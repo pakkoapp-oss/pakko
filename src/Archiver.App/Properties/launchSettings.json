@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "Archiver.App (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "Archiver.App (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}

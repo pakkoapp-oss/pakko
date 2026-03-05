@@ -1,0 +1,1 @@
+C:\Users\Pa\Projects\windows-archiver-wrapper\src\Archiver.App\Archiver.App.csproj;x64

@@ -1,0 +1,11 @@
+C:\Users\Pa\Projects\windows-archiver-wrapper\src\Archiver.Core\bin\Debug\net8.0\Archiver.Core.deps.json
+C:\Users\Pa\Projects\windows-archiver-wrapper\src\Archiver.Core\bin\Debug\net8.0\Archiver.Core.dll
+C:\Users\Pa\Projects\windows-archiver-wrapper\src\Archiver.Core\bin\Debug\net8.0\Archiver.Core.pdb
+C:\Users\Pa\Projects\windows-archiver-wrapper\src\Archiver.Core\obj\Debug\net8.0\Archiver.Core.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Pa\Projects\windows-archiver-wrapper\src\Archiver.Core\obj\Debug\net8.0\Archiver.Core.AssemblyInfoInputs.cache
+C:\Users\Pa\Projects\windows-archiver-wrapper\src\Archiver.Core\obj\Debug\net8.0\Archiver.Core.AssemblyInfo.cs
+C:\Users\Pa\Projects\windows-archiver-wrapper\src\Archiver.Core\obj\Debug\net8.0\Archiver.Core.csproj.CoreCompileInputs.cache
+C:\Users\Pa\Projects\windows-archiver-wrapper\src\Archiver.Core\obj\Debug\net8.0\Archiver.Core.dll
+C:\Users\Pa\Projects\windows-archiver-wrapper\src\Archiver.Core\obj\Debug\net8.0\refint\Archiver.Core.dll
+C:\Users\Pa\Projects\windows-archiver-wrapper\src\Archiver.Core\obj\Debug\net8.0\Archiver.Core.pdb
+C:\Users\Pa\Projects\windows-archiver-wrapper\src\Archiver.Core\obj\Debug\net8.0\ref\Archiver.Core.dll
