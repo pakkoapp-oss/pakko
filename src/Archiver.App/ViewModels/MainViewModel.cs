@@ -34,6 +34,15 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private ObservableCollection<string> _selectedPaths = [];
 
+    [ObservableProperty]
+    private bool _openDestinationFolder = false;
+
+    [ObservableProperty]
+    private bool _deleteSourceFiles = false;
+
+    [ObservableProperty]
+    private bool _deleteArchiveAfterExtraction = false;
+
     public MainViewModel(IArchiveService archiveService, IDialogService dialogService)
     {
         _archiveService = archiveService;
@@ -74,6 +83,8 @@ public sealed partial class MainViewModel : ObservableObject
             {
                 SourcePaths = [.. SelectedPaths],
                 DestinationFolder = DestinationPath,
+                OpenDestinationFolder = OpenDestinationFolder,
+                DeleteSourceFiles = DeleteSourceFiles,
             };
             var progress = new Progress<int>(p => Progress = p);
             var result = await _archiveService.ArchiveAsync(options, progress);
@@ -99,6 +110,8 @@ public sealed partial class MainViewModel : ObservableObject
             {
                 ArchivePaths = [.. SelectedPaths],
                 DestinationFolder = DestinationPath,
+                OpenDestinationFolder = OpenDestinationFolder,
+                DeleteArchiveAfterExtraction = DeleteArchiveAfterExtraction,
             };
             var progress = new Progress<int>(p => Progress = p);
             var result = await _archiveService.ExtractAsync(options, progress);

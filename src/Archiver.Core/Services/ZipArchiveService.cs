@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.IO.Compression;
 using Archiver.Core.Interfaces;
 using Archiver.Core.Models;
@@ -168,12 +169,32 @@ public sealed class ZipArchiveService : IArchiveService
             }
         }
 
-        return new ArchiveResult
+        var result = new ArchiveResult
         {
             Success = errors.Count == 0,
             CreatedFiles = createdFiles,
             Errors = errors
         };
+
+        if (result.Success && options.DeleteSourceFiles)
+        {
+            foreach (var path in options.SourcePaths)
+            {
+                try
+                {
+                    if (Directory.Exists(path)) Directory.Delete(path, recursive: true);
+                    else if (File.Exists(path)) File.Delete(path);
+                }
+                catch { }
+            }
+        }
+
+        if (result.Success && options.OpenDestinationFolder)
+        {
+            try { Process.Start("explorer.exe", options.DestinationFolder); } catch { }
+        }
+
+        return result;
     }
 
     /// <inheritdoc/>
@@ -249,13 +270,28 @@ public sealed class ZipArchiveService : IArchiveService
             progress?.Report((i + 1) * 100 / total);
         }
 
-        return new ArchiveResult
+        var result = new ArchiveResult
         {
             Success = errors.Count == 0,
             CreatedFiles = createdFiles,
             Errors = errors,
             SkippedFiles = skippedFiles
         };
+
+        if (result.Success && options.DeleteArchiveAfterExtraction)
+        {
+            foreach (var path in options.ArchivePaths)
+            {
+                try { if (File.Exists(path)) File.Delete(path); } catch { }
+            }
+        }
+
+        if (result.Success && options.OpenDestinationFolder)
+        {
+            try { Process.Start("explorer.exe", options.DestinationFolder); } catch { }
+        }
+
+        return result;
     }
 
     private static string ExtractWithSmartFoldering(string archivePath, string destDir, bool alreadyIsolated = false)

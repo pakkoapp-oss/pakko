@@ -109,6 +109,24 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
     }
 
     [Fact]
+    public async Task ArchiveAsync_DeleteSourceFiles_DeletesSourcesAfterSuccess()
+    {
+        var file = _temp.CreateFile("to-delete.txt");
+        var options = new ArchiveOptions
+        {
+            SourcePaths = [file],
+            DestinationFolder = _temp.Path,
+            ArchiveName = "output",
+            DeleteSourceFiles = true
+        };
+
+        var result = await _sut.ArchiveAsync(options);
+
+        result.Success.Should().BeTrue();
+        File.Exists(file).Should().BeFalse();
+    }
+
+    [Fact]
     public async Task ArchiveAsync_ReportsProgress()
     {
         var files = Enumerable.Range(1, 5)

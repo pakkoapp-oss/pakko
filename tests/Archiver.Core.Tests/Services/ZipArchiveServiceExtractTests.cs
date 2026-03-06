@@ -234,6 +234,25 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
     }
 
     [Fact]
+    public async Task ExtractAsync_DeleteArchiveAfterExtraction_DeletesArchiveAfterSuccess()
+    {
+        var zip = CreateTestZip("removeme.zip", "file.txt");
+        var destDir = Path.Combine(_temp.Path, "output");
+
+        var options = new ExtractOptions
+        {
+            ArchivePaths = [zip],
+            DestinationFolder = destDir,
+            DeleteArchiveAfterExtraction = true
+        };
+
+        var result = await _sut.ExtractAsync(options);
+
+        result.Success.Should().BeTrue();
+        File.Exists(zip).Should().BeFalse();
+    }
+
+    [Fact]
     public async Task ExtractAsync_ZipMagicBytesButCorruptedContent_ReturnsArchiveError()
     {
         var corruptPath = Path.Combine(_temp.Path, "corrupt.zip");
