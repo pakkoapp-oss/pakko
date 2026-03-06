@@ -14,7 +14,7 @@ public sealed class ArchiveOptionsTests
         options.DestinationFolder.Should().Be(string.Empty);
         options.ArchiveName.Should().BeNull();
         options.Mode.Should().Be(ArchiveMode.SingleArchive);
-        options.OnConflict.Should().Be(ConflictBehavior.Ask);
+        options.OnConflict.Should().Be(ConflictBehavior.Skip);
         options.OpenDestinationFolder.Should().BeFalse();
         options.DeleteSourceFiles.Should().BeFalse();
     }

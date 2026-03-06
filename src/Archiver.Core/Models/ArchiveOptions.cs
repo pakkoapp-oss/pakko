@@ -6,7 +6,7 @@ public sealed record ArchiveOptions
     public string DestinationFolder { get; init; } = string.Empty;
     public string? ArchiveName { get; init; }              // null = auto-name from source
     public ArchiveMode Mode { get; init; } = ArchiveMode.SingleArchive;
-    public ConflictBehavior OnConflict { get; init; } = ConflictBehavior.Ask;
+    public ConflictBehavior OnConflict { get; init; } = ConflictBehavior.Skip;
     public bool OpenDestinationFolder { get; init; } = false;
     public bool DeleteSourceFiles { get; init; } = false;
 }
@@ -19,7 +19,7 @@ public enum ArchiveMode
 
 public enum ConflictBehavior
 {
-    Ask,
     Overwrite,
-    Skip
+    Skip,
+    Rename
 }

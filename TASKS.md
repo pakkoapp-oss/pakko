@@ -403,7 +403,7 @@ Mode: (•) One archive   ( ) Separate archives
 ---
 
 ### T-23 — Conflict Behavior Dropdown
-- [ ] **Status:** pending
+- [x] **Status:** complete
 
 **Files:**
 - `src/Archiver.App/MainWindow.xaml`
@@ -425,12 +425,12 @@ If file exists: [ Skip ▼ ]
 **Note:** `Ask` removed for v1.0 — default is `Skip` which is safe.
 
 **Acceptance criteria:**
-- [ ] `OnConflict` observable `ConflictBehavior` in ViewModel, default `ConflictBehavior.Skip`
-- [ ] `ComboBox` with three options: Overwrite, Skip, Rename
-- [ ] Passed to both `ArchiveOptions.OnConflict` and `ExtractOptions.OnConflict`
-- [ ] `ZipArchiveService` implements `Skip` — skips silently if output exists
-- [ ] `ZipArchiveService` implements `Rename` — appends `(1)`, `(2)` etc to filename
-- [ ] `dotnet test` passes — tests for Skip and Rename behavior
+- [x] `OnConflict` observable `ConflictBehavior` in ViewModel, default `ConflictBehavior.Skip`
+- [x] `ComboBox` with three options: Overwrite, Skip, Rename
+- [x] Passed to both `ArchiveOptions.OnConflict` and `ExtractOptions.OnConflict`
+- [x] `ZipArchiveService` implements `Skip` — skips silently if output exists
+- [x] `ZipArchiveService` implements `Rename` — appends `(1)`, `(2)` etc to filename
+- [x] `dotnet test` passes — tests for Skip and Rename behavior
 
 ---
 
@@ -559,6 +559,260 @@ already prefixes entries with the folder name via `entryPrefix`.
 - [ ] `SeparateArchives` directory branch uses `AddDirectoryToArchive` instead
 - [ ] Resulting ZIP structure identical — folder name preserved as root entry prefix
 - [ ] `dotnet test` passes — existing archive tests unchanged
+
+---
+
+### T-28 — Internationalization Foundation (ResW)
+- [ ] **Status:** pending
+
+**Files:**
+- `src/Archiver.App/Strings/en-US/Resources.resw` ← create
+- `src/Archiver.App/MainWindow.xaml` ← replace hardcoded strings with `x:Uid`
+- `src/Archiver.App/ViewModels/MainViewModel.cs` ← use `ResourceLoader` for dynamic strings
+- `src/Archiver.App/Services/DialogService.cs` ← use `ResourceLoader` for dialog strings
+
+**What:** Extract all UI strings into `.resw` resource files using the standard
+Windows/WinUI 3 localization system. No third-party libraries.
+English (`en-US`) is the only language for v1.0 — Ukrainian (`uk-UA`) added later.
+
+**ResW file location:**
+```
+src/Archiver.App/
+  Strings/
+    en-US/
+      Resources.resw    ← all UI strings here
+```
+
+**XAML usage — via x:Uid (zero code-behind):**
+```xml
+<!-- Resources.resw key: ArchiveButton.Content = "Archive" -->
+<Button x:Uid="ArchiveButton" />
+
+<!-- Resources.resw key: DropZoneHint.Text = "Drop files or folders here..." -->
+<TextBlock x:Uid="DropZoneHint" />
+```
+
+**C# usage — via ResourceLoader:**
+```csharp
+private static readonly ResourceLoader _res = new();
+
+// In ViewModel or DialogService:
+StatusMessage = _res.GetString("StatusDone").Replace("{0}", count.ToString());
+```
+
+**Strings to extract — minimum set:**
+
+| Key | Value |
+|-----|-------|
+| `ArchiveButton.Content` | Archive |
+| `ExtractButton.Content` | Extract |
+| `ClearButton.Content` | Clear |
+| `AddFilesButton.Content` | Add files |
+| `AddFolderButton.Content` | Add folder |
+| `DropZoneHint.Text` | Drop files or folders here, or double-click to browse files |
+| `MultipleFoldersHint.Text` | For multiple folders — drag & drop from Explorer |
+| `DestinationLabel.Text` | Destination: |
+| `ArchiveNameLabel.Text` | Name: |
+| `CompressionLabel.Text` | Compression: |
+| `ConflictLabel.Text` | If file exists: |
+| `OpenDestinationCheck.Content` | Open destination folder after completion |
+| `DeleteSourceCheck.Content` | Delete source files after archiving |
+| `DeleteArchiveCheck.Content` | Delete archive after extraction |
+| `StatusDone` | Done — {0} file(s) processed. |
+| `ErrorDialogTitle` | Completed with issues |
+| `ErrorSectionHeader` | Errors |
+| `SkippedSectionHeader` | Skipped — unsupported format |
+
+**Architecture boundary — Archiver.Core stays clean:**
+- `Archiver.Core` must NOT reference `ResourceLoader` or any UI assembly
+- Error messages in `ZipArchiveService` stay as English constants
+- Translation of Core error messages happens in `MainViewModel` or `DialogService`
+- Use an `ErrorMessageTranslator` helper class in `Archiver.App` if needed
+
+**Acceptance criteria:**
+- [ ] `Strings/en-US/Resources.resw` created with all strings from the table above
+- [ ] All hardcoded strings in `MainWindow.xaml` replaced with `x:Uid`
+- [ ] Dynamic strings in `MainViewModel` use `ResourceLoader.GetString()`
+- [ ] Dynamic strings in `DialogService` use `ResourceLoader.GetString()`
+- [ ] App builds and runs — all UI text appears correctly
+- [ ] `Archiver.Core` has zero references to `ResourceLoader` or `Windows.ApplicationModel.Resources`
+- [ ] Adding `uk-UA/Resources.resw` in future requires no code changes — only new file
+
+---
+
+### T-29 — Drag & Drop on File List Area
+- [ ] **Status:** pending
+
+**Files:**
+- `src/Archiver.App/MainWindow.xaml`
+- `src/Archiver.App/MainWindow.xaml.cs`
+
+**What:** Expand drag & drop target from the small drop zone hint area to the entire
+file list/table area. When list is empty — drop zone hint is visible. When files are
+added — user can still drag & drop directly onto the table.
+
+This matches Bandizip and NanaZip behavior — the list area is always the drop target,
+not the whole window (which would cause accidental drops on buttons and inputs).
+
+**Behavior:**
+```
+List area empty  → shows large hint "Drop files or folders here..."
+                   drop anywhere in list area works
+List area filled → table visible, hint hidden
+                   drop onto table still works — appends to existing list
+```
+
+**Implementation notes:**
+- Move `DragOver` and `Drop` event handlers from drop zone hint to the list/table control
+- The hint `TextBlock`/`Border` becomes purely visual — hidden when `SelectedPaths` not empty
+- Use `AllowDrop="True"` on the `ListView`/`DataGrid` control itself
+- `DragOver` → set `AcceptedOperation = DataPackageOperation.Copy`
+- `Drop` → extract `StorageItems`, add paths via `ViewModel.AddPaths()`
+
+**Acceptance criteria:**
+- [ ] `AllowDrop="True"` set on file list control, not on drop zone hint
+- [ ] Drop zone hint visible only when list is empty
+- [ ] Drop zone hint hidden when list has items
+- [ ] Drag & drop onto list area works when list is empty
+- [ ] Drag & drop onto list area works when list already has items — appends
+- [ ] Files and folders both accepted
+- [ ] Duplicates still prevented
+- [ ] Dropping on buttons, inputs, or other controls outside list area does NOT trigger add
+
+---
+
+### T-30 — App Title and Simple File Log
+- [ ] **Status:** pending
+
+**Files:**
+- `src/Archiver.App/MainWindow.xaml.cs`
+- `src/Archiver.App/Services/ILogService.cs` ← create
+- `src/Archiver.App/Services/LogService.cs` ← create
+- `src/Archiver.App/App.xaml.cs`
+
+**What:** Two separate concerns combined in one task:
+
+**A) App title in taskbar and title bar:**
+Currently shows raw executable name. Set a proper display name.
+
+```csharp
+// In MainWindow constructor or Activated handler:
+AppWindow.Title = "Pakko";
+```
+
+Also set in `Package.appxmanifest` (for MSIX, T-11):
+```xml
+<uap:VisualElements DisplayName="Pakko" ... />
+```
+
+**B) Simple file log:**
+Log significant events to `%LocalAppData%\Archiver\logs\archiver.log`.
+No third-party libraries — plain `File.AppendAllText` with rotation.
+
+Log format:
+```
+2025-01-15 14:32:01 [INFO]  Archive completed — 3 files → C:\Users\Pa\Desktop\backup.zip
+2025-01-15 14:32:05 [INFO]  Extract completed — archive.zip → C:\Users\Pa\Downloads\
+2025-01-15 14:32:10 [WARN]  Skipped backup.rar — RAR format not supported
+2025-01-15 14:32:15 [ERROR] document.pdf — File is locked by another process
+```
+
+**Log rotation:** if `archiver.log` exceeds 1 MB — rename to `archiver.log.1` and start fresh.
+Keep maximum 3 rotated files. No external libraries needed — check size before append.
+
+**ILogService interface:**
+```csharp
+public interface ILogService
+{
+    void Info(string message);
+    void Warn(string message);
+    void Error(string message, Exception? ex = null);
+}
+```
+
+**What to log:**
+- Archive started / completed (file count, destination)
+- Extract started / completed (file count, destination)
+- Each `ArchiveError` → `Error()`
+- Each `SkippedFile` → `Warn()`
+- App startup
+
+**Acceptance criteria:**
+- [ ] `AppWindow.Title` set to "Pakko" in `MainWindow`
+- [ ] Title visible correctly in taskbar and title bar
+- [ ] `ILogService` and `LogService` created in `Archiver.App/Services/`
+- [ ] Log written to `%LocalAppData%\Pakko\logs\pakko.log`
+- [ ] Log directory created automatically if not exists
+- [ ] Log rotation at 1 MB — old file renamed to `.log.1`, max 3 rotated files
+- [ ] Archive and Extract results logged after every operation
+- [ ] `ILogService` registered in DI container
+- [ ] `Archiver.Core` has zero references to `ILogService` — logging done in ViewModel
+
+---
+
+### T-31 — App Icon and System Tray (Pakko Branding)
+- [ ] **Status:** pending
+
+**Files:**
+- `src/Archiver.App/Assets/` ← icon files
+- `src/Archiver.App/Package.appxmanifest`
+- `src/Archiver.App/App.xaml.cs`
+- `src/Archiver.App/Archiver.App.csproj`
+
+**What:** Three levels of icon presence for Pakko:
+
+**A) App icon** — taskbar, Alt+Tab, title bar, Start menu.
+Required sizes for MSIX (PNG, transparent background):
+| File | Size |
+|------|------|
+| `Square44x44Logo.png` | 44×44 |
+| `Square44x44Logo.targetsize-16.png` | 16×16 |
+| `Square44x44Logo.targetsize-32.png` | 32×32 |
+| `Square150x150Logo.png` | 150×150 |
+| `Wide310x150Logo.png` | 310×150 |
+| `StoreLogo.png` | 50×50 |
+
+All referenced in `Package.appxmanifest` under `<uap:VisualElements>`.
+
+**B) Window title bar icon** — small icon in the custom title bar area.
+```csharp
+AppWindow.SetIcon("Assets/Square44x44Logo.ico");
+```
+Requires `.ico` file (can be converted from PNG).
+
+**C) System tray icon** — icon in notification area, lives when window is minimized.
+Use `H.NotifyIcon.WinUI` NuGet package (MIT license, actively maintained).
+
+```xml
+<!-- In MainWindow.xaml -->
+<tb:TaskbarIcon
+    IconSource="Assets/Square44x44Logo.ico"
+    ToolTipText="Pakko">
+    <tb:TaskbarIcon.ContextMenuMode>
+        SecondWindow
+    </tb:TaskbarIcon.ContextMenuMode>
+</tb:TaskbarIcon>
+```
+
+Tray context menu minimum:
+```
+Open Pakko
+─────────
+Exit
+```
+
+**Note on icon design:** icon not designed in this task — placeholder from Assets/
+is acceptable for v1.0. Proper icon design is separate creative work.
+
+**Acceptance criteria:**
+- [ ] All required PNG sizes present in `Assets/`
+- [ ] `Package.appxmanifest` references all icon sizes correctly
+- [ ] App icon appears correctly in taskbar and Alt+Tab
+- [ ] Window title bar shows icon
+- [ ] `H.NotifyIcon.WinUI` added to `Archiver.App.csproj`
+- [ ] Tray icon visible in notification area when app is running
+- [ ] Tray context menu: "Open Pakko" brings window to foreground, "Exit" closes app
+- [ ] App name shown as "Pakko" everywhere — taskbar, tray tooltip, title bar
 
 ---
 

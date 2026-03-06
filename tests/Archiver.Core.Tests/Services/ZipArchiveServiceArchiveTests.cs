@@ -127,6 +127,71 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
     }
 
     [Fact]
+    public async Task ArchiveAsync_ConflictSkip_DoesNotOverwriteExistingZip()
+    {
+        var file = _temp.CreateFile("source.txt");
+        var existingZip = _temp.CreateFile("output.zip");
+        var originalWriteTime = File.GetLastWriteTimeUtc(existingZip);
+
+        var options = new ArchiveOptions
+        {
+            SourcePaths = [file],
+            DestinationFolder = _temp.Path,
+            ArchiveName = "output",
+            OnConflict = ConflictBehavior.Skip
+        };
+
+        var result = await _sut.ArchiveAsync(options);
+
+        result.Success.Should().BeTrue();
+        result.CreatedFiles.Should().BeEmpty();
+        File.GetLastWriteTimeUtc(existingZip).Should().Be(originalWriteTime);
+    }
+
+    [Fact]
+    public async Task ArchiveAsync_ConflictRename_CreatesNumberedZipWhenOutputExists()
+    {
+        var file = _temp.CreateFile("source.txt");
+        _temp.CreateFile("output.zip");
+
+        var options = new ArchiveOptions
+        {
+            SourcePaths = [file],
+            DestinationFolder = _temp.Path,
+            ArchiveName = "output",
+            OnConflict = ConflictBehavior.Rename
+        };
+
+        var result = await _sut.ArchiveAsync(options);
+
+        result.Success.Should().BeTrue();
+        result.CreatedFiles.Should().HaveCount(1);
+        result.CreatedFiles[0].Should().EndWith("output (1).zip");
+        File.Exists(result.CreatedFiles[0]).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ArchiveAsync_ConflictOverwrite_ReplacesExistingZip()
+    {
+        var file = _temp.CreateFile("source.txt");
+        var existingZip = _temp.CreateFile("output.zip");
+
+        var options = new ArchiveOptions
+        {
+            SourcePaths = [file],
+            DestinationFolder = _temp.Path,
+            ArchiveName = "output",
+            OnConflict = ConflictBehavior.Overwrite
+        };
+
+        var result = await _sut.ArchiveAsync(options);
+
+        result.Success.Should().BeTrue();
+        result.CreatedFiles.Should().HaveCount(1);
+        result.CreatedFiles[0].Should().Be(existingZip);
+    }
+
+    [Fact]
     public async Task ArchiveAsync_ReportsProgress()
     {
         var files = Enumerable.Range(1, 5)

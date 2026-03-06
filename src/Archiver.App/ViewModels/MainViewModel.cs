@@ -60,6 +60,26 @@ public sealed partial class MainViewModel : ObservableObject
     public bool IsArchiveNameEnabled => SelectedArchiveMode == ArchiveMode.SingleArchive;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(OnConflictIndex))]
+    private ConflictBehavior _onConflict = ConflictBehavior.Skip;
+
+    public int OnConflictIndex
+    {
+        get => OnConflict switch
+        {
+            ConflictBehavior.Overwrite => 0,
+            ConflictBehavior.Rename    => 2,
+            _                          => 1 // Skip
+        };
+        set => OnConflict = value switch
+        {
+            0 => ConflictBehavior.Overwrite,
+            2 => ConflictBehavior.Rename,
+            _ => ConflictBehavior.Skip
+        };
+    }
+
+    [ObservableProperty]
     private bool _openDestinationFolder = false;
 
     [ObservableProperty]
@@ -144,6 +164,7 @@ public sealed partial class MainViewModel : ObservableObject
                 DestinationFolder = DestinationPath,
                 ArchiveName = string.IsNullOrWhiteSpace(ArchiveName) ? null : ArchiveName.Trim(),
                 Mode = SelectedArchiveMode,
+                OnConflict = OnConflict,
                 OpenDestinationFolder = OpenDestinationFolder,
                 DeleteSourceFiles = DeleteSourceFiles,
             };
@@ -172,6 +193,7 @@ public sealed partial class MainViewModel : ObservableObject
             {
                 ArchivePaths = [.. FileItems.Select(x => x.FullPath)],
                 DestinationFolder = DestinationPath,
+                OnConflict = OnConflict,
                 OpenDestinationFolder = OpenDestinationFolder,
                 DeleteArchiveAfterExtraction = DeleteArchiveAfterExtraction,
             };

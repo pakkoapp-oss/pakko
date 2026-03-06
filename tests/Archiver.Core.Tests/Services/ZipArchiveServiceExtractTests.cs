@@ -253,6 +253,55 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
     }
 
     [Fact]
+    public async Task ExtractAsync_ConflictSkip_DoesNotOverwriteExistingFile()
+    {
+        var zip = CreateTestZip("archive.zip", "file.txt");
+        var destDir = Path.Combine(_temp.Path, "out");
+        Directory.CreateDirectory(destDir);
+
+        // Pre-create the file that would be extracted
+        var existingFile = Path.Combine(destDir, "file.txt");
+        File.WriteAllText(existingFile, "original content");
+        var originalContent = File.ReadAllText(existingFile);
+
+        var options = new ExtractOptions
+        {
+            ArchivePaths = [zip],
+            DestinationFolder = destDir,
+            Mode = ExtractMode.SingleFolder,
+            OnConflict = ConflictBehavior.Skip
+        };
+
+        await _sut.ExtractAsync(options);
+
+        File.ReadAllText(existingFile).Should().Be(originalContent);
+    }
+
+    [Fact]
+    public async Task ExtractAsync_ConflictRename_CreatesNumberedFileWhenDestinationExists()
+    {
+        var zip = CreateTestZip("archive.zip", "file.txt");
+        var destDir = Path.Combine(_temp.Path, "out");
+        Directory.CreateDirectory(destDir);
+
+        // Pre-create the file that would be extracted
+        File.WriteAllText(Path.Combine(destDir, "file.txt"), "original content");
+
+        var options = new ExtractOptions
+        {
+            ArchivePaths = [zip],
+            DestinationFolder = destDir,
+            Mode = ExtractMode.SingleFolder,
+            OnConflict = ConflictBehavior.Rename
+        };
+
+        await _sut.ExtractAsync(options);
+
+        File.Exists(Path.Combine(destDir, "file (1).txt")).Should().BeTrue();
+        File.Exists(Path.Combine(destDir, "file.txt")).Should().BeTrue(); // original untouched
+    }
+
+    [Fact]
     public async Task ExtractAsync_ZipMagicBytesButCorruptedContent_ReturnsArchiveError()
     {
         var corruptPath = Path.Combine(_temp.Path, "corrupt.zip");

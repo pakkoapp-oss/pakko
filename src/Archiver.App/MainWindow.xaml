@@ -196,8 +196,16 @@
             </Grid>
         </StackPanel>
 
-        <!-- Row 6: Post-Action Checkboxes -->
+        <!-- Row 6: Shared Options + Post-Action Checkboxes -->
         <StackPanel Grid.Row="6" Spacing="4">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <TextBlock Text="If file exists:" VerticalAlignment="Center"/>
+                <ComboBox SelectedIndex="{x:Bind ViewModel.OnConflictIndex, Mode=TwoWay}">
+                    <ComboBoxItem Content="Overwrite"/>
+                    <ComboBoxItem Content="Skip"/>
+                    <ComboBoxItem Content="Rename (add number)"/>
+                </ComboBox>
+            </StackPanel>
             <CheckBox
                 Content="Open destination folder after completion"
                 IsChecked="{x:Bind ViewModel.OpenDestinationFolder, Mode=TwoWay}"/>

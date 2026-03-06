@@ -29,12 +29,26 @@ public sealed class ZipArchiveService : IArchiveService
 
             string destPath = Path.Combine(options.DestinationFolder, archiveName + ".zip");
 
+            Directory.CreateDirectory(options.DestinationFolder);
+
+            if (File.Exists(destPath))
+            {
+                switch (options.OnConflict)
+                {
+                    case ConflictBehavior.Skip:
+                        return new ArchiveResult { Success = true, CreatedFiles = [], Errors = [] };
+                    case ConflictBehavior.Overwrite:
+                        File.Delete(destPath);
+                        break;
+                    case ConflictBehavior.Rename:
+                        destPath = GetUniqueFilePath(destPath);
+                        break;
+                }
+            }
+
             try
             {
-                Directory.CreateDirectory(options.DestinationFolder);
-
                 using var archive = ZipFile.Open(destPath, ZipArchiveMode.Create);
-
                 int total = options.SourcePaths.Count;
                 for (int i = 0; i < total; i++)
                 {
@@ -119,6 +133,22 @@ public sealed class ZipArchiveService : IArchiveService
                 string sourcePath = options.SourcePaths[i];
                 string baseName = Path.GetFileNameWithoutExtension(sourcePath);
                 string destPath = Path.Combine(options.DestinationFolder, baseName + ".zip");
+
+                if (File.Exists(destPath))
+                {
+                    switch (options.OnConflict)
+                    {
+                        case ConflictBehavior.Skip:
+                            progress?.Report((i + 1) * 100 / total);
+                            continue;
+                        case ConflictBehavior.Overwrite:
+                            File.Delete(destPath);
+                            break;
+                        case ConflictBehavior.Rename:
+                            destPath = GetUniqueFilePath(destPath);
+                            break;
+                    }
+                }
 
                 try
                 {
@@ -234,7 +264,7 @@ public sealed class ZipArchiveService : IArchiveService
             {
                 bool alreadyIsolated = options.Mode == ExtractMode.SeparateFolders;
                 string actualDest = await Task.Run(() =>
-                    ExtractWithSmartFoldering(archivePath, destDir, alreadyIsolated),
+                    ExtractWithSmartFoldering(archivePath, destDir, alreadyIsolated, options.OnConflict),
                     cancellationToken).ConfigureAwait(false);
 
                 createdFiles.Add(actualDest);
@@ -294,7 +324,7 @@ public sealed class ZipArchiveService : IArchiveService
         return result;
     }
 
-    private static string ExtractWithSmartFoldering(string archivePath, string destDir, bool alreadyIsolated = false)
+    private static string ExtractWithSmartFoldering(string archivePath, string destDir, bool alreadyIsolated = false, ConflictBehavior onConflict = ConflictBehavior.Skip)
     {
         using var archive = ZipFile.OpenRead(archivePath);
 
@@ -341,6 +371,13 @@ public sealed class ZipArchiveService : IArchiveService
                 throw new InvalidDataException($"ZIP entry '{entry.FullName}' would extract outside destination directory.");
 
             Directory.CreateDirectory(Path.GetDirectoryName(destFilePath)!);
+
+            if (File.Exists(destFilePath))
+            {
+                if (onConflict == ConflictBehavior.Skip) continue;
+                if (onConflict == ConflictBehavior.Rename) destFilePath = GetUniqueFilePath(destFilePath);
+            }
+
             entry.ExtractToFile(destFilePath, overwrite: true);
         }
 
@@ -403,6 +440,18 @@ public sealed class ZipArchiveService : IArchiveService
         {
             return null;
         }
+    }
+
+    private static string GetUniqueFilePath(string path)
+    {
+        string dir = Path.GetDirectoryName(path)!;
+        string name = Path.GetFileNameWithoutExtension(path);
+        string ext = Path.GetExtension(path);
+        int i = 1;
+        string candidate;
+        do { candidate = Path.Combine(dir, $"{name} ({i++}){ext}"); }
+        while (File.Exists(candidate));
+        return candidate;
     }
 
     private static void AddDirectoryToArchive(ZipArchive archive, string sourceDir, string entryPrefix)
