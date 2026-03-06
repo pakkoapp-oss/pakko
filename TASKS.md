@@ -1,7 +1,30 @@
 # TASKS.md — Implementation Tasks
 
-Each task has: scope, files to create/modify, and **acceptance criteria**.
-Agent marks task `[x]` only when ALL criteria pass.
+---
+
+## ⚠ Agent Rules — Read Before Every Task
+
+These rules apply to ALL tasks. Violating them = task is NOT complete.
+
+**Completion rules:**
+- NEVER mark `[x]` unless every single acceptance criterion is checked `[x]`
+- `[~]` means partially complete — UI done but logic missing, or logic done but untested
+- A task with ANY `[ ]` criterion must stay `[ ]` or `[~]` — never `[x]`
+
+**Testing rules:**
+- ALWAYS run `dotnet test` after any change to `Archiver.Core`
+- If tests fail → fix before marking anything complete
+- Every new behavior in `ZipArchiveService` needs at least one test
+
+**UI vs Logic rules:**
+- UI-only implementation = `[~]` not `[x]`
+- If a task touches both XAML and a service, BOTH must be done before `[x]`
+- Options passed from ViewModel to service must actually be READ and ACTED ON in the service
+
+**Scope rules — which options apply to which action:**
+- Archive-only options (Name, Mode, Compression, DeleteSourceFiles) → passed only to `ArchiveOptions`, ignored when Extract is pressed
+- Extract-only options (DeleteArchiveAfterExtraction) → passed only to `ExtractOptions`, ignored when Archive is pressed
+- Shared options (Destination, OnConflict, OpenDestinationFolder) → passed to both
 
 ---
 
@@ -10,25 +33,8 @@ Agent marks task `[x]` only when ALL criteria pass.
 ### T-01 — Create Solution and Projects
 - [x] **Status:** complete
 
-**Acceptance criteria:**
-- [x] `dotnet build src/Archiver.Core` runs without errors
-- [x] `Archiver.Core` targets `net8.0`
-- [x] `Archiver.App` references `Archiver.Core`
-- [x] Solution contains both projects (`dotnet sln list` shows both)
-- [x] `Archiver.Core.csproj` has `<Nullable>enable</Nullable>`
-
----
-
 ### T-02 — Create Folder Structure
 - [x] **Status:** complete
-
-**Acceptance criteria:**
-- [x] `src/Archiver.Core/Interfaces/` exists
-- [x] `src/Archiver.Core/Services/` exists
-- [x] `src/Archiver.Core/Models/` exists
-- [x] `src/Archiver.App/Views/` exists
-- [x] `src/Archiver.App/ViewModels/` exists
-- [x] `src/Archiver.App/Services/` exists
 
 ---
 
@@ -37,12 +43,8 @@ Agent marks task `[x]` only when ALL criteria pass.
 ### T-03 — Implement ArchiveOptions
 - [x] **Status:** complete
 
----
-
 ### T-04 — Implement ExtractOptions
 - [x] **Status:** complete
-
----
 
 ### T-05 — Implement ArchiveResult and ArchiveError
 - [x] **Status:** complete
@@ -53,8 +55,6 @@ Agent marks task `[x]` only when ALL criteria pass.
 
 ### T-06 — Implement IArchiveService
 - [x] **Status:** complete
-
----
 
 ### T-07 — Implement ZipArchiveService
 - [x] **Status:** complete
@@ -72,8 +72,6 @@ Agent marks task `[x]` only when ALL criteria pass.
 
 ### T-08 — Implement MainViewModel
 - [x] **Status:** complete
-
----
 
 ### T-09 — Implement MainWindow
 - [x] **Status:** complete
@@ -102,220 +100,95 @@ Agent marks task `[x]` only when ALL criteria pass.
 **What:** Replace extension-based ZIP check with magic bytes detection.
 ZIP format always starts with bytes `50 4B 03 04` (`PK♥♦`).
 
-**ZIP-compatible formats that must now work:**
-
-| Extension | Format |
-|-----------|--------|
-| `.zip` | Standard ZIP |
-| `.jar` | Java Archive |
-| `.apk` | Android Package |
-| `.docx` | Word Document |
-| `.xlsx` | Excel Spreadsheet |
-| `.pptx` | PowerPoint |
-| `.epub` | eBook |
-| `.odt` | OpenDocument Text |
-| `.war` | Java Web Archive |
-| `.nupkg` | NuGet Package |
-
-**Implementation:**
-```csharp
-private static bool IsZipFile(string path)
-{
-    try
-    {
-        Span<byte> header = stackalloc byte[4];
-        using var fs = File.OpenRead(path);
-        fs.ReadExactly(header);
-        return header[0] == 0x50 && header[1] == 0x4B
-            && header[2] == 0x03 && header[3] == 0x04;
-    }
-    catch
-    {
-        return false;
-    }
-}
-```
-
-**Decision logic:**
-```
-IsZipFile() == false
-    → skip silently (not a ZIP, not an error)
-IsZipFile() == true → try ZipFile.OpenRead()
-    ├── success              → extract normally
-    └── InvalidDataException → ArchiveError:
-        "File has ZIP signature but appears corrupted or incomplete."
-```
-
 **Acceptance criteria:**
 - [x] `IsZipFile()` private method uses magic bytes `50 4B 03 04`
 - [x] Extension check removed entirely
 - [x] `.jar`, `.docx`, `.xlsx`, `.apk` with valid ZIP content extracted successfully
 - [x] File with `.zip` extension but wrong magic bytes → skipped silently
-- [x] File with ZIP magic bytes but corrupted → `ArchiveError` with message "File has ZIP signature but appears corrupted or incomplete."
-- [x] `dotnet test` passes — existing tests unchanged
-- [x] New test cases:
-  - [x] `.jar` with valid ZIP content → extracted successfully
-  - [x] File with `.zip` extension but not ZIP magic bytes → skipped silently
-  - [x] File with ZIP magic bytes but corrupted content → `ArchiveError`
+- [x] File with ZIP magic bytes but corrupted → `ArchiveError`
+- [x] `dotnet test` passes
+- [x] New test cases added
 
 ---
 
 ### T-13.2 — Inform User About Skipped Non-ZIP Files
-- [ ] **Status:** pending
+- [x] **Status:** complete
 
 **Files:**
 - `src/Archiver.Core/Models/ArchiveResult.cs`
 - `src/Archiver.Core/Services/ZipArchiveService.cs`
-- `src/Archiver.App/Services/IDialogService.cs`
-- `src/Archiver.App/Services/DialogService.cs`
-- `src/Archiver.App/ViewModels/MainViewModel.cs`
 
-**What:** Currently non-ZIP files are skipped silently — user has no idea why.
-Add `SkippedFiles` collection to `ArchiveResult` and show skipped files
-in the summary dialog (T-19) as a separate section distinct from errors.
+**What:** Add `SkippedFiles` to `ArchiveResult`. Known non-ZIP formats reported with friendly name.
+Unknown binaries skipped silently.
 
-Known non-ZIP formats to detect by magic bytes and report with friendly name:
-
-| Magic bytes | Format | Friendly name |
-|-------------|--------|---------------|
-| `52 61 72 21` | RAR | RAR archive |
-| `37 7A BC AF 27 1C` | 7-Zip | 7-Zip archive |
-| `1F 8B` | GZIP / TAR.GZ | GZip archive |
-| `42 5A 68` | BZIP2 / TAR.BZ2 | BZip2 archive |
-| `FD 37 7A 58 5A 00` | XZ / TAR.XZ | XZ archive |
-| `04 22 4D 18` | LZ4 | LZ4 archive |
-
-Files with unknown magic bytes → skipped silently, no message (could be any binary).
-
-**Change to ArchiveResult:**
-```csharp
-public sealed record ArchiveResult
-{
-    public bool Success { get; init; }
-    public IReadOnlyList<string> CreatedFiles { get; init; } = [];
-    public IReadOnlyList<ArchiveError> Errors { get; init; } = [];
-    public IReadOnlyList<SkippedFile> SkippedFiles { get; init; } = [];  // NEW
-}
-
-public sealed record SkippedFile
-{
-    public string Path { get; init; } = string.Empty;
-    public string Reason { get; init; } = string.Empty;
-}
-```
-
-**Decision logic in ExtractAsync:**
-```
-IsZipFile() == false
-    ├── IsKnownArchiveFormat() == true
-    │   → add to SkippedFiles with reason:
-    │     "RAR format is not supported. Only ZIP-based formats are supported."
-    └── IsKnownArchiveFormat() == false
-        → skip silently, no record kept
-```
+| Magic bytes | Format |
+|-------------|--------|
+| `52 61 72 21` | RAR |
+| `37 7A BC AF 27 1C` | 7-Zip |
+| `1F 8B` | GZip |
+| `42 5A 68` | BZip2 |
+| `FD 37 7A 58 5A 00` | XZ |
+| `04 22 4D 18` | LZ4 |
 
 **Acceptance criteria:**
-- [ ] `SkippedFile` sealed record added to `src/Archiver.Core/Models/`
-- [ ] `ArchiveResult.SkippedFiles` is `IReadOnlyList<SkippedFile>`, defaults to `[]`
-- [ ] `IsKnownArchiveFormat()` private method in `ZipArchiveService` checks magic bytes for RAR, 7z, GZip, BZip2, XZ, LZ4
-- [ ] Known non-ZIP archives added to `SkippedFiles` with friendly reason message
-- [ ] Unknown binary files skipped silently — not added to `SkippedFiles`
-- [ ] `ArchiveResult.Success` remains `true` when only skips occurred, no errors
-- [ ] `dotnet test` passes — existing tests unchanged
-- [ ] New test cases:
-  - [ ] RAR file → appears in `SkippedFiles` with friendly reason
-  - [ ] Random binary file → not in `SkippedFiles`, not in `Errors`
+- [x] `SkippedFile` sealed record in `src/Archiver.Core/Models/`
+- [x] `ArchiveResult.SkippedFiles` is `IReadOnlyList<SkippedFile>`, defaults to `[]`
+- [x] `IsKnownArchiveFormat()` checks magic bytes for all formats above
+- [x] Known non-ZIP archives added to `SkippedFiles` with friendly reason
+- [x] Unknown binaries skipped silently
+- [x] `ArchiveResult.Success` stays `true` when only skips occurred
+- [x] `dotnet test` passes
+- [x] New test cases added
 
 ---
 
 ### T-14 — Smart Extract Folder Logic
 - [x] **Status:** complete
 
-**File:** `src/Archiver.Core/Services/ZipArchiveService.cs`
-
-**What:** Automatically decide whether to wrap extracted files in a subfolder.
-
-Rules:
-- Single root folder in archive → extract contents directly, no double-nesting
-- Multiple items at root → create subfolder named after the archive
-- Single file at root → extract directly, no subfolder
-
 **Acceptance criteria:**
 - [x] Single root folder → no double-nesting
 - [x] Multiple root items → subfolder created named after archive
 - [x] Single root file → extracted directly
-- [x] Existing tests still pass
-- [x] New test cases for each scenario
+- [x] ZIP slip protection on every entry
+- [x] Existing tests pass, new test cases added
 
 ---
 
 ### T-15 — Add Files and Add Folder Buttons
-- [ ] **Status:** pending
-
-**Files:**
-- `src/Archiver.App/MainWindow.xaml`
-- `src/Archiver.App/MainWindow.xaml.cs`
-- `src/Archiver.App/ViewModels/MainViewModel.cs`
-- `src/Archiver.App/Services/IDialogService.cs`
-- `src/Archiver.App/Services/DialogService.cs`
-
-**What:** Two explicit buttons below the drop zone.
-
-```
-[ Add files ]  [ Add folder ]
-```
+- [x] **Status:** complete
 
 **Acceptance criteria:**
-- [ ] "Add files" opens `FileOpenPicker` — multi-select, all file types
-- [ ] "Add folder" opens `FolderPicker` — single folder selection
-- [ ] Both add to `SelectedPaths` without duplicates
-- [ ] Double-click on drop zone still triggers files picker
-- [ ] Hint text: "Drop files or folders here, or double-click to browse files"
+- [x] "Add files" opens `FileOpenPicker` — multi-select
+- [x] "Add folder" opens `FolderPicker`
+- [x] Both add to `SelectedPaths` without duplicates
+- [x] Double-click on drop zone triggers files picker
+- [x] Hint text updated
 
 ---
 
 ### T-16 — Destination Path Row
-- [ ] **Status:** pending
-
-**Files:**
-- `src/Archiver.App/MainWindow.xaml`
-- `src/Archiver.App/ViewModels/MainViewModel.cs`
-
-**What:** Destination path row above Archive/Extract buttons.
-
-```
-Destination:  [C:\Users\Pa\Downloads\          ] [...]
-```
+- [x] **Status:** complete
 
 **Acceptance criteria:**
-- [ ] `DestinationPath` observable `string` in ViewModel
-- [ ] Default = folder of first item in `SelectedPaths` when list changes
-- [ ] If `SelectedPaths` empty → Desktop (`Environment.GetFolderPath(Environment.SpecialFolder.Desktop)`)
-- [ ] `...` button opens `FolderPicker` and updates `DestinationPath`
-- [ ] `DestinationPath` passed to `ArchiveOptions.DestinationFolder` and `ExtractOptions.DestinationFolder`
-- [ ] Read-only `TextBox` — editable only via picker button
+- [x] `DestinationPath` observable `string` in ViewModel
+- [x] Default = folder of first item in `SelectedPaths`
+- [x] If empty → Desktop
+- [x] `...` button opens `FolderPicker`
+- [x] `DestinationPath` passed to both `ArchiveOptions` and `ExtractOptions`
 
 ---
 
 ### T-17 — Remove Item from List (Right-click)
 - [x] **Status:** complete
 
-**Files:**
-- `src/Archiver.App/MainWindow.xaml`
-- `src/Archiver.App/MainWindow.xaml.cs`
-- `src/Archiver.App/ViewModels/MainViewModel.cs`
-
-**What:** Right-click on list item → context menu → "Remove".
-
 **Acceptance criteria:**
-- [x] Right-click shows `MenuFlyout` with "Remove" item
+- [x] Right-click shows `MenuFlyout` with "Remove"
 - [x] Clicking "Remove" calls `ViewModel.RemovePath(path)`
-- [x] `RemovePath(string path)` added to `MainViewModel`
 - [x] No business logic in code-behind
 
 ---
 
-### T-18 — Post-Action Checkboxes — UI and Logic
+### T-18 — Post-Action Options — UI and Service Logic
 - [x] **Status:** complete
 
 **Files:**
@@ -323,63 +196,63 @@ Destination:  [C:\Users\Pa\Downloads\          ] [...]
 - `src/Archiver.App/ViewModels/MainViewModel.cs`
 - `src/Archiver.Core/Services/ZipArchiveService.cs`
 
-**What:** Post-action options below Archive/Extract buttons — both UI checkboxes
-AND actual implementation in `ZipArchiveService`.
+**What:** Three post-action checkboxes grouped by relevance.
 
-UI layout:
+**UI layout:**
 ```
-[ ] Open destination folder after completion
-[ ] Delete source files after archiving
-[ ] Delete archive after extraction
+── Archive options ──────────────────────────
+  [ ] Delete source files after archiving    ← archive-only
+
+── Extract options ──────────────────────────
+  [ ] Delete archive after extraction        ← extract-only
+
+── Always ───────────────────────────────────
+  [ ] Open destination folder after completion
 ```
 
-**Logic in ZipArchiveService:**
+**Scope (per Agent Rules):**
+- `DeleteSourceFiles` → only read in `ArchiveAsync`, ignored in `ExtractAsync`
+- `DeleteArchiveAfterExtraction` → only read in `ExtractAsync`, ignored in `ArchiveAsync`
+- `OpenDestinationFolder` → read in both
 
-`OpenDestinationFolder` — after successful operation:
+**Service logic to implement in ZipArchiveService:**
 ```csharp
-if (options.OpenDestinationFolder && errors.Count == 0)
-    Process.Start("explorer.exe", options.DestinationFolder);
-```
+// OpenDestinationFolder — both Archive and Extract:
+if (options.OpenDestinationFolder && result.Success)
+    Process.Start(new ProcessStartInfo("explorer.exe", options.DestinationFolder) { UseShellExecute = true });
 
-`DeleteSourceFiles` — after successful archive creation, delete each source path:
-```csharp
+// DeleteSourceFiles — ArchiveAsync only:
 if (options.DeleteSourceFiles && result.Success)
-{
     foreach (var path in options.SourcePaths)
     {
-        if (Directory.Exists(path)) Directory.Delete(path, recursive: true);
-        else if (File.Exists(path)) File.Delete(path);
+        try {
+            if (Directory.Exists(path)) Directory.Delete(path, recursive: true);
+            else if (File.Exists(path)) File.Delete(path);
+        } catch { /* silent */ }
     }
-}
-```
 
-`DeleteArchiveAfterExtraction` — after successful extraction, delete each archive:
-```csharp
+// DeleteArchiveAfterExtraction — ExtractAsync only:
 if (options.DeleteArchiveAfterExtraction && result.Success)
-{
     foreach (var path in options.ArchivePaths)
-        if (File.Exists(path)) File.Delete(path);
-}
+        try { if (File.Exists(path)) File.Delete(path); } catch { /* silent */ }
 ```
-
-**Important:** Delete operations run only when `result.Success == true` (no errors).
-Delete failures are caught silently — do not affect `ArchiveResult`.
 
 **Acceptance criteria:**
 - [x] `OpenDestinationFolder` observable `bool` in ViewModel, default `false`
 - [x] `DeleteSourceFiles` observable `bool` in ViewModel, default `false`
 - [x] `DeleteArchiveAfterExtraction` observable `bool` in ViewModel, default `false`
 - [x] All three values passed to `ArchiveOptions` and `ExtractOptions`
-- [x] All three checkboxes visible in UI
-- [x] `ZipArchiveService.ArchiveAsync` opens Explorer if `OpenDestinationFolder` and no errors
+- [x] UI grouped as: Archive options / Extract options / Always
+- [x] `ZipArchiveService.ArchiveAsync` opens Explorer if `OpenDestinationFolder` and `Success`
 - [x] `ZipArchiveService.ArchiveAsync` deletes source paths if `DeleteSourceFiles` and `Success`
+- [x] `ZipArchiveService.ExtractAsync` opens Explorer if `OpenDestinationFolder` and `Success`
 - [x] `ZipArchiveService.ExtractAsync` deletes archive files if `DeleteArchiveAfterExtraction` and `Success`
 - [x] Delete failures caught silently — do not throw, do not add to `Errors`
-- [x] `dotnet test` passes — add test for DeleteSourceFiles and DeleteArchiveAfterExtraction
+- [x] `dotnet test` passes — tests added for DeleteSourceFiles and DeleteArchiveAfterExtraction
 
 ---
 
-### T-19 — Error Summary Dialog
+### T-19 — Operation Summary Dialog
 - [ ] **Status:** pending
 
 **Files:**
@@ -387,15 +260,14 @@ Delete failures are caught silently — do not affect `ArchiveResult`.
 - `src/Archiver.App/Services/DialogService.cs`
 - `src/Archiver.App/ViewModels/MainViewModel.cs`
 
-**What:** After each operation show a summary dialog only if there were errors.
-No dialog on success — only `StatusMessage` update.
-On errors — formatted list of what failed and why.
+**What:** Show summary dialog after operation only if errors or skipped files exist.
+On full success — only update `StatusMessage`, no dialog.
 
 **UI appearance:**
 ```
 ┌─────────────────────────────────────┐
 │  Completed with issues              │
-│─────────────────────────────────────│
+├─────────────────────────────────────┤
 │  ✗ Errors (2)                       │
 │                                     │
 │    document.pdf                     │
@@ -404,7 +276,7 @@ On errors — formatted list of what failed and why.
 │    archive.zip                      │
 │    File has ZIP signature but       │
 │    appears corrupted or incomplete  │
-│─────────────────────────────────────│
+├─────────────────────────────────────┤
 │  ⊘ Skipped — unsupported format (2) │
 │                                     │
 │    backup.rar                       │
@@ -412,51 +284,27 @@ On errors — formatted list of what failed and why.
 │                                     │
 │    archive.7z                       │
 │    7-Zip format is not supported    │
-│─────────────────────────────────────│
+├─────────────────────────────────────┤
 │                   [  OK  ]          │
 └─────────────────────────────────────┘
 ```
 
-Each section shown only if it has items. No dialog at all if both lists are empty.
+Each section shown only if it has items.
 
-**Interface addition:**
+**Interface:**
 ```csharp
-// Add to IDialogService:
 Task ShowOperationSummaryAsync(string operationName, ArchiveResult result);
 ```
 
-**Implementation in DialogService:**
-```csharp
-public async Task ShowOperationSummaryAsync(string operationName, ArchiveResult result)
-{
-    // Show only if result.Errors.Count > 0 OR result.SkippedFiles.Count > 0
-    // Build StackPanel:
-    //   - Errors section (if any): header + per-error filename bold + message
-    //   - Skipped section (if any): header + per-skip filename bold + reason
-    // Show in ContentDialog with ScrollViewer
-    // Title: $"{operationName} completed with issues"
-}
-```
-
-**ViewModel logic:**
-```csharp
-// After ArchiveAsync or ExtractAsync:
-if (result.Errors.Count > 0 || result.SkippedFiles.Count > 0)
-    await _dialogService.ShowOperationSummaryAsync("Archive", result);
-else
-    StatusMessage = $"Done — {result.CreatedFiles.Count} file(s) processed.";
-```
-
 **Acceptance criteria:**
-- [ ] `ShowOperationSummaryAsync(string operationName, ArchiveResult result)` added to `IDialogService`
-- [ ] `DialogService` implements using `ContentDialog` with `ScrollViewer` + `StackPanel`
-- [ ] Errors section shown only if `result.Errors.Count > 0` — filename bold + message
-- [ ] Skipped section shown only if `result.SkippedFiles.Count > 0` — filename bold + reason
-- [ ] Dialog NOT shown when both lists are empty
-- [ ] On full success: only `StatusMessage` updated, no dialog
-- [ ] `MainViewModel.ArchiveAsync` calls `ShowOperationSummaryAsync` when errors or skips exist
-- [ ] `MainViewModel.ExtractAsync` calls `ShowOperationSummaryAsync` when errors or skips exist
-- [ ] `Archiver.Core` has zero references to dialog — all results via `ArchiveResult` only
+- [ ] `ShowOperationSummaryAsync` added to `IDialogService`
+- [ ] `DialogService` implements using `ContentDialog` + `ScrollViewer` + `StackPanel`
+- [ ] Errors section shown only if `result.Errors.Count > 0`
+- [ ] Skipped section shown only if `result.SkippedFiles.Count > 0`
+- [ ] No dialog when both lists empty
+- [ ] On success: only `StatusMessage` updated
+- [ ] `MainViewModel` calls `ShowOperationSummaryAsync` after both Archive and Extract
+- [ ] `Archiver.Core` has zero UI references
 
 ---
 
@@ -466,21 +314,24 @@ else
 **Files:**
 - `src/Archiver.App/MainWindow.xaml`
 - `src/Archiver.App/ViewModels/MainViewModel.cs`
+- `src/Archiver.Core/Services/ZipArchiveService.cs`
 
-**What:** Text field for custom archive name, visible only in archive mode.
-If left empty — auto-name from first item in `SelectedPaths`.
+**What:** Text field for custom archive name in Archive options section.
+Empty = auto-name from first item in `SelectedPaths`.
 
-UI layout (above Archive/Extract buttons):
+**Scope:** Archive-only — passed to `ArchiveOptions.ArchiveName`, not used in Extract.
+
+**UI layout (inside Archive options group):**
 ```
-Archive name:  [my-backup                    ]  (leave empty for auto)
+Name: [my-backup                    ]   placeholder: "Auto"
 ```
 
 **Acceptance criteria:**
 - [ ] `ArchiveName` observable `string?` in ViewModel, default `null`
-- [ ] TextBox placeholder text: "Auto (based on first file/folder name)"
-- [ ] If `ArchiveName` is empty/whitespace → pass `null` to `ArchiveOptions.ArchiveName`
-- [ ] `ArchiveOptions.ArchiveName` is used by `ZipArchiveService` when not null
-- [ ] Field is only meaningful for `ArchiveMode.SingleArchive` — visible always but noted in hint
+- [ ] TextBox placeholder: "Auto (based on first file/folder name)"
+- [ ] Empty/whitespace → `null` passed to `ArchiveOptions.ArchiveName`
+- [ ] `ZipArchiveService` uses `options.ArchiveName` when not null for SingleArchive mode
+- [ ] Ignored when Extract is pressed
 
 ---
 
@@ -493,33 +344,25 @@ Archive name:  [my-backup                    ]  (leave empty for auto)
 - `src/Archiver.App/ViewModels/MainViewModel.cs`
 - `src/Archiver.App/Models/FileItem.cs`
 
-**What:** Replace plain `ListView` with a table showing useful metadata per item.
+**What:** Replace plain `ListView` with table showing file metadata.
 
 Columns:
 | Column | Source | Notes |
 |--------|--------|-------|
-| Name | `Path.GetFileName()` | |
-| Type | `Directory` / file extension | "Folder", "ZIP", "JAR", "PDF"... |
-| Size | `FileInfo.Length` / dir recursive | Async, shows "..." while loading |
+| Name | `Path.GetFileName()` | Full path as tooltip |
+| Type | extension or "Folder" | Uppercase, no dot |
+| Size | `FileInfo.Length` / recursive | Async, shows "..." for folders |
 | Modified | `FileInfo.LastWriteTime` | `yyyy-MM-dd HH:mm` |
-| Full path | full path string | Shown as tooltip on Name column |
-
-**Implementation notes:**
-- Add `FileItem` model in `Archiver.App/Models/FileItem.cs` with all columns as properties
-- Size calculation for folders must be async — run in background, update when done
-- `SelectedPaths` in ViewModel becomes `ObservableCollection<FileItem>`
-- `AddPaths()` creates `FileItem` per path, triggers async size calculation
 
 **Acceptance criteria:**
-- [ ] `FileItem` model with `Name`, `Type`, `Size`, `SizeBytes`, `Modified`, `FullPath` properties
-- [ ] Table shows Name, Type, Size, Modified columns
-- [ ] Full path shown as tooltip on Name cell
-- [ ] Folder size calculated asynchronously — shows "..." until done
-- [ ] Size formatted human-readable: "1.2 MB", "345 KB", "12 bytes"
-- [ ] Type shows "Folder" for directories, uppercase extension without dot for files ("ZIP", "PDF")
-- [ ] Sorting by any column supported
-- [ ] Right-click Remove still works (T-17)
-- [ ] Duplicate paths still prevented
+- [ ] `FileItem` model: `Name`, `Type`, `Size`, `SizeBytes`, `Modified`, `FullPath`
+- [ ] Table shows all four columns
+- [ ] Full path as tooltip on Name cell
+- [ ] Folder size async — shows "..." until calculated
+- [ ] Size human-readable: "1.2 MB", "345 KB", "12 bytes"
+- [ ] Sorting by any column
+- [ ] Right-click Remove still works
+- [ ] No duplicate paths
 
 ---
 
@@ -530,19 +373,20 @@ Columns:
 - `src/Archiver.App/MainWindow.xaml`
 - `src/Archiver.App/ViewModels/MainViewModel.cs`
 
-**What:** Let user choose between SingleArchive and SeparateArchives mode.
+**What:** RadioButtons inside Archive options group.
 
-UI layout (near Archive button):
+**Scope:** Archive-only — passed to `ArchiveOptions.Mode`, ignored in Extract.
+
+**UI (inside Archive options group):**
 ```
-Mode: ( ) One archive   (•) Separate archives
+Mode: (•) One archive   ( ) Separate archives
 ```
 
 **Acceptance criteria:**
-- [ ] `ArchiveMode` observable property in ViewModel, default `ArchiveMode.SingleArchive`
+- [ ] `SelectedArchiveMode` observable `ArchiveMode` in ViewModel, default `SingleArchive`
 - [ ] Two `RadioButton` controls bound to ViewModel
-- [ ] Archive name field (T-20) disabled/grayed when mode is `SeparateArchives`
-- [ ] Selected mode passed to `ArchiveOptions.Mode`
-- [ ] Mode selection persists while app is open (not across restarts)
+- [ ] Archive name field (T-20) disabled when mode is `SeparateArchives`
+- [ ] Passed to `ArchiveOptions.Mode` only — not to `ExtractOptions`
 
 ---
 
@@ -552,24 +396,29 @@ Mode: ( ) One archive   (•) Separate archives
 **Files:**
 - `src/Archiver.App/MainWindow.xaml`
 - `src/Archiver.App/ViewModels/MainViewModel.cs`
+- `src/Archiver.Core/Services/ZipArchiveService.cs`
 
-**What:** Let user choose what happens when output file already exists.
+**What:** Dropdown for conflict resolution in shared options section.
 
-UI layout (below destination row):
+**Scope:** Shared — passed to both `ArchiveOptions.OnConflict` and `ExtractOptions.OnConflict`.
+
+**UI (in shared/always section):**
 ```
-If file exists: [ Overwrite ▼ ]
-                  Ask
+If file exists: [ Skip ▼ ]
                   Overwrite
                   Skip
                   Rename (add number)
 ```
 
+**Note:** `Ask` removed for v1.0 — default is `Skip` which is safe.
+
 **Acceptance criteria:**
-- [ ] `OnConflict` observable `ConflictBehavior` in ViewModel, default `ConflictBehavior.Ask`
-- [ ] `ComboBox` with all four options bound to ViewModel
-- [ ] Selected value passed to both `ArchiveOptions.OnConflict` and `ExtractOptions.OnConflict`
-- [ ] `ZipArchiveService` handles `Skip` and `Rename` correctly (currently only Overwrite works)
-- [ ] `Ask` behavior deferred to T-Future — for now treated as `Skip` with a note in code
+- [ ] `OnConflict` observable `ConflictBehavior` in ViewModel, default `ConflictBehavior.Skip`
+- [ ] `ComboBox` with three options: Overwrite, Skip, Rename
+- [ ] Passed to both `ArchiveOptions.OnConflict` and `ExtractOptions.OnConflict`
+- [ ] `ZipArchiveService` implements `Skip` — skips silently if output exists
+- [ ] `ZipArchiveService` implements `Rename` — appends `(1)`, `(2)` etc to filename
+- [ ] `dotnet test` passes — tests for Skip and Rename behavior
 
 ---
 
@@ -582,23 +431,25 @@ If file exists: [ Overwrite ▼ ]
 - `src/Archiver.Core/Models/ArchiveOptions.cs`
 - `src/Archiver.Core/Services/ZipArchiveService.cs`
 
-**What:** Let user choose compression level. Maps to `CompressionLevel` enum in `System.IO.Compression`.
+**What:** Dropdown for compression level inside Archive options group.
 
-UI layout (near Archive button, only relevant for archiving):
+**Scope:** Archive-only — passed to `ArchiveOptions.CompressionLevel`, not used in Extract.
+
+**UI (inside Archive options group):**
 ```
 Compression: [ Normal ▼ ]
-               Fast (Fastest)
-               Normal (Optimal)
-               Best (SmallestSize)
-               None (NoCompression)
+               Fast
+               Normal
+               Best
+               None
 ```
 
 **Acceptance criteria:**
-- [ ] `CompressionLevel` property added to `ArchiveOptions` with default `CompressionLevel.Optimal`
-- [ ] `ComboBox` in UI with four options bound to ViewModel
-- [ ] Selected level passed to `ArchiveOptions.CompressionLevel`
+- [ ] `CompressionLevel` added to `ArchiveOptions`, default `CompressionLevel.Optimal`
+- [ ] `ComboBox` with four options bound to ViewModel
+- [ ] Passed to `ArchiveOptions.CompressionLevel` only
 - [ ] `ZipArchiveService` uses `options.CompressionLevel` when creating entries
-- [ ] UI shows compression selector only when operation is archiving (always visible is also acceptable for v1.0)
+- [ ] `dotnet test` passes
 
 ---
 
@@ -609,9 +460,9 @@ Compression: [ Normal ▼ ]
 
 **Acceptance criteria:**
 - [ ] App builds as MSIX package
-- [ ] `Package.appxmanifest` has correct `Identity`, `DisplayName`, `Description`
-- [ ] Package runs on Windows 10 version 1903+ (build 18362)
-- [ ] No capability declarations beyond `runFullTrust`
+- [ ] `Package.appxmanifest` correct `Identity`, `DisplayName`, `Description`
+- [ ] Runs on Windows 10 1903+ (build 18362)
+- [ ] No capabilities beyond `runFullTrust`
 
 ---
 
@@ -629,14 +480,14 @@ Compression: [ Normal ▼ ]
 ### T-F04 — TAR Support
 - [ ] **Status:** future
 
-Via Windows built-in `tar.exe` using `System.Diagnostics.Process`.
-No third-party libraries.
-
----
+Via Windows built-in `tar.exe` via `System.Diagnostics.Process`. No third-party libraries.
 
 ### T-F05 — Archive Contents Preview
 - [ ] **Status:** future
 
-Click on a ZIP file in the list → see contents without extracting.
-Read-only tree view of entries inside the archive using `ZipFile.OpenRead`.
-No extraction, no temp files..
+Click ZIP in list → read-only tree view of contents via `ZipFile.OpenRead`. No extraction.
+
+### T-F06 — Ask on Conflict Dialog
+- [ ] **Status:** future
+
+Interactive dialog when conflict detected during operation — Show / Skip / Overwrite / Rename per file.
