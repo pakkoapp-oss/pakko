@@ -37,54 +37,15 @@ Agent marks task `[x]` only when ALL criteria pass.
 ### T-03 — Implement ArchiveOptions
 - [x] **Status:** complete
 
-**File:** `src/Archiver.Core/Models/ArchiveOptions.cs`
-
-**Acceptance criteria:**
-- [x] `record` type (not class)
-- [x] All properties use `init;` setters
-- [x] `SourcePaths` is `IReadOnlyList<string>`, defaults to `[]`
-- [x] `DestinationFolder` defaults to `string.Empty`
-- [x] `ArchiveName` is `string?` (nullable)
-- [x] `Mode` is `ArchiveMode` enum, defaults to `ArchiveMode.SingleArchive`
-- [x] `OnConflict` is `ConflictBehavior` enum, defaults to `ConflictBehavior.Ask`
-- [x] `OpenDestinationFolder` defaults to `false`
-- [x] `DeleteSourceFiles` defaults to `false`
-- [x] Enums `ArchiveMode` and `ConflictBehavior` are defined in same namespace
-
 ---
 
 ### T-04 — Implement ExtractOptions
 - [x] **Status:** complete
 
-**File:** `src/Archiver.Core/Models/ExtractOptions.cs`
-
-**Acceptance criteria:**
-- [x] `record` type with `init;` setters
-- [x] `ArchivePaths` is `IReadOnlyList<string>`, defaults to `[]`
-- [x] `DestinationFolder` defaults to `string.Empty`
-- [x] `Mode` is `ExtractMode` enum, defaults to `ExtractMode.SeparateFolders`
-- [x] `OnConflict` is `ConflictBehavior` (reuse from T-03)
-- [x] `OpenDestinationFolder` defaults to `false`
-- [x] `DeleteArchiveAfterExtraction` defaults to `false`
-- [x] Enum `ExtractMode` defined in same namespace
-
 ---
 
 ### T-05 — Implement ArchiveResult and ArchiveError
 - [x] **Status:** complete
-
-**Files:**
-- `src/Archiver.Core/Models/ArchiveResult.cs`
-- `src/Archiver.Core/Models/ArchiveError.cs`
-
-**Acceptance criteria:**
-- [x] Both are `sealed record` types
-- [x] `ArchiveResult.Success` is `bool`
-- [x] `ArchiveResult.CreatedFiles` is `IReadOnlyList<string>`, defaults to `[]`
-- [x] `ArchiveResult.Errors` is `IReadOnlyList<ArchiveError>`, defaults to `[]`
-- [x] `ArchiveError.SourcePath` is `string`, defaults to `string.Empty`
-- [x] `ArchiveError.Message` is `string`, defaults to `string.Empty`
-- [x] `ArchiveError.Exception` is `Exception?` (nullable)
 
 ---
 
@@ -93,35 +54,10 @@ Agent marks task `[x]` only when ALL criteria pass.
 ### T-06 — Implement IArchiveService
 - [x] **Status:** complete
 
-**File:** `src/Archiver.Core/Interfaces/IArchiveService.cs`
-
-**Acceptance criteria:**
-- [x] Interface is `public`
-- [x] `ArchiveAsync(ArchiveOptions, IProgress<int>?, CancellationToken)` method exists
-- [x] `ExtractAsync(ExtractOptions, IProgress<int>?, CancellationToken)` method exists
-- [x] Both return `Task<ArchiveResult>`
-- [x] `IProgress<int>?` and `CancellationToken` have default values (`null` and `default`)
-- [x] No implementation logic in the interface file
-- [x] XML doc comments on both methods
-
 ---
 
 ### T-07 — Implement ZipArchiveService
 - [x] **Status:** complete
-
-**File:** `src/Archiver.Core/Services/ZipArchiveService.cs`
-
-**Acceptance criteria:**
-- [x] Class implements `IArchiveService`
-- [x] Class is `sealed`
-- [x] Uses only `System.IO.Compression` — no third-party packages
-- [x] `ArchiveAsync` handles both `ArchiveMode.SingleArchive` and `ArchiveMode.SeparateArchives`
-- [x] `ExtractAsync` handles both `ExtractMode.SeparateFolders` and `ExtractMode.SingleFolder`
-- [x] All `IOException` and `UnauthorizedAccessException` are caught per-item, appended to errors list, processing continues
-- [x] `CancellationToken` is checked between processing items
-- [x] `IProgress<int>` reports 0–100 as percentage of items processed
-- [x] Method never throws — all exceptions result in `ArchiveError` entries
-- [x] `ArchiveResult.Success` is `true` only when `Errors` list is empty
 
 ---
 
@@ -130,19 +66,6 @@ Agent marks task `[x]` only when ALL criteria pass.
 ### T-12 — Implement Test Project
 - [x] **Status:** complete
 
-**Files:**
-- `tests/Archiver.Core.Tests/Helpers/TempDirectory.cs`
-- `tests/Archiver.Core.Tests/Services/ZipArchiveServiceArchiveTests.cs`
-- `tests/Archiver.Core.Tests/Services/ZipArchiveServiceExtractTests.cs`
-- `tests/Archiver.Core.Tests/Models/ArchiveOptionsTests.cs`
-
-**Acceptance criteria:**
-- [x] `dotnet test` passes with zero failures
-- [x] All 10 test cases implemented
-- [x] No tests use `Thread.Sleep` — use `await Task.Delay` if needed
-- [x] Each test cleans up temp files via `TempDirectory.Dispose()`
-- [x] No test depends on another test's state
-
 ---
 
 ## Phase 4 — UI Layer
@@ -150,38 +73,10 @@ Agent marks task `[x]` only when ALL criteria pass.
 ### T-08 — Implement MainViewModel
 - [x] **Status:** complete
 
-**File:** `src/Archiver.App/ViewModels/MainViewModel.cs`
-
-**Acceptance criteria:**
-- [x] Inherits `ObservableObject` from CommunityToolkit
-- [x] `SelectedPaths` is `ObservableCollection<string>`
-- [x] `IsBusy` is observable `bool` property
-- [x] `Progress` is observable `int` property (0–100)
-- [x] `StatusMessage` is observable `string` property
-- [x] `ArchiveCommand` is `AsyncRelayCommand`, disabled when `IsBusy` or no paths selected
-- [x] `ExtractCommand` is `AsyncRelayCommand`, disabled when `IsBusy` or no paths selected
-- [x] Commands call `IArchiveService` (injected via constructor)
-- [x] `IsBusy` set to `true` during operation, `false` in `finally` block
-- [x] `StatusMessage` updated on completion and on error
-
 ---
 
 ### T-09 — Implement MainWindow
 - [x] **Status:** complete
-
-**Files:**
-- `src/Archiver.App/MainWindow.xaml`
-- `src/Archiver.App/MainWindow.xaml.cs`
-
-**Acceptance criteria:**
-- [x] Window has a drag-and-drop area (`AllowDrop="True"`)
-- [x] `ListView` bound to `ViewModel.SelectedPaths`
-- [x] "Archive" button bound to `ViewModel.ArchiveCommand`
-- [x] "Extract" button bound to `ViewModel.ExtractCommand`
-- [x] `ProgressBar` bound to `ViewModel.Progress`
-- [x] Status label bound to `ViewModel.StatusMessage`
-- [x] No business logic in code-behind — only UI wiring
-- [x] Drag-and-drop handler calls `ViewModel` method, not service directly
 
 ---
 
@@ -190,33 +85,78 @@ Agent marks task `[x]` only when ALL criteria pass.
 ### T-10 — DialogService for Error Display
 - [x] **Status:** complete
 
-**File:** `src/Archiver.App/Services/DialogService.cs`
-
-**Acceptance criteria:**
-- [x] `ShowErrorAsync(string title, string message)` method
-- [x] Uses WinUI `ContentDialog`
-- [x] Called from ViewModel (not from code-behind)
-- [x] Interface `IDialogService` defined in `Archiver.App.Services` namespace
-- [x] `MainViewModel` depends on `IDialogService`, not concrete class
-
 ---
 
 ## Phase 5b — UX Improvements
 
-### T-13 — Smart Extraction (skip non-archives)
+### T-13 — ZIP Detection (extension-based)
+- [x] **Status:** complete — superseded by T-13.1
+
+---
+
+### T-13.1 — Upgrade ZIP Detection to Magic Bytes
 - [ ] **Status:** pending
 
 **File:** `src/Archiver.Core/Services/ZipArchiveService.cs`
 
-**What:** Before extracting each file check if it is a valid ZIP.
-Non-ZIP files are silently skipped — no error, no crash.
+**What:** Replace extension-based ZIP check with magic bytes detection.
+ZIP format always starts with bytes `50 4B 03 04` (`PK♥♦`).
+
+**ZIP-compatible formats that must now work:**
+
+| Extension | Format |
+|-----------|--------|
+| `.zip` | Standard ZIP |
+| `.jar` | Java Archive |
+| `.apk` | Android Package |
+| `.docx` | Word Document |
+| `.xlsx` | Excel Spreadsheet |
+| `.pptx` | PowerPoint |
+| `.epub` | eBook |
+| `.odt` | OpenDocument Text |
+| `.war` | Java Web Archive |
+| `.nupkg` | NuGet Package |
+
+**Implementation:**
+```csharp
+private static bool IsZipFile(string path)
+{
+    try
+    {
+        Span<byte> header = stackalloc byte[4];
+        using var fs = File.OpenRead(path);
+        fs.ReadExactly(header);
+        return header[0] == 0x50 && header[1] == 0x4B
+            && header[2] == 0x03 && header[3] == 0x04;
+    }
+    catch
+    {
+        return false;
+    }
+}
+```
+
+**Decision logic:**
+```
+IsZipFile() == false
+    → skip silently (not a ZIP, not an error)
+IsZipFile() == true → try ZipFile.OpenRead()
+    ├── success              → extract normally
+    └── InvalidDataException → ArchiveError:
+        "File has ZIP signature but appears corrupted or incomplete."
+```
 
 **Acceptance criteria:**
-- [ ] Files without `.zip` extension are skipped silently
-- [ ] Files with `.zip` extension but invalid content return `ArchiveError` with friendly message
-- [ ] Skipped files are NOT added to `ArchiveResult.Errors`
-- [ ] Skipped files are NOT added to `ArchiveResult.CreatedFiles`
-- [ ] `dotnet test` still passes after change
+- [ ] `IsZipFile()` private method uses magic bytes `50 4B 03 04`
+- [ ] Extension check removed entirely
+- [ ] `.jar`, `.docx`, `.xlsx`, `.apk` with valid ZIP content extracted successfully
+- [ ] File with `.zip` extension but wrong magic bytes → skipped silently
+- [ ] File with ZIP magic bytes but corrupted → `ArchiveError` with message "File has ZIP signature but appears corrupted or incomplete."
+- [ ] `dotnet test` passes — existing tests unchanged
+- [ ] New test cases:
+  - [ ] `.jar` with valid ZIP content → extracted successfully
+  - [ ] File with `.zip` extension but not ZIP magic bytes → skipped silently
+  - [ ] File with ZIP magic bytes but corrupted content → `ArchiveError`
 
 ---
 
@@ -228,16 +168,16 @@ Non-ZIP files are silently skipped — no error, no crash.
 **What:** Automatically decide whether to wrap extracted files in a subfolder.
 
 Rules:
-- Archive contains a **single root folder** → extract its contents directly, no double-nesting
-- Archive contains **multiple items at root** → create subfolder named after the archive
-- Archive contains a **single file at root** → extract directly, no subfolder
+- Single root folder in archive → extract contents directly, no double-nesting
+- Multiple items at root → create subfolder named after the archive
+- Single file at root → extract directly, no subfolder
 
 **Acceptance criteria:**
-- [ ] Single root folder → no double-nesting (`archive/folder/files` becomes `folder/files`)
-- [ ] Multiple root items → subfolder created (`archive.zip` → `archive/` containing all items)
-- [ ] Single root file → extracted directly to destination, no subfolder
+- [ ] Single root folder → no double-nesting
+- [ ] Multiple root items → subfolder created named after archive
+- [ ] Single root file → extracted directly
 - [ ] Existing tests still pass
-- [ ] New test cases added for each smart extraction scenario
+- [ ] New test cases for each scenario
 
 ---
 
@@ -253,7 +193,6 @@ Rules:
 
 **What:** Two explicit buttons below the drop zone.
 
-UI layout below drop zone:
 ```
 [ Add files ]  [ Add folder ]
 ```
@@ -263,7 +202,7 @@ UI layout below drop zone:
 - [ ] "Add folder" opens `FolderPicker` — single folder selection
 - [ ] Both add to `SelectedPaths` without duplicates
 - [ ] Double-click on drop zone still triggers files picker
-- [ ] Hint text in drop zone: "Drop files or folders here, or double-click to browse files"
+- [ ] Hint text: "Drop files or folders here, or double-click to browse files"
 
 ---
 
@@ -275,20 +214,18 @@ UI layout below drop zone:
 - `src/Archiver.App/ViewModels/MainViewModel.cs`
 
 **What:** Destination path row above Archive/Extract buttons.
-Default = folder of first item in `SelectedPaths`.
 
-UI layout:
 ```
 Destination:  [C:\Users\Pa\Downloads\          ] [...]
 ```
 
 **Acceptance criteria:**
-- [ ] `DestinationPath` is observable `string` property in `MainViewModel`
+- [ ] `DestinationPath` observable `string` in ViewModel
 - [ ] Default = folder of first item in `SelectedPaths` when list changes
-- [ ] If `SelectedPaths` is empty → default to user Desktop (`Environment.GetFolderPath(Environment.SpecialFolder.Desktop)`)
+- [ ] If `SelectedPaths` empty → Desktop (`Environment.GetFolderPath(Environment.SpecialFolder.Desktop)`)
 - [ ] `...` button opens `FolderPicker` and updates `DestinationPath`
 - [ ] `DestinationPath` passed to `ArchiveOptions.DestinationFolder` and `ExtractOptions.DestinationFolder`
-- [ ] Path displayed in read-only `TextBox` — editable only via picker button
+- [ ] Read-only `TextBox` — editable only via picker button
 
 ---
 
@@ -303,10 +240,10 @@ Destination:  [C:\Users\Pa\Downloads\          ] [...]
 **What:** Right-click on list item → context menu → "Remove".
 
 **Acceptance criteria:**
-- [ ] Right-click shows `MenuFlyout` with single item "Remove"
-- [ ] Clicking "Remove" removes that path from `SelectedPaths`
-- [ ] `RemovePath(string path)` method added to `MainViewModel`
-- [ ] No business logic in code-behind — handler passes path to ViewModel only
+- [ ] Right-click shows `MenuFlyout` with "Remove" item
+- [ ] Clicking "Remove" calls `ViewModel.RemovePath(path)`
+- [ ] `RemovePath(string path)` added to `MainViewModel`
+- [ ] No business logic in code-behind
 
 ---
 
@@ -319,7 +256,6 @@ Destination:  [C:\Users\Pa\Downloads\          ] [...]
 
 **What:** Post-action options below Archive/Extract buttons.
 
-UI layout:
 ```
 [ ] Open destination folder after completion
 [ ] Delete source files after archiving
@@ -327,11 +263,77 @@ UI layout:
 ```
 
 **Acceptance criteria:**
-- [ ] `OpenDestinationFolder` observable `bool` in ViewModel, default `false`
-- [ ] `DeleteSourceFiles` observable `bool` in ViewModel, default `false`
-- [ ] `DeleteArchiveAfterExtraction` observable `bool` in ViewModel, default `false`
-- [ ] All three values passed correctly to `ArchiveOptions` and `ExtractOptions`
-- [ ] All three checkboxes always visible (not conditional)
+- [ ] `OpenDestinationFolder` observable `bool`, default `false`
+- [ ] `DeleteSourceFiles` observable `bool`, default `false`
+- [ ] `DeleteArchiveAfterExtraction` observable `bool`, default `false`
+- [ ] All values passed to `ArchiveOptions` and `ExtractOptions`
+- [ ] All three checkboxes always visible
+
+---
+
+### T-19 — Error Summary Dialog
+- [ ] **Status:** pending
+
+**Files:**
+- `src/Archiver.App/Services/IDialogService.cs`
+- `src/Archiver.App/Services/DialogService.cs`
+- `src/Archiver.App/ViewModels/MainViewModel.cs`
+
+**What:** After each operation show a summary dialog only if there were errors.
+No dialog on success — only `StatusMessage` update.
+On errors — formatted list of what failed and why.
+
+**UI appearance:**
+```
+┌─────────────────────────────────────┐
+│  Completed with 2 error(s)          │
+│─────────────────────────────────────│
+│  ✗ document.pdf                     │
+│    File is locked by another process│
+│                                     │
+│  ✗ archive.zip                      │
+│    File has ZIP signature but       │
+│    appears corrupted or incomplete  │
+│─────────────────────────────────────│
+│                   [  OK  ]          │
+└─────────────────────────────────────┘
+```
+
+**Interface addition:**
+```csharp
+// Add to IDialogService:
+Task ShowErrorSummaryAsync(string operationName, IReadOnlyList<ArchiveError> errors);
+```
+
+**Implementation in DialogService:**
+```csharp
+public async Task ShowErrorSummaryAsync(string operationName, IReadOnlyList<ArchiveError> errors)
+{
+    // Build formatted error list as StackPanel with TextBlocks
+    // Show in ContentDialog with scrollable content
+    // Title: $"{operationName} completed with {errors.Count} error(s)"
+}
+```
+
+**ViewModel logic:**
+```csharp
+// After ArchiveAsync or ExtractAsync:
+if (result.Errors.Count > 0)
+    await _dialogService.ShowErrorSummaryAsync("Archive", result.Errors);
+else
+    StatusMessage = $"Done — {result.CreatedFiles.Count} file(s) processed.";
+```
+
+**Acceptance criteria:**
+- [ ] `ShowErrorSummaryAsync(string operationName, IReadOnlyList<ArchiveError> errors)` added to `IDialogService`
+- [ ] `DialogService` implements it using `ContentDialog` with scrollable `StackPanel`
+- [ ] Each error shows: filename (bold) + error message below it
+- [ ] Dialog title shows operation name and error count
+- [ ] Dialog NOT shown when `result.Errors` is empty
+- [ ] On success: only `StatusMessage` updated, no dialog
+- [ ] `MainViewModel.ArchiveAsync` calls `ShowErrorSummaryAsync` when errors exist
+- [ ] `MainViewModel.ExtractAsync` calls `ShowErrorSummaryAsync` when errors exist
+- [ ] `Archiver.Core` has zero references to dialog — errors returned via `ArchiveResult` only
 
 ---
 
@@ -339,9 +341,6 @@ UI layout:
 
 ### T-11 — MSIX Packaging Setup
 - [ ] **Status:** pending
-
-**Files:**
-- `src/Archiver.Packaging/` project or `Package.appxmanifest` configuration
 
 **Acceptance criteria:**
 - [ ] App builds as MSIX package
@@ -356,24 +355,11 @@ UI layout:
 ### T-F01 — Explorer Context Menu Integration
 - [ ] **Status:** future
 
-Right-click in Explorer → "Archive with Archiver" / "Extract here"
-Requires shell extension via sparse MSIX package.
-
----
-
 ### T-F02 — Dedicated Archive Window
 - [ ] **Status:** future
 
-Separate window for archive mode — opened when files passed via Explorer context menu.
-
----
-
 ### T-F03 — Dedicated Extract Window
 - [ ] **Status:** future
-
-Separate window for extract mode — opened when archives passed via Explorer context menu.
-
----
 
 ### T-F04 — TAR Support
 - [ ] **Status:** future
