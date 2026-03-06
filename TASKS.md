@@ -42,21 +42,21 @@ Agent marks task `[x]` only when ALL criteria pass.
 ## Phase 2 — Core Models
 
 ### T-03 — Implement ArchiveOptions
-- [ ] **Status:** pending
+- [x] **Status:** complete
 
 **File:** `src/Archiver.Core/Models/ArchiveOptions.cs`
 
 **Acceptance criteria:**
-- [ ] `record` type (not class)
-- [ ] All properties use `init;` setters
-- [ ] `SourcePaths` is `IReadOnlyList<string>`, defaults to `[]`
-- [ ] `DestinationFolder` defaults to `string.Empty`
-- [ ] `ArchiveName` is `string?` (nullable)
-- [ ] `Mode` is `ArchiveMode` enum, defaults to `ArchiveMode.SingleArchive`
-- [ ] `OnConflict` is `ConflictBehavior` enum, defaults to `ConflictBehavior.Ask`
-- [ ] `OpenDestinationFolder` defaults to `false`
-- [ ] `DeleteSourceFiles` defaults to `false`
-- [ ] Enums `ArchiveMode` and `ConflictBehavior` are defined in same namespace
+- [x] `record` type (not class)
+- [x] All properties use `init;` setters
+- [x] `SourcePaths` is `IReadOnlyList<string>`, defaults to `[]`
+- [x] `DestinationFolder` defaults to `string.Empty`
+- [x] `ArchiveName` is `string?` (nullable)
+- [x] `Mode` is `ArchiveMode` enum, defaults to `ArchiveMode.SingleArchive`
+- [x] `OnConflict` is `ConflictBehavior` enum, defaults to `ConflictBehavior.Ask`
+- [x] `OpenDestinationFolder` defaults to `false`
+- [x] `DeleteSourceFiles` defaults to `false`
+- [x] Enums `ArchiveMode` and `ConflictBehavior` are defined in same namespace
 
 ---
 
