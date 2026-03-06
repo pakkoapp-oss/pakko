@@ -195,6 +195,12 @@ public sealed class ZipArchiveService : IArchiveService
 
             string archivePath = options.ArchivePaths[i];
 
+            if (!string.Equals(Path.GetExtension(archivePath), ".zip", StringComparison.OrdinalIgnoreCase))
+            {
+                progress?.Report((i + 1) * 100 / total);
+                continue;
+            }
+
             string destDir = options.Mode == ExtractMode.SeparateFolders
                 ? Path.Combine(options.DestinationFolder, Path.GetFileNameWithoutExtension(archivePath))
                 : options.DestinationFolder;
