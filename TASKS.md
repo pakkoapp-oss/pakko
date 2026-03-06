@@ -8,7 +8,7 @@ Agent marks task `[x]` only when ALL criteria pass.
 ## Phase 1 — Project Setup
 
 ### T-01 — Create Solution and Projects
-- [ ] **Status:** pending
+- [~] **Status:** partially complete (Archiver.App to be created manually in Visual Studio)
 
 **Files to create:**
 - `windows-archiver-wrapper.sln`
@@ -16,26 +16,26 @@ Agent marks task `[x]` only when ALL criteria pass.
 - `src/Archiver.App/Archiver.App.csproj`
 
 **Acceptance criteria:**
-- [ ] `dotnet build` runs without errors
-- [ ] `Archiver.Core` targets `net8.0`
-- [ ] `Archiver.App` references `Archiver.Core`
-- [ ] Solution contains both projects (`dotnet sln list` shows both)
-- [ ] `Archiver.Core.csproj` has `<Nullable>enable</Nullable>`
+- [x] `dotnet build src/Archiver.Core` runs without errors
+- [x] `Archiver.Core` targets `net8.0`
+- [ ] `Archiver.App` references `Archiver.Core` ← to be done after VS creates the project
+- [ ] Solution contains both projects (`dotnet sln list` shows both) ← pending Archiver.App
+- [x] `Archiver.Core.csproj` has `<Nullable>enable</Nullable>`
 
 ---
 
 ### T-02 — Create Folder Structure
-- [ ] **Status:** pending
+- [x] **Status:** complete
 
 **Files to create:** empty `.gitkeep` or placeholder files in each folder.
 
 **Acceptance criteria:**
-- [ ] `src/Archiver.Core/Interfaces/` exists
-- [ ] `src/Archiver.Core/Services/` exists
-- [ ] `src/Archiver.Core/Models/` exists
-- [ ] `src/Archiver.App/Views/` exists
-- [ ] `src/Archiver.App/ViewModels/` exists
-- [ ] `src/Archiver.App/Services/` exists
+- [x] `src/Archiver.Core/Interfaces/` exists
+- [x] `src/Archiver.Core/Services/` exists
+- [x] `src/Archiver.Core/Models/` exists
+- [x] `src/Archiver.App/Views/` exists
+- [x] `src/Archiver.App/ViewModels/` exists
+- [x] `src/Archiver.App/Services/` exists
 
 ---
 
