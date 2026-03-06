@@ -7,7 +7,7 @@
     xmlns:viewmodels="using:Archiver.App.ViewModels"
     Title="Archiver">
 
-    <Grid RowDefinitions="Auto,Auto,*,Auto,Auto" Padding="16" RowSpacing="12">
+    <Grid RowDefinitions="Auto,Auto,*,Auto,Auto,Auto" Padding="16" RowSpacing="12">
 
         <!-- Row 0: Drop Zone -->
         <Border
@@ -63,8 +63,27 @@
             </ListView.ItemTemplate>
         </ListView>
 
-        <!-- Row 3: Action Buttons -->
-        <Grid Grid.Row="3" ColumnDefinitions="*,*,Auto">
+        <!-- Row 3: Destination Path -->
+        <Grid Grid.Row="3" ColumnDefinitions="Auto,*,Auto">
+            <TextBlock
+                Grid.Column="0"
+                Text="Destination:"
+                VerticalAlignment="Center"
+                Margin="0,0,8,0"/>
+            <TextBox
+                Grid.Column="1"
+                Text="{x:Bind ViewModel.DestinationPath, Mode=OneWay}"
+                IsReadOnly="True"
+                VerticalAlignment="Center"/>
+            <Button
+                Grid.Column="2"
+                Content="..."
+                Margin="8,0,0,0"
+                Command="{x:Bind ViewModel.BrowseDestinationCommand, Mode=OneWay}"/>
+        </Grid>
+
+        <!-- Row 4: Action Buttons -->
+        <Grid Grid.Row="4" ColumnDefinitions="*,*,Auto">
 
             <Button
                 Grid.Column="0"
@@ -87,8 +106,8 @@
                 Command="{x:Bind ViewModel.ClearCommand, Mode=OneWay}"/>
         </Grid>
 
-        <!-- Row 4: Status Bar -->
-        <Grid Grid.Row="4" RowDefinitions="Auto,Auto" RowSpacing="4">
+        <!-- Row 5: Status Bar -->
+        <Grid Grid.Row="5" RowDefinitions="Auto,Auto" RowSpacing="4">
             <ProgressBar
                 Grid.Row="0"
                 Value="{x:Bind ViewModel.Progress, Mode=OneWay}"

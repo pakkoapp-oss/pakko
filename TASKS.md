@@ -275,7 +275,7 @@ Rules:
 ---
 
 ### T-16 — Destination Path Row
-- [ ] **Status:** pending
+- [x] **Status:** complete
 
 **Files:**
 - `src/Archiver.App/MainWindow.xaml`
@@ -288,12 +288,12 @@ Destination:  [C:\Users\Pa\Downloads\          ] [...]
 ```
 
 **Acceptance criteria:**
-- [ ] `DestinationPath` observable `string` in ViewModel
-- [ ] Default = folder of first item in `SelectedPaths` when list changes
-- [ ] If `SelectedPaths` empty → Desktop (`Environment.GetFolderPath(Environment.SpecialFolder.Desktop)`)
-- [ ] `...` button opens `FolderPicker` and updates `DestinationPath`
-- [ ] `DestinationPath` passed to `ArchiveOptions.DestinationFolder` and `ExtractOptions.DestinationFolder`
-- [ ] Read-only `TextBox` — editable only via picker button
+- [x] `DestinationPath` observable `string` in ViewModel
+- [x] Default = folder of first item in `SelectedPaths` when list changes
+- [x] If `SelectedPaths` empty → Desktop (`Environment.GetFolderPath(Environment.SpecialFolder.Desktop)`)
+- [x] `...` button opens `FolderPicker` and updates `DestinationPath`
+- [x] `DestinationPath` passed to `ArchiveOptions.DestinationFolder` and `ExtractOptions.DestinationFolder`
+- [x] Read-only `TextBox` — editable only via picker button
 
 ---
 

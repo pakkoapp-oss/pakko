@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -28,6 +29,9 @@ public sealed partial class MainViewModel : ObservableObject
     private string _statusMessage = string.Empty;
 
     [ObservableProperty]
+    private string _destinationPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+
+    [ObservableProperty]
     private ObservableCollection<string> _selectedPaths = [];
 
     public MainViewModel(IArchiveService archiveService, IDialogService dialogService)
@@ -38,15 +42,29 @@ public sealed partial class MainViewModel : ObservableObject
         {
             ArchiveCommand.NotifyCanExecuteChanged();
             ExtractCommand.NotifyCanExecuteChanged();
+            UpdateDefaultDestination();
         };
+    }
+
+    private void UpdateDefaultDestination()
+    {
+        if (SelectedPaths.Count > 0)
+            DestinationPath = Path.GetDirectoryName(SelectedPaths[0]) ?? DestinationPath;
+        else
+            DestinationPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+    }
+
+    [RelayCommand]
+    private async Task BrowseDestinationAsync()
+    {
+        var folder = await _dialogService.PickDestinationFolderAsync();
+        if (folder is not null)
+            DestinationPath = folder;
     }
 
     [RelayCommand(CanExecute = nameof(CanArchive))]
     private async Task ArchiveAsync()
     {
-        var destination = await _dialogService.PickDestinationFolderAsync();
-        if (destination is null) return;
-
         IsBusy = true;
         Progress = 0;
         StatusMessage = "Archiving...";
@@ -55,7 +73,7 @@ public sealed partial class MainViewModel : ObservableObject
             var options = new ArchiveOptions
             {
                 SourcePaths = [.. SelectedPaths],
-                DestinationFolder = destination,
+                DestinationFolder = DestinationPath,
             };
             var progress = new Progress<int>(p => Progress = p);
             var result = await _archiveService.ArchiveAsync(options, progress);
@@ -72,9 +90,6 @@ public sealed partial class MainViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(CanExtract))]
     private async Task ExtractAsync()
     {
-        var destination = await _dialogService.PickDestinationFolderAsync();
-        if (destination is null) return;
-
         IsBusy = true;
         Progress = 0;
         StatusMessage = "Extracting...";
@@ -83,7 +98,7 @@ public sealed partial class MainViewModel : ObservableObject
             var options = new ExtractOptions
             {
                 ArchivePaths = [.. SelectedPaths],
-                DestinationFolder = destination,
+                DestinationFolder = DestinationPath,
             };
             var progress = new Progress<int>(p => Progress = p);
             var result = await _archiveService.ExtractAsync(options, progress);
