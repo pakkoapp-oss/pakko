@@ -32,7 +32,7 @@ public partial class App : Application
     {
         var window = new MainWindow();
         var dialogService = (DialogService)Services.GetRequiredService<IDialogService>();
-        dialogService.SetWindow(window);
+        dialogService.SetWindow((Microsoft.UI.Xaml.Window)window);
         window.Activate();
     }
 }

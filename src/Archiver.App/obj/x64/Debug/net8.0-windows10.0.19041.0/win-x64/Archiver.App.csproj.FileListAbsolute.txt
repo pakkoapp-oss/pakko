@@ -268,3 +268,5 @@ C:\Users\Pa\Projects\windows-archiver-wrapper\src\Archiver.App\obj\x64\Debug\net
 C:\Users\Pa\Projects\windows-archiver-wrapper\src\Archiver.App\obj\x64\Debug\net8.0-windows10.0.19041.0\win-x64\ProjectArchitectures.txt
 C:\Users\Pa\Projects\windows-archiver-wrapper\src\Archiver.App\obj\x64\Debug\net8.0-windows10.0.19041.0\win-x64\.winmd_cache\$Microsoft.Web.WebView2.Core.winmd_638789222360000000.json
 C:\Users\Pa\Projects\windows-archiver-wrapper\src\Archiver.App\bin\x64\Debug\net8.0-windows10.0.19041.0\win-x64\CommunityToolkit.Mvvm.dll
+C:\Users\Pa\Projects\windows-archiver-wrapper\src\Archiver.App\bin\x64\Debug\net8.0-windows10.0.19041.0\win-x64\Microsoft.Extensions.DependencyInjection.dll
+C:\Users\Pa\Projects\windows-archiver-wrapper\src\Archiver.App\bin\x64\Debug\net8.0-windows10.0.19041.0\win-x64\Microsoft.Extensions.DependencyInjection.Abstractions.dll

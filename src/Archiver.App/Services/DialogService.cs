@@ -41,7 +41,7 @@ public sealed class DialogService : IDialogService
     {
         var picker = new FolderPicker();
         picker.SuggestedStartLocation = PickerLocationId.Desktop;
-        WinRT.Interop.InitializeWithWindow.Initialize(picker, WinRT.Interop.WindowNative.GetWindowHandle(_window!));
+        WinRT.Interop.InitializeWithWindow.Initialize(picker, WinRT.Interop.WindowNative.GetWindowHandle(_window));
         var folder = await picker.PickSingleFolderAsync();
         return folder?.Path;
     }
@@ -50,7 +50,7 @@ public sealed class DialogService : IDialogService
     {
         var picker = new FileOpenPicker();
         picker.FileTypeFilter.Add("*");
-        WinRT.Interop.InitializeWithWindow.Initialize(picker, WinRT.Interop.WindowNative.GetWindowHandle(_window!));
+        WinRT.Interop.InitializeWithWindow.Initialize(picker, WinRT.Interop.WindowNative.GetWindowHandle(_window));
         var files = await picker.PickMultipleFilesAsync();
         return files?.Select(f => f.Path).ToList() ?? [];
     }

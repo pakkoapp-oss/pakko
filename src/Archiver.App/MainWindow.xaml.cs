@@ -6,12 +6,13 @@ namespace Archiver.App;
 
 public sealed partial class MainWindow : Window
 {
-    public MainViewModel ViewModel { get; }
+    internal MainViewModel ViewModel { get; }
 
     public MainWindow()
     {
         InitializeComponent();
         ViewModel = App.Services.GetRequiredService<MainViewModel>();
+        this.AppWindow.Resize(new Windows.Graphics.SizeInt32(800, 600));
     }
 
     private void DropZone_DragOver(object sender, DragEventArgs e)
