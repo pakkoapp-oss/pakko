@@ -1,6 +1,8 @@
 using Archiver.App.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
 
 namespace Archiver.App;
 
@@ -30,5 +32,16 @@ public sealed partial class MainWindow : Window
             var paths = items.Select(i => i.Path).ToList();
             ViewModel.AddPaths(paths);
         }
+    }
+
+    private void DropZone_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
+    {
+        ViewModel.BrowseFilesCommand.Execute(null);
+    }
+
+    private void RemoveItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuFlyoutItem item && item.DataContext is string path)
+            ViewModel.RemovePath(path);
     }
 }

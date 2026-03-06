@@ -54,4 +54,13 @@ public sealed class DialogService : IDialogService
         var files = await picker.PickMultipleFilesAsync();
         return files?.Select(f => f.Path).ToList() ?? [];
     }
+
+    public async Task<IReadOnlyList<string>> PickFoldersAsync()
+    {
+        var picker = new FolderPicker();
+        picker.SuggestedStartLocation = PickerLocationId.Desktop;
+        WinRT.Interop.InitializeWithWindow.Initialize(picker, WinRT.Interop.WindowNative.GetWindowHandle(_window));
+        var folder = await picker.PickSingleFolderAsync();
+        return folder is null ? [] : [folder.Path];
+    }
 }

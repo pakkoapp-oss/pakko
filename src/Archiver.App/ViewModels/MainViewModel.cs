@@ -110,10 +110,19 @@ public sealed partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void Clear() => SelectedPaths.Clear();
 
+    public void RemovePath(string path) => SelectedPaths.Remove(path);
+
     [RelayCommand]
     private async Task BrowseFilesAsync()
     {
         var paths = await _dialogService.PickFilesAsync();
+        AddPaths(paths);
+    }
+
+    [RelayCommand]
+    private async Task BrowseFolderAsync()
+    {
+        var paths = await _dialogService.PickFoldersAsync();
         AddPaths(paths);
     }
 }

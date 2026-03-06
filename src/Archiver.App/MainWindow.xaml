@@ -19,17 +19,14 @@
             AllowDrop="True"
             DragOver="DropZone_DragOver"
             Drop="DropZone_Drop"
+            DoubleTapped="DropZone_DoubleTapped"
             Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="4">
                 <FontIcon Glyph="&#xE8B7;" FontSize="28" Opacity="0.6"/>
                 <TextBlock
-                    Text="Drop files or folders here"
+                    Text="Drop files or folders here, or double-click to browse"
                     HorizontalAlignment="Center"
                     Opacity="0.6"/>
-                <HyperlinkButton
-                    Content="Browse files"
-                    HorizontalAlignment="Center"
-                    Command="{x:Bind ViewModel.BrowseFilesCommand, Mode=OneWay}"/>
             </StackPanel>
         </Border>
 
@@ -44,7 +41,14 @@
                     <TextBlock
                         Text="{x:Bind}"
                         TextTrimming="CharacterEllipsis"
-                        ToolTipService.ToolTip="{x:Bind}"/>
+                        ToolTipService.ToolTip="{x:Bind}">
+                        <TextBlock.ContextFlyout>
+                            <MenuFlyout>
+                                <MenuFlyoutItem Text="Remove"
+                                    Click="RemoveItem_Click"/>
+                            </MenuFlyout>
+                        </TextBlock.ContextFlyout>
+                    </TextBlock>
                 </DataTemplate>
             </ListView.ItemTemplate>
         </ListView>

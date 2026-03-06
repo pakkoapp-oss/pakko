@@ -6,4 +6,5 @@ public interface IDialogService
     Task<bool> ShowConfirmAsync(string title, string message);
     Task<string?> PickDestinationFolderAsync();
     Task<IReadOnlyList<string>> PickFilesAsync();
+    Task<IReadOnlyList<string>> PickFoldersAsync();
 }
