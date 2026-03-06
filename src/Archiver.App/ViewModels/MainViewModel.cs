@@ -35,6 +35,9 @@ public sealed partial class MainViewModel : ObservableObject
     private ObservableCollection<string> _selectedPaths = [];
 
     [ObservableProperty]
+    private string? _archiveName;
+
+    [ObservableProperty]
     private bool _openDestinationFolder = false;
 
     [ObservableProperty]
@@ -83,6 +86,7 @@ public sealed partial class MainViewModel : ObservableObject
             {
                 SourcePaths = [.. SelectedPaths],
                 DestinationFolder = DestinationPath,
+                ArchiveName = string.IsNullOrWhiteSpace(ArchiveName) ? null : ArchiveName.Trim(),
                 OpenDestinationFolder = OpenDestinationFolder,
                 DeleteSourceFiles = DeleteSourceFiles,
             };

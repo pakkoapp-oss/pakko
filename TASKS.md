@@ -309,7 +309,7 @@ Task ShowOperationSummaryAsync(string operationName, ArchiveResult result);
 ---
 
 ### T-20 — Archive Name Field
-- [ ] **Status:** pending
+- [x] **Status:** complete
 
 **Files:**
 - `src/Archiver.App/MainWindow.xaml`
@@ -327,11 +327,11 @@ Name: [my-backup                    ]   placeholder: "Auto"
 ```
 
 **Acceptance criteria:**
-- [ ] `ArchiveName` observable `string?` in ViewModel, default `null`
-- [ ] TextBox placeholder: "Auto (based on first file/folder name)"
-- [ ] Empty/whitespace → `null` passed to `ArchiveOptions.ArchiveName`
-- [ ] `ZipArchiveService` uses `options.ArchiveName` when not null for SingleArchive mode
-- [ ] Ignored when Extract is pressed
+- [x] `ArchiveName` observable `string?` in ViewModel, default `null`
+- [x] TextBox placeholder: "Auto (based on first file/folder name)"
+- [x] Empty/whitespace → `null` passed to `ArchiveOptions.ArchiveName`
+- [x] `ZipArchiveService` uses `options.ArchiveName` when not null for SingleArchive mode
+- [x] Ignored when Extract is pressed
 
 ---
 
@@ -453,6 +453,64 @@ Compression: [ Normal ▼ ]
 
 ---
 
+### T-25 — Detect and Report Password-Protected ZIP Archives
+- [ ] **Status:** pending
+
+**File:** `src/Archiver.Core/Services/ZipArchiveService.cs`
+
+**What:** `System.IO.Compression` does not support encrypted ZIP archives.
+Instead of crashing or silently failing, detect encryption and report clearly.
+
+ZIP encryption flag is bit 0 of the general purpose bit flag in the local file header.
+
+**Decision logic:**
+```
+Open ZIP → check first entry flags
+    ├── encrypted flag set → ArchiveError:
+    │   "This archive is password-protected and cannot be extracted."
+    └── not encrypted → extract normally
+```
+
+**Acceptance criteria:**
+- [ ] Encrypted ZIP detected before extraction attempt
+- [ ] Returns `ArchiveError` with message "This archive is password-protected and cannot be extracted."
+- [ ] Does not throw unhandled exception
+- [ ] `dotnet test` passes — test: encrypted ZIP → `ArchiveError` with correct message
+
+---
+
+### T-26 — Windows Compatibility Target
+- [ ] **Status:** pending
+
+**File:** `src/Archiver.App/Archiver.App.csproj`
+
+**What:** Lower minimum Windows version from 2004 (19041) to 1809 (17763).
+WinUI 3 minimum is Windows 10 1809. This also enables Windows Server 2019+.
+
+**Supported after change:**
+| OS | Version |
+|----|---------|
+| Windows 10 | 1809 (October 2018) and later |
+| Windows Server | 2019 and later |
+| Windows Server | 2022 |
+
+**Change:**
+```xml
+<!-- Before -->
+<TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+
+<!-- After -->
+<TargetFramework>net8.0-windows10.0.17763.0</TargetFramework>
+```
+
+**Acceptance criteria:**
+- [ ] `TargetFramework` changed to `net8.0-windows10.0.17763.0`
+- [ ] `Package.appxmanifest` `MinVersion` set to `10.0.17763.0`
+- [ ] App builds without errors
+- [ ] No API calls requiring version above 17763 — verify with build warnings
+
+---
+
 ## Phase 6 — Packaging
 
 ### T-11 — MSIX Packaging Setup
@@ -461,7 +519,7 @@ Compression: [ Normal ▼ ]
 **Acceptance criteria:**
 - [ ] App builds as MSIX package
 - [ ] `Package.appxmanifest` correct `Identity`, `DisplayName`, `Description`
-- [ ] Runs on Windows 10 1903+ (build 18362)
+- [ ] Runs on Windows 10 1809+ (build 17763) — per T-26
 - [ ] No capabilities beyond `runFullTrust`
 
 ---
@@ -477,10 +535,12 @@ Compression: [ Normal ▼ ]
 ### T-F03 — Dedicated Extract Window
 - [ ] **Status:** future
 
-### T-F04 — TAR Support
+### T-F04 — TAR/GZip/BZip2/XZ Support via Windows tar.exe
 - [ ] **Status:** future
 
-Via Windows built-in `tar.exe` via `System.Diagnostics.Process`. No third-party libraries.
+Uses Windows built-in `tar.exe` (available since Windows 10 1803, based on libarchive).
+No third-party binaries — `tar.exe` is part of the OS.
+Invoke via `System.Diagnostics.Process`.
 
 ### T-F05 — Archive Contents Preview
 - [ ] **Status:** future
@@ -490,4 +550,63 @@ Click ZIP in list → read-only tree view of contents via `ZipFile.OpenRead`. No
 ### T-F06 — Ask on Conflict Dialog
 - [ ] **Status:** future
 
-Interactive dialog when conflict detected during operation — Show / Skip / Overwrite / Rename per file.
+Interactive dialog when conflict detected — Skip / Overwrite / Rename per file.
+
+---
+
+### T-F07 — Optional 7-Zip Extraction Support
+- [ ] **Status:** future
+
+**What:** Optional component — not bundled by default, installable separately via app settings
+or as optional checkbox during MSIX install.
+
+**Binary source:** NanaZip (MIT licensed fork of 7-Zip by M2Team, Japan).
+Preferred over original 7-Zip due to reproducible builds and non-Russian maintainership.
+
+**Security model:**
+- SHA-256 hash of binary embedded as constant in source code
+- Hash verified at runtime before every invocation
+- Hash mismatch → operation refused, user notified with security error
+- Binary stored in app's local data folder, not system-wide
+
+**Acceptance criteria (when implemented):**
+- [ ] SHA-256 verification before every `Process.Start`
+- [ ] Hash mismatch → clear security error, no execution
+- [ ] Optional install — not present in base MSIX package
+- [ ] `.7z` files extracted to destination using verified binary
+- [ ] Falls back to "unsupported format" if binary not installed
+
+---
+
+### T-F08 — Optional RAR Extraction Support
+- [ ] **Status:** future
+
+**What:** Optional component for extracting `.rar` archives.
+RAR is a closed format — only official RARLAB `unrar.exe` can be used legally.
+Cannot be reimplemented — must use official binary.
+
+**Binary source:** Official RARLAB `unrar.exe` (freeware license allows use in free software).
+
+**Security model:** same as T-F07 — SHA-256 verification before every invocation.
+
+**Installation:** same as T-F07 — optional, never bundled silently.
+
+**Acceptance criteria (when implemented):**
+- [ ] SHA-256 verification before every `Process.Start`
+- [ ] Hash mismatch → security error, no execution
+- [ ] Optional install only
+- [ ] `.rar` files extracted using verified binary
+
+---
+
+### T-F09 — CLI Core (Archiver.CLI)
+- [ ] **Status:** future
+
+**What:** Expose `Archiver.Core` as standalone CLI executable for scripting and automation.
+New project `src/Archiver.CLI/` referencing `Archiver.Core` — no logic duplication.
+
+Example:
+```
+archiver archive --src C:\files --dest C:\output --name backup
+archiver extract --src C:\backup.zip --dest C:\output
+```

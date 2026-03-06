@@ -7,7 +7,7 @@
     xmlns:viewmodels="using:Archiver.App.ViewModels"
     Title="Archiver">
 
-    <Grid RowDefinitions="Auto,Auto,*,Auto,Auto,Auto,Auto" Padding="16" RowSpacing="12">
+    <Grid RowDefinitions="Auto,Auto,*,Auto,Auto,Auto,Auto,Auto" Padding="16" RowSpacing="12">
 
         <!-- Row 0: Drop Zone -->
         <Border
@@ -106,8 +106,21 @@
                 Command="{x:Bind ViewModel.ClearCommand, Mode=OneWay}"/>
         </Grid>
 
-        <!-- Row 5: Post-Action Checkboxes -->
-        <StackPanel Grid.Row="5" Spacing="4">
+        <!-- Row 5: Archive Name -->
+        <Grid Grid.Row="5" ColumnDefinitions="Auto,*">
+            <TextBlock
+                Grid.Column="0"
+                Text="Name:"
+                VerticalAlignment="Center"
+                Margin="0,0,8,0"/>
+            <TextBox
+                Grid.Column="1"
+                Text="{x:Bind ViewModel.ArchiveName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                PlaceholderText="Auto (based on first file/folder name)"/>
+        </Grid>
+
+        <!-- Row 6: Post-Action Checkboxes -->
+        <StackPanel Grid.Row="6" Spacing="4">
             <CheckBox
                 Content="Open destination folder after completion"
                 IsChecked="{x:Bind ViewModel.OpenDestinationFolder, Mode=TwoWay}"/>
@@ -119,8 +132,8 @@
                 IsChecked="{x:Bind ViewModel.DeleteArchiveAfterExtraction, Mode=TwoWay}"/>
         </StackPanel>
 
-        <!-- Row 6: Status Bar -->
-        <Grid Grid.Row="6" RowDefinitions="Auto,Auto" RowSpacing="4">
+        <!-- Row 7: Status Bar -->
+        <Grid Grid.Row="7" RowDefinitions="Auto,Auto" RowSpacing="4">
             <ProgressBar
                 Grid.Row="0"
                 Value="{x:Bind ViewModel.Progress, Mode=OneWay}"
