@@ -328,6 +328,7 @@ Task ShowOperationSummaryAsync(string operationName, ArchiveResult result);
 - [x] `DialogService` implements using `ContentDialog` + `ScrollViewer` + `StackPanel`
 - [x] Errors section shown only if `result.Errors.Count > 0`
 - [x] Skipped section shown only if `result.SkippedFiles.Count > 0`
+- [ ] Warnings section shown only if `result.Warnings.Count > 0` — "⚠ Integrity warnings" header — added in T-34
 - [x] No dialog when both lists empty
 - [x] On success: only `StatusMessage` updated
 - [x] `MainViewModel` calls `ShowOperationSummaryAsync` after both Archive and Extract
@@ -507,7 +508,7 @@ Open ZIP → check first entry flags
 ---
 
 ### T-26 — Windows Compatibility Target
-- [ ] **Status:** pending
+- [x] **Status:** complete
 
 **File:** `src/Archiver.App/Archiver.App.csproj`
 
@@ -531,10 +532,10 @@ WinUI 3 minimum is Windows 10 1809. This also enables Windows Server 2019+.
 ```
 
 **Acceptance criteria:**
-- [ ] `TargetFramework` changed to `net8.0-windows10.0.17763.0`
-- [ ] `Package.appxmanifest` `MinVersion` set to `10.0.17763.0`
-- [ ] App builds without errors
-- [ ] No API calls requiring version above 17763 — verify with build warnings
+- [x] `TargetFramework` changed to `net8.0-windows10.0.17763.0`
+- [x] `Package.appxmanifest` `MinVersion` set to `10.0.17763.0`
+- [x] App builds without errors
+- [x] No API calls requiring version above 17763 — verify with build warnings
 
 ---
 
@@ -919,6 +920,96 @@ IsOperationRunning = false;
 - [ ] `StatusMessage` updated to final result after completion of either operation
 - [ ] `CancellationTokenSource` properly created per operation and disposed after
 - [ ] `dotnet test` passes
+
+---
+
+### T-34 — SHA-256 Integrity Manifest in ZIP Comment
+- [ ] **Status:** pending
+
+**Files:**
+- `src/Archiver.Core/Services/ZipArchiveService.cs`
+- `src/Archiver.Core/Models/ArchiveResult.cs`
+
+**What:** After creating a ZIP archive, compute SHA-256 for every entry and write
+a signed manifest into the ZIP comment field. On extraction, read and verify the
+manifest — mismatches become warnings, not errors (archive still extracts normally).
+
+This is a Pakko-specific integrity feature — not standard ZIP behavior.
+
+**Manifest format in ZIP comment:**
+```
+PAKKO-INTEGRITY-V1
+documents/report.pdf=a3f1c2d4e5b6...
+documents/data.xlsx=9f8e7d6c5b4a...
+readme.txt=1a2b3c4d5e6f...
+```
+
+First line is always the magic header `PAKKO-INTEGRITY-V1` — used to detect
+whether a ZIP was created by Pakko or by another tool.
+
+**Archiving flow (non-blocking):**
+```
+1. Write all entries to ZIP normally
+2. After all entries written — compute SHA-256 for each entry asynchronously
+3. Build manifest string
+4. Set archive.Comment = manifest
+5. If SHA-256 computation fails for any entry → skip that entry in manifest,
+   add warning to ArchiveResult.Warnings (new field, see below)
+```
+
+**Extraction flow (non-blocking):**
+```
+1. Open ZIP, read archive.Comment
+2. If comment is empty or doesn't start with PAKKO-INTEGRITY-V1
+   → extract normally, no verification (archive from another tool)
+3. If manifest present → parse expected hashes
+4. Extract each entry normally
+5. After extraction — verify SHA-256 of each extracted file against manifest
+6. Hash mismatch → add to ArchiveResult.Warnings:
+   "Integrity warning: 'report.pdf' — SHA-256 mismatch. File may be corrupted."
+7. Missing entry in manifest → no warning (could be partial manifest)
+8. All checks non-blocking — extraction always completes regardless of warnings
+```
+
+**New field in ArchiveResult:**
+```csharp
+public sealed record ArchiveResult
+{
+    // existing fields...
+    public IReadOnlyList<string> Warnings { get; init; } = [];  // NEW
+}
+```
+
+**Warnings shown in T-19 summary dialog** — third section after Errors and Skipped:
+```
+⚠ Integrity warnings (1)
+
+   report.pdf
+   SHA-256 mismatch. File may be corrupted.
+```
+
+**Performance note:**
+- SHA-256 computation runs after ZIP is written — does not slow down the write itself
+- For large archives (>100 MB) — run on background thread via `Task.Run`
+- Verification on extraction also runs after files are written to disk
+
+**Acceptance criteria:**
+- [ ] `ArchiveResult.Warnings` added as `IReadOnlyList<string>`, defaults to `[]`
+- [ ] Magic header `PAKKO-INTEGRITY-V1` written as first line of ZIP comment
+- [ ] SHA-256 computed for every entry after archive creation
+- [ ] Manifest written to `ZipArchive.Comment` before archive is closed
+- [ ] SHA-256 computation failure → warning in `Warnings`, not error — archiving succeeds
+- [ ] On extraction: comment checked for `PAKKO-INTEGRITY-V1` header
+- [ ] ZIP without Pakko header → extracted normally, no verification attempted
+- [ ] Hash mismatch on extraction → warning in `ArchiveResult.Warnings`, extraction continues
+- [ ] Warnings shown in T-19 summary dialog as third section "⚠ Integrity warnings"
+- [ ] SHA-256 computation is async — does not block UI thread
+- [ ] `dotnet test` passes — tests:
+  - [ ] Archive created → comment contains `PAKKO-INTEGRITY-V1`
+  - [ ] Archive created → comment contains correct SHA-256 for each entry
+  - [ ] Tampered file on extraction → appears in `Warnings`
+  - [ ] Non-Pakko ZIP extracted → no warnings, no errors
+  - [ ] Corrupt manifest → extraction still succeeds, warning added
 
 ---
 
