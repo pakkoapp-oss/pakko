@@ -540,7 +540,7 @@ WinUI 3 minimum is Windows 10 1809. This also enables Windows Server 2019+.
 ---
 
 ### T-27 — Replace ZipFile.CreateFromDirectory with Lazy Enumeration
-- [ ] **Status:** pending
+- [x] **Status:** complete
 
 **File:** `src/Archiver.Core/Services/ZipArchiveService.cs`
 
@@ -571,10 +571,10 @@ await Task.Run(() =>
 already prefixes entries with the folder name via `entryPrefix`.
 
 **Acceptance criteria:**
-- [ ] `ZipFile.CreateFromDirectory` removed from `ArchiveAsync`
-- [ ] `SeparateArchives` directory branch uses `AddDirectoryToArchive` instead
-- [ ] Resulting ZIP structure identical — folder name preserved as root entry prefix
-- [ ] `dotnet test` passes — existing archive tests unchanged
+- [x] `ZipFile.CreateFromDirectory` removed from `ArchiveAsync`
+- [x] `SeparateArchives` directory branch uses `AddDirectoryToArchive` instead
+- [x] Resulting ZIP structure identical — folder name preserved as root entry prefix
+- [x] `dotnet test` passes — existing archive tests unchanged
 
 ---
 
