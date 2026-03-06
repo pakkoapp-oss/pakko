@@ -114,21 +114,21 @@ Agent marks task `[x]` only when ALL criteria pass.
 ---
 
 ### T-07 — Implement ZipArchiveService
-- [ ] **Status:** pending
+- [x] **Status:** complete
 
 **File:** `src/Archiver.Core/Services/ZipArchiveService.cs`
 
 **Acceptance criteria:**
-- [ ] Class implements `IArchiveService`
-- [ ] Class is `sealed`
-- [ ] Uses only `System.IO.Compression` — no third-party packages
-- [ ] `ArchiveAsync` handles both `ArchiveMode.SingleArchive` and `ArchiveMode.SeparateArchives`
-- [ ] `ExtractAsync` handles both `ExtractMode.SeparateFolders` and `ExtractMode.SingleFolder`
-- [ ] All `IOException` and `UnauthorizedAccessException` are caught per-item, appended to errors list, processing continues
-- [ ] `CancellationToken` is checked between processing items
-- [ ] `IProgress<int>` reports 0–100 as percentage of items processed
-- [ ] Method never throws — all exceptions result in `ArchiveError` entries
-- [ ] `ArchiveResult.Success` is `true` only when `Errors` list is empty
+- [x] Class implements `IArchiveService`
+- [x] Class is `sealed`
+- [x] Uses only `System.IO.Compression` — no third-party packages
+- [x] `ArchiveAsync` handles both `ArchiveMode.SingleArchive` and `ArchiveMode.SeparateArchives`
+- [x] `ExtractAsync` handles both `ExtractMode.SeparateFolders` and `ExtractMode.SingleFolder`
+- [x] All `IOException` and `UnauthorizedAccessException` are caught per-item, appended to errors list, processing continues
+- [x] `CancellationToken` is checked between processing items
+- [x] `IProgress<int>` reports 0–100 as percentage of items processed
+- [x] Method never throws — all exceptions result in `ArchiveError` entries
+- [x] `ArchiveResult.Success` is `true` only when `Errors` list is empty
 
 ---
 
