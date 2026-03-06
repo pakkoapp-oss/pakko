@@ -176,38 +176,38 @@ Agent marks task `[x]` only when ALL criteria pass.
 ---
 
 ### T-09 — Implement MainWindow
-- [ ] **Status:** pending
+- [x] **Status:** complete
 
 **Files:**
-- `src/Archiver.App/Views/MainWindow.xaml`
-- `src/Archiver.App/Views/MainWindow.xaml.cs`
+- `src/Archiver.App/MainWindow.xaml`
+- `src/Archiver.App/MainWindow.xaml.cs`
 
 **Acceptance criteria:**
-- [ ] Window has a drag-and-drop area (`AllowDrop="True"`)
-- [ ] `ListView` or `ItemsControl` bound to `ViewModel.SelectedPaths`
-- [ ] "Archive" button bound to `ViewModel.ArchiveCommand`
-- [ ] "Extract" button bound to `ViewModel.ExtractCommand`
-- [ ] Buttons disabled when `IsBusy` is `true`
-- [ ] `ProgressBar` bound to `ViewModel.Progress`
-- [ ] Status label bound to `ViewModel.StatusMessage`
-- [ ] No business logic in code-behind — only UI wiring
-- [ ] Drag-and-drop handler calls `ViewModel` method, not service directly
+- [x] Window has a drag-and-drop area (`AllowDrop="True"`)
+- [x] `ListView` or `ItemsControl` bound to `ViewModel.SelectedPaths`
+- [x] "Archive" button bound to `ViewModel.ArchiveCommand`
+- [x] "Extract" button bound to `ViewModel.ExtractCommand`
+- [x] Buttons disabled when `IsBusy` is `true`
+- [x] `ProgressBar` bound to `ViewModel.Progress`
+- [x] Status label bound to `ViewModel.StatusMessage`
+- [x] No business logic in code-behind — only UI wiring
+- [x] Drag-and-drop handler calls `ViewModel` method, not service directly
 
 ---
 
 ## Phase 5 — Error Handling UI
 
 ### T-10 — DialogService for Error Display
-- [ ] **Status:** pending
+- [x] **Status:** complete
 
 **File:** `src/Archiver.App/Services/DialogService.cs`
 
 **Acceptance criteria:**
-- [ ] `ShowErrorAsync(string title, string message)` method
-- [ ] Uses WinUI `ContentDialog`
-- [ ] Called from ViewModel (not from code-behind)
-- [ ] Interface `IDialogService` defined in `Archiver.App.Services` namespace
-- [ ] `MainViewModel` depends on `IDialogService`, not concrete class
+- [x] `ShowErrorAsync(string title, string message)` method
+- [x] Uses WinUI `ContentDialog`
+- [x] Called from ViewModel (not from code-behind)
+- [x] Interface `IDialogService` defined in `Archiver.App.Services` namespace
+- [x] `MainViewModel` depends on `IDialogService`, not concrete class
 
 ---
 
