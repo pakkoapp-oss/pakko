@@ -155,23 +155,23 @@ Agent marks task `[x]` only when ALL criteria pass.
 ## Phase 4 — UI Layer
 
 ### T-08 — Implement MainViewModel
-- [ ] **Status:** pending
+- [x] **Status:** complete
 
 **File:** `src/Archiver.App/ViewModels/MainViewModel.cs`
 
 **Dependencies:** `CommunityToolkit.Mvvm`
 
 **Acceptance criteria:**
-- [ ] Inherits `ObservableObject` from CommunityToolkit
-- [ ] `SelectedPaths` is `ObservableCollection<string>`
-- [ ] `IsBusy` is observable `bool` property
-- [ ] `Progress` is observable `int` property (0–100)
-- [ ] `StatusMessage` is observable `string` property
-- [ ] `ArchiveCommand` is `AsyncRelayCommand`, disabled when `IsBusy` or no paths selected
-- [ ] `ExtractCommand` is `AsyncRelayCommand`, disabled when `IsBusy` or no paths selected
-- [ ] Commands call `IArchiveService` (injected via constructor)
-- [ ] `IsBusy` set to `true` during operation, `false` in `finally` block
-- [ ] `StatusMessage` updated on completion and on error
+- [x] Inherits `ObservableObject` from CommunityToolkit
+- [x] `SelectedPaths` is `ObservableCollection<string>`
+- [x] `IsBusy` is observable `bool` property
+- [x] `Progress` is observable `int` property (0–100)
+- [x] `StatusMessage` is observable `string` property
+- [x] `ArchiveCommand` is `AsyncRelayCommand`, disabled when `IsBusy` or no paths selected
+- [x] `ExtractCommand` is `AsyncRelayCommand`, disabled when `IsBusy` or no paths selected
+- [x] Commands call `IArchiveService` (injected via constructor)
+- [x] `IsBusy` set to `true` during operation, `false` in `finally` block
+- [x] `StatusMessage` updated on completion and on error
 
 ---
 

@@ -1,12 +1,37 @@
 {
   "Version": 1,
   "WorkspaceRootPath": "C:\\Users\\Pa\\Projects\\windows-archiver-wrapper\\src\\Archiver.App\\",
-  "Documents": [],
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{F14CDE5E-C2B4-4147-B373-E81BA9F215CE}|Archiver.App.csproj|c:\\users\\pa\\projects\\windows-archiver-wrapper\\src\\archiver.app\\archiver.app.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|",
+      "RelativeMoniker": "D:0:0:{F14CDE5E-C2B4-4147-B373-E81BA9F215CE}|Archiver.App.csproj|solutionrelative:archiver.app.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|"
+    }
+  ],
   "DocumentGroupContainers": [
     {
       "Orientation": 0,
       "VerticalTabListWidth": 256,
-      "DocumentGroups": []
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 0,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "Archiver.App",
+              "DocumentMoniker": "C:\\Users\\Pa\\Projects\\windows-archiver-wrapper\\src\\Archiver.App\\Archiver.App.csproj",
+              "RelativeDocumentMoniker": "Archiver.App.csproj",
+              "ToolTip": "C:\\Users\\Pa\\Projects\\windows-archiver-wrapper\\src\\Archiver.App\\Archiver.App.csproj*",
+              "RelativeToolTip": "Archiver.App.csproj*",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABMAAAA9AAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
+              "WhenOpened": "2026-03-06T00:33:56.833Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
     }
   ]
 }

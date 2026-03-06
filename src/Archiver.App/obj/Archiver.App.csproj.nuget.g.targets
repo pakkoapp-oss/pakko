@@ -14,5 +14,6 @@
     <Import Project="$(NuGetPackageRoot)microsoft.windowsappsdk.dwrite\1.8.25122902\buildTransitive\Microsoft.WindowsAppSDK.DWrite.targets" Condition="Exists('$(NuGetPackageRoot)microsoft.windowsappsdk.dwrite\1.8.25122902\buildTransitive\Microsoft.WindowsAppSDK.DWrite.targets')" />
     <Import Project="$(NuGetPackageRoot)microsoft.windowsappsdk.ai\1.8.47\buildTransitive\Microsoft.WindowsAppSDK.AI.targets" Condition="Exists('$(NuGetPackageRoot)microsoft.windowsappsdk.ai\1.8.47\buildTransitive\Microsoft.WindowsAppSDK.AI.targets')" />
     <Import Project="$(NuGetPackageRoot)microsoft.windowsappsdk\1.8.260209005\buildTransitive\Microsoft.WindowsAppSDK.targets" Condition="Exists('$(NuGetPackageRoot)microsoft.windowsappsdk\1.8.260209005\buildTransitive\Microsoft.WindowsAppSDK.targets')" />
+    <Import Project="$(NuGetPackageRoot)communitytoolkit.mvvm\8.4.0\buildTransitive\CommunityToolkit.Mvvm.targets" Condition="Exists('$(NuGetPackageRoot)communitytoolkit.mvvm\8.4.0\buildTransitive\CommunityToolkit.Mvvm.targets')" />
   </ImportGroup>
 </Project>

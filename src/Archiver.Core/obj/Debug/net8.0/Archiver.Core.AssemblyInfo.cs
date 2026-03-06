@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Archiver.Core")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+6eb46f53385dadb0467ed6f0e6c991569ab9c22e")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+406983167ab58786c13948018cc9aa50c28d6b8c")]
 [assembly: System.Reflection.AssemblyProductAttribute("Archiver.Core")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Archiver.Core")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
