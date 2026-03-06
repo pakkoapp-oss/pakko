@@ -160,6 +160,74 @@ IsZipFile() == true → try ZipFile.OpenRead()
 
 ---
 
+### T-13.2 — Inform User About Skipped Non-ZIP Files
+- [x] **Status:** complete
+
+**Files:**
+- `src/Archiver.Core/Models/ArchiveResult.cs`
+- `src/Archiver.Core/Services/ZipArchiveService.cs`
+- `src/Archiver.App/Services/IDialogService.cs`
+- `src/Archiver.App/Services/DialogService.cs`
+- `src/Archiver.App/ViewModels/MainViewModel.cs`
+
+**What:** Currently non-ZIP files are skipped silently — user has no idea why.
+Add `SkippedFiles` collection to `ArchiveResult` and show skipped files
+in the summary dialog (T-19) as a separate section distinct from errors.
+
+Known non-ZIP formats to detect by magic bytes and report with friendly name:
+
+| Magic bytes | Format | Friendly name |
+|-------------|--------|---------------|
+| `52 61 72 21` | RAR | RAR archive |
+| `37 7A BC AF 27 1C` | 7-Zip | 7-Zip archive |
+| `1F 8B` | GZIP / TAR.GZ | GZip archive |
+| `42 5A 68` | BZIP2 / TAR.BZ2 | BZip2 archive |
+| `FD 37 7A 58 5A 00` | XZ / TAR.XZ | XZ archive |
+| `04 22 4D 18` | LZ4 | LZ4 archive |
+
+Files with unknown magic bytes → skipped silently, no message (could be any binary).
+
+**Change to ArchiveResult:**
+```csharp
+public sealed record ArchiveResult
+{
+    public bool Success { get; init; }
+    public IReadOnlyList<string> CreatedFiles { get; init; } = [];
+    public IReadOnlyList<ArchiveError> Errors { get; init; } = [];
+    public IReadOnlyList<SkippedFile> SkippedFiles { get; init; } = [];  // NEW
+}
+
+public sealed record SkippedFile
+{
+    public string Path { get; init; } = string.Empty;
+    public string Reason { get; init; } = string.Empty;
+}
+```
+
+**Decision logic in ExtractAsync:**
+```
+IsZipFile() == false
+    ├── IsKnownArchiveFormat() == true
+    │   → add to SkippedFiles with reason:
+    │     "RAR format is not supported. Only ZIP-based formats are supported."
+    └── IsKnownArchiveFormat() == false
+        → skip silently, no record kept
+```
+
+**Acceptance criteria:**
+- [x] `SkippedFile` sealed record added to `src/Archiver.Core/Models/`
+- [x] `ArchiveResult.SkippedFiles` is `IReadOnlyList<SkippedFile>`, defaults to `[]`
+- [x] `IsKnownArchiveFormat()` private method in `ZipArchiveService` checks magic bytes for RAR, 7z, GZip, BZip2, XZ, LZ4
+- [x] Known non-ZIP archives added to `SkippedFiles` with friendly reason message
+- [x] Unknown binary files skipped silently — not added to `SkippedFiles`
+- [x] `ArchiveResult.Success` remains `true` when only skips occurred, no errors
+- [x] `dotnet test` passes — existing tests unchanged
+- [x] New test cases:
+  - [x] RAR file → appears in `SkippedFiles` with friendly reason
+  - [x] Random binary file → not in `SkippedFiles`, not in `Errors`
+
+---
+
 ### T-14 — Smart Extract Folder Logic
 - [x] **Status:** complete
 
@@ -286,54 +354,69 @@ On errors — formatted list of what failed and why.
 **UI appearance:**
 ```
 ┌─────────────────────────────────────┐
-│  Completed with 2 error(s)          │
+│  Completed with issues              │
 │─────────────────────────────────────│
-│  ✗ document.pdf                     │
+│  ✗ Errors (2)                       │
+│                                     │
+│    document.pdf                     │
 │    File is locked by another process│
 │                                     │
-│  ✗ archive.zip                      │
+│    archive.zip                      │
 │    File has ZIP signature but       │
 │    appears corrupted or incomplete  │
+│─────────────────────────────────────│
+│  ⊘ Skipped — unsupported format (2) │
+│                                     │
+│    backup.rar                       │
+│    RAR format is not supported      │
+│                                     │
+│    archive.7z                       │
+│    7-Zip format is not supported    │
 │─────────────────────────────────────│
 │                   [  OK  ]          │
 └─────────────────────────────────────┘
 ```
 
+Each section shown only if it has items. No dialog at all if both lists are empty.
+
 **Interface addition:**
 ```csharp
 // Add to IDialogService:
-Task ShowErrorSummaryAsync(string operationName, IReadOnlyList<ArchiveError> errors);
+Task ShowOperationSummaryAsync(string operationName, ArchiveResult result);
 ```
 
 **Implementation in DialogService:**
 ```csharp
-public async Task ShowErrorSummaryAsync(string operationName, IReadOnlyList<ArchiveError> errors)
+public async Task ShowOperationSummaryAsync(string operationName, ArchiveResult result)
 {
-    // Build formatted error list as StackPanel with TextBlocks
-    // Show in ContentDialog with scrollable content
-    // Title: $"{operationName} completed with {errors.Count} error(s)"
+    // Show only if result.Errors.Count > 0 OR result.SkippedFiles.Count > 0
+    // Build StackPanel:
+    //   - Errors section (if any): header + per-error filename bold + message
+    //   - Skipped section (if any): header + per-skip filename bold + reason
+    // Show in ContentDialog with ScrollViewer
+    // Title: $"{operationName} completed with issues"
 }
 ```
 
 **ViewModel logic:**
 ```csharp
 // After ArchiveAsync or ExtractAsync:
-if (result.Errors.Count > 0)
-    await _dialogService.ShowErrorSummaryAsync("Archive", result.Errors);
+if (result.Errors.Count > 0 || result.SkippedFiles.Count > 0)
+    await _dialogService.ShowOperationSummaryAsync("Archive", result);
 else
     StatusMessage = $"Done — {result.CreatedFiles.Count} file(s) processed.";
 ```
 
 **Acceptance criteria:**
-- [ ] `ShowErrorSummaryAsync(string operationName, IReadOnlyList<ArchiveError> errors)` added to `IDialogService`
-- [ ] `DialogService` implements it using `ContentDialog` with scrollable `StackPanel`
-- [ ] Each error shows: filename (bold) + error message below it
-- [ ] Dialog title shows operation name and error count
-- [ ] Dialog NOT shown when `result.Errors` is empty
-- [ ] On success: only `StatusMessage` updated, no dialog
-- [ ] `MainViewModel.ArchiveAsync` calls `ShowErrorSummaryAsync` when errors exist
-- [ ] `MainViewModel.ExtractAsync` calls `ShowErrorSummaryAsync` when errors exist
-- [ ] `Archiver.Core` has zero references to dialog — errors returned via `ArchiveResult` only
+- [ ] `ShowOperationSummaryAsync(string operationName, ArchiveResult result)` added to `IDialogService`
+- [ ] `DialogService` implements using `ContentDialog` with `ScrollViewer` + `StackPanel`
+- [ ] Errors section shown only if `result.Errors.Count > 0` — filename bold + message
+- [ ] Skipped section shown only if `result.SkippedFiles.Count > 0` — filename bold + reason
+- [ ] Dialog NOT shown when both lists are empty
+- [ ] On full success: only `StatusMessage` updated, no dialog
+- [ ] `MainViewModel.ArchiveAsync` calls `ShowOperationSummaryAsync` when errors or skips exist
+- [ ] `MainViewModel.ExtractAsync` calls `ShowOperationSummaryAsync` when errors or skips exist
+- [ ] `Archiver.Core` has zero references to dialog — all results via `ArchiveResult` only
 
 ---
 

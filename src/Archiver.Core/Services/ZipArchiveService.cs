@@ -184,6 +184,7 @@ public sealed class ZipArchiveService : IArchiveService
     {
         var errors = new List<ArchiveError>();
         var createdFiles = new List<string>();
+        var skippedFiles = new List<SkippedFile>();
 
         Directory.CreateDirectory(options.DestinationFolder);
 
@@ -197,6 +198,9 @@ public sealed class ZipArchiveService : IArchiveService
 
             if (!IsZipFile(archivePath))
             {
+                string? reason = GetKnownArchiveReason(archivePath);
+                if (reason is not null)
+                    skippedFiles.Add(new SkippedFile { Path = archivePath, Reason = reason });
                 progress?.Report((i + 1) * 100 / total);
                 continue;
             }
@@ -249,7 +253,8 @@ public sealed class ZipArchiveService : IArchiveService
         {
             Success = errors.Count == 0,
             CreatedFiles = createdFiles,
-            Errors = errors
+            Errors = errors,
+            SkippedFiles = skippedFiles
         };
     }
 
@@ -319,6 +324,48 @@ public sealed class ZipArchiveService : IArchiveService
         catch
         {
             return false;
+        }
+    }
+
+    private static string? GetKnownArchiveReason(string path)
+    {
+        try
+        {
+            Span<byte> header = stackalloc byte[6];
+            using var fs = File.OpenRead(path);
+            int read = fs.Read(header);
+
+            // GZIP: 1F 8B
+            if (read >= 2 && header[0] == 0x1F && header[1] == 0x8B)
+                return "GZip format is not supported. Only ZIP-based formats are supported.";
+
+            // BZip2: 42 5A 68
+            if (read >= 3 && header[0] == 0x42 && header[1] == 0x5A && header[2] == 0x68)
+                return "BZip2 format is not supported. Only ZIP-based formats are supported.";
+
+            // RAR: 52 61 72 21
+            if (read >= 4 && header[0] == 0x52 && header[1] == 0x61 && header[2] == 0x72 && header[3] == 0x21)
+                return "RAR format is not supported. Only ZIP-based formats are supported.";
+
+            // LZ4: 04 22 4D 18
+            if (read >= 4 && header[0] == 0x04 && header[1] == 0x22 && header[2] == 0x4D && header[3] == 0x18)
+                return "LZ4 format is not supported. Only ZIP-based formats are supported.";
+
+            // 7-Zip: 37 7A BC AF 27 1C
+            if (read >= 6 && header[0] == 0x37 && header[1] == 0x7A && header[2] == 0xBC
+                && header[3] == 0xAF && header[4] == 0x27 && header[5] == 0x1C)
+                return "7-Zip format is not supported. Only ZIP-based formats are supported.";
+
+            // XZ: FD 37 7A 58 5A 00
+            if (read >= 6 && header[0] == 0xFD && header[1] == 0x37 && header[2] == 0x7A
+                && header[3] == 0x58 && header[4] == 0x5A && header[5] == 0x00)
+                return "XZ format is not supported. Only ZIP-based formats are supported.";
+
+            return null;
+        }
+        catch
+        {
+            return null;
         }
     }
 

@@ -193,6 +193,47 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
     }
 
     [Fact]
+    public async Task ExtractAsync_RarFile_AppearsInSkippedFilesWithFriendlyReason()
+    {
+        var rarPath = Path.Combine(_temp.Path, "backup.rar");
+        // RAR magic bytes: 52 61 72 21
+        File.WriteAllBytes(rarPath, [0x52, 0x61, 0x72, 0x21, 0x1A, 0x07, 0x00]);
+
+        var options = new ExtractOptions
+        {
+            ArchivePaths = [rarPath],
+            DestinationFolder = _temp.Path
+        };
+
+        var result = await _sut.ExtractAsync(options);
+
+        result.Success.Should().BeTrue();
+        result.Errors.Should().BeEmpty();
+        result.SkippedFiles.Should().HaveCount(1);
+        result.SkippedFiles[0].Path.Should().Be(rarPath);
+        result.SkippedFiles[0].Reason.Should().Be("RAR format is not supported. Only ZIP-based formats are supported.");
+    }
+
+    [Fact]
+    public async Task ExtractAsync_RandomBinaryFile_NotInSkippedFilesOrErrors()
+    {
+        var binaryPath = Path.Combine(_temp.Path, "data.bin");
+        File.WriteAllBytes(binaryPath, [0xDE, 0xAD, 0xBE, 0xEF, 0x00, 0x11]);
+
+        var options = new ExtractOptions
+        {
+            ArchivePaths = [binaryPath],
+            DestinationFolder = _temp.Path
+        };
+
+        var result = await _sut.ExtractAsync(options);
+
+        result.Success.Should().BeTrue();
+        result.Errors.Should().BeEmpty();
+        result.SkippedFiles.Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task ExtractAsync_ZipMagicBytesButCorruptedContent_ReturnsArchiveError()
     {
         var corruptPath = Path.Combine(_temp.Path, "corrupt.zip");
