@@ -61,19 +61,19 @@ Agent marks task `[x]` only when ALL criteria pass.
 ---
 
 ### T-04 — Implement ExtractOptions
-- [ ] **Status:** pending
+- [x] **Status:** complete
 
 **File:** `src/Archiver.Core/Models/ExtractOptions.cs`
 
 **Acceptance criteria:**
-- [ ] `record` type with `init;` setters
-- [ ] `ArchivePaths` is `IReadOnlyList<string>`, defaults to `[]`
-- [ ] `DestinationFolder` defaults to `string.Empty`
-- [ ] `Mode` is `ExtractMode` enum, defaults to `ExtractMode.SeparateFolders`
-- [ ] `OnConflict` is `ConflictBehavior` (reuse from T-03)
-- [ ] `OpenDestinationFolder` defaults to `false`
-- [ ] `DeleteArchiveAfterExtraction` defaults to `false`
-- [ ] Enum `ExtractMode` defined in same namespace
+- [x] `record` type with `init;` setters
+- [x] `ArchivePaths` is `IReadOnlyList<string>`, defaults to `[]`
+- [x] `DestinationFolder` defaults to `string.Empty`
+- [x] `Mode` is `ExtractMode` enum, defaults to `ExtractMode.SeparateFolders`
+- [x] `OnConflict` is `ConflictBehavior` (reuse from T-03)
+- [x] `OpenDestinationFolder` defaults to `false`
+- [x] `DeleteArchiveAfterExtraction` defaults to `false`
+- [x] Enum `ExtractMode` defined in same namespace
 
 ---
 
