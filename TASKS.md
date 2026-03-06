@@ -164,6 +164,13 @@ Unknown binaries skipped silently.
 - [x] Double-click on drop zone triggers files picker
 - [x] Hint text updated
 
+**UX note:** `FolderPicker` is limited to single folder selection by Windows Shell API —
+`PickMultipleFoldersAsync` does not exist in WinRT. Workaround via COM `IFileOpenDialog`
+with `FOS_ALLOWMULTISELECT` is possible but requires P/Invoke boilerplate — deferred.
+Current mitigation: hint text below buttons reads
+"For multiple folders — drag & drop from Explorer"
+Drag & drop already supports multiple folders simultaneously.
+
 ---
 
 ### T-16 — Destination Path Row
@@ -219,7 +226,12 @@ Unknown binaries skipped silently.
 ```csharp
 // OpenDestinationFolder — both Archive and Extract:
 if (options.OpenDestinationFolder && result.Success)
-    Process.Start(new ProcessStartInfo("explorer.exe", options.DestinationFolder) { UseShellExecute = true });
+{
+    using var p = Process.Start(
+        new ProcessStartInfo("explorer.exe", options.DestinationFolder)
+        { UseShellExecute = true });
+    // using ensures Process handle is released immediately after Start
+}
 
 // DeleteSourceFiles — ArchiveAsync only:
 if (options.DeleteSourceFiles && result.Success)
@@ -367,7 +379,7 @@ Columns:
 ---
 
 ### T-22 — Archive Mode Toggle (Single / Separate)
-- [ ] **Status:** pending
+- [x] **Status:** complete
 
 **Files:**
 - `src/Archiver.App/MainWindow.xaml`
@@ -383,10 +395,10 @@ Mode: (•) One archive   ( ) Separate archives
 ```
 
 **Acceptance criteria:**
-- [ ] `SelectedArchiveMode` observable `ArchiveMode` in ViewModel, default `SingleArchive`
-- [ ] Two `RadioButton` controls bound to ViewModel
-- [ ] Archive name field (T-20) disabled when mode is `SeparateArchives`
-- [ ] Passed to `ArchiveOptions.Mode` only — not to `ExtractOptions`
+- [x] `SelectedArchiveMode` observable `ArchiveMode` in ViewModel, default `SingleArchive`
+- [x] Two `RadioButton` controls bound to ViewModel
+- [x] Archive name field (T-20) disabled when mode is `SeparateArchives`
+- [x] Passed to `ArchiveOptions.Mode` only — not to `ExtractOptions`
 
 ---
 
@@ -511,6 +523,45 @@ WinUI 3 minimum is Windows 10 1809. This also enables Windows Server 2019+.
 
 ---
 
+### T-27 — Replace ZipFile.CreateFromDirectory with Lazy Enumeration
+- [ ] **Status:** pending
+
+**File:** `src/Archiver.Core/Services/ZipArchiveService.cs`
+
+**What:** In `SeparateArchives` mode, folders are currently archived via
+`ZipFile.CreateFromDirectory` which eagerly enumerates all files into memory before
+writing. For folders with many files (100k+) this creates a large in-memory collection.
+
+Replace with `AddDirectoryToArchive` which already exists in the service and uses
+`Directory.EnumerateFiles` — lazy, one file at a time, no upfront collection.
+
+**Current code (SeparateArchives, directory branch):**
+```csharp
+await Task.Run(() =>
+    ZipFile.CreateFromDirectory(sourcePath, destPath, CompressionLevel.Optimal, includeBaseDirectory: true),
+    cancellationToken).ConfigureAwait(false);
+```
+
+**Replacement:**
+```csharp
+await Task.Run(() =>
+{
+    using var archive = ZipFile.Open(destPath, ZipArchiveMode.Create);
+    AddDirectoryToArchive(archive, sourcePath, Path.GetFileName(sourcePath));
+}, cancellationToken).ConfigureAwait(false);
+```
+
+**Note:** `includeBaseDirectory: true` behaviour is preserved — `AddDirectoryToArchive`
+already prefixes entries with the folder name via `entryPrefix`.
+
+**Acceptance criteria:**
+- [ ] `ZipFile.CreateFromDirectory` removed from `ArchiveAsync`
+- [ ] `SeparateArchives` directory branch uses `AddDirectoryToArchive` instead
+- [ ] Resulting ZIP structure identical — folder name preserved as root entry prefix
+- [ ] `dotnet test` passes — existing archive tests unchanged
+
+---
+
 ## Phase 6 — Packaging
 
 ### T-11 — MSIX Packaging Setup
@@ -575,6 +626,8 @@ Preferred over original 7-Zip due to reproducible builds and non-Russian maintai
 - [ ] Optional install — not present in base MSIX package
 - [ ] `.7z` files extracted to destination using verified binary
 - [ ] Falls back to "unsupported format" if binary not installed
+- [ ] `Process` always disposed after use — wrap in `using` or explicit `Dispose()` in `finally`
+- [ ] No orphaned process handles after extraction completes or fails
 
 ---
 
@@ -596,6 +649,8 @@ Cannot be reimplemented — must use official binary.
 - [ ] Hash mismatch → security error, no execution
 - [ ] Optional install only
 - [ ] `.rar` files extracted using verified binary
+- [ ] `Process` always disposed after use — wrap in `using` or explicit `Dispose()` in `finally`
+- [ ] No orphaned process handles after extraction completes or fails
 
 ---
 

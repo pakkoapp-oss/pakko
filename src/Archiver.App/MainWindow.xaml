@@ -168,18 +168,33 @@
                 Command="{x:Bind ViewModel.ClearCommand, Mode=OneWay}"/>
         </Grid>
 
-        <!-- Row 5: Archive Name -->
-        <Grid Grid.Row="5" ColumnDefinitions="Auto,*">
-            <TextBlock
-                Grid.Column="0"
-                Text="Name:"
-                VerticalAlignment="Center"
-                Margin="0,0,8,0"/>
-            <TextBox
-                Grid.Column="1"
-                Text="{x:Bind ViewModel.ArchiveName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                PlaceholderText="Auto (based on first file/folder name)"/>
-        </Grid>
+        <!-- Row 5: Archive Options (Mode + Name) -->
+        <StackPanel Grid.Row="5" Spacing="8">
+            <StackPanel Orientation="Horizontal" Spacing="16">
+                <TextBlock Text="Mode:" VerticalAlignment="Center" Width="46"/>
+                <RadioButton
+                    GroupName="ArchiveMode"
+                    Content="One archive"
+                    IsChecked="{x:Bind ViewModel.IsSingleArchive, Mode=TwoWay}"/>
+                <RadioButton
+                    GroupName="ArchiveMode"
+                    Content="Separate archives"
+                    IsChecked="{x:Bind ViewModel.IsSeparateArchives, Mode=TwoWay}"/>
+            </StackPanel>
+            <Grid ColumnDefinitions="Auto,*">
+                <TextBlock
+                    Grid.Column="0"
+                    Text="Name:"
+                    VerticalAlignment="Center"
+                    Margin="0,0,8,0"
+                    Width="46"/>
+                <TextBox
+                    Grid.Column="1"
+                    Text="{x:Bind ViewModel.ArchiveName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                    PlaceholderText="Auto (based on first file/folder name)"
+                    IsEnabled="{x:Bind ViewModel.IsArchiveNameEnabled, Mode=OneWay}"/>
+            </Grid>
+        </StackPanel>
 
         <!-- Row 6: Post-Action Checkboxes -->
         <StackPanel Grid.Row="6" Spacing="4">

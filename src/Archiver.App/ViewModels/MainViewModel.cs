@@ -40,6 +40,26 @@ public sealed partial class MainViewModel : ObservableObject
     private string? _archiveName;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsSingleArchive))]
+    [NotifyPropertyChangedFor(nameof(IsSeparateArchives))]
+    [NotifyPropertyChangedFor(nameof(IsArchiveNameEnabled))]
+    private ArchiveMode _selectedArchiveMode = ArchiveMode.SingleArchive;
+
+    public bool IsSingleArchive
+    {
+        get => SelectedArchiveMode == ArchiveMode.SingleArchive;
+        set { if (value) SelectedArchiveMode = ArchiveMode.SingleArchive; }
+    }
+
+    public bool IsSeparateArchives
+    {
+        get => SelectedArchiveMode == ArchiveMode.SeparateArchives;
+        set { if (value) SelectedArchiveMode = ArchiveMode.SeparateArchives; }
+    }
+
+    public bool IsArchiveNameEnabled => SelectedArchiveMode == ArchiveMode.SingleArchive;
+
+    [ObservableProperty]
     private bool _openDestinationFolder = false;
 
     [ObservableProperty]
@@ -123,6 +143,7 @@ public sealed partial class MainViewModel : ObservableObject
                 SourcePaths = [.. FileItems.Select(x => x.FullPath)],
                 DestinationFolder = DestinationPath,
                 ArchiveName = string.IsNullOrWhiteSpace(ArchiveName) ? null : ArchiveName.Trim(),
+                Mode = SelectedArchiveMode,
                 OpenDestinationFolder = OpenDestinationFolder,
                 DeleteSourceFiles = DeleteSourceFiles,
             };
