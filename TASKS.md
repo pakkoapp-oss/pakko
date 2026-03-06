@@ -78,20 +78,20 @@ Agent marks task `[x]` only when ALL criteria pass.
 ---
 
 ### T-05 — Implement ArchiveResult and ArchiveError
-- [ ] **Status:** pending
+- [x] **Status:** complete
 
 **Files:**
 - `src/Archiver.Core/Models/ArchiveResult.cs`
 - `src/Archiver.Core/Models/ArchiveError.cs`
 
 **Acceptance criteria:**
-- [ ] Both are `sealed record` types
-- [ ] `ArchiveResult.Success` is `bool`
-- [ ] `ArchiveResult.CreatedFiles` is `IReadOnlyList<string>`, defaults to `[]`
-- [ ] `ArchiveResult.Errors` is `IReadOnlyList<ArchiveError>`, defaults to `[]`
-- [ ] `ArchiveError.SourcePath` is `string`, defaults to `string.Empty`
-- [ ] `ArchiveError.Message` is `string`, defaults to `string.Empty`
-- [ ] `ArchiveError.Exception` is `Exception?` (nullable)
+- [x] Both are `sealed record` types
+- [x] `ArchiveResult.Success` is `bool`
+- [x] `ArchiveResult.CreatedFiles` is `IReadOnlyList<string>`, defaults to `[]`
+- [x] `ArchiveResult.Errors` is `IReadOnlyList<ArchiveError>`, defaults to `[]`
+- [x] `ArchiveError.SourcePath` is `string`, defaults to `string.Empty`
+- [x] `ArchiveError.Message` is `string`, defaults to `string.Empty`
+- [x] `ArchiveError.Exception` is `Exception?` (nullable)
 
 ---
 
