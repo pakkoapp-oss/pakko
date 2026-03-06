@@ -195,7 +195,7 @@ public sealed class ZipArchiveService : IArchiveService
 
             string archivePath = options.ArchivePaths[i];
 
-            if (!string.Equals(Path.GetExtension(archivePath), ".zip", StringComparison.OrdinalIgnoreCase))
+            if (!IsZipFile(archivePath))
             {
                 progress?.Report((i + 1) * 100 / total);
                 continue;
@@ -236,7 +236,7 @@ public sealed class ZipArchiveService : IArchiveService
                 errors.Add(new ArchiveError
                 {
                     SourcePath = archivePath,
-                    Message = $"Invalid or corrupt archive: {ex.Message}",
+                    Message = "File has ZIP signature but appears corrupted or incomplete.",
                     Exception = ex
                 });
             }
@@ -250,6 +250,22 @@ public sealed class ZipArchiveService : IArchiveService
             CreatedFiles = createdFiles,
             Errors = errors
         };
+    }
+
+    private static bool IsZipFile(string path)
+    {
+        try
+        {
+            Span<byte> header = stackalloc byte[4];
+            using var fs = File.OpenRead(path);
+            fs.ReadExactly(header);
+            return header[0] == 0x50 && header[1] == 0x4B
+                && header[2] == 0x03 && header[3] == 0x04;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private static void AddDirectoryToArchive(ZipArchive archive, string sourceDir, string entryPrefix)

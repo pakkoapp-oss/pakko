@@ -95,7 +95,7 @@ Agent marks task `[x]` only when ALL criteria pass.
 ---
 
 ### T-13.1 — Upgrade ZIP Detection to Magic Bytes
-- [ ] **Status:** pending
+- [x] **Status:** complete
 
 **File:** `src/Archiver.Core/Services/ZipArchiveService.cs`
 
@@ -147,16 +147,16 @@ IsZipFile() == true → try ZipFile.OpenRead()
 ```
 
 **Acceptance criteria:**
-- [ ] `IsZipFile()` private method uses magic bytes `50 4B 03 04`
-- [ ] Extension check removed entirely
-- [ ] `.jar`, `.docx`, `.xlsx`, `.apk` with valid ZIP content extracted successfully
-- [ ] File with `.zip` extension but wrong magic bytes → skipped silently
-- [ ] File with ZIP magic bytes but corrupted → `ArchiveError` with message "File has ZIP signature but appears corrupted or incomplete."
-- [ ] `dotnet test` passes — existing tests unchanged
-- [ ] New test cases:
-  - [ ] `.jar` with valid ZIP content → extracted successfully
-  - [ ] File with `.zip` extension but not ZIP magic bytes → skipped silently
-  - [ ] File with ZIP magic bytes but corrupted content → `ArchiveError`
+- [x] `IsZipFile()` private method uses magic bytes `50 4B 03 04`
+- [x] Extension check removed entirely
+- [x] `.jar`, `.docx`, `.xlsx`, `.apk` with valid ZIP content extracted successfully
+- [x] File with `.zip` extension but wrong magic bytes → skipped silently
+- [x] File with ZIP magic bytes but corrupted → `ArchiveError` with message "File has ZIP signature but appears corrupted or incomplete."
+- [x] `dotnet test` passes — existing tests unchanged
+- [x] New test cases:
+  - [x] `.jar` with valid ZIP content → extracted successfully
+  - [x] File with `.zip` extension but not ZIP magic bytes → skipped silently
+  - [x] File with ZIP magic bytes but corrupted content → `ArchiveError`
 
 ---
 

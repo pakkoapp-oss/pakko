@@ -62,7 +62,7 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
     }
 
     [Fact]
-    public async Task ExtractAsync_InvalidZipPath_ReturnsErrorNotThrows()
+    public async Task ExtractAsync_NonExistentPath_SkippedSilently()
     {
         var options = new ExtractOptions
         {
@@ -72,7 +72,67 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
 
         var result = await _sut.ExtractAsync(options);
 
+        // Non-existent file fails magic-byte check → silently skipped
+        result.Success.Should().BeTrue();
+        result.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ExtractAsync_JarWithValidZipContent_ExtractsSuccessfully()
+    {
+        var jarPath = Path.Combine(_temp.Path, "library.jar");
+        using (var archive = ZipFile.Open(jarPath, ZipArchiveMode.Create))
+            archive.CreateEntryFromFile(_temp.CreateFile("Manifest.txt"), "Manifest.txt");
+
+        var destDir = Path.Combine(_temp.Path, "jar_output");
+        var options = new ExtractOptions
+        {
+            ArchivePaths = [jarPath],
+            DestinationFolder = destDir,
+            Mode = ExtractMode.SingleFolder
+        };
+
+        var result = await _sut.ExtractAsync(options);
+
+        result.Success.Should().BeTrue();
+        File.Exists(Path.Combine(destDir, "Manifest.txt")).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ExtractAsync_ZipExtensionButWrongMagicBytes_SkippedSilently()
+    {
+        var fakePath = Path.Combine(_temp.Path, "not_really.zip");
+        File.WriteAllBytes(fakePath, [0x00, 0x01, 0x02, 0x03]);
+
+        var options = new ExtractOptions
+        {
+            ArchivePaths = [fakePath],
+            DestinationFolder = _temp.Path
+        };
+
+        var result = await _sut.ExtractAsync(options);
+
+        result.Success.Should().BeTrue();
+        result.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ExtractAsync_ZipMagicBytesButCorruptedContent_ReturnsArchiveError()
+    {
+        var corruptPath = Path.Combine(_temp.Path, "corrupt.zip");
+        // Valid ZIP magic bytes followed by garbage
+        File.WriteAllBytes(corruptPath, [0x50, 0x4B, 0x03, 0x04, 0xFF, 0xFE, 0xAA, 0xBB]);
+
+        var options = new ExtractOptions
+        {
+            ArchivePaths = [corruptPath],
+            DestinationFolder = _temp.Path
+        };
+
+        var result = await _sut.ExtractAsync(options);
+
         result.Success.Should().BeFalse();
         result.Errors.Should().HaveCount(1);
+        result.Errors[0].Message.Should().Be("File has ZIP signature but appears corrupted or incomplete.");
     }
 }
