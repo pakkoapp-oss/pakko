@@ -250,7 +250,7 @@ Rules:
 ---
 
 ### T-15 — Add Files and Add Folder Buttons
-- [ ] **Status:** pending
+- [x] **Status:** complete
 
 **Files:**
 - `src/Archiver.App/MainWindow.xaml`
@@ -266,11 +266,11 @@ Rules:
 ```
 
 **Acceptance criteria:**
-- [ ] "Add files" opens `FileOpenPicker` — multi-select, all file types
-- [ ] "Add folder" opens `FolderPicker` — single folder selection
-- [ ] Both add to `SelectedPaths` without duplicates
-- [ ] Double-click on drop zone still triggers files picker
-- [ ] Hint text: "Drop files or folders here, or double-click to browse files"
+- [x] "Add files" opens `FileOpenPicker` — multi-select, all file types
+- [x] "Add folder" opens `FolderPicker` — single folder selection
+- [x] Both add to `SelectedPaths` without duplicates
+- [x] Double-click on drop zone still triggers files picker
+- [x] Hint text: "Drop files or folders here, or double-click to browse files"
 
 ---
 

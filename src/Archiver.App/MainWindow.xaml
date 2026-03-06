@@ -7,7 +7,7 @@
     xmlns:viewmodels="using:Archiver.App.ViewModels"
     Title="Archiver">
 
-    <Grid RowDefinitions="Auto,*,Auto,Auto" Padding="16" RowSpacing="12">
+    <Grid RowDefinitions="Auto,Auto,*,Auto,Auto" Padding="16" RowSpacing="12">
 
         <!-- Row 0: Drop Zone -->
         <Border
@@ -24,15 +24,25 @@
             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="4">
                 <FontIcon Glyph="&#xE8B7;" FontSize="28" Opacity="0.6"/>
                 <TextBlock
-                    Text="Drop files or folders here, or double-click to browse"
+                    Text="Drop files or folders here, or double-click to browse files"
                     HorizontalAlignment="Center"
                     Opacity="0.6"/>
             </StackPanel>
         </Border>
 
-        <!-- Row 1: Selected Files List -->
+        <!-- Row 1: Add Files / Add Folder Buttons -->
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8">
+            <Button
+                Content="Add files"
+                Command="{x:Bind ViewModel.BrowseFilesCommand, Mode=OneWay}"/>
+            <Button
+                Content="Add folder"
+                Command="{x:Bind ViewModel.BrowseFolderCommand, Mode=OneWay}"/>
+        </StackPanel>
+
+        <!-- Row 2: Selected Files List -->
         <ListView
-            Grid.Row="1"
+            Grid.Row="2"
             ItemsSource="{x:Bind ViewModel.SelectedPaths, Mode=OneWay}"
             SelectionMode="None"
             MinHeight="80">
@@ -53,8 +63,8 @@
             </ListView.ItemTemplate>
         </ListView>
 
-        <!-- Row 2: Action Buttons -->
-        <Grid Grid.Row="2" ColumnDefinitions="*,*,Auto">
+        <!-- Row 3: Action Buttons -->
+        <Grid Grid.Row="3" ColumnDefinitions="*,*,Auto">
 
             <Button
                 Grid.Column="0"
@@ -77,8 +87,8 @@
                 Command="{x:Bind ViewModel.ClearCommand, Mode=OneWay}"/>
         </Grid>
 
-        <!-- Row 3: Status Bar -->
-        <Grid Grid.Row="3" RowDefinitions="Auto,Auto" RowSpacing="4">
+        <!-- Row 4: Status Bar -->
+        <Grid Grid.Row="4" RowDefinitions="Auto,Auto" RowSpacing="4">
             <ProgressBar
                 Grid.Row="0"
                 Value="{x:Bind ViewModel.Progress, Mode=OneWay}"
