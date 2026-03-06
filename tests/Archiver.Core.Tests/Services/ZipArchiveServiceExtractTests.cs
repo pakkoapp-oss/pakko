@@ -302,6 +302,28 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
     }
 
     [Fact]
+    public async Task ExtractAsync_PasswordProtectedZip_ReturnsArchiveErrorWithClearMessage()
+    {
+        var encryptedPath = Path.Combine(_temp.Path, "encrypted.zip");
+        // Local file header with encryption bit (bit 0) set in general purpose bit flag (offset 6)
+        // 50 4B 03 04 = signature, 14 00 = version 2.0, 01 00 = flags (bit 0 = encrypted)
+        File.WriteAllBytes(encryptedPath, [0x50, 0x4B, 0x03, 0x04, 0x14, 0x00, 0x01, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
+
+        var options = new ExtractOptions
+        {
+            ArchivePaths = [encryptedPath],
+            DestinationFolder = _temp.Path
+        };
+
+        var result = await _sut.ExtractAsync(options);
+
+        result.Success.Should().BeFalse();
+        result.Errors.Should().HaveCount(1);
+        result.Errors[0].Message.Should().Be("This archive is password-protected and cannot be extracted.");
+    }
+
+    [Fact]
     public async Task ExtractAsync_ZipMagicBytesButCorruptedContent_ReturnsArchiveError()
     {
         var corruptPath = Path.Combine(_temp.Path, "corrupt.zip");

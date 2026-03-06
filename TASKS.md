@@ -481,7 +481,7 @@ Compression: [ Normal ▼ ]
 ---
 
 ### T-25 — Detect and Report Password-Protected ZIP Archives
-- [ ] **Status:** pending
+- [x] **Status:** complete
 
 **File:** `src/Archiver.Core/Services/ZipArchiveService.cs`
 
@@ -499,10 +499,10 @@ Open ZIP → check first entry flags
 ```
 
 **Acceptance criteria:**
-- [ ] Encrypted ZIP detected before extraction attempt
-- [ ] Returns `ArchiveError` with message "This archive is password-protected and cannot be extracted."
-- [ ] Does not throw unhandled exception
-- [ ] `dotnet test` passes — test: encrypted ZIP → `ArchiveError` with correct message
+- [x] Encrypted ZIP detected before extraction attempt
+- [x] Returns `ArchiveError` with message "This archive is password-protected and cannot be extracted."
+- [x] Does not throw unhandled exception
+- [x] `dotnet test` passes — test: encrypted ZIP → `ArchiveError` with correct message
 
 ---
 

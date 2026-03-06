@@ -259,6 +259,17 @@ public sealed class ZipArchiveService : IArchiveService
                 continue;
             }
 
+            if (IsEncryptedZip(archivePath))
+            {
+                errors.Add(new ArchiveError
+                {
+                    SourcePath = archivePath,
+                    Message = "This archive is password-protected and cannot be extracted."
+                });
+                progress?.Report((i + 1) * 100 / total);
+                continue;
+            }
+
             string destDir = options.Mode == ExtractMode.SeparateFolders
                 ? Path.Combine(options.DestinationFolder, Path.GetFileNameWithoutExtension(archivePath))
                 : options.DestinationFolder;
@@ -396,6 +407,25 @@ public sealed class ZipArchiveService : IArchiveService
             fs.ReadExactly(header);
             return header[0] == 0x50 && header[1] == 0x4B
                 && header[2] == 0x03 && header[3] == 0x04;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    // ZIP local file header: [4 sig][2 version][2 general purpose bit flag]
+    // Bit 0 of the general purpose bit flag indicates encryption.
+    private static bool IsEncryptedZip(string path)
+    {
+        try
+        {
+            Span<byte> header = stackalloc byte[8];
+            using var fs = File.OpenRead(path);
+            int read = fs.Read(header);
+            if (read < 8) return false;
+            // flags are at offset 6 (little-endian); bit 0 = encryption flag
+            return (header[6] & 0x01) != 0;
         }
         catch
         {
