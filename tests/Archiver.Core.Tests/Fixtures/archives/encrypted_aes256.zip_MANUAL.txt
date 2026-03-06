@@ -1,0 +1,8 @@
+﻿MANUAL FIXTURE REQUIRED
+=======================
+Target file : encrypted_aes256.zip
+
+7-Zip: 7z a -p"testpassword" -mem=AES256 encrypted_aes256.zip ..\..\files\compressible.txt
+Password for tests: testpassword
+
+Delete this .txt file after creating the real .zip

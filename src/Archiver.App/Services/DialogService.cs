@@ -1,5 +1,6 @@
 using System.IO;
 using Archiver.Core.Models;
+using Windows.ApplicationModel.Resources;
 using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -10,6 +11,8 @@ namespace Archiver.App.Services;
 // Full implementation in T-10. Stub registered here so DI container builds.
 public sealed class DialogService : IDialogService
 {
+    private static readonly ResourceLoader _res = new();
+
     private Window? _window;
 
     public void SetWindow(Window window) => _window = window;
@@ -78,7 +81,7 @@ public sealed class DialogService : IDialogService
         {
             panel.Children.Add(new TextBlock
             {
-                Text = $"\u2717 Errors ({result.Errors.Count})",
+                Text = $"\u2717 {_res.GetString("ErrorSectionHeader")} ({result.Errors.Count})",
                 FontWeight = FontWeights.SemiBold
             });
 
@@ -104,7 +107,7 @@ public sealed class DialogService : IDialogService
         {
             panel.Children.Add(new TextBlock
             {
-                Text = $"\u2298 Skipped \u2014 unsupported format ({result.SkippedFiles.Count})",
+                Text = $"\u2298 {_res.GetString("SkippedSectionHeader")} ({result.SkippedFiles.Count})",
                 FontWeight = FontWeights.SemiBold
             });
 
@@ -128,7 +131,7 @@ public sealed class DialogService : IDialogService
 
         var dialog = new ContentDialog
         {
-            Title = "Completed with issues",
+            Title = _res.GetString("ErrorDialogTitle"),
             Content = new ScrollViewer
             {
                 Content = panel,

@@ -25,7 +25,7 @@
             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="4">
                 <FontIcon Glyph="&#xE8B7;" FontSize="28" Opacity="0.6"/>
                 <TextBlock
-                    Text="Drop files or folders here, or double-click to browse files"
+                    x:Uid="DropZoneHint"
                     HorizontalAlignment="Center"
                     Opacity="0.6"/>
             </StackPanel>
@@ -34,10 +34,10 @@
         <!-- Row 1: Add Files / Add Folder Buttons -->
         <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8">
             <Button
-                Content="Add files"
+                x:Uid="AddFilesButton"
                 Command="{x:Bind ViewModel.BrowseFilesCommand, Mode=OneWay}"/>
             <Button
-                Content="Add folder"
+                x:Uid="AddFolderButton"
                 Command="{x:Bind ViewModel.BrowseFolderCommand, Mode=OneWay}"/>
         </StackPanel>
 
@@ -128,8 +128,8 @@
         <!-- Row 3: Destination Path -->
         <Grid Grid.Row="3" ColumnDefinitions="Auto,*,Auto">
             <TextBlock
+                x:Uid="DestinationLabel"
                 Grid.Column="0"
-                Text="Destination:"
                 VerticalAlignment="Center"
                 Margin="0,0,8,0"/>
             <TextBox
@@ -148,22 +148,22 @@
         <Grid Grid.Row="4" ColumnDefinitions="*,*,Auto">
 
             <Button
+                x:Uid="ArchiveButton"
                 Grid.Column="0"
-                Content="Archive"
                 HorizontalAlignment="Stretch"
                 Command="{x:Bind ViewModel.ArchiveCommand, Mode=OneWay}"
                 Style="{StaticResource AccentButtonStyle}"/>
 
             <Button
+                x:Uid="ExtractButton"
                 Grid.Column="1"
-                Content="Extract"
                 Margin="8,0,0,0"
                 HorizontalAlignment="Stretch"
                 Command="{x:Bind ViewModel.ExtractCommand, Mode=OneWay}"/>
 
             <Button
+                x:Uid="ClearButton"
                 Grid.Column="2"
-                Content="Clear"
                 Margin="8,0,0,0"
                 Command="{x:Bind ViewModel.ClearCommand, Mode=OneWay}"/>
         </Grid>
@@ -183,8 +183,8 @@
             </StackPanel>
             <Grid ColumnDefinitions="Auto,*">
                 <TextBlock
+                    x:Uid="ArchiveNameLabel"
                     Grid.Column="0"
-                    Text="Name:"
                     VerticalAlignment="Center"
                     Margin="0,0,8,0"
                     Width="46"/>
@@ -195,7 +195,7 @@
                     IsEnabled="{x:Bind ViewModel.IsArchiveNameEnabled, Mode=OneWay}"/>
             </Grid>
             <StackPanel Orientation="Horizontal" Spacing="8">
-                <TextBlock Text="Compression:" VerticalAlignment="Center"/>
+                <TextBlock x:Uid="CompressionLabel" VerticalAlignment="Center"/>
                 <ComboBox SelectedIndex="{x:Bind ViewModel.CompressionLevelIndex, Mode=TwoWay}">
                     <ComboBoxItem Content="Fast"/>
                     <ComboBoxItem Content="Normal"/>
@@ -208,7 +208,7 @@
         <!-- Row 6: Shared Options + Post-Action Checkboxes -->
         <StackPanel Grid.Row="6" Spacing="4">
             <StackPanel Orientation="Horizontal" Spacing="8">
-                <TextBlock Text="If file exists:" VerticalAlignment="Center"/>
+                <TextBlock x:Uid="ConflictLabel" VerticalAlignment="Center"/>
                 <ComboBox SelectedIndex="{x:Bind ViewModel.OnConflictIndex, Mode=TwoWay}">
                     <ComboBoxItem Content="Overwrite"/>
                     <ComboBoxItem Content="Skip"/>
@@ -216,13 +216,13 @@
                 </ComboBox>
             </StackPanel>
             <CheckBox
-                Content="Open destination folder after completion"
+                x:Uid="OpenDestinationCheck"
                 IsChecked="{x:Bind ViewModel.OpenDestinationFolder, Mode=TwoWay}"/>
             <CheckBox
-                Content="Delete source files after archiving"
+                x:Uid="DeleteSourceCheck"
                 IsChecked="{x:Bind ViewModel.DeleteSourceFiles, Mode=TwoWay}"/>
             <CheckBox
-                Content="Delete archive after extraction"
+                x:Uid="DeleteArchiveCheck"
                 IsChecked="{x:Bind ViewModel.DeleteArchiveAfterExtraction, Mode=TwoWay}"/>
         </StackPanel>
 

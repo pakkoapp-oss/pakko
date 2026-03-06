@@ -1,0 +1,7 @@
+﻿MANUAL FIXTURE REQUIRED
+=======================
+Target file : created_by_7zip.zip
+
+7-Zip: 7z a created_by_7zip.zip ..\..\files\compressible.txt
+
+Delete this .txt file after creating the real .zip

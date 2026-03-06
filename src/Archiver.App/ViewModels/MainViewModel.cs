@@ -12,11 +12,14 @@ using Archiver.App.Models;
 using Archiver.App.Services;
 using Archiver.Core.Interfaces;
 using Archiver.Core.Models;
+using Windows.ApplicationModel.Resources;
 
 namespace Archiver.App.ViewModels;
 
 public sealed partial class MainViewModel : ObservableObject
 {
+    private static readonly ResourceLoader _res = new();
+
     private readonly IArchiveService _archiveService;
     private readonly IDialogService _dialogService;
 
@@ -179,7 +182,7 @@ public sealed partial class MainViewModel : ObservableObject
     {
         IsBusy = true;
         Progress = 0;
-        StatusMessage = "Archiving...";
+        StatusMessage = _res.GetString("StatusArchiving");
         try
         {
             var options = new ArchiveOptions
@@ -196,8 +199,8 @@ public sealed partial class MainViewModel : ObservableObject
             var progress = new Progress<int>(p => Progress = p);
             var result = await _archiveService.ArchiveAsync(options, progress);
             StatusMessage = result.Errors.Count == 0 && result.SkippedFiles.Count == 0
-                ? $"Done — {result.CreatedFiles.Count} archive(s) created."
-                : "Completed with issues.";
+                ? _res.GetString("StatusDone").Replace("{0}", result.CreatedFiles.Count.ToString())
+                : _res.GetString("StatusIssues");
             await _dialogService.ShowOperationSummaryAsync("Archive", result);
         }
         finally
@@ -211,7 +214,7 @@ public sealed partial class MainViewModel : ObservableObject
     {
         IsBusy = true;
         Progress = 0;
-        StatusMessage = "Extracting...";
+        StatusMessage = _res.GetString("StatusExtracting");
         try
         {
             var options = new ExtractOptions
@@ -225,8 +228,8 @@ public sealed partial class MainViewModel : ObservableObject
             var progress = new Progress<int>(p => Progress = p);
             var result = await _archiveService.ExtractAsync(options, progress);
             StatusMessage = result.Errors.Count == 0 && result.SkippedFiles.Count == 0
-                ? $"Done — {result.CreatedFiles.Count} file(s) extracted."
-                : "Completed with issues.";
+                ? _res.GetString("StatusDone").Replace("{0}", result.CreatedFiles.Count.ToString())
+                : _res.GetString("StatusIssues");
             await _dialogService.ShowOperationSummaryAsync("Extract", result);
         }
         finally

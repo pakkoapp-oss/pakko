@@ -1,0 +1,8 @@
+﻿MANUAL FIXTURE REQUIRED
+=======================
+Target file : created_by_macos.zip
+
+macOS Terminal: zip -r created_by_macos.zip folder/
+Transfer the resulting file to this directory.
+
+Delete this .txt file after creating the real .zip

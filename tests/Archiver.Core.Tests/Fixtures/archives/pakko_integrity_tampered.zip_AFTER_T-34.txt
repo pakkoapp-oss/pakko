@@ -1,0 +1,11 @@
+﻿GENERATE AFTER T-34 IS IMPLEMENTED
+========================================
+Target file : pakko_integrity_tampered.zip
+
+1. Copy pakko_integrity_valid.zip
+2. Open with hex editor (e.g. HxD)
+3. Find 'PAKKO-INTEGRITY-V1' in the file
+4. Change one hex digit in any SHA-256 hash on the lines below
+5. Save as pakko_integrity_tampered.zip
+
+Delete this .txt file after creating the real .zip

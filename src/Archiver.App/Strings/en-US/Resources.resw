@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <!-- Buttons -->
+  <data name="ArchiveButton.Content" xml:space="preserve">
+    <value>Archive</value>
+  </data>
+  <data name="ExtractButton.Content" xml:space="preserve">
+    <value>Extract</value>
+  </data>
+  <data name="ClearButton.Content" xml:space="preserve">
+    <value>Clear</value>
+  </data>
+  <data name="AddFilesButton.Content" xml:space="preserve">
+    <value>Add files</value>
+  </data>
+  <data name="AddFolderButton.Content" xml:space="preserve">
+    <value>Add folder</value>
+  </data>
+
+  <!-- Drop zone -->
+  <data name="DropZoneHint.Text" xml:space="preserve">
+    <value>Drop files or folders here, or double-click to browse files</value>
+  </data>
+  <data name="MultipleFoldersHint.Text" xml:space="preserve">
+    <value>For multiple folders — drag &amp; drop from Explorer</value>
+  </data>
+
+  <!-- Labels -->
+  <data name="DestinationLabel.Text" xml:space="preserve">
+    <value>Destination:</value>
+  </data>
+  <data name="ArchiveNameLabel.Text" xml:space="preserve">
+    <value>Name:</value>
+  </data>
+  <data name="CompressionLabel.Text" xml:space="preserve">
+    <value>Compression:</value>
+  </data>
+  <data name="ConflictLabel.Text" xml:space="preserve">
+    <value>If file exists:</value>
+  </data>
+
+  <!-- Checkboxes -->
+  <data name="OpenDestinationCheck.Content" xml:space="preserve">
+    <value>Open destination folder after completion</value>
+  </data>
+  <data name="DeleteSourceCheck.Content" xml:space="preserve">
+    <value>Delete source files after archiving</value>
+  </data>
+  <data name="DeleteArchiveCheck.Content" xml:space="preserve">
+    <value>Delete archive after extraction</value>
+  </data>
+
+  <!-- Status messages -->
+  <data name="StatusArchiving" xml:space="preserve">
+    <value>Archiving...</value>
+  </data>
+  <data name="StatusExtracting" xml:space="preserve">
+    <value>Extracting...</value>
+  </data>
+  <data name="StatusDone" xml:space="preserve">
+    <value>Done — {0} file(s) processed.</value>
+  </data>
+  <data name="StatusIssues" xml:space="preserve">
+    <value>Completed with issues.</value>
+  </data>
+
+  <!-- Dialog strings -->
+  <data name="ErrorDialogTitle" xml:space="preserve">
+    <value>Completed with issues</value>
+  </data>
+  <data name="ErrorSectionHeader" xml:space="preserve">
+    <value>Errors</value>
+  </data>
+  <data name="SkippedSectionHeader" xml:space="preserve">
+    <value>Skipped — unsupported format</value>
+  </data>
+</root>

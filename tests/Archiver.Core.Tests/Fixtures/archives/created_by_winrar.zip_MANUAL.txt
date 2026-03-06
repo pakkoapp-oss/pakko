@@ -1,0 +1,7 @@
+﻿MANUAL FIXTURE REQUIRED
+=======================
+Target file : created_by_winrar.zip
+
+WinRAR: open WinRAR → Add → select compressible.txt → ZIP format → OK
+
+Delete this .txt file after creating the real .zip

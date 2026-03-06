@@ -1,0 +1,9 @@
+﻿GENERATE AFTER T-34 IS IMPLEMENTED
+========================================
+Target file : pakko_integrity_valid.zip
+
+Run Pakko to archive files/compressible.txt.
+The resulting ZIP will contain PAKKO-INTEGRITY-V1 manifest in the ZIP comment.
+Copy here and rename to pakko_integrity_valid.zip
+
+Delete this .txt file after creating the real .zip
