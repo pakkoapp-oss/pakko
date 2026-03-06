@@ -98,18 +98,18 @@ Agent marks task `[x]` only when ALL criteria pass.
 ## Phase 3 — Core Interface and Service
 
 ### T-06 — Implement IArchiveService
-- [ ] **Status:** pending
+- [x] **Status:** complete
 
 **File:** `src/Archiver.Core/Interfaces/IArchiveService.cs`
 
 **Acceptance criteria:**
-- [ ] Interface is `public`
-- [ ] `ArchiveAsync(ArchiveOptions, IProgress<int>?, CancellationToken)` method exists
-- [ ] `ExtractAsync(ExtractOptions, IProgress<int>?, CancellationToken)` method exists
-- [ ] Both return `Task<ArchiveResult>`
-- [ ] `IProgress<int>?` and `CancellationToken` have default values (`null` and `default`)
-- [ ] No implementation logic in the interface file
-- [ ] XML doc comments on both methods
+- [x] Interface is `public`
+- [x] `ArchiveAsync(ArchiveOptions, IProgress<int>?, CancellationToken)` method exists
+- [x] `ExtractAsync(ExtractOptions, IProgress<int>?, CancellationToken)` method exists
+- [x] Both return `Task<ArchiveResult>`
+- [x] `IProgress<int>?` and `CancellationToken` have default values (`null` and `default`)
+- [x] No implementation logic in the interface file
+- [x] XML doc comments on both methods
 
 ---
 
