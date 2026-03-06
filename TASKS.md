@@ -336,7 +336,7 @@ Name: [my-backup                    ]   placeholder: "Auto"
 ---
 
 ### T-21 — File List Table with Columns
-- [ ] **Status:** pending
+- [x] **Status:** complete
 
 **Files:**
 - `src/Archiver.App/MainWindow.xaml`
@@ -355,14 +355,14 @@ Columns:
 | Modified | `FileInfo.LastWriteTime` | `yyyy-MM-dd HH:mm` |
 
 **Acceptance criteria:**
-- [ ] `FileItem` model: `Name`, `Type`, `Size`, `SizeBytes`, `Modified`, `FullPath`
-- [ ] Table shows all four columns
-- [ ] Full path as tooltip on Name cell
-- [ ] Folder size async — shows "..." until calculated
-- [ ] Size human-readable: "1.2 MB", "345 KB", "12 bytes"
-- [ ] Sorting by any column
-- [ ] Right-click Remove still works
-- [ ] No duplicate paths
+- [x] `FileItem` model: `Name`, `Type`, `Size`, `SizeBytes`, `Modified`, `FullPath`
+- [x] Table shows all four columns
+- [x] Full path as tooltip on Name cell
+- [x] Folder size async — shows "..." until calculated
+- [x] Size human-readable: "1.2 MB", "345 KB", "12 bytes"
+- [x] Sorting by any column
+- [x] Right-click Remove still works
+- [x] No duplicate paths
 
 ---
 

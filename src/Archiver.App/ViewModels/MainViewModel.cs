@@ -2,10 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Archiver.App.Models;
 using Archiver.App.Services;
 using Archiver.Core.Interfaces;
 using Archiver.Core.Models;
@@ -32,7 +34,7 @@ public sealed partial class MainViewModel : ObservableObject
     private string _destinationPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
 
     [ObservableProperty]
-    private ObservableCollection<string> _selectedPaths = [];
+    private ObservableCollection<FileItem> _fileItems = [];
 
     [ObservableProperty]
     private string? _archiveName;
@@ -46,11 +48,14 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private bool _deleteArchiveAfterExtraction = false;
 
+    private string _sortColumn = "Name";
+    private bool _sortAscending = true;
+
     public MainViewModel(IArchiveService archiveService, IDialogService dialogService)
     {
         _archiveService = archiveService;
         _dialogService = dialogService;
-        _selectedPaths.CollectionChanged += (_, _) =>
+        _fileItems.CollectionChanged += (_, _) =>
         {
             ArchiveCommand.NotifyCanExecuteChanged();
             ExtractCommand.NotifyCanExecuteChanged();
@@ -60,10 +65,41 @@ public sealed partial class MainViewModel : ObservableObject
 
     private void UpdateDefaultDestination()
     {
-        if (SelectedPaths.Count > 0)
-            DestinationPath = Path.GetDirectoryName(SelectedPaths[0]) ?? DestinationPath;
+        if (FileItems.Count > 0)
+            DestinationPath = Path.GetDirectoryName(FileItems[0].FullPath) ?? DestinationPath;
         else
             DestinationPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+    }
+
+    [RelayCommand]
+    private void SortBy(string column)
+    {
+        if (_sortColumn == column)
+            _sortAscending = !_sortAscending;
+        else
+        {
+            _sortColumn = column;
+            _sortAscending = true;
+        }
+        ApplySort();
+    }
+
+    private void ApplySort()
+    {
+        var sorted = (_sortColumn switch
+        {
+            "Type"     => _sortAscending ? FileItems.OrderBy(x => x.Type)     : FileItems.OrderByDescending(x => x.Type),
+            "Size"     => _sortAscending ? FileItems.OrderBy(x => x.SizeBytes) : FileItems.OrderByDescending(x => x.SizeBytes),
+            "Modified" => _sortAscending ? FileItems.OrderBy(x => x.Modified) : FileItems.OrderByDescending(x => x.Modified),
+            _          => _sortAscending ? FileItems.OrderBy(x => x.Name)     : FileItems.OrderByDescending(x => x.Name),
+        }).ToList();
+
+        for (int i = 0; i < sorted.Count; i++)
+        {
+            int current = FileItems.IndexOf(sorted[i]);
+            if (current != i)
+                FileItems.Move(current, i);
+        }
     }
 
     [RelayCommand]
@@ -84,7 +120,7 @@ public sealed partial class MainViewModel : ObservableObject
         {
             var options = new ArchiveOptions
             {
-                SourcePaths = [.. SelectedPaths],
+                SourcePaths = [.. FileItems.Select(x => x.FullPath)],
                 DestinationFolder = DestinationPath,
                 ArchiveName = string.IsNullOrWhiteSpace(ArchiveName) ? null : ArchiveName.Trim(),
                 OpenDestinationFolder = OpenDestinationFolder,
@@ -113,7 +149,7 @@ public sealed partial class MainViewModel : ObservableObject
         {
             var options = new ExtractOptions
             {
-                ArchivePaths = [.. SelectedPaths],
+                ArchivePaths = [.. FileItems.Select(x => x.FullPath)],
                 DestinationFolder = DestinationPath,
                 OpenDestinationFolder = OpenDestinationFolder,
                 DeleteArchiveAfterExtraction = DeleteArchiveAfterExtraction,
@@ -131,20 +167,25 @@ public sealed partial class MainViewModel : ObservableObject
         }
     }
 
-    private bool CanArchive() => !IsBusy && SelectedPaths.Count > 0;
-    private bool CanExtract() => !IsBusy && SelectedPaths.Count > 0;
+    private bool CanArchive() => !IsBusy && FileItems.Count > 0;
+    private bool CanExtract() => !IsBusy && FileItems.Count > 0;
 
     public void AddPaths(IEnumerable<string> paths)
     {
         foreach (var path in paths)
-            if (!SelectedPaths.Contains(path))
-                SelectedPaths.Add(path);
+            if (!FileItems.Any(x => x.FullPath == path))
+                FileItems.Add(new FileItem(path));
     }
 
     [RelayCommand]
-    private void Clear() => SelectedPaths.Clear();
+    private void Clear() => FileItems.Clear();
 
-    public void RemovePath(string path) => SelectedPaths.Remove(path);
+    public void RemovePath(string path)
+    {
+        var item = FileItems.FirstOrDefault(x => x.FullPath == path);
+        if (item is not null)
+            FileItems.Remove(item);
+    }
 
     [RelayCommand]
     private async Task BrowseFilesAsync()

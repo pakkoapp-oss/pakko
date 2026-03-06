@@ -1,3 +1,4 @@
+using Archiver.App.Models;
 using Archiver.App.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
@@ -41,7 +42,7 @@ public sealed partial class MainWindow : Window
 
     private void RemoveItem_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is MenuFlyoutItem item && item.DataContext is string path)
-            ViewModel.RemovePath(path);
+        if (sender is MenuFlyoutItem item && item.DataContext is FileItem fileItem)
+            ViewModel.RemovePath(fileItem.FullPath);
     }
 }
