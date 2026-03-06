@@ -132,6 +132,26 @@ Agent marks task `[x]` only when ALL criteria pass.
 
 ---
 
+## Phase 3b — Tests
+
+### T-12 — Implement Test Project
+- [x] **Status:** complete
+
+**Files:**
+- `tests/Archiver.Core.Tests/Helpers/TempDirectory.cs`
+- `tests/Archiver.Core.Tests/Services/ZipArchiveServiceArchiveTests.cs`
+- `tests/Archiver.Core.Tests/Services/ZipArchiveServiceExtractTests.cs`
+- `tests/Archiver.Core.Tests/Models/ArchiveOptionsTests.cs`
+
+**Acceptance criteria:**
+- [x] `dotnet test` passes with zero failures
+- [x] All 10 test cases implemented
+- [x] No tests use `Thread.Sleep` — use `await Task.Delay` if needed
+- [x] Each test cleans up temp files via `TempDirectory.Dispose()`
+- [x] No test depends on another test's state
+
+---
+
 ## Phase 4 — UI Layer
 
 ### T-08 — Implement MainViewModel
