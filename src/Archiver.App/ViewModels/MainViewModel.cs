@@ -88,9 +88,10 @@ public sealed partial class MainViewModel : ObservableObject
             };
             var progress = new Progress<int>(p => Progress = p);
             var result = await _archiveService.ArchiveAsync(options, progress);
-            StatusMessage = result.Success
+            StatusMessage = result.Errors.Count == 0 && result.SkippedFiles.Count == 0
                 ? $"Done — {result.CreatedFiles.Count} archive(s) created."
-                : $"Completed with {result.Errors.Count} error(s).";
+                : "Completed with issues.";
+            await _dialogService.ShowOperationSummaryAsync("Archive", result);
         }
         finally
         {
@@ -115,9 +116,10 @@ public sealed partial class MainViewModel : ObservableObject
             };
             var progress = new Progress<int>(p => Progress = p);
             var result = await _archiveService.ExtractAsync(options, progress);
-            StatusMessage = result.Success
+            StatusMessage = result.Errors.Count == 0 && result.SkippedFiles.Count == 0
                 ? $"Done — {result.CreatedFiles.Count} file(s) extracted."
-                : $"Completed with {result.Errors.Count} error(s).";
+                : "Completed with issues.";
+            await _dialogService.ShowOperationSummaryAsync("Extract", result);
         }
         finally
         {

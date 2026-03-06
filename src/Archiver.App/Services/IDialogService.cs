@@ -1,3 +1,5 @@
+using Archiver.Core.Models;
+
 namespace Archiver.App.Services;
 
 public interface IDialogService
@@ -7,4 +9,5 @@ public interface IDialogService
     Task<string?> PickDestinationFolderAsync();
     Task<IReadOnlyList<string>> PickFilesAsync();
     Task<IReadOnlyList<string>> PickFoldersAsync();
+    Task ShowOperationSummaryAsync(string operationName, ArchiveResult result);
 }

@@ -1,3 +1,6 @@
+using System.IO;
+using Archiver.Core.Models;
+using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Windows.Storage.Pickers;
@@ -62,5 +65,80 @@ public sealed class DialogService : IDialogService
         WinRT.Interop.InitializeWithWindow.Initialize(picker, WinRT.Interop.WindowNative.GetWindowHandle(_window));
         var folder = await picker.PickSingleFolderAsync();
         return folder is null ? [] : [folder.Path];
+    }
+
+    public async Task ShowOperationSummaryAsync(string operationName, ArchiveResult result)
+    {
+        if (result.Errors.Count == 0 && result.SkippedFiles.Count == 0)
+            return;
+
+        var panel = new StackPanel { Spacing = 8 };
+
+        if (result.Errors.Count > 0)
+        {
+            panel.Children.Add(new TextBlock
+            {
+                Text = $"\u2717 Errors ({result.Errors.Count})",
+                FontWeight = FontWeights.SemiBold
+            });
+
+            foreach (var error in result.Errors)
+            {
+                var itemPanel = new StackPanel { Margin = new Thickness(12, 0, 0, 4) };
+                itemPanel.Children.Add(new TextBlock
+                {
+                    Text = Path.GetFileName(error.SourcePath),
+                    FontWeight = FontWeights.SemiBold
+                });
+                itemPanel.Children.Add(new TextBlock
+                {
+                    Text = error.Message,
+                    TextWrapping = TextWrapping.Wrap,
+                    Opacity = 0.7
+                });
+                panel.Children.Add(itemPanel);
+            }
+        }
+
+        if (result.SkippedFiles.Count > 0)
+        {
+            panel.Children.Add(new TextBlock
+            {
+                Text = $"\u2298 Skipped \u2014 unsupported format ({result.SkippedFiles.Count})",
+                FontWeight = FontWeights.SemiBold
+            });
+
+            foreach (var skipped in result.SkippedFiles)
+            {
+                var itemPanel = new StackPanel { Margin = new Thickness(12, 0, 0, 4) };
+                itemPanel.Children.Add(new TextBlock
+                {
+                    Text = Path.GetFileName(skipped.Path),
+                    FontWeight = FontWeights.SemiBold
+                });
+                itemPanel.Children.Add(new TextBlock
+                {
+                    Text = skipped.Reason,
+                    TextWrapping = TextWrapping.Wrap,
+                    Opacity = 0.7
+                });
+                panel.Children.Add(itemPanel);
+            }
+        }
+
+        var dialog = new ContentDialog
+        {
+            Title = "Completed with issues",
+            Content = new ScrollViewer
+            {
+                Content = panel,
+                MaxHeight = 400,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto
+            },
+            CloseButtonText = "OK",
+            XamlRoot = _window!.Content.XamlRoot
+        };
+
+        await dialog.ShowAsync();
     }
 }

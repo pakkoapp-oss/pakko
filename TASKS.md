@@ -253,7 +253,7 @@ if (options.DeleteArchiveAfterExtraction && result.Success)
 ---
 
 ### T-19 — Operation Summary Dialog
-- [ ] **Status:** pending
+- [x] **Status:** complete
 
 **Files:**
 - `src/Archiver.App/Services/IDialogService.cs`
@@ -297,14 +297,14 @@ Task ShowOperationSummaryAsync(string operationName, ArchiveResult result);
 ```
 
 **Acceptance criteria:**
-- [ ] `ShowOperationSummaryAsync` added to `IDialogService`
-- [ ] `DialogService` implements using `ContentDialog` + `ScrollViewer` + `StackPanel`
-- [ ] Errors section shown only if `result.Errors.Count > 0`
-- [ ] Skipped section shown only if `result.SkippedFiles.Count > 0`
-- [ ] No dialog when both lists empty
-- [ ] On success: only `StatusMessage` updated
-- [ ] `MainViewModel` calls `ShowOperationSummaryAsync` after both Archive and Extract
-- [ ] `Archiver.Core` has zero UI references
+- [x] `ShowOperationSummaryAsync` added to `IDialogService`
+- [x] `DialogService` implements using `ContentDialog` + `ScrollViewer` + `StackPanel`
+- [x] Errors section shown only if `result.Errors.Count > 0`
+- [x] Skipped section shown only if `result.SkippedFiles.Count > 0`
+- [x] No dialog when both lists empty
+- [x] On success: only `StatusMessage` updated
+- [x] `MainViewModel` calls `ShowOperationSummaryAsync` after both Archive and Extract
+- [x] `Archiver.Core` has zero UI references
 
 ---
 
