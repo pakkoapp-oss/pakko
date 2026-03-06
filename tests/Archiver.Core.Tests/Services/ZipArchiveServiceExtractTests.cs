@@ -22,6 +22,20 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
         return zipPath;
     }
 
+    private string CreateTestZipWithFolder(string zipName, string folderName, params string[] fileNames)
+    {
+        var zipPath = Path.Combine(_temp.Path, zipName);
+        using var archive = ZipFile.Open(zipPath, ZipArchiveMode.Create);
+        foreach (var name in fileNames)
+        {
+            var entry = archive.CreateEntry($"{folderName}/{name}");
+            using var entryStream = entry.Open();
+            using var srcStream = File.OpenRead(_temp.CreateFile(name));
+            srcStream.CopyTo(entryStream);
+        }
+        return zipPath;
+    }
+
     [Fact]
     public async Task ExtractAsync_ValidZip_ExtractsFiles()
     {
@@ -114,6 +128,68 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
 
         result.Success.Should().BeTrue();
         result.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ExtractAsync_SingleRootFolder_ExtractsWithoutDoubleNesting()
+    {
+        var zip = CreateTestZipWithFolder("wrapped.zip", "myFolder", "a.txt", "b.txt");
+        var destDir = Path.Combine(_temp.Path, "output");
+
+        var options = new ExtractOptions
+        {
+            ArchivePaths = [zip],
+            DestinationFolder = destDir,
+            Mode = ExtractMode.SingleFolder
+        };
+
+        var result = await _sut.ExtractAsync(options);
+
+        result.Success.Should().BeTrue();
+        // Files must land directly in destDir, not in destDir/myFolder/
+        File.Exists(Path.Combine(destDir, "a.txt")).Should().BeTrue();
+        File.Exists(Path.Combine(destDir, "b.txt")).Should().BeTrue();
+        Directory.Exists(Path.Combine(destDir, "myFolder")).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ExtractAsync_MultipleRootItems_CreatesSubfolderNamedAfterArchive()
+    {
+        var zip = CreateTestZip("bundle.zip", "file1.txt", "file2.txt");
+        var destDir = Path.Combine(_temp.Path, "output");
+
+        var options = new ExtractOptions
+        {
+            ArchivePaths = [zip],
+            DestinationFolder = destDir,
+            Mode = ExtractMode.SingleFolder
+        };
+
+        var result = await _sut.ExtractAsync(options);
+
+        result.Success.Should().BeTrue();
+        // Files must land in destDir/bundle/, not directly in destDir
+        File.Exists(Path.Combine(destDir, "bundle", "file1.txt")).Should().BeTrue();
+        File.Exists(Path.Combine(destDir, "bundle", "file2.txt")).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ExtractAsync_SingleRootFile_ExtractsDirectly()
+    {
+        var zip = CreateTestZip("solo.zip", "readme.txt");
+        var destDir = Path.Combine(_temp.Path, "output");
+
+        var options = new ExtractOptions
+        {
+            ArchivePaths = [zip],
+            DestinationFolder = destDir,
+            Mode = ExtractMode.SingleFolder
+        };
+
+        var result = await _sut.ExtractAsync(options);
+
+        result.Success.Should().BeTrue();
+        File.Exists(Path.Combine(destDir, "readme.txt")).Should().BeTrue();
     }
 
     [Fact]

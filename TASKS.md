@@ -161,7 +161,7 @@ IsZipFile() == true → try ZipFile.OpenRead()
 ---
 
 ### T-14 — Smart Extract Folder Logic
-- [ ] **Status:** pending
+- [x] **Status:** complete
 
 **File:** `src/Archiver.Core/Services/ZipArchiveService.cs`
 
@@ -173,11 +173,11 @@ Rules:
 - Single file at root → extract directly, no subfolder
 
 **Acceptance criteria:**
-- [ ] Single root folder → no double-nesting
-- [ ] Multiple root items → subfolder created named after archive
-- [ ] Single root file → extracted directly
-- [ ] Existing tests still pass
-- [ ] New test cases for each scenario
+- [x] Single root folder → no double-nesting
+- [x] Multiple root items → subfolder created named after archive
+- [x] Single root file → extracted directly
+- [x] Existing tests still pass
+- [x] New test cases for each scenario
 
 ---
 

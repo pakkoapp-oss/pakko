@@ -207,11 +207,12 @@ public sealed class ZipArchiveService : IArchiveService
 
             try
             {
-                await Task.Run(() =>
-                    ZipFile.ExtractToDirectory(archivePath, destDir, overwriteFiles: true),
+                bool alreadyIsolated = options.Mode == ExtractMode.SeparateFolders;
+                string actualDest = await Task.Run(() =>
+                    ExtractWithSmartFoldering(archivePath, destDir, alreadyIsolated),
                     cancellationToken).ConfigureAwait(false);
 
-                createdFiles.Add(destDir);
+                createdFiles.Add(actualDest);
             }
             catch (IOException ex)
             {
@@ -250,6 +251,59 @@ public sealed class ZipArchiveService : IArchiveService
             CreatedFiles = createdFiles,
             Errors = errors
         };
+    }
+
+    private static string ExtractWithSmartFoldering(string archivePath, string destDir, bool alreadyIsolated = false)
+    {
+        using var archive = ZipFile.OpenRead(archivePath);
+
+        var fileEntries = archive.Entries
+            .Where(e => !e.FullName.EndsWith('/'))
+            .ToList();
+
+        if (fileEntries.Count == 0)
+        {
+            Directory.CreateDirectory(destDir);
+            return destDir;
+        }
+
+        bool isSingleRootFolder = fileEntries.All(e => e.FullName.Contains('/'))
+            && fileEntries
+                .Select(e => e.FullName[..e.FullName.IndexOf('/')])
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Count() == 1;
+
+        bool isSingleRootFile = fileEntries.Count == 1 && !fileEntries[0].FullName.Contains('/');
+
+        string actualDest = (isSingleRootFolder || isSingleRootFile || alreadyIsolated)
+            ? destDir
+            : Path.Combine(destDir, Path.GetFileNameWithoutExtension(archivePath));
+
+        Directory.CreateDirectory(actualDest);
+        string fullActualDest = Path.GetFullPath(actualDest).TrimEnd(Path.DirectorySeparatorChar)
+            + Path.DirectorySeparatorChar;
+
+        foreach (var entry in fileEntries)
+        {
+            string relativePath = entry.FullName.Replace('/', Path.DirectorySeparatorChar);
+
+            if (isSingleRootFolder)
+            {
+                var sep = relativePath.IndexOf(Path.DirectorySeparatorChar);
+                relativePath = relativePath[(sep + 1)..];
+                if (string.IsNullOrEmpty(relativePath)) continue;
+            }
+
+            string destFilePath = Path.GetFullPath(Path.Combine(actualDest, relativePath));
+
+            if (!destFilePath.StartsWith(fullActualDest, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidDataException($"ZIP entry '{entry.FullName}' would extract outside destination directory.");
+
+            Directory.CreateDirectory(Path.GetDirectoryName(destFilePath)!);
+            entry.ExtractToFile(destFilePath, overwrite: true);
+        }
+
+        return actualDest;
     }
 
     private static bool IsZipFile(string path)
