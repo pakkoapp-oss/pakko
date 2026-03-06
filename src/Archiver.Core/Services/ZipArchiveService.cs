@@ -61,11 +61,11 @@ public sealed class ZipArchiveService : IArchiveService
                     {
                         if (Directory.Exists(sourcePath))
                         {
-                            AddDirectoryToArchive(archive, sourcePath, Path.GetFileName(sourcePath));
+                            AddDirectoryToArchive(archive, sourcePath, Path.GetFileName(sourcePath), options.CompressionLevel);
                         }
                         else if (File.Exists(sourcePath))
                         {
-                            archive.CreateEntryFromFile(sourcePath, Path.GetFileName(sourcePath), CompressionLevel.Optimal);
+                            archive.CreateEntryFromFile(sourcePath, Path.GetFileName(sourcePath), options.CompressionLevel);
                         }
                         else
                         {
@@ -154,14 +154,17 @@ public sealed class ZipArchiveService : IArchiveService
                 {
                     if (Directory.Exists(sourcePath))
                     {
+                        var level = options.CompressionLevel;
                         await Task.Run(() =>
-                            ZipFile.CreateFromDirectory(sourcePath, destPath, CompressionLevel.Optimal, includeBaseDirectory: true),
-                            cancellationToken).ConfigureAwait(false);
+                        {
+                            using var archive = ZipFile.Open(destPath, ZipArchiveMode.Create);
+                            AddDirectoryToArchive(archive, sourcePath, Path.GetFileName(sourcePath), level);
+                        }, cancellationToken).ConfigureAwait(false);
                     }
                     else if (File.Exists(sourcePath))
                     {
                         using var archive = ZipFile.Open(destPath, ZipArchiveMode.Create);
-                        archive.CreateEntryFromFile(sourcePath, Path.GetFileName(sourcePath), CompressionLevel.Optimal);
+                        archive.CreateEntryFromFile(sourcePath, Path.GetFileName(sourcePath), options.CompressionLevel);
                     }
                     else
                     {
@@ -454,13 +457,13 @@ public sealed class ZipArchiveService : IArchiveService
         return candidate;
     }
 
-    private static void AddDirectoryToArchive(ZipArchive archive, string sourceDir, string entryPrefix)
+    private static void AddDirectoryToArchive(ZipArchive archive, string sourceDir, string entryPrefix, CompressionLevel compressionLevel)
     {
         foreach (string filePath in Directory.EnumerateFiles(sourceDir, "*", SearchOption.AllDirectories))
         {
             string relativePath = Path.GetRelativePath(Path.GetDirectoryName(sourceDir)!, filePath);
             string entryName = relativePath.Replace('\\', '/');
-            archive.CreateEntryFromFile(filePath, entryName, CompressionLevel.Optimal);
+            archive.CreateEntryFromFile(filePath, entryName, compressionLevel);
         }
     }
 }

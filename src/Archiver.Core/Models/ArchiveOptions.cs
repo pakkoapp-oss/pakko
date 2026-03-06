@@ -1,3 +1,5 @@
+using System.IO.Compression;
+
 namespace Archiver.Core.Models;
 
 public sealed record ArchiveOptions
@@ -9,6 +11,7 @@ public sealed record ArchiveOptions
     public ConflictBehavior OnConflict { get; init; } = ConflictBehavior.Skip;
     public bool OpenDestinationFolder { get; init; } = false;
     public bool DeleteSourceFiles { get; init; } = false;
+    public CompressionLevel CompressionLevel { get; init; } = CompressionLevel.Optimal;
 }
 
 public enum ArchiveMode

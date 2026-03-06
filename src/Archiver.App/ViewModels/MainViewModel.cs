@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -76,6 +77,29 @@ public sealed partial class MainViewModel : ObservableObject
             0 => ConflictBehavior.Overwrite,
             2 => ConflictBehavior.Rename,
             _ => ConflictBehavior.Skip
+        };
+    }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CompressionLevelIndex))]
+    private CompressionLevel _selectedCompressionLevel = CompressionLevel.Optimal;
+
+    public int CompressionLevelIndex
+    {
+        get => SelectedCompressionLevel switch
+        {
+            CompressionLevel.Fastest       => 0,
+            CompressionLevel.Optimal       => 1,
+            CompressionLevel.SmallestSize  => 2,
+            CompressionLevel.NoCompression => 3,
+            _                              => 1
+        };
+        set => SelectedCompressionLevel = value switch
+        {
+            0 => CompressionLevel.Fastest,
+            2 => CompressionLevel.SmallestSize,
+            3 => CompressionLevel.NoCompression,
+            _ => CompressionLevel.Optimal
         };
     }
 
@@ -167,6 +191,7 @@ public sealed partial class MainViewModel : ObservableObject
                 OnConflict = OnConflict,
                 OpenDestinationFolder = OpenDestinationFolder,
                 DeleteSourceFiles = DeleteSourceFiles,
+                CompressionLevel = SelectedCompressionLevel,
             };
             var progress = new Progress<int>(p => Progress = p);
             var result = await _archiveService.ArchiveAsync(options, progress);

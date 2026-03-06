@@ -28,6 +28,21 @@ These rules apply to ALL tasks. Violating them = task is NOT complete.
 
 ---
 
+## 📋 File Maintenance Note
+
+This file will be split into two files when Phase 5b is fully complete (after T-33):
+
+- `TASKS.md` — active tasks only (pending/future) + Agent Rules
+- `TASKS_DONE.md` — archive of all completed tasks for reference
+
+Each file must contain the Agent Rules section at the top.
+`TASKS_DONE.md` must include a warning: "Do NOT re-implement anything in this file."
+`TASKS.md` must include a reference: "See TASKS_DONE.md for completed tasks (T-01 through T-XX)."
+
+**Trigger:** when all T-13.x through T-33 are marked `[x]` and before starting Phase 6 (T-11).
+
+---
+
 ## Phase 1 — Project Setup
 
 ### T-01 — Create Solution and Projects
@@ -435,7 +450,7 @@ If file exists: [ Skip ▼ ]
 ---
 
 ### T-24 — Compression Level Selector
-- [ ] **Status:** pending
+- [x] **Status:** complete
 
 **Files:**
 - `src/Archiver.App/MainWindow.xaml`
@@ -457,11 +472,11 @@ Compression: [ Normal ▼ ]
 ```
 
 **Acceptance criteria:**
-- [ ] `CompressionLevel` added to `ArchiveOptions`, default `CompressionLevel.Optimal`
-- [ ] `ComboBox` with four options bound to ViewModel
-- [ ] Passed to `ArchiveOptions.CompressionLevel` only
-- [ ] `ZipArchiveService` uses `options.CompressionLevel` when creating entries
-- [ ] `dotnet test` passes
+- [x] `CompressionLevel` added to `ArchiveOptions`, default `CompressionLevel.Optimal`
+- [x] `ComboBox` with four options bound to ViewModel
+- [x] Passed to `ArchiveOptions.CompressionLevel` only
+- [x] `ZipArchiveService` uses `options.CompressionLevel` when creating entries
+- [x] `dotnet test` passes
 
 ---
 
@@ -706,7 +721,7 @@ Also set in `Package.appxmanifest` (for MSIX, T-11):
 ```
 
 **B) Simple file log:**
-Log significant events to `%LocalAppData%\Archiver\logs\archiver.log`.
+Log significant events to `%LocalAppData%\Pakko\logs\pakko.log`.
 No third-party libraries — plain `File.AppendAllText` with rotation.
 
 Log format:
@@ -813,6 +828,97 @@ is acceptable for v1.0. Proper icon design is separate creative work.
 - [ ] Tray icon visible in notification area when app is running
 - [ ] Tray context menu: "Open Pakko" brings window to foreground, "Exit" closes app
 - [ ] App name shown as "Pakko" everywhere — taskbar, tray tooltip, title bar
+
+---
+
+
+### T-32 — File List Minimum Height and Layout Fix
+- [ ] **Status:** pending
+
+**Files:**
+- `src/Archiver.App/MainWindow.xaml`
+
+**What:** On startup the file list table is too small — other UI elements push it out
+and it becomes invisible or very thin. The list area should have a guaranteed minimum
+height and should stretch to fill available space.
+
+**Expected layout:**
+```
+┌─ Window ──────────────────────────────┐
+│  Drop zone hint / file table  ↕ grows │  ← Height="*"
+│  Destination row                      │  ← Height="Auto"
+│  [ Archive ] [ Extract ] [ Clear ]    │  ← Height="Auto"
+│  ── Archive options ──────────────────│  ← Height="Auto"
+│  ── Extract options ──────────────────│  ← Height="Auto"
+│  ── Always ───────────────────────────│  ← Height="Auto"
+│  Status bar                           │  ← Height="Auto"
+└───────────────────────────────────────┘
+```
+
+**Implementation notes:**
+- File list row: `Height="*"` in Grid row definitions
+- All other rows: `Height="Auto"`
+- `MinHeight="120"` on the file list control
+- Root layout must be `Grid`, not `StackPanel`
+
+**Acceptance criteria:**
+- [ ] File list visible on startup without resizing the window
+- [ ] File list has `MinHeight="120"` — never collapses to zero
+- [ ] File list grows when window is resized taller
+- [ ] Options panel stays at bottom, compact, fixed height
+- [ ] Layout correct at minimum window size (600×500)
+
+---
+
+### T-33 — Real-Time Progress During Archive and Extract
+- [ ] **Status:** pending
+
+**Files:**
+- `src/Archiver.App/ViewModels/MainViewModel.cs`
+- `src/Archiver.App/MainWindow.xaml`
+- `src/Archiver.Core/Services/ZipArchiveService.cs`
+
+**What:** Currently progress bar jumps from 0% to 100% after operation completes.
+User sees no feedback during archiving OR extracting — the UI appears frozen.
+Both `ArchiveAsync` and `ExtractAsync` are affected identically.
+
+**Issue 1 — UI thread blocking:**
+Both operations in ViewModel must run on background thread:
+```csharp
+var result = await Task.Run(() => _archiveService.ArchiveAsync(options, progress, ct));
+var result = await Task.Run(() => _archiveService.ExtractAsync(options, progress, ct));
+```
+
+**Issue 2 — Progress not granular enough:**
+Report after each file completes in both `ArchiveAsync` and `ExtractAsync`:
+```csharp
+progress?.Report((i + 1) * 100 / total);
+```
+For single large file/archive (>10 MB) → `IsIndeterminate = true`.
+
+**ViewModel pattern — identical for both operations:**
+```csharp
+IsOperationRunning = true;
+StatusMessage = "Archiving..."; // or "Extracting..."
+Progress = 0;
+var progress = new Progress<int>(p => Progress = p);
+// await operation...
+IsOperationRunning = false;
+```
+
+**Acceptance criteria:**
+- [ ] Progress bar updates visibly during **archiving** — not just at end
+- [ ] Progress bar updates visibly during **extraction** — not just at end
+- [ ] Buttons (`Archive`, `Extract`, `Clear`, `Add files`, `Add folder`) disabled during both operations
+- [ ] `IsOperationRunning` observable `bool` in ViewModel, default `false`
+- [ ] Progress bar shows indeterminate animation for single large file/archive (>10 MB)
+- [ ] Progress bar shows percentage for multiple files/archives
+- [ ] UI remains responsive during both operations — window can be moved/resized
+- [ ] `StatusMessage` shows "Archiving..." during archive operation
+- [ ] `StatusMessage` shows "Extracting..." during extract operation
+- [ ] `StatusMessage` updated to final result after completion of either operation
+- [ ] `CancellationTokenSource` properly created per operation and disposed after
+- [ ] `dotnet test` passes
 
 ---
 
