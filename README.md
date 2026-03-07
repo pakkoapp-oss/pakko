@@ -10,11 +10,11 @@ Minimal WinUI 3 GUI wrapper for Windows built-in ZIP support.
 
 Both tools carry supply chain risk unacceptable for security-conscious environments.
 
-**7-Zip** — developed by a single Russian developer (Igor Pavlov). Source published but no reproducible builds — the distributed binary cannot be verified against source. No independent security audit. Multiple critical CVEs.
+**7-Zip** — source published but no reproducible builds — the distributed binary cannot be verified against source. No independent security audit. Multiple critical CVEs.
 
-**WinRAR** — developed by Eugene Roshal (Russia). Closed source — independent audit impossible. CVE-2018-20250 affected 500M+ installations.
+**WinRAR** — closed source — independent audit impossible. CVE-2018-20250 affected 500M+ installations.
 
-For government, defense, and critical infrastructure: unverifiable binaries from developers in adversarial jurisdictions processing sensitive documents is an unacceptable supply chain risk.
+For government, defense, and critical infrastructure: unverifiable binaries processing sensitive documents is an unacceptable supply chain risk.
 
 ---
 
