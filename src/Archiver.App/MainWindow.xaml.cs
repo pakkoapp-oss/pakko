@@ -14,7 +14,7 @@ public sealed partial class MainWindow : Window
     {
         InitializeComponent();
         ViewModel = App.Services.GetRequiredService<MainViewModel>();
-        this.AppWindow.Resize(new Windows.Graphics.SizeInt32(800, 600));
+        this.AppWindow.Resize(new Windows.Graphics.SizeInt32(800, 700));
         this.AppWindow.Title = "Pakko";
 
         var iconPath = System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", "Square44x44Logo.ico");

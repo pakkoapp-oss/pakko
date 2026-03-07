@@ -834,7 +834,7 @@ is acceptable for v1.0. Proper icon design is separate creative work.
 
 
 ### T-32 — File List Minimum Height and Layout Fix
-- [ ] **Status:** pending
+- [x] **Status:** complete
 
 **Files:**
 - `src/Archiver.App/MainWindow.xaml`
@@ -863,11 +863,11 @@ height and should stretch to fill available space.
 - Root layout must be `Grid`, not `StackPanel`
 
 **Acceptance criteria:**
-- [ ] File list visible on startup without resizing the window
-- [ ] File list has `MinHeight="120"` — never collapses to zero
-- [ ] File list grows when window is resized taller
-- [ ] Options panel stays at bottom, compact, fixed height
-- [ ] Layout correct at minimum window size (600×500)
+- [x] File list visible on startup without resizing the window
+- [x] File list has `MinHeight="120"` — never collapses to zero
+- [x] File list grows when window is resized taller
+- [x] Options panel stays at bottom, compact, fixed height
+- [x] Layout correct at minimum window size (600×500)
 
 ---
 
