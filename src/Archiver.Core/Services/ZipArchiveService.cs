@@ -249,7 +249,7 @@ public sealed class ZipArchiveService : IArchiveService
 
         if (result.Success && options.OpenDestinationFolder)
         {
-            try { Process.Start("explorer.exe", options.DestinationFolder); } catch { }
+            try { Process.Start(new ProcessStartInfo("explorer.exe", options.DestinationFolder) { UseShellExecute = true }); } catch { }
         }
 
         return result;
@@ -373,7 +373,7 @@ public sealed class ZipArchiveService : IArchiveService
 
         if (result.Success && options.OpenDestinationFolder)
         {
-            try { Process.Start("explorer.exe", options.DestinationFolder); } catch { }
+            try { Process.Start(new ProcessStartInfo("explorer.exe", options.DestinationFolder) { UseShellExecute = true }); } catch { }
         }
 
         return result;

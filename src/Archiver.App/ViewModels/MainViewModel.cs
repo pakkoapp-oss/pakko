@@ -19,7 +19,7 @@ namespace Archiver.App.ViewModels;
 
 public sealed partial class MainViewModel : ObservableObject
 {
-    private static readonly ResourceLoader _res = new();
+    private static readonly ResourceLoader _res = ResourceLoader.GetForViewIndependentUse();
 
     private readonly IArchiveService _archiveService;
     private readonly IDialogService _dialogService;

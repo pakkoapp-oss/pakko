@@ -12,7 +12,7 @@ namespace Archiver.App.Services;
 // Full implementation in T-10. Stub registered here so DI container builds.
 public sealed class DialogService : IDialogService
 {
-    private static readonly ResourceLoader _res = new();
+    private static readonly ResourceLoader _res = ResourceLoader.GetForViewIndependentUse();
 
     private Window? _window;
 

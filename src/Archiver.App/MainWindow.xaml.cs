@@ -11,7 +11,7 @@ namespace Archiver.App;
 
 public sealed partial class MainWindow : Window
 {
-    internal MainViewModel ViewModel { get; }
+    public MainViewModel ViewModel { get; }
 
     public ICommand TrayOpenCommand { get; }
     public ICommand TrayAboutCommand { get; }  // placeholder — implemented in T-F14
@@ -19,7 +19,11 @@ public sealed partial class MainWindow : Window
 
     public MainWindow()
     {
-        TrayOpenCommand = new RelayCommand(() => this.Activate());
+        TrayOpenCommand = new RelayCommand(() =>
+        {
+            this.Activate();
+            
+        });
         TrayAboutCommand = new AsyncRelayCommand(async () =>
         {
             this.Activate();
@@ -32,9 +36,7 @@ public sealed partial class MainWindow : Window
         this.AppWindow.Resize(new Windows.Graphics.SizeInt32(800, 700));
         this.AppWindow.Title = "Pakko";
 
-        var iconPath = System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", "Square44x44Logo.ico");
-        if (System.IO.File.Exists(iconPath))
-            this.AppWindow.SetIcon(iconPath);
+        this.AppWindow.SetIcon("Assets/Square44x44Logo.ico");
 
         this.Activated += OnFirstActivated;
         this.Closed += (_, _) => TrayIcon.Dispose();
@@ -58,9 +60,32 @@ public sealed partial class MainWindow : Window
         if (e.DataView.Contains(Windows.ApplicationModel.DataTransfer.StandardDataFormats.StorageItems))
         {
             var items = await e.DataView.GetStorageItemsAsync();
-            var paths = items.Select(i => i.Path).ToList();
+            var paths = new List<string>();
+            foreach (var item in items)
+            {
+                var path = item switch
+                {
+                    Windows.Storage.StorageFile file => file.Path,
+                    Windows.Storage.StorageFolder folder => folder.Path,
+                    _ => item.Path
+                };
+                System.Diagnostics.Debug.WriteLine($"[Drop] name={item.Name} path={path}");
+                if (!string.IsNullOrEmpty(path))
+                    paths.Add(path);
+            }
             ViewModel.AddPaths(paths);
         }
+    }
+
+    private void TrayOpen_Click(object sender, RoutedEventArgs e)
+    {
+        System.Diagnostics.Debug.WriteLine("[Tray] TrayOpen_Click fired");
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            this.AppWindow.Show();
+            (this.AppWindow.Presenter as Microsoft.UI.Windowing.OverlappedPresenter)?.Restore();
+            this.Activate();
+        });
     }
 
     private void RemoveItem_Click(object sender, RoutedEventArgs e)

@@ -14,7 +14,6 @@
         <!-- Tray icon -->
         <tb:TaskbarIcon
             x:Name="TrayIcon"
-            Grid.RowSpan="7"
             ToolTipText="Pakko"
             IconSource="Assets/Square44x44Logo.ico">
             <tb:TaskbarIcon.ContextFlyout>

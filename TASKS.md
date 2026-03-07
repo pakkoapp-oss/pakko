@@ -247,7 +247,7 @@ For Ukrainian government deployment: self-signed with distributed root cert via 
 ---
 
 ### T-F11 — ARM64 Support
-- [ ] **Status:** future
+- [x] **Status:** complete
 
 One-line change. Windows on ARM increasingly common in government/enterprise.
 
