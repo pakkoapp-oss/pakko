@@ -44,9 +44,78 @@ These rules apply to ALL tasks. Violating them = task is NOT complete.
 
 ### T-F01 — Explorer Context Menu Integration
 - [ ] **Status:** future
+- **Depends on:** T-F09 (CLI Core)
 
-Right-click → "Archive with Pakko" / "Extract here" in Windows Explorer.
-Requires COM registration and shell extension — significant additional complexity.
+**What:** Right-click context menu in Windows Explorer for archiving and extracting without opening the main UI window.
+
+**User experience:**
+
+Right-click on any files/folders (non-ZIP or mixed):
+```
+Pakko ►
+  ├── Add to "first_item.zip"    ← immediate, no window, single archive
+  ├── Add to separate ZIPs       ← immediate, no window, one ZIP per item
+  └── Archive with Pakko...      ← opens main window with items pre-loaded
+```
+
+Right-click on one or more ZIP files:
+```
+Pakko ►
+  ├── Extract here               ← immediate, no window, extract next to archive
+  ├── Extract here (new folder)  ← immediate, subfolder per archive
+  └── Extract with Pakko...      ← opens main window with archives pre-loaded
+```
+
+Right-click on mixed selection (ZIP + non-ZIP):
+```
+Pakko ►
+  ├── Add to "first_item.zip"
+  ├── Extract ZIPs here
+  └── Open with Pakko...
+```
+
+**Technical approach — two components:**
+
+**1. `Archiver.Shell` project** (new, `src/Archiver.Shell/`)
+Lightweight console exe invoked by the context menu with arguments:
+```
+Archiver.Shell.exe --archive --dest same "file1" "file2" "file3"
+Archiver.Shell.exe --archive --separate --dest same "file1" "file2"
+Archiver.Shell.exe --extract --dest same "archive1.zip" "archive2.zip"
+Archiver.Shell.exe --open-ui --archive "file1" "file2"
+```
+Uses `Archiver.Core` directly — no WinUI dependency. Runs silently (`<OutputType>WinExe</OutputType>`, no console window).
+
+**2. Shell extension registration**
+Windows 11 (build 22621+): sparse package manifest — no COM DLL needed.
+Windows 10 fallback: classic COM `IContextMenu` shell extension DLL.
+
+Declared in `Package.appxmanifest` for MSIX distribution.
+
+**Silent operation — no window flicker:**
+- `Archiver.Shell.exe` runs with `CreateNoWindow = true`
+- Progress shown via Windows Toast notification on completion:
+  ```
+  Pakko
+  Archived 3 files → backup.zip
+  ```
+- Errors shown via Toast, not dialog
+
+**Acceptance criteria (when implemented):**
+- [ ] `Archiver.Shell` project added to solution, references `Archiver.Core`
+- [ ] `--archive` flag: archives all passed paths into single ZIP next to first item
+- [ ] `--archive --separate` flag: one ZIP per item
+- [ ] `--extract` flag: extracts all passed ZIPs next to each archive (T-14 smart folder logic)
+- [ ] `--open-ui` flag: launches `Archiver.App` with items pre-loaded
+- [ ] No console window shown during silent operations
+- [ ] Toast notification on completion — success and error
+- [ ] Context menu appears for ZIP files with Extract options
+- [ ] Context menu appears for non-ZIP files/folders with Archive options
+- [ ] Multi-selection works — all selected items passed in single invocation
+- [ ] Works on Windows 10 1809+ and Windows 11
+- [ ] Registered via MSIX manifest — no manual registry editing
+- [ ] Uninstall removes all context menu entries cleanly
+- [ ] `dotnet test` passes — basic invocation tests for Archiver.Shell
 
 ---
 
@@ -256,3 +325,102 @@ Rule removed on uninstall.
 - [ ] Job Object handle closed after process exits — no leak
 - [ ] `dotnet test` passes
 - [ ] Verified: spawning child process from sandboxed binary fails
+
+---
+
+### T-F15 — Microsoft Store Publication
+- [ ] **Status:** future
+
+**What:** Publish Pakko to Microsoft Store via Partner Center. Store handles MSIX signing, hosting, distribution, and automatic updates.
+
+**Cost:** $0 for individual developers (as of September 2025).
+
+**Prerequisites before submission:**
+- Proper app icon in all required sizes (T-F16 — see below)
+- About dialog with version and links (T-F14)
+- Store listing assets: screenshots, description, privacy policy URL
+
+**Required icon sizes for Store:**
+| File | Size |
+|------|------|
+| `StoreLogo.png` | 50×50 |
+| `Square44x44Logo.png` | 44×44 |
+| `Square150x150Logo.png` | 150×150 |
+| `Wide310x150Logo.png` | 310×150 |
+| `Square71x71Logo.png` | 71×71 |
+| `Square310x310Logo.png` | 310×310 |
+
+**Submission process:**
+1. Register at storedeveloper.microsoft.com (individual, free, ID verification)
+2. Create app reservation — reserve "Pakko" name
+3. Build MSIX bundle (x64, optionally + arm64 per T-F11)
+4. Upload to Partner Center
+5. Fill Store listing: description, screenshots, category (Utilities), privacy policy
+6. Submit for certification (1–3 business days)
+7. Store signs the package — no separate code signing certificate needed
+
+**Privacy policy note:**
+Store requires a privacy policy URL even for apps that collect no data.
+Acceptable: simple GitHub Pages page stating "Pakko collects no data."
+
+**Automatic updates:**
+Once published, Store delivers updates automatically when new version is submitted.
+Version bump: increment `Package.appxmanifest` `Version` attribute before each submission.
+
+**Acceptance criteria (when implemented):**
+- [ ] Partner Center account registered (individual, free)
+- [ ] App name "Pakko" reserved in Store
+- [ ] All required icon sizes present in `Assets/`
+- [ ] Privacy policy page published (GitHub Pages or similar)
+- [ ] MSIX bundle built and uploaded
+- [ ] Store listing complete: description (EN), screenshots, category
+- [ ] App passes Store certification
+- [ ] Published app installs and runs correctly from Store
+- [ ] Version update flow tested — submit new version, confirm auto-update delivers
+- [ ] **Status:** future
+
+**What:** Simple "About Pakko" dialog accessible from the system tray menu and/or a button in the title bar area. Shows app info and a donate link.
+
+**Tray menu update:**
+```
+Open Pakko
+─────────
+About
+─────────
+Exit
+```
+
+**Dialog content:**
+```
+┌─────────────────────────────────┐
+│  Pakko  v1.0.0                  │
+│                                 │
+│  Minimal ZIP archiver for       │
+│  Windows. No 7-Zip. No WinRAR.  │
+│  Built on System.IO.Compression │
+│                                 │
+│  License: Apache 2.0            │
+│  [GitHub ↗]   [Donate ↗]        │
+│                                 │
+│                    [  OK  ]     │
+└─────────────────────────────────┘
+```
+
+**Links:**
+- GitHub → repo URL
+- Donate → Ko-fi / Buy Me a Coffee / Monobank jar (configure before release)
+
+**Implementation notes:**
+- `ContentDialog` with `StackPanel` — same pattern as T-19 summary dialog
+- Links open via `Launcher.LaunchUriAsync(new Uri("https://..."))` — no browser dependency
+- Version number read from `Package.Current.Id.Version` (MSIX) or assembly version fallback
+- No hardcoded URLs in XAML — store in `Resources.resw` so they can be updated without recompile
+
+**Acceptance criteria (when implemented):**
+- [ ] "About" added to tray context menu between "Open Pakko" and "Exit"
+- [ ] `ContentDialog` shows app name, version, one-line description, license
+- [ ] GitHub link opens in default browser via `Launcher.LaunchUriAsync`
+- [ ] Donate link opens in default browser via `Launcher.LaunchUriAsync`
+- [ ] Version number read dynamically — not hardcoded
+- [ ] URLs stored in `Resources.resw` — not hardcoded in C#
+- [ ] Dialog follows same visual style as T-19 summary dialog
