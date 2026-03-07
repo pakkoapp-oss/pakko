@@ -46,57 +46,67 @@ public sealed class ZipArchiveService : IArchiveService
                 }
             }
 
+            bool isSingleLargeFile = options.SourcePaths.Count == 1
+                && File.Exists(options.SourcePaths[0])
+                && new FileInfo(options.SourcePaths[0]).Length > 10 * 1024 * 1024;
+            if (isSingleLargeFile)
+                progress?.Report(-1);
+
             try
             {
-                using var archive = ZipFile.Open(destPath, ZipArchiveMode.Create);
-                int total = options.SourcePaths.Count;
-                for (int i = 0; i < total; i++)
+                await Task.Run(() =>
                 {
-                    if (cancellationToken.IsCancellationRequested)
-                        break;
-
-                    string sourcePath = options.SourcePaths[i];
-
-                    try
+                    using var archive = ZipFile.Open(destPath, ZipArchiveMode.Create);
+                    int total = options.SourcePaths.Count;
+                    for (int i = 0; i < total; i++)
                     {
-                        if (Directory.Exists(sourcePath))
+                        if (cancellationToken.IsCancellationRequested)
+                            break;
+
+                        string sourcePath = options.SourcePaths[i];
+
+                        try
                         {
-                            AddDirectoryToArchive(archive, sourcePath, Path.GetFileName(sourcePath), options.CompressionLevel);
+                            if (Directory.Exists(sourcePath))
+                            {
+                                AddDirectoryToArchive(archive, sourcePath, Path.GetFileName(sourcePath), options.CompressionLevel);
+                            }
+                            else if (File.Exists(sourcePath))
+                            {
+                                archive.CreateEntryFromFile(sourcePath, Path.GetFileName(sourcePath), options.CompressionLevel);
+                            }
+                            else
+                            {
+                                errors.Add(new ArchiveError
+                                {
+                                    SourcePath = sourcePath,
+                                    Message = $"Source path does not exist: {sourcePath}"
+                                });
+                            }
                         }
-                        else if (File.Exists(sourcePath))
-                        {
-                            archive.CreateEntryFromFile(sourcePath, Path.GetFileName(sourcePath), options.CompressionLevel);
-                        }
-                        else
+                        catch (IOException ex)
                         {
                             errors.Add(new ArchiveError
                             {
                                 SourcePath = sourcePath,
-                                Message = $"Source path does not exist: {sourcePath}"
+                                Message = $"Cannot access file: {ex.Message}",
+                                Exception = ex
                             });
                         }
-                    }
-                    catch (IOException ex)
-                    {
-                        errors.Add(new ArchiveError
+                        catch (UnauthorizedAccessException ex)
                         {
-                            SourcePath = sourcePath,
-                            Message = $"Cannot access file: {ex.Message}",
-                            Exception = ex
-                        });
-                    }
-                    catch (UnauthorizedAccessException ex)
-                    {
-                        errors.Add(new ArchiveError
-                        {
-                            SourcePath = sourcePath,
-                            Message = $"Access denied: {ex.Message}",
-                            Exception = ex
-                        });
-                    }
+                            errors.Add(new ArchiveError
+                            {
+                                SourcePath = sourcePath,
+                                Message = $"Access denied: {ex.Message}",
+                                Exception = ex
+                            });
+                        }
 
-                    progress?.Report((i + 1) * 100 / total);
-                }
+                        if (!isSingleLargeFile)
+                            progress?.Report((i + 1) * 100 / total);
+                    }
+                }, cancellationToken).ConfigureAwait(false);
             }
             catch (IOException ex)
             {
@@ -163,8 +173,12 @@ public sealed class ZipArchiveService : IArchiveService
                     }
                     else if (File.Exists(sourcePath))
                     {
-                        using var archive = ZipFile.Open(destPath, ZipArchiveMode.Create);
-                        archive.CreateEntryFromFile(sourcePath, Path.GetFileName(sourcePath), options.CompressionLevel);
+                        var level = options.CompressionLevel;
+                        await Task.Run(() =>
+                        {
+                            using var archive = ZipFile.Open(destPath, ZipArchiveMode.Create);
+                            archive.CreateEntryFromFile(sourcePath, Path.GetFileName(sourcePath), level);
+                        }, cancellationToken).ConfigureAwait(false);
                     }
                     else
                     {
@@ -242,6 +256,12 @@ public sealed class ZipArchiveService : IArchiveService
 
         Directory.CreateDirectory(options.DestinationFolder);
 
+        bool isSingleLargeArchive = options.ArchivePaths.Count == 1
+            && File.Exists(options.ArchivePaths[0])
+            && new FileInfo(options.ArchivePaths[0]).Length > 10 * 1024 * 1024;
+        if (isSingleLargeArchive)
+            progress?.Report(-1);
+
         int total = options.ArchivePaths.Count;
         for (int i = 0; i < total; i++)
         {
@@ -255,7 +275,7 @@ public sealed class ZipArchiveService : IArchiveService
                 string? reason = GetKnownArchiveReason(archivePath);
                 if (reason is not null)
                     skippedFiles.Add(new SkippedFile { Path = archivePath, Reason = reason });
-                progress?.Report((i + 1) * 100 / total);
+                if (!isSingleLargeArchive) progress?.Report((i + 1) * 100 / total);
                 continue;
             }
 
@@ -266,7 +286,7 @@ public sealed class ZipArchiveService : IArchiveService
                     SourcePath = archivePath,
                     Message = "This archive is password-protected and cannot be extracted."
                 });
-                progress?.Report((i + 1) * 100 / total);
+                if (!isSingleLargeArchive) progress?.Report((i + 1) * 100 / total);
                 continue;
             }
 
@@ -311,7 +331,7 @@ public sealed class ZipArchiveService : IArchiveService
                 });
             }
 
-            progress?.Report((i + 1) * 100 / total);
+            if (!isSingleLargeArchive) progress?.Report((i + 1) * 100 / total);
         }
 
         var result = new ArchiveResult

@@ -28,10 +28,23 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(ArchiveCommand))]
     [NotifyCanExecuteChangedFor(nameof(ExtractCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ClearCommand))]
+    [NotifyCanExecuteChangedFor(nameof(BrowseFilesCommand))]
+    [NotifyCanExecuteChangedFor(nameof(BrowseFolderCommand))]
+    [NotifyPropertyChangedFor(nameof(IsOperationRunning))]
+    [NotifyPropertyChangedFor(nameof(IsOperationRunningVisibility))]
     private bool _isBusy = false;
 
     [ObservableProperty]
+    private bool _isIndeterminate = false;
+
+    [ObservableProperty]
     private int _progress = 0;
+
+    public bool IsOperationRunning => IsBusy;
+
+    public Visibility IsOperationRunningVisibility =>
+        IsBusy ? Visibility.Visible : Visibility.Collapsed;
 
     [ObservableProperty]
     private string _statusMessage = string.Empty;
@@ -192,6 +205,7 @@ public sealed partial class MainViewModel : ObservableObject
     {
         IsBusy = true;
         Progress = 0;
+        IsIndeterminate = false;
         StatusMessage = _res.GetString("StatusArchiving");
         try
         {
@@ -206,7 +220,11 @@ public sealed partial class MainViewModel : ObservableObject
                 DeleteSourceFiles = DeleteSourceFiles,
                 CompressionLevel = SelectedCompressionLevel,
             };
-            var progress = new Progress<int>(p => Progress = p);
+            var progress = new Progress<int>(p =>
+            {
+                if (p < 0) { IsIndeterminate = true; Progress = 0; }
+                else { IsIndeterminate = false; Progress = p; }
+            });
             var result = await _archiveService.ArchiveAsync(options, progress);
             StatusMessage = result.Errors.Count == 0 && result.SkippedFiles.Count == 0
                 ? _res.GetString("StatusDone").Replace("{0}", result.CreatedFiles.Count.ToString())
@@ -229,6 +247,7 @@ public sealed partial class MainViewModel : ObservableObject
     {
         IsBusy = true;
         Progress = 0;
+        IsIndeterminate = false;
         StatusMessage = _res.GetString("StatusExtracting");
         try
         {
@@ -240,7 +259,11 @@ public sealed partial class MainViewModel : ObservableObject
                 OpenDestinationFolder = OpenDestinationFolder,
                 DeleteArchiveAfterExtraction = DeleteArchiveAfterExtraction,
             };
-            var progress = new Progress<int>(p => Progress = p);
+            var progress = new Progress<int>(p =>
+            {
+                if (p < 0) { IsIndeterminate = true; Progress = 0; }
+                else { IsIndeterminate = false; Progress = p; }
+            });
             var result = await _archiveService.ExtractAsync(options, progress);
             StatusMessage = result.Errors.Count == 0 && result.SkippedFiles.Count == 0
                 ? _res.GetString("StatusDone").Replace("{0}", result.CreatedFiles.Count.ToString())
@@ -260,6 +283,7 @@ public sealed partial class MainViewModel : ObservableObject
 
     private bool CanArchive() => !IsBusy && FileItems.Count > 0;
     private bool CanExtract() => !IsBusy && FileItems.Count > 0;
+    private bool CanOperate() => !IsBusy;
 
     public void AddPaths(IEnumerable<string> paths)
     {
@@ -268,7 +292,7 @@ public sealed partial class MainViewModel : ObservableObject
                 FileItems.Add(new FileItem(path));
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanOperate))]
     private void Clear() => FileItems.Clear();
 
     public void RemovePath(string path)
@@ -278,14 +302,14 @@ public sealed partial class MainViewModel : ObservableObject
             FileItems.Remove(item);
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanOperate))]
     private async Task BrowseFilesAsync()
     {
         var paths = await _dialogService.PickFilesAsync();
         AddPaths(paths);
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanOperate))]
     private async Task BrowseFolderAsync()
     {
         var paths = await _dialogService.PickFoldersAsync();

@@ -872,7 +872,7 @@ height and should stretch to fill available space.
 ---
 
 ### T-33 — Real-Time Progress During Archive and Extract
-- [ ] **Status:** pending
+- [x] **Status:** complete
 
 **Files:**
 - `src/Archiver.App/ViewModels/MainViewModel.cs`
@@ -908,18 +908,18 @@ IsOperationRunning = false;
 ```
 
 **Acceptance criteria:**
-- [ ] Progress bar updates visibly during **archiving** — not just at end
-- [ ] Progress bar updates visibly during **extraction** — not just at end
-- [ ] Buttons (`Archive`, `Extract`, `Clear`, `Add files`, `Add folder`) disabled during both operations
-- [ ] `IsOperationRunning` observable `bool` in ViewModel, default `false`
-- [ ] Progress bar shows indeterminate animation for single large file/archive (>10 MB)
-- [ ] Progress bar shows percentage for multiple files/archives
-- [ ] UI remains responsive during both operations — window can be moved/resized
-- [ ] `StatusMessage` shows "Archiving..." during archive operation
-- [ ] `StatusMessage` shows "Extracting..." during extract operation
-- [ ] `StatusMessage` updated to final result after completion of either operation
-- [ ] `CancellationTokenSource` properly created per operation and disposed after
-- [ ] `dotnet test` passes
+- [x] Progress bar updates visibly during **archiving** — not just at end
+- [x] Progress bar updates visibly during **extraction** — not just at end
+- [x] Buttons (`Archive`, `Extract`, `Clear`, `Add files`, `Add folder`) disabled during both operations
+- [x] `IsOperationRunning` observable `bool` in ViewModel, default `false`
+- [x] Progress bar shows indeterminate animation for single large file/archive (>10 MB)
+- [x] Progress bar shows percentage for multiple files/archives
+- [x] UI remains responsive during both operations — window can be moved/resized
+- [x] `StatusMessage` shows "Archiving..." during archive operation
+- [x] `StatusMessage` shows "Extracting..." during extract operation
+- [x] `StatusMessage` updated to final result after completion of either operation
+- [x] `CancellationTokenSource` properly created per operation and disposed after
+- [x] `dotnet test` passes
 
 ---
 

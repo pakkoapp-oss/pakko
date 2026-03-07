@@ -245,7 +245,8 @@
                 Grid.Row="0"
                 Value="{x:Bind ViewModel.Progress, Mode=OneWay}"
                 Maximum="100"
-                Opacity="{x:Bind ViewModel.Progress, Mode=OneWay}"/>
+                IsIndeterminate="{x:Bind ViewModel.IsIndeterminate, Mode=OneWay}"
+                Visibility="{x:Bind ViewModel.IsOperationRunningVisibility, Mode=OneWay}"/>
             <TextBlock
                 Grid.Row="1"
                 Text="{x:Bind ViewModel.StatusMessage, Mode=OneWay}"
