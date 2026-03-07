@@ -1147,13 +1147,13 @@ CI stays green. Developer sees exactly what command to run.
 ## Phase 6 — Packaging
 
 ### T-11 — MSIX Packaging Setup
-- [ ] **Status:** pending
+- [x] **Status:** complete
 
 **Acceptance criteria:**
-- [ ] App builds as MSIX package
-- [ ] `Package.appxmanifest` correct `Identity`, `DisplayName`, `Description`
-- [ ] Runs on Windows 10 1809+ (build 17763) — per T-26
-- [ ] No capabilities beyond `runFullTrust`
+- [x] App builds as MSIX package
+- [x] `Package.appxmanifest` correct `Identity`, `DisplayName`, `Description`
+- [x] Runs on Windows 10 1809+ (build 17763) — per T-26
+- [x] No capabilities beyond `runFullTrust`
 
 ---
 

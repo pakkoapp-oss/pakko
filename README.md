@@ -68,6 +68,27 @@ The entire compression stack is part of the .NET Base Class Library, maintained 
 
 ---
 
+## Building MSIX
+
+Prerequisites: Windows 10 SDK (makeappx.exe), .NET 8 SDK or later
+
+```
+dotnet publish src/Archiver.App/Archiver.App.csproj ^
+    --property:Configuration=Release ^
+    --property:Platform=x64 ^
+    --property:RuntimeIdentifier=win-x64 ^
+    --property:SelfContained=true ^
+    --property:GenerateAppxPackageOnBuild=true ^
+    --property:AppxPackageSigningEnabled=false
+```
+
+Output: `src/Archiver.App/AppPackages/Archiver.App_1.0.0.0_x64_Test/Archiver.App_1.0.0.0_x64.msix`
+
+The package is unsigned (no code signing certificate in v1.0). To install locally, enable
+Developer Mode in Windows Settings, or use `Add-AppxPackage` with a self-signed cert.
+
+---
+
 ## Project Status
 
 Work in progress. See `TASKS.md` for implementation status.

@@ -6,6 +6,8 @@ bin/
 obj/
 *.user
 .vs/
+src/Archiver.App/AppPackages/
+pakko-current.zip
 
 # NuGet
 packages/
