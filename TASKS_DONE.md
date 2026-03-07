@@ -218,3 +218,8 @@ Both `ArchiveAsync` (SingleArchive) and `ExtractAsync` wrapped in `Task.Run`. Pe
 - [x] **Status:** complete
 
 `win-x64-msix.pubxml` publish profile. `GenerateAppxPackageOnBuild=false` by default. `AppxPackageSigningEnabled=false`. Output: `AppPackages/Archiver.App_1.0.0.0_x64_Test/`. Requires self-signed cert or Developer Mode for local install.
+
+### T-36 — Pakko Branding Icons
+- [x] **Status:** complete
+
+Steel blue `#1D5FA8`, slab bold П lettermark. All `Assets/` placeholders replaced: `Square44x44Logo.scale-200.png`, `Square44x44Logo.targetsize-24_altform-unplated.png`, `Square150x150Logo.scale-200.png`, `Wide310x150Logo.scale-200.png`, `StoreLogo.png`, `Square44x44Logo.ico`, `SplashScreen.scale-200.png`. Source `pakko_*.png` / `pakko.ico` files removed after copy. Build: 0 warnings, 0 errors.
