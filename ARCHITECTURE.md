@@ -1,5 +1,7 @@
 # ARCHITECTURE.md — Architecture and Layer Contracts
 
+> **Current as of v1.0.** All signatures reflect actual implemented code.
+
 ---
 
 ## Layer Diagram
@@ -7,34 +9,35 @@
 ```
 ┌─────────────────────────────────────┐
 │           Archiver.App              │
-│           (WinUI 3)                 │
+│           (WinUI 3, net8.0-win)     │
 │                                     │
-│  Views (XAML)                       │
-│  ViewModels (INotifyPropertyChanged)│
-│  App-level Services                 │
+│  MainWindow.xaml / .cs              │
+│  ViewModels/MainViewModel.cs        │
+│  Services/ (Dialog, Log)            │
+│  Strings/en-US/Resources.resw       │
 └──────────────┬──────────────────────┘
                │  project reference
                ▼
 ┌─────────────────────────────────────┐
 │           Archiver.Core             │
-│         (Class Library)             │
+│         (net8.0, no UI deps)        │
 │                                     │
-│  Interfaces                         │
-│  Services (ZipArchiveService)       │
-│  Models (ArchiveOptions, etc.)      │
+│  Interfaces/IArchiveService.cs      │
+│  Services/ZipArchiveService.cs      │
+│  Models/                            │
 └──────────────┬──────────────────────┘
-               │  uses
+               │
                ▼
 ┌─────────────────────────────────────┐
 │       Windows / .NET APIs           │
-│                                     │
 │  System.IO.Compression              │
-│  System.IO (File, Directory, Path)  │
-│  Windows.System.Launcher (optional) │
+│  System.Security.Cryptography       │
+│  System.Diagnostics.Process         │
 └─────────────────────────────────────┘
 ```
 
-**Rule:** `Archiver.Core` must have **zero** references to WinUI, Microsoft.UI, or Windows.UI namespaces.
+**Rule:** `Archiver.Core` must have **zero** references to WinUI, Microsoft.UI,
+Windows.ApplicationModel.Resources, or any UI assembly.
 
 ---
 
@@ -43,7 +46,6 @@
 ```
 src/
 ├── Archiver.Core/
-│   ├── Archiver.Core.csproj
 │   ├── Interfaces/
 │   │   └── IArchiveService.cs
 │   ├── Services/
@@ -52,92 +54,80 @@ src/
 │       ├── ArchiveOptions.cs
 │       ├── ExtractOptions.cs
 │       ├── ArchiveResult.cs
-│       └── ArchiveError.cs
+│       ├── ArchiveError.cs
+│       └── SkippedFile.cs
 │
 └── Archiver.App/
-    ├── Archiver.App.csproj
-    ├── Views/
-    │   └── MainWindow.xaml (.cs)
+    ├── MainWindow.xaml / .cs
     ├── ViewModels/
     │   └── MainViewModel.cs
     ├── Services/
-    │   └── DialogService.cs
-    └── Models/
-        └── (UI-only models if needed)
+    │   ├── IDialogService.cs
+    │   ├── DialogService.cs
+    │   ├── ILogService.cs
+    │   └── LogService.cs
+    ├── Models/
+    │   └── FileItem.cs
+    ├── Converters/
+    │   └── BoolToVisibilityConverter.cs
+    └── Strings/
+        └── en-US/
+            └── Resources.resw
 ```
 
 ---
 
-## Core Models — Exact Signatures
-
-Agent must implement these exactly. Do not rename or add required constructor parameters.
+## Core Models — Current Signatures
 
 ```csharp
 // Models/ArchiveOptions.cs
-namespace Archiver.Core.Models;
-
 public sealed record ArchiveOptions
 {
     public IReadOnlyList<string> SourcePaths { get; init; } = [];
     public string DestinationFolder { get; init; } = string.Empty;
-    public string? ArchiveName { get; init; }              // null = auto-name from source
+    public string? ArchiveName { get; init; }
     public ArchiveMode Mode { get; init; } = ArchiveMode.SingleArchive;
-    public ConflictBehavior OnConflict { get; init; } = ConflictBehavior.Ask;
+    public ConflictBehavior OnConflict { get; init; } = ConflictBehavior.Skip;
     public bool OpenDestinationFolder { get; init; } = false;
     public bool DeleteSourceFiles { get; init; } = false;
+    public CompressionLevel CompressionLevel { get; init; } = CompressionLevel.Optimal;
 }
 
-public enum ArchiveMode
-{
-    SingleArchive,      // all sources → one .zip
-    SeparateArchives    // one .zip per source item
-}
+public enum ArchiveMode { SingleArchive, SeparateArchives }
 
-public enum ConflictBehavior
-{
-    Ask,
-    Overwrite,
-    Skip
-}
+public enum ConflictBehavior { Overwrite, Skip, Rename }
+// Note: ConflictBehavior.Ask was removed — default is Skip
 ```
 
 ```csharp
 // Models/ExtractOptions.cs
-namespace Archiver.Core.Models;
-
 public sealed record ExtractOptions
 {
     public IReadOnlyList<string> ArchivePaths { get; init; } = [];
     public string DestinationFolder { get; init; } = string.Empty;
     public ExtractMode Mode { get; init; } = ExtractMode.SeparateFolders;
-    public ConflictBehavior OnConflict { get; init; } = ConflictBehavior.Ask;
+    public ConflictBehavior OnConflict { get; init; } = ConflictBehavior.Skip;
     public bool OpenDestinationFolder { get; init; } = false;
     public bool DeleteArchiveAfterExtraction { get; init; } = false;
 }
 
-public enum ExtractMode
-{
-    SeparateFolders,    // each archive → own subfolder
-    SingleFolder        // all archives → one flat folder
-}
+public enum ExtractMode { SeparateFolders, SingleFolder }
 ```
 
 ```csharp
 // Models/ArchiveResult.cs
-namespace Archiver.Core.Models;
-
 public sealed record ArchiveResult
 {
     public bool Success { get; init; }
     public IReadOnlyList<string> CreatedFiles { get; init; } = [];
     public IReadOnlyList<ArchiveError> Errors { get; init; } = [];
+    public IReadOnlyList<SkippedFile> SkippedFiles { get; init; } = [];
+    public IReadOnlyList<string> Warnings { get; init; } = [];   // SHA-256 mismatches (T-34)
 }
 ```
 
 ```csharp
 // Models/ArchiveError.cs
-namespace Archiver.Core.Models;
-
 public sealed record ArchiveError
 {
     public string SourcePath { get; init; } = string.Empty;
@@ -146,29 +136,28 @@ public sealed record ArchiveError
 }
 ```
 
+```csharp
+// Models/SkippedFile.cs
+public sealed record SkippedFile
+{
+    public string Path { get; init; } = string.Empty;
+    public string Reason { get; init; } = string.Empty;
+}
+```
+
 ---
 
-## Interface — Exact Signature
+## Interface — Current Signature
 
 ```csharp
 // Interfaces/IArchiveService.cs
-namespace Archiver.Core.Interfaces;
-
 public interface IArchiveService
 {
-    /// <summary>
-    /// Creates one or more ZIP archives from the provided options.
-    /// Never throws — errors are captured in ArchiveResult.Errors.
-    /// </summary>
     Task<ArchiveResult> ArchiveAsync(
         ArchiveOptions options,
         IProgress<int>? progress = null,
         CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Extracts one or more ZIP archives.
-    /// Never throws — errors are captured in ArchiveResult.Errors.
-    /// </summary>
     Task<ArchiveResult> ExtractAsync(
         ExtractOptions options,
         IProgress<int>? progress = null,
@@ -178,82 +167,73 @@ public interface IArchiveService
 
 ---
 
-## ZipArchiveService — Implementation Notes
-
-File: `Services/ZipArchiveService.cs`
+## App Services — Current Signatures
 
 ```csharp
-namespace Archiver.Core.Services;
-
-public sealed class ZipArchiveService : IArchiveService
+// Services/IDialogService.cs
+public interface IDialogService
 {
-    // Use ZipFile.CreateFromDirectory for folders
-    // Use ZipArchive for fine-grained control over individual files
-    // Wrap all IO in try/catch — append to errors list, continue processing
-    // Report progress as percentage of processed items (0–100)
-    // Check cancellationToken.IsCancellationRequested between items
+    Task ShowErrorAsync(string title, string message);
+    Task<bool> ShowConfirmAsync(string title, string message);
+    Task<string?> PickDestinationFolderAsync();
+    Task<IReadOnlyList<string>> PickFilesAsync();
+    Task<IReadOnlyList<string>> PickFoldersAsync();
+    Task ShowOperationSummaryAsync(string operationName, ArchiveResult result);
 }
 ```
 
-Compression API reference:
 ```csharp
-using System.IO.Compression;
-
-// Create from directory
-ZipFile.CreateFromDirectory(sourceDir, destZip, CompressionLevel.Optimal, includeBaseDirectory: true);
-
-// Create from files (manual)
-using var archive = ZipFile.Open(destZip, ZipArchiveMode.Create);
-archive.CreateEntryFromFile(filePath, entryName, CompressionLevel.Optimal);
-
-// Extract
-ZipFile.ExtractToDirectory(sourceZip, destDir, overwriteFiles: true);
+// Services/ILogService.cs
+public interface ILogService
+{
+    void Info(string message);
+    void Warn(string message);
+    void Error(string message, Exception? ex = null);
+}
+// Log path: %LocalAppData%\Pakko\logs\pakko.log
+// Rotation: 1 MB → .log.1, max 3 rotated files
 ```
 
 ---
 
-## ViewModel — MainViewModel Outline
+## ZipArchiveService — Key Behaviors
 
-```csharp
-// ViewModels/MainViewModel.cs
-namespace Archiver.App.ViewModels;
-
-public sealed partial class MainViewModel : ObservableObject
-{
-    private readonly IArchiveService _archiveService;
-
-    [ObservableProperty] private ObservableCollection<string> _selectedPaths = [];
-    [ObservableProperty] private string _statusMessage = string.Empty;
-    [ObservableProperty] private bool _isBusy = false;
-    [ObservableProperty] private int _progress = 0;
-
-    // Commands
-    [RelayCommand(CanExecute = nameof(CanArchive))]
-    private async Task ArchiveAsync() { ... }
-
-    [RelayCommand(CanExecute = nameof(CanExtract))]
-    private async Task ExtractAsync() { ... }
-
-    private bool CanArchive() => !IsBusy && SelectedPaths.Count > 0;
-    private bool CanExtract() => !IsBusy && SelectedPaths.Count > 0;
-}
-```
-
-Use `CommunityToolkit.Mvvm` for `ObservableObject`, `[ObservableProperty]`, `[RelayCommand]`.  
-This is the only allowed NuGet package in `Archiver.App`.
+- **ZIP detection:** magic bytes `50 4B 03 04` — no extension check
+- **Encryption detection:** bit 0 of general purpose bit flag in local file header
+- **Known non-ZIP formats:** RAR, 7-Zip, GZip, BZip2, XZ, LZ4 detected by magic bytes → `SkippedFiles`
+- **Smart extract (T-14):** single root folder → strips prefix; multiple roots → creates subfolder; single root file → direct
+- **ZIP slip protection:** every entry path validated against destination before extraction
+- **Progress:** `progress?.Report((i+1)*100/total)` per file in both Archive and Extract
+- **Threading:** `Task.Run` wraps all IO — never blocks UI thread
+- **Indeterminate:** single source/archive >10 MB → `progress?.Report(-1)`
+- **Integrity manifest (T-34):** writes `PAKKO-INTEGRITY-V1` + SHA-256 per entry to ZIP comment after creation; verifies on extract — mismatch → `Warnings`
+- **Lazy enumeration:** `Directory.EnumerateFiles` — no upfront collection for large directories
 
 ---
 
-## Project File Targets
+## DI Registration
 
-```xml
-<!-- Archiver.Core.csproj -->
-<Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
-    <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <LangVersion>12</LangVersion>
-  </PropertyGroup>
-</Project>
+```csharp
+services.AddSingleton<IArchiveService, ZipArchiveService>();
+services.AddSingleton<IDialogService, DialogService>();
+services.AddSingleton<ILogService, LogService>();
+services.AddTransient<MainViewModel>();
+```
+
+---
+
+## FileItem Model (UI layer)
+
+```csharp
+// Models/FileItem.cs (Archiver.App only)
+public sealed class FileItem
+{
+    public string FullPath { get; }
+    public string Name { get; }
+    public string Type { get; }           // extension uppercase or "Folder"
+    public string Size { get; set; }      // "1.2 MB", "345 KB", "12 bytes"
+    public long SizeBytes { get; set; }
+    public DateTime Modified { get; }
+    public string ModifiedDisplay { get; } // "yyyy-MM-dd HH:mm"
+}
 ```

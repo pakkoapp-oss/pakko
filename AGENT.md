@@ -1,26 +1,35 @@
-# AGENT.md — Windows Archiver Wrapper
+# AGENT.md — Pakko
 
-**Entry point for AI coding agents (Claude Code / OpenAI Codex).**  
+**Entry point for AI coding agents (Claude Code / OpenAI Codex).**
 Read this file first. It references other files in order.
+
+---
+
+## Project in One Sentence
+
+**Pakko** — minimal WinUI 3 desktop app wrapping Windows built-in ZIP support
+(`System.IO.Compression`) with a clean GUI. No third-party compression libraries.
+Target: Ukrainian government/defense — trust, auditability, minimal attack surface.
+
+---
+
+## Status
+
+**v1.0 complete** — all T-01 through T-35 + T-11 done, tagged `v1.0.0`.
+Next work is Future tasks (T-F01+) in `TASKS.md`.
 
 ---
 
 ## Read Order
 
 1. `AGENT.md` ← you are here
-2. `SPEC.md` — what to build and why
-3. `ARCHITECTURE.md` — project structure and layer contracts
-4. `BOOTSTRAP.md` — DI wiring and app startup
-5. `XAML.md` — UI skeleton (use as-is, do not redesign)
-6. `TASKS.md` — implementation tasks with acceptance criteria
-7. `CONVENTIONS.md` — coding rules the agent must follow
-8. `TESTING.md` — test project setup and all test cases
+2. `CLAUDE.md` — session context, current state, build commands
+3. `TASKS.md` — active/future tasks with acceptance criteria
+4. `ARCHITECTURE.md` — current C# signatures (use these, do not invent)
+5. `CONVENTIONS.md` — coding rules
+6. `SECURITY.md` — threat model (if modifying compression logic)
 
----
-
-## Project in One Sentence
-
-A minimal WinUI 3 desktop app that wraps Windows built-in ZIP support (`System.IO.Compression`) with a clean GUI — no third-party compression libraries.
+For completed task reference: `TASKS_DONE.md`
 
 ---
 
@@ -28,11 +37,13 @@ A minimal WinUI 3 desktop app that wraps Windows built-in ZIP support (`System.I
 
 | Rule | Reason |
 |------|--------|
-| No NuGet compression packages | Stability, no external deps |
-| Use only `System.IO.Compression` | Native Windows API |
-| MVVM pattern strictly | Testability, separation of concerns |
-| `Archiver.Core` has zero WinUI references | Layer independence |
-| No background services | Out of scope for v1.0 |
+| No NuGet compression packages | Auditability, no external deps |
+| Use only `System.IO.Compression` | Native Windows, verifiable |
+| MVVM strictly | Testability, separation of concerns |
+| `Archiver.Core` zero WinUI references | Layer independence |
+| `Archiver.Core` zero `ResourceLoader` references | Layer independence |
+| `Archiver.Core` zero `ILogService` references | Layer independence |
+| No background services | Out of scope |
 
 ---
 
@@ -41,41 +52,14 @@ A minimal WinUI 3 desktop app that wraps Windows built-in ZIP support (`System.I
 ```
 windows-archiver-wrapper/
 ├── src/
-│   ├── Archiver.Core/          ← class library, no UI deps
+│   ├── Archiver.Core/          ← net8.0 class library, no UI deps
 │   └── Archiver.App/           ← WinUI 3 app
-├── docs/
-├── AGENT.md
-├── SPEC.md
-├── ARCHITECTURE.md
-├── TASKS.md
-├── CONVENTIONS.md
+├── tests/
+│   ├── Archiver.Core.Tests/    ← xunit, 45 tests
+│   └── Archiver.Core.Tests.GenerateFixtures/
+├── AGENT.md, CLAUDE.md, TASKS.md, TASKS_DONE.md
+├── ARCHITECTURE.md, CONVENTIONS.md, SECURITY.md
 └── windows-archiver-wrapper.sln
-```
-
----
-
-## Quick Bootstrap Commands
-
-```bash
-# 1. Create solution
-dotnet new sln -n windows-archiver-wrapper
-
-# 2. Create core library
-dotnet new classlib -n Archiver.Core -o src/Archiver.Core --framework net8.0
-
-# 3. Add core to solution
-dotnet sln add src/Archiver.Core
-
-# 4. Create WinUI app (Visual Studio only — CLI does not support WinUI template)
-#    Template: "Blank App, Packaged (WinUI 3 in Desktop)"
-#    Project name: Archiver.App
-#    Output: src/Archiver.App
-
-# 5. Add app to solution
-dotnet sln add src/Archiver.App
-
-# 6. Add Core reference to App
-dotnet add src/Archiver.App reference src/Archiver.Core
 ```
 
 ---
@@ -84,8 +68,9 @@ dotnet add src/Archiver.App reference src/Archiver.Core
 
 When implementing a task from `TASKS.md`:
 
-1. Check task status — skip if marked `[x]`
-2. Implement according to the interface/signature defined in `ARCHITECTURE.md`
-3. Verify acceptance criteria listed in the task
-4. Do not modify files outside the task scope
-5. Mark task `[x]` in `TASKS.md` after completion
+1. Read task — check acceptance criteria
+2. Check `ARCHITECTURE.md` — use existing signatures, do not invent new ones
+3. Implement
+4. `dotnet build src/Archiver.Core` — verify no errors
+5. `dotnet test tests/Archiver.Core.Tests` — verify 45+ tests pass
+6. Mark task `[x]` in `TASKS.md`
