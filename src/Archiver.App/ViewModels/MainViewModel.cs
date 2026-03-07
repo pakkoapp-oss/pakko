@@ -226,7 +226,7 @@ public sealed partial class MainViewModel : ObservableObject
                 else { IsIndeterminate = false; Progress = p; }
             });
             var result = await _archiveService.ArchiveAsync(options, progress);
-            StatusMessage = result.Errors.Count == 0 && result.SkippedFiles.Count == 0
+            StatusMessage = result.Errors.Count == 0 && result.SkippedFiles.Count == 0 && result.Warnings.Count == 0
                 ? _res.GetString("StatusDone").Replace("{0}", result.CreatedFiles.Count.ToString())
                 : _res.GetString("StatusIssues");
             _logService.Info($"Archive completed — {result.CreatedFiles.Count} file(s) → {DestinationPath}");
@@ -265,7 +265,7 @@ public sealed partial class MainViewModel : ObservableObject
                 else { IsIndeterminate = false; Progress = p; }
             });
             var result = await _archiveService.ExtractAsync(options, progress);
-            StatusMessage = result.Errors.Count == 0 && result.SkippedFiles.Count == 0
+            StatusMessage = result.Errors.Count == 0 && result.SkippedFiles.Count == 0 && result.Warnings.Count == 0
                 ? _res.GetString("StatusDone").Replace("{0}", result.CreatedFiles.Count.ToString())
                 : _res.GetString("StatusIssues");
             _logService.Info($"Extract completed — {result.CreatedFiles.Count} file(s) → {DestinationPath}");
@@ -273,6 +273,8 @@ public sealed partial class MainViewModel : ObservableObject
                 _logService.Warn($"Skipped {skipped.Path} — {skipped.Reason}");
             foreach (var error in result.Errors)
                 _logService.Error($"{error.SourcePath} — {error.Message}");
+            foreach (var warning in result.Warnings)
+                _logService.Warn($"Integrity: {warning}");
             await _dialogService.ShowOperationSummaryAsync("Extract", result);
         }
         finally

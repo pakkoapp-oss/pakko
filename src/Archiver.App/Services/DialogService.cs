@@ -72,7 +72,7 @@ public sealed class DialogService : IDialogService
 
     public async Task ShowOperationSummaryAsync(string operationName, ArchiveResult result)
     {
-        if (result.Errors.Count == 0 && result.SkippedFiles.Count == 0)
+        if (result.Errors.Count == 0 && result.SkippedFiles.Count == 0 && result.Warnings.Count == 0)
             return;
 
         var panel = new StackPanel { Spacing = 8 };
@@ -126,6 +126,26 @@ public sealed class DialogService : IDialogService
                     Opacity = 0.7
                 });
                 panel.Children.Add(itemPanel);
+            }
+        }
+
+        if (result.Warnings.Count > 0)
+        {
+            panel.Children.Add(new TextBlock
+            {
+                Text = $"\u26a0 Integrity warnings ({result.Warnings.Count})",
+                FontWeight = FontWeights.SemiBold
+            });
+
+            foreach (var warning in result.Warnings)
+            {
+                panel.Children.Add(new TextBlock
+                {
+                    Text = warning,
+                    Margin = new Thickness(12, 0, 0, 4),
+                    TextWrapping = TextWrapping.Wrap,
+                    Opacity = 0.7
+                });
             }
         }
 

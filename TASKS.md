@@ -924,7 +924,7 @@ IsOperationRunning = false;
 ---
 
 ### T-34 — SHA-256 Integrity Manifest in ZIP Comment
-- [ ] **Status:** pending
+- [~] **Status:** implementation complete — test cases pending (T-35)
 
 **Files:**
 - `src/Archiver.Core/Services/ZipArchiveService.cs`
@@ -994,16 +994,16 @@ public sealed record ArchiveResult
 - Verification on extraction also runs after files are written to disk
 
 **Acceptance criteria:**
-- [ ] `ArchiveResult.Warnings` added as `IReadOnlyList<string>`, defaults to `[]`
-- [ ] Magic header `PAKKO-INTEGRITY-V1` written as first line of ZIP comment
-- [ ] SHA-256 computed for every entry after archive creation
-- [ ] Manifest written to `ZipArchive.Comment` before archive is closed
-- [ ] SHA-256 computation failure → warning in `Warnings`, not error — archiving succeeds
-- [ ] On extraction: comment checked for `PAKKO-INTEGRITY-V1` header
-- [ ] ZIP without Pakko header → extracted normally, no verification attempted
-- [ ] Hash mismatch on extraction → warning in `ArchiveResult.Warnings`, extraction continues
-- [ ] Warnings shown in T-19 summary dialog as third section "⚠ Integrity warnings"
-- [ ] SHA-256 computation is async — does not block UI thread
+- [x] `ArchiveResult.Warnings` added as `IReadOnlyList<string>`, defaults to `[]`
+- [x] Magic header `PAKKO-INTEGRITY-V1` written as first line of ZIP comment
+- [x] SHA-256 computed for every entry after archive creation
+- [x] Manifest written to `ZipArchive.Comment` before archive is closed
+- [x] SHA-256 computation failure → warning in `Warnings`, not error — archiving succeeds
+- [x] On extraction: comment checked for `PAKKO-INTEGRITY-V1` header
+- [x] ZIP without Pakko header → extracted normally, no verification attempted
+- [x] Hash mismatch on extraction → warning in `ArchiveResult.Warnings`, extraction continues
+- [x] Warnings shown in T-19 summary dialog as third section "⚠ Integrity warnings"
+- [x] SHA-256 computation is async — does not block UI thread
 - [ ] `dotnet test` passes — tests:
   - [ ] Archive created → comment contains `PAKKO-INTEGRITY-V1`
   - [ ] Archive created → comment contains correct SHA-256 for each entry

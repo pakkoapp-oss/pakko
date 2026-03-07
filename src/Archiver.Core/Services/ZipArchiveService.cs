@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.IO.Compression;
+using System.Security.Cryptography;
 using Archiver.Core.Interfaces;
 using Archiver.Core.Models;
 
@@ -11,6 +12,8 @@ namespace Archiver.Core.Services;
 /// </summary>
 public sealed class ZipArchiveService : IArchiveService
 {
+    private const string IntegrityHeader = "PAKKO-INTEGRITY-V1";
+
     /// <inheritdoc/>
     public async Task<ArchiveResult> ArchiveAsync(
         ArchiveOptions options,
@@ -19,6 +22,7 @@ public sealed class ZipArchiveService : IArchiveService
     {
         var errors = new List<ArchiveError>();
         var createdFiles = new List<string>();
+        var warnings = new List<string>();
 
         if (options.Mode == ArchiveMode.SingleArchive)
         {
@@ -128,7 +132,11 @@ public sealed class ZipArchiveService : IArchiveService
             }
 
             if (errors.Count == 0 && File.Exists(destPath))
+            {
                 createdFiles.Add(destPath);
+                var manifestWarnings = await Task.Run(() => WriteIntegrityManifest(destPath)).ConfigureAwait(false);
+                warnings.AddRange(manifestWarnings);
+            }
         }
         else // SeparateArchives
         {
@@ -192,6 +200,8 @@ public sealed class ZipArchiveService : IArchiveService
                     }
 
                     createdFiles.Add(destPath);
+                    var manifestWarnings = await Task.Run(() => WriteIntegrityManifest(destPath)).ConfigureAwait(false);
+                    warnings.AddRange(manifestWarnings);
                 }
                 catch (IOException ex)
                 {
@@ -220,7 +230,8 @@ public sealed class ZipArchiveService : IArchiveService
         {
             Success = errors.Count == 0,
             CreatedFiles = createdFiles,
-            Errors = errors
+            Errors = errors,
+            Warnings = warnings
         };
 
         if (result.Success && options.DeleteSourceFiles)
@@ -253,6 +264,7 @@ public sealed class ZipArchiveService : IArchiveService
         var errors = new List<ArchiveError>();
         var createdFiles = new List<string>();
         var skippedFiles = new List<SkippedFile>();
+        var warnings = new List<string>();
 
         Directory.CreateDirectory(options.DestinationFolder);
 
@@ -294,10 +306,11 @@ public sealed class ZipArchiveService : IArchiveService
                 ? Path.Combine(options.DestinationFolder, Path.GetFileNameWithoutExtension(archivePath))
                 : options.DestinationFolder;
 
+            string? actualDest = null;
             try
             {
                 bool alreadyIsolated = options.Mode == ExtractMode.SeparateFolders;
-                string actualDest = await Task.Run(() =>
+                actualDest = await Task.Run(() =>
                     ExtractWithSmartFoldering(archivePath, destDir, alreadyIsolated, options.OnConflict),
                     cancellationToken).ConfigureAwait(false);
 
@@ -331,6 +344,13 @@ public sealed class ZipArchiveService : IArchiveService
                 });
             }
 
+            if (actualDest is not null)
+            {
+                var archiveWarnings = await Task.Run(() =>
+                    VerifyIntegrityManifest(archivePath, actualDest)).ConfigureAwait(false);
+                warnings.AddRange(archiveWarnings);
+            }
+
             if (!isSingleLargeArchive) progress?.Report((i + 1) * 100 / total);
         }
 
@@ -339,7 +359,8 @@ public sealed class ZipArchiveService : IArchiveService
             Success = errors.Count == 0,
             CreatedFiles = createdFiles,
             Errors = errors,
-            SkippedFiles = skippedFiles
+            SkippedFiles = skippedFiles,
+            Warnings = warnings
         };
 
         if (result.Success && options.DeleteArchiveAfterExtraction)
@@ -416,6 +437,121 @@ public sealed class ZipArchiveService : IArchiveService
         }
 
         return actualDest;
+    }
+
+    /// <summary>
+    /// Computes SHA-256 for every entry in the ZIP and writes a PAKKO-INTEGRITY-V1
+    /// manifest into the archive comment. Silent on failure — never throws to caller.
+    /// Returns any per-entry warnings (e.g. hash computation failures).
+    /// </summary>
+    private static IReadOnlyList<string> WriteIntegrityManifest(string zipPath)
+    {
+        var warnings = new List<string>();
+        try
+        {
+            var lines = new List<string> { IntegrityHeader };
+
+            using var archive = ZipFile.Open(zipPath, ZipArchiveMode.Update);
+            foreach (var entry in archive.Entries.ToList())
+            {
+                if (entry.FullName.EndsWith('/')) continue; // skip directory entries
+                try
+                {
+                    using var stream = entry.Open();
+                    byte[] hash = SHA256.HashData(stream);
+                    lines.Add($"{entry.FullName}={Convert.ToHexString(hash).ToLowerInvariant()}");
+                }
+                catch
+                {
+                    warnings.Add($"Integrity: SHA-256 computation failed for '{entry.FullName}'.");
+                }
+            }
+
+            archive.Comment = string.Join("\n", lines);
+        }
+        catch
+        {
+            // Silent — manifest writing failure does not affect the archive.
+        }
+        return warnings;
+    }
+
+    /// <summary>
+    /// Reads the PAKKO-INTEGRITY-V1 manifest from the ZIP comment and verifies
+    /// each extracted file on disk. Returns one warning string per mismatch.
+    /// Never throws to caller.
+    /// </summary>
+    private static IReadOnlyList<string> VerifyIntegrityManifest(string zipPath, string actualDest)
+    {
+        var warnings = new List<string>();
+        try
+        {
+            using var archive = ZipFile.OpenRead(zipPath);
+
+            string comment = archive.Comment ?? string.Empty;
+            if (!comment.StartsWith(IntegrityHeader, StringComparison.Ordinal))
+                return warnings;
+
+            // Parse manifest lines: "entryName=hexhash"
+            var manifest = new Dictionary<string, string>(StringComparer.Ordinal);
+            foreach (var line in comment.Split('\n').Skip(1))
+            {
+                var trimmed = line.Trim();
+                int eq = trimmed.IndexOf('=');
+                if (eq > 0)
+                    manifest[trimmed[..eq]] = trimmed[(eq + 1)..];
+            }
+
+            if (manifest.Count == 0) return warnings;
+
+            // Determine if single root folder (mirrors ExtractWithSmartFoldering logic)
+            var fileEntries = archive.Entries.Where(e => !e.FullName.EndsWith('/')).ToList();
+            bool isSingleRootFolder = fileEntries.Count > 0
+                && fileEntries.All(e => e.FullName.Contains('/'))
+                && fileEntries
+                    .Select(e => e.FullName[..e.FullName.IndexOf('/')])
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .Count() == 1;
+
+            foreach (var (entryName, expectedHash) in manifest)
+            {
+                try
+                {
+                    string relativePath = entryName.Replace('/', Path.DirectorySeparatorChar);
+
+                    if (isSingleRootFolder)
+                    {
+                        int sep = relativePath.IndexOf(Path.DirectorySeparatorChar);
+                        if (sep < 0) continue;
+                        relativePath = relativePath[(sep + 1)..];
+                        if (string.IsNullOrEmpty(relativePath)) continue;
+                    }
+
+                    string onDiskPath = Path.Combine(actualDest, relativePath);
+                    if (!File.Exists(onDiskPath)) continue; // may have been skipped via conflict resolution
+
+                    using var fs = File.OpenRead(onDiskPath);
+                    byte[] actualHash = SHA256.HashData(fs);
+                    string actualHashHex = Convert.ToHexString(actualHash).ToLowerInvariant();
+
+                    if (!string.Equals(actualHashHex, expectedHash, StringComparison.OrdinalIgnoreCase))
+                    {
+                        string fileName = Path.GetFileName(entryName);
+                        warnings.Add($"Integrity warning: '{fileName}' — SHA-256 mismatch. File may be corrupted.");
+                    }
+                }
+                catch
+                {
+                    string fileName = Path.GetFileName(entryName.Replace('/', Path.DirectorySeparatorChar));
+                    warnings.Add($"Integrity warning: '{fileName}' — Verification failed.");
+                }
+            }
+        }
+        catch
+        {
+            // Silent — verification failure does not affect extraction result.
+        }
+        return warnings;
     }
 
     private static bool IsZipFile(string path)
