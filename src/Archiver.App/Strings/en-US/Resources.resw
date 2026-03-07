@@ -77,6 +77,14 @@
     <value>Completed with issues.</value>
   </data>
 
+  <!-- About dialog -->
+  <data name="AboutGitHubUrl" xml:space="preserve">
+    <value>https://github.com/pakkoapp-oss/pakko</value>
+  </data>
+  <data name="AboutPrivacyUrl" xml:space="preserve">
+    <value>https://pakkoapp-oss.github.io/pakko/</value>
+  </data>
+
   <!-- Dialog strings -->
   <data name="ErrorDialogTitle" xml:space="preserve">
     <value>Completed with issues</value>

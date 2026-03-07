@@ -10,4 +10,5 @@ public interface IDialogService
     Task<IReadOnlyList<string>> PickFilesAsync();
     Task<IReadOnlyList<string>> PickFoldersAsync();
     Task ShowOperationSummaryAsync(string operationName, ArchiveResult result);
+    Task ShowAboutAsync();
 }

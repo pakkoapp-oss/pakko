@@ -1,6 +1,7 @@
 using System.IO;
 using Archiver.Core.Models;
 using Windows.ApplicationModel.Resources;
+using Windows.System;
 using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -162,6 +163,61 @@ public sealed class DialogService : IDialogService
             XamlRoot = _window!.Content.XamlRoot
         };
 
+        await dialog.ShowAsync();
+    }
+
+    public async Task ShowAboutAsync()
+    {
+        string version;
+        try
+        {
+            var v = Windows.ApplicationModel.Package.Current.Id.Version;
+            version = $"{v.Major}.{v.Minor}.{v.Build}.{v.Revision}";
+        }
+        catch
+        {
+            version = "dev";
+        }
+
+        var githubUrl = _res.GetString("AboutGitHubUrl");
+        var privacyUrl = _res.GetString("AboutPrivacyUrl");
+
+        var panel = new StackPanel { Spacing = 12 };
+        panel.Children.Add(new TextBlock
+        {
+            Text = $"Pakko  v{version}",
+            FontSize = 18,
+            FontWeight = FontWeights.SemiBold
+        });
+        panel.Children.Add(new TextBlock
+        {
+            Text = "Lightweight native Windows archiver",
+            TextWrapping = TextWrapping.Wrap
+        });
+        panel.Children.Add(new TextBlock
+        {
+            Text = "License: Apache 2.0",
+            Opacity = 0.7
+        });
+
+        var githubBtn = new HyperlinkButton { Content = "GitHub", Padding = new Thickness(0) };
+        githubBtn.Click += async (_, _) => await Launcher.LaunchUriAsync(new Uri(githubUrl));
+
+        var privacyBtn = new HyperlinkButton { Content = "Privacy Policy", Padding = new Thickness(0) };
+        privacyBtn.Click += async (_, _) => await Launcher.LaunchUriAsync(new Uri(privacyUrl));
+
+        var linksPanel = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 16 };
+        linksPanel.Children.Add(githubBtn);
+        linksPanel.Children.Add(privacyBtn);
+        panel.Children.Add(linksPanel);
+
+        var dialog = new ContentDialog
+        {
+            Title = "About Pakko",
+            Content = panel,
+            CloseButtonText = "Close",
+            XamlRoot = _window!.Content.XamlRoot
+        };
         await dialog.ShowAsync();
     }
 }

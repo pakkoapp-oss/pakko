@@ -377,50 +377,16 @@ Version bump: increment `Package.appxmanifest` `Version` attribute before each s
 - [ ] App passes Store certification
 - [ ] Published app installs and runs correctly from Store
 - [ ] Version update flow tested — submit new version, confirm auto-update delivers
-- [ ] **Status:** future
 
-**What:** Simple "About Pakko" dialog accessible from the system tray menu and/or a button in the title bar area. Shows app info and a donate link.
+---
 
-**Tray menu update:**
-```
-Open Pakko
-─────────
-About
-─────────
-Exit
-```
+### T-F14 — About Dialog
+- [x] **Status:** complete
 
-**Dialog content:**
-```
-┌─────────────────────────────────┐
-│  Pakko  v1.0.0                  │
-│                                 │
-│  Minimal ZIP archiver for       │
-│  Windows. No 7-Zip. No WinRAR.  │
-│  Built on System.IO.Compression │
-│                                 │
-│  License: Apache 2.0            │
-│  [GitHub ↗]   [Donate ↗]        │
-│                                 │
-│                    [  OK  ]     │
-└─────────────────────────────────┘
-```
-
-**Links:**
-- GitHub → repo URL
-- Donate → Ko-fi / Buy Me a Coffee / Monobank jar (configure before release)
-
-**Implementation notes:**
-- `ContentDialog` with `StackPanel` — same pattern as T-19 summary dialog
-- Links open via `Launcher.LaunchUriAsync(new Uri("https://..."))` — no browser dependency
-- Version number read from `Package.Current.Id.Version` (MSIX) or assembly version fallback
-- No hardcoded URLs in XAML — store in `Resources.resw` so they can be updated without recompile
-
-**Acceptance criteria (when implemented):**
-- [ ] "About" added to tray context menu between "Open Pakko" and "Exit"
-- [ ] `ContentDialog` shows app name, version, one-line description, license
-- [ ] GitHub link opens in default browser via `Launcher.LaunchUriAsync`
-- [ ] Donate link opens in default browser via `Launcher.LaunchUriAsync`
-- [ ] Version number read dynamically — not hardcoded
-- [ ] URLs stored in `Resources.resw` — not hardcoded in C#
-- [ ] Dialog follows same visual style as T-19 summary dialog
+**Acceptance criteria:**
+- [x] `ContentDialog` shows app name, version, description, license
+- [x] GitHub link opens in browser via `Launcher.LaunchUriAsync`
+- [x] Privacy Policy link opens in browser via `Launcher.LaunchUriAsync`
+- [x] Version read dynamically from `Package.Current.Id.Version`
+- [x] URLs read from `Resources.resw` — not hardcoded in C#
+- [x] Dialog visible when main window is behind other windows (`this.Activate()` called first)

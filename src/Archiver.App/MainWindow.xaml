@@ -19,9 +19,11 @@
             IconSource="Assets/Square44x44Logo.ico">
             <tb:TaskbarIcon.ContextFlyout>
                 <MenuFlyout>
-                    <MenuFlyoutItem Text="Open Pakko" Click="TrayOpen_Click"/>
+                    <MenuFlyoutItem Text="Open Pakko" Command="{x:Bind TrayOpenCommand}"/>
                     <MenuFlyoutSeparator/>
-                    <MenuFlyoutItem Text="Exit" Click="TrayExit_Click"/>
+                    <MenuFlyoutItem Text="About Pakko" Command="{x:Bind TrayAboutCommand}"/>
+                    <MenuFlyoutSeparator/>
+                    <MenuFlyoutItem Text="Exit" Command="{x:Bind TrayExitCommand}"/>
                 </MenuFlyout>
             </tb:TaskbarIcon.ContextFlyout>
         </tb:TaskbarIcon>
