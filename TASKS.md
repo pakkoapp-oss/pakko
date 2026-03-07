@@ -698,7 +698,7 @@ List area filled → table visible, hint hidden
 ---
 
 ### T-30 — App Title and Simple File Log
-- [ ] **Status:** pending
+- [x] **Status:** done
 
 **Files:**
 - `src/Archiver.App/MainWindow.xaml.cs`
@@ -754,15 +754,15 @@ public interface ILogService
 - App startup
 
 **Acceptance criteria:**
-- [ ] `AppWindow.Title` set to "Pakko" in `MainWindow`
-- [ ] Title visible correctly in taskbar and title bar
-- [ ] `ILogService` and `LogService` created in `Archiver.App/Services/`
-- [ ] Log written to `%LocalAppData%\Pakko\logs\pakko.log`
-- [ ] Log directory created automatically if not exists
-- [ ] Log rotation at 1 MB — old file renamed to `.log.1`, max 3 rotated files
-- [ ] Archive and Extract results logged after every operation
-- [ ] `ILogService` registered in DI container
-- [ ] `Archiver.Core` has zero references to `ILogService` — logging done in ViewModel
+- [x] `AppWindow.Title` set to "Pakko" in `MainWindow`
+- [x] Title visible correctly in taskbar and title bar
+- [x] `ILogService` and `LogService` created in `Archiver.App/Services/`
+- [x] Log written to `%LocalAppData%\Pakko\logs\pakko.log`
+- [x] Log directory created automatically if not exists
+- [x] Log rotation at 1 MB — old file renamed to `.log.1`, max 3 rotated files
+- [x] Archive and Extract results logged after every operation
+- [x] `ILogService` registered in DI container
+- [x] `Archiver.Core` has zero references to `ILogService` — logging done in ViewModel
 
 ---
 

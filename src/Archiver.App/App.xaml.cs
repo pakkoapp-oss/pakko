@@ -21,6 +21,7 @@ public partial class App : Application
     {
         var services = new ServiceCollection();
 
+        services.AddSingleton<ILogService, LogService>();
         services.AddSingleton<IArchiveService, ZipArchiveService>();
         services.AddSingleton<IDialogService, DialogService>();
         services.AddTransient<MainViewModel>();
@@ -30,6 +31,7 @@ public partial class App : Application
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
+        Services.GetRequiredService<ILogService>().Info("Pakko started");
         var window = new MainWindow();
         var dialogService = (DialogService)Services.GetRequiredService<IDialogService>();
         dialogService.SetWindow((Microsoft.UI.Xaml.Window)window);

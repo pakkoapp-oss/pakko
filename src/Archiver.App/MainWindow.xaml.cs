@@ -15,6 +15,7 @@ public sealed partial class MainWindow : Window
         InitializeComponent();
         ViewModel = App.Services.GetRequiredService<MainViewModel>();
         this.AppWindow.Resize(new Windows.Graphics.SizeInt32(800, 600));
+        this.AppWindow.Title = "Pakko";
     }
 
     private void FileList_DragOver(object sender, DragEventArgs e)

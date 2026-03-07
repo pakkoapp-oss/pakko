@@ -23,6 +23,7 @@ public sealed partial class MainViewModel : ObservableObject
 
     private readonly IArchiveService _archiveService;
     private readonly IDialogService _dialogService;
+    private readonly ILogService _logService;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(ArchiveCommand))]
@@ -124,10 +125,11 @@ public sealed partial class MainViewModel : ObservableObject
     private string _sortColumn = "Name";
     private bool _sortAscending = true;
 
-    public MainViewModel(IArchiveService archiveService, IDialogService dialogService)
+    public MainViewModel(IArchiveService archiveService, IDialogService dialogService, ILogService logService)
     {
         _archiveService = archiveService;
         _dialogService = dialogService;
+        _logService = logService;
         _fileItems.CollectionChanged += (_, _) =>
         {
             ArchiveCommand.NotifyCanExecuteChanged();
@@ -209,6 +211,11 @@ public sealed partial class MainViewModel : ObservableObject
             StatusMessage = result.Errors.Count == 0 && result.SkippedFiles.Count == 0
                 ? _res.GetString("StatusDone").Replace("{0}", result.CreatedFiles.Count.ToString())
                 : _res.GetString("StatusIssues");
+            _logService.Info($"Archive completed — {result.CreatedFiles.Count} file(s) → {DestinationPath}");
+            foreach (var skipped in result.SkippedFiles)
+                _logService.Warn($"Skipped {skipped.Path} — {skipped.Reason}");
+            foreach (var error in result.Errors)
+                _logService.Error($"{error.SourcePath} — {error.Message}");
             await _dialogService.ShowOperationSummaryAsync("Archive", result);
         }
         finally
@@ -238,6 +245,11 @@ public sealed partial class MainViewModel : ObservableObject
             StatusMessage = result.Errors.Count == 0 && result.SkippedFiles.Count == 0
                 ? _res.GetString("StatusDone").Replace("{0}", result.CreatedFiles.Count.ToString())
                 : _res.GetString("StatusIssues");
+            _logService.Info($"Extract completed — {result.CreatedFiles.Count} file(s) → {DestinationPath}");
+            foreach (var skipped in result.SkippedFiles)
+                _logService.Warn($"Skipped {skipped.Path} — {skipped.Reason}");
+            foreach (var error in result.Errors)
+                _logService.Error($"{error.SourcePath} — {error.Message}");
             await _dialogService.ShowOperationSummaryAsync("Extract", result);
         }
         finally
