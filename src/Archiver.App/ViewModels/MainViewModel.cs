@@ -12,6 +12,7 @@ using Archiver.App.Models;
 using Archiver.App.Services;
 using Archiver.Core.Interfaces;
 using Archiver.Core.Models;
+using Microsoft.UI.Xaml;
 using Windows.ApplicationModel.Resources;
 
 namespace Archiver.App.ViewModels;
@@ -62,6 +63,11 @@ public sealed partial class MainViewModel : ObservableObject
     }
 
     public bool IsArchiveNameEnabled => SelectedArchiveMode == ArchiveMode.SingleArchive;
+
+    public bool IsFileListEmpty => FileItems.Count == 0;
+
+    public Visibility IsFileListEmptyVisibility =>
+        FileItems.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(OnConflictIndex))]
@@ -127,6 +133,8 @@ public sealed partial class MainViewModel : ObservableObject
             ArchiveCommand.NotifyCanExecuteChanged();
             ExtractCommand.NotifyCanExecuteChanged();
             UpdateDefaultDestination();
+            OnPropertyChanged(nameof(IsFileListEmpty));
+            OnPropertyChanged(nameof(IsFileListEmptyVisibility));
         };
     }
 

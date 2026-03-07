@@ -657,7 +657,7 @@ StatusMessage = _res.GetString("StatusDone").Replace("{0}", count.ToString());
 ---
 
 ### T-29 — Drag & Drop on File List Area
-- [ ] **Status:** pending
+- [x] **Status:** complete
 
 **Files:**
 - `src/Archiver.App/MainWindow.xaml`
@@ -686,14 +686,14 @@ List area filled → table visible, hint hidden
 - `Drop` → extract `StorageItems`, add paths via `ViewModel.AddPaths()`
 
 **Acceptance criteria:**
-- [ ] `AllowDrop="True"` set on file list control, not on drop zone hint
-- [ ] Drop zone hint visible only when list is empty
-- [ ] Drop zone hint hidden when list has items
-- [ ] Drag & drop onto list area works when list is empty
-- [ ] Drag & drop onto list area works when list already has items — appends
-- [ ] Files and folders both accepted
-- [ ] Duplicates still prevented
-- [ ] Dropping on buttons, inputs, or other controls outside list area does NOT trigger add
+- [x] `AllowDrop="True"` set on file list control, not on drop zone hint
+- [x] Drop zone hint visible only when list is empty
+- [x] Drop zone hint hidden when list has items
+- [x] Drag & drop onto list area works when list is empty
+- [x] Drag & drop onto list area works when list already has items — appends
+- [x] Files and folders both accepted
+- [x] Duplicates still prevented
+- [x] Dropping on buttons, inputs, or other controls outside list area does NOT trigger add
 
 ---
 

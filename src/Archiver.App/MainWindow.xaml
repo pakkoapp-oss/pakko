@@ -8,31 +8,10 @@
     xmlns:models="using:Archiver.App.Models"
     Title="Archiver">
 
-    <Grid RowDefinitions="Auto,Auto,*,Auto,Auto,Auto,Auto,Auto" Padding="16" RowSpacing="12">
+    <Grid RowDefinitions="Auto,*,Auto,Auto,Auto,Auto,Auto" Padding="16" RowSpacing="12">
 
-        <!-- Row 0: Drop Zone -->
-        <Border
-            Grid.Row="0"
-            Height="120"
-            BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
-            BorderThickness="2"
-            CornerRadius="8"
-            AllowDrop="True"
-            DragOver="DropZone_DragOver"
-            Drop="DropZone_Drop"
-            DoubleTapped="DropZone_DoubleTapped"
-            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
-            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="4">
-                <FontIcon Glyph="&#xE8B7;" FontSize="28" Opacity="0.6"/>
-                <TextBlock
-                    x:Uid="DropZoneHint"
-                    HorizontalAlignment="Center"
-                    Opacity="0.6"/>
-            </StackPanel>
-        </Border>
-
-        <!-- Row 1: Add Files / Add Folder Buttons -->
-        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8">
+        <!-- Row 0: Add Files / Add Folder Buttons -->
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="8">
             <Button
                 x:Uid="AddFilesButton"
                 Command="{x:Bind ViewModel.BrowseFilesCommand, Mode=OneWay}"/>
@@ -41,8 +20,8 @@
                 Command="{x:Bind ViewModel.BrowseFolderCommand, Mode=OneWay}"/>
         </StackPanel>
 
-        <!-- Row 2: File Table -->
-        <Grid Grid.Row="2" RowDefinitions="Auto,*">
+        <!-- Row 1: File Table -->
+        <Grid Grid.Row="1" RowDefinitions="Auto,*">
 
             <!-- Header -->
             <Border
@@ -78,55 +57,73 @@
                 </Grid>
             </Border>
 
-            <!-- Body -->
-            <ListView
-                Grid.Row="1"
-                ItemsSource="{x:Bind ViewModel.FileItems, Mode=OneWay}"
-                SelectionMode="None"
-                MinHeight="80">
-                <ListView.ItemContainerStyle>
-                    <Style TargetType="ListViewItem">
-                        <Setter Property="Padding" Value="12,4,12,4"/>
-                        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-                    </Style>
-                </ListView.ItemContainerStyle>
-                <ListView.ItemTemplate>
-                    <DataTemplate x:DataType="models:FileItem">
-                        <Grid ColumnDefinitions="*,80,100,140">
-                            <Grid.ContextFlyout>
-                                <MenuFlyout>
-                                    <MenuFlyoutItem Text="Remove" Click="RemoveItem_Click"/>
-                                </MenuFlyout>
-                            </Grid.ContextFlyout>
-                            <TextBlock
-                                Grid.Column="0"
-                                Text="{x:Bind Name}"
-                                TextTrimming="CharacterEllipsis"
-                                ToolTipService.ToolTip="{x:Bind FullPath}"/>
-                            <TextBlock
-                                Grid.Column="1"
-                                Text="{x:Bind Type}"
-                                TextTrimming="CharacterEllipsis"
-                                Opacity="0.7"/>
-                            <TextBlock
-                                Grid.Column="2"
-                                Text="{x:Bind Size, Mode=OneWay}"
-                                TextTrimming="CharacterEllipsis"
-                                Opacity="0.7"/>
-                            <TextBlock
-                                Grid.Column="3"
-                                Text="{x:Bind ModifiedDisplay}"
-                                TextTrimming="CharacterEllipsis"
-                                Opacity="0.7"/>
-                        </Grid>
-                    </DataTemplate>
-                </ListView.ItemTemplate>
-            </ListView>
+            <!-- Body: ListView + empty-state hint overlay in the same cell -->
+            <Grid Grid.Row="1">
+                <ListView
+                    ItemsSource="{x:Bind ViewModel.FileItems, Mode=OneWay}"
+                    SelectionMode="None"
+                    MinHeight="80"
+                    AllowDrop="True"
+                    DragOver="FileList_DragOver"
+                    Drop="FileList_Drop">
+                    <ListView.ItemContainerStyle>
+                        <Style TargetType="ListViewItem">
+                            <Setter Property="Padding" Value="12,4,12,4"/>
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                        </Style>
+                    </ListView.ItemContainerStyle>
+                    <ListView.ItemTemplate>
+                        <DataTemplate x:DataType="models:FileItem">
+                            <Grid ColumnDefinitions="*,80,100,140">
+                                <Grid.ContextFlyout>
+                                    <MenuFlyout>
+                                        <MenuFlyoutItem Text="Remove" Click="RemoveItem_Click"/>
+                                    </MenuFlyout>
+                                </Grid.ContextFlyout>
+                                <TextBlock
+                                    Grid.Column="0"
+                                    Text="{x:Bind Name}"
+                                    TextTrimming="CharacterEllipsis"
+                                    ToolTipService.ToolTip="{x:Bind FullPath}"/>
+                                <TextBlock
+                                    Grid.Column="1"
+                                    Text="{x:Bind Type}"
+                                    TextTrimming="CharacterEllipsis"
+                                    Opacity="0.7"/>
+                                <TextBlock
+                                    Grid.Column="2"
+                                    Text="{x:Bind Size, Mode=OneWay}"
+                                    TextTrimming="CharacterEllipsis"
+                                    Opacity="0.7"/>
+                                <TextBlock
+                                    Grid.Column="3"
+                                    Text="{x:Bind ModifiedDisplay}"
+                                    TextTrimming="CharacterEllipsis"
+                                    Opacity="0.7"/>
+                            </Grid>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
+
+                <!-- Empty-state hint overlay -->
+                <StackPanel
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Spacing="4"
+                    IsHitTestVisible="False"
+                    Visibility="{x:Bind ViewModel.IsFileListEmptyVisibility, Mode=OneWay}">
+                    <FontIcon Glyph="&#xE8B7;" FontSize="28" Opacity="0.6"/>
+                    <TextBlock
+                        x:Uid="DropZoneHint"
+                        HorizontalAlignment="Center"
+                        Opacity="0.6"/>
+                </StackPanel>
+            </Grid>
 
         </Grid>
 
-        <!-- Row 3: Destination Path -->
-        <Grid Grid.Row="3" ColumnDefinitions="Auto,*,Auto">
+        <!-- Row 2: Destination Path -->
+        <Grid Grid.Row="2" ColumnDefinitions="Auto,*,Auto">
             <TextBlock
                 x:Uid="DestinationLabel"
                 Grid.Column="0"
@@ -144,8 +141,8 @@
                 Command="{x:Bind ViewModel.BrowseDestinationCommand, Mode=OneWay}"/>
         </Grid>
 
-        <!-- Row 4: Action Buttons -->
-        <Grid Grid.Row="4" ColumnDefinitions="*,*,Auto">
+        <!-- Row 3: Action Buttons -->
+        <Grid Grid.Row="3" ColumnDefinitions="*,*,Auto">
 
             <Button
                 x:Uid="ArchiveButton"
@@ -168,8 +165,8 @@
                 Command="{x:Bind ViewModel.ClearCommand, Mode=OneWay}"/>
         </Grid>
 
-        <!-- Row 5: Archive Options (Mode + Name) -->
-        <StackPanel Grid.Row="5" Spacing="8">
+        <!-- Row 4: Archive Options (Mode + Name) -->
+        <StackPanel Grid.Row="4" Spacing="8">
             <StackPanel Orientation="Horizontal" Spacing="16">
                 <TextBlock Text="Mode:" VerticalAlignment="Center" Width="46"/>
                 <RadioButton
@@ -205,8 +202,8 @@
             </StackPanel>
         </StackPanel>
 
-        <!-- Row 6: Shared Options + Post-Action Checkboxes -->
-        <StackPanel Grid.Row="6" Spacing="4">
+        <!-- Row 5: Shared Options + Post-Action Checkboxes -->
+        <StackPanel Grid.Row="5" Spacing="4">
             <StackPanel Orientation="Horizontal" Spacing="8">
                 <TextBlock x:Uid="ConflictLabel" VerticalAlignment="Center"/>
                 <ComboBox SelectedIndex="{x:Bind ViewModel.OnConflictIndex, Mode=TwoWay}">
@@ -226,8 +223,8 @@
                 IsChecked="{x:Bind ViewModel.DeleteArchiveAfterExtraction, Mode=TwoWay}"/>
         </StackPanel>
 
-        <!-- Row 7: Status Bar -->
-        <Grid Grid.Row="7" RowDefinitions="Auto,Auto" RowSpacing="4">
+        <!-- Row 6: Status Bar -->
+        <Grid Grid.Row="6" RowDefinitions="Auto,Auto" RowSpacing="4">
             <ProgressBar
                 Grid.Row="0"
                 Value="{x:Bind ViewModel.Progress, Mode=OneWay}"
