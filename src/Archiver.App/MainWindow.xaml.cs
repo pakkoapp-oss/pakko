@@ -16,7 +16,17 @@ public sealed partial class MainWindow : Window
         ViewModel = App.Services.GetRequiredService<MainViewModel>();
         this.AppWindow.Resize(new Windows.Graphics.SizeInt32(800, 600));
         this.AppWindow.Title = "Pakko";
+
+        var iconPath = System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", "Square44x44Logo.ico");
+        if (System.IO.File.Exists(iconPath))
+            this.AppWindow.SetIcon(iconPath);
+
+        this.Closed += (_, _) => TrayIcon.Dispose();
     }
+
+    private void TrayOpen_Click(object sender, RoutedEventArgs e) => this.Activate();
+
+    private void TrayExit_Click(object sender, RoutedEventArgs e) => Application.Current.Exit();
 
     private void FileList_DragOver(object sender, DragEventArgs e)
     {

@@ -6,9 +6,25 @@
     xmlns:local="using:Archiver.App"
     xmlns:viewmodels="using:Archiver.App.ViewModels"
     xmlns:models="using:Archiver.App.Models"
+    xmlns:tb="using:H.NotifyIcon"
     Title="Archiver">
 
     <Grid RowDefinitions="Auto,*,Auto,Auto,Auto,Auto,Auto" Padding="16" RowSpacing="12">
+
+        <!-- Tray icon -->
+        <tb:TaskbarIcon
+            x:Name="TrayIcon"
+            Grid.RowSpan="7"
+            ToolTipText="Pakko"
+            IconSource="Assets/Square44x44Logo.ico">
+            <tb:TaskbarIcon.ContextFlyout>
+                <MenuFlyout>
+                    <MenuFlyoutItem Text="Open Pakko" Click="TrayOpen_Click"/>
+                    <MenuFlyoutSeparator/>
+                    <MenuFlyoutItem Text="Exit" Click="TrayExit_Click"/>
+                </MenuFlyout>
+            </tb:TaskbarIcon.ContextFlyout>
+        </tb:TaskbarIcon>
 
         <!-- Row 0: Add Files / Add Folder Buttons -->
         <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="8">
