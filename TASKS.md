@@ -418,7 +418,7 @@ Version bump: increment `Package.appxmanifest` `Version` attribute before each s
 ---
 
 ### T-F17 — Tray Left-Click Toggle
-- [ ] **Status:** future
+- [x] **Status:** complete
 - **Store blocker — complete before v1.1 submission**
 
 **What:** Left-click on the system tray icon toggles window visibility (show if hidden, hide if visible). Currently only right-click shows the context menu.
@@ -426,10 +426,10 @@ Version bump: increment `Package.appxmanifest` `Version` attribute before each s
 **File:** `src/Archiver.App/MainWindow.xaml.cs` and `MainWindow.xaml`.
 
 **Acceptance criteria:**
-- [ ] `TrayLeftClickCommand` added to `MainWindow.xaml.cs`
-- [ ] Left-click on tray icon hides window if visible, shows if hidden
-- [ ] `LeftClickCommand="{x:Bind TrayLeftClickCommand}"` wired in XAML
-- [ ] Works in both Release and Debug configurations
+- [x] `TrayLeftClickCommand` added to `MainWindow.xaml.cs`
+- [x] Left-click on tray icon hides window if visible, shows if hidden
+- [x] `LeftClickCommand="{x:Bind TrayLeftClickCommand}"` wired in XAML
+- [x] Works in both Release and Debug configurations
 
 ---
 
