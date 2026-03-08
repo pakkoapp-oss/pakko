@@ -130,3 +130,10 @@ Task<IReadOnlyList<string>> PickFoldersAsync()
 - Do not implement features not listed in `TASKS.md` or `SPEC.md`
 - Do not use `Thread.Sleep` — use `await Task.Delay` if needed
 - Do not use `static` mutable fields in services
+
+---
+
+## Workflow Tips
+
+- For complex tasks (architecture changes, new services, multi-file refactoring)
+  use Plan Mode before writing any code — activate with /plan in Claude Code.
