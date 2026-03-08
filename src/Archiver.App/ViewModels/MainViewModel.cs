@@ -36,7 +36,11 @@ public sealed partial class MainViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(CancelCommand))]
     [NotifyPropertyChangedFor(nameof(IsOperationRunning))]
     [NotifyPropertyChangedFor(nameof(IsOperationRunningVisibility))]
+    [NotifyPropertyChangedFor(nameof(ArchiveButtonText))]
+    [NotifyPropertyChangedFor(nameof(ExtractButtonText))]
     private bool _isBusy = false;
+
+    private string _lastOperation = string.Empty;
 
     [ObservableProperty]
     private bool _isIndeterminate = false;
@@ -45,6 +49,9 @@ public sealed partial class MainViewModel : ObservableObject
     private int _progress = 0;
 
     public bool IsOperationRunning => IsBusy;
+
+    public string ArchiveButtonText => IsBusy && _lastOperation == "archive" ? "Archiving..." : "Archive";
+    public string ExtractButtonText => IsBusy && _lastOperation == "extract" ? "Extracting..." : "Extract";
 
     public Visibility IsOperationRunningVisibility =>
         IsBusy ? Visibility.Visible : Visibility.Collapsed;
@@ -205,6 +212,7 @@ public sealed partial class MainViewModel : ObservableObject
     private async Task ArchiveAsync()
     {
         _cts = new CancellationTokenSource();
+        _lastOperation = "archive";
         IsBusy = true;
         CancelCommand.NotifyCanExecuteChanged();
         Progress = 0;
@@ -268,6 +276,7 @@ public sealed partial class MainViewModel : ObservableObject
     private async Task ExtractAsync()
     {
         _cts = new CancellationTokenSource();
+        _lastOperation = "extract";
         IsBusy = true;
         CancelCommand.NotifyCanExecuteChanged();
         Progress = 0;

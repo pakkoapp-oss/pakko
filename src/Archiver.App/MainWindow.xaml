@@ -163,15 +163,15 @@
         <Grid Grid.Row="3" ColumnDefinitions="*,*,Auto" MinHeight="40">
 
             <Button
-                x:Uid="ArchiveButton"
                 Grid.Column="0"
+                Content="{x:Bind ViewModel.ArchiveButtonText, Mode=OneWay}"
                 HorizontalAlignment="Stretch"
                 Command="{x:Bind ViewModel.ArchiveCommand, Mode=OneWay}"
                 Style="{StaticResource AccentButtonStyle}"/>
 
             <Button
-                x:Uid="ExtractButton"
                 Grid.Column="1"
+                Content="{x:Bind ViewModel.ExtractButtonText, Mode=OneWay}"
                 Margin="8,0,0,0"
                 HorizontalAlignment="Stretch"
                 Command="{x:Bind ViewModel.ExtractCommand, Mode=OneWay}"/>
