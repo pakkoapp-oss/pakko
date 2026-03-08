@@ -317,8 +317,8 @@ public sealed class ZipArchiveService : IArchiveService
             try
             {
                 bool alreadyIsolated = options.Mode == ExtractMode.SeparateFolders;
-                string actualDest = await Task.Run(() =>
-                    ExtractWithSmartFoldering(archivePath, destDir, alreadyIsolated, options.OnConflict),
+                string actualDest = await Task.Run(async () =>
+                    await ExtractWithSmartFolderingAsync(archivePath, destDir, alreadyIsolated, options.OnConflict, cancellationToken),
                     cancellationToken).ConfigureAwait(false);
 
                 createdFiles.Add(actualDest);
@@ -378,7 +378,12 @@ public sealed class ZipArchiveService : IArchiveService
         return result;
     }
 
-    private static string ExtractWithSmartFoldering(string archivePath, string destDir, bool alreadyIsolated = false, ConflictBehavior onConflict = ConflictBehavior.Skip)
+    private static async Task<string> ExtractWithSmartFolderingAsync(
+        string archivePath,
+        string destDir,
+        bool alreadyIsolated,
+        ConflictBehavior onConflict,
+        CancellationToken cancellationToken)
     {
         using var archive = ZipFile.OpenRead(archivePath);
 
@@ -410,6 +415,9 @@ public sealed class ZipArchiveService : IArchiveService
 
         foreach (var entry in fileEntries)
         {
+            if (cancellationToken.IsCancellationRequested)
+                break;
+
             string relativePath = entry.FullName.Replace('/', Path.DirectorySeparatorChar);
 
             if (isSingleRootFolder)
@@ -432,7 +440,15 @@ public sealed class ZipArchiveService : IArchiveService
                 if (onConflict == ConflictBehavior.Rename) destFilePath = GetUniqueFilePath(destFilePath);
             }
 
-            entry.ExtractToFile(destFilePath, overwrite: true);
+            using var entryStream = entry.Open();
+            using var fileStream = new FileStream(
+                destFilePath,
+                FileMode.Create,
+                FileAccess.Write,
+                FileShare.None,
+                bufferSize: 81920,
+                useAsync: true);
+            await entryStream.CopyToAsync(fileStream, cancellationToken).ConfigureAwait(false);
         }
 
         return actualDest;
