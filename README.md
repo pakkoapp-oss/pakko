@@ -33,7 +33,6 @@ The entire compression stack is part of the .NET Base Class Library — maintain
 
 - **No third-party compression dependencies** — attack surface limited to .NET runtime
 - **Open source** — full codebase auditable
-- **SHA-256 integrity manifest** — archives created by Pakko carry a `PAKKO-INTEGRITY-V1` manifest in the ZIP comment; verified on extraction
 - **Minimal permissions** — no network access, no background services, no shell extensions
 - **No telemetry** — no data leaves the machine
 
@@ -69,7 +68,6 @@ The entire compression stack is part of the .NET Base Class Library — maintain
 
 - ✅ Archive (single / separate) with compression level selector
 - ✅ Extract with smart folder logic and ZIP slip protection
-- ✅ SHA-256 integrity manifest (PAKKO-INTEGRITY-V1)
 - ✅ Password-protected ZIP detection
 - ✅ System tray icon
 - ✅ File log (`%LocalAppData%\Pakko\logs\pakko.log`)

@@ -201,7 +201,7 @@ File list row `Height="*"`. Window size `800×700`.
 Both `ArchiveAsync` (SingleArchive) and `ExtractAsync` wrapped in `Task.Run`. Per-file `progress?.Report()`. `IsIndeterminate` for single large file/archive >10 MB. `IsOperationRunning` disables all buttons.
 
 ### T-34 — SHA-256 Integrity Manifest in ZIP Comment
-- [x] **Status:** complete
+- [x] **Status:** complete → Removed in post-v1.0 — redundant with ZIP built-in CRC-32
 
 `PAKKO-INTEGRITY-V1` header in ZIP comment. SHA-256 per entry after archive creation. Verification on extract — mismatch → `ArchiveResult.Warnings`, not errors. `ArchiveResult.Warnings` field added.
 

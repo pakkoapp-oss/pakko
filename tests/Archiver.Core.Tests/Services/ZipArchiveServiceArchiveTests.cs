@@ -214,4 +214,41 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
         progressValues.Should().NotBeEmpty();
         progressValues.Last().Should().Be(100);
     }
+
+    [Fact]
+    public async Task ArchiveAsync_CancelMidArchive_NoUnhandledException()
+    {
+        // Create 3 files with ~64 KB each so the operation takes measurable time
+        string largeContent = new string('x', 64 * 1024);
+        var files = Enumerable.Range(1, 3)
+            .Select(i => _temp.CreateFile($"large{i}.txt", largeContent))
+            .ToList();
+
+        using var destDir = new TempDirectory();
+        using var cts = new CancellationTokenSource();
+
+        var options = new ArchiveOptions
+        {
+            SourcePaths = files,
+            DestinationFolder = destDir.Path,
+            ArchiveName = "cancel_test",
+            Mode = ArchiveMode.SingleArchive
+        };
+
+        // Cancel after a short delay — may fire before, during, or after the operation
+        _ = Task.Delay(5).ContinueWith(_ => cts.Cancel());
+
+        ArchiveResult? result = null;
+        try
+        {
+            result = await _sut.ArchiveAsync(options, cancellationToken: cts.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            // Expected when cancellation fires mid-file via CopyToAsync
+        }
+
+        // If we got a result it should have no errors (completed before cancel or cancel was a no-op)
+        result?.Errors.Should().BeEmpty();
+    }
 }

@@ -702,9 +702,7 @@ Sort paths before processing for consistent, predictable archive structure.
 ---
 
 ### T-F33 — Archive Verify Command
-- [ ] **Status:** future
-- **Priority:** low
-- **Depends on:** T-F09 (CLI Core)
+- [ ] **Status:** cancelled — integrity manifest removed; ZIP CRC-32 is sufficient
 
 **What:** CLI command to verify archive integrity without extraction.
 Checks ZIP structure and PAKKO-INTEGRITY-V1 manifest if present.
@@ -719,8 +717,7 @@ Checks ZIP structure and PAKKO-INTEGRITY-V1 manifest if present.
 ---
 
 ### T-F34 — Archive Metadata in ZIP Comment
-- [ ] **Status:** future
-- **Priority:** low
+- [ ] **Status:** cancelled — integrity manifest removed; ZIP CRC-32 is sufficient
 
 **What:** Store Pakko version and creation timestamp in ZIP comment
 alongside existing PAKKO-INTEGRITY-V1 manifest.

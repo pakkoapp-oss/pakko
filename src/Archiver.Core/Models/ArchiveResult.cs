@@ -6,5 +6,4 @@ public sealed record ArchiveResult
     public IReadOnlyList<string> CreatedFiles { get; init; } = [];
     public IReadOnlyList<ArchiveError> Errors { get; init; } = [];
     public IReadOnlyList<SkippedFile> SkippedFiles { get; init; } = [];
-    public IReadOnlyList<string> Warnings { get; init; } = [];
 }

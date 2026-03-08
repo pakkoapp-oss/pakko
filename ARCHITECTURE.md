@@ -31,7 +31,6 @@
 ┌─────────────────────────────────────┐
 │       Windows / .NET APIs           │
 │  System.IO.Compression              │
-│  System.Security.Cryptography       │
 │  System.Diagnostics.Process         │
 └─────────────────────────────────────┘
 ```
@@ -122,7 +121,6 @@ public sealed record ArchiveResult
     public IReadOnlyList<string> CreatedFiles { get; init; } = [];
     public IReadOnlyList<ArchiveError> Errors { get; init; } = [];
     public IReadOnlyList<SkippedFile> SkippedFiles { get; init; } = [];
-    public IReadOnlyList<string> Warnings { get; init; } = [];   // SHA-256 mismatches (T-34)
 }
 ```
 
@@ -206,7 +204,6 @@ public interface ILogService
 - **Progress:** `progress?.Report((i+1)*100/total)` per file in both Archive and Extract
 - **Threading:** `Task.Run` wraps all IO — never blocks UI thread
 - **Indeterminate:** single source/archive >10 MB → `progress?.Report(-1)`
-- **Integrity manifest (T-34):** writes `PAKKO-INTEGRITY-V1` + SHA-256 per entry to ZIP comment after creation; verifies on extract — mismatch → `Warnings`
 - **Lazy enumeration:** `Directory.EnumerateFiles` — no upfront collection for large directories
 
 ---

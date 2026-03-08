@@ -105,7 +105,6 @@ bool Success
 IReadOnlyList<string> CreatedFiles
 IReadOnlyList<ArchiveError> Errors
 IReadOnlyList<SkippedFile> SkippedFiles
-IReadOnlyList<string> Warnings          // SHA-256 mismatches (T-34)
 
 // ILogService
 void Info(string message)

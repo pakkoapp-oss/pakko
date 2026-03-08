@@ -240,12 +240,20 @@
 
         <!-- Row 6: Status Bar -->
         <Grid Grid.Row="6" RowDefinitions="Auto,Auto" RowSpacing="4">
-            <ProgressBar
-                Grid.Row="0"
-                Value="{x:Bind ViewModel.Progress, Mode=OneWay}"
-                Maximum="100"
-                IsIndeterminate="{x:Bind ViewModel.IsIndeterminate, Mode=OneWay}"
-                Visibility="{x:Bind ViewModel.IsOperationRunningVisibility, Mode=OneWay}"/>
+            <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+                <ProgressBar
+                    Grid.Column="0"
+                    Value="{x:Bind ViewModel.Progress, Mode=OneWay}"
+                    Maximum="100"
+                    IsIndeterminate="{x:Bind ViewModel.IsIndeterminate, Mode=OneWay}"
+                    Visibility="{x:Bind ViewModel.IsOperationRunningVisibility, Mode=OneWay}"/>
+                <Button
+                    Grid.Column="1"
+                    Content="✕ Cancel"
+                    Margin="8,0,0,0"
+                    Command="{x:Bind ViewModel.CancelCommand, Mode=OneWay}"
+                    Visibility="{x:Bind ViewModel.IsOperationRunningVisibility, Mode=OneWay}"/>
+            </Grid>
             <TextBlock
                 Grid.Row="1"
                 Text="{x:Bind ViewModel.StatusMessage, Mode=OneWay}"

@@ -25,12 +25,15 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly IDialogService _dialogService;
     private readonly ILogService _logService;
 
+    private CancellationTokenSource? _cts;
+
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(ArchiveCommand))]
     [NotifyCanExecuteChangedFor(nameof(ExtractCommand))]
     [NotifyCanExecuteChangedFor(nameof(ClearCommand))]
     [NotifyCanExecuteChangedFor(nameof(BrowseFilesCommand))]
     [NotifyCanExecuteChangedFor(nameof(BrowseFolderCommand))]
+    [NotifyCanExecuteChangedFor(nameof(CancelCommand))]
     [NotifyPropertyChangedFor(nameof(IsOperationRunning))]
     [NotifyPropertyChangedFor(nameof(IsOperationRunningVisibility))]
     private bool _isBusy = false;
@@ -201,10 +204,13 @@ public sealed partial class MainViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(CanArchive))]
     private async Task ArchiveAsync()
     {
+        _cts = new CancellationTokenSource();
         IsBusy = true;
+        CancelCommand.NotifyCanExecuteChanged();
         Progress = 0;
         IsIndeterminate = false;
         StatusMessage = _res.GetString("StatusArchiving");
+        bool wasCancelled = false;
         try
         {
             var options = new ArchiveOptions
@@ -223,8 +229,8 @@ public sealed partial class MainViewModel : ObservableObject
                 if (p < 0) { IsIndeterminate = true; Progress = 0; }
                 else { IsIndeterminate = false; Progress = p; }
             });
-            var result = await _archiveService.ArchiveAsync(options, progress);
-            StatusMessage = result.Errors.Count == 0 && result.SkippedFiles.Count == 0 && result.Warnings.Count == 0
+            var result = await _archiveService.ArchiveAsync(options, progress, _cts.Token);
+            StatusMessage = result.Errors.Count == 0 && result.SkippedFiles.Count == 0
                 ? _res.GetString("StatusDone").Replace("{0}", result.CreatedFiles.Count.ToString())
                 : _res.GetString("StatusIssues");
             _logService.Info($"Archive completed — {result.CreatedFiles.Count} file(s) → {DestinationPath}");
@@ -234,20 +240,40 @@ public sealed partial class MainViewModel : ObservableObject
                 _logService.Error($"{error.SourcePath} — {error.Message}");
             await _dialogService.ShowOperationSummaryAsync("Archive", result);
         }
+        catch (OperationCanceledException)
+        {
+            wasCancelled = true;
+            StatusMessage = _res.GetString("StatusCancelled");
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = "Error";
+            _logService.Error("Unexpected error during operation", ex);
+            await _dialogService.ShowErrorAsync("Error", ex.Message);
+        }
         finally
         {
+            _cts?.Dispose();
+            _cts = null;
             IsBusy = false;
-            StatusMessage = _res.GetString("StatusReady");
         }
+        if (wasCancelled)
+        {
+            await Task.Delay(2000);
+        }
+        StatusMessage = _res.GetString("StatusReady");
     }
 
     [RelayCommand(CanExecute = nameof(CanExtract))]
     private async Task ExtractAsync()
     {
+        _cts = new CancellationTokenSource();
         IsBusy = true;
+        CancelCommand.NotifyCanExecuteChanged();
         Progress = 0;
         IsIndeterminate = false;
         StatusMessage = _res.GetString("StatusExtracting");
+        bool wasCancelled = false;
         try
         {
             var options = new ExtractOptions
@@ -263,8 +289,8 @@ public sealed partial class MainViewModel : ObservableObject
                 if (p < 0) { IsIndeterminate = true; Progress = 0; }
                 else { IsIndeterminate = false; Progress = p; }
             });
-            var result = await _archiveService.ExtractAsync(options, progress);
-            StatusMessage = result.Errors.Count == 0 && result.SkippedFiles.Count == 0 && result.Warnings.Count == 0
+            var result = await _archiveService.ExtractAsync(options, progress, _cts.Token);
+            StatusMessage = result.Errors.Count == 0 && result.SkippedFiles.Count == 0
                 ? _res.GetString("StatusDone").Replace("{0}", result.CreatedFiles.Count.ToString())
                 : _res.GetString("StatusIssues");
             _logService.Info($"Extract completed — {result.CreatedFiles.Count} file(s) → {DestinationPath}");
@@ -272,16 +298,34 @@ public sealed partial class MainViewModel : ObservableObject
                 _logService.Warn($"Skipped {skipped.Path} — {skipped.Reason}");
             foreach (var error in result.Errors)
                 _logService.Error($"{error.SourcePath} — {error.Message}");
-            foreach (var warning in result.Warnings)
-                _logService.Warn($"Integrity: {warning}");
             await _dialogService.ShowOperationSummaryAsync("Extract", result);
+        }
+        catch (OperationCanceledException)
+        {
+            wasCancelled = true;
+            StatusMessage = _res.GetString("StatusCancelled");
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = "Error";
+            _logService.Error("Unexpected error during operation", ex);
+            await _dialogService.ShowErrorAsync("Error", ex.Message);
         }
         finally
         {
+            _cts?.Dispose();
+            _cts = null;
             IsBusy = false;
-            StatusMessage = _res.GetString("StatusReady");
         }
+        if (wasCancelled)
+        {
+            await Task.Delay(2000);
+        }
+        StatusMessage = _res.GetString("StatusReady");
     }
+
+    [RelayCommand(CanExecute = nameof(IsOperationRunning))]
+    private void Cancel() => _cts?.Cancel();
 
     private bool CanArchive() => !IsBusy && FileItems.Count > 0;
     private bool CanExtract() => !IsBusy && FileItems.Count > 0;
