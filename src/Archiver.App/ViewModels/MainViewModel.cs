@@ -115,14 +115,15 @@ public sealed partial class MainViewModel : ObservableObject
             CompressionLevel.Optimal       => 1,
             CompressionLevel.SmallestSize  => 2,
             CompressionLevel.NoCompression => 3,
-            _                              => 1
+            _                              => 0
         };
         set => SelectedCompressionLevel = value switch
         {
             0 => CompressionLevel.Fastest,
+            1 => CompressionLevel.Optimal,
             2 => CompressionLevel.SmallestSize,
             3 => CompressionLevel.NoCompression,
-            _ => CompressionLevel.Optimal
+            _ => CompressionLevel.Fastest
         };
     }
 
