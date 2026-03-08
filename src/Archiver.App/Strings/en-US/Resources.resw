@@ -56,11 +56,8 @@
   <data name="OpenDestinationCheck.Content" xml:space="preserve">
     <value>Open destination folder after completion</value>
   </data>
-  <data name="DeleteSourceCheck.Content" xml:space="preserve">
-    <value>Delete source files after archiving</value>
-  </data>
-  <data name="DeleteArchiveCheck.Content" xml:space="preserve">
-    <value>Delete archive after extraction</value>
+  <data name="DeleteAfterOperationCheck.Content" xml:space="preserve">
+    <value>Delete after operation</value>
   </data>
 
   <!-- Status messages -->

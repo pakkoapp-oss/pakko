@@ -16,6 +16,8 @@ public sealed partial class MainWindow : Window
     public ICommand TrayOpenCommand { get; }
     public ICommand TrayAboutCommand { get; }  // placeholder — implemented in T-F14
     public ICommand TrayExitCommand { get; }
+    public ICommand TrayLeftClickCommand { get; }
+
 
     public MainWindow()
     {
@@ -30,6 +32,13 @@ public sealed partial class MainWindow : Window
             await App.Services.GetRequiredService<IDialogService>().ShowAboutAsync();
         });
         TrayExitCommand = new RelayCommand(() => Application.Current.Exit());
+        TrayLeftClickCommand = new RelayCommand(() =>
+        {
+            if (this.AppWindow.IsVisible)
+                this.AppWindow.Hide();
+            else
+                this.Activate();
+        });
 
         InitializeComponent();
         ViewModel = App.Services.GetRequiredService<MainViewModel>();
@@ -75,17 +84,6 @@ public sealed partial class MainWindow : Window
             }
             ViewModel.AddPaths(paths);
         }
-    }
-
-    private void TrayOpen_Click(object sender, RoutedEventArgs e)
-    {
-        System.Diagnostics.Debug.WriteLine("[Tray] TrayOpen_Click fired");
-        DispatcherQueue.TryEnqueue(() =>
-        {
-            this.AppWindow.Show();
-            (this.AppWindow.Presenter as Microsoft.UI.Windowing.OverlappedPresenter)?.Restore();
-            this.Activate();
-        });
     }
 
     private void RemoveItem_Click(object sender, RoutedEventArgs e)

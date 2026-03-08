@@ -261,11 +261,11 @@ One-line change. Windows on ARM increasingly common in government/enterprise.
 
 No code changes required — .NET 8 JIT handles ARM64 natively.
 
-**Acceptance criteria (when implemented):**
-- [ ] `win-arm64` added to `RuntimeIdentifiers`
-- [ ] App builds for ARM64 without errors
-- [ ] MSIX bundle includes both architectures
-- [ ] Smoke test on ARM64: archive and extract work correctly
+**Acceptance criteria:**
+- [x] `win-arm64` added to `RuntimeIdentifiers`
+- [x] App builds for ARM64 without errors
+- [x] MSIX bundle includes both architectures
+- [x] Smoke test on ARM64: archive and extract work correctly
 
 ---
 
@@ -336,7 +336,7 @@ Rule removed on uninstall.
 **Cost:** $0 for individual developers (as of September 2025).
 
 **Prerequisites before submission:**
-- Proper app icon in all required sizes (T-F16 — see below)
+- Proper app icon in all required sizes
 - About dialog with version and links (T-F14)
 - Store listing assets: screenshots, description, privacy policy URL
 
@@ -380,13 +380,331 @@ Version bump: increment `Package.appxmanifest` `Version` attribute before each s
 
 ---
 
-### T-F14 — About Dialog
-- [x] **Status:** complete
+### T-F16 — Byte-accurate Progress Reporting
+- [ ] **Status:** future
+
+**What:** Replace the indeterminate progress bar with real percentage by wrapping `ZipArchiveService` streams in a `ProgressStream` that counts bytes written/read. `System.IO.Compression` does not expose byte-level progress natively, so stream wrapping is required.
+
+**Key challenge:** Total byte count must be computed up-front (sum of source file sizes for archive, sum of compressed entry sizes for extract) before streaming begins.
+
+**File:** `src/Archiver.Core/Services/ZipArchiveService.cs` and a new `src/Archiver.Core/IO/ProgressStream.cs`.
 
 **Acceptance criteria:**
-- [x] `ContentDialog` shows app name, version, description, license
-- [x] GitHub link opens in browser via `Launcher.LaunchUriAsync`
-- [x] Privacy Policy link opens in browser via `Launcher.LaunchUriAsync`
-- [x] Version read dynamically from `Package.Current.Id.Version`
-- [x] URLs read from `Resources.resw` — not hardcoded in C#
-- [x] Dialog visible when main window is behind other windows (`this.Activate()` called first)
+- [ ] `ProgressStream` wrapper class in `Archiver.Core` counts bytes read/written and reports to `IProgress<int>`
+- [ ] `ArchiveAsync` reports real byte-based percentage for `SingleArchive` mode
+- [ ] `ExtractAsync` reports real byte-based percentage
+- [ ] `IsIndeterminate` removed from `MainViewModel` — replaced with real percentage
+- [ ] `dotnet test` passes — existing tests unchanged
+
+---
+
+### T-F17 — Tray Left-Click Toggle
+- [ ] **Status:** future
+
+**What:** Left-click on the system tray icon toggles window visibility (show if hidden, hide if visible). Currently only right-click shows the context menu.
+
+**File:** `src/Archiver.App/MainWindow.xaml.cs` and `MainWindow.xaml`.
+
+**Acceptance criteria:**
+- [ ] `TrayLeftClickCommand` added to `MainWindow.xaml.cs`
+- [ ] Left-click on tray icon hides window if visible, shows if hidden
+- [ ] `LeftClickCommand="{x:Bind TrayLeftClickCommand}"` wired in XAML
+- [ ] Works in both Release and Debug configurations
+
+---
+
+### T-F18 — Operation Spinner on Action Buttons
+- [ ] **Status:** future
+
+**What:** Show an indeterminate `ProgressRing` inline next to the button text on Archive and Extract buttons while an operation is running. Provides visual feedback without relying solely on the progress bar.
+
+**File:** `src/Archiver.App/MainWindow.xaml`.
+
+**Acceptance criteria:**
+- [ ] `ProgressRing` visible on Archive button while `IsOperationRunning = true`
+- [ ] `ProgressRing` visible on Extract button while `IsOperationRunning = true`
+- [ ] Buttons remain disabled during operation (existing behavior unchanged)
+- [ ] No layout shift when spinner appears or disappears
+
+---
+
+### T-F19 — Streaming Safety Audit
+- [ ] **Status:** future
+
+**What:** Verify all file I/O in ZipArchiveService uses stream-based operations
+with optimal buffer size. No File.ReadAllBytes or large in-memory buffers.
+
+**Acceptance criteria:**
+- [ ] All file transfers use CopyToAsync with explicit buffer size 81920 (80 KB)
+- [ ] No File.ReadAllBytes or File.ReadAllText in ZipArchiveService
+- [ ] Memory profiling on 1 GB file shows no spike beyond 2x buffer size
+- [ ] dotnet test passes — existing tests unchanged
+
+---
+
+### T-F20 — Zip64 Verification
+- [ ] **Status:** future
+
+**What:** Verify Zip64 support works correctly for large archives.
+.NET supports Zip64 but behavior must be explicitly tested.
+
+**Acceptance criteria:**
+- [ ] Test: archive with >65535 files completes without error
+- [ ] Test: archive >4 GB completes without error
+- [ ] Test: extract >4 GB archive completes without error
+- [ ] dotnet test passes
+
+---
+
+### T-F21 — Race Condition Handling During Traversal
+- [ ] **Status:** future
+
+**What:** Files may be modified or deleted during directory traversal.
+FileNotFoundException during archiving should be recoverable, not fatal.
+
+**File:** `src/Archiver.Core/Services/ZipArchiveService.cs`
+
+**Acceptance criteria:**
+- [ ] FileNotFoundException during traversal → ArchiveError, operation continues
+- [ ] File deleted between scan and read → ArchiveError with clear message
+- [ ] No unhandled exception reaches caller
+- [ ] dotnet test passes — new test: file deleted mid-archive → ArchiveError
+
+---
+
+### T-F22 — Windows Long Path Support
+- [ ] **Status:** future
+
+**What:** Windows paths exceeding 260 characters fail silently on some APIs.
+Verify Pakko handles long paths correctly.
+
+**Acceptance criteria:**
+- [ ] app.manifest contains longPathAware element set to true
+- [ ] ZipArchiveService tested with paths >260 characters
+- [ ] No silent truncation or failure on long paths
+- [ ] dotnet test passes — new test: archive/extract with path >260 chars
+
+---
+
+### T-F23 — Symlink and Junction Handling
+- [ ] **Status:** future
+
+**What:** Define and implement explicit behavior for symbolic links and
+NTFS junctions during archiving. Currently undefined — may cause
+infinite loops or unintended file inclusion.
+
+**Decision required before implementation:**
+- Follow symlinks (include target content)
+- Skip symlinks (add to SkippedFiles with reason)
+- Archive link metadata only
+
+**Recommendation:** Skip symlinks — add to SkippedFiles with reason
+"Symbolic links are not supported".
+
+**Acceptance criteria:**
+- [ ] Symlinks detected during directory traversal
+- [ ] Symlinks added to SkippedFiles with clear reason
+- [ ] No recursive loop on circular symlinks
+- [ ] NTFS junctions handled same as symlinks
+- [ ] dotnet test passes — new test: directory with symlink → SkippedFile
+
+---
+
+### T-F24 — Property-Based Archive Integrity Testing
+- [ ] **Status:** future
+
+**What:** Generate random directory trees, archive them, extract them,
+and compare file hashes to verify round-trip integrity.
+
+**File:** `tests/Archiver.Core.Tests/`
+
+**Acceptance criteria:**
+- [ ] Test generates random directory tree (random depth, file count, sizes)
+- [ ] Archive → Extract → compare SHA-256 hash of every file
+- [ ] Tested with: all-small files, all-large files, mixed, deep nesting
+- [ ] 10+ random seeds tested per run
+- [ ] dotnet test passes
+
+---
+
+### T-F25 — README Security Positioning Review
+- [ ] **Status:** future
+
+**What:** Review README.md security claims for accuracy and balance.
+Avoid unverifiable superiority claims. Prefer factual positioning.
+
+**Guidance:**
+- Replace "more secure than X" with "different trust model than X"
+- Emphasize: transparent architecture, managed runtime, supply chain transparency
+- Keep factual CVE references — these are documented and verifiable
+- Add caveat: .NET runtime itself is a trust dependency
+
+**Acceptance criteria:**
+- [ ] No unverifiable security superiority claims in README
+- [ ] Supply chain risk section remains — factual CVE data kept
+- [ ] Trust model framing added: "different trust model, not superior security"
+- [ ] SECURITY.md unchanged — it is already appropriately nuanced
+
+---
+
+### T-F26 — Temporary File Pattern for Safe Archive Creation
+- [ ] **Status:** future
+- **Priority:** high
+
+**What:** Write archive to a .tmp file first. On success rename to final name.
+On failure or cancellation delete the .tmp file. Prevents corrupted archives
+from reaching the user.
+
+**File:** `src/Archiver.Core/Services/ZipArchiveService.cs`
+
+**Acceptance criteria:**
+- [ ] Archive written to destPath + ".tmp" during creation
+- [ ] On success: .tmp renamed to final destination path
+- [ ] On failure or exception: .tmp deleted, no partial archive left
+- [ ] On cancellation: .tmp deleted cleanly
+- [ ] dotnet test passes — new test: cancelled archive leaves no .tmp file
+
+---
+
+### T-F27 — Temporary Directory Pattern for Safe Extraction
+- [ ] **Status:** future
+- **Priority:** high
+
+**What:** Extract to a temporary directory first. On success move to final
+destination. On failure delete the temporary directory. Prevents partial
+extraction on interruption.
+
+**File:** `src/Archiver.Core/Services/ZipArchiveService.cs`
+
+**Acceptance criteria:**
+- [ ] Extraction target is destPath + "_tmp" during operation
+- [ ] On success: _tmp directory moved to final destination
+- [ ] On failure or cancellation: _tmp directory deleted cleanly
+- [ ] dotnet test passes — new test: cancelled extraction leaves no _tmp directory
+
+---
+
+### T-F28 — Archive Bomb Protection
+- [ ] **Status:** future
+- **Priority:** high
+
+**What:** Limit extraction size to prevent ZIP bomb attacks.
+ZIP bombs decompress to enormous sizes from small archives.
+
+**File:** `src/Archiver.Core/Services/ZipArchiveService.cs`
+
+**Limits:**
+- Max total extraction size: 4 GB
+- Max single entry size: 2 GB
+- Max entry count: 100 000
+
+**Acceptance criteria:**
+- [ ] Total extraction size tracked during extract
+- [ ] Exceeds 4 GB limit → ArchiveError "Archive extraction size limit exceeded"
+- [ ] Single entry > 2 GB → ArchiveError "Entry size limit exceeded"
+- [ ] Entry count > 100 000 → ArchiveError "Archive entry count limit exceeded"
+- [ ] Limits configurable via ExtractOptions constants
+- [ ] dotnet test passes — new tests for each limit
+
+---
+
+### T-F29 — UTF-8 Filename Encoding Verification
+- [ ] **Status:** future
+- **Priority:** high
+
+**What:** Verify Cyrillic, Asian, emoji filenames are preserved correctly
+in ZIP archives. ZIP historically used CP437 — ensure UTF-8 flag is set.
+
+**File:** `src/Archiver.Core/Services/ZipArchiveService.cs`
+
+**Acceptance criteria:**
+- [ ] Archive and extract file with Cyrillic name — name preserved exactly
+- [ ] Archive and extract file with emoji name — name preserved exactly
+- [ ] ZIP entries have UTF-8 encoding flag set
+- [ ] dotnet test passes — new tests: Cyrillic filename round-trip, emoji filename round-trip
+
+---
+
+### T-F30 — Duplicate Filename Detection Inside Archive
+- [ ] **Status:** future
+- **Priority:** medium
+
+**What:** ZIP format allows multiple entries with identical paths.
+Pakko should detect and handle duplicates during both archive creation
+and extraction.
+
+**File:** `src/Archiver.Core/Services/ZipArchiveService.cs`
+
+**Acceptance criteria:**
+- [ ] During archive: duplicate source paths detected → second occurrence renamed (add number)
+- [ ] During extract: duplicate entry names detected → handled per ConflictBehavior
+- [ ] dotnet test passes — new test: archive with duplicate entry names
+
+---
+
+### T-F31 — Deterministic Archive Output
+- [ ] **Status:** future
+- **Priority:** medium
+
+**What:** Sort files before archiving so identical inputs always produce
+identical archives. Useful for reproducible builds and testing.
+
+**File:** `src/Archiver.Core/Services/ZipArchiveService.cs`
+
+**Acceptance criteria:**
+- [ ] Files sorted by full path (ordinal, case-insensitive) before archive creation
+- [ ] Two archive runs with identical input produce byte-identical output
+- [ ] dotnet test passes — new test: same input twice → identical ZIP
+
+---
+
+### T-F32 — Directory Traversal Ordering
+- [ ] **Status:** future
+- **Priority:** medium
+
+**What:** Directory.EnumerateFiles returns files in non-deterministic order.
+Sort paths before processing for consistent, predictable archive structure.
+
+**File:** `src/Archiver.Core/Services/ZipArchiveService.cs`
+
+**Note:** Partially overlaps T-F31 — implement together.
+
+**Acceptance criteria:**
+- [ ] EnumerateFiles results sorted by path before archiving
+- [ ] Archive entry order is alphabetical and consistent across runs
+- [ ] dotnet test passes
+
+---
+
+### T-F33 — Archive Verify Command
+- [ ] **Status:** future
+- **Priority:** low
+- **Depends on:** T-F09 (CLI Core)
+
+**What:** CLI command to verify archive integrity without extraction.
+Checks ZIP structure and PAKKO-INTEGRITY-V1 manifest if present.
+
+**Acceptance criteria:**
+- [ ] verify command reads ZIP structure — reports corrupted entries
+- [ ] If PAKKO-INTEGRITY-V1 manifest present — verifies SHA-256 per entry
+- [ ] Exit code 0 = valid, 1 = invalid
+- [ ] Human-readable output: per-entry status
+- [ ] dotnet test passes
+
+---
+
+### T-F34 — Archive Metadata in ZIP Comment
+- [ ] **Status:** future
+- **Priority:** low
+
+**What:** Store Pakko version and creation timestamp in ZIP comment
+alongside existing PAKKO-INTEGRITY-V1 manifest.
+
+**File:** `src/Archiver.Core/Services/ZipArchiveService.cs`
+
+**Acceptance criteria:**
+- [ ] PAKKO-VERSION written to ZIP comment on archive creation
+- [ ] PAKKO-CREATED (UTC ISO 8601) written to ZIP comment
+- [ ] Existing PAKKO-INTEGRITY-V1 format unchanged — new fields appended
+- [ ] dotnet test passes — existing integrity tests unchanged
+

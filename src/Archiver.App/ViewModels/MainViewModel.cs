@@ -105,7 +105,7 @@ public sealed partial class MainViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CompressionLevelIndex))]
-    private CompressionLevel _selectedCompressionLevel = CompressionLevel.Optimal;
+    private CompressionLevel _selectedCompressionLevel = CompressionLevel.Fastest;
 
     public int CompressionLevelIndex
     {
@@ -130,10 +130,7 @@ public sealed partial class MainViewModel : ObservableObject
     private bool _openDestinationFolder = false;
 
     [ObservableProperty]
-    private bool _deleteSourceFiles = false;
-
-    [ObservableProperty]
-    private bool _deleteArchiveAfterExtraction = false;
+    private bool _deleteAfterOperation = false;
 
     private string _sortColumn = "Name";
     private bool _sortAscending = true;
@@ -217,7 +214,7 @@ public sealed partial class MainViewModel : ObservableObject
                 Mode = SelectedArchiveMode,
                 OnConflict = OnConflict,
                 OpenDestinationFolder = OpenDestinationFolder,
-                DeleteSourceFiles = DeleteSourceFiles,
+                DeleteSourceFiles = DeleteAfterOperation,
                 CompressionLevel = SelectedCompressionLevel,
             };
             var progress = new Progress<int>(p =>
@@ -257,7 +254,7 @@ public sealed partial class MainViewModel : ObservableObject
                 DestinationFolder = DestinationPath,
                 OnConflict = OnConflict,
                 OpenDestinationFolder = OpenDestinationFolder,
-                DeleteArchiveAfterExtraction = DeleteArchiveAfterExtraction,
+                DeleteArchiveAfterExtraction = DeleteAfterOperation,
             };
             var progress = new Progress<int>(p =>
             {
