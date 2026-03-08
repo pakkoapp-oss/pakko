@@ -109,8 +109,10 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
     }
 
     [Fact]
-    public async Task ArchiveAsync_DeleteSourceFiles_DeletesSourcesAfterSuccess()
+    public async Task ArchiveAsync_DeleteSourceFiles_SucceedsWithoutDeletingSource()
     {
+        // Deletion is now handled by MainViewModel (RunCleanupAsync), not the service.
+        // The service must accept the option and complete successfully; source is NOT deleted.
         var file = _temp.CreateFile("to-delete.txt");
         var options = new ArchiveOptions
         {
@@ -123,7 +125,8 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
         var result = await _sut.ArchiveAsync(options);
 
         result.Success.Should().BeTrue();
-        File.Exists(file).Should().BeFalse();
+        result.CreatedFiles.Should().HaveCount(1);
+        File.Exists(file).Should().BeTrue(); // service no longer deletes — ViewModel does
     }
 
     [Fact]
@@ -250,5 +253,32 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
 
         // If we got a result it should have no errors (completed before cancel or cancel was a no-op)
         result?.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ArchiveAsync_Cancelled_LeavesNoTempFile()
+    {
+        var file1 = _temp.CreateFile("a.txt", "content a");
+        var file2 = _temp.CreateFile("b.txt", "content b");
+        var file3 = _temp.CreateFile("c.txt", "content c");
+
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        var options = new ArchiveOptions
+        {
+            SourcePaths = [file1, file2, file3],
+            DestinationFolder = _temp.Path,
+            ArchiveName = "cancelled_output",
+            Mode = ArchiveMode.SingleArchive
+        };
+
+        try
+        {
+            await _sut.ArchiveAsync(options, cancellationToken: cts.Token);
+        }
+        catch (OperationCanceledException) { }
+
+        Directory.GetFiles(_temp.Path, "*.tmp").Should().BeEmpty();
     }
 }

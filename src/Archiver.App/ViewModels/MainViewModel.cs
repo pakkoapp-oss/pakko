@@ -238,6 +238,8 @@ public sealed partial class MainViewModel : ObservableObject
                 else { IsIndeterminate = false; Progress = p; }
             });
             var result = await _archiveService.ArchiveAsync(options, progress, _cts.Token);
+            if (result.Success && DeleteAfterOperation)
+                await RunCleanupAsync(options.SourcePaths);
             StatusMessage = result.Errors.Count == 0 && result.SkippedFiles.Count == 0
                 ? _res.GetString("StatusDone").Replace("{0}", result.CreatedFiles.Count.ToString())
                 : _res.GetString("StatusIssues");
@@ -299,6 +301,8 @@ public sealed partial class MainViewModel : ObservableObject
                 else { IsIndeterminate = false; Progress = p; }
             });
             var result = await _archiveService.ExtractAsync(options, progress, _cts.Token);
+            if (result.Success && DeleteAfterOperation)
+                await RunCleanupAsync(options.ArchivePaths);
             StatusMessage = result.Errors.Count == 0 && result.SkippedFiles.Count == 0
                 ? _res.GetString("StatusDone").Replace("{0}", result.CreatedFiles.Count.ToString())
                 : _res.GetString("StatusIssues");
@@ -335,6 +339,23 @@ public sealed partial class MainViewModel : ObservableObject
 
     [RelayCommand(CanExecute = nameof(IsOperationRunning))]
     private void Cancel() => _cts?.Cancel();
+
+    private async Task RunCleanupAsync(IEnumerable<string> paths)
+    {
+        StatusMessage = _res.GetString("StatusCleaningUp");
+        await Task.Run(() =>
+        {
+            foreach (var path in paths)
+            {
+                try
+                {
+                    if (Directory.Exists(path)) Directory.Delete(path, recursive: true);
+                    else if (File.Exists(path)) File.Delete(path);
+                }
+                catch { }
+            }
+        }).ConfigureAwait(false);
+    }
 
     private bool CanArchive() => !IsBusy && FileItems.Count > 0;
     private bool CanExtract() => !IsBusy && FileItems.Count > 0;

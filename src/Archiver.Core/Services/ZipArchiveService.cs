@@ -46,6 +46,8 @@ public sealed class ZipArchiveService : IArchiveService
                 }
             }
 
+            string tempPath = destPath + ".tmp";
+
             bool isSingleLargeFile = options.SourcePaths.Count == 1
                 && File.Exists(options.SourcePaths[0])
                 && new FileInfo(options.SourcePaths[0]).Length > 10 * 1024 * 1024;
@@ -56,7 +58,7 @@ public sealed class ZipArchiveService : IArchiveService
             {
                 await Task.Run(async () =>
                 {
-                    using var archive = ZipFile.Open(destPath, ZipArchiveMode.Create);
+                    using var archive = ZipFile.Open(tempPath, ZipArchiveMode.Create);
                     int total = options.SourcePaths.Count;
                     for (int i = 0; i < total; i++)
                     {
@@ -107,9 +109,25 @@ public sealed class ZipArchiveService : IArchiveService
                             progress?.Report((i + 1) * 100 / total);
                     }
                 }, cancellationToken).ConfigureAwait(false);
+
+                if (errors.Count == 0)
+                {
+                    File.Move(tempPath, destPath, overwrite: true);
+                    createdFiles.Add(destPath);
+                }
+                else
+                {
+                    try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { }
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { }
+                throw;
             }
             catch (IOException ex)
             {
+                try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { }
                 errors.Add(new ArchiveError
                 {
                     SourcePath = destPath,
@@ -119,6 +137,7 @@ public sealed class ZipArchiveService : IArchiveService
             }
             catch (UnauthorizedAccessException ex)
             {
+                try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { }
                 errors.Add(new ArchiveError
                 {
                     SourcePath = destPath,
@@ -128,17 +147,13 @@ public sealed class ZipArchiveService : IArchiveService
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
+                try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { }
                 errors.Add(new ArchiveError
                 {
                     SourcePath = destPath,
                     Message = $"Unexpected error: {ex.Message}",
                     Exception = ex
                 });
-            }
-
-            if (errors.Count == 0 && File.Exists(destPath))
-            {
-                createdFiles.Add(destPath);
             }
         }
         else // SeparateArchives
@@ -171,6 +186,7 @@ public sealed class ZipArchiveService : IArchiveService
                     }
                 }
 
+                string separateTempPath = destPath + ".tmp";
                 try
                 {
                     if (Directory.Exists(sourcePath))
@@ -178,7 +194,7 @@ public sealed class ZipArchiveService : IArchiveService
                         var level = options.CompressionLevel;
                         await Task.Run(async () =>
                         {
-                            using var archive = ZipFile.Open(destPath, ZipArchiveMode.Create);
+                            using var archive = ZipFile.Open(separateTempPath, ZipArchiveMode.Create);
                             await AddDirectoryToArchiveAsync(archive, sourcePath, Path.GetFileName(sourcePath), level, cancellationToken);
                         }, cancellationToken).ConfigureAwait(false);
                     }
@@ -187,7 +203,7 @@ public sealed class ZipArchiveService : IArchiveService
                         var level = options.CompressionLevel;
                         await Task.Run(async () =>
                         {
-                            using var archive = ZipFile.Open(destPath, ZipArchiveMode.Create);
+                            using var archive = ZipFile.Open(separateTempPath, ZipArchiveMode.Create);
                             await AddEntryFromFileAsync(archive, sourcePath, Path.GetFileName(sourcePath), level, cancellationToken);
                         }, cancellationToken).ConfigureAwait(false);
                     }
@@ -202,10 +218,17 @@ public sealed class ZipArchiveService : IArchiveService
                         continue;
                     }
 
+                    File.Move(separateTempPath, destPath, overwrite: true);
                     createdFiles.Add(destPath);
+                }
+                catch (OperationCanceledException)
+                {
+                    try { if (File.Exists(separateTempPath)) File.Delete(separateTempPath); } catch { }
+                    throw;
                 }
                 catch (IOException ex)
                 {
+                    try { if (File.Exists(separateTempPath)) File.Delete(separateTempPath); } catch { }
                     errors.Add(new ArchiveError
                     {
                         SourcePath = sourcePath,
@@ -215,6 +238,7 @@ public sealed class ZipArchiveService : IArchiveService
                 }
                 catch (UnauthorizedAccessException ex)
                 {
+                    try { if (File.Exists(separateTempPath)) File.Delete(separateTempPath); } catch { }
                     errors.Add(new ArchiveError
                     {
                         SourcePath = sourcePath,
@@ -224,6 +248,7 @@ public sealed class ZipArchiveService : IArchiveService
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
+                    try { if (File.Exists(separateTempPath)) File.Delete(separateTempPath); } catch { }
                     errors.Add(new ArchiveError
                     {
                         SourcePath = sourcePath,
@@ -242,19 +267,6 @@ public sealed class ZipArchiveService : IArchiveService
             CreatedFiles = createdFiles,
             Errors = errors,
         };
-
-        if (result.Success && options.DeleteSourceFiles)
-        {
-            foreach (var path in options.SourcePaths)
-            {
-                try
-                {
-                    if (Directory.Exists(path)) Directory.Delete(path, recursive: true);
-                    else if (File.Exists(path)) File.Delete(path);
-                }
-                catch { }
-            }
-        }
 
         if (result.Success && options.OpenDestinationFolder)
         {
@@ -362,14 +374,6 @@ public sealed class ZipArchiveService : IArchiveService
             SkippedFiles = skippedFiles,
         };
 
-        if (result.Success && options.DeleteArchiveAfterExtraction)
-        {
-            foreach (var path in options.ArchivePaths)
-            {
-                try { if (File.Exists(path)) File.Delete(path); } catch { }
-            }
-        }
-
         if (result.Success && options.OpenDestinationFolder)
         {
             try { Process.Start(new ProcessStartInfo("explorer.exe", options.DestinationFolder) { UseShellExecute = true }); } catch { }
@@ -409,46 +413,80 @@ public sealed class ZipArchiveService : IArchiveService
             ? destDir
             : Path.Combine(destDir, Path.GetFileNameWithoutExtension(archivePath));
 
-        Directory.CreateDirectory(actualDest);
-        string fullActualDest = Path.GetFullPath(actualDest).TrimEnd(Path.DirectorySeparatorChar)
+        string tempDest = actualDest + "_tmp";
+
+        Directory.CreateDirectory(tempDest);
+        string fullTempDest = Path.GetFullPath(tempDest).TrimEnd(Path.DirectorySeparatorChar)
             + Path.DirectorySeparatorChar;
 
-        foreach (var entry in fileEntries)
+        try
         {
-            if (cancellationToken.IsCancellationRequested)
-                break;
-
-            string relativePath = entry.FullName.Replace('/', Path.DirectorySeparatorChar);
-
-            if (isSingleRootFolder)
+            foreach (var entry in fileEntries)
             {
-                var sep = relativePath.IndexOf(Path.DirectorySeparatorChar);
-                relativePath = relativePath[(sep + 1)..];
-                if (string.IsNullOrEmpty(relativePath)) continue;
+                if (cancellationToken.IsCancellationRequested)
+                    break;
+
+                string relativePath = entry.FullName.Replace('/', Path.DirectorySeparatorChar);
+
+                if (isSingleRootFolder)
+                {
+                    var sep = relativePath.IndexOf(Path.DirectorySeparatorChar);
+                    relativePath = relativePath[(sep + 1)..];
+                    if (string.IsNullOrEmpty(relativePath)) continue;
+                }
+
+                string destFilePath = Path.GetFullPath(Path.Combine(tempDest, relativePath));
+
+                if (!destFilePath.StartsWith(fullTempDest, StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidDataException($"ZIP entry '{entry.FullName}' would extract outside destination directory.");
+
+                Directory.CreateDirectory(Path.GetDirectoryName(destFilePath)!);
+
+                // Conflict check against the final destination, not the temp dir
+                string finalFilePath = Path.GetFullPath(Path.Combine(actualDest, relativePath));
+                if (File.Exists(finalFilePath))
+                {
+                    if (onConflict == ConflictBehavior.Skip) continue;
+                    if (onConflict == ConflictBehavior.Rename)
+                    {
+                        string uniqueFinal = GetUniqueFilePath(finalFilePath);
+                        destFilePath = Path.Combine(Path.GetDirectoryName(destFilePath)!, Path.GetFileName(uniqueFinal));
+                    }
+                }
+
+                using var entryStream = entry.Open();
+                using var fileStream = new FileStream(
+                    destFilePath,
+                    FileMode.Create,
+                    FileAccess.Write,
+                    FileShare.None,
+                    bufferSize: 81920,
+                    useAsync: true);
+                await entryStream.CopyToAsync(fileStream, cancellationToken).ConfigureAwait(false);
             }
+        }
+        catch (OperationCanceledException)
+        {
+            try { if (Directory.Exists(tempDest)) Directory.Delete(tempDest, recursive: true); } catch { }
+            throw;
+        }
 
-            string destFilePath = Path.GetFullPath(Path.Combine(actualDest, relativePath));
-
-            if (!destFilePath.StartsWith(fullActualDest, StringComparison.OrdinalIgnoreCase))
-                throw new InvalidDataException($"ZIP entry '{entry.FullName}' would extract outside destination directory.");
-
-            Directory.CreateDirectory(Path.GetDirectoryName(destFilePath)!);
-
-            if (File.Exists(destFilePath))
+        // Commit: if final dest doesn't exist, fast-path rename; otherwise merge extracted
+        // files in so pre-existing files (e.g. skipped/renamed) are preserved.
+        if (!Directory.Exists(actualDest))
+        {
+            Directory.Move(tempDest, actualDest);
+        }
+        else
+        {
+            foreach (string file in Directory.EnumerateFiles(tempDest, "*", SearchOption.AllDirectories))
             {
-                if (onConflict == ConflictBehavior.Skip) continue;
-                if (onConflict == ConflictBehavior.Rename) destFilePath = GetUniqueFilePath(destFilePath);
+                string relative = Path.GetRelativePath(tempDest, file);
+                string finalFile = Path.Combine(actualDest, relative);
+                Directory.CreateDirectory(Path.GetDirectoryName(finalFile)!);
+                File.Move(file, finalFile, overwrite: true);
             }
-
-            using var entryStream = entry.Open();
-            using var fileStream = new FileStream(
-                destFilePath,
-                FileMode.Create,
-                FileAccess.Write,
-                FileShare.None,
-                bufferSize: 81920,
-                useAsync: true);
-            await entryStream.CopyToAsync(fileStream, cancellationToken).ConfigureAwait(false);
+            Directory.Delete(tempDest, recursive: true);
         }
 
         return actualDest;

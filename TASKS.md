@@ -434,7 +434,7 @@ Version bump: increment `Package.appxmanifest` `Version` attribute before each s
 ---
 
 ### T-F18 — Operation Spinner on Action Buttons
-- [ ] **Status:** future
+- [x] **Status:** complete
 - **Store blocker — complete before v1.1 submission**
 
 **What:** Show an indeterminate `ProgressRing` inline next to the button text on Archive and Extract buttons while an operation is running. Provides visual feedback without relying solely on the progress bar.
@@ -442,10 +442,10 @@ Version bump: increment `Package.appxmanifest` `Version` attribute before each s
 **File:** `src/Archiver.App/MainWindow.xaml`.
 
 **Acceptance criteria:**
-- [ ] `ProgressRing` visible on Archive button while `IsOperationRunning = true`
-- [ ] `ProgressRing` visible on Extract button while `IsOperationRunning = true`
-- [ ] Buttons remain disabled during operation (existing behavior unchanged)
-- [ ] No layout shift when spinner appears or disappears
+- [x] `ProgressRing` visible on Archive button while `IsOperationRunning = true`
+- [x] `ProgressRing` visible on Extract button while `IsOperationRunning = true`
+- [x] Buttons remain disabled during operation (existing behavior unchanged)
+- [x] No layout shift when spinner appears or disappears
 
 ---
 
@@ -569,7 +569,7 @@ Avoid unverifiable superiority claims. Prefer factual positioning.
 ---
 
 ### T-F26 — Temporary File Pattern for Safe Archive Creation
-- [ ] **Status:** future
+- [x] **Status:** complete
 - **Priority:** high
 - **Store blocker — complete before v1.1 submission**
 
@@ -580,16 +580,16 @@ from reaching the user.
 **File:** `src/Archiver.Core/Services/ZipArchiveService.cs`
 
 **Acceptance criteria:**
-- [ ] Archive written to destPath + ".tmp" during creation
-- [ ] On success: .tmp renamed to final destination path
-- [ ] On failure or exception: .tmp deleted, no partial archive left
-- [ ] On cancellation: .tmp deleted cleanly
-- [ ] dotnet test passes — new test: cancelled archive leaves no .tmp file
+- [x] Archive written to destPath + ".tmp" during creation
+- [x] On success: .tmp renamed to final destination path
+- [x] On failure or exception: .tmp deleted, no partial archive left
+- [x] On cancellation: .tmp deleted cleanly
+- [x] dotnet test passes — new test: cancelled archive leaves no .tmp file
 
 ---
 
 ### T-F27 — Temporary Directory Pattern for Safe Extraction
-- [ ] **Status:** future
+- [x] **Status:** complete
 - **Priority:** high
 - **Store blocker — complete before v1.1 submission**
 
@@ -600,10 +600,10 @@ extraction on interruption.
 **File:** `src/Archiver.Core/Services/ZipArchiveService.cs`
 
 **Acceptance criteria:**
-- [ ] Extraction target is destPath + "_tmp" during operation
-- [ ] On success: _tmp directory moved to final destination
-- [ ] On failure or cancellation: _tmp directory deleted cleanly
-- [ ] dotnet test passes — new test: cancelled extraction leaves no _tmp directory
+- [x] Extraction target is destPath + "_tmp" during operation
+- [x] On success: _tmp directory moved to final destination
+- [x] On failure or cancellation: _tmp directory deleted cleanly
+- [x] dotnet test passes — new test: cancelled extraction leaves no _tmp directory
 
 ---
 

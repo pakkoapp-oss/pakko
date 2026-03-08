@@ -234,8 +234,10 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
     }
 
     [Fact]
-    public async Task ExtractAsync_DeleteArchiveAfterExtraction_DeletesArchiveAfterSuccess()
+    public async Task ExtractAsync_DeleteArchiveAfterExtraction_SucceedsWithoutDeletingArchive()
     {
+        // Deletion is now handled by MainViewModel (RunCleanupAsync), not the service.
+        // The service must accept the option and complete successfully; archive is NOT deleted.
         var zip = CreateTestZip("removeme.zip", "file.txt");
         var destDir = Path.Combine(_temp.Path, "output");
 
@@ -249,7 +251,7 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
         var result = await _sut.ExtractAsync(options);
 
         result.Success.Should().BeTrue();
-        File.Exists(zip).Should().BeFalse();
+        File.Exists(zip).Should().BeTrue(); // service no longer deletes — ViewModel does
     }
 
     [Fact]
@@ -341,5 +343,34 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
         result.Success.Should().BeFalse();
         result.Errors.Should().HaveCount(1);
         result.Errors[0].Message.Should().Be("File has ZIP signature but appears corrupted or incomplete.");
+    }
+
+    [Fact]
+    public async Task ExtractAsync_Cancelled_LeavesNoTempDirectory()
+    {
+        var file = _temp.CreateFile("source.txt", new string('x', 64 * 1024));
+        var archiveOptions = new ArchiveOptions
+        {
+            SourcePaths = [file],
+            DestinationFolder = _temp.Path,
+            ArchiveName = "test"
+        };
+        await _sut.ArchiveAsync(archiveOptions);
+        string archivePath = Path.Combine(_temp.Path, "test.zip");
+
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        var options = new ExtractOptions
+        {
+            ArchivePaths = [archivePath],
+            DestinationFolder = _temp.Path,
+            Mode = ExtractMode.SeparateFolders
+        };
+
+        try { await _sut.ExtractAsync(options, cancellationToken: cts.Token); }
+        catch (OperationCanceledException) { }
+
+        Directory.GetDirectories(_temp.Path, "*_tmp").Should().BeEmpty();
     }
 }

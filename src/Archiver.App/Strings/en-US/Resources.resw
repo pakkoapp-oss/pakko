@@ -79,6 +79,9 @@
   <data name="StatusCancelled" xml:space="preserve">
     <value>Cancelled</value>
   </data>
+  <data name="StatusCleaningUp" xml:space="preserve">
+    <value>Cleaning up...</value>
+  </data>
 
   <!-- About dialog -->
   <data name="AboutGitHubUrl" xml:space="preserve">
