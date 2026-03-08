@@ -47,7 +47,7 @@ public sealed partial class MainViewModel : ObservableObject
         IsBusy ? Visibility.Visible : Visibility.Collapsed;
 
     [ObservableProperty]
-    private string _statusMessage = string.Empty;
+    private string _statusMessage = _res.GetString("StatusReady");
 
     [ObservableProperty]
     private string _destinationPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
@@ -237,6 +237,7 @@ public sealed partial class MainViewModel : ObservableObject
         finally
         {
             IsBusy = false;
+            StatusMessage = _res.GetString("StatusReady");
         }
     }
 
@@ -278,6 +279,7 @@ public sealed partial class MainViewModel : ObservableObject
         finally
         {
             IsBusy = false;
+            StatusMessage = _res.GetString("StatusReady");
         }
     }
 

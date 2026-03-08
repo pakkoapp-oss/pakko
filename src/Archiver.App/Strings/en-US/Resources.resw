@@ -61,6 +61,9 @@
   </data>
 
   <!-- Status messages -->
+  <data name="StatusReady" xml:space="preserve">
+    <value>Ready</value>
+  </data>
   <data name="StatusArchiving" xml:space="preserve">
     <value>Archiving...</value>
   </data>
