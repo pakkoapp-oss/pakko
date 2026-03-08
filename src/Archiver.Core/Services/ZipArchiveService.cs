@@ -11,6 +11,8 @@ namespace Archiver.Core.Services;
 /// </summary>
 public sealed class ZipArchiveService : IArchiveService
 {
+    private const int MaxCompressionRatio = 1000;
+
     /// <inheritdoc/>
     public async Task<ArchiveResult> ArchiveAsync(
         ArchiveOptions options,
@@ -330,7 +332,7 @@ public sealed class ZipArchiveService : IArchiveService
             {
                 bool alreadyIsolated = options.Mode == ExtractMode.SeparateFolders;
                 string actualDest = await Task.Run(async () =>
-                    await ExtractWithSmartFolderingAsync(archivePath, destDir, alreadyIsolated, options.OnConflict, cancellationToken),
+                    await ExtractWithSmartFolderingAsync(archivePath, destDir, alreadyIsolated, options.OnConflict, skippedFiles, cancellationToken),
                     cancellationToken).ConfigureAwait(false);
 
                 createdFiles.Add(actualDest);
@@ -387,6 +389,7 @@ public sealed class ZipArchiveService : IArchiveService
         string destDir,
         bool alreadyIsolated,
         ConflictBehavior onConflict,
+        List<SkippedFile> skippedFiles,
         CancellationToken cancellationToken)
     {
         using var archive = ZipFile.OpenRead(archivePath);
@@ -441,6 +444,20 @@ public sealed class ZipArchiveService : IArchiveService
                     throw new InvalidDataException($"ZIP entry '{entry.FullName}' would extract outside destination directory.");
 
                 Directory.CreateDirectory(Path.GetDirectoryName(destFilePath)!);
+
+                // ZIP bomb check — skip entries with suspicious compression ratio
+                if (entry.CompressedLength > 0
+                    && entry.Length > 0
+                    && entry.Length / entry.CompressedLength > MaxCompressionRatio)
+                {
+                    skippedFiles.Add(new SkippedFile
+                    {
+                        Path = entry.FullName,
+                        Reason = $"Suspicious compression ratio ({entry.Length / entry.CompressedLength}:1). " +
+                                 "Entry was skipped as a precaution against ZIP bombs."
+                    });
+                    continue;
+                }
 
                 // Conflict check against the final destination, not the temp dir
                 string finalFilePath = Path.GetFullPath(Path.Combine(actualDest, relativePath));

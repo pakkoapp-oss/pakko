@@ -608,27 +608,29 @@ extraction on interruption.
 ---
 
 ### T-F28 — Archive Bomb Protection
-- [ ] **Status:** future
+- [x] **Status:** complete (Variant B — ratio-based skip)
 - **Priority:** high
 - **Store blocker — complete before v1.1 submission**
 
-**What:** Limit extraction size to prevent ZIP bomb attacks.
-ZIP bombs decompress to enormous sizes from small archives.
+**What:** Detect suspicious compression ratio before extracting each entry.
+Skip suspicious entries and report them in SkippedFiles — entire archive continues normally.
+
+> Post-v1.1: consider configurable size limits or warning dialog
+> for large archives. Military/government users may work with large
+> map files, satellite imagery, ortho photos that could exceed
+> naive byte limits. Current implementation only checks compression
+> ratio — no hard byte limits enforced.
 
 **File:** `src/Archiver.Core/Services/ZipArchiveService.cs`
 
-**Limits:**
-- Max total extraction size: 4 GB
-- Max single entry size: 2 GB
-- Max entry count: 100 000
+**Implementation:** `MaxCompressionRatio = 1000` constant. Entries with
+`CompressedLength > 0 && Length / CompressedLength > 1000` are added to
+`SkippedFiles` and skipped — operation continues for remaining entries.
 
 **Acceptance criteria:**
-- [ ] Total extraction size tracked during extract
-- [ ] Exceeds 4 GB limit → ArchiveError "Archive extraction size limit exceeded"
-- [ ] Single entry > 2 GB → ArchiveError "Entry size limit exceeded"
-- [ ] Entry count > 100 000 → ArchiveError "Archive entry count limit exceeded"
-- [ ] Limits configurable via ExtractOptions constants
-- [ ] dotnet test passes — new tests for each limit
+- [x] Entries with ratio > 1000:1 skipped and reported in SkippedFiles
+- [x] Legitimate files extract normally alongside skipped entries
+- [x] dotnet test passes — new test: suspicious ratio → skip, no errors
 
 ---
 

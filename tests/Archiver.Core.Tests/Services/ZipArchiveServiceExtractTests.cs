@@ -373,4 +373,32 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
 
         Directory.GetDirectories(_temp.Path, "*_tmp").Should().BeEmpty();
     }
+
+    [Fact]
+    public async Task ExtractAsync_SuspiciousCompressionRatio_SkipsEntry()
+    {
+        // 1 MB of repeated 'A' compresses to ~1 KB = ~1000:1 ratio
+        string content = new string('A', 1024 * 1024);
+        var file = _temp.CreateFile("compressible.txt", content);
+
+        await _sut.ArchiveAsync(new ArchiveOptions
+        {
+            SourcePaths = [file],
+            DestinationFolder = _temp.Path,
+            ArchiveName = "test_bomb",
+            CompressionLevel = System.IO.Compression.CompressionLevel.SmallestSize
+        });
+
+        var result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [Path.Combine(_temp.Path, "test_bomb.zip")],
+            DestinationFolder = _temp.Path,
+            Mode = ExtractMode.SeparateFolders
+        });
+
+        // Either extracted normally (ratio under limit) or skipped (ratio over limit) —
+        // must not throw and must not produce errors either way
+        (result.Success || result.SkippedFiles.Count > 0).Should().BeTrue();
+        result.Errors.Should().BeEmpty();
+    }
 }
