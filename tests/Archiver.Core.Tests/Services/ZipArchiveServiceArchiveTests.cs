@@ -281,4 +281,60 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
 
         Directory.GetFiles(_temp.Path, "*.tmp").Should().BeEmpty();
     }
+
+    [Fact]
+    public async Task ArchiveAsync_CyrillicFilename_PreservedAfterRoundTrip()
+    {
+        string cyrillicName = "документ.txt";
+        var file = _temp.CreateFile(cyrillicName);
+
+        await _sut.ArchiveAsync(new ArchiveOptions
+        {
+            SourcePaths = [file],
+            DestinationFolder = _temp.Path,
+            ArchiveName = "cyrillic_test"
+        });
+
+        using var destDir = new TempDirectory();
+        var result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [Path.Combine(_temp.Path, "cyrillic_test.zip")],
+            DestinationFolder = destDir.Path,
+            Mode = ExtractMode.SeparateFolders
+        });
+
+        result.Success.Should().BeTrue();
+        result.Errors.Should().BeEmpty();
+        Directory.GetFiles(destDir.Path, "*", SearchOption.AllDirectories)
+            .Select(Path.GetFileName)
+            .Should().Contain(cyrillicName);
+    }
+
+    [Fact]
+    public async Task ArchiveAsync_EmojiFilename_PreservedAfterRoundTrip()
+    {
+        string emojiName = "photo_🇺🇦.txt";
+        var file = _temp.CreateFile(emojiName);
+
+        await _sut.ArchiveAsync(new ArchiveOptions
+        {
+            SourcePaths = [file],
+            DestinationFolder = _temp.Path,
+            ArchiveName = "emoji_test"
+        });
+
+        using var destDir = new TempDirectory();
+        var result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [Path.Combine(_temp.Path, "emoji_test.zip")],
+            DestinationFolder = destDir.Path,
+            Mode = ExtractMode.SeparateFolders
+        });
+
+        result.Success.Should().BeTrue();
+        result.Errors.Should().BeEmpty();
+        Directory.GetFiles(destDir.Path, "*", SearchOption.AllDirectories)
+            .Select(Path.GetFileName)
+            .Should().Contain(emojiName);
+    }
 }

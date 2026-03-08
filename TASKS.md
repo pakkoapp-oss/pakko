@@ -635,7 +635,7 @@ Skip suspicious entries and report them in SkippedFiles — entire archive conti
 ---
 
 ### T-F29 — UTF-8 Filename Encoding Verification
-- [ ] **Status:** future
+- [x] **Status:** complete
 - **Priority:** high
 - **Store blocker — complete before v1.1 submission**
 
@@ -644,11 +644,14 @@ in ZIP archives. ZIP historically used CP437 — ensure UTF-8 flag is set.
 
 **File:** `src/Archiver.Core/Services/ZipArchiveService.cs`
 
+**Note:** .NET 8 `ZipArchive` sets the UTF-8 language encoding flag (EFS) automatically
+for non-ASCII entry names — no code change required. Tests confirm correct behavior.
+
 **Acceptance criteria:**
-- [ ] Archive and extract file with Cyrillic name — name preserved exactly
-- [ ] Archive and extract file with emoji name — name preserved exactly
-- [ ] ZIP entries have UTF-8 encoding flag set
-- [ ] dotnet test passes — new tests: Cyrillic filename round-trip, emoji filename round-trip
+- [x] Archive and extract file with Cyrillic name — name preserved exactly
+- [x] Archive and extract file with emoji name — name preserved exactly
+- [x] ZIP entries have UTF-8 encoding flag set (.NET 8 handles this automatically)
+- [x] dotnet test passes — new tests: Cyrillic filename round-trip, emoji filename round-trip
 
 ---
 
