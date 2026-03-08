@@ -40,6 +40,25 @@ These rules apply to ALL tasks. Violating them = task is NOT complete.
 
 ---
 
+## Store Publication Plan
+
+Target: publish v1.1 to Microsoft Store.
+
+Complete these tasks in order before submission:
+
+1. T-F17 — Tray left-click toggle
+2. T-F18 — Operation spinner on action buttons
+3. T-F26 — Temporary file pattern (safe archive creation)
+4. T-F27 — Temporary directory pattern (safe extraction)
+5. T-F28 — Archive bomb protection
+6. T-F29 — UTF-8 filename encoding verification
+
+After all six complete → build MSIX → submit to Store as v1.1.
+
+Tasks T-F16, T-F19–T-F25, T-F30–T-F34 are post-Store roadmap.
+
+---
+
 ## Future Tasks (post v1.0)
 
 ### T-F01 — Explorer Context Menu Integration
@@ -265,7 +284,7 @@ No code changes required — .NET 8 JIT handles ARM64 natively.
 - [x] `win-arm64` added to `RuntimeIdentifiers`
 - [x] App builds for ARM64 without errors
 - [x] MSIX bundle includes both architectures
-- [x] Smoke test on ARM64: archive and extract work correctly
+- [ ] Smoke test on ARM64: archive and extract work correctly
 
 ---
 
@@ -400,6 +419,7 @@ Version bump: increment `Package.appxmanifest` `Version` attribute before each s
 
 ### T-F17 — Tray Left-Click Toggle
 - [ ] **Status:** future
+- **Store blocker — complete before v1.1 submission**
 
 **What:** Left-click on the system tray icon toggles window visibility (show if hidden, hide if visible). Currently only right-click shows the context menu.
 
@@ -415,6 +435,7 @@ Version bump: increment `Package.appxmanifest` `Version` attribute before each s
 
 ### T-F18 — Operation Spinner on Action Buttons
 - [ ] **Status:** future
+- **Store blocker — complete before v1.1 submission**
 
 **What:** Show an indeterminate `ProgressRing` inline next to the button text on Archive and Extract buttons while an operation is running. Provides visual feedback without relying solely on the progress bar.
 
@@ -550,6 +571,7 @@ Avoid unverifiable superiority claims. Prefer factual positioning.
 ### T-F26 — Temporary File Pattern for Safe Archive Creation
 - [ ] **Status:** future
 - **Priority:** high
+- **Store blocker — complete before v1.1 submission**
 
 **What:** Write archive to a .tmp file first. On success rename to final name.
 On failure or cancellation delete the .tmp file. Prevents corrupted archives
@@ -569,6 +591,7 @@ from reaching the user.
 ### T-F27 — Temporary Directory Pattern for Safe Extraction
 - [ ] **Status:** future
 - **Priority:** high
+- **Store blocker — complete before v1.1 submission**
 
 **What:** Extract to a temporary directory first. On success move to final
 destination. On failure delete the temporary directory. Prevents partial
@@ -587,6 +610,7 @@ extraction on interruption.
 ### T-F28 — Archive Bomb Protection
 - [ ] **Status:** future
 - **Priority:** high
+- **Store blocker — complete before v1.1 submission**
 
 **What:** Limit extraction size to prevent ZIP bomb attacks.
 ZIP bombs decompress to enormous sizes from small archives.
@@ -611,6 +635,7 @@ ZIP bombs decompress to enormous sizes from small archives.
 ### T-F29 — UTF-8 Filename Encoding Verification
 - [ ] **Status:** future
 - **Priority:** high
+- **Store blocker — complete before v1.1 submission**
 
 **What:** Verify Cyrillic, Asian, emoji filenames are preserved correctly
 in ZIP archives. ZIP historically used CP437 — ensure UTF-8 flag is set.
@@ -707,4 +732,73 @@ alongside existing PAKKO-INTEGRITY-V1 manifest.
 - [ ] PAKKO-CREATED (UTC ISO 8601) written to ZIP comment
 - [ ] Existing PAKKO-INTEGRITY-V1 format unchanged — new fields appended
 - [ ] dotnet test passes — existing integrity tests unchanged
+
+---
+
+### T-F35 — Streaming Pipeline Architecture
+- [ ] **Status:** future
+- **Priority:** low
+- **Depends on:** T-F12 (Parallel Compression)
+
+**What:** Replace sequential file-by-file compression with a pipeline architecture that separates reading, compression, and writing into parallel stages.
+
+**Architecture:**
+```
+filesystem reader → Channel<FileWorkItem> → compression workers → archive writer
+```
+
+**Implementation primitives:**
+- System.Threading.Channels for work queues
+- Parallel compression tasks (bounded by ProcessorCount)
+- Single-threaded archive writer (ZIP format constraint)
+
+**Expected benefit:** 2x–4x faster compression on large archives with many files.
+
+**File:** `src/Archiver.Core/Services/ZipArchiveService.cs`
+
+**Acceptance criteria:**
+- [ ] FileWorkItem record defined: path, entryName, bytes/stream
+- [ ] Reader stage enqueues files into Channel<FileWorkItem>
+- [ ] Compression workers consume channel in parallel
+- [ ] Writer stage is single-threaded — ZIP format requires sequential entry writes
+- [ ] CancellationToken respected in all stages
+- [ ] Progress reporting thread-safe — Interlocked.Increment
+- [ ] SingleArchive mode only — SeparateArchives already parallelized in T-F12
+- [ ] dotnet test passes — existing archive tests unchanged
+- [ ] Verified: no file corruption in parallel pipeline
+
+---
+
+### T-F36 — Pluggable Archive Engine Interface
+- [ ] **Status:** future
+- **Priority:** low
+- **Depends on:** T-F04 (TAR support)
+
+**What:** Introduce IArchiveEngine abstraction to decouple core logic from ZIP-specific implementation. Enables TAR, tar.gz, and future formats without UI changes.
+
+**Architecture:**
+```
+Archiver.Core
+  IArchiveEngine
+    ZipEngine       ← current ZipArchiveService refactored
+    TarEngine       ← T-F04
+    FutureEngines
+```
+
+**UI impact:** Archive Format dropdown added to UI:
+```
+Format: [ ZIP ▾]   ZIP / TAR / TAR.GZ
+```
+
+**File:** `src/Archiver.Core/Interfaces/IArchiveEngine.cs` (new)
+
+**Acceptance criteria:**
+- [ ] IArchiveEngine interface defined with ArchiveAsync and ExtractAsync
+- [ ] ZipArchiveService refactored to implement IArchiveEngine
+- [ ] IArchiveService updated or replaced — no breaking changes to existing callers
+- [ ] TarEngine stub created — ready for T-F04 implementation
+- [ ] Format selector in UI — ZIP default, extensible
+- [ ] DI registration updated — engine selected based on format choice
+- [ ] dotnet test passes — existing 45 tests unchanged
+- [ ] Adding new engine requires: new class + DI registration — no other changes
 

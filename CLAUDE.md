@@ -42,6 +42,7 @@ SECURITY.md     → threat model (read if modifying compression logic)
 - Services injected via constructor — never `new ZipArchiveService()` in ViewModels
 - All IO exceptions caught per-item → `ArchiveError` — methods never throw to callers
 - MVVM: no business logic in `.xaml.cs` files
+- `PublishTrimmed` must be `false` for `Archiver.App` — WinUI 3 `x:Bind` generated code is not trim-compatible. Trimming silently breaks event handlers and Command bindings in Release builds.
 
 ---
 
