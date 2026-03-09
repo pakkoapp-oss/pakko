@@ -199,6 +199,12 @@ Preferred over original 7-Zip due to reproducible builds and non-Russian maintai
 - [ ] Falls back to "unsupported format" if binary not installed
 - [ ] `Process` always disposed after use — wrap in `using` or `finally`
 - [ ] No orphaned process handles after extraction completes or fails
+- [ ] Worker process runs with restricted token (no debug, no driver privileges)
+- [ ] Filesystem access limited to sandbox/input and sandbox/output only
+- [ ] Network access completely disabled for worker process
+- [ ] Job Object applied: RAM limit, CPU limit, maximum runtime
+- [ ] Files extracted to staging directory first, validated, then moved to final destination
+- [ ] Staging directory cleaned up on success and failure
 
 ---
 
@@ -219,6 +225,12 @@ Official RARLAB `unrar.exe` (freeware license allows use in free software).
 - [ ] `.rar` files extracted using verified binary
 - [ ] `Process` always disposed after use
 - [ ] No orphaned process handles
+- [ ] Worker process runs with restricted token (no debug, no driver privileges)
+- [ ] Filesystem access limited to sandbox/input and sandbox/output only
+- [ ] Network access completely disabled for worker process
+- [ ] Job Object applied: RAM limit, CPU limit, maximum runtime
+- [ ] Files extracted to staging directory first, validated, then moved to final destination
+- [ ] Staging directory cleaned up on success and failure
 
 ---
 
@@ -318,14 +330,27 @@ Note: `SingleArchive` mode stays sequential. Progress reporting needs `Interlock
 - [ ] **Status:** future
 - **Depends on:** T-F07 or T-F08
 
-**Threat model:** binary passes SHA-256 but has undiscovered vulnerability, or is compromised between verification and execution, or attempts network exfiltration.
+**Threat model:** binary passes SHA-256 but has undiscovered vulnerability, or is compromised between verification and execution, or attempts network exfiltration or filesystem traversal.
 
-**Layer 1 — Windows Job Object (P/Invoke):**
+**Layer 1 — Restricted token:**
+- Create process with restricted token: no debug privileges, no driver privileges
+- Drops all unnecessary privilege groups before `Process.Start`
+
+**Layer 2 — Windows Job Object (P/Invoke):**
 - `ActiveProcessLimit = 1` — cannot spawn child processes
-- Memory limit 512 MB — prevent resource exhaustion
+- RAM limit 512 MB — prevent resource exhaustion
+- CPU time limit — maximum runtime enforced
 - UI restrictions — no clipboard, no desktop manipulation
 
-**Layer 2 — WFP firewall rule:**
+**Layer 3 — Filesystem restriction:**
+- Filesystem access limited to two directories: sandbox/input (read-only) and sandbox/output (write-only)
+- All other filesystem paths denied via DACL or AppContainer policy
+
+**Layer 4 — Network isolation:**
+- Network access completely disabled for worker process
+- No outbound or inbound connections permitted
+
+**Layer 5 — WFP firewall rule:**
 Added at optional component install time (requires elevation once):
 ```powershell
 New-NetFirewallRule -DisplayName "Pakko — block 7z.exe outbound" `
@@ -333,14 +358,25 @@ New-NetFirewallRule -DisplayName "Pakko — block 7z.exe outbound" `
 ```
 Rule removed on uninstall.
 
-**What this does NOT cover:** full filesystem isolation, AppContainer-level isolation.
+**Layer 6 — Staging directory validation:**
+- Files extracted to staging directory first
+- Staging output validated (path traversal check, no reparse points) before move to final destination
+- TOCTOU mitigation: resolve real paths immediately before file creation
+- Staging directory cleaned up on both success and failure
 
 **Acceptance criteria (when implemented):**
 - [ ] External binary process assigned to Job Object before execution
+- [ ] Worker process runs with restricted token (no debug, no driver privileges)
 - [ ] `ActiveProcessLimit = 1`
-- [ ] Memory limit enforced
+- [ ] RAM limit enforced (512 MB)
+- [ ] CPU time limit enforced — maximum runtime applied
 - [ ] UI restrictions applied
+- [ ] Filesystem access limited to sandbox/input and sandbox/output only
+- [ ] Network access completely disabled for worker process
 - [ ] Firewall rule added at install, removed at uninstall
+- [ ] Files extracted to staging directory first, validated, then moved to final destination
+- [ ] TOCTOU mitigation: real paths resolved immediately before file creation
+- [ ] Staging directory cleaned up on success and failure
 - [ ] Job Object handle closed after process exits — no leak
 - [ ] `dotnet test` passes
 - [ ] Verified: spawning child process from sandboxed binary fails
@@ -803,4 +839,61 @@ Format: [ ZIP ▾]   ZIP / TAR / TAR.GZ
 - [ ] DI registration updated — engine selected based on format choice
 - [ ] dotnet test passes — existing 45 tests unchanged
 - [ ] Adding new engine requires: new class + DI registration — no other changes
+
+---
+
+### T-F37 — Reparse Point Protection During Extraction
+- [ ] **Status:** future
+- **Priority:** high (security)
+
+**What:** ZIP archives may contain symlinks, junctions, or mount points
+that redirect file writes outside the destination directory.
+System.IO.Compression does not protect against this automatically.
+
+**File:** `src/Archiver.Core/Services/ZipArchiveService.cs`
+
+**Acceptance criteria:**
+- [ ] Before extracting each entry, check file attributes for
+      `FILE_ATTRIBUTE_REPARSE_POINT` using P/Invoke or
+      `FileInfo.Attributes` after creation
+- [ ] Reject entries that would create symlinks or junctions
+- [ ] Rejected entries added to `SkippedFiles` with reason
+- [ ] `dotnet test` passes — new test: archive with symlink entry is skipped
+
+---
+
+### T-F38 — Alternate Data Streams Protection
+- [ ] **Status:** future
+- **Priority:** high (security)
+
+**What:** NTFS Alternate Data Streams allow hiding executable payloads
+in filenames containing `:` (e.g. `file.txt:payload.exe`).
+ZIP archives may contain such entries.
+
+**File:** `src/Archiver.Core/Services/ZipArchiveService.cs`
+
+**Acceptance criteria:**
+- [ ] Reject any ZIP entry whose name contains `:`
+- [ ] Rejected entries added to `SkippedFiles` with reason
+      `"Alternate Data Stream entry rejected for security"`
+- [ ] `dotnet test` passes — new test: entry with `:` in name is skipped
+
+---
+
+### T-F39 — Reserved Windows Filename and Control Character Filtering
+- [ ] **Status:** future
+- **Priority:** medium (security)
+
+**What:** Windows reserved device names (`CON`, `PRN`, `NUL`, `COM1`–`COM9`,
+`LPT1`–`LPT9`) and filenames containing control characters (`0x00`–`0x1F`)
+can cause unpredictable behavior or security issues during extraction.
+
+**File:** `src/Archiver.Core/Services/ZipArchiveService.cs`
+
+**Acceptance criteria:**
+- [ ] Reject entries whose filename (without path) matches reserved
+      Windows names (case-insensitive, with or without extension)
+- [ ] Reject entries whose filename contains control characters `0x00`–`0x1F`
+- [ ] Rejected entries added to `SkippedFiles` with descriptive reason
+- [ ] `dotnet test` passes — new tests for reserved names and control chars
 
