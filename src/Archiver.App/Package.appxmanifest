@@ -10,7 +10,7 @@
   <Identity
     Name="PavloRybchenko.Pakko"
     Publisher="CN=EF3EC84C-8287-4FC3-BB4F-FCCEBA116BCE"
-    Version="1.0.0.0" />
+    Version="1.1.0.0" />
 
   <mp:PhoneIdentity PhoneProductId="c0456ca0-e25b-4778-95a2-045a49e4ab06" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
 

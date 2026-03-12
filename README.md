@@ -79,7 +79,7 @@ Windows 11 23H2+ includes `tar.exe` (Microsoft-signed bsdtar) supporting RAR, 7z
 
 ## Project Status
 
-**v1.1 sprint** — Store release (ZIP only). v1.0 tagged `v1.0.0`.
+**v1.1 complete — GitHub release** for early testers. v1.0 tagged `v1.0.0`, v1.1 tagged `v1.1.0`.
 
 - ✅ Archive (single / separate) with compression level selector
 - ✅ Extract with smart folder logic and ZIP slip protection
@@ -88,15 +88,21 @@ Windows 11 23H2+ includes `tar.exe` (Microsoft-signed bsdtar) supporting RAR, 7z
 - ✅ File log (`%LocalAppData%\Pakko\logs\pakko.log`)
 - ✅ i18n foundation (ResW, en-US)
 - ✅ MSIX packaging
-- ✅ 45 tests
+- ✅ Mid-file cancellation (async streaming)
+- ✅ Safe temp file/dir pattern — no partial files on cancel
+- ✅ ZIP bomb detection (compression ratio 1000:1 threshold)
+- ✅ UTF-8 filenames — Cyrillic and emoji round-trip verified
+- ✅ 48 tests
+
+Microsoft Store release planned for **v1.3** — when shell extension and MOTW propagation are complete. v1.1 and v1.2 are GitHub-only releases for early testers.
 
 **Roadmap:**
 
 | Version | Focus |
 |---------|-------|
-| v1.1 | Store release — ZIP only (current sprint) |
+| v1.1 | ✅ GitHub release — ZIP only |
 | v1.2 | Shell extension + MOTW + file associations + hash viewer |
-| v1.3 | tar.exe integration — RAR/7z/tar extraction + capability detection |
+| v1.3 | tar.exe integration + Microsoft Store release |
 | v1.4 | GPO/ADMX + Low IL sandbox (P/Invoke) + strict mode policy |
 | v1.5 | TAR creation via tar.exe + additional format fixtures |
 

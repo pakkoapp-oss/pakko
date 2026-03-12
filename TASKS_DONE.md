@@ -223,3 +223,37 @@ Both `ArchiveAsync` (SingleArchive) and `ExtractAsync` wrapped in `Task.Run`. Pe
 - [x] **Status:** complete
 
 Steel blue `#1D5FA8`, slab bold П lettermark. All `Assets/` placeholders replaced: `Square44x44Logo.scale-200.png`, `Square44x44Logo.targetsize-24_altform-unplated.png`, `Square150x150Logo.scale-200.png`, `Wide310x150Logo.scale-200.png`, `StoreLogo.png`, `Square44x44Logo.ico`, `SplashScreen.scale-200.png`. Source `pakko_*.png` / `pakko.ico` files removed after copy. Build: 0 warnings, 0 errors.
+
+---
+
+## v1.1 Sprint — Completed March 2026
+
+### T-F17 — Tray Left-Click Toggle
+- [x] **Status:** complete — Completed in v1.1 sprint, March 2026
+
+Left-click on tray icon toggles window visibility. `TrayLeftClickCommand` in `MainWindow.xaml.cs`. `LeftClickCommand="{x:Bind TrayLeftClickCommand}"` wired in XAML. Works in Release and Debug.
+
+### T-F18 — Operation Spinner on Action Buttons
+- [x] **Status:** complete — Completed in v1.1 sprint, March 2026
+
+Indeterminate `ProgressRing` inline on Archive/Extract buttons while `IsOperationRunning = true`. No layout shift. Buttons remain disabled during operation. Button text changes to "Archiving..." / "Extracting..." during operations.
+
+### T-F26 — Temporary File Pattern for Safe Archive Creation
+- [x] **Status:** complete — Completed in v1.1 sprint, March 2026
+
+Archive written to `destPath + ".tmp"` during creation. On success: renamed to final path. On failure or cancellation: `.tmp` deleted — no partial archive left on disk. New test: `ArchiveAsync_Cancelled_LeavesNoTempFile`.
+
+### T-F27 — Temporary Directory Pattern for Safe Extraction
+- [x] **Status:** complete — Completed in v1.1 sprint, March 2026
+
+Extraction target is `destPath + "_tmp"` during operation. On success: `_tmp` directory moved to final destination. On failure or cancellation: `_tmp` deleted cleanly. New test: `ExtractAsync_Cancelled_LeavesNoTempDirectory`.
+
+### T-F28 — Archive Bomb Protection
+- [x] **Status:** complete (Variant B — ratio-based skip) — Completed in v1.1 sprint, March 2026
+
+`MaxCompressionRatio = 1000` constant in `ZipArchiveService`. Entries with ratio >1000:1 added to `SkippedFiles` and skipped — archive continues for remaining entries. Post-v1.1: configurable limits if needed for large map/imagery files. New test: `ExtractAsync_SuspiciousCompressionRatio_SkipsEntry`.
+
+### T-F29 — UTF-8 Filename Encoding Verification
+- [x] **Status:** complete — Completed in v1.1 sprint, March 2026
+
+.NET 8 `ZipArchive` sets UTF-8 EFS flag automatically for non-ASCII entry names — no code change required. New tests: `CyrillicFilename_PreservedAfterRoundTrip`, `EmojiFilename_PreservedAfterRoundTrip`. 48/48 tests pass.

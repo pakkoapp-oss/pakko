@@ -31,35 +31,17 @@ These rules apply to ALL tasks. Violating them = task is NOT complete.
 
 ---
 
-## Current State — v1.0 Complete
+## Current State — v1.1 Complete
 
-- All T-01 through T-35 + T-11 complete and committed
-- 45/45 tests pass (`dotnet test`)
+- All T-01 through T-35 + T-11, and T-F17/T-F18/T-F26–T-F29 complete and committed
+- 48/48 tests pass (`dotnet test`)
 - MSIX builds at `src/Archiver.App/AppPackages/` (unsigned — see T-F10 for signing)
-- Git tag: `v1.0.0`
+- Git tag: `v1.1.0` — GitHub-only release for early testers
+- **Store release planned for v1.3** (when shell extension + MOTW + tar.exe complete)
 
 ---
 
-## Store Publication Plan
-
-Target: publish v1.1 to Microsoft Store.
-
-Complete these tasks in order before submission:
-
-1. T-F17 — Tray left-click toggle
-2. T-F18 — Operation spinner on action buttons
-3. T-F26 — Temporary file pattern (safe archive creation)
-4. T-F27 — Temporary directory pattern (safe extraction)
-5. T-F28 — Archive bomb protection
-6. T-F29 — UTF-8 filename encoding verification
-
-After all six complete → build MSIX → submit to Store as v1.1.
-
-Tasks T-F16, T-F19–T-F25, T-F30–T-F34 are post-Store roadmap.
-
----
-
-## Future Tasks (post v1.0)
+## Future Tasks
 
 ### T-F01 — Explorer Context Menu Integration
 - [ ] **Status:** future
@@ -404,38 +386,6 @@ Version bump: increment `Package.appxmanifest` `Version` attribute before each s
 
 ---
 
-### T-F17 — Tray Left-Click Toggle
-- [x] **Status:** complete
-- **Store blocker — complete before v1.1 submission**
-
-**What:** Left-click on the system tray icon toggles window visibility (show if hidden, hide if visible). Currently only right-click shows the context menu.
-
-**File:** `src/Archiver.App/MainWindow.xaml.cs` and `MainWindow.xaml`.
-
-**Acceptance criteria:**
-- [x] `TrayLeftClickCommand` added to `MainWindow.xaml.cs`
-- [x] Left-click on tray icon hides window if visible, shows if hidden
-- [x] `LeftClickCommand="{x:Bind TrayLeftClickCommand}"` wired in XAML
-- [x] Works in both Release and Debug configurations
-
----
-
-### T-F18 — Operation Spinner on Action Buttons
-- [x] **Status:** complete
-- **Store blocker — complete before v1.1 submission**
-
-**What:** Show an indeterminate `ProgressRing` inline next to the button text on Archive and Extract buttons while an operation is running. Provides visual feedback without relying solely on the progress bar.
-
-**File:** `src/Archiver.App/MainWindow.xaml`.
-
-**Acceptance criteria:**
-- [x] `ProgressRing` visible on Archive button while `IsOperationRunning = true`
-- [x] `ProgressRing` visible on Extract button while `IsOperationRunning = true`
-- [x] Buttons remain disabled during operation (existing behavior unchanged)
-- [x] No layout shift when spinner appears or disappears
-
----
-
 ### T-F19 — Streaming Safety Audit
 - [ ] **Status:** future
 
@@ -552,93 +502,6 @@ Avoid unverifiable superiority claims. Prefer factual positioning.
 - [ ] Supply chain risk section remains — factual CVE data kept
 - [ ] Trust model framing added: "different trust model, not superior security"
 - [ ] SECURITY.md unchanged — it is already appropriately nuanced
-
----
-
-### T-F26 — Temporary File Pattern for Safe Archive Creation
-- [x] **Status:** complete
-- **Priority:** high
-- **Store blocker — complete before v1.1 submission**
-
-**What:** Write archive to a .tmp file first. On success rename to final name.
-On failure or cancellation delete the .tmp file. Prevents corrupted archives
-from reaching the user.
-
-**File:** `src/Archiver.Core/Services/ZipArchiveService.cs`
-
-**Acceptance criteria:**
-- [x] Archive written to destPath + ".tmp" during creation
-- [x] On success: .tmp renamed to final destination path
-- [x] On failure or exception: .tmp deleted, no partial archive left
-- [x] On cancellation: .tmp deleted cleanly
-- [x] dotnet test passes — new test: cancelled archive leaves no .tmp file
-
----
-
-### T-F27 — Temporary Directory Pattern for Safe Extraction
-- [x] **Status:** complete
-- **Priority:** high
-- **Store blocker — complete before v1.1 submission**
-
-**What:** Extract to a temporary directory first. On success move to final
-destination. On failure delete the temporary directory. Prevents partial
-extraction on interruption.
-
-**File:** `src/Archiver.Core/Services/ZipArchiveService.cs`
-
-**Acceptance criteria:**
-- [x] Extraction target is destPath + "_tmp" during operation
-- [x] On success: _tmp directory moved to final destination
-- [x] On failure or cancellation: _tmp directory deleted cleanly
-- [x] dotnet test passes — new test: cancelled extraction leaves no _tmp directory
-
----
-
-### T-F28 — Archive Bomb Protection
-- [x] **Status:** complete (Variant B — ratio-based skip)
-- **Priority:** high
-- **Store blocker — complete before v1.1 submission**
-
-**What:** Detect suspicious compression ratio before extracting each entry.
-Skip suspicious entries and report them in SkippedFiles — entire archive continues normally.
-
-> Post-v1.1: consider configurable size limits or warning dialog
-> for large archives. Military/government users may work with large
-> map files, satellite imagery, ortho photos that could exceed
-> naive byte limits. Current implementation only checks compression
-> ratio — no hard byte limits enforced.
-
-**File:** `src/Archiver.Core/Services/ZipArchiveService.cs`
-
-**Implementation:** `MaxCompressionRatio = 1000` constant. Entries with
-`CompressedLength > 0 && Length / CompressedLength > 1000` are added to
-`SkippedFiles` and skipped — operation continues for remaining entries.
-
-**Acceptance criteria:**
-- [x] Entries with ratio > 1000:1 skipped and reported in SkippedFiles
-- [x] Legitimate files extract normally alongside skipped entries
-- [x] dotnet test passes — new test: suspicious ratio → skip, no errors
-
----
-
-### T-F29 — UTF-8 Filename Encoding Verification
-- [x] **Status:** complete
-- **Priority:** high
-- **Store blocker — complete before v1.1 submission**
-
-**What:** Verify Cyrillic, Asian, emoji filenames are preserved correctly
-in ZIP archives. ZIP historically used CP437 — ensure UTF-8 flag is set.
-
-**File:** `src/Archiver.Core/Services/ZipArchiveService.cs`
-
-**Note:** .NET 8 `ZipArchive` sets the UTF-8 language encoding flag (EFS) automatically
-for non-ASCII entry names — no code change required. Tests confirm correct behavior.
-
-**Acceptance criteria:**
-- [x] Archive and extract file with Cyrillic name — name preserved exactly
-- [x] Archive and extract file with emoji name — name preserved exactly
-- [x] ZIP entries have UTF-8 encoding flag set (.NET 8 handles this automatically)
-- [x] dotnet test passes — new tests: Cyrillic filename round-trip, emoji filename round-trip
 
 ---
 

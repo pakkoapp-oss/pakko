@@ -14,10 +14,19 @@ Target audience: Ukrainian government/defense — trust, auditability, minimal a
 
 ## Current State
 
-**v1.0 complete** — tagged `v1.0.0`. v1.1 Store release in progress.
-- T-01 through T-35 + T-11 all complete and committed
-- 45/45 tests pass
+**v1.1 complete** — tagged `v1.1.0`. GitHub-only release for early testers.
+- T-01 through T-35 + T-11, and T-F17/T-F18/T-F26–T-F29 complete
+- 48/48 tests pass
 - MSIX builds unsigned (see T-F10 for signing)
+- Async streaming (CopyToAsync) — CancellationToken respected mid-file
+- Temp file/dir pattern — no partial files on cancel or failure
+- ZIP bomb detection via compression ratio (1000:1 threshold)
+- UTF-8 round-trip verified for Cyrillic and emoji filenames
+- Button text changes to "Archiving..." / "Extracting..." during operation
+- Post-op cleanup (DeleteSourceFiles, DeleteArchiveAfterExtraction) runs with IsBusy=true
+- SHA-256 integrity manifest removed — redundant with ZIP built-in CRC-32
+- **Store release planned for v1.3** — when shell extension, MOTW propagation,
+  and tar.exe integration are complete. v1.1 and v1.2 are GitHub-only releases.
 - Next work: Future tasks in `TASKS.md`
 
 ## Roadmap Summary
