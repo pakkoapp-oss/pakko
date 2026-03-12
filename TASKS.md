@@ -176,61 +176,12 @@ Interactive dialog when conflict detected — Skip / Overwrite / Rename per file
 ---
 
 ### T-F07 — Optional 7-Zip Extraction Support
-- [ ] **Status:** future
-
-**What:** Optional component — not bundled by default, installable separately.
-
-**Binary source:** NanaZip (MIT licensed fork of 7-Zip by M2Team, Japan).
-Preferred over original 7-Zip due to reproducible builds and non-Russian maintainership.
-
-**Security model:**
-- SHA-256 hash of binary embedded as constant in source code
-- Hash verified at runtime before every invocation
-- Hash mismatch → operation refused, user notified with security error
-- Binary stored in app's local data folder, not system-wide
-
-**Process isolation:** see T-F13.
-
-**Acceptance criteria (when implemented):**
-- [ ] SHA-256 verification before every `Process.Start`
-- [ ] Hash mismatch → clear security error, no execution
-- [ ] Optional install — not present in base MSIX package
-- [ ] `.7z` files extracted to destination using verified binary
-- [ ] Falls back to "unsupported format" if binary not installed
-- [ ] `Process` always disposed after use — wrap in `using` or `finally`
-- [ ] No orphaned process handles after extraction completes or fails
-- [ ] Worker process runs with restricted token (no debug, no driver privileges)
-- [ ] Filesystem access limited to sandbox/input and sandbox/output only
-- [ ] Network access completely disabled for worker process
-- [ ] Job Object applied: RAM limit, CPU limit, maximum runtime
-- [ ] Files extracted to staging directory first, validated, then moved to final destination
-- [ ] Staging directory cleaned up on success and failure
+- [ ] **Status:** CANCELLED — replaced by tar.exe integration (T-F47/T-F49). Windows built-in `tar.exe` (Microsoft-signed) supports 7z extraction on Windows 11 23H2+ without requiring a third-party binary.
 
 ---
 
 ### T-F08 — Optional RAR Extraction Support
-- [ ] **Status:** future
-
-**What:** Optional component for `.rar` archives.
-Official RARLAB `unrar.exe` (freeware license allows use in free software).
-
-**Security model:** same as T-F07 — SHA-256 verification before every invocation.
-
-**Process isolation:** see T-F13.
-
-**Acceptance criteria (when implemented):**
-- [ ] SHA-256 verification before every `Process.Start`
-- [ ] Hash mismatch → security error, no execution
-- [ ] Optional install only
-- [ ] `.rar` files extracted using verified binary
-- [ ] `Process` always disposed after use
-- [ ] No orphaned process handles
-- [ ] Worker process runs with restricted token (no debug, no driver privileges)
-- [ ] Filesystem access limited to sandbox/input and sandbox/output only
-- [ ] Network access completely disabled for worker process
-- [ ] Job Object applied: RAM limit, CPU limit, maximum runtime
-- [ ] Files extracted to staging directory first, validated, then moved to final destination
-- [ ] Staging directory cleaned up on success and failure
+- [ ] **Status:** CANCELLED — covered by tar.exe integration (T-F47/T-F49). Windows built-in `tar.exe` supports RAR extraction on Windows 11 23H2+, eliminating the need for `unrar.exe`.
 
 ---
 
@@ -896,4 +847,240 @@ can cause unpredictable behavior or security issues during extraction.
 - [ ] Reject entries whose filename contains control characters `0x00`–`0x1F`
 - [ ] Rejected entries added to `SkippedFiles` with descriptive reason
 - [ ] `dotnet test` passes — new tests for reserved names and control chars
+
+---
+
+## v1.2 — Shell Extension
+
+### T-F40 — Shell Extension Project Setup
+- [ ] **Status:** future (v1.2)
+
+**What:** New project `Archiver.ShellExtension` (net8.0-windows) implementing `IExplorerCommand`. Registered via MSIX AppExtension — appears in modern Windows 11 context menu without requiring "Show more options".
+
+**Acceptance criteria:**
+- [ ] `Archiver.ShellExtension` project added to solution
+- [ ] `IExplorerCommand` implementation compiles
+- [ ] Registered via `Package.appxmanifest` AppExtension entry
+- [ ] Context menu entry visible in Windows 11 modern context menu
+- [ ] Uninstall removes context menu entry cleanly
+
+---
+
+### T-F41 — Context Menu: Extract Here
+- [ ] **Status:** future (v1.2)
+
+**What:** "Extract here" command on ZIP files — extracts to same folder as archive, no window.
+
+**Acceptance criteria:**
+- [ ] Appears on right-click of `.zip` files
+- [ ] Extracts to same directory as archive (T-14 smart folder logic)
+- [ ] Calls Archiver.App via protocol activation
+- [ ] Toast notification on completion
+
+---
+
+### T-F42 — Context Menu: Extract to Folder
+- [ ] **Status:** future (v1.2)
+
+**What:** "Extract to `<folder_name>`\" on ZIP files — creates subfolder automatically.
+
+**Acceptance criteria:**
+- [ ] Appears on right-click of `.zip` files
+- [ ] Creates `<archive_name>\` subfolder next to archive
+- [ ] Extracts into the created subfolder
+- [ ] Toast notification on completion
+
+---
+
+### T-F43 — Context Menu: Archive with Pakko
+- [ ] **Status:** future (v1.2)
+
+**What:** "Archive with Pakko" on any files/folders — single archive, Fast compression, destination = source folder.
+
+**Acceptance criteria:**
+- [ ] Appears on right-click of any files/folders
+- [ ] Creates single `.zip` archive next to source items
+- [ ] Uses Fast compression level
+- [ ] Supports multi-selection (all items in one archive)
+- [ ] Toast notification on completion
+
+---
+
+### T-F44 — File Type Association
+- [ ] **Status:** future (v1.2)
+
+**What:** Register `.zip` file association in `Package.appxmanifest`. Double-click opens archive in Pakko.
+
+**Acceptance criteria:**
+- [ ] `.zip` association declared in appxmanifest
+- [ ] Double-click on `.zip` opens Pakko with archive loaded
+- [ ] Association registered/unregistered with MSIX install/uninstall
+
+---
+
+### T-F45 — Mark of the Web (MOTW) Propagation
+- [ ] **Status:** future (v1.2)
+- **Priority:** high (security)
+
+**What:** On extraction, read `Zone.Identifier` ADS from the source archive and write it to every extracted file. Always on by default — cannot be disabled by user (only via GPO in v1.4).
+
+**File:** `src/Archiver.Core/Services/ZipArchiveService.cs`
+
+**Implementation:** `FileStream` opened with ADS path `"<file>:Zone.Identifier"`. No P/Invoke required — NTFS ADS is accessible via standard `FileStream` on Windows.
+
+**Acceptance criteria:**
+- [ ] `Zone.Identifier` ADS read from source archive before extraction
+- [ ] `Zone.Identifier` ADS written to each extracted file
+- [ ] If source archive has no `Zone.Identifier`, skip silently (no error)
+- [ ] Always on — no user setting to disable
+- [ ] `dotnet test` passes — new test: extracted files inherit `Zone.Identifier` from archive
+
+---
+
+### T-F46 — File Hash Viewer
+- [ ] **Status:** future (v1.2)
+
+**What:** Select file(s) → show SHA-256 hash in UI. Useful for integrity verification before opening extracted files.
+
+**Acceptance criteria:**
+- [ ] File picker → show SHA-256 hash of selected file(s)
+- [ ] UI only — no new service methods required
+- [ ] Hash computed via `System.Security.Cryptography.SHA256`
+
+---
+
+## v1.3 — tar.exe Integration
+
+### T-F47 — ITarService Interface and TarCapabilities
+- [ ] **Status:** future (v1.3)
+
+**What:** Add `ITarService` interface and `TarCapabilities` record to `Archiver.Core`. `TarProcessService` implements `ITarService`. Register in DI.
+
+**File:** `src/Archiver.Core/Interfaces/ITarService.cs`, `src/Archiver.Core/Models/TarCapabilities.cs`, `src/Archiver.Core/Services/TarProcessService.cs`
+
+**Acceptance criteria:**
+- [ ] `TarCapabilities` record defined with `SupportsRar`, `Supports7z`, `SupportsZstd`, `SupportsXz`, `SupportsLzma`, `SupportsBz2`, `Version` properties
+- [ ] `ITarService` interface defined with `DetectCapabilitiesAsync()` and `ExtractAsync()`
+- [ ] `TarProcessService` class created (implementation in T-F48/T-F49)
+- [ ] DI registration added
+- [ ] `dotnet build src/Archiver.Core` passes
+
+---
+
+### T-F48 — tar.exe Capability Detection
+- [ ] **Status:** future (v1.3)
+
+**What:** At app startup, run `C:\Windows\System32\tar.exe --version` to detect version and probe which formats are supported. Cache result as `TarCapabilities` singleton. UI greys out unsupported formats with tooltip "Requires Windows 11 23H2+".
+
+**Acceptance criteria:**
+- [ ] `DetectCapabilitiesAsync()` runs `C:\Windows\System32\tar.exe --version` (absolute path)
+- [ ] Parses version string and probes format support
+- [ ] Returns sensible defaults if tar.exe absent or probe fails
+- [ ] Result cached — detection runs once at startup
+- [ ] UI greys out formats not supported by detected tar.exe
+- [ ] `dotnet test` passes — unit test with mocked process output
+
+---
+
+### T-F49 — tar.exe Extraction Pipeline
+- [ ] **Status:** future (v1.3)
+
+**What:** Implement `TarProcessService.ExtractAsync()`. Always uses absolute path. Argument whitelist enforced. Quarantine staging directory on same disk as destination. Full validation after extraction. MOTW propagation. Timeout via `CancellationToken` + `Process.Kill()`.
+
+**File:** `src/Archiver.Core/Services/TarProcessService.cs`
+
+**Acceptance criteria:**
+- [ ] Always invokes `C:\Windows\System32\tar.exe` (absolute path — never PATH)
+- [ ] Only `-xf` and `-C` arguments allowed — no arbitrary flag injection
+- [ ] Extraction goes to quarantine directory on same disk as destination
+- [ ] All extracted files validated: no ADS, no reserved names, no reparse points
+- [ ] MOTW propagation: copies `Zone.Identifier` from archive to each extracted file
+- [ ] `CancellationToken` triggers `Process.Kill()` — no orphaned processes
+- [ ] Quarantine directory cleaned up on success and failure
+- [ ] New test project `Archiver.Core.IntegrationTests` created
+- [ ] Integration tests tagged `[Integration]` — skipped if tar.exe not present
+- [ ] Format-specific tests tagged `[SkipIfFormatUnsupported(format)]`
+- [ ] `dotnet test` passes (unit tests); integration tests pass on Win 11 23H2+
+
+---
+
+### T-F50 — tar.exe Test Fixtures
+- [ ] **Status:** future (v1.3)
+
+**What:** Create fixture set for tar format integration tests. Update `GenerateFixtures` project to generate tar fixtures.
+
+**Fixtures required** (`tests/Archiver.Core.Tests/Fixtures/tar/`):
+- `valid_tar.tar`, `valid_tar_gz.tar.gz`, `valid_tar_bz2.tar.bz2`
+- `valid_tar_xz.tar.xz`, `valid_tar_zst.tar.zst`, `valid_tar_lzma.tar.lzma`
+- `valid_7z.7z`, `valid_rar4.rar`, `valid_rar5.rar`
+- `corrupted_tar.tar`, `zipslip_tar.tar`, `bomb_tar.tar.gz`
+- `unicode_cyrillic.tar`, `unicode_emoji.tar`
+
+**Acceptance criteria:**
+- [ ] All fixtures present and generated by `GenerateFixtures` project (where tar.exe can create them)
+- [ ] Integration tests for each valid fixture format
+- [ ] Security tests: zipslip rejected, bomb skipped, ADS blocked
+- [ ] Tests tagged `[SkipIfFormatUnsupported]` for RAR5/7z (require Win 11 23H2+)
+- [ ] `dotnet test` passes (skips gracefully where format unsupported)
+
+---
+
+## v1.4 — GPO + Low IL Sandbox
+
+### T-F51 — Group Policy Support
+- [ ] **Status:** future (v1.4)
+
+**What:** Registry-based Group Policy support for enterprise deployment. `PolicyService` reads at startup, overrides user settings. ADMX/ADML template provided.
+
+**Registry path:** `HKLM\Software\Policies\Pakko\`
+
+**Keys:**
+| Key | Type | Effect |
+|-----|------|--------|
+| `EnforceMOTW` | DWORD | Force MOTW propagation (cannot be disabled by user) |
+| `AllowedFormats` | multi-string | Whitelist of allowed archive formats |
+| `StrictZipBombMode` | DWORD | Lower compression ratio threshold |
+| `DisableTarExtraction` | DWORD | Block all tar.exe extraction |
+
+**Acceptance criteria:**
+- [ ] `PolicyService` reads all four keys at startup
+- [ ] Policies override corresponding user settings
+- [ ] `EnforceMOTW=1` forces MOTW on even if user would disable
+- [ ] `DisableTarExtraction=1` hides tar format options in UI
+- [ ] ADMX/ADML template file added to repo (`deploy/Pakko.admx`, `deploy/Pakko.adml`)
+- [ ] `dotnet test` passes — unit tests with mocked registry
+
+---
+
+### T-F52 — Low IL Sandbox for tar.exe
+- [ ] **Status:** future (v1.4)
+
+**What:** `TarSandboxedService` implements `ITarService` using a P/Invoke-based Low Integrity Level sandbox for `tar.exe`. Replaces `TarProcessService` via single DI line change.
+
+**File:** `src/Archiver.Core/Services/TarSandboxedService.cs`
+
+**P/Invoke surface:**
+- `CreateRestrictedToken` — strip privileges from Pakko's token
+- `DuplicateTokenEx` — duplicate for `CreateProcessAsUser`
+- `SetTokenInformation` — set integrity level to Low IL
+- `CreateProcessAsUser` — launch tar.exe with restricted token
+- `SetNamedSecurityInfo` — label quarantine directory with Low IL
+
+**Flow:**
+1. Create quarantine directory on same disk as destination
+2. Label quarantine directory Low IL via `SetNamedSecurityInfo`
+3. Launch `tar.exe` into quarantine with restricted token (Low IL)
+4. After process exits, validate all files at Medium IL (C# code)
+5. Atomic move to final destination
+6. Clean up quarantine directory
+
+**Acceptance criteria:**
+- [ ] `TarSandboxedService` implements `ITarService` — same interface as `TarProcessService`
+- [ ] DI swap is one line: `AddSingleton<ITarService, TarSandboxedService>()`
+- [ ] Quarantine directory receives Low IL label before tar.exe launch
+- [ ] tar.exe process runs with restricted Low IL token
+- [ ] Validation and move run at Medium IL in C# after process exits
+- [ ] Quarantine directory cleaned up on success and failure
+- [ ] All P/Invoke handles properly closed — no leaks
+- [ ] `dotnet test` passes — integration test: file write outside quarantine fails
 

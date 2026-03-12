@@ -68,16 +68,16 @@ For a full threat model see `SECURITY.md`.
 
 ---
 
-## Supported Formats — v1.0
+## Supported Formats
 
 | Format | Status | Method |
 |--------|--------|--------|
-| ZIP | ✅ Supported | `System.IO.Compression.ZipFile` |
-| TAR | 🔜 Future | `tar.exe` via `Process` |
-| RAR | ❌ Not supported | — |
-| 7z | ❌ Not supported | — |
-| Encrypted archives | ❌ Not supported | — |
-| Multi-volume | ❌ Not supported | — |
+| ZIP | ✅ v1.0 | `System.IO.Compression.ZipFile` |
+| TAR/GZ/XZ/ZST/BZ2 | 🔜 v1.3 | `tar.exe` (Windows built-in) |
+| RAR | 🔜 v1.3 (read) | `tar.exe` (Windows built-in) |
+| 7z | 🔜 v1.3 (read) | `tar.exe` (Windows built-in) |
+| Encrypted archives | ❌ Out of scope | — |
+| Multi-volume | ❌ Out of scope | — |
 
 ---
 
@@ -129,17 +129,115 @@ Errors must **never crash the app**. Each failed item should be reported individ
 ## Non-Goals (v1.0)
 
 - Advanced compression level tuning
-- Explorer shell/context menu integration
 - Background or scheduled archiving
 - Archive encryption
-- Formats other than ZIP
 - Preview of archive contents
 
 ---
 
-## Future Roadmap (post v1.0)
+## Windows Explorer Gap Analysis
 
-- Explorer context menu ("Archive with Archiver", "Extract here")
-- TAR support via `tar.exe`
-- Drag & drop to external apps
-- Microsoft Store listing
+### What Explorer Provides
+- Read many formats (ZIP natively; RAR/7z/tar via built-in `tar.exe` on Win 11 23H2+)
+- Basic extract (right-click → Extract All)
+
+### What Explorer Lacks
+- No "Extract Here" (extracts into a subfolder, no way to extract in-place)
+- No "Extract to `<folder_name>`\" shortcut
+- No batch extraction to separate folders
+- No compression level selection
+- No conflict handling (overwrites silently)
+- No MOTW propagation — extracted files lose Mark of the Web
+- No per-file progress or extraction log
+- No GPO policy for format restrictions
+
+### Pakko's Unique Value
+- Auditable stack — `System.IO.Compression` + Windows built-in `tar.exe`, no third-party binaries
+- MOTW propagation — extracted files inherit Zone.Identifier from archive
+- Shell integration — modern IExplorerCommand context menu
+- Security-first defaults — reparse point protection, ADS blocking, ZIP bomb detection
+- GPO policy support for enterprise deployment
+
+---
+
+## Shell Extension
+
+Pakko v1.2 adds a native Windows 11 context menu via `IExplorerCommand`:
+
+- Registered via MSIX AppExtension — appears in modern context menu (no "Show more options" click required)
+- **Commands available on ZIP files:** Extract here · Extract to `<folder_name>\` · Open with Pakko
+- **Commands available on any files/folders:** Archive with Pakko
+
+Implementation: `Archiver.ShellExtension` project, COM-based `IExplorerCommand`, registered in `Package.appxmanifest`.
+
+---
+
+## Mark of the Web (MOTW)
+
+### Why It Matters
+
+MOTW (Zone.Identifier ADS) signals to Windows and Office that a file originated from an untrusted zone. Without MOTW:
+
+- Office opens documents in **edit mode** instead of Protected View — macro execution is not blocked
+- Windows does not prompt before executing downloaded scripts
+
+### Explorer's Gap
+
+Windows Explorer does **not** propagate MOTW to extracted files. 7-Zip (default settings) also does not propagate MOTW. NanaZip 6.0 (Feb 2026) added MOTW propagation as a default.
+
+### Pakko's Behavior (v1.2+)
+
+- On extraction: reads `Zone.Identifier` ADS from the source archive
+- Writes `Zone.Identifier` ADS to **every** extracted file
+- Always on by default — cannot be disabled by user
+- Only a GPO policy can disable MOTW propagation (v1.4)
+
+Implementation: `FileStream` opened with ADS path `file.txt:Zone.Identifier`.
+
+---
+
+## tar.exe Integration (v1.3)
+
+### Design
+
+- Always uses absolute path `C:\Windows\System32\tar.exe` — no PATH lookup, prevents EXE hijacking
+- Capability detection at app startup — probes which formats the current `tar.exe` supports
+- UI shows only formats the detected `tar.exe` supports
+- Unsupported formats shown greyed with tooltip "Requires Windows 11 23H2+"
+- Argument whitelist: only `-xf` and `-C` allowed — no arbitrary flag injection
+
+### Process Isolation
+
+- v1.3: `tar.exe` runs at Medium IL (inherits from Pakko process)
+- v1.4: restricted token via P/Invoke (`CreateRestrictedToken`, `SetNamedSecurityInfo`) — Low IL quarantine directory
+
+### Quarantine Pattern
+
+Same as ZIP extraction (T-F26/T-F27): extract to staging directory on same disk, validate all output files, then atomic move to final destination.
+
+---
+
+## Group Policy Support (v1.4)
+
+Registry path: `HKLM\Software\Policies\Pakko\`
+
+| Key | Type | Effect |
+|-----|------|--------|
+| `EnforceMOTW` | DWORD | Force MOTW propagation even if user disables |
+| `AllowedFormats` | multi-string | Whitelist of allowed formats |
+| `StrictZipBombMode` | DWORD | Lower compression ratio threshold |
+| `DisableTarExtraction` | DWORD | Block all tar.exe extraction |
+
+ADMX/ADML template provided for enterprise Group Policy deployment.
+
+---
+
+## Future Roadmap
+
+| Version | Focus |
+|---------|-------|
+| v1.1 | Store release — ZIP only |
+| v1.2 | Shell extension + MOTW + file associations + hash viewer |
+| v1.3 | tar.exe integration — RAR/7z/tar extraction + capability detection |
+| v1.4 | GPO/ADMX + Low IL sandbox (P/Invoke) + strict mode policy |
+| v1.5 | TAR creation via tar.exe + additional format fixtures |

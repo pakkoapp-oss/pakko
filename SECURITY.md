@@ -35,7 +35,7 @@ This document explains the threat model behind Windows Archiver Wrapper and why 
 
 ---
 
-## Supply Chain Risk: 7-Zip and WinRAR
+## Supply Chain Risk: 7-Zip, WinRAR, and Windows tar.exe
 
 This section documents the rationale for excluding these tools as a dependency or reference implementation.
 
@@ -64,13 +64,17 @@ The absence of reproducible builds is a critical gap: anyone with access to the 
 
 Closed-source compression tools that process untrusted files are not appropriate for environments handling sensitive data. There is no technical means to verify the absence of intentional backdoors or unintentional vulnerabilities.
 
+### Windows tar.exe
+
+`C:\Windows\System32\tar.exe` is an acceptable dependency for extracting non-ZIP formats. It is Microsoft-signed, open source (bsdtar/libarchive on GitHub), and delivered through the Windows Update chain. See the **tar.exe Trust Model** section below for details.
+
 ### Risk Classification for Regulated Environments
 
 For organizations operating under security requirements (government, defense, critical infrastructure, financial sector):
 
 - Using software from developers in adversarial jurisdictions without source auditability is a supply chain risk
 - Unverifiable binaries processing sensitive files fail basic security hygiene standards
-- Neither tool meets reproducible build requirements
+- Neither 7-Zip nor WinRAR meets reproducible build requirements
 
 ---
 
@@ -107,10 +111,84 @@ Each supported format adds parser attack surface. RAR and 7z are excluded perman
 
 | Risk | Severity | Mitigation |
 |------|----------|-----------|
-| ZIP path traversal (e.g., `../../etc/passwd` style entries) | High | `System.IO.Compression` with .NET 8 validates entry paths — verify behavior in `ZipArchiveService` tests |
-| ZIP bomb (deeply nested or highly compressed) | Medium | No size limit enforced in v1.0 — add extraction size limit in v2.0 |
-| Symlink attacks in ZIP entries | Medium | `ZipFile.ExtractToDirectory` behavior on Windows — document and test |
+| ZIP path traversal (e.g., `../../etc/passwd` style entries) | High | `System.IO.Compression` with .NET 8 validates entry paths — covered in `ZipArchiveService` tests |
+| ZIP bomb (highly compressed entries) | Medium | Ratio-based detection (T-F28, v1.0): entries with ratio >1000:1 skipped and reported |
+| Symlink/reparse point attacks in ZIP entries | Medium | T-F37 — reparse point check after file creation, planned post-v1.1 |
+| Alternate Data Stream entries (`:` in filename) | Medium | T-F38 — ADS entry rejection, planned post-v1.1 |
+| Reserved Windows filenames in entries (`CON`, `NUL`, etc.) | Low-Medium | T-F39 — reserved name filtering, planned post-v1.1 |
+| MOTW not propagated to extracted files | Medium | v1.1 gap — MOTW propagation implemented in v1.2 (T-F45) |
+| tar.exe runs at Medium IL | Medium | v1.3 gap — Low IL sandbox via P/Invoke in v1.4 (T-F52) |
 | Microsoft as trust anchor | Low-Medium | Accepted tradeoff for the target audience; .NET is open source and auditable |
+
+---
+
+## Mark of the Web — Security Rationale
+
+### What Zone.Identifier Is
+
+Windows NTFS Alternate Data Stream `Zone.Identifier` records the security zone of a file's origin (e.g., `ZoneId=3` = Internet). This is the Mark of the Web (MOTW).
+
+### Why MOTW Propagation Prevents Attacks
+
+When a user downloads a ZIP archive from the internet, the archive receives MOTW. If extracted files **do not** inherit MOTW:
+
+- Microsoft Office opens the extracted `.docx` or `.xlsm` in full edit mode — macros execute without Protected View
+- Windows SmartScreen does not warn before running extracted `.exe` files
+
+This is a documented exploitation technique: deliver a macro-containing document inside a ZIP, knowing the extractor will strip MOTW on extraction.
+
+### Explorer's Gap — and 7-Zip's Default
+
+- Windows Explorer **does not propagate** MOTW to extracted files
+- 7-Zip **does not propagate** MOTW by default (added as an option in 7-Zip 23.01, off by default)
+- NanaZip 6.0 (Feb 2026) propagates MOTW by default
+
+### Pakko's Behavior (v1.2+)
+
+Pakko will propagate MOTW on all extracted files by default:
+
+1. Read `Zone.Identifier` ADS from the source archive
+2. Write identical `Zone.Identifier` ADS to each extracted file
+3. Default: always on — users cannot disable (only GPO can override in v1.4)
+
+Implementation: `FileStream` with ADS path `"extractedfile.txt:Zone.Identifier"`, no P/Invoke required.
+
+---
+
+## tar.exe Trust Model
+
+### Why tar.exe Is Acceptable
+
+`C:\Windows\System32\tar.exe` is:
+
+- **Microsoft-signed** — binary integrity verified by Windows Authenticode chain
+- **Open source** — based on bsdtar/libarchive, source on GitHub (`microsoft/bsdtar`)
+- **Part of Windows Update** — patched through normal OS update cycle, MSRC process applies
+- **No SHA-256 verification needed** — unlike third-party binaries, the Authenticode signature provides equivalent or stronger integrity guarantee
+
+### Trust Chain
+
+```
+Windows Update → Microsoft signing infrastructure → tar.exe
+```
+
+This is the same trust chain as `System.IO.Compression` via the .NET runtime — both are Microsoft-signed, open source, and maintained by MSRC.
+
+### Process Isolation Levels
+
+| Version | Isolation | Method |
+|---------|-----------|--------|
+| v1.3 | Medium IL | tar.exe inherits Pakko process token |
+| v1.4 | Low IL | P/Invoke `CreateRestrictedToken` + `SetNamedSecurityInfo` quarantine directory |
+
+In both cases: extraction goes to a staging directory, all output files are validated (ADS, reserved names, reparse points), then atomically moved to final destination.
+
+### Absolute Path Requirement
+
+Always invoked as `C:\Windows\System32\tar.exe` — never as `tar` via PATH search. Prevents:
+- EXE hijacking via PATH manipulation
+- DLL side-loading from working directory
+- User-placed `tar.exe` taking precedence over system binary
 
 ---
 

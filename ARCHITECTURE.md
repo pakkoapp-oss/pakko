@@ -219,6 +219,92 @@ services.AddTransient<MainViewModel>();
 
 ---
 
+## Planned Layer Additions (v1.2+)
+
+### v1.2 — Shell Extension
+
+New project `Archiver.ShellExtension` (net8.0-windows, COM):
+
+```
+Archiver.ShellExtension/
+  Commands/
+    ArchiveHereCommand.cs       ← IExplorerCommand
+    ExtractHereCommand.cs       ← IExplorerCommand
+    ExtractToFolderCommand.cs   ← IExplorerCommand
+```
+
+Registered via MSIX AppExtension in `Package.appxmanifest`. Communicates with `Archiver.App` via named pipe or protocol activation.
+
+### v1.3 — ITarService Layer
+
+New interface and implementation in `Archiver.Core`:
+
+```csharp
+// Models/TarCapabilities.cs
+public sealed record TarCapabilities
+{
+    public bool SupportsRar { get; init; }
+    public bool Supports7z { get; init; }
+    public bool SupportsZstd { get; init; }
+    public bool SupportsXz { get; init; }
+    public bool SupportsLzma { get; init; }
+    public bool SupportsBz2 { get; init; }
+    public string Version { get; init; } = string.Empty;
+}
+```
+
+```csharp
+// Interfaces/ITarService.cs
+public interface ITarService
+{
+    Task<TarCapabilities> DetectCapabilitiesAsync();
+    Task<ArchiveResult> ExtractAsync(
+        ExtractOptions options,
+        IProgress<int>? progress = null,
+        CancellationToken cancellationToken = default);
+}
+```
+
+Implementation: `TarProcessService` in `Archiver.Core/Services/`.
+
+- Always invokes `C:\Windows\System32\tar.exe` (absolute path)
+- Quarantine/staging: same pattern as T-F26/T-F27 (temp dir on same disk, atomic move)
+- Post-extraction validation: ADS, reserved names, reparse points
+- MOTW propagation: copies `Zone.Identifier` ADS from archive to each extracted file
+
+DI registration:
+
+```csharp
+services.AddSingleton<ITarService, TarProcessService>();
+services.AddSingleton<TarCapabilities>(sp =>
+    sp.GetRequiredService<ITarService>().DetectCapabilitiesAsync().GetAwaiter().GetResult());
+```
+
+### v1.4 — Low IL Sandbox
+
+`TarSandboxedService` implements `ITarService` — replaces `TarProcessService` via single DI line change:
+
+```csharp
+services.AddSingleton<ITarService, TarSandboxedService>(); // was TarProcessService
+```
+
+P/Invoke surface:
+- `CreateRestrictedToken` — drop privileges from Pakko token
+- `DuplicateTokenEx` — duplicate for `CreateProcessAsUser`
+- `SetTokenInformation` — set integrity level to Low
+- `CreateProcessAsUser` — launch tar.exe with restricted token
+- `SetNamedSecurityInfo` — label quarantine directory with Low IL
+
+Flow:
+1. Create quarantine directory on same disk as destination
+2. Label quarantine directory Low IL via `SetNamedSecurityInfo`
+3. Launch `tar.exe` into quarantine with restricted token
+4. After process exits, validate all files at Medium IL in C# code
+5. Atomic move to final destination
+6. Clean up quarantine directory
+
+---
+
 ## FileItem Model (UI layer)
 
 ```csharp

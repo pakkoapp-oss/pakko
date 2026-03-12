@@ -33,8 +33,10 @@ The entire compression stack is part of the .NET Base Class Library — maintain
 
 - **No third-party compression dependencies** — attack surface limited to .NET runtime
 - **Open source** — full codebase auditable
-- **Minimal permissions** — no network access, no background services, no shell extensions
+- **Minimal permissions** — no network access, no background services
 - **No telemetry** — no data leaves the machine
+- **Mark of the Web (MOTW) propagation** — planned v1.2; prevents macro execution in extracted Office docs (Explorer does not propagate MOTW)
+- **No libarchive in-process** — tar/RAR/7z extraction via isolated `tar.exe` subprocess, not an in-process parser
 
 ---
 
@@ -53,18 +55,31 @@ The entire compression stack is part of the .NET Base Class Library — maintain
 
 ## Supported Formats
 
-| Format | Status |
-|--------|--------|
-| ZIP | ✅ v1.0 |
-| TAR | 🔜 planned (via Windows built-in `tar.exe`) |
-| RAR, 7z | ❌ out of scope by design |
-| Encrypted | ❌ out of scope by design |
+| Format | Status | Method |
+|--------|--------|--------|
+| ZIP | ✅ v1.0 | `System.IO.Compression` |
+| TAR/GZ/XZ/ZST/BZ2 | 🔜 v1.3 | `tar.exe` (Windows built-in) |
+| RAR | 🔜 v1.3 (read) | `tar.exe` (Windows built-in) |
+| 7z | 🔜 v1.3 (read) | `tar.exe` (Windows built-in) |
+| Encrypted | ❌ out of scope | — |
+
+---
+
+## Windows 11 Integration (planned)
+
+Pakko will close the remaining gaps in Windows Explorer:
+
+- **Native context menu** — Extract Here, Extract to `<folder>`, Archive with Pakko (no "Show more options" — uses modern IExplorerCommand API)
+- **File type associations** — double-click `.zip` opens in Pakko
+- **Extract-on-open** — optional auto-extract on file open
+
+Windows 11 23H2+ includes `tar.exe` (Microsoft-signed bsdtar) supporting RAR, 7z, tar, gz, xz, and zst for reading. Pakko will use this built-in binary — no third-party compression tools.
 
 ---
 
 ## Project Status
 
-**v1.0 complete** — tagged `v1.0.0`.
+**v1.1 sprint** — Store release (ZIP only). v1.0 tagged `v1.0.0`.
 
 - ✅ Archive (single / separate) with compression level selector
 - ✅ Extract with smart folder logic and ZIP slip protection
@@ -75,7 +90,17 @@ The entire compression stack is part of the .NET Base Class Library — maintain
 - ✅ MSIX packaging
 - ✅ 45 tests
 
-See `TASKS.md` for future roadmap.
+**Roadmap:**
+
+| Version | Focus |
+|---------|-------|
+| v1.1 | Store release — ZIP only (current sprint) |
+| v1.2 | Shell extension + MOTW + file associations + hash viewer |
+| v1.3 | tar.exe integration — RAR/7z/tar extraction + capability detection |
+| v1.4 | GPO/ADMX + Low IL sandbox (P/Invoke) + strict mode policy |
+| v1.5 | TAR creation via tar.exe + additional format fixtures |
+
+See `TASKS.md` for detailed task list.
 
 ---
 

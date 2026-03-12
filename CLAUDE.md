@@ -6,7 +6,7 @@ This file is automatically read by Claude Code at session start.
 
 ## Project
 
-**Pakko** — WinUI 3 desktop ZIP archiver for Windows.
+**Pakko** — WinUI 3 desktop ZIP archiver for Windows with a planned shell extension (IExplorerCommand) and tar.exe integration for RAR/7z/tar extraction.
 Minimal GUI over `System.IO.Compression`. No 7-Zip. No WinRAR. No third-party compression code.
 Target audience: Ukrainian government/defense — trust, auditability, minimal attack surface.
 
@@ -14,11 +14,21 @@ Target audience: Ukrainian government/defense — trust, auditability, minimal a
 
 ## Current State
 
-**v1.0 complete** — tagged `v1.0.0`.
+**v1.0 complete** — tagged `v1.0.0`. v1.1 Store release in progress.
 - T-01 through T-35 + T-11 all complete and committed
 - 45/45 tests pass
 - MSIX builds unsigned (see T-F10 for signing)
 - Next work: Future tasks in `TASKS.md`
+
+## Roadmap Summary
+
+| Version | Focus |
+|---------|-------|
+| v1.1 | Store release — ZIP only (current sprint) |
+| v1.2 | Shell extension (IExplorerCommand) + MOTW + file associations + hash viewer |
+| v1.3 | ITarService + tar.exe integration — RAR/7z/tar extraction + capability detection |
+| v1.4 | GPO/ADMX + Low IL P/Invoke sandbox + strict mode policy |
+| v1.5 | TAR creation via tar.exe + additional format fixtures |
 
 ---
 
@@ -38,11 +48,15 @@ SECURITY.md     → threat model (read if modifying compression logic)
 
 - `Archiver.Core` has **zero** WinUI / Microsoft.UI references
 - `Archiver.Core` has **zero** references to `ResourceLoader` or `ILogService`
-- Use only `System.IO.Compression` for compression — no NuGet compression packages
+- Use only `System.IO.Compression` for ZIP compression — no NuGet compression packages
 - Services injected via constructor — never `new ZipArchiveService()` in ViewModels
 - All IO exceptions caught per-item → `ArchiveError` — methods never throw to callers
 - MVVM: no business logic in `.xaml.cs` files
 - `PublishTrimmed` must be `false` for `Archiver.App` — WinUI 3 `x:Bind` generated code is not trim-compatible. Trimming silently breaks event handlers and Command bindings in Release builds.
+- **tar.exe:** always use `C:\Windows\System32\tar.exe` (absolute path) — never via PATH
+- **MOTW:** always propagate `Zone.Identifier` ADS on extracted files (v1.2+)
+- **Shell extension:** `IExplorerCommand` only — no legacy `IContextMenu` COM shell extensions
+- **Low IL sandbox:** P/Invoke is acceptable for security-critical process isolation code (v1.4)
 
 ---
 
@@ -129,6 +143,9 @@ Task<IReadOnlyList<string>> PickFoldersAsync()
 - Do not implement features not listed in `TASKS.md` or `SPEC.md`
 - Do not use `Thread.Sleep` — use `await Task.Delay` if needed
 - Do not use `static` mutable fields in services
+- Do not use legacy `IContextMenu` shell extension — use `IExplorerCommand`
+- Do not call `tar.exe` via PATH — always absolute path `C:\Windows\System32\tar.exe`
+- Do not extract tar/RAR/7z formats in-process — only via `tar.exe` subprocess
 
 ---
 

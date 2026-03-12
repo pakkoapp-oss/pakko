@@ -7,9 +7,7 @@ Read this file first. It references other files in order.
 
 ## Project in One Sentence
 
-**Pakko** — minimal WinUI 3 desktop app wrapping Windows built-in ZIP support
-(`System.IO.Compression`) with a clean GUI. No third-party compression libraries.
-Target: Ukrainian government/defense — trust, auditability, minimal attack surface.
+**Pakko** — minimal WinUI 3 desktop app wrapping Windows built-in ZIP support (`System.IO.Compression`) with a clean GUI, planned shell extension (IExplorerCommand), and tar.exe integration for RAR/7z/tar extraction. No third-party compression libraries. Target: Ukrainian government/defense — trust, auditability, minimal attack surface.
 
 ---
 
@@ -31,6 +29,10 @@ Next work is Future tasks (T-F01+) in `TASKS.md`.
 
 For completed task reference: `TASKS_DONE.md`
 
+Optional reference (research context, do not implement without task):
+- `RESEARCH.md` — architecture research findings (if present)
+- `windows-archiver-reality-2026.md` — Windows 11 archive ecosystem analysis (if present)
+
 ---
 
 ## Hard Constraints (never violate)
@@ -38,12 +40,15 @@ For completed task reference: `TASKS_DONE.md`
 | Rule | Reason |
 |------|--------|
 | No NuGet compression packages | Auditability, no external deps |
-| Use only `System.IO.Compression` | Native Windows, verifiable |
+| Use only `System.IO.Compression` for ZIP | Native Windows, verifiable |
 | MVVM strictly | Testability, separation of concerns |
 | `Archiver.Core` zero WinUI references | Layer independence |
 | `Archiver.Core` zero `ResourceLoader` references | Layer independence |
 | `Archiver.Core` zero `ILogService` references | Layer independence |
 | No background services | Out of scope |
+| tar.exe absolute path only (`C:\Windows\System32\tar.exe`) | Prevent EXE hijacking via PATH |
+| No in-process libarchive | Memory safety, no C/C++ parser in-process |
+| MOTW propagation always on (v1.2+) | Security requirement — prevents macro attacks |
 
 ---
 
