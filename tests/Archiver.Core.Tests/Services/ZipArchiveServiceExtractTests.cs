@@ -375,6 +375,100 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
     }
 
     [Fact]
+    public async Task ExtractAsync_EntryWithColonInName_IsSkipped()
+    {
+        using var tempDir = new TempDirectory();
+        string archivePath = Path.Combine(tempDir.Path, "ads_test.zip");
+
+        // Create a ZIP with an entry whose name contains ':'
+        using (var archive = ZipFile.Open(archivePath, ZipArchiveMode.Create))
+        {
+            var entry = archive.CreateEntry("file.txt:payload.exe");
+            using var stream = entry.Open();
+            await stream.WriteAsync("malicious"u8.ToArray());
+        }
+
+        var svc = new ZipArchiveService();
+        var options = new ExtractOptions
+        {
+            ArchivePaths = [archivePath],
+            DestinationFolder = tempDir.Path,
+            Mode = ExtractMode.SeparateFolders,
+            OnConflict = ConflictBehavior.Overwrite
+        };
+
+        var result = await svc.ExtractAsync(options);
+
+        result.SkippedFiles.Should().HaveCount(1);
+        result.SkippedFiles[0].Path.Should().Contain(":");
+        result.SkippedFiles[0].Reason.Should().Contain("Alternate Data Stream");
+    }
+
+    [Theory]
+    [InlineData("NUL")]
+    [InlineData("CON")]
+    [InlineData("PRN")]
+    [InlineData("COM1")]
+    [InlineData("LPT9")]
+    [InlineData("nul.txt")]
+    [InlineData("con.log")]
+    public async Task ExtractAsync_ReservedWindowsName_IsSkipped(string reservedName)
+    {
+        using var tempDir = new TempDirectory();
+        string archivePath = Path.Combine(tempDir.Path, "reserved_test.zip");
+
+        using (var archive = ZipFile.Open(archivePath, ZipArchiveMode.Create))
+        {
+            var entry = archive.CreateEntry(reservedName);
+            using var stream = entry.Open();
+            await stream.WriteAsync("data"u8.ToArray());
+        }
+
+        var svc = new ZipArchiveService();
+        var options = new ExtractOptions
+        {
+            ArchivePaths = [archivePath],
+            DestinationFolder = tempDir.Path,
+            Mode = ExtractMode.SeparateFolders,
+            OnConflict = ConflictBehavior.Overwrite
+        };
+
+        var result = await svc.ExtractAsync(options);
+
+        result.SkippedFiles.Should().HaveCount(1);
+        result.SkippedFiles[0].Reason.Should().Contain("reserved Windows device name");
+    }
+
+    [Fact]
+    public async Task ExtractAsync_EntryWithControlCharacters_IsSkipped()
+    {
+        using var tempDir = new TempDirectory();
+        string archivePath = Path.Combine(tempDir.Path, "ctrl_char_test.zip");
+
+        using (var archive = ZipFile.Open(archivePath, ZipArchiveMode.Create))
+        {
+            // Entry name with a null byte (0x00)
+            var entry = archive.CreateEntry("file\x01name.txt");
+            using var stream = entry.Open();
+            await stream.WriteAsync("data"u8.ToArray());
+        }
+
+        var svc = new ZipArchiveService();
+        var options = new ExtractOptions
+        {
+            ArchivePaths = [archivePath],
+            DestinationFolder = tempDir.Path,
+            Mode = ExtractMode.SeparateFolders,
+            OnConflict = ConflictBehavior.Overwrite
+        };
+
+        var result = await svc.ExtractAsync(options);
+
+        result.SkippedFiles.Should().HaveCount(1);
+        result.SkippedFiles[0].Reason.Should().Contain("control characters");
+    }
+
+    [Fact]
     public async Task ExtractAsync_SuspiciousCompressionRatio_SkipsEntry()
     {
         // 1 MB of repeated 'A' compresses to ~1 KB = ~1000:1 ratio

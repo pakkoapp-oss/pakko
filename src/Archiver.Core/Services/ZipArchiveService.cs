@@ -438,12 +438,56 @@ public sealed class ZipArchiveService : IArchiveService
                     if (string.IsNullOrEmpty(relativePath)) continue;
                 }
 
+                // T-F38: Reject entries with Alternate Data Stream marker
+                if (EntryHasAlternateDataStream(entry.FullName))
+                {
+                    skippedFiles.Add(new SkippedFile
+                    {
+                        Path = entry.FullName,
+                        Reason = "Alternate Data Stream entry rejected for security."
+                    });
+                    continue;
+                }
+
+                // T-F39: Reject reserved Windows device names
+                if (EntryHasReservedName(entry.FullName))
+                {
+                    skippedFiles.Add(new SkippedFile
+                    {
+                        Path = entry.FullName,
+                        Reason = $"Entry name matches a reserved Windows device name and was skipped."
+                    });
+                    continue;
+                }
+
+                // T-F39: Reject entries with control characters in name
+                if (EntryHasControlCharacters(entry.FullName))
+                {
+                    skippedFiles.Add(new SkippedFile
+                    {
+                        Path = entry.FullName,
+                        Reason = "Entry name contains control characters and was skipped."
+                    });
+                    continue;
+                }
+
                 string destFilePath = Path.GetFullPath(Path.Combine(tempDest, relativePath));
 
                 if (!destFilePath.StartsWith(fullTempDest, StringComparison.OrdinalIgnoreCase))
                     throw new InvalidDataException($"ZIP entry '{entry.FullName}' would extract outside destination directory.");
 
                 Directory.CreateDirectory(Path.GetDirectoryName(destFilePath)!);
+
+                // T-F37: Reject entries whose path traverses a reparse point (symlink/junction)
+                if (PathContainsReparsePoint(destFilePath, fullTempDest))
+                {
+                    skippedFiles.Add(new SkippedFile
+                    {
+                        Path = entry.FullName,
+                        Reason = "Entry path traverses a reparse point (symlink or junction) and was skipped."
+                    });
+                    continue;
+                }
 
                 // ZIP bomb check — skip entries with suspicious compression ratio
                 if (entry.CompressedLength > 0
@@ -621,6 +665,52 @@ public sealed class ZipArchiveService : IArchiveService
         {
             return null;
         }
+    }
+
+    // T-F38: Reject entries with ':' in name (Alternate Data Streams)
+    private static bool EntryHasAlternateDataStream(string entryFullName)
+        => entryFullName.Contains(':');
+
+    // T-F39: Reject reserved Windows device names (with or without extension, case-insensitive)
+    private static readonly HashSet<string> _reservedNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "CON", "PRN", "AUX", "NUL",
+        "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
+        "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"
+    };
+
+    private static bool EntryHasReservedName(string entryFullName)
+    {
+        // Use the last path segment from the raw ZIP entry name (before any GetFullPath call)
+        string lastSegment = entryFullName.Contains('/')
+            ? entryFullName[(entryFullName.LastIndexOf('/') + 1)..]
+            : entryFullName;
+        string nameWithoutExt = Path.GetFileNameWithoutExtension(lastSegment);
+        return _reservedNames.Contains(nameWithoutExt);
+    }
+
+    // T-F39: Reject entries with control characters (0x00–0x1F) in name
+    private static bool EntryHasControlCharacters(string entryFullName)
+        => entryFullName.Any(c => c < 0x20);
+
+    // T-F37: Check whether any directory component of destFilePath (within rootPath) is a reparse point
+    // T-F37: No automated unit test — System.IO.Compression cannot create reparse points in test fixtures.
+    private static bool PathContainsReparsePoint(string destFilePath, string rootPath)
+    {
+        string? current = Path.GetDirectoryName(destFilePath);
+        while (current != null && current.Length >= rootPath.Length)
+        {
+            if (Directory.Exists(current))
+            {
+                var info = new DirectoryInfo(current);
+                if (info.Attributes.HasFlag(FileAttributes.ReparsePoint))
+                    return true;
+            }
+            string? parent = Path.GetDirectoryName(current);
+            if (parent == current) break;
+            current = parent;
+        }
+        return false;
     }
 
     private static string GetUniqueFilePath(string path)

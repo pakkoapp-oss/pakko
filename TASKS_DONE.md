@@ -257,3 +257,22 @@ Extraction target is `destPath + "_tmp"` during operation. On success: `_tmp` di
 - [x] **Status:** complete — Completed in v1.1 sprint, March 2026
 
 .NET 8 `ZipArchive` sets UTF-8 EFS flag automatically for non-ASCII entry names — no code change required. New tests: `CyrillicFilename_PreservedAfterRoundTrip`, `EmojiFilename_PreservedAfterRoundTrip`. 48/48 tests pass.
+
+---
+
+## v1.2 Security Hardening
+
+### T-F37 — Reparse Point Protection During Extraction
+- [x] **Status:** complete — Completed March 2026
+
+`PathContainsReparsePoint(destFilePath, rootPath)` walks directory components of the resolved destination path and checks `FileAttributes.ReparsePoint`. Called after `Directory.CreateDirectory` in the per-entry loop. Entries whose path traverses a symlink or junction are added to `SkippedFiles` and skipped. No automated unit test — `System.IO.Compression` cannot create reparse point entries in test fixtures; manual testing required.
+
+### T-F38 — Alternate Data Streams Protection
+- [x] **Status:** complete — Completed March 2026
+
+`EntryHasAlternateDataStream(entryFullName)` checks for `:` in the raw ZIP entry name. Check runs before `Path.GetFullPath` to prevent OS-level device path resolution. Rejected entries added to `SkippedFiles` with reason `"Alternate Data Stream entry rejected for security."`. New test: `ExtractAsync_EntryWithColonInName_IsSkipped`. 57/57 tests pass.
+
+### T-F39 — Reserved Windows Filename and Control Character Filtering
+- [x] **Status:** complete — Completed March 2026
+
+`EntryHasReservedName(entryFullName)` checks the last segment of the raw ZIP entry name (before `Path.GetFullPath`) against a `HashSet` of 22 reserved Windows device names (`CON`, `PRN`, `AUX`, `NUL`, `COM1`–`COM9`, `LPT1`–`LPT9`), case-insensitive, stripping extension. `EntryHasControlCharacters(entryFullName)` rejects any entry with a character `< 0x20`. Both checks run before `Path.GetFullPath` — critical because Windows resolves bare reserved names (e.g. `NUL`) to device paths. New tests: `ExtractAsync_ReservedWindowsName_IsSkipped` (7 theory cases), `ExtractAsync_EntryWithControlCharacters_IsSkipped`. 57/57 tests pass.
