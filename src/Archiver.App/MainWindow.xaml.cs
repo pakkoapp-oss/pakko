@@ -14,7 +14,7 @@ public sealed partial class MainWindow : Window
     public MainViewModel ViewModel { get; }
 
     public ICommand TrayOpenCommand { get; }
-    public ICommand TrayAboutCommand { get; }  // placeholder — implemented in T-F14
+    public ICommand TrayAboutCommand { get; }
     public ICommand TrayExitCommand { get; }
     public ICommand TrayLeftClickCommand { get; }
 

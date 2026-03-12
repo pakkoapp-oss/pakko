@@ -325,7 +325,7 @@ Rule removed on uninstall.
 
 **Prerequisites before submission:**
 - Proper app icon in all required sizes
-- About dialog with version and links (T-F14)
+- About dialog with version and links (T-F14) ✓ done
 - Store listing assets: screenshots, description, privacy policy URL
 
 **Required icon sizes for Store:**

@@ -262,6 +262,15 @@ Extraction target is `destPath + "_tmp"` during operation. On success: `_tmp` di
 
 ## v1.2 Security Hardening
 
+### T-F14 — About Dialog
+- [x] **Status:** complete — Completed March 2026
+
+`DialogService.ShowAboutAsync()` shows version (from `Package.Current.Id.Version`, fallback "dev"), license line, GitHub and Privacy Policy `HyperlinkButton`s (URLs from `Resources.resw` `AboutGitHubUrl` / `AboutPrivacyUrl`). `TrayAboutCommand` in `MainWindow.xaml.cs` calls `ShowAboutAsync()`. About button added to Row 0 of `MainWindow.xaml` (right-aligned via `Grid ColumnDefinitions="Auto,Auto,*,Auto"`). Tray menu item "About Pakko" wired to the same command.
+
+---
+
+## v1.2 Security Hardening
+
 ### T-F37 — Reparse Point Protection During Extraction
 - [x] **Status:** complete — Completed March 2026
 
