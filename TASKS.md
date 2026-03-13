@@ -703,7 +703,7 @@ can cause unpredictable behavior or security issues during extraction.
 ---
 
 ### T-F53 — Archiver.Shell Project
-- [ ] **Status:** future (v1.2)
+- [x] **Status:** complete (v1.2)
 
 **What:** New lightweight WinExe project (`src/Archiver.Shell/`, net8.0-windows). Entry point for all shell-triggered operations. References `Archiver.Core` only — no WinUI dependency. No console window (`<OutputType>WinExe</OutputType>`).
 
@@ -728,15 +728,15 @@ Archiver.Shell.exe --open-ui --archive "file1" "file2"
 3. Exit immediately
 
 **Acceptance criteria:**
-- [ ] `Archiver.Shell` project added to solution, `net8.0-windows`, references `Archiver.Core`
-- [ ] All argument combinations parsed and dispatched correctly
-- [ ] `--extract-here`: extracts each ZIP to its own directory (T-14 smart folder logic)
-- [ ] `--extract-folder`: creates `<archive_name>\` subfolder and extracts into it
-- [ ] `--archive`: archives all passed paths into a single ZIP next to the first item
-- [ ] `--open-ui --extract`: launches `Archiver.App` via `pakko://` and exits
-- [ ] `--open-ui --archive`: launches `Archiver.App` via `pakko://` and exits
-- [ ] No console window shown (`WinExe` output type)
-- [ ] `dotnet build src/Archiver.Shell` passes
+- [x] `Archiver.Shell` project added to solution, `net8.0-windows`, references `Archiver.Core`
+- [x] All argument combinations parsed and dispatched correctly
+- [x] `--extract-here`: extracts each ZIP to its own directory (T-14 smart folder logic)
+- [x] `--extract-folder`: creates `<archive_name>\` subfolder and extracts into it
+- [x] `--archive`: archives all passed paths into a single ZIP next to the first item
+- [x] `--open-ui --extract`: launches `Archiver.App` via `pakko://` and exits
+- [x] `--open-ui --archive`: launches `Archiver.App` via `pakko://` and exits
+- [x] No console window shown (`WinExe` output type)
+- [x] `dotnet build src/Archiver.Shell` passes
 
 ---
 
