@@ -504,7 +504,7 @@ and extraction.
 ---
 
 ### T-F31 — Deterministic Archive Output
-- [ ] **Status:** future
+- [x] **Status:** complete
 - **Priority:** medium
 
 **What:** Sort files before archiving so identical inputs always produce
@@ -513,14 +513,14 @@ identical archives. Useful for reproducible builds and testing.
 **File:** `src/Archiver.Core/Services/ZipArchiveService.cs`
 
 **Acceptance criteria:**
-- [ ] Files sorted by full path (ordinal, case-insensitive) before archive creation
-- [ ] Two archive runs with identical input produce byte-identical output
-- [ ] dotnet test passes — new test: same input twice → identical ZIP
+- [x] Files sorted by full path (ordinal, case-insensitive) before archive creation
+- [x] Two archive runs with identical input produce byte-identical output
+- [x] dotnet test passes — new test: same input twice → identical ZIP
 
 ---
 
 ### T-F32 — Directory Traversal Ordering
-- [ ] **Status:** future
+- [x] **Status:** complete
 - **Priority:** medium
 
 **What:** Directory.EnumerateFiles returns files in non-deterministic order.
@@ -528,12 +528,12 @@ Sort paths before processing for consistent, predictable archive structure.
 
 **File:** `src/Archiver.Core/Services/ZipArchiveService.cs`
 
-**Note:** Partially overlaps T-F31 — implement together.
+**Note:** Partially overlaps T-F31 — implemented together.
 
 **Acceptance criteria:**
-- [ ] EnumerateFiles results sorted by path before archiving
-- [ ] Archive entry order is alphabetical and consistent across runs
-- [ ] dotnet test passes
+- [x] EnumerateFiles results sorted by path before archiving
+- [x] Archive entry order is alphabetical and consistent across runs
+- [x] dotnet test passes
 
 ---
 

@@ -597,4 +597,97 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
         result.Errors.Should().BeEmpty();
         result.SkippedFiles.Should().ContainSingle(s => s.Path == linkFile);
     }
+
+    // T-F31/T-F32: Deterministic Archive Output + Directory Traversal Ordering
+
+    [Fact]
+    public async Task ArchiveAsync_SameDirectoryTwice_EntryOrderIdentical()
+    {
+        // Populate a directory with multiple files whose names would sort differently
+        // under filesystem order vs. ordinal order (upper/lower mix, numeric suffixes).
+        string sourceDir = Path.Combine(_temp.Path, "source");
+        Directory.CreateDirectory(sourceDir);
+        string subDir = Path.Combine(sourceDir, "sub");
+        Directory.CreateDirectory(subDir);
+
+        File.WriteAllText(Path.Combine(sourceDir, "charlie.txt"), "c");
+        File.WriteAllText(Path.Combine(sourceDir, "Alpha.txt"), "a");
+        File.WriteAllText(Path.Combine(sourceDir, "bravo.txt"), "b");
+        File.WriteAllText(Path.Combine(subDir, "zulu.txt"), "z");
+        File.WriteAllText(Path.Combine(subDir, "echo.txt"), "e");
+
+        using var dest1 = new TempDirectory();
+        using var dest2 = new TempDirectory();
+
+        var result1 = await _sut.ArchiveAsync(new ArchiveOptions
+        {
+            SourcePaths = [sourceDir],
+            DestinationFolder = dest1.Path,
+            ArchiveName = "run1",
+            CompressionLevel = System.IO.Compression.CompressionLevel.NoCompression
+        });
+        var result2 = await _sut.ArchiveAsync(new ArchiveOptions
+        {
+            SourcePaths = [sourceDir],
+            DestinationFolder = dest2.Path,
+            ArchiveName = "run2",
+            CompressionLevel = System.IO.Compression.CompressionLevel.NoCompression
+        });
+
+        result1.Success.Should().BeTrue();
+        result2.Success.Should().BeTrue();
+
+        using var zip1 = System.IO.Compression.ZipFile.OpenRead(result1.CreatedFiles[0]);
+        using var zip2 = System.IO.Compression.ZipFile.OpenRead(result2.CreatedFiles[0]);
+
+        var entries1 = zip1.Entries.Select(e => e.FullName).ToList();
+        var entries2 = zip2.Entries.Select(e => e.FullName).ToList();
+
+        entries1.Should().Equal(entries2);
+
+        // Entries must be in ascending ordinal case-insensitive order within each directory level
+        entries1.Should().BeInAscendingOrder(StringComparer.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task ArchiveAsync_SameDirectoryTwice_ProducesByteIdenticalZips()
+    {
+        // Byte-identical output requires: (1) sorted entry order, (2) deterministic timestamps
+        // (entry.LastWriteTime pinned to source file's LastWriteTime), (3) deterministic
+        // compression (Deflate is deterministic). NoCompression avoids any compression
+        // variance and keeps the test fast.
+        string sourceDir = Path.Combine(_temp.Path, "source");
+        Directory.CreateDirectory(sourceDir);
+
+        File.WriteAllText(Path.Combine(sourceDir, "beta.txt"), "hello beta");
+        File.WriteAllText(Path.Combine(sourceDir, "alpha.txt"), "hello alpha");
+
+        using var dest1 = new TempDirectory();
+        using var dest2 = new TempDirectory();
+
+        var result1 = await _sut.ArchiveAsync(new ArchiveOptions
+        {
+            SourcePaths = [sourceDir],
+            DestinationFolder = dest1.Path,
+            ArchiveName = "run1",
+            CompressionLevel = System.IO.Compression.CompressionLevel.NoCompression
+        });
+        var result2 = await _sut.ArchiveAsync(new ArchiveOptions
+        {
+            SourcePaths = [sourceDir],
+            DestinationFolder = dest2.Path,
+            ArchiveName = "run2",
+            CompressionLevel = System.IO.Compression.CompressionLevel.NoCompression
+        });
+
+        result1.Success.Should().BeTrue();
+        result2.Success.Should().BeTrue();
+
+        byte[] bytes1 = File.ReadAllBytes(result1.CreatedFiles[0]);
+        byte[] bytes2 = File.ReadAllBytes(result2.CreatedFiles[0]);
+
+        bytes1.Should().Equal(bytes2,
+            "two archive runs over identical inputs must produce byte-identical ZIPs " +
+            "(sorted entry order + source-file LastWriteTime pinned per T-F31)");
+    }
 }

@@ -57,19 +57,26 @@ public sealed class ZipArchiveService : IArchiveService
             long totalSourceBytes = ComputeTotalBytes(options.SourcePaths);
             progress?.Report(new ProgressReport { Percent = 0, BytesTransferred = 0, TotalBytes = totalSourceBytes });
 
+            // T-F31/T-F32: Sort source paths for deterministic archive entry order (ordinal, case-insensitive).
+            // This ensures identical inputs always produce identical archives regardless of the order
+            // in which the caller supplies paths or the OS enumerates them.
+            var sortedSourcePaths = options.SourcePaths
+                .OrderBy(p => p, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
             try
             {
                 await Task.Run(async () =>
                 {
                     using var archive = ZipFile.Open(tempPath, ZipArchiveMode.Create);
-                    int total = options.SourcePaths.Count;
+                    int total = sortedSourcePaths.Count;
                     long byteOffset = 0;
                     for (int i = 0; i < total; i++)
                     {
                         if (cancellationToken.IsCancellationRequested)
                             break;
 
-                        string sourcePath = options.SourcePaths[i];
+                        string sourcePath = sortedSourcePaths[i];
 
                         // Compute source size for offset tracking (best-effort)
                         long pathSize = 0;
@@ -184,13 +191,18 @@ public sealed class ZipArchiveService : IArchiveService
             progress?.Report(new ProgressReport { Percent = 0, BytesTransferred = 0, TotalBytes = totalSourceBytes });
             long byteOffset = 0;
 
-            int total = options.SourcePaths.Count;
+            // T-F31/T-F32: Sort source paths for deterministic archive entry order (ordinal, case-insensitive).
+            var sortedSourcePaths = options.SourcePaths
+                .OrderBy(p => p, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            int total = sortedSourcePaths.Count;
             for (int i = 0; i < total; i++)
             {
                 if (cancellationToken.IsCancellationRequested)
                     break;
 
-                string sourcePath = options.SourcePaths[i];
+                string sourcePath = sortedSourcePaths[i];
                 string baseName = Path.GetFileNameWithoutExtension(sourcePath);
                 string destPath = Path.Combine(options.DestinationFolder, baseName + ".zip");
 
@@ -657,6 +669,11 @@ public sealed class ZipArchiveService : IArchiveService
             bufferSize: FileStreamBufferSize,
             useAsync: false);
         var entry = archive.CreateEntry(entryName, compressionLevel);
+        // T-F31: Pin LastWriteTime to the source file's actual timestamp so that two
+        // archive runs over identical inputs produce byte-identical ZIPs.
+        // Without this, ZipArchiveEntry defaults to DateTimeOffset.UtcNow (creation time),
+        // which makes the archive non-deterministic.
+        try { entry.LastWriteTime = File.GetLastWriteTime(sourcePath); } catch { }
 
         if (progress != null && totalBytes > 0)
         {
@@ -687,8 +704,11 @@ public sealed class ZipArchiveService : IArchiveService
         long startOffset = 0,
         IProgress<ProgressReport>? progress = null)
     {
-        // Files in this directory
-        foreach (string filePath in Directory.EnumerateFiles(sourceDir, "*", SearchOption.TopDirectoryOnly))
+        // T-F32: Sort files and subdirectories for deterministic traversal order.
+        // Directory.EnumerateFiles/EnumerateDirectories return items in filesystem order,
+        // which is non-deterministic across runs and filesystems.
+        foreach (string filePath in Directory.EnumerateFiles(sourceDir, "*", SearchOption.TopDirectoryOnly)
+            .OrderBy(p => p, StringComparer.OrdinalIgnoreCase))
         {
             if (cancellationToken.IsCancellationRequested)
                 break;
@@ -742,7 +762,8 @@ public sealed class ZipArchiveService : IArchiveService
         }
 
         // Recurse into subdirectories, skipping junctions and directory symlinks
-        foreach (string subDir in Directory.EnumerateDirectories(sourceDir, "*", SearchOption.TopDirectoryOnly))
+        foreach (string subDir in Directory.EnumerateDirectories(sourceDir, "*", SearchOption.TopDirectoryOnly)
+            .OrderBy(p => p, StringComparer.OrdinalIgnoreCase))
         {
             if (cancellationToken.IsCancellationRequested)
                 break;
