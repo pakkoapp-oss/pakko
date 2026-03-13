@@ -469,6 +469,37 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
     }
 
     [Fact]
+    public async Task ExtractAsync_SingleArchive_ReportsMonotonicByteProgress()
+    {
+        // Use NoCompression so CompressedLength == uncompressed length for predictable progress
+        string content = new string('x', 8 * 1024); // 8 KB
+        var file = _temp.CreateFile("data.txt", content);
+        var zipPath = Path.Combine(_temp.Path, "progress_test.zip");
+        using (var archive = ZipFile.Open(zipPath, ZipArchiveMode.Create))
+            archive.CreateEntryFromFile(file, "data.txt", System.IO.Compression.CompressionLevel.NoCompression);
+
+        var progressValues = new List<int>();
+        var progress = new Progress<int>(v => progressValues.Add(v));
+
+        var destDir = Path.Combine(_temp.Path, "extract_output");
+        var options = new ExtractOptions
+        {
+            ArchivePaths = [zipPath],
+            DestinationFolder = destDir,
+            Mode = ExtractMode.SingleFolder
+        };
+
+        await _sut.ExtractAsync(options, progress);
+        await Task.Delay(50); // let Progress<int> callbacks fire
+
+        progressValues.Should().NotBeEmpty();
+        progressValues.Last().Should().Be(100);
+        // Sequence must be non-decreasing
+        for (int i = 1; i < progressValues.Count; i++)
+            progressValues[i].Should().BeGreaterThanOrEqualTo(progressValues[i - 1]);
+    }
+
+    [Fact]
     public async Task ExtractAsync_SuspiciousCompressionRatio_SkipsEntry()
     {
         // 1 MB of repeated 'A' compresses to ~1 KB = ~1000:1 ratio

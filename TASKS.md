@@ -33,8 +33,8 @@ These rules apply to ALL tasks. Violating them = task is NOT complete.
 
 ## Current State — v1.1 Complete
 
-- All T-01 through T-35 + T-11, and T-F17/T-F18/T-F26–T-F29/T-F37–T-F39 complete and committed
-- 57/57 tests pass (`dotnet test`)
+- All T-01 through T-35 + T-11, and T-F16/T-F17/T-F18/T-F26–T-F29/T-F37–T-F39 complete and committed
+- 59/59 tests pass (`dotnet test`)
 - MSIX builds at `src/Archiver.App/AppPackages/` (unsigned — see T-F10 for signing)
 - Git tag: `v1.1.0` — GitHub-only release for early testers
 - **Store release planned for v1.3** (when shell extension + MOTW + tar.exe complete)
@@ -365,24 +365,6 @@ Version bump: increment `Package.appxmanifest` `Version` attribute before each s
 - [ ] App passes Store certification
 - [ ] Published app installs and runs correctly from Store
 - [ ] Version update flow tested — submit new version, confirm auto-update delivers
-
----
-
-### T-F16 — Byte-accurate Progress Reporting
-- [ ] **Status:** future
-
-**What:** Replace the indeterminate progress bar with real percentage by wrapping `ZipArchiveService` streams in a `ProgressStream` that counts bytes written/read. `System.IO.Compression` does not expose byte-level progress natively, so stream wrapping is required.
-
-**Key challenge:** Total byte count must be computed up-front (sum of source file sizes for archive, sum of compressed entry sizes for extract) before streaming begins.
-
-**File:** `src/Archiver.Core/Services/ZipArchiveService.cs` and a new `src/Archiver.Core/IO/ProgressStream.cs`.
-
-**Acceptance criteria:**
-- [ ] `ProgressStream` wrapper class in `Archiver.Core` counts bytes read/written and reports to `IProgress<int>`
-- [ ] `ArchiveAsync` reports real byte-based percentage for `SingleArchive` mode
-- [ ] `ExtractAsync` reports real byte-based percentage
-- [ ] `IsIndeterminate` removed from `MainViewModel` — replaced with real percentage
-- [ ] `dotnet test` passes — existing tests unchanged
 
 ---
 

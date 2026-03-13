@@ -283,6 +283,35 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
     }
 
     [Fact]
+    public async Task ArchiveAsync_SingleFile_ReportsMonotonicByteProgress()
+    {
+        string content = new string('x', 8 * 1024); // 8 KB — enough for multiple progress ticks
+        var file = _temp.CreateFile("data.txt", content);
+
+        var progressValues = new List<int>();
+        var progress = new Progress<int>(v => progressValues.Add(v));
+
+        var options = new ArchiveOptions
+        {
+            SourcePaths = [file],
+            DestinationFolder = _temp.Path,
+            ArchiveName = "progress_test",
+            Mode = ArchiveMode.SingleArchive,
+            CompressionLevel = System.IO.Compression.CompressionLevel.NoCompression
+        };
+
+        await _sut.ArchiveAsync(options, progress);
+        await Task.Delay(50); // let Progress<int> callbacks fire
+
+        progressValues.Should().NotBeEmpty();
+        progressValues[0].Should().Be(0);
+        progressValues.Last().Should().Be(100);
+        // Sequence must be non-decreasing
+        for (int i = 1; i < progressValues.Count; i++)
+            progressValues[i].Should().BeGreaterThanOrEqualTo(progressValues[i - 1]);
+    }
+
+    [Fact]
     public async Task ArchiveAsync_CyrillicFilename_PreservedAfterRoundTrip()
     {
         string cyrillicName = "документ.txt";

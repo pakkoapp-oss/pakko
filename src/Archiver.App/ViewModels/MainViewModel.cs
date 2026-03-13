@@ -38,17 +38,17 @@ public sealed partial class MainViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(IsOperationRunningVisibility))]
     [NotifyPropertyChangedFor(nameof(ArchiveButtonText))]
     [NotifyPropertyChangedFor(nameof(ExtractButtonText))]
+    [NotifyPropertyChangedFor(nameof(IsNotBusy))]
+    [NotifyPropertyChangedFor(nameof(IsArchiveNameAndNotBusy))]
     private bool _isBusy = false;
 
     private string _lastOperation = string.Empty;
 
     [ObservableProperty]
-    private bool _isIndeterminate = false;
-
-    [ObservableProperty]
     private int _progress = 0;
 
     public bool IsOperationRunning => IsBusy;
+    public bool IsNotBusy => !IsBusy;
 
     public string ArchiveButtonText => IsBusy && _lastOperation == "archive" ? "Archiving..." : "Archive";
     public string ExtractButtonText => IsBusy && _lastOperation == "extract" ? "Extracting..." : "Extract";
@@ -72,6 +72,7 @@ public sealed partial class MainViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(IsSingleArchive))]
     [NotifyPropertyChangedFor(nameof(IsSeparateArchives))]
     [NotifyPropertyChangedFor(nameof(IsArchiveNameEnabled))]
+    [NotifyPropertyChangedFor(nameof(IsArchiveNameAndNotBusy))]
     private ArchiveMode _selectedArchiveMode = ArchiveMode.SingleArchive;
 
     public bool IsSingleArchive
@@ -87,6 +88,7 @@ public sealed partial class MainViewModel : ObservableObject
     }
 
     public bool IsArchiveNameEnabled => SelectedArchiveMode == ArchiveMode.SingleArchive;
+    public bool IsArchiveNameAndNotBusy => IsArchiveNameEnabled && !IsBusy;
 
     public bool IsFileListEmpty => FileItems.Count == 0;
 
@@ -216,7 +218,6 @@ public sealed partial class MainViewModel : ObservableObject
         IsBusy = true;
         CancelCommand.NotifyCanExecuteChanged();
         Progress = 0;
-        IsIndeterminate = false;
         StatusMessage = _res.GetString("StatusArchiving");
         bool wasCancelled = false;
         try
@@ -232,11 +233,7 @@ public sealed partial class MainViewModel : ObservableObject
                 DeleteSourceFiles = DeleteAfterOperation,
                 CompressionLevel = SelectedCompressionLevel,
             };
-            var progress = new Progress<int>(p =>
-            {
-                if (p < 0) { IsIndeterminate = true; Progress = 0; }
-                else { IsIndeterminate = false; Progress = p; }
-            });
+            var progress = new Progress<int>(p => { Progress = p; });
             var result = await _archiveService.ArchiveAsync(options, progress, _cts.Token);
             if (result.Success && DeleteAfterOperation)
                 await RunCleanupAsync(options.SourcePaths);
@@ -282,7 +279,6 @@ public sealed partial class MainViewModel : ObservableObject
         IsBusy = true;
         CancelCommand.NotifyCanExecuteChanged();
         Progress = 0;
-        IsIndeterminate = false;
         StatusMessage = _res.GetString("StatusExtracting");
         bool wasCancelled = false;
         try
@@ -295,11 +291,7 @@ public sealed partial class MainViewModel : ObservableObject
                 OpenDestinationFolder = OpenDestinationFolder,
                 DeleteArchiveAfterExtraction = DeleteAfterOperation,
             };
-            var progress = new Progress<int>(p =>
-            {
-                if (p < 0) { IsIndeterminate = true; Progress = 0; }
-                else { IsIndeterminate = false; Progress = p; }
-            });
+            var progress = new Progress<int>(p => { Progress = p; });
             var result = await _archiveService.ExtractAsync(options, progress, _cts.Token);
             if (result.Success && DeleteAfterOperation)
                 await RunCleanupAsync(options.ArchivePaths);

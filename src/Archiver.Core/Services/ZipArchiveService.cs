@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.IO.Compression;
+using Archiver.Core.IO;
 using Archiver.Core.Interfaces;
 using Archiver.Core.Models;
 
@@ -50,11 +51,8 @@ public sealed class ZipArchiveService : IArchiveService
 
             string tempPath = destPath + ".tmp";
 
-            bool isSingleLargeFile = options.SourcePaths.Count == 1
-                && File.Exists(options.SourcePaths[0])
-                && new FileInfo(options.SourcePaths[0]).Length > 10 * 1024 * 1024;
-            if (isSingleLargeFile)
-                progress?.Report(-1);
+            long totalSourceBytes = ComputeTotalBytes(options.SourcePaths);
+            progress?.Report(0);
 
             try
             {
@@ -62,6 +60,7 @@ public sealed class ZipArchiveService : IArchiveService
                 {
                     using var archive = ZipFile.Open(tempPath, ZipArchiveMode.Create);
                     int total = options.SourcePaths.Count;
+                    long byteOffset = 0;
                     for (int i = 0; i < total; i++)
                     {
                         if (cancellationToken.IsCancellationRequested)
@@ -69,15 +68,29 @@ public sealed class ZipArchiveService : IArchiveService
 
                         string sourcePath = options.SourcePaths[i];
 
+                        // Compute source size for offset tracking (best-effort)
+                        long pathSize = 0;
+                        if (File.Exists(sourcePath))
+                            try { pathSize = new FileInfo(sourcePath).Length; } catch { }
+                        else if (Directory.Exists(sourcePath))
+                            try
+                            {
+                                pathSize = Directory.EnumerateFiles(sourcePath, "*", SearchOption.AllDirectories)
+                                    .Sum(f => { try { return new FileInfo(f).Length; } catch { return 0L; } });
+                            }
+                            catch { }
+
                         try
                         {
                             if (Directory.Exists(sourcePath))
                             {
-                                await AddDirectoryToArchiveAsync(archive, sourcePath, Path.GetFileName(sourcePath), options.CompressionLevel, cancellationToken);
+                                await AddDirectoryToArchiveAsync(archive, sourcePath, Path.GetFileName(sourcePath),
+                                    options.CompressionLevel, cancellationToken, totalSourceBytes, byteOffset, progress);
                             }
                             else if (File.Exists(sourcePath))
                             {
-                                await AddEntryFromFileAsync(archive, sourcePath, Path.GetFileName(sourcePath), options.CompressionLevel, cancellationToken);
+                                await AddEntryFromFileAsync(archive, sourcePath, Path.GetFileName(sourcePath),
+                                    options.CompressionLevel, cancellationToken, totalSourceBytes, byteOffset, progress);
                             }
                             else
                             {
@@ -107,8 +120,7 @@ public sealed class ZipArchiveService : IArchiveService
                             });
                         }
 
-                        if (!isSingleLargeFile)
-                            progress?.Report((i + 1) * 100 / total);
+                        byteOffset += pathSize;
                     }
                 }, cancellationToken).ConfigureAwait(false);
 
@@ -162,6 +174,10 @@ public sealed class ZipArchiveService : IArchiveService
         {
             Directory.CreateDirectory(options.DestinationFolder);
 
+            long totalSourceBytes = ComputeTotalBytes(options.SourcePaths);
+            progress?.Report(0);
+            long byteOffset = 0;
+
             int total = options.SourcePaths.Count;
             for (int i = 0; i < total; i++)
             {
@@ -172,12 +188,24 @@ public sealed class ZipArchiveService : IArchiveService
                 string baseName = Path.GetFileNameWithoutExtension(sourcePath);
                 string destPath = Path.Combine(options.DestinationFolder, baseName + ".zip");
 
+                // Compute source size for offset tracking (best-effort)
+                long pathSize = 0;
+                if (File.Exists(sourcePath))
+                    try { pathSize = new FileInfo(sourcePath).Length; } catch { }
+                else if (Directory.Exists(sourcePath))
+                    try
+                    {
+                        pathSize = Directory.EnumerateFiles(sourcePath, "*", SearchOption.AllDirectories)
+                            .Sum(f => { try { return new FileInfo(f).Length; } catch { return 0L; } });
+                    }
+                    catch { }
+
                 if (File.Exists(destPath))
                 {
                     switch (options.OnConflict)
                     {
                         case ConflictBehavior.Skip:
-                            progress?.Report((i + 1) * 100 / total);
+                            byteOffset += pathSize;
                             continue;
                         case ConflictBehavior.Overwrite:
                             File.Delete(destPath);
@@ -194,19 +222,23 @@ public sealed class ZipArchiveService : IArchiveService
                     if (Directory.Exists(sourcePath))
                     {
                         var level = options.CompressionLevel;
+                        long capturedOffset = byteOffset;
                         await Task.Run(async () =>
                         {
                             using var archive = ZipFile.Open(separateTempPath, ZipArchiveMode.Create);
-                            await AddDirectoryToArchiveAsync(archive, sourcePath, Path.GetFileName(sourcePath), level, cancellationToken);
+                            await AddDirectoryToArchiveAsync(archive, sourcePath, Path.GetFileName(sourcePath),
+                                level, cancellationToken, totalSourceBytes, capturedOffset, progress);
                         }, cancellationToken).ConfigureAwait(false);
                     }
                     else if (File.Exists(sourcePath))
                     {
                         var level = options.CompressionLevel;
+                        long capturedOffset = byteOffset;
                         await Task.Run(async () =>
                         {
                             using var archive = ZipFile.Open(separateTempPath, ZipArchiveMode.Create);
-                            await AddEntryFromFileAsync(archive, sourcePath, Path.GetFileName(sourcePath), level, cancellationToken);
+                            await AddEntryFromFileAsync(archive, sourcePath, Path.GetFileName(sourcePath),
+                                level, cancellationToken, totalSourceBytes, capturedOffset, progress);
                         }, cancellationToken).ConfigureAwait(false);
                     }
                     else
@@ -216,7 +248,7 @@ public sealed class ZipArchiveService : IArchiveService
                             SourcePath = sourcePath,
                             Message = $"Source path does not exist: {sourcePath}"
                         });
-                        progress?.Report((i + 1) * 100 / total);
+                        byteOffset += pathSize;
                         continue;
                     }
 
@@ -259,7 +291,7 @@ public sealed class ZipArchiveService : IArchiveService
                     });
                 }
 
-                progress?.Report((i + 1) * 100 / total);
+                byteOffset += pathSize;
             }
         }
 
@@ -290,13 +322,9 @@ public sealed class ZipArchiveService : IArchiveService
 
         Directory.CreateDirectory(options.DestinationFolder);
 
-        bool isSingleLargeArchive = options.ArchivePaths.Count == 1
-            && File.Exists(options.ArchivePaths[0])
-            && new FileInfo(options.ArchivePaths[0]).Length > 10 * 1024 * 1024;
-        if (isSingleLargeArchive)
-            progress?.Report(-1);
-
         int total = options.ArchivePaths.Count;
+        bool singleArchive = total == 1;
+
         for (int i = 0; i < total; i++)
         {
             if (cancellationToken.IsCancellationRequested)
@@ -309,7 +337,7 @@ public sealed class ZipArchiveService : IArchiveService
                 string? reason = GetKnownArchiveReason(archivePath);
                 if (reason is not null)
                     skippedFiles.Add(new SkippedFile { Path = archivePath, Reason = reason });
-                if (!isSingleLargeArchive) progress?.Report((i + 1) * 100 / total);
+                if (!singleArchive) progress?.Report((i + 1) * 100 / total);
                 continue;
             }
 
@@ -320,7 +348,7 @@ public sealed class ZipArchiveService : IArchiveService
                     SourcePath = archivePath,
                     Message = "This archive is password-protected and cannot be extracted."
                 });
-                if (!isSingleLargeArchive) progress?.Report((i + 1) * 100 / total);
+                if (!singleArchive) progress?.Report((i + 1) * 100 / total);
                 continue;
             }
 
@@ -330,9 +358,11 @@ public sealed class ZipArchiveService : IArchiveService
 
             try
             {
+                IProgress<int>? archiveProgress = singleArchive ? progress : null;
                 bool alreadyIsolated = options.Mode == ExtractMode.SeparateFolders;
                 string actualDest = await Task.Run(async () =>
-                    await ExtractWithSmartFolderingAsync(archivePath, destDir, alreadyIsolated, options.OnConflict, skippedFiles, cancellationToken),
+                    await ExtractWithSmartFolderingAsync(archivePath, destDir, alreadyIsolated,
+                        options.OnConflict, skippedFiles, archiveProgress, cancellationToken),
                     cancellationToken).ConfigureAwait(false);
 
                 createdFiles.Add(actualDest);
@@ -365,7 +395,7 @@ public sealed class ZipArchiveService : IArchiveService
                 });
             }
 
-            if (!isSingleLargeArchive) progress?.Report((i + 1) * 100 / total);
+            if (!singleArchive) progress?.Report((i + 1) * 100 / total);
         }
 
         var result = new ArchiveResult
@@ -390,6 +420,7 @@ public sealed class ZipArchiveService : IArchiveService
         bool alreadyIsolated,
         ConflictBehavior onConflict,
         List<SkippedFile> skippedFiles,
+        IProgress<int>? progress,
         CancellationToken cancellationToken)
     {
         using var archive = ZipFile.OpenRead(archivePath);
@@ -422,6 +453,9 @@ public sealed class ZipArchiveService : IArchiveService
         string fullTempDest = Path.GetFullPath(tempDest).TrimEnd(Path.DirectorySeparatorChar)
             + Path.DirectorySeparatorChar;
 
+        long totalCompressedBytes = fileEntries.Sum(e => e.CompressedLength);
+        long bytesRead = 0;
+
         try
         {
             foreach (var entry in fileEntries)
@@ -435,7 +469,11 @@ public sealed class ZipArchiveService : IArchiveService
                 {
                     var sep = relativePath.IndexOf(Path.DirectorySeparatorChar);
                     relativePath = relativePath[(sep + 1)..];
-                    if (string.IsNullOrEmpty(relativePath)) continue;
+                    if (string.IsNullOrEmpty(relativePath))
+                    {
+                        bytesRead += entry.CompressedLength;
+                        continue;
+                    }
                 }
 
                 // T-F38: Reject entries with Alternate Data Stream marker
@@ -446,6 +484,7 @@ public sealed class ZipArchiveService : IArchiveService
                         Path = entry.FullName,
                         Reason = "Alternate Data Stream entry rejected for security."
                     });
+                    bytesRead += entry.CompressedLength;
                     continue;
                 }
 
@@ -457,6 +496,7 @@ public sealed class ZipArchiveService : IArchiveService
                         Path = entry.FullName,
                         Reason = $"Entry name matches a reserved Windows device name and was skipped."
                     });
+                    bytesRead += entry.CompressedLength;
                     continue;
                 }
 
@@ -468,6 +508,7 @@ public sealed class ZipArchiveService : IArchiveService
                         Path = entry.FullName,
                         Reason = "Entry name contains control characters and was skipped."
                     });
+                    bytesRead += entry.CompressedLength;
                     continue;
                 }
 
@@ -486,6 +527,7 @@ public sealed class ZipArchiveService : IArchiveService
                         Path = entry.FullName,
                         Reason = "Entry path traverses a reparse point (symlink or junction) and was skipped."
                     });
+                    bytesRead += entry.CompressedLength;
                     continue;
                 }
 
@@ -500,6 +542,7 @@ public sealed class ZipArchiveService : IArchiveService
                         Reason = $"Suspicious compression ratio ({entry.Length / entry.CompressedLength}:1). " +
                                  "Entry was skipped as a precaution against ZIP bombs."
                     });
+                    bytesRead += entry.CompressedLength;
                     continue;
                 }
 
@@ -507,7 +550,11 @@ public sealed class ZipArchiveService : IArchiveService
                 string finalFilePath = Path.GetFullPath(Path.Combine(actualDest, relativePath));
                 if (File.Exists(finalFilePath))
                 {
-                    if (onConflict == ConflictBehavior.Skip) continue;
+                    if (onConflict == ConflictBehavior.Skip)
+                    {
+                        bytesRead += entry.CompressedLength;
+                        continue;
+                    }
                     if (onConflict == ConflictBehavior.Rename)
                     {
                         string uniqueFinal = GetUniqueFilePath(finalFilePath);
@@ -515,15 +562,33 @@ public sealed class ZipArchiveService : IArchiveService
                     }
                 }
 
-                using var entryStream = entry.Open();
-                using var fileStream = new FileStream(
-                    destFilePath,
-                    FileMode.Create,
-                    FileAccess.Write,
-                    FileShare.None,
-                    bufferSize: 81920,
-                    useAsync: true);
-                await entryStream.CopyToAsync(fileStream, cancellationToken).ConfigureAwait(false);
+                if (progress != null && totalCompressedBytes > 0)
+                {
+                    var entryStream = entry.Open();
+                    await using var ps = new ProgressStream(entryStream, totalCompressedBytes, bytesRead, progress);
+                    using var fileStream = new FileStream(
+                        destFilePath,
+                        FileMode.Create,
+                        FileAccess.Write,
+                        FileShare.None,
+                        bufferSize: 81920,
+                        useAsync: true);
+                    await ps.CopyToAsync(fileStream, cancellationToken).ConfigureAwait(false);
+                }
+                else
+                {
+                    using var entryStream = entry.Open();
+                    using var fileStream = new FileStream(
+                        destFilePath,
+                        FileMode.Create,
+                        FileAccess.Write,
+                        FileShare.None,
+                        bufferSize: 81920,
+                        useAsync: true);
+                    await entryStream.CopyToAsync(fileStream, cancellationToken).ConfigureAwait(false);
+                }
+
+                bytesRead += entry.CompressedLength;
             }
         }
         catch (OperationCanceledException)
@@ -558,18 +623,31 @@ public sealed class ZipArchiveService : IArchiveService
         string sourcePath,
         string entryName,
         CompressionLevel compressionLevel,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        long totalBytes = 0,
+        long startOffset = 0,
+        IProgress<int>? progress = null)
     {
         var entry = archive.CreateEntry(entryName, compressionLevel);
-        using var entryStream = entry.Open();
         using var fileStream = new FileStream(
             sourcePath,
             FileMode.Open,
             FileAccess.Read,
             FileShare.Read,
-            bufferSize: 81920,
-            useAsync: true);
-        await fileStream.CopyToAsync(entryStream, cancellationToken).ConfigureAwait(false);
+            bufferSize: 262144,
+            useAsync: false);
+
+        if (progress != null && totalBytes > 0)
+        {
+            var entryStream = entry.Open();
+            await using var ps = new ProgressStream(entryStream, totalBytes, startOffset, progress);
+            await fileStream.CopyToAsync(ps, cancellationToken).ConfigureAwait(false);
+        }
+        else
+        {
+            using var entryStream = entry.Open();
+            await fileStream.CopyToAsync(entryStream, cancellationToken).ConfigureAwait(false);
+        }
     }
 
     private static async Task AddDirectoryToArchiveAsync(
@@ -577,17 +655,42 @@ public sealed class ZipArchiveService : IArchiveService
         string sourceDir,
         string entryPrefix,
         CompressionLevel compressionLevel,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        long totalBytes = 0,
+        long startOffset = 0,
+        IProgress<int>? progress = null)
     {
         foreach (string filePath in Directory.EnumerateFiles(sourceDir, "*", SearchOption.AllDirectories))
         {
             if (cancellationToken.IsCancellationRequested)
                 break;
 
+            long fileSize = 0;
+            try { fileSize = new FileInfo(filePath).Length; } catch { }
+
             string relativePath = Path.GetRelativePath(Path.GetDirectoryName(sourceDir)!, filePath);
             string entryName = relativePath.Replace('\\', '/');
-            await AddEntryFromFileAsync(archive, filePath, entryName, compressionLevel, cancellationToken);
+            await AddEntryFromFileAsync(archive, filePath, entryName, compressionLevel, cancellationToken,
+                totalBytes, startOffset, progress);
+            startOffset += fileSize;
         }
+    }
+
+    private static long ComputeTotalBytes(IReadOnlyList<string> paths)
+    {
+        long total = 0;
+        foreach (var p in paths)
+        {
+            try
+            {
+                if (File.Exists(p)) total += new FileInfo(p).Length;
+                else if (Directory.Exists(p))
+                    total += Directory.EnumerateFiles(p, "*", SearchOption.AllDirectories)
+                        .Sum(f => { try { return new FileInfo(f).Length; } catch { return 0L; } });
+            }
+            catch { }
+        }
+        return total;
     }
 
     private static bool IsZipFile(string path)

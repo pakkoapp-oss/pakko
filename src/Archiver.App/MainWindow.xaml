@@ -164,7 +164,8 @@
                 Grid.Column="2"
                 Content="..."
                 Margin="8,0,0,0"
-                Command="{x:Bind ViewModel.BrowseDestinationCommand, Mode=OneWay}"/>
+                Command="{x:Bind ViewModel.BrowseDestinationCommand, Mode=OneWay}"
+                IsEnabled="{x:Bind ViewModel.IsNotBusy, Mode=OneWay}"/>
         </Grid>
 
         <!-- Row 3: Action Buttons -->
@@ -198,11 +199,13 @@
                 <RadioButton
                     GroupName="ArchiveMode"
                     Content="One archive"
-                    IsChecked="{x:Bind ViewModel.IsSingleArchive, Mode=TwoWay}"/>
+                    IsChecked="{x:Bind ViewModel.IsSingleArchive, Mode=TwoWay}"
+                    IsEnabled="{x:Bind ViewModel.IsNotBusy, Mode=OneWay}"/>
                 <RadioButton
                     GroupName="ArchiveMode"
                     Content="Separate archives"
-                    IsChecked="{x:Bind ViewModel.IsSeparateArchives, Mode=TwoWay}"/>
+                    IsChecked="{x:Bind ViewModel.IsSeparateArchives, Mode=TwoWay}"
+                    IsEnabled="{x:Bind ViewModel.IsNotBusy, Mode=OneWay}"/>
             </StackPanel>
             <Grid ColumnDefinitions="Auto,*">
                 <TextBlock
@@ -215,11 +218,12 @@
                     Grid.Column="1"
                     Text="{x:Bind ViewModel.ArchiveName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                     PlaceholderText="Auto (based on first file/folder name)"
-                    IsEnabled="{x:Bind ViewModel.IsArchiveNameEnabled, Mode=OneWay}"/>
+                    IsEnabled="{x:Bind ViewModel.IsArchiveNameAndNotBusy, Mode=OneWay}"/>
             </Grid>
             <StackPanel Orientation="Horizontal" Spacing="8" MinHeight="40">
                 <TextBlock x:Uid="CompressionLabel" VerticalAlignment="Center"/>
-                <ComboBox MinHeight="32" SelectedIndex="{x:Bind ViewModel.CompressionLevelIndex, Mode=TwoWay}">
+                <ComboBox MinHeight="32" SelectedIndex="{x:Bind ViewModel.CompressionLevelIndex, Mode=TwoWay}"
+                          IsEnabled="{x:Bind ViewModel.IsNotBusy, Mode=OneWay}">
                     <ComboBoxItem Content="Fast"/>
                     <ComboBoxItem Content="Normal"/>
                     <ComboBoxItem Content="Best"/>
@@ -232,7 +236,8 @@
         <StackPanel Grid.Row="5" Spacing="8">
             <StackPanel Orientation="Horizontal" Spacing="8" MinHeight="40">
                 <TextBlock x:Uid="ConflictLabel" VerticalAlignment="Center"/>
-                <ComboBox MinHeight="32" SelectedIndex="{x:Bind ViewModel.OnConflictIndex, Mode=TwoWay}">
+                <ComboBox MinHeight="32" SelectedIndex="{x:Bind ViewModel.OnConflictIndex, Mode=TwoWay}"
+                          IsEnabled="{x:Bind ViewModel.IsNotBusy, Mode=OneWay}">
                     <ComboBoxItem Content="Overwrite"/>
                     <ComboBoxItem Content="Skip"/>
                     <ComboBoxItem Content="Rename (add number)"/>
@@ -240,10 +245,12 @@
             </StackPanel>
             <CheckBox
             x:Uid="OpenDestinationCheck"
-            IsChecked="{x:Bind ViewModel.OpenDestinationFolder, Mode=TwoWay}"/>
+            IsChecked="{x:Bind ViewModel.OpenDestinationFolder, Mode=TwoWay}"
+            IsEnabled="{x:Bind ViewModel.IsNotBusy, Mode=OneWay}"/>
             <CheckBox
             x:Uid="DeleteAfterOperationCheck"
-            IsChecked="{x:Bind ViewModel.DeleteAfterOperation, Mode=TwoWay}"/>
+            IsChecked="{x:Bind ViewModel.DeleteAfterOperation, Mode=TwoWay}"
+            IsEnabled="{x:Bind ViewModel.IsNotBusy, Mode=OneWay}"/>
         </StackPanel>
 
         <!-- Row 6: Status Bar -->
@@ -253,7 +260,6 @@
                     Grid.Column="0"
                     Value="{x:Bind ViewModel.Progress, Mode=OneWay}"
                     Maximum="100"
-                    IsIndeterminate="{x:Bind ViewModel.IsIndeterminate, Mode=OneWay}"
                     Visibility="{x:Bind ViewModel.IsOperationRunningVisibility, Mode=OneWay}"/>
                 <Button
                     Grid.Column="1"

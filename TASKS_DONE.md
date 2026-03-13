@@ -285,3 +285,10 @@ Extraction target is `destPath + "_tmp"` during operation. On success: `_tmp` di
 - [x] **Status:** complete — Completed March 2026
 
 `EntryHasReservedName(entryFullName)` checks the last segment of the raw ZIP entry name (before `Path.GetFullPath`) against a `HashSet` of 22 reserved Windows device names (`CON`, `PRN`, `AUX`, `NUL`, `COM1`–`COM9`, `LPT1`–`LPT9`), case-insensitive, stripping extension. `EntryHasControlCharacters(entryFullName)` rejects any entry with a character `< 0x20`. Both checks run before `Path.GetFullPath` — critical because Windows resolves bare reserved names (e.g. `NUL`) to device paths. New tests: `ExtractAsync_ReservedWindowsName_IsSkipped` (7 theory cases), `ExtractAsync_EntryWithControlCharacters_IsSkipped`. 57/57 tests pass.
+
+---
+
+### T-F16 — Byte-accurate Progress Reporting
+- [x] **Status:** complete — Completed March 2026
+
+New `src/Archiver.Core/IO/ProgressStream.cs`: a read/write `Stream` wrapper that counts bytes transferred and reports percentage via `IProgress<int>`. Constructor overload accepts `startOffset` so multiple files share a single 0–100 progress range. `ZipArchiveService` changes: `AddEntryFromFileAsync` wraps `entryStream` (write side) with `ProgressStream` when `progress != null`; `AddDirectoryToArchiveAsync` accumulates `startOffset` per file; `ArchiveAsync` (both `SingleArchive` and `SeparateArchives` modes) calls `ComputeTotalBytes` upfront and tracks a running `byteOffset` across the loop. `ExtractAsync`: `isSingleLargeArchive` removed — for a single archive, byte-based progress is passed into `ExtractWithSmartFolderingAsync`; for multiple archives, file-count progress is kept. `ExtractWithSmartFolderingAsync` wraps `entry.Open()` (read side) with `ProgressStream(entryStream, totalCompressedBytes, bytesRead, progress)`; all skipped entries advance `bytesRead` for accurate reporting. `IsIndeterminate` removed from `MainViewModel` and `MainWindow.xaml` — progress is always 0–100. New tests: `ArchiveAsync_SingleFile_ReportsMonotonicByteProgress`, `ExtractAsync_SingleArchive_ReportsMonotonicByteProgress`. 59/59 tests pass.
