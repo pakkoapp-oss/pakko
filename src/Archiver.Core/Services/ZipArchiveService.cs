@@ -95,7 +95,7 @@ public sealed class ZipArchiveService : IArchiveService
                             if (Directory.Exists(sourcePath))
                             {
                                 await AddDirectoryToArchiveAsync(archive, sourcePath, Path.GetFileName(sourcePath),
-                                    options.CompressionLevel, cancellationToken, skippedFiles, totalSourceBytes, byteOffset, progress);
+                                    options.CompressionLevel, cancellationToken, skippedFiles, errors, totalSourceBytes, byteOffset, progress);
                             }
                             else if (File.Exists(sourcePath))
                             {
@@ -134,15 +134,11 @@ public sealed class ZipArchiveService : IArchiveService
                     }
                 }, cancellationToken).ConfigureAwait(false);
 
-                if (errors.Count == 0)
-                {
-                    File.Move(tempPath, destPath, overwrite: true);
-                    createdFiles.Add(destPath);
-                }
-                else
-                {
-                    try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { }
-                }
+                // T-F21: Commit the archive even when per-item errors occurred so that
+                // successfully archived files are preserved. Fatal errors (IOException
+                // creating the archive itself) are still caught below and delete the temp.
+                File.Move(tempPath, destPath, overwrite: true);
+                createdFiles.Add(destPath);
             }
             catch (OperationCanceledException)
             {
@@ -244,7 +240,7 @@ public sealed class ZipArchiveService : IArchiveService
                         {
                             using var archive = ZipFile.Open(separateTempPath, ZipArchiveMode.Create);
                             await AddDirectoryToArchiveAsync(archive, sourcePath, Path.GetFileName(sourcePath),
-                                level, cancellationToken, skippedFiles, totalSourceBytes, capturedOffset, progress);
+                                level, cancellationToken, skippedFiles, errors, totalSourceBytes, capturedOffset, progress);
                         }, cancellationToken).ConfigureAwait(false);
                     }
                     else if (File.Exists(sourcePath))
@@ -649,7 +645,10 @@ public sealed class ZipArchiveService : IArchiveService
         long startOffset = 0,
         IProgress<ProgressReport>? progress = null)
     {
-        var entry = archive.CreateEntry(entryName, compressionLevel);
+        // T-F21: Open the source file BEFORE creating the archive entry.
+        // If the file has been deleted or locked since it was discovered by
+        // Directory.EnumerateFiles, the IOException propagates to the caller
+        // without leaving an orphaned 0-byte entry in the archive.
         using var fileStream = new FileStream(
             sourcePath,
             FileMode.Open,
@@ -657,6 +656,7 @@ public sealed class ZipArchiveService : IArchiveService
             FileShare.Read,
             bufferSize: FileStreamBufferSize,
             useAsync: false);
+        var entry = archive.CreateEntry(entryName, compressionLevel);
 
         if (progress != null && totalBytes > 0)
         {
@@ -673,6 +673,8 @@ public sealed class ZipArchiveService : IArchiveService
 
     // T-F23: Manual recursive traversal so we can inspect FileAttributes before entering each
     // directory. Returns the updated startOffset for progress tracking.
+    // T-F21: errors list receives per-file ArchiveErrors so that a single inaccessible file
+    // does not abort the rest of the directory — operation continues for all remaining files.
     private static async Task<long> AddDirectoryToArchiveAsync(
         ZipArchive archive,
         string sourceDir,
@@ -680,6 +682,7 @@ public sealed class ZipArchiveService : IArchiveService
         CompressionLevel compressionLevel,
         CancellationToken cancellationToken,
         List<SkippedFile> skippedFiles,
+        List<ArchiveError> errors,
         long totalBytes = 0,
         long startOffset = 0,
         IProgress<ProgressReport>? progress = null)
@@ -706,8 +709,35 @@ public sealed class ZipArchiveService : IArchiveService
 
             string relativePath = Path.GetRelativePath(Path.GetDirectoryName(sourceDir)!, filePath);
             string entryName = relativePath.Replace('\\', '/');
-            await AddEntryFromFileAsync(archive, filePath, entryName, compressionLevel, cancellationToken,
-                totalBytes, startOffset, progress);
+
+            // T-F21: Catch per-file IO failures. A file may be deleted or locked between
+            // Directory.EnumerateFiles discovery and the FileStream.Open inside
+            // AddEntryFromFileAsync — both FileNotFoundException and sharing-violation
+            // IOException are subclasses of IOException and handled here.
+            try
+            {
+                await AddEntryFromFileAsync(archive, filePath, entryName, compressionLevel, cancellationToken,
+                    totalBytes, startOffset, progress);
+            }
+            catch (IOException ex)
+            {
+                errors.Add(new ArchiveError
+                {
+                    SourcePath = filePath,
+                    Message = $"Cannot access file: {ex.Message}",
+                    Exception = ex
+                });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                errors.Add(new ArchiveError
+                {
+                    SourcePath = filePath,
+                    Message = $"Access denied: {ex.Message}",
+                    Exception = ex
+                });
+            }
+
             startOffset += fileSize;
         }
 
@@ -729,7 +759,7 @@ public sealed class ZipArchiveService : IArchiveService
             }
 
             startOffset = await AddDirectoryToArchiveAsync(archive, subDir, entryPrefix, compressionLevel,
-                cancellationToken, skippedFiles, totalBytes, startOffset, progress);
+                cancellationToken, skippedFiles, errors, totalBytes, startOffset, progress);
         }
 
         return startOffset;

@@ -521,6 +521,49 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
         zip.Entries.Should().Contain(e => e.FullName.Contains("file.txt"));
     }
 
+    // T-F21: Race Condition Handling During Traversal
+
+    [Fact]
+    public async Task ArchiveAsync_FileLockedDuringDirectoryTraversal_PerFileErrorRemainingFilesArchived()
+    {
+        // Simulate the race condition: locked.txt exists when Directory.EnumerateFiles
+        // discovers it but is held with FileShare.None so FileStream.Open fails.
+        // keep.txt must be archived successfully; the error must name locked.txt specifically.
+        string sourceDir = Path.Combine(_temp.Path, "source");
+        Directory.CreateDirectory(sourceDir);
+        string keepFile = Path.Combine(sourceDir, "keep.txt");
+        string lockedFile = Path.Combine(sourceDir, "locked.txt");
+        File.WriteAllText(keepFile, "keep content");
+        File.WriteAllText(lockedFile, "locked content");
+
+        ArchiveResult result;
+        // Exclusive lock: FileShare.None prevents any other FileStream.Open on this file,
+        // simulating the race window where the file exists at scan time but is inaccessible at read time.
+        using (var exclusiveLock = new FileStream(lockedFile, FileMode.Open, FileAccess.Read, FileShare.None))
+        {
+            result = await _sut.ArchiveAsync(new ArchiveOptions
+            {
+                SourcePaths = [sourceDir],
+                DestinationFolder = _temp.Path,
+                ArchiveName = "race_test"
+            });
+        }
+
+        // Exactly one error — the specific locked file, not the containing directory
+        result.Errors.Should().HaveCount(1);
+        result.Errors[0].SourcePath.Should().Be(lockedFile);
+        result.Errors[0].Message.Should().NotBeNullOrEmpty();
+
+        // keep.txt was processed without error
+        result.Errors.Should().NotContain(e => e.SourcePath == keepFile);
+
+        // The archive was committed and contains keep.txt
+        result.CreatedFiles.Should().HaveCount(1);
+        using var zip = System.IO.Compression.ZipFile.OpenRead(result.CreatedFiles[0]);
+        zip.Entries.Should().Contain(e => e.Name == "keep.txt");
+        zip.Entries.Should().NotContain(e => e.Name == "locked.txt");
+    }
+
     [Fact]
     public async Task ArchiveAsync_TopLevelSymlinkSource_SymlinkSkippedOperationSucceeds()
     {

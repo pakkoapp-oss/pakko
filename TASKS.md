@@ -397,7 +397,7 @@ with optimal buffer size. No File.ReadAllBytes or large in-memory buffers.
 ---
 
 ### T-F21 — Race Condition Handling During Traversal
-- [ ] **Status:** future
+- [x] **Status:** complete
 
 **What:** Files may be modified or deleted during directory traversal.
 FileNotFoundException during archiving should be recoverable, not fatal.
@@ -405,10 +405,10 @@ FileNotFoundException during archiving should be recoverable, not fatal.
 **File:** `src/Archiver.Core/Services/ZipArchiveService.cs`
 
 **Acceptance criteria:**
-- [ ] FileNotFoundException during traversal → ArchiveError, operation continues
-- [ ] File deleted between scan and read → ArchiveError with clear message
-- [ ] No unhandled exception reaches caller
-- [ ] dotnet test passes — new test: file deleted mid-archive → ArchiveError
+- [x] FileNotFoundException during traversal → ArchiveError, operation continues
+- [x] File deleted between scan and read → ArchiveError with clear message
+- [x] No unhandled exception reaches caller
+- [x] dotnet test passes — new test: file deleted mid-archive → ArchiveError
 
 ---
 
