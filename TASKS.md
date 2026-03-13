@@ -369,16 +369,16 @@ Version bump: increment `Package.appxmanifest` `Version` attribute before each s
 ---
 
 ### T-F19 — Streaming Safety Audit
-- [ ] **Status:** future
+- [x] **Status:** complete
 
 **What:** Verify all file I/O in ZipArchiveService uses stream-based operations
 with optimal buffer size. No File.ReadAllBytes or large in-memory buffers.
 
 **Acceptance criteria:**
-- [ ] All file transfers use CopyToAsync with explicit buffer size 81920 (80 KB)
-- [ ] No File.ReadAllBytes or File.ReadAllText in ZipArchiveService
-- [ ] Memory profiling on 1 GB file shows no spike beyond 2x buffer size
-- [ ] dotnet test passes — existing tests unchanged
+- [x] All file transfers use CopyToAsync with explicit buffer size 81920 (80 KB)
+- [x] No File.ReadAllBytes or File.ReadAllText in ZipArchiveService
+- [x] Memory profiling on 1 GB file shows no spike beyond 2x buffer size
+- [x] dotnet test passes — existing tests unchanged
 
 ---
 

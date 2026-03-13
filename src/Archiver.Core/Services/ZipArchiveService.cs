@@ -13,6 +13,8 @@ namespace Archiver.Core.Services;
 public sealed class ZipArchiveService : IArchiveService
 {
     private const int MaxCompressionRatio = 1000;
+    private const int CopyBufferSize = 81920;        // 80 KB — CopyToAsync transfer buffer
+    private const int FileStreamBufferSize = 262144; // 256 KB — FileStream read buffer (archiving)
 
     /// <inheritdoc/>
     public async Task<ArchiveResult> ArchiveAsync(
@@ -571,9 +573,9 @@ public sealed class ZipArchiveService : IArchiveService
                         FileMode.Create,
                         FileAccess.Write,
                         FileShare.None,
-                        bufferSize: 81920,
+                        bufferSize: CopyBufferSize,
                         useAsync: true);
-                    await ps.CopyToAsync(fileStream, cancellationToken).ConfigureAwait(false);
+                    await ps.CopyToAsync(fileStream, CopyBufferSize, cancellationToken).ConfigureAwait(false);
                 }
                 else
                 {
@@ -583,9 +585,9 @@ public sealed class ZipArchiveService : IArchiveService
                         FileMode.Create,
                         FileAccess.Write,
                         FileShare.None,
-                        bufferSize: 81920,
+                        bufferSize: CopyBufferSize,
                         useAsync: true);
-                    await entryStream.CopyToAsync(fileStream, cancellationToken).ConfigureAwait(false);
+                    await entryStream.CopyToAsync(fileStream, CopyBufferSize, cancellationToken).ConfigureAwait(false);
                 }
 
                 // T-F45: Propagate Zone.Identifier ADS from archive to extracted file
@@ -637,19 +639,19 @@ public sealed class ZipArchiveService : IArchiveService
             FileMode.Open,
             FileAccess.Read,
             FileShare.Read,
-            bufferSize: 262144,
+            bufferSize: FileStreamBufferSize,
             useAsync: false);
 
         if (progress != null && totalBytes > 0)
         {
             var entryStream = entry.Open();
             await using var ps = new ProgressStream(entryStream, totalBytes, startOffset, progress);
-            await fileStream.CopyToAsync(ps, cancellationToken).ConfigureAwait(false);
+            await fileStream.CopyToAsync(ps, CopyBufferSize, cancellationToken).ConfigureAwait(false);
         }
         else
         {
             using var entryStream = entry.Open();
-            await fileStream.CopyToAsync(entryStream, cancellationToken).ConfigureAwait(false);
+            await fileStream.CopyToAsync(entryStream, CopyBufferSize, cancellationToken).ConfigureAwait(false);
         }
     }
 
