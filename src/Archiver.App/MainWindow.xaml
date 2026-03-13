@@ -272,7 +272,8 @@
                 Grid.Row="1"
                 Text="{x:Bind ViewModel.StatusMessage, Mode=OneWay}"
                 Opacity="0.7"
-                FontSize="12"/>
+                FontSize="12"
+                TextTrimming="CharacterEllipsis"/>
         </Grid>
     </Grid>
 </Window>

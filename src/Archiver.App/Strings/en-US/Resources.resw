@@ -82,6 +82,12 @@
   <data name="StatusCleaningUp" xml:space="preserve">
     <value>Cleaning up...</value>
   </data>
+  <data name="StatusArchivedIn" xml:space="preserve">
+    <value>Archived in {0} sec — {1} file(s)</value>
+  </data>
+  <data name="StatusExtractedIn" xml:space="preserve">
+    <value>Extracted in {0} sec — {1} file(s)</value>
+  </data>
 
   <!-- About dialog -->
   <data name="AboutGitHubUrl" xml:space="preserve">

@@ -201,8 +201,8 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
             .Select(i => _temp.CreateFile($"file{i}.txt"))
             .ToList();
 
-        var progressValues = new List<int>();
-        var progress = new Progress<int>(v => progressValues.Add(v));
+        var reports = new List<ProgressReport>();
+        var progress = new Progress<ProgressReport>(r => reports.Add(r));
 
         var options = new ArchiveOptions
         {
@@ -212,10 +212,10 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
         };
 
         await _sut.ArchiveAsync(options, progress);
-        await Task.Delay(50); // let Progress callbacks fire
+        await Task.Delay(50); // let Progress<ProgressReport> callbacks fire
 
-        progressValues.Should().NotBeEmpty();
-        progressValues.Last().Should().Be(100);
+        reports.Should().NotBeEmpty();
+        reports.Last().Percent.Should().Be(100);
     }
 
     [Fact]
@@ -288,8 +288,8 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
         string content = new string('x', 8 * 1024); // 8 KB — enough for multiple progress ticks
         var file = _temp.CreateFile("data.txt", content);
 
-        var progressValues = new List<int>();
-        var progress = new Progress<int>(v => progressValues.Add(v));
+        var reports = new List<ProgressReport>();
+        var progress = new Progress<ProgressReport>(r => reports.Add(r));
 
         var options = new ArchiveOptions
         {
@@ -301,14 +301,13 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
         };
 
         await _sut.ArchiveAsync(options, progress);
-        await Task.Delay(50); // let Progress<int> callbacks fire
+        await Task.Delay(50); // let Progress<ProgressReport> callbacks fire
 
-        progressValues.Should().NotBeEmpty();
-        progressValues[0].Should().Be(0);
-        progressValues.Last().Should().Be(100);
+        reports.Should().NotBeEmpty();
+        reports[0].Percent.Should().Be(0);
+        reports.Last().Percent.Should().Be(100);
         // Sequence must be non-decreasing
-        for (int i = 1; i < progressValues.Count; i++)
-            progressValues[i].Should().BeGreaterThanOrEqualTo(progressValues[i - 1]);
+        reports.Select(r => r.Percent).Should().BeInAscendingOrder();
     }
 
     [Fact]

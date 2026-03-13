@@ -478,8 +478,8 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
         using (var archive = ZipFile.Open(zipPath, ZipArchiveMode.Create))
             archive.CreateEntryFromFile(file, "data.txt", System.IO.Compression.CompressionLevel.NoCompression);
 
-        var progressValues = new List<int>();
-        var progress = new Progress<int>(v => progressValues.Add(v));
+        var reports = new List<ProgressReport>();
+        var progress = new Progress<ProgressReport>(r => reports.Add(r));
 
         var destDir = Path.Combine(_temp.Path, "extract_output");
         var options = new ExtractOptions
@@ -490,13 +490,12 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
         };
 
         await _sut.ExtractAsync(options, progress);
-        await Task.Delay(50); // let Progress<int> callbacks fire
+        await Task.Delay(50); // let Progress<ProgressReport> callbacks fire
 
-        progressValues.Should().NotBeEmpty();
-        progressValues.Last().Should().Be(100);
+        reports.Should().NotBeEmpty();
+        reports.Last().Percent.Should().Be(100);
         // Sequence must be non-decreasing
-        for (int i = 1; i < progressValues.Count; i++)
-            progressValues[i].Should().BeGreaterThanOrEqualTo(progressValues[i - 1]);
+        reports.Select(r => r.Percent).Should().BeInAscendingOrder();
     }
 
     [Fact]

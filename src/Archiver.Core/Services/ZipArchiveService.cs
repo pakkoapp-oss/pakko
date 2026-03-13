@@ -17,7 +17,7 @@ public sealed class ZipArchiveService : IArchiveService
     /// <inheritdoc/>
     public async Task<ArchiveResult> ArchiveAsync(
         ArchiveOptions options,
-        IProgress<int>? progress = null,
+        IProgress<ProgressReport>? progress = null,
         CancellationToken cancellationToken = default)
     {
         var errors = new List<ArchiveError>();
@@ -52,7 +52,7 @@ public sealed class ZipArchiveService : IArchiveService
             string tempPath = destPath + ".tmp";
 
             long totalSourceBytes = ComputeTotalBytes(options.SourcePaths);
-            progress?.Report(0);
+            progress?.Report(new ProgressReport { Percent = 0, BytesTransferred = 0, TotalBytes = totalSourceBytes });
 
             try
             {
@@ -175,7 +175,7 @@ public sealed class ZipArchiveService : IArchiveService
             Directory.CreateDirectory(options.DestinationFolder);
 
             long totalSourceBytes = ComputeTotalBytes(options.SourcePaths);
-            progress?.Report(0);
+            progress?.Report(new ProgressReport { Percent = 0, BytesTransferred = 0, TotalBytes = totalSourceBytes });
             long byteOffset = 0;
 
             int total = options.SourcePaths.Count;
@@ -313,7 +313,7 @@ public sealed class ZipArchiveService : IArchiveService
     /// <inheritdoc/>
     public async Task<ArchiveResult> ExtractAsync(
         ExtractOptions options,
-        IProgress<int>? progress = null,
+        IProgress<ProgressReport>? progress = null,
         CancellationToken cancellationToken = default)
     {
         var errors = new List<ArchiveError>();
@@ -337,7 +337,7 @@ public sealed class ZipArchiveService : IArchiveService
                 string? reason = GetKnownArchiveReason(archivePath);
                 if (reason is not null)
                     skippedFiles.Add(new SkippedFile { Path = archivePath, Reason = reason });
-                if (!singleArchive) progress?.Report((i + 1) * 100 / total);
+                if (!singleArchive) progress?.Report(new ProgressReport { Percent = (i + 1) * 100 / total, BytesTransferred = 0, TotalBytes = 0 });
                 continue;
             }
 
@@ -348,7 +348,7 @@ public sealed class ZipArchiveService : IArchiveService
                     SourcePath = archivePath,
                     Message = "This archive is password-protected and cannot be extracted."
                 });
-                if (!singleArchive) progress?.Report((i + 1) * 100 / total);
+                if (!singleArchive) progress?.Report(new ProgressReport { Percent = (i + 1) * 100 / total, BytesTransferred = 0, TotalBytes = 0 });
                 continue;
             }
 
@@ -358,7 +358,7 @@ public sealed class ZipArchiveService : IArchiveService
 
             try
             {
-                IProgress<int>? archiveProgress = singleArchive ? progress : null;
+                IProgress<ProgressReport>? archiveProgress = singleArchive ? progress : null;
                 bool alreadyIsolated = options.Mode == ExtractMode.SeparateFolders;
                 string actualDest = await Task.Run(async () =>
                     await ExtractWithSmartFolderingAsync(archivePath, destDir, alreadyIsolated,
@@ -395,7 +395,7 @@ public sealed class ZipArchiveService : IArchiveService
                 });
             }
 
-            if (!singleArchive) progress?.Report((i + 1) * 100 / total);
+            if (!singleArchive) progress?.Report(new ProgressReport { Percent = (i + 1) * 100 / total, BytesTransferred = 0, TotalBytes = 0 });
         }
 
         var result = new ArchiveResult
@@ -420,7 +420,7 @@ public sealed class ZipArchiveService : IArchiveService
         bool alreadyIsolated,
         ConflictBehavior onConflict,
         List<SkippedFile> skippedFiles,
-        IProgress<int>? progress,
+        IProgress<ProgressReport>? progress,
         CancellationToken cancellationToken)
     {
         using var archive = ZipFile.OpenRead(archivePath);
@@ -626,7 +626,7 @@ public sealed class ZipArchiveService : IArchiveService
         CancellationToken cancellationToken,
         long totalBytes = 0,
         long startOffset = 0,
-        IProgress<int>? progress = null)
+        IProgress<ProgressReport>? progress = null)
     {
         var entry = archive.CreateEntry(entryName, compressionLevel);
         using var fileStream = new FileStream(
@@ -658,7 +658,7 @@ public sealed class ZipArchiveService : IArchiveService
         CancellationToken cancellationToken,
         long totalBytes = 0,
         long startOffset = 0,
-        IProgress<int>? progress = null)
+        IProgress<ProgressReport>? progress = null)
     {
         foreach (string filePath in Directory.EnumerateFiles(sourceDir, "*", SearchOption.AllDirectories))
         {

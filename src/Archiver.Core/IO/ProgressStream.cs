@@ -1,3 +1,5 @@
+using Archiver.Core.Models;
+
 namespace Archiver.Core.IO;
 
 /// <summary>
@@ -8,14 +10,14 @@ internal sealed class ProgressStream : Stream
 {
     private readonly Stream _inner;
     private readonly long _totalBytes;
-    private readonly IProgress<int> _progress;
+    private readonly IProgress<ProgressReport> _progress;
     private long _bytesTransferred;
     private int _lastReported;
 
-    public ProgressStream(Stream inner, long totalBytes, IProgress<int> progress)
+    public ProgressStream(Stream inner, long totalBytes, IProgress<ProgressReport> progress)
         : this(inner, totalBytes, startOffset: 0, progress) { }
 
-    public ProgressStream(Stream inner, long totalBytes, long startOffset, IProgress<int> progress)
+    public ProgressStream(Stream inner, long totalBytes, long startOffset, IProgress<ProgressReport> progress)
     {
         _inner = inner;
         _totalBytes = totalBytes;
@@ -85,7 +87,12 @@ internal sealed class ProgressStream : Stream
         if (pct != _lastReported)
         {
             _lastReported = pct;
-            _progress.Report(pct);
+            _progress.Report(new ProgressReport
+            {
+                Percent          = pct,
+                BytesTransferred = _bytesTransferred,
+                TotalBytes       = _totalBytes
+            });
         }
     }
 

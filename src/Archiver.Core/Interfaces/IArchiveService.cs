@@ -10,7 +10,7 @@ public interface IArchiveService
     /// </summary>
     Task<ArchiveResult> ArchiveAsync(
         ArchiveOptions options,
-        IProgress<int>? progress = null,
+        IProgress<ProgressReport>? progress = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -19,6 +19,6 @@ public interface IArchiveService
     /// </summary>
     Task<ArchiveResult> ExtractAsync(
         ExtractOptions options,
-        IProgress<int>? progress = null,
+        IProgress<ProgressReport>? progress = null,
         CancellationToken cancellationToken = default);
 }

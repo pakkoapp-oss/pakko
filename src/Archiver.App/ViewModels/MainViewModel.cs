@@ -27,6 +27,13 @@ public sealed partial class MainViewModel : ObservableObject
 
     private CancellationTokenSource? _cts;
 
+    private System.Diagnostics.Stopwatch? _operationStopwatch;
+    private long _lastBytesTransferred;
+    private DateTime _lastSpeedSampleTime;
+    private double _smoothedBytesPerSec;
+    private const double SpeedAlpha = 0.25;
+    private string _operationStatusPrefix = string.Empty;
+
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(ArchiveCommand))]
     [NotifyCanExecuteChangedFor(nameof(ExtractCommand))]
@@ -218,7 +225,6 @@ public sealed partial class MainViewModel : ObservableObject
         IsBusy = true;
         CancelCommand.NotifyCanExecuteChanged();
         Progress = 0;
-        StatusMessage = _res.GetString("StatusArchiving");
         bool wasCancelled = false;
         try
         {
@@ -233,13 +239,68 @@ public sealed partial class MainViewModel : ObservableObject
                 DeleteSourceFiles = DeleteAfterOperation,
                 CompressionLevel = SelectedCompressionLevel,
             };
-            var progress = new Progress<int>(p => { Progress = p; });
+
+            long totalBytes = 0;
+            int fileCount = 0;
+            foreach (var p in options.SourcePaths)
+            {
+                try
+                {
+                    if (File.Exists(p))
+                    {
+                        totalBytes += new FileInfo(p).Length;
+                        fileCount++;
+                    }
+                    else if (Directory.Exists(p))
+                    {
+                        foreach (var f in Directory.EnumerateFiles(p, "*", SearchOption.AllDirectories))
+                        {
+                            try { totalBytes += new FileInfo(f).Length; fileCount++; } catch { }
+                        }
+                    }
+                }
+                catch { }
+            }
+
+            string sizeStr = totalBytes switch
+            {
+                >= 1_073_741_824 => $"{totalBytes / 1_073_741_824.0:F1} GB",
+                >= 1_048_576     => $"{totalBytes / 1_048_576.0:F1} MB",
+                >= 1_024         => $"{totalBytes / 1_024.0:F0} KB",
+                _                => $"{totalBytes} B"
+            };
+
+            _operationStatusPrefix = $"Archiving... ({fileCount} files, {sizeStr})";
+            StatusMessage = _operationStatusPrefix;
+            _operationStopwatch = System.Diagnostics.Stopwatch.StartNew();
+            _lastBytesTransferred = 0;
+            _lastSpeedSampleTime = DateTime.UtcNow;
+            _smoothedBytesPerSec = 0;
+
+            var progress = new Progress<ProgressReport>(r =>
+            {
+                Progress = r.Percent;
+                UpdateOperationStatus(r);
+            });
+
             var result = await _archiveService.ArchiveAsync(options, progress, _cts.Token);
             if (result.Success && DeleteAfterOperation)
                 await RunCleanupAsync(options.SourcePaths);
-            StatusMessage = result.Errors.Count == 0 && result.SkippedFiles.Count == 0
-                ? _res.GetString("StatusDone").Replace("{0}", result.CreatedFiles.Count.ToString())
-                : _res.GetString("StatusIssues");
+            _operationStopwatch?.Stop();
+            int totalSec = (int)(_operationStopwatch?.Elapsed.TotalSeconds ?? 0);
+            if (result.Errors.Count == 0 && result.SkippedFiles.Count == 0)
+            {
+                StatusMessage = totalSec > 0
+                    ? _res.GetString("StatusArchivedIn")
+                        .Replace("{0}", totalSec.ToString())
+                        .Replace("{1}", result.CreatedFiles.Count.ToString())
+                    : _res.GetString("StatusDone")
+                        .Replace("{0}", result.CreatedFiles.Count.ToString());
+            }
+            else
+            {
+                StatusMessage = _res.GetString("StatusIssues");
+            }
             _logService.Info($"Archive completed — {result.CreatedFiles.Count} file(s) → {DestinationPath}");
             foreach (var skipped in result.SkippedFiles)
                 _logService.Warn($"Skipped {skipped.Path} — {skipped.Reason}");
@@ -250,10 +311,12 @@ public sealed partial class MainViewModel : ObservableObject
         catch (OperationCanceledException)
         {
             wasCancelled = true;
+            _operationStopwatch?.Stop();
             StatusMessage = _res.GetString("StatusCancelled");
         }
         catch (Exception ex)
         {
+            _operationStopwatch?.Stop();
             StatusMessage = "Error";
             _logService.Error("Unexpected error during operation", ex);
             await _dialogService.ShowErrorAsync("Error", ex.Message);
@@ -279,7 +342,6 @@ public sealed partial class MainViewModel : ObservableObject
         IsBusy = true;
         CancelCommand.NotifyCanExecuteChanged();
         Progress = 0;
-        StatusMessage = _res.GetString("StatusExtracting");
         bool wasCancelled = false;
         try
         {
@@ -291,13 +353,38 @@ public sealed partial class MainViewModel : ObservableObject
                 OpenDestinationFolder = OpenDestinationFolder,
                 DeleteArchiveAfterExtraction = DeleteAfterOperation,
             };
-            var progress = new Progress<int>(p => { Progress = p; });
+
+            _operationStatusPrefix = $"Extracting... ({options.ArchivePaths.Count} archive(s))";
+            StatusMessage = _operationStatusPrefix;
+            _operationStopwatch = System.Diagnostics.Stopwatch.StartNew();
+            _lastBytesTransferred = 0;
+            _lastSpeedSampleTime = DateTime.UtcNow;
+            _smoothedBytesPerSec = 0;
+
+            var progress = new Progress<ProgressReport>(r =>
+            {
+                Progress = r.Percent;
+                UpdateOperationStatus(r);
+            });
+
             var result = await _archiveService.ExtractAsync(options, progress, _cts.Token);
             if (result.Success && DeleteAfterOperation)
                 await RunCleanupAsync(options.ArchivePaths);
-            StatusMessage = result.Errors.Count == 0 && result.SkippedFiles.Count == 0
-                ? _res.GetString("StatusDone").Replace("{0}", result.CreatedFiles.Count.ToString())
-                : _res.GetString("StatusIssues");
+            _operationStopwatch?.Stop();
+            int totalSec = (int)(_operationStopwatch?.Elapsed.TotalSeconds ?? 0);
+            if (result.Errors.Count == 0 && result.SkippedFiles.Count == 0)
+            {
+                StatusMessage = totalSec > 0
+                    ? _res.GetString("StatusExtractedIn")
+                        .Replace("{0}", totalSec.ToString())
+                        .Replace("{1}", result.CreatedFiles.Count.ToString())
+                    : _res.GetString("StatusDone")
+                        .Replace("{0}", result.CreatedFiles.Count.ToString());
+            }
+            else
+            {
+                StatusMessage = _res.GetString("StatusIssues");
+            }
             _logService.Info($"Extract completed — {result.CreatedFiles.Count} file(s) → {DestinationPath}");
             foreach (var skipped in result.SkippedFiles)
                 _logService.Warn($"Skipped {skipped.Path} — {skipped.Reason}");
@@ -308,10 +395,12 @@ public sealed partial class MainViewModel : ObservableObject
         catch (OperationCanceledException)
         {
             wasCancelled = true;
+            _operationStopwatch?.Stop();
             StatusMessage = _res.GetString("StatusCancelled");
         }
         catch (Exception ex)
         {
+            _operationStopwatch?.Stop();
             StatusMessage = "Error";
             _logService.Error("Unexpected error during operation", ex);
             await _dialogService.ShowErrorAsync("Error", ex.Message);
@@ -347,6 +436,61 @@ public sealed partial class MainViewModel : ObservableObject
                 catch { }
             }
         }).ConfigureAwait(false);
+    }
+
+    private void UpdateOperationStatus(ProgressReport report)
+    {
+        if (_operationStopwatch is null) return;
+
+        var now = DateTime.UtcNow;
+        var elapsed = _operationStopwatch.Elapsed;
+
+        string speedPart = string.Empty;
+        string etaPart = string.Empty;
+
+        if (report.TotalBytes > 0)
+        {
+            long bytesDelta = report.BytesTransferred - _lastBytesTransferred;
+            double timeDelta = (now - _lastSpeedSampleTime).TotalSeconds;
+
+            if (timeDelta >= 0.25 && bytesDelta > 0)
+            {
+                double instantSpeed = bytesDelta / timeDelta;
+                _smoothedBytesPerSec = _smoothedBytesPerSec < 1
+                    ? instantSpeed
+                    : SpeedAlpha * instantSpeed + (1 - SpeedAlpha) * _smoothedBytesPerSec;
+                _lastBytesTransferred = report.BytesTransferred;
+                _lastSpeedSampleTime = now;
+            }
+
+            if (_smoothedBytesPerSec >= 1)
+            {
+                speedPart = _smoothedBytesPerSec switch
+                {
+                    >= 1_073_741_824 => $"{_smoothedBytesPerSec / 1_073_741_824:F1} GB/s",
+                    >= 1_048_576     => $"{_smoothedBytesPerSec / 1_048_576:F1} MB/s",
+                    >= 1_024         => $"{_smoothedBytesPerSec / 1_024:F0} KB/s",
+                    _                => $"{_smoothedBytesPerSec:F0} B/s"
+                };
+            }
+
+            if (elapsed.TotalSeconds >= 1.0 && report.Percent > 0)
+            {
+                double estimatedTotal = elapsed.TotalSeconds / (report.Percent / 100.0);
+                double remaining = estimatedTotal - elapsed.TotalSeconds;
+                etaPart = remaining switch
+                {
+                    < 4  => string.Empty,
+                    < 60 => $"~{(int)remaining} sec remaining",
+                    _    => $"~{(int)(remaining / 60)}:{(int)(remaining % 60):D2} remaining"
+                };
+            }
+        }
+
+        var sb = new System.Text.StringBuilder(_operationStatusPrefix);
+        if (speedPart.Length > 0) sb.Append($"  ·  {speedPart}");
+        if (etaPart.Length > 0)   sb.Append($"  ·  {etaPart}");
+        StatusMessage = sb.ToString();
     }
 
     private bool CanArchive() => !IsBusy && FileItems.Count > 0;
