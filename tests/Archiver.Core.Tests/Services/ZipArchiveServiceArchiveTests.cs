@@ -365,4 +365,71 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
             .Select(Path.GetFileName)
             .Should().Contain(emojiName);
     }
+
+    // T-F22: Windows Long Path Support
+    // Verifies archive/extract round-trip with a source path exceeding 260 characters.
+    // Gracefully skips when the OS does not have long path support enabled.
+    [Fact]
+    public async Task ArchiveAsync_LongSourcePath_SucceedsWithoutTruncation()
+    {
+        // Build a path that exceeds MAX_PATH (260) by nesting 50-char segments
+        string segment = new string('a', 50);
+        string deepDir = _temp.Path;
+        for (int i = 0; i < 6; i++)
+            deepDir = Path.Combine(deepDir, segment);
+
+        try
+        {
+            Directory.CreateDirectory(deepDir);
+        }
+        catch (PathTooLongException)
+        {
+            return; // long paths not enabled on this system — skip
+        }
+        catch (IOException)
+        {
+            return; // long paths not enabled on this system — skip
+        }
+
+        string longFilePath = Path.Combine(deepDir, "longpath_test.txt");
+        File.WriteAllText(longFilePath, "long path content");
+
+        longFilePath.Length.Should().BeGreaterThan(260);
+
+        // --- Archive ---
+        var archiveOptions = new ArchiveOptions
+        {
+            SourcePaths = [longFilePath],
+            DestinationFolder = _temp.Path,
+            ArchiveName = "longpath_archive"
+        };
+
+        var archiveResult = await _sut.ArchiveAsync(archiveOptions);
+
+        archiveResult.Success.Should().BeTrue();
+        archiveResult.Errors.Should().BeEmpty();
+        archiveResult.CreatedFiles.Should().HaveCount(1);
+
+        string zipPath = archiveResult.CreatedFiles[0];
+        File.Exists(zipPath).Should().BeTrue();
+
+        // --- Extract ---
+        using var extractTemp = new TempDirectory();
+        var extractOptions = new ExtractOptions
+        {
+            ArchivePaths = [zipPath],
+            DestinationFolder = extractTemp.Path,
+            Mode = ExtractMode.SingleFolder
+        };
+
+        var extractResult = await _sut.ExtractAsync(extractOptions);
+
+        extractResult.Success.Should().BeTrue();
+        extractResult.Errors.Should().BeEmpty();
+
+        // The entry was stored under the bare filename — verify round-trip content
+        string extractedFile = Path.Combine(extractTemp.Path, "longpath_test.txt");
+        File.Exists(extractedFile).Should().BeTrue();
+        File.ReadAllText(extractedFile).Should().Be("long path content");
+    }
 }

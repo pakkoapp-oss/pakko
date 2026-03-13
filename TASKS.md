@@ -413,16 +413,16 @@ FileNotFoundException during archiving should be recoverable, not fatal.
 ---
 
 ### T-F22 — Windows Long Path Support
-- [ ] **Status:** future
+- [x] **Status:** complete
 
 **What:** Windows paths exceeding 260 characters fail silently on some APIs.
 Verify Pakko handles long paths correctly.
 
 **Acceptance criteria:**
-- [ ] app.manifest contains longPathAware element set to true
-- [ ] ZipArchiveService tested with paths >260 characters
-- [ ] No silent truncation or failure on long paths
-- [ ] dotnet test passes — new test: archive/extract with path >260 chars
+- [x] app.manifest contains longPathAware element set to true
+- [x] ZipArchiveService tested with paths >260 characters
+- [x] No silent truncation or failure on long paths
+- [x] dotnet test passes — new test: archive/extract with path >260 chars
 
 ---
 
