@@ -24,6 +24,7 @@ public sealed class ZipArchiveService : IArchiveService
     {
         var errors = new List<ArchiveError>();
         var createdFiles = new List<string>();
+        var skippedFiles = new List<SkippedFile>();
 
         if (options.Mode == ArchiveMode.SingleArchive)
         {
@@ -75,19 +76,26 @@ public sealed class ZipArchiveService : IArchiveService
                         if (File.Exists(sourcePath))
                             try { pathSize = new FileInfo(sourcePath).Length; } catch { }
                         else if (Directory.Exists(sourcePath))
-                            try
+                            pathSize = ComputeDirectoryBytes(sourcePath);
+
+                        // T-F23: Skip top-level symlinks and NTFS junctions
+                        if (IsReparsePoint(sourcePath))
+                        {
+                            skippedFiles.Add(new SkippedFile
                             {
-                                pathSize = Directory.EnumerateFiles(sourcePath, "*", SearchOption.AllDirectories)
-                                    .Sum(f => { try { return new FileInfo(f).Length; } catch { return 0L; } });
-                            }
-                            catch { }
+                                Path = sourcePath,
+                                Reason = "Symbolic links and NTFS junctions are not archived."
+                            });
+                            byteOffset += pathSize;
+                            continue;
+                        }
 
                         try
                         {
                             if (Directory.Exists(sourcePath))
                             {
                                 await AddDirectoryToArchiveAsync(archive, sourcePath, Path.GetFileName(sourcePath),
-                                    options.CompressionLevel, cancellationToken, totalSourceBytes, byteOffset, progress);
+                                    options.CompressionLevel, cancellationToken, skippedFiles, totalSourceBytes, byteOffset, progress);
                             }
                             else if (File.Exists(sourcePath))
                             {
@@ -195,12 +203,19 @@ public sealed class ZipArchiveService : IArchiveService
                 if (File.Exists(sourcePath))
                     try { pathSize = new FileInfo(sourcePath).Length; } catch { }
                 else if (Directory.Exists(sourcePath))
-                    try
+                    pathSize = ComputeDirectoryBytes(sourcePath);
+
+                // T-F23: Skip top-level symlinks and NTFS junctions
+                if (IsReparsePoint(sourcePath))
+                {
+                    skippedFiles.Add(new SkippedFile
                     {
-                        pathSize = Directory.EnumerateFiles(sourcePath, "*", SearchOption.AllDirectories)
-                            .Sum(f => { try { return new FileInfo(f).Length; } catch { return 0L; } });
-                    }
-                    catch { }
+                        Path = sourcePath,
+                        Reason = "Symbolic links and NTFS junctions are not archived."
+                    });
+                    byteOffset += pathSize;
+                    continue;
+                }
 
                 if (File.Exists(destPath))
                 {
@@ -229,7 +244,7 @@ public sealed class ZipArchiveService : IArchiveService
                         {
                             using var archive = ZipFile.Open(separateTempPath, ZipArchiveMode.Create);
                             await AddDirectoryToArchiveAsync(archive, sourcePath, Path.GetFileName(sourcePath),
-                                level, cancellationToken, totalSourceBytes, capturedOffset, progress);
+                                level, cancellationToken, skippedFiles, totalSourceBytes, capturedOffset, progress);
                         }, cancellationToken).ConfigureAwait(false);
                     }
                     else if (File.Exists(sourcePath))
@@ -302,6 +317,7 @@ public sealed class ZipArchiveService : IArchiveService
             Success = errors.Count == 0,
             CreatedFiles = createdFiles,
             Errors = errors,
+            SkippedFiles = skippedFiles,
         };
 
         if (result.Success && options.OpenDestinationFolder)
@@ -655,20 +671,35 @@ public sealed class ZipArchiveService : IArchiveService
         }
     }
 
-    private static async Task AddDirectoryToArchiveAsync(
+    // T-F23: Manual recursive traversal so we can inspect FileAttributes before entering each
+    // directory. Returns the updated startOffset for progress tracking.
+    private static async Task<long> AddDirectoryToArchiveAsync(
         ZipArchive archive,
         string sourceDir,
         string entryPrefix,
         CompressionLevel compressionLevel,
         CancellationToken cancellationToken,
+        List<SkippedFile> skippedFiles,
         long totalBytes = 0,
         long startOffset = 0,
         IProgress<ProgressReport>? progress = null)
     {
-        foreach (string filePath in Directory.EnumerateFiles(sourceDir, "*", SearchOption.AllDirectories))
+        // Files in this directory
+        foreach (string filePath in Directory.EnumerateFiles(sourceDir, "*", SearchOption.TopDirectoryOnly))
         {
             if (cancellationToken.IsCancellationRequested)
                 break;
+
+            // T-F23: Skip file-level symlinks (reparse points)
+            if (IsReparsePoint(filePath))
+            {
+                skippedFiles.Add(new SkippedFile
+                {
+                    Path = filePath,
+                    Reason = "Symbolic links and reparse points are not archived."
+                });
+                continue;
+            }
 
             long fileSize = 0;
             try { fileSize = new FileInfo(filePath).Length; } catch { }
@@ -679,6 +710,29 @@ public sealed class ZipArchiveService : IArchiveService
                 totalBytes, startOffset, progress);
             startOffset += fileSize;
         }
+
+        // Recurse into subdirectories, skipping junctions and directory symlinks
+        foreach (string subDir in Directory.EnumerateDirectories(sourceDir, "*", SearchOption.TopDirectoryOnly))
+        {
+            if (cancellationToken.IsCancellationRequested)
+                break;
+
+            // T-F23: Skip NTFS junctions and directory symlinks — prevents infinite loops
+            if (IsReparsePoint(subDir))
+            {
+                skippedFiles.Add(new SkippedFile
+                {
+                    Path = subDir,
+                    Reason = "NTFS junctions and directory symbolic links are not followed during archiving."
+                });
+                continue;
+            }
+
+            startOffset = await AddDirectoryToArchiveAsync(archive, subDir, entryPrefix, compressionLevel,
+                cancellationToken, skippedFiles, totalBytes, startOffset, progress);
+        }
+
+        return startOffset;
     }
 
     private static long ComputeTotalBytes(IReadOnlyList<string> paths)
@@ -688,13 +742,34 @@ public sealed class ZipArchiveService : IArchiveService
         {
             try
             {
+                if (IsReparsePoint(p)) continue;
                 if (File.Exists(p)) total += new FileInfo(p).Length;
-                else if (Directory.Exists(p))
-                    total += Directory.EnumerateFiles(p, "*", SearchOption.AllDirectories)
-                        .Sum(f => { try { return new FileInfo(f).Length; } catch { return 0L; } });
+                else if (Directory.Exists(p)) total += ComputeDirectoryBytes(p);
             }
             catch { }
         }
+        return total;
+    }
+
+    // T-F23: Safe recursive byte count that skips reparse points — prevents infinite loops
+    // on circular directory symlinks and NTFS junctions.
+    private static long ComputeDirectoryBytes(string dir)
+    {
+        long total = 0;
+        try
+        {
+            foreach (string filePath in Directory.EnumerateFiles(dir, "*", SearchOption.TopDirectoryOnly))
+            {
+                if (!IsReparsePoint(filePath))
+                    try { total += new FileInfo(filePath).Length; } catch { }
+            }
+            foreach (string subDir in Directory.EnumerateDirectories(dir, "*", SearchOption.TopDirectoryOnly))
+            {
+                if (!IsReparsePoint(subDir))
+                    total += ComputeDirectoryBytes(subDir);
+            }
+        }
+        catch { }
         return total;
     }
 
@@ -800,6 +875,38 @@ public sealed class ZipArchiveService : IArchiveService
     // T-F39: Reject entries with control characters (0x00–0x1F) in name
     private static bool EntryHasControlCharacters(string entryFullName)
         => entryFullName.Any(c => c < 0x20);
+
+    // T-F23: Returns true when path itself carries the ReparsePoint attribute (symlink or junction).
+    // Swallows all exceptions — returns false when attributes cannot be read.
+    //
+    // Filesystem compatibility:
+    //   FAT32/exFAT : always false — these filesystems have no reparse points.
+    //   ReFS        : correctly true for symlinks and junctions (same as NTFS).
+    //   SMB/UNC     : true when the server propagates FILE_ATTRIBUTE_REPARSE_POINT;
+    //                 DFS junctions are followed transparently by the SMB redirector
+    //                 and appear as normal directories (false) — not detected here.
+    //   Linux/Samba : Linux symlinks are NOT exposed as reparse points to Windows
+    //                 clients; they resolve to targets and appear as normal files/dirs.
+    //   ISO 9660    : always false — no reparse points on optical media.
+    //
+    // TODO: Cloud storage stubs (OneDrive cloud-only files) carry FILE_ATTRIBUTE_REPARSE_POINT
+    //       and are therefore incorrectly added to SkippedFiles rather than being downloaded
+    //       and archived. Fixing this requires reading the reparse tag to distinguish
+    //       IO_REPARSE_TAG_CLOUD_* from IO_REPARSE_TAG_SYMLINK / IO_REPARSE_TAG_MOUNT_POINT.
+    //       Implement when OneDrive compatibility becomes a requirement.
+    private static bool IsReparsePoint(string path)
+    {
+        try
+        {
+            return File.GetAttributes(path).HasFlag(FileAttributes.ReparsePoint);
+        }
+        catch
+        {
+            // Cannot read attributes (unreachable network, permission denied, path vanished).
+            // Return false — let the subsequent file-open produce an ArchiveError instead.
+            return false;
+        }
+    }
 
     // T-F37: Check whether any directory component of destFilePath (within rootPath) is a reparse point
     // T-F37: No automated unit test — System.IO.Compression cannot create reparse points in test fixtures.

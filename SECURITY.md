@@ -209,7 +209,62 @@ This tool is **not** a replacement for:
 
 ---
 
+## Symlink Detection — Filesystem Compatibility Notes
+
+T-F23 added symlink and junction detection to `ZipArchiveService` using
+`File.GetAttributes(path).HasFlag(FileAttributes.ReparsePoint)`. This section
+documents how that detection behaves on every Windows-mountable filesystem.
+
+### How the Detection Works
+
+`IsReparsePoint` calls `GetFileAttributesW` (via .NET's `File.GetAttributes`).
+If the attribute `FILE_ATTRIBUTE_REPARSE_POINT` is set, the path is treated as
+a symlink or junction and added to `SkippedFiles`. All exceptions are swallowed
+and return `false` (conservative: if attributes are unreadable, let the
+subsequent file-open produce an `ArchiveError` rather than silently skipping).
+
+### Non-NTFS Filesystem Considerations
+
+This table covers all Windows-mountable filesystems. It applies to every place
+in `ZipArchiveService` that touches the filesystem: `IsReparsePoint`,
+`AddDirectoryToArchiveAsync`, `ComputeDirectoryBytes`, `TryPropagateMotw`.
+
+| Filesystem | Reparse Points | `IsReparsePoint` | Notes |
+|------------|---------------|-------------------|-------|
+| **NTFS** | Yes | Correctly true/false | Symlinks, junctions, cloud stubs all detected |
+| **ReFS** | Yes | Correctly true/false | Behavior identical to NTFS; all reparse point types supported |
+| **FAT32** | No | Always `false` | No reparse points; all files enumerated and archived normally |
+| **exFAT** | No | Always `false` | Same as FAT32; `FILE_ATTRIBUTE_REPARSE_POINT` never returned |
+| **SMB/UNC (Windows server, NTFS/ReFS backend)** | Possible | Usually correct | DFS junctions are followed transparently by the SMB redirector and appear as normal directories — they are **not** detected as reparse points. True NTFS symlinks may be blocked by server policy; access denial produces `ArchiveError` |
+| **SMB/UNC (Linux/Samba backend)** | No NTFS equivalent | Always `false` | Linux symlinks are resolved server-side; they appear as their targets (normal files/dirs) or as inaccessible entries. Symlink cycles are handled server-side — no infinite-loop risk. No reparse-point detection applies |
+| **ISO 9660 / UDF** | No | Always `false` | Read-only optical media; no reparse points; all files archived normally. UDF 2.5+ extended attributes are not exposed as `FILE_ATTRIBUTE_REPARSE_POINT` by the Windows driver |
+| **MOTW (ADS, Zone.Identifier)** | NTFS/ReFS only | N/A | `TryPropagateMotw` writes `Zone.Identifier` ADS to extracted files. ADS is not supported on FAT32, exFAT, or network shares backed by non-NTFS servers — the write silently fails (best-effort, never fatal) |
+
+### Security Assumptions That Break on Non-NTFS Volumes
+
+| Assumption | NTFS | FAT32/exFAT | SMB/Linux | Notes |
+|------------|------|-------------|-----------|-------|
+| Symlinks detected and skipped | ✅ | ✅ (none exist) | ⚠️ Partial | Linux symlinks not detected; see above |
+| MOTW propagated to extracted files | ✅ | ❌ | ❌ (non-NTFS) | ADS not supported; best-effort silently no-ops |
+| No infinite loop on circular symlinks | ✅ | ✅ | ✅ (server-side) | Safe on all filesystems |
+| All exceptions produce `ArchiveError` | ✅ | ✅ | ✅ | `IOException` propagates to caller catch blocks |
+
+### Known Limitation: Cloud Storage Stubs
+
+Files that are cloud-only (OneDrive, not locally downloaded) carry
+`FILE_ATTRIBUTE_REPARSE_POINT | FILE_ATTRIBUTE_OFFLINE`. `IsReparsePoint`
+returns `true`, causing these files to be added to `SkippedFiles` rather than
+being downloaded and archived. The user sees a skipped-file entry but no
+indication that it was a cloud stub rather than a symlink.
+
+This is safe (no data corruption or security issue) but is a usability
+limitation. Distinguishing cloud stubs from true symlinks requires reading the
+raw reparse tag (`IO_REPARSE_TAG_CLOUD_*` vs. `IO_REPARSE_TAG_SYMLINK` /
+`IO_REPARSE_TAG_MOUNT_POINT`), which needs P/Invoke or `FileSystemInfo.LinkTarget`.
+
+---
+
 ## Reporting Vulnerabilities
 
-Report security issues via GitHub Security Advisories (private disclosure).  
+Report security issues via GitHub Security Advisories (private disclosure).
 Do not open public issues for security vulnerabilities.

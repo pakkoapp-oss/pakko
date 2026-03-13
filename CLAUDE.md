@@ -55,7 +55,8 @@ AGENT.md        → hard constraints, entry point
 TASKS.md        → active/future tasks (v1.0 done tasks in TASKS_DONE.md)
 ARCHITECTURE.md → current C# signatures — use these, do not invent
 CONVENTIONS.md  → naming, async rules, error handling
-SECURITY.md     → threat model (read if modifying compression logic)
+SECURITY.md     → threat model (read if modifying compression logic,
+                  file traversal, extraction paths, or any file I/O)
 ```
 
 ---

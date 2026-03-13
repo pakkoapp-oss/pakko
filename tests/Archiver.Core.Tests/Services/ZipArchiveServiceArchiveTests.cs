@@ -432,4 +432,126 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
         File.Exists(extractedFile).Should().BeTrue();
         File.ReadAllText(extractedFile).Should().Be("long path content");
     }
+
+    // T-F23: Symlink and Junction Handling
+
+    [Fact]
+    public async Task ArchiveAsync_DirectoryWithFileSymlink_SymlinkSkippedRealFileArchived()
+    {
+        // Create source directory with a real file and a file symlink
+        string sourceDir = Path.Combine(_temp.Path, "source");
+        Directory.CreateDirectory(sourceDir);
+        string realFile = Path.Combine(sourceDir, "real.txt");
+        File.WriteAllText(realFile, "real content");
+        string linkFile = Path.Combine(sourceDir, "link.txt");
+
+        try
+        {
+            File.CreateSymbolicLink(linkFile, realFile);
+        }
+        catch (IOException)
+        {
+            return; // symlinks not supported on this system — skip
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return; // Developer Mode not enabled — skip
+        }
+
+        var options = new ArchiveOptions
+        {
+            SourcePaths = [sourceDir],
+            DestinationFolder = _temp.Path,
+            ArchiveName = "symlink_test"
+        };
+
+        var result = await _sut.ArchiveAsync(options);
+
+        result.Success.Should().BeTrue();
+        result.Errors.Should().BeEmpty();
+        result.CreatedFiles.Should().HaveCount(1);
+        result.SkippedFiles.Should().ContainSingle(s => s.Path == linkFile);
+
+        // The archive must contain the real file but NOT the symlink
+        using var zip = System.IO.Compression.ZipFile.OpenRead(result.CreatedFiles[0]);
+        zip.Entries.Select(e => e.Name).Should().Contain("real.txt");
+        zip.Entries.Select(e => e.Name).Should().NotContain("link.txt");
+    }
+
+    [Fact]
+    public async Task ArchiveAsync_DirectoryWithDirectorySymlink_SymlinkSkippedNoInfiniteLoop()
+    {
+        // Create source directory with a subdirectory and a symlink that points back at it
+        string sourceDir = Path.Combine(_temp.Path, "source");
+        string realSubDir = Path.Combine(sourceDir, "real_sub");
+        Directory.CreateDirectory(realSubDir);
+        File.WriteAllText(Path.Combine(realSubDir, "file.txt"), "content");
+        string linkDir = Path.Combine(sourceDir, "link_sub");
+
+        try
+        {
+            // Circular: link_sub → source (ancestor), which would loop without our guard
+            Directory.CreateSymbolicLink(linkDir, sourceDir);
+        }
+        catch (IOException)
+        {
+            return; // symlinks not supported — skip
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return; // Developer Mode not enabled — skip
+        }
+
+        var options = new ArchiveOptions
+        {
+            SourcePaths = [sourceDir],
+            DestinationFolder = _temp.Path,
+            ArchiveName = "dirsymlink_test"
+        };
+
+        // Must complete without hanging (no infinite recursion on the circular symlink)
+        var result = await _sut.ArchiveAsync(options);
+
+        result.Success.Should().BeTrue();
+        result.Errors.Should().BeEmpty();
+        result.SkippedFiles.Should().ContainSingle(s => s.Path == linkDir);
+
+        // real_sub/file.txt must be in the archive
+        using var zip = System.IO.Compression.ZipFile.OpenRead(result.CreatedFiles[0]);
+        zip.Entries.Should().Contain(e => e.FullName.Contains("file.txt"));
+    }
+
+    [Fact]
+    public async Task ArchiveAsync_TopLevelSymlinkSource_SymlinkSkippedOperationSucceeds()
+    {
+        // A top-level source path that is itself a symlink should be skipped
+        string realFile = _temp.CreateFile("real.txt", "content");
+        string linkFile = Path.Combine(_temp.Path, "link.txt");
+
+        try
+        {
+            File.CreateSymbolicLink(linkFile, realFile);
+        }
+        catch (IOException)
+        {
+            return;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return;
+        }
+
+        var options = new ArchiveOptions
+        {
+            SourcePaths = [linkFile],
+            DestinationFolder = _temp.Path,
+            ArchiveName = "toplevel_symlink_test"
+        };
+
+        var result = await _sut.ArchiveAsync(options);
+
+        // Symlink skipped → no files archived, no errors, SkippedFiles has the link
+        result.Errors.Should().BeEmpty();
+        result.SkippedFiles.Should().ContainSingle(s => s.Path == linkFile);
+    }
 }

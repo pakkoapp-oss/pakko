@@ -427,7 +427,7 @@ Verify Pakko handles long paths correctly.
 ---
 
 ### T-F23 — Symlink and Junction Handling
-- [ ] **Status:** future
+- [x] **Status:** complete
 
 **What:** Define and implement explicit behavior for symbolic links and
 NTFS junctions during archiving. Currently undefined — may cause
@@ -438,15 +438,14 @@ infinite loops or unintended file inclusion.
 - Skip symlinks (add to SkippedFiles with reason)
 - Archive link metadata only
 
-**Recommendation:** Skip symlinks — add to SkippedFiles with reason
-"Symbolic links are not supported".
+**Decision:** Skip symlinks — added to SkippedFiles with clear reason.
 
 **Acceptance criteria:**
-- [ ] Symlinks detected during directory traversal
-- [ ] Symlinks added to SkippedFiles with clear reason
-- [ ] No recursive loop on circular symlinks
-- [ ] NTFS junctions handled same as symlinks
-- [ ] dotnet test passes — new test: directory with symlink → SkippedFile
+- [x] Symlinks detected during directory traversal
+- [x] Symlinks added to SkippedFiles with clear reason
+- [x] No recursive loop on circular symlinks
+- [x] NTFS junctions handled same as symlinks
+- [x] dotnet test passes — new test: directory with symlink → SkippedFile
 
 ---
 
