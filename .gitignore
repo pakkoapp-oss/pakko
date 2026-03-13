@@ -16,3 +16,6 @@ packages/
 # OS
 Thumbs.db
 desktop.ini
+
+# Dev certificates
+scripts/PakkoDev.cer

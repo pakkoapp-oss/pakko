@@ -58,7 +58,7 @@ public partial class App : Application
             case ExtendedActivationKind.Protocol:
                 if (args.Data is not Windows.ApplicationModel.Activation.IProtocolActivatedEventArgs protoArgs) return;
                 EnsureWindow("Pakko started via protocol activation");
-                _window!.ViewModel.AddPathsFromProtocolUri(protoArgs.Uri.RawUri);
+                _window!.ViewModel.AddPathsFromProtocolUri(protoArgs.Uri.AbsoluteUri);
                 break;
         }
     }
