@@ -144,8 +144,18 @@ public sealed class ZipArchiveService : IArchiveService
                 // T-F21: Commit the archive even when per-item errors occurred so that
                 // successfully archived files are preserved. Fatal errors (IOException
                 // creating the archive itself) are still caught below and delete the temp.
-                File.Move(tempPath, destPath, overwrite: true);
-                createdFiles.Add(destPath);
+                // T-F60: Only commit if at least one entry was written. When every source
+                // path failed (missing, locked, etc.) the temp is an empty ZIP — discard it
+                // so no zero-entry archive and no leftover .tmp lands on disk.
+                if (HasTempEntries(tempPath))
+                {
+                    File.Move(tempPath, destPath, overwrite: true);
+                    createdFiles.Add(destPath);
+                }
+                else
+                {
+                    try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { }
+                }
             }
             catch (OperationCanceledException)
             {
@@ -277,8 +287,17 @@ public sealed class ZipArchiveService : IArchiveService
                         continue;
                     }
 
-                    File.Move(separateTempPath, destPath, overwrite: true);
-                    createdFiles.Add(destPath);
+                    // T-F60: Only commit if at least one entry was written (e.g. a directory
+                    // where all contained files failed would otherwise leave an empty archive).
+                    if (HasTempEntries(separateTempPath))
+                    {
+                        File.Move(separateTempPath, destPath, overwrite: true);
+                        createdFiles.Add(destPath);
+                    }
+                    else
+                    {
+                        try { if (File.Exists(separateTempPath)) File.Delete(separateTempPath); } catch { }
+                    }
                 }
                 catch (OperationCanceledException)
                 {
@@ -1001,6 +1020,21 @@ public sealed class ZipArchiveService : IArchiveService
         catch
         {
             // MOTW propagation is best-effort — never surfaces to caller
+        }
+    }
+
+    // T-F60: Returns true when the temp ZIP at path contains at least one entry.
+    // Used to decide whether to commit or discard after an all-failures archive run.
+    private static bool HasTempEntries(string path)
+    {
+        try
+        {
+            using var zip = ZipFile.OpenRead(path);
+            return zip.Entries.Count > 0;
+        }
+        catch
+        {
+            return false;
         }
     }
 

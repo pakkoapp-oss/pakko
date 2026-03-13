@@ -690,4 +690,49 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
             "two archive runs over identical inputs must produce byte-identical ZIPs " +
             "(sorted entry order + source-file LastWriteTime pinned per T-F31)");
     }
+
+    // T-F60 — cleanup bug: all sources missing leaves no .tmp and no .zip on disk
+    [Fact]
+    public async Task ArchiveAsync_AllSourcesMissing_LeavesNoDiskArtifacts()
+    {
+        string missing1 = Path.Combine(_temp.Path, "does_not_exist_1.txt");
+        string missing2 = Path.Combine(_temp.Path, "does_not_exist_2.txt");
+        var options = new ArchiveOptions
+        {
+            SourcePaths = [missing1, missing2],
+            DestinationFolder = _temp.Path,
+            ArchiveName = "output"
+        };
+
+        var result = await _sut.ArchiveAsync(options);
+
+        result.Success.Should().BeFalse();
+        result.Errors.Should().HaveCount(2);
+        result.CreatedFiles.Should().BeEmpty();
+        Directory.EnumerateFiles(_temp.Path).Should().BeEmpty(
+            "no .zip or .tmp should be left when every source path is missing");
+    }
+
+    // T-F60 — partial success: one valid file + one missing path → partial archive committed
+    [Fact]
+    public async Task ArchiveAsync_OneValidOneInvalidSource_CreatesPartialArchive()
+    {
+        var validFile = _temp.CreateFile("real.txt", "hello");
+        string missing = Path.Combine(_temp.Path, "ghost.txt");
+        var options = new ArchiveOptions
+        {
+            SourcePaths = [validFile, missing],
+            DestinationFolder = _temp.Path,
+            ArchiveName = "partial"
+        };
+
+        var result = await _sut.ArchiveAsync(options);
+
+        result.Success.Should().BeFalse();
+        result.Errors.Should().HaveCount(1);
+        result.CreatedFiles.Should().HaveCount(1, "the valid file must still be archived");
+        File.Exists(result.CreatedFiles[0]).Should().BeTrue();
+        Directory.EnumerateFiles(_temp.Path, "*.tmp").Should().BeEmpty(
+            "no .tmp should remain after a partial-success archive");
+    }
 }

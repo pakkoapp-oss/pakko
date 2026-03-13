@@ -1146,3 +1146,26 @@ pakko://archive?files=<base64-encoded-json-array>
 - [x] ZIP bomb check still uses `entry.CompressedLength` (ratio check unchanged)
 - [x] `dotnet test` passes — 67/67
 
+---
+
+### T-F60 — Cleanup Bug: Leftover .tmp on All-Failures Archive
+- [x] **Status:** complete
+
+**What:** When archiving fails for every source file (all paths missing, locked, etc.), `ZipArchive` still creates and closes the temp file before the commit point is reached. The unconditional `File.Move(tempPath, destPath)` then produces an empty `.zip` on disk. In the SeparateArchives path, the same bug affects directories whose every contained file fails.
+
+**Fix:** Add a `HasTempEntries` helper that opens the temp ZIP and checks `Entries.Count > 0`. Before committing (moving temp → dest), check it:
+- Entries found → commit as before (partial archive with errors is still useful)
+- No entries → delete the temp, leave `createdFiles` empty
+
+**Files:** `src/Archiver.Core/Services/ZipArchiveService.cs`, `tests/Archiver.Core.Tests/Services/ZipArchiveServiceArchiveTests.cs`
+
+**Acceptance criteria:**
+- [x] `HasTempEntries(path)` private helper added — opens ZIP read-only, returns `Entries.Count > 0`, swallows exceptions
+- [x] SingleArchive path: `File.Move` gated on `HasTempEntries` — empty temp deleted, not moved
+- [x] SeparateArchives path: same gate applied to the per-item `File.Move`
+- [x] Partial success (some files ok, some missing): archive committed, `Success = false`, errors reported
+- [x] Test: all sources missing → `result.Errors.Count == 2`, `CreatedFiles` empty, no `.zip` or `.tmp` on disk
+- [x] Test: one valid + one missing → `CreatedFiles.Count == 1`, `Errors.Count == 1`, `Success = false`, no `.tmp` on disk
+- [x] All existing tests still pass
+- [x] `dotnet test` passes — 69/69
+
