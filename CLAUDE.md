@@ -15,7 +15,7 @@ Target audience: Ukrainian government/defense — trust, auditability, minimal a
 ## Current State
 
 **v1.1 complete** — tagged `v1.1.0`. GitHub-only release for early testers.
-- T-01 through T-35 + T-11, and T-F16/T-F17/T-F18/T-F26–T-F29/T-F37–T-F39 complete
+- T-01 through T-35 + T-11, and T-F16/T-F17/T-F18/T-F26–T-F29/T-F37–T-F39/T-F44 complete
 - 59/59 tests pass
 - MSIX builds unsigned (see T-F10 for signing)
 - Async streaming (CopyToAsync) — CancellationToken respected mid-file
@@ -29,6 +29,8 @@ Target audience: Ukrainian government/defense — trust, auditability, minimal a
 - Byte-accurate progress reporting (T-F16) — `ProgressStream` wraps IO streams; `IsIndeterminate` removed
 - Option controls disabled during operations — `IsNotBusy` / `IsArchiveNameAndNotBusy` properties; all option controls bind `IsEnabled`
 - FileStream perf: `useAsync: false`, `bufferSize: 262144` in all `ZipArchiveService` streams (faster on local disks from ThreadPool)
+- `.zip` file type association (T-F44) — double-click opens Pakko with archive pre-loaded; `AppInstance.Activated` handles both cold-start and warm file activation
+- Status line shows operation name, file stats, speed, and ETA during operation; elapsed time after completion
 - **Store release planned for v1.3** — when shell extension, MOTW propagation,
   and tar.exe integration are complete. v1.1 and v1.2 are GitHub-only releases.
 - Next work: Future tasks in `TASKS.md`

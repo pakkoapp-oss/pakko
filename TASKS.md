@@ -749,14 +749,14 @@ can cause unpredictable behavior or security issues during extraction.
 ---
 
 ### T-F44 — File Type Association
-- [ ] **Status:** future (v1.2)
+- [x] **Status:** complete
 
 **What:** Register `.zip` file association in `Package.appxmanifest`. Double-click opens archive in Pakko.
 
 **Acceptance criteria:**
-- [ ] `.zip` association declared in appxmanifest
-- [ ] Double-click on `.zip` opens Pakko with archive loaded
-- [ ] Association registered/unregistered with MSIX install/uninstall
+- [x] `.zip` association declared in appxmanifest
+- [x] Double-click on `.zip` opens Pakko with archive loaded
+- [x] Association registered/unregistered with MSIX install/uninstall
 
 ---
 
