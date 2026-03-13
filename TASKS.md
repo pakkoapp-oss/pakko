@@ -44,7 +44,7 @@ These rules apply to ALL tasks. Violating them = task is NOT complete.
 ## Future Tasks
 
 ### T-F01 — Explorer Context Menu Integration
-- [ ] **Status:** future
+- [ ] **Status:** SUPERSEDED by T-F53–T-F57 — kept for historical reference
 - **Depends on:** T-F09 (CLI Core)
 
 **What:** Right-click context menu in Windows Explorer for archiving and extracting without opening the main UI window.
@@ -694,57 +694,240 @@ can cause unpredictable behavior or security issues during extraction.
 
 ## v1.2 — Shell Extension
 
-### T-F40 — Shell Extension Project Setup
+> **Minimum supported OS:** Windows 10 1809 (10.0.17763.0).
+> Shell extension uses dual registration:
+> - `desktop4:FileExplorerContextMenus` — Win10 1809+, classic context menu
+> - `IExplorerCommand` via COM — Win11 22000+, modern context menu
+>
+> Both mechanisms invoke `Archiver.Shell.exe`. No separate code paths needed.
+
+---
+
+### T-F53 — Archiver.Shell Project
 - [ ] **Status:** future (v1.2)
 
-**What:** New project `Archiver.ShellExtension` (net8.0-windows) implementing `IExplorerCommand`. Registered via MSIX AppExtension — appears in modern Windows 11 context menu without requiring "Show more options".
+**What:** New lightweight WinExe project (`src/Archiver.Shell/`, net8.0-windows). Entry point for all shell-triggered operations. References `Archiver.Core` only — no WinUI dependency. No console window (`<OutputType>WinExe</OutputType>`).
+
+**CLI arguments:**
+```
+Archiver.Shell.exe --extract-here "file.zip" ["file2.zip"]
+Archiver.Shell.exe --extract-folder "file.zip"
+Archiver.Shell.exe --archive "file1" "file2" ["file3"]
+Archiver.Shell.exe --open-ui --extract "file.zip"
+Archiver.Shell.exe --open-ui --archive "file1" "file2"
+```
+
+**Silent operation flow** (`--extract-here`, `--extract-folder`, `--archive`):
+1. Parse arguments
+2. Launch `Archiver.ProgressWindow` with operation parameters
+3. Run `Archiver.Core` operation, pipe `ProgressReport` to ProgressWindow via named pipe
+4. Wait for completion; ProgressWindow shows live progress and Cancel button
+
+**Open-UI flow** (`--open-ui`):
+1. Parse arguments
+2. Launch `Archiver.App` via `pakko://` URI with base64-encoded args (T-F56)
+3. Exit immediately
 
 **Acceptance criteria:**
-- [ ] `Archiver.ShellExtension` project added to solution
-- [ ] `IExplorerCommand` implementation compiles
-- [ ] Registered via `Package.appxmanifest` AppExtension entry
-- [ ] Context menu entry visible in Windows 11 modern context menu
-- [ ] Uninstall removes context menu entry cleanly
+- [ ] `Archiver.Shell` project added to solution, `net8.0-windows`, references `Archiver.Core`
+- [ ] All argument combinations parsed and dispatched correctly
+- [ ] `--extract-here`: extracts each ZIP to its own directory (T-14 smart folder logic)
+- [ ] `--extract-folder`: creates `<archive_name>\` subfolder and extracts into it
+- [ ] `--archive`: archives all passed paths into a single ZIP next to the first item
+- [ ] `--open-ui --extract`: launches `Archiver.App` via `pakko://` and exits
+- [ ] `--open-ui --archive`: launches `Archiver.App` via `pakko://` and exits
+- [ ] No console window shown (`WinExe` output type)
+- [ ] `dotnet build src/Archiver.Shell` passes
+
+---
+
+### T-F54 — Archiver.ProgressWindow Project
+- [ ] **Status:** future (v1.2)
+- **Depends on:** T-F53
+
+**What:** Minimal WinUI 3 project (`src/Archiver.ProgressWindow/`, net8.0-windows). Single small window showing live progress for silent shell operations. Receives operation parameters from `Archiver.Shell` via named pipe.
+
+**Window contents (only):**
+- Title bar: operation name (e.g. "Extracting archive.zip")
+- Progress bar
+- Speed / ETA text line
+- Cancel button
+
+No file list, no options, no tray icon. Window is non-resizable, fixed size (~400×120 px).
+
+**Lifecycle:**
+- Auto-closes 1.5 seconds after successful completion
+- On failure: shows simple error dialog, stays open until dismissed
+
+**Acceptance criteria:**
+- [ ] `Archiver.ProgressWindow` project added to solution, `net8.0-windows`
+- [ ] Window appears with operation name, progress bar, speed/ETA, Cancel button
+- [ ] Receives progress updates via named pipe from `Archiver.Shell`
+- [ ] Cancel button signals cancellation back to `Archiver.Shell`
+- [ ] Auto-closes 1.5 sec after success
+- [ ] Error dialog shown on failure; window stays open until dismissed
+- [ ] Window is non-resizable, fixed ~400×120 px
+- [ ] `dotnet build src/Archiver.ProgressWindow` passes
+
+---
+
+### T-F55 — Dual Shell Registration
+- [ ] **Status:** future (v1.2)
+- **Depends on:** T-F53
+
+**What:** Register Pakko's context menu via two mechanisms declared in `Package.appxmanifest`, both targeting `Archiver.Shell.exe`. Windows automatically uses the appropriate mechanism per OS version — no separate code paths needed.
+
+**Mechanism 1 — `desktop4:FileExplorerContextMenus`** (Win10 1809+):
+- Appears in classic context menu
+- Works on Windows 10 and Windows 11 ("Show more options")
+
+**Mechanism 2 — `com:Extension` + `IExplorerCommand`** (Win11 22000+):
+- Appears directly in modern context menu
+- No "Show more options" click required on Windows 11
+
+**Context menu structure:**
+
+Right-click on `.zip` file(s):
+```
+Pakko ►
+  Extract here
+  Extract to "<folder_name>"
+  ─────────────────
+  Extract with Pakko...
+```
+
+Right-click on non-ZIP files/folders:
+```
+Pakko ►
+  Add to "<name>.zip"
+  ─────────────────
+  Archive with Pakko...
+```
+
+Right-click on mixed selection:
+```
+Pakko ►
+  Add to "<name>.zip"
+  Extract ZIPs here
+  ─────────────────
+  Open with Pakko...
+```
+
+**Acceptance criteria:**
+- [ ] `desktop4:FileExplorerContextMenus` entry declared in `Package.appxmanifest` (Win10+)
+- [ ] `com:Extension` + `IExplorerCommand` entry declared in `Package.appxmanifest` (Win11)
+- [ ] Both entries invoke `Archiver.Shell.exe` with correct arguments
+- [ ] Context menu appears on Win10 (classic menu) after MSIX install
+- [ ] Context menu appears on Win11 (modern menu) after MSIX install
+- [ ] `.zip` files show Extract submenu; non-ZIP files show Archive submenu
+- [ ] Mixed selection shows combined submenu
+- [ ] Uninstall removes both context menu registrations cleanly
+
+---
+
+### T-F56 — Protocol Activation (pakko://)
+- [ ] **Status:** future (v1.2)
+- **Depends on:** T-F53
+
+**What:** Register `pakko://` URI scheme in `Package.appxmanifest`. `Archiver.App` handles activation by parsing the URI and pre-loading the UI. Used by `Archiver.Shell` for `--open-ui` operations.
+
+**URI format:**
+```
+pakko://extract?files=<base64-encoded-json-array>
+pakko://archive?files=<base64-encoded-json-array>
+```
+
+**Acceptance criteria:**
+- [ ] `pakko://` URI scheme registered in `Package.appxmanifest`
+- [ ] `Archiver.App` handles `pakko://extract?files=...` — opens with ZIPs pre-loaded
+- [ ] `Archiver.App` handles `pakko://archive?files=...` — opens with source files pre-loaded
+- [ ] Both cold-start and warm activation (already running) handled via `AppInstance.Activated`
+- [ ] `Archiver.Shell --open-ui --extract "file.zip"` correctly constructs and launches the URI
+- [ ] `Archiver.Shell --open-ui --archive "file1" "file2"` correctly constructs and launches the URI
+- [ ] `dotnet build src/Archiver.App` passes
+
+---
+
+### T-F57 — Shell Integration Tests
+- [ ] **Status:** future (v1.2)
+- **Depends on:** T-F53
+
+**What:** Basic smoke tests for `Archiver.Shell` argument parsing logic. No UI tests — `Archiver.ProgressWindow` is tested manually.
+
+**Acceptance criteria:**
+- [ ] `Archiver.Shell` argument parsing extracted into a testable class
+- [ ] Tests cover: `--extract-here`, `--extract-folder`, `--archive`, `--open-ui --extract`, `--open-ui --archive`
+- [ ] Tests cover: missing arguments → graceful error (no crash)
+- [ ] Tests cover: multiple file arguments parsed correctly
+- [ ] `dotnet test` passes
+
+---
+
+### T-F40 — Shell Extension Registration (Dual Mechanism)
+- [ ] **Status:** future (v1.2)
+- **Depends on:** T-F53, T-F55
+
+**What:** Complete dual-mechanism shell registration wired to `Archiver.Shell.exe`. Validates that both `desktop4:FileExplorerContextMenus` (Win10) and `IExplorerCommand` via COM (Win11) registrations work end-to-end after MSIX install.
+
+**Note:** Registration declarations are written in T-F55. This task covers end-to-end validation — install, verify menu appearance on both OS versions, verify uninstall cleanup.
+
+**Acceptance criteria:**
+- [ ] MSIX installs without errors on Windows 10 1809+
+- [ ] MSIX installs without errors on Windows 11 22000+
+- [ ] Context menu entry visible in classic menu on Win10 (right-click → menu appears)
+- [ ] Context menu entry visible in modern menu on Win11 (no "Show more options" needed)
+- [ ] Invoking any menu item launches `Archiver.Shell.exe` with correct arguments
+- [ ] Uninstall removes both registration entries cleanly — no orphan registry keys
 
 ---
 
 ### T-F41 — Context Menu: Extract Here
 - [ ] **Status:** future (v1.2)
+- **Depends on:** T-F53, T-F54, T-F55
 
-**What:** "Extract here" command on ZIP files — extracts to same folder as archive, no window.
+**What:** "Extract here" command on ZIP files — extracts to same folder as archive. Runs silently via `Archiver.Shell.exe --extract-here`; progress shown in `Archiver.ProgressWindow`.
 
 **Acceptance criteria:**
-- [ ] Appears on right-click of `.zip` files
+- [ ] Appears in Pakko submenu on right-click of `.zip` files
+- [ ] Invokes `Archiver.Shell.exe --extract-here "<path>"` for each selected ZIP
+- [ ] Extraction runs silently — `Archiver.ProgressWindow` shows progress (T-F54)
 - [ ] Extracts to same directory as archive (T-14 smart folder logic)
-- [ ] Calls Archiver.App via protocol activation
-- [ ] Toast notification on completion
+- [ ] Multi-selection: all selected ZIPs extracted in a single `Archiver.Shell` invocation
+- [ ] `Archiver.ProgressWindow` auto-closes 1.5 sec after success
+- [ ] Error shown in `Archiver.ProgressWindow` dialog on failure
 
 ---
 
 ### T-F42 — Context Menu: Extract to Folder
 - [ ] **Status:** future (v1.2)
+- **Depends on:** T-F53, T-F54, T-F55
 
-**What:** "Extract to `<folder_name>`\" on ZIP files — creates subfolder automatically.
+**What:** "Extract to `<folder_name>`" on ZIP files — creates a named subfolder automatically. Runs silently via `Archiver.Shell.exe --extract-folder`; progress shown in `Archiver.ProgressWindow`.
 
 **Acceptance criteria:**
-- [ ] Appears on right-click of `.zip` files
-- [ ] Creates `<archive_name>\` subfolder next to archive
-- [ ] Extracts into the created subfolder
-- [ ] Toast notification on completion
+- [ ] Appears in Pakko submenu on right-click of `.zip` files
+- [ ] Invokes `Archiver.Shell.exe --extract-folder "<path>"` for each selected ZIP
+- [ ] Creates `<archive_name>\` subfolder next to archive; extracts into it
+- [ ] Multi-selection: each ZIP gets its own named subfolder
+- [ ] `Archiver.ProgressWindow` shows progress, auto-closes 1.5 sec after success
+- [ ] Error shown in `Archiver.ProgressWindow` dialog on failure
 
 ---
 
 ### T-F43 — Context Menu: Archive with Pakko
 - [ ] **Status:** future (v1.2)
+- **Depends on:** T-F53, T-F54, T-F55
 
-**What:** "Archive with Pakko" on any files/folders — single archive, Fast compression, destination = source folder.
+**What:** "Add to `<name>.zip`" on any files/folders — single archive, Fast compression, destination = source folder. Runs silently via `Archiver.Shell.exe --archive`; progress shown in `Archiver.ProgressWindow`.
 
 **Acceptance criteria:**
-- [ ] Appears on right-click of any files/folders
-- [ ] Creates single `.zip` archive next to source items
+- [ ] Appears in Pakko submenu on right-click of any files/folders
+- [ ] Invokes `Archiver.Shell.exe --archive "file1" "file2" ...`
+- [ ] Creates single `.zip` archive next to the first selected item
 - [ ] Uses Fast compression level
-- [ ] Supports multi-selection (all items in one archive)
-- [ ] Toast notification on completion
+- [ ] Supports multi-selection (all selected items passed in one invocation)
+- [ ] `Archiver.ProgressWindow` shows progress, auto-closes 1.5 sec after success
+- [ ] Error shown in `Archiver.ProgressWindow` dialog on failure
 
 ---
 
@@ -761,8 +944,7 @@ can cause unpredictable behavior or security issues during extraction.
 ---
 
 ### T-F45 — Mark of the Web (MOTW) Propagation
-- [ ] **Status:** future (v1.2)
-- **Priority:** high (security)
+- [x] **Status:** complete
 
 **What:** On extraction, read `Zone.Identifier` ADS from the source archive and write it to every extracted file. Always on by default — cannot be disabled by user (only via GPO in v1.4).
 
@@ -771,11 +953,11 @@ can cause unpredictable behavior or security issues during extraction.
 **Implementation:** `FileStream` opened with ADS path `"<file>:Zone.Identifier"`. No P/Invoke required — NTFS ADS is accessible via standard `FileStream` on Windows.
 
 **Acceptance criteria:**
-- [ ] `Zone.Identifier` ADS read from source archive before extraction
-- [ ] `Zone.Identifier` ADS written to each extracted file
-- [ ] If source archive has no `Zone.Identifier`, skip silently (no error)
-- [ ] Always on — no user setting to disable
-- [ ] `dotnet test` passes — new test: extracted files inherit `Zone.Identifier` from archive
+- [x] `Zone.Identifier` ADS read from source archive before extraction
+- [x] `Zone.Identifier` ADS written to each extracted file
+- [x] If source archive has no `Zone.Identifier`, skip silently (no error)
+- [x] Always on — no user setting to disable
+- [x] `dotnet test` passes — new test: extracted files inherit `Zone.Identifier` from archive
 
 ---
 

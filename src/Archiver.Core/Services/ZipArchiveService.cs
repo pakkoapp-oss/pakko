@@ -588,6 +588,9 @@ public sealed class ZipArchiveService : IArchiveService
                     await entryStream.CopyToAsync(fileStream, cancellationToken).ConfigureAwait(false);
                 }
 
+                // T-F45: Propagate Zone.Identifier ADS from archive to extracted file
+                TryPropagateMotw(archivePath, destFilePath);
+
                 bytesRead += entry.CompressedLength;
             }
         }
@@ -814,6 +817,31 @@ public sealed class ZipArchiveService : IArchiveService
             current = parent;
         }
         return false;
+    }
+
+    // T-F45: Propagate Zone.Identifier ADS from archive to extracted file.
+    // Best-effort — swallows all exceptions. Never fatal.
+    // Silently no-ops if the archive has no Zone.Identifier ADS.
+    private static void TryPropagateMotw(string archivePath, string destFilePath)
+    {
+        try
+        {
+            using var source = new FileStream(
+                archivePath + ":Zone.Identifier",
+                FileMode.Open,
+                FileAccess.Read,
+                FileShare.Read);
+            using var dest = new FileStream(
+                destFilePath + ":Zone.Identifier",
+                FileMode.Create,
+                FileAccess.Write,
+                FileShare.None);
+            source.CopyTo(dest);
+        }
+        catch
+        {
+            // MOTW propagation is best-effort — never surfaces to caller
+        }
     }
 
     private static string GetUniqueFilePath(string path)

@@ -525,4 +525,66 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
         (result.Success || result.SkippedFiles.Count > 0).Should().BeTrue();
         result.Errors.Should().BeEmpty();
     }
+
+    [Fact]
+    public async Task ExtractAsync_ZipWithMotw_PropagatesZoneIdentifierToExtractedFiles()
+    {
+        // Arrange: create a ZIP with two files
+        var file1 = _temp.CreateFile("doc.txt", "hello");
+        var file2 = _temp.CreateFile("data.txt", "world");
+        var zipPath = Path.Combine(_temp.Path, "motw_test.zip");
+        using (var archive = ZipFile.Open(zipPath, ZipArchiveMode.Create))
+        {
+            archive.CreateEntryFromFile(file1, "doc.txt");
+            archive.CreateEntryFromFile(file2, "data.txt");
+        }
+
+        // Write Zone.Identifier ADS to the archive — skip test if NTFS ADS not supported
+        const string zoneContent = "[ZoneTransfer]\r\nZoneId=3\r\n";
+        byte[] zoneBytes = System.Text.Encoding.ASCII.GetBytes(zoneContent);
+        try
+        {
+            using var adsStream = new FileStream(
+                zipPath + ":Zone.Identifier",
+                FileMode.Create, FileAccess.Write, FileShare.None);
+            adsStream.Write(zoneBytes);
+        }
+        catch (Exception ex) when (ex is NotSupportedException or IOException)
+        {
+            // ADS not supported on this volume (non-NTFS, network, etc.) — skip gracefully
+            return;
+        }
+
+        var destDir = Path.Combine(_temp.Path, "motw_output");
+        var options = new ExtractOptions
+        {
+            ArchivePaths = [zipPath],
+            DestinationFolder = destDir,
+            Mode = ExtractMode.SingleFolder
+        };
+
+        // Act
+        var result = await _sut.ExtractAsync(options);
+
+        // Assert
+        result.Errors.Should().BeEmpty();
+        var extractedFiles = Directory.GetFiles(destDir, "*", SearchOption.AllDirectories);
+        extractedFiles.Should().HaveCount(2);
+
+        foreach (string extractedFile in extractedFiles)
+        {
+            byte[] actual;
+            try
+            {
+                actual = File.ReadAllBytes(extractedFile + ":Zone.Identifier");
+            }
+            catch
+            {
+                // ADS read failed — MOTW not propagated
+                true.Should().BeFalse($"Zone.Identifier ADS missing on {Path.GetFileName(extractedFile)}");
+                return;
+            }
+            actual.Should().Equal(zoneBytes, $"Zone.Identifier content should match on {Path.GetFileName(extractedFile)}");
+        }
+    }
 }
