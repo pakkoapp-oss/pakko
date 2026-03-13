@@ -45,19 +45,29 @@ public partial class App : Application
 
     private void OnActivated(object? sender, AppActivationArguments args)
     {
-        if (args.Kind != ExtendedActivationKind.File) return;
-        if (args.Data is not Windows.ApplicationModel.Activation.IFileActivatedEventArgs fileArgs) return;
+        switch (args.Kind)
+        {
+            case ExtendedActivationKind.File:
+                if (args.Data is not Windows.ApplicationModel.Activation.IFileActivatedEventArgs fileArgs) return;
+                var paths = fileArgs.Files.OfType<StorageFile>().Select(f => f.Path).ToList();
+                if (paths.Count == 0) return;
+                EnsureWindow("Pakko started via file activation");
+                _window!.ViewModel.AddPaths(paths);
+                break;
 
-        var paths = fileArgs.Files
-            .OfType<StorageFile>()
-            .Select(f => f.Path)
-            .ToList();
+            case ExtendedActivationKind.Protocol:
+                if (args.Data is not Windows.ApplicationModel.Activation.IProtocolActivatedEventArgs protoArgs) return;
+                EnsureWindow("Pakko started via protocol activation");
+                _window!.ViewModel.AddPathsFromProtocolUri(protoArgs.Uri.RawUri);
+                break;
+        }
+    }
 
-        if (paths.Count == 0) return;
-
+    private void EnsureWindow(string logMessage)
+    {
         if (_window is null)
         {
-            Services.GetRequiredService<ILogService>().Info("Pakko started via file activation");
+            Services.GetRequiredService<ILogService>().Info(logMessage);
             _window = new MainWindow();
             var dialogService = (DialogService)Services.GetRequiredService<IDialogService>();
             dialogService.SetWindow((Microsoft.UI.Xaml.Window)_window);
@@ -67,7 +77,5 @@ public partial class App : Application
         {
             _window.Activate();
         }
-
-        _window.ViewModel.AddPaths(paths);
     }
 }

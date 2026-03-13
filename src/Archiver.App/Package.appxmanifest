@@ -53,6 +53,9 @@
             <uap:Logo>Assets\Square44x44Logo.png</uap:Logo>
           </uap:FileTypeAssociation>
         </uap:Extension>
+        <uap3:Extension Category="windows.protocol">
+          <uap3:Protocol Name="pakko" />
+        </uap3:Extension>
       </Extensions>
     </Application>
   </Applications>

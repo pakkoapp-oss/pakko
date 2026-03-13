@@ -825,7 +825,7 @@ Pakko ►
 ---
 
 ### T-F56 — Protocol Activation (pakko://)
-- [ ] **Status:** future (v1.2)
+- [x] **Status:** complete
 - **Depends on:** T-F53
 
 **What:** Register `pakko://` URI scheme in `Package.appxmanifest`. `Archiver.App` handles activation by parsing the URI and pre-loading the UI. Used by `Archiver.Shell` for `--open-ui` operations.
@@ -837,13 +837,13 @@ pakko://archive?files=<base64-encoded-json-array>
 ```
 
 **Acceptance criteria:**
-- [ ] `pakko://` URI scheme registered in `Package.appxmanifest`
-- [ ] `Archiver.App` handles `pakko://extract?files=...` — opens with ZIPs pre-loaded
-- [ ] `Archiver.App` handles `pakko://archive?files=...` — opens with source files pre-loaded
-- [ ] Both cold-start and warm activation (already running) handled via `AppInstance.Activated`
-- [ ] `Archiver.Shell --open-ui --extract "file.zip"` correctly constructs and launches the URI
-- [ ] `Archiver.Shell --open-ui --archive "file1" "file2"` correctly constructs and launches the URI
-- [ ] `dotnet build src/Archiver.App` passes
+- [x] `pakko://` URI scheme registered in `Package.appxmanifest`
+- [x] `Archiver.App` handles `pakko://extract?files=...` — opens with ZIPs pre-loaded
+- [x] `Archiver.App` handles `pakko://archive?files=...` — opens with source files pre-loaded
+- [x] Both cold-start and warm activation (already running) handled via `AppInstance.Activated`
+- [x] `Archiver.Shell --open-ui --extract "file.zip"` correctly constructs and launches the URI
+- [x] `Archiver.Shell --open-ui --archive "file1" "file2"` correctly constructs and launches the URI
+- [x] `dotnet build src/Archiver.App` passes
 
 ---
 

@@ -51,6 +51,11 @@ public sealed partial class MainViewModel : ObservableObject
 
     private string _lastOperation = string.Empty;
 
+    // Set by protocol activation (pakko://extract or pakko://archive) before the
+    // user has pressed either button. Empty when the app was not opened via URI.
+    [ObservableProperty]
+    private string _requestedOperation = string.Empty;
+
     [ObservableProperty]
     private int _progress = 0;
 
@@ -515,6 +520,42 @@ public sealed partial class MainViewModel : ObservableObject
         foreach (var path in paths)
             if (!FileItems.Any(x => x.FullPath == path))
                 FileItems.Add(new FileItem(path));
+    }
+
+    public void AddPathsFromProtocolUri(string rawUri)
+    {
+        try
+        {
+            var uri = new Uri(rawUri);
+            var query = uri.Query.TrimStart('?');
+            string? base64 = null;
+            foreach (var part in query.Split('&'))
+            {
+                var idx = part.IndexOf('=');
+                if (idx > 0 && part[..idx] == "files")
+                {
+                    base64 = Uri.UnescapeDataString(part[(idx + 1)..]);
+                    break;
+                }
+            }
+            if (string.IsNullOrEmpty(base64)) return;
+            var json = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(base64));
+            var files = System.Text.Json.JsonSerializer.Deserialize<string[]>(json);
+            if (files is not null)
+            {
+                AddPaths(files);
+                RequestedOperation = uri.Host switch
+                {
+                    "extract" => "extract",
+                    "archive" => "archive",
+                    _ => RequestedOperation
+                };
+            }
+        }
+        catch
+        {
+            // Malformed URI — open normally with empty state
+        }
     }
 
     [RelayCommand(CanExecute = nameof(CanOperate))]

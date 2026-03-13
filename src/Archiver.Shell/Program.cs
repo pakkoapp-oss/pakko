@@ -46,9 +46,6 @@ switch (command.Type)
 // -------------------------------------------------------------------------
 static void LaunchOpenUi(string operation, IReadOnlyList<string> files)
 {
-    // TODO T-F56: The pakko:// URI scheme must be registered in
-    // Package.appxmanifest before this Process.Start call will succeed.
-    // Registration is handled as part of T-F56 (Protocol Activation).
     var base64 = Convert.ToBase64String(
         Encoding.UTF8.GetBytes(JsonSerializer.Serialize(files)));
     var uri = $"pakko://{operation}?files={base64}";
