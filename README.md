@@ -8,13 +8,13 @@ Minimal WinUI 3 GUI wrapper for Windows built-in ZIP support.
 
 ## Why Not 7-Zip or WinRAR?
 
-Both tools carry supply chain risk unacceptable for security-conscious environments.
+Pakko uses a different trust model — not a claim of absolute security superiority, but a different set of supply chain dependencies with different auditability properties. Both tools have supply chain characteristics that some security-conscious environments find unacceptable.
 
-**7-Zip** — source published but no reproducible builds — the distributed binary cannot be verified against source. No independent security audit. Multiple critical CVEs.
+**7-Zip** — source published but no reproducible builds — the distributed binary cannot be verified against source. No independent security audit. Multiple critical CVEs (CVE-2016-9296, CVE-2017-17969, CVE-2018-10115, CVE-2022-29072).
 
-**WinRAR** — closed source — independent audit impossible. CVE-2018-20250 affected 500M+ installations.
+**WinRAR** — closed source — independent audit impossible. CVE-2018-20250 (path traversal, 500M+ installations affected).
 
-For government, defense, and critical infrastructure: unverifiable binaries processing sensitive documents is an unacceptable supply chain risk.
+For government, defense, and critical infrastructure: organizations that require auditability of every binary processing sensitive files may prefer a tool whose entire compression stack is open source, reproducible, and maintained via a public CVE process. This is a trust model choice, not a guarantee of zero vulnerabilities.
 
 ---
 
@@ -26,6 +26,8 @@ For government, defense, and critical infrastructure: unverifiable binaries proc
 | UI framework | WinUI 3 / Windows App SDK | Open source on GitHub |
 
 The entire compression stack is part of the .NET Base Class Library — maintained by Microsoft with a public CVE process, reproducible builds, and community audit via `dotnet/runtime`.
+
+> **Trust dependency:** The .NET runtime and Windows App SDK are themselves trust dependencies. Pakko's security properties depend on the integrity of Microsoft's supply chain and build infrastructure. Organizations that trust the Microsoft/.NET ecosystem will find this architecture auditable; those that do not should evaluate accordingly.
 
 ---
 

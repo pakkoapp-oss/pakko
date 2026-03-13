@@ -467,7 +467,7 @@ and compare file hashes to verify round-trip integrity.
 ---
 
 ### T-F25 — README Security Positioning Review
-- [ ] **Status:** future
+- [x] **Status:** done
 
 **What:** Review README.md security claims for accuracy and balance.
 Avoid unverifiable superiority claims. Prefer factual positioning.
@@ -479,10 +479,10 @@ Avoid unverifiable superiority claims. Prefer factual positioning.
 - Add caveat: .NET runtime itself is a trust dependency
 
 **Acceptance criteria:**
-- [ ] No unverifiable security superiority claims in README
-- [ ] Supply chain risk section remains — factual CVE data kept
-- [ ] Trust model framing added: "different trust model, not superior security"
-- [ ] SECURITY.md unchanged — it is already appropriately nuanced
+- [x] No unverifiable security superiority claims in README
+- [x] Supply chain risk section remains — factual CVE data kept
+- [x] Trust model framing added: "different trust model, not superior security"
+- [x] SECURITY.md unchanged — it is already appropriately nuanced
 
 ---
 
