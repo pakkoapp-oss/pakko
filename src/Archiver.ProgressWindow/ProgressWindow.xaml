@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="Archiver.ProgressWindow.ProgressWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:Archiver.ProgressWindow">
+
+    <Grid Padding="16" RowSpacing="8">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Progress bar -->
+        <ProgressBar
+            Grid.Row="0"
+            Value="{x:Bind ViewModel.Percent, Mode=OneWay}"
+            Maximum="100"
+            IsIndeterminate="{x:Bind ViewModel.IsIndeterminate, Mode=OneWay}"
+            HorizontalAlignment="Stretch"/>
+
+        <!-- Speed / ETA status text -->
+        <TextBlock
+            Grid.Row="1"
+            Text="{x:Bind ViewModel.StatusText, Mode=OneWay}"
+            FontSize="12"
+            Opacity="0.7"
+            TextTrimming="CharacterEllipsis"/>
+
+        <!-- Cancel button -->
+        <Button
+            Grid.Row="2"
+            Content="Cancel"
+            HorizontalAlignment="Right"
+            Command="{x:Bind ViewModel.CancelCommand, Mode=OneWay}"
+            IsEnabled="{x:Bind ViewModel.IsCancelEnabled, Mode=OneWay}"/>
+
+    </Grid>
+</Window>

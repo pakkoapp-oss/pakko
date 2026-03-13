@@ -74,6 +74,9 @@ SECURITY.md     → threat model (read if modifying compression logic,
 - **MOTW:** always propagate `Zone.Identifier` ADS on extracted files (v1.2+)
 - **Shell extension:** `IExplorerCommand` only — no legacy `IContextMenu` COM shell extensions
 - **Low IL sandbox:** P/Invoke is acceptable for security-critical process isolation code (v1.4)
+- **Solution platforms:** x64 and ARM64 only — never add `Any CPU` or `x86` configuration entries
+  to the `.sln` file. When adding a new project, mirror the `Debug|x64` / `Release|x64` entries
+  from `Archiver.Shell` exactly (two lines per config, right-hand side maps to project's `Any CPU`).
 
 ---
 

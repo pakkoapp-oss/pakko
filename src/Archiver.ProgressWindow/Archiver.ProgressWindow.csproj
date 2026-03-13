@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows10.0.17763.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <RootNamespace>Archiver.ProgressWindow</RootNamespace>
+    <UseWinUI>true</UseWinUI>
+    <!-- EnableMsixTooling intentionally omitted: ProgressWindow is deployed within the
+         Shell's MSIX context, not as a separately packaged app. -->
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>12</LangVersion>
+    <NoWarn>$(NoWarn);MVVMTK0045</NoWarn>
+    <!-- PublishTrimmed intentionally omitted: WinUI 3 x:Bind generated code is not trim-compatible -->
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.7705" />
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.8.260209005" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Archiver.Core\Archiver.Core.csproj" />
+  </ItemGroup>
+</Project>

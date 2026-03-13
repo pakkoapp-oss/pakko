@@ -1,6 +1,8 @@
 using System.Diagnostics;
+using System.IO.Pipes;
 using System.Text;
 using System.Text.Json;
+using System.Threading.Channels;
 using Archiver.Core.Models;
 using Archiver.Core.Services;
 using Archiver.Shell;
@@ -9,8 +11,7 @@ var command = ShellArgumentParser.Parse(args);
 
 if (command.Type == CommandType.Invalid)
 {
-    // WinExe: no console window shown. Exit silently — T-F54 will surface
-    // errors through ProgressWindow once that project is implemented.
+    // WinExe: no console window shown. Exit silently.
     Environment.Exit(1);
     return;
 }
@@ -67,11 +68,6 @@ static async Task RunExtractHereAsync(IReadOnlyList<string> archivePaths)
     foreach (var archivePath in archivePaths)
     {
         var destFolder = Path.GetDirectoryName(archivePath) ?? ".";
-
-        // TODO T-F54: Replace direct Archiver.Core call with an
-        // Archiver.ProgressWindow process launch. Pass operation parameters
-        // as command-line arguments; wire a named pipe for progress updates
-        // and cancellation. Wait for the ProgressWindow process to exit.
         var options = new ExtractOptions
         {
             ArchivePaths = [archivePath],
@@ -80,7 +76,10 @@ static async Task RunExtractHereAsync(IReadOnlyList<string> archivePaths)
             OnConflict = ConflictBehavior.Skip,
         };
 
-        await service.ExtractAsync(options).ConfigureAwait(false);
+        string title = $"Extracting: {Path.GetFileName(archivePath)}";
+        await RunWithProgressWindowAsync(title,
+            (progress, ct) => service.ExtractAsync(options, progress, ct))
+            .ConfigureAwait(false);
     }
 }
 
@@ -97,11 +96,6 @@ static async Task RunExtractFolderAsync(IReadOnlyList<string> archivePaths)
         var archiveDir = Path.GetDirectoryName(archivePath) ?? ".";
         var folderName = Path.GetFileNameWithoutExtension(archivePath);
         var destFolder = Path.Combine(archiveDir, folderName);
-
-        // TODO T-F54: Replace direct Archiver.Core call with an
-        // Archiver.ProgressWindow process launch. Pass operation parameters
-        // as command-line arguments; wire a named pipe for progress updates
-        // and cancellation. Wait for the ProgressWindow process to exit.
         var options = new ExtractOptions
         {
             ArchivePaths = [archivePath],
@@ -110,7 +104,10 @@ static async Task RunExtractFolderAsync(IReadOnlyList<string> archivePaths)
             OnConflict = ConflictBehavior.Skip,
         };
 
-        await service.ExtractAsync(options).ConfigureAwait(false);
+        string title = $"Extracting: {Path.GetFileName(archivePath)}";
+        await RunWithProgressWindowAsync(title,
+            (progress, ct) => service.ExtractAsync(options, progress, ct))
+            .ConfigureAwait(false);
     }
 }
 
@@ -124,10 +121,6 @@ static async Task RunArchiveAsync(IReadOnlyList<string> sourcePaths)
     var destFolder = Path.GetDirectoryName(firstPath) ?? ".";
     var archiveName = Path.GetFileNameWithoutExtension(firstPath);
 
-    // TODO T-F54: Replace direct Archiver.Core call with an
-    // Archiver.ProgressWindow process launch. Pass operation parameters
-    // as command-line arguments; wire a named pipe for progress updates
-    // and cancellation. Wait for the ProgressWindow process to exit.
     var service = new ZipArchiveService();
     var options = new ArchiveOptions
     {
@@ -138,5 +131,127 @@ static async Task RunArchiveAsync(IReadOnlyList<string> sourcePaths)
         OnConflict = ConflictBehavior.Skip,
     };
 
-    await service.ArchiveAsync(options).ConfigureAwait(false);
+    string title = $"Archiving: {archiveName}";
+    await RunWithProgressWindowAsync(title,
+        (progress, ct) => service.ArchiveAsync(options, progress, ct))
+        .ConfigureAwait(false);
+}
+
+// -------------------------------------------------------------------------
+// Launches Archiver.ProgressWindow.exe with a named pipe for live progress
+// and cancellation. Falls back to silent direct-service operation if
+// Archiver.ProgressWindow.exe is not found alongside this executable.
+//
+// Named pipe protocol (newline-delimited UTF-8 JSON):
+//   ProgressWindow → Shell: {"type":"cancel"}
+//   Shell → ProgressWindow: {"type":"progress","percent":N,"bytesTransferred":N,"totalBytes":N}
+//   Shell → ProgressWindow: {"type":"complete","success":true}
+//   Shell → ProgressWindow: {"type":"complete","success":false,"errorSummary":"N error(s)"}
+//   Shell → ProgressWindow: {"type":"cancelled"}
+// -------------------------------------------------------------------------
+static async Task<ArchiveResult> RunWithProgressWindowAsync(
+    string title,
+    Func<IProgress<ProgressReport>, CancellationToken, Task<ArchiveResult>> op)
+{
+    string exeDir = Path.GetDirectoryName(Environment.ProcessPath ?? string.Empty) ?? string.Empty;
+    string pwExe = Path.Combine(exeDir, "Archiver.ProgressWindow.exe");
+
+    // Fallback: run silently if ProgressWindow is not co-deployed.
+    if (!File.Exists(pwExe))
+        return await op(null!, CancellationToken.None).ConfigureAwait(false);
+
+    string pipeName = $"pakko-{Guid.NewGuid():N}";
+    using var pipe = new NamedPipeServerStream(
+        pipeName,
+        PipeDirection.InOut,
+        maxNumberOfServerInstances: 1,
+        PipeTransmissionMode.Byte,
+        PipeOptions.Asynchronous);
+
+    var pwProc = Process.Start(new ProcessStartInfo(pwExe)
+    {
+        Arguments = $"--pipe {pipeName} --title \"{title}\"",
+        UseShellExecute = false,
+    });
+
+    if (pwProc is null)
+        return await op(null!, CancellationToken.None).ConfigureAwait(false);
+
+    // Wait up to 5 seconds for ProgressWindow to connect.
+    using var connectCts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+    try
+    {
+        await pipe.WaitForConnectionAsync(connectCts.Token).ConfigureAwait(false);
+    }
+    catch (OperationCanceledException)
+    {
+        try { pwProc.Kill(); } catch { }
+        return await op(null!, CancellationToken.None).ConfigureAwait(false);
+    }
+
+    using var reader = new StreamReader(pipe, Encoding.UTF8,
+        detectEncodingFromByteOrderMarks: false, bufferSize: 1024, leaveOpen: true);
+    using var writer = new StreamWriter(pipe, Encoding.UTF8,
+        bufferSize: 1024, leaveOpen: true) { AutoFlush = true };
+
+    // Channel bridges IProgress callbacks (any thread) to the write task (sequential).
+    var ch = Channel.CreateUnbounded<string>(new UnboundedChannelOptions { SingleReader = true });
+    using var cts = new CancellationTokenSource();
+
+    // Write task: drains the channel and sends JSON lines to ProgressWindow.
+    var writeTask = Task.Run(async () =>
+    {
+        await foreach (var msg in ch.Reader.ReadAllAsync().ConfigureAwait(false))
+        {
+            try { writer.WriteLine(msg); }
+            catch (IOException) { break; }
+        }
+    });
+
+    // Read task: receives cancel signal from ProgressWindow.
+    var readTask = Task.Run(async () =>
+    {
+        try
+        {
+            while (true)
+            {
+                var line = await reader.ReadLineAsync().ConfigureAwait(false);
+                if (line is null) break;
+                if (line.Contains("\"cancel\""))
+                    cts.Cancel();
+            }
+        }
+        catch (IOException) { /* ProgressWindow disconnected */ }
+    });
+
+    // Progress callback posts to the channel (non-blocking).
+    var progress = new Progress<ProgressReport>(r =>
+        ch.Writer.TryWrite(
+            $"{{\"type\":\"progress\",\"percent\":{r.Percent}," +
+            $"\"bytesTransferred\":{r.BytesTransferred},\"totalBytes\":{r.TotalBytes}}}"));
+
+    ArchiveResult result;
+    try
+    {
+        result = await op(progress, cts.Token).ConfigureAwait(false);
+    }
+    catch (OperationCanceledException)
+    {
+        ch.Writer.TryWrite("{\"type\":\"cancelled\"}");
+        ch.Writer.Complete();
+        await writeTask.ConfigureAwait(false);
+        await pwProc.WaitForExitAsync().ConfigureAwait(false);
+        return new ArchiveResult { Success = false };
+    }
+
+    string completionMsg = result.Success && result.Errors.Count == 0
+        ? "{\"type\":\"complete\",\"success\":true}"
+        : $"{{\"type\":\"complete\",\"success\":false,\"errorSummary\":\"{result.Errors.Count} error(s)\"}}";
+    ch.Writer.TryWrite(completionMsg);
+    ch.Writer.Complete();
+
+    await writeTask.ConfigureAwait(false);
+    await readTask.ConfigureAwait(false);
+    await pwProc.WaitForExitAsync().ConfigureAwait(false);
+    return result;
 }

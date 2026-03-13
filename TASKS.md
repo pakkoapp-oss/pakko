@@ -741,7 +741,7 @@ Archiver.Shell.exe --open-ui --archive "file1" "file2"
 ---
 
 ### T-F54 — Archiver.ProgressWindow Project
-- [ ] **Status:** future (v1.2)
+- [x] **Status:** complete
 - **Depends on:** T-F53
 
 **What:** Minimal WinUI 3 project (`src/Archiver.ProgressWindow/`, net8.0-windows). Single small window showing live progress for silent shell operations. Receives operation parameters from `Archiver.Shell` via named pipe.
@@ -759,14 +759,14 @@ No file list, no options, no tray icon. Window is non-resizable, fixed size (~40
 - On failure: shows simple error dialog, stays open until dismissed
 
 **Acceptance criteria:**
-- [ ] `Archiver.ProgressWindow` project added to solution, `net8.0-windows`
-- [ ] Window appears with operation name, progress bar, speed/ETA, Cancel button
-- [ ] Receives progress updates via named pipe from `Archiver.Shell`
-- [ ] Cancel button signals cancellation back to `Archiver.Shell`
-- [ ] Auto-closes 1.5 sec after success
-- [ ] Error dialog shown on failure; window stays open until dismissed
-- [ ] Window is non-resizable, fixed ~400×120 px
-- [ ] `dotnet build src/Archiver.ProgressWindow` passes
+- [x] `Archiver.ProgressWindow` project added to solution, `net8.0-windows`
+- [x] Window appears with operation name, progress bar, speed/ETA, Cancel button
+- [x] Receives progress updates via named pipe from `Archiver.Shell`
+- [x] Cancel button signals cancellation back to `Archiver.Shell`
+- [x] Auto-closes 1.5 sec after success
+- [x] Error dialog shown on failure; window stays open until dismissed
+- [x] Window is non-resizable, fixed ~400×120 px
+- [x] `dotnet build src/Archiver.ProgressWindow` passes
 
 ---
 
