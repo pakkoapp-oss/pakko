@@ -15,7 +15,7 @@ These rules apply to ALL tasks. Violating them = task is NOT complete.
 - A task with ANY `[ ]` criterion must stay `[ ]` or `[~]` — never `[x]`
 
 **Testing rules:**
-- ALWAYS run `dotnet test` after any change to `Archiver.Core`
+- ALWAYS run `dotnet test` (no path — all projects) after any change to any project. A change in one project can break tests in another.
 - If tests fail → fix before marking anything complete
 - Every new behavior in `ZipArchiveService` needs at least one test
 
@@ -848,17 +848,17 @@ pakko://archive?files=<base64-encoded-json-array>
 ---
 
 ### T-F57 — Shell Integration Tests
-- [ ] **Status:** future (v1.2)
+- [x] **Status:** complete
 - **Depends on:** T-F53
 
 **What:** Basic smoke tests for `Archiver.Shell` argument parsing logic. No UI tests — `Archiver.ProgressWindow` is tested manually.
 
 **Acceptance criteria:**
-- [ ] `Archiver.Shell` argument parsing extracted into a testable class
-- [ ] Tests cover: `--extract-here`, `--extract-folder`, `--archive`, `--open-ui --extract`, `--open-ui --archive`
-- [ ] Tests cover: missing arguments → graceful error (no crash)
-- [ ] Tests cover: multiple file arguments parsed correctly
-- [ ] `dotnet test` passes
+- [x] `Archiver.Shell` argument parsing extracted into a testable class
+- [x] Tests cover: `--extract-here`, `--extract-folder`, `--archive`, `--open-ui --extract`, `--open-ui --archive`
+- [x] Tests cover: missing arguments → graceful error (no crash)
+- [x] Tests cover: multiple file arguments parsed correctly
+- [x] `dotnet test` passes
 
 ---
 

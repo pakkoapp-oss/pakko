@@ -207,6 +207,17 @@ indent_size = 2
 
 ---
 
+## Archiver.Shell Conventions
+
+### ShellArgumentParser — validation boundary
+
+`ShellArgumentParser` validates only command structure (command name and minimum
+argument count). It never validates file path content, existence, or format.
+Path validation is the responsibility of dispatch logic in `Program.cs` and
+downstream service calls. Do not add path content checks to `ShellArgumentParser`.
+
+---
+
 ## Packages Allowed per Project
 
 | Package | Project | Purpose |

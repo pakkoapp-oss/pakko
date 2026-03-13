@@ -19,6 +19,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Archiver.Shell", "src\Archi
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Archiver.ProgressWindow", "src\Archiver.ProgressWindow\Archiver.ProgressWindow.csproj", "{B740B990-8B8F-446F-87A5-EBE7DEC3EC3D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Archiver.Shell.Tests", "tests\Archiver.Shell.Tests\Archiver.Shell.Tests.csproj", "{BFE553B6-B743-4A23-BE63-AB462262E9DB}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -93,6 +95,10 @@ Global
 		{B740B990-8B8F-446F-87A5-EBE7DEC3EC3D}.Debug|x64.Build.0 = Debug|Any CPU
 		{B740B990-8B8F-446F-87A5-EBE7DEC3EC3D}.Release|x64.ActiveCfg = Release|Any CPU
 		{B740B990-8B8F-446F-87A5-EBE7DEC3EC3D}.Release|x64.Build.0 = Release|Any CPU
+		{BFE553B6-B743-4A23-BE63-AB462262E9DB}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{BFE553B6-B743-4A23-BE63-AB462262E9DB}.Debug|x64.Build.0 = Debug|Any CPU
+		{BFE553B6-B743-4A23-BE63-AB462262E9DB}.Release|x64.ActiveCfg = Release|Any CPU
+		{BFE553B6-B743-4A23-BE63-AB462262E9DB}.Release|x64.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -104,5 +110,6 @@ Global
 		{AEB7D316-3E57-4652-9188-6113228DA09A} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 		{2250B362-0B02-44D6-9FF6-EA14E04CBE1A} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{B740B990-8B8F-446F-87A5-EBE7DEC3EC3D} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
+		{BFE553B6-B743-4A23-BE63-AB462262E9DB} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 	EndGlobalSection
 EndGlobal

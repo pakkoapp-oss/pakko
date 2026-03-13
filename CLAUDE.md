@@ -77,6 +77,12 @@ SECURITY.md     → threat model (read if modifying compression logic,
 - **Solution platforms:** x64 and ARM64 only — never add `Any CPU` or `x86` configuration entries
   to the `.sln` file. When adding a new project, mirror the `Debug|x64` / `Release|x64` entries
   from `Archiver.Shell` exactly (two lines per config, right-hand side maps to project's `Any CPU`).
+- When adding or modifying tests, always run `dotnet test` with no path argument — never scope to
+  a single test project. All projects must stay green after every change.
+- If a change modifies a public interface, model, or contract in `Archiver.Core`, check whether
+  tests in other projects (`Archiver.Shell.Tests`, future `Archiver.CLI.Tests`) need to be updated
+  or extended. Internal implementation changes (private methods, buffers, sorting) require only
+  `Archiver.Core.Tests` coverage.
 
 ---
 
@@ -107,7 +113,7 @@ windows-archiver-wrapper/
 
 ```bash
 # Run tests (always works from CLI)
-dotnet test tests/Archiver.Core.Tests
+dotnet test   # runs all test projects in the solution
 
 # Build core only
 dotnet build src/Archiver.Core
@@ -166,6 +172,16 @@ Task<IReadOnlyList<string>> PickFoldersAsync()
 - Do not use legacy `IContextMenu` shell extension — use `IExplorerCommand`
 - Do not call `tar.exe` via PATH — always absolute path `C:\Windows\System32\tar.exe`
 - Do not extract tar/RAR/7z formats in-process — only via `tar.exe` subprocess
+
+---
+
+## Known test gaps — manual verification required
+
+- **ProgressViewModel (Archiver.ProgressWindow)** — named pipe state machine,
+  JSON message dispatch, and UI lifecycle are not covered by automated tests.
+  Manual verification required: progress updates render correctly, Cancel signal
+  propagates, auto-close triggers after 1.5 s on success, error dialog appears
+  and stays open on failure.
 
 ---
 

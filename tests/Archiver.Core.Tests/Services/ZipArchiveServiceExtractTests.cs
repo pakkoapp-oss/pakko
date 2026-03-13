@@ -468,6 +468,48 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
         result.SkippedFiles[0].Reason.Should().Contain("control characters");
     }
 
+    // T-F59: extraction total computed from entry.Length (uncompressed), not CompressedLength
+    [Fact]
+    public async Task ExtractAsync_CompressedArchive_ProgressNeverExceedsHundredPercent()
+    {
+        // 10 KB of identical bytes compresses dramatically (~300:1 ratio),
+        // well under the 1000:1 ZIP bomb threshold so extraction proceeds normally.
+        // If the progress total were computed from CompressedLength, bytesRead would
+        // vastly exceed it and Percent would shoot past 100 — regression for T-F59.
+        string content = new string('A', 10 * 1024);
+        var file = _temp.CreateFile("compressible.txt", content);
+        var zipPath = Path.Combine(_temp.Path, "overshoot_test.zip");
+        using (var archive = ZipFile.Open(zipPath, ZipArchiveMode.Create))
+            archive.CreateEntryFromFile(file, "compressible.txt", CompressionLevel.SmallestSize);
+
+        // Confirm the scenario is meaningful: compressed must be < 1/10 of uncompressed
+        using (var zip = ZipFile.OpenRead(zipPath))
+        {
+            var entry = zip.GetEntry("compressible.txt")!;
+            entry.CompressedLength.Should().BeLessThan(entry.Length / 10,
+                "the entry must be at least 10x compressed for this test to distinguish Length from CompressedLength");
+        }
+
+        var reports = new List<ProgressReport>();
+        var progress = new Progress<ProgressReport>(r => reports.Add(r));
+
+        var destDir = Path.Combine(_temp.Path, "overshoot_output");
+        var options = new ExtractOptions
+        {
+            ArchivePaths = [zipPath],
+            DestinationFolder = destDir,
+            Mode = ExtractMode.SingleFolder
+        };
+
+        await _sut.ExtractAsync(options, progress);
+        await Task.Delay(50); // let Progress<ProgressReport> callbacks fire
+
+        reports.Should().NotBeEmpty();
+        reports.Last().Percent.Should().Be(100);
+        reports.Should().OnlyContain(r => r.Percent >= 0 && r.Percent <= 100,
+            "progress percent must stay within [0, 100] — regression for T-F59");
+    }
+
     [Fact]
     public async Task ExtractAsync_SingleArchive_ReportsMonotonicByteProgress()
     {
