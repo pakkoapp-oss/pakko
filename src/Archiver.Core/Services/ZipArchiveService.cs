@@ -479,7 +479,7 @@ public sealed class ZipArchiveService : IArchiveService
         string fullTempDest = Path.GetFullPath(tempDest).TrimEnd(Path.DirectorySeparatorChar)
             + Path.DirectorySeparatorChar;
 
-        long totalCompressedBytes = fileEntries.Sum(e => e.CompressedLength);
+        long totalUncompressedBytes = fileEntries.Where(e => e.Length > 0).Sum(e => e.Length);
         long bytesRead = 0;
 
         try
@@ -497,7 +497,7 @@ public sealed class ZipArchiveService : IArchiveService
                     relativePath = relativePath[(sep + 1)..];
                     if (string.IsNullOrEmpty(relativePath))
                     {
-                        bytesRead += entry.CompressedLength;
+                        bytesRead += entry.Length;
                         continue;
                     }
                 }
@@ -510,7 +510,7 @@ public sealed class ZipArchiveService : IArchiveService
                         Path = entry.FullName,
                         Reason = "Alternate Data Stream entry rejected for security."
                     });
-                    bytesRead += entry.CompressedLength;
+                    bytesRead += entry.Length;
                     continue;
                 }
 
@@ -522,7 +522,7 @@ public sealed class ZipArchiveService : IArchiveService
                         Path = entry.FullName,
                         Reason = $"Entry name matches a reserved Windows device name and was skipped."
                     });
-                    bytesRead += entry.CompressedLength;
+                    bytesRead += entry.Length;
                     continue;
                 }
 
@@ -534,7 +534,7 @@ public sealed class ZipArchiveService : IArchiveService
                         Path = entry.FullName,
                         Reason = "Entry name contains control characters and was skipped."
                     });
-                    bytesRead += entry.CompressedLength;
+                    bytesRead += entry.Length;
                     continue;
                 }
 
@@ -553,7 +553,7 @@ public sealed class ZipArchiveService : IArchiveService
                         Path = entry.FullName,
                         Reason = "Entry path traverses a reparse point (symlink or junction) and was skipped."
                     });
-                    bytesRead += entry.CompressedLength;
+                    bytesRead += entry.Length;
                     continue;
                 }
 
@@ -568,7 +568,7 @@ public sealed class ZipArchiveService : IArchiveService
                         Reason = $"Suspicious compression ratio ({entry.Length / entry.CompressedLength}:1). " +
                                  "Entry was skipped as a precaution against ZIP bombs."
                     });
-                    bytesRead += entry.CompressedLength;
+                    bytesRead += entry.Length;
                     continue;
                 }
 
@@ -578,7 +578,7 @@ public sealed class ZipArchiveService : IArchiveService
                 {
                     if (onConflict == ConflictBehavior.Skip)
                     {
-                        bytesRead += entry.CompressedLength;
+                        bytesRead += entry.Length;
                         continue;
                     }
                     if (onConflict == ConflictBehavior.Rename)
@@ -588,10 +588,10 @@ public sealed class ZipArchiveService : IArchiveService
                     }
                 }
 
-                if (progress != null && totalCompressedBytes > 0)
+                if (progress != null && totalUncompressedBytes > 0)
                 {
                     var entryStream = entry.Open();
-                    await using var ps = new ProgressStream(entryStream, totalCompressedBytes, bytesRead, progress);
+                    await using var ps = new ProgressStream(entryStream, totalUncompressedBytes, bytesRead, progress);
                     using var fileStream = new FileStream(
                         destFilePath,
                         FileMode.Create,
@@ -617,7 +617,7 @@ public sealed class ZipArchiveService : IArchiveService
                 // T-F45: Propagate Zone.Identifier ADS from archive to extracted file
                 TryPropagateMotw(archivePath, destFilePath);
 
-                bytesRead += entry.CompressedLength;
+                bytesRead += entry.Length;
             }
         }
         catch (OperationCanceledException)

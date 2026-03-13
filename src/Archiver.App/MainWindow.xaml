@@ -260,6 +260,7 @@
                     Grid.Column="0"
                     Value="{x:Bind ViewModel.Progress, Mode=OneWay}"
                     Maximum="100"
+                    IsIndeterminate="{x:Bind ViewModel.IsProgressIndeterminate, Mode=OneWay}"
                     Visibility="{x:Bind ViewModel.IsOperationRunningVisibility, Mode=OneWay}"/>
                 <Button
                     Grid.Column="1"

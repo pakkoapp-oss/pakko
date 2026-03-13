@@ -1107,3 +1107,42 @@ pakko://archive?files=<base64-encoded-json-array>
 - [ ] All P/Invoke handles properly closed — no leaks
 - [ ] `dotnet test` passes — integration test: file write outside quarantine fails
 
+---
+
+### T-F58 — Archive Finalization Phase UX
+- [x] **Status:** complete
+
+**What:** After all file bytes are copied into the ZIP, `ZipArchive` still performs real work (writing the central directory, flushing, closing, renaming the temp file). During this phase `ProgressStream` reports no new bytes, so the progress bar freezes and speed/ETA disappear, making the app appear hung.
+
+**Fix:** When the reported byte count reaches the operation total (percent = 100), switch the UI to a "finalizing" state: progress bar becomes indeterminate, status line shows "Finalizing...", and speed/ETA are hidden. Normal completion state takes over once the operation returns.
+
+**Files:** `src/Archiver.App/ViewModels/MainViewModel.cs`, `src/Archiver.App/MainWindow.xaml`, `src/Archiver.App/Strings/en-US/Resources.resw`
+
+**Acceptance criteria:**
+- [x] `IsProgressIndeterminate` observable property added to `MainViewModel`
+- [x] When archive progress callback receives `Percent >= 100`, set `IsProgressIndeterminate = true` and `StatusMessage = "Finalizing..."`
+- [x] `IsProgressIndeterminate` reset to `false` in the `finally` block
+- [x] ProgressBar `IsIndeterminate` bound to `ViewModel.IsProgressIndeterminate` in XAML
+- [x] `StatusFinalizing` resource string added to `Resources.resw`
+- [x] State driven from ViewModel — no code-behind logic
+- [x] `dotnet test` passes — 67/67
+
+---
+
+### T-F59 — Extraction Progress Overshoot Fix
+- [x] **Status:** complete
+
+**What:** Extraction progress total was computed from `entry.CompressedLength` (bytes inside the ZIP), but `ProgressStream` counts uncompressed bytes as they flow out of `entry.Open()`. When compression ratio is significant the byte count exceeds the total, causing the progress bar to overshoot 100% and reset.
+
+**Fix:** Compute the extraction total from `entry.Length` (uncompressed size) for all entries where `Length > 0`. Use the same uncompressed unit for all `bytesRead` accumulation so the ProgressStream offset and total are consistent.
+
+**Files:** `src/Archiver.Core/Services/ZipArchiveService.cs`
+
+**Acceptance criteria:**
+- [x] `totalUncompressedBytes` computed as `fileEntries.Where(e => e.Length > 0).Sum(e => e.Length)`
+- [x] `ProgressStream` initialized with `totalUncompressedBytes` instead of `totalCompressedBytes`
+- [x] All `bytesRead += entry.CompressedLength` changed to `bytesRead += entry.Length`
+- [x] Entries with `Length == 0` excluded from the total (directories, streaming entries)
+- [x] ZIP bomb check still uses `entry.CompressedLength` (ratio check unchanged)
+- [x] `dotnet test` passes — 67/67
+

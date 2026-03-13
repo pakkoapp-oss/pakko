@@ -54,6 +54,9 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private int _progress = 0;
 
+    [ObservableProperty]
+    private bool _isProgressIndeterminate = false;
+
     public bool IsOperationRunning => IsBusy;
     public bool IsNotBusy => !IsBusy;
 
@@ -280,7 +283,16 @@ public sealed partial class MainViewModel : ObservableObject
             var progress = new Progress<ProgressReport>(r =>
             {
                 Progress = r.Percent;
-                UpdateOperationStatus(r);
+                if (r.Percent >= 100)
+                {
+                    IsProgressIndeterminate = true;
+                    StatusMessage = _res.GetString("StatusFinalizing");
+                }
+                else
+                {
+                    IsProgressIndeterminate = false;
+                    UpdateOperationStatus(r);
+                }
             });
 
             var result = await _archiveService.ArchiveAsync(options, progress, _cts.Token);
@@ -325,6 +337,7 @@ public sealed partial class MainViewModel : ObservableObject
         {
             _cts?.Dispose();
             _cts = null;
+            IsProgressIndeterminate = false;
             IsBusy = false;
         }
         if (wasCancelled)

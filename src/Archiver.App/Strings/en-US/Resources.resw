@@ -82,6 +82,9 @@
   <data name="StatusCleaningUp" xml:space="preserve">
     <value>Cleaning up...</value>
   </data>
+  <data name="StatusFinalizing" xml:space="preserve">
+    <value>Finalizing...</value>
+  </data>
   <data name="StatusArchivedIn" xml:space="preserve">
     <value>Archived in {0} sec — {1} file(s)</value>
   </data>
