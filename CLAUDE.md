@@ -130,6 +130,11 @@ dotnet publish src/Archiver.App/Archiver.App.csproj \
 
 > WinUI app must be built and run from Visual Studio 2022.
 > `dotnet test` and `dotnet build src/Archiver.Core` work freely from terminal.
+>
+> **Deploy shortcuts:**
+> Release build in VS triggers `Deploy.ps1 -DeployOnly` automatically (post-build event).
+> For manual deploy from terminal: `.\scripts\Deploy.ps1` (full build + sign + install)
+> or `.\scripts\Deploy.ps1 -DeployOnly` (install only, no build).
 
 ---
 

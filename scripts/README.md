@@ -32,6 +32,8 @@ You only need to run this once per machine (or when the certificate expires).
 
 ## Step 2 — Build and install (after every change)
 
+**Full build + deploy** (terminal workflow — builds and signs via `dotnet publish`):
+
 ```powershell
 # Auto-detect the CN=Pakko Dev certificate:
 .\scripts\Deploy.ps1
@@ -45,6 +47,16 @@ This will:
 2. Uninstall any existing Pakko package
 3. Install the new `.msix` from `src/Archiver.App/AppPackages/`
 4. Print the installed version
+
+**Deploy only** (skips build — installs the most recently built `.msix`):
+
+```powershell
+.\scripts\Deploy.ps1 -DeployOnly
+```
+
+> **Visual Studio post-build event** — Release builds in Visual Studio run
+> `Deploy.ps1 -DeployOnly` automatically after the build completes, so no
+> manual script invocation is needed when building from VS.
 
 ---
 

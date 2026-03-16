@@ -60,6 +60,13 @@ for full details. The short version:
    # or: .\scripts\Deploy.ps1 -Thumbprint "<thumbprint>"
    ```
 
+   > **Visual Studio shortcut** — Release builds in VS trigger
+   > `Deploy.ps1 -DeployOnly` automatically via a post-build event.
+   > No manual script needed after first setup; just build in Release and
+   > the new MSIX is installed automatically.
+   > Use `.\scripts\Deploy.ps1` from the terminal for a full build + deploy
+   > outside of Visual Studio.
+
 ---
 
 ## Testing protocol activation (pakko://)
