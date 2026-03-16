@@ -65,8 +65,9 @@
   </PropertyGroup>
 
   <!-- Deploy the freshly built MSIX after every Release build in Visual Studio -->
-  <Target Name="DeployMsix" AfterTargets="Build" Condition="'$(Configuration)' == 'Release'">
-    <Exec Command="powershell.exe -ExecutionPolicy Bypass -File &quot;$(SolutionDir)scripts\Deploy.ps1&quot; -DeployOnly" />
+  <Target Name="DeployMsix" AfterTargets="Build"
+          Condition="'$(Configuration)' == 'Release' and '$(PAKKO_DEPLOYING)' != '1'">
+    <Exec Command="powershell.exe -ExecutionPolicy Bypass -File &quot;$(MSBuildThisFileDirectory)..\..\scripts\Deploy.ps1&quot; -DeployOnly" />
   </Target>
 
   <!-- Publish Properties -->

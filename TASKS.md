@@ -771,7 +771,7 @@ No file list, no options, no tray icon. Window is non-resizable, fixed size (~40
 ---
 
 ### T-F55 — Dual Shell Registration
-- [ ] **Status:** future (v1.2)
+- [x] **Status:** complete (v1.2)
 - **Depends on:** T-F53
 
 **What:** Register Pakko's context menu via two mechanisms declared in `Package.appxmanifest`, both targeting `Archiver.Shell.exe`. Windows automatically uses the appropriate mechanism per OS version — no separate code paths needed.
@@ -813,9 +813,9 @@ Pakko ►
 ```
 
 **Acceptance criteria:**
-- [ ] `desktop4:FileExplorerContextMenus` entry declared in `Package.appxmanifest` (Win10+)
-- [ ] `com:Extension` + `IExplorerCommand` entry declared in `Package.appxmanifest` (Win11)
-- [ ] Both entries invoke `Archiver.Shell.exe` with correct arguments
+- [x] `desktop4:FileExplorerContextMenus` entry declared in `Package.appxmanifest` (Win10+)
+- [x] `com:Extension` + `IExplorerCommand` entry declared in `Package.appxmanifest` (Win11)
+- [x] Both entries invoke `Archiver.Shell.exe` with correct arguments
 - [ ] Context menu appears on Win10 (classic menu) after MSIX install
 - [ ] Context menu appears on Win11 (modern menu) after MSIX install
 - [ ] `.zip` files show Extract submenu; non-ZIP files show Archive submenu

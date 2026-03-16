@@ -6,7 +6,9 @@
   xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
   xmlns:uap3="http://schemas.microsoft.com/appx/manifest/uap/windows10/3"
   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
-  IgnorableNamespaces="uap uap3 rescap">
+  xmlns:desktop4="http://schemas.microsoft.com/appx/manifest/desktop/windows10/4"
+  xmlns:com="http://schemas.microsoft.com/appx/manifest/com/windows10"
+  IgnorableNamespaces="uap uap3 rescap desktop4 com">
 
   <Identity
     Name="PavloRybchenko.Pakko"
@@ -56,6 +58,50 @@
         <uap3:Extension Category="windows.protocol">
           <uap3:Protocol Name="pakko" />
         </uap3:Extension>
+        <!-- T-F55: Register Archiver.Shell.exe as an out-of-process COM EXE server.
+             All six CLSIDs implement IExplorerCommand (parent + five commands).
+             Parent CLSID is bound to file types below via desktop4:FileExplorerContextMenus.
+             IExplorerCommand implementation in Archiver.Shell.exe is wired in T-F40. -->
+        <com:Extension Category="windows.comServer">
+          <com:ComServer>
+            <com:ExeServer Executable="Archiver.Shell.exe"
+                           DisplayName="Pakko Shell Handler">
+              <com:Class Id="6D8A2F1E-3B4C-4E5D-9F0A-1B2C3D4E5F6A"
+                         DisplayName="Pakko" />
+              <com:Class Id="7E9B3A2F-4C5D-4F6E-A01B-2C3D4E5F6A7B"
+                         DisplayName="Pakko: Extract Here" />
+              <com:Class Id="8FAC4B3A-5D6E-4A7F-B12C-3D4E5F6A7B8C"
+                         DisplayName="Pakko: Extract to Folder" />
+              <com:Class Id="90BD5C4B-6E7F-4B8A-C23D-4E5F6A7B8C9D"
+                         DisplayName="Pakko: Extract with Pakko..." />
+              <com:Class Id="A1CE6D5C-7F8A-4C9B-D34E-5F6A7B8C9DAE"
+                         DisplayName="Pakko: Add to .zip" />
+              <com:Class Id="B2DF7E6D-8A9B-4DAC-E45F-6A7B8C9DAEBF"
+                         DisplayName="Pakko: Archive with Pakko..." />
+            </com:ExeServer>
+          </com:ComServer>
+        </com:Extension>
+        <!-- T-F55: Bind the parent CLSID to three file-type scopes.
+             Win10 1809+: appears in classic context menu.
+             Win11 22000+: promoted to modern context menu automatically for packaged apps.
+             Dynamic submenu content (Extract vs Archive vs mixed) is determined at runtime
+             by IExplorerCommand::GetSubCommands in Archiver.Shell.exe (T-F40). -->
+        <desktop4:Extension Category="windows.fileExplorerContextMenus">
+          <desktop4:FileExplorerContextMenus>
+            <!-- ZIP files: handler returns Extract submenu -->
+            <desktop4:ItemType Type=".zip">
+              <desktop4:Verb Id="Pakko"
+                             Clsid="6D8A2F1E-3B4C-4E5D-9F0A-1B2C3D4E5F6A" />
+            </desktop4:ItemType>
+            <!-- All files (incl. non-ZIP): handler returns Archive submenu;
+                 returns HIDDEN state for pure-ZIP selections to avoid duplication -->
+            <desktop4:ItemType Type="*">
+              <desktop4:Verb Id="Pakko"
+                             Clsid="6D8A2F1E-3B4C-4E5D-9F0A-1B2C3D4E5F6A" />
+            </desktop4:ItemType>
+
+          </desktop4:FileExplorerContextMenus>
+        </desktop4:Extension>
       </Extensions>
     </Application>
   </Applications>

@@ -73,7 +73,9 @@ if (-not $DeployOnly) {
         "/p:PackageCertificateThumbprint=$Thumbprint"
     )
 
+    $env:PAKKO_DEPLOYING = '1'
     & dotnet @publishArgs
+    $env:PAKKO_DEPLOYING = $null
     if ($LASTEXITCODE -ne 0) {
         Write-Error "dotnet publish failed (exit code $LASTEXITCODE)."
         exit $LASTEXITCODE
