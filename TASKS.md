@@ -34,8 +34,9 @@ These rules apply to ALL tasks. Violating them = task is NOT complete.
 ## Current State — v1.1 Complete
 
 - All T-01 through T-35 + T-11, and T-F16/T-F17/T-F18/T-F26–T-F29/T-F37–T-F39 complete and committed
-- 59/59 tests pass (`dotnet test`)
-- MSIX builds at `src/Archiver.Package/AppPackages/` (unsigned — see T-F10 for signing)
+- 95/95 tests pass (`dotnet test`)
+- MSIX builds at `src/Archiver.App/AppPackages/` via `Deploy.ps1` (signed with dev cert)
+- Satellite EXEs (Archiver.Shell.exe, Archiver.ProgressWindow.exe) included via Content Include in Archiver.App.csproj
 - Git tag: `v1.1.0` — GitHub-only release for early testers
 - **Store release planned for v1.3** (when shell extension + MOTW + tar.exe complete)
 
@@ -771,7 +772,12 @@ No file list, no options, no tray icon. Window is non-resizable, fixed size (~40
 ---
 
 ### T-F55 — Dual Shell Registration
-- [x] **Status:** complete (v1.2)
+- [~] **Status:** partial (v1.2) — manifest declarations written then temporarily reverted
+
+> **Note:** COM registration (`com:Extension`) and context menu binding (`desktop4:Extension`)
+> were written and then removed from `Package.appxmanifest` because Explorer hangs on
+> right-click when `Archiver.Shell.exe` does not implement `IExplorerCommand`. Restore both
+> blocks after T-F61 is complete.
 - **Depends on:** T-F53
 
 **What:** Register Pakko's context menu via two mechanisms declared in `Package.appxmanifest`, both targeting `Archiver.Shell.exe`. Windows automatically uses the appropriate mechanism per OS version — no separate code paths needed.
@@ -863,8 +869,13 @@ pakko://archive?files=<base64-encoded-json-array>
 ---
 
 ### T-F40 — Shell Extension Registration (Dual Mechanism)
-- [ ] **Status:** in-progress (v1.2)
+- [~] **Status:** partial (v1.2) — MSIX installs with all three EXEs present
 - **Depends on:** T-F53, T-F55
+
+> **Note:** `Archiver.Shell.exe` and `Archiver.ProgressWindow.exe` confirmed present in the
+> installed package alongside `Archiver.App.exe`. Context menu functionality is blocked on
+> `IExplorerCommand` implementation (T-F61). COM and context menu manifest entries restored
+> once T-F61 is complete.
 
 **What:** Complete dual-mechanism shell registration wired to `Archiver.Shell.exe`. Validates that both `desktop4:FileExplorerContextMenus` (Win10) and `IExplorerCommand` via COM (Win11) registrations work end-to-end after MSIX install.
 
@@ -878,6 +889,28 @@ pakko://archive?files=<base64-encoded-json-array>
 - [ ] Context menu entry visible in modern menu on Win11 (no "Show more options" needed) — requires IExplorerCommand implementation
 - [ ] Invoking any menu item launches `Archiver.Shell.exe` with correct arguments — requires IExplorerCommand implementation
 - [ ] Uninstall removes both registration entries cleanly — no orphan registry keys
+
+---
+
+### T-F61 — IExplorerCommand Implementation
+- [ ] **Status:** future (v1.2)
+- **Depends on:** T-F53, T-F55
+
+**What:** Implement the `IExplorerCommand` COM interface in `Archiver.Shell.exe` so Windows Shell can activate context menu items without hanging. Research the correct C# COM interop approach for packaged apps before implementing — the interface must be served from the registered out-of-process COM EXE server declared in `Package.appxmanifest`.
+
+**Key design questions to resolve before implementation:**
+- C# COM interop mechanism for `IExplorerCommand` (ComWrappers vs ComImport vs WinRT interop)
+- How Windows Shell activates the COM server from a packaged out-of-process EXE
+- How `IShellItemArray` is passed to `IExplorerCommand::Invoke` and converted to file paths
+- Whether `GetSubCommands` returning child `IExplorerCommand` objects is required for the submenu
+
+**Acceptance criteria:**
+- [ ] `IExplorerCommand` implemented in `Archiver.Shell.exe`
+- [ ] Dynamic submenu: ZIP files show Extract options; non-ZIP files show Archive options; mixed selection shows combined options
+- [ ] Selected file paths extracted from `IShellItemArray` and passed to existing argument parsing logic
+- [ ] `com:Extension` and `desktop4:Extension` registration restored in `Package.appxmanifest` (T-F55)
+- [ ] Explorer does not hang on right-click after MSIX install
+- [ ] `dotnet test` passes
 
 ---
 

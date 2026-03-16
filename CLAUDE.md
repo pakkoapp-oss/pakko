@@ -87,6 +87,12 @@ SECURITY.md     → threat model (read if modifying compression logic,
   straightforward script step (copy, move, delete) versus a complex MSBuild/pipeline hook, choose
   the script. Reserve MSBuild targets and build pipeline customization for cases where a script
   genuinely cannot work. This applies to all tooling decisions — not just MSBuild.
+- **MSIX packaging:** never use `BeforeTargets` hooks or manual `MakeAppx` calls to inject files
+  into packages. Use `Content Include` items in `.csproj` with `CopyToOutputDirectory` — this is
+  the only reliable approach that survives incremental builds. `dotnet publish` with
+  `AppxPackageSigningEnabled=true` is the only confirmed working signing method; manual
+  `SignTool` calls fail on MSIX because `New-SelfSignedCertificate` generates CNG keys on modern
+  Windows and SignTool cannot use CNG keys to sign MSIX directly.
 
 ---
 
@@ -191,6 +197,28 @@ Task<IReadOnlyList<string>> PickFoldersAsync()
   Manual verification required: progress updates render correctly, Cancel signal
   propagates, auto-close triggers after 1.5 s on success, error dialog appears
   and stays open on failure.
+
+---
+
+## Windows Packaging Best Practices
+
+Lessons learned during v1.2 MSIX packaging work — follow these to avoid known failure modes:
+
+- **Satellite EXEs** are included via `Content Include` in `Archiver.App.csproj` with
+  `Condition="'$(GenerateAppxPackageOnBuild)'=='true'"` — invisible to normal VS builds,
+  activated only during `Deploy.ps1` packaging.
+- **Never sign MSIX manually** with `SignTool` — use `AppxPackageSigningEnabled=true` and
+  `PackageCertificateThumbprint` in `dotnet publish` instead. The SDK's built-in pipeline
+  handles MSIX format requirements correctly; direct SignTool calls produce `ERROR_BAD_FORMAT`.
+- **`New-SelfSignedCertificate` generates CNG keys** by default on modern Windows. SignTool
+  cannot use CNG keys for MSIX signing. Always pass
+  `-Provider "Microsoft Strong Cryptographic Provider"` to force CryptoAPI (RSA 2048).
+- **`.wapproj` does not work** for projects with multiple WinUI 3 apps. The DesktopBridge
+  targets generate PRI resources for each WinUI app (producing duplicate `Files/App.xbf`
+  entries) — this conflict cannot be resolved within the `.wapproj` model.
+- **`BeforeTargets` hooks are fragile** — the correct MSBuild hook point (`_CreateAppxPackage`,
+  `_GenerateAppxUploadPackageFile`, etc.) changes across SDK versions and `dotnet publish` vs
+  VS build contexts. Use `Content Include` instead.
 
 ---
 

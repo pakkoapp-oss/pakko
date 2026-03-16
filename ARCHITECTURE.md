@@ -7,17 +7,18 @@
 ## Layer Diagram
 
 ```
-┌─────────────────────────────────────┐
-│           Archiver.App              │
-│           (WinUI 3, net8.0-win)     │
-│                                     │
-│  MainWindow.xaml / .cs              │
-│  ViewModels/MainViewModel.cs        │
-│  Services/ (Dialog, Log)            │
-│  Strings/en-US/Resources.resw       │
-└──────────────┬──────────────────────┘
-               │  project reference
-               ▼
+┌─────────────────────────────────────┐  ┌──────────────────────────────────────┐
+│           Archiver.App              │  │         Archiver.Shell               │
+│           (WinUI 3, net8.0-win)     │  │   (net8.0-windows, WinExe, no WinUI) │
+│                                     │  │                                      │
+│  MainWindow.xaml / .cs              │  │  Program.cs (entry point)            │
+│  ViewModels/MainViewModel.cs        │  │  ShellArgumentParser.cs              │
+│  Services/ (Dialog, Log)            │  │  Launches ProgressWindow via pipe    │
+│  Strings/en-US/Resources.resw       │  │  Launches App via pakko:// URI       │
+└──────────────┬──────────────────────┘  └───────────────┬──────────────────────┘
+               │  project reference                       │  project reference
+               └──────────────┬──────────────────────────┘
+                               ▼
 ┌─────────────────────────────────────┐
 │           Archiver.Core             │
 │         (net8.0, no UI deps)        │
@@ -34,6 +35,16 @@
 │  System.Diagnostics.Process         │
 └─────────────────────────────────────┘
 ```
+
+**Archiver.ProgressWindow** (WinUI 3, net8.0-windows) — satellite progress UI. Launched by
+`Archiver.Shell` for silent operations. Communicates via named pipe (JSON messages). Not
+shown in diagram above as it has no project reference to Core — it is data-driven at runtime.
+
+**Archiver.Package** — created and deleted during v1.2 development. The `.wapproj` approach
+was abandoned due to PRI resource conflicts when packaging multiple WinUI 3 apps
+(`Files/App.xbf` duplicate entries from `Archiver.App` and `Archiver.ProgressWindow`).
+Satellite EXE packaging is solved instead via `Content Include` items in `Archiver.App.csproj`
+conditioned on `GenerateAppxPackageOnBuild=true`.
 
 **Rule:** `Archiver.Core` must have **zero** references to WinUI, Microsoft.UI,
 Windows.ApplicationModel.Resources, or any UI assembly.
@@ -56,22 +67,30 @@ src/
 │       ├── ArchiveError.cs
 │       └── SkippedFile.cs
 │
-└── Archiver.App/
-    ├── MainWindow.xaml / .cs
-    ├── ViewModels/
-    │   └── MainViewModel.cs
-    ├── Services/
-    │   ├── IDialogService.cs
-    │   ├── DialogService.cs
-    │   ├── ILogService.cs
-    │   └── LogService.cs
-    ├── Models/
-    │   └── FileItem.cs
-    ├── Converters/
-    │   └── BoolToVisibilityConverter.cs
-    └── Strings/
-        └── en-US/
-            └── Resources.resw
+├── Archiver.App/              ← WinUI 3 main app; packages all three EXEs via MSIX
+│   ├── MainWindow.xaml / .cs
+│   ├── ViewModels/
+│   │   └── MainViewModel.cs
+│   ├── Services/
+│   │   ├── IDialogService.cs
+│   │   ├── DialogService.cs
+│   │   ├── ILogService.cs
+│   │   └── LogService.cs
+│   ├── Models/
+│   │   └── FileItem.cs
+│   ├── Converters/
+│   │   └── BoolToVisibilityConverter.cs
+│   └── Strings/
+│       └── en-US/
+│           └── Resources.resw
+│
+├── Archiver.Shell/            ← shell extension entry point; net8.0-windows; WinExe; no WinUI
+│   ├── Program.cs
+│   └── ShellArgumentParser.cs
+│
+└── Archiver.ProgressWindow/   ← progress UI for silent operations; WinUI 3; named pipe client
+    ├── App.xaml / .cs
+    └── ProgressWindow.xaml / .cs
 ```
 
 ---
@@ -221,19 +240,16 @@ services.AddTransient<MainViewModel>();
 
 ## Planned Layer Additions (v1.2+)
 
-### v1.2 — Shell Extension
+### v1.2 — Shell Extension (in progress)
 
-New project `Archiver.ShellExtension` (net8.0-windows, COM):
+`Archiver.Shell` (net8.0-windows, WinExe) and `Archiver.ProgressWindow` (WinUI 3) are
+implemented and included in the MSIX package. Remaining work: `IExplorerCommand` COM
+interface implementation (T-F61) to activate context menu items without Explorer hanging.
 
-```
-Archiver.ShellExtension/
-  Commands/
-    ArchiveHereCommand.cs       ← IExplorerCommand
-    ExtractHereCommand.cs       ← IExplorerCommand
-    ExtractToFolderCommand.cs   ← IExplorerCommand
-```
-
-Registered via MSIX AppExtension in `Package.appxmanifest`. Communicates with `Archiver.App` via named pipe or protocol activation.
+**Pending T-F61:**
+- `IExplorerCommand` implemented inside `Archiver.Shell.exe` (out-of-process COM EXE server)
+- `com:Extension` and `desktop4:FileExplorerContextMenus` restored in `Package.appxmanifest`
+- Dynamic submenu population based on selection type (ZIP / non-ZIP / mixed)
 
 ### v1.3 — ITarService Layer
 
