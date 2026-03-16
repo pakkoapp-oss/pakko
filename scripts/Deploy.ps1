@@ -3,41 +3,57 @@
 .SYNOPSIS
     Builds, signs, and installs the Pakko MSIX package for local development.
 .DESCRIPTION
-    In default (BuildAndDeploy) mode, publishes a signed Release x64 MSIX,
-    uninstalls any existing Pakko package, then installs the new one.
+    In default (BuildAndDeploy) mode:
+      1. Builds Archiver.Shell and Archiver.ProgressWindow for the target architecture.
+      2. Runs dotnet publish on Archiver.App with GenerateAppxPackageOnBuild=true.
+         Content Include items in Archiver.App.csproj declare the satellite EXEs as
+         package content, so the packaging pipeline includes them automatically.
+      3. Uninstalls any existing Pakko package, then installs the new one.
 
-    In -DeployOnly mode, skips dotnet publish and installs the most recently
-    built .msix from AppPackages/ — used by the VS Release post-build event
-    to avoid double-building.
+    In -DeployOnly mode, skips all build/package steps and installs
+    the most recently built .msix from AppPackages/.
 .PARAMETER DeployOnly
-    Skip dotnet publish; install the most recently built .msix from AppPackages/.
+    Skip build and package; install the most recently built .msix from AppPackages/.
+.PARAMETER Architecture
+    Target architecture: "x64" (default) or "arm64".
 .PARAMETER Thumbprint
-    Thumbprint of the code-signing certificate to use (BuildAndDeploy mode only).
-    If omitted, the script searches Cert:\CurrentUser\My for a certificate with
-    Subject "CN=Pakko Dev".
+    Thumbprint of the code-signing certificate (BuildAndDeploy mode only).
+    If omitted, the script searches Cert:\CurrentUser\My for CN=Pakko Dev.
 .EXAMPLE
     .\Deploy.ps1
+    .\Deploy.ps1 -Architecture arm64
     .\Deploy.ps1 -Thumbprint "ABCDEF1234567890..."
     .\Deploy.ps1 -DeployOnly
 #>
 [CmdletBinding()]
 param(
     [switch] $DeployOnly,
+    [ValidateSet('x64', 'arm64')]
+    [string] $Architecture = 'x64',
     [string] $Thumbprint
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-# ── Paths ────────────────────────────────────────────────────────────────────
+# ── Paths ─────────────────────────────────────────────────────────────────────
 $repoRoot   = Split-Path $PSScriptRoot -Parent
 $csprojPath = Join-Path $repoRoot 'src\Archiver.App\Archiver.App.csproj'
 $pkgOutDir  = Join-Path $repoRoot 'src\Archiver.App\AppPackages'
 
+# ── Derive platform/RID from Architecture ─────────────────────────────────────
+if ($Architecture -eq 'arm64') {
+    $platform = 'ARM64'
+    $rid      = 'win-arm64'
+} else {
+    $platform = 'x64'
+    $rid      = 'win-x64'
+}
+
 if (-not $DeployOnly) {
-    # ── Resolve certificate thumbprint ──────────────────────────────────────────
+    # ── Resolve certificate thumbprint ────────────────────────────────────────
     if (-not $Thumbprint) {
-        Write-Host "No thumbprint provided — searching Cert:\CurrentUser\My for CN=Pakko Dev..."
+        Write-Host "No thumbprint provided -- searching Cert:\CurrentUser\My for CN=Pakko Dev..."
         $cert = Get-ChildItem 'Cert:\CurrentUser\My' |
             Where-Object { $_.Subject -eq 'CN=Pakko Dev' } |
             Sort-Object NotAfter -Descending |
@@ -52,37 +68,45 @@ if (-not $DeployOnly) {
         Write-Host "Found certificate: $Thumbprint (expires $($cert.NotAfter.ToString('yyyy-MM-dd')))"
     }
 
-    # ── Clean old AppPackages output ─────────────────────────────────────────────
+    # ── Clean old AppPackages output ──────────────────────────────────────────
     if (Test-Path $pkgOutDir) {
         Write-Host "Removing old AppPackages output..."
         Remove-Item -Recurse -Force $pkgOutDir -ErrorAction SilentlyContinue
     }
 
-    # ── Build & package ──────────────────────────────────────────────────────────
+    # ── Build satellite projects ───────────────────────────────────────────────
     Write-Host ""
-    Write-Host "Building and packaging Pakko..." -ForegroundColor Cyan
+    Write-Host "Building satellite projects..." -ForegroundColor Cyan
 
-    $publishArgs = @(
-        'publish', $csprojPath,
-        '/p:Configuration=Release',
-        '/p:Platform=x64',
-        '/p:RuntimeIdentifier=win-x64',
-        '/p:SelfContained=true',
-        '/p:GenerateAppxPackageOnBuild=true',
-        '/p:AppxPackageSigningEnabled=true',
-        "/p:PackageCertificateThumbprint=$Thumbprint"
-    )
+    $shellProj    = Join-Path $repoRoot 'src\Archiver.Shell\Archiver.Shell.csproj'
+    $progressProj = Join-Path $repoRoot 'src\Archiver.ProgressWindow\Archiver.ProgressWindow.csproj'
+
+    & dotnet build $shellProj    /p:Configuration=Release /p:Platform=$platform /p:RuntimeIdentifier=$rid --no-self-contained
+    if ($LASTEXITCODE -ne 0) { Write-Error "Archiver.Shell build failed (exit $LASTEXITCODE)."; exit $LASTEXITCODE }
+
+    & dotnet build $progressProj /p:Configuration=Release /p:Platform=$platform /p:RuntimeIdentifier=$rid --no-self-contained
+    if ($LASTEXITCODE -ne 0) { Write-Error "Archiver.ProgressWindow build failed (exit $LASTEXITCODE)."; exit $LASTEXITCODE }
+
+    # ── dotnet publish: package and sign ─────────────────────────────────────
+    # Content Include items in Archiver.App.csproj (conditioned on
+    # GenerateAppxPackageOnBuild=true) declare satellite EXEs as package content.
+    Write-Host ""
+    Write-Host "Publishing Pakko ($Architecture)..." -ForegroundColor Cyan
 
     $env:PAKKO_DEPLOYING = '1'
-    & dotnet @publishArgs
+    & dotnet publish $csprojPath `
+        /p:Configuration=Release `
+        "/p:Platform=$platform" `
+        "/p:RuntimeIdentifier=$rid" `
+        /p:SelfContained=true `
+        /p:GenerateAppxPackageOnBuild=true `
+        /p:AppxPackageSigningEnabled=true `
+        "/p:PackageCertificateThumbprint=$Thumbprint"
     $env:PAKKO_DEPLOYING = $null
-    if ($LASTEXITCODE -ne 0) {
-        Write-Error "dotnet publish failed (exit code $LASTEXITCODE)."
-        exit $LASTEXITCODE
-    }
+    if ($LASTEXITCODE -ne 0) { Write-Error "dotnet publish failed (exit $LASTEXITCODE)."; exit $LASTEXITCODE }
 }
 
-# ── Locate the generated .msix ───────────────────────────────────────────────
+# ── Locate the final .msix ────────────────────────────────────────────────────
 $msix = Get-ChildItem -Path $pkgOutDir -Recurse -Filter '*.msix' |
     Sort-Object LastWriteTime -Descending |
     Select-Object -First 1
@@ -94,16 +118,16 @@ if (-not $msix) {
 
 Write-Host "Package: $($msix.FullName)"
 
-# ── Uninstall existing Pakko package ────────────────────────────────────────
+# ── Uninstall existing Pakko package ──────────────────────────────────────────
 Write-Host ""
 Write-Host "Uninstalling existing Pakko package (if any)..."
 Get-AppxPackage *Pakko* | Remove-AppxPackage -ErrorAction SilentlyContinue
 
-# ── Install new package ──────────────────────────────────────────────────────
+# ── Install new package ───────────────────────────────────────────────────────
 Write-Host "Installing $($msix.Name)..."
 Add-AppxPackage -Path $msix.FullName
 
-# ── Report installed version ─────────────────────────────────────────────────
+# ── Report installed version ──────────────────────────────────────────────────
 $installed = Get-AppxPackage *Pakko* | Select-Object -First 1
 if ($installed) {
     Write-Host ""

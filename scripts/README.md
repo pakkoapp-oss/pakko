@@ -32,21 +32,27 @@ You only need to run this once per machine (or when the certificate expires).
 
 ## Step 2 — Build and install (after every change)
 
-**Full build + deploy** (terminal workflow — builds and signs via `dotnet publish`):
+**Full build + deploy** (terminal workflow):
 
 ```powershell
-# Auto-detect the CN=Pakko Dev certificate:
+# Auto-detect the CN=Pakko Dev certificate (x64 default):
 .\scripts\Deploy.ps1
+
+# ARM64 build:
+.\scripts\Deploy.ps1 -Architecture arm64
 
 # Or pass the thumbprint explicitly:
 .\scripts\Deploy.ps1 -Thumbprint "ABCDEF1234567890ABCDEF1234567890ABCDEF12"
 ```
 
 This will:
-1. Run `dotnet publish` with Release/x64/signed MSIX settings
-2. Uninstall any existing Pakko package
-3. Install the new `.msix` from `src/Archiver.App/AppPackages/`
-4. Print the installed version
+1. Run `MSBuild.exe` on `Archiver.Package.wapproj` — DesktopBridge targets collect all three EXE projects (App, Shell, ProgressWindow) into the package automatically
+2. Sign the `.msix` with `SignTool.exe`
+3. Uninstall any existing Pakko package
+4. Install the new `.msix` from `src/Archiver.Package/AppPackages/`
+5. Print the installed version
+
+**`-Architecture`** — `"x64"` (default) or `"arm64"`. Derives the MSBuild Platform and runtime identifier automatically.
 
 **Deploy only** (skips build — installs the most recently built `.msix`):
 

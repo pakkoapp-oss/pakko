@@ -83,6 +83,10 @@ SECURITY.md     → threat model (read if modifying compression logic,
   tests in other projects (`Archiver.Shell.Tests`, future `Archiver.CLI.Tests`) need to be updated
   or extended. Internal implementation changes (private methods, buffers, sorting) require only
   `Archiver.Core.Tests` coverage.
+- Prefer simple and explicit over clever and implicit. If a task can be solved with a
+  straightforward script step (copy, move, delete) versus a complex MSBuild/pipeline hook, choose
+  the script. Reserve MSBuild targets and build pipeline customization for cases where a script
+  genuinely cannot work. This applies to all tooling decisions — not just MSBuild.
 
 ---
 

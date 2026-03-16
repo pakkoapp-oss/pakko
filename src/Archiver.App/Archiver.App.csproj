@@ -52,6 +52,23 @@
   </ItemGroup>
 
   <!--
+    Declare satellite EXEs as package content so the MSIX packaging pipeline
+    picks them up automatically. Conditioned on GenerateAppxPackageOnBuild=true
+    so these items are invisible during normal VS Debug/Release builds.
+    Satellites must be built before dotnet publish is invoked (Deploy.ps1 step 1).
+  -->
+  <ItemGroup Condition="'$(GenerateAppxPackageOnBuild)'=='true'">
+    <Content Include="..\Archiver.Shell\bin\$(Platform)\$(Configuration)\net8.0-windows\$(RuntimeIdentifier)\Archiver.Shell.exe">
+      <Link>Archiver.Shell.exe</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\Archiver.ProgressWindow\bin\$(Platform)\$(Configuration)\net8.0-windows10.0.17763.0\$(RuntimeIdentifier)\Archiver.ProgressWindow.exe">
+      <Link>Archiver.ProgressWindow.exe</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <!--
     Defining the "HasPackageAndPublishMenuAddedByProject" property here allows the Solution
     Explorer "Package and Publish" context menu entry to be enabled for this project even if
     the Windows App SDK Nuget package has not yet been restored.

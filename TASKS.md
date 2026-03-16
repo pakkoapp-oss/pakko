@@ -35,7 +35,7 @@ These rules apply to ALL tasks. Violating them = task is NOT complete.
 
 - All T-01 through T-35 + T-11, and T-F16/T-F17/T-F18/T-F26–T-F29/T-F37–T-F39 complete and committed
 - 59/59 tests pass (`dotnet test`)
-- MSIX builds at `src/Archiver.App/AppPackages/` (unsigned — see T-F10 for signing)
+- MSIX builds at `src/Archiver.Package/AppPackages/` (unsigned — see T-F10 for signing)
 - Git tag: `v1.1.0` — GitHub-only release for early testers
 - **Store release planned for v1.3** (when shell extension + MOTW + tar.exe complete)
 
@@ -863,7 +863,7 @@ pakko://archive?files=<base64-encoded-json-array>
 ---
 
 ### T-F40 — Shell Extension Registration (Dual Mechanism)
-- [ ] **Status:** future (v1.2)
+- [ ] **Status:** in-progress (v1.2)
 - **Depends on:** T-F53, T-F55
 
 **What:** Complete dual-mechanism shell registration wired to `Archiver.Shell.exe`. Validates that both `desktop4:FileExplorerContextMenus` (Win10) and `IExplorerCommand` via COM (Win11) registrations work end-to-end after MSIX install.
@@ -871,11 +871,12 @@ pakko://archive?files=<base64-encoded-json-array>
 **Note:** Registration declarations are written in T-F55. This task covers end-to-end validation — install, verify menu appearance on both OS versions, verify uninstall cleanup.
 
 **Acceptance criteria:**
-- [ ] MSIX installs without errors on Windows 10 1809+
-- [ ] MSIX installs without errors on Windows 11 22000+
-- [ ] Context menu entry visible in classic menu on Win10 (right-click → menu appears)
-- [ ] Context menu entry visible in modern menu on Win11 (no "Show more options" needed)
-- [ ] Invoking any menu item launches `Archiver.Shell.exe` with correct arguments
+- [x] MSIX installs without errors on Windows 10 1809+
+- [x] MSIX installs without errors on Windows 11 22000+
+- [x] `Archiver.Shell.exe` and `Archiver.ProgressWindow.exe` present in installed package alongside `Archiver.App.exe`
+- [ ] Context menu entry visible in classic menu on Win10 (right-click → menu appears) — requires IExplorerCommand implementation
+- [ ] Context menu entry visible in modern menu on Win11 (no "Show more options" needed) — requires IExplorerCommand implementation
+- [ ] Invoking any menu item launches `Archiver.Shell.exe` with correct arguments — requires IExplorerCommand implementation
 - [ ] Uninstall removes both registration entries cleanly — no orphan registry keys
 
 ---

@@ -3,10 +3,13 @@
 .SYNOPSIS
     Creates and installs a self-signed developer certificate for local Pakko MSIX signing.
 .DESCRIPTION
-    Run once before using Deploy.ps1. Generates a code-signing certificate,
-    exports it as PakkoDev.cer, and installs it into the machine TrustedPeople store.
+    Run once before using Deploy.ps1. Removes any existing CN=Pakko Dev certificate,
+    generates a new CryptoAPI RSA code-signing certificate, exports it as PakkoDev.cer,
+    and installs it into the machine TrustedPeople store.
     Requires elevation — the script will relaunch itself as Administrator if needed.
 .NOTES
+    Uses -Provider "Microsoft Strong Cryptographic Provider" to generate a CryptoAPI key
+    instead of CNG. SignTool requires a CryptoAPI key to sign MSIX files.
     The printed thumbprint is required by Deploy.ps1.
 #>
 
@@ -23,13 +26,30 @@ if (-not $isAdmin) {
 
 $cerPath = Join-Path $PSScriptRoot 'PakkoDev.cer'
 
-# Generate self-signed code-signing certificate in the current user store
-Write-Host "Generating self-signed certificate..."
+# Remove any existing CN=Pakko Dev certificate from CurrentUser\My
+Write-Host "Removing any existing CN=Pakko Dev certificates from Cert:\CurrentUser\My..."
+Get-ChildItem 'Cert:\CurrentUser\My' |
+    Where-Object { $_.Subject -eq 'CN=Pakko Dev' } |
+    Remove-Item
+
+# Remove any existing CN=Pakko Dev certificate from LocalMachine\TrustedPeople
+Write-Host "Removing any existing CN=Pakko Dev certificates from Cert:\LocalMachine\TrustedPeople..."
+Get-ChildItem 'Cert:\LocalMachine\TrustedPeople' |
+    Where-Object { $_.Subject -eq 'CN=Pakko Dev' } |
+    Remove-Item
+
+# Generate self-signed CryptoAPI code-signing certificate in the current user store.
+# -Provider "Microsoft Strong Cryptographic Provider" forces CryptoAPI (not CNG) so
+# SignTool can use the key directly when signing MSIX files.
+Write-Host "Generating self-signed certificate (CryptoAPI RSA 2048)..."
 $cert = New-SelfSignedCertificate `
     -Subject 'CN=Pakko Dev' `
     -CertStoreLocation 'Cert:\CurrentUser\My' `
     -Type CodeSigningCert `
     -KeyUsage DigitalSignature `
+    -KeyAlgorithm RSA `
+    -KeyLength 2048 `
+    -Provider 'Microsoft Strong Cryptographic Provider' `
     -FriendlyName 'Pakko Dev (local)'
 
 if (-not $cert) {
@@ -56,5 +76,4 @@ Write-Host " Certificate thumbprint (copy this):" -ForegroundColor Cyan
 Write-Host " $($cert.Thumbprint)" -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "Pass this thumbprint to Deploy.ps1 with -Thumbprint, or"
-Write-Host "omit it and Deploy.ps1 will locate the certificate automatically."
+Write-Host "New certificate generated. Run Deploy.ps1 to build and install."
