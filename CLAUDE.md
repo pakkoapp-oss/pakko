@@ -57,6 +57,9 @@ ARCHITECTURE.md → current C# signatures — use these, do not invent
 CONVENTIONS.md  → naming, async rules, error handling
 SECURITY.md     → threat model (read if modifying compression logic,
                   file traversal, extraction paths, or any file I/O)
+DECISIONS.md    → architectural decisions and rejected approaches
+                  (read before implementing anything in packaging,
+                  COM, or shell integration)
 ```
 
 ---
@@ -93,6 +96,14 @@ SECURITY.md     → threat model (read if modifying compression logic,
   `AppxPackageSigningEnabled=true` is the only confirmed working signing method; manual
   `SignTool` calls fail on MSIX because `New-SelfSignedCertificate` generates CNG keys on modern
   Windows and SignTool cannot use CNG keys to sign MSIX directly.
+- **3-attempt rule:** if the same problem persists after 3 different implementation attempts,
+  stop immediately. Report what was tried, what failed, and what is unknown. Do not attempt a
+  4th approach without explicit direction. This applies especially to build tooling, packaging,
+  and signing issues.
+- **Pre-implementation research:** for tasks involving COM interop, shell integration, or Windows
+  packaging — always research existing working examples before writing any code. Check NanaZip,
+  Windows Community Toolkit, and Microsoft docs. Document findings in `DECISIONS.md` before
+  implementing.
 
 ---
 

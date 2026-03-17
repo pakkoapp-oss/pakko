@@ -905,6 +905,8 @@ pakko://archive?files=<base64-encoded-json-array>
 - Whether `GetSubCommands` returning child `IExplorerCommand` objects is required for the submenu
 
 **Acceptance criteria:**
+- [ ] Research phase complete: C# `IExplorerCommand` implementation approach documented in
+      `DECISIONS.md` before any code written
 - [ ] `IExplorerCommand` implemented in `Archiver.Shell.exe`
 - [ ] Dynamic submenu: ZIP files show Extract options; non-ZIP files show Archive options; mixed selection shows combined options
 - [ ] Selected file paths extracted from `IShellItemArray` and passed to existing argument parsing logic
