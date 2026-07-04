@@ -104,9 +104,15 @@ DECISIONS.md    → architectural decisions and rejected approaches
   4th approach without explicit direction. This applies especially to build tooling, packaging,
   and signing issues.
 - **Pre-implementation research:** for tasks involving COM interop, shell integration, or Windows
-  packaging — always research existing working examples before writing any code. Check NanaZip,
-  Windows Community Toolkit, and Microsoft docs. Document findings in `DECISIONS.md` before
-  implementing.
+  packaging — always research existing working examples before writing any code. "Check NanaZip"
+  means fetch the actual shipped source (github.com/M2Team/NanaZip, e.g.
+  `NanaZipPackage/Package.appxmanifest`) and quote/compare its real XML or code — not a
+  description from memory or search-result summaries. A manifest schema that merely looks
+  plausible is not enough; verify it against a working reference before writing it. Also check
+  Windows Community Toolkit and Microsoft docs. Document findings in `DECISIONS.md` before
+  implementing. (The `com:InProcessServer` schema in the original T-F61 decision was never
+  actually verified this way and shipped with an undeclared XML namespace for ~4 months before
+  being caught — see the "Correction — SurrogateServer" entry in `DECISIONS.md`.)
 
 ---
 
@@ -249,11 +255,15 @@ Lessons learned during v1.2 MSIX packaging work — follow these to avoid known 
 
 ## Deployment
 
-- Every time a change is deployed via `Deploy.ps1`, increment the last segment of the
-  `Version` attribute in `src/Archiver.App/Package.appxmanifest` by 1.
+- `Deploy.ps1` automatically increments the last segment of the `Version` attribute in
+  `src/Archiver.App/Package.appxmanifest` after every successful build+install (not in
+  `-DeployOnly` mode, which reinstalls an already-built package). No manual bump needed.
+  Pass `-SkipVersionBump` to suppress this for a given run.
 - The version format is `1.1.0.X` — only the last segment changes.
   Example: `1.1.0.3` → `1.1.0.4`.
 - Do not change the first three segments unless explicitly instructed.
+- If bumping manually (e.g. outside `Deploy.ps1`), only edit the `Version` attribute on
+  `<Identity>` — do not touch `MinVersion`/`MaxVersionTested` on `TargetDeviceFamily`.
 
 ---
 

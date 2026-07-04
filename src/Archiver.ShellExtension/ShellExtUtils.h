@@ -1,0 +1,37 @@
+#pragma once
+#include "pch.h"
+
+// ---------------------------------------------------------------------------
+// COM-free utility functions for Archiver.ShellExtension.
+// All functions in this file can be unit-tested without COM.
+// ---------------------------------------------------------------------------
+
+// Returns the directory that contains this DLL.
+// Uses g_hModule set in DllMain. Returns empty string on failure.
+std::wstring GetDllDirectory();
+
+// Returns the full path to Archiver.Shell.exe (sibling of this DLL).
+// Returns empty string if GetDllDirectory() fails.
+std::wstring GetShellExePath();
+
+// Extracts all filesystem paths from psia.
+// Returns an empty vector if psia is null or retrieval fails; never throws.
+std::vector<std::wstring> GetPathsFromShellItemArray(IShellItemArray* psia);
+
+// Returns true iff all paths end with .zip (case-insensitive).
+// Returns false for an empty vector.
+bool AllPathsAreZip(const std::vector<std::wstring>& paths);
+
+// Returns true iff at least one path ends with .zip (case-insensitive).
+bool AnyPathIsZip(const std::vector<std::wstring>& paths);
+
+// Launches Archiver.Shell.exe with the given argument string via CreateProcess.
+// Closes PROCESS_INFORMATION handles immediately after launch; does not wait.
+// Returns HRESULT_FROM_WIN32 on CreateProcess failure.
+HRESULT LaunchShellExe(const std::wstring& args);
+
+// Command-line argument builders.
+// Each path is wrapped in double quotes. No escaping needed: '"' is invalid in NTFS names.
+std::wstring BuildExtractHereArgs(const std::vector<std::wstring>& paths);
+std::wstring BuildExtractFolderArgs(const std::vector<std::wstring>& paths);
+std::wstring BuildArchiveArgs(const std::vector<std::wstring>& paths);

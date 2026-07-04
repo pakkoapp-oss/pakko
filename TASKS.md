@@ -893,26 +893,57 @@ pakko://archive?files=<base64-encoded-json-array>
 ---
 
 ### T-F61 — IExplorerCommand Implementation
-- [ ] **Status:** future (v1.2)
+- [~] **Status:** in progress (v1.2)
 - **Depends on:** T-F53, T-F55
 
-**What:** Implement the `IExplorerCommand` COM interface in `Archiver.Shell.exe` so Windows Shell can activate context menu items without hanging. Research the correct C# COM interop approach for packaged apps before implementing — the interface must be served from the registered out-of-process COM EXE server declared in `Package.appxmanifest`.
+**What:** In-process COM DLL (`Archiver.ShellExtension.dll`) implementing `IExplorerCommand` via
+WRL. Registered as `com:InProcessServer` in `Package.appxmanifest`. Launches `Archiver.Shell.exe`
+via `CreateProcess` from `Invoke`. See `DECISIONS.md` for architecture rationale (in-process DLL
+chosen over out-of-process EXE).
 
-**Key design questions to resolve before implementation:**
-- C# COM interop mechanism for `IExplorerCommand` (ComWrappers vs ComImport vs WinRT interop)
-- How Windows Shell activates the COM server from a packaged out-of-process EXE
-- How `IShellItemArray` is passed to `IExplorerCommand::Invoke` and converted to file paths
-- Whether `GetSubCommands` returning child `IExplorerCommand` objects is required for the submenu
+**Projects:**
+- `src/Archiver.ShellExtension/` — C++ DLL (x64 + ARM64, static CRT /MT)
+- `tests/Archiver.ShellExtension.Tests/` — C++ test EXE (Google Test via NuGet)
 
 **Acceptance criteria:**
-- [ ] Research phase complete: C# `IExplorerCommand` implementation approach documented in
-      `DECISIONS.md` before any code written
-- [ ] `IExplorerCommand` implemented in `Archiver.Shell.exe`
-- [ ] Dynamic submenu: ZIP files show Extract options; non-ZIP files show Archive options; mixed selection shows combined options
-- [ ] Selected file paths extracted from `IShellItemArray` and passed to existing argument parsing logic
-- [ ] `com:Extension` and `desktop4:Extension` registration restored in `Package.appxmanifest` (T-F55)
-- [ ] Explorer does not hang on right-click after MSIX install
-- [ ] `dotnet test` passes
+- [x] Architecture documented in `DECISIONS.md` before code written
+- [x] `Archiver.ShellExtension` C++ DLL project added to solution
+- [x] `Archiver.ShellExtension.Tests` C++ test project added to solution
+- [x] `IExplorerCommand` implemented for `PakkoRootCommand`, `ExtractHereCommand`,
+      `ExtractFolderCommand`, `ArchiveCommand` via WRL
+- [x] Dynamic submenu: ZIP files → Extract here + Extract to folder; non-ZIP/mixed → Add to archive
+- [x] Selected file paths extracted from `IShellItemArray` via `GetPathsFromShellItemArray`
+- [x] `com:Extension` + `desktop4:Extension` restored in `Package.appxmanifest` (unblocks T-F55)
+- [x] DLL included in MSIX via `Content Include` in `Archiver.App.csproj`
+- [x] `Deploy.ps1` builds DLL via MSBuild before `dotnet publish`
+- [ ] **Manual smoke test:** Explorer does not hang on right-click after `Deploy.ps1`
+- [ ] **Manual smoke test:** "Pakko ▶" submenu appears in context menu
+- [ ] **Manual smoke test:** Extract here/folder/archive commands invoke `Archiver.Shell.exe`
+- [ ] **Manual smoke test:** `Type="Directory"` shows menu on folder right-click (verify empirically)
+- [ ] `Archiver.ShellExtension.Tests.exe` passes all Google Test cases
+
+**Manual end-to-end smoke test procedure (step 8):**
+1. Run `.\scripts\Deploy.ps1` — confirm no build errors; MSIX installs successfully.
+2. Open File Explorer; right-click a `.zip` file.
+   - Confirm "Pakko ▶" submenu appears with "Extract here" and "Extract to folder…".
+   - Click "Extract here" → `Archiver.ProgressWindow` appears; extraction completes.
+3. Right-click a non-ZIP file (e.g., `.txt`).
+   - Confirm "Pakko ▶" submenu appears with "Add to archive…".
+   - Click "Add to archive…" → `Archiver.ProgressWindow` appears; archive is created.
+4. Right-click a folder.
+   - Confirm "Pakko ▶" submenu appears. If `Type="Directory"` is not supported by the OS
+     version, remove that entry from `Package.appxmanifest` and re-run `Deploy.ps1`.
+5. Select a mixed set (one ZIP + one non-ZIP); right-click.
+   - Confirm only "Add to archive…" appears (mixed → archive only).
+6. Uninstall Pakko via `Get-AppxPackage *Pakko* | Remove-AppxPackage`.
+   - Confirm no orphan context menu entries remain.
+
+**Test project setup (NuGet restore required before first build):**
+```
+nuget restore tests\Archiver.ShellExtension.Tests\Archiver.ShellExtension.Tests.vcxproj
+  -SolutionDirectory .
+```
+Then build and run `tests\Archiver.ShellExtension.Tests\bin\x64\Debug\Archiver.ShellExtension.Tests.exe`.
 
 ---
 

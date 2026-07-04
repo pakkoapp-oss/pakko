@@ -46,6 +46,7 @@
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.3" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.7705" />
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.8.260209005" />
+    <PackageReference Include="System.Security.Permissions" Version="8.0.0" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Archiver.Core\Archiver.Core.csproj" />
@@ -64,6 +65,15 @@
     </Content>
     <Content Include="..\Archiver.ProgressWindow\bin\$(Platform)\$(Configuration)\net8.0-windows10.0.17763.0\$(RuntimeIdentifier)\Archiver.ProgressWindow.exe">
       <Link>Archiver.ProgressWindow.exe</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <!--
+      Archiver.ShellExtension.dll is a C++ DLL built by MSBuild (Deploy.ps1 step 1b).
+      Always reference the Release build — Debug /MTd DLL must never enter an MSIX package.
+    -->
+    <Content Include="..\Archiver.ShellExtension\bin\$(Platform)\Release\Archiver.ShellExtension.dll"
+             Condition="'$(GenerateAppxPackageOnBuild)'=='true'">
+      <Link>Archiver.ShellExtension.dll</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

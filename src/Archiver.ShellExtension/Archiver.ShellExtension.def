@@ -1,0 +1,5 @@
+LIBRARY Archiver.ShellExtension
+
+EXPORTS
+    DllGetClassObject PRIVATE
+    DllCanUnloadNow   PRIVATE

@@ -6,12 +6,15 @@
   xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
   xmlns:uap3="http://schemas.microsoft.com/appx/manifest/uap/windows10/3"
   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
-  IgnorableNamespaces="uap uap3 rescap">
+  xmlns:com="http://schemas.microsoft.com/appx/manifest/com/windows10"
+  xmlns:desktop4="http://schemas.microsoft.com/appx/manifest/desktop/windows10/4"
+  xmlns:desktop5="http://schemas.microsoft.com/appx/manifest/desktop/windows10/5"
+  IgnorableNamespaces="uap uap3 rescap com desktop4 desktop5">
 
   <Identity
     Name="PavloRybchenko.Pakko"
     Publisher="CN=EF3EC84C-8287-4FC3-BB4F-FCCEBA116BCE"
-    Version="1.1.0.0" />
+    Version="1.1.0.15" />
 
   <mp:PhoneIdentity PhoneProductId="c0456ca0-e25b-4778-95a2-045a49e4ab06" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
 
@@ -22,8 +25,8 @@
   </Properties>
 
   <Dependencies>
-    <TargetDeviceFamily Name="Windows.Universal" MinVersion="10.0.17763.0" MaxVersionTested="10.0.19041.0" />
-    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.19041.0" />
+    <TargetDeviceFamily Name="Windows.Universal" MinVersion="10.0.19041.0" MaxVersionTested="10.0.22621.0" />
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.19041.0" MaxVersionTested="10.0.22621.0" />
   </Dependencies>
 
   <Resources>
@@ -56,10 +59,35 @@
         <uap3:Extension Category="windows.protocol">
           <uap3:Protocol Name="pakko" />
         </uap3:Extension>
-        <!-- T-F55 (com:Extension + desktop4:Extension) temporarily removed.
-             COM server registration and context menu binding cause Explorer to
-             hang because Archiver.Shell.exe does not implement IExplorerCommand yet.
-             Restore when T-F40 is complete. -->
+        <!--
+          T-F61: IExplorerCommand shell extension (Archiver.ShellExtension.dll), registered
+          as a SurrogateServer — same schema as NanaZip's shipped manifest (verified against
+          github.com/M2Team/NanaZip). Runs the DLL inside an isolated dllhost.exe surrogate,
+          so a crash in the extension does not bring down explorer.exe.
+          desktop4:FileExplorerContextMenus wires the classic context menu.
+          Type="*" — all files, including .zip (no duplicate .zip entry needed)
+        -->
+        <com:Extension Category="windows.comServer">
+          <com:ComServer>
+            <com:SurrogateServer DisplayName="Pakko Shell Extension">
+              <com:Class Id="1EABC7CE-20A4-48EE-A99F-43D4E0F58D6A"
+                         Path="Archiver.ShellExtension.dll"
+                         ThreadingModel="STA" />
+            </com:SurrogateServer>
+          </com:ComServer>
+        </com:Extension>
+        <desktop4:Extension Category="windows.fileExplorerContextMenus">
+          <desktop4:FileExplorerContextMenus>
+            <desktop4:ItemType Type="*">
+              <desktop4:Verb Id="0000PakkoShellExtension"
+                             Clsid="1EABC7CE-20A4-48EE-A99F-43D4E0F58D6A" />
+            </desktop4:ItemType>
+            <desktop5:ItemType Type="Directory">
+              <desktop5:Verb Id="0000PakkoShellExtension"
+                             Clsid="1EABC7CE-20A4-48EE-A99F-43D4E0F58D6A" />
+            </desktop5:ItemType>
+          </desktop4:FileExplorerContextMenus>
+        </desktop4:Extension>
       </Extensions>
     </Application>
   </Applications>

@@ -1,0 +1,112 @@
+// ShellExtUtilsTests.cpp
+// Unit tests for the COM-free functions in ShellExtUtils.cpp.
+// No COM, no DLL loading — pure argument-building and path-classification logic.
+
+#include "pch.h"         // pulled from src/Archiver.ShellExtension via include dir
+#include "ShellExtUtils.h"
+#include <gtest/gtest.h>
+
+// ---------------------------------------------------------------------------
+// AllPathsAreZip / AnyPathIsZip
+// ---------------------------------------------------------------------------
+
+TEST(AllPathsAreZip, ReturnsFalseForEmptyVector)
+{
+    EXPECT_FALSE(AllPathsAreZip({}));
+}
+
+TEST(AllPathsAreZip, ReturnsTrueWhenAllZip)
+{
+    EXPECT_TRUE(AllPathsAreZip({ L"C:\\a.zip", L"C:\\b.zip" }));
+}
+
+TEST(AllPathsAreZip, ReturnsFalseWhenMixed)
+{
+    EXPECT_FALSE(AllPathsAreZip({ L"C:\\a.zip", L"C:\\b.txt" }));
+}
+
+TEST(AllPathsAreZip, CaseInsensitive)
+{
+    EXPECT_TRUE(AllPathsAreZip({ L"C:\\archive.ZIP", L"C:\\data.Zip" }));
+}
+
+TEST(AnyPathIsZip, ReturnsFalseForEmptyVector)
+{
+    EXPECT_FALSE(AnyPathIsZip({}));
+}
+
+TEST(AnyPathIsZip, ReturnsTrueWhenOneZip)
+{
+    EXPECT_TRUE(AnyPathIsZip({ L"C:\\file.txt", L"C:\\archive.zip" }));
+}
+
+TEST(AnyPathIsZip, ReturnsFalseWhenNoneAreZip)
+{
+    EXPECT_FALSE(AnyPathIsZip({ L"C:\\file.txt", L"C:\\image.png" }));
+}
+
+// ---------------------------------------------------------------------------
+// BuildExtractHereArgs
+// ---------------------------------------------------------------------------
+
+TEST(BuildExtractHereArgs, SingleFile)
+{
+    const auto args = BuildExtractHereArgs({ L"C:\\archive.zip" });
+    EXPECT_EQ(args, L"--extract-here \"C:\\archive.zip\"");
+}
+
+TEST(BuildExtractHereArgs, MultipleFiles)
+{
+    const auto args = BuildExtractHereArgs({ L"C:\\a.zip", L"C:\\b.zip" });
+    EXPECT_EQ(args, L"--extract-here \"C:\\a.zip\" \"C:\\b.zip\"");
+}
+
+TEST(BuildExtractHereArgs, PathWithSpaces)
+{
+    const auto args = BuildExtractHereArgs({ L"C:\\My Files\\test.zip" });
+    EXPECT_EQ(args, L"--extract-here \"C:\\My Files\\test.zip\"");
+}
+
+TEST(BuildExtractHereArgs, CyrillicPath)
+{
+    const auto args = BuildExtractHereArgs({ L"C:\\\u0414\u0430\u043D\u0456.zip" });
+    EXPECT_EQ(args, L"--extract-here \"C:\\\u0414\u0430\u043D\u0456.zip\"");
+}
+
+// ---------------------------------------------------------------------------
+// BuildExtractFolderArgs
+// ---------------------------------------------------------------------------
+
+TEST(BuildExtractFolderArgs, SingleFile)
+{
+    const auto args = BuildExtractFolderArgs({ L"C:\\archive.zip" });
+    EXPECT_EQ(args, L"--extract-folder \"C:\\archive.zip\"");
+}
+
+TEST(BuildExtractFolderArgs, MultipleFiles)
+{
+    const auto args = BuildExtractFolderArgs({ L"C:\\a.zip", L"C:\\b.zip" });
+    EXPECT_EQ(args, L"--extract-folder \"C:\\a.zip\" \"C:\\b.zip\"");
+}
+
+// ---------------------------------------------------------------------------
+// BuildArchiveArgs
+// ---------------------------------------------------------------------------
+
+TEST(BuildArchiveArgs, SingleFile)
+{
+    const auto args = BuildArchiveArgs({ L"C:\\document.docx" });
+    EXPECT_EQ(args, L"--archive \"C:\\document.docx\"");
+}
+
+TEST(BuildArchiveArgs, MultipleFiles)
+{
+    const auto args = BuildArchiveArgs({ L"C:\\file1.txt", L"C:\\file2.txt" });
+    EXPECT_EQ(args, L"--archive \"C:\\file1.txt\" \"C:\\file2.txt\"");
+}
+
+TEST(BuildArchiveArgs, PathWithSpacesIsQuoted)
+{
+    const auto args = BuildArchiveArgs({ L"C:\\Program Files\\app.exe" });
+    EXPECT_NE(args.find(L"\"C:\\Program Files\\app.exe\""), std::wstring::npos);
+}
