@@ -6,7 +6,7 @@ This file is automatically read by Claude Code at session start.
 
 ## Project
 
-**Pakko** — WinUI 3 desktop ZIP archiver for Windows with a planned shell extension (IExplorerCommand) and tar.exe integration for RAR/7z/tar extraction.
+**Pakko** — WinUI 3 desktop ZIP archiver for Windows with an in-progress shell extension (IExplorerCommand) and planned tar.exe integration for RAR/7z/tar extraction.
 Minimal GUI over `System.IO.Compression`. No 7-Zip. No WinRAR. No third-party compression code.
 Target audience: Ukrainian government/defense — trust, auditability, minimal attack surface.
 
@@ -15,9 +15,12 @@ Target audience: Ukrainian government/defense — trust, auditability, minimal a
 ## Current State
 
 **v1.1 complete** — tagged `v1.1.0`. GitHub-only release for early testers.
+**v1.2 (shell extension) in progress** — Archiver.Shell, ProgressWindow, protocol activation,
+file association, and MOTW are complete; `IExplorerCommand` COM DLL (T-F61) is the remaining
+piece, currently mid-implementation (`src/Archiver.ShellExtension/`).
 - T-01 through T-35 + T-11, and T-F16/T-F17/T-F18/T-F26–T-F29/T-F37–T-F39/T-F44/T-F45 complete
-- 60/60 tests pass
-- MSIX builds unsigned (see T-F10 for signing)
+- 95/95 .NET tests pass (`dotnet test`) — C++ `Archiver.ShellExtension.Tests` (Google Test) run separately, not covered by `dotnet test`
+- MSIX signed with dev cert via Deploy.ps1 (see T-F10 for production-grade cert)
 - Async streaming (CopyToAsync) — CancellationToken respected mid-file
 - Temp file/dir pattern — no partial files on cancel or failure
 - ZIP bomb detection via compression ratio (1000:1 threshold)
@@ -40,8 +43,8 @@ Target audience: Ukrainian government/defense — trust, auditability, minimal a
 
 | Version | Focus |
 |---------|-------|
-| v1.1 | Store release — ZIP only (current sprint) |
-| v1.2 | Shell extension (IExplorerCommand) + MOTW + file associations + hash viewer |
+| v1.1 | Store release — ZIP only (complete) |
+| v1.2 | Shell extension — MOTW, file associations, protocol activation done; IExplorerCommand (T-F61) in progress; hash viewer still future |
 | v1.3 | ITarService + tar.exe integration — RAR/7z/tar extraction + capability detection |
 | v1.4 | GPO/ADMX + Low IL P/Invoke sandbox + strict mode policy |
 | v1.5 | TAR creation via tar.exe + additional format fixtures |
@@ -113,10 +116,15 @@ DECISIONS.md    → architectural decisions and rejected approaches
 windows-archiver-wrapper/
 ├── src/
 │   ├── Archiver.Core/              ← net8.0 class library, no UI deps
-│   └── Archiver.App/               ← WinUI 3 app
-│       └── Strings/en-US/          ← ResW localization
+│   ├── Archiver.App/               ← WinUI 3 app
+│   │   └── Strings/en-US/          ← ResW localization
+│   ├── Archiver.Shell/             ← net8.0-windows WinExe, shell-triggered ops, no WinUI
+│   ├── Archiver.ProgressWindow/    ← WinUI 3, progress UI for silent shell operations
+│   └── Archiver.ShellExtension/    ← C++ COM DLL, IExplorerCommand (T-F61), x64+ARM64
 ├── tests/
-│   ├── Archiver.Core.Tests/        ← xunit, 45 tests
+│   ├── Archiver.Core.Tests/        ← xunit, 70 tests
+│   ├── Archiver.Shell.Tests/       ← xunit, 25 tests
+│   ├── Archiver.ShellExtension.Tests/  ← C++ Google Test, run separately (see Build Commands)
 │   └── Archiver.Core.Tests.GenerateFixtures/  ← fixture generator
 ├── CLAUDE.md                       ← you are here
 ├── AGENT.md
@@ -147,6 +155,12 @@ dotnet publish src/Archiver.App/Archiver.App.csproj \
     /p:Configuration=Release /p:Platform=x64 \
     /p:RuntimeIdentifier=win-x64 /p:SelfContained=true \
     /p:GenerateAppxPackageOnBuild=true /p:AppxPackageSigningEnabled=false
+
+# Archiver.ShellExtension (C++ COM DLL) — not built or tested by dotnet build/test
+# Build via Visual Studio / MSBuild (x64 or ARM64 platform).
+# First-time test project setup:
+nuget restore tests\Archiver.ShellExtension.Tests\Archiver.ShellExtension.Tests.vcxproj -SolutionDirectory .
+# Then run: tests\Archiver.ShellExtension.Tests\bin\x64\Debug\Archiver.ShellExtension.Tests.exe
 ```
 
 > WinUI app must be built and run from Visual Studio 2022.
@@ -230,6 +244,16 @@ Lessons learned during v1.2 MSIX packaging work — follow these to avoid known 
 - **`BeforeTargets` hooks are fragile** — the correct MSBuild hook point (`_CreateAppxPackage`,
   `_GenerateAppxUploadPackageFile`, etc.) changes across SDK versions and `dotnet publish` vs
   VS build contexts. Use `Content Include` instead.
+
+---
+
+## Deployment
+
+- Every time a change is deployed via `Deploy.ps1`, increment the last segment of the
+  `Version` attribute in `src/Archiver.App/Package.appxmanifest` by 1.
+- The version format is `1.1.0.X` — only the last segment changes.
+  Example: `1.1.0.3` → `1.1.0.4`.
+- Do not change the first three segments unless explicitly instructed.
 
 ---
 

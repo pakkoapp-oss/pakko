@@ -88,9 +88,15 @@ src/
 │   ├── Program.cs
 │   └── ShellArgumentParser.cs
 │
-└── Archiver.ProgressWindow/   ← progress UI for silent operations; WinUI 3; named pipe client
-    ├── App.xaml / .cs
-    └── ProgressWindow.xaml / .cs
+├── Archiver.ProgressWindow/   ← progress UI for silent operations; WinUI 3; named pipe client
+│   ├── App.xaml / .cs
+│   └── ProgressWindow.xaml / .cs
+│
+└── Archiver.ShellExtension/   ← IExplorerCommand COM DLL (T-F61); C++/WRL, x64+ARM64, static CRT
+    ├── dllmain.cpp                    ← DllGetClassObject, DllCanUnloadNow
+    ├── ExplorerCommands.cpp/.h        ← PakkoRootCommand, SubCommandEnum, ExtractHereCommand,
+    │                                    ExtractFolderCommand, ArchiveCommand
+    └── ShellExtUtils.cpp/.h           ← COM-free logic, unit-tested via Archiver.ShellExtension.Tests
 ```
 
 ---
@@ -246,10 +252,19 @@ services.AddTransient<MainViewModel>();
 implemented and included in the MSIX package. Remaining work: `IExplorerCommand` COM
 interface implementation (T-F61) to activate context menu items without Explorer hanging.
 
-**Pending T-F61:**
-- `IExplorerCommand` implemented inside `Archiver.Shell.exe` (out-of-process COM EXE server)
-- `com:Extension` and `desktop4:FileExplorerContextMenus` restored in `Package.appxmanifest`
-- Dynamic submenu population based on selection type (ZIP / non-ZIP / mixed)
+**T-F61 — `Archiver.ShellExtension` (in-process COM DLL, C++/WRL):**
+- One registered CLSID: `PakkoRootCommand` (`1EABC7CE-20A4-48EE-A99F-43D4E0F58D6A`), `ThreadingModel STA`
+- Sub-commands (`ExtractHereCommand`, `ExtractFolderCommand`, `ArchiveCommand`) returned at
+  runtime via `IExplorerCommand::EnumSubCommands` — not separately registered in the manifest
+- Selection logic in `EnumSubCommands`: all `.zip` → `[ExtractHereCommand, ExtractFolderCommand]`;
+  all non-ZIP / mixed / null selection → `[ArchiveCommand]`
+- `Invoke` launches `Archiver.Shell.exe` via `CreateProcess` with the correct argument set
+- Registered via `com:InProcessServer` in `Package.appxmanifest` — `com:Path` must be a **child
+  element** of the server, not a `Path` attribute on `com:Class` (see `DECISIONS.md`); requires
+  `MinVersion="10.0.18362.0"` (Windows 10 1903) or higher in `TargetDeviceFamily`
+- Rejected alternative: out-of-process COM EXE server inside `Archiver.Shell.exe` — an
+  in-process DLL has lower latency and needs no `LocalServer32` infrastructure; see
+  `DECISIONS.md` for the full rationale and the crash-isolation risk this accepts
 
 ### v1.3 — ITarService Layer
 
