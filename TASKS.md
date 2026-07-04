@@ -928,14 +928,19 @@ via `CreateProcess` from `Invoke`.
 - [x] **Manual smoke test:** "Pakko ▶" submenu appears in context menu, with icon
 - [x] **Manual smoke test:** Extract here invokes `Archiver.Shell.exe` and files are actually
       extracted (verified 2026-07-04 via direct `Start-Process` + event log + disk check)
-- [ ] **Manual smoke test:** Extract to folder / Add to archive commands verified end-to-end
-      (only "Extract here" has been directly verified so far)
+- [x] **Manual smoke test:** Extract to folder / Add to archive commands verified end-to-end
+      (verified 2026-07-05 — both commands create/extract archives correctly, no progress
+      bar shown, see known gap below)
 - [ ] **Known gap:** `Archiver.ProgressWindow.exe` still fails to launch (separate `App.xbf`
       resource collision with `Archiver.App.exe` — two WinUI 3 apps in one flat package root).
       Operations currently fall back to running silently with no progress UI. See
       "Known remaining gap" in `DECISIONS.md`. Needs its own task before closing T-F61 fully.
-- [ ] **Manual smoke test:** `Type="Directory"` shows menu on folder right-click (verify empirically)
-- [ ] `Archiver.ShellExtension.Tests.exe` passes all Google Test cases
+- [x] **Manual smoke test:** `Type="Directory"` shows menu on folder right-click (verified
+      2026-07-05)
+- [x] `Archiver.ShellExtension.Tests.exe` passes all Google Test cases (23/23, verified
+      2026-07-05 — built via `MSBuild tests\Archiver.ShellExtension.Tests\Archiver.ShellExtension.Tests.vcxproj`
+      with explicit `/p:SolutionDir=<repo root>\`, since `$(SolutionDir)` is only set
+      automatically when building through the `.sln`)
 
 **Manual end-to-end smoke test procedure (step 8):**
 1. Run `.\scripts\Deploy.ps1` — confirm no build errors; MSIX installs successfully.
@@ -1174,6 +1179,47 @@ variants.
       logic as `Program.cs`'s `RunArchiveAsync` (first selected item's base name)
 - [ ] No behavior change — still archives immediately, no dialog
 - [ ] Manual smoke test: title updates correctly for single vs multi-selection
+
+---
+
+### T-F65 — Fix Archiver.ProgressWindow.exe App.xbf Resource Collision
+- [ ] **Status:** future (v1.2)
+- **Depends on:** T-F61
+
+**What:** `Archiver.ProgressWindow.exe` never actually launches after a shell-triggered
+operation. `Archiver.ProgressWindow.exe` and `Archiver.App.exe` are two independent
+WinUI 3 apps (each with its own `App.xaml` → `App.xbf`) landing in the same flat MSIX
+package root, causing a `Files/App.xbf` resource-name collision — the same conflict
+documented as the reason `.wapproj` was rejected for this project (see `DECISIONS.md`).
+`RunWithProgressWindowAsync` in `Archiver.Shell`'s `Program.cs` degrades gracefully:
+if the named pipe doesn't connect within 5 seconds it falls back to running the
+operation silently — so extraction/archiving still succeeds, just with no visual
+feedback. This is the gap observed during T-F61 smoke testing on 2026-07-05: Extract
+to folder / Add to archive both worked end-to-end, but with no progress bar.
+
+**File:** `src/Archiver.App/Package.appxmanifest`, `src/Archiver.App/Archiver.App.csproj`,
+`src/Archiver.ProgressWindow/`
+
+**Constraints (per `CLAUDE.md`):** no `.wapproj`, no `BeforeTargets` MSBuild hooks, no
+manual `MakeAppx` calls — must stay within the existing `Content Include` packaging
+approach. Read `DECISIONS.md`'s MSIX packaging section before implementing.
+
+**Acceptance criteria:**
+- [ ] Root cause confirmed against the shipped package layout — inspect the installed
+      MSIX's `Files\` folder for the exact `App.xbf` collision (or rule it out and find
+      the real cause if it's something else)
+- [ ] `Archiver.ProgressWindow` given a non-colliding resource layout — e.g. its own
+      subfolder with an independent PRI resource map, or an alternate resource file name
+      — investigate options; document the chosen approach in `DECISIONS.md`
+- [ ] `Archiver.ProgressWindow.exe` launches successfully after `Deploy.ps1` install —
+      verified via direct `Start-Process` + `Get-WinEvent` check per the "verify a
+      shell-triggered EXE actually runs" method in `CLAUDE.md`
+- [ ] Named pipe connects within `Archiver.Shell`'s 5-second timeout — progress window
+      actually renders instead of falling back to silent mode
+- [ ] Manual smoke test: Extract here / Extract to folder / Add to archive all show a
+      live progress bar with speed/ETA, not the silent fallback
+- [ ] `dotnet test` passes — no functional regression in `Archiver.Shell`/`Archiver.Core`
+- [ ] Once fixed, cross-reference back to close the "Known gap" bullet under T-F61
 
 ---
 
