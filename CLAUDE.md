@@ -169,6 +169,11 @@ dotnet publish src/Archiver.App/Archiver.App.csproj \
 # Build via Visual Studio / MSBuild (x64 or ARM64 platform).
 # First-time test project setup:
 nuget restore tests\Archiver.ShellExtension.Tests\Archiver.ShellExtension.Tests.vcxproj -SolutionDirectory .
+# Build directly (NOT via .sln — .sln + /t:<ProjectName> applies that target to every project).
+# $(SolutionDir) is only auto-set when building through the .sln, so pass it explicitly:
+MSBuild tests\Archiver.ShellExtension.Tests\Archiver.ShellExtension.Tests.vcxproj /p:SolutionDir=<repo-root>\ /p:Configuration=Debug /p:Platform=x64
+# If MSBuild.exe isn't on PATH, locate it with vswhere — use the PowerShell tool for this,
+# not Bash: Bash strips backslashes from patterns like "MSBuild\**\Bin\MSBuild.exe".
 # Then run: tests\Archiver.ShellExtension.Tests\bin\x64\Debug\Archiver.ShellExtension.Tests.exe
 ```
 
