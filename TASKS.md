@@ -963,7 +963,8 @@ Then build and run `tests\Archiver.ShellExtension.Tests\bin\x64\Debug\Archiver.S
 ---
 
 ### T-F41 — Context Menu: Extract Here
-- [ ] **Status:** future (v1.2)
+- [ ] **Status:** future (v1.2) — **superseded by T-F61, see note above T-F62**; already
+      implemented as `ExtractHereCommand` and smoke-tested. Do not re-implement.
 - **Depends on:** T-F53, T-F54, T-F55
 
 **What:** "Extract here" command on ZIP files — extracts to same folder as archive. Runs silently via `Archiver.Shell.exe --extract-here`; progress shown in `Archiver.ProgressWindow`.
@@ -980,7 +981,8 @@ Then build and run `tests\Archiver.ShellExtension.Tests\bin\x64\Debug\Archiver.S
 ---
 
 ### T-F42 — Context Menu: Extract to Folder
-- [ ] **Status:** future (v1.2)
+- [ ] **Status:** future (v1.2) — **superseded by T-F61, see note above T-F62**; already
+      implemented as `ExtractFolderCommand` and smoke-tested. Do not re-implement.
 - **Depends on:** T-F53, T-F54, T-F55
 
 **What:** "Extract to `<folder_name>`" on ZIP files — creates a named subfolder automatically. Runs silently via `Archiver.Shell.exe --extract-folder`; progress shown in `Archiver.ProgressWindow`.
@@ -996,7 +998,9 @@ Then build and run `tests\Archiver.ShellExtension.Tests\bin\x64\Debug\Archiver.S
 ---
 
 ### T-F43 — Context Menu: Archive with Pakko
-- [ ] **Status:** future (v1.2)
+- [ ] **Status:** future (v1.2) — **superseded by T-F61, see note above T-F62**; already
+      implemented as `ArchiveCommand` and smoke-tested (label/naming gap tracked separately
+      as T-F64). Do not re-implement.
 - **Depends on:** T-F53, T-F54, T-F55
 
 **What:** "Add to `<name>.zip`" on any files/folders — single archive, Fast compression, destination = source folder. Runs silently via `Archiver.Shell.exe --archive`; progress shown in `Archiver.ProgressWindow`.
@@ -1051,6 +1055,125 @@ Then build and run `tests\Archiver.ShellExtension.Tests\bin\x64\Debug\Archiver.S
 - [ ] File picker → show SHA-256 hash of selected file(s)
 - [ ] UI only — no new service methods required
 - [ ] Hash computed via `System.Security.Cryptography.SHA256`
+
+---
+
+## Context Menu — NanaZip Parity Review (2026-07-04)
+
+Per project direction, NanaZip is the reference implementation for what the Pakko context
+menu should offer. Reviewed NanaZip's actual modern (`IExplorerCommand`-based) shell
+extension source —
+[`NanaZip.UI.Modern/NanaZip.ShellExtension.cpp`](https://github.com/M2Team/NanaZip/blob/main/NanaZip.UI.Modern/NanaZip.ShellExtension.cpp)
+— the direct architectural equivalent of `Archiver.ShellExtension`, not the legacy classic
+`IContextMenu` implementation (`NanaZip.UI.Classic/.../ContextMenu.cpp`), which is
+irrelevant here per this project's `IExplorerCommand`-only constraint.
+
+**NanaZip's full modern-menu command set** (flat list, no separate folder/file/mixed
+submenus — conditions are evaluated per-command against the selection, not via distinct
+menu trees):
+
+| Command | Condition | Pakko status |
+|---|---|---|
+| Open | single file, needs extraction | done differently — double-click file association (T-F44); no explicit context-menu verb |
+| Test | ≥1 file needs extraction | **missing** — see T-F62 |
+| Extract (dialog, picks destination) | ≥1 file needs extraction | **missing** — see T-F63 |
+| Extract Here | ≥1 file needs extraction | done — `ExtractHereCommand` (already smart: `SeparateFolders` mode strips/wraps as needed, equivalent to NanaZip's separate "Extract Here (Smart)") |
+| Extract Here (Smart) | ≥1 file needs extraction | n/a — folded into Pakko's "Extract here" above, not a separate verb |
+| Extract to "\<folder\>" | ≥1 file needs extraction | done — `ExtractFolderCommand` |
+| Compress (dialog, format/options) | any selection | **missing** — see T-F63 |
+| Compress to "\<name\>.zip" (one click) | any selection | done, but see T-F64 (label says "Add to archive…" though behavior is already the one-click no-dialog path) |
+| Compress to "\<name\>.7z" | any selection | out of scope — 7z creation forbidden (`CLAUDE.md`: ZIP only, no third-party compression code) |
+| Compress + Email variants (×4) | any selection | **out of scope, deliberately** — mail client integration adds attack surface and a dependency the gov/defense trust model doesn't need; not tracked as a task |
+| CRC/Checksum submenu (CRC-32/64, SHA-1/256/384/512, BLAKE2/3, etc.) | any selection | covered by existing T-F46 (File Hash Viewer), which already targets SHA-256; T-F46 is in-app UI only today, not a context-menu verb — cross-referenced, no new task |
+
+**Note on T-F41/T-F42/T-F43:** these three older task entries (below, still `future`/unchecked)
+describe "Extract Here", "Extract to Folder", and "Archive with Pakko" as if unimplemented.
+They predate T-F61 and are now superseded by it — all three behaviors are implemented and
+smoke-tested there. Left in place with a note rather than deleted, per the "never silently
+deprecate" rule; do not re-implement them as new work.
+
+---
+
+### T-F62 — Context Menu: Test Archive (Integrity Check)
+- [ ] **Status:** future (v1.2)
+- **Depends on:** T-F61
+
+**What:** "Test archive" command — verifies every entry's CRC-32 without writing any files to
+disk. Modeled on NanaZip's `Test` verb (`IDS_CONTEXT_TEST`), which appears whenever the
+selection contains at least one archive.
+
+**Why this one and not the CRC/checksum submenu:** NanaZip's checksum submenu hashes
+arbitrary files for user-facing comparison; "Test" instead validates that an archive's
+*own* declared checksums match its contents — a distinct, extraction-adjacent operation
+that fits `IArchiveService` naturally (`IArchiveService` currently only has `ArchiveAsync`/
+`ExtractAsync` — no verify method exists yet).
+
+**Acceptance criteria:**
+- [ ] New `TestAsync` (or similarly named) method on `IArchiveService` — reads every entry,
+      computes CRC-32, compares against the entry's declared value, never writes to disk
+- [ ] Appears in Pakko submenu whenever selection contains ≥1 `.zip`
+- [ ] Runs silently via `Archiver.Shell.exe --test "<path>"`; result (pass/fail + which
+      entries failed) shown in `Archiver.ProgressWindow` or a summary dialog
+- [ ] Multi-selection: all selected archives tested in one invocation
+- [ ] `dotnet test` passes — new test: corrupted-CRC fixture fails; valid fixture passes
+
+---
+
+### T-F63 — Context Menu: "Extract…" and "Compress…" with Dialog
+- [ ] **Status:** future (v1.2)
+- **Depends on:** T-F61
+
+**What:** Two additional leaf commands that open the full Pakko UI instead of running
+silently — matching NanaZip's dialog-based `Extract` (`IDS_CONTEXT_EXTRACT`) and `Compress`
+(`IDS_CONTEXT_COMPRESS`) verbs, which let the user pick a destination folder / compression
+options instead of accepting the auto-derived defaults `ExtractHereCommand`/
+`ExtractFolderCommand`/`ArchiveCommand` use today. This is also exactly what the original
+T-F01 design (see its historical entry above) called "Archive with Pakko…" / "Extract with
+Pakko…" — never implemented under the old sparse-package/`IContextMenu` plan T-F01 was
+superseded by; this task re-introduces the same idea under the current
+`IExplorerCommand`/T-F61 architecture.
+
+**Already-existing plumbing to reuse — do not duplicate:** `Archiver.Shell`'s
+`ShellArgumentParser` already parses `--extract` → `CommandType.OpenUiExtract` and
+`--archive` (dialog form) → `CommandType.OpenUiArchive`; `Program.cs`'s `LaunchOpenUi`
+already launches `Archiver.App` via the `pakko://` protocol with the selected files
+pre-loaded (T-F56). The only missing piece is wiring two new `IExplorerCommand` leaf
+classes in `Archiver.ShellExtension` to invoke `Archiver.Shell.exe --extract`/`--archive`
+(dialog form) — no new backend work.
+
+**Acceptance criteria:**
+- [ ] New leaf command "Extract…" — shown whenever selection contains ≥1 `.zip`; invokes
+      `Archiver.Shell.exe --extract "<path>..."`
+- [ ] New leaf command "Compress…" — shown for any selection; invokes
+      `Archiver.Shell.exe --archive "<path>..."` (dialog form, not the silent one)
+- [ ] Both open `Archiver.App` with the files pre-loaded via the existing `pakko://` flow
+- [ ] `GetState` filtering matches the sibling silent commands (same `AllPathsAreZip`/
+      `AnyPathIsZip` helpers)
+
+---
+
+### T-F64 — Context Menu: Fix "Add to archive…" Label vs One-Click Behavior
+- [ ] **Status:** future (v1.2)
+- **Depends on:** T-F61
+
+**What:** `ArchiveCommand`'s current title is "Add to archive…" (an ellipsis conventionally
+signals a dialog will follow), but its actual behavior is NanaZip's one-click,
+no-dialog "Compress to \"\<name\>.zip\"" path — it archives immediately with an
+auto-derived name and no user prompt. This is a label/expectation mismatch, not a
+functionality gap.
+
+**Fix:** rename the leaf command's title to match its real behavior, e.g. dynamically
+build `"Add to \"<name>.zip\""` (mirroring NanaZip's exact pattern — the name is computed
+from the first selected item, same logic `RunArchiveAsync` already uses), removing the
+ellipsis. Once T-F63 adds a real dialog-based "Compress…", the two commands will be
+correctly distinguished the same way NanaZip distinguishes its one-click and dialog
+variants.
+
+**Acceptance criteria:**
+- [ ] `ArchiveCommand::GetTitle` returns `Add to "<name>.zip"` using the same name-derivation
+      logic as `Program.cs`'s `RunArchiveAsync` (first selected item's base name)
+- [ ] No behavior change — still archives immediately, no dialog
+- [ ] Manual smoke test: title updates correctly for single vs multi-selection
 
 ---
 
