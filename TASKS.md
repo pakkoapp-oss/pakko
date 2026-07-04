@@ -897,9 +897,9 @@ pakko://archive?files=<base64-encoded-json-array>
 - **Depends on:** T-F53, T-F55
 
 **What:** In-process COM DLL (`Archiver.ShellExtension.dll`) implementing `IExplorerCommand` via
-WRL. Registered as `com:InProcessServer` in `Package.appxmanifest`. Launches `Archiver.Shell.exe`
-via `CreateProcess` from `Invoke`. See `DECISIONS.md` for architecture rationale (in-process DLL
-chosen over out-of-process EXE).
+WRL. Registered as `com:SurrogateServer` in `Package.appxmanifest` (runs inside an isolated
+`dllhost.exe`; see "Correction — SurrogateServer" in `DECISIONS.md`). Launches `Archiver.Shell.exe`
+via `CreateProcess` from `Invoke`.
 
 **Projects:**
 - `src/Archiver.ShellExtension/` — C++ DLL (x64 + ARM64, static CRT /MT)
@@ -916,9 +916,24 @@ chosen over out-of-process EXE).
 - [x] `com:Extension` + `desktop4:Extension` restored in `Package.appxmanifest` (unblocks T-F55)
 - [x] DLL included in MSIX via `Content Include` in `Archiver.App.csproj`
 - [x] `Deploy.ps1` builds DLL via MSBuild before `dotnet publish`
-- [ ] **Manual smoke test:** Explorer does not hang on right-click after `Deploy.ps1`
-- [ ] **Manual smoke test:** "Pakko ▶" submenu appears in context menu
-- [ ] **Manual smoke test:** Extract here/folder/archive commands invoke `Archiver.Shell.exe`
+- [x] `GetIcon`/`GetToolTip` return `E_NOTIMPL` (not `S_FALSE`) when no value is provided —
+      fixed a real `explorer.exe` crash; see `DECISIONS.md`
+- [x] `Archiver.Shell.exe`/`Archiver.ProgressWindow.exe` declared as their own `<Application>`
+      entries (`AppListEntry="none"`) — Windows blocks `CreateProcess` of undeclared EXEs
+      inside the package; see `DECISIONS.md`
+- [x] `Archiver.Shell.exe`/`Archiver.ProgressWindow.exe` built self-contained (not
+      framework-dependent) and ship their `.dll`/`.deps.json`/`.runtimeconfig.json` via
+      `Content Include` — see `DECISIONS.md`
+- [x] **Manual smoke test:** Explorer does not hang/crash on right-click after `Deploy.ps1`
+- [x] **Manual smoke test:** "Pakko ▶" submenu appears in context menu, with icon
+- [x] **Manual smoke test:** Extract here invokes `Archiver.Shell.exe` and files are actually
+      extracted (verified 2026-07-04 via direct `Start-Process` + event log + disk check)
+- [ ] **Manual smoke test:** Extract to folder / Add to archive commands verified end-to-end
+      (only "Extract here" has been directly verified so far)
+- [ ] **Known gap:** `Archiver.ProgressWindow.exe` still fails to launch (separate `App.xbf`
+      resource collision with `Archiver.App.exe` — two WinUI 3 apps in one flat package root).
+      Operations currently fall back to running silently with no progress UI. See
+      "Known remaining gap" in `DECISIONS.md`. Needs its own task before closing T-F61 fully.
 - [ ] **Manual smoke test:** `Type="Directory"` shows menu on folder right-click (verify empirically)
 - [ ] `Archiver.ShellExtension.Tests.exe` passes all Google Test cases
 

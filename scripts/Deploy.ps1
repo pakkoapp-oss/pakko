@@ -87,10 +87,16 @@ if (-not $DeployOnly) {
     $shellProj    = Join-Path $repoRoot 'src\Archiver.Shell\Archiver.Shell.csproj'
     $progressProj = Join-Path $repoRoot 'src\Archiver.ProgressWindow\Archiver.ProgressWindow.csproj'
 
-    & dotnet build $shellProj    /p:Configuration=Release /p:Platform=$platform /p:RuntimeIdentifier=$rid --no-self-contained
+    # Self-contained: these apphosts run inside the MSIX package with no globally installed
+    # .NET runtime to fall back on. A framework-dependent apphost fails at launch with
+    # "You must install or update .NET to run this application" (a modal dialog — the process
+    # never exits, which looked like the context menu silently doing nothing). Self-contained
+    # apphosts probe their own directory first, where Archiver.App's self-contained publish
+    # already deposits the matching hostfxr/coreclr/hostpolicy native files at the package root.
+    & dotnet build $shellProj    /p:Configuration=Release /p:Platform=$platform /p:RuntimeIdentifier=$rid --self-contained
     if ($LASTEXITCODE -ne 0) { Write-Error "Archiver.Shell build failed (exit $LASTEXITCODE)."; exit $LASTEXITCODE }
 
-    & dotnet build $progressProj /p:Configuration=Release /p:Platform=$platform /p:RuntimeIdentifier=$rid --no-self-contained
+    & dotnet build $progressProj /p:Configuration=Release /p:Platform=$platform /p:RuntimeIdentifier=$rid --self-contained
     if ($LASTEXITCODE -ne 0) { Write-Error "Archiver.ProgressWindow build failed (exit $LASTEXITCODE)."; exit $LASTEXITCODE }
 
     # ── Build Archiver.ShellExtension (C++ DLL) ───────────────────────────────────

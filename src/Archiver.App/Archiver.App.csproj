@@ -59,8 +59,31 @@
     Satellites must be built before dotnet publish is invoked (Deploy.ps1 step 1).
   -->
   <ItemGroup Condition="'$(GenerateAppxPackageOnBuild)'=='true'">
+    <!--
+      Archiver.Shell.exe is a self-contained apphost, not a single-file executable —
+      it requires its managed .dll/.deps.json/.runtimeconfig.json alongside it or it
+      fails at startup with "The application to execute does not exist: ...Archiver.Shell.dll"
+      (silently, since it's a WinExe with no console). The native host files it needs
+      (hostfxr.dll, coreclr.dll, etc.) are not duplicated here: Archiver.App's own
+      self-contained publish already places identical copies (same TFM/RID) at the
+      package root, and the apphost's own-directory probe finds them there.
+      Archiver.Core.dll is likewise not duplicated: Archiver.App's publish already
+      places an identical copy (same project, same build config) at the package root.
+    -->
     <Content Include="..\Archiver.Shell\bin\$(Platform)\$(Configuration)\net8.0-windows\$(RuntimeIdentifier)\Archiver.Shell.exe">
       <Link>Archiver.Shell.exe</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\Archiver.Shell\bin\$(Platform)\$(Configuration)\net8.0-windows\$(RuntimeIdentifier)\Archiver.Shell.dll">
+      <Link>Archiver.Shell.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\Archiver.Shell\bin\$(Platform)\$(Configuration)\net8.0-windows\$(RuntimeIdentifier)\Archiver.Shell.deps.json">
+      <Link>Archiver.Shell.deps.json</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\Archiver.Shell\bin\$(Platform)\$(Configuration)\net8.0-windows\$(RuntimeIdentifier)\Archiver.Shell.runtimeconfig.json">
+      <Link>Archiver.Shell.runtimeconfig.json</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="..\Archiver.ProgressWindow\bin\$(Platform)\$(Configuration)\net8.0-windows10.0.17763.0\$(RuntimeIdentifier)\Archiver.ProgressWindow.exe">

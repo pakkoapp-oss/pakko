@@ -5,6 +5,77 @@ packaging, COM, or shell integration.
 
 ---
 
+## Context Menu Appeared But Commands Did Nothing (three stacked packaging bugs)
+
+**Symptom:** After fixing the `explorer.exe` crash (below), the "Pakko ▶" submenu appeared
+with correct icons, but clicking "Extract here" / "Extract to folder…" / "Add to archive…"
+did nothing — no error, no UI, no extracted files.
+
+**Root causes, found by testing `Archiver.Shell.exe` directly (bypassing Explorer/COM) via
+`CreateProcess`/`Start-Process` from an external process, then reading the Windows
+`Application` event log for `.NET Runtime` entries** — three separate, stacked failures,
+each hiding the next:
+
+1. **`ERROR_ACCESS_DENIED` launching `Archiver.Shell.exe`.** Windows blocks `CreateProcess`
+   of any EXE inside an installed package's `WindowsApps` folder unless that EXE is declared
+   as its own `<Application>` in `AppxManifest.xml` — confirmed via
+   [microsoft/WindowsAppSDK#4651](https://github.com/microsoft/WindowsAppSDK/issues/4651):
+   "on Win11 it is sufficient to create an entry for your helper EXEs in AppxManifest.xml."
+   Only `Archiver.App.exe` (`Id="App"`) was declared; `Archiver.Shell.exe` and
+   `Archiver.ProgressWindow.exe` were bare `Content Include` files with no `<Application>`
+   entry, so `IExplorerCommand::Invoke`'s `CreateProcessW` call always failed silently
+   (the shell does not surface `Invoke` failures to the user).
+   **Fix:** added `<Application Id="ShellHelper" Executable="Archiver.Shell.exe"
+   EntryPoint="Windows.FullTrustApplication">` and the equivalent for
+   `Archiver.ProgressWindow.exe`, both with `AppListEntry="none"` on `uap:VisualElements`
+   to hide them from the Start menu / app list (`uap:VisualElements` is a required child
+   element even for hidden entries — still needs `DisplayName` and both logo attributes).
+
+2. **`Archiver.Shell.exe` apphost couldn't find its own managed assembly.** Once launchable,
+   the `.NET Runtime` event log showed: `"The application to execute does not exist:
+   ...Archiver.Shell.dll"`. `Archiver.App.csproj`'s `Content Include` for the satellite only
+   copied the bare `.exe` — a framework-dependent/self-contained .NET apphost is a thin
+   native stub that always needs its `.dll` + `.deps.json` + `.runtimeconfig.json` alongside
+   it. **Fix:** added `Content Include` entries for all three files (not `Archiver.Core.dll`/
+   `.pdb` — Archiver.App's own self-contained publish already places an identical copy of
+   `Archiver.Core.dll` at the package root).
+
+3. **`Archiver.Shell.exe` couldn't find the .NET runtime.** Even with the `.dll` present, the
+   event log then showed `"You must install or update .NET to run this application... No
+   frameworks were found"` — a real modal dialog box, which is why the process never exited
+   (`HasExited: False` indefinitely; looked identical to "nothing happens" from the COM
+   caller's side). Cause: `Deploy.ps1` built `Archiver.Shell`/`Archiver.ProgressWindow` with
+   `--no-self-contained` (framework-dependent), but the MSIX package ships with no
+   system-wide .NET runtime to fall back on — unlike `Archiver.App`, which is
+   `SelfContained=true`. **Fix:** changed both `dotnet build` invocations in `Deploy.ps1` to
+   `--self-contained`. This does not need extra `Content Include` entries for the native host
+   files (`hostfxr.dll`, `coreclr.dll`, `hostpolicy.dll`, etc.) — `Archiver.App`'s own
+   self-contained publish already deposits identical copies (same TFM/RID) at the package
+   root, and a self-contained apphost probes its own directory first.
+
+**Verification method:** since Explorer/COM surrogate invocation can't be scripted, each fix
+was verified by directly invoking `Start-Process 'C:\Program Files\WindowsApps\...\
+Archiver.Shell.exe' -ArgumentList '--extract-here "<test.zip>"'` from an external process
+(faithfully reproducing what `IExplorerCommand::Invoke`'s `CreateProcessW` does) and
+confirming the archive's contents actually appeared on disk — not just that the process
+exited 0.
+
+**Known remaining gap (not fixed, separate task):** `Archiver.ProgressWindow.exe` still
+fails to launch after fix #2/#3 are applied to it too — its own event log entry was the same
+"`.dll` does not exist" error before its `Content Include` was extended to match
+`Archiver.Shell.exe`'s. Even after that, `Archiver.ProgressWindow.exe` and `Archiver.App.exe`
+are two independent WinUI 3 apps (each with its own `App.xaml` → `App.xbf`) landing in the
+same flat package root — the same `Files/App.xbf` name collision documented above as the
+reason `.wapproj` was rejected for this project. `RunWithProgressWindowAsync` in
+`Archiver.Shell`'s `Program.cs` degrades gracefully when `Archiver.ProgressWindow.exe` fails
+to connect its named pipe within 5 seconds (falls back to running the operation silently,
+with no progress UI) — so extraction/archiving still succeeds, just without visual feedback.
+Giving `Archiver.ProgressWindow` its own non-colliding XBF/resource layout (e.g. a subfolder
+with its own resource map) is unsolved and needs dedicated investigation before the progress
+window will actually appear.
+
+---
+
 ## Archiver.ShellExtension — explorer.exe Crash on Context Menu (GetIcon/GetToolTip S_FALSE)
 
 **Symptom:** `explorer.exe` crashes (access violation, null pointer deref) inside
