@@ -79,6 +79,9 @@ DECISIONS.md    → architectural decisions and rejected approaches
 - **tar.exe:** always use `C:\Windows\System32\tar.exe` (absolute path) — never via PATH
 - **MOTW:** always propagate `Zone.Identifier` ADS on extracted files (v1.2+)
 - **Shell extension:** `IExplorerCommand` only — no legacy `IContextMenu` COM shell extensions
+- **COM HRESULTs:** never return `S_FALSE` alongside a null/unset out-parameter — `S_FALSE` is a
+  *success* code (`SUCCEEDED()` is true), so callers checking only `SUCCEEDED()` will dereference
+  the null. Use `E_NOTIMPL` instead (verified against Microsoft's own `IExplorerCommand` sample).
 - **Low IL sandbox:** P/Invoke is acceptable for security-critical process isolation code (v1.4)
 - **Solution platforms:** x64 and ARM64 only — never add `Any CPU` or `x86` configuration entries
   to the `.sln` file. When adding a new project, mirror the `Debug|x64` / `Release|x64` entries
@@ -250,6 +253,24 @@ Lessons learned during v1.2 MSIX packaging work — follow these to avoid known 
 - **`BeforeTargets` hooks are fragile** — the correct MSBuild hook point (`_CreateAppxPackage`,
   `_GenerateAppxUploadPackageFile`, etc.) changes across SDK versions and `dotnet publish` vs
   VS build contexts. Use `Content Include` instead.
+- **Any EXE launched via `CreateProcess` from outside its own package must be declared as its
+  own `<Application>` in `Package.appxmanifest`** (use `EntryPoint="Windows.FullTrustApplication"`,
+  `AppListEntry="none"` to hide it). Otherwise Windows returns `ERROR_ACCESS_DENIED` — confirmed
+  via `microsoft/WindowsAppSDK#4651`. This applies to every satellite EXE the shell extension or
+  any other external process spawns (`Archiver.Shell.exe`, `Archiver.ProgressWindow.exe`).
+- **Satellite EXEs must be built self-contained**, not framework-dependent (`--self-contained` in
+  `Deploy.ps1`, not `--no-self-contained`). A framework-dependent apphost inside an MSIX package
+  has no system runtime to fall back on and fails with a modal ".NET not found" dialog that never
+  surfaces to an automated caller — looks exactly like "nothing happens." A self-contained apphost
+  additionally needs its own `.dll`/`.deps.json`/`.runtimeconfig.json` shipped via `Content Include`
+  alongside the `.exe` — the bare `.exe` alone is not enough.
+- **A COM surrogate (`dllhost.exe`) hosting `Archiver.ShellExtension.dll` can lock the DLL/PDB**
+  after testing the context menu, causing `C1041`/file-in-use errors on the next rebuild. Run
+  `taskkill /F /IM dllhost.exe` (or find the specific PID) before rebuilding if this happens.
+- **To verify a shell-triggered EXE actually runs** (Explorer/COM invocation can't be scripted):
+  launch it directly the same way the COM caller would (`Start-Process <path> -ArgumentList ...`)
+  and check `Get-WinEvent -FilterHashtable @{LogName='Application'; ProviderName='.NET Runtime'}`
+  for silent apphost failures — these never produce console output or a visible error otherwise.
 
 ---
 
