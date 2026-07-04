@@ -5,6 +5,48 @@ packaging, COM, or shell integration.
 
 ---
 
+## Archiver.ShellExtension — explorer.exe Crash on Context Menu (GetIcon/GetToolTip S_FALSE)
+
+**Symptom:** `explorer.exe` crashes (access violation, null pointer deref) inside
+`Windows.UI.FileExplorer.dll!winrt::hstring::operator=` / `ShouldLoadIconAsync()` when the
+Pakko context menu is invoked, per a WinDbg trace captured against Microsoft symbol servers.
+
+**Root cause:** `ExtractHereCommand::GetIcon`, `ExtractFolderCommand::GetIcon`,
+`ArchiveCommand::GetIcon`, `PakkoRootCommand::GetIcon` (empty-path fallback), and the
+corresponding `GetToolTip` methods all set `*ppszIcon`/`*ppszInfotip = nullptr` and returned
+`S_FALSE`. `S_FALSE` is `0x00000001` — a **success** code under the `SUCCEEDED()` macro (top
+bit clear). Shell code that does `if (SUCCEEDED(cmd->GetIcon(...))) { hstring = *ppszIcon; }`
+treats `S_FALSE` the same as `S_OK` and dereferences the null pointer we returned.
+
+**Verified against real reference implementations** (per this file's pre-implementation
+research rule):
+- Microsoft's own canonical `IExplorerCommand` sample,
+  `Windows-classic-samples/.../ExplorerCommandVerb/ExplorerCommandVerb.cpp`:
+  ```cpp
+  IFACEMETHODIMP GetIcon(IShellItemArray*, LPWSTR *ppszIcon)
+  {
+      *ppszIcon = NULL;
+      return E_NOTIMPL;   // not S_FALSE
+  }
+  ```
+  Same pattern for `GetToolTip`.
+- ReactOS `zipfldr` `CExplorerCommand::GetIcon` (a real shipped `IExplorerCommand`
+  implementation) never returns `S_FALSE` at all — it always returns `S_OK` with a valid,
+  non-null icon string (`"zipfldr.dll,-1"`). No real-world implementation pairs a null
+  out-pointer with a success HRESULT.
+
+**Fix:** All `GetIcon`/`GetToolTip` "no value to provide" paths in
+`src/Archiver.ShellExtension/ExplorerCommands.cpp` now return `E_NOTIMPL` instead of
+`S_FALSE`. The one legitimate remaining `S_FALSE` in the file is
+`SubCommandEnum::Next` (`IEnumXXX::Next` contract: `S_FALSE` means "fewer than `celt`
+elements were returned", not "success with a null value") — left unchanged.
+
+**Lesson:** `S_FALSE` is a *success* HRESULT. Never pair it with a null/unset out-parameter
+in a COM method whose caller may only check `SUCCEEDED()`. Use `E_NOTIMPL` (or another real
+failure HRESULT) whenever an out-parameter is intentionally left empty.
+
+---
+
 ## Archiver.ShellExtension Build — Stale PCH (C1853)
 
 **Symptom:** `Deploy.ps1` fails building `Archiver.ShellExtension.vcxproj` with

@@ -89,14 +89,14 @@ STDMETHODIMP ExtractHereCommand::GetIcon(IShellItemArray*, LPWSTR* ppszIcon) noe
 {
     if (!ppszIcon) return E_POINTER;
     *ppszIcon = nullptr;
-    return S_FALSE;
+    return E_NOTIMPL;
 }
 
 STDMETHODIMP ExtractHereCommand::GetToolTip(IShellItemArray*, LPWSTR* ppszInfotip) noexcept
 {
     if (!ppszInfotip) return E_POINTER;
     *ppszInfotip = nullptr;
-    return S_FALSE;
+    return E_NOTIMPL;
 }
 
 STDMETHODIMP ExtractHereCommand::GetCanonicalName(GUID* pguidCommandName) noexcept
@@ -152,14 +152,14 @@ STDMETHODIMP ExtractFolderCommand::GetIcon(IShellItemArray*, LPWSTR* ppszIcon) n
 {
     if (!ppszIcon) return E_POINTER;
     *ppszIcon = nullptr;
-    return S_FALSE;
+    return E_NOTIMPL;
 }
 
 STDMETHODIMP ExtractFolderCommand::GetToolTip(IShellItemArray*, LPWSTR* ppszInfotip) noexcept
 {
     if (!ppszInfotip) return E_POINTER;
     *ppszInfotip = nullptr;
-    return S_FALSE;
+    return E_NOTIMPL;
 }
 
 STDMETHODIMP ExtractFolderCommand::GetCanonicalName(GUID* pguidCommandName) noexcept
@@ -215,14 +215,14 @@ STDMETHODIMP ArchiveCommand::GetIcon(IShellItemArray*, LPWSTR* ppszIcon) noexcep
 {
     if (!ppszIcon) return E_POINTER;
     *ppszIcon = nullptr;
-    return S_FALSE;
+    return E_NOTIMPL;
 }
 
 STDMETHODIMP ArchiveCommand::GetToolTip(IShellItemArray*, LPWSTR* ppszInfotip) noexcept
 {
     if (!ppszInfotip) return E_POINTER;
     *ppszInfotip = nullptr;
-    return S_FALSE;
+    return E_NOTIMPL;
 }
 
 STDMETHODIMP ArchiveCommand::GetCanonicalName(GUID* pguidCommandName) noexcept
@@ -281,7 +281,7 @@ STDMETHODIMP PakkoRootCommand::GetIcon(IShellItemArray*, LPWSTR* ppszIcon) noexc
         if (!ppszIcon) return E_POINTER;
         *ppszIcon = nullptr;
         const std::wstring& iconPath = GetAppIconPath();
-        if (iconPath.empty()) return S_FALSE;
+        if (iconPath.empty()) return E_NOTIMPL;
         return SHStrDupW(iconPath.c_str(), ppszIcon);
     }
     catch (...) { return E_FAIL; }
@@ -291,7 +291,7 @@ STDMETHODIMP PakkoRootCommand::GetToolTip(IShellItemArray*, LPWSTR* ppszInfotip)
 {
     if (!ppszInfotip) return E_POINTER;
     *ppszInfotip = nullptr;
-    return S_FALSE;
+    return E_NOTIMPL;
 }
 
 STDMETHODIMP PakkoRootCommand::GetCanonicalName(GUID* pguidCommandName) noexcept
