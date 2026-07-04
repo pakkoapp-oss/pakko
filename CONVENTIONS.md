@@ -218,6 +218,35 @@ downstream service calls. Do not add path content checks to `ShellArgumentParser
 
 ---
 
+## C++ Language Rules (Archiver.ShellExtension)
+
+- C++17 (`stdcpp17`), MSVC only, `v143` toolset — no portability requirement, this DLL is
+  Windows-only COM.
+- RAII everywhere. No manual `new`/`delete`, no owning raw pointers. COM objects are created
+  via `Microsoft::WRL::Make<T>()` and held in `ComPtr<T>` — never a raw `IUnknown*` with manual
+  `AddRef`/`Release`.
+- Every COM interface method implementation is `noexcept override` (see `ExplorerCommands.h`).
+  COM methods must never throw across the ABI boundary — catch internally, return an `HRESULT`.
+- Naming: members `m_camelCase`, free functions `PascalCase` (matches `ShellExtUtils.h`), classes
+  `PascalCase` with `final` when not designed for inheritance (matches `SubCommandEnum`,
+  `ExtractHereCommand`, etc.).
+- COM interface parameter names follow the Windows SDK signature exactly (`psia`, `ppszName`,
+  `pCmdState`, ...) even though they read like Hungarian notation — do not rename them; they are
+  copy-pasted from `shobjidl_core.h` and renaming makes cross-referencing MSDN/Explorer-sample
+  code harder.
+- No template metaprogramming, SFINAE, or concepts — the DLL is small and fixed-shape; none of
+  that machinery is needed here.
+- Prefer `std::vector` + linear scan for the small collections this DLL deals with (path lists,
+  sub-command lists — always a handful of items). Don't reach for `unordered_map`/`set` at this
+  scale.
+- Keep COM-free logic (path/arg building, `.zip` classification) as free functions in
+  `ShellExtUtils.cpp`/`.h`, testable without loading the DLL or touching COM — this split already
+  exists and must be preserved so `ShellExtUtilsTests.cpp` keeps running without a COM apartment.
+- Comment WHY, not WHAT (same rule as C#) — e.g. the existing comment on `BuildExtractHereArgs`
+  explaining why no path escaping is needed (`"` is invalid in NTFS filenames).
+
+---
+
 ## Packages Allowed per Project
 
 | Package | Project | Purpose |
