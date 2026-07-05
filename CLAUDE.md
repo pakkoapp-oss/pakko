@@ -113,6 +113,10 @@ DI duplication happened).
 | COM/shell, operation lifecycle, `ZipArchiveService` branching, or manifest changes | `DIAGRAMS.md` | Per its own DoD table |
 | New test or fixture added | `TESTING.md` | `tests/Archiver.Core.Tests.GenerateFixtures/README.md`, `CONTRIBUTING.md` |
 
+Before deleting or merging any `.md` file, grep the whole repo for its filename first — dead
+references are easy to miss otherwise (this session found 5 lingering mentions of `AGENT.md`/
+`BOOTSTRAP.md` after removing them).
+
 ---
 
 ## Hard Constraints — Never Violate
