@@ -125,10 +125,17 @@ TEST(BuildAddToArchiveTitle, SingleFileUsesNameWithoutExtension)
     EXPECT_EQ(BuildAddToArchiveTitle({ L"C:\\Docs\\report.docx" }), L"Add to \"report.zip\"");
 }
 
-TEST(BuildAddToArchiveTitle, MultipleFilesUseFirstPathOnly)
+TEST(BuildAddToArchiveTitle, MultipleFilesUseContainingFolderName)
 {
-    const auto title = BuildAddToArchiveTitle({ L"C:\\a\\first.txt", L"C:\\b\\second.txt" });
-    EXPECT_EQ(title, L"Add to \"first.zip\"");
+    const auto title = BuildAddToArchiveTitle(
+        { L"C:\\Projects\\MyStuff\\first.txt", L"C:\\Projects\\MyStuff\\second.txt" });
+    EXPECT_EQ(title, L"Add to \"MyStuff.zip\"");
+}
+
+TEST(BuildAddToArchiveTitle, MultipleFilesAtDriveRootFallsBackToArchive)
+{
+    const auto title = BuildAddToArchiveTitle({ L"C:\\first.txt", L"C:\\second.txt" });
+    EXPECT_EQ(title, L"Add to \"archive.zip\"");
 }
 
 TEST(BuildAddToArchiveTitle, FolderWithNoExtensionKeepsFullName)

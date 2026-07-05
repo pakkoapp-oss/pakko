@@ -208,7 +208,11 @@ STDMETHODIMP ExtractFolderCommand::EnumSubCommands(IEnumExplorerCommand** ppEnum
 STDMETHODIMP ArchiveCommand::GetTitle(IShellItemArray* psia, LPWSTR* ppszName) noexcept
 {
     if (!ppszName) return E_POINTER;
-    return SHStrDupW(BuildAddToArchiveTitle(GetPathsFromShellItemArray(psia)).c_str(), ppszName);
+    try
+    {
+        return SHStrDupW(BuildAddToArchiveTitle(GetPathsFromShellItemArray(psia)).c_str(), ppszName);
+    }
+    catch (...) { return SHStrDupW(L"Add to archive\u2026", ppszName); }
 }
 
 STDMETHODIMP ArchiveCommand::GetIcon(IShellItemArray*, LPWSTR* ppszIcon) noexcept

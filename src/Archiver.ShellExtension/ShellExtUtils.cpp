@@ -21,13 +21,27 @@ static bool HasZipExtension(const std::wstring& path)
     return pExt != nullptr && _wcsicmp(pExt, L".zip") == 0;
 }
 
-// Mirrors .NET's Path.GetFileNameWithoutExtension: a leading dot (e.g. ".gitignore")
-// is not treated as an extension separator.
+// Deliberately deviates from .NET's Path.GetFileNameWithoutExtension for dotfiles: real .NET
+// strips everything from the only dot in ".gitignore", leaving "". Keeping the full name instead
+// avoids an empty display name; Archiver.Shell/Program.cs's RunArchiveAsync applies the same
+// "don't strip to empty" fallback so the title shown here matches the archive actually created.
 static std::wstring GetFileNameWithoutExtension(const std::wstring& path)
 {
     const std::wstring fileName(PathFindFileNameW(path.c_str()));
     const auto pos = fileName.rfind(L'.');
     return (pos != std::wstring::npos && pos != 0) ? fileName.substr(0, pos) : fileName;
+}
+
+// Returns the name of the folder containing `path` (i.e. path's parent directory's own
+// basename) — mirrors Archiver.Shell/Program.cs's RunArchiveAsync, which names a multi-item
+// archive after the common containing folder rather than an arbitrary selected item.
+static std::wstring GetParentFolderName(const std::wstring& path)
+{
+    const auto lastSep = path.rfind(L'\\');
+    if (lastSep == std::wstring::npos) return {};
+    const std::wstring parentPath = path.substr(0, lastSep);
+    const auto parentSep = parentPath.rfind(L'\\');
+    return (parentSep != std::wstring::npos) ? parentPath.substr(parentSep + 1) : parentPath;
 }
 
 // A folder/file name can be up to 255 characters - left untruncated, that would make the
@@ -177,6 +191,14 @@ std::wstring BuildArchiveArgs(const std::vector<std::wstring>& paths)
 std::wstring BuildAddToArchiveTitle(const std::vector<std::wstring>& paths)
 {
     if (paths.empty()) return L"Add to archive\u2026";
-    const std::wstring name = TruncateMiddle(GetFileNameWithoutExtension(paths.front()));
-    return L"Add to \"" + name + L".zip\"";
+
+    std::wstring name = paths.size() > 1
+        ? GetParentFolderName(paths.front())
+        : GetFileNameWithoutExtension(paths.front());
+
+    // Empty (no parent, e.g. a drive root) or a bare drive letter like "C:" \u2014 invalid as a
+    // display name (and as the file name RunArchiveAsync would build) \u2014 fall back.
+    if (name.empty() || name.back() == L':') name = L"archive";
+
+    return L"Add to \"" + TruncateMiddle(name) + L".zip\"";
 }

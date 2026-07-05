@@ -398,7 +398,8 @@ public sealed class ZipArchiveService : IArchiveService
             }
 
             string destDir = options.Mode == ExtractMode.SeparateFolders
-                ? Path.Combine(options.DestinationFolder, Path.GetFileNameWithoutExtension(archivePath))
+                ? Path.Combine(options.DestinationFolder,
+                    options.SeparateFolderName ?? Path.GetFileNameWithoutExtension(archivePath))
                 : options.DestinationFolder;
 
             try
@@ -723,6 +724,17 @@ public sealed class ZipArchiveService : IArchiveService
         long startOffset = 0,
         IProgress<ProgressReport>? progress = null)
     {
+        // T-F66: A directory with no files and no subdirectories writes no entry at all
+        // otherwise — for a top-level empty folder, that leaves HasTempEntries() false and
+        // the whole archive gets silently discarded (ArchiveAsync's "no entries" cleanup),
+        // so archiving an empty folder produced no output file. Writing an explicit
+        // directory entry preserves the folder and keeps the archive from being discarded.
+        if (!Directory.EnumerateFileSystemEntries(sourceDir).Any())
+        {
+            archive.CreateEntry(Path.GetFileName(sourceDir).Replace('\\', '/') + "/");
+            return startOffset;
+        }
+
         // T-F32: Sort files and subdirectories for deterministic traversal order.
         // Directory.EnumerateFiles/EnumerateDirectories return items in filesystem order,
         // which is non-deterministic across runs and filesystems.
@@ -1049,4 +1061,5 @@ public sealed class ZipArchiveService : IArchiveService
         while (File.Exists(candidate));
         return candidate;
     }
+
 }

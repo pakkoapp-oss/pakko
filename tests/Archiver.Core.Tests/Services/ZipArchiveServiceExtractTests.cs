@@ -75,6 +75,30 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
         Directory.Exists(Path.Combine(destDir, "second")).Should().BeTrue();
     }
 
+    // T-F67: SeparateFolderName lets a caller (Archiver.Shell) put the extracted contents
+    // under a caller-chosen subfolder name instead of the archive's own file name — used to
+    // pick a numbered name when the archive's own name is already taken on disk.
+    [Fact]
+    public async Task ExtractAsync_SeparateFolderName_OverridesArchiveDerivedName()
+    {
+        var zip = CreateTestZip("first.zip", "a.txt");
+        var destDir = Path.Combine(_temp.Path, "extracted");
+
+        var options = new ExtractOptions
+        {
+            ArchivePaths = [zip],
+            DestinationFolder = destDir,
+            Mode = ExtractMode.SeparateFolders,
+            SeparateFolderName = "first (1)"
+        };
+
+        var result = await _sut.ExtractAsync(options);
+
+        result.Success.Should().BeTrue();
+        Directory.Exists(Path.Combine(destDir, "first (1)")).Should().BeTrue();
+        Directory.Exists(Path.Combine(destDir, "first")).Should().BeFalse();
+    }
+
     [Fact]
     public async Task ExtractAsync_NonExistentPath_SkippedSilently()
     {

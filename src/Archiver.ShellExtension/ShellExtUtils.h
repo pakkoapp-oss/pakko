@@ -36,7 +36,8 @@ std::wstring BuildExtractHereArgs(const std::vector<std::wstring>& paths);
 std::wstring BuildExtractFolderArgs(const std::vector<std::wstring>& paths);
 std::wstring BuildArchiveArgs(const std::vector<std::wstring>& paths);
 
-// Builds the "Add to <name>.zip" context-menu title, where <name> is the first
-// path's file name without extension (mirrors RunArchiveAsync's naming in
+// Builds the "Add to <name>.zip" context-menu title. For a single selected path, <name> is
+// that path's file name without extension; for multiple paths, <name> is their common
+// containing folder's name instead (mirrors RunArchiveAsync's naming in
 // Archiver.Shell/Program.cs). Returns "Add to archive..." if paths is empty.
 std::wstring BuildAddToArchiveTitle(const std::vector<std::wstring>& paths);

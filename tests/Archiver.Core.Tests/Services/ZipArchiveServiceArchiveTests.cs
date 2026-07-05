@@ -735,4 +735,54 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
         Directory.EnumerateFiles(_temp.Path, "*.tmp").Should().BeEmpty(
             "no .tmp should remain after a partial-success archive");
     }
+
+    // T-F66 — an empty folder writes no ZIP entry by itself, which used to make the T-F60
+    // "no entries → discard" cleanup silently delete the archive. Archiving an empty folder
+    // must still produce a .zip containing that folder as a directory entry.
+    [Fact]
+    public async Task ArchiveAsync_EmptyFolder_CreatesArchiveWithDirectoryEntry()
+    {
+        string emptyFolder = Path.Combine(_temp.Path, "EmptyFolder");
+        Directory.CreateDirectory(emptyFolder);
+        var options = new ArchiveOptions
+        {
+            SourcePaths = [emptyFolder],
+            DestinationFolder = _temp.Path,
+            ArchiveName = "output"
+        };
+
+        var result = await _sut.ArchiveAsync(options);
+
+        result.Success.Should().BeTrue();
+        result.Errors.Should().BeEmpty();
+        result.CreatedFiles.Should().HaveCount(1);
+        File.Exists(result.CreatedFiles[0]).Should().BeTrue();
+
+        using var zip = System.IO.Compression.ZipFile.OpenRead(result.CreatedFiles[0]);
+        zip.Entries.Should().ContainSingle(e => e.FullName == "EmptyFolder/");
+    }
+
+    // T-F66 — an empty subfolder nested inside a non-empty folder must also be preserved.
+    [Fact]
+    public async Task ArchiveAsync_FolderWithEmptySubfolder_PreservesEmptySubfolderEntry()
+    {
+        string folder = Path.Combine(_temp.Path, "Parent");
+        Directory.CreateDirectory(folder);
+        File.WriteAllText(Path.Combine(folder, "file.txt"), "hello");
+        Directory.CreateDirectory(Path.Combine(folder, "EmptyChild"));
+        var options = new ArchiveOptions
+        {
+            SourcePaths = [folder],
+            DestinationFolder = _temp.Path,
+            ArchiveName = "output"
+        };
+
+        var result = await _sut.ArchiveAsync(options);
+
+        result.Success.Should().BeTrue();
+        result.CreatedFiles.Should().HaveCount(1);
+
+        using var zip = System.IO.Compression.ZipFile.OpenRead(result.CreatedFiles[0]);
+        zip.Entries.Should().Contain(e => e.FullName == "EmptyChild/");
+    }
 }

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
@@ -64,12 +65,18 @@ static async Task RunExtractHereAsync(IReadOnlyList<string> archivePaths)
     foreach (var archivePath in archivePaths)
     {
         var destFolder = Path.GetDirectoryName(archivePath) ?? ".";
+        // T-F67: a plain OnConflict=Rename only renames individual conflicting files inside
+        // an existing destination folder (that's the GUI app's merge behavior). The shell
+        // command instead wants a brand-new numbered folder so re-extracting never silently
+        // merges into — or does nothing to — a folder from a previous run.
+        var folderName = GetUniqueFolderName(destFolder, Path.GetFileNameWithoutExtension(archivePath));
         var options = new ExtractOptions
         {
             ArchivePaths = [archivePath],
             DestinationFolder = destFolder,
             Mode = ExtractMode.SeparateFolders,
-            OnConflict = ConflictBehavior.Skip,
+            SeparateFolderName = folderName,
+            OnConflict = ConflictBehavior.Rename,
         };
 
         string title = $"Extracting: {Path.GetFileName(archivePath)}";
@@ -90,14 +97,14 @@ static async Task RunExtractFolderAsync(IReadOnlyList<string> archivePaths)
     foreach (var archivePath in archivePaths)
     {
         var archiveDir = Path.GetDirectoryName(archivePath) ?? ".";
-        var folderName = Path.GetFileNameWithoutExtension(archivePath);
+        var folderName = GetUniqueFolderName(archiveDir, Path.GetFileNameWithoutExtension(archivePath));
         var destFolder = Path.Combine(archiveDir, folderName);
         var options = new ExtractOptions
         {
             ArchivePaths = [archivePath],
             DestinationFolder = destFolder,
             Mode = ExtractMode.SingleFolder,
-            OnConflict = ConflictBehavior.Skip,
+            OnConflict = ConflictBehavior.Rename,
         };
 
         string title = $"Extracting: {Path.GetFileName(archivePath)}";
@@ -109,13 +116,32 @@ static async Task RunExtractFolderAsync(IReadOnlyList<string> archivePaths)
 
 // -------------------------------------------------------------------------
 // --archive: pack all source paths into a single ZIP placed next to the first
-// item, named after the first item.
+// item. A single selected item is named after itself; multiple items are named
+// after their common containing folder instead of an arbitrary selected item
+// (matches NanaZip's convention).
 // -------------------------------------------------------------------------
 static async Task RunArchiveAsync(IReadOnlyList<string> sourcePaths)
 {
     var firstPath = sourcePaths[0];
     var destFolder = Path.GetDirectoryName(firstPath) ?? ".";
-    var archiveName = Path.GetFileNameWithoutExtension(firstPath);
+
+    string archiveName;
+    if (sourcePaths.Count > 1)
+    {
+        archiveName = Path.GetFileName(destFolder);
+        // Path.GetFileName("C:\") returns "C:" when the selection sits directly at a drive
+        // root — invalid in a file name (colon), so fall back rather than let ArchiveAsync throw.
+        if (string.IsNullOrEmpty(archiveName) || archiveName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
+            archiveName = "archive";
+    }
+    else
+    {
+        // Path.GetFileNameWithoutExtension returns "" for dotfiles (e.g. ".gitignore" has no
+        // name before its only dot) — fall back to the full name so we don't create a bare ".zip".
+        archiveName = Path.GetFileNameWithoutExtension(firstPath);
+        if (string.IsNullOrEmpty(archiveName))
+            archiveName = Path.GetFileName(firstPath);
+    }
 
     var service = new ZipArchiveService();
     var options = new ArchiveOptions
@@ -124,13 +150,26 @@ static async Task RunArchiveAsync(IReadOnlyList<string> sourcePaths)
         DestinationFolder = destFolder,
         ArchiveName = archiveName,
         Mode = ArchiveMode.SingleArchive,
-        OnConflict = ConflictBehavior.Skip,
+        OnConflict = ConflictBehavior.Rename,
     };
 
     string title = $"Archiving: {archiveName}";
     await RunWithProgressWindowAsync(title,
         (progress, ct) => service.ArchiveAsync(options, progress, ct))
         .ConfigureAwait(false);
+}
+
+// Returns "name", or "name (1)", "name (2)", ... if "name" already exists under parentDir.
+static string GetUniqueFolderName(string parentDir, string name)
+{
+    if (!Directory.Exists(Path.Combine(parentDir, name)))
+        return name;
+
+    int i = 1;
+    string candidate;
+    do { candidate = $"{name} ({i++})"; }
+    while (Directory.Exists(Path.Combine(parentDir, candidate)));
+    return candidate;
 }
 
 // -------------------------------------------------------------------------
@@ -153,34 +192,76 @@ static async Task<ArchiveResult> RunWithProgressWindowAsync(
         return await op(null!, CancellationToken.None).ConfigureAwait(false);
     }
 
+    ArchiveResult result;
     using (dialog)
     {
         using var cts = new CancellationTokenSource();
+        var dialogLock = new object();
+
+        // Polls independently of progress reporting: Report() only fires when a
+        // ProgressStream was constructed (totalBytes > 0), so gating Cancel on it left
+        // Cancel inert for operations on zero-byte files. The lock keeps this timer's COM
+        // calls from overlapping the progress callback's COM calls on the same object.
+        using var cancelPoll = new Timer(_ =>
+        {
+            lock (dialogLock)
+            {
+                if (dialog.HasUserCancelled())
+                    cts.Cancel();
+            }
+        }, null, TimeSpan.Zero, TimeSpan.FromMilliseconds(250));
 
         var progress = new Progress<ProgressReport>(r =>
         {
-            if (dialog.HasUserCancelled())
+            lock (dialogLock)
             {
-                cts.Cancel();
-                return;
+                if (r.CurrentFile is not null)
+                    dialog.SetLine(1, r.CurrentFile);
+                dialog.SetLine(2, FormatStatus(r));
+                dialog.SetProgress(r.BytesTransferred, r.TotalBytes);
             }
-
-            if (r.CurrentFile is not null)
-                dialog.SetLine(1, r.CurrentFile);
-            dialog.SetLine(2, FormatStatus(r));
-            dialog.SetProgress(r.BytesTransferred, r.TotalBytes);
         });
 
         try
         {
-            return await op(progress, cts.Token).ConfigureAwait(false);
+            result = await op(progress, cts.Token).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
             return new ArchiveResult { Success = false };
         }
     }
+
+    if (!result.Success || result.Errors.Count > 0)
+        ShowErrorSummary(title, result.Errors);
+
+    return result;
 }
+
+// The native progress dialog has no built-in way to report failures after it closes —
+// unlike the deleted ProgressWindow, which showed a ContentDialog with an error summary.
+const uint MB_ICONERROR = 0x10;
+const int MaxErrorLinesShown = 10;
+
+static void ShowErrorSummary(string title, IReadOnlyList<ArchiveError> errors)
+{
+    if (errors.Count == 0)
+    {
+        MessageBoxW(IntPtr.Zero, "The operation failed.", title, MB_ICONERROR);
+        return;
+    }
+
+    var lines = errors.Take(MaxErrorLinesShown)
+        .Select(e => $"{Path.GetFileName(e.SourcePath)}: {e.Message}");
+    var message = string.Join(Environment.NewLine, lines);
+    if (errors.Count > MaxErrorLinesShown)
+        message += $"{Environment.NewLine}…and {errors.Count - MaxErrorLinesShown} more";
+
+    MessageBoxW(IntPtr.Zero, message, title, MB_ICONERROR);
+}
+
+[DllImport("user32.dll", CharSet = CharSet.Unicode)]
+static extern int MessageBoxW(IntPtr hWnd, string text, string caption, uint type);
 
 static string FormatStatus(ProgressReport r) =>
     r.TotalBytes <= 0 ? $"{r.Percent}%" : $"{r.Percent}%  ·  {FormatBytes(r.BytesTransferred)} / {FormatBytes(r.TotalBytes)}";
