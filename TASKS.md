@@ -15,7 +15,7 @@ These rules apply to ALL tasks. Violating them = task is NOT complete.
 - A task with ANY `[ ]` criterion must stay `[ ]` or `[~]` — never `[x]`
 
 **Testing rules:**
-- ALWAYS run `dotnet test` (no path — all projects) after any change to any project. A change in one project can break tests in another.
+- ALWAYS run `dotnet test --filter "Category!=Slow"` (no path — all projects) after any change to any project. A change in one project can break tests in another. Run `dotnet test --filter "Category=Slow"` too before a release or when touching Zip64-adjacent code — see `CLAUDE.md`'s Hard Constraints.
 - If tests fail → fix before marking anything complete
 - Every new behavior in `ZipArchiveService` needs at least one test
 
@@ -384,16 +384,33 @@ with optimal buffer size. No File.ReadAllBytes or large in-memory buffers.
 ---
 
 ### T-F20 — Zip64 Verification
-- [ ] **Status:** future
+- [x] **Status:** complete
 
 **What:** Verify Zip64 support works correctly for large archives.
 .NET supports Zip64 but behavior must be explicitly tested.
 
+**File:** `tests/Archiver.Core.Tests/Services/ZipArchiveServiceZip64Tests.cs`
+
+**Cost tradeoff, resolved with user:** the >65535-file tests measured ~30s each (real
+`ZipArchiveService` per-entry processing cost, not fixable by optimizing test setup — tried
+parallelizing file creation, saved only ~6s). Rather than pay that on every `dotnet test`, these
+three tests are tagged `[Trait("Category", "Slow")]` and excluded from the routine run via
+`--filter "Category!=Slow"` — the first use of this convention in the repo. See `DECISIONS.md`'s
+"T-F20 — Slow Test Convention" entry for the full rationale, and `CLAUDE.md`/`TESTING.md` for the
+updated standard test commands.
+
+**>4 GiB technique:** an NTFS sparse file (`FSCTL_SET_SPARSE` via P/Invoke, test-only) lets
+`SetLength` reach >4 GiB without writing real data — archived with `CompressionLevel
+.NoCompression` (Stored) so an all-zero source doesn't trip our own ZIP-bomb ratio check on
+extract, and so archiving/extracting doesn't spend CPU compressing 4 GiB of zeros. Falls back to
+skipping gracefully if the volume doesn't support sparse files.
+
 **Acceptance criteria:**
-- [ ] Test: archive with >65535 files completes without error
-- [ ] Test: archive >4 GB completes without error
-- [ ] Test: extract >4 GB archive completes without error
-- [ ] dotnet test passes
+- [x] Test: archive with >65535 files completes without error
+- [x] Test: archive >4 GB completes without error
+- [x] Test: extract >4 GB archive completes without error
+- [x] `dotnet test --filter "Category=Slow"` passes — 3/3, ~1m25s total (measured)
+- [x] `dotnet test --filter "Category!=Slow"` (routine run) unaffected — 99/99 Core + 28/28 Shell
 
 ---
 
@@ -451,19 +468,27 @@ infinite loops or unintended file inclusion.
 ---
 
 ### T-F24 — Property-Based Archive Integrity Testing
-- [ ] **Status:** future
+- [x] **Status:** complete
 
 **What:** Generate random directory trees, archive them, extract them,
 and compare file hashes to verify round-trip integrity.
 
-**File:** `tests/Archiver.Core.Tests/`
+**File:** `tests/Archiver.Core.Tests/Services/ZipArchiveServicePropertyTests.cs`
+
+**Found T-F75 by design:** implementing this deliberately AFTER T-F75's recursion fix landed
+(rather than before) confirmed it now catches exactly the class of bug T-F75 fixed by hand — a
+random deep-nesting tree round-tripped through the pre-fix code would have failed a hash
+comparison at any file below the first nesting level.
 
 **Acceptance criteria:**
-- [ ] Test generates random directory tree (random depth, file count, sizes)
-- [ ] Archive → Extract → compare SHA-256 hash of every file
-- [ ] Tested with: all-small files, all-large files, mixed, deep nesting
-- [ ] 10+ random seeds tested per run
-- [ ] dotnet test passes
+- [x] Test generates random directory tree (random depth, file count, sizes) —
+      `GenerateLevel` with a configurable `RandomTreeShape`
+- [x] Archive → Extract → compare SHA-256 hash of every file
+- [x] Tested with: all-small files, all-large files, mixed, deep nesting — four dedicated
+      `[Fact]`s with distinct `RandomTreeShape` parameters, plus `ForceMaxDepth` for the
+      deep-nesting case (no random early stop, so every level actually nests)
+- [x] 10+ random seeds tested per run — `[Theory]`/`MemberData` over seeds 1–12
+- [x] `dotnet test` passes — 99/99 (was 83/83), all 16 new tests complete in ~1s total
 
 ---
 
@@ -488,7 +513,7 @@ Avoid unverifiable superiority claims. Prefer factual positioning.
 ---
 
 ### T-F30 — Duplicate Filename Detection Inside Archive
-- [ ] **Status:** future
+- [x] **Status:** complete
 - **Priority:** medium
 
 **What:** ZIP format allows multiple entries with identical paths.
@@ -497,10 +522,21 @@ and extraction.
 
 **File:** `src/Archiver.Core/Services/ZipArchiveService.cs`
 
+**Fix:** Archive side — `GetUniqueEntryName` tracks top-level entry names already claimed
+(`usedEntryNames`) and renames a colliding second SourcePath ("name (1).ext"), same convention
+as `GetUniqueFilePath`. Extract side — `claimedFinalPaths` tracks every final path already
+claimed within the current run, closing a gap where the existing conflict check only looked at
+the real destination's pre-existing state (nothing is committed there until the whole extraction
+loop finishes), so a genuine duplicate entry inside one ZIP silently overwrote itself in the temp
+extraction directory. `GetUniqueFilePath` gained an optional `claimedPaths` exclusion set so a
+Rename target can't collide with an earlier duplicate's already-chosen rename target either.
+
 **Acceptance criteria:**
-- [ ] During archive: duplicate source paths detected → second occurrence renamed (add number)
-- [ ] During extract: duplicate entry names detected → handled per ConflictBehavior
-- [ ] dotnet test passes — new test: archive with duplicate entry names
+- [x] During archive: duplicate source paths detected → second occurrence renamed (add number)
+- [x] During extract: duplicate entry names detected → handled per ConflictBehavior
+- [x] `dotnet test` passes — new tests: two source files/two source directories sharing a
+      basename (archive side); a ZIP with a genuine duplicate entry name under Rename and under
+      Skip (extract side) — 83/83 (was 79/79)
 
 ---
 
@@ -1465,6 +1501,41 @@ feedback. This is now moot: `Archiver.Shell` no longer spawns a second process f
 - [x] Test: one valid + one missing → `CreatedFiles.Count == 1`, `Errors.Count == 1`, `Success = false`, no `.tmp` on disk
 - [x] All existing tests still pass
 - [x] `dotnet test` passes — 69/69
+
+---
+
+### T-F75 — Correctness Bug: Nested Subdirectory Entries Lost Their Path Prefix
+- [x] **Status:** complete — **confirmed shipped in tagged v1.1.0**, found 2026-07-06 while
+      investigating T-F30
+
+**What:** `AddDirectoryToArchiveAsync` computed each entry's relative path against the current
+recursion level's own immediate parent, recomputed fresh every level, instead of against the
+true archived root held constant. Archiving a directory nested two or more levels deep produced
+ZIP entries missing their accumulated prefix — e.g. `notes/sub/file.txt` was written as just
+`sub/file.txt`. Worse: two files at different depths whose path relative to their own immediate
+parent happened to match could collide into the *same* entry name, and since
+`ZipArchive.CreateEntry` doesn't reject duplicates, the second write silently clobbered the
+first on extraction. See `DECISIONS.md`'s "T-F75" entry for the full trace and root-cause detail.
+
+**Fix:** `AddDirectoryToArchiveAsync` gained a `rootDir` parameter, fixed across all recursion,
+used (with `entryPrefix`) to compute every entry name against the true root regardless of depth.
+The T-F66 empty-subdirectory special case had the identical bug and is fixed the same way.
+
+**Files:** `src/Archiver.Core/Services/ZipArchiveService.cs`,
+`tests/Archiver.Core.Tests/Services/ZipArchiveServiceArchiveTests.cs`
+
+**Acceptance criteria:**
+- [x] `AddDirectoryToArchiveAsync` computes entry names against a fixed `rootDir`, not each
+      recursion level's own parent
+- [x] Empty-subdirectory entries (T-F66) also computed against the fixed root
+- [x] `ArchiveAsync_FolderWithEmptySubfolder_PreservesEmptySubfolderEntry` updated — it asserted
+      the bug's own output (`EmptyChild/`) as correct; now expects `Parent/EmptyChild/`
+- [x] New test: 3-level nesting — entry names include the full path from root at every depth
+- [x] New test: sibling subdirectories with matching relative structure no longer collide into
+      one entry name; archive → extract round trip preserves both files' distinct content
+- [x] `dotnet test` passes — 79/79 (was 77/77)
+- [ ] Decide whether this warrants a v1.1 patch/release note for early testers (flagged to user,
+      not yet decided)
 
 ---
 

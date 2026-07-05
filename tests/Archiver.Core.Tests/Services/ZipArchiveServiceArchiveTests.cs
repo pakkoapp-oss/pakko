@@ -783,6 +783,158 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
         result.CreatedFiles.Should().HaveCount(1);
 
         using var zip = System.IO.Compression.ZipFile.OpenRead(result.CreatedFiles[0]);
-        zip.Entries.Should().Contain(e => e.FullName == "EmptyChild/");
+        // T-F75: entry names are relative to the archived root ("Parent/"), not to the
+        // subfolder's own immediate parent — a nested empty folder keeps its full path.
+        zip.Entries.Should().Contain(e => e.FullName == "Parent/EmptyChild/");
+    }
+
+    // T-F75: AddDirectoryToArchiveAsync previously recomputed each recursion level's relative
+    // path against its own immediate parent instead of the original archived root, so every
+    // level below the first lost its accumulated prefix entirely.
+    [Fact]
+    public async Task ArchiveAsync_ThreeLevelNesting_EntryNamesIncludeFullPathFromRoot()
+    {
+        string root = Path.Combine(_temp.Path, "notes");
+        string level1 = Path.Combine(root, "level1");
+        string level2 = Path.Combine(level1, "level2");
+        Directory.CreateDirectory(level2);
+        File.WriteAllText(Path.Combine(root, "top.txt"), "top");
+        File.WriteAllText(Path.Combine(level1, "mid.txt"), "mid");
+        File.WriteAllText(Path.Combine(level2, "deep.txt"), "deep");
+
+        var result = await _sut.ArchiveAsync(new ArchiveOptions
+        {
+            SourcePaths = [root],
+            DestinationFolder = _temp.Path,
+            ArchiveName = "three_level"
+        });
+
+        result.Success.Should().BeTrue();
+        using var zip = System.IO.Compression.ZipFile.OpenRead(result.CreatedFiles[0]);
+        var names = zip.Entries.Select(e => e.FullName).ToList();
+
+        names.Should().Contain("notes/top.txt");
+        names.Should().Contain("notes/level1/mid.txt");
+        names.Should().Contain("notes/level1/level2/deep.txt");
+    }
+
+    // T-F75: before the fix, two files at different depths whose paths relative to their OWN
+    // immediate parent happened to match (both "a/file.txt" relative to their parent) collided
+    // into the SAME entry name — CreateEntry allows duplicates, so both were written, and
+    // extraction would silently clobber one with the other. This proves that data-loss case
+    // is closed: both files must survive as distinct, correctly-prefixed entries.
+    [Fact]
+    public async Task ArchiveAsync_SiblingSubdirectoriesWithMatchingRelativeStructure_NoEntryCollision()
+    {
+        string root = Path.Combine(_temp.Path, "notes");
+        string branchA = Path.Combine(root, "a");
+        string branchB = Path.Combine(root, "b", "a");
+        Directory.CreateDirectory(branchA);
+        Directory.CreateDirectory(branchB);
+        File.WriteAllText(Path.Combine(branchA, "file.txt"), "from a");
+        File.WriteAllText(Path.Combine(branchB, "file.txt"), "from b/a");
+
+        var result = await _sut.ArchiveAsync(new ArchiveOptions
+        {
+            SourcePaths = [root],
+            DestinationFolder = _temp.Path,
+            ArchiveName = "collision_test"
+        });
+
+        result.Success.Should().BeTrue();
+        using var zip = System.IO.Compression.ZipFile.OpenRead(result.CreatedFiles[0]);
+        var names = zip.Entries.Select(e => e.FullName).ToList();
+
+        names.Should().Contain("notes/a/file.txt");
+        names.Should().Contain("notes/b/a/file.txt");
+        names.Should().OnlyHaveUniqueItems();
+
+        using var extractDest = new TempDirectory();
+        var extractResult = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [result.CreatedFiles[0]],
+            DestinationFolder = extractDest.Path,
+            Mode = ExtractMode.SingleFolder
+        });
+
+        extractResult.Success.Should().BeTrue();
+        File.ReadAllText(Path.Combine(extractDest.Path, "a", "file.txt")).Should().Be("from a");
+        File.ReadAllText(Path.Combine(extractDest.Path, "b", "a", "file.txt")).Should().Be("from b/a");
+    }
+
+    // T-F30: Duplicate Filename Detection Inside Archive
+
+    [Fact]
+    public async Task ArchiveAsync_TwoSourceFilesShareBasename_SecondRenamedWithSuffix()
+    {
+        string folderA = Path.Combine(_temp.Path, "A");
+        string folderB = Path.Combine(_temp.Path, "B");
+        Directory.CreateDirectory(folderA);
+        Directory.CreateDirectory(folderB);
+        string fileA = Path.Combine(folderA, "report.txt");
+        string fileB = Path.Combine(folderB, "report.txt");
+        File.WriteAllText(fileA, "content from A");
+        File.WriteAllText(fileB, "content from B");
+
+        var result = await _sut.ArchiveAsync(new ArchiveOptions
+        {
+            SourcePaths = [fileA, fileB],
+            DestinationFolder = _temp.Path,
+            ArchiveName = "dup_files"
+        });
+
+        result.Success.Should().BeTrue();
+        using var zip = System.IO.Compression.ZipFile.OpenRead(result.CreatedFiles[0]);
+        var names = zip.Entries.Select(e => e.FullName).ToList();
+
+        // Sorted ordinal-case-insensitive input order (T-F31/T-F32) means fileA is processed
+        // first and keeps the plain name; fileB collides and is renamed.
+        names.Should().Contain("report.txt");
+        names.Should().Contain("report (1).txt");
+        names.Should().OnlyHaveUniqueItems();
+    }
+
+    [Fact]
+    public async Task ArchiveAsync_TwoSourceDirectoriesShareBasename_SecondRenamedWithSuffix()
+    {
+        string parentA = Path.Combine(_temp.Path, "ParentA");
+        string parentB = Path.Combine(_temp.Path, "ParentB");
+        string dirA = Path.Combine(parentA, "notes");
+        string dirB = Path.Combine(parentB, "notes");
+        Directory.CreateDirectory(dirA);
+        Directory.CreateDirectory(dirB);
+        File.WriteAllText(Path.Combine(dirA, "file.txt"), "from A");
+        File.WriteAllText(Path.Combine(dirB, "file.txt"), "from B");
+
+        var result = await _sut.ArchiveAsync(new ArchiveOptions
+        {
+            SourcePaths = [dirA, dirB],
+            DestinationFolder = _temp.Path,
+            ArchiveName = "dup_dirs"
+        });
+
+        result.Success.Should().BeTrue();
+        using var zip = System.IO.Compression.ZipFile.OpenRead(result.CreatedFiles[0]);
+        var names = zip.Entries.Select(e => e.FullName).ToList();
+
+        names.Should().Contain("notes/file.txt");
+        names.Should().Contain("notes (1)/file.txt");
+        names.Should().OnlyHaveUniqueItems();
+
+        using var extractDest = new TempDirectory();
+        var extractResult = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [result.CreatedFiles[0]],
+            DestinationFolder = extractDest.Path,
+            Mode = ExtractMode.SingleFolder
+        });
+
+        extractResult.Success.Should().BeTrue();
+        // T-14 smart foldering: "notes" and "notes (1)" are two distinct roots, so extraction
+        // wraps them in a subfolder named after the archive itself ("dup_dirs"), same as any
+        // other multi-root archive (see extract_multiple_root_items.zip fixture scenario).
+        string wrapped = Path.Combine(extractDest.Path, "dup_dirs");
+        File.ReadAllText(Path.Combine(wrapped, "notes", "file.txt")).Should().Be("from A");
+        File.ReadAllText(Path.Combine(wrapped, "notes (1)", "file.txt")).Should().Be("from B");
     }
 }

@@ -71,6 +71,11 @@ public sealed class ZipArchiveService : IArchiveService
                     using var archive = ZipFile.Open(tempPath, ZipArchiveMode.Create);
                     int total = sortedSourcePaths.Count;
                     long byteOffset = 0;
+                    // T-F30: multiple top-level SourcePaths can share a basename (e.g. two
+                    // selected files both named "report.txt" from different folders) — track
+                    // names already claimed at the archive root and rename later occurrences,
+                    // the same way GetUniqueFilePath renames colliding output files on disk.
+                    var usedEntryNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                     for (int i = 0; i < total; i++)
                     {
                         if (cancellationToken.IsCancellationRequested)
@@ -101,12 +106,14 @@ public sealed class ZipArchiveService : IArchiveService
                         {
                             if (Directory.Exists(sourcePath))
                             {
-                                await AddDirectoryToArchiveAsync(archive, sourcePath, Path.GetFileName(sourcePath),
+                                string entryName = GetUniqueEntryName(usedEntryNames, Path.GetFileName(sourcePath));
+                                await AddDirectoryToArchiveAsync(archive, sourcePath, sourcePath, entryName,
                                     options.CompressionLevel, cancellationToken, skippedFiles, errors, totalSourceBytes, byteOffset, progress);
                             }
                             else if (File.Exists(sourcePath))
                             {
-                                await AddEntryFromFileAsync(archive, sourcePath, Path.GetFileName(sourcePath),
+                                string entryName = GetUniqueEntryName(usedEntryNames, Path.GetFileName(sourcePath));
+                                await AddEntryFromFileAsync(archive, sourcePath, entryName,
                                     options.CompressionLevel, cancellationToken, totalSourceBytes, byteOffset, progress);
                             }
                             else
@@ -261,7 +268,7 @@ public sealed class ZipArchiveService : IArchiveService
                         await Task.Run(async () =>
                         {
                             using var archive = ZipFile.Open(separateTempPath, ZipArchiveMode.Create);
-                            await AddDirectoryToArchiveAsync(archive, sourcePath, Path.GetFileName(sourcePath),
+                            await AddDirectoryToArchiveAsync(archive, sourcePath, sourcePath, Path.GetFileName(sourcePath),
                                 level, cancellationToken, skippedFiles, errors, totalSourceBytes, capturedOffset, progress);
                         }, cancellationToken).ConfigureAwait(false);
                     }
@@ -606,6 +613,15 @@ public sealed class ZipArchiveService : IArchiveService
         long totalUncompressedBytes = fileEntries.Where(e => e.Length > 0).Sum(e => e.Length);
         long bytesRead = 0;
 
+        // T-F30: ZIP format allows two entries with the identical name, and
+        // System.IO.Compression does not reject them on read. The existing conflict check
+        // below only looks at whether finalFilePath already exists in the FINAL destination —
+        // it never sees an earlier duplicate entry from THIS SAME run, since nothing is
+        // committed to the final destination until after the whole loop finishes. Tracking
+        // claimed paths in memory closes that gap; without it, a duplicate entry would
+        // silently overwrite the first one's file in tempDest.
+        var claimedFinalPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
         try
         {
             foreach (var entry in fileEntries)
@@ -696,9 +712,12 @@ public sealed class ZipArchiveService : IArchiveService
                     continue;
                 }
 
-                // Conflict check against the final destination, not the temp dir
+                // Conflict check against the final destination, not the temp dir — plus
+                // T-F30: against every finalFilePath already claimed earlier in this same run,
+                // which catches a duplicate entry name inside this archive that File.Exists
+                // alone can't see (see claimedFinalPaths comment above).
                 string finalFilePath = Path.GetFullPath(Path.Combine(actualDest, relativePath));
-                if (File.Exists(finalFilePath))
+                if (File.Exists(finalFilePath) || claimedFinalPaths.Contains(finalFilePath))
                 {
                     if (onConflict == ConflictBehavior.Skip)
                     {
@@ -707,10 +726,12 @@ public sealed class ZipArchiveService : IArchiveService
                     }
                     if (onConflict == ConflictBehavior.Rename)
                     {
-                        string uniqueFinal = GetUniqueFilePath(finalFilePath);
+                        string uniqueFinal = GetUniqueFilePath(finalFilePath, claimedFinalPaths);
                         destFilePath = Path.Combine(Path.GetDirectoryName(destFilePath)!, Path.GetFileName(uniqueFinal));
+                        finalFilePath = uniqueFinal;
                     }
                 }
+                claimedFinalPaths.Add(finalFilePath);
 
                 if (progress != null && totalUncompressedBytes > 0)
                 {
@@ -816,9 +837,16 @@ public sealed class ZipArchiveService : IArchiveService
     // directory. Returns the updated startOffset for progress tracking.
     // T-F21: errors list receives per-file ArchiveErrors so that a single inaccessible file
     // does not abort the rest of the directory — operation continues for all remaining files.
+    // T-F75: rootDir is the original top-level directory being archived and stays FIXED across
+    // every recursion level — relative paths (and therefore ZIP entry names) are always computed
+    // against it. Before this fix, relative paths were computed against each recursion level's
+    // own immediate parent, so every level below the first lost its accumulated prefix (e.g.
+    // "notes/sub/file.txt" became just "sub/file.txt" — silently wrong, and deep enough nesting
+    // could collide two distinct source files into the same entry name). See DECISIONS.md.
     private static async Task<long> AddDirectoryToArchiveAsync(
         ZipArchive archive,
         string sourceDir,
+        string rootDir,
         string entryPrefix,
         CompressionLevel compressionLevel,
         CancellationToken cancellationToken,
@@ -835,7 +863,11 @@ public sealed class ZipArchiveService : IArchiveService
         // directory entry preserves the folder and keeps the archive from being discarded.
         if (!Directory.EnumerateFileSystemEntries(sourceDir).Any())
         {
-            archive.CreateEntry(Path.GetFileName(sourceDir).Replace('\\', '/') + "/");
+            string relativeDir = Path.GetRelativePath(rootDir, sourceDir);
+            string emptyEntryName = relativeDir == "."
+                ? entryPrefix + "/"
+                : entryPrefix + "/" + relativeDir.Replace('\\', '/') + "/";
+            archive.CreateEntry(emptyEntryName);
             return startOffset;
         }
 
@@ -862,8 +894,8 @@ public sealed class ZipArchiveService : IArchiveService
             long fileSize = 0;
             try { fileSize = new FileInfo(filePath).Length; } catch { }
 
-            string relativePath = Path.GetRelativePath(Path.GetDirectoryName(sourceDir)!, filePath);
-            string entryName = relativePath.Replace('\\', '/');
+            string relativePath = Path.GetRelativePath(rootDir, filePath).Replace('\\', '/');
+            string entryName = entryPrefix + "/" + relativePath;
 
             // T-F21: Catch per-file IO failures. A file may be deleted or locked between
             // Directory.EnumerateFiles discovery and the FileStream.Open inside
@@ -914,7 +946,7 @@ public sealed class ZipArchiveService : IArchiveService
                 continue;
             }
 
-            startOffset = await AddDirectoryToArchiveAsync(archive, subDir, entryPrefix, compressionLevel,
+            startOffset = await AddDirectoryToArchiveAsync(archive, subDir, rootDir, entryPrefix, compressionLevel,
                 cancellationToken, skippedFiles, errors, totalBytes, startOffset, progress);
         }
 
@@ -1154,7 +1186,10 @@ public sealed class ZipArchiveService : IArchiveService
         }
     }
 
-    private static string GetUniqueFilePath(string path)
+    // T-F30: claimedPaths lets a caller also exclude candidates already reserved in-memory this
+    // run (e.g. a rename target chosen for an earlier duplicate entry that hasn't been written
+    // to the real destination yet) — File.Exists alone can't see those.
+    private static string GetUniqueFilePath(string path, HashSet<string>? claimedPaths = null)
     {
         string dir = Path.GetDirectoryName(path)!;
         string name = Path.GetFileNameWithoutExtension(path);
@@ -1162,7 +1197,25 @@ public sealed class ZipArchiveService : IArchiveService
         int i = 1;
         string candidate;
         do { candidate = Path.Combine(dir, $"{name} ({i++}){ext}"); }
-        while (File.Exists(candidate));
+        while (File.Exists(candidate) || (claimedPaths?.Contains(candidate) ?? false));
+        return candidate;
+    }
+
+    // T-F30: same "name (1)", "name (2)", ... renaming convention as GetUniqueFilePath, but
+    // against an in-memory set of ZIP entry names already claimed at the archive root rather
+    // than the filesystem — two top-level SourcePaths sharing a basename would otherwise become
+    // two ZIP entries with the identical name (CreateEntry does not reject duplicates).
+    private static string GetUniqueEntryName(HashSet<string> usedNames, string proposedName)
+    {
+        if (usedNames.Add(proposedName))
+            return proposedName;
+
+        string name = Path.GetFileNameWithoutExtension(proposedName);
+        string ext = Path.GetExtension(proposedName);
+        int i = 1;
+        string candidate;
+        do { candidate = $"{name} ({i++}){ext}"; }
+        while (!usedNames.Add(candidate));
         return candidate;
     }
 

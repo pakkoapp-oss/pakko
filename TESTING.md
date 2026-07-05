@@ -7,12 +7,21 @@ Covers `Archiver.Core` only. UI layer (`Archiver.App`) is not unit-tested in v1.
 ## Running Tests
 
 ```bash
-# Run all tests
-dotnet test tests/Archiver.Core.Tests
+# Run all tests (skips T-F20's Zip64 Slow tests — see below)
+dotnet test tests/Archiver.Core.Tests --filter "Category!=Slow"
 
 # With verbose output
-dotnet test tests/Archiver.Core.Tests --logger "console;verbosity=normal"
+dotnet test tests/Archiver.Core.Tests --filter "Category!=Slow" --logger "console;verbosity=normal"
+
+# Zip64 tests only — real multi-second/multi-GB cost, not run by default
+dotnet test tests/Archiver.Core.Tests --filter "Category=Slow"
 ```
+
+**Slow tests (`[Trait("Category", "Slow")]`):** `ZipArchiveServiceZip64Tests.cs` (T-F20) creates
+65,600 real files and a >4 GiB sparse file to exercise Zip64's entry-count and large-size
+boundaries — genuinely expensive (~30s per >65535-file test; multi-GB disk I/O for the large-file
+test), not something worth paying on every `dotnet test` run. Run explicitly before a release or
+when a change touches Zip64-adjacent code.
 
 **Note:** Do not run from Visual Studio Test Explorer when WinUI project is in the same solution — VS Test Explorer has a known issue with WinUI + mixed solution. Use CLI.
 
@@ -41,6 +50,8 @@ dotnet test tests/Archiver.Core.Tests --logger "console;verbosity=normal"
 | `ZipArchiveServiceExtractTests.cs` | ~14 | Extract modes, smart foldering, password detection, conflict, delete archive, temp dir pattern (T-F27), bomb protection (T-F28) |
 | `ZipArchiveServiceFixtureTests.cs` | 18 | Fixture-based: valid archives, corrupted, encrypted, ZIP slip |
 | `ZipArchiveServiceTestAsyncTests.cs` | 4 | T-F62: `TestAsync` CRC-32 verification — valid archive passes, corrupted-CRC fixture fails, encrypted archive errors, mixed valid+corrupted selection reports only the corrupted one |
+| `ZipArchiveServicePropertyTests.cs` | 16 | T-F24: property-based archive/extract round-trip — random directory trees (12 seeds) + named all-small/all-large/mixed/deep-nesting scenarios, SHA-256 hash comparison per file |
+| `ZipArchiveServiceZip64Tests.cs` | 3 | T-F20: Zip64 boundaries — `[Trait("Category","Slow")]`, excluded from default `dotnet test` (see "Running Tests" above) |
 | `ArchiveOptionsTests.cs` | ~2 | Model defaults |
 
 This table (and the "48 tests total" figure below) predates several rounds of additions

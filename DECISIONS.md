@@ -452,3 +452,92 @@ clean "reads fine, CRC is wrong" case, which is the specific scenario `TestAsync
 archive), not first as NanaZip's Open → Test → Extract → Compress ordering would suggest. Per
 project direction: Test is a diagnostic/verification action, not a primary one, and primary
 actions (Extract/Archive) must always precede it in the menu.
+
+---
+
+## T-F75 — Correctness Bug: Nested Subdirectory Entries Lost Their Path Prefix
+
+**Found while investigating T-F30** (duplicate filename detection) — writing a throwaway trace
+test to check current archive-entry-naming behavior before adding dedup logic surfaced this
+independently, more severe bug. **Confirmed shipped in the tagged `v1.1.0` release** — any
+archive of a directory containing subdirectories nested two or more levels deep has always
+produced structurally wrong entry names.
+
+**Root cause:** `AddDirectoryToArchiveAsync` computed each file's ZIP entry name as
+`Path.GetRelativePath(Path.GetDirectoryName(sourceDir)!, filePath)` — relative to the CURRENT
+recursion level's own immediate parent, recomputed fresh at every level. This is correct only at
+the top level. One level down, the relative-path base has already shifted to the subdirectory's
+own parent, so the entry name loses the entire prefix accumulated so far. Traced concretely:
+archiving `notes/` containing `notes/readme.txt` and `notes/sub/file.txt` produced ZIP entries
+`notes/readme.txt` (correct) and `sub/file.txt` (**missing the `notes/` prefix entirely**) —
+verified via a real `ArchiveAsync` → `ZipFile.OpenRead` round trip, not inferred from reading the
+code.
+
+**Blast radius — silent data loss, not just misplaced files:** because the relative-path base
+resets at every level to "the current directory's own parent" rather than the true archived
+root, two files at different nesting depths can produce the *same* entry name whenever their
+paths relative to their own immediate parent happen to match — e.g. `notes/a/file.txt` and
+`notes/b/a/file.txt` both reduce to entry name `a/file.txt`. `ZipArchive.CreateEntry` does not
+reject duplicate names, so both are written; on extraction, the second write clobbers the first.
+Confirmed via `ArchiveAsync_SiblingSubdirectoriesWithMatchingRelativeStructure_NoEntryCollision`
+in `ZipArchiveServiceArchiveTests.cs` that this collision is now closed.
+
+**Fix:** `AddDirectoryToArchiveAsync` gained a `rootDir` parameter — the original top-level
+directory being archived — held **fixed** across every recursion level, alongside the existing
+`entryPrefix` (the archived folder's own, possibly-deduplicated, top-level name). Every entry
+name is now `entryPrefix + "/" + Path.GetRelativePath(rootDir, filePath)`, computed against the
+one true root regardless of recursion depth. The empty-subdirectory special case (T-F66) had the
+identical bug (`Path.GetFileName(sourceDir) + "/"` with no prefix) and is fixed the same way.
+
+**Test that had codified the bug, now corrected:**
+`ArchiveAsync_FolderWithEmptySubfolder_PreservesEmptySubfolderEntry` asserted the ZIP contained
+an entry named exactly `EmptyChild/` — this was the bug's own output, asserted as if it were
+correct. Updated to expect `Parent/EmptyChild/`. No other existing entry-name assertion in
+`ZipArchiveServiceArchiveTests.cs` encoded the bug (the "SameDirectoryTwice" tests only assert
+run-to-run consistency and ascending order, never the actual prefix content).
+
+**Why no existing test caught this:** no test exercised `ArchiveAsync` on a directory nested two
+or more levels deep and then asserted the *exact* entry names or performed a structural
+round-trip comparison — exactly the gap T-F24 (property-based round-trip integrity testing) is
+meant to close. Implementing T-F24 was deferred until after this fix landed, so it validates
+correct behavior rather than locking in the bug.
+
+**Action item flagged to user (not yet decided as of this writing):** whether this warrants a
+v1.1 patch release notice, given early testers may have archives with silently-misplaced or
+partially-overwritten nested content.
+
+---
+
+## T-F20 — Slow Test Convention (`[Trait("Category", "Slow")]`)
+
+**Decision:** T-F20's Zip64 tests (`ZipArchiveServiceZip64Tests.cs`) are tagged
+`[Trait("Category", "Slow")]` and excluded from the routine `dotnet test` invocation via
+`--filter "Category!=Slow"`. This is the **first use of this convention in the repo** — every
+other project hard constraint says "always run `dotnet test` with no path argument," full stop.
+
+**Why:** Measured, not assumed. The >65535-file archive/extract tests took ~30s *each*
+(~65s combined) — tried parallelizing the file-creation loop first (`Parallel.For`), which only
+shaved ~6s off, confirming the real cost is `ZipArchiveService` processing tens of thousands of
+individual ZIP entries (traversal, sorting, per-entry writes), not the file-creation loop itself.
+That's not fixable without changing production code for a test's sake, and it's well past a
+"routine `dotnet test`" cost. The >4 GiB round-trip test adds real multi-GB disk I/O on top.
+
+**Sparse-file technique for the >4 GiB case:** `CreateSparseFileOver4Gb` marks a file NTFS-sparse
+via `DeviceIoControl(FSCTL_SET_SPARSE)` (P/Invoke, test-only — this is not production
+`Archiver.Core` code, so it doesn't touch the "P/Invoke reserved for v1.4 Low IL sandbox" hard
+constraint) before calling `SetLength` past 4 GiB — the filesystem returns zeros for the
+unallocated range on read without real disk I/O, so generating the *source* file is fast. The
+resulting `.zip` itself is still a real ~4 GiB file on disk (transient, cleaned up by
+`TempDirectory.Dispose`): archived with `CompressionLevel.NoCompression` (Stored) rather than
+Deflate, because an all-zero source compresses at a ratio our own ZIP-bomb check
+(`MaxCompressionRatio = 1000`) would reject on extract, and Stored also avoids spending CPU time
+compressing 4 GiB of zeros just to prove Zip64's size handling works. Falls back to skipping
+(not failing) if `FSCTL_SET_SPARSE` isn't supported on the volume (e.g. FAT32).
+
+**Convention going forward:** `[Trait("Category", "Slow")]` is now the repo's mechanism for
+"this test is correct and worth having, but too expensive to run on every change." Use it only
+when a cheaper test design has genuinely been ruled out (as here) — it is not a shortcut around
+writing a faster test. `CLAUDE.md`'s hard constraint, `TASKS.md`'s Agent Rules, and `TESTING.md`
+were all updated to `dotnet test --filter "Category!=Slow"` as the routine command, with
+`--filter "Category=Slow"` required before a release or when a change touches Zip64-adjacent
+code.

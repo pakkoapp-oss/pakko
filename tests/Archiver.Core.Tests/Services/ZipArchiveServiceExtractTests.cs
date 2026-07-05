@@ -653,4 +653,71 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
             actual.Should().Equal(zoneBytes, $"Zone.Identifier content should match on {Path.GetFileName(extractedFile)}");
         }
     }
+
+    // T-F30: Duplicate Filename Detection Inside Archive (extract side)
+    //
+    // ZIP format allows two entries with the identical name; System.IO.Compression does not
+    // reject them on read. Without dedup, the second entry silently overwrote the first inside
+    // the temp extraction directory, since the pre-existing conflict check only looked at the
+    // real destination's state, which nothing had been committed to yet.
+
+    private static string CreateZipWithDuplicateEntryNames(string zipPath, string entryName, string contentA, string contentB)
+    {
+        using var archive = ZipFile.Open(zipPath, ZipArchiveMode.Create);
+        using (var s = archive.CreateEntry(entryName).Open())
+        using (var w = new StreamWriter(s))
+            w.Write(contentA);
+        using (var s = archive.CreateEntry(entryName).Open())
+        using (var w = new StreamWriter(s))
+            w.Write(contentB);
+        return zipPath;
+    }
+
+    [Fact]
+    public async Task ExtractAsync_DuplicateEntryNames_RenameKeepsBothFilesDistinct()
+    {
+        string zipPath = CreateZipWithDuplicateEntryNames(
+            Path.Combine(_temp.Path, "dup.zip"), "dup.txt", "first", "second");
+
+        var options = new ExtractOptions
+        {
+            ArchivePaths = [zipPath],
+            DestinationFolder = _temp.Path,
+            Mode = ExtractMode.SeparateFolders,
+            OnConflict = ConflictBehavior.Rename,
+        };
+
+        var result = await _sut.ExtractAsync(options);
+
+        result.Success.Should().BeTrue();
+        var extractedFiles = Directory.GetFiles(_temp.Path, "*.txt", SearchOption.AllDirectories)
+            .OrderBy(f => f)
+            .ToList();
+        extractedFiles.Should().HaveCount(2);
+
+        var contents = extractedFiles.Select(File.ReadAllText).OrderBy(c => c).ToList();
+        contents.Should().Equal("first", "second");
+    }
+
+    [Fact]
+    public async Task ExtractAsync_DuplicateEntryNames_SkipKeepsOnlyFirst()
+    {
+        string zipPath = CreateZipWithDuplicateEntryNames(
+            Path.Combine(_temp.Path, "dup.zip"), "dup.txt", "first", "second");
+
+        var options = new ExtractOptions
+        {
+            ArchivePaths = [zipPath],
+            DestinationFolder = _temp.Path,
+            Mode = ExtractMode.SeparateFolders,
+            OnConflict = ConflictBehavior.Skip,
+        };
+
+        var result = await _sut.ExtractAsync(options);
+
+        result.Success.Should().BeTrue();
+        var extractedFiles = Directory.GetFiles(_temp.Path, "*.txt", SearchOption.AllDirectories);
+        extractedFiles.Should().ContainSingle();
+        File.ReadAllText(extractedFiles[0]).Should().Be("first");
+    }
 }

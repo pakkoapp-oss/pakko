@@ -24,8 +24,13 @@ T-F62 (Test archive) is code-complete (`TestAsync` + `--test` + `TestCommand`), 
 manual Explorer smoke test; remaining v1.2 work after that is T-F63 (Extract…/Compress…
 dialogs) and T-F68 (shell extract silently ignoring `SkippedFiles`).
 - T-01 through T-35 + T-11, and T-F16/T-F17/T-F18/T-F26–T-F29/T-F37–T-F39/T-F44/T-F45 complete
-- 105/105 .NET tests pass (`dotnet test`: 77 Archiver.Core.Tests + 28 Archiver.Shell.Tests) — C++
-  `Archiver.ShellExtension.Tests` (Google Test, 33/33) run separately, not covered by `dotnet test`
+- 127/127 .NET tests pass (`dotnet test --filter "Category!=Slow"`: 99 Archiver.Core.Tests +
+  28 Archiver.Shell.Tests). 3 additional Zip64 tests (T-F20) are tagged `[Trait("Category",
+  "Slow")]` and excluded from this default run — they cost real wall-clock time (>65535-file
+  archiving/extraction, a >4 GiB round trip) that isn't worth paying on every change; run them
+  explicitly with `dotnet test --filter "Category=Slow"` before a release or when touching
+  Zip64-adjacent code. C++ `Archiver.ShellExtension.Tests` (Google Test, 33/33) run separately,
+  not covered by `dotnet test`
 - MSIX signed with dev cert via Deploy.ps1 (see T-F10 for production-grade cert)
 - Async streaming (CopyToAsync) — CancellationToken respected mid-file
 - Temp file/dir pattern — no partial files on cancel or failure
@@ -148,8 +153,11 @@ references are easy to miss otherwise (this session found 5 lingering mentions o
 - **Solution platforms:** x64 and ARM64 only — never add `Any CPU` or `x86` configuration entries
   to the `.sln` file. When adding a new project, mirror the `Debug|x64` / `Release|x64` entries
   from `Archiver.Shell` exactly (two lines per config, right-hand side maps to project's `Any CPU`).
-- When adding or modifying tests, always run `dotnet test` with no path argument — never scope to
-  a single test project. All projects must stay green after every change.
+- When adding or modifying tests, always run `dotnet test --filter "Category!=Slow"` with no path
+  argument — never scope to a single test project. All projects must stay green after every
+  change. The `Category!=Slow` filter excludes T-F20's Zip64 tests (real multi-second/multi-GB
+  cost); run `dotnet test --filter "Category=Slow"` too before a release or when the change
+  touches Zip64-adjacent code (entry counts, large files, Zip64 boundary conditions).
 - If a change modifies a public interface, model, or contract in `Archiver.Core`, check whether
   tests in other projects (`Archiver.Shell.Tests`, future `Archiver.CLI.Tests`) need to be updated
   or extended. Internal implementation changes (private methods, buffers, sorting) require only
@@ -232,7 +240,8 @@ windows-archiver-wrapper/
 
 ```bash
 # Run tests (always works from CLI)
-dotnet test   # runs all test projects in the solution
+dotnet test --filter "Category!=Slow"   # runs all test projects, skips T-F20's Zip64 Slow tests
+dotnet test --filter "Category=Slow"    # Zip64 tests only — real multi-second/multi-GB cost
 
 # Build core only
 dotnet build src/Archiver.Core
