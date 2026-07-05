@@ -10,7 +10,7 @@ using Microsoft::WRL::RuntimeClassFlags;
 using Microsoft::WRL::ClassicCom;
 
 // ---------------------------------------------------------------------------
-// Module-level HMODULE — set once in DLL_PROCESS_ATTACH, never changed.
+// Module-level HMODULE \u2014 set once in DLL_PROCESS_ATTACH, never changed.
 // POD type with trivial construction; used by ShellExtUtils::GetDllDirectory.
 // ---------------------------------------------------------------------------
 HMODULE g_hModule = nullptr;
@@ -46,7 +46,7 @@ public:
 };
 
 // ---------------------------------------------------------------------------
-// DllMain — store HMODULE and return TRUE. No COM init.
+// DllMain \u2014 store HMODULE and return TRUE. No COM init.
 // ---------------------------------------------------------------------------
 BOOL WINAPI DllMain(HMODULE hModule, DWORD dwReason, LPVOID /*lpReserved*/)
 {
@@ -59,7 +59,7 @@ BOOL WINAPI DllMain(HMODULE hModule, DWORD dwReason, LPVOID /*lpReserved*/)
 }
 
 // ---------------------------------------------------------------------------
-// DllGetClassObject — exported via .def file.
+// DllGetClassObject \u2014 exported via .def file.
 // Only PakkoRootCommand is registered in the manifest; other command classes
 // are instantiated internally by PakkoRootCommand::EnumSubCommands.
 // ---------------------------------------------------------------------------
@@ -79,7 +79,7 @@ STDAPI DllGetClassObject(REFCLSID rclsid, REFIID riid, void** ppv)
 }
 
 // ---------------------------------------------------------------------------
-// DllCanUnloadNow — exported via .def file.
+// DllCanUnloadNow \u2014 exported via .def file.
 // Returns S_OK when all WRL-tracked objects have been released.
 // ---------------------------------------------------------------------------
 STDAPI DllCanUnloadNow()

@@ -33,7 +33,7 @@ static std::wstring GetFileNameWithoutExtension(const std::wstring& path)
 }
 
 // Returns the name of the folder containing `path` (i.e. path's parent directory's own
-// basename) — mirrors Archiver.Shell/Program.cs's RunArchiveAsync, which names a multi-item
+// basename) \u2014 mirrors Archiver.Shell/Program.cs's RunArchiveAsync, which names a multi-item
 // archive after the common containing folder rather than an arbitrary selected item.
 static std::wstring GetParentFolderName(const std::wstring& path)
 {
