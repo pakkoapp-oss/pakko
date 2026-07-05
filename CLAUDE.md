@@ -152,9 +152,12 @@ ask before creating a new file.
   lists every file path unauthenticated — grep it for the area you need, then WebFetch the raw
   file (`raw.githubusercontent.com/<owner>/<repo>/main/<path>`) to read real code.
 - Before tagging an ad-hoc fix with a new `T-Fxx` comment/reference, grep the highest existing
-  number across `TASKS.md`/`TASKS_DONE.md`/`CLAUDE.md`/`DECISIONS.md` first — don't guess a
-  number. `T-F62`/`T-F63` are already claimed by *different* future tasks in `TASKS.md`; reusing
-  them for an unrelated fix creates a lasting mismatch between code comments and the task log.
+  number **across the entire repo**, not just `TASKS.md`/`TASKS_DONE.md`/`CLAUDE.md`/
+  `DECISIONS.md` — don't guess a number. Some `T-Fxx` tags exist only as code comments with no
+  `TASKS.md` entry (e.g. `T-F66` in `ZipArchiveService.cs`, `T-F67` in `Program.cs`); a
+  markdown-only grep misses them and risks a collision. `T-F62`/`T-F63` are already claimed by
+  *different* future tasks in `TASKS.md`; reusing them for an unrelated fix creates a lasting
+  mismatch between code comments and the task log.
 - `ConflictBehavior.Rename` on `ZipArchiveService.ExtractAsync` means **per-file rename inside a
   merged existing folder** (the GUI app's tested behavior) — it does NOT mean "always create a
   fresh whole folder." For shell-only "always fresh" behavior (numbered folder), use
