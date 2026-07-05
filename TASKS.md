@@ -1454,3 +1454,168 @@ feedback. This is now moot: `Archiver.Shell` no longer spawns a second process f
 - [x] All existing tests still pass
 - [x] `dotnet test` passes — 69/69
 
+---
+
+## Diagram Review Findings (2026-07-05)
+
+Surfaced while drafting `DIAGRAMS.md`'s required diagram set (see that file's "Ground Truth
+Rule" — every branch below was traced to a specific file:line before being written up, not
+inferred). Cross-reference: `DIAGRAMS.md` → "Findings summary".
+
+### T-F68 — Shell Extract Silently Ignores SkippedFiles (possible dead-end)
+- [ ] **Status:** future
+
+**What:** `ArchiveResult.Success` is computed as `errors.Count == 0`
+(`ZipArchiveService.cs:449`) — `SkippedFiles` never affects it. The GUI path surfaces
+`SkippedFiles` correctly via `ShowOperationSummaryAsync`. The shell path does not: `Program.cs:235`
+only calls `ShowErrorSummary` when `!result.Success || result.Errors.Count > 0`. Every gate in the
+extract validation chain (ADS, reserved device name, control chars, reparse point, ZIP bomb ratio,
+`OnConflict=Skip`) routes to `SkippedFiles`, never `Errors`. So a shell-triggered "Extract here" on
+an archive where *every* entry hits one of these gates completes with `Success=true`, creates an
+empty (or near-empty) folder, and shows **no dialog at all** — indistinguishable from a normal
+successful extraction with nothing visibly wrong.
+
+**File:** `src/Archiver.Shell/Program.cs`, possibly `src/Archiver.Core/Models/ArchiveResult.cs`
+
+**Decision needed first:** should `ArchiveResult.Success` itself account for `SkippedFiles`
+(changes the GUI contract too), or should only the shell path's error/skip-summary trigger be
+widened to also check `SkippedFiles.Count > 0` (minimal, GUI unaffected since it already shows
+skips)? Record the choice in `DECISIONS.md` before implementing.
+
+**Acceptance criteria:**
+- [ ] Decision recorded in `DECISIONS.md`
+- [ ] Shell path (`RunWithProgressWindowAsync` / its caller) shows a dialog when
+      `result.SkippedFiles.Count > 0`, even if `Errors.Count == 0`
+- [ ] Message distinguishes "N entries skipped" from "operation failed"
+- [ ] `dotnet test` passes — new test: all-entries-skipped extraction surfaces a non-silent result
+- [ ] Manual smoke test: shell "Extract here" on an archive containing only
+      reserved-device-name/ADS entries shows a dialog, not silent completion
+
+---
+
+### T-F69 — Fix ARCHITECTURE.md Doc Drift: com:InProcessServer → com:SurrogateServer
+- [ ] **Status:** future (trivial)
+
+**What:** `ARCHITECTURE.md:259` still says *"Registered via `com:InProcessServer` in
+`Package.appxmanifest`"*. The actual manifest (`Package.appxmanifest:70-78`) and `DECISIONS.md`'s
+own "Correction — SurrogateServer" entry both say `com:SurrogateServer`. `ARCHITECTURE.md` was
+never updated when that correction landed during T-F61.
+
+**Acceptance criteria:**
+- [ ] `ARCHITECTURE.md:259` updated to `com:SurrogateServer`, matching the manifest and `DECISIONS.md`
+- [ ] Grep confirms no remaining doc references the old `com:InProcessServer` wording
+
+---
+
+### T-F70 — Confirm Intended UX: IsBusy vs. Status-Text Timing After Cancel vs. Success/Error
+- [ ] **Status:** future (decision/investigation, not necessarily a code change)
+
+**What:** In `MainViewModel.ArchiveAsync`/`ExtractAsync` (lines 228–437), the
+success/issues/error exit paths await their modal dialog (`ShowOperationSummaryAsync` /
+`ShowErrorAsync`) *before* the `finally` block runs — so `IsBusy` stays `true` (controls stay
+disabled) for as long as that dialog is on screen. The cancelled exit path shows no dialog:
+`IsBusy` flips to `false` immediately in `finally`, and only *afterward* does a fixed
+`Task.Delay(2000)` run before `StatusMessage` reverts to "Ready". Net effect: for ~2 seconds after
+a cancel, the UI is already not-busy (a new operation is invokable) while the status text still
+reads "Cancelled" — the reverse of the other three outcomes, where the UI stays busy exactly as
+long as something requiring dismissal is still on screen. Not confirmed as a bug — nothing gets
+stuck — but it's a real, verified asymmetry that should be a deliberate choice, not an accident.
+
+**Acceptance criteria:**
+- [ ] Decide: is it acceptable that a new Archive/Extract can start during the 2-second post-cancel
+      "Cancelled" status display, while the other three outcomes fully block until their dialog is
+      dismissed?
+- [ ] If intended: document the asymmetry (`ARCHITECTURE.md` or `CONVENTIONS.md`) so it isn't
+      "fixed" later as an accidental bug
+- [ ] If not intended: align behavior (e.g. keep `IsBusy=true` through the 2s delay, or drop the delay)
+- [ ] `DIAGRAMS.md` diagram 2 updated to reflect the final decision
+
+---
+
+## Documentation Map Findings (2026-07-05)
+
+Surfaced while auditing every `.md` file in the repo for duplication/drift and building
+`CLAUDE.md`'s "Documentation Map" section. The map itself, the `AGENT.md` redirect, and the
+broken build instructions in `scripts/README.md`/`CONTRIBUTING.md` (`Archiver.Package.wapproj` +
+`Archiver.ProgressWindow.exe` + manual `SignTool.exe` — all three rejected/deleted/broken per
+`DECISIONS.md`) were fixed directly, not tasked, since anyone following the old instructions
+would fail. Remaining duplication/drift is lower-severity and tracked below.
+
+### T-F71 — Consolidate Security/Supply-Chain Rationale (SECURITY.md as sole owner)
+- [ ] **Status:** future
+
+**What:** The 7-Zip/WinRAR supply-chain risk tables, CVE lists, and MOTW rationale are written out
+in full independently in three places: `SECURITY.md` (the canonical threat model), `SPEC.md`
+("Security Rationale" section), and `README.md` ("Why Not 7-Zip or WinRAR?" section). All three
+are hand-maintained prose/tables covering the same CVEs and the same reasoning, with no link
+between them — a future CVE addition or rationale change has to be remembered and applied in up
+to three places, and nothing catches it if one is missed.
+
+**Fix:** Trim `SPEC.md` and `README.md` to a 2–3 line teaser plus a link to `SECURITY.md` for the
+full table/rationale. `CLAUDE.md`'s Documentation Map already names `SECURITY.md` as canonical.
+
+**Acceptance criteria:**
+- [ ] `SPEC.md`'s "Security Rationale" section trimmed to a teaser + link to `SECURITY.md`
+- [ ] `README.md`'s "Why Not 7-Zip or WinRAR?" section trimmed to a teaser + link to `SECURITY.md`
+- [ ] No CVE table or supply-chain rationale text duplicated outside `SECURITY.md`
+- [ ] `SECURITY.md` itself unchanged (already the richest, most current version)
+
+---
+
+### T-F72 — Consolidate Version Roadmap Table (SPEC.md as sole owner)
+- [ ] **Status:** future
+
+**What:** A version-to-focus roadmap table (v1.1 through v1.5) is independently maintained in
+`CLAUDE.md`, `SPEC.md`, and `README.md`, with slightly different wording and status per copy
+(e.g. `CLAUDE.md`'s v1.2 row has per-feature status detail the other two don't). This is exactly
+the kind of drift this repo already caught once (`ARCHITECTURE.md`'s `com:InProcessServer` vs.
+`com:SurrogateServer`, see `T-F69`) — three tables that can silently disagree.
+
+**Fix:** `SPEC.md`'s "Future Roadmap" table becomes the sole source. `CLAUDE.md`'s "Roadmap
+Summary" and `README.md`'s "Roadmap" sections are replaced with a link to it; version-specific
+status detail that doesn't fit a one-line roadmap entry stays in `CLAUDE.md`'s "Current State"
+prose (which already carries it) rather than in a second table.
+
+**Acceptance criteria:**
+- [ ] `SPEC.md`'s roadmap table reviewed and confirmed current (cross-check against `TASKS.md`
+      status of each version's tasks)
+- [ ] `CLAUDE.md`'s "Roadmap Summary" table replaced with a link to `SPEC.md`
+- [ ] `README.md`'s "Roadmap" table replaced with a link to `SPEC.md`
+- [ ] No independent roadmap table remains outside `SPEC.md`
+
+---
+
+### T-F73 — Fix Stale `IProgress<int>` Signature in ARCHITECTURE.md and CONVENTIONS.md
+- [ ] **Status:** future (trivial)
+
+**What:** `ARCHITECTURE.md`'s `IArchiveService` interface snippet and `CONVENTIONS.md`'s XML-doc
+example both show `IProgress<int>? progress` with "(0–100)"/"Optional progress reporter (0–100)"
+wording. The actual interface (`src/Archiver.Core/Interfaces/IArchiveService.cs:11-23`) is
+`IProgress<ProgressReport>? progress` — `ProgressReport` carries `Percent`, `BytesTransferred`,
+`TotalBytes`, `CurrentFile` (added for T-F16's byte-accurate progress). `ARCHITECTURE.md` is the
+file `CLAUDE.md`'s Documentation Map names canonical for signatures — it must not itself be stale.
+
+**Acceptance criteria:**
+- [ ] `ARCHITECTURE.md`'s `IArchiveService` snippet updated to `IProgress<ProgressReport>?`
+- [ ] `CONVENTIONS.md`'s XML-doc example updated to match, including a real `ProgressReport`
+      description instead of "(0–100)"
+- [ ] Grep confirms no other doc still shows the old `IProgress<int>` signature for this interface
+
+---
+
+### T-F74 — Consolidate Duplicate Testing/Build Rules Between CLAUDE.md and TASKS.md
+- [ ] **Status:** future (low priority)
+
+**What:** `TASKS.md`'s "⚠ Agent Rules" section (top of file) restates rules already in
+`CLAUDE.md`'s "Hard Constraints" — e.g. "ALWAYS run `dotnet test` (no path — all projects)"
+appears near-verbatim in both files. `CLAUDE.md`'s Documentation Map now names `CLAUDE.md` as the
+canonical owner of hard constraints; `TASKS.md`'s copy should become a link, keeping only the
+task-specific rules that don't exist elsewhere (completion-marking rules `[x]`/`[~]`, UI-vs-logic
+rules, scope rules for which options apply to which action).
+
+**Acceptance criteria:**
+- [ ] `TASKS.md`'s testing-rule bullets that duplicate `CLAUDE.md` hard constraints replaced with
+      a link to `CLAUDE.md`
+- [ ] Task-specific rules with no equivalent in `CLAUDE.md` (completion marking, UI-vs-logic,
+      scope rules) kept in `TASKS.md` unchanged
+

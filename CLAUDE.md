@@ -53,19 +53,42 @@ the earlier `Archiver.ProgressWindow` satellite WinUI 3 app was removed (T-F65; 
 
 ---
 
-## Read These First
+## Documentation Map
 
-```
-AGENT.md        → hard constraints, entry point
-TASKS.md        → active/future tasks (v1.0 done tasks in TASKS_DONE.md)
-ARCHITECTURE.md → current C# signatures — use these, do not invent
-CONVENTIONS.md  → naming, async rules, error handling
-SECURITY.md     → threat model (read if modifying compression logic,
-                  file traversal, extraction paths, or any file I/O)
-DECISIONS.md    → architectural decisions and rejected approaches
-                  (read before implementing anything in packaging,
-                  COM, or shell integration)
-```
+**This is the single index for every doc in the repo.** `AGENT.md` used to be a second,
+competing entry point (its own "Read Order", its own stale hard-constraints subset) — it is now
+a one-line redirect to this section. Do not create a third map file; extend this table instead.
+
+| File | Purpose | Read when | Update when |
+|---|---|---|---|
+| **CLAUDE.md** (here) | Session context, hard constraints, build commands, this map | Every session (auto-loaded) | Project status changes, a hard constraint changes, build/deploy commands change |
+| `AGENT.md` | Redirect stub only | Never — points here | Only if a non-Claude tool ever needs its own entry point again |
+| `TASKS.md` | Active/future task backlog, acceptance criteria, `T-Fxx` numbering | Starting any implementation task | A task starts/completes/changes scope; a new `T-Fxx` is claimed |
+| `TASKS_DONE.md` | Archive of completed v1.0 tasks | Need historical task detail | Never — append-only via tasks graduating out of `TASKS.md` |
+| `ARCHITECTURE.md` | Current C# layer diagram + signatures | Before writing code that touches a public signature | A public signature/model/interface in `Archiver.Core` changes |
+| `BOOTSTRAP.md` | DI registration + app startup wiring | Adding/changing a DI-registered service | DI registration or lifetime changes |
+| `XAML.md` | Current `MainWindow.xaml` structure + WinUI 3 gotchas | Touching `Archiver.App`'s XAML | XAML structure changes, a new WinUI 3 constraint is discovered |
+| `CONVENTIONS.md` | Coding style, naming, async, error-handling, per-project package whitelist | Before writing any code | A new convention is adopted, or a code example goes stale |
+| `SECURITY.md` | Threat model — **canonical owner of all security/CVE/supply-chain/MOTW rationale** | Modifying compression, traversal, or extraction logic | Threat model changes, a new mitigation is added |
+| `DECISIONS.md` | Architectural decisions + rejected approaches, with root-cause detail | Before implementing packaging, COM, or shell integration | An approach is chosen, rejected, or corrected |
+| `DIAGRAMS.md` | Required sequence/state/activity/component diagrams, Ground Truth Rule | Touching COM/shell, operation lifecycle, `ZipArchiveService` branching, or the manifest | Per its own DoD table — same commit as the code |
+| `TESTING.md` | Test plan and fixture inventory for `Archiver.Core` | Writing or running tests | New test category, fixture, or test count changes |
+| `tests/Archiver.Core.Tests.GenerateFixtures/README.md` | Fixture-generation mechanics only (subordinate to `TESTING.md`) | Adding a fixture-dependent test | A new fixture scenario is added |
+| `SPEC.md` | Product specification — **canonical owner of the version roadmap table, feature scope, non-goals** | Scoping a new feature, checking what's out of scope | Scope or roadmap changes |
+| `README.md` | Public GitHub landing page | User-facing — not an agent instruction source | Public messaging changes; must link to `SECURITY.md`/`SPEC.md`, never restate their tables |
+| `CONTRIBUTING.md` | Contributor onboarding summary | Before a contributor's first build | Build/deploy steps change — update `scripts/README.md` first, then sync the summary here |
+| `scripts/README.md` | **Canonical owner of build/sign/deploy steps** (`Deploy.ps1`, `Setup-DevCert.ps1`) | Running or changing the deploy scripts | `Deploy.ps1`/`Setup-DevCert.ps1` behavior changes |
+
+**Canonical topic owners — do not duplicate, link instead:**
+- Security/threat-model/CVE/supply-chain rationale → `SECURITY.md` only. `SPEC.md`/`README.md` keep at most a 2-line teaser with a link.
+- Version roadmap table → `SPEC.md` only. `CLAUDE.md`/`README.md`/`TASKS.md` reference it by version number instead of repeating the table (existing duplicates tracked as `T-F72`).
+- Build/sign/deploy steps → `scripts/README.md` only. `CONTRIBUTING.md` and this file's "Build Commands" section link to it rather than repeating steps.
+- Hard constraints → `CLAUDE.md` (this file) only — the richest and most current copy. `AGENT.md` does not repeat them.
+- Current C# signatures → `ARCHITECTURE.md` only (stale signature there tracked as `T-F73`).
+
+If you're updating a doc and find yourself retyping a table that already exists elsewhere in
+this list, stop — link to the canonical owner instead. If no owner is obvious for a new topic,
+ask before creating a new file.
 
 ---
 

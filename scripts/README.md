@@ -46,13 +46,27 @@ You only need to run this once per machine (or when the certificate expires).
 ```
 
 This will:
-1. Run `MSBuild.exe` on `Archiver.Package.wapproj` — DesktopBridge targets collect all three EXE projects (App, Shell, ProgressWindow) into the package automatically
-2. Sign the `.msix` with `SignTool.exe`
-3. Uninstall any existing Pakko package
-4. Install the new `.msix` from `src/Archiver.Package/AppPackages/`
-5. Print the installed version
+1. Build `Archiver.Shell` (`dotnet build`, self-contained) for the target architecture
+2. Build `Archiver.ShellExtension.dll` (`MSBuild.exe` directly on the `.vcxproj`, with
+   `/p:SolutionDir` passed explicitly — see `DECISIONS.md` for why)
+3. Run `dotnet publish` on `Archiver.App.csproj` with `GenerateAppxPackageOnBuild=true` and
+   `AppxPackageSigningEnabled=true` + `PackageCertificateThumbprint=<thumbprint>` — packaging
+   *and* signing happen in this one step. `Content Include` items in `Archiver.App.csproj`
+   (conditioned on `GenerateAppxPackageOnBuild=true`) declare `Archiver.Shell.exe` and
+   `Archiver.ShellExtension.dll` as package content, so `dotnet publish` includes them
+   automatically — there is no separate `Archiver.Package.wapproj` and no manual `SignTool.exe`
+   call (a manual `SignTool` call on an MSIX produces `ERROR_BAD_FORMAT`; see `DECISIONS.md`
+   "MSIX Signing")
+4. Uninstall any existing Pakko package
+5. Install the new `.msix` from `src/Archiver.App/AppPackages/`
+6. Print the installed version, then bump `Package.appxmanifest`'s version (unless
+   `-SkipVersionBump`)
 
 **`-Architecture`** — `"x64"` (default) or `"arm64"`. Derives the MSBuild Platform and runtime identifier automatically.
+
+> There is no `Archiver.ProgressWindow` project — it was removed (see `DECISIONS.md`, T-F65).
+> Shell-triggered operations show progress via the Windows Shell's built-in `IProgressDialog`,
+> in-process, no second `.exe`.
 
 **Deploy only** (skips build — installs the most recently built `.msix`):
 
