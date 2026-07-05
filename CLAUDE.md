@@ -15,9 +15,11 @@ Target audience: Ukrainian government/defense — trust, auditability, minimal a
 ## Current State
 
 **v1.1 complete** — tagged `v1.1.0`. GitHub-only release for early testers.
-**v1.2 (shell extension) in progress** — Archiver.Shell, ProgressWindow, protocol activation,
-file association, and MOTW are complete; `IExplorerCommand` COM DLL (T-F61) is the remaining
-piece, currently mid-implementation (`src/Archiver.ShellExtension/`).
+**v1.2 (shell extension) in progress** — Archiver.Shell, protocol activation, file association,
+and MOTW are complete; `IExplorerCommand` COM DLL (T-F61) is complete. Progress UI is shown via
+the Windows Shell's built-in `IProgressDialog` (see `Archiver.Shell/NativeProgressDialog.cs`) —
+the earlier `Archiver.ProgressWindow` satellite WinUI 3 app was removed (T-F65; see
+`DECISIONS.md`).
 - T-01 through T-35 + T-11, and T-F16/T-F17/T-F18/T-F26–T-F29/T-F37–T-F39/T-F44/T-F45 complete
 - 95/95 .NET tests pass (`dotnet test`) — C++ `Archiver.ShellExtension.Tests` (Google Test) run separately, not covered by `dotnet test`
 - MSIX signed with dev cert via Deploy.ps1 (see T-F10 for production-grade cert)
@@ -128,7 +130,7 @@ windows-archiver-wrapper/
 │   ├── Archiver.App/               ← WinUI 3 app
 │   │   └── Strings/en-US/          ← ResW localization
 │   ├── Archiver.Shell/             ← net8.0-windows WinExe, shell-triggered ops, no WinUI
-│   ├── Archiver.ProgressWindow/    ← WinUI 3, progress UI for silent shell operations
+│   │   └── NativeProgressDialog.cs ← IProgressDialog COM interop (in-process progress UI)
 │   └── Archiver.ShellExtension/    ← C++ COM DLL, IExplorerCommand (T-F61), x64+ARM64
 ├── tests/
 │   ├── Archiver.Core.Tests/        ← xunit, 70 tests
@@ -231,11 +233,9 @@ Task<IReadOnlyList<string>> PickFoldersAsync()
 
 ## Known test gaps — manual verification required
 
-- **ProgressViewModel (Archiver.ProgressWindow)** — named pipe state machine,
-  JSON message dispatch, and UI lifecycle are not covered by automated tests.
-  Manual verification required: progress updates render correctly, Cancel signal
-  propagates, auto-close triggers after 1.5 s on success, error dialog appears
-  and stays open on failure.
+- **NativeProgressDialog (Archiver.Shell)** — the `IProgressDialog` COM wrapper is not covered
+  by automated tests (COM UI object, not unit-testable). Manual verification required: progress
+  bar and status line update during Extract/Archive, Cancel button stops the operation.
 
 ---
 
@@ -262,7 +262,7 @@ Lessons learned during v1.2 MSIX packaging work — follow these to avoid known 
   own `<Application>` in `Package.appxmanifest`** (use `EntryPoint="Windows.FullTrustApplication"`,
   `AppListEntry="none"` to hide it). Otherwise Windows returns `ERROR_ACCESS_DENIED` — confirmed
   via `microsoft/WindowsAppSDK#4651`. This applies to every satellite EXE the shell extension or
-  any other external process spawns (`Archiver.Shell.exe`, `Archiver.ProgressWindow.exe`).
+  any other external process spawns (e.g. `Archiver.Shell.exe`).
 - **Satellite EXEs must be built self-contained**, not framework-dependent (`--self-contained` in
   `Deploy.ps1`, not `--no-self-contained`). A framework-dependent apphost inside an MSIX package
   has no system runtime to fall back on and fails with a modal ".NET not found" dialog that never

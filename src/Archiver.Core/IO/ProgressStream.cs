@@ -11,18 +11,21 @@ internal sealed class ProgressStream : Stream
     private readonly Stream _inner;
     private readonly long _totalBytes;
     private readonly IProgress<ProgressReport> _progress;
+    private readonly string? _currentFile;
     private long _bytesTransferred;
     private int _lastReported;
 
     public ProgressStream(Stream inner, long totalBytes, IProgress<ProgressReport> progress)
         : this(inner, totalBytes, startOffset: 0, progress) { }
 
-    public ProgressStream(Stream inner, long totalBytes, long startOffset, IProgress<ProgressReport> progress)
+    public ProgressStream(Stream inner, long totalBytes, long startOffset, IProgress<ProgressReport> progress,
+        string? currentFile = null)
     {
         _inner = inner;
         _totalBytes = totalBytes;
         _bytesTransferred = startOffset;
         _progress = progress;
+        _currentFile = currentFile;
         _lastReported = startOffset > 0 ? (int)Math.Min(100, startOffset * 100L / totalBytes) : -1;
     }
 
@@ -91,7 +94,8 @@ internal sealed class ProgressStream : Stream
             {
                 Percent          = pct,
                 BytesTransferred = _bytesTransferred,
-                TotalBytes       = _totalBytes
+                TotalBytes       = _totalBytes,
+                CurrentFile      = _currentFile
             });
         }
     }

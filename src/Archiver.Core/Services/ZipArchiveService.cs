@@ -610,7 +610,7 @@ public sealed class ZipArchiveService : IArchiveService
                 if (progress != null && totalUncompressedBytes > 0)
                 {
                     var entryStream = entry.Open();
-                    await using var ps = new ProgressStream(entryStream, totalUncompressedBytes, bytesRead, progress);
+                    await using var ps = new ProgressStream(entryStream, totalUncompressedBytes, bytesRead, progress, entry.Name);
                     using var fileStream = new FileStream(
                         destFilePath,
                         FileMode.Create,
@@ -697,7 +697,7 @@ public sealed class ZipArchiveService : IArchiveService
         if (progress != null && totalBytes > 0)
         {
             var entryStream = entry.Open();
-            await using var ps = new ProgressStream(entryStream, totalBytes, startOffset, progress);
+            await using var ps = new ProgressStream(entryStream, totalBytes, startOffset, progress, entryName);
             await fileStream.CopyToAsync(ps, CopyBufferSize, cancellationToken).ConfigureAwait(false);
         }
         else

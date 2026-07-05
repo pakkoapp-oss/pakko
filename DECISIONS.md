@@ -60,19 +60,45 @@ Archiver.Shell.exe' -ArgumentList '--extract-here "<test.zip>"'` from an externa
 confirming the archive's contents actually appeared on disk — not just that the process
 exited 0.
 
-**Known remaining gap (not fixed, separate task):** `Archiver.ProgressWindow.exe` still
-fails to launch after fix #2/#3 are applied to it too — its own event log entry was the same
-"`.dll` does not exist" error before its `Content Include` was extended to match
-`Archiver.Shell.exe`'s. Even after that, `Archiver.ProgressWindow.exe` and `Archiver.App.exe`
-are two independent WinUI 3 apps (each with its own `App.xaml` → `App.xbf`) landing in the
-same flat package root — the same `Files/App.xbf` name collision documented above as the
-reason `.wapproj` was rejected for this project. `RunWithProgressWindowAsync` in
-`Archiver.Shell`'s `Program.cs` degrades gracefully when `Archiver.ProgressWindow.exe` fails
-to connect its named pipe within 5 seconds (falls back to running the operation silently,
-with no progress UI) — so extraction/archiving still succeeds, just without visual feedback.
-Giving `Archiver.ProgressWindow` its own non-colliding XBF/resource layout (e.g. a subfolder
-with its own resource map) is unsolved and needs dedicated investigation before the progress
-window will actually appear.
+**Known remaining gap (not fixed, separate task — see T-F65):** `Archiver.ProgressWindow.exe`
+still fails to launch after fix #2/#3 are applied to it too — its own event log entry was the
+same "`.dll` does not exist" error before its `Content Include` was extended to match
+`Archiver.Shell.exe`'s. `RunWithProgressWindowAsync` in `Archiver.Shell`'s `Program.cs` degrades
+gracefully when `Archiver.ProgressWindow.exe` fails to connect its named pipe within 5 seconds
+(falls back to running the operation silently, with no progress UI) — so extraction/archiving
+still succeeds, just without visual feedback.
+
+**Update 2026-07-05 — the `App.xbf` collision theory above is disproven.** T-F65 added the
+missing `Archiver.ProgressWindow.dll`/`.deps.json`/`.runtimeconfig.json` `Content Include`
+entries (the apphost fix, confirmed necessary and correct — the "`.dll` does not exist" error
+is gone) and then, to rule out the theorized `App.xaml`/`App.xbf` resource-identity collision,
+rewrote `Archiver.ProgressWindow`'s entire UI in C# with **zero XAML files** (no `App.xaml`,
+no `ProgressWindow.xaml`, no `InitializeComponent`/`LoadComponent` call anywhere in the
+project). The crash was **byte-for-byte identical** before and after this rewrite: `Application
+Error` (event 1000), faulting module `Microsoft.UI.Xaml.dll` (from the
+`Microsoft.WindowsAppRuntime.1.8` framework package, not the app-local copy), exception code
+`0xc000027b` (`STATUS_STOWED_EXCEPTION`), same faulting offset `0x3a7515`, in both cases.
+Since the second run has no XAML at all, nothing about `App.xaml`/`ms-appx:///`/`resources.pri`
+can be the cause — the original hypothesis (and the T-F65 acceptance criteria as originally
+written) was wrong. Reproduced identically via two paths: direct `Start-Process` of the exe,
+and the real production path (`Archiver.Shell.exe --archive` spawning
+`Archiver.ProgressWindow.exe` via `Process.Start`, exactly as `RunWithProgressWindowAsync`
+does) — same crash both times, so this is not a test-harness artifact.
+
+**What's actually happening (unconfirmed HRESULT):** `0xc000027b` is a WinRT exception
+surfacing during WinUI/WindowsAppRuntime init, before any app code runs — it fires even for a
+`Microsoft.UI.Xaml.Application`/`Window` with no XAML content. The only failing combination
+among Pakko's three satellite processes is "uses WinUI 3" + "launched via raw `Process.Start`
+instead of shell/user activation" (`Archiver.Shell.exe` has no WinUI dependency and works;
+`Archiver.App.exe` has WinUI but is always shell-activated and works). This points at
+WindowsAppRuntime/WinUI framework resolution failing for a `Windows.FullTrustApplication`
+satellite spawned by `CreateProcess` rather than proper activation — not a resource-file
+problem. Getting the real (stowed) HRESULT under the outer `0xc000027b` needs a crash dump
+analyzed in WinDbg/`dotnet-dump` (`!analyze -v`); this was not available in the diagnosing
+session (no local WER reports were archived, and `HKLM` `LocalDumps` registration requires
+elevation not available in that shell). **Do not re-attempt a fix here without that HRESULT or
+explicit direction** — two implementation attempts (apphost fix, then the no-XAML rewrite)
+have already been made per the 3-attempt rule in `CLAUDE.md`.
 
 ---
 
@@ -319,9 +345,66 @@ ones whose `GetState` returns `ECS_HIDDEN`. Implemented via the already-tested
 
 ## Named Pipe Protocol (Shell ↔ ProgressWindow)
 
+> **Superseded 2026-07-05** — see "Progress UI: IProgressDialog replaces Archiver.ProgressWindow"
+> below. `Archiver.ProgressWindow` (and this named-pipe protocol) was removed entirely; kept
+> here for history.
+
 **Decision:** Newline-delimited UTF-8 JSON over `NamedPipeServerStream`.
 - `Archiver.Shell` = server (creates pipe, runs operation)
 - `Archiver.ProgressWindow` = client (connects, renders progress)
 - Pipe name passed to `Archiver.ProgressWindow` via `--pipe <name>` command-line argument
 
 **Message types:** `progress` (percent, speed, ETA), `complete`, `error`, `cancel` (client → server).
+
+---
+
+## Progress UI: IProgressDialog replaces Archiver.ProgressWindow
+
+**Decision:** `Archiver.Shell` shows progress via the Windows Shell's built-in
+`IProgressDialog` COM object (`CLSID_ProgressDialog`, `shell32`), wrapped in
+`Archiver.Shell/NativeProgressDialog.cs`, called in-process. The separate
+`Archiver.ProgressWindow` project (a second independent WinUI 3 `.exe` communicating over a
+named pipe) was deleted along with its `Content Include` entries in `Archiver.App.csproj`,
+its `<Application Id="ProgressWindow">` manifest entry, and its `Deploy.ps1` build step.
+
+**Why:** T-F65 set out to fix a theorized `App.xbf` resource collision between
+`Archiver.ProgressWindow.exe` and `Archiver.App.exe` (two independent WinUI 3 apps' compiled
+XAML sharing one package). That theory was disproven empirically — the crash (`Application
+Error`, `Microsoft.UI.Xaml.dll`, exception `0xc000027b`/`STATUS_STOWED_EXCEPTION`, same
+faulting offset) was **byte-for-byte identical** before and after rewriting
+`Archiver.ProgressWindow` to use zero XAML files (see the T-F65 entry above this one for the
+full disproof). The real cause was never confirmed (would need a WinDbg/`dotnet-dump`
+`!analyze -v` on a crash dump, not available in the diagnosing environment), but the evidence
+pointed at WinUI3/WindowsAppRuntime framework activation failing for a
+`Windows.FullTrustApplication` satellite spawned via raw `Process.Start` rather than proper
+shell/user activation — `Archiver.App.exe` (WinUI, but always shell-activated) and
+`Archiver.Shell.exe` (`Process.Start`'d, but no WinUI) each work individually; only "WinUI +
+`Process.Start`" fails.
+
+**Verified against a real reference (per `CLAUDE.md`'s pre-implementation-research rule):**
+fetched `M2Team/NanaZip`'s actual source. `NanaZip.Modern.cpp` is **not an executable** — it's a
+DLL exporting plain C functions (`K7ModernShowProgressWindow`, `K7ModernShowAboutDialog`, ...)
+that the caller (the classic file-manager/shell-extension process) invokes in-process;
+`ProgressPage.xaml` is a `Page` navigated within NanaZip.Modern's single `App.xaml`, never a
+second `Application`/`Window` in a separately spawned process. NanaZip never hits this failure
+mode because it never creates it: no second CreateProcess'd WinUI app exists in its design.
+
+**Fix:** don't spawn a second process at all. `IProgressDialog` is a plain COM object (not
+WinUI/WindowsAppRuntime) that `Archiver.Shell.exe` creates directly via
+`(IProgressDialog)new ProgressDialogCoClass()` — it renders on its own internal worker thread
+inside the same process, matching the in-process principle from NanaZip's design without
+needing NanaZip's C++/WinRT XAML-island machinery (out of proportion for this project — see
+`NativeProgressDialog.cs` for the full COM interop and `Program.cs`'s `RunWithProgressWindowAsync`
+for the call site). Cancellation maps onto `IProgressDialog.HasUserCancelled()`, polled from the
+existing `IProgress<ProgressReport>` callback, feeding the same `CancellationToken` the archive
+services already accept — no new IPC or protocol needed.
+
+**Rejected:**
+- Fixing `Archiver.ProgressWindow` in place (subfolder + duplicated self-contained runtime, or
+  merging its XAML into `Archiver.App`'s own PRI) — both require either re-litigating the
+  `.wapproj` rejection (see "MSIX Satellite EXE Packaging" above) or custom MSBuild/PRI-merge
+  tooling this project's conventions rule out.
+- Replicating NanaZip's C++/WinRT XAML-island-in-`dllhost.exe` approach exactly — technically
+  the most faithful fix, but requires native XAML-island hosting inside
+  `Archiver.ShellExtension.dll`'s COM surrogate process, a disproportionate rewrite for a
+  progress bar.

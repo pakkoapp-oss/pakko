@@ -1211,43 +1211,49 @@ literals" rule.
 ---
 
 ### T-F65 — Fix Archiver.ProgressWindow.exe App.xbf Resource Collision
-- [ ] **Status:** future (v1.2)
+- [x] **Status:** complete (v1.2) — **not fixed as titled; the underlying design was removed.**
+      The "App.xbf collision" theory was disproven (identical crash with zero XAML — see
+      `DECISIONS.md` "Progress UI: IProgressDialog replaces Archiver.ProgressWindow" for the
+      full disproof and NanaZip-verified reasoning). `Archiver.ProgressWindow` (separate WinUI 3
+      `.exe` + named-pipe IPC) is deleted entirely; `Archiver.Shell` now shows progress via the
+      Windows Shell's built-in `IProgressDialog` COM object, in-process, no second EXE, no IPC.
 - **Depends on:** T-F61
 
-**What:** `Archiver.ProgressWindow.exe` never actually launches after a shell-triggered
-operation. `Archiver.ProgressWindow.exe` and `Archiver.App.exe` are two independent
-WinUI 3 apps (each with its own `App.xaml` → `App.xbf`) landing in the same flat MSIX
-package root, causing a `Files/App.xbf` resource-name collision — the same conflict
-documented as the reason `.wapproj` was rejected for this project (see `DECISIONS.md`).
-`RunWithProgressWindowAsync` in `Archiver.Shell`'s `Program.cs` degrades gracefully:
-if the named pipe doesn't connect within 5 seconds it falls back to running the
-operation silently — so extraction/archiving still succeeds, just with no visual
-feedback. This is the gap observed during T-F61 smoke testing on 2026-07-05: Extract
-to folder / Add to archive both worked end-to-end, but with no progress bar.
+**What:** `Archiver.ProgressWindow.exe` never actually launched after a shell-triggered
+operation — it crashed at WinUI/WindowsAppRuntime init (`Application Error`,
+`Microsoft.UI.Xaml.dll`, `0xc000027b`) regardless of its XAML content. `RunWithProgressWindowAsync`
+in `Archiver.Shell`'s `Program.cs` degraded gracefully (falls back to running the operation
+silently within 5 seconds), so extraction/archiving always succeeded — just with no visual
+feedback. This is now moot: `Archiver.Shell` no longer spawns a second process for progress UI.
 
-**File:** `src/Archiver.App/Package.appxmanifest`, `src/Archiver.App/Archiver.App.csproj`,
-`src/Archiver.ProgressWindow/`
-
-**Constraints (per `CLAUDE.md`):** no `.wapproj`, no `BeforeTargets` MSBuild hooks, no
-manual `MakeAppx` calls — must stay within the existing `Content Include` packaging
-approach. Read `DECISIONS.md`'s MSIX packaging section before implementing.
+**File:** `src/Archiver.Shell/NativeProgressDialog.cs` (new), `src/Archiver.Shell/Program.cs`,
+`src/Archiver.App/Package.appxmanifest`, `src/Archiver.App/Archiver.App.csproj`,
+`scripts/Deploy.ps1`, `windows-archiver-wrapper.sln` — `src/Archiver.ProgressWindow/` deleted.
 
 **Acceptance criteria:**
-- [ ] Root cause confirmed against the shipped package layout — inspect the installed
-      MSIX's `Files\` folder for the exact `App.xbf` collision (or rule it out and find
-      the real cause if it's something else)
-- [ ] `Archiver.ProgressWindow` given a non-colliding resource layout — e.g. its own
-      subfolder with an independent PRI resource map, or an alternate resource file name
-      — investigate options; document the chosen approach in `DECISIONS.md`
-- [ ] `Archiver.ProgressWindow.exe` launches successfully after `Deploy.ps1` install —
-      verified via direct `Start-Process` + `Get-WinEvent` check per the "verify a
-      shell-triggered EXE actually runs" method in `CLAUDE.md`
-- [ ] Named pipe connects within `Archiver.Shell`'s 5-second timeout — progress window
-      actually renders instead of falling back to silent mode
-- [ ] Manual smoke test: Extract here / Extract to folder / Add to archive all show a
-      live progress bar with speed/ETA, not the silent fallback
-- [ ] `dotnet test` passes — no functional regression in `Archiver.Shell`/`Archiver.Core`
-- [ ] Once fixed, cross-reference back to close the "Known gap" bullet under T-F61
+- [x] Root cause investigated — the `App.xbf` collision theory disproven via a no-XAML rewrite
+      that crashed identically; real HRESULT never obtained (would need WinDbg/`dotnet-dump`,
+      unavailable in the diagnosing session) but made moot by removing the second-process design
+- [x] `NanaZip` source verified (`M2Team/NanaZip`, `NanaZip.Modern.cpp`/`ProgressPage.xaml`) per
+      `CLAUDE.md`'s pre-implementation-research rule — confirmed it never spawns a second WinUI
+      process either; progress UI is a `Page` inside its single `App.xaml`, invoked in-process
+- [x] `Archiver.Shell` shows progress via `IProgressDialog` (`CLSID_ProgressDialog`), in-process,
+      no separate `.exe`
+- [x] Cancel wired via `IProgressDialog.HasUserCancelled()` → existing `CancellationToken` plumbing.
+      **Bug found during manual verification:** Cancel appeared to do nothing (operation ran to
+      completion regardless). Root cause: `HasUserCancelled` is the only method on
+      `IProgressDialog` that returns a plain `BOOL`, not `HRESULT` (per `shobjidl.h`) — without
+      `[PreserveSig]` on the interop declaration, the marshaller assumes the HRESULT convention
+      and misreads the return value, so the call always came back `false`. Fixed by adding
+      `[PreserveSig]` in `NativeProgressDialog.cs`.
+- [x] Progress dialog shows the current file name (line 1) plus percent/bytes (line 2) — added
+      `ProgressReport.CurrentFile`, threaded through `ProgressStream` and both `ZipArchiveService`
+      call sites (archive entry write, extract entry write), per user feedback on the first
+      on-device screenshot ("яка назва поточного файлу")
+- [x] `dotnet test` passes (95/95) — no functional regression in `Archiver.Shell`/`Archiver.Core`
+- [ ] Manual smoke test: Extract here / Extract to folder / Add to archive all show the shell
+      progress dialog with file name + percent/bytes and a working Cancel button, after
+      `Deploy.ps1` install
 
 ---
 

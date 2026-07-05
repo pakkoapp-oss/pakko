@@ -13,4 +13,7 @@ public sealed class ProgressReport
 
     /// <summary>Total bytes expected for the entire operation.</summary>
     public long TotalBytes { get; init; }
+
+    /// <summary>Name of the file currently being read/written, if known.</summary>
+    public string? CurrentFile { get; init; }
 }

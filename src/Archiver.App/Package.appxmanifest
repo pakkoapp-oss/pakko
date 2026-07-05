@@ -14,7 +14,7 @@
   <Identity
     Name="PavloRybchenko.Pakko"
     Publisher="CN=EF3EC84C-8287-4FC3-BB4F-FCCEBA116BCE"
-    Version="1.1.0.22" />
+    Version="1.1.0.27" />
 
   <mp:PhoneIdentity PhoneProductId="c0456ca0-e25b-4778-95a2-045a49e4ab06" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
 
@@ -92,14 +92,14 @@
     </Application>
 
     <!--
-      Archiver.Shell.exe and Archiver.ProgressWindow.exe must each be declared as their own
-      <Application> — Windows blocks CreateProcess of any EXE inside an installed package's
-      WindowsApps folder unless it is a declared Application entry point (confirmed via
-      microsoft/WindowsAppSDK#4651; verified empirically: CreateProcess against the
-      undeclared Archiver.Shell.exe from an external process returned ERROR_ACCESS_DENIED).
-      This blocked the shell extension's Invoke() from ever launching Archiver.Shell.exe,
-      so the context menu appeared but its commands silently did nothing.
-      AppListEntry="none" hides both from the Start menu / app list — they are never
+      Archiver.Shell.exe must be declared as its own <Application> — Windows blocks
+      CreateProcess of any EXE inside an installed package's WindowsApps folder unless it is
+      a declared Application entry point (confirmed via microsoft/WindowsAppSDK#4651;
+      verified empirically: CreateProcess against the undeclared Archiver.Shell.exe from an
+      external process returned ERROR_ACCESS_DENIED). This blocked the shell extension's
+      Invoke() from ever launching Archiver.Shell.exe, so the context menu appeared but its
+      commands silently did nothing.
+      AppListEntry="none" hides it from the Start menu / app list — it is never
       user-launched directly.
     -->
     <Application Id="ShellHelper"
@@ -108,19 +108,6 @@
       <uap:VisualElements
         DisplayName="Pakko Shell Helper"
         Description="Pakko context-menu command handler"
-        BackgroundColor="transparent"
-        Square150x150Logo="Assets\Square150x150Logo.png"
-        Square44x44Logo="Assets\Square44x44Logo.png"
-        AppListEntry="none">
-      </uap:VisualElements>
-    </Application>
-
-    <Application Id="ProgressWindow"
-      Executable="Archiver.ProgressWindow.exe"
-      EntryPoint="Windows.FullTrustApplication">
-      <uap:VisualElements
-        DisplayName="Pakko Progress Window"
-        Description="Pakko operation progress UI"
         BackgroundColor="transparent"
         Square150x150Logo="Assets\Square150x150Logo.png"
         Square44x44Logo="Assets\Square44x44Logo.png"

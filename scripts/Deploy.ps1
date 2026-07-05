@@ -4,10 +4,10 @@
     Builds, signs, and installs the Pakko MSIX package for local development.
 .DESCRIPTION
     In default (BuildAndDeploy) mode:
-      1. Builds Archiver.Shell and Archiver.ProgressWindow for the target architecture.
+      1. Builds Archiver.Shell for the target architecture.
       2. Runs dotnet publish on Archiver.App with GenerateAppxPackageOnBuild=true.
-         Content Include items in Archiver.App.csproj declare the satellite EXEs as
-         package content, so the packaging pipeline includes them automatically.
+         Content Include items in Archiver.App.csproj declare the satellite EXE as
+         package content, so the packaging pipeline includes it automatically.
       3. Uninstalls any existing Pakko package, then installs the new one.
 
     In -DeployOnly mode, skips all build/package steps and installs
@@ -85,9 +85,8 @@ if (-not $DeployOnly) {
     Write-Host "Building satellite projects..." -ForegroundColor Cyan
 
     $shellProj    = Join-Path $repoRoot 'src\Archiver.Shell\Archiver.Shell.csproj'
-    $progressProj = Join-Path $repoRoot 'src\Archiver.ProgressWindow\Archiver.ProgressWindow.csproj'
 
-    # Self-contained: these apphosts run inside the MSIX package with no globally installed
+    # Self-contained: this apphost runs inside the MSIX package with no globally installed
     # .NET runtime to fall back on. A framework-dependent apphost fails at launch with
     # "You must install or update .NET to run this application" (a modal dialog — the process
     # never exits, which looked like the context menu silently doing nothing). Self-contained
@@ -95,9 +94,6 @@ if (-not $DeployOnly) {
     # already deposits the matching hostfxr/coreclr/hostpolicy native files at the package root.
     & dotnet build $shellProj    /p:Configuration=Release /p:Platform=$platform /p:RuntimeIdentifier=$rid --self-contained
     if ($LASTEXITCODE -ne 0) { Write-Error "Archiver.Shell build failed (exit $LASTEXITCODE)."; exit $LASTEXITCODE }
-
-    & dotnet build $progressProj /p:Configuration=Release /p:Platform=$platform /p:RuntimeIdentifier=$rid --self-contained
-    if ($LASTEXITCODE -ne 0) { Write-Error "Archiver.ProgressWindow build failed (exit $LASTEXITCODE)."; exit $LASTEXITCODE }
 
     # ── Build Archiver.ShellExtension (C++ DLL) ───────────────────────────────────
     Write-Host ""
