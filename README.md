@@ -37,7 +37,7 @@ The entire compression stack is part of the .NET Base Class Library — maintain
 - **Open source** — full codebase auditable
 - **Minimal permissions** — no network access, no background services
 - **No telemetry** — no data leaves the machine
-- **Mark of the Web (MOTW) propagation** — planned v1.2; prevents macro execution in extracted Office docs (Explorer does not propagate MOTW)
+- **Mark of the Web (MOTW) propagation** — extracted files inherit `Zone.Identifier` from the archive by default; prevents macro execution in extracted Office docs (Explorer does not propagate MOTW)
 - **No libarchive in-process** — tar/RAR/7z extraction via isolated `tar.exe` subprocess, not an in-process parser
 
 ---
@@ -67,21 +67,25 @@ The entire compression stack is part of the .NET Base Class Library — maintain
 
 ---
 
-## Windows 11 Integration (planned)
+## Windows 11 Integration
 
-Pakko will close the remaining gaps in Windows Explorer:
+Pakko closes gaps in Windows Explorer:
 
-- **Native context menu** — Extract Here, Extract to `<folder>`, Archive with Pakko (no "Show more options" — uses modern IExplorerCommand API)
+- **Native context menu** — Extract Here, Extract to `<folder>`, Add to archive (no "Show more
+  options" — uses the modern `IExplorerCommand` API)
 - **File type associations** — double-click `.zip` opens in Pakko
-- **Extract-on-open** — optional auto-extract on file open
 
-Windows 11 23H2+ includes `tar.exe` (Microsoft-signed bsdtar) supporting RAR, 7z, tar, gz, xz, and zst for reading. Pakko will use this built-in binary — no third-party compression tools.
+Still planned: RAR/7z/tar reading via `tar.exe` (v1.3). Windows 11 23H2+ includes `tar.exe`
+(Microsoft-signed bsdtar) supporting RAR, 7z, tar, gz, xz, and zst for reading. Pakko will use
+this built-in binary — no third-party compression tools.
 
 ---
 
 ## Project Status
 
-**v1.1 complete — GitHub release** for early testers. v1.0 tagged `v1.0.0`, v1.1 tagged `v1.1.0`.
+**v1.1 complete** (tagged `v1.1.0`) — GitHub-only release for early testers.
+**v1.2 (shell extension) in progress** — native right-click context menu (`IExplorerCommand`),
+file type association, and MOTW propagation are complete; hash viewer is still future.
 
 - ✅ Archive (single / separate) with compression level selector
 - ✅ Extract with smart folder logic and ZIP slip protection
@@ -89,14 +93,20 @@ Windows 11 23H2+ includes `tar.exe` (Microsoft-signed bsdtar) supporting RAR, 7z
 - ✅ System tray icon
 - ✅ File log (`%LocalAppData%\Pakko\logs\pakko.log`)
 - ✅ i18n foundation (ResW, en-US)
-- ✅ MSIX packaging
+- ✅ MSIX packaging, signed with a dev cert via `Deploy.ps1`
 - ✅ Mid-file cancellation (async streaming)
 - ✅ Safe temp file/dir pattern — no partial files on cancel
 - ✅ ZIP bomb detection (compression ratio 1000:1 threshold)
 - ✅ UTF-8 filenames — Cyrillic and emoji round-trip verified
-- ✅ 48 tests
+- ✅ Native right-click context menu — Extract here, Extract to folder, Add to archive
+- ✅ `.zip` file type association, `pakko://` protocol activation
+- ✅ MOTW propagation on every extracted file
+- ✅ Alternate Data Stream / reserved-filename / reparse-point protections during extraction
+- ✅ 95/95 .NET tests pass (`dotnet test`) — a separate C++ Google Test suite covers the
+  `Archiver.ShellExtension` COM DLL
 
-Microsoft Store release planned for **v1.3** — when shell extension and MOTW propagation are complete. v1.1 and v1.2 are GitHub-only releases for early testers.
+Microsoft Store release planned for **v1.3** — when `tar.exe` integration is complete. v1.1 and
+v1.2 are GitHub-only releases for early testers.
 
 **Roadmap:**
 
@@ -112,34 +122,28 @@ See `TASKS.md` for detailed task list.
 
 ---
 
-## Building MSIX
+## Building and Deploying
 
-Prerequisites: Windows 10 SDK (`makeappx.exe`), .NET 8 SDK
+Prerequisites: Visual Studio 2022 (Windows App SDK / WinUI 3 + Desktop C++ workloads), .NET 8 SDK.
 
-```
-dotnet publish src/Archiver.App/Archiver.App.csproj ^
-    /p:Configuration=Release /p:Platform=x64 ^
-    /p:RuntimeIdentifier=win-x64 /p:SelfContained=true ^
-    /p:GenerateAppxPackageOnBuild=true /p:AppxPackageSigningEnabled=false
+```powershell
+.\scripts\Setup-DevCert.ps1   # once per machine
+.\scripts\Deploy.ps1          # build, sign, and sideload the MSIX
 ```
 
-Output: `src/Archiver.App/AppPackages/Archiver.App_1.0.0.0_x64_Test/Archiver.App_1.0.0.0_x64.msix`
-
-The package is unsigned in v1.0. To install locally:
-- Enable Developer Mode in Windows Settings, then use `Add-AppxPackage` with a self-signed cert
-- Or sign with a self-signed cert: `New-SelfSignedCertificate` + `signtool.exe`
-
-Code signing with a trusted certificate is planned (T-F10).
+See [`scripts/README.md`](scripts/README.md) for full details and [`CONTRIBUTING.md`](CONTRIBUTING.md)
+for the contributor workflow. Production code signing with a trusted certificate is planned (T-F10).
 
 ---
 
 ## Running Tests
 
 ```bash
-dotnet test tests/Archiver.Core.Tests
+dotnet test
 ```
 
-To regenerate test fixtures:
+Always run without a path argument — all projects must stay green after every change. To
+regenerate test fixtures:
 ```bash
 dotnet run --project tests/Archiver.Core.Tests.GenerateFixtures
 ```

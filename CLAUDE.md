@@ -55,18 +55,20 @@ the earlier `Archiver.ProgressWindow` satellite WinUI 3 app was removed (T-F65; 
 
 ## Documentation Map
 
-**This is the single index for every doc in the repo.** `AGENT.md` used to be a second,
-competing entry point (its own "Read Order", its own stale hard-constraints subset) — it is now
-a one-line redirect to this section. Do not create a third map file; extend this table instead.
+**This is the single index for every doc in the repo.** An earlier `AGENT.md` was a second,
+competing entry point (its own "Read Order", its own stale hard-constraints subset) — it was
+deleted 2026-07-05 once this map fully absorbed its role (see git history if you need it).
+`BOOTSTRAP.md` was deleted the same day — its content is now the "Dependency Injection &
+Startup" section of `ARCHITECTURE.md` (it had drifted into a near-duplicate of a section
+`ARCHITECTURE.md` already had). Do not create a third map file or a new DI-wiring file; extend
+this table and its owners instead.
 
 | File | Purpose | Read when | Update when |
 |---|---|---|---|
 | **CLAUDE.md** (here) | Session context, hard constraints, build commands, this map | Every session (auto-loaded) | Project status changes, a hard constraint changes, build/deploy commands change |
-| `AGENT.md` | Redirect stub only | Never — points here | Only if a non-Claude tool ever needs its own entry point again |
 | `TASKS.md` | Active/future task backlog, acceptance criteria, `T-Fxx` numbering | Starting any implementation task | A task starts/completes/changes scope; a new `T-Fxx` is claimed |
 | `TASKS_DONE.md` | Archive of completed v1.0 tasks | Need historical task detail | Never — append-only via tasks graduating out of `TASKS.md` |
-| `ARCHITECTURE.md` | Current C# layer diagram + signatures | Before writing code that touches a public signature | A public signature/model/interface in `Archiver.Core` changes |
-| `BOOTSTRAP.md` | DI registration + app startup wiring | Adding/changing a DI-registered service | DI registration or lifetime changes |
+| `ARCHITECTURE.md` | Current C# layer diagram + signatures + DI wiring/startup | Before writing code that touches a public signature or a DI-registered service | A public signature/model/interface in `Archiver.Core` changes, or DI registration/lifetime changes |
 | `XAML.md` | Current `MainWindow.xaml` structure + WinUI 3 gotchas | Touching `Archiver.App`'s XAML | XAML structure changes, a new WinUI 3 constraint is discovered |
 | `CONVENTIONS.md` | Coding style, naming, async, error-handling, per-project package whitelist | Before writing any code | A new convention is adopted, or a code example goes stale |
 | `SECURITY.md` | Threat model — **canonical owner of all security/CVE/supply-chain/MOTW rationale** | Modifying compression, traversal, or extraction logic | Threat model changes, a new mitigation is added |
@@ -83,12 +85,33 @@ a one-line redirect to this section. Do not create a third map file; extend this
 - Security/threat-model/CVE/supply-chain rationale → `SECURITY.md` only. `SPEC.md`/`README.md` keep at most a 2-line teaser with a link.
 - Version roadmap table → `SPEC.md` only. `CLAUDE.md`/`README.md`/`TASKS.md` reference it by version number instead of repeating the table (existing duplicates tracked as `T-F72`).
 - Build/sign/deploy steps → `scripts/README.md` only. `CONTRIBUTING.md` and this file's "Build Commands" section link to it rather than repeating steps.
-- Hard constraints → `CLAUDE.md` (this file) only — the richest and most current copy. `AGENT.md` does not repeat them.
-- Current C# signatures → `ARCHITECTURE.md` only (stale signature there tracked as `T-F73`).
+- Hard constraints → `CLAUDE.md` (this file) only — the richest and most current copy.
+- Current C# signatures and DI wiring → `ARCHITECTURE.md` only (stale signature there tracked as `T-F73`).
 
 If you're updating a doc and find yourself retyping a table that already exists elsewhere in
 this list, stop — link to the canonical owner instead. If no owner is obvious for a new topic,
 ask before creating a new file.
+
+### Update Cascades
+
+Some changes ripple beyond their primary doc. After updating the primary doc for a change below,
+check whether the cascade docs still agree with it — don't let them silently drift (this is how
+the `com:InProcessServer`/`com:SurrogateServer` drift and the `ARCHITECTURE.md`/`BOOTSTRAP.md`
+DI duplication happened).
+
+| Change | Primary doc | Cascade — check these too |
+|---|---|---|
+| Public signature/model change in `Archiver.Core` | `ARCHITECTURE.md` | `CONVENTIONS.md` (XML-doc example), `TASKS.md` (mark task done) |
+| DI registration or lifetime change | `ARCHITECTURE.md` | — (single owner now, no cascade) |
+| `MainWindow.xaml` structure or new WinUI 3 gotcha | `XAML.md` | — (leaf doc) |
+| New coding convention adopted | `CONVENTIONS.md` | — |
+| Threat model or mitigation changes | `SECURITY.md` | `SPEC.md` (teaser), `README.md` (teaser) |
+| Approach chosen/rejected/corrected (COM, packaging, shell) | `DECISIONS.md` | `ARCHITECTURE.md`, `CLAUDE.md` (hard constraints), `scripts/README.md`, `DIAGRAMS.md` |
+| Task starts/completes, or a new `T-Fxx` is claimed | `TASKS.md` | `TASKS_DONE.md` (graduation on completion), `CLAUDE.md` (Current State), `README.md` (Project Status) |
+| Version scope/roadmap changes | `SPEC.md` | `CLAUDE.md` (Roadmap Summary), `README.md` (Roadmap) |
+| `Deploy.ps1`/`Setup-DevCert.ps1` behavior changes | `scripts/README.md` | `CONTRIBUTING.md`, `README.md` (Building and Deploying), `CLAUDE.md` (Build Commands) |
+| COM/shell, operation lifecycle, `ZipArchiveService` branching, or manifest changes | `DIAGRAMS.md` | Per its own DoD table |
+| New test or fixture added | `TESTING.md` | `tests/Archiver.Core.Tests.GenerateFixtures/README.md`, `CONTRIBUTING.md` |
 
 ---
 
@@ -187,7 +210,6 @@ windows-archiver-wrapper/
 │   ├── Archiver.ShellExtension.Tests/  ← C++ Google Test, run separately (see Build Commands)
 │   └── Archiver.Core.Tests.GenerateFixtures/  ← fixture generator
 ├── CLAUDE.md                       ← you are here
-├── AGENT.md
 ├── TASKS.md                        ← active/future tasks
 ├── TASKS_DONE.md                   ← completed tasks archive
 ├── ARCHITECTURE.md
@@ -273,7 +295,7 @@ Task<IReadOnlyList<string>> PickFoldersAsync()
 
 - Do not re-implement anything from `TASKS_DONE.md`
 - Do not add NuGet packages to `Archiver.Core` (zero dependencies)
-- Do not modify `CLAUDE.md`, `AGENT.md`, `SECURITY.md` unless explicitly asked
+- Do not modify `CLAUDE.md`, `SECURITY.md` unless explicitly asked
 - Do not implement features not listed in `TASKS.md` or `SPEC.md`
 - Do not use `Thread.Sleep` — use `await Task.Delay` if needed
 - Do not use `static` mutable fields in services

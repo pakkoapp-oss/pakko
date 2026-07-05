@@ -90,8 +90,12 @@ For organizations operating under security requirements (government, defense, cr
 
 ### Architectural Decisions with Security Impact
 
-**No shell extensions in v1.0**
-Context menu integration requires elevated trust and COM registration. Excluded to minimize attack surface.
+**No shell extensions in v1.0 — added in v1.2 with a narrowed surface**
+v1.0 excluded context menu integration to minimize attack surface, since it requires elevated
+trust and COM registration. v1.2 adds a shell extension (`IExplorerCommand`, T-F61), registered
+as a `com:SurrogateServer` — the COM DLL runs inside an isolated `dllhost.exe` process, not
+in-process inside `explorer.exe`, so a crash in the extension cannot bring down Explorer itself.
+`IContextMenu` (the legacy, in-process-only shell extension API) is not used, by hard constraint.
 
 **No network access**
 The application has no network capability by design. No telemetry, no update checks, no cloud storage integration.
@@ -113,10 +117,10 @@ Each supported format adds parser attack surface. RAR and 7z are excluded perman
 |------|----------|-----------|
 | ZIP path traversal (e.g., `../../etc/passwd` style entries) | High | `System.IO.Compression` with .NET 8 validates entry paths — covered in `ZipArchiveService` tests |
 | ZIP bomb (highly compressed entries) | Medium | Ratio-based detection (T-F28, v1.0): entries with ratio >1000:1 skipped and reported |
-| Symlink/reparse point attacks in ZIP entries | Medium | T-F37 — reparse point check after file creation, planned post-v1.1 |
-| Alternate Data Stream entries (`:` in filename) | Medium | T-F38 — ADS entry rejection, planned post-v1.1 |
-| Reserved Windows filenames in entries (`CON`, `NUL`, etc.) | Low-Medium | T-F39 — reserved name filtering, planned post-v1.1 |
-| MOTW not propagated to extracted files | Medium | v1.1 gap — MOTW propagation implemented in v1.2 (T-F45) |
+| Symlink/reparse point attacks in ZIP entries | Medium | Mitigated (T-F37, v1.2) — reparse point check after file creation; path traversal via reparse point rejected |
+| Alternate Data Stream entries (`:` in filename) | Medium | Mitigated (T-F38, v1.2) — ADS entries rejected |
+| Reserved Windows filenames in entries (`CON`, `NUL`, etc.) | Low-Medium | Mitigated (T-F39, v1.2) — reserved names and control characters filtered |
+| MOTW not propagated to extracted files | — | Resolved (T-F45, v1.2) — MOTW propagated to every extracted file by default |
 | tar.exe runs at Medium IL | Medium | v1.3 gap — Low IL sandbox via P/Invoke in v1.4 (T-F52) |
 | Microsoft as trust anchor | Low-Medium | Accepted tradeoff for the target audience; .NET is open source and auditable |
 
@@ -143,9 +147,9 @@ This is a documented exploitation technique: deliver a macro-containing document
 - 7-Zip **does not propagate** MOTW by default (added as an option in 7-Zip 23.01, off by default)
 - NanaZip 6.0 (Feb 2026) propagates MOTW by default
 
-### Pakko's Behavior (v1.2+)
+### Pakko's Behavior (v1.2+, implemented)
 
-Pakko will propagate MOTW on all extracted files by default:
+Pakko propagates MOTW on all extracted files by default:
 
 1. Read `Zone.Identifier` ADS from the source archive
 2. Write identical `Zone.Identifier` ADS to each extracted file
