@@ -128,6 +128,19 @@ DECISIONS.md    → architectural decisions and rejected approaches
   for public repos. Instead: `curl -s "https://api.github.com/repos/<owner>/<repo>/git/trees/main?recursive=1"`
   lists every file path unauthenticated — grep it for the area you need, then WebFetch the raw
   file (`raw.githubusercontent.com/<owner>/<repo>/main/<path>`) to read real code.
+- Before tagging an ad-hoc fix with a new `T-Fxx` comment/reference, grep the highest existing
+  number across `TASKS.md`/`TASKS_DONE.md`/`CLAUDE.md`/`DECISIONS.md` first — don't guess a
+  number. `T-F62`/`T-F63` are already claimed by *different* future tasks in `TASKS.md`; reusing
+  them for an unrelated fix creates a lasting mismatch between code comments and the task log.
+- `ConflictBehavior.Rename` on `ZipArchiveService.ExtractAsync` means **per-file rename inside a
+  merged existing folder** (the GUI app's tested behavior) — it does NOT mean "always create a
+  fresh whole folder." For shell-only "always fresh" behavior (numbered folder), use
+  `ExtractOptions.SeparateFolderName` computed by the caller instead of changing this semantic.
+- **Context-menu flicker on first open of a new Explorer window** (e.g. showing a stale/other
+  entry before repainting to Pakko's) is a known Explorer verb/icon-cache artifact, not a
+  Pakko code bug — Explorer caches top-level shell-extension verbs across COM DLL
+  (re)registrations until it requeries `GetTitle`/`GetIcon`. Don't chase this with code changes
+  without first confirming the cache-artifact explanation is wrong.
 
 ---
 
