@@ -84,6 +84,12 @@ DECISIONS.md    → architectural decisions and rejected approaches
 - **COM HRESULTs:** never return `S_FALSE` alongside a null/unset out-parameter — `S_FALSE` is a
   *success* code (`SUCCEEDED()` is true), so callers checking only `SUCCEEDED()` will dereference
   the null. Use `E_NOTIMPL` instead (verified against Microsoft's own `IExplorerCommand` sample).
+- **.NET COM interop (`[ComImport]` interfaces consuming external COM objects):** check the real
+  SDK header before declaring the interface — if a method returns a plain type (e.g. `BOOL`)
+  instead of `HRESULT`, mark it `[PreserveSig]`. Without it, the marshaller assumes the
+  HRESULT + hidden-`[out]`-param convention and silently misreads the return value. Real bug:
+  `IProgressDialog.HasUserCancelled` always read back `false` (Cancel appeared to do nothing)
+  until `[PreserveSig]` was added — see `Archiver.Shell/NativeProgressDialog.cs`.
 - **Low IL sandbox:** P/Invoke is acceptable for security-critical process isolation code (v1.4)
 - **Solution platforms:** x64 and ARM64 only — never add `Any CPU` or `x86` configuration entries
   to the `.sln` file. When adding a new project, mirror the `Debug|x64` / `Release|x64` entries
@@ -118,6 +124,10 @@ DECISIONS.md    → architectural decisions and rejected approaches
   implementing. (The `com:InProcessServer` schema in the original T-F61 decision was never
   actually verified this way and shipped with an undeclared XML namespace for ~4 months before
   being caught — see the "Correction — SurrogateServer" entry in `DECISIONS.md`.)
+  `gh` CLI is not installed in this environment, and GitHub's code search requires sign-in even
+  for public repos. Instead: `curl -s "https://api.github.com/repos/<owner>/<repo>/git/trees/main?recursive=1"`
+  lists every file path unauthenticated — grep it for the area you need, then WebFetch the raw
+  file (`raw.githubusercontent.com/<owner>/<repo>/main/<path>`) to read real code.
 
 ---
 
@@ -169,6 +179,9 @@ dotnet publish src/Archiver.App/Archiver.App.csproj \
 
 # Archiver.ShellExtension (C++ COM DLL) — not built or tested by dotnet build/test
 # Build via Visual Studio / MSBuild (x64 or ARM64 platform).
+# Any dotnet build/publish/test command with /p:Key=Value flags must run via the PowerShell
+# tool, not Bash — Bash (Git Bash/MSYS) mangles "/p:" into a path-like token, failing with
+# "MSB1008: Only one project can be specified."
 # First-time test project setup:
 nuget restore tests\Archiver.ShellExtension.Tests\Archiver.ShellExtension.Tests.vcxproj -SolutionDirectory .
 # Build directly (NOT via .sln — .sln + /t:<ProjectName> applies that target to every project).
@@ -276,6 +289,9 @@ Lessons learned during v1.2 MSIX packaging work — follow these to avoid known 
   launch it directly the same way the COM caller would (`Start-Process <path> -ArgumentList ...`)
   and check `Get-WinEvent -FilterHashtable @{LogName='Application'; ProviderName='.NET Runtime'}`
   for silent apphost failures — these never produce console output or a visible error otherwise.
+  For a *native* crash (WinUI/WindowsAppRuntime init failure, access violation, etc.) instead
+  check `ProviderName='Application Error'` — these show as event ID 1000 with the faulting
+  module/offset/exception code and never appear under the `.NET Runtime` provider at all.
 
 ---
 
