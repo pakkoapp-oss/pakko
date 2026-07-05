@@ -176,15 +176,24 @@ public interface IArchiveService
 {
     Task<ArchiveResult> ArchiveAsync(
         ArchiveOptions options,
-        IProgress<int>? progress = null,
+        IProgress<ProgressReport>? progress = null,
         CancellationToken cancellationToken = default);
 
     Task<ArchiveResult> ExtractAsync(
         ExtractOptions options,
-        IProgress<int>? progress = null,
+        IProgress<ProgressReport>? progress = null,
+        CancellationToken cancellationToken = default);
+
+    // T-F62: verifies every entry's CRC-32 against its declared header value without
+    // writing anything to disk. Never throws — mismatches surface as ArchiveResult.Errors.
+    Task<ArchiveResult> TestAsync(
+        IReadOnlyList<string> archivePaths,
+        IProgress<ProgressReport>? progress = null,
         CancellationToken cancellationToken = default);
 }
 ```
+
+`ProgressReport` carries `Percent`, `BytesTransferred`, `TotalBytes`, and `CurrentFile` (T-F16).
 
 ---
 

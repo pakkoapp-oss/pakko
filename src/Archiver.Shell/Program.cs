@@ -37,6 +37,10 @@ switch (command.Type)
     case CommandType.Archive:
         await RunArchiveAsync(command.Files).ConfigureAwait(false);
         break;
+
+    case CommandType.Test:
+        await RunTestAsync(command.Files).ConfigureAwait(false);
+        break;
 }
 
 // -------------------------------------------------------------------------
@@ -157,6 +161,29 @@ static async Task RunArchiveAsync(IReadOnlyList<string> sourcePaths)
     await RunWithProgressWindowAsync(title,
         (progress, ct) => service.ArchiveAsync(options, progress, ct))
         .ConfigureAwait(false);
+}
+
+// -------------------------------------------------------------------------
+// --test: verify every entry's CRC-32 across all selected archives without writing
+// anything to disk. Unlike Extract/Archive, a successful Test has no visible result on
+// disk, so — unlike those two — it needs its own "no errors" confirmation, or a silent
+// success would look indistinguishable from nothing having happened.
+// -------------------------------------------------------------------------
+const uint MB_ICONINFORMATION = 0x40;
+
+static async Task RunTestAsync(IReadOnlyList<string> archivePaths)
+{
+    var service = new ZipArchiveService();
+    string title = archivePaths.Count == 1
+        ? $"Testing: {Path.GetFileName(archivePaths[0])}"
+        : $"Testing {archivePaths.Count} archives";
+
+    var result = await RunWithProgressWindowAsync(title,
+        (progress, ct) => service.TestAsync(archivePaths, progress, ct))
+        .ConfigureAwait(false);
+
+    if (result.Success)
+        MessageBoxW(IntPtr.Zero, "No errors detected in the archive(s).", title, MB_ICONINFORMATION);
 }
 
 // Returns "name", or "name (1)", "name (2)", ... if "name" already exists under parentDir.

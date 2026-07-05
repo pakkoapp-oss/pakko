@@ -28,6 +28,10 @@ static const CLSID CLSID_ExtractFolderCommand =
 static const CLSID CLSID_ArchiveCommand =
     { 0xE84DDF12, 0x7539, 0x4D06, { 0x85, 0xD8, 0xBF, 0xA4, 0xF8, 0x7B, 0xCF, 0x27 } };
 
+// {BA69EF3A-F324-46CB-9391-6D14FE9597D3}
+static const CLSID CLSID_TestCommand =
+    { 0xBA69EF3A, 0xF324, 0x46CB, { 0x93, 0x91, 0x6D, 0x14, 0xFE, 0x95, 0x97, 0xD3 } };
+
 // ---------------------------------------------------------------------------
 // IEnumExplorerCommand implementation that owns a snapshot of sub-commands.
 // ---------------------------------------------------------------------------
@@ -85,6 +89,26 @@ public:
 // Leaf command: "Add to archive..."
 // ---------------------------------------------------------------------------
 class ArchiveCommand final :
+    public RuntimeClass<RuntimeClassFlags<ClassicCom>, IExplorerCommand>
+{
+public:
+    STDMETHODIMP GetTitle(IShellItemArray* psia, LPWSTR* ppszName) noexcept override;
+    STDMETHODIMP GetIcon(IShellItemArray* psia, LPWSTR* ppszIcon) noexcept override;
+    STDMETHODIMP GetToolTip(IShellItemArray* psia, LPWSTR* ppszInfotip) noexcept override;
+    STDMETHODIMP GetCanonicalName(GUID* pguidCommandName) noexcept override;
+    STDMETHODIMP GetState(IShellItemArray* psia, BOOL fOkToBeSlow, EXPCMDSTATE* pCmdState) noexcept override;
+    STDMETHODIMP Invoke(IShellItemArray* psia, IBindCtx* pbc) noexcept override;
+    STDMETHODIMP GetFlags(EXPCMDFLAGS* pFlags) noexcept override;
+    STDMETHODIMP EnumSubCommands(IEnumExplorerCommand** ppEnum) noexcept override;
+};
+
+// ---------------------------------------------------------------------------
+// Leaf command: "Test archive"
+// Shown whenever the selection contains at least one .zip (T-F62) — mirrors NanaZip's
+// IDS_CONTEXT_TEST verb, which fires whenever any selected item needs extraction, not only
+// when every item does (contrast with ExtractHereCommand/ExtractFolderCommand's AllPathsAreZip).
+// ---------------------------------------------------------------------------
+class TestCommand final :
     public RuntimeClass<RuntimeClassFlags<ClassicCom>, IExplorerCommand>
 {
 public:

@@ -408,3 +408,47 @@ services already accept — no new IPC or protocol needed.
   the most faithful fix, but requires native XAML-island hosting inside
   `Archiver.ShellExtension.dll`'s COM surrogate process, a disproportionate rewrite for a
   progress bar.
+
+---
+
+## Test Archive (T-F62)
+
+**Decision:** Added `IArchiveService.TestAsync(IReadOnlyList<string> archivePaths, ...)`,
+reusing the existing `ArchiveResult` model (CRC mismatches → `Errors`, unsupported formats →
+`SkippedFiles`, `CreatedFiles` always empty). No new `TestResult` model was introduced.
+
+**Why no new model:** `ArchiveResult` already expresses "some items failed, here's why" without
+committing to disk — the exact shape Test needs. `IArchiveService` has exactly one implementation
+(`ZipArchiveService`), so widening the interface carries no compatibility risk.
+
+**Verified against a real reference (per `CLAUDE.md`'s pre-implementation-research rule):**
+fetched `M2Team/NanaZip`'s actual `NanaZip.UI.Modern/NanaZip.ShellExtension.cpp`. Its `Test`
+command (`CommandID::Test`, `IDS_CONTEXT_TEST`) is gated on the same `NeedExtract` flag used by
+`Extract`/`ExtractHere` — true when **any** selected item needs extraction, not all — and is
+invoked with the full, unfiltered selection (`TestArchives(FileNames)`); NanaZip's underlying
+engine skips non-archive entries itself rather than the shell layer pre-filtering. Pakko mirrors
+both: `TestCommand::GetState` uses the already-present-but-previously-unused `AnyPathIsZip`
+helper (contrast `ExtractHereCommand`/`ExtractFolderCommand`, which use `AllPathsAreZip`), and
+`TestCommand::Invoke` passes the full selection to `Archiver.Shell.exe --test`, relying on
+`ZipArchiveService.TestAsync`'s own `IsZipFile`/`GetKnownArchiveReason` gating (the same gating
+`ExtractAsync` already uses) to skip non-archives — no new C++-side filtering helper needed.
+
+**CRC-32 is hand-rolled, not `System.IO.Hashing.Crc32`:** that type ships in a NuGet package,
+and `Archiver.Core` takes zero NuGet dependencies (`CLAUDE.md` hard constraint).
+`ZipArchiveEntry.Crc32` only exposes the value declared in the entry's header — .NET's
+`System.IO.Compression` never validates an entry's decompressed bytes against it on read, so
+a bit-flipped-but-structurally-valid entry extracts "successfully" with silently wrong content
+unless something explicitly checks. `Archiver.Core/IO/Crc32.cs` is a ~40-line table-based
+implementation of the standard ZIP/PNG polynomial (`0xEDB88320`), self-contained.
+
+**Fixture:** `corrupted_crc_stored.zip` uses a `CompressionLevel.NoCompression` (Stored) entry
+with a single data byte flipped *after* the ZIP was written. The two pre-existing corrupted
+fixtures (`corrupted_entry_data.zip`, `corrupted_central_directory.zip`) break the Deflate
+stream or the EOCD signature respectively — both tend to throw on read rather than produce a
+clean "reads fine, CRC is wrong" case, which is the specific scenario `TestAsync` exists to catch.
+
+**Menu order — deviates from NanaZip by explicit project direction:** `TestCommand` is enumerated
+**last** in `PakkoRootCommand::EnumSubCommands` (after Extract here/Extract to folder/Add to
+archive), not first as NanaZip's Open → Test → Extract → Compress ordering would suggest. Per
+project direction: Test is a diagnostic/verification action, not a primary one, and primary
+actions (Extract/Archive) must always precede it in the menu.

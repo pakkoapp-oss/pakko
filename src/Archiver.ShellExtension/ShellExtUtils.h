@@ -35,6 +35,7 @@ HRESULT LaunchShellExe(const std::wstring& args);
 std::wstring BuildExtractHereArgs(const std::vector<std::wstring>& paths);
 std::wstring BuildExtractFolderArgs(const std::vector<std::wstring>& paths);
 std::wstring BuildArchiveArgs(const std::vector<std::wstring>& paths);
+std::wstring BuildTestArgs(const std::vector<std::wstring>& paths);
 
 // Builds the "Add to <name>.zip" context-menu title. For a single selected path, <name> is
 // that path's file name without extension; for multiple paths, <name> is their common

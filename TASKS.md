@@ -893,7 +893,7 @@ pakko://archive?files=<base64-encoded-json-array>
 ---
 
 ### T-F61 — IExplorerCommand Implementation
-- [~] **Status:** in progress (v1.2)
+- [x] **Status:** complete (v1.2)
 - **Depends on:** T-F53, T-F55
 
 **What:** In-process COM DLL (`Archiver.ShellExtension.dll`) implementing `IExplorerCommand` via
@@ -931,10 +931,9 @@ via `CreateProcess` from `Invoke`.
 - [x] **Manual smoke test:** Extract to folder / Add to archive commands verified end-to-end
       (verified 2026-07-05 — both commands create/extract archives correctly, no progress
       bar shown, see known gap below)
-- [ ] **Known gap:** `Archiver.ProgressWindow.exe` still fails to launch (separate `App.xbf`
-      resource collision with `Archiver.App.exe` — two WinUI 3 apps in one flat package root).
-      Operations currently fall back to running silently with no progress UI. See
-      "Known remaining gap" in `DECISIONS.md`. Needs its own task before closing T-F61 fully.
+- [x] **Known gap — resolved via T-F65:** `Archiver.ProgressWindow.exe` (separate WinUI 3 process)
+      is deleted entirely; progress UI now runs in-process via `IProgressDialog`, confirmed
+      working end-to-end (2026-07-05). No longer a gap.
 - [x] **Manual smoke test:** `Type="Directory"` shows menu on folder right-click (verified
       2026-07-05)
 - [x] `Archiver.ShellExtension.Tests.exe` passes all Google Test cases (23/23, verified
@@ -1100,7 +1099,7 @@ deprecate" rule; do not re-implement them as new work.
 ---
 
 ### T-F62 — Context Menu: Test Archive (Integrity Check)
-- [ ] **Status:** future (v1.2)
+- [~] **Status:** partial (v1.2) — code + tests done, manual Explorer smoke test pending
 - **Depends on:** T-F61
 
 **What:** "Test archive" command — verifies every entry's CRC-32 without writing any files to
@@ -1114,13 +1113,26 @@ that fits `IArchiveService` naturally (`IArchiveService` currently only has `Arc
 `ExtractAsync` — no verify method exists yet).
 
 **Acceptance criteria:**
-- [ ] New `TestAsync` (or similarly named) method on `IArchiveService` — reads every entry,
+- [x] New `TestAsync` (or similarly named) method on `IArchiveService` — reads every entry,
       computes CRC-32, compares against the entry's declared value, never writes to disk
-- [ ] Appears in Pakko submenu whenever selection contains ≥1 `.zip`
-- [ ] Runs silently via `Archiver.Shell.exe --test "<path>"`; result (pass/fail + which
-      entries failed) shown in `Archiver.ProgressWindow` or a summary dialog
-- [ ] Multi-selection: all selected archives tested in one invocation
-- [ ] `dotnet test` passes — new test: corrupted-CRC fixture fails; valid fixture passes
+- [x] Appears in Pakko submenu whenever selection contains ≥1 `.zip` — `TestCommand::GetState`
+      uses `AnyPathIsZip` (not `AllPathsAreZip`), so it shows even on a mixed selection
+- [x] Runs silently via `Archiver.Shell.exe --test "<path>"`; result shown via the same
+      `IProgressDialog`/`ShowErrorSummary` path Extract/Archive use (`Archiver.ProgressWindow`
+      no longer exists, see T-F65) plus a new "No errors detected" confirmation on success,
+      since Test has no visible on-disk result to imply success
+- [x] Multi-selection: all selected archives tested in one invocation
+- [x] `dotnet test` passes — new tests: corrupted-CRC fixture fails (`corrupted_crc_stored.zip`,
+      a Stored entry with a post-write byte flip), valid fixture passes, encrypted archive
+      errors, mixed valid+corrupted selection reports only the corrupted one
+      (Archiver.Core.Tests 77/77, was 73/73; Archiver.Shell.Tests 28/28, was 25/25 — new `--test`
+      parser cases)
+- [x] C++ side: `TestCommand` (`ExplorerCommands.h/.cpp`) + `BuildTestArgs`
+      (`ShellExtUtils.h/.cpp`), wired first in `PakkoRootCommand::EnumSubCommands`
+      (Google Test 33/33, was 30/30)
+- [ ] **Manual smoke test:** after `Deploy.ps1`, "Test archive" appears on a `.zip` and on a
+      mixed selection; running it on a valid archive shows "No errors detected"; on a corrupted
+      one shows the CRC-mismatch error
 
 ---
 
@@ -1251,9 +1263,9 @@ feedback. This is now moot: `Archiver.Shell` no longer spawns a second process f
       call sites (archive entry write, extract entry write), per user feedback on the first
       on-device screenshot ("яка назва поточного файлу")
 - [x] `dotnet test` passes (95/95) — no functional regression in `Archiver.Shell`/`Archiver.Core`
-- [ ] Manual smoke test: Extract here / Extract to folder / Add to archive all show the shell
+- [x] Manual smoke test: Extract here / Extract to folder / Add to archive all show the shell
       progress dialog with file name + percent/bytes and a working Cancel button, after
-      `Deploy.ps1` install
+      `Deploy.ps1` install (confirmed 2026-07-05)
 
 ---
 
@@ -1586,7 +1598,7 @@ prose (which already carries it) rather than in a second table.
 ---
 
 ### T-F73 — Fix Stale `IProgress<int>` Signature in ARCHITECTURE.md and CONVENTIONS.md
-- [ ] **Status:** future (trivial)
+- [x] **Status:** complete (trivial) — fixed while touching this exact snippet for T-F62's `TestAsync`
 
 **What:** `ARCHITECTURE.md`'s `IArchiveService` interface snippet and `CONVENTIONS.md`'s XML-doc
 example both show `IProgress<int>? progress` with "(0–100)"/"Optional progress reporter (0–100)"
@@ -1596,10 +1608,12 @@ wording. The actual interface (`src/Archiver.Core/Interfaces/IArchiveService.cs:
 file `CLAUDE.md`'s Documentation Map names canonical for signatures — it must not itself be stale.
 
 **Acceptance criteria:**
-- [ ] `ARCHITECTURE.md`'s `IArchiveService` snippet updated to `IProgress<ProgressReport>?`
-- [ ] `CONVENTIONS.md`'s XML-doc example updated to match, including a real `ProgressReport`
+- [x] `ARCHITECTURE.md`'s `IArchiveService` snippet updated to `IProgress<ProgressReport>?`
+- [x] `CONVENTIONS.md`'s XML-doc example updated to match, including a real `ProgressReport`
       description instead of "(0–100)"
-- [ ] Grep confirms no other doc still shows the old `IProgress<int>` signature for this interface
+- [x] Grep confirms no other doc still shows the old `IProgress<int>` signature for this interface
+      (the one remaining hit, `ARCHITECTURE.md`'s `ITarService` v1.3 stub, is a different,
+      not-yet-implemented interface — out of scope for this task)
 
 ---
 

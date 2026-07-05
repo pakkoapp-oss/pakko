@@ -269,6 +269,73 @@ STDMETHODIMP ArchiveCommand::EnumSubCommands(IEnumExplorerCommand** ppEnum) noex
 }
 
 // ---------------------------------------------------------------------------
+// TestCommand
+// ---------------------------------------------------------------------------
+
+STDMETHODIMP TestCommand::GetTitle(IShellItemArray*, LPWSTR* ppszName) noexcept
+{
+    if (!ppszName) return E_POINTER;
+    return SHStrDupW(L"Test archive", ppszName);
+}
+
+STDMETHODIMP TestCommand::GetIcon(IShellItemArray*, LPWSTR* ppszIcon) noexcept
+{
+    if (!ppszIcon) return E_POINTER;
+    *ppszIcon = nullptr;
+    return E_NOTIMPL;
+}
+
+STDMETHODIMP TestCommand::GetToolTip(IShellItemArray*, LPWSTR* ppszInfotip) noexcept
+{
+    if (!ppszInfotip) return E_POINTER;
+    *ppszInfotip = nullptr;
+    return E_NOTIMPL;
+}
+
+STDMETHODIMP TestCommand::GetCanonicalName(GUID* pguidCommandName) noexcept
+{
+    if (!pguidCommandName) return E_POINTER;
+    *pguidCommandName = CLSID_TestCommand;
+    return S_OK;
+}
+
+STDMETHODIMP TestCommand::GetState(IShellItemArray* psia, BOOL, EXPCMDSTATE* pCmdState) noexcept
+{
+    if (!pCmdState) return E_POINTER;
+    // T-F62: unlike ExtractHere/ExtractFolder (AllPathsAreZip), Test appears whenever the
+    // selection contains at least one archive — matching NanaZip's NeedExtract-gated Test verb,
+    // which fires on a mixed selection too. ZipArchiveService.TestAsync skips non-zip paths
+    // internally, the same defense-in-depth pattern ExtractAsync already relies on.
+    *pCmdState = AnyPathIsZip(GetPathsFromShellItemArray(psia)) ? ECS_ENABLED : ECS_HIDDEN;
+    return S_OK;
+}
+
+STDMETHODIMP TestCommand::Invoke(IShellItemArray* psia, IBindCtx*) noexcept
+{
+    try
+    {
+        const auto paths = GetPathsFromShellItemArray(psia);
+        if (paths.empty()) return E_INVALIDARG;
+        return LaunchShellExe(BuildTestArgs(paths));
+    }
+    catch (...) { return E_FAIL; }
+}
+
+STDMETHODIMP TestCommand::GetFlags(EXPCMDFLAGS* pFlags) noexcept
+{
+    if (!pFlags) return E_POINTER;
+    *pFlags = ECF_DEFAULT;
+    return S_OK;
+}
+
+STDMETHODIMP TestCommand::EnumSubCommands(IEnumExplorerCommand** ppEnum) noexcept
+{
+    if (!ppEnum) return E_POINTER;
+    *ppEnum = nullptr;
+    return E_NOTIMPL;
+}
+
+// ---------------------------------------------------------------------------
 // PakkoRootCommand
 // ---------------------------------------------------------------------------
 
@@ -334,17 +401,23 @@ STDMETHODIMP PakkoRootCommand::EnumSubCommands(IEnumExplorerCommand** ppEnum) no
         auto pExtractHere   = Make<ExtractHereCommand>();
         auto pExtractFolder = Make<ExtractFolderCommand>();
         auto pArchive       = Make<ArchiveCommand>();
-        if (!pExtractHere || !pExtractFolder || !pArchive) return E_OUTOFMEMORY;
+        auto pTest          = Make<TestCommand>();
+        if (!pExtractHere || !pExtractFolder || !pArchive || !pTest) return E_OUTOFMEMORY;
 
-        ComPtr<IExplorerCommand> pCmdA, pCmdB, pCmdC;
-        HRESULT hr = pExtractHere.As(&pCmdA);   if (FAILED(hr)) return hr;
+        ComPtr<IExplorerCommand> pCmdA, pCmdB, pCmdC, pCmdTest;
+        HRESULT hr = pExtractHere.As(&pCmdA);    if (FAILED(hr)) return hr;
         hr = pExtractFolder.As(&pCmdB);          if (FAILED(hr)) return hr;
         hr = pArchive.As(&pCmdC);                if (FAILED(hr)) return hr;
+        hr = pTest.As(&pCmdTest);                if (FAILED(hr)) return hr;
 
+        // Test archive is a diagnostic/verification action, not a primary one — it goes last,
+        // after Extract/Archive (deliberate deviation from NanaZip's Open-Test-Extract order,
+        // per project direction: primary actions before Test, always).
         std::vector<ComPtr<IExplorerCommand>> commands;
         commands.push_back(std::move(pCmdA));
         commands.push_back(std::move(pCmdB));
         commands.push_back(std::move(pCmdC));
+        commands.push_back(std::move(pCmdTest));
 
         auto pEnum = Make<SubCommandEnum>();
         if (!pEnum) return E_OUTOFMEMORY;

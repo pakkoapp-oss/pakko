@@ -40,7 +40,12 @@ dotnet test tests/Archiver.Core.Tests --logger "console;verbosity=normal"
 | `ZipArchiveServiceArchiveTests.cs` | ~17 | Archive modes, conflicts, progress, cancellation, delete source, temp file pattern (T-F26), UTF-8 filenames (T-F29) |
 | `ZipArchiveServiceExtractTests.cs` | ~14 | Extract modes, smart foldering, password detection, conflict, delete archive, temp dir pattern (T-F27), bomb protection (T-F28) |
 | `ZipArchiveServiceFixtureTests.cs` | 18 | Fixture-based: valid archives, corrupted, encrypted, ZIP slip |
+| `ZipArchiveServiceTestAsyncTests.cs` | 4 | T-F62: `TestAsync` CRC-32 verification — valid archive passes, corrupted-CRC fixture fails, encrypted archive errors, mixed valid+corrupted selection reports only the corrupted one |
 | `ArchiveOptionsTests.cs` | ~2 | Model defaults |
+
+This table (and the "48 tests total" figure below) predates several rounds of additions
+(T-F37/38/39/45/58/59/60, etc.) and is known stale beyond the `TestAsync` row just added —
+tracked as its own cleanup, not fixed wholesale here. Current true count: run `dotnet test`.
 
 Tests added in v1.1:
 - `ArchiveAsync_Cancelled_LeavesNoTempFile` (T-F26)
@@ -94,7 +99,9 @@ Located at `tests/Archiver.Core.Tests/Fixtures/`.
 - `files/compressible.txt`, `incompressible.bin`, `unicode_filename_привіт.txt`, `readme.txt`
 - `archives/valid_*.zip` — 5 valid archives
 - `archives/extract_*.zip` — 3 smart extract scenarios
-- `archives/corrupted_*.zip` — 2 corrupted archives
+- `archives/corrupted_*.zip` — 3 corrupted archives (T-F62 adds `corrupted_crc_stored.zip`:
+  a Stored/uncompressed entry with a data byte flipped after write — reads back cleanly, only
+  its CRC-32 is wrong, unlike the other two which break the Deflate stream or the EOCD signature)
 - `archives/encrypted_zipcrypto.zip`
 - `archives/zipslip_traversal.zip`
 

@@ -16,6 +16,7 @@ e68d90c298fab1d7085016291002425367fbe30543e11b8dd50b113517890ec8  extract_multip
 896ff6863d66195897b78be17aa608cd76972300439c7b3175212e56ff870738  extract_single_root_file.zip  # T-14: single root file — extract directly
 6385ab5d7cfab718578b70fc1c7ac74e25609ebb988b0cfcdbbc90dc3c1f8a90  corrupted_entry_data.zip  # local file data corrupted — CRC mismatch expected on extract
 e4e7d376be86480819cd0caf40638fcd2ccd3954d80b74352104025fa5f76ac2  corrupted_central_directory.zip  # EOCD signature corrupted — archive unreadable
+cf267ce926cd12f37528bb7cae38cfd5074b372f13acbb0aba754ded5ec7e05a  corrupted_crc_stored.zip  # Stored entry data flipped after write — CRC-32 mismatch, read still succeeds
 1a89e4b06ec7611bdb318f9e8dab5645e111a776d58bdde2cf557d426ba45b00  encrypted_zipcrypto.zip  # ZipCrypto encryption flag set — T-25 detection target
 48d1ff086a37bb3fd4f929a8e0efdef619d1abab3c444b463b68ed11a606fbb8  zipslip_traversal.zip  # ZIP slip: path traversal entries — T-14 ZIP slip protection target
 

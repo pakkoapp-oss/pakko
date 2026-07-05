@@ -21,4 +21,13 @@ public interface IArchiveService
         ExtractOptions options,
         IProgress<ProgressReport>? progress = null,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Verifies every entry's CRC-32 against its declared value without writing any files
+    /// to disk. Never throws — errors are captured in ArchiveResult.Errors.
+    /// </summary>
+    Task<ArchiveResult> TestAsync(
+        IReadOnlyList<string> archivePaths,
+        IProgress<ProgressReport>? progress = null,
+        CancellationToken cancellationToken = default);
 }

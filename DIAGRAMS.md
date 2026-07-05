@@ -68,6 +68,7 @@ sequenceDiagram
     participant EH as ExtractHereCommand
     participant EF as ExtractFolderCommand
     participant AC as ArchiveCommand
+    participant TC as TestCommand
     participant ShellExe as Archiver.Shell.exe
     participant Core as ZipArchiveService
     participant Dlg as IProgressDialog (shell32)
@@ -82,28 +83,30 @@ sequenceDiagram
     Root->>EH: Make<ExtractHereCommand>()
     Root->>EF: Make<ExtractFolderCommand>()
     Root->>AC: Make<ArchiveCommand>()
-    Root->>Enum: SetCommands([EH, EF, AC])<br/>ALWAYS all three, unconditionally —<br/>selection does not filter EnumSubCommands
+    Root->>TC: Make<TestCommand>()
+    Root->>Enum: SetCommands([EH, EF, AC, TC])<br/>ALWAYS all four, unconditionally —<br/>selection does not filter EnumSubCommands.<br/>TC last: diagnostic/verification action, not primary —<br/>deliberate deviation from NanaZip's Test-then-Extract order
     Root-->>Explorer: Enum (IEnumExplorerCommand)
     loop Explorer drains the enumerator
         Explorer->>Enum: Next(celt, ...)
         Enum-->>Explorer: fetched item(s);<br/>S_OK if fetched==celt, else S_FALSE<br/>(S_FALSE is a SUCCESS code here, not failure)
     end
-    Note over Explorer,AC: Visibility is decided per-command by GetState(),<br/>separately from enumeration
+    Note over Explorer,TC: Visibility is decided per-command by GetState(),<br/>separately from enumeration
     Explorer->>EH: GetState(psia) → ECS_ENABLED iff AllPathsAreZip(paths), else ECS_HIDDEN
     Explorer->>EF: GetState(psia) → ECS_ENABLED iff AllPathsAreZip(paths), else ECS_HIDDEN
     Explorer->>AC: GetState(psia) → ECS_HIDDEN iff AllPathsAreZip(paths), else ECS_ENABLED<br/>(condition is INVERTED vs. EH/EF)
     Explorer->>AC: GetTitle(psia) → BuildAddToArchiveTitle(paths)<br/>dynamic "Add to <name>.zip", truncated middle if >40 chars
+    Explorer->>TC: GetState(psia) → ECS_ENABLED iff AnyPathIsZip(paths), else ECS_HIDDEN<br/>(T-F62: AnyPathIsZip, NOT AllPathsAreZip — shows on a mixed selection too)
     User->>Explorer: click one visible leaf command
-    Explorer->>EH: Invoke(psia, pbc)  — or EF / AC, same shape
+    Explorer->>EH: Invoke(psia, pbc)  — or EF / AC / TC, same shape
     alt GetPathsFromShellItemArray(psia) empty
         EH-->>Explorer: E_INVALIDARG
     else paths present
-        EH->>ShellExe: LaunchShellExe(BuildExtractHereArgs(paths))<br/>CreateProcessW; PROCESS_INFORMATION handles<br/>closed immediately; does NOT wait for the child
+        EH->>ShellExe: LaunchShellExe(BuildExtractHereArgs(paths))<br/>— or BuildExtractFolderArgs / BuildArchiveArgs / BuildTestArgs<br/>CreateProcessW; PROCESS_INFORMATION handles<br/>closed immediately; does NOT wait for the child<br/>note: TC passes the FULL selection unfiltered — Core does the<br/>per-path IsZipFile gating, same as Extract already does
         ShellExe-->>Explorer: (no return channel — ShellExe runs independently)
         EH-->>Explorer: S_OK, or HRESULT_FROM_WIN32(GetLastError())<br/>on CreateProcess failure — returned the instant<br/>CreateProcess returns, NOT when the operation finishes
         ShellExe->>Dlg: new NativeProgressDialog(title)<br/>= new ProgressDialogCoClass() + StartProgressDialog
         alt COMException thrown during construction
-            ShellExe->>Core: ExtractAsync(options, progress: null, CancellationToken.None)
+            ShellExe->>Core: ArchiveAsync/ExtractAsync/TestAsync(options or paths, progress: null, CancellationToken.None)
         else dialog constructed
             loop every 250ms (System.Threading.Timer, lock-guarded on dialogLock)
                 ShellExe->>Dlg: HasUserCancelled()<br/>[PreserveSig] required — plain BOOL return, not HRESULT
@@ -111,19 +114,22 @@ sequenceDiagram
                     ShellExe->>ShellExe: cts.Cancel()
                 end
             end
-            ShellExe->>Core: ExtractAsync(options, progress, cts.Token)
-            Core-->>ShellExe: IProgress<ProgressReport> callback per file/entry
+            ShellExe->>Core: ArchiveAsync/ExtractAsync/TestAsync(options or paths, progress, cts.Token)
+            Core-->>ShellExe: IProgress<ProgressReport> callback per file/entry<br/>(TestAsync: TotalBytes=0, one report per archive — no byte-level tracking)
             ShellExe->>Dlg: SetLine(1, CurrentFile) / SetLine(2, status) / SetProgress64(bytes, total)
             alt OperationCanceledException from Core
                 ShellExe-->>ShellExe: return new ArchiveResult { Success = false }
             else Core completes
-                Core-->>ShellExe: ArchiveResult
+                Core-->>ShellExe: ArchiveResult<br/>(TestAsync: CreatedFiles always empty — nothing is written to disk)
             end
             ShellExe->>Dlg: Dispose() → StopProgressDialog
         end
         opt !result.Success or result.Errors.Count > 0
             ShellExe->>User: MessageBoxW(error summary, max 10 lines shown)
             Note over ShellExe: result.SkippedFiles is NEVER inspected here — see Finding 2
+        end
+        opt result.Success AND command == Test
+            ShellExe->>User: MessageBoxW("No errors detected in the archive(s).", MB_ICONINFORMATION)<br/>Test-only: unlike Extract/Archive, success has no visible disk<br/>side effect, so silent success would look like nothing happened
         end
     end
 ```
@@ -141,6 +147,10 @@ sequenceDiagram
   Archive for all-ZIP selections") would be editing the wrong method; `ArchiveCommand`'s
   `GetState` condition is the *inverse* of `ExtractHereCommand`/`ExtractFolderCommand`'s, which is
   easy to get backwards when copy-pasting.
+- `TestCommand::GetState` (T-F62) uses `AnyPathIsZip`, a *third* distinct condition alongside
+  `AllPathsAreZip` (EH/EF) and its inverse (AC) — copy-pasting `AllPathsAreZip` here would hide
+  Test on any mixed selection, unlike NanaZip's reference behavior (verified against real
+  NanaZip source in `DECISIONS.md`).
 
 ---
 
@@ -232,6 +242,17 @@ Every validation gate in this chain (ADS, reserved name, control chars, reparse,
 computed as `errors.Count == 0` (`ZipArchiveService.cs:449`) and does not look at `SkippedFiles`
 at all. So an archive where *every* entry gets skipped reports `Success=true` with no real content
 extracted besides an empty folder.
+
+**Not updated for `TestAsync` (T-F62), by decision:** `TestAsync` is a separate, structurally
+simpler method — a flat per-archive loop with no foldering, no conflict handling, no path-escape
+check, and no writes to disk at all — not a new branch inside
+`ExtractWithSmartFolderingAsync`, so it isn't this diagram's subject. It does have its own
+"silently dropped" shape worth naming: a path that is neither a ZIP nor a recognized foreign
+archive format (`GetKnownArchiveReason` returns `null`) is skipped with no `SkippedFiles` entry
+and no `ArchiveError` — mirroring `ExtractAsync`'s identical existing gap for the same input
+shape (same `if (!IsZipFile(...)) { ...; if (reason is not null) ...; continue; }` pattern).
+Not a new gap `TestAsync` introduces; not fixed here as it's `ExtractAsync`'s pre-existing
+behavior, out of scope for T-F62.
 
 The GUI path surfaces this correctly — `ShowOperationSummaryAsync` receives the full
 `ArchiveResult` including `SkippedFiles`. The **shell path does not**: `Program.cs:235` only calls

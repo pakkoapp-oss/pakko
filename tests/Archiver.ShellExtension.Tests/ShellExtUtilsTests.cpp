@@ -112,6 +112,22 @@ TEST(BuildArchiveArgs, PathWithSpacesIsQuoted)
 }
 
 // ---------------------------------------------------------------------------
+// BuildTestArgs
+// ---------------------------------------------------------------------------
+
+TEST(BuildTestArgs, SingleFile)
+{
+    const auto args = BuildTestArgs({ L"C:\\archive.zip" });
+    EXPECT_EQ(args, L"--test \"C:\\archive.zip\"");
+}
+
+TEST(BuildTestArgs, MultipleFiles)
+{
+    const auto args = BuildTestArgs({ L"C:\\a.zip", L"C:\\b.zip" });
+    EXPECT_EQ(args, L"--test \"C:\\a.zip\" \"C:\\b.zip\"");
+}
+
+// ---------------------------------------------------------------------------
 // BuildAddToArchiveTitle
 // ---------------------------------------------------------------------------
 

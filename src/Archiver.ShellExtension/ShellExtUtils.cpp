@@ -188,6 +188,17 @@ std::wstring BuildArchiveArgs(const std::vector<std::wstring>& paths)
     return args;
 }
 
+std::wstring BuildTestArgs(const std::vector<std::wstring>& paths)
+{
+    std::wstring args = L"--test";
+    for (const auto& p : paths)
+    {
+        args += L' ';
+        args += QuotePath(p);
+    }
+    return args;
+}
+
 std::wstring BuildAddToArchiveTitle(const std::vector<std::wstring>& paths)
 {
     if (paths.empty()) return L"Add to archive\u2026";

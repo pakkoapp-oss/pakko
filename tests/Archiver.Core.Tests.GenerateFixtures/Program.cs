@@ -74,6 +74,8 @@
  *     extract_single_root_file.zip    — T-14: extract directly
  *     corrupted_entry_data.zip        — CRC mismatch on extract
  *     corrupted_central_directory.zip — EOCD signature mangled
+ *     corrupted_crc_stored.zip        — T-F62: Stored (uncompressed) entry, data flipped after
+ *                                        write — reads back cleanly, only its CRC-32 is wrong
  *     encrypted_zipcrypto.zip         — encryption bit set, T-25 target
  *     zipslip_traversal.zip           — path traversal entries, T-14 target
  *     pakko_integrity_valid.zip       — MANUAL, after T-34
@@ -260,6 +262,29 @@ var corruptedCentralDir = Path.Combine(archivesDir, "corrupted_central_directory
     File.WriteAllBytes(corruptedCentralDir, raw);
 }
 Record(corruptedCentralDir, "EOCD signature corrupted — archive unreadable");
+
+// T-F62: Stored (CompressionLevel.NoCompression) entry so the corrupted byte is the raw
+// content itself — no Deflate stream to break, so entry.Open() reads back cleanly (unlike
+// corruptedEntryData above, which is Deflate-compressed and usually throws on read instead).
+// This isolates the "CRC-32 in the header doesn't match the actual bytes" case that
+// ZipArchiveService.TestAsync exists to catch — .NET never validates this itself on read.
+var corruptedCrcStored = Path.Combine(archivesDir, "corrupted_crc_stored.zip");
+{
+    using var ms = new MemoryStream();
+    using (var zip = new ZipArchive(ms, ZipArchiveMode.Create, leaveOpen: true))
+    {
+        var entry = zip.CreateEntry("file.txt", CompressionLevel.NoCompression);
+        using var s = entry.Open();
+        var data = Encoding.UTF8.GetBytes(Repeat("Stored content for CRC testing.\n", 20));
+        s.Write(data);
+    }
+    var raw = ms.ToArray();
+    // Local file header: signature(4) + fixed fields(26) + filename "file.txt"(8) = 38.
+    const int offset = 38;
+    raw[offset + 10] ^= 0xFF;
+    File.WriteAllBytes(corruptedCrcStored, raw);
+}
+Record(corruptedCrcStored, "Stored entry data flipped after write — CRC-32 mismatch, read still succeeds");
 
 // ── Encrypted archives ────────────────────────────────────────────────────────
 

@@ -460,6 +460,110 @@ public sealed class ZipArchiveService : IArchiveService
         return result;
     }
 
+    /// <inheritdoc/>
+    public async Task<ArchiveResult> TestAsync(
+        IReadOnlyList<string> archivePaths,
+        IProgress<ProgressReport>? progress = null,
+        CancellationToken cancellationToken = default)
+    {
+        var errors = new List<ArchiveError>();
+        var skippedFiles = new List<SkippedFile>();
+
+        int total = archivePaths.Count;
+        for (int i = 0; i < total; i++)
+        {
+            if (cancellationToken.IsCancellationRequested)
+                break;
+
+            string archivePath = archivePaths[i];
+
+            if (!IsZipFile(archivePath))
+            {
+                string? reason = GetKnownArchiveReason(archivePath);
+                if (reason is not null)
+                    skippedFiles.Add(new SkippedFile { Path = archivePath, Reason = reason });
+                progress?.Report(new ProgressReport { Percent = (i + 1) * 100 / total, BytesTransferred = 0, TotalBytes = 0 });
+                continue;
+            }
+
+            if (IsEncryptedZip(archivePath))
+            {
+                errors.Add(new ArchiveError
+                {
+                    SourcePath = archivePath,
+                    Message = "This archive is password-protected and cannot be tested."
+                });
+                progress?.Report(new ProgressReport { Percent = (i + 1) * 100 / total, BytesTransferred = 0, TotalBytes = 0 });
+                continue;
+            }
+
+            try
+            {
+                await Task.Run(() => TestArchiveEntries(archivePath, errors, cancellationToken), cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch (IOException ex)
+            {
+                errors.Add(new ArchiveError
+                {
+                    SourcePath = archivePath,
+                    Message = $"Cannot read archive: {ex.Message}",
+                    Exception = ex
+                });
+            }
+            catch (InvalidDataException ex)
+            {
+                errors.Add(new ArchiveError
+                {
+                    SourcePath = archivePath,
+                    Message = "File has ZIP signature but appears corrupted or incomplete.",
+                    Exception = ex
+                });
+            }
+
+            progress?.Report(new ProgressReport { Percent = (i + 1) * 100 / total, BytesTransferred = 0, TotalBytes = 0 });
+        }
+
+        return new ArchiveResult
+        {
+            Success = errors.Count == 0,
+            Errors = errors,
+            SkippedFiles = skippedFiles,
+        };
+    }
+
+    // Reads every entry's decompressed bytes and compares a freshly computed CRC-32 against
+    // the value declared in the entry's header — System.IO.Compression never validates this
+    // itself on read, so a bit-flipped-but-structurally-valid entry would otherwise extract
+    // "successfully" with silently wrong content.
+    private static void TestArchiveEntries(string archivePath, List<ArchiveError> errors, CancellationToken cancellationToken)
+    {
+        using var archive = ZipFile.OpenRead(archivePath);
+
+        foreach (var entry in archive.Entries)
+        {
+            if (cancellationToken.IsCancellationRequested)
+                break;
+
+            if (entry.FullName.EndsWith('/'))
+                continue; // directory entry — no data to verify
+
+            uint computed;
+            using (var entryStream = entry.Open())
+                computed = Crc32.Compute(entryStream);
+
+            if (computed != entry.Crc32)
+            {
+                errors.Add(new ArchiveError
+                {
+                    SourcePath = archivePath,
+                    Message = $"Entry '{entry.FullName}' failed CRC-32 check " +
+                              $"(expected {entry.Crc32:X8}, got {computed:X8})."
+                });
+            }
+        }
+    }
+
     private static async Task<string> ExtractWithSmartFolderingAsync(
         string archivePath,
         string destDir,

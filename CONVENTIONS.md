@@ -132,12 +132,12 @@ Not required on:
 /// Creates ZIP archives from the provided options.
 /// </summary>
 /// <param name="options">Archive configuration including source paths and destination.</param>
-/// <param name="progress">Optional progress reporter (0–100).</param>
+/// <param name="progress">Optional progress reporter (percent, bytes transferred/total, current file).</param>
 /// <param name="cancellationToken">Token to cancel the operation between items.</param>
 /// <returns>Result containing created file paths and any per-item errors.</returns>
 Task<ArchiveResult> ArchiveAsync(
     ArchiveOptions options,
-    IProgress<int>? progress = null,
+    IProgress<ProgressReport>? progress = null,
     CancellationToken cancellationToken = default);
 ```
 

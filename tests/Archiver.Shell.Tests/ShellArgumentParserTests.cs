@@ -67,6 +67,36 @@ public sealed class ShellArgumentParserTests
         result.Files.Should().Equal("file1.txt", "file2.docx", "image.png");
     }
 
+    // --- Valid: --test ---
+
+    [Fact]
+    public void Test_SingleFile_ReturnsTest()
+    {
+        ParsedCommand result = ShellArgumentParser.Parse(["--test", "archive.zip"]);
+
+        result.Type.Should().Be(CommandType.Test);
+        result.Files.Should().Equal("archive.zip");
+        result.ErrorMessage.Should().BeNull();
+    }
+
+    [Fact]
+    public void Test_MultipleFiles_ReturnsAllFiles()
+    {
+        ParsedCommand result = ShellArgumentParser.Parse(["--test", "a.zip", "b.zip"]);
+
+        result.Type.Should().Be(CommandType.Test);
+        result.Files.Should().Equal("a.zip", "b.zip");
+    }
+
+    [Fact]
+    public void Test_NoFiles_ReturnsInvalid()
+    {
+        ParsedCommand result = ShellArgumentParser.Parse(["--test"]);
+
+        result.Type.Should().Be(CommandType.Invalid);
+        result.ErrorMessage.Should().NotBeNullOrEmpty();
+    }
+
     // --- Valid: --open-ui --extract ---
 
     [Fact]
