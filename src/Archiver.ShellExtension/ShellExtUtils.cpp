@@ -21,6 +21,30 @@ static bool HasZipExtension(const std::wstring& path)
     return pExt != nullptr && _wcsicmp(pExt, L".zip") == 0;
 }
 
+// Mirrors .NET's Path.GetFileNameWithoutExtension: a leading dot (e.g. ".gitignore")
+// is not treated as an extension separator.
+static std::wstring GetFileNameWithoutExtension(const std::wstring& path)
+{
+    const std::wstring fileName(PathFindFileNameW(path.c_str()));
+    const auto pos = fileName.rfind(L'.');
+    return (pos != std::wstring::npos && pos != 0) ? fileName.substr(0, pos) : fileName;
+}
+
+// A folder/file name can be up to 255 characters - left untruncated, that would make the
+// "Pakko" context-menu submenu absurdly wide. Truncate in the middle (head + "..." + tail),
+// the same "recognizable prefix + ellipsis + tail" shape Windows itself uses for long names
+// (see PathCompactPathExW) - a plain right-truncation would hide the tail, which for many
+// real names (dates, versions, "_final", "_v2") is the most distinguishing part.
+constexpr size_t kMaxDisplayNameLength = 40;
+constexpr size_t kDisplayNameHeadLength = 22;
+constexpr size_t kDisplayNameTailLength = 15;
+
+static std::wstring TruncateMiddle(const std::wstring& name)
+{
+    if (name.size() <= kMaxDisplayNameLength) return name;
+    return name.substr(0, kDisplayNameHeadLength) + L"\u2026" + name.substr(name.size() - kDisplayNameTailLength);
+}
+
 // ---------------------------------------------------------------------------
 // Public functions
 // ---------------------------------------------------------------------------
@@ -148,4 +172,11 @@ std::wstring BuildArchiveArgs(const std::vector<std::wstring>& paths)
         args += QuotePath(p);
     }
     return args;
+}
+
+std::wstring BuildAddToArchiveTitle(const std::vector<std::wstring>& paths)
+{
+    if (paths.empty()) return L"Add to archive\u2026";
+    const std::wstring name = TruncateMiddle(GetFileNameWithoutExtension(paths.front()));
+    return L"Add to \"" + name + L".zip\"";
 }

@@ -244,6 +244,14 @@ downstream service calls. Do not add path content checks to `ShellArgumentParser
   exists and must be preserved so `ShellExtUtilsTests.cpp` keeps running without a COM apartment.
 - Comment WHY, not WHAT (same rule as C#) — e.g. the existing comment on `BuildExtractHereArgs`
   explaining why no path escaping is needed (`"` is invalid in NTFS filenames).
+- **Never write a literal non-ASCII character (`…`, `—`, Cyrillic, etc.) directly in a string
+  literal.** Always use the `\uXXXX` escape (e.g. `L"…"` for the ellipsis). Reason: a `.cpp`
+  file saved as UTF-8 **without a BOM** gets decoded by MSVC using the *active system code page*
+  (e.g. Windows-1251 on a Ukrainian-locale machine), not UTF-8 — the multi-byte UTF-8 sequence
+  then gets split into garbage individual characters at compile time (a real bug found in
+  `ShellExtUtils.cpp`: `L"…"` compiled into `вЂ¦`; see T-F64 in `TASKS.md`). `\uXXXX` escapes are
+  pure ASCII in the source file, so they're immune to this regardless of BOM/locale. This applies
+  to comments too, though there it's cosmetic rather than a functional bug.
 
 ---
 

@@ -1158,7 +1158,7 @@ classes in `Archiver.ShellExtension` to invoke `Archiver.Shell.exe --extract`/`-
 ---
 
 ### T-F64 — Context Menu: Fix "Add to archive…" Label vs One-Click Behavior
-- [ ] **Status:** future (v1.2)
+- [~] **Status:** partial (v1.2) — code + tests done, manual Explorer smoke test pending
 - **Depends on:** T-F61
 
 **What:** `ArchiveCommand`'s current title is "Add to archive…" (an ellipsis conventionally
@@ -1175,10 +1175,38 @@ correctly distinguished the same way NanaZip distinguishes its one-click and dia
 variants.
 
 **Acceptance criteria:**
-- [ ] `ArchiveCommand::GetTitle` returns `Add to "<name>.zip"` using the same name-derivation
-      logic as `Program.cs`'s `RunArchiveAsync` (first selected item's base name)
-- [ ] No behavior change — still archives immediately, no dialog
-- [ ] Manual smoke test: title updates correctly for single vs multi-selection
+- [x] `ArchiveCommand::GetTitle` returns `Add to "<name>.zip"` using the same name-derivation
+      logic as `Program.cs`'s `RunArchiveAsync` (first selected item's base name) — implemented
+      as `BuildAddToArchiveTitle` in `ShellExtUtils.cpp`, using `psia` (previously ignored)
+- [x] Long names truncated in the middle (`head…tail`) before display — a 255-char folder name
+      would otherwise make the "Pakko" submenu absurdly wide. Cap: 40 chars total (22 head + 15
+      tail), `.zip` always fully visible. See `TruncateMiddle` in `ShellExtUtils.cpp`.
+- [x] No behavior change — still archives immediately, no dialog (`Invoke`/`GetState` untouched)
+- [x] **Manual smoke test:** title updates correctly for single vs multi-selection, and for a
+      long folder/file name (verified 2026-07-05 via `Deploy.ps1` + Explorer right-click,
+      after fixing the mojibake bug below)
+
+**Verified 2026-07-05:** `Archiver.ShellExtension.Tests.exe` 30/30 (7 new `BuildAddToArchiveTitle`
+cases: empty vector fallback, single file, multi-selection uses first path only, folder with no
+extension, leading-dot filename like `.gitignore` not treated as an extension, name exactly at
+the 40-char limit passes through unchanged, name over the limit truncated head/tail). `dotnet
+test` 95/95 unaffected (no C# changes). MSIX built + installed via `Deploy.ps1` per new
+CLAUDE.md workflow rule.
+
+**Bug found and fixed during on-device smoke test:** the first build (v1.1.0.20) showed
+`Add to "raspberry-pi-5-case-мовЂ¦1111111111111111.zip"` instead of the expected
+`...case-mo…11111111.zip` — the ellipsis character was mojibake'd into three garbage bytes.
+Root cause: `ShellExtUtils.cpp` was saved as UTF-8 **without a BOM** and contained a literal
+`…` glyph (not an escape sequence). Without a BOM, MSVC falls back to the system's active code
+page (Windows-1251 on this Cyrillic/Ukrainian-locale machine) to decode the source file, so the
+3-byte UTF-8 sequence for `…` (`E2 80 A6`) got decoded as three separate cp1251 characters
+(`в`, `Ђ`, `¦`) instead of one Unicode code point. The pre-existing `ExtractFolderCommand` title
+never hit this because it already used the `…` escape (verified: pure-ASCII source, immune
+to source-encoding assumptions). Fixed by replacing the literal glyph with `…` in both
+`ShellExtUtils.cpp` and `ShellExtUtilsTests.cpp` (the test file had the same latent bug, but it
+went undetected because both sides of `EXPECT_EQ` were mis-decoded identically). Verified fix
+on-device: v1.1.0.21 shows the title correctly. See `CONVENTIONS.md`'s new "non-ASCII string
+literals" rule.
 
 ---
 

@@ -290,6 +290,10 @@ Lessons learned during v1.2 MSIX packaging work — follow these to avoid known 
 - Do not change the first three segments unless explicitly instructed.
 - If bumping manually (e.g. outside `Deploy.ps1`), only edit the `Version` attribute on
   `<Identity>` — do not touch `MinVersion`/`MaxVersionTested` on `TargetDeviceFamily`.
+- Full build+sign+install command (user's dev cert thumbprint):
+  ```powershell
+  .\scripts\Deploy.ps1 -Thumbprint "D2EC5F2C451ED0EBE94B8168A68E5B813954CC75"
+  ```
 
 ---
 
@@ -297,3 +301,8 @@ Lessons learned during v1.2 MSIX packaging work — follow these to avoid known 
 
 - For complex tasks (architecture changes, new services, multi-file refactoring)
   use Plan Mode before writing any code — activate with /plan in Claude Code.
+- **Before committing any task marked complete or partial:** run the full
+  `.\scripts\Deploy.ps1 -Thumbprint "D2EC5F2C451ED0EBE94B8168A68E5B813954CC75"` build+sign+install, and
+  ask the user to do the manual on-device verification (context menu, extraction, etc.) before
+  the commit. Don't commit a task as done/partial on the strength of `dotnet test` /
+  `Archiver.ShellExtension.Tests.exe` alone if it touches shell-triggered or UI behavior.

@@ -110,3 +110,47 @@ TEST(BuildArchiveArgs, PathWithSpacesIsQuoted)
     const auto args = BuildArchiveArgs({ L"C:\\Program Files\\app.exe" });
     EXPECT_NE(args.find(L"\"C:\\Program Files\\app.exe\""), std::wstring::npos);
 }
+
+// ---------------------------------------------------------------------------
+// BuildAddToArchiveTitle
+// ---------------------------------------------------------------------------
+
+TEST(BuildAddToArchiveTitle, ReturnsFallbackForEmptyVector)
+{
+    EXPECT_EQ(BuildAddToArchiveTitle({}), L"Add to archive\u2026");
+}
+
+TEST(BuildAddToArchiveTitle, SingleFileUsesNameWithoutExtension)
+{
+    EXPECT_EQ(BuildAddToArchiveTitle({ L"C:\\Docs\\report.docx" }), L"Add to \"report.zip\"");
+}
+
+TEST(BuildAddToArchiveTitle, MultipleFilesUseFirstPathOnly)
+{
+    const auto title = BuildAddToArchiveTitle({ L"C:\\a\\first.txt", L"C:\\b\\second.txt" });
+    EXPECT_EQ(title, L"Add to \"first.zip\"");
+}
+
+TEST(BuildAddToArchiveTitle, FolderWithNoExtensionKeepsFullName)
+{
+    EXPECT_EQ(BuildAddToArchiveTitle({ L"C:\\Projects\\MyFolder" }), L"Add to \"MyFolder.zip\"");
+}
+
+TEST(BuildAddToArchiveTitle, LeadingDotIsNotTreatedAsExtension)
+{
+    EXPECT_EQ(BuildAddToArchiveTitle({ L"C:\\Projects\\.gitignore" }), L"Add to \".gitignore.zip\"");
+}
+
+TEST(BuildAddToArchiveTitle, NameAtLimitIsNotTruncated)
+{
+    // 40 chars exactly — must pass through unchanged.
+    const std::wstring name(40, L'a');
+    EXPECT_EQ(BuildAddToArchiveTitle({ L"C:\\" + name + L".txt" }), L"Add to \"" + name + L".zip\"");
+}
+
+TEST(BuildAddToArchiveTitle, NameOverLimitIsTruncatedInTheMiddle)
+{
+    const auto title = BuildAddToArchiveTitle(
+        { L"C:\\My Very Long Project Folder Name With Lots Of Words 2026 Final Report.txt" });
+    EXPECT_EQ(title, L"Add to \"My Very Long Project F\u202626 Final Report.zip\"");
+}
