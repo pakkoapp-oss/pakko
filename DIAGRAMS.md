@@ -44,6 +44,7 @@ documentation that lies.
 | `IsBusy`/cancellation/operation lifecycle in `MainViewModel`, or `NativeProgressDialog` cancel polling | **2. State** | Catches stuck states (a state with no outgoing transition) and commands gated on the wrong `CanExecute`. |
 | New branch in `ZipArchiveService` validation/conflict/smart-folder logic | **3. Activity** | Catches silently-dropped entries: a new `continue`/skip path that isn't reflected in `ArchiveResult` (see Finding 2 below for why this matters). |
 | MSIX manifest `<Application>` entries, `com:ComServer` registration, packaging of a new satellite EXE | **4. Component** | Catches "works in VS, `ERROR_ACCESS_DENIED` when packaged" — an EXE that isn't its own declared `Application` entry. |
+| New branch in `TarProcessService`'s pre-scan/extraction/conflict pipeline | **5. Activity (tar.exe)** | Whole-archive-reject means a single scan gap silently lets an entire class of unsafe entries through — there's no per-entry fallback the way ZIP has, so a missed branch here is higher-severity, not lower. |
 
 Update the diagram in the same commit as the code change, alongside `dotnet test` — not as a
 follow-up. Re-derive the affected part from the current source per the Ground Truth Rule above;
@@ -344,6 +345,79 @@ installed MSIX package — invisible until on-device testing. This is exactly th
 
 ---
 
+## 5. Activity — tar.exe whole-archive pre-scan and extraction (T-F49)
+
+Source read for this diagram: `ExtractSingleArchiveAsync`, `ScanForUnsafeEntriesAsync`,
+`IsDangerousEntryName`, `EnumerateFilesGuarded` in
+`src/Archiver.Core/Services/TarProcessService.cs:145-331`.
+
+```mermaid
+flowchart TD
+    A[ExtractSingleArchiveAsync per archivePath] --> B["tar -tf archivePath (RunTarAsync)"]
+    B -- "exit != 0" --> RejIO1["throw IOException(stdErr)<br/>quarantine never created —<br/>caught in ExtractAsync as ArchiveError"]
+    B -- "exit 0" --> D{"for each listed name:<br/>IsDangerousEntryName?<br/>('..' segment, rooted path,<br/>ADS ':', reserved name, control char)"}
+    D -- yes --> RejTar1["throw TarArchiveRejectedException<br/>WHOLE ARCHIVE rejected, quarantine never created"]
+    D -- "no, all names clean" --> E["tar -tvf archivePath (RunTarAsync)"]
+    E -- "exit != 0" --> RejIO1
+    E -- "exit 0" --> F{"-tf line count ==<br/>-tvf line count?"}
+    F -- no --> RejTar2["throw TarArchiveRejectedException<br/>('listing is inconsistent')"]
+    F -- yes --> G{"for each -tvf line:<br/>char[0] == '-' or 'd'?"}
+    G -- "no (l/h/b/c/p/s)" --> RejTar3["throw TarArchiveRejectedException<br/>('symlink, hardlink, device...')<br/>⚠ THIS is the gate that blocks the confirmed<br/>symlink-escape exploit — see DECISIONS.md's T-F49 entry"]
+    G -- "yes, every entry '-' or 'd'" --> H["Directory.CreateDirectory(quarantineDir)<br/>tar -xf archivePath -C quarantineDir"]
+    H -- "exit != 0" --> RejIO2["throw IOException(stdErr)<br/>→ finally still runs: quarantine deleted<br/>→ caught in ExtractAsync as ArchiveError"]
+    H -- "exit 0" --> I["Directory.CreateDirectory(destDir)<br/>walk EnumerateFilesGuarded(quarantineDir)"]
+    I --> J{"subdirectory hit during walk:<br/>IsReparsePoint?"}
+    J -- yes --> K["⚠ silently NOT descended into —<br/>no SkippedFiles entry, no ArchiveError<br/>(see Finding below)"]
+    J -- no --> L[yield each file in this directory]
+    K --> Mloop{More entries?}
+    L --> N{"File.Exists at<br/>destDir + relativePath?"}
+    N -- no --> O
+    N -- "yes, onConflict==Skip" --> P["SkippedFiles += 'already exists at destination'; continue"]
+    N -- "yes, onConflict==Rename" --> O2["finalFilePath = GetUniqueFilePath(...)"]
+    N -- "yes, onConflict==Overwrite (or any other value)" --> O3["NO explicit branch — falls through to O<br/>with the ORIGINAL finalFilePath;<br/>File.Move(overwrite:true) below does the actual overwrite<br/>(same asymmetry as diagram 3's ZIP OnConflict gate)"]
+    O2 --> O
+    O3 --> O
+    O["File.Move(file, finalFilePath, overwrite:true)<br/>ArchiveEntrySecurity.TryPropagateMotw(archivePath, finalFilePath)"] --> Mloop
+    P --> Mloop
+    Mloop -- yes --> I
+    Mloop -- no --> Q["return destDir<br/>(finally: quarantineDir deleted, success or failure)"]
+    Q --> R{{"ArchiveResult.Success = errors.Count==0 (ExtractAsync) —<br/>SkippedFiles NOT read in this computation,<br/>same asymmetry as diagram 3's ZIP finding"}}
+```
+
+**What this catches — the confirmed exploit, and one new finding:**
+- **Gate G is the load-bearing check.** It is the only thing standing between this pipeline and
+  the reproduced symlink-escape exploit in `DECISIONS.md`'s T-F49 entry (a `link -> ..` symlink
+  entry followed by `link/escaped.txt`, which made raw tar.exe write one directory level above
+  the extraction root). Any future change that weakens gate G (e.g. widening the character
+  whitelist, or trusting `-tvf`'s columns beyond character 0) reopens that exploit. Gates D and F
+  run first but do not by themselves block a symlink entry — an entry named `link` with no `..`
+  or rooted path in its name passes D cleanly; only G's type check catches it.
+- **Whole-archive-reject, no per-entry fallback.** Unlike diagram 3's ZIP chain (where a bad
+  entry is skipped and the rest of the archive still extracts), any rejection here
+  (`RejTar1`/`RejTar2`/`RejTar3`) throws before `quarantineDir` is even created — the entire
+  archive produces one `ArchiveError` and nothing is written. This is deliberate (see
+  `DECISIONS.md`), but means a single overly-broad future name/type check would silently reject
+  entire legitimate archives rather than just skipping one entry.
+- **New finding (node K): a reparse-point subdirectory hit during the post-extraction walk is
+  silently dropped** — `EnumerateFilesGuarded` simply doesn't push it onto its traversal stack,
+  recording neither a `SkippedFiles` entry nor an `ArchiveError`. Currently unreachable in normal
+  operation, since gate G already rejects any archive containing a symlink entry before `-xf`
+  ever runs — this path only matters if gate G is ever weakened, or in the already-documented
+  TOCTOU gap between the scan pass and `-xf` (archive modified between the two). Flagged per this
+  file's Ground Truth Rule rather than silently patched; not fixed as part of T-F49 since it's
+  currently dead code, not a live gap — worth a one-line `SkippedFiles` addition if gate G's
+  guarantees are ever loosened.
+- **Same `OnConflict` asymmetry as diagram 3:** `Overwrite` (and any future `ConflictBehavior`
+  value) has no explicit branch and falls through to the unconditional `File.Move(overwrite:
+  true)` — identical shape to `ZipArchiveService`'s gate, confirmed by reading
+  `TarProcessService.cs:176-190` directly rather than assuming parity with diagram 3.
+- **Same `Success`/`SkippedFiles` asymmetry as diagram 3:** an extraction where every file was
+  skipped (e.g. `OnConflict=Skip` and every entry already exists at the destination) reports
+  `Success=true` — `ArchiveResult.Success` is `errors.Count==0` and never inspects
+  `SkippedFiles`, mirroring the ZIP-side finding from 2026-07-05.
+
+---
+
 ## Findings summary (surfaced while drafting/redrawing 2026-07-05, all three since resolved)
 
 1. **`ARCHITECTURE.md:259` stale** — said `com:InProcessServer`, actual manifest and
@@ -357,3 +431,11 @@ installed MSIX package — invisible until on-device testing. This is exactly th
    operation `IsBusy` stayed `true` for as long as the summary/error dialog was open. Tracked as
    **T-F70** — decided (align, not document) and fixed 2026-07-06; see diagram 2 above and
    `DECISIONS.md`.
+
+## Findings summary (surfaced while drafting diagram 5, 2026-07-07)
+
+4. **Reparse-point subdirectory silently dropped during `TarProcessService`'s post-extraction
+   walk** — no `SkippedFiles` entry, no `ArchiveError`; see diagram 5's node K and its note above.
+   Not tracked as a `T-Fxx` and not fixed — currently dead code (gate G already rejects any
+   archive containing a symlink entry before this walk can run), so there is nothing live to fix
+   yet. Revisit if gate G's guarantees are ever loosened.

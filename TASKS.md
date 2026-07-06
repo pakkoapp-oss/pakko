@@ -774,6 +774,57 @@ checks shared with `ZipArchiveService`, moved here so validation can't drift bet
 
 ---
 
+### T-F85 — Wire ITarService into UI/Shell for Non-ZIP Extraction
+- [ ] **Status:** future (v1.3)
+- **Depends on:** T-F49 (done)
+
+**What:** `TarProcessService`/`ITarService` is DI-registered (`App.xaml.cs`) but nothing calls
+`ExtractAsync` on it — `MainViewModel` (`src/Archiver.App/ViewModels/MainViewModel.cs`) only
+holds an `IArchiveService` (ZIP), and `Archiver.Shell/Program.cs`'s extract commands call the
+same `IArchiveService.ExtractAsync` directly. Today, opening a `.rar`/`.7z`/`.tar*` file — from
+either the app or the shell context menu — hits `ZipArchiveService`'s `GetKnownArchiveReason`
+signature sniff and is reported as a `SkippedFile` with messages like *"RAR format is not
+supported. Only ZIP-based formats are supported."* — which becomes actively wrong once this task
+lands, since Pakko now can extract those formats via `TarProcessService`. This task is the
+missing bridge between the T-F49 Core capability and an app the user can actually run it from,
+and is what unblocks T-F49's own remaining manual-verification criterion.
+
+**Scope:**
+- A dispatch point (new small service, or inline in `MainViewModel`/`Archiver.Shell` — decide at
+  implementation time) that sniffs each archive path the same way
+  `ZipArchiveService.GetKnownArchiveReason` already does, and routes: ZIP → `IArchiveService`
+  (unchanged), tar-family formats `TarCapabilities` reports as supported → `ITarService`,
+  everything else → today's existing "not supported" `SkippedFile` message.
+- `MainViewModel` needs `ITarService`/`TarCapabilities` injected alongside its existing
+  `IArchiveService` (constructor + DI registration already exist in `App.xaml.cs` for the
+  service itself, just needs the extra constructor parameter wired through).
+- `Archiver.Shell/Program.cs`'s extract path needs the same dispatch — confirm whether
+  `Archiver.Shell`'s DI container (if any) or its direct `new ZipArchiveService()`-style
+  construction (check current code before assuming) also needs a `TarProcessService` instance.
+- `GetKnownArchiveReason`'s RAR/7z/tar/etc. messages need to stop unconditionally saying
+  "not supported" once the corresponding format is actually routed to `ITarService` — likely
+  means this sniffing logic itself needs to move (or be duplicated/shared) to the new dispatch
+  point rather than living solely inside `ZipArchiveService`.
+- Encrypted/password-protected non-ZIP archives, and formats `TarCapabilities` reports as
+  unsupported on the current OS (e.g. RAR5/7z pre-Windows-11-23H2), must still produce a clear
+  user-facing message — not a silent failure or a confusing tar.exe error passthrough.
+
+**Acceptance criteria:**
+- [ ] Opening a `.tar`/`.tar.gz`/etc. file in `Archiver.App` extracts via `ITarService`, not
+      reported as unsupported
+- [ ] Opening a `.rar`/`.7z` file extracts via `ITarService` when `TarCapabilities` reports the
+      format supported on the current OS; produces a clear message (not a raw tar.exe error) when
+      unsupported
+- [ ] Same routing works from `Archiver.Shell`'s context-menu extract commands
+- [ ] ZIP archives are entirely unaffected — still routed to `IArchiveService`
+- [ ] `GetKnownArchiveReason`'s messaging updated so a now-supported format doesn't still claim
+      "not supported"
+- [ ] `dotnet test --filter "Category!=Slow"` passes
+- [ ] This is what unblocks T-F49's last unchecked criterion (manual on-device `.rar`/`.7z`
+      extraction) — after this lands, do that verification and graduate T-F49 to `[x]`
+
+---
+
 ### T-F50 — tar.exe Test Fixtures
 - [ ] **Status:** future (v1.3)
 
