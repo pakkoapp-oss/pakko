@@ -201,6 +201,6 @@ if (-not $DeployOnly -and -not $SkipVersionBump -and $installed) {
         Write-Host ""
         Write-Host "Bumped Package.appxmanifest: $oldVersion -> $newVersion" -ForegroundColor Cyan
     } else {
-        Write-Warning "Could not find Version attribute in Package.appxmanifest — skipped version bump."
+        Write-Warning "Could not find Version attribute in Package.appxmanifest - skipped version bump."
     }
 }

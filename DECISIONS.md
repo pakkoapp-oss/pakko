@@ -715,3 +715,60 @@ tool round-trip in this session's harness reliably exceeded 2 seconds, so by the
 post-cancel screenshot could be taken, the window had already elapsed regardless of whether the fix
 was in place. Functional behavior (Cancel still stops the operation cleanly, no crash, UI reaches
 "Ready" afterward) was confirmed live.
+
+---
+
+## T-F84 — Bug: Deploy.ps1's Post-Build Hook Fails on Cyrillic-Locale Machines (Mojibake, 3rd Language)
+
+**Found while:** verifying T-F47/T-F48 compiled cleanly under a real Visual Studio Release build
+(requested since `dotnet build`/`dotnet test` cannot build `Archiver.App`, a WinUI 3 project).
+`Archiver.App`'s post-build event auto-runs `Deploy.ps1 -DeployOnly` (documented in `CLAUDE.md`);
+the build reported `MSB3073: The command "powershell.exe ... Deploy.ps1" ... exited with code 1`.
+
+**Root cause:** `scripts/Deploy.ps1` line 204 (`Write-Warning "... Package.appxmanifest —
+skipped version bump."`) contains a literal em-dash inside a double-quoted string literal, and the
+file is saved as UTF-8 **without a BOM**. Windows PowerShell 5.1 (`powershell.exe`, required by this
+script's `#Requires -Version 5.1`) has no BOM to detect UTF-8 from, so on this Cyrillic-locale
+machine it decodes the file via the system ANSI code page (cp1251) instead — the em-dash's UTF-8
+bytes (`E2 80 94`) misdecode into `вЂ”`, and one of the resulting characters breaks the string's
+terminator, cascading into `TerminatorExpectedAtEndOfString` / `Missing closing '}'` parser errors
+at the *reported* lines 203/186 (both downstream symptoms, not the real location). Confirmed by
+running `Deploy.ps1 -DeployOnly` directly and reading the full PowerShell error text (VS's Output
+window truncates/wraps this badly enough that a direct terminal repro was clearer than screen
+scraping it). This is the same **mojibake bug class already documented three times in this
+project's C++ code** (T-F64, T-F76, T-F63 — see `CONVENTIONS.md`'s non-ASCII string-literal rule)
+— the first known occurrence in a PowerShell script rather than C++.
+
+**Fix:** replaced the em-dash with a plain ASCII hyphen (`"... appxmanifest - skipped version
+bump."`). `grep -P "[^\x00-\x7F]"` run over every `scripts/*.ps1` file (not just `Deploy.ps1`)
+found one more live instance: `Setup-DevCert.ps1` line 21, `Write-Host "Not running as
+Administrator — relaunching elevated..."` — arguably higher-risk than `Deploy.ps1`'s, since that
+script explicitly relaunches itself via `Start-Process powershell` (Windows PowerShell, the exact
+vulnerable interpreter) when not elevated. Fixed the same way. The many em-dash/box-drawing
+characters used as comment dividers throughout both files (`# ── Paths ──...`) don't affect
+parsing (comments are skipped verbatim regardless of how their bytes decode) and were deliberately
+left alone, per "minimal diff, don't touch unrelated content."
+
+**Considered and rejected:** re-saving the file as UTF-8-with-BOM instead of removing the
+character. Rejected for the same reason `CONVENTIONS.md` prefers `\uXXXX` escapes over BOM
+discipline in C++ — an encoding fix is fragile (any future save without preserving the BOM,
+by any editor or tool, silently reintroduces the bug), while removing the non-ASCII character is
+immune to encoding regardless of how the file is later saved. Windows PowerShell 5.1 also has no
+backtick-`u{}` Unicode escape (that requires PowerShell 6.2+/pwsh core), so an escape-sequence fix
+analogous to the C++ one wasn't available here.
+
+**Why it hid until now:** the bug only manifests when the file is read by Windows PowerShell 5.1
+(`powershell.exe`) on a non-UTF-8-default-locale machine. pwsh 7+ defaults to UTF-8 regardless of
+system locale, so every manual `.\Deploy.ps1`/`.\Setup-DevCert.ps1` run from a pwsh 7 terminal
+(this project's usual dev workflow) read the file correctly. The Release-only Visual Studio
+post-build hook — which shells out via `powershell.exe` specifically — was the first path to
+actually exercise the vulnerable interpreter.
+
+**Verification:** both fixes confirmed against the *actual* vulnerable interpreter, not pwsh 7
+(which would have reported "no parse errors" on the broken files too, since it doesn't hit the
+bug) — `powershell.exe -NoProfile -Command "[...]::ParseFile(...)"` reports zero parse errors for
+both files after the fix. `Deploy.ps1 -DeployOnly` run directly (via `powershell.exe`) completed
+successfully (`Pakko installed successfully`, version 1.1.0.42); a subsequent Visual Studio
+Release build of the full solution completed with 0 errors/0 warnings.
+
+**Files:** `scripts/Deploy.ps1`, `scripts/Setup-DevCert.ps1`

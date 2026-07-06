@@ -869,3 +869,42 @@ The T-F66 empty-subdirectory special case had the identical bug and is fixed the
 - [ ] Decide whether this warrants a v1.1 patch/release note for early testers (flagged to user,
       not yet decided)
 
+---
+
+### T-F84 — Bug: Deploy.ps1's Post-Build Hook Fails on Cyrillic-Locale Machines (Mojibake)
+- [x] **Status:** complete — found and fixed 2026-07-07 while verifying T-F47/T-F48 built cleanly
+      in Visual Studio
+
+**What:** Found while asking Visual Studio to build the solution (needed since `dotnet build`
+cannot build `Archiver.App`, a WinUI 3 project). The Release build failed with `MSB3073`: the
+post-build hook's `Deploy.ps1 -DeployOnly` invocation exited with code 1.
+
+**Root cause:** the same mojibake bug class documented three times already in this project's C++
+code (T-F64, T-F76, T-F63), now found for the first time in a PowerShell script. `Deploy.ps1` line
+204 had a literal em-dash inside a `Write-Warning` string; the file is UTF-8 without a BOM, and
+Windows PowerShell 5.1 decoded it via the system ANSI code page (cp1251, Cyrillic locale) instead
+of UTF-8, corrupting the em-dash into `вЂ”` and breaking the string's terminator — reported by the
+parser as misleading `Missing closing '}'` errors several lines away. See `DECISIONS.md`'s "T-F84"
+entry for the full trace.
+
+**Fix:** replaced the em-dash with a plain ASCII hyphen. `grep -P "[^\x00-\x7F]"` run over every
+`scripts/*.ps1` (not just `Deploy.ps1`) found one more live instance in `Setup-DevCert.ps1` line
+21 — fixed the same way; that script is arguably higher-risk since it explicitly relaunches
+itself via `Start-Process powershell` (Windows PowerShell) when not elevated. The many
+em-dash/box-drawing comment dividers in both files are unaffected (comments don't need a matching
+terminator) and were left alone. `CONVENTIONS.md` gained a new "PowerShell Scripts" section for
+this rule.
+
+**Acceptance criteria:**
+- [x] `scripts/Deploy.ps1`'s em-dash replaced with an ASCII-safe substitute
+- [x] Every other `scripts/*.ps1` file checked (`grep -P "[^\x00-\x7F]"`) — `Setup-DevCert.ps1`'s
+      matching bug found and fixed too
+- [x] `[System.Management.Automation.Language.Parser]::ParseFile`, run via real `powershell.exe`
+      (Windows PowerShell 5.1, the actually-vulnerable interpreter — pwsh 7 would pass either way),
+      confirms zero parse errors on both files after the fix
+- [x] `Deploy.ps1 -DeployOnly` run directly completes successfully (installed Pakko 1.1.0.42)
+- [x] Visual Studio Release build of the full solution completes with 0 errors / 0 warnings
+- [x] `CONVENTIONS.md` updated so this bug class is documented for PowerShell scripts too, not
+      just C++ (`CLAUDE.md`'s hard constraint intentionally left alone — out of scope without
+      explicit sign-off, per its own "Do Not modify CLAUDE.md" rule)
+
