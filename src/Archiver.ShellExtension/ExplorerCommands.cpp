@@ -142,10 +142,14 @@ STDMETHODIMP ExtractHereCommand::EnumSubCommands(IEnumExplorerCommand** ppEnum) 
 // ExtractFolderCommand
 // ---------------------------------------------------------------------------
 
-STDMETHODIMP ExtractFolderCommand::GetTitle(IShellItemArray*, LPWSTR* ppszName) noexcept
+STDMETHODIMP ExtractFolderCommand::GetTitle(IShellItemArray* psia, LPWSTR* ppszName) noexcept
 {
     if (!ppszName) return E_POINTER;
-    return SHStrDupW(L"Extract to folder\u2026", ppszName);
+    try
+    {
+        return SHStrDupW(BuildExtractFolderTitle(GetPathsFromShellItemArray(psia)).c_str(), ppszName);
+    }
+    catch (...) { return SHStrDupW(L"Extract to folder", ppszName); }
 }
 
 STDMETHODIMP ExtractFolderCommand::GetIcon(IShellItemArray*, LPWSTR* ppszIcon) noexcept

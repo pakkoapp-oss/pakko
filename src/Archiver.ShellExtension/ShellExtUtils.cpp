@@ -213,3 +213,14 @@ std::wstring BuildAddToArchiveTitle(const std::vector<std::wstring>& paths)
 
     return L"Add to \"" + TruncateMiddle(name) + L".zip\"";
 }
+
+std::wstring BuildExtractFolderTitle(const std::vector<std::wstring>& paths)
+{
+    if (paths.empty()) return L"Extract to folder";
+    if (paths.size() > 1) return L"Extract each to its own folder";
+
+    const std::wstring name = GetFileNameWithoutExtension(paths.front());
+    if (name.empty()) return L"Extract to folder";
+
+    return L"Extract to \"" + TruncateMiddle(name) + L"\\\"";
+}

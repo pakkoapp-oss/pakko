@@ -1709,3 +1709,175 @@ rules, scope rules for which options apply to which action).
 - [ ] Task-specific rules with no equivalent in `CLAUDE.md` (completion marking, UI-vs-logic,
       scope rules) kept in `TASKS.md` unchanged
 
+---
+
+## UI/UX Design Review Findings (2026-07-06)
+
+Surfaced during a design pass over `Archiver.App`'s main window and the Explorer context menu
+(screenshots from this session's smoke-test cycle — see `TESTING.md`'s manual smoke test entry).
+Design direction below was checked against Pakko's own niche (Ukrainian government/defense —
+trust, auditability, minimal attack surface, `CLAUDE.md`'s Project section) before being written
+up: this audience reads native OS fidelity as a trust signal and a bespoke brand skin as the
+opposite, so recommendations deliberately favor WinUI-native idioms and restraint over a custom
+visual identity. T-F76 is a concrete, reproducible bug; T-F77–T-F81 are design debt, not bugs —
+each needs a decision before implementation, not just code.
+
+---
+
+### T-F76 — Bug: "Extract to folder…" Ellipsis Implies a Dialog That Never Appears
+- [x] **Status:** complete — fixed 2026-07-06, same class as T-F64
+
+**What:** `ExtractFolderCommand::GetTitle` (`ExplorerCommands.cpp:145-149`) hardcodes
+`"Extract to folder…"`. The trailing ellipsis is a UI convention meaning "a dialog/prompt
+follows" — but `ExtractFolderCommand::Invoke` (`ExplorerCommands.cpp:179-188`) calls
+`LaunchShellExe` directly with no dialog; it silently creates `<archive_name>\` and extracts into
+it. This is the identical label/behavior mismatch already found and fixed for `ArchiveCommand`'s
+"Add to archive…" in T-F64 — that fix removed the ellipsis and showed the real computed name
+instead (`Add to "<name>.zip"`). `ExtractFolderCommand` never got the equivalent treatment.
+
+**Fix (mirrors T-F64):** `GetTitle` already receives `IShellItemArray* psia` (currently unused —
+the signature takes it but the body ignores it, same starting point `ArchiveCommand` had before
+T-F64). Compute the real destination folder name from the first selected archive's base name and
+render e.g. `Extract to "<name>\"`, reusing `TruncateMiddle` from `ShellExtUtils.cpp` for long
+names, no ellipsis.
+
+**Files:** `src/Archiver.ShellExtension/ExplorerCommands.cpp`,
+`src/Archiver.ShellExtension/ShellExtUtils.cpp` (helper reuse), corresponding
+`Archiver.ShellExtension.Tests` cases.
+
+**Acceptance criteria:**
+- [x] `ExtractFolderCommand::GetTitle` computes `Extract to "<name>\"` from the first selected
+      item, no trailing ellipsis — implemented as `BuildExtractFolderTitle` in `ShellExtUtils.cpp`
+      (multi-selection extracts each archive to its own separately-named folder per T-F42, so no
+      single name would be truthful there — returns `"Extract each to its own folder"` instead)
+- [x] Long names truncated middle via existing `TruncateMiddle`, consistent with T-F64
+- [x] No behavior change to `Invoke`/`GetState` — still extracts silently, no dialog
+- [x] `Archiver.ShellExtension.Tests` gains cases mirroring `BuildAddToArchiveTitle`'s coverage
+      (empty vector, single item, multi-selection, leading-dot edge case, at-limit and
+      over-limit truncation) — 39/39 (was 33/33)
+- [x] **Manual smoke test:** verified 2026-07-06 via Explorer UI automation (Windows MCP) after
+      `Deploy.ps1` — single archive shows `Extract to "quarterly_report\"`, two-archive selection
+      shows `Extract each to its own folder`; invoking the multi-selection command still extracts
+      each archive to its own separate folder exactly as before (no behavior regression)
+
+---
+
+### T-F77 — Archive/Extract Options Don't Adapt to the Active Action
+- [ ] **Status:** future — needs a UX decision before implementation
+
+**What:** `MainWindow`'s options panel always shows `Mode`, `Name`, `Compression` (Archive-only
+per `CLAUDE.md`'s own documented scope rules) even when the current selection is extract-only
+(e.g. a single `.zip`), and always shows both Archive and Extract buttons regardless of which one
+the current selection actually supports. The form doesn't tell the user, at a glance, what will
+happen when they press the primary button — it reads as one long flat list of settings, some of
+which are inert for the current selection.
+
+**Design direction:** don't hide fields with elaborate animation — this niche rewards
+predictability over motion. Collapse Archive-only fields (`Mode`, `Name`, `Compression`) via a
+plain `Visibility` binding to a ViewModel property that already knows the active action (mirrors
+the existing `IsArchiveNameAndNotBusy`-style computed properties per `ARCHITECTURE.md`). Showing
+only the options that apply *is* the signature move here: which fields are visible becomes
+information about what's about to happen, which is more honest than a permanent settings dump.
+
+**Acceptance criteria:**
+- [ ] Decision recorded (`DECISIONS.md`): collapse vs. grey-out vs. leave as-is, and exactly which
+      ViewModel property drives visibility
+- [ ] If collapsing: Archive-only fields hidden when selection is extract-only and vice versa;
+      shared fields (`Destination`, `If file exists`, `Open destination folder`) always visible
+- [ ] No new dependencies, no custom animation — plain XAML visibility binding
+- [ ] `dotnet test` passes — ViewModel visibility logic covered by a new test if it's
+      testable in isolation
+
+---
+
+### T-F78 — No Typographic Hierarchy in the Options Panel
+- [ ] **Status:** future
+
+**What:** Every label (`Destination:`, `Mode:`, `Name:`, `Compression:`, `If file exists:`) and
+every value/input renders at the same weight and size — nothing distinguishes a section label
+from body text, so the panel reads as an undifferentiated list rather than a structured form.
+
+**Design direction:** don't introduce a custom type system — WinUI 3 already ships
+`CaptionTextBlockStyle`/`BodyStrongTextBlockStyle`/`TitleTextBlockStyle` resources built for
+exactly this. Apply `CaptionTextBlockStyle` (smaller, secondary-color) to the field labels and
+leave inputs at body weight. Purely additive, zero new dependencies, consistent with the
+project's "no custom framework" posture.
+
+**Files:** `src/Archiver.App/MainWindow.xaml`
+
+**Acceptance criteria:**
+- [ ] Field labels (`Destination:`, `Mode:`, `Name:`, `Compression:`, `If file exists:`) use
+      `CaptionTextBlockStyle` or equivalent existing WinUI resource — no new custom style
+- [ ] Inputs/values remain at current (body) weight — contrast comes from the label, not the value
+- [ ] No layout shift/regression — spacing unchanged, only text style
+- [ ] Visual check against both light and dark theme (WinUI resources auto-adapt, confirm they do)
+
+---
+
+### T-F79 — Record the Decision Not to Add a Custom Brand Palette
+- [ ] **Status:** future — documentation-only task, no code change implied
+
+**What:** Pakko currently has no app-specific color identity — background/text come from the
+WinUI dark theme, and the only accent is the user's system accent color on the primary button.
+This was flagged during design review as a potential gap, but for this audience (government/
+defense — trust, auditability) a bespoke brand palette that visually diverges from native Windows
+chrome would read as "skinned," which undercuts trust rather than building it. The considered,
+deliberate choice is to **not** add a custom palette and instead invest restraint and hierarchy
+(T-F78) plus contextual clarity (T-F77) as the actual signature.
+
+**Why this is a task and not just a conversation:** per `CLAUDE.md`'s "never silently deprecate"
+and `DECISIONS.md`'s role as the record of chosen/rejected approaches — if this reasoning isn't
+written down, a future session may "fix" the lack of branding as an oversight.
+
+**Acceptance criteria:**
+- [ ] Decision written to `DECISIONS.md`: no custom brand palette; native WinUI theme + system
+      accent only; rationale tied to the gov/defense trust model
+- [ ] `SECURITY.md`/`SPEC.md` teaser-linked if either references visual trust signals (check
+      first — likely no change needed)
+
+---
+
+### T-F80 — Empty State Doesn't Teach the Two Modes
+- [ ] **Status:** future
+
+**What:** The empty-state drop zone ("Drop files or folders here, or double-click to browse
+files") is functionally correct but purely instructional — it tells the user how to add items,
+not what happens next. A first-time user doesn't learn from this screen that dropping a `.zip`
+leads to extraction while dropping anything else leads to archiving.
+
+**Design direction:** treat the empty state as an invitation to act, not decoration (per the
+project's own copy-is-material principle) — add one calm second line stating the fork, e.g.
+"Archives offer to extract; anything else gets archived." No icons, no illustration, no
+animation — a single added sentence, consistent with the rest of the panel's plain-text register.
+
+**Files:** `src/Archiver.App/MainWindow.xaml`, `src/Archiver.App/Strings/en-US/Resources.resw`
+
+**Acceptance criteria:**
+- [ ] Second line added under the existing drop-zone prompt, resource string in `Resources.resw`
+      (not hardcoded, per existing localization convention)
+- [ ] Copy reviewed for plain, active-voice register matching the rest of the app's strings
+- [ ] No layout/visual redesign of the drop zone itself — text addition only
+
+---
+
+### T-F81 — Archive/Extract Button Pair Reads as a Toggle, Not Two Distinct Actions
+- [ ] **Status:** future — depends on the T-F77 decision
+
+**What:** `Archive` and `Extract` render as adjacent, equal-width buttons that visually resemble a
+segmented toggle control, but they're two independent actions whose availability depends on the
+current selection (only one is normally actionable at a time). When one is disabled it still
+shows at reduced opacity next to the enabled one, with no text explaining why — a user extracting
+a single `.zip` sees a live "Archive" button and a dead "Extract" button with no stated reason.
+
+**Design direction:** once T-F77's contextual-visibility decision lands, pair it with a one-line
+status/subtitle under the button row stating the resolved action in plain language (e.g. "Will
+extract 1 archive to the folder above") — this reuses the same "structure communicates outcome"
+principle as T-F77 rather than introducing a separate mechanism.
+
+**Acceptance criteria:**
+- [ ] Decision on whether the inactive button should grey out (current behavior, kept) or hide
+      entirely — recorded alongside T-F77's decision, not separately
+- [ ] One-line outcome subtitle added under the button row, driven by existing ViewModel state
+- [ ] No change to the underlying Archive/Extract command logic — presentation only
+- [ ] `dotnet test` passes — no ViewModel behavior change expected, only new bindable display text
+

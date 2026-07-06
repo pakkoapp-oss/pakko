@@ -177,3 +177,42 @@ TEST(BuildAddToArchiveTitle, NameOverLimitIsTruncatedInTheMiddle)
         { L"C:\\My Very Long Project Folder Name With Lots Of Words 2026 Final Report.txt" });
     EXPECT_EQ(title, L"Add to \"My Very Long Project F\u202626 Final Report.zip\"");
 }
+
+// ---------------------------------------------------------------------------
+// BuildExtractFolderTitle
+// ---------------------------------------------------------------------------
+
+TEST(BuildExtractFolderTitle, ReturnsFallbackForEmptyVector)
+{
+    EXPECT_EQ(BuildExtractFolderTitle({}), L"Extract to folder");
+}
+
+TEST(BuildExtractFolderTitle, SingleArchiveUsesNameWithoutExtension)
+{
+    EXPECT_EQ(BuildExtractFolderTitle({ L"C:\\Docs\\report.zip" }), L"Extract to \"report\\\"");
+}
+
+TEST(BuildExtractFolderTitle, MultipleArchivesDoNotClaimASingleName)
+{
+    const auto title = BuildExtractFolderTitle({ L"C:\\a.zip", L"C:\\b.zip" });
+    EXPECT_EQ(title, L"Extract each to its own folder");
+}
+
+TEST(BuildExtractFolderTitle, LeadingDotIsNotTreatedAsExtension)
+{
+    EXPECT_EQ(BuildExtractFolderTitle({ L"C:\\Projects\\.gitignore.zip" }), L"Extract to \".gitignore\\\"");
+}
+
+TEST(BuildExtractFolderTitle, NameAtLimitIsNotTruncated)
+{
+    // 40 chars exactly \u2014 must pass through unchanged.
+    const std::wstring name(40, L'a');
+    EXPECT_EQ(BuildExtractFolderTitle({ L"C:\\" + name + L".zip" }), L"Extract to \"" + name + L"\\\"");
+}
+
+TEST(BuildExtractFolderTitle, NameOverLimitIsTruncatedInTheMiddle)
+{
+    const auto title = BuildExtractFolderTitle(
+        { L"C:\\My Very Long Project Folder Name With Lots Of Words 2026 Final Report.zip" });
+    EXPECT_EQ(title, L"Extract to \"My Very Long Project F\u202626 Final Report\\\"");
+}

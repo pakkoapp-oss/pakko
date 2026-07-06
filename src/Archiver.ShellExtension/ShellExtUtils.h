@@ -42,3 +42,10 @@ std::wstring BuildTestArgs(const std::vector<std::wstring>& paths);
 // containing folder's name instead (mirrors RunArchiveAsync's naming in
 // Archiver.Shell/Program.cs). Returns "Add to archive..." if paths is empty.
 std::wstring BuildAddToArchiveTitle(const std::vector<std::wstring>& paths);
+
+// Builds the "Extract to <name>\" context-menu title. For a single selected archive, <name> is
+// that archive's file name without extension - the exact subfolder ExtractFolderCommand::Invoke
+// creates. For multiple archives each extracts to its own separately-named subfolder (T-F42), so
+// no single name would be truthful; returns "Extract each to its own folder" instead. Returns
+// "Extract to folder" if paths is empty. Never ends in an ellipsis: Invoke never shows a dialog.
+std::wstring BuildExtractFolderTitle(const std::vector<std::wstring>& paths);
