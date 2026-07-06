@@ -126,6 +126,15 @@ public sealed partial class MainViewModel : ObservableObject
         ? _res.GetString("OutcomeWillExtract").Replace("{0}", FileItems.Count.ToString())
         : _res.GetString("OutcomeWillArchive").Replace("{0}", FileItems.Count.ToString());
 
+    // T-F82: accent styling must track the resolved action (matching OperationOutcomeText),
+    // not always sit on Archive — otherwise the visually-primary button can contradict what the
+    // outcome subtitle says is about to happen for an extract-only selection.
+    public Style? ArchiveButtonStyle =>
+        IsExtractOnlySelection ? null : (Style)Application.Current.Resources["AccentButtonStyle"];
+
+    public Style? ExtractButtonStyle =>
+        IsExtractOnlySelection ? (Style)Application.Current.Resources["AccentButtonStyle"] : null;
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(OnConflictIndex))]
     private ConflictBehavior _onConflict = ConflictBehavior.Skip;
@@ -195,6 +204,8 @@ public sealed partial class MainViewModel : ObservableObject
             OnPropertyChanged(nameof(ArchiveOptionsVisibility));
             OnPropertyChanged(nameof(OperationOutcomeVisibility));
             OnPropertyChanged(nameof(OperationOutcomeText));
+            OnPropertyChanged(nameof(ArchiveButtonStyle));
+            OnPropertyChanged(nameof(ExtractButtonStyle));
         };
     }
 

@@ -1898,3 +1898,33 @@ principle as T-F77 rather than introducing a separate mechanism.
       reads "Will extract 1 archive(s)..." / "Will archive 1 item(s)..." / "Will archive 2
       item(s)..." matching each of the three T-F77 scenarios
 
+---
+
+### T-F82 — Archive Button Keeps Accent Color Even When the Outcome Subtitle Says "Extract"
+- [x] **Status:** complete — fixed 2026-07-06, found during a follow-up design review of T-F77/T-F81
+
+**What:** Found during a second design-review pass (after T-F76–T-F81 shipped) comparing the
+actual rendered screens rather than mockups. `Archive`'s `AccentButtonStyle` is unconditional —
+it stays visually primary (blue) regardless of selection type. For an extract-only selection
+(single `.zip`), T-F81's new outcome subtitle reads "Will extract 1 archive(s) to the folder
+above," but `Archive` is still live (archiving a `.zip` into a new `.zip` is a valid, reachable
+edge case) and still the visually-highlighted button — so the interface's text and its visual
+weight point at two different actions. A user following the accent color gets an outcome the
+subtitle never described. This is isolated to the extract-only case: for archive-mode selections
+(non-`.zip` or mixed), `Archive`-blue and "Will archive…" already agree.
+
+**Design direction:** no new mechanism — drive the accent style off the same
+`IsExtractOnlySelection` property that already governs T-F77's field collapse, so visual weight
+always matches whichever action the outcome subtitle is describing.
+
+**Files:** `src/Archiver.App/MainWindow.xaml`, `src/Archiver.App/ViewModels/MainViewModel.cs`
+
+**Acceptance criteria:**
+- [x] `Archive` has `AccentButtonStyle` when the selection is not extract-only; `Extract` has it
+      when the selection is extract-only — driven by `IsExtractOnlySelection`
+- [x] No change to `CanArchive`/`CanExtract`/command logic — presentation only
+- [x] `dotnet test` passes
+- [x] **Manual smoke test:** verified 2026-07-06 via Pakko UI automation (Windows MCP) — accent
+      color follows the resolved action across all three T-F77 scenarios (zip-only, non-zip-only,
+      mixed)
+

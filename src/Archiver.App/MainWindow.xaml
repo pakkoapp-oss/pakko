@@ -182,14 +182,15 @@
                 Content="{x:Bind ViewModel.ArchiveButtonText, Mode=OneWay}"
                 HorizontalAlignment="Stretch"
                 Command="{x:Bind ViewModel.ArchiveCommand, Mode=OneWay}"
-                Style="{StaticResource AccentButtonStyle}"/>
+                Style="{x:Bind ViewModel.ArchiveButtonStyle, Mode=OneWay}"/>
 
             <Button
                 Grid.Column="1"
                 Content="{x:Bind ViewModel.ExtractButtonText, Mode=OneWay}"
                 Margin="8,0,0,0"
                 HorizontalAlignment="Stretch"
-                Command="{x:Bind ViewModel.ExtractCommand, Mode=OneWay}"/>
+                Command="{x:Bind ViewModel.ExtractCommand, Mode=OneWay}"
+                Style="{x:Bind ViewModel.ExtractButtonStyle, Mode=OneWay}"/>
 
             <Button
                 x:Uid="ClearButton"
