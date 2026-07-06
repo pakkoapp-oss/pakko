@@ -346,6 +346,12 @@ Implementation: `TarProcessService` in `Archiver.Core/Services/`.
 - Post-extraction validation: ADS, reserved names, reparse points
 - MOTW propagation: copies `Zone.Identifier` ADS from archive to each extracted file
 
+`DetectCapabilitiesAsync` (T-F48) runs `tar.exe --version` and delegates parsing to
+`TarVersionParser.Parse(string)` in `Archiver.Core/Services/TarVersionParser.cs` — pulled into
+its own class so format detection is unit-testable without launching a process, the same
+rationale as `Archiver.Shell`'s `ShellArgumentParser` (T-F57). `Supports7z`/`SupportsRar` are
+gated on libarchive >= 3.7.0.
+
 DI registration:
 
 ```csharp

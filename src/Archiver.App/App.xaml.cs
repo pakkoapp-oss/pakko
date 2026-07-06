@@ -35,7 +35,13 @@ public partial class App : Application
             sp.GetRequiredService<ITarService>().DetectCapabilitiesAsync().GetAwaiter().GetResult());
         services.AddTransient<MainViewModel>();
 
-        return services.BuildServiceProvider();
+        var provider = services.BuildServiceProvider();
+
+        // T-F48: force tar.exe capability detection now — a factory-registered singleton only
+        // runs on first resolution, and nothing else currently injects TarCapabilities.
+        provider.GetRequiredService<TarCapabilities>();
+
+        return provider;
     }
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)

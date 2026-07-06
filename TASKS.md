@@ -695,17 +695,40 @@ registration resolves it eagerly as a singleton at startup (`GetAwaiter().GetRes
 ---
 
 ### T-F48 — tar.exe Capability Detection
-- [ ] **Status:** future (v1.3)
+- [~] **Status:** partial (v1.3) — detection logic complete; UI criterion blocked on T-F36 (no
+      tar format selector exists yet to grey out)
 
 **What:** At app startup, run `C:\Windows\System32\tar.exe --version` to detect version and probe which formats are supported. Cache result as `TarCapabilities` singleton. UI greys out unsupported formats with tooltip "Requires Windows 11 23H2+".
 
+**Implementation:** `TarProcessService.DetectCapabilitiesAsync` invokes `tar.exe --version`
+(absolute path, stdout captured) and delegates parsing to the new `TarVersionParser.Parse`,
+extracted into its own class so format detection is unit-testable without launching a process
+(same rationale as `ShellArgumentParser`, T-F57). `Supports7z`/`SupportsRar`/`SupportsZstd` are
+gated on libarchive >= 3.7.0 (matches `TESTING.md`'s documented "requires Win 11 23H2+ tar.exe"
+note on all three formats — zstd is version-gated, not just token-gated, since a hypothetical
+older libarchive build linking `libzstd` would still contradict that documented threshold).
+`SupportsXz`/`SupportsLzma`/`SupportsBz2` are detected from the corresponding library tokens in
+the version string, since `TESTING.md` does not flag those as 23H2+-only. Any failure to start
+the process, or unrecognized output, returns the
+all-unsupported `TarCapabilities` default — never throws. Found along the way: the T-F47
+factory-registered `TarCapabilities` singleton only runs on first *resolution*, not at container
+build — since nothing yet injects `TarCapabilities`, detection would silently never run. Fixed by
+explicitly resolving it once in `App.xaml.cs`'s `ConfigureServices` right after
+`BuildServiceProvider()`. Since that forced resolution runs synchronously on every app launch
+(including the T-F83 cold-start path), `DetectCapabilitiesAsync` enforces a 5-second timeout via
+an internal `CancellationTokenSource` and kills the process on expiry — a hung `tar.exe --version`
+must not hang app launch indefinitely.
+
 **Acceptance criteria:**
-- [ ] `DetectCapabilitiesAsync()` runs `C:\Windows\System32\tar.exe --version` (absolute path)
-- [ ] Parses version string and probes format support
-- [ ] Returns sensible defaults if tar.exe absent or probe fails
-- [ ] Result cached — detection runs once at startup
-- [ ] UI greys out formats not supported by detected tar.exe
-- [ ] `dotnet test` passes — unit test with mocked process output
+- [x] `DetectCapabilitiesAsync()` runs `C:\Windows\System32\tar.exe --version` (absolute path)
+- [x] Parses version string and probes format support
+- [x] Returns sensible defaults if tar.exe absent or probe fails
+- [x] Result cached — detection runs once at startup (`App.xaml.cs` forces resolution explicitly;
+      see note above — a bare DI registration alone does not run it)
+- [ ] UI greys out formats not supported by detected tar.exe — no tar format selector exists in
+      the UI yet; blocked on T-F36 (Pluggable Archive Engine Interface / format dropdown)
+- [x] `dotnet test` passes — unit test with mocked process output (`TarVersionParserTests`, no
+      process launch)
 
 ---
 
