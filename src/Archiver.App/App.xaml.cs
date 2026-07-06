@@ -1,6 +1,7 @@
 using Archiver.App.Services;
 using Archiver.App.ViewModels;
 using Archiver.Core.Interfaces;
+using Archiver.Core.Models;
 using Archiver.Core.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
@@ -29,6 +30,9 @@ public partial class App : Application
         services.AddSingleton<ILogService, LogService>();
         services.AddSingleton<IArchiveService, ZipArchiveService>();
         services.AddSingleton<IDialogService, DialogService>();
+        services.AddSingleton<ITarService, TarProcessService>();
+        services.AddSingleton<TarCapabilities>(sp =>
+            sp.GetRequiredService<ITarService>().DetectCapabilitiesAsync().GetAwaiter().GetResult());
         services.AddTransient<MainViewModel>();
 
         return services.BuildServiceProvider();
