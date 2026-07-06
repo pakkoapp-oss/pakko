@@ -210,6 +210,17 @@ references are easy to miss otherwise (this session found 5 lingering mentions o
   Pakko code bug — Explorer caches top-level shell-extension verbs across COM DLL
   (re)registrations until it requeries `GetTitle`/`GetIcon`. Don't chase this with code changes
   without first confirming the cache-artifact explanation is wrong.
+- **WinUI 3 cold-start activation gotcha:** `AppInstance.Activated` (Windows App SDK) only fires
+  for activations *redirected* to an already-running instance — never for a process's own initial
+  activation. `OnLaunched` must pull it explicitly via
+  `AppInstance.GetCurrent().GetActivatedEventArgs()` and route File/Protocol kinds through the same
+  handler `OnActivated` uses, or a cold `pakko://`/file-association launch silently opens a blank
+  window (see T-F83 in `DECISIONS.md`).
+- **Non-ASCII glyphs in `Archiver.ShellExtension` C++ string literals** (ellipsis, em-dash, etc.)
+  must use `\uXXXX` escapes, never the literal character — MSVC decodes a non-BOM UTF-8 source file
+  via the system code page, silently corrupting the glyph on non-English-locale machines. This
+  exact bug has shipped three times now (T-F64, T-F76, T-F63) despite being documented in
+  `CONVENTIONS.md` — check every new string literal in this project before considering a change done.
 
 ---
 
@@ -404,3 +415,8 @@ Lessons learned during v1.2 MSIX packaging work — follow these to avoid known 
   ask the user to do the manual on-device verification (context menu, extraction, etc.) before
   the commit. Don't commit a task as done/partial on the strength of `dotnet test` /
   `Archiver.ShellExtension.Tests.exe` alone if it touches shell-triggered or UI behavior.
+- **Debugging via Pakko's log file:** when running as an installed MSIX, the log is NOT at the
+  plain `%LOCALAPPDATA%\Pakko\logs` `LogService.cs` constructs — MSIX virtualizes
+  `LocalApplicationData` per-package. Find it at
+  `%LOCALAPPDATA%\Packages\<PackageFamilyName>\LocalCache\Local\Pakko\logs\pakko.log`
+  (get `<PackageFamilyName>` via `Get-AppxPackage *Pakko*`).
