@@ -733,24 +733,44 @@ must not hang app launch indefinitely.
 ---
 
 ### T-F49 — tar.exe Extraction Pipeline
-- [ ] **Status:** future (v1.3)
+- [~] **Status:** partial (v1.3) — `Archiver.Core` implementation and its own tests complete;
+      stays `[~]` until a `Deploy.ps1`-driven build+install and a manual on-device extraction of
+      a real `.rar`/`.7z` through the app is done and confirmed by the user (this task's scope
+      never reached UI/shell wiring — `TarProcessService` isn't called from there yet)
 
 **What:** Implement `TarProcessService.ExtractAsync()`. Always uses absolute path. Argument whitelist enforced. Quarantine staging directory on same disk as destination. Full validation after extraction. MOTW propagation. Timeout via `CancellationToken` + `Process.Kill()`.
 
-**File:** `src/Archiver.Core/Services/TarProcessService.cs`
+**Design note:** empirically verified (before writing code, per `CLAUDE.md`'s pre-implementation
+research constraint) that a naive quarantine-then-validate model is unsafe for tar.exe — a
+symlink entry causes tar.exe to write outside the quarantine directory before any C# code can
+inspect the result, and tar.exe does not abort on a bad entry. `ExtractAsync` therefore runs a
+whole-archive pre-scan (`tar -tf` for unsafe names, `tar -tvf`'s column-0 type character for
+symlink/hardlink/device entries) and rejects the entire archive before `-xf` ever runs, rather
+than ZIP's per-entry skip-and-continue model. Full trace in `DECISIONS.md`'s T-F49 entry.
+
+**File:** `src/Archiver.Core/Services/TarProcessService.cs`,
+`src/Archiver.Core/Services/ArchiveEntrySecurity.cs` (new — ADS/reserved-name/reparse-point/MOTW
+checks shared with `ZipArchiveService`, moved here so validation can't drift between extractors)
 
 **Acceptance criteria:**
-- [ ] Always invokes `C:\Windows\System32\tar.exe` (absolute path — never PATH)
-- [ ] Only `-xf` and `-C` arguments allowed — no arbitrary flag injection
-- [ ] Extraction goes to quarantine directory on same disk as destination
-- [ ] All extracted files validated: no ADS, no reserved names, no reparse points
-- [ ] MOTW propagation: copies `Zone.Identifier` from archive to each extracted file
-- [ ] `CancellationToken` triggers `Process.Kill()` — no orphaned processes
-- [ ] Quarantine directory cleaned up on success and failure
-- [ ] New test project `Archiver.Core.IntegrationTests` created
-- [ ] Integration tests tagged `[Integration]` — skipped if tar.exe not present
-- [ ] Format-specific tests tagged `[SkipIfFormatUnsupported(format)]`
-- [ ] `dotnet test` passes (unit tests); integration tests pass on Win 11 23H2+
+- [x] Always invokes `C:\Windows\System32\tar.exe` (absolute path — never PATH)
+- [x] Only `-xf` and `-C` arguments allowed — no arbitrary flag injection (also `-tf`/`-tvf` for
+      the pre-scan, via `ProcessStartInfo.ArgumentList`, never a concatenated string)
+- [x] Extraction goes to quarantine directory on same disk as destination
+- [x] All extracted files validated: no ADS, no reserved names, no reparse points (plus the
+      whole-archive pre-scan — the primary defense; post-hoc validation alone was proven
+      insufficient against a symlink escape)
+- [x] MOTW propagation: copies `Zone.Identifier` from archive to each extracted file
+- [x] `CancellationToken` triggers `Process.Kill()` — no orphaned processes
+- [x] Quarantine directory cleaned up on success and failure
+- [x] New test project `Archiver.Core.IntegrationTests` created
+- [x] Integration tests tagged `[Integration]` — skipped if tar.exe not present
+- [x] Format-specific tests tagged `[SkipIfFormatUnsupported(format)]`
+- [x] `dotnet test` passes (150/150: 107 Archiver.Core.Tests + 36 Archiver.Shell.Tests + 7
+      Archiver.Core.IntegrationTests, the last including a regression test for the confirmed
+      symlink-escape exploit); integration tests pass on this machine (Win 11, bsdtar 3.8.4)
+- [ ] Manual on-device verification: real `.rar`/`.7z` extraction through the installed app,
+      confirmed by the user (blocked on UI/shell wiring, out of this task's scope)
 
 ---
 

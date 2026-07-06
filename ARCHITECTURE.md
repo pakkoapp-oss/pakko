@@ -343,8 +343,14 @@ Implementation: `TarProcessService` in `Archiver.Core/Services/`.
 
 - Always invokes `C:\Windows\System32\tar.exe` (absolute path)
 - Quarantine/staging: same pattern as T-F26/T-F27 (temp dir on same disk, atomic move)
-- Post-extraction validation: ADS, reserved names, reparse points
-- MOTW propagation: copies `Zone.Identifier` ADS from archive to each extracted file
+- Whole-archive pre-scan (T-F49) runs before `-xf`: `tar -tf`/`-tvf` reject the archive outright
+  if any entry name is unsafe or any entry is a symlink/hardlink/device — see DECISIONS.md's
+  T-F49 entry for why post-extraction validation alone isn't sufficient
+- Post-extraction validation: ADS, reserved names, reparse points — via `ArchiveEntrySecurity`
+  (`Archiver.Core/Services/ArchiveEntrySecurity.cs`), a shared internal static class also used by
+  `ZipArchiveService`, so this checklist can't drift between the two extractors
+- MOTW propagation: copies `Zone.Identifier` ADS from archive to each extracted file (also via
+  `ArchiveEntrySecurity`)
 
 `DetectCapabilitiesAsync` (T-F48) runs `tar.exe --version` and delegates parsing to
 `TarVersionParser.Parse(string)` in `Archiver.Core/Services/TarVersionParser.cs` — pulled into

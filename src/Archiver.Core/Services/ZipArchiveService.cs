@@ -91,7 +91,7 @@ public sealed class ZipArchiveService : IArchiveService
                             pathSize = ComputeDirectoryBytes(sourcePath);
 
                         // T-F23: Skip top-level symlinks and NTFS junctions
-                        if (IsReparsePoint(sourcePath))
+                        if (ArchiveEntrySecurity.IsReparsePoint(sourcePath))
                         {
                             skippedFiles.Add(new SkippedFile
                             {
@@ -231,7 +231,7 @@ public sealed class ZipArchiveService : IArchiveService
                     pathSize = ComputeDirectoryBytes(sourcePath);
 
                 // T-F23: Skip top-level symlinks and NTFS junctions
-                if (IsReparsePoint(sourcePath))
+                if (ArchiveEntrySecurity.IsReparsePoint(sourcePath))
                 {
                     skippedFiles.Add(new SkippedFile
                     {
@@ -643,7 +643,7 @@ public sealed class ZipArchiveService : IArchiveService
                 }
 
                 // T-F38: Reject entries with Alternate Data Stream marker
-                if (EntryHasAlternateDataStream(entry.FullName))
+                if (ArchiveEntrySecurity.HasAlternateDataStreamMarker(entry.FullName))
                 {
                     skippedFiles.Add(new SkippedFile
                     {
@@ -655,7 +655,7 @@ public sealed class ZipArchiveService : IArchiveService
                 }
 
                 // T-F39: Reject reserved Windows device names
-                if (EntryHasReservedName(entry.FullName))
+                if (ArchiveEntrySecurity.HasReservedName(entry.FullName))
                 {
                     skippedFiles.Add(new SkippedFile
                     {
@@ -667,7 +667,7 @@ public sealed class ZipArchiveService : IArchiveService
                 }
 
                 // T-F39: Reject entries with control characters in name
-                if (EntryHasControlCharacters(entry.FullName))
+                if (ArchiveEntrySecurity.HasControlCharacters(entry.FullName))
                 {
                     skippedFiles.Add(new SkippedFile
                     {
@@ -686,7 +686,7 @@ public sealed class ZipArchiveService : IArchiveService
                 Directory.CreateDirectory(Path.GetDirectoryName(destFilePath)!);
 
                 // T-F37: Reject entries whose path traverses a reparse point (symlink/junction)
-                if (PathContainsReparsePoint(destFilePath, fullTempDest))
+                if (ArchiveEntrySecurity.PathContainsReparsePoint(destFilePath, fullTempDest))
                 {
                     skippedFiles.Add(new SkippedFile
                     {
@@ -760,7 +760,7 @@ public sealed class ZipArchiveService : IArchiveService
                 }
 
                 // T-F45: Propagate Zone.Identifier ADS from archive to extracted file
-                TryPropagateMotw(archivePath, destFilePath);
+                ArchiveEntrySecurity.TryPropagateMotw(archivePath, destFilePath);
 
                 bytesRead += entry.Length;
             }
@@ -881,7 +881,7 @@ public sealed class ZipArchiveService : IArchiveService
                 break;
 
             // T-F23: Skip file-level symlinks (reparse points)
-            if (IsReparsePoint(filePath))
+            if (ArchiveEntrySecurity.IsReparsePoint(filePath))
             {
                 skippedFiles.Add(new SkippedFile
                 {
@@ -936,7 +936,7 @@ public sealed class ZipArchiveService : IArchiveService
                 break;
 
             // T-F23: Skip NTFS junctions and directory symlinks — prevents infinite loops
-            if (IsReparsePoint(subDir))
+            if (ArchiveEntrySecurity.IsReparsePoint(subDir))
             {
                 skippedFiles.Add(new SkippedFile
                 {
@@ -960,7 +960,7 @@ public sealed class ZipArchiveService : IArchiveService
         {
             try
             {
-                if (IsReparsePoint(p)) continue;
+                if (ArchiveEntrySecurity.IsReparsePoint(p)) continue;
                 if (File.Exists(p)) total += new FileInfo(p).Length;
                 else if (Directory.Exists(p)) total += ComputeDirectoryBytes(p);
             }
@@ -978,12 +978,12 @@ public sealed class ZipArchiveService : IArchiveService
         {
             foreach (string filePath in Directory.EnumerateFiles(dir, "*", SearchOption.TopDirectoryOnly))
             {
-                if (!IsReparsePoint(filePath))
+                if (!ArchiveEntrySecurity.IsReparsePoint(filePath))
                     try { total += new FileInfo(filePath).Length; } catch { }
             }
             foreach (string subDir in Directory.EnumerateDirectories(dir, "*", SearchOption.TopDirectoryOnly))
             {
-                if (!IsReparsePoint(subDir))
+                if (!ArchiveEntrySecurity.IsReparsePoint(subDir))
                     total += ComputeDirectoryBytes(subDir);
             }
         }
@@ -1068,108 +1068,8 @@ public sealed class ZipArchiveService : IArchiveService
         }
     }
 
-    // T-F38: Reject entries with ':' in name (Alternate Data Streams)
-    private static bool EntryHasAlternateDataStream(string entryFullName)
-        => entryFullName.Contains(':');
-
-    // T-F39: Reject reserved Windows device names (with or without extension, case-insensitive)
-    private static readonly HashSet<string> _reservedNames = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "CON", "PRN", "AUX", "NUL",
-        "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
-        "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"
-    };
-
-    private static bool EntryHasReservedName(string entryFullName)
-    {
-        // Use the last path segment from the raw ZIP entry name (before any GetFullPath call)
-        string lastSegment = entryFullName.Contains('/')
-            ? entryFullName[(entryFullName.LastIndexOf('/') + 1)..]
-            : entryFullName;
-        string nameWithoutExt = Path.GetFileNameWithoutExtension(lastSegment);
-        return _reservedNames.Contains(nameWithoutExt);
-    }
-
-    // T-F39: Reject entries with control characters (0x00–0x1F) in name
-    private static bool EntryHasControlCharacters(string entryFullName)
-        => entryFullName.Any(c => c < 0x20);
-
-    // T-F23: Returns true when path itself carries the ReparsePoint attribute (symlink or junction).
-    // Swallows all exceptions — returns false when attributes cannot be read.
-    //
-    // Filesystem compatibility:
-    //   FAT32/exFAT : always false — these filesystems have no reparse points.
-    //   ReFS        : correctly true for symlinks and junctions (same as NTFS).
-    //   SMB/UNC     : true when the server propagates FILE_ATTRIBUTE_REPARSE_POINT;
-    //                 DFS junctions are followed transparently by the SMB redirector
-    //                 and appear as normal directories (false) — not detected here.
-    //   Linux/Samba : Linux symlinks are NOT exposed as reparse points to Windows
-    //                 clients; they resolve to targets and appear as normal files/dirs.
-    //   ISO 9660    : always false — no reparse points on optical media.
-    //
-    // TODO: Cloud storage stubs (OneDrive cloud-only files) carry FILE_ATTRIBUTE_REPARSE_POINT
-    //       and are therefore incorrectly added to SkippedFiles rather than being downloaded
-    //       and archived. Fixing this requires reading the reparse tag to distinguish
-    //       IO_REPARSE_TAG_CLOUD_* from IO_REPARSE_TAG_SYMLINK / IO_REPARSE_TAG_MOUNT_POINT.
-    //       Implement when OneDrive compatibility becomes a requirement.
-    private static bool IsReparsePoint(string path)
-    {
-        try
-        {
-            return File.GetAttributes(path).HasFlag(FileAttributes.ReparsePoint);
-        }
-        catch
-        {
-            // Cannot read attributes (unreachable network, permission denied, path vanished).
-            // Return false — let the subsequent file-open produce an ArchiveError instead.
-            return false;
-        }
-    }
-
-    // T-F37: Check whether any directory component of destFilePath (within rootPath) is a reparse point
-    // T-F37: No automated unit test — System.IO.Compression cannot create reparse points in test fixtures.
-    private static bool PathContainsReparsePoint(string destFilePath, string rootPath)
-    {
-        string? current = Path.GetDirectoryName(destFilePath);
-        while (current != null && current.Length >= rootPath.Length)
-        {
-            if (Directory.Exists(current))
-            {
-                var info = new DirectoryInfo(current);
-                if (info.Attributes.HasFlag(FileAttributes.ReparsePoint))
-                    return true;
-            }
-            string? parent = Path.GetDirectoryName(current);
-            if (parent == current) break;
-            current = parent;
-        }
-        return false;
-    }
-
-    // T-F45: Propagate Zone.Identifier ADS from archive to extracted file.
-    // Best-effort — swallows all exceptions. Never fatal.
-    // Silently no-ops if the archive has no Zone.Identifier ADS.
-    private static void TryPropagateMotw(string archivePath, string destFilePath)
-    {
-        try
-        {
-            using var source = new FileStream(
-                archivePath + ":Zone.Identifier",
-                FileMode.Open,
-                FileAccess.Read,
-                FileShare.Read);
-            using var dest = new FileStream(
-                destFilePath + ":Zone.Identifier",
-                FileMode.Create,
-                FileAccess.Write,
-                FileShare.None);
-            source.CopyTo(dest);
-        }
-        catch
-        {
-            // MOTW propagation is best-effort — never surfaces to caller
-        }
-    }
+    // T-F38/T-F39/T-F23/T-F37/T-F45 checks moved to ArchiveEntrySecurity (T-F49) — shared with
+    // TarProcessService so validation cannot drift between extractors.
 
     // T-F60: Returns true when the temp ZIP at path contains at least one entry.
     // Used to decide whether to commit or discard after an all-failures archive run.

@@ -160,17 +160,29 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
 
 ## Integration Tests (v1.3+)
 
-New project: `tests/Archiver.Core.IntegrationTests/`
+Project: `tests/Archiver.Core.IntegrationTests/` (created in T-F49).
 
 ```bash
 # Run integration tests (requires Windows with tar.exe)
 dotnet test tests/Archiver.Core.IntegrationTests
 ```
 
+`TarProcessServiceExtractTests.cs` (7 tests) exercises `TarProcessService.ExtractAsync` against
+the real system `tar.exe`: a round-trip extraction, a rename-conflict case, MOTW propagation,
+and three whole-archive-reject cases (path-traversal entry, ADS/reserved-name entry, and a
+symlink-entry escape — the last is a regression test for the exploit documented in
+`DECISIONS.md`'s T-F49 entry). Fixtures are self-generated per-test via `TarBuilder.cs` (raw
+USTAR bytes, no third-party tooling — needed since a `..`-entry or a symlink escape target isn't
+a representable real source path) rather than a prebuilt corpus; T-F50 still owns the full
+multi-format fixture set below.
+
 ### Tags
 
-- `[Integration]` — skipped automatically if `C:\Windows\System32\tar.exe` is not present
-- `[SkipIfFormatUnsupported("rar5")]` etc. — skipped if capability detection reports format unsupported
+- `[Integration]` — custom `FactAttribute` (`IntegrationAttribute.cs`), skipped automatically if
+  `C:\Windows\System32\tar.exe` is not present
+- `[SkipIfFormatUnsupported("rar5")]` etc. — custom `FactAttribute`
+  (`SkipIfFormatUnsupportedAttribute.cs`), skipped if `DetectCapabilitiesAsync` reports the named
+  format unsupported. Not yet exercised by any test — T-F50's format-specific fixtures will use it.
 
 ### When to Run
 

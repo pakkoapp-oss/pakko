@@ -29,14 +29,26 @@ see `DECISIONS.md`. T-F83's last criterion (reverifying T-F44's file-activation 
 on a machine where Pakko owns the `.zip` association) was completed 2026-07-06 — Pakko was set as
 the default `.zip` handler and a cold-start double-click (simulated via `Start-Process`) correctly
 populated the file list. T-F83 is now fully complete.
+**v1.3 (tar.exe integration) in progress** — T-F47 (`ITarService`/`TarCapabilities` scaffolding)
+and T-F48 (capability detection) are complete. T-F49 (`TarProcessService.ExtractAsync()`
+pipeline) is `[~]` partial — implementation and its own tests (`Archiver.Core.Tests` +
+new `Archiver.Core.IntegrationTests`) are complete, but it stays partial until a
+`Deploy.ps1`-driven build+install and a manual on-device extraction of a real `.rar`/`.7z`
+through the app is confirmed by the user (T-F49 never reached UI/shell wiring). While designing
+T-F49, empirically confirmed a real sandbox-escape exploit against a naive tar.exe
+quarantine-then-validate model (a symlink entry writes outside the quarantine directory before
+any validation code runs) — see `DECISIONS.md`'s T-F49 entry; `ExtractAsync` instead pre-scans
+and rejects the whole archive before extraction ever runs. The ADS/reserved-name/reparse-point/
+MOTW checks `ZipArchiveService` already had were moved into a new shared
+`ArchiveEntrySecurity` class so both extractors stay in sync.
 - T-01 through T-35 + T-11, and T-F16/T-F17/T-F18/T-F26–T-F29/T-F37–T-F39/T-F44/T-F45 complete
-- 135/135 .NET tests pass (`dotnet test --filter "Category!=Slow"`: 99 Archiver.Core.Tests +
-  36 Archiver.Shell.Tests). 3 additional Zip64 tests (T-F20) are tagged `[Trait("Category",
-  "Slow")]` and excluded from this default run — they cost real wall-clock time (>65535-file
-  archiving/extraction, a >4 GiB round trip) that isn't worth paying on every change; run them
-  explicitly with `dotnet test --filter "Category=Slow"` before a release or when touching
-  Zip64-adjacent code. C++ `Archiver.ShellExtension.Tests` (Google Test, 33/33) run separately,
-  not covered by `dotnet test`
+- 150/150 .NET tests pass (`dotnet test --filter "Category!=Slow"`: 107 Archiver.Core.Tests +
+  36 Archiver.Shell.Tests + 7 Archiver.Core.IntegrationTests). 3 additional Zip64 tests (T-F20)
+  are tagged `[Trait("Category", "Slow")]` and excluded from this default run — they cost real
+  wall-clock time (>65535-file archiving/extraction, a >4 GiB round trip) that isn't worth paying
+  on every change; run them explicitly with `dotnet test --filter "Category=Slow"` before a
+  release or when touching Zip64-adjacent code. C++ `Archiver.ShellExtension.Tests` (Google Test,
+  33/33) run separately, not covered by `dotnet test`
 - MSIX signed with dev cert via Deploy.ps1 (see T-F10 for production-grade cert)
 - Async streaming (CopyToAsync) — CancellationToken respected mid-file
 - Temp file/dir pattern — no partial files on cancel or failure

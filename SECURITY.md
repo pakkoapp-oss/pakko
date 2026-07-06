@@ -122,6 +122,7 @@ Each supported format adds parser attack surface. RAR and 7z are excluded perman
 | Reserved Windows filenames in entries (`CON`, `NUL`, etc.) | Low-Medium | Mitigated (T-F39, v1.2) — reserved names and control characters filtered |
 | MOTW not propagated to extracted files | — | Resolved (T-F45, v1.2) — MOTW propagated to every extracted file by default |
 | tar.exe runs at Medium IL | Medium | v1.3 gap — Low IL sandbox via P/Invoke in v1.4 (T-F52) |
+| tar.exe symlink entries escape a naive quarantine (confirmed exploit, T-F49) | High | Mitigated (T-F49, v1.3) — whole-archive pre-scan via `tar -tf`/`-tvf` rejects any archive containing a symlink/hardlink/device entry or a traversal/ADS/reserved name before `-xf` ever runs; see `DECISIONS.md`'s T-F49 entry |
 | Microsoft as trust anchor | Low-Medium | Accepted tradeoff for the target audience; .NET is open source and auditable |
 
 ---
@@ -185,7 +186,7 @@ This is the same trust chain as `System.IO.Compression` via the .NET runtime —
 | v1.3 | Medium IL | tar.exe inherits Pakko process token |
 | v1.4 | Low IL | P/Invoke `CreateRestrictedToken` + `SetNamedSecurityInfo` quarantine directory |
 
-In both cases: extraction goes to a staging directory, all output files are validated (ADS, reserved names, reparse points), then atomically moved to final destination.
+In both cases: extraction goes to a staging directory, all output files are validated (ADS, reserved names, reparse points), then atomically moved to final destination. The staging-directory walk alone is **not** sufficient — a symlink entry can cause tar.exe to write outside the staging directory before any C# code inspects it, confirmed empirically in T-F49 (see `DECISIONS.md`). The primary defense is a whole-archive pre-scan (`tar -tf`/`-tvf`) that rejects any archive containing a symlink/hardlink/device entry or a traversal/rooted/ADS/reserved name before extraction ever runs.
 
 ### Absolute Path Requirement
 

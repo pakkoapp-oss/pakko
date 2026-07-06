@@ -772,3 +772,92 @@ successfully (`Pakko installed successfully`, version 1.1.0.42); a subsequent Vi
 Release build of the full solution completed with 0 errors/0 warnings.
 
 **Files:** `scripts/Deploy.ps1`, `scripts/Setup-DevCert.ps1`
+
+---
+
+## T-F49 — tar.exe Extraction Pipeline: Symlink Escape Confirmed, Whole-Archive Pre-Scan Chosen
+
+**Found while:** designing `TarProcessService.ExtractAsync()`. Per `CLAUDE.md`'s
+"Pre-implementation research" hard constraint, verified `C:\Windows\System32\tar.exe`'s actual
+extraction behavior against hand-crafted malicious tar archives before writing any extraction
+code, rather than assuming `SECURITY.md`'s existing quarantine-then-validate sketch (written for
+ZIP, where entries are inspected before being written) transfers unchanged to tar.exe (an
+external process that writes whatever it decides to, with no per-entry pre-write hook available
+to Pakko).
+
+**Method:** built raw tar archives byte-for-byte (512-byte USTAR headers, no real files, no
+third-party tooling) via a throwaway PowerShell script, then ran the actual
+`C:\Windows\System32\tar.exe` (bsdtar 3.8.4, libarchive 3.8.4, confirmed via `tar --version`)
+against them with `-tf`, `-tvf`, and `-xf -C <quarantine>`.
+
+**Findings:**
+
+1. **Symlink entries are created and then written through, escaping the extraction root.** An
+   archive containing a typeflag-`2` entry named `link` with linkname `..`, followed immediately
+   by an entry named `link/escaped.txt`, caused tar.exe to create `link` as an NTFS reparse point
+   *inside* the quarantine directory, then write `escaped.txt` through it — landing the file
+   **one directory level above the quarantine root**, entirely outside the extraction sandbox.
+   Confirmed by direct inspection: `quarantine\link` had `FileAttributes.ReparsePoint`, and
+   `escaped.txt` (with the exact 20-byte payload) appeared in quarantine's parent directory.
+   `ARCHIVE_EXTRACT_SECURE_SYMLINKS` (libarchive's usual guard against exactly this) is not
+   effectively blocking it on this Windows build — plausibly because the check is written for
+   POSIX symlink semantics and doesn't fully cover NTFS reparse points, though the exact reason
+   wasn't traced further since it doesn't change the mitigation.
+2. **Path-traversal (`..`) entries are already rejected by tar.exe itself** — extracting an
+   entry named `../evil.txt` produces `../evil.txt: Path contains '..': Unknown error` and the
+   file is never written. Safe as-is; no extra mitigation needed for this specific case.
+3. **Absolute/rooted paths are sanitized, not rejected** — an entry named
+   `C:/Windows/Temp/pakko_abs_test.txt` extracts as `Windows\Temp\pakko_abs_test.txt` *inside*
+   the destination (`tar.exe: Removing leading drive letter from member names`), confirmed to
+   stay contained (`C:\Windows\Temp\pakko_abs_test.txt` itself was not created).
+4. **tar.exe does not abort extraction on a bad entry.** It logs the error and continues
+   processing subsequent entries, only returning a nonzero exit code at the very end
+   (`tar.exe: Error exit delayed from previous errors.`). Proven directly: in the symlink-escape
+   run, `innocent.txt` (a preceding valid entry), the `link` reparse point, and the escaped file
+   all landed on disk despite the process exiting with code 1. **This means exit-code/error-based
+   reactive handling cannot prevent an escape** — by the time Pakko's code observes the error,
+   the damaging write has already happened. Any mitigation must act *before* calling `-xf`.
+5. **`tar -tvf`'s entry-type character (column 0 of each output line) is reliable across
+   locales; the rest of the line is not.** The date column renders using the system locale and
+   was observed mangled on this (Cyrillic-locale) machine (garbled month abbreviation), matching
+   the same locale-decoding bug class as T-F84. The leading type character (`-` regular, `d`
+   directory, `l` symlink, `h` hardlink) is rendered deterministically by libarchive from the
+   entry's typeflag and was not affected. `tar -tf` (plain name list, one per line, no type or
+   date info) is separately clean and was used for name-based checks.
+6. **Hardlink entries pointing at a nonexistent target fail cleanly** (`Hard-link target
+   'innocent.txt' does not exist.`) without escaping — but a hardlink to an *existing* file
+   elsewhere on disk was not tested (out of scope once symlinks alone proved the whole-archive
+   pre-scan was necessary regardless).
+
+**Decision:** `TarProcessService.ExtractAsync()` performs a **whole-archive pre-scan and
+reject** before ever invoking `-xf` — not the ZIP path's per-entry skip-and-continue model (see
+`ARCHITECTURE.md`'s `ITarService` section for the resulting pipeline shape):
+- `tar -tf` lists all entry names; any name containing `..`, rooted (leading `/`, `\`, drive
+  letter, or UNC `\\`), carrying an ADS colon, matching a reserved Windows device name, or
+  containing control characters → the **entire archive** is rejected with one `ArchiveError`
+  (not sanitized, not skipped per-entry — defense-in-depth: reject outright rather than trust
+  tar.exe's own partial sanitization from finding #2/#3 above).
+- `tar -tvf` is scanned for entry types; any character-0 value other than `-`/`d` (i.e. any
+  symlink, hardlink, device, fifo, or socket entry) → the entire archive is rejected.
+- Only after both scans pass clean does `-xf -C <quarantine>` run. The quarantine directory
+  and its post-extraction walk still exist (same same-disk/atomic-move pattern as
+  `ZipArchiveService`) for defense-in-depth and consistent commit/conflict/MOTW handling, but
+  they are **not** the primary safety mechanism against escape — the pre-scan is, per finding #4.
+
+**Rejected: `System.Formats.Tar` (BCL).** .NET 8 ships an in-process, dependency-free tar reader
+that would sidestep the type-detection fragility entirely (structured `TarEntryType` instead of
+parsing a CLI output column). Not adopted here: `SECURITY.md`'s tar.exe Trust Model section
+explicitly commits to "tar.exe process, not an in-process parser" as the threat-model boundary
+for non-ZIP formats (see "No format parsers beyond ZIP" in that doc). Swapping to an in-process
+parser — even a BCL one — reverses that documented boundary and is a decision for the project
+owner to make deliberately, not something to slide in as a T-F49 implementation detail. Flagged
+here for future consideration; not implemented.
+
+**Rejected: parsing more of `-tvf`'s columns** (permissions, link count, size) for additional
+signal. Only column 0 is used, deliberately — every other column risks the same locale/whitespace
+fragility that already broke the date column, and a single reliable character is all the design
+needs.
+
+**Files:** `src/Archiver.Core/Services/TarProcessService.cs`,
+`src/Archiver.Core/Services/ArchiveEntrySecurity.cs`, `SECURITY.md` (Trust Model cross-reference),
+`tests/Archiver.Core.IntegrationTests/`
