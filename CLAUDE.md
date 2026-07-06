@@ -20,9 +20,9 @@ and MOTW are complete; `IExplorerCommand` COM DLL (T-F61) is complete. Progress 
 the Windows Shell's built-in `IProgressDialog` (see `Archiver.Shell/NativeProgressDialog.cs`) —
 the earlier `Archiver.ProgressWindow` satellite WinUI 3 app was removed (T-F65; see
 `DECISIONS.md`). Both T-F61 and T-F65 manually smoke-tested end-to-end and confirmed 2026-07-05.
-T-F62 (Test archive) is code-complete (`TestAsync` + `--test` + `TestCommand`), pending its
-manual Explorer smoke test; remaining v1.2 work after that is T-F63 (Extract…/Compress…
-dialogs) and T-F68 (shell extract silently ignoring `SkippedFiles`).
+T-F62 (Test archive) is complete — manually smoke-tested in Explorer and confirmed 2026-07-06;
+remaining v1.2 work is T-F63 (Extract…/Compress… dialogs) and T-F68 (shell extract silently
+ignoring `SkippedFiles`).
 - T-01 through T-35 + T-11, and T-F16/T-F17/T-F18/T-F26–T-F29/T-F37–T-F39/T-F44/T-F45 complete
 - 127/127 .NET tests pass (`dotnet test --filter "Category!=Slow"`: 99 Archiver.Core.Tests +
   28 Archiver.Shell.Tests). 3 additional Zip64 tests (T-F20) are tagged `[Trait("Category",

@@ -1135,7 +1135,7 @@ deprecate" rule; do not re-implement them as new work.
 ---
 
 ### T-F62 — Context Menu: Test Archive (Integrity Check)
-- [~] **Status:** partial (v1.2) — code + tests done, manual Explorer smoke test pending
+- [x] **Status:** complete (v1.2) — manual Explorer smoke test passed 2026-07-06
 - **Depends on:** T-F61
 
 **What:** "Test archive" command — verifies every entry's CRC-32 without writing any files to
@@ -1166,9 +1166,14 @@ that fits `IArchiveService` naturally (`IArchiveService` currently only has `Arc
 - [x] C++ side: `TestCommand` (`ExplorerCommands.h/.cpp`) + `BuildTestArgs`
       (`ShellExtUtils.h/.cpp`), wired first in `PakkoRootCommand::EnumSubCommands`
       (Google Test 33/33, was 30/30)
-- [ ] **Manual smoke test:** after `Deploy.ps1`, "Test archive" appears on a `.zip` and on a
+- [x] **Manual smoke test:** after `Deploy.ps1`, "Test archive" appears on a `.zip` and on a
       mixed selection; running it on a valid archive shows "No errors detected"; on a corrupted
-      one shows the CRC-mismatch error
+      one shows the CRC-mismatch error. Verified 2026-07-06 via Explorer UI automation (Windows
+      MCP): single `.zip` submenu order is Extract here / Extract to folder / Test archive; mixed
+      `.zip`+`.txt` selection shows Add to "\<name\>.zip" / Test archive — both confirm the
+      diagnostic-after-primary-action ordering rule. `valid_archive.zip` → "No errors detected in
+      the archive(s)." `corrupted_crc_stored.zip` → "Entry 'file.txt' failed CRC-32 check
+      (expected BA4A5016, got 7884F662)."
 
 ---
 
