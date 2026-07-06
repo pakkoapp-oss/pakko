@@ -572,3 +572,40 @@ native, user-controlled signal, not a Pakko brand choice.
 **Cascade check:** `SECURITY.md` and `SPEC.md` reviewed — neither currently makes claims about
 visual trust signals beyond what's already covered by the general trust/auditability framing, so
 no change needed there.
+
+---
+
+## T-F77 / T-F81 — Contextual Option Visibility and the Outcome Subtitle
+
+**Decision:** Archive-only fields (`Mode`, `Name`, `Compression`) **collapse** (not grey out) via
+a plain `Visibility` binding (`ArchiveOptionsVisibility`) when the current selection is
+extract-only. A selection counts as extract-only **only if every selected item is a `.zip`** — a
+single non-`.zip` item keeps the panel in archive-mode, because bundling a `.zip` together with
+other files into one new archive is still a coherent action, while "extract" has no meaning for a
+mixed set. The Archive/Extract button pair (T-F81) keeps both buttons visible and greyed out as
+before, paired with a new one-line outcome subtitle (`OperationOutcomeText`, e.g. "Will extract 2
+archive(s) to the folder above") shown under the button row whenever the file list is non-empty.
+
+**Why:** Consulted the project's design-review framing (native WinUI fidelity as a trust signal
+for a gov/defense audience, `CLAUDE.md`'s Project section) for three sub-decisions:
+- **Collapse over grey-out:** an absent field reads as "does not apply right now"; a greyed-out
+  field still asks the user to notice and dismiss it. Absence is the clearer signal for an
+  audience that reads predictability as trust. No animation — the collapse is an instant reaction
+  to a selection change the user just made, not decorative motion (consistent with T-F77's
+  original "don't hide fields with elaborate animation" direction).
+- **Strict all-`.zip` rule for "extract-only":** the alternative (any `.zip` present flips the
+  whole selection to extract-mode) would hide Mode/Name/Compression for a selection where
+  Archive is still the only action that makes sense — the archive-only fields must never
+  disappear while Archive is the intended operation.
+- **Grey-out + subtitle over hiding the inactive button:** hiding a button makes the remaining
+  one jump position/width on every selection change, which is more disruptive for a "nothing
+  moves unless I did something deliberate" audience than a stable disabled twin. The subtitle
+  reuses the same "structure states the outcome" mechanism as the collapse decision and the
+  empty-state hint (T-F80) — one mechanism applied consistently, not a new one per problem.
+
+**Implementation:** `MainViewModel.IsExtractOnlySelection` (`FileItems.Count > 0 &&
+FileItems.All(x => x.Type == "ZIP")`), `ArchiveOptionsVisibility`, `OperationOutcomeVisibility`,
+and `OperationOutcomeText` (resource strings `OutcomeWillExtract`/`OutcomeWillArchive`) — all
+plain computed properties following the existing `IsFileListEmptyVisibility` pattern, notified via
+the `FileItems.CollectionChanged` handler. No change to `CanArchive`/`CanExtract`/`ArchiveAsync`/
+`ExtractAsync` — presentation only, per both tasks' acceptance criteria.

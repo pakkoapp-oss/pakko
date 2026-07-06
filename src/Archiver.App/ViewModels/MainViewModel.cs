@@ -110,6 +110,22 @@ public sealed partial class MainViewModel : ObservableObject
     public Visibility IsFileListEmptyVisibility =>
         FileItems.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
 
+    // T-F77: only a selection that is entirely .zip files counts as extract-only — a single
+    // non-.zip item means "archive everything together" is still the coherent action, so the
+    // archive-only fields (Mode/Name/Compression) must stay visible for any mixed selection.
+    public bool IsExtractOnlySelection =>
+        FileItems.Count > 0 && FileItems.All(x => x.Type == "ZIP");
+
+    public Visibility ArchiveOptionsVisibility =>
+        IsExtractOnlySelection ? Visibility.Collapsed : Visibility.Visible;
+
+    public Visibility OperationOutcomeVisibility =>
+        FileItems.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
+
+    public string OperationOutcomeText => IsExtractOnlySelection
+        ? _res.GetString("OutcomeWillExtract").Replace("{0}", FileItems.Count.ToString())
+        : _res.GetString("OutcomeWillArchive").Replace("{0}", FileItems.Count.ToString());
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(OnConflictIndex))]
     private ConflictBehavior _onConflict = ConflictBehavior.Skip;
@@ -175,6 +191,10 @@ public sealed partial class MainViewModel : ObservableObject
             UpdateDefaultDestination();
             OnPropertyChanged(nameof(IsFileListEmpty));
             OnPropertyChanged(nameof(IsFileListEmptyVisibility));
+            OnPropertyChanged(nameof(IsExtractOnlySelection));
+            OnPropertyChanged(nameof(ArchiveOptionsVisibility));
+            OnPropertyChanged(nameof(OperationOutcomeVisibility));
+            OnPropertyChanged(nameof(OperationOutcomeText));
         };
     }
 

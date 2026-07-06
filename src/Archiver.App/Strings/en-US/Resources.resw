@@ -94,6 +94,12 @@
   <data name="StatusExtractedIn" xml:space="preserve">
     <value>Extracted in {0} sec — {1} file(s)</value>
   </data>
+  <data name="OutcomeWillExtract" xml:space="preserve">
+    <value>Will extract {0} archive(s) to the folder above</value>
+  </data>
+  <data name="OutcomeWillArchive" xml:space="preserve">
+    <value>Will archive {0} item(s) to the folder above</value>
+  </data>
 
   <!-- About dialog -->
   <data name="AboutGitHubUrl" xml:space="preserve">

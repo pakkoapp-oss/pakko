@@ -1763,7 +1763,7 @@ names, no ellipsis.
 ---
 
 ### T-F77 — Archive/Extract Options Don't Adapt to the Active Action
-- [ ] **Status:** future — needs a UX decision before implementation
+- [x] **Status:** complete — decision recorded and fixed 2026-07-06
 
 **What:** `MainWindow`'s options panel always shows `Mode`, `Name`, `Compression` (Archive-only
 per `CLAUDE.md`'s own documented scope rules) even when the current selection is extract-only
@@ -1780,13 +1780,20 @@ only the options that apply *is* the signature move here: which fields are visib
 information about what's about to happen, which is more honest than a permanent settings dump.
 
 **Acceptance criteria:**
-- [ ] Decision recorded (`DECISIONS.md`): collapse vs. grey-out vs. leave as-is, and exactly which
-      ViewModel property drives visibility
-- [ ] If collapsing: Archive-only fields hidden when selection is extract-only and vice versa;
-      shared fields (`Destination`, `If file exists`, `Open destination folder`) always visible
-- [ ] No new dependencies, no custom animation — plain XAML visibility binding
-- [ ] `dotnet test` passes — ViewModel visibility logic covered by a new test if it's
-      testable in isolation
+- [x] Decision recorded (`DECISIONS.md`, "T-F77 / T-F81 — Contextual Option Visibility and the
+      Outcome Subtitle"): collapse via `ArchiveOptionsVisibility`; extract-only requires a 100%
+      `.zip` selection (any non-`.zip` item keeps archive-mode)
+- [x] Archive-only fields hidden when selection is extract-only and vice versa; shared fields
+      (`Destination`, `If file exists`, `Open destination folder`) always visible
+- [x] No new dependencies, no custom animation — plain XAML `Visibility` binding
+      (`ArchiveOptionsVisibility` on `MainViewModel`)
+- [x] `dotnet test` passes — 127/127 (visibility logic is a plain computed property over
+      `FileItems`, not independently unit-testable without a WinUI host; covered by manual
+      verification below)
+- [x] **Manual smoke test:** verified 2026-07-06 via Pakko UI automation (Windows MCP) after
+      `Deploy.ps1` — three scenarios confirmed: single `.zip` collapses Mode/Name/Compression;
+      single non-`.zip` file keeps them visible; mixed `.zip` + non-`.zip` selection also keeps
+      them visible (per the strict all-`.zip` rule)
 
 ---
 
@@ -1867,7 +1874,7 @@ animation — a single added sentence, consistent with the rest of the panel's p
 ---
 
 ### T-F81 — Archive/Extract Button Pair Reads as a Toggle, Not Two Distinct Actions
-- [ ] **Status:** future — depends on the T-F77 decision
+- [x] **Status:** complete — fixed 2026-07-06, alongside the T-F77 decision
 
 **What:** `Archive` and `Extract` render as adjacent, equal-width buttons that visually resemble a
 segmented toggle control, but they're two independent actions whose availability depends on the
@@ -1881,9 +1888,13 @@ extract 1 archive to the folder above") — this reuses the same "structure comm
 principle as T-F77 rather than introducing a separate mechanism.
 
 **Acceptance criteria:**
-- [ ] Decision on whether the inactive button should grey out (current behavior, kept) or hide
-      entirely — recorded alongside T-F77's decision, not separately
-- [ ] One-line outcome subtitle added under the button row, driven by existing ViewModel state
-- [ ] No change to the underlying Archive/Extract command logic — presentation only
-- [ ] `dotnet test` passes — no ViewModel behavior change expected, only new bindable display text
+- [x] Decision on whether the inactive button should grey out (current behavior, kept) or hide
+      entirely — recorded alongside T-F77's decision, not separately: grey out, kept
+- [x] One-line outcome subtitle added under the button row, driven by existing ViewModel state
+      (`OperationOutcomeText`/`OperationOutcomeVisibility`)
+- [x] No change to the underlying Archive/Extract command logic — presentation only
+- [x] `dotnet test` passes — 127/127, no ViewModel behavior change, only new bindable display text
+- [x] **Manual smoke test:** verified 2026-07-06 via Pakko UI automation (Windows MCP) — subtitle
+      reads "Will extract 1 archive(s)..." / "Will archive 1 item(s)..." / "Will archive 2
+      item(s)..." matching each of the three T-F77 scenarios
 
