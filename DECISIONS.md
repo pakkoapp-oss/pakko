@@ -677,10 +677,14 @@ Both entry points are mutually exclusive per process (a given process either col
 receives redirected activations later, never both for the same activation), so there is no
 double-handling risk.
 
-**T-F44 status:** not independently reverified here — this dev machine's default `.zip` handler is
-NanaZip, not Pakko, so a real double-click repro wasn't possible in this session. T-F44's cold-start
-claim should be treated as *unverified*, not confirmed-working, until someone checks it on a machine
-where Pakko owns the `.zip` file association.
+**T-F44 status — reverified 2026-07-06:** the user set Pakko as the default `.zip` handler on this
+machine (`UserChoice` ProgId resolved to Pakko's AppX ProgId, `ApplicationName = Pakko`) and a
+cold-start file activation was reproduced via `Start-Process` on a test ZIP (no Pakko process
+running beforehand, confirmed via `Get-Process`). `pakko.log` recorded `"Pakko started via file
+activation"` (previously just `"Pakko started"`), and `ui_read` over the resulting window confirmed
+the file (`tf83coldstart.zip`, 194 bytes) was visibly populated in the list with "Will extract 1
+archive(s)..." shown — the exact "file list is visibly populated after a cold launch" check T-F44
+was missing. T-F44's cold-start claim is now confirmed working, not just unverified.
 
 ---
 

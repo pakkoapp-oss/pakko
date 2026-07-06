@@ -25,8 +25,10 @@ T-F68 (shell extract silently ignoring `SkippedFiles`) and T-F63 (Extract…/Com
 both complete — manually smoke-tested and confirmed 2026-07-06. All planned v1.2 shell-extension
 work is now done. T-F63's manual test surfaced T-F83 — a cold-start protocol/file activation bug
 in `Archiver.App` (pre-dating T-F63, in already-shipped T-F44/T-F56 code) — fixed the same day;
-see `DECISIONS.md`. T-F83's own last criterion (reverifying T-F44's file-activation cold-start
-claim on a machine where Pakko owns the `.zip` association) remains open.
+see `DECISIONS.md`. T-F83's last criterion (reverifying T-F44's file-activation cold-start claim
+on a machine where Pakko owns the `.zip` association) was completed 2026-07-06 — Pakko was set as
+the default `.zip` handler and a cold-start double-click (simulated via `Start-Process`) correctly
+populated the file list. T-F83 is now fully complete.
 - T-01 through T-35 + T-11, and T-F16/T-F17/T-F18/T-F26–T-F29/T-F37–T-F39/T-F44/T-F45 complete
 - 135/135 .NET tests pass (`dotnet test --filter "Category!=Slow"`: 99 Archiver.Core.Tests +
   36 Archiver.Shell.Tests). 3 additional Zip64 tests (T-F20) are tagged `[Trait("Category",
