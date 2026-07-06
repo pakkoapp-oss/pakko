@@ -140,6 +140,10 @@ references are easy to miss otherwise (this session found 5 lingering mentions o
 - **tar.exe:** always use `C:\Windows\System32\tar.exe` (absolute path) — never via PATH
 - **MOTW:** always propagate `Zone.Identifier` ADS on extracted files (v1.2+)
 - **Shell extension:** `IExplorerCommand` only — no legacy `IContextMenu` COM shell extensions
+- **Context-menu ordering:** primary action commands (Extract/Archive) always precede
+  diagnostic/verification ones (Test archive) in `PakkoRootCommand::EnumSubCommands` —
+  deliberate deviation from NanaZip's Test-first order. See `DECISIONS.md`'s
+  "Test Archive (T-F62)" entry before copying NanaZip's menu order for a new command.
 - **COM HRESULTs:** never return `S_FALSE` alongside a null/unset out-parameter — `S_FALSE` is a
   *success* code (`SUCCEEDED()` is true), so callers checking only `SUCCEEDED()` will dereference
   the null. Use `E_NOTIMPL` instead (verified against Microsoft's own `IExplorerCommand` sample).

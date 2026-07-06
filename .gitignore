@@ -1,5 +1,6 @@
 # Claude Code
 .claude/
+.claude.local.md
 
 # .NET
 bin/

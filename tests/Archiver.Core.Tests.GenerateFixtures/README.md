@@ -16,6 +16,17 @@ Writes fixtures to `tests/Archiver.Core.Tests/Fixtures/`. Commit the result.
 - An existing fixture is found to be incorrect
 - `MANIFEST.sha256` is out of sync with actual files
 
+## Gotchas
+
+- Re-running the generator when some fixtures already exist throws `IOException` for any
+  fixture created via `ZipFile.Open(path, ZipArchiveMode.Create)` (e.g. `valid_*.zip`,
+  `extract_*.zip`) — delete those specific files first if you need to regenerate them.
+- The generator does not pin `ZipArchiveEntry.LastWriteTime` (unlike `ZipArchiveService`,
+  which does per T-F31), so every fixture it touches gets a fresh, non-deterministic
+  timestamp each run. After adding one new fixture, check `git status`/`git diff` and
+  `git checkout --` any OTHER fixture files that changed — only your intended addition
+  should show as new/modified.
+
 ## Manual fixtures
 
 Some fixtures require external tools. Each has a `*_MANUAL.txt` file with instructions.
