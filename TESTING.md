@@ -210,6 +210,59 @@ dotnet run --project tests/Archiver.Core.Tests.GenerateFixtures
 
 ---
 
+## Manual Smoke Test Cycle (Full Stack)
+
+Ordered simplest → most complex. Confirms Core, Shell, ShellExtension (COM), and the WinUI app
+all work end-to-end after a change — not just `dotnet test`. Run before a release or after
+touching shell-triggered/UI behavior (see `CLAUDE.md`'s Workflow Tips). Last run in full:
+2026-07-06.
+
+1. **Build core (fast fail)**
+   ```
+   dotnet build src/Archiver.Core
+   ```
+2. **.NET test suite**
+   ```
+   dotnet test --filter "Category!=Slow"
+   ```
+3. **C++ Google Test suite** (rebuild only if the exe is missing or C++ source changed)
+   ```
+   tests\Archiver.ShellExtension.Tests\bin\x64\Debug\Archiver.ShellExtension.Tests.exe
+   ```
+4. **Shell context menu (Explorer, manual)** — requires the installed MSIX to match the current
+   commit (check `Get-AppxPackage *Pakko*` version against the `Package.appxmanifest` version at
+   HEAD; re-run `Deploy.ps1` only if they've diverged). Use a scratch folder, verify actual disk
+   output (not just that a dialog appeared), clean up after:
+   - Folder → right-click → Pakko → `Add to "<name>.zip"` → verify entries keep their path
+     prefix (T-F75)
+   - Single non-zip file → same → verify archive created
+   - `.zip` → `Extract here` → verify smart-folder logic (wraps in a subfolder when the archive
+     has multiple root items)
+   - `.zip` → `Extract to folder...` → verify `<name>\` subfolder created
+   - `.zip` (valid) → `Test archive` → "No errors detected in the archive(s)."
+   - `.zip` (use the `corrupted_crc_stored.zip` fixture) → `Test archive` → CRC-32 mismatch
+     message naming the entry and both hash values
+   - Mixed selection (zip + non-zip) → confirms `Add to "..."` and `Test archive` both appear,
+     Test archive after the primary action (context-menu ordering rule, `CLAUDE.md`)
+5. **WinUI app (manual)** — launch via
+   `shell:AppsFolder\PavloRybchenko.Pakko_9hkd8feqeqbr4!App` (not `dotnet run` — WinUI dev builds
+   are VS-only, see `CLAUDE.md`). Add files → Archive → Clear → add the resulting archive →
+   Extract → diff extracted content against the originals. Known automation quirk: the
+   Destination text box does not reliably accept direct keyboard input — use the "..."
+   folder-picker button instead.
+6. **Slow tests** (optional — before a release or a Zip64-adjacent change)
+   ```
+   dotnet test --filter "Category=Slow"
+   ```
+
+**Known non-bug finding:** `.zip`'s `UserChoice` file association may still point at Windows'
+built-in `CompressedFolder` handler even after Pakko is installed. T-F44 registers the
+association, but Windows requires explicit user opt-in via Settings → Default apps before
+double-click routes to a non-built-in handler — this is a Windows security mechanism (UserChoice
+hash), not a Pakko defect.
+
+---
+
 ## Rules
 
 - No `Thread.Sleep` — use `await Task.Delay` if needed
