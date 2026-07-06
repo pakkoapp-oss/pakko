@@ -290,6 +290,11 @@ MSBuild tests\Archiver.ShellExtension.Tests\Archiver.ShellExtension.Tests.vcxpro
 > WinUI app must be built and run from Visual Studio 2022.
 > `dotnet test` and `dotnet build src/Archiver.Core` work freely from terminal.
 >
+> **Testing `scripts/*.ps1` fixes:** these scripts require Windows PowerShell 5.1
+> (`#Requires -Version 5.1`). The PowerShell tool runs pwsh 7+, which defaults to UTF-8 and
+> will NOT reproduce non-BOM-file ANSI-codepage bugs (see T-F84). To actually verify a fix,
+> invoke `powershell.exe` explicitly rather than relying on the tool's default interpreter.
+>
 > **Deploy shortcuts:**
 > Release build in VS triggers `Deploy.ps1 -DeployOnly` automatically (post-build event).
 > For manual deploy from terminal: `.\scripts\Deploy.ps1` (full build + sign + install)
@@ -344,6 +349,11 @@ Task<IReadOnlyList<string>> PickFoldersAsync()
 - **NativeProgressDialog (Archiver.Shell)** — the `IProgressDialog` COM wrapper is not covered
   by automated tests (COM UI object, not unit-testable). Manual verification required: progress
   bar and status line update during Extract/Archive, Cancel button stops the operation.
+- **Observed test flakiness (2026-07-07):** `Extract_ValidUnicodeFilenames_Succeeds` and
+  `ExtractAsync_ZipWithMotw_PropagatesZoneIdentifierToExtractedFiles` each failed once in a
+  run, then passed immediately on rerun in isolation — looks like parallel-execution timing
+  noise, not a real regression. If a test fails once, rerun before treating it as caused by
+  your change.
 
 ---
 
@@ -417,6 +427,10 @@ Lessons learned during v1.2 MSIX packaging work — follow these to avoid known 
   ask the user to do the manual on-device verification (context menu, extraction, etc.) before
   the commit. Don't commit a task as done/partial on the strength of `dotnet test` /
   `Archiver.ShellExtension.Tests.exe` alone if it touches shell-triggered or UI behavior.
+- **`TASKS.md`'s task-graduation edits** (moving completed entries to `TASKS_DONE.md`) tend to
+  land in large diff hunks that intermingle several unrelated tasks — `git add -p` can't
+  cleanly split one task's doc update out of such a hunk. When committing narrowly, stage
+  specific files/whole hunks deliberately, or commit the doc consolidation separately.
 - **Debugging via Pakko's log file:** when running as an installed MSIX, the log is NOT at the
   plain `%LOCALAPPDATA%\Pakko\logs` `LogService.cs` constructs — MSIX virtualizes
   `LocalApplicationData` per-package. Find it at
