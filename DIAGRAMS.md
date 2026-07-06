@@ -55,7 +55,8 @@ do not edit by pattern-matching the diagram's previous shape.
 
 Sources read for this diagram: `src/Archiver.ShellExtension/dllmain.cpp`,
 `src/Archiver.ShellExtension/ExplorerCommands.cpp`, `src/Archiver.ShellExtension/ShellExtUtils.cpp`,
-`src/Archiver.Shell/Program.cs`, `src/Archiver.Shell/NativeProgressDialog.cs`.
+`src/Archiver.Shell/Program.cs`, `src/Archiver.Shell/ShellResultPresenter.cs`,
+`src/Archiver.Shell/NativeProgressDialog.cs`, `src/Archiver.App/App.xaml.cs`.
 
 ```mermaid
 sequenceDiagram
@@ -65,13 +66,16 @@ sequenceDiagram
     participant Factory as PakkoClassFactory<PakkoRootCommand>
     participant Root as PakkoRootCommand
     participant Enum as SubCommandEnum
+    participant EDC as ExtractDialogCommand
     participant EH as ExtractHereCommand
     participant EF as ExtractFolderCommand
+    participant CDC as CompressDialogCommand
     participant AC as ArchiveCommand
     participant TC as TestCommand
     participant ShellExe as Archiver.Shell.exe
     participant Core as ZipArchiveService
     participant Dlg as IProgressDialog (shell32)
+    participant App as Archiver.App.exe (pakko:// activation)
 
     User->>Explorer: right-click selection
     Explorer->>Dllhost: CoCreateInstance(CLSID_PakkoRootCommand)<br/>(com:SurrogateServer registration)
@@ -80,63 +84,88 @@ sequenceDiagram
     Factory->>Root: Make<PakkoRootCommand>()
     Explorer->>Root: GetFlags() → ECF_HASSUBCOMMANDS
     Explorer->>Root: EnumSubCommands()
+    Root->>EDC: Make<ExtractDialogCommand>()
     Root->>EH: Make<ExtractHereCommand>()
     Root->>EF: Make<ExtractFolderCommand>()
+    Root->>CDC: Make<CompressDialogCommand>()
     Root->>AC: Make<ArchiveCommand>()
     Root->>TC: Make<TestCommand>()
-    Root->>Enum: SetCommands([EH, EF, AC, TC])<br/>ALWAYS all four, unconditionally —<br/>selection does not filter EnumSubCommands.<br/>TC last: diagnostic/verification action, not primary —<br/>deliberate deviation from NanaZip's Test-then-Extract order
+    Root->>Enum: SetCommands([EDC, EH, EF, CDC, AC, TC])<br/>ALWAYS all six, unconditionally —<br/>selection does not filter EnumSubCommands.<br/>Order mirrors NanaZip's real ContextMenu.cpp (T-F63):<br/>dialog command before its one-click sibling in each group.<br/>TC last: diagnostic/verification action, not primary —<br/>deliberate deviation from NanaZip's own Test-before-Compress grouping
     Root-->>Explorer: Enum (IEnumExplorerCommand)
     loop Explorer drains the enumerator
         Explorer->>Enum: Next(celt, ...)
         Enum-->>Explorer: fetched item(s);<br/>S_OK if fetched==celt, else S_FALSE<br/>(S_FALSE is a SUCCESS code here, not failure)
     end
     Note over Explorer,TC: Visibility is decided per-command by GetState(),<br/>separately from enumeration
+    Explorer->>EDC: GetState(psia) → ECS_ENABLED iff AnyPathIsZip(paths), else ECS_HIDDEN<br/>(T-F63: same gate as TC, NOT the stricter AllPathsAreZip EH/EF use)
     Explorer->>EH: GetState(psia) → ECS_ENABLED iff AllPathsAreZip(paths), else ECS_HIDDEN
     Explorer->>EF: GetState(psia) → ECS_ENABLED iff AllPathsAreZip(paths), else ECS_HIDDEN
+    Explorer->>CDC: GetState(psia) → always ECS_ENABLED (T-F63: shown for any selection,<br/>unlike AC below — archiving a .zip into a new .zip via the dialog is valid)
     Explorer->>AC: GetState(psia) → ECS_HIDDEN iff AllPathsAreZip(paths), else ECS_ENABLED<br/>(condition is INVERTED vs. EH/EF)
     Explorer->>AC: GetTitle(psia) → BuildAddToArchiveTitle(paths)<br/>dynamic "Add to <name>.zip", truncated middle if >40 chars
     Explorer->>TC: GetState(psia) → ECS_ENABLED iff AnyPathIsZip(paths), else ECS_HIDDEN<br/>(T-F62: AnyPathIsZip, NOT AllPathsAreZip — shows on a mixed selection too)
     User->>Explorer: click one visible leaf command
-    Explorer->>EH: Invoke(psia, pbc)  — or EF / AC / TC, same shape
-    alt GetPathsFromShellItemArray(psia) empty
-        EH-->>Explorer: E_INVALIDARG
-    else paths present
-        EH->>ShellExe: LaunchShellExe(BuildExtractHereArgs(paths))<br/>— or BuildExtractFolderArgs / BuildArchiveArgs / BuildTestArgs<br/>CreateProcessW; PROCESS_INFORMATION handles<br/>closed immediately; does NOT wait for the child<br/>note: TC passes the FULL selection unfiltered — Core does the<br/>per-path IsZipFile gating, same as Extract already does
-        ShellExe-->>Explorer: (no return channel — ShellExe runs independently)
-        EH-->>Explorer: S_OK, or HRESULT_FROM_WIN32(GetLastError())<br/>on CreateProcess failure — returned the instant<br/>CreateProcess returns, NOT when the operation finishes
-        ShellExe->>Dlg: new NativeProgressDialog(title)<br/>= new ProgressDialogCoClass() + StartProgressDialog
-        alt COMException thrown during construction
-            ShellExe->>Core: ArchiveAsync/ExtractAsync/TestAsync(options or paths, progress: null, CancellationToken.None)
-        else dialog constructed
-            loop every 250ms (System.Threading.Timer, lock-guarded on dialogLock)
-                ShellExe->>Dlg: HasUserCancelled()<br/>[PreserveSig] required — plain BOOL return, not HRESULT
-                alt returns true
-                    ShellExe->>ShellExe: cts.Cancel()
+    alt command is EDC or CDC (dialog form, T-F63)
+        Explorer->>EDC: Invoke(psia, pbc) — or CDC, same shape
+        EDC->>ShellExe: LaunchShellExe(BuildOpenUiExtractArgs(paths))<br/>— or BuildOpenUiArchiveArgs for CDC —<br/>i.e. "--open-ui --extract/--archive <paths>"
+        EDC-->>Explorer: S_OK, or HRESULT_FROM_WIN32(GetLastError())
+        ShellExe->>App: Process.Start("pakko://extract?files=<base64>", UseShellExecute:true)<br/>— or pakko://archive — then ShellExe's Main returns/exits immediately;<br/>NO NativeProgressDialog, NO ZipArchiveService call in this branch at all
+        Note over App: T-F83 (fixed 2026-07-06): cold start reads the activation via<br/>OnLaunched→AppInstance.GetCurrent().GetActivatedEventArgs(), not just<br/>the OnActivated event (which only fires for redirected/warm activation).<br/>Before the fix, a cold pakko:// launch silently opened an EMPTY window.
+        App->>App: MainViewModel.AddPathsFromProtocolUri(uri)<br/>— files pre-loaded, user drives Archive/Extract from the full UI
+    else command is EH, EF, AC, or TC (silent form)
+        Explorer->>EH: Invoke(psia, pbc) — or EF / AC / TC, same shape
+        alt GetPathsFromShellItemArray(psia) empty
+            EH-->>Explorer: E_INVALIDARG
+        else paths present
+            EH->>ShellExe: LaunchShellExe(BuildExtractHereArgs(paths))<br/>— or BuildExtractFolderArgs / BuildArchiveArgs / BuildTestArgs<br/>CreateProcessW; PROCESS_INFORMATION handles<br/>closed immediately; does NOT wait for the child<br/>note: TC passes the FULL selection unfiltered — Core does the<br/>per-path IsZipFile gating, same as Extract already does
+            ShellExe-->>Explorer: (no return channel — ShellExe runs independently)
+            EH-->>Explorer: S_OK, or HRESULT_FROM_WIN32(GetLastError())<br/>on CreateProcess failure — returned the instant<br/>CreateProcess returns, NOT when the operation finishes
+            ShellExe->>Dlg: new NativeProgressDialog(title)<br/>= new ProgressDialogCoClass() + StartProgressDialog
+            alt COMException thrown during construction
+                ShellExe->>Core: ArchiveAsync/ExtractAsync/TestAsync(options or paths, progress: null, CancellationToken.None)
+            else dialog constructed
+                loop every 250ms (System.Threading.Timer, lock-guarded on dialogLock)
+                    ShellExe->>Dlg: HasUserCancelled()<br/>[PreserveSig] required — plain BOOL return, not HRESULT
+                    alt returns true
+                        ShellExe->>ShellExe: cts.Cancel()
+                    end
                 end
+                ShellExe->>Core: ArchiveAsync/ExtractAsync/TestAsync(options or paths, progress, cts.Token)
+                Core-->>ShellExe: IProgress<ProgressReport> callback per file/entry<br/>(TestAsync: TotalBytes=0, one report per archive — no byte-level tracking)
+                ShellExe->>Dlg: SetLine(1, CurrentFile) / SetLine(2, status) / SetProgress64(bytes, total)
+                alt OperationCanceledException from Core
+                    ShellExe-->>ShellExe: return new ArchiveResult { Success = false }
+                else Core completes
+                    Core-->>ShellExe: ArchiveResult<br/>(TestAsync: CreatedFiles always empty — nothing is written to disk)
+                end
+                ShellExe->>Dlg: Dispose() → StopProgressDialog
             end
-            ShellExe->>Core: ArchiveAsync/ExtractAsync/TestAsync(options or paths, progress, cts.Token)
-            Core-->>ShellExe: IProgress<ProgressReport> callback per file/entry<br/>(TestAsync: TotalBytes=0, one report per archive — no byte-level tracking)
-            ShellExe->>Dlg: SetLine(1, CurrentFile) / SetLine(2, status) / SetProgress64(bytes, total)
-            alt OperationCanceledException from Core
-                ShellExe-->>ShellExe: return new ArchiveResult { Success = false }
-            else Core completes
-                Core-->>ShellExe: ArchiveResult<br/>(TestAsync: CreatedFiles always empty — nothing is written to disk)
+            Note over ShellExe: ShellResultPresenter.Classify(result) (T-F68, fixed 2026-07-06):<br/>Failed (!Success or Errors.Count>0) wins over SkippedOnly wins over Success
+            opt Classify == Failed
+                ShellExe->>User: MessageBoxW(error summary, max 10 lines shown, MB_ICONERROR)
             end
-            ShellExe->>Dlg: Dispose() → StopProgressDialog
-        end
-        opt !result.Success or result.Errors.Count > 0
-            ShellExe->>User: MessageBoxW(error summary, max 10 lines shown)
-            Note over ShellExe: result.SkippedFiles is NEVER inspected here — see Finding 2
-        end
-        opt result.Success AND command == Test
-            ShellExe->>User: MessageBoxW("No errors detected in the archive(s).", MB_ICONINFORMATION)<br/>Test-only: unlike Extract/Archive, success has no visible disk<br/>side effect, so silent success would look like nothing happened
+            opt Classify == SkippedOnly
+                ShellExe->>User: MessageBoxW("N entries skipped: ...", MB_ICONWARNING)<br/>T-F68: previously this case (Success=true, Errors=0, Skipped>0)<br/>closed with NO dialog at all — silently indistinguishable from a normal run
+            end
+            opt result.Success AND command == Test
+                ShellExe->>User: MessageBoxW("No errors detected in the archive(s).", MB_ICONINFORMATION)<br/>Test-only: unlike Extract/Archive, success has no visible disk<br/>side effect, so silent success would look like nothing happened
+            end
         end
     end
 ```
 
-**What this catches (verified against the two real bugs already fixed here):**
-- `EH`/`EF`/`AC` `Invoke()` never awaits the operation — Explorer's HRESULT comes back the instant
-  `CreateProcess` returns. Anything that assumes Explorer "waits" for Pakko's result is wrong.
+**What this catches (verified against the real bugs already fixed here):**
+- `EH`/`EF`/`AC`/`EDC`/`CDC`/`TC` `Invoke()` never awaits the operation — Explorer's HRESULT comes
+  back the instant `CreateProcess` returns. Anything that assumes Explorer "waits" for Pakko's
+  result is wrong.
+- **`EDC`/`CDC` (T-F63) take a structurally different path than the other four:** no
+  `NativeProgressDialog`, no `ZipArchiveService` call from `Archiver.Shell.exe` at all — they only
+  construct a `pakko://` URI and hand off to `Archiver.App` via `Process.Start`/`UseShellExecute`.
+  A future change to the silent path's progress/result handling does not automatically apply here.
+- **T-F83 (fixed 2026-07-06):** this dialog path is exactly what surfaced a pre-existing cold-start
+  bug in `Archiver.App` — `AppInstance.Activated` only fires for *redirected* activation to an
+  already-running instance, never for the process's own initial activation, so `OnLaunched` must
+  pull `GetActivatedEventArgs()` itself. See `DECISIONS.md`'s "T-F83" entry.
 - `HasUserCancelled()` is the one `IProgressDialog` method returning a plain `BOOL`; the
   `[PreserveSig]` boundary is exactly where "Cancel does nothing" lived (`NativeProgressDialog.cs:26`).
 - `SubCommandEnum::Next()` returns `S_FALSE` on partial fetch — a *success* code, per
@@ -147,9 +176,10 @@ sequenceDiagram
   Archive for all-ZIP selections") would be editing the wrong method; `ArchiveCommand`'s
   `GetState` condition is the *inverse* of `ExtractHereCommand`/`ExtractFolderCommand`'s, which is
   easy to get backwards when copy-pasting.
-- `TestCommand::GetState` (T-F62) uses `AnyPathIsZip`, a *third* distinct condition alongside
-  `AllPathsAreZip` (EH/EF) and its inverse (AC) — copy-pasting `AllPathsAreZip` here would hide
-  Test on any mixed selection, unlike NanaZip's reference behavior (verified against real
+- `TestCommand::GetState` (T-F62) uses `AnyPathIsZip`, a condition also shared by `ExtractDialogCommand`
+  (T-F63) but distinct from `AllPathsAreZip` (EH/EF) and its inverse (AC) — copy-pasting
+  `AllPathsAreZip` here would hide Test/ExtractDialog on any mixed selection, unlike NanaZip's
+  reference behavior (verified against real
   NanaZip source in `DECISIONS.md`).
 
 ---
@@ -167,30 +197,31 @@ stateDiagram-v2
     Busy --> Busy: CancelCommand invoked<br/>(CanExecute: IsOperationRunning == IsBusy)<br/>→ cts.Cancel() only — IsBusy is NOT changed here;<br/>there is no dedicated "Cancelling" state in code
     Busy --> AwaitingSummaryDialog: _archiveService call returns without throwing<br/>StatusMessage set to StatusDone/StatusArchivedIn<br/>(Errors==0 && Skipped==0) or StatusIssues (otherwise)
     AwaitingSummaryDialog --> AwaitingSummaryDialog: await ShowOperationSummaryAsync(...)<br/>IsBusy is STILL TRUE while this modal is open —<br/>finally has not run yet
-    AwaitingSummaryDialog --> Idle: finally{IsBusy=false}; then StatusMessage=StatusReady<br/>(unconditional, executes immediately, no delay)
+    AwaitingSummaryDialog --> Idle: finally{no IsBusy change}; wasCancelled==false so the delay<br/>branch below is skipped; THEN IsBusy=false; THEN StatusMessage=StatusReady<br/>(T-F70: IsBusy=false moved out of finally to here)
     Busy --> AwaitingErrorDialog: unexpected Exception caught (not OperationCanceledException)<br/>StatusMessage="Error"
     AwaitingErrorDialog --> AwaitingErrorDialog: await ShowErrorAsync(...)<br/>IsBusy is STILL TRUE while this modal is open
-    AwaitingErrorDialog --> Idle: finally{IsBusy=false}; then StatusMessage=StatusReady<br/>(unconditional, immediately, no delay)
+    AwaitingErrorDialog --> Idle: finally{no IsBusy change}; delay branch skipped;<br/>THEN IsBusy=false; THEN StatusMessage=StatusReady (same T-F70 point as above)
     Busy --> CancelledNoDialog: OperationCanceledException caught<br/>StatusMessage=StatusCancelled — NO dialog is shown
-    CancelledNoDialog --> Idle: finally{IsBusy=false} runs FIRST (immediately);<br/>THEN await Task.Delay(2000) while already back to !IsBusy;<br/>THEN StatusMessage=StatusReady
+    CancelledNoDialog --> Idle: finally{no IsBusy change}; THEN await Task.Delay(2000)<br/>(IsBusy still TRUE throughout the delay — T-F70 fix);<br/>THEN IsBusy=false; THEN StatusMessage=StatusReady
 ```
 
 **What this catches:**
-- Every exit path sets `IsBusy=false` inside `finally` — no path leaves `Busy` without
-  re-enabling controls. A future edit that adds an early `return` before the `finally`, or a new
-  `catch` that doesn't fall through to it, would break this.
-- **Order matters and was gotten backwards in an earlier draft of this diagram:** for the
-  success/issues/error outcomes, the modal dialog (`ShowOperationSummaryAsync` /
-  `ShowErrorAsync`) is awaited *before* the `finally` block, so `IsBusy` stays `true` — buttons
-  stay disabled — for as long as that dialog is open. For the cancelled outcome there is no
-  dialog at all: `IsBusy` flips to `false` immediately, and only *after* that does the fixed
-  2-second delay run. So during that 2 seconds the UI is already not-busy (new operations are
-  invokable) while the status text still reads "Cancelled" — a real, verified asymmetry, not
-  balanced across the two exit families. Worth confirming this is the intended UX; not a
-  correctness bug (nothing is stuck), but flagged here since a future diagram-writer must not
-  "tidy" this into a symmetric two-branch picture.
+- Every exit path sets `IsBusy=false` exactly once, after both the dialog-await (success/issues/
+  error) and the cancel-only delay have finished — no path leaves `Busy` without eventually
+  re-enabling controls, and (post-T-F70) no path re-enables them early either. A future edit that
+  adds an early `return` before this point, or a new `catch` that doesn't fall through to it,
+  would break this.
+- **T-F70 fix (2026-07-06):** `IsBusy = false` used to live in `finally`, which ran *before* the
+  cancel-only `Task.Delay(2000)` — so for those 2 seconds the UI was already not-busy (new
+  operations invokable) while the status text still read "Cancelled", unlike the other three
+  outcomes where `IsBusy` stays `true` for exactly as long as their dialog is open. Fixed by moving
+  `IsBusy = false` to immediately before the final `StatusMessage = StatusReady` line, after the
+  `if (wasCancelled) await Task.Delay(2000)` — see `DECISIONS.md`'s "T-F70" entry. All four exit
+  paths now release `IsBusy` at the same conceptual point: once nothing transient is left on screen.
 - `Cancel`'s `CanExecute` is gated on `IsOperationRunning` (=`IsBusy`) — a future state inserted
-  between "user clicked" and `IsBusy=true` would make Cancel uninvokable during it.
+  between "user clicked" and `IsBusy=true` would make Cancel uninvokable during it. Note this also
+  means Cancel now stays *clickable* (though a harmless no-op, since `_cts` is already null by
+  `finally`) throughout the post-cancel 2-second delay too.
 - Cancellation itself has no intermediate state: `cts.Cancel()` only sets the token; the running
   `Task.Run` loop notices it at whatever granularity it happens to check
   (`cancellationToken.IsCancellationRequested`, or inside `CopyToAsync`, which also observes the
@@ -233,7 +264,7 @@ flowchart TD
     M -- yes --> A
     M -- no --> N["Commit: Directory.Move(tempDest→actualDest) if actualDest<br/>doesn't exist yet; ELSE merge each tempDest file into<br/>actualDest via File.Move(overwrite:true) — this is where<br/>an Overwrite-conflict entry actually overwrites"]
     N --> O["ArchiveResult.Success = errors.Count == 0<br/>(ZipArchiveService.cs:449) — SkippedFiles is NOT<br/>read anywhere in this computation"]
-    O --> P{{"⚠ every branch reachable in normal operation<br/>(D,E,F,H,I,J-Skip) feeds SkippedFiles, never errors.<br/>Only G (path escape) produces an ArchiveError.<br/>So: all-entries-skipped ⇒ Success=true,<br/>an (empty or near-empty) folder is created,<br/>and the shell path never surfaces this (see Finding 2)."}}
+    O --> P{{"⚠ every branch reachable in normal operation<br/>(D,E,F,H,I,J-Skip) feeds SkippedFiles, never errors.<br/>Only G (path escape) produces an ArchiveError.<br/>So: all-entries-skipped ⇒ Success=true,<br/>an (empty or near-empty) folder is created.<br/>T-F68 (fixed): the shell path now shows a dialog for<br/>this case too — see Program.cs's ShellResultPresenter,<br/>not a change to Success itself, still computed as drawn here."}}
 ```
 
 **What this catches — a live finding, not a hypothetical:**
@@ -255,10 +286,13 @@ Not a new gap `TestAsync` introduces; not fixed here as it's `ExtractAsync`'s pr
 behavior, out of scope for T-F62.
 
 The GUI path surfaces this correctly — `ShowOperationSummaryAsync` receives the full
-`ArchiveResult` including `SkippedFiles`. The **shell path does not**: `Program.cs:235` only calls
-`ShowErrorSummary` when `!result.Success || result.Errors.Count > 0` — `SkippedFiles` is never
-inspected, so a shell-triggered "Extract here" that skips every entry closes silently with no
-dialog at all. Found while drafting this diagram, not fixed — flagging for a `TASKS.md` decision.
+`ArchiveResult` including `SkippedFiles`. **The shell path was fixed to match (T-F68, 2026-07-06):**
+`Program.cs`'s `RunWithProgressWindowAsync` now calls `ShellResultPresenter.Classify(result)` and
+shows a dedicated `MB_ICONWARNING` dialog ("N entries skipped: ...") whenever
+`SkippedFiles.Count > 0` and there are no errors, instead of only checking `!result.Success ||
+result.Errors.Count > 0`. `ArchiveResult.Success` itself is unchanged (still `errors.Count == 0`,
+per node O above) — only the shell's dialog *trigger* was widened; see `DECISIONS.md`'s "T-F68"
+entry for the two options considered and why widening the trigger (not `Success`) was chosen.
 
 **Corrected in this redraw:** the `OnConflict` gate is not three parallel branches for three enum
 values. The code is two sequential `if`s with no `else` (`ZipArchiveService.cs:597-609`) — `Skip`
@@ -302,22 +336,24 @@ but fail with `ERROR_ACCESS_DENIED` the moment it's launched via `CreateProcess`
 installed MSIX package — invisible until on-device testing. This is exactly the bug the
 `ShellHelper` entry above was added to fix.
 
-**Finding 1 (doc drift, not fixed here):** `ARCHITECTURE.md:259` currently states *"Registered via
-`com:InProcessServer` in `Package.appxmanifest`"*. The actual manifest
+**Finding 1 (doc drift) — fixed 2026-07-06 as T-F69:** `ARCHITECTURE.md:259` had stated
+*"Registered via `com:InProcessServer` in `Package.appxmanifest`"*, but the actual manifest
 (`Package.appxmanifest:70-78`) uses `com:SurrogateServer`, matching `CLAUDE.md`'s own
-"Correction — SurrogateServer" note in `DECISIONS.md`. Not fixed here — out of scope for this task.
+"Correction — SurrogateServer" note in `DECISIONS.md`. `ARCHITECTURE.md` now says
+`com:SurrogateServer` and its sub-command list was updated to include T-F63's new dialog commands.
 
 ---
 
-## Findings summary (surfaced while drafting/redrawing, not acted on)
+## Findings summary (surfaced while drafting/redrawing 2026-07-05, all three since resolved)
 
-1. **`ARCHITECTURE.md:259` stale** — says `com:InProcessServer`, actual manifest and
-   `DECISIONS.md` say `com:SurrogateServer`. Tracked as **T-F69**.
+1. **`ARCHITECTURE.md:259` stale** — said `com:InProcessServer`, actual manifest and
+   `DECISIONS.md` say `com:SurrogateServer`. Tracked as **T-F69** — fixed 2026-07-06.
 2. **Possible silent-empty-extract bug** — `ArchiveResult.Success` ignores `SkippedFiles`; the
    shell path (`Program.cs:235`) only checks `Errors`, so an all-skipped shell extraction shows
-   no dialog at all. Tracked as **T-F68**.
-3. **`IsBusy` vs. status-text asymmetry (watch, not confirmed as a bug)** — after a cancelled
-   operation, `IsBusy` is already `false` throughout the fixed 2-second `StatusCancelled` display,
-   while after a completed/errored operation `IsBusy` stays `true` for as long as the summary/error
-   dialog is open. Different exit families leave the UI in observably different "is this really
-   done" states. Tracked as **T-F70**.
+   no dialog at all. Tracked as **T-F68** — fixed 2026-07-06 (see diagram 3's note below and
+   `DECISIONS.md`).
+3. **`IsBusy` vs. status-text asymmetry** — after a cancelled operation, `IsBusy` was already
+   `false` throughout the fixed 2-second `StatusCancelled` display, while after a completed/errored
+   operation `IsBusy` stayed `true` for as long as the summary/error dialog was open. Tracked as
+   **T-F70** — decided (align, not document) and fixed 2026-07-06; see diagram 2 above and
+   `DECISIONS.md`.

@@ -374,12 +374,17 @@ public sealed partial class MainViewModel : ObservableObject
             _cts?.Dispose();
             _cts = null;
             IsProgressIndeterminate = false;
-            IsBusy = false;
         }
+        // T-F70: IsBusy stays true for as long as something transient is still on screen — a
+        // modal dialog for success/issues/error (awaited above, inside the try), or this delay
+        // for cancel — so a new operation can never start while the previous outcome is still
+        // being shown. Keeping this consistent across all four outcomes was a deliberate choice;
+        // see DECISIONS.md.
         if (wasCancelled)
         {
             await Task.Delay(2000);
         }
+        IsBusy = false;
         StatusMessage = _res.GetString("StatusReady");
     }
 
@@ -458,12 +463,14 @@ public sealed partial class MainViewModel : ObservableObject
         {
             _cts?.Dispose();
             _cts = null;
-            IsBusy = false;
         }
+        // T-F70: see the matching comment in ArchiveAsync — IsBusy stays true until whatever
+        // transient thing is on screen (dialog or this delay) is gone, for all four outcomes.
         if (wasCancelled)
         {
             await Task.Delay(2000);
         }
+        IsBusy = false;
         StatusMessage = _res.GetString("StatusReady");
     }
 

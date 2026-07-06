@@ -259,8 +259,15 @@ static async Task<ArchiveResult> RunWithProgressWindowAsync(
         }
     }
 
-    if (!result.Success || result.Errors.Count > 0)
-        ShowErrorSummary(title, result.Errors);
+    switch (ShellResultPresenter.Classify(result))
+    {
+        case ShellResultOutcome.Failed:
+            ShowErrorSummary(title, result.Errors);
+            break;
+        case ShellResultOutcome.SkippedOnly:
+            ShowSkippedSummary(title, result.SkippedFiles);
+            break;
+    }
 
     return result;
 }
@@ -268,6 +275,7 @@ static async Task<ArchiveResult> RunWithProgressWindowAsync(
 // The native progress dialog has no built-in way to report failures after it closes —
 // unlike the deleted ProgressWindow, which showed a ContentDialog with an error summary.
 const uint MB_ICONERROR = 0x10;
+const uint MB_ICONWARNING = 0x30;
 const int MaxErrorLinesShown = 10;
 
 static void ShowErrorSummary(string title, IReadOnlyList<ArchiveError> errors)
@@ -286,6 +294,9 @@ static void ShowErrorSummary(string title, IReadOnlyList<ArchiveError> errors)
 
     MessageBoxW(IntPtr.Zero, message, title, MB_ICONERROR);
 }
+
+static void ShowSkippedSummary(string title, IReadOnlyList<SkippedFile> skipped) =>
+    MessageBoxW(IntPtr.Zero, ShellResultPresenter.BuildSkippedMessage(skipped), title, MB_ICONWARNING);
 
 [DllImport("user32.dll", CharSet = CharSet.Unicode)]
 static extern int MessageBoxW(IntPtr hWnd, string text, string caption, uint type);

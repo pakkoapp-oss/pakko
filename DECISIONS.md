@@ -609,3 +609,105 @@ and `OperationOutcomeText` (resource strings `OutcomeWillExtract`/`OutcomeWillAr
 plain computed properties following the existing `IsFileListEmptyVisibility` pattern, notified via
 the `FileItems.CollectionChanged` handler. No change to `CanArchive`/`CanExtract`/`ArchiveAsync`/
 `ExtractAsync` — presentation only, per both tasks' acceptance criteria.
+
+---
+
+## T-F68 — Shell Extract Silently Ignoring SkippedFiles
+
+**Decision:** Widen only the shell path's dialog trigger to also fire when
+`result.SkippedFiles.Count > 0`. Do **not** change `ArchiveResult.Success` (stays
+`Errors.Count == 0`, unchanged everywhere it's read).
+
+**Why:** Two options were on the table — make `Success` itself account for `SkippedFiles`, or
+widen only the shell's trigger condition. `Success` already has a GUI-facing meaning ("no hard
+failures") that several call sites (button state, status text) depend on; a skip-only run (e.g.
+one bad entry rejected, rest extracted fine) is not a *failure*, so folding skips into `Success`
+would be a semantic change with GUI-wide blast radius for a bug that's actually localized to one
+`Program.cs` conditional. The GUI's `DialogService.ShowOperationSummaryAsync` already gates on
+`Errors.Count == 0 && SkippedFiles.Count == 0` together — i.e. the GUI already shows skips
+regardless of `Success`. The shell path just never learned that pattern when it was written
+against the older `!Success || Errors.Count > 0` check. Matching the shell's trigger to the GUI's
+existing gate is the minimal fix and needs no change to `ArchiveResult`.
+
+**Message distinction:** errors keep the existing "operation failed" (`MB_ICONERROR`) dialog
+unchanged. A new skip-only outcome gets its own `MB_ICONWARNING` dialog reading "N entries
+skipped:" followed by the same `path: reason` line format `ShowErrorSummary` already uses. If both
+errors and skips are present, the error dialog wins (unchanged behavior) — the run is already
+non-silent in that case, so covering the pure-skip gap was the actual bug.
+
+**Implementation:** new `ShellResultPresenter` class (`src/Archiver.Shell/ShellResultPresenter.cs`)
+holds the classification (`Classify(ArchiveResult)`) and message-building
+(`BuildSkippedMessage(IReadOnlyList<SkippedFile>)`) as pure, unit-testable static methods —
+same pattern `ShellArgumentParser` established for T-F57, since `Program.cs`'s top-level-statement
+local functions aren't reachable from `Archiver.Shell.Tests`.
+
+---
+
+## T-F83 — Cold-Start Protocol/File Activation Never Reached OnActivated
+
+**Found while manually verifying T-F63** (`ExtractDialogCommand`/`CompressDialogCommand`): invoking
+"Extract…" from a fresh Explorer right-click launched `Archiver.App` with a completely empty file
+list — the `pakko://extract?files=...` payload was silently dropped. Reproduced independently of
+the shell extension via a direct `Start-Process Archiver.Shell.exe --open-ui --extract "<file>"`,
+so the bug is in `Archiver.App`, not in the new T-F63 code. `%LOCALAPPDATA%\Packages\...\Pakko\logs\
+pakko.log` showed `"Pakko started"` (the plain `OnLaunched` log line) instead of `"Pakko started via
+protocol activation"` for both repro attempts — proof `OnActivated` never ran.
+
+**Root cause:** `App.xaml.cs`'s constructor did `AppInstance.GetCurrent().Activated += OnActivated;`,
+but per the Windows App SDK's documented behavior, `AppInstance.Activated` only fires for activation
+requests *redirected* to an already-running instance — it is never raised for the process's own
+initial (cold-start) activation. `OnLaunched(LaunchActivatedEventArgs)` — the plain WinUI XAML
+override — fired instead, which built a blank `MainWindow` and never inspected the File/Protocol
+payload at all. This is why the bug went unnoticed until now: `dotnet build` and unit tests can't
+catch it, and every previous manual smoke test of protocol/file activation (T-F44, T-F56) happened
+to run while a Pakko window was already open (warm/redirected path, where `Activated` *does* fire),
+or was verified only at the build/URI-construction level rather than by watching the file actually
+appear in the UI. T-F56's and T-F44's acceptance-criteria checklists have no explicit "the file list
+is visibly populated after a cold launch" smoke-test line — a real gap in how "complete" was
+verified for both, not just an incidental omission.
+
+**Fix:** pulled the `switch (args.Kind)` File/Protocol handling out of `OnActivated` into a shared
+`HandleActivation(AppActivationArguments, string defaultLogMessage)`, called from both entry points:
+- `OnActivated` (warm/redirected) passes the event's own args, as before.
+- `OnLaunched` (cold) now calls `AppInstance.GetCurrent().GetActivatedEventArgs()` to pull the
+  process's actual initial activation kind, instead of ignoring `LaunchActivatedEventArgs` and
+  always building a blank window.
+
+Both entry points are mutually exclusive per process (a given process either cold-starts once or
+receives redirected activations later, never both for the same activation), so there is no
+double-handling risk.
+
+**T-F44 status:** not independently reverified here — this dev machine's default `.zip` handler is
+NanaZip, not Pakko, so a real double-click repro wasn't possible in this session. T-F44's cold-start
+claim should be treated as *unverified*, not confirmed-working, until someone checks it on a machine
+where Pakko owns the `.zip` file association.
+
+---
+
+## T-F70 — IsBusy vs. Status-Text Timing After Cancel vs. Success/Error
+
+**Decision:** align — `IsBusy` now stays `true` for exactly as long as *something transient is still
+on screen* for all four operation outcomes, not just three of them. Fixed by moving `IsBusy = false`
+out of the `finally` block in both `ArchiveAsync`/`ExtractAsync` and placing it immediately before
+the final `StatusMessage = "Ready"` line — after the `if (wasCancelled) await Task.Delay(2000)`.
+
+**Why:** the success/issues/error paths already await a modal dialog (`ShowOperationSummaryAsync`/
+`ShowErrorAsync`) *inside* the `try`, before `finally` runs — so `IsBusy` blocks new operations for
+exactly as long as that dialog is up. The cancelled path showed no dialog and released `IsBusy`
+immediately in `finally`, then displayed "Cancelled" for a further fixed 2 seconds with the UI
+already re-enabled — the only outcome where a new operation could start while the previous one's
+result text was still on screen. Per the project's own established direction (T-F77/T-F81's
+"structure states the outcome" principle, and the gov/defense audience's preference for
+predictability over motion, `CLAUDE.md`'s Project section), the asymmetry was accidental, not
+deliberate, and the more consistent behavior — never re-enable controls while a result is still
+being displayed, dialog or plain text — was chosen over documenting the asymmetry or dropping the
+2s delay entirely.
+
+**Files:** `src/Archiver.App/ViewModels/MainViewModel.cs` (`ArchiveAsync`, `ExtractAsync`)
+
+**Verification note:** the exact 2-second window was confirmed by code inspection (the line move is
+mechanical and unambiguous), not by visually catching the race through remote UI automation — each
+tool round-trip in this session's harness reliably exceeded 2 seconds, so by the time any
+post-cancel screenshot could be taken, the window had already elapsed regardless of whether the fix
+was in place. Functional behavior (Cancel still stops the operation cleanly, no crash, UI reaches
+"Ready" afterward) was confirmed live.

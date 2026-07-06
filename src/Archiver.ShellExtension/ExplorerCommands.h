@@ -32,6 +32,14 @@ static const CLSID CLSID_ArchiveCommand =
 static const CLSID CLSID_TestCommand =
     { 0xBA69EF3A, 0xF324, 0x46CB, { 0x93, 0x91, 0x6D, 0x14, 0xFE, 0x95, 0x97, 0xD3 } };
 
+// {01564B8D-111A-4999-83B9-A2D1EE2BCD79}
+static const CLSID CLSID_ExtractDialogCommand =
+    { 0x01564B8D, 0x111A, 0x4999, { 0x83, 0xB9, 0xA2, 0xD1, 0xEE, 0x2B, 0xCD, 0x79 } };
+
+// {ADB98ED2-801C-418D-BE22-95ABA4DA58D0}
+static const CLSID CLSID_CompressDialogCommand =
+    { 0xADB98ED2, 0x801C, 0x418D, { 0xBE, 0x22, 0x95, 0xAB, 0xA4, 0xDA, 0x58, 0xD0 } };
+
 // ---------------------------------------------------------------------------
 // IEnumExplorerCommand implementation that owns a snapshot of sub-commands.
 // ---------------------------------------------------------------------------
@@ -109,6 +117,45 @@ public:
 // when every item does (contrast with ExtractHereCommand/ExtractFolderCommand's AllPathsAreZip).
 // ---------------------------------------------------------------------------
 class TestCommand final :
+    public RuntimeClass<RuntimeClassFlags<ClassicCom>, IExplorerCommand>
+{
+public:
+    STDMETHODIMP GetTitle(IShellItemArray* psia, LPWSTR* ppszName) noexcept override;
+    STDMETHODIMP GetIcon(IShellItemArray* psia, LPWSTR* ppszIcon) noexcept override;
+    STDMETHODIMP GetToolTip(IShellItemArray* psia, LPWSTR* ppszInfotip) noexcept override;
+    STDMETHODIMP GetCanonicalName(GUID* pguidCommandName) noexcept override;
+    STDMETHODIMP GetState(IShellItemArray* psia, BOOL fOkToBeSlow, EXPCMDSTATE* pCmdState) noexcept override;
+    STDMETHODIMP Invoke(IShellItemArray* psia, IBindCtx* pbc) noexcept override;
+    STDMETHODIMP GetFlags(EXPCMDFLAGS* pFlags) noexcept override;
+    STDMETHODIMP EnumSubCommands(IEnumExplorerCommand** ppEnum) noexcept override;
+};
+
+// ---------------------------------------------------------------------------
+// Leaf command: "Extract..." (T-F63) — dialog form. Opens Archiver.App with the
+// selected archives pre-loaded instead of extracting silently. Shown whenever the
+// selection contains at least one .zip, same as TestCommand (AnyPathIsZip), not the
+// stricter AllPathsAreZip ExtractHereCommand/ExtractFolderCommand use.
+// ---------------------------------------------------------------------------
+class ExtractDialogCommand final :
+    public RuntimeClass<RuntimeClassFlags<ClassicCom>, IExplorerCommand>
+{
+public:
+    STDMETHODIMP GetTitle(IShellItemArray* psia, LPWSTR* ppszName) noexcept override;
+    STDMETHODIMP GetIcon(IShellItemArray* psia, LPWSTR* ppszIcon) noexcept override;
+    STDMETHODIMP GetToolTip(IShellItemArray* psia, LPWSTR* ppszInfotip) noexcept override;
+    STDMETHODIMP GetCanonicalName(GUID* pguidCommandName) noexcept override;
+    STDMETHODIMP GetState(IShellItemArray* psia, BOOL fOkToBeSlow, EXPCMDSTATE* pCmdState) noexcept override;
+    STDMETHODIMP Invoke(IShellItemArray* psia, IBindCtx* pbc) noexcept override;
+    STDMETHODIMP GetFlags(EXPCMDFLAGS* pFlags) noexcept override;
+    STDMETHODIMP EnumSubCommands(IEnumExplorerCommand** ppEnum) noexcept override;
+};
+
+// ---------------------------------------------------------------------------
+// Leaf command: "Compress..." (T-F63) — dialog form. Opens Archiver.App with the
+// selected items pre-loaded instead of archiving silently. Shown for any selection,
+// unlike ArchiveCommand which hides when the selection is all-.zip.
+// ---------------------------------------------------------------------------
+class CompressDialogCommand final :
     public RuntimeClass<RuntimeClassFlags<ClassicCom>, IExplorerCommand>
 {
 public:

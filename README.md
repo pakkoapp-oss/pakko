@@ -8,13 +8,12 @@ Minimal WinUI 3 GUI wrapper for Windows built-in ZIP support.
 
 ## Why Not 7-Zip or WinRAR?
 
-Pakko uses a different trust model — not a claim of absolute security superiority, but a different set of supply chain dependencies with different auditability properties. Both tools have supply chain characteristics that some security-conscious environments find unacceptable.
+Pakko uses a different trust model — not a claim of absolute security superiority, but a different
+set of supply chain dependencies with different auditability properties. Both tools have supply
+chain characteristics (developer jurisdiction, no reproducible builds, CVE history) that some
+security-conscious environments find unacceptable.
 
-**7-Zip** — source published but no reproducible builds — the distributed binary cannot be verified against source. No independent security audit. Multiple critical CVEs (CVE-2016-9296, CVE-2017-17969, CVE-2018-10115, CVE-2022-29072).
-
-**WinRAR** — closed source — independent audit impossible. CVE-2018-20250 (path traversal, 500M+ installations affected).
-
-For government, defense, and critical infrastructure: organizations that require auditability of every binary processing sensitive files may prefer a tool whose entire compression stack is open source, reproducible, and maintained via a public CVE process. This is a trust model choice, not a guarantee of zero vulnerabilities.
+**For the full CVE tables and rationale, see `SECURITY.md`** (the canonical source).
 
 ---
 
@@ -108,17 +107,8 @@ file type association, and MOTW propagation are complete; hash viewer is still f
 Microsoft Store release planned for **v1.3** — when `tar.exe` integration is complete. v1.1 and
 v1.2 are GitHub-only releases for early testers.
 
-**Roadmap:**
-
-| Version | Focus |
-|---------|-------|
-| v1.1 | ✅ GitHub release — ZIP only |
-| v1.2 | Shell extension + MOTW + file associations + hash viewer |
-| v1.3 | tar.exe integration + Microsoft Store release |
-| v1.4 | GPO/ADMX + Low IL sandbox (P/Invoke) + strict mode policy |
-| v1.5 | TAR creation via tar.exe + additional format fixtures |
-
-See `TASKS.md` for detailed task list.
+See `SPEC.md`'s "Future Roadmap" section for the version-to-focus table, and `TASKS.md` for the
+detailed task list.
 
 ---
 

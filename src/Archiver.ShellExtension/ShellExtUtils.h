@@ -37,6 +37,11 @@ std::wstring BuildExtractFolderArgs(const std::vector<std::wstring>& paths);
 std::wstring BuildArchiveArgs(const std::vector<std::wstring>& paths);
 std::wstring BuildTestArgs(const std::vector<std::wstring>& paths);
 
+// Dialog-form commands (T-F63): launch Archiver.App via Archiver.Shell's --open-ui flow
+// (ShellArgumentParser.ParseOpenUi) instead of running silently.
+std::wstring BuildOpenUiExtractArgs(const std::vector<std::wstring>& paths);
+std::wstring BuildOpenUiArchiveArgs(const std::vector<std::wstring>& paths);
+
 // Builds the "Add to <name>.zip" context-menu title. For a single selected path, <name> is
 // that path's file name without extension; for multiple paths, <name> is their common
 // containing folder's name instead (mirrors RunArchiveAsync's naming in

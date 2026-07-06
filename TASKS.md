@@ -15,7 +15,8 @@ These rules apply to ALL tasks. Violating them = task is NOT complete.
 - A task with ANY `[ ]` criterion must stay `[ ]` or `[~]` — never `[x]`
 
 **Testing rules:**
-- ALWAYS run `dotnet test --filter "Category!=Slow"` (no path — all projects) after any change to any project. A change in one project can break tests in another. Run `dotnet test --filter "Category=Slow"` too before a release or when touching Zip64-adjacent code — see `CLAUDE.md`'s Hard Constraints.
+- Test-run commands and when to run the Slow filter are `CLAUDE.md`'s Hard Constraints — the
+  canonical copy; don't restate them here.
 - If tests fail → fix before marking anything complete
 - Every new behavior in `ZipArchiveService` needs at least one test
 
@@ -1178,7 +1179,8 @@ that fits `IArchiveService` naturally (`IArchiveService` currently only has `Arc
 ---
 
 ### T-F63 — Context Menu: "Extract…" and "Compress…" with Dialog
-- [ ] **Status:** future (v1.2)
+- [x] **Status:** complete (v1.2) — verified end-to-end on-device 2026-07-06, after fixing T-F83
+      (a pre-existing cold-start activation bug this task's manual test surfaced)
 - **Depends on:** T-F61
 
 **What:** Two additional leaf commands that open the full Pakko UI instead of running
@@ -1200,18 +1202,41 @@ classes in `Archiver.ShellExtension` to invoke `Archiver.Shell.exe --extract`/`-
 (dialog form) — no new backend work.
 
 **Acceptance criteria:**
-- [ ] New leaf command "Extract…" — shown whenever selection contains ≥1 `.zip`; invokes
-      `Archiver.Shell.exe --extract "<path>..."`
-- [ ] New leaf command "Compress…" — shown for any selection; invokes
-      `Archiver.Shell.exe --archive "<path>..."` (dialog form, not the silent one)
-- [ ] Both open `Archiver.App` with the files pre-loaded via the existing `pakko://` flow
-- [ ] `GetState` filtering matches the sibling silent commands (same `AllPathsAreZip`/
+- [x] New leaf command "Extract…" — shown whenever selection contains ≥1 `.zip`; invokes
+      `Archiver.Shell.exe --open-ui --extract "<path>..."` — `ExtractDialogCommand`, gated on
+      `AnyPathIsZip` (same as `TestCommand`, not the stricter `AllPathsAreZip` used by
+      `ExtractHereCommand`/`ExtractFolderCommand`)
+- [x] New leaf command "Compress…" — shown for any selection; invokes
+      `Archiver.Shell.exe --open-ui --archive "<path>..."` (dialog form, not the silent one) —
+      `CompressDialogCommand`, unconditionally `ECS_ENABLED`
+- [x] Both open `Archiver.App` with the files pre-loaded via the existing `pakko://` flow —
+      required fixing T-F83 first (cold-start activation silently dropped the payload); verified
+      working after that fix
+- [x] `GetState` filtering matches the sibling silent commands (same `AllPathsAreZip`/
       `AnyPathIsZip` helpers)
+- [x] Menu ordering verified against NanaZip's actual shipped source
+      (`NanaZip.UI.Modern/SevenZip/CPP/7zip/UI/Explorer/ContextMenu.cpp`, fetched via the GitHub
+      trees API per `CLAUDE.md`'s pre-implementation-research rule): the dialog-based command
+      precedes its one-click siblings in both groups (`kExtract` before `kExtractHere`/
+      `kExtractTo`; `kCompress` before `kCompressToZip`). Pakko's `EnumSubCommands` order is now
+      `ExtractDialog, ExtractHere, ExtractFolder, CompressDialog, Archive, Test` — Test still last
+      per Pakko's own deliberate deviation (primary actions before diagnostic, `CLAUDE.md` hard
+      constraint), unlike NanaZip's own Test-before-Compress grouping
+- [x] `Archiver.ShellExtension.Tests` gains `BuildOpenUiExtractArgs`/`BuildOpenUiArchiveArgs` cases
+      — 43/43 (was 39/39)
+- [x] `dotnet test --filter "Category!=Slow"` passes — 135/135 unaffected (no C# changes besides
+      the T-F83 fix in `Archiver.App`, which has no automated test coverage — WinUI activation
+      can't be unit-tested; see T-F83)
+- [x] **Manual smoke test:** verified 2026-07-06 via Explorer UI automation (Windows MCP) after
+      `Deploy.ps1` (v1.1.0.40+, includes the T-F83 fix) — right-clicking a `.zip` shows "Extract…",
+      "Extract here", "Extract to \"\<name\>\\\"", "Compress…", "Test archive" in that order, no
+      mojibake; clicking "Extract…" launches Pakko with the archive pre-loaded in the file list
 
 ---
 
 ### T-F64 — Context Menu: Fix "Add to archive…" Label vs One-Click Behavior
-- [~] **Status:** partial (v1.2) — code + tests done, manual Explorer smoke test pending
+- [x] **Status:** complete (v1.2) — all acceptance criteria verified 2026-07-05, including manual
+      smoke test (see below); status line was stale, not the task itself
 - **Depends on:** T-F61
 
 **What:** `ArchiveCommand`'s current title is "Add to archive…" (an ellipsis conventionally
@@ -1551,7 +1576,7 @@ Rule" — every branch below was traced to a specific file:line before being wri
 inferred). Cross-reference: `DIAGRAMS.md` → "Findings summary".
 
 ### T-F68 — Shell Extract Silently Ignores SkippedFiles (possible dead-end)
-- [ ] **Status:** future
+- [x] **Status:** complete — verified 2026-07-06
 
 **What:** `ArchiveResult.Success` is computed as `errors.Count == 0`
 (`ZipArchiveService.cs:449`) — `SkippedFiles` never affects it. The GUI path surfaces
@@ -1571,18 +1596,25 @@ widened to also check `SkippedFiles.Count > 0` (minimal, GUI unaffected since it
 skips)? Record the choice in `DECISIONS.md` before implementing.
 
 **Acceptance criteria:**
-- [ ] Decision recorded in `DECISIONS.md`
-- [ ] Shell path (`RunWithProgressWindowAsync` / its caller) shows a dialog when
-      `result.SkippedFiles.Count > 0`, even if `Errors.Count == 0`
-- [ ] Message distinguishes "N entries skipped" from "operation failed"
-- [ ] `dotnet test` passes — new test: all-entries-skipped extraction surfaces a non-silent result
-- [ ] Manual smoke test: shell "Extract here" on an archive containing only
-      reserved-device-name/ADS entries shows a dialog, not silent completion
+- [x] Decision recorded in `DECISIONS.md` (see "T-F68 — Shell Extract Silently Ignoring
+      SkippedFiles") — widen only the shell trigger; `ArchiveResult.Success` unchanged
+- [x] Shell path (`RunWithProgressWindowAsync`) shows a dialog when `result.SkippedFiles.Count > 0`,
+      even if `Errors.Count == 0` — via new `ShellResultPresenter.Classify`
+- [x] Message distinguishes "N entries skipped" (`MB_ICONWARNING`) from "operation failed"
+      (`MB_ICONERROR`, unchanged) — `ShellResultPresenter.BuildSkippedMessage`
+- [x] `dotnet test` passes — new `ShellResultPresenterTests` (8 cases: classify success/failed/
+      skipped-only/errors-win-over-skips, message singular/plural/truncation) — Archiver.Shell.Tests
+      36/36 (was 28/28), Archiver.Core.Tests 99/99 unaffected
+- [x] **Manual smoke test:** verified 2026-07-06 via Explorer UI automation (Windows MCP) after
+      `Deploy.ps1` (v1.1.0.38) — a ZIP with a single ADS entry (`file.txt:payload.exe`, the only
+      entry, so extraction has nothing else to write) and "Extract here" now shows
+      `MB_ICONWARNING`: "1 entry skipped: file.txt:payload.exe: Alternate Data Stream entry
+      rejected for security." Previously this completed silently with no dialog at all.
 
 ---
 
 ### T-F69 — Fix ARCHITECTURE.md Doc Drift: com:InProcessServer → com:SurrogateServer
-- [ ] **Status:** future (trivial)
+- [x] **Status:** complete (trivial) — fixed 2026-07-06, alongside T-F63's sub-command list update
 
 **What:** `ARCHITECTURE.md:259` still says *"Registered via `com:InProcessServer` in
 `Package.appxmanifest`"*. The actual manifest (`Package.appxmanifest:70-78`) and `DECISIONS.md`'s
@@ -1590,13 +1622,17 @@ own "Correction — SurrogateServer" entry both say `com:SurrogateServer`. `ARCH
 never updated when that correction landed during T-F61.
 
 **Acceptance criteria:**
-- [ ] `ARCHITECTURE.md:259` updated to `com:SurrogateServer`, matching the manifest and `DECISIONS.md`
-- [ ] Grep confirms no remaining doc references the old `com:InProcessServer` wording
+- [x] `ARCHITECTURE.md:259` updated to `com:SurrogateServer`, matching the manifest and `DECISIONS.md`
+      — also updated the stale sub-command list/selection-logic description alongside it (it had
+      drifted again, missing `TestCommand`/T-F63's new dialog commands)
+- [x] Grep confirms no remaining doc references the old `com:InProcessServer` wording as current
+      truth — the 3 remaining hits (`CLAUDE.md` ×2, `DIAGRAMS.md` ×1) are historical descriptions
+      of the bug itself, not stale claims
 
 ---
 
 ### T-F70 — Confirm Intended UX: IsBusy vs. Status-Text Timing After Cancel vs. Success/Error
-- [ ] **Status:** future (decision/investigation, not necessarily a code change)
+- [x] **Status:** complete — decided and fixed 2026-07-06 (aligned, not documented-as-intended)
 
 **What:** In `MainViewModel.ArchiveAsync`/`ExtractAsync` (lines 228–437), the
 success/issues/error exit paths await their modal dialog (`ShowOperationSummaryAsync` /
@@ -1610,13 +1646,20 @@ long as something requiring dismissal is still on screen. Not confirmed as a bug
 stuck — but it's a real, verified asymmetry that should be a deliberate choice, not an accident.
 
 **Acceptance criteria:**
-- [ ] Decide: is it acceptable that a new Archive/Extract can start during the 2-second post-cancel
+- [x] Decide: is it acceptable that a new Archive/Extract can start during the 2-second post-cancel
       "Cancelled" status display, while the other three outcomes fully block until their dialog is
-      dismissed?
-- [ ] If intended: document the asymmetry (`ARCHITECTURE.md` or `CONVENTIONS.md`) so it isn't
-      "fixed" later as an accidental bug
-- [ ] If not intended: align behavior (e.g. keep `IsBusy=true` through the 2s delay, or drop the delay)
-- [ ] `DIAGRAMS.md` diagram 2 updated to reflect the final decision
+      dismissed? — **No.** Decision recorded in `DECISIONS.md`'s "T-F70" entry.
+- [x] If not intended: align behavior — `IsBusy = false` moved from `finally` to immediately before
+      the final `StatusMessage = "Ready"` line (after the cancel-only delay), in both `ArchiveAsync`
+      and `ExtractAsync`
+- [x] `DIAGRAMS.md` diagram 2 updated — it had documented the old behavior in explicit detail
+      (`CancelledNoDialog --> Idle: finally{IsBusy=false} runs FIRST...`), so it was now stale;
+      re-derived all three exit transitions from the current source per the Ground Truth Rule
+- [x] **Verification:** code-level (the line move is unambiguous); live-tested that Cancel still
+      stops an in-progress Archive cleanly and the UI reaches "Ready" afterward with no crash. The
+      exact 2-second window itself could not be visually caught via remote UI automation — each
+      tool round-trip in this session exceeded 2 seconds, so any post-cancel check landed after the
+      window had already elapsed regardless of correctness; see `DECISIONS.md` for detail.
 
 ---
 
@@ -1630,7 +1673,7 @@ broken build instructions in `scripts/README.md`/`CONTRIBUTING.md` (`Archiver.Pa
 would fail. Remaining duplication/drift is lower-severity and tracked below.
 
 ### T-F71 — Consolidate Security/Supply-Chain Rationale (SECURITY.md as sole owner)
-- [ ] **Status:** future
+- [x] **Status:** complete — fixed 2026-07-06
 
 **What:** The 7-Zip/WinRAR supply-chain risk tables, CVE lists, and MOTW rationale are written out
 in full independently in three places: `SECURITY.md` (the canonical threat model), `SPEC.md`
@@ -1643,15 +1686,17 @@ to three places, and nothing catches it if one is missed.
 full table/rationale. `CLAUDE.md`'s Documentation Map already names `SECURITY.md` as canonical.
 
 **Acceptance criteria:**
-- [ ] `SPEC.md`'s "Security Rationale" section trimmed to a teaser + link to `SECURITY.md`
-- [ ] `README.md`'s "Why Not 7-Zip or WinRAR?" section trimmed to a teaser + link to `SECURITY.md`
-- [ ] No CVE table or supply-chain rationale text duplicated outside `SECURITY.md`
-- [ ] `SECURITY.md` itself unchanged (already the richest, most current version)
+- [x] `SPEC.md`'s "Security Rationale" section trimmed to a teaser + link to `SECURITY.md`
+- [x] `README.md`'s "Why Not 7-Zip or WinRAR?" section trimmed to a teaser + link to `SECURITY.md`
+      (its separate "What Pakko Uses Instead"/"Security Properties" sections are distinct content,
+      not CVE/rationale duplication, and were left as-is — out of this task's specific scope)
+- [x] No CVE table or supply-chain rationale text duplicated outside `SECURITY.md`
+- [x] `SECURITY.md` itself unchanged (already the richest, most current version)
 
 ---
 
 ### T-F72 — Consolidate Version Roadmap Table (SPEC.md as sole owner)
-- [ ] **Status:** future
+- [x] **Status:** complete — fixed 2026-07-06
 
 **What:** A version-to-focus roadmap table (v1.1 through v1.5) is independently maintained in
 `CLAUDE.md`, `SPEC.md`, and `README.md`, with slightly different wording and status per copy
@@ -1665,11 +1710,13 @@ status detail that doesn't fit a one-line roadmap entry stays in `CLAUDE.md`'s "
 prose (which already carries it) rather than in a second table.
 
 **Acceptance criteria:**
-- [ ] `SPEC.md`'s roadmap table reviewed and confirmed current (cross-check against `TASKS.md`
-      status of each version's tasks)
-- [ ] `CLAUDE.md`'s "Roadmap Summary" table replaced with a link to `SPEC.md`
-- [ ] `README.md`'s "Roadmap" table replaced with a link to `SPEC.md`
-- [ ] No independent roadmap table remains outside `SPEC.md`
+- [x] `SPEC.md`'s roadmap table reviewed and confirmed current (cross-check against `TASKS.md`
+      status of each version's tasks) — e.g. v1.2's "hash viewer" mention matches `T-F46`
+      (status: future), still accurate; the table describes scope only, not per-task completion,
+      so no content edit was needed, only the other two files' copies
+- [x] `CLAUDE.md`'s "Roadmap Summary" table replaced with a link to `SPEC.md`
+- [x] `README.md`'s "Roadmap" table replaced with a link to `SPEC.md`
+- [x] No independent roadmap table remains outside `SPEC.md` — grep confirmed
 
 ---
 
@@ -1694,7 +1741,7 @@ file `CLAUDE.md`'s Documentation Map names canonical for signatures — it must 
 ---
 
 ### T-F74 — Consolidate Duplicate Testing/Build Rules Between CLAUDE.md and TASKS.md
-- [ ] **Status:** future (low priority)
+- [x] **Status:** complete (low priority) — fixed 2026-07-06
 
 **What:** `TASKS.md`'s "⚠ Agent Rules" section (top of file) restates rules already in
 `CLAUDE.md`'s "Hard Constraints" — e.g. "ALWAYS run `dotnet test` (no path — all projects)"
@@ -1704,9 +1751,9 @@ task-specific rules that don't exist elsewhere (completion-marking rules `[x]`/`
 rules, scope rules for which options apply to which action).
 
 **Acceptance criteria:**
-- [ ] `TASKS.md`'s testing-rule bullets that duplicate `CLAUDE.md` hard constraints replaced with
+- [x] `TASKS.md`'s testing-rule bullets that duplicate `CLAUDE.md` hard constraints replaced with
       a link to `CLAUDE.md`
-- [ ] Task-specific rules with no equivalent in `CLAUDE.md` (completion marking, UI-vs-logic,
+- [x] Task-specific rules with no equivalent in `CLAUDE.md` (completion marking, UI-vs-logic,
       scope rules) kept in `TASKS.md` unchanged
 
 ---
@@ -1927,4 +1974,54 @@ always matches whichever action the outcome subtitle is describing.
 - [x] **Manual smoke test:** verified 2026-07-06 via Pakko UI automation (Windows MCP) — accent
       color follows the resolved action across all three T-F77 scenarios (zip-only, non-zip-only,
       mixed)
+
+---
+
+### T-F83 — Bug: Cold-Start Protocol/File Activation Never Reached OnActivated
+- [~] **Status:** partial — fixed and verified end-to-end for protocol activation 2026-07-06;
+      T-F44's file-activation cold-start claim remains unverified (flagged, not actioned, see
+      last criterion). Found while manually testing T-F63.
+- **Depends on:** none (bug in already-shipped T-F44/T-F56 code)
+
+**What:** `App.xaml.cs` subscribed to `AppInstance.GetCurrent().Activated` in its constructor, but
+per the Windows App SDK, that event only fires for activations *redirected* to an already-running
+instance — never for the process's own initial (cold-start) activation. `OnLaunched` (the plain
+WinUI override) fired instead on cold start, which unconditionally built a blank `MainWindow` and
+never inspected the File/Protocol activation payload. Net effect: any cold-start `pakko://` launch
+(T-F63's new dialog commands, and potentially T-F44/T-F56's already-shipped paths) opened Pakko
+with an **empty file list**, silently dropping the files it was invoked with — no error, no dialog,
+just looked like a normal empty launch. See `DECISIONS.md`'s "T-F83" entry for the full repro
+(reproduced independently of the shell extension via direct `Archiver.Shell.exe --open-ui --extract`
+invocation) and root-cause trace via `pakko.log`.
+
+**Why T-F56/T-F44 didn't catch this:** neither task's acceptance criteria list an explicit
+"file list is visibly populated after a cold launch" smoke-test line — both were verified at the
+build/URI-construction level, or (for warm re-activation, where `Activated` *does* fire) while a
+Pakko window was already open. T-F44's cold-start claim ("`AppInstance.Activated` handles both
+cold-start and warm file activation") could not be independently reverified in this session — this
+dev machine's default `.zip` handler is NanaZip, not Pakko — so treat it as **unverified**, not
+confirmed-working, until checked on a machine where Pakko owns the `.zip` association.
+
+**Fix:** `HandleActivation(AppActivationArguments, string defaultLogMessage)` extracted from the old
+`OnActivated`; both `OnActivated` (warm) and `OnLaunched` (cold, via
+`AppInstance.GetCurrent().GetActivatedEventArgs()`) now route through it.
+
+**File:** `src/Archiver.App/App.xaml.cs`
+
+**Acceptance criteria:**
+- [x] `OnLaunched` pulls the real activation kind via `GetActivatedEventArgs()` instead of ignoring
+      `LaunchActivatedEventArgs` and always building a blank window
+- [x] File/Protocol handling shared between `OnLaunched` and `OnActivated` via one
+      `HandleActivation` helper — no logic duplication, can't drift
+- [x] `dotnet build src/Archiver.App` passes (no automated test coverage possible — WinUI
+      activation requires a real process/window, not unit-testable)
+- [x] **Manual smoke test:** verified 2026-07-06 after `Deploy.ps1` (v1.1.0.41) — cold-start
+      `Archiver.Shell.exe --open-ui --extract "<zip>"` (no Pakko instance already running, verified
+      via `Get-Process`) opened Pakko with `tf63test.zip` visible in the file list, "Extract"
+      accented, subtitle "Will extract 1 archive(s)..."; `pakko.log` showed `"Pakko started via
+      protocol activation"` for that launch (previously just `"Pakko started"`, blank window).
+      Also reverified end-to-end through the real Explorer context menu (both "Extract…" on a
+      `.zip` and "Compress…" on a `.pdf`) — both correctly pre-load Pakko now.
+- [ ] T-F44 cold-start file activation reverified on a machine where Pakko is the default `.zip`
+      handler (flagged, not actioned, in this session)
 

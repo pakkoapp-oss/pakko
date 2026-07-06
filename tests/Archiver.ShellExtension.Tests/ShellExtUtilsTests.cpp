@@ -128,6 +128,38 @@ TEST(BuildTestArgs, MultipleFiles)
 }
 
 // ---------------------------------------------------------------------------
+// BuildOpenUiExtractArgs (T-F63)
+// ---------------------------------------------------------------------------
+
+TEST(BuildOpenUiExtractArgs, SingleFile)
+{
+    const auto args = BuildOpenUiExtractArgs({ L"C:\\archive.zip" });
+    EXPECT_EQ(args, L"--open-ui --extract \"C:\\archive.zip\"");
+}
+
+TEST(BuildOpenUiExtractArgs, MultipleFiles)
+{
+    const auto args = BuildOpenUiExtractArgs({ L"C:\\a.zip", L"C:\\b.zip" });
+    EXPECT_EQ(args, L"--open-ui --extract \"C:\\a.zip\" \"C:\\b.zip\"");
+}
+
+// ---------------------------------------------------------------------------
+// BuildOpenUiArchiveArgs (T-F63)
+// ---------------------------------------------------------------------------
+
+TEST(BuildOpenUiArchiveArgs, SingleFile)
+{
+    const auto args = BuildOpenUiArchiveArgs({ L"C:\\document.docx" });
+    EXPECT_EQ(args, L"--open-ui --archive \"C:\\document.docx\"");
+}
+
+TEST(BuildOpenUiArchiveArgs, MultipleFiles)
+{
+    const auto args = BuildOpenUiArchiveArgs({ L"C:\\file1.txt", L"C:\\file2.txt" });
+    EXPECT_EQ(args, L"--open-ui --archive \"C:\\file1.txt\" \"C:\\file2.txt\"");
+}
+
+// ---------------------------------------------------------------------------
 // BuildAddToArchiveTitle
 // ---------------------------------------------------------------------------
 

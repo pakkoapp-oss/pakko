@@ -1,4 +1,4 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "ExplorerCommands.h"
 
 // ---------------------------------------------------------------------------
@@ -340,6 +340,137 @@ STDMETHODIMP TestCommand::EnumSubCommands(IEnumExplorerCommand** ppEnum) noexcep
 }
 
 // ---------------------------------------------------------------------------
+// ExtractDialogCommand
+// ---------------------------------------------------------------------------
+
+STDMETHODIMP ExtractDialogCommand::GetTitle(IShellItemArray*, LPWSTR* ppszName) noexcept
+{
+    if (!ppszName) return E_POINTER;
+    return SHStrDupW(L"Extract\u2026", ppszName);
+}
+
+STDMETHODIMP ExtractDialogCommand::GetIcon(IShellItemArray*, LPWSTR* ppszIcon) noexcept
+{
+    if (!ppszIcon) return E_POINTER;
+    *ppszIcon = nullptr;
+    return E_NOTIMPL;
+}
+
+STDMETHODIMP ExtractDialogCommand::GetToolTip(IShellItemArray*, LPWSTR* ppszInfotip) noexcept
+{
+    if (!ppszInfotip) return E_POINTER;
+    *ppszInfotip = nullptr;
+    return E_NOTIMPL;
+}
+
+STDMETHODIMP ExtractDialogCommand::GetCanonicalName(GUID* pguidCommandName) noexcept
+{
+    if (!pguidCommandName) return E_POINTER;
+    *pguidCommandName = CLSID_ExtractDialogCommand;
+    return S_OK;
+}
+
+STDMETHODIMP ExtractDialogCommand::GetState(IShellItemArray* psia, BOOL, EXPCMDSTATE* pCmdState) noexcept
+{
+    if (!pCmdState) return E_POINTER;
+    // Same gate as TestCommand (AnyPathIsZip), not the stricter AllPathsAreZip
+    // ExtractHereCommand/ExtractFolderCommand use — a dialog lets the user reconsider the
+    // destination even for a mixed selection that includes at least one archive.
+    *pCmdState = AnyPathIsZip(GetPathsFromShellItemArray(psia)) ? ECS_ENABLED : ECS_HIDDEN;
+    return S_OK;
+}
+
+STDMETHODIMP ExtractDialogCommand::Invoke(IShellItemArray* psia, IBindCtx*) noexcept
+{
+    try
+    {
+        const auto paths = GetPathsFromShellItemArray(psia);
+        if (paths.empty()) return E_INVALIDARG;
+        return LaunchShellExe(BuildOpenUiExtractArgs(paths));
+    }
+    catch (...) { return E_FAIL; }
+}
+
+STDMETHODIMP ExtractDialogCommand::GetFlags(EXPCMDFLAGS* pFlags) noexcept
+{
+    if (!pFlags) return E_POINTER;
+    *pFlags = ECF_DEFAULT;
+    return S_OK;
+}
+
+STDMETHODIMP ExtractDialogCommand::EnumSubCommands(IEnumExplorerCommand** ppEnum) noexcept
+{
+    if (!ppEnum) return E_POINTER;
+    *ppEnum = nullptr;
+    return E_NOTIMPL;
+}
+
+// ---------------------------------------------------------------------------
+// CompressDialogCommand
+// ---------------------------------------------------------------------------
+
+STDMETHODIMP CompressDialogCommand::GetTitle(IShellItemArray*, LPWSTR* ppszName) noexcept
+{
+    if (!ppszName) return E_POINTER;
+    return SHStrDupW(L"Compress\u2026", ppszName);
+}
+
+STDMETHODIMP CompressDialogCommand::GetIcon(IShellItemArray*, LPWSTR* ppszIcon) noexcept
+{
+    if (!ppszIcon) return E_POINTER;
+    *ppszIcon = nullptr;
+    return E_NOTIMPL;
+}
+
+STDMETHODIMP CompressDialogCommand::GetToolTip(IShellItemArray*, LPWSTR* ppszInfotip) noexcept
+{
+    if (!ppszInfotip) return E_POINTER;
+    *ppszInfotip = nullptr;
+    return E_NOTIMPL;
+}
+
+STDMETHODIMP CompressDialogCommand::GetCanonicalName(GUID* pguidCommandName) noexcept
+{
+    if (!pguidCommandName) return E_POINTER;
+    *pguidCommandName = CLSID_CompressDialogCommand;
+    return S_OK;
+}
+
+STDMETHODIMP CompressDialogCommand::GetState(IShellItemArray*, BOOL, EXPCMDSTATE* pCmdState) noexcept
+{
+    if (!pCmdState) return E_POINTER;
+    // Shown for any selection (unlike ArchiveCommand, which hides for an all-.zip selection) —
+    // archiving a .zip into a new .zip via the dialog is a valid, reachable choice.
+    *pCmdState = ECS_ENABLED;
+    return S_OK;
+}
+
+STDMETHODIMP CompressDialogCommand::Invoke(IShellItemArray* psia, IBindCtx*) noexcept
+{
+    try
+    {
+        const auto paths = GetPathsFromShellItemArray(psia);
+        if (paths.empty()) return E_INVALIDARG;
+        return LaunchShellExe(BuildOpenUiArchiveArgs(paths));
+    }
+    catch (...) { return E_FAIL; }
+}
+
+STDMETHODIMP CompressDialogCommand::GetFlags(EXPCMDFLAGS* pFlags) noexcept
+{
+    if (!pFlags) return E_POINTER;
+    *pFlags = ECF_DEFAULT;
+    return S_OK;
+}
+
+STDMETHODIMP CompressDialogCommand::EnumSubCommands(IEnumExplorerCommand** ppEnum) noexcept
+{
+    if (!ppEnum) return E_POINTER;
+    *ppEnum = nullptr;
+    return E_NOTIMPL;
+}
+
+// ---------------------------------------------------------------------------
 // PakkoRootCommand
 // ---------------------------------------------------------------------------
 
@@ -402,24 +533,34 @@ STDMETHODIMP PakkoRootCommand::EnumSubCommands(IEnumExplorerCommand** ppEnum) no
         if (!ppEnum) return E_POINTER;
         *ppEnum = nullptr;
 
+        auto pExtractDialog = Make<ExtractDialogCommand>();
         auto pExtractHere   = Make<ExtractHereCommand>();
         auto pExtractFolder = Make<ExtractFolderCommand>();
+        auto pCompressDialog = Make<CompressDialogCommand>();
         auto pArchive       = Make<ArchiveCommand>();
         auto pTest          = Make<TestCommand>();
-        if (!pExtractHere || !pExtractFolder || !pArchive || !pTest) return E_OUTOFMEMORY;
+        if (!pExtractDialog || !pExtractHere || !pExtractFolder || !pCompressDialog || !pArchive || !pTest)
+            return E_OUTOFMEMORY;
 
-        ComPtr<IExplorerCommand> pCmdA, pCmdB, pCmdC, pCmdTest;
-        HRESULT hr = pExtractHere.As(&pCmdA);    if (FAILED(hr)) return hr;
-        hr = pExtractFolder.As(&pCmdB);          if (FAILED(hr)) return hr;
-        hr = pArchive.As(&pCmdC);                if (FAILED(hr)) return hr;
-        hr = pTest.As(&pCmdTest);                if (FAILED(hr)) return hr;
+        ComPtr<IExplorerCommand> pCmdExtractDialog, pCmdA, pCmdB, pCmdCompressDialog, pCmdC, pCmdTest;
+        HRESULT hr = pExtractDialog.As(&pCmdExtractDialog); if (FAILED(hr)) return hr;
+        hr = pExtractHere.As(&pCmdA);                       if (FAILED(hr)) return hr;
+        hr = pExtractFolder.As(&pCmdB);                      if (FAILED(hr)) return hr;
+        hr = pCompressDialog.As(&pCmdCompressDialog);        if (FAILED(hr)) return hr;
+        hr = pArchive.As(&pCmdC);                            if (FAILED(hr)) return hr;
+        hr = pTest.As(&pCmdTest);                            if (FAILED(hr)) return hr;
 
-        // Test archive is a diagnostic/verification action, not a primary one — it goes last,
-        // after Extract/Archive (deliberate deviation from NanaZip's Open-Test-Extract order,
-        // per project direction: primary actions before Test, always).
+        // Order mirrors NanaZip's real ContextMenu.cpp: within each group, the dialog-based
+        // command precedes its one-click siblings (kExtract before kExtractHere/kExtractTo;
+        // kCompress before kCompressToZip). Test archive is a diagnostic/verification action,
+        // not a primary one — it goes last, after every Extract/Archive variant (deliberate
+        // deviation from NanaZip's own Test-before-Compress grouping, per project direction:
+        // primary actions before Test, always).
         std::vector<ComPtr<IExplorerCommand>> commands;
+        commands.push_back(std::move(pCmdExtractDialog));
         commands.push_back(std::move(pCmdA));
         commands.push_back(std::move(pCmdB));
+        commands.push_back(std::move(pCmdCompressDialog));
         commands.push_back(std::move(pCmdC));
         commands.push_back(std::move(pCmdTest));
 

@@ -20,12 +20,16 @@ and MOTW are complete; `IExplorerCommand` COM DLL (T-F61) is complete. Progress 
 the Windows Shell's built-in `IProgressDialog` (see `Archiver.Shell/NativeProgressDialog.cs`) —
 the earlier `Archiver.ProgressWindow` satellite WinUI 3 app was removed (T-F65; see
 `DECISIONS.md`). Both T-F61 and T-F65 manually smoke-tested end-to-end and confirmed 2026-07-05.
-T-F62 (Test archive) is complete — manually smoke-tested in Explorer and confirmed 2026-07-06;
-remaining v1.2 work is T-F63 (Extract…/Compress… dialogs) and T-F68 (shell extract silently
-ignoring `SkippedFiles`).
+T-F62 (Test archive) is complete — manually smoke-tested in Explorer and confirmed 2026-07-06.
+T-F68 (shell extract silently ignoring `SkippedFiles`) and T-F63 (Extract…/Compress… dialogs) are
+both complete — manually smoke-tested and confirmed 2026-07-06. All planned v1.2 shell-extension
+work is now done. T-F63's manual test surfaced T-F83 — a cold-start protocol/file activation bug
+in `Archiver.App` (pre-dating T-F63, in already-shipped T-F44/T-F56 code) — fixed the same day;
+see `DECISIONS.md`. T-F83's own last criterion (reverifying T-F44's file-activation cold-start
+claim on a machine where Pakko owns the `.zip` association) remains open.
 - T-01 through T-35 + T-11, and T-F16/T-F17/T-F18/T-F26–T-F29/T-F37–T-F39/T-F44/T-F45 complete
-- 127/127 .NET tests pass (`dotnet test --filter "Category!=Slow"`: 99 Archiver.Core.Tests +
-  28 Archiver.Shell.Tests). 3 additional Zip64 tests (T-F20) are tagged `[Trait("Category",
+- 135/135 .NET tests pass (`dotnet test --filter "Category!=Slow"`: 99 Archiver.Core.Tests +
+  36 Archiver.Shell.Tests). 3 additional Zip64 tests (T-F20) are tagged `[Trait("Category",
   "Slow")]` and excluded from this default run — they cost real wall-clock time (>65535-file
   archiving/extraction, a >4 GiB round trip) that isn't worth paying on every change; run them
   explicitly with `dotnet test --filter "Category=Slow"` before a release or when touching
@@ -52,13 +56,9 @@ ignoring `SkippedFiles`).
 
 ## Roadmap Summary
 
-| Version | Focus |
-|---------|-------|
-| v1.1 | Store release — ZIP only (complete) |
-| v1.2 | Shell extension — MOTW, file associations, protocol activation done; IExplorerCommand (T-F61) in progress; hash viewer still future |
-| v1.3 | ITarService + tar.exe integration — RAR/7z/tar extraction + capability detection |
-| v1.4 | GPO/ADMX + Low IL P/Invoke sandbox + strict mode policy |
-| v1.5 | TAR creation via tar.exe + additional format fixtures |
+Version-to-focus table: see `SPEC.md`'s "Future Roadmap" section (the sole owner, per T-F72 —
+`README.md`'s roadmap links there too now). Per-version completion detail beyond a one-line scope
+description lives in this file's "Current State" section above instead of a second table.
 
 ---
 

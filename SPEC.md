@@ -17,42 +17,13 @@ Fill the usability gap in Windows Explorer — not replace advanced archivers li
 
 ## Security Rationale
 
-This section is part of the specification. It defines *why* certain dependencies are excluded — not just *what* is excluded.
+Pakko uses only `System.IO.Compression` (.NET BCL) instead of 7-Zip/WinRAR — a deliberate
+architectural constraint driven by supply-chain trust concerns (developer jurisdiction, lack of
+reproducible builds, CVE history), not a technical limitation.
 
-### The Problem with Dominant Archive Tools
-
-The two most widely deployed archive tools on Windows — 7-Zip and WinRAR — share a common risk profile:
-
-| Tool | Developer Origin | Source | Reproducible Builds | Known CVEs |
-|------|-----------------|--------|--------------------|----|
-| 7-Zip | Russian Federation | Open | ❌ No | Multiple critical |
-| WinRAR | Russian Federation | Closed | ❌ No | CVE-2018-20250 and others |
-
-The absence of reproducible builds means: even if source code is published, the distributed binary cannot be independently verified to match it. This is not a theoretical concern — the XZ Utils backdoor (2024) demonstrated exactly this attack pattern: clean source, compromised build artifact.
-
-For organizations in Ukraine and allied countries, software with opaque ownership in adversarial jurisdictions and unverifiable binaries is a supply chain risk that should be avoided on workstations handling sensitive documents.
-
-### This Project's Answer
-
-Use only `System.IO.Compression` — part of the .NET Base Class Library:
-- open source at `dotnet/runtime` on GitHub
-- maintained by Microsoft with a public CVE response process (MSRC)
-- reproducible builds available for the .NET runtime itself
-- no single developer as a trust anchor
-
-**This is a deliberate architectural constraint, not a technical limitation.**
-
-### Scope of the Security Claim
-
-This project claims:
-- ✅ No compression code from developers in adversarial jurisdictions
-- ✅ Full source auditability
-- ✅ Minimal attack surface (no network, no background services, no shell extensions)
-- ❌ Does NOT claim FIPS compliance
-- ❌ Does NOT implement encryption
-- ❌ Does NOT protect against a compromised .NET runtime or Windows OS
-
-For a full threat model see `SECURITY.md`.
+**For the full rationale — CVE tables, risk classification, and the scope of what this project
+does and does not claim — see `SECURITY.md`** (the canonical, most current source; this section
+is a teaser only, per `CLAUDE.md`'s Documentation Map).
 
 ---
 

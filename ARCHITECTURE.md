@@ -290,12 +290,19 @@ showing progress via the in-process `IProgressDialog` COM object (`NativeProgres
 
 **T-F61 — `Archiver.ShellExtension` (in-process COM DLL, C++/WRL):**
 - One registered CLSID: `PakkoRootCommand` (`1EABC7CE-20A4-48EE-A99F-43D4E0F58D6A`), `ThreadingModel STA`
-- Sub-commands (`ExtractHereCommand`, `ExtractFolderCommand`, `ArchiveCommand`) returned at
-  runtime via `IExplorerCommand::EnumSubCommands` — not separately registered in the manifest
-- Selection logic in `EnumSubCommands`: all `.zip` → `[ExtractHereCommand, ExtractFolderCommand]`;
-  all non-ZIP / mixed / null selection → `[ArchiveCommand]`
-- `Invoke` launches `Archiver.Shell.exe` via `CreateProcess` with the correct argument set
-- Registered via `com:InProcessServer` in `Package.appxmanifest` — `com:Path` must be a **child
+- Sub-commands (`ExtractDialogCommand`, `ExtractHereCommand`, `ExtractFolderCommand`,
+  `CompressDialogCommand`, `ArchiveCommand`, `TestCommand`) returned at runtime via
+  `IExplorerCommand::EnumSubCommands` — not separately registered in the manifest
+- Selection logic in `EnumSubCommands` (order mirrors NanaZip's real `ContextMenu.cpp`: dialog
+  command before its one-click sibling in each group; `TestCommand` always last per Pakko's own
+  primary-actions-before-diagnostic rule, `CLAUDE.md`): `ExtractDialogCommand`/`TestCommand` shown
+  whenever selection contains ≥1 `.zip` (`AnyPathIsZip`); `ExtractHereCommand`/`ExtractFolderCommand`
+  shown only when all paths are `.zip` (`AllPathsAreZip`); `CompressDialogCommand` always shown;
+  `ArchiveCommand` shown unless all paths are `.zip`
+- `Invoke` launches `Archiver.Shell.exe` via `CreateProcess` with the correct argument set —
+  dialog commands (T-F63) use `--open-ui --extract`/`--open-ui --archive` to route through
+  `Archiver.App`'s `pakko://` activation instead of running silently
+- Registered via `com:SurrogateServer` in `Package.appxmanifest` — `com:Path` must be a **child
   element** of the server, not a `Path` attribute on `com:Class` (see `DECISIONS.md`); requires
   `MinVersion="10.0.18362.0"` (Windows 10 1903) or higher in `TargetDeviceFamily`
 - Rejected alternative: out-of-process COM EXE server inside `Archiver.Shell.exe` — an
