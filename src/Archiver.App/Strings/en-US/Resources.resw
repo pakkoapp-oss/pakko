@@ -37,6 +37,9 @@
   <data name="MultipleFoldersHint.Text" xml:space="preserve">
     <value>For multiple folders — drag &amp; drop from Explorer</value>
   </data>
+  <data name="DropZoneModeHint.Text" xml:space="preserve">
+    <value>Archives offer to extract; anything else gets archived</value>
+  </data>
 
   <!-- Labels -->
   <data name="DestinationLabel.Text" xml:space="preserve">

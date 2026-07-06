@@ -143,6 +143,11 @@
                         x:Uid="DropZoneHint"
                         HorizontalAlignment="Center"
                         Opacity="0.6"/>
+                    <TextBlock
+                        x:Uid="DropZoneModeHint"
+                        HorizontalAlignment="Center"
+                        Opacity="0.6"
+                        Style="{StaticResource CaptionTextBlockStyle}"/>
                 </StackPanel>
             </Grid>
 
@@ -154,7 +159,8 @@
                 x:Uid="DestinationLabel"
                 Grid.Column="0"
                 VerticalAlignment="Center"
-                Margin="0,0,8,0"/>
+                Margin="0,0,8,0"
+                Style="{StaticResource CaptionTextBlockStyle}"/>
             <TextBox
                 Grid.Column="1"
                 Text="{x:Bind ViewModel.DestinationPath, Mode=OneWay}"
@@ -195,7 +201,7 @@
         <!-- Row 4: Archive Options (Mode + Name) -->
         <StackPanel Grid.Row="4" Spacing="8">
             <StackPanel Orientation="Horizontal" Spacing="16" MinHeight="40">
-                <TextBlock Text="Mode:" VerticalAlignment="Center" Width="46"/>
+                <TextBlock Text="Mode:" VerticalAlignment="Center" Width="46" Style="{StaticResource CaptionTextBlockStyle}"/>
                 <RadioButton
                     GroupName="ArchiveMode"
                     Content="One archive"
@@ -213,7 +219,8 @@
                     Grid.Column="0"
                     VerticalAlignment="Center"
                     Margin="0,0,8,0"
-                    Width="46"/>
+                    Width="46"
+                    Style="{StaticResource CaptionTextBlockStyle}"/>
                 <TextBox
                     Grid.Column="1"
                     Text="{x:Bind ViewModel.ArchiveName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
@@ -221,7 +228,7 @@
                     IsEnabled="{x:Bind ViewModel.IsArchiveNameAndNotBusy, Mode=OneWay}"/>
             </Grid>
             <StackPanel Orientation="Horizontal" Spacing="8" MinHeight="40">
-                <TextBlock x:Uid="CompressionLabel" VerticalAlignment="Center"/>
+                <TextBlock x:Uid="CompressionLabel" VerticalAlignment="Center" Style="{StaticResource CaptionTextBlockStyle}"/>
                 <ComboBox MinHeight="32" SelectedIndex="{x:Bind ViewModel.CompressionLevelIndex, Mode=TwoWay}"
                           IsEnabled="{x:Bind ViewModel.IsNotBusy, Mode=OneWay}">
                     <ComboBoxItem Content="Fast"/>
@@ -235,7 +242,7 @@
         <!-- Row 5: Shared Options + Post-Action Checkboxes -->
         <StackPanel Grid.Row="5" Spacing="8">
             <StackPanel Orientation="Horizontal" Spacing="8" MinHeight="40">
-                <TextBlock x:Uid="ConflictLabel" VerticalAlignment="Center"/>
+                <TextBlock x:Uid="ConflictLabel" VerticalAlignment="Center" Style="{StaticResource CaptionTextBlockStyle}"/>
                 <ComboBox MinHeight="32" SelectedIndex="{x:Bind ViewModel.OnConflictIndex, Mode=TwoWay}"
                           IsEnabled="{x:Bind ViewModel.IsNotBusy, Mode=OneWay}">
                     <ComboBoxItem Content="Overwrite"/>

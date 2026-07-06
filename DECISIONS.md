@@ -541,3 +541,34 @@ writing a faster test. `CLAUDE.md`'s hard constraint, `TASKS.md`'s Agent Rules, 
 were all updated to `dotnet test --filter "Category!=Slow"` as the routine command, with
 `--filter "Category=Slow"` required before a release or when a change touches Zip64-adjacent
 code.
+
+---
+
+## T-F79 — No Custom Brand Palette
+
+**Decision:** Pakko will **not** adopt a custom brand color palette. The app stays on the
+native WinUI 3 dark/light theme with the user's system accent color as the only accent (already
+the case on the primary Archive button) — no app-specific hex values, no custom color resource
+dictionary.
+
+**Why:** Pakko's audience is Ukrainian government/defense users, where the whole value
+proposition is trust and auditability over third-party/branded tooling (`CLAUDE.md`'s Project
+section, `SECURITY.md`'s threat model). For that audience, native OS chrome fidelity *is* a trust
+signal — the app looking exactly like "a Windows dialog" is reassuring, because it means nothing
+is being visually dressed up or hidden. A bespoke palette would read as "skinned," which is the
+opposite signal: it invites the question "what else did they customize that I can't see." This
+was raised as a possible gap during a 2026-07-06 design review pass and considered explicitly
+before being rejected — recorded here per `CLAUDE.md`'s "never silently deprecate" spirit, so a
+future session doesn't "fix" the lack of branding as an oversight.
+
+**What Pakko invests in instead:** restraint and typographic hierarchy using existing WinUI
+resources (T-F78: `CaptionTextBlockStyle` for field labels) and contextual clarity — showing only
+the options relevant to the current selection (T-F77) — rather than a visual identity layer.
+
+**Rejected:** a themed accent color (e.g. a fixed blue/teal regardless of system accent) — still
+rejected for the same reason; system accent is the one piece of "color" that is itself a Windows-
+native, user-controlled signal, not a Pakko brand choice.
+
+**Cascade check:** `SECURITY.md` and `SPEC.md` reviewed — neither currently makes claims about
+visual trust signals beyond what's already covered by the general trust/auditability framing, so
+no change needed there.

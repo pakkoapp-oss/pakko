@@ -1791,7 +1791,7 @@ information about what's about to happen, which is more honest than a permanent 
 ---
 
 ### T-F78 — No Typographic Hierarchy in the Options Panel
-- [ ] **Status:** future
+- [x] **Status:** complete — fixed 2026-07-06
 
 **What:** Every label (`Destination:`, `Mode:`, `Name:`, `Compression:`, `If file exists:`) and
 every value/input renders at the same weight and size — nothing distinguishes a section label
@@ -1806,16 +1806,19 @@ project's "no custom framework" posture.
 **Files:** `src/Archiver.App/MainWindow.xaml`
 
 **Acceptance criteria:**
-- [ ] Field labels (`Destination:`, `Mode:`, `Name:`, `Compression:`, `If file exists:`) use
+- [x] Field labels (`Destination:`, `Mode:`, `Name:`, `Compression:`, `If file exists:`) use
       `CaptionTextBlockStyle` or equivalent existing WinUI resource — no new custom style
-- [ ] Inputs/values remain at current (body) weight — contrast comes from the label, not the value
-- [ ] No layout shift/regression — spacing unchanged, only text style
-- [ ] Visual check against both light and dark theme (WinUI resources auto-adapt, confirm they do)
+- [x] Inputs/values remain at current (body) weight — contrast comes from the label, not the value
+- [x] No layout shift/regression — spacing unchanged, only text style
+- [x] **Manual smoke test:** verified 2026-07-06 via Explorer/Pakko UI automation (Windows MCP)
+      after `Deploy.ps1` — labels render visibly secondary/dimmer than input values in both dark
+      theme (default) and light theme (temporarily toggled via `AppsUseLightTheme` registry value,
+      reverted after); no layout shift observed in either theme
 
 ---
 
 ### T-F79 — Record the Decision Not to Add a Custom Brand Palette
-- [ ] **Status:** future — documentation-only task, no code change implied
+- [x] **Status:** complete — recorded 2026-07-06, documentation-only
 
 **What:** Pakko currently has no app-specific color identity — background/text come from the
 WinUI dark theme, and the only accent is the user's system accent color on the primary button.
@@ -1830,15 +1833,15 @@ and `DECISIONS.md`'s role as the record of chosen/rejected approaches — if thi
 written down, a future session may "fix" the lack of branding as an oversight.
 
 **Acceptance criteria:**
-- [ ] Decision written to `DECISIONS.md`: no custom brand palette; native WinUI theme + system
+- [x] Decision written to `DECISIONS.md`: no custom brand palette; native WinUI theme + system
       accent only; rationale tied to the gov/defense trust model
-- [ ] `SECURITY.md`/`SPEC.md` teaser-linked if either references visual trust signals (check
-      first — likely no change needed)
+- [x] `SECURITY.md`/`SPEC.md` teaser-linked if either references visual trust signals (checked —
+      neither makes visual-trust-signal claims beyond the general framing; no change needed)
 
 ---
 
 ### T-F80 — Empty State Doesn't Teach the Two Modes
-- [ ] **Status:** future
+- [x] **Status:** complete — fixed 2026-07-06
 
 **What:** The empty-state drop zone ("Drop files or folders here, or double-click to browse
 files") is functionally correct but purely instructional — it tells the user how to add items,
@@ -1853,10 +1856,13 @@ animation — a single added sentence, consistent with the rest of the panel's p
 **Files:** `src/Archiver.App/MainWindow.xaml`, `src/Archiver.App/Strings/en-US/Resources.resw`
 
 **Acceptance criteria:**
-- [ ] Second line added under the existing drop-zone prompt, resource string in `Resources.resw`
-      (not hardcoded, per existing localization convention)
-- [ ] Copy reviewed for plain, active-voice register matching the rest of the app's strings
-- [ ] No layout/visual redesign of the drop zone itself — text addition only
+- [x] Second line added under the existing drop-zone prompt, resource string in `Resources.resw`
+      (not hardcoded, per existing localization convention) — `DropZoneModeHint.Text`: "Archives
+      offer to extract; anything else gets archived"
+- [x] Copy reviewed for plain, active-voice register matching the rest of the app's strings
+- [x] No layout/visual redesign of the drop zone itself — text addition only
+- [x] **Manual smoke test:** verified 2026-07-06 via Pakko UI automation (Windows MCP) after
+      `Deploy.ps1` — second line renders under the existing hint in both dark and light theme
 
 ---
 
