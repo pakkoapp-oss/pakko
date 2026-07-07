@@ -147,7 +147,7 @@ public sealed partial class MainViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(OnConflictIndex))]
-    private ConflictBehavior _onConflict = ConflictBehavior.Skip;
+    private ConflictBehavior _onConflict = ConflictBehavior.Rename;
 
     public int OnConflictIndex
     {
