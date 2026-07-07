@@ -6,7 +6,7 @@ This file is automatically read by Claude Code at session start.
 
 ## Project
 
-**Pakko** — WinUI 3 desktop ZIP archiver for Windows with an in-progress shell extension (IExplorerCommand) and planned tar.exe integration for RAR/7z/tar extraction.
+**Pakko** — WinUI 3 desktop ZIP archiver for Windows with a completed shell extension (IExplorerCommand) and in-progress tar.exe integration for RAR/7z/tar extraction.
 Minimal GUI over `System.IO.Compression`. No 7-Zip. No WinRAR. No third-party compression code.
 Target audience: Ukrainian government/defense — trust, auditability, minimal attack surface.
 
@@ -15,7 +15,7 @@ Target audience: Ukrainian government/defense — trust, auditability, minimal a
 ## Current State
 
 **v1.1 complete** — tagged `v1.1.0`. GitHub-only release for early testers.
-**v1.2 (shell extension) in progress** — Archiver.Shell, protocol activation, file association,
+**v1.2 (shell extension) complete** — Archiver.Shell, protocol activation, file association,
 and MOTW are complete; `IExplorerCommand` COM DLL (T-F61) is complete. Progress UI is shown via
 the Windows Shell's built-in `IProgressDialog` (see `Archiver.Shell/NativeProgressDialog.cs`) —
 the earlier `Archiver.ProgressWindow` satellite WinUI 3 app was removed (T-F65; see
@@ -42,8 +42,8 @@ and rejects the whole archive before extraction ever runs. The ADS/reserved-name
 MOTW checks `ZipArchiveService` already had were moved into a new shared
 `ArchiveEntrySecurity` class so both extractors stay in sync.
 - T-01 through T-35 + T-11, and T-F16/T-F17/T-F18/T-F26–T-F29/T-F37–T-F39/T-F44/T-F45 complete
-- 150/150 .NET tests pass (`dotnet test --filter "Category!=Slow"`: 107 Archiver.Core.Tests +
-  36 Archiver.Shell.Tests + 7 Archiver.Core.IntegrationTests). 3 additional Zip64 tests (T-F20)
+- 177/177 .NET tests pass (`dotnet test --filter "Category!=Slow"`: 124 Archiver.Core.Tests +
+  36 Archiver.Shell.Tests + 17 Archiver.Core.IntegrationTests). 3 additional Zip64 tests (T-F20)
   are tagged `[Trait("Category", "Slow")]` and excluded from this default run — they cost real
   wall-clock time (>65535-file archiving/extraction, a >4 GiB round trip) that isn't worth paying
   on every change; run them explicitly with `dotnet test --filter "Category=Slow"` before a
@@ -237,11 +237,10 @@ references are easy to miss otherwise (this session found 5 lingering mentions o
   `AppInstance.GetCurrent().GetActivatedEventArgs()` and route File/Protocol kinds through the same
   handler `OnActivated` uses, or a cold `pakko://`/file-association launch silently opens a blank
   window (see T-F83 in `DECISIONS.md`).
-- **Non-ASCII glyphs in `Archiver.ShellExtension` C++ string literals** (ellipsis, em-dash, etc.)
-  must use `\uXXXX` escapes, never the literal character — MSVC decodes a non-BOM UTF-8 source file
-  via the system code page, silently corrupting the glyph on non-English-locale machines. This
-  exact bug has shipped three times now (T-F64, T-F76, T-F63) despite being documented in
-  `CONVENTIONS.md` — check every new string literal in this project before considering a change done.
+- **Non-ASCII glyphs (ellipsis, em-dash, Cyrillic) in C++/PowerShell string literals**: never write
+  the literal character — full rule + `\uXXXX` escape pattern is in `CONVENTIONS.md`. Shipped
+  three times already (T-F64, T-F76, T-F63) despite being documented — check every new string
+  literal before considering a change done.
 
 ---
 
@@ -257,8 +256,8 @@ windows-archiver-wrapper/
 │   │   └── NativeProgressDialog.cs ← IProgressDialog COM interop (in-process progress UI)
 │   └── Archiver.ShellExtension/    ← C++ COM DLL, IExplorerCommand (T-F61), x64+ARM64
 ├── tests/
-│   ├── Archiver.Core.Tests/        ← xunit, 70 tests
-│   ├── Archiver.Shell.Tests/       ← xunit, 25 tests
+│   ├── Archiver.Core.Tests/        ← xunit (see "Current State" for current count)
+│   ├── Archiver.Shell.Tests/       ← xunit (see "Current State" for current count)
 │   ├── Archiver.ShellExtension.Tests/  ← C++ Google Test, run separately (see Build Commands)
 │   └── Archiver.Core.Tests.GenerateFixtures/  ← fixture generator
 ├── CLAUDE.md                       ← you are here
@@ -321,6 +320,17 @@ MSBuild tests\Archiver.ShellExtension.Tests\Archiver.ShellExtension.Tests.vcxpro
 > into a scratch folder (e.g. while building a test fixture), a later `rm -rf`/`Remove-Item` on
 > that folder — even from Bash — fails with "in use" until a PowerShell call explicitly
 > `Set-Location`s back out first.
+>
+> **PowerShell tool's *initial* cwd is not guaranteed to be the repo root** — a bare
+> `dotnet test`/`dotnet build` can fail with `MSB1003: Specify a project or solution file`.
+> Prefix with `Set-Location "<repo-root>";` when running dotnet commands via the PowerShell tool.
+>
+> **Monitor tool commands run in POSIX/Git-Bash syntax**, even when polling a Windows path —
+> use `[ -f "/c/Program Files/..." ]`, not `Test-Path`, or the wait-loop never fires.
+>
+> **`winget install`/`uninstall` needing elevation fails non-interactively** with
+> `0x800704c7` ("canceled by the user") — the UAC prompt has nothing to click it. Retry once
+> and ask the user to approve the UAC prompt that appears; the retry succeeds.
 >
 > **Deploy shortcuts:**
 > Release build in VS triggers `Deploy.ps1 -DeployOnly` automatically (post-build event).
@@ -388,34 +398,26 @@ Task<IReadOnlyList<string>> PickFoldersAsync()
 
 ## Windows Packaging Best Practices
 
-Lessons learned during v1.2 MSIX packaging work — follow these to avoid known failure modes:
+Root-cause detail for the first six points below lives in `DECISIONS.md` ("MSIX Satellite EXE
+Packaging", "MSIX Signing", "Context Menu Appeared But Commands Did Nothing") — this is the
+quick-reference list only, to avoid known failure modes without re-reading the full postmortems:
 
-- **Satellite EXEs** are included via `Content Include` in `Archiver.App.csproj` with
-  `Condition="'$(GenerateAppxPackageOnBuild)'=='true'"` — invisible to normal VS builds,
-  activated only during `Deploy.ps1` packaging.
-- **Never sign MSIX manually** with `SignTool` — use `AppxPackageSigningEnabled=true` and
-  `PackageCertificateThumbprint` in `dotnet publish` instead. The SDK's built-in pipeline
-  handles MSIX format requirements correctly; direct SignTool calls produce `ERROR_BAD_FORMAT`.
-- **`New-SelfSignedCertificate` generates CNG keys** by default on modern Windows. SignTool
-  cannot use CNG keys for MSIX signing. Always pass
-  `-Provider "Microsoft Strong Cryptographic Provider"` to force CryptoAPI (RSA 2048).
-- **`.wapproj` does not work** for projects with multiple WinUI 3 apps. The DesktopBridge
-  targets generate PRI resources for each WinUI app (producing duplicate `Files/App.xbf`
-  entries) — this conflict cannot be resolved within the `.wapproj` model.
-- **`BeforeTargets` hooks are fragile** — the correct MSBuild hook point (`_CreateAppxPackage`,
-  `_GenerateAppxUploadPackageFile`, etc.) changes across SDK versions and `dotnet publish` vs
-  VS build contexts. Use `Content Include` instead.
-- **Any EXE launched via `CreateProcess` from outside its own package must be declared as its
-  own `<Application>` in `Package.appxmanifest`** (use `EntryPoint="Windows.FullTrustApplication"`,
-  `AppListEntry="none"` to hide it). Otherwise Windows returns `ERROR_ACCESS_DENIED` — confirmed
-  via `microsoft/WindowsAppSDK#4651`. This applies to every satellite EXE the shell extension or
-  any other external process spawns (e.g. `Archiver.Shell.exe`).
-- **Satellite EXEs must be built self-contained**, not framework-dependent (`--self-contained` in
-  `Deploy.ps1`, not `--no-self-contained`). A framework-dependent apphost inside an MSIX package
-  has no system runtime to fall back on and fails with a modal ".NET not found" dialog that never
-  surfaces to an automated caller — looks exactly like "nothing happens." A self-contained apphost
-  additionally needs its own `.dll`/`.deps.json`/`.runtimeconfig.json` shipped via `Content Include`
-  alongside the `.exe` — the bare `.exe` alone is not enough.
+- Satellite EXEs: `Content Include` in `Archiver.App.csproj`
+  (`Condition="'$(GenerateAppxPackageOnBuild)'=='true'"`), never `BeforeTargets`/manual `MakeAppx`
+- MSIX signing: `AppxPackageSigningEnabled=true` + `PackageCertificateThumbprint` in
+  `dotnet publish`, never manual `SignTool` (`ERROR_BAD_FORMAT` on MSIX)
+- Self-signed certs: pass `-Provider "Microsoft Strong Cryptographic Provider"` to
+  `New-SelfSignedCertificate` (default CNG keys break SignTool)
+- Never use `.wapproj` with multiple WinUI 3 apps (duplicate `Files/App.xbf` PRI entries)
+- Every EXE launched via `CreateProcess` from outside its own package needs its own
+  `<Application>` entry in `Package.appxmanifest` (`EntryPoint="Windows.FullTrustApplication"`,
+  `AppListEntry="none"` to hide it) — otherwise `ERROR_ACCESS_DENIED`
+- Satellite EXEs must be built self-contained (`--self-contained`, not `--no-self-contained`) —
+  a framework-dependent apphost in an MSIX package has no runtime to fall back on; also needs its
+  own `.dll`/`.deps.json`/`.runtimeconfig.json` via `Content Include`, not just the bare `.exe`
+
+Two more, not duplicated elsewhere:
+
 - **A COM surrogate (`dllhost.exe`) hosting `Archiver.ShellExtension.dll` can lock the DLL/PDB**
   after testing the context menu, causing `C1041`/file-in-use errors on the next rebuild. Run
   `taskkill /F /IM dllhost.exe` (or find the specific PID) before rebuilding if this happens.
@@ -437,8 +439,8 @@ Lessons learned during v1.2 MSIX packaging work — follow these to avoid known 
   `src/Archiver.App/Package.appxmanifest` after every successful build+install (not in
   `-DeployOnly` mode, which reinstalls an already-built package). No manual bump needed.
   Pass `-SkipVersionBump` to suppress this for a given run.
-- The version format is `1.1.0.X` — only the last segment changes.
-  Example: `1.1.0.3` → `1.1.0.4`.
+- The version format is `1.2.0.X` — only the last segment changes.
+  Example: `1.2.0.0` → `1.2.0.1`.
 - Do not change the first three segments unless explicitly instructed.
 - If bumping manually (e.g. outside `Deploy.ps1`), only edit the `Version` attribute on
   `<Identity>` — do not touch `MinVersion`/`MaxVersionTested` on `TargetDeviceFamily`.
