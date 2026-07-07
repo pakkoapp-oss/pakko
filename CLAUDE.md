@@ -41,6 +41,12 @@ any validation code runs) — see `DECISIONS.md`'s T-F49 entry; `ExtractAsync` i
 and rejects the whole archive before extraction ever runs. The ADS/reserved-name/reparse-point/
 MOTW checks `ZipArchiveService` already had were moved into a new shared
 `ArchiveEntrySecurity` class so both extractors stay in sync.
+T-F95 (root "Pakko" context-menu icon missing in Explorer) is complete — `Archiver.App.csproj` had
+no `<ApplicationIcon>`, so the built exe had zero icon resources; fixed by pointing it at the
+existing `Assets\Square44x44Logo.ico`, confirmed on-device by the user 2026-07-07. Found along the
+way: `Deploy.ps1`/`dotnet publish` currently fails with `MSB3231` cleaning up its own
+`AppPackages`/`obj` output *after* a valid `.msix` is already written — worked around this once via
+a direct `Add-AppxPackage`, root cause still open, tracked as T-F96.
 - T-01 through T-35 + T-11, and T-F16/T-F17/T-F18/T-F26–T-F29/T-F37–T-F39/T-F44/T-F45 complete
 - 177/177 .NET tests pass (`dotnet test --filter "Category!=Slow"`: 124 Archiver.Core.Tests +
   36 Archiver.Shell.Tests + 17 Archiver.Core.IntegrationTests). 3 additional Zip64 tests (T-F20)

@@ -1496,6 +1496,147 @@ specifics in `DECISIONS.md`'s T-F94 entry — summary only here.
 
 ---
 
+### T-F95 — Bug: Root "Pakko" Context-Menu Icon Missing in Explorer (No Icon Resource in Archiver.App.exe)
+- [x] **Status:** complete — root cause found, fixed, and confirmed on-device by the user
+      personally 2026-07-07 (fresh Explorer window after reinstall, "Pakko" icon now shows). Not
+      the already-documented "first-open flicker" cache artifact — a real missing resource, since
+      confirmed reproducible on demand and gone after the fix. Reopens the icon-reliability
+      assumption T-F61 and T-F92 both shipped with ("root 'Pakko' entry keeps its icon").
+- **Depends on:** T-F61 (root `GetIcon` implementation), T-F92 (last touched this code, reverted
+  the submenu-icon part, left root icon as-is)
+
+**What:** `PakkoRootCommand::GetIcon` (`ExplorerCommands.cpp:495`) returns
+`GetAppIconPath()` — `<dll_dir>\Archiver.App.exe,0` — via `SHStrDupW`. User-provided screenshot
+(2026-07-07, real right-click on a folder in Explorer) shows the "Pakko" root entry with a blank
+icon slot, while "NanaZip" directly above it shows its icon correctly in the same menu at the same
+moment. This is not the already-documented "first-open-of-a-new-Explorer-window flicker" artifact
+(`CLAUDE.md`'s hard constraints) — the user is reporting it missing on a menu they were already
+looking at, and says it has been flaky across sessions, not just on first paint.
+
+**Investigation so far (this session, before any code change):**
+- Confirmed `Package.appxmanifest` declares `Archiver.App.exe` and `Archiver.ShellExtension.dll`
+  in the same package (both are `<Application>`/`com:Class Path=` entries with no subfolder), so
+  `GetAppIconPath()`'s `<dll_dir>\Archiver.App.exe,0` should be a structurally valid path once
+  installed.
+- Checked the installed package directly: `Get-AppxPackage *Pakko*` →
+  `C:\Program Files\WindowsApps\PavloRybchenko.Pakko_1.2.0.5_x64__9hkd8feqeqbr4\Archiver.App.exe`
+  exists, and `[System.Drawing.Icon]::ExtractAssociatedIcon()` against it **succeeds** — the exe's
+  icon resource itself is present and extractable via a standard API. Rules out "the exe has no
+  icon at index 0" as the root cause.
+- Fetched NanaZip's real shipped source
+  (`NanaZip.UI.Modern/NanaZip.ShellExtension.cpp`, `ExplorerCommandRoot::GetIcon`, confirmed via
+  the GitHub trees API per `CLAUDE.md`'s pre-implementation-research rule) — it uses the **same
+  pattern**: `GetModuleDirPrefix() + "NanaZip.Modern.FileManager.exe" + ",-1"`, an external exe
+  path plus an icon index, not an icon resource embedded in the shell extension DLL itself. So
+  Pakko's basic approach isn't structurally wrong relative to a real shipped competitor — the
+  `,0` vs `,-1` (positional index vs resource-ID index) difference is the only notable delta,
+  not yet ruled out as relevant.
+- `Package.appxmanifest`'s `Version` is `1.2.0.6` but the installed package is `1.2.0.5` — a
+  one-version gap consistent with `Deploy.ps1`'s normal post-install version bump (see
+  `CLAUDE.md`'s Deployment section), not itself a sign of a stale/broken install, but worth
+  re-confirming after the next real `Deploy.ps1` run.
+- **Leading hypothesis, not yet confirmed:** `CLAUDE.md`'s existing hard constraint already
+  documents Explorer as having a "known Explorer verb/icon-cache artifact" for Pakko's submenu on
+  first open of a new Explorer window — this may be a variant of the same OS-level caching/async
+  icon-load behavior (`DECISIONS.md`'s "explorer.exe Crash on Context Menu (GetIcon/GetToolTip
+  S_FALSE)" entry references a `ShouldLoadIconAsync()` code path inside
+  `Windows.UI.FileExplorer.dll` specifically for shell-extension icons), rather than a Pakko code
+  defect. Per `CLAUDE.md`'s own instruction on that constraint — "don't chase this with code
+  changes without first confirming the cache-artifact explanation is wrong" — this needs a live
+  test before any code change: restart `explorer.exe` and/or open a completely fresh Explorer
+  window, then check whether the root icon reliably appears immediately, disappears again after
+  some time/action, or is consistently absent regardless. User is at the PC now and can run this
+  directly.
+
+**Root cause (confirmed empirically, not guessed):** `src/Archiver.App/Archiver.App.csproj` had
+no `<ApplicationIcon>` property — only `Assets\Square44x44Logo.ico` copied in as `Content` (used
+for the MSIX tile/Start-menu logo, a different mechanism entirely). The built `Archiver.App.exe`
+apphost therefore had **zero** classic Win32 icon resources. `PakkoRootCommand::GetIcon`
+(`,0` positional index — the same shape NanaZip's real shipped `ExplorerCommandRoot::GetIcon`
+uses against its own exe, confirmed via the GitHub trees API) was pointing at an index that never
+existed, so it always resolved to nothing. Decisive test (`ExtractIconEx(exe, -1, ...)` for total
+count) on the installed exe read `total=0` before the fix — not a `.NET Icon.ExtractAssociatedIcon`
+false-positive (that API can return a generic fallback icon even for a resource-less exe, which
+had briefly looked like evidence the icon was fine and needed ruling out first).
+
+**Fix:** added `<ApplicationIcon>Assets\Square44x44Logo.ico</ApplicationIcon>` to
+`Archiver.App.csproj` (one line, matches NanaZip's proven pattern — an icon embedded in the exe
+itself, not a change to `ExplorerCommands.cpp`). Rebuilding raised the apphost's icon count from 0
+to 1; reinstalling raised the installed package's count from 0 to 1 too (`ExtractIconEx` rerun
+against the fresh install).
+
+**Found along the way — separate, pre-existing packaging pipeline issue:** `Deploy.ps1`/
+`dotnet publish` now reliably fails with `MSB3231: Unable to remove directory ...` on a
+freshly-created `AppPackages\..._Test\` (or `obj\...\PackageLayout\`) folder, *after* the `.msix`
+has already been written successfully — reproduced identically in three different clean-state
+attempts (this session) and independently by the user in their own terminal. Windows Defender
+real-time protection was ruled out (user already has a project-wide exclusion). Since the `.msix`
+file itself is valid and complete by the time the error fires, this session worked around it by
+uninstalling the old package and `Add-AppxPackage`-ing the freshly-built `.msix` directly, instead
+of relying on `Deploy.ps1`'s own install step. The cleanup failure itself is unexplained — most
+likely a parallel-MSBuild-node race between locale-resource generation (25 locale sub-packages,
+T-F91) and the packaging pipeline's own directory cleanup, worth a `/m:1` (serialize the build)
+experiment if it recurs — **not fixed here**, tracked as a new follow-up below (see T-F96).
+
+**Acceptance criteria:**
+- [x] Root cause confirmed via a decisive, reproducible test (`ExtractIconEx` total icon count on
+      the installed `Archiver.App.exe`) — not inferred from `Icon.ExtractAssociatedIcon` alone,
+      which was checked first and found to be a false-positive-prone API for this purpose
+- [x] Real NanaZip shipped source fetched and compared (`ExplorerCommandRoot::GetIcon` in
+      `NanaZip.UI.Modern/NanaZip.ShellExtension.cpp`) per `CLAUDE.md`'s pre-implementation-research
+      constraint for COM/shell-adjacent changes — confirmed Pakko's `GetIcon` approach (external
+      exe path + icon index) already matches a real shipped implementation; the fix needed was in
+      the icon *source*, not `ExplorerCommands.cpp`
+- [x] `<ApplicationIcon>` added to `Archiver.App.csproj`; rebuilt apphost's icon count raised from
+      0 to 1
+- [x] Installed package's apphost re-verified with the same `ExtractIconEx` test after reinstall —
+      0 → 1
+- [x] Manual on-device verification: user personally restarted/opened a fresh Explorer window and
+      confirmed the "Pakko" root entry now shows its icon in the real right-click menu (2026-07-07)
+- [x] `DECISIONS.md` entry added for this investigation (see "T-F95" entry)
+
+---
+
+### T-F96 — Bug: `Deploy.ps1`/`dotnet publish` Fails Cleaning Up PackageLayout After a Valid `.msix` Is Written
+- [ ] **Status:** future — found as a side effect of T-F95's investigation, not yet root-caused
+- **Depends on:** none
+
+**What:** `dotnet publish` (both directly and via `Deploy.ps1`) reliably fails with
+`MSB3231: Unable to remove directory "..."` — `Access to the path '...' is denied` — on a
+just-created `AppPackages\Archiver.App_<version>_Test\` or `obj\...\PackageLayout\` folder,
+**after** the `.msix` inside it has already been written successfully. Reproduced identically
+across three clean-state attempts in one session (`dotnet build-server shutdown` + targeted folder
+removal; `obj\...\PackageLayout` clean; full `obj`+`AppPackages` clean plus a version bump to get
+a guaranteed-fresh folder name) and independently by the user running `Deploy.ps1` themselves.
+Windows Defender was ruled out — the user has a project-wide exclusion already in place, and the
+error is `ACCESS_DENIED` on a delete, not a sharing-violation shape typical of AV scanning a file
+mid-write.
+
+**Workaround used this session (not a fix):** since the `.msix` is valid and complete by the time
+the error fires, uninstall the old package and `Add-AppxPackage` the freshly-built `.msix`
+directly, bypassing `Deploy.ps1`'s own install step for that one run.
+
+**Leading hypothesis, not yet tested:** a parallel-MSBuild-node race between the 25-locale
+resource-generation work (T-F91 added 24 locale folders) and the packaging pipeline's own
+directory cleanup — more parallel work in that stage than before T-F91, and the folder implicated
+differs run to run (`cs-CZ` resources one run, `Assets` another), consistent with a timing race
+rather than a fixed permissions problem.
+
+**Scope:** try serializing the build (`/m:1` or `/p:BuildInParallel=false`) on a `dotnet publish`
+of `Archiver.App` and see if the cleanup step stops failing; if that's not it, escalate to
+Process Monitor (not just Resource Monitor's handle search, which only shows *currently open*
+handles — the failing process may have already closed its handle by the time you search) filtered
+to the exact failing path to catch whichever process actually holds it at the moment of deletion.
+
+**Acceptance criteria:**
+- [ ] Root cause identified (not just worked around)
+- [ ] `Deploy.ps1` (full build+sign+install, no manual `Add-AppxPackage` workaround) completes
+      successfully end-to-end at least 3 times in a row from a clean `obj`/`AppPackages` state
+- [ ] `CLAUDE.md`'s Build Commands section updated with the fix/workaround if one is needed
+      permanently (e.g. if `/m:1` turns out to be required going forward)
+
+---
+
 ### T-F50 — tar.exe Test Fixtures
 - [~] **Status:** partial (v1.3) — all achievable coverage implemented; bomb detection descoped to
       T-F90 (missing feature, not a fixture gap). RAR's previously-documented "unobtainable on
