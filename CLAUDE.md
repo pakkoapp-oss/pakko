@@ -184,6 +184,8 @@ references are easy to miss otherwise (this session found 5 lingering mentions o
   straightforward script step (copy, move, delete) versus a complex MSBuild/pipeline hook, choose
   the script. Reserve MSBuild targets and build pipeline customization for cases where a script
   genuinely cannot work. This applies to all tooling decisions — not just MSBuild.
+- No mocking library (Moq/NSubstitute/etc.) is used anywhere in this repo — write hand-rolled
+  fake implementations of interfaces for tests instead (see `ExtractionRouterTests.cs`).
 - **MSIX packaging:** never use `BeforeTargets` hooks or manual `MakeAppx` calls to inject files
   into packages. Use `Content Include` items in `.csproj` with `CopyToOutputDirectory` — this is
   the only reliable approach that survives incremental builds. `dotnet publish` with
@@ -301,6 +303,9 @@ MSBuild tests\Archiver.ShellExtension.Tests\Archiver.ShellExtension.Tests.vcxpro
 
 > WinUI app must be built and run from Visual Studio 2022.
 > `dotnet test` and `dotnet build src/Archiver.Core` work freely from terminal.
+> `dotnet build src/Archiver.App` also compiles via CLI (confirmed producing ARM64 output) —
+> useful for a quick compile-check on ViewModel/DI changes without opening VS. Full MSIX
+> packaging/signing/run still needs Deploy.ps1 or VS.
 >
 > **Testing `scripts/*.ps1` fixes:** these scripts require Windows PowerShell 5.1
 > (`#Requires -Version 5.1`). The PowerShell tool runs pwsh 7+, which defaults to UTF-8 and
@@ -347,6 +352,8 @@ Task<IReadOnlyList<string>> PickFoldersAsync()
 - Do not re-implement anything from `TASKS_DONE.md`
 - Do not add NuGet packages to `Archiver.Core` (zero dependencies)
 - Do not modify `CLAUDE.md`, `SECURITY.md` unless explicitly asked
+  (a Plan that merely *proposes* editing one of these two is not itself "explicitly asked" —
+  get separate explicit confirmation before touching either, even after plan approval)
 - Do not implement features not listed in `TASKS.md` or `SPEC.md`
 - Do not use `Thread.Sleep` — use `await Task.Delay` if needed
 - Do not use `static` mutable fields in services

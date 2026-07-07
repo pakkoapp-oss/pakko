@@ -960,6 +960,39 @@ interop) — update it in the same commit.
 
 ---
 
+### T-F88 — Dead Code: `AppInstance.Activated` Subscription Never Fires
+- [ ] **Status:** future — found while smoke-testing T-F85, low priority
+
+**What:** While smoke-testing T-F85, launching Pakko twice in a row via
+`pakko://extract?files=...` opened **two separate windows/processes** instead of the second
+activation redirecting into the first. Confirmed by grepping the whole repo: `FindOrRegisterForKey`
+and `RedirectActivationTo` appear nowhere in `src/`. Without registering a key via
+`AppInstance.GetCurrent().FindOrRegisterForKey(...)` and checking `IsCurrent`, Windows has no way
+to route a new activation to an already-running instance — every launch just starts a fresh
+process. That means `App()`'s `AppInstance.GetCurrent().Activated += OnActivated;` subscription
+(`App.xaml.cs`) and the `OnActivated` handler it wires up currently never fire in practice for
+Pakko's own activations; `OnLaunched`'s `GetActivatedEventArgs()` path (T-F83) is what actually
+handles every real launch, cold or warm.
+
+**Decision needed before removing anything:** multi-instance-per-launch matches 7-Zip File
+Manager/WinRAR/NanaZip precedent (each is a one-shot "do the task" tool, not a persistent
+workspace) — see this session's discussion. So the fix may be "remove the dead subscription"
+(if multi-instance is the intended, kept behavior) rather than "implement single-instance
+redirection" (which raises its own unresolved UX question: what should happen to an in-progress
+operation, i.e. `IsBusy=true`, if a second activation ever did redirect into it?). Confirm intent
+before implementing either direction.
+
+**Acceptance criteria:**
+- [ ] Either: remove the unused `AppInstance.Activated`/`OnActivated` subscription and document
+      that Pakko is deliberately multi-instance (simplest, matches other archivers) — or:
+      implement real single-instance redirection via `FindOrRegisterForKey`/`RedirectActivationTo`
+      with an explicit answer for the `IsBusy` redirect case
+- [ ] `dotnet build src/Archiver.App` (works via CLI, confirmed this session) shows no new
+      warnings from the change
+- [ ] Manual on-device verification of whichever direction is chosen
+
+---
+
 ### T-F50 — tar.exe Test Fixtures
 - [ ] **Status:** future (v1.3)
 
