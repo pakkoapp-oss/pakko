@@ -7,4 +7,10 @@
     <LangVersion>12</LangVersion>
   </PropertyGroup>
 
+  <!-- T-F94: lets Archiver.Core.Tests unit-test ArchiveEntrySecurity.EvaluateCompressionBombAsync
+       (internal) directly, rather than making internal-only implementation detail public. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="Archiver.Core.Tests" />
+  </ItemGroup>
+
 </Project>

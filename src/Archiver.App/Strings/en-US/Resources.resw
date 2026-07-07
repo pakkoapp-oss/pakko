@@ -119,4 +119,10 @@
   <data name="SkippedSectionHeader" xml:space="preserve">
     <value>Skipped</value>
   </data>
+  <data name="CompressionBombDialogTitle" xml:space="preserve">
+    <value>Suspicious archive</value>
+  </data>
+  <data name="CompressionBombDialogMessage" xml:space="preserve">
+    <value>This archive claims to contain {0} of data, a compression ratio of {1}:1. This is unusually high and may indicate a decompression bomb. Extract anyway?</value>
+  </data>
 </root>

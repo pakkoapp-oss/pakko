@@ -131,9 +131,26 @@ public sealed record ExtractOptions
     public ConflictBehavior OnConflict { get; init; } = ConflictBehavior.Skip;
     public bool OpenDestinationFolder { get; init; } = false;
     public bool DeleteArchiveAfterExtraction { get; init; } = false;
+
+    // T-F94: invoked when an archive looks like a decompression bomb (declared uncompressed
+    // size vs. compressed size exceeds the ratio threshold) AND the destination has enough free
+    // space to hold it. True proceeds with extraction, false declines. Null (default) auto-
+    // declines — the safe behavior for callers that don't wire a callback (Archiver.Shell).
+    public Func<CompressionBombWarning, Task<bool>>? ConfirmCompressionBombExtraction { get; init; }
 }
 
 public enum ExtractMode { SeparateFolders, SingleFolder }
+```
+
+```csharp
+// Models/CompressionBombWarning.cs
+public sealed record CompressionBombWarning
+{
+    public string ArchivePath { get; init; } = string.Empty;
+    public long DeclaredUncompressedSize { get; init; }
+    public long CompressedSize { get; init; }
+    public long Ratio => CompressedSize > 0 ? DeclaredUncompressedSize / CompressedSize : 0;
+}
 ```
 
 ```csharp
@@ -209,6 +226,12 @@ public interface IDialogService
     Task<IReadOnlyList<string>> PickFilesAsync();
     Task<IReadOnlyList<string>> PickFoldersAsync();
     Task ShowOperationSummaryAsync(string operationName, ArchiveResult result);
+    Task ShowAboutAsync();
+
+    // T-F94: called from a thread-pool thread by the extractors — implementation must marshal
+    // onto the window's DispatcherQueue before showing a ContentDialog. See DECISIONS.md's
+    // T-F94 entry.
+    Task<bool> ShowCompressionBombConfirmAsync(CompressionBombWarning warning);
 }
 ```
 

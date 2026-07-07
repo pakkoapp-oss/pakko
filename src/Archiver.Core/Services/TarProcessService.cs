@@ -84,7 +84,8 @@ public sealed class TarProcessService : ITarService
             try
             {
                 var (actualDest, anyExtracted) = await ExtractSingleArchiveAsync(
-                    archivePath, destDir, options.OnConflict, skippedFiles, cancellationToken)
+                    archivePath, destDir, options.OnConflict, skippedFiles,
+                    options.ConfirmCompressionBombExtraction, cancellationToken)
                     .ConfigureAwait(false);
 
                 // T-F87: an archive whose entries were all individually skipped (e.g. every
@@ -152,9 +153,44 @@ public sealed class TarProcessService : ITarService
         string destDir,
         ConflictBehavior onConflict,
         List<SkippedFile> skippedFiles,
+        Func<CompressionBombWarning, Task<bool>>? confirmCompressionBombExtraction,
         CancellationToken cancellationToken)
     {
-        await ScanForUnsafeEntriesAsync(archivePath, cancellationToken).ConfigureAwait(false);
+        long declaredUncompressedSize = await ScanForUnsafeEntriesAsync(archivePath, cancellationToken)
+            .ConfigureAwait(false);
+
+        // T-F94: whole-archive compression-ratio decision, run BEFORE quarantineDir is created
+        // so a declined/blocked bomb leaves nothing to clean up. See DECISIONS.md's T-F94 entry
+        // (supersedes T-F90's auto-reject-only model).
+        long compressedFileSize = new FileInfo(archivePath).Length;
+        var bombOutcome = await ArchiveEntrySecurity.EvaluateCompressionBombAsync(
+            archivePath, declaredUncompressedSize, compressedFileSize,
+            ArchiveEntrySecurity.GetAvailableFreeSpace(destDir),
+            confirmCompressionBombExtraction).ConfigureAwait(false);
+
+        if (bombOutcome == CompressionBombOutcome.InsufficientDiskSpace)
+        {
+            skippedFiles.Add(new SkippedFile
+            {
+                Path = archivePath,
+                Reason = $"Archive declares {declaredUncompressedSize:N0} bytes uncompressed, " +
+                         $"but the destination only has {ArchiveEntrySecurity.GetAvailableFreeSpace(destDir):N0} bytes free. " +
+                         "Extraction was blocked."
+            });
+            return (destDir, false);
+        }
+
+        if (bombOutcome == CompressionBombOutcome.UserDeclined)
+        {
+            long ratio = compressedFileSize > 0 ? declaredUncompressedSize / compressedFileSize : 0;
+            skippedFiles.Add(new SkippedFile
+            {
+                Path = archivePath,
+                Reason = $"Suspicious compression ratio ({ratio}:1, {declaredUncompressedSize:N0} bytes declared) " +
+                         "across the whole archive. Extraction was declined as a precaution against decompression bombs."
+            });
+            return (destDir, false);
+        }
 
         // Same "<dest>_tmp"-adjacent-directory convention as ZipArchiveService's tempDest —
         // same disk as destDir, no pre-delete (matches ZIP's existing tempDest behavior).
@@ -234,7 +270,13 @@ public sealed class TarProcessService : ITarService
     // deterministically by libarchive regardless of locale — unlike the rest of that line (its
     // date column was observed locale-mangled on a Cyrillic-locale machine, same bug class as
     // T-F84) — so only character 0 of each "-tvf" line is read.
-    private static async Task ScanForUnsafeEntriesAsync(string archivePath, CancellationToken cancellationToken)
+    // Returns the sum of declared uncompressed sizes for every regular-file entry (T-F94) — the
+    // ratio-threshold decision itself now lives in ExtractSingleArchiveAsync via the shared
+    // ArchiveEntrySecurity.EvaluateCompressionBombAsync evaluator, but the size sum is still
+    // accumulated here, in the same single "-tvf" pass that already reads the type column, to
+    // avoid a second tar.exe invocation just to re-derive it (matches T-F90's original rationale
+    // for extending this one pass in the first place).
+    private static async Task<long> ScanForUnsafeEntriesAsync(string archivePath, CancellationToken cancellationToken)
     {
         var (nameExitCode, nameStdOut, nameStdErr) = await RunTarAsync(
             new[] { "-tf", archivePath }, cancellationToken).ConfigureAwait(false);
@@ -260,13 +302,32 @@ public sealed class TarProcessService : ITarService
             throw new TarArchiveRejectedException(
                 "Archive listing is inconsistent and cannot be safely extracted.");
 
+        // T-F90: column 4 (size) is accumulated alongside the existing column-0 (type) check in
+        // the same pass — see DECISIONS.md's T-F90 entry for why the size column, unlike the
+        // date column, is safe to parse regardless of locale.
+        long totalDeclaredSize = 0;
+
         foreach (string line in typeLines)
         {
             char typeChar = line.Length > 0 ? line[0] : '?';
             if (typeChar != '-' && typeChar != 'd')
                 throw new TarArchiveRejectedException(
                     "Archive contains a symlink, hardlink, device, or other special entry and cannot be safely extracted.");
+
+            if (typeChar == '-')
+                totalDeclaredSize += ParseTarListingSize(line);
         }
+
+        return totalDeclaredSize;
+    }
+
+    // Column 4 (0-based) of "tar -tvf" output: mode, link-count, owner, group, size, month, day,
+    // time, name. Locale-independent (plain ASCII decimal), unlike the date columns — see
+    // DECISIONS.md's T-F90 entry.
+    private static long ParseTarListingSize(string line)
+    {
+        string[] fields = line.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
+        return fields.Length > 4 && long.TryParse(fields[4], out long size) ? size : 0;
     }
 
     private static string[] SplitLines(string text)

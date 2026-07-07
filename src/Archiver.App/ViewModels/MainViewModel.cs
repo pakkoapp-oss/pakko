@@ -417,6 +417,7 @@ public sealed partial class MainViewModel : ObservableObject
                 OnConflict = OnConflict,
                 OpenDestinationFolder = OpenDestinationFolder,
                 DeleteArchiveAfterExtraction = DeleteAfterOperation,
+                ConfirmCompressionBombExtraction = _dialogService.ShowCompressionBombConfirmAsync,
             };
 
             _operationStatusPrefix = $"Extracting... ({options.ArchivePaths.Count} archive(s))";

@@ -1,3 +1,6 @@
+using System.Runtime.InteropServices;
+using Archiver.Core.Models;
+
 namespace Archiver.Core.Services;
 
 /// <summary>
@@ -7,6 +10,10 @@ namespace Archiver.Core.Services;
 /// </summary>
 internal static class ArchiveEntrySecurity
 {
+    // T-F94: single source of truth for both extractors' bomb-ratio threshold — previously
+    // duplicated separately in ZipArchiveService and TarProcessService. See DECISIONS.md's
+    // T-F94 entry.
+    public const int MaxCompressionRatio = 1000;
     // T-F39: Reject reserved Windows device names (with or without extension, case-insensitive)
     private static readonly HashSet<string> _reservedNames = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -109,4 +116,82 @@ internal static class ArchiveEntrySecurity
             // MOTW propagation is best-effort — never surfaces to caller
         }
     }
+
+    // T-F94: replaces the old auto-reject-only model. An archive whose declared uncompressed
+    // size exceeds MaxCompressionRatio against its compressed size is no longer always rejected —
+    // if the destination has room for the declared size, the caller-supplied confirmCallback (if
+    // any) decides; if there is not enough room, extraction is blocked regardless of the
+    // callback. See DECISIONS.md's T-F94 entry for the full design trace.
+    public static async Task<CompressionBombOutcome> EvaluateCompressionBombAsync(
+        string archivePath,
+        long declaredUncompressedSize,
+        long compressedSize,
+        long availableFreeSpaceBytes,
+        Func<CompressionBombWarning, Task<bool>>? confirmCallback)
+    {
+        if (compressedSize <= 0 || declaredUncompressedSize <= 0)
+            return CompressionBombOutcome.NotABomb;
+
+        if (declaredUncompressedSize / compressedSize <= MaxCompressionRatio)
+            return CompressionBombOutcome.NotABomb;
+
+        if (availableFreeSpaceBytes < declaredUncompressedSize)
+            return CompressionBombOutcome.InsufficientDiskSpace;
+
+        if (confirmCallback is null)
+            return CompressionBombOutcome.UserDeclined;
+
+        bool proceed = await confirmCallback(new CompressionBombWarning
+        {
+            ArchivePath = archivePath,
+            DeclaredUncompressedSize = declaredUncompressedSize,
+            CompressedSize = compressedSize
+        }).ConfigureAwait(false);
+
+        return proceed ? CompressionBombOutcome.UserConfirmed : CompressionBombOutcome.UserDeclined;
+    }
+
+    // T-F94: GetDiskFreeSpaceExW instead of DriveInfo — DriveInfo's constructor throws on UNC
+    // paths (\\server\share\...), which this app's destination folder picker can legitimately
+    // point at. GetDiskFreeSpaceExW works uniformly for local drive letters and UNC shares.
+    // Returns 0 (treated as "no room" by EvaluateCompressionBombAsync) if the call fails —
+    // conservative default, consistent with this codebase's security-first posture on the
+    // extraction path.
+    public static long GetAvailableFreeSpace(string destinationPath)
+    {
+        try
+        {
+            // Use the volume/share root, not destinationPath itself — GetDiskFreeSpaceExW
+            // requires an existing directory, and the exact destination subfolder (e.g. a
+            // per-archive SeparateFolders subfolder) may not have been created yet at the point
+            // this check runs.
+            string? root = Path.GetPathRoot(Path.GetFullPath(destinationPath));
+            if (string.IsNullOrEmpty(root))
+                return 0;
+
+            if (GetDiskFreeSpaceExW(root, out ulong freeBytesAvailable, out _, out _))
+                return checked((long)freeBytesAvailable);
+            return 0;
+        }
+        catch
+        {
+            return 0;
+        }
+    }
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetDiskFreeSpaceExW(
+        string lpDirectoryName,
+        out ulong lpFreeBytesAvailable,
+        out ulong lpTotalNumberOfBytes,
+        out ulong lpTotalNumberOfFreeBytes);
+}
+
+internal enum CompressionBombOutcome
+{
+    NotABomb,
+    InsufficientDiskSpace,
+    UserDeclined,
+    UserConfirmed
 }

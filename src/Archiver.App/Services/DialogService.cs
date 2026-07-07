@@ -1,4 +1,5 @@
 using System.IO;
+using Archiver.App.Models;
 using Archiver.Core.Models;
 using Windows.ApplicationModel.Resources;
 using Windows.System;
@@ -42,6 +43,44 @@ public sealed class DialogService : IDialogService
         };
         var result = await dialog.ShowAsync();
         return result == ContentDialogResult.Primary;
+    }
+
+    // T-F94: the archive extractors call this from a thread-pool thread (ZipArchiveService's
+    // Task.Run, TarProcessService's ConfigureAwait(false) chain) — ContentDialog.ShowAsync()
+    // requires the calling thread to own the window's DispatcherQueue, so the dialog itself must
+    // be built and shown on the UI thread via DispatcherQueue.TryEnqueue, not called directly
+    // from wherever this method happens to run. See DECISIONS.md's T-F94 entry.
+    public Task<bool> ShowCompressionBombConfirmAsync(CompressionBombWarning warning)
+    {
+        var tcs = new TaskCompletionSource<bool>();
+
+        bool enqueued = _window!.DispatcherQueue.TryEnqueue(async () =>
+        {
+            try
+            {
+                var dialog = new ContentDialog
+                {
+                    Title = _res.GetString("CompressionBombDialogTitle"),
+                    Content = _res.GetString("CompressionBombDialogMessage")
+                        .Replace("{0}", FileItem.FormatSize(warning.DeclaredUncompressedSize))
+                        .Replace("{1}", warning.Ratio.ToString()),
+                    PrimaryButtonText = "Yes",
+                    CloseButtonText = "No",
+                    XamlRoot = _window!.Content.XamlRoot
+                };
+                var result = await dialog.ShowAsync();
+                tcs.SetResult(result == ContentDialogResult.Primary);
+            }
+            catch (Exception ex)
+            {
+                tcs.SetException(ex);
+            }
+        });
+
+        if (!enqueued)
+            tcs.SetResult(false);
+
+        return tcs.Task;
     }
 
     public async Task<string?> PickDestinationFolderAsync()

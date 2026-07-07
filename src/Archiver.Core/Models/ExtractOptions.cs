@@ -14,6 +14,14 @@ public sealed record ExtractOptions
     public ConflictBehavior OnConflict { get; init; } = ConflictBehavior.Skip;
     public bool OpenDestinationFolder { get; init; } = false;
     public bool DeleteArchiveAfterExtraction { get; init; } = false;
+
+    // T-F94: invoked when an archive's declared uncompressed size vs. its compressed size looks
+    // like a decompression bomb AND the destination has enough free space to hold it — returning
+    // true proceeds with extraction, false declines (archive is skipped). Null (the default)
+    // auto-declines, preserving the pre-T-F94 safe behavior for callers that don't wire a
+    // callback (Archiver.Shell, and any test that doesn't set this). See ArchiveEntrySecurity's
+    // EvaluateCompressionBombAsync and DECISIONS.md's T-F94 entry.
+    public Func<CompressionBombWarning, Task<bool>>? ConfirmCompressionBombExtraction { get; init; }
 }
 
 public enum ExtractMode

@@ -1095,3 +1095,191 @@ implemented under this one's scope or silently dropped from the checklist.
 `TarProcessServiceCompressedFormatsTests.cs`, `TarProcessServiceExternalFormatsTests.cs`,
 `TarProcessServiceExtractTests.cs` (added truncated-tar test), `Fixtures/valid.7z`,
 `Fixtures/README.md`.
+
+---
+
+## T-F90 — Whole-Archive Compression-Ratio Check for the tar.exe Path
+
+**Problem (spun out of T-F50, see above):** `ZipArchiveService` rejects individual ZIP entries
+whose `Length / CompressedLength` exceeds 1000:1 as a decompression-bomb precaution. No
+equivalent exists on the tar.exe path. Can't be a direct port: ZIP compresses each entry
+independently and exposes `CompressedLength` per entry for free; a `.tar.gz`/`.tar.bz2`/etc.
+compresses the *entire tar stream* in one pass, so there is no per-entry compressed size to read
+before extraction.
+
+**Empirical check before implementing (per `CLAUDE.md`'s pre-implementation-research
+constraint, and because T-F49's own entry above explicitly warned against parsing `-tvf` columns
+beyond the type character):** T-F49 rejected parsing `-tvf`'s other columns after observing the
+date column render mangled on this Cyrillic-locale machine (same bug class as T-F84) and
+generalized that caution to "every other column." Re-tested specifically for the size column: on
+`tar -tvf` output like `-rw-rw-rw-  0 0      0          12 <mangled-month> 07 16:59 file1.txt`,
+the size field (`12`) is a plain ASCII decimal number at a fixed token position (5th
+whitespace-separated field), not a locale-formatted string — only the month abbreviation (6th
+field) was mangled. Confirmed across empty (`0`), single-digit, and multi-digit sizes; token
+position stays fixed regardless of filename spacing because the parse only reads field index 4
+and never needs to locate the name field. **Correction to T-F49's blanket "every other column"
+caution: the size column specifically is safe to parse — the risk T-F49 found is confined to the
+date column's locale-dependent formatting, not shared by numeric fields.**
+
+**Decision:** extend `ScanForUnsafeEntriesAsync`'s existing `-tvf` pass (already reads column 0
+for entry type) to also parse column 4 (size) for every regular-file (`-`) entry and accumulate a
+running total declared uncompressed size. After the scan, compare that total against the archive
+file's actual on-disk (compressed) size:
+- Ratio computed as `totalDeclaredSize / compressedFileSize`, guarded against division by zero
+  (empty/zero-byte archive file skips the check, same guard style as `ZipArchiveService`'s
+  per-entry check).
+- Threshold: **1000:1, matching `ZipArchiveService.MaxCompressionRatio` exactly** — no evidence
+  surfaced during this task to justify a different number, and keeping both extractors' bomb
+  thresholds identical avoids an unexplained asymmetry between the two paths a future reader
+  would have to puzzle over.
+- On breach, the **whole archive is rejected** (`TarArchiveRejectedException`, same whole-archive
+  reject-before-`-xf` model T-F49 already established) — not a per-entry skip. Tar's compression
+  wraps the whole stream, so there is no way to attribute the bomb to one specific entry the way
+  ZIP's per-entry check can.
+- Directory entries (`d`) are excluded from the size sum — their declared size is always 0 and
+  contributes nothing to genuine bomb ratios, but skipping them explicitly keeps the sum's
+  meaning unambiguous.
+
+**Rejected: comparing against libarchive's own decompression limits or shelling out a second
+`tar.exe` invocation with a byte-count cap.** Adds process overhead and a second point of
+locale/version fragility for no benefit over a single `-tvf` pass already being read for the
+type-character check — the size column rides along in the same pass at zero extra cost.
+
+**Files:** `src/Archiver.Core/Services/TarProcessService.cs`,
+`tests/Archiver.Core.IntegrationTests/TarProcessServiceExtractTests.cs`.
+
+---
+
+## T-F92 — Reverted: Submenu Icons Undone After On-Device Review
+
+**Original decision (same day, see T-F92's own entry above in `TASKS.md`):** give every Pakko
+submenu command (Extract here, Extract to folder, Add to archive, Test archive, both dialogs) the
+same icon as the root "Pakko" entry, via `GetAppIconPath()`.
+
+**Correction:** implemented and on-device verified (all six subcommands showed the icon,
+Explorer stable), then shown to the user as a screenshot. The user's reaction: the icons on every
+individual action read as visual clutter, not as parity with the root entry the original decision
+assumed. Reverted all six `GetIcon` overrides back to `E_NOTIMPL`; only `PakkoRootCommand::GetIcon`
+(the top-level "Pakko" entry) keeps an icon, matching the pre-T-F92 shipped behavior.
+
+**Why recorded rather than just reverted silently:** the original "one shared icon" decision was
+made *before* seeing it rendered in Explorer — a case where the actual visual result changed the
+call, not a discovered bug. Worth keeping so a future session doesn't re-propose the same fix
+without knowing it was already tried and rejected on sight.
+
+**Files:** `src/Archiver.ShellExtension/ExplorerCommands.cpp`.
+
+---
+
+## T-F94 — Compression-Bomb Handling: Confirm-and-Extract Instead of Auto-Reject
+
+**Problem:** T-F90 (same session, earlier) added a whole-archive ratio check to
+`TarProcessService` that always rejected an archive over 1000:1; `ZipArchiveService` already had
+an older per-entry version (T-F28, v1.0) that always skipped individual suspicious entries. User
+feedback: auto-rejecting is too aggressive — a legitimately huge but genuinely compressible file
+(a text log, a disk image) can trip the same ratio a real bomb would. The user should see the
+declared size and ratio, and be allowed to extract anyway **if the destination disk has room for
+the declared size**; if it doesn't fit, block with an explanation, no override.
+
+**Decision — unify ZIP to whole-archive ratio, matching tar's model:** `ZipArchiveService`'s
+detection moves from per-entry to whole-archive granularity (sum of all entries' declared
+`Length` vs. the archive file's on-disk size), enabling exactly one confirmation per archive
+instead of one dialog per flagged entry. **Trade-off, accepted deliberately:** an archive with
+one small bomb entry hidden among otherwise-legitimate large files may no longer trip detection
+if the aggregate ratio stays under 1000:1. Not mitigated — considered an acceptable cost for
+consistent, non-spammy UX.
+
+**Shared evaluator, not duplicated per-extractor logic:** `ArchiveEntrySecurity` gains
+`EvaluateCompressionBombAsync(archivePath, declaredUncompressedSize, compressedSize,
+availableFreeSpaceBytes, confirmCallback)` returning a `CompressionBombOutcome` (`NotABomb`,
+`InsufficientDiskSpace`, `UserDeclined`, `UserConfirmed`). `MaxCompressionRatio` (1000) moved here
+too — previously duplicated separately in `ZipArchiveService` and `TarProcessService` with a
+"kept identical deliberately" comment; now one constant. Disk space is checked **before** the
+confirm callback runs — `InsufficientDiskSpace` always blocks regardless of what a callback would
+have said, matching the user's explicit "block if it doesn't fit, no override" requirement.
+
+**Delegate on `ExtractOptions`, not a DI-injected interface:** `ConfirmCompressionBombExtraction
+{ get; init; }` is a `Func<CompressionBombWarning, Task<bool>>?`, not a constructor-injected
+service. Both `ZipArchiveService`/`TarProcessService` are constructed directly (`new
+ZipArchiveService()`) in multiple test files and DI composition roots — a mandatory
+constructor-injected confirm-service would force a dependency (and a no-op fake) onto every one
+of those call sites. `null` (the default) auto-declines, preserving pre-T-F94 behavior for
+`Archiver.Shell` and any test that doesn't set it. Rides through `ExtractionRouter`'s existing
+`options with { ArchivePaths = subset, OpenDestinationFolder = false }` pattern for free.
+
+**`GetDiskFreeSpaceExW` via P/Invoke, not `DriveInfo`:** `DriveInfo`'s constructor throws on UNC
+paths (`\\server\share\...`), which this app's destination folder picker can legitimately point
+at — silently and permanently blocking every bomb-flagged archive extracted to a network
+destination regardless of actual free space. `GetDiskFreeSpaceExW` works uniformly for local
+drive letters and UNC shares. Queries the **volume/share root** (`Path.GetPathRoot`), not the
+exact destination subfolder — the per-archive `SeparateFolders` subfolder may not exist yet when
+the check runs, and `GetDiskFreeSpaceExW` requires an existing directory. Returns 0 on any
+failure (treated as "no room," blocking extraction) — conservative default, consistent with this
+codebase's security-first posture on the extraction path.
+
+**ZIP-specific ordering fix (found while implementing, not part of the original design pass):**
+the whole-archive check runs **before** `tempDest` is created (`ZipArchiveService`'s
+`ExtractWithSmartFolderingAsync`) — placing it after `Directory.CreateDirectory(tempDest)` but
+before the `try/finally` that cleans it up would leak an orphaned `<name>_tmp` directory on every
+declined/blocked bomb.
+
+**Tar refactor precision:** `ScanForUnsafeEntriesAsync`'s return type changed from `Task` to
+`Task<long>`, returning the `totalDeclaredSize` it already accumulates during its one `-tvf`
+pass — the ratio/outcome decision itself moved to `ExtractSingleArchiveAsync` (via the shared
+evaluator), but the size sum stays computed in that single pass rather than spawning a second
+`tar -tvf` process to re-derive it (would have silently reversed T-F90's own stated rationale for
+extending that one pass in the first place).
+
+**Tar bomb outcome changes from `ArchiveError` to `SkippedFile`:** under T-F90, a rejected bomb
+set `Success = false` (an `ArchiveError`). Under T-F94, `InsufficientDiskSpace`/`UserDeclined`
+produce a `SkippedFile` instead — `Success` stays `true`, consistent with T-F87's
+SkippedFiles/CreatedFiles bookkeeping and with ZIP's skip-based model. This also moves which
+section (`Errors` vs `Skipped`) it surfaces under in `ShowOperationSummaryAsync`'s dialog and in
+`Archiver.Shell`'s `MessageBoxW` split.
+
+**UI-thread marshaling (the difference between working and a guaranteed crash on first real
+use):** both extractors run their per-archive bodies off the UI thread (`ConfigureAwait(false)`
+throughout; `ZipArchiveService.ExtractAsync` explicitly wraps per-archive work in `Task.Run(...)`).
+`ContentDialog.ShowAsync()` requires the calling thread to own the window's `DispatcherQueue`.
+`DialogService.ShowCompressionBombConfirmAsync` marshals explicitly via a `TaskCompletionSource<bool>`
++ `DispatcherQueue.TryEnqueue(...)` rather than calling `ShowAsync()` directly from wherever the
+confirm delegate happens to run — this is new ground for this codebase (no prior mid-operation UI
+prompt existed here before).
+
+**Archiver.Shell scope (confirmed with user):** `Archiver.Shell` is a `WinExe` with
+`CreateNoWindow=true`, launched by Explorer via COM — no attached console/stdin/stdout in its
+actual invocation path, so a console Y/N prompt isn't technically meaningful there today. It keeps
+`ConfirmCompressionBombExtraction` unset (auto-decline), unchanged. The project's actual "console
+analog of 7z" goal is tracked separately as **T-F09 (Archiver.CLI)**, currently `future`/unbuilt —
+out of scope here. The delegate design was specifically validated against this: when T-F09 is
+eventually built, it supplies its own callback (`Console.ReadLine`-based Y/N prompt by default, or
+an unconditional `true`/`false` under a future `--yes`/`--silent` flag) with zero changes needed
+in `Archiver.Core`.
+
+**UX note:** a batch extraction with N flagged archives shows N sequential modal confirm dialogs —
+intended, not a bug (both extractors already loop per-archive independently; nothing new needed
+for one bomb archive to skip/block while the rest of the batch proceeds normally).
+
+**Known, pre-existing gap, not fixed here:** clicking Cancel while a confirm `ContentDialog` is
+showing won't dismiss it (`ShowAsync()` isn't wired to the `CancellationToken`) — the existing
+`ShowOperationSummaryAsync` dialog has the identical gap today.
+
+**Test-boundary limit, accepted:** the `InsufficientDiskSpace` branch is covered only at the pure
+`EvaluateCompressionBombAsync` unit-test level (`availableFreeSpaceBytes` injected as a plain
+`long`) — not attempted in integration tests, since simulating a genuinely full disk isn't
+practical there.
+
+**`InternalsVisibleTo` added** (`Archiver.Core.csproj` → `Archiver.Core.Tests`) so
+`EvaluateCompressionBombAsync`/`CompressionBombOutcome` (both `internal`, matching
+`ArchiveEntrySecurity`'s existing internal-only surface) can be unit-tested directly rather than
+made `public` just for test access — first use of this attribute in the repo.
+
+**Files:** `src/Archiver.Core/Models/CompressionBombWarning.cs` (new),
+`src/Archiver.Core/Models/ExtractOptions.cs`, `src/Archiver.Core/Services/ArchiveEntrySecurity.cs`,
+`src/Archiver.Core/Services/ZipArchiveService.cs`, `src/Archiver.Core/Services/TarProcessService.cs`,
+`src/Archiver.Core/Archiver.Core.csproj`, `src/Archiver.App/Services/IDialogService.cs`,
+`src/Archiver.App/Services/DialogService.cs`, `src/Archiver.App/ViewModels/MainViewModel.cs`,
+`src/Archiver.App/Strings/en-US/Resources.resw`,
+`tests/Archiver.Core.Tests/Services/ArchiveEntrySecurityCompressionBombTests.cs` (new),
+`tests/Archiver.Core.Tests/Services/ZipArchiveServiceExtractTests.cs`,
+`tests/Archiver.Core.IntegrationTests/TarProcessServiceExtractTests.cs`.

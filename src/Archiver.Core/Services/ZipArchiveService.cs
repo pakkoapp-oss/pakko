@@ -12,7 +12,6 @@ namespace Archiver.Core.Services;
 /// </summary>
 public sealed class ZipArchiveService : IArchiveService
 {
-    private const int MaxCompressionRatio = 1000;
     private const int CopyBufferSize = 81920;        // 80 KB — CopyToAsync transfer buffer
     private const int FileStreamBufferSize = 262144; // 256 KB — FileStream read buffer (archiving)
 
@@ -435,7 +434,8 @@ public sealed class ZipArchiveService : IArchiveService
                 bool alreadyIsolated = options.Mode == ExtractMode.SeparateFolders;
                 var (actualDest, anyExtracted) = await Task.Run(async () =>
                     await ExtractWithSmartFolderingAsync(archivePath, destDir, alreadyIsolated,
-                        options.OnConflict, skippedFiles, archiveProgress, cancellationToken),
+                        options.OnConflict, skippedFiles, archiveProgress,
+                        options.ConfirmCompressionBombExtraction, cancellationToken),
                     cancellationToken).ConfigureAwait(false);
 
                 // T-F87: an archive whose entries were all individually skipped (e.g. every
@@ -603,6 +603,7 @@ public sealed class ZipArchiveService : IArchiveService
         ConflictBehavior onConflict,
         List<SkippedFile> skippedFiles,
         IProgress<ProgressReport>? progress,
+        Func<CompressionBombWarning, Task<bool>>? confirmCompressionBombExtraction,
         CancellationToken cancellationToken)
     {
         using var archive = ZipFile.OpenRead(archivePath);
@@ -629,13 +630,48 @@ public sealed class ZipArchiveService : IArchiveService
             ? destDir
             : Path.Combine(destDir, Path.GetFileNameWithoutExtension(archivePath));
 
+        // T-F94: whole-archive compression-ratio check, run BEFORE tempDest is created so a
+        // declined/blocked bomb leaves nothing to clean up. Deliberately whole-archive rather
+        // than the old per-entry model (see DECISIONS.md's T-F94 entry) — matches
+        // TarProcessService's model and allows exactly one confirmation per archive.
+        long declaredUncompressedSize = fileEntries.Where(e => e.Length > 0).Sum(e => e.Length);
+        long compressedFileSize = new FileInfo(archivePath).Length;
+        var bombOutcome = await ArchiveEntrySecurity.EvaluateCompressionBombAsync(
+            archivePath, declaredUncompressedSize, compressedFileSize,
+            ArchiveEntrySecurity.GetAvailableFreeSpace(destDir),
+            confirmCompressionBombExtraction).ConfigureAwait(false);
+
+        if (bombOutcome == CompressionBombOutcome.InsufficientDiskSpace)
+        {
+            skippedFiles.Add(new SkippedFile
+            {
+                Path = archivePath,
+                Reason = $"Archive declares {declaredUncompressedSize:N0} bytes uncompressed, " +
+                         $"but the destination only has {ArchiveEntrySecurity.GetAvailableFreeSpace(destDir):N0} bytes free. " +
+                         "Extraction was blocked."
+            });
+            return (destDir, false);
+        }
+
+        if (bombOutcome == CompressionBombOutcome.UserDeclined)
+        {
+            long ratio = compressedFileSize > 0 ? declaredUncompressedSize / compressedFileSize : 0;
+            skippedFiles.Add(new SkippedFile
+            {
+                Path = archivePath,
+                Reason = $"Suspicious compression ratio ({ratio}:1, {declaredUncompressedSize:N0} bytes declared). " +
+                         "Extraction was declined as a precaution against ZIP bombs."
+            });
+            return (destDir, false);
+        }
+
         string tempDest = actualDest + "_tmp";
 
         Directory.CreateDirectory(tempDest);
         string fullTempDest = Path.GetFullPath(tempDest).TrimEnd(Path.DirectorySeparatorChar)
             + Path.DirectorySeparatorChar;
 
-        long totalUncompressedBytes = fileEntries.Where(e => e.Length > 0).Sum(e => e.Length);
+        long totalUncompressedBytes = declaredUncompressedSize;
         long bytesRead = 0;
         int extractedCount = 0;
 
@@ -723,20 +759,8 @@ public sealed class ZipArchiveService : IArchiveService
                     continue;
                 }
 
-                // ZIP bomb check — skip entries with suspicious compression ratio
-                if (entry.CompressedLength > 0
-                    && entry.Length > 0
-                    && entry.Length / entry.CompressedLength > MaxCompressionRatio)
-                {
-                    skippedFiles.Add(new SkippedFile
-                    {
-                        Path = entry.FullName,
-                        Reason = $"Suspicious compression ratio ({entry.Length / entry.CompressedLength}:1). " +
-                                 "Entry was skipped as a precaution against ZIP bombs."
-                    });
-                    bytesRead += entry.Length;
-                    continue;
-                }
+                // T-F94: per-entry compression-ratio check removed — superseded by the
+                // whole-archive check above (before tempDest was created).
 
                 // Conflict check against the final destination, not the temp dir — plus
                 // T-F30: against every finalFilePath already claimed earlier in this same run,

@@ -214,6 +214,57 @@ public sealed class TarProcessServiceExtractTests : IDisposable
         result.CreatedFiles.Should().BeEmpty();
     }
 
+    // T-F94: a tar.gz whose declared uncompressed content is a huge run of a single repeated
+    // byte (compresses to a tiny fraction of its declared size) is skipped by default (no
+    // confirm callback wired) rather than extracted — a SkippedFile, not an ArchiveError, since
+    // T-F94 changed this from an auto-reject to a declined-by-default confirmation. See
+    // DECISIONS.md's T-F94 entry (supersedes T-F90's original auto-reject-only design).
+    [Integration]
+    public async Task ExtractAsync_ArchiveWithExtremeCompressionRatio_NoCallback_SkipsWholeArchive()
+    {
+        string archivePath = Path.Combine(_temp.Path, "bomb.tar.gz");
+        string bombContent = new string('A', 5_000_000);
+        ExternalTarFixtureBuilder.CreateCompressedTar(archivePath, "-czf", [("bomb.txt", bombContent)]);
+
+        string destDir = Path.Combine(_temp.Path, "out");
+        var result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [archivePath],
+            DestinationFolder = destDir,
+            Mode = ExtractMode.SingleFolder,
+        });
+
+        result.Success.Should().BeTrue();
+        result.Errors.Should().BeEmpty();
+        result.CreatedFiles.Should().BeEmpty();
+        result.SkippedFiles.Should().Contain(s => s.Path == archivePath);
+        File.Exists(Path.Combine(destDir, "bomb.txt")).Should().BeFalse();
+    }
+
+    // T-F94: the same bomb-shaped archive, but with a confirm callback that returns true and
+    // ample real disk space — extraction proceeds normally.
+    [Integration]
+    public async Task ExtractAsync_ArchiveWithExtremeCompressionRatio_CallbackConfirms_ExtractsNormally()
+    {
+        string archivePath = Path.Combine(_temp.Path, "bomb.tar.gz");
+        string bombContent = new string('A', 5_000_000);
+        ExternalTarFixtureBuilder.CreateCompressedTar(archivePath, "-czf", [("bomb.txt", bombContent)]);
+
+        string destDir = Path.Combine(_temp.Path, "out");
+        var result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [archivePath],
+            DestinationFolder = destDir,
+            Mode = ExtractMode.SingleFolder,
+            ConfirmCompressionBombExtraction = _ => Task.FromResult(true),
+        });
+
+        result.Success.Should().BeTrue();
+        result.SkippedFiles.Should().BeEmpty();
+        result.CreatedFiles.Should().ContainSingle();
+        File.ReadAllText(Path.Combine(destDir, "bomb.txt")).Should().Be(bombContent);
+    }
+
     // Regression test for the confirmed exploit in DECISIONS.md's T-F49 entry: a symlink entry
     // named "link" targeting ".." followed by "link/escaped.txt" caused raw tar.exe to write
     // escaped.txt one directory level above the extraction root. This proves the pre-scan blocks

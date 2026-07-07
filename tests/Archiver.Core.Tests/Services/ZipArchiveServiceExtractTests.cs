@@ -598,11 +598,14 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
         reports.Select(r => r.Percent).Should().BeInAscendingOrder();
     }
 
+    // T-F94: whole-archive ratio check, no confirm callback wired — default (declined) behavior
+    // is a whole-archive SkippedFile, not a per-entry skip (that model was replaced; see
+    // DECISIONS.md's T-F94 entry). 50 MB of a single repeated byte comfortably clears the
+    // 1000:1 threshold under deflate.
     [Fact]
-    public async Task ExtractAsync_SuspiciousCompressionRatio_SkipsEntry()
+    public async Task ExtractAsync_SuspiciousCompressionRatio_NoCallback_SkipsWholeArchive()
     {
-        // 1 MB of repeated 'A' compresses to ~1 KB = ~1000:1 ratio
-        string content = new string('A', 1024 * 1024);
+        string content = new string('A', 50 * 1024 * 1024);
         var file = _temp.CreateFile("compressible.txt", content);
 
         await _sut.ArchiveAsync(new ArchiveOptions
@@ -612,18 +615,51 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
             ArchiveName = "test_bomb",
             CompressionLevel = System.IO.Compression.CompressionLevel.SmallestSize
         });
+        string archivePath = Path.Combine(_temp.Path, "test_bomb.zip");
 
         var result = await _sut.ExtractAsync(new ExtractOptions
         {
-            ArchivePaths = [Path.Combine(_temp.Path, "test_bomb.zip")],
+            ArchivePaths = [archivePath],
             DestinationFolder = _temp.Path,
             Mode = ExtractMode.SeparateFolders
         });
 
-        // Either extracted normally (ratio under limit) or skipped (ratio over limit) —
-        // must not throw and must not produce errors either way
-        (result.Success || result.SkippedFiles.Count > 0).Should().BeTrue();
+        result.Success.Should().BeTrue();
         result.Errors.Should().BeEmpty();
+        result.CreatedFiles.Should().BeEmpty();
+        result.SkippedFiles.Should().Contain(s => s.Path == archivePath);
+    }
+
+    // T-F94: same bomb-shaped archive, but with a confirm callback returning true and ample
+    // real disk space — extraction proceeds normally.
+    [Fact]
+    public async Task ExtractAsync_SuspiciousCompressionRatio_CallbackConfirms_ExtractsNormally()
+    {
+        string content = new string('A', 50 * 1024 * 1024);
+        var file = _temp.CreateFile("compressible.txt", content);
+
+        await _sut.ArchiveAsync(new ArchiveOptions
+        {
+            SourcePaths = [file],
+            DestinationFolder = _temp.Path,
+            ArchiveName = "test_bomb",
+            CompressionLevel = System.IO.Compression.CompressionLevel.SmallestSize
+        });
+        string archivePath = Path.Combine(_temp.Path, "test_bomb.zip");
+        string destDir = Path.Combine(_temp.Path, "extracted");
+
+        var result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [archivePath],
+            DestinationFolder = destDir,
+            Mode = ExtractMode.SeparateFolders,
+            ConfirmCompressionBombExtraction = _ => Task.FromResult(true),
+        });
+
+        result.Success.Should().BeTrue();
+        result.SkippedFiles.Should().BeEmpty();
+        result.CreatedFiles.Should().ContainSingle();
+        File.ReadAllText(Path.Combine(destDir, "test_bomb", "compressible.txt")).Should().Be(content);
     }
 
     [Fact]

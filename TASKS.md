@@ -527,7 +527,11 @@ don't ship an unreviewed MT dump under a locale folder.
 ---
 
 ### T-F92 — Context Menu Icon Missing on Submenu Items
-- [ ] **Status:** future — confirmed gap 2026-07-07, not yet fixed
+- [x] **Status:** CLOSED, reverted 2026-07-07 — implemented, on-device verified, then reverted
+      the same day after the user saw the actual on-device screenshots and decided submenu
+      icons are visual clutter. Final code state matches pre-T-F92 (root "Pakko" entry keeps its
+      icon; all six subcommands are back to `E_NOTIMPL`). Kept here rather than deleted, per the
+      "never silently deprecate" rule — do not re-implement without a fresh explicit request
 - **Priority:** medium (visible cosmetic gap in shipped v1.2 shell extension)
 - **Depends on:** none
 
@@ -539,25 +543,34 @@ shows correctly. Every child command's `GetIcon` returns `E_NOTIMPL`/`nullptr` i
 here", "Extract to folder…", "Add to archive…", "Test archive", the two dialog commands) shows no
 icon in Explorer's dropdown.
 
-**Decision (per user 2026-07-07):** use the same single Pakko icon for every subcommand — no
-per-action icon set. Simplest change, matches the icon already cached for the root command.
+**Original decision (per user 2026-07-07):** use the same single Pakko icon for every subcommand
+— no per-action icon set. Simplest change, matches the icon already cached for the root command.
 
-**Fix:** change each subcommand's `GetIcon` to mirror `PakkoRootCommand::GetIcon`'s existing safe
-pattern exactly — call `GetAppIconPath()`, return `E_NOTIMPL` if it's empty, otherwise
-`SHStrDupW` the path into `*ppszIcon` and return its `HRESULT`. **Never** pair `S_FALSE` with a
-null out-pointer — that exact combination already crashed `explorer.exe` once (see
-`DECISIONS.md`'s "explorer.exe Crash on Context Menu (GetIcon/GetToolTip S_FALSE)" entry); the
-`E_NOTIMPL`-based pattern already in this file is the verified-safe one.
+**Fix (implemented, then reverted the same day):** changed each subcommand's `GetIcon` to mirror
+`PakkoRootCommand::GetIcon`'s existing safe pattern exactly — call `GetAppIconPath()`, return
+`E_NOTIMPL` if it's empty, otherwise `SHStrDupW` the path into `*ppszIcon` and return its
+`HRESULT`. Built, unit-tested (55/55), and on-device verified (right-clicked a ZIP and a `.txt`
+file; every submenu item showed the icon, Explorer did not crash). Shown to the user via
+screenshot, who then decided the per-item icons look cluttered and asked to revert to root-only.
 
-**Acceptance criteria:**
-- [ ] `ExtractHereCommand::GetIcon`, `ExtractFolderCommand::GetIcon`, `ArchiveCommand::GetIcon`,
+**Reversal (per user 2026-07-07, after seeing the on-device result):** all six subcommands'
+`GetIcon` reverted to the original `E_NOTIMPL` stub — only the root "Pakko" entry keeps an icon.
+Rebuilt and reconfirmed `Archiver.ShellExtension.Tests` still 55/55 after the revert.
+
+**Acceptance criteria (historical — task is closed/reverted, not open work):**
+- [x] `ExtractHereCommand::GetIcon`, `ExtractFolderCommand::GetIcon`, `ArchiveCommand::GetIcon`,
       `TestCommand::GetIcon`, `ExtractDialogCommand::GetIcon`, `CompressDialogCommand::GetIcon`
-      all return `Archiver.App.exe,0` via `GetAppIconPath()`, matching `PakkoRootCommand`'s pattern
-- [ ] No `S_FALSE` + null-out-pointer combination introduced anywhere in the diff
-- [ ] `Archiver.ShellExtension.Tests` (Google Test) still pass
-- [ ] Manual on-device verification: right-click a ZIP, confirm every submenu item shows the
-      Pakko icon, and Explorer does not crash or misbehave
-- [ ] `DECISIONS.md` note only if the "one shared icon" decision changes during implementation
+      all returned `Archiver.App.exe,0` via `GetAppIconPath()` — implemented and verified, then
+      reverted back to `E_NOTIMPL` per the user's follow-up decision
+- [x] No `S_FALSE` + null-out-pointer combination introduced anywhere in either the fix or the
+      revert
+- [x] `Archiver.ShellExtension.Tests` (Google Test) still pass — 55/55, both after the fix and
+      after the revert
+- [x] Manual on-device verification of the fix: right-clicked a ZIP (`tf92test.zip`) and a `.txt`
+      file in a scratch folder — confirmed all submenu items showed the icon, Explorer did not
+      crash; done via Windows UI automation, not personally by the user
+- [x] `DECISIONS.md` note — added, since the decision changed post-implementation (see the
+      "T-F92 — Reverted" entry)
 
 ---
 
@@ -1230,8 +1243,12 @@ unchanged.
 ---
 
 ### T-F90 — Gap: No ZIP-Bomb-Style Compression-Ratio Protection on the tar.exe Extraction Path
-- [ ] **Status:** future — found while scoping T-F50's fixture/test coverage, not yet triaged for
-      severity or fixed
+- [x] **Status:** complete — design recorded, implemented, unit-tested, and on-device verified
+      2026-07-07 (AI-driven via Windows UI automation, at the user's explicit request
+      "Перевір сам я не за пк"). **Superseded same day by T-F94** — the auto-reject behavior this
+      task shipped was changed to a confirm-and-extract-if-it-fits model per user feedback after
+      seeing it on-device; this entry is left as historical record of the original gap and design,
+      not re-litigated here
 - **Depends on:** none
 
 **What:** `ZipArchiveService` rejects/skips entries whose `entry.Length / entry.CompressedLength`
@@ -1260,13 +1277,105 @@ skip-and-continue one. Needs a threshold decision (is ZIP's 1000:1 appropriate h
 changes.
 
 **Acceptance criteria:**
-- [ ] Design decision recorded in `DECISIONS.md`: detection mechanism and threshold
-- [ ] `TarProcessService.ExtractAsync` rejects (or skips, if a per-entry model turns out feasible)
-      an archive whose declared uncompressed size grossly exceeds its compressed file size
-- [ ] New test(s): a real decompression-bomb-shaped `.tar.gz` (e.g. a large run of a single
-      repeated byte, which compresses extremely well) is rejected/skipped, not extracted
-- [ ] `dotnet test --filter "Category!=Slow"` passes
-- [ ] Manual on-device verification per `CLAUDE.md`'s workflow tip (touches extraction logic)
+- [x] Design decision recorded in `DECISIONS.md`: detection mechanism and threshold — whole-archive
+      ratio (total declared size from `-tvf` column 4 vs. compressed file size), 1000:1 threshold
+      matching `ZipArchiveService`. Also corrects T-F49's blanket "don't parse other `-tvf`
+      columns" caution: the size column, unlike the date column, is locale-independent and safe
+- [x] `TarProcessService.ExtractAsync` rejects (whole-archive, not per-entry — tar's compression
+      wraps the whole stream, so no single entry can be blamed) an archive whose declared
+      uncompressed size grossly exceeds its compressed file size
+- [x] New test(s): a real decompression-bomb-shaped `.tar.gz` (5,000,000 repeated 'A' bytes,
+      compresses to a tiny fraction of that) is rejected, not extracted —
+      `ExtractAsync_ArchiveWithExtremeCompressionRatio_RejectsWholeArchive`
+- [x] `dotnet test --filter "Category!=Slow"` passes — 178/178 (124 Archiver.Core.Tests + 36
+      Archiver.Shell.Tests + 18 Archiver.Core.IntegrationTests, was 177/177 before this task)
+- [x] Manual on-device verification per `CLAUDE.md`'s workflow tip (touches extraction logic):
+      `Deploy.ps1` build+sign+install (Pakko 1.2.0.1), built a real `bomb.tar.gz` via the system
+      `tar.exe` (50,000,000 repeated 'A' bytes, compressed to 47.6 KB — 1026:1), launched via
+      `pakko://extract?files=...` protocol activation, clicked Extract, and confirmed the summary
+      dialog showed "Completed with issues — Errors (1): bomb.tar.gz — Suspicious compression
+      ratio (1026:1) across the whole archive. Archive was rejected as a precaution against
+      decompression bombs." — and that no file was written to the destination
+
+---
+
+### T-F94 — Compression-Bomb Handling: Confirm-and-Extract Instead of Auto-Reject
+- [x] **Status:** complete — implemented, unit-tested (187/187), docs updated, `Deploy.ps1`
+      build+sign+install done (Pakko 1.2.0.2), on-device verified 2026-07-07 (AI-driven via
+      Windows UI automation, at the user's standing "перевір сам" authorization)
+- **Depends on:** T-F90 (supersedes its auto-reject behavior)
+
+**What:** T-F90's tar.exe auto-reject and ZIP's older per-entry auto-skip (T-F28, v1.0) both
+always blocked a suspicious-ratio archive with no way to proceed. Per user feedback, changed both
+paths to a confirm-and-extract model: show the declared size and compression ratio, and let the
+user extract anyway if the destination disk has room for the declared size; if it doesn't fit,
+block with an explanation, no override. Full design trace, trade-offs, and implementation
+specifics in `DECISIONS.md`'s T-F94 entry — summary only here.
+
+**Design (see `DECISIONS.md`'s T-F94 entry for the full trace):**
+- New shared model `CompressionBombWarning` (`Archiver.Core/Models/`) and a new delegate property
+  on `ExtractOptions`: `ConfirmCompressionBombExtraction`. `null` (default) auto-declines,
+  preserving safe behavior for `Archiver.Shell` and any caller/test that doesn't wire a callback.
+- New shared evaluator `ArchiveEntrySecurity.EvaluateCompressionBombAsync` (returns
+  `NotABomb`/`InsufficientDiskSpace`/`UserDeclined`/`UserConfirmed`) — `MaxCompressionRatio` moved
+  here as the single source of truth (previously duplicated separately in `ZipArchiveService` and
+  `TarProcessService`). Disk space checked via `GetDiskFreeSpaceExW` (P/Invoke, not `DriveInfo` —
+  works for UNC destinations too) **before** any confirm callback runs.
+- `ZipArchiveService`'s detection unified from per-entry to whole-archive ratio (deliberate
+  trade-off, see DECISIONS.md), matching tar's model — exactly one confirm dialog per archive.
+- `TarProcessService`'s bomb outcome changed from `ArchiveError` to `SkippedFile` — `Success`
+  stays `true`, consistent with ZIP's model and T-F87's bookkeeping.
+- `IDialogService` gained `ShowCompressionBombConfirmAsync`, implemented in `DialogService.cs`
+  with explicit `DispatcherQueue.TryEnqueue` marshaling (extractors call the confirm delegate from
+  a thread-pool thread; `ContentDialog.ShowAsync()` requires the UI thread — found and fixed
+  during design review, not an afterthought).
+- `MainViewModel.ExtractAsync()` wires `ConfirmCompressionBombExtraction =
+  _dialogService.ShowCompressionBombConfirmAsync`.
+- `Archiver.Shell` unchanged (confirmed with user) — no attached console/stdin/stdout in its
+  actual Explorer-COM invocation path, so a console prompt isn't meaningful there. The delegate
+  design was validated as ready for the future **T-F09 (Archiver.CLI)** with zero `Archiver.Core`
+  changes needed when that's eventually built.
+
+**Acceptance criteria:**
+- [x] `CompressionBombWarning` model + `ConfirmCompressionBombExtraction` on `ExtractOptions`
+- [x] `ArchiveEntrySecurity.EvaluateCompressionBombAsync` + `GetAvailableFreeSpace`
+      (`GetDiskFreeSpaceExW` P/Invoke, UNC-safe) — shared by both extractors
+- [x] `ZipArchiveService`: whole-archive check before `tempDest` creation (no orphaned `_tmp` dir
+      on decline/block — a real bug found and fixed during implementation, see DECISIONS.md)
+- [x] `TarProcessService`: `ScanForUnsafeEntriesAsync` returns declared size from its existing
+      single `-tvf` pass (no second `tar.exe` call); ratio decision moved to
+      `ExtractSingleArchiveAsync` via the shared evaluator; outcome is `SkippedFile` not
+      `ArchiveError`
+- [x] `IDialogService.ShowCompressionBombConfirmAsync` + `DialogService` implementation with
+      `DispatcherQueue` marshaling; new `Resources.resw` keys (`CompressionBombDialogTitle`,
+      `CompressionBombDialogMessage`); `MainViewModel` wiring
+- [x] `Archiver.Shell` unchanged — confirmed in scope discussion with user
+- [x] New unit tests for `EvaluateCompressionBombAsync` (all 4 outcomes + warning-detail
+      correctness) — `ArchiveEntrySecurityCompressionBombTests.cs` (new)
+- [x] Reworked ZIP bomb test (whole-archive skip, not per-entry) + new "callback confirms,
+      extracts normally" test
+- [x] Reworked tar bomb test (`SkippedFile` not `ArchiveError`) + new "callback confirms, extracts
+      normally" test
+- [x] `dotnet test --filter "Category!=Slow"` passes — 187/187 (132 Archiver.Core.Tests + 36
+      Archiver.Shell.Tests + 19 Archiver.Core.IntegrationTests, was 178/178 before this task)
+- [x] `ARCHITECTURE.md` (`ExtractOptions`, `CompressionBombWarning`, `IDialogService` snippets)
+      and `DECISIONS.md` updated
+- [x] `SECURITY.md`'s two T-F90-era spots (mitigation table row, tar.exe Trust Model section)
+      updated to describe the new confirm-gated model, with fresh explicit user permission
+      obtained separately from this task's main approval, per `CLAUDE.md`'s standing rule
+- [x] `Deploy.ps1` build+sign+install (Pakko 1.2.0.2)
+- [x] Manual on-device verification: real bomb-shaped `.zip` (47.6 KB compressed, 47.7 MB
+      declared, 1026:1) and `.tar.gz` (same shape) launched via `pakko://extract?files=...`
+      protocol activation. Both showed the identical "Suspicious archive" dialog with correct
+      "47,7 MB of data, a compression ratio of 1026:1" text — confirming the shared evaluator/
+      dialog works uniformly for both extractors and the `DispatcherQueue` marshaling fix works
+      (no `RPC_E_WRONG_THREAD` crash). ZIP tested with "No": summary dialog showed "Skipped (1)"
+      with the exact declined-ratio message, filesystem confirmed nothing was extracted. tar.gz
+      tested with "Yes": no summary dialog (matches existing "no errors/skipped = no dialog"
+      behavior), filesystem confirmed `bomb.txt` extracted byte-for-byte (50,000,000 bytes,
+      content verified). Insufficient-disk-space branch not verifiable on-device (no practical
+      way to fill a real disk) — covered by unit tests only (`ArchiveEntrySecurityCompressionBombTests`),
+      noted explicitly rather than claimed as on-device-verified
 
 ---
 

@@ -116,7 +116,8 @@ Each supported format adds parser attack surface. RAR and 7z are excluded perman
 | Risk | Severity | Mitigation |
 |------|----------|-----------|
 | ZIP path traversal (e.g., `../../etc/passwd` style entries) | High | `System.IO.Compression` with .NET 8 validates entry paths — covered in `ZipArchiveService` tests |
-| ZIP bomb (highly compressed entries) | Medium | Ratio-based detection (T-F28, v1.0): entries with ratio >1000:1 skipped and reported |
+| ZIP bomb (highly compressed entries) | Medium | Whole-archive ratio check (T-F94, v1.3; supersedes T-F28's per-entry version) — an archive whose declared uncompressed size exceeds 1000:1 against the archive file's on-disk size is blocked unless the destination has free space for the declared size AND the user explicitly confirms extraction; see `DECISIONS.md`'s T-F94 entry |
+| tar-family decompression bomb (`.tar.gz`/`.bz2`/`.xz`/`.zst`/`.lzma`) | Medium | Mitigated (T-F94, v1.3; supersedes T-F90's auto-reject-only version) — same whole-archive ratio check and confirm-if-it-fits model as ZIP, run before `-xf` ever executes; see `DECISIONS.md`'s T-F94 entry |
 | Symlink/reparse point attacks in ZIP entries | Medium | Mitigated (T-F37, v1.2) — reparse point check after file creation; path traversal via reparse point rejected |
 | Alternate Data Stream entries (`:` in filename) | Medium | Mitigated (T-F38, v1.2) — ADS entries rejected |
 | Reserved Windows filenames in entries (`CON`, `NUL`, etc.) | Low-Medium | Mitigated (T-F39, v1.2) — reserved names and control characters filtered |
@@ -186,7 +187,7 @@ This is the same trust chain as `System.IO.Compression` via the .NET runtime —
 | v1.3 | Medium IL | tar.exe inherits Pakko process token |
 | v1.4 | Low IL | P/Invoke `CreateRestrictedToken` + `SetNamedSecurityInfo` quarantine directory |
 
-In both cases: extraction goes to a staging directory, all output files are validated (ADS, reserved names, reparse points), then atomically moved to final destination. The staging-directory walk alone is **not** sufficient — a symlink entry can cause tar.exe to write outside the staging directory before any C# code inspects it, confirmed empirically in T-F49 (see `DECISIONS.md`). The primary defense is a whole-archive pre-scan (`tar -tf`/`-tvf`) that rejects any archive containing a symlink/hardlink/device entry or a traversal/rooted/ADS/reserved name before extraction ever runs.
+In both cases: extraction goes to a staging directory, all output files are validated (ADS, reserved names, reparse points), then atomically moved to final destination. The staging-directory walk alone is **not** sufficient — a symlink entry can cause tar.exe to write outside the staging directory before any C# code inspects it, confirmed empirically in T-F49 (see `DECISIONS.md`). The primary defense is a whole-archive pre-scan (`tar -tf`/`-tvf`) that rejects any archive containing a symlink/hardlink/device entry or a traversal/rooted/ADS/reserved name before extraction ever runs. The same pre-scan also sums each entry's declared uncompressed size (from `-tvf`'s size column); if that total exceeds 1000x the compressed file's size on disk, extraction is blocked unless the destination has free space for the declared size AND the user explicitly confirms — the same shared evaluator (`ArchiveEntrySecurity.EvaluateCompressionBombAsync`) and confirm-if-it-fits model ZIP uses, computed once for the whole archive since tar-family compression wraps the entire stream rather than each entry independently (T-F94, v1.3; see `DECISIONS.md`'s T-F94 entry — supersedes T-F90's original auto-reject-only version).
 
 ### Absolute Path Requirement
 
