@@ -173,6 +173,12 @@ references are easy to miss otherwise (this session found 5 lingering mentions o
   `IProgressDialog.HasUserCancelled` always read back `false` (Cancel appeared to do nothing)
   until `[PreserveSig]` was added — see `Archiver.Shell/NativeProgressDialog.cs`.
 - **Low IL sandbox:** P/Invoke is acceptable for security-critical process isolation code (v1.4)
+- **UI-thread marshaling for Core→App callbacks:** any delegate `Archiver.Core` invokes that ends
+  up showing WinUI (e.g. `ExtractOptions.ConfirmCompressionBombExtraction` → `ContentDialog`) must
+  marshal onto `Window.DispatcherQueue` inside the App-layer implementation —
+  `ZipArchiveService`/`TarProcessService` run their extraction bodies off the UI thread, and
+  `ContentDialog.ShowAsync()` requires the calling thread to own the DispatcherQueue. Found via
+  design review before shipping (T-F94) — would have crashed on first real use otherwise.
 - **Solution platforms:** x64 and ARM64 only — never add `Any CPU` or `x86` configuration entries
   to the `.sln` file. When adding a new project, mirror the `Debug|x64` / `Release|x64` entries
   from `Archiver.Shell` exactly (two lines per config, right-hand side maps to project's `Any CPU`).
@@ -191,6 +197,9 @@ references are easy to miss otherwise (this session found 5 lingering mentions o
   genuinely cannot work. This applies to all tooling decisions — not just MSBuild.
 - No mocking library (Moq/NSubstitute/etc.) is used anywhere in this repo — write hand-rolled
   fake implementations of interfaces for tests instead (see `ExtractionRouterTests.cs`).
+- To unit-test an `internal` `Archiver.Core` class directly, add
+  `<InternalsVisibleTo Include="Archiver.Core.Tests" />` to `Archiver.Core.csproj` rather than
+  making it/its members `public` just for test access (first used for `ArchiveEntrySecurity`, T-F94).
 - **MSIX packaging:** never use `BeforeTargets` hooks or manual `MakeAppx` calls to inject files
   into packages. Use `Content Include` items in `.csproj` with `CopyToOutputDirectory` — this is
   the only reliable approach that survives incremental builds. `dotnet publish` with
