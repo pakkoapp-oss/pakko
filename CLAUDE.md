@@ -320,6 +320,13 @@ MSBuild tests\Archiver.ShellExtension.Tests\Archiver.ShellExtension.Tests.vcxpro
 > useful for a quick compile-check on ViewModel/DI changes without opening VS. Full MSIX
 > packaging/signing/run still needs Deploy.ps1 or VS.
 >
+> **A quick `dotnet build` can silently install a stale MSIX.** Its `DeployMsix` post-build
+> target reports success even when MSBuild's incremental packaging step skipped repackaging a
+> changed DLL into the `.msix` (confirmed via file timestamp — 55 min old after a rebuild that
+> changed a XAML-bound command). Don't trust a bare `dotnet build`'s installed package when
+> verifying a UI change on-device — run the full `.\scripts\Deploy.ps1` first (it wipes old
+> `AppPackages` output before rebuilding).
+>
 > **Testing `scripts/*.ps1` fixes:** these scripts require Windows PowerShell 5.1
 > (`#Requires -Version 5.1`). The PowerShell tool runs pwsh 7+, which defaults to UTF-8 and
 > will NOT reproduce non-BOM-file ANSI-codepage bugs (see T-F84). To actually verify a fix,
