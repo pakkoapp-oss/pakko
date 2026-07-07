@@ -470,6 +470,126 @@ Format: [ ZIP ▾]   ZIP / TAR / TAR.GZ
 
 ---
 
+### T-F91 — Multi-Language Localization (OS-Language Auto-Match, English Fallback)
+- [ ] **Status:** future — scope discussed with user 2026-07-07, not yet started
+- **Priority:** low ("nice to have" bonus, per user)
+- **Depends on:** none
+
+**What:** `src/Archiver.App/Strings/` currently has only `en-US/Resources.resw` — the app is
+English-only. WinUI 3 + MSIX already auto-select the UI language from the OS display language
+via resource qualifiers (folder name = BCP-47 locale, declared in `Package.appxmanifest`'s
+`<Resources>` element) — no app code is needed for the matching itself, only the translated
+`Resources.resw` per locale plus the manifest declarations.
+
+**Explicitly out of scope (confirmed with user):**
+- No installer-time language picker — MSIX has no install-time UI to add one to.
+- No install-location picker — MSIX always installs to the sandboxed `WindowsApps` path;
+  there is no user-choosable install directory on this platform. Document as a non-goal in
+  `DECISIONS.md` rather than revisiting.
+- No in-app manual language override — OS-language auto-match only, per user's stated scope.
+
+**Target language list (confirm before starting translation work — large scope, deliver
+incrementally per locale rather than all at once):**
+- European, human-quality translation, **excluding Russian and Belarusian**: Ukrainian, German,
+  French, Spanish, Italian, Polish, Portuguese, Dutch, Romanian, Czech, Slovak, Hungarian, Greek,
+  Swedish, Danish, Finnish, Norwegian, Bulgarian, Croatian, Serbian, Slovenian, Estonian, Latvian,
+  Lithuanian
+- Additional (user-requested, beyond Europe): Arabic, Japanese, Chinese, Indonesian, Hindi,
+  Vietnamese, Turkish, Korean, Urdu, Thai, Hebrew, Swahili
+- **Explicitly excluded:** Persian/Farsi (per user — Iran)
+- Any OS language not on this list falls back to `en-US` — WinUI 3's `ResourceManager` does this
+  automatically as long as `en-US` stays the manifest's neutral/default language.
+
+**Note on translation quality:** user asked for "human" quality, not raw machine translation —
+each locale needs a native-speaker pass or at minimum a correctness review before shipping;
+don't ship an unreviewed MT dump under a locale folder.
+
+**Acceptance criteria:**
+- [ ] Final language list confirmed with user before translation work begins
+- [ ] `Resources.resw` created under `Strings/<locale>/` for each confirmed locale, translating
+      every key already in `en-US/Resources.resw`
+- [ ] `Package.appxmanifest`'s `<Resources>` element declares every shipped locale
+- [ ] OS display language automatically selects the matching `Resources.resw` with no app code
+      change — verified on-device for at least `uk-UA`
+- [ ] An excluded/unsupported OS language (e.g. `ru-RU`) falls back to `en-US` text, not a
+      blank string or resource-load crash — verified on-device
+- [ ] No installer-time language picker or install-location picker added (confirmed non-goal)
+- [ ] Max text-length budget determined per UI string (buttons, labels, dialog titles) —
+      German/Finnish/Ukrainian and other "long" locales are notorious for overflowing controls
+      sized for English text; check longest translated string per key against the control it
+      renders in and either widen/wrap the control or shorten the translation before shipping
+- [ ] Manual on-device check for layout corruption (clipped/overlapping/truncated text, buttons
+      that no longer fit their label) on at least one long-text locale (e.g. German) and one
+      wide-glyph/RTL locale (e.g. Arabic or Hebrew)
+- [ ] `dotnet build src/Archiver.App` succeeds with all new resources
+- [ ] `DECISIONS.md` entry: MSIX install-location non-goal + language auto-match mechanism
+
+---
+
+### T-F92 — Context Menu Icon Missing on Submenu Items
+- [ ] **Status:** future — confirmed gap 2026-07-07, not yet fixed
+- **Priority:** medium (visible cosmetic gap in shipped v1.2 shell extension)
+- **Depends on:** none
+
+**What:** `PakkoRootCommand::GetIcon` (`ExplorerCommands.cpp:495`) returns a real icon
+(`Archiver.App.exe,0` via the cached `GetAppIconPath()` helper), so the top-level "Pakko" entry
+shows correctly. Every child command's `GetIcon` returns `E_NOTIMPL`/`nullptr` instead:
+`ExtractHereCommand` (:88), `ExtractFolderCommand`, `ArchiveCommand` (:225), `TestCommand` (:288),
+`ExtractDialogCommand` (:360), `CompressDialogCommand` (:430). Result: the submenu ("Extract
+here", "Extract to folder…", "Add to archive…", "Test archive", the two dialog commands) shows no
+icon in Explorer's dropdown.
+
+**Decision (per user 2026-07-07):** use the same single Pakko icon for every subcommand — no
+per-action icon set. Simplest change, matches the icon already cached for the root command.
+
+**Fix:** change each subcommand's `GetIcon` to mirror `PakkoRootCommand::GetIcon`'s existing safe
+pattern exactly — call `GetAppIconPath()`, return `E_NOTIMPL` if it's empty, otherwise
+`SHStrDupW` the path into `*ppszIcon` and return its `HRESULT`. **Never** pair `S_FALSE` with a
+null out-pointer — that exact combination already crashed `explorer.exe` once (see
+`DECISIONS.md`'s "explorer.exe Crash on Context Menu (GetIcon/GetToolTip S_FALSE)" entry); the
+`E_NOTIMPL`-based pattern already in this file is the verified-safe one.
+
+**Acceptance criteria:**
+- [ ] `ExtractHereCommand::GetIcon`, `ExtractFolderCommand::GetIcon`, `ArchiveCommand::GetIcon`,
+      `TestCommand::GetIcon`, `ExtractDialogCommand::GetIcon`, `CompressDialogCommand::GetIcon`
+      all return `Archiver.App.exe,0` via `GetAppIconPath()`, matching `PakkoRootCommand`'s pattern
+- [ ] No `S_FALSE` + null-out-pointer combination introduced anywhere in the diff
+- [ ] `Archiver.ShellExtension.Tests` (Google Test) still pass
+- [ ] Manual on-device verification: right-click a ZIP, confirm every submenu item shows the
+      Pakko icon, and Explorer does not crash or misbehave
+- [ ] `DECISIONS.md` note only if the "one shared icon" decision changes during implementation
+
+---
+
+### T-F93 — Non-Intrusive Donate Link (Buy Me a Coffee)
+- [ ] **Status:** future — scope confirmed with user 2026-07-07, blocked on a real URL
+- **Priority:** low ("not urgent," per user)
+- **Depends on:** T-F14 (About dialog with version/links — already done)
+
+**What:** add a small, non-pushy donate link to Pakko's About section and to the GitHub README,
+pointing to a Buy Me a Coffee page. Explicitly not a banner, popup, or nag — a small link/button
+only, consistent with how Buy Me a Coffee itself is typically presented.
+
+**Scope:**
+- About dialog (wherever T-F14 already put version/links, `Archiver.App`) gains one additional
+  small link/button (e.g. "☕ Support the project") opening the Buy Me a Coffee URL in the
+  system default browser.
+- `README.md` gets an equivalent small link/badge, placed near the top or bottom — not inline
+  with technical content.
+- **Blocked:** needs a real Buy Me a Coffee page/username from the user before wiring the link —
+  do not invent or ship a placeholder URL.
+
+**Acceptance criteria:**
+- [ ] Real Buy Me a Coffee URL obtained from user
+- [ ] About dialog shows one small, non-modal donate link/button
+- [ ] `README.md` shows one small donate link/badge
+- [ ] Link opens in the system default browser (not a modal or embedded frame)
+- [ ] `dotnet build src/Archiver.App` succeeds
+- [ ] Manual on-device verification: click the link in the About dialog, confirm it opens the
+      correct URL
+
+---
+
 ## v1.2 — Shell Extension
 
 > **Minimum supported OS:** Windows 10 1809 (10.0.17763.0).
