@@ -25,6 +25,27 @@ bool AllPathsAreZip(const std::vector<std::wstring>& paths);
 // Returns true iff at least one path ends with .zip (case-insensitive).
 bool AnyPathIsZip(const std::vector<std::wstring>& paths);
 
+// T-F86: true iff C:\Windows\System32\tar.exe exists. Checked once via GetFileAttributesW and
+// cached in a function-local static (mirrors ExplorerCommands.cpp's GetAppIconPath) - GetState()
+// is called by Explorer on every right-click, so this must never re-stat the filesystem per call.
+bool TarExeExists();
+
+// Returns true iff path ends with a non-ZIP extension Archiver.Core can extract via ITarService
+// (rar, 7z, tar, gz, tgz, bz2, tbz2, xz, txz, zst, tzst, lzma - case-insensitive). Extension-only,
+// no content sniffing - mirrors Archiver.App/ViewModels/MainViewModel.cs's _extractableTypes
+// allowlist (see DECISIONS.md's T-F86 entry for why an allowlist, not NanaZip's exclusion-list
+// approach, and why extension-only, not magic-byte, at gating time).
+bool HasSupportedNonZipArchiveExtension(const std::wstring& path);
+
+// Returns true iff all paths are either .zip or a HasSupportedNonZipArchiveExtension format with
+// tar.exe present. Returns false for an empty vector. Used in place of AllPathsAreZip for
+// Extract-here/Extract-to-folder gating (T-F86).
+bool AllPathsAreSupportedArchive(const std::vector<std::wstring>& paths);
+
+// Returns true iff at least one path is .zip or a HasSupportedNonZipArchiveExtension format with
+// tar.exe present. Used in place of AnyPathIsZip for Test/Extract-dialog gating (T-F86).
+bool AnyPathIsSupportedArchive(const std::vector<std::wstring>& paths);
+
 // Launches Archiver.Shell.exe with the given argument string via CreateProcess.
 // Closes PROCESS_INFORMATION handles immediately after launch; does not wait.
 // Returns HRESULT_FROM_WIN32 on CreateProcess failure.

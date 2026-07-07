@@ -186,6 +186,34 @@ public sealed class TarProcessServiceExtractTests : IDisposable
         result.Errors.Should().ContainSingle();
     }
 
+    // T-F50: a truncated/malformed tar - tar.exe's own "-tf" listing pass (the first half of
+    // ScanForUnsafeEntriesAsync's pre-scan) fails with a nonzero exit code before any entry
+    // name/type check runs, surfacing as an IOException -> ArchiveError, not an unhandled
+    // exception or a silently-empty result.
+    [Integration]
+    public async Task ExtractAsync_TruncatedTar_ReportsErrorAndExtractsNothing()
+    {
+        string archivePath = Path.Combine(_temp.Path, "corrupted.tar");
+        TarBuilder.WriteTar(archivePath,
+        [
+            new TarBuilder.Entry { Name = "a.txt", Content = Encoding.ASCII.GetBytes("this content will be cut off") },
+        ]);
+        byte[] truncated = File.ReadAllBytes(archivePath)[..300]; // cut mid-header/data, well short of the real length
+        File.WriteAllBytes(archivePath, truncated);
+
+        string destDir = Path.Combine(_temp.Path, "out");
+        var result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [archivePath],
+            DestinationFolder = destDir,
+            Mode = ExtractMode.SingleFolder,
+        });
+
+        result.Success.Should().BeFalse();
+        result.Errors.Should().ContainSingle();
+        result.CreatedFiles.Should().BeEmpty();
+    }
+
     // Regression test for the confirmed exploit in DECISIONS.md's T-F49 entry: a symlink entry
     // named "link" targeting ".." followed by "link/escaped.txt" caused raw tar.exe to write
     // escaped.txt one directory level above the extraction root. This proves the pre-scan blocks

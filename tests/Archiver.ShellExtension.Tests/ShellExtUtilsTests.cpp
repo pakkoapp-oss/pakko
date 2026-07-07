@@ -46,6 +46,91 @@ TEST(AnyPathIsZip, ReturnsFalseWhenNoneAreZip)
 }
 
 // ---------------------------------------------------------------------------
+// HasSupportedNonZipArchiveExtension / AllPathsAreSupportedArchive / AnyPathIsSupportedArchive
+// (T-F86)
+// ---------------------------------------------------------------------------
+
+TEST(HasSupportedNonZipArchiveExtension, RecognizesEachSupportedExtension)
+{
+    EXPECT_TRUE(HasSupportedNonZipArchiveExtension(L"C:\\a.rar"));
+    EXPECT_TRUE(HasSupportedNonZipArchiveExtension(L"C:\\a.7z"));
+    EXPECT_TRUE(HasSupportedNonZipArchiveExtension(L"C:\\a.tar"));
+    EXPECT_TRUE(HasSupportedNonZipArchiveExtension(L"C:\\a.gz"));
+    EXPECT_TRUE(HasSupportedNonZipArchiveExtension(L"C:\\a.tgz"));
+    EXPECT_TRUE(HasSupportedNonZipArchiveExtension(L"C:\\a.bz2"));
+    EXPECT_TRUE(HasSupportedNonZipArchiveExtension(L"C:\\a.tbz2"));
+    EXPECT_TRUE(HasSupportedNonZipArchiveExtension(L"C:\\a.xz"));
+    EXPECT_TRUE(HasSupportedNonZipArchiveExtension(L"C:\\a.txz"));
+    EXPECT_TRUE(HasSupportedNonZipArchiveExtension(L"C:\\a.zst"));
+    EXPECT_TRUE(HasSupportedNonZipArchiveExtension(L"C:\\a.tzst"));
+    EXPECT_TRUE(HasSupportedNonZipArchiveExtension(L"C:\\a.lzma"));
+}
+
+TEST(HasSupportedNonZipArchiveExtension, CaseInsensitive)
+{
+    EXPECT_TRUE(HasSupportedNonZipArchiveExtension(L"C:\\ARCHIVE.RAR"));
+    EXPECT_TRUE(HasSupportedNonZipArchiveExtension(L"C:\\Archive.7Z"));
+}
+
+TEST(HasSupportedNonZipArchiveExtension, ReturnsFalseForZip)
+{
+    // ZIP is handled separately via HasZipExtension/AllPathsAreZip - not this function.
+    EXPECT_FALSE(HasSupportedNonZipArchiveExtension(L"C:\\archive.zip"));
+}
+
+TEST(HasSupportedNonZipArchiveExtension, ReturnsFalseForUnrelatedExtension)
+{
+    EXPECT_FALSE(HasSupportedNonZipArchiveExtension(L"C:\\document.docx"));
+    EXPECT_FALSE(HasSupportedNonZipArchiveExtension(L"C:\\noextension"));
+}
+
+// AllPathsAreSupportedArchive/AnyPathIsSupportedArchive both OR in HasSupportedNonZipArchiveExtension
+// only when TarExeExists() is true. On the machine actually running this test suite,
+// C:\Windows\System32\tar.exe is expected to exist (ships with Windows 10 1803+), so these tests
+// assert the tar.exe-present behavior directly rather than mocking TarExeExists (no seam exists
+// for that - see DECISIONS.md's T-F86 entry for why: a real filesystem check, not a fake, is the
+// simplest correct answer to "is extraction possible in principle").
+TEST(AllPathsAreSupportedArchive, ReturnsFalseForEmptyVector)
+{
+    EXPECT_FALSE(AllPathsAreSupportedArchive({}));
+}
+
+TEST(AllPathsAreSupportedArchive, TrueForAllZip)
+{
+    EXPECT_TRUE(AllPathsAreSupportedArchive({ L"C:\\a.zip", L"C:\\b.zip" }));
+}
+
+TEST(AllPathsAreSupportedArchive, TrueForAllRar)
+{
+    EXPECT_TRUE(AllPathsAreSupportedArchive({ L"C:\\a.rar", L"C:\\b.rar" }));
+}
+
+TEST(AllPathsAreSupportedArchive, TrueForMixedZipAndSevenZip)
+{
+    EXPECT_TRUE(AllPathsAreSupportedArchive({ L"C:\\a.zip", L"C:\\b.7z" }));
+}
+
+TEST(AllPathsAreSupportedArchive, FalseWhenOnePathIsUnsupported)
+{
+    EXPECT_FALSE(AllPathsAreSupportedArchive({ L"C:\\a.rar", L"C:\\b.docx" }));
+}
+
+TEST(AnyPathIsSupportedArchive, ReturnsFalseForEmptyVector)
+{
+    EXPECT_FALSE(AnyPathIsSupportedArchive({}));
+}
+
+TEST(AnyPathIsSupportedArchive, TrueWhenOneTarFamilyFileAmongOthers)
+{
+    EXPECT_TRUE(AnyPathIsSupportedArchive({ L"C:\\notes.txt", L"C:\\archive.gz" }));
+}
+
+TEST(AnyPathIsSupportedArchive, FalseWhenNoneSupported)
+{
+    EXPECT_FALSE(AnyPathIsSupportedArchive({ L"C:\\file.txt", L"C:\\image.png" }));
+}
+
+// ---------------------------------------------------------------------------
 // BuildExtractHereArgs
 // ---------------------------------------------------------------------------
 

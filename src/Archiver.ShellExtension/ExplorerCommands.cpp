@@ -109,7 +109,9 @@ STDMETHODIMP ExtractHereCommand::GetCanonicalName(GUID* pguidCommandName) noexce
 STDMETHODIMP ExtractHereCommand::GetState(IShellItemArray* psia, BOOL, EXPCMDSTATE* pCmdState) noexcept
 {
     if (!pCmdState) return E_POINTER;
-    *pCmdState = AllPathsAreZip(GetPathsFromShellItemArray(psia)) ? ECS_ENABLED : ECS_HIDDEN;
+    // T-F86: AllPathsAreSupportedArchive also recognizes RAR/7z/tar-family when tar.exe is
+    // present - see DECISIONS.md's T-F86 entry.
+    *pCmdState = AllPathsAreSupportedArchive(GetPathsFromShellItemArray(psia)) ? ECS_ENABLED : ECS_HIDDEN;
     return S_OK;
 }
 
@@ -176,7 +178,8 @@ STDMETHODIMP ExtractFolderCommand::GetCanonicalName(GUID* pguidCommandName) noex
 STDMETHODIMP ExtractFolderCommand::GetState(IShellItemArray* psia, BOOL, EXPCMDSTATE* pCmdState) noexcept
 {
     if (!pCmdState) return E_POINTER;
-    *pCmdState = AllPathsAreZip(GetPathsFromShellItemArray(psia)) ? ECS_ENABLED : ECS_HIDDEN;
+    // T-F86: see ExtractHereCommand::GetState above.
+    *pCmdState = AllPathsAreSupportedArchive(GetPathsFromShellItemArray(psia)) ? ECS_ENABLED : ECS_HIDDEN;
     return S_OK;
 }
 
@@ -306,10 +309,15 @@ STDMETHODIMP TestCommand::GetCanonicalName(GUID* pguidCommandName) noexcept
 STDMETHODIMP TestCommand::GetState(IShellItemArray* psia, BOOL, EXPCMDSTATE* pCmdState) noexcept
 {
     if (!pCmdState) return E_POINTER;
-    // T-F62: unlike ExtractHere/ExtractFolder (AllPathsAreZip), Test appears whenever the
-    // selection contains at least one archive — matching NanaZip's NeedExtract-gated Test verb,
-    // which fires on a mixed selection too. ZipArchiveService.TestAsync skips non-zip paths
-    // internally, the same defense-in-depth pattern ExtractAsync already relies on.
+    // T-F62: unlike ExtractHere/ExtractFolder, Test appears whenever the selection contains at
+    // least one archive — matching NanaZip's NeedExtract-gated Test verb, which fires on a mixed
+    // selection too. ZipArchiveService.TestAsync skips non-zip paths internally, the same
+    // defense-in-depth pattern ExtractAsync already relies on.
+    // T-F86: deliberately stays AnyPathIsZip, NOT AnyPathIsSupportedArchive - ITarService has no
+    // Test/verify method, so enabling this for RAR/7z/tar would show "Test archive", run
+    // RunTestAsync's ZipArchiveService.TestAsync (which silently skips non-zip paths), and report
+    // a false "No errors detected" for an archive that was never actually tested. See
+    // DECISIONS.md's T-F86 entry.
     *pCmdState = AnyPathIsZip(GetPathsFromShellItemArray(psia)) ? ECS_ENABLED : ECS_HIDDEN;
     return S_OK;
 }
@@ -373,10 +381,14 @@ STDMETHODIMP ExtractDialogCommand::GetCanonicalName(GUID* pguidCommandName) noex
 STDMETHODIMP ExtractDialogCommand::GetState(IShellItemArray* psia, BOOL, EXPCMDSTATE* pCmdState) noexcept
 {
     if (!pCmdState) return E_POINTER;
-    // Same gate as TestCommand (AnyPathIsZip), not the stricter AllPathsAreZip
+    // Same "any, not all" breadth as TestCommand, not the stricter AllPathsAreSupportedArchive
     // ExtractHereCommand/ExtractFolderCommand use — a dialog lets the user reconsider the
     // destination even for a mixed selection that includes at least one archive.
-    *pCmdState = AnyPathIsZip(GetPathsFromShellItemArray(psia)) ? ECS_ENABLED : ECS_HIDDEN;
+    // T-F86: unlike TestCommand, this one DOES use AnyPathIsSupportedArchive - Invoke launches
+    // --open-ui --extract, which opens Archiver.App and routes through IExtractionRouter
+    // (MainViewModel/ExtractionRouter), which does support RAR/7z/tar-family (T-F85). No false
+    // "tested OK" risk here since a dialog opens rather than a silent pass/fail messagebox.
+    *pCmdState = AnyPathIsSupportedArchive(GetPathsFromShellItemArray(psia)) ? ECS_ENABLED : ECS_HIDDEN;
     return S_OK;
 }
 

@@ -117,6 +117,6 @@
     <value>Errors</value>
   </data>
   <data name="SkippedSectionHeader" xml:space="preserve">
-    <value>Skipped — unsupported format</value>
+    <value>Skipped</value>
   </data>
 </root>

@@ -20,7 +20,6 @@ public partial class App : Application
     {
         InitializeComponent();
         Services = ConfigureServices();
-        AppInstance.GetCurrent().Activated += OnActivated;
     }
 
     private static IServiceProvider ConfigureServices()
@@ -47,16 +46,14 @@ public partial class App : Application
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
-        // T-F83: AppInstance.Activated only fires for activations redirected to an
-        // already-running instance — the initial cold-start activation (including File/Protocol
-        // kinds) is never delivered as an event and must be pulled explicitly here. Without this,
-        // a cold "Extract…"/double-click launch fell through to a blank window, silently ignoring
-        // the files it was invoked with. See DECISIONS.md.
+        // T-F83: this activation is never delivered as an event on cold start (there is no
+        // AppInstance.Activated subscriber — see DECISIONS.md's T-F88 entry: Pakko is
+        // deliberately multi-instance, one process per launch, matching 7-Zip/WinRAR/NanaZip) —
+        // it must be pulled explicitly here, including File/Protocol kinds. Without this, a cold
+        // "Extract…"/double-click launch fell through to a blank window, silently ignoring the
+        // files it was invoked with.
         HandleActivation(AppInstance.GetCurrent().GetActivatedEventArgs(), "Pakko started");
     }
-
-    private void OnActivated(object? sender, AppActivationArguments args) =>
-        HandleActivation(args, "Pakko started via redirected activation");
 
     private void HandleActivation(AppActivationArguments args, string defaultLogMessage)
     {

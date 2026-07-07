@@ -963,7 +963,10 @@ covered by this fix — worth a follow-up `T-Fxx` if it needs closing.
 ---
 
 ### T-F86 — Explorer Context-Menu Gating for Non-ZIP Extract/Test (Native)
-- [ ] **Status:** future (v1.3 or later)
+- [~] **Status:** partial (v1.3) — native gating code, C++ unit tests, DECISIONS.md/DIAGRAMS.md
+      updates, and on-device smoke test (`.7z`/`.tar.gz`, this round, AI-driven via Windows UI
+      automation) all complete; only a real `.rar` end-to-end pass remains blocked (same
+      constraint as T-F85's own unfinished criterion — no RAR-capable encoder on this machine)
 - **Depends on:** T-F85 (partial)
 
 **What:** `Archiver.ShellExtension`'s `ExtractHereCommand`/`ExtractFolderCommand`/
@@ -976,28 +979,50 @@ ever invoked. This is native COM code with its own risk class (per `CLAUDE.md`'s
 "Pre-implementation research" constraint for COM/shell integration) — deliberately scoped out of
 T-F85, not an oversight.
 
-**Scope:** likely needs a new `AnyPathIsSupportedArchive`/`AllPathsAreSupportedArchive` in
-`ShellExtUtils.cpp` that also recognizes tar-family magic bytes/extensions (mirroring
-`ArchiveFormatDetector`'s C# logic, likely re-implemented in C++ rather than shared — no existing
-cross-language sharing mechanism in this repo), used in place of the ZIP-only checks for
-Extract/Test/ArchiveCommand's `GetState()`. Needs research against NanaZip's real shell-extension
-source first, per `CLAUDE.md`'s pre-implementation-research hard constraint, and a `DECISIONS.md`
-entry before implementing. `DIAGRAMS.md`'s diagram 1 (Sequence) DoD trigger applies here (COM
-interop) — update it in the same commit.
+**Scope (as implemented — see `DECISIONS.md`'s T-F86 entry for the full research trace):** fetched
+NanaZip's real `NanaZip.ShellExtension.cpp` first, per `CLAUDE.md`'s pre-implementation-research
+constraint — found its `DoNeedExtract` gate is a plain extension *exclusion* list, no magic-byte
+sniffing at all. Deviated from that shape deliberately: added a positive extension *allowlist*
+(`HasSupportedNonZipArchiveExtension` in `ShellExtUtils.cpp`, mirroring
+`MainViewModel.cs`'s existing `_extractableTypes` set) instead, since Pakko's supported-format
+surface is small and fixed, unlike 7-Zip's engine. Gated only on `TarExeExists()` (a cached
+`GetFileAttributesW` check), not full per-format `TarCapabilities` — re-parsing `tar.exe --version`
+in C++ would duplicate `TarVersionParser`'s canonical logic for a non-authoritative visibility
+check; the precise per-format "libarchive too old" answer still comes from
+`ExtractionRouter.BuildUnsupportedReason` at actual-extraction time, same message either way
+(context menu or in-app file picker). `TestCommand` was found to need staying `AnyPathIsZip` —
+`ITarService` has no Test/verify method, so enabling it for RAR/7z would produce a false "No
+errors detected" via `ZipArchiveService.TestAsync`'s silent non-zip skip. `ArchiveCommand` also
+stays unchanged (already correct: hides only for all-ZIP). `DIAGRAMS.md`'s diagram 1 updated in
+the same commit per its own COM-interop DoD trigger.
 
 **Acceptance criteria:**
-- [ ] Right-clicking a `.rar`/`.7z`/tar-family file shows Extract/Test verbs (same conditions
-      `.zip` already gets), gated by whether `TarCapabilities` supports the format on this OS
-- [ ] `ArchiveCommand`'s inverted condition (hidden for all-ZIP, shown otherwise) updated to
-      match — a `.rar`-only selection should still show "Add to archive", same as today
-- [ ] C++ Google Test suite (`Archiver.ShellExtension.Tests`) covers the new/changed predicate
-- [ ] Manual on-device verification: right-click a real `.rar` file, confirm Extract appears and
-      works end-to-end through the shell path
+- [x] Right-clicking a `.rar`/`.7z`/tar-family file shows Extract verbs (Extract here/to folder/
+      dialog) when `tar.exe` is present — same conditions `.zip` already gets. Test intentionally
+      excluded (see Scope above — no `ITarService` Test capability exists to back it)
+- [x] `ArchiveCommand`'s inverted condition (hidden for all-ZIP, shown otherwise) confirmed
+      unchanged and covered by test — a `.rar`-only selection still shows "Add to archive", same
+      as today (`AllPathsAreSupportedArchive.TrueForAllRar` new test)
+- [x] C++ Google Test suite (`Archiver.ShellExtension.Tests`) covers the new/changed predicate —
+      55/55 passing (was 44/44)
+- [x] Manual on-device verification (done 2026-07-07, AI-driven via Windows UI automation, at the
+      user's explicit request "Зроби сам усі смоук тести"): built real `smoke_test.tar.gz`
+      (via system `tar.exe`) and `smoke_test.7z` (via `NanaZipC.exe`) in a scratch folder, right-
+      clicked each in Explorer, confirmed the Pakko submenu showed "Extract…"/"Extract here"/
+      "Extract to \"<name>\\\""/"Compress…"/"Add to \"<name>.zip\"" and — critically — **no "Test
+      archive" entry** for either non-ZIP file, matching the deliberate `AnyPathIsZip`-only gate
+      on `TestCommand`. Clicked "Extract here" for both; confirmed via filesystem that each
+      produced a correctly-named subfolder with the exact original file content
+      ("smoke test tar.gz content" / "hello from a real 7z fixture" contents matched byte-for-
+      byte). Real `.rar` remains untested — no RAR-capable encoder available on this machine (same
+      gap as T-F85/T-F49); routing/gating logic for RAR is covered by
+      `AllPathsAreSupportedArchive.TrueForAllRar`'s unit test instead.
 
 ---
 
 ### T-F88 — Dead Code: `AppInstance.Activated` Subscription Never Fires
-- [ ] **Status:** future — found while smoke-testing T-F85, low priority
+- [x] **Status:** complete — user confirmed multi-instance is the intended behavior; dead
+      subscription removed, compile-checked, and on-device verified (2026-07-07, AI-driven)
 
 **What:** While smoke-testing T-F85, launching Pakko twice in a row via
 `pakko://extract?files=...` opened **two separate windows/processes** instead of the second
@@ -1010,27 +1035,32 @@ process. That means `App()`'s `AppInstance.GetCurrent().Activated += OnActivated
 Pakko's own activations; `OnLaunched`'s `GetActivatedEventArgs()` path (T-F83) is what actually
 handles every real launch, cold or warm.
 
-**Decision needed before removing anything:** multi-instance-per-launch matches 7-Zip File
-Manager/WinRAR/NanaZip precedent (each is a one-shot "do the task" tool, not a persistent
-workspace) — see this session's discussion. So the fix may be "remove the dead subscription"
-(if multi-instance is the intended, kept behavior) rather than "implement single-instance
-redirection" (which raises its own unresolved UX question: what should happen to an in-progress
-operation, i.e. `IsBusy=true`, if a second activation ever did redirect into it?). Confirm intent
-before implementing either direction.
+**Decision (user-confirmed, per `DECISIONS.md`'s T-F88 entry):** stay multi-instance —
+matches 7-Zip File Manager/WinRAR/NanaZip precedent (each is a one-shot "do the task" tool, not a
+persistent workspace). Single-instance redirection was rejected: it raises an unresolved UX
+question (what happens to a redirected activation while the first instance has `IsBusy=true`?)
+for a behavior change nothing was asking for.
+
+**Fix:** removed `App()`'s `AppInstance.GetCurrent().Activated += OnActivated;` subscription and
+the now-unreachable `OnActivated` method. `OnLaunched`'s comment updated to state the
+multi-instance decision explicitly.
 
 **Acceptance criteria:**
-- [ ] Either: remove the unused `AppInstance.Activated`/`OnActivated` subscription and document
-      that Pakko is deliberately multi-instance (simplest, matches other archivers) — or:
-      implement real single-instance redirection via `FindOrRegisterForKey`/`RedirectActivationTo`
-      with an explicit answer for the `IsBusy` redirect case
-- [ ] `dotnet build src/Archiver.App` (works via CLI, confirmed this session) shows no new
-      warnings from the change
-- [ ] Manual on-device verification of whichever direction is chosen
+- [x] Removed the unused `AppInstance.Activated`/`OnActivated` subscription and documented that
+      Pakko is deliberately multi-instance (user confirmed this is the intended direction)
+- [x] `dotnet build src/Archiver.App` shows no new warnings from the change (0 warnings, 0 errors)
+- [x] Manual on-device verification (done 2026-07-07, AI-driven via `pakko://extract?...`
+      protocol activation launched twice in a row through PowerShell `Start-Process`): confirmed
+      two independent `Archiver.App` processes (PIDs distinct) each with their own "Pakko" window
+      — behavior unchanged from before the dead-code removal, as expected
 
 ---
 
 ### T-F89 — Cosmetic: Operation Summary Dialog Mislabels Every Skip Reason as "Unsupported Format"
-- [ ] **Status:** future — found while manually verifying T-F87 on-device
+- [~] **Status:** partial — fix applied, compile-checked, and on-device verified for the
+      conflict-skip case (2026-07-07, AI-driven); the unsupported-format case still can't be
+      triggered on this machine — this system's tar.exe/bsdtar 3.8.4 supports every format
+      `TarCapabilities` tracks, same known limitation already noted on T-F85/T-F86
 - **Depends on:** none
 
 **What:** `Resources.resw`'s `SkippedSectionHeader` string is hardcoded to *"Skipped — unsupported
@@ -1057,35 +1087,120 @@ the mislabel in practice.
 `ShowOperationSummaryAsync` implementation for how the header is consumed before choosing an
 approach.
 
+**Fix:** `SkippedSectionHeader` in `Resources.resw` changed from `"Skipped — unsupported format"`
+to plain `"Skipped"` — `DialogService.cs`'s existing `$"{header} ({count})"` composition renders
+this as "Skipped (N)", matching the reason-neutral, count-suffixed shape `ErrorSectionHeader`
+("Errors") already uses. Per-item reason text underneath (already correct and specific) is
+unchanged.
+
 **Acceptance criteria:**
-- [ ] Section header no longer claims "unsupported format" for skips that aren't format-related
+- [x] Section header no longer claims "unsupported format" for skips that aren't format-related
       (conflict skips, ADS/reserved-name/reparse-point/zip-bomb skips, whole-archive skips)
-- [ ] Existing "unsupported format" skips (RAR/7z on pre-23H2 tar.exe) still read sensibly under
-      whatever header replaces it
-- [ ] `dotnet build src/Archiver.App` succeeds (WinUI 3, CLI-buildable per `CLAUDE.md`)
-- [ ] Manual on-device verification: trigger both a conflict-skip and an unsupported-format skip,
-      confirm the dialog wording is accurate for each
+- [x] Existing "unsupported format" skips (RAR/7z on pre-23H2 tar.exe) still read sensibly under
+      whatever header replaces it — "Skipped (N)" plus the existing specific per-item reason text
+- [x] `dotnet build src/Archiver.App` succeeds (WinUI 3, CLI-buildable per `CLAUDE.md`)
+- [x] Manual on-device verification, conflict-skip case (done 2026-07-07, AI-driven via
+      `pakko://extract?...` protocol activation + Windows UI automation): built a ZIP with one
+      entry, pre-created a same-named conflicting file at the extraction destination, extracted
+      with default `OnConflict=Skip` — summary dialog showed the exact text "⊘ Skipped (1)" (not
+      the old "Skipped — unsupported format"), with the specific per-item reason ("No entries were
+      extracted from this archive — every entry was skipped.") intact underneath
+- [ ] Unsupported-format case: still not triggerable on this machine (see Status above)
+
+---
+
+### T-F90 — Gap: No ZIP-Bomb-Style Compression-Ratio Protection on the tar.exe Extraction Path
+- [ ] **Status:** future — found while scoping T-F50's fixture/test coverage, not yet triaged for
+      severity or fixed
+- **Depends on:** none
+
+**What:** `ZipArchiveService` rejects/skips entries whose `entry.Length / entry.CompressedLength`
+exceeds `MaxCompressionRatio` (1000:1) as a ZIP-bomb precaution (`ZipArchiveService.cs:15`, `:726-735`).
+`TarProcessService`/`ArchiveEntrySecurity` has no equivalent check anywhere — confirmed by
+grepping `TarProcessService.cs` for "ratio"/"bomb"/"1000" and finding zero matches beyond
+unrelated `OperationCanceledException` text. T-F50's own spec (this file, before this edit) asked
+for a `bomb_tar.tar.gz` fixture and a "bomb skipped" test — writing that test would have silently
+asserted behavior that doesn't exist, so it was pulled out into this task instead of faked or
+quietly dropped.
+
+**Why this isn't a straightforward port of ZIP's check:** ZIP's ratio check is per-entry, because
+each ZIP entry is independently compressed. A `.tar.gz`/`.tar.bz2`/etc. wraps the *entire tar
+stream* in one compression pass — there is no per-entry compressed size to read before extraction
+the way `ZipArchiveEntry.CompressedLength` gives one for free. Detecting a decompression bomb here
+means comparing the compressed file's on-disk size against the tar stream's total *uncompressed*
+size (summed from `-tvf`'s listing, or watched during extraction), which is a different mechanism
+than ZIP's, not a copy-paste of the existing constant and branch.
+
+**Scope (not yet designed):** likely extends `ScanForUnsafeEntriesAsync`'s existing whole-archive
+pre-scan (already runs `-tvf` and reads per-entry data) to also sum declared entry sizes and
+compare against the compressed file's actual size on disk, rejecting the whole archive above some
+ratio threshold — mirroring T-F49's "reject before extraction runs" model rather than ZIP's
+skip-and-continue one. Needs a threshold decision (is ZIP's 1000:1 appropriate here?) and a
+`DECISIONS.md` entry before implementing, per this project's usual practice for extraction-security
+changes.
+
+**Acceptance criteria:**
+- [ ] Design decision recorded in `DECISIONS.md`: detection mechanism and threshold
+- [ ] `TarProcessService.ExtractAsync` rejects (or skips, if a per-entry model turns out feasible)
+      an archive whose declared uncompressed size grossly exceeds its compressed file size
+- [ ] New test(s): a real decompression-bomb-shaped `.tar.gz` (e.g. a large run of a single
+      repeated byte, which compresses extremely well) is rejected/skipped, not extracted
+- [ ] `dotnet test --filter "Category!=Slow"` passes
+- [ ] Manual on-device verification per `CLAUDE.md`'s workflow tip (touches extraction logic)
 
 ---
 
 ### T-F50 — tar.exe Test Fixtures
-- [ ] **Status:** future (v1.3)
+- [~] **Status:** partial (v1.3) — all achievable coverage implemented; bomb detection descoped to
+      T-F90 (missing feature, not a fixture gap) and RAR remains unobtainable on this machine
+      (matches T-F49/T-F85/T-F86's existing documented gap)
 
-**What:** Create fixture set for tar format integration tests. Update `GenerateFixtures` project to generate tar fixtures.
+**What (as implemented — deviates from the original "committed `Fixtures/tar/` corpus" spec
+below; see Design deviation note):** round-trips every tar-family compression variant
+`TarProcessService.ExtractAsync` supports, plus the formats it can only read.
 
-**Fixtures required** (`tests/Archiver.Core.Tests/Fixtures/tar/`):
-- `valid_tar.tar`, `valid_tar_gz.tar.gz`, `valid_tar_bz2.tar.bz2`
-- `valid_tar_xz.tar.xz`, `valid_tar_zst.tar.zst`, `valid_tar_lzma.tar.lzma`
-- `valid_7z.7z`, `valid_rar4.rar`, `valid_rar5.rar`
-- `corrupted_tar.tar`, `zipslip_tar.tar`, `bomb_tar.tar.gz`
-- `unicode_cyrillic.tar`, `unicode_emoji.tar`
+**Design deviation from the original spec (advisor-reviewed before implementing):** the original
+text asked for a committed binary corpus under `tests/Archiver.Core.Tests/Fixtures/tar/`,
+generated by the `GenerateFixtures` project. Empirically checked what the system's `tar.exe`
+(bsdtar 3.8.4) can actually *create*, not just read (`tar --help`'s `--format` only lists
+`ustar|pax|cpio|shar` for writing — no 7z/rar writer exists in libarchive at all): tar, tar.gz,
+tar.bz2, tar.xz, tar.zst, and tar.lzma can all be created by `tar.exe` itself. Generating these at
+test-run time (new `ExternalTarFixtureBuilder.cs`, shells out to `tar.exe`) avoids committing
+binary blobs for formats that are perfectly reproducible in CI, and extends the precedent
+`TarBuilder.cs` already set for plain `.tar` (self-generated, "T-F50 owns the full multi-format
+fixture set later" per its own doc comment). Only 7z needed a committed fixture (`Fixtures/valid.7z`,
+built via NanaZip's `NanaZipC.exe` — same tool T-F85 already used for this, documented in
+`Fixtures/README.md`) since `tar.exe` can only read it. RAR needed a fixture too but none could be
+obtained (no RAR-capable encoder installed anywhere on this machine — same finding as T-F85/T-F86).
+All new tests live in `tests/Archiver.Core.IntegrationTests/`, matching where T-F49's tar tests
+already are, not a new `tests/Archiver.Core.Tests/Fixtures/tar/` directory as the original text
+named — that directory belongs to the ZIP-fixture/`GenerateFixtures` convention, which this task's
+tests don't use.
+
+**Files:** `tests/Archiver.Core.IntegrationTests/ExternalTarFixtureBuilder.cs` (new),
+`TarProcessServiceCompressedFormatsTests.cs` (new — tar.gz/bz2/xz/zst/lzma round-trips + a
+unicode-filename tar.gz test), `TarProcessServiceExternalFormatsTests.cs` (new — the committed
+`valid.7z` fixture), `TarProcessServiceExtractTests.cs` (added a truncated/corrupted-tar test),
+`Fixtures/valid.7z` and `Fixtures/README.md` (new).
 
 **Acceptance criteria:**
-- [ ] All fixtures present and generated by `GenerateFixtures` project (where tar.exe can create them)
-- [ ] Integration tests for each valid fixture format
-- [ ] Security tests: zipslip rejected, bomb skipped, ADS blocked
-- [ ] Tests tagged `[SkipIfFormatUnsupported]` for RAR5/7z (require Win 11 23H2+)
-- [ ] `dotnet test` passes (skips gracefully where format unsupported)
+- [x] Valid-format round-trip coverage: tar (already covered pre-existing), tar.gz, tar.bz2,
+      tar.xz, tar.zst, tar.lzma (all generated at test time via real `tar.exe`), 7z (committed
+      fixture) — RAR excluded, see Status above
+- [x] Corrupted-archive test: a truncated `.tar` is rejected with an `ArchiveError`, not an
+      unhandled exception or silent empty success
+- [x] zipslip: already covered by the pre-existing
+      `ExtractAsync_ArchiveWithParentTraversalEntry_RejectsWholeArchive` test — no new test needed
+- [ ] Bomb: **descoped to T-F90** — no compression-ratio protection exists on the tar.exe path to
+      test against; writing a "bomb skipped" test against nonexistent behavior would have been
+      dishonest, so this criterion is intentionally left unchecked here
+- [x] ADS: already covered by the pre-existing
+      `ExtractAsync_ArchiveWithAlternateDataStreamEntry_RejectsWholeArchive` test
+- [x] Tests tagged `[SkipIfFormatUnsupported]` for bz2/xz/zst/lzma/7z (RAR has no test — no
+      fixture obtainable)
+- [x] Unicode filename coverage: new tar.gz test with Cyrillic+CJK content and a Cyrillic filename
+- [x] `dotnet test --filter "Category!=Slow"` passes — 176/176 (124 Archiver.Core.Tests + 36
+      Archiver.Shell.Tests + 16 Archiver.Core.IntegrationTests, was 168/168 before this task)
 
 ---
 
