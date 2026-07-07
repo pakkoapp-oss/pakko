@@ -152,6 +152,11 @@ references are easy to miss otherwise (this session found 5 lingering mentions o
 - MVVM: no business logic in `.xaml.cs` files
 - `PublishTrimmed` must be `false` for `Archiver.App` — WinUI 3 `x:Bind` generated code is not trim-compatible. Trimming silently breaks event handlers and Command bindings in Release builds.
 - **tar.exe:** always use `C:\Windows\System32\tar.exe` (absolute path) — never via PATH
+- **tar.exe format support:** can *create* tar/gz/bz2/xz/zst/lzma (compression filters on a
+  ustar/pax/cpio/shar writer) but can only *read* 7z/rar — libarchive has no writer for either
+  (`tar --help`'s `--format` lists only `ustar|pax|cpio|shar`). Confirmed empirically while
+  building T-F50's fixtures — don't assume `tar -cf out.7z ...` produces real 7z (it silently
+  writes a plain ustar tar under that filename instead).
 - **MOTW:** always propagate `Zone.Identifier` ADS on extracted files (v1.2+)
 - **Shell extension:** `IExplorerCommand` only — no legacy `IContextMenu` COM shell extensions
 - **Context-menu ordering:** primary action commands (Extract/Archive) always precede
@@ -312,6 +317,11 @@ MSBuild tests\Archiver.ShellExtension.Tests\Archiver.ShellExtension.Tests.vcxpro
 > will NOT reproduce non-BOM-file ANSI-codepage bugs (see T-F84). To actually verify a fix,
 > invoke `powershell.exe` explicitly rather than relying on the tool's default interpreter.
 >
+> **PowerShell tool's cwd persists across calls:** if a PowerShell call `cd`s/`Set-Location`s
+> into a scratch folder (e.g. while building a test fixture), a later `rm -rf`/`Remove-Item` on
+> that folder — even from Bash — fails with "in use" until a PowerShell call explicitly
+> `Set-Location`s back out first.
+>
 > **Deploy shortcuts:**
 > Release build in VS triggers `Deploy.ps1 -DeployOnly` automatically (post-build event).
 > For manual deploy from terminal: `.\scripts\Deploy.ps1` (full build + sign + install)
@@ -409,6 +419,8 @@ Lessons learned during v1.2 MSIX packaging work — follow these to avoid known 
 - **A COM surrogate (`dllhost.exe`) hosting `Archiver.ShellExtension.dll` can lock the DLL/PDB**
   after testing the context menu, causing `C1041`/file-in-use errors on the next rebuild. Run
   `taskkill /F /IM dllhost.exe` (or find the specific PID) before rebuilding if this happens.
+  The same surrogate can also lock unrelated scratch files/folders touched during that
+  right-click (e.g. a smoke-test directory) — same fix if cleanup fails with "in use".
 - **To verify a shell-triggered EXE actually runs** (Explorer/COM invocation can't be scripted):
   launch it directly the same way the COM caller would (`Start-Process <path> -ArgumentList ...`)
   and check `Get-WinEvent -FilterHashtable @{LogName='Application'; ProviderName='.NET Runtime'}`
