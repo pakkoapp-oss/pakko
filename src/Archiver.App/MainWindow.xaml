@@ -28,8 +28,8 @@
             </tb:TaskbarIcon.ContextFlyout>
         </tb:TaskbarIcon>
 
-        <!-- Row 0: Add Files / Add Folder / About Buttons -->
-        <Grid Grid.Row="0" ColumnDefinitions="Auto,Auto,*,Auto" MinHeight="40">
+        <!-- Row 0: Add Files / Add Folder / Hash / About Buttons -->
+        <Grid Grid.Row="0" ColumnDefinitions="Auto,Auto,*,Auto,Auto" MinHeight="40">
             <Button
                 Grid.Column="0"
                 x:Uid="AddFilesButton"
@@ -41,7 +41,13 @@
                 Command="{x:Bind ViewModel.BrowseFolderCommand, Mode=OneWay}"/>
             <Button
                 Grid.Column="3"
+                Content="Hash..."
+                HorizontalAlignment="Right"
+                Command="{x:Bind HashFilesCommand, Mode=OneTime}"/>
+            <Button
+                Grid.Column="4"
                 Content="About"
+                Margin="8,0,0,0"
                 HorizontalAlignment="Right"
                 Command="{x:Bind TrayAboutCommand, Mode=OneTime}"/>
         </Grid>

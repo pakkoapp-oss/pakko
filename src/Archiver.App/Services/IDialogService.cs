@@ -11,5 +11,6 @@ public interface IDialogService
     Task<IReadOnlyList<string>> PickFoldersAsync();
     Task ShowOperationSummaryAsync(string operationName, ArchiveResult result);
     Task ShowAboutAsync();
+    Task ShowFileHashAsync();
     Task<bool> ShowCompressionBombConfirmAsync(CompressionBombWarning warning);
 }

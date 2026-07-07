@@ -1,4 +1,5 @@
 using System.IO;
+using System.Security.Cryptography;
 using Archiver.App.Models;
 using Archiver.Core.Models;
 using Windows.ApplicationModel.Resources;
@@ -6,6 +7,7 @@ using Windows.System;
 using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
 using Windows.Storage.Pickers;
 
 namespace Archiver.App.Services;
@@ -182,6 +184,61 @@ public sealed class DialogService : IDialogService
             XamlRoot = _window!.Content.XamlRoot
         };
 
+        await dialog.ShowAsync();
+    }
+
+    public async Task ShowFileHashAsync()
+    {
+        var files = await PickFilesAsync();
+        if (files.Count == 0)
+            return;
+
+        var panel = new StackPanel { Spacing = 12 };
+
+        foreach (var path in files)
+        {
+            var itemPanel = new StackPanel { Spacing = 2 };
+            itemPanel.Children.Add(new TextBlock
+            {
+                Text = Path.GetFileName(path),
+                FontWeight = FontWeights.SemiBold
+            });
+
+            string hashText;
+            try
+            {
+                await using var stream = File.OpenRead(path);
+                var hash = await SHA256.HashDataAsync(stream);
+                hashText = Convert.ToHexString(hash).ToLowerInvariant();
+            }
+            catch (Exception ex)
+            {
+                hashText = $"Error: {ex.Message}";
+            }
+
+            itemPanel.Children.Add(new TextBlock
+            {
+                Text = hashText,
+                FontFamily = new FontFamily("Consolas"),
+                IsTextSelectionEnabled = true,
+                TextWrapping = TextWrapping.Wrap,
+                Opacity = 0.85
+            });
+            panel.Children.Add(itemPanel);
+        }
+
+        var dialog = new ContentDialog
+        {
+            Title = "SHA-256",
+            Content = new ScrollViewer
+            {
+                Content = panel,
+                MaxHeight = 400,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto
+            },
+            CloseButtonText = "OK",
+            XamlRoot = _window!.Content.XamlRoot
+        };
         await dialog.ShowAsync();
     }
 

@@ -17,6 +17,7 @@ public sealed partial class MainWindow : Window
     public ICommand TrayAboutCommand { get; }
     public ICommand TrayExitCommand { get; }
     public ICommand TrayLeftClickCommand { get; }
+    public ICommand HashFilesCommand { get; }
 
 
     public MainWindow()
@@ -32,6 +33,8 @@ public sealed partial class MainWindow : Window
             await App.Services.GetRequiredService<IDialogService>().ShowAboutAsync();
         });
         TrayExitCommand = new RelayCommand(() => Application.Current.Exit());
+        HashFilesCommand = new AsyncRelayCommand(async () =>
+            await App.Services.GetRequiredService<IDialogService>().ShowFileHashAsync());
         TrayLeftClickCommand = new RelayCommand(() =>
         {
             if (this.AppWindow.IsVisible)

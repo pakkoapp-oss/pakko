@@ -752,14 +752,52 @@ Pakko ►
 ---
 
 ### T-F46 — File Hash Viewer
-- [ ] **Status:** future (v1.2)
+- [x] **Status:** complete — implemented, compiled, full `Deploy.ps1` build+sign+install
+      (Pakko 1.2.0.3), on-device verified 2026-07-07 (AI-driven via Windows UI automation, per
+      user's "continue with what's unblocked" direction this round)
 
 **What:** Select file(s) → show SHA-256 hash in UI. Useful for integrity verification before opening extracted files.
 
+**Implementation:** `IDialogService.ShowFileHashAsync()` (new, mirrors the existing
+`ShowAboutAsync()` shape — a presentation-only method on the App-layer dialog service, not a new
+`Archiver.Core` service method, so this stays within the task's "UI only" scope). Reuses the
+existing `PickFilesAsync()` file picker; for each picked file, hashes via
+`await SHA256.HashDataAsync(stream)` (async, so a large file doesn't block the UI thread) and
+renders the digest as lowercase hex in a `TextBlock` with `IsTextSelectionEnabled="True"` (so the
+hash can be copied) inside the same `ContentDialog` + per-item panel layout
+`ShowOperationSummaryAsync` already uses. A per-file `try/catch` reports `"Error: {message}"`
+inline instead of failing the whole dialog (a picked file being locked/deleted before hashing is a
+real boundary condition, same reasoning as the rest of this codebase's per-item error handling).
+Wired via a new `HashFilesCommand` in `MainWindow.xaml.cs`, following `TrayAboutCommand`'s exact
+pattern (thin `AsyncRelayCommand` resolving `IDialogService` from DI) — no `MainViewModel` changes
+needed since file selection here is independent of the main file list. New "Hash..." button added
+to `MainWindow.xaml`'s Row 0, to the left of "About" (plain ASCII "..." in the label, not a real
+ellipsis glyph, per this repo's recurring mojibake-in-string-literals rule).
+
+**Found along the way:** a plain `dotnet build src/Archiver.App/Archiver.App.csproj
+/p:Platform=x64` compiled the new code correctly (confirmed `HashFilesCommand` present in the
+built DLL and generated `MainWindow.g.cs`) and its `DeployMsix` post-build target reported success,
+but the `.msix` it installed was **stale by 55 minutes** — MSBuild's incremental packaging step
+didn't consider the changed DLL a reason to repackage. On-device Hash button was missing after
+that install. A full `.\scripts\Deploy.ps1 -Thumbprint "..."` (which removes old `AppPackages`
+output before rebuilding, per its own script) produced a correctly fresh `.msix` and the button
+appeared. Worth knowing for future UI changes: a quick `dotnet build` compile-check is fine to
+verify the code compiles, but don't trust its `.msix` for on-device verification — always redeploy
+via the full `Deploy.ps1` before checking a UI change on-device.
+
 **Acceptance criteria:**
-- [ ] File picker → show SHA-256 hash of selected file(s)
-- [ ] UI only — no new service methods required
-- [ ] Hash computed via `System.Security.Cryptography.SHA256`
+- [x] File picker → show SHA-256 hash of selected file(s)
+- [x] UI only — no new `Archiver.Core` service methods (only a new `IDialogService`/`DialogService`
+      presentation method, same category as the existing `ShowAboutAsync`)
+- [x] Hash computed via `System.Security.Cryptography.SHA256` (`SHA256.HashDataAsync`)
+- [x] `dotnet build src/Archiver.App` succeeds; `dotnet test --filter "Category!=Slow"` unaffected
+      — 187/187 (no new unit tests — `DialogService` isn't unit-testable per the existing "Known
+      test gaps" section, and SHA-256 itself is a framework primitive, not new logic to test)
+- [x] Manual on-device verification: `Deploy.ps1` build+sign+install (Pakko 1.2.0.3), clicked
+      "Hash...", picked a test file (`sample.txt`, content `"hello hash test\n"`), confirmed the
+      dialog showed the exact digest `bd2e409445c3598b966929f01c2a22ac92d1d205ea7ba878dfbea35e63f50c37`
+      — matching `Get-FileHash -Algorithm SHA256` on the same file byte-for-byte. AI-driven
+      automation (agent-run via Windows UI automation, not the user personally)
 
 ---
 
@@ -915,11 +953,12 @@ checks shared with `ZipArchiveService`, moved here so validation can't drift bet
 
 ### T-F85 — Wire ITarService into UI/Shell for Non-ZIP Extraction
 - [~] **Status:** partial (v1.3) — `Archiver.Core`/`Archiver.App`/`Archiver.Shell` wiring and
-      tests complete; `.tar.gz` and `.7z` verified end-to-end through the installed app
-      (2026-07-07, AI-driven). Stays `[~]` — real `.rar` is confirmed *impossible* to construct
-      on this machine (no RAR-capable encoder installed), not merely untested; graduate to `[x]`
-      once a real `.rar` is tested elsewhere, or accept the routing-level unit-test coverage as
-      sufficient (user's call)
+      tests complete; `.tar.gz`, `.7z`, and now real `.rar` (2026-07-07, using T-F50's committed
+      `valid.rar` fixture) all verified end-to-end through the installed app. Stays `[~]` — the
+      remaining open criterion (a `TarCapabilities`-unsupported format selected with "delete after
+      extraction" checked) still can't be exercised on this machine, since this system's tar.exe
+      (bsdtar 3.8.4) supports every format `TarCapabilities` tracks — there is no naturally
+      unsupported format here to test against, unrelated to the RAR fixture gap this closes
 - **Depends on:** T-F49 (done)
 
 **What:** `TarProcessService`/`ITarService` was DI-registered (`App.xaml.cs`) but nothing called
@@ -996,14 +1035,19 @@ right-click still won't show Extract until that native code changes too. Tracked
       Extract, and confirmed via filesystem (`test\hello.txt`, byte-for-byte match) and
       `pakko.log` (second clean `Extract completed` line) that the `ArchiveFormatDetector`
       SevenZip magic-byte path routes correctly end-to-end.
-- [ ] **Not verified: real `.rar` specifically — confirmed impossible to construct on this
-      machine, not just untested.** `NanaZipC.exe a -trar test.rar hello.txt` fails with
-      `System ERROR: Not implemented` — 7-Zip/NanaZip can only *read* RAR (proprietary encoder,
-      owned by WinRAR), never create it. No RAR-capable encoder is installed on this machine.
-      RAR *routing* logic itself is covered by `ExtractionRouterTests` (magic-byte-crafted fakes)
-      and `TarCapabilities.SupportsRar`-gating is unit-tested, but a real end-to-end RAR
-      extraction through the installed app needs either a real `.rar` file sourced elsewhere or
-      a machine with WinRAR installed to build one.
+- [x] Manual on-device verification (real `.rar`, done 2026-07-07 using T-F50's committed
+      `valid.rar` fixture — `rar.txt`, content `"hello from a real rar fixture\n"`): copied the
+      fixture to a scratch folder, launched Pakko via `pakko://extract?files=...` protocol
+      activation, confirmed the file loaded (`Type: RAR`), clicked Extract, and confirmed via both
+      the filesystem (`smoketest\rar.txt`, byte-for-byte match) and `pakko.log`
+      (`Extract completed — 1 file(s) → ...\pakko-rar-smoketest`, no Warn/Error lines) that
+      extraction succeeded end-to-end through `MainViewModel` → `IExtractionRouter` →
+      `ArchiveFormatDetector` (detected RAR) → `TarProcessService`. AI-driven automation (agent-run
+      via Windows UI automation, not the user personally) — done at the user's general "continue
+      with what's unblocked" direction this round, not a specific "перевір сам" for this task.
+      Note: the WinUI `Extract` button did not respond to UIA `Invoke`-pattern clicks in this
+      session (silent no-op, no log line) — switching to `mouse_control`'s real synthetic mouse
+      click at the same coordinates worked. Worth knowing for future on-device passes.
 - [ ] Manual on-device verification also covers: a format `TarCapabilities` reports unsupported
       on this machine, selected with "delete after extraction" checked — confirm whether the
       source file survives (see **T-F87** below; `MainViewModel.ExtractAsync` only checks
@@ -1096,11 +1140,11 @@ covered by this fix — worth a follow-up `T-Fxx` if it needs closing.
 ---
 
 ### T-F86 — Explorer Context-Menu Gating for Non-ZIP Extract/Test (Native)
-- [~] **Status:** partial (v1.3) — native gating code, C++ unit tests, DECISIONS.md/DIAGRAMS.md
-      updates, and on-device smoke test (`.7z`/`.tar.gz`, this round, AI-driven via Windows UI
-      automation) all complete; only a real `.rar` end-to-end pass remains blocked (same
-      constraint as T-F85's own unfinished criterion — no RAR-capable encoder on this machine)
-- **Depends on:** T-F85 (partial)
+- [x] **Status:** complete — native gating code, C++ unit tests, DECISIONS.md/DIAGRAMS.md
+      updates, and on-device smoke tests (`.7z`/`.tar.gz` in an earlier round; real `.rar` closed
+      2026-07-07 using T-F50's committed `valid.rar` fixture, AI-driven via Windows UI automation)
+      all complete
+- **Depends on:** T-F85 (partial — see T-F85's own status; unaffected by this task's closure)
 
 **What:** `Archiver.ShellExtension`'s `ExtractHereCommand`/`ExtractFolderCommand`/
 `ExtractDialogCommand`/`TestCommand`/`ArchiveCommand` (`ExplorerCommands.cpp:109-379`) gate
@@ -1147,9 +1191,17 @@ the same commit per its own COM-interop DoD trigger.
       on `TestCommand`. Clicked "Extract here" for both; confirmed via filesystem that each
       produced a correctly-named subfolder with the exact original file content
       ("smoke test tar.gz content" / "hello from a real 7z fixture" contents matched byte-for-
-      byte). Real `.rar` remains untested — no RAR-capable encoder available on this machine (same
-      gap as T-F85/T-F49); routing/gating logic for RAR is covered by
-      `AllPathsAreSupportedArchive.TrueForAllRar`'s unit test instead.
+      byte).
+- [x] Manual on-device verification (real `.rar`, done 2026-07-07 using T-F50's committed
+      `valid.rar` fixture): right-clicked `smoketest.rar` in Explorer, confirmed the Pakko submenu
+      showed "Extract...", "Extract here", "Extract to \"smoketest\\\"", "Compress...", "Add to
+      \"smoketest.zip\"" — and, critically, **no "Test archive" entry**, matching the deliberate
+      `AnyPathIsZip`-only gate on `TestCommand`. Clicked "Extract here"; confirmed via filesystem
+      that it produced a correctly-named subfolder (`smoketest (1)\`, since a same-named folder
+      already existed from an earlier check) containing `rar.txt` with the exact original content
+      ("hello from a real rar fixture") byte-for-byte. Closes this task's last open item — RAR
+      routing/gating was already unit-tested via `AllPathsAreSupportedArchive.TrueForAllRar`, this
+      adds the real end-to-end pass.
 
 ---
 
