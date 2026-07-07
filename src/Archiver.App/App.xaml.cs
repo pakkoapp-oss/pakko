@@ -33,6 +33,7 @@ public partial class App : Application
         services.AddSingleton<ITarService, TarProcessService>();
         services.AddSingleton<TarCapabilities>(sp =>
             sp.GetRequiredService<ITarService>().DetectCapabilitiesAsync().GetAwaiter().GetResult());
+        services.AddSingleton<IExtractionRouter, ExtractionRouter>();
         services.AddTransient<MainViewModel>();
 
         var provider = services.BuildServiceProvider();

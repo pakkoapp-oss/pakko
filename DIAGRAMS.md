@@ -188,8 +188,13 @@ sequenceDiagram
 ## 2. State — Operation lifecycle (`MainViewModel`)
 
 Source read for this diagram: `src/Archiver.App/ViewModels/MainViewModel.cs`
-(`ArchiveAsync`/`ExtractAsync`/`Cancel`, lines 228–437). Both methods have the identical
-try/catch/finally shape; the diagram applies to either.
+(`ArchiveAsync`/`ExtractAsync`/`Cancel`, lines 271–489 as of T-F85 — shifted from the
+diagram's original 228–437 by T-F85's added `IExtractionRouter` field/constructor param and
+`_extractableTypes` allowlist above `ArchiveAsync`; the state machine itself is unchanged, only
+line numbers moved). Both methods have the identical try/catch/finally shape; the diagram
+applies to either. T-F85 changed `ExtractAsync()`'s single `_archiveService.ExtractAsync(...)`
+call to `_extractionRouter.ExtractAsync(...)` — same await, same exception types, no new
+branch — so this diagram's content is otherwise unaffected by that change.
 
 ```mermaid
 stateDiagram-v2

@@ -364,7 +364,38 @@ DI registration:
 services.AddSingleton<ITarService, TarProcessService>();
 services.AddSingleton<TarCapabilities>(sp =>
     sp.GetRequiredService<ITarService>().DetectCapabilitiesAsync().GetAwaiter().GetResult());
+services.AddSingleton<IExtractionRouter, ExtractionRouter>();
 ```
+
+### v1.3 — IExtractionRouter (T-F85)
+
+`MainViewModel`/`Archiver.Shell` don't call `IArchiveService`/`ITarService` directly for
+extraction — both go through `IExtractionRouter`, which splits a mixed selection by format and
+merges the results:
+
+```csharp
+// Interfaces/IExtractionRouter.cs
+public interface IExtractionRouter
+{
+    Task<ArchiveResult> ExtractAsync(
+        ExtractOptions options,
+        IProgress<ProgressReport>? progress = null,
+        CancellationToken cancellationToken = default);
+}
+```
+
+Implementation: `ExtractionRouter` in `Archiver.Core/Services/`. Classifies every
+`ArchivePaths` entry via `ArchiveFormatDetector.Detect` (magic-byte only — ZIP/gzip/bzip2/
+RAR/7z/xz/zstd via header bytes, plain `.tar` via the `ustar` string at offset 257), routes
+ZIP to `IArchiveService` and tar-family formats `TarCapabilities` reports supported to
+`ITarService` (both sub-calls get `OpenDestinationFolder = false` — the router opens it itself,
+once, after merging), adapts `ITarService`'s `IProgress<int>` into `IProgress<ProgressReport>`,
+and merges both `ArchiveResult`s. A tar-family format the installed tar.exe doesn't support
+becomes a `SkippedFiles` entry with a specific reason, not a generic message.
+
+`ZipArchiveService.GetKnownArchiveReason` is deliberately not refactored to share
+`ArchiveFormatDetector` — see `DECISIONS.md`-equivalent reasoning in `TASKS.md`'s T-F85 entry
+(opposite polarity, not behavior-equivalent).
 
 ### v1.4 — Low IL Sandbox
 

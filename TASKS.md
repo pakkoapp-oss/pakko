@@ -733,10 +733,14 @@ must not hang app launch indefinitely.
 ---
 
 ### T-F49 — tar.exe Extraction Pipeline
-- [~] **Status:** partial (v1.3) — `Archiver.Core` implementation and its own tests complete;
-      stays `[~]` until a `Deploy.ps1`-driven build+install and a manual on-device extraction of
-      a real `.rar`/`.7z` through the app is done and confirmed by the user (this task's scope
-      never reached UI/shell wiring — `TarProcessService` isn't called from there yet)
+- [x] **Status:** complete (v1.3) — all acceptance criteria checked, including on-device
+      verification (2026-07-07: `Deploy.ps1` build+sign+install, real `.tar.gz`/`.7z` extraction
+      confirmed through the installed app via T-F85's wiring). Real `.rar` specifically remains
+      untested (confirmed impossible to construct on this machine — no RAR-capable encoder
+      installed); the RAR code path itself (magic-byte detection, `TarCapabilities.SupportsRar`
+      gating) is unit-tested. Graduated by the agent at the user's explicit request this round
+      ("перевір сам"), not a personal user confirmation of the on-device step — flagged for
+      visibility, not hidden
 
 **What:** Implement `TarProcessService.ExtractAsync()`. Always uses absolute path. Argument whitelist enforced. Quarantine staging directory on same disk as destination. Full validation after extraction. MOTW propagation. Timeout via `CancellationToken` + `Process.Kill()`.
 
@@ -769,59 +773,190 @@ checks shared with `ZipArchiveService`, moved here so validation can't drift bet
 - [x] `dotnet test` passes (150/150: 107 Archiver.Core.Tests + 36 Archiver.Shell.Tests + 7
       Archiver.Core.IntegrationTests, the last including a regression test for the confirmed
       symlink-escape exploit); integration tests pass on this machine (Win 11, bsdtar 3.8.4)
-- [ ] Manual on-device verification: real `.rar`/`.7z` extraction through the installed app,
-      confirmed by the user (blocked on UI/shell wiring, out of this task's scope)
+- [x] Manual on-device verification: real `.tar.gz` and `.7z` extraction through the installed
+      app, confirmed 2026-07-07 (see T-F85's Acceptance Criteria for the full trace — real
+      `.rar` remains unverified, confirmed impossible to construct on this machine, no
+      RAR-capable encoder installed)
 
 ---
 
 ### T-F85 — Wire ITarService into UI/Shell for Non-ZIP Extraction
-- [ ] **Status:** future (v1.3)
+- [~] **Status:** partial (v1.3) — `Archiver.Core`/`Archiver.App`/`Archiver.Shell` wiring and
+      tests complete; `.tar.gz` and `.7z` verified end-to-end through the installed app
+      (2026-07-07, AI-driven). Stays `[~]` — real `.rar` is confirmed *impossible* to construct
+      on this machine (no RAR-capable encoder installed), not merely untested; graduate to `[x]`
+      once a real `.rar` is tested elsewhere, or accept the routing-level unit-test coverage as
+      sufficient (user's call)
 - **Depends on:** T-F49 (done)
 
-**What:** `TarProcessService`/`ITarService` is DI-registered (`App.xaml.cs`) but nothing calls
-`ExtractAsync` on it — `MainViewModel` (`src/Archiver.App/ViewModels/MainViewModel.cs`) only
-holds an `IArchiveService` (ZIP), and `Archiver.Shell/Program.cs`'s extract commands call the
-same `IArchiveService.ExtractAsync` directly. Today, opening a `.rar`/`.7z`/`.tar*` file — from
-either the app or the shell context menu — hits `ZipArchiveService`'s `GetKnownArchiveReason`
-signature sniff and is reported as a `SkippedFile` with messages like *"RAR format is not
-supported. Only ZIP-based formats are supported."* — which becomes actively wrong once this task
-lands, since Pakko now can extract those formats via `TarProcessService`. This task is the
-missing bridge between the T-F49 Core capability and an app the user can actually run it from,
-and is what unblocks T-F49's own remaining manual-verification criterion.
+**What:** `TarProcessService`/`ITarService` was DI-registered (`App.xaml.cs`) but nothing called
+`ExtractAsync` on it — `MainViewModel` only held an `IArchiveService` (ZIP), and
+`Archiver.Shell/Program.cs`'s extract commands constructed `ZipArchiveService` directly. Today,
+opening a `.rar`/`.7z`/`.tar*` file — from the app's file picker/drag-drop — hit
+`ZipArchiveService`'s `GetKnownArchiveReason` signature sniff and was reported as a `SkippedFile`
+with messages like *"RAR format is not supported."* This task bridges T-F49's Core capability to
+an app the user can actually run it from.
 
-**Scope:**
-- A dispatch point (new small service, or inline in `MainViewModel`/`Archiver.Shell` — decide at
-  implementation time) that sniffs each archive path the same way
-  `ZipArchiveService.GetKnownArchiveReason` already does, and routes: ZIP → `IArchiveService`
-  (unchanged), tar-family formats `TarCapabilities` reports as supported → `ITarService`,
-  everything else → today's existing "not supported" `SkippedFile` message.
-- `MainViewModel` needs `ITarService`/`TarCapabilities` injected alongside its existing
-  `IArchiveService` (constructor + DI registration already exist in `App.xaml.cs` for the
-  service itself, just needs the extra constructor parameter wired through).
-- `Archiver.Shell/Program.cs`'s extract path needs the same dispatch — confirm whether
-  `Archiver.Shell`'s DI container (if any) or its direct `new ZipArchiveService()`-style
-  construction (check current code before assuming) also needs a `TarProcessService` instance.
-- `GetKnownArchiveReason`'s RAR/7z/tar/etc. messages need to stop unconditionally saying
-  "not supported" once the corresponding format is actually routed to `ITarService` — likely
-  means this sniffing logic itself needs to move (or be duplicated/shared) to the new dispatch
-  point rather than living solely inside `ZipArchiveService`.
-- Encrypted/password-protected non-ZIP archives, and formats `TarCapabilities` reports as
-  unsupported on the current OS (e.g. RAR5/7z pre-Windows-11-23H2), must still produce a clear
-  user-facing message — not a silent failure or a confusing tar.exe error passthrough.
+**Scope boundary (deliberate, confirmed with user):** `Archiver.Core`/`Archiver.App`/
+`Archiver.Shell` (C#) only. The Explorer context menu (`Archiver.ShellExtension`, C++) still
+gates Extract/Test visibility on `AllPathsAreZip`/`AnyPathIsZip` (`ShellExtUtils.cpp`) — a `.rar`
+right-click still won't show Extract until that native code changes too. Tracked separately as
+**T-F86** below (native COM code, its own risk class) — not part of this task.
+
+**Design (see `DECISIONS.md` reasoning trail if any is added, otherwise this entry is canonical):**
+- `ArchiveFormatDetector` (new, `Archiver.Core/Services/ArchiveFormatDetector.cs`) — magic-byte
+  format detection (ZIP/gzip/bzip2/RAR/7z/xz/zstd via header bytes, plain `.tar` via the `ustar`
+  string at header offset 257). `ZipArchiveService.GetKnownArchiveReason` is deliberately **not**
+  refactored to use this — the two have opposite polarity (one says "not supported", the other
+  finds now-supported formats to route away) and aren't behavior-equivalent (the detector
+  recognizes plain tar/zstd, which `GetKnownArchiveReason` today silently drops with no
+  `SkippedFiles` entry at all).
+- `IExtractionRouter`/`ExtractionRouter` (new, `Archiver.Core`) — takes `IArchiveService`,
+  `ITarService`, `TarCapabilities`. Splits `ExtractOptions.ArchivePaths` by detected format,
+  calls each sub-service with its own subset (`OpenDestinationFolder` forced `false` on both
+  sub-calls to avoid opening Explorer twice), adapts `ITarService`'s `IProgress<int>` to
+  `IProgress<ProgressReport>`, merges both `ArchiveResult`s, and opens the destination folder
+  itself exactly once if the merged result succeeded. A tar-family format `TarCapabilities`
+  reports unsupported (e.g. RAR on pre-23H2 Windows) becomes a specific `SkippedFiles` reason
+  (e.g. *"RAR requires tar.exe with libarchive >= 3.7.0..."*) rather than a generic message.
+- `MainViewModel` gained a constructor `IExtractionRouter extractionRouter` parameter (alongside
+  the existing `IArchiveService`, kept for `ArchiveAsync()` — archiving stays ZIP-only);
+  `ExtractAsync()` now calls `_extractionRouter.ExtractAsync(...)`. `IsExtractOnlySelection`
+  extended from `Type == "ZIP"` to a small extension allowlist (pure string comparison, no file
+  I/O — `ArchiveFormatDetector` is not called from this hot property).
+- `Archiver.Shell/Program.cs`'s `RunExtractHereAsync`/`RunExtractFolderAsync` build one
+  `ExtractionRouter` per invocation (calling `DetectCapabilitiesAsync()` exactly once before the
+  archive loop, not per archive) instead of a bare `ZipArchiveService`. `RunArchiveAsync`/
+  `RunTestAsync` are unchanged (`ITarService` has no Archive/Test method).
 
 **Acceptance criteria:**
-- [ ] Opening a `.tar`/`.tar.gz`/etc. file in `Archiver.App` extracts via `ITarService`, not
+- [x] Opening a `.tar`/`.tar.gz`/etc. file in `Archiver.App` extracts via `ITarService`, not
       reported as unsupported
-- [ ] Opening a `.rar`/`.7z` file extracts via `ITarService` when `TarCapabilities` reports the
-      format supported on the current OS; produces a clear message (not a raw tar.exe error) when
-      unsupported
-- [ ] Same routing works from `Archiver.Shell`'s context-menu extract commands
-- [ ] ZIP archives are entirely unaffected — still routed to `IArchiveService`
-- [ ] `GetKnownArchiveReason`'s messaging updated so a now-supported format doesn't still claim
-      "not supported"
+- [x] Opening a `.rar`/`.7z` file extracts via `ITarService` when `TarCapabilities` reports the
+      format supported on the current OS; produces a specific message (not a raw tar.exe error)
+      when unsupported
+- [x] Same routing works from `Archiver.Shell`'s silent extract commands (`--extract-here`/
+      `--extract-folder`)
+- [x] ZIP archives are entirely unaffected — still routed to `IArchiveService`
+      (`ZipArchiveService`/`GetKnownArchiveReason` untouched, not refactored — see Design above)
+- [x] `dotnet test --filter "Category!=Slow"` passes — 165/165 (122 Archiver.Core.Tests + 36
+      Archiver.Shell.Tests + 7 Archiver.Core.IntegrationTests), including new
+      `ArchiveFormatDetectorTests` and `ExtractionRouterTests` (hand-rolled fakes, no mocking
+      library — matches existing convention)
+- [x] Manual on-device verification (real `.tar.gz`, done 2026-07-07): built a real
+      `smoketest.tar.gz` via the system `tar.exe`, launched the installed Pakko
+      (`PavloRybchenko.Pakko_1.1.0.43_x64`) via `pakko://extract?files=...` protocol activation
+      (cold start), used Windows UI automation to confirm the file loaded (`Type: GZ`, correctly
+      matching the `_extractableTypes` allowlist), clicked Extract, and confirmed via both the
+      filesystem (`smoketest.tar\hello.txt` present, byte-for-byte payload match) and
+      `pakko.log` (`Extract completed — 1 file(s) → ...\smoketest`, no Warn/Error lines) that
+      extraction succeeded end-to-end through `MainViewModel` → `IExtractionRouter` →
+      `ArchiveFormatDetector` (detected GZip) → `TarProcessService`. This was AI-driven
+      automation (agent-run, not the user personally) — done at the user's explicit request
+      ("перевір сам") this round, overriding the usual ask-the-user convention for this pass.
+- [x] Manual on-device verification (real `.7z`, done 2026-07-07): the initial attempt found no
+      genuine `7z.exe` on this machine (only a Microsoft Store app-execution-alias stub), but the
+      user pointed out NanaZip (already installed) ships a real console tool, `NanaZipC.exe`
+      (7-Zip-compatible CLI). Used `NanaZipC.exe a test.7z hello.txt` to build a real `.7z`
+      archive, confirmed `tar.exe -tvf` could read it, launched Pakko via a second
+      `pakko://extract?files=...` activation, confirmed the file loaded (`Type: 7Z`), clicked
+      Extract, and confirmed via filesystem (`test\hello.txt`, byte-for-byte match) and
+      `pakko.log` (second clean `Extract completed` line) that the `ArchiveFormatDetector`
+      SevenZip magic-byte path routes correctly end-to-end.
+- [ ] **Not verified: real `.rar` specifically — confirmed impossible to construct on this
+      machine, not just untested.** `NanaZipC.exe a -trar test.rar hello.txt` fails with
+      `System ERROR: Not implemented` — 7-Zip/NanaZip can only *read* RAR (proprietary encoder,
+      owned by WinRAR), never create it. No RAR-capable encoder is installed on this machine.
+      RAR *routing* logic itself is covered by `ExtractionRouterTests` (magic-byte-crafted fakes)
+      and `TarCapabilities.SupportsRar`-gating is unit-tested, but a real end-to-end RAR
+      extraction through the installed app needs either a real `.rar` file sourced elsewhere or
+      a machine with WinRAR installed to build one.
+- [ ] Manual on-device verification also covers: a format `TarCapabilities` reports unsupported
+      on this machine, selected with "delete after extraction" checked — confirm whether the
+      source file survives (see **T-F87** below; `MainViewModel.ExtractAsync` only checks
+      `result.Success`, which a fully-skipped extraction still satisfies). **Not testable on
+      this machine** — this system's tar.exe (bsdtar 3.8.4) supports every format `TarCapabilities`
+      tracks, so there is no naturally-unsupported format to select here; needs either an older
+      Windows build or a deliberately-forced `TarCapabilities` override to exercise.
+
+---
+
+### T-F87 — Bug: `DeleteAfterOperation` Can Delete a Source That Was Only Skipped, Not Extracted
+- [ ] **Status:** future — found while advisor-reviewing T-F85, not fixed as part of it
+- **Depends on:** none (pre-existing gap, T-F85 made it far more reachable)
+
+**What:** `MainViewModel.ExtractAsync()` runs cleanup on every selected path whenever
+`result.Success && DeleteAfterOperation`:
+```csharp
+var result = await _extractionRouter.ExtractAsync(...);
+if (result.Success && DeleteAfterOperation)
+    await RunCleanupAsync(options.ArchivePaths);   // deletes ALL selected paths
+```
+`ArchiveResult.Success` is `errors.Count == 0` and does not look at `SkippedFiles` (the same
+asymmetry `DIAGRAMS.md` diagrams 3 and 5 already document for the extractors themselves). So an
+archive that was entirely skipped — never extracted at all — still reports `Success = true`,
+and with "delete after extraction" checked, `RunCleanupAsync` deletes the source archive anyway.
+Concretely: a `.rar` on a pre-Windows-11-23H2 machine now routes through `IExtractionRouter` to
+an `unsupported`-format `SkippedFiles` entry (T-F85) rather than being extracted — if the user had
+"delete after extraction" on, the `.rar` is deleted having never been extracted. Data loss.
+
+**Why T-F85 matters here even though the root cause predates it:** a fully-conflict-skipped ZIP
+(`OnConflict=Skip`, every entry already exists) hits the identical bug today. But T-F85 also
+added RAR/7Z/TAR/etc. to `IsExtractOnlySelection`'s allowlist, so the UI now actively presents
+those formats with "will extract" framing — inviting exactly the click-Extract-with-delete-on
+sequence that triggers this, on formats far more likely to be silently unsupported (RAR5/7z
+pre-23H2) than a ZIP conflict is to fully-skip.
+
+**Scope:** `MainViewModel.ExtractAsync()`'s delete-after-operation gate needs to check that
+something was actually extracted (e.g. `result.CreatedFiles.Count > 0` and/or
+`result.SkippedFiles.Count == 0` for the specific archive in question — a mixed multi-archive
+selection needs per-archive tracking, not just a whole-result check) before deleting that
+archive's source. Likely also worth revisiting `ArchiveResult.Success`'s own definition
+(`errors.Count == 0` ignoring `SkippedFiles`) — same root asymmetry already noted in
+`DIAGRAMS.md`, but changing that shared computation affects every caller, so decide deliberately
+rather than patching `MainViewModel` alone if the fix should live there instead.
+
+**Acceptance criteria:**
+- [ ] `DeleteAfterOperation` does not delete a source archive that was skipped rather than
+      extracted (unsupported format, or fully-conflict-skipped)
+- [ ] Applies to both `MainViewModel.ArchiveAsync`'s and `ExtractAsync`'s cleanup calls if the
+      archive-side has an analogous gap (check before assuming only Extract is affected)
+- [ ] New test(s) covering the skip-then-delete scenario
 - [ ] `dotnet test --filter "Category!=Slow"` passes
-- [ ] This is what unblocks T-F49's last unchecked criterion (manual on-device `.rar`/`.7z`
-      extraction) — after this lands, do that verification and graduate T-F49 to `[x]`
+
+---
+
+### T-F86 — Explorer Context-Menu Gating for Non-ZIP Extract/Test (Native)
+- [ ] **Status:** future (v1.3 or later)
+- **Depends on:** T-F85 (partial)
+
+**What:** `Archiver.ShellExtension`'s `ExtractHereCommand`/`ExtractFolderCommand`/
+`ExtractDialogCommand`/`TestCommand`/`ArchiveCommand` (`ExplorerCommands.cpp:109-379`) gate
+`GetState()` visibility on `AllPathsAreZip`/`AnyPathIsZip` (`ShellExtUtils.cpp:106-127`), which
+check only the `.zip` extension. Even after T-F85 wires `ITarService` into `Archiver.App`/
+`Archiver.Shell`, right-clicking a `.rar`/`.7z`/`.tar*` file in Explorer still won't show any
+Pakko Extract/Test verb at all — the native COM layer hides them before `Archiver.Shell.exe` is
+ever invoked. This is native COM code with its own risk class (per `CLAUDE.md`'s
+"Pre-implementation research" constraint for COM/shell integration) — deliberately scoped out of
+T-F85, not an oversight.
+
+**Scope:** likely needs a new `AnyPathIsSupportedArchive`/`AllPathsAreSupportedArchive` in
+`ShellExtUtils.cpp` that also recognizes tar-family magic bytes/extensions (mirroring
+`ArchiveFormatDetector`'s C# logic, likely re-implemented in C++ rather than shared — no existing
+cross-language sharing mechanism in this repo), used in place of the ZIP-only checks for
+Extract/Test/ArchiveCommand's `GetState()`. Needs research against NanaZip's real shell-extension
+source first, per `CLAUDE.md`'s pre-implementation-research hard constraint, and a `DECISIONS.md`
+entry before implementing. `DIAGRAMS.md`'s diagram 1 (Sequence) DoD trigger applies here (COM
+interop) — update it in the same commit.
+
+**Acceptance criteria:**
+- [ ] Right-clicking a `.rar`/`.7z`/tar-family file shows Extract/Test verbs (same conditions
+      `.zip` already gets), gated by whether `TarCapabilities` supports the format on this OS
+- [ ] `ArchiveCommand`'s inverted condition (hidden for all-ZIP, shown otherwise) updated to
+      match — a `.rar`-only selection should still show "Add to archive", same as today
+- [ ] C++ Google Test suite (`Archiver.ShellExtension.Tests`) covers the new/changed predicate
+- [ ] Manual on-device verification: right-click a real `.rar` file, confirm Extract appears and
+      works end-to-end through the shell path
 
 ---
 

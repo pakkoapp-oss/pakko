@@ -22,6 +22,7 @@ public sealed partial class MainViewModel : ObservableObject
     private static readonly ResourceLoader _res = ResourceLoader.GetForViewIndependentUse();
 
     private readonly IArchiveService _archiveService;
+    private readonly IExtractionRouter _extractionRouter;
     private readonly IDialogService _dialogService;
     private readonly ILogService _logService;
 
@@ -110,11 +111,20 @@ public sealed partial class MainViewModel : ObservableObject
     public Visibility IsFileListEmptyVisibility =>
         FileItems.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
 
-    // T-F77: only a selection that is entirely .zip files counts as extract-only — a single
-    // non-.zip item means "archive everything together" is still the coherent action, so the
-    // archive-only fields (Mode/Name/Compression) must stay visible for any mixed selection.
+    // T-F85: recognized archive extensions whose Extract path now actually works (ZIP directly,
+    // the rest via ITarService/ExtractionRouter). Extension-based, not ArchiveFormatDetector's
+    // magic-byte sniff — this is read on every FileItems change and must not do per-file disk
+    // I/O; FileItem.Type is already a plain string computed once at construction.
+    private static readonly HashSet<string> _extractableTypes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "ZIP", "RAR", "7Z", "TAR", "GZ", "TGZ", "BZ2", "TBZ2", "XZ", "TXZ", "ZST", "TZST", "LZMA"
+    };
+
+    // T-F77: only a selection that is entirely recognized archives counts as extract-only — a
+    // single non-archive item means "archive everything together" is still the coherent action,
+    // so the archive-only fields (Mode/Name/Compression) must stay visible for any mixed selection.
     public bool IsExtractOnlySelection =>
-        FileItems.Count > 0 && FileItems.All(x => x.Type == "ZIP");
+        FileItems.Count > 0 && FileItems.All(x => _extractableTypes.Contains(x.Type));
 
     public Visibility ArchiveOptionsVisibility =>
         IsExtractOnlySelection ? Visibility.Collapsed : Visibility.Visible;
@@ -188,9 +198,10 @@ public sealed partial class MainViewModel : ObservableObject
     private string _sortColumn = "Name";
     private bool _sortAscending = true;
 
-    public MainViewModel(IArchiveService archiveService, IDialogService dialogService, ILogService logService)
+    public MainViewModel(IArchiveService archiveService, IExtractionRouter extractionRouter, IDialogService dialogService, ILogService logService)
     {
         _archiveService = archiveService;
+        _extractionRouter = extractionRouter;
         _dialogService = dialogService;
         _logService = logService;
         _fileItems.CollectionChanged += (_, _) =>
@@ -421,7 +432,7 @@ public sealed partial class MainViewModel : ObservableObject
                 UpdateOperationStatus(r);
             });
 
-            var result = await _archiveService.ExtractAsync(options, progress, _cts.Token);
+            var result = await _extractionRouter.ExtractAsync(options, progress, _cts.Token);
             if (result.Success && DeleteAfterOperation)
                 await RunCleanupAsync(options.ArchivePaths);
             _operationStopwatch?.Stop();

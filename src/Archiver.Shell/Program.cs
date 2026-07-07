@@ -3,6 +3,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
+using Archiver.Core.Interfaces;
 using Archiver.Core.Models;
 using Archiver.Core.Services;
 using Archiver.Shell;
@@ -64,7 +65,7 @@ static void LaunchOpenUi(string operation, IReadOnlyList<string> files)
 // -------------------------------------------------------------------------
 static async Task RunExtractHereAsync(IReadOnlyList<string> archivePaths)
 {
-    var service = new ZipArchiveService();
+    var router = await BuildExtractionRouterAsync().ConfigureAwait(false);
 
     foreach (var archivePath in archivePaths)
     {
@@ -85,7 +86,7 @@ static async Task RunExtractHereAsync(IReadOnlyList<string> archivePaths)
 
         string title = $"Extracting: {Path.GetFileName(archivePath)}";
         await RunWithProgressWindowAsync(title,
-            (progress, ct) => service.ExtractAsync(options, progress, ct))
+            (progress, ct) => router.ExtractAsync(options, progress, ct))
             .ConfigureAwait(false);
     }
 }
@@ -96,7 +97,7 @@ static async Task RunExtractHereAsync(IReadOnlyList<string> archivePaths)
 // -------------------------------------------------------------------------
 static async Task RunExtractFolderAsync(IReadOnlyList<string> archivePaths)
 {
-    var service = new ZipArchiveService();
+    var router = await BuildExtractionRouterAsync().ConfigureAwait(false);
 
     foreach (var archivePath in archivePaths)
     {
@@ -113,9 +114,19 @@ static async Task RunExtractFolderAsync(IReadOnlyList<string> archivePaths)
 
         string title = $"Extracting: {Path.GetFileName(archivePath)}";
         await RunWithProgressWindowAsync(title,
-            (progress, ct) => service.ExtractAsync(options, progress, ct))
+            (progress, ct) => router.ExtractAsync(options, progress, ct))
             .ConfigureAwait(false);
     }
+}
+
+// T-F85: constructs one ExtractionRouter per invocation, calling DetectCapabilitiesAsync exactly
+// once (it spawns a tar.exe process) — shared across every archive in the current selection
+// rather than re-probed per archive.
+static async Task<IExtractionRouter> BuildExtractionRouterAsync()
+{
+    var tarService = new TarProcessService();
+    var capabilities = await tarService.DetectCapabilitiesAsync().ConfigureAwait(false);
+    return new ExtractionRouter(new ZipArchiveService(), tarService, capabilities);
 }
 
 // -------------------------------------------------------------------------
