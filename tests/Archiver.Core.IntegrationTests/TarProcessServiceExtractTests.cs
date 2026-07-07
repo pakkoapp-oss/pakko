@@ -69,6 +69,36 @@ public sealed class TarProcessServiceExtractTests : IDisposable
         File.ReadAllText(Path.Combine(destDir, "a (1).txt")).Should().Be("new content");
     }
 
+    // T-F87: an archive whose only entry conflict-skips must not appear in CreatedFiles, and
+    // must record a whole-archive SkippedFile (Path == archivePath) — the signal MainViewModel
+    // uses to avoid deleting a source that was never actually extracted when
+    // DeleteAfterOperation is on.
+    [Integration]
+    public async Task ExtractAsync_AllEntriesConflictSkipped_ExcludesArchiveFromCreatedFilesAndRecordsWholeArchiveSkip()
+    {
+        string archivePath = Path.Combine(_temp.Path, "valid.tar");
+        TarBuilder.WriteTar(archivePath,
+        [
+            new TarBuilder.Entry { Name = "a.txt", Content = Encoding.ASCII.GetBytes("new content") },
+        ]);
+
+        string destDir = Path.Combine(_temp.Path, "out");
+        Directory.CreateDirectory(destDir);
+        File.WriteAllText(Path.Combine(destDir, "a.txt"), "original content");
+
+        var result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [archivePath],
+            DestinationFolder = destDir,
+            Mode = ExtractMode.SingleFolder,
+            OnConflict = ConflictBehavior.Skip,
+        });
+
+        result.CreatedFiles.Should().BeEmpty();
+        result.SkippedFiles.Should().Contain(s => s.Path == archivePath);
+        File.ReadAllText(Path.Combine(destDir, "a.txt")).Should().Be("original content");
+    }
+
     [Integration]
     public async Task ExtractAsync_ArchiveHasZoneIdentifier_PropagatesMotwToExtractedFile()
     {

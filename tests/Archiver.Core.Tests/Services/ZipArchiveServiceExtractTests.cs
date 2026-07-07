@@ -303,6 +303,32 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
         File.ReadAllText(existingFile).Should().Be(originalContent);
     }
 
+    // T-F87: an archive whose only entry conflict-skips must not appear in CreatedFiles, and
+    // must record a whole-archive SkippedFile (Path == archivePath) — this is the signal
+    // MainViewModel uses to avoid deleting a source that was never actually extracted when
+    // DeleteAfterOperation is on.
+    [Fact]
+    public async Task ExtractAsync_AllEntriesConflictSkipped_ExcludesArchiveFromCreatedFilesAndRecordsWholeArchiveSkip()
+    {
+        var zip = CreateTestZip("archive.zip", "file.txt");
+        var destDir = Path.Combine(_temp.Path, "out");
+        Directory.CreateDirectory(destDir);
+        File.WriteAllText(Path.Combine(destDir, "file.txt"), "original content");
+
+        var options = new ExtractOptions
+        {
+            ArchivePaths = [zip],
+            DestinationFolder = destDir,
+            Mode = ExtractMode.SingleFolder,
+            OnConflict = ConflictBehavior.Skip
+        };
+
+        var result = await _sut.ExtractAsync(options);
+
+        result.CreatedFiles.Should().BeEmpty();
+        result.SkippedFiles.Should().Contain(s => s.Path == zip);
+    }
+
     [Fact]
     public async Task ExtractAsync_ConflictRename_CreatesNumberedFileWhenDestinationExists()
     {
@@ -423,9 +449,13 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
 
         var result = await svc.ExtractAsync(options);
 
-        result.SkippedFiles.Should().HaveCount(1);
+        // T-F87: since every entry in this archive was skipped, a second whole-archive
+        // SkippedFile (Path == archivePath) is also recorded so DeleteAfterOperation cleanup
+        // knows this source was never actually extracted.
+        result.SkippedFiles.Should().HaveCount(2);
         result.SkippedFiles[0].Path.Should().Contain(":");
         result.SkippedFiles[0].Reason.Should().Contain("Alternate Data Stream");
+        result.SkippedFiles[1].Path.Should().Be(archivePath);
     }
 
     [Theory]
@@ -459,8 +489,10 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
 
         var result = await svc.ExtractAsync(options);
 
-        result.SkippedFiles.Should().HaveCount(1);
+        // T-F87: whole-archive skip also recorded — see the ADS test's comment above.
+        result.SkippedFiles.Should().HaveCount(2);
         result.SkippedFiles[0].Reason.Should().Contain("reserved Windows device name");
+        result.SkippedFiles[1].Path.Should().Be(archivePath);
     }
 
     [Fact]
@@ -488,8 +520,10 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
 
         var result = await svc.ExtractAsync(options);
 
-        result.SkippedFiles.Should().HaveCount(1);
+        // T-F87: whole-archive skip also recorded — see the ADS test's comment above.
+        result.SkippedFiles.Should().HaveCount(2);
         result.SkippedFiles[0].Reason.Should().Contain("control characters");
+        result.SkippedFiles[1].Path.Should().Be(archivePath);
     }
 
     // T-F59: extraction total computed from entry.Length (uncompressed), not CompressedLength

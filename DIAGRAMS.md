@@ -269,8 +269,11 @@ flowchart TD
     Z --> M
     M -- yes --> A
     M -- no --> N["Commit: Directory.Move(tempDest→actualDest) if actualDest<br/>doesn't exist yet; ELSE merge each tempDest file into<br/>actualDest via File.Move(overwrite:true) — this is where<br/>an Overwrite-conflict entry actually overwrites"]
-    N --> O["ArchiveResult.Success = errors.Count == 0<br/>(ZipArchiveService.cs:449) — SkippedFiles is NOT<br/>read anywhere in this computation"]
-    O --> P{{"⚠ every branch reachable in normal operation<br/>(D,E,F,H,I,J-Skip) feeds SkippedFiles, never errors.<br/>Only G (path escape) produces an ArchiveError.<br/>So: all-entries-skipped ⇒ Success=true,<br/>an (empty or near-empty) folder is created.<br/>T-F68 (fixed): the shell path now shows a dialog for<br/>this case too — see Program.cs's ShellResultPresenter,<br/>not a change to Success itself, still computed as drawn here."}}
+    N --> N2{"extractedCount == 0?<br/>(T-F87 — every entry hit S1-S6, nothing<br/>actually written to tempDest)"}
+    N2 -- yes --> N3["SkippedFiles += whole-archive entry<br/>(Path == archivePath); caller does NOT<br/>add this archive to CreatedFiles"]
+    N2 -- no --> O
+    N3 --> O["ArchiveResult.Success = errors.Count == 0<br/>(ZipArchiveService.cs:449) — SkippedFiles is still NOT<br/>read in THIS computation, only in MainViewModel's<br/>DeleteAfterOperation cleanup gate (T-F87)"]
+    O --> P{{"⚠ every per-entry branch (D,E,F,H,I,J-Skip) still feeds<br/>SkippedFiles, never errors — Success stays true for an<br/>all-entries-skipped archive, by design (T-F87 deliberately<br/>did not redefine Success — see DECISIONS.md). What N2/N3<br/>add: a per-archive signal (whole-archive SkippedFiles entry<br/>+ exclusion from CreatedFiles) so DeleteAfterOperation can<br/>no longer delete a source that was never extracted.<br/>T-F68 (fixed earlier): the shell path also shows a dialog<br/>for this case — see Program.cs's ShellResultPresenter."}}
 ```
 
 **What this catches — a live finding, not a hypothetical:**
@@ -279,6 +282,16 @@ Every validation gate in this chain (ADS, reserved name, control chars, reparse,
 computed as `errors.Count == 0` (`ZipArchiveService.cs:449`) and does not look at `SkippedFiles`
 at all. So an archive where *every* entry gets skipped reports `Success=true` with no real content
 extracted besides an empty folder.
+
+**Fixed downstream as T-F87 (node N2/N3 above):** this asymmetry became a real data-loss bug once
+`DeleteAfterOperation` existed — `MainViewModel.ExtractAsync` deleted the source archive on
+`Success=true` regardless of whether anything was actually extracted. Rather than redefine
+`Success` (broad blast radius — every caller depends on its current meaning), the fix adds a
+whole-archive `SkippedFiles` entry (`Path == archivePath`) when `extractedCount == 0`, and the
+caller (`ZipArchiveService.ExtractAsync`) excludes that archive from `CreatedFiles`.
+`MainViewModel.GetDeletableSources` then filters `DeleteAfterOperation`'s cleanup list against
+`SkippedFiles` by full path — per-entry skips (S1-S6, relative entry names) never match a source's
+full path, so only a genuine whole-archive skip blocks deletion. See `DECISIONS.md`'s "T-F87" entry.
 
 **Not updated for `TestAsync` (T-F62), by decision:** `TestAsync` is a separate, structurally
 simpler method — a flat per-archive loop with no foldering, no conflict handling, no path-escape
@@ -385,8 +398,11 @@ flowchart TD
     O["File.Move(file, finalFilePath, overwrite:true)<br/>ArchiveEntrySecurity.TryPropagateMotw(archivePath, finalFilePath)"] --> Mloop
     P --> Mloop
     Mloop -- yes --> I
-    Mloop -- no --> Q["return destDir<br/>(finally: quarantineDir deleted, success or failure)"]
-    Q --> R{{"ArchiveResult.Success = errors.Count==0 (ExtractAsync) —<br/>SkippedFiles NOT read in this computation,<br/>same asymmetry as diagram 3's ZIP finding"}}
+    Mloop -- no --> Q2{"totalFiles &gt; 0 &&<br/>extractedCount == 0?<br/>(T-F87 - every file hit P, nothing moved)"}
+    Q2 -- yes --> Q3["SkippedFiles += whole-archive entry<br/>(Path == archivePath); caller does NOT<br/>add this archive to CreatedFiles"]
+    Q2 -- no --> Q
+    Q3 --> Q["return destDir<br/>(finally: quarantineDir deleted, success or failure)"]
+    Q --> R{{"ArchiveResult.Success = errors.Count==0 (ExtractAsync); SkippedFiles still NOT read in this computation, only in MainViewModel's DeleteAfterOperation cleanup gate (T-F87)"}}
 ```
 
 **What this catches — the confirmed exploit, and one new finding:**
@@ -416,10 +432,14 @@ flowchart TD
   value) has no explicit branch and falls through to the unconditional `File.Move(overwrite:
   true)` — identical shape to `ZipArchiveService`'s gate, confirmed by reading
   `TarProcessService.cs:176-190` directly rather than assuming parity with diagram 3.
-- **Same `Success`/`SkippedFiles` asymmetry as diagram 3:** an extraction where every file was
-  skipped (e.g. `OnConflict=Skip` and every entry already exists at the destination) reports
-  `Success=true` — `ArchiveResult.Success` is `errors.Count==0` and never inspects
-  `SkippedFiles`, mirroring the ZIP-side finding from 2026-07-05.
+- **Same `Success`/`SkippedFiles` asymmetry as diagram 3, fixed downstream the same way (T-F87,
+  nodes Q2/Q3):** an extraction where every file was skipped (e.g. `OnConflict=Skip` and every
+  entry already exists at the destination) still reports `Success=true` — `Success` itself was
+  deliberately left as `errors.Count==0` (see `DECISIONS.md`'s "T-F87" entry for why). What Q2/Q3
+  add: a whole-archive `SkippedFiles` entry (`Path == archivePath`) when nothing was actually
+  moved, and exclusion of that archive from `CreatedFiles`, giving `MainViewModel`'s
+  `GetDeletableSources` the same per-archive signal it uses for the ZIP path so
+  `DeleteAfterOperation` can't delete a source that was never extracted.
 
 ---
 

@@ -83,11 +83,16 @@ public sealed class TarProcessService : ITarService
 
             try
             {
-                string actualDest = await ExtractSingleArchiveAsync(
+                var (actualDest, anyExtracted) = await ExtractSingleArchiveAsync(
                     archivePath, destDir, options.OnConflict, skippedFiles, cancellationToken)
                     .ConfigureAwait(false);
 
-                createdFiles.Add(actualDest);
+                // T-F87: an archive whose entries were all individually skipped (e.g. every
+                // entry already exists at the destination with OnConflict=Skip) must not be
+                // reported as CreatedFiles — MainViewModel uses this list to decide whether
+                // DeleteAfterOperation may delete the source archive.
+                if (anyExtracted)
+                    createdFiles.Add(actualDest);
             }
             catch (OperationCanceledException)
             {
@@ -142,7 +147,7 @@ public sealed class TarProcessService : ITarService
     // C# code gets a chance to inspect the result — see DECISIONS.md's T-F49 entry for the
     // reproduced exploit. Post-hoc validation of quarantine contents therefore cannot be the
     // primary defense; rejecting the whole archive before -xf runs is.
-    private static async Task<string> ExtractSingleArchiveAsync(
+    private static async Task<(string ActualDest, bool AnyExtracted)> ExtractSingleArchiveAsync(
         string archivePath,
         string destDir,
         ConflictBehavior onConflict,
@@ -166,9 +171,13 @@ public sealed class TarProcessService : ITarService
 
             Directory.CreateDirectory(destDir);
 
+            int totalFiles = 0;
+            int extractedCount = 0;
+
             foreach (string file in EnumerateFilesGuarded(quarantineDir))
             {
                 cancellationToken.ThrowIfCancellationRequested();
+                totalFiles++;
 
                 string relativePath = Path.GetRelativePath(quarantineDir, file);
                 string finalFilePath = Path.GetFullPath(Path.Combine(destDir, relativePath));
@@ -191,9 +200,25 @@ public sealed class TarProcessService : ITarService
 
                 // T-F45: propagate Zone.Identifier ADS from archive to extracted file
                 ArchiveEntrySecurity.TryPropagateMotw(archivePath, finalFilePath);
+
+                extractedCount++;
             }
 
-            return destDir;
+            // T-F87: every extracted file was individually skipped (already existed at the
+            // destination) — nothing was actually written, so the caller must not count this
+            // archive as CreatedFiles (that list gates whether DeleteAfterOperation may delete
+            // the source archive).
+            if (totalFiles > 0 && extractedCount == 0)
+            {
+                skippedFiles.Add(new SkippedFile
+                {
+                    Path = archivePath,
+                    Reason = "No entries were extracted from this archive — every entry was skipped."
+                });
+                return (destDir, false);
+            }
+
+            return (destDir, true);
         }
         finally
         {

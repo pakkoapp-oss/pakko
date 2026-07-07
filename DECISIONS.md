@@ -861,3 +861,81 @@ needs.
 **Files:** `src/Archiver.Core/Services/TarProcessService.cs`,
 `src/Archiver.Core/Services/ArchiveEntrySecurity.cs`, `SECURITY.md` (Trust Model cross-reference),
 `tests/Archiver.Core.IntegrationTests/`
+
+---
+
+## T-F87 — Bug: `DeleteAfterOperation` Could Delete a Source That Was Only Skipped, Not Processed
+
+**Found while:** advisor-reviewing T-F85, then confirmed as a pre-existing gap on both the
+Archive and Extract sides, not something T-F85 introduced (T-F85 only made the Extract-side
+instance far more reachable, by routing RAR/7z/tar formats through `IsExtractOnlySelection`'s
+"will extract" UI framing).
+
+**Root cause:** `MainViewModel.ArchiveAsync`/`ExtractAsync` both gate `RunCleanupAsync` (which
+deletes the operation's source paths when `DeleteAfterOperation` is checked) on `result.Success`
+alone. `ArchiveResult.Success` is `errors.Count == 0` and does not look at `SkippedFiles` — so an
+archive/extraction that was entirely skipped, not processed at all, still reports `Success=true`.
+Three concrete ways this happened, found by reading each conflict-skip branch directly rather than
+assuming symmetry:
+1. `ZipArchiveService.ArchiveAsync`'s `SingleArchive` mode returned an early, bare
+   `new ArchiveResult { Success = true, CreatedFiles = [], Errors = [] }` when the destination
+   already existed and `OnConflict == Skip` — no `SkippedFiles` entry at all.
+2. `ZipArchiveService.ArchiveAsync`'s `SeparateArchives` mode hit the identical conflict but
+   `continue`d silently per source path, again with no `SkippedFiles` entry.
+3. `ZipArchiveService.ExtractAsync`/`TarProcessService.ExtractAsync`: when every entry inside an
+   archive individually conflict-skipped (`OnConflict == Skip`, all entries already exist at the
+   destination), the per-entry skip path itself records nothing (`ZipArchiveService.cs`'s
+   `S6`/conflict branch, `TarProcessService`'s equivalent), and the caller unconditionally added
+   the archive's destination folder to `CreatedFiles` regardless of whether anything was written.
+   See `DIAGRAMS.md` diagrams 3 and 5 (nodes `N`/`Q` before this fix) — both already documented
+   this exact `Success`/`SkippedFiles` asymmetry as a finding, from redraws in 2026-07-05/07-07,
+   before it was fixed here.
+
+Concretely dangerous case: a `.rar` on a pre-Windows-11-23H2 machine now routes through
+`IExtractionRouter` to an `unsupported`-format `SkippedFiles` entry (T-F85) rather than being
+extracted. With "delete after extraction" checked, the `.rar` would be deleted having never been
+extracted — data loss, and the exact reason this bug was escalated from "someday" to "now."
+
+**Decision — fix the cleanup gate, not `ArchiveResult.Success`'s definition.** Widening `Success`
+to also check `SkippedFiles.Count == 0` was considered and rejected: `Success` currently means
+"no errors" and every caller (status-message branching in `ArchiveAsync`/`ExtractAsync`, the shell
+path's `ShellResultPresenter.Classify`, `ExtractionRouter`'s merge) depends on that exact meaning.
+Redefining it to also mean "nothing was skipped" is a broad blast-radius change for a fix that
+only needs to answer one narrower question: *was this specific source actually processed?*
+
+**Fix — per-source whole-item `SkippedFiles` entries, filtered at the ViewModel:**
+- Both `ZipArchiveService.ArchiveAsync` conflict-skip branches (`SingleArchive` and
+  `SeparateArchives`) now add a `SkippedFile { Path = <sourcePath>, Reason = "..." }` for every
+  source that was skipped, instead of silently continuing or returning bare.
+- `ZipArchiveService.ExtractWithSmartFolderingAsync` and
+  `TarProcessService.ExtractSingleArchiveAsync` now track how many entries were actually written
+  (`extractedCount`). If an archive had entries but none were extracted, a whole-archive
+  `SkippedFile { Path = archivePath, ... }` is added and the method reports `AnyExtracted = false`
+  (return type changed from `Task<string>` to `Task<(string ActualDest, bool AnyExtracted)>` —
+  both are private methods, no public-API impact). The caller (`ExtractAsync` in both services)
+  only adds the archive to `CreatedFiles` when `AnyExtracted` is true.
+- **Why `Path == archivePath`/`sourcePath` (the full source path) and not something else:** this
+  is what lets the fix work with zero `ArchiveResult` model changes. Per-entry skips inside an
+  archive already record `Path = entry.FullName` — a relative in-archive path, which by
+  construction never equals a caller's full source-path string. So a single `HashSet` membership
+  check at the ViewModel (`GetDeletableSources`, below) distinguishes "this whole source was
+  skipped" from "some entries inside a successfully-processed source were skipped" without needing
+  to know which case produced which entry.
+- `MainViewModel.ArchiveAsync`/`ExtractAsync` now call a new `GetDeletableSources(sources, result)`
+  helper before `RunCleanupAsync`, which filters out any source path found in
+  `result.SkippedFiles` (by exact path, case-insensitive) — so a fully-skipped source is never
+  handed to `RunCleanupAsync` regardless of what `result.Success` says.
+
+**Side effect, accepted as an honesty improvement:** a ZIP archive that conflict-skips every entry
+now surfaces in the operation summary dialog as having skipped files, where it previously looked
+like a silent clean success. This changes 3 existing `ZipArchiveServiceExtractTests` assertions
+(`ExtractAsync_EntryWithColonInName_IsSkipped`, `_ReservedWindowsName_IsSkipped`,
+`_EntryWithControlCharacters_IsSkipped`) from `SkippedFiles.Should().HaveCount(1)` to `HaveCount(2)`
+— each of those fixtures has exactly one entry, which was already individually skipped, so the new
+whole-archive aggregate entry is a second, expected item, not a regression.
+
+**Files:** `src/Archiver.Core/Services/ZipArchiveService.cs`,
+`src/Archiver.Core/Services/TarProcessService.cs`,
+`src/Archiver.App/ViewModels/MainViewModel.cs`, `DIAGRAMS.md` (diagrams 3 and 5 updated in the
+same commit per their own DoD trigger), `tests/Archiver.Core.Tests/Services/*`,
+`tests/Archiver.Core.IntegrationTests/TarProcessServiceExtractTests.cs`

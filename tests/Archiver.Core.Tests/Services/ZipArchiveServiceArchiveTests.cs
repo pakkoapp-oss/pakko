@@ -149,6 +149,32 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
         result.Success.Should().BeTrue();
         result.CreatedFiles.Should().BeEmpty();
         File.GetLastWriteTimeUtc(existingZip).Should().Be(originalWriteTime);
+        // T-F87: the skipped source must be reported so MainViewModel's DeleteAfterOperation
+        // cleanup knows this source was never actually archived.
+        result.SkippedFiles.Should().Contain(s => s.Path == file);
+    }
+
+    // T-F87: SeparateArchives mode has its own conflict-skip branch (SingleArchive's is tested
+    // above) — each skipped source must be recorded, not just silently continued past, so
+    // DeleteAfterOperation cleanup doesn't delete a source that was never archived.
+    [Fact]
+    public async Task ArchiveAsync_SeparateArchivesConflictSkip_RecordsSkippedSource()
+    {
+        var file = _temp.CreateFile("source.txt");
+        _temp.CreateFile("source.zip"); // pre-existing destination for SeparateArchives naming
+
+        var options = new ArchiveOptions
+        {
+            SourcePaths = [file],
+            DestinationFolder = _temp.Path,
+            Mode = ArchiveMode.SeparateArchives,
+            OnConflict = ConflictBehavior.Skip
+        };
+
+        var result = await _sut.ArchiveAsync(options);
+
+        result.CreatedFiles.Should().BeEmpty();
+        result.SkippedFiles.Should().Contain(s => s.Path == file);
     }
 
     [Fact]

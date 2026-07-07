@@ -882,7 +882,14 @@ right-click still won't show Extract until that native code changes too. Tracked
 ---
 
 ### T-F87 — Bug: `DeleteAfterOperation` Can Delete a Source That Was Only Skipped, Not Extracted
-- [ ] **Status:** future — found while advisor-reviewing T-F85, not fixed as part of it
+- [x] **Status:** complete — fix, tests, and on-device verification all done (advisor-reviewed
+      design, see `DECISIONS.md`'s "T-F87" entry). Verified 2026-07-07 via `Deploy.ps1`
+      build+sign+install (Pakko 1.1.0.44) then Windows UI automation: launched via
+      `pakko://extract?files=...` protocol activation with a ZIP whose only entry conflicted
+      with an existing file at the `SeparateFolders` destination, `OnConflict=Skip` (default),
+      "Delete after operation" checked. Summary dialog showed "Completed with issues — Skipped
+      (1): No entries were extracted from this archive — every entry was skipped."; filesystem
+      confirmed the source `.zip` survived and the pre-existing destination file was untouched
 - **Depends on:** none (pre-existing gap, T-F85 made it far more reachable)
 
 **What:** `MainViewModel.ExtractAsync()` runs cleanup on every selected path whenever
@@ -916,13 +923,42 @@ archive's source. Likely also worth revisiting `ArchiveResult.Success`'s own def
 `DIAGRAMS.md`, but changing that shared computation affects every caller, so decide deliberately
 rather than patching `MainViewModel` alone if the fix should live there instead.
 
+**Fix implemented:** see `DECISIONS.md`'s "T-F87" entry for the full design trace (why `Success`
+itself was deliberately left unchanged, and how per-source `SkippedFiles` entries plus a
+`MainViewModel.GetDeletableSources` filter close the gap with no `ArchiveResult` model change).
+
+**Known residual, not fixed here (pre-existing, unchanged by this fix, out of this task's
+enumerated scope):** a path that is neither a ZIP nor a recognized foreign archive format
+(`GetKnownArchiveReason` returns `null` — e.g. a random `.txt`/unrecognized binary) records
+nothing at all — not `CreatedFiles`, not `SkippedFiles`, not `Errors` (see
+`ExtractAsync_RandomBinaryFile_NotInSkippedFilesOrErrors`, which asserts exactly this). Since
+`GetDeletableSources` only protects paths present in `SkippedFiles`, such a file is still handed
+to `RunCleanupAsync` and deleted if selected with "delete after extraction" checked. Narrow in
+practice (`IsExtractOnlySelection` steers non-archives toward Archive framing instead), but not
+covered by this fix — worth a follow-up `T-Fxx` if it needs closing.
+
 **Acceptance criteria:**
-- [ ] `DeleteAfterOperation` does not delete a source archive that was skipped rather than
-      extracted (unsupported format, or fully-conflict-skipped)
-- [ ] Applies to both `MainViewModel.ArchiveAsync`'s and `ExtractAsync`'s cleanup calls if the
-      archive-side has an analogous gap (check before assuming only Extract is affected)
-- [ ] New test(s) covering the skip-then-delete scenario
-- [ ] `dotnet test --filter "Category!=Slow"` passes
+- [x] `DeleteAfterOperation` does not delete a source archive that was skipped rather than
+      extracted (unsupported format, or fully-conflict-skipped) — `GetDeletableSources` filters
+      `RunCleanupAsync`'s input against `result.SkippedFiles` by full path
+- [x] Applies to both `MainViewModel.ArchiveAsync`'s and `ExtractAsync`'s cleanup calls — the
+      archive-side had the identical gap in both `SingleArchive` and `SeparateArchives`
+      conflict-skip branches, now fixed the same way
+- [x] New test(s) covering the skip-then-delete scenario —
+      `ExtractAsync_AllEntriesConflictSkipped_ExcludesArchiveFromCreatedFilesAndRecordsWholeArchiveSkip`
+      (ZIP unit test + tar.exe integration test), `ArchiveAsync_ConflictSkip_...` (updated) and
+      `ArchiveAsync_SeparateArchivesConflictSkip_RecordsSkippedSource` (new)
+- [x] `dotnet test --filter "Category!=Slow"` passes — 168/168 (124 Archiver.Core.Tests + 36
+      Archiver.Shell.Tests + 8 Archiver.Core.IntegrationTests)
+- [x] Manual on-device verification: `Deploy.ps1` build+sign+install, then confirm through the
+      installed app that checking "delete after extraction"/"delete after archiving" together
+      with a conflict-skip-all or unsupported-format selection leaves the source file(s) intact —
+      done 2026-07-07 via Windows UI automation on the Extract side (conflict-skip-all); see the
+      Status line above for the full trace. Archive-side conflict-skip-all and the
+      unsupported-format (RAR/7z on pre-23H2) case were not separately re-verified on-device in
+      this pass — both share the identical `GetDeletableSources` code path already exercised, and
+      are covered by `dotnet test`'s unit/integration coverage, but a personal on-device rerun of
+      those specific variants was not additionally requested this round
 
 ---
 
@@ -990,6 +1026,45 @@ before implementing either direction.
 - [ ] `dotnet build src/Archiver.App` (works via CLI, confirmed this session) shows no new
       warnings from the change
 - [ ] Manual on-device verification of whichever direction is chosen
+
+---
+
+### T-F89 — Cosmetic: Operation Summary Dialog Mislabels Every Skip Reason as "Unsupported Format"
+- [ ] **Status:** future — found while manually verifying T-F87 on-device
+- **Depends on:** none
+
+**What:** `Resources.resw`'s `SkippedSectionHeader` string is hardcoded to *"Skipped — unsupported
+format"* and is used as the section header for `SkippedFiles` regardless of the actual skip
+reason. While verifying T-F87's fix (a ZIP whose only entry conflict-skipped because a file with
+the same name already existed at the destination), the summary dialog showed:
+
+```
+Completed with issues
+Skipped — unsupported format (1)
+  skiptest.zip
+  No entries were extracted from this archive — every entry was skipped.
+```
+
+The per-item reason text underneath is correct and specific; only the section *header* is wrong —
+it claims "unsupported format" for what was actually a conflict skip. This is pre-existing
+(the header string predates T-F87) and not something T-F87 introduced — T-F87 just made a
+previously-rare all-skipped-archive dialog appearance (conflict-skip-all) common enough to notice
+the mislabel in practice.
+
+**Scope:** change `SkippedSectionHeader` to a reason-neutral label (e.g. plain "Skipped (N)") in
+`src/Archiver.App/Strings/en-US/Resources.resw`, or — if per-category headers are wanted — group
+`SkippedFiles` by reason category before rendering. Check `IDialogService`'s
+`ShowOperationSummaryAsync` implementation for how the header is consumed before choosing an
+approach.
+
+**Acceptance criteria:**
+- [ ] Section header no longer claims "unsupported format" for skips that aren't format-related
+      (conflict skips, ADS/reserved-name/reparse-point/zip-bomb skips, whole-archive skips)
+- [ ] Existing "unsupported format" skips (RAR/7z on pre-23H2 tar.exe) still read sensibly under
+      whatever header replaces it
+- [ ] `dotnet build src/Archiver.App` succeeds (WinUI 3, CLI-buildable per `CLAUDE.md`)
+- [ ] Manual on-device verification: trigger both a conflict-skip and an unsupported-format skip,
+      confirm the dialog wording is accurate for each
 
 ---
 

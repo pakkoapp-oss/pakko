@@ -42,7 +42,20 @@ public sealed class ZipArchiveService : IArchiveService
                 switch (options.OnConflict)
                 {
                     case ConflictBehavior.Skip:
-                        return new ArchiveResult { Success = true, CreatedFiles = [], Errors = [] };
+                        // T-F87: report every source as skipped (not just a bare empty result) so
+                        // MainViewModel's DeleteAfterOperation cleanup can tell these sources were
+                        // never archived and must not be deleted.
+                        return new ArchiveResult
+                        {
+                            Success = true,
+                            CreatedFiles = [],
+                            Errors = [],
+                            SkippedFiles = [.. options.SourcePaths.Select(p => new SkippedFile
+                            {
+                                Path = p,
+                                Reason = $"Archive '{Path.GetFileName(destPath)}' already exists at the destination and was skipped."
+                            })],
+                        };
                     case ConflictBehavior.Overwrite:
                         File.Delete(destPath);
                         break;
@@ -247,6 +260,13 @@ public sealed class ZipArchiveService : IArchiveService
                     switch (options.OnConflict)
                     {
                         case ConflictBehavior.Skip:
+                            // T-F87: record the skip so DeleteAfterOperation cleanup (keyed off
+                            // SkippedFiles) doesn't delete a source that was never archived.
+                            skippedFiles.Add(new SkippedFile
+                            {
+                                Path = sourcePath,
+                                Reason = $"Archive '{Path.GetFileName(destPath)}' already exists at the destination and was skipped."
+                            });
                             byteOffset += pathSize;
                             continue;
                         case ConflictBehavior.Overwrite:
@@ -413,12 +433,17 @@ public sealed class ZipArchiveService : IArchiveService
             {
                 IProgress<ProgressReport>? archiveProgress = singleArchive ? progress : null;
                 bool alreadyIsolated = options.Mode == ExtractMode.SeparateFolders;
-                string actualDest = await Task.Run(async () =>
+                var (actualDest, anyExtracted) = await Task.Run(async () =>
                     await ExtractWithSmartFolderingAsync(archivePath, destDir, alreadyIsolated,
                         options.OnConflict, skippedFiles, archiveProgress, cancellationToken),
                     cancellationToken).ConfigureAwait(false);
 
-                createdFiles.Add(actualDest);
+                // T-F87: an archive whose entries were all individually skipped (e.g. every
+                // entry already exists at the destination with OnConflict=Skip) must not be
+                // reported as CreatedFiles — MainViewModel uses this list to decide whether
+                // DeleteAfterOperation may delete the source archive.
+                if (anyExtracted)
+                    createdFiles.Add(actualDest);
             }
             catch (IOException ex)
             {
@@ -571,7 +596,7 @@ public sealed class ZipArchiveService : IArchiveService
         }
     }
 
-    private static async Task<string> ExtractWithSmartFolderingAsync(
+    private static async Task<(string ActualDest, bool AnyExtracted)> ExtractWithSmartFolderingAsync(
         string archivePath,
         string destDir,
         bool alreadyIsolated,
@@ -589,7 +614,7 @@ public sealed class ZipArchiveService : IArchiveService
         if (fileEntries.Count == 0)
         {
             Directory.CreateDirectory(destDir);
-            return destDir;
+            return (destDir, true);
         }
 
         bool isSingleRootFolder = fileEntries.All(e => e.FullName.Contains('/'))
@@ -612,6 +637,7 @@ public sealed class ZipArchiveService : IArchiveService
 
         long totalUncompressedBytes = fileEntries.Where(e => e.Length > 0).Sum(e => e.Length);
         long bytesRead = 0;
+        int extractedCount = 0;
 
         // T-F30: ZIP format allows two entries with the identical name, and
         // System.IO.Compression does not reject them on read. The existing conflict check
@@ -762,6 +788,7 @@ public sealed class ZipArchiveService : IArchiveService
                 // T-F45: Propagate Zone.Identifier ADS from archive to extracted file
                 ArchiveEntrySecurity.TryPropagateMotw(archivePath, destFilePath);
 
+                extractedCount++;
                 bytesRead += entry.Length;
             }
         }
@@ -789,7 +816,20 @@ public sealed class ZipArchiveService : IArchiveService
             Directory.Delete(tempDest, recursive: true);
         }
 
-        return actualDest;
+        // T-F87: every entry was individually skipped (conflict/ADS/reserved name/reparse point/
+        // zip bomb) — nothing was actually extracted, so the caller must not count this archive
+        // as CreatedFiles (that list gates whether DeleteAfterOperation may delete the source).
+        if (extractedCount == 0)
+        {
+            skippedFiles.Add(new SkippedFile
+            {
+                Path = archivePath,
+                Reason = "No entries were extracted from this archive — every entry was skipped."
+            });
+            return (actualDest, false);
+        }
+
+        return (actualDest, true);
     }
 
     private static async Task AddEntryFromFileAsync(
