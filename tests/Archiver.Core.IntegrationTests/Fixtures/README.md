@@ -22,9 +22,21 @@ Single entry `seven.txt`, content `"hello from a real 7z fixture\n"` (29 bytes, 
 Used by `TarProcessServiceExternalFormatsTests.ExtractAsync_Valid7z_ExtractsFileWithContent`,
 gated `[SkipIfFormatUnsupported("7z")]`.
 
-## RAR — not present, not obtainable on this machine
+## `valid.rar`
 
-No RAR-capable encoder is installed here (7-Zip/NanaZip can only *read* RAR — proprietary format,
-owned by WinRAR). Same gap already documented in T-F85/T-F86/T-F49. RAR *routing* logic is unit-
-tested elsewhere (`ExtractionRouterTests`, magic-byte-crafted fakes); a real end-to-end RAR
-extraction needs either a real `.rar` sourced elsewhere or a machine with WinRAR installed.
+Committed as a binary fixture for the same reason as `valid.7z` — `tar.exe`/libarchive can only
+**read** RAR, never create it (proprietary format writer, owned by RARLAB). Previously undocumented
+gap (T-F85/T-F86/T-F49); closed by installing WinRAR's official console `Rar.exe` (via
+`winget install RARLab.WinRAR`, 40-day trial) purely to generate this one fixture, then
+uninstalling it — no RAR-writing tool is used at runtime or shipped with Pakko, this is a one-off
+fixture-generation step same as `valid.7z`'s `NanaZipC.exe` use above.
+
+```
+echo "hello from a real rar fixture" > rar.txt
+"C:\Program Files\WinRAR\Rar.exe" a -ep1 valid.rar rar.txt
+```
+
+Single entry `rar.txt`, content `"hello from a real rar fixture\n"` (30 bytes, LF line ending).
+Used by `TarProcessServiceExternalFormatsTests.ExtractAsync_ValidRar_ExtractsFileWithContent`,
+gated `[SkipIfFormatUnsupported("rar")]`. RAR *routing* logic (pre-existing, unrelated to this
+fixture) is also unit-tested elsewhere via magic-byte-crafted fakes (`ExtractionRouterTests`).

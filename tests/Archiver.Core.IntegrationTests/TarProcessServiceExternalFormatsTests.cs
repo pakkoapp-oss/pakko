@@ -33,4 +33,19 @@ public sealed class TarProcessServiceExternalFormatsTests : IDisposable
         result.Success.Should().BeTrue();
         File.ReadAllText(Path.Combine(destDir, "seven.txt")).Should().Be("hello from a real 7z fixture\n");
     }
+
+    [SkipIfFormatUnsupported("rar")]
+    public async Task ExtractAsync_ValidRar_ExtractsFileWithContent()
+    {
+        string destDir = Path.Combine(_temp.Path, "out");
+        var result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [FixturePath("valid.rar")],
+            DestinationFolder = destDir,
+            Mode = ExtractMode.SingleFolder,
+        });
+
+        result.Success.Should().BeTrue();
+        File.ReadAllText(Path.Combine(destDir, "rar.txt")).Should().Be("hello from a real rar fixture\n");
+    }
 }

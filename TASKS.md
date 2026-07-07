@@ -1272,8 +1272,11 @@ changes.
 
 ### T-F50 — tar.exe Test Fixtures
 - [~] **Status:** partial (v1.3) — all achievable coverage implemented; bomb detection descoped to
-      T-F90 (missing feature, not a fixture gap) and RAR remains unobtainable on this machine
-      (matches T-F49/T-F85/T-F86's existing documented gap)
+      T-F90 (missing feature, not a fixture gap). RAR's previously-documented "unobtainable on
+      this machine" gap (T-F49/T-F85/T-F86) was closed 2026-07-07 — a `valid.rar` fixture was
+      generated via WinRAR's official console `Rar.exe` (installed via `winget`, used once, then
+      uninstalled — no RAR-writing tool is shipped with or used by Pakko itself), same one-off
+      pattern `valid.7z` already used with `NanaZipC.exe`
 
 **What (as implemented — deviates from the original "committed `Fixtures/tar/` corpus" spec
 below; see Design deviation note):** round-trips every tar-family compression variant
@@ -1291,7 +1294,8 @@ binary blobs for formats that are perfectly reproducible in CI, and extends the 
 fixture set later" per its own doc comment). Only 7z needed a committed fixture (`Fixtures/valid.7z`,
 built via NanaZip's `NanaZipC.exe` — same tool T-F85 already used for this, documented in
 `Fixtures/README.md`) since `tar.exe` can only read it. RAR needed a fixture too but none could be
-obtained (no RAR-capable encoder installed anywhere on this machine — same finding as T-F85/T-F86).
+obtained at the time (no RAR-capable encoder installed anywhere on this machine — same finding as
+T-F85/T-F86); closed 2026-07-07, see Status above.
 All new tests live in `tests/Archiver.Core.IntegrationTests/`, matching where T-F49's tar tests
 already are, not a new `tests/Archiver.Core.Tests/Fixtures/tar/` directory as the original text
 named — that directory belongs to the ZIP-fixture/`GenerateFixtures` convention, which this task's
@@ -1300,13 +1304,14 @@ tests don't use.
 **Files:** `tests/Archiver.Core.IntegrationTests/ExternalTarFixtureBuilder.cs` (new),
 `TarProcessServiceCompressedFormatsTests.cs` (new — tar.gz/bz2/xz/zst/lzma round-trips + a
 unicode-filename tar.gz test), `TarProcessServiceExternalFormatsTests.cs` (new — the committed
-`valid.7z` fixture), `TarProcessServiceExtractTests.cs` (added a truncated/corrupted-tar test),
-`Fixtures/valid.7z` and `Fixtures/README.md` (new).
+`valid.7z` and `valid.rar` fixtures), `TarProcessServiceExtractTests.cs` (added a
+truncated/corrupted-tar test), `Fixtures/valid.7z`, `Fixtures/valid.rar` (added 2026-07-07), and
+`Fixtures/README.md`.
 
 **Acceptance criteria:**
 - [x] Valid-format round-trip coverage: tar (already covered pre-existing), tar.gz, tar.bz2,
-      tar.xz, tar.zst, tar.lzma (all generated at test time via real `tar.exe`), 7z (committed
-      fixture) — RAR excluded, see Status above
+      tar.xz, tar.zst, tar.lzma (all generated at test time via real `tar.exe`), 7z and RAR
+      (committed fixtures — RAR added 2026-07-07)
 - [x] Corrupted-archive test: a truncated `.tar` is rejected with an `ArchiveError`, not an
       unhandled exception or silent empty success
 - [x] zipslip: already covered by the pre-existing
@@ -1316,11 +1321,11 @@ unicode-filename tar.gz test), `TarProcessServiceExternalFormatsTests.cs` (new �
       dishonest, so this criterion is intentionally left unchecked here
 - [x] ADS: already covered by the pre-existing
       `ExtractAsync_ArchiveWithAlternateDataStreamEntry_RejectsWholeArchive` test
-- [x] Tests tagged `[SkipIfFormatUnsupported]` for bz2/xz/zst/lzma/7z (RAR has no test — no
-      fixture obtainable)
+- [x] Tests tagged `[SkipIfFormatUnsupported]` for bz2/xz/zst/lzma/7z/rar
 - [x] Unicode filename coverage: new tar.gz test with Cyrillic+CJK content and a Cyrillic filename
-- [x] `dotnet test --filter "Category!=Slow"` passes — 176/176 (124 Archiver.Core.Tests + 36
-      Archiver.Shell.Tests + 16 Archiver.Core.IntegrationTests, was 168/168 before this task)
+- [x] `dotnet test --filter "Category!=Slow"` passes — 177/177 (124 Archiver.Core.Tests + 36
+      Archiver.Shell.Tests + 17 Archiver.Core.IntegrationTests, was 168/168 before this task,
+      176/176 before the RAR fixture was added)
 
 ---
 
