@@ -172,6 +172,12 @@ references are easy to miss otherwise (this session found 5 lingering mentions o
 - **COM HRESULTs:** never return `S_FALSE` alongside a null/unset out-parameter — `S_FALSE` is a
   *success* code (`SUCCEEDED()` is true), so callers checking only `SUCCEEDED()` will dereference
   the null. Use `E_NOTIMPL` instead (verified against Microsoft's own `IExplorerCommand` sample).
+- **Shell-extension icons referencing another exe** (e.g. `PakkoRootCommand::GetIcon` →
+  `Archiver.App.exe,0`): the target exe needs `<ApplicationIcon>` set in its `.csproj` — a
+  `Content Include` of an `.ico` (used for the MSIX tile logo) does NOT embed a Win32 icon
+  resource in the exe. Verify with `ExtractIconEx(path, -1, $null, $null, 0)`'s total count, not
+  `[System.Drawing.Icon]::ExtractAssociatedIcon()` — the latter can return a non-null fallback
+  icon even for a file with zero real icon resources (T-F95).
 - **.NET COM interop (`[ComImport]` interfaces consuming external COM objects):** check the real
   SDK header before declaring the interface — if a method returns a plain type (e.g. `BOOL`)
   instead of `HRESULT`, mark it `[PreserveSig]`. Without it, the marshaller assumes the
@@ -395,6 +401,14 @@ MSBuild tests\Archiver.ShellExtension.Tests\Archiver.ShellExtension.Tests.vcxpro
 > that specific version's `obj`/`AppPackages` state was wedged, not a live handle. Don't spend
 > time chasing process locks for this error; a version bump + `obj` clean is faster and fixed
 > it outright.
+>
+> **Correction (recurred a 3rd time, 2026-07-07):** the lesson above isn't universal — distinguish
+> a wedged/stale folder from a live-handle race before reaching for a version bump. Test: if a
+> manual `rm -rf`/`Remove-Item` on the "locked" path succeeds immediately right after
+> `dotnet publish` fails on that same path, it's a transient live handle (Search Indexer is the
+> top suspect), not a wedged folder — a version bump won't reliably fix this variant.
+> `Deploy.ps1` now tolerates this specific shape (MSB3231 on `AppPackages`/`PackageLayout` with a
+> valid `.msix` already written) instead of aborting a good build — see T-F96 in `TASKS.md`.
 
 ---
 

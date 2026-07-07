@@ -133,17 +133,43 @@ if (-not $DeployOnly) {
     Write-Host ""
     Write-Host "Publishing Pakko ($Architecture)..." -ForegroundColor Cyan
 
+    $publishStartTime = Get-Date
+
     $env:PAKKO_DEPLOYING = '1'
-    & dotnet publish $csprojPath `
+    $publishOutput = & dotnet publish $csprojPath `
         /p:Configuration=Release `
         "/p:Platform=$platform" `
         "/p:RuntimeIdentifier=$rid" `
         /p:SelfContained=true `
         /p:GenerateAppxPackageOnBuild=true `
         /p:AppxPackageSigningEnabled=true `
-        "/p:PackageCertificateThumbprint=$Thumbprint"
+        "/p:PackageCertificateThumbprint=$Thumbprint" 2>&1 |
+        Tee-Object -Variable publishOutput
     $env:PAKKO_DEPLOYING = $null
-    if ($LASTEXITCODE -ne 0) { Write-Error "dotnet publish failed (exit $LASTEXITCODE)."; exit $LASTEXITCODE }
+
+    if ($LASTEXITCODE -ne 0) {
+        # T-F96 (see DECISIONS.md): the MSIX packaging pipeline can fail with
+        # MSB3231 "Unable to remove directory ... AppPackages/PackageLayout ..." while
+        # cleaning up its own intermediate output -- AFTER a valid .msix/.msixbundle has
+        # already been written. Confirmed empirically (installing that already-written
+        # package directly works fine); root cause still open (leading theory: Search
+        # Indexer racing the cleanup). Narrow tolerance: only continue past this exact,
+        # narrowly-matched failure shape with proof a fresh package exists -- any other
+        # publish failure still fails hard, unchanged from before.
+        $isKnownCleanupRace = ($publishOutput -join "`n") -match
+            'MSB3231.*Unable to remove directory.*(AppPackages|PackageLayout)'
+        $freshPackage = Get-ChildItem -Path $pkgOutDir -Recurse -Include '*.msix', '*.msixbundle' -ErrorAction SilentlyContinue |
+            Where-Object { $_.LastWriteTime -ge $publishStartTime } |
+            Sort-Object LastWriteTime -Descending |
+            Select-Object -First 1
+
+        if ($isKnownCleanupRace -and $freshPackage) {
+            Write-Warning "dotnet publish failed with MSB3231 cleaning up its own packaging output (known issue, T-F96 -- see DECISIONS.md), but a freshly-built package exists: $($freshPackage.Name). Continuing with install."
+        } else {
+            Write-Error "dotnet publish failed (exit $LASTEXITCODE)."
+            exit $LASTEXITCODE
+        }
+    }
 }
 
 # ── Locate the final .msix/.msixbundle ────────────────────────────────────────

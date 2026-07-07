@@ -1598,8 +1598,20 @@ experiment if it recurs — **not fixed here**, tracked as a new follow-up below
 ---
 
 ### T-F96 — Bug: `Deploy.ps1`/`dotnet publish` Fails Cleaning Up PackageLayout After a Valid `.msix` Is Written
-- [ ] **Status:** future — found as a side effect of T-F95's investigation, not yet root-caused
+- [~] **Status:** partial — `Deploy.ps1` now tolerates this specific failure shape instead of
+      aborting a good build (2026-07-07, advisor-reviewed scenario menu, Opus 4.8). Root cause
+      still open — see below
 - **Depends on:** none
+
+**Diagnostic update (this round, advisor session):** the earlier `ExtractAssociatedIcon`-adjacent
+theory that this was a *wedged/stale* directory (per the "Deploy.ps1 Failed After T-F91" entry in
+`DECISIONS.md`) does not fit here — every manual `rm -rf` on the "locked" path succeeded
+immediately (`exit=0`) moments after MSBuild's own `RemoveDir` failed on the identical path. A
+wedged directory or DACL problem would block a manual delete too; a handle that's gone by retry
+time means a **transient live handle held during the build**, not stale state. `RemoveDirectory`
+also returns `ACCESS_DENIED` (not `SHARING_VIOLATION`) when a *child file* still has an open
+handle — the earlier "ACCESS_DENIED must mean wedged, not a live handle" heuristic was based on
+reasoning about opening a single file, which doesn't transfer to removing its parent directory.
 
 **What:** `dotnet publish` (both directly and via `Deploy.ps1`) reliably fails with
 `MSB3231: Unable to remove directory "..."` — `Access to the path '...' is denied` — on a
@@ -1622,18 +1634,53 @@ directory cleanup — more parallel work in that stage than before T-F91, and th
 differs run to run (`cs-CZ` resources one run, `Assets` another), consistent with a timing race
 rather than a fixed permissions problem.
 
-**Scope:** try serializing the build (`/m:1` or `/p:BuildInParallel=false`) on a `dotnet publish`
-of `Archiver.App` and see if the cleanup step stops failing; if that's not it, escalate to
-Process Monitor (not just Resource Monitor's handle search, which only shows *currently open*
-handles — the failing process may have already closed its handle by the time you search) filtered
-to the exact failing path to catch whichever process actually holds it at the moment of deletion.
+**Root-cause scenarios (ranked, from an advisor-built menu — not yet individually tested against
+a live recurrence, since the race didn't reproduce during this round's two follow-up `Deploy.ps1`
+runs):**
+1. **Windows Search Indexer** (top suspect) — the failing subpaths seen so far (`cs-CZ` text
+   resources, `Assets` images) both fall under content types the indexer touches. Decisive test:
+   `Stop-Service WSearch` (elevated) before a `Deploy.ps1` run; if the failure stops recurring,
+   confirmed — permanent fix is excluding the build output folders from indexing.
+2. **Third-party EDR/AV beyond Defender** — plausible given the project's government/defense
+   target audience (a managed dev machine could run an endpoint agent that ignores a Defender-only
+   exclusion). Check: `Get-MpPreference | Select -ExpandProperty ExclusionPath` (confirm the
+   exclusion actually covers this path, not just assumed), and look for other running
+   protection/EDR services.
+3. **`/m:1 /nodeReuse:false` on the `dotnet publish`** — cheap test for an MSBuild-node-level race;
+   inconclusive if negative, since MakeAppx/PRI-generation may parallelize internally regardless
+   of `/m`.
+4. **Suppress the `_Test\Add-AppDevPackage.resources\<locale>` sideload artifacts entirely** —
+   `Deploy.ps1` never uses them (it `Add-AppxPackage`s the `.msix`/`.msixbundle` directly); if an
+   MSBuild property gates their generation, disabling it removes one whole class of files this
+   race could be racing against. Needs reading the real
+   `Microsoft.Windows.SDK.BuildTools.MSIX.Packaging.targets` lines involved (1831, 3140), not
+   guessing a property name.
+
+**Mitigation implemented now (unblocks deploys regardless of which theory above is correct):**
+`Deploy.ps1` captures `dotnet publish`'s combined output and, only on failure, checks whether (a)
+the captured output matches `MSB3231.*Unable to remove directory.*(AppPackages|PackageLayout)` and
+(b) a `.msix`/`.msixbundle` newer than the publish start time actually exists under
+`AppPackages\`. Only when both hold does it `Write-Warning` and continue to the existing
+uninstall/install steps instead of aborting — any other publish failure (real compile/sign errors)
+still fails hard, unchanged. Verified: the regex matches both real historical error variants
+captured this session (`AppPackages\..._Test\` and `obj\...\PackageLayout\`) and correctly does
+**not** match an unrelated real C# compile error (negative control) — tested in isolation since the
+race itself didn't reproduce live in this round's two clean `Deploy.ps1` runs, so the "continue"
+branch couldn't be exercised end-to-end this time.
 
 **Acceptance criteria:**
-- [ ] Root cause identified (not just worked around)
-- [ ] `Deploy.ps1` (full build+sign+install, no manual `Add-AppxPackage` workaround) completes
-      successfully end-to-end at least 3 times in a row from a clean `obj`/`AppPackages` state
-- [ ] `CLAUDE.md`'s Build Commands section updated with the fix/workaround if one is needed
-      permanently (e.g. if `/m:1` turns out to be required going forward)
+- [x] `Deploy.ps1` tolerates the specific MSB3231-after-valid-package failure shape instead of
+      aborting a successful build; any other failure still fails hard (narrow regex + freshness
+      check, not a blanket try/continue)
+- [x] Tolerance logic verified against real captured historical error text (positive) and a real
+      unrelated compile error (negative control) — isolated regex test, not yet exercised via a
+      live recurrence of the race in this round
+- [x] Two clean-state `Deploy.ps1` end-to-end runs completed successfully this round (neither hit
+      the race — expected, since it's confirmed intermittent, not deterministic)
+- [ ] Root cause identified (not just tolerated) — none of the four ranked scenarios above tested
+      yet; next step is the `Stop-Service WSearch` test the next time the race recurs
+- [ ] `CLAUDE.md`'s Build Commands section updated once a root cause (not just the tolerance
+      guard) is confirmed, if it implies a standing environmental fix (e.g. an indexing exclusion)
 
 ---
 

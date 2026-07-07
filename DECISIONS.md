@@ -1604,4 +1604,41 @@ resolve it).
 package and ran `Add-AppxPackage` directly against the freshly-built `.msix`, bypassing
 `Deploy.ps1`'s own install step for that one deployment.
 
-**Files:** none changed — investigation only, tracked as open follow-up (T-F96 in `TASKS.md`).
+**Follow-up (same day, next session): corrected the wedged-folder theory, added a tolerance
+guard.** The user reported this recurring a third time across separate sessions and asked for a
+proper diagnosis via a second opinion (advisor, Opus 4.8). Key correction: the earlier
+"Deploy.ps1 Failed After T-F91" entry's lesson — `ACCESS_DENIED` on delete implies a wedged/stale
+directory, not a live handle, because `Get-ChildItem` showed it as empty — **does not transfer to
+this failure**. Re-examined this session's own transcript: every manual `rm -rf` against the
+"locked" path succeeded immediately (`exit=0`), moments after MSBuild's own `RemoveDir` failed on
+that identical path. A truly wedged directory or DACL problem would block a manual delete too — a
+handle that's gone by retry time means a **transient live handle held during the build**, then
+released right after, i.e. a race, not stale state. Separately, `RemoveDirectory` returns
+`ACCESS_DENIED` (not `ERROR_SHARING_VIOLATION`) when a *child file inside the directory* still has
+an open handle — the earlier heuristic ("ACCESS_DENIED ⇒ wedged, SHARING_VIOLATION ⇒ live handle")
+was reasoning about opening one specific file, which doesn't hold for removing that file's parent.
+
+**Root-cause scenarios produced (ranked, not yet individually tested against a live recurrence —
+see T-F96's `TASKS.md` entry for the full list):** Windows Search Indexer racing the cleanup
+(top suspect — the two failing subpaths seen so far, `cs-CZ` text resources and `Assets` images,
+both fall under content types the indexer touches); a third-party EDR/AV agent beyond Defender
+(plausible given this project's government/defense target audience, and "I have an exclusion"
+covering Defender specifically was never verified to actually include this exact path); an
+MSBuild-node-level race (cheap `/m:1` test, inconclusive if negative since MakeAppx/PRI-gen may
+parallelize internally regardless); or removing the trigger entirely by suppressing the
+`_Test\Add-AppDevPackage.resources\<locale>` sideload-package generation, which `Deploy.ps1` never
+actually consumes.
+
+**Mitigation implemented (not a root-cause fix):** `Deploy.ps1` now captures `dotnet publish`'s
+output and, only if the process exits non-zero, checks whether the output narrowly matches
+`MSB3231.*Unable to remove directory.*(AppPackages|PackageLayout)` **and** a `.msix`/`.msixbundle`
+newer than the publish start time exists on disk. Only when both hold does it warn and continue to
+the existing install steps instead of aborting a build that actually succeeded — any other
+`dotnet publish` failure (real compile/sign errors) still fails hard, exactly as before. The regex
+was verified against the real historical error text captured earlier this session (both the
+`AppPackages\..._Test\` and `obj\...\PackageLayout\` variants) and confirmed to *not* match an
+unrelated real C# compile error, as a negative control. The race itself did not recur during two
+clean-state `Deploy.ps1` runs used to test this change, so the "continue" branch is verified by
+isolated regex testing, not yet by a live end-to-end trigger.
+
+**Files:** `scripts/Deploy.ps1`.
