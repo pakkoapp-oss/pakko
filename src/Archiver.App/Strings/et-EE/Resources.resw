@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <!-- Buttons -->
+  <data name="ArchiveButton.Content" xml:space="preserve">
+    <value>Arhiveeri</value>
+  </data>
+  <data name="ExtractButton.Content" xml:space="preserve">
+    <value>Paki lahti</value>
+  </data>
+  <data name="ClearButton.Content" xml:space="preserve">
+    <value>Tühjenda</value>
+  </data>
+  <data name="AddFilesButton.Content" xml:space="preserve">
+    <value>Lisa failid</value>
+  </data>
+  <data name="AddFolderButton.Content" xml:space="preserve">
+    <value>Lisa kaust</value>
+  </data>
+
+  <!-- Drop zone -->
+  <data name="DropZoneHint.Text" xml:space="preserve">
+    <value>Lohistage failid või kaustad siia, või tehke failide sirvimiseks topeltklõps</value>
+  </data>
+  <data name="MultipleFoldersHint.Text" xml:space="preserve">
+    <value>Mitme kausta jaoks — lohistage need Explorerist</value>
+  </data>
+  <data name="DropZoneModeHint.Text" xml:space="preserve">
+    <value>Arhiivid pakuvad lahtipakkimist; kõik muu arhiveeritakse</value>
+  </data>
+
+  <!-- Labels -->
+  <data name="DestinationLabel.Text" xml:space="preserve">
+    <value>Sihtkoht:</value>
+  </data>
+  <data name="ArchiveNameLabel.Text" xml:space="preserve">
+    <value>Nimi:</value>
+  </data>
+  <data name="CompressionLabel.Text" xml:space="preserve">
+    <value>Tihendus:</value>
+  </data>
+  <data name="ConflictLabel.Text" xml:space="preserve">
+    <value>Kui fail on juba olemas:</value>
+  </data>
+
+  <!-- Checkboxes -->
+  <data name="OpenDestinationCheck.Content" xml:space="preserve">
+    <value>Ava sihtkaust pärast lõpetamist</value>
+  </data>
+  <data name="DeleteAfterOperationCheck.Content" xml:space="preserve">
+    <value>Kustuta pärast toimingut</value>
+  </data>
+
+  <!-- Status messages -->
+  <data name="StatusReady" xml:space="preserve">
+    <value>Valmis</value>
+  </data>
+  <data name="StatusArchiving" xml:space="preserve">
+    <value>Arhiveerimine...</value>
+  </data>
+  <data name="StatusExtracting" xml:space="preserve">
+    <value>Lahtipakkimine...</value>
+  </data>
+  <data name="StatusDone" xml:space="preserve">
+    <value>Valmis — töödeldud faile: {0}.</value>
+  </data>
+  <data name="StatusIssues" xml:space="preserve">
+    <value>Lõpetatud probleemidega.</value>
+  </data>
+  <data name="StatusCancelled" xml:space="preserve">
+    <value>Tühistatud</value>
+  </data>
+  <data name="StatusCleaningUp" xml:space="preserve">
+    <value>Puhastamine...</value>
+  </data>
+  <data name="StatusFinalizing" xml:space="preserve">
+    <value>Lõpetamine...</value>
+  </data>
+  <data name="StatusArchivedIn" xml:space="preserve">
+    <value>Arhiveeritud {0} s — faile: {1}</value>
+  </data>
+  <data name="StatusExtractedIn" xml:space="preserve">
+    <value>Lahti pakitud {0} s — faile: {1}</value>
+  </data>
+  <data name="OutcomeWillExtract" xml:space="preserve">
+    <value>Lahti pakitakse {0} arhiivi ülal olevasse kausta</value>
+  </data>
+  <data name="OutcomeWillArchive" xml:space="preserve">
+    <value>Arhiveeritakse {0} elementi ülal olevasse kausta</value>
+  </data>
+
+  <!-- Dialog strings -->
+  <data name="ErrorDialogTitle" xml:space="preserve">
+    <value>Lõpetatud probleemidega</value>
+  </data>
+  <data name="ErrorSectionHeader" xml:space="preserve">
+    <value>Vead</value>
+  </data>
+  <data name="SkippedSectionHeader" xml:space="preserve">
+    <value>Vahele jäetud</value>
+  </data>
+  <data name="CompressionBombDialogTitle" xml:space="preserve">
+    <value>Kahtlane arhiiv</value>
+  </data>
+  <data name="CompressionBombDialogMessage" xml:space="preserve">
+    <value>See arhiiv väidab sisaldavat {0} andmeid, tihendussuhtega {1}:1. See on ebatavaliselt kõrge ja võib viidata lahtipakkimispommile. Kas pakkida ikkagi lahti?</value>
+  </data>
+</root>

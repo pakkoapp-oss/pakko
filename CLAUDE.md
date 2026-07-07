@@ -352,6 +352,15 @@ MSBuild tests\Archiver.ShellExtension.Tests\Archiver.ShellExtension.Tests.vcxpro
 > Release build in VS triggers `Deploy.ps1 -DeployOnly` automatically (post-build event).
 > For manual deploy from terminal: `.\scripts\Deploy.ps1` (full build + sign + install)
 > or `.\scripts\Deploy.ps1 -DeployOnly` (install only, no build).
+>
+> **Localization (`Strings/<locale>/Resources.resw`, T-F91):** `Package.appxmanifest`'s
+> `<Resource Language="x-generate"/>` auto-detects every `Strings/<locale>/` folder at build —
+> no manual `<Resources>` edit needed when adding a locale. A key missing from a locale's
+> `Resources.resw` falls back to `en-US` automatically, so non-translatable keys (URLs) should
+> be omitted from locale files, not duplicated. Verify a new locale is wired without opening VS:
+> `dotnet build src/Archiver.App/Archiver.App.csproj /p:Platform=x64`, then check
+> `bin/x64/Release/net8.0-windows10.0.17763.0/win-x64/AppxManifest.xml` for the `<Resource
+> Language>` entries.
 
 ---
 

@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <!-- Buttons -->
+  <data name="ArchiveButton.Content" xml:space="preserve">
+    <value>Archiwizuj</value>
+  </data>
+  <data name="ExtractButton.Content" xml:space="preserve">
+    <value>Wypakuj</value>
+  </data>
+  <data name="ClearButton.Content" xml:space="preserve">
+    <value>Wyczyść</value>
+  </data>
+  <data name="AddFilesButton.Content" xml:space="preserve">
+    <value>Dodaj pliki</value>
+  </data>
+  <data name="AddFolderButton.Content" xml:space="preserve">
+    <value>Dodaj folder</value>
+  </data>
+
+  <!-- Drop zone -->
+  <data name="DropZoneHint.Text" xml:space="preserve">
+    <value>Przeciągnij tu pliki lub foldery albo kliknij dwukrotnie, aby je wybrać</value>
+  </data>
+  <data name="MultipleFoldersHint.Text" xml:space="preserve">
+    <value>W przypadku wielu folderów — przeciągnij je z Eksploratora</value>
+  </data>
+  <data name="DropZoneModeHint.Text" xml:space="preserve">
+    <value>Archiwa oferują wypakowanie; wszystko inne zostanie zarchiwizowane</value>
+  </data>
+
+  <!-- Labels -->
+  <data name="DestinationLabel.Text" xml:space="preserve">
+    <value>Miejsce docelowe:</value>
+  </data>
+  <data name="ArchiveNameLabel.Text" xml:space="preserve">
+    <value>Nazwa:</value>
+  </data>
+  <data name="CompressionLabel.Text" xml:space="preserve">
+    <value>Kompresja:</value>
+  </data>
+  <data name="ConflictLabel.Text" xml:space="preserve">
+    <value>Jeśli plik istnieje:</value>
+  </data>
+
+  <!-- Checkboxes -->
+  <data name="OpenDestinationCheck.Content" xml:space="preserve">
+    <value>Otwórz folder docelowy po zakończeniu</value>
+  </data>
+  <data name="DeleteAfterOperationCheck.Content" xml:space="preserve">
+    <value>Usuń po zakończeniu operacji</value>
+  </data>
+
+  <!-- Status messages -->
+  <data name="StatusReady" xml:space="preserve">
+    <value>Gotowy</value>
+  </data>
+  <data name="StatusArchiving" xml:space="preserve">
+    <value>Archiwizowanie...</value>
+  </data>
+  <data name="StatusExtracting" xml:space="preserve">
+    <value>Wypakowywanie...</value>
+  </data>
+  <data name="StatusDone" xml:space="preserve">
+    <value>Gotowe — przetworzono plików: {0}.</value>
+  </data>
+  <data name="StatusIssues" xml:space="preserve">
+    <value>Zakończono z problemami.</value>
+  </data>
+  <data name="StatusCancelled" xml:space="preserve">
+    <value>Anulowano</value>
+  </data>
+  <data name="StatusCleaningUp" xml:space="preserve">
+    <value>Czyszczenie...</value>
+  </data>
+  <data name="StatusFinalizing" xml:space="preserve">
+    <value>Finalizowanie...</value>
+  </data>
+  <data name="StatusArchivedIn" xml:space="preserve">
+    <value>Zarchiwizowano w {0} s — plików: {1}</value>
+  </data>
+  <data name="StatusExtractedIn" xml:space="preserve">
+    <value>Wypakowano w {0} s — plików: {1}</value>
+  </data>
+  <data name="OutcomeWillExtract" xml:space="preserve">
+    <value>Zostanie wypakowanych archiwów: {0} — do folderu powyżej</value>
+  </data>
+  <data name="OutcomeWillArchive" xml:space="preserve">
+    <value>Zostanie zarchiwizowanych elementów: {0} — do folderu powyżej</value>
+  </data>
+
+  <!-- Dialog strings -->
+  <data name="ErrorDialogTitle" xml:space="preserve">
+    <value>Zakończono z problemami</value>
+  </data>
+  <data name="ErrorSectionHeader" xml:space="preserve">
+    <value>Błędy</value>
+  </data>
+  <data name="SkippedSectionHeader" xml:space="preserve">
+    <value>Pominięto</value>
+  </data>
+  <data name="CompressionBombDialogTitle" xml:space="preserve">
+    <value>Podejrzane archiwum</value>
+  </data>
+  <data name="CompressionBombDialogMessage" xml:space="preserve">
+    <value>To archiwum deklaruje {0} danych, współczynnik kompresji {1}:1. To niezwykle wysoka wartość i może wskazywać na bombę dekompresyjną. Mimo to wypakować?</value>
+  </data>
+</root>

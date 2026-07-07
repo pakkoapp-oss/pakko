@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <!-- Buttons -->
+  <data name="ArchiveButton.Content" xml:space="preserve">
+    <value>Arhivează</value>
+  </data>
+  <data name="ExtractButton.Content" xml:space="preserve">
+    <value>Extrage</value>
+  </data>
+  <data name="ClearButton.Content" xml:space="preserve">
+    <value>Golește</value>
+  </data>
+  <data name="AddFilesButton.Content" xml:space="preserve">
+    <value>Adaugă fișiere</value>
+  </data>
+  <data name="AddFolderButton.Content" xml:space="preserve">
+    <value>Adaugă folder</value>
+  </data>
+
+  <!-- Drop zone -->
+  <data name="DropZoneHint.Text" xml:space="preserve">
+    <value>Plasați fișiere sau foldere aici, sau faceți dublu clic pentru a răsfoi fișierele</value>
+  </data>
+  <data name="MultipleFoldersHint.Text" xml:space="preserve">
+    <value>Pentru mai multe foldere — trageți din Explorer</value>
+  </data>
+  <data name="DropZoneModeHint.Text" xml:space="preserve">
+    <value>Arhivele oferă extragere; orice altceva va fi arhivat</value>
+  </data>
+
+  <!-- Labels -->
+  <data name="DestinationLabel.Text" xml:space="preserve">
+    <value>Destinație:</value>
+  </data>
+  <data name="ArchiveNameLabel.Text" xml:space="preserve">
+    <value>Nume:</value>
+  </data>
+  <data name="CompressionLabel.Text" xml:space="preserve">
+    <value>Compresie:</value>
+  </data>
+  <data name="ConflictLabel.Text" xml:space="preserve">
+    <value>Dacă fișierul există:</value>
+  </data>
+
+  <!-- Checkboxes -->
+  <data name="OpenDestinationCheck.Content" xml:space="preserve">
+    <value>Deschide folderul de destinație după finalizare</value>
+  </data>
+  <data name="DeleteAfterOperationCheck.Content" xml:space="preserve">
+    <value>Șterge după operație</value>
+  </data>
+
+  <!-- Status messages -->
+  <data name="StatusReady" xml:space="preserve">
+    <value>Gata</value>
+  </data>
+  <data name="StatusArchiving" xml:space="preserve">
+    <value>Se arhivează...</value>
+  </data>
+  <data name="StatusExtracting" xml:space="preserve">
+    <value>Se extrage...</value>
+  </data>
+  <data name="StatusDone" xml:space="preserve">
+    <value>Gata — {0} fișier(e) procesat(e).</value>
+  </data>
+  <data name="StatusIssues" xml:space="preserve">
+    <value>Finalizat cu probleme.</value>
+  </data>
+  <data name="StatusCancelled" xml:space="preserve">
+    <value>Anulat</value>
+  </data>
+  <data name="StatusCleaningUp" xml:space="preserve">
+    <value>Se curăță...</value>
+  </data>
+  <data name="StatusFinalizing" xml:space="preserve">
+    <value>Se finalizează...</value>
+  </data>
+  <data name="StatusArchivedIn" xml:space="preserve">
+    <value>Arhivat în {0} sec — {1} fișier(e)</value>
+  </data>
+  <data name="StatusExtractedIn" xml:space="preserve">
+    <value>Extras în {0} sec — {1} fișier(e)</value>
+  </data>
+  <data name="OutcomeWillExtract" xml:space="preserve">
+    <value>Vor fi extrase {0} arhivă/arhive în folderul de mai sus</value>
+  </data>
+  <data name="OutcomeWillArchive" xml:space="preserve">
+    <value>Vor fi arhivate {0} element(e) în folderul de mai sus</value>
+  </data>
+
+  <!-- Dialog strings -->
+  <data name="ErrorDialogTitle" xml:space="preserve">
+    <value>Finalizat cu probleme</value>
+  </data>
+  <data name="ErrorSectionHeader" xml:space="preserve">
+    <value>Erori</value>
+  </data>
+  <data name="SkippedSectionHeader" xml:space="preserve">
+    <value>Omise</value>
+  </data>
+  <data name="CompressionBombDialogTitle" xml:space="preserve">
+    <value>Arhivă suspectă</value>
+  </data>
+  <data name="CompressionBombDialogMessage" xml:space="preserve">
+    <value>Această arhivă declară că conține {0} de date, un raport de compresie de {1}:1. Aceasta este neobișnuit de ridicat și poate indica o bombă de decompresie. Extrageți oricum?</value>
+  </data>
+</root>

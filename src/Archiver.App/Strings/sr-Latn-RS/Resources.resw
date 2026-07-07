@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <!-- Buttons -->
+  <data name="ArchiveButton.Content" xml:space="preserve">
+    <value>Arhiviraj</value>
+  </data>
+  <data name="ExtractButton.Content" xml:space="preserve">
+    <value>Raspakuj</value>
+  </data>
+  <data name="ClearButton.Content" xml:space="preserve">
+    <value>Očisti</value>
+  </data>
+  <data name="AddFilesButton.Content" xml:space="preserve">
+    <value>Dodaj datoteke</value>
+  </data>
+  <data name="AddFolderButton.Content" xml:space="preserve">
+    <value>Dodaj fasciklu</value>
+  </data>
+
+  <!-- Drop zone -->
+  <data name="DropZoneHint.Text" xml:space="preserve">
+    <value>Prevucite datoteke ili fascikle ovde, ili dvaput kliknite da pregledate datoteke</value>
+  </data>
+  <data name="MultipleFoldersHint.Text" xml:space="preserve">
+    <value>Za više fascikli — prevucite ih iz Explorer-a</value>
+  </data>
+  <data name="DropZoneModeHint.Text" xml:space="preserve">
+    <value>Arhive nude raspakivanje; sve ostalo će biti arhivirano</value>
+  </data>
+
+  <!-- Labels -->
+  <data name="DestinationLabel.Text" xml:space="preserve">
+    <value>Odredište:</value>
+  </data>
+  <data name="ArchiveNameLabel.Text" xml:space="preserve">
+    <value>Naziv:</value>
+  </data>
+  <data name="CompressionLabel.Text" xml:space="preserve">
+    <value>Kompresija:</value>
+  </data>
+  <data name="ConflictLabel.Text" xml:space="preserve">
+    <value>Ako datoteka postoji:</value>
+  </data>
+
+  <!-- Checkboxes -->
+  <data name="OpenDestinationCheck.Content" xml:space="preserve">
+    <value>Otvori odredišnu fasciklu po završetku</value>
+  </data>
+  <data name="DeleteAfterOperationCheck.Content" xml:space="preserve">
+    <value>Obriši posle operacije</value>
+  </data>
+
+  <!-- Status messages -->
+  <data name="StatusReady" xml:space="preserve">
+    <value>Spremno</value>
+  </data>
+  <data name="StatusArchiving" xml:space="preserve">
+    <value>Arhiviranje...</value>
+  </data>
+  <data name="StatusExtracting" xml:space="preserve">
+    <value>Raspakivanje...</value>
+  </data>
+  <data name="StatusDone" xml:space="preserve">
+    <value>Gotovo — obrađeno datoteka: {0}.</value>
+  </data>
+  <data name="StatusIssues" xml:space="preserve">
+    <value>Završeno sa problemima.</value>
+  </data>
+  <data name="StatusCancelled" xml:space="preserve">
+    <value>Otkazano</value>
+  </data>
+  <data name="StatusCleaningUp" xml:space="preserve">
+    <value>Čišćenje...</value>
+  </data>
+  <data name="StatusFinalizing" xml:space="preserve">
+    <value>Finalizacija...</value>
+  </data>
+  <data name="StatusArchivedIn" xml:space="preserve">
+    <value>Arhivirano za {0} s — datoteka: {1}</value>
+  </data>
+  <data name="StatusExtractedIn" xml:space="preserve">
+    <value>Raspakovano za {0} s — datoteka: {1}</value>
+  </data>
+  <data name="OutcomeWillExtract" xml:space="preserve">
+    <value>Biće raspakovano arhiva: {0} — u fasciklu iznad</value>
+  </data>
+  <data name="OutcomeWillArchive" xml:space="preserve">
+    <value>Biće arhivirano stavki: {0} — u fasciklu iznad</value>
+  </data>
+
+  <!-- Dialog strings -->
+  <data name="ErrorDialogTitle" xml:space="preserve">
+    <value>Završeno sa problemima</value>
+  </data>
+  <data name="ErrorSectionHeader" xml:space="preserve">
+    <value>Greške</value>
+  </data>
+  <data name="SkippedSectionHeader" xml:space="preserve">
+    <value>Preskočeno</value>
+  </data>
+  <data name="CompressionBombDialogTitle" xml:space="preserve">
+    <value>Sumnjiva arhiva</value>
+  </data>
+  <data name="CompressionBombDialogMessage" xml:space="preserve">
+    <value>Ova arhiva tvrdi da sadrži {0} podataka, odnos kompresije {1}:1. To je neuobičajeno visoko i može ukazivati na dekompresionu bombu. Ipak raspakovati?</value>
+  </data>
+</root>

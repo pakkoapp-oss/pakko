@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <!-- Buttons -->
+  <data name="ArchiveButton.Content" xml:space="preserve">
+    <value>Archivovat</value>
+  </data>
+  <data name="ExtractButton.Content" xml:space="preserve">
+    <value>Rozbalit</value>
+  </data>
+  <data name="ClearButton.Content" xml:space="preserve">
+    <value>Vymazat</value>
+  </data>
+  <data name="AddFilesButton.Content" xml:space="preserve">
+    <value>Přidat soubory</value>
+  </data>
+  <data name="AddFolderButton.Content" xml:space="preserve">
+    <value>Přidat složku</value>
+  </data>
+
+  <!-- Drop zone -->
+  <data name="DropZoneHint.Text" xml:space="preserve">
+    <value>Přetáhněte sem soubory nebo složky, nebo dvakrát klikněte pro procházení souborů</value>
+  </data>
+  <data name="MultipleFoldersHint.Text" xml:space="preserve">
+    <value>Pro více složek — přetáhněte je z Průzkumníka</value>
+  </data>
+  <data name="DropZoneModeHint.Text" xml:space="preserve">
+    <value>Archivy nabízejí rozbalení; vše ostatní bude zabaleno</value>
+  </data>
+
+  <!-- Labels -->
+  <data name="DestinationLabel.Text" xml:space="preserve">
+    <value>Cíl:</value>
+  </data>
+  <data name="ArchiveNameLabel.Text" xml:space="preserve">
+    <value>Název:</value>
+  </data>
+  <data name="CompressionLabel.Text" xml:space="preserve">
+    <value>Komprese:</value>
+  </data>
+  <data name="ConflictLabel.Text" xml:space="preserve">
+    <value>Pokud soubor existuje:</value>
+  </data>
+
+  <!-- Checkboxes -->
+  <data name="OpenDestinationCheck.Content" xml:space="preserve">
+    <value>Otevřít cílovou složku po dokončení</value>
+  </data>
+  <data name="DeleteAfterOperationCheck.Content" xml:space="preserve">
+    <value>Odstranit po dokončení operace</value>
+  </data>
+
+  <!-- Status messages -->
+  <data name="StatusReady" xml:space="preserve">
+    <value>Připraveno</value>
+  </data>
+  <data name="StatusArchiving" xml:space="preserve">
+    <value>Archivace...</value>
+  </data>
+  <data name="StatusExtracting" xml:space="preserve">
+    <value>Rozbalování...</value>
+  </data>
+  <data name="StatusDone" xml:space="preserve">
+    <value>Hotovo — zpracováno souborů: {0}.</value>
+  </data>
+  <data name="StatusIssues" xml:space="preserve">
+    <value>Dokončeno s problémy.</value>
+  </data>
+  <data name="StatusCancelled" xml:space="preserve">
+    <value>Zrušeno</value>
+  </data>
+  <data name="StatusCleaningUp" xml:space="preserve">
+    <value>Čištění...</value>
+  </data>
+  <data name="StatusFinalizing" xml:space="preserve">
+    <value>Dokončování...</value>
+  </data>
+  <data name="StatusArchivedIn" xml:space="preserve">
+    <value>Archivováno za {0} s — souborů: {1}</value>
+  </data>
+  <data name="StatusExtractedIn" xml:space="preserve">
+    <value>Rozbaleno za {0} s — souborů: {1}</value>
+  </data>
+  <data name="OutcomeWillExtract" xml:space="preserve">
+    <value>Bude rozbaleno archivů: {0} — do složky výše</value>
+  </data>
+  <data name="OutcomeWillArchive" xml:space="preserve">
+    <value>Bude zabaleno položek: {0} — do složky výše</value>
+  </data>
+
+  <!-- Dialog strings -->
+  <data name="ErrorDialogTitle" xml:space="preserve">
+    <value>Dokončeno s problémy</value>
+  </data>
+  <data name="ErrorSectionHeader" xml:space="preserve">
+    <value>Chyby</value>
+  </data>
+  <data name="SkippedSectionHeader" xml:space="preserve">
+    <value>Přeskočeno</value>
+  </data>
+  <data name="CompressionBombDialogTitle" xml:space="preserve">
+    <value>Podezřelý archiv</value>
+  </data>
+  <data name="CompressionBombDialogMessage" xml:space="preserve">
+    <value>Tento archiv deklaruje {0} dat, kompresní poměr {1}:1. To je neobvykle vysoké a může jít o dekompresní bombu. Přesto rozbalit?</value>
+  </data>
+</root>

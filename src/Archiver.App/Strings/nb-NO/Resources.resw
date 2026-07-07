@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <!-- Buttons -->
+  <data name="ArchiveButton.Content" xml:space="preserve">
+    <value>Arkiver</value>
+  </data>
+  <data name="ExtractButton.Content" xml:space="preserve">
+    <value>Pakk ut</value>
+  </data>
+  <data name="ClearButton.Content" xml:space="preserve">
+    <value>Tøm</value>
+  </data>
+  <data name="AddFilesButton.Content" xml:space="preserve">
+    <value>Legg til filer</value>
+  </data>
+  <data name="AddFolderButton.Content" xml:space="preserve">
+    <value>Legg til mappe</value>
+  </data>
+
+  <!-- Drop zone -->
+  <data name="DropZoneHint.Text" xml:space="preserve">
+    <value>Slipp filer eller mapper her, eller dobbeltklikk for å bla gjennom filer</value>
+  </data>
+  <data name="MultipleFoldersHint.Text" xml:space="preserve">
+    <value>For flere mapper — dra og slipp fra Filutforsker</value>
+  </data>
+  <data name="DropZoneModeHint.Text" xml:space="preserve">
+    <value>Arkiver tilbyr utpakking; alt annet blir arkivert</value>
+  </data>
+
+  <!-- Labels -->
+  <data name="DestinationLabel.Text" xml:space="preserve">
+    <value>Mål:</value>
+  </data>
+  <data name="ArchiveNameLabel.Text" xml:space="preserve">
+    <value>Navn:</value>
+  </data>
+  <data name="CompressionLabel.Text" xml:space="preserve">
+    <value>Komprimering:</value>
+  </data>
+  <data name="ConflictLabel.Text" xml:space="preserve">
+    <value>Hvis filen finnes:</value>
+  </data>
+
+  <!-- Checkboxes -->
+  <data name="OpenDestinationCheck.Content" xml:space="preserve">
+    <value>Åpne målmappen etter fullføring</value>
+  </data>
+  <data name="DeleteAfterOperationCheck.Content" xml:space="preserve">
+    <value>Slett etter operasjonen</value>
+  </data>
+
+  <!-- Status messages -->
+  <data name="StatusReady" xml:space="preserve">
+    <value>Klar</value>
+  </data>
+  <data name="StatusArchiving" xml:space="preserve">
+    <value>Arkiverer...</value>
+  </data>
+  <data name="StatusExtracting" xml:space="preserve">
+    <value>Pakker ut...</value>
+  </data>
+  <data name="StatusDone" xml:space="preserve">
+    <value>Ferdig — {0} fil(er) behandlet.</value>
+  </data>
+  <data name="StatusIssues" xml:space="preserve">
+    <value>Fullført med problemer.</value>
+  </data>
+  <data name="StatusCancelled" xml:space="preserve">
+    <value>Avbrutt</value>
+  </data>
+  <data name="StatusCleaningUp" xml:space="preserve">
+    <value>Rydder opp...</value>
+  </data>
+  <data name="StatusFinalizing" xml:space="preserve">
+    <value>Fullfører...</value>
+  </data>
+  <data name="StatusArchivedIn" xml:space="preserve">
+    <value>Arkivert på {0} sek — {1} fil(er)</value>
+  </data>
+  <data name="StatusExtractedIn" xml:space="preserve">
+    <value>Pakket ut på {0} sek — {1} fil(er)</value>
+  </data>
+  <data name="OutcomeWillExtract" xml:space="preserve">
+    <value>{0} arkiv vil bli pakket ut til mappen ovenfor</value>
+  </data>
+  <data name="OutcomeWillArchive" xml:space="preserve">
+    <value>{0} element vil bli arkivert til mappen ovenfor</value>
+  </data>
+
+  <!-- Dialog strings -->
+  <data name="ErrorDialogTitle" xml:space="preserve">
+    <value>Fullført med problemer</value>
+  </data>
+  <data name="ErrorSectionHeader" xml:space="preserve">
+    <value>Feil</value>
+  </data>
+  <data name="SkippedSectionHeader" xml:space="preserve">
+    <value>Hoppet over</value>
+  </data>
+  <data name="CompressionBombDialogTitle" xml:space="preserve">
+    <value>Mistenkelig arkiv</value>
+  </data>
+  <data name="CompressionBombDialogMessage" xml:space="preserve">
+    <value>Dette arkivet hevder å inneholde {0} data, et komprimeringsforhold på {1}:1. Dette er uvanlig høyt og kan tyde på en utpakkingsbombe. Pakk ut likevel?</value>
+  </data>
+</root>

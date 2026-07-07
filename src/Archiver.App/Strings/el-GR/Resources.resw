@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <!-- Buttons -->
+  <data name="ArchiveButton.Content" xml:space="preserve">
+    <value>Αρχειοθέτηση</value>
+  </data>
+  <data name="ExtractButton.Content" xml:space="preserve">
+    <value>Εξαγωγή</value>
+  </data>
+  <data name="ClearButton.Content" xml:space="preserve">
+    <value>Εκκαθάριση</value>
+  </data>
+  <data name="AddFilesButton.Content" xml:space="preserve">
+    <value>Προσθήκη αρχείων</value>
+  </data>
+  <data name="AddFolderButton.Content" xml:space="preserve">
+    <value>Προσθήκη φακέλου</value>
+  </data>
+
+  <!-- Drop zone -->
+  <data name="DropZoneHint.Text" xml:space="preserve">
+    <value>Σύρετε αρχεία ή φακέλους εδώ, ή κάντε διπλό κλικ για περιήγηση στα αρχεία</value>
+  </data>
+  <data name="MultipleFoldersHint.Text" xml:space="preserve">
+    <value>Για πολλαπλούς φακέλους — σύρετε και αφήστε από την Εξερεύνηση αρχείων</value>
+  </data>
+  <data name="DropZoneModeHint.Text" xml:space="preserve">
+    <value>Τα αρχεία συμπίεσης προσφέρουν εξαγωγή· οτιδήποτε άλλο θα συμπιεστεί</value>
+  </data>
+
+  <!-- Labels -->
+  <data name="DestinationLabel.Text" xml:space="preserve">
+    <value>Προορισμός:</value>
+  </data>
+  <data name="ArchiveNameLabel.Text" xml:space="preserve">
+    <value>Όνομα:</value>
+  </data>
+  <data name="CompressionLabel.Text" xml:space="preserve">
+    <value>Συμπίεση:</value>
+  </data>
+  <data name="ConflictLabel.Text" xml:space="preserve">
+    <value>Αν το αρχείο υπάρχει:</value>
+  </data>
+
+  <!-- Checkboxes -->
+  <data name="OpenDestinationCheck.Content" xml:space="preserve">
+    <value>Άνοιγμα φακέλου προορισμού μετά την ολοκλήρωση</value>
+  </data>
+  <data name="DeleteAfterOperationCheck.Content" xml:space="preserve">
+    <value>Διαγραφή μετά τη λειτουργία</value>
+  </data>
+
+  <!-- Status messages -->
+  <data name="StatusReady" xml:space="preserve">
+    <value>Έτοιμο</value>
+  </data>
+  <data name="StatusArchiving" xml:space="preserve">
+    <value>Συμπίεση σε εξέλιξη...</value>
+  </data>
+  <data name="StatusExtracting" xml:space="preserve">
+    <value>Εξαγωγή σε εξέλιξη...</value>
+  </data>
+  <data name="StatusDone" xml:space="preserve">
+    <value>Ολοκληρώθηκε — επεξεργασία {0} αρχείου/ων.</value>
+  </data>
+  <data name="StatusIssues" xml:space="preserve">
+    <value>Ολοκληρώθηκε με προβλήματα.</value>
+  </data>
+  <data name="StatusCancelled" xml:space="preserve">
+    <value>Ακυρώθηκε</value>
+  </data>
+  <data name="StatusCleaningUp" xml:space="preserve">
+    <value>Εκκαθάριση...</value>
+  </data>
+  <data name="StatusFinalizing" xml:space="preserve">
+    <value>Οριστικοποίηση...</value>
+  </data>
+  <data name="StatusArchivedIn" xml:space="preserve">
+    <value>Συμπιέστηκε σε {0} δευτ. — {1} αρχείο/α</value>
+  </data>
+  <data name="StatusExtractedIn" xml:space="preserve">
+    <value>Εξήχθη σε {0} δευτ. — {1} αρχείο/α</value>
+  </data>
+  <data name="OutcomeWillExtract" xml:space="preserve">
+    <value>Θα εξαχθούν {0} αρχείο/α στον παραπάνω φάκελο</value>
+  </data>
+  <data name="OutcomeWillArchive" xml:space="preserve">
+    <value>Θα συμπιεστούν {0} στοιχείο/α στον παραπάνω φάκελο</value>
+  </data>
+
+  <!-- Dialog strings -->
+  <data name="ErrorDialogTitle" xml:space="preserve">
+    <value>Ολοκληρώθηκε με προβλήματα</value>
+  </data>
+  <data name="ErrorSectionHeader" xml:space="preserve">
+    <value>Σφάλματα</value>
+  </data>
+  <data name="SkippedSectionHeader" xml:space="preserve">
+    <value>Παραλείφθηκαν</value>
+  </data>
+  <data name="CompressionBombDialogTitle" xml:space="preserve">
+    <value>Ύποπτο αρχείο</value>
+  </data>
+  <data name="CompressionBombDialogMessage" xml:space="preserve">
+    <value>Αυτό το αρχείο δηλώνει ότι περιέχει {0} δεδομένων, με λόγο συμπίεσης {1}:1. Αυτό είναι ασυνήθιστα υψηλό και ενδέχεται να υποδεικνύει βόμβα αποσυμπίεσης. Εξαγωγή ούτως ή άλλως;</value>
+  </data>
+</root>

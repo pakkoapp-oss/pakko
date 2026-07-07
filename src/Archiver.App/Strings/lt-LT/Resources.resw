@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <!-- Buttons -->
+  <data name="ArchiveButton.Content" xml:space="preserve">
+    <value>Archyvuoti</value>
+  </data>
+  <data name="ExtractButton.Content" xml:space="preserve">
+    <value>Išskleisti</value>
+  </data>
+  <data name="ClearButton.Content" xml:space="preserve">
+    <value>Išvalyti</value>
+  </data>
+  <data name="AddFilesButton.Content" xml:space="preserve">
+    <value>Pridėti failus</value>
+  </data>
+  <data name="AddFolderButton.Content" xml:space="preserve">
+    <value>Pridėti aplanką</value>
+  </data>
+
+  <!-- Drop zone -->
+  <data name="DropZoneHint.Text" xml:space="preserve">
+    <value>Nutempkite failus ar aplankus čia arba dukart spustelėkite, kad naršytumėte failus</value>
+  </data>
+  <data name="MultipleFoldersHint.Text" xml:space="preserve">
+    <value>Kelis aplankus — vilkite ir įkelkite iš Explorer</value>
+  </data>
+  <data name="DropZoneModeHint.Text" xml:space="preserve">
+    <value>Archyvai siūlo išskleidimą; visa kita bus archyvuojama</value>
+  </data>
+
+  <!-- Labels -->
+  <data name="DestinationLabel.Text" xml:space="preserve">
+    <value>Paskirties vieta:</value>
+  </data>
+  <data name="ArchiveNameLabel.Text" xml:space="preserve">
+    <value>Pavadinimas:</value>
+  </data>
+  <data name="CompressionLabel.Text" xml:space="preserve">
+    <value>Suspaudimas:</value>
+  </data>
+  <data name="ConflictLabel.Text" xml:space="preserve">
+    <value>Jei failas jau egzistuoja:</value>
+  </data>
+
+  <!-- Checkboxes -->
+  <data name="OpenDestinationCheck.Content" xml:space="preserve">
+    <value>Atidaryti paskirties aplanką baigus</value>
+  </data>
+  <data name="DeleteAfterOperationCheck.Content" xml:space="preserve">
+    <value>Ištrinti po operacijos</value>
+  </data>
+
+  <!-- Status messages -->
+  <data name="StatusReady" xml:space="preserve">
+    <value>Paruošta</value>
+  </data>
+  <data name="StatusArchiving" xml:space="preserve">
+    <value>Archyvuojama...</value>
+  </data>
+  <data name="StatusExtracting" xml:space="preserve">
+    <value>Išskleidžiama...</value>
+  </data>
+  <data name="StatusDone" xml:space="preserve">
+    <value>Baigta — apdorota failų: {0}.</value>
+  </data>
+  <data name="StatusIssues" xml:space="preserve">
+    <value>Baigta su problemomis.</value>
+  </data>
+  <data name="StatusCancelled" xml:space="preserve">
+    <value>Atšaukta</value>
+  </data>
+  <data name="StatusCleaningUp" xml:space="preserve">
+    <value>Valoma...</value>
+  </data>
+  <data name="StatusFinalizing" xml:space="preserve">
+    <value>Baigiama...</value>
+  </data>
+  <data name="StatusArchivedIn" xml:space="preserve">
+    <value>Archyvuota per {0} s — failų: {1}</value>
+  </data>
+  <data name="StatusExtractedIn" xml:space="preserve">
+    <value>Išskleista per {0} s — failų: {1}</value>
+  </data>
+  <data name="OutcomeWillExtract" xml:space="preserve">
+    <value>Bus išskleista archyvų: {0} — į aukščiau nurodytą aplanką</value>
+  </data>
+  <data name="OutcomeWillArchive" xml:space="preserve">
+    <value>Bus archyvuota elementų: {0} — į aukščiau nurodytą aplanką</value>
+  </data>
+
+  <!-- Dialog strings -->
+  <data name="ErrorDialogTitle" xml:space="preserve">
+    <value>Baigta su problemomis</value>
+  </data>
+  <data name="ErrorSectionHeader" xml:space="preserve">
+    <value>Klaidos</value>
+  </data>
+  <data name="SkippedSectionHeader" xml:space="preserve">
+    <value>Praleista</value>
+  </data>
+  <data name="CompressionBombDialogTitle" xml:space="preserve">
+    <value>Įtartinas archyvas</value>
+  </data>
+  <data name="CompressionBombDialogMessage" xml:space="preserve">
+    <value>Šis archyvas teigia, kad jame yra {0} duomenų, suspaudimo santykis {1}:1. Tai neįprastai aukšta ir gali reikšti išpakavimo bombą. Vis tiek išskleisti?</value>
+  </data>
+</root>

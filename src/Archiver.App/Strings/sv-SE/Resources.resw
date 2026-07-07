@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <!-- Buttons -->
+  <data name="ArchiveButton.Content" xml:space="preserve">
+    <value>Arkivera</value>
+  </data>
+  <data name="ExtractButton.Content" xml:space="preserve">
+    <value>Extrahera</value>
+  </data>
+  <data name="ClearButton.Content" xml:space="preserve">
+    <value>Rensa</value>
+  </data>
+  <data name="AddFilesButton.Content" xml:space="preserve">
+    <value>Lägg till filer</value>
+  </data>
+  <data name="AddFolderButton.Content" xml:space="preserve">
+    <value>Lägg till mapp</value>
+  </data>
+
+  <!-- Drop zone -->
+  <data name="DropZoneHint.Text" xml:space="preserve">
+    <value>Släpp filer eller mappar här, eller dubbelklicka för att bläddra efter filer</value>
+  </data>
+  <data name="MultipleFoldersHint.Text" xml:space="preserve">
+    <value>För flera mappar — dra och släpp från Utforskaren</value>
+  </data>
+  <data name="DropZoneModeHint.Text" xml:space="preserve">
+    <value>Arkiv erbjuder extrahering; allt annat arkiveras</value>
+  </data>
+
+  <!-- Labels -->
+  <data name="DestinationLabel.Text" xml:space="preserve">
+    <value>Mål:</value>
+  </data>
+  <data name="ArchiveNameLabel.Text" xml:space="preserve">
+    <value>Namn:</value>
+  </data>
+  <data name="CompressionLabel.Text" xml:space="preserve">
+    <value>Komprimering:</value>
+  </data>
+  <data name="ConflictLabel.Text" xml:space="preserve">
+    <value>Om filen finns:</value>
+  </data>
+
+  <!-- Checkboxes -->
+  <data name="OpenDestinationCheck.Content" xml:space="preserve">
+    <value>Öppna målmappen efter slutförande</value>
+  </data>
+  <data name="DeleteAfterOperationCheck.Content" xml:space="preserve">
+    <value>Ta bort efter åtgärden</value>
+  </data>
+
+  <!-- Status messages -->
+  <data name="StatusReady" xml:space="preserve">
+    <value>Klar</value>
+  </data>
+  <data name="StatusArchiving" xml:space="preserve">
+    <value>Arkiverar...</value>
+  </data>
+  <data name="StatusExtracting" xml:space="preserve">
+    <value>Extraherar...</value>
+  </data>
+  <data name="StatusDone" xml:space="preserve">
+    <value>Klar — {0} fil(er) bearbetade.</value>
+  </data>
+  <data name="StatusIssues" xml:space="preserve">
+    <value>Slutförd med problem.</value>
+  </data>
+  <data name="StatusCancelled" xml:space="preserve">
+    <value>Avbruten</value>
+  </data>
+  <data name="StatusCleaningUp" xml:space="preserve">
+    <value>Rensar...</value>
+  </data>
+  <data name="StatusFinalizing" xml:space="preserve">
+    <value>Slutför...</value>
+  </data>
+  <data name="StatusArchivedIn" xml:space="preserve">
+    <value>Arkiverad på {0} sek — {1} fil(er)</value>
+  </data>
+  <data name="StatusExtractedIn" xml:space="preserve">
+    <value>Extraherad på {0} sek — {1} fil(er)</value>
+  </data>
+  <data name="OutcomeWillExtract" xml:space="preserve">
+    <value>{0} arkiv kommer att extraheras till mappen ovan</value>
+  </data>
+  <data name="OutcomeWillArchive" xml:space="preserve">
+    <value>{0} objekt kommer att arkiveras till mappen ovan</value>
+  </data>
+
+  <!-- Dialog strings -->
+  <data name="ErrorDialogTitle" xml:space="preserve">
+    <value>Slutförd med problem</value>
+  </data>
+  <data name="ErrorSectionHeader" xml:space="preserve">
+    <value>Fel</value>
+  </data>
+  <data name="SkippedSectionHeader" xml:space="preserve">
+    <value>Överhoppade</value>
+  </data>
+  <data name="CompressionBombDialogTitle" xml:space="preserve">
+    <value>Misstänkt arkiv</value>
+  </data>
+  <data name="CompressionBombDialogMessage" xml:space="preserve">
+    <value>Det här arkivet uppger sig innehålla {0} data, ett komprimeringsförhållande på {1}:1. Det är ovanligt högt och kan tyda på en dekomprimeringsbomb. Extrahera ändå?</value>
+  </data>
+</root>

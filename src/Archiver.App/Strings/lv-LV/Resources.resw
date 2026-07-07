@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <!-- Buttons -->
+  <data name="ArchiveButton.Content" xml:space="preserve">
+    <value>Arhivēt</value>
+  </data>
+  <data name="ExtractButton.Content" xml:space="preserve">
+    <value>Atarhivēt</value>
+  </data>
+  <data name="ClearButton.Content" xml:space="preserve">
+    <value>Notīrīt</value>
+  </data>
+  <data name="AddFilesButton.Content" xml:space="preserve">
+    <value>Pievienot failus</value>
+  </data>
+  <data name="AddFolderButton.Content" xml:space="preserve">
+    <value>Pievienot mapi</value>
+  </data>
+
+  <!-- Drop zone -->
+  <data name="DropZoneHint.Text" xml:space="preserve">
+    <value>Ievelciet failus vai mapes šeit, vai veiciet dubultklikšķi, lai pārlūkotu failus</value>
+  </data>
+  <data name="MultipleFoldersHint.Text" xml:space="preserve">
+    <value>Vairākām mapēm — velciet un nometiet no Explorer</value>
+  </data>
+  <data name="DropZoneModeHint.Text" xml:space="preserve">
+    <value>Arhīvi piedāvā atarhivēšanu; viss pārējais tiks arhivēts</value>
+  </data>
+
+  <!-- Labels -->
+  <data name="DestinationLabel.Text" xml:space="preserve">
+    <value>Galamērķis:</value>
+  </data>
+  <data name="ArchiveNameLabel.Text" xml:space="preserve">
+    <value>Nosaukums:</value>
+  </data>
+  <data name="CompressionLabel.Text" xml:space="preserve">
+    <value>Saspiešana:</value>
+  </data>
+  <data name="ConflictLabel.Text" xml:space="preserve">
+    <value>Ja fails jau pastāv:</value>
+  </data>
+
+  <!-- Checkboxes -->
+  <data name="OpenDestinationCheck.Content" xml:space="preserve">
+    <value>Atvērt galamērķa mapi pēc pabeigšanas</value>
+  </data>
+  <data name="DeleteAfterOperationCheck.Content" xml:space="preserve">
+    <value>Dzēst pēc darbības</value>
+  </data>
+
+  <!-- Status messages -->
+  <data name="StatusReady" xml:space="preserve">
+    <value>Gatavs</value>
+  </data>
+  <data name="StatusArchiving" xml:space="preserve">
+    <value>Notiek arhivēšana...</value>
+  </data>
+  <data name="StatusExtracting" xml:space="preserve">
+    <value>Notiek atarhivēšana...</value>
+  </data>
+  <data name="StatusDone" xml:space="preserve">
+    <value>Gatavs — apstrādāti faili: {0}.</value>
+  </data>
+  <data name="StatusIssues" xml:space="preserve">
+    <value>Pabeigts ar problēmām.</value>
+  </data>
+  <data name="StatusCancelled" xml:space="preserve">
+    <value>Atcelts</value>
+  </data>
+  <data name="StatusCleaningUp" xml:space="preserve">
+    <value>Notiek tīrīšana...</value>
+  </data>
+  <data name="StatusFinalizing" xml:space="preserve">
+    <value>Notiek pabeigšana...</value>
+  </data>
+  <data name="StatusArchivedIn" xml:space="preserve">
+    <value>Arhivēts {0} s — faili: {1}</value>
+  </data>
+  <data name="StatusExtractedIn" xml:space="preserve">
+    <value>Atarhivēts {0} s — faili: {1}</value>
+  </data>
+  <data name="OutcomeWillExtract" xml:space="preserve">
+    <value>Tiks atarhivēti {0} arhīvi augstāk norādītajā mapē</value>
+  </data>
+  <data name="OutcomeWillArchive" xml:space="preserve">
+    <value>Tiks arhivēti {0} vienumi augstāk norādītajā mapē</value>
+  </data>
+
+  <!-- Dialog strings -->
+  <data name="ErrorDialogTitle" xml:space="preserve">
+    <value>Pabeigts ar problēmām</value>
+  </data>
+  <data name="ErrorSectionHeader" xml:space="preserve">
+    <value>Kļūdas</value>
+  </data>
+  <data name="SkippedSectionHeader" xml:space="preserve">
+    <value>Izlaisti</value>
+  </data>
+  <data name="CompressionBombDialogTitle" xml:space="preserve">
+    <value>Aizdomīgs arhīvs</value>
+  </data>
+  <data name="CompressionBombDialogMessage" xml:space="preserve">
+    <value>Šis arhīvs apgalvo, ka satur {0} datu, saspiešanas attiecība {1}:1. Tas ir neparasti augsts un var liecināt par atarhivēšanas bumbu. Vai tomēr atarhivēt?</value>
+  </data>
+</root>

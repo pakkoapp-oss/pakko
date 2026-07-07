@@ -471,7 +471,10 @@ Format: [ ZIP ▾]   ZIP / TAR / TAR.GZ
 ---
 
 ### T-F91 — Multi-Language Localization (OS-Language Auto-Match, English Fallback)
-- [ ] **Status:** future — scope discussed with user 2026-07-07, not yet started
+- [~] **Status:** partial — first batch (all 24 European locales) implemented 2026-07-07;
+      Arabic/Japanese/Chinese/etc. (the non-European half of the target list) not started;
+      on-device verification, layout-corruption check, and native-speaker translation review
+      still outstanding for the European batch. See `DECISIONS.md`'s T-F91 entry
 - **Priority:** low ("nice to have" bonus, per user)
 - **Depends on:** none
 
@@ -505,15 +508,22 @@ each locale needs a native-speaker pass or at minimum a correctness review befor
 don't ship an unreviewed MT dump under a locale folder.
 
 **Acceptance criteria:**
-- [ ] Final language list confirmed with user before translation work begins
-- [ ] `Resources.resw` created under `Strings/<locale>/` for each confirmed locale, translating
-      every key already in `en-US/Resources.resw`
-- [ ] `Package.appxmanifest`'s `<Resources>` element declares every shipped locale
+- [x] Final language list confirmed with user before translation work begins — European batch
+      (all 24 locales) confirmed 2026-07-07; the non-European half (Arabic, Japanese, Chinese,
+      Indonesian, Hindi, Vietnamese, Turkish, Korean, Urdu, Thai, Hebrew, Swahili) not yet
+      batched/confirmed for implementation order
+- [x] `Resources.resw` created under `Strings/<locale>/` for each confirmed locale, translating
+      every key already in `en-US/Resources.resw` — done for all 24 European locales (31/31 keys
+      each; the 2 URL keys deliberately omitted, see `DECISIONS.md`); non-European locales not
+      started
+- [x] `Package.appxmanifest`'s `<Resources>` element declares every shipped locale — confirmed
+      automatic via the existing `<Resource Language="x-generate"/>`; generated `AppxManifest.xml`
+      lists all 25 locales after a `dotnet build`, no manual manifest edit needed
 - [ ] OS display language automatically selects the matching `Resources.resw` with no app code
       change — verified on-device for at least `uk-UA`
 - [ ] An excluded/unsupported OS language (e.g. `ru-RU`) falls back to `en-US` text, not a
       blank string or resource-load crash — verified on-device
-- [ ] No installer-time language picker or install-location picker added (confirmed non-goal)
+- [x] No installer-time language picker or install-location picker added (confirmed non-goal)
 - [ ] Max text-length budget determined per UI string (buttons, labels, dialog titles) —
       German/Finnish/Ukrainian and other "long" locales are notorious for overflowing controls
       sized for English text; check longest translated string per key against the control it
@@ -521,8 +531,11 @@ don't ship an unreviewed MT dump under a locale folder.
 - [ ] Manual on-device check for layout corruption (clipped/overlapping/truncated text, buttons
       that no longer fit their label) on at least one long-text locale (e.g. German) and one
       wide-glyph/RTL locale (e.g. Arabic or Hebrew)
-- [ ] `dotnet build src/Archiver.App` succeeds with all new resources
-- [ ] `DECISIONS.md` entry: MSIX install-location non-goal + language auto-match mechanism
+- [x] `dotnet build src/Archiver.App` succeeds with all new resources — 0 warnings, 0 errors
+- [x] `DECISIONS.md` entry: MSIX install-location non-goal + language auto-match mechanism
+- [ ] Native-speaker/correctness review pass on the 24 European translations before shipping —
+      current text is AI-translated to a professional-UI standard but unreviewed, per this
+      task's own "don't ship an unreviewed MT dump" requirement
 
 ---
 

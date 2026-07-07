@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <!-- Buttons -->
+  <data name="ArchiveButton.Content" xml:space="preserve">
+    <value>Tömörítés</value>
+  </data>
+  <data name="ExtractButton.Content" xml:space="preserve">
+    <value>Kibontás</value>
+  </data>
+  <data name="ClearButton.Content" xml:space="preserve">
+    <value>Törlés</value>
+  </data>
+  <data name="AddFilesButton.Content" xml:space="preserve">
+    <value>Fájlok hozzáadása</value>
+  </data>
+  <data name="AddFolderButton.Content" xml:space="preserve">
+    <value>Mappa hozzáadása</value>
+  </data>
+
+  <!-- Drop zone -->
+  <data name="DropZoneHint.Text" xml:space="preserve">
+    <value>Húzzon ide fájlokat vagy mappákat, vagy kattintson duplán a fájlok tallózásához</value>
+  </data>
+  <data name="MultipleFoldersHint.Text" xml:space="preserve">
+    <value>Több mappa esetén — húzza ide az Intézőből</value>
+  </data>
+  <data name="DropZoneModeHint.Text" xml:space="preserve">
+    <value>Az archívumok kibontást ajánlanak fel; minden más tömörítve lesz</value>
+  </data>
+
+  <!-- Labels -->
+  <data name="DestinationLabel.Text" xml:space="preserve">
+    <value>Cél:</value>
+  </data>
+  <data name="ArchiveNameLabel.Text" xml:space="preserve">
+    <value>Név:</value>
+  </data>
+  <data name="CompressionLabel.Text" xml:space="preserve">
+    <value>Tömörítés:</value>
+  </data>
+  <data name="ConflictLabel.Text" xml:space="preserve">
+    <value>Ha a fájl létezik:</value>
+  </data>
+
+  <!-- Checkboxes -->
+  <data name="OpenDestinationCheck.Content" xml:space="preserve">
+    <value>Célmappa megnyitása befejezés után</value>
+  </data>
+  <data name="DeleteAfterOperationCheck.Content" xml:space="preserve">
+    <value>Törlés a művelet után</value>
+  </data>
+
+  <!-- Status messages -->
+  <data name="StatusReady" xml:space="preserve">
+    <value>Kész</value>
+  </data>
+  <data name="StatusArchiving" xml:space="preserve">
+    <value>Tömörítés...</value>
+  </data>
+  <data name="StatusExtracting" xml:space="preserve">
+    <value>Kibontás...</value>
+  </data>
+  <data name="StatusDone" xml:space="preserve">
+    <value>Kész — {0} fájl feldolgozva.</value>
+  </data>
+  <data name="StatusIssues" xml:space="preserve">
+    <value>Befejezve, hibákkal.</value>
+  </data>
+  <data name="StatusCancelled" xml:space="preserve">
+    <value>Megszakítva</value>
+  </data>
+  <data name="StatusCleaningUp" xml:space="preserve">
+    <value>Takarítás...</value>
+  </data>
+  <data name="StatusFinalizing" xml:space="preserve">
+    <value>Véglegesítés...</value>
+  </data>
+  <data name="StatusArchivedIn" xml:space="preserve">
+    <value>Tömörítve {0} mp alatt — {1} fájl</value>
+  </data>
+  <data name="StatusExtractedIn" xml:space="preserve">
+    <value>Kibontva {0} mp alatt — {1} fájl</value>
+  </data>
+  <data name="OutcomeWillExtract" xml:space="preserve">
+    <value>{0} archívum kerül kibontásra a fenti mappába</value>
+  </data>
+  <data name="OutcomeWillArchive" xml:space="preserve">
+    <value>{0} elem kerül tömörítésre a fenti mappába</value>
+  </data>
+
+  <!-- Dialog strings -->
+  <data name="ErrorDialogTitle" xml:space="preserve">
+    <value>Befejezve, hibákkal</value>
+  </data>
+  <data name="ErrorSectionHeader" xml:space="preserve">
+    <value>Hibák</value>
+  </data>
+  <data name="SkippedSectionHeader" xml:space="preserve">
+    <value>Kihagyva</value>
+  </data>
+  <data name="CompressionBombDialogTitle" xml:space="preserve">
+    <value>Gyanús archívum</value>
+  </data>
+  <data name="CompressionBombDialogMessage" xml:space="preserve">
+    <value>Ez az archívum állítása szerint {0} adatot tartalmaz, {1}:1 tömörítési aránnyal. Ez szokatlanul magas, és kicsomagolási bombára utalhat. Mindenképp kibontja?</value>
+  </data>
+</root>

@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <!-- Buttons -->
+  <data name="ArchiveButton.Content" xml:space="preserve">
+    <value>Arkistoi</value>
+  </data>
+  <data name="ExtractButton.Content" xml:space="preserve">
+    <value>Pura</value>
+  </data>
+  <data name="ClearButton.Content" xml:space="preserve">
+    <value>Tyhjennä</value>
+  </data>
+  <data name="AddFilesButton.Content" xml:space="preserve">
+    <value>Lisää tiedostoja</value>
+  </data>
+  <data name="AddFolderButton.Content" xml:space="preserve">
+    <value>Lisää kansio</value>
+  </data>
+
+  <!-- Drop zone -->
+  <data name="DropZoneHint.Text" xml:space="preserve">
+    <value>Pudota tiedostoja tai kansioita tähän, tai kaksoisnapsauta selataksesi tiedostoja</value>
+  </data>
+  <data name="MultipleFoldersHint.Text" xml:space="preserve">
+    <value>Useita kansioita varten — vedä ja pudota Resurssienhallinnasta</value>
+  </data>
+  <data name="DropZoneModeHint.Text" xml:space="preserve">
+    <value>Arkistot tarjoutuvat purettavaksi; kaikki muu arkistoidaan</value>
+  </data>
+
+  <!-- Labels -->
+  <data name="DestinationLabel.Text" xml:space="preserve">
+    <value>Kohde:</value>
+  </data>
+  <data name="ArchiveNameLabel.Text" xml:space="preserve">
+    <value>Nimi:</value>
+  </data>
+  <data name="CompressionLabel.Text" xml:space="preserve">
+    <value>Pakkaus:</value>
+  </data>
+  <data name="ConflictLabel.Text" xml:space="preserve">
+    <value>Jos tiedosto on jo olemassa:</value>
+  </data>
+
+  <!-- Checkboxes -->
+  <data name="OpenDestinationCheck.Content" xml:space="preserve">
+    <value>Avaa kohdekansio valmistumisen jälkeen</value>
+  </data>
+  <data name="DeleteAfterOperationCheck.Content" xml:space="preserve">
+    <value>Poista toiminnon jälkeen</value>
+  </data>
+
+  <!-- Status messages -->
+  <data name="StatusReady" xml:space="preserve">
+    <value>Valmis</value>
+  </data>
+  <data name="StatusArchiving" xml:space="preserve">
+    <value>Arkistoidaan...</value>
+  </data>
+  <data name="StatusExtracting" xml:space="preserve">
+    <value>Puretaan...</value>
+  </data>
+  <data name="StatusDone" xml:space="preserve">
+    <value>Valmis — {0} tiedosto(a) käsitelty.</value>
+  </data>
+  <data name="StatusIssues" xml:space="preserve">
+    <value>Valmis, mutta ongelmia ilmeni.</value>
+  </data>
+  <data name="StatusCancelled" xml:space="preserve">
+    <value>Peruutettu</value>
+  </data>
+  <data name="StatusCleaningUp" xml:space="preserve">
+    <value>Siivotaan...</value>
+  </data>
+  <data name="StatusFinalizing" xml:space="preserve">
+    <value>Viimeistellään...</value>
+  </data>
+  <data name="StatusArchivedIn" xml:space="preserve">
+    <value>Arkistoitu {0} s — {1} tiedosto(a)</value>
+  </data>
+  <data name="StatusExtractedIn" xml:space="preserve">
+    <value>Purettu {0} s — {1} tiedosto(a)</value>
+  </data>
+  <data name="OutcomeWillExtract" xml:space="preserve">
+    <value>Puretaan {0} arkisto(a) yllä olevaan kansioon</value>
+  </data>
+  <data name="OutcomeWillArchive" xml:space="preserve">
+    <value>Arkistoidaan {0} kohde(tta) yllä olevaan kansioon</value>
+  </data>
+
+  <!-- Dialog strings -->
+  <data name="ErrorDialogTitle" xml:space="preserve">
+    <value>Valmis, mutta ongelmia ilmeni</value>
+  </data>
+  <data name="ErrorSectionHeader" xml:space="preserve">
+    <value>Virheet</value>
+  </data>
+  <data name="SkippedSectionHeader" xml:space="preserve">
+    <value>Ohitettu</value>
+  </data>
+  <data name="CompressionBombDialogTitle" xml:space="preserve">
+    <value>Epäilyttävä arkisto</value>
+  </data>
+  <data name="CompressionBombDialogMessage" xml:space="preserve">
+    <value>Tämä arkisto väittää sisältävänsä {0} dataa, pakkaussuhde {1}:1. Tämä on epätavallisen korkea ja voi viitata purkupommiin. Puretaanko silti?</value>
+  </data>
+</root>

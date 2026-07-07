@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <!-- Buttons -->
+  <data name="ArchiveButton.Content" xml:space="preserve">
+    <value>Arhiviraj</value>
+  </data>
+  <data name="ExtractButton.Content" xml:space="preserve">
+    <value>Raspakiraj</value>
+  </data>
+  <data name="ClearButton.Content" xml:space="preserve">
+    <value>Očisti</value>
+  </data>
+  <data name="AddFilesButton.Content" xml:space="preserve">
+    <value>Dodaj datoteke</value>
+  </data>
+  <data name="AddFolderButton.Content" xml:space="preserve">
+    <value>Dodaj mapu</value>
+  </data>
+
+  <!-- Drop zone -->
+  <data name="DropZoneHint.Text" xml:space="preserve">
+    <value>Ispustite datoteke ili mape ovdje, ili dvaput kliknite za pregled datoteka</value>
+  </data>
+  <data name="MultipleFoldersHint.Text" xml:space="preserve">
+    <value>Za više mapa — povucite i ispustite iz Istraživača</value>
+  </data>
+  <data name="DropZoneModeHint.Text" xml:space="preserve">
+    <value>Arhive nude raspakiravanje; sve ostalo bit će arhivirano</value>
+  </data>
+
+  <!-- Labels -->
+  <data name="DestinationLabel.Text" xml:space="preserve">
+    <value>Odredište:</value>
+  </data>
+  <data name="ArchiveNameLabel.Text" xml:space="preserve">
+    <value>Naziv:</value>
+  </data>
+  <data name="CompressionLabel.Text" xml:space="preserve">
+    <value>Kompresija:</value>
+  </data>
+  <data name="ConflictLabel.Text" xml:space="preserve">
+    <value>Ako datoteka postoji:</value>
+  </data>
+
+  <!-- Checkboxes -->
+  <data name="OpenDestinationCheck.Content" xml:space="preserve">
+    <value>Otvori odredišnu mapu nakon dovršetka</value>
+  </data>
+  <data name="DeleteAfterOperationCheck.Content" xml:space="preserve">
+    <value>Izbriši nakon radnje</value>
+  </data>
+
+  <!-- Status messages -->
+  <data name="StatusReady" xml:space="preserve">
+    <value>Spremno</value>
+  </data>
+  <data name="StatusArchiving" xml:space="preserve">
+    <value>Arhiviranje...</value>
+  </data>
+  <data name="StatusExtracting" xml:space="preserve">
+    <value>Raspakiravanje...</value>
+  </data>
+  <data name="StatusDone" xml:space="preserve">
+    <value>Gotovo — obrađeno datoteka: {0}.</value>
+  </data>
+  <data name="StatusIssues" xml:space="preserve">
+    <value>Dovršeno s problemima.</value>
+  </data>
+  <data name="StatusCancelled" xml:space="preserve">
+    <value>Otkazano</value>
+  </data>
+  <data name="StatusCleaningUp" xml:space="preserve">
+    <value>Čišćenje...</value>
+  </data>
+  <data name="StatusFinalizing" xml:space="preserve">
+    <value>Finaliziranje...</value>
+  </data>
+  <data name="StatusArchivedIn" xml:space="preserve">
+    <value>Arhivirano za {0} s — datoteka: {1}</value>
+  </data>
+  <data name="StatusExtractedIn" xml:space="preserve">
+    <value>Raspakirano za {0} s — datoteka: {1}</value>
+  </data>
+  <data name="OutcomeWillExtract" xml:space="preserve">
+    <value>Bit će raspakirano arhiva: {0} — u gornju mapu</value>
+  </data>
+  <data name="OutcomeWillArchive" xml:space="preserve">
+    <value>Bit će arhivirano stavki: {0} — u gornju mapu</value>
+  </data>
+
+  <!-- Dialog strings -->
+  <data name="ErrorDialogTitle" xml:space="preserve">
+    <value>Dovršeno s problemima</value>
+  </data>
+  <data name="ErrorSectionHeader" xml:space="preserve">
+    <value>Pogreške</value>
+  </data>
+  <data name="SkippedSectionHeader" xml:space="preserve">
+    <value>Preskočeno</value>
+  </data>
+  <data name="CompressionBombDialogTitle" xml:space="preserve">
+    <value>Sumnjiva arhiva</value>
+  </data>
+  <data name="CompressionBombDialogMessage" xml:space="preserve">
+    <value>Ova arhiva tvrdi da sadrži {0} podataka, omjer kompresije {1}:1. To je neobično visoko i može upućivati na dekompresijsku bombu. Ipak raspakirati?</value>
+  </data>
+</root>

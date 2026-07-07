@@ -1283,3 +1283,46 @@ made `public` just for test access — first use of this attribute in the repo.
 `tests/Archiver.Core.Tests/Services/ArchiveEntrySecurityCompressionBombTests.cs` (new),
 `tests/Archiver.Core.Tests/Services/ZipArchiveServiceExtractTests.cs`,
 `tests/Archiver.Core.IntegrationTests/TarProcessServiceExtractTests.cs`.
+
+---
+
+## T-F91 — Multi-Language Localization (First Batch: 24 European Locales)
+
+**What:** added `Resources.resw` under `Strings/<locale>/` for all 24 confirmed European
+locales (uk-UA, de-DE, fr-FR, es-ES, it-IT, pl-PL, pt-PT, nl-NL, ro-RO, cs-CZ, sk-SK, hu-HU,
+el-GR, sv-SE, da-DK, fi-FI, nb-NO, bg-BG, hr-HR, sr-Latn-RS, sl-SI, et-EE, lv-LV, lt-LT),
+translating the 31 UI strings `en-US/Resources.resw` currently defines. Scope confirmed with
+user 2026-07-07: all 24 European locales in one batch, not the "one pilot locale" incremental
+approach `TASKS.md` originally floated — the string count (31, mostly single words/short
+phrases) made the whole batch tractable in one pass rather than justifying per-locale staging.
+Arabic/Japanese/Chinese/etc. (the non-European half of T-F91's target list) are explicitly
+**not** part of this batch — a separate follow-up, since those scripts (RTL, CJK) carry their
+own layout-verification risk `TASKS.md`'s T-F91 entry already calls out.
+
+**AboutGitHubUrl/AboutPrivacyUrl intentionally omitted from every non-English `Resources.resw`:**
+these two keys hold literal URLs, not translatable text. WinUI 3/MRT's resource candidate
+lookup falls back to the neutral/default-language resource (`en-US`, per `Package.appxmanifest`'s
+implicit default) when a specific-culture `.resw` doesn't define a key — confirmed by inspecting
+the generated `AppxManifest.xml` after a `dotnet build` (see below), which lists all 25 locales
+via the existing `<Resource Language="x-generate"/>` auto-expansion with no manual manifest edit
+needed. Duplicating the same URL string across 24 files would only create 24 places to miss when
+the URL changes.
+
+**Locale tag choices:** used the standard specific-region BCP-47 tag matching each language's
+primary Windows-supported culture (e.g. `de-DE`, `pt-PT` for European Portuguese not `pt-BR`,
+`nb-NO` for Norwegian Bokmål). Serbian used `sr-Latn-RS` (Latin script) rather than
+`sr-Cyrl-RS` — a deliberate simplification for this small string set, not a claim that Latin is
+more "correct" for Serbian; flagged here in case a native reviewer prefers Cyrillic instead.
+
+**Verification performed:** every new `Resources.resw` parsed successfully via PowerShell's
+`[xml]` cast (24/24 files, 31 data keys each). `dotnet build src/Archiver.App/Archiver.App.csproj
+/p:Platform=x64` succeeded (0 warnings, 0 errors) and its generated `AppxManifest.xml`
+(`bin/x64/Release/.../AppxManifest.xml`) confirmed all 25 `<Resource Language="..."/>` entries
+were auto-generated from the new locale folders. **Not yet done:** on-device verification that
+the OS display language actually selects the matching resource set (`TASKS.md`'s T-F91
+acceptance criteria still list this open, plus the native-speaker review pass the task's own
+text requires before shipping any locale — these translations are AI-generated to a
+professional-UI standard but unreviewed by a native speaker).
+
+**Files:** `src/Archiver.App/Strings/<locale>/Resources.resw` (24 new files, one per locale
+listed above).

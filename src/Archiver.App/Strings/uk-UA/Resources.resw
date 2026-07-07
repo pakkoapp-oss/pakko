@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <!-- Buttons -->
+  <data name="ArchiveButton.Content" xml:space="preserve">
+    <value>Архів</value>
+  </data>
+  <data name="ExtractButton.Content" xml:space="preserve">
+    <value>Розпакувати</value>
+  </data>
+  <data name="ClearButton.Content" xml:space="preserve">
+    <value>Очистити</value>
+  </data>
+  <data name="AddFilesButton.Content" xml:space="preserve">
+    <value>Додати файли</value>
+  </data>
+  <data name="AddFolderButton.Content" xml:space="preserve">
+    <value>Додати папку</value>
+  </data>
+
+  <!-- Drop zone -->
+  <data name="DropZoneHint.Text" xml:space="preserve">
+    <value>Перетягніть файли або папки сюди, або двічі клацніть, щоб вибрати файли</value>
+  </data>
+  <data name="MultipleFoldersHint.Text" xml:space="preserve">
+    <value>Для кількох папок — перетягніть їх з Провідника</value>
+  </data>
+  <data name="DropZoneModeHint.Text" xml:space="preserve">
+    <value>Архіви пропонують розпакування; все інше буде заархівовано</value>
+  </data>
+
+  <!-- Labels -->
+  <data name="DestinationLabel.Text" xml:space="preserve">
+    <value>Призначення:</value>
+  </data>
+  <data name="ArchiveNameLabel.Text" xml:space="preserve">
+    <value>Назва:</value>
+  </data>
+  <data name="CompressionLabel.Text" xml:space="preserve">
+    <value>Стиснення:</value>
+  </data>
+  <data name="ConflictLabel.Text" xml:space="preserve">
+    <value>Якщо файл існує:</value>
+  </data>
+
+  <!-- Checkboxes -->
+  <data name="OpenDestinationCheck.Content" xml:space="preserve">
+    <value>Відкрити папку призначення після завершення</value>
+  </data>
+  <data name="DeleteAfterOperationCheck.Content" xml:space="preserve">
+    <value>Видалити після операції</value>
+  </data>
+
+  <!-- Status messages -->
+  <data name="StatusReady" xml:space="preserve">
+    <value>Готово</value>
+  </data>
+  <data name="StatusArchiving" xml:space="preserve">
+    <value>Архівування...</value>
+  </data>
+  <data name="StatusExtracting" xml:space="preserve">
+    <value>Розпакування...</value>
+  </data>
+  <data name="StatusDone" xml:space="preserve">
+    <value>Готово — оброблено файлів: {0}.</value>
+  </data>
+  <data name="StatusIssues" xml:space="preserve">
+    <value>Завершено з проблемами.</value>
+  </data>
+  <data name="StatusCancelled" xml:space="preserve">
+    <value>Скасовано</value>
+  </data>
+  <data name="StatusCleaningUp" xml:space="preserve">
+    <value>Очищення...</value>
+  </data>
+  <data name="StatusFinalizing" xml:space="preserve">
+    <value>Завершення...</value>
+  </data>
+  <data name="StatusArchivedIn" xml:space="preserve">
+    <value>Заархівовано за {0} с — файлів: {1}</value>
+  </data>
+  <data name="StatusExtractedIn" xml:space="preserve">
+    <value>Розпаковано за {0} с — файлів: {1}</value>
+  </data>
+  <data name="OutcomeWillExtract" xml:space="preserve">
+    <value>Буде розпаковано архівів: {0} — у вказану вище папку</value>
+  </data>
+  <data name="OutcomeWillArchive" xml:space="preserve">
+    <value>Буде заархівовано елементів: {0} — у вказану вище папку</value>
+  </data>
+
+  <!-- Dialog strings -->
+  <data name="ErrorDialogTitle" xml:space="preserve">
+    <value>Завершено з проблемами</value>
+  </data>
+  <data name="ErrorSectionHeader" xml:space="preserve">
+    <value>Помилки</value>
+  </data>
+  <data name="SkippedSectionHeader" xml:space="preserve">
+    <value>Пропущено</value>
+  </data>
+  <data name="CompressionBombDialogTitle" xml:space="preserve">
+    <value>Підозрілий архів</value>
+  </data>
+  <data name="CompressionBombDialogMessage" xml:space="preserve">
+    <value>Цей архів заявляє про {0} даних, коефіцієнт стиснення {1}:1. Це незвично високо і може вказувати на "бомбу" розпакування. Розпакувати попри це?</value>
+  </data>
+</root>

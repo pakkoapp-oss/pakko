@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <!-- Buttons -->
+  <data name="ArchiveButton.Content" xml:space="preserve">
+    <value>Архивиране</value>
+  </data>
+  <data name="ExtractButton.Content" xml:space="preserve">
+    <value>Разархивиране</value>
+  </data>
+  <data name="ClearButton.Content" xml:space="preserve">
+    <value>Изчистване</value>
+  </data>
+  <data name="AddFilesButton.Content" xml:space="preserve">
+    <value>Добавяне на файлове</value>
+  </data>
+  <data name="AddFolderButton.Content" xml:space="preserve">
+    <value>Добавяне на папка</value>
+  </data>
+
+  <!-- Drop zone -->
+  <data name="DropZoneHint.Text" xml:space="preserve">
+    <value>Пуснете файлове или папки тук, или щракнете двукратно, за да прегледате файлове</value>
+  </data>
+  <data name="MultipleFoldersHint.Text" xml:space="preserve">
+    <value>За няколко папки — плъзнете и пуснете от Explorer</value>
+  </data>
+  <data name="DropZoneModeHint.Text" xml:space="preserve">
+    <value>Архивите предлагат разархивиране; всичко останало ще бъде архивирано</value>
+  </data>
+
+  <!-- Labels -->
+  <data name="DestinationLabel.Text" xml:space="preserve">
+    <value>Местоназначение:</value>
+  </data>
+  <data name="ArchiveNameLabel.Text" xml:space="preserve">
+    <value>Име:</value>
+  </data>
+  <data name="CompressionLabel.Text" xml:space="preserve">
+    <value>Компресия:</value>
+  </data>
+  <data name="ConflictLabel.Text" xml:space="preserve">
+    <value>Ако файлът съществува:</value>
+  </data>
+
+  <!-- Checkboxes -->
+  <data name="OpenDestinationCheck.Content" xml:space="preserve">
+    <value>Отваряне на папката на местоназначението след завършване</value>
+  </data>
+  <data name="DeleteAfterOperationCheck.Content" xml:space="preserve">
+    <value>Изтриване след операцията</value>
+  </data>
+
+  <!-- Status messages -->
+  <data name="StatusReady" xml:space="preserve">
+    <value>Готово</value>
+  </data>
+  <data name="StatusArchiving" xml:space="preserve">
+    <value>Архивиране...</value>
+  </data>
+  <data name="StatusExtracting" xml:space="preserve">
+    <value>Разархивиране...</value>
+  </data>
+  <data name="StatusDone" xml:space="preserve">
+    <value>Готово — обработени файлове: {0}.</value>
+  </data>
+  <data name="StatusIssues" xml:space="preserve">
+    <value>Завършено с проблеми.</value>
+  </data>
+  <data name="StatusCancelled" xml:space="preserve">
+    <value>Отменено</value>
+  </data>
+  <data name="StatusCleaningUp" xml:space="preserve">
+    <value>Изчистване...</value>
+  </data>
+  <data name="StatusFinalizing" xml:space="preserve">
+    <value>Финализиране...</value>
+  </data>
+  <data name="StatusArchivedIn" xml:space="preserve">
+    <value>Архивирано за {0} сек — файлове: {1}</value>
+  </data>
+  <data name="StatusExtractedIn" xml:space="preserve">
+    <value>Разархивирано за {0} сек — файлове: {1}</value>
+  </data>
+  <data name="OutcomeWillExtract" xml:space="preserve">
+    <value>Ще бъдат разархивирани {0} архив(а) в папката по-горе</value>
+  </data>
+  <data name="OutcomeWillArchive" xml:space="preserve">
+    <value>Ще бъдат архивирани {0} елемент(а) в папката по-горе</value>
+  </data>
+
+  <!-- Dialog strings -->
+  <data name="ErrorDialogTitle" xml:space="preserve">
+    <value>Завършено с проблеми</value>
+  </data>
+  <data name="ErrorSectionHeader" xml:space="preserve">
+    <value>Грешки</value>
+  </data>
+  <data name="SkippedSectionHeader" xml:space="preserve">
+    <value>Пропуснати</value>
+  </data>
+  <data name="CompressionBombDialogTitle" xml:space="preserve">
+    <value>Подозрителен архив</value>
+  </data>
+  <data name="CompressionBombDialogMessage" xml:space="preserve">
+    <value>Този архив твърди, че съдържа {0} данни, коефициент на компресия {1}:1. Това е необичайно високо и може да показва декомпресионна бомба. Да се разархивира ли въпреки това?</value>
+  </data>
+</root>
