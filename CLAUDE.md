@@ -455,3 +455,7 @@ Lessons learned during v1.2 MSIX packaging work — follow these to avoid known 
   `LocalApplicationData` per-package. Find it at
   `%LOCALAPPDATA%\Packages\<PackageFamilyName>\LocalCache\Local\Pakko\logs\pakko.log`
   (get `<PackageFamilyName>` via `Get-AppxPackage *Pakko*`).
+- **Editing unicode-heavy docs (`DIAGRAMS.md` mermaid blocks, `DECISIONS.md`) with the Edit
+  tool:** a multi-line `old_string` spanning several em-dash (—)/arrow (→) characters can
+  silently fail to match even though `Read` shows it verbatim. Split into smaller edits
+  (isolate one such character per edit) to work around it.
