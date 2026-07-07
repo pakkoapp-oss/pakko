@@ -236,7 +236,8 @@ No code changes required — .NET 8 JIT handles ARM64 natively.
 ---
 
 ### T-F12 — Parallel Compression (SeparateArchives Mode)
-- [ ] **Status:** future
+- [x] **Status:** complete — implemented 2026-07-07, see `DECISIONS.md`'s T-F12 entry for the
+      same-basename collision fix this required beyond the original one-line pseudocode
 
 **File:** `src/Archiver.Core/Services/ZipArchiveService.cs`
 
@@ -251,13 +252,30 @@ await Parallel.ForEachAsync(
 
 Note: `SingleArchive` mode stays sequential. Progress reporting needs `Interlocked.Increment`.
 
-**Acceptance criteria (when implemented):**
-- [ ] `SeparateArchives` uses `Parallel.ForEachAsync`
-- [ ] `MaxDegreeOfParallelism` capped at `Environment.ProcessorCount`
-- [ ] Progress reporting thread-safe
-- [ ] `CancellationToken` respected
-- [ ] `SingleArchive` unchanged
-- [ ] `dotnet test` passes, no file corruption
+**Acceptance criteria:**
+- [x] `SeparateArchives` uses `Parallel.ForEachAsync`
+- [x] `MaxDegreeOfParallelism` capped at `Environment.ProcessorCount`
+- [x] Progress reporting thread-safe — shared `Interlocked`-updated byte counter per worker,
+      plus a forced final 100% report after the parallel loop completes (see DECISIONS.md —
+      needed to keep the existing `reports.Last().Percent == 100` test deterministic)
+- [x] `CancellationToken` respected — mid-flight cancellation still propagates the same way the
+      old sequential loop did; a token already cancelled before the call now needs an explicit
+      guard since `Parallel.ForEachAsync` throws immediately on an already-cancelled token where
+      a plain `for` loop's `IsCancellationRequested` check did not
+- [x] `SingleArchive` unchanged
+- [x] `dotnet test --filter "Category!=Slow"` passes — 190/190 (135 Archiver.Core.Tests + 36
+      Archiver.Shell.Tests + 19 Archiver.Core.IntegrationTests, was 187/187 before this task);
+      3 new tests added covering many-file parallel correctness, same-basename collision
+      handling, and a batch larger than typical core counts; reran the affected test classes 5x
+      each with no flakiness observed
+- [x] Manual on-device verification (2026-07-07, AI-driven via Windows UI automation): full
+      `Deploy.ps1` build+sign+install (Pakko 1.2.0.5 — this same round also found and fixed an
+      unrelated `Deploy.ps1` bug, see `DECISIONS.md`'s "Deploy.ps1 Failed After T-F91" entry),
+      launched via `pakko://archive?files=...` protocol activation with 5 real files, toggled
+      "Separate archives", clicked Archive. Confirmed via filesystem (5 correctly-named `.zip`
+      files, each containing exactly its own source file's content, byte-for-byte) and
+      `pakko.log` ("Archive completed — 5 file(s) → ...", no Warn/Error lines) that the parallel
+      path works end-to-end through the real UI
 
 ---
 
@@ -436,11 +454,37 @@ filesystem reader → Channel<FileWorkItem> → compression workers → archive 
 ---
 
 ### T-F36 — Pluggable Archive Engine Interface
-- [ ] **Status:** future
+- [ ] **Status:** SUPERSEDED (partially) / deferred to v1.5 — reassessed 2026-07-07, see note below.
+      Kept per the "never silently deprecate" rule, not deleted.
 - **Priority:** low
-- **Depends on:** T-F04 (TAR support)
+- **Depends on:** T-F04 (superseded — see below)
 
-**What:** Introduce IArchiveEngine abstraction to decouple core logic from ZIP-specific implementation. Enables TAR, tar.gz, and future formats without UI changes.
+> **2026-07-07 reassessment:** this task predates T-F47–T-F50/T-F85's actual tar.exe
+> integration and no longer matches the shipped architecture or `SPEC.md`'s roadmap. Two
+> separate things were conflated under one task:
+> 1. **Multi-format *extraction*** — the motivation this task and T-F48's blocked criterion
+>    both cite. Already solved, differently: `ArchiveFormatDetector` + `IExtractionRouter`
+>    (T-F85) auto-detect format and route to `IArchiveService`/`ITarService`, surfacing a
+>    specific `SkippedFiles` message for anything `TarCapabilities` reports unsupported. No
+>    format *selector* exists or is needed for extraction — nothing here to unblock.
+> 2. **Multi-format *archive creation*** (the literal "Format: ZIP/TAR/TAR.GZ" dropdown next to
+>    the Archive button) — this is real, unbuilt work, but `SPEC.md`'s roadmap table places
+>    "TAR creation via tar.exe" at **v1.5**, not now. Building a full `IArchiveEngine`
+>    abstraction today for one real engine (`ZipEngine`) plus a `TarEngine` *stub* would be a
+>    premature abstraction for a feature nobody has asked to pull forward — confirmed with user
+>    2026-07-07, who chose to defer rather than build it now.
+>
+> T-F04 (the "Depends on") is equally stale — its generic "TAR/GZip/BZip2/XZ Support" scope was
+> superseded by the actual T-F47–T-F50 tar.exe integration long ago; T-F36's dependency line
+> should be read as "the tar.exe subprocess plumbing already exists" (true today), not as a
+> pointer to unfinished work.
+>
+> **When this becomes real work (v1.5):** re-scope as "add archive creation to `ITarService`"
+> rather than a from-scratch `IArchiveEngine` interface — `ITarService`/`TarCapabilities`
+> already exist and are the natural place to add a `CompressAsync`-shaped method, with the UI
+> format selector wired to `TarCapabilities` the same way `TASKS.md`'s original text intended.
+
+**What (original, pre-reassessment text — see note above for current status):** Introduce IArchiveEngine abstraction to decouple core logic from ZIP-specific implementation. Enables TAR, tar.gz, and future formats without UI changes.
 
 **Architecture:**
 ```
@@ -879,8 +923,14 @@ registration resolves it eagerly as a singleton at startup (`GetAwaiter().GetRes
 ---
 
 ### T-F48 — tar.exe Capability Detection
-- [~] **Status:** partial (v1.3) — detection logic complete; UI criterion blocked on T-F36 (no
-      tar format selector exists yet to grey out)
+- [~] **Status:** partial (v1.3) — detection logic complete (all other criteria `[x]`). The one
+      remaining criterion (grey out unsupported formats in a tar format selector) is reassessed
+      as of 2026-07-07: not "blocked on T-F36" so much as **not applicable to extraction at
+      all** — `IExtractionRouter` (T-F85) auto-detects format and reports unsupported ones via a
+      specific `SkippedFiles` message, with no selector in the loop. The criterion only makes
+      sense once T-F36's real remaining scope (an *archive-creation* format selector, v1.5) is
+      built — see T-F36's note. Left `[~]` rather than `[x]` since the literal criterion is still
+      unmet, but it is no longer this task's blocker to chase
 
 **What:** At app startup, run `C:\Windows\System32\tar.exe --version` to detect version and probe which formats are supported. Cache result as `TarCapabilities` singleton. UI greys out unsupported formats with tooltip "Requires Windows 11 23H2+".
 
@@ -909,8 +959,10 @@ must not hang app launch indefinitely.
 - [x] Returns sensible defaults if tar.exe absent or probe fails
 - [x] Result cached — detection runs once at startup (`App.xaml.cs` forces resolution explicitly;
       see note above — a bare DI registration alone does not run it)
-- [ ] UI greys out formats not supported by detected tar.exe — no tar format selector exists in
-      the UI yet; blocked on T-F36 (Pluggable Archive Engine Interface / format dropdown)
+- [ ] UI greys out formats not supported by detected tar.exe — no tar format selector exists for
+      extraction (not needed — see T-F36's 2026-07-07 note: `IExtractionRouter` already handles
+      unsupported formats without a selector); applies once T-F36's v1.5 archive-creation format
+      selector is built instead
 - [x] `dotnet test` passes — unit test with mocked process output (`TarVersionParserTests`, no
       process launch)
 

@@ -963,4 +963,103 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
         File.ReadAllText(Path.Combine(wrapped, "notes", "file.txt")).Should().Be("from A");
         File.ReadAllText(Path.Combine(wrapped, "notes (1)", "file.txt")).Should().Be("from B");
     }
+
+    // T-F12: SeparateArchives now runs each SourcePath's archive in parallel via
+    // Parallel.ForEachAsync. These tests target the concurrency-specific risks that don't exist
+    // in a sequential loop: output corruption under real parallel writers, and correctness when
+    // multiple SourcePaths would produce the same output filename.
+
+    [Fact]
+    public async Task ArchiveAsync_SeparateArchivesMode_ManyFiles_AllProduceCorrectContentNoCorruption()
+    {
+        const int fileCount = 20;
+        var files = Enumerable.Range(1, fileCount)
+            .Select(i => _temp.CreateFile($"item{i}.txt", $"content-{i}"))
+            .ToList();
+
+        var options = new ArchiveOptions
+        {
+            SourcePaths = files,
+            DestinationFolder = _temp.Path,
+            Mode = ArchiveMode.SeparateArchives
+        };
+
+        var result = await _sut.ArchiveAsync(options);
+
+        result.Success.Should().BeTrue();
+        result.CreatedFiles.Should().HaveCount(fileCount);
+
+        for (int i = 1; i <= fileCount; i++)
+        {
+            string expectedZip = Path.Combine(_temp.Path, $"item{i}.zip");
+            result.CreatedFiles.Should().Contain(expectedZip);
+            using var zip = System.IO.Compression.ZipFile.OpenRead(expectedZip);
+            zip.Entries.Should().ContainSingle();
+            using var reader = new StreamReader(zip.Entries[0].Open());
+            reader.ReadToEnd().Should().Be($"content-{i}");
+        }
+    }
+
+    [Fact]
+    public async Task ArchiveAsync_SeparateArchivesMode_TwoSourcesShareBasename_BothPreservedDistinctly()
+    {
+        // Two different directories named "Photos" under different parents — both would
+        // naturally produce "Photos.zip", which is exactly the race T-F12's sequential
+        // planning pre-pass exists to prevent (see ZipArchiveService.ArchiveAsync's
+        // SeparateArchives branch).
+        string parentA = Path.Combine(_temp.Path, "A");
+        string parentB = Path.Combine(_temp.Path, "B");
+        Directory.CreateDirectory(Path.Combine(parentA, "Photos"));
+        Directory.CreateDirectory(Path.Combine(parentB, "Photos"));
+        File.WriteAllText(Path.Combine(parentA, "Photos", "pic.txt"), "from A");
+        File.WriteAllText(Path.Combine(parentB, "Photos", "pic.txt"), "from B");
+
+        var options = new ArchiveOptions
+        {
+            SourcePaths = [Path.Combine(parentA, "Photos"), Path.Combine(parentB, "Photos")],
+            DestinationFolder = _temp.Path,
+            Mode = ArchiveMode.SeparateArchives,
+            OnConflict = ConflictBehavior.Rename
+        };
+
+        var result = await _sut.ArchiveAsync(options);
+
+        result.Success.Should().BeTrue();
+        result.CreatedFiles.Should().HaveCount(2);
+
+        var contents = result.CreatedFiles.Select(zipPath =>
+        {
+            using var zip = System.IO.Compression.ZipFile.OpenRead(zipPath);
+            var entry = zip.Entries.Single(e => e.FullName.EndsWith("pic.txt"));
+            using var reader = new StreamReader(entry.Open());
+            return reader.ReadToEnd();
+        }).ToList();
+
+        contents.Should().BeEquivalentTo(["from A", "from B"]);
+    }
+
+    [Fact]
+    public async Task ArchiveAsync_SeparateArchivesMode_MaxDegreeOfParallelismCapped_StillCompletesCorrectly()
+    {
+        // Not a direct assertion on concurrency (Environment.ProcessorCount cap is enforced by
+        // Parallel.ForEachAsync itself) — this exercises a batch comfortably larger than typical
+        // core counts to make sure the cap doesn't drop or duplicate any work.
+        var files = Enumerable.Range(1, 12)
+            .Select(i => _temp.CreateFile($"batch{i}.txt", $"payload-{i}"))
+            .ToList();
+
+        var options = new ArchiveOptions
+        {
+            SourcePaths = files,
+            DestinationFolder = _temp.Path,
+            Mode = ArchiveMode.SeparateArchives
+        };
+
+        var result = await _sut.ArchiveAsync(options);
+
+        result.Success.Should().BeTrue();
+        result.Errors.Should().BeEmpty();
+        result.CreatedFiles.Should().HaveCount(12);
+        result.CreatedFiles.Should().OnlyHaveUniqueItems();
+    }
 }

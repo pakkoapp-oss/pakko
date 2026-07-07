@@ -348,6 +348,11 @@ MSBuild tests\Archiver.ShellExtension.Tests\Archiver.ShellExtension.Tests.vcxpro
 > `0x800704c7` ("canceled by the user") — the UAC prompt has nothing to click it. Retry once
 > and ask the user to approve the UAC prompt that appears; the retry succeeds.
 >
+> **A build failing with a file-lock-shaped error** (`MSB3231`/`Access to the path ... is
+> denied` on something under `bin`/`obj`/`AppPackages`) — first try `dotnet build-server
+> shutdown` (kills lingering MSBuild/VBCSCompiler nodes that can hold output handles open)
+> before assuming a stuck folder needs a version bump (see the `AppPackages` wedge note above).
+>
 > **Deploy shortcuts:**
 > Release build in VS triggers `Deploy.ps1 -DeployOnly` automatically (post-build event).
 > For manual deploy from terminal: `.\scripts\Deploy.ps1` (full build + sign + install)
@@ -361,6 +366,29 @@ MSBuild tests\Archiver.ShellExtension.Tests\Archiver.ShellExtension.Tests.vcxpro
 > `dotnet build src/Archiver.App/Archiver.App.csproj /p:Platform=x64`, then check
 > `bin/x64/Release/net8.0-windows10.0.17763.0/win-x64/AppxManifest.xml` for the `<Resource
 > Language>` entries.
+>
+> **25+ locale resource packages force a `.msixbundle`, not a flat `.msix`** (found 2026-07-07
+> right after T-F91 added 24 locale folders, taking the app from 1 to 25 total resource
+> packages). MSBuild's packaging pipeline needs a bundle once there are enough per-language
+> resource packages that the device must selectively install a subset — a flat `.msix` can't
+> hold multiple resource-qualified sub-packages. `Deploy.ps1`'s "locate the final package" step
+> only searched `-Filter '*.msix'`, so it silently found nothing and failed with `No .msix file
+> found under ...AppPackages` even though `dotnet publish` had already succeeded and produced a
+> real `.msixbundle`. Fixed by widening that search to `-Include '*.msix', '*.msixbundle'` —
+> `Add-AppxPackage` installs either directly. If you ever reduce the shipped locale count back
+> down, expect the output to flip back to a flat `.msix` — both are handled now.
+>
+> **A stuck `AppPackages\Archiver.App_<version>_Test\`/`obj\...\PackageLayout\` folder can look
+> like a process lock but isn't one.** Hit this the same day: `dotnet publish` failed with
+> `MSB3231: Unable to remove directory ... Access to the path ... is denied` on a specific
+> version's output folder — reproducible even after `dotnet build-server shutdown`, killing
+> stray `dotnet`/`MSBuild`/`dllhost.exe` processes, and a full machine reboot. Reducing the
+> locale count also didn't help (a real experiment, not just a guess — ruled it out cleanly).
+> What actually worked: bump `Package.appxmanifest`'s `Version` to get a **fresh** output
+> folder name, and separately clean the `obj\` folder (not just `AppPackages\`) — something in
+> that specific version's `obj`/`AppPackages` state was wedged, not a live handle. Don't spend
+> time chasing process locks for this error; a version bump + `obj` clean is faster and fixed
+> it outright.
 
 ---
 

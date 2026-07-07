@@ -146,13 +146,17 @@ if (-not $DeployOnly) {
     if ($LASTEXITCODE -ne 0) { Write-Error "dotnet publish failed (exit $LASTEXITCODE)."; exit $LASTEXITCODE }
 }
 
-# ── Locate the final .msix ────────────────────────────────────────────────────
-$msix = Get-ChildItem -Path $pkgOutDir -Recurse -Filter '*.msix' |
+# ── Locate the final .msix/.msixbundle ────────────────────────────────────────
+# T-F91: once enough per-language resource packages exist (24+ locale folders under
+# Strings/), the packaging pipeline emits a .msixbundle instead of a flat .msix — a
+# bundle is required to carry multiple resource-qualified sub-packages. Add-AppxPackage
+# installs either directly, so accept both and take whichever is newest.
+$msix = Get-ChildItem -Path $pkgOutDir -Recurse -Include '*.msix', '*.msixbundle' |
     Sort-Object LastWriteTime -Descending |
     Select-Object -First 1
 
 if (-not $msix) {
-    Write-Error "No .msix file found under $pkgOutDir."
+    Write-Error "No .msix or .msixbundle file found under $pkgOutDir."
     exit 1
 }
 

@@ -8,6 +8,7 @@ obj/
 *.user
 .vs/
 src/Archiver.App/AppPackages/
+src/Archiver.App/BundleArtifacts/
 pakko-current.zip
 
 # NuGet

@@ -1326,3 +1326,185 @@ professional-UI standard but unreviewed by a native speaker).
 
 **Files:** `src/Archiver.App/Strings/<locale>/Resources.resw` (24 new files, one per locale
 listed above).
+
+---
+
+## Correction — T-F36 / T-F48: "Pluggable Archive Engine" Was Two Different Tasks
+
+**Symptom:** asked to pick up T-F36 (unblock T-F48's grey-out-unsupported-formats criterion).
+Before writing code, re-read both tasks against the architecture actually shipped in
+T-F47–T-F50/T-F85 and found the premise no longer holds.
+
+**Root cause:** T-F36 was written before tar.exe integration existed and bundled two unrelated
+problems under one task:
+1. **Extraction of non-ZIP formats** — T-F36/T-F48 both assumed this needed a UI format
+   selector to grey out unsupported entries. It doesn't: `ArchiveFormatDetector` +
+   `IExtractionRouter` (T-F85) auto-detect the format from file content and route to
+   `IArchiveService`/`ITarService`, producing a specific `SkippedFiles` message
+   (e.g. "RAR requires tar.exe with libarchive >= 3.7.0...") for anything `TarCapabilities`
+   reports unsupported. There is no selector in this flow to grey out.
+2. **Creation of non-ZIP archives** (T-F36's actual "Format: ZIP/TAR/TAR.GZ" dropdown next to
+   the Archive button) — genuine unbuilt work, but `SPEC.md`'s roadmap table (line 214) places
+   "TAR creation via tar.exe" at **v1.5**, not the current v1.3/v1.4 window.
+
+**Why this wasn't caught earlier:** T-F48 was written/partial-completed during the T-F47–T-F49
+push and its one open criterion just carried forward the "blocked on T-F36" note without anyone
+re-checking whether T-F36 itself still matched reality once T-F85 shipped a completely different
+extraction-routing design.
+
+**Decision (confirmed with user 2026-07-07):** do not build `IArchiveEngine` now. Marked T-F36
+superseded/deferred to v1.5 and T-F48's grey-out criterion as not-applicable-to-extraction in
+`TASKS.md`, per the "never silently deprecate" rule — neither task was deleted. When v1.5's TAR
+creation work actually starts, re-scope it as "add a create/compress method to the existing
+`ITarService`" rather than resurrecting a from-scratch `IArchiveEngine` interface — avoids
+building an abstraction with only one real implementation (`ZipEngine`) and a stub
+(`TarEngine`) today, which `CLAUDE.md`'s no-premature-abstraction rule already warns against.
+
+**Files:** `TASKS.md` (T-F36, T-F48 status/criteria notes only — no source changes this round).
+
+---
+
+## T-F12 — Parallel Compression (SeparateArchives Mode)
+
+**What:** `ArchiveAsync`'s `SeparateArchives` branch now processes all `SourcePaths` via
+`Parallel.ForEachAsync` (capped at `Environment.ProcessorCount`) instead of a sequential `for`
+loop. Each path produces its own independent `.zip`, so there is no shared `ZipArchive` writer
+across workers — the parallelism itself is safe by construction.
+
+**The one thing the one-line pseudocode in `TASKS.md` didn't account for:** the old sequential
+loop's conflict/rename logic (`OnConflict` handling for a destination path that already exists)
+implicitly relied on `File.Exists(destPath)` reflecting every *prior* iteration's completed
+write — true only because execution was strictly ordered. Two different `SourcePaths` sharing a
+basename (e.g. two folders both named "Photos" from different parents) would, under real
+concurrency, both observe "doesn't exist yet" and race to write the identical `.tmp` path.
+**Fix:** split conflict resolution out into its own sequential pre-pass before the parallel
+section starts. It walks the sorted source paths once, using an in-memory `claimedDestPaths`
+set alongside the on-disk `File.Exists` check, and assigns each path a final, collision-free
+`destPath` (or a skip decision) before any worker touches the filesystem. Workers then just use
+their precomputed destination — no conflict logic left inside the parallel body at all.
+
+**Deliberate behavior deviation, `Overwrite` + same-run collision only:** sequentially,
+`OnConflict = Overwrite` with two same-basename sources meant "last one processed clobbers the
+first" (nondeterministic which one survives, purely by loop order). Two workers concurrently
+overwriting the same path is a genuine data race, not just a semantic quirk — so a same-run
+collision under `Overwrite` is treated as a rename instead (same as `ConflictBehavior.Rename`
+would do), while a true on-disk-only conflict (no same-run collision) still overwrites exactly
+as before. This only changes behavior for the narrow case of two sources sharing a basename
+within one `Overwrite`-mode batch — not covered by any pre-existing test, and not a scenario
+worth reproducing exactly given the old behavior was itself nondeterministic under any future
+reordering.
+
+**Progress reporting:** replaced the single running `byteOffset` (impossible to keep once
+multiple workers touch it concurrently) with a `long[] completedBytesBox` box updated via
+`Interlocked.Read`/`Interlocked.Add`. Each worker snapshots the current total as its own
+per-entry progress baseline when it starts, and adds its path's byte count back once it
+finishes. This is a reasonable, thread-safe approximation, not byte-exact — two workers mid-flight
+at once will briefly double-count in the reported numerator, which is acceptable for a progress
+bar. To keep the existing `ArchiveAsync_ProgressReporting...` test's `reports.Last().Percent ==
+100` assertion deterministic regardless of how concurrent workers' individual reports interleave,
+`ArchiveAsync` now emits one explicit, exact `Percent = 100` report immediately after the
+`Parallel.ForEachAsync` await completes.
+
+**Cancellation:** `Parallel.ForEachAsync` throws immediately if handed an *already-cancelled*
+token, whereas the old `for` loop's `if (cancellationToken.IsCancellationRequested) break;` at
+the top of each iteration simply skipped all work and returned a graceful (mostly empty)
+`ArchiveResult`. This broke `ArchiveAsync_CancellationRequested_StopsProcessing` (pre-cancels the
+token before calling `ArchiveAsync`) the first time this was implemented — caught by running the
+full test suite before considering the task done. Fixed by gating the whole pre-pass + parallel
+section behind `if (!cancellationToken.IsCancellationRequested)`, restoring the old graceful-noop
+behavior for that specific case. Mid-flight cancellation (token cancelled after work has started)
+is unchanged: it still propagates an `OperationCanceledException` out of `ArchiveAsync`, exactly
+as the old sequential loop's per-path `catch (OperationCanceledException) { cleanup; throw; }`
+already did — no test exercises that path for `SeparateArchives` specifically, so no further
+change was needed there.
+
+**Signature widening for delegate reuse:** `AddDirectoryToArchiveAsync` originally took
+`List<SkippedFile>`/`List<ArchiveError>` parameters. The parallel path needed to pass a
+`ConcurrentBag<T>` instead (thread-safe `.Add` from multiple workers) — `ConcurrentBag<T>` does
+**not** implement `ICollection<T>` (only `IProducerConsumerCollection<T>`/`IReadOnlyCollection<T>`),
+so widening the parameter type to `ICollection<T>` doesn't compile for both callers. Changed the
+parameters to `Action<SkippedFile>`/`Action<ArchiveError>` instead — both `List<T>.Add` and
+`ConcurrentBag<T>.Add` satisfy this via method-group conversion (`skippedFiles.Add`,
+`errors.Add`), and the method only ever calls `.Add` on these anyway.
+
+**Verification:** `dotnet test --filter "Category!=Slow"` — 190/190 (was 187/187). Added 3 new
+tests (many-file parallel round-trip content check, two-sources-same-basename collision handling,
+a batch larger than typical core counts). Reran the affected test classes 5x each after the fix —
+no flakiness observed, including the pre-existing progress-reporting and pre-cancelled-token
+tests that this change put genuinely at risk.
+
+**Files:** `src/Archiver.Core/Services/ZipArchiveService.cs`,
+`tests/Archiver.Core.Tests/Services/ZipArchiveServiceArchiveTests.cs`.
+
+---
+
+## Bug: Deploy.ps1 Failed After T-F91 — `.msixbundle` vs `.msix`, and a Wedged Version Folder
+
+**Symptom:** while verifying T-F12 on-device, `.\scripts\Deploy.ps1` failed repeatedly with
+`MSB3231: Unable to remove directory "...AppPackages\Archiver.App_1.2.0.4_Test\"... Access to
+the path ... is denied`, rotating across different subpaths each retry (`Add-AppDevPackage.
+resources\de-DE`, then `\cs-CZ`, then the bare directory itself). This looked exactly like a
+process-lock problem and was chased as one for a long time.
+
+**What was tried and did NOT fix it (all legitimate, ruled out cleanly, not wasted — see below
+for why the false trail happened):**
+- `taskkill /F /IM dllhost.exe` (did find and kill a live COM surrogate — didn't help)
+- `dotnet build-server shutdown` (did find and shut down a live MSBuild/VBCSCompiler node —
+  didn't help)
+- Manual `Remove-Item`/`[System.IO.Directory]::Delete` on the stuck folder between attempts
+- Confirming `EnableControlledFolderAccess` was `0` (not Defender's ransomware-protection
+  feature blocking it) and that ACLs/owner on the folder were normal (`Full Control` for the
+  current user)
+- **A full machine reboot** — the strongest possible test for "some process holds a handle."
+  Failed identically afterward, which should have been the moment to abandon the process-lock
+  theory outright
+- **Reducing the locale count from 25 to 6** (`uk-UA`, `de-DE`, `fr-FR`, `es-ES`, `pl-PL` +
+  `en-US`) as a controlled experiment against the "T-F91 added too many locale folders" theory —
+  failed identically with only 6, cleanly disproving that specific theory. (The real T-F91
+  connection turned out to be true anyway, just via a completely different mechanism — see below.)
+
+**What actually fixed it:** bumping `Package.appxmanifest`'s `Version` from `1.2.0.4` to
+`1.2.0.5` (to get a **fresh** output folder name) combined with deleting `obj\` as well as
+`AppPackages\` (not just `AppPackages\`, which is all every prior cleanup attempt had touched).
+Once building against a clean version/folder, the packaging step got measurably further before
+hitting a *different*, real bug — proving the `1.2.0.4`-named `obj`/`AppPackages` state itself
+was wedged (not a live handle at all; `Get-ChildItem` had shown the "locked" directory as empty
+the whole time, which in hindsight was the tell — a live handle from a scanner/indexer produces
+`ERROR_SHARING_VIOLATION` on a specific open file, not `ERROR_ACCESS_DENIED` on an
+enumerated-empty directory). Root cause of the wedge itself was never fully pinned down (most
+likely NTFS metadata left over from one of the many earlier failed/interrupted publish attempts
+against that exact path) — not worth further investigation now that the workaround
+(version bump + `obj` clean) is known and cheap.
+
+**The real, separate bug T-F91 did cause:** once past the wedged-folder issue, `dotnet publish`
+succeeded and produced `Archiver.App_1.2.0.5_x64.msix` **and then consumed it into**
+`Archiver.App_1.2.0.5_x64.msixbundle` — no flat `.msix` remained on disk. This is expected,
+correct MSBuild behavior: once an app has enough per-language resource packages (T-F91 took
+Pakko from 1 locale to 25), a single flat `.msix` can no longer represent the app — a bundle is
+required to hold multiple resource-qualified sub-packages so a device can install only the
+languages it needs. `Deploy.ps1`'s "locate the final package" step
+(`Get-ChildItem -Filter '*.msix'`) had no reason to expect this before T-F91 (Pakko shipped only
+`en-US` until then) and simply found nothing, failing with a misleading `No .msix file found`
+error that had nothing to do with the file actually being missing — `dotnet publish` had already
+succeeded by that point.
+
+**Fix:** `Deploy.ps1`'s package-locate step now searches `-Include '*.msix', '*.msixbundle'`
+instead of `-Filter '*.msix'`, taking whichever is newest. `Add-AppxPackage` installs either
+format directly, so no other change was needed.
+
+**Why the long detour was still worth it:** the reboot and locale-reduction experiments were the
+correct next steps given the evidence available at each point (an "Access is denied" error is a
+process-lock symptom far more often than a wedged-folder one) — they weren't wasted, they were
+what correctly ruled out the wrong theory and forced the actual fix (version bump) to be found.
+The lesson worth keeping: `Get-ChildItem`/enumeration showing a directory as **empty** while
+deletion still fails with `Access is denied` (not `in use by another process`) points at wedged
+directory state, not a live handle — try a fresh path (version bump) before spending more time
+on process/handle theories next time this shape of error shows up.
+
+**Verification:** clean `.\scripts\Deploy.ps1 -Thumbprint "..."` run completed end-to-end —
+`Pakko installed successfully, Version: 1.2.0.5`, confirmed via
+`Get-AppxPackage *Pakko*` showing `PavloRybchenko.Pakko_1.2.0.5_x64__9hkd8feqeqbr4`. Version
+auto-bumped to `1.2.0.6` by `Deploy.ps1` itself per its documented behavior.
+
+**Files:** `scripts/Deploy.ps1`, `src/Archiver.App/Package.appxmanifest` (version bump only,
+its own auto-increment behavior — not a manual scope change).
