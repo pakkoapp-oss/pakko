@@ -145,10 +145,221 @@ Invoke via `System.Diagnostics.Process`.
 
 ---
 
-### T-F05 — Archive Contents Preview
-- [ ] **Status:** future
+### T-F05 — Archive Browser (Navigate, Select, Extract Selected/All)
+- [ ] **Status:** future — scope expanded 2026-07-12 from the original "read-only tree view, no
+      extraction" text (kept below the divider as historical record, per the "never silently
+      deprecate" doc rule) to include basic commands, per user request. Not yet in `SPEC.md`'s
+      versioned roadmap table — needs a version slot decided with the user before work starts
+      (`SPEC.md` owns that table; this entry alone doesn't assign one)
+- **Depends on:** none
+
+**What:** let the user browse an archive's internal folder structure — without extracting
+everything first — and run basic commands from that view: navigate in/out of folders, select
+one or more entries, Extract selected, Extract all, and view an entry's Info/properties. Opens
+from the existing pending-selection list (double-click an archive) by swapping the main window's
+content area into a browser view — not a new window, not `NavigationView` (see Design below for
+why). Explicitly **not** an archive manager: no in-place edit, no Add/Copy/Move/Delete-within-
+archive, no Benchmark — this stays "minimal GUI over `System.IO.Compression`", not a 7-Zip/NanaZip
+clone.
+
+**Research done before scoping (per `CLAUDE.md`'s pre-implementation-research norm, extended here
+to a UI feature since a real reference existed):** fetched NanaZip's actual shipped source
+(`NanaZip.Modern/`, via the GitHub trees API) to check what a modern Windows archiver's browsing
+UI looks like. **Negative result, stated plainly so it isn't re-attempted:** NanaZip's "modern"
+WinUI layer (`MainWindowToolBarPage.xaml`, `AddressBar.*`) is only *chrome* — toolbar, breadcrumb,
+status bar — wrapping the legacy vendored Win32 7-Zip `FileManager` C++ control
+(`NanaZip.Core/SevenZip/CPP/7zip/UI/FileManager/`) for the actual file list. That control cannot be
+reused here (`CLAUDE.md`'s "no 7-Zip, no third-party compression code" hard constraint) — the file
+list itself must be designed natively. What *is* reusable: the **command vocabulary** (Extract,
+Info) and the **breadcrumb/address-bar navigation shape** — NanaZip's toolbar also has Add, Test,
+Copy, Move, Delete-in-archive, Benchmark, all of which are archive-*editing*/manager features
+deliberately **out of scope** here (see What, above) since they clash with Pakko's positioning and
+aren't expressible without add/delete-in-place support Pakko doesn't have.
+
+**Design (advisor + `frontend-design` skill consulted, 2026-07-12; user confirmed the navigation-
+surface choice below):**
+- **Inline mode-swap in the existing main window**, not a separate window or a `NavigationView`
+  page. A separate window breaks Pakko's established one-shot/single-focus model (see T-F88's
+  multi-instance decision — same "one task, one window" reasoning applies within a window, not
+  just across windows). `NavigationView` is an architectural commitment (multi-top-level-section
+  shell) too heavy for one feature in a "minimal GUI" app. Double-clicking an archive in the
+  existing pending-selection `ListView` swaps the window's content area (`Visibility` toggle on
+  two `Grid` sections, not a new `Frame`/page) into the browser view; clicking the breadcrumb's
+  root segment (or a "Back" affordance) swaps back. Matches File Explorer's own drill-in behavior
+  (double-clicking a folder doesn't open a new window).
+- **Breadcrumb + flat per-level `ListView`, not a `TreeView`.** WinUI `TreeView` virtualizes
+  poorly; this app has real Zip64 archives with 65,000+ entries (T-F20's Slow tests exercise this
+  scale). A flat per-folder list reuses the existing 4-column `ListView` pattern
+  (Name/Type/Size/Modified) already in `MainWindow.xaml`, just with checkboxes
+  (`SelectionMode="Multiple"`) and a folder/file-type icon per row, plus
+  `VirtualizingStackPanel.VirtualizationMode="Recycling"` set explicitly for that scale.
+- Use the real `Microsoft.UI.Xaml.Controls.BreadcrumbBar` (Windows App SDK 1.4+; Pakko is on
+  1.8.260209005, so it's available and not yet used anywhere in this codebase) instead of a
+  hand-rolled breadcrumb from `ItemsRepeater`/chevrons.
+- New `ArchiveEntryViewModel` (name, size, modified, isFolder, icon glyph) — **separate from** the
+  existing `FileItem` model, which represents top-level pending-selection paths queued for an
+  Archive/Extract operation, not entries inside an archive. Don't overload one model with two
+  meanings.
+- **Navigation/selection behavior:** double-click a folder row descends (breadcrumb appends a
+  segment, list refreshes to that folder's direct children only — no recursive flattening);
+  double-click a file row extracts just that file; clicking a breadcrumb segment jumps directly to
+  that level. Selection is **per-current-folder only and clears on every navigation** — matches
+  File Explorer's own behavior; deliberately not attempting cross-folder "select things in
+  multiple folders, then extract together" (the kind of scope creep flagged during design). Extract
+  all ignores selection state entirely and reuses the existing whole-archive extract pipeline.
+- **tar-family listing is async, non-blocking.** ZIP central-directory listing is fast in-memory
+  (`ZipFile.OpenRead`), but tar-family archives need an external `tar -tvf` process per listing —
+  show the existing indeterminate "Finalizing..."-style loading state (T-F58's pattern), never a
+  blocking modal, while that listing runs.
+
+**Hard design constraint — partial (selected-entries) extraction through `TarProcessService` must
+NOT weaken T-F49's security model.** T-F49 deliberately pre-scans and rejects the *whole archive*
+before any extraction runs (a symlink entry can escape the quarantine directory before per-entry
+validation code ever executes — see `DECISIONS.md`'s T-F49 entry). "Extract selected" for a tar-
+family archive must still run that same whole-archive pre-scan first (reject the entire archive as
+a unit if anything is unsafe), and only then extract the subset of safe, selected members — it must
+never become a per-entry-only validation shortcut. Call this out explicitly in the implementation
+plan; don't let it get "optimized" into a hole later.
+
+**Core-layer boundary:** the listing method returns a flat `IReadOnlyList<ArchiveEntryInfo>`
+(path, size, compressedSize, modified, isDirectory) from `Archiver.Core` — the App layer builds the
+folder hierarchy from `/`-split paths in a view-model helper, not Core. `Archiver.Core` has zero
+WinUI references (hard constraint); a tree-shaped model belongs in the App layer only. No existing
+listing API exists today — confirmed by reading `ZipArchiveService.cs`/`TarProcessService.cs`:
+`ZipFile.OpenRead` and `tar -tvf` are both used today, but only as `private`/internal helpers
+inside `TestAsync`/extraction, not exposed as a reusable structured listing method; both need a new
+public method rather than reusing what's there unchanged.
+
+**Explicitly out of scope (confirmed during design):** anything that mutates the archive (Add,
+Copy, Move, Delete-in-archive), Benchmark, cross-folder multi-select, in-app content preview of a
+file's own contents (opening/viewing a text file or image from inside the archive — a separate,
+bigger feature if ever wanted).
+
+**Acceptance criteria:**
+- [ ] Version slot decided with the user and added to `SPEC.md`'s roadmap table (currently
+      unversioned)
+- [ ] `Archiver.Core`: new listing method(s) on `IArchiveService`/`ITarService` (or a new shared
+      interface) returning `IReadOnlyList<ArchiveEntryInfo>` — flat, not hierarchical
+- [ ] tar-family listing still runs T-F49's whole-archive pre-scan before any partial extraction;
+      no per-entry-only validation path introduced
+- [ ] App layer: new `ArchiveEntryViewModel` + folder-hierarchy-building helper from flat entries
+      (kept separate from `FileItem`)
+- [ ] `MainWindow.xaml`: inline mode-swap (not a new window, not `NavigationView`) between the
+      existing pending-selection view and the new browser view, triggered by double-clicking an
+      archive in the pending-selection list
+- [ ] Real `BreadcrumbBar` control (not hand-rolled) + per-folder `ListView` with
+      `SelectionMode="Multiple"` and explicit `VirtualizationMode="Recycling"`
+- [ ] Extract selected / Extract all / Info commands wired, reusing existing extraction pipeline
+      (`IExtractionRouter`) — no new extraction logic duplicated
+- [ ] Selection clears on navigation; double-click file = extract that file; double-click folder =
+      descend; breadcrumb segment click = jump to that level
+- [ ] New tests: `Archiver.Core.Tests` for the listing method(s) (ZIP + tar-family, including a
+      large-entry-count case exercising the flat-not-hierarchical contract), App-layer tests for
+      the flat-to-tree helper if testable per this project's WinUI-testability constraints
+- [ ] `dotnet test --filter "Category!=Slow"` passes; Zip64 Slow-tagged coverage added or extended
+      if the listing method's behavior at 65,000+ entries isn't already covered
+- [ ] Manual on-device verification: browse a real multi-folder ZIP and a real multi-folder
+      tar.gz/7z/rar, extract a selection, extract all, view Info — confirmed by the user personally
+      per this project's UI-verification workflow tip
+
+---
+
+### T-F05 (original, pre-2026-07-12 scope, superseded by the expanded entry above — kept per the
+"never silently deprecate" rule)
 
 Click ZIP in list → read-only tree view of contents via `ZipFile.OpenRead`. No extraction.
+
+---
+
+### T-F97 — Archive Browser: Preview a File (Open Without Manual Extract)
+- [ ] **Status:** future — split out of T-F05's design discussion 2026-07-12, not a discovered
+      bug or existing behavior
+- **Depends on:** T-F05 (Archive Browser) — needs the browser view to exist first
+
+**What:** from the archive browser (T-F05), double-clicking a previewable file (image, text —
+not every file type, see Security below) silently extracts just that one entry to a temp location
+and opens it with the OS's default handler (`Launcher.LaunchFileAsync`), instead of requiring the
+user to Extract-to-disk first just to look at one file. Matches the equivalent 7-Zip/NanaZip
+double-click-to-preview behavior the user pointed at — but implemented natively (ZIP via
+`ZipArchiveEntry.Open()` directly; tar-family via `tar.exe` extracting a single named member),
+not by reusing any 7-Zip code (hard constraint).
+
+**Security constraints (both non-negotiable, confirmed with user before scoping this in):**
+- **MOTW must propagate to the temp preview file.** If the source archive carries a
+  `Zone.Identifier` ADS (came from the internet), the temp-extracted preview file must carry it
+  too — otherwise the OS handler opens a from-the-internet file with no warning, silently
+  defeating the MOTW propagation this project already treats as a hard constraint for every other
+  extraction path.
+- **Restrict auto-open to a safe-type allowlist** (images, plain text — not an executable, script,
+  `.lnk`, or macro-capable document type) — `ShellExecute`-ing an arbitrary extracted file is its
+  own attack surface (a malicious file inside an archive, opened with one click, no "Extract
+  to..." friction first). Anything outside the allowlist still requires the existing explicit
+  Extract flow, no preview shortcut.
+- tar-family single-member extraction must still run T-F49's whole-archive pre-scan first — same
+  constraint already called out in T-F05's "Extract selected" design; a preview is not exempt from
+  it just because it's one file.
+
+**Scope:** temp file cleanup strategy needs a decision before implementing — either best-effort
+(leave in `%TEMP%`, matches 7-Zip's own behavior, relies on OS temp cleanup) or tracked-and-deleted
+on app exit; decide and record in `DECISIONS.md`, don't default to whichever is easiest to write.
+
+**Acceptance criteria:**
+- [ ] Safe-preview-type allowlist defined (images, text at minimum) and documented in `SECURITY.md`
+- [ ] MOTW propagated to the temp-extracted preview file, verified with a real internet-zone test
+      archive (mirrors the existing MOTW extraction tests' approach)
+- [ ] tar-family preview still runs the whole-archive pre-scan before extracting the single member
+- [ ] Non-allowlisted file types show the existing Extract flow instead of auto-opening
+- [ ] Temp file cleanup strategy decided and recorded in `DECISIONS.md`
+- [ ] New tests covering: allowlist enforcement, MOTW propagation on preview, tar pre-scan still
+      runs for single-member extraction
+- [ ] `dotnet test --filter "Category!=Slow"` passes
+- [ ] Manual on-device verification: preview a real image and a real text file from inside a ZIP
+      and a tar.gz downloaded from the internet (real MOTW tag present) — confirm the extracted
+      preview file also carries the internet zone tag
+
+---
+
+### T-F98 — Archive Browser: Transparent Drill-Down Into Nested Archives
+- [ ] **Status:** future, low priority — split out of T-F05's design discussion 2026-07-12; real
+      risk (recursive archive-bomb DoS) means this needs deliberate scoping before it's picked up,
+      not casual "while we're in there" scope creep onto T-F05 or T-F97
+- **Depends on:** T-F05 (Archive Browser)
+
+**What:** in 7-Zip/NanaZip, double-clicking an archive file (`.rar`/`.zip`/etc.) found *inside*
+another archive transparently "enters" it — extracts just that nested archive to a temp location
+and browses its contents, recursively. Pakko currently does nothing special for this case: a
+nested archive is just another file; extracting the outer archive leaves it sitting on disk as a
+normal file, and the user re-opens it through Pakko's normal top-level flow.
+
+**Why this is a bigger ask than it looks, not a natural T-F05 extension:** each nesting level needs
+its **own** whole-archive pre-scan (T-F49's model doesn't compose automatically across nesting —
+running the pre-scan once on the outer archive says nothing about what's safe inside a nested
+archive found within it) and its own temp-directory lifecycle (created, cleaned up on both success
+and failure, at every level of nesting). More importantly: **automatic recursive drill-down
+multiplies decompression-bomb risk** — a zip-containing-a-zip-containing-a-zip expands
+exponentially per level, a materially worse DoS shape than the single-level compression-ratio bomb
+T-F90/T-F94 already defend against. This clashes directly with this project's "minimal attack
+surface" positioning for its government/defense target audience unless the nesting-depth and
+per-level-bomb-check design is deliberate, not incidental.
+
+**Scope (not yet designed):** at minimum needs a hard nesting-depth limit (reject drilling past N
+levels, N to be decided) and confirmation that T-F94's compression-bomb confirm-and-extract model
+applies independently at every nesting level, not just the outermost. Needs a `DECISIONS.md` entry
+recording the depth limit and bomb-check composition before implementation, per this project's
+usual practice for extraction-security changes (see T-F90/T-F94's entries for the expected shape).
+
+**Acceptance criteria:**
+- [ ] Nesting-depth limit decided and documented (`DECISIONS.md`) before implementation starts
+- [ ] Each nesting level runs its own whole-archive pre-scan and compression-bomb check
+      independently — not inherited or skipped based on the outer archive's result
+- [ ] Temp directories cleaned up on success and failure at every nesting level, not just the
+      outermost
+- [ ] New tests: nested-archive-bomb rejection at depth 2+, nesting-depth-limit enforcement,
+      temp-directory cleanup across multiple nesting levels including a mid-nesting failure
+- [ ] `dotnet test --filter "Category!=Slow"` passes
+- [ ] Manual on-device verification: drill into a real nested archive (e.g. a `.zip` containing a
+      `.7z`), confirm contents browse correctly and temp state is cleaned up after closing the
+      browser view
 
 ---
 
