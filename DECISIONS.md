@@ -1643,6 +1643,131 @@ isolated regex testing, not yet by a live end-to-end trigger.
 
 ---
 
+## T-F102 — Deploy.ps1 Exit Code: Artifact-Based Gate Replaces Regex-Only Gate; Explicit Exit Codes Throughout
+
+**What broke:** `Deploy.ps1` reported process exit code 1 even on a fully successful deployment
+(found 2026-07-13, running the script for T-F05's manual verification). Pakko installed
+correctly, the version bumped correctly — the script's own reported *outcome* was simply wrong.
+
+**Root cause:** PowerShell's `$LASTEXITCODE` is set only by external/native process invocations,
+never by built-in cmdlets. `dotnet publish` hitting the tolerated T-F96 MSB3231 race left
+`$LASTEXITCODE` nonzero; every cmdlet the script ran afterward (`Get-AppxPackage`,
+`Remove-AppxPackage`, `Add-AppxPackage`) left it untouched, and the script had no explicit `exit`
+at the end. The stale nonzero value from a *tolerated, non-fatal* condition silently became the
+script's final reported exit code — indistinguishable from a real failure to anything checking it
+(CI, a wrapper script, or a human running `echo $LASTEXITCODE` afterward).
+
+**Fix, designed via a second-opinion review (relayed by the user from another model) and applied
+as-is after checking it against the real script:**
+
+1. **Every native call's exit code is captured into its own local variable immediately after the
+   call** (`$shellBuildExitCode`, `$shellExtBuildExitCode`, `$publishExitCode`) — every decision
+   reads that variable, never `$LASTEXITCODE` at a later point where an intervening cmdlet could
+   have left it stale. Every failure branch `exit`s with its own captured code; the script now
+   ends with an explicit `exit 0` so reaching that line can only mean every prior step already
+   succeeded (or exited on its own).
+
+2. **The T-F96 tolerance gate no longer decides on the MSB3231 regex match — it decides on
+   artifact evidence.** Old gate: `$publishOutput` text matches
+   `MSB3231.*Unable to remove directory.*(AppPackages|PackageLayout)` **and** a fresh package
+   exists. New gate: a fresh package exists (`LastWriteTime -ge $publishStartTime`) **and**
+   `Get-AuthenticodeSignature` on it reports `Status -eq 'Valid'`. The regex is kept, but only to
+   label which known failure text was seen inside the `Write-Warning` message — it no longer gates
+   anything.
+   **Why this is strictly better, not just different:** a real compile error happens before
+   packaging ever starts, so no fresh package can exist — the freshness check alone already rules
+   that failure mode out. A real signing error produces a package with an invalid or absent
+   signature — the signature check rules that out too. So "fresh package + valid signature +
+   nonzero exit" can only be a failure *after* both compiling and signing completed, i.e. exactly
+   this post-packaging cleanup race, regardless of what the stdout text happened to say. The old
+   regex gate's real weakness: MSBuild's error text is locale-dependent (a non-`en-US` toolchain
+   or Windows display language emits the message in a different language), so a regex anchored to
+   English words could silently stop matching on another machine while the underlying condition
+   (successful build, failed cleanup) is identical — the artifact-based gate has no such
+   dependency.
+
+3. **`Add-AppxPackage` now runs inside `try { ... -ErrorAction Stop } catch { ...; exit 1 }`** — it
+   previously had no error handling at all, so a corrupt or otherwise bad package would have
+   silently reported success all the way to the end of the script.
+
+**Verification status: both of the reviewing model's suggested checks are now done, one of them by
+real accident.** A live `Deploy.ps1` run right after this fix hit the actual MSB3231 cleanup race
+for real — not staged — while building for this same verification pass. The new gate correctly
+identified `Archiver.App_1.2.0.11_x64.msix` as fresh and validly signed, tolerated the nonzero
+`dotnet publish` exit, installed the package, and the script exited 0: the exact tolerate-and-
+continue path the fix was written for, exercised live rather than synthetically. The race recurred
+on every single `Deploy.ps1` run made during this fix's verification (three runs total) — strong
+supporting evidence for T-F96's leading Search-Indexer-race hypothesis (see the indexing-exclusion
+note below), though still not proof by itself. Separately, a deliberate C# syntax error was
+introduced in `App.xaml.cs`, `Deploy.ps1` run against it, and confirmed to fail correctly —
+`dotnet publish` never reached packaging, no fresh package existed, the gate did not tolerate it,
+and the script exited 1 (the error was reverted immediately after via `git checkout`). Both checks
+are now closed on T-F102 in `TASKS.md`.
+
+**Follow-up, same day: freshness + a valid signature aren't enough — added a package-content
+check.** The user raised a sharp, specific concern: could this tolerance gate let through a
+package that's missing content or holds a stale copy of something, and we'd spend time later
+hunting a "bug" that was actually just an incomplete package? This is a real risk in this exact
+codebase, not a hypothetical — `Archiver.App.csproj` packages `Archiver.Shell.exe` and
+`Archiver.ShellExtension.dll` via `Content Include ... CopyToOutputDirectory=PreserveNewest`,
+which silently skips the copy if MSBuild's up-to-date check for that one file decides the
+destination is already current. `CLAUDE.md`'s own "A quick `dotnet build` can silently install a
+stale MSIX" note already documents this exact failure class recurring once before (a 55-minute-old
+apphost surviving a rebuild that changed a XAML-bound command) — a valid outer signature doesn't
+protect against it, since signing happens on whatever bytes already ended up in the package
+layout, complete or not.
+
+**First approach tried, and why it was rejected:** compare each packaged entry's `LastWriteTime`
+(read via `System.IO.Compression.ZipFile` without full extraction) against the timestamp captured
+right after building `Archiver.Shell.exe`/`Archiver.ShellExtension.dll` this run. Rejected after
+inspecting a real known-good package: both entries — built at different times (12:58 and 13:08:53
+UTC) — showed an *identical* packaged timestamp (13:09:12 UTC), meaning the zip entry's timestamp
+reflects when the packaging step touched the file, not the file's own original mtime. Under that
+model, a stale cached copy re-touched during packaging would carry the same "fresh" timestamp as a
+genuinely up-to-date one — the check would have been unable to actually detect the failure mode it
+was written for.
+
+**What shipped instead: a byte-for-byte SHA256 comparison.** For each of the two satellite files,
+compute a SHA256 hash of the packaged zip entry's stream and compare it against
+`Get-FileHash` on the corresponding file in `bin\` (the exact file the Content Include item
+references). Verified the load-bearing assumption *before* wiring it into the gate, against the
+already-built, known-good `Archiver.App_1.2.0.12_x64.msix` sitting on disk from the prior test run
+— both files' packaged hash matched their source `bin\` hash exactly. Only then edited
+`Deploy.ps1` to use this comparison inside the tolerance branch, and re-ran the full script twice
+more (both hit the real MSB3231 race again) to confirm the hash check still passes on a genuinely
+good package and doesn't introduce a false rejection.
+
+**Scope of what this does and doesn't prove, stated explicitly to avoid overclaiming:** the hash
+check proves the packaged bytes are identical to whatever is in `bin\` *right now*, at the moment
+`Deploy.ps1` runs. It does **not** prove `bin\` itself is up to date with source — that is
+`dotnet build`'s own incremental-compilation correctness, a separate concern this check cannot
+see. Only a flat `.msix` is checked; once 25+ locales force a `.msixbundle` (T-F91), these two
+files live one zip level deeper inside a nested inner `.msix`, which this check doesn't unpack —
+that combination silently falls back to freshness+signature only, rather than guessing at a
+nested path that was never verified against a real bundle.
+
+**Separately, took the user's suggestion to reduce the T-F96 race itself:** set the
+`NotContentIndexed` file attribute recursively on the repo root and every subdirectory (no
+elevation needed, no security tradeoff, unlike a Defender exclusion). Caveat noted, not yet acted
+on: `AppPackages\` is deleted and recreated by every `Deploy.ps1` run, so this specific attribute
+does not survive onto that folder's next incarnation — a persistent fix would need Windows
+Search's own path-based "excluded locations" list (Indexing Options, or its COM API), which does
+require elevation and wasn't attempted this session. Worth watching whether the race stops
+recurring now that the stable parts of the tree are excluded; it recurred on all three `Deploy.ps1`
+runs made *before* this indexing change, so a clean run afterward would be suggestive (not
+conclusive, since it's already documented as intermittent) evidence for the Search Indexer theory.
+
+**Separate, deliberately not done here:** adding the project directory to Windows Defender/Search
+exclusions was suggested (by the same reviewing model) as cheap prevention for the underlying
+T-F96 race itself. This is a machine-configuration change requiring elevation, not a code change,
+and was left for the user to apply directly rather than run from an unattended shell — see T-F96's
+existing note that a project-wide Defender exclusion was already reported in place once before;
+whether it's still configured on this machine wasn't re-verified as part of this fix.
+
+**Files:** `scripts/Deploy.ps1`.
+
+---
+
 ## T-F05 — Archive Browser: tar.exe Selective-Extraction Spike + Subset Compression-Bomb Scope
 
 **Spike, run before writing any subset-extraction code (per this project's "confirmed
