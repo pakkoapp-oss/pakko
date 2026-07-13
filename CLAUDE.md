@@ -209,6 +209,13 @@ references are easy to miss otherwise (this session found 5 lingering mentions o
   genuinely cannot work. This applies to all tooling decisions — not just MSBuild.
 - No mocking library (Moq/NSubstitute/etc.) is used anywhere in this repo — write hand-rolled
   fake implementations of interfaces for tests instead (see `ExtractionRouterTests.cs`).
+- **Console-frontend testing (`Archiver.Shell`, future `Archiver.CLI`):** extract argument
+  parsing into its own testable class (e.g. `ShellArgumentParser`) and unit-test it in-process —
+  never parse inline in `Main`. No test in this repo spawns a built `.exe` and asserts on a real
+  exit code/stdout yet — `Archiver.Shell.Tests` only unit-tests the parser, which is fine there
+  since its args are always generated programmatically, never typed by a person. A frontend a
+  user/script invokes directly (`Archiver.CLI`) needs that real-process layer too, since its
+  exit code/stdout *is* the public contract — see T-F09's acceptance criteria for the shape.
 - To unit-test an `internal` `Archiver.Core` class directly, add
   `<InternalsVisibleTo Include="Archiver.Core.Tests" />` to `Archiver.Core.csproj` rather than
   making it/its members `public` just for test access (first used for `ArchiveEntrySecurity`, T-F94).
@@ -236,6 +243,10 @@ references are easy to miss otherwise (this session found 5 lingering mentions o
   for public repos. Instead: `curl -s "https://api.github.com/repos/<owner>/<repo>/git/trees/main?recursive=1"`
   lists every file path unauthenticated — grep it for the area you need, then WebFetch the raw
   file (`raw.githubusercontent.com/<owner>/<repo>/main/<path>`) to read real code.
+  Same method applies beyond COM/shell/packaging: fetching NanaZip's real `NanaZip.Modern/` source
+  settled an archive-browser UI design (T-F05), and fetching its vendored real 7-Zip
+  `ArchiveCommandLine.cpp` settled the CLI command/switch table (T-F09) — don't restrict this
+  research discipline to COM work just because that's where it was first written down.
 - Before tagging an ad-hoc fix with a new `T-Fxx` comment/reference, grep the highest existing
   number **across the entire repo**, not just `TASKS.md`/`TASKS_DONE.md`/`CLAUDE.md`/
   `DECISIONS.md` — don't guess a number. Some `T-Fxx` tags exist only as code comments with no
