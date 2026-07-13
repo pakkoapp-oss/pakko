@@ -138,7 +138,13 @@ static async Task<IExtractionRouter> BuildExtractionRouterAsync()
 static async Task RunArchiveAsync(IReadOnlyList<string> sourcePaths)
 {
     var firstPath = sourcePaths[0];
-    var destFolder = Path.GetDirectoryName(firstPath) ?? ".";
+    // T-F99: Path.GetDirectoryName returns null when firstPath is itself a root (e.g. "Z:\",
+    // now a reachable single-item selection via the shell extension's Drive ItemType) — a root
+    // has no parent to place the archive next to. Falls back to Desktop, the same default
+    // destination MainViewModel.cs already uses, rather than "." (the process's own working
+    // directory, which is unpredictable for a COM-surrogate-launched process).
+    var destFolder = Path.GetDirectoryName(firstPath)
+        ?? Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
 
     string archiveName;
     if (sourcePaths.Count > 1)
@@ -153,9 +159,12 @@ static async Task RunArchiveAsync(IReadOnlyList<string> sourcePaths)
     {
         // Path.GetFileNameWithoutExtension returns "" for dotfiles (e.g. ".gitignore" has no
         // name before its only dot) — fall back to the full name so we don't create a bare ".zip".
+        // Both return "" for a drive root (e.g. "Z:\") — fall back to "archive" in that case too.
         archiveName = Path.GetFileNameWithoutExtension(firstPath);
         if (string.IsNullOrEmpty(archiveName))
             archiveName = Path.GetFileName(firstPath);
+        if (string.IsNullOrEmpty(archiveName))
+            archiveName = "archive";
     }
 
     var service = new ZipArchiveService();

@@ -33,6 +33,7 @@ public static class ArchiveTreeIndex
                     IsFolder = entry.IsDirectory,
                     Size = entry.Size,
                     CompressedSize = entry.CompressedSize,
+                    Crc32 = entry.Crc32,
                     Modified = entry.Modified,
                 };
             }

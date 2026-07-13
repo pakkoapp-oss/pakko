@@ -29,17 +29,105 @@
   <data name="AddFolderButton.Content" xml:space="preserve">
     <value>Add folder</value>
   </data>
+  <data name="HashButton.Content" xml:space="preserve">
+    <value>Hash...</value>
+  </data>
+  <data name="AboutButton.Content" xml:space="preserve">
+    <value>About</value>
+  </data>
   <data name="ExtractSelectedButton.Content" xml:space="preserve">
     <value>Extract Selected</value>
   </data>
   <data name="ExtractAllButton.Content" xml:space="preserve">
     <value>Extract All</value>
   </data>
-  <data name="EntryInfoButton.Content" xml:space="preserve">
-    <value>Info</value>
+  <!-- Table headers. Each element gets its own Uid — a shared Uid across a Button (.Content) and
+       a TextBlock (.Text) applies EVERY suffixed key under that Uid to the element regardless of
+       whether it has that property, which crashes WinUI's x:Uid resource application at
+       InitializeComponent time (confirmed on-device — see DECISIONS.md's second T-F05 follow-up,
+       "correction" note). Keep pending-list (Button) and browse-mode (TextBlock) headers under
+       fully separate key names even when the display text is identical. -->
+  <data name="NameColumnHeader.Content" xml:space="preserve">
+    <value>Name</value>
   </data>
-  <data name="CloseArchiveBrowserButton.Content" xml:space="preserve">
-    <value>Close</value>
+  <data name="TypeColumnHeader.Content" xml:space="preserve">
+    <value>Type</value>
+  </data>
+  <data name="SizeColumnHeader.Content" xml:space="preserve">
+    <value>Size</value>
+  </data>
+  <data name="ModifiedColumnHeader.Content" xml:space="preserve">
+    <value>Modified</value>
+  </data>
+  <data name="CrcColumnHeader.Content" xml:space="preserve">
+    <value>CRC-32</value>
+  </data>
+  <data name="BrowseNameColumnHeader.Text" xml:space="preserve">
+    <value>Name</value>
+  </data>
+  <data name="BrowseSizeColumnHeader.Text" xml:space="preserve">
+    <value>Size</value>
+  </data>
+  <data name="PackedColumnHeader.Text" xml:space="preserve">
+    <value>Packed</value>
+  </data>
+  <data name="BrowseCrcColumnHeader.Text" xml:space="preserve">
+    <value>CRC-32</value>
+  </data>
+  <data name="BrowseModifiedColumnHeader.Text" xml:space="preserve">
+    <value>Modified</value>
+  </data>
+
+  <!-- Tray menu -->
+  <data name="TrayOpenMenuItem.Text" xml:space="preserve">
+    <value>Open Pakko</value>
+  </data>
+  <data name="TrayAboutMenuItem.Text" xml:space="preserve">
+    <value>About Pakko</value>
+  </data>
+  <data name="TrayExitMenuItem.Text" xml:space="preserve">
+    <value>Exit</value>
+  </data>
+  <data name="RemoveMenuItem.Text" xml:space="preserve">
+    <value>Remove</value>
+  </data>
+
+  <!-- Archive options -->
+  <data name="ModeLabel.Text" xml:space="preserve">
+    <value>Mode:</value>
+  </data>
+  <data name="OneArchiveRadio.Content" xml:space="preserve">
+    <value>One archive</value>
+  </data>
+  <data name="SeparateArchivesRadio.Content" xml:space="preserve">
+    <value>Separate archives</value>
+  </data>
+  <data name="ArchiveNameTextBox.PlaceholderText" xml:space="preserve">
+    <value>Auto (based on first file/folder name)</value>
+  </data>
+  <data name="CompressionFastItem.Content" xml:space="preserve">
+    <value>Fast</value>
+  </data>
+  <data name="CompressionNormalItem.Content" xml:space="preserve">
+    <value>Normal</value>
+  </data>
+  <data name="CompressionBestItem.Content" xml:space="preserve">
+    <value>Best</value>
+  </data>
+  <data name="CompressionNoneItem.Content" xml:space="preserve">
+    <value>None</value>
+  </data>
+  <data name="ConflictOverwriteItem.Content" xml:space="preserve">
+    <value>Overwrite</value>
+  </data>
+  <data name="ConflictSkipItem.Content" xml:space="preserve">
+    <value>Skip</value>
+  </data>
+  <data name="ConflictRenameItem.Content" xml:space="preserve">
+    <value>Rename (add number)</value>
+  </data>
+  <data name="CancelButton.Content" xml:space="preserve">
+    <value>✕ Cancel</value>
   </data>
 
   <!-- Drop zone -->

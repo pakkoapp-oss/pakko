@@ -20,17 +20,18 @@
             IconSource="Assets/Square44x44Logo.ico">
             <tb:TaskbarIcon.ContextFlyout>
                 <MenuFlyout>
-                    <MenuFlyoutItem Text="Open Pakko" Command="{x:Bind TrayOpenCommand}"/>
+                    <MenuFlyoutItem x:Uid="TrayOpenMenuItem" Command="{x:Bind TrayOpenCommand}"/>
                     <MenuFlyoutSeparator/>
-                    <MenuFlyoutItem Text="About Pakko" Command="{x:Bind TrayAboutCommand}"/>
+                    <MenuFlyoutItem x:Uid="TrayAboutMenuItem" Command="{x:Bind TrayAboutCommand}"/>
                     <MenuFlyoutSeparator/>
-                    <MenuFlyoutItem Text="Exit" Command="{x:Bind TrayExitCommand}"/>
+                    <MenuFlyoutItem x:Uid="TrayExitMenuItem" Command="{x:Bind TrayExitCommand}"/>
                 </MenuFlyout>
             </tb:TaskbarIcon.ContextFlyout>
         </tb:TaskbarIcon>
 
         <!-- Row 0: Add Files / Add Folder / Hash / About Buttons -->
-        <Grid Grid.Row="0" ColumnDefinitions="Auto,Auto,*,Auto,Auto" MinHeight="40">
+        <Grid Grid.Row="0" ColumnDefinitions="Auto,Auto,*,Auto,Auto" MinHeight="40"
+              Visibility="{x:Bind ViewModel.IsPendingListVisibility, Mode=OneWay}">
             <Button
                 Grid.Column="0"
                 x:Uid="AddFilesButton"
@@ -42,13 +43,28 @@
                 Command="{x:Bind ViewModel.BrowseFolderCommand, Mode=OneWay}"/>
             <Button
                 Grid.Column="3"
-                Content="Hash..."
+                x:Uid="HashButton"
                 HorizontalAlignment="Right"
                 Command="{x:Bind HashFilesCommand, Mode=OneTime}"/>
             <Button
                 Grid.Column="4"
-                Content="About"
+                x:Uid="AboutButton"
                 Margin="8,0,0,0"
+                HorizontalAlignment="Right"
+                Command="{x:Bind TrayAboutCommand, Mode=OneTime}"/>
+        </Grid>
+
+        <!-- Row 0 (T-F05): Archive Browser Top Command Bar. The Info button that originally sat
+             here was removed (design review 2026-07-13): its Name/Path/Type/Size/Compressed-size/
+             Modified fields all now live directly on the entry table below (Row 1 browse). The
+             Close button that replaced it was removed in the same follow-up round — the up-arrow
+             now in front of the breadcrumb (Row 1 browse) doubles as the exit affordance (see
+             MainViewModel.NavigateUpOrExitBrowser): only About remains here. -->
+        <Grid Grid.Row="0" ColumnDefinitions="*,Auto" MinHeight="40"
+              Visibility="{x:Bind ViewModel.IsBrowsingArchiveVisibility, Mode=OneWay}">
+            <Button
+                Grid.Column="1"
+                x:Uid="AboutButton"
                 HorizontalAlignment="Right"
                 Command="{x:Bind TrayAboutCommand, Mode=OneTime}"/>
         </Grid>
@@ -63,26 +79,32 @@
                 Background="{ThemeResource SubtleFillColorSecondaryBrush}"
                 BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
                 BorderThickness="0,0,0,1">
-                <Grid ColumnDefinitions="*,80,100,140" Margin="12,0,12,0">
-                    <Button Grid.Column="0" Content="Name"
+                <Grid ColumnDefinitions="*,80,100,90,140" Margin="12,0,12,0">
+                    <Button Grid.Column="0" x:Uid="NameColumnHeader"
                             Command="{x:Bind ViewModel.SortByCommand, Mode=OneWay}"
                             CommandParameter="Name"
                             HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
                             Background="Transparent" BorderThickness="0"
                             Padding="0,6,0,6" FontWeight="SemiBold"/>
-                    <Button Grid.Column="1" Content="Type"
+                    <Button Grid.Column="1" x:Uid="TypeColumnHeader"
                             Command="{x:Bind ViewModel.SortByCommand, Mode=OneWay}"
                             CommandParameter="Type"
                             HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
                             Background="Transparent" BorderThickness="0"
                             Padding="0,6,0,6" FontWeight="SemiBold"/>
-                    <Button Grid.Column="2" Content="Size"
+                    <Button Grid.Column="2" x:Uid="SizeColumnHeader"
                             Command="{x:Bind ViewModel.SortByCommand, Mode=OneWay}"
                             CommandParameter="Size"
                             HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
                             Background="Transparent" BorderThickness="0"
                             Padding="0,6,0,6" FontWeight="SemiBold"/>
-                    <Button Grid.Column="3" Content="Modified"
+                    <Button Grid.Column="3" x:Uid="CrcColumnHeader"
+                            Command="{x:Bind ViewModel.SortByCommand, Mode=OneWay}"
+                            CommandParameter="Crc"
+                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                            Background="Transparent" BorderThickness="0"
+                            Padding="0,6,0,6" FontWeight="SemiBold"/>
+                    <Button Grid.Column="4" x:Uid="ModifiedColumnHeader"
                             Command="{x:Bind ViewModel.SortByCommand, Mode=OneWay}"
                             CommandParameter="Modified"
                             HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
@@ -109,10 +131,10 @@
                     </ListView.ItemContainerStyle>
                     <ListView.ItemTemplate>
                         <DataTemplate x:DataType="models:FileItem">
-                            <Grid ColumnDefinitions="*,80,100,140">
+                            <Grid ColumnDefinitions="*,80,100,90,140">
                                 <Grid.ContextFlyout>
                                     <MenuFlyout>
-                                        <MenuFlyoutItem Text="Remove" Click="RemoveItem_Click"/>
+                                        <MenuFlyoutItem x:Uid="RemoveMenuItem" Click="RemoveItem_Click"/>
                                     </MenuFlyout>
                                 </Grid.ContextFlyout>
                                 <TextBlock
@@ -132,6 +154,11 @@
                                     Opacity="0.7"/>
                                 <TextBlock
                                     Grid.Column="3"
+                                    Text="{x:Bind Crc32Display, Mode=OneWay}"
+                                    TextTrimming="CharacterEllipsis"
+                                    Opacity="0.7"/>
+                                <TextBlock
+                                    Grid.Column="4"
                                     Text="{x:Bind ModifiedDisplay}"
                                     TextTrimming="CharacterEllipsis"
                                     Opacity="0.7"/>
@@ -166,21 +193,35 @@
         <Grid Grid.Row="1" RowDefinitions="Auto,Auto,*"
               Visibility="{x:Bind ViewModel.IsBrowsingArchiveVisibility, Mode=OneWay}">
 
-            <BreadcrumbBar
-                Grid.Row="0"
-                Margin="0,0,0,8"
-                ItemsSource="{x:Bind ViewModel.BreadcrumbSegments, Mode=OneWay}"
-                ItemClicked="ArchiveBreadcrumb_ItemClicked"/>
+            <Grid Grid.Row="0" ColumnDefinitions="Auto,*" Margin="0,0,0,8">
+                <!-- Up one archive folder level; at the archive root, exits the browser back to
+                     the pending list (replaces the removed standalone Close button — design
+                     review 2026-07-13 follow-up). See MainViewModel.NavigateUpOrExitBrowser. -->
+                <Button
+                    Grid.Column="0"
+                    Margin="0,0,8,0"
+                    Padding="8,4,8,4"
+                    Command="{x:Bind ViewModel.NavigateUpOrExitBrowserCommand, Mode=OneWay}"
+                    ToolTipService.ToolTip="Up">
+                    <FontIcon Glyph="&#xE74A;" FontFamily="Segoe MDL2 Assets" FontSize="14"/>
+                </Button>
+                <BreadcrumbBar
+                    Grid.Column="1"
+                    ItemsSource="{x:Bind ViewModel.BreadcrumbSegments, Mode=OneWay}"
+                    ItemClicked="ArchiveBreadcrumb_ItemClicked"/>
+            </Grid>
 
             <Border
                 Grid.Row="1"
                 Background="{ThemeResource SubtleFillColorSecondaryBrush}"
                 BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
                 BorderThickness="0,0,0,1">
-                <Grid ColumnDefinitions="*,100,140" Margin="12,0,12,0">
-                    <TextBlock Grid.Column="0" Text="Name" Padding="0,6,0,6" FontWeight="SemiBold"/>
-                    <TextBlock Grid.Column="1" Text="Size" Padding="0,6,0,6" FontWeight="SemiBold"/>
-                    <TextBlock Grid.Column="2" Text="Modified" Padding="0,6,0,6" FontWeight="SemiBold"/>
+                <Grid ColumnDefinitions="Auto,*,100,100,90,140" Margin="12,0,12,0">
+                    <TextBlock Grid.Column="1" x:Uid="BrowseNameColumnHeader" Padding="0,6,0,6" FontWeight="SemiBold"/>
+                    <TextBlock Grid.Column="2" x:Uid="BrowseSizeColumnHeader" Padding="0,6,0,6" FontWeight="SemiBold"/>
+                    <TextBlock Grid.Column="3" x:Uid="PackedColumnHeader" Padding="0,6,0,6" FontWeight="SemiBold"/>
+                    <TextBlock Grid.Column="4" x:Uid="BrowseCrcColumnHeader" Padding="0,6,0,6" FontWeight="SemiBold"/>
+                    <TextBlock Grid.Column="5" x:Uid="BrowseModifiedColumnHeader" Padding="0,6,0,6" FontWeight="SemiBold"/>
                 </Grid>
             </Border>
 
@@ -205,7 +246,7 @@
                 </ListView.ItemContainerStyle>
                 <ListView.ItemTemplate>
                     <DataTemplate x:DataType="appcore:ArchiveEntryViewModel">
-                        <Grid ColumnDefinitions="Auto,*,100,140">
+                        <Grid ColumnDefinitions="Auto,*,100,100,90,140">
                             <FontIcon
                                 Grid.Column="0"
                                 Glyph="{x:Bind Icon}"
@@ -225,6 +266,16 @@
                                 Opacity="0.7"/>
                             <TextBlock
                                 Grid.Column="3"
+                                Text="{x:Bind CompressedSizeDisplay}"
+                                TextTrimming="CharacterEllipsis"
+                                Opacity="0.7"/>
+                            <TextBlock
+                                Grid.Column="4"
+                                Text="{x:Bind CrcDisplay}"
+                                TextTrimming="CharacterEllipsis"
+                                Opacity="0.7"/>
+                            <TextBlock
+                                Grid.Column="5"
                                 Text="{x:Bind ModifiedDisplay}"
                                 TextTrimming="CharacterEllipsis"
                                 Opacity="0.7"/>
@@ -235,20 +286,31 @@
         </Grid>
 
         <!-- Row 2: Destination Path -->
-        <Grid Grid.Row="2" ColumnDefinitions="Auto,*,Auto" MinHeight="40">
+        <Grid Grid.Row="2" ColumnDefinitions="Auto,Auto,*,Auto" MinHeight="40">
             <TextBlock
                 x:Uid="DestinationLabel"
                 Grid.Column="0"
                 VerticalAlignment="Center"
                 Margin="0,0,8,0"
                 Style="{StaticResource CaptionTextBlockStyle}"/>
-            <TextBox
+            <!-- Up to parent folder; disabled at a drive root (Path.GetDirectoryName returns
+                 null there — see MainViewModel.CanNavigateDestinationUp). Added per user request
+                 alongside the archive browser's own up/exit button. -->
+            <Button
                 Grid.Column="1"
+                Margin="0,0,8,0"
+                Padding="8,4,8,4"
+                Command="{x:Bind ViewModel.NavigateDestinationUpCommand, Mode=OneWay}"
+                ToolTipService.ToolTip="Up">
+                <FontIcon Glyph="&#xE74A;" FontFamily="Segoe MDL2 Assets" FontSize="14"/>
+            </Button>
+            <TextBox
+                Grid.Column="2"
                 Text="{x:Bind ViewModel.DestinationPath, Mode=OneWay}"
                 IsReadOnly="True"
                 VerticalAlignment="Center"/>
             <Button
-                Grid.Column="2"
+                Grid.Column="3"
                 Content="..."
                 Margin="8,0,0,0"
                 Command="{x:Bind ViewModel.BrowseDestinationCommand, Mode=OneWay}"
@@ -281,8 +343,10 @@
                 Command="{x:Bind ViewModel.ClearCommand, Mode=OneWay}"/>
         </Grid>
 
-        <!-- Row 3 (T-F05): Archive Browser Action Buttons -->
-        <Grid Grid.Row="3" ColumnDefinitions="*,*,Auto,Auto" MinHeight="40"
+        <!-- Row 3 (T-F05): Archive Browser Action Buttons — Info/Close moved to the Row 0
+             command bar above (design review 2026-07-13); these two stay anchored here, next to
+             the destination path/conflict-behavior options (Row 2/Row 6) they actually consume. -->
+        <Grid Grid.Row="3" ColumnDefinitions="*,*" MinHeight="40"
               Visibility="{x:Bind ViewModel.IsBrowsingArchiveVisibility, Mode=OneWay}">
 
             <Button
@@ -297,18 +361,6 @@
                 Margin="8,0,0,0"
                 HorizontalAlignment="Stretch"
                 Command="{x:Bind ViewModel.ExtractAllFromBrowserCommand, Mode=OneWay}"/>
-
-            <Button
-                Grid.Column="2"
-                x:Uid="EntryInfoButton"
-                Margin="8,0,0,0"
-                Command="{x:Bind ViewModel.ShowSelectedEntryInfoCommand, Mode=OneWay}"/>
-
-            <Button
-                Grid.Column="3"
-                x:Uid="CloseArchiveBrowserButton"
-                Margin="8,0,0,0"
-                Command="{x:Bind ViewModel.ExitBrowseModeCommand, Mode=OneWay}"/>
         </Grid>
 
         <!-- Row 4: Operation Outcome Subtitle -->
@@ -324,15 +376,15 @@
             Spacing="8"
             Visibility="{x:Bind ViewModel.ArchiveOptionsVisibility, Mode=OneWay}">
             <StackPanel Orientation="Horizontal" Spacing="16" MinHeight="40">
-                <TextBlock Text="Mode:" VerticalAlignment="Center" Width="46" Style="{StaticResource CaptionTextBlockStyle}"/>
+                <TextBlock x:Uid="ModeLabel" VerticalAlignment="Center" Width="46" Style="{StaticResource CaptionTextBlockStyle}"/>
                 <RadioButton
+                    x:Uid="OneArchiveRadio"
                     GroupName="ArchiveMode"
-                    Content="One archive"
                     IsChecked="{x:Bind ViewModel.IsSingleArchive, Mode=TwoWay}"
                     IsEnabled="{x:Bind ViewModel.IsNotBusy, Mode=OneWay}"/>
                 <RadioButton
+                    x:Uid="SeparateArchivesRadio"
                     GroupName="ArchiveMode"
-                    Content="Separate archives"
                     IsChecked="{x:Bind ViewModel.IsSeparateArchives, Mode=TwoWay}"
                     IsEnabled="{x:Bind ViewModel.IsNotBusy, Mode=OneWay}"/>
             </StackPanel>
@@ -345,19 +397,19 @@
                     Width="46"
                     Style="{StaticResource CaptionTextBlockStyle}"/>
                 <TextBox
+                    x:Uid="ArchiveNameTextBox"
                     Grid.Column="1"
                     Text="{x:Bind ViewModel.ArchiveName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                    PlaceholderText="Auto (based on first file/folder name)"
                     IsEnabled="{x:Bind ViewModel.IsArchiveNameAndNotBusy, Mode=OneWay}"/>
             </Grid>
             <StackPanel Orientation="Horizontal" Spacing="8" MinHeight="40">
                 <TextBlock x:Uid="CompressionLabel" VerticalAlignment="Center" Style="{StaticResource CaptionTextBlockStyle}"/>
                 <ComboBox MinHeight="32" SelectedIndex="{x:Bind ViewModel.CompressionLevelIndex, Mode=TwoWay}"
                           IsEnabled="{x:Bind ViewModel.IsNotBusy, Mode=OneWay}">
-                    <ComboBoxItem Content="Fast"/>
-                    <ComboBoxItem Content="Normal"/>
-                    <ComboBoxItem Content="Best"/>
-                    <ComboBoxItem Content="None"/>
+                    <ComboBoxItem x:Uid="CompressionFastItem"/>
+                    <ComboBoxItem x:Uid="CompressionNormalItem"/>
+                    <ComboBoxItem x:Uid="CompressionBestItem"/>
+                    <ComboBoxItem x:Uid="CompressionNoneItem"/>
                 </ComboBox>
             </StackPanel>
         </StackPanel>
@@ -368,9 +420,9 @@
                 <TextBlock x:Uid="ConflictLabel" VerticalAlignment="Center" Style="{StaticResource CaptionTextBlockStyle}"/>
                 <ComboBox MinHeight="32" SelectedIndex="{x:Bind ViewModel.OnConflictIndex, Mode=TwoWay}"
                           IsEnabled="{x:Bind ViewModel.IsNotBusy, Mode=OneWay}">
-                    <ComboBoxItem Content="Overwrite"/>
-                    <ComboBoxItem Content="Skip"/>
-                    <ComboBoxItem Content="Rename (add number)"/>
+                    <ComboBoxItem x:Uid="ConflictOverwriteItem"/>
+                    <ComboBoxItem x:Uid="ConflictSkipItem"/>
+                    <ComboBoxItem x:Uid="ConflictRenameItem"/>
                 </ComboBox>
             </StackPanel>
             <CheckBox
@@ -393,8 +445,8 @@
                     IsIndeterminate="{x:Bind ViewModel.IsProgressIndeterminate, Mode=OneWay}"
                     Visibility="{x:Bind ViewModel.IsOperationRunningVisibility, Mode=OneWay}"/>
                 <Button
+                    x:Uid="CancelButton"
                     Grid.Column="1"
-                    Content="✕ Cancel"
                     Margin="8,0,0,0"
                     Command="{x:Bind ViewModel.CancelCommand, Mode=OneWay}"
                     Visibility="{x:Bind ViewModel.IsOperationRunningVisibility, Mode=OneWay}"/>

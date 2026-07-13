@@ -1641,6 +1641,13 @@ unrelated real C# compile error, as a negative control. The race itself did not 
 clean-state `Deploy.ps1` runs used to test this change, so the "continue" branch is verified by
 isolated regex testing, not yet by a live end-to-end trigger.
 
+**Observed recurrence (2026-07-13, T-F99/T-F100/T-F101 session, on hold per user decision — no
+new investigation or code change, purely logged):** the MSB3231 race recurred on **4 consecutive**
+`Deploy.ps1` runs in a row during this session (each rebuilding after a drive-root/file-activation
+fix), every one correctly tolerated by T-F102's artifact-based gate. This is far more frequent
+than "intermittent" — worth the next person touching T-F96 knowing it reproduces close to every
+run on this machine right now, not rarely.
+
 ---
 
 ## T-F102 — Deploy.ps1 Exit Code: Artifact-Based Gate Replaces Regex-Only Gate; Explicit Exit Codes Throughout
@@ -1817,3 +1824,465 @@ known, whereas today's whole-archive check runs as a single pass over `-tvf` out
 per-entry logic exists.
 
 **Files:** `scripts/Deploy.ps1`.
+
+---
+
+## T-F99 — Drive-Root Selection: Three Independent "Assumes a Real Path" Bugs Found While Verifying the Manifest Fix
+
+**What shipped first:** the manifest fix itself — `xmlns:desktop10` declared,
+`<desktop10:ItemType Type="Drive">` added alongside the existing `*`/`Directory` entries in
+`Package.appxmanifest`, verb wired to the same `PakkoRootCommand` CLSID. This alone made Pakko's
+entry appear on a drive-root right-click, matching NanaZip's real shipped manifest.
+
+**Then, verifying it end-to-end on-device (not just checking the menu appears) surfaced three
+more bugs, all the same underlying shape — code written assuming a source path always has a
+filename component, which a drive root (e.g. `Z:\`) doesn't:**
+
+1. **`QuotePath` (`ShellExtUtils.cpp`) corrupts the command line for a drive-root path.**
+   `QuotePath` wrapped every path in `"..."` unconditionally. For `"Z:\"`, the result is `"Z:\"` —
+   a trailing backslash immediately before the closing quote. Win32/CRT command-line parsing
+   (`CommandLineToArgvW` and equivalents, including .NET's own argv handling) treats a backslash
+   run immediately before a quote specially: an *odd* count means the last backslash escapes the
+   quote character itself rather than closing the quoted argument. One trailing backslash is odd,
+   so the quote never closes — everything after it in the command line gets swallowed into a
+   single corrupted argument. Reproduced live: clicking `Compress…` on a `subst`-mapped drive
+   root opened Pakko with a completely empty pending list (no error, no crash — just silently
+   wrong). Fixed by doubling a trailing backslash before quoting (the standard Win32 quoting rule
+   for this exact case) — a two-line change in `QuotePath`, single fix point since every
+   `Build*Args` helper routes through it.
+2. **`ZipArchiveService.ArchiveAsync`'s null-`ArchiveName` auto-name fallback produces a bare
+   `.zip`.** `Path.GetFileNameWithoutExtension("Z:\\")` returns `""` (.NET's real behavior,
+   confirmed empirically — this is *not* the same empty-string case dotfiles hit, which the
+   existing comment already covered). The fallback only checked `options.ArchiveName ?? ...`,
+   which doesn't help when the derived name is `""` rather than `null`. Fixed with an explicit
+   length check before falling back to `"archive"`.
+3. **`Archiver.Shell/Program.cs`'s `RunArchiveAsync` (the one-click "Add to X.zip" command,
+   *not* the `Compress…` dialog — an entirely separate code path that computes its own name and
+   destination) had the same empty-name bug independently, plus a second bug:**
+   `Path.GetDirectoryName("Z:\\")` returns `null` (a root has no parent), which fell back to `"."`
+   — the shell-launched process's own working directory, unpredictable for a COM-surrogate-spawned
+   process and never what the user would expect. Fixed the name the same way as (2), and changed
+   the destination fallback to `Environment.GetFolderPath(Environment.SpecialFolder.Desktop)` —
+   reusing `MainViewModel.cs`'s own existing default-destination convention rather than inventing
+   a new one.
+4. **`BuildAddToArchiveTitle`'s existing drive-root fallback didn't catch this shape either.**
+   The function already had a fallback comment mentioning "a bare drive letter like `C:`" for the
+   *multi-file-at-drive-root* case (`GetParentFolderName` returning `"C:"`, caught by
+   `name.back() == L':'`). But a *single* drive-root source goes through
+   `GetFileNameWithoutExtension` instead, and `PathFindFileNameW(L"Z:\\")` — verified with a small
+   standalone probe program compiled and run against the real Windows API, not assumed from
+   documentation — returns the **whole string unchanged**, not an empty tail. So `name` ends up
+   `"Z:\"`, whose last character is `\`, not `:` — the existing check missed it. Added a
+   `name.back() == L'\\'` branch alongside the existing colon check.
+
+**Why this matters beyond just this task:** none of these four bugs were caught by static
+reasoning about `GetState`/`EnumSubCommands` (which was the original plan — see `TASKS.md`'s
+original T-F99 acceptance criterion wording). They only surfaced by actually invoking the
+commands end-to-end on a real (if scratch, `subst`-mapped) drive root and checking the resulting
+file on disk, confirming this project's standing practice of not marking shell/UI-touching work
+done on manual-verification alone. All four fixed and covered by new tests (C++:
+`BuildArchiveArgs.DriveRootTrailingBackslashIsEscaped`,
+`BuildAddToArchiveTitle.SingleDriveRootFallsBackToArchive`; C#:
+`ArchiveAsync_NullArchiveName_SingleSourceEndingInSeparator_FallsBackToArchive` in
+`Archiver.Core.Tests`). `RunArchiveAsync`'s two fixes are *not* independently unit-tested — it's a
+top-level-statement local function in `Archiver.Shell/Program.cs`, the same "no test project spawns
+the built exe" gap `CLAUDE.md` already documents for this project; verified instead via a real
+on-device invocation of the one-click command against the `subst` drive, confirming both the
+correct filename (`archive.zip`) and correct destination (Desktop) on disk.
+
+**Files:** `src/Archiver.App/Package.appxmanifest`, `src/Archiver.ShellExtension/ShellExtUtils.cpp`,
+`src/Archiver.Core/Services/ZipArchiveService.cs`, `src/Archiver.Shell/Program.cs`,
+`tests/Archiver.ShellExtension.Tests/ShellExtUtilsTests.cpp`,
+`tests/Archiver.Core.Tests/Services/ZipArchiveServiceArchiveTests.cs`.
+
+---
+
+## T-F100 — File Activation Routing + FileTypeAssociation Extension List
+
+**Routing fix:** new `FileActivationRouter` static class in `src/Archiver.App.Core/`
+(`Decide(IReadOnlyList<string> paths) -> FileActivationDecision`) — WinUI-free and unit-testable,
+mirroring `ArchiveTreeIndex`'s existing split for the same reason. A single path whose
+`ArchiveFormatDetector.Detect` result isn't `Unknown` routes to Browse (T-F05's
+`EnterBrowseModeAsync`); everything else (multi-file, or a single unrecognized file) keeps the
+existing `AddPaths` behavior. Wired into `App.xaml.cs`'s `HandleActivation` File case, which is now
+`async void` (was `void`) to `await` the browse call deliberately rather than fire-and-forget it —
+already on the UI thread from `OnLaunched`, so no dispatcher-marshaling concern.
+
+**Extension-list decision: reuse `ShellExtUtils.cpp`'s existing `kSupportedNonZipArchiveExtensions`
+list, not a new one.** That C++ list (`.rar .7z .tar .gz .tgz .bz2 .tbz2 .xz .txz .zst .tzst
+.lzma`) already exists as this project's single source of truth for "non-ZIP formats
+`Archiver.Core` routes to `ITarService`" — its own comment says it's kept in sync with
+`MainViewModel.cs`'s `_extractableTypes`. Extending `Package.appxmanifest`'s
+`windows.fileTypeAssociation` with a second `archivefile` extension using this exact list (rather
+than NanaZip's much larger ~60-extension list, or independently re-deriving a list from
+`TarCapabilities`) means one fewer copy of the same decision to keep in sync — a manifest can't be
+conditioned on runtime `TarCapabilities` anyway (it's build-time static), so gating by "what
+`tar.exe` can format-detect at all" rather than "what this specific Windows build's `tar.exe`
+happens to support today" is the only coherent static choice; the existing capability-gap error
+path (`ArchiveListingRouter`/`ExtractionRouter`'s `IsSupported`/`BuildUnsupportedReason`) already
+handles the runtime gap for an older Windows without a capable `tar.exe`, unchanged by this task.
+
+**Real, unplanned observation while verifying on-device:** `.zip`'s association had reverted to
+Windows' built-in `CompressedFolder` handler (`HKCU:\...\FileExts\.zip\UserChoice`'s `ProgId`) —
+Pakko was set as the default per T-F83's confirmation, but that apparently doesn't survive an MSIX
+reinstall/reassociation cycle (this session redeployed the package 5 times). Not a bug in this
+task's code — Windows' per-user default-app choice is a system setting outside the app's control —
+but verification used "Open with → Pakko" (a one-time picker choice, doesn't touch the system
+default) instead of relying on double-click, which exercises the exact same `HandleActivation`
+code path regardless of which app the OS considers default.
+
+**Files:** `src/Archiver.App.Core/FileActivationRouter.cs`, `src/Archiver.App/App.xaml.cs`,
+`src/Archiver.App/Package.appxmanifest`,
+`tests/Archiver.App.Core.Tests/FileActivationRouterTests.cs`.
+
+---
+
+## T-F101 — Classic "Show More Options" Menu Missing Pakko: Diagnosis, No Fix Yet
+
+**Per user decision, this round is diagnosis-only** — the symptom is logged and two candidate
+explanations are ruled out below, but no code changed.
+
+**Confirmed real** on a fresh Explorer window (new process, to rule out any menu-mode state
+carried over from a prior right-click in the same session): the modern top-level menu shows both
+NanaZip and Pakko directly; clicking "Показати додаткові параметри" transitions to the classic
+Win32 popup menu, which lists every expected classic verb (`Відкрити`, `Відкрити за допомогою`, …,
+`Властивості`, `NanaZip`) but **not** Pakko.
+
+**Ruled out — stale installed build.** `Get-AppxPackage` plus a direct read of the installed
+`AppxManifest.xml` confirmed the running package matched current source on the relevant
+`FileExplorerContextMenus`/`ItemType` block exactly (trivially true this round, since T-F99/T-F100
+had just redeployed moments before) — the original bug report's leading theory doesn't explain
+this specific repro.
+
+**Ruled out — a crash during classic-menu enumeration.** `Get-WinEvent` against `.NET Runtime` and
+`Application Error` providers, filtered to the whole repro window, returned zero events. One
+`Application Hang` (ID 1002, `dllhost.exe`, `HangType: Quiesce`,
+`PackageFullName: ...Pakko_1.2.0.16...`) did turn up, but its timing and `Quiesce` hang type match
+this session's own repeated `Deploy.ps1` uninstall/reinstall cycling (Windows asking the *previous*
+version's COM surrogate to quiesce during an MSIX package replace) — not Explorer invoking the
+classic menu. Flagged explicitly so a future session doesn't mistake it for evidence.
+
+**Not yet tried:** a real Process Monitor/ETW trace of `explorer.exe` actually calling
+`IExplorerCommand::EnumSubCommands`/`GetState` during classic-menu population specifically, to
+confirm whether Explorer even reaches `Archiver.ShellExtension.dll` for that code path at all.
+UI-automation-driven repro turned out to be an unreliable way to *hold open* the classic Win32
+popup menu long enough to inspect its state mid-flight (it collapses faster than tool round-trips
+in this environment) — a real trace tool is the likely next step, not more automated clicking.
+
+**Files:** none changed — diagnosis only.
+
+---
+
+## T-F05 — UI Design-Review Pass: Row 0 Visibility Bug, Top Command Bar, Window Proportions
+
+**Trigger:** the user, looking at a real on-device screenshot of the Archive Browser, asked
+whether Row 0's Add Files/Add Folder/Hash buttons belonged there, and asked for a comparison
+against NanaZip's real archive-viewing UI (NanaZip is installed on the dev machine — opened the
+same `.7z` fixture in both apps for a direct side-by-side).
+
+**Diagram gap closed first.** Before touching any code, the user asked to catalog what diagrams
+should exist for "all the menu elements in Pakko" — confirmed none of `DIAGRAMS.md`'s 5 existing
+categories covered a WinUI window's own row-visibility state machine (diagram 2 is scoped
+specifically to `IsBusy`/operation lifecycle, not to `IsBrowsingArchive`-driven layout). Added
+diagram 6 (`DIAGRAMS.md`) with a per-row visibility table built directly from `MainWindow.xaml`'s
+8 rows and `MainViewModel.cs`'s visibility properties — drawing it surfaced the Row 0 gap formally
+(it had already been spotted visually, but the diagram is what pinned down that it was the *only*
+row of 8 with no `Visibility` binding at all, and that `MainViewModel.cs:209-212`'s own comment
+listing "intentionally shared" elements never mentioned it).
+
+**Finding 1 — Row 0 never hid in browse mode; real bug, not a documented choice.** Fixed by
+splitting Row 0 into two mode-gated sibling `Grid`s (same pattern Rows 1/3 already used):
+pending-list variant unchanged (Add Files/Add Folder/Hash/About, now behind
+`IsPendingListVisibility`), new browse variant behind `IsBrowsingArchiveVisibility`.
+
+**Finding 2 — where should Info/Close live, given the new browse-mode Row 0 exists anyway?**
+The user asked (referencing WinRAR/7-Zip/NanaZip and modern Windows 11 Explorer) whether *all*
+Archive Browser actions should move above the table, text-labeled rather than icon-only. Consulted
+the `frontend-design` skill on this specifically before touching XAML. The answer was not a
+blanket "yes, move everything": WinRAR/7-Zip/NanaZip's own top-toolbar buttons work because they
+each open a **self-contained dialog** that carries its own destination/options — clicking the
+button and configuring the action happen in the same place. Pakko's model is different and
+deliberate (T-F05's original design): destination path, conflict behavior, and the two checkboxes
+stay **inline and persistent** below the list, not in a per-click dialog. Moving `Extract Selected`/
+`Extract All` to the top while their configuration stays at the bottom would create a "configure
+below, commit above" flow — worse than today's shape, not better, since today at least the buttons
+sit immediately after their own inputs. `Info` and `Close`, by contrast, are non-committing/
+navigational (view metadata; leave the browser) and don't consume anything below them — those two
+moved into the new browse-mode Row 0, text-labeled, matching modern Explorer's command-bar-above-
+the-list convention; `Extract Selected`/`Extract All` stayed in Row 3, now alone.
+
+**Finding 3 — window proportions.** `MainWindow.xaml.cs` hardcoded `AppWindow.Resize(800, 700)` —
+near-square. Every reference file manager compared (Explorer, NanaZip's real 1440×753 window,
+7-Zip, WinRAR) defaults to wide-not-square, because a file/archive listing is inherently tabular —
+the Name column wants width, rows don't want height. Confirmed concretely from the same `.7z`
+comparison screenshots: Pakko's narrower Name column would truncate long/nested archive entry
+names (this project explicitly has Unicode/emoji-filename and deep-nesting test coverage) more
+aggressively than necessary. Changed to `1100x650` — wider than the old size but well short of
+NanaZip's own 1440px, since Pakko's simpler 3-column list (Name/Size/Modified vs. NanaZip's 11
+columns) doesn't need that much width; the window is still user-resizable beyond this, this only
+changes the initial size.
+
+**Explicitly not done, and why:** did not adopt NanaZip's broader toolbar (Add/Copy/Cut/Delete-
+in-archive/Test icons) or its column set (CRC/Method/Attributes/Block/Folders/Files) — both
+conflict with T-F05's own already-decided "not an archive manager" scope. NanaZip was used here
+purely as a reference for layout/information-density conventions (address-bar-style path display,
+column choices, top-vs-bottom action placement), never as a feature target to match.
+
+**Verification:** AI-driven on-device, same session — redeployed, confirmed via screenshot that
+Row 0 correctly shows the browse-mode variant (Info greyed until a selection exists, Close, About)
+with the pending-list variant's buttons gone; confirmed `Info` opens the metadata dialog and
+`Close` correctly exits back to pending-list mode (Row 0/Row 3/Row 5 all correctly flip back) from
+their new position; confirmed the wider window via `AppWindow` bounds. No new automated tests —
+this is a WinUI layout/visibility change with no non-UI logic to unit-test; the existing
+`IsPendingListVisibility`/`IsBrowsingArchiveVisibility` properties themselves are unchanged, only
+which `Grid` rows bind to them.
+
+---
+
+## T-F05 — Follow-up: Info Button Removed, Compressed/Full Size Added as Table Columns
+
+**Trigger:** user feedback on the Row 0 change directly above — the `Info`+`Close` pair sitting
+together in the new browse-mode command bar read as a confusing combination, not an improvement.
+Separately, the user asked for compressed size and full (uncompressed) size to be visible per
+entry in the browse table.
+
+**Resolution: delete the Info dialog, fold its fields into the table.** Read `DialogService.cs`'s
+`ShowEntryInfoAsync` to see exactly what it showed: Name, Path, Type (Folder/File), Size,
+Compressed size (guarded `> 0`), Modified. Cross-checked against what the browse-mode entry table
+(`MainWindow.xaml` Row 1) already carries: Name and Modified were already columns, Path is already
+the row's tooltip (`ToolTipService.ToolTip="{x:Bind FullPath}"`), and Type is already conveyed by
+the folder/file `FontIcon`. Only `Size` (uncompressed) and `Packed` (compressed) were missing as
+columns — added both, which makes the entire Info dialog redundant rather than partially
+redundant. Deleted outright rather than leaving it reachable some other way (e.g. a right-click
+"Properties" item): `IDialogService.ShowEntryInfoAsync`, `DialogService.ShowEntryInfoAsync`,
+`MainViewModel.ShowSelectedEntryInfoCommand`/`CanShowSelectedEntryInfo`, the `EntryInfoButton` XAML
+button and its `Resources.resw` string. This also mechanically resolves the "combination" — Row 0
+(browse) is now just `Close` + `About`, no pairing to be confused by.
+
+**`CompressedSizeDisplay` guards `<= 0`, not just folders.** Read `TarProcessService.cs`'s listing
+path (`ScanForUnsafeEntriesAsync`'s sibling) before writing this: it hardcodes
+`CompressedSize = 0` for every entry, because tar.exe/libarchive's gzip/xz/bzip2/zstd streams are
+whole-archive, not per-entry, so there's no real per-entry compressed size to report for any
+tar-routed format (RAR/7z/tar/tar.gz/tar.bz2/tar.xz/tar.zst). `DialogService`'s old Info dialog
+already worked around this with an `if (entry.CompressedSize > 0)` guard that hid the row
+entirely for these formats; a column can't hide itself the same way, so `CompressedSizeDisplay`
+carries the same `<= 0` guard and renders empty instead of a misleading `0 bytes`. Net effect:
+the `Packed` column is ZIP-only in practice — real information for `.zip`, blank for everything
+else Pakko extracts. This is disclosed here and in `ARCHITECTURE.md` rather than silently shipped;
+no attempt was made to backfill a synthetic per-entry compressed size for tar-routed formats since
+none exists to report honestly.
+
+**Column alignment fixed while touching the same `Grid`s.** The browse-mode header `Grid`
+(`ColumnDefinitions="*,100,140"`, no icon column) never matched the row template's
+`ColumnDefinitions="Auto,*,100,140"` (icon + 3 columns) — the header's `Name` column was
+consequently narrower than the row's actual name cell by one `Auto` icon-width. Not a
+pre-existing bug worth a separate task: both `Grid`s were already being edited to add the
+`Packed` column, so aligning them (`Auto,*,100,100,140` on both) was folded into this change.
+
+**Verification:** `dotnet test --filter "Category!=Slow"` green (added
+`ArchiveEntryViewModelTests` covering `CompressedSizeDisplay`'s folder/zero/positive cases).
+On-device verification pending — same standing rule as every other UI change this session: not
+marked done until confirmed via a redeploy + screenshot pass.
+
+**Files:** `src/Archiver.App/MainWindow.xaml`, `src/Archiver.App/MainWindow.xaml.cs`,
+`DIAGRAMS.md` (new diagram 6 + DoD table row + diagram 1 update for the same-day T-F99 finding).
+
+---
+
+## T-F05 — Second Follow-up: Close Removed, CRC-32 Column, Destination Up-Button, Localization Pass
+
+Four separate user requests, batched into one round because all four touch `MainWindow.xaml` and
+would otherwise force a second Deploy.ps1 cycle for no benefit (this session's own notes already
+document Deploy.ps1's build+sign+install cost — batching is the standing practice for that reason
+alone, not new to this round).
+
+**1. Close button removed; replaced by a single up-arrow that also exits the browser.** The user
+confirmed (via direct question) that the standalone Close button — kept after Info's removal in
+the prior round — should also go, but flagged unprompted that this leaves *no* way back to the
+pending list (the window's own "X" closes the whole app, not just the browser). Two options were
+put to the user before writing any code (advisor flagged this as a genuine blocker, not a call to
+make solo): (a) an up-arrow in front of the breadcrumb that navigates up a folder level, and at
+the archive's own root falls through to exiting the browser; (b) a small icon-only close button
+in the same spot Close occupied. The user picked (a) and asked for the same up-arrow pattern to
+also apply to archive creation (i.e. the Destination Path row, which is already shared by both
+modes — see point 3 below).
+`MainViewModel.NavigateUpOrExitBrowser` (new `[RelayCommand]`) implements this:
+`CurrentFolderPath.Length == 0` → call the now-private `ExitBrowseMode()` (no longer its own
+command); otherwise → `NavigateToBreadcrumbSegment(BreadcrumbSegments.Count - 2)`, which is
+exactly the target the *second-to-last* breadcrumb segment already resolves to. Row 0 (browse)
+now holds only `About`. `EntryInfoButton`/`CloseArchiveBrowserButton` were already gone from
+`en-US`'s `Resources.resw` (Info) or removed this round (Close).
+
+**2. CRC-32 column added — nullable, not a `<= 0` sentinel like `CompressedSizeDisplay`.** Unlike
+compressed size, `0` is a legitimate CRC-32 (an empty file legitimately hashes to `0x00000000`),
+so reusing the `<= 0` "not available" pattern from the prior round's `CompressedSizeDisplay` would
+have silently mislabeled a real all-zero CRC as missing — caught by the advisor before writing any
+code, not found in testing. `ArchiveEntryInfo.Crc32` (`Archiver.Core`) and
+`ArchiveEntryViewModel.Crc32` (`Archiver.App.Core`) are both `uint?`; `null` means unavailable
+(every tar-routed format — same "no per-entry concept" reason as `CompressedSize`), any value
+including `0` means a real, verified CRC. `ZipArchiveService.ListEntriesAsync` populates it from
+`ZipArchiveEntry.Crc32` (already used elsewhere in the same file for `TestArchiveEntries`'s
+integrity check); `TarProcessService`'s listing path leaves it unset. `CrcDisplay` renders as
+uppercase 8-digit hex (`X8` format) — this is the field a government/defense/auditability
+audience is most likely to read directly, so "verified zero" vs. "unknown" needed to stay
+distinguishable, not collapse into the same blank cell.
+
+**3. Destination Path gets its own up-button — a separate feature from #1, despite the visual
+symmetry.** User request, independent of the archive browser: a small icon button to the left of
+the Destination Path `TextBox` (Row 2, shared by both Archive and Extract flows) that goes up one
+real filesystem folder level, disabled at a drive root. Implemented via the framework rather than
+string parsing — `Path.GetDirectoryName(DestinationPath) is null` is the drive-root/unrooted-path
+signal (confirmed this returns `null` at `"C:\"`, not an empty string or an exception), used both
+as the click handler's action and as `CanNavigateDestinationUp`'s `CanExecute` gate (also checks
+`!IsBusy`, matching the existing "..." browse button's disable-while-busy behavior). Deliberately
+**not** wired to the archive browser's up/exit command — same icon, same visual language, but two
+functionally unrelated targets (real filesystem vs. archive-internal path); worth flagging since a
+future reader could otherwise assume one implementation covers both.
+
+**4. Localization completion pass — `en-US` + `uk-UA` only, matching T-F91's existing design.**
+User reported (correctly) that not all menu elements were translated. Audit of `MainWindow.xaml`
+found two distinct gaps: (a) `ExtractSelectedButton`/`ExtractAllButton` already had `x:Uid`s and
+`en-US` entries from T-F05's original implementation, but were never given `uk-UA` translations —
+a straightforward oversight, fixed by adding the two missing `uk-UA` entries; (b) a much larger set
+of controls were built with hardcoded `Content`/`Text`/`PlaceholderText` string literals that never
+routed through the resource system at all, so they displayed in English regardless of locale —
+the tray context menu (`Open Pakko`/`About Pakko`/`Exit`), `Hash...`/`About` buttons, both tables'
+column headers (`Name`/`Type`/`Size`/`Modified`, plus the new `Packed`/`CRC-32`), the pending
+list's `Remove` context-menu item, `Mode:`/`One archive`/`Separate archives`, the archive-name
+placeholder text, the compression level items (`Fast`/`Normal`/`Best`/`None`), the conflict-
+behavior items (`Overwrite`/`Skip`/`Rename (add number)`), and the `✕ Cancel` button. All were
+converted to `x:Uid` and given both `en-US` (canonical) and `uk-UA` (translated) `Resources.resw`
+entries; the other 22 locale folders were left as-is, relying on the existing documented
+fallback-to-`en-US` behavior for any key a locale doesn't define (T-F91) — not creating 22 new
+files for keys that were never localized to begin with. The `NameColumnHeader`/`SizeColumnHeader`/
+`ModifiedColumnHeader` keys are shared between a `Button` (pending-list sort header, resolves the
+`.Content` suffix) and a `TextBlock` (browse-mode header, resolves `.Text`) — both suffixes were
+added per shared key rather than duplicating the string under two different key names.
+`ComboBoxItem`/`RadioButton` selections all bind via `SelectedIndex`/`GroupName`+`IsChecked`, not
+by matching text, so translating their display text is logic-safe (confirmed by reading
+`MainViewModel.cs`'s `CompressionLevelIndex`/`OnConflictIndex` before touching any of them).
+
+**Non-obvious tooling note, unrelated to the feature but hit while writing diagram 6's update:**
+typing a raw Segoe MDL2 Assets icon glyph (a Private-Use-Area Unicode character, e.g. U+E74A)
+directly into an Edit/Write tool call's content is unreliable — it can render as invisible/empty
+between two backticks and then fail to match on a later `Edit` even when `Read` shows what looks
+like the same text. Byte-level (`xxd`) inspection confirmed the character was written correctly
+the first time; retyping it doesn't reproduce identical bytes. Fixed via a small Python script
+(codepoint expressed as a `\uXXXX` escape in the *script's own source*, not as a raw character) —
+see `feedback_pua_glyph_corruption` in the assistant's memory. Also noted: this machine's `python3`
+is a Microsoft Store stub (exits 49, prints nothing); the `py` launcher is the real interpreter.
+
+**Correction — on-device crash found by the first real launch, root-caused and fixed same round.**
+`dotnet build`/`dotnet test` passing (and even a `dotnet build`-triggered MSIX install reporting
+"installed successfully") never actually launches the app — this session's own earlier notes
+already say a quick `dotnet build` can silently install a stale MSIX, but the deeper point proven
+here is broader: **compiling and installing a WinUI package proves nothing about whether it can
+run.** The very first real launch of this round's build (via `Start-Process` on the installed
+`Archiver.App.exe`, not Explorer/shell activation) hard-crashed immediately after
+`OnLaunched`/`MainWindow.InitializeComponent()` — confirmed via `pakko.log` showing only
+`Pakko started` (no further lines) and a `ProviderName='Application Error'`, event ID 1000, exit
+code `0xc000027b`, faulting module `Microsoft.UI.Xaml.dll`. This is a native fail-fast that bypasses
+any managed `try/catch` or `App.UnhandledException` handler, so nothing else in the app's own
+logging could have caught it. Root cause (found via advisor before spending a second deploy cycle
+on a guess, per this repo's 3-attempt rule): two invented-this-round `x:Uid` patterns, both wrong.
+(1) `NameColumnHeader`/`SizeColumnHeader`/`ModifiedColumnHeader` were given *both* a `.Content` and
+a `.Text` `Resources.resw` entry under the same `x:Uid`, on the assumption each element (a `Button`
+with `.Content`, or a `TextBlock` with `.Text`) would only pick up the suffix matching its own
+property. It doesn't — WinUI's x:Uid resource applier applies every key found under that `Uid`
+to the element regardless of which properties the element actually has, and setting `.Text` on a
+`Button` (no such DP) or `.Content` on a `TextBlock` (no such DP) is fatal at `InitializeComponent`
+time, not just a no-op. Fixed by giving every header its own fully separate key — the pending-list
+`Button` headers kept `NameColumnHeader`/`TypeColumnHeader`/`SizeColumnHeader`/`ModifiedColumnHeader`
+(`.Content` only), the browse-mode `TextBlock` headers became distinct
+`BrowseNameColumnHeader`/`BrowseSizeColumnHeader`/`BrowseModifiedColumnHeader` (`.Text` only) even
+though the displayed string is identical in both. (2) The two up-arrow buttons' tooltips used
+`Uid.[ToolTipService.ToolTip]` — no other `.resw` in this repo had ever used the bracket syntax for
+an attached property, and it turned out to be the wrong form (or at least unverified against a
+working reference, which the project's own pre-implementation-research rule requires and this
+change skipped). Fixed by dropping the `x:Uid` on both buttons entirely and hardcoding
+`ToolTipService.ToolTip="Up"` inline — tooltip text on an icon-only "Up" button is the least
+valuable thing to localize in this whole round, so it was cut rather than risked a second time.
+Confirmed fixed by relaunching the freshly redeployed package (1.2.0.21) directly — no crash,
+`pakko.log` shows a normal steady-state session, and all four features (up-arrow-only Row 0,
+CRC-32 column populated for ZIP/blank for tar-routed fixtures, destination up-button, Ukrainian
+text throughout) verified on-device via screenshots. **Lesson for future `x:Uid` work in this
+repo:** never share one `Uid` across elements of different types/property sets, and don't invent
+a resource-key syntax without checking a working WinUI/UWP reference first — the same
+pre-implementation-research discipline `CLAUDE.md` already mandates for COM/shell/packaging work
+applies just as much to XAML resource wiring, which this round treated as low-risk and shouldn't
+have.
+
+**Verification:** `dotnet test --filter "Category!=Slow"` green (221/221 — added `CrcDisplay`
+folder/null/zero/positive cases to `ArchiveEntryViewModelTests`, alongside the prior round's
+`CompressedSizeDisplay` tests). On-device verification now actually completed (not just deployed) —
+confirmed via direct launch + screenshots as described above.
+
+**Files:** `src/Archiver.Core/Models/ArchiveEntryInfo.cs`, `src/Archiver.Core/Services/ZipArchiveService.cs`,
+`src/Archiver.App.Core/ArchiveEntryViewModel.cs`, `src/Archiver.App.Core/ArchiveTreeIndex.cs`,
+`src/Archiver.App/ViewModels/MainViewModel.cs`, `src/Archiver.App/MainWindow.xaml`,
+`src/Archiver.App/Strings/en-US/Resources.resw`, `src/Archiver.App/Strings/uk-UA/Resources.resw`,
+`tests/Archiver.App.Core.Tests/ArchiveEntryViewModelTests.cs`, `ARCHITECTURE.md`, `DIAGRAMS.md`.
+
+## T-F05 — Third Follow-up: Pending-List CRC-32, a Real Blank-Row Regression Found and Fixed, Large-Entry-Count Review
+
+User asked three things in one message: (1) add CRC-32 to the pending (archive-creation) list too,
+not just the archive-browser table; (2) make the hash computation itself async/lazy so it never
+blocks the UI and updates progressively; (3) whether Pakko has display problems when a folder
+contains "too many files to display" — a bomb-like concern, but for entry *count* rather than
+compression ratio.
+
+**1+2. Pending-list CRC-32.** `Archiver.Core.IO.Crc32` (T-F94-era ZIP-bomb/integrity code, already
+internal) was changed from `internal` to `public` — reused as-is by `Archiver.App`'s `FileItem`
+rather than adding a second implementation or a hashing NuGet package (`Archiver.Core` takes none).
+`FileItem` gained `Crc32`/`Crc32Display` (`ObservableProperty`, same null-vs-`<=0` reasoning as the
+browse-mode column — 0 is a legitimate CRC, so the sentinel is `null`, not `<= 0`) and a
+`LoadCrc32Async` method matching the existing `LoadFolderSizeAsync` fire-and-forget-from-constructor
+pattern: starts immediately for every file (not deferred/"lazy" in the sense of waiting for
+scroll-into-view — matching the existing size-loading precedent), but throttled through a new
+`static readonly SemaphoreSlim _crc32Throttle = new(4)` shared across all `FileItem` instances, so
+adding many/large files at once can't turn into an unbounded concurrent-disk-read storm. A
+`_crc32Throttle` static field holds no data (only a synchronization primitive), so it isn't the kind
+of mutable service state `CLAUDE.md`'s "no static mutable fields" rule targets.
+
+**3. Investigated `ArchiveTreeIndex.Build`/`CurrentFolderEntries`** (the browse-mode path a huge
+archive would stress) before assuming a fix was needed. Confirmed: `Build` is a single O(n) pass
+over the flat entry list (already had to be, for T-F20's 65,000+-entry Zip64 fixtures); sorting is
+scoped to one folder's own children, not the whole archive, so one folder holding many entries
+doesn't turn into a whole-archive sort; per-navigation lookup is an O(1) dictionary read, no re-scan.
+`CurrentFolderEntries` renders through the browse-mode `ListView`, which already had an explicit
+`VirtualizingStackPanel` (`VirtualizationMode="Recycling"`) predating this session. `ArchiveEntryViewModel`
+does no per-item async work — its `Crc32`/sizes come straight from `ArchiveEntryInfo`, already
+computed during `ListEntriesAsync`, unlike `FileItem`'s new per-file disk read. **No entry-count
+"bomb" problem was found for archive browsing; no guard was built, since none was warranted.**
+
+**A real regression WAS found while testing part 1, though — this is the concrete answer to part
+3.** Adding a large file (a 20 MB test file) together with a second, small file in the same
+"Add Files" batch left the second row visually and UIA-blank (no Name/Type/Size/CRC/Modified text
+in either the rendered UI or the accessibility tree) until something forced a re-layout (e.g.
+resizing the window), even though the underlying `FileItems` collection and count were always
+correct throughout (confirmed via the on-screen "will be archived: N items" summary, which reads
+straight from the collection, not from rendered rows) — a container-realization/binding race, not
+data loss. Root cause: the pending-list `ListView` had *also* been given an explicit
+`<VirtualizingStackPanel VirtualizationMode="Recycling"/>` `ItemsPanel` this session (added
+alongside the CRC column work) where none existed before — `ListView` already virtualizes by
+default via its own `ItemsStackPanel`, so the explicit panel added no capability, only introduced a
+new interaction between container recycling and a `PropertyChanged` notification landing mid-
+realization (the large file's ~100 ms `Task.Run` CRC read widens the timing window enough for a
+second item added in the same synchronous loop to hit it — small-file-only batches don't reliably
+reproduce it). Fixed by reverting the pending-list `ListView` to its previous implicit/default
+panel (`MainWindow.xaml`) — one attempt, confirmed on-device: re-added a fresh small file
+(`browse_test.zip`) as the second item in a batch, and its full row text was present in the
+accessibility tree immediately, with no resize needed (previously this same scenario left the row
+blank). The browse-mode `ListView`'s own explicit `VirtualizingStackPanel` predates this session and
+was left as-is — it was never implicated (that view has no per-item async binding at all).
+
+**Verification:** `dotnet test --filter "Category!=Slow"` green (221/221, no test changes needed —
+this was a XAML-only revert). Deployed as 1.2.0.23 (the T-F96 MSB3231 publish-exit-code race
+recurred and was tolerated as designed, per T-F102 — no new action taken). Confirmed via direct
+`Start-Process` launch (not just a green build, per this session's own earlier lesson): app opens
+without crashing, CRC-32 populates correctly for real ZIP/RAR/tar.gz/large-binary fixtures, and the
+blank-row repro no longer reproduces for a freshly-added batch.
+
+**Files:** `src/Archiver.Core/IO/Crc32.cs`, `src/Archiver.App/Models/FileItem.cs`,
+`src/Archiver.App/ViewModels/MainViewModel.cs` (sort-by-CRC), `src/Archiver.App/MainWindow.xaml`
+(CRC column + `ItemsPanel` revert), `ARCHITECTURE.md`.

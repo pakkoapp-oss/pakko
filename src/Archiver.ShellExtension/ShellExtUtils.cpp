@@ -12,7 +12,16 @@ extern HMODULE g_hModule;
 
 static std::wstring QuotePath(const std::wstring& path)
 {
-    return L'"' + path + L'"';
+    // T-F99: a trailing backslash immediately before the closing quote escapes the quote itself
+    // under Win32/CRT command-line parsing (CommandLineToArgvW) instead of closing the quoted
+    // argument, corrupting every argument after it. Only a bare drive root (e.g. "Z:\") ends in
+    // a backslash - a real file/folder path from Explorer never does - but T-F99 makes drive
+    // roots a reachable selection, so this must be handled. Doubling the trailing backslash
+    // makes the parser see a literal backslash followed by a real closing quote.
+    std::wstring escaped = path;
+    if (!escaped.empty() && escaped.back() == L'\\')
+        escaped += L'\\';
+    return L'"' + escaped + L'"';
 }
 
 static bool HasZipExtension(const std::wstring& path)
@@ -287,7 +296,10 @@ std::wstring BuildAddToArchiveTitle(const std::vector<std::wstring>& paths)
 
     // Empty (no parent, e.g. a drive root) or a bare drive letter like "C:" \u2014 invalid as a
     // display name (and as the file name RunArchiveAsync would build) \u2014 fall back.
-    if (name.empty() || name.back() == L':') name = L"archive";
+    // T-F99: PathFindFileNameW returns the whole string unchanged for a path ending in a
+    // backslash (e.g. "Z:\", a real drive root's SIGDN_FILESYSPATH) rather than an empty tail,
+    // so name.back() == L':' alone doesn't catch it \u2014 check for a trailing backslash too.
+    if (name.empty() || name.back() == L':' || name.back() == L'\\') name = L"archive";
 
     return L"Add to \"" + TruncateMiddle(name) + L".zip\"";
 }

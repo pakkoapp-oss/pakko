@@ -238,10 +238,6 @@ public interface IDialogService
     // onto the window's DispatcherQueue before showing a ContentDialog. See DECISIONS.md's
     // T-F94 entry.
     Task<bool> ShowCompressionBombConfirmAsync(CompressionBombWarning warning);
-
-    // T-F05: single-entry Info dialog for the archive browser (ArchiveEntryViewModel lives in
-    // Archiver.App.Core).
-    Task ShowEntryInfoAsync(ArchiveEntryViewModel entry);
 }
 ```
 
@@ -472,6 +468,7 @@ public sealed record ArchiveEntryInfo
     public required string Path { get; init; }  // '/'-separated, no leading slash
     public long Size { get; init; }
     public long CompressedSize { get; init; }
+    public uint? Crc32 { get; init; }            // null for tar-routed formats — no per-entry CRC
     public DateTime? Modified { get; init; }     // null for tar (date column is locale-mangled)
     public bool IsDirectory { get; init; }
 }
@@ -541,8 +538,9 @@ public sealed record ArchiveEntryViewModel
     public required bool IsFolder { get; init; }
     public long Size { get; init; }
     public long CompressedSize { get; init; }
+    public uint? Crc32 { get; init; }
     public DateTime? Modified { get; init; }
-    // + ModifiedDisplay/SizeDisplay/Icon computed properties
+    // + ModifiedDisplay/SizeDisplay/CompressedSizeDisplay/CrcDisplay/Icon computed properties
 }
 
 // Archiver.App.Core/ArchiveTreeIndex.cs
@@ -561,16 +559,32 @@ scale this app's archives can reach (T-F20).
 `MainViewModel` (`Archiver.App`) gains an `IArchiveListingRouter` constructor dependency plus
 browser state (`IsBrowsingArchive`, `BrowsedArchivePath`, `CurrentFolderPath`,
 `CurrentFolderEntries`, `BreadcrumbSegments`, `SelectedBrowserEntries`) and commands
-(`EnterBrowseModeAsync`, `NavigateIntoFolder`/`NavigateToBreadcrumbSegment`, `ExitBrowseModeCommand`,
-`ExtractSelectedFromBrowserCommand`/`ExtractAllFromBrowserCommand`/`ExtractSingleBrowserEntryAsync`,
-`ShowSelectedEntryInfoCommand`). The Extract-related commands all funnel through a shared private
+(`EnterBrowseModeAsync`, `NavigateIntoFolder`/`NavigateToBreadcrumbSegment`,
+`NavigateUpOrExitBrowserCommand`,
+`ExtractSelectedFromBrowserCommand`/`ExtractAllFromBrowserCommand`/`ExtractSingleBrowserEntryAsync`).
+The Extract-related commands all funnel through a shared private
 `RunExtractAsync(archivePaths, selectedEntryPaths)` that the pre-existing whole-archive
 `ExtractCommand` was refactored to call too — the `IsBusy`/progress/stopwatch/bomb-confirm/
 summary-dialog/cleanup sequence is identical for both; only `ArchivePaths` and
-`SelectedEntryPaths` differ.
+`SelectedEntryPaths` differ. `NavigateUpOrExitBrowserCommand` (added in a follow-up round, same
+day) replaced the standalone `ExitBrowseModeCommand`/Close button entirely: it steps up one
+archive folder level when not at the archive's own root, and exits browse mode (the same effect
+`ExitBrowseMode` — kept as a private method, no longer its own command — always had) when already
+there. A second, unrelated up-navigation command, `NavigateDestinationUpCommand`, was added the
+same round for the Destination Path row (Row 2, shared by both modes): it sets
+`DestinationPath = Path.GetDirectoryName(DestinationPath)`, disabled via its own `CanExecute`
+when that returns `null` (a drive root or an unrooted path).
 
-`IDialogService` gains `Task ShowEntryInfoAsync(ArchiveEntryViewModel entry)` — a `ContentDialog`
-showing Name/Path/Size/CompressedSize/Modified, matching the existing `ShowFileHashAsync` pattern.
+`ArchiveEntryViewModel` (`Archiver.App.Core`) exposes `SizeDisplay`/`CompressedSizeDisplay`/
+`CrcDisplay` — all three render as the entry table's own columns (Row 1 browse in
+`MainWindow.xaml`) rather than a separate Info dialog; `IDialogService.ShowEntryInfoAsync` was
+removed the same day it shipped (design review 2026-07-13) once every field it showed had a
+table-column equivalent. Note `CompressedSizeDisplay`/`CrcDisplay` are both blank for every
+tar-routed format (RAR/7z/tar.*) — `TarProcessService`'s listing path never populates
+`CompressedSize`/`Crc32` (no per-entry concept for either in a tar-family archive) — so both
+columns only ever show a value for ZIP. `CrcDisplay` guards on `Crc32 is null`, not `<= 0` —
+unlike a size, `0` is a legitimate CRC-32 (an empty file), so it cannot double as a
+"not available" sentinel the way `CompressedSizeDisplay`'s `<= 0` guard safely does.
 
 `MainWindow.xaml`'s Row 1 (file table) and Row 3 (action buttons) each gain a sibling `Grid`
 toggled by `IsPendingListVisibility`/`IsBrowsingArchiveVisibility` (inline mode-swap, not a new
@@ -593,7 +607,22 @@ public sealed class FileItem
     public string Type { get; }           // extension uppercase or "Folder"
     public string Size { get; set; }      // "1.2 MB", "345 KB", "12 bytes"
     public long SizeBytes { get; set; }
+    public string Crc32Display { get; set; } // "..." while computing, "?" on read error, hex once done, empty for folders
+    public uint? Crc32 { get; set; }
     public DateTime Modified { get; }
     public string ModifiedDisplay { get; } // "yyyy-MM-dd HH:mm"
 }
 ```
+
+`Crc32`/`Crc32Display` (added alongside a pending-list "CRC-32" column, per user request) mirror the
+existing `Size`/`SizeBytes` async-load pattern (`LoadFolderSizeAsync`) but in reverse: size is async
+only for *folders* (walking the tree), CRC is async only for *files* (folders have no single
+meaningful CRC to aggregate, so `LoadCrc32Async` is never started for one). Computation reuses
+`Archiver.Core.IO.Crc32.Compute(Stream)` — made `public` (was `internal`, previously only used by
+`ZipArchiveService`'s own integrity check) rather than adding a NuGet hashing package to
+`Archiver.App` or reimplementing the algorithm a second time. A `static readonly SemaphoreSlim`
+(capacity 4) throttles concurrent CRC reads across every `FileItem` instance — reading a whole
+file's bytes is real disk I/O, and queuing many/large files at once (loose files added
+individually, not one collapsed folder row) would otherwise spawn an unbounded number of
+concurrent `Task.Run` reads. No cancellation if an item is removed mid-read — same tradeoff
+`LoadFolderSizeAsync` already accepts.

@@ -29,6 +29,103 @@
   <data name="AddFolderButton.Content" xml:space="preserve">
     <value>Додати папку</value>
   </data>
+  <data name="HashButton.Content" xml:space="preserve">
+    <value>Хеш...</value>
+  </data>
+  <data name="AboutButton.Content" xml:space="preserve">
+    <value>Про програму</value>
+  </data>
+  <data name="ExtractSelectedButton.Content" xml:space="preserve">
+    <value>Розпакувати вибране</value>
+  </data>
+  <data name="ExtractAllButton.Content" xml:space="preserve">
+    <value>Розпакувати все</value>
+  </data>
+
+  <!-- Table headers. Each element gets its own Uid — see the en-US Resources.resw comment for
+       why a shared Uid across a Button (.Content) and a TextBlock (.Text) crashed on-device. -->
+  <data name="NameColumnHeader.Content" xml:space="preserve">
+    <value>Назва</value>
+  </data>
+  <data name="TypeColumnHeader.Content" xml:space="preserve">
+    <value>Тип</value>
+  </data>
+  <data name="SizeColumnHeader.Content" xml:space="preserve">
+    <value>Розмір</value>
+  </data>
+  <data name="ModifiedColumnHeader.Content" xml:space="preserve">
+    <value>Змінено</value>
+  </data>
+  <data name="CrcColumnHeader.Content" xml:space="preserve">
+    <value>CRC-32</value>
+  </data>
+  <data name="BrowseNameColumnHeader.Text" xml:space="preserve">
+    <value>Назва</value>
+  </data>
+  <data name="BrowseSizeColumnHeader.Text" xml:space="preserve">
+    <value>Розмір</value>
+  </data>
+  <data name="PackedColumnHeader.Text" xml:space="preserve">
+    <value>Стиснено</value>
+  </data>
+  <data name="BrowseCrcColumnHeader.Text" xml:space="preserve">
+    <value>CRC-32</value>
+  </data>
+  <data name="BrowseModifiedColumnHeader.Text" xml:space="preserve">
+    <value>Змінено</value>
+  </data>
+
+  <!-- Tray menu -->
+  <data name="TrayOpenMenuItem.Text" xml:space="preserve">
+    <value>Відкрити Pakko</value>
+  </data>
+  <data name="TrayAboutMenuItem.Text" xml:space="preserve">
+    <value>Про Pakko</value>
+  </data>
+  <data name="TrayExitMenuItem.Text" xml:space="preserve">
+    <value>Вихід</value>
+  </data>
+  <data name="RemoveMenuItem.Text" xml:space="preserve">
+    <value>Видалити</value>
+  </data>
+
+  <!-- Archive options -->
+  <data name="ModeLabel.Text" xml:space="preserve">
+    <value>Режим:</value>
+  </data>
+  <data name="OneArchiveRadio.Content" xml:space="preserve">
+    <value>Один архів</value>
+  </data>
+  <data name="SeparateArchivesRadio.Content" xml:space="preserve">
+    <value>Окремі архіви</value>
+  </data>
+  <data name="ArchiveNameTextBox.PlaceholderText" xml:space="preserve">
+    <value>Авто (за назвою першого файлу/папки)</value>
+  </data>
+  <data name="CompressionFastItem.Content" xml:space="preserve">
+    <value>Швидко</value>
+  </data>
+  <data name="CompressionNormalItem.Content" xml:space="preserve">
+    <value>Звичайне</value>
+  </data>
+  <data name="CompressionBestItem.Content" xml:space="preserve">
+    <value>Найкраще</value>
+  </data>
+  <data name="CompressionNoneItem.Content" xml:space="preserve">
+    <value>Без стиснення</value>
+  </data>
+  <data name="ConflictOverwriteItem.Content" xml:space="preserve">
+    <value>Перезаписати</value>
+  </data>
+  <data name="ConflictSkipItem.Content" xml:space="preserve">
+    <value>Пропустити</value>
+  </data>
+  <data name="ConflictRenameItem.Content" xml:space="preserve">
+    <value>Перейменувати (додати номер)</value>
+  </data>
+  <data name="CancelButton.Content" xml:space="preserve">
+    <value>✕ Скасувати</value>
+  </data>
 
   <!-- Drop zone -->
   <data name="DropZoneHint.Text" xml:space="preserve">

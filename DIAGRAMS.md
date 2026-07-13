@@ -45,6 +45,7 @@ documentation that lies.
 | New branch in `ZipArchiveService` validation/conflict/smart-folder logic | **3. Activity** | Catches silently-dropped entries: a new `continue`/skip path that isn't reflected in `ArchiveResult` (see Finding 2 below for why this matters). |
 | MSIX manifest `<Application>` entries, `com:ComServer` registration, packaging of a new satellite EXE | **4. Component** | Catches "works in VS, `ERROR_ACCESS_DENIED` when packaged" — an EXE that isn't its own declared `Application` entry. |
 | New branch in `TarProcessService`'s pre-scan/extraction/conflict pipeline | **5. Activity (tar.exe)** | Whole-archive-reject means a single scan gap silently lets an entire class of unsafe entries through — there's no per-entry fallback the way ZIP has, so a missed branch here is higher-severity, not lower. |
+| `MainWindow.xaml` row added/removed, or any row's `Visibility` binding changed; new `IsBrowsingArchive`-gated (or should-be-gated) UI element | **6. State (UI mode)** | Exactly the category that missed Row 0 never hiding in browse mode (found 2026-07-13 by manual comparison, not by this table) — a per-row visibility table is the only thing that would have caught it before shipping. |
 
 Update the diagram in the same commit as the code change, alongside `dotnet test` — not as a
 follow-up. Re-derive the affected part from the current source per the Ground Truth Rule above;
@@ -58,6 +59,14 @@ Sources read for this diagram: `src/Archiver.ShellExtension/dllmain.cpp`,
 `src/Archiver.ShellExtension/ExplorerCommands.cpp`, `src/Archiver.ShellExtension/ShellExtUtils.cpp`,
 `src/Archiver.Shell/Program.cs`, `src/Archiver.Shell/ShellResultPresenter.cs`,
 `src/Archiver.Shell/NativeProgressDialog.cs`, `src/Archiver.App/App.xaml.cs`.
+
+**T-F99 (2026-07-13):** `Package.appxmanifest` now also registers `PakkoRootCommand`'s verb for
+`desktop10:ItemType Type="Drive"`, alongside the existing `*`/`Directory` entries this diagram
+already covers — `Explorer->>Root: CoCreateInstance(...)` is now also reachable for a drive-root
+`IShellItemArray` selection. No new sequence step needed (`GetState`/`Invoke` already treat `paths`
+generically, regardless of what kind of selection produced them), but see the new "What this
+catches" bullet below for a real bug this reachability change exposed in `LaunchShellExe`'s
+argument-building step (node `EH->>ShellExe`/`AC->>ShellExe` etc.).
 
 ```mermaid
 sequenceDiagram
@@ -191,6 +200,18 @@ sequenceDiagram
   archive…" for an all-RAR selection was never correct to begin with. A future change that makes
   these four commands' gates "consistent" by copy-pasting one predicate onto all of them would
   reintroduce either the false-Test-pass bug or hide a legitimate archive action.
+- **T-F99 (2026-07-13): `LaunchShellExe(Build*Args(paths))` can silently corrupt the command line
+  for a drive-root path.** `QuotePath` (called by every `Build*Args` helper feeding into the
+  `ShellExe->>Dlg`/`Core` steps above) wrapped every path in `"..."` unconditionally; for a
+  drive-root path (e.g. `"Z:\"`, reachable via T-F99's new `Type="Drive"` registration above), the
+  trailing backslash immediately before the closing quote escapes the quote itself under
+  Win32/CRT command-line parsing instead of closing the argument — every argument after it in the
+  command line gets swallowed into one corrupted string. `Explorer->>EH: Invoke` and friends still
+  return `S_OK` in this case (`CreateProcess` itself succeeds), so nothing in this diagram's HRESULT
+  flow signals the failure — it only shows up as `Archiver.Shell.exe`/`Archiver.App` silently
+  receiving the wrong arguments, exactly the class of process-boundary contract mismatch this
+  diagram category exists to catch. Fixed by doubling a trailing backslash before quoting; see
+  `DECISIONS.md`'s T-F99 entry.
 
 ---
 
@@ -475,6 +496,108 @@ flowchart TD
   moved, and exclusion of that archive from `CreatedFiles`, giving `MainViewModel`'s
   `GetDeletableSources` the same per-archive signal it uses for the ZIP path so
   `DeleteAfterOperation` can't delete a source that was never extracted.
+
+---
+
+## 6. State — MainWindow UI Mode & Per-Row Element Visibility (T-F05 inline mode-swap)
+
+Source read for this diagram: `src/Archiver.App/MainWindow.xaml` (all 8 grid rows, in full) and
+`src/Archiver.App/ViewModels/MainViewModel.cs:136-144,205-227,556-653` (`IsBrowsingArchive`,
+`IsPendingListVisibility`, `IsBrowsingArchiveVisibility`, `ArchiveOptionsVisibility`,
+`OperationOutcomeVisibility`, `EnterBrowseModeAsync`, `ExitBrowseMode`). Did not exist before
+2026-07-13 — no diagram category in the table above covers a WinUI window's own row-visibility
+state machine (the closest, diagram 2, is scoped specifically to `IsBusy`/operation lifecycle);
+added after a real bug in this exact area (Row 0 never hiding in browse mode) was found by manual
+UI comparison against NanaZip, not by this diagram — this file's standing gap is exactly why.
+
+**Updated same day, after a design-review pass (advisor: `frontend-design` skill) acted on the
+finding below:** Row 0 now has two mode-gated sibling `Grid`s, same pattern as Rows 1/3. The
+Archive Browser's `Info`/`Close` buttons also moved from Row 3 into the new browse-mode Row 0 —
+a deliberate design decision (not just a bug fix): they're non-committing/navigational actions
+(view metadata, leave the browser) versus `Extract Selected`/`Extract All`, which stay in Row 3
+because they consume the destination-path/conflict-behavior options in Rows 2/6 below them —
+moving *those* to the top would create a "configure below, commit above" backwards flow that
+WinRAR/7-Zip/NanaZip's own top toolbars avoid by opening a self-contained dialog per click, which
+Pakko's inline-always-visible-options model doesn't have. The window's initial size also changed
+from `800x700` to `1100x650` (`MainWindow.xaml.cs`) — a file/archive listing is tabular and wants
+width more than height, matching every reference file manager's own proportions.
+
+**Updated again same day — Info button removed entirely, its fields folded into the table.**
+User feedback on the change above: the `Info`+`Close` pair sitting together in Row 0 read as a
+confusing combination, not an improvement. Resolution: Info's dialog (Name/Path/Type/Size/
+Compressed size/Modified) was redundant with what the browse-mode entry table (Row 1) already
+shows or could trivially show — Name/tooltip-path/folder-vs-file icon/Modified were already
+columns, so the fix was adding the two that weren't (`Size`, `Packed`) as real columns and
+deleting `ShowSelectedEntryInfoCommand`/`IDialogService.ShowEntryInfoAsync` outright rather than
+leaving a now-redundant dialog reachable another way. This also resolves the "combination" — Row
+0 (browse) now holds only `Close` + `About`, no pairing. Row 1 (browse)'s column set is now
+`Auto,*,100,100,140` (icon / Name / Size / Packed / Modified); the header `Grid`'s columns were
+widened to match (previously `*,100,140` with no icon column, silently misaligned against the
+row template's `Auto,*,100,140` — fixed as part of this same change since both were being
+touched). `Packed` reads blank for every tar-routed format (RAR/7z/tar.*) — `TarProcessService`
+never populates `CompressedSize` per-entry (the underlying gzip/xz stream is whole-archive) — so
+this column is ZIP-only in practice; see `ARCHITECTURE.md`'s `IDialogService` note.
+
+**Updated a third time same round — Close button removed too; up-arrow added in two places.**
+User feedback established the standalone Close button (kept alone after Info's removal above)
+should also go — but Close was the *only* way back to the pending list from the browser (the
+window's own "X" closes the whole app). Resolution: a small icon-only "up" `Button` (Segoe MDL2
+Assets glyph U+E74A, "Up") was added directly in front of the `BreadcrumbBar` (still Row 1 browse, now itself a
+nested `Grid` of `[UpButton, BreadcrumbBar]` rather than the `BreadcrumbBar` alone). Its command,
+`MainViewModel.NavigateUpOrExitBrowser`, steps up one archive folder level when
+`CurrentFolderPath` is non-empty; at the archive's own root it falls through to the same reset
+`ExitBrowseMode` always did (kept as a plain private method, no longer its own `[RelayCommand]`).
+Row 0 (browse) now holds only `About`. A second, textually similar but functionally unrelated
+up-arrow was added to Row 2 (Destination Path, shared by both modes) per the same user request —
+`MainViewModel.NavigateDestinationUpCommand` sets
+`DestinationPath = Path.GetDirectoryName(DestinationPath)`, disabled via `CanExecute` when that's
+`null` (a drive root or unrooted path). The two up-arrows look identical but serve different
+targets (archive-internal navigation + exit vs. real filesystem navigation) — noted here since a
+future reader could otherwise assume one implementation covers both.
+
+**Correction — this round's first real on-device launch crashed; root cause was in the `.resw`
+changes, not this row-structure change.** See `DECISIONS.md`'s second T-F05 follow-up "Correction"
+entry for the full root cause (a shared `x:Uid` applying a mismatched `.Content`/`.Text` pair to
+elements that only have one of the two, and an unverified `.[ToolTipService.ToolTip]` bracket-key
+syntax). Both header rows above are accurate as fixed; flagging here only because this diagram's
+own row-visibility claims were verified *after* the crash fix, not before — an earlier version of
+this section (written right after the row-restructure, before the first real launch) would have
+been describing a build that could not actually start.
+
+```mermaid
+stateDiagram-v2
+    [*] --> PendingListMode
+    PendingListMode --> ArchiveBrowseMode: EnterBrowseModeAsync(path) succeeds<br/>(double-click a recognized archive in the pending list,<br/>or a single-archive File/Protocol activation, T-F100)<br/>IsBrowsingArchive=true
+    ArchiveBrowseMode --> PendingListMode: NavigateUpOrExitBrowserCommand (up-arrow) at archive root<br/>OR EnterBrowseModeAsync's own listing fails<br/>(result.Success==false) — same reset, no error state<br/>IsBrowsingArchive=false
+```
+
+**Per-row visibility, verified directly against `MainWindow.xaml`'s 8 rows — not inferred:**
+
+| Row | Elements | Visibility rule | Correct? |
+|---|---|---|---|
+| 0 (pending) | Add Files, Add Folder, Hash…, About | `IsPendingListVisibility` | Yes (fixed 2026-07-13 — see Finding) |
+| 0 (browse) | About | `IsBrowsingArchiveVisibility` | Yes (Info, then Close, both removed same round — see notes above) |
+| 1 (pending) | File table (Name/Type/Size/CRC-32/Modified), drop-zone hint | `IsPendingListVisibility` | Yes |
+| 1 (browse) | Up-arrow + Breadcrumb, Name/Size/Packed/CRC-32/Modified header, entry `ListView` | `IsBrowsingArchiveVisibility` | Yes |
+| 2 | Up-arrow + Destination path + "…" browse button | none (deliberately shared — see code comment at `MainViewModel.cs:209-212`) | Yes, by design |
+| 3 (pending) | Archive/Extract/Clear buttons | `IsPendingListVisibility` | Yes |
+| 3 (browse) | Extract Selected, Extract All | `IsBrowsingArchiveVisibility` | Yes (Info/Close moved out to Row 0, then both removed — see notes above) |
+| 4 | Operation-outcome subtitle | `OperationOutcomeVisibility` = `!IsBrowsingArchive && FileItems.Count>0` | Yes |
+| 5 | Mode (One/Separate archive), Archive Name, Compression | `ArchiveOptionsVisibility` = `!IsBrowsingArchive && !IsExtractOnlySelection` | Yes |
+| 6 | Conflict combo, Open-destination checkbox, Delete-after checkbox | none (deliberately shared — same comment as Row 2) | Yes, by design |
+| 7 | Progress bar, Cancel, status text | none (busy-state driven, not mode-driven — diagram 2's concern) | Yes, out of scope here |
+
+**Finding (fixed 2026-07-13) — Row 0 was a real, unaddressed gap, not a documented design choice.**
+The code comment at `MainViewModel.cs:209-212` explicitly lists which elements are *intentionally*
+shared across both modes: "destination path, OnConflict, Open/Delete-after checkboxes all stay live
+in both modes, per the design in `TASKS.md`'s T-F05 entry" — Row 0's Add Files/Add Folder/Hash
+buttons were conspicuously **absent** from that list. They bind to
+`BrowseFilesCommand`/`BrowseFolderCommand`/`HashFilesCommand` — all three are pending-list/archive-
+creation actions with no meaning while browsing a read-only archive's contents — yet rendered
+unconditionally in both modes, confirmed both by reading the XAML (no `Visibility` attribute on the
+Row 0 `Grid`) and by an on-device screenshot of Pakko browsing a real `.7z` (2026-07-13, side-by-side
+with NanaZip's equivalent view). Fixed by splitting Row 0 into two mode-gated sibling `Grid`s, same
+pattern as Rows 1/3; "About" stays in both variants (matches NanaZip's own always-visible "?" icon).
 
 ---
 

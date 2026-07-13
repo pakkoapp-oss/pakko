@@ -49,7 +49,12 @@ public sealed partial class MainWindow : Window
 
         InitializeComponent();
         ViewModel = App.Services.GetRequiredService<MainViewModel>();
-        this.AppWindow.Resize(new Windows.Graphics.SizeInt32(800, 700));
+        // Widened from the original 800x700 (design review 2026-07-13): a file/archive listing
+        // is inherently tabular — the Name column needs width far more than the window needs
+        // height, matching every reference file manager (Explorer, NanaZip, 7-Zip all default to
+        // wide-not-square windows). The old near-square size truncated long/nested archive entry
+        // names more aggressively than necessary.
+        this.AppWindow.Resize(new Windows.Graphics.SizeInt32(1100, 650));
         this.AppWindow.Title = "Pakko";
 
         this.AppWindow.SetIcon("Assets/Square44x44Logo.ico");

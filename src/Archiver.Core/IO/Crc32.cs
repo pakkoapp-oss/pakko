@@ -5,8 +5,10 @@ namespace Archiver.Core.IO;
 /// dependencies, so <c>System.IO.Hashing.Crc32</c> is not an option, and
 /// <see cref="System.IO.Compression.ZipArchiveEntry.Crc32"/> only exposes the value stored in
 /// the entry's header; .NET does not verify it against the decompressed bytes on read.
+/// Public (not internal) so Archiver.App's FileItem can reuse it for the pending-list CRC-32
+/// column instead of adding a second implementation or a hashing NuGet package there.
 /// </summary>
-internal static class Crc32
+public static class Crc32
 {
     private static readonly uint[] Table = BuildTable();
 

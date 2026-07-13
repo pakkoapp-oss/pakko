@@ -32,6 +32,46 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
     }
 
     [Fact]
+    public async Task ArchiveAsync_NullArchiveName_SingleSource_AutoNamesFromSource()
+    {
+        var dir = Path.Combine(_temp.Path, "my_folder");
+        Directory.CreateDirectory(dir);
+        var options = new ArchiveOptions
+        {
+            SourcePaths = [dir],
+            DestinationFolder = _temp.Path,
+            ArchiveName = null
+        };
+
+        var result = await _sut.ArchiveAsync(options);
+
+        result.Success.Should().BeTrue();
+        result.CreatedFiles.Should().ContainSingle(f => Path.GetFileName(f) == "my_folder.zip");
+    }
+
+    // T-F99: Path.GetFileNameWithoutExtension returns "" for a path ending in a directory
+    // separator with no name component (a real drive root, e.g. "Z:\", behaves the same way) -
+    // a bare-drive-root single source became reachable once the shell extension registered a
+    // Drive ItemType. Without the fallback this silently created a file literally named ".zip".
+    [Fact]
+    public async Task ArchiveAsync_NullArchiveName_SingleSourceEndingInSeparator_FallsBackToArchive()
+    {
+        var dir = Path.Combine(_temp.Path, "my_folder");
+        Directory.CreateDirectory(dir);
+        var options = new ArchiveOptions
+        {
+            SourcePaths = [dir + Path.DirectorySeparatorChar],
+            DestinationFolder = _temp.Path,
+            ArchiveName = null
+        };
+
+        var result = await _sut.ArchiveAsync(options);
+
+        result.Success.Should().BeTrue();
+        result.CreatedFiles.Should().ContainSingle(f => Path.GetFileName(f) == "archive.zip");
+    }
+
+    [Fact]
     public async Task ArchiveAsync_MultipleFiles_SingleArchiveMode_CreatesOneZip()
     {
         var file1 = _temp.CreateFile("a.txt");

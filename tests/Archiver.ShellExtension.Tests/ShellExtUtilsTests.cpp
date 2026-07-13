@@ -196,6 +196,17 @@ TEST(BuildArchiveArgs, PathWithSpacesIsQuoted)
     EXPECT_NE(args.find(L"\"C:\\Program Files\\app.exe\""), std::wstring::npos);
 }
 
+// T-F99: a drive root (e.g. "Z:\") ends in a backslash. Quoting it naively as "Z:\" leaves an
+// odd number of backslashes before the closing quote, which CommandLineToArgvW/CRT parsing
+// reads as an escaped literal quote rather than the end of the argument - corrupting every
+// argument after it. Found via a live on-device test: Compress on a drive root silently produced
+// an empty pending list because the rest of the command line was swallowed into one argument.
+TEST(BuildArchiveArgs, DriveRootTrailingBackslashIsEscaped)
+{
+    const auto args = BuildArchiveArgs({ L"Z:\\" });
+    EXPECT_EQ(args, L"--archive \"Z:\\\\\"");
+}
+
 // ---------------------------------------------------------------------------
 // BuildTestArgs
 // ---------------------------------------------------------------------------
@@ -268,6 +279,15 @@ TEST(BuildAddToArchiveTitle, MultipleFilesUseContainingFolderName)
 TEST(BuildAddToArchiveTitle, MultipleFilesAtDriveRootFallsBackToArchive)
 {
     const auto title = BuildAddToArchiveTitle({ L"C:\\first.txt", L"C:\\second.txt" });
+    EXPECT_EQ(title, L"Add to \"archive.zip\"");
+}
+
+// T-F99: a single drive-root selection (e.g. "Z:\") is a distinct case from the
+// multi-file-at-drive-root case above — PathFindFileNameW returns the whole "Z:\" string
+// unchanged (not an empty tail), so it needs its own trailing-backslash check to fall back.
+TEST(BuildAddToArchiveTitle, SingleDriveRootFallsBackToArchive)
+{
+    const auto title = BuildAddToArchiveTitle({ L"Z:\\" });
     EXPECT_EQ(title, L"Add to \"archive.zip\"");
 }
 

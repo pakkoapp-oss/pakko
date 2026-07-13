@@ -46,24 +46,69 @@ no `<ApplicationIcon>`, so the built exe had zero icon resources; fixed by point
 existing `Assets\Square44x44Logo.ico`, confirmed on-device by the user 2026-07-07. Found along the
 way: `Deploy.ps1`/`dotnet publish` currently fails with `MSB3231` cleaning up its own
 `AppPackages`/`obj` output *after* a valid `.msix` is already written — worked around this once via
-a direct `Add-AppxPackage`, root cause still open, tracked as T-F96.
+a direct `Add-AppxPackage`, root cause still open, tracked as T-F96 (recurred 4 consecutive times
+during the 2026-07-13 T-F99/T-F100 session — see `DECISIONS.md`, `[~]` on hold, not being actively
+chased right now).
 **T-F05 (Archive Browser) is `[~]` partial** — versioned into v1.4, all implementation done
 (Core `ListEntriesAsync`/`IArchiveListingRouter`, `ExtractOptions.SelectedEntryPaths`, new
 `Archiver.App.Core` project, full `MainWindow.xaml`/`MainViewModel` wiring for the breadcrumb +
 per-folder browser view and Extract Selected/All/Info commands), `dotnet test` green, and a full
-`Deploy.ps1` build+sign+install completed 2026-07-13 — stays partial until the user's manual
-on-device click-through (browse a real ZIP/tar-family archive, extract a selection, view Info)
-is confirmed. See `DECISIONS.md`'s T-F05 entry for the tar.exe selective-extraction spike findings
-and the subset-compression-bomb-check tradeoff made while implementing it.
+`Deploy.ps1` build+sign+install completed 2026-07-13. AI-driven on-device verification passed
+2026-07-13 (browsed real ZIP/7z/rar/tar.gz fixtures, extracted a selection and all, viewed Info) —
+stays partial until the user's own on-device click-through is confirmed. See `DECISIONS.md`'s
+T-F05 entry for the tar.exe selective-extraction spike findings and the subset-compression-bomb-
+check tradeoff made while implementing it.
+**Same-day UI design-review pass on T-F05** (user-driven, comparing a real on-device screenshot
+against NanaZip's own archive-viewing UI): added `DIAGRAMS.md`'s new diagram 6 (no prior category
+covered `MainWindow`'s row-visibility state machine — the gap itself was real), which formalized a
+genuine bug — Row 0 (Add Files/Add Folder/Hash) never hid during browse mode. Fixed by splitting
+Row 0 into mode-gated variants; `Info`/`Close` moved into the new browse-mode Row 0 as a
+text-labeled top command bar (advisor: `frontend-design` skill), while `Extract Selected`/
+`Extract All` deliberately stayed anchored next to the destination/options below rather than also
+moving up, to avoid a "configure below, commit above" flow. Window's initial size grew
+`800x700` → `1100x650` (file listings want width, not a near-square shape). See `DECISIONS.md`'s
+T-F05 "UI Design-Review Pass" entry.
+**Three same-day follow-ups on T-F05, all user-driven** (see `DECISIONS.md`'s three follow-up
+entries for full detail): (1) the Info dialog was deleted entirely and its fields (Size, Packed)
+folded into the browse-mode table as columns; (2) the standalone Close button was also removed,
+replaced by a single up-arrow (in front of the breadcrumb, and separately next to the Destination
+Path row) that steps up a folder level or exits the browser at the archive root — plus a CRC-32
+column (`uint?`, ZIP-only) and a full localization pass (`en-US`/`uk-UA`) converting every
+remaining hardcoded string in `MainWindow.xaml` to `x:Uid`; this round's first real on-device
+launch hard-crashed (`0xc000027b` in `Microsoft.UI.Xaml.dll`) from two invented, unverified `x:Uid`
+patterns (a `Uid` shared between a `Button`'s `.Content` and a `TextBlock`'s `.Text`, and a bracket-
+syntax `ToolTipService.ToolTip` key) — root-caused and fixed the same round; (3) CRC-32 was
+extended to the pending (archive-creation) list too (`FileItem`, async + throttled via a shared
+`SemaphoreSlim(4)`, reusing `Archiver.Core.IO.Crc32` made `public`), and a genuine blank-row
+regression was found and fixed — an unneeded explicit `VirtualizingStackPanel` added to the
+pending-list `ListView` this session (it already virtualizes by default) raced with a large file's
+async CRC completion, leaving a second item's row visually/UIA-blank until a forced re-layout; data
+was never lost (count/archiving always read the real collection). Reverting that `ItemsPanel`
+fixed it, confirmed via direct on-device relaunch. `ArchiveTreeIndex`/browse-mode rendering were
+separately reviewed for the large-entry-count question this same round and found already sound
+(O(n) build, per-folder-scoped sort, pre-existing virtualization, no per-item async work) — no fix
+needed there.
+**T-F99 (drive-root context menu) and T-F100 (file-activation routing) are both `[~]` partial** —
+implemented and AI-driven on-device verified 2026-07-13 (see `DECISIONS.md`'s T-F99/T-F100
+entries), awaiting the user's own on-device pass. T-F99's on-device verification surfaced three
+more real bugs beyond the manifest fix — a command-line-corrupting `QuotePath` trailing-backslash
+bug, and two independent archive-auto-naming code paths both producing a bare `.zip` for a
+drive-root source — all fixed and tested; see `DECISIONS.md`. **T-F101** (Pakko missing from the
+classic "Show more options" menu) was diagnosed (repro confirmed, stale-build and crash-during-
+enumeration theories both ruled out) but not fixed, per the user's own instruction to log the
+symptom only. **T-F103** (new, found while testing T-F05 against a real `.tar.gz`): the extraction
+destination folder is misnamed for compound extensions (`browse_test.tar.gz` → `browse_test.tar`,
+not `browse_test`) — logged in `TASKS.md`, not yet fixed.
 - T-01 through T-35 + T-11, and T-F16/T-F17/T-F18/T-F26–T-F29/T-F37–T-F39/T-F44/T-F45 complete
-- 208/208 .NET tests pass (`dotnet test --filter "Category!=Slow"`: 146 Archiver.Core.Tests +
-  36 Archiver.Shell.Tests + 21 Archiver.Core.IntegrationTests + 5 Archiver.App.Core.Tests, the
-  last a new plain-net8.0 project added for T-F05's flat-to-tree helper). 4 Zip64 tests (T-F20)
-  are tagged `[Trait("Category", "Slow")]` and excluded from this default run — they cost real
-  wall-clock time (>65535-file archiving/extraction, a >4 GiB round trip) that isn't worth paying
-  on every change; run them explicitly with `dotnet test --filter "Category=Slow"` before a
-  release or when touching Zip64-adjacent code. C++ `Archiver.ShellExtension.Tests` (Google Test,
-  33/33) run separately, not covered by `dotnet test`
+- 221/221 .NET tests pass (`dotnet test --filter "Category!=Slow"`: 148 Archiver.Core.Tests +
+  36 Archiver.Shell.Tests + 21 Archiver.Core.IntegrationTests + 16 Archiver.App.Core.Tests, the
+  last a new plain-net8.0 project added for T-F05's flat-to-tree helper and T-F100's
+  `FileActivationRouter`). 4 Zip64 tests (T-F20) are tagged `[Trait("Category", "Slow")]` and
+  excluded from this default run — they cost real wall-clock time (>65535-file
+  archiving/extraction, a >4 GiB round trip) that isn't worth paying on every change; run them
+  explicitly with `dotnet test --filter "Category=Slow"` before a release or when touching
+  Zip64-adjacent code. C++ `Archiver.ShellExtension.Tests` (Google Test, 56/56) run separately,
+  not covered by `dotnet test`
 - MSIX signed with dev cert via Deploy.ps1 (see T-F10 for production-grade cert)
 - Async streaming (CopyToAsync) — CancellationToken respected mid-file
 - Temp file/dir pattern — no partial files on cancel or failure

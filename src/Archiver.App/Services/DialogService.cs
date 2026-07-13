@@ -1,6 +1,5 @@
 using System.IO;
 using System.Security.Cryptography;
-using Archiver.App.Core;
 using Archiver.App.Models;
 using Archiver.Core.Models;
 using Windows.ApplicationModel.Resources;
@@ -238,39 +237,6 @@ public sealed class DialogService : IDialogService
                 VerticalScrollBarVisibility = ScrollBarVisibility.Auto
             },
             CloseButtonText = "OK",
-            XamlRoot = _window!.Content.XamlRoot
-        };
-        await dialog.ShowAsync();
-    }
-
-    public async Task ShowEntryInfoAsync(ArchiveEntryViewModel entry)
-    {
-        var panel = new StackPanel { Spacing = 8 };
-
-        void AddRow(string label, string value)
-        {
-            var row = new StackPanel { Spacing = 2, Margin = new Thickness(0, 0, 0, 4) };
-            row.Children.Add(new TextBlock { Text = label, FontWeight = FontWeights.SemiBold, Opacity = 0.7 });
-            row.Children.Add(new TextBlock { Text = value, TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true });
-            panel.Children.Add(row);
-        }
-
-        AddRow("Name", entry.Name);
-        AddRow("Path", entry.FullPath);
-        AddRow("Type", entry.IsFolder ? "Folder" : "File");
-        if (!entry.IsFolder)
-        {
-            AddRow("Size", FileItem.FormatSize(entry.Size));
-            if (entry.CompressedSize > 0)
-                AddRow("Compressed size", FileItem.FormatSize(entry.CompressedSize));
-        }
-        AddRow("Modified", entry.ModifiedDisplay);
-
-        var dialog = new ContentDialog
-        {
-            Title = entry.Name,
-            Content = panel,
-            CloseButtonText = "Close",
             XamlRoot = _window!.Content.XamlRoot
         };
         await dialog.ShowAsync();

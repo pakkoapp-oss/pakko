@@ -1,3 +1,4 @@
+using Archiver.App.Core;
 using Archiver.App.Services;
 using Archiver.App.ViewModels;
 using Archiver.Core.Interfaces;
@@ -56,7 +57,7 @@ public partial class App : Application
         HandleActivation(AppInstance.GetCurrent().GetActivatedEventArgs(), "Pakko started");
     }
 
-    private void HandleActivation(AppActivationArguments args, string defaultLogMessage)
+    private async void HandleActivation(AppActivationArguments args, string defaultLogMessage)
     {
         switch (args.Kind)
         {
@@ -65,7 +66,15 @@ public partial class App : Application
                 var paths = fileArgs.Files.OfType<StorageFile>().Select(f => f.Path).ToList();
                 if (paths.Count == 0) { EnsureWindow(defaultLogMessage); return; }
                 EnsureWindow("Pakko started via file activation");
-                _window!.ViewModel.AddPaths(paths);
+
+                // T-F100: a single recognized archive enters the browser (T-F05) instead of the
+                // archive-creation list; multi-file activation keeps the existing AddPaths behavior
+                // (browsing only makes sense for one archive at a time).
+                var decision = FileActivationRouter.Decide(paths);
+                if (decision.Mode == FileActivationMode.Browse)
+                    await _window!.ViewModel.EnterBrowseModeAsync(decision.BrowsePath!);
+                else
+                    _window!.ViewModel.AddPaths(paths);
                 break;
 
             case ExtendedActivationKind.Protocol:

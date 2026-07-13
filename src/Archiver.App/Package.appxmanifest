@@ -9,12 +9,13 @@
   xmlns:com="http://schemas.microsoft.com/appx/manifest/com/windows10"
   xmlns:desktop4="http://schemas.microsoft.com/appx/manifest/desktop/windows10/4"
   xmlns:desktop5="http://schemas.microsoft.com/appx/manifest/desktop/windows10/5"
-  IgnorableNamespaces="uap uap3 rescap com desktop4 desktop5">
+  xmlns:desktop10="http://schemas.microsoft.com/appx/manifest/desktop/windows10/10"
+  IgnorableNamespaces="uap uap3 rescap com desktop4 desktop5 desktop10">
 
   <Identity
     Name="PavloRybchenko.Pakko"
     Publisher="CN=EF3EC84C-8287-4FC3-BB4F-FCCEBA116BCE"
-    Version="1.2.0.14" />
+    Version="1.2.0.24" />
 
   <mp:PhoneIdentity PhoneProductId="c0456ca0-e25b-4778-95a2-045a49e4ab06" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
 
@@ -56,6 +57,33 @@
             <uap:Logo>Assets\Square44x44Logo.png</uap:Logo>
           </uap:FileTypeAssociation>
         </uap:Extension>
+        <!-- T-F100: extensions Archiver.Core actually routes to ITarService/tar.exe today.
+             Reuses ShellExtUtils.cpp's kSupportedNonZipArchiveExtensions list (already the
+             project's single source of truth for this set, kept in sync with
+             MainViewModel.cs's _extractableTypes) rather than NanaZip's much larger ~60-extension
+             list, since Pakko doesn't support most of those. Runtime capability gaps (older
+             Windows without a capable tar.exe) still surface ArchiveListingRouter/
+             ExtractionRouter's existing "not supported" error instead of a silent failure. -->
+        <uap:Extension Category="windows.fileTypeAssociation">
+          <uap:FileTypeAssociation Name="archivefile">
+            <uap:SupportedFileTypes>
+              <uap:FileType>.rar</uap:FileType>
+              <uap:FileType>.7z</uap:FileType>
+              <uap:FileType>.tar</uap:FileType>
+              <uap:FileType>.gz</uap:FileType>
+              <uap:FileType>.tgz</uap:FileType>
+              <uap:FileType>.bz2</uap:FileType>
+              <uap:FileType>.tbz2</uap:FileType>
+              <uap:FileType>.xz</uap:FileType>
+              <uap:FileType>.txz</uap:FileType>
+              <uap:FileType>.zst</uap:FileType>
+              <uap:FileType>.tzst</uap:FileType>
+              <uap:FileType>.lzma</uap:FileType>
+            </uap:SupportedFileTypes>
+            <uap:DisplayName>Pakko Archive</uap:DisplayName>
+            <uap:Logo>Assets\Square44x44Logo.png</uap:Logo>
+          </uap:FileTypeAssociation>
+        </uap:Extension>
         <uap3:Extension Category="windows.protocol">
           <uap3:Protocol Name="pakko" />
         </uap3:Extension>
@@ -86,6 +114,14 @@
               <desktop5:Verb Id="0000PakkoShellExtension"
                              Clsid="1EABC7CE-20A4-48EE-A99F-43D4E0F58D6A" />
             </desktop5:ItemType>
+            <!-- T-F99: drive-root selections (e.g. right-clicking C:\ in Explorer's tree or
+                 "This PC") are a distinct ItemType from Directory - without this entry Explorer
+                 never queries PakkoRootCommand for a drive root at all. Verified against
+                 NanaZip's shipped manifest, which registers the same Type="Drive" entry. -->
+            <desktop10:ItemType Type="Drive">
+              <desktop10:Verb Id="0000PakkoShellExtension"
+                              Clsid="1EABC7CE-20A4-48EE-A99F-43D4E0F58D6A" />
+            </desktop10:ItemType>
           </desktop4:FileExplorerContextMenus>
         </desktop4:Extension>
       </Extensions>

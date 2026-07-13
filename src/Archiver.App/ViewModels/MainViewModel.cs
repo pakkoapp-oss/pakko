@@ -56,6 +56,7 @@ public sealed partial class MainViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(ExtractButtonText))]
     [NotifyPropertyChangedFor(nameof(IsNotBusy))]
     [NotifyPropertyChangedFor(nameof(IsArchiveNameAndNotBusy))]
+    [NotifyCanExecuteChangedFor(nameof(NavigateDestinationUpCommand))]
     private bool _isBusy = false;
 
     private string _lastOperation = string.Empty;
@@ -84,6 +85,7 @@ public sealed partial class MainViewModel : ObservableObject
     private string _statusMessage = _res.GetString("StatusReady");
 
     [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(NavigateDestinationUpCommand))]
     private string _destinationPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
 
     [ObservableProperty]
@@ -217,7 +219,6 @@ public sealed partial class MainViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(OperationOutcomeVisibility))]
     [NotifyCanExecuteChangedFor(nameof(ExtractAllFromBrowserCommand))]
     [NotifyCanExecuteChangedFor(nameof(ExtractSelectedFromBrowserCommand))]
-    [NotifyCanExecuteChangedFor(nameof(ShowSelectedEntryInfoCommand))]
     private bool _isBrowsingArchive = false;
 
     public Visibility IsPendingListVisibility =>
@@ -242,7 +243,6 @@ public sealed partial class MainViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(ExtractSelectedFromBrowserCommand))]
-    [NotifyCanExecuteChangedFor(nameof(ShowSelectedEntryInfoCommand))]
     private IReadOnlyList<ArchiveEntryViewModel> _selectedBrowserEntries = [];
 
     private string _sortColumn = "Name";
@@ -303,6 +303,10 @@ public sealed partial class MainViewModel : ObservableObject
         {
             "Type"     => _sortAscending ? FileItems.OrderBy(x => x.Type)     : FileItems.OrderByDescending(x => x.Type),
             "Size"     => _sortAscending ? FileItems.OrderBy(x => x.SizeBytes) : FileItems.OrderByDescending(x => x.SizeBytes),
+            // Sorting by CRC clusters identical values together — a real use (spotting duplicate-
+            // content files), not just a placeholder. Still-computing/unavailable (null) sorts as
+            // 0, same tie-break precedent SizeBytes' -1-while-loading already sets for folders.
+            "Crc"      => _sortAscending ? FileItems.OrderBy(x => x.Crc32 ?? 0) : FileItems.OrderByDescending(x => x.Crc32 ?? 0),
             "Modified" => _sortAscending ? FileItems.OrderBy(x => x.Modified) : FileItems.OrderByDescending(x => x.Modified),
             _          => _sortAscending ? FileItems.OrderBy(x => x.Name)     : FileItems.OrderByDescending(x => x.Name),
         }).ToList();
@@ -321,6 +325,20 @@ public sealed partial class MainViewModel : ObservableObject
         var folder = await _dialogService.PickDestinationFolderAsync();
         if (folder is not null)
             DestinationPath = folder;
+    }
+
+    // Path.GetDirectoryName returns null at a drive root (e.g. "C:\") and for an unrooted path —
+    // both cases mean "cannot go higher," so CanNavigateDestinationUp doubles as the disable
+    // condition and the click handler's own guard (added per user request, alongside the archive
+    // browser's own up/exit affordance).
+    private bool CanNavigateDestinationUp() => !IsBusy && Path.GetDirectoryName(DestinationPath) is not null;
+
+    [RelayCommand(CanExecute = nameof(CanNavigateDestinationUp))]
+    private void NavigateDestinationUp()
+    {
+        var parent = Path.GetDirectoryName(DestinationPath);
+        if (parent is not null)
+            DestinationPath = parent;
     }
 
     [RelayCommand(CanExecute = nameof(CanArchive))]
@@ -643,6 +661,22 @@ public sealed partial class MainViewModel : ObservableObject
     public void SetSelectedBrowserEntries(IReadOnlyList<ArchiveEntryViewModel> entries) =>
         SelectedBrowserEntries = entries;
 
+    // Single "up" affordance for the whole Archive Browser (design review 2026-07-13, follow-up):
+    // replaces the standalone Close button. Inside the archive, it steps up one folder level
+    // (same target as clicking the second-to-last breadcrumb segment); at the archive's own root
+    // there is nowhere higher to go within the archive, so it falls through to exiting the browser
+    // back to the pending list — the same behavior the removed Close button had.
+    [RelayCommand]
+    private void NavigateUpOrExitBrowser()
+    {
+        if (CurrentFolderPath.Length == 0)
+        {
+            ExitBrowseMode();
+            return;
+        }
+        NavigateToBreadcrumbSegment(BreadcrumbSegments.Count - 2);
+    }
+
     [RelayCommand]
     private void ExitBrowseMode()
     {
@@ -673,11 +707,6 @@ public sealed partial class MainViewModel : ObservableObject
     // other extraction path.
     public Task ExtractSingleBrowserEntryAsync(ArchiveEntryViewModel entry) =>
         RunExtractAsync([BrowsedArchivePath!], [entry.FullPath]);
-
-    private bool CanShowSelectedEntryInfo() => SelectedBrowserEntries.Count == 1;
-
-    [RelayCommand(CanExecute = nameof(CanShowSelectedEntryInfo))]
-    private Task ShowSelectedEntryInfoAsync() => _dialogService.ShowEntryInfoAsync(SelectedBrowserEntries[0]);
 
     // T-F87: a source whose full path appears in SkippedFiles was never actually archived or
     // extracted (unsupported format, whole-archive conflict skip, or every entry individually

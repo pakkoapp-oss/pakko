@@ -28,10 +28,15 @@ public sealed class ZipArchiveService : IArchiveService
 
         if (options.Mode == ArchiveMode.SingleArchive)
         {
-            string archiveName = options.ArchiveName
-                ?? (options.SourcePaths.Count == 1
-                    ? Path.GetFileNameWithoutExtension(options.SourcePaths[0])
-                    : "archive");
+            // T-F99: Path.GetFileNameWithoutExtension returns "" for a drive root (e.g. "Z:\"),
+            // now a reachable single-source selection via the shell extension's Drive ItemType —
+            // falls back to "archive" the same way BuildAddToArchiveTitle already does for the
+            // context-menu title text, instead of silently naming the archive ".zip".
+            string archiveName = options.ArchiveName ?? (options.SourcePaths.Count == 1
+                ? Path.GetFileNameWithoutExtension(options.SourcePaths[0]) is { Length: > 0 } name
+                    ? name
+                    : "archive"
+                : "archive");
 
             string destPath = Path.Combine(options.DestinationFolder, archiveName + ".zip");
 
@@ -654,6 +659,7 @@ public sealed class ZipArchiveService : IArchiveService
                     CompressedSize = e.CompressedLength,
                     Modified = e.LastWriteTime.DateTime,
                     IsDirectory = e.FullName.EndsWith('/'),
+                    Crc32 = e.FullName.EndsWith('/') ? null : e.Crc32,
                 }).ToList();
             }, cancellationToken).ConfigureAwait(false);
 
