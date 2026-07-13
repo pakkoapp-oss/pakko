@@ -8,10 +8,12 @@ using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Archiver.App.Core;
 using Archiver.App.Models;
 using Archiver.App.Services;
 using Archiver.Core.Interfaces;
 using Archiver.Core.Models;
+using Archiver.Core.Services;
 using Microsoft.UI.Xaml;
 using Windows.ApplicationModel.Resources;
 
@@ -23,8 +25,12 @@ public sealed partial class MainViewModel : ObservableObject
 
     private readonly IArchiveService _archiveService;
     private readonly IExtractionRouter _extractionRouter;
+    private readonly IArchiveListingRouter _archiveListingRouter;
     private readonly IDialogService _dialogService;
     private readonly ILogService _logService;
+
+    private IReadOnlyDictionary<string, IReadOnlyList<ArchiveEntryViewModel>> _archiveIndex =
+        new Dictionary<string, IReadOnlyList<ArchiveEntryViewModel>>();
 
     private CancellationTokenSource? _cts;
 
@@ -42,6 +48,8 @@ public sealed partial class MainViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(BrowseFilesCommand))]
     [NotifyCanExecuteChangedFor(nameof(BrowseFolderCommand))]
     [NotifyCanExecuteChangedFor(nameof(CancelCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ExtractAllFromBrowserCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ExtractSelectedFromBrowserCommand))]
     [NotifyPropertyChangedFor(nameof(IsOperationRunning))]
     [NotifyPropertyChangedFor(nameof(IsOperationRunningVisibility))]
     [NotifyPropertyChangedFor(nameof(ArchiveButtonText))]
@@ -126,11 +134,14 @@ public sealed partial class MainViewModel : ObservableObject
     public bool IsExtractOnlySelection =>
         FileItems.Count > 0 && FileItems.All(x => _extractableTypes.Contains(x.Type));
 
+    // T-F05: both force-collapse while the archive browser is open — neither the batch
+    // Archive/Extract outcome subtitle nor the Archive Mode/Name options have meaning once the
+    // window has swapped into browsing a single archive's contents.
     public Visibility ArchiveOptionsVisibility =>
-        IsExtractOnlySelection ? Visibility.Collapsed : Visibility.Visible;
+        !IsBrowsingArchive && !IsExtractOnlySelection ? Visibility.Visible : Visibility.Collapsed;
 
     public Visibility OperationOutcomeVisibility =>
-        FileItems.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
+        !IsBrowsingArchive && FileItems.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
 
     public string OperationOutcomeText => IsExtractOnlySelection
         ? _res.GetString("OutcomeWillExtract").Replace("{0}", FileItems.Count.ToString())
@@ -195,13 +206,58 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private bool _deleteAfterOperation = false;
 
+    // T-F05: Archive Browser — inline mode-swap state. IsBrowsingArchive drives which of the two
+    // Row-1/Row-3 sibling Grids in MainWindow.xaml is visible; nothing else in this ViewModel
+    // changes shape based on it (destination path, OnConflict, Open/Delete-after checkboxes all
+    // stay live in both modes, per the design in TASKS.md's T-F05 entry).
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsPendingListVisibility))]
+    [NotifyPropertyChangedFor(nameof(IsBrowsingArchiveVisibility))]
+    [NotifyPropertyChangedFor(nameof(ArchiveOptionsVisibility))]
+    [NotifyPropertyChangedFor(nameof(OperationOutcomeVisibility))]
+    [NotifyCanExecuteChangedFor(nameof(ExtractAllFromBrowserCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ExtractSelectedFromBrowserCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ShowSelectedEntryInfoCommand))]
+    private bool _isBrowsingArchive = false;
+
+    public Visibility IsPendingListVisibility =>
+        IsBrowsingArchive ? Visibility.Collapsed : Visibility.Visible;
+
+    public Visibility IsBrowsingArchiveVisibility =>
+        IsBrowsingArchive ? Visibility.Visible : Visibility.Collapsed;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(ExtractAllFromBrowserCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ExtractSelectedFromBrowserCommand))]
+    private string? _browsedArchivePath;
+
+    [ObservableProperty]
+    private string _currentFolderPath = string.Empty;
+
+    [ObservableProperty]
+    private ObservableCollection<ArchiveEntryViewModel> _currentFolderEntries = [];
+
+    [ObservableProperty]
+    private ObservableCollection<string> _breadcrumbSegments = [];
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(ExtractSelectedFromBrowserCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ShowSelectedEntryInfoCommand))]
+    private IReadOnlyList<ArchiveEntryViewModel> _selectedBrowserEntries = [];
+
     private string _sortColumn = "Name";
     private bool _sortAscending = true;
 
-    public MainViewModel(IArchiveService archiveService, IExtractionRouter extractionRouter, IDialogService dialogService, ILogService logService)
+    public MainViewModel(
+        IArchiveService archiveService,
+        IExtractionRouter extractionRouter,
+        IArchiveListingRouter archiveListingRouter,
+        IDialogService dialogService,
+        ILogService logService)
     {
         _archiveService = archiveService;
         _extractionRouter = extractionRouter;
+        _archiveListingRouter = archiveListingRouter;
         _dialogService = dialogService;
         _logService = logService;
         _fileItems.CollectionChanged += (_, _) =>
@@ -400,7 +456,14 @@ public sealed partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand(CanExecute = nameof(CanExtract))]
-    private async Task ExtractAsync()
+    private Task ExtractAsync() =>
+        RunExtractAsync([.. FileItems.Select(x => x.FullPath)], selectedEntryPaths: null);
+
+    // T-F05: shared by the whole-archive Extract button and the archive browser's Extract
+    // Selected/Extract All/double-click-a-file commands below — the entire IsBusy/progress/
+    // stopwatch/bomb-confirm-callback/summary-dialog/cleanup sequence stays identical for both;
+    // only which archive(s) and which entry subset (if any) get passed to ExtractOptions differ.
+    private async Task RunExtractAsync(IReadOnlyList<string> archivePaths, IReadOnlyList<string>? selectedEntryPaths)
     {
         _cts = new CancellationTokenSource();
         _lastOperation = "extract";
@@ -412,12 +475,13 @@ public sealed partial class MainViewModel : ObservableObject
         {
             var options = new ExtractOptions
             {
-                ArchivePaths = [.. FileItems.Select(x => x.FullPath)],
+                ArchivePaths = archivePaths,
                 DestinationFolder = DestinationPath,
                 OnConflict = OnConflict,
                 OpenDestinationFolder = OpenDestinationFolder,
                 DeleteArchiveAfterExtraction = DeleteAfterOperation,
                 ConfirmCompressionBombExtraction = _dialogService.ShowCompressionBombConfirmAsync,
+                SelectedEntryPaths = selectedEntryPaths,
             };
 
             _operationStatusPrefix = $"Extracting... ({options.ArchivePaths.Count} archive(s))";
@@ -488,6 +552,132 @@ public sealed partial class MainViewModel : ObservableObject
 
     [RelayCommand(CanExecute = nameof(IsOperationRunning))]
     private void Cancel() => _cts?.Cancel();
+
+    // ── Archive Browser (T-F05) ──────────────────────────────────────────────────
+
+    public async Task EnterBrowseModeAsync(string archivePath)
+    {
+        IsBrowsingArchive = true;
+        BrowsedArchivePath = archivePath;
+        CurrentFolderPath = string.Empty;
+        SelectedBrowserEntries = [];
+
+        // tar-family listing shells out to tar.exe per T-F49/T-F48's model; ZIP listing is fast
+        // in-memory (ZipFile.OpenRead). Only show the async-load indeterminate state for the
+        // former, matching T-F58's existing "Finalizing..." pattern rather than a blocking modal.
+        bool isZip = ArchiveFormatDetector.Detect(archivePath) is ArchiveFormat.Zip or ArchiveFormat.Unknown;
+        if (!isZip)
+        {
+            IsProgressIndeterminate = true;
+            StatusMessage = _res.GetString("StatusFinalizing");
+        }
+
+        ArchiveListResult result;
+        try
+        {
+            result = await _archiveListingRouter.ListEntriesAsync(archivePath);
+        }
+        finally
+        {
+            IsProgressIndeterminate = false;
+            StatusMessage = _res.GetString("StatusReady");
+        }
+
+        if (!result.Success)
+        {
+            IsBrowsingArchive = false;
+            BrowsedArchivePath = null;
+            await _dialogService.ShowErrorAsync("Error", result.ErrorMessage ?? "Failed to read archive.");
+            return;
+        }
+
+        _archiveIndex = ArchiveTreeIndex.Build(result.Entries);
+        RefreshCurrentFolder();
+    }
+
+    private void RefreshCurrentFolder()
+    {
+        // T-F05: a childless folder (explicit empty directory entry) is a node in its parent's
+        // child list but has no key of its own in the index — TryGetValue + empty fallback avoids
+        // a KeyNotFoundException on navigating into one, rather than assuming every folder path
+        // is guaranteed a dictionary entry.
+        var entries = _archiveIndex.TryGetValue(CurrentFolderPath, out var list)
+            ? list
+            : (IReadOnlyList<ArchiveEntryViewModel>)[];
+        CurrentFolderEntries = new ObservableCollection<ArchiveEntryViewModel>(entries);
+        SelectedBrowserEntries = [];
+        RebuildBreadcrumb();
+    }
+
+    private void RebuildBreadcrumb()
+    {
+        string archiveName = Path.GetFileName(BrowsedArchivePath ?? string.Empty);
+        var segments = new List<string> { archiveName };
+        if (CurrentFolderPath.Length > 0)
+            segments.AddRange(CurrentFolderPath.Split('/'));
+        BreadcrumbSegments = new ObservableCollection<string>(segments);
+    }
+
+    public void NavigateIntoFolder(ArchiveEntryViewModel folder)
+    {
+        if (!folder.IsFolder) return;
+        CurrentFolderPath = folder.FullPath;
+        RefreshCurrentFolder();
+    }
+
+    // index 0 = archive root (BreadcrumbSegments[0], the archive's own file name).
+    public void NavigateToBreadcrumbSegment(int index)
+    {
+        if (index <= 0)
+        {
+            CurrentFolderPath = string.Empty;
+        }
+        else
+        {
+            var segments = CurrentFolderPath.Split('/');
+            CurrentFolderPath = string.Join('/', segments.Take(index));
+        }
+        RefreshCurrentFolder();
+    }
+
+    public void SetSelectedBrowserEntries(IReadOnlyList<ArchiveEntryViewModel> entries) =>
+        SelectedBrowserEntries = entries;
+
+    [RelayCommand]
+    private void ExitBrowseMode()
+    {
+        IsBrowsingArchive = false;
+        BrowsedArchivePath = null;
+        CurrentFolderPath = string.Empty;
+        CurrentFolderEntries = [];
+        BreadcrumbSegments = [];
+        SelectedBrowserEntries = [];
+        _archiveIndex = new Dictionary<string, IReadOnlyList<ArchiveEntryViewModel>>();
+    }
+
+    private bool CanExtractSelectedFromBrowser() =>
+        !IsBusy && BrowsedArchivePath is not null && SelectedBrowserEntries.Count > 0;
+
+    [RelayCommand(CanExecute = nameof(CanExtractSelectedFromBrowser))]
+    private Task ExtractSelectedFromBrowserAsync() =>
+        RunExtractAsync([BrowsedArchivePath!], [.. SelectedBrowserEntries.Select(e => e.FullPath)]);
+
+    private bool CanExtractAllFromBrowser() => !IsBusy && BrowsedArchivePath is not null;
+
+    [RelayCommand(CanExecute = nameof(CanExtractAllFromBrowser))]
+    private Task ExtractAllFromBrowserAsync() =>
+        RunExtractAsync([BrowsedArchivePath!], selectedEntryPaths: null);
+
+    // Double-click a file row in the browser view — extracts just that one entry, reusing the
+    // same RunExtractAsync sequence (bomb-confirm callback, progress, summary dialog) as every
+    // other extraction path.
+    public Task ExtractSingleBrowserEntryAsync(ArchiveEntryViewModel entry) =>
+        RunExtractAsync([BrowsedArchivePath!], [entry.FullPath]);
+
+    private bool CanShowSelectedEntryInfo() => SelectedBrowserEntries.Count == 1;
+
+    [RelayCommand(CanExecute = nameof(CanShowSelectedEntryInfo))]
+    private Task ShowSelectedEntryInfoAsync() => _dialogService.ShowEntryInfoAsync(SelectedBrowserEntries[0]);
 
     // T-F87: a source whose full path appears in SkippedFiles was never actually archived or
     // extracted (unsupported format, whole-archive conflict skip, or every entry individually

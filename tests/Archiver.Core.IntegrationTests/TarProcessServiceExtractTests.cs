@@ -265,6 +265,68 @@ public sealed class TarProcessServiceExtractTests : IDisposable
         File.ReadAllText(Path.Combine(destDir, "bomb.txt")).Should().Be(bombContent);
     }
 
+    // T-F05: SelectedEntryPaths restricts extraction to just the named entries — used by the
+    // archive browser's "Extract selected" command. Whole-archive pre-scan still runs
+    // unconditionally (this is exercised implicitly: extraction would fail here if it didn't,
+    // since ScanForUnsafeEntriesAsync is what produces the name list ExpandSelection consumes).
+    [Integration]
+    public async Task ExtractAsync_SelectedEntryPaths_FilesOnly_ExtractsOnlySelectedFiles()
+    {
+        string archivePath = Path.Combine(_temp.Path, "nested.tar");
+        TarBuilder.WriteTar(archivePath,
+        [
+            new TarBuilder.Entry { Name = "root.txt", Content = Encoding.ASCII.GetBytes("root") },
+            new TarBuilder.Entry { Name = "docs/readme.txt", Content = Encoding.ASCII.GetBytes("readme") },
+            new TarBuilder.Entry { Name = "docs/manual.txt", Content = Encoding.ASCII.GetBytes("manual") },
+            new TarBuilder.Entry { Name = "src/main.cs", Content = Encoding.ASCII.GetBytes("code") },
+        ]);
+
+        string destDir = Path.Combine(_temp.Path, "out");
+        var result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [archivePath],
+            DestinationFolder = destDir,
+            Mode = ExtractMode.SingleFolder,
+            SelectedEntryPaths = ["root.txt", "docs/readme.txt"],
+        });
+
+        result.Success.Should().BeTrue();
+        File.Exists(Path.Combine(destDir, "root.txt")).Should().BeTrue();
+        File.Exists(Path.Combine(destDir, "docs", "readme.txt")).Should().BeTrue();
+        File.Exists(Path.Combine(destDir, "docs", "manual.txt")).Should().BeFalse();
+        Directory.Exists(Path.Combine(destDir, "src")).Should().BeFalse();
+    }
+
+    // T-F05: a selected folder path pulls in every entry nested under it, expanded to explicit
+    // descendant member names before the "-xf" call (see DECISIONS.md's T-F05 spike entry).
+    [Integration]
+    public async Task ExtractAsync_SelectedEntryPaths_FolderPath_ExtractsAllDescendants()
+    {
+        string archivePath = Path.Combine(_temp.Path, "nested.tar");
+        TarBuilder.WriteTar(archivePath,
+        [
+            new TarBuilder.Entry { Name = "root.txt", Content = Encoding.ASCII.GetBytes("root") },
+            new TarBuilder.Entry { Name = "docs/readme.txt", Content = Encoding.ASCII.GetBytes("readme") },
+            new TarBuilder.Entry { Name = "docs/sub/appendix.txt", Content = Encoding.ASCII.GetBytes("appendix") },
+            new TarBuilder.Entry { Name = "src/main.cs", Content = Encoding.ASCII.GetBytes("code") },
+        ]);
+
+        string destDir = Path.Combine(_temp.Path, "out");
+        var result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [archivePath],
+            DestinationFolder = destDir,
+            Mode = ExtractMode.SingleFolder,
+            SelectedEntryPaths = ["docs"],
+        });
+
+        result.Success.Should().BeTrue();
+        File.Exists(Path.Combine(destDir, "docs", "readme.txt")).Should().BeTrue();
+        File.Exists(Path.Combine(destDir, "docs", "sub", "appendix.txt")).Should().BeTrue();
+        File.Exists(Path.Combine(destDir, "root.txt")).Should().BeFalse();
+        Directory.Exists(Path.Combine(destDir, "src")).Should().BeFalse();
+    }
+
     // Regression test for the confirmed exploit in DECISIONS.md's T-F49 entry: a symlink entry
     // named "link" targeting ".." followed by "link/escaped.txt" caused raw tar.exe to write
     // escaped.txt one directory level above the extraction root. This proves the pre-scan blocks

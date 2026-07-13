@@ -769,6 +769,74 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
         contents.Should().Equal("first", "second");
     }
 
+    private static void WriteEntry(ZipArchive archive, string entryName, string content)
+    {
+        var entry = archive.CreateEntry(entryName);
+        using var stream = entry.Open();
+        using var writer = new StreamWriter(stream);
+        writer.Write(content);
+    }
+
+    // T-F05: SelectedEntryPaths restricts extraction to just the named entries — used by the
+    // archive browser's "Extract selected" command.
+    [Fact]
+    public async Task ExtractAsync_SelectedEntryPaths_FilesOnly_ExtractsOnlySelectedFiles()
+    {
+        var zipPath = Path.Combine(_temp.Path, "nested.zip");
+        using (var archive = ZipFile.Open(zipPath, ZipArchiveMode.Create))
+        {
+            WriteEntry(archive, "root.txt", "root");
+            WriteEntry(archive, "docs/readme.txt", "readme");
+            WriteEntry(archive, "docs/manual.txt", "manual");
+            WriteEntry(archive, "src/main.cs", "code");
+        }
+        var destDir = Path.Combine(_temp.Path, "output");
+
+        var result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [zipPath],
+            DestinationFolder = destDir,
+            Mode = ExtractMode.SingleFolder,
+            SelectedEntryPaths = ["root.txt", "docs/readme.txt"],
+        });
+
+        result.Success.Should().BeTrue();
+        File.Exists(Path.Combine(destDir, "root.txt")).Should().BeTrue();
+        File.Exists(Path.Combine(destDir, "docs", "readme.txt")).Should().BeTrue();
+        File.Exists(Path.Combine(destDir, "docs", "manual.txt")).Should().BeFalse();
+        Directory.Exists(Path.Combine(destDir, "src")).Should().BeFalse();
+    }
+
+    // T-F05: a selected folder path pulls in every entry nested under it, matching 7-Zip/NanaZip's
+    // own "extract selected folder" behavior.
+    [Fact]
+    public async Task ExtractAsync_SelectedEntryPaths_FolderPath_ExtractsAllDescendants()
+    {
+        var zipPath = Path.Combine(_temp.Path, "nested.zip");
+        using (var archive = ZipFile.Open(zipPath, ZipArchiveMode.Create))
+        {
+            WriteEntry(archive, "root.txt", "root");
+            WriteEntry(archive, "docs/readme.txt", "readme");
+            WriteEntry(archive, "docs/sub/appendix.txt", "appendix");
+            WriteEntry(archive, "src/main.cs", "code");
+        }
+        var destDir = Path.Combine(_temp.Path, "output");
+
+        var result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [zipPath],
+            DestinationFolder = destDir,
+            Mode = ExtractMode.SingleFolder,
+            SelectedEntryPaths = ["docs"],
+        });
+
+        result.Success.Should().BeTrue();
+        File.Exists(Path.Combine(destDir, "docs", "readme.txt")).Should().BeTrue();
+        File.Exists(Path.Combine(destDir, "docs", "sub", "appendix.txt")).Should().BeTrue();
+        File.Exists(Path.Combine(destDir, "root.txt")).Should().BeFalse();
+        Directory.Exists(Path.Combine(destDir, "src")).Should().BeFalse();
+    }
+
     [Fact]
     public async Task ExtractAsync_DuplicateEntryNames_SkipKeepsOnlyFirst()
     {

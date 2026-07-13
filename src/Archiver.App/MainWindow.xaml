@@ -6,6 +6,7 @@
     xmlns:local="using:Archiver.App"
     xmlns:viewmodels="using:Archiver.App.ViewModels"
     xmlns:models="using:Archiver.App.Models"
+    xmlns:appcore="using:Archiver.App.Core"
     xmlns:tb="using:H.NotifyIcon"
     Title="Archiver">
 
@@ -53,7 +54,8 @@
         </Grid>
 
         <!-- Row 1: File Table -->
-        <Grid Grid.Row="1" RowDefinitions="Auto,*">
+        <Grid Grid.Row="1" RowDefinitions="Auto,*"
+              Visibility="{x:Bind ViewModel.IsPendingListVisibility, Mode=OneWay}">
 
             <!-- Header -->
             <Border
@@ -97,7 +99,8 @@
                     MinHeight="80"
                     AllowDrop="True"
                     DragOver="FileList_DragOver"
-                    Drop="FileList_Drop">
+                    Drop="FileList_Drop"
+                    DoubleTapped="PendingList_DoubleTapped">
                     <ListView.ItemContainerStyle>
                         <Style TargetType="ListViewItem">
                             <Setter Property="Padding" Value="12,4,12,4"/>
@@ -159,6 +162,78 @@
 
         </Grid>
 
+        <!-- Row 1 (T-F05): Archive Browser -->
+        <Grid Grid.Row="1" RowDefinitions="Auto,Auto,*"
+              Visibility="{x:Bind ViewModel.IsBrowsingArchiveVisibility, Mode=OneWay}">
+
+            <BreadcrumbBar
+                Grid.Row="0"
+                Margin="0,0,0,8"
+                ItemsSource="{x:Bind ViewModel.BreadcrumbSegments, Mode=OneWay}"
+                ItemClicked="ArchiveBreadcrumb_ItemClicked"/>
+
+            <Border
+                Grid.Row="1"
+                Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+                BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
+                BorderThickness="0,0,0,1">
+                <Grid ColumnDefinitions="*,100,140" Margin="12,0,12,0">
+                    <TextBlock Grid.Column="0" Text="Name" Padding="0,6,0,6" FontWeight="SemiBold"/>
+                    <TextBlock Grid.Column="1" Text="Size" Padding="0,6,0,6" FontWeight="SemiBold"/>
+                    <TextBlock Grid.Column="2" Text="Modified" Padding="0,6,0,6" FontWeight="SemiBold"/>
+                </Grid>
+            </Border>
+
+            <ListView
+                Grid.Row="2"
+                x:Name="ArchiveBrowserListView"
+                ItemsSource="{x:Bind ViewModel.CurrentFolderEntries, Mode=OneWay}"
+                SelectionMode="Multiple"
+                MinHeight="80"
+                SelectionChanged="ArchiveBrowserList_SelectionChanged"
+                DoubleTapped="ArchiveBrowserList_DoubleTapped">
+                <ListView.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <VirtualizingStackPanel Orientation="Vertical" VirtualizationMode="Recycling"/>
+                    </ItemsPanelTemplate>
+                </ListView.ItemsPanel>
+                <ListView.ItemContainerStyle>
+                    <Style TargetType="ListViewItem">
+                        <Setter Property="Padding" Value="12,4,12,4"/>
+                        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                    </Style>
+                </ListView.ItemContainerStyle>
+                <ListView.ItemTemplate>
+                    <DataTemplate x:DataType="appcore:ArchiveEntryViewModel">
+                        <Grid ColumnDefinitions="Auto,*,100,140">
+                            <FontIcon
+                                Grid.Column="0"
+                                Glyph="{x:Bind Icon}"
+                                FontFamily="Segoe MDL2 Assets"
+                                FontSize="14"
+                                Margin="0,0,8,0"
+                                Opacity="0.7"/>
+                            <TextBlock
+                                Grid.Column="1"
+                                Text="{x:Bind Name}"
+                                TextTrimming="CharacterEllipsis"
+                                ToolTipService.ToolTip="{x:Bind FullPath}"/>
+                            <TextBlock
+                                Grid.Column="2"
+                                Text="{x:Bind SizeDisplay}"
+                                TextTrimming="CharacterEllipsis"
+                                Opacity="0.7"/>
+                            <TextBlock
+                                Grid.Column="3"
+                                Text="{x:Bind ModifiedDisplay}"
+                                TextTrimming="CharacterEllipsis"
+                                Opacity="0.7"/>
+                        </Grid>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
+        </Grid>
+
         <!-- Row 2: Destination Path -->
         <Grid Grid.Row="2" ColumnDefinitions="Auto,*,Auto" MinHeight="40">
             <TextBlock
@@ -181,7 +256,8 @@
         </Grid>
 
         <!-- Row 3: Action Buttons -->
-        <Grid Grid.Row="3" ColumnDefinitions="*,*,Auto" MinHeight="40">
+        <Grid Grid.Row="3" ColumnDefinitions="*,*,Auto" MinHeight="40"
+              Visibility="{x:Bind ViewModel.IsPendingListVisibility, Mode=OneWay}">
 
             <Button
                 Grid.Column="0"
@@ -203,6 +279,36 @@
                 Grid.Column="2"
                 Margin="8,0,0,0"
                 Command="{x:Bind ViewModel.ClearCommand, Mode=OneWay}"/>
+        </Grid>
+
+        <!-- Row 3 (T-F05): Archive Browser Action Buttons -->
+        <Grid Grid.Row="3" ColumnDefinitions="*,*,Auto,Auto" MinHeight="40"
+              Visibility="{x:Bind ViewModel.IsBrowsingArchiveVisibility, Mode=OneWay}">
+
+            <Button
+                Grid.Column="0"
+                x:Uid="ExtractSelectedButton"
+                HorizontalAlignment="Stretch"
+                Command="{x:Bind ViewModel.ExtractSelectedFromBrowserCommand, Mode=OneWay}"/>
+
+            <Button
+                Grid.Column="1"
+                x:Uid="ExtractAllButton"
+                Margin="8,0,0,0"
+                HorizontalAlignment="Stretch"
+                Command="{x:Bind ViewModel.ExtractAllFromBrowserCommand, Mode=OneWay}"/>
+
+            <Button
+                Grid.Column="2"
+                x:Uid="EntryInfoButton"
+                Margin="8,0,0,0"
+                Command="{x:Bind ViewModel.ShowSelectedEntryInfoCommand, Mode=OneWay}"/>
+
+            <Button
+                Grid.Column="3"
+                x:Uid="CloseArchiveBrowserButton"
+                Margin="8,0,0,0"
+                Command="{x:Bind ViewModel.ExitBrowseModeCommand, Mode=OneWay}"/>
         </Grid>
 
         <!-- Row 4: Operation Outcome Subtitle -->

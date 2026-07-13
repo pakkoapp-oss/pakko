@@ -22,6 +22,13 @@ public sealed record ExtractOptions
     // callback (Archiver.Shell, and any test that doesn't set this). See ArchiveEntrySecurity's
     // EvaluateCompressionBombAsync and DECISIONS.md's T-F94 entry.
     public Func<CompressionBombWarning, Task<bool>>? ConfirmCompressionBombExtraction { get; init; }
+
+    // T-F05: non-null/non-empty restricts extraction to just these archive-internal entry paths
+    // ('/'-separated, matching ArchiveEntryInfo.Path) instead of every entry. Only meaningful when
+    // ArchivePaths has exactly one entry — "Extract selected" from the archive browser always
+    // targets the single archive currently open in that view. A selected directory path implies
+    // its full nested contents. Null/empty (the default) extracts everything, unaffected.
+    public IReadOnlyList<string>? SelectedEntryPaths { get; init; }
 }
 
 public enum ExtractMode

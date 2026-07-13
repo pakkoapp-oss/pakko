@@ -84,8 +84,11 @@
  *     created_by_7zip.zip             — MANUAL
  *     created_by_winrar.zip           — MANUAL
  *     created_by_macos.zip            — MANUAL
+ *     valid_nested_folders.tar        — T-F05: 6 entries, 3-level nesting, mirrors the .zip of
+ *                                        the same name (System.Formats.Tar, no shell-out)
  */
 
+using System.Formats.Tar;
 using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text;
@@ -188,6 +191,29 @@ using (var zip = ZipFile.Open(incompressibleZip, ZipArchiveMode.Create))
     stream.Write(buf);
 }
 Record(incompressibleZip, "NoCompression — incompressible binary content");
+
+// ── Tar-family fixtures (T-F05) ───────────────────────────────────────────────
+
+Section("Tar-family fixtures (T-F05)");
+
+// Mirrors valid_nested_folders.zip's exact structure so ZIP/tar listing tests can assert the
+// same shape. Built via System.Formats.Tar (no tar.exe shell-out) so fixture generation stays
+// deterministic and platform-independent, per this file's own convention for every other fixture.
+var tarSourceDir = Path.Combine(Path.GetTempPath(), "pakko_tar_fixture_src_" + Guid.NewGuid());
+Directory.CreateDirectory(Path.Combine(tarSourceDir, "docs", "sub"));
+Directory.CreateDirectory(Path.Combine(tarSourceDir, "src"));
+WriteText(Path.Combine(tarSourceDir, "root.txt"), "Root level file\n");
+WriteText(Path.Combine(tarSourceDir, "docs", "readme.txt"), Repeat("Docs readme\n", 20));
+WriteText(Path.Combine(tarSourceDir, "docs", "manual.txt"), Repeat("Manual content\n", 20));
+WriteText(Path.Combine(tarSourceDir, "docs", "sub", "appendix.txt"), Repeat("Appendix\n", 20));
+WriteText(Path.Combine(tarSourceDir, "src", "main.cs"), Repeat("// C# source\nclass Program {}\n", 15));
+WriteText(Path.Combine(tarSourceDir, "src", "utils.cs"), Repeat("// Utils\nstatic class Utils {}\n", 15));
+
+var nestedFoldersTar = Path.Combine(archivesDir, "valid_nested_folders.tar");
+if (File.Exists(nestedFoldersTar)) File.Delete(nestedFoldersTar);
+TarFile.CreateFromDirectory(tarSourceDir, nestedFoldersTar, includeBaseDirectory: false);
+Directory.Delete(tarSourceDir, recursive: true);
+Record(nestedFoldersTar, "6 entries, 3-level nesting — mirrors valid_nested_folders.zip for parity");
 
 // ── Smart extract scenarios (T-14) ───────────────────────────────────────────
 

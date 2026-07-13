@@ -146,11 +146,13 @@ Invoke via `System.Diagnostics.Process`.
 ---
 
 ### T-F05 — Archive Browser (Navigate, Select, Extract Selected/All)
-- [ ] **Status:** future — scope expanded 2026-07-12 from the original "read-only tree view, no
-      extraction" text (kept below the divider as historical record, per the "never silently
-      deprecate" doc rule) to include basic commands, per user request. Not yet in `SPEC.md`'s
-      versioned roadmap table — needs a version slot decided with the user before work starts
-      (`SPEC.md` owns that table; this entry alone doesn't assign one)
+- [~] **Status:** partial — versioned into v1.4 (`SPEC.md`) 2026-07-13; Core listing API,
+      `Archiver.App.Core`, and the full WinUI wiring (mode-swap, breadcrumb, browser `ListView`,
+      Extract Selected/All/Info commands) are all implemented and `dotnet test` is green
+      (208/208, `Category!=Slow`; Zip64 `Category=Slow` also green). Stays partial until the
+      user's manual on-device verification (last acceptance criterion) is confirmed — see
+      `DECISIONS.md` for the tar.exe selective-extraction spike and subset-bomb-check tradeoff
+      made along the way.
 - **Depends on:** none
 
 **What:** let the user browse an archive's internal folder structure — without extracting
@@ -236,31 +238,33 @@ file's own contents (opening/viewing a text file or image from inside the archiv
 bigger feature if ever wanted).
 
 **Acceptance criteria:**
-- [ ] Version slot decided with the user and added to `SPEC.md`'s roadmap table (currently
-      unversioned)
-- [ ] `Archiver.Core`: new listing method(s) on `IArchiveService`/`ITarService` (or a new shared
-      interface) returning `IReadOnlyList<ArchiveEntryInfo>` — flat, not hierarchical
-- [ ] tar-family listing still runs T-F49's whole-archive pre-scan before any partial extraction;
-      no per-entry-only validation path introduced
-- [ ] App layer: new `ArchiveEntryViewModel` + folder-hierarchy-building helper from flat entries
-      (kept separate from `FileItem`)
-- [ ] `MainWindow.xaml`: inline mode-swap (not a new window, not `NavigationView`) between the
+- [x] Version slot decided with the user and added to `SPEC.md`'s roadmap table — v1.4
+- [x] `Archiver.Core`: new listing method(s) on `IArchiveService`/`ITarService` (`ListEntriesAsync`,
+      routed by new `IArchiveListingRouter`/`ArchiveListingRouter`) returning
+      `IReadOnlyList<ArchiveEntryInfo>` — flat, not hierarchical
+- [x] tar-family listing still runs T-F49's whole-archive pre-scan before any partial extraction;
+      no per-entry-only validation path introduced (`ExtractOptions.SelectedEntryPaths` +
+      `TarProcessService.ExpandSelection` built on the existing scan's name list)
+- [x] App layer: new `ArchiveEntryViewModel` + folder-hierarchy-building helper (`ArchiveTreeIndex`)
+      from flat entries (kept separate from `FileItem`) — lives in new `Archiver.App.Core` project
+- [x] `MainWindow.xaml`: inline mode-swap (not a new window, not `NavigationView`) between the
       existing pending-selection view and the new browser view, triggered by double-clicking an
       archive in the pending-selection list
-- [ ] Real `BreadcrumbBar` control (not hand-rolled) + per-folder `ListView` with
+- [x] Real `BreadcrumbBar` control (not hand-rolled) + per-folder `ListView` with
       `SelectionMode="Multiple"` and explicit `VirtualizationMode="Recycling"`
-- [ ] Extract selected / Extract all / Info commands wired, reusing existing extraction pipeline
-      (`IExtractionRouter`) — no new extraction logic duplicated
-- [ ] Selection clears on navigation; double-click file = extract that file; double-click folder =
+- [x] Extract selected / Extract all / Info commands wired, reusing existing extraction pipeline
+      (`IExtractionRouter` via a shared `RunExtractAsync`) — no new extraction logic duplicated
+- [x] Selection clears on navigation; double-click file = extract that file; double-click folder =
       descend; breadcrumb segment click = jump to that level
-- [ ] New tests: `Archiver.Core.Tests` for the listing method(s) (ZIP + tar-family, including a
-      large-entry-count case exercising the flat-not-hierarchical contract), App-layer tests for
-      the flat-to-tree helper if testable per this project's WinUI-testability constraints
-- [ ] `dotnet test --filter "Category!=Slow"` passes; Zip64 Slow-tagged coverage added or extended
-      if the listing method's behavior at 65,000+ entries isn't already covered
+- [x] New tests: `Archiver.Core.Tests`/`Archiver.Core.IntegrationTests` for the listing method(s)
+      (ZIP + tar-family, including a large-entry-count case exercising the flat-not-hierarchical
+      contract), new `Archiver.App.Core.Tests` project for the flat-to-tree helper
+- [x] `dotnet test --filter "Category!=Slow"` passes (208/208); Zip64 Slow-tagged coverage extended
+      with a `ListEntriesAsync` 65,600-entry test, confirmed green under `Category=Slow`
 - [ ] Manual on-device verification: browse a real multi-folder ZIP and a real multi-folder
       tar.gz/7z/rar, extract a selection, extract all, view Info — confirmed by the user personally
-      per this project's UI-verification workflow tip
+      per this project's UI-verification workflow tip. **Full `Deploy.ps1` build+sign+install
+      completed 2026-07-13** (Pakko v1.2.0.11 on-device) — awaiting the user's manual click-through.
 
 ---
 
@@ -363,6 +367,118 @@ usual practice for extraction-security changes (see T-F90/T-F94's entries for th
 
 ---
 
+### T-F99 — Context Menu Missing on Drive Root (Type="Drive")
+- [ ] **Status:** future — real bug reported by user 2026-07-13 during T-F05 manual verification,
+      not a discovered-while-implementing item
+- **Depends on:** none
+
+**What:** right-clicking a drive root (e.g. `C:\` in Explorer's left-hand tree or "This PC") shows
+NanaZip's "Compress to..."-style entries but no Pakko entry at all.
+
+**Root cause, confirmed against NanaZip's real shipped manifest** (fetched
+`raw.githubusercontent.com/M2Team/NanaZip/main/NanaZipPackage/Package.appxmanifest` per
+`CLAUDE.md`'s pre-implementation-research rule): NanaZip registers its context-menu verb on
+**three** item types —
+```xml
+<desktop4:ItemType Type="*">          <!-- files -->
+<desktop5:ItemType Type="Directory">  <!-- folders -->
+<desktop10:ItemType Type="Drive">     <!-- drive roots -->
+```
+Pakko's `Package.appxmanifest` only has the first two (`src/Archiver.App/Package.appxmanifest`,
+`desktop4:FileExplorerContextMenus` block). Neither `xmlns:desktop10` nor a `Drive` `ItemType`
+entry exists — the drive-root case was simply never registered.
+
+**Acceptance criteria:**
+- [ ] `xmlns:desktop10="http://schemas.microsoft.com/appx/manifest/desktop/windows10/10"` declared
+      in `Package.appxmanifest` (added to `IgnorableNamespaces` too)
+- [ ] `<desktop10:ItemType Type="Drive"><desktop10:Verb Id="0000PakkoShellExtension"
+      Clsid="1EABC7CE-20A4-48EE-A99F-43D4E0F58D6A" /></desktop10:ItemType>` added alongside the
+      existing `*`/`Directory` entries
+- [ ] `PakkoRootCommand::GetState`/`EnumSubCommands` behavior checked against a drive-root
+      `IShellItemArray` selection — confirm it doesn't assume a real file path where a drive root
+      (e.g. `C:\`) is passed (path-parsing edge case, not just the manifest registration)
+- [ ] Full `Deploy.ps1` build+sign+install, manual on-device right-click on a real drive root
+      confirms the Pakko entry now appears, and its Archive command produces a valid archive of
+      the drive's contents (or fails gracefully — a multi-hundred-GB drive is not expected to
+      actually complete, but the command must not crash Explorer or the surrogate)
+
+---
+
+### T-F100 — File Activation Opens Archive-Creation UI Instead of Browsing the Archive
+- [ ] **Status:** future — real bug reported by user 2026-07-13 during T-F05 manual verification
+- **Depends on:** T-F05 (Archive Browser) — the correct destination behavior (browse mode) only
+      exists because of T-F05's `EnterBrowseModeAsync`
+
+**What:** double-clicking a `.zip` (or opening via `pakko://`/file association) opens Pakko with
+the archive added to the "files to archive" list — i.e. the Archive-creation UI — instead of
+opening the archive browser to show its contents. Separately, Windows never offers Pakko in the
+"Open with" list for any archive format other than `.zip`.
+
+**Root cause #1, confirmed in code:** `src/Archiver.App/App.xaml.cs:HandleActivation`, the
+`ExtendedActivationKind.File` case, unconditionally calls `_window.ViewModel.AddPaths(paths)` —
+the same method used for "add these files to the pending archive-creation list." It never checks
+whether the activated file is itself a supported archive, and never calls T-F05's
+`MainViewModel.EnterBrowseModeAsync(path)`.
+
+**Root cause #2, confirmed in manifest:** `Package.appxmanifest`'s `windows.fileTypeAssociation`
+extension lists only `<uap:FileType>.zip</uap:FileType>` — no `.rar`/`.7z`/`.tar`/`.gz`/etc. entry
+exists, so Windows has no association to offer for any other format, regardless of what
+`TarCapabilities`/`tar.exe` can actually read at runtime.
+
+**Acceptance criteria:**
+- [ ] `HandleActivation`'s File case: when exactly one file was activated and
+      `ArchiveFormatDetector.Detect(path)` reports a supported format, call
+      `EnterBrowseModeAsync(path)` instead of `AddPaths`. Multi-file activation (e.g. selecting
+      several files and using "Open with → Pakko") keeps today's `AddPaths` behavior — browsing
+      only makes sense for a single archive.
+- [ ] `Package.appxmanifest`'s `FileTypeAssociation` extended to cover every format Pakko can
+      actually read today (ZIP always; tar-family formats gated by what `tar.exe` on a supported
+      Windows build reads per `TarCapabilities` — decide the static list against that capability
+      table, not NanaZip's full ~60-extension list, since Pakko doesn't support most of those)
+- [ ] Opening a format Pakko is associated with but the runtime `TarCapabilities` doesn't actually
+      support (older Windows without a capable `tar.exe`) still shows the existing
+      capability-gap error message — not a silent failure or crash
+- [ ] New test(s) covering the File-activation routing decision (single supported-archive path →
+      browse; multi-file or unsupported-format path → existing add-to-list behavior) — likely on
+      a testable seam extracted from `HandleActivation`, mirroring this project's existing
+      "extract decision logic out of `.xaml.cs`/`App.xaml.cs` into something testable" pattern
+- [ ] `dotnet test --filter "Category!=Slow"` passes
+- [ ] Manual on-device verification: double-click a real `.zip` → opens directly into the T-F05
+      browser view (not the Archive UI); double-click a real `.rar`/`.7z`/`.tar.gz` → same;
+      confirm Pakko now appears in Windows' "Open with" list for at least one non-`.zip` format
+
+---
+
+### T-F101 — Pakko Missing From Classic "Show More Options" Context Menu
+- [ ] **Status:** future — real bug reported by user 2026-07-13; root cause NOT diagnosed yet,
+      needs on-device investigation before any code change (per user decision — log the symptom
+      only, don't guess a fix)
+- **Depends on:** none
+
+**Symptom:** right-clicking a file in Explorer shows NanaZip's entry in both the modern
+(top-level, Windows 11) context menu and the classic "Show more options" menu. Pakko's entry only
+appears in the modern menu — it is missing from "Show more options" entirely.
+
+**Why this isn't a quick manifest fix:** NanaZip's real shipped manifest
+(`NanaZipPackage/Package.appxmanifest`, verified via `raw.githubusercontent.com`) uses the exact
+same "low ID prefix" workaround Pakko already has —
+`Id="0000NanaZipShellExtension"` / Pakko's `Id="0000PakkoShellExtension"` — with a comment citing
+`github.com/MediaArea/MediaInfo#998` for why the prefix matters for classic-menu visibility.
+Structurally, Pakko's `desktop4:FileExplorerContextMenus` block already matches NanaZip's on this
+point, so the manifest is not an obvious explanation by itself. Candidate causes, none confirmed:
+the on-device package may be running a build older than the current manifest; `EnumSubCommands`/
+`GetState` may throw or behave differently when Explorer invokes them for the classic-menu code
+path specifically (a different call shape than the modern menu uses); or something else entirely.
+
+**Next step (not yet done):** on-device diagnosis — confirm the installed package version/manifest
+actually matches the current source, check Explorer/COM-surrogate crash events
+(`Get-WinEvent` against `.NET Runtime`/`Application Error` providers per `CLAUDE.md`'s shell-verb
+debugging tips) while triggering "Show more options" on a real file, before writing any fix.
+
+**Acceptance criteria:** none yet — to be written once the root cause is identified.
+
+---
+
 ### T-F06 — Ask on Conflict Dialog
 - [ ] **Status:** future
 
@@ -386,78 +502,10 @@ Interactive dialog when conflict detected — Skip / Overwrite / Rename per file
       a `7z`-*familiar* command syntax, per user request. Advisor-reviewed before writing this.
 - **Depends on:** none
 
-**Goal, decided explicitly with the user (this is not a drop-in replacement):** `Archiver.CLI`'s
-commands/switches are spelled the same as `7z.exe`'s so a user who knows 7-Zip doesn't have to
-relearn syntax — **not** a byte-for-byte compatible drop-in (a script pointed at `7z` cannot be
-silently repointed at `pakko` and expect identical exit codes / output format for every command).
-This distinction was raised deliberately: "maximally close to 7z" collides with Pakko's
-minimalism (see the command table below — several real 7z commands require archive mutation Pakko
-won't do), so a genuine drop-in would mean either faking unsupported commands or silently
-diverging from 7z's own documented behavior. Familiar-but-distinct avoids both.
-
-**Architecture — `Archiver.CLI` is a third thin frontend over `Archiver.Core`, exactly like
-`Archiver.App` and `Archiver.Shell` already are. It does NOT become a shared engine that
-`Archiver.App`/`Archiver.Shell` shell out to.** Routing the GUI/shell through a CLI subprocess for
-every operation was considered and rejected: it would replace the in-process byte-accurate
-`IProgress<ProgressReport>` model (T-F16) with stdout-text parsing, replace structured
-`ArchiveResult`/`ArchiveError`/`SkippedFile` returns with JSON-over-a-pipe marshaling, contradict
-the established constructor-injection/DI pattern (`CLAUDE.md`'s "Services injected via
-constructor" rule), and add process-spawn overhead per operation for no benefit — Core is already
-the shared engine, three frontends consume it in-process, same as today's two. (Subprocess
-delegation *is* the right pattern for one specific existing case — isolating the *untrusted
-external* `tar.exe`, T-F52's Low IL sandbox — that's isolation of an external binary, not routing
-trusted managed Core through a subprocess, and doesn't generalize to this feature.)
-
-**Research done first (per `CLAUDE.md`'s pre-implementation-research norm):** fetched 7-Zip's real
-command-line parser source (`ArchiveCommandLine.h`/`.cpp`, via NanaZip's vendored copy — a direct
-7-Zip fork — through the GitHub trees API), not relied on memory. Confirmed the authoritative
-11-command set (`g_Commands = "audtexlbih"`, one character per `NCommandType` enum entry in
-declaration order) plus the two-character `rn` (rename) special case, and the real switch-prefix
-table (`kSwitchForms`).
-
-**Command table — 7z command → Pakko support today:**
-
-| 7z | Meaning | Pakko support |
-|----|---------|----------------|
-| `a` | Add (create/add to archive) | Partial — ZIP create only; no `-t7z`/`-ttar` archive *creation* (tar-family creation is T-F36's deferred v1.5 scope, not this task) |
-| `u` | Update (add newer/changed files to an *existing* archive) | Not supported — no "diff against existing archive contents" logic exists anywhere in `Archiver.Core` |
-| `d` | Delete (remove entries from an archive) | Not supported, deliberately — no in-place archive mutation, matches T-F05's "not an archive manager" positioning |
-| `t` | Test (verify integrity) | Partial — ZIP via existing `TestAsync` (T-F62); tar-family has no test capability (`ITarService` has no Test method, per T-F86's finding) |
-| `e` | Extract, flattened (no directory structure) | Not supported — Pakko's extraction always preserves the archive's folder structure; no flatten mode exists |
-| `x` | Extract with full paths | Supported — matches `ExtractAsync`'s existing default behavior |
-| `l` | List contents | Not supported today — this is exactly T-F05 (Archive Browser)'s listing API; this task should consume that once it exists, not duplicate it |
-| `b` | Benchmark | Not supported, deliberately out of scope (same reasoning as T-F05's NanaZip-toolbar scope cuts) |
-| `i` | Info (list supported archive formats/codecs) | Not implemented, but trivial — would report ZIP (always) + live `TarCapabilities` (detected formats) |
-| `h` | Hash | Partial — T-F46 hashes arbitrary files (SHA-256) via the GUI, but nothing hashes *entries inside* an archive specifically |
-| `rn` | Rename entries in an archive | Not supported, deliberately — in-place mutation, same reasoning as `d` |
-
-**Switch fidelity — even "supported" commands only support a subset of 7z's real switches; list
-per-switch, don't imply full coverage:**
-
-| 7z switch | Meaning | Pakko mapping |
-|-----------|---------|----------------|
-| `-o{dir}` | Output directory | Maps directly to `ExtractOptions.Destination` |
-| `-p{pwd}` | Password / encryption | Not supported — `System.IO.Compression` has no ZIP encryption support; this is a real capability gap, not a scope choice |
-| `-r[-\|0]` | Recurse subdirectories | Archiving already recurses folders by default; the 7z on/off nuance needs its own check against current `ArchiveOptions` behavior |
-| `-i{pattern}` / `-x{pattern}` | Include/exclude filename patterns | Not supported — no wildcard include/exclude filtering exists in `ArchiveOptions`/`ExtractOptions` today |
-| `-y` | Assume yes, suppress prompts | Needs a CLI-side default for Pakko's interactive callbacks (conflict resolution, compression-bomb confirm, T-F94) since there's no UI to prompt |
-| `-t{type}` | Archive type override | Partial — format is already auto-detected via `ArchiveFormatDetector`; only meaningful for `a` (creation), and only `-tzip` is real today |
-| `-v{size}` | Split into volumes | Not supported — no multi-part/split-archive logic exists anywhere in `Archiver.Core` |
-| `-m{params}` (e.g. `-mx=9`) | Compression method/level | Partial — 7z's 0–9 scale doesn't map 1:1 onto `System.IO.Compression.CompressionLevel`'s four discrete values (`NoCompression`/`Fastest`/`Optimal`/`SmallestFiles`); needs an explicit, documented bucketing, not a naive `/9*4` |
-| `-ao{a\|s\|u\|t}` | Overwrite mode | Mostly supported — maps to `ExtractOptions.OnConflict` (Overwrite/Skip/Rename); 7z's 4th variant (`t`, rename existing instead of new) has no Pakko equivalent |
-| `-scc`/`-ssc` | Console charset / case-sensitivity | `-scc` not applicable (.NET is Unicode-native); case-sensitive matching is an open question worth a decision, not an assumption |
-
-**Unknown/unsupported input — three-way rule, never silent:**
-1. **Unparseable token** (not a real 7z command/switch at all) → 7z-style "Incorrect command line"
-   error, non-zero exit — a typo, not a scope gap.
-2. **Real 7z command Pakko deliberately doesn't implement** (`u`, `d`, `rn`, `b`, flat `e`) →
-   explicit `"not supported by Pakko: <reason>"` message naming the specific gap (e.g. "in-place
-   archive mutation is out of scope — see CLAUDE.md"), not a generic parse error. This
-   distinguishes "real 7z feature we chose not to build" from a typo, which matters for anyone
-   debugging a script.
-3. **Real, supported command with an unsupported switch** → name the specific switch in the error,
-   don't fail generically.
-Never silently ignore an unrecognized token or switch and proceed as if it wasn't there.
+**Full command/switch specification lives in [`CLI.md`](CLI.md)** — the goal statement,
+architecture rationale, the 11-command 7z→Pakko support table, the switch-fidelity table, and the
+three-way unknown-input rule are all there now (moved 2026-07-13 to stop duplicating the same
+tables in both files; `CLI.md` is the canonical owner per `CLAUDE.md`'s Documentation Map).
 
 **Acceptance criteria:**
 - [ ] New `src/Archiver.CLI/` project, references `Archiver.Core` directly (in-process, no

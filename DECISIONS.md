@@ -1641,4 +1641,54 @@ unrelated real C# compile error, as a negative control. The race itself did not 
 clean-state `Deploy.ps1` runs used to test this change, so the "continue" branch is verified by
 isolated regex testing, not yet by a live end-to-end trigger.
 
+---
+
+## T-F05 — Archive Browser: tar.exe Selective-Extraction Spike + Subset Compression-Bomb Scope
+
+**Spike, run before writing any subset-extraction code (per this project's "confirmed
+empirically" standard for tar.exe behavior):** built a real `.tar` (`root.txt` + `sub/nested.txt`
++ `sub/nested2.txt`) with the real Windows-shipped `C:\Windows\System32\tar.exe` and tested
+`-xf archive.tar -C <dest> <members...>` directly.
+
+**Findings:**
+- `-tf`'s plain-name listing and `-tvf`'s per-line paths use the exact same path form, including a
+  trailing `/` on directory entries (`sub/`, not `sub`). Any selective-extraction argument list
+  must match that form exactly — passing `sub` (no trailing slash) for a directory member was not
+  tested but should not be assumed equivalent to `sub/`; always build member arguments from the
+  literal strings `ListEntriesAsync`/`-tf` already produced, never re-derive them.
+- Passing explicit leaf members (e.g. `root.txt sub/nested.txt`) extracts **only** those files —
+  `sub/nested2.txt` is correctly left out, and no error occurs even though the containing `sub/`
+  directory entry itself was never named as an argument (tar creates the intermediate directory
+  implicitly).
+- **Passing a directory member (`sub/`) auto-recurses** — it extracts every file nested under it
+  (`nested.txt` and `nested2.txt` both appeared), not just an empty directory placeholder. This
+  means `ExpandSelection` (T-F05's plan, `TASKS.md:148-264`) does not strictly need to expand a
+  selected folder into its full descendant leaf-name list before calling `tar -xf` — passing the
+  folder's own path (with trailing `/`, matching `-tf`'s form) is sufficient and tar itself does
+  the recursion. Kept the plan's original "expand to explicit descendant names" approach anyway
+  (see decision below) rather than relying on this auto-recursion — it is simply a validated
+  superset-safe fallback if the plan's expansion logic has a bug, not a load-bearing behavior.
+- An unmatched/misspelled member name (`does_not_exist.txt`) makes `tar.exe` exit non-zero
+  (`tar.exe: <name>: Not found in archive` / `Error exit delayed from previous errors.`) rather
+  than silently skipping it. `TarProcessService`'s subset-extraction code must therefore build its
+  member-argument list only from names it already confirmed exist (from the same `-tf`/`-tvf`
+  pass `ScanForUnsafeEntriesAsync` already ran), never from unvalidated UI-supplied strings — a
+  stale selection (an entry the UI thinks exists but doesn't, e.g. a race with the archive
+  changing on disk between listing and extraction) would otherwise fail the *entire* `-xf` call,
+  not just the missing member.
+
+**Decision — subset compression-bomb check stays whole-archive-based, not narrowed to the
+selection:** `EvaluateCompressionBombAsync` continues to run against the full archive's
+`declaredUncompressedSize`/`compressedSize` even when `ExtractOptions.SelectedEntryPaths` narrows
+what's actually written to disk. Accepted trade-off, same shape as T-F94's own "aggregate ratio
+can miss a small hidden bomb" trade-off above: this can **over-warn** (a huge, otherwise-safe
+archive with only a small selected subset may trip a bomb prompt that doesn't reflect what's
+actually being extracted) but never **under-warns** (a real bomb entry within the selection is
+never let through uncomputed). Under-warning would be the actual regression to avoid; over-warning
+is just an extra confirmation dialog. Narrowing the check to sum only the selected entries' sizes
+is a valid fast-follow if this proves annoying in practice, but is out of scope for this task —
+it would require the check to run after the entry list (and their individual sizes) is already
+known, whereas today's whole-archive check runs as a single pass over `-tvf` output before any
+per-entry logic exists.
+
 **Files:** `scripts/Deploy.ps1`.

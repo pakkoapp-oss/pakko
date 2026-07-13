@@ -210,5 +210,5 @@ ADMX/ADML template provided for enterprise Group Policy deployment.
 | v1.1 | Store release — ZIP only |
 | v1.2 | Shell extension + MOTW + file associations + hash viewer |
 | v1.3 | tar.exe integration — RAR/7z/tar extraction + capability detection |
-| v1.4 | GPO/ADMX + Low IL sandbox (P/Invoke) + strict mode policy |
+| v1.4 | GPO/ADMX + Low IL sandbox (P/Invoke) + strict mode policy + Archive Browser (T-F05) |
 | v1.5 | TAR creation via tar.exe + additional format fixtures |

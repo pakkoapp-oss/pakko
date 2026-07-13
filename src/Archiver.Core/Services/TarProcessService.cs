@@ -85,7 +85,8 @@ public sealed class TarProcessService : ITarService
             {
                 var (actualDest, anyExtracted) = await ExtractSingleArchiveAsync(
                     archivePath, destDir, options.OnConflict, skippedFiles,
-                    options.ConfirmCompressionBombExtraction, cancellationToken)
+                    options.ConfirmCompressionBombExtraction, options.SelectedEntryPaths,
+                    cancellationToken)
                     .ConfigureAwait(false);
 
                 // T-F87: an archive whose entries were all individually skipped (e.g. every
@@ -154,9 +155,15 @@ public sealed class TarProcessService : ITarService
         ConflictBehavior onConflict,
         List<SkippedFile> skippedFiles,
         Func<CompressionBombWarning, Task<bool>>? confirmCompressionBombExtraction,
+        IReadOnlyList<string>? selectedEntryPaths,
         CancellationToken cancellationToken)
     {
-        long declaredUncompressedSize = await ScanForUnsafeEntriesAsync(archivePath, cancellationToken)
+        // T-F05: the whole-archive pre-scan below runs unconditionally, exactly as it did before
+        // SelectedEntryPaths existed — it must NEVER be skipped or narrowed just because only a
+        // subset will be extracted (see T-F49's exploit finding in DECISIONS.md: a symlink entry
+        // can escape quarantine before any per-entry check runs, so the whole archive must be
+        // validated regardless of what subset the caller eventually asks tar.exe to extract).
+        var (declaredUncompressedSize, allNames) = await ScanForUnsafeEntriesAsync(archivePath, cancellationToken)
             .ConfigureAwait(false);
 
         // T-F94: whole-archive compression-ratio decision, run BEFORE quarantineDir is created
@@ -199,8 +206,11 @@ public sealed class TarProcessService : ITarService
 
         try
         {
-            var (exitCode, _, stdErr) = await RunTarAsync(
-                new[] { "-xf", archivePath, "-C", quarantineDir }, cancellationToken).ConfigureAwait(false);
+            var tarArgs = new List<string> { "-xf", archivePath, "-C", quarantineDir };
+            if (selectedEntryPaths is { Count: > 0 })
+                tarArgs.AddRange(ExpandSelection(allNames, selectedEntryPaths));
+
+            var (exitCode, _, stdErr) = await RunTarAsync(tarArgs, cancellationToken).ConfigureAwait(false);
 
             if (exitCode != 0)
                 throw new IOException($"tar.exe extraction failed: {stdErr.Trim()}");
@@ -276,7 +286,8 @@ public sealed class TarProcessService : ITarService
     // accumulated here, in the same single "-tvf" pass that already reads the type column, to
     // avoid a second tar.exe invocation just to re-derive it (matches T-F90's original rationale
     // for extending this one pass in the first place).
-    private static async Task<long> ScanForUnsafeEntriesAsync(string archivePath, CancellationToken cancellationToken)
+    private static async Task<(long TotalDeclaredSize, string[] Names)> ScanForUnsafeEntriesAsync(
+        string archivePath, CancellationToken cancellationToken)
     {
         var (nameExitCode, nameStdOut, nameStdErr) = await RunTarAsync(
             new[] { "-tf", archivePath }, cancellationToken).ConfigureAwait(false);
@@ -318,7 +329,90 @@ public sealed class TarProcessService : ITarService
                 totalDeclaredSize += ParseTarListingSize(line);
         }
 
-        return totalDeclaredSize;
+        // T-F05: the raw names (with tar's own trailing '/' on directory entries preserved) are
+        // returned so ExtractSingleArchiveAsync's selected-subset extraction can build a "-xf"
+        // member argument list without a second "-tf" invocation, and so the exact path form
+        // tar.exe itself uses is what's ever passed back to it (see DECISIONS.md's T-F05 spike
+        // entry — an unmatched/mismatched member name makes the whole "-xf" call fail non-zero).
+        return (totalDeclaredSize, names);
+    }
+
+    // T-F05: expands a UI-selected set of archive-internal paths (ArchiveEntryInfo.Path's
+    // convention — no trailing slash, even for folders) into the exact literal member names
+    // tar.exe's "-tf" reported, for a "-xf archive member..." selective-extraction call. A
+    // selected folder path is expanded to every one of its descendants explicitly, rather than
+    // relying on tar.exe auto-recursing a bare directory-member argument — confirmed empirically
+    // (DECISIONS.md's T-F05 entry) that tar.exe does auto-recurse, but this method doesn't depend
+    // on that behavior continuing to hold.
+    private static List<string> ExpandSelection(string[] allNames, IReadOnlyList<string> selectedEntryPaths)
+    {
+        var allNamesSet = new HashSet<string>(allNames, StringComparer.Ordinal);
+        var result = new List<string>();
+
+        foreach (string selected in selectedEntryPaths)
+        {
+            if (allNamesSet.Contains(selected))
+                result.Add(selected);
+            else if (allNamesSet.Contains(selected + "/"))
+                result.Add(selected + "/");
+
+            string descendantPrefix = selected + "/";
+            foreach (string name in allNames)
+            {
+                if (name.StartsWith(descendantPrefix, StringComparison.Ordinal))
+                    result.Add(name);
+            }
+        }
+
+        return result.Distinct(StringComparer.Ordinal).ToList();
+    }
+
+    /// <inheritdoc/>
+    public async Task<ArchiveListResult> ListEntriesAsync(
+        string archivePath,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var (nameExitCode, nameStdOut, nameStdErr) = await RunTarAsync(
+                new[] { "-tf", archivePath }, cancellationToken).ConfigureAwait(false);
+            if (nameExitCode != 0)
+                return new ArchiveListResult { Success = false, ErrorMessage = nameStdErr.Trim() };
+
+            string[] names = SplitLines(nameStdOut);
+
+            var (typeExitCode, typeStdOut, typeStdErr) = await RunTarAsync(
+                new[] { "-tvf", archivePath }, cancellationToken).ConfigureAwait(false);
+            if (typeExitCode != 0)
+                return new ArchiveListResult { Success = false, ErrorMessage = typeStdErr.Trim() };
+
+            string[] typeLines = SplitLines(typeStdOut);
+            if (typeLines.Length != names.Length)
+                return new ArchiveListResult { Success = false, ErrorMessage = "Archive listing is inconsistent." };
+
+            var entries = new List<ArchiveEntryInfo>(names.Length);
+            for (int i = 0; i < names.Length; i++)
+            {
+                char typeChar = typeLines[i].Length > 0 ? typeLines[i][0] : '?';
+                entries.Add(new ArchiveEntryInfo
+                {
+                    Path = names[i].TrimEnd('/'),
+                    Size = typeChar == '-' ? ParseTarListingSize(typeLines[i]) : 0,
+                    CompressedSize = 0,
+                    // Date column was observed locale-mangled (see this method's sibling
+                    // ScanForUnsafeEntriesAsync's comment and DECISIONS.md's T-F84 entry) — left
+                    // null rather than risk a half-correct parse; the UI shows "—" instead.
+                    Modified = null,
+                    IsDirectory = typeChar == 'd',
+                });
+            }
+
+            return new ArchiveListResult { Success = true, Entries = entries };
+        }
+        catch (IOException ex)
+        {
+            return new ArchiveListResult { Success = false, ErrorMessage = ex.Message };
+        }
     }
 
     // Column 4 (0-based) of "tar -tvf" output: mode, link-count, owner, group, size, month, day,

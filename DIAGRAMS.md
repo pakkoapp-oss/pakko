@@ -205,6 +205,14 @@ applies to either. T-F85 changed `ExtractAsync()`'s single `_archiveService.Extr
 call to `_extractionRouter.ExtractAsync(...)` — same await, same exception types, no new
 branch — so this diagram's content is otherwise unaffected by that change.
 
+**T-F05 (Archive Browser):** `ExtractAsync()`'s body was extracted into a shared
+`RunExtractAsync(archivePaths, selectedEntryPaths)`, now also called by
+`ExtractSelectedFromBrowserCommand`/`ExtractAllFromBrowserCommand`/
+`ExtractSingleBrowserEntryAsync`. The state machine below is unchanged — same
+`Idle→Busy→{AwaitingSummaryDialog|AwaitingErrorDialog|CancelledNoDialog}→Idle` shape, same
+`IsBusy` sequencing — only the transition's trigger label gains three more command names that
+all lead to the identical `Busy` entry point via the same shared method body.
+
 ```mermaid
 stateDiagram-v2
     [*] --> Idle
@@ -247,11 +255,16 @@ stateDiagram-v2
 ## 3. Activity — Extract validation/foldering chain
 
 Source read for this diagram: `ExtractWithSmartFolderingAsync` in
-`src/Archiver.Core/Services/ZipArchiveService.cs:463-668`.
+`src/Archiver.Core/Services/ZipArchiveService.cs`.
 
 ```mermaid
 flowchart TD
-    A[For each ZIP file entry<br/>fileEntries excludes dir markers ending '/'] --> C{isSingleRootFolder:<br/>strip leading segment}
+    A0[allFileEntries = every non-dir ZIP entry] --> A1{"T-F05: options.SelectedEntryPaths<br/>set and non-empty?"}
+    A1 -- no --> A2[fileEntries = allFileEntries;<br/>isSingleRootFolder/isSingleRootFile<br/>computed normally]
+    A1 -- yes --> A3["fileEntries = allFileEntries filtered to<br/>the selected paths + anything nested<br/>under a selected folder path.<br/>isSingleRootFolder/isSingleRootFile forced<br/>false — actualDest = destDir always,<br/>no smart-foldering collapse for a subset"]
+    A2 --> A4["Compression-bomb check (below) still sums<br/>allFileEntries, NOT the filtered subset —<br/>conservative: may over-warn, never under-warns.<br/>See DECISIONS.md's T-F05 entry."]
+    A3 --> A4
+    A4 --> A[For each entry in fileEntries<br/>— the (possibly filtered) set from A2/A3] --> C{isSingleRootFolder:<br/>strip leading segment}
     C -- stripped to empty --> Z[bytesRead += Length; no output]
     C -- non-empty, or not applicable --> D{"':' in entry name?<br/>(Alternate Data Stream) T-F38"}
     D -- yes --> S1[SkippedFiles += ADS reason]
@@ -390,7 +403,12 @@ flowchart TD
     F -- no --> RejTar2["throw TarArchiveRejectedException<br/>('listing is inconsistent')"]
     F -- yes --> G{"for each -tvf line:<br/>char[0] == '-' or 'd'?"}
     G -- "no (l/h/b/c/p/s)" --> RejTar3["throw TarArchiveRejectedException<br/>('symlink, hardlink, device...')<br/>⚠ THIS is the gate that blocks the confirmed<br/>symlink-escape exploit — see DECISIONS.md's T-F49 entry"]
-    G -- "yes, every entry '-' or 'd'" --> H["Directory.CreateDirectory(quarantineDir)<br/>tar -xf archivePath -C quarantineDir"]
+    G -- "yes, every entry '-' or 'd'" --> G2{"T-F05: options.SelectedEntryPaths<br/>set and non-empty?<br/>(gates D-G above already ran<br/>UNCONDITIONALLY — the pre-scan<br/>never branches on this)"}
+    G2 -- no --> H["Directory.CreateDirectory(quarantineDir)<br/>tar -xf archivePath -C quarantineDir"]
+    G2 -- yes --> G3["ExpandSelection(allNames, SelectedEntryPaths):<br/>each selected path → its exact -tf name<br/>(file or dir form) + every -tf name it's<br/>a '/'-prefix of (descendants) — built from<br/>the SAME name list gate D already validated,<br/>never a second '-tf' call"]
+    G3 --> H2["Directory.CreateDirectory(quarantineDir)<br/>tar -xf archivePath -C quarantineDir &lt;expanded members&gt;"]
+    H2 -- "exit != 0 (e.g. a stale/unmatched<br/>member name — 'Not found in archive')" --> RejIO2
+    H2 -- "exit 0" --> I
     H -- "exit != 0" --> RejIO2["throw IOException(stdErr)<br/>→ finally still runs: quarantine deleted<br/>→ caught in ExtractAsync as ArchiveError"]
     H -- "exit 0" --> I["Directory.CreateDirectory(destDir)<br/>walk EnumerateFilesGuarded(quarantineDir)"]
     I --> J{"subdirectory hit during walk:<br/>IsReparsePoint?"}
@@ -441,6 +459,14 @@ flowchart TD
   value) has no explicit branch and falls through to the unconditional `File.Move(overwrite:
   true)` — identical shape to `ZipArchiveService`'s gate, confirmed by reading
   `TarProcessService.cs:176-190` directly rather than assuming parity with diagram 3.
+- **New (T-F05, node G2/G3): the archive browser's "Extract selected" narrows what `-xf` extracts,
+  but never what the pre-scan validates.** Gates D through G run unconditionally, exactly as
+  before `SelectedEntryPaths` existed — the branch at G2 only changes the member-argument list
+  passed to `-xf`, never whether the whole-archive scan runs. `ExpandSelection` builds that list
+  from `allNames` (the same list gate D already validated), so a stale/mismatched selected path
+  fails the entire `-xf` call with a real tar.exe error rather than silently extracting nothing —
+  see `DECISIONS.md`'s T-F05 entry for the empirical spike confirming tar.exe's exact
+  member-matching and directory-auto-recursion behavior this relies on.
 - **Same `Success`/`SkippedFiles` asymmetry as diagram 3, fixed downstream the same way (T-F87,
   nodes Q2/Q3):** an extraction where every file was skipped (e.g. `OnConflict=Skip` and every
   entry already exists at the destination) still reports `Success=true` — `Success` itself was

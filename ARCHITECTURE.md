@@ -207,6 +207,12 @@ public interface IArchiveService
         IReadOnlyList<string> archivePaths,
         IProgress<ProgressReport>? progress = null,
         CancellationToken cancellationToken = default);
+
+    // T-F05: lists entries without extracting — flat, not hierarchical. Never throws — a
+    // failure is reported via ArchiveListResult.Success/ErrorMessage.
+    Task<ArchiveListResult> ListEntriesAsync(
+        string archivePath,
+        CancellationToken cancellationToken = default);
 }
 ```
 
@@ -232,6 +238,10 @@ public interface IDialogService
     // onto the window's DispatcherQueue before showing a ContentDialog. See DECISIONS.md's
     // T-F94 entry.
     Task<bool> ShowCompressionBombConfirmAsync(CompressionBombWarning warning);
+
+    // T-F05: single-entry Info dialog for the archive browser (ArchiveEntryViewModel lives in
+    // Archiver.App.Core).
+    Task ShowEntryInfoAsync(ArchiveEntryViewModel entry);
 }
 ```
 
@@ -359,6 +369,13 @@ public interface ITarService
         ExtractOptions options,
         IProgress<int>? progress = null,
         CancellationToken cancellationToken = default);
+
+    // T-F05: built on the RunTarAsync primitive (-tf + -tvf) — deliberately does NOT reuse
+    // ScanForUnsafeEntriesAsync's pre-scan; listing must never be gated on a policy that only
+    // matters once bytes are about to be written to disk.
+    Task<ArchiveListResult> ListEntriesAsync(
+        string archivePath,
+        CancellationToken cancellationToken = default);
 }
 ```
 
@@ -388,6 +405,7 @@ services.AddSingleton<ITarService, TarProcessService>();
 services.AddSingleton<TarCapabilities>(sp =>
     sp.GetRequiredService<ITarService>().DetectCapabilitiesAsync().GetAwaiter().GetResult());
 services.AddSingleton<IExtractionRouter, ExtractionRouter>();
+services.AddSingleton<IArchiveListingRouter, ArchiveListingRouter>(); // T-F05
 ```
 
 ### v1.3 — IExtractionRouter (T-F85)
@@ -442,6 +460,125 @@ Flow:
 4. After process exits, validate all files at Medium IL in C# code
 5. Atomic move to final destination
 6. Clean up quarantine directory
+
+### v1.4 — T-F05 Archive Browser
+
+New models in `Archiver.Core/Models/`:
+
+```csharp
+// Models/ArchiveEntryInfo.cs
+public sealed record ArchiveEntryInfo
+{
+    public required string Path { get; init; }  // '/'-separated, no leading slash
+    public long Size { get; init; }
+    public long CompressedSize { get; init; }
+    public DateTime? Modified { get; init; }     // null for tar (date column is locale-mangled)
+    public bool IsDirectory { get; init; }
+}
+
+// Models/ArchiveListResult.cs
+public sealed record ArchiveListResult
+{
+    public bool Success { get; init; }
+    public IReadOnlyList<ArchiveEntryInfo> Entries { get; init; } = [];
+    public string? ErrorMessage { get; init; }
+}
+```
+
+`IArchiveService`/`ITarService` each gain:
+
+```csharp
+Task<ArchiveListResult> ListEntriesAsync(string archivePath, CancellationToken cancellationToken = default);
+```
+
+Routed by a new interface, mirroring `IExtractionRouter`'s dispatch exactly (same
+`ArchiveFormatDetector`/`TarCapabilities` logic, copied rather than shared — see `DECISIONS.md`):
+
+```csharp
+// Interfaces/IArchiveListingRouter.cs
+public interface IArchiveListingRouter
+{
+    Task<ArchiveListResult> ListEntriesAsync(string archivePath, CancellationToken cancellationToken = default);
+}
+```
+
+Implementation: `ArchiveListingRouter` in `Archiver.Core/Services/`. `TarProcessService.ListEntriesAsync`
+is built on the existing `RunTarAsync` primitive (`-tf` + `-tvf`), deliberately **not** reusing
+`ScanForUnsafeEntriesAsync` — listing must never be gated on the security pre-scan that only
+matters once bytes are about to be written to disk.
+
+`ExtractOptions` gains one field for the archive browser's "Extract selected" command:
+
+```csharp
+public IReadOnlyList<string>? SelectedEntryPaths { get; init; }
+```
+
+Non-null/non-empty restricts extraction to just those archive-internal entry paths (a selected
+folder implies its full nested contents); `null` (default) is unaffected — every existing caller
+extracts everything, as before. Rides through `ExtractionRouter`'s existing
+`options with { ArchivePaths = ... }` pattern for free — `ExtractionRouter.cs` itself needed zero
+changes. Both `ZipArchiveService.ExtractWithSmartFolderingAsync` and
+`TarProcessService.ExtractSingleArchiveAsync` implement the filtering; the tar side's
+whole-archive pre-scan (T-F49) still runs **unconditionally** before the subset is ever computed
+— see `DECISIONS.md`'s T-F05 entry for the tar.exe selective-extraction spike this was verified
+against.
+
+DI registration adds:
+
+```csharp
+services.AddSingleton<IArchiveListingRouter, ArchiveListingRouter>();
+```
+
+New project `Archiver.App.Core` (plain `net8.0`, no WinUI — referenced by `Archiver.App`, tested
+by `Archiver.App.Core.Tests`) holds the App-layer model and the flat-to-tree helper:
+
+```csharp
+// Archiver.App.Core/ArchiveEntryViewModel.cs
+public sealed record ArchiveEntryViewModel
+{
+    public required string FullPath { get; init; }
+    public required string Name { get; init; }
+    public required bool IsFolder { get; init; }
+    public long Size { get; init; }
+    public long CompressedSize { get; init; }
+    public DateTime? Modified { get; init; }
+    // + ModifiedDisplay/SizeDisplay/Icon computed properties
+}
+
+// Archiver.App.Core/ArchiveTreeIndex.cs
+public static class ArchiveTreeIndex
+{
+    public static IReadOnlyDictionary<string, IReadOnlyList<ArchiveEntryViewModel>> Build(
+        IReadOnlyList<ArchiveEntryInfo> flatEntries);
+}
+```
+
+`Build` synthesizes implied folder nodes from `/`-split paths (ZIP archives commonly have no
+explicit directory entries) and runs once per archive open — folder navigation afterward is an
+O(1) dictionary lookup, never a re-scan of the flat list, which matters at the 65,000+-entry
+scale this app's archives can reach (T-F20).
+
+`MainViewModel` (`Archiver.App`) gains an `IArchiveListingRouter` constructor dependency plus
+browser state (`IsBrowsingArchive`, `BrowsedArchivePath`, `CurrentFolderPath`,
+`CurrentFolderEntries`, `BreadcrumbSegments`, `SelectedBrowserEntries`) and commands
+(`EnterBrowseModeAsync`, `NavigateIntoFolder`/`NavigateToBreadcrumbSegment`, `ExitBrowseModeCommand`,
+`ExtractSelectedFromBrowserCommand`/`ExtractAllFromBrowserCommand`/`ExtractSingleBrowserEntryAsync`,
+`ShowSelectedEntryInfoCommand`). The Extract-related commands all funnel through a shared private
+`RunExtractAsync(archivePaths, selectedEntryPaths)` that the pre-existing whole-archive
+`ExtractCommand` was refactored to call too — the `IsBusy`/progress/stopwatch/bomb-confirm/
+summary-dialog/cleanup sequence is identical for both; only `ArchivePaths` and
+`SelectedEntryPaths` differ.
+
+`IDialogService` gains `Task ShowEntryInfoAsync(ArchiveEntryViewModel entry)` — a `ContentDialog`
+showing Name/Path/Size/CompressedSize/Modified, matching the existing `ShowFileHashAsync` pattern.
+
+`MainWindow.xaml`'s Row 1 (file table) and Row 3 (action buttons) each gain a sibling `Grid`
+toggled by `IsPendingListVisibility`/`IsBrowsingArchiveVisibility` (inline mode-swap, not a new
+window or `NavigationView`). The browser `Grid` holds a `BreadcrumbBar` (first use in this
+codebase) and a `ListView` (`SelectionMode="Multiple"`, explicit
+`VirtualizingStackPanel VirtualizationMode="Recycling"` via `ItemsPanelTemplate`) bound to
+`ArchiveEntryViewModel`. Double-clicking a recognized archive in the existing pending-selection
+list (gated by `ArchiveFormatDetector.Detect`, not `FileItem.Type`) calls `EnterBrowseModeAsync`.
 
 ---
 

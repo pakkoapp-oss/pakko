@@ -11,6 +11,7 @@ f137303d2823726ff47e24e2acfaf4549de948b7c7cb6b899ed65b6760963299  valid_single_f
 9f376ca9b3ef29c5857bae5b0c87bac004d60adb0050639d38f3e410b542f89e  valid_nested_folders.zip  # 6 entries, 3-level nesting
 b3abca90df135b9019f6d858382e93a7c6389a786d47517f5db4bf3c76358e0c  valid_unicode_filenames.zip  # unicode entry names
 b6da9d7d83faac8e0c4c809c17b10946288da7a83c3ca0df849b2fed101f97ec  valid_incompressible_content.zip  # NoCompression — incompressible binary content
+5858937e765a160e32a21b9d13d6029a0c7703caa3ab7f4d4974d2aab1fb6818  valid_nested_folders.tar  # T-F05: 6 entries, 3-level nesting — mirrors valid_nested_folders.zip for parity
 c47f3b60ac1c0ac41f7531a268163af94d13b451aa0396844e23501195504a10  extract_single_root_folder.zip  # T-14: single root folder 'project/' — no double-nesting expected
 e68d90c298fab1d7085016291002425367fbe30543e11b8dd50b113517890ec8  extract_multiple_root_items.zip  # T-14: multiple root items — subfolder expected on extract
 896ff6863d66195897b78be17aa608cd76972300439c7b3175212e56ff870738  extract_single_root_file.zip  # T-14: single root file — extract directly

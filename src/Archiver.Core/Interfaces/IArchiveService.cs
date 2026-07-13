@@ -30,4 +30,12 @@ public interface IArchiveService
         IReadOnlyList<string> archivePaths,
         IProgress<ProgressReport>? progress = null,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Lists an archive's entries as a flat list, without extracting. Never throws — a failure
+    /// (corrupted archive, IO error) is reported via ArchiveListResult.Success/ErrorMessage.
+    /// </summary>
+    Task<ArchiveListResult> ListEntriesAsync(
+        string archivePath,
+        CancellationToken cancellationToken = default);
 }

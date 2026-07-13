@@ -1,3 +1,4 @@
+using Archiver.App.Core;
 using Archiver.Core.Models;
 
 namespace Archiver.App.Services;
@@ -13,4 +14,5 @@ public interface IDialogService
     Task ShowAboutAsync();
     Task ShowFileHashAsync();
     Task<bool> ShowCompressionBombConfirmAsync(CompressionBombWarning warning);
+    Task ShowEntryInfoAsync(ArchiveEntryViewModel entry);
 }

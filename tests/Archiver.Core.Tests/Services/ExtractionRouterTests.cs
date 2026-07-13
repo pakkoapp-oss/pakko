@@ -27,6 +27,9 @@ file sealed class FakeArchiveService : IArchiveService
 
     public Task<ArchiveResult> TestAsync(IReadOnlyList<string> archivePaths, IProgress<ProgressReport>? progress = null, CancellationToken cancellationToken = default)
         => throw new NotImplementedException();
+
+    public Task<ArchiveListResult> ListEntriesAsync(string archivePath, CancellationToken cancellationToken = default)
+        => throw new NotImplementedException();
 }
 
 file sealed class FakeTarService : ITarService
@@ -43,6 +46,9 @@ file sealed class FakeTarService : ITarService
         LastExtractOptions = options;
         return Task.FromResult(ExtractResult);
     }
+
+    public Task<ArchiveListResult> ListEntriesAsync(string archivePath, CancellationToken cancellationToken = default)
+        => throw new NotImplementedException();
 }
 
 public sealed class ExtractionRouterTests : IDisposable

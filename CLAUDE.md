@@ -47,9 +47,18 @@ existing `Assets\Square44x44Logo.ico`, confirmed on-device by the user 2026-07-0
 way: `Deploy.ps1`/`dotnet publish` currently fails with `MSB3231` cleaning up its own
 `AppPackages`/`obj` output *after* a valid `.msix` is already written — worked around this once via
 a direct `Add-AppxPackage`, root cause still open, tracked as T-F96.
+**T-F05 (Archive Browser) is `[~]` partial** — versioned into v1.4, all implementation done
+(Core `ListEntriesAsync`/`IArchiveListingRouter`, `ExtractOptions.SelectedEntryPaths`, new
+`Archiver.App.Core` project, full `MainWindow.xaml`/`MainViewModel` wiring for the breadcrumb +
+per-folder browser view and Extract Selected/All/Info commands), `dotnet test` green, and a full
+`Deploy.ps1` build+sign+install completed 2026-07-13 — stays partial until the user's manual
+on-device click-through (browse a real ZIP/tar-family archive, extract a selection, view Info)
+is confirmed. See `DECISIONS.md`'s T-F05 entry for the tar.exe selective-extraction spike findings
+and the subset-compression-bomb-check tradeoff made while implementing it.
 - T-01 through T-35 + T-11, and T-F16/T-F17/T-F18/T-F26–T-F29/T-F37–T-F39/T-F44/T-F45 complete
-- 177/177 .NET tests pass (`dotnet test --filter "Category!=Slow"`: 124 Archiver.Core.Tests +
-  36 Archiver.Shell.Tests + 17 Archiver.Core.IntegrationTests). 3 additional Zip64 tests (T-F20)
+- 208/208 .NET tests pass (`dotnet test --filter "Category!=Slow"`: 146 Archiver.Core.Tests +
+  36 Archiver.Shell.Tests + 21 Archiver.Core.IntegrationTests + 5 Archiver.App.Core.Tests, the
+  last a new plain-net8.0 project added for T-F05's flat-to-tree helper). 4 Zip64 tests (T-F20)
   are tagged `[Trait("Category", "Slow")]` and excluded from this default run — they cost real
   wall-clock time (>65535-file archiving/extraction, a >4 GiB round trip) that isn't worth paying
   on every change; run them explicitly with `dotnet test --filter "Category=Slow"` before a
@@ -106,6 +115,7 @@ this table and its owners instead.
 | `TESTING.md` | Test plan and fixture inventory for `Archiver.Core` | Writing or running tests | New test category, fixture, or test count changes |
 | `tests/Archiver.Core.Tests.GenerateFixtures/README.md` | Fixture-generation mechanics only (subordinate to `TESTING.md`) | Adding a fixture-dependent test | A new fixture scenario is added |
 | `SPEC.md` | Product specification — **canonical owner of the version roadmap table, feature scope, non-goals** | Scoping a new feature, checking what's out of scope | Scope or roadmap changes |
+| `CLI.md` | **Canonical owner of Archiver.CLI's (T-F09) command/switch specification** — 7z→Pakko command table, switch fidelity, three-way unknown-input rule | Implementing or extending T-F09 | The planned CLI command/switch surface changes |
 | `README.md` | Public GitHub landing page | User-facing — not an agent instruction source | Public messaging changes; must link to `SECURITY.md`/`SPEC.md`, never restate their tables |
 | `CONTRIBUTING.md` | Contributor onboarding summary | Before a contributor's first build | Build/deploy steps change — update `scripts/README.md` first, then sync the summary here |
 | `scripts/README.md` | **Canonical owner of build/sign/deploy steps** (`Deploy.ps1`, `Setup-DevCert.ps1`) | Running or changing the deploy scripts | `Deploy.ps1`/`Setup-DevCert.ps1` behavior changes |
@@ -282,6 +292,9 @@ references are easy to miss otherwise (this session found 5 lingering mentions o
 windows-archiver-wrapper/
 ├── src/
 │   ├── Archiver.Core/              ← net8.0 class library, no UI deps
+│   ├── Archiver.App.Core/          ← net8.0 class library, no WinUI deps (T-F05: ArchiveEntryViewModel,
+│   │                                  ArchiveTreeIndex — split out so the flat-to-tree helper is
+│   │                                  unit-testable without a WinUI test host)
 │   ├── Archiver.App/               ← WinUI 3 app
 │   │   └── Strings/en-US/          ← ResW localization
 │   ├── Archiver.Shell/             ← net8.0-windows WinExe, shell-triggered ops, no WinUI
@@ -289,6 +302,8 @@ windows-archiver-wrapper/
 │   └── Archiver.ShellExtension/    ← C++ COM DLL, IExplorerCommand (T-F61), x64+ARM64
 ├── tests/
 │   ├── Archiver.Core.Tests/        ← xunit (see "Current State" for current count)
+│   ├── Archiver.App.Core.Tests/    ← xunit, ArchiveTreeIndex coverage (T-F05)
+│   ├── Archiver.Core.IntegrationTests/ ← xunit, real tar.exe via [Integration]/TarBuilder
 │   ├── Archiver.Shell.Tests/       ← xunit (see "Current State" for current count)
 │   ├── Archiver.ShellExtension.Tests/  ← C++ Google Test, run separately (see Build Commands)
 │   └── Archiver.Core.Tests.GenerateFixtures/  ← fixture generator

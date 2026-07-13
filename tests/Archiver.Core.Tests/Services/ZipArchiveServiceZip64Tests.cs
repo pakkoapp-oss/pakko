@@ -82,6 +82,34 @@ public sealed class ZipArchiveServiceZip64Tests : IDisposable
         Directory.GetFiles(extractDest).Should().HaveCount(fileCount);
     }
 
+    // T-F05: ListEntriesAsync must return a flat (not hierarchical) list even at Zip64 scale —
+    // confirms the listing method itself doesn't choke or truncate past the 16-bit entry-count
+    // boundary, complementing the archive/extract Zip64 tests above.
+    [Fact]
+    [Trait("Category", "Slow")]
+    public async Task ListEntriesAsync_ArchiveWithMoreThan65535Entries_ReturnsFlatListNotHierarchical()
+    {
+        const int fileCount = 65_600;
+        string sourceDir = Path.Combine(_temp.Path, "many_files_list_src");
+        Directory.CreateDirectory(sourceDir);
+        for (int i = 0; i < fileCount; i++)
+            File.Create(Path.Combine(sourceDir, $"f{i}.txt")).Dispose();
+
+        var archiveResult = await _sut.ArchiveAsync(new ArchiveOptions
+        {
+            SourcePaths = [sourceDir],
+            DestinationFolder = _temp.Path,
+            ArchiveName = "many_files_list"
+        });
+        archiveResult.Success.Should().BeTrue();
+
+        var listResult = await _sut.ListEntriesAsync(archiveResult.CreatedFiles[0]);
+
+        listResult.Success.Should().BeTrue();
+        listResult.Entries.Should().HaveCount(fileCount);
+        listResult.Entries.Should().OnlyContain(e => !e.IsDirectory);
+    }
+
     // Marks a freshly-created file as an NTFS sparse file (FSCTL_SET_SPARSE) so a >4 GiB length
     // can be set without allocating real disk blocks for the all-zero content — the filesystem
     // returns zeros for unallocated ranges on read, so archiving/extracting it exercises Zip64's

@@ -18,4 +18,15 @@ public interface ITarService
         ExtractOptions options,
         IProgress<int>? progress = null,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Lists a tar-family archive's entries as a flat list, without extracting. Never throws — a
+    /// failure (corrupted archive, tar.exe error) is reported via
+    /// ArchiveListResult.Success/ErrorMessage. Does not run the whole-archive safety pre-scan
+    /// ScanForUnsafeEntriesAsync performs before extraction — listing must never be gated on a
+    /// policy that only matters once bytes are about to be written to disk.
+    /// </summary>
+    Task<ArchiveListResult> ListEntriesAsync(
+        string archivePath,
+        CancellationToken cancellationToken = default);
 }

@@ -507,7 +507,8 @@ public sealed class ZipArchiveService : IArchiveService
                 var (actualDest, anyExtracted) = await Task.Run(async () =>
                     await ExtractWithSmartFolderingAsync(archivePath, destDir, alreadyIsolated,
                         options.OnConflict, skippedFiles, archiveProgress,
-                        options.ConfirmCompressionBombExtraction, cancellationToken),
+                        options.ConfirmCompressionBombExtraction, options.SelectedEntryPaths,
+                        cancellationToken),
                     cancellationToken).ConfigureAwait(false);
 
                 // T-F87: an archive whose entries were all individually skipped (e.g. every
@@ -636,6 +637,34 @@ public sealed class ZipArchiveService : IArchiveService
         };
     }
 
+    /// <inheritdoc/>
+    public async Task<ArchiveListResult> ListEntriesAsync(
+        string archivePath,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var entries = await Task.Run(() =>
+            {
+                using var archive = ZipFile.OpenRead(archivePath);
+                return archive.Entries.Select(e => new ArchiveEntryInfo
+                {
+                    Path = e.FullName.TrimEnd('/'),
+                    Size = e.Length,
+                    CompressedSize = e.CompressedLength,
+                    Modified = e.LastWriteTime.DateTime,
+                    IsDirectory = e.FullName.EndsWith('/'),
+                }).ToList();
+            }, cancellationToken).ConfigureAwait(false);
+
+            return new ArchiveListResult { Success = true, Entries = entries };
+        }
+        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException)
+        {
+            return new ArchiveListResult { Success = false, ErrorMessage = ex.Message };
+        }
+    }
+
     // Reads every entry's decompressed bytes and compares a freshly computed CRC-32 against
     // the value declared in the entry's header — System.IO.Compression never validates this
     // itself on read, so a bit-flipped-but-structurally-valid entry would otherwise extract
@@ -676,13 +705,31 @@ public sealed class ZipArchiveService : IArchiveService
         List<SkippedFile> skippedFiles,
         IProgress<ProgressReport>? progress,
         Func<CompressionBombWarning, Task<bool>>? confirmCompressionBombExtraction,
+        IReadOnlyList<string>? selectedEntryPaths,
         CancellationToken cancellationToken)
     {
         using var archive = ZipFile.OpenRead(archivePath);
 
-        var fileEntries = archive.Entries
+        var allFileEntries = archive.Entries
             .Where(e => !e.FullName.EndsWith('/'))
             .ToList();
+
+        // T-F05: restrict to just the selected entries (plus anything nested under a selected
+        // folder path) before any of the smart-foldering logic below runs. O(entries × selected)
+        // is fine here — selections are UI-driven (a user checking boxes), realistically dozens of
+        // rows, not thousands, even against a 65,000-entry archive. The compression-bomb check
+        // below deliberately still evaluates allFileEntries (the whole archive), not this subset —
+        // see DECISIONS.md's T-F05 entry for why (conservative: may over-warn, never under-warns).
+        bool isSelectedSubset = selectedEntryPaths is { Count: > 0 };
+        var fileEntries = allFileEntries;
+        if (isSelectedSubset)
+        {
+            var selectedSet = new HashSet<string>(selectedEntryPaths!, StringComparer.Ordinal);
+            fileEntries = allFileEntries
+                .Where(e => selectedSet.Contains(e.FullName)
+                         || selectedSet.Any(s => e.FullName.StartsWith(s + "/", StringComparison.Ordinal)))
+                .ToList();
+        }
 
         if (fileEntries.Count == 0)
         {
@@ -690,23 +737,30 @@ public sealed class ZipArchiveService : IArchiveService
             return (destDir, true);
         }
 
-        bool isSingleRootFolder = fileEntries.All(e => e.FullName.Contains('/'))
+        // A selected subset has no single meaningful "root" to collapse — it may span multiple
+        // top-level folders/files depending on what the user checked. Skip the whole-archive
+        // smart-foldering decision entirely and always extract straight into destDir.
+        bool isSingleRootFolder = !isSelectedSubset
+            && fileEntries.All(e => e.FullName.Contains('/'))
             && fileEntries
                 .Select(e => e.FullName[..e.FullName.IndexOf('/')])
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .Count() == 1;
 
-        bool isSingleRootFile = fileEntries.Count == 1 && !fileEntries[0].FullName.Contains('/');
+        bool isSingleRootFile = !isSelectedSubset
+            && fileEntries.Count == 1 && !fileEntries[0].FullName.Contains('/');
 
-        string actualDest = (isSingleRootFolder || isSingleRootFile || alreadyIsolated)
+        string actualDest = (isSingleRootFolder || isSingleRootFile || alreadyIsolated || isSelectedSubset)
             ? destDir
             : Path.Combine(destDir, Path.GetFileNameWithoutExtension(archivePath));
 
         // T-F94: whole-archive compression-ratio check, run BEFORE tempDest is created so a
         // declined/blocked bomb leaves nothing to clean up. Deliberately whole-archive rather
         // than the old per-entry model (see DECISIONS.md's T-F94 entry) — matches
-        // TarProcessService's model and allows exactly one confirmation per archive.
-        long declaredUncompressedSize = fileEntries.Where(e => e.Length > 0).Sum(e => e.Length);
+        // TarProcessService's model and allows exactly one confirmation per archive. T-F05: uses
+        // allFileEntries (not the filtered subset) even when extracting only a selection — see
+        // DECISIONS.md's T-F05 entry for why this stays conservative rather than narrowed.
+        long declaredUncompressedSize = allFileEntries.Where(e => e.Length > 0).Sum(e => e.Length);
         long compressedFileSize = new FileInfo(archivePath).Length;
         var bombOutcome = await ArchiveEntrySecurity.EvaluateCompressionBombAsync(
             archivePath, declaredUncompressedSize, compressedFileSize,

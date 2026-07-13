@@ -29,6 +29,18 @@
   <data name="AddFolderButton.Content" xml:space="preserve">
     <value>Add folder</value>
   </data>
+  <data name="ExtractSelectedButton.Content" xml:space="preserve">
+    <value>Extract Selected</value>
+  </data>
+  <data name="ExtractAllButton.Content" xml:space="preserve">
+    <value>Extract All</value>
+  </data>
+  <data name="EntryInfoButton.Content" xml:space="preserve">
+    <value>Info</value>
+  </data>
+  <data name="CloseArchiveBrowserButton.Content" xml:space="preserve">
+    <value>Close</value>
+  </data>
 
   <!-- Drop zone -->
   <data name="DropZoneHint.Text" xml:space="preserve">
