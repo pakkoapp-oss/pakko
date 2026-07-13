@@ -472,9 +472,30 @@ Never silently ignore an unrecognized token or switch and proceed as if it wasn'
       and ignored; unsupported switches hit the three-way rule, not silent no-ops
 - [ ] `-mx` bucketing onto `CompressionLevel` documented (in `--help` output and in
       `ARCHITECTURE.md`), not left as an undocumented approximation
-- [ ] New `Archiver.CLI.Tests` project — command parsing, three-way error handling, and each
-      supported command's happy path
-- [ ] `dotnet test --filter "Category!=Slow"` passes with the new test project included
+- [ ] Argument parsing extracted into its own testable class (e.g. `CliArgumentParser`, mirroring
+      `Archiver.Shell`'s existing `ShellArgumentParser`/`ShellArgumentParserTests` split — parsing
+      logic never inline in `Main`), unit-tested in-process, no process spawned — covers the
+      three-way unknown-command/switch handling and every supported command's argument shape
+- [ ] **Real subprocess invocation tests against real archive fixtures — a genuinely new test
+      layer for this repo, not an existing pattern to reuse.** Checked first: `Archiver.Shell.Tests`
+      only unit-tests its parser class, never spawns `Archiver.Shell.exe`; no C# test project in
+      this repo currently launches a built `.exe` and asserts on its real exit code/stdout — that's
+      only done manually per `TESTING.md`'s smoke-test cycle. This doesn't transfer to
+      `Archiver.CLI` as-is: `Archiver.Shell.exe`'s arguments are only ever generated
+      programmatically by the shell extension, never typed by a person, so testing its parser
+      class in isolation is sufficient. `Archiver.CLI` is different — a user or script invokes it
+      directly, so its actual exit code and stdout/stderr text **are** the public contract, not an
+      implementation detail; a parser-only test suite would never catch a real process returning
+      the wrong exit code or malformed output. New tests (own test class/project, or a clearly
+      separated section of `Archiver.CLI.Tests` — decide during implementation) that `Process.Start`
+      the actual built `Archiver.CLI.exe` against real archive fixtures (reuse
+      `Archiver.Core.IntegrationTests/Fixtures/` where formats overlap, e.g. `valid.7z`/`valid.rar`,
+      rather than a third fixture set) covering: each supported command's happy path (`x`, `t`, `i`,
+      `a`) with real output verified on disk/in stdout, and at least one real case of each of the
+      three unknown-input categories (unparseable token, deliberately-unsupported real 7z command,
+      unsupported switch on a supported command) with the real exit code and real stderr text
+      asserted, not just that *some* non-zero exit happened
+- [ ] `dotnet test --filter "Category!=Slow"` passes with both new test layers included
 - [ ] Manual on-device verification: real `pakko x archive.zip`, `pakko t archive.zip`,
       `pakko i`, `pakko a archive.zip file1 file2` against real archives, plus one of each
       three-way error case, confirmed by the user personally
