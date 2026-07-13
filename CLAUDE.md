@@ -328,6 +328,16 @@ references are easy to miss otherwise (this session found 5 lingering mentions o
   the literal character — full rule + `\uXXXX` escape pattern is in `CONVENTIONS.md`. Shipped
   three times already (T-F64, T-F76, T-F63) despite being documented — check every new string
   literal before considering a change done.
+- **Shared WinUI `x:Uid` across elements with different property sets is fatal, not a no-op:**
+  giving a `Button` (`.Content`) and a `TextBlock` (`.Text`) the same `x:Uid` applies both resource
+  keys to both elements regardless of which properties exist — crashes natively (`0xc000027b`) at
+  `InitializeComponent()`. Give every distinct element/property combo its own key (T-F05,
+  `DECISIONS.md`).
+- **`ListView` already virtualizes by default** (its own `ItemsStackPanel`) — don't add an explicit
+  `VirtualizingStackPanel` `ItemsPanel` without a specific reason. Doing so gratuitously can race
+  with an async-loaded bound property (a fire-and-forget `Task.Run` setting a value after
+  construction), leaving a freshly realized row blank until a forced re-layout (T-F05,
+  `DECISIONS.md`).
 
 ---
 
