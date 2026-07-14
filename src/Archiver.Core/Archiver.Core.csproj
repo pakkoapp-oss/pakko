@@ -9,8 +9,12 @@
 
   <!-- T-F94: lets Archiver.Core.Tests unit-test ArchiveEntrySecurity.EvaluateCompressionBombAsync
        (internal) directly, rather than making internal-only implementation detail public. -->
+  <!-- T-F52: lets Archiver.Core.IntegrationTests exercise the internal Sandbox/ classes directly
+       for real tar.exe-through-AppContainer round trips (xz/zst compressed-format extraction,
+       sandbox-behavior proofs), same rationale as the entry above. -->
   <ItemGroup>
     <InternalsVisibleTo Include="Archiver.Core.Tests" />
+    <InternalsVisibleTo Include="Archiver.Core.IntegrationTests" />
   </ItemGroup>
 
 </Project>

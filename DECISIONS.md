@@ -2772,5 +2772,127 @@ but production `TarSandboxedService` code will call `SetEntriesInAclW` directly 
 implementation phase — verify via `icacls /save`+parse or by computing the mask programmatically,
 per this project's own norm of not committing to an unverified Windows API detail from memory.
 
+---
+
+## T-F52 — Phase 1 (steps 1–5) Implementation Progress + Packaged-Identity Confirmation
+
+**Method:** began the 13-phase implementation per TASKS.md's ordered build/verify plan, compiling
+and testing after each step rather than writing all 9 files up front — advisor-recommended given
+this task's unfamiliar security P/Invoke surface and this project's 3-attempt rule. New
+`src/Archiver.Core/Services/Sandbox/` classes written so far: `SandboxHandles.cs` (4 SafeHandle
+types — SID/Job Object/process-or-thread/attribute-list-buffer), `QuarantineStaging.cs`
+(`IsSameVolume`, hardlink-or-copy staging), `AppContainerProfile.cs` (`EnsureExists`/`GetSid`/
+`Delete`, the last test-only), `SandboxedProcessLauncher.cs` (raw `CreateProcessW` +
+`STARTUPINFOEX` + non-inheritable pipes + `CREATE_SUSPENDED`→assign→resume, with a Win32
+command-line-quoting helper), `SecurityCapabilitiesAttributeList.cs`
+(`PROC_THREAD_ATTRIBUTE_SECURITY_CAPABILITIES` attribute-list builder), `SandboxJobObject.cs`
+(`ActiveProcessLimit=1`, 512 MB RAM limit, CPU time limit, `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`,
+full UI-restriction bitmask). Real unit/integration tests added alongside each (not deferred to
+step 9) — `tests/Archiver.Core.Tests/Services/Sandbox/` and one new
+`tests/Archiver.Core.IntegrationTests/SandboxJobObjectTarExtractionTests.cs` — all passing against
+real Win32 calls, no mocks (per this repo's no-mocking-library convention).
+
+**Critical environment-gap check, done before continuing to ACL/signature/service work (advisor
+flagged this as the single most important checkpoint — Phase 0's spike and `dotnet test` both run
+from a plain, unpackaged full-trust console host, which cannot prove AppContainer creation and a
+`PROC_THREAD_ATTRIBUTE_SECURITY_CAPABILITIES` child launch also work from **package identity**,
+the actual context `Archiver.Shell`/`Archiver.App` run in as an MSIX `FullTrustApplication`):
+added a temporary `--sandbox-probe` command to `Archiver.Shell/Program.cs` (plus a temporary
+`InternalsVisibleTo` grant for `Archiver.Shell` in `Archiver.Core.csproj`) running the exact
+production pipeline — `AppContainerProfile.EnsureExists` → `GetSid` →
+`SecurityCapabilitiesAttributeList.Create` → `SandboxedProcessLauncher.RunAsync("tar.exe",
+["--version"], ...)` — logging its result to a temp file. Ran a full `Deploy.ps1` build+sign+
+install, then launched the **installed** `Archiver.Shell.exe` from
+`C:\Program Files\WindowsApps\PavloRybchenko.Pakko_1.2.0.26_x64__9hkd8feqeqbr4\` directly via
+`Start-Process` (same technique this project already uses to verify shell-triggered EXEs —
+see CLAUDE.md's Windows Packaging Best Practices). **Result: PASS** — exit code 0, full correct
+`bsdtar 3.8.4 - libarchive 3.8.4 zlib/... liblzma/... bz2lib/... libzstd/... cng/... libb2/...`
+output, from the real packaged process identity, not a simulated/unpackaged one. Both the temporary
+probe command and the temporary `InternalsVisibleTo` grant were reverted immediately after
+(`git checkout`/manual edit) — not part of the shipped design, same "throwaway, not committed"
+treatment as the Phase 0 spike itself.
+
+**Decision:** AppContainer + `PROC_THREAD_ATTRIBUTE_SECURITY_CAPABILITIES` is confirmed safe to
+build out fully under package identity — no fallback design or LPAC escape hatch is needed for
+this reason. Proceeding to step 6 (`QuarantineAcl`/`TarSandboxScope`) as planned.
+
+**Step 6 — `QuarantineAcl` resolves Phase 0's deferred icacls→`ACCESS_MASK` translation:**
+implemented via the canonical `GetNamedSecurityInfoW` → `SetEntriesInAclW` (with the existing DACL
+passed as `OldAcl`, so the grant is added, never a full-DACL replace that would strip the folder's
+owner/SYSTEM/Administrators entries) → `SetNamedSecurityInfoW` pattern, using the standard
+documented NTFS simple-permission masks: Read & Execute = `0x1200A9`, Modify = `0x1301BF`,
+Traverse Folder (quarantine-root-only, non-inherited) = `0x0020`. Verified with two real
+integration tests against a live AppContainer profile + real tar.exe (`QuarantineAclTests.cs`):
+(1) granting Read&amp;Execute on `in\`, Modify on `out\`, and traverse-only on the quarantine root
+lets a real `-xf` extraction succeed with zero `ERROR_ACCESS_DENIED`; (2) the same sandboxed
+launch targeting a sibling destination folder that Pakko itself created but never granted an ACE
+to fails with `tar.exe: could not chdir to ...` and writes nothing — reproducing Phase 0's own
+negative-control result, now through production code instead of `icacls.exe`.
+
+**Step 6 — real bug found while building `TarSandboxScope`, not in Phase 0's own spike:**
+NTFS hard links share their security descriptor with the ORIGINAL file object, not the containing
+directory — a hard link is just an additional directory entry pointing at the same file object,
+and DACL inheritance only applies at file-creation time, never retroactively to an existing
+object a new directory entry now also points at. This meant `QuarantineStaging.StageArchive`'s
+hardlink-when-same-volume path produced a staged archive the AppContainer SID could not read,
+even though the containing `in\` folder was correctly ACL'd with Read&amp;Execute for that SID —
+`tar.exe: Error opening archive: Failed to open '...\in\fixture.tar'` despite `icacls` showing
+`in\` itself granting the right access. Diagnosed by isolating variables one at a time (profile
+name, directory nesting depth, folder-name reuse across runs — all ruled out as the cause) until
+swapping `File.Copy` for `QuarantineStaging.StageArchive` in an otherwise-identical reproduction
+reproduced the failure on demand, and `icacls` on the staged file itself showed only
+`SYSTEM`/`Administrators`/the real user account — the original archive's inherited permissions,
+not `in\`'s. **Fix:** `TarSandboxScope.CreateAsync` now calls `QuarantineAcl.GrantReadExecute`
+directly on the staged file path itself immediately after staging, regardless of whether staging
+hardlinked or copied (a copy would already inherit this from `in\` at creation time, but granting
+explicitly is harmless and keeps both paths correct without a branch). Covered by a permanent
+regression test, `TarSandboxScopeTests.CreateAsync_StagedArchiveIsHardlinkedSameVolume_
+StillReadableInsideSandbox`.
+
+**Step 6 — separate, related design correction found the same session (before the bug above):**
+TASKS.md's original Flow said the quarantine directory should live "on the same disk as
+the destination" (a sibling of the user's chosen destination folder). Empirically, an AppContainer
+token has no bypass-traverse-checking privilege, so `FILE_TRAVERSE` is enforced on every ancestor
+directory down to `in\`/`out\` — and the user's arbitrary destination folder (Desktop, Documents,
+a network share, anywhere) sits under an ancestor chain Pakko does not own and should not be
+granting ACEs on. `TarSandboxScope` now roots the quarantine under a fixed, Pakko-owned
+`%TEMP%\PakkoTarSandbox\<guid>\` location instead, granting traverse-only on both Pakko-created
+levels (the shared `PakkoTarSandbox` parent and the per-operation `<guid>` subfolder) — `%TEMP%`
+itself needs no explicit grant for either of these two levels to work. This is a deliberate
+deviation from TASKS.md's original text: the final atomic-seeming "move from `out\` to
+destination" was already, in the real `TarProcessService` code, a **per-file `File.Move` loop**,
+not a whole-directory rename — and `File.Move` already succeeds across volumes for individual
+files — so rooting the quarantine under `%TEMP%` instead of next to the destination costs at most
+an extra copy instead of a rename when the two are on different volumes, never a correctness
+problem. Confirmed via `git log`/Explore of `TarProcessService.ExtractSingleArchiveAsync` before
+committing to this — the "same disk" requirement in the original text was never actually load-
+bearing for correctness, only an unrealized perf assumption.
+
+**Step 7 — `TarSignatureVerifier`: real `CERT_FIND_SUBJECT_CERT` constant bug, and a scope
+boundary (embedded vs. catalog signing):** the first working draft used
+`CERT_FIND_SUBJECT_CERT = 0x00070000`, guessed from a half-remembered constant — this is
+actually `CERT_COMPARE_NAME_STR_A << CERT_COMPARE_SHIFT` (a find-by-name-string mode), not
+`CERT_COMPARE_SUBJECT_CERT(11) << CERT_COMPARE_SHIFT(16) = 0x000B0000`. Passing the wrong
+constant made `CertFindCertificateInStore` misinterpret the `CERT_INFO` buffer from
+`CryptMsgGetParam(CMSG_SIGNER_CERT_INFO_PARAM)` as a plain string pointer, silently returning
+`CRYPT_E_NOT_FOUND` — confirmed via a temporary diagnostic build against the real
+`C:\Windows\System32\tar.exe` (`WinVerifyTrust` returned `0x00000000` — the integrity check
+itself was correct — but `CertFindCertificateInStore` failed with
+`0x80092004`/`-2146885628`). Fixed to the correct `0x000B0000`; re-running against the real
+tar.exe then correctly read the signer's Organization attribute as `Microsoft Corporation` (full
+subject `CN=Microsoft Windows, O=Microsoft Corporation, L=Redmond, S=Washington, C=US`, matching
+`Get-AuthenticodeSignature`'s own output for this file).
+
+Separately, an over-generalized test (`notepad.exe` should also pass, "confirming the check
+generalizes beyond tar.exe") failed even after the fix — not a further bug, but a real scope
+boundary: `notepad.exe` is genuinely Microsoft-signed but via a **Windows catalog (.cat) file**,
+not an embedded PKCS#7-in-PE signature (confirmed via
+`(Get-AuthenticodeSignature notepad.exe).SignatureType` = `"Catalog"` on this machine).
+`TarSignatureVerifier`'s `CryptQueryObject` call only requests
+`CERT_QUERY_CONTENT_FLAG_PKCS7_SIGNED_EMBED`, so it correctly does not recognize catalog
+signatures — and doesn't need to, since tar.exe (the only file this class ever checks) carries a
+real embedded signature. The test was corrected to assert `notepad.exe` returns `false`, with a
+comment explaining this is a deliberate scope boundary, not something to "fix" later.
+
 **Files:** none in `src/` — spike lived entirely in the session scratchpad and was deleted after
 use, per plan.

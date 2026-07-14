@@ -2608,17 +2608,30 @@ not because it's load-bearing.
    filesystem grants below are per-operation. This matters for both performance (no
    registry-profile churn per Extract/Archive call) and correctness under T-F12's parallel
    `SeparateArchives` mode (concurrent create/delete of the same profile would race)
-3. Create a **two-subfolder** quarantine directory on the same disk as the destination:
-   `quarantine\in\` and `quarantine\out\`. Grant the AppContainer SID **read-only** access to
-   `in\` and **write-only** access to `out\` via `SetNamedSecurityInfo` — an AppContainer process
-   has zero filesystem access outside paths explicitly ACL'd to its SID, so both are required
-   (tar.exe needs to read the source archive and write extracted output; it gets neither by
-   default)
+3. Create a **two-subfolder** quarantine directory rooted under a fixed, Pakko-owned
+   `%TEMP%\PakkoTarSandbox\<guid>\` location — **not** "same disk as the destination" as this
+   step originally said. An AppContainer token has no bypass-traverse-checking privilege, so
+   `FILE_TRAVERSE` is enforced on every ancestor directory down to `in\`/`out\`, and the user's
+   arbitrary destination folder sits under an ancestor chain Pakko doesn't own and shouldn't be
+   granting ACEs on; found empirically while implementing (see DECISIONS.md's T-F52 entry) —
+   `%TEMP%` itself needs no explicit grant, only the two Pakko-created levels
+   (`PakkoTarSandbox` and the per-operation `<guid>`) do. The final `out\`-to-destination move is
+   a per-file `File.Move` (already cross-volume-safe), not a directory rename, so this costs at
+   most an extra copy instead of a rename when the two are on different volumes — never a
+   correctness problem. Grant the AppContainer SID **read-only** access to `in\` and
+   **write-only** access to `out\` via `SetNamedSecurityInfo` — an AppContainer process has zero
+   filesystem access outside paths explicitly ACL'd to its SID, so both are required (tar.exe
+   needs to read the source archive and write extracted output; it gets neither by default)
 4. Place the source archive into `quarantine\in\` — hardlink if the archive and the quarantine
    directory are on the same volume (instant, no I/O cost); fall back to a real copy only when
    they're on different volumes. Never grant the AppContainer SID an ACE on the archive's
    original, user-chosen path directly — all AppContainer access stays confined to paths Pakko
-   itself created and controls
+   itself created and controls. **A hardlinked staged file shares its security descriptor with
+   the original archive, not the containing `in\` folder** — grant Read&amp;Execute on the staged
+   file path itself too, immediately after staging, regardless of whether it was hardlinked or
+   copied (found empirically as a real bug — see DECISIONS.md's T-F52 entry — a copy would
+   already inherit this from `in\` at creation time, but the explicit grant is harmless and keeps
+   both paths correct without a branch)
 5. Create a Job Object for the tar.exe process (`ActiveProcessLimit = 1`, RAM limit, CPU time
    limit, UI restrictions, `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE` — see criteria below)
 6. Run tar.exe inside the AppContainer (empty capability list — no network) for **both** T-F49's
