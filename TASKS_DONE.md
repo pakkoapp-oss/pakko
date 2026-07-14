@@ -148,7 +148,8 @@ Default = folder of first item. Falls back to Desktop.
 ### T-23 — Conflict Behavior Dropdown
 - [x] **Status:** complete
 
-`ConflictBehavior`: Overwrite, Skip, Rename. `Ask` removed — default is `Skip`.
+`ConflictBehavior`: Overwrite, Skip, Rename. `Ask` cut from v1.0 scope — default is `Skip`.
+(Reintroduced later as a real interactive per-conflict dialog — see T-F06 in `TASKS.md`.)
 
 ### T-24 — Compression Level Selector
 - [x] **Status:** complete

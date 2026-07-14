@@ -104,22 +104,22 @@ sequenceDiagram
     Root-->>Explorer: Enum (IEnumExplorerCommand)
     loop Explorer drains the enumerator
         Explorer->>Enum: Next(celt, ...)
-        Enum-->>Explorer: fetched item(s);<br/>S_OK if fetched==celt, else S_FALSE<br/>(S_FALSE is a SUCCESS code here, not failure)
+        Enum-->>Explorer: fetched items,<br/>S_OK if fetched==celt, else S_FALSE<br/>S_FALSE is a SUCCESS code here, not failure
     end
     Note over Explorer,TC: Visibility is decided per-command by GetState(),<br/>separately from enumeration
     Explorer->>EDC: GetState(psia) → ECS_ENABLED iff AnyPathIsSupportedArchive(paths), else ECS_HIDDEN<br/>(T-F86: also true for RAR/7z/tar-family when tar.exe exists — EDC routes<br/>to Archiver.App/IExtractionRouter, which supports those formats since T-F85)
     Explorer->>EH: GetState(psia) → ECS_ENABLED iff AllPathsAreSupportedArchive(paths), else ECS_HIDDEN<br/>(T-F86: also true for RAR/7z/tar-family when tar.exe exists)
     Explorer->>EF: GetState(psia) → ECS_ENABLED iff AllPathsAreSupportedArchive(paths), else ECS_HIDDEN<br/>(T-F86: also true for RAR/7z/tar-family when tar.exe exists)
     Explorer->>CDC: GetState(psia) → always ECS_ENABLED (T-F63: shown for any selection,<br/>unlike AC below — archiving a .zip into a new .zip via the dialog is valid)
-    Explorer->>AC: GetState(psia) → ECS_HIDDEN iff AllPathsAreZip(paths), else ECS_ENABLED<br/>(condition is INVERTED vs. EH/EF; T-F86: deliberately UNCHANGED —<br/>still AllPathsAreZip, not AllPathsAreSupportedArchive — archiving an<br/>all-RAR selection into a new ZIP stays valid, same reasoning as CDC)
+    Explorer->>AC: GetState(psia) → ECS_HIDDEN iff AllPathsAreZip(paths), else ECS_ENABLED<br/>(condition is INVERTED vs. EH/EF — T-F86: deliberately UNCHANGED —<br/>still AllPathsAreZip, not AllPathsAreSupportedArchive — archiving an<br/>all-RAR selection into a new ZIP stays valid, same reasoning as CDC)
     Explorer->>AC: GetTitle(psia) → BuildAddToArchiveTitle(paths)<br/>dynamic "Add to <name>.zip", truncated middle if >40 chars
-    Explorer->>TC: GetState(psia) → ECS_ENABLED iff AnyPathIsZip(paths), else ECS_HIDDEN<br/>(T-F62: AnyPathIsZip, NOT AllPathsAreZip — shows on a mixed selection too;<br/>T-F86: deliberately UNCHANGED — ITarService has no Test/verify method,<br/>so enabling this for RAR/7z would run ZipArchiveService.TestAsync,<br/>which skips non-zip paths internally and would report a false<br/>"No errors detected" — see DECISIONS.md's T-F86 entry)
+    Explorer->>TC: GetState(psia) → ECS_ENABLED iff AnyPathIsZip(paths), else ECS_HIDDEN<br/>(T-F62: AnyPathIsZip, NOT AllPathsAreZip — shows on a mixed selection too —<br/>T-F86: deliberately UNCHANGED — ITarService has no Test/verify method,<br/>so enabling this for RAR/7z would run ZipArchiveService.TestAsync,<br/>which skips non-zip paths internally and would report a false<br/>"No errors detected" — see DECISIONS.md's T-F86 entry)
     User->>Explorer: click one visible leaf command
     alt command is EDC or CDC (dialog form, T-F63)
         Explorer->>EDC: Invoke(psia, pbc) — or CDC, same shape
         EDC->>ShellExe: LaunchShellExe(BuildOpenUiExtractArgs(paths))<br/>— or BuildOpenUiArchiveArgs for CDC —<br/>i.e. "--open-ui --extract/--archive <paths>"
         EDC-->>Explorer: S_OK, or HRESULT_FROM_WIN32(GetLastError())
-        ShellExe->>App: Process.Start("pakko://extract?files=<base64>", UseShellExecute:true)<br/>— or pakko://archive — then ShellExe's Main returns/exits immediately;<br/>NO NativeProgressDialog, NO ZipArchiveService call in this branch at all
+        ShellExe->>App: Process.Start("pakko://extract?files=<base64>", UseShellExecute:true)<br/>— or pakko://archive — then ShellExe's Main returns/exits immediately —<br/>NO NativeProgressDialog, NO ZipArchiveService call in this branch at all
         Note over App: T-F83 (fixed 2026-07-06): cold start reads the activation via<br/>OnLaunched→AppInstance.GetCurrent().GetActivatedEventArgs(), not just<br/>the OnActivated event (which only fires for redirected/warm activation).<br/>Before the fix, a cold pakko:// launch silently opened an EMPTY window.
         App->>App: MainViewModel.AddPathsFromProtocolUri(uri)<br/>— files pre-loaded, user drives Archive/Extract from the full UI
     else command is EH, EF, AC, or TC (silent form)
@@ -127,7 +127,7 @@ sequenceDiagram
         alt GetPathsFromShellItemArray(psia) empty
             EH-->>Explorer: E_INVALIDARG
         else paths present
-            EH->>ShellExe: LaunchShellExe(BuildExtractHereArgs(paths))<br/>— or BuildExtractFolderArgs / BuildArchiveArgs / BuildTestArgs<br/>CreateProcessW; PROCESS_INFORMATION handles<br/>closed immediately; does NOT wait for the child<br/>note: TC passes the FULL selection unfiltered — Core does the<br/>per-path IsZipFile gating, same as Extract already does
+            EH->>ShellExe: LaunchShellExe(BuildExtractHereArgs(paths))<br/>— or BuildExtractFolderArgs / BuildArchiveArgs / BuildTestArgs<br/>CreateProcessW — PROCESS_INFORMATION handles<br/>closed immediately — does NOT wait for the child<br/>note: TC passes the FULL selection unfiltered — Core does the<br/>per-path IsZipFile gating, same as Extract already does
             ShellExe-->>Explorer: (no return channel — ShellExe runs independently)
             EH-->>Explorer: S_OK, or HRESULT_FROM_WIN32(GetLastError())<br/>on CreateProcess failure — returned the instant<br/>CreateProcess returns, NOT when the operation finishes
             ShellExe->>Dlg: new NativeProgressDialog(title)<br/>= new ProgressDialogCoClass() + StartProgressDialog
@@ -238,15 +238,15 @@ all lead to the identical `Busy` entry point via the same shared method body.
 stateDiagram-v2
     [*] --> Idle
     Idle --> Busy: ArchiveCommand/ExtractCommand invoked<br/>(CanExecute: FileItems.Count>0 && !IsBusy)<br/>IsBusy=true
-    Busy --> Busy: CancelCommand invoked<br/>(CanExecute: IsOperationRunning == IsBusy)<br/>→ cts.Cancel() only — IsBusy is NOT changed here;<br/>there is no dedicated "Cancelling" state in code
+    Busy --> Busy: CancelCommand invoked<br/>(CanExecute: IsOperationRunning == IsBusy)<br/>→ cts.Cancel() only — IsBusy is NOT changed here —<br/>there is no dedicated Cancelling state in code
     Busy --> AwaitingSummaryDialog: _archiveService call returns without throwing<br/>StatusMessage set to StatusDone/StatusArchivedIn<br/>(Errors==0 && Skipped==0) or StatusIssues (otherwise)
     AwaitingSummaryDialog --> AwaitingSummaryDialog: await ShowOperationSummaryAsync(...)<br/>IsBusy is STILL TRUE while this modal is open —<br/>finally has not run yet
-    AwaitingSummaryDialog --> Idle: finally{no IsBusy change}; wasCancelled==false so the delay<br/>branch below is skipped; THEN IsBusy=false; THEN StatusMessage=StatusReady<br/>(T-F70: IsBusy=false moved out of finally to here)
-    Busy --> AwaitingErrorDialog: unexpected Exception caught (not OperationCanceledException)<br/>StatusMessage="Error"
+    AwaitingSummaryDialog --> Idle: finally{no IsBusy change} — wasCancelled==false so the delay<br/>branch below is skipped — THEN IsBusy=false — THEN StatusMessage=StatusReady<br/>(T-F70: IsBusy=false moved out of finally to here)
+    Busy --> AwaitingErrorDialog: unexpected Exception caught (not OperationCanceledException)<br/>StatusMessage=Error
     AwaitingErrorDialog --> AwaitingErrorDialog: await ShowErrorAsync(...)<br/>IsBusy is STILL TRUE while this modal is open
-    AwaitingErrorDialog --> Idle: finally{no IsBusy change}; delay branch skipped;<br/>THEN IsBusy=false; THEN StatusMessage=StatusReady (same T-F70 point as above)
+    AwaitingErrorDialog --> Idle: finally{no IsBusy change} — delay branch skipped —<br/>THEN IsBusy=false — THEN StatusMessage=StatusReady (same T-F70 point as above)
     Busy --> CancelledNoDialog: OperationCanceledException caught<br/>StatusMessage=StatusCancelled — NO dialog is shown
-    CancelledNoDialog --> Idle: finally{no IsBusy change}; THEN await Task.Delay(2000)<br/>(IsBusy still TRUE throughout the delay — T-F70 fix);<br/>THEN IsBusy=false; THEN StatusMessage=StatusReady
+    CancelledNoDialog --> Idle: finally{no IsBusy change} — THEN await Task.Delay(2000)<br/>(IsBusy still TRUE throughout the delay — T-F70 fix) —<br/>THEN IsBusy=false — THEN StatusMessage=StatusReady
 ```
 
 **What this catches:**
@@ -285,7 +285,7 @@ flowchart TD
     A1 -- yes --> A3["fileEntries = allFileEntries filtered to<br/>the selected paths + anything nested<br/>under a selected folder path.<br/>isSingleRootFolder/isSingleRootFile forced<br/>false — actualDest = destDir always,<br/>no smart-foldering collapse for a subset"]
     A2 --> A4["Compression-bomb check (below) still sums<br/>allFileEntries, NOT the filtered subset —<br/>conservative: may over-warn, never under-warns.<br/>See DECISIONS.md's T-F05 entry."]
     A3 --> A4
-    A4 --> A[For each entry in fileEntries<br/>— the (possibly filtered) set from A2/A3] --> C{isSingleRootFolder:<br/>strip leading segment}
+    A4 --> A["For each entry in fileEntries<br/>— the (possibly filtered) set from A2/A3"] --> C{isSingleRootFolder:<br/>strip leading segment}
     C -- stripped to empty --> Z[bytesRead += Length; no output]
     C -- non-empty, or not applicable --> D{"':' in entry name?<br/>(Alternate Data Stream) T-F38"}
     D -- yes --> S1[SkippedFiles += ADS reason]
@@ -301,9 +301,10 @@ flowchart TD
     I -- yes --> S5[SkippedFiles += suspicious ratio]
     I -- no --> J{File.Exists at finalFilePath<br/>= actualDest + relativePath ?}
     J -- no --> K
-    J -- "yes, onConflict==Skip" --> S6["bytesRead += Length; continue<br/>(no SkippedFiles entry recorded for this case)"]
-    J -- "yes, onConflict==Rename" --> K2[destFilePath renamed via GetUniqueFilePath]
-    J -- "yes, onConflict==Overwrite (or any other value)" --> K3["NO explicit branch — falls through<br/>unchanged to K with ORIGINAL destFilePath;<br/>actual overwrite happens later, only if the merge<br/>step's File.Move(overwrite:true) runs"]
+    J -- yes --> J0["T-F06: resolvedConflict = await conflictResolver.ResolveAsync(finalFilePath)<br/>configured != Ask → passes through unchanged;<br/>configured == Ask → invokes options.ResolveConflictAsync(ConflictInfo)<br/>(or defaults to Skip if that callback is null, e.g. Archiver.Shell),<br/>remembering the decision for the rest of THIS ExtractAsync call<br/>if ApplyToAll was set — see DECISIONS.md's T-F06 entry"]
+    J0 -- "resolvedConflict==Skip" --> S6["bytesRead += Length; continue<br/>(no SkippedFiles entry recorded for this case)"]
+    J0 -- "resolvedConflict==Rename" --> K2[destFilePath renamed via GetUniqueFilePath]
+    J0 -- "resolvedConflict==Overwrite" --> K3["NO explicit branch — falls through<br/>unchanged to K with ORIGINAL destFilePath;<br/>actual overwrite happens later, only if the merge<br/>step's File.Move(overwrite:true) runs"]
     K2 --> K
     K3 --> K
     K[Extract entry to destFilePath in tempDest;<br/>TryPropagateMotw best-effort] --> L[bytesRead += entry.Length]
@@ -357,12 +358,33 @@ per node O above) — only the shell's dialog *trigger* was widened; see `DECISI
 entry for the two options considered and why widening the trigger (not `Success`) was chosen.
 
 **Corrected in this redraw:** the `OnConflict` gate is not three parallel branches for three enum
-values. The code is two sequential `if`s with no `else` (`ZipArchiveService.cs:597-609`) — `Skip`
-and `Rename` are handled explicitly; `Overwrite` (and any future enum value) has no branch at all
-and simply falls through to extraction with the original path, with the actual overwrite deferred
-to the final merge step's `File.Move(overwrite: true)`. Drawing this as three clean branches in
-the previous version hid that a new `ConflictBehavior` value added later would silently get
-"extract unchanged" behavior unless a branch is added for it explicitly.
+values. The code is two sequential `if`s with no `else` — `Skip` and `Rename` are handled
+explicitly; `Overwrite` has no branch at all and simply falls through to extraction with the
+original path, with the actual overwrite deferred to the final merge step's
+`File.Move(overwrite: true)`. Drawing this as three clean branches in the previous version hid
+that a new `ConflictBehavior` value added later would silently get "extract unchanged" behavior
+unless a branch is added for it explicitly.
+
+**T-F06 (2026-07-14): a 4th `ConflictBehavior` value, `Ask`, was in fact added — and does NOT hit
+the silent-fallthrough gap the paragraph above warned about,** because it's resolved into a
+concrete `Skip`/`Overwrite`/`Rename` by a new `ConflictResolver.ResolveAsync` call (node J0 above)
+*before* reaching this gate, not by adding a third case to the two `if`s themselves — the gate's
+own two-`if`-no-`else` shape is untouched. `Ask`'s resolution flows through a new Core→UI callback
+(`ExtractOptions.ResolveConflictAsync`), mirroring the existing `ConfirmCompressionBombExtraction`
+callback's shape (same nullable-delegate/DispatcherQueue-marshaling pattern, different call site).
+`ConflictResolver` also remembers an "apply to all" decision across every entry and every archive
+in the current `ExtractAsync` call (constructed once before the outer archive loop) — so this
+gate can now be reached with a resolved value chosen once, dozens of entries earlier, not just a
+value read fresh from `options.OnConflict` each time. See `DECISIONS.md`'s T-F06 entry.
+
+**Not diagrammed here — `ZipArchiveService.ArchiveAsync`'s own two `OnConflict` gates** (the
+single-decision `SingleArchive` case, and the sequential `SeparateArchives` pre-pass loop) also
+gained the identical `ConflictResolver`-resolves-`Ask` treatment as part of T-F06, but this
+diagram's declared source is `ExtractWithSmartFolderingAsync` only — `ArchiveAsync` was never in
+scope here even before T-F06. Both gates are structurally simpler than this one (a single
+decision per call, or one decision per source in a plain pre-pass loop — no per-entry loop, no
+smart-foldering), so a full flowchart wasn't judged to add signal beyond this note. See
+`DECISIONS.md`'s T-F06 entry for the full detail on both.
 
 ---
 
@@ -438,9 +460,10 @@ flowchart TD
     K --> Mloop{More entries?}
     L --> N{"File.Exists at<br/>destDir + relativePath?"}
     N -- no --> O
-    N -- "yes, onConflict==Skip" --> P["SkippedFiles += 'already exists at destination'; continue"]
-    N -- "yes, onConflict==Rename" --> O2["finalFilePath = GetUniqueFilePath(...)"]
-    N -- "yes, onConflict==Overwrite (or any other value)" --> O3["NO explicit branch — falls through to O<br/>with the ORIGINAL finalFilePath;<br/>File.Move(overwrite:true) below does the actual overwrite<br/>(same asymmetry as diagram 3's ZIP OnConflict gate)"]
+    N -- yes --> N0["T-F06: resolvedConflict = await conflictResolver.ResolveAsync(finalFilePath)<br/>same resolver/callback shape as diagram 3's node J0 —<br/>independent ConflictResolver instance, own 'apply to all'<br/>memory scoped to this ExtractAsync call only<br/>(does not cross a mixed zip+tar-family selection)"]
+    N0 -- "resolvedConflict==Skip" --> P["SkippedFiles += 'already exists at destination'; continue"]
+    N0 -- "resolvedConflict==Rename" --> O2["finalFilePath = GetUniqueFilePath(...)"]
+    N0 -- "resolvedConflict==Overwrite" --> O3["NO explicit branch — falls through to O<br/>with the ORIGINAL finalFilePath;<br/>File.Move(overwrite:true) below does the actual overwrite<br/>(same asymmetry as diagram 3's ZIP OnConflict gate)"]
     O2 --> O
     O3 --> O
     O["File.Move(file, finalFilePath, overwrite:true)<br/>ArchiveEntrySecurity.TryPropagateMotw(archivePath, finalFilePath)"] --> Mloop
@@ -476,10 +499,16 @@ flowchart TD
   file's Ground Truth Rule rather than silently patched; not fixed as part of T-F49 since it's
   currently dead code, not a live gap — worth a one-line `SkippedFiles` addition if gate G's
   guarantees are ever loosened.
-- **Same `OnConflict` asymmetry as diagram 3:** `Overwrite` (and any future `ConflictBehavior`
-  value) has no explicit branch and falls through to the unconditional `File.Move(overwrite:
-  true)` — identical shape to `ZipArchiveService`'s gate, confirmed by reading
-  `TarProcessService.cs:176-190` directly rather than assuming parity with diagram 3.
+- **Same `OnConflict` asymmetry as diagram 3:** `Overwrite` has no explicit branch and falls
+  through to the unconditional `File.Move(overwrite: true)` — identical shape to
+  `ZipArchiveService`'s gate, confirmed by reading `TarProcessService.cs` directly rather than
+  assuming parity with diagram 3.
+- **T-F06 (2026-07-14): `Ask` resolved the same way as diagram 3's node J0** (node N0 above) — a
+  separate `ConflictResolver` instance from `ZipArchiveService`'s, since `TarProcessService` is a
+  distinct `ExtractAsync` call routed independently by `ExtractionRouter`. An "apply to all"
+  decision made while extracting a batch of tar-family archives does not carry over to a ZIP in
+  the same user selection, and vice versa — an accepted, documented scope cut, not a bug. See
+  `DECISIONS.md`'s T-F06 entry.
 - **New (T-F05, node G2/G3): the archive browser's "Extract selected" narrows what `-xf` extracts,
   but never what the pre-scan validates.** Gates D through G run unconditionally, exactly as
   before `SelectedEntryPaths` existed — the branch at G2 only changes the member-argument list
@@ -622,3 +651,22 @@ pattern as Rows 1/3; "About" stays in both variants (matches NanaZip's own alway
    Not tracked as a `T-Fxx` and not fixed — currently dead code (gate G already rejects any
    archive containing a symlink entry before this walk can run), so there is nothing live to fix
    yet. Revisit if gate G's guarantees are ever loosened.
+
+## Findings summary (surfaced updating diagrams 3/5 for T-F06, 2026-07-14)
+
+5. **Diagrams 1, 2, and (pre-fix) 3 had never actually been rendered by a real mermaid
+   implementation — all three failed to parse.** This file's own header says diagrams here are
+   "a reasoning aid, not an executable test," which was true in a more literal sense than
+   intended: nothing in this repo's workflow ever fed these `mermaid` code blocks through an
+   actual renderer, so syntax errors survived multiple redraws undetected. Found only because a
+   direct question ("are the diagrams updated and run as a test?") prompted actually running them
+   through `npx @mermaid-js/mermaid-cli` for the first time. Root cause in all three: a bare `;`
+   or an unescaped `"..."` inside unquoted node/message/transition label text — mermaid's
+   sequence/state/flowchart grammars all treat these as statement-structure tokens, not literal
+   text, unless the whole label is quoted. Fixed by replacing every offending `;`/`"..."` with
+   `—`/plain text (diagrams 1 and 2) and quoting a node label containing literal parentheses
+   (diagram 3, pre-dating T-F06 — unrelated to this round's actual content change). All six
+   diagrams now render cleanly; verified via real `.svg` output, not just visual inspection of
+   the source. Not tracked as a `T-Fxx` — punctuation-only fixes, no code or behavior changed.
+   **Worth remembering for future diagram edits:** avoid bare `;` and `"quoted phrases"` inside
+   any mermaid label text going forward, even though nothing catches this automatically today.

@@ -126,6 +126,9 @@
   <data name="ConflictRenameItem.Content" xml:space="preserve">
     <value>Rename (add number)</value>
   </data>
+  <data name="ConflictAskItem.Content" xml:space="preserve">
+    <value>Ask</value>
+  </data>
   <data name="CancelButton.Content" xml:space="preserve">
     <value>✕ Cancel</value>
   </data>
@@ -224,5 +227,23 @@
   </data>
   <data name="CompressionBombDialogMessage" xml:space="preserve">
     <value>This archive claims to contain {0} of data, a compression ratio of {1}:1. This is unusually high and may indicate a decompression bomb. Extract anyway?</value>
+  </data>
+  <data name="ConflictDialogTitle" xml:space="preserve">
+    <value>File already exists</value>
+  </data>
+  <data name="ConflictDialogMessage" xml:space="preserve">
+    <value>"{0}" already exists at the destination. What would you like to do?</value>
+  </data>
+  <data name="ConflictDialogOverwriteButton" xml:space="preserve">
+    <value>Overwrite</value>
+  </data>
+  <data name="ConflictDialogRenameButton" xml:space="preserve">
+    <value>Rename</value>
+  </data>
+  <data name="ConflictDialogSkipButton" xml:space="preserve">
+    <value>Skip</value>
+  </data>
+  <data name="ConflictDialogApplyToAllCheck" xml:space="preserve">
+    <value>Apply to all remaining conflicts</value>
   </data>
 </root>

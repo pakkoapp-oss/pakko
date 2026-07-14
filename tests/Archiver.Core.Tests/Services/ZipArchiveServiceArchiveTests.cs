@@ -260,6 +260,76 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
         result.CreatedFiles[0].Should().Be(existingZip);
     }
 
+    // T-F06: SingleArchive mode's Ask path — a single one-shot conflict, resolved via the caller's
+    // ResolveConflictAsync callback instead of a pre-selected ConflictBehavior.
+    [Theory]
+    [InlineData(ConflictResolution.Overwrite)]
+    [InlineData(ConflictResolution.Rename)]
+    [InlineData(ConflictResolution.Skip)]
+    public async Task ArchiveAsync_ConflictAsk_SingleArchive_AppliesCallbackResolution(ConflictResolution resolution)
+    {
+        var file = _temp.CreateFile("source.txt");
+        var existingZip = _temp.CreateFile("output.zip");
+
+        var options = new ArchiveOptions
+        {
+            SourcePaths = [file],
+            DestinationFolder = _temp.Path,
+            ArchiveName = "output",
+            OnConflict = ConflictBehavior.Ask,
+            ResolveConflictAsync = _ => Task.FromResult(new ConflictDecision { Resolution = resolution })
+        };
+
+        var result = await _sut.ArchiveAsync(options);
+
+        switch (resolution)
+        {
+            case ConflictResolution.Overwrite:
+                result.CreatedFiles.Should().ContainSingle().Which.Should().Be(existingZip);
+                break;
+            case ConflictResolution.Rename:
+                result.CreatedFiles.Should().ContainSingle(f => f.EndsWith("output (1).zip"));
+                break;
+            case ConflictResolution.Skip:
+                result.CreatedFiles.Should().BeEmpty();
+                result.SkippedFiles.Should().Contain(s => s.Path == file);
+                break;
+        }
+    }
+
+    // T-F06: SeparateArchives mode's sequential pre-pass loop shares one ConflictResolver
+    // instance across all sources in the batch — ApplyToAll on the first conflict must suppress
+    // the callback for every subsequent conflicting source, not just apply to the first one.
+    [Fact]
+    public async Task ArchiveAsync_ConflictAsk_SeparateArchives_ApplyToAll_InvokesCallbackOnce()
+    {
+        var file1 = _temp.CreateFile("first.txt");
+        var file2 = _temp.CreateFile("second.txt");
+        _temp.CreateFile("first.zip");
+        _temp.CreateFile("second.zip");
+
+        int callCount = 0;
+        var options = new ArchiveOptions
+        {
+            SourcePaths = [file1, file2],
+            DestinationFolder = _temp.Path,
+            Mode = ArchiveMode.SeparateArchives,
+            OnConflict = ConflictBehavior.Ask,
+            ResolveConflictAsync = _ =>
+            {
+                callCount++;
+                return Task.FromResult(new ConflictDecision { Resolution = ConflictResolution.Rename, ApplyToAll = true });
+            }
+        };
+
+        var result = await _sut.ArchiveAsync(options);
+
+        result.CreatedFiles.Should().HaveCount(2);
+        result.CreatedFiles.Should().Contain(f => f.EndsWith("first (1).zip"));
+        result.CreatedFiles.Should().Contain(f => f.EndsWith("second (1).zip"));
+        callCount.Should().Be(1);
+    }
+
     [Fact]
     public async Task ArchiveAsync_ReportsProgress()
     {

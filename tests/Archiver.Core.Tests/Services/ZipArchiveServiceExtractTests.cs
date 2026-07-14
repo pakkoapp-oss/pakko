@@ -376,6 +376,107 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
         File.Exists(Path.Combine(destDir, "file.txt")).Should().BeTrue(); // original untouched
     }
 
+    // T-F06: per-entry Ask conflict resolution — the callback decides Overwrite/Rename/Skip
+    // instead of a pre-selected ConflictBehavior.
+    [Theory]
+    [InlineData(ConflictResolution.Overwrite)]
+    [InlineData(ConflictResolution.Rename)]
+    [InlineData(ConflictResolution.Skip)]
+    public async Task ExtractAsync_ConflictAsk_PerEntry_AppliesCallbackResolution(ConflictResolution resolution)
+    {
+        var zip = CreateTestZip("archive.zip", "file.txt");
+        var destDir = Path.Combine(_temp.Path, "out");
+        Directory.CreateDirectory(destDir);
+        File.WriteAllText(Path.Combine(destDir, "file.txt"), "original content");
+
+        var options = new ExtractOptions
+        {
+            ArchivePaths = [zip],
+            DestinationFolder = destDir,
+            Mode = ExtractMode.SingleFolder,
+            OnConflict = ConflictBehavior.Ask,
+            ResolveConflictAsync = _ => Task.FromResult(new ConflictDecision { Resolution = resolution })
+        };
+
+        await _sut.ExtractAsync(options);
+
+        switch (resolution)
+        {
+            case ConflictResolution.Overwrite:
+                File.Exists(Path.Combine(destDir, "file.txt")).Should().BeTrue();
+                File.ReadAllText(Path.Combine(destDir, "file.txt")).Should().NotBe("original content");
+                break;
+            case ConflictResolution.Rename:
+                File.Exists(Path.Combine(destDir, "file (1).txt")).Should().BeTrue();
+                File.ReadAllText(Path.Combine(destDir, "file.txt")).Should().Be("original content");
+                break;
+            case ConflictResolution.Skip:
+                File.ReadAllText(Path.Combine(destDir, "file.txt")).Should().Be("original content");
+                File.Exists(Path.Combine(destDir, "file (1).txt")).Should().BeFalse();
+                break;
+        }
+    }
+
+    [Fact]
+    public async Task ExtractAsync_ConflictAsk_NoConflicts_CallbackNeverInvoked()
+    {
+        var zip = CreateTestZip("archive.zip", "file.txt");
+        var destDir = Path.Combine(_temp.Path, "out");
+
+        int callCount = 0;
+        var options = new ExtractOptions
+        {
+            ArchivePaths = [zip],
+            DestinationFolder = destDir,
+            Mode = ExtractMode.SingleFolder,
+            OnConflict = ConflictBehavior.Ask,
+            ResolveConflictAsync = _ =>
+            {
+                callCount++;
+                return Task.FromResult(new ConflictDecision { Resolution = ConflictResolution.Skip });
+            }
+        };
+
+        var result = await _sut.ExtractAsync(options);
+
+        result.Success.Should().BeTrue();
+        callCount.Should().Be(0);
+    }
+
+    // T-F06: the ConflictResolver instance is constructed once per ExtractAsync call, before the
+    // loop over ArchivePaths — this is what makes ApplyToAll survive from one archive to the
+    // next, not just within a single archive's own entries.
+    [Fact]
+    public async Task ExtractAsync_ConflictAsk_ApplyToAll_AcrossMultipleArchives_InvokesCallbackOnce()
+    {
+        var zip1 = CreateTestZip("first.zip", "file.txt");
+        var zip2 = CreateTestZip("second.zip", "file.txt");
+        var destDir = Path.Combine(_temp.Path, "out");
+        Directory.CreateDirectory(destDir);
+        File.WriteAllText(Path.Combine(destDir, "file.txt"), "original content");
+
+        int callCount = 0;
+        var options = new ExtractOptions
+        {
+            ArchivePaths = [zip1, zip2],
+            DestinationFolder = destDir,
+            Mode = ExtractMode.SingleFolder,
+            OnConflict = ConflictBehavior.Ask,
+            ResolveConflictAsync = _ =>
+            {
+                callCount++;
+                return Task.FromResult(new ConflictDecision { Resolution = ConflictResolution.Rename, ApplyToAll = true });
+            }
+        };
+
+        var result = await _sut.ExtractAsync(options);
+
+        result.Success.Should().BeTrue();
+        File.Exists(Path.Combine(destDir, "file (1).txt")).Should().BeTrue();
+        File.Exists(Path.Combine(destDir, "file (2).txt")).Should().BeTrue();
+        callCount.Should().Be(1);
+    }
+
     [Fact]
     public async Task ExtractAsync_PasswordProtectedZip_ReturnsArchiveErrorWithClearMessage()
     {

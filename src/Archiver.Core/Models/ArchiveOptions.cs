@@ -12,6 +12,10 @@ public sealed record ArchiveOptions
     public bool OpenDestinationFolder { get; init; } = false;
     public bool DeleteSourceFiles { get; init; } = false;
     public CompressionLevel CompressionLevel { get; init; } = CompressionLevel.Optimal;
+
+    // T-F06: invoked once per conflicting destination path when OnConflict == Ask. Null (e.g.
+    // Archiver.Shell, or a test that doesn't wire it) falls back to Skip — see ConflictResolver.
+    public Func<ConflictInfo, Task<ConflictDecision>>? ResolveConflictAsync { get; init; }
 }
 
 public enum ArchiveMode
@@ -24,5 +28,6 @@ public enum ConflictBehavior
 {
     Overwrite,
     Skip,
-    Rename
+    Rename,
+    Ask
 }

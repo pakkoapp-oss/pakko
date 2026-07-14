@@ -29,6 +29,10 @@ public sealed record ExtractOptions
     // targets the single archive currently open in that view. A selected directory path implies
     // its full nested contents. Null/empty (the default) extracts everything, unaffected.
     public IReadOnlyList<string>? SelectedEntryPaths { get; init; }
+
+    // T-F06: invoked once per conflicting entry when OnConflict == Ask. Null (e.g.
+    // Archiver.Shell, or a test that doesn't wire it) falls back to Skip — see ConflictResolver.
+    public Func<ConflictInfo, Task<ConflictDecision>>? ResolveConflictAsync { get; init; }
 }
 
 public enum ExtractMode

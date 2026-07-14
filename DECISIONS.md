@@ -2399,3 +2399,111 @@ blank-row repro no longer reproduces for a freshly-added batch.
 **Files:** `src/Archiver.Core/IO/Crc32.cs`, `src/Archiver.App/Models/FileItem.cs`,
 `src/Archiver.App/ViewModels/MainViewModel.cs` (sort-by-CRC), `src/Archiver.App/MainWindow.xaml`
 (CRC column + `ItemsPanel` revert), `ARCHITECTURE.md`.
+
+---
+
+## T-F06 — Ask on Conflict Dialog
+
+**Designed via Plan Mode (2026-07-14), approved plan saved at
+`C:\Users\Pa\.claude\plans\floofy-swimming-sifakis.md`.** Adds a 4th `ConflictBehavior` value,
+`Ask`, alongside the existing `Overwrite`/`Skip`/`Rename` — resolved per-conflict via an
+interactive dialog instead of one blanket rule chosen before the operation starts.
+
+**Reused the existing T-F94 Core→UI callback precedent rather than inventing a new pattern.**
+`ConfirmCompressionBombExtraction` (`Func<CompressionBombWarning, Task<bool>>?`) already
+established the shape: a nullable delegate on the options record, invoked from a background
+thread inside `ZipArchiveService`/`TarProcessService`, implemented in `DialogService` via
+`_window.DispatcherQueue.TryEnqueue` wrapping a `TaskCompletionSource` (since `ContentDialog
+.ShowAsync()` requires the calling thread to own the DispatcherQueue). The new
+`ResolveConflictAsync` (`Func<ConflictInfo, Task<ConflictDecision>>?`) on both `ArchiveOptions`
+and `ExtractOptions` follows the identical shape.
+
+**One shared `ConflictBehavior` enum, not a parallel toggle.** `ConflictBehavior` is a
+**shared** option between archive-creation and extraction per this project's own scope-rules
+table, bound to a single `ComboBox` in `MainWindow.xaml`. Research before implementing (see the
+approved plan) found all four existing conflict-resolution call sites are on sequential (never
+parallel) code paths — including `ZipArchiveService.ArchiveAsync`'s `SeparateArchives` mode,
+whose conflict pre-pass runs as a plain `foreach` *before* `Parallel.ForEachAsync` starts, not
+inside it — so `Ask` could be wired everywhere the enum is already used, not just extraction,
+with no half-finished direction.
+
+**New shared internal `Archiver.Core.Services.ConflictResolver`, one instance per
+`ArchiveAsync`/`ExtractAsync` call, constructed before any loop:**
+```csharp
+internal sealed class ConflictResolver(
+    ConflictBehavior configured,
+    Func<ConflictInfo, Task<ConflictDecision>>? resolveConflictAsync)
+{
+    private ConflictResolution? _sticky;
+
+    public async Task<ConflictBehavior> ResolveAsync(string existingPath)
+    {
+        if (configured != ConflictBehavior.Ask) return configured;
+        if (_sticky is { } sticky) return Map(sticky);
+        if (resolveConflictAsync is null) return ConflictBehavior.Skip;
+
+        var decision = await resolveConflictAsync(new ConflictInfo { ExistingPath = existingPath })
+            .ConfigureAwait(false);
+        if (decision.ApplyToAll) _sticky = decision.Resolution;
+        return Map(decision.Resolution);
+    }
+    // Map: Overwrite→Overwrite, Rename→Rename, else→Skip
+}
+```
+Returning `ConflictBehavior` (not `ConflictResolution`) from `ResolveAsync` is the key trick:
+every existing `switch (options.OnConflict)` at the four call sites becomes
+`switch (await conflictResolver.ResolveAsync(existingPath).ConfigureAwait(false))` — the
+Skip/Overwrite/Rename branches themselves are completely unchanged, and `Ask` never reaches them
+(the existing switches have no `default`, so this compiles cleanly without one).
+
+**"Apply to all" scope is deliberately the whole operation, not just the current archive** —
+a direct consequence of constructing one `ConflictResolver` before the outer loop rather than
+inside it. Extracting 3 archives at once: choosing "apply to all" on archive 1's conflict
+suppresses the dialog for archives 2 and 3 too, not just further entries within archive 1. Zip
+and tar-family archives are still two independent `ExtractionRouter` calls, each with its own
+resolver instance — a mixed zip+tar-family selection does not share "apply to all" across the
+format boundary. Accepted as a documented scope cut, not engineered around, since the same
+per-format-independence already exists elsewhere in this codebase (e.g. capability detection).
+
+**`ContentDialogResult.None` (Escape, or the Close-button click that Skip itself uses — the two
+are indistinguishable) maps to `Skip`.** `ContentDialogResult` only has three values
+(`None`/`Primary`/`Secondary`), so `Primary⇒Overwrite, Secondary⇒Rename, _⇒Skip` is the only
+consistent mapping — matches the existing `_ ⇒ negative answer` convention already used in
+`ShowConfirmAsync`. Also set `DefaultButton = ContentDialogButton.Close` on the new dialog so
+pressing Enter resolves to Skip, not the more destructive Overwrite — deliberate, since Overwrite
+being the *easiest* accidental keystroke would be the wrong default for a conflict prompt.
+
+**`SeparateArchives` mode's existing T-F12 same-run-collision rule still applies under `Ask`.**
+If two sources in one archive-creation batch share a basename, T-F12 already deliberately renames
+rather than overwrites even when the configured behavior is `Overwrite`, to avoid a parallel-write
+race between two workers. This still fires when the user explicitly picks Overwrite through the
+Ask dialog for that specific collision — surprising in isolation, but it is the same accepted
+deviation T-F12 already introduced for the non-Ask path, just now user-triggerable. Not treated
+as a new bug.
+
+**Testing:** `ConflictResolverTests` unit-tests the resolver in isolation (non-`Ask` passthrough,
+null-callback default, per-resolution mapping, `ApplyToAll` suppressing further callback
+invocations — asserted by invocation *count*, not just final state). Ask-mode cases were added to
+`ZipArchiveServiceArchiveTests` (both `SingleArchive` and `SeparateArchives`, the latter with an
+`ApplyToAll` case across two conflicting sources), `ZipArchiveServiceExtractTests` (per-entry, a
+zero-conflicts case proving the callback never fires spuriously, and a multi-archive `ApplyToAll`
+case that specifically exercises the "resolver constructed once outside the outer loop" decision
+above), and `TarProcessServiceExtractTests` (same shape, against real `tar.exe`). `dotnet test
+--filter "Category!=Slow"` green (254/254, +19 new). App-layer wiring
+(`IDialogService.ShowConflictDialogAsync`, `MainViewModel`, `MainWindow.xaml`,
+`en-US`/`uk-UA` `Resources.resw`) has no automated test coverage, per this repo's existing
+"no ViewModel test project" convention — verified manually per `TASKS.md`'s remaining acceptance
+criterion.
+
+**Files:** `src/Archiver.Core/Models/ConflictInfo.cs` (new),
+`src/Archiver.Core/Models/ConflictDecision.cs` (new),
+`src/Archiver.Core/Models/ArchiveOptions.cs`, `src/Archiver.Core/Models/ExtractOptions.cs`,
+`src/Archiver.Core/Services/ConflictResolver.cs` (new),
+`src/Archiver.Core/Services/ZipArchiveService.cs`, `src/Archiver.Core/Services/TarProcessService.cs`,
+`src/Archiver.App/Services/IDialogService.cs`, `src/Archiver.App/Services/DialogService.cs`,
+`src/Archiver.App/ViewModels/MainViewModel.cs`, `src/Archiver.App/MainWindow.xaml`,
+`src/Archiver.App/Strings/en-US/Resources.resw`, `src/Archiver.App/Strings/uk-UA/Resources.resw`,
+`tests/Archiver.Core.Tests/Services/ConflictResolverTests.cs` (new),
+`tests/Archiver.Core.Tests/Services/ZipArchiveServiceArchiveTests.cs`,
+`tests/Archiver.Core.Tests/Services/ZipArchiveServiceExtractTests.cs`,
+`tests/Archiver.Core.IntegrationTests/TarProcessServiceExtractTests.cs`.

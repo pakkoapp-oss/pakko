@@ -85,6 +85,67 @@ public sealed class DialogService : IDialogService
         return tcs.Task;
     }
 
+    // T-F06: same DispatcherQueue-marshaling need as ShowCompressionBombConfirmAsync above — the
+    // extraction/archive services call ResolveConflictAsync from a background thread.
+    public Task<ConflictDecision> ShowConflictDialogAsync(ConflictInfo conflict)
+    {
+        var tcs = new TaskCompletionSource<ConflictDecision>();
+
+        bool enqueued = _window!.DispatcherQueue.TryEnqueue(async () =>
+        {
+            try
+            {
+                var applyToAllCheck = new CheckBox
+                {
+                    Content = _res.GetString("ConflictDialogApplyToAllCheck"),
+                    Margin = new Thickness(0, 12, 0, 0)
+                };
+
+                var panel = new StackPanel { Spacing = 8 };
+                panel.Children.Add(new TextBlock
+                {
+                    Text = _res.GetString("ConflictDialogMessage")
+                        .Replace("{0}", Path.GetFileName(conflict.ExistingPath)),
+                    TextWrapping = TextWrapping.Wrap
+                });
+                panel.Children.Add(applyToAllCheck);
+
+                var dialog = new ContentDialog
+                {
+                    Title = _res.GetString("ConflictDialogTitle"),
+                    Content = panel,
+                    PrimaryButtonText = _res.GetString("ConflictDialogOverwriteButton"),
+                    SecondaryButtonText = _res.GetString("ConflictDialogRenameButton"),
+                    CloseButtonText = _res.GetString("ConflictDialogSkipButton"),
+                    DefaultButton = ContentDialogButton.Close, // Enter resolves to Skip, not Overwrite
+                    XamlRoot = _window!.Content.XamlRoot
+                };
+                var result = await dialog.ShowAsync();
+
+                var resolution = result switch
+                {
+                    ContentDialogResult.Primary => ConflictResolution.Overwrite,
+                    ContentDialogResult.Secondary => ConflictResolution.Rename,
+                    _ => ConflictResolution.Skip
+                };
+                tcs.SetResult(new ConflictDecision
+                {
+                    Resolution = resolution,
+                    ApplyToAll = applyToAllCheck.IsChecked == true
+                });
+            }
+            catch (Exception ex)
+            {
+                tcs.SetException(ex);
+            }
+        });
+
+        if (!enqueued)
+            tcs.SetResult(new ConflictDecision { Resolution = ConflictResolution.Skip });
+
+        return tcs.Task;
+    }
+
     public async Task<string?> PickDestinationFolderAsync()
     {
         var picker = new FolderPicker();

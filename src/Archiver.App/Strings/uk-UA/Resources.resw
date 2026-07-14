@@ -123,6 +123,9 @@
   <data name="ConflictRenameItem.Content" xml:space="preserve">
     <value>Перейменувати (додати номер)</value>
   </data>
+  <data name="ConflictAskItem.Content" xml:space="preserve">
+    <value>Запитувати</value>
+  </data>
   <data name="CancelButton.Content" xml:space="preserve">
     <value>✕ Скасувати</value>
   </data>
@@ -213,5 +216,23 @@
   </data>
   <data name="CompressionBombDialogMessage" xml:space="preserve">
     <value>Цей архів заявляє про {0} даних, коефіцієнт стиснення {1}:1. Це незвично високо і може вказувати на "бомбу" розпакування. Розпакувати попри це?</value>
+  </data>
+  <data name="ConflictDialogTitle" xml:space="preserve">
+    <value>Файл вже існує</value>
+  </data>
+  <data name="ConflictDialogMessage" xml:space="preserve">
+    <value>"{0}" вже існує в місці призначення. Що зробити?</value>
+  </data>
+  <data name="ConflictDialogOverwriteButton" xml:space="preserve">
+    <value>Перезаписати</value>
+  </data>
+  <data name="ConflictDialogRenameButton" xml:space="preserve">
+    <value>Перейменувати</value>
+  </data>
+  <data name="ConflictDialogSkipButton" xml:space="preserve">
+    <value>Пропустити</value>
+  </data>
+  <data name="ConflictDialogApplyToAllCheck" xml:space="preserve">
+    <value>Застосувати до всіх решти конфліктів</value>
   </data>
 </root>

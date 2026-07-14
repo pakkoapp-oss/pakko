@@ -99,6 +99,41 @@ public sealed class TarProcessServiceExtractTests : IDisposable
         File.ReadAllText(Path.Combine(destDir, "a.txt")).Should().Be("original content");
     }
 
+    // T-F06: per-entry Ask conflict resolution against a real tar.exe extraction — mirrors
+    // ZipArchiveServiceExtractTests' equivalent case.
+    [Integration]
+    public async Task ExtractAsync_ConflictAsk_RenameResolution_CreatesNumberedCopyWithoutOverwriting()
+    {
+        string archivePath = Path.Combine(_temp.Path, "valid.tar");
+        TarBuilder.WriteTar(archivePath,
+        [
+            new TarBuilder.Entry { Name = "a.txt", Content = Encoding.ASCII.GetBytes("new content") },
+        ]);
+
+        string destDir = Path.Combine(_temp.Path, "out");
+        Directory.CreateDirectory(destDir);
+        File.WriteAllText(Path.Combine(destDir, "a.txt"), "original content");
+
+        int callCount = 0;
+        var result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [archivePath],
+            DestinationFolder = destDir,
+            Mode = ExtractMode.SingleFolder,
+            OnConflict = ConflictBehavior.Ask,
+            ResolveConflictAsync = _ =>
+            {
+                callCount++;
+                return Task.FromResult(new ConflictDecision { Resolution = ConflictResolution.Rename });
+            }
+        });
+
+        result.Success.Should().BeTrue();
+        callCount.Should().Be(1);
+        File.ReadAllText(Path.Combine(destDir, "a.txt")).Should().Be("original content");
+        File.ReadAllText(Path.Combine(destDir, "a (1).txt")).Should().Be("new content");
+    }
+
     [Integration]
     public async Task ExtractAsync_ArchiveHasZoneIdentifier_PropagatesMotwToExtractedFile()
     {

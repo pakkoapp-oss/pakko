@@ -65,6 +65,11 @@ public sealed class TarProcessService : ITarService
         var errors = new List<ArchiveError>();
         var createdFiles = new List<string>();
         var skippedFiles = new List<SkippedFile>();
+        // T-F06: one instance for the whole call — see ZipArchiveService.ExtractAsync's identical
+        // comment. Independent of ZipArchiveService's own resolver instance: Zip and tar-family
+        // archives are handled by two separate ExtractionRouter calls, so "apply to all" does not
+        // cross a mixed zip+tar-family selection (an accepted, documented scope cut).
+        var conflictResolver = new ConflictResolver(options.OnConflict, options.ResolveConflictAsync);
 
         Directory.CreateDirectory(options.DestinationFolder);
 
@@ -84,7 +89,7 @@ public sealed class TarProcessService : ITarService
             try
             {
                 var (actualDest, anyExtracted) = await ExtractSingleArchiveAsync(
-                    archivePath, destDir, options.OnConflict, skippedFiles,
+                    archivePath, destDir, conflictResolver, skippedFiles,
                     options.ConfirmCompressionBombExtraction, options.SelectedEntryPaths,
                     cancellationToken)
                     .ConfigureAwait(false);
@@ -152,7 +157,7 @@ public sealed class TarProcessService : ITarService
     private static async Task<(string ActualDest, bool AnyExtracted)> ExtractSingleArchiveAsync(
         string archivePath,
         string destDir,
-        ConflictBehavior onConflict,
+        ConflictResolver conflictResolver,
         List<SkippedFile> skippedFiles,
         Func<CompressionBombWarning, Task<bool>>? confirmCompressionBombExtraction,
         IReadOnlyList<string>? selectedEntryPaths,
@@ -230,12 +235,13 @@ public sealed class TarProcessService : ITarService
 
                 if (File.Exists(finalFilePath))
                 {
-                    if (onConflict == ConflictBehavior.Skip)
+                    ConflictBehavior resolvedConflict = await conflictResolver.ResolveAsync(finalFilePath).ConfigureAwait(false);
+                    if (resolvedConflict == ConflictBehavior.Skip)
                     {
                         skippedFiles.Add(new SkippedFile { Path = relativePath, Reason = "File already exists at destination." });
                         continue;
                     }
-                    if (onConflict == ConflictBehavior.Rename)
+                    if (resolvedConflict == ConflictBehavior.Rename)
                     {
                         finalFilePath = GetUniqueFilePath(finalFilePath);
                     }

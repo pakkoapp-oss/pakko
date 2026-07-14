@@ -13,4 +13,5 @@ public interface IDialogService
     Task ShowAboutAsync();
     Task ShowFileHashAsync();
     Task<bool> ShowCompressionBombConfirmAsync(CompressionBombWarning warning);
+    Task<ConflictDecision> ShowConflictDialogAsync(ConflictInfo conflict);
 }

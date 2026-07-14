@@ -105,9 +105,15 @@ guess is a side effect of T-F100's manifest change invalidating an Explorer verb
 wired into all five buggy call sites across `ZipArchiveService.cs`/`TarProcessService.cs`/
 `Archiver.Shell/Program.cs`, plus the native `ShellExtUtils.cpp` title-display equivalent;
 on-device verified 2026-07-14. See `DECISIONS.md`'s T-F103 entry.
+**T-F06** (Ask on Conflict Dialog) is now `[x]` done — designed via Plan Mode, `ConflictBehavior`
+gained a 4th value `Ask` resolved per-conflict through a new Core→UI callback mirroring T-F94's
+existing `ConfirmCompressionBombExtraction` pattern, wired into both Archive-creation modes and
+both Zip/Tar extraction engines via a shared `ConflictResolver` helper; on-device verified
+2026-07-14 for both Archive and Extract directions, all three resolutions plus "apply to all". See
+`DECISIONS.md`'s T-F06 entry.
 - T-01 through T-35 + T-11, and T-F16/T-F17/T-F18/T-F26–T-F29/T-F37–T-F39/T-F44/T-F45 complete
-- 235/235 .NET tests pass (`dotnet test --filter "Category!=Slow"`: 161 Archiver.Core.Tests +
-  36 Archiver.Shell.Tests + 22 Archiver.Core.IntegrationTests + 16 Archiver.App.Core.Tests, the
+- 254/254 .NET tests pass (`dotnet test --filter "Category!=Slow"`: 179 Archiver.Core.Tests +
+  36 Archiver.Shell.Tests + 23 Archiver.Core.IntegrationTests + 16 Archiver.App.Core.Tests, the
   last a new plain-net8.0 project added for T-F05's flat-to-tree helper and T-F100's
   `FileActivationRouter`). 4 Zip64 tests (T-F20) are tagged `[Trait("Category", "Slow")]` and
   excluded from this default run — they cost real wall-clock time (>65535-file
@@ -620,6 +626,9 @@ Two more, not duplicated elsewhere:
   ask the user to do the manual on-device verification (context menu, extraction, etc.) before
   the commit. Don't commit a task as done/partial on the strength of `dotnet test` /
   `Archiver.ShellExtension.Tests.exe` alone if it touches shell-triggered or UI behavior.
+  If the user explicitly directs it, performing that verification yourself via the local
+  `windows` MCP server (see `.claude.local.md`) is an accepted substitute for asking — still
+  don't graduate a task on `dotnet test` alone without one or the other.
 - **`TASKS.md`'s task-graduation edits** (moving completed entries to `TASKS_DONE.md`) tend to
   land in large diff hunks that intermingle several unrelated tasks — `git add -p` can't
   cleanly split one task's doc update out of such a hunk. When committing narrowly, stage
@@ -633,3 +642,9 @@ Two more, not duplicated elsewhere:
   tool:** a multi-line `old_string` spanning several em-dash (—)/arrow (→) characters can
   silently fail to match even though `Read` shows it verbatim. Split into smaller edits
   (isolate one such character per edit) to work around it.
+- **`DIAGRAMS.md` mermaid blocks are never auto-validated — nothing in this repo's workflow
+  renders them.** After editing, run each block through `npx @mermaid-js/mermaid-cli` (`mmdc -i
+  diagram.mmd -o diagram.svg`) before considering the edit done. A bare `;` or an unescaped
+  `"quoted phrase"` inside unquoted label/message/transition text breaks the parser in
+  sequence/state/flowchart diagrams alike — use `—` instead of `;`, and quote the whole label if
+  it needs literal parentheses or quotes.

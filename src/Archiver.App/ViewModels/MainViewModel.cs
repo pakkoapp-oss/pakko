@@ -168,12 +168,14 @@ public sealed partial class MainViewModel : ObservableObject
         {
             ConflictBehavior.Overwrite => 0,
             ConflictBehavior.Rename    => 2,
+            ConflictBehavior.Ask       => 3,
             _                          => 1 // Skip
         };
         set => OnConflict = value switch
         {
             0 => ConflictBehavior.Overwrite,
             2 => ConflictBehavior.Rename,
+            3 => ConflictBehavior.Ask,
             _ => ConflictBehavior.Skip
         };
     }
@@ -362,6 +364,7 @@ public sealed partial class MainViewModel : ObservableObject
                 OpenDestinationFolder = OpenDestinationFolder,
                 DeleteSourceFiles = DeleteAfterOperation,
                 CompressionLevel = SelectedCompressionLevel,
+                ResolveConflictAsync = _dialogService.ShowConflictDialogAsync,
             };
 
             long totalBytes = 0;
@@ -499,6 +502,7 @@ public sealed partial class MainViewModel : ObservableObject
                 OpenDestinationFolder = OpenDestinationFolder,
                 DeleteArchiveAfterExtraction = DeleteAfterOperation,
                 ConfirmCompressionBombExtraction = _dialogService.ShowCompressionBombConfirmAsync,
+                ResolveConflictAsync = _dialogService.ShowConflictDialogAsync,
                 SelectedEntryPaths = selectedEntryPaths,
             };
 

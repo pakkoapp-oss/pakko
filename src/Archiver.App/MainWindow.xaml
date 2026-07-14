@@ -423,6 +423,7 @@
                     <ComboBoxItem x:Uid="ConflictOverwriteItem"/>
                     <ComboBoxItem x:Uid="ConflictSkipItem"/>
                     <ComboBoxItem x:Uid="ConflictRenameItem"/>
+                    <ComboBoxItem x:Uid="ConflictAskItem"/>
                 </ComboBox>
             </StackPanel>
             <CheckBox

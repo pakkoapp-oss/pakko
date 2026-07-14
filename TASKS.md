@@ -705,9 +705,52 @@ places for one conceptual bug).
 ---
 
 ### T-F06 — Ask on Conflict Dialog
-- [ ] **Status:** future
+- [x] **Status:** done — designed via Plan Mode 2026-07-14 (approved plan:
+      `floofy-swimming-sifakis.md`), implemented the same day. `ConflictBehavior` gained a 4th
+      value, `Ask`, resolved per-conflict via a new Core→UI callback
+      (`ArchiveOptions`/`ExtractOptions.ResolveConflictAsync`) mirroring T-F94's existing
+      `ConfirmCompressionBombExtraction` precedent (same `DispatcherQueue.TryEnqueue` marshaling).
+      A new shared internal `Archiver.Core.Services.ConflictResolver` (one instance per
+      `ArchiveAsync`/`ExtractAsync` call) resolves `Ask` into a concrete `Skip`/`Overwrite`/`Rename`
+      before reaching each of the four existing conflict switches — those switches themselves are
+      unchanged. New `ConflictInfo`/`ConflictDecision`/`ConflictResolution` models in
+      `Archiver.Core.Models`. New `IDialogService.ShowConflictDialogAsync` +
+      `DialogService` implementation (code-first `ContentDialog`, 3-button
+      Overwrite/Rename/Skip + an "apply to all" `CheckBox`, `DefaultButton = Close` so Enter never
+      resolves to the destructive Overwrite). `MainWindow.xaml`'s conflict `ComboBox` gained a 4th
+      `ConflictAskItem`; `MainViewModel.OnConflictIndex` extended to the 4-way mapping;
+      `en-US`/`uk-UA` `Resources.resw` both updated. `Archiver.Shell` is unaffected by construction
+      (hardcodes `Rename`, never wires the callback). See `DECISIONS.md`'s T-F06 entry for the full
+      design rationale (apply-to-all's whole-operation scope, the `ContentDialogResult.None →
+      Skip` mapping, and the `SeparateArchives`/T-F12 same-run-collision interaction).
+      `dotnet test --filter "Category!=Slow"` green (254/254, +19 new: `ConflictResolverTests`,
+      plus Ask-mode cases added to `ZipArchiveServiceArchiveTests`/`ZipArchiveServiceExtractTests`/
+      `TarProcessServiceExtractTests`). **Full `Deploy.ps1` build+sign+install and on-device
+      verification completed 2026-07-14** (user-directed via Windows MCP automation): the dialog
+      appeared correctly for both Extract (multiple real conflicts in `browse_test.zip`) and
+      Archive (a pre-existing `big_test_file.zip`) — correct title/message/localization, all
+      three buttons (Перезаписати/Перейменувати/Пропустити) individually confirmed via real
+      filesystem checks (rename created a numbered copy; overwrite replaced a 12-byte placeholder
+      with the real 20 MB archive), and "Застосувати до всіх" confirmed suppressing further
+      prompts for subsequent conflicts in the same operation. `Archiver.Shell` reconfirmed
+      unaffected (unchanged file; already exercised silently-renaming behavior during this same
+      session's T-F103 verification). Graduated to `[x]`.
+- **Depends on:** none
 
-Interactive dialog when conflict detected — Skip / Overwrite / Rename per file.
+**Acceptance criteria:**
+- [x] `ConflictBehavior.Ask` added; resolved via a new Core→UI callback at all four existing
+      conflict-resolution call sites (`ZipArchiveService.ArchiveAsync` × 2 modes,
+      `ZipArchiveService.ExtractAsync`, `TarProcessService.ExtractAsync`)
+- [x] "Apply to all remaining conflicts" — a single decision suppresses the dialog for the rest
+      of the current Archive/Extract operation (verified via callback-invocation-count assertions,
+      not just final on-disk state)
+- [x] `Archiver.Shell` unaffected — still hardcodes `Rename`, never shows a dialog
+- [x] New tests: `ConflictResolverTests` (unit, isolated resolver logic) plus Ask-mode extensions
+      to the existing Archive/Extract test files for both Zip and (real `tar.exe`) Tar paths
+- [x] `dotnet test --filter "Category!=Slow"` passes
+- [x] `Deploy.ps1` build+sign+install, on-device: select "Ask", trigger a real conflict during
+      both Extract and Archive, confirm the dialog appears with the correct file name, test all 3
+      buttons, and confirm "apply to all" suppresses further prompts within one operation
 
 ---
 

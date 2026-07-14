@@ -25,6 +25,7 @@ public sealed class ZipArchiveService : IArchiveService
         var errors = new List<ArchiveError>();
         var createdFiles = new List<string>();
         var skippedFiles = new List<SkippedFile>();
+        var conflictResolver = new ConflictResolver(options.OnConflict, options.ResolveConflictAsync);
 
         if (options.Mode == ArchiveMode.SingleArchive)
         {
@@ -44,7 +45,7 @@ public sealed class ZipArchiveService : IArchiveService
 
             if (File.Exists(destPath))
             {
-                switch (options.OnConflict)
+                switch (await conflictResolver.ResolveAsync(destPath).ConfigureAwait(false))
                 {
                     case ConflictBehavior.Skip:
                         // T-F87: report every source as skipped (not just a bare empty result) so
@@ -271,7 +272,7 @@ public sealed class ZipArchiveService : IArchiveService
 
                     if (onDiskConflict || sameRunConflict)
                     {
-                        switch (options.OnConflict)
+                        switch (await conflictResolver.ResolveAsync(destPath).ConfigureAwait(false))
                         {
                             case ConflictBehavior.Skip:
                                 // T-F87: record the skip so DeleteAfterOperation cleanup (keyed off
@@ -467,6 +468,10 @@ public sealed class ZipArchiveService : IArchiveService
         var errors = new List<ArchiveError>();
         var createdFiles = new List<string>();
         var skippedFiles = new List<SkippedFile>();
+        // T-F06: one instance for the whole call, constructed before the loop below, so an
+        // "apply to all" decision on one archive's conflict survives across every subsequent
+        // archive in this same ArchivePaths batch, not just the current archive's entries.
+        var conflictResolver = new ConflictResolver(options.OnConflict, options.ResolveConflictAsync);
 
         Directory.CreateDirectory(options.DestinationFolder);
 
@@ -511,7 +516,7 @@ public sealed class ZipArchiveService : IArchiveService
                 bool alreadyIsolated = options.Mode == ExtractMode.SeparateFolders;
                 var (actualDest, anyExtracted) = await Task.Run(async () =>
                     await ExtractWithSmartFolderingAsync(archivePath, destDir, alreadyIsolated,
-                        options.OnConflict, skippedFiles, archiveProgress,
+                        conflictResolver, skippedFiles, archiveProgress,
                         options.ConfirmCompressionBombExtraction, options.SelectedEntryPaths,
                         cancellationToken),
                     cancellationToken).ConfigureAwait(false);
@@ -707,7 +712,7 @@ public sealed class ZipArchiveService : IArchiveService
         string archivePath,
         string destDir,
         bool alreadyIsolated,
-        ConflictBehavior onConflict,
+        ConflictResolver conflictResolver,
         List<SkippedFile> skippedFiles,
         IProgress<ProgressReport>? progress,
         Func<CompressionBombWarning, Task<bool>>? confirmCompressionBombExtraction,
@@ -901,12 +906,13 @@ public sealed class ZipArchiveService : IArchiveService
                 string finalFilePath = Path.GetFullPath(Path.Combine(actualDest, relativePath));
                 if (File.Exists(finalFilePath) || claimedFinalPaths.Contains(finalFilePath))
                 {
-                    if (onConflict == ConflictBehavior.Skip)
+                    ConflictBehavior resolvedConflict = await conflictResolver.ResolveAsync(finalFilePath).ConfigureAwait(false);
+                    if (resolvedConflict == ConflictBehavior.Skip)
                     {
                         bytesRead += entry.Length;
                         continue;
                     }
-                    if (onConflict == ConflictBehavior.Rename)
+                    if (resolvedConflict == ConflictBehavior.Rename)
                     {
                         string uniqueFinal = GetUniqueFilePath(finalFilePath, claimedFinalPaths);
                         destFilePath = Path.Combine(Path.GetDirectoryName(destFilePath)!, Path.GetFileName(uniqueFinal));

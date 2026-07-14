@@ -113,12 +113,17 @@ public sealed record ArchiveOptions
     public bool OpenDestinationFolder { get; init; } = false;
     public bool DeleteSourceFiles { get; init; } = false;
     public CompressionLevel CompressionLevel { get; init; } = CompressionLevel.Optimal;
+
+    // T-F06: invoked once per conflicting destination path when OnConflict == Ask. Null (e.g.
+    // Archiver.Shell, or a test that doesn't wire it) falls back to Skip — see ConflictResolver.
+    public Func<ConflictInfo, Task<ConflictDecision>>? ResolveConflictAsync { get; init; }
 }
 
 public enum ArchiveMode { SingleArchive, SeparateArchives }
 
-public enum ConflictBehavior { Overwrite, Skip, Rename }
-// Note: ConflictBehavior.Ask was removed — default is Skip
+public enum ConflictBehavior { Overwrite, Skip, Rename, Ask }
+// T-23 (v1.0): Ask was cut from scope, default Skip. T-F06 (2026-07-14) reintroduced it as a
+// real interactive per-conflict dialog — see ConflictResolver and DECISIONS.md's T-F06 entry.
 ```
 
 ```csharp
@@ -137,9 +142,46 @@ public sealed record ExtractOptions
     // space to hold it. True proceeds with extraction, false declines. Null (default) auto-
     // declines — the safe behavior for callers that don't wire a callback (Archiver.Shell).
     public Func<CompressionBombWarning, Task<bool>>? ConfirmCompressionBombExtraction { get; init; }
+
+    // T-F06: invoked once per conflicting entry when OnConflict == Ask. Same null-safe-default
+    // (Skip) and delegate shape as ArchiveOptions.ResolveConflictAsync above.
+    public Func<ConflictInfo, Task<ConflictDecision>>? ResolveConflictAsync { get; init; }
 }
 
 public enum ExtractMode { SeparateFolders, SingleFolder }
+```
+
+```csharp
+// Models/ConflictInfo.cs
+public sealed record ConflictInfo
+{
+    public required string ExistingPath { get; init; }
+}
+
+// Models/ConflictDecision.cs
+public enum ConflictResolution { Skip, Overwrite, Rename }  // no Ask — a resolved decision, not a policy
+
+public sealed record ConflictDecision
+{
+    public required ConflictResolution Resolution { get; init; }
+    public bool ApplyToAll { get; init; }  // suppresses further ResolveConflictAsync calls this operation
+}
+```
+
+```csharp
+// Services/ConflictResolver.cs — internal, Archiver.Core.Services
+// Resolves ConflictBehavior.Ask into a concrete Skip/Overwrite/Rename by invoking the caller's
+// ResolveConflictAsync callback, remembering an ApplyToAll choice for its own lifetime. One
+// instance is constructed per ArchiveAsync/ExtractAsync call, before any loop, so "apply to all"
+// spans every archive/entry in that call. Wired into all four existing conflict-resolution call
+// sites (ZipArchiveService.ArchiveAsync's two modes, ZipArchiveService.ExtractAsync,
+// TarProcessService.ExtractAsync) — see DECISIONS.md's T-F06 entry and DIAGRAMS.md's diagrams 3/5.
+internal sealed class ConflictResolver(
+    ConflictBehavior configured,
+    Func<ConflictInfo, Task<ConflictDecision>>? resolveConflictAsync)
+{
+    public Task<ConflictBehavior> ResolveAsync(string existingPath);
+}
 ```
 
 ```csharp
@@ -238,6 +280,9 @@ public interface IDialogService
     // onto the window's DispatcherQueue before showing a ContentDialog. See DECISIONS.md's
     // T-F94 entry.
     Task<bool> ShowCompressionBombConfirmAsync(CompressionBombWarning warning);
+
+    // T-F06: same DispatcherQueue-marshaling requirement as ShowCompressionBombConfirmAsync above.
+    Task<ConflictDecision> ShowConflictDialogAsync(ConflictInfo conflict);
 }
 ```
 
