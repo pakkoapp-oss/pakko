@@ -44,7 +44,7 @@ documentation that lies.
 | `IsBusy`/cancellation/operation lifecycle in `MainViewModel`, or `NativeProgressDialog` cancel polling | **2. State** | Catches stuck states (a state with no outgoing transition) and commands gated on the wrong `CanExecute`. |
 | New branch in `ZipArchiveService` validation/conflict/smart-folder logic | **3. Activity** | Catches silently-dropped entries: a new `continue`/skip path that isn't reflected in `ArchiveResult` (see Finding 2 below for why this matters). |
 | MSIX manifest `<Application>` entries, `com:ComServer` registration, packaging of a new satellite EXE | **4. Component** | Catches "works in VS, `ERROR_ACCESS_DENIED` when packaged" — an EXE that isn't its own declared `Application` entry. |
-| New branch in `TarProcessService`'s pre-scan/extraction/conflict pipeline | **5. Activity (tar.exe)** | Whole-archive-reject means a single scan gap silently lets an entire class of unsafe entries through — there's no per-entry fallback the way ZIP has, so a missed branch here is higher-severity, not lower. |
+| New branch in `TarSandboxedService`'s pre-scan/extraction/conflict pipeline | **5. Activity (tar.exe)** | Whole-archive-reject means a single scan gap silently lets an entire class of unsafe entries through — there's no per-entry fallback the way ZIP has, so a missed branch here is higher-severity, not lower. |
 | `MainWindow.xaml` row added/removed, or any row's `Visibility` binding changed; new `IsBrowsingArchive`-gated (or should-be-gated) UI element | **6. State (UI mode)** | Exactly the category that missed Row 0 never hiding in browse mode (found 2026-07-13 by manual comparison, not by this table) — a per-row visibility table is the only thing that would have caught it before shipping. |
 
 Update the diagram in the same commit as the code change, alongside `dotnet test` — not as a
@@ -428,32 +428,36 @@ installed MSIX package — invisible until on-device testing. This is exactly th
 
 ---
 
-## 5. Activity — tar.exe whole-archive pre-scan and extraction (T-F49)
+## 5. Activity — tar.exe whole-archive pre-scan and extraction (T-F49, sandboxed since T-F52)
 
 Source read for this diagram: `ExtractSingleArchiveAsync`, `ScanForUnsafeEntriesAsync`,
 `IsDangerousEntryName`, `EnumerateFilesGuarded` in
-`src/Archiver.Core/Services/TarProcessService.cs:145-331`.
+`src/Archiver.Core/Services/TarSandboxedService.cs`, and `TarSandboxScope.CreateAsync`/`RunAsync`
+in `src/Archiver.Core/Services/Sandbox/TarSandboxScope.cs`.
 
 ```mermaid
 flowchart TD
-    A[ExtractSingleArchiveAsync per archivePath] --> B["tar -tf archivePath (RunTarAsync)"]
-    B -- "exit != 0" --> RejIO1["throw IOException(stdErr)<br/>quarantine never created —<br/>caught in ExtractAsync as ArchiveError"]
+    A0["ExtractSingleArchiveAsync per archivePath:<br/>scope = TarSandboxScope.CreateAsync(archivePath, needsOutputDir:true)<br/>— verifies tar.exe's Authenticode signature once,<br/>ensures the AppContainer profile, creates %TEMP%\PakkoTarSandbox\&lt;guid&gt;\in+out<br/>with ACEs, stages archivePath into in\ (hardlink-or-copy)"]
+    A0 -- "signature check fails" --> RejSig["throw TarSignatureVerificationException<br/>caught in ExtractAsync as ArchiveError — fail-closed,<br/>never a silent unsandboxed fallback"]
+    A0 -- "signature OK" --> A[ExtractSingleArchiveAsync continues] --> B["scope.RunAsync(['-tf', scope.StagedArchivePath])<br/>— tar.exe runs INSIDE the AppContainer + a fresh Job Object"]
+    B -- "exit != 0" --> RejIO1["throw IOException(stdErr)<br/>→ finally still runs: scope disposed —<br/>caught in ExtractAsync as ArchiveError"]
     B -- "exit 0" --> D{"for each listed name:<br/>IsDangerousEntryName?<br/>('..' segment, rooted path,<br/>ADS ':', reserved name, control char)"}
-    D -- yes --> RejTar1["throw TarArchiveRejectedException<br/>WHOLE ARCHIVE rejected, quarantine never created"]
-    D -- "no, all names clean" --> E["tar -tvf archivePath (RunTarAsync)"]
+    D -- yes --> RejTar1["throw TarArchiveRejectedException<br/>WHOLE ARCHIVE rejected — finally still runs: scope disposed"]
+    D -- "no, all names clean" --> E["scope.RunAsync(['-tvf', scope.StagedArchivePath])<br/>— same scope, same AppContainer, a fresh Job Object"]
     E -- "exit != 0" --> RejIO1
     E -- "exit 0" --> F{"-tf line count ==<br/>-tvf line count?"}
     F -- no --> RejTar2["throw TarArchiveRejectedException<br/>('listing is inconsistent')"]
     F -- yes --> G{"for each -tvf line:<br/>char[0] == '-' or 'd'?"}
     G -- "no (l/h/b/c/p/s)" --> RejTar3["throw TarArchiveRejectedException<br/>('symlink, hardlink, device...')<br/>⚠ THIS is the gate that blocks the confirmed<br/>symlink-escape exploit — see DECISIONS.md's T-F49 entry"]
-    G -- "yes, every entry '-' or 'd'" --> G2{"T-F05: options.SelectedEntryPaths<br/>set and non-empty?<br/>(gates D-G above already ran<br/>UNCONDITIONALLY — the pre-scan<br/>never branches on this)"}
-    G2 -- no --> H["Directory.CreateDirectory(quarantineDir)<br/>tar -xf archivePath -C quarantineDir"]
+    G -- "yes, every entry '-' or 'd'" --> PreDir["Pre-create every directory allNames implies,<br/>via Directory.CreateDirectory at Pakko's OWN<br/>(unsandboxed) identity under scope.OutputDirectory —<br/>libarchive's own implicit parent-dir creation was found<br/>to fail under the AppContainer even with a correctly<br/>ACL'd out\; see DECISIONS.md's T-F52 entry"]
+    PreDir --> G2{"T-F05: options.SelectedEntryPaths<br/>set and non-empty?<br/>(gates D-G above already ran<br/>UNCONDITIONALLY — the pre-scan<br/>never branches on this)"}
+    G2 -- no --> H["scope.RunAsync(['-xf', scope.StagedArchivePath,<br/>'-C', scope.OutputDirectory])"]
     G2 -- yes --> G3["ExpandSelection(allNames, SelectedEntryPaths):<br/>each selected path → its exact -tf name<br/>(file or dir form) + every -tf name it's<br/>a '/'-prefix of (descendants) — built from<br/>the SAME name list gate D already validated,<br/>never a second '-tf' call"]
-    G3 --> H2["Directory.CreateDirectory(quarantineDir)<br/>tar -xf archivePath -C quarantineDir &lt;expanded members&gt;"]
+    G3 --> H2["scope.RunAsync(['-xf', scope.StagedArchivePath,<br/>'-C', scope.OutputDirectory, &lt;expanded members&gt;])"]
     H2 -- "exit != 0 (e.g. a stale/unmatched<br/>member name — 'Not found in archive')" --> RejIO2
     H2 -- "exit 0" --> I
-    H -- "exit != 0" --> RejIO2["throw IOException(stdErr)<br/>→ finally still runs: quarantine deleted<br/>→ caught in ExtractAsync as ArchiveError"]
-    H -- "exit 0" --> I["Directory.CreateDirectory(destDir)<br/>walk EnumerateFilesGuarded(quarantineDir)"]
+    H -- "exit != 0" --> RejIO2["throw IOException(stdErr)<br/>→ finally still runs: scope disposed<br/>→ caught in ExtractAsync as ArchiveError"]
+    H -- "exit 0" --> I["Directory.CreateDirectory(destDir)<br/>walk EnumerateFilesGuarded(scope.OutputDirectory)"]
     I --> J{"subdirectory hit during walk:<br/>IsReparsePoint?"}
     J -- yes --> K["⚠ silently NOT descended into —<br/>no SkippedFiles entry, no ArchiveError<br/>(see Finding below)"]
     J -- no --> L[yield each file in this directory]
@@ -466,13 +470,13 @@ flowchart TD
     N0 -- "resolvedConflict==Overwrite" --> O3["NO explicit branch — falls through to O<br/>with the ORIGINAL finalFilePath;<br/>File.Move(overwrite:true) below does the actual overwrite<br/>(same asymmetry as diagram 3's ZIP OnConflict gate)"]
     O2 --> O
     O3 --> O
-    O["File.Move(file, finalFilePath, overwrite:true)<br/>ArchiveEntrySecurity.TryPropagateMotw(archivePath, finalFilePath)"] --> Mloop
+    O["File.Move(file, finalFilePath, overwrite:true)<br/>ArchiveEntrySecurity.TryPropagateMotw(archivePath, finalFilePath)<br/>— reads the ORIGINAL archivePath's Zone.Identifier, never the<br/>staged in\ copy, which may not even carry one depending on<br/>hardlink-vs-copy staging"] --> Mloop
     P --> Mloop
     Mloop -- yes --> I
     Mloop -- no --> Q2{"totalFiles &gt; 0 &&<br/>extractedCount == 0?<br/>(T-F87 - every file hit P, nothing moved)"}
     Q2 -- yes --> Q3["SkippedFiles += whole-archive entry<br/>(Path == archivePath); caller does NOT<br/>add this archive to CreatedFiles"]
     Q2 -- no --> Q
-    Q3 --> Q["return destDir<br/>(finally: quarantineDir deleted, success or failure)"]
+    Q3 --> Q["return destDir<br/>(finally: scope.Dispose() — quarantine root deleted,<br/>AppContainer SID handle released; the AppContainer PROFILE<br/>itself is never deleted, it persists for reuse)"]
     Q --> R{{"ArchiveResult.Success = errors.Count==0 (ExtractAsync); SkippedFiles still NOT read in this computation, only in MainViewModel's DeleteAfterOperation cleanup gate (T-F87)"}}
 ```
 
@@ -486,10 +490,14 @@ flowchart TD
   or rooted path in its name passes D cleanly; only G's type check catches it.
 - **Whole-archive-reject, no per-entry fallback.** Unlike diagram 3's ZIP chain (where a bad
   entry is skipped and the rest of the archive still extracts), any rejection here
-  (`RejTar1`/`RejTar2`/`RejTar3`) throws before `quarantineDir` is even created — the entire
-  archive produces one `ArchiveError` and nothing is written. This is deliberate (see
-  `DECISIONS.md`), but means a single overly-broad future name/type check would silently reject
-  entire legitimate archives rather than just skipping one entry.
+  (`RejTar1`/`RejTar2`/`RejTar3`) throws before `-xf` ever runs — the entire archive produces one
+  `ArchiveError` and nothing is written to the final destination. Since T-F52, the quarantine
+  scope (staged archive + ACL'd `in\`/`out\`) *does* already exist by this point — the pre-scan
+  itself now runs sandboxed, which needs a staged copy — but that's an ephemeral, Pakko-owned
+  `%TEMP%` directory the `finally` always cleans up regardless of which branch threw; nothing
+  reaches the user's chosen destination either way. This is deliberate (see `DECISIONS.md`), but
+  means a single overly-broad future name/type check would silently reject entire legitimate
+  archives rather than just skipping one entry.
 - **New finding (node K): a reparse-point subdirectory hit during the post-extraction walk is
   silently dropped** — `EnumerateFilesGuarded` simply doesn't push it onto its traversal stack,
   recording neither a `SkippedFiles` entry nor an `ArchiveError`. Currently unreachable in normal
@@ -501,10 +509,10 @@ flowchart TD
   guarantees are ever loosened.
 - **Same `OnConflict` asymmetry as diagram 3:** `Overwrite` has no explicit branch and falls
   through to the unconditional `File.Move(overwrite: true)` — identical shape to
-  `ZipArchiveService`'s gate, confirmed by reading `TarProcessService.cs` directly rather than
+  `ZipArchiveService`'s gate, confirmed by reading `TarSandboxedService.cs` directly rather than
   assuming parity with diagram 3.
 - **T-F06 (2026-07-14): `Ask` resolved the same way as diagram 3's node J0** (node N0 above) — a
-  separate `ConflictResolver` instance from `ZipArchiveService`'s, since `TarProcessService` is a
+  separate `ConflictResolver` instance from `ZipArchiveService`'s, since `TarSandboxedService` is a
   distinct `ExtractAsync` call routed independently by `ExtractionRouter`. An "apply to all"
   decision made while extracting a batch of tar-family archives does not carry over to a ZIP in
   the same user selection, and vice versa — an accepted, documented scope cut, not a bug. See
@@ -563,7 +571,7 @@ leaving a now-redundant dialog reachable another way. This also resolves the "co
 `Auto,*,100,100,140` (icon / Name / Size / Packed / Modified); the header `Grid`'s columns were
 widened to match (previously `*,100,140` with no icon column, silently misaligned against the
 row template's `Auto,*,100,140` — fixed as part of this same change since both were being
-touched). `Packed` reads blank for every tar-routed format (RAR/7z/tar.*) — `TarProcessService`
+touched). `Packed` reads blank for every tar-routed format (RAR/7z/tar.*) — `TarSandboxedService`
 never populates `CompressedSize` per-entry (the underlying gzip/xz stream is whole-archive) — so
 this column is ZIP-only in practice; see `ARCHITECTURE.md`'s `IDialogService` note.
 
@@ -646,7 +654,7 @@ pattern as Rows 1/3; "About" stays in both variants (matches NanaZip's own alway
 
 ## Findings summary (surfaced while drafting diagram 5, 2026-07-07)
 
-4. **Reparse-point subdirectory silently dropped during `TarProcessService`'s post-extraction
+4. **Reparse-point subdirectory silently dropped during `TarSandboxedService`'s post-extraction
    walk** — no `SkippedFiles` entry, no `ArchiveError`; see diagram 5's node K and its note above.
    Not tracked as a `T-Fxx` and not fixed — currently dead code (gate G already rejects any
    archive containing a symlink entry before this walk can run), so there is nothing live to fix

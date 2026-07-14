@@ -167,14 +167,44 @@ Project: `tests/Archiver.Core.IntegrationTests/` (created in T-F49).
 dotnet test tests/Archiver.Core.IntegrationTests
 ```
 
-`TarProcessServiceExtractTests.cs` (7 tests) exercises `TarProcessService.ExtractAsync` against
-the real system `tar.exe`: a round-trip extraction, a rename-conflict case, MOTW propagation,
-and three whole-archive-reject cases (path-traversal entry, ADS/reserved-name entry, and a
-symlink-entry escape — the last is a regression test for the exploit documented in
-`DECISIONS.md`'s T-F49 entry). Fixtures are self-generated per-test via `TarBuilder.cs` (raw
-USTAR bytes, no third-party tooling — needed since a `..`-entry or a symlink escape target isn't
-a representable real source path) rather than a prebuilt corpus; T-F50 still owns the full
-multi-format fixture set below.
+`TarSandboxedServiceExtractTests.cs` (14 tests; renamed from `TarProcessServiceExtractTests.cs`
+when T-F52 replaced `TarProcessService` with the sandboxed service — same test bodies, only the
+`_sut` type changed) exercises `TarSandboxedService.ExtractAsync` against the real system
+`tar.exe`: round-trip extraction, rename-conflict cases, MOTW propagation, selective extraction
+(files-only and folder-with-descendants), compression-bomb handling, and whole-archive-reject
+cases (path-traversal entry, ADS/reserved-name entry, truncated tar, and a symlink-entry escape —
+the last is a regression test for the exploit documented in `DECISIONS.md`'s T-F49 entry).
+Fixtures are self-generated per-test via `TarBuilder.cs` (raw USTAR bytes, no third-party tooling
+— needed since a `..`-entry or a symlink escape target isn't a representable real source path)
+rather than a prebuilt corpus; T-F50 still owns the full multi-format fixture set below.
+`TarSandboxedServiceCompressedFormatsTests.cs` and `TarSandboxedServiceExternalFormatsTests.cs`
+were renamed the same way.
+
+### Sandbox subsystem tests (T-F52, v1.4)
+
+Exercise the real Win32 AppContainer/ACL/Job-Object/Authenticode APIs directly — no mocks (this
+repo's convention), every assertion is against real OS behavior:
+
+- `tests/Archiver.Core.Tests/Services/Sandbox/` — pure/fast unit tests: `SandboxedProcessLauncherTests.cs`
+  (raw `CreateProcessW` launcher, no AppContainer), `SecurityCapabilitiesAttributeListTests.cs`
+  (`tar.exe --version` inside a real AppContainer), `AppContainerProfileTests.cs` (profile
+  create/reuse/delete, using its own throwaway test profile name — never the shared production
+  `Pakko.TarSandbox` profile), `QuarantineStagingTests.cs` (hardlink/copy staging),
+  `TarSignatureVerifierTests.cs` (real tar.exe passes, an unsigned decoy and a catalog-signed
+  system binary both correctly fail).
+- `tests/Archiver.Core.IntegrationTests/` — `QuarantineAclTests.cs` (2 tests: a granted quarantine
+  lets a real sandboxed extraction succeed; an un-granted sibling folder is denied — the actual
+  security proof), `TarSandboxScopeTests.cs` (4 tests: pre-scan + extraction in one scope,
+  listing-only scope creates no `out\`, Dispose cleans up but never touches the shared profile),
+  `SandboxJobObjectTarExtractionTests.cs` (2 tests: `.tar.xz`/`.tar.zst` extraction survives
+  `ActiveProcessLimit = 1`), and `TarSandboxedServiceSandboxBehaviorTests.cs` (3 tests — the
+  acceptance-criteria proofs: a write outside the quarantine is denied, a spawned child process
+  under the Job Object never completes, and a socket-connect attempt fails inside the
+  AppContainer while succeeding unsandboxed against the same listener).
+
+No `[Trait("Category", "Sandbox")]` was added — per-test wall time measured at 44–172ms (profile
+reuse means no registry-provisioning cost per test), so there was nothing to gain from a
+filterable-but-not-excluded category; add one later only if a real cost is measured.
 
 ### Tags
 

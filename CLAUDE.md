@@ -111,11 +111,35 @@ existing `ConfirmCompressionBombExtraction` pattern, wired into both Archive-cre
 both Zip/Tar extraction engines via a shared `ConflictResolver` helper; on-device verified
 2026-07-14 for both Archive and Extract directions, all three resolutions plus "apply to all". See
 `DECISIONS.md`'s T-F06 entry.
+**T-F52 (AppContainer Sandbox for tar.exe) is `[~]` partial — Phase 1 implementation (11 of 13
+planned steps) complete 2026-07-14.** `TarProcessService.cs` is deleted outright (fail-closed, no
+unsandboxed fallback) and replaced by `TarSandboxedService`, which routes every tar.exe launch
+through a new `Archiver.Core/Services/Sandbox/` subsystem (`AppContainerProfile`, `QuarantineAcl`,
+`QuarantineStaging`, `SandboxJobObject`, `SandboxedProcessLauncher`,
+`SecurityCapabilitiesAttributeList`, `TarSignatureVerifier`, `TarSandboxScope`). Confirmed on
+real hardware, not just `dotnet test`: an on-device probe proved AppContainer +
+`PROC_THREAD_ATTRIBUTE_SECURITY_CAPABILITIES` works from the actual packaged (MSIX
+`FullTrustApplication`) process identity, not only from an unpackaged test host. DI wired at all 3
+touch points (`Archiver.App`, `Archiver.Shell`, `SkipIfFormatUnsupportedAttribute`); the 3 existing
+integration test files plus 2 unit test files were renamed to match, and a new
+`TarSandboxedServiceSandboxBehaviorTests.cs` proves the three properties that matter (writes
+outside quarantine denied, a spawned child process never completes under the Job Object, a
+socket-connect fails inside the AppContainer while succeeding unsandboxed against the same
+listener). Several real bugs found and fixed along the way (wrong `CERT_FIND_SUBJECT_CERT`
+constant, hardlinked staged files not inheriting the quarantine folder's ACL, libarchive's
+implicit parent-directory creation failing under AppContainer, a quarantine-location design
+correction from "same disk as destination" to a fixed `%TEMP%`-rooted path) — see `DECISIONS.md`'s
+several T-F52 entries for the full empirical trail. **Remaining before this graduates to done:**
+Phase 1's doc-update checklist (`ARCHITECTURE.md`/`DIAGRAMS.md`/`TESTING.md` — in progress this
+same round) and Phase 1's final step — a full `Deploy.ps1` build+sign+install and on-device
+verification of real archive extraction through the installed, packaged app.
 - T-01 through T-35 + T-11, and T-F16/T-F17/T-F18/T-F26–T-F29/T-F37–T-F39/T-F44/T-F45 complete
-- 254/254 .NET tests pass (`dotnet test --filter "Category!=Slow"`: 179 Archiver.Core.Tests +
-  36 Archiver.Shell.Tests + 23 Archiver.Core.IntegrationTests + 16 Archiver.App.Core.Tests, the
-  last a new plain-net8.0 project added for T-F05's flat-to-tree helper and T-F100's
-  `FileActivationRouter`). 4 Zip64 tests (T-F20) are tagged `[Trait("Category", "Slow")]` and
+- 282/282 .NET tests pass (`dotnet test --filter "Category!=Slow"`: 196 Archiver.Core.Tests +
+  36 Archiver.Shell.Tests + 34 Archiver.Core.IntegrationTests + 16 Archiver.App.Core.Tests — the
+  jump from 254 reflects T-F52's new `Sandbox/` classes, real-Win32-API test coverage, and the
+  `TarSandboxedService` port, and the App.Core project is a plain-net8.0 project added for T-F05's
+  flat-to-tree helper and T-F100's `FileActivationRouter`). 4 Zip64 tests (T-F20) are tagged
+  `[Trait("Category", "Slow")]` and
   excluded from this default run — they cost real wall-clock time (>65535-file
   archiving/extraction, a >4 GiB round trip) that isn't worth paying on every change; run them
   explicitly with `dotnet test --filter "Category=Slow"` before a release or when touching

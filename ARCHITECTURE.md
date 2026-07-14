@@ -481,17 +481,26 @@ becomes a `SkippedFiles` entry with a specific reason, not a generic message.
 
 ### v1.4 — AppContainer Sandbox for tar.exe
 
-`TarSandboxedService` implements `ITarService`, replacing `TarProcessService` (deleted outright,
-not kept as a fallback — fail-closed posture, see `TASKS.md`/`DECISIONS.md`'s T-F52 entries).
-Mechanism is an **AppContainer**, not a Low-IL restricted token (superseded design, see
-`DECISIONS.md`'s T-F52 tradeoff entry — network isolation falls out of AppContainer's empty
-capability list for free, avoiding a global firewall rule). DI swap touches three call sites, not
-one — `Archiver.App/App.xaml.cs`, `Archiver.Shell/Program.cs` (no DI container there, a direct
-`new`), and `SkipIfFormatUnsupportedAttribute.cs` (test infra):
+**Status: implemented (T-F52 Phase 1, steps 1–11 of 13 complete 2026-07-14) — `TarSandboxedService`
+is real, shipping code, not a design description.** It implements `ITarService`, replacing
+`TarProcessService` (deleted outright, not kept as a fallback — fail-closed posture, see
+`TASKS.md`/`DECISIONS.md`'s T-F52 entries). Mechanism is an **AppContainer**, not a Low-IL
+restricted token (superseded design, see `DECISIONS.md`'s T-F52 tradeoff entry — network isolation
+falls out of AppContainer's empty capability list for free, avoiding a global firewall rule). DI
+swap touches three call sites, not one — `Archiver.App/App.xaml.cs`, `Archiver.Shell/Program.cs`
+(no DI container there, a direct `new`), and `SkipIfFormatUnsupportedAttribute.cs` (test infra):
 
 ```csharp
 services.AddSingleton<ITarService, TarSandboxedService>(); // was TarProcessService
 ```
+
+`src/Archiver.Core/Services/Sandbox/` — single-concern classes, no P/Invoke god-class:
+`SandboxHandles.cs` (4 `SafeHandle` types), `AppContainerProfile.cs`, `QuarantineAcl.cs`,
+`QuarantineStaging.cs`, `SandboxJobObject.cs`, `SandboxedProcessLauncher.cs`,
+`SecurityCapabilitiesAttributeList.cs`, `TarSignatureVerifier.cs`, and `TarSandboxScope.cs` — the
+disposable orchestration class every sandboxed tar.exe launch actually goes through
+(`TarSandboxScope.RunAsync`), tying profile + ACL + staging + Job Object + signature check
+together per archive operation.
 
 P/Invoke surface:
 - `CreateAppContainerProfile` — created lazily once, reused for the lifetime of the install
@@ -500,30 +509,49 @@ P/Invoke surface:
   `UpdateProcThreadAttribute`) — attaches the AppContainer SID + an empty capability list (no
   network) to raw `CreateProcessW`'s extended startup info (`STARTUPINFOEX`)
 - `SetEntriesInAclW`/`SetNamedSecurityInfoW` — grants the AppContainer SID access to the
-  quarantine `in\`/`out\` subfolders (least-privilege masks confirmed via a Phase 0 spike:
-  `in\` = Read&Execute, `out\` = Modify, quarantine-root = traverse-only)
+  quarantine `in\`/`out\` subfolders and the staged archive file itself (a hardlinked staged file
+  shares its security descriptor with the *original* archive, not the containing folder's — found
+  empirically, see `DECISIONS.md`'s T-F52 entry) via the standard NTFS simple-permission masks:
+  `in\` = Read&Execute (`0x1200A9`), `out\` = Modify (`0x1301BF`), quarantine-root = traverse-only
+  (`0x0020`, non-inherited)
 - `CreateJobObject`/`SetInformationJobObject`/`AssignProcessToJobObject` — `ActiveProcessLimit = 1`
   + RAM/CPU limits + UI restrictions (absorbed from T-F13)
 - `WinVerifyTrust` + `CryptQueryObject`/`CryptMsgGetParam`/`CertGetNameStringW` — Authenticode
-  signature + Microsoft-subject check before every launch (cheap, defense-in-depth only, not
-  managed `X509Certificate2` — that only extracts the embedded cert without verifying it against
-  the file's actual bytes)
+  signature + Microsoft-Organization check before every scope creation (cheap, defense-in-depth
+  only, not managed `X509Certificate2` — that only extracts the embedded cert without verifying it
+  against the file's actual bytes)
 
-Flow:
-1. Verify `tar.exe`'s Authenticode signature (Microsoft subject) before every launch
+Flow (`TarSandboxScope.CreateAsync` + `RunAsync`):
+1. Verify `tar.exe`'s Authenticode signature (Microsoft Organization) once per scope — covers
+   every `RunAsync` call made through that scope (pre-scan and extraction both share one scope)
 2. Ensure the AppContainer profile exists (lazy, once, never deleted)
-3. Create a two-subfolder quarantine directory on the same disk as the destination: `in\`
-   (read-only-ish ACE) and `out\` (write-ish ACE) — not one shared folder
-4. Stage the source archive into `in\` via hardlink (same volume) or copy (cross-volume) — the
-   AppContainer SID never gets an ACE on the archive's original, user-chosen path
-5. Create a Job Object (`ActiveProcessLimit = 1`, RAM/CPU limits, `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`)
+3. Create a two-subfolder quarantine directory rooted under a fixed, Pakko-owned
+   `%TEMP%\PakkoTarSandbox\<guid>\` location — **not** "same disk as the destination" (an earlier
+   design assumption corrected during implementation: an AppContainer token has no
+   bypass-traverse-checking privilege, so `FILE_TRAVERSE` is enforced on every ancestor directory,
+   and the user's arbitrary destination folder sits under an ancestor chain Pakko doesn't own —
+   see `DECISIONS.md`'s T-F52 entry). `in\` gets Read&Execute, `out\` gets Modify, both plus the
+   quarantine root get a traverse-only grant on every Pakko-created ancestor level
+4. Stage the source archive into `in\` via hardlink (same volume) or copy (cross-volume), then
+   explicitly grant Read&Execute on the staged file path itself too — the AppContainer SID never
+   gets an ACE on the archive's original, user-chosen path
+5. Create a fresh Job Object per tar.exe launch (`ActiveProcessLimit = 1`, RAM/CPU limits,
+   `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`)
 6. Run tar.exe inside the AppContainer for **both** the T-F49 whole-archive pre-scan (`-tf`/`-tvf`)
-   and the extraction (`-xf`) — the pre-scan is not exempt from sandboxing
+   and the extraction (`-xf`) — the pre-scan is not exempt from sandboxing. Before `-xf` runs,
+   Pakko itself (at its own trusted identity, not tar.exe's sandboxed one) pre-creates every
+   directory the archive implies via `Directory.CreateDirectory` — libarchive's own implicit
+   parent-directory creation was found to fail under the AppContainer even with a correctly
+   ACL'd `out\` (see `DECISIONS.md`'s T-F52 entry)
 7. After the process exits, validate all files in `out\` at Pakko's normal process identity
    (existing `ArchiveEntrySecurity` checks)
-8. Atomic move from `out\` to the final destination
-9. Delete the quarantine directory (`in\`+`out\`, including the staged archive copy) and close the
-   Job Object handle — the AppContainer profile itself is **not** deleted, it persists for reuse
+8. Move each file from `out\` to the final destination via `File.Move` (a per-file move, already
+   cross-volume-safe — not a directory rename, so rooting the quarantine under `%TEMP%` instead of
+   next to the destination costs at most an extra copy, never a correctness problem). MOTW
+   propagation reads the *original* archive path, never the staged copy
+9. Dispose the scope: delete the quarantine directory (`in\`+`out\`, including the staged archive
+   copy) and release the AppContainer SID handle — the AppContainer profile itself is **not**
+   deleted, it persists for reuse
 
 ### v1.4 — T-F05 Archive Browser
 

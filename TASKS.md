@@ -2534,8 +2534,19 @@ truncated/corrupted-tar test), `Fixtures/valid.7z`, `Fixtures/valid.rar` (added 
 ---
 
 ### T-F52 — AppContainer Sandbox for tar.exe
-- [ ] **Status:** future (v1.4) — redesigned 2026-07-14 (advisor-reviewed design session, same day
-      as the scope-widening that absorbed T-F13's Job Object/network-isolation layers). Mechanism
+- [~] **Status:** partial (v1.4) — Phase 1 implementation (steps 1–11 of 13) complete 2026-07-14.
+      `TarProcessService.cs` is deleted and `TarSandboxedService` is real, shipping code; every
+      acceptance criterion below is checked except the final on-device `Deploy.ps1` verification
+      (Phase 1's step 13). See `DECISIONS.md`'s several same-day T-F52 entries for the full
+      empirical trail — three real bugs found and fixed while implementing (a wrong
+      `CERT_FIND_SUBJECT_CERT` constant, hardlinked staged files not inheriting the quarantine
+      folder's ACL, libarchive's implicit parent-directory creation failing under the
+      AppContainer), plus a design correction (quarantine rooted under `%TEMP%`, not "same disk as
+      destination" — an AppContainer token enforces `FILE_TRAVERSE` on every ancestor directory,
+      which the user's arbitrary destination folder tree doesn't grant).
+
+      Originally redesigned 2026-07-14 (advisor-reviewed design session, same day as the
+      scope-widening that absorbed T-F13's Job Object/network-isolation layers). Mechanism
       changed from a Low-IL restricted token to an **AppContainer** — user-directed choice after
       weighing both; see `DECISIONS.md`'s T-F52 entry for the full two-vector threat-model
       reframing and the AppContainer-vs-Low-IL tradeoff. The global WFP firewall rule from the
@@ -2558,14 +2569,15 @@ truncated/corrupted-tar test), `Fixtures/valid.7z`, `Fixtures/valid.rar` (added 
       succeed with zero `ERROR_ACCESS_DENIED`, and a negative control confirmed the same sandboxed
       process is denied writing to any path never explicitly ACL'd (`tar.exe: could not chdir to
       ...`) — the core security property this task exists to provide, demonstrated, not assumed.
-      **Nothing below is implemented yet** — the design that follows (files, signatures, DI
-      touch points, test plan, doc-update checklist, 13-phase build order) is the concrete spec
-      for a future implementation session, informed by the Phase 0 findings above.
+      **Everything below is now implemented** (steps 1–11 of 13; see the Status line above) — the
+      design that follows was the concrete spec used for that implementation session, informed by
+      the Phase 0 findings above, and is kept here as the as-built reference (not a future plan).
 - **Depends on:** none
 
 **What:** `TarSandboxedService` implements `ITarService`, launching `tar.exe` inside a Low-privilege
 AppContainer (no network capability, ACL'd quarantine directory) instead of Pakko's own process
-token. Replaces `TarProcessService` via single DI line change.
+token. Replaces the deleted `TarProcessService` — DI wired at `Archiver.App/App.xaml.cs`,
+`Archiver.Shell/Program.cs`, and `SkipIfFormatUnsupportedAttribute.cs`.
 
 **Threat model this actually defends (record in `SECURITY.md`, not just here):** this task does
 **not** defend against `tar.exe` itself being replaced/tampered with — reaching
@@ -2670,7 +2682,9 @@ extraction of both succeeded under a Job Object with `ActiveProcessLimit = 1`.
 
 ---
 
-## Concrete implementation design (Plan-agent-produced, Phase-0-informed; not yet implemented)
+## Concrete implementation design (Plan-agent-produced, Phase-0-informed; implemented 2026-07-14 —
+kept below as the as-built reference; see `DECISIONS.md`'s T-F52 entries for what deviated from
+this spec during implementation and why)
 
 **New files** — under a new `src/Archiver.Core/Services/Sandbox/` subfolder, split into small,
 single-concern classes rather than one `NativeMethods` god-class (this task's P/Invoke surface
@@ -2825,45 +2839,52 @@ synchronously at `Archiver.App` startup).
 
 ---
 
-**Acceptance criteria:**
-- [ ] `TarSandboxedService` implements `ITarService` — same interface as `TarProcessService`
-- [ ] DI swap is one line: `AddSingleton<ITarService, TarSandboxedService>()`
-- [ ] `tar.exe`'s Authenticode signature (Microsoft subject) verified before every launch
-- [ ] Empirically confirmed `.tar.xz`/`.tar.zst` extraction stays in-process (no child filter
+**Acceptance criteria (all but the last confirmed 2026-07-14 — Phase 1, steps 1–11 of 13):**
+- [x] `TarSandboxedService` implements `ITarService` — same interface as the deleted `TarProcessService`
+- [x] DI swap is one line: `AddSingleton<ITarService, TarSandboxedService>()`
+- [x] `tar.exe`'s Authenticode signature (Microsoft Organization) verified before every launch
+- [x] Empirically confirmed `.tar.xz`/`.tar.zst` extraction stays in-process (no child filter
       helper) before shipping `ActiveProcessLimit = 1`
-- [ ] AppContainer profile created with an empty capability list (no network capability),
+- [x] AppContainer profile created with an empty capability list (no network capability),
       created lazily once and reused across every subsequent operation — never recreated or
       deleted per Extract/Archive call
-- [ ] Quarantine directory has separate `in\` (read-only) and `out\` (write-only) subfolders,
+- [x] Quarantine directory has separate `in\` (read-only) and `out\` (write-only) subfolders,
       each ACL'd to grant only the AppContainer SID the matching access
-- [ ] Source archive placed into `quarantine\in\` via hardlink when same-volume, real copy
+- [x] Source archive placed into `quarantine\in\` via hardlink when same-volume, real copy
       otherwise — the AppContainer SID never receives an ACE on the archive's original path
-- [ ] Both the whole-archive pre-scan (`-tf`/`-tvf`) and the extraction (`-xf`) run inside the
+      (plus an explicit per-file grant on the staged copy itself — a hardlink doesn't inherit the
+      containing folder's ACL, found empirically, see `DECISIONS.md`)
+- [x] Both the whole-archive pre-scan (`-tf`/`-tvf`) and the extraction (`-xf`) run inside the
       AppContainer — the pre-scan is not run unsandboxed just because it produces no output
-- [ ] tar.exe process launched inside the AppContainer via
+- [x] tar.exe process launched inside the AppContainer via
       `PROC_THREAD_ATTRIBUTE_SECURITY_CAPABILITIES`
-- [ ] tar.exe process assigned to a Job Object with `ActiveProcessLimit = 1` and
+- [x] tar.exe process assigned to a Job Object with `ActiveProcessLimit = 1` and
       `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`
-- [ ] Job Object enforces a 512 MB RAM limit
-- [ ] Job Object enforces a maximum CPU time / runtime limit
-- [ ] Job Object applies UI restrictions (no clipboard, no desktop manipulation)
-- [ ] Job Object handle closed after the tar.exe process exits — no leak
-- [ ] Network access verified disabled for the tar.exe worker process (real socket-attempt test,
+- [x] Job Object enforces a 512 MB RAM limit
+- [x] Job Object enforces a maximum CPU time / runtime limit
+- [x] Job Object applies UI restrictions (no clipboard, no desktop manipulation)
+- [x] Job Object handle closed after the tar.exe process exits — no leak
+- [x] Network access verified disabled for the tar.exe worker process (real socket-attempt test,
       not just capability-list inspection)
-- [ ] No firewall rule added anywhere — network isolation is AppContainer-only
-- [ ] Validation and move run at Pakko's normal process identity in C# after process exits
-- [ ] Quarantine directory cleaned up on success and failure
-- [ ] AppContainer profile created lazily once, tolerating `ERROR_ALREADY_EXISTS`, and persists
+- [x] No firewall rule added anywhere — network isolation is AppContainer-only
+- [x] Validation and move run at Pakko's normal process identity in C# after process exits
+- [x] Quarantine directory cleaned up on success and failure
+- [x] AppContainer profile created lazily once, tolerating `ERROR_ALREADY_EXISTS`, and persists
       across every operation — never deleted mid-operation (this replaces an earlier, contradictory
       draft of this line that said the profile is deleted after use; the Flow section above and
       `DECISIONS.md`'s T-F52 follow-up entry are authoritative — create-once-reuse-forever, no
       per-operation churn, no race under T-F12's parallel mode)
-- [ ] All P/Invoke handles properly closed — no leaks
-- [ ] `dotnet test` passes — integration test: file write outside quarantine fails; spawning a
+- [x] All P/Invoke handles properly closed — no leaks
+- [x] `dotnet test` passes — integration test: file write outside quarantine fails; spawning a
       child process from the sandboxed tar.exe fails (Job Object `ActiveProcessLimit`); a real
-      socket-connect attempt from inside the AppContainer fails
-- [ ] `SECURITY.md`'s tar.exe Trust Model section updated with the two-vector reframing and the
-      AppContainer isolation method (cascade per `CLAUDE.md`'s Documentation Map)
+      socket-connect attempt from inside the AppContainer fails. 282/282 tests green across two
+      full-suite runs (`TarSandboxedServiceSandboxBehaviorTests.cs`)
+- [x] `SECURITY.md`'s tar.exe Trust Model section updated with the two-vector reframing and the
+      AppContainer isolation method (cascade per `CLAUDE.md`'s Documentation Map) — done during
+      the initial design round, verified still accurate against the final implementation
+- [ ] Full `Deploy.ps1` build+sign+install and on-device verification of real archive extraction
+      through the installed, packaged app (Phase 1's step 13 — the one remaining item before this
+      task graduates to `[x]` done)
 
 ---
 
