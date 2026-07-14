@@ -134,10 +134,16 @@ full `Deploy.ps1` build+sign+install and AI-driven on-device verification (`.tar
 subdirectories, `.7z`, and `.rar` all extracted correctly through the installed, packaged
 `Archiver.Shell.exe`). **Stays `[~]` partial, not `[x]` done, only because this was AI-driven
 verification rather than the user's own personal click-through** — the same distinction already
-applied to T-F49's history above.
+applied to T-F49's history above. A fourth real bug was found via advisor review right after
+Step 13 (no existing test exercised it): `ExtractAsync`/`ListEntriesAsync` didn't catch
+`InvalidOperationException`, the type every sandbox-setup call (`AppContainerProfile`,
+`QuarantineAcl`, `SecurityCapabilitiesAttributeList`, `SandboxJobObject`) throws on a Win32
+failure — so a blocked/misconfigured sandbox would have crashed instead of yielding an
+`ArchiveError`. Fixed with a new `SandboxSetupException` caught at the same boundary as
+`TarSignatureVerificationException`; see `DECISIONS.md`'s T-F52 entry.
 - T-01 through T-35 + T-11, and T-F16/T-F17/T-F18/T-F26–T-F29/T-F37–T-F39/T-F44/T-F45 complete
-- 282/282 .NET tests pass (`dotnet test --filter "Category!=Slow"`: 196 Archiver.Core.Tests +
-  36 Archiver.Shell.Tests + 34 Archiver.Core.IntegrationTests + 16 Archiver.App.Core.Tests — the
+- 284/284 .NET tests pass (`dotnet test --filter "Category!=Slow"`: 197 Archiver.Core.Tests +
+  36 Archiver.Shell.Tests + 35 Archiver.Core.IntegrationTests + 16 Archiver.App.Core.Tests — the
   jump from 254 reflects T-F52's new `Sandbox/` classes, real-Win32-API test coverage, and the
   `TarSandboxedService` port, and the App.Core project is a plain-net8.0 project added for T-F05's
   flat-to-tree helper and T-F100's `FileActivationRouter`). 4 Zip64 tests (T-F20) are tagged

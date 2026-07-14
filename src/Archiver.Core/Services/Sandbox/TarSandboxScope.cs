@@ -78,44 +78,54 @@ internal sealed class TarSandboxScope : IDisposable
         if (!TarSignatureVerifier.Verify(TarExecutablePath))
             throw new TarSignatureVerificationException(TarExecutablePath);
 
-        var profile = new AppContainerProfile(AppContainerProfile.ProductionProfileName);
-        profile.EnsureExists();
-        SafeSidHandle sid = profile.GetSid();
-
-        Directory.CreateDirectory(SandboxParentDirectory);
-        QuarantineAcl.GrantTraverseOnly(SandboxParentDirectory, sid);
-
-        string quarantineRoot = Path.Combine(SandboxParentDirectory, Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(quarantineRoot);
-        QuarantineAcl.GrantTraverseOnly(quarantineRoot, sid);
-
-        string inDir = Path.Combine(quarantineRoot, "in");
-        Directory.CreateDirectory(inDir);
-        QuarantineAcl.GrantReadExecute(inDir, sid);
-
-        string? outDir = null;
-        if (needsOutputDir)
+        try
         {
-            outDir = Path.Combine(quarantineRoot, "out");
-            Directory.CreateDirectory(outDir);
-            QuarantineAcl.GrantModify(outDir, sid);
+            var profile = new AppContainerProfile(AppContainerProfile.ProductionProfileName);
+            profile.EnsureExists();
+            SafeSidHandle sid = profile.GetSid();
+
+            Directory.CreateDirectory(SandboxParentDirectory);
+            QuarantineAcl.GrantTraverseOnly(SandboxParentDirectory, sid);
+
+            string quarantineRoot = Path.Combine(SandboxParentDirectory, Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(quarantineRoot);
+            QuarantineAcl.GrantTraverseOnly(quarantineRoot, sid);
+
+            string inDir = Path.Combine(quarantineRoot, "in");
+            Directory.CreateDirectory(inDir);
+            QuarantineAcl.GrantReadExecute(inDir, sid);
+
+            string? outDir = null;
+            if (needsOutputDir)
+            {
+                outDir = Path.Combine(quarantineRoot, "out");
+                Directory.CreateDirectory(outDir);
+                QuarantineAcl.GrantModify(outDir, sid);
+            }
+
+            string stagedArchivePath = Path.Combine(inDir, Path.GetFileName(archivePath));
+            QuarantineStaging.StageArchive(archivePath, stagedArchivePath);
+            // A hardlinked staged file shares its security descriptor with the ORIGINAL archive, not
+            // the containing "in\" folder's — NTFS hard links are just an extra directory entry
+            // pointing at the same file object, and that object's DACL doesn't change, so folder-level
+            // inheritance never applies to it. Without this explicit per-file grant, a hardlinked
+            // staged archive is unreadable to the AppContainer even though "in\" itself is correctly
+            // ACL'd (found empirically — see DECISIONS.md's T-F52 entry). A copied file would already
+            // inherit this from "in\" at creation time, but granting explicitly here is harmless and
+            // correct for both cases.
+            QuarantineAcl.GrantReadExecute(stagedArchivePath, sid);
+
+            SecurityCapabilitiesAttributeList securityCapabilities = SecurityCapabilitiesAttributeList.Create(sid);
+
+            return Task.FromResult(new TarSandboxScope(sid, securityCapabilities, quarantineRoot, stagedArchivePath, outDir));
         }
-
-        string stagedArchivePath = Path.Combine(inDir, Path.GetFileName(archivePath));
-        QuarantineStaging.StageArchive(archivePath, stagedArchivePath);
-        // A hardlinked staged file shares its security descriptor with the ORIGINAL archive, not
-        // the containing "in\" folder's — NTFS hard links are just an extra directory entry
-        // pointing at the same file object, and that object's DACL doesn't change, so folder-level
-        // inheritance never applies to it. Without this explicit per-file grant, a hardlinked
-        // staged archive is unreadable to the AppContainer even though "in\" itself is correctly
-        // ACL'd (found empirically — see DECISIONS.md's T-F52 entry). A copied file would already
-        // inherit this from "in\" at creation time, but granting explicitly here is harmless and
-        // correct for both cases.
-        QuarantineAcl.GrantReadExecute(stagedArchivePath, sid);
-
-        SecurityCapabilitiesAttributeList securityCapabilities = SecurityCapabilitiesAttributeList.Create(sid);
-
-        return Task.FromResult(new TarSandboxScope(sid, securityCapabilities, quarantineRoot, stagedArchivePath, outDir));
+        catch (InvalidOperationException ex)
+        {
+            // AppContainer/ACL/attribute-list setup can fail at runtime (e.g. group policy
+            // blocking profile creation) — fail closed as an ordinary per-archive error, never
+            // an unhandled crash. Callers catch this the same way as TarSignatureVerificationException.
+            throw new SandboxSetupException($"Sandbox setup failed: {ex.Message}", ex);
+        }
     }
 
     /// <summary>
@@ -126,10 +136,22 @@ internal sealed class TarSandboxScope : IDisposable
     public async Task<(int ExitCode, string StdOut, string StdErr)> RunAsync(
         IReadOnlyList<string> tarArguments, CancellationToken cancellationToken)
     {
-        using SandboxJobObject job = SandboxJobObject.Create(RamLimitBytes, CpuTimeLimit);
-        return await SandboxedProcessLauncher.RunAsync(
-            TarExecutablePath, tarArguments, _securityCapabilities.AttributeList, job.Handle, cancellationToken)
-            .ConfigureAwait(false);
+        SandboxJobObject job;
+        try
+        {
+            job = SandboxJobObject.Create(RamLimitBytes, CpuTimeLimit);
+        }
+        catch (InvalidOperationException ex)
+        {
+            throw new SandboxSetupException($"Sandbox setup failed: {ex.Message}", ex);
+        }
+
+        using (job)
+        {
+            return await SandboxedProcessLauncher.RunAsync(
+                TarExecutablePath, tarArguments, _securityCapabilities.AttributeList, job.Handle, cancellationToken)
+                .ConfigureAwait(false);
+        }
     }
 
     public void Dispose()
@@ -149,3 +171,12 @@ internal sealed class TarSandboxScope : IDisposable
 /// </summary>
 internal sealed class TarSignatureVerificationException(string tarExecutablePath)
     : Exception($"'{tarExecutablePath}' failed Authenticode signature verification.");
+
+/// <summary>
+/// Thrown by <see cref="TarSandboxScope.CreateAsync"/>/<see cref="TarSandboxScope.RunAsync"/> when
+/// AppContainer profile/ACL/attribute-list/Job-Object setup fails (e.g. a Win32 security API
+/// blocked by group policy) — fail-closed: treated as an ordinary per-archive error by callers,
+/// never a silent fallback to unsandboxed extraction.
+/// </summary>
+internal sealed class SandboxSetupException(string message, Exception innerException)
+    : Exception(message, innerException);

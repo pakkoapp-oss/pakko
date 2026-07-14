@@ -88,4 +88,21 @@ public sealed class QuarantineAclTests : IDisposable
         stdErr.Should().Contain("chdir");
         File.Exists(Path.Combine(neverAcldOutDir, "a.txt")).Should().BeFalse();
     }
+
+    // Real, deterministic Win32 setup failure (not simulated) — GetNamedSecurityInfoW fails for a
+    // path that doesn't exist. This is the exact failure shape TarSandboxScope.CreateAsync now
+    // catches and rewraps as SandboxSetupException (T-F52), so a blocked/misconfigured sandbox
+    // surfaces to callers as an ArchiveError instead of an unhandled crash.
+    [Fact]
+    public void GrantReadExecute_NonexistentPath_ThrowsInvalidOperationException()
+    {
+        _profile.EnsureExists();
+        using var sid = _profile.GetSid();
+
+        string nonexistentPath = Path.Combine(_temp.Path, "does_not_exist_" + Guid.NewGuid());
+
+        Action act = () => QuarantineAcl.GrantReadExecute(nonexistentPath, sid);
+
+        act.Should().Throw<InvalidOperationException>();
+    }
 }

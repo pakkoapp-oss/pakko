@@ -2965,3 +2965,32 @@ pre-scan, pre-created directories, sandboxed `-xf`, and the move to the final de
 project's established distinction (see T-F49's own history in `CLAUDE.md`), T-F52 stays `[~]`
 partial rather than `[x]` done until the user confirms via their own on-device use, or explicitly
 directs otherwise.
+
+**Post-Step-13 review finding, fixed same day — sandbox-setup failures could crash instead of
+producing an `ArchiveError`.** `AppContainerProfile.EnsureExists`/`GetSid`, `QuarantineAcl`'s three
+`Grant*` methods, `SecurityCapabilitiesAttributeList.Create`, and `SandboxJobObject.Create` all
+throw plain `InvalidOperationException` on a Win32 P/Invoke failure (e.g. `CreateAppContainerProfile`
+blocked by group policy, `SetNamedSecurityInfoW` denied). `TarSandboxedService.ExtractAsync`'s
+per-archive catch list only handled `OperationCanceledException`/`TarArchiveRejectedException`/
+`TarSignatureVerificationException`/`IOException`/`UnauthorizedAccessException` — `ListEntriesAsync`
+was narrower still. Neither caught `InvalidOperationException`, so any of those five setup calls
+failing would propagate all the way out of `ExtractAsync`/`ListEntriesAsync` as an unhandled
+exception — violating this project's own hard constraint ("All IO exceptions caught per-item →
+`ArchiveError` — methods never throw to callers") and falsifying the acceptance-criterion text that
+a sandbox-setup failure should surface as an `ArchiveError`, not a crash. Every existing test runs
+on a healthy dev machine where setup always succeeds, so nothing exercised this path — caught by
+advisor review, not by a failing test. **Fix:** added `SandboxSetupException` (`TarSandboxScope.cs`,
+next to `TarSignatureVerificationException`); `TarSandboxScope.CreateAsync` and `RunAsync` now
+catch `InvalidOperationException` from the setup calls they make and rethrow as
+`SandboxSetupException`, caught at the same boundary as `TarSignatureVerificationException` in both
+`TarSandboxedService.ExtractAsync` and `ListEntriesAsync`. Verified with two real (not mocked) forced
+failures of the exact two most likely setup-failure sources: `AppContainerProfileTests.
+EnsureExists_NameExceedsMaxLength_ThrowsInvalidOperationException` (a >64-char AppContainer name is
+a documented `CreateAppContainerProfile` limit) and `QuarantineAclTests.
+GrantReadExecute_NonexistentPath_ThrowsInvalidOperationException` (`GetNamedSecurityInfoW` on a
+nonexistent path) — both confirm `InvalidOperationException` is the real failure shape the new
+catch depends on. Forcing a failure through the full `TarSandboxScope.CreateAsync` → `TarSandboxedService`
+pipeline end-to-end would require an injectable seam (profile name, ACL target) that production
+code has no other use for — not added, to avoid a speculative abstraction for a path these two
+lower-layer tests already cover. 284/284 tests green after the fix (197 Core.Tests + 35
+IntegrationTests + 36 Shell.Tests + 16 App.Core.Tests).

@@ -189,12 +189,16 @@ repo's convention), every assertion is against real OS behavior:
   (raw `CreateProcessW` launcher, no AppContainer), `SecurityCapabilitiesAttributeListTests.cs`
   (`tar.exe --version` inside a real AppContainer), `AppContainerProfileTests.cs` (profile
   create/reuse/delete, using its own throwaway test profile name — never the shared production
-  `Pakko.TarSandbox` profile), `QuarantineStagingTests.cs` (hardlink/copy staging),
-  `TarSignatureVerifierTests.cs` (real tar.exe passes, an unsigned decoy and a catalog-signed
-  system binary both correctly fail).
-- `tests/Archiver.Core.IntegrationTests/` — `QuarantineAclTests.cs` (2 tests: a granted quarantine
+  `Pakko.TarSandbox` profile — plus a real forced-failure case: a >64-char profile name makes
+  `CreateAppContainerProfile` throw `InvalidOperationException`, the exact failure shape
+  `TarSandboxScope` now rewraps as `SandboxSetupException`), `QuarantineStagingTests.cs`
+  (hardlink/copy staging), `TarSignatureVerifierTests.cs` (real tar.exe passes, an unsigned decoy
+  and a catalog-signed system binary both correctly fail).
+- `tests/Archiver.Core.IntegrationTests/` — `QuarantineAclTests.cs` (3 tests: a granted quarantine
   lets a real sandboxed extraction succeed; an un-granted sibling folder is denied — the actual
-  security proof), `TarSandboxScopeTests.cs` (4 tests: pre-scan + extraction in one scope,
+  security proof; and a nonexistent path makes `GetNamedSecurityInfoW` throw
+  `InvalidOperationException`, the same forced-failure shape as above), `TarSandboxScopeTests.cs`
+  (4 tests: pre-scan + extraction in one scope,
   listing-only scope creates no `out\`, Dispose cleans up but never touches the shared profile),
   `SandboxJobObjectTarExtractionTests.cs` (2 tests: `.tar.xz`/`.tar.zst` extraction survives
   `ActiveProcessLimit = 1`), and `TarSandboxedServiceSandboxBehaviorTests.cs` (3 tests — the

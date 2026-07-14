@@ -58,6 +58,20 @@ public sealed class AppContainerProfileTests : IDisposable
         NativeSidToString(sidA).Should().Be(NativeSidToString(sidB));
     }
 
+    // Real, deterministic Win32 setup failure (not simulated) — CreateAppContainerProfile
+    // documents a 64-character limit on pszAppContainerName. This is the exact failure shape
+    // TarSandboxScope.CreateAsync now catches and rewraps as SandboxSetupException (T-F52) so a
+    // blocked/misconfigured sandbox surfaces as an ArchiveError instead of an unhandled crash.
+    [Fact]
+    public void EnsureExists_NameExceedsMaxLength_ThrowsInvalidOperationException()
+    {
+        var tooLong = new AppContainerProfile(new string('x', 300));
+
+        Action act = () => tooLong.EnsureExists();
+
+        act.Should().Throw<InvalidOperationException>();
+    }
+
     private static string NativeSidToString(SafeSidHandle sid)
     {
         if (!ConvertSidToStringSidW(sid.DangerousGetHandle(), out IntPtr stringSidPtr))

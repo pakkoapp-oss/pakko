@@ -124,6 +124,10 @@ public sealed class TarSandboxedService : ITarService
             {
                 errors.Add(new ArchiveError { SourcePath = archivePath, Message = ex.Message });
             }
+            catch (SandboxSetupException ex)
+            {
+                errors.Add(new ArchiveError { SourcePath = archivePath, Message = ex.Message, Exception = ex });
+            }
             catch (IOException ex)
             {
                 errors.Add(new ArchiveError
@@ -453,6 +457,10 @@ public sealed class TarSandboxedService : ITarService
             return new ArchiveListResult { Success = true, Entries = entries };
         }
         catch (TarSignatureVerificationException ex)
+        {
+            return new ArchiveListResult { Success = false, ErrorMessage = ex.Message };
+        }
+        catch (SandboxSetupException ex)
         {
             return new ArchiveListResult { Success = false, ErrorMessage = ex.Message };
         }

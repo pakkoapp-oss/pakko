@@ -2546,7 +2546,15 @@ truncated/corrupted-tar test), `Fixtures/valid.7z`, `Fixtures/valid.rar` (added 
       folder's ACL, libarchive's implicit parent-directory creation failing under the
       AppContainer), plus a design correction (quarantine rooted under `%TEMP%`, not "same disk as
       destination" — an AppContainer token enforces `FILE_TRAVERSE` on every ancestor directory,
-      which the user's arbitrary destination folder tree doesn't grant).
+      which the user's arbitrary destination folder tree doesn't grant). A fourth bug found via
+      advisor review after Step 13 (not by a test — no existing test exercised a sandbox-setup
+      failure): `TarSandboxedService.ExtractAsync`/`ListEntriesAsync` didn't catch
+      `InvalidOperationException`, the type `AppContainerProfile`/`QuarantineAcl`/
+      `SecurityCapabilitiesAttributeList`/`SandboxJobObject` throw on a Win32 setup failure — so a
+      blocked/misconfigured sandbox would have crashed instead of producing an `ArchiveError`,
+      violating this project's own "never throw to callers" constraint. Fixed via a new
+      `SandboxSetupException` caught at the same boundary as `TarSignatureVerificationException`;
+      see `DECISIONS.md`'s T-F52 entry for the two real forced-failure tests added.
 
       Originally redesigned 2026-07-14 (advisor-reviewed design session, same day as the
       scope-widening that absorbed T-F13's Job Object/network-isolation layers). Mechanism
