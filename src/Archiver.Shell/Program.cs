@@ -74,7 +74,7 @@ static async Task RunExtractHereAsync(IReadOnlyList<string> archivePaths)
         // an existing destination folder (that's the GUI app's merge behavior). The shell
         // command instead wants a brand-new numbered folder so re-extracting never silently
         // merges into — or does nothing to — a folder from a previous run.
-        var folderName = GetUniqueFolderName(destFolder, Path.GetFileNameWithoutExtension(archivePath));
+        var folderName = GetUniqueFolderName(destFolder, ArchiveNaming.GetBaseName(archivePath));
         var options = new ExtractOptions
         {
             ArchivePaths = [archivePath],
@@ -102,7 +102,7 @@ static async Task RunExtractFolderAsync(IReadOnlyList<string> archivePaths)
     foreach (var archivePath in archivePaths)
     {
         var archiveDir = Path.GetDirectoryName(archivePath) ?? ".";
-        var folderName = GetUniqueFolderName(archiveDir, Path.GetFileNameWithoutExtension(archivePath));
+        var folderName = GetUniqueFolderName(archiveDir, ArchiveNaming.GetBaseName(archivePath));
         var destFolder = Path.Combine(archiveDir, folderName);
         var options = new ExtractOptions
         {

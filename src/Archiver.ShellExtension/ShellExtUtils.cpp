@@ -38,6 +38,20 @@ static const wchar_t* const kSupportedNonZipArchiveExtensions[] = {
     L".xz", L".txz", L".zst", L".tzst", L".lzma"
 };
 
+// T-F103: kept in sync with Archiver.Core/Services/ArchiveNaming.cs's compound extension list.
+// Path.GetFileNameWithoutExtension-style single-dot stripping leaves ".tar" on the end of
+// "archive.tar.gz" — these must be stripped as a unit before falling back to the single-dot rule.
+static const wchar_t* const kCompoundArchiveExtensions[] = {
+    L".tar.gz", L".tar.bz2", L".tar.xz", L".tar.zst", L".tar.lzma"
+};
+
+static bool EndsWithCaseInsensitive(const std::wstring& value, const wchar_t* suffix)
+{
+    const size_t suffixLen = wcslen(suffix);
+    if (value.size() < suffixLen) return false;
+    return _wcsicmp(value.c_str() + (value.size() - suffixLen), suffix) == 0;
+}
+
 // Deliberately deviates from .NET's Path.GetFileNameWithoutExtension for dotfiles: real .NET
 // strips everything from the only dot in ".gitignore", leaving "". Keeping the full name instead
 // avoids an empty display name; Archiver.Shell/Program.cs's RunArchiveAsync applies the same
@@ -45,6 +59,13 @@ static const wchar_t* const kSupportedNonZipArchiveExtensions[] = {
 static std::wstring GetFileNameWithoutExtension(const std::wstring& path)
 {
     const std::wstring fileName(PathFindFileNameW(path.c_str()));
+
+    for (const wchar_t* ext : kCompoundArchiveExtensions)
+    {
+        if (EndsWithCaseInsensitive(fileName, ext))
+            return fileName.substr(0, fileName.size() - wcslen(ext));
+    }
+
     const auto pos = fileName.rfind(L'.');
     return (pos != std::wstring::npos && pos != 0) ? fileName.substr(0, pos) : fileName;
 }

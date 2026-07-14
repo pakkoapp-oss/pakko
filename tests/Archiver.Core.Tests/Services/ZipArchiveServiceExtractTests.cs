@@ -75,6 +75,29 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
         Directory.Exists(Path.Combine(destDir, "second")).Should().BeTrue();
     }
 
+    // T-F103: a compound extension (".tar.gz") must be stripped as a unit — Path
+    // .GetFileNameWithoutExtension alone would leave "browse_test.tar" instead of "browse_test".
+    // The content here is a plain zip; only the file name string is exercising the naming bug.
+    [Fact]
+    public async Task ExtractAsync_SeparateFoldersMode_StripsCompoundTarExtension()
+    {
+        var zip = CreateTestZip("browse_test.tar.gz", "a.txt");
+        var destDir = Path.Combine(_temp.Path, "extracted");
+
+        var options = new ExtractOptions
+        {
+            ArchivePaths = [zip],
+            DestinationFolder = destDir,
+            Mode = ExtractMode.SeparateFolders
+        };
+
+        var result = await _sut.ExtractAsync(options);
+
+        result.Success.Should().BeTrue();
+        Directory.Exists(Path.Combine(destDir, "browse_test")).Should().BeTrue();
+        Directory.Exists(Path.Combine(destDir, "browse_test.tar")).Should().BeFalse();
+    }
+
     // T-F67: SeparateFolderName lets a caller (Archiver.Shell) put the extracted contents
     // under a caller-chosen subfolder name instead of the archive's own file name — used to
     // pick a numbered name when the archive's own name is already taken on disk.

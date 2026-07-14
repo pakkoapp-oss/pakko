@@ -31,10 +31,11 @@ the default `.zip` handler and a cold-start double-click (simulated via `Start-P
 populated the file list. T-F83 is now fully complete.
 **v1.3 (tar.exe integration) in progress** — T-F47 (`ITarService`/`TarCapabilities` scaffolding)
 and T-F48 (capability detection) are complete. T-F49 (`TarProcessService.ExtractAsync()`
-pipeline) is `[~]` partial — implementation and its own tests (`Archiver.Core.Tests` +
-new `Archiver.Core.IntegrationTests`) are complete, but it stays partial until a
-`Deploy.ps1`-driven build+install and a manual on-device extraction of a real `.rar`/`.7z`
-through the app is confirmed by the user (T-F49 never reached UI/shell wiring). While designing
+pipeline) is `[x]` complete — implementation, tests, and a `Deploy.ps1`-driven on-device
+`.tar.gz`/`.7z` extraction through the installed app were all confirmed 2026-07-07 (graduated by
+the agent at the user's explicit request that round, not a personal user click-through — flagged
+in `TASKS.md`; real `.rar` stayed unverified then, since no RAR-capable encoder existed on this
+machine — since fixed, see `TASKS.md`'s T-F85 entry). While designing
 T-F49, empirically confirmed a real sandbox-escape exploit against a naive tar.exe
 quarantine-then-validate model (a symlink entry writes outside the quarantine directory before
 any validation code runs) — see `DECISIONS.md`'s T-F49 entry; `ExtractAsync` instead pre-scans
@@ -88,26 +89,31 @@ fixed it, confirmed via direct on-device relaunch. `ArchiveTreeIndex`/browse-mod
 separately reviewed for the large-entry-count question this same round and found already sound
 (O(n) build, per-folder-scoped sort, pre-existing virtualization, no per-item async work) — no fix
 needed there.
-**T-F99 (drive-root context menu) and T-F100 (file-activation routing) are both `[~]` partial** —
-implemented and AI-driven on-device verified 2026-07-13 (see `DECISIONS.md`'s T-F99/T-F100
-entries), awaiting the user's own on-device pass. T-F99's on-device verification surfaced three
-more real bugs beyond the manifest fix — a command-line-corrupting `QuotePath` trailing-backslash
-bug, and two independent archive-auto-naming code paths both producing a bare `.zip` for a
-drive-root source — all fixed and tested; see `DECISIONS.md`. **T-F101** (Pakko missing from the
-classic "Show more options" menu) was diagnosed (repro confirmed, stale-build and crash-during-
-enumeration theories both ruled out) but not fixed, per the user's own instruction to log the
-symptom only. **T-F103** (new, found while testing T-F05 against a real `.tar.gz`): the extraction
-destination folder is misnamed for compound extensions (`browse_test.tar.gz` → `browse_test.tar`,
-not `browse_test`) — logged in `TASKS.md`, not yet fixed.
+**T-F99 (drive-root context menu) and T-F100 (file-activation routing) are both `[x]` done** —
+implemented and AI-driven on-device verified 2026-07-13, then re-confirmed 2026-07-14 via a
+user-directed Windows MCP automation pass (see `DECISIONS.md`'s T-F99/T-F100 entries). T-F99's
+on-device verification surfaced three more real bugs beyond the manifest fix — a
+command-line-corrupting `QuotePath` trailing-backslash bug, and two independent archive-auto-naming
+code paths both producing a bare `.zip` for a drive-root source — all fixed and tested; see
+`DECISIONS.md`. **T-F101** (Pakko missing from the classic "Show more options" menu) was diagnosed
+2026-07-13 (repro confirmed, stale-build and crash-during-enumeration theories both ruled out, no
+fix made) but stopped reproducing on its own by 2026-07-14 — root cause still unconfirmed, leading
+guess is a side effect of T-F100's manifest change invalidating an Explorer verb/icon cache; see
+`DECISIONS.md`. **T-F103** (extraction destination folder misnamed for compound extensions,
+`browse_test.tar.gz` → `browse_test.tar` instead of `browse_test`) is now `[x]` fixed — new shared
+`Archiver.Core.Services.ArchiveNaming` helper strips tar.exe's five compound extensions as a unit,
+wired into all five buggy call sites across `ZipArchiveService.cs`/`TarProcessService.cs`/
+`Archiver.Shell/Program.cs`, plus the native `ShellExtUtils.cpp` title-display equivalent;
+on-device verified 2026-07-14. See `DECISIONS.md`'s T-F103 entry.
 - T-01 through T-35 + T-11, and T-F16/T-F17/T-F18/T-F26–T-F29/T-F37–T-F39/T-F44/T-F45 complete
-- 221/221 .NET tests pass (`dotnet test --filter "Category!=Slow"`: 148 Archiver.Core.Tests +
-  36 Archiver.Shell.Tests + 21 Archiver.Core.IntegrationTests + 16 Archiver.App.Core.Tests, the
+- 235/235 .NET tests pass (`dotnet test --filter "Category!=Slow"`: 161 Archiver.Core.Tests +
+  36 Archiver.Shell.Tests + 22 Archiver.Core.IntegrationTests + 16 Archiver.App.Core.Tests, the
   last a new plain-net8.0 project added for T-F05's flat-to-tree helper and T-F100's
   `FileActivationRouter`). 4 Zip64 tests (T-F20) are tagged `[Trait("Category", "Slow")]` and
   excluded from this default run — they cost real wall-clock time (>65535-file
   archiving/extraction, a >4 GiB round trip) that isn't worth paying on every change; run them
   explicitly with `dotnet test --filter "Category=Slow"` before a release or when touching
-  Zip64-adjacent code. C++ `Archiver.ShellExtension.Tests` (Google Test, 56/56) run separately,
+  Zip64-adjacent code. C++ `Archiver.ShellExtension.Tests` (Google Test, 59/59) run separately,
   not covered by `dotnet test`
 - MSIX signed with dev cert via Deploy.ps1 (see T-F10 for production-grade cert)
 - Async streaming (CopyToAsync) — CancellationToken respected mid-file

@@ -1895,6 +1895,29 @@ correct filename (`archive.zip`) and correct destination (Desktop) on disk.
 `tests/Archiver.ShellExtension.Tests/ShellExtUtilsTests.cpp`,
 `tests/Archiver.Core.Tests/Services/ZipArchiveServiceArchiveTests.cs`.
 
+**User-directed on-device confirmation (2026-07-14), via Windows MCP automation instead of the
+user's own hands:** the user explicitly asked the agent to drive the on-device smoke test itself
+through the Windows automation MCP tools rather than clicking through it personally. A real
+`subst`-mapped `Z:` drive was created, right-clicked in "Цей ПК", and the one-click `Add to
+"archive.zip"` command invoked. Confirmed: Pakko's entry appears on the drive-root context menu;
+the resulting archive contains the drive's real content (`file1.txt`, correct bytes) — the core
+QuotePath/empty-pending-list bug stays fixed. **Two new, minor, unplanned observations from this
+pass, not yet acted on:**
+1. The archive landed at `Desktop\archive.zip` — matches the documented `RunArchiveAsync` fallback
+   (`Environment.SpecialFolder.Desktop`) exactly, so this is expected behavior given the existing
+   design, not a regression — but it means a drive-root one-click archive never lands "next to" the
+   source the way a normal file/folder selection does, since a drive root has no meaningful parent
+   folder. Worth a user-facing affordance someday (e.g. prompting for a destination when the source
+   has no parent) but not scoped as a bug fix here.
+2. The zip entry itself is stored as `/file1.txt` (leading slash) rather than the conventional
+   `file1.txt`. Not yet root-caused — plausibly `ZipArchiveService`'s relative-path computation
+   producing an empty prefix for a drive-root source and a downstream `Path.Combine`-style join
+   leaving a leading separator. Not fixed this round; flagging for a future look if it ever proves
+   to matter (most zip readers tolerate a leading slash, but it's not standard-conforming).
+Given this task's acceptance criteria were already satisfied by the 2026-07-13 AI-driven pass, and
+this pass adds a second independent on-device confirmation (this time explicitly requested by the
+user rather than autonomous), **T-F99 graduates to done** — see `TASKS.md`.
+
 ---
 
 ## T-F100 — File Activation Routing + FileTypeAssociation Extension List
@@ -1935,9 +1958,16 @@ code path regardless of which app the OS considers default.
 `src/Archiver.App/Package.appxmanifest`,
 `tests/Archiver.App.Core.Tests/FileActivationRouterTests.cs`.
 
+**User-directed on-device confirmation (2026-07-14), via Windows MCP automation:** all four formats
+re-verified via "Відкрити за допомогою → Pakko" against the real `PakkoSmokeTest` fixtures —
+`.zip`, `.7z`, `.rar`, `.tar.gz` each opened directly into the T-F05 browser (not the archive-
+creation UI). Also exercised T-F05's Extract Selected/Extract All from this same entry point across
+all four formats (see `TASKS.md`'s T-F05 entry for the full extraction results) — this is the
+deepest single-session verification pass this feature has had. **T-F100 graduates to done.**
+
 ---
 
-## T-F101 — Classic "Show More Options" Menu Missing Pakko: Diagnosis, No Fix Yet
+## T-F101 — Classic "Show More Options" Menu Missing Pakko: Fixed (Side Effect, Cause Unconfirmed)
 
 **Per user decision, this round is diagnosis-only** — the symptom is logged and two candidate
 explanations are ruled out below, but no code changed.
@@ -1962,14 +1992,97 @@ this session's own repeated `Deploy.ps1` uninstall/reinstall cycling (Windows as
 version's COM surrogate to quiesce during an MSIX package replace) — not Explorer invoking the
 classic menu. Flagged explicitly so a future session doesn't mistake it for evidence.
 
-**Not yet tried:** a real Process Monitor/ETW trace of `explorer.exe` actually calling
-`IExplorerCommand::EnumSubCommands`/`GetState` during classic-menu population specifically, to
-confirm whether Explorer even reaches `Archiver.ShellExtension.dll` for that code path at all.
+**Not yet tried (at diagnosis time):** a real Process Monitor/ETW trace of `explorer.exe` actually
+calling `IExplorerCommand::EnumSubCommands`/`GetState` during classic-menu population specifically,
+to confirm whether Explorer even reaches `Archiver.ShellExtension.dll` for that code path at all.
 UI-automation-driven repro turned out to be an unreliable way to *hold open* the classic Win32
 popup menu long enough to inspect its state mid-flight (it collapses faster than tool round-trips
-in this environment) — a real trace tool is the likely next step, not more automated clicking.
+in this environment) at diagnosis time.
 
-**Files:** none changed — diagnosis only.
+**Resolution found later (2026-07-14), via Windows MCP automation, user-directed:** re-running the
+exact same repro (right-click a file in `PakkoSmokeTest`, click "Показати додаткові параметри")
+now shows Pakko present in the classic menu, right after NanaZip — confirmed twice, reproducibly,
+via screenshots saved outside the UI-automation tree-walk (see below for why that distinction
+mattered). **Root cause still not confirmed** — no code change was made between the 2026-07-13
+diagnosis and this pass; the leading hypothesis is that T-F100's `Package.appxmanifest`
+`FileTypeAssociation` extension (landed the same day, after this diagnosis) also happened to
+invalidate whatever Explorer verb/icon cache was suppressing Pakko from the classic menu, but this
+is speculative, not verified against a trace. If this ever regresses, re-check whether it's tied to
+a `Package.appxmanifest` change or purely an Explorer-cache artifact (see this project's existing
+documented "context-menu flicker on first open of a new Explorer window" cache-artifact precedent
+in `CLAUDE.md`).
+
+**Automation note for future sessions attempting to script Explorer context menus:** a UI-Automation
+tree-walk (this project's `ui_find`/annotated-`screenshot_control` tooling) issued *between* opening
+a Win32 popup menu and clicking an item reliably closed the menu without registering the click —
+observed 3 times in a row before switching to a plain (non-`annotate`) screen capture plus manual
+pixel-coordinate clicks, which worked every time after. Treat any transient popup menu (context
+menus, unpinned flyouts) as allergic to UIA tree enumeration while open; capture pixels only, or
+drive it via keyboard navigation instead.
+
+**Files:** none changed — still diagnosis + a later, better-evidenced observation. No code fix
+exists to attribute this to.
+
+---
+
+## T-F103 — Extraction Destination Folder Misnamed for Compound Extensions
+
+**Root cause, confirmed exactly as suspected at discovery time:** `Path.GetFileNameWithoutExtension`
+(and the C++ `ShellExtUtils.cpp` equivalent of the same name) strip only the last dot segment —
+`"browse_test.tar.gz"` became `"browse_test.tar"`. Five call sites shared this bug across three
+files: `ZipArchiveService.cs`'s `SeparateFolders`-mode destination and its smart-foldering
+wrapper-folder case, `TarProcessService.cs`'s `SeparateFolders`-mode destination, and
+`Archiver.Shell/Program.cs`'s `RunExtractHereAsync`/`RunExtractFolderAsync`. A sixth, cosmetic-only
+site (`ShellExtUtils.cpp`'s `BuildExtractFolderTitle`, the context-menu title text) had the same bug
+independently.
+
+**Fix: one shared helper, not five separate patches.** New `Archiver.Core.Services.ArchiveNaming
+.GetBaseName(string archivePath)` strips the five compound extensions `tar.exe` itself can produce
+(`.tar.gz`, `.tar.bz2`, `.tar.xz`, `.tar.zst`, `.tar.lzma`) as a unit before falling back to
+`Path.GetFileNameWithoutExtension` for everything else — mirrors the existing
+`_extractableTypes`/`kSupportedNonZipArchiveExtensions` "one canonical list, kept in sync across
+C#/C++" precedent from T-F86/T-F100. All three C# call sites (already in or referencing
+`Archiver.Core`) now call this one method instead of duplicating the logic. The native
+`GetFileNameWithoutExtension` in `ShellExtUtils.cpp` got the equivalent fix (a `kCompoundArchiveExtensions`
+array checked before the single-dot fallback), kept in sync via a cross-reference comment since the
+two codebases can't literally share code.
+
+**Bonus, not scope creep — fixing the shared C++ helper also fixed the archiving-direction case for
+free.** `GetFileNameWithoutExtension` is used by *both* `BuildExtractFolderTitle` (extraction,
+T-F103's actual scope) and `BuildAddToArchiveTitle` (archiving a source file, a different direction
+this task never targeted). Since both title builders route through the one helper, fixing it once
+also fixes an out-of-scope inverse bug (archiving a file literally named `backup.tar.gz` would have
+produced `backup.tar.zip`) as a side effect, at zero extra cost — this is presented as a fix that
+happened to occur, not a deliberate scope expansion.
+
+**Testing:** new `ArchiveNamingTests` (12 theory cases covering every compound extension plus the
+single-extension formats, case-insensitivity), a `ZipArchiveServiceExtractTests` case (a zip
+literally named `browse_test.tar.gz`, since the bug is about the file-name string, not the actual
+archive format), a real `TarProcessService` integration test exercising `SeparateFolders` mode
+against a genuine `tar.exe`-built `.tar.gz` fixture (this mode was never previously covered by
+`TarProcessServiceCompressedFormatsTests.cs` — every existing test there used `SingleFolder` with an
+explicit `destDir`, which is exactly why this bug shipped uncaught until real on-device use), and
+two new C++ Google Test cases. `dotnet test --filter "Category!=Slow"` green (235/235, +14) and
+`Archiver.ShellExtension.Tests.exe` green (59/59, +3).
+
+**On-device verification (2026-07-14), user-directed via Windows MCP automation:** all three
+previously-buggy paths re-tested against the real `browse_test.tar.gz` fixture after a full
+`Deploy.ps1` build+sign+install — the shell's own context-menu title now reads
+`Extract to "browse_test\"` (was `browse_test.tar\`); "Extract to folder" and "Extract here" both
+produced correctly-named folders (`browse_test\` / a numbered `browse_test (1)\` where a
+same-named folder already existed from an earlier test); the Archive Browser's Extract All routed
+its content into the correctly-named folder too (confirmed via a `root (1).txt` rename-on-conflict
+landing in the right place). A stale `browse_test.tar\` folder from the original 2026-07-13 bug
+repro was left untouched on disk during this pass — its own mtime confirmed nothing wrote to it,
+distinguishing "still there from before" from "the bug is still creating it."
+
+**Files:** `src/Archiver.Core/Services/ArchiveNaming.cs` (new),
+`src/Archiver.Core/Services/ZipArchiveService.cs`, `src/Archiver.Core/Services/TarProcessService.cs`,
+`src/Archiver.Shell/Program.cs`, `src/Archiver.ShellExtension/ShellExtUtils.cpp`,
+`tests/Archiver.Core.Tests/Services/ArchiveNamingTests.cs` (new),
+`tests/Archiver.Core.Tests/Services/ZipArchiveServiceExtractTests.cs`,
+`tests/Archiver.Core.IntegrationTests/TarProcessServiceCompressedFormatsTests.cs`,
+`tests/Archiver.ShellExtension.Tests/ShellExtUtilsTests.cpp`.
 
 ---
 

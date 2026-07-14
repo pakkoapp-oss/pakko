@@ -269,6 +269,13 @@ TEST(BuildAddToArchiveTitle, SingleFileUsesNameWithoutExtension)
     EXPECT_EQ(BuildAddToArchiveTitle({ L"C:\\Docs\\report.docx" }), L"Add to \"report.zip\"");
 }
 
+// T-F103: a compound tar extension must be stripped as a unit, not just the last dot segment
+// (e.g. "backup.tar.gz" must not become "backup.tar.zip").
+TEST(BuildAddToArchiveTitle, CompoundTarExtensionStripsBothComponents)
+{
+    EXPECT_EQ(BuildAddToArchiveTitle({ L"C:\\Docs\\backup.tar.gz" }), L"Add to \"backup.zip\"");
+}
+
 TEST(BuildAddToArchiveTitle, MultipleFilesUseContainingFolderName)
 {
     const auto title = BuildAddToArchiveTitle(
@@ -327,6 +334,12 @@ TEST(BuildExtractFolderTitle, ReturnsFallbackForEmptyVector)
 TEST(BuildExtractFolderTitle, SingleArchiveUsesNameWithoutExtension)
 {
     EXPECT_EQ(BuildExtractFolderTitle({ L"C:\\Docs\\report.zip" }), L"Extract to \"report\\\"");
+}
+
+// T-F103: "browse_test.tar.gz" must extract to "browse_test\", not "browse_test.tar\".
+TEST(BuildExtractFolderTitle, CompoundTarExtensionStripsBothComponents)
+{
+    EXPECT_EQ(BuildExtractFolderTitle({ L"C:\\Docs\\browse_test.tar.gz" }), L"Extract to \"browse_test\\\"");
 }
 
 TEST(BuildExtractFolderTitle, MultipleArchivesDoNotClaimASingleName)

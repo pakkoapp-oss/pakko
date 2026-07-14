@@ -344,10 +344,16 @@ bigger feature if ever wanted).
       contract), new `Archiver.App.Core.Tests` project for the flat-to-tree helper
 - [x] `dotnet test --filter "Category!=Slow"` passes (208/208); Zip64 Slow-tagged coverage extended
       with a `ListEntriesAsync` 65,600-entry test, confirmed green under `Category=Slow`
-- [ ] Manual on-device verification: browse a real multi-folder ZIP and a real multi-folder
+- [x] Manual on-device verification: browse a real multi-folder ZIP and a real multi-folder
       tar.gz/7z/rar, extract a selection, extract all, view Info — confirmed by the user personally
       per this project's UI-verification workflow tip. **Full `Deploy.ps1` build+sign+install
-      completed 2026-07-13** (Pakko v1.2.0.11 on-device) — awaiting the user's manual click-through.
+      completed 2026-07-13** (Pakko v1.2.0.11 on-device). **Confirmed 2026-07-14, user-directed via
+      Windows MCP automation:** browsed `browse_test.zip`/`.7z`/`.rar`/`.tar.gz` (via "Open with →
+      Pakko"), descended into a subfolder, ran Extract Selected on one file (correct content, only
+      that file written) and Extract All on all four formats (correct structure, correct
+      rename-on-conflict behavior for a repeat name). The Info dialog itself no longer exists (see
+      the "Info button removed" follow-up above) so that half of this criterion is void by design,
+      not skipped. Graduated to `[x]`.
 
 ---
 
@@ -451,7 +457,7 @@ usual practice for extraction-security changes (see T-F90/T-F94's entries for th
 ---
 
 ### T-F99 — Context Menu Missing on Drive Root (Type="Drive")
-- [~] **Status:** partial — manifest fix implemented and, while verifying it end-to-end on-device,
+- [x] **Status:** done — manifest fix implemented and, while verifying it end-to-end on-device,
       three more real bugs were found and fixed (2026-07-13): `QuotePath` in
       `ShellExtUtils.cpp` produced `"Z:\"` for a drive-root path — a trailing backslash right
       before the closing quote escapes the quote under Win32/CRT command-line parsing instead of
@@ -467,8 +473,13 @@ usual practice for extraction-security changes (see T-F90/T-F94's entries for th
       `PathFindFileNameW` returns a path ending in `\` unchanged, not an empty tail, so the check
       needed a trailing-backslash branch too. All four fixed; see `DECISIONS.md`'s T-F99 entry.
       AI-driven on-device verification passed via both `Compress…` and the one-click `Add to
-      "archive.zip"` command against a `subst`-mapped scratch drive letter — awaiting the user's
-      own on-device confirmation before this graduates to `[x]`.
+      "archive.zip"` command against a `subst`-mapped scratch drive letter. **Second confirmation,
+      2026-07-14, this time user-directed via Windows MCP automation** (`subst Z:`, right-click in
+      "Цей ПК", one-click "Add to archive.zip") — Pakko's drive-root entry present, archive content
+      correct. Two new minor, unfixed observations from this pass (not blocking, see `DECISIONS.md`):
+      the archive lands on Desktop rather than "near" the drive (expected given the existing
+      no-parent-folder fallback, just worth a UX look later), and the zip entry is stored as
+      `/file1.txt` (leading slash) rather than `file1.txt`. Graduated to `[x]`.
 - **Depends on:** none
 
 **What:** right-clicking a drive root (e.g. `C:\` in Explorer's left-hand tree or "This PC") shows
@@ -503,13 +514,13 @@ entry exists — the drive-root case was simply never registered.
       `subst`, a small scratch folder mapped to a drive letter — avoids risking a real
       multi-hundred-GB volume) confirms the Pakko entry now appears, and its Archive command
       produces a valid archive of the drive's contents, tested via both `Compress…` and the
-      one-click `Add to "archive.zip"` command — AI-driven this round, awaiting the user's own
-      on-device pass before graduating to `[x]`.
+      one-click `Add to "archive.zip"` command — confirmed twice: AI-driven 2026-07-13, and again
+      2026-07-14 user-directed via Windows MCP automation.
 
 ---
 
 ### T-F100 — File Activation Opens Archive-Creation UI Instead of Browsing the Archive
-- [~] **Status:** partial — both root causes fixed 2026-07-13. New `FileActivationRouter` static
+- [x] **Status:** done — both root causes fixed 2026-07-13. New `FileActivationRouter` static
       class in `Archiver.App.Core` (WinUI-free, mirrors `ArchiveTreeIndex`'s testability split)
       decides Browse vs. AddToList; `App.xaml.cs`'s `HandleActivation` File case now awaits
       `EnterBrowseModeAsync` for a single recognized archive instead of unconditionally calling
@@ -520,7 +531,10 @@ entry exists — the drive-root case was simply never registered.
       `DECISIONS.md`. `dotnet test` green (4 new `FileActivationRouterTests`). AI-driven on-device
       verification passed for all four formats (`.zip`, `.7z`, `.rar`, `.tar.gz` — the last built
       with real `tar.exe`) via "Open with → Pakko", each opening directly into the T-F05 browser
-      view — awaiting the user's own on-device confirmation before this graduates to `[x]`.
+      view. **Second confirmation, 2026-07-14, user-directed via Windows MCP automation:**
+      re-verified all four formats the same way, plus exercised T-F05's Extract Selected/Extract
+      All from each (see T-F05's entry below) — every format opened directly into the browser and
+      extracted correctly. Graduated to `[x]`.
 - **Depends on:** T-F05 (Archive Browser) — the correct destination behavior (browse mode) only
       exists because of T-F05's `EnterBrowseModeAsync`
 
@@ -561,20 +575,27 @@ exists, so Windows has no association to offer for any other format, regardless 
       "extract decision logic out of `.xaml.cs`/`App.xaml.cs` into something testable" pattern.
       `FileActivationRouter`/`FileActivationRouterTests` in `Archiver.App.Core`(`.Tests`).
 - [x] `dotnet test --filter "Category!=Slow"` passes
-- [ ] Manual on-device verification: double-click a real `.zip` → opens directly into the T-F05
+- [x] Manual on-device verification: double-click a real `.zip` → opens directly into the T-F05
       browser view (not the Archive UI); double-click a real `.rar`/`.7z`/`.tar.gz` → same;
       confirm Pakko now appears in Windows' "Open with" list for at least one non-`.zip` format.
       AI-driven verification done (2026-07-13, via "Open with → Pakko" since `.zip`'s system
       default had reverted to Windows' built-in `CompressedFolder` handler after the MSIX
-      reinstall — a real, separate observation, not this task's bug) for all four formats —
-      awaiting the user's own on-device pass.
+      reinstall — a real, separate observation, not this task's bug) for all four formats.
+      Re-confirmed 2026-07-14, user-directed via Windows MCP automation, same method, same result.
 
 ---
 
 ### T-F101 — Pakko Missing From Classic "Show More Options" Context Menu
-- [ ] **Status:** future — diagnosed 2026-07-13 (AI-driven on-device investigation), root cause
-      still NOT identified; two candidate explanations ruled out. Per user decision, this stays a
-      diagnosis-only round — no code change.
+- [x] **Status:** resolved (no code fix; cause unconfirmed) — diagnosed 2026-07-13 (AI-driven
+      on-device investigation, root cause not identified, two candidate explanations ruled out).
+      Re-tested 2026-07-14 (user-directed, via Windows MCP automation, repro run twice
+      reproducibly): Pakko now appears in the classic "Показати додаткові параметри" menu right
+      next to NanaZip. No code changed between the two dates — leading (unverified) hypothesis is
+      that T-F100's `Package.appxmanifest` `FileTypeAssociation` change, landed the same day as the
+      original diagnosis, also invalidated whatever Explorer verb/icon cache was suppressing Pakko
+      from the classic menu. See `DECISIONS.md`'s T-F101 entry for the full resolution note and an
+      automation gotcha (UI-Automation tree-walks collapse open Win32 popup menus — use plain
+      screenshots + pixel clicks instead).
 - **Depends on:** none
 
 **Symptom:** right-clicking a file in Explorer shows NanaZip's entry in both the modern
@@ -615,13 +636,44 @@ point, so the manifest is not an obvious explanation by itself.
   classic Win32 popup menu's exact call timing (it closes faster than tool round-trips in this
   environment), so a real trace tool is likely needed rather than more UI automation attempts.
 
-**Acceptance criteria:** none yet — to be written once the root cause is identified.
+**Acceptance criteria:** none were written (root cause was never pinned down) — symptom stopped
+reproducing as of 2026-07-14 (see status line above). Re-open this task with a proper root-cause
+investigation (Process Monitor/ETW trace, per the diagnosis section above) if it ever regresses.
 
 ---
 
 ### T-F103 — Extraction Destination Folder Misnamed for Compound Extensions (.tar.gz etc.)
-- [ ] **Status:** future — found 2026-07-13 while smoke-testing T-F05/T-F100 against a real
-      `.tar.gz` fixture, not part of any task's original scope
+- [x] **Status:** done — found 2026-07-13 while smoke-testing T-F05/T-F100 against a real
+      `.tar.gz` fixture, not part of any task's original scope. Fixed 2026-07-14: root cause was
+      exactly as suspected — `Path.GetFileNameWithoutExtension` (and the C++ equivalent) strip only
+      the last dot segment. New shared `Archiver.Core.Services.ArchiveNaming.GetBaseName()` helper
+      strips the five compound extensions `tar.exe` itself creates (`.tar.gz`, `.tar.bz2`,
+      `.tar.xz`, `.tar.zst`, `.tar.lzma`) as a unit before falling back to the single-dot rule;
+      wired into all four call sites that had the bug (`ZipArchiveService.cs` × 2 — the
+      `SeparateFolders`-mode destination and the smart-foldering wrapper-folder case,
+      `TarProcessService.cs` × 1, `Archiver.Shell/Program.cs` × 2 — `RunExtractHereAsync`/
+      `RunExtractFolderAsync`). The native C++ `ShellExtUtils.cpp::GetFileNameWithoutExtension`
+      helper (used by both `BuildAddToArchiveTitle` and `BuildExtractFolderTitle`) got the same
+      fix, kept in sync via a cross-reference comment — this incidentally also fixes the inverse,
+      out-of-scope case (archiving a source file itself named like a compound archive, e.g.
+      `backup.tar.gz`, would have produced `backup.tar.zip`) for free, since both title builders
+      share the one helper. `dotnet test --filter "Category!=Slow"` green (235/235, +14 new:
+      `ArchiveNamingTests` × 12 theory cases, one `ZipArchiveServiceExtractTests` case, one real
+      `TarProcessService` `SeparateFolders`-mode integration test against an actual `tar.exe`
+      `.tar.gz` fixture — the last exercises a code path this test file never covered before,
+      since every other test there used `SingleFolder` mode with an explicit `destDir`).
+      `Archiver.ShellExtension.Tests.exe` green (59/59, +3 new: two C++ compound-extension title
+      cases). **Full `Deploy.ps1` build+sign+install completed and on-device verified 2026-07-14**
+      (user-directed via Windows MCP automation) against the real `browse_test.tar.gz` fixture:
+      the shell's "Extract to..." title itself now reads `Extract to "browse_test\"` (was
+      `browse_test.tar\`); "Extract to folder" created `browse_test\` (confirmed via the
+      dir's own mtime, since a stale `browse_test.tar\` from the original bug repro was still
+      sitting on disk and stayed untouched); "Extract here" created the correctly-named
+      `browse_test (1)\` (numbered — a same-named folder from an earlier test already existed);
+      and the Archive Browser's Extract All routed its content into the correct `browse_test\`
+      (confirmed via a `root (1).txt` rename-on-conflict landing there, not in `browse_test.tar\`).
+      All three previously-buggy code paths (Core's two services + `Archiver.Shell`) now agree.
+      Graduated to `[x]`.
 - **Depends on:** none
 
 **What:** extracting `browse_test.tar.gz` (via the T-F05 Archive Browser's Extract All) created
@@ -639,13 +691,14 @@ they're independent code paths (same pattern as T-F99's fix needing changes in t
 places for one conceptual bug).
 
 **Acceptance criteria:**
-- [ ] Root cause located (likely more than one call site, per the note above)
-- [ ] `.tar.gz`/`.tar.bz2`/`.tar.xz`/`.tar.zst` (every double-barrelled extension `tar.exe` itself
+- [x] Root cause located (likely more than one call site, per the note above) — five call sites
+      across three files, plus a sixth (cosmetic, title-only) in the native shell extension
+- [x] `.tar.gz`/`.tar.bz2`/`.tar.xz`/`.tar.zst` (every double-barrelled extension `tar.exe` itself
       creates, per `CLAUDE.md`'s tar.exe format-support hard constraint) strip both components,
-      not just the last
-- [ ] New tests covering a `.tar.gz`-named archive's extraction destination folder name
-- [ ] `dotnet test --filter "Category!=Slow"` passes
-- [ ] Manual on-device verification: extract a real `.tar.gz` via the Archive Browser and via the
+      not just the last — `.tar.lzma` included too, same shape
+- [x] New tests covering a `.tar.gz`-named archive's extraction destination folder name
+- [x] `dotnet test --filter "Category!=Slow"` passes
+- [x] Manual on-device verification: extract a real `.tar.gz` via the Archive Browser and via the
       shell's Extract-here/Extract-to-folder commands, confirm the destination folder is named
       after the full compound extension stripped, not just the last segment
 

@@ -37,6 +37,29 @@ public sealed class TarProcessServiceCompressedFormatsTests : IDisposable
         File.ReadAllText(Path.Combine(destDir, "a.txt")).Should().Be("hello gz");
     }
 
+    // T-F103: SeparateFolders mode derives its per-archive subfolder name from the archive's own
+    // file name — "browse_test.tar.gz" must produce a "browse_test" subfolder, not "browse_test.tar".
+    // This mode wasn't previously exercised by this file (every other test here uses SingleFolder
+    // with an explicit destDir), so the naming bug went uncaught until T-F05's real on-device use.
+    [Integration]
+    public async Task ExtractAsync_TarGz_SeparateFoldersMode_StripsCompoundExtensionForSubfolderName()
+    {
+        string archivePath = Path.Combine(_temp.Path, "browse_test.tar.gz");
+        ExternalTarFixtureBuilder.CreateCompressedTar(archivePath, "-czf", [("a.txt", "hello gz")]);
+
+        string destDir = Path.Combine(_temp.Path, "out");
+        var result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [archivePath],
+            DestinationFolder = destDir,
+            Mode = ExtractMode.SeparateFolders,
+        });
+
+        result.Success.Should().BeTrue();
+        File.ReadAllText(Path.Combine(destDir, "browse_test", "a.txt")).Should().Be("hello gz");
+        Directory.Exists(Path.Combine(destDir, "browse_test.tar")).Should().BeFalse();
+    }
+
     [SkipIfFormatUnsupported("bz2")]
     public async Task ExtractAsync_TarBz2_ExtractsFileWithContent()
     {

@@ -78,7 +78,7 @@ public sealed class TarProcessService : ITarService
             string archivePath = options.ArchivePaths[i];
             string destDir = options.Mode == ExtractMode.SeparateFolders
                 ? Path.Combine(options.DestinationFolder,
-                    options.SeparateFolderName ?? Path.GetFileNameWithoutExtension(archivePath))
+                    options.SeparateFolderName ?? ArchiveNaming.GetBaseName(archivePath))
                 : options.DestinationFolder;
 
             try

@@ -502,7 +502,7 @@ public sealed class ZipArchiveService : IArchiveService
 
             string destDir = options.Mode == ExtractMode.SeparateFolders
                 ? Path.Combine(options.DestinationFolder,
-                    options.SeparateFolderName ?? Path.GetFileNameWithoutExtension(archivePath))
+                    options.SeparateFolderName ?? ArchiveNaming.GetBaseName(archivePath))
                 : options.DestinationFolder;
 
             try
@@ -758,7 +758,7 @@ public sealed class ZipArchiveService : IArchiveService
 
         string actualDest = (isSingleRootFolder || isSingleRootFile || alreadyIsolated || isSelectedSubset)
             ? destDir
-            : Path.Combine(destDir, Path.GetFileNameWithoutExtension(archivePath));
+            : Path.Combine(destDir, ArchiveNaming.GetBaseName(archivePath));
 
         // T-F94: whole-archive compression-ratio check, run BEFORE tempDest is created so a
         // declined/blocked bomb leaves nothing to clean up. Deliberately whole-archive rather
