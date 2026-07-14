@@ -29,6 +29,105 @@
   <data name="AddFolderButton.Content" xml:space="preserve">
     <value>Lisa kaust</value>
   </data>
+  <data name="HashButton.Content" xml:space="preserve">
+    <value>Räsi...</value>
+  </data>
+  <data name="AboutButton.Content" xml:space="preserve">
+    <value>Teave</value>
+  </data>
+  <data name="ExtractSelectedButton.Content" xml:space="preserve">
+    <value>Paki lahti valitud</value>
+  </data>
+  <data name="ExtractAllButton.Content" xml:space="preserve">
+    <value>Paki lahti kõik</value>
+  </data>
+
+  <!-- Table headers -->
+  <data name="NameColumnHeader.Content" xml:space="preserve">
+    <value>Nimi</value>
+  </data>
+  <data name="TypeColumnHeader.Content" xml:space="preserve">
+    <value>Tüüp</value>
+  </data>
+  <data name="SizeColumnHeader.Content" xml:space="preserve">
+    <value>Suurus</value>
+  </data>
+  <data name="ModifiedColumnHeader.Content" xml:space="preserve">
+    <value>Muudetud</value>
+  </data>
+  <data name="CrcColumnHeader.Content" xml:space="preserve">
+    <value>CRC-32</value>
+  </data>
+  <data name="BrowseNameColumnHeader.Text" xml:space="preserve">
+    <value>Nimi</value>
+  </data>
+  <data name="BrowseSizeColumnHeader.Text" xml:space="preserve">
+    <value>Suurus</value>
+  </data>
+  <data name="PackedColumnHeader.Text" xml:space="preserve">
+    <value>Pakitud</value>
+  </data>
+  <data name="BrowseCrcColumnHeader.Text" xml:space="preserve">
+    <value>CRC-32</value>
+  </data>
+  <data name="BrowseModifiedColumnHeader.Text" xml:space="preserve">
+    <value>Muudetud</value>
+  </data>
+
+  <!-- Tray menu -->
+  <data name="TrayOpenMenuItem.Text" xml:space="preserve">
+    <value>Ava Pakko</value>
+  </data>
+  <data name="TrayAboutMenuItem.Text" xml:space="preserve">
+    <value>Teave Pakko kohta</value>
+  </data>
+  <data name="TrayExitMenuItem.Text" xml:space="preserve">
+    <value>Välju</value>
+  </data>
+  <data name="RemoveMenuItem.Text" xml:space="preserve">
+    <value>Eemalda</value>
+  </data>
+
+  <!-- Archive options -->
+  <data name="ModeLabel.Text" xml:space="preserve">
+    <value>Režiim:</value>
+  </data>
+  <data name="OneArchiveRadio.Content" xml:space="preserve">
+    <value>Üks arhiiv</value>
+  </data>
+  <data name="SeparateArchivesRadio.Content" xml:space="preserve">
+    <value>Eraldi arhiivid</value>
+  </data>
+  <data name="ArchiveNameTextBox.PlaceholderText" xml:space="preserve">
+    <value>Automaatne (esimese faili/kausta nime järgi)</value>
+  </data>
+  <data name="CompressionFastItem.Content" xml:space="preserve">
+    <value>Kiire</value>
+  </data>
+  <data name="CompressionNormalItem.Content" xml:space="preserve">
+    <value>Tavaline</value>
+  </data>
+  <data name="CompressionBestItem.Content" xml:space="preserve">
+    <value>Parim</value>
+  </data>
+  <data name="CompressionNoneItem.Content" xml:space="preserve">
+    <value>Puudub</value>
+  </data>
+  <data name="ConflictOverwriteItem.Content" xml:space="preserve">
+    <value>Kirjuta üle</value>
+  </data>
+  <data name="ConflictSkipItem.Content" xml:space="preserve">
+    <value>Jäta vahele</value>
+  </data>
+  <data name="ConflictRenameItem.Content" xml:space="preserve">
+    <value>Nimeta ümber (lisa number)</value>
+  </data>
+  <data name="ConflictAskItem.Content" xml:space="preserve">
+    <value>Küsi</value>
+  </data>
+  <data name="CancelButton.Content" xml:space="preserve">
+    <value>✕ Tühista</value>
+  </data>
 
   <!-- Drop zone -->
   <data name="DropZoneHint.Text" xml:space="preserve">
@@ -116,5 +215,23 @@
   </data>
   <data name="CompressionBombDialogMessage" xml:space="preserve">
     <value>See arhiiv väidab sisaldavat {0} andmeid, tihendussuhtega {1}:1. See on ebatavaliselt kõrge ja võib viidata lahtipakkimispommile. Kas pakkida ikkagi lahti?</value>
+  </data>
+  <data name="ConflictDialogTitle" xml:space="preserve">
+    <value>Fail on juba olemas</value>
+  </data>
+  <data name="ConflictDialogMessage" xml:space="preserve">
+    <value>"{0}" on sihtkohas juba olemas. Mida soovite teha?</value>
+  </data>
+  <data name="ConflictDialogOverwriteButton" xml:space="preserve">
+    <value>Kirjuta üle</value>
+  </data>
+  <data name="ConflictDialogRenameButton" xml:space="preserve">
+    <value>Nimeta ümber</value>
+  </data>
+  <data name="ConflictDialogSkipButton" xml:space="preserve">
+    <value>Jäta vahele</value>
+  </data>
+  <data name="ConflictDialogApplyToAllCheck" xml:space="preserve">
+    <value>Rakenda kõigile ülejäänud konfliktidele</value>
   </data>
 </root>

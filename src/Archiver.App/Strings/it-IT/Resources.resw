@@ -29,6 +29,105 @@
   <data name="AddFolderButton.Content" xml:space="preserve">
     <value>Aggiungi cartella</value>
   </data>
+  <data name="HashButton.Content" xml:space="preserve">
+    <value>Hash...</value>
+  </data>
+  <data name="AboutButton.Content" xml:space="preserve">
+    <value>Informazioni</value>
+  </data>
+  <data name="ExtractSelectedButton.Content" xml:space="preserve">
+    <value>Estrai selezionati</value>
+  </data>
+  <data name="ExtractAllButton.Content" xml:space="preserve">
+    <value>Estrai tutto</value>
+  </data>
+
+  <!-- Table headers -->
+  <data name="NameColumnHeader.Content" xml:space="preserve">
+    <value>Nome</value>
+  </data>
+  <data name="TypeColumnHeader.Content" xml:space="preserve">
+    <value>Tipo</value>
+  </data>
+  <data name="SizeColumnHeader.Content" xml:space="preserve">
+    <value>Dimensione</value>
+  </data>
+  <data name="ModifiedColumnHeader.Content" xml:space="preserve">
+    <value>Modificato</value>
+  </data>
+  <data name="CrcColumnHeader.Content" xml:space="preserve">
+    <value>CRC-32</value>
+  </data>
+  <data name="BrowseNameColumnHeader.Text" xml:space="preserve">
+    <value>Nome</value>
+  </data>
+  <data name="BrowseSizeColumnHeader.Text" xml:space="preserve">
+    <value>Dimensione</value>
+  </data>
+  <data name="PackedColumnHeader.Text" xml:space="preserve">
+    <value>Compresso</value>
+  </data>
+  <data name="BrowseCrcColumnHeader.Text" xml:space="preserve">
+    <value>CRC-32</value>
+  </data>
+  <data name="BrowseModifiedColumnHeader.Text" xml:space="preserve">
+    <value>Modificato</value>
+  </data>
+
+  <!-- Tray menu -->
+  <data name="TrayOpenMenuItem.Text" xml:space="preserve">
+    <value>Apri Pakko</value>
+  </data>
+  <data name="TrayAboutMenuItem.Text" xml:space="preserve">
+    <value>Informazioni su Pakko</value>
+  </data>
+  <data name="TrayExitMenuItem.Text" xml:space="preserve">
+    <value>Esci</value>
+  </data>
+  <data name="RemoveMenuItem.Text" xml:space="preserve">
+    <value>Rimuovi</value>
+  </data>
+
+  <!-- Archive options -->
+  <data name="ModeLabel.Text" xml:space="preserve">
+    <value>Modalità:</value>
+  </data>
+  <data name="OneArchiveRadio.Content" xml:space="preserve">
+    <value>Un archivio</value>
+  </data>
+  <data name="SeparateArchivesRadio.Content" xml:space="preserve">
+    <value>Archivi separati</value>
+  </data>
+  <data name="ArchiveNameTextBox.PlaceholderText" xml:space="preserve">
+    <value>Automatico (basato sul nome del primo file/cartella)</value>
+  </data>
+  <data name="CompressionFastItem.Content" xml:space="preserve">
+    <value>Veloce</value>
+  </data>
+  <data name="CompressionNormalItem.Content" xml:space="preserve">
+    <value>Normale</value>
+  </data>
+  <data name="CompressionBestItem.Content" xml:space="preserve">
+    <value>Ottima</value>
+  </data>
+  <data name="CompressionNoneItem.Content" xml:space="preserve">
+    <value>Nessuna</value>
+  </data>
+  <data name="ConflictOverwriteItem.Content" xml:space="preserve">
+    <value>Sovrascrivi</value>
+  </data>
+  <data name="ConflictSkipItem.Content" xml:space="preserve">
+    <value>Ignora</value>
+  </data>
+  <data name="ConflictRenameItem.Content" xml:space="preserve">
+    <value>Rinomina (aggiungi numero)</value>
+  </data>
+  <data name="ConflictAskItem.Content" xml:space="preserve">
+    <value>Chiedi</value>
+  </data>
+  <data name="CancelButton.Content" xml:space="preserve">
+    <value>✕ Annulla</value>
+  </data>
 
   <!-- Drop zone -->
   <data name="DropZoneHint.Text" xml:space="preserve">
@@ -116,5 +215,23 @@
   </data>
   <data name="CompressionBombDialogMessage" xml:space="preserve">
     <value>Questo archivio dichiara di contenere {0} di dati, un rapporto di compressione di {1}:1. Questo è insolitamente alto e potrebbe indicare una bomba di decompressione. Estrarre comunque?</value>
+  </data>
+  <data name="ConflictDialogTitle" xml:space="preserve">
+    <value>Il file esiste già</value>
+  </data>
+  <data name="ConflictDialogMessage" xml:space="preserve">
+    <value>"{0}" esiste già nella destinazione. Cosa vuoi fare?</value>
+  </data>
+  <data name="ConflictDialogOverwriteButton" xml:space="preserve">
+    <value>Sovrascrivi</value>
+  </data>
+  <data name="ConflictDialogRenameButton" xml:space="preserve">
+    <value>Rinomina</value>
+  </data>
+  <data name="ConflictDialogSkipButton" xml:space="preserve">
+    <value>Ignora</value>
+  </data>
+  <data name="ConflictDialogApplyToAllCheck" xml:space="preserve">
+    <value>Applica a tutti i conflitti rimanenti</value>
   </data>
 </root>

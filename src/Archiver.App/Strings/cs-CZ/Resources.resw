@@ -29,6 +29,105 @@
   <data name="AddFolderButton.Content" xml:space="preserve">
     <value>Přidat složku</value>
   </data>
+  <data name="HashButton.Content" xml:space="preserve">
+    <value>Hash...</value>
+  </data>
+  <data name="AboutButton.Content" xml:space="preserve">
+    <value>O aplikaci</value>
+  </data>
+  <data name="ExtractSelectedButton.Content" xml:space="preserve">
+    <value>Rozbalit vybrané</value>
+  </data>
+  <data name="ExtractAllButton.Content" xml:space="preserve">
+    <value>Rozbalit vše</value>
+  </data>
+
+  <!-- Table headers -->
+  <data name="NameColumnHeader.Content" xml:space="preserve">
+    <value>Název</value>
+  </data>
+  <data name="TypeColumnHeader.Content" xml:space="preserve">
+    <value>Typ</value>
+  </data>
+  <data name="SizeColumnHeader.Content" xml:space="preserve">
+    <value>Velikost</value>
+  </data>
+  <data name="ModifiedColumnHeader.Content" xml:space="preserve">
+    <value>Změněno</value>
+  </data>
+  <data name="CrcColumnHeader.Content" xml:space="preserve">
+    <value>CRC-32</value>
+  </data>
+  <data name="BrowseNameColumnHeader.Text" xml:space="preserve">
+    <value>Název</value>
+  </data>
+  <data name="BrowseSizeColumnHeader.Text" xml:space="preserve">
+    <value>Velikost</value>
+  </data>
+  <data name="PackedColumnHeader.Text" xml:space="preserve">
+    <value>Komprimováno</value>
+  </data>
+  <data name="BrowseCrcColumnHeader.Text" xml:space="preserve">
+    <value>CRC-32</value>
+  </data>
+  <data name="BrowseModifiedColumnHeader.Text" xml:space="preserve">
+    <value>Změněno</value>
+  </data>
+
+  <!-- Tray menu -->
+  <data name="TrayOpenMenuItem.Text" xml:space="preserve">
+    <value>Otevřít Pakko</value>
+  </data>
+  <data name="TrayAboutMenuItem.Text" xml:space="preserve">
+    <value>O aplikaci Pakko</value>
+  </data>
+  <data name="TrayExitMenuItem.Text" xml:space="preserve">
+    <value>Konec</value>
+  </data>
+  <data name="RemoveMenuItem.Text" xml:space="preserve">
+    <value>Odebrat</value>
+  </data>
+
+  <!-- Archive options -->
+  <data name="ModeLabel.Text" xml:space="preserve">
+    <value>Režim:</value>
+  </data>
+  <data name="OneArchiveRadio.Content" xml:space="preserve">
+    <value>Jeden archiv</value>
+  </data>
+  <data name="SeparateArchivesRadio.Content" xml:space="preserve">
+    <value>Samostatné archivy</value>
+  </data>
+  <data name="ArchiveNameTextBox.PlaceholderText" xml:space="preserve">
+    <value>Automaticky (podle názvu prvního souboru/složky)</value>
+  </data>
+  <data name="CompressionFastItem.Content" xml:space="preserve">
+    <value>Rychlá</value>
+  </data>
+  <data name="CompressionNormalItem.Content" xml:space="preserve">
+    <value>Normální</value>
+  </data>
+  <data name="CompressionBestItem.Content" xml:space="preserve">
+    <value>Nejlepší</value>
+  </data>
+  <data name="CompressionNoneItem.Content" xml:space="preserve">
+    <value>Žádná</value>
+  </data>
+  <data name="ConflictOverwriteItem.Content" xml:space="preserve">
+    <value>Přepsat</value>
+  </data>
+  <data name="ConflictSkipItem.Content" xml:space="preserve">
+    <value>Přeskočit</value>
+  </data>
+  <data name="ConflictRenameItem.Content" xml:space="preserve">
+    <value>Přejmenovat (přidat číslo)</value>
+  </data>
+  <data name="ConflictAskItem.Content" xml:space="preserve">
+    <value>Zeptat se</value>
+  </data>
+  <data name="CancelButton.Content" xml:space="preserve">
+    <value>✕ Zrušit</value>
+  </data>
 
   <!-- Drop zone -->
   <data name="DropZoneHint.Text" xml:space="preserve">
@@ -116,5 +215,23 @@
   </data>
   <data name="CompressionBombDialogMessage" xml:space="preserve">
     <value>Tento archiv deklaruje {0} dat, kompresní poměr {1}:1. To je neobvykle vysoké a může jít o dekompresní bombu. Přesto rozbalit?</value>
+  </data>
+  <data name="ConflictDialogTitle" xml:space="preserve">
+    <value>Soubor již existuje</value>
+  </data>
+  <data name="ConflictDialogMessage" xml:space="preserve">
+    <value>"{0}" v cíli již existuje. Co chcete udělat?</value>
+  </data>
+  <data name="ConflictDialogOverwriteButton" xml:space="preserve">
+    <value>Přepsat</value>
+  </data>
+  <data name="ConflictDialogRenameButton" xml:space="preserve">
+    <value>Přejmenovat</value>
+  </data>
+  <data name="ConflictDialogSkipButton" xml:space="preserve">
+    <value>Přeskočit</value>
+  </data>
+  <data name="ConflictDialogApplyToAllCheck" xml:space="preserve">
+    <value>Použít pro všechny zbývající konflikty</value>
   </data>
 </root>

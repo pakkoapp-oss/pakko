@@ -29,6 +29,105 @@
   <data name="AddFolderButton.Content" xml:space="preserve">
     <value>Mappa hozzáadása</value>
   </data>
+  <data name="HashButton.Content" xml:space="preserve">
+    <value>Hash...</value>
+  </data>
+  <data name="AboutButton.Content" xml:space="preserve">
+    <value>Névjegy</value>
+  </data>
+  <data name="ExtractSelectedButton.Content" xml:space="preserve">
+    <value>Kijelöltek kibontása</value>
+  </data>
+  <data name="ExtractAllButton.Content" xml:space="preserve">
+    <value>Összes kibontása</value>
+  </data>
+
+  <!-- Table headers -->
+  <data name="NameColumnHeader.Content" xml:space="preserve">
+    <value>Név</value>
+  </data>
+  <data name="TypeColumnHeader.Content" xml:space="preserve">
+    <value>Típus</value>
+  </data>
+  <data name="SizeColumnHeader.Content" xml:space="preserve">
+    <value>Méret</value>
+  </data>
+  <data name="ModifiedColumnHeader.Content" xml:space="preserve">
+    <value>Módosítva</value>
+  </data>
+  <data name="CrcColumnHeader.Content" xml:space="preserve">
+    <value>CRC-32</value>
+  </data>
+  <data name="BrowseNameColumnHeader.Text" xml:space="preserve">
+    <value>Név</value>
+  </data>
+  <data name="BrowseSizeColumnHeader.Text" xml:space="preserve">
+    <value>Méret</value>
+  </data>
+  <data name="PackedColumnHeader.Text" xml:space="preserve">
+    <value>Tömörített méret</value>
+  </data>
+  <data name="BrowseCrcColumnHeader.Text" xml:space="preserve">
+    <value>CRC-32</value>
+  </data>
+  <data name="BrowseModifiedColumnHeader.Text" xml:space="preserve">
+    <value>Módosítva</value>
+  </data>
+
+  <!-- Tray menu -->
+  <data name="TrayOpenMenuItem.Text" xml:space="preserve">
+    <value>Pakko megnyitása</value>
+  </data>
+  <data name="TrayAboutMenuItem.Text" xml:space="preserve">
+    <value>A Pakko névjegye</value>
+  </data>
+  <data name="TrayExitMenuItem.Text" xml:space="preserve">
+    <value>Kilépés</value>
+  </data>
+  <data name="RemoveMenuItem.Text" xml:space="preserve">
+    <value>Eltávolítás</value>
+  </data>
+
+  <!-- Archive options -->
+  <data name="ModeLabel.Text" xml:space="preserve">
+    <value>Mód:</value>
+  </data>
+  <data name="OneArchiveRadio.Content" xml:space="preserve">
+    <value>Egy archívum</value>
+  </data>
+  <data name="SeparateArchivesRadio.Content" xml:space="preserve">
+    <value>Külön archívumok</value>
+  </data>
+  <data name="ArchiveNameTextBox.PlaceholderText" xml:space="preserve">
+    <value>Automatikus (az első fájl/mappa neve alapján)</value>
+  </data>
+  <data name="CompressionFastItem.Content" xml:space="preserve">
+    <value>Gyors</value>
+  </data>
+  <data name="CompressionNormalItem.Content" xml:space="preserve">
+    <value>Normál</value>
+  </data>
+  <data name="CompressionBestItem.Content" xml:space="preserve">
+    <value>Legjobb</value>
+  </data>
+  <data name="CompressionNoneItem.Content" xml:space="preserve">
+    <value>Nincs</value>
+  </data>
+  <data name="ConflictOverwriteItem.Content" xml:space="preserve">
+    <value>Felülírás</value>
+  </data>
+  <data name="ConflictSkipItem.Content" xml:space="preserve">
+    <value>Kihagyás</value>
+  </data>
+  <data name="ConflictRenameItem.Content" xml:space="preserve">
+    <value>Átnevezés (szám hozzáadása)</value>
+  </data>
+  <data name="ConflictAskItem.Content" xml:space="preserve">
+    <value>Kérdezzen</value>
+  </data>
+  <data name="CancelButton.Content" xml:space="preserve">
+    <value>✕ Mégse</value>
+  </data>
 
   <!-- Drop zone -->
   <data name="DropZoneHint.Text" xml:space="preserve">
@@ -116,5 +215,23 @@
   </data>
   <data name="CompressionBombDialogMessage" xml:space="preserve">
     <value>Ez az archívum állítása szerint {0} adatot tartalmaz, {1}:1 tömörítési aránnyal. Ez szokatlanul magas, és kicsomagolási bombára utalhat. Mindenképp kibontja?</value>
+  </data>
+  <data name="ConflictDialogTitle" xml:space="preserve">
+    <value>A fájl már létezik</value>
+  </data>
+  <data name="ConflictDialogMessage" xml:space="preserve">
+    <value>A(z) "{0}" már létezik a célhelyen. Mit szeretne tenni?</value>
+  </data>
+  <data name="ConflictDialogOverwriteButton" xml:space="preserve">
+    <value>Felülírás</value>
+  </data>
+  <data name="ConflictDialogRenameButton" xml:space="preserve">
+    <value>Átnevezés</value>
+  </data>
+  <data name="ConflictDialogSkipButton" xml:space="preserve">
+    <value>Kihagyás</value>
+  </data>
+  <data name="ConflictDialogApplyToAllCheck" xml:space="preserve">
+    <value>Alkalmazás az összes hátralévő ütközésre</value>
   </data>
 </root>

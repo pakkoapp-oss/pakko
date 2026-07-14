@@ -929,8 +929,20 @@ Note: `SingleArchive` mode stays sequential. Progress reporting needs `Interlock
 ---
 
 ### T-F13 — Process Sandbox Isolation for External Binaries
-- [ ] **Status:** future
-- **Depends on:** T-F07 or T-F08
+- [ ] **Status:** SUPERSEDED by T-F52 — reassessed 2026-07-14. Written when the project still
+      planned to bundle optional third-party binaries (`7z.exe`/`unrar.exe`, T-F07/T-F08); both
+      of those tasks were cancelled 2026-07-12 when the project pivoted entirely to Windows'
+      built-in `tar.exe` (T-F47–T-F49), so this task's `Depends on` target no longer exists and
+      its threat model ("binary passes SHA-256 but is compromised") doesn't fit a Microsoft-
+      signed OS component nobody downloads or hash-verifies. T-F52 (Low IL Sandbox for tar.exe)
+      is this task's tar.exe-specific descendant, already planned for v1.4 per `SPEC.md`.
+      Layers 1/3/6 below (restricted token, filesystem restriction via IL labeling, staging
+      validation) are superseded outright by T-F52's flow. Layers 2 and 4/5 (Job Object resource
+      limits; network isolation + WFP firewall rule) are real additional hardening not covered by
+      T-F52 as originally scoped — folded into T-F52's acceptance criteria below rather than
+      implemented as a second, separate sandboxing task. Kept per the "never silently deprecate"
+      rule instead of deleted.
+- **Depends on:** T-F07 or T-F08 (both cancelled — see Status)
 
 **Threat model:** binary passes SHA-256 but has undiscovered vulnerability, or is compromised between verification and execution, or attempts network exfiltration or filesystem traversal.
 
@@ -1167,7 +1179,20 @@ Format: [ ZIP ▾]   ZIP / TAR / TAR.GZ
 - [~] **Status:** partial — first batch (all 24 European locales) implemented 2026-07-07;
       Arabic/Japanese/Chinese/etc. (the non-European half of the target list) not started;
       on-device verification, layout-corruption check, and native-speaker translation review
-      still outstanding for the European batch. See `DECISIONS.md`'s T-F91 entry
+      still outstanding for the European batch. See `DECISIONS.md`'s T-F91 entry.
+      **Parity gap found and fixed 2026-07-14:** every string key added by later features
+      (T-F05's browse-mode columns/buttons/tray menu/archive-option items, T-F06's conflict
+      dialog) had only ever been added to `en-US` and `uk-UA` — the other 22 European locales
+      were silently 37 keys behind (31/68 real keys), falling back to English for a large
+      fraction of the UI. Found by diffing `<data name=` counts across all 25 `Resources.resw`
+      files rather than trusting this doc. Translated the missing 37 keys into all 22 locales
+      (bg/cs/da/de/el/es/et/fi/fr/hr/hu/it/lt/lv/nb/nl/pl/pt/ro/sk/sl/sr-Latn/sv), matching each
+      locale's existing established terminology; all 25 locale files now carry the same 68 real
+      keys (`en-US` stays at 70 — its 2 non-translatable URL keys are deliberately absent from
+      every other locale, per this task's own design). `dotnet build src/Archiver.App.csproj`
+      confirmed 0 errors with the expanded resources. Native-speaker review, on-device
+      verification, and the layout-corruption check below remain outstanding — AI translation
+      closes the parity gap, not this task's remaining review criteria.
 - **Priority:** low ("nice to have" bonus, per user)
 - **Depends on:** none
 
@@ -2506,7 +2531,12 @@ truncated/corrupted-tar test), `Fixtures/valid.7z`, `Fixtures/valid.rar` (added 
 ---
 
 ### T-F52 — Low IL Sandbox for tar.exe
-- [ ] **Status:** future (v1.4)
+- [ ] **Status:** future (v1.4) — scope widened 2026-07-14 to absorb T-F13's Job Object and
+      network-isolation layers (see T-F13's entry for why: its own dependency, T-F07/T-F08, was
+      cancelled, and its threat model no longer fits a Windows-builtin, Microsoft-signed
+      `tar.exe`). This is now the single task for all process-level tar.exe hardening — do not
+      re-split Job Object/network-isolation work back into a separate task.
+- **Depends on:** none
 
 **What:** `TarSandboxedService` implements `ITarService` using a P/Invoke-based Low Integrity Level sandbox for `tar.exe`. Replaces `TarProcessService` via single DI line change.
 
@@ -2518,24 +2548,54 @@ truncated/corrupted-tar test), `Fixtures/valid.7z`, `Fixtures/valid.rar` (added 
 - `SetTokenInformation` — set integrity level to Low IL
 - `CreateProcessAsUser` — launch tar.exe with restricted token
 - `SetNamedSecurityInfo` — label quarantine directory with Low IL
+- `CreateJobObject` / `SetInformationJobObject` / `AssignProcessToJobObject` — Job Object resource
+  limits (absorbed from T-F13's Layer 2, 2026-07-14)
 
 **Flow:**
 1. Create quarantine directory on same disk as destination
 2. Label quarantine directory Low IL via `SetNamedSecurityInfo`
-3. Launch `tar.exe` into quarantine with restricted token (Low IL)
-4. After process exits, validate all files at Medium IL (C# code)
-5. Atomic move to final destination
-6. Clean up quarantine directory
+3. Create a Job Object for the tar.exe process (`ActiveProcessLimit = 1`, RAM limit, CPU time
+   limit, UI restrictions — see Job Object criteria below)
+4. Launch `tar.exe` into quarantine with restricted token (Low IL), assigned to the Job Object
+5. After process exits, validate all files at Medium IL (C# code)
+6. Atomic move to final destination
+7. Clean up quarantine directory and close the Job Object handle
+
+**Job Object resource limits (absorbed from T-F13's Layer 2):**
+- `ActiveProcessLimit = 1` — tar.exe cannot spawn child processes
+- RAM limit 512 MB — prevents resource exhaustion
+- CPU time limit — maximum runtime enforced; `Process.Kill()` (or job termination) on expiry
+- UI restrictions — no clipboard, no desktop manipulation
+
+**Network isolation (absorbed from T-F13's Layers 4/5):**
+- Network access disabled for the tar.exe worker process — no outbound or inbound connections
+- WFP firewall rule added at optional-component install time (requires elevation once), removed
+  cleanly on uninstall:
+  ```powershell
+  New-NetFirewallRule -DisplayName "Pakko — block tar.exe outbound" `
+      -Direction Outbound -Program "C:\Windows\System32\tar.exe" -Action Block
+  ```
+  Note this blocks the *system* `tar.exe` outbound, which Pakko always launches by absolute path
+  per this project's hard constraint — confirm the rule's scope doesn't affect other
+  applications that also invoke the same system binary before shipping this.
 
 **Acceptance criteria:**
 - [ ] `TarSandboxedService` implements `ITarService` — same interface as `TarProcessService`
 - [ ] DI swap is one line: `AddSingleton<ITarService, TarSandboxedService>()`
 - [ ] Quarantine directory receives Low IL label before tar.exe launch
 - [ ] tar.exe process runs with restricted Low IL token
+- [ ] tar.exe process assigned to a Job Object with `ActiveProcessLimit = 1`
+- [ ] Job Object enforces a 512 MB RAM limit
+- [ ] Job Object enforces a maximum CPU time / runtime limit
+- [ ] Job Object applies UI restrictions (no clipboard, no desktop manipulation)
+- [ ] Job Object handle closed after the tar.exe process exits — no leak
+- [ ] Network access completely disabled for the tar.exe worker process
+- [ ] WFP firewall rule added at install, removed cleanly at uninstall
 - [ ] Validation and move run at Medium IL in C# after process exits
 - [ ] Quarantine directory cleaned up on success and failure
 - [ ] All P/Invoke handles properly closed — no leaks
-- [ ] `dotnet test` passes — integration test: file write outside quarantine fails
+- [ ] `dotnet test` passes — integration test: file write outside quarantine fails; spawning a
+      child process from the sandboxed tar.exe fails (Job Object `ActiveProcessLimit`)
 
 ---
 

@@ -2507,3 +2507,74 @@ criterion.
 `tests/Archiver.Core.Tests/Services/ZipArchiveServiceArchiveTests.cs`,
 `tests/Archiver.Core.Tests/Services/ZipArchiveServiceExtractTests.cs`,
 `tests/Archiver.Core.IntegrationTests/TarProcessServiceExtractTests.cs`.
+
+---
+
+## Correction — T-F13 Superseded by T-F52 (Sandbox Tasks Merged)
+
+**Symptom:** user flagged, unprompted, that T-F13 ("Process Sandbox Isolation for External
+Binaries") and T-F52 ("Low IL Sandbox for tar.exe") looked like they might be the same task and
+asked for a plan before either was picked up.
+
+**Root cause:** T-F13 was written while the project still planned to bundle optional third-party
+binaries (`7z.exe`/`unrar.exe`, then-tasks T-F07/T-F08) and scoped its threat model around a
+downloaded, SHA-256-verified binary that could be compromised between verification and execution.
+That premise stopped holding 2026-07-12, when T-F07/T-F08 were cancelled outright in favor of
+tar.exe integration (T-F47–T-F49) — `tar.exe` is a Microsoft-signed OS component nobody downloads
+or hash-verifies, so T-F13's stated threat model doesn't fit it. T-F13's `Depends on: T-F07 or
+T-F08` was never updated after that cancellation, leaving a task pointing at a dead dependency.
+
+Comparing the two tasks line by line: T-F13's Layer 1 (restricted token), Layer 3 (filesystem
+restriction via IL/DACL), and Layer 6 (staging validation, TOCTOU mitigation) are exactly what
+T-F52's Flow already implements, specialized for tar.exe and already scoped into v1.4 per
+`SPEC.md`'s roadmap table. T-F13's Layer 2 (Job Object: `ActiveProcessLimit`, RAM/CPU limits, UI
+restrictions) and Layers 4/5 (network isolation, WFP firewall rule) are **not** covered by T-F52
+as originally written — genuine additional hardening, not duplicate scope.
+
+**Resolution:** T-F13 marked `SUPERSEDED by T-F52` rather than deleted (per this project's "never
+silently deprecate" rule). T-F52's P/Invoke surface, Flow, and acceptance criteria were extended
+to absorb Job Object limits and network isolation/firewall rule, making it the single task for
+all tar.exe process-hardening work. No implementation exists yet for either task — this is a
+task-planning correction, not a code change; `TASKS.md`'s T-F13 and T-F52 entries carry the full
+updated detail.
+
+**Files:** `TASKS.md` (T-F13, T-F52 entries only — no source changes).
+
+---
+
+## Correction — T-F91 Localization Parity Gap (22 of 24 Locales Fell Behind)
+
+**Symptom:** user asked whether all T-F91 locales were "equally supported." Diffing
+`<data name=` key counts across every `Strings/<locale>/Resources.resw` (rather than trusting
+`TASKS.md`'s prose, which only tracked the original 2026-07-07 batch) showed `en-US` at 70 keys,
+`uk-UA` at 68, and all other 22 European locales at 31.
+
+**Root cause:** every feature that shipped after T-F91's original batch and added new `x:Uid`
+strings — T-F05's second follow-up (browse-mode column headers, the up-arrow buttons, tray menu,
+Mode/compression/conflict radio+combo items) and T-F06 (the entire Ask-on-Conflict dialog) — only
+ever added the new keys to `en-US` and `uk-UA`. uk-UA got them because that follow-up round was
+done for a Ukrainian-speaking user testing on-device; the other 22 locales were simply never
+revisited. WinUI's `ResourceManager` falls back to `en-US` for any key missing from a specific
+locale, so this was never a crash or a build error — it silently degraded to a part-native,
+part-English UI for every non-English, non-Ukrainian locale, which is why it went unnoticed
+through multiple `dotnet build`/`dotnet test` passes.
+
+**Resolution:** translated the 37 missing keys (39 total minus the 2 intentionally-omitted URL
+keys) into all 22 affected locales, matching each locale's already-established terminology (e.g.
+reusing German's existing "Archivieren"/"Extrahieren"/"Ziel" rather than picking new synonyms).
+All 25 `Resources.resw` files now carry 68 real keys each (`en-US` stays at 70 for the URL-key
+exception the original T-F91 entry already documents). Verified every file still parses as valid
+XML (`py -c "import xml.etree.ElementTree as ET; ET.parse(...)"` — `python3`'s WindowsApps alias
+is unreliable per this project's own tooling notes) and that `dotnet build
+src/Archiver.App/Archiver.App.csproj /p:Platform=x64` succeeds with 0 errors against the expanded
+resources.
+
+**Not addressed by this fix — stays open on T-F91:** native-speaker correctness review of any of
+the 24 European locales (all translations, old and new, are AI-generated), on-device verification
+that OS-language auto-match actually selects each locale, and the long-text/RTL layout-corruption
+check. This fix closes the *parity* gap (same keys present everywhere), not T-F91's remaining
+quality-review criteria.
+
+**Files:** `src/Archiver.App/Strings/{bg-BG,cs-CZ,da-DK,de-DE,el-GR,es-ES,et-EE,fi-FI,fr-FR,hr-HR,
+hu-HU,it-IT,lt-LT,lv-LV,nb-NO,nl-NL,pl-PL,pt-PT,ro-RO,sk-SK,sl-SI,sr-Latn-RS,sv-SE}/Resources.resw`
+(22 files updated, no new files).

@@ -29,6 +29,105 @@
   <data name="AddFolderButton.Content" xml:space="preserve">
     <value>Προσθήκη φακέλου</value>
   </data>
+  <data name="HashButton.Content" xml:space="preserve">
+    <value>Κατακερματισμός...</value>
+  </data>
+  <data name="AboutButton.Content" xml:space="preserve">
+    <value>Σχετικά</value>
+  </data>
+  <data name="ExtractSelectedButton.Content" xml:space="preserve">
+    <value>Εξαγωγή επιλεγμένων</value>
+  </data>
+  <data name="ExtractAllButton.Content" xml:space="preserve">
+    <value>Εξαγωγή όλων</value>
+  </data>
+
+  <!-- Table headers -->
+  <data name="NameColumnHeader.Content" xml:space="preserve">
+    <value>Όνομα</value>
+  </data>
+  <data name="TypeColumnHeader.Content" xml:space="preserve">
+    <value>Τύπος</value>
+  </data>
+  <data name="SizeColumnHeader.Content" xml:space="preserve">
+    <value>Μέγεθος</value>
+  </data>
+  <data name="ModifiedColumnHeader.Content" xml:space="preserve">
+    <value>Τροποποιήθηκε</value>
+  </data>
+  <data name="CrcColumnHeader.Content" xml:space="preserve">
+    <value>CRC-32</value>
+  </data>
+  <data name="BrowseNameColumnHeader.Text" xml:space="preserve">
+    <value>Όνομα</value>
+  </data>
+  <data name="BrowseSizeColumnHeader.Text" xml:space="preserve">
+    <value>Μέγεθος</value>
+  </data>
+  <data name="PackedColumnHeader.Text" xml:space="preserve">
+    <value>Συμπιεσμένο</value>
+  </data>
+  <data name="BrowseCrcColumnHeader.Text" xml:space="preserve">
+    <value>CRC-32</value>
+  </data>
+  <data name="BrowseModifiedColumnHeader.Text" xml:space="preserve">
+    <value>Τροποποιήθηκε</value>
+  </data>
+
+  <!-- Tray menu -->
+  <data name="TrayOpenMenuItem.Text" xml:space="preserve">
+    <value>Άνοιγμα Pakko</value>
+  </data>
+  <data name="TrayAboutMenuItem.Text" xml:space="preserve">
+    <value>Σχετικά με το Pakko</value>
+  </data>
+  <data name="TrayExitMenuItem.Text" xml:space="preserve">
+    <value>Έξοδος</value>
+  </data>
+  <data name="RemoveMenuItem.Text" xml:space="preserve">
+    <value>Αφαίρεση</value>
+  </data>
+
+  <!-- Archive options -->
+  <data name="ModeLabel.Text" xml:space="preserve">
+    <value>Λειτουργία:</value>
+  </data>
+  <data name="OneArchiveRadio.Content" xml:space="preserve">
+    <value>Ένα αρχείο</value>
+  </data>
+  <data name="SeparateArchivesRadio.Content" xml:space="preserve">
+    <value>Ξεχωριστά αρχεία</value>
+  </data>
+  <data name="ArchiveNameTextBox.PlaceholderText" xml:space="preserve">
+    <value>Αυτόματο (βάσει του ονόματος του πρώτου αρχείου/φακέλου)</value>
+  </data>
+  <data name="CompressionFastItem.Content" xml:space="preserve">
+    <value>Γρήγορη</value>
+  </data>
+  <data name="CompressionNormalItem.Content" xml:space="preserve">
+    <value>Κανονική</value>
+  </data>
+  <data name="CompressionBestItem.Content" xml:space="preserve">
+    <value>Καλύτερη</value>
+  </data>
+  <data name="CompressionNoneItem.Content" xml:space="preserve">
+    <value>Καμία</value>
+  </data>
+  <data name="ConflictOverwriteItem.Content" xml:space="preserve">
+    <value>Αντικατάσταση</value>
+  </data>
+  <data name="ConflictSkipItem.Content" xml:space="preserve">
+    <value>Παράλειψη</value>
+  </data>
+  <data name="ConflictRenameItem.Content" xml:space="preserve">
+    <value>Μετονομασία (προσθήκη αριθμού)</value>
+  </data>
+  <data name="ConflictAskItem.Content" xml:space="preserve">
+    <value>Ερώτηση</value>
+  </data>
+  <data name="CancelButton.Content" xml:space="preserve">
+    <value>✕ Ακύρωση</value>
+  </data>
 
   <!-- Drop zone -->
   <data name="DropZoneHint.Text" xml:space="preserve">
@@ -116,5 +215,23 @@
   </data>
   <data name="CompressionBombDialogMessage" xml:space="preserve">
     <value>Αυτό το αρχείο δηλώνει ότι περιέχει {0} δεδομένων, με λόγο συμπίεσης {1}:1. Αυτό είναι ασυνήθιστα υψηλό και ενδέχεται να υποδεικνύει βόμβα αποσυμπίεσης. Εξαγωγή ούτως ή άλλως;</value>
+  </data>
+  <data name="ConflictDialogTitle" xml:space="preserve">
+    <value>Το αρχείο υπάρχει ήδη</value>
+  </data>
+  <data name="ConflictDialogMessage" xml:space="preserve">
+    <value>Το "{0}" υπάρχει ήδη στον προορισμό. Τι θα θέλατε να κάνετε;</value>
+  </data>
+  <data name="ConflictDialogOverwriteButton" xml:space="preserve">
+    <value>Αντικατάσταση</value>
+  </data>
+  <data name="ConflictDialogRenameButton" xml:space="preserve">
+    <value>Μετονομασία</value>
+  </data>
+  <data name="ConflictDialogSkipButton" xml:space="preserve">
+    <value>Παράλειψη</value>
+  </data>
+  <data name="ConflictDialogApplyToAllCheck" xml:space="preserve">
+    <value>Εφαρμογή σε όλες τις υπόλοιπες συγκρούσεις</value>
   </data>
 </root>
