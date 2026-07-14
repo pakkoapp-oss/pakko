@@ -2948,3 +2948,20 @@ that "passes alone" isn't sufficient for a timing-sensitive test. **Fix:** accep
 collected and disposed only once, after both curl calls have fully completed, with an explicit
 `FlushAsync` after the write. Two full `dotnet test --filter "Category!=Slow"` runs (282/282 both
 times) confirmed the fix.
+
+**Step 13 — full `Deploy.ps1` build+sign+install, then AI-driven on-device verification of real
+extraction through the installed, packaged app:** built+signed+installed
+`Archiver.App_1.2.0.27_x64.msix`, then launched the **installed**
+`Archiver.Shell.exe` (`C:\Program Files\WindowsApps\PavloRybchenko.Pakko_1.2.0.27_x64__...\`)
+directly via `Start-Process --extract-here`, the same way the real shell context-menu invokes it,
+against three real archives: a `.tar.gz` built with nested subdirectories via the real system
+`tar.exe` (exercising the pre-created-directories fix from step 8), and the repo's existing
+committed `valid.7z`/`valid.rar` fixtures. All three extracted correctly — file contents matched
+exactly, the nested-directory structure was preserved, and `SeparateFolders`-style auto-naming
+(`valid`, `valid (1)`) worked as expected. This exercises the full real pipeline end-to-end
+through package identity: signature check, AppContainer profile, ACL grants, staging,
+pre-scan, pre-created directories, sandboxed `-xf`, and the move to the final destination.
+**This is AI-driven verification, not the user's own personal click-through** — per this
+project's established distinction (see T-F49's own history in `CLAUDE.md`), T-F52 stays `[~]`
+partial rather than `[x]` done until the user confirms via their own on-device use, or explicitly
+directs otherwise.

@@ -129,10 +129,12 @@ listener). Several real bugs found and fixed along the way (wrong `CERT_FIND_SUB
 constant, hardlinked staged files not inheriting the quarantine folder's ACL, libarchive's
 implicit parent-directory creation failing under AppContainer, a quarantine-location design
 correction from "same disk as destination" to a fixed `%TEMP%`-rooted path) — see `DECISIONS.md`'s
-several T-F52 entries for the full empirical trail. **Remaining before this graduates to done:**
-Phase 1's doc-update checklist (`ARCHITECTURE.md`/`DIAGRAMS.md`/`TESTING.md` — in progress this
-same round) and Phase 1's final step — a full `Deploy.ps1` build+sign+install and on-device
-verification of real archive extraction through the installed, packaged app.
+several T-F52 entries for the full empirical trail. All 13 planned steps are now done, including a
+full `Deploy.ps1` build+sign+install and AI-driven on-device verification (`.tar.gz` with nested
+subdirectories, `.7z`, and `.rar` all extracted correctly through the installed, packaged
+`Archiver.Shell.exe`). **Stays `[~]` partial, not `[x]` done, only because this was AI-driven
+verification rather than the user's own personal click-through** — the same distinction already
+applied to T-F49's history above.
 - T-01 through T-35 + T-11, and T-F16/T-F17/T-F18/T-F26–T-F29/T-F37–T-F39/T-F44/T-F45 complete
 - 282/282 .NET tests pass (`dotnet test --filter "Category!=Slow"`: 196 Archiver.Core.Tests +
   36 Archiver.Shell.Tests + 34 Archiver.Core.IntegrationTests + 16 Archiver.App.Core.Tests — the

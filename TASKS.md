@@ -2534,10 +2534,13 @@ truncated/corrupted-tar test), `Fixtures/valid.7z`, `Fixtures/valid.rar` (added 
 ---
 
 ### T-F52 — AppContainer Sandbox for tar.exe
-- [~] **Status:** partial (v1.4) — Phase 1 implementation (steps 1–11 of 13) complete 2026-07-14.
-      `TarProcessService.cs` is deleted and `TarSandboxedService` is real, shipping code; every
-      acceptance criterion below is checked except the final on-device `Deploy.ps1` verification
-      (Phase 1's step 13). See `DECISIONS.md`'s several same-day T-F52 entries for the full
+- [~] **Status:** partial (v1.4) — Phase 1 implementation (all 13 steps) complete 2026-07-14,
+      including a full `Deploy.ps1` build+sign+install and AI-driven on-device verification
+      (`.tar.gz`/`.7z`/`.rar` all extracted correctly through the installed, packaged
+      `Archiver.Shell.exe`). `TarProcessService.cs` is deleted and `TarSandboxedService` is real,
+      shipping code. Stays `[~]` rather than `[x]` only because this was AI-driven verification,
+      not the user's own personal click-through — same distinction this project already applies to
+      T-F49 (see `CLAUDE.md`). See `DECISIONS.md`'s several same-day T-F52 entries for the full
       empirical trail — three real bugs found and fixed while implementing (a wrong
       `CERT_FIND_SUBJECT_CERT` constant, hardlinked staged files not inheriting the quarantine
       folder's ACL, libarchive's implicit parent-directory creation failing under the
@@ -2882,9 +2885,13 @@ synchronously at `Archiver.App` startup).
 - [x] `SECURITY.md`'s tar.exe Trust Model section updated with the two-vector reframing and the
       AppContainer isolation method (cascade per `CLAUDE.md`'s Documentation Map) — done during
       the initial design round, verified still accurate against the final implementation
-- [ ] Full `Deploy.ps1` build+sign+install and on-device verification of real archive extraction
-      through the installed, packaged app (Phase 1's step 13 — the one remaining item before this
-      task graduates to `[x]` done)
+- [~] Full `Deploy.ps1` build+sign+install done (`Archiver.App_1.2.0.27_x64.msix`); AI-driven
+      on-device verification passed — `.tar.gz` (with nested subdirectories, real system tar.exe),
+      `valid.7z`, and `valid.rar` all extracted correctly through the installed
+      `Archiver.Shell.exe` via `--extract-here`, matching the real shell context-menu invocation
+      path. Per this project's own T-F49 precedent, this is AI-driven verification, not the
+      user's own personal click-through — stays `[~]` until the user confirms via their own
+      on-device use, or explicitly directs graduation on this evidence alone
 
 ---
 
