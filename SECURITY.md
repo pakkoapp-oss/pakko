@@ -122,7 +122,7 @@ Each supported format adds parser attack surface. RAR and 7z are excluded perman
 | Alternate Data Stream entries (`:` in filename) | Medium | Mitigated (T-F38, v1.2) — ADS entries rejected |
 | Reserved Windows filenames in entries (`CON`, `NUL`, etc.) | Low-Medium | Mitigated (T-F39, v1.2) — reserved names and control characters filtered |
 | MOTW not propagated to extracted files | — | Resolved (T-F45, v1.2) — MOTW propagated to every extracted file by default |
-| tar.exe runs at Medium IL | Medium | v1.3 gap — Low IL sandbox via P/Invoke in v1.4 (T-F52) |
+| tar.exe runs at Medium IL | Medium | v1.3 gap — AppContainer sandbox via P/Invoke in v1.4 (T-F52) |
 | tar.exe symlink entries escape a naive quarantine (confirmed exploit, T-F49) | High | Mitigated (T-F49, v1.3) — whole-archive pre-scan via `tar -tf`/`-tvf` rejects any archive containing a symlink/hardlink/device entry or a traversal/ADS/reserved name before `-xf` ever runs; see `DECISIONS.md`'s T-F49 entry |
 | Microsoft as trust anchor | Low-Medium | Accepted tradeoff for the target audience; .NET is open source and auditable |
 
@@ -171,6 +171,26 @@ Implementation: `FileStream` with ADS path `"extractedfile.txt:Zone.Identifier"`
 - **Open source** — based on bsdtar/libarchive, source on GitHub (`microsoft/bsdtar`)
 - **Part of Windows Update** — patched through normal OS update cycle, MSRC process applies
 - **No SHA-256 verification needed** — unlike third-party binaries, the Authenticode signature provides equivalent or stronger integrity guarantee
+- **T-F52 (v1.4) additionally verifies the Authenticode subject is Microsoft before every launch**
+  — cheap defense-in-depth, not a primary control (see "Why Sandbox tar.exe at All" below for why)
+
+### Why Sandbox tar.exe at All, Given It's Microsoft-Signed?
+
+Two distinct threat vectors, only the second of which the v1.4 sandbox (T-F52) defends against —
+see `DECISIONS.md`'s T-F52 entry for the full design session:
+
+1. **The binary itself is swapped/tampered with.** Reaching `C:\Windows\System32\tar.exe`'s ACLs
+   requires SYSTEM-level access — the host is already fully compromised at that point, and no
+   sandbox around Pakko's own invocation of it changes that. The realistic version of this vector
+   (PATH hijacking from a lower privilege level) is already covered by the existing hard
+   constraint that `tar.exe` is always invoked by absolute path, never via PATH search. A
+   signature check (above) adds a cheap additional check but is not the reason to sandbox.
+2. **The legitimate, unmodified tar.exe is driven by a hostile archive into misbehaving.**
+   libarchive is a native parser with a real CVE history, processing attacker-controlled bytes —
+   this is the standard "sandbox the untrusted-input parser" pattern (the same reason browsers
+   sandbox image/PDF decoders). This is what T-F52's AppContainer confinement, Job Object limits,
+   and network isolation actually defend against, and why the sandbox is proportionate despite
+   `tar.exe` being a trusted OS component.
 
 ### Trust Chain
 
@@ -185,7 +205,7 @@ This is the same trust chain as `System.IO.Compression` via the .NET runtime —
 | Version | Isolation | Method |
 |---------|-----------|--------|
 | v1.3 | Medium IL | tar.exe inherits Pakko process token |
-| v1.4 | Low IL | P/Invoke `CreateRestrictedToken` + `SetNamedSecurityInfo` quarantine directory |
+| v1.4 | AppContainer | P/Invoke `CreateAppContainerProfile` + `PROC_THREAD_ATTRIBUTE_SECURITY_CAPABILITIES` (empty capability list — no network); quarantine directory ACL'd to the AppContainer SID via `SetNamedSecurityInfo`; Job Object (`ActiveProcessLimit = 1`, RAM/CPU limits). Chosen over a Low-IL restricted token because network isolation falls out of the empty capability list for free — no global firewall rule needed (see T-F52 in `TASKS.md`/`DECISIONS.md`) |
 
 In both cases: extraction goes to a staging directory, all output files are validated (ADS, reserved names, reparse points), then atomically moved to final destination. The staging-directory walk alone is **not** sufficient — a symlink entry can cause tar.exe to write outside the staging directory before any C# code inspects it, confirmed empirically in T-F49 (see `DECISIONS.md`). The primary defense is a whole-archive pre-scan (`tar -tf`/`-tvf`) that rejects any archive containing a symlink/hardlink/device entry or a traversal/rooted/ADS/reserved name before extraction ever runs. The same pre-scan also sums each entry's declared uncompressed size (from `-tvf`'s size column); if that total exceeds 1000x the compressed file's size on disk, extraction is blocked unless the destination has free space for the declared size AND the user explicitly confirms — the same shared evaluator (`ArchiveEntrySecurity.EvaluateCompressionBombAsync`) and confirm-if-it-fits model ZIP uses, computed once for the whole archive since tar-family compression wraps the entire stream rather than each entry independently (T-F94, v1.3; see `DECISIONS.md`'s T-F94 entry — supersedes T-F90's original auto-reject-only version).
 

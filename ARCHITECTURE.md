@@ -479,28 +479,51 @@ becomes a `SkippedFiles` entry with a specific reason, not a generic message.
 `ArchiveFormatDetector` — see `DECISIONS.md`-equivalent reasoning in `TASKS.md`'s T-F85 entry
 (opposite polarity, not behavior-equivalent).
 
-### v1.4 — Low IL Sandbox
+### v1.4 — AppContainer Sandbox for tar.exe
 
-`TarSandboxedService` implements `ITarService` — replaces `TarProcessService` via single DI line change:
+`TarSandboxedService` implements `ITarService`, replacing `TarProcessService` (deleted outright,
+not kept as a fallback — fail-closed posture, see `TASKS.md`/`DECISIONS.md`'s T-F52 entries).
+Mechanism is an **AppContainer**, not a Low-IL restricted token (superseded design, see
+`DECISIONS.md`'s T-F52 tradeoff entry — network isolation falls out of AppContainer's empty
+capability list for free, avoiding a global firewall rule). DI swap touches three call sites, not
+one — `Archiver.App/App.xaml.cs`, `Archiver.Shell/Program.cs` (no DI container there, a direct
+`new`), and `SkipIfFormatUnsupportedAttribute.cs` (test infra):
 
 ```csharp
 services.AddSingleton<ITarService, TarSandboxedService>(); // was TarProcessService
 ```
 
 P/Invoke surface:
-- `CreateRestrictedToken` — drop privileges from Pakko token
-- `DuplicateTokenEx` — duplicate for `CreateProcessAsUser`
-- `SetTokenInformation` — set integrity level to Low
-- `CreateProcessAsUser` — launch tar.exe with restricted token
-- `SetNamedSecurityInfo` — label quarantine directory with Low IL
+- `CreateAppContainerProfile` — created lazily once, reused for the lifetime of the install
+  (never per-operation; tolerates `ERROR_ALREADY_EXISTS`)
+- `PROC_THREAD_ATTRIBUTE_SECURITY_CAPABILITIES` (`InitializeProcThreadAttributeList`/
+  `UpdateProcThreadAttribute`) — attaches the AppContainer SID + an empty capability list (no
+  network) to raw `CreateProcessW`'s extended startup info (`STARTUPINFOEX`)
+- `SetEntriesInAclW`/`SetNamedSecurityInfoW` — grants the AppContainer SID access to the
+  quarantine `in\`/`out\` subfolders (least-privilege masks confirmed via a Phase 0 spike:
+  `in\` = Read&Execute, `out\` = Modify, quarantine-root = traverse-only)
+- `CreateJobObject`/`SetInformationJobObject`/`AssignProcessToJobObject` — `ActiveProcessLimit = 1`
+  + RAM/CPU limits + UI restrictions (absorbed from T-F13)
+- `WinVerifyTrust` + `CryptQueryObject`/`CryptMsgGetParam`/`CertGetNameStringW` — Authenticode
+  signature + Microsoft-subject check before every launch (cheap, defense-in-depth only, not
+  managed `X509Certificate2` — that only extracts the embedded cert without verifying it against
+  the file's actual bytes)
 
 Flow:
-1. Create quarantine directory on same disk as destination
-2. Label quarantine directory Low IL via `SetNamedSecurityInfo`
-3. Launch `tar.exe` into quarantine with restricted token
-4. After process exits, validate all files at Medium IL in C# code
-5. Atomic move to final destination
-6. Clean up quarantine directory
+1. Verify `tar.exe`'s Authenticode signature (Microsoft subject) before every launch
+2. Ensure the AppContainer profile exists (lazy, once, never deleted)
+3. Create a two-subfolder quarantine directory on the same disk as the destination: `in\`
+   (read-only-ish ACE) and `out\` (write-ish ACE) — not one shared folder
+4. Stage the source archive into `in\` via hardlink (same volume) or copy (cross-volume) — the
+   AppContainer SID never gets an ACE on the archive's original, user-chosen path
+5. Create a Job Object (`ActiveProcessLimit = 1`, RAM/CPU limits, `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`)
+6. Run tar.exe inside the AppContainer for **both** the T-F49 whole-archive pre-scan (`-tf`/`-tvf`)
+   and the extraction (`-xf`) — the pre-scan is not exempt from sandboxing
+7. After the process exits, validate all files in `out\` at Pakko's normal process identity
+   (existing `ArchiveEntrySecurity` checks)
+8. Atomic move from `out\` to the final destination
+9. Delete the quarantine directory (`in\`+`out\`, including the staged archive copy) and close the
+   Job Object handle — the AppContainer profile itself is **not** deleted, it persists for reuse
 
 ### v1.4 — T-F05 Archive Browser
 

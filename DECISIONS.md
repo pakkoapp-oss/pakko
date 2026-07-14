@@ -2578,3 +2578,199 @@ quality-review criteria.
 **Files:** `src/Archiver.App/Strings/{bg-BG,cs-CZ,da-DK,de-DE,el-GR,es-ES,et-EE,fi-FI,fr-FR,hr-HR,
 hu-HU,it-IT,lt-LT,lv-LV,nb-NO,nl-NL,pl-PL,pt-PT,ro-RO,sk-SK,sl-SI,sr-Latn-RS,sv-SE}/Resources.resw`
 (22 files updated, no new files).
+
+---
+
+## T-F52 — AppContainer Chosen Over Low-IL Token; Two-Vector Threat-Model Reframing
+
+**Context:** before writing any P/Invoke for T-F52 (per this project's 3-attempt-rule caution
+around Windows security programming), the user asked to think through the task from first
+principles: given `tar.exe` is a Microsoft-signed, built-in OS binary, what does sandboxing it
+actually buy — and is a signature check alone enough? Advisor consulted before committing to a
+design, per this project's own pre-implementation-research norm extended to security design.
+
+**The reframing — two distinct threat vectors, only one of which T-F52 defends:**
+
+1. **The binary itself is swapped/tampered with.** Writing over
+   `C:\Windows\System32\tar.exe` requires defeating WRP/TrustedInstaller ACLs — SYSTEM-level
+   access. At that point the whole host is already owned, and no sandbox around *Pakko's own
+   invocation* changes that outcome. The load-bearing mitigation for the *realistic* version of
+   this vector (PATH hijacking from a lower privilege level) is already in place: the existing
+   hard constraint that `tar.exe` is always invoked by absolute path, never via PATH search.
+2. **The legitimate, unmodified `tar.exe` is driven by a hostile archive into misbehaving.**
+   libarchive is a native parser with a real CVE history, processing attacker-controlled bytes.
+   This is the standard "sandbox the untrusted-input parser" pattern (the same reason browsers
+   sandbox image/PDF decoders) — and it's what actually justifies T-F52. A signature check does
+   nothing for this vector; the binary is genuinely, correctly signed and still exploitable via a
+   crafted archive.
+
+**Decision: reframe T-F52 around vector 2, not "what if tar.exe is compromised."** The previous
+task description conflated the two. `SECURITY.md`'s tar.exe Trust Model section and `TASKS.md`'s
+T-F52 entry now state this explicitly so a future reader doesn't re-derive (or worse,
+mis-derive) the rationale.
+
+**Decision: add an Authenticode signature check anyway, but explicitly as a cheap non-primary
+defense.** Verifying `tar.exe`'s signature (Microsoft subject) before each launch is nearly free
+and catches a specific tampering scenario (malware swaps the binary with a lower-privilege
+write primitive that doesn't also let it forge a Microsoft signature). Documented plainly that
+its value against a real, determined attacker is marginal — TOCTOU between the check and the
+launch, and anyone who can swap the binary outright can typically do worse — so it must never be
+treated as a substitute for the sandbox, and its presence shouldn't be used to justify shrinking
+the sandbox later.
+
+**Decision: AppContainer instead of a Low-IL restricted token (user's choice, after weighing
+both).**
+
+| | Low-IL token (original draft) | AppContainer (chosen) |
+|---|---|---|
+| Implementation cost | Lower — `CreateRestrictedToken`/`SetTokenInformation`, IL label on quarantine dir | Higher — AppContainer profile + SID, `PROC_THREAD_ATTRIBUTE_SECURITY_CAPABILITIES`, SID ACL on quarantine dir |
+| Network isolation | Not natural to the mechanism — pushed the original draft toward a **global WFP firewall rule** blocking `C:\Windows\System32\tar.exe` outbound for *every application on the system*, requiring install-time elevation and guaranteed-clean uninstall | Free and clean — an AppContainer created with an empty capability list (no `internetClient`) simply cannot open a socket, enforced by the kernel, no firewall rule, no elevation, no system-wide side effect |
+| MSIX package identity interaction | Neutral | Needs care (Pakko already runs as a packaged MSIX app) — not a blocker, just a design detail to get right during implementation |
+
+The deciding factor was network isolation: given this project's gov/defense target audience,
+blocking outbound access from a compromised parser process is a real requirement, and the
+Low-IL path's only route there (a global, system-wide firewall rule) was independently flagged
+as the worst cost/risk item in the original draft — elevation-gated, affects other applications'
+use of the same system binary, and needs guaranteed-clean removal on uninstall. AppContainer
+gets the same protection with none of that blast radius.
+
+**Decision: implement Low-IL... no — AppContainer confinement, Job Object limits, and network
+isolation as one task, not split into a follow-up.** With the WFP-rule approach dropped, network
+isolation is no longer the risky, separately-scoped piece it was in the original T-F13-derived
+draft — it falls out of the AppContainer capability list with no extra mechanism. Splitting it
+into a second task would just add coordination overhead for no risk reduction.
+
+**Rejected: shipping the global WFP firewall rule from the original draft.** Blocks
+`C:\Windows\System32\tar.exe` outbound for every application on the machine, not just Pakko's
+invocation; requires elevation at install; needs a guaranteed-clean removal on uninstall. Dropped
+outright in favor of AppContainer's per-process, kernel-enforced isolation.
+
+**Must verify empirically before relying on `ActiveProcessLimit = 1`:** confirm Windows' built-in
+bsdtar keeps `.tar.xz`/`.tar.zst` compression filters statically linked and in-process (expected,
+since Windows' tar.exe ships them compiled in) — if either format ever shells out to an external
+filter helper, the Job Object's `ActiveProcessLimit = 1` will break that extraction. Test against
+real fixtures before shipping, don't assume.
+
+**Files (not yet changed — design-only session, no P/Invoke written):** `TASKS.md`'s T-F52 entry
+rewritten to the AppContainer design; `SECURITY.md`'s tar.exe Trust Model section needs the same
+two-vector reframing and isolation-method update when T-F52 implementation starts.
+
+---
+
+## T-F52 — Follow-up: Profile Lifecycle and Quarantine In/Out Split (User Q&A Before Implementation)
+
+**Context:** before starting implementation, the user asked three concrete questions: is this
+transparent to the user, what's the performance cost, and how do files actually cross the
+sandbox boundary. Answering the third question surfaced a real gap in the design session above —
+the original flow said "create (or reuse) an AppContainer profile" per operation and "delete the
+AppContainer profile" as a cleanup step, which is wrong on both counts.
+
+**Correction — the AppContainer profile is created once, never per-operation.**
+`CreateAppContainerProfile` is a registry-backed, per-user-account operation with no elevation
+requirement (unlike the previously-rejected WFP firewall rule) — but creating and deleting it on
+every single Extract/Archive call adds avoidable overhead and, worse, a real race under T-F12's
+`SeparateArchives` parallel mode (concurrent create/delete of the same named profile from
+multiple threads). The profile is created lazily on first use (tolerating
+`ERROR_ALREADY_EXISTS`) and kept registered for the life of the install; its SID is a fixed,
+safely-shared identity across concurrent tar.exe invocations. Only the **filesystem grants** are
+per-operation, not the profile itself.
+
+**Decision — quarantine directory splits into `in\` (read-only ACE) and `out\` (write-only ACE),
+not one shared folder.** An AppContainer process has zero filesystem access outside paths
+explicitly ACL'd to its SID — including the source archive itself, which lives at an arbitrary
+user-chosen path (Downloads, Desktop, a mapped drive) that Pakko does not control and should not
+grant a sandboxed process direct access to. Rather than ACL the user's original file path, the
+archive is staged into `quarantine\in\` first — via hardlink when same-volume (no I/O cost),
+falling back to a real copy cross-volume — and only that Pakko-owned path gets an ACE. This keeps
+every AppContainer filesystem grant scoped to directories Pakko itself created, never to a path
+the user chose.
+
+**Decision — the T-F49 whole-archive pre-scan (`-tf`/`-tvf`) runs inside the AppContainer too,
+not just the extraction (`-xf`).** Both invoke the same libarchive parser against the same
+untrusted bytes; the pre-scan producing no filesystem output doesn't reduce its exposure to a
+parsing vulnerability. Sandboxing only the extraction step and leaving the listing step
+unsandboxed would reopen exactly the vector T-F52 exists to close.
+
+**Files:** none yet — still a design-only session; `TASKS.md`'s T-F52 entry updated with the
+corrected Flow/acceptance-criteria to match before any code is written.
+
+---
+
+## T-F52 — Phase 0: Empirical Spike Findings (Job Object, AppContainer, ACE Masks)
+
+**Method:** built a throwaway .NET 9 console spike (`SandboxSpike`, `dotnet new console` in the
+session scratchpad, not committed — same "throwaway script, not committed" precedent T-F49 used
+for its own tar.exe symlink-escape research) that P/Invokes the real Win32 APIs T-F52's design
+depends on, and ran it against real `C:\Windows\System32\tar.exe` (bsdtar 3.8.4 / libarchive 3.8.4
+/ liblzma 5.8.1 / libzstd 1.5.7, confirmed via `tar --version` on this machine) and real fixture
+archives. All three of the design's empirically-unverified assumptions were tested and confirmed;
+none forced a design change.
+
+### 0a — Job Object `ActiveProcessLimit = 1` vs `.tar.xz`/`.tar.zst` extraction
+
+Built real `.tar.xz` and `.tar.zst` fixtures via `tar -a -cf <name> -C <src> hello.txt` (same
+auto-compress-by-suffix invocation `ExternalTarFixtureBuilder` already uses), launched
+`tar -xf <archive> -C <dest>` via `Process.Start` and immediately called
+`AssignProcessToJobObject` against a Job Object configured with
+`JOB_OBJECT_LIMIT_ACTIVE_PROCESS` / `ActiveProcessLimit = 1`. **Both formats extracted
+successfully — exit code 0, correct file contents recovered, no Job Object violation.** This
+confirms Windows' built-in bsdtar keeps its xz/zstd compression filters statically linked and
+in-process for extraction, exactly as hypothesized (liblzma/libzstd are linked directly into the
+binary per its own `--version` output, not shelled out to separate filter executables). **Decision:
+`ActiveProcessLimit = 1` is safe to ship as designed** — no exception needed for either format.
+
+### 0b — Regular AppContainer readability
+
+Created a real AppContainer profile (`CreateAppContainerProfile`, tolerating
+`ERROR_ALREADY_EXISTS` on rerun) with an **empty capability list**, then launched
+`tar.exe --version` inside it via raw `CreateProcessW` + `STARTUPINFOEX` +
+`PROC_THREAD_ATTRIBUTE_SECURITY_CAPABILITIES` (`SECURITY_CAPABILITIES{AppContainerSid, Capabilities
+= null, CapabilityCount = 0}`). **Succeeded on the first attempt** — exit code 0, full, correct
+`--version` output (`bsdtar 3.8.4 - libarchive 3.8.4 zlib/... liblzma/... bz2lib/... libzstd/...
+cng/... libb2/...`) — i.e. tar.exe successfully loaded every one of its DLL dependencies
+(`zlib1.dll`-equivalent statically-linked code, `bcrypt.dll`/CNG, etc.) from `System32` while
+running inside the AppContainer identity, with zero granted capabilities. **Decision: a regular
+(non-LPAC) AppContainer is sufficient** — `ALL APPLICATION PACKAGES`/`ALL RESTRICTED APPLICATION
+PACKAGES` already has the default read+execute Windows grants on `System32` that a regular
+AppContainer needs; LPAC is not required and adds complexity (a separate, more restrictive
+identity with its own compatibility surface) for no observed benefit here. Do not revisit LPAC
+without a concrete failure this spike didn't hit.
+
+### 0c — ACE mask probe for quarantine `in\`/`out\`
+
+Built a real `in\`/`out\` quarantine pair, staged a fixture archive into `in\`, and granted the
+AppContainer SID access via `icacls.exe` (used in this throwaway spike in place of hand-marshaling
+`SetEntriesInAclW` — faster to iterate; production code still uses `SetEntriesInAclW`/
+`SetNamedSecurityInfoW` directly as designed, this only changes how the spike itself granted
+access for testing purposes) plus a **traverse-only grant on the quarantine root** (an AppContainer
+identity does not bypass traverse checking on ancestor directories by default, confirmed necessary
+— omitting it produces `tar.exe: could not chdir to ...`, see the negative-control result below).
+
+Tested **least-privilege masks first, not Full Control**: `in\` = `(OI)(CI)(RX)` (Read &
+Execute, inherited), `out\` = `(OI)(CI)(M)` (Modify, inherited), quarantine root = `(X)`
+(traverse-only, non-inherited). **Succeeded on the first attempt** — real `-xf` run against the
+staged archive extracted correctly into `out\` with zero `ERROR_ACCESS_DENIED`. Full Control on
+both folders was also confirmed to work (tested in an earlier iteration of this same spike) but
+**the least-privilege combination is the one to ship** — no reason to grant more than Modify/
+Read&Execute once the narrower masks are confirmed sufficient.
+
+**Negative control (the actual security proof, not just "does it work"):** the same sandboxed
+tar.exe process, given the identical staged archive, was launched again targeting a destination
+directory that was **never** granted any ACE for the AppContainer SID
+(`0c_outside_never_acld\`, a sibling of the quarantine dir Pakko itself created but did not ACL).
+Result: **`tar.exe: could not chdir to 'C:\...\0c_outside_never_acld'` — access denied, nothing
+written.** This is the concrete, on-this-machine confirmation that AppContainer confinement (not
+just "we didn't grant access, so we assume it's blocked") actually stops a sandboxed tar.exe from
+touching a path outside the folders Pakko explicitly ACL'd — the core security property the whole
+design exists to provide.
+
+**Open item deferred to actual implementation (Phase 6 of the 13-phase plan below), not blocking
+Phase 0:** the icacls letter codes above (`RX`/`M`/`X`) are confirmed-working via `icacls.exe`,
+but production `TarSandboxedService` code will call `SetEntriesInAclW` directly with raw
+`ACCESS_MASK` values, not shell out to `icacls.exe`. Translating `RX`/`M`/`X` to their exact
+`ACCESS_MASK` hex values (rather than trusting a memorized constant) is deferred to that
+implementation phase — verify via `icacls /save`+parse or by computing the mask programmatically,
+per this project's own norm of not committing to an unverified Windows API detail from memory.
+
+**Files:** none in `src/` — spike lived entirely in the session scratchpad and was deleted after
+use, per plan.
