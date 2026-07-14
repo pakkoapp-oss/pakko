@@ -18,7 +18,7 @@ public sealed class SkipIfFormatUnsupportedAttribute : FactAttribute
             return;
         }
 
-        TarCapabilities capabilities = new TarProcessService().DetectCapabilitiesAsync().GetAwaiter().GetResult();
+        TarCapabilities capabilities = new TarSandboxedService().DetectCapabilitiesAsync().GetAwaiter().GetResult();
 
         bool supported = format.ToLowerInvariant() switch
         {

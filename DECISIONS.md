@@ -2894,5 +2894,57 @@ signatures — and doesn't need to, since tar.exe (the only file this class ever
 real embedded signature. The test was corrected to assert `notepad.exe` returns `false`, with a
 comment explaining this is a deliberate scope boundary, not something to "fix" later.
 
-**Files:** none in `src/` — spike lived entirely in the session scratchpad and was deleted after
-use, per plan.
+**Step 8 — `TarSandboxedService`: real bug — implicit parent-directory creation fails under the
+AppContainer, explicit directory entries don't.** Before deleting `TarProcessService.cs`, the
+port was smoke-tested by temporarily pointing all 4 existing test files' `_sut` field at
+`TarSandboxedService` and running the full existing suite (26 tests: the T-F49 reject cases,
+compressed-format round trips, 7z/RAR reads, MOTW propagation, selective extraction,
+`DetectCapabilitiesAsync`) — advisor-recommended, since a renamed-test-only verification would
+only prove "extraction/listing work," not that nothing regressed. 23/26 passed immediately; 3
+failed, all sharing one shape: a tar entry like `"sub/b.txt"` with **no preceding explicit `"sub/"`
+directory entry** failed to extract (`tar.exe: sub/b.txt: Can't create '...\out\sub\b.txt': No
+such file or directory`), even though `icacls` confirmed `out\` itself correctly carried
+`(OI)(CI)(M)` for the AppContainer SID. Isolated via a throwaway diagnostic harness (leaked,
+uncleaned scopes, one variable changed at a time): (1) an **explicit** `"sub/"` directory entry
+alone extracts fine under the sandbox; (2) the identical `"sub/b.txt"`-only archive extracts fine
+through the same raw launcher with **no** AppContainer capabilities at all (ruling out a
+launcher/pipe/Job-Object bug); (3) an archive with **both** an explicit `"sub/"` entry and
+`"sub/b.txt"` extracts fine under the sandbox. Conclusion: libarchive's own **implicit**
+parent-directory auto-creation (when a nested file entry has no corresponding directory entry)
+behaves differently under an AppContainer token than its normal explicit-directory-entry path —
+plausibly a permissions/ownership fixup step libarchive performs only for auto-created
+directories, though the exact internal libarchive code path wasn't traced further (not necessary
+once a robust fix was found). **Fix:** `TarSandboxedService.ExtractSingleArchiveAsync` now
+pre-creates every directory the archive implies — via `Directory.CreateDirectory`, at Pakko's own
+trusted process identity, which correctly inherits `out\`'s ACEs — immediately after the pre-scan
+and before `-xf` ever runs, so tar.exe itself never needs to create a directory under
+AppContainer. All 26/26 tests passed after this fix, including both selective-extraction
+variants (files-only and folder-with-descendants) the advisor specifically flagged as unverified
+by the plan up to that point.
+
+**Step 9 (`TarSandboxedServiceSandboxBehaviorTests`) — a test-design bug, not a product bug, in
+the network-isolation proof.** The first draft's socket-connect test called
+`TcpListener.AcceptTcpClientAsync()` once but never actually answered the accepted connection with
+an HTTP response. Windows completes a real TCP handshake (and queues it in the backlog) as soon as
+`Start()` has run, independent of whether .NET's own accept call has been reached yet — so the
+*unsandboxed* curl call genuinely connected (confirmed via `curl -v`: "Established connection...")
+but then timed out waiting for bytes that were never sent, producing the same exit code 28
+(`CURLE_OPERATION_TIMEDOUT`) as the sandboxed call's real connection failure — a false negative
+that had nothing to do with AppContainer. Diagnosed by temporarily capturing `curl -v` output for
+both calls side by side. **Fix:** a background loop now accepts every real connection for the
+test's duration and answers with a minimal 200 OK, so a genuinely reachable curl call always
+succeeds — leaving "never even established a connection" as the only way the sandboxed case can
+still fail, with an accepted-connection counter (expected exactly 1, from the unsandboxed call
+only) as the assertion, instead of reasoning about ambiguous curl exit codes.
+
+**Step 11 — one more flake in the same socket test, only visible under the full parallel suite:**
+disposing each accepted `TcpClient` immediately after `WriteAsync` (inside the accept loop) raced
+the OS's actual delivery of that data under load — running the full `dotnet test` suite (many
+tests, including several spawning real tar.exe processes, running in parallel) made the dispose
+land before the response bytes were flushed, some of the time, sending an abrupt RST instead of a
+graceful close; curl reported `CURLE_RECV_ERROR` (56). Invisible when this one test file ran in
+isolation (confirmed: passed 5/5 in isolation before the full-suite run exposed it) — a reminder
+that "passes alone" isn't sufficient for a timing-sensitive test. **Fix:** accepted clients are now
+collected and disposed only once, after both curl calls have fully completed, with an explicit
+`FlushAsync` after the write. Two full `dotnet test --filter "Category!=Slow"` runs (282/282 both
+times) confirmed the fix.

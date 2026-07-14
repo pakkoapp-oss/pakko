@@ -124,7 +124,7 @@ static async Task RunExtractFolderAsync(IReadOnlyList<string> archivePaths)
 // rather than re-probed per archive.
 static async Task<IExtractionRouter> BuildExtractionRouterAsync()
 {
-    var tarService = new TarProcessService();
+    var tarService = new TarSandboxedService();
     var capabilities = await tarService.DetectCapabilitiesAsync().ConfigureAwait(false);
     return new ExtractionRouter(new ZipArchiveService(), tarService, capabilities);
 }

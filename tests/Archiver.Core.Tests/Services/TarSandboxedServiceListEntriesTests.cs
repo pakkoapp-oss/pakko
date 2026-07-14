@@ -5,13 +5,13 @@ using FluentAssertions;
 namespace Archiver.Core.Tests.Services;
 
 /// <summary>
-/// Exercises TarProcessService.ListEntriesAsync against the real system tar.exe. tar.exe ships
+/// Exercises TarSandboxedService.ListEntriesAsync against the real system tar.exe. tar.exe ships
 /// with Windows 10 1803+/11, so this runs unconditionally — same rationale as
-/// TarProcessServiceTests's DetectCapabilitiesAsync test, not gated behind [Integration].
+/// TarSandboxedServiceTests's DetectCapabilitiesAsync test, not gated behind [Integration].
 /// </summary>
-public sealed class TarProcessServiceListEntriesTests
+public sealed class TarSandboxedServiceListEntriesTests
 {
-    private readonly TarProcessService _sut = new();
+    private readonly TarSandboxedService _sut = new();
 
     [Fact]
     public async Task ListEntriesAsync_NestedFoldersFixture_ReturnsFlatEntriesMatchingZipCounterpart()

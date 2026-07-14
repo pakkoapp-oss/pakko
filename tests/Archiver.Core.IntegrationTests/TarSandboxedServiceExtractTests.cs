@@ -6,15 +6,16 @@ using FluentAssertions;
 namespace Archiver.Core.IntegrationTests;
 
 /// <summary>
-/// Exercises TarProcessService.ExtractAsync (T-F49) against the real system tar.exe. Fixtures
-/// are self-generated via TarBuilder (raw USTAR bytes) rather than a prebuilt corpus — T-F50
-/// owns the full multi-format fixture set later. The reject-case tests reproduce the exploit
-/// documented in DECISIONS.md's T-F49 entry, most importantly the symlink-escape test, which is
-/// a regression test for a confirmed sandbox escape found while designing this pipeline.
+/// Exercises TarSandboxedService.ExtractAsync (T-F49, sandboxed since T-F52) against the real
+/// system tar.exe. Fixtures are self-generated via TarBuilder (raw USTAR bytes) rather than a
+/// prebuilt corpus — T-F50 owns the full multi-format fixture set later. The reject-case tests
+/// reproduce the exploit documented in DECISIONS.md's T-F49 entry, most importantly the
+/// symlink-escape test, which is a regression test for a confirmed sandbox escape found while
+/// designing this pipeline.
 /// </summary>
-public sealed class TarProcessServiceExtractTests : IDisposable
+public sealed class TarSandboxedServiceExtractTests : IDisposable
 {
-    private readonly TarProcessService _sut = new();
+    private readonly TarSandboxedService _sut = new();
     private readonly TempDirectory _temp = new();
 
     public void Dispose() => _temp.Dispose();

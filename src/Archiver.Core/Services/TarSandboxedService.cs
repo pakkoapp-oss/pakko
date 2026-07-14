@@ -1,14 +1,18 @@
 using System.Diagnostics;
 using Archiver.Core.Interfaces;
 using Archiver.Core.Models;
+using Archiver.Core.Services.Sandbox;
 
 namespace Archiver.Core.Services;
 
 /// <summary>
 /// Extracts tar-family archives (tar, tar.gz, tar.bz2, tar.xz, tar.zst, tar.lzma, 7z, rar) via
-/// the system's tar.exe. Never throws to callers — all errors are captured in ArchiveResult.Errors.
+/// the system's tar.exe, launched inside a Windows AppContainer (no network capability) with a
+/// Job Object (ActiveProcessLimit = 1, RAM/CPU limits) — see TASKS.md's T-F52 entry for the full
+/// design and DECISIONS.md for the empirical trail. Never throws to callers — all errors are
+/// captured in ArchiveResult.Errors. Replaces the deleted TarProcessService.
 /// </summary>
-public sealed class TarProcessService : ITarService
+public sealed class TarSandboxedService : ITarService
 {
     private const string TarExecutablePath = @"C:\Windows\System32\tar.exe";
 
@@ -21,6 +25,13 @@ public sealed class TarProcessService : ITarService
     {
         try
         {
+            // Deliberately unsandboxed (no AppContainer/Job Object) — this is a one-shot,
+            // eagerly-resolved startup probe, not an untrusted-archive operation. Still gated on
+            // the signature check: a tampered tar.exe should fail closed here via the same
+            // all-false-defaults path used for "tar.exe absent", not silently run --version.
+            if (!TarSignatureVerifier.Verify(TarExecutablePath))
+                return new TarCapabilities();
+
             var startInfo = new ProcessStartInfo
             {
                 FileName = TarExecutablePath,
@@ -109,6 +120,10 @@ public sealed class TarProcessService : ITarService
             {
                 errors.Add(new ArchiveError { SourcePath = archivePath, Message = ex.Message });
             }
+            catch (TarSignatureVerificationException ex)
+            {
+                errors.Add(new ArchiveError { SourcePath = archivePath, Message = ex.Message });
+            }
             catch (IOException ex)
             {
                 errors.Add(new ArchiveError
@@ -154,6 +169,13 @@ public sealed class TarProcessService : ITarService
     // C# code gets a chance to inspect the result — see DECISIONS.md's T-F49 entry for the
     // reproduced exploit. Post-hoc validation of quarantine contents therefore cannot be the
     // primary defense; rejecting the whole archive before -xf runs is.
+    //
+    // T-F52: the scope (profile + ACLs + staging + Job Object + signature check) is created
+    // FIRST, before the compression-bomb decision — unlike the pre-sandbox design, the pre-scan
+    // itself must now run inside the sandbox too, which needs a staged copy of the archive to
+    // already exist in quarantine\in\. This means a declined/blocked bomb no longer leaves
+    // "nothing to clean up" the way it used to — the `using` on scope below disposes the
+    // quarantine directory on every exit path, early or not.
     private static async Task<(string ActualDest, bool AnyExtracted)> ExtractSingleArchiveAsync(
         string archivePath,
         string destDir,
@@ -163,17 +185,20 @@ public sealed class TarProcessService : ITarService
         IReadOnlyList<string>? selectedEntryPaths,
         CancellationToken cancellationToken)
     {
+        using TarSandboxScope scope = await TarSandboxScope.CreateAsync(archivePath, needsOutputDir: true, cancellationToken)
+            .ConfigureAwait(false);
+
         // T-F05: the whole-archive pre-scan below runs unconditionally, exactly as it did before
         // SelectedEntryPaths existed — it must NEVER be skipped or narrowed just because only a
         // subset will be extracted (see T-F49's exploit finding in DECISIONS.md: a symlink entry
         // can escape quarantine before any per-entry check runs, so the whole archive must be
         // validated regardless of what subset the caller eventually asks tar.exe to extract).
-        var (declaredUncompressedSize, allNames) = await ScanForUnsafeEntriesAsync(archivePath, cancellationToken)
+        var (declaredUncompressedSize, allNames) = await ScanForUnsafeEntriesAsync(scope, cancellationToken)
             .ConfigureAwait(false);
 
-        // T-F94: whole-archive compression-ratio decision, run BEFORE quarantineDir is created
-        // so a declined/blocked bomb leaves nothing to clean up. See DECISIONS.md's T-F94 entry
-        // (supersedes T-F90's auto-reject-only model).
+        // T-F94: whole-archive compression-ratio decision. compressedFileSize reads the
+        // ORIGINAL archivePath (not the staged copy — same size either way, hardlink or copy,
+        // but this is the path the caller/UI actually knows about for any error messages).
         long compressedFileSize = new FileInfo(archivePath).Length;
         var bombOutcome = await ArchiveEntrySecurity.EvaluateCompressionBombAsync(
             archivePath, declaredUncompressedSize, compressedFileSize,
@@ -204,99 +229,108 @@ public sealed class TarProcessService : ITarService
             return (destDir, false);
         }
 
-        // Same "<dest>_tmp"-adjacent-directory convention as ZipArchiveService's tempDest —
-        // same disk as destDir, no pre-delete (matches ZIP's existing tempDest behavior).
-        string quarantineDir = destDir + "_tar_tmp";
-        Directory.CreateDirectory(quarantineDir);
-
-        try
+        // T-F52: pre-create every directory the archive implies, at Pakko's own (unsandboxed)
+        // identity, before tar.exe ever runs inside the AppContainer. Found empirically: when a
+        // nested file entry (e.g. "sub/b.txt") has no preceding explicit "sub/" directory entry,
+        // libarchive's own implicit parent-directory creation fails under the AppContainer even
+        // though "out\" itself is correctly ACL'd with inheritable Modify — an explicit "sub/"
+        // entry extracts fine, so this is specific to libarchive's own implicit-mkdir path, not a
+        // general ACL problem (isolated via a throwaway diagnostic against the real tar.exe; see
+        // DECISIONS.md's T-F52 entry). Pre-creating here sidesteps it entirely: Directory.
+        // CreateDirectory, run by Pakko's own trusted process, correctly inherits "out\"'s ACEs
+        // for every directory it creates, so tar.exe's own directory ever needs to create one.
+        foreach (string name in allNames)
         {
-            var tarArgs = new List<string> { "-xf", archivePath, "-C", quarantineDir };
-            if (selectedEntryPaths is { Count: > 0 })
-                tarArgs.AddRange(ExpandSelection(allNames, selectedEntryPaths));
+            string? relativeDir = name.EndsWith('/') ? name.TrimEnd('/') : Path.GetDirectoryName(name);
+            if (!string.IsNullOrEmpty(relativeDir))
+                Directory.CreateDirectory(Path.Combine(scope.OutputDirectory!, relativeDir));
+        }
 
-            var (exitCode, _, stdErr) = await RunTarAsync(tarArgs, cancellationToken).ConfigureAwait(false);
+        var tarArgs = new List<string> { "-xf", scope.StagedArchivePath, "-C", scope.OutputDirectory! };
+        if (selectedEntryPaths is { Count: > 0 })
+            tarArgs.AddRange(ExpandSelection(allNames, selectedEntryPaths));
 
-            if (exitCode != 0)
-                throw new IOException($"tar.exe extraction failed: {stdErr.Trim()}");
+        var (exitCode, _, stdErr) = await scope.RunAsync(tarArgs, cancellationToken).ConfigureAwait(false);
 
-            Directory.CreateDirectory(destDir);
+        if (exitCode != 0)
+            throw new IOException($"tar.exe extraction failed: {stdErr.Trim()}");
 
-            int totalFiles = 0;
-            int extractedCount = 0;
+        Directory.CreateDirectory(destDir);
 
-            foreach (string file in EnumerateFilesGuarded(quarantineDir))
+        int totalFiles = 0;
+        int extractedCount = 0;
+
+        foreach (string file in EnumerateFilesGuarded(scope.OutputDirectory!))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            totalFiles++;
+
+            string relativePath = Path.GetRelativePath(scope.OutputDirectory!, file);
+            string finalFilePath = Path.GetFullPath(Path.Combine(destDir, relativePath));
+
+            if (File.Exists(finalFilePath))
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                totalFiles++;
-
-                string relativePath = Path.GetRelativePath(quarantineDir, file);
-                string finalFilePath = Path.GetFullPath(Path.Combine(destDir, relativePath));
-
-                if (File.Exists(finalFilePath))
+                ConflictBehavior resolvedConflict = await conflictResolver.ResolveAsync(finalFilePath).ConfigureAwait(false);
+                if (resolvedConflict == ConflictBehavior.Skip)
                 {
-                    ConflictBehavior resolvedConflict = await conflictResolver.ResolveAsync(finalFilePath).ConfigureAwait(false);
-                    if (resolvedConflict == ConflictBehavior.Skip)
-                    {
-                        skippedFiles.Add(new SkippedFile { Path = relativePath, Reason = "File already exists at destination." });
-                        continue;
-                    }
-                    if (resolvedConflict == ConflictBehavior.Rename)
-                    {
-                        finalFilePath = GetUniqueFilePath(finalFilePath);
-                    }
+                    skippedFiles.Add(new SkippedFile { Path = relativePath, Reason = "File already exists at destination." });
+                    continue;
                 }
-
-                Directory.CreateDirectory(Path.GetDirectoryName(finalFilePath)!);
-                File.Move(file, finalFilePath, overwrite: true);
-
-                // T-F45: propagate Zone.Identifier ADS from archive to extracted file
-                ArchiveEntrySecurity.TryPropagateMotw(archivePath, finalFilePath);
-
-                extractedCount++;
-            }
-
-            // T-F87: every extracted file was individually skipped (already existed at the
-            // destination) — nothing was actually written, so the caller must not count this
-            // archive as CreatedFiles (that list gates whether DeleteAfterOperation may delete
-            // the source archive).
-            if (totalFiles > 0 && extractedCount == 0)
-            {
-                skippedFiles.Add(new SkippedFile
+                if (resolvedConflict == ConflictBehavior.Rename)
                 {
-                    Path = archivePath,
-                    Reason = "No entries were extracted from this archive — every entry was skipped."
-                });
-                return (destDir, false);
+                    finalFilePath = GetUniqueFilePath(finalFilePath);
+                }
             }
 
-            return (destDir, true);
+            Directory.CreateDirectory(Path.GetDirectoryName(finalFilePath)!);
+            File.Move(file, finalFilePath, overwrite: true);
+
+            // T-F45: propagate Zone.Identifier ADS from the ORIGINAL archive (never the staged
+            // quarantine copy) to the extracted file — the staged copy is a Pakko-internal
+            // implementation detail and may not even carry a Zone.Identifier depending on
+            // hardlink-vs-copy staging; MOTW must reflect the real source the user chose.
+            ArchiveEntrySecurity.TryPropagateMotw(archivePath, finalFilePath);
+
+            extractedCount++;
         }
-        finally
+
+        // T-F87: every extracted file was individually skipped (already existed at the
+        // destination) — nothing was actually written, so the caller must not count this
+        // archive as CreatedFiles (that list gates whether DeleteAfterOperation may delete
+        // the source archive).
+        if (totalFiles > 0 && extractedCount == 0)
         {
-            try { if (Directory.Exists(quarantineDir)) Directory.Delete(quarantineDir, recursive: true); } catch { }
+            skippedFiles.Add(new SkippedFile
+            {
+                Path = archivePath,
+                Reason = "No entries were extracted from this archive — every entry was skipped."
+            });
+            return (destDir, false);
         }
+
+        return (destDir, true);
     }
 
     // Rejects the whole archive (throws TarArchiveRejectedException) if any entry name is
-    // unsafe, or if any entry is a symlink/hardlink/device/fifo/socket. Two tar.exe invocations:
-    // "-tf" lists plain entry names (one per line, no locale-dependent formatting — used for the
-    // name checks) and "-tvf" lists the same entries with a leading ls-style type character
-    // ('-' regular, 'd' directory, 'l' symlink, 'h' hardlink, etc.) that is rendered
-    // deterministically by libarchive regardless of locale — unlike the rest of that line (its
-    // date column was observed locale-mangled on a Cyrillic-locale machine, same bug class as
-    // T-F84) — so only character 0 of each "-tvf" line is read.
+    // unsafe, or if any entry is a symlink/hardlink/device/fifo/socket. Two tar.exe invocations,
+    // both run through the sandboxed scope: "-tf" lists plain entry names (one per line, no
+    // locale-dependent formatting — used for the name checks) and "-tvf" lists the same entries
+    // with a leading ls-style type character ('-' regular, 'd' directory, 'l' symlink, 'h'
+    // hardlink, etc.) that is rendered deterministically by libarchive regardless of locale —
+    // unlike the rest of that line (its date column was observed locale-mangled on a
+    // Cyrillic-locale machine, same bug class as T-F84) — so only character 0 of each "-tvf" line
+    // is read.
     // Returns the sum of declared uncompressed sizes for every regular-file entry (T-F94) — the
-    // ratio-threshold decision itself now lives in ExtractSingleArchiveAsync via the shared
+    // ratio-threshold decision itself lives in ExtractSingleArchiveAsync via the shared
     // ArchiveEntrySecurity.EvaluateCompressionBombAsync evaluator, but the size sum is still
     // accumulated here, in the same single "-tvf" pass that already reads the type column, to
     // avoid a second tar.exe invocation just to re-derive it (matches T-F90's original rationale
     // for extending this one pass in the first place).
     private static async Task<(long TotalDeclaredSize, string[] Names)> ScanForUnsafeEntriesAsync(
-        string archivePath, CancellationToken cancellationToken)
+        TarSandboxScope scope, CancellationToken cancellationToken)
     {
-        var (nameExitCode, nameStdOut, nameStdErr) = await RunTarAsync(
-            new[] { "-tf", archivePath }, cancellationToken).ConfigureAwait(false);
+        var (nameExitCode, nameStdOut, nameStdErr) = await scope.RunAsync(
+            ["-tf", scope.StagedArchivePath], cancellationToken).ConfigureAwait(false);
         if (nameExitCode != 0)
             throw new IOException($"Cannot read archive: {nameStdErr.Trim()}");
 
@@ -309,8 +343,8 @@ public sealed class TarProcessService : ITarService
                     $"Archive contains an unsafe entry path ('{name}') and cannot be safely extracted.");
         }
 
-        var (typeExitCode, typeStdOut, typeStdErr) = await RunTarAsync(
-            new[] { "-tvf", archivePath }, cancellationToken).ConfigureAwait(false);
+        var (typeExitCode, typeStdOut, typeStdErr) = await scope.RunAsync(
+            ["-tvf", scope.StagedArchivePath], cancellationToken).ConfigureAwait(false);
         if (typeExitCode != 0)
             throw new IOException($"Cannot read archive: {typeStdErr.Trim()}");
 
@@ -380,15 +414,18 @@ public sealed class TarProcessService : ITarService
     {
         try
         {
-            var (nameExitCode, nameStdOut, nameStdErr) = await RunTarAsync(
-                new[] { "-tf", archivePath }, cancellationToken).ConfigureAwait(false);
+            using TarSandboxScope scope = await TarSandboxScope.CreateAsync(archivePath, needsOutputDir: false, cancellationToken)
+                .ConfigureAwait(false);
+
+            var (nameExitCode, nameStdOut, nameStdErr) = await scope.RunAsync(
+                ["-tf", scope.StagedArchivePath], cancellationToken).ConfigureAwait(false);
             if (nameExitCode != 0)
                 return new ArchiveListResult { Success = false, ErrorMessage = nameStdErr.Trim() };
 
             string[] names = SplitLines(nameStdOut);
 
-            var (typeExitCode, typeStdOut, typeStdErr) = await RunTarAsync(
-                new[] { "-tvf", archivePath }, cancellationToken).ConfigureAwait(false);
+            var (typeExitCode, typeStdOut, typeStdErr) = await scope.RunAsync(
+                ["-tvf", scope.StagedArchivePath], cancellationToken).ConfigureAwait(false);
             if (typeExitCode != 0)
                 return new ArchiveListResult { Success = false, ErrorMessage = typeStdErr.Trim() };
 
@@ -414,6 +451,10 @@ public sealed class TarProcessService : ITarService
             }
 
             return new ArchiveListResult { Success = true, Entries = entries };
+        }
+        catch (TarSignatureVerificationException ex)
+        {
+            return new ArchiveListResult { Success = false, ErrorMessage = ex.Message };
         }
         catch (IOException ex)
         {
@@ -462,11 +503,11 @@ public sealed class TarProcessService : ITarService
         return false;
     }
 
-    // Walks quarantineDir without ever recursing into a reparse-point subdirectory — a plain
-    // Directory.EnumerateFiles(..., AllDirectories) would follow such a directory and could walk
-    // straight out of quarantine. The pre-scan already rejects any archive containing a symlink
-    // entry, so this is defense-in-depth for anything the scan didn't anticipate, not the
-    // primary safety mechanism.
+    // Walks the sandbox scope's output directory without ever recursing into a reparse-point
+    // subdirectory — a plain Directory.EnumerateFiles(..., AllDirectories) would follow such a
+    // directory and could walk straight out of quarantine. The pre-scan already rejects any
+    // archive containing a symlink entry, so this is defense-in-depth for anything the scan
+    // didn't anticipate, not the primary safety mechanism.
     private static IEnumerable<string> EnumerateFilesGuarded(string root)
     {
         var pending = new Stack<string>();
@@ -514,40 +555,6 @@ public sealed class TarProcessService : ITarService
         do { candidate = Path.Combine(dir, $"{name} ({i++}){ext}"); }
         while (File.Exists(candidate));
         return candidate;
-    }
-
-    private static async Task<(int ExitCode, string StdOut, string StdErr)> RunTarAsync(
-        IReadOnlyList<string> arguments,
-        CancellationToken cancellationToken)
-    {
-        var startInfo = new ProcessStartInfo
-        {
-            FileName = TarExecutablePath,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true,
-        };
-        foreach (string arg in arguments)
-            startInfo.ArgumentList.Add(arg);
-
-        using Process process = Process.Start(startInfo)
-            ?? throw new IOException("Failed to start tar.exe.");
-
-        try
-        {
-            Task<string> stdOutTask = process.StandardOutput.ReadToEndAsync(cancellationToken);
-            Task<string> stdErrTask = process.StandardError.ReadToEndAsync(cancellationToken);
-            await Task.WhenAll(stdOutTask, stdErrTask).ConfigureAwait(false);
-            await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
-
-            return (process.ExitCode, stdOutTask.Result, stdErrTask.Result);
-        }
-        catch (OperationCanceledException)
-        {
-            try { if (!process.HasExited) process.Kill(entireProcessTree: true); } catch { }
-            throw;
-        }
     }
 
     private sealed class TarArchiveRejectedException(string message) : Exception(message);

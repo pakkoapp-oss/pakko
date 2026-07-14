@@ -68,6 +68,16 @@ internal sealed class TarSandboxScope : IDisposable
     {
         cancellationToken.ThrowIfCancellationRequested();
 
+        // Checked once per scope (covers every RunAsync call made through it — the pre-scan and
+        // the extraction both use the same scope) rather than once per tar.exe launch. This is
+        // the correct choke point: SandboxedProcessLauncher itself is generic (it also launches
+        // plain cmd.exe in its own unit tests), so it cannot assume "the target is always
+        // tar.exe" the way this scope — which always launches the one hardcoded TarExecutablePath
+        // constant — can. Cheap, defense-in-depth only; TOCTOU between this check and the actual
+        // launch means it is not load-bearing against a real attacker (see TASKS.md's T-F52 entry).
+        if (!TarSignatureVerifier.Verify(TarExecutablePath))
+            throw new TarSignatureVerificationException(TarExecutablePath);
+
         var profile = new AppContainerProfile(AppContainerProfile.ProductionProfileName);
         profile.EnsureExists();
         SafeSidHandle sid = profile.GetSid();
@@ -131,3 +141,11 @@ internal sealed class TarSandboxScope : IDisposable
         try { if (Directory.Exists(_quarantineRoot)) Directory.Delete(_quarantineRoot, recursive: true); } catch { }
     }
 }
+
+/// <summary>
+/// Thrown by <see cref="TarSandboxScope.CreateAsync"/> when tar.exe's Authenticode signature
+/// check fails — fail-closed: this is treated as an ordinary per-archive error by callers, never
+/// a silent fallback to running tar.exe unsandboxed or unverified.
+/// </summary>
+internal sealed class TarSignatureVerificationException(string tarExecutablePath)
+    : Exception($"'{tarExecutablePath}' failed Authenticode signature verification.");

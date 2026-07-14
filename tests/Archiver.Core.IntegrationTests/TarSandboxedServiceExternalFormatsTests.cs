@@ -9,9 +9,9 @@ namespace Archiver.Core.IntegrationTests;
 /// has no encoder available on this machine at all - see Fixtures/README.md) - use a committed
 /// binary fixture instead of test-time generation.
 /// </summary>
-public sealed class TarProcessServiceExternalFormatsTests : IDisposable
+public sealed class TarSandboxedServiceExternalFormatsTests : IDisposable
 {
-    private readonly TarProcessService _sut = new();
+    private readonly TarSandboxedService _sut = new();
     private readonly TempDirectory _temp = new();
 
     public void Dispose() => _temp.Dispose();

@@ -5,16 +5,16 @@ using FluentAssertions;
 namespace Archiver.Core.IntegrationTests;
 
 /// <summary>
-/// T-F50: round-trips every tar-family compression variant TarProcessService.ExtractAsync
+/// T-F50: round-trips every tar-family compression variant TarSandboxedService.ExtractAsync
 /// supports, through the real system tar.exe (ExternalTarFixtureBuilder), rather than a
 /// committed binary corpus - tar.exe can create every one of these formats itself (empirically
 /// confirmed; see DECISIONS.md's T-F50 entry). Each test generates its own fixture inside the
 /// [SkipIfFormatUnsupported]-gated test body, not in shared setup, so an unsupported format
 /// skips cleanly instead of throwing during fixture creation.
 /// </summary>
-public sealed class TarProcessServiceCompressedFormatsTests : IDisposable
+public sealed class TarSandboxedServiceCompressedFormatsTests : IDisposable
 {
-    private readonly TarProcessService _sut = new();
+    private readonly TarSandboxedService _sut = new();
     private readonly TempDirectory _temp = new();
 
     public void Dispose() => _temp.Dispose();

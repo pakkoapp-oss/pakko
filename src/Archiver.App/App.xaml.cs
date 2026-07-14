@@ -30,7 +30,7 @@ public partial class App : Application
         services.AddSingleton<ILogService, LogService>();
         services.AddSingleton<IArchiveService, ZipArchiveService>();
         services.AddSingleton<IDialogService, DialogService>();
-        services.AddSingleton<ITarService, TarProcessService>();
+        services.AddSingleton<ITarService, TarSandboxedService>();
         services.AddSingleton<TarCapabilities>(sp =>
             sp.GetRequiredService<ITarService>().DetectCapabilitiesAsync().GetAwaiter().GetResult());
         services.AddSingleton<IExtractionRouter, ExtractionRouter>();
