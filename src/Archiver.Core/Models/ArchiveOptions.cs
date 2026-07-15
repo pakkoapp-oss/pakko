@@ -12,6 +12,7 @@ public sealed record ArchiveOptions
     public bool OpenDestinationFolder { get; init; } = false;
     public bool DeleteSourceFiles { get; init; } = false;
     public CompressionLevel CompressionLevel { get; init; } = CompressionLevel.Optimal;
+    public ArchiveContainerFormat Format { get; init; } = ArchiveContainerFormat.Zip;
 
     // T-F06: invoked once per conflicting destination path when OnConflict == Ask. Null (e.g.
     // Archiver.Shell, or a test that doesn't wire it) falls back to Skip — see ConflictResolver.

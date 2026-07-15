@@ -49,6 +49,9 @@ file sealed class FakeTarService : ITarService
 
     public Task<ArchiveListResult> ListEntriesAsync(string archivePath, CancellationToken cancellationToken = default)
         => throw new NotImplementedException();
+
+    public Task<ArchiveResult> CompressAsync(ArchiveOptions options, IProgress<ProgressReport>? progress = null, CancellationToken cancellationToken = default)
+        => throw new NotImplementedException();
 }
 
 public sealed class ExtractionRouterTests : IDisposable

@@ -1,3 +1,4 @@
+using Archiver.Core.Models;
 using FluentAssertions;
 
 namespace Archiver.Shell.Tests;
@@ -65,6 +66,75 @@ public sealed class ShellArgumentParserTests
 
         result.Type.Should().Be(CommandType.Archive);
         result.Files.Should().Equal("file1.txt", "file2.docx", "image.png");
+    }
+
+    [Fact]
+    public void Archive_NoFormatFlag_DefaultsToZip()
+    {
+        ParsedCommand result = ShellArgumentParser.Parse(["--archive", "document.txt"]);
+
+        result.Format.Should().Be(ArchiveContainerFormat.Zip);
+    }
+
+    // --- Valid: --archive --format (T-F105) ---
+
+    [Fact]
+    public void Archive_FormatZip_ReturnsZipFormatAndFiles()
+    {
+        ParsedCommand result = ShellArgumentParser.Parse(["--archive", "--format", "zip", "document.txt"]);
+
+        result.Type.Should().Be(CommandType.Archive);
+        result.Format.Should().Be(ArchiveContainerFormat.Zip);
+        result.Files.Should().Equal("document.txt");
+        result.ErrorMessage.Should().BeNull();
+    }
+
+    [Fact]
+    public void Archive_FormatTar_ReturnsTarFormatAndFiles()
+    {
+        ParsedCommand result = ShellArgumentParser.Parse(["--archive", "--format", "tar", "document.txt"]);
+
+        result.Type.Should().Be(CommandType.Archive);
+        result.Format.Should().Be(ArchiveContainerFormat.Tar);
+        result.Files.Should().Equal("document.txt");
+        result.ErrorMessage.Should().BeNull();
+    }
+
+    [Fact]
+    public void Archive_FormatTarMultipleFiles_ReturnsAllFiles()
+    {
+        ParsedCommand result = ShellArgumentParser.Parse(["--archive", "--format", "tar", "a.txt", "b.txt"]);
+
+        result.Type.Should().Be(CommandType.Archive);
+        result.Format.Should().Be(ArchiveContainerFormat.Tar);
+        result.Files.Should().Equal("a.txt", "b.txt");
+    }
+
+    [Fact]
+    public void Archive_UnknownFormatValue_ReturnsInvalid()
+    {
+        ParsedCommand result = ShellArgumentParser.Parse(["--archive", "--format", "tar.gz", "document.txt"]);
+
+        result.Type.Should().Be(CommandType.Invalid);
+        result.ErrorMessage.Should().NotBeNull();
+    }
+
+    [Fact]
+    public void Archive_FormatFlagMissingValue_ReturnsInvalid()
+    {
+        ParsedCommand result = ShellArgumentParser.Parse(["--archive", "--format"]);
+
+        result.Type.Should().Be(CommandType.Invalid);
+        result.ErrorMessage.Should().NotBeNull();
+    }
+
+    [Fact]
+    public void Archive_FormatFlagWithNoFilesAfterValue_ReturnsInvalid()
+    {
+        ParsedCommand result = ShellArgumentParser.Parse(["--archive", "--format", "tar"]);
+
+        result.Type.Should().Be(CommandType.Invalid);
+        result.ErrorMessage.Should().NotBeNull();
     }
 
     // --- Valid: --test ---

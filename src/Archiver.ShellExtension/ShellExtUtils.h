@@ -55,7 +55,9 @@ HRESULT LaunchShellExe(const std::wstring& args);
 // Each path is wrapped in double quotes. No escaping needed: '"' is invalid in NTFS names.
 std::wstring BuildExtractHereArgs(const std::vector<std::wstring>& paths);
 std::wstring BuildExtractFolderArgs(const std::vector<std::wstring>& paths);
-std::wstring BuildArchiveArgs(const std::vector<std::wstring>& paths);
+// T-F105: format is "zip" (default, matches pre-T-F105 behavior — no --format flag emitted) or
+// "tar" (emits "--format tar", consumed by ShellArgumentParser.ParseArchive on the .NET side).
+std::wstring BuildArchiveArgs(const std::vector<std::wstring>& paths, const std::wstring& format = L"zip");
 std::wstring BuildTestArgs(const std::vector<std::wstring>& paths);
 
 // Dialog-form commands (T-F63): launch Archiver.App via Archiver.Shell's --open-ui flow
@@ -63,11 +65,12 @@ std::wstring BuildTestArgs(const std::vector<std::wstring>& paths);
 std::wstring BuildOpenUiExtractArgs(const std::vector<std::wstring>& paths);
 std::wstring BuildOpenUiArchiveArgs(const std::vector<std::wstring>& paths);
 
-// Builds the "Add to <name>.zip" context-menu title. For a single selected path, <name> is
-// that path's file name without extension; for multiple paths, <name> is their common
-// containing folder's name instead (mirrors RunArchiveAsync's naming in
-// Archiver.Shell/Program.cs). Returns "Add to archive..." if paths is empty.
-std::wstring BuildAddToArchiveTitle(const std::vector<std::wstring>& paths);
+// Builds the "Add to <name><ext>" context-menu title (ext defaults to ".zip"; T-F105's
+// TarArchiveCommand passes ".tar"). For a single selected path, <name> is that path's file name
+// without extension; for multiple paths, <name> is their common containing folder's name instead
+// (mirrors RunArchiveAsync's naming in Archiver.Shell/Program.cs). Returns "Add to archive..." if
+// paths is empty.
+std::wstring BuildAddToArchiveTitle(const std::vector<std::wstring>& paths, const std::wstring& ext = L".zip");
 
 // Builds the "Extract to <name>\" context-menu title. For a single selected archive, <name> is
 // that archive's file name without extension - the exact subfolder ExtractFolderCommand::Invoke

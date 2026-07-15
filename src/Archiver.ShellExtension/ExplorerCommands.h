@@ -28,6 +28,10 @@ static const CLSID CLSID_ExtractFolderCommand =
 static const CLSID CLSID_ArchiveCommand =
     { 0xE84DDF12, 0x7539, 0x4D06, { 0x85, 0xD8, 0xBF, 0xA4, 0xF8, 0x7B, 0xCF, 0x27 } };
 
+// {5F440071-6288-4446-AE25-3F4EDA490DDC}
+static const CLSID CLSID_TarArchiveCommand =
+    { 0x5F440071, 0x6288, 0x4446, { 0xAE, 0x25, 0x3F, 0x4E, 0xDA, 0x49, 0x0D, 0xDC } };
+
 // {BA69EF3A-F324-46CB-9391-6D14FE9597D3}
 static const CLSID CLSID_TestCommand =
     { 0xBA69EF3A, 0xF324, 0x46CB, { 0x93, 0x91, 0x6D, 0x14, 0xFE, 0x95, 0x97, 0xD3 } };
@@ -97,6 +101,27 @@ public:
 // Leaf command: "Add to archive..."
 // ---------------------------------------------------------------------------
 class ArchiveCommand final :
+    public RuntimeClass<RuntimeClassFlags<ClassicCom>, IExplorerCommand>
+{
+public:
+    STDMETHODIMP GetTitle(IShellItemArray* psia, LPWSTR* ppszName) noexcept override;
+    STDMETHODIMP GetIcon(IShellItemArray* psia, LPWSTR* ppszIcon) noexcept override;
+    STDMETHODIMP GetToolTip(IShellItemArray* psia, LPWSTR* ppszInfotip) noexcept override;
+    STDMETHODIMP GetCanonicalName(GUID* pguidCommandName) noexcept override;
+    STDMETHODIMP GetState(IShellItemArray* psia, BOOL fOkToBeSlow, EXPCMDSTATE* pCmdState) noexcept override;
+    STDMETHODIMP Invoke(IShellItemArray* psia, IBindCtx* pbc) noexcept override;
+    STDMETHODIMP GetFlags(EXPCMDFLAGS* pFlags) noexcept override;
+    STDMETHODIMP EnumSubCommands(IEnumExplorerCommand** ppEnum) noexcept override;
+};
+
+// ---------------------------------------------------------------------------
+// Leaf command: "Add to <name>.tar" (T-F105) — plain/uncompressed tar only, mirroring
+// ArchiveCommand's ZIP one-click but with --format tar. Never tar.gz or any other compressed
+// tar variant: one-click commands never prompt the user for anything, so this is limited to the
+// one tar-family format with no filter/level choice to make. Compressed tar variants remain
+// reachable only through CompressDialogCommand's format selector.
+// ---------------------------------------------------------------------------
+class TarArchiveCommand final :
     public RuntimeClass<RuntimeClassFlags<ClassicCom>, IExplorerCommand>
 {
 public:

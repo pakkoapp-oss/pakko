@@ -1,3 +1,5 @@
+using Archiver.Core.Models;
+
 namespace Archiver.Core.Services;
 
 /// <summary>
@@ -25,4 +27,16 @@ public static class ArchiveNaming
 
         return Path.GetFileNameWithoutExtension(archivePath);
     }
+
+    public static string GetExtension(ArchiveContainerFormat format) => format switch
+    {
+        ArchiveContainerFormat.Zip => ".zip",
+        ArchiveContainerFormat.Tar => ".tar",
+        ArchiveContainerFormat.TarGz => ".tar.gz",
+        ArchiveContainerFormat.TarBz2 => ".tar.bz2",
+        ArchiveContainerFormat.TarXz => ".tar.xz",
+        ArchiveContainerFormat.TarZst => ".tar.zst",
+        ArchiveContainerFormat.TarLzma => ".tar.lzma",
+        _ => throw new ArgumentOutOfRangeException(nameof(format), format, null),
+    };
 }

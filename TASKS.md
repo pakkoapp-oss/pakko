@@ -2502,6 +2502,12 @@ branch couldn't be exercised end-to-end this time.
       live recurrence of the race in this round
 - [x] Two clean-state `Deploy.ps1` end-to-end runs completed successfully this round (neither hit
       the race — expected, since it's confirmed intermittent, not deterministic)
+- [x] **Live recurrence exercised end-to-end, 2026-07-15** (T-F52 deploy run): the exact MSB3231
+      shape recurred for real (`dotnet publish exited 1 ... Archiver.App_1.2.0.31_x64.msix`) and
+      the tolerance guard correctly caught it, printed the warning, and continued to a successful
+      install — the "continue" branch is no longer only isolated-regex-tested, it has now run for
+      real. Root cause still unconfirmed (see below); this only confirms the mitigation itself
+      works live, not which of the four ranked scenarios is the actual cause
 - [ ] Root cause identified (not just tolerated) — none of the four ranked scenarios above tested
       yet; next step is the `Stop-Service WSearch` test the next time the race recurs
 - [ ] `CLAUDE.md`'s Build Commands section updated once a root cause (not just the tolerance
@@ -2689,13 +2695,14 @@ truncated/corrupted-tar test), `Fixtures/valid.7z`, `Fixtures/valid.rar` (added 
 ---
 
 ### T-F52 — AppContainer Sandbox for tar.exe
-- [~] **Status:** partial (v1.4) — Phase 1 implementation (all 13 steps) complete 2026-07-14,
+- [x] **Status:** complete (v1.4) — Phase 1 implementation (all 13 steps) complete 2026-07-14,
       including a full `Deploy.ps1` build+sign+install and AI-driven on-device verification
       (`.tar.gz`/`.7z`/`.rar` all extracted correctly through the installed, packaged
       `Archiver.Shell.exe`). `TarProcessService.cs` is deleted and `TarSandboxedService` is real,
-      shipping code. Stays `[~]` rather than `[x]` only because this was AI-driven verification,
-      not the user's own personal click-through — same distinction this project already applies to
-      T-F49 (see `CLAUDE.md`). See `DECISIONS.md`'s several same-day T-F52 entries for the full
+      shipping code. **Graduated to `[x]` 2026-07-15, user-directed**, after a second on-device
+      pass through the actual packaged GUI app (real button click via the `windows` MCP
+      UI-automation server, not just `Archiver.Shell.exe`) — see the last acceptance criterion
+      below for the full method and evidence. See `DECISIONS.md`'s several same-day T-F52 entries for the full
       empirical trail — three real bugs found and fixed while implementing (a wrong
       `CERT_FIND_SUBJECT_CERT` constant, hardlinked staged files not inheriting the quarantine
       folder's ACL, libarchive's implicit parent-directory creation failing under the
@@ -3048,13 +3055,278 @@ synchronously at `Archiver.App` startup).
 - [x] `SECURITY.md`'s tar.exe Trust Model section updated with the two-vector reframing and the
       AppContainer isolation method (cascade per `CLAUDE.md`'s Documentation Map) — done during
       the initial design round, verified still accurate against the final implementation
-- [~] Full `Deploy.ps1` build+sign+install done (`Archiver.App_1.2.0.27_x64.msix`); AI-driven
-      on-device verification passed — `.tar.gz` (with nested subdirectories, real system tar.exe),
-      `valid.7z`, and `valid.rar` all extracted correctly through the installed
+- [x] Full `Deploy.ps1` build+sign+install done (`Archiver.App_1.2.0.31_x64.msix`, 2026-07-15);
+      AI-driven on-device verification passed — `.tar.gz` (with nested subdirectories, real
+      system tar.exe), `valid.7z`, and `valid.rar` all extracted correctly through the installed
       `Archiver.Shell.exe` via `--extract-here`, matching the real shell context-menu invocation
-      path. Per this project's own T-F49 precedent, this is AI-driven verification, not the
-      user's own personal click-through — stays `[~]` until the user confirms via their own
-      on-device use, or explicitly directs graduation on this evidence alone
+      path. **Graduated to `[x]` 2026-07-15, user-directed**: re-verified through the actual
+      packaged GUI app this time (not just `Archiver.Shell.exe`) via the `windows` MCP UI-
+      automation server (`pakko://extract` with three fresh fixtures — a `browse_test.tar.gz`
+      built for this run with a nested `sub/` subdirectory, plus the committed `valid.7z`/
+      `valid.rar` fixtures — pre-loaded into the pending list, then a real
+      `mcp__windows__ui_click` on "Розпакувати"). All four resulting files (`browse_test\root.txt`,
+      `browse_test\sub\nested.txt`, `pakko_seven\seven.txt`, `pakko_rar\rar.txt`) confirmed present
+      with correct content via direct filesystem read after the click. User explicitly directed
+      this as an accepted substitute for their own personal click-through, per this project's own
+      "if the user explicitly directs it, performing verification via the local windows MCP server
+      is an accepted substitute" workflow rule (`CLAUDE.md`).
+
+---
+
+### T-F105 — TAR Archive Creation via tar.exe (Compress Dialog + One-Click "Add to X.tar")
+- [x] **Status:** complete (v1.4) — all four phases (Core, App, Shell, on-device verification)
+      done 2026-07-16. **Phase D verification (user-directed via the `windows` MCP server, same
+      precedent as T-F52's graduation):** `Deploy.ps1 -Thumbprint "D2EC5F2C..."` ran clean
+      (hit the known T-F96 MSB3231 race, tolerated per existing logic, installed
+      `PavloRybchenko.Pakko_1.2.0.32_x64__9hkd8feqeqbr4` successfully). Three real checks against
+      the installed, packaged app: (1) the one-click path verified by invoking
+      `Archiver.Shell.exe --archive --format tar "<path>"` directly (the exact command line
+      `TarArchiveCommand::Invoke` builds) — produced a real uncompressed `.tar` with correct
+      content; (2) the Compress dialog's format selector verified through the real GUI via
+      `pakko://archive` activation — all 7 formats present in the dropdown (ZIP/TAR/TAR.GZ/
+      TAR.BZ2/TAR.XZ/TAR.ZST/TAR.LZMA), selected TAR.GZ and created a real archive, confirmed via
+      `tar -tzvf`/extraction that it's genuinely gzip-compressed with correct content; (3)
+      switched the format to plain TAR and confirmed via screenshot that the Compression combobox
+      visibly greys out (`IsCompressionLevelEnabled` correctly wired end-to-end in the shipped
+      build), while it stayed enabled for TAR.GZ and the initial ZIP default. All three checks
+      passed with no fixes needed. Pulled forward from v1.5 2026-07-16 at user's explicit request,
+      overriding T-F36's
+      2026-07-07 deferral decision (see `DECISIONS.md`'s T-F36 correction entry for why it was
+      deferred originally — re-scoped here exactly as that entry recommended: "add a
+      create/compress method to the existing `ITarService`", not a from-scratch
+      `IArchiveEngine`). Full design approved via Plan Mode
+      (`C:\Users\Pa\.claude-work\plans\jazzy-snacking-pony.md`).
+      **Phase A (Core layer) complete 2026-07-16:** `ArchiveContainerFormat` enum (`Zip, Tar,
+      TarGz, TarBz2, TarXz, TarZst, TarLzma`), `ArchiveOptions.Format` field (default `Zip`,
+      no existing caller/test affected), `ArchiveNaming.GetExtension()` (inverse of the existing
+      `GetBaseName`; `ZipArchiveService.ArchiveAsync`'s two hardcoded `".zip"` literals now call
+      it too), `ITarService.CompressAsync` + `TarSandboxedService` implementation (deliberately
+      **unsandboxed** — see Security decision below), `IArchiveCreationRouter`/
+      `ArchiveCreationRouter` (minimal single-branch dispatch, no per-path splitting needed since
+      format is one explicit choice per call — simpler than `IExtractionRouter`), DI wired in
+      `App.xaml.cs`. `dotnet test --filter "Category!=Slow"` green (309/309, +25: 11 new
+      `TarSandboxedServiceCompressTests` integration tests against the real system tar.exe — all
+      6 container formats round-tripped, multi-source-from-different-parents structure
+      preservation, `SeparateArchives` mode, rename-conflict, missing-source error handling, and
+      a real compression-level-has-an-effect check; 7 new `ArchiveNamingTests.GetExtension` theory
+      cases; 7 new `ArchiveCreationRouterTests` dispatch cases). `MainViewModel`/XAML/shell
+      extension are **not yet wired** to this router — Phases B/C below.
+      **Empirical findings from Phase 0 (folded into planning, not a separate committed spike)
+      that changed the original plan:** a bare `-9`-style level flag does **not** work on this
+      tar.exe (bsdtar 3.8.4) — exit 1 — but `--options <filter>:compression-level=N` does, real
+      output-size differences confirmed for all 5 write filters (gzip/bzip2/xz/zstd/lzma);
+      `compression-level=0` is a genuine store/no-compression mode; plain `Tar` is the *only*
+      format where compression level is truly meaningless (`--options` without an active filter
+      fails with `Unknown module name`) — so the UI's compression-level combobox (Phase B) greys
+      out only for plain TAR, not for every non-ZIP format as first assumed. `tar -v` writes its
+      per-entry creation lines to **stderr**, not stdout (confirmed via direct `Process`
+      redirection, not just shell piping) — this is how `CompressAsync`'s file-count progress is
+      derived. See `DECISIONS.md`'s T-F105 entry for the full raw command output.
+- **Depends on:** none (T-F47–T-F52's tar.exe plumbing already exists)
+
+**What:** lets the user create TAR-family archives (plain `.tar`, and `.tar.gz`/`.tar.bz2`/
+`.tar.xz`/`.tar.zst`/`.tar.lzma` via tar.exe's own write filters) in addition to Pakko's existing
+ZIP-only creation. Two surfaces, deliberately different in scope (user-confirmed during scoping —
+see the Plan file's "Обсяг shell-інтеграції" section):
+- **"Compress…" dialog** (existing `Archiver.App` GUI, reached via the shell's
+  `CompressDialogCommand`) gets a full format selector: ZIP + all 6 tar variants.
+- **One new one-click Explorer context-menu command, "Add to X.tar"** — plain/uncompressed
+  `.tar` only, mirroring the existing one-click "Add to X.zip" (`ArchiveCommand`). Deliberately
+  **not** "Add to X.tar.gz" or any compressed variant — one-click commands never prompt the user
+  for anything, so the one-click branch is limited to the one format with no filter/level choice
+  to make; every compressed tar variant (including tar.gz) is reachable only through the dialog,
+  where there's something to choose from.
+
+**Security decision (recorded here per `CLAUDE.md`'s Documentation Map; canonical copy in
+`SECURITY.md`'s new "Why Archive Creation Is NOT Sandboxed" subsection):** unlike T-F52's
+extraction path, `CompressAsync` runs tar.exe **unsandboxed** — no `TarSandboxScope`/
+AppContainer/Job Object. T-F52's threat model is specifically "a hostile *archive* drives
+libarchive into misbehaving while parsing it" — creation has no untrusted-archive input at all,
+just trusted local files the user selected, the same reasoning that has always left
+`ZipArchiveService.ArchiveAsync` unsandboxed. The Authenticode signature check still runs before
+every tar.exe launch regardless of direction.
+
+**Acceptance criteria:**
+- [x] `ArchiveContainerFormat` enum + `ArchiveOptions.Format` field (default `Zip`)
+- [x] `ArchiveNaming.GetExtension(ArchiveContainerFormat)` + `ZipArchiveService` refactored onto it
+- [x] `ITarService.CompressAsync` — unsandboxed, `SingleArchive`/`SeparateArchives` modes, real
+      `-C <parent> <name>`-per-source multi-source structure preservation (empirically verified),
+      `--options <filter>:compression-level=N` mapping from the existing ZIP `CompressionLevel`
+      enum, temp-file-then-atomic-move (no partial files on cancel/failure), `ConflictResolver`
+      reuse, never throws (`ArchiveError` on failure), Authenticode signature check before launch
+- [x] `IArchiveCreationRouter`/`ArchiveCreationRouter` + DI registration
+- [x] New tests: real tar.exe round-trip for all 6 formats, multi-source structure, both modes,
+      conflicts, missing-source handling, compression-level effect — `dotnet test
+      --filter "Category!=Slow"` passes (309/309)
+- [x] **Phase B — App layer, complete 2026-07-16:** "Формат" `ComboBox` added to `MainWindow.xaml`
+      right before the existing Compression combobox (ZIP default + 6 tar variants, `FormatIndex`
+      int property mirroring the existing `CompressionLevelIndex`/`OnConflictIndex` pattern),
+      localized via `x:Uid` across all 37 locale `Resources.resw` files (mechanical script insert —
+      the 7 format names are technical/universal and stay untranslated Latin script in every
+      locale, same as Windows Explorer itself; only the "Format:" label word is translated per
+      locale). Compression-level combobox's `IsEnabled` now binds to a new
+      `IsCompressionLevelEnabled` computed property (`IsNotBusy && !IsPlainTarFormatSelected`) —
+      greys out only when plain TAR is selected, matching the Phase A empirical finding.
+      `MainViewModel`'s constructor now takes `IArchiveCreationRouter` instead of `IArchiveService`
+      (which had exactly one call site, `ArchiveAsync`'s `_archiveService.ArchiveAsync` — now
+      `_archiveCreationRouter.ArchiveAsync`, same `ArchiveOptions`/`IProgress<ProgressReport>`
+      signature, no adapter needed); `ArchiveOptions.Format = SelectedContainerFormat` added to the
+      options object built in `ArchiveAsync`. **Correction on scope:** the "auto-name preview"
+      item from the original plan doesn't apply — verified the actual UI first (per this project's
+      own "verify UI behavior empirically" lesson) and found `ArchiveNameTextBox`'s `PlaceholderText`
+      is a static, non-extension-specific hint ("Auto (based on first file/folder name)"); there is
+      no dynamic filename/extension preview anywhere in `MainWindow.xaml` to wire up. The actual
+      extension used when the name is left blank is still correct per format — that's
+      `ArchiveNaming.GetExtension` inside `TarSandboxedService.CompressAsync`/`ZipArchiveService`
+      (Phase A), unrelated to this (nonexistent) preview control. `dotnet build
+      src/Archiver.App/Archiver.App.csproj /p:Platform=x64` succeeds; `dotnet test
+      --filter "Category!=Slow"` still green (309/309 — no new App-layer tests, `MainViewModel` is
+      not unit-tested per the project's existing "Known test gaps" section, consistent with how
+      every prior ViewModel change in this file was verified)
+- [x] **Phase C — Shell layer, complete 2026-07-16:** new one-click "Add to X.tar" C++ command
+      (`TarArchiveCommand` in `ExplorerCommands.h`/`.cpp`, new CLSID
+      `5F440071-6288-4446-AE25-3F4EDA490DDC` — needs no `Package.appxmanifest` entry, confirmed
+      only the root command's CLSID is registered there and every leaf command is instantiated
+      internally via `Make<T>()` inside `PakkoRootCommand::EnumSubCommands`; inserted right after
+      `ArchiveCommand`/"Add to X.zip" per this project's context-menu-ordering convention, same
+      `AllPathsAreZip`-based `GetState` hiding rule). `BuildAddToArchiveTitle` gained an `ext`
+      parameter defaulting to `L".zip"` (existing call sites/tests untouched); `BuildArchiveArgs`
+      gained a `format` parameter defaulting to `L"zip"` that only emits `--format <value>` for a
+      non-zip format, so the pre-existing zip one-click command line is byte-for-byte unchanged.
+      New `--format zip|tar` CLI switch parsed by `ShellArgumentParser.ParseArchive` (only these
+      two values accepted — the one-click path never prompts the user, so it never needs the
+      dialog's full 6-variant tar selection); `ParsedCommand` gained a `Format` field (default
+      `Zip`). `Archiver.Shell/Program.cs`'s `RunArchiveAsync` now builds an `ArchiveCreationRouter`
+      directly (`new ArchiveCreationRouter(new ZipArchiveService(), new TarSandboxedService())`)
+      instead of calling `new ZipArchiveService().ArchiveAsync()`, and sets
+      `ArchiveOptions.Format` from the parsed command.
+      **Caught and fixed during implementation:** typed a literal ellipsis character (not the
+      safe `…` escape) into `TarArchiveCommand::GetTitle`'s catch-block fallback while
+      writing the new code — the exact mojibake bug class this file already documents having
+      shipped three times (T-F64/T-F76/T-F63). Caught by re-reading the file immediately after
+      the edit (not deploy-time), fixed via a direct byte-level PowerShell replacement (typing
+      `…` through the Edit tool's JSON param decodes it back into the literal character —
+      confirmed this happens even when deliberately trying to fix it that way, consistent with
+      this project's own recorded `\uXXXX`-in-tool-param gotcha) rather than by re-typing it.
+- [x] New tests for Phase C: `ShellArgumentParserTests` gained 7 cases (`--format` absent/zip/tar,
+      multi-file with `--format tar`, unknown format value, `--format` with no value, `--format
+      tar` with no files after) — 43/43 `Archiver.Shell.Tests` pass (was 36).
+      `Archiver.ShellExtension.Tests` (Google Test) gained 9 cases: 4 `BuildArchiveArgs` (default/
+      explicit-zip omit the flag, tar emits it, tar+multiple files) + 5 `BuildAddToArchiveTitle`
+      `.tar`-extension mirrors of the existing `.zip` drive-root/compound-extension/truncation
+      cases — 68/68 pass (was 59). No new `Archiver.App.Core.Tests` needed — Phase B's new
+      `MainViewModel` logic isn't unit-testable per the project's existing "Known test gaps"
+      (WinUI ViewModel, no test host).
+- [x] `SPEC.md`'s roadmap/format table updated (v1.5→v1.4 move, format table clarified
+      read-vs-write per format), `SECURITY.md`'s creation-vs-extraction subsection,
+      `ARCHITECTURE.md`'s `IArchiveCreationRouter`/`ITarService.CompressAsync`/
+      `ArchiveContainerFormat`/Phase B/Phase C documentation. **`DIAGRAMS.md` cascade check
+      (resolved, no new diagram needed):** the new shell/COM surface is a single new leaf
+      `IExplorerCommand` class that mirrors `ArchiveCommand` exactly (same COM lifecycle, same
+      `EnumSubCommands` registration shape) — it adds a list entry to an existing diagram's
+      command set, not a new branch or state machine; `ArchiveCreationRouter`'s own dispatch is a
+      single ternary already fully described in prose in `ARCHITECTURE.md`, far simpler than
+      `ExtractionRouter`'s per-path splitting that justified a diagram. No diagram in `DIAGRAMS.md`
+      documents `PakkoRootCommand::EnumSubCommands`'s command *list* at that level of detail today
+      (it covers COM activation/lifecycle and the extraction/op-lifecycle state machines) — adding
+      one now would be a scope expansion beyond what T-F105 itself needs, not a same-commit
+      requirement under the DoD table's existing triggers.
+- [x] Full `Deploy.ps1` build+sign+install + on-device verification (both surfaces — Compress
+      dialog with every format, and the one-click "Add to X.tar") — per this project's workflow
+      rule, via the `windows` MCP server (user-directed, same as T-F52's graduation)
+
+---
+
+### T-F106 — Bug: Pending-List Rows Blank on Activation; Responsive Window-Size Design
+
+- [ ] **Status:** open — found 2026-07-16 while screenshotting T-F105's Phase D verification (the
+      user noticed the file table was empty in the screenshots and asked why). **Not caused by
+      T-F105** — confirmed via `git diff src/Archiver.App/MainWindow.xaml`, which shows this
+      session's only change there is the new Format `ComboBox` row; the pending-list `ListView`
+      (Row 1) and `FileItem.cs` were untouched. **Scope widened same day, user request:** also
+      covers responsive/minimum-window-size design — currently untested and, per a same-session
+      code check, entirely unconstrained (`MainWindow.xaml.cs` only calls
+      `AppWindow.Resize(1100, 650)` once at startup; no `Window`/`AppWindow` minimum-size is set
+      anywhere, so WinUI 3's own default minimum — a few dozen pixels — is the only floor today).
+
+**What:** launching Pakko via `pakko://archive` protocol activation (`Archiver.Shell.exe
+--open-ui --archive <path(s)>`) shows the correct file *count* ("Буде заархівовано елементів: N")
+but the `ListView` row(s) for the actual file(s) render **completely blank** — no visible Name/
+Type/Size/CRC-32/Modified text at all, even though the underlying data is present and correct.
+
+**Root-caused this far (not yet fixed):**
+- `mcp__windows__ui_find(controlType: 'Text')` on the live window found the row's text elements
+  *do* exist with correct bound values (`"note.txt"`, `"TXT"`, `"15 bytes"`, `"B3AA3209"`,
+  `"2026-07-16 02:03"`) — so the ViewModel/binding pipeline itself is correct. But every one of
+  those elements reports its UI-Automation bounding position as `(0,0)`, i.e. they're realized
+  with effectively zero layout size — a rendering/layout bug, not a data bug.
+- Resizing the window afterward (forcing a relayout) does **not** fix it — ruling out the
+  previously-fixed T-F05 `VirtualizingStackPanel`/CRC-async-race mechanism (that one *did*
+  resolve on a forced relayout; see `DECISIONS.md`'s T-F05 entry). This is a different cause.
+- Reproduces identically with 1 file and with 2 files (neither row renders — unlike the old T-F05
+  bug's shape, where adding a second item made the *first* item's row start rendering).
+- **Leading hypothesis:** `App.xaml.cs::HandleActivation`'s Protocol-activation branch calls
+  `EnsureWindow(...)` (which calls `_window.Activate()`, showing the window) and then, still
+  synchronously on the same call stack, calls
+  `_window!.ViewModel.AddPathsFromProtocolUri(...)` — populating `FileItems` before the
+  `ListView` has had its first `Loaded`/layout pass. The File-activation branch (multi-file,
+  non-Browse case, used by T-F100's double-click-multiple-files path) has the exact same
+  `EnsureWindow(...)` → `AddPaths(...)` shape, so it may share the same bug — **not confirmed**,
+  only the Protocol path was actually reproduced this session.
+- **Not yet determined:** whether the normal "Додати файли" (Add Files, window already open and
+  rendered before the user picks files) path is affected too — attempts to automate the WinRT
+  file picker via the `windows` MCP server did not reliably complete a selection this session, so
+  this remains unconfirmed either way. This is the first thing to check before assuming the bug
+  is activation-only.
+
+**Files likely involved:** `src/Archiver.App/App.xaml.cs` (`HandleActivation`/`EnsureWindow`),
+`src/Archiver.App/MainWindow.xaml` (pending-list `ListView`, Row 1), possibly
+`src/Archiver.App/ViewModels/MainViewModel.cs` (`AddPaths`/`AddPathsFromProtocolUri`).
+
+**Acceptance criteria:**
+- [ ] Confirm whether the "Add Files"/drag-and-drop path (files added after the window is already
+      shown and interactive) reproduces the same blank-row symptom, to scope whether this is
+      activation-timing-specific or a broader `ListView`/`FileItems` binding issue
+- [ ] Confirm whether File-activation's multi-file `AddPaths` branch (T-F100) shares the bug —
+      real double-click-multiple-files repro, not just protocol activation
+- [ ] Root-cause the exact WinUI mechanism (not just the `EnsureWindow`-before-`AddPaths`
+      correlation above) before choosing a fix — per this project's "pre-implementation research"
+      rule, especially given this touches the same cold-start activation code T-F83 already had to
+      fix once
+- [ ] Fix implemented and verified on-device (screenshot showing real file names/sizes rendered,
+      not just the correct count text)
+- [ ] New test coverage if the fix is unit-testable (`Archiver.App.Core.Tests` if the fix moves
+      logic there, otherwise documented as a manual/on-device-only verification like this file's
+      other WinUI-only gaps)
+
+**Responsive window-size design (added 2026-07-16, user request) — separate sub-scope, same
+task:**
+- [ ] On-device resize testing across the real window's full range (not just the fixed 1100×650
+      startup size) — both pending-list mode (Row 0/1/3/5/6/7) and archive-browser mode (T-F05's
+      alternate Row 0/1/3), since they're two different row sets with different content demands;
+      check every row/column for clipping, overlap, or unreachable controls as the window shrinks,
+      including this session's new Format row (Row 5) which made the Archive Options section
+      taller than before T-F105
+- [ ] Determine and set an explicit minimum window size (both width and height) — investigate
+      `AppWindow.Presenter` (`OverlappedPresenter.PreferredMinimumWidth`/`PreferredMinimumHeight`
+      on Windows App SDK) or the equivalent `Window`-level API; today there is no floor beyond
+      WinUI 3's own tiny built-in default, confirmed by code inspection this session
+      (`MainWindow.xaml.cs` has exactly one `AppWindow.Resize` call, no min-size call at all)
+- [ ] Base the chosen minimum on **real** constraints, not a guess — per this project's
+      "pre-implementation research"/"verify UI behavior empirically" conventions: measure the
+      narrowest/shortest size at which every row still reads correctly (destination path textbox,
+      the three-combobox archive-options block, action buttons) rather than picking a round number
+- [ ] Account for the monitors actually available on the dev machine (`screenshot_control`'s
+      `list_monitors` action, or `Get-CimInstance Win32_VideoController`/`Win32_DesktopMonitor`,
+      returns real current resolutions/scaling to test against — don't assume a single fixed DPI)
+- [ ] Cover the worst-case display scenario explicitly: a machine running without a proper GPU
+      driver (Windows' Basic Display Adapter / VGA fallback), which typically caps resolution far
+      below a modern monitor's native mode (historically 800×600 or 1024×768, sometimes locked to
+      96 DPI with no scaling) — verify the chosen minimum window size still fits and stays usable
+      at that floor, not only at the dev machine's actual current resolution/scaling
+- [ ] Document the chosen minimum dimensions and the reasoning (which row/control was the binding
+      constraint) in `XAML.md` or `DECISIONS.md` so a future layout change doesn't silently
+      reintroduce a size that no longer fits the driver-less floor
 
 ---
 

@@ -1,4 +1,4 @@
-﻿#include "pch.h"
+#include "pch.h"
 #include "ExplorerCommands.h"
 
 // ---------------------------------------------------------------------------
@@ -269,6 +269,73 @@ STDMETHODIMP ArchiveCommand::GetFlags(EXPCMDFLAGS* pFlags) noexcept
 }
 
 STDMETHODIMP ArchiveCommand::EnumSubCommands(IEnumExplorerCommand** ppEnum) noexcept
+{
+    if (!ppEnum) return E_POINTER;
+    *ppEnum = nullptr;
+    return E_NOTIMPL;
+}
+
+// ---------------------------------------------------------------------------
+// TarArchiveCommand (T-F105) — "Add to <name>.tar", plain/uncompressed tar only
+// ---------------------------------------------------------------------------
+
+STDMETHODIMP TarArchiveCommand::GetTitle(IShellItemArray* psia, LPWSTR* ppszName) noexcept
+{
+    if (!ppszName) return E_POINTER;
+    try
+    {
+        return SHStrDupW(BuildAddToArchiveTitle(GetPathsFromShellItemArray(psia), L".tar").c_str(), ppszName);
+    }
+    catch (...) { return SHStrDupW(L"Add to archive\u2026", ppszName); }
+}
+
+STDMETHODIMP TarArchiveCommand::GetIcon(IShellItemArray*, LPWSTR* ppszIcon) noexcept
+{
+    if (!ppszIcon) return E_POINTER;
+    *ppszIcon = nullptr;
+    return E_NOTIMPL;
+}
+
+STDMETHODIMP TarArchiveCommand::GetToolTip(IShellItemArray*, LPWSTR* ppszInfotip) noexcept
+{
+    if (!ppszInfotip) return E_POINTER;
+    *ppszInfotip = nullptr;
+    return E_NOTIMPL;
+}
+
+STDMETHODIMP TarArchiveCommand::GetCanonicalName(GUID* pguidCommandName) noexcept
+{
+    if (!pguidCommandName) return E_POINTER;
+    *pguidCommandName = CLSID_TarArchiveCommand;
+    return S_OK;
+}
+
+STDMETHODIMP TarArchiveCommand::GetState(IShellItemArray* psia, BOOL, EXPCMDSTATE* pCmdState) noexcept
+{
+    if (!pCmdState) return E_POINTER;
+    *pCmdState = AllPathsAreZip(GetPathsFromShellItemArray(psia)) ? ECS_HIDDEN : ECS_ENABLED;
+    return S_OK;
+}
+
+STDMETHODIMP TarArchiveCommand::Invoke(IShellItemArray* psia, IBindCtx*) noexcept
+{
+    try
+    {
+        const auto paths = GetPathsFromShellItemArray(psia);
+        if (paths.empty()) return E_INVALIDARG;
+        return LaunchShellExe(BuildArchiveArgs(paths, L"tar"));
+    }
+    catch (...) { return E_FAIL; }
+}
+
+STDMETHODIMP TarArchiveCommand::GetFlags(EXPCMDFLAGS* pFlags) noexcept
+{
+    if (!pFlags) return E_POINTER;
+    *pFlags = ECF_DEFAULT;
+    return S_OK;
+}
+
+STDMETHODIMP TarArchiveCommand::EnumSubCommands(IEnumExplorerCommand** ppEnum) noexcept
 {
     if (!ppEnum) return E_POINTER;
     *ppEnum = nullptr;
@@ -550,16 +617,18 @@ STDMETHODIMP PakkoRootCommand::EnumSubCommands(IEnumExplorerCommand** ppEnum) no
         auto pExtractFolder = Make<ExtractFolderCommand>();
         auto pCompressDialog = Make<CompressDialogCommand>();
         auto pArchive       = Make<ArchiveCommand>();
+        auto pTarArchive    = Make<TarArchiveCommand>();
         auto pTest          = Make<TestCommand>();
-        if (!pExtractDialog || !pExtractHere || !pExtractFolder || !pCompressDialog || !pArchive || !pTest)
+        if (!pExtractDialog || !pExtractHere || !pExtractFolder || !pCompressDialog || !pArchive || !pTarArchive || !pTest)
             return E_OUTOFMEMORY;
 
-        ComPtr<IExplorerCommand> pCmdExtractDialog, pCmdA, pCmdB, pCmdCompressDialog, pCmdC, pCmdTest;
+        ComPtr<IExplorerCommand> pCmdExtractDialog, pCmdA, pCmdB, pCmdCompressDialog, pCmdC, pCmdTarArchive, pCmdTest;
         HRESULT hr = pExtractDialog.As(&pCmdExtractDialog); if (FAILED(hr)) return hr;
         hr = pExtractHere.As(&pCmdA);                       if (FAILED(hr)) return hr;
         hr = pExtractFolder.As(&pCmdB);                      if (FAILED(hr)) return hr;
         hr = pCompressDialog.As(&pCmdCompressDialog);        if (FAILED(hr)) return hr;
         hr = pArchive.As(&pCmdC);                            if (FAILED(hr)) return hr;
+        hr = pTarArchive.As(&pCmdTarArchive);                if (FAILED(hr)) return hr;
         hr = pTest.As(&pCmdTest);                            if (FAILED(hr)) return hr;
 
         // Order mirrors NanaZip's real ContextMenu.cpp: within each group, the dialog-based
@@ -567,13 +636,15 @@ STDMETHODIMP PakkoRootCommand::EnumSubCommands(IEnumExplorerCommand** ppEnum) no
         // kCompress before kCompressToZip). Test archive is a diagnostic/verification action,
         // not a primary one — it goes last, after every Extract/Archive variant (deliberate
         // deviation from NanaZip's own Test-before-Compress grouping, per project direction:
-        // primary actions before Test, always).
+        // primary actions before Test, always). T-F105: "Add to X.tar" sits right after
+        // "Add to X.zip" — both are one-click archive-creation commands, kept adjacent.
         std::vector<ComPtr<IExplorerCommand>> commands;
         commands.push_back(std::move(pCmdExtractDialog));
         commands.push_back(std::move(pCmdA));
         commands.push_back(std::move(pCmdB));
         commands.push_back(std::move(pCmdCompressDialog));
         commands.push_back(std::move(pCmdC));
+        commands.push_back(std::move(pCmdTarArchive));
         commands.push_back(std::move(pCmdTest));
 
         auto pEnum = Make<SubCommandEnum>();

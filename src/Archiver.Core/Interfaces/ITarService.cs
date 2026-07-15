@@ -29,4 +29,19 @@ public interface ITarService
     Task<ArchiveListResult> ListEntriesAsync(
         string archivePath,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Creates a tar-family archive (tar, tar.gz, tar.bz2, tar.xz, tar.zst, tar.lzma) from
+    /// options.SourcePaths via tar.exe. Unlike ExtractAsync, this never runs the sandboxed
+    /// AppContainer path — the input is trusted local files the user selected, not an untrusted
+    /// archive being parsed, so T-F52's threat model (a hostile archive driving libarchive into
+    /// misbehaving) does not apply here. Never throws — errors are captured in
+    /// ArchiveResult.Errors. IProgress&lt;ProgressReport&gt; (not IProgress&lt;int&gt;, unlike
+    /// ExtractAsync above) to match IArchiveService.ArchiveAsync's contract, since callers route
+    /// through the same IArchiveCreationRouter regardless of which service handles the format.
+    /// </summary>
+    Task<ArchiveResult> CompressAsync(
+        ArchiveOptions options,
+        IProgress<ProgressReport>? progress = null,
+        CancellationToken cancellationToken = default);
 }

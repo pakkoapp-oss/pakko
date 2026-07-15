@@ -263,9 +263,17 @@ std::wstring BuildExtractFolderArgs(const std::vector<std::wstring>& paths)
     return args;
 }
 
-std::wstring BuildArchiveArgs(const std::vector<std::wstring>& paths)
+std::wstring BuildArchiveArgs(const std::vector<std::wstring>& paths, const std::wstring& format)
 {
     std::wstring args = L"--archive";
+    // T-F105: "zip" is the pre-existing default and stays flag-less on the command line, so
+    // ShellArgumentParser.ParseArchive's existing zip-when-absent default keeps working
+    // unchanged; only a non-zip format needs to be spelled out explicitly.
+    if (format != L"zip")
+    {
+        args += L" --format ";
+        args += format;
+    }
     for (const auto& p : paths)
     {
         args += L' ';
@@ -307,7 +315,7 @@ std::wstring BuildOpenUiArchiveArgs(const std::vector<std::wstring>& paths)
     return args;
 }
 
-std::wstring BuildAddToArchiveTitle(const std::vector<std::wstring>& paths)
+std::wstring BuildAddToArchiveTitle(const std::vector<std::wstring>& paths, const std::wstring& ext)
 {
     if (paths.empty()) return L"Add to archive\u2026";
 
@@ -322,7 +330,7 @@ std::wstring BuildAddToArchiveTitle(const std::vector<std::wstring>& paths)
     // so name.back() == L':' alone doesn't catch it \u2014 check for a trailing backslash too.
     if (name.empty() || name.back() == L':' || name.back() == L'\\') name = L"archive";
 
-    return L"Add to \"" + TruncateMiddle(name) + L".zip\"";
+    return L"Add to \"" + TruncateMiddle(name) + ext + L"\"";
 }
 
 std::wstring BuildExtractFolderTitle(const std::vector<std::wstring>& paths)

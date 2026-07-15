@@ -2994,3 +2994,181 @@ pipeline end-to-end would require an injectable seam (profile name, ACL target) 
 code has no other use for — not added, to avoid a speculative abstraction for a path these two
 lower-layer tests already cover. 284/284 tests green after the fix (197 Core.Tests + 35
 IntegrationTests + 36 Shell.Tests + 16 App.Core.Tests).
+
+---
+
+## T-F105 — TAR Archive Creation: Version Pull-Forward, Sandbox Decision, Phase 0 Findings
+
+**Context:** T-F36's 2026-07-07 correction (above, "Pluggable Archive Engine Was Two Different
+Tasks") explicitly deferred TAR archive creation to v1.5 and recommended, when it eventually
+happened, scoping it as "add a create/compress method to the existing `ITarService`" rather than
+a from-scratch `IArchiveEngine`. On 2026-07-16 the user explicitly asked to pull this work
+forward into v1.4 and start implementation — overriding that deferral, not contradicting it (the
+re-scoping recommendation was followed exactly).
+
+**Decision 1 — version:** `SPEC.md`'s roadmap moved "TAR creation via tar.exe" from the v1.5 row
+to the v1.4 row (v1.5 now reads "Additional format fixtures" only).
+
+**Decision 2 — sandbox posture for creation, confirmed with user before scoping:** unlike T-F52's
+extraction path, archive *creation* runs tar.exe **unsandboxed**. T-F52's own "Why Sandbox tar.exe
+at All" reasoning identifies the threat as vector 2 specifically — "the legitimate, unmodified
+tar.exe is driven by a hostile *archive* into misbehaving" (an untrusted-input parser problem).
+Creation has no such input: `ArchiveOptions.SourcePaths` are trusted local files the user
+selected via Pakko's own UI, and tar.exe is asked to *write* a new archive, not parse one. This
+mirrors `ZipArchiveService.ArchiveAsync`, which has never been sandboxed for the identical reason.
+Recorded canonically in `SECURITY.md`'s new "Why Archive Creation Is NOT Sandboxed" subsection —
+this entry exists only to record the decision trail, not to duplicate the reasoning.
+
+**Decision 3 — one-click shell scope, clarified after an initial misscope:** the first plan draft
+proposed a new one-click "Add to X.tar.gz" Explorer command. The user corrected this: the
+one-click command is "Add to X.tar" (plain, uncompressed) only — every compressed variant
+(including tar.gz) is reachable solely through the existing "Compress…" dialog's new format
+selector, since one-click commands never prompt the user for anything and therefore can't offer a
+filter/level choice. See the project's own memory note on disambiguating multi-part scoping
+answers (`feedback_disambiguate_multipart_scoping_answers`, agent memory, not part of this repo)
+for the general lesson.
+
+**Phase 0 — empirical findings (throwaway spike, not committed; command outputs below are the
+real evidence, per this project's own T-F49/T-F52 precedent for this kind of pre-implementation
+research):**
+
+1. `-a`/`--auto-compress` correctly infers the filter from the output extension:
+   `tar -a -cf out.tar.gz a.txt` → `tar -tvf out.tar.gz` lists `a.txt` correctly (real gzip, not a
+   renamed plain tar). `--zstd` also confirmed independently creating a valid `.tar.zst`.
+   **Not actually used in the shipped implementation** — `CompressAsync` maps
+   `ArchiveContainerFormat` to an explicit filter flag (`-z`/`-j`/`-J`/`--zstd`/`--lzma`) instead
+   of relying on `-a`'s extension inference, since the explicit-flag + `--options` combination
+   (next finding) was independently confirmed working and removes any risk of `-a`'s inference
+   disagreeing with `ArchiveNaming.GetExtension`'s own output.
+2. **A bare `-9`-style compression-level flag does NOT work**: `tar -z -9 -cf out.tar.gz a.txt`
+   exits 1 with a usage error. **`--options <filter>:compression-level=N` DOES work**, confirmed
+   for all five write filters on this machine's tar.exe (bsdtar 3.8.4):
+   - gzip: `tar -z --options gzip:compression-level=1 -cf out.tar.gz a.txt` → exit 0, real size
+     difference vs. the `-a`-produced default (112 bytes vs 103 bytes on a 7-byte source)
+   - bzip2: `tar -j --options bzip2:compression-level=1|9 -cf out.tar.bz2 a.txt` → exit 0 both
+   - xz: `tar -J --options xz:compression-level=1|9 -cf out.tar.xz a.txt` → exit 0, 148 vs 144
+     bytes (level 1 larger than level 9, as expected)
+   - zstd: `tar --zstd --options zstd:compression-level=1|19 -cf out.tar.zst a.txt` → exit 0,
+     104 vs 87 bytes
+   - lzma: `tar --lzma --options lzma:compression-level=1 -cf out.tar.lzma a.txt` → exit 0
+3. **`compression-level=0` is a genuine store/no-compression mode**, not a no-op: gzip level 0
+   produced 2071 bytes (raw tar bytes + gzip framing, no compression) vs 103 bytes at the
+   `-a`-inferred default — confirmed also for xz (148 bytes) and zstd (104 bytes) at level 0.
+   Existing `System.IO.Compression.CompressionLevel.NoCompression` maps cleanly to
+   `compression-level=0` for every filter — no special-case handling needed.
+4. **Plain, unfiltered `.tar` is the only format where a compression-level concept is genuinely
+   meaningless** — confirmed by a real failure, not assumed: `tar --options gzip:compression-level=9
+   -cf out.tar a.txt` (no `-z`/`-j`/`-J`/`--zstd`/`--lzma` present) fails with
+   `tar.exe: Unknown module name: 'gzip'` (exit 1). This directly overturned the first design
+   draft's assumption that the UI's compression-level control should grey out for "any non-ZIP
+   format" — the user pushed back and asked for empirical verification (see the project's own
+   memory note `feedback_verify_ui_behavior_empirically`) before that assumption shipped into the
+   plan. The correct grey-out condition is "plain TAR selected", nothing broader.
+5. **Multi-source archiving via repeated `-C <parent> <name>` pairs** (one pair per top-level
+   source, sources drawn from different parent directories) correctly preserves relative
+   structure with no absolute-path leakage and no flattening: `tar -a -cf multi.tar.gz -C
+   <src1-parent> one.txt sub -C <src2-parent> three.txt` → `-tvf` lists `one.txt`, `sub/`,
+   `sub/two.txt`, `three.txt` all at the archive root, exactly matching
+   `ZipArchiveService.AddDirectoryToArchiveAsync`/`AddEntryFromFileAsync`'s existing per-top-level-
+   source entry-naming semantics.
+6. **`tar -v` (verbose) writes its per-entry "a &lt;name&gt;" lines to STDERR during creation, not
+   STDOUT** — confirmed via a real `.NET Process` with separately redirected streams (not shell
+   piping, which can misattribute interleaved output). `stdout` was empty; `stderr` contained
+   `a one.txt` / `a sub` / `a sub/two.txt`. This is the mechanism `CompressAsync` uses for
+   file-count-based progress reporting (no byte-accurate progress is available for a
+   subprocess-based creation path, unlike ZIP's in-process `ProgressStream`).
+
+**Files:** `TASKS.md` (new T-F105 entry), `SPEC.md` (roadmap + format table), `SECURITY.md` (new
+creation-vs-extraction subsection), `ARCHITECTURE.md` (new `IArchiveCreationRouter`/
+`ITarService.CompressAsync`/`ArchiveContainerFormat` documentation) — Phase A source changes:
+`ArchiveContainerFormat.cs` (new), `ArchiveOptions.cs`, `ArchiveNaming.cs`, `ITarService.cs`,
+`TarSandboxedService.cs`, `IArchiveCreationRouter.cs`/`ArchiveCreationRouter.cs` (new),
+`ZipArchiveService.cs` (extension-literal refactor), `App.xaml.cs` (DI). Full plan at
+`C:\Users\Pa\.claude-work\plans\jazzy-snacking-pony.md`.
+
+---
+
+**Phase B/C addendum (same session, 2026-07-16):**
+
+**Phase B (App layer) — one correction to the plan, caught before implementing:** the plan's
+"auto-name preview reflects the selected format's extension" acceptance item assumed a dynamic
+filename/extension preview control exists somewhere in `MainWindow.xaml`. It doesn't —
+`ArchiveNameTextBox.PlaceholderText` is a static, non-extension-specific hint ("Auto (based on
+first file/folder name)"). Verified against the real XAML before implementing anything for it
+(per this project's own `feedback_verify_ui_behavior_empirically` memory lesson), found nothing to
+wire, and dropped that specific sub-item rather than inventing a new preview control the plan
+never actually asked for. Everything else in Phase B (format `ComboBox`, `IsCompressionLevelEnabled`
+grey-out, `IArchiveCreationRouter` wiring, 37-locale localization) shipped as planned.
+
+**Phase C (Shell layer) — no manifest registration needed for the new leaf command:** before
+adding `TarArchiveCommand`, checked `Package.appxmanifest` for how existing leaf commands
+(`ArchiveCommand`, `ExtractHereCommand`, etc.) are registered — found only
+`PakkoRootCommand`'s own CLSID (`1EABC7CE-...`) appears anywhere in the manifest's
+`com:SurrogateServer`/`FileExplorerContextMenus` sections. Every leaf command is instantiated
+internally via `Make<T>()` inside `PakkoRootCommand::EnumSubCommands`, never through
+`CoCreateInstance` from the manifest — so a new leaf command needs a fresh CLSID constant in code
+(`CLSID_TarArchiveCommand`, `5F440071-6288-4446-AE25-3F4EDA490DDC`, generated via
+`[guid]::NewGuid()`) but zero manifest changes. Confirms/extends this file's existing "MSIX
+Packaged COM registration" note about `PackagedCom` namespacing — that note was about the root
+command; this is the first time a *second* CLSID was added to this DLL, so it's worth recording
+that leaf CLSIDs specifically don't need their own manifest entry.
+
+**Real mojibake bug caught mid-session (not shipped):** while writing `TarArchiveCommand::GetTitle`'s
+catch-block fallback, typed a literal ellipsis character (…) directly into the C++ string literal
+instead of the `…` escape `ArchiveCommand`'s own catch block already uses — the exact bug
+class `CONVENTIONS.md`/`CLAUDE.md` document as having shipped three times before (T-F64, T-F76,
+T-F63) despite being a known rule. Caught immediately by re-reading the file after the edit, not
+at deploy/runtime. The fix itself hit a second, related gotcha: attempting to fix it by typing
+`…` as replacement text through the `Edit` tool's JSON parameter silently decodes it back
+into the literal character before it ever reaches the file — confirmed empirically (the "fix"
+edit reported success with `old_string`/`new_string` identical, meaning both had already been
+silently decoded to the same glyph). Matches this project's own recorded
+`feedback_uescape_tool_param_corruption` memory. Worked around by building the escape sequence
+from raw character codes in a PowerShell script (`[char]0x5C + "u2026"`) and writing it via
+direct `System.IO.File` byte-level replacement instead of the Edit tool, verified by scanning the
+whole file afterward for any remaining literal `U+2026` code points (found zero) and confirming
+the expected escape-sequence count.
+
+**Files (Phase B/C):** `MainWindow.xaml`, `MainViewModel.cs`, all 37 `Strings/<locale>/Resources.resw`
+(new `FormatLabel`/`Format*Item` keys — mechanical script insert, format names stay untranslated
+Latin script everywhere, only the label word is translated per locale), `ExplorerCommands.h/.cpp`
+(new `TarArchiveCommand`), `ShellExtUtils.h/.cpp` (`BuildAddToArchiveTitle`/`BuildArchiveArgs`
+gained parameters), `ShellArgumentParser.cs` (`--format` switch, `ParsedCommand.Format`),
+`Archiver.Shell/Program.cs` (`RunArchiveAsync` routes through `ArchiveCreationRouter`),
+`ShellArgumentParserTests.cs` (+7), `ShellExtUtilsTests.cpp` (+9). `TASKS.md`/`ARCHITECTURE.md`
+updated same session.
+
+---
+
+**Phase D addendum (same session, 2026-07-16) — on-device verification, user-directed via the
+`windows` MCP server:**
+
+Ran the full `Deploy.ps1 -Thumbprint "D2EC5F2C..."` build+sign+install. It hit T-F96's known
+MSB3231 cleanup race on `dotnet publish` — already tolerated by existing `Deploy.ps1` logic (a
+valid, signed `.msix` existed despite the non-zero exit) — and installed
+`PavloRybchenko.Pakko_1.2.0.32_x64__9hkd8feqeqbr4` successfully.
+
+Three real checks against the installed, packaged app (not just `dotnet test`):
+
+1. **One-click "Add to X.tar":** rather than driving Explorer's right-click menu through UI
+   automation (fragile, per this project's own COM-surrogate caveats), invoked
+   `Archiver.Shell.exe --archive --format tar "<path>"` directly — the exact command line
+   `TarArchiveCommand::Invoke`/`BuildArchiveArgs(paths, L"tar")` builds — matching this project's
+   documented pattern for verifying shell-triggered EXEs (`CLAUDE.md`'s "To verify a
+   shell-triggered EXE actually runs"). Produced a real, uncompressed `.tar` with the source
+   file's exact content, confirmed via `tar -tvf` and extraction.
+2. **Compress dialog format selector:** launched the real GUI via `pakko://archive` protocol
+   activation (`Archiver.Shell.exe --open-ui --archive <path>`), screenshotted the actual running
+   window (not a mock). The Format dropdown showed all 7 items in the expected order (ZIP, TAR,
+   TAR.GZ, TAR.BZ2, TAR.XZ, TAR.ZST, TAR.LZMA). Selected TAR.GZ, clicked Archive, and a real
+   `report.tar.gz` appeared in the destination folder — `tar -tzvf` and extraction confirmed it's
+   genuinely gzip-compressed (not a renamed plain tar) with correct content.
+3. **Compression-level grey-out:** with TAR.GZ selected, the Compression combobox was visibly
+   enabled (bright, showing "Швидко"). Switched Format to plain TAR — the Compression combobox
+   visibly greyed out in the same screenshot comparison, confirming `IsCompressionLevelEnabled`'s
+   `IsNotBusy && !IsPlainTarFormatSelected` logic is wired correctly end-to-end in the shipped
+   build, not just in the ViewModel's unit-independent logic.
+
+All three passed with no fixes needed. A stray `verbose_test3.tar` file was found at the repo
+root (leftover from the Phase 0 empirical spike's `tar.exe` command testing, untracked in git)
+and deleted before deploying — not part of any planned change, just spike debris.

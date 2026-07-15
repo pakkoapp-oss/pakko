@@ -403,9 +403,22 @@
                     IsEnabled="{x:Bind ViewModel.IsArchiveNameAndNotBusy, Mode=OneWay}"/>
             </Grid>
             <StackPanel Orientation="Horizontal" Spacing="8" MinHeight="40">
+                <TextBlock x:Uid="FormatLabel" VerticalAlignment="Center" Style="{StaticResource CaptionTextBlockStyle}"/>
+                <ComboBox MinHeight="32" SelectedIndex="{x:Bind ViewModel.FormatIndex, Mode=TwoWay}"
+                          IsEnabled="{x:Bind ViewModel.IsNotBusy, Mode=OneWay}">
+                    <ComboBoxItem x:Uid="FormatZipItem"/>
+                    <ComboBoxItem x:Uid="FormatTarItem"/>
+                    <ComboBoxItem x:Uid="FormatTarGzItem"/>
+                    <ComboBoxItem x:Uid="FormatTarBz2Item"/>
+                    <ComboBoxItem x:Uid="FormatTarXzItem"/>
+                    <ComboBoxItem x:Uid="FormatTarZstItem"/>
+                    <ComboBoxItem x:Uid="FormatTarLzmaItem"/>
+                </ComboBox>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="8" MinHeight="40">
                 <TextBlock x:Uid="CompressionLabel" VerticalAlignment="Center" Style="{StaticResource CaptionTextBlockStyle}"/>
                 <ComboBox MinHeight="32" SelectedIndex="{x:Bind ViewModel.CompressionLevelIndex, Mode=TwoWay}"
-                          IsEnabled="{x:Bind ViewModel.IsNotBusy, Mode=OneWay}">
+                          IsEnabled="{x:Bind ViewModel.IsCompressionLevelEnabled, Mode=OneWay}">
                     <ComboBoxItem x:Uid="CompressionFastItem"/>
                     <ComboBoxItem x:Uid="CompressionNormalItem"/>
                     <ComboBoxItem x:Uid="CompressionBestItem"/>

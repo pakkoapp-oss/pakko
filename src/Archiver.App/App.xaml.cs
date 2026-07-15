@@ -35,6 +35,7 @@ public partial class App : Application
             sp.GetRequiredService<ITarService>().DetectCapabilitiesAsync().GetAwaiter().GetResult());
         services.AddSingleton<IExtractionRouter, ExtractionRouter>();
         services.AddSingleton<IArchiveListingRouter, ArchiveListingRouter>();
+        services.AddSingleton<IArchiveCreationRouter, ArchiveCreationRouter>();
         services.AddTransient<MainViewModel>();
 
         var provider = services.BuildServiceProvider();

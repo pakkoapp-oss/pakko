@@ -43,10 +43,10 @@ is a teaser only, per `CLAUDE.md`'s Documentation Map).
 
 | Format | Status | Method |
 |--------|--------|--------|
-| ZIP | ✅ v1.0 | `System.IO.Compression.ZipFile` |
-| TAR/GZ/XZ/ZST/BZ2 | 🔜 v1.3 | `tar.exe` (Windows built-in) |
-| RAR | 🔜 v1.3 (read) | `tar.exe` (Windows built-in) |
-| 7z | 🔜 v1.3 (read) | `tar.exe` (Windows built-in) |
+| ZIP | ✅ v1.0 (read+write) | `System.IO.Compression.ZipFile` |
+| TAR/GZ/BZ2/XZ/ZST/LZMA | ✅ v1.3 (read), 🔜 v1.4 (write, T-F105) | `tar.exe` (Windows built-in) |
+| RAR | ✅ v1.3 (read only — no libarchive writer exists) | `tar.exe` (Windows built-in) |
+| 7z | ✅ v1.3 (read only — no libarchive writer exists) | `tar.exe` (Windows built-in) |
 | Encrypted archives | ❌ Out of scope | — |
 | Multi-volume | ❌ Out of scope | — |
 
@@ -210,5 +210,5 @@ ADMX/ADML template provided for enterprise Group Policy deployment.
 | v1.1 | Store release — ZIP only |
 | v1.2 | Shell extension + MOTW + file associations + hash viewer |
 | v1.3 | tar.exe integration — RAR/7z/tar extraction + capability detection |
-| v1.4 | GPO/ADMX + Low IL sandbox (P/Invoke) + strict mode policy + Archive Browser (T-F05) |
-| v1.5 | TAR creation via tar.exe + additional format fixtures |
+| v1.4 | GPO/ADMX + AppContainer sandbox (P/Invoke, T-F52) + strict mode policy + Archive Browser (T-F05) + TAR creation via tar.exe (T-F105, pulled forward from v1.5 2026-07-16) |
+| v1.5 | Additional format fixtures |

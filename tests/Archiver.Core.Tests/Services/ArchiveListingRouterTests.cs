@@ -48,6 +48,9 @@ file sealed class FakeTarService : ITarService
         LastListedPath = archivePath;
         return Task.FromResult(ListResult);
     }
+
+    public Task<ArchiveResult> CompressAsync(ArchiveOptions options, IProgress<ProgressReport>? progress = null, CancellationToken cancellationToken = default)
+        => throw new NotImplementedException();
 }
 
 public sealed class ArchiveListingRouterTests : IDisposable

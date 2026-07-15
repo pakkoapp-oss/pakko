@@ -192,6 +192,30 @@ see `DECISIONS.md`'s T-F52 entry for the full design session:
    and network isolation actually defend against, and why the sandbox is proportionate despite
    `tar.exe` being a trusted OS component.
 
+### Why Archive Creation (T-F105, v1.4) Is NOT Sandboxed
+
+`TarSandboxedService.CompressAsync` deliberately runs `tar.exe` **unsandboxed** — no
+`TarSandboxScope`, no AppContainer, no Job Object — even though it shares a class name and a
+process (`tar.exe`) with the extraction path above. This is not an oversight; it follows directly
+from the "Why Sandbox tar.exe at All" reasoning: vector 2 above (*"the legitimate, unmodified
+tar.exe is driven by a hostile archive into misbehaving"*) requires an attacker-controlled
+**archive** feeding libarchive's parser. Archive creation has no such input — `tar.exe` reads
+`ArchiveOptions.SourcePaths`, files the user themselves selected via Pakko's own UI/shell
+integration, and writes a brand-new archive. There is no untrusted-input parser in this data flow
+for the sandbox to isolate; the threat model this task exists to close simply does not apply in
+the reverse direction.
+
+This is consistent with `ZipArchiveService.ArchiveAsync`, which has never been sandboxed either,
+for the identical reason — ZIP creation via `System.IO.Compression.ZipFile` also only ever reads
+trusted local files. The Authenticode signature check (above) still runs before every `tar.exe`
+launch regardless of direction — cheap, and not specific to the extraction threat model — but
+`CompressAsync` gets no `TarSandboxScope`/quarantine/AppContainer/Job-Object machinery.
+
+If a future task ever wants defense-in-depth on the creation path anyway (e.g. against a
+maliciously-named source file tripping a hypothetical libarchive *writer*-side bug), that would be
+a new, separate decision with its own cost/benefit case — not an extension of T-F52's threat
+model, which is specifically about parsing untrusted archive bytes.
+
 ### Trust Chain
 
 ```

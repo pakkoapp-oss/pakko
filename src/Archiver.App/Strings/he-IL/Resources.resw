@@ -101,6 +101,30 @@
   <data name="ArchiveNameTextBox.PlaceholderText" xml:space="preserve">
     <value>אוטומטי (מבוסס על שם הקובץ/התיקייה הראשונים)</value>
   </data>
+  <data name="FormatLabel.Text" xml:space="preserve">
+    <value>פורמט:</value>
+  </data>
+  <data name="FormatZipItem.Content" xml:space="preserve">
+    <value>ZIP</value>
+  </data>
+  <data name="FormatTarItem.Content" xml:space="preserve">
+    <value>TAR</value>
+  </data>
+  <data name="FormatTarGzItem.Content" xml:space="preserve">
+    <value>TAR.GZ</value>
+  </data>
+  <data name="FormatTarBz2Item.Content" xml:space="preserve">
+    <value>TAR.BZ2</value>
+  </data>
+  <data name="FormatTarXzItem.Content" xml:space="preserve">
+    <value>TAR.XZ</value>
+  </data>
+  <data name="FormatTarZstItem.Content" xml:space="preserve">
+    <value>TAR.ZST</value>
+  </data>
+  <data name="FormatTarLzmaItem.Content" xml:space="preserve">
+    <value>TAR.LZMA</value>
+  </data>
   <data name="CompressionFastItem.Content" xml:space="preserve">
     <value>מהיר</value>
   </data>

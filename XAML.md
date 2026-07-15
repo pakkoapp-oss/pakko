@@ -3,6 +3,13 @@
 > **Historical note:** This file originally contained the bootstrap skeleton for MainWindow.
 > The UI is now fully implemented. This file describes the current actual structure.
 
+> **Staleness note (2026-07-16):** the row diagram below predates T-F05's archive-browser mode
+> (a second Row 1/Row 3 sibling `Grid` pair toggled by `IsBrowsingArchiveVisibility`), T-F06's
+> "Ask" conflict item, the CRC-32 column, and the actual current 8-row `Grid` (this doc still
+> shows 7). Only the Format combobox line below (T-F105 Phase B) was added/verified this session
+> — the rest was not re-verified against `MainWindow.xaml` and should not be trusted as current
+> without checking the real file first, per this project's own "verify docs against files" lesson.
+
 ---
 
 ## Current MainWindow.xaml Structure
@@ -37,7 +44,9 @@ Window
     ├── Row 4: StackPanel — Archive options
     │   ├── RadioButtons: Mode (One archive / Separate archives)
     │   ├── Grid: Name field (TextBox, disabled in SeparateArchives mode)
-    │   └── StackPanel: Compression ComboBox (Fast/Normal/Best/None)
+    │   ├── StackPanel: Format ComboBox (Zip/Tar/TarGz/TarBz2/TarXz/TarZst/TarLzma — T-F105)
+    │   └── StackPanel: Compression ComboBox (Fast/Normal/Best/None; IsEnabled greys out only
+    │           when plain Tar is selected — IsCompressionLevelEnabled, T-F105)
     │
     ├── Row 5: StackPanel — Shared options + checkboxes
     │   ├── StackPanel: "If file exists" ComboBox (Overwrite/Skip/Rename)

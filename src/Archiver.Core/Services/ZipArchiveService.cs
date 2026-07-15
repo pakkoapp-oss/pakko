@@ -39,7 +39,7 @@ public sealed class ZipArchiveService : IArchiveService
                     : "archive"
                 : "archive");
 
-            string destPath = Path.Combine(options.DestinationFolder, archiveName + ".zip");
+            string destPath = Path.Combine(options.DestinationFolder, archiveName + ArchiveNaming.GetExtension(ArchiveContainerFormat.Zip));
 
             Directory.CreateDirectory(options.DestinationFolder);
 
@@ -266,7 +266,7 @@ public sealed class ZipArchiveService : IArchiveService
                     }
 
                     string baseName = Path.GetFileNameWithoutExtension(sourcePath);
-                    string destPath = Path.Combine(options.DestinationFolder, baseName + ".zip");
+                    string destPath = Path.Combine(options.DestinationFolder, baseName + ArchiveNaming.GetExtension(ArchiveContainerFormat.Zip));
                     bool onDiskConflict = File.Exists(destPath);
                     bool sameRunConflict = claimedDestPaths.Contains(destPath);
 

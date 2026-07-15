@@ -111,7 +111,7 @@ existing `ConfirmCompressionBombExtraction` pattern, wired into both Archive-cre
 both Zip/Tar extraction engines via a shared `ConflictResolver` helper; on-device verified
 2026-07-14 for both Archive and Extract directions, all three resolutions plus "apply to all". See
 `DECISIONS.md`'s T-F06 entry.
-**T-F52 (AppContainer Sandbox for tar.exe) is `[~]` partial — Phase 1 implementation (11 of 13
+**T-F52 (AppContainer Sandbox for tar.exe) is `[x]` complete — Phase 1 implementation (11 of 13
 planned steps) complete 2026-07-14.** `TarProcessService.cs` is deleted outright (fail-closed, no
 unsandboxed fallback) and replaced by `TarSandboxedService`, which routes every tar.exe launch
 through a new `Archiver.Core/Services/Sandbox/` subsystem (`AppContainerProfile`, `QuarantineAcl`,
@@ -132,9 +132,14 @@ correction from "same disk as destination" to a fixed `%TEMP%`-rooted path) — 
 several T-F52 entries for the full empirical trail. All 13 planned steps are now done, including a
 full `Deploy.ps1` build+sign+install and AI-driven on-device verification (`.tar.gz` with nested
 subdirectories, `.7z`, and `.rar` all extracted correctly through the installed, packaged
-`Archiver.Shell.exe`). **Stays `[~]` partial, not `[x]` done, only because this was AI-driven
-verification rather than the user's own personal click-through** — the same distinction already
-applied to T-F49's history above. A fourth real bug was found via advisor review right after
+`Archiver.Shell.exe`). **Graduated to `[x]` 2026-07-15, user-directed**, after a second on-device
+pass through the actual packaged GUI app itself (not just `Archiver.Shell.exe`): the `windows`
+MCP UI-automation server drove a real `pakko://extract` launch with three fresh archives
+(a `.tar.gz` built with a nested subdirectory, plus the committed `valid.7z`/`valid.rar`
+fixtures) and a real click on "Розпакувати" — all resulting files confirmed present with correct
+content on disk afterward. The user explicitly directed this MCP-driven pass as an accepted
+substitute for their own personal click-through (see the Workflow Tips section below). A fourth
+real bug was found via advisor review right after
 Step 13 (no existing test exercised it): `ExtractAsync`/`ListEntriesAsync` didn't catch
 `InvalidOperationException`, the type every sandbox-setup call (`AppContainerProfile`,
 `QuarantineAcl`, `SecurityCapabilitiesAttributeList`, `SandboxJobObject`) throws on a Win32
@@ -142,16 +147,62 @@ failure — so a blocked/misconfigured sandbox would have crashed instead of yie
 `ArchiveError`. Fixed with a new `SandboxSetupException` caught at the same boundary as
 `TarSignatureVerificationException`; see `DECISIONS.md`'s T-F52 entry.
 - T-01 through T-35 + T-11, and T-F16/T-F17/T-F18/T-F26–T-F29/T-F37–T-F39/T-F44/T-F45 complete
-- 284/284 .NET tests pass (`dotnet test --filter "Category!=Slow"`: 197 Archiver.Core.Tests +
-  36 Archiver.Shell.Tests + 35 Archiver.Core.IntegrationTests + 16 Archiver.App.Core.Tests — the
-  jump from 254 reflects T-F52's new `Sandbox/` classes, real-Win32-API test coverage, and the
-  `TarSandboxedService` port, and the App.Core project is a plain-net8.0 project added for T-F05's
-  flat-to-tree helper and T-F100's `FileActivationRouter`). 4 Zip64 tests (T-F20) are tagged
+- **T-F105 (TAR archive creation) — `[x]` complete 2026-07-16, all four phases done.** Pulled
+  forward from v1.5 to v1.4 at user's explicit request, overriding T-F36's 2026-07-07 deferral
+  (re-scoped exactly as that deferral recommended: a `CompressAsync` method on the existing
+  `ITarService`, not a new `IArchiveEngine`). **Phase A (Core):** `ArchiveContainerFormat` enum,
+  `ArchiveOptions.Format`, `ITarService.CompressAsync`/`TarSandboxedService` (deliberately
+  **unsandboxed** — creation reads trusted local files, not an untrusted archive; see
+  `SECURITY.md`), `IArchiveCreationRouter`, and `ArchiveNaming.GetExtension()`. **Phase B (App
+  layer):** a "Формат" `ComboBox` in `MainWindow.xaml` (ZIP default + 6 tar variants) localized
+  across all 37 locales (format names stay untranslated Latin script everywhere, matching Windows
+  Explorer's own convention — only the label word is translated); the Compression combobox now
+  greys out only when plain `Tar` is selected (`IsCompressionLevelEnabled`); `MainViewModel` calls
+  `IArchiveCreationRouter` instead of `IArchiveService` directly. **Phase C (Shell layer):** a new
+  one-click "Add to X.tar" `IExplorerCommand` (`TarArchiveCommand`, plain tar only — the full
+  6-variant selector stays dialog-only) registered right after "Add to X.zip"; needs no
+  `Package.appxmanifest` entry (only the root command's CLSID is ever registered there); new
+  `--format zip|tar` CLI switch through `ShellArgumentParser`/`Archiver.Shell/Program.cs`. Caught
+  and fixed a real mojibake bug mid-session (a literal ellipsis typed into a new C++ string
+  literal — the same bug class that's shipped 3 times before) via re-reading the file, not at
+  deploy time. **Phase D (on-device, user-directed via the `windows` MCP server):** full
+  `Deploy.ps1` build+sign+install, then three real checks against the installed packaged app —
+  the one-click path via direct `Archiver.Shell.exe --archive --format tar` invocation (correct
+  `.tar` produced), the Compress dialog's format selector via real `pakko://archive` GUI
+  activation (all 7 formats present, created a real gzip-compressed `.tar.gz`, confirmed via
+  `tar -tzvf`), and the Compression combobox visibly greying out for plain TAR only (screenshot-
+  confirmed) — all three passed with no fixes needed. 316/316 .NET tests pass, 68/68 C++ tests
+  pass (was 309/59 before Phase C). See `TASKS.md`'s T-F105 entry and `DECISIONS.md`'s T-F105
+  entry (Phase 0 empirical findings on tar.exe's real compression-level mechanism, plus the Phase
+  B/C addendum).
+- **T-F106 (new, `[ ]` open) — pending-list `ListView` rows render blank when files are added at
+  window-activation time; also covers responsive/minimum window-size design (scope widened
+  2026-07-16, user request).** Blank-row half: found during T-F105's Phase D screenshots (user
+  noticed the file table was empty, asked why). Confirmed real via `windows` MCP: `ui_find` shows
+  the row's text elements have correct bound data but a `(0,0)` UI-Automation position — a
+  zero-size layout bug, not a data bug. Not fixed by a forced relayout (rules out the
+  previously-fixed T-F05 `VirtualizingStackPanel` race). Leading hypothesis: `App.xaml.cs::
+  HandleActivation`'s Protocol branch calls `EnsureWindow` (shows the window) then synchronously
+  populates `FileItems` before the `ListView`'s first `Loaded`/layout pass — File-activation's
+  multi-file branch (T-F100) has the same shape and may share the bug, unconfirmed. Whether the
+  normal "Add Files" path (window already shown) is affected is also unconfirmed. Not caused by
+  T-F105 (confirmed via `git diff`). Resize half: on-device resize testing across both pending-list
+  and browse-mode row sets, choosing and setting an explicit minimum window width/height (today
+  there is none — confirmed by code inspection, only one fixed-size `AppWindow.Resize` call at
+  startup), accounting for real monitor resolutions and a driver-less Basic-Display-Adapter
+  worst case. See `TASKS.md`'s T-F106 entry for the full acceptance criteria.
+- 316/316 .NET tests pass (`dotnet test --filter "Category!=Slow"`: 211 Archiver.Core.Tests +
+  43 Archiver.Shell.Tests + 46 Archiver.Core.IntegrationTests + 16 Archiver.App.Core.Tests — the
+  jump from 284 to 309 reflects T-F105 Phase A's new `TarSandboxedServiceCompressTests` (real
+  tar.exe round-trips for all 6 creation formats), `ArchiveNamingTests.GetExtension`, and
+  `ArchiveCreationRouterTests`; 309 to 316 reflects Phase C's new `ShellArgumentParser`
+  `--format` switch tests). 4 Zip64 tests (T-F20) are tagged
   `[Trait("Category", "Slow")]` and
   excluded from this default run — they cost real wall-clock time (>65535-file
   archiving/extraction, a >4 GiB round trip) that isn't worth paying on every change; run them
   explicitly with `dotnet test --filter "Category=Slow"` before a release or when touching
-  Zip64-adjacent code. C++ `Archiver.ShellExtension.Tests` (Google Test, 59/59) run separately,
+  Zip64-adjacent code. C++ `Archiver.ShellExtension.Tests` (Google Test, 68/68 — was 59, +9 from
+  T-F105 Phase C's `BuildArchiveArgs`/`BuildAddToArchiveTitle` `.tar` cases) run separately,
   not covered by `dotnet test`
 - MSIX signed with dev cert via Deploy.ps1 (see T-F10 for production-grade cert)
 - Async streaming (CopyToAsync) — CancellationToken respected mid-file
@@ -372,6 +423,10 @@ references are easy to miss otherwise (this session found 5 lingering mentions o
   the literal character — full rule + `\uXXXX` escape pattern is in `CONVENTIONS.md`. Shipped
   three times already (T-F64, T-F76, T-F63) despite being documented — check every new string
   literal before considering a change done.
+  **Fixing an already-corrupted literal is not exempt:** typing the `\uXXXX` escape as Edit-tool
+  replacement text silently re-decodes to the same literal glyph (confirmed T-F105) — the Edit
+  reports `old_string`/`new_string` identical instead of erroring. Build the escape from raw char
+  codes (`[char]0x5C + "u2026"`) and write via `System.IO.File`/byte-level replacement instead.
 - **Shared WinUI `x:Uid` across elements with different property sets is fatal, not a no-op:**
   giving a `Button` (`.Content`) and a `TextBlock` (`.Text`) the same `x:Uid` applies both resource
   keys to both elements regardless of which properties exist — crashes natively (`0xc000027b`) at
@@ -398,6 +453,11 @@ references are easy to miss otherwise (this session found 5 lingering mentions o
   `Remove-AppxPackage`/`Add-AppxPackage` cleanly removes/restores both `PackagedCom` subtrees.
   There is no orphan-registry-key risk to chase for this app's shell extension — it never used
   classic `regsvr32`-style registration to begin with.
+- **A new leaf `IExplorerCommand` class needs zero `Package.appxmanifest` entry.** Only
+  `PakkoRootCommand`'s own CLSID is ever registered there (`com:Class`/`desktopN:Verb`); every
+  leaf command (`ArchiveCommand`, `TarArchiveCommand`, etc.) is instantiated internally via
+  `Make<T>()` inside `PakkoRootCommand::EnumSubCommands` — confirmed T-F105 by grepping the
+  manifest for every existing leaf CLSID and finding none.
 
 ---
 
@@ -484,6 +544,12 @@ MSBuild tests\Archiver.ShellExtension.Tests\Archiver.ShellExtension.Tests.vcxpro
 > (`#Requires -Version 5.1`). The PowerShell tool runs pwsh 7+, which defaults to UTF-8 and
 > will NOT reproduce non-BOM-file ANSI-codepage bugs (see T-F84). To actually verify a fix,
 > invoke `powershell.exe` explicitly rather than relying on the tool's default interpreter.
+>
+> **Writing a new throwaway script with non-ASCII content (translations, Cyrillic, etc.):**
+> the opposite applies — run it via the PowerShell tool's default pwsh 7, NOT `powershell.exe`.
+> `powershell.exe` (5.1) decodes a UTF-8-no-BOM `.ps1` via the system ANSI codepage, corrupting
+> every non-ASCII character before the script even runs (confirmed T-F105, a 37-locale insert
+> script). Only reach for explicit `powershell.exe` when deliberately reproducing a codepage bug.
 >
 > **PowerShell tool's cwd persists across calls:** if a PowerShell call `cd`s/`Set-Location`s
 > into a scratch folder (e.g. while building a test fixture), a later `rm -rf`/`Remove-Item` on

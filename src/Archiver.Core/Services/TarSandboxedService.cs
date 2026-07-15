@@ -470,6 +470,341 @@ public sealed class TarSandboxedService : ITarService
         }
     }
 
+    /// <inheritdoc/>
+    // T-F105: deliberately unsandboxed — SourcePaths are trusted local files the user selected,
+    // not an untrusted archive being parsed, so T-F52's threat model (a hostile archive driving
+    // libarchive into misbehaving) does not apply. See SECURITY.md's tar.exe Trust Model section
+    // for the extraction-vs-creation distinction. Still runs the same Authenticode signature
+    // check as every other tar.exe launch site (SandboxedProcessLauncher.RunAsync,
+    // DetectCapabilitiesAsync above) — cheap, not a substitute for the sandbox, but no launch
+    // site should skip it.
+    public async Task<ArchiveResult> CompressAsync(
+        ArchiveOptions options,
+        IProgress<ProgressReport>? progress = null,
+        CancellationToken cancellationToken = default)
+    {
+        var errors = new List<ArchiveError>();
+        var createdFiles = new List<string>();
+        var skippedFiles = new List<SkippedFile>();
+        var conflictResolver = new ConflictResolver(options.OnConflict, options.ResolveConflictAsync);
+
+        if (!TarSignatureVerifier.Verify(TarExecutablePath))
+        {
+            errors.Add(new ArchiveError
+            {
+                SourcePath = options.DestinationFolder,
+                Message = "tar.exe failed Authenticode signature verification; refusing to run it."
+            });
+            return new ArchiveResult { Success = false, CreatedFiles = createdFiles, Errors = errors, SkippedFiles = skippedFiles };
+        }
+
+        Directory.CreateDirectory(options.DestinationFolder);
+        string extension = ArchiveNaming.GetExtension(options.Format);
+
+        if (options.Mode == ArchiveMode.SingleArchive)
+        {
+            // T-F99: same drive-root/empty-name fallback ZipArchiveService.ArchiveAsync already
+            // uses for a single-source drive-root selection (e.g. "Z:\" via the shell extension's
+            // Drive ItemType) instead of silently naming the archive after the bare extension.
+            string archiveName = options.ArchiveName ?? (options.SourcePaths.Count == 1
+                ? Path.GetFileNameWithoutExtension(options.SourcePaths[0]) is { Length: > 0 } name
+                    ? name
+                    : "archive"
+                : "archive");
+
+            string destPath = Path.Combine(options.DestinationFolder, archiveName + extension);
+
+            if (File.Exists(destPath))
+            {
+                switch (await conflictResolver.ResolveAsync(destPath).ConfigureAwait(false))
+                {
+                    case ConflictBehavior.Skip:
+                        return new ArchiveResult
+                        {
+                            Success = true,
+                            CreatedFiles = [],
+                            Errors = [],
+                            SkippedFiles = [.. options.SourcePaths.Select(p => new SkippedFile
+                            {
+                                Path = p,
+                                Reason = $"Archive '{Path.GetFileName(destPath)}' already exists at the destination and was skipped."
+                            })],
+                        };
+                    case ConflictBehavior.Overwrite:
+                        File.Delete(destPath);
+                        break;
+                    case ConflictBehavior.Rename:
+                        destPath = GetUniqueFilePath(destPath);
+                        break;
+                }
+            }
+
+            await CompressToArchiveAsync(options, destPath, createdFiles, errors, skippedFiles, progress, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        else // ArchiveMode.SeparateArchives — one archive per top-level source path
+        {
+            var sortedSourcePaths = options.SourcePaths.OrderBy(p => p, StringComparer.OrdinalIgnoreCase).ToList();
+
+            foreach (string sourcePath in sortedSourcePaths)
+            {
+                if (cancellationToken.IsCancellationRequested)
+                    break;
+
+                if (!File.Exists(sourcePath) && !Directory.Exists(sourcePath))
+                {
+                    errors.Add(new ArchiveError { SourcePath = sourcePath, Message = $"Source path does not exist: {sourcePath}" });
+                    continue;
+                }
+
+                string baseName = Path.GetFileNameWithoutExtension(sourcePath);
+                string destPath = Path.Combine(options.DestinationFolder, baseName + extension);
+
+                if (File.Exists(destPath))
+                {
+                    switch (await conflictResolver.ResolveAsync(destPath).ConfigureAwait(false))
+                    {
+                        case ConflictBehavior.Skip:
+                            skippedFiles.Add(new SkippedFile
+                            {
+                                Path = sourcePath,
+                                Reason = $"Archive '{Path.GetFileName(destPath)}' already exists at the destination and was skipped."
+                            });
+                            continue;
+                        case ConflictBehavior.Overwrite:
+                            File.Delete(destPath);
+                            break;
+                        case ConflictBehavior.Rename:
+                            destPath = GetUniqueFilePath(destPath);
+                            break;
+                    }
+                }
+
+                var singleOptions = options with { SourcePaths = [sourcePath] };
+                await CompressToArchiveAsync(singleOptions, destPath, createdFiles, errors, skippedFiles, progress, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+        }
+
+        var result = new ArchiveResult
+        {
+            Success = errors.Count == 0,
+            CreatedFiles = createdFiles,
+            Errors = errors,
+            SkippedFiles = skippedFiles,
+        };
+
+        if (result.Success && options.OpenDestinationFolder)
+        {
+            try { Process.Start(new ProcessStartInfo("explorer.exe", options.DestinationFolder) { UseShellExecute = true }); } catch { }
+        }
+
+        return result;
+    }
+
+    // Runs one tar.exe -cf invocation writing to a ".tmp" path, then atomically moves it to
+    // destPath only if at least one entry was actually written — mirrors ZipArchiveService's
+    // temp-then-commit pattern (no partial files on cancel or failure, CLAUDE.md hard
+    // constraint). Reparse-point sources are skipped (T-F23 precedent); missing sources are
+    // reported as ArchiveError, matching ZipArchiveService.ArchiveAsync's per-item handling.
+    private static async Task CompressToArchiveAsync(
+        ArchiveOptions options,
+        string destPath,
+        List<string> createdFiles,
+        List<ArchiveError> errors,
+        List<SkippedFile> skippedFiles,
+        IProgress<ProgressReport>? progress,
+        CancellationToken cancellationToken)
+    {
+        string tempPath = destPath + ".tmp";
+
+        var sortedSourcePaths = options.SourcePaths.OrderBy(p => p, StringComparer.OrdinalIgnoreCase).ToList();
+        var tarArgs = new List<string>();
+        AppendCompressionFilterArgs(tarArgs, options.Format, options.CompressionLevel);
+        tarArgs.Add("-v");
+        tarArgs.Add("-cf");
+        tarArgs.Add(tempPath);
+
+        int entryCount = 0;
+
+        foreach (string sourcePath in sortedSourcePaths)
+        {
+            if (ArchiveEntrySecurity.IsReparsePoint(sourcePath))
+            {
+                skippedFiles.Add(new SkippedFile
+                {
+                    Path = sourcePath,
+                    Reason = "Symbolic links and NTFS junctions are not archived."
+                });
+                continue;
+            }
+
+            if (!File.Exists(sourcePath) && !Directory.Exists(sourcePath))
+            {
+                errors.Add(new ArchiveError { SourcePath = sourcePath, Message = $"Source path does not exist: {sourcePath}" });
+                continue;
+            }
+
+            string fullSource = Path.GetFullPath(sourcePath);
+            string? parent = Path.GetDirectoryName(fullSource);
+            string name = Path.GetFileName(fullSource);
+
+            if (string.IsNullOrEmpty(name))
+            {
+                // Drive-root source (e.g. "Z:\") — GetFileName returns "" and GetDirectoryName
+                // returns null. tar.exe strips the drive letter from a rooted absolute-path
+                // argument on its own (see IsDangerousEntryName's comment above) — pass it
+                // through directly rather than via -C. Same edge case T-F99 already handles for
+                // ZipArchiveService; needs its own on-device confirmation in Phase C/D.
+                tarArgs.Add(fullSource);
+            }
+            else
+            {
+                tarArgs.Add("-C");
+                tarArgs.Add(parent!);
+                tarArgs.Add(name);
+            }
+
+            entryCount++;
+        }
+
+        if (entryCount == 0)
+            return;
+
+        int reportedFiles = 0;
+        void OnVerboseLine(string _)
+        {
+            reportedFiles++;
+            progress?.Report(new ProgressReport { Percent = Math.Min(99, reportedFiles * 100 / Math.Max(entryCount, 1)), BytesTransferred = 0, TotalBytes = 0 });
+        }
+
+        try
+        {
+            var (exitCode, _, stdErr) = await RunUnsandboxedTarAsync(tarArgs, OnVerboseLine, cancellationToken).ConfigureAwait(false);
+
+            if (exitCode != 0 || !File.Exists(tempPath))
+            {
+                try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { }
+                errors.Add(new ArchiveError { SourcePath = destPath, Message = $"tar.exe failed to create archive: {stdErr.Trim()}" });
+                return;
+            }
+
+            File.Move(tempPath, destPath, overwrite: true);
+            createdFiles.Add(destPath);
+            progress?.Report(new ProgressReport { Percent = 100, BytesTransferred = 0, TotalBytes = 0 });
+        }
+        catch (OperationCanceledException)
+        {
+            try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { }
+            throw;
+        }
+        catch (IOException ex)
+        {
+            try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { }
+            errors.Add(new ArchiveError { SourcePath = destPath, Message = $"Cannot create archive: {ex.Message}", Exception = ex });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { }
+            errors.Add(new ArchiveError { SourcePath = destPath, Message = $"Access denied creating archive: {ex.Message}", Exception = ex });
+        }
+    }
+
+    // Maps the selected container format + the existing ZIP CompressionLevel enum (reused as the
+    // UI-facing knob rather than inventing a second one) to tar.exe's real
+    // "--options <filter>:compression-level=N" mechanism — confirmed empirically during T-F105
+    // planning that a bare "-9"-style flag does NOT work (exit 1), but --options does, for all
+    // five write filters (gzip/bzip2/xz/zstd/lzma), and that "compression-level=0" is a real
+    // store/no-compression mode (see DECISIONS.md's T-F105 entry for the raw command output).
+    // Plain Tar gets no filter flag and no --options at all — passing --options without an
+    // active filter fails with "Unknown module name", confirmed empirically the same round.
+    private static void AppendCompressionFilterArgs(List<string> tarArgs, ArchiveContainerFormat format, System.IO.Compression.CompressionLevel level)
+    {
+        (string? filterFlag, string? moduleName, int max) = format switch
+        {
+            ArchiveContainerFormat.Tar => ((string?)null, (string?)null, 0),
+            ArchiveContainerFormat.TarGz => ("-z", "gzip", 9),
+            ArchiveContainerFormat.TarBz2 => ("-j", "bzip2", 9),
+            ArchiveContainerFormat.TarXz => ("-J", "xz", 9),
+            ArchiveContainerFormat.TarZst => ("--zstd", "zstd", 19),
+            ArchiveContainerFormat.TarLzma => ("--lzma", "lzma", 9),
+            _ => throw new ArgumentOutOfRangeException(nameof(format), format, null),
+        };
+
+        if (filterFlag is null)
+            return;
+
+        tarArgs.Add(filterFlag);
+
+        int numericLevel = level switch
+        {
+            System.IO.Compression.CompressionLevel.NoCompression => 0,
+            System.IO.Compression.CompressionLevel.Fastest => 1,
+            System.IO.Compression.CompressionLevel.SmallestSize => max,
+            _ => Math.Max(1, max / 2), // Optimal (and any future enum value) — libarchive's own
+                                        // conventional mid-range default (gzip's default is 6 of 9)
+        };
+
+        tarArgs.Add("--options");
+        tarArgs.Add($"{moduleName}:compression-level={numericLevel}");
+    }
+
+    // Unsandboxed tar.exe launch for archive CREATION only (see CompressAsync's own comment for
+    // why this is safe to run outside the AppContainer). Mirrors TarSandboxScope.RunAsync's
+    // (exitCode, stdOut, stdErr) shape for consistency, but has no quarantine/ACL/Job-Object
+    // setup — just a plain redirected-IO process launch, the same shape
+    // DetectCapabilitiesAsync above already uses for its own deliberately-unsandboxed probe.
+    // onStdErrLine is invoked once per non-empty stderr line as it streams in — tar.exe's "-v"
+    // writes each added entry's "a <name>" line to STDERR during creation (confirmed
+    // empirically; NOT stdout), so this is how per-entry progress is derived.
+    private static async Task<(int ExitCode, string StdOut, string StdErr)> RunUnsandboxedTarAsync(
+        IReadOnlyList<string> arguments,
+        Action<string>? onStdErrLine,
+        CancellationToken cancellationToken)
+    {
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = TarExecutablePath,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+        };
+        foreach (string arg in arguments)
+            startInfo.ArgumentList.Add(arg);
+
+        using Process process = new() { StartInfo = startInfo };
+
+        var stdOutBuilder = new System.Text.StringBuilder();
+        var stdErrBuilder = new System.Text.StringBuilder();
+
+        process.OutputDataReceived += (_, e) => { if (e.Data is not null) stdOutBuilder.AppendLine(e.Data); };
+        process.ErrorDataReceived += (_, e) =>
+        {
+            if (e.Data is null)
+                return;
+            stdErrBuilder.AppendLine(e.Data);
+            if (e.Data.Length > 0)
+                onStdErrLine?.Invoke(e.Data);
+        };
+
+        process.Start();
+        process.BeginOutputReadLine();
+        process.BeginErrorReadLine();
+
+        try
+        {
+            await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            try { process.Kill(entireProcessTree: true); } catch { }
+            throw;
+        }
+
+        return (process.ExitCode, stdOutBuilder.ToString(), stdErrBuilder.ToString());
+    }
+
     // Column 4 (0-based) of "tar -tvf" output: mode, link-count, owner, group, size, month, day,
     // time, name. Locale-independent (plain ASCII decimal), unlike the date columns — see
     // DECISIONS.md's T-F90 entry.

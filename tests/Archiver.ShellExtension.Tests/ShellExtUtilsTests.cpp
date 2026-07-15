@@ -207,6 +207,32 @@ TEST(BuildArchiveArgs, DriveRootTrailingBackslashIsEscaped)
     EXPECT_EQ(args, L"--archive \"Z:\\\\\"");
 }
 
+// T-F105: default format ("zip", or the arg omitted entirely) stays flag-less on the command
+// line — this is what keeps every BuildArchiveArgs test above unchanged after adding the param.
+TEST(BuildArchiveArgs, DefaultFormatOmitsFormatFlag)
+{
+    const auto args = BuildArchiveArgs({ L"C:\\document.docx" });
+    EXPECT_EQ(args, L"--archive \"C:\\document.docx\"");
+}
+
+TEST(BuildArchiveArgs, ExplicitZipFormatOmitsFormatFlag)
+{
+    const auto args = BuildArchiveArgs({ L"C:\\document.docx" }, L"zip");
+    EXPECT_EQ(args, L"--archive \"C:\\document.docx\"");
+}
+
+TEST(BuildArchiveArgs, TarFormatEmitsFormatFlag)
+{
+    const auto args = BuildArchiveArgs({ L"C:\\document.docx" }, L"tar");
+    EXPECT_EQ(args, L"--archive --format tar \"C:\\document.docx\"");
+}
+
+TEST(BuildArchiveArgs, TarFormatMultipleFiles)
+{
+    const auto args = BuildArchiveArgs({ L"C:\\file1.txt", L"C:\\file2.txt" }, L"tar");
+    EXPECT_EQ(args, L"--archive --format tar \"C:\\file1.txt\" \"C:\\file2.txt\"");
+}
+
 // ---------------------------------------------------------------------------
 // BuildTestArgs
 // ---------------------------------------------------------------------------
@@ -320,6 +346,39 @@ TEST(BuildAddToArchiveTitle, NameOverLimitIsTruncatedInTheMiddle)
     const auto title = BuildAddToArchiveTitle(
         { L"C:\\My Very Long Project Folder Name With Lots Of Words 2026 Final Report.txt" });
     EXPECT_EQ(title, L"Add to \"My Very Long Project F\u202626 Final Report.zip\"");
+}
+
+// T-F105: TarArchiveCommand::GetTitle passes L".tar" explicitly \u2014 mirrors the default-.zip
+// cases above for the extension-parameterized paths (drive-root fallback, compound-extension
+// stripping, truncation), since those all run through the same shared code before the extension
+// is appended at the very end.
+TEST(BuildAddToArchiveTitle, TarExtensionSingleFileUsesNameWithoutExtension)
+{
+    EXPECT_EQ(BuildAddToArchiveTitle({ L"C:\\Docs\\report.docx" }, L".tar"), L"Add to \"report.tar\"");
+}
+
+TEST(BuildAddToArchiveTitle, TarExtensionCompoundTarExtensionStripsBothComponents)
+{
+    EXPECT_EQ(BuildAddToArchiveTitle({ L"C:\\Docs\\backup.tar.gz" }, L".tar"), L"Add to \"backup.tar\"");
+}
+
+TEST(BuildAddToArchiveTitle, TarExtensionMultipleFilesAtDriveRootFallsBackToArchive)
+{
+    const auto title = BuildAddToArchiveTitle({ L"C:\\first.txt", L"C:\\second.txt" }, L".tar");
+    EXPECT_EQ(title, L"Add to \"archive.tar\"");
+}
+
+TEST(BuildAddToArchiveTitle, TarExtensionSingleDriveRootFallsBackToArchive)
+{
+    const auto title = BuildAddToArchiveTitle({ L"Z:\\" }, L".tar");
+    EXPECT_EQ(title, L"Add to \"archive.tar\"");
+}
+
+TEST(BuildAddToArchiveTitle, TarExtensionNameOverLimitIsTruncatedInTheMiddle)
+{
+    const auto title = BuildAddToArchiveTitle(
+        { L"C:\\My Very Long Project Folder Name With Lots Of Words 2026 Final Report.txt" }, L".tar");
+    EXPECT_EQ(title, L"Add to \"My Very Long Project F\u202626 Final Report.tar\"");
 }
 
 // ---------------------------------------------------------------------------

@@ -36,7 +36,7 @@ switch (command.Type)
         break;
 
     case CommandType.Archive:
-        await RunArchiveAsync(command.Files).ConfigureAwait(false);
+        await RunArchiveAsync(command.Files, command.Format).ConfigureAwait(false);
         break;
 
     case CommandType.Test:
@@ -135,7 +135,7 @@ static async Task<IExtractionRouter> BuildExtractionRouterAsync()
 // after their common containing folder instead of an arbitrary selected item
 // (matches NanaZip's convention).
 // -------------------------------------------------------------------------
-static async Task RunArchiveAsync(IReadOnlyList<string> sourcePaths)
+static async Task RunArchiveAsync(IReadOnlyList<string> sourcePaths, ArchiveContainerFormat format)
 {
     var firstPath = sourcePaths[0];
     // T-F99: Path.GetDirectoryName returns null when firstPath is itself a root (e.g. "Z:\",
@@ -167,7 +167,7 @@ static async Task RunArchiveAsync(IReadOnlyList<string> sourcePaths)
             archiveName = "archive";
     }
 
-    var service = new ZipArchiveService();
+    var router = new ArchiveCreationRouter(new ZipArchiveService(), new TarSandboxedService());
     var options = new ArchiveOptions
     {
         SourcePaths = sourcePaths,
@@ -175,11 +175,12 @@ static async Task RunArchiveAsync(IReadOnlyList<string> sourcePaths)
         ArchiveName = archiveName,
         Mode = ArchiveMode.SingleArchive,
         OnConflict = ConflictBehavior.Rename,
+        Format = format,
     };
 
     string title = $"Archiving: {archiveName}";
     await RunWithProgressWindowAsync(title,
-        (progress, ct) => service.ArchiveAsync(options, progress, ct))
+        (progress, ct) => router.ArchiveAsync(options, progress, ct))
         .ConfigureAwait(false);
 }
 

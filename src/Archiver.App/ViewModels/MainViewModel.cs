@@ -23,7 +23,7 @@ public sealed partial class MainViewModel : ObservableObject
 {
     private static readonly ResourceLoader _res = ResourceLoader.GetForViewIndependentUse();
 
-    private readonly IArchiveService _archiveService;
+    private readonly IArchiveCreationRouter _archiveCreationRouter;
     private readonly IExtractionRouter _extractionRouter;
     private readonly IArchiveListingRouter _archiveListingRouter;
     private readonly IDialogService _dialogService;
@@ -56,6 +56,7 @@ public sealed partial class MainViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(ExtractButtonText))]
     [NotifyPropertyChangedFor(nameof(IsNotBusy))]
     [NotifyPropertyChangedFor(nameof(IsArchiveNameAndNotBusy))]
+    [NotifyPropertyChangedFor(nameof(IsCompressionLevelEnabled))]
     [NotifyCanExecuteChangedFor(nameof(NavigateDestinationUpCommand))]
     private bool _isBusy = false;
 
@@ -208,6 +209,46 @@ public sealed partial class MainViewModel : ObservableObject
         };
     }
 
+    // T-F105: the container/compression format to create the archive as. Plain Tar is the one
+    // format where tar.exe's compression-level flag is genuinely inapplicable (`--options
+    // gzip:compression-level=N` fails with "Unknown module name" when no filter is active —
+    // confirmed empirically, see DECISIONS.md's T-F105 entry) — every other format, including
+    // ZIP and all 5 compressed tar variants, keeps the compression-level control live.
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(FormatIndex))]
+    [NotifyPropertyChangedFor(nameof(IsCompressionLevelEnabled))]
+    private ArchiveContainerFormat _selectedContainerFormat = ArchiveContainerFormat.Zip;
+
+    public int FormatIndex
+    {
+        get => SelectedContainerFormat switch
+        {
+            ArchiveContainerFormat.Zip     => 0,
+            ArchiveContainerFormat.Tar     => 1,
+            ArchiveContainerFormat.TarGz   => 2,
+            ArchiveContainerFormat.TarBz2  => 3,
+            ArchiveContainerFormat.TarXz   => 4,
+            ArchiveContainerFormat.TarZst  => 5,
+            ArchiveContainerFormat.TarLzma => 6,
+            _                              => 0
+        };
+        set => SelectedContainerFormat = value switch
+        {
+            0 => ArchiveContainerFormat.Zip,
+            1 => ArchiveContainerFormat.Tar,
+            2 => ArchiveContainerFormat.TarGz,
+            3 => ArchiveContainerFormat.TarBz2,
+            4 => ArchiveContainerFormat.TarXz,
+            5 => ArchiveContainerFormat.TarZst,
+            6 => ArchiveContainerFormat.TarLzma,
+            _ => ArchiveContainerFormat.Zip
+        };
+    }
+
+    public bool IsPlainTarFormatSelected => SelectedContainerFormat == ArchiveContainerFormat.Tar;
+
+    public bool IsCompressionLevelEnabled => IsNotBusy && !IsPlainTarFormatSelected;
+
     [ObservableProperty]
     private bool _openDestinationFolder = false;
 
@@ -255,13 +296,13 @@ public sealed partial class MainViewModel : ObservableObject
     private bool _sortAscending = true;
 
     public MainViewModel(
-        IArchiveService archiveService,
+        IArchiveCreationRouter archiveCreationRouter,
         IExtractionRouter extractionRouter,
         IArchiveListingRouter archiveListingRouter,
         IDialogService dialogService,
         ILogService logService)
     {
-        _archiveService = archiveService;
+        _archiveCreationRouter = archiveCreationRouter;
         _extractionRouter = extractionRouter;
         _archiveListingRouter = archiveListingRouter;
         _dialogService = dialogService;
@@ -368,6 +409,7 @@ public sealed partial class MainViewModel : ObservableObject
                 OpenDestinationFolder = OpenDestinationFolder,
                 DeleteSourceFiles = DeleteAfterOperation,
                 CompressionLevel = SelectedCompressionLevel,
+                Format = SelectedContainerFormat,
                 ResolveConflictAsync = _dialogService.ShowConflictDialogAsync,
             };
 
@@ -423,7 +465,7 @@ public sealed partial class MainViewModel : ObservableObject
                 }
             });
 
-            var result = await _archiveService.ArchiveAsync(options, progress, _cts.Token);
+            var result = await _archiveCreationRouter.ArchiveAsync(options, progress, _cts.Token);
             if (result.Success && DeleteAfterOperation)
                 await RunCleanupAsync(GetDeletableSources(options.SourcePaths, result));
             _operationStopwatch?.Stop();

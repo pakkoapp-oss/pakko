@@ -113,6 +113,11 @@ public sealed record ArchiveOptions
     public bool OpenDestinationFolder { get; init; } = false;
     public bool DeleteSourceFiles { get; init; } = false;
     public CompressionLevel CompressionLevel { get; init; } = CompressionLevel.Optimal;
+    // T-F105 (v1.4): which container format to CREATE. Default Zip preserves all pre-T-F105
+    // callers/tests unchanged. Deliberately separate from the detection-only ArchiveFormat enum
+    // (Models/ArchiveFormat.cs) used by extraction routing — that one includes read-only formats
+    // (Rar, SevenZip) that can never be a creation target.
+    public ArchiveContainerFormat Format { get; init; } = ArchiveContainerFormat.Zip;
 
     // T-F06: invoked once per conflicting destination path when OnConflict == Ask. Null (e.g.
     // Archiver.Shell, or a test that doesn't wire it) falls back to Skip — see ConflictResolver.
@@ -120,6 +125,9 @@ public sealed record ArchiveOptions
 }
 
 public enum ArchiveMode { SingleArchive, SeparateArchives }
+
+// Models/ArchiveContainerFormat.cs
+public enum ArchiveContainerFormat { Zip, Tar, TarGz, TarBz2, TarXz, TarZst, TarLzma }
 
 public enum ConflictBehavior { Overwrite, Skip, Rename, Ask }
 // T-23 (v1.0): Ask was cut from scope, default Skip. T-F06 (2026-07-14) reintroduced it as a
@@ -417,6 +425,15 @@ public interface ITarService
     Task<ArchiveListResult> ListEntriesAsync(
         string archivePath,
         CancellationToken cancellationToken = default);
+
+    // T-F105 (v1.4): archive CREATION, not extraction — deliberately unsandboxed (trusted local
+    // input, not an untrusted archive; see SECURITY.md's tar.exe Trust Model). IProgress<
+    // ProgressReport>, not IProgress<int> like ExtractAsync above, to match
+    // IArchiveService.ArchiveAsync's contract for IArchiveCreationRouter below.
+    Task<ArchiveResult> CompressAsync(
+        ArchiveOptions options,
+        IProgress<ProgressReport>? progress = null,
+        CancellationToken cancellationToken = default);
 }
 ```
 
@@ -447,6 +464,7 @@ services.AddSingleton<TarCapabilities>(sp =>
     sp.GetRequiredService<ITarService>().DetectCapabilitiesAsync().GetAwaiter().GetResult());
 services.AddSingleton<IExtractionRouter, ExtractionRouter>();
 services.AddSingleton<IArchiveListingRouter, ArchiveListingRouter>(); // T-F05
+services.AddSingleton<IArchiveCreationRouter, ArchiveCreationRouter>(); // T-F105
 ```
 
 ### v1.3 — IExtractionRouter (T-F85)
@@ -689,6 +707,99 @@ codebase) and a `ListView` (`SelectionMode="Multiple"`, explicit
 `VirtualizingStackPanel VirtualizationMode="Recycling"` via `ItemsPanelTemplate`) bound to
 `ArchiveEntryViewModel`. Double-clicking a recognized archive in the existing pending-selection
 list (gated by `ArchiveFormatDetector.Detect`, not `FileItem.Type`) calls `EnterBrowseModeAsync`.
+
+### v1.4 — IArchiveCreationRouter (T-F105, TAR Archive Creation)
+
+Archive **creation** gains the same one-interface-per-operation dispatch pattern
+`IExtractionRouter`/`IArchiveListingRouter` already established — but simpler, since the format
+is a single explicit `ArchiveOptions.Format` choice for the whole call, not something detected
+per-path from file content:
+
+```csharp
+// Interfaces/IArchiveCreationRouter.cs
+public interface IArchiveCreationRouter
+{
+    Task<ArchiveResult> ArchiveAsync(
+        ArchiveOptions options,
+        IProgress<ProgressReport>? progress = null,
+        CancellationToken cancellationToken = default);
+}
+```
+
+Implementation: `ArchiveCreationRouter` in `Archiver.Core/Services/` — a single branch, no
+per-path splitting/merging like `ExtractionRouter`:
+
+```csharp
+public sealed class ArchiveCreationRouter(IArchiveService archiveService, ITarService tarService)
+    : IArchiveCreationRouter
+{
+    public Task<ArchiveResult> ArchiveAsync(ArchiveOptions options, IProgress<ProgressReport>? progress = null, CancellationToken cancellationToken = default) =>
+        options.Format == ArchiveContainerFormat.Zip
+            ? archiveService.ArchiveAsync(options, progress, cancellationToken)
+            : tarService.CompressAsync(options, progress, cancellationToken);
+}
+```
+
+`TarSandboxedService.CompressAsync` runs `tar.exe` **unsandboxed** — no `TarSandboxScope`/
+AppContainer/Job Object — since creation reads trusted local files, not an untrusted archive; see
+`SECURITY.md`'s "Why Archive Creation Is NOT Sandboxed" for the full reasoning. It builds one
+`tar.exe -cf` invocation per output archive (`ArchiveMode.SingleArchive` = one invocation for all
+sources via a repeated `-C <parent> <name>` pair per source, confirmed to preserve relative
+structure correctly; `ArchiveMode.SeparateArchives` = one invocation per source), using the
+temp-file-then-atomic-move pattern `ZipArchiveService.ArchiveAsync` already uses (no partial files
+on cancel/failure). Compression level (the existing ZIP `System.IO.Compression.CompressionLevel`
+enum, reused rather than adding a second one) maps to tar.exe's real
+`--options <filter>:compression-level=N` mechanism — confirmed empirically that a bare `-9`-style
+flag does not work, but `--options` does, for all five write filters (gzip/bzip2/xz/zstd/lzma);
+plain `Tar` gets no filter flag and no `--options` at all (passing `--options` without an active
+filter fails outright — confirmed). Progress is file-count-based (parsed from `-v`'s per-entry
+`stderr` lines — confirmed empirically that verbose creation output goes to stderr, not stdout),
+not byte-accurate like ZIP's `ProgressStream` — an accepted v1 trade-off, same precedent as the
+tar-family listing path being coarser than ZIP's.
+
+`ArchiveNaming` (`Archiver.Core/Services/ArchiveNaming.cs`) gains the inverse of its existing
+`GetBaseName` — `GetExtension(ArchiveContainerFormat)` maps the enum to `.zip`/`.tar`/`.tar.gz`/
+etc.; `ZipArchiveService.ArchiveAsync`'s two previously-hardcoded `".zip"` literals now call it
+too, so both creation paths share one source of truth for extensions.
+
+DI registration adds:
+
+```csharp
+services.AddSingleton<IArchiveCreationRouter, ArchiveCreationRouter>();
+```
+
+**Phase B (2026-07-16):** `MainViewModel`'s constructor now takes `IArchiveCreationRouter` instead
+of `IArchiveService` — that was its only `IArchiveService` call site. `ArchiveAsync` calls
+`_archiveCreationRouter.ArchiveAsync(options, progress, _cts.Token)` with a new
+`SelectedContainerFormat` (`ArchiveContainerFormat`, default `Zip`) plumbed into
+`ArchiveOptions.Format`. `MainWindow.xaml` gained a "Формат" `ComboBox` (Row 5, right before the
+existing Compression combobox) bound to a new `FormatIndex` int property, following the same
+`get`/`set` switch-expression pattern as `CompressionLevelIndex`/`OnConflictIndex`. The
+Compression combobox's `IsEnabled` now binds to a new `IsCompressionLevelEnabled` property
+(`IsNotBusy && !IsPlainTarFormatSelected`) instead of plain `IsNotBusy`, so it greys out only when
+plain `Tar` is selected (the Phase A empirical finding — every other format, ZIP included, keeps
+a working compression-level control). All 37 locale `Resources.resw` files gained the
+`FormatLabel`/`FormatZipItem`/.../`FormatTarLzmaItem` keys; the 7 format-name item values are
+identical, untranslated Latin script in every locale (technical identifiers, not prose — same
+convention Windows Explorer itself follows), only the `FormatLabel.Text` word is translated per
+locale.
+
+**Phase C (2026-07-16):** a new `TarArchiveCommand` leaf `IExplorerCommand`
+(`Archiver.ShellExtension/ExplorerCommands.h`/`.cpp`, CLSID `5F440071-6288-4446-AE25-3F4EDA490DDC`)
+mirrors `ArchiveCommand` exactly but always passes `L".tar"`/`L"tar"` where `ArchiveCommand` passes
+the ZIP defaults — plain/uncompressed tar only, since one-click commands never prompt the user for
+a filter choice. Registered in `PakkoRootCommand::EnumSubCommands` right after `ArchiveCommand`
+("Add to X.zip"); needs no `Package.appxmanifest` entry — only the root command's CLSID is ever
+registered there, every leaf command is instantiated internally via `Make<T>()`. Two shared
+`ShellExtUtils` functions gained parameters instead of new twin functions:
+`BuildAddToArchiveTitle(paths, ext = L".zip")` and `BuildArchiveArgs(paths, format = L"zip")` (the
+latter only emits `--format <value>` for a non-`"zip"` value, so the pre-existing zip command line
+is unchanged). On the .NET side, `ShellArgumentParser.ParseArchive` consumes an optional
+`--format zip|tar` pair right after `--archive` into a new `ParsedCommand.Format`
+(`ArchiveContainerFormat`, default `Zip`); `Archiver.Shell/Program.cs`'s `RunArchiveAsync` now
+constructs `new ArchiveCreationRouter(new ZipArchiveService(), new TarSandboxedService())` directly
+(no DI container in this console entry point) instead of calling `ZipArchiveService.ArchiveAsync`,
+and sets `ArchiveOptions.Format` from the parsed switch.
 
 ---
 
