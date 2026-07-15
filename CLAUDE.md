@@ -382,6 +382,22 @@ references are easy to miss otherwise (this session found 5 lingering mentions o
   with an async-loaded bound property (a fire-and-forget `Task.Run` setting a value after
   construction), leaving a freshly realized row blank until a forced re-layout (T-F05,
   `DECISIONS.md`).
+- **A dotted resw key (`"Foo.Content"`) manually looked up via `_res.GetString("Foo.Content")`
+  silently returns an empty string if no element in XAML actually has `x:Uid="Foo"`.** The dotted
+  naming convention only gets populated by the XAML framework's implicit `x:Uid` + property-suffix
+  lookup — a key that exists in every locale's `.resw` but was never wired to an `x:Uid` is dead,
+  and manual `GetString()` won't resolve it either. For any string accessed manually from C# (not
+  via `x:Uid`), use a plain, non-dotted key name, matching `StatusReady`/`StatusArchiving`/etc.
+  Real bug: `MainViewModel.ArchiveButtonText`/`ExtractButtonText` looked up `"ArchiveButton.Content"`
+  and got blank buttons in every locale until renamed to plain `ArchiveButtonLabel` (T-F104).
+- **MSIX Packaged COM registration lives entirely under
+  `HKLM\SOFTWARE\Classes\PackagedCom\Package\<PackageFullName>\...` and
+  `PackagedCom\ClassIndex\<CLSID>`** — namespaced by the full versioned package identity, with
+  zero classic `HKCR\CLSID\{...}` entry ever written. Confirmed empirically (T-F55/T-F40): a full
+  `HKEY_CLASSES_ROOT` search for the verb ID string returned 0 matches even while installed, and
+  `Remove-AppxPackage`/`Add-AppxPackage` cleanly removes/restores both `PackagedCom` subtrees.
+  There is no orphan-registry-key risk to chase for this app's shell extension — it never used
+  classic `regsvr32`-style registration to begin with.
 
 ---
 
@@ -474,6 +490,13 @@ MSBuild tests\Archiver.ShellExtension.Tests\Archiver.ShellExtension.Tests.vcxpro
 > that folder — even from Bash — fails with "in use" until a PowerShell call explicitly
 > `Set-Location`s back out first.
 >
+> **PowerShell tool's `Add-Type` classes do NOT persist across separate calls** (only cwd does) —
+> a `Win32`-style helper class defined in one call is gone in the next ("Unable to find type"). If
+> you need it again (e.g. for a follow-up screenshot), redefine the whole `Add-Type` block in the
+> same call that uses it, not just once at the start of a multi-call sequence. Also: `Get-Item` on
+> a registry path containing `{...}` (a GUID/CLSID) silently returns nothing unless you pass
+> `-LiteralPath` instead of the default `-Path` — curly braces are wildcard syntax otherwise.
+>
 > **PowerShell tool's *initial* cwd is not guaranteed to be the repo root** — a bare
 > `dotnet test`/`dotnet build` can fail with `MSB1003: Specify a project or solution file`.
 > Prefix with `Set-Location "<repo-root>";` when running dotnet commands via the PowerShell tool.
@@ -514,6 +537,11 @@ MSBuild tests\Archiver.ShellExtension.Tests\Archiver.ShellExtension.Tests.vcxpro
 > real `.msixbundle`. Fixed by widening that search to `-Include '*.msix', '*.msixbundle'` —
 > `Add-AppxPackage` installs either directly. If you ever reduce the shipped locale count back
 > down, expect the output to flip back to a flat `.msix` — both are handled now.
+>
+> **Correction (2026-07-15, 37 locales):** the 25-locale threshold above didn't hold — adding 12
+> more locales (37 total) still produced a flat `.msix`, not a bundle. Don't assume a specific
+> locale count triggers the switch; `Deploy.ps1`'s dual `.msix`/`.msixbundle` search already
+> handles either output, so this isn't actionable — just don't be surprised either way.
 >
 > **A stuck `AppPackages\Archiver.App_<version>_Test\`/`obj\...\PackageLayout\` folder can look
 > like a process lock but isn't one.** Hit this the same day: `dotnet publish` failed with
