@@ -15,223 +15,223 @@
 
   <!-- Buttons -->
   <data name="ArchiveButtonLabel" xml:space="preserve">
-    <value>Arhivēt</value>
+    <value>压缩</value>
   </data>
   <data name="ExtractButtonLabel" xml:space="preserve">
-    <value>Atarhivēt</value>
+    <value>解压</value>
   </data>
   <data name="ClearButton.Content" xml:space="preserve">
-    <value>Notīrīt</value>
+    <value>清除</value>
   </data>
   <data name="AddFilesButton.Content" xml:space="preserve">
-    <value>Pievienot failus</value>
+    <value>添加文件</value>
   </data>
   <data name="AddFolderButton.Content" xml:space="preserve">
-    <value>Pievienot mapi</value>
+    <value>添加文件夹</value>
   </data>
   <data name="HashButton.Content" xml:space="preserve">
-    <value>Kontrolsumma...</value>
+    <value>哈希...</value>
   </data>
   <data name="AboutButton.Content" xml:space="preserve">
-    <value>Par programmu</value>
+    <value>关于</value>
   </data>
   <data name="ExtractSelectedButton.Content" xml:space="preserve">
-    <value>Atarhivēt atlasīto</value>
+    <value>解压所选项</value>
   </data>
   <data name="ExtractAllButton.Content" xml:space="preserve">
-    <value>Atarhivēt visu</value>
+    <value>全部解压</value>
   </data>
 
   <!-- Table headers -->
   <data name="NameColumnHeader.Content" xml:space="preserve">
-    <value>Nosaukums</value>
+    <value>名称</value>
   </data>
   <data name="TypeColumnHeader.Content" xml:space="preserve">
-    <value>Tips</value>
+    <value>类型</value>
   </data>
   <data name="SizeColumnHeader.Content" xml:space="preserve">
-    <value>Izmērs</value>
+    <value>大小</value>
   </data>
   <data name="ModifiedColumnHeader.Content" xml:space="preserve">
-    <value>Mainīts</value>
+    <value>修改日期</value>
   </data>
   <data name="CrcColumnHeader.Content" xml:space="preserve">
     <value>CRC-32</value>
   </data>
   <data name="BrowseNameColumnHeader.Text" xml:space="preserve">
-    <value>Nosaukums</value>
+    <value>名称</value>
   </data>
   <data name="BrowseSizeColumnHeader.Text" xml:space="preserve">
-    <value>Izmērs</value>
+    <value>大小</value>
   </data>
   <data name="PackedColumnHeader.Text" xml:space="preserve">
-    <value>Saspiests</value>
+    <value>压缩后大小</value>
   </data>
   <data name="BrowseCrcColumnHeader.Text" xml:space="preserve">
     <value>CRC-32</value>
   </data>
   <data name="BrowseModifiedColumnHeader.Text" xml:space="preserve">
-    <value>Mainīts</value>
+    <value>修改日期</value>
   </data>
 
   <!-- Tray menu -->
   <data name="TrayOpenMenuItem.Text" xml:space="preserve">
-    <value>Atvērt Pakko</value>
+    <value>打开 Pakko</value>
   </data>
   <data name="TrayAboutMenuItem.Text" xml:space="preserve">
-    <value>Par Pakko</value>
+    <value>关于 Pakko</value>
   </data>
   <data name="TrayExitMenuItem.Text" xml:space="preserve">
-    <value>Iziet</value>
+    <value>退出</value>
   </data>
   <data name="RemoveMenuItem.Text" xml:space="preserve">
-    <value>Noņemt</value>
+    <value>移除</value>
   </data>
 
   <!-- Archive options -->
   <data name="ModeLabel.Text" xml:space="preserve">
-    <value>Režīms:</value>
+    <value>模式:</value>
   </data>
   <data name="OneArchiveRadio.Content" xml:space="preserve">
-    <value>Viens arhīvs</value>
+    <value>单个压缩包</value>
   </data>
   <data name="SeparateArchivesRadio.Content" xml:space="preserve">
-    <value>Atsevišķi arhīvi</value>
+    <value>分别压缩</value>
   </data>
   <data name="ArchiveNameTextBox.PlaceholderText" xml:space="preserve">
-    <value>Automātiski (pēc pirmā faila/mapes nosaukuma)</value>
+    <value>自动 (基于第一个文件/文件夹名称)</value>
   </data>
   <data name="CompressionFastItem.Content" xml:space="preserve">
-    <value>Ātra</value>
+    <value>快速</value>
   </data>
   <data name="CompressionNormalItem.Content" xml:space="preserve">
-    <value>Normāla</value>
+    <value>普通</value>
   </data>
   <data name="CompressionBestItem.Content" xml:space="preserve">
-    <value>Labākā</value>
+    <value>最佳</value>
   </data>
   <data name="CompressionNoneItem.Content" xml:space="preserve">
-    <value>Nav</value>
+    <value>无</value>
   </data>
   <data name="ConflictOverwriteItem.Content" xml:space="preserve">
-    <value>Pārrakstīt</value>
+    <value>覆盖</value>
   </data>
   <data name="ConflictSkipItem.Content" xml:space="preserve">
-    <value>Izlaist</value>
+    <value>跳过</value>
   </data>
   <data name="ConflictRenameItem.Content" xml:space="preserve">
-    <value>Pārdēvēt (pievienot numuru)</value>
+    <value>重命名 (添加编号)</value>
   </data>
   <data name="ConflictAskItem.Content" xml:space="preserve">
-    <value>Jautāt</value>
+    <value>询问</value>
   </data>
   <data name="CancelButton.Content" xml:space="preserve">
-    <value>✕ Atcelt</value>
+    <value>✕ 取消</value>
   </data>
 
   <!-- Drop zone -->
   <data name="DropZoneHint.Text" xml:space="preserve">
-    <value>Ievelciet failus vai mapes šeit, vai veiciet dubultklikšķi, lai pārlūkotu failus</value>
+    <value>将文件或文件夹拖放到此处，或双击浏览文件</value>
   </data>
   <data name="MultipleFoldersHint.Text" xml:space="preserve">
-    <value>Vairākām mapēm — velciet un nometiet no Explorer</value>
+    <value>多个文件夹 — 请从资源管理器拖放</value>
   </data>
   <data name="DropZoneModeHint.Text" xml:space="preserve">
-    <value>Arhīvi piedāvā atarhivēšanu; viss pārējais tiks arhivēts</value>
+    <value>压缩包可供解压；其他内容将被压缩</value>
   </data>
 
   <!-- Labels -->
   <data name="DestinationLabel.Text" xml:space="preserve">
-    <value>Galamērķis:</value>
+    <value>目标位置:</value>
   </data>
   <data name="ArchiveNameLabel.Text" xml:space="preserve">
-    <value>Nosaukums:</value>
+    <value>名称:</value>
   </data>
   <data name="CompressionLabel.Text" xml:space="preserve">
-    <value>Saspiešana:</value>
+    <value>压缩:</value>
   </data>
   <data name="ConflictLabel.Text" xml:space="preserve">
-    <value>Ja fails jau pastāv:</value>
+    <value>如果文件已存在:</value>
   </data>
 
   <!-- Checkboxes -->
   <data name="OpenDestinationCheck.Content" xml:space="preserve">
-    <value>Atvērt galamērķa mapi pēc pabeigšanas</value>
+    <value>完成后打开目标文件夹</value>
   </data>
   <data name="DeleteAfterOperationCheck.Content" xml:space="preserve">
-    <value>Dzēst pēc darbības</value>
+    <value>操作后删除</value>
   </data>
 
   <!-- Status messages -->
   <data name="StatusReady" xml:space="preserve">
-    <value>Gatavs</value>
+    <value>就绪</value>
   </data>
   <data name="StatusArchiving" xml:space="preserve">
-    <value>Notiek arhivēšana...</value>
+    <value>正在压缩...</value>
   </data>
   <data name="StatusExtracting" xml:space="preserve">
-    <value>Notiek atarhivēšana...</value>
+    <value>正在解压...</value>
   </data>
   <data name="StatusDone" xml:space="preserve">
-    <value>Gatavs — apstrādāti faili: {0}.</value>
+    <value>完成 — 已处理 {0} 个文件。</value>
   </data>
   <data name="StatusIssues" xml:space="preserve">
-    <value>Pabeigts ar problēmām.</value>
+    <value>已完成，但存在问题。</value>
   </data>
   <data name="StatusCancelled" xml:space="preserve">
-    <value>Atcelts</value>
+    <value>已取消</value>
   </data>
   <data name="StatusCleaningUp" xml:space="preserve">
-    <value>Notiek tīrīšana...</value>
+    <value>正在清理...</value>
   </data>
   <data name="StatusFinalizing" xml:space="preserve">
-    <value>Notiek pabeigšana...</value>
+    <value>正在完成...</value>
   </data>
   <data name="StatusArchivedIn" xml:space="preserve">
-    <value>Arhivēts {0} s — faili: {1}</value>
+    <value>已在 {0} 秒内压缩完成 — {1} 个文件</value>
   </data>
   <data name="StatusExtractedIn" xml:space="preserve">
-    <value>Atarhivēts {0} s — faili: {1}</value>
+    <value>已在 {0} 秒内解压完成 — {1} 个文件</value>
   </data>
   <data name="OutcomeWillExtract" xml:space="preserve">
-    <value>Tiks atarhivēti {0} arhīvi augstāk norādītajā mapē</value>
+    <value>将把 {0} 个压缩包解压到上方文件夹</value>
   </data>
   <data name="OutcomeWillArchive" xml:space="preserve">
-    <value>Tiks arhivēti {0} vienumi augstāk norādītajā mapē</value>
+    <value>将把 {0} 个项目压缩到上方文件夹</value>
   </data>
 
   <!-- Dialog strings -->
   <data name="ErrorDialogTitle" xml:space="preserve">
-    <value>Pabeigts ar problēmām</value>
+    <value>已完成，但存在问题</value>
   </data>
   <data name="ErrorSectionHeader" xml:space="preserve">
-    <value>Kļūdas</value>
+    <value>错误</value>
   </data>
   <data name="SkippedSectionHeader" xml:space="preserve">
-    <value>Izlaisti</value>
+    <value>已跳过</value>
   </data>
   <data name="CompressionBombDialogTitle" xml:space="preserve">
-    <value>Aizdomīgs arhīvs</value>
+    <value>可疑的压缩包</value>
   </data>
   <data name="CompressionBombDialogMessage" xml:space="preserve">
-    <value>Šis arhīvs apgalvo, ka satur {0} datu, saspiešanas attiecība {1}:1. Tas ir neparasti augsts un var liecināt par atarhivēšanas bumbu. Vai tomēr atarhivēt?</value>
+    <value>此压缩包声称包含 {0} 数据，压缩比为 {1}:1。这异常地高，可能是解压炸弹。仍要解压吗？</value>
   </data>
   <data name="ConflictDialogTitle" xml:space="preserve">
-    <value>Fails jau pastāv</value>
+    <value>文件已存在</value>
   </data>
   <data name="ConflictDialogMessage" xml:space="preserve">
-    <value>"{0}" galamērķī jau pastāv. Ko vēlaties darīt?</value>
+    <value>目标位置已存在 "{0}"。您想怎么做？</value>
   </data>
   <data name="ConflictDialogOverwriteButton" xml:space="preserve">
-    <value>Pārrakstīt</value>
+    <value>覆盖</value>
   </data>
   <data name="ConflictDialogRenameButton" xml:space="preserve">
-    <value>Pārdēvēt</value>
+    <value>重命名</value>
   </data>
   <data name="ConflictDialogSkipButton" xml:space="preserve">
-    <value>Izlaist</value>
+    <value>跳过</value>
   </data>
   <data name="ConflictDialogApplyToAllCheck" xml:space="preserve">
-    <value>Piemērot visiem atlikušajiem konfliktiem</value>
+    <value>应用于所有剩余冲突</value>
   </data>
 </root>

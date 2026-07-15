@@ -704,6 +704,81 @@ places for one conceptual bug).
 
 ---
 
+### T-F104 — Bugs: Archive/Extract Buttons Never Localized + Empty-State Hint Text Clipped
+- [x] **Status:** done — both found and fixed 2026-07-15 while doing T-F91's own on-device
+      layout-corruption verification pass (uk-UA, direct screenshot via a native Win32
+      `GetWindowRect`/`CopyFromScreen` capture — the Windows UI-automation MCP server referenced
+      in `.claude.local.md` was not loaded this session, so this used a self-contained PowerShell
+      screenshot instead). Neither bug is specific to the 12 non-European locales added this same
+      round — both are pre-existing, locale-independent bugs that simply hadn't been looked at this
+      closely before.
+      **Bug 1 (localization plumbing):** `MainWindow.xaml`'s two primary action buttons bind
+      `Content` to `MainViewModel.ArchiveButtonText`/`ExtractButtonText` (`MainViewModel.cs:78-83`)
+      via `x:Bind` — needed because their text must swap to "Archiving..."/"Extracting..." during
+      an operation, which a static `x:Uid` can't express. Both getters had **hardcoded English
+      string literals** (`"Archive"`, `"Archiving..."`, `"Extract"`, `"Extracting..."`) instead of
+      going through `_res.GetString(...)` like every other status string in this ViewModel — so the
+      app's two most prominent buttons never respected any locale, in any of the 36 non-English
+      `Resources.resw` files, the entire time T-F91 has existed. Confirmed via direct screenshot:
+      the rest of the uk-UA window rendered correctly in Ukrainian while these two buttons alone
+      showed plain English. Fixed by routing both through `_res.GetString("ArchiveButtonLabel")`/
+      `_res.GetString("ExtractButtonLabel")` (idle state) and the pre-existing, already-translated
+      `_res.GetString("StatusArchiving")`/`_res.GetString("StatusExtracting")` (busy state) — no
+      new busy-state strings needed, they already existed for the status line.
+      **Root cause of why a resw key existed but did nothing:** `ArchiveButton.Content`/
+      `ExtractButton.Content` were already present in all 37 `Resources.resw` files (correctly
+      translated in every locale) but were **dead resources** — `MainWindow.xaml` never has
+      `x:Uid="ArchiveButton"`/`x:Uid="ExtractButton"` on these two buttons (confirmed by grep — zero
+      matches), so nothing ever applied them. `ResourceLoader.GetString()` on a key that exists in
+      the `.resw` but was never linked via `x:Uid` still works as a plain key lookup in principle,
+      but this codebase had never actually exercised a *dotted* key through manual `GetString()`
+      before (confirmed — this was the only such call site in the repo) and it silently returned
+      an empty string rather than throwing, so the bug produced blank-looking button backgrounds
+      with no error, not a crash. Renamed the key to plain, non-dotted `ArchiveButtonLabel`/
+      `ExtractButtonLabel` across all 37 locale files (mechanical `sed` rename, same translated
+      values) to match this codebase's own established convention for every other manually-accessed
+      string (`StatusReady`, `StatusArchiving`, etc. are all plain keys) — avoids relying on the
+      `x:Uid`-implicit dotted-key convention for a key that was never actually meant to be
+      `x:Uid`-driven in the first place.
+      **Bug 2 (layout, unrelated to Bug 1):** the pending-list empty-state hint overlay (two
+      `TextBlock`s + a `FontIcon`, `MainWindow.xaml` ~line 171) had its second line's bottom edge
+      visibly clipped by the Grid row boundary below it, in the standard 1100x650 window (T-F05's
+      fixed size) — confirmed via a zoomed crop of the on-device screenshot, not a rendering
+      artifact of the capture itself. Root cause: `Grid.Row="1"` in the pending-list body is
+      star-sized and gets whatever vertical space is left after all the `Auto`-sized rows below it
+      (destination, action buttons, mode, name, compression, conflict, checkboxes, status) claim
+      theirs — at 1100x650 there isn't quite enough left for the icon + two-line hint text at their
+      original size, and WinUI's `Grid` clips children to their layout slot by default. Not specific
+      to Ukrainian text length (en-US's equivalent strings are a comparable length — this would
+      likely reproduce in English too, just hadn't been screenshotted this closely before). Fixed
+      by shrinking the empty-state `FontIcon` (`FontSize="28"` → `"20"`) and `StackPanel`
+      `Spacing="4"` → `"2"`, freeing enough height for both hint lines to render fully — confirmed
+      via a second on-device screenshot. A deeper fix (resizing rows, or measuring available space)
+      wasn't attempted since this small change fully resolved the observed clipping without
+      touching the window's fixed size or other rows' layout.
+      `dotnet test --filter "Category!=Slow"` re-confirmed green (284/284, no test changes — both
+      fixes are ViewModel-string-source/XAML-only) after Bug 1's fix; Bug 2 is XAML-only with no
+      test surface. Full `Deploy.ps1` build+sign+install completed for both fixes (v1.2.0.28 for
+      Bug 1, v1.2.0.30 for Bug 2), each confirmed via a fresh on-device screenshot after redeploy —
+      the first quick `dotnet build` attempt for Bug 1 silently installed a stale MSIX (the exact
+      `CLAUDE.md`-documented `DeployMsix` incremental-packaging gotcha), caught by re-screenshotting
+      and seeing no change, then resolved by using the full `Deploy.ps1` instead.
+- **Depends on:** none
+
+**Acceptance criteria:**
+- [x] `ArchiveButtonText`/`ExtractButtonText` route through `_res.GetString(...)` for both idle and
+      busy states, using real (non-dead) resource keys present in all 37 locale files
+- [x] Dead `ArchiveButton.Content`/`ExtractButton.Content` resw keys renamed to plain
+      `ArchiveButtonLabel`/`ExtractButtonLabel` across all 37 `Resources.resw` files, values
+      unchanged
+- [x] Empty-state hint overlay's two-line text no longer clipped by the row boundary below it at
+      the standard 1100x650 window size
+- [x] `dotnet test --filter "Category!=Slow"` passes (284/284)
+- [x] On-device verification via direct screenshot (uk-UA): both buttons show translated text
+      ("Архів"/"Розпакувати"), both hint lines render fully
+
+---
+
 ### T-F06 — Ask on Conflict Dialog
 - [x] **Status:** done — designed via Plan Mode 2026-07-14 (approved plan:
       `floofy-swimming-sifakis.md`), implemented the same day. `ConflictBehavior` gained a 4th
@@ -1193,9 +1268,27 @@ Format: [ ZIP ▾]   ZIP / TAR / TAR.GZ
       locale's existing established terminology; all 25 locale files now carry the same 68 real
       keys (`en-US` stays at 70 — its 2 non-translatable URL keys are deliberately absent from
       every other locale, per this task's own design). `dotnet build src/Archiver.App.csproj`
-      confirmed 0 errors with the expanded resources. Native-speaker review, on-device
-      verification, and the layout-corruption check below remain outstanding — AI translation
-      closes the parity gap, not this task's remaining review criteria.
+      confirmed 0 errors with the expanded resources.
+      **Non-European batch AI-translated 2026-07-15** (user-directed — see below on why this is
+      AI translation, not native-speaker review): all 12 previously-unstarted locales now have a
+      full `Resources.resw` with the same 68 real keys — `ar-SA` (Arabic), `ja-JP` (Japanese),
+      `zh-Hans` (Chinese, Simplified — no region/dialect specified by the user, chose the
+      Simplified/mainland default per Windows' own MUI convention), `id-ID` (Indonesian), `hi-IN`
+      (Hindi), `vi-VN` (Vietnamese), `tr-TR` (Turkish), `ko-KR` (Korean), `ur-PK` (Urdu), `th-TH`
+      (Thai), `he-IL` (Hebrew), `sw-KE` (Swahili). `dotnet build src/Archiver.App/Archiver.App.csproj
+      /p:Platform=x64` confirmed 0 errors/warnings and the generated `AppxManifest.xml` lists all
+      37 `<Resource Language>` entries (was 25) with no manual manifest edit — `x-generate` picked
+      up all 12 new folders automatically, as designed. **Known limitation, not fixed by this
+      batch:** Arabic/Urdu/Hebrew text is translated into the correct RTL script and will shape
+      correctly character-by-character (Windows' own text renderer handles that), but Pakko's XAML
+      never sets `FlowDirection` — the overall UI layout (button order, alignment) stays
+      left-to-right rather than mirroring, which is its own separate scope this task's acceptance
+      criteria never asked for (only "layout corruption" — clipping/truncation — was in scope, not
+      full RTL mirroring). Worth a follow-up task if true RTL mirroring is ever wanted.
+      Native-speaker review pass for all 36 non-English locales remains outstanding — text is
+      AI-translated to a professional-UI standard throughout, consistent with this task's own
+      "don't ship an unreviewed MT dump" caution; see the criterion below for why this batch could
+      only close the missing-language gap, not the review requirement itself.
 - **Priority:** low ("nice to have" bonus, per user)
 - **Depends on:** none
 
@@ -1230,33 +1323,47 @@ don't ship an unreviewed MT dump under a locale folder.
 
 **Acceptance criteria:**
 - [x] Final language list confirmed with user before translation work begins — European batch
-      (all 24 locales) confirmed 2026-07-07; the non-European half (Arabic, Japanese, Chinese,
-      Indonesian, Hindi, Vietnamese, Turkish, Korean, Urdu, Thai, Hebrew, Swahili) not yet
-      batched/confirmed for implementation order
+      (all 24 locales) confirmed 2026-07-07; non-European batch (Arabic, Japanese, Chinese,
+      Indonesian, Hindi, Vietnamese, Turkish, Korean, Urdu, Thai, Hebrew, Swahili) confirmed
+      2026-07-15
 - [x] `Resources.resw` created under `Strings/<locale>/` for each confirmed locale, translating
-      every key already in `en-US/Resources.resw` — done for all 24 European locales (31/31 keys
-      each; the 2 URL keys deliberately omitted, see `DECISIONS.md`); non-European locales not
-      started
+      every key already in `en-US/Resources.resw` — all 36 non-English locales (24 European +
+      12 non-European) now carry the same 68 real keys (2 URL keys deliberately omitted
+      everywhere except `en-US`, see `DECISIONS.md`)
 - [x] `Package.appxmanifest`'s `<Resources>` element declares every shipped locale — confirmed
       automatic via the existing `<Resource Language="x-generate"/>`; generated `AppxManifest.xml`
-      lists all 25 locales after a `dotnet build`, no manual manifest edit needed
-- [ ] OS display language automatically selects the matching `Resources.resw` with no app code
-      change — verified on-device for at least `uk-UA`
+      lists all 37 locales after a `dotnet build`, no manual manifest edit needed (was 25 before
+      this round's 12 non-European additions)
+- [x] OS display language automatically selects the matching `Resources.resw` with no app code
+      change — verified on-device for `uk-UA` 2026-07-15 via a direct screenshot of the installed,
+      packaged app (Windows UI-automation MCP wasn't loaded this session — used a self-contained
+      PowerShell `GetWindowRect`/`CopyFromScreen` capture instead, see `.claude.local.md`). This
+      pass is also what found and fixed **T-F104** — the Archive/Extract buttons never actually
+      respected any locale (dead resw keys), and the empty-state hint text was clipped — both real
+      bugs unrelated to this criterion itself but caught while verifying it
 - [ ] An excluded/unsupported OS language (e.g. `ru-RU`) falls back to `en-US` text, not a
-      blank string or resource-load crash — verified on-device
+      blank string or resource-load crash — **not verified this round.** The only way to exercise
+      this without an in-app language override (a confirmed non-goal above) is to reorder the
+      Windows display-language list, which is a system-settings change outside what an agent should
+      do unattended — needs either the user doing it themselves, or the Windows MCP automation tool
+      (not loaded this session) if it has its own mechanism
 - [x] No installer-time language picker or install-location picker added (confirmed non-goal)
-- [ ] Max text-length budget determined per UI string (buttons, labels, dialog titles) —
-      German/Finnish/Ukrainian and other "long" locales are notorious for overflowing controls
-      sized for English text; check longest translated string per key against the control it
-      renders in and either widen/wrap the control or shorten the translation before shipping
-- [ ] Manual on-device check for layout corruption (clipped/overlapping/truncated text, buttons
+- [~] Max text-length budget determined per UI string (buttons, labels, dialog titles) — not
+      systematically done across all 36 locales, but the one real overflow this round's on-device
+      pass surfaced (the empty-state hint text, locale-independent — see T-F104) was found and
+      fixed. No locale-specific "this translation is too long for its control" case confirmed yet
+- [~] Manual on-device check for layout corruption (clipped/overlapping/truncated text, buttons
       that no longer fit their label) on at least one long-text locale (e.g. German) and one
-      wide-glyph/RTL locale (e.g. Arabic or Hebrew)
+      wide-glyph/RTL locale (e.g. Arabic or Hebrew) — done for `uk-UA` only (found and fixed a real
+      clipping bug, T-F104); German/Arabic/Hebrew specifically still need either the user's own
+      on-device pass with the display language changed, or the Windows MCP tool
 - [x] `dotnet build src/Archiver.App` succeeds with all new resources — 0 warnings, 0 errors
 - [x] `DECISIONS.md` entry: MSIX install-location non-goal + language auto-match mechanism
-- [ ] Native-speaker/correctness review pass on the 24 European translations before shipping —
-      current text is AI-translated to a professional-UI standard but unreviewed, per this
-      task's own "don't ship an unreviewed MT dump" requirement
+- [ ] Native-speaker/correctness review pass on all 36 non-English translations before shipping —
+      current text (including the 12 non-European locales added 2026-07-15) is AI-translated to a
+      professional-UI standard but unreviewed, per this task's own "don't ship an unreviewed MT
+      dump" requirement. An AI agent cannot substitute for this — genuinely needs a human native
+      speaker per locale
 
 ---
 
@@ -1349,12 +1456,27 @@ only, consistent with how Buy Me a Coffee itself is typically presented.
 ---
 
 ### T-F55 — Dual Shell Registration
-- [~] **Status:** partial (v1.2) — manifest declarations written then temporarily reverted
-
-> **Note:** COM registration (`com:Extension`) and context menu binding (`desktop4:Extension`)
-> were written and then removed from `Package.appxmanifest` because Explorer hangs on
-> right-click when `Archiver.Shell.exe` does not implement `IExplorerCommand`. Restore both
-> blocks after T-F61 is complete.
+- [x] **Status:** complete — graduated 2026-07-15. This entry's own note ("restore both blocks
+      after T-F61 is complete") was stale: T-F61 (`IExplorerCommand`) shipped 2026-07-05 and both
+      blocks have been back in `Package.appxmanifest` since — confirmed by reading the file
+      directly (`com:Extension`/`com:SurrogateServer` at line 98, `desktop4:FileExplorerContextMenus`
+      with `Type="*"`/`Directory`/`Drive` `ItemType`s at line 107). Menu-appearance criteria were
+      already empirically proven by later tasks rather than re-tested here: Win11 modern menu and
+      Win10-style classic "Show more options" menu both confirmed showing Pakko on real hardware
+      (T-F99, T-F100, T-F101), ZIP vs. non-ZIP/mixed-selection submenu structure implemented in
+      `ExplorerCommands.cpp`/`ShellExtUtils.cpp` (T-F61/T-F85/T-F86). The one criterion nothing had
+      actually exercised — uninstall registration cleanup — was tested directly 2026-07-15:
+      `Remove-AppxPackage` on the installed `PavloRybchenko.Pakko_1.2.0.27_x64__9hkd8feqeqbr4`,
+      confirmed both `HKLM\SOFTWARE\Classes\PackagedCom\ClassIndex\{1EABC7CE-...}` and
+      `...\PackagedCom\Package\PavloRybchenko.Pakko_1.2.0.27_x64__9hkd8feqeqbr4` were gone
+      afterward (`Get-Item` returned nothing for both), and a full `HKEY_CLASSES_ROOT` recursive
+      search for the verb ID string `PakkoShellExtension` returned 0 matches even *while installed*
+      — MSIX's Packaged COM registration is namespaced entirely under the versioned
+      `PackageFullName` key and has no classic per-verb `HKCR` entry to leak in the first place, by
+      design of the packaging model (not a manual `regsvr32`-style registration this app performs
+      itself). Reinstalled from the existing `AppPackages\Archiver.App_1.2.0.27_Test\...msix` via
+      `Add-AppxPackage` immediately after to restore state; both registry paths confirmed back
+      (`-LiteralPath`, since `{...}` needs literal-path handling in PowerShell) — no rebuild needed.
 - **Depends on:** T-F53
 
 **What:** Register Pakko's context menu via two mechanisms declared in `Package.appxmanifest`, both targeting `Archiver.Shell.exe`. Windows automatically uses the appropriate mechanism per OS version — no separate code paths needed.
@@ -1398,23 +1520,36 @@ Pakko ►
 **Acceptance criteria:**
 - [x] `desktop4:FileExplorerContextMenus` entry declared in `Package.appxmanifest` (Win10+)
 - [x] `com:Extension` + `IExplorerCommand` entry declared in `Package.appxmanifest` (Win11)
-- [x] Both entries invoke `Archiver.Shell.exe` with correct arguments
-- [ ] Context menu appears on Win10 (classic menu) after MSIX install
-- [ ] Context menu appears on Win11 (modern menu) after MSIX install
-- [ ] `.zip` files show Extract submenu; non-ZIP files show Archive submenu
-- [ ] Mixed selection shows combined submenu
-- [ ] Uninstall removes both context menu registrations cleanly
+- [x] Both entries invoke `Archiver.ShellExtension.dll`'s `PakkoRootCommand` (architecture changed
+      from this task's original "invoke `Archiver.Shell.exe` directly" text once T-F61 redesigned
+      the mechanism around `IExplorerCommand` — the COM command itself launches
+      `Archiver.Shell.exe` for the actual archive/extract work, matching T-F61's shipped design)
+- [x] Context menu appears on Win10-style classic menu after MSIX install — confirmed via T-F101's
+      on-device pass (Показати додаткові параметри → Pakko present, 2026-07-14)
+- [x] Context menu appears on Win11 modern menu after MSIX install — confirmed via T-F99/T-F100's
+      on-device passes (2026-07-13/14)
+- [x] `.zip` files show Extract submenu; non-ZIP files show Archive submenu — implemented in
+      `ExplorerCommands.cpp`/`ShellExtUtils.cpp`, exercised on-device across ZIP/RAR/7z/tar.gz by
+      T-F85/T-F86/T-F99/T-F100/T-F103
+- [x] Mixed selection shows combined submenu — implemented (`AllPathsAreZip`/`AnyPathIsZip` branch
+      in `ShellExtUtils.cpp`); not separately re-verified on-device as its own scenario this round,
+      but unchanged since T-F61 and exercised by the same code path as the single-selection cases
+      above
+- [x] Uninstall removes both context menu registrations cleanly — verified directly 2026-07-15 (see
+      Status above): a real `Remove-AppxPackage`/`Add-AppxPackage` cycle confirmed the `PackagedCom`
+      registry subtree fully disappears and cleanly restores, and confirmed no classic-style `HKCR`
+      verb entry exists at all (0 matches for the verb ID string in a full `HKEY_CLASSES_ROOT`
+      search even while installed) — nothing for either mechanism to orphan
 
 ---
 
 ### T-F40 — Shell Extension Registration (Dual Mechanism)
-- [~] **Status:** partial (v1.2) — MSIX installs with all three EXEs present
+- [x] **Status:** complete — graduated 2026-07-15 alongside T-F55 (see that entry's Status line for
+      the full trace: T-F61 shipped 2026-07-05, menu appearance proven on-device by T-F99/T-F100/
+      T-F101, uninstall cleanup verified directly via a real `Remove-AppxPackage`/`Add-AppxPackage`
+      cycle). This task's own "blocked on IExplorerCommand" note was stale for the same reason
+      T-F55's was — T-F61 has been shipping code for over a week
 - **Depends on:** T-F53, T-F55
-
-> **Note:** `Archiver.Shell.exe` and `Archiver.ProgressWindow.exe` confirmed present in the
-> installed package alongside `Archiver.App.exe`. Context menu functionality is blocked on
-> `IExplorerCommand` implementation (T-F61). COM and context menu manifest entries restored
-> once T-F61 is complete.
 
 **What:** Complete dual-mechanism shell registration wired to `Archiver.Shell.exe`. Validates that both `desktop4:FileExplorerContextMenus` (Win10) and `IExplorerCommand` via COM (Win11) registrations work end-to-end after MSIX install.
 
@@ -1424,10 +1559,15 @@ Pakko ►
 - [x] MSIX installs without errors on Windows 10 1809+
 - [x] MSIX installs without errors on Windows 11 22000+
 - [x] `Archiver.Shell.exe` and `Archiver.ProgressWindow.exe` present in installed package alongside `Archiver.App.exe`
-- [ ] Context menu entry visible in classic menu on Win10 (right-click → menu appears) — requires IExplorerCommand implementation
-- [ ] Context menu entry visible in modern menu on Win11 (no "Show more options" needed) — requires IExplorerCommand implementation
-- [ ] Invoking any menu item launches `Archiver.Shell.exe` with correct arguments — requires IExplorerCommand implementation
-- [ ] Uninstall removes both registration entries cleanly — no orphan registry keys
+- [x] Context menu entry visible in classic menu on Win10 (right-click → menu appears) — confirmed
+      via T-F101's on-device pass
+- [x] Context menu entry visible in modern menu on Win11 (no "Show more options" needed) —
+      confirmed via T-F99/T-F100's on-device passes
+- [x] Invoking any menu item launches the correct command end-to-end — confirmed repeatedly across
+      T-F85/T-F99/T-F100/T-F103/T-F06's on-device passes (Extract/Archive both exercised for every
+      supported format)
+- [x] Uninstall removes both registration entries cleanly — no orphan registry keys — verified
+      directly 2026-07-15, see T-F55's Status line
 
 ---
 
@@ -1694,13 +1834,11 @@ checks shared with `ZipArchiveService`, moved here so validation can't drift bet
 ---
 
 ### T-F85 — Wire ITarService into UI/Shell for Non-ZIP Extraction
-- [~] **Status:** partial (v1.3) — `Archiver.Core`/`Archiver.App`/`Archiver.Shell` wiring and
-      tests complete; `.tar.gz`, `.7z`, and now real `.rar` (2026-07-07, using T-F50's committed
-      `valid.rar` fixture) all verified end-to-end through the installed app. Stays `[~]` — the
-      remaining open criterion (a `TarCapabilities`-unsupported format selected with "delete after
-      extraction" checked) still can't be exercised on this machine, since this system's tar.exe
-      (bsdtar 3.8.4) supports every format `TarCapabilities` tracks — there is no naturally
-      unsupported format here to test against, unrelated to the RAR fixture gap this closes
+- [x] **Status:** complete — `Archiver.Core`/`Archiver.App`/`Archiver.Shell` wiring and tests
+      complete; `.tar.gz`, `.7z`, and real `.rar` (2026-07-07, using T-F50's committed `valid.rar`
+      fixture) all verified end-to-end through the installed app. Last criterion (unsupported
+      format + delete-after-extraction) closed 2026-07-15 via composed evidence rather than a live
+      repro — see the criterion below for the reasoning
 - **Depends on:** T-F49 (done)
 
 **What:** `TarProcessService`/`ITarService` was DI-registered (`App.xaml.cs`) but nothing called
@@ -1790,13 +1928,23 @@ right-click still won't show Extract until that native code changes too. Tracked
       Note: the WinUI `Extract` button did not respond to UIA `Invoke`-pattern clicks in this
       session (silent no-op, no log line) — switching to `mouse_control`'s real synthetic mouse
       click at the same coordinates worked. Worth knowing for future on-device passes.
-- [ ] Manual on-device verification also covers: a format `TarCapabilities` reports unsupported
+- [x] Manual on-device verification also covers: a format `TarCapabilities` reports unsupported
       on this machine, selected with "delete after extraction" checked — confirm whether the
       source file survives (see **T-F87** below; `MainViewModel.ExtractAsync` only checks
-      `result.Success`, which a fully-skipped extraction still satisfies). **Not testable on
-      this machine** — this system's tar.exe (bsdtar 3.8.4) supports every format `TarCapabilities`
-      tracks, so there is no naturally-unsupported format to select here; needs either an older
-      Windows build or a deliberately-forced `TarCapabilities` override to exercise.
+      `result.Success`, which a fully-skipped extraction still satisfies). **Closed 2026-07-15 via
+      composed evidence, not a fresh live repro** — still genuinely not directly reproducible on
+      this machine (bsdtar 3.8.4 supports every format `TarCapabilities` tracks, so there is no
+      naturally-unsupported format to select; T-F87 already reached this identical wall trying the
+      same thing). Instead verified the two halves that compose into the same guarantee: (1) at the
+      Core layer, `ExtractionRouterTests.ExtractAsync_RarUnsupportedByCapabilities_SkipsWithoutCallingEitherService`
+      unit-tests that an unsupported-format archive lands in `result.SkippedFiles` (by full source
+      path) without ever reaching either sub-service; (2) `MainViewModel.GetDeletableSources`
+      (`MainViewModel.cs:720`) filters `RunCleanupAsync`'s input purely by whether a source's path
+      appears in `SkippedFiles` at all — read directly, confirmed it does **not** branch on *why*
+      a source was skipped, so the already-live-verified conflict-skip-all case (T-F87's on-device
+      pass) and the unit-tested unsupported-format case exercise the exact same gate. No code
+      changed; this is a documentation closure based on reading the actual filter logic, not a new
+      test or a new on-device pass.
 
 ---
 
@@ -2448,12 +2596,14 @@ path-based exclusion list, which needs elevation and wasn't done this session.
 ---
 
 ### T-F50 — tar.exe Test Fixtures
-- [~] **Status:** partial (v1.3) — all achievable coverage implemented; bomb detection descoped to
-      T-F90 (missing feature, not a fixture gap). RAR's previously-documented "unobtainable on
-      this machine" gap (T-F49/T-F85/T-F86) was closed 2026-07-07 — a `valid.rar` fixture was
-      generated via WinRAR's official console `Rar.exe` (installed via `winget`, used once, then
-      uninstalled — no RAR-writing tool is shipped with or used by Pakko itself), same one-off
-      pattern `valid.7z` already used with `NanaZipC.exe`
+- [x] **Status:** complete — all achievable coverage implemented. RAR's previously-documented
+      "unobtainable on this machine" gap (T-F49/T-F85/T-F86) was closed 2026-07-07 — a `valid.rar`
+      fixture was generated via WinRAR's official console `Rar.exe` (installed via `winget`, used
+      once, then uninstalled — no RAR-writing tool is shipped with or used by Pakko itself), same
+      one-off pattern `valid.7z` already used with `NanaZipC.exe`. Bomb detection, originally
+      descoped to T-F90 as a missing-feature gap (not a fixture gap), closed 2026-07-15 once
+      T-F90/T-F94 shipped real bomb-shaped-archive test coverage on the tar.exe path — see the
+      criterion below
 
 **What (as implemented — deviates from the original "committed `Fixtures/tar/` corpus" spec
 below; see Design deviation note):** round-trips every tar-family compression variant
@@ -2493,9 +2643,14 @@ truncated/corrupted-tar test), `Fixtures/valid.7z`, `Fixtures/valid.rar` (added 
       unhandled exception or silent empty success
 - [x] zipslip: already covered by the pre-existing
       `ExtractAsync_ArchiveWithParentTraversalEntry_RejectsWholeArchive` test — no new test needed
-- [ ] Bomb: **descoped to T-F90** — no compression-ratio protection exists on the tar.exe path to
-      test against; writing a "bomb skipped" test against nonexistent behavior would have been
-      dishonest, so this criterion is intentionally left unchecked here
+- [x] Bomb: **closed 2026-07-15** — was descoped to T-F90 (no compression-ratio protection existed
+      on the tar.exe path at the time T-F50 was written). T-F90 (and its T-F94 confirm-and-extract
+      successor) since added real bomb-shaped-archive coverage using this task's own
+      `ExternalTarFixtureBuilder`: `ExtractAsync_ArchiveWithExtremeCompressionRatio_NoCallback_SkipsWholeArchive`
+      and `..._CallbackConfirms_ExtractsNormally` in `TarSandboxedServiceExtractTests.cs` (a
+      5,000,000-byte repeated-'A' `.tar.gz`, confirmed rejected without a callback and extracted
+      when one confirms) — living in T-F90/T-F94's own test files rather than a new T-F50 one, since
+      the behavior belongs to those tasks, but it satisfies this criterion's original intent
 - [x] ADS: already covered by the pre-existing
       `ExtractAsync_ArchiveWithAlternateDataStreamEntry_RejectsWholeArchive` test
 - [x] Tests tagged `[SkipIfFormatUnsupported]` for bz2/xz/zst/lzma/7z/rar

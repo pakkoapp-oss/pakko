@@ -15,223 +15,223 @@
 
   <!-- Buttons -->
   <data name="ArchiveButtonLabel" xml:space="preserve">
-    <value>Arhivēt</value>
+    <value>圧縮</value>
   </data>
   <data name="ExtractButtonLabel" xml:space="preserve">
-    <value>Atarhivēt</value>
+    <value>展開</value>
   </data>
   <data name="ClearButton.Content" xml:space="preserve">
-    <value>Notīrīt</value>
+    <value>クリア</value>
   </data>
   <data name="AddFilesButton.Content" xml:space="preserve">
-    <value>Pievienot failus</value>
+    <value>ファイルを追加</value>
   </data>
   <data name="AddFolderButton.Content" xml:space="preserve">
-    <value>Pievienot mapi</value>
+    <value>フォルダーを追加</value>
   </data>
   <data name="HashButton.Content" xml:space="preserve">
-    <value>Kontrolsumma...</value>
+    <value>ハッシュ...</value>
   </data>
   <data name="AboutButton.Content" xml:space="preserve">
-    <value>Par programmu</value>
+    <value>バージョン情報</value>
   </data>
   <data name="ExtractSelectedButton.Content" xml:space="preserve">
-    <value>Atarhivēt atlasīto</value>
+    <value>選択項目を展開</value>
   </data>
   <data name="ExtractAllButton.Content" xml:space="preserve">
-    <value>Atarhivēt visu</value>
+    <value>すべて展開</value>
   </data>
 
   <!-- Table headers -->
   <data name="NameColumnHeader.Content" xml:space="preserve">
-    <value>Nosaukums</value>
+    <value>名前</value>
   </data>
   <data name="TypeColumnHeader.Content" xml:space="preserve">
-    <value>Tips</value>
+    <value>種類</value>
   </data>
   <data name="SizeColumnHeader.Content" xml:space="preserve">
-    <value>Izmērs</value>
+    <value>サイズ</value>
   </data>
   <data name="ModifiedColumnHeader.Content" xml:space="preserve">
-    <value>Mainīts</value>
+    <value>更新日時</value>
   </data>
   <data name="CrcColumnHeader.Content" xml:space="preserve">
     <value>CRC-32</value>
   </data>
   <data name="BrowseNameColumnHeader.Text" xml:space="preserve">
-    <value>Nosaukums</value>
+    <value>名前</value>
   </data>
   <data name="BrowseSizeColumnHeader.Text" xml:space="preserve">
-    <value>Izmērs</value>
+    <value>サイズ</value>
   </data>
   <data name="PackedColumnHeader.Text" xml:space="preserve">
-    <value>Saspiests</value>
+    <value>圧縮後</value>
   </data>
   <data name="BrowseCrcColumnHeader.Text" xml:space="preserve">
     <value>CRC-32</value>
   </data>
   <data name="BrowseModifiedColumnHeader.Text" xml:space="preserve">
-    <value>Mainīts</value>
+    <value>更新日時</value>
   </data>
 
   <!-- Tray menu -->
   <data name="TrayOpenMenuItem.Text" xml:space="preserve">
-    <value>Atvērt Pakko</value>
+    <value>Pakko を開く</value>
   </data>
   <data name="TrayAboutMenuItem.Text" xml:space="preserve">
-    <value>Par Pakko</value>
+    <value>Pakko について</value>
   </data>
   <data name="TrayExitMenuItem.Text" xml:space="preserve">
-    <value>Iziet</value>
+    <value>終了</value>
   </data>
   <data name="RemoveMenuItem.Text" xml:space="preserve">
-    <value>Noņemt</value>
+    <value>削除</value>
   </data>
 
   <!-- Archive options -->
   <data name="ModeLabel.Text" xml:space="preserve">
-    <value>Režīms:</value>
+    <value>モード:</value>
   </data>
   <data name="OneArchiveRadio.Content" xml:space="preserve">
-    <value>Viens arhīvs</value>
+    <value>1つのアーカイブ</value>
   </data>
   <data name="SeparateArchivesRadio.Content" xml:space="preserve">
-    <value>Atsevišķi arhīvi</value>
+    <value>個別のアーカイブ</value>
   </data>
   <data name="ArchiveNameTextBox.PlaceholderText" xml:space="preserve">
-    <value>Automātiski (pēc pirmā faila/mapes nosaukuma)</value>
+    <value>自動 (最初のファイル/フォルダー名に基づく)</value>
   </data>
   <data name="CompressionFastItem.Content" xml:space="preserve">
-    <value>Ātra</value>
+    <value>高速</value>
   </data>
   <data name="CompressionNormalItem.Content" xml:space="preserve">
-    <value>Normāla</value>
+    <value>標準</value>
   </data>
   <data name="CompressionBestItem.Content" xml:space="preserve">
-    <value>Labākā</value>
+    <value>最高</value>
   </data>
   <data name="CompressionNoneItem.Content" xml:space="preserve">
-    <value>Nav</value>
+    <value>なし</value>
   </data>
   <data name="ConflictOverwriteItem.Content" xml:space="preserve">
-    <value>Pārrakstīt</value>
+    <value>上書き</value>
   </data>
   <data name="ConflictSkipItem.Content" xml:space="preserve">
-    <value>Izlaist</value>
+    <value>スキップ</value>
   </data>
   <data name="ConflictRenameItem.Content" xml:space="preserve">
-    <value>Pārdēvēt (pievienot numuru)</value>
+    <value>名前を変更 (番号を追加)</value>
   </data>
   <data name="ConflictAskItem.Content" xml:space="preserve">
-    <value>Jautāt</value>
+    <value>確認する</value>
   </data>
   <data name="CancelButton.Content" xml:space="preserve">
-    <value>✕ Atcelt</value>
+    <value>✕ キャンセル</value>
   </data>
 
   <!-- Drop zone -->
   <data name="DropZoneHint.Text" xml:space="preserve">
-    <value>Ievelciet failus vai mapes šeit, vai veiciet dubultklikšķi, lai pārlūkotu failus</value>
+    <value>ここにファイルまたはフォルダーをドロップするか、ダブルクリックしてファイルを参照してください</value>
   </data>
   <data name="MultipleFoldersHint.Text" xml:space="preserve">
-    <value>Vairākām mapēm — velciet un nometiet no Explorer</value>
+    <value>複数のフォルダーの場合 — エクスプローラーからドラッグ &amp; ドロップしてください</value>
   </data>
   <data name="DropZoneModeHint.Text" xml:space="preserve">
-    <value>Arhīvi piedāvā atarhivēšanu; viss pārējais tiks arhivēts</value>
+    <value>アーカイブは展開を提案します。それ以外は圧縮されます</value>
   </data>
 
   <!-- Labels -->
   <data name="DestinationLabel.Text" xml:space="preserve">
-    <value>Galamērķis:</value>
+    <value>保存先:</value>
   </data>
   <data name="ArchiveNameLabel.Text" xml:space="preserve">
-    <value>Nosaukums:</value>
+    <value>名前:</value>
   </data>
   <data name="CompressionLabel.Text" xml:space="preserve">
-    <value>Saspiešana:</value>
+    <value>圧縮:</value>
   </data>
   <data name="ConflictLabel.Text" xml:space="preserve">
-    <value>Ja fails jau pastāv:</value>
+    <value>ファイルが存在する場合:</value>
   </data>
 
   <!-- Checkboxes -->
   <data name="OpenDestinationCheck.Content" xml:space="preserve">
-    <value>Atvērt galamērķa mapi pēc pabeigšanas</value>
+    <value>完了後に保存先フォルダーを開く</value>
   </data>
   <data name="DeleteAfterOperationCheck.Content" xml:space="preserve">
-    <value>Dzēst pēc darbības</value>
+    <value>処理後に削除する</value>
   </data>
 
   <!-- Status messages -->
   <data name="StatusReady" xml:space="preserve">
-    <value>Gatavs</value>
+    <value>準備完了</value>
   </data>
   <data name="StatusArchiving" xml:space="preserve">
-    <value>Notiek arhivēšana...</value>
+    <value>圧縮中...</value>
   </data>
   <data name="StatusExtracting" xml:space="preserve">
-    <value>Notiek atarhivēšana...</value>
+    <value>展開中...</value>
   </data>
   <data name="StatusDone" xml:space="preserve">
-    <value>Gatavs — apstrādāti faili: {0}.</value>
+    <value>完了 — {0} 個のファイルを処理しました。</value>
   </data>
   <data name="StatusIssues" xml:space="preserve">
-    <value>Pabeigts ar problēmām.</value>
+    <value>問題ありで完了しました。</value>
   </data>
   <data name="StatusCancelled" xml:space="preserve">
-    <value>Atcelts</value>
+    <value>キャンセルされました</value>
   </data>
   <data name="StatusCleaningUp" xml:space="preserve">
-    <value>Notiek tīrīšana...</value>
+    <value>クリーンアップ中...</value>
   </data>
   <data name="StatusFinalizing" xml:space="preserve">
-    <value>Notiek pabeigšana...</value>
+    <value>終了処理中...</value>
   </data>
   <data name="StatusArchivedIn" xml:space="preserve">
-    <value>Arhivēts {0} s — faili: {1}</value>
+    <value>{0} 秒で圧縮完了 — {1} 個のファイル</value>
   </data>
   <data name="StatusExtractedIn" xml:space="preserve">
-    <value>Atarhivēts {0} s — faili: {1}</value>
+    <value>{0} 秒で展開完了 — {1} 個のファイル</value>
   </data>
   <data name="OutcomeWillExtract" xml:space="preserve">
-    <value>Tiks atarhivēti {0} arhīvi augstāk norādītajā mapē</value>
+    <value>上記のフォルダーに {0} 個のアーカイブを展開します</value>
   </data>
   <data name="OutcomeWillArchive" xml:space="preserve">
-    <value>Tiks arhivēti {0} vienumi augstāk norādītajā mapē</value>
+    <value>上記のフォルダーに {0} 個の項目を圧縮します</value>
   </data>
 
   <!-- Dialog strings -->
   <data name="ErrorDialogTitle" xml:space="preserve">
-    <value>Pabeigts ar problēmām</value>
+    <value>問題ありで完了しました</value>
   </data>
   <data name="ErrorSectionHeader" xml:space="preserve">
-    <value>Kļūdas</value>
+    <value>エラー</value>
   </data>
   <data name="SkippedSectionHeader" xml:space="preserve">
-    <value>Izlaisti</value>
+    <value>スキップ</value>
   </data>
   <data name="CompressionBombDialogTitle" xml:space="preserve">
-    <value>Aizdomīgs arhīvs</value>
+    <value>不審なアーカイブ</value>
   </data>
   <data name="CompressionBombDialogMessage" xml:space="preserve">
-    <value>Šis arhīvs apgalvo, ka satur {0} datu, saspiešanas attiecība {1}:1. Tas ir neparasti augsts un var liecināt par atarhivēšanas bumbu. Vai tomēr atarhivēt?</value>
+    <value>このアーカイブは {0} のデータを含むとされており、圧縮率は {1}:1 です。これは異常に高く、展開爆弾 (デコンプレッションボム) の可能性があります。それでも展開しますか?</value>
   </data>
   <data name="ConflictDialogTitle" xml:space="preserve">
-    <value>Fails jau pastāv</value>
+    <value>ファイルは既に存在します</value>
   </data>
   <data name="ConflictDialogMessage" xml:space="preserve">
-    <value>"{0}" galamērķī jau pastāv. Ko vēlaties darīt?</value>
+    <value>"{0}" は保存先に既に存在します。どうしますか?</value>
   </data>
   <data name="ConflictDialogOverwriteButton" xml:space="preserve">
-    <value>Pārrakstīt</value>
+    <value>上書き</value>
   </data>
   <data name="ConflictDialogRenameButton" xml:space="preserve">
-    <value>Pārdēvēt</value>
+    <value>名前を変更</value>
   </data>
   <data name="ConflictDialogSkipButton" xml:space="preserve">
-    <value>Izlaist</value>
+    <value>スキップ</value>
   </data>
   <data name="ConflictDialogApplyToAllCheck" xml:space="preserve">
-    <value>Piemērot visiem atlikušajiem konfliktiem</value>
+    <value>残りのすべての競合に適用する</value>
   </data>
 </root>

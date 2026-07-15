@@ -15,223 +15,223 @@
 
   <!-- Buttons -->
   <data name="ArchiveButtonLabel" xml:space="preserve">
-    <value>Arhivēt</value>
+    <value>آرکائیو کریں</value>
   </data>
   <data name="ExtractButtonLabel" xml:space="preserve">
-    <value>Atarhivēt</value>
+    <value>نکالیں</value>
   </data>
   <data name="ClearButton.Content" xml:space="preserve">
-    <value>Notīrīt</value>
+    <value>صاف کریں</value>
   </data>
   <data name="AddFilesButton.Content" xml:space="preserve">
-    <value>Pievienot failus</value>
+    <value>فائلیں شامل کریں</value>
   </data>
   <data name="AddFolderButton.Content" xml:space="preserve">
-    <value>Pievienot mapi</value>
+    <value>فولڈر شامل کریں</value>
   </data>
   <data name="HashButton.Content" xml:space="preserve">
-    <value>Kontrolsumma...</value>
+    <value>ہیش...</value>
   </data>
   <data name="AboutButton.Content" xml:space="preserve">
-    <value>Par programmu</value>
+    <value>تعارف</value>
   </data>
   <data name="ExtractSelectedButton.Content" xml:space="preserve">
-    <value>Atarhivēt atlasīto</value>
+    <value>منتخب کردہ نکالیں</value>
   </data>
   <data name="ExtractAllButton.Content" xml:space="preserve">
-    <value>Atarhivēt visu</value>
+    <value>سب نکالیں</value>
   </data>
 
   <!-- Table headers -->
   <data name="NameColumnHeader.Content" xml:space="preserve">
-    <value>Nosaukums</value>
+    <value>نام</value>
   </data>
   <data name="TypeColumnHeader.Content" xml:space="preserve">
-    <value>Tips</value>
+    <value>قسم</value>
   </data>
   <data name="SizeColumnHeader.Content" xml:space="preserve">
-    <value>Izmērs</value>
+    <value>حجم</value>
   </data>
   <data name="ModifiedColumnHeader.Content" xml:space="preserve">
-    <value>Mainīts</value>
+    <value>ترمیم شدہ</value>
   </data>
   <data name="CrcColumnHeader.Content" xml:space="preserve">
     <value>CRC-32</value>
   </data>
   <data name="BrowseNameColumnHeader.Text" xml:space="preserve">
-    <value>Nosaukums</value>
+    <value>نام</value>
   </data>
   <data name="BrowseSizeColumnHeader.Text" xml:space="preserve">
-    <value>Izmērs</value>
+    <value>حجم</value>
   </data>
   <data name="PackedColumnHeader.Text" xml:space="preserve">
-    <value>Saspiests</value>
+    <value>کمپریسڈ حجم</value>
   </data>
   <data name="BrowseCrcColumnHeader.Text" xml:space="preserve">
     <value>CRC-32</value>
   </data>
   <data name="BrowseModifiedColumnHeader.Text" xml:space="preserve">
-    <value>Mainīts</value>
+    <value>ترمیم شدہ</value>
   </data>
 
   <!-- Tray menu -->
   <data name="TrayOpenMenuItem.Text" xml:space="preserve">
-    <value>Atvērt Pakko</value>
+    <value>Pakko کھولیں</value>
   </data>
   <data name="TrayAboutMenuItem.Text" xml:space="preserve">
-    <value>Par Pakko</value>
+    <value>Pakko کے بارے میں</value>
   </data>
   <data name="TrayExitMenuItem.Text" xml:space="preserve">
-    <value>Iziet</value>
+    <value>خارج ہوں</value>
   </data>
   <data name="RemoveMenuItem.Text" xml:space="preserve">
-    <value>Noņemt</value>
+    <value>ہٹائیں</value>
   </data>
 
   <!-- Archive options -->
   <data name="ModeLabel.Text" xml:space="preserve">
-    <value>Režīms:</value>
+    <value>موڈ:</value>
   </data>
   <data name="OneArchiveRadio.Content" xml:space="preserve">
-    <value>Viens arhīvs</value>
+    <value>ایک آرکائیو</value>
   </data>
   <data name="SeparateArchivesRadio.Content" xml:space="preserve">
-    <value>Atsevišķi arhīvi</value>
+    <value>علیحدہ آرکائیوز</value>
   </data>
   <data name="ArchiveNameTextBox.PlaceholderText" xml:space="preserve">
-    <value>Automātiski (pēc pirmā faila/mapes nosaukuma)</value>
+    <value>خودکار (پہلی فائل/فولڈر کے نام کی بنیاد پر)</value>
   </data>
   <data name="CompressionFastItem.Content" xml:space="preserve">
-    <value>Ātra</value>
+    <value>تیز</value>
   </data>
   <data name="CompressionNormalItem.Content" xml:space="preserve">
-    <value>Normāla</value>
+    <value>عام</value>
   </data>
   <data name="CompressionBestItem.Content" xml:space="preserve">
-    <value>Labākā</value>
+    <value>بہترین</value>
   </data>
   <data name="CompressionNoneItem.Content" xml:space="preserve">
-    <value>Nav</value>
+    <value>کوئی نہیں</value>
   </data>
   <data name="ConflictOverwriteItem.Content" xml:space="preserve">
-    <value>Pārrakstīt</value>
+    <value>اوور رائٹ کریں</value>
   </data>
   <data name="ConflictSkipItem.Content" xml:space="preserve">
-    <value>Izlaist</value>
+    <value>نظرانداز کریں</value>
   </data>
   <data name="ConflictRenameItem.Content" xml:space="preserve">
-    <value>Pārdēvēt (pievienot numuru)</value>
+    <value>نام تبدیل کریں (نمبر شامل کریں)</value>
   </data>
   <data name="ConflictAskItem.Content" xml:space="preserve">
-    <value>Jautāt</value>
+    <value>پوچھیں</value>
   </data>
   <data name="CancelButton.Content" xml:space="preserve">
-    <value>✕ Atcelt</value>
+    <value>✕ منسوخ کریں</value>
   </data>
 
   <!-- Drop zone -->
   <data name="DropZoneHint.Text" xml:space="preserve">
-    <value>Ievelciet failus vai mapes šeit, vai veiciet dubultklikšķi, lai pārlūkotu failus</value>
+    <value>فائلیں یا فولڈرز یہاں چھوڑیں، یا فائلیں براؤز کرنے کے لیے ڈبل کلک کریں</value>
   </data>
   <data name="MultipleFoldersHint.Text" xml:space="preserve">
-    <value>Vairākām mapēm — velciet un nometiet no Explorer</value>
+    <value>متعدد فولڈرز کے لیے — ایکسپلورر سے گھسیٹ کر چھوڑیں</value>
   </data>
   <data name="DropZoneModeHint.Text" xml:space="preserve">
-    <value>Arhīvi piedāvā atarhivēšanu; viss pārējais tiks arhivēts</value>
+    <value>آرکائیوز نکالنے کی پیشکش کرتے ہیں؛ باقی سب کچھ آرکائیو کیا جائے گا</value>
   </data>
 
   <!-- Labels -->
   <data name="DestinationLabel.Text" xml:space="preserve">
-    <value>Galamērķis:</value>
+    <value>منزل:</value>
   </data>
   <data name="ArchiveNameLabel.Text" xml:space="preserve">
-    <value>Nosaukums:</value>
+    <value>نام:</value>
   </data>
   <data name="CompressionLabel.Text" xml:space="preserve">
-    <value>Saspiešana:</value>
+    <value>کمپریشن:</value>
   </data>
   <data name="ConflictLabel.Text" xml:space="preserve">
-    <value>Ja fails jau pastāv:</value>
+    <value>اگر فائل پہلے سے موجود ہو:</value>
   </data>
 
   <!-- Checkboxes -->
   <data name="OpenDestinationCheck.Content" xml:space="preserve">
-    <value>Atvērt galamērķa mapi pēc pabeigšanas</value>
+    <value>مکمل ہونے کے بعد منزل کا فولڈر کھولیں</value>
   </data>
   <data name="DeleteAfterOperationCheck.Content" xml:space="preserve">
-    <value>Dzēst pēc darbības</value>
+    <value>عمل کے بعد حذف کریں</value>
   </data>
 
   <!-- Status messages -->
   <data name="StatusReady" xml:space="preserve">
-    <value>Gatavs</value>
+    <value>تیار</value>
   </data>
   <data name="StatusArchiving" xml:space="preserve">
-    <value>Notiek arhivēšana...</value>
+    <value>آرکائیو کیا جا رہا ہے...</value>
   </data>
   <data name="StatusExtracting" xml:space="preserve">
-    <value>Notiek atarhivēšana...</value>
+    <value>نکالا جا رہا ہے...</value>
   </data>
   <data name="StatusDone" xml:space="preserve">
-    <value>Gatavs — apstrādāti faili: {0}.</value>
+    <value>مکمل — {0} فائل(یں) پراسیس ہوئیں۔</value>
   </data>
   <data name="StatusIssues" xml:space="preserve">
-    <value>Pabeigts ar problēmām.</value>
+    <value>مسائل کے ساتھ مکمل ہوا۔</value>
   </data>
   <data name="StatusCancelled" xml:space="preserve">
-    <value>Atcelts</value>
+    <value>منسوخ کر دیا گیا</value>
   </data>
   <data name="StatusCleaningUp" xml:space="preserve">
-    <value>Notiek tīrīšana...</value>
+    <value>صفائی ہو رہی ہے...</value>
   </data>
   <data name="StatusFinalizing" xml:space="preserve">
-    <value>Notiek pabeigšana...</value>
+    <value>تکمیل ہو رہی ہے...</value>
   </data>
   <data name="StatusArchivedIn" xml:space="preserve">
-    <value>Arhivēts {0} s — faili: {1}</value>
+    <value>{0} سیکنڈ میں آرکائیو ہوا — {1} فائل(یں)</value>
   </data>
   <data name="StatusExtractedIn" xml:space="preserve">
-    <value>Atarhivēts {0} s — faili: {1}</value>
+    <value>{0} سیکنڈ میں نکالا گیا — {1} فائل(یں)</value>
   </data>
   <data name="OutcomeWillExtract" xml:space="preserve">
-    <value>Tiks atarhivēti {0} arhīvi augstāk norādītajā mapē</value>
+    <value>اوپر دیے گئے فولڈر میں {0} آرکائیو(ز) نکالے جائیں گے</value>
   </data>
   <data name="OutcomeWillArchive" xml:space="preserve">
-    <value>Tiks arhivēti {0} vienumi augstāk norādītajā mapē</value>
+    <value>اوپر دیے گئے فولڈر میں {0} آئٹم(ز) آرکائیو کیے جائیں گے</value>
   </data>
 
   <!-- Dialog strings -->
   <data name="ErrorDialogTitle" xml:space="preserve">
-    <value>Pabeigts ar problēmām</value>
+    <value>مسائل کے ساتھ مکمل ہوا</value>
   </data>
   <data name="ErrorSectionHeader" xml:space="preserve">
-    <value>Kļūdas</value>
+    <value>خرابیاں</value>
   </data>
   <data name="SkippedSectionHeader" xml:space="preserve">
-    <value>Izlaisti</value>
+    <value>نظرانداز شدہ</value>
   </data>
   <data name="CompressionBombDialogTitle" xml:space="preserve">
-    <value>Aizdomīgs arhīvs</value>
+    <value>مشکوک آرکائیو</value>
   </data>
   <data name="CompressionBombDialogMessage" xml:space="preserve">
-    <value>Šis arhīvs apgalvo, ka satur {0} datu, saspiešanas attiecība {1}:1. Tas ir neparasti augsts un var liecināt par atarhivēšanas bumbu. Vai tomēr atarhivēt?</value>
+    <value>یہ آرکائیو {0} ڈیٹا پر مشتمل ہونے کا دعویٰ کرتا ہے، جس کا کمپریشن تناسب {1}:1 ہے۔ یہ غیر معمولی طور پر زیادہ ہے اور ڈی کمپریشن بم کی نشاندہی کر سکتا ہے۔ کیا پھر بھی نکالیں؟</value>
   </data>
   <data name="ConflictDialogTitle" xml:space="preserve">
-    <value>Fails jau pastāv</value>
+    <value>فائل پہلے سے موجود ہے</value>
   </data>
   <data name="ConflictDialogMessage" xml:space="preserve">
-    <value>"{0}" galamērķī jau pastāv. Ko vēlaties darīt?</value>
+    <value>"{0}" منزل پر پہلے سے موجود ہے۔ آپ کیا کرنا چاہیں گے؟</value>
   </data>
   <data name="ConflictDialogOverwriteButton" xml:space="preserve">
-    <value>Pārrakstīt</value>
+    <value>اوور رائٹ کریں</value>
   </data>
   <data name="ConflictDialogRenameButton" xml:space="preserve">
-    <value>Pārdēvēt</value>
+    <value>نام تبدیل کریں</value>
   </data>
   <data name="ConflictDialogSkipButton" xml:space="preserve">
-    <value>Izlaist</value>
+    <value>نظرانداز کریں</value>
   </data>
   <data name="ConflictDialogApplyToAllCheck" xml:space="preserve">
-    <value>Piemērot visiem atlikušajiem konfliktiem</value>
+    <value>باقی تمام تنازعات پر لاگو کریں</value>
   </data>
 </root>

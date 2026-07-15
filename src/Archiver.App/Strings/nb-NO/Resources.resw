@@ -14,10 +14,10 @@
   </resheader>
 
   <!-- Buttons -->
-  <data name="ArchiveButton.Content" xml:space="preserve">
+  <data name="ArchiveButtonLabel" xml:space="preserve">
     <value>Arkiver</value>
   </data>
-  <data name="ExtractButton.Content" xml:space="preserve">
+  <data name="ExtractButtonLabel" xml:space="preserve">
     <value>Pakk ut</value>
   </data>
   <data name="ClearButton.Content" xml:space="preserve">

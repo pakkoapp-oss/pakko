@@ -75,8 +75,12 @@ public sealed partial class MainViewModel : ObservableObject
     public bool IsOperationRunning => IsBusy;
     public bool IsNotBusy => !IsBusy;
 
-    public string ArchiveButtonText => IsBusy && _lastOperation == "archive" ? "Archiving..." : "Archive";
-    public string ExtractButtonText => IsBusy && _lastOperation == "extract" ? "Extracting..." : "Extract";
+    public string ArchiveButtonText => IsBusy && _lastOperation == "archive"
+        ? _res.GetString("StatusArchiving")
+        : _res.GetString("ArchiveButtonLabel");
+    public string ExtractButtonText => IsBusy && _lastOperation == "extract"
+        ? _res.GetString("StatusExtracting")
+        : _res.GetString("ExtractButtonLabel");
 
     public Visibility IsOperationRunningVisibility =>
         IsBusy ? Visibility.Visible : Visibility.Collapsed;

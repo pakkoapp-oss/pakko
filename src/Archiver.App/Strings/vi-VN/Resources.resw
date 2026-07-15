@@ -15,223 +15,223 @@
 
   <!-- Buttons -->
   <data name="ArchiveButtonLabel" xml:space="preserve">
-    <value>Arhivēt</value>
+    <value>Nén</value>
   </data>
   <data name="ExtractButtonLabel" xml:space="preserve">
-    <value>Atarhivēt</value>
+    <value>Giải nén</value>
   </data>
   <data name="ClearButton.Content" xml:space="preserve">
-    <value>Notīrīt</value>
+    <value>Xóa hết</value>
   </data>
   <data name="AddFilesButton.Content" xml:space="preserve">
-    <value>Pievienot failus</value>
+    <value>Thêm tệp</value>
   </data>
   <data name="AddFolderButton.Content" xml:space="preserve">
-    <value>Pievienot mapi</value>
+    <value>Thêm thư mục</value>
   </data>
   <data name="HashButton.Content" xml:space="preserve">
-    <value>Kontrolsumma...</value>
+    <value>Hash...</value>
   </data>
   <data name="AboutButton.Content" xml:space="preserve">
-    <value>Par programmu</value>
+    <value>Giới thiệu</value>
   </data>
   <data name="ExtractSelectedButton.Content" xml:space="preserve">
-    <value>Atarhivēt atlasīto</value>
+    <value>Giải nén mục đã chọn</value>
   </data>
   <data name="ExtractAllButton.Content" xml:space="preserve">
-    <value>Atarhivēt visu</value>
+    <value>Giải nén tất cả</value>
   </data>
 
   <!-- Table headers -->
   <data name="NameColumnHeader.Content" xml:space="preserve">
-    <value>Nosaukums</value>
+    <value>Tên</value>
   </data>
   <data name="TypeColumnHeader.Content" xml:space="preserve">
-    <value>Tips</value>
+    <value>Loại</value>
   </data>
   <data name="SizeColumnHeader.Content" xml:space="preserve">
-    <value>Izmērs</value>
+    <value>Kích thước</value>
   </data>
   <data name="ModifiedColumnHeader.Content" xml:space="preserve">
-    <value>Mainīts</value>
+    <value>Ngày sửa đổi</value>
   </data>
   <data name="CrcColumnHeader.Content" xml:space="preserve">
     <value>CRC-32</value>
   </data>
   <data name="BrowseNameColumnHeader.Text" xml:space="preserve">
-    <value>Nosaukums</value>
+    <value>Tên</value>
   </data>
   <data name="BrowseSizeColumnHeader.Text" xml:space="preserve">
-    <value>Izmērs</value>
+    <value>Kích thước</value>
   </data>
   <data name="PackedColumnHeader.Text" xml:space="preserve">
-    <value>Saspiests</value>
+    <value>Đã nén</value>
   </data>
   <data name="BrowseCrcColumnHeader.Text" xml:space="preserve">
     <value>CRC-32</value>
   </data>
   <data name="BrowseModifiedColumnHeader.Text" xml:space="preserve">
-    <value>Mainīts</value>
+    <value>Ngày sửa đổi</value>
   </data>
 
   <!-- Tray menu -->
   <data name="TrayOpenMenuItem.Text" xml:space="preserve">
-    <value>Atvērt Pakko</value>
+    <value>Mở Pakko</value>
   </data>
   <data name="TrayAboutMenuItem.Text" xml:space="preserve">
-    <value>Par Pakko</value>
+    <value>Giới thiệu về Pakko</value>
   </data>
   <data name="TrayExitMenuItem.Text" xml:space="preserve">
-    <value>Iziet</value>
+    <value>Thoát</value>
   </data>
   <data name="RemoveMenuItem.Text" xml:space="preserve">
-    <value>Noņemt</value>
+    <value>Xóa</value>
   </data>
 
   <!-- Archive options -->
   <data name="ModeLabel.Text" xml:space="preserve">
-    <value>Režīms:</value>
+    <value>Chế độ:</value>
   </data>
   <data name="OneArchiveRadio.Content" xml:space="preserve">
-    <value>Viens arhīvs</value>
+    <value>Một tệp nén</value>
   </data>
   <data name="SeparateArchivesRadio.Content" xml:space="preserve">
-    <value>Atsevišķi arhīvi</value>
+    <value>Các tệp nén riêng</value>
   </data>
   <data name="ArchiveNameTextBox.PlaceholderText" xml:space="preserve">
-    <value>Automātiski (pēc pirmā faila/mapes nosaukuma)</value>
+    <value>Tự động (dựa trên tên tệp/thư mục đầu tiên)</value>
   </data>
   <data name="CompressionFastItem.Content" xml:space="preserve">
-    <value>Ātra</value>
+    <value>Nhanh</value>
   </data>
   <data name="CompressionNormalItem.Content" xml:space="preserve">
-    <value>Normāla</value>
+    <value>Bình thường</value>
   </data>
   <data name="CompressionBestItem.Content" xml:space="preserve">
-    <value>Labākā</value>
+    <value>Tốt nhất</value>
   </data>
   <data name="CompressionNoneItem.Content" xml:space="preserve">
-    <value>Nav</value>
+    <value>Không</value>
   </data>
   <data name="ConflictOverwriteItem.Content" xml:space="preserve">
-    <value>Pārrakstīt</value>
+    <value>Ghi đè</value>
   </data>
   <data name="ConflictSkipItem.Content" xml:space="preserve">
-    <value>Izlaist</value>
+    <value>Bỏ qua</value>
   </data>
   <data name="ConflictRenameItem.Content" xml:space="preserve">
-    <value>Pārdēvēt (pievienot numuru)</value>
+    <value>Đổi tên (thêm số)</value>
   </data>
   <data name="ConflictAskItem.Content" xml:space="preserve">
-    <value>Jautāt</value>
+    <value>Hỏi</value>
   </data>
   <data name="CancelButton.Content" xml:space="preserve">
-    <value>✕ Atcelt</value>
+    <value>✕ Hủy</value>
   </data>
 
   <!-- Drop zone -->
   <data name="DropZoneHint.Text" xml:space="preserve">
-    <value>Ievelciet failus vai mapes šeit, vai veiciet dubultklikšķi, lai pārlūkotu failus</value>
+    <value>Thả tệp hoặc thư mục vào đây, hoặc nhấp đúp để duyệt tệp</value>
   </data>
   <data name="MultipleFoldersHint.Text" xml:space="preserve">
-    <value>Vairākām mapēm — velciet un nometiet no Explorer</value>
+    <value>Đối với nhiều thư mục — kéo &amp; thả từ Explorer</value>
   </data>
   <data name="DropZoneModeHint.Text" xml:space="preserve">
-    <value>Arhīvi piedāvā atarhivēšanu; viss pārējais tiks arhivēts</value>
+    <value>Tệp nén sẽ đề nghị giải nén; mọi thứ khác sẽ được nén</value>
   </data>
 
   <!-- Labels -->
   <data name="DestinationLabel.Text" xml:space="preserve">
-    <value>Galamērķis:</value>
+    <value>Đích:</value>
   </data>
   <data name="ArchiveNameLabel.Text" xml:space="preserve">
-    <value>Nosaukums:</value>
+    <value>Tên:</value>
   </data>
   <data name="CompressionLabel.Text" xml:space="preserve">
-    <value>Saspiešana:</value>
+    <value>Nén:</value>
   </data>
   <data name="ConflictLabel.Text" xml:space="preserve">
-    <value>Ja fails jau pastāv:</value>
+    <value>Nếu tệp đã tồn tại:</value>
   </data>
 
   <!-- Checkboxes -->
   <data name="OpenDestinationCheck.Content" xml:space="preserve">
-    <value>Atvērt galamērķa mapi pēc pabeigšanas</value>
+    <value>Mở thư mục đích sau khi hoàn tất</value>
   </data>
   <data name="DeleteAfterOperationCheck.Content" xml:space="preserve">
-    <value>Dzēst pēc darbības</value>
+    <value>Xóa sau khi thao tác</value>
   </data>
 
   <!-- Status messages -->
   <data name="StatusReady" xml:space="preserve">
-    <value>Gatavs</value>
+    <value>Sẵn sàng</value>
   </data>
   <data name="StatusArchiving" xml:space="preserve">
-    <value>Notiek arhivēšana...</value>
+    <value>Đang nén...</value>
   </data>
   <data name="StatusExtracting" xml:space="preserve">
-    <value>Notiek atarhivēšana...</value>
+    <value>Đang giải nén...</value>
   </data>
   <data name="StatusDone" xml:space="preserve">
-    <value>Gatavs — apstrādāti faili: {0}.</value>
+    <value>Hoàn tất — đã xử lý {0} tệp.</value>
   </data>
   <data name="StatusIssues" xml:space="preserve">
-    <value>Pabeigts ar problēmām.</value>
+    <value>Hoàn tất với một số vấn đề.</value>
   </data>
   <data name="StatusCancelled" xml:space="preserve">
-    <value>Atcelts</value>
+    <value>Đã hủy</value>
   </data>
   <data name="StatusCleaningUp" xml:space="preserve">
-    <value>Notiek tīrīšana...</value>
+    <value>Đang dọn dẹp...</value>
   </data>
   <data name="StatusFinalizing" xml:space="preserve">
-    <value>Notiek pabeigšana...</value>
+    <value>Đang hoàn thiện...</value>
   </data>
   <data name="StatusArchivedIn" xml:space="preserve">
-    <value>Arhivēts {0} s — faili: {1}</value>
+    <value>Đã nén trong {0} giây — {1} tệp</value>
   </data>
   <data name="StatusExtractedIn" xml:space="preserve">
-    <value>Atarhivēts {0} s — faili: {1}</value>
+    <value>Đã giải nén trong {0} giây — {1} tệp</value>
   </data>
   <data name="OutcomeWillExtract" xml:space="preserve">
-    <value>Tiks atarhivēti {0} arhīvi augstāk norādītajā mapē</value>
+    <value>Sẽ giải nén {0} tệp nén vào thư mục ở trên</value>
   </data>
   <data name="OutcomeWillArchive" xml:space="preserve">
-    <value>Tiks arhivēti {0} vienumi augstāk norādītajā mapē</value>
+    <value>Sẽ nén {0} mục vào thư mục ở trên</value>
   </data>
 
   <!-- Dialog strings -->
   <data name="ErrorDialogTitle" xml:space="preserve">
-    <value>Pabeigts ar problēmām</value>
+    <value>Hoàn tất với một số vấn đề</value>
   </data>
   <data name="ErrorSectionHeader" xml:space="preserve">
-    <value>Kļūdas</value>
+    <value>Lỗi</value>
   </data>
   <data name="SkippedSectionHeader" xml:space="preserve">
-    <value>Izlaisti</value>
+    <value>Đã bỏ qua</value>
   </data>
   <data name="CompressionBombDialogTitle" xml:space="preserve">
-    <value>Aizdomīgs arhīvs</value>
+    <value>Tệp nén đáng ngờ</value>
   </data>
   <data name="CompressionBombDialogMessage" xml:space="preserve">
-    <value>Šis arhīvs apgalvo, ka satur {0} datu, saspiešanas attiecība {1}:1. Tas ir neparasti augsts un var liecināt par atarhivēšanas bumbu. Vai tomēr atarhivēt?</value>
+    <value>Tệp nén này báo chứa {0} dữ liệu, với tỷ lệ nén {1}:1. Đây là mức bất thường cao và có thể là dấu hiệu của bom giải nén. Vẫn giải nén chứ?</value>
   </data>
   <data name="ConflictDialogTitle" xml:space="preserve">
-    <value>Fails jau pastāv</value>
+    <value>Tệp đã tồn tại</value>
   </data>
   <data name="ConflictDialogMessage" xml:space="preserve">
-    <value>"{0}" galamērķī jau pastāv. Ko vēlaties darīt?</value>
+    <value>"{0}" đã tồn tại tại đích. Bạn muốn làm gì?</value>
   </data>
   <data name="ConflictDialogOverwriteButton" xml:space="preserve">
-    <value>Pārrakstīt</value>
+    <value>Ghi đè</value>
   </data>
   <data name="ConflictDialogRenameButton" xml:space="preserve">
-    <value>Pārdēvēt</value>
+    <value>Đổi tên</value>
   </data>
   <data name="ConflictDialogSkipButton" xml:space="preserve">
-    <value>Izlaist</value>
+    <value>Bỏ qua</value>
   </data>
   <data name="ConflictDialogApplyToAllCheck" xml:space="preserve">
-    <value>Piemērot visiem atlikušajiem konfliktiem</value>
+    <value>Áp dụng cho tất cả xung đột còn lại</value>
   </data>
 </root>

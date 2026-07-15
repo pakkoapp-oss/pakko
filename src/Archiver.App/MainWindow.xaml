@@ -171,10 +171,10 @@
                 <StackPanel
                     HorizontalAlignment="Center"
                     VerticalAlignment="Center"
-                    Spacing="4"
+                    Spacing="2"
                     IsHitTestVisible="False"
                     Visibility="{x:Bind ViewModel.IsFileListEmptyVisibility, Mode=OneWay}">
-                    <FontIcon Glyph="&#xE8B7;" FontSize="28" Opacity="0.6"/>
+                    <FontIcon Glyph="&#xE8B7;" FontSize="20" Opacity="0.6"/>
                     <TextBlock
                         x:Uid="DropZoneHint"
                         HorizontalAlignment="Center"

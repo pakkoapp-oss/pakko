@@ -15,223 +15,223 @@
 
   <!-- Buttons -->
   <data name="ArchiveButtonLabel" xml:space="preserve">
-    <value>Arhivēt</value>
+    <value>אריכוב</value>
   </data>
   <data name="ExtractButtonLabel" xml:space="preserve">
-    <value>Atarhivēt</value>
+    <value>חילוץ</value>
   </data>
   <data name="ClearButton.Content" xml:space="preserve">
-    <value>Notīrīt</value>
+    <value>נקה</value>
   </data>
   <data name="AddFilesButton.Content" xml:space="preserve">
-    <value>Pievienot failus</value>
+    <value>הוסף קבצים</value>
   </data>
   <data name="AddFolderButton.Content" xml:space="preserve">
-    <value>Pievienot mapi</value>
+    <value>הוסף תיקייה</value>
   </data>
   <data name="HashButton.Content" xml:space="preserve">
-    <value>Kontrolsumma...</value>
+    <value>גיבוב...</value>
   </data>
   <data name="AboutButton.Content" xml:space="preserve">
-    <value>Par programmu</value>
+    <value>אודות</value>
   </data>
   <data name="ExtractSelectedButton.Content" xml:space="preserve">
-    <value>Atarhivēt atlasīto</value>
+    <value>חלץ נבחרים</value>
   </data>
   <data name="ExtractAllButton.Content" xml:space="preserve">
-    <value>Atarhivēt visu</value>
+    <value>חלץ הכול</value>
   </data>
 
   <!-- Table headers -->
   <data name="NameColumnHeader.Content" xml:space="preserve">
-    <value>Nosaukums</value>
+    <value>שם</value>
   </data>
   <data name="TypeColumnHeader.Content" xml:space="preserve">
-    <value>Tips</value>
+    <value>סוג</value>
   </data>
   <data name="SizeColumnHeader.Content" xml:space="preserve">
-    <value>Izmērs</value>
+    <value>גודל</value>
   </data>
   <data name="ModifiedColumnHeader.Content" xml:space="preserve">
-    <value>Mainīts</value>
+    <value>שונה</value>
   </data>
   <data name="CrcColumnHeader.Content" xml:space="preserve">
     <value>CRC-32</value>
   </data>
   <data name="BrowseNameColumnHeader.Text" xml:space="preserve">
-    <value>Nosaukums</value>
+    <value>שם</value>
   </data>
   <data name="BrowseSizeColumnHeader.Text" xml:space="preserve">
-    <value>Izmērs</value>
+    <value>גודל</value>
   </data>
   <data name="PackedColumnHeader.Text" xml:space="preserve">
-    <value>Saspiests</value>
+    <value>גודל דחוס</value>
   </data>
   <data name="BrowseCrcColumnHeader.Text" xml:space="preserve">
     <value>CRC-32</value>
   </data>
   <data name="BrowseModifiedColumnHeader.Text" xml:space="preserve">
-    <value>Mainīts</value>
+    <value>שונה</value>
   </data>
 
   <!-- Tray menu -->
   <data name="TrayOpenMenuItem.Text" xml:space="preserve">
-    <value>Atvērt Pakko</value>
+    <value>פתח את Pakko</value>
   </data>
   <data name="TrayAboutMenuItem.Text" xml:space="preserve">
-    <value>Par Pakko</value>
+    <value>אודות Pakko</value>
   </data>
   <data name="TrayExitMenuItem.Text" xml:space="preserve">
-    <value>Iziet</value>
+    <value>יציאה</value>
   </data>
   <data name="RemoveMenuItem.Text" xml:space="preserve">
-    <value>Noņemt</value>
+    <value>הסר</value>
   </data>
 
   <!-- Archive options -->
   <data name="ModeLabel.Text" xml:space="preserve">
-    <value>Režīms:</value>
+    <value>מצב:</value>
   </data>
   <data name="OneArchiveRadio.Content" xml:space="preserve">
-    <value>Viens arhīvs</value>
+    <value>ארכיון אחד</value>
   </data>
   <data name="SeparateArchivesRadio.Content" xml:space="preserve">
-    <value>Atsevišķi arhīvi</value>
+    <value>ארכיונים נפרדים</value>
   </data>
   <data name="ArchiveNameTextBox.PlaceholderText" xml:space="preserve">
-    <value>Automātiski (pēc pirmā faila/mapes nosaukuma)</value>
+    <value>אוטומטי (מבוסס על שם הקובץ/התיקייה הראשונים)</value>
   </data>
   <data name="CompressionFastItem.Content" xml:space="preserve">
-    <value>Ātra</value>
+    <value>מהיר</value>
   </data>
   <data name="CompressionNormalItem.Content" xml:space="preserve">
-    <value>Normāla</value>
+    <value>רגיל</value>
   </data>
   <data name="CompressionBestItem.Content" xml:space="preserve">
-    <value>Labākā</value>
+    <value>הטוב ביותר</value>
   </data>
   <data name="CompressionNoneItem.Content" xml:space="preserve">
-    <value>Nav</value>
+    <value>ללא</value>
   </data>
   <data name="ConflictOverwriteItem.Content" xml:space="preserve">
-    <value>Pārrakstīt</value>
+    <value>החלף</value>
   </data>
   <data name="ConflictSkipItem.Content" xml:space="preserve">
-    <value>Izlaist</value>
+    <value>דלג</value>
   </data>
   <data name="ConflictRenameItem.Content" xml:space="preserve">
-    <value>Pārdēvēt (pievienot numuru)</value>
+    <value>שנה שם (הוסף מספר)</value>
   </data>
   <data name="ConflictAskItem.Content" xml:space="preserve">
-    <value>Jautāt</value>
+    <value>שאל</value>
   </data>
   <data name="CancelButton.Content" xml:space="preserve">
-    <value>✕ Atcelt</value>
+    <value>✕ ביטול</value>
   </data>
 
   <!-- Drop zone -->
   <data name="DropZoneHint.Text" xml:space="preserve">
-    <value>Ievelciet failus vai mapes šeit, vai veiciet dubultklikšķi, lai pārlūkotu failus</value>
+    <value>גרור לכאן קבצים או תיקיות, או לחץ פעמיים כדי לעיין בקבצים</value>
   </data>
   <data name="MultipleFoldersHint.Text" xml:space="preserve">
-    <value>Vairākām mapēm — velciet un nometiet no Explorer</value>
+    <value>עבור מספר תיקיות — גרור ושחרר מ-Explorer</value>
   </data>
   <data name="DropZoneModeHint.Text" xml:space="preserve">
-    <value>Arhīvi piedāvā atarhivēšanu; viss pārējais tiks arhivēts</value>
+    <value>ארכיונים מציעים חילוץ; כל השאר יאורכב</value>
   </data>
 
   <!-- Labels -->
   <data name="DestinationLabel.Text" xml:space="preserve">
-    <value>Galamērķis:</value>
+    <value>יעד:</value>
   </data>
   <data name="ArchiveNameLabel.Text" xml:space="preserve">
-    <value>Nosaukums:</value>
+    <value>שם:</value>
   </data>
   <data name="CompressionLabel.Text" xml:space="preserve">
-    <value>Saspiešana:</value>
+    <value>דחיסה:</value>
   </data>
   <data name="ConflictLabel.Text" xml:space="preserve">
-    <value>Ja fails jau pastāv:</value>
+    <value>אם הקובץ כבר קיים:</value>
   </data>
 
   <!-- Checkboxes -->
   <data name="OpenDestinationCheck.Content" xml:space="preserve">
-    <value>Atvērt galamērķa mapi pēc pabeigšanas</value>
+    <value>פתח את תיקיית היעד לאחר הסיום</value>
   </data>
   <data name="DeleteAfterOperationCheck.Content" xml:space="preserve">
-    <value>Dzēst pēc darbības</value>
+    <value>מחק לאחר הפעולה</value>
   </data>
 
   <!-- Status messages -->
   <data name="StatusReady" xml:space="preserve">
-    <value>Gatavs</value>
+    <value>מוכן</value>
   </data>
   <data name="StatusArchiving" xml:space="preserve">
-    <value>Notiek arhivēšana...</value>
+    <value>מאכרך...</value>
   </data>
   <data name="StatusExtracting" xml:space="preserve">
-    <value>Notiek atarhivēšana...</value>
+    <value>מחלץ...</value>
   </data>
   <data name="StatusDone" xml:space="preserve">
-    <value>Gatavs — apstrādāti faili: {0}.</value>
+    <value>הושלם — {0} קבצים עובדו.</value>
   </data>
   <data name="StatusIssues" xml:space="preserve">
-    <value>Pabeigts ar problēmām.</value>
+    <value>הושלם עם בעיות.</value>
   </data>
   <data name="StatusCancelled" xml:space="preserve">
-    <value>Atcelts</value>
+    <value>בוטל</value>
   </data>
   <data name="StatusCleaningUp" xml:space="preserve">
-    <value>Notiek tīrīšana...</value>
+    <value>מנקה...</value>
   </data>
   <data name="StatusFinalizing" xml:space="preserve">
-    <value>Notiek pabeigšana...</value>
+    <value>משלים...</value>
   </data>
   <data name="StatusArchivedIn" xml:space="preserve">
-    <value>Arhivēts {0} s — faili: {1}</value>
+    <value>אוכרך תוך {0} שניות — {1} קבצים</value>
   </data>
   <data name="StatusExtractedIn" xml:space="preserve">
-    <value>Atarhivēts {0} s — faili: {1}</value>
+    <value>חולץ תוך {0} שניות — {1} קבצים</value>
   </data>
   <data name="OutcomeWillExtract" xml:space="preserve">
-    <value>Tiks atarhivēti {0} arhīvi augstāk norādītajā mapē</value>
+    <value>יחולצו {0} ארכיונים לתיקייה שלמעלה</value>
   </data>
   <data name="OutcomeWillArchive" xml:space="preserve">
-    <value>Tiks arhivēti {0} vienumi augstāk norādītajā mapē</value>
+    <value>יאורכבו {0} פריטים לתיקייה שלמעלה</value>
   </data>
 
   <!-- Dialog strings -->
   <data name="ErrorDialogTitle" xml:space="preserve">
-    <value>Pabeigts ar problēmām</value>
+    <value>הושלם עם בעיות</value>
   </data>
   <data name="ErrorSectionHeader" xml:space="preserve">
-    <value>Kļūdas</value>
+    <value>שגיאות</value>
   </data>
   <data name="SkippedSectionHeader" xml:space="preserve">
-    <value>Izlaisti</value>
+    <value>דולגו</value>
   </data>
   <data name="CompressionBombDialogTitle" xml:space="preserve">
-    <value>Aizdomīgs arhīvs</value>
+    <value>ארכיון חשוד</value>
   </data>
   <data name="CompressionBombDialogMessage" xml:space="preserve">
-    <value>Šis arhīvs apgalvo, ka satur {0} datu, saspiešanas attiecība {1}:1. Tas ir neparasti augsts un var liecināt par atarhivēšanas bumbu. Vai tomēr atarhivēt?</value>
+    <value>ארכיון זה טוען שהוא מכיל {0} נתונים, ביחס דחיסה של {1}:1. זהו יחס גבוה באופן חריג ועשוי להעיד על פצצת דחיסה. לחלץ בכל זאת?</value>
   </data>
   <data name="ConflictDialogTitle" xml:space="preserve">
-    <value>Fails jau pastāv</value>
+    <value>הקובץ כבר קיים</value>
   </data>
   <data name="ConflictDialogMessage" xml:space="preserve">
-    <value>"{0}" galamērķī jau pastāv. Ko vēlaties darīt?</value>
+    <value>"{0}" כבר קיים ביעד. מה תרצה לעשות?</value>
   </data>
   <data name="ConflictDialogOverwriteButton" xml:space="preserve">
-    <value>Pārrakstīt</value>
+    <value>החלף</value>
   </data>
   <data name="ConflictDialogRenameButton" xml:space="preserve">
-    <value>Pārdēvēt</value>
+    <value>שנה שם</value>
   </data>
   <data name="ConflictDialogSkipButton" xml:space="preserve">
-    <value>Izlaist</value>
+    <value>דלג</value>
   </data>
   <data name="ConflictDialogApplyToAllCheck" xml:space="preserve">
-    <value>Piemērot visiem atlikušajiem konfliktiem</value>
+    <value>החל על כל שאר ההתנגשויות</value>
   </data>
 </root>
