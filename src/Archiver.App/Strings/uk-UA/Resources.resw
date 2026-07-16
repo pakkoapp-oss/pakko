@@ -212,6 +212,9 @@
   <data name="StatusFinalizing" xml:space="preserve">
     <value>Завершення...</value>
   </data>
+  <data name="StatusOpening" xml:space="preserve">
+    <value>Відкриття...</value>
+  </data>
   <data name="ThisPcBreadcrumbRoot" xml:space="preserve">
     <value>Цей комп'ютер</value>
   </data>

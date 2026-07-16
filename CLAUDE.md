@@ -197,12 +197,44 @@ failure — so a blocked/misconfigured sandbox would have crashed instead of yie
   **Also added, same session:** the app's title bar now shows `Pakko — build <timestamp>`, read
   from the running assembly's own file `LastWriteTime` — see this file's "Build Commands" section
   for why (never trust build logs alone to prove an on-device check ran against fresh code).
-- 316/316 .NET tests pass (`dotnet test --filter "Category!=Slow"`: 211 Archiver.Core.Tests +
-  43 Archiver.Shell.Tests + 46 Archiver.Core.IntegrationTests + 16 Archiver.App.Core.Tests — the
+- **T-F107 (`[x]` done 2026-07-16)** — the Archive Browser's "Up" button used to exit the browser
+  entirely once it reached an archive's own root; now it keeps climbing past the archive root into
+  the archive's real containing folder, up through real parent folders, up to a drive root, and up
+  to a synthetic "This PC" node listing all drives (greying out only there), patterned after
+  NanaZip's classic FileManager. New `ArchiveBrowseScope` (`Archive`/`RealFileSystem`/`ThisPc`) on
+  `MainViewModel` plus a new `FileSystemBrowser` static helper in `Archiver.App.Core`
+  (`ListFolder`/`ListDrives`, reusing `ArchiveEntryViewModel` unchanged) drive it;
+  `NavigateUpOrExitBrowser` was renamed to `NavigateUp`/`CanNavigateUp()` and `ExitBrowseMode()`
+  deleted outright (no callers left). AI-driven on-device verification (2026-07-16) confirmed
+  climbing from inside a real archive up through Desktop/Users/`C:\` to "Цей комп'ютер" (up button
+  UIA-confirmed disabled there), descending back into a drive via double-click, opening a different
+  real archive fresh via double-click while browsing real folders, and Extract Selected/All staying
+  disabled throughout real-filesystem browsing and re-enabling immediately back inside an archive.
+  See `DECISIONS.md`'s T-F107 entry.
+- **T-F97 (`[x]` done 2026-07-16)** — double-clicking an image/text file inside the Archive
+  Browser now silently extracts just that entry to a shared `%TEMP%\PakkoPreview\` cache and opens
+  it with the OS default handler (only a quiet "Opening..."/"Відкриття..." status-line change, no
+  progress bar/summary dialog), instead of always running a full Extract. New
+  `Archiver.Core.Services.PreviewPolicy.IsPreviewable` allowlist (images + plain text only — see
+  `SECURITY.md`); new `Archiver.App.Core.PreviewCache` (one shared root, fresh `Guid` subfolder per
+  preview, deleted on window close). Deliberately reuses the real `IExtractionRouter` pipeline via
+  `ExtractOptions.SelectedEntryPaths` rather than a bespoke extraction path, so T-F49's whole-
+  archive pre-scan and MOTW propagation both apply with zero new code. Two real bugs found via
+  on-device testing, neither caught by `dotnet test`: `Launcher.LaunchFileAsync`/`StorageFile`
+  silently fails for an arbitrary `%TEMP%` path even from this app's full-trust packaged identity
+  (fixed with `Process.Start(UseShellExecute=true)`, same mechanism already used elsewhere for
+  "open destination folder"); `ArchiveResult.CreatedFiles` lists per-archive destination
+  *folders*, not individual file paths (the previewed file's path has to be computed directly).
+  AI-driven on-device verification confirmed a ZIP's `.txt`/`.jpg` and a `.tar.gz`'s `.txt` all
+  preview correctly with a real propagated MOTW tag, a non-allowlisted `.docx` still runs the full
+  Extract flow, and the cache is gone after closing the window. See `DECISIONS.md`'s T-F97 entry.
+- 353/353 .NET tests pass (`dotnet test --filter "Category!=Slow"`: 234 Archiver.Core.Tests +
+  43 Archiver.Shell.Tests + 46 Archiver.Core.IntegrationTests + 30 Archiver.App.Core.Tests — the
   jump from 284 to 309 reflects T-F105 Phase A's new `TarSandboxedServiceCompressTests` (real
   tar.exe round-trips for all 6 creation formats), `ArchiveNamingTests.GetExtension`, and
   `ArchiveCreationRouterTests`; 309 to 316 reflects Phase C's new `ShellArgumentParser`
-  `--format` switch tests). 4 Zip64 tests (T-F20) are tagged
+  `--format` switch tests; 316 to 326 reflects T-F107's new `FileSystemBrowserTests`; 326 to 353
+  reflects T-F97's new `PreviewPolicyTests`/`PreviewCacheTests`). 4 Zip64 tests (T-F20) are tagged
   `[Trait("Category", "Slow")]` and
   excluded from this default run — they cost real wall-clock time (>65535-file
   archiving/extraction, a >4 GiB round trip) that isn't worth paying on every change; run them

@@ -104,7 +104,9 @@ The application has no network capability by design. No telemetry, no update che
 The app runs only when the user explicitly opens it. No persistent processes.
 
 **No format parsers beyond ZIP**
-Each supported format adds parser attack surface. RAR and 7z are excluded permanently. TAR support (planned) uses the Windows built-in `tar.exe` process — not an in-process parser.
+Each supported format adds parser attack surface. RAR and 7z are read-only, via the Windows
+built-in `tar.exe` process — not an in-process parser — since libarchive has no writer for
+either. TAR-family formats (read and create) use the same `tar.exe` process.
 
 **Minimal MSIX capabilities**
 `Package.appxmanifest` declares only `runFullTrust`. No `broadFileSystemAccess`, no `internetClient`, no device capabilities.
@@ -122,7 +124,7 @@ Each supported format adds parser attack surface. RAR and 7z are excluded perman
 | Alternate Data Stream entries (`:` in filename) | Medium | Mitigated (T-F38, v1.2) — ADS entries rejected |
 | Reserved Windows filenames in entries (`CON`, `NUL`, etc.) | Low-Medium | Mitigated (T-F39, v1.2) — reserved names and control characters filtered |
 | MOTW not propagated to extracted files | — | Resolved (T-F45, v1.2) — MOTW propagated to every extracted file by default |
-| tar.exe runs at Medium IL | Medium | v1.3 gap — AppContainer sandbox via P/Invoke in v1.4 (T-F52) |
+| tar.exe runs at Medium IL | Medium | Resolved (T-F52, v1.4) — extraction now runs inside an AppContainer via P/Invoke (empty capability list, ACL'd quarantine directory, Job Object process/resource limits); archive creation stays unsandboxed by design, since it only reads trusted local files — see the "Why Archive Creation Is NOT Sandboxed" note below |
 | tar.exe symlink entries escape a naive quarantine (confirmed exploit, T-F49) | High | Mitigated (T-F49, v1.3) — whole-archive pre-scan via `tar -tf`/`-tvf` rejects any archive containing a symlink/hardlink/device entry or a traversal/ADS/reserved name before `-xf` ever runs; see `DECISIONS.md`'s T-F49 entry |
 | Microsoft as trust anchor | Low-Medium | Accepted tradeoff for the target audience; .NET is open source and auditable |
 
@@ -158,6 +160,34 @@ Pakko propagates MOTW on all extracted files by default:
 3. Default: always on — users cannot disable (only GPO can override in v1.4)
 
 Implementation: `FileStream` with ADS path `"extractedfile.txt:Zone.Identifier"`, no P/Invoke required.
+
+---
+
+## Archive Browser Preview — Safe-Type Allowlist (T-F97)
+
+Double-clicking a file inside the Archive Browser (T-F05) extracts just that entry to a
+throwaway temp cache and opens it with the OS's default handler, instead of requiring a manual
+Extract first. Two constraints keep this from becoming a new attack surface:
+
+1. **Safe-type allowlist only** — `Archiver.Core.Services.PreviewPolicy.IsPreviewable` restricts
+   auto-open to images (`.jpg`/`.jpeg`/`.png`/`.gif`/`.bmp`/`.webp`) and plain text
+   (`.txt`/`.md`/`.log`/`.ini`/`.csv`/`.json`/`.xml`/`.yaml`/`.yml`) — no executable, script,
+   `.lnk`, or macro-capable document type. `ShellExecute`-ing an arbitrary archive entry with one
+   click, no "Extract to..." friction first, would itself be an attack surface (a malicious file
+   inside an archive, opened automatically). Anything outside the allowlist still requires the
+   existing explicit Extract flow.
+2. **No shortcut around existing extraction security** — preview extraction reuses the real
+   `IExtractionRouter.ExtractAsync` pipeline (`ExtractOptions.SelectedEntryPaths` restricted to
+   the one previewed entry), the same mechanism T-F05's "Extract Selected" already uses. This
+   means T-F49's whole-archive pre-scan for tar-family formats always runs first, unconditionally,
+   before any bytes are extracted — a preview is never a "validate this one entry only" shortcut —
+   and MOTW propagation (above) applies automatically, since it happens inside
+   `ZipArchiveService`/`TarSandboxedService` as part of normal extraction, not something the App
+   layer has to remember to call separately for the preview path.
+
+Preview files are staged under `%TEMP%\PakkoPreview\<random>\` (one shared cache root, a fresh
+subfolder per preview) and deleted on window close, best-effort — see `DECISIONS.md`'s T-F97
+entry.
 
 ---
 

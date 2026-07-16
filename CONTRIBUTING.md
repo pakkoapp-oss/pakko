@@ -14,14 +14,20 @@
 # Build the core library (works from any terminal)
 dotnet build src/Archiver.Core
 
-# Run all tests
-dotnet test
+# Run all tests (excludes a handful of real multi-second/multi-GB Zip64 tests)
+dotnet test --filter "Category!=Slow"
+
+# Run the Zip64 tests too, before a release or when touching Zip64-adjacent code
+dotnet test --filter "Category=Slow"
 ```
 
 Always run `dotnet test` with no path argument — all projects must stay green after every change.
 
 The WinUI 3 application (`Archiver.App`) must be built and run from **Visual Studio 2022**.
-`dotnet build src/Archiver.Core` and `dotnet test` work freely from the terminal.
+`dotnet build src/Archiver.Core` and `dotnet test` work freely from the terminal — as does
+`dotnet build src/Archiver.App`, which compiles the WinUI project (useful as a quick
+compile-check on ViewModel/XAML changes without opening Visual Studio), though full MSIX
+packaging/signing/running still needs `Deploy.ps1` or Visual Studio.
 
 ---
 
@@ -87,11 +93,14 @@ Pakko should launch and begin extracting the specified archive.
 
 | Project | Role |
 |---------|------|
-| `Archiver.Core` | Compression logic — no UI dependencies, no NuGet packages |
+| `Archiver.Core` | Compression/extraction logic and the tar.exe AppContainer sandbox — no UI dependencies, no NuGet packages |
+| `Archiver.App.Core` | WinUI-free helpers for `Archiver.App` (Archive Browser tree/breadcrumb building, real-filesystem browsing, file-activation routing) — kept separate so they're unit-testable without a WinUI test host |
 | `Archiver.App` | WinUI 3 main application |
 | `Archiver.Shell` | Shell-triggered operation entry point (silent CLI, launched by the shell extension); shows progress via the Windows Shell's built-in `IProgressDialog`, in-process |
 | `Archiver.ShellExtension` | C++ COM DLL implementing `IExplorerCommand` (the actual right-click context menu) — built via MSBuild, not `dotnet build`; see `CLAUDE.md` Build Commands |
-| `Archiver.Core.Tests` | Unit tests for core compression logic |
+| `Archiver.Core.Tests` | Unit tests for core compression/extraction logic |
+| `Archiver.Core.IntegrationTests` | Tests that shell out to the real `C:\Windows\System32\tar.exe` (tagged `[Integration]`) |
+| `Archiver.App.Core.Tests` | Unit tests for `Archiver.App.Core`'s WinUI-free helpers |
 | `Archiver.Shell.Tests` | Argument parser tests for `Archiver.Shell` |
 | `Archiver.ShellExtension.Tests` | C++ Google Test suite for `Archiver.ShellExtension`'s COM-free logic — run separately, not covered by `dotnet test`; see `CLAUDE.md` Build Commands |
 | `Archiver.Core.Tests.GenerateFixtures` | Fixture generator (see above) |

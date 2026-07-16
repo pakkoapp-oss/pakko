@@ -98,6 +98,7 @@ public sealed partial class MainWindow : Window
         {
             TrayIcon.Dispose();
             ActivationGate.Cancel();
+            PreviewCache.DeleteAll();
         };
     }
 
@@ -206,6 +207,11 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        await ViewModel.ExtractSingleBrowserEntryAsync(entry);
+        // T-F97: a previewable file type opens silently via the OS default handler instead of
+        // running the full Extract flow.
+        if (PreviewPolicy.IsPreviewable(entry.Name))
+            await ViewModel.PreviewBrowserEntryAsync(entry);
+        else
+            await ViewModel.ExtractSingleBrowserEntryAsync(entry);
     }
 }

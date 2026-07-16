@@ -215,6 +215,9 @@
   <data name="StatusFinalizing" xml:space="preserve">
     <value>Finalizing...</value>
   </data>
+  <data name="StatusOpening" xml:space="preserve">
+    <value>Opening...</value>
+  </data>
   <data name="ThisPcBreadcrumbRoot" xml:space="preserve">
     <value>This PC</value>
   </data>

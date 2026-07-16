@@ -3529,3 +3529,86 @@ still true in substance — `NavigateUp` and `NavigateDestinationUp` remain two 
 serving two different UI rows — but the archive browser's own `NavigateUp` now covers materially
 more ground (real folders/drives/"This PC") than when that note was written. Superseding the
 framing, not the substance.
+
+---
+
+## T-F97 — Archive Browser Preview: Non-Intrusive Status, Shared Temp Cache, Reuse the Real Pipeline
+
+**Trigger:** user-driven UX request — double-clicking a file in the Archive Browser (T-F05)
+always ran a full Extract (progress bar, stopwatch, summary dialog) even to just look at one
+small image or text file. User's explicit direction for this round: the indicator must be
+non-intrusive (a status-line message like "Opening...", not a dialog/spinner); every preview
+extraction shares one temp folder near the app, not scattered `%TEMP%` entries; that folder gets
+deleted when the window closes.
+
+**Security decision — reuse the real extraction pipeline, not a lightweight shortcut.** Preview
+calls `IExtractionRouter.ExtractAsync` with `ExtractOptions.SelectedEntryPaths` restricted to the
+one previewed entry — the same mechanism T-F05's "Extract Selected" already uses, not a new
+"validate this one entry only" code path. Two consequences fall out of this for free:
+
+1. T-F49's whole-archive pre-scan (`TarSandboxedService.ScanForUnsafeEntriesAsync`) always runs
+   first, unconditionally, before any bytes extract — confirmed by reading the actual
+   implementation before writing any preview code. A one-file preview gets exactly the same
+   pre-scan guarantee as a full extract; there was never a design where it could be skipped.
+2. MOTW propagation (`ArchiveEntrySecurity.TryPropagateMotw`) needed **no new call site** — it
+   already runs inside `ZipArchiveService`/`TarSandboxedService` as part of normal extraction, so
+   a previewed file downloaded from the internet still carries its `Zone.Identifier` tag into the
+   temp cache automatically. (Also: `ArchiveEntrySecurity` is `internal` to `Archiver.Core`, only
+   visible to `Archiver.Core.Tests` via `[InternalsVisibleTo]` — the App layer could not have
+   called it directly even if it wanted to.)
+
+**Safe-type allowlist:** new `Archiver.Core.Services.PreviewPolicy.IsPreviewable` — `public`
+(unlike `ArchiveEntrySecurity`), mirroring `ArchiveFormatDetector`'s existing precedent for
+App-facing Core policy classes. Images (`.jpg`/`.jpeg`/`.png`/`.gif`/`.bmp`/`.webp`) and plain
+text (`.txt`/`.md`/`.log`/`.ini`/`.csv`/`.json`/`.xml`/`.yaml`/`.yml`) only — see `SECURITY.md`'s
+new T-F97 section. A non-allowlisted file double-clicked in the browser keeps running the
+existing full-Extract flow unchanged (`ExtractSingleBrowserEntryAsync`).
+
+**Temp cache location and cleanup — decided, not defaulted to whichever was easiest:** new
+`Archiver.App.Core.PreviewCache` (WinUI-free, mirrors `FileSystemBrowser`'s placement from
+T-F107) roots every preview under one shared `%TEMP%\PakkoPreview\` directory — same
+`Path.Combine(Path.GetTempPath(), "Pakko<Purpose>")` convention `TarSandboxScope` already
+established for the tar sandbox — with a fresh `Guid`-named subfolder per preview underneath it,
+so two previews (even of same-named entries from different archives) can never collide. Cleanup
+is **whole-root delete on window close**, hooked into `MainWindow.xaml.cs`'s existing
+`this.Closed` handler (already disposes `TrayIcon`/cancels `ActivationGate` there) — not
+per-file tracked deletion. Rejected per-file tracking as unnecessary complexity for a cache that's
+either fully live (window open) or safe to discard entirely (window closing); best-effort, same
+posture as `TryPropagateMotw` — a file the OS handler still has open blocks deletion, silently
+left for the next app start or OS temp cleanup, never surfaced to the user.
+
+**Status indicator:** reused the existing `StatusMessage` binding (`MainWindow.xaml`'s status
+line) with a new resource key `StatusOpening` ("Opening..." / "Відкриття...", en-US + uk-UA only
+per T-F05's established fallback-to-en-US convention for the other 22 locales) — deliberately
+**not** `IsBusy`/a progress bar/a summary dialog, unlike every other extraction path
+(`RunExtractAsync`). This is the "non-intrusive" requirement taken literally: the new
+`PreviewBrowserEntryAsync` method is a separate, lighter code path rather than a flag added to
+`RunExtractAsync`, since `RunExtractAsync`'s whole shape (stopwatch, cancel token, summary dialog,
+always-`DestinationPath`) is wrong for a background one-file peek.
+
+**Two real bugs found via on-device testing (2026-07-16), neither caught by `dotnet test` since
+both are WinUI/full-trust-packaged-process runtime behavior with no App-layer unit test coverage
+in this repo — see this file's "Known test gaps" precedent in `CLAUDE.md`:**
+
+1. **`Windows.Storage.StorageFile.GetFileFromPathAsync` + `Windows.System.Launcher.LaunchFileAsync`
+   fails silently (returns `false`/throws) for an arbitrary path like `%TEMP%\PakkoPreview\...`,
+   even from this app's `runFullTrust` packaged process identity** — confirmed by double-clicking
+   a real `.txt` entry and getting the generic "Completed with issues" error instead of Notepad
+   opening. The WinRT Storage broker enforces its own access policy for arbitrary paths outside
+   declared capabilities/known folders, independent of the process's actual Win32 file permissions
+   (which had no trouble creating the same file moments earlier via classic `System.IO`). Fixed by
+   switching `DialogService.OpenFileWithDefaultAppAsync` to
+   `Process.Start(new ProcessStartInfo(filePath) { UseShellExecute = true })` — the same
+   Win32-native "ask Explorer to open this" mechanism this codebase already uses for "open
+   destination folder" (`ExtractionRouter.cs`/`TarSandboxedService.cs`), needing no WinRT
+   capability at all. Confirmed fixed: `.txt` → Notepad, `.jpg` → the system's registered image
+   viewer, both correctly.
+2. **`ArchiveResult.CreatedFiles` lists per-archive *destination folders*, not individual
+   extracted file paths** (confirmed by reading `ZipArchiveService.cs:528-529`:
+   `createdFiles.Add(actualDest)`, where `actualDest` is the resolved destination directory).
+   The first preview implementation assumed `result.CreatedFiles[0]` was the previewed file's own
+   path and passed it straight to `OpenFileWithDefaultAppAsync` — confirmed broken on-device: it
+   opened Explorer on the preview's temp scope *folder* (correctly showing the extracted file
+   inside it) instead of opening the file itself. Fixed by computing the actual file path
+   directly — `Path.Combine(scopeDir, entry.FullPath.Replace('/', Path.DirectorySeparatorChar))`
+   — since the caller already knows exactly which single entry it asked to extract.

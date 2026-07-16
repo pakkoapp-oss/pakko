@@ -861,6 +861,54 @@ public sealed partial class MainViewModel : ObservableObject
     public Task ExtractSingleBrowserEntryAsync(ArchiveEntryViewModel entry) =>
         RunExtractAsync([BrowsedArchivePath!], [entry.FullPath]);
 
+    // T-F97: previewable file types (PreviewPolicy) skip the full Extract ceremony (progress,
+    // summary dialog) — silently extract to a throwaway PreviewCache scope and open with the OS
+    // default handler, with only a status-line change to indicate it's happening. Reuses the
+    // real IExtractionRouter pipeline (not a lightweight shortcut) so T-F49's whole-archive
+    // pre-scan and MOTW propagation both still apply unchanged — see DECISIONS.md's T-F97 entry.
+    public async Task PreviewBrowserEntryAsync(ArchiveEntryViewModel entry)
+    {
+        if (BrowsedArchivePath is null) return;
+
+        StatusMessage = _res.GetString("StatusOpening");
+        try
+        {
+            string scopeDir = PreviewCache.CreateScope();
+            var options = new ExtractOptions
+            {
+                ArchivePaths = [BrowsedArchivePath],
+                DestinationFolder = scopeDir,
+                Mode = ExtractMode.SingleFolder,
+                SelectedEntryPaths = [entry.FullPath],
+                ConfirmCompressionBombExtraction = _dialogService.ShowCompressionBombConfirmAsync,
+            };
+
+            var result = await _extractionRouter.ExtractAsync(options);
+            if (!result.Success || result.CreatedFiles.Count == 0)
+            {
+                await _dialogService.ShowErrorAsync("Error",
+                    result.Errors.FirstOrDefault()?.Message ?? _res.GetString("StatusIssues"));
+                return;
+            }
+
+            // ArchiveResult.CreatedFiles lists per-archive destination folders, not individual
+            // extracted file paths (see ZipArchiveService/TarSandboxedService) — the previewed
+            // entry's actual on-disk path has to be computed from the scope dir + entry path.
+            string previewFilePath = Path.Combine(scopeDir, entry.FullPath.Replace('/', Path.DirectorySeparatorChar));
+            if (!await _dialogService.OpenFileWithDefaultAppAsync(previewFilePath))
+                await _dialogService.ShowErrorAsync("Error", _res.GetString("StatusIssues"));
+        }
+        catch (Exception ex)
+        {
+            _logService.Error("Preview failed", ex);
+            await _dialogService.ShowErrorAsync("Error", ex.Message);
+        }
+        finally
+        {
+            StatusMessage = _res.GetString("StatusReady");
+        }
+    }
+
     // T-F87: a source whose full path appears in SkippedFiles was never actually archived or
     // extracted (unsupported format, whole-archive conflict skip, or every entry individually
     // skipped) — deleting it with DeleteAfterOperation on would be data loss. Per-entry skips

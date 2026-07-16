@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.IO;
 using System.Security.Cryptography;
 using Archiver.App.Models;
@@ -144,6 +145,26 @@ public sealed class DialogService : IDialogService
             tcs.SetResult(new ConflictDecision { Resolution = ConflictResolution.Skip });
 
         return tcs.Task;
+    }
+
+    // T-F97: opens an Archive Browser preview file with the OS's default handler for its type.
+    // Process.Start(UseShellExecute=true), not Launcher.LaunchFileAsync/StorageFile — confirmed
+    // on-device that the WinRT Storage broker rejects an arbitrary %TEMP% path from this app's
+    // full-trust packaged identity even though classic File I/O (which created the file) has no
+    // trouble with the same path. Process.Start with shell execution is the same mechanism this
+    // codebase already uses for "open destination folder" (ExtractionRouter/TarSandboxedService)
+    // and needs no WinRT capability at all.
+    public Task<bool> OpenFileWithDefaultAppAsync(string filePath)
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo(filePath) { UseShellExecute = true });
+            return Task.FromResult(true);
+        }
+        catch
+        {
+            return Task.FromResult(false);
+        }
     }
 
     public async Task<string?> PickDestinationFolderAsync()

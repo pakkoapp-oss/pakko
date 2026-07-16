@@ -365,17 +365,40 @@ Click ZIP in list → read-only tree view of contents via `ZipFile.OpenRead`. No
 ---
 
 ### T-F97 — Archive Browser: Preview a File (Open Without Manual Extract)
-- [ ] **Status:** future — split out of T-F05's design discussion 2026-07-12, not a discovered
-      bug or existing behavior
+- [x] **Status:** done — implemented and on-device verified 2026-07-16 (user-driven,
+      non-intrusive-preview design requested directly: a status-line indicator only, one shared
+      temp cache, deleted on window close), planned via Plan Mode. Two real bugs found and fixed
+      during on-device verification, neither caught by `dotnet test`: (1)
+      `Launcher.LaunchFileAsync`/`StorageFile.GetFileFromPathAsync` failed silently for an
+      arbitrary `%TEMP%` path from this app's full-trust packaged identity — fixed by switching to
+      `Process.Start(UseShellExecute=true)`, the same mechanism already used elsewhere in this
+      codebase for "open destination folder"; (2) `ArchiveResult.CreatedFiles` turned out to list
+      per-archive *destination folders*, not individual file paths — the previewed file's path had
+      to be computed directly from the scope dir + entry path instead. See `DECISIONS.md`'s T-F97
+      entry for the full trace. `dotnet test --filter "Category!=Slow"` green (353/353 — was
+      326/326 before this task; +23 `PreviewPolicyTests`, +4 `PreviewCacheTests`). Full
+      `Deploy.ps1` build+sign+install completed (1.2.0.38), AI-driven on-device verification via
+      the `windows` MCP server confirmed: a `.txt` entry opens in Notepad with correct content and
+      a real propagated MOTW `Zone.Identifier` tag (`ZoneId=3`, matching the source archive); a
+      `.jpg` entry opens in the system's registered image viewer; a non-allowlisted `.docx` entry
+      still runs the full Extract flow unchanged (landed in a real `SeparateFolders`-mode
+      subfolder, no preview shortcut taken); `%TEMP%\PakkoPreview\` existed with the extracted
+      files while the window was open and was fully removed after closing it. Graduated to `[x]`.
 - **Depends on:** T-F05 (Archive Browser) — needs the browser view to exist first
 
 **What:** from the archive browser (T-F05), double-clicking a previewable file (image, text —
 not every file type, see Security below) silently extracts just that one entry to a temp location
-and opens it with the OS's default handler (`Launcher.LaunchFileAsync`), instead of requiring the
-user to Extract-to-disk first just to look at one file. Matches the equivalent 7-Zip/NanaZip
-double-click-to-preview behavior the user pointed at — but implemented natively (ZIP via
-`ZipArchiveEntry.Open()` directly; tar-family via `tar.exe` extracting a single named member),
-not by reusing any 7-Zip code (hard constraint).
+and opens it with the OS's default handler, instead of requiring the user to Extract-to-disk first
+just to look at one file. Matches the equivalent 7-Zip/NanaZip double-click-to-preview behavior
+the user pointed at. **Design correction from the original scoping below:** rather than a
+lightweight custom extraction (`ZipArchiveEntry.Open()`/a bespoke single-member `tar.exe` call),
+the shipped implementation reuses the real `IExtractionRouter.ExtractAsync` pipeline via
+`ExtractOptions.SelectedEntryPaths` — the same mechanism T-F05's "Extract Selected" already uses.
+This was a deliberate decision made during planning, not scope creep: it means T-F49's
+whole-archive pre-scan and MOTW propagation both apply automatically with zero new code (they
+already run inside `ZipArchiveService`/`TarSandboxedService`), instead of needing to be
+re-implemented and separately verified for a new, parallel extraction path. See `DECISIONS.md`'s
+T-F97 entry for the full reasoning.
 
 **Security constraints (both non-negotiable, confirmed with user before scoping this in):**
 - **MOTW must propagate to the temp preview file.** If the source archive carries a
@@ -392,23 +415,38 @@ not by reusing any 7-Zip code (hard constraint).
   constraint already called out in T-F05's "Extract selected" design; a preview is not exempt from
   it just because it's one file.
 
-**Scope:** temp file cleanup strategy needs a decision before implementing — either best-effort
-(leave in `%TEMP%`, matches 7-Zip's own behavior, relies on OS temp cleanup) or tracked-and-deleted
-on app exit; decide and record in `DECISIONS.md`, don't default to whichever is easiest to write.
+**Scope:** temp file cleanup strategy — decided: best-effort whole-cache-root delete on window
+close (not tracked-per-file deletion); see `DECISIONS.md`'s T-F97 entry.
 
 **Acceptance criteria:**
-- [ ] Safe-preview-type allowlist defined (images, text at minimum) and documented in `SECURITY.md`
-- [ ] MOTW propagated to the temp-extracted preview file, verified with a real internet-zone test
-      archive (mirrors the existing MOTW extraction tests' approach)
-- [ ] tar-family preview still runs the whole-archive pre-scan before extracting the single member
-- [ ] Non-allowlisted file types show the existing Extract flow instead of auto-opening
-- [ ] Temp file cleanup strategy decided and recorded in `DECISIONS.md`
-- [ ] New tests covering: allowlist enforcement, MOTW propagation on preview, tar pre-scan still
-      runs for single-member extraction
-- [ ] `dotnet test --filter "Category!=Slow"` passes
-- [ ] Manual on-device verification: preview a real image and a real text file from inside a ZIP
+- [x] Safe-preview-type allowlist defined (images, text at minimum) and documented in `SECURITY.md`
+      — `Archiver.Core.Services.PreviewPolicy.IsPreviewable`
+- [x] MOTW propagated to the temp-extracted preview file — automatic, no new code: preview reuses
+      the real extraction pipeline (`ArchiveEntrySecurity.TryPropagateMotw` already runs inside
+      `ZipArchiveService`/`TarSandboxedService` for every extraction, preview included). Not
+      re-verified by a *new* test — covered by T-F45's existing MOTW extraction tests, since no
+      new MOTW code path was introduced. Still needs the on-device internet-zone check below.
+- [x] tar-family preview still runs the whole-archive pre-scan before extracting the single member
+      — automatic for the same reason (identical code path as T-F05's "Extract Selected", already
+      covered by T-F49's pre-scan tests)
+- [x] Non-allowlisted file types show the existing Extract flow instead of auto-opening —
+      `MainWindow.xaml.cs`'s `ArchiveBrowserList_DoubleTapped` branches on `PreviewPolicy.IsPreviewable`
+- [x] Temp file cleanup strategy decided and recorded in `DECISIONS.md`
+- [x] New tests: `PreviewPolicyTests` (allowlist enforcement, `Archiver.Core.Tests`),
+      `PreviewCacheTests` (cache-root/scope mechanics, `Archiver.App.Core.Tests`) — MOTW
+      propagation and tar pre-scan intentionally not re-tested under new names, per above
+- [x] `dotnet test --filter "Category!=Slow"` passes
+- [x] Manual on-device verification: preview a real image and a real text file from inside a ZIP
       and a tar.gz downloaded from the internet (real MOTW tag present) — confirm the extracted
-      preview file also carries the internet zone tag
+      preview file also carries the internet zone tag; confirm the status line shows the
+      "Opening..."/"Відкриття..." indicator with no progress bar/summary dialog; confirm a
+      non-allowlisted file still runs the full Extract flow; confirm `%TEMP%\PakkoPreview\` is
+      removed after closing the Pakko window. Confirmed via the `windows` MCP server 2026-07-16
+      (Pakko 1.2.0.38): a ZIP's `.txt` and `.jpg` entries and a `.tar.gz`'s `.txt` entry all
+      previewed correctly (Notepad/image viewer, correct content, real `ZoneId=3` MOTW tag on
+      each extracted preview file); a ZIP's `.docx` entry still ran the full Extract flow into a
+      real `SeparateFolders`-mode subfolder; `%TEMP%\PakkoPreview\` existed with files while the
+      window was open and was gone immediately after closing it, both times tested.
 
 ---
 
@@ -1415,29 +1453,32 @@ Rebuilt and reconfirmed `Archiver.ShellExtension.Tests` still 55/55 after the re
 
 ---
 
-### T-F93 — Non-Intrusive Donate Link (Buy Me a Coffee)
-- [ ] **Status:** future — scope confirmed with user 2026-07-07, blocked on a real URL
+### T-F93 — Non-Intrusive Donate Link (Ko-fi)
+- [~] **Status:** partial — README done 2026-07-16; About-dialog link (the app-code half) not
+      started. Scope confirmed with user 2026-07-07; real URL provided 2026-07-16
+      (`https://ko-fi.com/pakko_app` — Ko-fi, not Buy Me a Coffee as originally scoped; platform
+      corrected below, link mechanics/placement unchanged), no longer blocked
 - **Priority:** low ("not urgent," per user)
 - **Depends on:** T-F14 (About dialog with version/links — already done)
 
 **What:** add a small, non-pushy donate link to Pakko's About section and to the GitHub README,
-pointing to a Buy Me a Coffee page. Explicitly not a banner, popup, or nag — a small link/button
-only, consistent with how Buy Me a Coffee itself is typically presented.
+pointing to Pakko's Ko-fi page: `https://ko-fi.com/pakko_app`. Explicitly not a banner, popup, or
+nag — a small link/button only, consistent with how Ko-fi itself is typically presented.
 
 **Scope:**
 - About dialog (wherever T-F14 already put version/links, `Archiver.App`) gains one additional
-  small link/button (e.g. "☕ Support the project") opening the Buy Me a Coffee URL in the
+  small link/button (e.g. "☕ Support the project") opening `https://ko-fi.com/pakko_app` in the
   system default browser.
 - `README.md` gets an equivalent small link/badge, placed near the top or bottom — not inline
   with technical content.
-- **Blocked:** needs a real Buy Me a Coffee page/username from the user before wiring the link —
-  do not invent or ship a placeholder URL.
 
 **Acceptance criteria:**
-- [ ] Real Buy Me a Coffee URL obtained from user
+- [x] Real donate URL obtained from user — `https://ko-fi.com/pakko_app`
 - [ ] About dialog shows one small, non-modal donate link/button
-- [ ] `README.md` shows one small donate link/badge
-- [ ] Link opens in the system default browser (not a modal or embedded frame)
+- [x] `README.md` shows one small donate link/badge — added right under the title/tagline
+- [ ] Link opens in the system default browser (not a modal or embedded frame) — applies to the
+      About-dialog link; README's is a plain Markdown link, opens however GitHub/the reader
+      handles external links
 - [ ] `dotnet build src/Archiver.App` succeeds
 - [ ] Manual on-device verification: click the link in the About dialog, confirm it opens the
       correct URL
@@ -2423,9 +2464,16 @@ experiment if it recurs — **not fixed here**, tracked as a new follow-up below
 ---
 
 ### T-F96 — Bug: `Deploy.ps1`/`dotnet publish` Fails Cleaning Up PackageLayout After a Valid `.msix` Is Written
-- [~] **Status:** partial — `Deploy.ps1` now tolerates this specific failure shape instead of
-      aborting a good build (2026-07-07, advisor-reviewed scenario menu, Opus 4.8). Root cause
-      still open — see below
+- [~] **Status:** closed as non-blocking, not on active investigation — the tolerance mitigation
+      (2026-07-07) has now absorbed the race live on at least two separate occasions (2026-07-15's
+      T-F52 deploy, and again during this same T-F107 session's `Deploy.ps1` run on 2026-07-16,
+      producing 1.2.0.35) without ever failing a build. Root cause is still genuinely unconfirmed
+      (none of the four ranked scenarios below have been tested), so this stays `[~]`, not `[x]`,
+      per this project's completion rules — but since the workaround has proven reliable across
+      multiple real recurrences and isn't costing any deploy time, it's not worth further
+      investigation right now. Re-open (resume the `Stop-Service WSearch` test, etc.) only if the
+      tolerance guard itself ever fails to catch a real recurrence, or if deploy reliability
+      becomes a problem again.
 - **Depends on:** none
 
 **Diagnostic update (this round, advisor session):** the earlier `ExtractAssociatedIcon`-adjacent
@@ -3342,7 +3390,21 @@ task. Turned out to be the actual fix for the bug above, not a separate concern 
 ---
 
 ### T-F107 — Archive Browser: Climb Past the Archive Root into the Real Filesystem
-- [ ] **Status:** in progress, started 2026-07-16 — user-driven UX request, planned via Plan Mode
+- [x] **Status:** done — implemented 2026-07-16 (user-driven UX request, planned via Plan Mode),
+      `dotnet test --filter "Category!=Slow"` green (326/326: 26 Archiver.App.Core.Tests + 43
+      Archiver.Shell.Tests + 211 Archiver.Core.Tests + 46 Archiver.Core.IntegrationTests — the
+      jump from 300 to 326 reflects this task's new `FileSystemBrowserTests`), full
+      `Deploy.ps1` build+sign+install completed (1.2.0.35), and AI-driven on-device verification
+      passed against fresh fixtures (a real two-archive test folder, not the stale
+      `browse_test*` fixtures from earlier tasks): climbed from inside `test1.zip` through its
+      real containing folder, up through `Desktop`/`Pa`/`Users`/`C:\`, to "Цей комп'ютер" (up
+      button confirmed `enabled: false` there via UIA, not just visually); double-clicked
+      `C:\` to descend back into the drive; navigated back down to the test folder and
+      double-clicked `test2.zip` (a different real archive) while browsing real folders,
+      confirming it opens fresh; Extract Selected/All confirmed disabled throughout real-
+      filesystem browsing (even with a row selected) and re-enabled immediately once back inside
+      an archive. `DIAGRAMS.md` diagram 6 was already updated in the implementing commit
+      (adbd759). Graduated to `[x]`.
 - **Depends on:** T-F05 (Archive Browser)
 
 **What:** the Archive Browser's "Up" button used to fall through to exiting the browser entirely
@@ -3367,28 +3429,29 @@ this round — would require COM Shell32 `IShellFolder` interop with no simple .
 effort for a rarely-used path. Scope is real folders → drive roots → "This PC" (drives list) only.
 
 **Acceptance criteria:**
-- [ ] `BrowseScope` (`Archive`/`RealFileSystem`/`ThisPc`) added to `MainViewModel`; drives what
+- [x] `BrowseScope` (`Archive`/`RealFileSystem`/`ThisPc`) added to `MainViewModel`; drives what
       `CurrentFolderPath`/`CurrentFolderEntries`/breadcrumb mean and where "Up" goes next
-- [ ] New `FileSystemBrowser` static helper in `Archiver.App.Core` (parallel to `ArchiveTreeIndex`,
+      (shipped as `ArchiveBrowseScope`/`BrowseScope`)
+- [x] New `FileSystemBrowser` static helper in `Archiver.App.Core` (parallel to `ArchiveTreeIndex`,
       unit-testable without a WinUI host): `ListFolder(path)` and `ListDrives()`, both returning
       the existing `ArchiveEntryViewModel` unchanged (no new model needed — its optional
       `CompressedSize`/`Crc32`/`Modified` fields already tolerate "not applicable")
-- [ ] `NavigateUpOrExitBrowser` renamed to `NavigateUp`, gains `CanNavigateUp()` (false only at
+- [x] `NavigateUpOrExitBrowser` renamed to `NavigateUp`, gains `CanNavigateUp()` (false only at
       `ThisPc`) mirroring `CanNavigateDestinationUp`'s exact idiom; `ExitBrowseMode()` deleted
       entirely (no callers left — confirmed via repo grep)
-- [ ] Double-clicking a different real archive found while browsing real folders opens it fresh
+- [x] Double-clicking a different real archive found while browsing real folders opens it fresh
       via the existing `EnterBrowseModeAsync` (same trust level as today's pending-list
       double-click gate — **not** T-F98's deferred nested-archive-drill-down, which is a different,
       higher-risk scenario: archives found *inside* the currently open archive)
-- [ ] New `FileSystemBrowserTests` in `Archiver.App.Core.Tests` (folders-first/alphabetical
+- [x] New `FileSystemBrowserTests` in `Archiver.App.Core.Tests` (folders-first/alphabetical
       ordering, correct Size/Modified population, graceful empty list for a nonexistent/
       inaccessible path)
-- [ ] `dotnet test --filter "Category!=Slow"` passes
-- [ ] Manual on-device verification: climb from inside an archive up through its real containing
+- [x] `dotnet test --filter "Category!=Slow"` passes (326/326)
+- [x] Manual on-device verification: climb from inside an archive up through its real containing
       folder, up to a drive root, up to "This PC" (button greys out there); double-click a drive to
       descend; double-click a different real archive to open it fresh; Extract Selected/All grey
       out while outside any archive and re-enable once back inside one
-- [ ] `DIAGRAMS.md` diagram 6 (T-F05's row-visibility/up-button history) updated to reflect
+- [x] `DIAGRAMS.md` diagram 6 (T-F05's row-visibility/up-button history) updated to reflect
       `BrowseScope`-driven navigation
 
 ---

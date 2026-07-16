@@ -4,6 +4,8 @@ Minimal WinUI 3 GUI wrapper for Windows built-in ZIP support.
 
 **No 7-Zip. No WinRAR. No third-party compression code.**
 
+[☕ Support the project on Ko-fi](https://ko-fi.com/pakko_app)
+
 ---
 
 ## Why Not 7-Zip or WinRAR?
@@ -58,10 +60,10 @@ The entire compression stack is part of the .NET Base Class Library — maintain
 
 | Format | Status | Method |
 |--------|--------|--------|
-| ZIP | ✅ v1.0 | `System.IO.Compression` |
-| TAR/GZ/XZ/ZST/BZ2 | 🔜 v1.3 | `tar.exe` (Windows built-in) |
-| RAR | 🔜 v1.3 (read) | `tar.exe` (Windows built-in) |
-| 7z | 🔜 v1.3 (read) | `tar.exe` (Windows built-in) |
+| ZIP | ✅ read/write, v1.0 | `System.IO.Compression` |
+| TAR/GZ/BZ2/XZ/ZST/LZMA | ✅ read (v1.3) + create (v1.4) | `tar.exe` (Windows built-in), AppContainer-sandboxed for extraction |
+| RAR | ✅ read only, v1.3 | `tar.exe` (Windows built-in) — libarchive has no RAR writer |
+| 7z | ✅ read only, v1.3 | `tar.exe` (Windows built-in) — libarchive has no 7z writer |
 | Encrypted | ❌ out of scope | — |
 
 ---
@@ -70,42 +72,58 @@ The entire compression stack is part of the .NET Base Class Library — maintain
 
 Pakko closes gaps in Windows Explorer:
 
-- **Native context menu** — Extract Here, Extract to `<folder>`, Add to archive (no "Show more
-  options" — uses the modern `IExplorerCommand` API)
-- **File type associations** — double-click `.zip` opens in Pakko
+- **Native context menu** — Extract Here, Extract to `<folder>`, Add to archive, Add to `X.tar`,
+  Test archive (both the modern `IExplorerCommand` menu and the classic "Show more options" menu)
+- **File type associations** — double-click any supported archive format opens directly into
+  Pakko's Archive Browser (T-F05/T-F100), not just `.zip`
+- **Archive Browser** — navigate an archive's folder structure without extracting everything
+  first, extract a selection or the whole archive, then climb past the archive root into the real
+  filesystem (drives, "This PC") the same way NanaZip's classic file manager does
 
-Still planned: RAR/7z/tar reading via `tar.exe` (v1.3). Windows 11 23H2+ includes `tar.exe`
-(Microsoft-signed bsdtar) supporting RAR, 7z, tar, gz, xz, and zst for reading. Pakko will use
-this built-in binary — no third-party compression tools.
+Windows 11 23H2+ includes `tar.exe` (Microsoft-signed bsdtar), which Pakko uses — no third-party
+compression tools — to read RAR/7z/tar/gz/bz2/xz/zst/lzma, and to create tar-family archives
+(plain tar plus the five compression-filter variants).
 
 ---
 
 ## Project Status
 
 **v1.1 complete** (tagged `v1.1.0`) — GitHub-only release for early testers.
-**v1.2 (shell extension) in progress** — native right-click context menu (`IExplorerCommand`),
-file type association, and MOTW propagation are complete; hash viewer is still future.
+**v1.2 (shell extension) complete** — native right-click context menu (`IExplorerCommand`), file
+type association, and MOTW propagation.
+**v1.3 (tar.exe integration) complete** — reading RAR/7z/tar-family archives via the Windows
+built-in `tar.exe`, run inside an AppContainer sandbox (its own Job Object, no network capability)
+for extraction; archive creation runs unsandboxed since it only ever reads trusted local files.
+**v1.4 (Archive Browser) in progress** — browse, extract-selected, and climb into the real
+filesystem are done; full localization to non-European locales is the main remaining item.
 
-- ✅ Archive (single / separate) with compression level selector
-- ✅ Extract with smart folder logic and ZIP slip protection
+- ✅ Archive (single / separate) with compression level selector, ZIP or any tar-family format
+- ✅ Extract with smart folder logic, ZIP slip protection, and a per-conflict Ask/Overwrite/
+  Rename/Skip resolution
 - ✅ Password-protected ZIP detection
 - ✅ System tray icon
 - ✅ File log (`%LocalAppData%\Pakko\logs\pakko.log`)
-- ✅ i18n foundation (ResW, en-US)
+- ✅ i18n — 37 locales, OS-language auto-match with English fallback
 - ✅ MSIX packaging, signed with a dev cert via `Deploy.ps1`
 - ✅ Mid-file cancellation (async streaming)
 - ✅ Safe temp file/dir pattern — no partial files on cancel
-- ✅ ZIP bomb detection (compression ratio 1000:1 threshold)
+- ✅ Compression-ratio bomb detection (1000:1 threshold), confirm-and-extract if the destination
+  has room, for ZIP and every tar-family format
 - ✅ UTF-8 filenames — Cyrillic and emoji round-trip verified
-- ✅ Native right-click context menu — Extract here, Extract to folder, Add to archive
-- ✅ `.zip` file type association, `pakko://` protocol activation
-- ✅ MOTW propagation on every extracted file
+- ✅ Native right-click context menu — Extract here, Extract to folder, Add to archive/`X.tar`,
+  Test archive
+- ✅ File type association (every readable format) + `pakko://` protocol activation
+- ✅ MOTW propagation on every extracted file, including Archive Browser previews
 - ✅ Alternate Data Stream / reserved-filename / reparse-point protections during extraction
-- ✅ 95/95 .NET tests pass (`dotnet test`) — a separate C++ Google Test suite covers the
-  `Archiver.ShellExtension` COM DLL
+- ✅ Archive Browser — navigate, extract selected/all, preview an image or text file without a
+  manual extract, climb past the archive root into the real filesystem
+- ✅ RAR/7z/tar-family extraction runs inside an AppContainer sandbox — quarantine staging, ACL'd
+  output directory, Job Object process limits, no network capability
+- ✅ 353/353 .NET tests pass (`dotnet test --filter "Category!=Slow"`) — a separate C++ Google
+  Test suite covers the `Archiver.ShellExtension` COM DLL
 
-Microsoft Store release planned for **v1.3** — when `tar.exe` integration is complete. v1.1 and
-v1.2 are GitHub-only releases for early testers.
+Microsoft Store release planned once localization review and the remaining v1.4 polish items
+are done. v1.1–v1.3 are GitHub-only releases for early testers.
 
 See `SPEC.md`'s "Future Roadmap" section for the version-to-focus table, and `TASKS.md` for the
 detailed task list.
@@ -129,11 +147,12 @@ for the contributor workflow. Production code signing with a trusted certificate
 ## Running Tests
 
 ```bash
-dotnet test
+dotnet test --filter "Category!=Slow"
 ```
 
-Always run without a path argument — all projects must stay green after every change. To
-regenerate test fixtures:
+Always run without a path argument — all projects must stay green after every change. The
+`Category!=Slow` filter excludes a handful of real multi-second/multi-GB Zip64 tests; run
+`dotnet test --filter "Category=Slow"` too before a release. To regenerate test fixtures:
 ```bash
 dotnet run --project tests/Archiver.Core.Tests.GenerateFixtures
 ```
