@@ -443,6 +443,12 @@ references are easy to miss otherwise (this session found 5 lingering mentions o
   with an async-loaded bound property (a fire-and-forget `Task.Run` setting a value after
   construction), leaving a freshly realized row blank until a forced re-layout (T-F05,
   `DECISIONS.md`).
+- **A child element's `MinHeight` (e.g. a `ListView`'s own `MinHeight="80"`) does NOT force a
+  Grid's Star-sized (`*`) row to grow past what the row-sizing algorithm allocates** — the
+  `RowDefinition` itself needs the `MinHeight`. Enough sibling `Auto` rows can otherwise clamp
+  the Star row to 0, and every child inside measures/arranges within zero height regardless of
+  data, binding mode, or population timing — cost five separate disproven fix hypotheses before
+  being found (T-F106, `DECISIONS.md`).
 - **A dotted resw key (`"Foo.Content"`) manually looked up via `_res.GetString("Foo.Content")`
   silently returns an empty string if no element in XAML actually has `x:Uid="Foo"`.** The dotted
   naming convention only gets populated by the XAML framework's implicit `x:Uid` + property-suffix
@@ -597,6 +603,13 @@ MSBuild tests\Archiver.ShellExtension.Tests\Archiver.ShellExtension.Tests.vcxpro
 > denied` on something under `bin`/`obj`/`AppPackages`) — first try `dotnet build-server
 > shutdown` (kills lingering MSBuild/VBCSCompiler nodes that can hold output handles open)
 > before assuming a stuck folder needs a version bump (see the `AppPackages` wedge note above).
+>
+> **`git stash push -u` can silently half-fail**: if cleaning untracked content hits
+> `Permission Denied` on an unrelated empty directory (e.g. leftover build-artifact folders),
+> the stash entry is still created correctly, but the working tree may NOT actually revert —
+> `git status` can still show the same modified files. Always verify with `git status` after
+> any `stash push`; if changes persist, finish the revert manually with `git checkout --
+> <files>` (the stash already has a safe backup, so this is not destructive).
 >
 > **Deploy shortcuts:**
 > Release build in VS triggers `Deploy.ps1 -DeployOnly` automatically (post-build event).
