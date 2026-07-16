@@ -175,22 +175,28 @@ failure — so a blocked/misconfigured sandbox would have crashed instead of yie
   pass (was 309/59 before Phase C). See `TASKS.md`'s T-F105 entry and `DECISIONS.md`'s T-F105
   entry (Phase 0 empirical findings on tar.exe's real compression-level mechanism, plus the Phase
   B/C addendum).
-- **T-F106 (new, `[ ]` open) — pending-list `ListView` rows render blank when files are added at
-  window-activation time; also covers responsive/minimum window-size design (scope widened
-  2026-07-16, user request).** Blank-row half: found during T-F105's Phase D screenshots (user
-  noticed the file table was empty, asked why). Confirmed real via `windows` MCP: `ui_find` shows
-  the row's text elements have correct bound data but a `(0,0)` UI-Automation position — a
-  zero-size layout bug, not a data bug. Not fixed by a forced relayout (rules out the
-  previously-fixed T-F05 `VirtualizingStackPanel` race). Leading hypothesis: `App.xaml.cs::
-  HandleActivation`'s Protocol branch calls `EnsureWindow` (shows the window) then synchronously
-  populates `FileItems` before the `ListView`'s first `Loaded`/layout pass — File-activation's
-  multi-file branch (T-F100) has the same shape and may share the bug, unconfirmed. Whether the
-  normal "Add Files" path (window already shown) is affected is also unconfirmed. Not caused by
-  T-F105 (confirmed via `git diff`). Resize half: on-device resize testing across both pending-list
-  and browse-mode row sets, choosing and setting an explicit minimum window width/height (today
-  there is none — confirmed by code inspection, only one fixed-size `AppWindow.Resize` call at
-  startup), accounting for real monitor resolutions and a driver-less Basic-Display-Adapter
-  worst case. See `TASKS.md`'s T-F106 entry for the full acceptance criteria.
+- **T-F106 (`[x]` resolved 2026-07-16)** — pending-list `ListView` rows rendered blank
+  (`ui_find` showed correct bound data but `(0,0)` position) when files were added at
+  window-activation time. **Root cause: never a WinUI rendering bug** — `RootGrid`'s file-table
+  row had no `MinHeight` on its own `RowDefinition`, only on the `ListView` child (which doesn't
+  force the row to grow); at a fixed 650px window height, the pending-list mode's other rows
+  (Archive Options — 4 rows, taller since T-F105's new Format row — plus Shared Options/action
+  buttons/status bar) collectively demanded more height than existed, clamping the table's Star
+  row to 0. Five unrelated fix hypotheses (population-timing gates, collection-mutation shape,
+  immutable-record rewrites, `ListView` structural copies, a full data-pipeline duplication) were
+  tried and disproven before this was found. Fixed by raising the default window size to
+  1100×900, giving the table row an explicit `MinHeight="200"`, and setting
+  `PreferredMinimumWidth="900"`/`PreferredMinimumHeight` (**850** — corrected same day from an
+  initial 700, which left the table visible but clipped the Shared Options checkboxes and status
+  bar below it off the bottom of the window) via `OverlappedPresenter` — confirmed on-device at
+  both default size and the enforced minimum (Windows clamps a smaller resize request to ~900×850,
+  everything — table, all options, both checkboxes, status bar — stays fully visible). This also
+  resolved the responsive/minimum-window-size sub-scope that had been widened into this same
+  ticket — see `DECISIONS.md`'s final T-F106 entry for the full account, including why Archive
+  Browser mode never showed the bug and why it first appeared during T-F105.
+  **Also added, same session:** the app's title bar now shows `Pakko — build <timestamp>`, read
+  from the running assembly's own file `LastWriteTime` — see this file's "Build Commands" section
+  for why (never trust build logs alone to prove an on-device check ran against fresh code).
 - 316/316 .NET tests pass (`dotnet test --filter "Category!=Slow"`: 211 Archiver.Core.Tests +
   43 Archiver.Shell.Tests + 46 Archiver.Core.IntegrationTests + 16 Archiver.App.Core.Tests — the
   jump from 284 to 309 reflects T-F105 Phase A's new `TarSandboxedServiceCompressTests` (real
@@ -539,6 +545,19 @@ MSBuild tests\Archiver.ShellExtension.Tests\Archiver.ShellExtension.Tests.vcxpro
 > changed a XAML-bound command). Don't trust a bare `dotnet build`'s installed package when
 > verifying a UI change on-device — run the full `.\scripts\Deploy.ps1` first (it wipes old
 > `AppPackages` output before rebuilding).
+>
+> **Never trust build logs alone to prove an on-device check ran against fresh code — always
+> have the running window itself prove it.** `Archiver.App`'s title bar shows
+> `Pakko — build <yyyy-MM-dd HH:mm:ss>`, read from the running assembly's own file timestamp
+> (`MainWindow.xaml.cs` constructor) — not a manually-bumped version, not a build-log claim, but
+> the actual installed binary's own on-disk timestamp, visible in every screenshot. Before
+> treating any on-device verification result as valid (especially a repeated "still broken"
+> result across several fix attempts), confirm this timestamp is within the last few minutes of
+> the current time. If it's stale, the deploy didn't actually pick up the latest change and the
+> verification must be redone — don't reason from build-log output alone. If a UI element already
+> on screen needs a freshness check and the title bar isn't convenient to read in a given
+> screenshot, add a similar visible, runtime-computed marker to the relevant page instead of
+> trusting logs.
 >
 > **Testing `scripts/*.ps1` fixes:** these scripts require Windows PowerShell 5.1
 > (`#Requires -Version 5.1`). The PowerShell tool runs pwsh 7+, which defaults to UTF-8 and

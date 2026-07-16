@@ -10,7 +10,27 @@
     xmlns:tb="using:H.NotifyIcon"
     Title="Archiver">
 
-    <Grid x:Name="RootGrid" RowDefinitions="Auto,*,Auto,Auto,Auto,Auto,Auto,Auto" Padding="16" RowSpacing="12">
+    <!-- T-F106: Row 1 (the file table) got MinHeight="200" on its RowDefinition itself, not just
+         on the ListView child inside it — a child's own MinHeight does not force a Grid's Star
+         row to grow past what the row-sizing algorithm allocates. Root cause of the "blank rows"
+         investigation (see DECISIONS.md): with a fixed 650px-tall window, the combined Auto-sized
+         rows below (Archive Options' 4 rows, Shared Options, action buttons, status bar) could
+         demand more height than the window had, collapsing this Star row to 0 — every ListView
+         item then measured/arranged within zero available height, reporting (0,0,0)
+         UI-Automation bounds regardless of population timing, data model, or XAML structure
+         (all five previously-tried, ultimately-irrelevant hypotheses). Not a WinUI rendering bug
+         at all — a plain missing minimum-size guarantee, which was T-F106 Sub-scope B all along. -->
+    <Grid x:Name="RootGrid" Padding="16" RowSpacing="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*" MinHeight="200"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
 
         <!-- Tray icon -->
         <tb:TaskbarIcon

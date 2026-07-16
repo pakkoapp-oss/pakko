@@ -3352,3 +3352,75 @@ starting point for a focused follow-up session — likely combined with also eli
 re-sequencing `FileItem`'s fire-and-forget async loads (e.g., not starting them until after the
 item's own container has confirmed-rendered, rather than from the constructor) to see if the two
 changes together finally close the gap the wholesale-reassignment change alone didn't.
+
+## T-F106 — Resolved: Never a WinUI Rendering Bug — Insufficient Window Height for the File Table's Star Row
+
+**Root cause, found 2026-07-16 in a later follow-up session (after five separate structurally
+distinct fix hypotheses — population-timing gates, collection-mutation shape, immutable-record/
+binding-mode rewrites, byte-for-byte `ListView` structural copies of the Archive Browser, and a
+full data-pipeline duplication — were each tried, verified on real hardware, and disproven):** the
+"blank rows" were never a WinUI virtualization/timing bug at all. `MainWindow.xaml`'s
+`RootGrid` had `RowDefinitions="Auto,*,Auto,Auto,Auto,Auto,Auto,Auto"` with no `MinHeight` on the
+Star row (Row 1, the file table) — only `MinHeight="80"` on the `ListView` *child* inside it,
+which does not force a Grid's Star-sized row to grow past what the row-sizing algorithm actually
+allocates. At the window's fixed 900→ previously 650px height, the pending-list mode's other
+Auto-sized rows — Archive Options (Mode/Name/Format/Compression, 4 rows, made taller by T-F105's
+new Format row), Shared Options (Conflict + 2 checkboxes), action buttons, destination path, and
+status bar, plus `RowSpacing="12"` × 7 gaps and `Padding="16"` — collectively demanded more height
+than the window had. WinUI's Grid clamps a Star row's computed height at 0 when Auto-row demand
+exceeds available space; every `ListView` item then measured/arranged within zero available
+height, reporting `(0,0,0)` UI-Automation bounds regardless of population timing, data model, or
+XAML structure — exactly matching every symptom observed across all five prior attempts, none of
+which touched window sizing at all.
+
+**Confirmed empirically:** raising `MainWindow`'s default size from `1100x650` to `1100x900`
+(`MainWindow.xaml.cs` constructor) and setting `PreferredMinimumWidth="900"`/
+`PreferredMinimumHeight="700"` via `OverlappedPresenter` immediately made the same
+`pakko://archive` 2-file repro — used unchanged throughout this entire investigation — render
+both rows with correct, non-zero `ui_find` bounds, confirmed both via `ui_find` and a screenshot.
+Also converted `RootGrid`'s shorthand `RowDefinitions` string to explicit `<RowDefinition>`
+elements so the Star row itself could carry `MinHeight="200"` — a genuine structural floor,
+independent of the window-level minimum, so the table can't collapse to 0 even if a future change
+to the window's own minimum size is loosened. Tested the minimum-size floor directly: requesting
+a resize to 600x400 via `windows` MCP was clamped by Windows itself to ~886x693, and the file
+table remained fully visible and correctly bound at that floor (only the very bottom status-text
+row clipped slightly at the exact minimum — cosmetic, not the reported bug).
+
+**Every one of the five prior "fix" attempts was addressing the wrong hypothesis space** — none
+of them were wasted in the sense of being poorly reasoned (each was a legitimate, carefully
+verified elimination of a real candidate), but the actual defect was a plain missing
+minimum-size guarantee, i.e. exactly what this ticket's own "Sub-scope B" (responsive/minimum
+window sizing) was scoped to address from the start — sub-scope B *was* the fix for what looked
+like sub-scope A the entire time. This also explains two loose threads from earlier follow-ups
+without needing any further investigation: (1) why Browse mode's `ArchiveBrowserListView` never
+reproduced the bug — `ArchiveOptionsVisibility` collapses that whole panel while browsing,
+leaving the Star row ample room regardless of window height; (2) why the bug was first noticed
+specifically during T-F105's Phase D screenshots — T-F105 added the Format row to Archive
+Options, growing its Auto-row demand just enough to tip the Star row's clamped allocation to 0 in
+a window that previously (barely) had enough spare height.
+
+**Correction, same day:** the first `PreferredMinimumHeight="700"` was not actually sufficient —
+it only guaranteed the file table itself stayed visible (per the `MinHeight="200"` on the table's
+own `RowDefinition`), not the content *below* the table. At 900×700, `ui_find` showed the two
+Shared Options checkboxes and the status bar (`"Готово"`) reporting `(0,0,0)` bounds — clipped off
+the bottom of the window, the same symptom class as the original bug, just relocated below the
+table instead of inside it. Measured empirically by testing progressively taller minimum heights
+until every row (table, all Archive/Shared Options, both checkboxes, status bar) simultaneously
+reported non-zero `ui_find` bounds at the enforced minimum: `PreferredMinimumHeight` raised from
+`700` to `850`. Confirmed via screenshot at the enforced 900×850 floor — nothing clipped.
+
+**State left in the repo:** a `git stash` entry from an abandoned fifth-attempt session (full
+`PendingFileEntry`/`PendingFileEntryBuilder` data-pipeline duplication, a from-scratch
+`ListView` rebuild) exists but is now superseded and unnecessary — the actual fix required none
+of that work. Safe to drop once confirmed no longer wanted; not dropped automatically since it
+was created from working, uncommitted session work and dropping a stash is not easily undone.
+
+**Sub-scope B is now effectively done as a side effect** — `PreferredMinimumWidth`/
+`PreferredMinimumHeight` are set (900×850, corrected from an initial insufficient 700), tested
+against the driver-less Basic-Display-Adapter question this ticket originally raised (900×850 is
+tighter against a typical 1024×768 floor than the original 900×700 estimate — worth re-checking
+the arithmetic margin explicitly, not just carrying over the earlier "comfortably under" claim).
+The `frontend-design` advisor checkpoint originally planned for sub-scope B was not run this
+round — worth a quick pass to confirm 1100x900's proportions still read as intentionally
+wide-not-square (T-F05's original design decision) rather than as an arbitrary height bump, before
+fully closing out T-F106's acceptance criteria in `TASKS.md`.

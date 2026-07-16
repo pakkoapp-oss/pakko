@@ -61,8 +61,34 @@ public sealed partial class MainWindow : Window
         // height, matching every reference file manager (Explorer, NanaZip, 7-Zip all default to
         // wide-not-square windows). The old near-square size truncated long/nested archive entry
         // names more aggressively than necessary.
-        this.AppWindow.Resize(new Windows.Graphics.SizeInt32(1100, 650));
-        this.AppWindow.Title = "Pakko";
+        // T-F106: height raised from 650 to 900 — at 650, the pending-list mode's Archive Options
+        // panel (Mode/Name/Format/Compression, 4 rows) plus Shared Options/action buttons/status
+        // bar could collectively demand more height than the window had, collapsing the file
+        // table's Star row to 0 (see RootGrid's RowDefinitions comment in MainWindow.xaml for the
+        // full root-cause account). 900 leaves real room for the table even with every optional
+        // row visible.
+        this.AppWindow.Resize(new Windows.Graphics.SizeInt32(1100, 900));
+
+        // T-F106: without an explicit floor, the window could be shrunk by the user to a height
+        // where content below the file table (Shared Options' two checkboxes, the status bar)
+        // gets clipped off the bottom of the window instead of the table itself collapsing —
+        // confirmed on-device: at an earlier 700px floor, "Готово"/the checkboxes reported
+        // (0,0,0) `ui_find` bounds even though the table itself stayed visible. 850 was measured
+        // by testing at increasing heights until every row — table, options, checkboxes, status
+        // bar — reported non-zero bounds simultaneously.
+        if (this.AppWindow.Presenter is Microsoft.UI.Windowing.OverlappedPresenter presenter)
+        {
+            presenter.PreferredMinimumWidth = 900;
+            presenter.PreferredMinimumHeight = 850;
+        }
+        // On-device verification relies on a fresh Deploy.ps1 having actually replaced the
+        // installed binary — a bare "Build succeeded" log does not prove that (see CLAUDE.md's
+        // stale-MSIX gotcha). Reading the running assembly's own file timestamp and showing it in
+        // the title bar makes every screenshot self-certifying: if the timestamp isn't "just now,"
+        // the deploy didn't actually pick up the latest change.
+        var buildTime = System.IO.File.GetLastWriteTime(
+            System.Reflection.Assembly.GetExecutingAssembly().Location);
+        this.AppWindow.Title = $"Pakko — build {buildTime:yyyy-MM-dd HH:mm:ss}";
 
         this.AppWindow.SetIcon("Assets/Square44x44Logo.ico");
 

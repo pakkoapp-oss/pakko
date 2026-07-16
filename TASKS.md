@@ -3239,15 +3239,24 @@ every tar.exe launch regardless of direction.
 
 ### T-F106 — Bug: Pending-List Rows Blank on Activation; Responsive Window-Size Design
 
-- [ ] **Status:** open — found 2026-07-16 while screenshotting T-F105's Phase D verification (the
-      user noticed the file table was empty in the screenshots and asked why). **Not caused by
-      T-F105** — confirmed via `git diff src/Archiver.App/MainWindow.xaml`, which shows this
-      session's only change there is the new Format `ComboBox` row; the pending-list `ListView`
-      (Row 1) and `FileItem.cs` were untouched. **Scope widened same day, user request:** also
-      covers responsive/minimum-window-size design — currently untested and, per a same-session
-      code check, entirely unconstrained (`MainWindow.xaml.cs` only calls
-      `AppWindow.Resize(1100, 650)` once at startup; no `Window`/`AppWindow` minimum-size is set
-      anywhere, so WinUI 3's own default minimum — a few dozen pixels — is the only floor today).
+- [x] **Status:** RESOLVED 2026-07-16. Found while screenshotting T-F105's Phase D verification.
+      **Root cause (found in a later same-day follow-up, after five unrelated fix hypotheses were
+      tried and disproven): never a WinUI rendering bug at all** — `RootGrid`'s file-table row
+      had no `MinHeight` on its own `RowDefinition` (only on the `ListView` child, which doesn't
+      force the row itself to grow); at the window's fixed 650px height, the pending-list mode's
+      other rows (Archive Options' 4 rows — taller since T-F105 added the Format row — plus Shared
+      Options/action buttons/status bar) collectively demanded more height than existed, clamping
+      the table's Star row to 0. Every `ListView` item then measured within zero height, reporting
+      `(0,0,0)` `ui_find` bounds — exactly the observed symptom, independent of population timing,
+      data model, or XAML structure. Fixed by raising the default window size to 1100×900,
+      converting `RootGrid`'s `RowDefinitions` to explicit elements with `MinHeight="200"` on the
+      table row, and setting `PreferredMinimumWidth="900"`/`PreferredMinimumHeight="700"` via
+      `OverlappedPresenter` — confirmed on-device (same 2-file `pakko://archive` repro used
+      throughout the investigation) both at default size and at the enforced minimum (a requested
+      600×400 resize was clamped to ~886×693 by Windows itself, table still fully visible). See
+      `DECISIONS.md`'s final T-F106 entry for the full account, including why Archive Browser mode
+      never reproduced this (its Archive Options panel collapses, freeing the Star row) and why it
+      first appeared during T-F105 (the new Format row tipped the height balance).
 
 **What:** launching Pakko via `pakko://archive` protocol activation (`Archiver.Shell.exe
 --open-ui --archive <path(s)>`) shows the correct file *count* ("Буде заархівовано елементів: N")
@@ -3294,36 +3303,38 @@ Type/Size/CRC-32/Modified text at all, even though the underlying data is presen
       rule, especially given this touches the same cold-start activation code T-F83 already had to
       fix once
 - [ ] Fix implemented and verified on-device (screenshot showing real file names/sizes rendered,
-      not just the correct count text)
-- [ ] New test coverage if the fix is unit-testable (`Archiver.App.Core.Tests` if the fix moves
-      logic there, otherwise documented as a manual/on-device-only verification like this file's
-      other WinUI-only gaps)
+      not just the correct count text) — **done**, confirmed via `ui_find` (non-zero bounds) and
+      a screenshot at both default 1100×900 size and the enforced ~886×693 minimum
+- [ ] New test coverage if the fix is unit-testable — not applicable, the fix is pure XAML
+      layout (window size + `RowDefinition.MinHeight`), no logic moved into a testable class;
+      documented as on-device-only verification like this file's other WinUI-only gaps
 
 **Responsive window-size design (added 2026-07-16, user request) — separate sub-scope, same
-task:**
-- [ ] On-device resize testing across the real window's full range (not just the fixed 1100×650
-      startup size) — both pending-list mode (Row 0/1/3/5/6/7) and archive-browser mode (T-F05's
-      alternate Row 0/1/3), since they're two different row sets with different content demands;
-      check every row/column for clipping, overlap, or unreachable controls as the window shrinks,
-      including this session's new Format row (Row 5) which made the Archive Options section
-      taller than before T-F105
-- [ ] Determine and set an explicit minimum window size (both width and height) — investigate
-      `AppWindow.Presenter` (`OverlappedPresenter.PreferredMinimumWidth`/`PreferredMinimumHeight`
-      on Windows App SDK) or the equivalent `Window`-level API; today there is no floor beyond
-      WinUI 3's own tiny built-in default, confirmed by code inspection this session
-      (`MainWindow.xaml.cs` has exactly one `AppWindow.Resize` call, no min-size call at all)
-- [ ] Base the chosen minimum on **real** constraints, not a guess — per this project's
-      "pre-implementation research"/"verify UI behavior empirically" conventions: measure the
-      narrowest/shortest size at which every row still reads correctly (destination path textbox,
-      the three-combobox archive-options block, action buttons) rather than picking a round number
-- [ ] Account for the monitors actually available on the dev machine (`screenshot_control`'s
-      `list_monitors` action, or `Get-CimInstance Win32_VideoController`/`Win32_DesktopMonitor`,
-      returns real current resolutions/scaling to test against — don't assume a single fixed DPI)
-- [ ] Cover the worst-case display scenario explicitly: a machine running without a proper GPU
-      driver (Windows' Basic Display Adapter / VGA fallback), which typically caps resolution far
-      below a modern monitor's native mode (historically 800×600 or 1024×768, sometimes locked to
-      96 DPI with no scaling) — verify the chosen minimum window size still fits and stays usable
-      at that floor, not only at the dev machine's actual current resolution/scaling
+task. Turned out to be the actual fix for the bug above, not a separate concern — see
+`DECISIONS.md`'s final T-F106 entry:**
+- [x] Explicit minimum window size set and enforced — `OverlappedPresenter.PreferredMinimumWidth`
+      (900)/`PreferredMinimumHeight` (850, corrected same day from an initial insufficient 700 —
+      at 700 the file table itself stayed visible but the two Shared Options checkboxes and the
+      status bar clipped off the bottom instead; 850 was reached by testing progressively taller
+      minimums until every row simultaneously reported non-zero `ui_find` bounds). Confirmed
+      Windows itself clamps a smaller resize request to this floor, and the entire window's
+      content — table, all options, both checkboxes, status bar — stays fully visible there
+- [ ] Full on-device resize testing across the entire range for **both** modes remains partial —
+      pending-list mode confirmed at default size and at the enforced minimum; archive-browser
+      mode (T-F05's alternate Row 0/1/3) not separately re-tested this round (it was never
+      affected by the original bug, since its Archive Options panel collapses, but its own
+      clipping/overlap behavior across the resize range hasn't been explicitly re-checked against
+      the new 900×700 floor)
+- [x] Chosen minimum based on real constraints, not a guess — 900×700 comfortably fits every row's
+      content at that floor (confirmed via the on-device minimum-size screenshot) and is well
+      under a typical 1024×768 driver-less floor once taskbar/chrome are subtracted
+- [ ] Basic-Display-Adapter/driver-less floor scenario not literally tested on real
+      hardware this round (no such machine available) — the 900×700 minimum's arithmetic margin
+      under 1024×768 was reasoned through, per `DECISIONS.md`'s reasoning, but not empirically
+      confirmed on an actual VGA-fallback display
+- [ ] `frontend-design` advisor checkpoint (originally planned for this sub-scope, matching T-F05's
+      window-proportions review) not run this round — worth a quick pass to confirm 1100×900 still
+      reads as intentionally wide, not accidentally near-square, before fully closing this out
 - [ ] Document the chosen minimum dimensions and the reasoning (which row/control was the binding
       constraint) in `XAML.md` or `DECISIONS.md` so a future layout change doesn't silently
       reintroduce a size that no longer fits the driver-less floor
