@@ -339,6 +339,7 @@ public sealed class DialogService : IDialogService
 
         var githubUrl = _res.GetString("AboutGitHubUrl");
         var privacyUrl = _res.GetString("AboutPrivacyUrl");
+        var kofiUrl = _res.GetString("AboutKofiUrl");
 
         var panel = new StackPanel { Spacing = 12 };
         panel.Children.Add(new TextBlock
@@ -364,9 +365,15 @@ public sealed class DialogService : IDialogService
         var privacyBtn = new HyperlinkButton { Content = "Privacy Policy", Padding = new Thickness(0) };
         privacyBtn.Click += async (_, _) => await Launcher.LaunchUriAsync(new Uri(privacyUrl));
 
+        // T-F93: same visual weight and style as GitHub/Privacy Policy, deliberately — a donate
+        // link that stands out more than the other links would read as a nag, not a small link.
+        var kofiBtn = new HyperlinkButton { Content = "Ko-fi", Padding = new Thickness(0) };
+        kofiBtn.Click += async (_, _) => await Launcher.LaunchUriAsync(new Uri(kofiUrl));
+
         var linksPanel = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 16 };
         linksPanel.Children.Add(githubBtn);
         linksPanel.Children.Add(privacyBtn);
+        linksPanel.Children.Add(kofiBtn);
         panel.Children.Add(linksPanel);
 
         var dialog = new ContentDialog

@@ -3612,3 +3612,33 @@ in this repo — see this file's "Known test gaps" precedent in `CLAUDE.md`:**
    inside it) instead of opening the file itself. Fixed by computing the actual file path
    directly — `Path.Combine(scopeDir, entry.FullPath.Replace('/', Path.DirectorySeparatorChar))`
    — since the caller already knows exactly which single entry it asked to extract.
+
+---
+
+## T-F93 — About-Dialog Donate Link: No Redesign, Same Weight as GitHub/Privacy Policy
+
+**Trigger:** user provided the real Ko-fi URL and, when shown the current About dialog
+(`DialogService.ShowAboutAsync`, GitHub + Privacy Policy in one `HyperlinkButton` row), explicitly
+asked whether the dialog needed a redesign to accommodate a donate link well, and asked for a
+design opinion (`frontend-design` skill consulted as advisor, per this project's established
+practice from T-F05's UI review).
+
+**Decision: no redesign — a donate link should carry *less* visual weight here, not more.**
+Pakko's whole positioning (per `CLAUDE.md`/`SECURITY.md`) is a minimal, auditable tool for a
+security-conscious government/defense audience. Any visual emphasis on the donate link beyond its
+two neighbors — a distinct color, an icon, its own line, larger type — would read as monetization
+being pushed in a tool whose entire pitch is minimalism and trust, working directly against the
+product's own positioning. The existing dialog's plain `HyperlinkButton` row (no icons, equal
+weight, equal spacing) is itself the right visual language for this — the design decision is to
+extend it exactly as-is, not evolve it.
+
+**Shipped:** a third `HyperlinkButton` labeled "Ko-fi" (no emoji — `GitHub`/`Privacy Policy` are
+both bare destination names with no decoration, so a lone emoji on the new entry would have made
+it stand out *more* than its neighbors, the opposite of the goal) added to the same horizontal
+`StackPanel`, same `Padding`/spacing, same `Launcher.LaunchUriAsync` click pattern. New
+`AboutKofiUrl` resw key follows `AboutGitHubUrl`/`AboutPrivacyUrl`'s exact existing convention —
+en-US only, since it's a non-translatable URL and other locales already fall back to en-US for
+the sibling keys.
+
+On-device verified (`windows` MCP, Pakko 1.2.0.39): the three-link row renders correctly with no
+visual imbalance; clicking "Ko-fi" opens "Support pakko" on Ko-fi in the system default browser.

@@ -1454,10 +1454,15 @@ Rebuilt and reconfirmed `Archiver.ShellExtension.Tests` still 55/55 after the re
 ---
 
 ### T-F93 — Non-Intrusive Donate Link (Ko-fi)
-- [~] **Status:** partial — README done 2026-07-16; About-dialog link (the app-code half) not
-      started. Scope confirmed with user 2026-07-07; real URL provided 2026-07-16
+- [x] **Status:** done — README link (2026-07-16) and About-dialog link (2026-07-16, same day)
+      both shipped. Scope confirmed with user 2026-07-07; real URL provided 2026-07-16
       (`https://ko-fi.com/pakko_app` — Ko-fi, not Buy Me a Coffee as originally scoped; platform
-      corrected below, link mechanics/placement unchanged), no longer blocked
+      corrected, link mechanics/placement unchanged). **Design question raised by the user**
+      ("does this need a redesign?") **answered explicitly: no** — see `DECISIONS.md`'s T-F93
+      entry for the reasoning (a donate link with more visual weight than GitHub/Privacy Policy
+      would read as a nag in a tool positioned around minimalism and trust for a government/
+      defense audience). Shipped as a third `HyperlinkButton` ("Ko-fi", no emoji) in the same
+      links row as GitHub/Privacy Policy — identical style, identical weight.
 - **Priority:** low ("not urgent," per user)
 - **Depends on:** T-F14 (About dialog with version/links — already done)
 
@@ -1466,22 +1471,24 @@ pointing to Pakko's Ko-fi page: `https://ko-fi.com/pakko_app`. Explicitly not a 
 nag — a small link/button only, consistent with how Ko-fi itself is typically presented.
 
 **Scope:**
-- About dialog (wherever T-F14 already put version/links, `Archiver.App`) gains one additional
-  small link/button (e.g. "☕ Support the project") opening `https://ko-fi.com/pakko_app` in the
-  system default browser.
-- `README.md` gets an equivalent small link/badge, placed near the top or bottom — not inline
-  with technical content.
+- About dialog (`DialogService.ShowAboutAsync`) gains a third `HyperlinkButton` ("Ko-fi") in the
+  existing GitHub/Privacy Policy links row, opening `https://ko-fi.com/pakko_app` in the system
+  default browser. New `AboutKofiUrl` resw key, en-US only (URL, non-translatable — same pattern
+  as the existing `AboutGitHubUrl`/`AboutPrivacyUrl`, absent from other locales by design so they
+  fall back).
+- `README.md` gets an equivalent small link, placed right under the title/tagline.
 
 **Acceptance criteria:**
 - [x] Real donate URL obtained from user — `https://ko-fi.com/pakko_app`
-- [ ] About dialog shows one small, non-modal donate link/button
+- [x] About dialog shows one small, non-modal donate link/button — third `HyperlinkButton` in the
+      existing links row, same style/weight as GitHub/Privacy Policy
 - [x] `README.md` shows one small donate link/badge — added right under the title/tagline
-- [ ] Link opens in the system default browser (not a modal or embedded frame) — applies to the
-      About-dialog link; README's is a plain Markdown link, opens however GitHub/the reader
-      handles external links
-- [ ] `dotnet build src/Archiver.App` succeeds
-- [ ] Manual on-device verification: click the link in the About dialog, confirm it opens the
-      correct URL
+- [x] Link opens in the system default browser (not a modal or embedded frame) — on-device
+      confirmed via `Launcher.LaunchUriAsync` (same mechanism GitHub/Privacy Policy already use)
+- [x] `dotnet build src/Archiver.App` succeeds
+- [x] Manual on-device verification: clicked the Ko-fi link in the About dialog via the `windows`
+      MCP server (Pakko 1.2.0.39) — opened "Support pakko" on Ko-fi in the system default browser
+      (Chrome)
 
 ---
 

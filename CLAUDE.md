@@ -228,6 +228,14 @@ failure — so a blocked/misconfigured sandbox would have crashed instead of yie
   AI-driven on-device verification confirmed a ZIP's `.txt`/`.jpg` and a `.tar.gz`'s `.txt` all
   preview correctly with a real propagated MOTW tag, a non-allowlisted `.docx` still runs the full
   Extract flow, and the cache is gone after closing the window. See `DECISIONS.md`'s T-F97 entry.
+- **T-F93 (`[x]` done 2026-07-16)** — Ko-fi donate link (`https://ko-fi.com/pakko_app`) added to
+  both `README.md` (small link under the title) and the About dialog (a third `HyperlinkButton`,
+  "Ko-fi", in the existing GitHub/Privacy Policy row — same style/weight, no icon, no redesign).
+  User explicitly asked whether the dialog needed a redesign to fit the link well; the design
+  answer was no — see `DECISIONS.md`'s T-F93 entry for why more visual weight on a donate link
+  would work against Pakko's minimal/trust-focused positioning for its government/defense
+  audience. New `AboutKofiUrl` resw key (en-US only, non-translatable, matching
+  `AboutGitHubUrl`/`AboutPrivacyUrl`'s existing convention). On-device verified.
 - 353/353 .NET tests pass (`dotnet test --filter "Category!=Slow"`: 234 Archiver.Core.Tests +
   43 Archiver.Shell.Tests + 46 Archiver.Core.IntegrationTests + 30 Archiver.App.Core.Tests — the
   jump from 284 to 309 reflects T-F105 Phase A's new `TarSandboxedServiceCompressTests` (real
