@@ -3461,3 +3461,71 @@ visibility). Removed the fixed `Width="46"` from both labels entirely. The Confl
 checkboxes below it; its own label was never wrapping and didn't need the fix, so it stayed as
 a plain `StackPanel` rather than forcing cross-section alignment that WinUI has no supported way
 to express safely. See `XAML.md`'s new WinUI 3 gotcha entry for the reusable pattern.
+
+---
+
+## T-F107 — Archive Browser Up-Navigation: NanaZip Precedent Is Hand-Coded, Not Free Explorer Behavior
+
+**Trigger:** after fixing the Archive Options alignment bug above, the user separately flagged
+that the Archive Browser's "Up" button falling through to `ExitBrowseMode()` at the archive root
+(closing the whole browser back to the pending list) was non-obvious on-device. First ask: grey
+the button out at the root, matching `CanNavigateDestinationUp`'s existing drive-root disable
+pattern. Mid-discussion the user redirected to a bigger ask: behave like NanaZip, where climbing
+past the archive root keeps going into real folders, drive roots, and a "This PC" node, only
+greying out at the very top.
+
+**Research question:** is NanaZip's climb-past-the-archive behavior free behavior from being a
+real Windows Explorer shell-namespace extension (i.e. the archive's shell folder is just one more
+node inside Explorer's own filesystem tree, so Explorer's address bar naturally shows the real
+parent hierarchy once you're back in real-folder territory) — or does NanaZip's own code
+implement this explicitly?
+
+**Finding, confirmed via `curl -s "https://api.github.com/repos/M2Team/NanaZip/git/trees/main?recursive=1"`
+plus raw-source fetches:** a full-repo grep for `IShellFolder`/`IPersistFolder`/`IPersistFolder2`/
+`ShellFolder`/`Namespace` returns **zero matches anywhere in NanaZip's repository**. NanaZip never
+implements the real Shell namespace-extension interfaces that would make an archive a first-class
+node inside Explorer's own tree — its actual Explorer-facing component
+(`NanaZip.UI.Modern/NanaZip.ShellExtension.cpp`) implements only `IExplorerCommand` (context-menu
+verbs), the exact same pattern Pakko already uses, with no shell-folder binding at all.
+
+The climb-past-the-archive experience the user observed comes from a **different, standalone
+part of NanaZip**: `NanaZip.UI.Classic`, its own two-pane file-manager window inherited from
+7-Zip's original `7zFM` sources. That code defines its own app-level interface family (`IFolder.h`
+→ `IFolderFolder`, with explicit `BindToFolder()`/`BindToParentFolder()` methods — an app-defined
+navigation contract, not a Windows Shell interface) and hand-builds a "Computer"/"Network"/
+drive-root tree (`RootFolder.cpp`'s `ROOT_INDEX_COMPUTER`/`ROOT_INDEX_NETWORK`/
+`ROOT_INDEX_VOLUMES`, binding to `CFSDrives`/`CNetFolder`/`CFSFolder`), unified with
+`ArchiveFolder.cpp` (archive contents) and `FSFolder.cpp` (real filesystem) under that one
+`IFolder`-family abstraction.
+
+**Conclusion:** this precedent does not hand Pakko free navigation — it confirms the opposite.
+Even NanaZip, which is far more deeply Explorer-integrated than Pakko (a real `IExplorerCommand`
+shell extension), still had to hand-write real filesystem/drive/network enumeration and
+parent-binding logic for its own standalone window. Pakko, with no shell-namespace component at
+all, has to build this entirely from scratch: its own real-directory listing, drive enumeration,
+and a breadcrumb model that extends past the archive boundary.
+
+**Design that shipped (T-F107):** a new `BrowseScope` enum (`Archive`/`RealFileSystem`/`ThisPc`)
+on `MainViewModel` drives what `CurrentFolderPath`/`CurrentFolderEntries`/the breadcrumb mean and
+where "Up" goes next. `ArchiveEntryViewModel` (`Archiver.App.Core`) is reused unchanged for real
+folders/files/drives — its optional `CompressedSize`/`Crc32`/`Modified` fields already render as
+"not applicable" when zero/null, so a real `FileInfo`/`DirectoryInfo`/`DriveInfo` maps onto it
+directly with no new model. A new `FileSystemBrowser` static helper in `Archiver.App.Core`
+(parallel to `ArchiveTreeIndex`, same "keep it unit-testable without a WinUI host" reasoning)
+provides `ListFolder`/`ListDrives`. `NavigateUpOrExitBrowser` was renamed to `NavigateUp` and
+gained `CanNavigateUp()` (mirroring `CanNavigateDestinationUp`'s exact "nowhere higher → disabled"
+idiom, false only at `ThisPc`); `ExitBrowseMode()` was deleted outright since nothing calls it
+anymore — the user explicitly confirmed no "return to pending list" affordance is needed, since
+the window's own standard close button already covers leaving the browser entirely.
+
+**Explicitly deferred:** Windows "Network" (Network Neighborhood) enumeration. NanaZip's own
+`CNetFolder` confirms this needs real COM Shell32 `IShellFolder` interop with no simple .NET
+equivalent — real effort for a rarely-used path. User confirmed: drives + "This PC" only, no
+Network node, for this round.
+
+**Note on the pre-existing "two up-buttons are deliberately unrelated" framing** (this file's
+earlier `CanNavigateDestinationUp`/`NavigateDestinationUp` entry, and `DIAGRAMS.md`'s diagram 6):
+still true in substance — `NavigateUp` and `NavigateDestinationUp` remain two separate commands
+serving two different UI rows — but the archive browser's own `NavigateUp` now covers materially
+more ground (real folders/drives/"This PC") than when that note was written. Superseding the
+framing, not the substance.

@@ -3341,6 +3341,58 @@ task. Turned out to be the actual fix for the bug above, not a separate concern 
 
 ---
 
+### T-F107 — Archive Browser: Climb Past the Archive Root into the Real Filesystem
+- [ ] **Status:** in progress, started 2026-07-16 — user-driven UX request, planned via Plan Mode
+- **Depends on:** T-F05 (Archive Browser)
+
+**What:** the Archive Browser's "Up" button used to fall through to exiting the browser entirely
+(back to the pending list) once you reached the archive's own root — confusing on-device, since it
+looked like an unrelated screen appeared. Per user request (patterned after NanaZip), "Up" now
+keeps navigating past the archive root: into the archive's real containing folder, up through real
+parent folders, up to a drive root, and up to a synthetic "This PC" node listing all drives — only
+greying out at "This PC" (nothing higher), mirroring `CanNavigateDestinationUp`'s existing
+drive-root disable pattern.
+
+**Research finding (see `DECISIONS.md`):** NanaZip's own equivalent behavior is NOT free Explorer
+shell-namespace behavior — a repo-wide grep of `M2Team/NanaZip` found zero `IShellFolder`/
+`IPersistFolder2` usage. It comes from NanaZip's own hand-coded classic FileManager
+(`NanaZip.UI.Classic`, inherited from 7-Zip's `7zFM`), which hand-builds a unifying
+`IFolder`-family abstraction across archive contents, real folders, and a "Computer"/"Network"/
+drive-root tree. Pakko has no shell-namespace component at all and had zero prior real-filesystem
+browsing code, so this had to be built from scratch — same conclusion NanaZip's own history
+reached.
+
+**Explicit non-goal:** Windows "Network" (Network Neighborhood) enumeration is out of scope for
+this round — would require COM Shell32 `IShellFolder` interop with no simple .NET equivalent, real
+effort for a rarely-used path. Scope is real folders → drive roots → "This PC" (drives list) only.
+
+**Acceptance criteria:**
+- [ ] `BrowseScope` (`Archive`/`RealFileSystem`/`ThisPc`) added to `MainViewModel`; drives what
+      `CurrentFolderPath`/`CurrentFolderEntries`/breadcrumb mean and where "Up" goes next
+- [ ] New `FileSystemBrowser` static helper in `Archiver.App.Core` (parallel to `ArchiveTreeIndex`,
+      unit-testable without a WinUI host): `ListFolder(path)` and `ListDrives()`, both returning
+      the existing `ArchiveEntryViewModel` unchanged (no new model needed — its optional
+      `CompressedSize`/`Crc32`/`Modified` fields already tolerate "not applicable")
+- [ ] `NavigateUpOrExitBrowser` renamed to `NavigateUp`, gains `CanNavigateUp()` (false only at
+      `ThisPc`) mirroring `CanNavigateDestinationUp`'s exact idiom; `ExitBrowseMode()` deleted
+      entirely (no callers left — confirmed via repo grep)
+- [ ] Double-clicking a different real archive found while browsing real folders opens it fresh
+      via the existing `EnterBrowseModeAsync` (same trust level as today's pending-list
+      double-click gate — **not** T-F98's deferred nested-archive-drill-down, which is a different,
+      higher-risk scenario: archives found *inside* the currently open archive)
+- [ ] New `FileSystemBrowserTests` in `Archiver.App.Core.Tests` (folders-first/alphabetical
+      ordering, correct Size/Modified population, graceful empty list for a nonexistent/
+      inaccessible path)
+- [ ] `dotnet test --filter "Category!=Slow"` passes
+- [ ] Manual on-device verification: climb from inside an archive up through its real containing
+      folder, up to a drive root, up to "This PC" (button greys out there); double-click a drive to
+      descend; double-click a different real archive to open it fresh; Extract Selected/All grey
+      out while outside any archive and re-enable once back inside one
+- [ ] `DIAGRAMS.md` diagram 6 (T-F05's row-visibility/up-button history) updated to reflect
+      `BrowseScope`-driven navigation
+
+---
+
 ### T-F75 — Correctness Bug: Nested Subdirectory Entries Lost Their Path Prefix
 - [x] **Status:** complete — **confirmed shipped in tagged v1.1.0**, found 2026-07-06 while
       investigating T-F30

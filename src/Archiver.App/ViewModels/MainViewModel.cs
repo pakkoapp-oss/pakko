@@ -19,6 +19,18 @@ using Windows.ApplicationModel.Resources;
 
 namespace Archiver.App.ViewModels;
 
+// T-F107: what CurrentFolderPath/CurrentFolderEntries/the breadcrumb mean, and where "Up" goes
+// next. Archive = browsing inside the currently open archive (CurrentFolderPath is '/'-separated,
+// archive-relative). RealFileSystem = browsing a real Windows folder (CurrentFolderPath is an
+// absolute Windows path). ThisPc = the synthetic drives-list root; CurrentFolderPath is unused.
+// Public (not nested-private) so MainWindow.xaml.cs's double-tap handler can dispatch on it too.
+public enum ArchiveBrowseScope
+{
+    Archive,
+    RealFileSystem,
+    ThisPc,
+}
+
 public sealed partial class MainViewModel : ObservableObject
 {
     private static readonly ResourceLoader _res = ResourceLoader.GetForViewIndependentUse();
@@ -283,6 +295,10 @@ public sealed partial class MainViewModel : ObservableObject
     private string _currentFolderPath = string.Empty;
 
     [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(NavigateUpCommand))]
+    private ArchiveBrowseScope _browseScope = ArchiveBrowseScope.Archive;
+
+    [ObservableProperty]
     private ObservableCollection<ArchiveEntryViewModel> _currentFolderEntries = [];
 
     [ObservableProperty]
@@ -377,7 +393,8 @@ public sealed partial class MainViewModel : ObservableObject
     // Path.GetDirectoryName returns null at a drive root (e.g. "C:\") and for an unrooted path —
     // both cases mean "cannot go higher," so CanNavigateDestinationUp doubles as the disable
     // condition and the click handler's own guard (added per user request, alongside the archive
-    // browser's own up/exit affordance).
+    // browser's own up-navigation affordance — a separate command for a separate row; see
+    // DECISIONS.md's T-F107 entry).
     private bool CanNavigateDestinationUp() => !IsBusy && Path.GetDirectoryName(DestinationPath) is not null;
 
     [RelayCommand(CanExecute = nameof(CanNavigateDestinationUp))]
@@ -626,6 +643,7 @@ public sealed partial class MainViewModel : ObservableObject
     public async Task EnterBrowseModeAsync(string archivePath)
     {
         IsBrowsingArchive = true;
+        BrowseScope = ArchiveBrowseScope.Archive;
         BrowsedArchivePath = archivePath;
         CurrentFolderPath = string.Empty;
         SelectedBrowserEntries = [];
@@ -678,13 +696,16 @@ public sealed partial class MainViewModel : ObservableObject
 
     private void RefreshCurrentFolder()
     {
-        // T-F05: a childless folder (explicit empty directory entry) is a node in its parent's
-        // child list but has no key of its own in the index — TryGetValue + empty fallback avoids
-        // a KeyNotFoundException on navigating into one, rather than assuming every folder path
-        // is guaranteed a dictionary entry.
-        var entries = _archiveIndex.TryGetValue(CurrentFolderPath, out var list)
-            ? list
-            : (IReadOnlyList<ArchiveEntryViewModel>)[];
+        // T-F05/T-F107: a childless archive folder (explicit empty directory entry) is a node in
+        // its parent's child list but has no key of its own in the index — TryGetValue + empty
+        // fallback avoids a KeyNotFoundException on navigating into one, rather than assuming
+        // every folder path is guaranteed a dictionary entry.
+        IReadOnlyList<ArchiveEntryViewModel> entries = BrowseScope switch
+        {
+            ArchiveBrowseScope.RealFileSystem => FileSystemBrowser.ListFolder(CurrentFolderPath),
+            ArchiveBrowseScope.ThisPc => FileSystemBrowser.ListDrives(),
+            _ => _archiveIndex.TryGetValue(CurrentFolderPath, out var list) ? list : [],
+        };
         CurrentFolderEntries = new ObservableCollection<ArchiveEntryViewModel>(entries);
         SelectedBrowserEntries = [];
         RebuildBreadcrumb();
@@ -692,31 +713,72 @@ public sealed partial class MainViewModel : ObservableObject
 
     private void RebuildBreadcrumb()
     {
-        string archiveName = Path.GetFileName(BrowsedArchivePath ?? string.Empty);
-        var segments = new List<string> { archiveName };
-        if (CurrentFolderPath.Length > 0)
-            segments.AddRange(CurrentFolderPath.Split('/'));
+        var segments = new List<string>();
+        switch (BrowseScope)
+        {
+            case ArchiveBrowseScope.ThisPc:
+                segments.Add(_res.GetString("ThisPcBreadcrumbRoot"));
+                break;
+            case ArchiveBrowseScope.RealFileSystem:
+                segments.Add(_res.GetString("ThisPcBreadcrumbRoot"));
+                segments.AddRange(CurrentFolderPath.Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries));
+                break;
+            default: // Archive
+                segments.Add(Path.GetFileName(BrowsedArchivePath ?? string.Empty));
+                if (CurrentFolderPath.Length > 0)
+                    segments.AddRange(CurrentFolderPath.Split('/'));
+                break;
+        }
         BreadcrumbSegments = new ObservableCollection<string>(segments);
     }
 
     public void NavigateIntoFolder(ArchiveEntryViewModel folder)
     {
         if (!folder.IsFolder) return;
+        if (BrowseScope != ArchiveBrowseScope.Archive)
+            BrowseScope = ArchiveBrowseScope.RealFileSystem; // a drive entry clicked from ThisPc
         CurrentFolderPath = folder.FullPath;
         RefreshCurrentFolder();
     }
 
-    // index 0 = archive root (BreadcrumbSegments[0], the archive's own file name).
+    // Breadcrumb index 0 = archive root (Archive scope) or the synthetic "This PC" segment
+    // (RealFileSystem/ThisPc scope) — never both, since the breadcrumb is rebuilt fresh on every
+    // scope transition and only ever shows segments for the currently active scope.
     public void NavigateToBreadcrumbSegment(int index)
     {
-        if (index <= 0)
+        switch (BrowseScope)
         {
-            CurrentFolderPath = string.Empty;
-        }
-        else
-        {
-            var segments = CurrentFolderPath.Split('/');
-            CurrentFolderPath = string.Join('/', segments.Take(index));
+            case ArchiveBrowseScope.ThisPc:
+                break; // only one segment ever exists ("This PC") — nothing to do.
+
+            case ArchiveBrowseScope.RealFileSystem:
+                if (index <= 0)
+                {
+                    BrowseScope = ArchiveBrowseScope.ThisPc;
+                    CurrentFolderPath = string.Empty;
+                }
+                else
+                {
+                    var segments = CurrentFolderPath.Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries);
+                    // index 1 = the drive segment alone, which needs a trailing separator to mean
+                    // the drive's root ("C:" means "current directory on C:" in .NET, not "C:\").
+                    CurrentFolderPath = index == 1
+                        ? segments[0] + Path.DirectorySeparatorChar
+                        : string.Join(Path.DirectorySeparatorChar, segments.Take(index));
+                }
+                break;
+
+            default: // Archive
+                if (index <= 0)
+                {
+                    CurrentFolderPath = string.Empty;
+                }
+                else
+                {
+                    var segments = CurrentFolderPath.Split('/');
+                    CurrentFolderPath = string.Join('/', segments.Take(index));
+                }
+                break;
         }
         RefreshCurrentFolder();
     }
@@ -724,32 +786,60 @@ public sealed partial class MainViewModel : ObservableObject
     public void SetSelectedBrowserEntries(IReadOnlyList<ArchiveEntryViewModel> entries) =>
         SelectedBrowserEntries = entries;
 
-    // Single "up" affordance for the whole Archive Browser (design review 2026-07-13, follow-up):
-    // replaces the standalone Close button. Inside the archive, it steps up one folder level
-    // (same target as clicking the second-to-last breadcrumb segment); at the archive's own root
-    // there is nowhere higher to go within the archive, so it falls through to exiting the browser
-    // back to the pending list — the same behavior the removed Close button had.
-    [RelayCommand]
-    private void NavigateUpOrExitBrowser()
-    {
-        if (CurrentFolderPath.Length == 0)
-        {
-            ExitBrowseMode();
-            return;
-        }
-        NavigateToBreadcrumbSegment(BreadcrumbSegments.Count - 2);
-    }
+    // T-F107: single "up" affordance for the whole Archive Browser. Inside the archive, steps up
+    // one folder level. At the archive's own root, keeps climbing into real Windows folders — the
+    // archive's containing folder, then real parent folders, up to a drive root, up to the
+    // synthetic "This PC" drives list. Never exits the browser back to the pending list anymore
+    // (see DECISIONS.md's T-F107 entry) — the window's own close button covers that; CanNavigateUp
+    // disables this button only at "This PC", mirroring CanNavigateDestinationUp's drive-root
+    // disable pattern.
+    private bool CanNavigateUp() => BrowseScope != ArchiveBrowseScope.ThisPc;
 
-    [RelayCommand]
-    private void ExitBrowseMode()
+    [RelayCommand(CanExecute = nameof(CanNavigateUp))]
+    private void NavigateUp()
     {
-        IsBrowsingArchive = false;
-        BrowsedArchivePath = null;
-        CurrentFolderPath = string.Empty;
-        CurrentFolderEntries = [];
-        BreadcrumbSegments = [];
-        SelectedBrowserEntries = [];
-        _archiveIndex = new Dictionary<string, IReadOnlyList<ArchiveEntryViewModel>>();
+        switch (BrowseScope)
+        {
+            case ArchiveBrowseScope.Archive:
+                if (CurrentFolderPath.Length == 0)
+                {
+                    string? containingFolder = Path.GetDirectoryName(BrowsedArchivePath);
+                    BrowsedArchivePath = null;
+                    if (containingFolder is not null)
+                    {
+                        BrowseScope = ArchiveBrowseScope.RealFileSystem;
+                        CurrentFolderPath = containingFolder;
+                    }
+                    else
+                    {
+                        BrowseScope = ArchiveBrowseScope.ThisPc;
+                        CurrentFolderPath = string.Empty;
+                    }
+                    RefreshCurrentFolder();
+                }
+                else
+                {
+                    NavigateToBreadcrumbSegment(BreadcrumbSegments.Count - 2);
+                }
+                break;
+
+            case ArchiveBrowseScope.RealFileSystem:
+                string? parent = Path.GetDirectoryName(CurrentFolderPath);
+                if (parent is not null)
+                {
+                    CurrentFolderPath = parent;
+                }
+                else
+                {
+                    BrowseScope = ArchiveBrowseScope.ThisPc;
+                    CurrentFolderPath = string.Empty;
+                }
+                RefreshCurrentFolder();
+                break;
+
+            case ArchiveBrowseScope.ThisPc:
+                break; // CanNavigateUp() is false here — unreachable in practice.
+        }
     }
 
     private bool CanExtractSelectedFromBrowser() =>

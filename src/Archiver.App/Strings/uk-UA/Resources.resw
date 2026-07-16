@@ -212,6 +212,9 @@
   <data name="StatusFinalizing" xml:space="preserve">
     <value>Завершення...</value>
   </data>
+  <data name="ThisPcBreadcrumbRoot" xml:space="preserve">
+    <value>Цей комп'ютер</value>
+  </data>
   <data name="StatusArchivedIn" xml:space="preserve">
     <value>Заархівовано за {0} с — файлів: {1}</value>
   </data>

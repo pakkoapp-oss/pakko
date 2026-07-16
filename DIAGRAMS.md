@@ -539,9 +539,9 @@ flowchart TD
 ## 6. State — MainWindow UI Mode & Per-Row Element Visibility (T-F05 inline mode-swap)
 
 Source read for this diagram: `src/Archiver.App/MainWindow.xaml` (all 8 grid rows, in full) and
-`src/Archiver.App/ViewModels/MainViewModel.cs:136-144,205-227,556-653` (`IsBrowsingArchive`,
-`IsPendingListVisibility`, `IsBrowsingArchiveVisibility`, `ArchiveOptionsVisibility`,
-`OperationOutcomeVisibility`, `EnterBrowseModeAsync`, `ExitBrowseMode`). Did not exist before
+`src/Archiver.App/ViewModels/MainViewModel.cs` (`IsBrowsingArchive`, `IsPendingListVisibility`,
+`IsBrowsingArchiveVisibility`, `ArchiveOptionsVisibility`, `OperationOutcomeVisibility`,
+`EnterBrowseModeAsync`, `ArchiveBrowseScope`, `NavigateUp`/`CanNavigateUp`). Did not exist before
 2026-07-13 — no diagram category in the table above covers a WinUI window's own row-visibility
 state machine (the closest, diagram 2, is scoped specifically to `IsBusy`/operation lifecycle);
 added after a real bug in this exact area (Row 0 never hiding in browse mode) was found by manual
@@ -601,11 +601,35 @@ own row-visibility claims were verified *after* the crash fix, not before — an
 this section (written right after the row-restructure, before the first real launch) would have
 been describing a build that could not actually start.
 
+**Updated a fourth time (T-F107, 2026-07-16) — the up-arrow no longer exits the browser at all.**
+User feedback: falling through to `ExitBrowseMode` at the archive root (reopening the pending
+list) was confusing on-device — it looked like an unrelated screen appeared. Redirected to a
+NanaZip-like design instead: climbing past the archive root now keeps navigating, into the
+archive's real containing folder, up through real parent folders, up to a drive root, and up to a
+synthetic "This PC" node listing all drives — only disabling (`CanNavigateUp()==false`) at "This
+PC". A new `ArchiveBrowseScope` enum (`Archive`/`RealFileSystem`/`ThisPc`) tracks which of the
+three the browser is currently showing; `ExitBrowseMode` was deleted outright (no callers left —
+the user confirmed the window's own close button already covers leaving the browser, no
+"return to pending list" affordance is needed). See `DECISIONS.md`'s T-F107 entry for the
+NanaZip-precedent research behind this (it is NOT free Explorer shell-namespace behavior — even
+NanaZip hand-codes its own equivalent).
+
 ```mermaid
 stateDiagram-v2
     [*] --> PendingListMode
-    PendingListMode --> ArchiveBrowseMode: EnterBrowseModeAsync(path) succeeds<br/>(double-click a recognized archive in the pending list,<br/>or a single-archive File/Protocol activation, T-F100)<br/>IsBrowsingArchive=true
-    ArchiveBrowseMode --> PendingListMode: NavigateUpOrExitBrowserCommand (up-arrow) at archive root<br/>OR EnterBrowseModeAsync's own listing fails<br/>(result.Success==false) — same reset, no error state<br/>IsBrowsingArchive=false
+    PendingListMode --> ArchiveBrowseMode: EnterBrowseModeAsync(path) succeeds<br/>(double-click a recognized archive in the pending list,<br/>or a single-archive File/Protocol activation, T-F100)<br/>IsBrowsingArchive=true, BrowseScope=Archive
+    ArchiveBrowseMode --> PendingListMode: EnterBrowseModeAsync's own listing fails<br/>(result.Success==false) — same reset, no error state<br/>IsBrowsingArchive=false
+
+    state ArchiveBrowseMode {
+        [*] --> InsideArchive
+        InsideArchive --> InsideArchive: NavigateIntoFolder / NavigateToBreadcrumbSegment (archive-internal, unchanged)
+        InsideArchive --> RealFolder: NavigateUp at archive root (T-F107)<br/>BrowseScope=RealFileSystem, CurrentFolderPath=real containing folder,<br/>BrowsedArchivePath=null (disables Extract Selected/All)
+        RealFolder --> RealFolder: NavigateUp / NavigateIntoFolder (Path.GetDirectoryName walk)
+        RealFolder --> ThisPcState: NavigateUp at a drive root (Path.GetDirectoryName returns null)
+        ThisPcState --> RealFolder: NavigateIntoFolder(drive)
+        RealFolder --> InsideArchive: double-tap a recognized archive file (EnterBrowseModeAsync re-enters fresh)
+        ThisPcState --> ThisPcState: NavigateUp is a no-op — CanNavigateUp()==false, button disabled
+    }
 ```
 
 **Per-row visibility, verified directly against `MainWindow.xaml`'s 8 rows — not inferred:**

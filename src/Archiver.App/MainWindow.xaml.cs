@@ -189,8 +189,23 @@ public sealed partial class MainWindow : Window
             return;
 
         if (entry.IsFolder)
+        {
             ViewModel.NavigateIntoFolder(entry);
-        else
-            await ViewModel.ExtractSingleBrowserEntryAsync(entry);
+            return;
+        }
+
+        // T-F107: a "file" double-tapped while browsing real folders/drives (not inside an
+        // archive) isn't extractable — there's no BrowsedArchivePath to extract from. If it's
+        // itself a recognized archive, open it fresh (same trust level as the pending-list
+        // double-click gate below — not T-F98's deferred nested-archive-drill-down, which is
+        // about archives found *inside* the currently open archive). A plain file is a no-op.
+        if (ViewModel.BrowseScope != ArchiveBrowseScope.Archive)
+        {
+            if (ArchiveFormatDetector.Detect(entry.FullPath) != Archiver.Core.Models.ArchiveFormat.Unknown)
+                await ViewModel.EnterBrowseModeAsync(entry.FullPath);
+            return;
+        }
+
+        await ViewModel.ExtractSingleBrowserEntryAsync(entry);
     }
 }

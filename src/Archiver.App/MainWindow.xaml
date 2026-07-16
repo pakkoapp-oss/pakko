@@ -215,14 +215,16 @@
               Visibility="{x:Bind ViewModel.IsBrowsingArchiveVisibility, Mode=OneWay}">
 
             <Grid Grid.Row="0" ColumnDefinitions="Auto,*" Margin="0,0,0,8">
-                <!-- Up one archive folder level; at the archive root, exits the browser back to
-                     the pending list (replaces the removed standalone Close button — design
-                     review 2026-07-13 follow-up). See MainViewModel.NavigateUpOrExitBrowser. -->
+                <!-- T-F107: up one archive folder level; at the archive root, keeps climbing into
+                     real Windows folders (containing folder, drive root, "This PC" drives list) —
+                     never exits the browser back to the pending list anymore. Disabled only at
+                     "This PC" (MainViewModel.CanNavigateUp), mirroring the destination path row's
+                     own drive-root disable pattern. See DECISIONS.md's T-F107 entry. -->
                 <Button
                     Grid.Column="0"
                     Margin="0,0,8,0"
                     Padding="8,4,8,4"
-                    Command="{x:Bind ViewModel.NavigateUpOrExitBrowserCommand, Mode=OneWay}"
+                    Command="{x:Bind ViewModel.NavigateUpCommand, Mode=OneWay}"
                     ToolTipService.ToolTip="Up">
                     <FontIcon Glyph="&#xE74A;" FontFamily="Segoe MDL2 Assets" FontSize="14"/>
                 </Button>
