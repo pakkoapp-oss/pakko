@@ -643,7 +643,20 @@ public sealed partial class MainViewModel : ObservableObject
         ArchiveListResult result;
         try
         {
+            // T-F106: this is awaited un-awaited (fire-and-forget) from App.xaml.cs's deferred
+            // activation path — a thrown exception there would otherwise leave IsBrowsingArchive
+            // stuck true with no archive index and no visible error (found via code-review advisor
+            // pass). Catching here, not just at the activation call site, fixes it for every
+            // caller, matching the same reset+dialog recovery already used for result.Success==false.
             result = await _archiveListingRouter.ListEntriesAsync(archivePath);
+        }
+        catch (Exception ex)
+        {
+            IsBrowsingArchive = false;
+            BrowsedArchivePath = null;
+            _logService.Error("EnterBrowseModeAsync failed", ex);
+            await _dialogService.ShowErrorAsync("Error", ex.Message);
+            return;
         }
         finally
         {

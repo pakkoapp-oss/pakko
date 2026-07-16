@@ -58,7 +58,7 @@ public partial class App : Application
         HandleActivation(AppInstance.GetCurrent().GetActivatedEventArgs(), "Pakko started");
     }
 
-    private async void HandleActivation(AppActivationArguments args, string defaultLogMessage)
+    private void HandleActivation(AppActivationArguments args, string defaultLogMessage)
     {
         switch (args.Kind)
         {
@@ -71,22 +71,45 @@ public partial class App : Application
                 // T-F100: a single recognized archive enters the browser (T-F05) instead of the
                 // archive-creation list; multi-file activation keeps the existing AddPaths behavior
                 // (browsing only makes sense for one archive at a time).
+                // T-F106: deferred via ActivationGate — EnsureWindow's Activate() returns before
+                // RootGrid's first Loaded/layout pass, and mutating ViewModel state before that
+                // point left ListView rows permanently blank (see DeferredActionGate's doc comment).
                 var decision = FileActivationRouter.Decide(paths);
+                var window = _window!;
                 if (decision.Mode == FileActivationMode.Browse)
-                    await _window!.ViewModel.EnterBrowseModeAsync(decision.BrowsePath!);
+                    window.ActivationGate.RunOrDefer(() => _ = EnterBrowseSafelyAsync(window, decision.BrowsePath!));
                 else
-                    _window!.ViewModel.AddPaths(paths);
+                    window.ActivationGate.RunOrDefer(() => window.ViewModel.AddPaths(paths));
                 break;
 
             case ExtendedActivationKind.Protocol:
                 if (args.Data is not Windows.ApplicationModel.Activation.IProtocolActivatedEventArgs protoArgs) { EnsureWindow(defaultLogMessage); return; }
                 EnsureWindow("Pakko started via protocol activation");
-                _window!.ViewModel.AddPathsFromProtocolUri(protoArgs.Uri.AbsoluteUri);
+                var protoWindow = _window!;
+                protoWindow.ActivationGate.RunOrDefer(() => protoWindow.ViewModel.AddPathsFromProtocolUri(protoArgs.Uri.AbsoluteUri));
                 break;
 
             default:
                 EnsureWindow(defaultLogMessage);
                 break;
+        }
+    }
+
+    // T-F106: deferred through ActivationGate, EnterBrowseModeAsync now runs un-awaited (no caller
+    // observes its Task). MainViewModel.EnterBrowseModeAsync itself already catches and recovers
+    // from any exception (resets IsBrowsingArchive, shows an error dialog — added during this same
+    // fix's code-review pass, since an uncaught exception there used to crash loudly but would
+    // otherwise now leave the ViewModel stuck in a blank browse view with no visible error). This
+    // is a last-resort net in case that guarantee is ever violated by a future change.
+    private static async Task EnterBrowseSafelyAsync(MainWindow window, string path)
+    {
+        try
+        {
+            await window.ViewModel.EnterBrowseModeAsync(path);
+        }
+        catch (Exception ex)
+        {
+            Services.GetRequiredService<ILogService>().Error("Deferred EnterBrowseModeAsync failed", ex);
         }
     }
 

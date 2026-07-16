@@ -10,7 +10,7 @@
     xmlns:tb="using:H.NotifyIcon"
     Title="Archiver">
 
-    <Grid RowDefinitions="Auto,*,Auto,Auto,Auto,Auto,Auto,Auto" Padding="16" RowSpacing="12">
+    <Grid x:Name="RootGrid" RowDefinitions="Auto,*,Auto,Auto,Auto,Auto,Auto,Auto" Padding="16" RowSpacing="12">
 
         <!-- Tray icon -->
         <tb:TaskbarIcon
@@ -116,6 +116,7 @@
             <!-- Body: ListView + empty-state hint overlay in the same cell -->
             <Grid Grid.Row="1">
                 <ListView
+                    x:Name="FileListView"
                     ItemsSource="{x:Bind ViewModel.FileItems, Mode=OneWay}"
                     SelectionMode="None"
                     MinHeight="80"

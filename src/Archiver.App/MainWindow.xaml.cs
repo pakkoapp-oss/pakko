@@ -17,6 +17,13 @@ public sealed partial class MainWindow : Window
 {
     public MainViewModel ViewModel { get; }
 
+    // T-F106: EnsureWindow's Activate() returns before RootGrid's first Loaded/layout pass
+    // completes — mutating ViewModel state (FileItems, IsBrowsingArchive) synchronously right
+    // after Activate() realizes ListView containers against an incomplete layout, leaving rows
+    // permanently blank (does not self-correct on resize, unlike the unrelated T-F05 blank-row
+    // bug). App.xaml.cs::HandleActivation routes every such mutation through this gate instead.
+    public DeferredActionGate ActivationGate { get; } = new();
+
     public ICommand TrayOpenCommand { get; }
     public ICommand TrayAboutCommand { get; }
     public ICommand TrayExitCommand { get; }
@@ -60,13 +67,30 @@ public sealed partial class MainWindow : Window
         this.AppWindow.SetIcon("Assets/Square44x44Logo.ico");
 
         this.Activated += OnFirstActivated;
-        this.Closed += (_, _) => TrayIcon.Dispose();
+        RootGrid.Loaded += RootGrid_Loaded;
+        this.Closed += (_, _) =>
+        {
+            TrayIcon.Dispose();
+            ActivationGate.Cancel();
+        };
     }
 
     private void OnFirstActivated(object sender, WindowActivatedEventArgs args)
     {
         this.Activated -= OnFirstActivated;
         TrayIcon.XamlRoot = Content.XamlRoot;
+    }
+
+    // T-F106: opens the gate so activation-time ViewModel mutations queued before this point
+    // flush now, and any later ones run immediately. NOTE: empirically, this alone does NOT fix
+    // the blank-row symptom (nor does gating on Window.Activated or CompositionTarget.Rendering,
+    // both also tried) — see DECISIONS.md's T-F106 entry. Kept as a real, independently-correct
+    // improvement (never mutate ViewModel state before the first layout pass), but the visual bug
+    // itself has a different, not-yet-identified root cause.
+    private void RootGrid_Loaded(object sender, RoutedEventArgs e)
+    {
+        RootGrid.Loaded -= RootGrid_Loaded;
+        ActivationGate.Open();
     }
 
     private void FileList_DragOver(object sender, DragEventArgs e)

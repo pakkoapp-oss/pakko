@@ -3172,3 +3172,99 @@ Three real checks against the installed, packaged app (not just `dotnet test`):
 All three passed with no fixes needed. A stray `verbose_test3.tar` file was found at the repo
 root (leftover from the Phase 0 empirical spike's `tar.exe` command testing, untracked in git)
 and deleted before deploying — not part of any planned change, just spike debris.
+
+---
+
+## T-F106 — Blank Pending-List Rows: Three Fix Hypotheses Empirically Disproven, Root Cause Still Unknown
+
+**Status: blocked, per the project's own 3-attempt rule — stopped after three distinct
+implementation attempts failed, none of which get a 4th try without explicit user direction.**
+
+**What was confirmed correct (not in question):** the original T-F106 finding that
+`App.xaml.cs`'s `HandleActivation` mutates ViewModel state (`AddPaths`/`AddPathsFromProtocolUri`/
+`EnterBrowseModeAsync`) synchronously, in the same call stack as `EnsureWindow`'s `_window.Activate()`,
+with no intervening `await`. This is real and was fixed cleanly: a new WinUI-free
+`Archiver.App.Core.DeferredActionGate` (FIFO queue, `RunOrDefer`/`Open`/`Cancel`, unit-tested —
+`tests/Archiver.App.Core.Tests/DeferredActionGateTests.cs`) now gates all three mutation call
+sites behind `MainWindow.ActivationGate`, opened once from a chosen "layout is ready" signal.
+A code-review advisor pass (`/code-review`, high effort — 7 of 8 finder angles hit a session
+usage-limit mid-run and failed to return; only Angle B completed) caught a real, separate bug this
+same session: `MainViewModel.EnterBrowseModeAsync`, now called un-awaited from the deferred path,
+had no top-level exception handling — an uncaught exception used to crash the process loudly, but
+deferred it would silently leave `IsBrowsingArchive` stuck `true` with no archive index and no
+error dialog. Fixed by wrapping its `ListEntriesAsync` call in the same `catch (Exception)` →
+reset state → `ShowErrorAsync` pattern the `!result.Success` branch already used. This fix is real,
+independent of the blank-row mechanism below, and stays regardless of how T-F106 itself resolves.
+
+**The blank-row VISUAL bug itself is NOT fixed — three different gating signals were each tried
+and empirically disproven, in order:**
+
+1. **`RootGrid.Loaded`** (the original hypothesis: `Activate()` returns before the root Grid's
+   first Measure/Arrange pass, so mutating `FileItems` before that point leaves containers stuck at
+   `(0,0)`). Implemented, deployed, and diagnostically logged via `ILogService` timestamps at every
+   step. The log confirmed the mutation now runs strictly *after* `RootGrid_Loaded` fires — the
+   intended ordering was achieved. **The rows were still blank** (`ui_find` reported `(0,0)` bounds
+   for every text element, and a real `screenshot_control` capture confirmed the row area is
+   genuinely empty on screen, not just misreported by UI Automation).
+2. A deliberate side-experiment (temporarily removing `Window.Activate()` entirely from
+   `EnsureWindow`) proved **`RootGrid.Loaded` fires with fully valid layout
+   (`ListView.ActualWidth=1052 ActualHeight=80`, `XamlRoot` already non-null) even when
+   `Activate()` is never called at all** — i.e., WinUI's internal XAML tree connection/layout pass
+   is entirely independent of the window ever being shown to the user. This directly refutes the
+   "layout hasn't run yet" theory: the ListView provably has correct, non-zero layout dimensions
+   at the moment items get added, in every one of these tests.
+3. **`Window.Activated`** (the first-activation event, already used elsewhere in `MainWindow` for
+   `TrayIcon.XamlRoot` setup) was tried next, reasoning that `Loaded` might be an XAML-internal
+   signal disconnected from the real compositor/DWM presentation. Diagnostic logging showed
+   `Activated` fires **synchronously inside `Window.Activate()`, before `Activate()` even returns**
+   — meaning gating on it provides no real deferral at all (the queued action still runs
+   immediately, same timing as the original unfixed code). Not a valid fix by construction; not
+   independently re-tested against the visual bug since the timing is provably identical to
+   baseline.
+4. **`CompositionTarget.Rendering`** (first real compositor frame after `RootGrid.Loaded`,
+   reasoning that XAML layout completing is different from the compositor actually presenting a
+   frame to DWM) was tried last. Diagnostic logging confirmed the intended ordering (mutation runs
+   strictly after both `Loaded` and the first `Rendering` callback). **Still blank** — same
+   `(0,0)`/empty-screenshot symptom as attempt 1.
+
+**Every attempt was verified against a genuinely rebuilt, genuinely reinstalled package** — this
+investigation first cost real time to a version of exactly the pitfall `CLAUDE.md` already
+documents: a bare `dotnet build` reported "installed successfully" three times in a row while the
+installed `Archiver.App.dll` (checked via a direct UTF-16 string search for known-new symbols like
+`ActivationGate`) still had *none* of the session's changes. Every real test after that point used
+the full `.\scripts\Deploy.ps1` (which bumps the package version each time — this investigation
+went through versions `1.2.0.32` → `1.2.0.38`) and confirmed the new build's presence in the
+*installed* DLL specifically before trusting a negative result.
+
+**What is still unknown:** the actual mechanism. Three plausible, independently-reasoned WinUI
+timing signals (XAML `Loaded`, `Window.Activated`, `CompositionTarget.Rendering`) have now been
+ruled out empirically, not just theoretically. Candidates not yet tried: (a) something specific to
+COM/protocol activation launches in particular (vs. a normal interactive double-click or Start
+Menu launch) — e.g. an apartment-threading or activation-surrogate quirk that a plain interactive
+launch never hits, which would mean the bug is not really about *timing* at all; (b) the
+`ListView`'s container recycling/virtualization itself getting into a bad state specifically when
+its *first ever* realized items happen to be added this way, independent of when in the timeline
+that occurs — i.e. maybe no gating signal fixes it because the container pool itself needs to be
+reset (`ItemsSource = null;` then reassigned, or an explicit `UpdateLayout()`/re-measure forced a
+different way) rather than merely delayed; (c) something about `x:Bind`'s compiled-binding phase
+ordering specific to how `FileItems`' initial (empty) binding gets established before `Activate()`
+vs. how the *first* non-empty update after that binding was already established gets processed.
+
+**Files touched this session (kept, independent of the unresolved visual bug):**
+`src/Archiver.App.Core/DeferredActionGate.cs` (new), `tests/Archiver.App.Core.Tests/DeferredActionGateTests.cs`
+(new), `src/Archiver.App/App.xaml.cs` (`HandleActivation` routes all 3 mutation sites through
+`ActivationGate.RunOrDefer`), `src/Archiver.App/MainWindow.xaml` (`RootGrid` named,
+`FileListView` named), `src/Archiver.App/MainWindow.xaml.cs` (`ActivationGate` property,
+`RootGrid_Loaded` opens it), `src/Archiver.App/ViewModels/MainViewModel.cs`
+(`EnterBrowseModeAsync`'s new `catch (Exception)` recovery path).
+
+**Next step, pending user direction:** do not attempt a 4th gating-signal guess. Candidate
+directions to discuss: (1) reproduce with a minimal/isolated repro project to rule out
+Pakko-specific interference; (2) search Windows App SDK's own GitHub issues for
+"protocol activation ListView blank" or similar, since this may be a known, already-triaged
+framework bug with a documented workaround; (3) try the more invasive container-reset approach
+(b above) despite not having a timing-based theory for *why* it would help, purely empirically;
+(4) accept this as a standing known-issue/manual workaround (e.g. document "resize does not help,
+but re-entering Browse mode or restarting the operation does" if that's even true — untested) and
+descope the visual fix from T-F106 while keeping the `DeferredActionGate`/exception-safety
+improvements that are independently correct.
