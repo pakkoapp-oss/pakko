@@ -391,13 +391,30 @@
             Visibility="{x:Bind ViewModel.OperationOutcomeVisibility, Mode=OneWay}"
             Style="{StaticResource CaptionTextBlockStyle}"/>
 
-        <!-- Row 5: Archive Options (Mode + Name) -->
-        <StackPanel
+        <!-- Row 5: Archive Options (Mode + Name). A single Grid (not per-row StackPanels) so
+             column 0's Auto width is computed once across all four rows, keeping every label's
+             right edge aligned regardless of which locale's string is longest — WinUI has no
+             WPF-style IsSharedSizeScope/SharedSizeGroup to do this across separate Grids, but
+             Auto-column sizing already gives the same result within one Grid (T-F106-adjacent
+             alignment fix, 2026-07-16: ModeLabel/ArchiveNameLabel previously used a hardcoded
+             Width="46" tuned for English, which wrapped Ukrainian "Режим:" onto two lines). -->
+        <Grid
             Grid.Row="5"
-            Spacing="8"
+            RowSpacing="8"
             Visibility="{x:Bind ViewModel.ArchiveOptionsVisibility, Mode=OneWay}">
-            <StackPanel Orientation="Horizontal" Spacing="16" MinHeight="40">
-                <TextBlock x:Uid="ModeLabel" VerticalAlignment="Center" Width="46" Style="{StaticResource CaptionTextBlockStyle}"/>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" MinHeight="40"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto" MinHeight="40"/>
+                <RowDefinition Height="Auto" MinHeight="40"/>
+            </Grid.RowDefinitions>
+
+            <TextBlock x:Uid="ModeLabel" Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Style="{StaticResource CaptionTextBlockStyle}"/>
+            <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" Spacing="16" Margin="8,0,0,0">
                 <RadioButton
                     x:Uid="OneArchiveRadio"
                     GroupName="ArchiveMode"
@@ -409,44 +426,42 @@
                     IsChecked="{x:Bind ViewModel.IsSeparateArchives, Mode=TwoWay}"
                     IsEnabled="{x:Bind ViewModel.IsNotBusy, Mode=OneWay}"/>
             </StackPanel>
-            <Grid ColumnDefinitions="Auto,*">
-                <TextBlock
-                    x:Uid="ArchiveNameLabel"
-                    Grid.Column="0"
-                    VerticalAlignment="Center"
-                    Margin="0,0,8,0"
-                    Width="46"
-                    Style="{StaticResource CaptionTextBlockStyle}"/>
-                <TextBox
-                    x:Uid="ArchiveNameTextBox"
-                    Grid.Column="1"
-                    Text="{x:Bind ViewModel.ArchiveName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                    IsEnabled="{x:Bind ViewModel.IsArchiveNameAndNotBusy, Mode=OneWay}"/>
-            </Grid>
-            <StackPanel Orientation="Horizontal" Spacing="8" MinHeight="40">
-                <TextBlock x:Uid="FormatLabel" VerticalAlignment="Center" Style="{StaticResource CaptionTextBlockStyle}"/>
-                <ComboBox MinHeight="32" SelectedIndex="{x:Bind ViewModel.FormatIndex, Mode=TwoWay}"
-                          IsEnabled="{x:Bind ViewModel.IsNotBusy, Mode=OneWay}">
-                    <ComboBoxItem x:Uid="FormatZipItem"/>
-                    <ComboBoxItem x:Uid="FormatTarItem"/>
-                    <ComboBoxItem x:Uid="FormatTarGzItem"/>
-                    <ComboBoxItem x:Uid="FormatTarBz2Item"/>
-                    <ComboBoxItem x:Uid="FormatTarXzItem"/>
-                    <ComboBoxItem x:Uid="FormatTarZstItem"/>
-                    <ComboBoxItem x:Uid="FormatTarLzmaItem"/>
-                </ComboBox>
-            </StackPanel>
-            <StackPanel Orientation="Horizontal" Spacing="8" MinHeight="40">
-                <TextBlock x:Uid="CompressionLabel" VerticalAlignment="Center" Style="{StaticResource CaptionTextBlockStyle}"/>
-                <ComboBox MinHeight="32" SelectedIndex="{x:Bind ViewModel.CompressionLevelIndex, Mode=TwoWay}"
-                          IsEnabled="{x:Bind ViewModel.IsCompressionLevelEnabled, Mode=OneWay}">
-                    <ComboBoxItem x:Uid="CompressionFastItem"/>
-                    <ComboBoxItem x:Uid="CompressionNormalItem"/>
-                    <ComboBoxItem x:Uid="CompressionBestItem"/>
-                    <ComboBoxItem x:Uid="CompressionNoneItem"/>
-                </ComboBox>
-            </StackPanel>
-        </StackPanel>
+
+            <TextBlock
+                x:Uid="ArchiveNameLabel"
+                Grid.Row="1"
+                Grid.Column="0"
+                VerticalAlignment="Center"
+                Style="{StaticResource CaptionTextBlockStyle}"/>
+            <TextBox
+                x:Uid="ArchiveNameTextBox"
+                Grid.Row="1"
+                Grid.Column="1"
+                Margin="8,0,0,0"
+                Text="{x:Bind ViewModel.ArchiveName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                IsEnabled="{x:Bind ViewModel.IsArchiveNameAndNotBusy, Mode=OneWay}"/>
+
+            <TextBlock x:Uid="FormatLabel" Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" Style="{StaticResource CaptionTextBlockStyle}"/>
+            <ComboBox Grid.Row="2" Grid.Column="1" Margin="8,0,0,0" HorizontalAlignment="Left" MinHeight="32" SelectedIndex="{x:Bind ViewModel.FormatIndex, Mode=TwoWay}"
+                      IsEnabled="{x:Bind ViewModel.IsNotBusy, Mode=OneWay}">
+                <ComboBoxItem x:Uid="FormatZipItem"/>
+                <ComboBoxItem x:Uid="FormatTarItem"/>
+                <ComboBoxItem x:Uid="FormatTarGzItem"/>
+                <ComboBoxItem x:Uid="FormatTarBz2Item"/>
+                <ComboBoxItem x:Uid="FormatTarXzItem"/>
+                <ComboBoxItem x:Uid="FormatTarZstItem"/>
+                <ComboBoxItem x:Uid="FormatTarLzmaItem"/>
+            </ComboBox>
+
+            <TextBlock x:Uid="CompressionLabel" Grid.Row="3" Grid.Column="0" VerticalAlignment="Center" Style="{StaticResource CaptionTextBlockStyle}"/>
+            <ComboBox Grid.Row="3" Grid.Column="1" Margin="8,0,0,0" HorizontalAlignment="Left" MinHeight="32" SelectedIndex="{x:Bind ViewModel.CompressionLevelIndex, Mode=TwoWay}"
+                      IsEnabled="{x:Bind ViewModel.IsCompressionLevelEnabled, Mode=OneWay}">
+                <ComboBoxItem x:Uid="CompressionFastItem"/>
+                <ComboBoxItem x:Uid="CompressionNormalItem"/>
+                <ComboBoxItem x:Uid="CompressionBestItem"/>
+                <ComboBoxItem x:Uid="CompressionNoneItem"/>
+            </ComboBox>
+        </Grid>
 
         <!-- Row 6: Shared Options + Post-Action Checkboxes -->
         <StackPanel Grid.Row="6" Spacing="8">

@@ -79,6 +79,22 @@ Window
 ```
 `IsHitTestVisible="False"` — overlay is visible but transparent to drag/drop events.
 
+**No `IsSharedSizeScope`/`SharedSizeGroup` (WPF-only):** unlike WPF, `Microsoft.UI.Xaml.Controls.Grid`
+has no `IsSharedSizeScope` property and `ColumnDefinition` has no `SharedSizeGroup` — both are
+silently rejected by the XAML compiler (`XamlCompiler.exe` exits 1 with no readable diagnostic
+piped through `dotnet build`; the actual cause only showed up by reverting the change and
+confirming the pre-existing file still built). To align a label column across several rows that
+share the same `Visibility` binding (e.g. Archive Options' Mode/Name/Format/Compression rows),
+put them all in **one `Grid`** with `ColumnDefinitions="Auto,*"` and one row per item
+(`Grid.Row="0..n"`) instead of separate per-row `Grid`s/`StackPanel`s — a single Grid's `Auto`
+column width is already computed as the max desired width across every row in that same Grid, so
+labels naturally align without any WPF-only API. Found fixing a real bug this way (2026-07-16):
+`ModeLabel`/`ArchiveNameLabel` had a hardcoded `Width="46"` sized for English "Mode:"/"Name:";
+Ukrainian "Режим:" is longer and `CaptionTextBlockStyle` inherits `TextWrapping="Wrap"` from
+`BodyTextBlockStyle`, so the colon wrapped onto its own line. Removing the fixed `Width` and
+merging Mode/Name/Format/Compression into one shared-column Grid fixed both the wrap and the
+inconsistent left edges — see `DECISIONS.md`.
+
 **H.NotifyIcon.WinUI 2.1.0 API:**
 ```xml
 xmlns:tb="using:H.NotifyIcon"

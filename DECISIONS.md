@@ -3424,3 +3424,40 @@ The `frontend-design` advisor checkpoint originally planned for sub-scope B was 
 round — worth a quick pass to confirm 1100x900's proportions still read as intentionally
 wide-not-square (T-F05's original design decision) rather than as an arbitrary height bump, before
 fully closing out T-F106's acceptance criteria in `TASKS.md`.
+
+---
+
+## Archive Options Label Alignment — Rejected `IsSharedSizeScope`/`SharedSizeGroup`, WPF-only API
+
+**Trigger:** user screenshot (2026-07-16) of the Compress flow's Archive Options rows showed
+`ModeLabel` ("Режим:") wrapping onto two lines with the colon stranded next to the first
+RadioButton, and the Format/Compression/Conflict rows' controls all starting at different
+horizontal positions — no shared left-edge alignment down the options panel.
+
+**Root cause:** `ModeLabel`/`ArchiveNameLabel` had a hardcoded `Width="46"`, sized for English
+"Mode:"/"Name:" (4-5 chars). Ukrainian "Режим:" is longer, and `CaptionTextBlockStyle` inherits
+`TextWrapping="Wrap"` from `BodyTextBlockStyle` (WinUI's stock typography ramp) — so the label
+wrapped instead of overflowing. The other rows (Format/Compression/Conflict) never had a fixed
+width, so they didn't wrap, but also had no shared column, hence the inconsistent alignment.
+
+**First attempt, rejected:** tried `Grid.IsSharedSizeScope="True"` on `RootGrid` plus
+`SharedSizeGroup="OptionLabel"` on each row's label `ColumnDefinition` — the standard WPF pattern
+for aligning label columns across sibling Grids. This fails the XAML compile with no readable
+diagnostic: `dotnet build` only surfaces `XamlCompiler.exe ... exited with code 1` via `MSB3073`,
+no file/line. Confirmed the cause by reverting the change and rebuilding the untouched file
+successfully, isolating the failure to the edit itself, then confirming
+`Microsoft.UI.Xaml.Controls.Grid`/`ColumnDefinition` simply have no such properties in WinUI 3 —
+this is a WPF-exclusive feature.
+
+**Fix that shipped:** merged the four rows that share one `Visibility` binding (Mode, Name,
+Format, Compression — all under `ArchiveOptionsVisibility`) into a single `Grid` with
+`ColumnDefinitions="Auto,*"` and one `Grid.Row` per item, instead of four separate per-row
+Grids/StackPanels. A single Grid's `Auto` column width is already computed as the max desired
+width across every row inside that same Grid — this reproduces the WPF shared-size-group result
+natively, with no invented API, as long as all the rows genuinely belong in one Grid (i.e. share
+visibility). Removed the fixed `Width="46"` from both labels entirely. The Conflict row (Row 6,
+`ConflictLabel`) was left as its own independent row — it lives under a different, always-visible
+`StackPanel` (Shared Options), so it cannot join the same Grid without also restructuring the
+checkboxes below it; its own label was never wrapping and didn't need the fix, so it stayed as
+a plain `StackPanel` rather than forcing cross-section alignment that WinUI has no supported way
+to express safely. See `XAML.md`'s new WinUI 3 gotcha entry for the reusable pattern.
