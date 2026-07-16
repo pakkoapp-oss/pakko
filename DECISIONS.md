@@ -3268,3 +3268,87 @@ framework bug with a documented workaround; (3) try the more invasive container-
 but re-entering Browse mode or restarting the operation does" if that's even true — untested) and
 descope the visual fix from T-F106 while keeping the `DeferredActionGate`/exception-safety
 improvements that are independently correct.
+
+---
+
+## T-F106 — Follow-up: Git-Bisect Traced the Regression to 8217a99; True Mechanism Still Elusive
+
+**User-directed follow-up** after the above was reported: commit the current (independently
+correct) fix, then git-bisect through history — rebuild+reinstall+repro at each candidate commit
+— to find exactly when the blank-row bug was introduced and what that commit did.
+
+**Bisect result — the exact commit:** `8217a99` ("feat(app): T-F05 archive-browser follow-ups
+(CRC-32, up-nav, i18n); T-F99/T-F100 shell wiring; log T-F101/T-F103", 2026-07-14). Its parent,
+`bf571b5` (base T-F05 Archive Browser, same day, no CRC-32 column yet), reliably shows both rows
+rendered correctly across every protocol-activation repro tried. Every commit from `8217a99`
+through current `main` reproduces some degree of blank-row symptom. This is the same commit whose
+own message already documents a blank-row race it found and fixed *within itself* ("a blank-row
+rendering race caused by an unneeded explicit `VirtualizingStackPanel`... reverted to the default
+panel") — T-F106 is a recurrence of that same class of bug, not a brand new one, despite the
+revert already being in place in current code.
+
+**Severity is graded, not binary, across the commits checked** (2 plain files via
+`pakko://archive`, `ui_find` bounding rects):
+- `bf571b5` (pre-CRC-32): both rows render (`root.txt`, `readme.txt` both non-zero bounds).
+- `8217a99` / `471a0fe` (CRC-32 present, T-F06 era): the **second** item's row is blank, the
+  first's is fine — matching the *shape* of the old (supposedly-fixed) T-F05 race. A single file
+  (no second item to race against) always renders correctly at these commits too.
+- Current `main` (`03d8139`/T-F105 and later): **both** rows blank, and — new this session —
+  confirmed via `window_management(resize)` that shrinking-then-restoring the window at `471a0fe`
+  does *not* reliably recover the blank row either (once, the *first*, previously-good row also
+  went blank after a resize, then came back after a second resize while the second row stayed
+  blank throughout) — i.e., even the "milder" `471a0fe`-era shape is not cleanly resize-recoverable
+  under close inspection; the difference from current `main` looks like matter of *degree*
+  (how many/which rows get caught), not a categorically different bug.
+- No commit between `8217a99` and current `main` touches `MainWindow.xaml`'s pending-list
+  `ListView`, `FileItem.cs`, or `MainViewModel.AddPaths`/`FileItems` at all (checked every commit's
+  diff stat individually — the only changes in that range are docs, Core-layer tar.exe sandboxing,
+  locale `.resw` additions, and one unrelated button-text-localization edit to
+  `MainViewModel.ArchiveButtonText`/`ExtractButtonText`). The apparent "worse over time" trend is
+  most likely the *same* race becoming more visible/severe under slightly different timing, not a
+  second distinct regression to bisect further.
+
+**Follow-up experiments this session, each empirically tested (build+deploy+repro), looking for
+what actually correlates with the blank row:**
+- **Disabling `FileItem`'s fire-and-forget `LoadCrc32Async` entirely:** no change — both rows
+  still blank on current `main`. Rules out the CRC-32 read itself (and its background-thread
+  `Crc32`/`Crc32Display` property sets) as the sole cause.
+- **Replacing `MainViewModel.AddPaths`'s per-item `FileItems.Add(...)` loop with a single wholesale
+  `FileItems = new ObservableCollection<FileItem>([...])` reassignment** (matching
+  `EnterBrowseModeAsync`/`RefreshCurrentFolder`'s working pattern for the Archive Browser's own
+  list, which the user confirmed renders correctly) — **materially reduced severity**: current
+  `main` went from *both* rows blank to only the *second* row blank (matching the older, milder
+  `8217a99`-era shape). This did not change whether CRC-32 was enabled or disabled — tested both
+  ways, same partial-improvement result either way. This is the most promising empirical lead: the
+  per-item `CollectionChanged(Add)` notification stream during a cold-start/activation batch add
+  is implicated, even though it doesn't fully explain the remaining single-row symptom.
+- **Adding back an explicit `VirtualizingStackPanel VirtualizationMode="Recycling"` on the
+  pending-list `ListView`** (matching the Archive Browser's own `ListView`, which the user pointed
+  out already works correctly) — **made it worse**, reverting to *both* rows blank. This directly
+  reproduces the original, already-diagnosed T-F05 mechanism (explicit VSP + per-item async
+  property mutation after container realization = blank rows) and confirms *why* the Archive
+  Browser's identical VSP setup is safe there: `ArchiveEntryViewModel` (per `DECISIONS.md`'s
+  existing T-F05 entry) does no per-item async work at all — its fields come pre-computed from
+  `ListEntriesAsync`, so there is no post-construction property mutation for the VSP to race
+  against. `FileItem`'s fire-and-forget `LoadCrc32Async`/`LoadFolderSizeAsync` is exactly the kind
+  of post-construction async mutation that combines badly with an explicit VSP — but, per the CRC
+  toggle test above, evidently *also* combines badly with the *default* (implicit) panel under
+  cold-start timing, just less severely.
+
+**Net picture:** three independent factors are now known to interact — (a) per-item
+`ObservableCollection.Add()` notifications vs. one wholesale reassignment, (b) explicit vs.
+implicit `ItemsPanel` virtualization, (c) `FileItem`'s fire-and-forget async CRC-32/size load
+racing against initial container realization — but no single change eliminates the symptom
+outright, and the true underlying WinUI mechanism (why a *second* rapidly-added item's container
+specifically ends up with degenerate `(0,0)` bounds, and why cold-start/activation timing exposes
+it far more reliably than an interactive "Add Files" click ever has in this project's multi-month
+history) is still not pinned down. All diagnostic changes from this follow-up were reverted;
+`main` is back to exactly the independently-correct `DeferredActionGate`/exception-safety fix
+committed at the start of this follow-up, with no visual-bug fix included.
+
+**Next step, pending user direction:** the wholesale-reassignment change is the single most
+promising lead (real, reproducible severity reduction, zero downside observed) and is a reasonable
+starting point for a focused follow-up session — likely combined with also eliminating or
+re-sequencing `FileItem`'s fire-and-forget async loads (e.g., not starting them until after the
+item's own container has confirmed-rendered, rather than from the constructor) to see if the two
+changes together finally close the gap the wholesale-reassignment change alone didn't.
