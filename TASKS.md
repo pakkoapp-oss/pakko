@@ -627,36 +627,81 @@ alongside existing PAKKO-INTEGRITY-V1 manifest.
 ---
 
 ### T-F35 — Streaming Pipeline Architecture
-- [ ] **Status:** future
-- **Priority:** low
-- **Depends on:** T-F12 (Parallel Compression)
+- [x] **Status:** complete — implemented 2026-07-18, see `DECISIONS.md`'s T-F35 entry for the
+      full design/research trail (design-advisor session, Option A vs. B trade-off, the real
+      compute-gate bug the whitebox concurrency test caught, the Zip64-local-header offset-swap
+      bug the cross-tool `7za.exe` test caught).
+- **Priority:** low → promoted after T-F114 measured a real ~6x regression for many-small-files
+  `SingleArchive` archiving against a 7z reference (user-driven investigation, 2026-07-17/18).
+- **Depends on:** T-F12 (Parallel Compression) — complete.
 
-**What:** Replace sequential file-by-file compression with a pipeline architecture that separates reading, compression, and writing into parallel stages.
+**What:** `ZipArchiveService.ArchiveAsync`'s `SingleArchive` mode gates on file count
+(`ParallelPipelineFileCountThreshold = 64`). Below it, archiving still runs through the
+original, completely unmodified, always-sequential `ZipArchive`-based code (proven, low-risk,
+covers the overwhelming majority of real usage). Above it, it routes into a new
+`Archiver.Core/Services/Zip/` subsystem:
 
-**Architecture:**
 ```
-filesystem reader → Channel<FileWorkItem> → compression workers → archive writer
+WorkItemEnumerator (deterministic T-F31/T-F32/T-F30/T-F66/T-F23/T-F75-preserving traversal)
+  → ParallelSingleArchiveWriter (bounded Channel<Task<WorkResult>> + SemaphoreSlim compute gate,
+     small files (≤4 MiB) compressed in parallel via ZipEntryCompressor; large files (>4 MiB)
+     streamed sequentially, never buffered, exactly like the old AddEntryFromFileAsync)
+  → ZipEntryWriter (hand-rolled ZIP container writer — local file headers, central directory,
+     EOCD/Zip64 — since System.IO.Compression.ZipArchive gives no API to compress independently
+     of the live archive and splice the result in later)
 ```
 
-**Implementation primitives:**
-- System.Threading.Channels for work queues
-- Parallel compression tasks (bounded by ProcessorCount)
-- Single-threaded archive writer (ZIP format constraint)
+**Deviations from the original one-line sketch, found necessary during implementation:**
+- **`System.IO.Compression.ZipArchive` cannot be reused for the write side at all** once gated —
+  it and a hand-rolled writer can't share one output stream, so *every* entry above the gate
+  (small compressed-in-memory, large streamed, and directory placeholders) goes through
+  `ZipEntryWriter`, not just the parallel-eligible ones.
+- **Zip64 is conditional, not "always on."** Decided per-field (local header per-entry based on
+  a safety-margined size hint; central directory/EOCD per-record/globally at dispose time) —
+  unconditional Zip64 on every entry was considered and rejected as needless per-entry bloat
+  for a decision that's fully covered by a small, exhaustively-tested boundary function. See
+  `DECISIONS.md`.
+- **No data descriptor.** The output is always a local, seekable `FileStream`, so unknown
+  crc/compressed-size values (large-file streamed path) are written as placeholders and
+  patched via a seek-back once real values are known — simpler and lower-risk than
+  implementing ZIP's data-descriptor mechanism.
+- **The bounded channel alone does NOT bound compute concurrency** — a real `SemaphoreSlim`
+  compute gate was required in addition (caught by a whitebox test before it shipped; see
+  `DECISIONS.md`).
+- **Progress reporting needs no `Interlocked`** — since exactly one thread (the writer/consumer)
+  ever calls `progress.Report`, unlike T-F12's `SeparateArchives` mode.
 
-**Expected benefit:** 2x–4x faster compression on large archives with many files.
-
-**File:** `src/Archiver.Core/Services/ZipArchiveService.cs`
+**Files:**
+- `src/Archiver.Core/Services/Zip/DosDateTime.cs`, `ZipEntryCompressor.cs`, `ZipEntryWriter.cs`,
+  `FileWorkItem.cs`, `WorkResult.cs`, `WorkItemEnumerator.cs`, `ParallelSingleArchiveWriter.cs`
+- `src/Archiver.Core/Services/ZipArchiveService.cs` — the gate (`ParallelPipelineFileCountThreshold`,
+  `CountFiles`/`CountDirectoryFiles`), `GetUniqueEntryName` widened to `internal` for reuse
+- `src/Archiver.Core/IO/Crc32.cs` — added `Accumulator` (incremental CRC-32, reused by both
+  `ZipEntryCompressor` and `ZipEntryWriter`'s streamed path) alongside the existing `Compute(Stream)`
 
 **Acceptance criteria:**
-- [ ] FileWorkItem record defined: path, entryName, bytes/stream
-- [ ] Reader stage enqueues files into Channel<FileWorkItem>
-- [ ] Compression workers consume channel in parallel
-- [ ] Writer stage is single-threaded — ZIP format requires sequential entry writes
-- [ ] CancellationToken respected in all stages
-- [ ] Progress reporting thread-safe — Interlocked.Increment
-- [ ] SingleArchive mode only — SeparateArchives already parallelized in T-F12
-- [ ] dotnet test passes — existing archive tests unchanged
-- [ ] Verified: no file corruption in parallel pipeline
+- [x] FileWorkItem record defined: path, entryName, size, kind, last-write-time
+- [x] Deterministic enumerator produces the exact same T-F31/T-F32 order as the old recursive walk
+- [x] Compression workers run in parallel (bounded `SemaphoreSlim` compute gate + bounded channel)
+- [x] Writer stage is single-threaded — ZIP format requires sequential entry writes
+- [x] CancellationToken respected in all stages (already-cancelled graceful no-op; mid-flight
+      throws and leaves no orphaned background tasks, both covered by tests)
+- [x] Progress reporting — no `Interlocked` needed (single-threaded reporter by construction)
+- [x] SingleArchive mode only — SeparateArchives already parallelized in T-F12, untouched
+- [x] `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` passes — existing archive tests
+      unchanged (all stay below the gate threshold, so they still exercise the untouched
+      sequential path) — 462 tests total across the solution, up from the pre-T-F35 baseline
+- [x] Verified: no file corruption in the parallel pipeline — cross-tool validity (`ZipFile.OpenRead`
+      + vendored `7za.exe` integrity check + an independent raw structural byte parser),
+      byte-identical/entry-order-identical determinism at scale (120 files), per-file error
+      isolation at scale, mixed small+large files in one archive
+- [x] T-F114 perf ratios re-measured: `ArchiveAsync_ManySmallFiles` 6.02 → 2.39 (~2.5x real
+      improvement), `ArchiveAsync_Hybrid` 3.47 → 3.03 (smaller, as designed — its medium files
+      stay on the untouched sequential path), `ArchiveAsync_OneLargeFile` 1.22 → 1.23 (unaffected,
+      confirms the gate correctly excludes single-large-file archiving)
+- [ ] Manual on-device verification (archive a real folder of 100+ small files via the installed
+      Pakko GUI/context menu, confirm the result opens without corruption warnings in Explorer/
+      7-Zip/WinRAR) — per this project's workflow rule, not graduated on `dotnet test` alone.
 
 ---
 

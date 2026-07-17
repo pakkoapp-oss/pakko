@@ -28,14 +28,34 @@ public static class Crc32
     /// <summary>Computes the CRC-32 of all remaining bytes in <paramref name="stream"/>.</summary>
     public static uint Compute(Stream stream)
     {
-        uint crc = 0xFFFFFFFF;
+        var acc = new Accumulator();
         Span<byte> buffer = stackalloc byte[8192];
         int read;
         while ((read = stream.Read(buffer)) > 0)
+            acc.Update(buffer[..read]);
+        return acc.Finish();
+    }
+
+    /// <summary>
+    /// Running CRC-32 state for computing a hash incrementally across chunks read from a
+    /// stream that is simultaneously being piped elsewhere (e.g. into a compressor) — used by
+    /// <c>Services.Zip.ZipEntryWriter</c> so uncompressed bytes are hashed in the same single
+    /// read pass as compression, instead of requiring a second full read of the source file.
+    /// </summary>
+    public struct Accumulator
+    {
+        private uint _crc = 0xFFFFFFFF;
+
+        public Accumulator() { }
+
+        public void Update(ReadOnlySpan<byte> data)
         {
-            for (int i = 0; i < read; i++)
-                crc = Table[(crc ^ buffer[i]) & 0xFF] ^ (crc >> 8);
+            uint crc = _crc;
+            foreach (byte b in data)
+                crc = Table[(crc ^ b) & 0xFF] ^ (crc >> 8);
+            _crc = crc;
         }
-        return crc ^ 0xFFFFFFFF;
+
+        public readonly uint Finish() => _crc ^ 0xFFFFFFFF;
     }
 }

@@ -322,6 +322,95 @@ public interface ILogService
 
 ---
 
+## `Archiver.Core/Services/Zip/` — T-F35 Parallel `SingleArchive` Pipeline
+
+Gated inside `ZipArchiveService.ArchiveAsync`'s `SingleArchive` branch: below
+`ParallelPipelineFileCountThreshold` (64 files), the original always-sequential
+`ZipFile.Open`/`AddDirectoryToArchiveAsync`/`AddEntryFromFileAsync` code runs completely
+unchanged. Above it, archiving routes into this subsystem instead — see `DECISIONS.md`'s T-F35
+entry for the full design rationale (why `ZipArchive` can't be reused for the write side once
+gated, the Option A/B trade-off, the two real bugs the test suite caught).
+
+```csharp
+// FileWorkItem.cs — one unit of work, in the exact final ZIP entry order
+internal readonly record struct FileWorkItem(
+    string SourcePath, string EntryName, FileWorkKind Kind, long FileSize, DateTime LastWriteTime);
+internal enum FileWorkKind { File, DirectoryPlaceholder }
+
+// WorkItemEnumerator.cs — deterministic, lazy; reshapes AddDirectoryToArchiveAsync's recursive
+// walk into a flat IEnumerable<FileWorkItem>, preserving T-F31/T-F32 order, T-F30 collision
+// renaming (reuses ZipArchiveService.GetUniqueEntryName, widened to internal), T-F66 empty-dir
+// placeholders, T-F23 reparse-point skip, T-F75 fixed rootDir.
+internal static class WorkItemEnumerator
+{
+    public static IEnumerable<FileWorkItem> Enumerate(
+        IReadOnlyList<string> sortedSourcePaths,
+        Action<SkippedFile> reportSkipped, Action<ArchiveError> reportError);
+}
+
+// WorkResult.cs — outcome of processing one FileWorkItem, consumed strictly in enqueue order
+internal enum WorkResultKind { Compressed, LargePassthrough, DirectoryPlaceholder, Error }
+internal sealed record WorkResult { /* Kind + payload; static WorkResult.For*() factories */ }
+
+// ZipEntryCompressor.cs — compresses a file's bytes fully into memory via DeflateStream directly
+// (no ZipArchiveEntry involved) for the small-file (≤4 MiB) parallel path.
+internal readonly record struct CompressedEntryData(
+    byte[] CompressedBytes, uint Crc32, long UncompressedLength, ushort Method);
+internal static class ZipEntryCompressor
+{
+    public static CompressedEntryData Compress(Stream sourceStream, CompressionLevel compressionLevel);
+}
+
+// ParallelSingleArchiveWriter.cs — dispatch/drain orchestration
+internal static class ParallelSingleArchiveWriter
+{
+    public const long ParallelEligibleByteThreshold = 4L * 1024 * 1024; // 4 MiB
+    public static int ComputeWindowCapacity(); // Clamp(ProcessorCount, 2, 16)
+
+    public static Task WriteAsync(
+        string tempPath, IReadOnlyList<string> sortedSourcePaths, CompressionLevel compressionLevel,
+        long totalBytes, Action<SkippedFile> reportSkipped, Action<ArchiveError> reportError,
+        IProgress<ProgressReport>? progress, CancellationToken cancellationToken);
+
+    // Decoupled from real compression so whitebox tests can inject a controllable delegate —
+    // see ParallelSingleArchiveWriterTests.
+    internal static Task RunPipelineAsync(
+        string tempPath, IEnumerable<FileWorkItem> items,
+        Func<FileWorkItem, CancellationToken, Task<WorkResult>> compressItem, int windowCapacity,
+        CompressionLevel compressionLevel, long totalBytes, IProgress<ProgressReport>? progress,
+        Action<ArchiveError> reportError, CancellationToken cancellationToken);
+}
+
+// ZipEntryWriter.cs — hand-rolled ZIP container writer (local file header/central directory/
+// EOCD, conditional Zip64 — never "always on", see DECISIONS.md). Owns the whole output file
+// once gated; a ZipArchive and this writer never share one output stream.
+internal sealed class ZipEntryWriter : IAsyncDisposable
+{
+    public ZipEntryWriter(string path);
+    public int EntryCount { get; }
+    public Task WriteCompressedEntryAsync(string entryName, CompressedEntryData data, DateTime lastWriteTime, CancellationToken ct);
+    public Task WriteStreamedEntryAsync(string sourcePath, string entryName, CompressionLevel compressionLevel,
+        long uncompressedLengthHint, DateTime lastWriteTime, IProgress<ProgressReport>? progress,
+        long totalBytes, long startOffset, CancellationToken ct); // large files, never buffered
+    public Task WriteDirectoryPlaceholderAsync(string entryName, DateTime lastWriteTime, CancellationToken ct);
+    public ValueTask DisposeAsync(); // writes central directory + EOCD (+ Zip64 if needed)
+}
+
+// DosDateTime.cs — MS-DOS date/time packing, byte-identical to ZipArchiveEntry's own encoding
+// (verified by a dedicated test that compares against a real ZipArchiveEntry-written header).
+internal static class DosDateTime
+{
+    public static uint Encode(DateTime dateTime);
+    public static DateTime Decode(uint packed);
+}
+```
+
+`Archiver.Core.IO.Crc32` gained an `Accumulator` struct (incremental CRC-32 — `Update(ReadOnlySpan<byte>)`/
+`Finish()`) alongside its existing whole-stream `Compute(Stream)`, so uncompressed bytes can be
+hashed in the same single read pass as compression instead of a second full file read.
+
+---
+
 ## Dependency Injection & Startup
 
 > Merged in from the former `BOOTSTRAP.md` (2026-07-05) — same content, one owner.

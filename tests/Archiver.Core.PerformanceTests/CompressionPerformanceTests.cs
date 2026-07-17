@@ -39,7 +39,10 @@ public sealed class CompressionPerformanceTests : IDisposable
     [Trait("Category", "VeryLarge")]
     public async Task ArchiveAsync_OneLargeFile_WithinToleranceOfSevenZipReference()
     {
-        const double calibratedBaselineRatio = 1.22; // observed 2026-07-17, see DECISIONS.md
+        // observed 2026-07-17, see DECISIONS.md; re-verified unaffected 2026-07-18 after T-F35
+        // (1.23 measured — a single large file always stays on the untouched sequential path,
+        // never routed through T-F35's parallel pipeline, by design)
+        const double calibratedBaselineRatio = 1.22;
         string sourceDir = PerformanceFixtures.CreateOneLargeFileFolder(_temp.Path);
 
         await ArchiveWithPakkoTimed(sourceDir, Path.Combine(_temp.Path, "warmup_pakko.zip"));
@@ -78,12 +81,18 @@ public sealed class CompressionPerformanceTests : IDisposable
     [Trait("Category", "Slow")]
     public async Task ArchiveAsync_ManySmallFiles_WithinToleranceOfSevenZipReference()
     {
-        // Observed 2026-07-17: 6.02 — much higher than the other scenarios because 7za's absolute
-        // time on this ~25-30 MB / 5,000-file input is dominated by process-spawn/near-instant
-        // completion (~0.36s), while Pakko's per-entry async pipeline (CRC, per-file overhead)
-        // costs more in absolute terms despite doing comparable real work — an architectural
-        // difference, not a regression. See DECISIONS.md's T-F114 entry.
-        const double calibratedBaselineRatio = 6.02;
+        // Re-measured 2026-07-18 after T-F35 (parallel SingleArchive pipeline): 2.39, down from
+        // the original 6.02 baseline (observed 2026-07-17, before T-F35) — a ~2.5x real
+        // improvement, consistent with T-F35's goal of closing this specific gap. Further
+        // re-measured same day after eliminating WorkItemEnumerator's redundant per-file stat
+        // calls (DirectoryInfo.EnumerateFiles() instead of Directory.EnumerateFiles() + separate
+        // FileInfo.Length/File.GetLastWriteTime/File.GetAttributes calls — 3 fewer native calls
+        // per file): 2.2 average across 3 runs (2.11-2.34) — a modest, real, but small further
+        // improvement, confirming per-file stat overhead was NOT the dominant remaining cost.
+        // The bulk of the remaining gap vs. 7za is more likely per-entry managed allocations
+        // (MemoryStream/byte[]/record per file) and Task/async orchestration overhead at
+        // thousands of files — not yet profiled/fixed, see DECISIONS.md's T-F35 entry.
+        const double calibratedBaselineRatio = 2.2;
         string sourceDir = PerformanceFixtures.CreateManySmallFilesFolder(_temp.Path);
 
         await ArchiveWithPakkoTimed(sourceDir, Path.Combine(_temp.Path, "warmup_pakko.zip"));
@@ -123,10 +132,12 @@ public sealed class CompressionPerformanceTests : IDisposable
     [Trait("Category", "Slow")]
     public async Task ArchiveAsync_Hybrid_WithinToleranceOfSevenZipReference()
     {
-        // Observed 2026-07-17: 3.47 — this fixture is small enough (~50-80 MB) that 7za's
-        // absolute time is still short (~0.57s), so the same process-spawn-overhead effect as
-        // ManySmallFiles applies here too, just less severely. See DECISIONS.md's T-F114 entry.
-        const double calibratedBaselineRatio = 3.47;
+        // Re-measured 2026-07-18 after T-F35: 3.03, down from the original 3.47 baseline (observed
+        // 2026-07-17, before T-F35) — a smaller improvement than ManySmallFiles, as expected: the
+        // 4 MiB Zip64/parallel-eligibility threshold (see DECISIONS.md's T-F35 entry) routes this
+        // fixture's 5-20 MB "medium" files through the same untouched sequential streaming path as
+        // before, so only the 500 small files' portion of this scenario sped up.
+        const double calibratedBaselineRatio = 3.03;
         string sourceDir = PerformanceFixtures.CreateHybridFolder(_temp.Path);
 
         await ArchiveWithPakkoTimed(sourceDir, Path.Combine(_temp.Path, "warmup_pakko.zip"));

@@ -16,6 +16,14 @@ public sealed class ZipArchiveService : IArchiveService
     private const int CopyBufferSize = 81920;        // 80 KB — CopyToAsync transfer buffer
     private const int FileStreamBufferSize = 262144; // 256 KB — FileStream read buffer (archiving)
 
+    // T-F35: below this file count, SingleArchive mode uses the original, unmodified, always-
+    // sequential ZipArchive-based path below (proven, low-risk, and the overwhelming majority of
+    // real usage). Above it, ArchiveAsync routes into Zip.ParallelSingleArchiveWriter's hand-
+    // rolled writer instead — a materially larger and newer code path, deliberately narrowed to
+    // only the workload shape (many files, one shared archive) where T-F114 measured a real ~6x
+    // regression against a 7z reference. See DECISIONS.md's T-F35 entry.
+    private const int ParallelPipelineFileCountThreshold = 64;
+
     /// <inheritdoc/>
     public async Task<ArchiveResult> ArchiveAsync(
         ArchiveOptions options,
@@ -83,10 +91,23 @@ public sealed class ZipArchiveService : IArchiveService
                 .OrderBy(p => p, StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
+            // T-F35: gate the parallel pipeline behind a file-count threshold — see the constant's
+            // own comment. CountFiles is a cheap recursive Directory.EnumerateFiles walk, the same
+            // shape as ComputeTotalBytes just below it.
+            bool useParallelPipeline = CountFiles(sortedSourcePaths) > ParallelPipelineFileCountThreshold;
+
             try
             {
-                await Task.Run(async () =>
+                if (useParallelPipeline)
                 {
+                    await Zip.ParallelSingleArchiveWriter.WriteAsync(
+                        tempPath, sortedSourcePaths, options.CompressionLevel, totalSourceBytes,
+                        skippedFiles.Add, errors.Add, progress, cancellationToken).ConfigureAwait(false);
+                }
+                else
+                {
+                    await Task.Run(async () =>
+                    {
                     using var archive = ZipFile.Open(tempPath, ZipArchiveMode.Create);
                     int total = sortedSourcePaths.Count;
                     long byteOffset = 0;
@@ -165,7 +186,8 @@ public sealed class ZipArchiveService : IArchiveService
 
                         byteOffset += pathSize;
                     }
-                }, cancellationToken).ConfigureAwait(false);
+                    }, cancellationToken).ConfigureAwait(false);
+                }
 
                 // T-F21: Commit the archive even when per-item errors occurred so that
                 // successfully archived files are preserved. Fatal errors (IOException
@@ -1193,6 +1215,45 @@ public sealed class ZipArchiveService : IArchiveService
         return total;
     }
 
+    // T-F35: cheap recursive file count used only to decide whether ArchiveAsync's SingleArchive
+    // branch routes into the parallel pipeline — same traversal shape as ComputeTotalBytes/
+    // ComputeDirectoryBytes just above, counting files instead of summing bytes.
+    private static int CountFiles(IReadOnlyList<string> paths)
+    {
+        int count = 0;
+        foreach (var p in paths)
+        {
+            try
+            {
+                if (ArchiveEntrySecurity.IsReparsePoint(p)) continue;
+                if (File.Exists(p)) count++;
+                else if (Directory.Exists(p)) count += CountDirectoryFiles(p);
+            }
+            catch { }
+        }
+        return count;
+    }
+
+    private static int CountDirectoryFiles(string dir)
+    {
+        int count = 0;
+        try
+        {
+            foreach (string filePath in Directory.EnumerateFiles(dir, "*", SearchOption.TopDirectoryOnly))
+            {
+                if (!ArchiveEntrySecurity.IsReparsePoint(filePath))
+                    count++;
+            }
+            foreach (string subDir in Directory.EnumerateDirectories(dir, "*", SearchOption.TopDirectoryOnly))
+            {
+                if (!ArchiveEntrySecurity.IsReparsePoint(subDir))
+                    count += CountDirectoryFiles(subDir);
+            }
+        }
+        catch { }
+        return count;
+    }
+
     private static bool IsZipFile(string path)
     {
         try
@@ -1307,7 +1368,9 @@ public sealed class ZipArchiveService : IArchiveService
     // against an in-memory set of ZIP entry names already claimed at the archive root rather
     // than the filesystem — two top-level SourcePaths sharing a basename would otherwise become
     // two ZIP entries with the identical name (CreateEntry does not reject duplicates).
-    private static string GetUniqueEntryName(HashSet<string> usedNames, string proposedName)
+    // Internal (not private) so Zip.WorkItemEnumerator (T-F35's parallel SingleArchive path) can
+    // reuse the exact same T-F30 collision-renaming rule instead of duplicating it.
+    internal static string GetUniqueEntryName(HashSet<string> usedNames, string proposedName)
     {
         if (usedNames.Add(proposedName))
             return proposedName;

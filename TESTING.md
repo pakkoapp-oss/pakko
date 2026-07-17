@@ -328,6 +328,42 @@ band meaningless for that path; see `DECISIONS.md` if that's ever revisited.
 
 ---
 
+## T-F35 Parallel SingleArchive Pipeline Tests (v1.4+)
+
+Three test classes cover the gated `Archiver.Core/Services/Zip/` subsystem (see `ARCHITECTURE.md`'s
+own section for it, `DECISIONS.md`'s T-F35 entry for the design rationale and two real bugs these
+tests caught before shipping):
+
+- `DosDateTimeTests` (`Archiver.Core.Tests/Services/Zip/`) — round-trip encode/decode, 1980/2107
+  clamping, and a byte-for-byte comparison against a real `ZipArchiveEntry`'s own DOS date/time
+  encoding.
+- `ParallelSingleArchiveWriterTests` (`Archiver.Core.Tests/Services/Zip/`) — unit-level, against
+  `ParallelSingleArchiveWriter.RunPipelineAsync` directly with an injectable compress delegate (not
+  real file I/O): enqueue-order-not-completion-order write proof, a whitebox concurrency-ceiling
+  test (a controllable blocking gate proves at most `windowCapacity` compress tasks ever run
+  concurrently — this caught a real bug: the bounded channel alone did not bound concurrency),
+  already-cancelled-token graceful no-op, mid-flight cancellation with no orphaned background
+  tasks left running afterward, and per-file error isolation.
+- `ZipEntryWriterCompatibilityTests` (`Archiver.Core.PerformanceTests/` — lives there specifically
+  to reuse the vendored, hash-verified `7za.exe` binary rather than duplicating it into a second
+  test project; a correctness suite, not a performance one, despite the location) — proves the
+  hand-rolled ZIP bytes are independently readable, not just self-consistent: a
+  `System.IO.Compression.ZipFile.OpenRead` round trip, an independent `7za.exe t` integrity check
+  (this caught a real Zip64 local-header field-offset swap bug — `ZipFile.OpenRead` accepted the
+  corrupted bytes silently, `7za.exe` rejected them outright), a raw structural byte parser written
+  independently of `ZipEntryWriter`'s own code, and a forced-Zip64 test (an artificially large size
+  hint on a tiny real file, exercising the Zip64 path without needing gigabytes of test data).
+- `ZipArchiveServiceParallelPipelineTests` (`Archiver.Core.Tests/Services/`) — the same properties
+  re-verified through the real public `ArchiveAsync` API at gate-triggering scale (120 files, above
+  `ParallelPipelineFileCountThreshold`'s 64): byte-identical/entry-order-identical determinism,
+  already-cancelled and mid-flight cancellation, one locked file mid-batch, and a mixed
+  small+large-file archive in one run.
+
+All four run as part of the default `dotnet test --filter "Category!=Slow&Category!=VeryLarge"`
+pass (untagged, fast) — no new Slow/VeryLarge tier was needed for T-F35 itself.
+
+---
+
 ## Manual Smoke Test Cycle (Full Stack)
 
 Ordered simplest → most complex. Confirms Core, Shell, ShellExtension (COM), and the WinUI app

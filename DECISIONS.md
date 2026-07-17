@@ -4218,3 +4218,209 @@ confirming `Deploy.ps1` never touches `tests/`), `SECURITY.md` (new "Vendored 7-
 Sandboxed, Never Shipped" section under the tar.exe Trust Model, explaining both why it's test-only
 and why it's sandboxed the way it is), `TASKS.md` (T-F114's acceptance criteria updated in place
 with dated addenda, not rewritten).
+
+---
+
+## T-F35 — Streaming Pipeline Architecture: Hand-Rolled ZIP Writer, Gated Behind a File-Count Threshold
+
+**Context:** T-F114 measured `ArchiveAsync`'s `SingleArchive` mode at ~6x slower than a 7za.exe
+reference for archiving 5,000 small files into one ZIP. Root cause: `SingleArchive` is fully
+single-threaded — one `ZipArchive`, one file at a time — while 7za.exe compresses multiple files
+across cores by default. `SeparateArchives` mode is already parallel (T-F12), but only because
+each source path gets its own independent output file; that pattern doesn't apply to one shared
+archive.
+
+**The central finding, from both an Explore-agent pass and a design-advisor session:**
+`System.IO.Compression.ZipArchive`/`ZipArchiveEntry` has no public API to compress a file's bytes
+into a standalone buffer and splice the result into the live archive later — `entry.Open()`
+compresses **and** writes to the single shared underlying stream in one motion, and the whole
+namespace is documented non-thread-safe at the instance level. Two options were weighed:
+
+- **Option B** (parallelize only file reads/pre-work, keep the actual `entry.Open()`+compress
+  step on the writer thread) — safe, zero new format code, but doesn't touch the actual CPU-bound
+  DEFLATE work, which is where the real cost lives. Assessed as very unlikely to close a
+  meaningful fraction of the 6x gap.
+- **Option A** (hand-roll the ZIP container format — local file headers, central directory,
+  EOCD/Zip64 — using `System.IO.Compression.DeflateStream` directly for the actual compression,
+  bypassing `ZipArchiveEntry` for the write side entirely) — real multi-core win, but introduces
+  a genuinely new class of risk (container-format bugs) with zero prior precedent in this
+  codebase.
+
+**Decision (user-directed, after the advisor's honest assessment that Option B would likely be a
+marginal win dressed up as a safe one): implement Option A, gated tightly behind a file-count
+threshold** (`ParallelPipelineFileCountThreshold = 64` in `ZipArchiveService.cs`) so the
+existing, unmodified, proven sequential `ZipArchive` path stays the default for the overwhelming
+majority of real usage (a handful of files, or one big file) and is never touched by this change.
+Only batches large enough to plausibly be "many-small-files"-shaped — exactly where the
+regression was measured — take the new, higher-risk path.
+
+### Why `ZipArchive` and the hand-rolled writer can never share one output file
+
+Once gated, `ZipArchive`'s own central-directory bookkeeping and a hand-rolled writer's
+bookkeeping can't coexist against the same physical stream — `ZipArchive.Dispose()` writes its
+own idea of the central directory for every entry *it* created via `CreateEntry`, with no API to
+"also register this entry I wrote by hand." So the gate is all-or-nothing per archive: once a
+`SingleArchive` run crosses the threshold, **every** entry in that output file — small files
+compressed in parallel, large files streamed sequentially, and T-F66 directory placeholders —
+goes through the new `ZipEntryWriter`, not just the parallel-eligible ones. This is a materially
+larger undertaking than "add a parallel fast lane" — it means hand-implementing Zip64 for the
+first time in this codebase (today it's free via `System.IO.Compression`).
+
+### Architecture
+
+```
+WorkItemEnumerator.Enumerate(...)          — deterministic, lazy, T-F31/T-F32/T-F30/T-F66/T-F23/
+                                              T-F75-preserving reshaping of the old recursive
+                                              AddDirectoryToArchiveAsync walk into a flat sequence
+  → ParallelSingleArchiveWriter.WriteAsync  — dispatch: files ≤ 4 MiB go through a bounded
+                                              Channel<Task<WorkResult>> + SemaphoreSlim compute
+                                              gate (parallel, in-memory compression via
+                                              ZipEntryCompressor); files > 4 MiB become an instant
+                                              "large passthrough" marker, streamed sequentially by
+                                              the writer, never buffered
+  → ZipEntryWriter                          — the single thread that ever touches the output
+                                              FileStream: drains results strictly in ENQUEUE order
+                                              (not completion order — awaiting an already-finished
+                                              Task is instant, so order is fixed by construction),
+                                              writes local file headers/compressed bytes/directory
+                                              placeholders, and the central directory + EOCD on
+                                              dispose
+```
+
+**New files:** `src/Archiver.Core/Services/Zip/{DosDateTime,ZipEntryCompressor,ZipEntryWriter,
+FileWorkItem,WorkResult,WorkItemEnumerator,ParallelSingleArchiveWriter}.cs`. `Crc32.cs` gained an
+`Accumulator` struct (incremental CRC-32) alongside the existing whole-stream `Compute(Stream)`,
+so uncompressed bytes can be hashed in the same single read pass as compression instead of
+requiring a second full read of the source file.
+
+### Deviations from the original plan, found during implementation
+
+1. **Zip64 is conditional, not unconditional.** The plan going in called for writing Zip64 fields
+   on every entry, unconditionally, specifically to avoid getting a boundary condition wrong.
+   During implementation this was reconsidered: unconditional Zip64 adds ~20+ bytes of overhead
+   to *every single entry* (real, measurable bloat at thousands of small files) for a decision
+   that's fully isolable into one small, exhaustively-tested boundary function instead. Implemented
+   as: local file header Zip64-or-not decided per-entry from a safety-margined uncompressed-size
+   hint (256 MiB margin — DEFLATE's worst-case expansion could never realistically eat that much
+   headroom); central directory/EOCD Zip64-or-not decided per-record/globally at dispose time,
+   once real final sizes/offsets are known. A dedicated test
+   (`WriteStreamedEntryAsync_LargeSizeHintForcesZip64_StillProducesValidArchive`) forces the
+   Zip64 code path via an artificially large size *hint* on a tiny real file — proving the branch
+   works without needing gigabytes of real test data on disk.
+2. **No data descriptor.** The plan's problem statement assumed a data descriptor (general-purpose
+   bit 3) would be needed for the streamed-large-file path, since compressed size isn't known
+   until the copy finishes. Realized during implementation: the output is always a local,
+   seekable `FileStream` (never a network stream), so the simpler, lower-risk approach is to write
+   the local file header with CRC/compressed-size/uncompressed-size as placeholders, stream the
+   data, then seek back and patch the real values in once known, then seek forward to resume —
+   avoiding the entire data-descriptor mechanism and its own risk surface.
+3. **The bounded channel alone does NOT bound compute concurrency** — a real bug, caught by a
+   whitebox test before shipping. The original assumption was that `Channel.CreateBounded`'s
+   backpressure (blocking `WriteAsync` once the channel is full) would naturally cap how many
+   files could be compressing at once, since the producer can't get further ahead than the
+   channel's capacity. This is wrong: the compress `Task` is already running (via `Task.Run`, or
+   an async lambda's synchronous prefix) by the time it's even offered to `WriteAsync` — the
+   channel only throttles how many *completed-but-undrained* results may sit in the buffer, not
+   how many are concurrently *starting*. `ParallelSingleArchiveWriterTests
+   .RunPipelineAsync_NeverStartsMoreThanWindowCapacityItemsConcurrently` (a controllable
+   blocking-gate test) caught this directly — measured concurrency of 4 against a configured
+   `windowCapacity` of 2 before the fix. Fixed by adding an explicit `SemaphoreSlim(windowCapacity)`
+   acquired **before** a compress task is created (not just before it's enqueued), released when
+   that task completes. This is also the mechanism the memory-ceiling formula (below) actually
+   depends on — the channel capacity turned out to be almost incidental to the real bound.
+4. **A genuine local-header field-offset bug**, also caught by a test before shipping: the
+   Zip64 local extra field's sub-fields are spec-ordered `[uncompressed size][compressed size]`,
+   but the first implementation swapped which physical byte offset the
+   `LocalHeaderFieldOffsets` record's `CompressedSizeOffset`/`UncompressedSizeOffset` pointed at.
+   `System.IO.Compression.ZipFile.OpenRead` read the corrupted archive without complaint; the
+   vendored `7za.exe` cross-tool check immediately failed with "Data Error" / "Unconfirmed start
+   of archive" — direct vindication of requiring an independent third-party reader as a
+   compatibility gate rather than trusting .NET's own reader alone (a bug both were written by
+   different code could still evade one lenient parser but not two independent ones).
+5. **Progress reporting needs no `Interlocked`**, confirmed rather than assumed — since exactly
+   one thread (the writer/consumer draining the channel) ever calls `progress.Report`, this is a
+   real simplification versus T-F12's `SeparateArchives` mode, which needed
+   `Interlocked.Read`/`Add` on a shared counter because multiple independent workers reported
+   concurrently there.
+
+### Memory ceiling
+
+Worst case ≈ `windowCapacity × parallelEligibleByteThreshold` ≈ `Clamp(ProcessorCount, 2, 16) ×
+4 MiB` ≈ **64 MiB worst case**, fixed regardless of total file count (5,000 files or 50,000 — the
+bound is on the window, not the total). The 4 MiB threshold itself is not a "where parallelism
+stops helping" measurement — it's a memory-risk boundary, chosen for a large margin (100x) between
+T-F114's fixture clusters (small files ≤50 KB, "medium" files ≥5 MB) so the exact value within
+that gap barely matters; picked to land on a round total ceiling with a 16-wide window. Files
+above the threshold always stream sequentially through the same code path (and same memory
+footprint) as today's `AddEntryFromFileAsync`, one at a time, never multiplied by window capacity
+— confirmed by the `OneLargeFile` perf scenario's ratio staying unchanged (see below).
+
+### Verification
+
+- `ZipEntryWriterCompatibilityTests` (`tests/Archiver.Core.PerformanceTests/` — lives there
+  specifically to reuse the vendored, hash-verified `7za.exe` binary rather than duplicating it
+  into a second test project; a correctness suite, not a performance one, despite the location):
+  `System.IO.Compression.ZipFile.OpenRead` round trip, an independent `7za.exe t` integrity check,
+  a raw structural byte parser written independently of `ZipEntryWriter`'s own code (so a shared
+  bug can't silently agree with itself), and the forced-Zip64 test described above.
+- `ParallelSingleArchiveWriterTests` (`tests/Archiver.Core.Tests/Services/Zip/`): enqueue-order-not-
+  completion-order write proof, the whitebox concurrency-ceiling test that caught finding #3 above,
+  already-cancelled-token graceful no-op, mid-flight cancellation with no orphaned background
+  tasks left running, per-file error isolation.
+- `ZipArchiveServiceParallelPipelineTests` (`tests/Archiver.Core.Tests/Services/`): the same
+  properties re-verified through the real public `ArchiveAsync` API at gate-triggering scale (120
+  files) — byte-identical/entry-order-identical determinism, already-cancelled and mid-flight
+  cancellation, one locked file mid-batch, and a mixed small+large-file archive in one run.
+- T-F114 perf ratios re-measured 2026-07-18: `ArchiveAsync_ManySmallFiles` 6.02 → **2.39** (~2.5x
+  real improvement), `ArchiveAsync_Hybrid` 3.47 → **3.03** (smaller, as designed — its medium
+  files stay on the untouched sequential path), `ArchiveAsync_OneLargeFile` 1.22 → **1.23**
+  (unaffected within noise, confirming the gate correctly excludes single-large-file archiving).
+  All Extract-side ratios unchanged (T-F35 only touches the Archive/write side).
+- 462 tests pass solution-wide (`dotnet test --filter "Category!=Slow&Category!=VeryLarge"`),
+  up from the pre-T-F35 baseline — every existing archive test stays below the gate threshold, so
+  none of them exercise anything but the original, unmodified sequential path, confirming zero
+  behavior change for typical small archiving operations.
+
+**Doc cascade:** `TASKS.md` (T-F35 marked `[x]` complete with full acceptance-criteria detail),
+`ARCHITECTURE.md` (new `Archiver.Core/Services/Zip/` classes and signatures), `TESTING.md` (new
+section for the three new test files/classes), `CLAUDE.md` (Current State, Repo Layout).
+
+### Follow-up (same day): where the remaining ~2.4x gap comes from — one confirmed, small win
+
+User asked, after seeing the 2.39x figure: a ~2.4x gap is still substantial — where else are we
+paying costs 7za.exe doesn't, deliberately excluding the "managed runtime vs. native" explanation
+(the `OneLargeFile` scenario's ~1.2x gap is the honest floor for that alone, since fixed per-op
+costs are negligible against gigabytes of real compression work; on 5,000 tiny files the *same*
+fixed per-op costs are instead paid 5,000 times each, which is a different phenomenon — cost
+amortization, not language abstraction).
+
+Ranked hypotheses identified: (1) **redundant per-file stat calls** — `WorkItemEnumerator` called
+`ArchiveEntrySecurity.IsReparsePoint` (→ `File.GetAttributes`), `new FileInfo(path).Length`, and
+`File.GetLastWriteTime(path)` independently per file — three separate native stat calls layered on
+top of the `Directory.EnumerateFiles`/`EnumerateDirectories` walk that had already read the same
+data (`WIN32_FIND_DATA`, via `FindNextFile`) and discarded it, since the plain string-returning
+enumeration overloads don't carry it forward; (2) per-file managed allocations (`MemoryStream`,
+`.ToArray()`, `WorkResult`/`CompressedEntryData` records) — real GC pressure at thousands of
+files; (3) `Task.Run`/`await`-chain scheduling overhead per file; (4) CRC-32 computed via a plain
+managed table-driven loop, no SIMD/hardware CRC32 intrinsic (unconfirmed whether this is actually
+different from the old sequential path's own CRC cost — flagged as a hypothesis, not verified);
+(5) a `ProgressReport` allocation + `IProgress<T>.Report` call per file.
+
+**Verified and fixed: hypothesis (1).** Switched `WorkItemEnumerator`'s recursive walk from
+`Directory.EnumerateFiles`/`EnumerateDirectories` (string paths) to
+`DirectoryInfo.EnumerateFiles()`/`EnumerateDirectories()` (`FileInfo`/`DirectoryInfo` objects) —
+on Windows, `FileSystemInfo`-returning enumeration overloads populate `Length`/`LastWriteTime`/
+`Attributes` directly from the same `WIN32_FIND_DATA` the enumeration already read, at zero extra
+stat cost, whereas a freshly-constructed `FileInfo`/a separate `File.GetAttributes`/
+`File.GetLastWriteTime` call each trigger their own independent native call. Eliminates all three
+redundant per-file stats in the recursive path (down to zero extra, from three). Verified
+empirically, not assumed: re-ran `ArchiveAsync_ManySmallFiles_...` three times before and after —
+**2.39x → ~2.2x average (2.11–2.34 across three runs)**, a real but modest ~8% improvement. This
+is a genuine, confirmed win, but its small size is itself informative: per-file stat overhead was
+**not** the dominant remaining cost. The bulk of the ~2.2x gap most likely lives in hypotheses
+(2)/(3) (allocations and async/Task scheduling overhead, both scaling with file count rather than
+file size) — not yet profiled or fixed; flagged as a candidate follow-up, not undertaken this
+session pending the user's direction on whether to pursue deeper profiling.
+
+Calibrated ratio constant updated again: `ArchiveAsync_ManySmallFiles_...` 2.39 → 2.2 (see the
+test file's own dated comment).

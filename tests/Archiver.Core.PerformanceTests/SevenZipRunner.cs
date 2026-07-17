@@ -43,6 +43,14 @@ public static class SevenZipRunner
         return Run(["x", archivePath, $"-o{destinationDir}", "-y", "-bd"]);
     }
 
+    /// <summary>
+    /// Runs 7-Zip's own integrity check (<c>t</c>) against an archive — used by T-F35's
+    /// <c>ZipEntryWriter</c> compatibility tests as an independent, strict, third-party ZIP
+    /// reader to validate hand-rolled container bytes against (not a timing measurement; the
+    /// elapsed time is discarded). Throws if 7-Zip reports the archive as invalid/corrupt.
+    /// </summary>
+    public static void Test(string archivePath) => Run(["t", archivePath, "-bd"]);
+
     private static TimeSpan Run(IReadOnlyList<string> arguments)
     {
         if (!IsAvailable)

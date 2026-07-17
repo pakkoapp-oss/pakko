@@ -297,6 +297,13 @@ failure — so a blocked/misconfigured sandbox would have crashed instead of yie
   `[Trait("Category", "VeryLarge")]` instead — on demand only, via
   `dotnet test --filter "Category=VeryLarge"` (2026-07-17: gated separately from `Slow` per user
   request, so a routine pre-release `Slow` run never pays its cost unless deliberately asked to).
+  **Current true total (2026-07-18, after T-F35): 462 tests** via
+  `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` — 305 Archiver.Core.Tests (+19 from
+  T-F35: `DosDateTimeTests`, `ParallelSingleArchiveWriterTests`,
+  `ZipArchiveServiceParallelPipelineTests`) + 4 Archiver.Core.PerformanceTests
+  (`ZipEntryWriterCompatibilityTests`, new) + 43 Archiver.Shell.Tests + 55 Archiver.App.Core.Tests
+  + 55 Archiver.Core.IntegrationTests. Don't trust the 414/316/269 figures in the paragraph below
+  as current — this bullet is the freshest count; run `dotnet test` for ground truth either way.
   **T-F114 (2026-07-17)** added a second project, `Archiver.Core.PerformanceTests` (6 tests:
   archive+extract × one-large-file/many-small-files/hybrid, each comparing Pakko's ZIP path
   against a sandboxed, vendored `7za.exe` reference on a same-run ratio basis — see
@@ -305,6 +312,25 @@ failure — so a blocked/misconfigured sandbox would have crashed instead of yie
   C++ `Archiver.ShellExtension.Tests` (Google Test,
   68/68 — was 59, +9 from T-F105 Phase C's `BuildArchiveArgs`/`BuildAddToArchiveTitle` `.tar`
   cases) run separately, not covered by `dotnet test`
+- **T-F35 (`[~]` implementation complete, on-device verification pending, 2026-07-18)** —
+  `ZipArchiveService.ArchiveAsync`'s `SingleArchive` mode gates on file count
+  (`ParallelPipelineFileCountThreshold = 64`): below it, archiving is completely unchanged
+  (original sequential `ZipArchive`-based code); above it, a new `Archiver.Core/Services/Zip/`
+  subsystem (`WorkItemEnumerator`, `ParallelSingleArchiveWriter`, `ZipEntryWriter`,
+  `ZipEntryCompressor`, `DosDateTime`) compresses small files (≤4 MiB) in parallel and streams
+  large files sequentially, writing the final ZIP through a hand-rolled container-format writer
+  since `System.IO.Compression.ZipArchive` gives no API to compress independently of the live
+  archive and splice the result in later. Built to fix the ~6x `SingleArchive`-vs-7z gap T-F114
+  measured for many-small-files archiving. Two real bugs were caught by the test suite before
+  shipping: a bounded-channel-alone-doesn't-bound-concurrency concurrency bug (whitebox test) and
+  a Zip64 local-header field-offset swap that corrupted output silently as far as .NET's own
+  reader was concerned but was rejected outright by an independent `7za.exe` integrity check — see
+  `DECISIONS.md`'s T-F35 entry for the full design/bug trail. T-F114's perf ratios were
+  re-measured after this change: `ArchiveAsync_ManySmallFiles` 6.02 → 2.39, `ArchiveAsync_Hybrid`
+  3.47 → 3.03, `ArchiveAsync_OneLargeFile` 1.22 → 1.23 (unaffected, as designed — a single large
+  file never crosses the gate). Stays `[~]` until a manual on-device verification (archive 100+
+  real small files via the installed Pakko GUI/context menu, confirm the result opens cleanly in
+  Explorer/7-Zip/WinRAR) — not graduated on `dotnet test` alone, per this project's workflow rule.
 - MSIX signed with dev cert via Deploy.ps1 (see T-F10 for production-grade cert)
 - Async streaming (CopyToAsync) — CancellationToken respected mid-file
 - Temp file/dir pattern — no partial files on cancel or failure
