@@ -1183,3 +1183,77 @@ changes.
 
 ---
 
+### T-F112 — Generate state-transition tests from DIAGRAMS.md's mermaid state diagram (stub, not scoped)
+- [ ] **Status:** future — proposed 2026-07-17, not implemented or scoped this round.
+
+**What:** `DIAGRAMS.md`'s mermaid blocks are prose/diagram-only — nothing in the repo parses or
+executes them, so a diagram can silently drift from the real UI state machine between audits (this
+is exactly what happened to Diagram 6 across T-F97/98/105/106/107/108/109/110 before the
+2026-07-17 sync pass caught it). Mermaid itself has no test runner; the diagram cannot be
+"compiled" and executed directly.
+
+**Proposed approach:** write a small one-off parser/generator (Python, `py` launcher per
+project convention) that reads Diagram 6's `stateDiagram-v2` block, extracts every
+`State1 --> State2 : trigger` line, and emits a skeleton per transition — either an
+xUnit test skeleton (for pieces reachable without WinUI, e.g. `ArchiveBrowseScope`/
+`_browseStack` transitions in `MainViewModel`) or a Windows-MCP automation script skeleton (for
+pieces that need the real WinUI tree, e.g. row-visibility). Each skeleton would still need a human
+to fill in the actual assertion — the generator's value is walking every diagrammed transition
+mechanically so none get silently skipped, not producing complete tests unattended.
+
+**Scope not yet decided:**
+- Whether this only targets Diagram 6 (state diagram — direct fit) or is also attempted for
+  diagrams 3/5 (activity diagrams — worse fit, no natural state/transition pairs to walk).
+- Whether generated skeletons live as a new test project/script under `tests/`, or as a one-shot
+  scratch tool re-run manually after each `DIAGRAMS.md` edit (no CI in this repo to wire it into
+  automatically).
+- Whether "generate" happens once per diagram edit (manual re-run) or whether the *absence* of a
+  test for a diagrammed transition should itself be a checked condition (would need the parser to
+  be a permanent repo tool, not a throwaway script).
+
+Needs a decision on the above before implementation. Candidate first target if scoped: Diagram 6's
+`InsideArchive` self-loop transitions added this session (T-F98's nested-archive drill-down).
+
+---
+
+### T-F113 — Encrypted-archive diagnostics for 7z/RAR (stub, not scoped; real decryption out of scope)
+- [ ] **Status:** future — proposed 2026-07-17, not implemented or scoped this round.
+
+**What:** `ZipArchiveService.IsEncryptedZip` detects ZIP encryption cheaply (general-purpose bit
+flag in the local file header) before ever attempting extraction, and fails with a clear message:
+`"This archive is password-protected and cannot be extracted."` (`ZipArchiveService.cs:497-506`,
+`:604-613`). The tar.exe path (`TarSandboxedService`, covers 7z/RAR/tar-family) has **no
+equivalent detection** — an encrypted 7z or RAR currently fails deep inside `tar -xf`/`tar -tf`
+with a raw libarchive stderr string surfaced verbatim via a generic `IOException` (
+`TarSandboxedService.cs:259-260`: `"tar.exe extraction failed: {stdErr.Trim()}"`). Archive
+**Browser listing** hits the same ungraceful path for a 7z with encrypted headers (filenames
+encrypted, not just content) — browsing fails with the same raw stderr instead of a clear
+"password-protected" message.
+
+**Explicitly out of scope for this task:** actually decrypting anything. `System.IO.Compression`
+has no ZIP decryption API at all (would require hand-rolled ZipCrypto/AES-256 code, a direct
+conflict with this project's "zero third-party/hand-rolled compression-crypto code" positioning —
+see `SECURITY.md`'s existing FIPS-140-2 line, `SECURITY.md:306`). tar.exe's own passphrase support
+(`--passphrase`) is documented for archives *bsdtar itself created*, not confirmed reliable for
+arbitrary third-party-encrypted 7z/RAR — would need its own empirical spike (in the style of
+T-F105's Phase 0) before being trusted, and is a materially bigger architectural question (does
+Pakko start accepting a password at all, in the UI and both extraction engines) than this stub is
+scoped for.
+
+**Proposed approach (diagnostics only):**
+- Add a cheap pre-check for 7z (signature `37 7A BC AF 27 1C`, then the format's own encrypted-
+  header flag) and RAR (RAR5 `52 61 72 21 1A 07 01 00` / RAR4 `52 61 72 21 1A 07 00`, then the
+  archive-header encryption flag) — mirroring `IsEncryptedZip`'s approach of reading a fixed
+  header offset directly, no tar.exe invocation needed for the check itself.
+- On detection, surface the same clear, consistent message ZIP already gives
+  (`"This archive is password-protected and cannot be extracted."` / a listing-specific variant
+  for Archive Browser) via `ArchiveError`/`SkippedFile`, instead of the raw libarchive stderr.
+- Extend `SECURITY.md`'s existing ZIP-encryption-not-implemented line to explicitly cover 7z/RAR,
+  so the non-goal is documented in one canonical place rather than only inferred from behavior.
+
+**Scope not yet decided:** exact byte offsets/flag bits for 7z's and RAR5's encrypted-header
+detection need to be verified against real encrypted fixtures (same empirical-first discipline as
+`IsEncryptedZip`) before implementation — not to be guessed from format-spec memory alone.
+
+---
+
