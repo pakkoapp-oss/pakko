@@ -473,6 +473,12 @@ references are easy to miss otherwise (this session found 5 lingering mentions o
   replacement text silently re-decodes to the same literal glyph (confirmed T-F105) — the Edit
   reports `old_string`/`new_string` identical instead of erroring. Build the escape from raw char
   codes (`[char]0x5C + "u2026"`) and write via `System.IO.File`/byte-level replacement instead.
+  **Not limited to C++/PowerShell:** the same corruption hit C# (an icon-font PUA glyph in
+  `ArchiveEntryViewModel.cs`'s `Icon` property, T-F110) and Markdown prose (`TASKS.md`, T-F110) —
+  any Edit/Write call whose params contain a raw `\uXXXX` escape or a raw PUA/icon-font glyph
+  (Segoe MDL2/Fluent, e.g. codepoint U+E890) risks silent corruption regardless of file type. Use a
+  throwaway Python script via the `py` launcher, building the exact bytes with `chr(0xEXXX)`,
+  for any edit touching such content.
 - **Shared WinUI `x:Uid` across elements with different property sets is fatal, not a no-op:**
   giving a `Button` (`.Content`) and a `TextBlock` (`.Text`) the same `x:Uid` applies both resource
   keys to both elements regardless of which properties exist — crashes natively (`0xc000027b`) at
@@ -634,6 +640,12 @@ MSBuild tests\Archiver.ShellExtension.Tests\Archiver.ShellExtension.Tests.vcxpro
 >
 > **Monitor tool commands run in POSIX/Git-Bash syntax**, even when polling a Windows path —
 > use `[ -f "/c/Program Files/..." ]`, not `Test-Path`, or the wait-loop never fires.
+>
+> **Windows MCP (`mcp__windows__*`) cannot reliably synthesize a WinUI `DoubleTapped` gesture or
+> open Explorer's right-click context menu** (`double_click`, two rapid `click` calls, and
+> Shift+F10 all failed across ~6 varied attempts, confirmed T-F98/T-F109 session). Don't burn
+> more than 2-3 attempts on this class of gesture — stop and ask the user to reproduce/verify
+> manually instead.
 >
 > **`winget install`/`uninstall` needing elevation fails non-interactively** with
 > `0x800704c7` ("canceled by the user") — the UAC prompt has nothing to click it. Retry once
