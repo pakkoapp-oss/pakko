@@ -218,6 +218,15 @@
   <data name="ThisPcBreadcrumbRoot" xml:space="preserve">
     <value>Цей комп'ютер</value>
   </data>
+  <data name="NestedArchiveDepthLimitReached" xml:space="preserve">
+    <value>Неможливо відкрити - цей архів вкладений занадто глибоко.</value>
+  </data>
+  <data name="UnsafePreviewConfirmTitle" xml:space="preserve">
+    <value>Перегляд недоступний</value>
+  </data>
+  <data name="UnsafePreviewConfirmMessage" xml:space="preserve">
+    <value>Файл "{0}" не можна безпечно відкрити напряму. Розпакувати його в теку поруч з архівом?</value>
+  </data>
   <data name="StatusArchivedIn" xml:space="preserve">
     <value>Заархівовано за {0} с — файлів: {1}</value>
   </data>

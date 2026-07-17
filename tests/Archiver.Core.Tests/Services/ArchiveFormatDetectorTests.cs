@@ -89,4 +89,43 @@ public sealed class ArchiveFormatDetectorTests : IDisposable
     {
         ArchiveFormatDetector.Detect(Path.Combine(_temp.Path, "does_not_exist.zip")).Should().Be(ArchiveFormat.Unknown);
     }
+
+    [Theory]
+    [InlineData("clip.zip")]
+    [InlineData("clip.RAR")]
+    [InlineData("clip.7z")]
+    [InlineData("clip.tar")]
+    [InlineData("clip.gz")]
+    [InlineData("clip.tgz")]
+    [InlineData("clip.bz2")]
+    [InlineData("clip.tbz2")]
+    [InlineData("clip.xz")]
+    [InlineData("clip.txz")]
+    [InlineData("clip.zst")]
+    [InlineData("clip.tzst")]
+    [InlineData("clip.lzma")]
+    [InlineData("nested/path/clip.zip")]
+    public void IsRecognizedArchiveExtension_RecognizedExtension_ReturnsTrue(string fileName)
+    {
+        ArchiveFormatDetector.IsRecognizedArchiveExtension(fileName).Should().BeTrue();
+    }
+
+    [Theory]
+    [InlineData("clip.mp4")]
+    [InlineData("clip.txt")]
+    [InlineData("clip.exe")]
+    [InlineData("clip")]
+    [InlineData("")]
+    public void IsRecognizedArchiveExtension_UnrecognizedExtension_ReturnsFalse(string fileName)
+    {
+        ArchiveFormatDetector.IsRecognizedArchiveExtension(fileName).Should().BeFalse();
+    }
+
+    [Fact]
+    public void IsRecognizedArchiveExtension_DoesNotTouchDisk()
+    {
+        // Unlike Detect(), this must work for a path that never existed on disk — it's used to
+        // decide drill-down candidacy for an in-archive entry before anything is extracted.
+        ArchiveFormatDetector.IsRecognizedArchiveExtension(Path.Combine(_temp.Path, "does_not_exist.zip")).Should().BeTrue();
+    }
 }

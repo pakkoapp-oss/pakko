@@ -113,4 +113,50 @@ public class ArchiveEntryViewModelTests
 
         entry.CrcDisplay.Should().Be("DEADBEEF");
     }
+
+    [Fact]
+    public void Icon_Folder_ReturnsFolderGlyph()
+    {
+        var entry = new ArchiveEntryViewModel
+        {
+            FullPath = "dir",
+            Name = "dir",
+            IsFolder = true,
+        };
+
+        entry.Icon.Should().Be("\uE8B7");
+    }
+
+    [Theory]
+    [InlineData("photo.jpg")]
+    [InlineData("clip.mp4")]
+    [InlineData("song.mp3")]
+    [InlineData("readme.txt")]
+    public void Icon_PreviewableFile_ReturnsViewGlyph(string name)
+    {
+        var entry = new ArchiveEntryViewModel
+        {
+            FullPath = name,
+            Name = name,
+            IsFolder = false,
+        };
+
+        entry.Icon.Should().Be("\uE890");
+    }
+
+    [Theory]
+    [InlineData("app.exe")]
+    [InlineData("resume.docx")]
+    [InlineData("document.pdf")]
+    public void Icon_NonPreviewableFile_ReturnsHideGlyph(string name)
+    {
+        var entry = new ArchiveEntryViewModel
+        {
+            FullPath = name,
+            Name = name,
+            IsFolder = false,
+        };
+
+        entry.Icon.Should().Be("\uED1A");
+    }
 }

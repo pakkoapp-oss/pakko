@@ -221,6 +221,15 @@
   <data name="ThisPcBreadcrumbRoot" xml:space="preserve">
     <value>This PC</value>
   </data>
+  <data name="NestedArchiveDepthLimitReached" xml:space="preserve">
+    <value>Cannot open — this archive is nested too deeply.</value>
+  </data>
+  <data name="UnsafePreviewConfirmTitle" xml:space="preserve">
+    <value>Not previewable</value>
+  </data>
+  <data name="UnsafePreviewConfirmMessage" xml:space="preserve">
+    <value>"{0}" cannot be safely opened directly. Extract it to a folder next to the archive instead?</value>
+  </data>
   <data name="StatusArchivedIn" xml:space="preserve">
     <value>Archived in {0} sec — {1} file(s)</value>
   </data>

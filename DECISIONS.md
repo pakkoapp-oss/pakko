@@ -3642,3 +3642,181 @@ the sibling keys.
 
 On-device verified (`windows` MCP, Pakko 1.2.0.39): the three-link row renders correctly with no
 visual imbalance; clicking "Ko-fi" opens "Support pakko" on Ko-fi in the system default browser.
+
+---
+
+## T-F108 — Archive Browser Silently Extracts to Desktop, Ignoring the Archive's Real Location
+
+**Found while:** scoping T-F98 (see below) — the user reported that double-clicking a
+non-previewable file (`.mp4`) in the Archive Browser "does nothing." Automating a repro via the
+`windows` MCP server hit a wall (WinUI's `DoubleTapped` gesture wasn't reliably synthesizable by
+the available mouse tools after several attempts across two different Explorer/PickerHost
+interaction paths), so the user reproduced it manually instead and reported the real symptom:
+the file **does** extract — silently, into whatever folder `DestinationPath` held, which was
+`Desktop`, surprising since the archive itself lived elsewhere entirely.
+
+**Root cause:** `MainViewModel._destinationPath` field-initializes to `Desktop` and is only ever
+updated by `UpdateDefaultDestination()`, wired solely to `FileItems.CollectionChanged` (the
+pending-list collection). `EnterBrowseModeAsync` — the entry point T-F100's file-activation
+routing ("Open with → Pakko") and T-F107's real-filesystem archive drill-in both call — never
+touches `FileItems`, so on those two paths `DestinationPath` stays stuck at `Desktop` regardless
+of where the opened archive actually lives. T-F05's own original entry point (double-clicking an
+archive already in the pending list) never surfaced this, since `FileItems` already held that one
+item and `UpdateDefaultDestination()` had already set the correct folder when it was added.
+
+**Fix:** `EnterBrowseModeAsync` now sets `DestinationPath = Path.GetDirectoryName(archivePath) ??
+DestinationPath` when `FileItems.Count == 0` — i.e. only when no pending-list-derived default
+exists yet, so a destination a user picked manually via the pending-list flow is never
+overwritten. Deliberately scoped to `EnterBrowseModeAsync` itself, not the shared
+`ListArchiveWithProgressAsync` listing helper both it and T-F98's `NavigateIntoNestedArchiveAsync`
+call — a nested level's `BrowsedArchivePath` is a `NestedArchiveCache` temp file, and hinting a
+destination from it would suggest extracting into `%TEMP%` by default, which is never right.
+
+**Files:** `src/Archiver.App/ViewModels/MainViewModel.cs`. See `TASKS.md`'s T-F108 entry.
+
+---
+
+## T-F98 — Archive Browser: Transparent Drill-Down Into Nested Archives
+
+**Depth limit — 4, user-decided:** `TASKS.md`'s own T-F98 entry explicitly withheld a nesting
+number pending deliberate choice, given the real risk (recursive archive-bomb DoS) of automatic
+drill-down. Presented three options (2/4/8) with 4 recommended as the balance between realistic
+multi-level use and bounding worst-case combined disk/time cost to a small constant multiplier on
+top of each level's own 1000:1 ratio check (T-F90/T-F94) — user chose 4. Implemented as
+`Archiver.App.Core.NestedArchivePolicy.MaxDepth`/`ExceedsMaxDepth`, not `Archiver.Core` — this is
+a browse-session/UX resource bound the App layer's recursive orchestration enforces, not a
+per-extraction security invariant; that backstop is T-F49/T-F90/T-F94, unchanged and already
+reused per-level (see below).
+
+**Per-level security — reuses the existing single-entry extraction pipeline unmodified, adds
+zero new Core code.** Confirmed by reading `TarSandboxedService.ExtractSingleArchiveAsync` and
+`ZipArchiveService.ExtractWithSmartFolderingAsync`: passing `ExtractOptions.SelectedEntryPaths`
+with exactly one path still runs T-F49's whole-archive pre-scan and T-F90/T-F94's whole-archive
+compression-ratio + disk-space check unconditionally, scoped to whatever archive is being
+extracted at that call. `NavigateIntoNestedArchiveAsync` (`MainViewModel.cs`) is, at the Core
+layer, nothing more than calling `IExtractionRouter.ExtractAsync` again against whatever was just
+extracted — exactly the same call T-F97's `PreviewBrowserEntryAsync` already makes for a single
+preview. `NestedArchiveDrillDownSecurityTests.cs`
+(`ExtractAsync_NestedBombArchive_RejectedIndependentlyAtSecondLevel`,
+`Archiver.Core.IntegrationTests`) proves this two-level composition directly: an outer (clean)
+tar containing a real bomb-shaped nested `tar.gz` extracts the nested archive out fine at level 1,
+then the same bomb check independently skips it at level 2 with no confirm callback wired —
+proving nesting doesn't bypass or weaken either mechanism.
+
+**Format detection before extraction — extension only, confirmed for real after.**
+`ArchiveFormatDetector.Detect` is magic-byte-only and requires a real file on disk, so it cannot
+classify an in-archive entry before extraction. New `ArchiveFormatDetector.IsRecognizedArchiveExtension`
+(pure extension lookup, no disk I/O) decides drill-down *candidacy* for the double-click dispatch
+in `MainWindow.xaml.cs`; the real `Detect()` call still runs against the extracted temp file
+before entering browse mode, rejecting cleanly (not crashing) if an entry merely named like an
+archive isn't really one. This method absorbed `MainViewModel`'s previously-separate
+`_extractableTypes` `HashSet` (used by `IsExtractOnlySelection`) — one owner for "is this a
+recognized archive extension" instead of two independently-maintained copies.
+
+**Temp lifecycle — a new cache, not a rename of `PreviewCache`, because the cleanup timing
+requirement genuinely differs.** `PreviewCache` (T-F97) must wait for window close, since an
+external OS handler may still have the previewed file open. A nested-archive scope has no such
+constraint — nothing outside Pakko ever holds a handle into it once the user navigates back out —
+so `NestedArchiveCache` adds `DeleteScope(scopeDir)` for immediate per-level cleanup on `NavigateUp`
+popping a level, bounding disk usage across a long drill-down/back-out session, with `DeleteAll()`
+kept as a crash/abandoned-session safety net (called from `MainWindow.xaml.cs`'s `Closed` handler,
+same as `PreviewCache.DeleteAll()`).
+
+**Browse-stack model, not a redesign of `CurrentFolderPath`/`BrowsedArchivePath`.** A private
+`Stack<NestedBrowseLevel>` in `MainViewModel` holds each ancestor level's restorable state
+(`ArchivePath`, `CurrentFolderPath`, display name, archive index, breadcrumb ancestry, scope dir)
+— `BrowsedArchivePath`/`CurrentFolderPath`/the folder index keep meaning exactly what they always
+have (the *current*, possibly-nested archive), so every other browser command (Extract
+Selected/All, `NavigateIntoFolder`) needed zero changes. `NavigateUp` checks the stack before
+falling through to T-F107's real-filesystem climb — only once every nested level is popped does
+the outermost archive's own root reach that climb, unchanged from T-F107.
+
+**Breadcrumb: continuous display, but ancestor segments aren't directly clickable — a deliberate,
+recorded scope cut, not an oversight.** `RebuildBreadcrumb` prepends a `_nestedBreadcrumbAncestry`
+list (each ancestor level's own root-name + folder-path contribution) so the breadcrumb reads as
+one continuous path across nesting (`outer.zip > sub > inner.rar > docs`), and
+`_currentLevelDisplayName` overrides the usual `Path.GetFileName(BrowsedArchivePath)` for a nested
+level (whose `BrowsedArchivePath` is an ugly `NestedArchiveCache` temp file, not the real entry
+name drilled into). Clicking an ancestor breadcrumb segment directly (jumping back several
+nesting levels in one click) is **not wired** — `NavigateToBreadcrumbSegment`'s Archive branch
+computes `localIndex = index - _nestedBreadcrumbAncestry.Count` and simply returns (no-op) when
+`localIndex < 0`. Fully supporting this would need tracking, per ancestor frame, exactly which
+global breadcrumb indices it owns so a click could pop the right number of levels and land on the
+right folder within that level — real complexity for a case `NavigateUp` already reaches correctly
+one level at a time, and the approved plan never committed to it. Recorded here so it isn't
+mistaken for a bug later.
+
+**Files:** `src/Archiver.Core/Services/ArchiveFormatDetector.cs`,
+`src/Archiver.App.Core/NestedArchivePolicy.cs`, `src/Archiver.App.Core/NestedArchiveCache.cs`,
+`src/Archiver.App/ViewModels/MainViewModel.cs`, `src/Archiver.App/MainWindow.xaml.cs`. See
+`TASKS.md`'s T-F98 entry.
+
+---
+
+## T-F109 — Archive Browser Preview Allowlist: Widened to Video/Audio, Verified Against Real 7-Zip/NanaZip Behavior
+
+**Trigger:** after T-F108 fixed the destination bug, the user clarified the original mp4 report
+wasn't just about *where* it landed — mp4 double-click should behave like T-F97's existing
+text/image preview (silent extract to the shared temp cache, launch with the OS default player,
+cache removed on window close), not run the full Extract-to-destination flow at all.
+`PreviewPolicy.IsPreviewable` had never included video. When asked whether to expand the
+allowlist further, the user asked how other archivers handle this — a legitimate question this
+project's own convention answers by checking real shipped source, not memory or assumption.
+
+**Research (per `CLAUDE.md`'s pre-implementation-research rule):** fetched NanaZip's real
+`NanaZip.UI.Modern/SevenZip/CPP/7zip/UI/FileManager/PanelItemOpen.cpp` via
+`raw.githubusercontent.com`. Its double-click handler (`CPanel::OpenItemInArchive`) has **no
+file-type allowlist whatsoever**: it always extracts the entry to a `CTempDir` and unconditionally
+calls `ShellExecuteEx` on the result via `StartApplication`, regardless of extension — including
+`.exe`, which gets special-cased to extract *every* sibling file first
+(`FindExt(kExeExtensions, name)` triggers extracting the whole archive, not just the one entry, so
+a portable app's DLL dependencies resolve next to it). The only gate present anywhere in this path
+is `IsVirus_Message` — a check for the Unicode right-to-left-override (`0x202E`) filename-spoofing
+trick, not a type restriction; it fires regardless of what's about to be opened, previewable or
+not. **Conclusion: Pakko's safe-type allowlist (T-F97) is not an industry convention it's
+following — it's a deliberate, stricter-than-reference security posture, consistent with
+`SECURITY.md`'s stated minimal-attack-surface positioning for a government/defense audience.**
+Recorded so a future session doesn't assume the allowlist should be relaxed "to match how real
+archivers do it" — real archivers don't do it this way; Pakko's choice to differ is intentional.
+
+**Decision — widen the allowlist, but keep it a genuine allowlist, not drop it:** user chose to
+extend `PreviewPolicy` with common audio containers (`.mp3`/`.wav`/`.flac`/`.ogg`/`.m4a`/`.aac`) in
+addition to the video containers just added, explicitly declining PDF — despite PDF looking like
+an obvious "safe document" candidate, some readers execute embedded JavaScript from a PDF, unlike
+every other type on this list, so it stays outside the allowlist deliberately (a `[InlineData]`
+case in `PreviewPolicyTests` locks this in as a test, not just a comment, so a future PR adding PDF
+"for convenience" fails a real assertion instead of silently slipping through).
+
+**Decision — non-allowlisted types get a warning + a different destination, not a silent full
+Extract:** previously, a non-previewable double-click silently ran the existing full Extract flow
+straight to whatever the user's Destination field held (T-F108 had just fixed *that* field's
+correctness, but the flow itself stayed a silent one-click full extraction of arbitrary archive
+content). User decided this needed real friction: a confirm dialog
+(`IDialogService.ShowConfirmAsync` — the existing generic Yes/No dialog, no new dialog type
+needed) explaining the file can't be safely opened directly, and on confirmation the entry
+extracts into a **subfolder next to the archive on disk** (`Path.Combine(archiveDir,
+ArchiveNaming.GetBaseName(archivePath))`) rather than the Destination field — that field is for
+deliberate bulk Extract Selected/All operations the user configured, not a one-off security-gated
+extraction triggered by an accidental double-click. `MainViewModel.RunExtractAsync` gained an
+optional `destinationOverride` parameter for this rather than temporarily mutating
+`DestinationPath` and restoring it, avoiding any re-entrancy/race risk with the field's normal
+two-way binding. `ExtractSingleBrowserEntryAsync` was renamed to
+`ExtractSingleBrowserEntryWithWarningAsync` and had the confirm+destination logic added directly —
+not kept as a separate unused method, since it had exactly one caller.
+
+**Files:** `src/Archiver.Core/Services/PreviewPolicy.cs`,
+`src/Archiver.App/ViewModels/MainViewModel.cs`, `src/Archiver.App/MainWindow.xaml.cs`,
+`src/Archiver.App/Strings/{en-US,uk-UA}/Resources.resw`, `SECURITY.md`. See `TASKS.md`'s T-F109
+entry.
+
+---
+
+## T-F110 - Archive Browser: Per-Row Preview/Extract-Only Icon, Not a Dialog Replacement
+
+**Trigger:** the user found T-F109's confirm dialog (for a non-previewable double-click) potentially naggy, and proposed a passive visual signal instead - either greying out non-previewable rows, or a mark in the entry table's first column (an eye / crossed-out eye was their own suggestion). Explicitly asked for both a design consult (`frontend-design` skill) and a separate advisor pass before implementing.
+
+**Design decision - extend the existing column-0 icon, don't add a column or grey out rows.** `ArchiveEntryViewModel.Icon` already showed a generic file glyph for every non-folder row (no per-type distinction at all before this). Greying out rows was rejected: every row stays fully double-clickable regardless of preview-vs-extract-only status, and greyed text is an established convention for *disabled/non-interactive* controls elsewhere in this codebase (e.g. IsNotBusy-gated option controls) - reusing it here would misleadingly suggest these rows can't be clicked. A new dedicated column was also rejected: this project already has a documented restraint precedent (T-F92 - per-command context-menu icons were implemented, then reverted once actually rendered and judged clutter) and adding a column carries real risk given this table's own history of column-alignment bugs (T-F106's Grid MinHeight issue, the earlier Archive Options label-column bug). Changing what the *existing* icon means costs nothing extra, so it was the natural choice. Glyphs: Segoe MDL2 Assets' `View` (U+E890, an eye) for a `PreviewPolicy`-allowlisted file, `Hide` (U+ED1A, a crossed-out eye) for anything else - same font family this XAML already uses everywhere else (the Up-arrow buttons, the empty-state drop-zone hint), verified against Microsoft's published Segoe Fluent Icons glyph list (same codepoints carried forward from Segoe MDL2 Assets for icon-font backward compatibility) rather than guessed from memory.
+
+**Security advisor decision (separate pass, per the user's explicit request) - the dialog stays exactly as it is; the icon is a heads-up, never a substitute.** A modal confirm is a synchronous checkpoint a fast double-click physically cannot skip past - the user has usually already clicked before consciously registering a row's icon, which is exactly the muscle-memory failure mode the T-F109 dialog exists to interrupt. Replacing it with a purely passive signal would quietly re-adopt the undifferentiated-ShellExecute model T-F109's own research found NanaZip/7-Zip use (no gate at all, not even for `.exe`) - the model this project deliberately diverged from. Two middle-ground softening options were surfaced as acceptable *if* nagging becomes a real ongoing complaint later: reworded, less alarming dialog text (zero security cost), or a "don't ask again" scoped strictly to the current browsing session (reset on relaunch/opening a new archive, never persisted to disk). A "don't ask again" persisted across app restarts was flagged explicitly as unacceptable - it would permanently and silently drop the gate for every future session, with no per-launch re-evaluation. **User chose to keep the dialog completely unchanged and add only the icon** - neither softening option was implemented this round.
+
+**Files:** `src/Archiver.App.Core/ArchiveEntryViewModel.cs`. See `TASKS.md`'s T-F110 entry.

@@ -44,6 +44,27 @@ public sealed partial class MainViewModel : ObservableObject
     private IReadOnlyDictionary<string, IReadOnlyList<ArchiveEntryViewModel>> _archiveIndex =
         new Dictionary<string, IReadOnlyList<ArchiveEntryViewModel>>();
 
+    // T-F98: nested archive drill-down. Each pushed frame is the PARENT level's state, restored
+    // when the user navigates back up out of the currently-open (child) nested archive's own
+    // root. _currentNestedScopeDir is the current level's own NestedArchiveCache folder (null for
+    // the real, top-level archive — nothing to clean up there). _nestedBreadcrumbAncestry holds
+    // every ancestor level's contribution to the breadcrumb (root name + folder path at the point
+    // it was left); _currentLevelDisplayName overrides RebuildBreadcrumb's usual
+    // Path.GetFileName(BrowsedArchivePath) for a nested level, whose BrowsedArchivePath is an
+    // ugly temp-extracted file, not the real entry name the user drilled into.
+    private sealed record NestedBrowseLevel(
+        string? ArchivePath,
+        string CurrentFolderPath,
+        string? DisplayName,
+        IReadOnlyDictionary<string, IReadOnlyList<ArchiveEntryViewModel>> ArchiveIndex,
+        List<string> BreadcrumbAncestry,
+        string? ScopeDir);
+
+    private readonly Stack<NestedBrowseLevel> _browseStack = new();
+    private string? _currentNestedScopeDir;
+    private string? _currentLevelDisplayName;
+    private List<string> _nestedBreadcrumbAncestry = [];
+
     private CancellationTokenSource? _cts;
 
     private System.Diagnostics.Stopwatch? _operationStopwatch;
@@ -138,20 +159,14 @@ public sealed partial class MainViewModel : ObservableObject
     public Visibility IsFileListEmptyVisibility =>
         FileItems.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
 
-    // T-F85: recognized archive extensions whose Extract path now actually works (ZIP directly,
-    // the rest via ITarService/ExtractionRouter). Extension-based, not ArchiveFormatDetector's
-    // magic-byte sniff — this is read on every FileItems change and must not do per-file disk
-    // I/O; FileItem.Type is already a plain string computed once at construction.
-    private static readonly HashSet<string> _extractableTypes = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "ZIP", "RAR", "7Z", "TAR", "GZ", "TGZ", "BZ2", "TBZ2", "XZ", "TXZ", "ZST", "TZST", "LZMA"
-    };
-
     // T-F77: only a selection that is entirely recognized archives counts as extract-only — a
     // single non-archive item means "archive everything together" is still the coherent action,
     // so the archive-only fields (Mode/Name/Compression) must stay visible for any mixed selection.
+    // T-F98: uses ArchiveFormatDetector.IsRecognizedArchiveExtension (extension-based, not the
+    // magic-byte Detect() sniff — this is read on every FileItems change and must not do
+    // per-file disk I/O) instead of a second, separately-maintained extension list.
     public bool IsExtractOnlySelection =>
-        FileItems.Count > 0 && FileItems.All(x => _extractableTypes.Contains(x.Type));
+        FileItems.Count > 0 && FileItems.All(x => ArchiveFormatDetector.IsRecognizedArchiveExtension(x.FullPath));
 
     // T-F05: both force-collapse while the archive browser is open — neither the batch
     // Archive/Extract outcome subtitle nor the Archive Mode/Name options have meaning once the
@@ -547,7 +562,7 @@ public sealed partial class MainViewModel : ObservableObject
     // Selected/Extract All/double-click-a-file commands below — the entire IsBusy/progress/
     // stopwatch/bomb-confirm-callback/summary-dialog/cleanup sequence stays identical for both;
     // only which archive(s) and which entry subset (if any) get passed to ExtractOptions differ.
-    private async Task RunExtractAsync(IReadOnlyList<string> archivePaths, IReadOnlyList<string>? selectedEntryPaths)
+    private async Task RunExtractAsync(IReadOnlyList<string> archivePaths, IReadOnlyList<string>? selectedEntryPaths, string? destinationOverride = null)
     {
         _cts = new CancellationTokenSource();
         _lastOperation = "extract";
@@ -560,7 +575,11 @@ public sealed partial class MainViewModel : ObservableObject
             var options = new ExtractOptions
             {
                 ArchivePaths = archivePaths,
-                DestinationFolder = DestinationPath,
+                // T-F109: destinationOverride lets a caller (the unsafe-preview-type warning
+                // flow) land a single-entry extraction next to the archive instead of whatever
+                // the user's Destination field currently holds — that field is for deliberate
+                // bulk Extract Selected/All operations, not a one-off security-gated extraction.
+                DestinationFolder = destinationOverride ?? DestinationPath,
                 OnConflict = OnConflict,
                 OpenDestinationFolder = OpenDestinationFolder,
                 DeleteArchiveAfterExtraction = DeleteAfterOperation,
@@ -647,39 +666,31 @@ public sealed partial class MainViewModel : ObservableObject
         BrowsedArchivePath = archivePath;
         CurrentFolderPath = string.Empty;
         SelectedBrowserEntries = [];
+        ResetNestedBrowseStack();
 
-        // tar-family listing shells out to tar.exe per T-F49/T-F48's model; ZIP listing is fast
-        // in-memory (ZipFile.OpenRead). Only show the async-load indeterminate state for the
-        // former, matching T-F58's existing "Finalizing..." pattern rather than a blocking modal.
-        bool isZip = ArchiveFormatDetector.Detect(archivePath) is ArchiveFormat.Zip or ArchiveFormat.Unknown;
-        if (!isZip)
-        {
-            IsProgressIndeterminate = true;
-            StatusMessage = _res.GetString("StatusFinalizing");
-        }
+        // Bug found 2026-07-17: entering browse mode via file activation (T-F100) or by
+        // double-clicking a real archive found while browsing real folders (T-F107) never goes
+        // through AddPaths, so FileItems stays empty and UpdateDefaultDestination() (only wired
+        // to FileItems.CollectionChanged) never fires — DestinationPath then silently stays at
+        // its Desktop default regardless of where the archive actually lives. Only apply this
+        // when FileItems is empty — the pending-list double-click entry point (T-F05's original
+        // flow) already got a correct destination from UpdateDefaultDestination() when the
+        // archive was added, and a user may have since picked a different one deliberately.
+        if (FileItems.Count == 0)
+            DestinationPath = Path.GetDirectoryName(archivePath) ?? DestinationPath;
 
-        ArchiveListResult result;
-        try
-        {
-            // T-F106: this is awaited un-awaited (fire-and-forget) from App.xaml.cs's deferred
-            // activation path — a thrown exception there would otherwise leave IsBrowsingArchive
-            // stuck true with no archive index and no visible error (found via code-review advisor
-            // pass). Catching here, not just at the activation call site, fixes it for every
-            // caller, matching the same reset+dialog recovery already used for result.Success==false.
-            result = await _archiveListingRouter.ListEntriesAsync(archivePath);
-        }
-        catch (Exception ex)
+        // T-F106: this is awaited un-awaited (fire-and-forget) from App.xaml.cs's deferred
+        // activation path — a thrown exception there would otherwise leave IsBrowsingArchive
+        // stuck true with no archive index and no visible error (found via code-review advisor
+        // pass). ListArchiveWithProgressAsync catching internally, not just at the activation
+        // call site, fixes it for every caller, matching the same reset+dialog recovery already
+        // used for result.Success==false below.
+        ArchiveListResult? result = await ListArchiveWithProgressAsync(archivePath);
+        if (result is null)
         {
             IsBrowsingArchive = false;
             BrowsedArchivePath = null;
-            _logService.Error("EnterBrowseModeAsync failed", ex);
-            await _dialogService.ShowErrorAsync("Error", ex.Message);
             return;
-        }
-        finally
-        {
-            IsProgressIndeterminate = false;
-            StatusMessage = _res.GetString("StatusReady");
         }
 
         if (!result.Success)
@@ -691,6 +702,141 @@ public sealed partial class MainViewModel : ObservableObject
         }
 
         _archiveIndex = ArchiveTreeIndex.Build(result.Entries);
+        RefreshCurrentFolder();
+    }
+
+    // T-F98: shared by EnterBrowseModeAsync (a real, on-disk archive) and
+    // NavigateIntoNestedArchiveAsync (a temp-extracted nested one) — tar-family listing shells
+    // out to tar.exe per T-F49/T-F48's model, ZIP listing is fast in-memory (ZipFile.OpenRead);
+    // only show the async-load indeterminate state for the former, matching T-F58's existing
+    // "Finalizing..." pattern rather than a blocking modal. Returns null (already reported to the
+    // user) on any exception — never throws to its caller.
+    private async Task<ArchiveListResult?> ListArchiveWithProgressAsync(string archivePath)
+    {
+        bool isZip = ArchiveFormatDetector.Detect(archivePath) is ArchiveFormat.Zip or ArchiveFormat.Unknown;
+        if (!isZip)
+        {
+            IsProgressIndeterminate = true;
+            StatusMessage = _res.GetString("StatusFinalizing");
+        }
+
+        try
+        {
+            return await _archiveListingRouter.ListEntriesAsync(archivePath);
+        }
+        catch (Exception ex)
+        {
+            _logService.Error("Archive listing failed", ex);
+            await _dialogService.ShowErrorAsync("Error", ex.Message);
+            return null;
+        }
+        finally
+        {
+            IsProgressIndeterminate = false;
+            StatusMessage = _res.GetString("StatusReady");
+        }
+    }
+
+    // T-F98: defensive reset — by the time a fresh EnterBrowseModeAsync runs, the nested browse
+    // stack should already be empty (NavigateUp only reaches RealFileSystem/ThisPc scope once
+    // every nested level has been popped), but clearing it here and deleting any scope dirs it
+    // still holds means a future bug leaks a stale stack, not an ever-growing pile of temp folders.
+    private void ResetNestedBrowseStack()
+    {
+        if (_currentNestedScopeDir is not null)
+            NestedArchiveCache.DeleteScope(_currentNestedScopeDir);
+        while (_browseStack.Count > 0)
+        {
+            var level = _browseStack.Pop();
+            if (level.ScopeDir is not null)
+                NestedArchiveCache.DeleteScope(level.ScopeDir);
+        }
+        _currentNestedScopeDir = null;
+        _currentLevelDisplayName = null;
+        _nestedBreadcrumbAncestry = [];
+    }
+
+    // T-F98: double-clicking an archive entry found inside the currently open archive extracts
+    // just that one entry to a fresh NestedArchiveCache scope and browses it, recursively — see
+    // DECISIONS.md's T-F98 entry for the depth limit and per-level security reasoning. Reuses the
+    // same single-entry extraction shape as PreviewBrowserEntryAsync (T-F97), so T-F49's
+    // whole-archive pre-scan and T-F90/T-F94's compression-bomb + disk-space check both still run
+    // unmodified, scoped to whichever archive is being extracted at this level.
+    public async Task NavigateIntoNestedArchiveAsync(ArchiveEntryViewModel entry)
+    {
+        if (BrowsedArchivePath is null) return;
+
+        if (NestedArchivePolicy.ExceedsMaxDepth(_browseStack.Count))
+        {
+            await _dialogService.ShowErrorAsync("Error", _res.GetString("NestedArchiveDepthLimitReached"));
+            return;
+        }
+
+        string scopeDir = NestedArchiveCache.CreateScope();
+        var options = new ExtractOptions
+        {
+            ArchivePaths = [BrowsedArchivePath],
+            DestinationFolder = scopeDir,
+            Mode = ExtractMode.SingleFolder,
+            SelectedEntryPaths = [entry.FullPath],
+            ConfirmCompressionBombExtraction = _dialogService.ShowCompressionBombConfirmAsync,
+        };
+
+        StatusMessage = _res.GetString("StatusOpening");
+        ArchiveResult result;
+        try
+        {
+            result = await _extractionRouter.ExtractAsync(options);
+        }
+        finally
+        {
+            StatusMessage = _res.GetString("StatusReady");
+        }
+
+        if (!result.Success || result.CreatedFiles.Count == 0)
+        {
+            NestedArchiveCache.DeleteScope(scopeDir);
+            await _dialogService.ShowErrorAsync("Error", _res.GetString("StatusIssues"));
+            return;
+        }
+
+        // The entry may itself not really be an archive despite its extension (ArchiveFormatDetector
+        // couldn't check this before extraction — its magic-byte sniff needs a real file on disk).
+        // Confirm now, mirroring EnterBrowseModeAsync's own "detect what you actually got" posture.
+        string extractedPath = Path.Combine(scopeDir, entry.FullPath.Replace('/', Path.DirectorySeparatorChar));
+        if (ArchiveFormatDetector.Detect(extractedPath) == ArchiveFormat.Unknown)
+        {
+            NestedArchiveCache.DeleteScope(scopeDir);
+            await _dialogService.ShowErrorAsync("Error", _res.GetString("StatusIssues"));
+            return;
+        }
+
+        ArchiveListResult? listResult = await ListArchiveWithProgressAsync(extractedPath);
+        if (listResult is null || !listResult.Success)
+        {
+            NestedArchiveCache.DeleteScope(scopeDir);
+            if (listResult is not null)
+                await _dialogService.ShowErrorAsync("Error", listResult.ErrorMessage ?? "Failed to read archive.");
+            return;
+        }
+
+        _browseStack.Push(new NestedBrowseLevel(
+            BrowsedArchivePath,
+            CurrentFolderPath,
+            _currentLevelDisplayName,
+            _archiveIndex,
+            new List<string>(_nestedBreadcrumbAncestry),
+            _currentNestedScopeDir));
+
+        _nestedBreadcrumbAncestry.Add(_currentLevelDisplayName ?? Path.GetFileName(BrowsedArchivePath ?? string.Empty));
+        if (CurrentFolderPath.Length > 0)
+            _nestedBreadcrumbAncestry.AddRange(CurrentFolderPath.Split('/'));
+
+        _currentLevelDisplayName = entry.Name;
+        _currentNestedScopeDir = scopeDir;
+        BrowsedArchivePath = extractedPath;
+        CurrentFolderPath = string.Empty;
+        _archiveIndex = ArchiveTreeIndex.Build(listResult.Entries);
         RefreshCurrentFolder();
     }
 
@@ -724,7 +870,12 @@ public sealed partial class MainViewModel : ObservableObject
                 segments.AddRange(CurrentFolderPath.Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries));
                 break;
             default: // Archive
-                segments.Add(Path.GetFileName(BrowsedArchivePath ?? string.Empty));
+                // T-F98: ancestry holds every enclosing nested level's own contribution; this
+                // level's own root uses _currentLevelDisplayName (the entry name it was entered
+                // as) when set, since BrowsedArchivePath for a nested level is a temp-extracted
+                // file, not the name the user actually drilled into.
+                segments.AddRange(_nestedBreadcrumbAncestry);
+                segments.Add(_currentLevelDisplayName ?? Path.GetFileName(BrowsedArchivePath ?? string.Empty));
                 if (CurrentFolderPath.Length > 0)
                     segments.AddRange(CurrentFolderPath.Split('/'));
                 break;
@@ -769,14 +920,23 @@ public sealed partial class MainViewModel : ObservableObject
                 break;
 
             default: // Archive
-                if (index <= 0)
+                // T-F98: index is global across the whole (ancestry + this level's own) breadcrumb;
+                // an ancestor segment (belonging to a previous nesting level) isn't directly
+                // clickable — reaching it means popping one or more nested levels, which Up
+                // already does correctly one level at a time. See DECISIONS.md's T-F98 entry.
+                int localIndex = index - _nestedBreadcrumbAncestry.Count;
+                if (localIndex < 0)
+                {
+                    return;
+                }
+                else if (localIndex == 0)
                 {
                     CurrentFolderPath = string.Empty;
                 }
                 else
                 {
                     var segments = CurrentFolderPath.Split('/');
-                    CurrentFolderPath = string.Join('/', segments.Take(index));
+                    CurrentFolderPath = string.Join('/', segments.Take(localIndex));
                 }
                 break;
         }
@@ -803,19 +963,40 @@ public sealed partial class MainViewModel : ObservableObject
             case ArchiveBrowseScope.Archive:
                 if (CurrentFolderPath.Length == 0)
                 {
-                    string? containingFolder = Path.GetDirectoryName(BrowsedArchivePath);
-                    BrowsedArchivePath = null;
-                    if (containingFolder is not null)
+                    // T-F98: a nested level's own root pops back to its parent level instead of
+                    // falling through to the real-filesystem climb — only once every nested level
+                    // has been popped does the outermost (real, on-disk) archive's own root reach
+                    // the RealFileSystem/ThisPc climb below, unchanged from T-F107.
+                    if (_browseStack.Count > 0)
                     {
-                        BrowseScope = ArchiveBrowseScope.RealFileSystem;
-                        CurrentFolderPath = containingFolder;
+                        string? childScopeDir = _currentNestedScopeDir;
+                        var parentLevel = _browseStack.Pop();
+                        BrowsedArchivePath = parentLevel.ArchivePath;
+                        CurrentFolderPath = parentLevel.CurrentFolderPath;
+                        _currentLevelDisplayName = parentLevel.DisplayName;
+                        _archiveIndex = parentLevel.ArchiveIndex;
+                        _nestedBreadcrumbAncestry = parentLevel.BreadcrumbAncestry;
+                        _currentNestedScopeDir = parentLevel.ScopeDir;
+                        RefreshCurrentFolder();
+                        if (childScopeDir is not null)
+                            NestedArchiveCache.DeleteScope(childScopeDir);
                     }
                     else
                     {
-                        BrowseScope = ArchiveBrowseScope.ThisPc;
-                        CurrentFolderPath = string.Empty;
+                        string? containingFolder = Path.GetDirectoryName(BrowsedArchivePath);
+                        BrowsedArchivePath = null;
+                        if (containingFolder is not null)
+                        {
+                            BrowseScope = ArchiveBrowseScope.RealFileSystem;
+                            CurrentFolderPath = containingFolder;
+                        }
+                        else
+                        {
+                            BrowseScope = ArchiveBrowseScope.ThisPc;
+                            CurrentFolderPath = string.Empty;
+                        }
+                        RefreshCurrentFolder();
                     }
-                    RefreshCurrentFolder();
                 }
                 else
                 {
@@ -855,11 +1036,28 @@ public sealed partial class MainViewModel : ObservableObject
     private Task ExtractAllFromBrowserAsync() =>
         RunExtractAsync([BrowsedArchivePath!], selectedEntryPaths: null);
 
-    // Double-click a file row in the browser view — extracts just that one entry, reusing the
-    // same RunExtractAsync sequence (bomb-confirm callback, progress, summary dialog) as every
-    // other extraction path.
-    public Task ExtractSingleBrowserEntryAsync(ArchiveEntryViewModel entry) =>
-        RunExtractAsync([BrowsedArchivePath!], [entry.FullPath]);
+    // T-F109: double-clicking a file type outside PreviewPolicy's allowlist is a real security
+    // boundary (see SECURITY.md's T-F97 section), not just an inconvenience — 7-Zip/NanaZip have
+    // no such allowlist at all and unconditionally ShellExecute anything, including .exe (see
+    // DECISIONS.md's T-F109 entry for the real source trace). Pakko instead warns first, and on
+    // confirmation extracts just that one entry into a dedicated subfolder next to the archive
+    // (ArchiveNaming.GetBaseName, same helper T-F103's smart-foldering uses) — deliberately not
+    // the user's Destination field, which is for bulk Extract Selected/All, not a one-off warned
+    // extraction. Reuses the same RunExtractAsync sequence (bomb-confirm callback, progress,
+    // summary dialog) as every other extraction path via destinationOverride.
+    public async Task ExtractSingleBrowserEntryWithWarningAsync(ArchiveEntryViewModel entry)
+    {
+        if (BrowsedArchivePath is null) return;
+
+        bool confirmed = await _dialogService.ShowConfirmAsync(
+            _res.GetString("UnsafePreviewConfirmTitle"),
+            _res.GetString("UnsafePreviewConfirmMessage").Replace("{0}", entry.Name));
+        if (!confirmed) return;
+
+        string archiveDir = Path.GetDirectoryName(BrowsedArchivePath) ?? DestinationPath;
+        string destDir = Path.Combine(archiveDir, ArchiveNaming.GetBaseName(BrowsedArchivePath));
+        await RunExtractAsync([BrowsedArchivePath], [entry.FullPath], destDir);
+    }
 
     // T-F97: previewable file types (PreviewPolicy) skip the full Extract ceremony (progress,
     // summary dialog) — silently extract to a throwaway PreviewCache scope and open with the OS

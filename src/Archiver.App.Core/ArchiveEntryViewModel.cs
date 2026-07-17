@@ -29,10 +29,18 @@ public sealed record ArchiveEntryViewModel
     // <= 0 guard does.
     public string CrcDisplay => IsFolder || Crc32 is null ? string.Empty : $"{Crc32:X8}";
 
-    // Segoe MDL2 Assets glyphs (folder / page) — \uXXXX escapes only, never a literal
+    // T-F110: a file's icon is a heads-up for what double-click does — View (eye) for a
+    // PreviewPolicy-allowlisted type (silent preview), Hide (crossed-out eye) for anything
+    // else (confirm-and-extract-next-to-archive, T-F109). Purely informational: the confirm
+    // dialog itself stays the real gate for non-allowlisted types (see SECURITY.md/
+    // DECISIONS.md's T-F109 entry) — an icon alone isn't a substitute for a synchronous
+    // checkpoint a double-click can't skip past.
+    // Segoe MDL2 Assets glyphs (folder / view / hide) — \uXXXX escapes only, never a literal
     // non-ASCII character in source (CONVENTIONS.md; this has shipped as a mojibake bug three
     // times already in this repo per CLAUDE.md's feedback note).
-    public string Icon => IsFolder ? "\uE8B7" : "\uE7C3";
+    public string Icon => IsFolder
+        ? "\uE8B7"
+        : Archiver.Core.Services.PreviewPolicy.IsPreviewable(Name) ? "\uE890" : "\uED1A";
 
     private static string FormatSize(long bytes) => bytes switch
     {

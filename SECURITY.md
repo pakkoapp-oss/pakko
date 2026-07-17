@@ -126,6 +126,7 @@ either. TAR-family formats (read and create) use the same `tar.exe` process.
 | MOTW not propagated to extracted files | — | Resolved (T-F45, v1.2) — MOTW propagated to every extracted file by default |
 | tar.exe runs at Medium IL | Medium | Resolved (T-F52, v1.4) — extraction now runs inside an AppContainer via P/Invoke (empty capability list, ACL'd quarantine directory, Job Object process/resource limits); archive creation stays unsandboxed by design, since it only reads trusted local files — see the "Why Archive Creation Is NOT Sandboxed" note below |
 | tar.exe symlink entries escape a naive quarantine (confirmed exploit, T-F49) | High | Mitigated (T-F49, v1.3) — whole-archive pre-scan via `tar -tf`/`-tvf` rejects any archive containing a symlink/hardlink/device entry or a traversal/ADS/reserved name before `-xf` ever runs; see `DECISIONS.md`'s T-F49 entry |
+| Recursive decompression bomb via nested archives (an archive inside an archive inside an archive, multiplying expansion per level) | Medium | Mitigated (T-F98, v1.4) — Archive Browser drill-down into a nested archive is capped at 4 levels deep, and every level independently re-runs the same whole-archive pre-scan (T-F49) and compression-ratio + disk-space check (T-F90/T-F94) a normal extraction would — no shortcut or inherited "already checked" state from an outer level; see `DECISIONS.md`'s T-F98 entry |
 | Microsoft as trust anchor | Low-Medium | Accepted tradeoff for the target audience; .NET is open source and auditable |
 
 ---
@@ -170,20 +171,37 @@ throwaway temp cache and opens it with the OS's default handler, instead of requ
 Extract first. Two constraints keep this from becoming a new attack surface:
 
 1. **Safe-type allowlist only** — `Archiver.Core.Services.PreviewPolicy.IsPreviewable` restricts
-   auto-open to images (`.jpg`/`.jpeg`/`.png`/`.gif`/`.bmp`/`.webp`) and plain text
-   (`.txt`/`.md`/`.log`/`.ini`/`.csv`/`.json`/`.xml`/`.yaml`/`.yml`) — no executable, script,
-   `.lnk`, or macro-capable document type. `ShellExecute`-ing an arbitrary archive entry with one
-   click, no "Extract to..." friction first, would itself be an attack surface (a malicious file
-   inside an archive, opened automatically). Anything outside the allowlist still requires the
-   existing explicit Extract flow.
-2. **No shortcut around existing extraction security** — preview extraction reuses the real
-   `IExtractionRouter.ExtractAsync` pipeline (`ExtractOptions.SelectedEntryPaths` restricted to
-   the one previewed entry), the same mechanism T-F05's "Extract Selected" already uses. This
-   means T-F49's whole-archive pre-scan for tar-family formats always runs first, unconditionally,
-   before any bytes are extracted — a preview is never a "validate this one entry only" shortcut —
-   and MOTW propagation (above) applies automatically, since it happens inside
-   `ZipArchiveService`/`TarSandboxedService` as part of normal extraction, not something the App
-   layer has to remember to call separately for the preview path.
+   auto-open to images (`.jpg`/`.jpeg`/`.png`/`.gif`/`.bmp`/`.webp`), plain text
+   (`.txt`/`.md`/`.log`/`.ini`/`.csv`/`.json`/`.xml`/`.yaml`/`.yml`), common video containers
+   (`.mp4`/`.m4v`/`.mkv`/`.avi`/`.mov`/`.wmv`/`.webm`, added T-F109), and audio
+   (`.mp3`/`.wav`/`.flac`/`.ogg`/`.m4a`/`.aac`, added T-F109) — no executable, script, `.lnk`,
+   macro-capable document, or PDF (PDF is deliberately excluded despite looking "safe" — some
+   readers execute embedded JavaScript, unlike every other allowlisted type here).
+   `ShellExecute`-ing an arbitrary archive entry with one click, no "Extract to..." friction first,
+   would itself be an attack surface (a malicious file inside an archive, opened automatically).
+   **This is deliberately stricter than 7-Zip/NanaZip**, confirmed by reading NanaZip's real
+   `PanelItemOpen.cpp`/`OpenItemInArchive`: neither has any type allowlist at all — a double-click
+   always extracts to temp and unconditionally `ShellExecuteEx`s the result, including `.exe`
+   (with special handling to extract every sibling file first, so a portable app's DLL
+   dependencies resolve). The only check either performs is `IsVirus_Message` — a Unicode
+   right-to-left-override filename-spoofing check, not a file-type restriction. Pakko's narrower
+   allowlist is a deliberate choice for its government/defense audience, not something forced by
+   archiver convention — see `DECISIONS.md`'s T-F109 entry.
+2. **Anything outside the allowlist is warned, not silently extracted to the user's chosen
+   Destination.** T-F109: double-clicking a non-allowlisted entry shows a confirm dialog
+   (`IDialogService.ShowConfirmAsync`) explaining it can't be safely opened directly; on
+   confirmation, only that one entry is extracted — into a dedicated subfolder named after the
+   archive, created next to the archive itself on disk (`ArchiveNaming.GetBaseName`), never the
+   general Destination field (which is for deliberate bulk Extract Selected/All operations). No
+   auto-open follows extraction — the friction is the point.
+3. **No shortcut around existing extraction security** — both the preview flow and the
+   warn-then-extract flow reuse the real `IExtractionRouter.ExtractAsync` pipeline
+   (`ExtractOptions.SelectedEntryPaths` restricted to the one entry), the same mechanism T-F05's
+   "Extract Selected" already uses. This means T-F49's whole-archive pre-scan for tar-family
+   formats always runs first, unconditionally, before any bytes are extracted — neither path is
+   ever a "validate this one entry only" shortcut — and MOTW propagation (above) applies
+   automatically, since it happens inside `ZipArchiveService`/`TarSandboxedService` as part of
+   normal extraction, not something the App layer has to remember to call separately.
 
 Preview files are staged under `%TEMP%\PakkoPreview\<random>\` (one shared cache root, a fresh
 subfolder per preview) and deleted on window close, best-effort — see `DECISIONS.md`'s T-F97

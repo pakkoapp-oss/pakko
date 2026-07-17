@@ -10,6 +10,18 @@ namespace Archiver.Core.Services;
 /// </summary>
 public static class ArchiveFormatDetector
 {
+    // T-F98: extensions recognized as "probably an archive" without touching disk — used to
+    // decide whether an in-archive entry (not yet extracted, so Detect's magic-byte sniff can't
+    // run against it) is a drill-down candidate, and by MainViewModel.IsExtractOnlySelection for
+    // the pending list. The real magic-byte Detect() call still runs after extraction to confirm.
+    private static readonly HashSet<string> _recognizedExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".zip", ".rar", ".7z", ".tar", ".gz", ".tgz", ".bz2", ".tbz2", ".xz", ".txz", ".zst", ".tzst", ".lzma"
+    };
+
+    public static bool IsRecognizedArchiveExtension(string fileName) =>
+        _recognizedExtensions.Contains(Path.GetExtension(fileName));
+
     public static ArchiveFormat Detect(string path)
     {
         try

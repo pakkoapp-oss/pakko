@@ -99,6 +99,7 @@ public sealed partial class MainWindow : Window
             TrayIcon.Dispose();
             ActivationGate.Cancel();
             PreviewCache.DeleteAll();
+            NestedArchiveCache.DeleteAll();
         };
     }
 
@@ -207,11 +208,23 @@ public sealed partial class MainWindow : Window
             return;
         }
 
+        // T-F98: an archive found inside the currently open archive drills in, extracting just
+        // that entry to a temp scope and browsing it — checked before PreviewPolicy since a real
+        // archive extension is never also a previewable one, but ordering here is for clarity,
+        // not correctness (the two extension sets are already disjoint).
+        if (ArchiveFormatDetector.IsRecognizedArchiveExtension(entry.Name))
+        {
+            await ViewModel.NavigateIntoNestedArchiveAsync(entry);
+        }
         // T-F97: a previewable file type opens silently via the OS default handler instead of
         // running the full Extract flow.
-        if (PreviewPolicy.IsPreviewable(entry.Name))
+        else if (PreviewPolicy.IsPreviewable(entry.Name))
+        {
             await ViewModel.PreviewBrowserEntryAsync(entry);
+        }
         else
-            await ViewModel.ExtractSingleBrowserEntryAsync(entry);
+        {
+            await ViewModel.ExtractSingleBrowserEntryWithWarningAsync(entry);
+        }
     }
 }
