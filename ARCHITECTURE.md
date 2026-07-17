@@ -365,7 +365,7 @@ public MainWindow()
 
 ## Planned Layer Additions (v1.2+)
 
-### v1.2 — Shell Extension (in progress)
+### v1.2 — Shell Extension
 
 `Archiver.Shell` (net8.0-windows, WinExe) is implemented and included in the MSIX package,
 showing progress via the in-process `IProgressDialog` COM object (`NativeProgressDialog.cs`).
@@ -494,7 +494,7 @@ and merges both `ArchiveResult`s. A tar-family format the installed tar.exe does
 becomes a `SkippedFiles` entry with a specific reason, not a generic message.
 
 `ZipArchiveService.GetKnownArchiveReason` is deliberately not refactored to share
-`ArchiveFormatDetector` — see `DECISIONS.md`-equivalent reasoning in `TASKS.md`'s T-F85 entry
+`ArchiveFormatDetector` — see `DECISIONS.md`-equivalent reasoning in `TASKS_DONE.md`'s T-F85 entry
 (opposite polarity, not behavior-equivalent).
 
 ### v1.4 — AppContainer Sandbox for tar.exe
@@ -502,7 +502,7 @@ becomes a `SkippedFiles` entry with a specific reason, not a generic message.
 **Status: implemented (T-F52 Phase 1, steps 1–11 of 13 complete 2026-07-14) — `TarSandboxedService`
 is real, shipping code, not a design description.** It implements `ITarService`, replacing
 `TarProcessService` (deleted outright, not kept as a fallback — fail-closed posture, see
-`TASKS.md`/`DECISIONS.md`'s T-F52 entries). Mechanism is an **AppContainer**, not a Low-IL
+`TASKS_DONE.md`/`DECISIONS.md`'s T-F52 entries). Mechanism is an **AppContainer**, not a Low-IL
 restricted token (superseded design, see `DECISIONS.md`'s T-F52 tradeoff entry — network isolation
 falls out of AppContainer's empty capability list for free, avoiding a global firewall rule). DI
 swap touches three call sites, not one — `Archiver.App/App.xaml.cs`, `Archiver.Shell/Program.cs`

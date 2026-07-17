@@ -263,7 +263,7 @@ downstream service calls. Do not add path content checks to `ShellArgumentParser
   UTF-8, corrupting the glyph and — if it lands inside a quoted string — breaking the string's
   terminator and cascading into parser errors elsewhere in the file (real bug: `Deploy.ps1`'s
   em-dash broke `Write-Warning`'s string, reported as `Missing closing '}'` several lines away;
-  see T-F84 in `TASKS.md`). Unlike the C++ case, there is **no `\uXXXX`-equivalent escape available**
+  see T-F84 in `TASKS_DONE.md`). Unlike the C++ case, there is **no `\uXXXX`-equivalent escape available**
   — PowerShell's backtick-`u{}` Unicode escape requires PowerShell 6.2+/pwsh core, and these scripts
   target Windows PowerShell 5.1 (`#Requires -Version 5.1`). Use a plain ASCII substitute instead
   (e.g. `-` for an em-dash). Non-ASCII characters in comments are safe (comments are skipped

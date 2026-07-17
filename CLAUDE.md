@@ -29,13 +29,15 @@ see `DECISIONS.md`. T-F83's last criterion (reverifying T-F44's file-activation 
 on a machine where Pakko owns the `.zip` association) was completed 2026-07-06 — Pakko was set as
 the default `.zip` handler and a cold-start double-click (simulated via `Start-Process`) correctly
 populated the file list. T-F83 is now fully complete.
-**v1.3 (tar.exe integration) in progress** — T-F47 (`ITarService`/`TarCapabilities` scaffolding)
+**v1.3 (tar.exe integration) complete; v1.4 complete except Group Policy/ADMX support (T-F51,
+still open/future — see `SPEC.md`'s roadmap table)** — T-F47 (`ITarService`/`TarCapabilities`
+scaffolding)
 and T-F48 (capability detection) are complete. T-F49 (`TarProcessService.ExtractAsync()`
 pipeline) is `[x]` complete — implementation, tests, and a `Deploy.ps1`-driven on-device
 `.tar.gz`/`.7z` extraction through the installed app were all confirmed 2026-07-07 (graduated by
 the agent at the user's explicit request that round, not a personal user click-through — flagged
 in `TASKS.md`; real `.rar` stayed unverified then, since no RAR-capable encoder existed on this
-machine — since fixed, see `TASKS.md`'s T-F85 entry). While designing
+machine — since fixed, see `TASKS_DONE.md`'s T-F85 entry). While designing
 T-F49, empirically confirmed a real sandbox-escape exploit against a naive tar.exe
 quarantine-then-validate model (a symlink entry writes outside the quarantine directory before
 any validation code runs) — see `DECISIONS.md`'s T-F49 entry; `ExtractAsync` instead pre-scans
@@ -172,7 +174,7 @@ failure — so a blocked/misconfigured sandbox would have crashed instead of yie
   activation (all 7 formats present, created a real gzip-compressed `.tar.gz`, confirmed via
   `tar -tzvf`), and the Compression combobox visibly greying out for plain TAR only (screenshot-
   confirmed) — all three passed with no fixes needed. 316/316 .NET tests pass, 68/68 C++ tests
-  pass (was 309/59 before Phase C). See `TASKS.md`'s T-F105 entry and `DECISIONS.md`'s T-F105
+  pass (was 309/59 before Phase C). See `TASKS_DONE.md`'s T-F105 entry and `DECISIONS.md`'s T-F105
   entry (Phase 0 empirical findings on tar.exe's real compression-level mechanism, plus the Phase
   B/C addendum).
 - **T-F106 (`[x]` resolved 2026-07-16)** — pending-list `ListView` rows rendered blank
@@ -841,8 +843,11 @@ Two more, not duplicated elsewhere:
   `src/Archiver.App/Package.appxmanifest` after every successful build+install (not in
   `-DeployOnly` mode, which reinstalls an already-built package). No manual bump needed.
   Pass `-SkipVersionBump` to suppress this for a given run.
-- The version format is `1.2.0.X` — only the last segment changes.
-  Example: `1.2.0.0` → `1.2.0.1`.
+- The version format is `1.4.0.X` — only the last segment changes.
+  Example: `1.4.0.0` → `1.4.0.1`. (Bumped from `1.2.0.x` 2026-07-17 — this is `Package.appxmanifest`'s
+  internal MSIX packaging number, tracked independently of the roadmap version labels in
+  `SPEC.md`; it was already `1.2.0.x` throughout all of v1.3's development, so don't read the
+  first three segments as a live indicator of roadmap completeness.)
 - Do not change the first three segments unless explicitly instructed.
 - If bumping manually (e.g. outside `Deploy.ps1`), only edit the `Version` attribute on
   `<Identity>` — do not touch `MinVersion`/`MaxVersionTested` on `TargetDeviceFamily`.

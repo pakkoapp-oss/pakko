@@ -94,8 +94,9 @@ type association, and MOTW propagation.
 **v1.3 (tar.exe integration) complete** — reading RAR/7z/tar-family archives via the Windows
 built-in `tar.exe`, run inside an AppContainer sandbox (its own Job Object, no network capability)
 for extraction; archive creation runs unsandboxed since it only ever reads trusted local files.
-**v1.4 (Archive Browser) in progress** — browse, extract-selected, and climb into the real
-filesystem are done; full localization to non-European locales is the main remaining item.
+**v1.4 complete except Group Policy/ADMX support (T-F51, still open/future)** — Archive Browser
+(browse, extract-selected/all, nested-archive drill-down, preview, climb into the real
+filesystem), TAR creation via `tar.exe`, and the AppContainer sandbox are all done.
 
 - ✅ Archive (single / separate) with compression level selector, ZIP or any tar-family format
 - ✅ Extract with smart folder logic, ZIP slip protection, and a per-conflict Ask/Overwrite/
@@ -119,11 +120,11 @@ filesystem are done; full localization to non-European locales is the main remai
   manual extract, climb past the archive root into the real filesystem
 - ✅ RAR/7z/tar-family extraction runs inside an AppContainer sandbox — quarantine staging, ACL'd
   output directory, Job Object process limits, no network capability
-- ✅ 353/353 .NET tests pass (`dotnet test --filter "Category!=Slow"`) — a separate C++ Google
+- ✅ 414/414 .NET tests pass (`dotnet test --filter "Category!=Slow"`) — a separate C++ Google
   Test suite covers the `Archiver.ShellExtension` COM DLL
 
-Microsoft Store release planned once localization review and the remaining v1.4 polish items
-are done. v1.1–v1.3 are GitHub-only releases for early testers.
+Microsoft Store release planned once Group Policy/ADMX support (T-F51) is done. v1.1–v1.4 are
+GitHub-only releases for early testers.
 
 See `SPEC.md`'s "Future Roadmap" section for the version-to-focus table, and `TASKS.md` for the
 detailed task list.

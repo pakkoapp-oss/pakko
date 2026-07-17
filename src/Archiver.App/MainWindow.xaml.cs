@@ -65,9 +65,12 @@ public sealed partial class MainWindow : Window
         // panel (Mode/Name/Format/Compression, 4 rows) plus Shared Options/action buttons/status
         // bar could collectively demand more height than the window had, collapsing the file
         // table's Star row to 0 (see RootGrid's RowDefinitions comment in MainWindow.xaml for the
-        // full root-cause account). 900 leaves real room for the table even with every optional
-        // row visible.
-        this.AppWindow.Resize(new Windows.Graphics.SizeInt32(1100, 900));
+        // full root-cause account). 900 left real room for the table even with every optional
+        // row visible, but read as needlessly large/near-square — T-F106's responsive-design
+        // follow-up (2026-07-17) re-tuned this down to 780 (paired with the table's MinHeight
+        // dropping 200->140 below) after re-running the same on-device zero-bounds check this
+        // value's history required; see DECISIONS.md's T-F106 entry for the confirmed numbers.
+        this.AppWindow.Resize(new Windows.Graphics.SizeInt32(1100, 780));
 
         // T-F106: without an explicit floor, the window could be shrunk by the user to a height
         // where content below the file table (Shared Options' two checkboxes, the status bar)
@@ -75,11 +78,12 @@ public sealed partial class MainWindow : Window
         // confirmed on-device: at an earlier 700px floor, "Готово"/the checkboxes reported
         // (0,0,0) `ui_find` bounds even though the table itself stayed visible. 850 was measured
         // by testing at increasing heights until every row — table, options, checkboxes, status
-        // bar — reported non-zero bounds simultaneously.
+        // bar — reported non-zero bounds simultaneously. Re-tuned down to 780 in the same
+        // follow-up noted above, re-verified with the identical on-device method.
         if (this.AppWindow.Presenter is Microsoft.UI.Windowing.OverlappedPresenter presenter)
         {
             presenter.PreferredMinimumWidth = 900;
-            presenter.PreferredMinimumHeight = 850;
+            presenter.PreferredMinimumHeight = 780;
         }
         // On-device verification relies on a fresh Deploy.ps1 having actually replaced the
         // installed binary — a bare "Build succeeded" log does not prove that (see CLAUDE.md's

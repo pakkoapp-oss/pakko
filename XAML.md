@@ -95,6 +95,20 @@ Ukrainian "Режим:" is longer and `CaptionTextBlockStyle` inherits `TextWrap
 merging Mode/Name/Format/Compression into one shared-column Grid fixed both the wrap and the
 inconsistent left edges — see `DECISIONS.md`.
 
+**A child control's `MinHeight` does not force a Grid's `*` row to grow (T-F106):** giving the
+file-table `ListView` its own `MinHeight` does nothing for the *row* it sits in — enough sibling
+`Auto` rows can still clamp the Star row to 0, silently rendering every list item within zero
+available height. Put `MinHeight` on the `RowDefinition` itself instead
+(`MainWindow.xaml`'s Row 1: `<RowDefinition Height="*" MinHeight="140"/>` — tuned down from an
+initial `200` in a same-day follow-up, see `DECISIONS.md`'s two T-F106 entries for the full
+history). Pair this with an explicit window-size floor — `MainWindow.xaml.cs` sets
+`OverlappedPresenter.PreferredMinimumWidth="900"`/`PreferredMinimumHeight="780"` (tuned down from
+an initial `850`) and an initial `AppWindow.Resize(1100, 780)` — or a user can still shrink the
+window enough to starve the Star row (or clip content *below* the table) even with the
+`RowDefinition` fix in place. Both numbers were arrived at empirically (`ui_find` bounds-checking
+every row at the enforced floor in both pending-list and Archive Browser modes), not by
+arithmetic — a rough sibling-row height estimate undershot the real tuned value once already.
+
 **H.NotifyIcon.WinUI 2.1.0 API:**
 ```xml
 xmlns:tb="using:H.NotifyIcon"

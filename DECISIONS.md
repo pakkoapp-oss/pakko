@@ -1152,7 +1152,7 @@ type-character check — the size column rides along in the same pass at zero ex
 
 ## T-F92 — Reverted: Submenu Icons Undone After On-Device Review
 
-**Original decision (same day, see T-F92's own entry above in `TASKS.md`):** give every Pakko
+**Original decision (same day, see T-F92's own entry above in `TASKS_DONE.md`):** give every Pakko
 submenu command (Extract here, Extract to folder, Add to archive, Test archive, both dialogs) the
 same icon as the root "Pakko" entry, via `GetAppIconPath()`.
 
@@ -1709,7 +1709,7 @@ note below), though still not proof by itself. Separately, a deliberate C# synta
 introduced in `App.xaml.cs`, `Deploy.ps1` run against it, and confirmed to fail correctly —
 `dotnet publish` never reached packaging, no fresh package existed, the gate did not tolerate it,
 and the script exited 1 (the error was reverted immediately after via `git checkout`). Both checks
-are now closed on T-F102 in `TASKS.md`.
+are now closed on T-F102 in `TASKS_DONE.md`.
 
 **Follow-up, same day: freshness + a valid signature aren't enough — added a package-content
 check.** The user raised a sharp, specific concern: could this tolerance gate let through a
@@ -2535,10 +2535,10 @@ as originally written — genuine additional hardening, not duplicate scope.
 silently deprecate" rule). T-F52's P/Invoke surface, Flow, and acceptance criteria were extended
 to absorb Job Object limits and network isolation/firewall rule, making it the single task for
 all tar.exe process-hardening work. No implementation exists yet for either task — this is a
-task-planning correction, not a code change; `TASKS.md`'s T-F13 and T-F52 entries carry the full
-updated detail.
+task-planning correction, not a code change; `TASKS.md`'s T-F13 entry and `TASKS_DONE.md`'s
+T-F52 entry carry the full updated detail.
 
-**Files:** `TASKS.md` (T-F13, T-F52 entries only — no source changes).
+**Files:** `TASKS.md` (T-F13 entry), `TASKS_DONE.md` (T-F52 entry) — no source changes.
 
 ---
 
@@ -3423,7 +3423,51 @@ the arithmetic margin explicitly, not just carrying over the earlier "comfortabl
 The `frontend-design` advisor checkpoint originally planned for sub-scope B was not run this
 round — worth a quick pass to confirm 1100x900's proportions still read as intentionally
 wide-not-square (T-F05's original design decision) rather than as an arbitrary height bump, before
-fully closing out T-F106's acceptance criteria in `TASKS.md`.
+fully closing out T-F106's acceptance criteria (later done — see the follow-up entry below, and
+`TASKS_DONE.md`'s T-F106 entry).
+
+---
+
+## T-F106 — Sub-scope B closed: re-tuned to 1100x780 / 900x780 floor, frontend-design pass run, empirically re-verified
+
+**Trigger:** the user felt 1100x900 (900x850 enforced floor, aspect ~1.06) still read as
+disproportionately large/square, and — recalling how the original blank-row bug cost real
+investigation time from a seemingly unrelated cause — explicitly asked for a `frontend-design`
+consult on the new minimum before shipping it, rather than picking a number by feel.
+
+**`frontend-design` skill consult:** verdict was that 1100x780 (aspect ~1.41) reads as a
+reasonable "wide file-manager" proportion in the same spirit as Explorer/NanaZip/7-Zip, clearly
+better than the near-square 900x850 floor, and that a 140px table `MinHeight` (roughly a header +
+2-3 visible rows) is a sane floor before a list starts looking non-functional — while flagging
+that T-F106's own history (the arithmetic sibling-row estimate undershooting the real empirically-
+tuned 850 value) means the number must still be re-verified on-device, not trusted from estimate
+alone.
+
+**Change:** `MainWindow.xaml:26`'s table `RowDefinition MinHeight` `200 → 140`;
+`MainWindow.xaml.cs`'s default `AppWindow.Resize` `1100x900 → 1100x780`; `PreferredMinimumHeight`
+`850 → 780`. `PreferredMinimumWidth` (900) and default/minimum width left unchanged — no evidence
+anywhere (this file, `DIAGRAMS.md`, `CLAUDE.md`) that width was ever the load-bearing dimension
+for the original zero-height bug; the "square" complaint was about height, not width.
+
+**Empirical re-verification (this session, via the `ui_find` + `mouse_control` `target:
+primary_screen` combination confirmed reliable earlier this same session):** launched the
+installed build, forced a resize request well below the floor (700x600) in both pending-list mode
+and Archive Browser mode (a real loaded archive, 4 entries), confirmed the window clamps to the
+enforced 900x780 in both cases, and confirmed via `ui_find` that every row/control — file table
+rows, both mode's action buttons, both Shared Options checkboxes, the status bar text, and (in
+Archive Browser mode) all 4 entry rows with their T-F110 icons and the breadcrumb — reports real,
+distinct, non-degenerate coordinates, not the `(0,0,0)` signature of the original bug.
+Screenshots confirm the same visually: both modes render fully within the 900x780 floor with
+comfortable spare vertical room, not scraping the edge.
+
+**Basic-Display-Adapter hardware re-check:** not re-run this round (no such hardware available on
+this dev machine, same accepted limitation as T-F89's untestable case elsewhere in this project) —
+900x780 is a strictly *smaller* floor than the previously-accepted 900x850, so the prior
+"comfortably under a typical 1024x768 floor" margin conclusion only improves, not worsens.
+
+**Sub-scope B (responsive window-size design) is now fully closed** — resize retest (both modes),
+`frontend-design` advisor pass, and this write-up were the three items left open. `TASKS.md`'s
+T-F106 entry and `XAML.md` updated with the final confirmed numbers.
 
 ---
 
@@ -3672,13 +3716,13 @@ overwritten. Deliberately scoped to `EnterBrowseModeAsync` itself, not the share
 call — a nested level's `BrowsedArchivePath` is a `NestedArchiveCache` temp file, and hinting a
 destination from it would suggest extracting into `%TEMP%` by default, which is never right.
 
-**Files:** `src/Archiver.App/ViewModels/MainViewModel.cs`. See `TASKS.md`'s T-F108 entry.
+**Files:** `src/Archiver.App/ViewModels/MainViewModel.cs`. See `TASKS_DONE.md`'s T-F108 entry.
 
 ---
 
 ## T-F98 — Archive Browser: Transparent Drill-Down Into Nested Archives
 
-**Depth limit — 4, user-decided:** `TASKS.md`'s own T-F98 entry explicitly withheld a nesting
+**Depth limit — 4, user-decided:** `TASKS_DONE.md`'s own T-F98 entry explicitly withheld a nesting
 number pending deliberate choice, given the real risk (recursive archive-bomb DoS) of automatic
 drill-down. Presented three options (2/4/8) with 4 recommended as the balance between realistic
 multi-level use and bounding worst-case combined disk/time cost to a small constant multiplier on
@@ -3749,7 +3793,7 @@ mistaken for a bug later.
 **Files:** `src/Archiver.Core/Services/ArchiveFormatDetector.cs`,
 `src/Archiver.App.Core/NestedArchivePolicy.cs`, `src/Archiver.App.Core/NestedArchiveCache.cs`,
 `src/Archiver.App/ViewModels/MainViewModel.cs`, `src/Archiver.App/MainWindow.xaml.cs`. See
-`TASKS.md`'s T-F98 entry.
+`TASKS_DONE.md`'s T-F98 entry.
 
 ---
 
@@ -3806,8 +3850,8 @@ not kept as a separate unused method, since it had exactly one caller.
 
 **Files:** `src/Archiver.Core/Services/PreviewPolicy.cs`,
 `src/Archiver.App/ViewModels/MainViewModel.cs`, `src/Archiver.App/MainWindow.xaml.cs`,
-`src/Archiver.App/Strings/{en-US,uk-UA}/Resources.resw`, `SECURITY.md`. See `TASKS.md`'s T-F109
-entry.
+`src/Archiver.App/Strings/{en-US,uk-UA}/Resources.resw`, `SECURITY.md`. See `TASKS_DONE.md`'s
+T-F109 entry.
 
 ---
 
@@ -3819,6 +3863,6 @@ entry.
 
 **Security advisor decision (separate pass, per the user's explicit request) - the dialog stays exactly as it is; the icon is a heads-up, never a substitute.** A modal confirm is a synchronous checkpoint a fast double-click physically cannot skip past - the user has usually already clicked before consciously registering a row's icon, which is exactly the muscle-memory failure mode the T-F109 dialog exists to interrupt. Replacing it with a purely passive signal would quietly re-adopt the undifferentiated-ShellExecute model T-F109's own research found NanaZip/7-Zip use (no gate at all, not even for `.exe`) - the model this project deliberately diverged from. Two middle-ground softening options were surfaced as acceptable *if* nagging becomes a real ongoing complaint later: reworded, less alarming dialog text (zero security cost), or a "don't ask again" scoped strictly to the current browsing session (reset on relaunch/opening a new archive, never persisted to disk). A "don't ask again" persisted across app restarts was flagged explicitly as unacceptable - it would permanently and silently drop the gate for every future session, with no per-launch re-evaluation. **User chose to keep the dialog completely unchanged and add only the icon** - neither softening option was implemented this round.
 
-**Files:** `src/Archiver.App.Core/ArchiveEntryViewModel.cs`. See `TASKS.md`'s T-F110 entry.
+**Files:** `src/Archiver.App.Core/ArchiveEntryViewModel.cs`. See `TASKS_DONE.md`'s T-F110 entry.
 
 **Correction (same day, on-device feedback):** the first implementation marked every nested-archive row (an archive found inside the currently browsed archive) with `Hide`, on the same basis as any other non-`PreviewPolicy` file. The user pointed out this was wrong: double-clicking a nested archive drills straight in transparently (T-F98) - it never goes through T-F109's confirm-and-extract flow, so labeling it "extract-only" actively misrepresents what double-click does. The one real exception is when drilling in would exceed `NestedArchivePolicy.MaxDepth` - `NavigateIntoNestedArchiveAsync` blocks that case outright (an error dialog, no extraction happens at all), so `Hide` is actually accurate there. Fixed by adding `ArchiveEntryViewModel.NestedDepthLimitReached` (bool, default false) and reading `ArchiveFormatDetector.IsRecognizedArchiveExtension` in `Icon` before falling back to the `PreviewPolicy` check; `MainViewModel.RefreshCurrentFolder` sets the flag per-row via a record `with` copy, re-using the exact same `NestedArchivePolicy.ExceedsMaxDepth(_browseStack.Count)` condition `NavigateIntoNestedArchiveAsync` itself checks - one source of truth for both "will this be blocked" and "should this row look blocked". Real-filesystem/drive browsing (`BrowseScope != Archive`) is untouched: opening an archive found there is always a fresh depth-0 open (`EnterBrowseModeAsync`), never subject to the nested depth limit.

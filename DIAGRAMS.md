@@ -538,10 +538,13 @@ flowchart TD
 
 ## 6. State — MainWindow UI Mode & Per-Row Element Visibility (T-F05 inline mode-swap)
 
-Source read for this diagram: `src/Archiver.App/MainWindow.xaml` (all 8 grid rows, in full) and
+Source read for this diagram: `src/Archiver.App/MainWindow.xaml` (all 8 grid rows, in full),
+`src/Archiver.App/MainWindow.xaml.cs` (window-size/`OverlappedPresenter` setup), and
 `src/Archiver.App/ViewModels/MainViewModel.cs` (`IsBrowsingArchive`, `IsPendingListVisibility`,
 `IsBrowsingArchiveVisibility`, `ArchiveOptionsVisibility`, `OperationOutcomeVisibility`,
-`EnterBrowseModeAsync`, `ArchiveBrowseScope`, `NavigateUp`/`CanNavigateUp`). Did not exist before
+`EnterBrowseModeAsync`, `ArchiveBrowseScope`, `NavigateUp`/`CanNavigateUp`,
+`NavigateIntoNestedArchiveAsync`, `_browseStack`) plus
+`src/Archiver.App.Core/NestedArchivePolicy.cs`. Did not exist before
 2026-07-13 — no diagram category in the table above covers a WinUI window's own row-visibility
 state machine (the closest, diagram 2, is scoped specifically to `IsBusy`/operation lifecycle);
 added after a real bug in this exact area (Row 0 never hiding in browse mode) was found by manual
@@ -559,6 +562,21 @@ Pakko's inline-always-visible-options model doesn't have. The window's initial s
 from `800x700` to `1100x650` (`MainWindow.xaml.cs`) — a file/archive listing is tabular and wants
 width more than height, matching every reference file manager's own proportions.
 
+**Updated again (T-F106, 2026-07-16/17) — window size and a hard minimum, re-tuned twice.**
+`1100x650` proved too short: the pending-list mode's Archive Options panel (grew to 4 rows once
+T-F105 added a Format row) plus Shared Options/action buttons/status bar could collectively demand
+more height than the window had, clamping Row 1's Star-sized file-table row to 0 (every `ListView`
+item then measured within zero height — a real bug, not a rendering glitch; see `DECISIONS.md`'s
+T-F106 entries). Fixed by giving Row 1's `RowDefinition` its own `MinHeight` (not just the
+`ListView` child, which doesn't force the row to grow) and raising the window size — first to
+`1100x900` with an enforced `PreferredMinimumWidth="900"`/`PreferredMinimumHeight="850"` floor via
+`OverlappedPresenter`, then re-tuned down a second time the same week (user felt 900x850 still
+read as needlessly large/near-square) to the current, empirically re-verified values: default
+`1100x780`, floor `900x780`, table `MinHeight="140"`. Both tunings were confirmed on-device via
+`ui_find` bounds-checking every row (table, options, checkboxes, status bar, and in Archive
+Browser mode the entry rows/breadcrumb too) at the enforced floor in both UI modes — not by
+arithmetic estimate alone, which undershot the real tuned value once already.
+
 **Updated again same day — Info button removed entirely, its fields folded into the table.**
 User feedback on the change above: the `Info`+`Close` pair sitting together in Row 0 read as a
 confusing combination, not an improvement. Resolution: Info's dialog (Name/Path/Type/Size/
@@ -568,9 +586,9 @@ columns, so the fix was adding the two that weren't (`Size`, `Packed`) as real c
 deleting `ShowSelectedEntryInfoCommand`/`IDialogService.ShowEntryInfoAsync` outright rather than
 leaving a now-redundant dialog reachable another way. This also resolves the "combination" — Row
 0 (browse) now holds only `Close` + `About`, no pairing. Row 1 (browse)'s column set is now
-`Auto,*,100,100,140` (icon / Name / Size / Packed / Modified); the header `Grid`'s columns were
-widened to match (previously `*,100,140` with no icon column, silently misaligned against the
-row template's `Auto,*,100,140` — fixed as part of this same change since both were being
+`Auto,*,100,100,90,140` (icon / Name / Size / Packed / CRC-32 / Modified); the header `Grid`'s
+columns were widened to match (previously `*,100,140` with no icon or CRC-32 column, silently
+misaligned against the row template — fixed as part of this same change since both were being
 touched). `Packed` reads blank for every tar-routed format (RAR/7z/tar.*) — `TarSandboxedService`
 never populates `CompressedSize` per-entry (the underlying gzip/xz stream is whole-archive) — so
 this column is ZIP-only in practice; see `ARCHITECTURE.md`'s `IDialogService` note.
@@ -614,6 +632,25 @@ the user confirmed the window's own close button already covers leaving the brow
 NanaZip-precedent research behind this (it is NOT free Explorer shell-namespace behavior — even
 NanaZip hand-codes its own equivalent).
 
+**Updated a fifth time (T-F98, 2026-07-17) — `InsideArchive` gained its own nesting-depth
+dimension, orthogonal to `ArchiveBrowseScope`.** Double-clicking a recognized archive *found
+inside* the currently-browsed archive no longer just sits there as an inert file — it drills in
+transparently via `NavigateIntoNestedArchiveAsync` (`MainViewModel.cs:765`): extracts just that
+entry to a fresh `NestedArchiveCache` scope, re-detects its real format, and re-enters
+`InsideArchive` one level deeper, pushing a `NestedBrowseLevel` onto a private `_browseStack`.
+Gated by `NestedArchivePolicy.ExceedsMaxDepth(_browseStack.Count)` (`:769`, `MaxDepth`=4) — at the
+limit, shows an error dialog and **stays exactly where it was** (no state change at all, a real
+blocked-transition case, not an omission). The Up-button's actual branch order
+(`MainViewModel.cs:977-1013`) checks the nesting stack *before* the T-F107 real-filesystem climb
+this diagram already draws: at an archive's own root, if `_browseStack.Count > 0` it pops back to
+the parent nested level (restoring the parent's path/index, deleting the child's
+`NestedArchiveCache` scope) — only once the stack is empty does `InsideArchive → RealFolder` (the
+transition already drawn below) actually fire. `ArchiveBrowseScope` (which of Archive/
+RealFileSystem/ThisPc) and nesting depth (`_browseStack.Count`, 0–4) are two independent
+dimensions collapsed into the single `InsideArchive` box below for readability — the self-loop and
+the blocked-transition note capture the depth dimension without drawing 5 parallel copies of the
+same state.
+
 ```mermaid
 stateDiagram-v2
     [*] --> PendingListMode
@@ -623,11 +660,13 @@ stateDiagram-v2
     state ArchiveBrowseMode {
         [*] --> InsideArchive
         InsideArchive --> InsideArchive: NavigateIntoFolder / NavigateToBreadcrumbSegment (archive-internal, unchanged)
-        InsideArchive --> RealFolder: NavigateUp at archive root (T-F107)<br/>BrowseScope=RealFileSystem, CurrentFolderPath=real containing folder,<br/>BrowsedArchivePath=null (disables Extract Selected/All)
+        InsideArchive --> InsideArchive: NavigateIntoNestedArchiveAsync (T-F98)<br/>double-tap a recognized nested archive, depth under MaxDepth(4)<br/>pushes _browseStack, drills one level deeper<br/>BLOCKED (no state change) if depth already at MaxDepth — error dialog only
+        InsideArchive --> InsideArchive: NavigateUp with _browseStack.Count greater than 0 (T-F98)<br/>pops one nested level, deletes its NestedArchiveCache scope
+        InsideArchive --> RealFolder: NavigateUp at archive root AND _browseStack empty (T-F107)<br/>BrowseScope=RealFileSystem, CurrentFolderPath=real containing folder,<br/>BrowsedArchivePath=null (disables Extract Selected/All)
         RealFolder --> RealFolder: NavigateUp / NavigateIntoFolder (Path.GetDirectoryName walk)
         RealFolder --> ThisPcState: NavigateUp at a drive root (Path.GetDirectoryName returns null)
         ThisPcState --> RealFolder: NavigateIntoFolder(drive)
-        RealFolder --> InsideArchive: double-tap a recognized archive file (EnterBrowseModeAsync re-enters fresh)
+        RealFolder --> InsideArchive: double-tap a recognized archive file (EnterBrowseModeAsync re-enters fresh, _browseStack reset to empty)
         ThisPcState --> ThisPcState: NavigateUp is a no-op — CanNavigateUp()==false, button disabled
     }
 ```
@@ -639,12 +678,12 @@ stateDiagram-v2
 | 0 (pending) | Add Files, Add Folder, Hash…, About | `IsPendingListVisibility` | Yes (fixed 2026-07-13 — see Finding) |
 | 0 (browse) | About | `IsBrowsingArchiveVisibility` | Yes (Info, then Close, both removed same round — see notes above) |
 | 1 (pending) | File table (Name/Type/Size/CRC-32/Modified), drop-zone hint | `IsPendingListVisibility` | Yes |
-| 1 (browse) | Up-arrow + Breadcrumb, Name/Size/Packed/CRC-32/Modified header, entry `ListView` | `IsBrowsingArchiveVisibility` | Yes |
+| 1 (browse) | Up-arrow + Breadcrumb, icon/Name/Size/Packed/CRC-32/Modified header (T-F110's icon column), entry `ListView` | `IsBrowsingArchiveVisibility` | Yes |
 | 2 | Up-arrow + Destination path + "…" browse button | none (deliberately shared — see code comment at `MainViewModel.cs:209-212`) | Yes, by design |
 | 3 (pending) | Archive/Extract/Clear buttons | `IsPendingListVisibility` | Yes |
 | 3 (browse) | Extract Selected, Extract All | `IsBrowsingArchiveVisibility` | Yes (Info/Close moved out to Row 0, then both removed — see notes above) |
 | 4 | Operation-outcome subtitle | `OperationOutcomeVisibility` = `!IsBrowsingArchive && FileItems.Count>0` | Yes |
-| 5 | Mode (One/Separate archive), Archive Name, Compression | `ArchiveOptionsVisibility` = `!IsBrowsingArchive && !IsExtractOnlySelection` | Yes |
+| 5 | Mode (One/Separate archive), Archive Name, **Формат** (Format, T-F105 — 7 items: Zip + 6 tar variants), Compression (`IsCompressionLevelEnabled` greys it out only for plain Tar) | `ArchiveOptionsVisibility` = `!IsBrowsingArchive && !IsExtractOnlySelection` | Yes |
 | 6 | Conflict combo, Open-destination checkbox, Delete-after checkbox | none (deliberately shared — same comment as Row 2) | Yes, by design |
 | 7 | Progress bar, Cancel, status text | none (busy-state driven, not mode-driven — diagram 2's concern) | Yes, out of scope here |
 
