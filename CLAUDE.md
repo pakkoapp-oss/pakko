@@ -236,13 +236,33 @@ failure — so a blocked/misconfigured sandbox would have crashed instead of yie
   would work against Pakko's minimal/trust-focused positioning for its government/defense
   audience. New `AboutKofiUrl` resw key (en-US only, non-translatable, matching
   `AboutGitHubUrl`/`AboutPrivacyUrl`'s existing convention). On-device verified.
-- 353/353 .NET tests pass (`dotnet test --filter "Category!=Slow"`: 234 Archiver.Core.Tests +
-  43 Archiver.Shell.Tests + 46 Archiver.Core.IntegrationTests + 30 Archiver.App.Core.Tests — the
+- **T-F108/T-F98/T-F109/T-F110 (all `[x]` done 2026-07-17)** — same session, Archive Browser
+  work. **T-F108:** fixed the extraction destination defaulting to Desktop instead of the
+  archive's own folder when browsing without any pending files queued
+  (`MainViewModel.EnterBrowseModeAsync`). **T-F98:** double-clicking an archive found *inside*
+  the currently browsed archive drills straight into it, up to 4 nesting levels
+  (`NestedArchivePolicy.MaxDepth`), reusing T-F49/T-F90/T-F94's per-extraction security
+  machinery unmodified at every level (`Archiver.App.Core.NestedArchiveCache`,
+  `MainViewModel`'s browse-stack model). **T-F109:** widened the Archive Browser's safe-preview
+  allowlist to include video/audio (`PreviewPolicy`, PDF deliberately excluded); anything still
+  outside it now shows a confirm dialog and extracts to a subfolder next to the archive on disk
+  instead of the old silent full-extract-to-Destination-field behavior. **T-F110:** the entry
+  table's icon column distinguishes preview-vs-extract-only per row (Segoe MDL2 `View`/`Hide`
+  glyphs); a nested-archive row shows `View` (it drills in transparently) unless drilling in
+  would exceed T-F98's depth limit, in which case it shows `Hide`
+  (`ArchiveEntryViewModel.NestedDepthLimitReached`). All four verified on-device, both via a real
+  automated Windows MCP pass and the user's own personal click-through.
+- 414/414 .NET tests pass (`dotnet test --filter "Category!=Slow"`: 269 Archiver.Core.Tests +
+  43 Archiver.Shell.Tests + 47 Archiver.Core.IntegrationTests + 55 Archiver.App.Core.Tests — the
   jump from 284 to 309 reflects T-F105 Phase A's new `TarSandboxedServiceCompressTests` (real
   tar.exe round-trips for all 6 creation formats), `ArchiveNamingTests.GetExtension`, and
   `ArchiveCreationRouterTests`; 309 to 316 reflects Phase C's new `ShellArgumentParser`
   `--format` switch tests; 316 to 326 reflects T-F107's new `FileSystemBrowserTests`; 326 to 353
-  reflects T-F97's new `PreviewPolicyTests`/`PreviewCacheTests`). 4 Zip64 tests (T-F20) are tagged
+  reflects T-F97's new `PreviewPolicyTests`/`PreviewCacheTests`; 353 to 387 reflects T-F98's new
+  `ArchiveFormatDetectorTests`/`NestedArchivePolicyTests`/`NestedArchiveCacheTests`/
+  `NestedArchiveDrillDownSecurityTests`; 387 to 402 reflects T-F109's widened
+  `PreviewPolicyTests`; 402 to 414 reflects T-F110's `ArchiveEntryViewModelTests.Icon*` cases).
+  4 Zip64 tests (T-F20) are tagged
   `[Trait("Category", "Slow")]` and
   excluded from this default run — they cost real wall-clock time (>65535-file
   archiving/extraction, a >4 GiB round trip) that isn't worth paying on every change; run them

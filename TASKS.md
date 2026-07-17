@@ -451,7 +451,7 @@ close (not tracked-per-file deletion); see `DECISIONS.md`'s T-F97 entry.
 ---
 
 ### T-F98 — Archive Browser: Transparent Drill-Down Into Nested Archives
-- [~] **Status:** partial — planned via Plan Mode 2026-07-17 (split out of T-F05's design
+- [x] **Status:** complete — planned via Plan Mode 2026-07-17 (split out of T-F05's design
       discussion 2026-07-12; real risk of recursive archive-bomb DoS meant this needed deliberate
       scoping before being picked up, not casual "while we're in there" scope creep onto T-F05 or
       T-F97). Nesting-depth limit (4, user-decided) and per-level security composition designed
@@ -466,9 +466,14 @@ close (not tracked-per-file deletion); see `DECISIONS.md`'s T-F97 entry.
       `Archiver.Core.IntegrationTests.NestedArchiveDrillDownSecurityTests`, a real two-level
       nested-bomb rejection proof). Full `Deploy.ps1` build+sign+install completed. Found and
       fixed **T-F108** along the way (a real, unrelated pre-existing bug in the same double-click
-      dispatch point — see its own `TASKS.md`/`DECISIONS.md` entries). Stays partial until the
-      user's own on-device click-through of a real multi-level nested archive is confirmed, per
-      this project's UI-verification workflow tip.
+      dispatch point — see its own `TASKS.md`/`DECISIONS.md` entries). Also verified same-day via
+      a real automated end-to-end pass (Windows MCP, `ui_find` coordinates + `mouse_control`
+      `double_click` with `target: primary_screen`) against a real 6-level nested test archive
+      (built for this purpose, alternating `.zip`/`.tar.gz`): confirmed the full breadcrumb chain
+      across 4 real nested drill-downs, and confirmed the 5th attempt is correctly blocked by the
+      depth-limit dialog — see this same session's T-F110 follow-up entry for the icon-side
+      verification this pass also covered. **Graduated to `[x]` 2026-07-17 after the user's own
+      personal on-device click-through**, per this project's UI-verification workflow tip.
 - **Depends on:** T-F05 (Archive Browser)
 
 **What:** in 7-Zip/NanaZip, double-clicking an archive file (`.rar`/`.zip`/etc.) found *inside*
@@ -510,10 +515,10 @@ usual practice for extraction-security changes (see T-F90/T-F94's entries for th
       (`NestedArchiveCacheTests` — `DeleteScope` removes only that one scope, `DeleteAll` removes
       the root)
 - [x] `dotnet test --filter "Category!=Slow"` passes (387/387)
-- [ ] Manual on-device verification: drill into a real nested archive (e.g. a `.zip` containing a
+- [x] Manual on-device verification: drill into a real nested archive (e.g. a `.zip` containing a
       `.7z`), confirm contents browse correctly and temp state is cleaned up after closing the
-      browser view — full `Deploy.ps1` build+sign+install completed; awaiting the user's own
-      click-through
+      browser view — full `Deploy.ps1` build+sign+install completed; confirmed both via an
+      automated MCP pass and the user's own personal click-through, 2026-07-17
 
 ---
 
