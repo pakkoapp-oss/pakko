@@ -148,11 +148,12 @@ for the contributor workflow. Production code signing with a trusted certificate
 ## Running Tests
 
 ```bash
-dotnet test --filter "Category!=Slow"
+dotnet test --filter "Category!=Slow&Category!=VeryLarge"
 ```
 
-Always run without a path argument — all projects must stay green after every change. The
-`Category!=Slow` filter excludes a handful of real multi-second/multi-GB Zip64 tests; run
+Always run without a path argument — all projects must stay green after every change. This filter
+excludes a handful of real multi-second Zip64/performance tests (`Category=Slow`) and a couple of
+genuinely large, on-demand-only tests (`Category=VeryLarge`, real multi-GB cost); run
 `dotnet test --filter "Category=Slow"` too before a release. To regenerate test fixtures:
 ```bash
 dotnet run --project tests/Archiver.Core.Tests.GenerateFixtures

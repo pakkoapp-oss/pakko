@@ -3997,3 +3997,224 @@ text. Separately, in Archive Browser mode: double-clicking `encrypted.7z`/`encry
 and moved to `TASKS_DONE.md`** — the user explicitly accepted this AI/MCP-driven pass as a
 substitute for their own personal click-through, the same accepted-substitute pattern already
 established for T-F52.
+
+---
+
+## T-F114 — Performance/Regression Tests vs. a 7-Zip Reference: Same-Run Ratio, Not a Cross-Machine Cached Baseline
+
+**Context:** the user asked for automated tests catching a code change that silently makes
+Pakko's ZIP compression/extraction slower, comparing against 7-Zip as a reference — but flagged
+the hard part themselves: test machines differ wildly in raw speed, so a hardcoded "must finish in
+under N seconds" assertion is useless, and the user's own tentative idea (cache a result in a temp
+file, compare against it later) came with its own unresolved question ("but then what do we
+compare against going forward?"). Per this project's pre-implementation-research norm, a
+design-advisor session plus real engineering-practice research was done before writing any code.
+
+**Research finding — resolves the cross-machine question directly:** checked how BenchmarkDotNet
+(.NET's own microbenchmarking library), Rust's `criterion.rs`, and Go's `benchstat` solve "compare
+speed fairly across unknown machines." **None of the three attempt true cross-machine baseline
+portability.** BenchmarkDotNet's `[Benchmark(Baseline = true)]` reports every other result as a
+ratio computed *within the same run on the same machine*. `criterion.rs`/`benchstat` compare
+against a *stored baseline from a prior run on the same machine* — a same-machine-over-time
+pattern, not cross-machine. **The only mechanism that generalizes to an arbitrary,
+never-before-seen machine is running the reference and the subject side-by-side, right now, in
+the same invocation, and taking the ratio.** The user's cache-in-a-temp-file idea was explicitly
+considered and **dropped** — its one legitimate use (per `criterion.rs`) is catching drift on the
+*same machine over time* (e.g. a persistent CI runner), and this repo has no CI today (confirmed —
+manual, occasionally-different-machine, pre-release testing cadence per `TESTING.md`). Building
+that infrastructure now would be speculative; revisit only if Pakko ever gets a persistent CI
+runner.
+
+**Real-world grounding — do users/sysadmins actually track archiver speed regressions?** Thin
+evidence. The genre that exists is cross-tool comparison ("which archiver is fastest" — 7-Zip's
+own `7z b` benchmark subcommand, various zstd/7z/zip speed-vs-ratio comparison articles), not
+"this specific tool got slower in its last release." Conclusion: this is a sound *internal
+engineering discipline* to self-impose, not something externally demanded — not framed as a
+user-requested feature in `TASKS.md`.
+
+**Decisions made (all confirmed with the user before implementation, not just advisor
+recommendations):**
+
+1. **Bundle a pinned, hash-verified `7za.exe`** (portable, console-only, LGPL v2.1+) directly in
+   the new test project, rather than requiring a system-installed 7-Zip with a skip-if-absent
+   fallback. Rejected the latter because `CLAUDE.md`'s own hard constraint is "No 7-Zip" for the
+   *shipped product* — the population of machines that build/test Pakko is disproportionately
+   likely to not have 7-Zip installed, so "skip if absent" would silently turn the gate into
+   decoration on most contributor machines, not a real regression check.
+2. **Drop the cache-in-a-temp-file/persistent-baseline idea entirely** — not built, not stubbed.
+3. **ZIP only** (`System.IO.Compression` vs. `7za.exe -tzip`), both archive creation and
+   extraction. Tar-family explicitly excluded: `TarSandboxedService` routes through
+   AppContainer/ACL/Job-Object sandbox machinery (T-F52), a deliberate, accepted security cost — a
+   shared tolerance band against unsandboxed `7za.exe` would almost certainly "fail" on sandbox
+   setup overhead alone, not a real regression. A future tar-family perf task would need its own
+   separate calibration accounting for sandbox overhead as a known constant.
+
+**Vendoring `7za.exe` — provenance and licensing:** 7-Zip 26.02's `7z2602-extra.7z` package
+downloaded from `github.com/ip7z/7zip` (the official upstream mirror), its package-level SHA-256
+(`081df9e9311dfd9c9e0e98c1c80180b99bb51e4cb24156b5f3057fe3c259d70a`) verified against the digest
+published in GitHub's release API metadata *before* extraction (via `tar.exe`, which already reads
+`.7z` per this project's own established capability — no chicken-and-egg problem). Only the x64
+and arm64 standalone console builds are vendored (matching this solution's own platform
+constraint), under `tests/Archiver.Core.PerformanceTests/Tools/7-Zip/{x64,arm64}/7za.exe`, with
+`LICENSE-7-Zip.txt` (7-Zip's own license file, copied verbatim) and a `NOTICE.md` recording exact
+version/source/hashes/date and the re-verification/update procedure. 7-Zip's core code is LGPL
+v2.1+; redistributing the binary requires attribution (state 7-Zip is used, state LGPL, link to
+7-zip.org, include license text) — satisfied by `NOTICE.md`/`LICENSE-7-Zip.txt`. This is
+explicitly a **test-only, dev-time dependency, never shipped in the MSIX** — distinct from
+`CLAUDE.md`'s "zero third-party dependencies" rule, which governs `Archiver.Core`'s shipped
+surface only (see also the new `CONVENTIONS.md` note added for future readers who might otherwise
+be confused finding a 7-Zip binary in a "No 7-Zip" repo).
+
+**Core comparison mechanism:** one discarded warmup pass + one timed pass, for both Pakko and
+`7za.exe`, on the identical fixture, in the same test method. Asserts
+`r = pakkoElapsed / referenceElapsed <= calibratedBaselineRatio * toleranceMultiplier`, with
+`toleranceMultiplier = 3.0` uniformly and a per-scenario `calibratedBaselineRatio` derived from
+real local runs (not guessed) on the reference dev machine, 2026-07-17:
+
+| Scenario | Observed ratio | Calibrated baseline used |
+|---|---|---|
+| Archive / one large file (~300 MB) | 1.223, 1.215 (two runs) | 1.22 |
+| Extract / one large file | 1.058, 1.047 | 1.06 |
+| Archive / many small files (5,000×) | 6.018, 5.960 | 6.02 |
+| Extract / many small files | 1.573, 1.569 | 1.58 |
+| Archive / hybrid (~500 small + 4 medium) | 3.469, 3.519 | 3.47 |
+| Extract / hybrid | 1.560, 1.461 | 1.56 |
+
+Two consecutive runs were checked for each scenario before finalizing the constant, confirming the
+ratios are stable enough for a 3x tolerance band to be meaningful (not swamped by run-to-run
+noise on this machine). **The many-small-files archive scenario's much higher ratio (~6x) is not
+a Pakko regression** — 7za's absolute time on this ~25-30 MB/5,000-file input is dominated by
+near-instant process-spawn/completion overhead (~0.36s total), while Pakko's per-entry async
+pipeline (progress reporting, CRC-32, per-file `FileStream` open/close) costs more in absolute
+terms despite doing comparable real compression work. This is exactly the "many-small-files is the
+noisiest shape" pitfall flagged during design (process-spawn overhead swamping the real signal for
+tiny inputs) — the fixture was kept anyway (per explicit user request, and because it exercises a
+genuinely distinct code path), with a correspondingly higher calibrated baseline rather than a
+tight one that would false-fail on this architectural difference.
+
+Extraction scenarios extract from one shared reference ZIP (built once via `7za.exe`, untimed
+setup) so both engines process byte-identical input, rather than each extracting its own
+separately-created archive (which could differ slightly in compressed size/layout and bias the
+comparison).
+
+No repeated-iteration statistics (medians/confidence intervals, criterion/benchstat-style) were
+added — a single timed run per engine after one warmup is proportionate for a coarse "catch a
+gross slowdown" gate; this repo has no CI to make repeated-run statistics meaningful anyway.
+Realistic sensitivity is "catches a ~2x+ slowdown," not a 5-10% regression detector — intentional,
+matching this project's actual regression history (accidental sync-over-async, wrong buffer
+sizes — gross, not subtle).
+
+**Test project placement:** a new dedicated project, `Archiver.Core.PerformanceTests`, not a new
+class inside `Archiver.Core.IntegrationTests` (the closest existing precedent, since it already
+spawns real external processes for `tar.exe`). `IntegrationTests` has a settled identity as
+"deterministic correctness/security proofs against real OS/tar.exe behavior" — every existing test
+there is a hard pass/fail on a deterministic property. Folding in a fundamentally different kind
+of test (a timing assertion with a small inherent flake risk under system load) would blur what a
+run of that project "means" and risks a real regression being dismissed as "oh, that's just the
+flaky integration suite." Tagged `[Trait("Category","Slow")]` throughout — picked up automatically
+by the existing `dotnet test --filter "Category!=Slow"`/`"Category=Slow"` convention, no new
+filtering mechanism. Added to the `.sln` mirroring `Archiver.Core.IntegrationTests`' exact
+Debug/Release × Any CPU/x64/x86 config-platform block (all mapping to the project's own "Any CPU"
+build, same as every other C# test project in this solution — `CLAUDE.md`'s "x64 and ARM64 only"
+hard constraint governs *new solution platforms*, not this existing, already-established six-line
+per-project pattern every C# project in the `.sln` already uses).
+
+**Failure-handling difference from Zip64's Slow tests, documented in `TESTING.md`:** a Zip64 test
+failure is always a real bug (deterministic, no timing). A perf-test failure carries a nonzero
+chance of being a one-off machine hiccup (background scan, thermal throttling, a stray process) —
+rerun once before treating a failure as a real regression; a *repeatable* failure across reruns is
+the real signal.
+
+**Verification:** all 6 scenarios implemented and passing on the reference dev machine, confirmed
+stable across two consecutive full-suite runs. A second, differently-specced machine was not
+available this session to independently confirm the ratio travels across machines as designed —
+noted as an open verification gap in `TASKS.md`, not skipped silently.
+
+**Files:** `tests/Archiver.Core.PerformanceTests/` (new project) — `Archiver.Core.PerformanceTests.csproj`,
+`TempDirectory.cs`, `PerformanceFixtures.cs`, `SevenZipRunner.cs`, `CompressionPerformanceTests.cs`,
+`Tools/7-Zip/{x64,arm64}/7za.exe` + `LICENSE-7-Zip.txt` + `NOTICE.md`. `windows-archiver-wrapper.sln`
+(new project entry + config platforms + solution-folder nesting). `TESTING.md` (new section),
+`CLAUDE.md` (Repo Layout, Current State, test-count paragraph), `CONVENTIONS.md` (vendored-binary
+note).
+
+---
+
+## T-F114 — Follow-up (same day): 7za.exe Sandboxed via Job Object; One-Large-File Scenarios Gated Behind a New `VeryLarge` Category
+
+**Two user-directed changes**, made right after the initial implementation above, both addressing
+gaps the user spotted rather than anything flagged during design:
+
+**1. `7za.exe` is now launched under a basic sandbox, not a bare `Process.Start`.** The user's
+concern: the vendored binary is hash-verified, but what if it were nonetheless compromised (a
+supply-chain concern distinct from "does the hash match what I downloaded")? Reused
+`SandboxJobObject`/`SandboxedProcessLauncher` directly from tar.exe's own T-F52 subsystem — Job
+Object only (`ActiveProcessLimit = 1`, 2 GiB RAM / 10 min CPU caps), explicitly **without**
+`TarSandboxScope`'s AppContainer/ACL/quarantine-staging layer. That layer exists specifically to
+contain a hostile *archive* driving an untrusted-input parser (tar.exe's actual threat model, see
+"Why Sandbox tar.exe at All" in `SECURITY.md`) — `7za.exe`'s input here is Pakko's own
+freshly-generated fixture data, never attacker-controlled, so that threat doesn't apply, and
+adopting AppContainer's staging/copy overhead would risk biasing the very timing being measured
+(the whole point of this test suite). A Job Object alone is a well-precedented, effectively free
+containment layer (no ACL checks, no staging copy — pure kernel bookkeeping) that still bounds the
+worst case if the binary itself misbehaves: it cannot spawn a persistence mechanism (no child
+processes), and it cannot consume unbounded resources.
+
+`SandboxJobObject`/`SandboxedProcessLauncher` are `internal` to `Archiver.Core` — added
+`Archiver.Core.PerformanceTests` to `Archiver.Core.csproj`'s `InternalsVisibleTo` list (same
+mechanism, same rationale, as the two existing entries for `Archiver.Core.Tests`/
+`Archiver.Core.IntegrationTests` — reuse internal implementation, don't make it public just to
+support this). `SevenZipRunner.cs` was rewritten to build argument lists (matching
+`SandboxedProcessLauncher.RunAsync`'s `IReadOnlyList<string>` signature and its own internal
+Win32-correct command-line quoting) rather than a hand-quoted single string, which incidentally
+removed the need for manual quote-escaping the original `Process`-based version had to get right
+itself.
+
+**Verified empirically, not just asserted:** re-ran all 6 scenarios after the switch. Ratios were
+unchanged within the same run-to-run variance already observed before sandboxing (e.g. Archive/
+Hybrid: 3.463 sandboxed vs. 3.469/3.519/3.494 across three earlier unsandboxed runs; Extract/
+OneLargeFile: 1.015 sandboxed vs. 1.058/1.047 unsandboxed) — confirming the Job Object's overhead
+is genuinely negligible for this purpose. None of the calibrated tolerance constants needed
+adjusting.
+
+**2. The one-large-file scenarios (and Zip64's own >4 GiB test) now require an explicit
+`Category=VeryLarge` filter, not the normal `Category=Slow` run.** User's framing: the "short"
+performance scenarios (many-small-files, hybrid) should always run under a routine `Category=Slow`
+pass; the genuinely large ones (T-F114's ~300 MB one-large-file archive/extract, and — for
+consistency, applying the same reasoning — Zip64's own >4 GiB round trip, which was previously
+bundled into `Category=Slow` alongside its three cheaper siblings) should only run on deliberate
+request. Introduced a third tier rather than repurposing the existing two:
+
+- (no trait) — default fast tests, always run.
+- `Category=Slow` — moderate cost (seconds), run before a release. Now: T-F114's 4
+  many-small-files/hybrid tests + Zip64's 3 non-`VeryLarge` tests (was 6 + 4).
+- `Category=VeryLarge` (new) — genuinely large/expensive, on-demand only, never bundled into a
+  routine `Slow` pass. T-F114's 2 one-large-file tests + Zip64's 1 >4 GiB test.
+
+Verified by name in test output (not just a pass/fail count) that `Category=Slow` now runs exactly
+4 perf + 3 Zip64 tests, and `Category=VeryLarge` runs exactly the 3 gated tests
+(`ArchiveAsync_OneLargeFile...`, `ExtractAsync_OneLargeFile...`,
+`ArchiveAndExtract_FileOver4Gb_RoundTripsWithoutError`), all passing.
+
+**A real bug was caught while verifying this, not just assumed correct:** the repo-wide
+"default" test command, `dotnet test --filter "Category!=Slow"`, does **not** exclude
+`VeryLarge`-tagged tests — a test tagged only `Category=VeryLarge` (never `Slow`) isn't matched by
+a `!=Slow` filter at all, so it runs anyway. Confirmed empirically: a plain `Category!=Slow` run
+against `Archiver.Core.PerformanceTests` picked up both one-large-file tests (2 tests, ~45s),
+exactly the ones meant to be on-demand-only — the entire point of introducing the `VeryLarge` tier
+would have been silently defeated. Fixed by changing every "default/routine" test command
+documented in the repo from `Category!=Slow` to `Category!=Slow&Category!=VeryLarge`
+(`CLAUDE.md`'s hard-constraint bullet and Build Commands section, `TESTING.md`'s "Running Tests"
+and Manual Smoke Test Cycle, `README.md`, `CONTRIBUTING.md`) — re-verified afterward that the
+corrected filter yields exactly 433 tests solution-wide (43+55+280+55), matching the last
+known-good count from before this session's changes, with `Archiver.Core.PerformanceTests`
+correctly contributing zero tests to that default run. Historical dated entries elsewhere in this
+file that quote the old bare `Category!=Slow` command (describing verification runs that predate
+the `VeryLarge` tier) were left as accurate records of what was run at the time, not rewritten.
+
+**Doc cascade for this follow-up:** `TESTING.md` (three-tier "Running Tests" explanation, updated
+Performance-Tests section, new Manual Smoke Test Cycle step 7), `CLAUDE.md` (Current State bullets,
+Build Commands, the hard-constraint bullet on required test filters, a new Deployment-section note
+confirming `Deploy.ps1` never touches `tests/`), `SECURITY.md` (new "Vendored 7-Zip: Test-Only,
+Sandboxed, Never Shipped" section under the tar.exe Trust Model, explaining both why it's test-only
+and why it's sandboxed the way it is), `TASKS.md` (T-F114's acceptance criteria updated in place
+with dated addenda, not rewritten).

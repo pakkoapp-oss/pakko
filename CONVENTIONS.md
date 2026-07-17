@@ -277,3 +277,11 @@ downstream service calls. Do not add path content checks to `ShellArgumentParser
 |---------|---------|---------|
 | `CommunityToolkit.Mvvm` | `Archiver.App` only | `ObservableObject`, `RelayCommand` |
 | None | `Archiver.Core` | Pure .NET, no NuGet dependencies |
+
+**Vendored native binaries (test-only, not a package reference) — `Archiver.Core.PerformanceTests`
+only:** `tests/Archiver.Core.PerformanceTests/Tools/7-Zip/{x64,arm64}/7za.exe` (T-F114) is a
+pinned, hash-verified, LGPL-attributed reference binary used purely to time-compare against
+Pakko's own ZIP path in performance-regression tests. This is **not** a violation of
+`CLAUDE.md`'s "No 7-Zip"/"zero third-party dependencies" hard constraint — that constraint governs
+the *shipped product* (`Archiver.Core`/`Archiver.App`/`Archiver.Shell`) only. If you see a 7-Zip
+binary checked into this repo and wonder why, this is why — see that folder's `NOTICE.md`.

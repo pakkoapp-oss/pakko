@@ -162,6 +162,11 @@ Pakko propagates MOTW on all extracted files by default:
 
 Implementation: `FileStream` with ADS path `"extractedfile.txt:Zone.Identifier"`, no P/Invoke required.
 
+**For system administrators:** the planned v1.4 Group Policy surface (`EnforceMOTW`,
+`AllowedFormats`/`BlockedFormats`, `DisableTarExtraction` under `HKLM\Software\Policies\Pakko\`) is
+documented in full, with deployment instructions, in [`POLICIES.md`](POLICIES.md) — not yet
+implemented (tracked as `T-F51`), see that file's status banner.
+
 ---
 
 ## Archive Browser Preview — Safe-Type Allowlist (T-F97)
@@ -312,6 +317,36 @@ Always invoked as `C:\Windows\System32\tar.exe` — never as `tar` via PATH sear
 - EXE hijacking via PATH manipulation
 - DLL side-loading from working directory
 - User-placed `tar.exe` taking precedence over system binary
+
+---
+
+## Vendored 7-Zip: Test-Only, Sandboxed, Never Shipped (T-F114)
+
+`tests/Archiver.Core.PerformanceTests/Tools/7-Zip/{x64,arm64}/7za.exe` is a pinned,
+hash-verified, LGPL-attributed copy of 7-Zip's standalone console binary, used purely as a
+speed-comparison reference in automated performance-regression tests (T-F114). It exists **only**
+in the test tree and is **never** referenced by, built into, or shipped inside
+`Archiver.Core`/`Archiver.App`/`Archiver.Shell` or the MSIX package — this is not an exception to
+this project's "no 7-Zip, no WinRAR, no third-party compression code" rule (see `SPEC.md`'s
+Security Rationale), it is entirely outside the shipped product's dependency surface. See
+`tests/Archiver.Core.PerformanceTests/Tools/7-Zip/NOTICE.md` for provenance (exact version,
+source URL, SHA-256, vendoring date) and `CONVENTIONS.md` for the packages-allowed note.
+
+**Why it's sandboxed anyway, even though it's test-only:** the binary is hash-verified at
+vendoring time, but a third-party executable checked into the repo is still worth containing on
+the assumption that a hash check only proves the file matches what was downloaded, not that it's
+safe to run unconditionally forever. Every `7za.exe` launch (`SevenZipRunner.cs`) runs under a
+Job Object (`SandboxJobObject`, reused directly from the tar.exe sandbox subsystem below —
+`ActiveProcessLimit = 1` so it cannot spawn further processes, plus RAM/CPU caps) via the same
+`SandboxedProcessLauncher` tar.exe uses. This deliberately stops short of tar.exe's full
+AppContainer + ACL'd-quarantine treatment: that layer exists to contain a hostile *archive*
+feeding an untrusted-input parser (see "Why Sandbox tar.exe at All" above) — `7za.exe`'s input
+here is Pakko's own freshly-generated fixture data, not attacker-controlled, so that specific
+threat doesn't apply, and adding AppContainer's staging/ACL overhead would risk biasing the very
+timing the tests exist to measure. The Job Object alone still meaningfully bounds the damage a
+compromised copy of the binary itself could do (no process spawning, capped resource use)
+without touching filesystem access or measured performance. See `DECISIONS.md`'s T-F114 entry for
+the full design rationale.
 
 ---
 

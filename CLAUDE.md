@@ -254,6 +254,32 @@ failure — so a blocked/misconfigured sandbox would have crashed instead of yie
   would exceed T-F98's depth limit, in which case it shows `Hide`
   (`ArchiveEntryViewModel.NestedDepthLimitReached`). All four verified on-device, both via a real
   automated Windows MCP pass and the user's own personal click-through.
+- **T-F114 (`[x]` done 2026-07-17)** — ZIP-only compression/extraction performance-regression
+  tests comparing Pakko's own `ZipArchiveService` against a vendored, pinned, hash-verified
+  `7za.exe` reference (`tests/Archiver.Core.PerformanceTests/Tools/7-Zip/`, LGPL-attributed,
+  test-only — never shipped in the MSIX). Designed via a design-advisor session plus real
+  engineering-practice research (BenchmarkDotNet/criterion.rs/benchstat all converge on
+  same-machine, same-invocation ratio comparison as the only pattern that generalizes across
+  arbitrary machines — no cross-machine cached-baseline mechanism exists in any of them, so that
+  approach — floated during scoping — was explicitly dropped). Each of the 6 scenarios (archive +
+  extract × one-large-file ~300 MB / 5,000-small-files / hybrid) runs one discarded warmup pass
+  then one timed pass per engine and asserts the elapsed-time ratio against a per-scenario
+  calibrated constant (observed 2026-07-17: 1.06–6.02 depending on scenario — the many-small-files
+  case is highest since 7za's absolute time there is dominated by near-instant process-spawn
+  overhead, not real compression work) with a 3x tolerance multiplier for cross-machine headroom.
+  tar-family formats are explicitly out of scope — `TarSandboxedService`'s AppContainer/Job-Object
+  overhead would make a shared tolerance band meaningless. The many-small-files/hybrid scenarios
+  (4 tests) are tagged `[Trait("Category","Slow")]`, run via `dotnet test --filter "Category=Slow"`
+  alongside T-F20's Zip64 tests; the one-large-file scenarios (2 tests, ~300 MB) are tagged
+  `[Trait("Category","VeryLarge")]` instead — on demand only via `Category=VeryLarge`, per user
+  request, alongside Zip64's own >4 GiB test (also moved to `VeryLarge`, see below). Every
+  `7za.exe` launch runs under a basic sandbox reused from tar.exe's own subsystem (`SandboxJobObject`
+  via `SandboxedProcessLauncher` — Job Object only, no AppContainer/quarantine, so raw I/O
+  performance is unaffected) — mitigates the vendored-binary-compromised risk without biasing the
+  timing being measured; see `SECURITY.md`. A perf-test failure should be rerun once before being
+  treated as a real regression (unlike Zip64's tests, it carries a nonzero chance of being machine
+  noise). See `TESTING.md`'s new section and `DECISIONS.md`'s T-F114 entry for the full
+  research/rationale.
 - 414/414 .NET tests pass (`dotnet test --filter "Category!=Slow"`: 269 Archiver.Core.Tests +
   43 Archiver.Shell.Tests + 47 Archiver.Core.IntegrationTests + 55 Archiver.App.Core.Tests — the
   jump from 284 to 309 reflects T-F105 Phase A's new `TarSandboxedServiceCompressTests` (real
@@ -264,14 +290,21 @@ failure — so a blocked/misconfigured sandbox would have crashed instead of yie
   `ArchiveFormatDetectorTests`/`NestedArchivePolicyTests`/`NestedArchiveCacheTests`/
   `NestedArchiveDrillDownSecurityTests`; 387 to 402 reflects T-F109's widened
   `PreviewPolicyTests`; 402 to 414 reflects T-F110's `ArchiveEntryViewModelTests.Icon*` cases).
-  4 Zip64 tests (T-F20) are tagged
-  `[Trait("Category", "Slow")]` and
-  excluded from this default run — they cost real wall-clock time (>65535-file
-  archiving/extraction, a >4 GiB round trip) that isn't worth paying on every change; run them
-  explicitly with `dotnet test --filter "Category=Slow"` before a release or when touching
-  Zip64-adjacent code. C++ `Archiver.ShellExtension.Tests` (Google Test, 68/68 — was 59, +9 from
-  T-F105 Phase C's `BuildArchiveArgs`/`BuildAddToArchiveTitle` `.tar` cases) run separately,
-  not covered by `dotnet test`
+  4 Zip64 tests (T-F20) are split across two tiers — 3 are tagged
+  `[Trait("Category", "Slow")]` (excluded from this default run, real wall-clock cost from
+  >65535-file archiving/extraction/listing; run via `dotnet test --filter "Category=Slow"` before
+  a release or when touching Zip64-adjacent code), and 1 (the >4 GiB round trip) is tagged
+  `[Trait("Category", "VeryLarge")]` instead — on demand only, via
+  `dotnet test --filter "Category=VeryLarge"` (2026-07-17: gated separately from `Slow` per user
+  request, so a routine pre-release `Slow` run never pays its cost unless deliberately asked to).
+  **T-F114 (2026-07-17)** added a second project, `Archiver.Core.PerformanceTests` (6 tests:
+  archive+extract × one-large-file/many-small-files/hybrid, each comparing Pakko's ZIP path
+  against a sandboxed, vendored `7za.exe` reference on a same-run ratio basis — see
+  `TESTING.md`/`DECISIONS.md`/`SECURITY.md`) — the many-small-files/hybrid tests (4) are tagged
+  `Slow`, the one-large-file tests (2) are tagged `VeryLarge`, same on-demand-only split as Zip64's.
+  C++ `Archiver.ShellExtension.Tests` (Google Test,
+  68/68 — was 59, +9 from T-F105 Phase C's `BuildArchiveArgs`/`BuildAddToArchiveTitle` `.tar`
+  cases) run separately, not covered by `dotnet test`
 - MSIX signed with dev cert via Deploy.ps1 (see T-F10 for production-grade cert)
 - Async streaming (CopyToAsync) — CancellationToken respected mid-file
 - Temp file/dir pattern — no partial files on cancel or failure
@@ -412,11 +445,18 @@ references are easy to miss otherwise (this session found 5 lingering mentions o
 - **Solution platforms:** x64 and ARM64 only — never add `Any CPU` or `x86` configuration entries
   to the `.sln` file. When adding a new project, mirror the `Debug|x64` / `Release|x64` entries
   from `Archiver.Shell` exactly (two lines per config, right-hand side maps to project's `Any CPU`).
-- When adding or modifying tests, always run `dotnet test --filter "Category!=Slow"` with no path
-  argument — never scope to a single test project. All projects must stay green after every
-  change. The `Category!=Slow` filter excludes T-F20's Zip64 tests (real multi-second/multi-GB
-  cost); run `dotnet test --filter "Category=Slow"` too before a release or when the change
-  touches Zip64-adjacent code (entry counts, large files, Zip64 boundary conditions).
+- When adding or modifying tests, always run `dotnet test --filter "Category!=Slow&Category!=VeryLarge"`
+  with no path argument — never scope to a single test project. **Plain `Category!=Slow` alone is
+  not sufficient** — a test tagged only `VeryLarge` (not `Slow`) is not excluded by `!=Slow`, so it
+  would run automatically, defeating the entire point of the `VeryLarge` tier (confirmed empirically
+  2026-07-17: `Category!=Slow` alone picked up T-F114's two one-large-file tests). All projects must
+  stay green after every change. This combined filter excludes T-F20's Zip64 Slow tests and T-F114's
+  Slow-tagged performance tests (real multi-second cost); run `dotnet test --filter "Category=Slow"`
+  too before a release or when the change touches Zip64-adjacent code (entry counts, large files,
+  Zip64 boundary conditions) or compression/extraction performance. `dotnet test --filter
+  "Category=VeryLarge"` (the >4 GiB Zip64 test, T-F114's one-large-file scenarios) is on-demand
+  only — never run automatically as part of either of the above, only when deliberately verifying
+  that specific path.
 - If a change modifies a public interface, model, or contract in `Archiver.Core`, check whether
   tests in other projects (`Archiver.Shell.Tests`, future `Archiver.CLI.Tests`) need to be updated
   or extended. Internal implementation changes (private methods, buffers, sorting) require only
@@ -559,6 +599,8 @@ windows-archiver-wrapper/
 │   ├── Archiver.Core.Tests/        ← xunit (see "Current State" for current count)
 │   ├── Archiver.App.Core.Tests/    ← xunit, ArchiveTreeIndex coverage (T-F05)
 │   ├── Archiver.Core.IntegrationTests/ ← xunit, real tar.exe via [Integration]/TarBuilder
+│   ├── Archiver.Core.PerformanceTests/ ← xunit, T-F114: ZIP perf vs. vendored 7za.exe reference,
+│   │                                     [Trait("Category","Slow")], see TESTING.md
 │   ├── Archiver.Shell.Tests/       ← xunit (see "Current State" for current count)
 │   ├── Archiver.ShellExtension.Tests/  ← C++ Google Test, run separately (see Build Commands)
 │   └── Archiver.Core.Tests.GenerateFixtures/  ← fixture generator
@@ -577,8 +619,13 @@ windows-archiver-wrapper/
 
 ```bash
 # Run tests (always works from CLI)
-dotnet test --filter "Category!=Slow"   # runs all test projects, skips T-F20's Zip64 Slow tests
-dotnet test --filter "Category=Slow"    # Zip64 tests only — real multi-second/multi-GB cost
+dotnet test --filter "Category!=Slow&Category!=VeryLarge"  # the actual default — plain
+                                            # "Category!=Slow" alone does NOT exclude VeryLarge
+                                            # tests, since they aren't tagged Slow (confirmed
+                                            # 2026-07-17; see the hard-constraint note above)
+dotnet test --filter "Category=Slow"    # Zip64 + T-F114 perf tests — real multi-second cost
+dotnet test --filter "Category=VeryLarge"  # >4 GiB Zip64 test + T-F114's one-large-file scenarios
+                                            # — on demand only, never run automatically
 
 # Build core only
 dotnet build src/Archiver.Core
@@ -855,6 +902,10 @@ Two more, not duplicated elsewhere:
   ```powershell
   .\scripts\Deploy.ps1 -Thumbprint "D2EC5F2C451ED0EBE94B8168A68E5B813954CC75"
   ```
+- **The vendored `7za.exe` test dependency (T-F114, `tests/Archiver.Core.PerformanceTests/Tools/7-Zip/`)
+  never enters this pipeline.** `Deploy.ps1` only publishes `src/Archiver.App`; nothing under
+  `tests/` is packaged, signed, or installed. See `SECURITY.md`'s "Vendored 7-Zip" section if this
+  ever needs re-confirming.
 
 ---
 

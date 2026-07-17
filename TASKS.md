@@ -1140,27 +1140,162 @@ branch couldn't be exercised end-to-end this time.
 ## v1.4 — GPO + Low IL Sandbox
 
 ### T-F51 — Group Policy Support
-- [ ] **Status:** future (v1.4)
+- [ ] **Status:** planned, not implemented — full design done 2026-07-17 via Plan Mode + a
+      design-advisor (Plan agent) session. Scope was deliberately **expanded beyond this task's
+      original 4-key text below** after the advisor fetched and verified the real
+      [`NanaZip/Documents/Policies.md`](https://raw.githubusercontent.com/M2Team/NanaZip/main/Documents/Policies.md)
+      (via WebFetch, not from memory/description — per `CLAUDE.md`'s pre-implementation-research
+      norm) and found the directly-comparable competitor already ships a richer version of the
+      same idea: `AllowedHandlers`+`BlockedHandlers` (blocklist takes precedence) and a 3-state
+      `WriteZoneIdExtract` (0/1/2) for MOTW. User chose to match that richer shape rather than
+      keep the original binary-only 4 keys. **`StrictZipBombMode` was then dropped entirely
+      (2026-07-17, user decision)** — it was already flagged by the advisor as the weakest-grounded
+      of the five keys (no desktop archiver exposes a configurable compression-ratio threshold as
+      a GPO value), and the user chose not to carry that complexity forward. **Final key count is
+      4**, not 5. `POLICIES.md` (new, repo root) now documents this table for sysadmins, with a
+      pointer from `SECURITY.md`. See "Expanded design" below for the full remaining plan; nothing
+      has been coded yet — resume from here.
 
-**What:** Registry-based Group Policy support for enterprise deployment. `PolicyService` reads at startup, overrides user settings. ADMX/ADML template provided.
+**Real-world grounding (advisor research, not invented scope):** checked what sysadmins/competitor
+products actually ship before finalizing keys.
+- `HKLM\Software\Policies\<Vendor>\` is the standard, precedented convention — 7-Zip has no native
+  GPO support at all (years-long sysadmin complaint on SourceForge); WinRAR has no official ADMX
+  either (third parties like PolicyPak fill the gap). Pakko shipping this natively is a real
+  differentiator.
+- `AllowedFormats`/`BlockedFormats` — **strongly grounded**: NanaZip ships exactly this
+  (`AllowedHandlers`/`BlockedHandlers`, `REG_MULTI_SZ`, blocklist takes precedence). Keep as
+  specified, now as a matched pair.
+- `EnforceMOTW` — NanaZip's real `WriteZoneIdExtract` is a 3-state DWORD (0=no, 1=all files,
+  2=unsafe-extensions-only), not a binary force-on. Matched to that shape (see below) — the
+  original binary criterion was under-scoped relative to the shipping competitor feature it's
+  modeled on.
+- `DisableTarExtraction` — **no direct precedent** in 7-Zip/WinRAR/NanaZip (NanaZip achieves the
+  equivalent generically via `BlockedHandlers` listing "tar"). Kept anyway, as its own key: it's
+  architecturally motivated by Pakko's own tar.exe-via-AppContainer-sandbox design (T-F52) — a
+  "don't spawn tar.exe at all" kill switch is a real, distinct lever (reduces process-spawn/
+  sandbox-escape surface, not just format surface) that a NanaZip-style in-process libarchive
+  binding doesn't need. Overlaps conceptually with excluding all non-Zip formats via
+  `BlockedFormats` — document why both exist, don't merge them.
+- `StrictZipBombMode` — was the **weakest-grounded of the original five**: no desktop archiver
+  (7-Zip/WinRAR/NanaZip) exposes a configurable compression-ratio threshold as a GPO/registry
+  value; the general zip-bomb threat is well documented, but an admin-configurable ratio looked
+  like a security-team wishlist item, not a documented sysadmin ask. **Dropped from scope
+  entirely** (user decision, 2026-07-17) rather than implemented — not worth the added
+  `EvaluateCompressionBombAsync` signature complexity for a key with no real precedent. The
+  existing hardcoded `ArchiveEntrySecurity.MaxCompressionRatio = 1000` constant is untouched.
 
-**Registry path:** `HKLM\Software\Policies\Pakko\`
+**Naming:** the new class is `GroupPolicyService`/`GroupPolicyOptions`, **not**
+`PolicyService`/`PolicyOptions` — `Archiver.Core` already has `PreviewPolicy.cs`/
+`NestedArchivePolicy.cs`, business-rule classes unrelated to Windows Group Policy; a same-named
+class next to those would read as ambiguous.
 
-**Keys:**
-| Key | Type | Effect |
-|-----|------|--------|
-| `EnforceMOTW` | DWORD | Force MOTW propagation (cannot be disabled by user) |
-| `AllowedFormats` | multi-string | Whitelist of allowed archive formats |
-| `StrictZipBombMode` | DWORD | Lower compression ratio threshold |
-| `DisableTarExtraction` | DWORD | Block all tar.exe extraction |
+**Registry path:** `HKLM\Software\Policies\Pakko\` (confirmed: zero existing registry-reading code
+anywhere in this repo today, including the C++ shell extension — this is genuinely new ground).
 
-**Acceptance criteria:**
-- [ ] `PolicyService` reads all four keys at startup
-- [ ] Policies override corresponding user settings
-- [ ] `EnforceMOTW=1` forces MOTW on even if user would disable
-- [ ] `DisableTarExtraction=1` hides tar format options in UI
-- [ ] ADMX/ADML template file added to repo (`deploy/Pakko.admx`, `deploy/Pakko.adml`)
-- [ ] `dotnet test` passes — unit tests with mocked registry
+**Expanded design — keys (final, 4 keys — full sysadmin-facing detail now lives in
+[`POLICIES.md`](POLICIES.md), this table is the implementation-facing summary):**
+| Key | Type | Values | Effect |
+|-----|------|--------|--------|
+| `EnforceMOTW` | DWORD | 0=disabled, 1=all files (default when key absent — today's shipped behavior), 2=unsafe extensions only | controls MOTW propagation mode |
+| `AllowedFormats` | REG_MULTI_SZ | format name list (`zip`,`tar`,`gzip`,`bz2`,`xz`,`zstd`,`lzma`,`rar`,`sevenzip`) | whitelist; absent = no restriction |
+| `BlockedFormats` | REG_MULTI_SZ | same format vocabulary | blocklist; **takes precedence over `AllowedFormats`** (matches NanaZip) |
+| `DisableTarExtraction` | DWORD | 0/1 | 1 = tar.exe never spawned at all (architecture-specific kill switch, see grounding above) |
+
+**Architecture / integration points (file:line references confirmed against real code, not
+guessed):**
+- Lives in `Archiver.Core` (not `Archiver.App`-only) — confirmed `Archiver.Shell/Program.cs` has
+  **no DI container**, constructs services directly (`new ZipArchiveService()` etc.), so both
+  hosts need to call the same plain `GroupPolicyService.Load()`.
+- Testability: minimal `IRegistryReader` seam (`int? GetDword(...)`, `string[]? GetMultiString(...)`)
+  + one untested `Win32RegistryReader` + one hand-rolled `FakeRegistryReader` test fake, same
+  `file sealed class FakeX : IX` pattern as `FakeArchiveService`/`FakeTarService` in
+  `tests/Archiver.Core.Tests/Services/ExtractionRouterTests.cs:9-55` (repo has zero mocking
+  library, hand-rolled fakes only). Keep this abstraction exactly this small.
+- `ArchiveEntrySecurity.TryPropagateMotw` (`src/Archiver.Core/Services/ArchiveEntrySecurity.cs:
+  98-118`) — currently unconditional, zero params, called from `ZipArchiveService.cs:950-951` and
+  `TarSandboxedService.cs:314-318`. Needs a new `MotwMode` param (`AllFiles`/`Disabled`/
+  `UnsafeExtensionsOnly`); `UnsafeExtensionsOnly` checks `destFilePath`'s extension against a list
+  modeled on Windows Attachment Manager/SmartScreen's real known-executable extension set (`.exe
+  .bat .cmd .com .cpl .msi .msp .scr .vbs .vbe .js .jse .ws .wsf .wsc .wsh .ps1 .ps1xml .ps2
+  .ps2xml .psc1 .psc2 .msh .mshxml .scf .lnk .inf .reg .hta`) — a real, precedented list, not
+  invented.
+- `ArchiveEntrySecurity.MaxCompressionRatio` (`ArchiveEntrySecurity.cs:16`) is **out of scope for
+  this task** — `StrictZipBombMode` was dropped, so this constant stays untouched, no injection
+  point needed.
+- `ZipArchiveService`/`TarSandboxedService` are currently parameterless-constructed — add an
+  optional `GroupPolicyOptions? policy = null` ctor param (default = "everything allowed", matches
+  today's behavior, keeps every existing `new XService()` call site compiling).
+- `ExtractionRouter.IsSupported` (`src/Archiver.Core/Services/ExtractionRouter.cs:85-95`) hardcodes
+  `ArchiveFormat.Tar or ArchiveFormat.GZip => true` **bypassing `TarCapabilities` entirely** — a
+  policy guard for `DisableTarExtraction`/`BlockedFormats`/`AllowedFormats` must sit before/outside
+  this switch, not inside it, since those two formats don't go through the `TarCapabilities`
+  branch at all. Add `GroupPolicyOptions` as a new ctor param.
+- `ArchiveCreationRouter` (`src/Archiver.Core/Services/ArchiveCreationRouter.cs`) has **zero**
+  capability/whitelist check today — the policy guard here is wholly new code, not a modification.
+  Must return an `ArchiveResult` error/skip, never throw (matches `IArchiveService`'s contract).
+- Need one shared `ArchiveFormat`/`ArchiveContainerFormat` ↔ registry-string mapping function — the
+  two enums don't line up 1:1 (e.g. creating `TarGz` is later *detected* as `ArchiveFormat.GZip`),
+  so `AllowedFormats`/`BlockedFormats` need one consistent mapping used by both routers, decided
+  once, not improvised per call site.
+- UI: `MainWindow.xaml:446-456` — 7 `ComboBoxItem`s are **static hardcoded XAML, not
+  `ItemsSource`-bound**; `MainViewModel.cs:249-273`'s `FormatIndex` is a hand-written index↔enum
+  switch. Plan: add one shared `Visibility="{x:Bind ViewModel.TarFormatVisibility}"` binding across
+  the 6 tar `ComboBoxItem`s (Collapsed items reportedly keep their slot in the `Items` index
+  sequence, so `FormatIndex`'s switch keeps working unchanged — **verify this empirically with one
+  real run before relying on it**, don't trust from memory). `MainViewModel` gains a
+  `GroupPolicyOptions` ctor param (6th, alongside its existing 5 services); force-reset
+  `SelectedContainerFormat` to Zip if the persisted selection is a now-hidden tar variant.
+- DI (`src/Archiver.App/App.xaml.cs:26-48`, full `ConfigureServices()` already documented in
+  `ARCHITECTURE.md`): `services.AddSingleton(GroupPolicyService.Load());` — eager, not the lazy
+  factory + forced-resolve dance `TarCapabilities` needs, since a registry read is cheap/
+  synchronous. Thread into the 5 consumers above.
+- `Archiver.Shell/Program.cs`: no container — call `GroupPolicyService.Load()` once near the top of
+  `Main`, thread into all 4 inline service-construction call sites (`BuildExtractionRouterAsync`
+  ~line 125, `RunArchiveAsync` ~line 170, plus 2 other command handlers).
+- `deploy/Pakko.admx` + `deploy/Pakko.adml` + `deploy/README.md` (new folder, nothing to extend) —
+  standard ADMX/ADML XML, one category, 5 policy elements, `multiText` elements for
+  `AllowedFormats`/`BlockedFormats`. README covers copying into `%SystemRoot%\PolicyDefinitions` or
+  a Central Store (a real, non-obvious step admins need told).
+
+**Ordered implementation steps (small, individually testable, per T-F52's phased-build precedent):**
+1. Shared `ArchiveFormat`/`ArchiveContainerFormat` ↔ string mapping helper.
+2. `GroupPolicyOptions` record + `IRegistryReader`/`Win32RegistryReader`/`FakeRegistryReader` +
+   `GroupPolicyService.Load()` + `GroupPolicyServiceTests` (absent/present/malformed cases,
+   DWORD=0 vs. absent distinguished explicitly). No consumer wiring yet.
+3. `ArchiveEntrySecurity.TryPropagateMotw(archivePath, destFilePath, MotwMode)` + unsafe-extension
+   list; `ZipArchiveService`/`TarSandboxedService` get the optional `GroupPolicyOptions?` ctor
+   param.
+4. `ExtractionRouter.IsSupported` guard + ctor param + tests using literal `GroupPolicyOptions`
+   records (no registry fake needed here, same as existing `TarCapabilities` tests).
+5. `ArchiveCreationRouter` guard (new code) + tests.
+6. `App.xaml.cs` DI wiring.
+7. `Archiver.Shell/Program.cs` — 4 call sites updated.
+8. `MainViewModel` + `MainWindow.xaml` (`TarFormatVisibility`, forced format reset) — with the
+   Collapsed-index empirical check.
+9. `deploy/Pakko.admx` + `deploy/Pakko.adml` + `deploy/README.md`.
+10. Cascade doc updates: `ARCHITECTURE.md` (new models/interfaces/DI), `SPEC.md` (GPO table —
+    add `BlockedFormats`, make `EnforceMOTW` 3-state, drop `StrictZipBombMode`), `DECISIONS.md`
+    (naming rationale, real-world grounding summary, why `DisableTarExtraction` stays separate
+    from `BlockedFormats`, why `StrictZipBombMode` was dropped rather than implemented). Also
+    confirm `POLICIES.md` (already added, see below) still matches the shipped behavior once coded.
+11. `dotnet test --filter "Category!=Slow"`, no path argument, all projects green.
+
+**Acceptance criteria (updated for final 4-key scope):**
+- [ ] `GroupPolicyService` reads all four keys at startup, never throws on absent/malformed values
+- [ ] Policies override corresponding user settings; `BlockedFormats` takes precedence over
+      `AllowedFormats`
+- [ ] `EnforceMOTW=2` propagates MOTW only to files matching the unsafe-extension list;
+      `EnforceMOTW=0` disables propagation entirely; absent key preserves today's always-on default
+- [ ] `DisableTarExtraction=1` hides tar format options in the UI and blocks tar.exe extraction
+      end-to-end (context menu + in-app)
+- [ ] ADMX/ADML template files added to repo (`deploy/Pakko.admx`, `deploy/Pakko.adml`,
+      `deploy/README.md`), importable via `gpedit.msc` with no XML parse errors
+- [ ] `dotnet test --filter "Category!=Slow"` passes (no path arg, all projects) — unit tests with
+      a hand-rolled `FakeRegistryReader`, no mocking library
+- [ ] Manual on-device verification: real registry values set under
+      `HKLM\Software\Policies\Pakko\`, installed app relaunched, each of the 4 keys' effects
+      confirmed for real (tar hidden/blocked, format block/allow, MOTW mode difference on a real
+      `.exe`-vs-`.txt` extraction)
 
 ---
 
@@ -1213,6 +1348,229 @@ mechanically so none get silently skipped, not producing complete tests unattend
 
 Needs a decision on the above before implementation. Candidate first target if scoped: Diagram 6's
 `InsideArchive` self-loop transitions added this session (T-F98's nested-archive drill-down).
+
+---
+
+### T-F114 — Performance/Regression Tests vs. a 7-Zip Reference (ZIP only)
+- [~] **Status:** implemented and passing 2026-07-17 — all 9 implementation steps done (7za.exe
+      vendored, project scaffolded, fixtures/runner built, all 6 scenarios implemented and
+      calibrated against real observed ratios, doc cascade complete). Stays `[~]` rather than `[x]`
+      for one reason only: the design's own verification criterion ("run on a second,
+      differently-specced machine if available, to confirm the ratio actually travels across
+      machines") could not be exercised this session — no second machine was available. Everything
+      else is done; see `DECISIONS.md`'s T-F114 entry for the observed baseline ratios and full
+      rationale.
+
+**What:** automated tests that compress/extract fixture data with Pakko's own ZIP path
+(`System.IO.Compression`) and, in the same test invocation on the same machine, run `7za.exe`
+against the identical fixture — then assert on the **ratio** between the two elapsed times. Goal:
+catch a code change that silently makes compression/extraction meaningfully slower (the project's
+actual regression history — accidental sync-over-async, wrong buffer sizes — has been gross, not
+subtle), without a flaky absolute-time threshold that breaks the moment the test runs on a
+different machine.
+
+**Real-world grounding (research done before designing, not invented scope):**
+- Checked whether end users/sysadmins actually track version-over-version archiver speed
+  regressions as a demand signal: **thin evidence.** The genre that exists is cross-tool
+  comparison ("which archiver is fastest" — 7-Zip's own `7z b` benchmark subcommand, various
+  zstd-vs-7z-vs-zip speed/ratio comparison articles), not "this specific tool got slower in its
+  last release." Conclusion: this is a sound *internal engineering discipline* to self-impose, not
+  something externally demanded — not framed as a user-requested feature.
+- Checked how BenchmarkDotNet (.NET's own microbenchmarking library), Rust's `criterion.rs`, and
+  Go's `benchstat` solve "compare speed fairly across unknown machines." **None of the three
+  attempt true cross-machine baseline portability.** BenchmarkDotNet's `[Benchmark(Baseline =
+  true)]` reports every other result as a ratio computed *within the same run on the same
+  machine*. `criterion.rs`/`benchstat` compare against a *stored baseline from a prior run on the
+  same machine* (not cross-machine). **The only mechanism that generalizes to an arbitrary,
+  never-before-seen machine is running the reference and the subject side-by-side, right now, in
+  the same invocation, and taking the ratio** — this directly resolves the "what do we compare
+  against, given all machines are different speeds" question raised when scoping this task.
+- The user's own tentative idea — cache a result in a temp file and compare against it going
+  forward — was explicitly considered and **dropped**: that pattern's one legitimate use (per
+  `criterion.rs`) is catching drift on the *same machine over time* (e.g. a persistent CI runner),
+  and this repo has no CI today (confirmed — manual, occasionally-different-machine, pre-release
+  testing cadence per `TESTING.md`). Building that infrastructure now would be speculative; revisit
+  only if Pakko ever gets a persistent CI runner.
+- 7-Zip's core code is LGPL v2.1+; bundling a portable `7za.exe` for test-only use requires
+  attribution (state 7-Zip is used, state LGPL, link to 7-zip.org, include license text) — real,
+  small, non-blocking.
+- Known pitfalls confirmed from the same research: JIT/cold-start skew (needs one discarded
+  warmup pass per engine before timing); process-spawn overhead for the `7za.exe` subprocess
+  (fixed per-invocation cost, negligible for large files, noisiest for the many-small-files
+  shape — argues for real tolerance headroom, not for dropping that shape); Windows Defender/AV
+  interference is real but largely self-cancelling within one ratio (both engines get scanned in
+  the same run) — documented as a known flakiness source, not coded around.
+
+**Decisions (confirmed with user, not left as advisor-only recommendations):**
+- **Bundle `7za.exe`** (portable, console-only, LGPL) directly in the new test project — pinned
+  exact version, SHA-256 verified against the official 7-zip.org release, committed alongside a
+  `LICENSE-7-Zip.txt` and a `NOTICE.md` (version/source URL/hash/vendored date). Rejected
+  "require a system-installed 7-Zip, skip if absent": `CLAUDE.md`'s own hard constraint is
+  "No 7-Zip" for the *shipped product* — the population of machines that build/test Pakko is
+  disproportionately likely to not have 7-Zip installed, so "skip if absent" would silently turn
+  the gate into decoration on most contributor machines. Explicitly document (code comment near
+  the runner + `DECISIONS.md`) that this is a test-only, dev-time dependency, never shipped in the
+  MSIX — distinct from the "zero third-party dependencies" rule, which governs `Archiver.Core`'s
+  shipped surface only. Absolute-path-only to the bundled binary, mirroring `tar.exe`'s existing
+  "never via PATH" convention. Still add a thin `File.Exists` presence guard as defense-in-depth
+  (someone deleted the file / `.gitignore` mistake) — documented as an edge case, not the routine
+  path `IntegrationAttribute` represents for tar.exe.
+- **Drop the cache-in-a-temp-file/persistent-baseline idea entirely** — not built, not stubbed.
+  Revisit only if a persistent CI runner is ever added.
+- **ZIP only for this task** (`System.IO.Compression` vs. `7za.exe -tzip`), both archive creation
+  and extraction. Explicitly **excludes tar-family** — `TarSandboxedService` routes through
+  AppContainer/ACL/Job-Object sandbox machinery (T-F52), a deliberate, accepted security cost; a
+  shared tolerance band against unsandboxed `7za.exe` would almost certainly "fail" on sandbox
+  setup overhead alone, not a real regression. A future tar-family perf task would need its own
+  separate calibration accounting for sandbox overhead as a known constant — not bolted onto this
+  one.
+
+**Core comparison mechanism:**
+- Per (fixture shape × operation): one discarded warmup pass + one timed pass, for both Pakko and
+  `7za.exe`, on the identical fixture, in the same test method. Assert
+  `r = pakkoElapsed / referenceElapsed <= calibratedBaselineRatio * toleranceMultiplier` — 6
+  hardcoded constants total (3 shapes × archive/extract), each derived by running the suite
+  locally a few times first and observing real ratios, then picking a multiplier with generous
+  headroom (starting point ~2–3x) to absorb machine-to-machine noise. Document the observed
+  baseline numbers and chosen multiplier's rationale in `DECISIONS.md` — no bare unexplained magic
+  constants.
+- Also assert basic sanity (operation succeeded, output entry count/size matches expectation,
+  elapsed > 0) alongside the ratio — cheap insurance against a broken timer or short-circuited
+  operation silently "passing" on garbage data.
+- No repeated-iteration statistics (medians/confidence intervals, criterion/benchstat-style) — a
+  single timed run per engine after one warmup is proportionate for a coarse "catch a gross
+  slowdown" gate; this repo has no CI to make repeated-run statistics meaningful anyway. Realistic
+  sensitivity: catches a ~2x+ slowdown, not a 5–10% regression — matches the actual ask.
+- Known residual risk to document, not solve: the ratio assumption holds well for raw clock-speed
+  differences between machines, only approximately for *core-count* differences, since `7za.exe`
+  is multi-threaded and Pakko's `System.IO.Compression` path is single-threaded — another reason
+  the tolerance band needs real headroom rather than a tight one.
+
+**Fixture shapes (generated at test-run time into a `TempDirectory`, matching
+`ZipArchiveServiceZip64Tests`' precedent — never committed to git, distinct from
+`GenerateFixtures`' small committed correctness fixtures; state this distinction explicitly in
+`TESTING.md` so the two mechanisms aren't conflated):**
+- **Many small files:** 5,000 files, 1–10 KB each (~25–30 MB total) — deliberately not Zip64's
+  65,600 (that count targets the 16-bit entry-count boundary, not perf; at that scale fixture
+  creation itself would dominate the perf test's own wall-clock). Kept despite being the noisiest
+  shape (process-spawn overhead) because it exercises a genuinely distinct code path (per-entry
+  overhead across many small Deflate streams) and was explicitly requested.
+- **One large file:** ~300 MB of semi-compressible generated content (a repeating pseudo-text
+  pattern — not all-zeros, not pure random noise; either extreme misrepresents realistic
+  throughput/ratio behavior), streamed to disk.
+- **Hybrid:** ~500 small files (1–50 KB) + 3–5 medium files (5–20 MB), total ~50–80 MB —
+  resembles a realistic project-folder archive, kept smaller than the large-file fixture so its
+  cost stays proportionate.
+- All three hardcoded as `const` fixture parameters directly in the test class, matching
+  `ZipArchiveServiceZip64Tests`' `const int fileCount = 65_600` style — no configurable sizing
+  system.
+
+**Test project placement:** new dedicated project, `Archiver.Core.PerformanceTests` — not folded
+into `Archiver.Core.IntegrationTests`, even though that project already spawns real external
+processes (the closest existing precedent). `IntegrationTests` has a settled identity as
+"deterministic correctness/security proofs against real OS/tar.exe behavior"; mixing in a timing
+assertion with inherent (if small) flake risk blurs that meaning and risks a real regression being
+dismissed as "oh, that's the flaky suite." A dedicated project also cleanly owns the bundled
+`7za.exe` + its license file rather than attaching an unrelated binary to the sandbox/tar.exe test
+project. Every test tagged `[Trait("Category","Slow")]` — picked up automatically by the existing
+`dotnet test --filter "Category!=Slow"`/`"Category=Slow"` convention, no new filtering mechanism.
+Add to the `.sln` with `Debug|x64`/`Release|x64`-only config entries per `CLAUDE.md`'s hard
+constraint (never `Any CPU`/`x86`).
+
+**Category/tagging and failure-handling note (differs from Zip64's Slow tests, document
+distinctly in `TESTING.md`):** a Zip64 test failure is always a real bug (deterministic, no
+timing) — "just rerun it" is never right there. A perf-test failure carries a nonzero chance of
+being a one-off machine hiccup (background scan, thermal throttling, a stray process). Document:
+rerun once before treating a perf-test failure as a real regression; a *repeatable* failure across
+reruns is the real signal. This repo has no CI — this suite is a manual pre-release gate, same
+cadence as the existing Zip64 Slow tests (`TESTING.md`'s Manual Smoke Test Cycle step 6).
+
+**Ordered implementation steps:**
+1. Pin an exact 7-Zip release, verify `7za.exe`'s SHA-256, commit it + `LICENSE-7-Zip.txt` +
+   `NOTICE.md` (version/URL/hash/date) under `tests/Archiver.Core.PerformanceTests/Tools/7-Zip/`.
+2. Scaffold `Archiver.Core.PerformanceTests` (net8.0, xunit, FluentAssertions — matching every
+   other test project), add to `.sln` with correct x64-only config entries.
+3. Shared fixture-generation helper (in a `TempDirectory`, the three shapes as named
+   methods/constants).
+4. `7za.exe` runner wrapper (absolute path only, `Stopwatch`-timed `Process` invocation for
+   `a -tzip` / `x`) plus the thin presence-check safety net.
+5. Implement **one** scenario end-to-end first (recommend large-file archive) — get the ratio
+   math, warmup handling, and assertion shape right before replicating.
+6. Calibrate: run that one scenario locally several times, record observed `r`, pick and hardcode
+   the tolerance constant with documented rationale.
+7. Replicate across the remaining 5 combinations (2 more shapes × archive+extract, plus extract
+   for the first shape).
+8. Update docs (see below).
+9. Run the full new Slow-tagged suite at least once end-to-end; if a second, differently-specced
+   machine is available, run it there too — the whole premise is that the ratio travels across
+   machines, worth actually checking once rather than just asserting it.
+
+**Overbuilding — explicitly avoid:** no generic pluggable-benchmark-harness abstraction (e.g. an
+`IPerformanceReference` interface anticipating a future WinRAR comparison); no persisted-
+history/trend-tracking mechanism (no CI to make it valuable); no statistical rigor beyond one
+warmup + one timed run per engine; no configurable fixture-size system; no tar-family coverage in
+this task; no auto-download/bootstrap mechanism for the reference binary (commit it like any other
+fixture).
+
+**Doc/cascade touches:**
+- `TESTING.md` — new section (mirroring the Zip64/Integration structure), update "Running
+  Tests"/Manual Smoke Test Cycle step 6, the rerun-once-before-treating-as-regression caveat, and
+  the GenerateFixtures-vs-this-suite distinction.
+- `CLAUDE.md` — add `tests/Archiver.Core.PerformanceTests/` to Repo Layout; a "Current State"
+  entry once implemented; confirm Build Commands' `Category=Slow` line still accurately describes
+  what it covers.
+- `DECISIONS.md` — new T-F114 entry: why same-run ratio over cross-machine cached baseline (citing
+  the BenchmarkDotNet/criterion/benchstat research), why the cache-in-temp-file idea was
+  considered and dropped, why `7za.exe` bundled vs. system-installed (with the LGPL attribution
+  note), why ZIP-only/tar-family excluded, the calibrated tolerance constants and how they were
+  derived, why a dedicated new test project rather than folding into `Archiver.Core.IntegrationTests`.
+- `CONVENTIONS.md` — note that `Archiver.Core.PerformanceTests` bundles a test-only, LGPL-licensed
+  native binary (`7za.exe`), explicitly distinct from the "zero third-party dependencies" rule
+  (shipped product only) — otherwise a future reader hitting `CLAUDE.md`'s "No 7-Zip" hard
+  constraint could reasonably be confused finding a 7-Zip binary checked into the repo.
+- `tests/Archiver.Core.Tests.GenerateFixtures/README.md` — not modified directly, but the
+  distinction from this suite's throwaway perf fixtures should be stated in `TESTING.md`.
+
+**Acceptance criteria:**
+- [x] `7za.exe` (x64 + arm64) + `LICENSE-7-Zip.txt` + `NOTICE.md` committed under
+      `tests/Archiver.Core.PerformanceTests/Tools/7-Zip/`, hash-verified against the official
+      GitHub release digest before extraction
+- [x] `Archiver.Core.PerformanceTests` project scaffolded, added to `.sln` — mirrors every other
+      C# test project's existing Any CPU/x64/x86-all-map-to-Any-CPU config block (not literally
+      "x64-only": that reading of the hard constraint doesn't match how any existing C# project in
+      this `.sln` is actually configured — see `DECISIONS.md`'s T-F114 entry)
+- [x] All 6 scenarios (3 fixture shapes × archive/extract) implemented, each asserting a
+      calibrated ratio + basic operation-sanity checks
+- [x] Tolerance constants calibrated from real local runs, documented with rationale in
+      `DECISIONS.md` (observed ratios 1.06-6.02 depending on scenario, 3x multiplier)
+- [x] **Revised same day, user-directed:** the many-small-files/hybrid scenarios (4 tests) tagged
+      `[Trait("Category","Slow")]` as originally designed; the one-large-file scenarios (2 tests)
+      moved to a new `[Trait("Category","VeryLarge")]` instead — on demand only, never part of the
+      normal `Category=Slow` pre-release run. Zip64's own >4 GiB test
+      (`ArchiveAndExtract_FileOver4Gb_RoundTripsWithoutError`) moved to `VeryLarge` the same way,
+      for consistency (same "genuinely oversized, opt-in only" reasoning). `dotnet test --filter
+      "Category!=Slow"` unaffected (confirmed: 43+55+280+55 still pass); `Category=Slow` now runs 4
+      perf tests + 3 Zip64 tests (was 6+4); `Category=VeryLarge` runs exactly the 3 gated tests (2
+      perf + 1 Zip64), confirmed by name in test output, all passing
+- [x] **7za.exe launches sandboxed, user-directed:** every `7za.exe` invocation now runs under a
+      basic sandbox reusing `SandboxJobObject`/`SandboxedProcessLauncher` from tar.exe's own T-F52
+      subsystem — Job Object only (no child-process creation, 2 GiB RAM / 10 min CPU caps),
+      deliberately **without** the AppContainer/quarantine-staging layer (that layer defends
+      against untrusted *input*, which doesn't apply to Pakko's own generated fixtures — adding it
+      would also risk biasing the very timing being measured via ACL/staging overhead). Mitigates
+      the risk of the vendored binary itself being compromised (bounds worst-case resource use,
+      blocks spawning further processes) without touching filesystem access. Required adding
+      `Archiver.Core.PerformanceTests` to `Archiver.Core.csproj`'s `InternalsVisibleTo` list (same
+      mechanism as the two existing entries) since the Sandbox classes are `internal`. Re-ran all 6
+      scenarios after the switch — ratios unchanged within normal run-to-run variance (e.g.
+      Archive/Hybrid 3.463 vs. the original 3.469-3.519 range), confirming negligible overhead;
+      existing calibrated constants did not need adjusting
+- [~] Full suite run at least once end-to-end (done, multiple times, confirmed stable both before
+      and after the sandboxing change) — a second, differently-specced machine was **not available
+      this session** to confirm the ratio actually travels across machines as designed; this
+      remains the one open item
+- [x] `TESTING.md`, `CLAUDE.md`, `DECISIONS.md`, `CONVENTIONS.md`, `SECURITY.md` updated per the
+      cascade above
 
 ---
 

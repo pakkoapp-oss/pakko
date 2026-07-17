@@ -138,8 +138,12 @@ public sealed class ZipArchiveServiceZip64Tests : IDisposable
         return path;
     }
 
+    // T-F114: this is the one genuinely oversized (>4 GiB) test in this file — kept out of
+    // Category=Slow's default pre-release run and gated behind its own explicit category so it's
+    // only ever run on demand, not automatically alongside the other (much cheaper) Zip64 tests
+    // above. Run explicitly with `dotnet test --filter "Category=VeryLarge"`.
     [Fact]
-    [Trait("Category", "Slow")]
+    [Trait("Category", "VeryLarge")]
     public async Task ArchiveAndExtract_FileOver4Gb_RoundTripsWithoutError()
     {
         string bigFile = Path.Combine(_temp.Path, "big.bin");

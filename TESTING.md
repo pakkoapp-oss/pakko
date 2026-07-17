@@ -7,21 +7,40 @@ Covers `Archiver.Core` only. UI layer (`Archiver.App`) is not unit-tested in v1.
 ## Running Tests
 
 ```bash
-# Run all tests (skips T-F20's Zip64 Slow tests — see below)
-dotnet test tests/Archiver.Core.Tests --filter "Category!=Slow"
+# Run all tests (skips T-F20's Zip64 Slow tests AND the VeryLarge tier — see below)
+dotnet test tests/Archiver.Core.Tests --filter "Category!=Slow&Category!=VeryLarge"
 
 # With verbose output
-dotnet test tests/Archiver.Core.Tests --filter "Category!=Slow" --logger "console;verbosity=normal"
+dotnet test tests/Archiver.Core.Tests --filter "Category!=Slow&Category!=VeryLarge" --logger "console;verbosity=normal"
 
-# Zip64 tests only — real multi-second/multi-GB cost, not run by default
+# Zip64 tests only — real multi-second cost, not run by default
 dotnet test tests/Archiver.Core.Tests --filter "Category=Slow"
+
+# The one genuinely oversized (>4 GiB) test — on demand only, never part of Category=Slow
+dotnet test tests/Archiver.Core.Tests --filter "Category=VeryLarge"
 ```
 
-**Slow tests (`[Trait("Category", "Slow")]`):** `ZipArchiveServiceZip64Tests.cs` (T-F20) creates
-65,600 real files and a >4 GiB sparse file to exercise Zip64's entry-count and large-size
-boundaries — genuinely expensive (~30s per >65535-file test; multi-GB disk I/O for the large-file
-test), not something worth paying on every `dotnet test` run. Run explicitly before a release or
-when a change touches Zip64-adjacent code.
+**Plain `Category!=Slow` alone is NOT the correct "default" filter — it does not exclude
+`VeryLarge`-tagged tests, since they aren't tagged `Slow` (confirmed empirically 2026-07-17: a
+bare `Category!=Slow` run picked up T-F114's two one-large-file tests, which are exactly the ones
+meant to be on-demand-only). Always combine both: `Category!=Slow&Category!=VeryLarge`.**
+
+**Three tiers, not two — `Category` alone isn't enough to describe cost here:**
+- **(no trait)** — default fast unit tests, always run.
+- **`[Trait("Category", "Slow")]`** — genuinely expensive but bounded (seconds, not minutes); run
+  before a release or when touching Zip64/compression-path-adjacent code.
+- **`[Trait("Category", "VeryLarge")]`** — the one >4 GiB Zip64 test
+  (`ArchiveAndExtract_FileOver4Gb_RoundTripsWithoutError`, T-F20) and T-F114's two one-large-file
+  (~300 MB) performance scenarios. Deliberately **not** included in `Category=Slow` — run only on
+  explicit demand via `Category=VeryLarge`, per user request: the "short" perf scenarios below
+  (many-small-files, hybrid) should always run under a normal `Category=Slow` pass; only the
+  genuinely large ones need a separate, deliberate opt-in.
+
+`ZipArchiveServiceZip64Tests.cs` (T-F20) creates 65,600 real files (the `Slow`-tagged tests) and a
+>4 GiB sparse file (the `VeryLarge`-tagged test) to exercise Zip64's entry-count and large-size
+boundaries — the sparse-file test itself is fast wall-clock-wise (no real disk I/O for the all-zero
+content), but is still gated behind `VeryLarge` since a multi-GiB round trip is the kind of thing
+that shouldn't run just because someone ran the "Slow" tier.
 
 **Note:** Do not run from Visual Studio Test Explorer when WinUI project is in the same solution — VS Test Explorer has a known issue with WinUI + mixed solution. Use CLI.
 
@@ -256,6 +275,59 @@ dotnet run --project tests/Archiver.Core.Tests.GenerateFixtures
 
 ---
 
+## Performance/Regression Tests vs. a 7-Zip Reference (T-F114, v1.4+)
+
+Project: `tests/Archiver.Core.PerformanceTests/` — `CompressionPerformanceTests.cs`, 6 tests
+(archive + extract × one-large-file / many-small-files / hybrid). The many-small-files and hybrid
+scenarios (4 tests) are tagged `[Trait("Category", "Slow")]`; the one-large-file scenarios (2
+tests, ~300 MB fixture) are tagged `[Trait("Category", "VeryLarge")]` instead — deliberately
+**not** part of the default Slow run, on demand only (see "Running Tests" above for why).
+
+```bash
+# Runs alongside Zip64's Slow tests — same filter, no new mechanism (4 of the 6 perf tests)
+dotnet test --filter "Category=Slow"
+
+# The two one-large-file scenarios only — alongside Zip64's >4 GiB test
+dotnet test --filter "Category=VeryLarge"
+```
+
+**Why this exists:** catches a code change that silently makes Pakko's ZIP compression/extraction
+meaningfully slower, without a flaky absolute-time threshold that breaks the moment the test runs
+on a different machine. **This is distinct from `GenerateFixtures`' small, committed correctness
+fixtures** — this suite's fixtures (a 300 MB file, 5,000 small files, a hybrid mix) are generated
+fresh into a `TempDirectory` at test-run time and never committed to git, following
+`ZipArchiveServiceZip64Tests`' precedent, not `GenerateFixtures`'.
+
+**Mechanism:** each test runs one discarded warmup pass, then one timed pass, for both Pakko
+(`ZipArchiveService`) and a vendored `7za.exe` reference — back-to-back, on the same machine, in
+the same test method — then asserts on the *ratio* between their elapsed times against a
+per-scenario calibrated constant with a 3x tolerance multiplier. This is the only pattern of the
+three researched precedents (BenchmarkDotNet, criterion.rs, benchstat) that generalizes to an
+arbitrary, never-before-seen machine — see `DECISIONS.md`'s T-F114 entry for the full research and
+the observed baseline ratios. Extraction scenarios extract from one shared reference ZIP (built
+once via 7za, untimed) so both engines process byte-identical input.
+
+**7za.exe is a test-only, dev-time dependency** (`tests/Archiver.Core.PerformanceTests/Tools/7-Zip/`,
+pinned + hash-verified + LGPL-attributed, see that folder's `NOTICE.md`) — never shipped in the
+MSIX, distinct from `CLAUDE.md`'s "No 7-Zip"/"zero third-party dependencies" hard constraint, which
+governs the shipped product only. Every `7za.exe` launch runs under a basic sandbox — a Job Object
+(`SandboxJobObject`, reused from tar.exe's own sandbox subsystem: no child-process creation, RAM/CPU
+caps) via `SandboxedProcessLauncher`, but deliberately **without** the AppContainer/quarantine
+layer tar.exe gets, since that layer exists to contain untrusted *input* (not applicable — the
+fixture is Pakko's own generated content) and would add ACL/staging overhead that could bias the
+very timing being measured. See `SevenZipRunner.cs`, `SECURITY.md`, and `DECISIONS.md`'s T-F114
+entry for the full rationale.
+
+**Failure-handling — different from Zip64's Slow tests, read this before treating a failure as a
+real regression:** a Zip64 test failure is always a real bug (deterministic, no timing involved).
+A perf-test failure carries a nonzero chance of being a one-off machine hiccup (background scan,
+thermal throttling, a stray process) — **rerun once before treating a failure as a real
+regression.** A *repeatable* failure across reruns is the real signal. Scope is ZIP only (no
+tar-family) — `TarSandboxedService`'s AppContainer/sandbox overhead would make a shared tolerance
+band meaningless for that path; see `DECISIONS.md` if that's ever revisited.
+
+---
+
 ## Manual Smoke Test Cycle (Full Stack)
 
 Ordered simplest → most complex. Confirms Core, Shell, ShellExtension (COM), and the WinUI app
@@ -269,7 +341,7 @@ touching shell-triggered/UI behavior (see `CLAUDE.md`'s Workflow Tips). Last run
    ```
 2. **.NET test suite**
    ```
-   dotnet test --filter "Category!=Slow"
+   dotnet test --filter "Category!=Slow&Category!=VeryLarge"
    ```
 3. **C++ Google Test suite** (rebuild only if the exe is missing or C++ source changed)
    ```
@@ -296,9 +368,16 @@ touching shell-triggered/UI behavior (see `CLAUDE.md`'s Workflow Tips). Last run
    Extract → diff extracted content against the originals. Known automation quirk: the
    Destination text box does not reliably accept direct keyboard input — use the "..."
    folder-picker button instead.
-6. **Slow tests** (optional — before a release or a Zip64-adjacent change)
+6. **Slow tests** (optional — before a release or a Zip64/compression-path-adjacent change; now
+   also runs T-F114's 7-Zip-reference performance suite alongside Zip64's — see above for its
+   rerun-once-before-treating-as-regression rule)
    ```
    dotnet test --filter "Category=Slow"
+   ```
+7. **VeryLarge tests** (optional, on demand only — not part of a normal release cycle; run when
+   deliberately verifying Zip64's >4 GiB path or T-F114's one-large-file perf scenarios)
+   ```
+   dotnet test --filter "Category=VeryLarge"
    ```
 
 **Known non-bug finding:** `.zip`'s `UserChoice` file association may still point at Windows'

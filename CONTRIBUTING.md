@@ -14,8 +14,9 @@
 # Build the core library (works from any terminal)
 dotnet build src/Archiver.Core
 
-# Run all tests (excludes a handful of real multi-second/multi-GB Zip64 tests)
-dotnet test --filter "Category!=Slow"
+# Run all tests (excludes a handful of real multi-second Zip64/performance tests and a couple of
+# genuinely large, on-demand-only tests)
+dotnet test --filter "Category!=Slow&Category!=VeryLarge"
 
 # Run the Zip64 tests too, before a release or when touching Zip64-adjacent code
 dotnet test --filter "Category=Slow"

@@ -12,9 +12,14 @@
   <!-- T-F52: lets Archiver.Core.IntegrationTests exercise the internal Sandbox/ classes directly
        for real tar.exe-through-AppContainer round trips (xz/zst compressed-format extraction,
        sandbox-behavior proofs), same rationale as the entry above. -->
+  <!-- T-F114: lets Archiver.Core.PerformanceTests reuse SandboxJobObject/SandboxedProcessLauncher
+       (Job-Object-only containment, no AppContainer) to launch the vendored 7za.exe reference
+       binary under a basic sandbox — not for testing, but production-adjacent reuse, same
+       InternalsVisibleTo mechanism as the two entries above rather than making these types public. -->
   <ItemGroup>
     <InternalsVisibleTo Include="Archiver.Core.Tests" />
     <InternalsVisibleTo Include="Archiver.Core.IntegrationTests" />
+    <InternalsVisibleTo Include="Archiver.Core.PerformanceTests" />
   </ItemGroup>
 
 </Project>
