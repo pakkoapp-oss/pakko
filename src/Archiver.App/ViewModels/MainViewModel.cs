@@ -852,6 +852,19 @@ public sealed partial class MainViewModel : ObservableObject
             ArchiveBrowseScope.ThisPc => FileSystemBrowser.ListDrives(),
             _ => _archiveIndex.TryGetValue(CurrentFolderPath, out var list) ? list : [],
         };
+
+        // T-F98/T-F110: only a nested-archive row inside the currently browsed archive can ever
+        // be blocked by the depth limit (NavigateIntoNestedArchiveAsync) — real-filesystem/drive
+        // browsing always opens an archive fresh (depth 0), so this never applies there.
+        if (BrowseScope == ArchiveBrowseScope.Archive && NestedArchivePolicy.ExceedsMaxDepth(_browseStack.Count))
+        {
+            entries = entries
+                .Select(e => !e.IsFolder && ArchiveFormatDetector.IsRecognizedArchiveExtension(e.Name)
+                    ? e with { NestedDepthLimitReached = true }
+                    : e)
+                .ToList();
+        }
+
         CurrentFolderEntries = new ObservableCollection<ArchiveEntryViewModel>(entries);
         SelectedBrowserEntries = [];
         RebuildBreadcrumb();

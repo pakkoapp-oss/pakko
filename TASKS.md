@@ -3668,5 +3668,20 @@ persisted-forever "don't ask again" was flagged as unacceptable — it would sil
 undifferentiated-ShellExecute model T-F109's research found NanaZip/7-Zip use, permanently. User
 chose to keep the dialog exactly as-is and add only the icon. See `DECISIONS.md`'s T-F110 entry.
 
-**Files:** `src/Archiver.App.Core/ArchiveEntryViewModel.cs`.
+**Follow-up (same day, user-driven on-device feedback):** the first pass marked every
+nested-archive row (a recognized archive extension found inside the currently browsed archive)
+with the crossed-out-eye "extract-only" glyph, same as any other non-`PreviewPolicy` file. The
+user pointed out this is misleading — double-clicking a nested archive drills straight in (T-F98),
+it doesn't run the confirm-and-extract flow, so it isn't "extract-only" at all. Fixed: a nested
+archive row now reads as `View` (same as a previewable file) UNLESS drilling into it would exceed
+`NestedArchivePolicy.MaxDepth`, the one case where double-click is actually blocked instead of
+drilling in — only then does it show `Hide`. New `ArchiveEntryViewModel.NestedDepthLimitReached`
+(bool, default false) drives this; `MainViewModel.RefreshCurrentFolder` sets it per-row (via a
+record `with` copy) only when `BrowseScope == Archive` and the depth check already used by
+`NavigateIntoNestedArchiveAsync` says the limit is reached — real-filesystem/drive browsing always
+opens an archive fresh at depth 0, so it's never affected. `dotnet test --filter "Category!=Slow"`
+green (414/414 — +4 new `ArchiveEntryViewModelTests.Icon_NestedArchive*` cases).
+
+**Files:** `src/Archiver.App.Core/ArchiveEntryViewModel.cs`,
+`src/Archiver.App/ViewModels/MainViewModel.cs`.
 

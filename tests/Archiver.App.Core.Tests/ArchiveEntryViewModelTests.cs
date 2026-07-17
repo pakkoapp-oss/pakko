@@ -159,4 +159,38 @@ public class ArchiveEntryViewModelTests
 
         entry.Icon.Should().Be("\uED1A");
     }
+
+    [Theory]
+    [InlineData("nested.zip")]
+    [InlineData("nested.tar.gz")]
+    [InlineData("nested.7z")]
+    public void Icon_NestedArchiveWithinDepthLimit_ReturnsViewGlyph(string name)
+    {
+        // T-F98/T-F110: an archive found inside the currently browsed archive drills in
+        // transparently, so it reads the same as a previewable file unless the depth limit
+        // blocks it (see the next test).
+        var entry = new ArchiveEntryViewModel
+        {
+            FullPath = name,
+            Name = name,
+            IsFolder = false,
+            NestedDepthLimitReached = false,
+        };
+
+        entry.Icon.Should().Be("\uE890");
+    }
+
+    [Fact]
+    public void Icon_NestedArchiveExceedingDepthLimit_ReturnsHideGlyph()
+    {
+        var entry = new ArchiveEntryViewModel
+        {
+            FullPath = "nested.zip",
+            Name = "nested.zip",
+            IsFolder = false,
+            NestedDepthLimitReached = true,
+        };
+
+        entry.Icon.Should().Be("\uED1A");
+    }
 }
