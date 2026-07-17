@@ -281,6 +281,31 @@ This is the same trust chain as `System.IO.Compression` via the .NET runtime —
 
 In both cases: extraction goes to a staging directory, all output files are validated (ADS, reserved names, reparse points), then atomically moved to final destination. The staging-directory walk alone is **not** sufficient — a symlink entry can cause tar.exe to write outside the staging directory before any C# code inspects it, confirmed empirically in T-F49 (see `DECISIONS.md`). The primary defense is a whole-archive pre-scan (`tar -tf`/`-tvf`) that rejects any archive containing a symlink/hardlink/device entry or a traversal/rooted/ADS/reserved name before extraction ever runs. The same pre-scan also sums each entry's declared uncompressed size (from `-tvf`'s size column); if that total exceeds 1000x the compressed file's size on disk, extraction is blocked unless the destination has free space for the declared size AND the user explicitly confirms — the same shared evaluator (`ArchiveEntrySecurity.EvaluateCompressionBombAsync`) and confirm-if-it-fits model ZIP uses, computed once for the whole archive since tar-family compression wraps the entire stream rather than each entry independently (T-F94, v1.3; see `DECISIONS.md`'s T-F94 entry — supersedes T-F90's original auto-reject-only version).
 
+### Encrypted-Archive Diagnostics (7z/RAR, T-F113)
+
+Pakko does not decrypt anything — this is diagnostics-only, so a password-protected archive
+fails with a clear message instead of raw libarchive stderr. Detection is asymmetric between the
+two formats, and deliberately so:
+
+- **RAR** is checked proactively, before tar.exe ever runs, by walking RAR5's own block/extra-area
+  structure directly (`ArchiveFormatDetector.IsEncryptedRar`) — RAR headers are never compressed,
+  only file *data* is, so reading a block's type/flags is real, bounded metadata parsing, not
+  decryption. A block of type 4 ("Archive encryption header") as the very first block means the
+  whole archive, including filenames, is unreadable without a password; otherwise, the first File
+  Header block's extra area is checked for an "Encryption" record (type 1) — same first-entry-only
+  fidelity `ZipArchiveService.IsEncryptedZip` already accepts for ZIP, not a weaker standard.
+  Legacy RAR4 (7-byte signature, no version byte) is not parsed — an accepted scope cut, since it
+  falls through to the reactive check below instead.
+- **7z** cannot be checked the same way: an AES-256 coder ID would appear inside the folder/coder
+  metadata, which 7z itself typically stores LZMA-compressed as an "Encoded Header" — inspecting it
+  would require decompressing 7z's own header stream, i.e. writing a partial 7z reader, which is
+  disproportionate hand-rolled-format-parsing effort for a diagnostics-only task. Instead, 7z (and
+  RAR's own rarer header-encrypted case) is classified reactively: the same `tar -tf`/`-tvf`/`-xf`
+  calls that already run unconditionally are inspected for a stderr message containing "encrypt"
+  (case-insensitive) — confirmed empirically to catch every encryption-related libarchive failure
+  message across both formats and both encryption modes. Exact byte offsets and stderr strings are
+  recorded in `DECISIONS.md`'s T-F113 entry.
+
 ### Absolute Path Requirement
 
 Always invoked as `C:\Windows\System32\tar.exe` — never as `tar` via PATH search. Prevents:
@@ -303,7 +328,9 @@ This tool is appropriate for:
 This tool is **not** a replacement for:
 
 - Full-featured archivers where RAR/7z/encrypted format support is required
-- Environments requiring FIPS 140-2 compliant cryptography (ZIP encryption is not implemented)
+- Environments requiring FIPS 140-2 compliant cryptography (ZIP/7z/RAR encryption is not
+  implemented — a password-protected archive in any of these three formats is detected and
+  refused with a clear error, not silently mishandled; see "Encrypted-Archive Diagnostics" above)
 
 ---
 

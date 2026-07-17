@@ -3866,3 +3866,134 @@ T-F109 entry.
 **Files:** `src/Archiver.App.Core/ArchiveEntryViewModel.cs`. See `TASKS_DONE.md`'s T-F110 entry.
 
 **Correction (same day, on-device feedback):** the first implementation marked every nested-archive row (an archive found inside the currently browsed archive) with `Hide`, on the same basis as any other non-`PreviewPolicy` file. The user pointed out this was wrong: double-clicking a nested archive drills straight in transparently (T-F98) - it never goes through T-F109's confirm-and-extract flow, so labeling it "extract-only" actively misrepresents what double-click does. The one real exception is when drilling in would exceed `NestedArchivePolicy.MaxDepth` - `NavigateIntoNestedArchiveAsync` blocks that case outright (an error dialog, no extraction happens at all), so `Hide` is actually accurate there. Fixed by adding `ArchiveEntryViewModel.NestedDepthLimitReached` (bool, default false) and reading `ArchiveFormatDetector.IsRecognizedArchiveExtension` in `Icon` before falling back to the `PreviewPolicy` check; `MainViewModel.RefreshCurrentFolder` sets the flag per-row via a record `with` copy, re-using the exact same `NestedArchivePolicy.ExceedsMaxDepth(_browseStack.Count)` condition `NavigateIntoNestedArchiveAsync` itself checks - one source of truth for both "will this be blocked" and "should this row look blocked". Real-filesystem/drive browsing (`BrowseScope != Archive`) is untouched: opening an archive found there is always a fresh depth-0 open (`EnterBrowseModeAsync`), never subject to the nested depth limit.
+
+---
+
+## T-F113 — Encrypted-Archive Diagnostics for 7z/RAR: Asymmetric Detection, Empirical Findings
+
+**Trigger:** the user asked what happens today when extracting an encrypted 7z/RAR, and whether
+detection could be added. Reading the code first (per this project's pre-implementation-research
+rule) found ZIP already detects encryption cheaply (`ZipArchiveService.IsEncryptedZip`, a single
+fixed-offset flag read) and refuses with a clean message, but the tar.exe path (7z/RAR/tar-family)
+has no equivalent — an encrypted 7z/RAR fails deep inside `tar -xf`/`-tf` with raw, doubled
+libarchive stderr surfaced verbatim. Real decryption was explicitly ruled out of scope from the
+start (see `SECURITY.md`'s FIPS-140-2 line — already a deliberate, documented non-goal before this
+task existed) — this is diagnostics-only.
+
+**Design correction found during planning, before any code was written:** the initial proposal
+(mirror `IsEncryptedZip` for both formats — a cheap fixed-offset byte check) does not survive
+contact with 7z's real format. RAR headers are never compressed (only file *data* is), so walking
+RAR5's block/extra-area chain is real, bounded, deterministic parsing — genuinely ZIP-equivalent
+cost. 7z's own header metadata (where an AES-256 coder ID, `06F10701`, would appear) is itself
+typically LZMA/LZMA2-compressed as an "Encoded Header" — inspecting it for real would require
+writing a partial 7z reader capable of decompressing 7z's own header stream, disproportionate
+hand-rolled-format-parsing effort for a diagnostics-only task, and edging toward the
+hand-rolled-crypto/format-parsing territory this project avoids. **Resolution: asymmetric
+detection.** RAR gets a proactive byte-level check (no tar.exe launch needed, and lets
+`TarSandboxedService` skip AppContainer/staging setup entirely for a known-bad RAR — strictly
+better than today's behavior). 7z gets reactive stderr classification instead, reusing the
+`tar -tf`/`-tvf`/`-xf` calls that already run unconditionally — zero new subprocess launches,
+just a smarter reading of output already being captured.
+
+**Empirical spike (required before writing any detection code, per this project's own "verify
+against real fixtures, never guess an external tool's output" discipline — same practice as
+T-F105's Phase 0 and T-F84's locale-output caution):** created four real encrypted fixtures.
+NanaZip's bundled `NanaZipC.exe` CLI (already installed on this dev machine, a 7-Zip fork; same
+tool T-F85/T-F50 already used to build the committed `valid.7z` fixture) produced
+`-mhe=off`/`-mhe=on` 7z fixtures directly. No RAR-capable encoder was installed — WinRAR was
+installed via `winget`, its console `Rar.exe` used to build both RAR fixtures, then uninstalled
+again afterward — same one-off install-use-uninstall cycle T-F50 already established for
+`valid.rar`; no RAR-writing tool is used at runtime or shipped with Pakko —
+`-p<password>` for data-only, `-hp<password>` for full header encryption. Ran the real
+`C:\Windows\System32\tar.exe` against all four and captured exact behavior:
+
+| Fixture | `-tf`/`-tvf` (listing) | `-xf` (extraction) |
+|---|---|---|
+| `encrypted.7z` (data-only, `-mhe=off`) | succeeds — names/sizes visible | exit 1: `"<entry>: The file content is encrypted, but currently not supported: Unknown error"` |
+| `encrypted_headers.7z` (`-mhe=on`) | exit 1: `"tar.exe: The archive header is encrypted, but currently not supported"` | same message |
+| `encrypted.rar` (data-only, `-p`) | succeeds — names/sizes visible | exit 1: `"<entry>: Reading encrypted data is not currently supported: Illegal byte sequence"` |
+| `encrypted_headers.rar` (`-hp`) | exit 1: `"tar.exe: Encryption is not supported"` | same message |
+
+Every failure message (all four) contains the substring "encrypt" (case-insensitive:
+"encrypted"/"Encryption") — confirmed a single classifier
+(`TarSandboxedService.IsLikelyEncryptionFailure`, `stdErr.Contains("encrypt", OrdinalIgnoreCase)`)
+catches all of them, both formats, both encryption modes, uniformly. All stderr text landed
+entirely on the stderr stream (nothing on stdout), confirmed by capturing the two streams
+separately.
+
+**RAR5 byte-level structure**, confirmed via a throwaway Python probe (vint decoder + block
+walker) run against `encrypted.rar`, `encrypted_headers.rar`, and the existing committed
+`valid.rar` fixture (as the known-good negative case) — not guessed from spec memory:
+- RAR5 signature is 8 bytes (`52 61 72 21 1A 07 01 00`); legacy RAR4's 7-byte signature (no
+  trailing version byte) is a different, unhandled shape — `IsEncryptedRar` returns `false` for it
+  outright, an accepted scope cut (RAR4 is increasingly rare; falls through to the reactive 7z-style
+  check instead of a wrong answer).
+- Each RAR5 block: `CRC32(4 bytes)` + `HeaderSize(vint)` + `HeaderType(vint)` + type-specific
+  fields, where `HeaderSize` counts bytes from `HeaderType` through the end of the block (verified
+  by walking `valid.rar`'s Main Archive Header, size 10, landing exactly on its File Header block
+  at the expected offset).
+- `encrypted_headers.rar`'s very first block (right after the signature) has `HeaderType == 4`
+  ("Archive encryption header") — its mere presence, before parsing any of its own fields, is the
+  complete signal that every further header (including filenames) is encrypted.
+- `encrypted.rar`'s first File Header block (`HeaderType == 2`, following a normal
+  `HeaderType == 1` Main Archive Header) carries two Extra Area records: `type=1` (Encryption) and
+  `type=3` (Time). `valid.rar`'s equivalent File Header carries only the `type=3` Time record — no
+  Encryption record. The presence of a `type == 1` record in the first File Header's extra area is
+  therefore the data-only-encryption signal — same first-entry-only fidelity
+  `ZipArchiveService.IsEncryptedZip` already accepts for ZIP (checks only the first local file
+  header's flag), not a new weaker standard invented for RAR.
+
+Sanity-verified the final C# implementation (`ArchiveFormatDetector.IsEncryptedRar`) against all
+three fixtures via a throwaway console project referencing `Archiver.Core` directly before writing
+any unit tests: `encrypted.rar` → `true`, `encrypted_headers.rar` → `true`, `valid.rar` → `false`.
+
+**Wiring:** `ArchiveFormatDetector.IsEncryptedRar` (both encryption modes) is checked proactively
+in `TarSandboxedService.ExtractAsync`'s per-archive loop, before `TarSandboxScope` is ever
+created — mirrors `ZipArchiveService.ExtractAsync`'s `IsEncryptedZip` placement exactly, and is
+correct for extraction since both RAR encryption modes always fail it. `ListEntriesAsync` uses
+the narrower `IsRarHeaderEncrypted` instead (header-encrypted only) — a data-only-encrypted RAR's
+filenames are still readable, so listing should still succeed there, matching
+`ZipArchiveService.ListEntriesAsync`'s and 7z's own parity (an encrypted ZIP/7z with data-only
+encryption browses fine; only extraction refuses). Using the wider `IsEncryptedRar` in
+`ListEntriesAsync` was tried first and rejected — it would have blocked browsing a data-only-
+encrypted RAR's names even though `tar -tf` can read them fine, a real behavioral regression
+relative to how ZIP already works, caught before shipping by comparing the two formats' actual
+`ListEntriesAsync` implementations side by side rather than wiring the check symmetrically by
+default. `IsLikelyEncryptionFailure` is checked reactively at `ExtractAsync`'s outer
+`catch (IOException)` (covers 7z and RAR's header-encrypted case — the proactive RAR check only
+catches the more common data-only case) and at both of `ListEntriesAsync`'s existing `-tf`/`-tvf`
+failure-return points (a safety net for 7z, and for RAR's header-encrypted case not already
+caught by the proactive `IsRarHeaderEncrypted` check).
+Message text mirrors ZIP's existing convention exactly ("This archive is password-protected and
+cannot be extracted."), with a browsing-specific variant ("...cannot be browsed.") for
+`ListEntriesAsync`, matching ZIP's own per-action verb convention (`ExtractAsync` says
+"extracted", `TestAsync` says "tested").
+
+**Not touched:** `ZipArchiveService.ListEntriesAsync` — confirmed already correct before writing
+any code. `ZipFile.OpenRead` reads the central directory/local headers without a password; only
+the per-entry data stream needs one, and listing never opens that stream, so an encrypted ZIP
+already browses fine today and only refuses at Extract/Test. No `Password` field was added to
+`ExtractOptions`/`ArchiveOptions` — no decryption UI exists or is planned by this task.
+`ExtractionRouter`/`ArchiveListingRouter` dispatch is unchanged; the checks live inside
+`TarSandboxedService` itself, the same layering ZIP already uses.
+
+**Files:** `src/Archiver.Core/Services/ArchiveFormatDetector.cs` (new `IsEncryptedRar`/
+`IsRarHeaderEncrypted` + `ReadVInt`/`TryReadFirstBlockType`), `src/Archiver.Core/Services/
+TarSandboxedService.cs` (new `IsLikelyEncryptionFailure`; wired into `ExtractAsync`/
+`ListEntriesAsync`), `SECURITY.md` (new "Encrypted-Archive Diagnostics" subsection + widened
+FIPS-140-2 line), plus new unit/integration tests and 4 new committed fixtures (see
+`Fixtures/README.md`).
+
+**On-device verification (2026-07-17, AI-driven via the `windows` MCP server):** launched Pakko
+via `pakko://extract` protocol activation with all four encrypted fixtures queued, clicked
+"Розпакувати" — the operation summary dialog showed the exact clean message
+("This archive is password-protected and cannot be extracted.") for all four, not raw libarchive
+text. Separately, in Archive Browser mode: double-clicking `encrypted.7z`/`encrypted.rar`
+(data-only) both listed `entry.txt` successfully; double-clicking `encrypted_headers.7z`/
+`encrypted_headers.rar` both showed the clean listing-refusal message
+("This archive is password-protected and cannot be browsed."). `dotnet test --filter
+"Category!=Slow"` green at 433/433 (up from 414). Full `Deploy.ps1` build+sign+install done
+(1.4.0.1 installed, auto-bumped to 1.4.0.2). **Graduated to `[x]` done 2026-07-17, user-directed,
+and moved to `TASKS_DONE.md`** — the user explicitly accepted this AI/MCP-driven pass as a
+substitute for their own personal click-through, the same accepted-substitute pattern already
+established for T-F52.

@@ -40,3 +40,26 @@ Single entry `rar.txt`, content `"hello from a real rar fixture\n"` (30 bytes, L
 Used by `TarProcessServiceExternalFormatsTests.ExtractAsync_ValidRar_ExtractsFileWithContent`,
 gated `[SkipIfFormatUnsupported("rar")]`. RAR *routing* logic (pre-existing, unrelated to this
 fixture) is also unit-tested elsewhere via magic-byte-crafted fakes (`ExtractionRouterTests`).
+
+## `encrypted.7z` / `encrypted_headers.7z` / `encrypted.rar` / `encrypted_headers.rar`
+
+T-F113: password-protected fixtures, password `testpassword` in all four, single entry
+`entry.txt` (`"hello from an encrypted archive fixture\n"`). `encrypted.*` encrypts only file
+*data* (names/sizes still readable via `tar -tf`/`-tvf`); `encrypted_headers.*` encrypts the
+archive's own headers too (nothing readable without the password, including the filename).
+Built the same one-off way as `valid.7z`/`valid.rar` above (NanaZip's `NanaZipC.exe` for 7z,
+WinRAR's console `Rar.exe` for RAR — reinstalled via `winget install RARLab.WinRAR`, used, then
+uninstalled again the same round; no RAR-writing tool is used at runtime or shipped with Pakko):
+
+```
+echo hello from an encrypted archive fixture > entry.txt
+NanaZipC.exe a -ptestpassword -mhe=off encrypted.7z entry.txt
+NanaZipC.exe a -ptestpassword -mhe=on encrypted_headers.7z entry.txt
+"C:\Program Files\WinRAR\Rar.exe" a -ep1 -ptestpassword encrypted.rar entry.txt
+"C:\Program Files\WinRAR\Rar.exe" a -ep1 -hptestpassword encrypted_headers.rar entry.txt
+```
+
+Used by `ArchiveFormatDetectorTests` (RAR-only, byte-level `IsEncryptedRar` assertions) and
+`TarSandboxedServiceEncryptedFormatsTests` (all four, asserting the clean "password-protected"
+message comes back from `ExtractAsync`/`ListEntriesAsync` instead of raw libarchive stderr).
+Exact libarchive stderr text and RAR5 byte offsets are recorded in `DECISIONS.md`'s T-F113 entry.

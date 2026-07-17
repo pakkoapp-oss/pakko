@@ -128,4 +128,133 @@ public sealed class ArchiveFormatDetectorTests : IDisposable
         // decide drill-down candidacy for an in-archive entry before anything is extracted.
         ArchiveFormatDetector.IsRecognizedArchiveExtension(Path.Combine(_temp.Path, "does_not_exist.zip")).Should().BeTrue();
     }
+
+    // T-F113: synthetic, hand-crafted RAR5 block bytes — not full spec-valid archives, just
+    // shaped exactly the way IsEncryptedRar reads them (verified field-by-field against real
+    // WinRAR-encrypted fixtures via a throwaway Python probe; see DECISIONS.md's T-F113 entry).
+    // Byte layout per block: CRC32(4, arbitrary) + HeaderSize(vint) + HeaderType(vint) + ...,
+    // where HeaderSize counts bytes from HeaderType through the end of that block.
+    private static readonly byte[] Rar5Sig = [0x52, 0x61, 0x72, 0x21, 0x1A, 0x07, 0x01, 0x00];
+
+    [Fact]
+    public void IsEncryptedRar_PlainFileEntry_ReturnsFalse()
+    {
+        byte[] bytes =
+        [
+            .. Rar5Sig,
+            // Main Archive Header (type 1): HeaderSize=1 covers just the HeaderType byte —
+            // IsEncryptedRar never reads anything else from this block.
+            0x00, 0x00, 0x00, 0x00, 0x01, 0x01,
+            // File Header (type 2): HeaderSize=6 (type+flags+extraAreaSize+3-byte extra area).
+            // HeaderFlags=0x01 (extra area present). Extra area: one record, size=2 (type+data),
+            // type=3 (arbitrary non-encryption type), data=0x00.
+            0x00, 0x00, 0x00, 0x00, 0x06, 0x02, 0x01, 0x03, 0x02, 0x03, 0x00,
+        ];
+        var path = WriteBytes("plain.rar", bytes);
+        ArchiveFormatDetector.IsEncryptedRar(path).Should().BeFalse();
+    }
+
+    [Fact]
+    public void IsEncryptedRar_FirstEntryHasEncryptionRecord_ReturnsTrue()
+    {
+        byte[] bytes =
+        [
+            .. Rar5Sig,
+            0x00, 0x00, 0x00, 0x00, 0x01, 0x01, // Main Archive Header (type 1)
+            // File Header (type 2), extra area's one record has type=1 (Encryption).
+            0x00, 0x00, 0x00, 0x00, 0x06, 0x02, 0x01, 0x03, 0x02, 0x01, 0x00,
+        ];
+        var path = WriteBytes("encrypted.rar", bytes);
+        ArchiveFormatDetector.IsEncryptedRar(path).Should().BeTrue();
+    }
+
+    [Fact]
+    public void IsEncryptedRar_ArchiveEncryptionHeaderBlock_ReturnsTrue()
+    {
+        byte[] bytes =
+        [
+            .. Rar5Sig,
+            // First block is type 4 (Archive encryption header) — presence alone means every
+            // further header, including filenames, is encrypted. IsEncryptedRar returns true
+            // without reading anything past the HeaderType field.
+            0x00, 0x00, 0x00, 0x00, 0x01, 0x04,
+        ];
+        var path = WriteBytes("encrypted_headers.rar", bytes);
+        ArchiveFormatDetector.IsEncryptedRar(path).Should().BeTrue();
+    }
+
+    [Fact]
+    public void IsRarHeaderEncrypted_DataOnlyEncryptionRecord_ReturnsFalse()
+    {
+        // Narrower than IsEncryptedRar — a data-only-encrypted first entry (Encryption record,
+        // type 1) does not make headers/filenames unreadable, so this must return false even
+        // though IsEncryptedRar(same bytes) returns true (see the test above).
+        byte[] bytes =
+        [
+            .. Rar5Sig,
+            0x00, 0x00, 0x00, 0x00, 0x01, 0x01, // Main Archive Header (type 1)
+            0x00, 0x00, 0x00, 0x00, 0x06, 0x02, 0x01, 0x03, 0x02, 0x01, 0x00,
+        ];
+        var path = WriteBytes("data_only_encrypted.rar", bytes);
+        ArchiveFormatDetector.IsRarHeaderEncrypted(path).Should().BeFalse();
+    }
+
+    [Fact]
+    public void IsRarHeaderEncrypted_ArchiveEncryptionHeaderBlock_ReturnsTrue()
+    {
+        byte[] bytes =
+        [
+            .. Rar5Sig,
+            0x00, 0x00, 0x00, 0x00, 0x01, 0x04, // First block is type 4
+        ];
+        var path = WriteBytes("encrypted_headers2.rar", bytes);
+        ArchiveFormatDetector.IsRarHeaderEncrypted(path).Should().BeTrue();
+    }
+
+    [Fact]
+    public void IsRarHeaderEncrypted_PlainFileEntry_ReturnsFalse()
+    {
+        byte[] bytes =
+        [
+            .. Rar5Sig,
+            0x00, 0x00, 0x00, 0x00, 0x01, 0x01,
+            0x00, 0x00, 0x00, 0x00, 0x06, 0x02, 0x01, 0x03, 0x02, 0x03, 0x00,
+        ];
+        var path = WriteBytes("plain2.rar", bytes);
+        ArchiveFormatDetector.IsRarHeaderEncrypted(path).Should().BeFalse();
+    }
+
+    [Fact]
+    public void IsRarHeaderEncrypted_MissingFile_ReturnsFalse()
+    {
+        ArchiveFormatDetector.IsRarHeaderEncrypted(Path.Combine(_temp.Path, "does_not_exist.rar")).Should().BeFalse();
+    }
+
+    [Fact]
+    public void IsEncryptedRar_TruncatedAfterSignature_ReturnsFalse()
+    {
+        var path = WriteBytes("truncated.rar", Rar5Sig);
+        ArchiveFormatDetector.IsEncryptedRar(path).Should().BeFalse();
+    }
+
+    [Fact]
+    public void IsEncryptedRar_Rar4Signature_ReturnsFalse()
+    {
+        // Legacy RAR4 (7-byte signature, no version byte) is an accepted scope cut — not parsed.
+        var path = WriteBytes("rar4.rar", [0x52, 0x61, 0x72, 0x21, 0x1A, 0x07, 0x00, 0x00]);
+        ArchiveFormatDetector.IsEncryptedRar(path).Should().BeFalse();
+    }
+
+    [Fact]
+    public void IsEncryptedRar_NotARarFile_ReturnsFalse()
+    {
+        var path = WriteBytes("a.zip", [0x50, 0x4B, 0x03, 0x04, 0, 0, 0, 0]);
+        ArchiveFormatDetector.IsEncryptedRar(path).Should().BeFalse();
+    }
+
+    [Fact]
+    public void IsEncryptedRar_MissingFile_ReturnsFalse()
+    {
+        ArchiveFormatDetector.IsEncryptedRar(Path.Combine(_temp.Path, "does_not_exist.rar")).Should().BeFalse();
+    }
 }

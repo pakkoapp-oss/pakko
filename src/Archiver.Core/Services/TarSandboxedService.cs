@@ -97,6 +97,23 @@ public sealed class TarSandboxedService : ITarService
                     options.SeparateFolderName ?? ArchiveNaming.GetBaseName(archivePath))
                 : options.DestinationFolder;
 
+            // T-F113: cheap proactive check, no sandbox/tar.exe launch needed for a known-
+            // encrypted RAR — mirrors ZipArchiveService.ExtractAsync's IsEncryptedZip placement.
+            // 7z and RAR's rarer header-encrypted case aren't cheaply detectable this way (see
+            // ArchiveFormatDetector.IsEncryptedRar's doc comment) — those are instead caught
+            // reactively below via IsLikelyEncryptionFailure once tar.exe actually fails.
+            if (ArchiveFormatDetector.Detect(archivePath) == ArchiveFormat.Rar
+                && ArchiveFormatDetector.IsEncryptedRar(archivePath))
+            {
+                errors.Add(new ArchiveError
+                {
+                    SourcePath = archivePath,
+                    Message = "This archive is password-protected and cannot be extracted."
+                });
+                progress?.Report((i + 1) * 100 / total);
+                continue;
+            }
+
             try
             {
                 var (actualDest, anyExtracted) = await ExtractSingleArchiveAsync(
@@ -130,10 +147,15 @@ public sealed class TarSandboxedService : ITarService
             }
             catch (IOException ex)
             {
+                // T-F113: covers 7z (both encryption modes) and RAR's header-encrypted case —
+                // the proactive check above only catches RAR's more common data-only case
+                // before staging even begins.
                 errors.Add(new ArchiveError
                 {
                     SourcePath = archivePath,
-                    Message = $"Cannot extract archive: {ex.Message}",
+                    Message = IsLikelyEncryptionFailure(ex.Message)
+                        ? "This archive is password-protected and cannot be extracted."
+                        : $"Cannot extract archive: {ex.Message}",
                     Exception = ex
                 });
             }
@@ -416,6 +438,20 @@ public sealed class TarSandboxedService : ITarService
         string archivePath,
         CancellationToken cancellationToken = default)
     {
+        // T-F113: cheap proactive check for the header-encrypted case only (unlike ExtractAsync's
+        // IsEncryptedRar check) — a data-only-encrypted RAR's filenames are still readable, so
+        // listing should still succeed there, matching ZipArchiveService.ListEntriesAsync's and
+        // 7z's own parity (only extraction refuses for data-only encryption, not browsing).
+        if (ArchiveFormatDetector.Detect(archivePath) == ArchiveFormat.Rar
+            && ArchiveFormatDetector.IsRarHeaderEncrypted(archivePath))
+        {
+            return new ArchiveListResult
+            {
+                Success = false,
+                ErrorMessage = "This archive is password-protected and cannot be browsed."
+            };
+        }
+
         try
         {
             using TarSandboxScope scope = await TarSandboxScope.CreateAsync(archivePath, needsOutputDir: false, cancellationToken)
@@ -424,14 +460,26 @@ public sealed class TarSandboxedService : ITarService
             var (nameExitCode, nameStdOut, nameStdErr) = await scope.RunAsync(
                 ["-tf", scope.StagedArchivePath], cancellationToken).ConfigureAwait(false);
             if (nameExitCode != 0)
-                return new ArchiveListResult { Success = false, ErrorMessage = nameStdErr.Trim() };
+                return new ArchiveListResult
+                {
+                    Success = false,
+                    ErrorMessage = IsLikelyEncryptionFailure(nameStdErr)
+                        ? "This archive is password-protected and cannot be browsed."
+                        : nameStdErr.Trim()
+                };
 
             string[] names = SplitLines(nameStdOut);
 
             var (typeExitCode, typeStdOut, typeStdErr) = await scope.RunAsync(
                 ["-tvf", scope.StagedArchivePath], cancellationToken).ConfigureAwait(false);
             if (typeExitCode != 0)
-                return new ArchiveListResult { Success = false, ErrorMessage = typeStdErr.Trim() };
+                return new ArchiveListResult
+                {
+                    Success = false,
+                    ErrorMessage = IsLikelyEncryptionFailure(typeStdErr)
+                        ? "This archive is password-protected and cannot be browsed."
+                        : typeStdErr.Trim()
+                };
 
             string[] typeLines = SplitLines(typeStdOut);
             if (typeLines.Length != names.Length)
@@ -845,6 +893,20 @@ public sealed class TarSandboxedService : ITarService
 
         return false;
     }
+
+    // T-F113: reactive classification of a tar.exe/libarchive failure as encryption-related —
+    // used for 7z (both data-only and header-encrypted) and RAR's rarer header-encrypted case,
+    // where ArchiveFormatDetector.IsEncryptedRar's proactive byte check can't apply (RAR's
+    // data-only case is caught proactively instead; see ExtractAsync/ListEntriesAsync). Unlike
+    // the RAR byte check, 7z's header metadata is itself typically LZMA-compressed, so a
+    // fixed-offset check isn't feasible without a partial 7z reader — see DECISIONS.md's T-F113
+    // entry. Confirmed empirically against real 7-Zip/WinRAR-encrypted fixtures that libarchive's
+    // own stderr always contains "encrypt" (case-insensitive) for every encryption-related
+    // failure it produces: "The file content is encrypted, but currently not supported",
+    // "The archive header is encrypted, but currently not supported",
+    // "Reading encrypted data is not currently supported", "Encryption is not supported".
+    private static bool IsLikelyEncryptionFailure(string stdErr)
+        => stdErr.Contains("encrypt", StringComparison.OrdinalIgnoreCase);
 
     // Walks the sandbox scope's output directory without ever recursing into a reparse-point
     // subdirectory — a plain Directory.EnumerateFiles(..., AllDirectories) would follow such a

@@ -3044,3 +3044,77 @@ green (414/414 — +4 new `ArchiveEntryViewModelTests.Icon_NestedArchive*` cases
 
 ---
 
+
+### T-F113 — Encrypted-archive diagnostics for 7z/RAR (real decryption out of scope)
+- [x] **Status:** complete 2026-07-17. RAR gets a proactive byte-level check
+      (`ArchiveFormatDetector.IsEncryptedRar`/`IsRarHeaderEncrypted`, no tar.exe launch needed);
+      7z (and RAR's rarer header-encrypted case) gets reactive stderr classification instead
+      (`TarSandboxedService.IsLikelyEncryptionFailure`), since 7z's header metadata is itself
+      typically compressed and not cheaply inspectable without a partial 7z reader — full
+      empirical trail (real byte offsets, real libarchive stderr text) in `DECISIONS.md`'s
+      T-F113 entry. `dotnet test --filter "Category!=Slow"` green (433 tests, up from 414 — 11
+      new unit tests in `ArchiveFormatDetectorTests` plus 8 new integration tests in a new
+      `TarSandboxedServiceEncryptedFormatsTests`), full `Deploy.ps1` build+sign+install done, and
+      AI-driven on-device verification (Windows MCP, `pakko://extract` protocol activation)
+      confirmed all 4 encrypted fixtures fail extraction with the clean message, and Archive
+      Browser correctly lists names for both data-only cases while cleanly refusing to browse
+      both header-encrypted cases. **Graduated to `[x]` 2026-07-17, user-directed** — user
+      explicitly accepted this AI/MCP-driven pass as a substitute for their own personal
+      click-through.
+
+**What:** `ZipArchiveService.IsEncryptedZip` detects ZIP encryption cheaply (general-purpose bit
+flag in the local file header) before ever attempting extraction, and fails with a clear message:
+`"This archive is password-protected and cannot be extracted."` (`ZipArchiveService.cs:497-506`,
+`:604-613`). The tar.exe path (`TarSandboxedService`, covers 7z/RAR/tar-family) has **no
+equivalent detection** — an encrypted 7z or RAR currently fails deep inside `tar -xf`/`tar -tf`
+with a raw libarchive stderr string surfaced verbatim via a generic `IOException` (
+`TarSandboxedService.cs:259-260`: `"tar.exe extraction failed: {stdErr.Trim()}"`). Archive
+**Browser listing** hits the same ungraceful path for a 7z with encrypted headers (filenames
+encrypted, not just content) — browsing fails with the same raw stderr instead of a clear
+"password-protected" message.
+
+**Explicitly out of scope for this task:** actually decrypting anything. `System.IO.Compression`
+has no ZIP decryption API at all (would require hand-rolled ZipCrypto/AES-256 code, a direct
+conflict with this project's "zero third-party/hand-rolled compression-crypto code" positioning —
+see `SECURITY.md`'s existing FIPS-140-2 line, `SECURITY.md:306`). tar.exe's own passphrase support
+(`--passphrase`) is documented for archives *bsdtar itself created*, not confirmed reliable for
+arbitrary third-party-encrypted 7z/RAR — would need its own empirical spike (in the style of
+T-F105's Phase 0) before being trusted, and is a materially bigger architectural question (does
+Pakko start accepting a password at all, in the UI and both extraction engines) than this stub is
+scoped for.
+
+**Implementation (as built — deviates from the original "cheap pre-check for both formats"
+proposal above once actually researched; see Design deviation note):**
+- RAR: `ArchiveFormatDetector.IsEncryptedRar`/`IsRarHeaderEncrypted` walk RAR5's own block/
+  extra-area structure directly (no tar.exe launch) — `IsRarHeaderEncrypted` (header/filenames
+  unreadable, block type 4) is used for `ListEntriesAsync`'s proactive check; the wider
+  `IsEncryptedRar` (also catches the common data-only case) is used for `ExtractAsync`'s
+  proactive check, since extraction always fails either way but listing shouldn't be blocked
+  for data-only encryption.
+- 7z (and RAR's header-encrypted case, as a safety net): `TarSandboxedService.
+  IsLikelyEncryptionFailure` classifies the stderr already produced by the existing `-tf`/`-tvf`/
+  `-xf` calls — every libarchive encryption-related failure message contains "encrypt"
+  (case-insensitive), confirmed against 4 real fixtures.
+- Both wired into `TarSandboxedService.ExtractAsync`/`ListEntriesAsync`; same clean message ZIP
+  already gives (`"...cannot be extracted."` / `"...cannot be browsed."` for listing).
+- `SECURITY.md`'s FIPS-140-2 line extended to cover 7z/RAR; new "Encrypted-Archive Diagnostics"
+  subsection added.
+
+**Design deviation note:** the original proposal above assumed a cheap fixed-offset byte check
+would work for **both** formats. Confirmed empirically (before writing any code) that 7z's header
+metadata is itself typically LZMA-compressed as an "Encoded Header" — a fixed-offset check can't
+see an AES coder ID without decompressing 7z's own header stream first, i.e. writing a partial 7z
+reader, disproportionate effort for a diagnostics-only task. RAR, by contrast, never compresses
+its own headers, so the proactive byte check works exactly as originally proposed there. See
+`DECISIONS.md`'s T-F113 entry for the full empirical trail (real byte offsets confirmed via a
+throwaway Python probe against real WinRAR-encrypted fixtures; real libarchive stderr text
+confirmed against all 4 fixtures via the real `tar.exe`).
+
+**Files:** `src/Archiver.Core/Services/ArchiveFormatDetector.cs`,
+`src/Archiver.Core/Services/TarSandboxedService.cs`, `SECURITY.md`,
+`tests/Archiver.Core.Tests/Services/ArchiveFormatDetectorTests.cs` (11 new tests),
+`tests/Archiver.Core.IntegrationTests/TarSandboxedServiceEncryptedFormatsTests.cs` (new, 8
+tests), `tests/Archiver.Core.IntegrationTests/Fixtures/{encrypted.7z,encrypted_headers.7z,
+encrypted.rar,encrypted_headers.rar}` (new fixtures) + `Fixtures/README.md`.
+
+---
