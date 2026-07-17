@@ -641,11 +641,17 @@ MSBuild tests\Archiver.ShellExtension.Tests\Archiver.ShellExtension.Tests.vcxpro
 > **Monitor tool commands run in POSIX/Git-Bash syntax**, even when polling a Windows path —
 > use `[ -f "/c/Program Files/..." ]`, not `Test-Path`, or the wait-loop never fires.
 >
-> **Windows MCP (`mcp__windows__*`) cannot reliably synthesize a WinUI `DoubleTapped` gesture or
-> open Explorer's right-click context menu** (`double_click`, two rapid `click` calls, and
-> Shift+F10 all failed across ~6 varied attempts, confirmed T-F98/T-F109 session). Don't burn
-> more than 2-3 attempts on this class of gesture — stop and ask the user to reproduce/verify
-> manually instead.
+> **Windows MCP (`mcp__windows__*`) synthesizing a WinUI `DoubleTapped` gesture is coordinate-
+> space sensitive, not fundamentally unreliable.** `mouse_control`'s `double_click` failed across
+> ~6 attempts in one session (T-F98/T-F109) when driven by `windowHandle`-relative coordinates or
+> a coordinate guess. The combination that works reliably (confirmed T-F110, a full 4-level
+> Archive Browser drill-down entirely via automation): call `ui_find` for the row to get its
+> `click` coordinates, then pass those coordinates straight to `mouse_control`'s `double_click`
+> with `target: "primary_screen"` and no `windowHandle` at all — same fix T-F107 found for plain
+> single clicks (see that entry above), it turns out to also fix double-clicks. Explorer's
+> right-click context menu (Shift+F10) remains unconfirmed either way. If a double-click still
+> doesn't register after trying the `ui_find` + `primary_screen` combination once, then fall back
+> to asking the user to reproduce manually rather than burning further attempts.
 >
 > **`winget install`/`uninstall` needing elevation fails non-interactively** with
 > `0x800704c7` ("canceled by the user") — the UAC prompt has nothing to click it. Retry once
