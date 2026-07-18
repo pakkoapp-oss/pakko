@@ -482,6 +482,116 @@ PowerShell 5.1, `cmd /c "..."` is byte-perfect everywhere).
 
 ---
 
+### T-F117 — Silent Success on an Unrecognized Single Archive Path (Extraction)
+- [ ] **Status:** future — found 2026-07-18 while testing T-F116, not fixed there (a
+      `Archiver.Core` behavior change, out of scope for a CLI-only task). See `DECISIONS.md`'s
+      T-F116 entry for the full repro.
+- **Depends on:** none
+
+**What:** `ZipArchiveService.ExtractAsync`'s per-item gate (`if (!IsZipFile(archivePath))`) only
+records a `SkippedFile` when `GetKnownArchiveReason` recognizes the bytes as a *different* known
+archive format (GZip/BZip2/RAR/etc.). For bytes matching no known magic number at all — an empty
+file, plain garbage, a truncated/corrupted download — `reason` is `null` and the loop just
+`continue`s with **nothing recorded**: `ArchiveResult.Success` stays `true`, no error, no skipped
+entry. Confirmed via both the CLI's `-si` path and a real on-disk garbage `.zip` fed to plain `x`
+— identical silent exit 0. This contradicts this project's own "loud error always" rule
+(`CLI.md`'s three-way-input philosophy, `CLAUDE.md`'s general stance) even though it predates T-F09
+and isn't CLI-specific — it's just never been noticed before because the GUI always shows an
+operation summary either way.
+
+**Acceptance criteria:**
+- [ ] `ZipArchiveService.ExtractAsync`/`TestAsync`'s per-item loop records a real `ArchiveError` (or
+      at minimum a `SkippedFile` with a named reason) when a path is neither a valid ZIP nor
+      matches any of `GetKnownArchiveReason`'s known-format signatures — decide which (error vs.
+      skip) matches this project's existing severity conventions for "not a valid archive at all"
+- [ ] `Archiver.Core.Tests` covers: empty file, plain garbage bytes, truncated real ZIP
+- [ ] `Archiver.CLI.Tests`' `Extract_SiWithEmptyStdin_SilentlyNoOpsPerPreExistingCoreBehavior`/
+      `Extract_SiWithGarbageBytes_SilentlyNoOpsPerPreExistingCoreBehavior` updated to assert the
+      new (non-silent) behavior, renamed to match
+- [ ] Checked whether `TarSandboxedService`'s extraction path has the same gap for a
+      non-tar/non-recognized input, and fixed there too if so (for parity, not assumed)
+- [ ] `Archiver.App`'s operation-summary dialog still reads correctly for this case (a real error
+      now appears where none did before — confirm it doesn't regress a currently-passing manual
+      test path)
+
+---
+
+### T-F118 — ZIP vs. Tar-Family Extraction Smart-Foldering Asymmetry
+- [ ] **Status:** future — found 2026-07-18 while implementing T-F09, not fixed there (CLI is a
+      thin frontend reusing Core's extraction engines unmodified). See `DECISIONS.md`'s T-F09
+      "Implementation" entry for the full repro.
+- **Depends on:** none
+
+**What:** extracting a multi-root-item archive (two or more root-level files/folders with no single
+common containing folder) behaves differently depending on format: `ZipArchiveService.ExtractAsync`
+wraps the result in a `<destDir>/<archive-base-name>/` subfolder (T-14's "smart foldering",
+confirmed to apply even under `ExtractMode.SingleFolder`), while `TarSandboxedService.ExtractAsync`
+has no equivalent — files land directly in `destDir`, unwrapped. `Archiver.Shell`'s
+`--extract-flat` (T-F115) inherits the ZIP behavior too despite its own doc comment claiming "no
+wrapper folder ever created," which is only accurate for the common single-root case.
+
+**Acceptance criteria:**
+- [ ] Decide the intended behavior — match tar-family to ZIP's smart-foldering, match ZIP to
+      tar-family's flat behavior, or keep the asymmetry but fix `Archiver.Shell`'s misleading doc
+      comment — this is a product decision, not purely technical; needs a Plan Mode session before
+      touching code
+- [ ] Whichever direction is chosen, both `ZipArchiveServiceTests` and
+      `TarSandboxedServiceExtractionTests` (or equivalent) cover the multi-root-item, no-common-
+      folder case explicitly
+- [ ] `Archiver.Shell/Program.cs`'s `--extract-flat` doc comment corrected to match actual verified
+      behavior, not the aspirational "no wrapper folder ever" claim
+- [ ] `Archiver.CLI.Tests`' existing test asserting the ZIP-wraps/tar-doesn't-wrap asymmetry
+      updated to match whichever new unified behavior is chosen
+
+---
+
+### T-F119 — Archiver.CLI PATH Distribution (winget/scoop manifest)
+- [ ] **Status:** future — flagged 2026-07-18 during T-F116's naming/distribution discussion. See
+      `CLI.md`'s Distribution section and `DECISIONS.md`'s T-F116 follow-up entry.
+- **Depends on:** T-F09 (CLI Core)
+
+**What:** `pakko.exe` currently ships only as a manually-downloaded, manually-unzipped artifact —
+confirmed (via research into ripgrep/fd/bat) that this matches the norm for zip-distributed CLI
+tools, but it means there is no "install once, available everywhere" path today. A `winget`
+manifest (Microsoft's own package manager, pre-installed on Windows 10 1709+/Windows 11) is the
+natural next step — its `Portable` installer type registers the exe in a PATH-managed `Links`
+folder without needing a custom installer or elevated MSI. `scoop` is a plausible second target
+for the same reason (also PATH-shim-based, no admin rights needed) but lower priority.
+
+**Acceptance criteria:**
+- [ ] `winget` manifest (`pakkoapp.pakko` or similar id — check availability) targeting the
+      `win-x64`/`win-arm64` zips already produced by `scripts/Publish-Cli.ps1`, using the
+      `Portable` installer type
+- [ ] Manifest validated via `winget validate` and a real local install
+      (`winget install --manifest <path>`) confirming `pakko` resolves from a fresh terminal with
+      no manual PATH edit
+- [ ] Submission process to `microsoft/winget-pkgs` documented in `scripts/README.md` (this is a
+      recurring release step, not a one-time action — new manifest version needed per release)
+- [ ] `CLI.md`'s Distribution section updated once this ships, replacing the "not yet scheduled"
+      note
+
+---
+
+### T-F120 — Publish Archiver.CLI to GitHub Releases
+- [ ] **Status:** future — deliberately left out of T-F09's implementation scope ("a release-time
+      action, not part of this implementation round"). `scripts/Publish-Cli.ps1` already produces
+      everything needed (`pakko-win-x64.zip`, `pakko-win-arm64.zip`, `SHA256SUMS`) — this task is
+      the actual publication step plus getting it into the repo's release workflow.
+- **Depends on:** T-F09 (CLI Core)
+
+**Acceptance criteria:**
+- [ ] `.\scripts\Publish-Cli.ps1` output attached to a real GitHub Release (either a new release or
+      an existing one, per user decision at the time)
+- [ ] Release notes/`README.md` link to the CLI download alongside the existing MSIX download,
+      matching the "GitHub-only release" pattern already used for v1.1–v1.4
+- [ ] `SHA256SUMS` verification instructions visible on the release page or linked from it, not
+      just buried in `CLI.md`
+- [ ] Decide whether this becomes part of a scripted release checklist (so it isn't a manually
+      remembered step every future release) or stays a one-off manual action — document whichever
+      is chosen in `scripts/README.md`
+
+---
+
 ### T-F09 (original, pre-2026-07-12 scope, superseded by the expanded entry above — kept per the
 "never silently deprecate" rule)
 
@@ -496,32 +606,88 @@ archiver extract --src C:\backup.zip --dest C:\output
 ---
 
 ### T-F10 — Code Signing
-- [ ] **Status:** future
+- [ ] **Status:** future. Scope explicitly includes `Archiver.CLI`'s `pakko.exe`/`pakko-win-*.zip`
+      (T-F09/T-F116, added 2026-07-18) — not just the MSIX. `pakko.exe` is downloaded and run
+      standalone, outside any package-manager trust chain, so it hits the exact SmartScreen/
+      AppLocker friction described below on its own, independent of whether the MSIX is signed.
+      Don't scope this task down to "just the MSIX" without an explicit decision to split it.
 
 **Why critical for target audience:** government/defense environments often block unsigned executables via AppLocker/WDAC. Unsigned MSIX triggers SmartScreen.
 
-**Two levels:**
-- MSIX package signature — required for sideload installs
-- Authenticode on binaries — visible in file Properties → Digital Signatures
+**Two levels, two different signing mechanisms — don't conflate them:**
+- MSIX package signature — required for sideload installs, covers `Archiver.App`'s package as a
+  whole (and everything bundled inside it, including the satellite EXEs `Archiver.Shell.exe`/
+  `Archiver.ShellExtension.dll`)
+- Authenticode on standalone binaries — visible in file Properties → Digital Signatures; this is
+  the mechanism that matters for `pakko.exe`, since it's downloaded and run **outside** the MSIX/
+  package trust boundary entirely (T-F09/T-F116)
 
-**Certificate options:**
+**Certificate options — researched 2026-07-18 (Microsoft Learn's "Code signing options for Windows
+app developers," updated 2026-04-20 — verified current, not from memory) after the user asked
+whether free Microsoft Store signing could also cover `pakko.exe`. It cannot: Store re-signing is
+free but applies **only to an MSIX package actually submitted through the Store** — a standalone
+loose `.exe` distributed via GitHub Releases (never submitted as a package) is never touched by
+it. Submitting `pakko.exe` to the Store via the MSI/EXE-installer path (a separate path from MSIX)
+doesn't help either — Microsoft explicitly does not re-sign Win32 MSI/EXE installer submissions;
+you're required to already hold your own Authenticode cert before submitting.**
 
-| Option | Cost | Trust |
-|--------|------|-------|
-| Commercial EV (DigiCert, Sectigo) | ~$300–500/yr | Immediate SmartScreen trust |
-| Standard OV | ~$100–200/yr | Trust builds over time |
-| Microsoft Store | Free | Full trust, Store review required |
-| Self-signed | Free | Manual install only |
+| Option | Cost | Availability | SmartScreen | Notes |
+|--------|------|------|------|------|
+| **Microsoft Store (MSIX)** | Free | Worldwide | No warnings | Already covers `Archiver.App`'s MSIX if/when submitted — doesn't touch `pakko.exe` |
+| **SignPath Foundation** | **Free**, for qualifying open-source projects | No geographic restriction found | Reputation builds over time like a paid cert, but the cert itself is free | **Best fit for `pakko.exe`** — Pakko is already Apache 2.0 and public on GitHub, matching their eligibility criteria; provides real OV-level Authenticode signing through a managed CI pipeline |
+| Azure Artifact Signing (formerly "Trusted Signing") | ~$9.99/mo | Individuals: **USA/Canada only**. Organizations: also EU/UK | Reputation builds over time | Blocks an individual developer submitting from Ukraine — would need to register as an org in an eligible region, or use a different option |
+| OV certificate (DigiCert, Sectigo, etc.) | $150–300/yr | Worldwide | Reputation builds over time | Fallback if SignPath Foundation eligibility doesn't pan out in practice |
+| EV certificate | $400+/yr | Worldwide | **No longer instant** — Microsoft removed EV's SmartScreen-bypass-on-first-download behavior in 2024; EV now builds reputation the same way OV does | Not worth the premium anymore, purely for SmartScreen purposes (older docs/advice claiming "immediate trust" are stale) |
+| Self-signed | Free | — | Blocks install for public users; fine for enterprise-managed trust | For Ukrainian government deployment specifically: self-signed with the root cert distributed via Group Policy remains viable for *internal* rollout, independent of whatever's chosen for public GitHub distribution |
 
-For Ukrainian government deployment: self-signed with distributed root cert via Group Policy is viable for internal use.
+**Working plan — two phases, researched 2026-07-18 after the user asked whether one SignPath
+certificate could cover both the MSIX and `pakko.exe`, and how that combines with an eventual
+Store submission:**
+
+**Phase 1 (now — MSIX and CLI both ship via direct GitHub download, no Store submission yet):**
+SignPath Foundation explicitly supports EXE/DLL **and MSIX/AppX** ("deep signing") through the
+same account/pipeline, per their own changelog — one application covers both `pakko.exe` and the
+MSIX for as long as the MSIX keeps shipping outside the Store. **Real gotcha, confirmed via
+research, not assumed:** an MSIX's `Package.appxmanifest`'s `<Identity Publisher="CN=...">` must
+match the signing certificate's Subject exactly — SignPath's own error messages specifically flag
+a mismatch here. Today that field holds the local self-signed dev cert's CN (`Setup-DevCert.ps1`);
+switching to SignPath means updating `Identity Publisher` to SignPath's issued cert's Subject, and
+re-pointing `Deploy.ps1`'s signing step from local `SignTool` + dev cert to SignPath's CI
+integration (their PowerShell module, called from GitHub Actions or wherever the release build
+runs) instead of a locally-installed cert.
+
+**Phase 2 (later — if/when the MSIX is actually submitted to the Store, per the roadmap's "planned
+once T-F51/GPO is done"):** confirmed via Microsoft's own "Publish your first Windows app" guide —
+an MSIX submitted to the Store needs **no CA-trusted signature at all** to be accepted; Microsoft
+re-signs it with its own certificate after certification, regardless of what it was built/signed
+with beforehand (even the existing self-signed dev cert is fine for the submission itself). What
+Store submission *does* require is a **separate, later** manifest change: Partner Center assigns
+its own Publisher ID (a different GUID-format CN) that `Identity Publisher` must match *at
+submission time* — unrelated to whatever cert SignPath issued in Phase 1. Once certification
+passes, SignPath is no longer needed for the MSIX specifically (Store re-signs every future
+release automatically) — but `pakko.exe` keeps needing its own binary signing indefinitely, since
+a portable CLI exe isn't something that goes through Store certification the way an MSIX does.
 
 **Acceptance criteria (when implemented):**
-- [ ] All `.exe` and `.dll` binaries signed
-- [ ] MSIX package signed — installs without SmartScreen warning
-- [ ] Timestamp applied
-- [ ] Signing in release build process
-- [ ] Certificate not in repository
-- [ ] `Get-AuthenticodeSignature` returns `Valid` on all binaries
+- [ ] SignPath Foundation eligibility confirmed by actually applying (not just reading their public
+      criteria) — record the real outcome here before relying on it as the plan
+- [ ] Phase 1: `Identity Publisher` in `Package.appxmanifest` updated to match the SignPath-issued
+      certificate's Subject; `Deploy.ps1`'s signing step re-pointed from local `SignTool` + dev
+      cert to SignPath's CI-integrated signing
+- [ ] Phase 1: all `.exe`/`.dll` binaries signed via SignPath, including standalone `pakko.exe`
+      (`Archiver.CLI`/T-F09) published via `scripts/Publish-Cli.ps1` — not just binaries inside
+      the MSIX
+- [ ] Phase 1: MSIX signed via SignPath — installs without SmartScreen warning for direct/GitHub
+      downloads (current distribution model)
+- [ ] Timestamp applied to every signature
+- [ ] Signing wired into the actual release process, not a manual one-off step, for both
+      `scripts/Publish-Cli.ps1` (CLI) and `Deploy.ps1` (MSIX)
+- [ ] Certificate/signing credentials not in the repository
+- [ ] `Get-AuthenticodeSignature` returns `Valid` on all binaries, including `pakko.exe`
+- [ ] Phase 2 (deferred, tracked here for when it becomes relevant): when the MSIX is actually
+      submitted to the Store, `Identity Publisher` updated again to the Partner-Center-assigned
+      Publisher ID before that specific submission, and SignPath signing dropped for the MSIX
+      going forward (kept for `pakko.exe` regardless)
 
 ---
 
