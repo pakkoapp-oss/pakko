@@ -297,13 +297,18 @@ failure — so a blocked/misconfigured sandbox would have crashed instead of yie
   `[Trait("Category", "VeryLarge")]` instead — on demand only, via
   `dotnet test --filter "Category=VeryLarge"` (2026-07-17: gated separately from `Slow` per user
   request, so a routine pre-release `Slow` run never pays its cost unless deliberately asked to).
-  **Current true total (2026-07-18, after T-F35): 462 tests** via
-  `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` — 305 Archiver.Core.Tests (+19 from
-  T-F35: `DosDateTimeTests`, `ParallelSingleArchiveWriterTests`,
-  `ZipArchiveServiceParallelPipelineTests`) + 4 Archiver.Core.PerformanceTests
-  (`ZipEntryWriterCompatibilityTests`, new) + 43 Archiver.Shell.Tests + 55 Archiver.App.Core.Tests
-  + 55 Archiver.Core.IntegrationTests. Don't trust the 414/316/269 figures in the paragraph below
-  as current — this bullet is the freshest count; run `dotnet test` for ground truth either way.
+  **Current true total (2026-07-18, after T-F35 + its temp-file-compression follow-up +
+  the zero-byte-file fix): 468 tests** via
+  `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` — 310 Archiver.Core.Tests
+  (+22 from T-F35: `DosDateTimeTests`, `ParallelSingleArchiveWriterTests` (8, including 3 new
+  temp-file cleanup tests from the follow-up redesign and one disk-space-pre-check test),
+  `ZipArchiveServiceParallelPipelineTests`) + 5 Archiver.Core.PerformanceTests
+  (`ZipEntryWriterCompatibilityTests`, +1 from the zero-byte-file real-on-device bug — a new
+  end-to-end test through the real `ZipArchiveService.ArchiveAsync` API reproducing the exact
+  NanaZip "Data error" report, confirmed to actually catch the regression via a temporary revert)
+  + 43 Archiver.Shell.Tests + 55 Archiver.App.Core.Tests + 55 Archiver.Core.IntegrationTests.
+  Don't trust the 414/316/269 figures in the paragraph below as current — this bullet is the
+  freshest count; run `dotnet test` for ground truth either way.
   **T-F114 (2026-07-17)** added a second project, `Archiver.Core.PerformanceTests` (6 tests:
   archive+extract × one-large-file/many-small-files/hybrid, each comparing Pakko's ZIP path
   against a sandboxed, vendored `7za.exe` reference on a same-run ratio basis — see
@@ -317,20 +322,53 @@ failure — so a blocked/misconfigured sandbox would have crashed instead of yie
   (`ParallelPipelineFileCountThreshold = 64`): below it, archiving is completely unchanged
   (original sequential `ZipArchive`-based code); above it, a new `Archiver.Core/Services/Zip/`
   subsystem (`WorkItemEnumerator`, `ParallelSingleArchiveWriter`, `ZipEntryWriter`,
-  `ZipEntryCompressor`, `DosDateTime`) compresses small files (≤4 MiB) in parallel and streams
-  large files sequentially, writing the final ZIP through a hand-rolled container-format writer
-  since `System.IO.Compression.ZipArchive` gives no API to compress independently of the live
-  archive and splice the result in later. Built to fix the ~6x `SingleArchive`-vs-7z gap T-F114
-  measured for many-small-files archiving. Two real bugs were caught by the test suite before
-  shipping: a bounded-channel-alone-doesn't-bound-concurrency concurrency bug (whitebox test) and
-  a Zip64 local-header field-offset swap that corrupted output silently as far as .NET's own
-  reader was concerned but was rejected outright by an independent `7za.exe` integrity check — see
-  `DECISIONS.md`'s T-F35 entry for the full design/bug trail. T-F114's perf ratios were
-  re-measured after this change: `ArchiveAsync_ManySmallFiles` 6.02 → 2.39, `ArchiveAsync_Hybrid`
-  3.47 → 3.03, `ArchiveAsync_OneLargeFile` 1.22 → 1.23 (unaffected, as designed — a single large
-  file never crosses the gate). Stays `[~]` until a manual on-device verification (archive 100+
-  real small files via the installed Pakko GUI/context menu, confirm the result opens cleanly in
-  Explorer/7-Zip/WinRAR) — not graduated on `dotnet test` alone, per this project's workflow rule.
+  `ZipEntryCompressor`, `DosDateTime`) compresses EVERY non-placeholder file in parallel
+  regardless of size — small files (≤1 MiB) in memory, everything else into a private per-worker
+  temp file — writing the final ZIP through a hand-rolled container-format writer since
+  `System.IO.Compression.ZipArchive` gives no API to compress independently of the live archive
+  and splice the result in later. Built to fix the ~6x `SingleArchive`-vs-7z gap T-F114 measured
+  for many-small-files archiving. Two real bugs were caught by the test suite before the initial
+  ship: a bounded-channel-alone-doesn't-bound-concurrency concurrency bug (whitebox test) and a
+  Zip64 local-header field-offset swap that corrupted output silently as far as .NET's own reader
+  was concerned but was rejected outright by an independent `7za.exe` integrity check. A follow-up
+  profiling pass (temporary `Stopwatch`/`GC`-instrumented probe, deleted after use) found the
+  pipeline itself was already performing close to the 7z reference — the real dominant remaining
+  cost was three redundant full directory-tree walks before any real work started; merged two of
+  them into one `ComputeSingleArchiveTotals` walk. A second same-day follow-up (user question: "why
+  does a file-size limit need to exist at all?") replaced the original design's 4 MiB "large files
+  stream sequentially, single-threaded" fallback with **per-worker temp-file compression** — the
+  size threshold (lowered to 1 MiB) now only decides in-memory-buffer vs. temp-file, never
+  parallel-vs-sequential; `WriteStreamedEntryAsync` and its placeholder-then-patch mechanism were
+  deleted outright. This surfaced one more real concurrency bug (temp-file cleanup could race with
+  a still-running straggler task under cancellation — caught by a test that failed only under
+  full-suite parallel load, not in isolation) — fixed by awaiting every dispatched task before
+  sweeping. Three further same-day follow-ups reworked where per-worker temp files live (loose in
+  the destination folder → shared `%TEMP%` → a per-operation **hidden subfolder next to the
+  destination**, after the user's own on-device screenshot showed visible chunk-file flicker in
+  Explorer) and added a disk-space pre-check (`ArchiveEntrySecurity.GetAvailableFreeSpace`, reusing
+  T-F94's helper) before each temp-file compression, since the redesign introduced a real transient
+  disk-space cost the old streaming path never had. A fourth, more serious bug was then caught by
+  the user's own real on-device comparison against NanaZip (not `dotnet test`): a real ~2.8 GB
+  folder containing genuinely empty files (`.gitkeep`, `gc.properties`, etc.) compressed by Pakko
+  produced entries NanaZip's real 7-Zip engine rejected with `Data error`, while Pakko's own
+  extraction of the same archive reported no error at all. Root cause: `ZipEntryCompressor`
+  tagged zero-byte files as `Deflate` even though .NET's `DeflateStream` emits literally 0 output
+  bytes for zero input (not a valid deflate stream) — real `ZipArchiveEntry` always uses `Store`
+  for empty entries regardless of requested level, and this hand-rolled compressor didn't match
+  that. Fixed by forcing `StoredMethod` whenever the compressed uncompressed-length is 0; folded
+  into `ZipEntryWriterCompatibilityTests`' shared archive-building helper (so the 7-Zip-integrity
+  and raw-structural-parse tests all now cover it too), no new test count. This bug is exactly why
+  the "not graduated on `dotnet test` alone" rule below exists — it round-tripped clean through
+  .NET's own lenient reader and was invisible to every existing automated test until an independent
+  third-party reader was used. See `DECISIONS.md`'s T-F35 entry and its four follow-up entries for
+  the full stage-by-stage/bug-by-bug trail. Final T-F114 ratios: `ArchiveAsync_ManySmallFiles`
+  6.02 → ~1.0, `ArchiveAsync_Hybrid` 3.47 → ~1.3 (the real target of the temp-file redesign — its
+  medium 5-20 MB files were exactly what the old ceiling excluded from parallelism),
+  `ArchiveAsync_OneLargeFile` 1.22 → 1.18 (unaffected throughout — a single large file's file count
+  never crosses the gate). Stays `[~]` until a manual on-device verification (archive 100+ real
+  small files, including at least one genuinely empty file, via the installed Pakko GUI/context
+  menu, confirm the result opens cleanly in Explorer/7-Zip/WinRAR/NanaZip) — not graduated on
+  `dotnet test` alone, per this project's workflow rule.
 - MSIX signed with dev cert via Deploy.ps1 (see T-F10 for production-grade cert)
 - Async streaming (CopyToAsync) — CancellationToken respected mid-file
 - Temp file/dir pattern — no partial files on cancel or failure

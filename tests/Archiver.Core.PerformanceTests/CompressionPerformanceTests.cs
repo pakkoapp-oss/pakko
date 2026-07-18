@@ -39,9 +39,12 @@ public sealed class CompressionPerformanceTests : IDisposable
     [Trait("Category", "VeryLarge")]
     public async Task ArchiveAsync_OneLargeFile_WithinToleranceOfSevenZipReference()
     {
-        // observed 2026-07-17, see DECISIONS.md; re-verified unaffected 2026-07-18 after T-F35
-        // (1.23 measured — a single large file always stays on the untouched sequential path,
-        // never routed through T-F35's parallel pipeline, by design)
+        // observed 2026-07-17, see DECISIONS.md; re-verified unaffected 2026-07-18 after T-F35's
+        // pipeline (1.23), the ComputeSingleArchiveTotals enumeration-merge fix (1.20), and the
+        // temp-file-compression redesign that removed the size ceiling entirely (1.18) — a single
+        // large file's total FILE COUNT (1) never crosses ArchiveAsync's own 64-file gate, so it
+        // always stays on the completely untouched original sequential path regardless of anything
+        // done inside the parallel pipeline itself, by design.
         const double calibratedBaselineRatio = 1.22;
         string sourceDir = PerformanceFixtures.CreateOneLargeFileFolder(_temp.Path);
 
@@ -81,18 +84,27 @@ public sealed class CompressionPerformanceTests : IDisposable
     [Trait("Category", "Slow")]
     public async Task ArchiveAsync_ManySmallFiles_WithinToleranceOfSevenZipReference()
     {
-        // Re-measured 2026-07-18 after T-F35 (parallel SingleArchive pipeline): 2.39, down from
-        // the original 6.02 baseline (observed 2026-07-17, before T-F35) — a ~2.5x real
-        // improvement, consistent with T-F35's goal of closing this specific gap. Further
-        // re-measured same day after eliminating WorkItemEnumerator's redundant per-file stat
-        // calls (DirectoryInfo.EnumerateFiles() instead of Directory.EnumerateFiles() + separate
-        // FileInfo.Length/File.GetLastWriteTime/File.GetAttributes calls — 3 fewer native calls
-        // per file): 2.2 average across 3 runs (2.11-2.34) — a modest, real, but small further
-        // improvement, confirming per-file stat overhead was NOT the dominant remaining cost.
-        // The bulk of the remaining gap vs. 7za is more likely per-entry managed allocations
-        // (MemoryStream/byte[]/record per file) and Task/async orchestration overhead at
-        // thousands of files — not yet profiled/fixed, see DECISIONS.md's T-F35 entry.
-        const double calibratedBaselineRatio = 2.2;
+        // Ratio history for this scenario (5,000-file fixture), all same-day 2026-07-18 unless noted:
+        //   6.02  observed 2026-07-17, before T-F35 (fully sequential SingleArchive)
+        //   2.39  after T-F35's parallel pipeline shipped (~2.5x real improvement)
+        //   2.2   after fixing WorkItemEnumerator's redundant per-file stat calls (DirectoryInfo.
+        //         EnumerateFiles() instead of separate FileInfo.Length/GetLastWriteTime/
+        //         GetAttributes calls per file) — modest, confirmed NOT the dominant cost
+        //   1.45  after a profiling pass found ArchiveAsync's SingleArchive branch walked the same
+        //         directory tree TWICE more before the pipeline even started (ComputeTotalBytes for
+        //         progress + the gate's own file count) — merged into one combined
+        //         ComputeSingleArchiveTotals walk (also applying the same DirectoryInfo fix). This
+        //         was the dominant remaining cost, not per-file allocations or Task/Channel
+        //         overhead as originally hypothesized — see DECISIONS.md's T-F35 profiling entry
+        //         for the full stage-by-stage breakdown that found it.
+        //   ~1.0  after replacing the file-size ceiling entirely: files above the in-memory
+        //         threshold (now 1 MiB, was 4 MiB) are now ALSO compressed in parallel, into a
+        //         private temp file per worker instead of a byte[] — this scenario's files are all
+        //         well under 1 MiB either way, so this specific number is unaffected by that change
+        //         (0.92-1.03 observed across 5 runs, essentially parity with 7za — the small
+        //         variance/occasional sub-1.0 reading is ordinary run-to-run noise on a sub-second
+        //         operation, not a real further improvement to this exact scenario).
+        const double calibratedBaselineRatio = 1.0;
         string sourceDir = PerformanceFixtures.CreateManySmallFilesFolder(_temp.Path);
 
         await ArchiveWithPakkoTimed(sourceDir, Path.Combine(_temp.Path, "warmup_pakko.zip"));
@@ -132,12 +144,20 @@ public sealed class CompressionPerformanceTests : IDisposable
     [Trait("Category", "Slow")]
     public async Task ArchiveAsync_Hybrid_WithinToleranceOfSevenZipReference()
     {
-        // Re-measured 2026-07-18 after T-F35: 3.03, down from the original 3.47 baseline (observed
-        // 2026-07-17, before T-F35) — a smaller improvement than ManySmallFiles, as expected: the
-        // 4 MiB Zip64/parallel-eligibility threshold (see DECISIONS.md's T-F35 entry) routes this
-        // fixture's 5-20 MB "medium" files through the same untouched sequential streaming path as
-        // before, so only the 500 small files' portion of this scenario sped up.
-        const double calibratedBaselineRatio = 3.03;
+        // Ratio history (500 small + 4 medium 5-20MB files), all 2026-07-18 unless noted:
+        //   3.47  observed 2026-07-17, before T-F35
+        //   3.03  after T-F35's parallel pipeline — smaller improvement than ManySmallFiles, as
+        //         expected: the 4 MiB Zip64/parallel-eligibility threshold (DECISIONS.md's T-F35
+        //         entry) routes this fixture's medium files through the untouched sequential path
+        //   2.85  after the ComputeSingleArchiveTotals enumeration-merge fix (same fix as
+        //         ManySmallFiles — this scenario's directory walk was redundant too)
+        //   ~1.3  after replacing the 4 MiB size ceiling with per-worker temp-file compression —
+        //         this scenario's 4 "medium" 5-20 MB files were exactly the ones excluded from
+        //         parallelism by the old design (the whole reason this scenario's ratio lagged
+        //         ManySmallFiles' this whole session); now parallel too. 0.93-1.54 observed across
+        //         5 runs — more variance than ManySmallFiles since 4 medium-file compressions
+        //         landing in different relative positions across runs shifts the total more.
+        const double calibratedBaselineRatio = 1.3;
         string sourceDir = PerformanceFixtures.CreateHybridFolder(_temp.Path);
 
         await ArchiveWithPakkoTimed(sourceDir, Path.Combine(_temp.Path, "warmup_pakko.zip"));

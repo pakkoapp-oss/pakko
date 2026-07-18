@@ -337,13 +337,21 @@ tests caught before shipping):
 - `DosDateTimeTests` (`Archiver.Core.Tests/Services/Zip/`) — round-trip encode/decode, 1980/2107
   clamping, and a byte-for-byte comparison against a real `ZipArchiveEntry`'s own DOS date/time
   encoding.
-- `ParallelSingleArchiveWriterTests` (`Archiver.Core.Tests/Services/Zip/`) — unit-level, against
-  `ParallelSingleArchiveWriter.RunPipelineAsync` directly with an injectable compress delegate (not
-  real file I/O): enqueue-order-not-completion-order write proof, a whitebox concurrency-ceiling
-  test (a controllable blocking gate proves at most `windowCapacity` compress tasks ever run
-  concurrently — this caught a real bug: the bounded channel alone did not bound concurrency),
-  already-cancelled-token graceful no-op, mid-flight cancellation with no orphaned background
-  tasks left running afterward, and per-file error isolation.
+- `ParallelSingleArchiveWriterTests` (`Archiver.Core.Tests/Services/Zip/`) — two layers:
+  - Unit-level, against `RunPipelineAsync` directly with injectable compress delegates (not real
+    file I/O): enqueue-order-not-completion-order write proof, a whitebox concurrency-ceiling test
+    (a controllable blocking gate proves at most `windowCapacity` compress tasks ever run
+    concurrently — this caught a real bug: the bounded channel alone did not bound concurrency),
+    already-cancelled-token graceful no-op, mid-flight cancellation with no orphaned background
+    tasks left running afterward, and per-file error isolation.
+  - Real-file-I/O level, against `WriteAsync` with actual files/temp directories (added when the
+    original "large files stream sequentially" design was replaced by per-worker temp-file
+    compression — no more file-size ceiling): successful cleanup after a normal run (no leftover
+    `*.chunk-*.tmp` files), cleanup after a locked-file compression error with the rest of the
+    batch still archived, and cleanup after mid-flight cancellation — this last one caught a real
+    concurrency bug (temp-file cleanup racing against a still-running straggler task) that failed
+    intermittently only under full-suite parallel load, never in isolation; fixed by awaiting
+    every dispatched compress task before sweeping leftover temp files.
 - `ZipEntryWriterCompatibilityTests` (`Archiver.Core.PerformanceTests/` — lives there specifically
   to reuse the vendored, hash-verified `7za.exe` binary rather than duplicating it into a second
   test project; a correctness suite, not a performance one, despite the location) — proves the
@@ -351,8 +359,22 @@ tests caught before shipping):
   `System.IO.Compression.ZipFile.OpenRead` round trip, an independent `7za.exe t` integrity check
   (this caught a real Zip64 local-header field-offset swap bug — `ZipFile.OpenRead` accepted the
   corrupted bytes silently, `7za.exe` rejected them outright), a raw structural byte parser written
-  independently of `ZipEntryWriter`'s own code, and a forced-Zip64 test (an artificially large size
-  hint on a tiny real file, exercising the Zip64 path without needing gigabytes of test data).
+  independently of `ZipEntryWriter`'s own code, and a forced-Zip64 test (deliberately-synthetic
+  declared sizes on a tiny real stream, exercising `WriteCompressedEntryFromStreamAsync`'s Zip64
+  path without needing gigabytes of test data — verified via the raw parser only, since a real
+  reader would reasonably reject content whose actual length doesn't match its declared length).
+  The shared `BuildMixedArchiveAsync` helper (reused by the three tests above) also includes a
+  zero-byte real file compressed at `CompressionLevel.Optimal`, added after a real on-device
+  NanaZip cross-check found `ZipEntryCompressor` tagged empty files as `Deflate` even though
+  `DeflateStream` writes 0 output bytes for zero input — invalid to a real deflate reader though
+  invisible to .NET's own lenient one; see `DECISIONS.md`'s T-F35 follow-up entry. A separate test,
+  `ArchiveAsync_RealFolderWithEmptyFilesAndFoldersAboveParallelThreshold_PassesSevenZipIntegrityCheck`,
+  reproduces that exact bug report end-to-end through the real public `ZipArchiveService.ArchiveAsync`
+  API (not just `ZipEntryCompressor`/`ZipEntryWriter` called directly) — a real folder with 70+
+  files, several genuinely empty ones, and an empty subdirectory, above the parallel threshold,
+  verified with `7za.exe t`. Confirmed to actually catch the regression (temporarily reverted the
+  fix and re-ran — both this test and the shared-helper one failed with the exact same "Data Error"
+  NanaZip reported).
 - `ZipArchiveServiceParallelPipelineTests` (`Archiver.Core.Tests/Services/`) — the same properties
   re-verified through the real public `ArchiveAsync` API at gate-triggering scale (120 files, above
   `ParallelPipelineFileCountThreshold`'s 64): byte-identical/entry-order-identical determinism,

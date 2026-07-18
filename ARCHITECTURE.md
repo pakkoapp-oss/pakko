@@ -328,8 +328,15 @@ Gated inside `ZipArchiveService.ArchiveAsync`'s `SingleArchive` branch: below
 `ParallelPipelineFileCountThreshold` (64 files), the original always-sequential
 `ZipFile.Open`/`AddDirectoryToArchiveAsync`/`AddEntryFromFileAsync` code runs completely
 unchanged. Above it, archiving routes into this subsystem instead — see `DECISIONS.md`'s T-F35
-entry for the full design rationale (why `ZipArchive` can't be reused for the write side once
-gated, the Option A/B trade-off, the two real bugs the test suite caught).
+entry (and its follow-up entries) for the full design rationale (why `ZipArchive` can't be
+reused for the write side once gated, the Option A/B trade-off, the temp-file-compression
+redesign that removed the original design's file-size ceiling, and the real bugs the test suite
+caught along the way).
+
+Every non-placeholder file is compressed in parallel now, regardless of size — small files
+(≤1 MiB) fully in memory, everything else via a private per-worker temp file (bounded memory
+either way: a `byte[]` capped at 1 MiB, or a fixed copy-buffer streamed to disk, never O(file
+size) in RAM). There is no longer a "some files skip the parallel path" case.
 
 ```csharp
 // FileWorkItem.cs — one unit of work, in the exact final ZIP entry order
@@ -340,7 +347,9 @@ internal enum FileWorkKind { File, DirectoryPlaceholder }
 // WorkItemEnumerator.cs — deterministic, lazy; reshapes AddDirectoryToArchiveAsync's recursive
 // walk into a flat IEnumerable<FileWorkItem>, preserving T-F31/T-F32 order, T-F30 collision
 // renaming (reuses ZipArchiveService.GetUniqueEntryName, widened to internal), T-F66 empty-dir
-// placeholders, T-F23 reparse-point skip, T-F75 fixed rootDir.
+// placeholders, T-F23 reparse-point skip, T-F75 fixed rootDir. Uses DirectoryInfo.EnumerateFiles()/
+// EnumerateDirectories() (not the plain string-path overloads) so Length/LastWriteTime/Attributes
+// come from the same FindNextFile data the enumeration already read — zero extra stat calls.
 internal static class WorkItemEnumerator
 {
     public static IEnumerable<FileWorkItem> Enumerate(
@@ -348,12 +357,15 @@ internal static class WorkItemEnumerator
         Action<SkippedFile> reportSkipped, Action<ArchiveError> reportError);
 }
 
-// WorkResult.cs — outcome of processing one FileWorkItem, consumed strictly in enqueue order
-internal enum WorkResultKind { Compressed, LargePassthrough, DirectoryPlaceholder, Error }
+// WorkResult.cs — outcome of processing one FileWorkItem, consumed strictly in enqueue order.
+// TempFileCompressed replaced the original "large files stream sequentially" design outright —
+// both compressed cases know crc/compressed/uncompressed size fully upfront by the time the
+// writer sees them (the temp file is already fully written by a background worker).
+internal enum WorkResultKind { Compressed, TempFileCompressed, DirectoryPlaceholder, Error }
 internal sealed record WorkResult { /* Kind + payload; static WorkResult.For*() factories */ }
 
 // ZipEntryCompressor.cs — compresses a file's bytes fully into memory via DeflateStream directly
-// (no ZipArchiveEntry involved) for the small-file (≤4 MiB) parallel path.
+// (no ZipArchiveEntry involved), for the in-memory (≤1 MiB) parallel path.
 internal readonly record struct CompressedEntryData(
     byte[] CompressedBytes, uint Crc32, long UncompressedLength, ushort Method);
 internal static class ZipEntryCompressor
@@ -364,7 +376,8 @@ internal static class ZipEntryCompressor
 // ParallelSingleArchiveWriter.cs — dispatch/drain orchestration
 internal static class ParallelSingleArchiveWriter
 {
-    public const long ParallelEligibleByteThreshold = 4L * 1024 * 1024; // 4 MiB
+    public const long InMemoryCompressByteThreshold = 1L * 1024 * 1024; // 1 MiB — memory-shape
+        // boundary (RAM buffer vs. disk-streamed buffer), not a parallelism-eligibility boundary.
     public static int ComputeWindowCapacity(); // Clamp(ProcessorCount, 2, 16)
 
     public static Task WriteAsync(
@@ -372,28 +385,43 @@ internal static class ParallelSingleArchiveWriter
         long totalBytes, Action<SkippedFile> reportSkipped, Action<ArchiveError> reportError,
         IProgress<ProgressReport>? progress, CancellationToken cancellationToken);
 
-    // Decoupled from real compression so whitebox tests can inject a controllable delegate —
-    // see ParallelSingleArchiveWriterTests.
+    // Decoupled from real compression so whitebox tests can inject controllable delegates for
+    // both compress paths — see ParallelSingleArchiveWriterTests (including the whitebox test
+    // that caught a real "bounded channel alone doesn't bound concurrency" bug).
     internal static Task RunPipelineAsync(
         string tempPath, IEnumerable<FileWorkItem> items,
-        Func<FileWorkItem, CancellationToken, Task<WorkResult>> compressItem, int windowCapacity,
-        CompressionLevel compressionLevel, long totalBytes, IProgress<ProgressReport>? progress,
+        Func<FileWorkItem, CancellationToken, Task<WorkResult>> compressInMemory,
+        Func<FileWorkItem, CancellationToken, Task<WorkResult>> compressToTempFile,
+        int windowCapacity, long totalBytes, IProgress<ProgressReport>? progress,
         Action<ArchiveError> reportError, CancellationToken cancellationToken);
 }
 
 // ZipEntryWriter.cs — hand-rolled ZIP container writer (local file header/central directory/
 // EOCD, conditional Zip64 — never "always on", see DECISIONS.md). Owns the whole output file
-// once gated; a ZipArchive and this writer never share one output stream.
+// once gated; a ZipArchive and this writer never share one output stream. Both write methods
+// take crc/compressed/uncompressed size fully known upfront — no unknown-size placeholder-then-
+// patch mechanism (removed once the "large files stream sequentially, sizes unknown until done"
+// design was replaced by temp-file compression, which always knows sizes before the writer runs).
 internal sealed class ZipEntryWriter : IAsyncDisposable
 {
+    internal const ushort StoredMethod = 0;
+    internal const ushort DeflateMethod = 8;
+    internal static ushort SelectMethod(CompressionLevel compressionLevel);
+
     public ZipEntryWriter(string path);
     public int EntryCount { get; }
-    public Task WriteCompressedEntryAsync(string entryName, CompressedEntryData data, DateTime lastWriteTime, CancellationToken ct);
-    public Task WriteStreamedEntryAsync(string sourcePath, string entryName, CompressionLevel compressionLevel,
-        long uncompressedLengthHint, DateTime lastWriteTime, IProgress<ProgressReport>? progress,
-        long totalBytes, long startOffset, CancellationToken ct); // large files, never buffered
+    public Task WriteCompressedEntryAsync(string entryName, CompressedEntryData data, DateTime lastWriteTime, CancellationToken ct); // in-memory byte[]
+    public Task WriteCompressedEntryFromStreamAsync(string entryName, Stream compressedSource,
+        long compressedLength, long uncompressedLength, uint crc32, ushort method,
+        DateTime lastWriteTime, CancellationToken ct); // temp-file-sourced, streamed copy, no size ceiling
     public Task WriteDirectoryPlaceholderAsync(string entryName, DateTime lastWriteTime, CancellationToken ct);
     public ValueTask DisposeAsync(); // writes central directory + EOCD (+ Zip64 if needed)
+
+    // internal — reused by ParallelSingleArchiveWriter's temp-file compression worker so a file's
+    // CRC is computed in the same single read pass as compression, not a second full file read.
+    internal static Task<(long Total, uint Crc32)> CopyWithCrcAsync(
+        FileStream source, Stream destination, byte[] buffer, IProgress<ProgressReport>? progress,
+        long totalBytes, long startOffset, string entryName, CancellationToken ct);
 }
 
 // DosDateTime.cs — MS-DOS date/time packing, byte-identical to ZipArchiveEntry's own encoding
@@ -408,6 +436,32 @@ internal static class DosDateTime
 `Archiver.Core.IO.Crc32` gained an `Accumulator` struct (incremental CRC-32 — `Update(ReadOnlySpan<byte>)`/
 `Finish()`) alongside its existing whole-stream `Compute(Stream)`, so uncompressed bytes can be
 hashed in the same single read pass as compression instead of a second full file read.
+
+**Temp-file lifecycle (T-F35 follow-up, twice-revised):** `WriteAsync` creates a per-operation,
+uniquely-named, **hidden** subfolder next to the destination archive —
+`{destinationDir}\.pakko-tmp-{Guid}\` — not loose files scattered in that folder (on-device
+verification showed those visibly flickering in Explorer mid-operation) and not a shared
+`%TEMP%` location either (considered and rejected in turn: a different, possibly smaller/fuller
+volume than the destination, which matters now that there's no per-file size ceiling). Same-
+volume-as-destination plus `FileAttributes.Hidden` gets both disk-space locality and
+invisible-by-default in Explorer at once. `CompressToTempFileAsync` (in
+`ParallelSingleArchiveWriter`) creates one uniquely-named chunk file (`chunk-{Guid}.tmp`) inside
+that folder per file above the in-memory threshold, streams the compressed result into it, and
+hands the finished path to the writer via `WorkResult.TempFileCompressed`. The writer copies its
+bytes into the archive and deletes it immediately after. A tracked set (`ConcurrentDictionary<string,byte>`)
+plus an outer `finally` that awaits every dispatched compress task before sweeping guarantees no
+orphaned temp file survives cancellation or an unhandled exception — a real race (a straggler task
+finishing and creating its temp file *after* an earlier sweep attempt already ran) was caught by a
+test that failed intermittently under full-suite parallel load before this was fixed; see
+`DECISIONS.md`.
+
+Before creating a chunk file, `CompressToTempFileAsync` also checks
+`ArchiveEntrySecurity.GetAvailableFreeSpace(chunkDirectory)` against the file's declared size —
+reusing the same T-F94 helper the extraction-side compression-bomb check already uses. Archive
+*creation* never had any disk-space check before this (only extraction did, and only as part of
+the bomb defense); the temp-file redesign introduced a real, if best-effort-only-mitigated, new
+disk-space risk that direct streaming never had. Insufficient space is reported as a per-file
+`ArchiveError`, no disk touched — see `DECISIONS.md`.
 
 ---
 

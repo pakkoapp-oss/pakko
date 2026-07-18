@@ -74,33 +74,95 @@ public sealed class ZipEntryWriterCompatibilityTests : IDisposable
     }
 
     [Fact]
-    public async Task WriteStreamedEntryAsync_LargeSizeHintForcesZip64_StillProducesValidArchive()
+    public async Task WriteCompressedEntryFromStreamAsync_LargeDeclaredSizes_EmitsCorrectZip64Fields()
     {
+        // Deliberately synthetic: declares compressed/uncompressed sizes far above the Zip64
+        // threshold while the actual stream content is a few bytes, to exercise the Zip64 local-
+        // header/extra-field write path without needing gigabytes of real data on disk. Both
+        // remaining write paths (in-memory and temp-file) know their real sizes fully upfront in
+        // production, so this test isn't simulating a real production input shape — it's directly
+        // probing WriteCompressedEntryFromStreamAsync's Zip64-field-writing logic in isolation.
+        // The resulting file's declared entry size deliberately does not match its real content,
+        // so this test verifies only the raw CONTAINER structure (signatures, offsets, the Zip64
+        // extra field's own bytes) — not via ZipFile.OpenRead/7za, since both would reasonably
+        // reject content that doesn't match its declared length.
+        const long hugeSize = 5_000_000_000L;
         string archivePath = Path.Combine(_temp.Path, "zip64-forced.zip");
-        string sourceFile = _temp.CreateFile("small-but-hinted-large.bin", "tiny real content, huge hint");
 
         await using (var writer = new ZipEntryWriter(archivePath))
         {
-            // Passes a size hint far above the Zip64 threshold while the real file is tiny —
-            // forces the Zip64 local-header/extra-field/patch-back code path to run without
-            // needing gigabytes of real test data on disk.
-            await writer.WriteStreamedEntryAsync(
-                sourceFile, "forced.bin", CompressionLevel.Optimal,
-                uncompressedLengthHint: 5_000_000_000L, DateTime.UtcNow,
-                progress: null, totalBytes: 0, startOffset: 0, CancellationToken.None);
+            byte[] tinyContent = System.Text.Encoding.UTF8.GetBytes("tiny");
+            using var ms = new MemoryStream(tinyContent);
+            await writer.WriteCompressedEntryFromStreamAsync(
+                "forced.bin", ms, compressedLength: hugeSize, uncompressedLength: hugeSize,
+                crc32: 0, ZipEntryWriter.StoredMethod, DateTime.UtcNow, CancellationToken.None);
         }
 
         byte[] bytes = await File.ReadAllBytesAsync(archivePath);
         RawZipStructure structure = RawZipStructure.Parse(bytes);
         structure.CentralDirectoryRecords.Should().ContainSingle();
 
-        using var archive = ZipFile.OpenRead(archivePath);
-        var entry = archive.Entries.Should().ContainSingle().Subject;
-        using var reader = new StreamReader(entry.Open());
-        (await reader.ReadToEndAsync()).Should().Be("tiny real content, huge hint");
+        // Parse the local file header's Zip64 extra field directly and confirm it carries the
+        // declared huge values — local header: sig(4) verNeeded(2) flags(2) method(2) time(2)
+        // date(2) crc(4) compSize(4)=0xFFFFFFFF uncompSize(4)=0xFFFFFFFF nameLen(2) extraLen(2)
+        // name(nameLen) extra(tag(2) size(2) uncompressed(8) compressed(8)).
+        int nameLen = BinaryPrimitives.ReadUInt16LittleEndian(bytes.AsSpan(26, 2));
+        int extraLen = BinaryPrimitives.ReadUInt16LittleEndian(bytes.AsSpan(28, 2));
+        extraLen.Should().Be(20, "tag(2)+size(2)+two 8-byte values = 20 bytes total for the extra field area");
+        int extraStart = 30 + nameLen;
+        BinaryPrimitives.ReadUInt16LittleEndian(bytes.AsSpan(extraStart, 2)).Should().Be(0x0001, "Zip64 extra field tag");
+        BinaryPrimitives.ReadUInt16LittleEndian(bytes.AsSpan(extraStart + 2, 2)).Should().Be(16, "the sub-field's own data-size value covers just the two 8-byte values, not the tag+size header");
+        ulong declaredUncompressed = BinaryPrimitives.ReadUInt64LittleEndian(bytes.AsSpan(extraStart + 4, 8));
+        ulong declaredCompressed = BinaryPrimitives.ReadUInt64LittleEndian(bytes.AsSpan(extraStart + 12, 8));
+        declaredUncompressed.Should().Be((ulong)hugeSize);
+        declaredCompressed.Should().Be((ulong)hugeSize);
+    }
 
-        if (SevenZipRunner.IsAvailable)
-            SevenZipRunner.Test(archivePath); // throws if the forced-Zip64 bytes are actually invalid
+    [Fact]
+    public async Task ArchiveAsync_RealFolderWithEmptyFilesAndFoldersAboveParallelThreshold_PassesSevenZipIntegrityCheck()
+    {
+        // End-to-end reproduction of a real on-device bug report: a real folder (containing
+        // genuinely empty files like .gitkeep/lockfile alongside normal ones, plus an empty
+        // subdirectory) compressed through the actual public ZipArchiveService.ArchiveAsync API —
+        // not just ZipEntryCompressor/ZipEntryWriter called directly, like the other tests in this
+        // class — so this also exercises the real WorkItemEnumerator/threshold-routing/RunPipelineAsync
+        // dispatch path. File count is pushed above ParallelPipelineFileCountThreshold (64) so the
+        // parallel pipeline (not the original sequential ZipArchive path) is the one under test.
+        // NanaZip (a real 7-Zip engine) rejected exactly this shape with "Data error" on every
+        // zero-byte entry before the ZipEntryCompressor fix; Pakko's own .NET-based extraction
+        // reported no error at all, so only an independent reader like 7za.exe can catch a
+        // regression here.
+        if (!SevenZipRunner.IsAvailable) return; // defense-in-depth only, see SevenZipRunner
+
+        string sourceDir = Path.Combine(_temp.Path, "source");
+        Directory.CreateDirectory(sourceDir);
+        Directory.CreateDirectory(Path.Combine(sourceDir, "empty-subfolder"));
+
+        for (int i = 0; i < 70; i++)
+            File.WriteAllText(Path.Combine(sourceDir, $"file{i}.txt"), $"content {i}");
+
+        File.WriteAllBytes(Path.Combine(sourceDir, ".gitkeep"), []);
+        File.WriteAllBytes(Path.Combine(sourceDir, "lockfile"), []);
+        File.WriteAllBytes(Path.Combine(sourceDir, "gc.properties"), []);
+
+        string destinationDir = Path.Combine(_temp.Path, "dest");
+        Directory.CreateDirectory(destinationDir);
+
+        var service = new Archiver.Core.Services.ZipArchiveService();
+        var result = await service.ArchiveAsync(new Archiver.Core.Models.ArchiveOptions
+        {
+            SourcePaths = [sourceDir],
+            DestinationFolder = destinationDir,
+            ArchiveName = "repro",
+            CompressionLevel = CompressionLevel.Optimal,
+        }, progress: null, CancellationToken.None);
+
+        result.Errors.Should().BeEmpty();
+        string archivePath = Path.Combine(destinationDir, "repro.zip");
+        File.Exists(archivePath).Should().BeTrue();
+
+        var act = () => SevenZipRunner.Test(archivePath);
+        act.Should().NotThrow("a real folder with genuinely empty files/folders must produce a spec-compliant archive, not just one .NET's own lenient reader accepts");
     }
 
     private async Task<(string ArchivePath, Dictionary<string, byte[]?> Expected)> BuildMixedArchiveAsync()
@@ -141,14 +203,30 @@ public sealed class ZipEntryWriterCompatibilityTests : IDisposable
             await writer.WriteDirectoryPlaceholderAsync("empty-folder/", DateTime.UtcNow, CancellationToken.None);
             expected["empty-folder/"] = null;
 
-            // Larger file through the streamed passthrough path.
-            string largeSourcePath = Path.Combine(_temp.Path, "streamed-source.bin");
+            // Zero-byte real file compressed at a non-Stored level, same in-memory path.
+            // DeflateStream never writes anything for zero input (0 output bytes, not even a
+            // minimal valid final block), so tagging it Deflate produces an entry real deflate
+            // readers reject as corrupt even though .NET's own reader accepts it silently —
+            // caught via a real on-device 7-Zip/NanaZip extraction failure. Must round-trip as
+            // Stored regardless of the requested level; see ZipEntryCompressor.Compress.
+            using (var ms = new MemoryStream())
+            {
+                var compressed = ZipEntryCompressor.Compress(ms, CompressionLevel.Optimal);
+                await writer.WriteCompressedEntryAsync("empty.txt", compressed, DateTime.UtcNow, CancellationToken.None);
+            }
+            expected["empty.txt"] = Array.Empty<byte>();
+
+            // Larger file through the temp-file-compressed path (T-F35 follow-up — replaces the
+            // old single-threaded "streamed passthrough" design; see DECISIONS.md).
             byte[] largeContent = BuildSemiCompressibleContent(512 * 1024);
-            await File.WriteAllBytesAsync(largeSourcePath, largeContent);
-            await writer.WriteStreamedEntryAsync(
-                largeSourcePath, "streamed.bin", CompressionLevel.Optimal,
-                uncompressedLengthHint: largeContent.Length, DateTime.UtcNow,
-                progress: null, totalBytes: largeContent.Length, startOffset: 0, CancellationToken.None);
+            using (var sourceMs = new MemoryStream(largeContent))
+            {
+                var compressed = ZipEntryCompressor.Compress(sourceMs, CompressionLevel.Optimal);
+                using var compressedMs = new MemoryStream(compressed.CompressedBytes);
+                await writer.WriteCompressedEntryFromStreamAsync(
+                    "streamed.bin", compressedMs, compressed.CompressedBytes.Length, compressed.UncompressedLength,
+                    compressed.Crc32, compressed.Method, DateTime.UtcNow, CancellationToken.None);
+            }
             expected["streamed.bin"] = largeContent;
         }
 

@@ -40,6 +40,15 @@ internal static class ZipEntryCompressor
             long uncompressedLength;
             using (var deflate = new DeflateStream(buffer, compressionLevel, leaveOpen: true))
                 uncompressedLength = CopyWithCrc(sourceStream, deflate, ref acc);
+
+            // A zero-length input never causes DeflateStream to write anything at all (0 bytes
+            // out, not even a minimal empty final block) — tagging that as the Deflate method
+            // produces a ZIP entry real deflate readers (7-Zip) reject as corrupt, even though
+            // .NET's own lenient reader accepts it silently. Real ZipArchiveEntry always uses
+            // Stored for empty entries regardless of requested level; match that here.
+            if (uncompressedLength == 0)
+                return new CompressedEntryData(Array.Empty<byte>(), acc.Finish(), 0, StoredMethod);
+
             return new CompressedEntryData(buffer.ToArray(), acc.Finish(), uncompressedLength, DeflateMethod);
         }
     }

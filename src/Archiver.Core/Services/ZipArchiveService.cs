@@ -81,7 +81,10 @@ public sealed class ZipArchiveService : IArchiveService
 
             string tempPath = destPath + ".tmp";
 
-            long totalSourceBytes = ComputeTotalBytes(options.SourcePaths);
+            // T-F35 profiling (2026-07-18) found ComputeTotalBytes and the gate's file count used
+            // to walk the same directory tree in two separate passes (~193ms combined against a
+            // 5,000-file fixture, ~20-25% of total archiving time) — merged into one combined walk.
+            (long totalSourceBytes, int totalFileCount) = ComputeSingleArchiveTotals(options.SourcePaths);
             progress?.Report(new ProgressReport { Percent = 0, BytesTransferred = 0, TotalBytes = totalSourceBytes });
 
             // T-F31/T-F32: Sort source paths for deterministic archive entry order (ordinal, case-insensitive).
@@ -92,9 +95,8 @@ public sealed class ZipArchiveService : IArchiveService
                 .ToList();
 
             // T-F35: gate the parallel pipeline behind a file-count threshold — see the constant's
-            // own comment. CountFiles is a cheap recursive Directory.EnumerateFiles walk, the same
-            // shape as ComputeTotalBytes just below it.
-            bool useParallelPipeline = CountFiles(sortedSourcePaths) > ParallelPipelineFileCountThreshold;
+            // own comment.
+            bool useParallelPipeline = totalFileCount > ParallelPipelineFileCountThreshold;
 
             try
             {
@@ -1215,43 +1217,65 @@ public sealed class ZipArchiveService : IArchiveService
         return total;
     }
 
-    // T-F35: cheap recursive file count used only to decide whether ArchiveAsync's SingleArchive
-    // branch routes into the parallel pipeline — same traversal shape as ComputeTotalBytes/
-    // ComputeDirectoryBytes just above, counting files instead of summing bytes.
-    private static int CountFiles(IReadOnlyList<string> paths)
+    // T-F35: combined byte-total + file-count walk for ArchiveAsync's SingleArchive branch —
+    // used for both the progress-report total and the parallel-pipeline gate decision in one
+    // pass (profiling found the previous two-separate-walks approach cost ~193ms combined
+    // against a 5,000-file fixture). Also applies the same stat-call reduction as
+    // WorkItemEnumerator: DirectoryInfo.EnumerateFiles()/EnumerateDirectories() populate
+    // Length/Attributes from the same FindNextFile data the enumeration itself already read,
+    // instead of separate File.GetAttributes/FileInfo.Length calls per entry.
+    private static (long TotalBytes, int FileCount) ComputeSingleArchiveTotals(IReadOnlyList<string> paths)
     {
-        int count = 0;
+        long totalBytes = 0;
+        int fileCount = 0;
         foreach (var p in paths)
         {
             try
             {
                 if (ArchiveEntrySecurity.IsReparsePoint(p)) continue;
-                if (File.Exists(p)) count++;
-                else if (Directory.Exists(p)) count += CountDirectoryFiles(p);
+                if (File.Exists(p))
+                {
+                    totalBytes += new FileInfo(p).Length;
+                    fileCount++;
+                }
+                else if (Directory.Exists(p))
+                {
+                    var (bytes, count) = ComputeDirectoryTotals(p);
+                    totalBytes += bytes;
+                    fileCount += count;
+                }
             }
             catch { }
         }
-        return count;
+        return (totalBytes, fileCount);
     }
 
-    private static int CountDirectoryFiles(string dir)
+    private static (long TotalBytes, int FileCount) ComputeDirectoryTotals(string dir)
     {
-        int count = 0;
+        long totalBytes = 0;
+        int fileCount = 0;
         try
         {
-            foreach (string filePath in Directory.EnumerateFiles(dir, "*", SearchOption.TopDirectoryOnly))
+            foreach (var fileInfo in new DirectoryInfo(dir).EnumerateFiles("*", SearchOption.TopDirectoryOnly))
             {
-                if (!ArchiveEntrySecurity.IsReparsePoint(filePath))
-                    count++;
+                if (fileInfo.Attributes.HasFlag(FileAttributes.ReparsePoint)) continue;
+                try
+                {
+                    totalBytes += fileInfo.Length;
+                    fileCount++;
+                }
+                catch { }
             }
-            foreach (string subDir in Directory.EnumerateDirectories(dir, "*", SearchOption.TopDirectoryOnly))
+            foreach (var dirInfo in new DirectoryInfo(dir).EnumerateDirectories("*", SearchOption.TopDirectoryOnly))
             {
-                if (!ArchiveEntrySecurity.IsReparsePoint(subDir))
-                    count += CountDirectoryFiles(subDir);
+                if (dirInfo.Attributes.HasFlag(FileAttributes.ReparsePoint)) continue;
+                var (bytes, count) = ComputeDirectoryTotals(dirInfo.FullName);
+                totalBytes += bytes;
+                fileCount += count;
             }
         }
         catch { }
-        return count;
+        return (totalBytes, fileCount);
     }
 
     private static bool IsZipFile(string path)

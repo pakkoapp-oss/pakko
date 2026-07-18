@@ -11,9 +11,14 @@ namespace Archiver.Core.Services.Zip;
 /// <see cref="System.IO.Compression.ZipArchive"/> gives no public API to compress a file's
 /// bytes independently of the live archive and splice the result in afterward — see
 /// <c>DECISIONS.md</c>'s T-F35 entry. Owns the whole output file for the archive it writes
-/// (small-file entries compressed in memory by parallel workers, large-file entries streamed
-/// sequentially, directory placeholders) — a <see cref="ZipArchive"/> and this writer can never
-/// share one output stream, since each keeps its own independent bookkeeping.
+/// (small entries compressed fully in memory by parallel workers, larger entries compressed by
+/// parallel workers into a private temp file and streamed in from there, directory placeholders)
+/// — a <see cref="ZipArchive"/> and this writer can never share one output stream, since each
+/// keeps its own independent bookkeeping. Both write paths know crc/compressed/uncompressed size
+/// fully upfront (the in-memory buffer or the finished temp file), so there is no unknown-size
+/// placeholder-then-patch mechanism here — see DECISIONS.md's T-F35 follow-up entry for why that
+/// mechanism (needed for T-F35's original "large files stream sequentially" design) was removed
+/// once compression stopped needing to happen directly on the writer thread for any file size.
 ///
 /// Compression itself still goes through <c>System.IO.Compression.DeflateStream</c> — only the
 /// ZIP container bytes (headers/CRC/central directory) are written by hand.
@@ -34,19 +39,17 @@ internal sealed class ZipEntryWriter : IAsyncDisposable
     // with the real 64-bit value carried in a Zip64 extra field.
     private const long Zip64Threshold = 0xFFFFFFFF;
 
-    // For the streamed (unknown-final-compressed-size-upfront) path, the Zip64-or-not decision
-    // for a file must be made BEFORE any header bytes are written (the local header's extra
-    // field length is fixed once written). Real compressed size is bounded by uncompressed size
-    // plus DEFLATE's small worst-case expansion overhead, so deciding from the uncompressed-size
-    // hint alone is safe as long as a generous safety margin is left — 256 MB is far larger than
-    // DEFLATE's expansion could ever realistically add.
-    private const long Zip64SafetyMarginBytes = 256L * 1024 * 1024;
-
     private const ushort DefaultVersionNeeded = 20;
     private const ushort Zip64VersionNeeded = 45;
 
-    private const ushort StoredMethod = 0;
-    private const ushort DeflateMethod = 8;
+    // internal — reused by ParallelSingleArchiveWriter's temp-file compression worker, which
+    // needs to pick the same ZIP method code before writing the header for a not-yet-in-memory,
+    // not-yet-fully-known entry (T-F35 follow-up: compress-to-temp-file path, no size limit).
+    internal const ushort StoredMethod = 0;
+    internal const ushort DeflateMethod = 8;
+
+    internal static ushort SelectMethod(CompressionLevel compressionLevel) =>
+        compressionLevel == CompressionLevel.NoCompression ? StoredMethod : DeflateMethod;
 
     private const int CopyBufferSize = 81920; // matches ZipArchiveService.CopyBufferSize
     private const int FileStreamBufferSize = 262144; // matches ZipArchiveService.FileStreamBufferSize
@@ -85,62 +88,27 @@ internal sealed class ZipEntryWriter : IAsyncDisposable
     }
 
     /// <summary>
-    /// Streams a large file directly into the archive without buffering its compressed bytes in
-    /// memory — mirrors <c>ZipArchiveService.AddEntryFromFileAsync</c>'s existing behavior
-    /// (same FileStream buffer size, same ProgressStream wiring), just writing through this
-    /// hand-rolled header instead of <see cref="ZipArchiveEntry"/>. CRC/compressed/uncompressed
-    /// size are unknown until the copy finishes, so the header is written with placeholders and
-    /// patched via a seek-back once the real values are known (the output file is always a local
-    /// FileStream, always seekable, so this is safe and avoids needing a ZIP data descriptor).
+    /// Writes an entry whose compressed bytes already exist as a complete, finished stream (T-F35
+    /// follow-up: the temp-file compression path — a file is compressed once, in full, into a
+    /// private temp file by a background worker, so by the time this method runs, crc/compressed
+    /// size/uncompressed size are all already known, exactly like <see cref="WriteCompressedEntryAsync"/>'s
+    /// in-memory case). Streams <paramref name="compressedSource"/>'s bytes into the archive via a
+    /// bounded-buffer copy — never materializes the whole entry in memory, so this scales to any
+    /// file size without a memory ceiling (see DECISIONS.md's T-F35 entry for why the file-size
+    /// threshold that used to gate this could be removed once compression stopped needing an
+    /// in-memory buffer for the "not tiny" case).
     /// </summary>
-    public async Task WriteStreamedEntryAsync(
-        string sourcePath, string entryName, CompressionLevel compressionLevel, long uncompressedLengthHint,
-        DateTime lastWriteTime, IProgress<ProgressReport>? progress, long totalBytes, long startOffset,
-        CancellationToken ct)
+    public async Task WriteCompressedEntryFromStreamAsync(
+        string entryName, Stream compressedSource, long compressedLength, long uncompressedLength,
+        uint crc32, ushort method, DateTime lastWriteTime, CancellationToken ct)
     {
-        using var fileStream = new FileStream(sourcePath, FileMode.Open, FileAccess.Read, FileShare.Read,
-            bufferSize: FileStreamBufferSize, useAsync: false);
-
-        bool needsZip64 = uncompressedLengthHint >= Zip64Threshold - Zip64SafetyMarginBytes;
-        ushort method = compressionLevel == CompressionLevel.NoCompression ? StoredMethod : DeflateMethod;
+        bool needsZip64 = uncompressedLength >= Zip64Threshold || compressedLength >= Zip64Threshold;
         long localHeaderOffset = _output.Position;
 
-        var offsets = WriteLocalFileHeader(entryName, lastWriteTime, crc32: 0, compressedSize: 0,
-            uncompressedSize: 0, method, needsZip64);
+        WriteLocalFileHeader(entryName, lastWriteTime, crc32, compressedLength, uncompressedLength, method, needsZip64);
+        await compressedSource.CopyToAsync(_output, CopyBufferSize, ct).ConfigureAwait(false);
 
-        long dataStart = _output.Position;
-        long uncompressedActual;
-        uint crc;
-        var buffer = new byte[CopyBufferSize];
-
-        if (method == StoredMethod)
-        {
-            (uncompressedActual, crc) = await CopyWithCrcAsync(fileStream, _output, buffer,
-                progress, totalBytes, startOffset, entryName, ct).ConfigureAwait(false);
-        }
-        else
-        {
-            var deflate = new DeflateStream(_output, compressionLevel, leaveOpen: true);
-            await using (deflate.ConfigureAwait(false))
-            {
-                (uncompressedActual, crc) = await CopyWithCrcAsync(fileStream, deflate, buffer,
-                    progress, totalBytes, startOffset, entryName, ct).ConfigureAwait(false);
-            }
-        }
-
-        long dataEnd = _output.Position;
-        long compressedActual = dataEnd - dataStart;
-
-        if (!needsZip64 && (compressedActual >= Zip64Threshold || uncompressedActual >= Zip64Threshold))
-        {
-            throw new InvalidOperationException(
-                $"File '{sourcePath}' grew past the 4 GiB ZIP32 boundary during archiving " +
-                "(actual size exceeded the size hint used to decide Zip64 eligibility upfront).");
-        }
-
-        PatchStreamedEntryHeader(offsets, crc, compressedActual, uncompressedActual, needsZip64);
-
-        RecordEntry(entryName, lastWriteTime, crc, method, compressedActual, uncompressedActual,
+        RecordEntry(entryName, lastWriteTime, crc32, method, compressedLength, uncompressedLength,
             localHeaderOffset, isDirectory: false);
     }
 
@@ -154,7 +122,14 @@ internal sealed class ZipEntryWriter : IAsyncDisposable
         return Task.CompletedTask;
     }
 
-    private static async Task<(long Total, uint Crc32)> CopyWithCrcAsync(
+    /// <summary>
+    /// Reads from <paramref name="source"/> in <paramref name="buffer"/>-sized chunks, updating a
+    /// running CRC-32 as it goes, writing each chunk straight to <paramref name="destination"/> —
+    /// used both by this writer (no longer directly — see history) and by
+    /// <c>ParallelSingleArchiveWriter</c>'s temp-file compression worker, so a file's CRC is
+    /// computed in the same single read pass as compression instead of a second full read.
+    /// </summary>
+    internal static async Task<(long Total, uint Crc32)> CopyWithCrcAsync(
         FileStream source, Stream destination, byte[] buffer,
         IProgress<ProgressReport>? progress, long totalBytes, long startOffset, string entryName,
         CancellationToken ct)
@@ -183,10 +158,7 @@ internal sealed class ZipEntryWriter : IAsyncDisposable
         return (total, acc.Finish());
     }
 
-    private readonly record struct LocalHeaderFieldOffsets(
-        long Crc32Offset, long CompressedSizeOffset, long UncompressedSizeOffset, bool IsZip64);
-
-    private LocalHeaderFieldOffsets WriteLocalFileHeader(
+    private void WriteLocalFileHeader(
         string entryName, DateTime lastWriteTime, uint crc32, long compressedSize, long uncompressedSize,
         ushort method, bool needsZip64)
     {
@@ -206,53 +178,16 @@ internal sealed class ZipEntryWriter : IAsyncDisposable
         WriteUInt16((ushort)(dosDateTime & 0xFFFF));
         WriteUInt16((ushort)(dosDateTime >> 16));
 
-        long crc32Offset = _output.Position;
         WriteUInt32(crc32);
-
-        long compressedSizeOffset = _output.Position;
         WriteUInt32(needsZip64 ? Zip32Marker : (uint)compressedSize);
-        long uncompressedSizeOffset = _output.Position;
         WriteUInt32(needsZip64 ? Zip32Marker : (uint)uncompressedSize);
 
         WriteUInt16((ushort)nameBytes.Length);
         WriteUInt16((ushort)extra.Length);
         _output.Write(nameBytes);
 
-        long zip64ExtraStart = _output.Position;
         if (extra.Length > 0)
             _output.Write(extra);
-
-        // Zip64 extra field sub-field order is [uncompressed size][compressed size] (spec-fixed),
-        // so CompressedSizeOffset must point at the SECOND 8-byte slot, not the first.
-        return needsZip64
-            ? new LocalHeaderFieldOffsets(crc32Offset, zip64ExtraStart + 4 + 8, zip64ExtraStart + 4, IsZip64: true)
-            : new LocalHeaderFieldOffsets(crc32Offset, compressedSizeOffset, uncompressedSizeOffset, IsZip64: false);
-    }
-
-    private void PatchStreamedEntryHeader(
-        LocalHeaderFieldOffsets offsets, uint crc32, long compressedSize, long uncompressedSize, bool needsZip64)
-    {
-        long resumePosition = _output.Position;
-
-        _output.Position = offsets.Crc32Offset;
-        WriteUInt32(crc32);
-
-        if (needsZip64)
-        {
-            _output.Position = offsets.CompressedSizeOffset;
-            WriteUInt64((ulong)compressedSize);
-            _output.Position = offsets.UncompressedSizeOffset;
-            WriteUInt64((ulong)uncompressedSize);
-        }
-        else
-        {
-            _output.Position = offsets.CompressedSizeOffset;
-            WriteUInt32((uint)compressedSize);
-            _output.Position = offsets.UncompressedSizeOffset;
-            WriteUInt32((uint)uncompressedSize);
-        }
-
-        _output.Position = resumePosition;
     }
 
     private static byte[] BuildZip64LocalExtraField(ulong uncompressedSize, ulong compressedSize)

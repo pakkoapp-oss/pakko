@@ -4424,3 +4424,364 @@ session pending the user's direction on whether to pursue deeper profiling.
 
 Calibrated ratio constant updated again: `ArchiveAsync_ManySmallFiles_...` 2.39 → 2.2 (see the
 test file's own dated comment).
+
+### Follow-up (same day): actual profiling — the real dominant cost was outside the pipeline entirely
+
+User asked for real profiling (not more guessing) of hypotheses (2)/(3) above. Built a temporary,
+throwaway diagnostic (`OverheadProfilingProbe.cs`, deleted after use, not a permanent test) that
+decomposed a single `ArchiveAsync_ManySmallFiles`-equivalent run (5,000 files) into stages, via
+`Stopwatch` + `GC.GetTotalAllocatedBytes`/`GC.CollectionCount(0)`:
+
+| Stage | Measured | What it isolates |
+|---|---|---|
+| Enumeration only | 26 ms | `WorkItemEnumerator.Enumerate`, no processing |
+| Pure sequential compress, no Task/Channel at all | 1,399 ms, 80,827 bytes allocated/file, 66 Gen0 GCs | The "floor" — raw compress + per-file managed allocation cost |
+| Pure sequential write of pre-compressed data | 417 ms | `ZipEntryWriter`'s own write-side cost, no compression |
+| **Real parallel pipeline** (`ParallelSingleArchiveWriter.WriteAsync`) | **476 ms** | The actual T-F35 code, as shipped |
+| `ComputeTotalBytes`-equivalent (a **second** directory walk, pre-existing code, for the progress total) | 97 ms | Redundant |
+| `CountFiles`-equivalent (a **third** directory walk — T-F35's *own* new gate-decision code) | 96 ms | Redundant, and self-inflicted |
+| `HasTempEntries`-equivalent (re-open + parse the just-written central directory) | 9 ms | Small |
+
+**The headline finding directly contradicted the standing hypotheses.** The parallel pipeline
+itself was never the problem — 476 ms against a theoretical zero-overhead-sequential baseline of
+1,816 ms (compress 1,399 + write 417) is a genuine ~3.8x win, and already close to 7za's own
+~380–400 ms. Hypotheses (2) (per-file allocations) and (3) (Task/Channel orchestration overhead)
+were real but not dominant — the pipeline's own allocation total (401,489 KB) barely exceeded the
+sequential compress-only baseline's (394,661 KB), meaning Channel/Task/WorkResult wrapping adds
+negligible extra garbage, and 476 ms substantially *beating* the sequential floor rules out
+orchestration overhead outweighing its own benefit.
+
+**The actual dominant cost: the same directory tree was walked three times before any real work
+started** — once for `ComputeTotalBytes` (pre-existing, used for the progress total), once for
+`CountFiles` (T-F35's *own* new gate-decision code — this session's own regression, not inherited
+debt), and once more inside `WorkItemEnumerator` when the pipeline actually dispatched. The first
+two combined (~193 ms) were pure waste relative to a 5,000-file fixture's ~800–900 ms total — 
+roughly a fifth to a quarter of total time, spent doing nothing but re-deriving numbers the
+pipeline was about to recompute anyway.
+
+**Fix:** merged `ComputeTotalBytes` and the gate's file count into one new combined walk,
+`ZipArchiveService.ComputeSingleArchiveTotals`/`ComputeDirectoryTotals`, replacing both the
+pre-existing `ComputeTotalBytes` call *and* T-F35's own `CountFiles` in the `SingleArchive`
+branch (removed `CountFiles`/`CountDirectoryFiles` outright as now-dead code) — one pass computes
+both the byte total (for progress) and the file count (for the gate decision). Also applies the
+same `DirectoryInfo.EnumerateFiles()`/`EnumerateDirectories()` stat-reduction trick as the earlier
+`WorkItemEnumerator` fix, on top of just eliminating the duplicate walk. `SeparateArchives` mode
+still uses the original, untouched `ComputeTotalBytes` — this fix only touches `SingleArchive`'s
+own gate-and-progress computation, nothing shared.
+
+**Result, verified empirically (not assumed) — three consecutive runs before treating as real,
+per this project's convention for perf-test findings:**
+
+| Scenario | Before this fix | After this fix |
+|---|---|---|
+| `ArchiveAsync_ManySmallFiles` | 2.2 | **1.42–1.48 (avg ~1.45)** |
+| `ArchiveAsync_Hybrid` | 3.03 | **2.85** (two runs) |
+| `ArchiveAsync_OneLargeFile` | 1.23 | **1.20** (unaffected — single-file directory walk is trivial either way) |
+
+Full history for `ManySmallFiles`: **6.02 (pre-T-F35) → 2.39 (pipeline) → 2.2 (WorkItemEnumerator
+stat fix) → 1.45 (this fix)** — the original ~6x regression is now within ~1.5x of the reference,
+with the largest single contribution coming not from the parallel-compression architecture itself
+but from eliminating redundant enumeration that had nothing to do with parallelism at all. Full
+solution test suite (462 tests) and the real 65,536-file Zip64 round trip re-confirmed green after
+this change, since it only affects total/count computation, not archiving logic itself.
+
+Calibrated ratio constants updated a final time: `ArchiveAsync_ManySmallFiles_...` 2.2 → 1.45,
+`ArchiveAsync_Hybrid_...` 3.03 → 2.85, `ArchiveAsync_OneLargeFile_...` re-confirmed at 1.22 (both
+1.23 and 1.20 observed, well within existing tolerance).
+
+### Follow-up (same day): temp-file compression replaces the file-size ceiling entirely
+
+User asked (discussion, not a bug report): the design still had a hard-coded "large file" cutoff
+(4 MiB) below which files compress in parallel and above which they stream sequentially,
+single-threaded — why does a size limit need to exist at all, given the original, unmodified
+sequential path never needed one for a single arbitrarily-large file? Proposed compressing any
+file in small chunks, appending each compressed chunk to a temp file on disk instead of an
+in-memory buffer, using the same bounded worker count as today (not proposing thousands of
+parallel temp files).
+
+**Discussed and confirmed technically sound, with one real nuance:** a temp file's bytes cannot be
+"attached" into the final ZIP for free — the ZIP format requires compressed data to be physically
+contiguous with its local file header at a specific recorded byte offset within the SAME file, and
+Windows/NTFS has no common zero-copy "splice bytes from file A into the middle of growing file B"
+primitive reachable from .NET. The temp file's bytes genuinely have to be re-read and re-written
+into the final archive — but this copy is pure I/O (no CPU/compression work repeated), so it's
+cheap relative to the compression time parallelism saves.
+
+**Implemented:** the file-size threshold (`ParallelSingleArchiveWriter`'s old
+`ParallelEligibleByteThreshold`, renamed `InMemoryCompressByteThreshold`) was **lowered from 4 MiB
+to 1 MiB**, not removed — it now means "compress into a `byte[]` vs. compress into a private temp
+file," not "compress in parallel vs. compress sequentially." Every non-placeholder file is
+compressed in parallel now, unconditionally:
+- **`WorkResultKind.LargePassthrough`/`ZipEntryWriter.WriteStreamedEntryAsync`** (the original
+  design's single-threaded, sequential, unknown-size-until-done streaming path) were **deleted
+  outright**, along with the whole unknown-size placeholder-then-seek-back-patch mechanism
+  (`LocalHeaderFieldOffsets`, `PatchStreamedEntryHeader`) that existed only to support it — no
+  longer needed once every remaining write path knows crc/compressed/uncompressed size fully
+  upfront.
+- **New `WorkResultKind.TempFileCompressed`** + `ParallelSingleArchiveWriter.CompressToTempFileAsync`:
+  a background worker (same `SemaphoreSlim`-gated concurrency as the in-memory path) streams a
+  file — read chunk, update CRC (`Crc32.Accumulator`), compress (`DeflateStream`), write chunk —
+  into a uniquely-named private temp file (`{tempPath's filename}.chunk-{Guid}.tmp`, same
+  directory as the archive's own `.tmp`, per the user's stated preference for "next to where the
+  archive is being created"). Per-worker memory is bounded by a fixed copy buffer, not file size —
+  identical memory shape to what the deleted sequential-streaming path already had, just now
+  achieved in parallel.
+- **New `ZipEntryWriter.WriteCompressedEntryFromStreamAsync`**: like `WriteCompressedEntryAsync`
+  but sources bytes from a `Stream` (the finished temp file) via a buffered copy instead of a
+  `byte[]` in one `WriteAsync` call — crc/compressed/uncompressed size are passed in fully known,
+  written directly into the header with no placeholder/patch needed (compression already
+  finished by the time the writer touches this entry).
+- **`ZipEntryWriter.CopyWithCrcAsync`** (already existed for the deleted streaming path) widened
+  to `internal static` and reused as-is by the new temp-file worker — same single-read-pass
+  CRC-plus-compression logic, no duplicated implementation.
+- **Cleanup correctness — a real, non-obvious concurrency bug caught by a test that failed only
+  under full-suite parallel load, not in isolation:** the original cleanup design tracked created
+  temp files in a `ConcurrentDictionary`, removed entries as the writer consumed them, and swept
+  anything left in a `finally` when the pipeline ended (cancellation, error, or normal
+  completion). This missed a real race: on cancellation, the consumer loop can exit (and the
+  `finally` sweep can run) *before* an already-dispatched-but-still-running background compress
+  task finishes, creates its temp file, and adds itself to the tracked set — arriving *after* the
+  sweep already ran and returned, leaving a genuinely orphaned temp file. Fixed by tracking every
+  dispatched compress `Task` in a separate `ConcurrentBag` and awaiting all of them (exceptions
+  swallowed) in the `finally`, *before* sweeping the tracked-temp-file set — guaranteeing nothing
+  is still writing to disk when the sweep runs. Caught by
+  `WriteAsync_CancelledMidFlight_NoOrphanedChunkTempFilesRemain`, which passed reliably in
+  isolation but failed intermittently (roughly 1 in 3-4 runs) under `dotnet test` with the full
+  solution running in parallel — a genuine reminder that a cleanup test's real signal only shows
+  up under the same contention a real machine under load would produce, not a clean single-test run.
+
+**Verification, same rigor as the original T-F35 work:**
+- Three new tests in `ParallelSingleArchiveWriterTests` using real files and real temp
+  directories (not fakes) — successful cleanup after a normal run, cleanup after a locked-file
+  compression error (with the rest of the batch still archived correctly), and cleanup after
+  mid-flight cancellation (the one that caught the race above).
+- `ZipEntryWriterCompatibilityTests` updated: the old `WriteStreamedEntryAsync`-based Zip64-forcing
+  test was replaced with one against the new `WriteCompressedEntryFromStreamAsync`, using
+  deliberately-synthetic declared sizes (a real file's actual bytes can't reach the Zip64
+  threshold in a fast test) — verified via raw structural parsing only (not `ZipFile.OpenRead`/
+  7za, both of which would reasonably reject content whose actual length doesn't match its
+  declared length, which this deliberately synthetic fixture doesn't try to avoid).
+- Full solution suite (462 tests) reconfirmed green, including 5 consecutive full-suite runs
+  specifically to re-prove the cleanup race fix under the exact parallel-load conditions that
+  surfaced it originally.
+- The real 65,536-file Zip64 `Slow` test and the >4 GiB `VeryLarge` test both re-confirmed passing
+  through the redesigned pipeline (the 65,536-file case routes through it directly; the >4 GiB
+  case is still a single file, so it stays on the untouched original sequential path regardless).
+- T-F114 perf ratios re-measured (5 runs each): `ArchiveAsync_ManySmallFiles` — unaffected by this
+  specific change (its files are all well under even the new 1 MiB threshold) but naturally noisy
+  at sub-second scale, 0.92–1.03 observed, essentially parity with 7za; `ArchiveAsync_Hybrid` —
+  the real target of this change, since its 4 "medium" 5–20 MB files were exactly what the old 4
+  MiB ceiling excluded from parallelism — dropped from 2.85 to **0.93–1.54 (avg ≈1.25)**;
+  `ArchiveAsync_OneLargeFile` unaffected (1.18, its single file never crosses the `ArchiveAsync`-
+  level 64-file gate regardless of anything inside this pipeline). Calibrated constants updated:
+  `ArchiveAsync_ManySmallFiles_...` 1.45 → 1.0, `ArchiveAsync_Hybrid_...` 2.85 → 1.3,
+  `ArchiveAsync_OneLargeFile_...` unchanged at 1.22.
+
+**Doc cascade:** `ARCHITECTURE.md` (Zip subsystem section rewritten for the new class shapes),
+`TASKS.md` (T-F35 acceptance criteria updated), `CLAUDE.md` (Current State bullet updated).
+
+### Follow-up (same day): chunk temp files moved to `%TEMP%`, found during the user's own on-device verification
+
+The user's own manual on-device verification (archiving a real ~2.8 GB folder via the installed
+Pakko GUI) surfaced a real UX problem, not a correctness bug: chunk temp files
+(`flutter_windows_3.zip.tmp.chunk-<guid>.tmp`) were visibly appearing and disappearing directly
+inside the user's own visible destination folder (their Downloads folder) while the progress
+dialog ran, mid-archive. Nothing was broken — every file was still cleaned up correctly — but a
+user watching Explorer during a multi-minute archive operation would reasonably find files
+flickering in and out of their own folder alarming or confusing, not legible as "an implementation
+detail."
+
+**Fix:** chunk temp files now root under a shared, Pakko-owned `%TEMP%\PakkoArchiveChunks\`
+directory instead of next to the destination archive's own `.tmp` file — this repo already made
+the identical design correction once before, for a different reason: T-F52's tar.exe quarantine
+staging originally lived "on the same disk as the destination" per its own design doc, and was
+moved to a fixed `%TEMP%\PakkoTarSandbox\<guid>\` location once that turned out not to be
+load-bearing for correctness (an AppContainer traverse-permission concern there, not a UX one
+here — same conclusion, different motivating problem). `File.Move`/copy across volumes already
+works correctly regardless of which physical disk the temp file and the final destination sit
+on, so this costs at most a marginal difference in cross-volume copy speed, never a correctness
+problem, matching that same precedent's own reasoning.
+
+**Test update:** the three temp-file lifecycle tests added earlier this session
+(`ParallelSingleArchiveWriterTests`) originally asserted "no `*.chunk-*.tmp` files remain" by
+scanning the test's own temp directory (which doubled as both source and destination) — since
+chunk files no longer land there at all, that assertion would have trivially passed regardless of
+whether cleanup actually worked. Updated to scan the real shared `%TEMP%\PakkoArchiveChunks\`
+location instead, filtered to the specific test's own archive filename (`{archive filename}.chunk-
+*.tmp`) so a leftover from some other concurrently-running operation sharing that same directory
+can't produce a false positive or false negative.
+
+Full solution suite (465 tests) reconfirmed green after this change.
+
+### Follow-up (same day, superseding the one above): a per-operation hidden subfolder next to the destination, not `%TEMP%`
+
+Discussed further with the user before this shipped: is `%TEMP%` actually the right call, given
+this design no longer has any per-file size ceiling? A genuinely large file (multi-GB) now
+produces a chunk temp file of comparable size — if `%TEMP%`'s volume (typically the system drive)
+has less free space than the destination volume, this introduces a real new failure mode ("out of
+space" on `%TEMP%`'s drive even though the actual destination has room) that didn't exist before
+this whole redesign. Performance-wise `%TEMP%` was still fine (the final copy into the archive is
+an unavoidable read+write regardless of where the temp file lives, per the earlier entry above,
+and `%TEMP%` is usually the fastest local volume) — but the disk-space-locality concern was real
+and specific to this design's removal of the size ceiling.
+
+**User's proposed fix, confirmed sound and implemented:** put the chunk files back next to the
+destination archive (matching disk-space locality with wherever the user chose to archive to) but
+inside a **per-operation, uniquely-named, hidden subfolder** — not loose files scattered directly
+in the destination directory (the original, rejected design that caused the on-device flicker),
+and not `%TEMP%` either. This gets both properties at once: natural free-space locality, and
+invisible-by-default in Explorer (the `FileAttributes.Hidden` bit — Explorer doesn't show hidden
+items unless the user has explicitly enabled "Show hidden files, folders, and drives").
+
+**Implementation:** `ParallelSingleArchiveWriter.WriteAsync` creates
+`{destinationDir}\.pakko-tmp-{Guid}\` (the GUID keeps two concurrent archive operations targeting
+the same destination folder from colliding), sets `FileAttributes.Hidden` on it immediately, and
+deletes the whole folder in an outer `finally` once `RunPipelineAsync` returns (success, error, or
+cancellation) — `RunPipelineAsync`'s own existing cleanup already empties it of individual chunk
+files first, so this is just removing the now-empty container. Individual chunk file names
+simplified to `chunk-{Guid}.tmp` (no longer need an archive-filename prefix for disambiguation,
+since the per-operation folder already provides it).
+
+**Residual, honestly-acknowledged limitations** (raised directly with the user before implementing):
+1. Doesn't help the subset of users who have "show hidden files" enabled in Explorer — plausibly a
+   larger fraction than average for Pakko's stated government/defense technical audience. For
+   that subset, the flicker concern the original on-device report raised isn't fully solved.
+2. If the app crashes hard (not a graceful cancellation — a real unhandled crash or power loss)
+   before the `finally` runs, a hidden orphaned chunk folder would sit inside the user's own
+   destination directory (Desktop, Documents, wherever they archived to), invisible by default —
+   arguably a more surprising place to find stray junk than `%TEMP%`, which is where users/IT
+   tooling (Disk Cleanup) already expect and periodically clear scratch debris. This is a real,
+   if rare, trade-off accepted in exchange for solving the much more commonly-hit visible-flicker
+   problem the user's own on-device test actually reproduced.
+
+**Test updates:** the three existing chunk-cleanup tests were re-pointed from the `%TEMP%\
+PakkoArchiveChunks\` location to `Directory.GetDirectories(_tempDir, ".pakko-tmp-*")` (the
+destination directory itself, since that's now where the hidden folder lives) — simpler than the
+previous filename-prefix-scoped file search, since checking "the per-operation folder is gone" is
+sufficient (its contents are gone by definition if the folder itself is gone). A new test,
+`WriteAsync_WhileRunning_ChunkFolderIsHiddenAndNextToDestination`, drives a real multi-file
+archive operation, polls for the chunk folder's appearance mid-flight, and asserts both that it
+sits in the same directory as the destination archive and that `FileAttributes.Hidden` is set —
+then asserts it's gone once the operation completes. Full solution suite (466 tests) reconfirmed
+green, including 4 consecutive reruns of the chunk-lifecycle tests specifically to rule out timing
+flakiness in the new mid-flight-polling test.
+
+### Follow-up (same day): a disk-space pre-check for the temp-file compression path
+
+User asked, correctly: this codebase already has a disk-space check (`ArchiveEntrySecurity
+.GetAvailableFreeSpace`, T-F94) — how does the temp-file redesign interact with it? Investigated
+and reported honestly: that check is **extraction-only**, and only fires as the second half of the
+compression-bomb defense (only once the 1000:1 ratio is already tripped) — there was never any
+disk-space check for archive **creation** at all, before or after this session's changes.
+
+That said, the temp-file redesign genuinely introduces a new risk the old design never had: the
+old direct-streaming path (and, before that, the original always-sequential path) never needed
+disk space beyond the final archive itself — data flowed straight through. Now, any file above
+the in-memory threshold is fully compressed into its own temp file first (bounded in count by
+`windowCapacity`, but each individual chunk file can be as large as its source file — no ceiling),
+so a real transient extra disk-space requirement now exists, on the same volume as the
+destination (per the hidden-subfolder entry above). Today's failure mode if the disk actually
+fills mid-batch: an `IOException` on the temp file write, already caught and surfaced as a
+per-file `ArchiveError` (no corruption, but an unclear message and a likely cascade of similar
+errors for whatever else was mid-flight).
+
+**Implemented:** `ParallelSingleArchiveWriter.CompressToTempFileAsync` now checks
+`ArchiveEntrySecurity.GetAvailableFreeSpace(chunkDirectory)` against the file's declared size
+*before* creating the temp file at all — reusing the exact same T-F94 helper the extraction-side
+check already uses, rather than inventing new disk-space-check infrastructure. If insufficient,
+returns a clear `ArchiveError` ("Not enough free disk space to compress this file: it is {N:N0}
+bytes, but only {N:N0} bytes are free") without ever touching disk for that file — the rest of the
+batch continues normally, same per-file error isolation guarantee as every other failure mode in
+this pipeline.
+
+**Deliberately NOT built:** a general "will the whole archive fit" pre-flight check (the user's
+question was specifically about the temp-file side effect, not a request for a new feature of that
+scope), and no attempt to make the check airtight against several concurrent workers racing the
+same free-space number down simultaneously (matches the existing extraction-side check's own
+tolerance for this — a best-effort catch of the common "file plainly too big" case, not a hard
+guarantee, backed by the same graceful `IOException`-to-`ArchiveError` fallback either way).
+
+**Test:** `CompressToTempFileAsync` widened from `private` to `internal` (matching this
+codebase's established `InternalsVisibleTo` convention for exactly this situation) so a test can
+drive it directly with a hand-crafted `FileWorkItem` — a real, tiny source file, but a declared
+`FileSize` of `long.MaxValue / 2` (no real disk has that much free space) — asserting the
+returned `WorkResult` is an error mentioning the shortfall and that no temp file was ever created.
+Full solution suite (467 tests) reconfirmed green.
+
+### Bug found via real on-device comparison against NanaZip: zero-byte files corrupted the archive
+
+User compressed a real ~2.8 GB folder (`flutter_windows_3`, containing several genuinely empty
+files — `.gitkeep`, `.dartignore`, `gc.properties`, `lockfile`, empty `CHANGELOG.md`, etc.) with
+Pakko, then cross-checked the result by extracting it with NanaZip (real 7-Zip engine) side by
+side with a NanaZip-created archive of the same folder. NanaZip's extraction of the NanaZip
+archive was clean; its extraction of the **Pakko** archive failed with `Data error` on exactly the
+zero-byte entries and nothing else. Pakko itself extracted both archives without any reported
+error — a real corruption silently invisible to Pakko's own round-trip, only surfaced by an
+independent reader, exactly the failure class T-F114's vendored-`7za.exe` integrity checks exist
+to catch — except this time in a code path (`ZipEntryCompressor`, T-F35's new in-memory compression
+worker) that had never gotten equivalent compatibility-test coverage the way `ZipEntryWriter`'s
+container-level bytes did.
+
+**Root cause, confirmed empirically (`7za l -slt`, `ZipArchive` + `DeflateStream` probes):** for a
+zero-byte source file at any compression level other than `NoCompression`,
+`ZipEntryCompressor.Compress` ran the content through `DeflateStream` as normal. .NET's
+`DeflateStream`, when zero bytes are ever written to it, emits **zero bytes of output on
+Dispose/FlushFinalBlock** — not even a minimal valid empty final block. The resulting ZIP entry
+was written with `Method = Deflate` but `Packed Size = 0`, which is not a valid deflate bitstream
+under any real decoder. 7-Zip's own deflate reader correctly rejects it as a data-integrity error.
+.NET's own `ZipArchiveEntry` reader, when asked to decompress 0 packed bytes against a 0-byte
+declared uncompressed size, apparently short-circuits without validating stream framing at all —
+so Pakko's own extraction (and its own `dotnet test` suite, which only ever round-tripped through
+.NET's reader) never caught it. Confirmed via a direct repro: real `System.IO.Compression
+.ZipArchive`, given a zero-byte entry at `CompressionLevel.Optimal`, always writes it as `Store`
+(0 packed bytes, method 0) rather than attempting Deflate at all — this hand-rolled compressor was
+the one path that didn't match that reference behavior.
+
+**Fix:** `ZipEntryCompressor.Compress` now checks the actual compressed uncompressed-length after
+running the (possibly no-op) Deflate pass — if it's 0, the result is forced to `StoredMethod`
+regardless of the requested compression level, matching real `ZipArchiveEntry`'s own observed
+behavior exactly (the compressed byte buffer is empty either way, so this is purely a
+method-tag/metadata correction, not a behavior change to any actual bytes written). The temp-file
+compression path (`ParallelSingleArchiveWriter.CompressToTempFileAsync`) cannot currently receive a
+zero-byte file at all — the in-memory/temp-file routing gate (`item.FileSize <=
+InMemoryCompressByteThreshold`) always sends 0-byte files through the in-memory path — so no
+parallel fix was needed there, and none was added speculatively.
+
+**Test:** `ZipEntryWriterCompatibilityTests.BuildMixedArchiveAsync` (the shared archive-building
+helper already reused by the in-process `ZipFile.OpenRead`, raw structural-parse, and real
+`7za.exe` integrity-check tests) gained a new zero-byte `"empty.txt"` entry compressed at
+`CompressionLevel.Optimal` — the exact reproduction shape. This means all three existing tests
+built on that helper now exercise the fix, including the 7-Zip integrity check that would have
+caught this bug immediately had it existed before.
+
+A second, genuinely new test was also added:
+`ArchiveAsync_RealFolderWithEmptyFilesAndFoldersAboveParallelThreshold_PassesSevenZipIntegrityCheck`
+drives the real public `ZipArchiveService.ArchiveAsync` API directly (not `ZipEntryCompressor`/
+`ZipEntryWriter` in isolation) against a real folder on disk — 70+ real files (above
+`ParallelPipelineFileCountThreshold`), several genuinely empty ones, and one empty subdirectory —
+then runs `7za.exe t` against the result. This is the closest automated equivalent to the user's
+actual on-device repro (a real `flutter_windows_3` folder compressed through the installed app),
+covering the real `WorkItemEnumerator`/threshold-routing/`RunPipelineAsync` dispatch path that the
+isolated compatibility tests bypass. Verified this test (and the shared-helper one) actually catch
+the regression: temporarily reverted the `ZipEntryCompressor` fix and reran — both failed with the
+exact same `Data Error` NanaZip reported, then both passed again once the fix was restored. Full
+solution suite (468 tests — 467 plus this one genuinely new test) reconfirmed green.
+
+Also checked, since empty **folders** were the other half of the user's question: directory
+placeholders (`ZipEntryWriter.WriteDirectoryPlaceholderAsync`) never went through
+`ZipEntryCompressor`/`DeflateStream` at all — they hardcode `StoredMethod`/crc32=0 directly and
+were unaffected by this bug from the start; already covered by the pre-existing `"empty-folder/"`
+entry in the same shared `BuildMixedArchiveAsync` helper.
+
+**Other documented-behavior divergence found while auditing, reported but deliberately not
+fixed (not a correctness bug, no extraction failure):** `ZipEntryWriter` always writes
+`ExternalAttributes = 0x20` (FILE_ATTRIBUTE_ARCHIVE) for every file and `0x10`
+(FILE_ATTRIBUTE_DIRECTORY) for every folder, regardless of the source file's real Windows
+attributes (Hidden/ReadOnly/System are never preserved). This differs from Pakko's own original
+sequential path (`ZipArchiveService`'s `archive.CreateEntry(name, level)` call, not
+`CreateEntryFromFile`), which writes `ExternalAttributes = 0` for everything — confirmed by
+creating a real zero-byte entry via `System.IO.Compression.ZipArchive` directly and inspecting it
+with `7za l -slt` (`Attributes` field blank). Neither path preserves per-file Hidden/ReadOnly/System
+flags on archive, so this is an inconsistency between Pakko's two ZIP-writing code paths, not a
+fidelity regression introduced by the parallel pipeline — flagged for awareness, not fixed
+speculatively (no user-visible symptom, no extraction failure in any tested reader).

@@ -643,9 +643,10 @@ covers the overwhelming majority of real usage). Above it, it routes into a new
 
 ```
 WorkItemEnumerator (deterministic T-F31/T-F32/T-F30/T-F66/T-F23/T-F75-preserving traversal)
-  → ParallelSingleArchiveWriter (bounded Channel<Task<WorkResult>> + SemaphoreSlim compute gate,
-     small files (≤4 MiB) compressed in parallel via ZipEntryCompressor; large files (>4 MiB)
-     streamed sequentially, never buffered, exactly like the old AddEntryFromFileAsync)
+  → ParallelSingleArchiveWriter (bounded Channel<Task<WorkResult>> + SemaphoreSlim compute gate —
+     EVERY non-placeholder file compresses in parallel, regardless of size: small files (≤1 MiB)
+     compressed in memory via ZipEntryCompressor; everything else compressed into a private
+     per-worker temp file, bounded by a fixed copy buffer, not file size)
   → ZipEntryWriter (hand-rolled ZIP container writer — local file headers, central directory,
      EOCD/Zip64 — since System.IO.Compression.ZipArchive gives no API to compress independently
      of the live archive and splice the result in later)
@@ -653,21 +654,34 @@ WorkItemEnumerator (deterministic T-F31/T-F32/T-F30/T-F66/T-F23/T-F75-preserving
 
 **Deviations from the original one-line sketch, found necessary during implementation:**
 - **`System.IO.Compression.ZipArchive` cannot be reused for the write side at all** once gated —
-  it and a hand-rolled writer can't share one output stream, so *every* entry above the gate
-  (small compressed-in-memory, large streamed, and directory placeholders) goes through
-  `ZipEntryWriter`, not just the parallel-eligible ones.
-- **Zip64 is conditional, not "always on."** Decided per-field (local header per-entry based on
-  a safety-margined size hint; central directory/EOCD per-record/globally at dispose time) —
+  it and a hand-rolled writer can't share one output stream, so *every* entry above the gate goes
+  through `ZipEntryWriter`.
+- **Zip64 is conditional, not "always on."** Decided per-field (local header per-entry from
+  exactly-known sizes; central directory/EOCD per-record/globally at dispose time) —
   unconditional Zip64 on every entry was considered and rejected as needless per-entry bloat
   for a decision that's fully covered by a small, exhaustively-tested boundary function. See
   `DECISIONS.md`.
-- **No data descriptor.** The output is always a local, seekable `FileStream`, so unknown
-  crc/compressed-size values (large-file streamed path) are written as placeholders and
-  patched via a seek-back once real values are known — simpler and lower-risk than
-  implementing ZIP's data-descriptor mechanism.
+- **No data descriptor, ever — not even for large files.** The original design needed one for
+  "large files stream sequentially, sizes unknown until done"; a same-day follow-up (user-driven
+  discussion — "why does a size limit need to exist at all?") replaced that whole design with
+  per-worker **temp-file compression** for anything above the (lowered, 1 MiB) in-memory
+  threshold: a background worker streams a file into its own private temp file, so crc/
+  compressed/uncompressed size are fully known by the time the writer touches the entry, same as
+  the in-memory case. `WorkResultKind.LargePassthrough`/`ZipEntryWriter.WriteStreamedEntryAsync`
+  and the placeholder-then-patch mechanism they needed were deleted outright, replaced by
+  `WorkResultKind.TempFileCompressed`/`ZipEntryWriter.WriteCompressedEntryFromStreamAsync`. A
+  temp file's bytes can't be spliced into the final ZIP for free (no Windows zero-copy primitive
+  for inserting bytes mid-file) but the required copy is pure I/O, not repeated compression — see
+  `DECISIONS.md`'s follow-up entry.
 - **The bounded channel alone does NOT bound compute concurrency** — a real `SemaphoreSlim`
   compute gate was required in addition (caught by a whitebox test before it shipped; see
   `DECISIONS.md`).
+- **Temp-file cleanup needed a second fix**: tracking created-but-unconsumed temp files in a
+  `ConcurrentDictionary` and sweeping in a `finally` isn't sufficient by itself — a straggler
+  compress task can finish and register its temp file *after* an earlier sweep (triggered by
+  cancellation) already ran. Fixed by awaiting every dispatched compress task before sweeping.
+  Caught by a test that failed intermittently only under full-suite parallel load, not in
+  isolation — see `DECISIONS.md`.
 - **Progress reporting needs no `Interlocked`** — since exactly one thread (the writer/consumer)
   ever calls `progress.Report`, unlike T-F12's `SeparateArchives` mode.
 
@@ -675,9 +689,10 @@ WorkItemEnumerator (deterministic T-F31/T-F32/T-F30/T-F66/T-F23/T-F75-preserving
 - `src/Archiver.Core/Services/Zip/DosDateTime.cs`, `ZipEntryCompressor.cs`, `ZipEntryWriter.cs`,
   `FileWorkItem.cs`, `WorkResult.cs`, `WorkItemEnumerator.cs`, `ParallelSingleArchiveWriter.cs`
 - `src/Archiver.Core/Services/ZipArchiveService.cs` — the gate (`ParallelPipelineFileCountThreshold`,
-  `CountFiles`/`CountDirectoryFiles`), `GetUniqueEntryName` widened to `internal` for reuse
-- `src/Archiver.Core/IO/Crc32.cs` — added `Accumulator` (incremental CRC-32, reused by both
-  `ZipEntryCompressor` and `ZipEntryWriter`'s streamed path) alongside the existing `Compute(Stream)`
+  `ComputeSingleArchiveTotals`/`ComputeDirectoryTotals`), `GetUniqueEntryName` widened to
+  `internal` for reuse
+- `src/Archiver.Core/IO/Crc32.cs` — added `Accumulator` (incremental CRC-32, reused by
+  `ZipEntryCompressor` and `ZipEntryWriter`'s `CopyWithCrcAsync`) alongside the existing `Compute(Stream)`
 
 **Acceptance criteria:**
 - [x] FileWorkItem record defined: path, entryName, size, kind, last-write-time
@@ -695,10 +710,26 @@ WorkItemEnumerator (deterministic T-F31/T-F32/T-F30/T-F66/T-F23/T-F75-preserving
       + vendored `7za.exe` integrity check + an independent raw structural byte parser),
       byte-identical/entry-order-identical determinism at scale (120 files), per-file error
       isolation at scale, mixed small+large files in one archive
-- [x] T-F114 perf ratios re-measured: `ArchiveAsync_ManySmallFiles` 6.02 → 2.39 (~2.5x real
-      improvement), `ArchiveAsync_Hybrid` 3.47 → 3.03 (smaller, as designed — its medium files
-      stay on the untouched sequential path), `ArchiveAsync_OneLargeFile` 1.22 → 1.23 (unaffected,
-      confirms the gate correctly excludes single-large-file archiving)
+- [x] T-F114 perf ratios re-measured, then re-measured again after a profiling follow-up: a
+      user-requested `Stopwatch`/`GC`-instrumented diagnostic (`OverheadProfilingProbe.cs`,
+      temporary, deleted after use) found the real dominant remaining cost was NOT inside the
+      parallel pipeline (which was already performing close to the 7z reference) but THREE
+      redundant full directory-tree walks before any real work started — `ComputeTotalBytes`
+      (pre-existing), the gate's own new `CountFiles` (T-F35's own added cost), and
+      `WorkItemEnumerator`'s real walk. Merged the first two into one `ComputeSingleArchiveTotals`
+      walk. Then re-measured a THIRD time after replacing the file-size ceiling with per-worker
+      temp-file compression (see the "Deviations" section above). Final ratio history:
+      `ArchiveAsync_ManySmallFiles` 6.02 → 2.39 (pipeline) → 2.2 (stat fix) → 1.45
+      (enumeration-merge fix) → **~1.0** (temp-file redesign — unaffected in principle, since all
+      its files are under even the new 1 MiB threshold, but re-measured for completeness: 0.92-1.03
+      observed, essentially parity with 7za); `ArchiveAsync_Hybrid` 3.47 → 3.03 → 2.85 →
+      **~1.3** (the real target of the temp-file redesign — this scenario's 4 medium 5-20 MB files
+      were exactly what the old 4 MiB ceiling excluded from parallelism; 0.93-1.54 observed);
+      `ArchiveAsync_OneLargeFile` 1.22 → 1.23 → 1.20 → **1.18** (unaffected throughout — a single
+      file's total count never crosses the gate). See `DECISIONS.md`'s two T-F35 profiling/
+      follow-up entries for the full stage-by-stage breakdown. The real 65,536-file Zip64 `Slow`
+      test also dropped from ~1m10s to ~37-39s under these fixes and re-confirmed passing through
+      the final temp-file-based design.
 - [ ] Manual on-device verification (archive a real folder of 100+ small files via the installed
       Pakko GUI/context menu, confirm the result opens without corruption warnings in Explorer/
       7-Zip/WinRAR) — per this project's workflow rule, not graduated on `dotnet test` alone.
