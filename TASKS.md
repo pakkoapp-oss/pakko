@@ -572,26 +572,6 @@ for the same reason (also PATH-shim-based, no admin rights needed) but lower pri
 
 ---
 
-### T-F120 — Publish Archiver.CLI to GitHub Releases
-- [ ] **Status:** future — deliberately left out of T-F09's implementation scope ("a release-time
-      action, not part of this implementation round"). `scripts/Publish-Cli.ps1` already produces
-      everything needed (`pakko-win-x64.zip`, `pakko-win-arm64.zip`, `SHA256SUMS`) — this task is
-      the actual publication step plus getting it into the repo's release workflow.
-- **Depends on:** T-F09 (CLI Core)
-
-**Acceptance criteria:**
-- [ ] `.\scripts\Publish-Cli.ps1` output attached to a real GitHub Release (either a new release or
-      an existing one, per user decision at the time)
-- [ ] Release notes/`README.md` link to the CLI download alongside the existing MSIX download,
-      matching the "GitHub-only release" pattern already used for v1.1–v1.4
-- [ ] `SHA256SUMS` verification instructions visible on the release page or linked from it, not
-      just buried in `CLI.md`
-- [ ] Decide whether this becomes part of a scripted release checklist (so it isn't a manually
-      remembered step every future release) or stays a one-off manual action — document whichever
-      is chosen in `scripts/README.md`
-
----
-
 ### T-F121 — Explore true zero-copy streaming for `-so` extraction output
 - [ ] **Status:** future, low priority — exploratory only, no committed design yet. Raised
       2026-07-18 when the user asked whether T-F116's `-si`/`-so` could avoid buffering entirely;
@@ -629,7 +609,7 @@ for the same reason (also PATH-shim-based, no admin rights needed) but lower pri
 
 ---
 
-### T-F122 — GitHub Actions CI: build MSIX + `pakko.exe` automatically
+### T-F122 — GitHub Actions CI: build MSIX + `pakko.exe` automatically, publish CLI to Releases
 - [ ] **Status:** future. Raised 2026-07-18: the repo has no `.github/workflows/` content at all
       today (confirmed empty) — every build (`Deploy.ps1` for the MSIX, `Publish-Cli.ps1` for the
       CLI) is a manual, local, developer-machine action. User wants GitHub itself to build both
@@ -639,10 +619,15 @@ for the same reason (also PATH-shim-based, no admin rights needed) but lower pri
       Phase 1) actually lands — this task is the CI/build-automation piece, T-F10 owns which
       certificate is used and stays the single source of truth for signing strategy; don't
       duplicate its cert-comparison table here.
-- **Depends on:** none to start (self-signed interim). **Feeds into:** T-F10 Phase 1 (swaps the
-      secret this workflow uses), overlaps with T-F120 (CLI GitHub Releases publication — this
-      task's CLI build job can supersede T-F120's manual attach step if scoped to also publish to
-      a Release, a decision to make during implementation, not assumed here)
+      **Merged 2026-07-18 (user-directed):** this task now also owns the CLI GitHub Releases
+      publication step formerly tracked as its own task, T-F120 (`.\scripts\Publish-Cli.ps1`
+      already produces everything needed — `pakko-win-x64.zip`, `pakko-win-arm64.zip`,
+      `SHA256SUMS`). T-F120 is deleted outright, not archived to `TASKS_DONE.md`, since nothing in
+      it was implemented — its acceptance criteria are folded into this task's criteria below
+      instead of being tracked separately. No standalone "publish CLI manually" task exists
+      anymore; the CI workflow's Release-publish job is the only planned path.
+- **Depends on:** T-F09 (CLI Core, for the CLI build/publish half). **Feeds into:** T-F10 Phase 1
+      (swaps the secret this workflow uses).
 
 **Known complexity to research before implementing, not assumed away:**
 - [ ] Confirm `windows-latest` GitHub-hosted runners actually have the Windows App SDK / WinUI 3
@@ -658,8 +643,9 @@ for the same reason (also PATH-shim-based, no admin rights needed) but lower pri
       in `SECURITY.md` once implemented, per that file's canonical ownership of supply-chain
       rationale (this task may only *propose* the `SECURITY.md` wording — CLAUDE.md requires
       separate explicit confirmation before actually editing `SECURITY.md`)
-- [ ] Decide artifact retention/publication: workflow artifacts only (every run), a GitHub Release
-      (only on tag push), or both — and whether this replaces or complements T-F120's manual step
+- [ ] Decide artifact retention: workflow artifacts on every run, plus a GitHub Release
+      specifically on tag push (this is now the only planned CLI-publication path — see the
+      merged-T-F120 note above)
 
 **Acceptance criteria:**
 - [ ] `.github/workflows/build.yml` (or similarly named) triggered at minimum on push to `main`
@@ -671,10 +657,16 @@ for the same reason (also PATH-shim-based, no admin rights needed) but lower pri
       `Archiver.ShellExtension.Tests.exe` runs too if the runner supports it (see research bullet
       above) — document if it has to be skipped in CI for a real, stated reason
 - [ ] Built artifacts (MSIX + both CLI zips + `SHA256SUMS`) uploaded as workflow artifacts at
-      minimum; GitHub Release attachment decided per the bullet above
+      minimum; on a version tag push, the CLI zips + `SHA256SUMS` are also attached to a real
+      GitHub Release automatically (this is the absorbed T-F120 scope — no separate manual publish
+      step should remain once this ships)
+- [ ] Release notes/`README.md` link to the CLI download alongside the existing MSIX download,
+      matching the "GitHub-only release" pattern already used for v1.1–v1.4; `SHA256SUMS`
+      verification instructions visible on the release page itself, not just buried in `CLI.md`
 - [ ] `scripts/README.md` updated to document the new CI path alongside the existing manual
       `Deploy.ps1`/`Publish-Cli.ps1` instructions (manual path stays — CI doesn't replace local dev
-      builds)
+      builds), and states plainly that CLI Release publication is now CI-only, not a remembered
+      manual step
 - [ ] A clear, findable TODO/comment in the workflow file (and a note in this task) marking exactly
       where the self-signed cert gets swapped for SignPath once T-F10 Phase 1 completes — so this
       isn't forgotten as a silent permanent state

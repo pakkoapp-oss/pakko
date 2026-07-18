@@ -410,6 +410,12 @@ failure — so a blocked/misconfigured sandbox would have crashed instead of yie
   full manual smoke test (all five commands, all three error cases, a real `cmd /c "pakko a -so
   ... | pakko x -si ... > log"` pipe) run by the agent after the rename; repo-wide tests stayed
   green. See `DECISIONS.md`'s T-F116 follow-up entry.
+- **T-F120 closed 2026-07-18, user-directed backlog consolidation — merged into T-F122, not
+  implemented.** T-F120 (manual CLI GitHub Releases publication) and T-F122 (GitHub Actions CI for
+  the MSIX + `pakko.exe`) overlapped by design; T-F120's acceptance criteria were folded into
+  T-F122's so there's exactly one planned path to CLI-Release publication (T-F122's CI workflow on
+  a version-tag push), not a parallel manual step. No CI/publication code exists yet — T-F122
+  itself is still `[ ]` future. See `TASKS_DONE.md`'s T-F120 entry and `TASKS.md`'s T-F122 entry.
 - MSIX signed with dev cert via Deploy.ps1 (see T-F10 for production-grade cert)
 - Async streaming (CopyToAsync) — CancellationToken respected mid-file
 - Temp file/dir pattern — no partial files on cancel or failure

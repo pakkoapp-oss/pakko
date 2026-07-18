@@ -3201,3 +3201,27 @@ unreachable, so the question is now moot rather than answered.
       change, not just when a quick build "looks" like it worked.
 
 ---
+
+### T-F120 — Publish Archiver.CLI to GitHub Releases (closed — merged into T-F122)
+- [x] **Status:** closed 2026-07-18, user-directed backlog consolidation — **not implemented**.
+      No CLI publication code/workflow exists yet; what's "complete" here is the consolidation
+      decision itself (a `TASKS.md` edit), not the underlying feature. Recorded here only so the
+      task number isn't silently dropped — do not read this entry as "CLI Releases publishing
+      ships."
+
+**What happened:** T-F120 (manual `.\scripts\Publish-Cli.ps1` output attached to a GitHub
+Release) and T-F122 (GitHub Actions CI building the MSIX + `pakko.exe`) overlapped by design —
+T-F122's own scoping note already flagged that its CLI build job could supersede T-F120's manual
+step. At the user's explicit request, T-F120's acceptance criteria (GitHub Release attachment,
+`README.md`/release-notes link, visible `SHA256SUMS` verification instructions) were folded
+directly into T-F122's acceptance criteria in `TASKS.md`, and T-F120's standalone section was
+deleted rather than kept as a parallel manual-path task. There is now exactly one planned path to
+CLI-Release publication: T-F122's CI workflow, triggered on version-tag push.
+
+**Why not archived as silently deleted:** this project's `CLAUDE.md` source-of-truth rule says
+never silently deprecate — this entry is that header note, applied to a task number instead of a
+document.
+
+**See:** `TASKS.md`'s T-F122 entry for the live, still-`[ ]` acceptance criteria this absorbed.
+
+---
