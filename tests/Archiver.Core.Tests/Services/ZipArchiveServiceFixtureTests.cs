@@ -159,6 +159,81 @@ public sealed class ZipArchiveServiceFixtureTests : IDisposable
             "path traversal entries should be blocked");
     }
 
+    // Strengthens the assertion above: reporting an error isn't proof the traversal was actually
+    // prevented on disk. zipslip_traversal.zip's two malicious entries ("../traversal_attempt.txt",
+    // "subdir/../../deep_traversal.txt") both resolve, if unprotected, to directly inside
+    // DestinationFolder (_temp.Path) — one level above the per-archive SeparateFolders subfolder.
+    // Mirrors libarchive's own test_write_disk_secure.c pattern (assertFileNotExists after a
+    // blocked absolute/traversal write), found while comparing against its extraction-safety
+    // test suite (T-F115 follow-up research).
+    [Fact]
+    public async Task Extract_ZipSlipTraversal_DoesNotCreateFileOutsideDestination()
+    {
+        await _sut.ExtractAsync(SeparateFolders(FixtureHelper.Archive("zipslip_traversal.zip")));
+
+        File.Exists(Path.Combine(_temp.Path, "traversal_attempt.txt")).Should().BeFalse(
+            "the '../traversal_attempt.txt' entry must never land outside its intended subfolder");
+        File.Exists(Path.Combine(_temp.Path, "deep_traversal.txt")).Should().BeFalse(
+            "the 'subdir/../../deep_traversal.txt' entry must never land outside its intended subfolder");
+        Directory.GetFiles(_temp.Path, "traversal_attempt.txt", SearchOption.AllDirectories).Should().BeEmpty();
+        Directory.GetFiles(_temp.Path, "deep_traversal.txt", SearchOption.AllDirectories).Should().BeEmpty();
+    }
+
+    // A ZIP entry whose name is rooted but drive-less (leading '\', no colon) skips the ADS-marker
+    // check entirely (HasAlternateDataStreamMarker only looks for ':') and isolates whether the
+    // Path.Combine(tempDest, relativePath) + StartsWith(fullTempDest) guard (ZipArchiveService.cs)
+    // alone still catches it. That guard relies on a specific, easy-to-regress .NET behavior:
+    // Path.Combine returns its second argument unchanged (discarding tempDest) whenever that
+    // argument is itself rooted. System.IO.Compression sanitizes entry names on write, so — same
+    // technique the zipslip_traversal.zip fixture already uses — the archive is built with a
+    // same-byte-length placeholder name, then the raw bytes are patched afterward.
+    [Fact]
+    public async Task Extract_RootedNonDriveEntryName_DoesNotEscapeDestination()
+    {
+        const string rooted = @"\evil_root_escape.txt";
+        // Same-byte-length placeholder — ASCII-only, so char count == UTF-8 byte count for both.
+        string placeholder = new string('X', rooted.Length);
+        var archivePath = Path.Combine(_temp.Path, "rooted_entry.zip");
+
+        byte[] raw;
+        using (var ms = new MemoryStream())
+        {
+            using (var zip = new ZipArchive(ms, ZipArchiveMode.Create, leaveOpen: true))
+            {
+                var entry = zip.CreateEntry(placeholder, CompressionLevel.Optimal);
+                using var stream = entry.Open();
+                stream.Write(System.Text.Encoding.UTF8.GetBytes("should never land here\n"));
+            }
+            raw = ms.ToArray();
+        }
+
+        var oldBytes = System.Text.Encoding.UTF8.GetBytes(placeholder);
+        var newBytes = System.Text.Encoding.UTF8.GetBytes(rooted);
+        newBytes.Should().HaveCount(oldBytes.Length, "patched name must keep the ZIP's declared name length");
+        int idx = IndexOfSequence(raw, oldBytes);
+        idx.Should().BeGreaterThanOrEqualTo(0, "placeholder entry name must be found in the raw ZIP bytes");
+        newBytes.CopyTo(raw, idx);
+        await File.WriteAllBytesAsync(archivePath, raw);
+
+        await _sut.ExtractAsync(SeparateFolders(archivePath));
+
+        File.Exists(Path.Combine(_temp.Path, "evil_root_escape.txt")).Should().BeFalse(
+            "a rooted, drive-less entry name must not escape the destination folder");
+        Directory.GetFiles(_temp.Path, "evil_root_escape.txt*", SearchOption.AllDirectories).Should().BeEmpty();
+    }
+
+    private static int IndexOfSequence(byte[] haystack, byte[] needle)
+    {
+        for (int i = 0; i <= haystack.Length - needle.Length; i++)
+        {
+            bool found = true;
+            for (int j = 0; j < needle.Length; j++)
+                if (haystack[i + j] != needle[j]) { found = false; break; }
+            if (found) return i;
+        }
+        return -1;
+    }
+
     // ── Manual fixtures (skipped if absent) ──────────────────────────────
 
     [Fact]
