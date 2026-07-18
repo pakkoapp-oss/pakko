@@ -592,6 +592,43 @@ for the same reason (also PATH-shim-based, no admin rights needed) but lower pri
 
 ---
 
+### T-F121 — Explore true zero-copy streaming for `-so` extraction output
+- [ ] **Status:** future, low priority — exploratory only, no committed design yet. Raised
+      2026-07-18 when the user asked whether T-F116's `-si`/`-so` could avoid buffering entirely;
+      confirmed the current design is deliberately buffer-then-proceed (temp-file staged), not a
+      technical gap — see `CLI.md`'s "Stdin/stdout streaming" section and `DECISIONS.md`'s T-F116
+      entry. `-si` (reading a ZIP) can't be made zero-copy at all — `ZipArchive` needs a seekable
+      stream since the central directory sits at the end of the file, and `TarSandboxedService`'s
+      T-F49 pre-scan is a deliberate security requirement (full archive on disk before extraction
+      runs), not an implementation shortcut. The one side worth a second look is `-so` on `x`:
+      instead of extracting to a private temp folder then copying the one result file to stdout,
+      stream bytes to stdout as they're produced during extraction.
+- **Depends on:** T-F116 (CLI stdin/stdout streaming)
+
+**Open questions to resolve before this becomes a real design, not yet answered:**
+- [ ] How to preserve the "never emit partial bytes on failure" guarantee without a completed file
+      to check first — today a failed operation writes nothing to stdout at all
+      (`CliStreamStaging`'s current design's central property)
+- [ ] How to know upfront that extraction resolves to exactly one file (today discovered by
+      enumerating the temp folder afterward) without either pre-listing the archive first or
+      accepting that a multi-file case fails only after streaming has already started
+- [ ] Whether tar-family extraction (subprocess + quarantine ACL, not an in-process stream) can
+      participate in this at all, or whether true streaming would end up ZIP-only — a format-
+      dependent capability split that would need to be documented clearly, not silently assumed
+- [ ] Whether the payoff (avoiding transient temp-disk use for one archive's worth of bytes) is
+      worth the added failure-mode complexity, given `-so` archives are already expected to fit on
+      disk once (the archive itself gets written to a temp file either way in the current design)
+
+**Acceptance criteria (once a design is agreed — not before):**
+- [ ] A short design note in `DECISIONS.md` before any implementation, per this project's
+      pre-implementation-research convention
+- [ ] `Archiver.Core.PerformanceTests`-style before/after evidence that it's actually faster or
+      lower-overhead for a real large single-file extraction, not just theoretically cleaner
+- [ ] Existing `-so`/`-si` test coverage (T-F116, `Subprocess/CliSubprocessTests.cs`) stays green,
+      plus new tests for the harder failure-mode edge cases raised above
+
+---
+
 ### T-F09 (original, pre-2026-07-12 scope, superseded by the expanded entry above — kept per the
 "never silently deprecate" rule)
 
