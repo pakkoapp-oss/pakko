@@ -40,6 +40,7 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly IArchiveListingRouter _archiveListingRouter;
     private readonly IDialogService _dialogService;
     private readonly ILogService _logService;
+    private readonly GroupPolicyOptions _policy;
 
     private IReadOnlyDictionary<string, IReadOnlyList<ArchiveEntryViewModel>> _archiveIndex =
         new Dictionary<string, IReadOnlyList<ArchiveEntryViewModel>>();
@@ -276,6 +277,12 @@ public sealed partial class MainViewModel : ObservableObject
 
     public bool IsCompressionLevelEnabled => IsNotBusy && !IsPlainTarFormatSelected;
 
+    // T-F51: DisableTarExtraction also hides the 6 tar-family Format ComboBoxItems — GroupPolicy
+    // is loaded once at process startup and never changes mid-session, so this is a fixed value
+    // for the lifetime of the ViewModel, not an [ObservableProperty].
+    public Visibility TarFormatVisibility =>
+        _policy.DisableTarExtraction ? Visibility.Collapsed : Visibility.Visible;
+
     [ObservableProperty]
     private bool _openDestinationFolder = false;
 
@@ -331,13 +338,23 @@ public sealed partial class MainViewModel : ObservableObject
         IExtractionRouter extractionRouter,
         IArchiveListingRouter archiveListingRouter,
         IDialogService dialogService,
-        ILogService logService)
+        ILogService logService,
+        GroupPolicyOptions groupPolicyOptions)
     {
         _archiveCreationRouter = archiveCreationRouter;
         _extractionRouter = extractionRouter;
         _archiveListingRouter = archiveListingRouter;
         _dialogService = dialogService;
         _logService = logService;
+        _policy = groupPolicyOptions;
+
+        // T-F51: defensive only — nothing in this ViewModel currently sets
+        // SelectedContainerFormat away from its Zip default except user interaction with the
+        // (now-hidden) tar ComboBoxItems, so this should be unreachable today. Kept in case a
+        // future caller (e.g. protocol activation) ever sets a tar format directly.
+        if (_policy.DisableTarExtraction && SelectedContainerFormat != ArchiveContainerFormat.Zip)
+            SelectedContainerFormat = ArchiveContainerFormat.Zip;
+
         _fileItems.CollectionChanged += (_, _) =>
         {
             ArchiveCommand.NotifyCanExecuteChanged();

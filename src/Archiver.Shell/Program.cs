@@ -8,6 +8,11 @@ using Archiver.Core.Models;
 using Archiver.Core.Services;
 using Archiver.Shell;
 
+// T-F51: loaded once per invocation and threaded into every inline service-construction call
+// site below — Archiver.Shell has no DI container, so this is the App.xaml.cs
+// AddSingleton(GroupPolicyService.Load()) equivalent for this frontend.
+GroupPolicyOptions policy = GroupPolicyService.Load();
+
 var command = ShellArgumentParser.Parse(args);
 
 if (command.Type == CommandType.Invalid)
@@ -32,23 +37,23 @@ switch (command.Type)
         break;
 
     case CommandType.ExtractHere:
-        await RunExtractHereAsync(command.Files).ConfigureAwait(false);
+        await RunExtractHereAsync(command.Files, policy).ConfigureAwait(false);
         break;
 
     case CommandType.ExtractHereFlat:
-        await RunExtractHereFlatAsync(command.Files).ConfigureAwait(false);
+        await RunExtractHereFlatAsync(command.Files, policy).ConfigureAwait(false);
         break;
 
     case CommandType.ExtractFolder:
-        await RunExtractFolderAsync(command.Files).ConfigureAwait(false);
+        await RunExtractFolderAsync(command.Files, policy).ConfigureAwait(false);
         break;
 
     case CommandType.Archive:
-        await RunArchiveAsync(command.Files, command.Format).ConfigureAwait(false);
+        await RunArchiveAsync(command.Files, command.Format, policy).ConfigureAwait(false);
         break;
 
     case CommandType.Test:
-        await RunTestAsync(command.Files).ConfigureAwait(false);
+        await RunTestAsync(command.Files, policy).ConfigureAwait(false);
         break;
 }
 
@@ -71,9 +76,9 @@ static void LaunchOpenUi(string operation, IReadOnlyList<string> files)
 // Uses T-14 smart folder logic in ZipArchiveService (SeparateFolders mode):
 // single root folder → strips prefix; multiple roots → creates wrapper folder.
 // -------------------------------------------------------------------------
-static async Task RunExtractHereAsync(IReadOnlyList<string> archivePaths)
+static async Task RunExtractHereAsync(IReadOnlyList<string> archivePaths, GroupPolicyOptions policy)
 {
-    var router = await BuildExtractionRouterAsync().ConfigureAwait(false);
+    var router = await BuildExtractionRouterAsync(policy).ConfigureAwait(false);
 
     foreach (var archivePath in archivePaths)
     {
@@ -110,9 +115,9 @@ static async Task RunExtractHereAsync(IReadOnlyList<string> archivePaths)
 // Contrast with RunExtractFolderAsync below, which unconditionally pre-computes a fresh
 // subfolder regardless of the archive's own root shape.
 // -------------------------------------------------------------------------
-static async Task RunExtractHereFlatAsync(IReadOnlyList<string> archivePaths)
+static async Task RunExtractHereFlatAsync(IReadOnlyList<string> archivePaths, GroupPolicyOptions policy)
 {
-    var router = await BuildExtractionRouterAsync().ConfigureAwait(false);
+    var router = await BuildExtractionRouterAsync(policy).ConfigureAwait(false);
 
     foreach (var archivePath in archivePaths)
     {
@@ -136,9 +141,9 @@ static async Task RunExtractHereFlatAsync(IReadOnlyList<string> archivePaths)
 // --extract-folder: always extract into an explicit <archive_name>\ subfolder,
 // regardless of the archive's internal structure.
 // -------------------------------------------------------------------------
-static async Task RunExtractFolderAsync(IReadOnlyList<string> archivePaths)
+static async Task RunExtractFolderAsync(IReadOnlyList<string> archivePaths, GroupPolicyOptions policy)
 {
-    var router = await BuildExtractionRouterAsync().ConfigureAwait(false);
+    var router = await BuildExtractionRouterAsync(policy).ConfigureAwait(false);
 
     foreach (var archivePath in archivePaths)
     {
@@ -163,11 +168,11 @@ static async Task RunExtractFolderAsync(IReadOnlyList<string> archivePaths)
 // T-F85: constructs one ExtractionRouter per invocation, calling DetectCapabilitiesAsync exactly
 // once (it spawns a tar.exe process) — shared across every archive in the current selection
 // rather than re-probed per archive.
-static async Task<IExtractionRouter> BuildExtractionRouterAsync()
+static async Task<IExtractionRouter> BuildExtractionRouterAsync(GroupPolicyOptions policy)
 {
-    var tarService = new TarSandboxedService();
+    var tarService = new TarSandboxedService(policy);
     var capabilities = await tarService.DetectCapabilitiesAsync().ConfigureAwait(false);
-    return new ExtractionRouter(new ZipArchiveService(), tarService, capabilities);
+    return new ExtractionRouter(new ZipArchiveService(policy), tarService, capabilities, policy);
 }
 
 // -------------------------------------------------------------------------
@@ -176,7 +181,7 @@ static async Task<IExtractionRouter> BuildExtractionRouterAsync()
 // after their common containing folder instead of an arbitrary selected item
 // (matches NanaZip's convention).
 // -------------------------------------------------------------------------
-static async Task RunArchiveAsync(IReadOnlyList<string> sourcePaths, ArchiveContainerFormat format)
+static async Task RunArchiveAsync(IReadOnlyList<string> sourcePaths, ArchiveContainerFormat format, GroupPolicyOptions policy)
 {
     var firstPath = sourcePaths[0];
     // T-F99: Path.GetDirectoryName returns null when firstPath is itself a root (e.g. "Z:\",
@@ -208,7 +213,7 @@ static async Task RunArchiveAsync(IReadOnlyList<string> sourcePaths, ArchiveCont
             archiveName = "archive";
     }
 
-    var router = new ArchiveCreationRouter(new ZipArchiveService(), new TarSandboxedService());
+    var router = new ArchiveCreationRouter(new ZipArchiveService(policy), new TarSandboxedService(policy), policy);
     var options = new ArchiveOptions
     {
         SourcePaths = sourcePaths,
@@ -233,9 +238,9 @@ static async Task RunArchiveAsync(IReadOnlyList<string> sourcePaths, ArchiveCont
 // -------------------------------------------------------------------------
 const uint MB_ICONINFORMATION = 0x40;
 
-static async Task RunTestAsync(IReadOnlyList<string> archivePaths)
+static async Task RunTestAsync(IReadOnlyList<string> archivePaths, GroupPolicyOptions policy)
 {
-    var service = new ZipArchiveService();
+    var service = new ZipArchiveService(policy);
     string title = archivePaths.Count == 1
         ? $"Testing: {Path.GetFileName(archivePaths[0])}"
         : $"Testing {archivePaths.Count} archives";

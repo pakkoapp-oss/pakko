@@ -92,11 +92,27 @@ internal static class ArchiveEntrySecurity
         return false;
     }
 
+    // T-F51: files matching this list drive GroupPolicyOptions.MotwMode.UnsafeExtensionsOnly —
+    // modeled on Windows Attachment Manager/SmartScreen's own known-executable extension set.
+    private static readonly HashSet<string> _unsafeExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".exe", ".bat", ".cmd", ".com", ".cpl", ".msi", ".msp", ".scr", ".vbs", ".vbe", ".js",
+        ".jse", ".ws", ".wsf", ".wsc", ".wsh", ".ps1", ".ps1xml", ".ps2", ".ps2xml", ".psc1",
+        ".psc2", ".msh", ".mshxml", ".scf", ".lnk", ".inf", ".reg", ".hta"
+    };
+
     // T-F45: Propagate Zone.Identifier ADS from archive to extracted file.
     // Best-effort — swallows all exceptions. Never fatal.
-    // Silently no-ops if the archive has no Zone.Identifier ADS.
-    public static void TryPropagateMotw(string archivePath, string destFilePath)
+    // Silently no-ops if the archive has no Zone.Identifier ADS, if mode is Disabled, or (under
+    // UnsafeExtensionsOnly, T-F51) if destFilePath's extension isn't in the unsafe-extension list.
+    public static void TryPropagateMotw(string archivePath, string destFilePath, MotwMode mode = MotwMode.AllFiles)
     {
+        if (mode == MotwMode.Disabled)
+            return;
+
+        if (mode == MotwMode.UnsafeExtensionsOnly && !_unsafeExtensions.Contains(Path.GetExtension(destFilePath)))
+            return;
+
         try
         {
             using var source = new FileStream(

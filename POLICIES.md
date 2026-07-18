@@ -1,9 +1,9 @@
 # POLICIES.md — Group Policy Reference for System Administrators
 
-> **Status: planned for v1.4, not yet implemented.** This document specifies the registry-based
-> policy surface Pakko will ship — it does not describe currently active behavior. Tracked as
-> [`T-F51`](TASKS.md) in `TASKS.md`; this file will be updated to describe *shipped* behavior once
-> that task is coded and tested, and this banner will be removed at that point.
+> **Status: shipped 2026-07-18.** Every policy below is implemented, covered by `dotnet test`, and
+> confirmed on real hardware — a `gpedit.msc` import and each key's real effect against the
+> installed app — matching this document exactly. See `DECISIONS.md`'s T-F51 entry and
+> [`T-F51`](TASKS.md) in `TASKS.md` for the full trail.
 
 ---
 

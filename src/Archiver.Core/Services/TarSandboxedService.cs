@@ -20,6 +20,15 @@ public sealed class TarSandboxedService : ITarService
     // resolution) — a hung tar.exe --version must not hang app launch indefinitely.
     private static readonly TimeSpan DetectionTimeout = TimeSpan.FromSeconds(5);
 
+    private readonly GroupPolicyOptions _policy;
+
+    // T-F51: optional so every existing `new TarSandboxedService()` call site keeps compiling —
+    // a null policy means "everything allowed", matching today's shipped behavior exactly.
+    public TarSandboxedService(GroupPolicyOptions? policy = null)
+    {
+        _policy = policy ?? new GroupPolicyOptions();
+    }
+
     /// <inheritdoc/>
     public async Task<TarCapabilities> DetectCapabilitiesAsync()
     {
@@ -120,7 +129,7 @@ public sealed class TarSandboxedService : ITarService
                 var (actualDest, anyExtracted) = await ExtractSingleArchiveAsync(
                     archivePath, destDir, alreadyIsolated, conflictResolver, skippedFiles,
                     options.ConfirmCompressionBombExtraction, options.SelectedEntryPaths,
-                    cancellationToken)
+                    _policy.MotwMode, cancellationToken)
                     .ConfigureAwait(false);
 
                 // T-F87: an archive whose entries were all individually skipped (e.g. every
@@ -211,6 +220,7 @@ public sealed class TarSandboxedService : ITarService
         List<SkippedFile> skippedFiles,
         Func<CompressionBombWarning, Task<bool>>? confirmCompressionBombExtraction,
         IReadOnlyList<string>? selectedEntryPaths,
+        MotwMode motwMode,
         CancellationToken cancellationToken)
     {
         using TarSandboxScope scope = await TarSandboxScope.CreateAsync(archivePath, needsOutputDir: true, cancellationToken)
@@ -356,7 +366,7 @@ public sealed class TarSandboxedService : ITarService
             // quarantine copy) to the extracted file — the staged copy is a Pakko-internal
             // implementation detail and may not even carry a Zone.Identifier depending on
             // hardlink-vs-copy staging; MOTW must reflect the real source the user chose.
-            ArchiveEntrySecurity.TryPropagateMotw(archivePath, finalFilePath);
+            ArchiveEntrySecurity.TryPropagateMotw(archivePath, finalFilePath, motwMode);
 
             extractedCount++;
         }

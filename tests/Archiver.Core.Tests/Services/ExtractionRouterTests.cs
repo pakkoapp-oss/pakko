@@ -200,4 +200,84 @@ public sealed class ExtractionRouterTests : IDisposable
         zipService.LastExtractOptions!.OpenDestinationFolder.Should().BeFalse();
         tarService.LastExtractOptions!.OpenDestinationFolder.Should().BeFalse();
     }
+
+    [Fact]
+    public async Task ExtractAsync_DisableTarExtractionPolicy_SkipsTarButStillExtractsZip()
+    {
+        var zip = WriteZip("a.zip");
+        var tar = WriteTar("b.tar");
+        var zipService = new FakeArchiveService();
+        var tarService = new FakeTarService();
+        var policy = new GroupPolicyOptions { DisableTarExtraction = true };
+        var router = new ExtractionRouter(zipService, tarService, AllSupported, policy);
+
+        var result = await router.ExtractAsync(new ExtractOptions { ArchivePaths = [zip, tar], DestinationFolder = _temp.Path });
+
+        zipService.ExtractCallCount.Should().Be(1);
+        tarService.ExtractCallCount.Should().Be(0);
+        result.SkippedFiles.Should().ContainSingle(s => s.Path == tar && s.Reason.Contains("Group Policy"));
+    }
+
+    [Fact]
+    public async Task ExtractAsync_BlockedFormatsPolicy_SkipsBlockedFormatOnly()
+    {
+        var zip = WriteZip("a.zip");
+        var tar = WriteTar("b.tar");
+        var zipService = new FakeArchiveService();
+        var tarService = new FakeTarService();
+        var policy = new GroupPolicyOptions { BlockedFormats = ["zip"] };
+        var router = new ExtractionRouter(zipService, tarService, AllSupported, policy);
+
+        var result = await router.ExtractAsync(new ExtractOptions { ArchivePaths = [zip, tar], DestinationFolder = _temp.Path });
+
+        zipService.ExtractCallCount.Should().Be(0);
+        tarService.ExtractCallCount.Should().Be(1);
+        result.SkippedFiles.Should().ContainSingle(s => s.Path == zip && s.Reason.Contains("Group Policy"));
+    }
+
+    [Fact]
+    public async Task ExtractAsync_AllowedFormatsPolicy_SkipsEverythingNotListed()
+    {
+        var zip = WriteZip("a.zip");
+        var tar = WriteTar("b.tar");
+        var zipService = new FakeArchiveService();
+        var tarService = new FakeTarService();
+        var policy = new GroupPolicyOptions { AllowedFormats = ["tar"] };
+        var router = new ExtractionRouter(zipService, tarService, AllSupported, policy);
+
+        var result = await router.ExtractAsync(new ExtractOptions { ArchivePaths = [zip, tar], DestinationFolder = _temp.Path });
+
+        zipService.ExtractCallCount.Should().Be(0);
+        tarService.ExtractCallCount.Should().Be(1);
+        result.SkippedFiles.Should().ContainSingle(s => s.Path == zip && s.Reason.Contains("Group Policy"));
+    }
+
+    [Fact]
+    public async Task ExtractAsync_BlockedFormatsTakesPrecedenceOverAllowedFormats()
+    {
+        var rar = WriteRar("only.rar");
+        var zipService = new FakeArchiveService();
+        var tarService = new FakeTarService();
+        var policy = new GroupPolicyOptions { AllowedFormats = ["rar"], BlockedFormats = ["rar"] };
+        var router = new ExtractionRouter(zipService, tarService, AllSupported, policy);
+
+        var result = await router.ExtractAsync(new ExtractOptions { ArchivePaths = [rar], DestinationFolder = _temp.Path });
+
+        tarService.ExtractCallCount.Should().Be(0);
+        result.SkippedFiles.Should().ContainSingle(s => s.Path == rar && s.Reason.Contains("Group Policy"));
+    }
+
+    [Fact]
+    public async Task ExtractAsync_NoPolicySupplied_BehavesAsUnrestricted()
+    {
+        var zip = WriteZip("a.zip");
+        var zipService = new FakeArchiveService();
+        var tarService = new FakeTarService();
+        var router = new ExtractionRouter(zipService, tarService, AllSupported);
+
+        var result = await router.ExtractAsync(new ExtractOptions { ArchivePaths = [zip], DestinationFolder = _temp.Path });
+
+        zipService.ExtractCallCount.Should().Be(1);
+        result.Success.Should().BeTrue();
+    }
 }

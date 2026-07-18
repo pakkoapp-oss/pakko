@@ -898,6 +898,88 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
         }
     }
 
+    [Fact]
+    public async Task ExtractAsync_MotwModeDisabled_DoesNotPropagateZoneIdentifier()
+    {
+        var file1 = _temp.CreateFile("doc.txt", "hello");
+        var zipPath = Path.Combine(_temp.Path, "motw_disabled.zip");
+        using (var archive = ZipFile.Open(zipPath, ZipArchiveMode.Create))
+            archive.CreateEntryFromFile(file1, "doc.txt");
+
+        byte[] zoneBytes = System.Text.Encoding.ASCII.GetBytes("[ZoneTransfer]\r\nZoneId=3\r\n");
+        try
+        {
+            using var adsStream = new FileStream(
+                zipPath + ":Zone.Identifier", FileMode.Create, FileAccess.Write, FileShare.None);
+            adsStream.Write(zoneBytes);
+        }
+        catch (Exception ex) when (ex is NotSupportedException or IOException)
+        {
+            return; // ADS not supported on this volume — skip gracefully
+        }
+
+        var destDir = Path.Combine(_temp.Path, "motw_disabled_output");
+        var sut = new ZipArchiveService(new GroupPolicyOptions { MotwMode = MotwMode.Disabled });
+
+        var result = await sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [zipPath],
+            DestinationFolder = destDir,
+            Mode = ExtractMode.SingleFolder
+        });
+
+        result.Errors.Should().BeEmpty();
+        string extractedFile = Directory.GetFiles(destDir, "doc.txt", SearchOption.AllDirectories).Should().ContainSingle().Subject;
+        File.Exists(extractedFile + ":Zone.Identifier")
+            .Should().BeFalse("MotwMode.Disabled must suppress MOTW propagation entirely");
+    }
+
+    [Fact]
+    public async Task ExtractAsync_MotwModeUnsafeExtensionsOnly_PropagatesOnlyToUnsafeExtensions()
+    {
+        var safeFile = _temp.CreateFile("readme.txt", "hello");
+        var unsafeFile = _temp.CreateFile("payload.exe", "world");
+        var zipPath = Path.Combine(_temp.Path, "motw_unsafe_only.zip");
+        using (var archive = ZipFile.Open(zipPath, ZipArchiveMode.Create))
+        {
+            archive.CreateEntryFromFile(safeFile, "readme.txt");
+            archive.CreateEntryFromFile(unsafeFile, "payload.exe");
+        }
+
+        byte[] zoneBytes = System.Text.Encoding.ASCII.GetBytes("[ZoneTransfer]\r\nZoneId=3\r\n");
+        try
+        {
+            using var adsStream = new FileStream(
+                zipPath + ":Zone.Identifier", FileMode.Create, FileAccess.Write, FileShare.None);
+            adsStream.Write(zoneBytes);
+        }
+        catch (Exception ex) when (ex is NotSupportedException or IOException)
+        {
+            return; // ADS not supported on this volume — skip gracefully
+        }
+
+        var destDir = Path.Combine(_temp.Path, "motw_unsafe_only_output");
+        var sut = new ZipArchiveService(new GroupPolicyOptions { MotwMode = MotwMode.UnsafeExtensionsOnly });
+
+        var result = await sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [zipPath],
+            DestinationFolder = destDir,
+            Mode = ExtractMode.SingleFolder
+        });
+
+        result.Errors.Should().BeEmpty();
+        // T-F118: this archive has two root entries with no common folder, so extraction wraps
+        // them in a "<archive-base-name>\" subfolder — search recursively rather than assuming
+        // destDir directly.
+        string readmePath = Directory.GetFiles(destDir, "readme.txt", SearchOption.AllDirectories).Should().ContainSingle().Subject;
+        string payloadPath = Directory.GetFiles(destDir, "payload.exe", SearchOption.AllDirectories).Should().ContainSingle().Subject;
+        File.Exists(readmePath + ":Zone.Identifier")
+            .Should().BeFalse("readme.txt is not on the unsafe-extension list");
+        File.Exists(payloadPath + ":Zone.Identifier")
+            .Should().BeTrue("payload.exe is on the unsafe-extension list");
+    }
+
     // T-F30: Duplicate Filename Detection Inside Archive (extract side)
     //
     // ZIP format allows two entries with the identical name; System.IO.Compression does not

@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<policyDefinitions
+    xmlns="http://www.microsoft.com/GroupPolicy/PolicyDefinitions"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.microsoft.com/GroupPolicy/PolicyDefinitions PolicyDefinitionFiles.xsd"
+    revision="1.0"
+    schemaVersion="1.0">
+    <policyNamespaces>
+        <target prefix="Pakko" namespace="Pakko.Policies" />
+    </policyNamespaces>
+    <resources minRequiredRevision="1.0" />
+
+    <supportedOn>
+        <products>
+            <product name="Pakko" displayName="$(string.Pakko)">
+                <!-- major (2 digits) + minor (2 digits) + build (5 digits) -->
+                <majorVersion name="Pakko14" displayName="$(string.Pakko14)" versionIndex="1400000" />
+            </product>
+        </products>
+        <definitions>
+            <definition name="SUPPORTED_Pakko14" displayName="$(string.SUPPORTED_Pakko14)">
+                <and>
+                    <range ref="Pakko14" />
+                </and>
+            </definition>
+        </definitions>
+    </supportedOn>
+
+    <categories>
+        <category name="PakkoPolicies" displayName="$(string.PakkoPolicies)" />
+    </categories>
+
+    <policies>
+        <policy
+            name="EnforceMOTW"
+            class="Machine"
+            displayName="$(string.EnforceMOTW)"
+            explainText="$(string.EnforceMOTWExplain)"
+            presentation="$(presentation.EnforceMOTW)"
+            key="SOFTWARE\Policies\Pakko">
+            <parentCategory ref="PakkoPolicies" />
+            <supportedOn ref="SUPPORTED_Pakko14" />
+            <elements>
+                <enum id="EnforceMOTW" valueName="EnforceMOTW">
+                    <item displayName="$(string.EnforceMOTW0)">
+                        <value>
+                            <decimal value="0" />
+                        </value>
+                    </item>
+                    <item displayName="$(string.EnforceMOTW1)">
+                        <value>
+                            <decimal value="1" />
+                        </value>
+                    </item>
+                    <item displayName="$(string.EnforceMOTW2)">
+                        <value>
+                            <decimal value="2" />
+                        </value>
+                    </item>
+                </enum>
+            </elements>
+        </policy>
+
+        <policy
+            name="AllowedFormats"
+            class="Machine"
+            displayName="$(string.AllowedFormats)"
+            explainText="$(string.AllowedFormatsExplain)"
+            presentation="$(presentation.AllowedFormats)"
+            key="SOFTWARE\Policies\Pakko">
+            <parentCategory ref="PakkoPolicies" />
+            <supportedOn ref="SUPPORTED_Pakko14" />
+            <elements>
+                <multiText id="AllowedFormats" valueName="AllowedFormats" />
+            </elements>
+        </policy>
+
+        <policy
+            name="BlockedFormats"
+            class="Machine"
+            displayName="$(string.BlockedFormats)"
+            explainText="$(string.BlockedFormatsExplain)"
+            presentation="$(presentation.BlockedFormats)"
+            key="SOFTWARE\Policies\Pakko">
+            <parentCategory ref="PakkoPolicies" />
+            <supportedOn ref="SUPPORTED_Pakko14" />
+            <elements>
+                <multiText id="BlockedFormats" valueName="BlockedFormats" />
+            </elements>
+        </policy>
+
+        <policy
+            name="DisableTarExtraction"
+            class="Machine"
+            displayName="$(string.DisableTarExtraction)"
+            explainText="$(string.DisableTarExtractionExplain)"
+            key="SOFTWARE\Policies\Pakko"
+            valueName="DisableTarExtraction">
+            <parentCategory ref="PakkoPolicies" />
+            <supportedOn ref="SUPPORTED_Pakko14" />
+            <enabledValue>
+                <decimal value="1" />
+            </enabledValue>
+            <disabledValue>
+                <decimal value="0" />
+            </disabledValue>
+        </policy>
+    </policies>
+</policyDefinitions>

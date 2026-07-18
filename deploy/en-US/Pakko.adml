@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<policyDefinitionResources
+    xmlns="http://www.microsoft.com/GroupPolicy/PolicyDefinitions"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.microsoft.com/GroupPolicy/PolicyDefinitions ../PolicyDefinitionFiles.xsd"
+    revision="1.0"
+    schemaVersion="1.0">
+    <displayName>Pakko</displayName>
+    <description>Pakko</description>
+
+    <resources>
+        <stringTable>
+            <!-- Products -->
+            <string id="Pakko">Pakko</string>
+            <string id="Pakko14">Pakko 1.4</string>
+
+            <!-- Definitions -->
+            <string id="SUPPORTED_Pakko14">At least Pakko 1.4</string>
+
+            <!-- Categories -->
+            <string id="PakkoPolicies">Pakko</string>
+
+            <!-- Policies -->
+            <string id="EnforceMOTW">Mark-of-the-Web propagation on extraction</string>
+            <string id="EnforceMOTWExplain">This policy setting controls whether Pakko propagates the Mark-of-the-Web (Zone.Identifier) marker from an archive to the files it extracts from that archive.
+
+If you enable this policy setting and select "Propagate to all files", Pakko always copies the archive's Zone.Identifier marker to every extracted file — this is Pakko's default behavior when this policy is not configured.
+
+If you select "Do not propagate", Pakko never writes a Zone.Identifier marker on extracted files.
+
+If you select "Propagate to unsafe extensions only", Pakko writes the marker only on extracted files whose extension is on its built-in unsafe-extension list (executables, scripts, shortcuts, and similar file types), leaving other extracted files unmarked.
+
+If you disable or do not configure this policy setting, Pakko propagates Mark-of-the-Web to all extracted files.</string>
+            <string id="EnforceMOTW0">Do not propagate</string>
+            <string id="EnforceMOTW1">Propagate to all files</string>
+            <string id="EnforceMOTW2">Propagate to unsafe extensions only</string>
+
+            <string id="AllowedFormats">Allowed archive formats</string>
+            <string id="AllowedFormatsExplain">This policy setting controls which archive formats Pakko is allowed to create or extract.
+
+If you enable this policy setting, only the formats listed here (one per line: zip, tar, gzip, bz2, xz, zstd, lzma, rar, sevenzip) can be created or extracted by Pakko. Any archive whose format is not on this list is skipped, and the reason is reported to the user.
+
+If you disable or do not configure this policy setting, Pakko does not restrict which formats can be created or extracted based on this list.
+
+Blocked Archive Formats (BlockedFormats) always takes precedence over this list — a format listed in both is blocked.</string>
+
+            <string id="BlockedFormats">Blocked archive formats</string>
+            <string id="BlockedFormatsExplain">This policy setting controls which archive formats Pakko is never allowed to create or extract.
+
+If you enable this policy setting, the formats listed here (one per line: zip, tar, gzip, bz2, xz, zstd, lzma, rar, sevenzip) are always skipped by Pakko, whether or not they also appear in Allowed Archive Formats (AllowedFormats) — the reason is reported to the user.
+
+If you disable or do not configure this policy setting, Pakko does not block any format based on this list.</string>
+
+            <string id="DisableTarExtraction">Disable tar.exe-based extraction</string>
+            <string id="DisableTarExtractionExplain">This policy setting controls whether Pakko is allowed to launch the system's tar.exe to extract tar-family archives (tar, tar.gz, tar.bz2, tar.xz, tar.zst, tar.lzma, 7z, rar).
+
+If you enable this policy setting, Pakko never spawns tar.exe — every tar-family format is hidden from the archive-creation format list and every tar-family extraction is skipped, whether or not it is also covered by Allowed/Blocked Archive Formats. This is a stricter, architecture-specific kill switch: it stops the tar.exe subprocess and its sandbox from ever being launched at all, rather than only blocking specific formats. ZIP archiving and extraction are unaffected.
+
+If you disable or do not configure this policy setting, Pakko launches tar.exe for tar-family formats as normal (subject to Allowed/Blocked Archive Formats).</string>
+        </stringTable>
+
+        <presentationTable>
+            <presentation id="EnforceMOTW">
+                <dropdownList refId="EnforceMOTW" defaultItem="1">Mark-of-the-Web propagation:</dropdownList>
+            </presentation>
+            <presentation id="AllowedFormats">
+                <text>List of allowed archive formats:</text>
+                <multiTextBox refId="AllowedFormats" />
+            </presentation>
+            <presentation id="BlockedFormats">
+                <text>List of blocked archive formats:</text>
+                <multiTextBox refId="BlockedFormats" />
+            </presentation>
+        </presentationTable>
+    </resources>
+</policyDefinitionResources>

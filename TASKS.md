@@ -1479,9 +1479,10 @@ branch couldn't be exercised end-to-end this time.
 ## v1.4 — GPO + Low IL Sandbox
 
 ### T-F51 — Group Policy Support
-- [ ] **Status:** planned, not implemented — full design done 2026-07-17 via Plan Mode + a
-      design-advisor (Plan agent) session. Scope was deliberately **expanded beyond this task's
-      original 4-key text below** after the advisor fetched and verified the real
+- [x] **Status:** done 2026-07-18, all 11 planned steps implemented and on-device verified — full
+      design done 2026-07-17 via Plan Mode + a design-advisor (Plan agent) session. Scope was deliberately
+      **expanded beyond this task's original 4-key text below** after the advisor fetched and
+      verified the real
       [`NanaZip/Documents/Policies.md`](https://raw.githubusercontent.com/M2Team/NanaZip/main/Documents/Policies.md)
       (via WebFetch, not from memory/description — per `CLAUDE.md`'s pre-implementation-research
       norm) and found the directly-comparable competitor already ships a richer version of the
@@ -1491,9 +1492,31 @@ branch couldn't be exercised end-to-end this time.
       (2026-07-17, user decision)** — it was already flagged by the advisor as the weakest-grounded
       of the five keys (no desktop archiver exposes a configurable compression-ratio threshold as
       a GPO value), and the user chose not to carry that complexity forward. **Final key count is
-      4**, not 5. `POLICIES.md` (new, repo root) now documents this table for sysadmins, with a
-      pointer from `SECURITY.md`. See "Expanded design" below for the full remaining plan; nothing
-      has been coded yet — resume from here.
+      4**, not 5. `POLICIES.md` (repo root) documents this table for sysadmins, with a pointer from
+      `SECURITY.md`. **2026-07-18 implementation pass:** all 11 ordered steps below done, including
+      real ADMX/ADML authored against NanaZip's own fetched, verified, shipped template (not from
+      memory), and two real gaps the original plan missed — `Archiver.CLI` (shipped the same day as
+      this plan, after the plan itself was written) and `DisableTarExtraction` also needing to
+      block archive *creation* in `ArchiveCreationRouter`, not just extraction — found and fixed
+      during implementation; see `DECISIONS.md`'s T-F51 entry for the full trail.
+      `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` green repo-wide.
+      **Graduated to `[x]` 2026-07-18, user-directed** — agent-driven on-device verification via
+      the local `windows` MCP server (elevated PowerShell for the `HKLM\Software\Policies\Pakko\`
+      writes and `%SystemRoot%\PolicyDefinitions` copy, each round explicitly UAC-approved by the
+      user): all 4 keys confirmed against the real installed `pakko.exe`/`Archiver.App` —
+      `EnforceMOTW` 2/0/1 produced exactly the expected per-file/no-file/all-file
+      `Zone.Identifier` pattern on a real ZIP with a `.txt`+`.exe` pair;
+      `BlockedFormats=zip`/`AllowedFormats=gzip` each correctly blocked/allowed the expected
+      archive with the documented Group-Policy skip message; `DisableTarExtraction=1` blocked both
+      tar.gz extraction and `.tar` creation (distinct error messages, correct exit codes) while
+      leaving ZIP unaffected in both directions, **and** correctly hid all 6 tar `ComboBoxItem`s in
+      the real WinUI Format dropdown (only "ZIP" rendered, no artifacts) — resolving the
+      Collapsed-index empirical risk flagged in "Ordered implementation steps" below. A real
+      `gpedit.msc` import (`Pakko.admx` + `en-US\Pakko.adml` copied into
+      `%SystemRoot%\PolicyDefinitions`) showed the "Pakko" category with all 4 policies and their
+      display names, "Not configured" by default, no XML parse errors. All test registry values,
+      copied ADMX/ADML files, and the `gpedit.msc` process were removed/closed afterward — no
+      lasting system state left behind.
 
 **Real-world grounding (advisor research, not invented scope):** checked what sysadmins/competitor
 products actually ship before finalizing keys.
@@ -1597,44 +1620,55 @@ guessed):**
   a Central Store (a real, non-obvious step admins need told).
 
 **Ordered implementation steps (small, individually testable, per T-F52's phased-build precedent):**
-1. Shared `ArchiveFormat`/`ArchiveContainerFormat` ↔ string mapping helper.
-2. `GroupPolicyOptions` record + `IRegistryReader`/`Win32RegistryReader`/`FakeRegistryReader` +
+1. [x] Shared `ArchiveFormat`/`ArchiveContainerFormat` ↔ string mapping helper
+       (`ArchiveFormatRegistryNames`).
+2. [x] `GroupPolicyOptions` record + `IRegistryReader`/`Win32RegistryReader`/`FakeRegistryReader` +
    `GroupPolicyService.Load()` + `GroupPolicyServiceTests` (absent/present/malformed cases,
    DWORD=0 vs. absent distinguished explicitly). No consumer wiring yet.
-3. `ArchiveEntrySecurity.TryPropagateMotw(archivePath, destFilePath, MotwMode)` + unsafe-extension
+3. [x] `ArchiveEntrySecurity.TryPropagateMotw(archivePath, destFilePath, MotwMode)` + unsafe-extension
    list; `ZipArchiveService`/`TarSandboxedService` get the optional `GroupPolicyOptions?` ctor
    param.
-4. `ExtractionRouter.IsSupported` guard + ctor param + tests using literal `GroupPolicyOptions`
+4. [x] `ExtractionRouter.IsSupported` guard + ctor param + tests using literal `GroupPolicyOptions`
    records (no registry fake needed here, same as existing `TarCapabilities` tests).
-5. `ArchiveCreationRouter` guard (new code) + tests.
-6. `App.xaml.cs` DI wiring.
-7. `Archiver.Shell/Program.cs` — 4 call sites updated.
-8. `MainViewModel` + `MainWindow.xaml` (`TarFormatVisibility`, forced format reset) — with the
-   Collapsed-index empirical check.
-9. `deploy/Pakko.admx` + `deploy/Pakko.adml` + `deploy/README.md`.
-10. Cascade doc updates: `ARCHITECTURE.md` (new models/interfaces/DI), `SPEC.md` (GPO table —
-    add `BlockedFormats`, make `EnforceMOTW` 3-state, drop `StrictZipBombMode`), `DECISIONS.md`
-    (naming rationale, real-world grounding summary, why `DisableTarExtraction` stays separate
-    from `BlockedFormats`, why `StrictZipBombMode` was dropped rather than implemented). Also
-    confirm `POLICIES.md` (already added, see below) still matches the shipped behavior once coded.
-11. `dotnet test --filter "Category!=Slow"`, no path argument, all projects green.
+5. [x] `ArchiveCreationRouter` guard (new code) + tests — also gained a `DisableTarExtraction`
+   check beyond the original plan (see `DECISIONS.md`'s T-F51 entry: `POLICIES.md` already
+   documented creation being blocked too, the step list alone didn't say so).
+6. [x] `App.xaml.cs` DI wiring.
+7. [x] `Archiver.Shell/Program.cs` — 3 call sites updated (`BuildExtractionRouterAsync`,
+   `RunArchiveAsync`, `RunTestAsync`) — plus `Archiver.CLI/Program.cs`'s equivalent call sites,
+   missing from this step's original text entirely since Archiver.CLI shipped the day after this
+   plan was written (see `DECISIONS.md`'s T-F51 entry).
+8. [x] `MainViewModel` + `MainWindow.xaml` (`TarFormatVisibility`, forced format reset) — the
+   Collapsed-index empirical check passed on-device 2026-07-18 (only "ZIP" rendered in the real
+   Format dropdown with `DisableTarExtraction=1` set, no artifacts).
+9. [x] `deploy/Pakko.admx` + `deploy/en-US/Pakko.adml` + `deploy/README.md` — authored against
+   NanaZip's own real, fetched, shipped ADMX/ADML as structural precedent (see `DECISIONS.md`).
+10. [x] Cascade doc updates: `ARCHITECTURE.md` (new models/interfaces/DI — new "v1.4 —
+    GroupPolicyOptions (T-F51)" section), `SPEC.md` (GPO table/roadmap status), `DECISIONS.md`
+    (implementation-trail entry), `POLICIES.md` (status banner).
+11. [x] `dotnet test --filter "Category!=Slow&Category!=VeryLarge"`, no path argument, all
+    projects green.
 
 **Acceptance criteria (updated for final 4-key scope):**
-- [ ] `GroupPolicyService` reads all four keys at startup, never throws on absent/malformed values
-- [ ] Policies override corresponding user settings; `BlockedFormats` takes precedence over
+- [x] `GroupPolicyService` reads all four keys at startup, never throws on absent/malformed values
+- [x] Policies override corresponding user settings; `BlockedFormats` takes precedence over
       `AllowedFormats`
-- [ ] `EnforceMOTW=2` propagates MOTW only to files matching the unsafe-extension list;
+- [x] `EnforceMOTW=2` propagates MOTW only to files matching the unsafe-extension list;
       `EnforceMOTW=0` disables propagation entirely; absent key preserves today's always-on default
-- [ ] `DisableTarExtraction=1` hides tar format options in the UI and blocks tar.exe extraction
-      end-to-end (context menu + in-app)
-- [ ] ADMX/ADML template files added to repo (`deploy/Pakko.admx`, `deploy/Pakko.adml`,
-      `deploy/README.md`), importable via `gpedit.msc` with no XML parse errors
-- [ ] `dotnet test --filter "Category!=Slow"` passes (no path arg, all projects) — unit tests with
-      a hand-rolled `FakeRegistryReader`, no mocking library
-- [ ] Manual on-device verification: real registry values set under
-      `HKLM\Software\Policies\Pakko\`, installed app relaunched, each of the 4 keys' effects
-      confirmed for real (tar hidden/blocked, format block/allow, MOTW mode difference on a real
-      `.exe`-vs-`.txt` extraction)
+      — confirmed on-device against a real `.txt`+`.exe` pair
+- [x] `DisableTarExtraction=1` hides tar format options in the UI and blocks tar.exe extraction
+      end-to-end (context menu + in-app) — confirmed on-device (real WinUI dropdown + real CLI
+      extraction/creation blocks)
+- [x] ADMX/ADML template files added to repo (`deploy/Pakko.admx`, `deploy/en-US/Pakko.adml`,
+      `deploy/README.md`) — a real `gpedit.msc` import confirmed on-device 2026-07-18: "Pakko"
+      category with all 4 policies, no XML parse errors
+- [x] `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` passes (no path arg, all
+      projects) — unit tests with a hand-rolled `FakeRegistryReader`, no mocking library
+- [x] On-device verification: real registry values set under `HKLM\Software\Policies\Pakko\`
+      (agent-driven via the local `windows` MCP server, each elevated write explicitly
+      UAC-approved by the user), installed app relaunched, each of the 4 keys' effects confirmed
+      for real (tar hidden/blocked, format block/allow, MOTW mode difference on a real
+      `.exe`-vs-`.txt` extraction) — see the Status line above for the full account
 
 ---
 

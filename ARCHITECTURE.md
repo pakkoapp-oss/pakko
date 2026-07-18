@@ -536,6 +536,7 @@ disk-space risk that direct streaming never had. Insufficient space is reported 
 
 ```csharp
 // App.xaml.cs — ConfigureServices()
+services.AddSingleton(GroupPolicyService.Load());
 services.AddSingleton<ILogService, LogService>();
 services.AddSingleton<IArchiveService, ZipArchiveService>();
 services.AddSingleton<IDialogService, DialogService>();
@@ -548,12 +549,16 @@ services.AddSingleton<IArchiveCreationRouter, ArchiveCreationRouter>();
 services.AddTransient<MainViewModel>();
 // T-F48: TarCapabilities is force-resolved once right after BuildServiceProvider() — a
 // factory-registered singleton only runs on first resolution, and nothing else injects it eagerly.
+// T-F51: GroupPolicyOptions is registered first so ActivatorUtilities can inject it into every
+// consumer below via their optional `GroupPolicyOptions? policy = null` ctor param — a registered
+// concrete instance is used over the null default automatically.
 ```
 
 | Type | Lifetime | Reason |
 |------|----------|--------|
+| `GroupPolicyOptions` | Singleton, eager (`GroupPolicyService.Load()`) | One synchronous registry read at startup (T-F51); never changes mid-session |
 | `LogService` | Singleton | Holds file path, lock object |
-| `ZipArchiveService` | Singleton | Stateless |
+| `ZipArchiveService` | Singleton | Stateless (besides the injected `GroupPolicyOptions`) |
 | `DialogService` | Singleton | Holds window reference |
 | `TarSandboxedService` | Singleton | Stateless (per-call sandbox scope, not per-instance state) |
 | `TarCapabilities` | Singleton, factory-resolved | Probed once at startup (T-F48), never changes at runtime |
@@ -1066,6 +1071,101 @@ and sets `ArchiveOptions.Format` from the parsed switch.
 
 ---
 
+### v1.4 — GroupPolicyOptions (T-F51, Group Policy Support)
+
+Four registry-backed policies under `HKLM\Software\Policies\Pakko\` — see `POLICIES.md` for the
+sysadmin-facing spec (value vocabulary, defaults, interaction rules) and `deploy/` for the
+ADMX/ADML templates. This section documents the code shape only.
+
+```csharp
+// Models/MotwMode.cs
+public enum MotwMode { Disabled = 0, AllFiles = 1, UnsafeExtensionsOnly = 2 }
+
+// Models/GroupPolicyOptions.cs
+public sealed record GroupPolicyOptions
+{
+    public MotwMode MotwMode { get; init; } = MotwMode.AllFiles;
+    public IReadOnlyList<string>? AllowedFormats { get; init; }
+    public IReadOnlyList<string>? BlockedFormats { get; init; }
+    public bool DisableTarExtraction { get; init; }
+
+    public bool IsFormatAllowed(string registryName); // BlockedFormats takes precedence over AllowedFormats
+}
+
+// Interfaces/IRegistryReader.cs — minimal seam, hand-rolled FakeRegistryReader in tests (no
+// mocking library anywhere in this repo)
+public interface IRegistryReader
+{
+    int? GetDword(string keyPath, string valueName);
+    string[]? GetMultiString(string keyPath, string valueName);
+}
+
+// Services/Win32RegistryReader.cs — [SupportedOSPlatform("windows")], reads HKEY_LOCAL_MACHINE,
+// swallows every failure (absent key, access denied, wrong type) and returns null
+public sealed class Win32RegistryReader : IRegistryReader { /* ... */ }
+
+// Services/GroupPolicyService.cs — static, never throws; absent/malformed values fall back to
+// today's shipped (unrestricted) defaults
+public static class GroupPolicyService
+{
+    [SupportedOSPlatform("windows")]
+    public static GroupPolicyOptions Load();                 // real registry, used by App/Shell/CLI
+    public static GroupPolicyOptions Load(IRegistryReader r); // testable overload
+}
+
+// Services/ArchiveFormatRegistryNames.cs — maps ArchiveFormat/ArchiveContainerFormat to the
+// registry-string vocabulary (zip/tar/gzip/bz2/xz/zstd/lzma/rar/sevenzip) AllowedFormats/
+// BlockedFormats use. ArchiveContainerFormat.TarGz maps to "gzip" — the same name
+// ArchiveFormat.GZip detection uses — since the two enums don't line up 1:1.
+public static class ArchiveFormatRegistryNames
+{
+    public static string ToRegistryName(ArchiveFormat format);
+    public static string ToRegistryName(ArchiveContainerFormat format);
+}
+```
+
+**Consumer wiring** — `GroupPolicyOptions? policy = null` was added as an optional constructor
+parameter (default = "everything allowed", so every pre-T-F51 `new XService()` call site keeps
+compiling) to:
+
+- `ZipArchiveService` / `TarSandboxedService` — `_policy.MotwMode` threaded down into
+  `ArchiveEntrySecurity.TryPropagateMotw(archivePath, destFilePath, motwMode)`'s new third
+  parameter (`Disabled` no-ops, `UnsafeExtensionsOnly` checks `destFilePath`'s extension against a
+  fixed unsafe-extension list modeled on Windows Attachment Manager/SmartScreen). Both extractors'
+  smart-foldering helper methods (`ExtractWithSmartFolderingAsync` / `ExtractSingleArchiveAsync`)
+  are `private static`, so `motwMode` is threaded through as an explicit parameter rather than
+  captured — a `static` local/private method cannot close over an instance field.
+- `ExtractionRouter` — gained a 4th ctor param; `AllowedFormats`/`BlockedFormats` are checked for
+  every non-`Unknown` detected format before the existing Zip/tar-family switch, and
+  `DisableTarExtraction` is checked only for the tar-family branch (both produce a `SkippedFile`,
+  never a thrown exception).
+- `ArchiveCreationRouter` — gained a 3rd ctor param; this router had **zero** capability/whitelist
+  check before T-F51, so both the format-block check and the `DisableTarExtraction` check
+  (POLICIES.md documents `DisableTarExtraction` as blocking creation too, not just extraction) are
+  wholly new code, returning an `ArchiveResult` with `Success = false` rather than throwing.
+- `MainViewModel` — gained a 6th ctor param; exposes `TarFormatVisibility` (`Visibility.Collapsed`
+  when `DisableTarExtraction`), bound from `MainWindow.xaml`'s 6 tar `ComboBoxItem`s via
+  `Visibility="{x:Bind ViewModel.TarFormatVisibility}"`. `SelectedContainerFormat` is defensively
+  reset to `Zip` in the constructor if policy disables tar — normally unreachable today since
+  nothing else sets it away from the `Zip` default, kept in case a future caller (e.g. protocol
+  activation) sets a tar format directly.
+
+**DI (`Archiver.App`)** — `services.AddSingleton(GroupPolicyService.Load());`, registered before
+every consumer above so `ActivatorUtilities` injects the real instance instead of falling back to
+each optional parameter's `null` default. **No DI (`Archiver.Shell`, `Archiver.CLI`)** —
+`GroupPolicyOptions policy = GroupPolicyService.Load();` once near the top of `Program.cs`,
+threaded explicitly into every inline `new ZipArchiveService(policy)` /
+`new TarSandboxedService(policy)` / `new ExtractionRouter(..., policy)` /
+`new ArchiveCreationRouter(..., policy)` call site (this supersedes the parameterless
+constructor calls shown in the T-F105/T-F09 sections above, which predate T-F51).
+
+`ArchiveListingRouter` and `RunInfoAsync`/`RunListAsync`'s inline service construction are
+**deliberately not threaded with a policy** — listing is read-only (no MOTW propagation, nothing
+written to disk) and out of this task's scope; see `ITarService.ListEntriesAsync`'s own doc
+comment on why listing must never be gated on an extraction-time policy.
+
+---
+
 ### v1.5 — Archiver.CLI (T-F09)
 
 A fourth thin frontend over `Archiver.Core`, alongside App/Shell/ShellExtension — 7z-familiar
@@ -1075,10 +1175,11 @@ standalone, self-contained downloadable artifact (see `CLI.md`'s "Distribution" 
 into it.
 
 **No DI container** — mirrors `Archiver.Shell/Program.cs`'s pattern exactly (manual `new
-ZipArchiveService()`/`new TarSandboxedService()` construction, `await
+ZipArchiveService(policy)`/`new TarSandboxedService(policy)` construction, `await
 tarService.DetectCapabilitiesAsync()` once, then `new` the relevant router directly per command),
-not `Archiver.App`'s `ServiceCollection`. Both `ZipArchiveService` and `TarSandboxedService` are
-parameterless, so there is nothing to inject.
+not `Archiver.App`'s `ServiceCollection`. `GroupPolicyService.Load()` is called once near the top
+of `Program.cs` and threaded through explicitly (T-F51) — see that section below for why this
+project no longer has "nothing to inject" for these two services.
 
 `CliArgumentParser.Parse(string[])` (in `Archiver.CLI/CliArgumentParser.cs`) never throws — mirrors
 `ShellArgumentParser`'s shape:

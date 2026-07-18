@@ -218,7 +218,7 @@ teaser only; don't let it drift from `POLICIES.md` again.
 | v1.1 | Store release — ZIP only |
 | v1.2 | Shell extension + MOTW + file associations + hash viewer |
 | v1.3 | tar.exe integration — RAR/7z/tar extraction + capability detection — **complete** |
-| v1.4 | GPO/ADMX + AppContainer sandbox (P/Invoke, T-F52) + strict mode policy + Archive Browser (T-F05) + TAR creation via tar.exe (T-F105, pulled forward from v1.5 2026-07-16) — **complete except GPO/ADMX (T-F51), still open/future** |
+| v1.4 | GPO/ADMX + AppContainer sandbox (P/Invoke, T-F52) + strict mode policy + Archive Browser (T-F05) + TAR creation via tar.exe (T-F105, pulled forward from v1.5 2026-07-16) — **complete, including GPO/ADMX (T-F51, done 2026-07-18)** |
 | v1.5 | Additional format fixtures |
 
 Package version (`Package.appxmanifest`'s `Identity Version`) tracks MSIX packaging, not this

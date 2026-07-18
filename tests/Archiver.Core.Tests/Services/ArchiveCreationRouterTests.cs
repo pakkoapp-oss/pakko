@@ -92,4 +92,71 @@ public sealed class ArchiveCreationRouterTests
         zipService.ArchiveCallCount.Should().Be(0);
         tarService.LastCompressOptions.Should().Be(options);
     }
+
+    [Fact]
+    public async Task ArchiveAsync_FormatBlockedByPolicy_ReturnsErrorWithoutCallingEitherService()
+    {
+        var zipService = new FakeArchiveService();
+        var tarService = new FakeTarService();
+        var policy = new GroupPolicyOptions { BlockedFormats = ["zip"] };
+        var router = new ArchiveCreationRouter(zipService, tarService, policy);
+        var options = new ArchiveOptions { SourcePaths = ["a.txt"], Format = ArchiveContainerFormat.Zip };
+
+        var result = await router.ArchiveAsync(options);
+
+        result.Success.Should().BeFalse();
+        result.Errors.Should().ContainSingle(e => e.Message.Contains("Group Policy"));
+        zipService.ArchiveCallCount.Should().Be(0);
+        tarService.CompressCallCount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task ArchiveAsync_FormatNotInAllowedList_ReturnsErrorWithoutCallingEitherService()
+    {
+        var zipService = new FakeArchiveService();
+        var tarService = new FakeTarService();
+        var policy = new GroupPolicyOptions { AllowedFormats = ["tar"] };
+        var router = new ArchiveCreationRouter(zipService, tarService, policy);
+        var options = new ArchiveOptions { SourcePaths = ["a.txt"], Format = ArchiveContainerFormat.Zip };
+
+        var result = await router.ArchiveAsync(options);
+
+        result.Success.Should().BeFalse();
+        zipService.ArchiveCallCount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task ArchiveAsync_DisableTarExtractionPolicy_BlocksTarCreationButNotZip()
+    {
+        var zipService = new FakeArchiveService();
+        var tarService = new FakeTarService();
+        var policy = new GroupPolicyOptions { DisableTarExtraction = true };
+        var router = new ArchiveCreationRouter(zipService, tarService, policy);
+
+        var tarResult = await router.ArchiveAsync(new ArchiveOptions { SourcePaths = ["a.txt"], Format = ArchiveContainerFormat.TarGz });
+        tarResult.Success.Should().BeFalse();
+        tarResult.Errors.Should().ContainSingle(e => e.Message.Contains("Group Policy"));
+        tarService.CompressCallCount.Should().Be(0);
+
+        var zipResult = await router.ArchiveAsync(new ArchiveOptions { SourcePaths = ["a.txt"], Format = ArchiveContainerFormat.Zip });
+        zipResult.Success.Should().BeTrue();
+        zipService.ArchiveCallCount.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task ArchiveAsync_TarGzMapsToGzipRegistryNameForPolicyCheck()
+    {
+        // TarGz is created via ArchiveContainerFormat.TarGz but must be checked against the same
+        // "gzip" registry name ArchiveFormat.GZip detection uses on extraction (T-F51).
+        var zipService = new FakeArchiveService();
+        var tarService = new FakeTarService();
+        var policy = new GroupPolicyOptions { BlockedFormats = ["gzip"] };
+        var router = new ArchiveCreationRouter(zipService, tarService, policy);
+        var options = new ArchiveOptions { SourcePaths = ["a.txt"], Format = ArchiveContainerFormat.TarGz };
+
+        var result = await router.ArchiveAsync(options);
+
+        result.Success.Should().BeFalse();
+        tarService.CompressCallCount.Should().Be(0);
+    }
 }

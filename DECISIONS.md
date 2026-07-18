@@ -5220,3 +5220,113 @@ under a `multiroot\` subfolder (named after the archive, matching `ArchiveNaming
 both files present and byte-correct — the exact wrapping `ZipArchiveServiceExtractTests.
 ExtractAsync_MultipleRootItems_CreatesSubfolderNamedAfterArchive` already asserts for ZIP, now
 proven identical for tar-family through the real installed app end-to-end.
+
+---
+
+## T-F51 — Group Policy Support: Implementation Trail
+
+**Context:** design (registry path, 4 final keys, NanaZip-grounded shape) was already fully
+decided via Plan Mode + a design-advisor session on 2026-07-17 — see that session's entry in
+`TASKS.md`'s T-F51 block for the real-world-grounding research (`AllowedFormats`/`BlockedFormats`
+modeled on NanaZip's real shipped `AllowedHandlers`/`BlockedHandlers`; `EnforceMOTW`'s 3-state
+shape modeled on NanaZip's real `WriteZoneIdExtract`; `StrictZipBombMode` dropped for having no
+real-world precedent). This entry covers what the 2026-07-18 implementation pass itself found.
+
+**`Archiver.CLI` was missing from the original plan entirely.** The plan was written 2026-07-17;
+`Archiver.CLI` (T-F09/T-F116) shipped 2026-07-18, the same day as this implementation, and the
+plan's "4 inline service-construction call sites" only enumerated `Archiver.Shell/Program.cs`.
+`Archiver.CLI/Program.cs` constructs `ZipArchiveService`/`TarSandboxedService`/`ExtractionRouter`/
+`ArchiveCreationRouter` directly with no DI container too — skipping it would have let a CLI user
+(`pakko.exe`) bypass every GPO restriction the GUI/shell extension enforced. Found by re-checking
+the repo layout against the plan before starting, not by the plan itself — caught before it became
+a real gap.
+
+**`DisableTarExtraction` needed threading into `ArchiveCreationRouter`, not just
+`ExtractionRouter`, despite its name.** The implementation plan's own step list only mentioned
+`AllowedFormats`/`BlockedFormats` for `ArchiveCreationRouter`; `POLICIES.md` (written during the
+same 2026-07-17 planning session, before implementation) already documented `DisableTarExtraction`
+as blocking "all tar.exe extraction **and creation**, hide those formats in the UI" — a real design
+decision that had been made but not carried through to every implementation step. Caught by
+re-reading `POLICIES.md` as the design source of truth during step 10 (doc cascade) rather than
+trusting the step list alone; `ArchiveCreationRouter.ArchiveAsync` now blocks any non-Zip
+`ArchiveContainerFormat` outright when `DisableTarExtraction` is set, in addition to the
+`AllowedFormats`/`BlockedFormats` check.
+
+**`static` local functions can't close over instance fields — `MotwMode` had to be threaded as an
+explicit parameter, not read from `_policy` inside the callee.** Both
+`ZipArchiveService.ExtractWithSmartFolderingAsync` and
+`TarSandboxedService.ExtractSingleArchiveAsync` (the methods that actually call
+`ArchiveEntrySecurity.TryPropagateMotw`) are `private static` — a deliberate existing pattern in
+both classes, unrelated to T-F51. Adding a `_policy` instance field to each class and referencing
+it directly from these static methods is a compile error (`CS0120`); fixed by adding a `MotwMode
+motwMode` parameter threaded through the whole call chain (`ExtractAsync` → the static helper) —
+the constructor-level `_policy` field is only ever read from non-static instance methods.
+
+**`Microsoft.Win32.Registry` (`RegistryKey`) is usable from `Archiver.Core` with zero new NuGet
+package reference**, confirmed empirically by a throwaway probe file that built clean under the
+project's existing zero-dependency `Archiver.Core.csproj` — it's part of the Windows-targeting
+runtime pack already pulled in transitively (confirmed via the win-arm64 `.appxrecipe`/
+`.deps.json` already listing `Microsoft.Win32.Registry.dll` for `Archiver.App`'s self-contained
+publish), not a package this task needed to add. The only cost is a `CA1416` platform-compatibility
+warning on any call site not itself gated to a Windows-only TFM; `Win32RegistryReader` and
+`GroupPolicyService.Load()`'s parameterless overload are marked `[SupportedOSPlatform("windows")]`
+to make that warning meaningful rather than suppressing it everywhere. `Archiver.CLI` targets plain
+`net8.0` (not `net8.0-windows`) despite being Windows-only in practice (hardcoded `tar.exe` path,
+AppContainer sandboxing already throughout that file) — its one call site needed an explicit
+`#pragma warning disable/restore CA1416` instead, since the project-wide TFM can't absorb the
+attribute the way `Archiver.App`/`Archiver.Shell`'s `net8.0-windows*` TFMs do automatically.
+
+**ADMX/ADML authoring:** per `CLAUDE.md`'s pre-implementation-research norm, fetched NanaZip's own
+real, shipped `Documents/PolicyDefinitions/NanaZip.admx`/`en-US/NanaZip.adml` from GitHub (not
+generated from memory) as the structural template — confirmed its `<multiText>` element is
+genuinely how NanaZip's own `AllowedHandlers`/`BlockedHandlers` (`REG_MULTI_SZ`) are authored, and
+its `<enum>` element is how the 3-state `WriteZoneIdExtract` is authored, directly validating the
+shapes `EnforceMOTW`/`AllowedFormats`/`BlockedFormats` needed. `deploy/Pakko.admx` +
+`deploy/en-US/Pakko.adml` mirror that structure exactly (own `<products>`/`<supportedOn>`
+definitions rather than referencing Microsoft's built-in `windows.admx`, matching NanaZip's own
+choice). Both confirmed well-formed XML via `xml.dom.minidom`; a live `gpedit.msc` import
+(requires writing into `%SystemRoot%\PolicyDefinitions`, a shared system folder, so treated as an
+on-device verification step rather than done unprompted) is still outstanding — see this task's
+`TASKS.md` entry for status.
+
+**Status: done, 2026-07-18.** All 11 planned steps implemented (mapping helper,
+`GroupPolicyOptions`/`IRegistryReader`/`GroupPolicyService`, MOTW mode wiring, both routers' policy
+guards, DI wiring in `Archiver.App`/`Archiver.Shell`/`Archiver.CLI`, `MainViewModel`/
+`MainWindow.xaml` tar-hiding, ADMX/ADML, this doc cascade).
+`dotnet test --filter "Category!=Slow&Category!=VeryLarge"` green repo-wide.
+**Graduated to `[x]` 2026-07-18, user-directed** — agent-driven on-device verification via the
+local `windows` MCP server. Since every check here needed either `HKLM\Software\Policies\Pakko\`
+writes or a copy into `%SystemRoot%\PolicyDefinitions` (both requiring elevation), each of the 4
+separate elevated PowerShell rounds was launched via `Start-Process -Verb RunAs` and the resulting
+UAC prompt was explicitly approved by the user in real time (confirmed via `AskUserQuestion` before
+each round) — never auto-approved or bypassed. Real findings from the pass itself:
+- The first elevated run used `pakko x archive -o outdir` (space-separated `-o`); every extraction
+  failed with a parser error (`-o requires a directory, e.g. -oC:\dest`) that looked superficially
+  like policy blocking (nonzero exit) but wasn't — caught by noticing the *baseline* (no policy at
+  all) scenario failed identically, which should never happen. `CLI.md`'s own switch table already
+  documented the no-space `-o<dir>`/`-t<type>` syntax; the mistake was not reading it carefully
+  enough on the first pass. Fixed and rerun (a second UAC round) before trusting any result.
+  All 6 scenarios (`EnforceMOTW`=2/0, `BlockedFormats`, `AllowedFormats`, `DisableTarExtraction`
+  extraction+creation) then passed exactly as designed against the real installed `pakko.exe`.
+- `mcp__windows__mouse_control`/keyboard automation cannot drive an elevated window at all — not a
+  coordinate issue like T-F107/T-F110's earlier findings, but a hard UIPI (User Interface Privilege
+  Isolation) block: mouse clicks return `errorType: elevated_process_target` outright, and
+  synthesized keyboard input to an elevated window's handle is silently swallowed (no error, no
+  effect). `gpedit.msc` auto-elevates on this machine even with no explicit `-Verb RunAs` from this
+  session's own launch — confirmed by its `window_management` result reporting `isElevated: true`
+  immediately. Automated verification of the ADMX import was therefore impossible from this side;
+  the user was asked to expand `Computer Configuration → Administrative Templates` themselves and
+  share a screenshot, which showed the "Pakko" category with all 4 policies
+  ("Allowed archive formats", "Blocked archive formats", "Disable tar.exe-based extraction",
+  "Mark-of-the-Web propagation on extraction"), each "Not configured" by default, no parse-error
+  dialog.
+- The WinUI Format `ComboBox`'s Collapsed-index risk flagged during planning (do hidden
+  `ComboBoxItem`s still occupy their `Items` index slot, keeping `FormatIndex`'s int↔enum switch
+  correct) resolved cleanly: with `DisableTarExtraction=1` set, opening the real dropdown in the
+  installed, non-elevated `Archiver.App` (driven successfully via `ui_click`, since that window is
+  *not* elevated — only `gpedit.msc` was) showed exactly one item, "ZIP" — no blank rows, no
+  leftover slots, no crash.
+- Every elevated script cleaned up after itself in the same run it was needed for: the registry key
+  was removed and the two files copied into `PolicyDefinitions` were deleted in a final elevated
+  pass (a 4th UAC round), confirmed via `Test-Path` returning `False` for all three afterward — the
+  machine was left exactly as it was found.

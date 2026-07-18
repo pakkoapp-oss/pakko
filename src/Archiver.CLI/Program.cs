@@ -3,16 +3,24 @@ using Archiver.CLI;
 using Archiver.Core.Models;
 using Archiver.Core.Services;
 
+// T-F51: loaded once per invocation and threaded into every inline service-construction call
+// site below — Archiver.CLI has no DI container, same pattern as Archiver.Shell/Program.cs.
+// pakko.exe only ships for Windows (tar.exe/AppContainer are already Windows-only throughout
+// this file) despite this project's plain net8.0 (not net8.0-windows) TargetFramework.
+#pragma warning disable CA1416
+GroupPolicyOptions policy = GroupPolicyService.Load();
+#pragma warning restore CA1416
+
 var command = CliArgumentParser.Parse(args);
 
 return command.Type switch
 {
     CliCommandType.Help => RunHelp(),
     CliCommandType.Invalid => RunInvalid(command),
-    CliCommandType.Extract => await RunExtractAsync(command).ConfigureAwait(false),
-    CliCommandType.Test => await RunTestAsync(command).ConfigureAwait(false),
+    CliCommandType.Extract => await RunExtractAsync(command, policy).ConfigureAwait(false),
+    CliCommandType.Test => await RunTestAsync(command, policy).ConfigureAwait(false),
     CliCommandType.Info => await RunInfoAsync().ConfigureAwait(false),
-    CliCommandType.Archive => await RunArchiveAsync(command).ConfigureAwait(false),
+    CliCommandType.Archive => await RunArchiveAsync(command, policy).ConfigureAwait(false),
     CliCommandType.List => await RunListAsync(command).ConfigureAwait(false),
     _ => 2,
 };
@@ -35,15 +43,15 @@ static int RunInvalid(ParsedCliCommand command)
 // archive's own internal structure goes straight into the destination, no
 // synthetic per-archive wrapper folder.
 // -------------------------------------------------------------------------
-static async Task<int> RunExtractAsync(ParsedCliCommand command)
+static async Task<int> RunExtractAsync(ParsedCliCommand command, GroupPolicyOptions policy)
 {
     string? stagedStdinPath = null;
     string? stdoutStagingDir = null;
     try
     {
-        var tarService = new TarSandboxedService();
+        var tarService = new TarSandboxedService(policy);
         var capabilities = await tarService.DetectCapabilitiesAsync().ConfigureAwait(false);
-        var router = new ExtractionRouter(new ZipArchiveService(), tarService, capabilities);
+        var router = new ExtractionRouter(new ZipArchiveService(policy), tarService, capabilities, policy);
 
         IReadOnlyList<string> archivePaths = command.ArchivePaths;
         if (command.ReadFromStdin)
@@ -103,7 +111,7 @@ static async Task<int> RunExtractAsync(ParsedCliCommand command)
 // archive paths are reported as skipped with the specific reason, never silently
 // dropped, matching CLI.md's three-way rule even though 't' itself is a supported command.
 // -------------------------------------------------------------------------
-static async Task<int> RunTestAsync(ParsedCliCommand command)
+static async Task<int> RunTestAsync(ParsedCliCommand command, GroupPolicyOptions policy)
 {
     string? stagedStdinPath = null;
     try
@@ -128,7 +136,7 @@ static async Task<int> RunTestAsync(ParsedCliCommand command)
         }
 
         ArchiveResult result = zipPaths.Count > 0
-            ? await new ZipArchiveService().TestAsync(zipPaths, progress: null, CancellationToken.None).ConfigureAwait(false)
+            ? await new ZipArchiveService(policy).TestAsync(zipPaths, progress: null, CancellationToken.None).ConfigureAwait(false)
             : new ArchiveResult { Success = true };
 
         result = result with { SkippedFiles = [.. result.SkippedFiles, .. skippedNonZip] };
@@ -173,12 +181,12 @@ static async Task<int> RunInfoAsync()
 // a: create a new archive. Always SingleArchive (7z 'a' packs every named source into one
 // archive) — SeparateArchives has no 7z-'a'-shaped equivalent and stays out of scope.
 // -------------------------------------------------------------------------
-static async Task<int> RunArchiveAsync(ParsedCliCommand command)
+static async Task<int> RunArchiveAsync(ParsedCliCommand command, GroupPolicyOptions policy)
 {
     string? stdoutStagingDir = null;
     try
     {
-        var router = new ArchiveCreationRouter(new ZipArchiveService(), new TarSandboxedService());
+        var router = new ArchiveCreationRouter(new ZipArchiveService(policy), new TarSandboxedService(policy), policy);
 
         string archivePathArg = command.ArchivePathArg!;
         string destFolder;

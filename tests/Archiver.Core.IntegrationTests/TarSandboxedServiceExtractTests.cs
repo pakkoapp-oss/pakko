@@ -239,6 +239,52 @@ public sealed class TarSandboxedServiceExtractTests : IDisposable
     }
 
     [Integration]
+    public async Task ExtractAsync_MotwModeDisabled_DoesNotPropagateZoneIdentifier()
+    {
+        string archivePath = Path.Combine(_temp.Path, "valid.tar");
+        TarBuilder.WriteTar(archivePath,
+        [
+            new TarBuilder.Entry { Name = "a.txt", Content = Encoding.ASCII.GetBytes("hello") },
+        ]);
+        File.WriteAllText(archivePath + ":Zone.Identifier", "[ZoneTransfer]\r\nZoneId=3\r\n");
+
+        string destDir = Path.Combine(_temp.Path, "out");
+        var sut = new TarSandboxedService(new GroupPolicyOptions { MotwMode = MotwMode.Disabled });
+        var result = await sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [archivePath],
+            DestinationFolder = destDir,
+            Mode = ExtractMode.SingleFolder,
+        });
+
+        result.Success.Should().BeTrue();
+        File.Exists(Path.Combine(destDir, "a.txt") + ":Zone.Identifier").Should().BeFalse();
+    }
+
+    [Integration]
+    public async Task ExtractAsync_MotwModeUnsafeExtensionsOnly_PropagatesOnlyToUnsafeExtensions()
+    {
+        string archivePath = Path.Combine(_temp.Path, "valid.tar");
+        TarBuilder.WriteTar(archivePath,
+        [
+            new TarBuilder.Entry { Name = "payload.exe", Content = Encoding.ASCII.GetBytes("hello") },
+        ]);
+        File.WriteAllText(archivePath + ":Zone.Identifier", "[ZoneTransfer]\r\nZoneId=3\r\n");
+
+        string destDir = Path.Combine(_temp.Path, "out");
+        var sut = new TarSandboxedService(new GroupPolicyOptions { MotwMode = MotwMode.UnsafeExtensionsOnly });
+        var result = await sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [archivePath],
+            DestinationFolder = destDir,
+            Mode = ExtractMode.SingleFolder,
+        });
+
+        result.Success.Should().BeTrue();
+        File.Exists(Path.Combine(destDir, "payload.exe") + ":Zone.Identifier").Should().BeTrue();
+    }
+
+    [Integration]
     public async Task ExtractAsync_ArchiveWithParentTraversalEntry_RejectsWholeArchive()
     {
         string archivePath = Path.Combine(_temp.Path, "evil_traversal.tar");

@@ -448,12 +448,12 @@
             <ComboBox Grid.Row="2" Grid.Column="1" Margin="8,0,0,0" HorizontalAlignment="Left" MinHeight="32" SelectedIndex="{x:Bind ViewModel.FormatIndex, Mode=TwoWay}"
                       IsEnabled="{x:Bind ViewModel.IsNotBusy, Mode=OneWay}">
                 <ComboBoxItem x:Uid="FormatZipItem"/>
-                <ComboBoxItem x:Uid="FormatTarItem"/>
-                <ComboBoxItem x:Uid="FormatTarGzItem"/>
-                <ComboBoxItem x:Uid="FormatTarBz2Item"/>
-                <ComboBoxItem x:Uid="FormatTarXzItem"/>
-                <ComboBoxItem x:Uid="FormatTarZstItem"/>
-                <ComboBoxItem x:Uid="FormatTarLzmaItem"/>
+                <ComboBoxItem x:Uid="FormatTarItem" Visibility="{x:Bind ViewModel.TarFormatVisibility}"/>
+                <ComboBoxItem x:Uid="FormatTarGzItem" Visibility="{x:Bind ViewModel.TarFormatVisibility}"/>
+                <ComboBoxItem x:Uid="FormatTarBz2Item" Visibility="{x:Bind ViewModel.TarFormatVisibility}"/>
+                <ComboBoxItem x:Uid="FormatTarXzItem" Visibility="{x:Bind ViewModel.TarFormatVisibility}"/>
+                <ComboBoxItem x:Uid="FormatTarZstItem" Visibility="{x:Bind ViewModel.TarFormatVisibility}"/>
+                <ComboBoxItem x:Uid="FormatTarLzmaItem" Visibility="{x:Bind ViewModel.TarFormatVisibility}"/>
             </ComboBox>
 
             <TextBlock x:Uid="CompressionLabel" Grid.Row="3" Grid.Column="0" VerticalAlignment="Center" Style="{StaticResource CaptionTextBlockStyle}"/>

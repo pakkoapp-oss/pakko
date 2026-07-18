@@ -24,6 +24,15 @@ public sealed class ZipArchiveService : IArchiveService
     // regression against a 7z reference. See DECISIONS.md's T-F35 entry.
     private const int ParallelPipelineFileCountThreshold = 64;
 
+    private readonly GroupPolicyOptions _policy;
+
+    // T-F51: optional so every existing `new ZipArchiveService()` call site keeps compiling —
+    // a null policy means "everything allowed", matching today's shipped behavior exactly.
+    public ZipArchiveService(GroupPolicyOptions? policy = null)
+    {
+        _policy = policy ?? new GroupPolicyOptions();
+    }
+
     /// <inheritdoc/>
     public async Task<ArchiveResult> ArchiveAsync(
         ArchiveOptions options,
@@ -552,7 +561,7 @@ public sealed class ZipArchiveService : IArchiveService
                     await ExtractWithSmartFolderingAsync(archivePath, destDir, alreadyIsolated,
                         conflictResolver, skippedFiles, archiveProgress,
                         options.ConfirmCompressionBombExtraction, options.SelectedEntryPaths,
-                        cancellationToken),
+                        _policy.MotwMode, cancellationToken),
                     cancellationToken).ConfigureAwait(false);
 
                 // T-F87: an archive whose entries were all individually skipped (e.g. every
@@ -759,6 +768,7 @@ public sealed class ZipArchiveService : IArchiveService
         IProgress<ProgressReport>? progress,
         Func<CompressionBombWarning, Task<bool>>? confirmCompressionBombExtraction,
         IReadOnlyList<string>? selectedEntryPaths,
+        MotwMode motwMode,
         CancellationToken cancellationToken)
     {
         using var archive = ZipFile.OpenRead(archivePath);
@@ -990,7 +1000,7 @@ public sealed class ZipArchiveService : IArchiveService
                 }
 
                 // T-F45: Propagate Zone.Identifier ADS from archive to extracted file
-                ArchiveEntrySecurity.TryPropagateMotw(archivePath, destFilePath);
+                ArchiveEntrySecurity.TryPropagateMotw(archivePath, destFilePath, motwMode);
 
                 extractedCount++;
                 bytesRead += entry.Length;

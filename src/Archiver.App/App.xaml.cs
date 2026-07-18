@@ -27,6 +27,9 @@ public partial class App : Application
     {
         var services = new ServiceCollection();
 
+        // T-F51: eager, synchronous registry read — registered before every consumer below so
+        // ActivatorUtilities can inject it into their optional GroupPolicyOptions? ctor params.
+        services.AddSingleton(GroupPolicyService.Load());
         services.AddSingleton<ILogService, LogService>();
         services.AddSingleton<IArchiveService, ZipArchiveService>();
         services.AddSingleton<IDialogService, DialogService>();

@@ -7,8 +7,11 @@ namespace Archiver.Core.Services;
 public sealed class ExtractionRouter(
     IArchiveService archiveService,
     ITarService tarService,
-    TarCapabilities tarCapabilities) : IExtractionRouter
+    TarCapabilities tarCapabilities,
+    GroupPolicyOptions? groupPolicyOptions = null) : IExtractionRouter
 {
+    private readonly GroupPolicyOptions _policy = groupPolicyOptions ?? new GroupPolicyOptions();
+
     /// <inheritdoc/>
     public async Task<ArchiveResult> ExtractAsync(
         ExtractOptions options,
@@ -22,6 +25,24 @@ public sealed class ExtractionRouter(
         foreach (string path in options.ArchivePaths)
         {
             ArchiveFormat format = ArchiveFormatDetector.Detect(path);
+
+            // T-F51: AllowedFormats/BlockedFormats sit outside the format-specific switch below
+            // since they apply uniformly to both Zip and every tar-family format. Unknown has no
+            // registry name to check — leave it to the existing unrecognized-path handling.
+            if (format != ArchiveFormat.Unknown)
+            {
+                string registryName = ArchiveFormatRegistryNames.ToRegistryName(format);
+                if (!_policy.IsFormatAllowed(registryName))
+                {
+                    unsupported.Add(new SkippedFile
+                    {
+                        Path = path,
+                        Reason = $"This archive format ({registryName}) is blocked by Group Policy."
+                    });
+                    continue;
+                }
+            }
+
             switch (format)
             {
                 case ArchiveFormat.Zip:
@@ -35,7 +56,15 @@ public sealed class ExtractionRouter(
                     zipPaths.Add(path);
                     break;
                 default:
-                    if (IsSupported(format, tarCapabilities))
+                    // T-F51: DisableTarExtraction is a separate kill switch from BlockedFormats —
+                    // it stops tar.exe from ever being spawned at all, not just a per-format block.
+                    if (_policy.DisableTarExtraction)
+                        unsupported.Add(new SkippedFile
+                        {
+                            Path = path,
+                            Reason = "tar.exe-based extraction is disabled by Group Policy."
+                        });
+                    else if (IsSupported(format, tarCapabilities))
                         tarPaths.Add(path);
                     else
                         unsupported.Add(new SkippedFile
