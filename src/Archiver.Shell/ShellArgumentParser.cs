@@ -6,6 +6,7 @@ namespace Archiver.Shell;
 public enum CommandType
 {
     ExtractHere,
+    ExtractHereFlat,
     ExtractFolder,
     Archive,
     Test,
@@ -46,6 +47,7 @@ public static class ShellArgumentParser
         {
             "--open-ui"        => ParseOpenUi(args),
             "--extract-here"   => ParseFileList(CommandType.ExtractHere, args),
+            "--extract-flat"   => ParseFileList(CommandType.ExtractHereFlat, args),
             "--extract-folder" => ParseFileList(CommandType.ExtractFolder, args),
             "--archive"        => ParseArchive(args),
             "--test"           => ParseFileList(CommandType.Test, args),

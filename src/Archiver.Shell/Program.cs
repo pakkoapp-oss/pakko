@@ -31,6 +31,10 @@ switch (command.Type)
         await RunExtractHereAsync(command.Files).ConfigureAwait(false);
         break;
 
+    case CommandType.ExtractHereFlat:
+        await RunExtractHereFlatAsync(command.Files).ConfigureAwait(false);
+        break;
+
     case CommandType.ExtractFolder:
         await RunExtractFolderAsync(command.Files).ConfigureAwait(false);
         break;
@@ -81,6 +85,35 @@ static async Task RunExtractHereAsync(IReadOnlyList<string> archivePaths)
             DestinationFolder = destFolder,
             Mode = ExtractMode.SeparateFolders,
             SeparateFolderName = folderName,
+            OnConflict = ConflictBehavior.Rename,
+        };
+
+        string title = $"Extracting: {Path.GetFileName(archivePath)}";
+        await RunWithProgressWindowAsync(title,
+            (progress, ct) => router.ExtractAsync(options, progress, ct))
+            .ConfigureAwait(false);
+    }
+}
+
+// -------------------------------------------------------------------------
+// --extract-flat (T-F115): genuinely flat - dump every archive's contents directly into its
+// own containing folder, no wrapper folder ever created, regardless of the archive's internal
+// structure. ExtractMode.SingleFolder already means exactly this once DestinationFolder points
+// straight at the archive's own folder (no subfolder computed) - contrast with
+// RunExtractFolderAsync below, which pre-computes a fresh subfolder and passes that instead.
+// -------------------------------------------------------------------------
+static async Task RunExtractHereFlatAsync(IReadOnlyList<string> archivePaths)
+{
+    var router = await BuildExtractionRouterAsync().ConfigureAwait(false);
+
+    foreach (var archivePath in archivePaths)
+    {
+        var destFolder = Path.GetDirectoryName(archivePath) ?? ".";
+        var options = new ExtractOptions
+        {
+            ArchivePaths = [archivePath],
+            DestinationFolder = destFolder,
+            Mode = ExtractMode.SingleFolder,
             OnConflict = ConflictBehavior.Rename,
         };
 

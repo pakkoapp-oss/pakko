@@ -1650,3 +1650,69 @@ fixture).
 
 ---
 
+### T-F115 — Shell-extension context-menu localization (37 locales) + Extract-here split
+
+- [~] **Status:** implementation complete 2026-07-18, all automated tests green (.NET + C++).
+      Stays `[~]` — not graduated to `[x]` — pending the required `Deploy.ps1` build+sign+install
+      and on-device Explorer check per this project's workflow rule (shell-triggered/UI change,
+      never graduated on `dotnet test`/`Archiver.ShellExtension.Tests.exe` alone).
+
+**What:** user compared a real on-device screenshot of Pakko's Explorer context menu against
+NanaZip's own (Windows UI in Ukrainian) and found two real gaps: (1) every `IExplorerCommand`
+menu title in `Archiver.ShellExtension` was a hardcoded English literal — T-F91 localized only
+`Archiver.App`'s WinUI XAML (resw), never the native COM shell extension; (2) `ExtractHereCommand`
+("Extract here") never actually extracted flat into the current folder — it already ran
+`ExtractMode.SeparateFolders`'s smart single-root-detection logic (NanaZip's own "Інтелектуально"
+behavior), just mislabeled, and neither existing command ever unconditionally dumped into the
+current folder without creating some destination folder first.
+
+**Delivered:**
+- [x] New `Archiver.ShellExtension/Localization.h`/`.cpp` — a plain compiled-in `StringId` →
+      per-locale-text lookup table (37 BCP-47 tags, mirroring `Archiver.App/Strings/<locale>/`
+      exactly), `GetCurrentUILanguageTag()` (`GetThreadPreferredUILanguages`), single-level
+      en-US fallback for an unrecognized tag, and `ApplyTemplate()` for the two templated titles
+      (quoted archive/folder name substitution via literal `{0}`, never `printf`-style formatting
+      since the substituted value is a user-controlled filename)
+- [x] All 8 pre-existing `GetTitle` overrides + `BuildAddToArchiveTitle`/`BuildExtractFolderTitle`
+      (`ShellExtUtils.cpp`) now pull from the table instead of hardcoded English; the two title
+      builders gained an optional `localeTag` parameter defaulting to `L"en-US"` so every
+      pre-existing English-text test kept passing unchanged — production call sites
+      (`ExplorerCommands.cpp`) pass `GetCurrentUILanguageTag()` explicitly
+- [x] `ExtractHereCommand`'s title relabeled to "Extract to current folder (Intelligently)" /
+      uk-UA "Видобути до поточної папки (Інтелектуально)" (matching NanaZip's own text verbatim) —
+      zero behavior change
+- [x] New genuinely-flat command, `ExtractHereFlatCommand` (new CLSID), took over the "Extract
+      here" label — dumps directly into the archive's own containing folder, no wrapper folder
+      ever, via `ExtractMode.SingleFolder` with `DestinationFolder` pointed straight at the
+      archive's folder (no subfolder computed) — zero `Archiver.Core` changes needed, since
+      `SingleFolder` already meant exactly this once no fresh subfolder path is passed in. New
+      `--extract-flat` CLI switch (`ShellArgumentParser`/`CommandType.ExtractHereFlat`), new
+      `RunExtractHereFlatAsync` in `Archiver.Shell/Program.cs`, new `BuildExtractHereFlatArgs`
+      in `ShellExtUtils`. `PakkoRootCommand::EnumSubCommands` now lists all three extract variants
+      in NanaZip's own order: `Extract…`, `Extract here` (flat), `Extract to current folder
+      (Intelligently)`, `Extract to "name\"`
+- [x] Translation content for all ~9 strings × 37 locales freshly authored (no existing
+      `Archiver.App` resw phrase covered "Test archive"/"Compress…"/"Add to archive…"; only
+      partial "Extract" vocabulary existed to seed from)
+- [x] Tests: new `LocalizationTests.cpp` (lookup/fallback/data-integrity — every locale's two
+      templated strings contain `{0}` exactly, every locale resolves to itself not the en-US
+      fallback), new `BuildExtractHereFlatArgs`/`BuildAddToArchiveTitle`/`BuildExtractFolderTitle`
+      uk-UA cases in `ShellExtUtilsTests.cpp`, new `ShellArgumentParser` `--extract-flat` cases.
+      468 + 85 C++ tests (was 468/68) all pass
+- [x] **Real root-cause bug found and fixed along the way:** MSVC silently decoded the non-BOM
+      UTF-8 source files (`Localization.cpp`'s literal-glyph translations) using the system ANSI
+      codepage instead of UTF-8, corrupting every non-ASCII literal at compile time (confirmed:
+      "Д" U+0414 became "Р"+U+201D under cp1251) — invisible to a same-file literal-vs-literal test
+      comparison (both sides mis-decode identically) but caught immediately once compared against
+      a `\uXXXX`-escaped expected value in a different test file. Fixed at the root with MSVC's
+      `/utf-8` compiler flag on both `Archiver.ShellExtension.vcxproj` and
+      `Archiver.ShellExtension.Tests.vcxproj`, rather than converting ~370 authored strings to
+      escapes. See `DECISIONS.md`'s T-F115 entry — this is very likely the actual mechanism behind
+      the three prior mojibake incidents (T-F64/T-F76/T-F63) that were previously only worked
+      around, never root-caused
+- [ ] `Deploy.ps1` build+sign+install + on-device Explorer check (Ukrainian and, if switchable,
+      en-US) confirming the three extract items render correctly localized and the new flat
+      command truly extracts without creating a wrapper folder — **not yet done this session**
+
+---
+

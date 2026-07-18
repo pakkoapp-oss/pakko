@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "ExplorerCommands.h"
+#include "Localization.h"
 
 // ---------------------------------------------------------------------------
 // SubCommandEnum
@@ -82,7 +83,7 @@ static const std::wstring& GetAppIconPath()
 STDMETHODIMP ExtractHereCommand::GetTitle(IShellItemArray*, LPWSTR* ppszName) noexcept
 {
     if (!ppszName) return E_POINTER;
-    return SHStrDupW(L"Extract here", ppszName);
+    return SHStrDupW(GetLocalizedString(StringId::ExtractHereIntelligent).c_str(), ppszName);
 }
 
 STDMETHODIMP ExtractHereCommand::GetIcon(IShellItemArray*, LPWSTR* ppszIcon) noexcept
@@ -141,6 +142,69 @@ STDMETHODIMP ExtractHereCommand::EnumSubCommands(IEnumExplorerCommand** ppEnum) 
 }
 
 // ---------------------------------------------------------------------------
+// ExtractHereFlatCommand (T-F115) - "Extract here", genuinely flat.
+// ---------------------------------------------------------------------------
+
+STDMETHODIMP ExtractHereFlatCommand::GetTitle(IShellItemArray*, LPWSTR* ppszName) noexcept
+{
+    if (!ppszName) return E_POINTER;
+    return SHStrDupW(GetLocalizedString(StringId::ExtractHereFlat).c_str(), ppszName);
+}
+
+STDMETHODIMP ExtractHereFlatCommand::GetIcon(IShellItemArray*, LPWSTR* ppszIcon) noexcept
+{
+    if (!ppszIcon) return E_POINTER;
+    *ppszIcon = nullptr;
+    return E_NOTIMPL;
+}
+
+STDMETHODIMP ExtractHereFlatCommand::GetToolTip(IShellItemArray*, LPWSTR* ppszInfotip) noexcept
+{
+    if (!ppszInfotip) return E_POINTER;
+    *ppszInfotip = nullptr;
+    return E_NOTIMPL;
+}
+
+STDMETHODIMP ExtractHereFlatCommand::GetCanonicalName(GUID* pguidCommandName) noexcept
+{
+    if (!pguidCommandName) return E_POINTER;
+    *pguidCommandName = CLSID_ExtractHereFlatCommand;
+    return S_OK;
+}
+
+STDMETHODIMP ExtractHereFlatCommand::GetState(IShellItemArray* psia, BOOL, EXPCMDSTATE* pCmdState) noexcept
+{
+    if (!pCmdState) return E_POINTER;
+    *pCmdState = AllPathsAreSupportedArchive(GetPathsFromShellItemArray(psia)) ? ECS_ENABLED : ECS_HIDDEN;
+    return S_OK;
+}
+
+STDMETHODIMP ExtractHereFlatCommand::Invoke(IShellItemArray* psia, IBindCtx*) noexcept
+{
+    try
+    {
+        const auto paths = GetPathsFromShellItemArray(psia);
+        if (paths.empty()) return E_INVALIDARG;
+        return LaunchShellExe(BuildExtractHereFlatArgs(paths));
+    }
+    catch (...) { return E_FAIL; }
+}
+
+STDMETHODIMP ExtractHereFlatCommand::GetFlags(EXPCMDFLAGS* pFlags) noexcept
+{
+    if (!pFlags) return E_POINTER;
+    *pFlags = ECF_DEFAULT;
+    return S_OK;
+}
+
+STDMETHODIMP ExtractHereFlatCommand::EnumSubCommands(IEnumExplorerCommand** ppEnum) noexcept
+{
+    if (!ppEnum) return E_POINTER;
+    *ppEnum = nullptr;
+    return E_NOTIMPL;
+}
+
+// ---------------------------------------------------------------------------
 // ExtractFolderCommand
 // ---------------------------------------------------------------------------
 
@@ -149,9 +213,9 @@ STDMETHODIMP ExtractFolderCommand::GetTitle(IShellItemArray* psia, LPWSTR* ppszN
     if (!ppszName) return E_POINTER;
     try
     {
-        return SHStrDupW(BuildExtractFolderTitle(GetPathsFromShellItemArray(psia)).c_str(), ppszName);
+        return SHStrDupW(BuildExtractFolderTitle(GetPathsFromShellItemArray(psia), GetCurrentUILanguageTag()).c_str(), ppszName);
     }
-    catch (...) { return SHStrDupW(L"Extract to folder", ppszName); }
+    catch (...) { return SHStrDupW(GetLocalizedString(StringId::ExtractFolderFallback).c_str(), ppszName); }
 }
 
 STDMETHODIMP ExtractFolderCommand::GetIcon(IShellItemArray*, LPWSTR* ppszIcon) noexcept
@@ -217,9 +281,9 @@ STDMETHODIMP ArchiveCommand::GetTitle(IShellItemArray* psia, LPWSTR* ppszName) n
     if (!ppszName) return E_POINTER;
     try
     {
-        return SHStrDupW(BuildAddToArchiveTitle(GetPathsFromShellItemArray(psia)).c_str(), ppszName);
+        return SHStrDupW(BuildAddToArchiveTitle(GetPathsFromShellItemArray(psia), L".zip", GetCurrentUILanguageTag()).c_str(), ppszName);
     }
-    catch (...) { return SHStrDupW(L"Add to archive\u2026", ppszName); }
+    catch (...) { return SHStrDupW(GetLocalizedString(StringId::ArchiveFallback).c_str(), ppszName); }
 }
 
 STDMETHODIMP ArchiveCommand::GetIcon(IShellItemArray*, LPWSTR* ppszIcon) noexcept
@@ -284,9 +348,9 @@ STDMETHODIMP TarArchiveCommand::GetTitle(IShellItemArray* psia, LPWSTR* ppszName
     if (!ppszName) return E_POINTER;
     try
     {
-        return SHStrDupW(BuildAddToArchiveTitle(GetPathsFromShellItemArray(psia), L".tar").c_str(), ppszName);
+        return SHStrDupW(BuildAddToArchiveTitle(GetPathsFromShellItemArray(psia), L".tar", GetCurrentUILanguageTag()).c_str(), ppszName);
     }
-    catch (...) { return SHStrDupW(L"Add to archive\u2026", ppszName); }
+    catch (...) { return SHStrDupW(GetLocalizedString(StringId::ArchiveFallback).c_str(), ppszName); }
 }
 
 STDMETHODIMP TarArchiveCommand::GetIcon(IShellItemArray*, LPWSTR* ppszIcon) noexcept
@@ -349,7 +413,7 @@ STDMETHODIMP TarArchiveCommand::EnumSubCommands(IEnumExplorerCommand** ppEnum) n
 STDMETHODIMP TestCommand::GetTitle(IShellItemArray*, LPWSTR* ppszName) noexcept
 {
     if (!ppszName) return E_POINTER;
-    return SHStrDupW(L"Test archive", ppszName);
+    return SHStrDupW(GetLocalizedString(StringId::TestArchive).c_str(), ppszName);
 }
 
 STDMETHODIMP TestCommand::GetIcon(IShellItemArray*, LPWSTR* ppszIcon) noexcept
@@ -421,7 +485,7 @@ STDMETHODIMP TestCommand::EnumSubCommands(IEnumExplorerCommand** ppEnum) noexcep
 STDMETHODIMP ExtractDialogCommand::GetTitle(IShellItemArray*, LPWSTR* ppszName) noexcept
 {
     if (!ppszName) return E_POINTER;
-    return SHStrDupW(L"Extract\u2026", ppszName);
+    return SHStrDupW(GetLocalizedString(StringId::ExtractDialog).c_str(), ppszName);
 }
 
 STDMETHODIMP ExtractDialogCommand::GetIcon(IShellItemArray*, LPWSTR* ppszIcon) noexcept
@@ -491,7 +555,7 @@ STDMETHODIMP ExtractDialogCommand::EnumSubCommands(IEnumExplorerCommand** ppEnum
 STDMETHODIMP CompressDialogCommand::GetTitle(IShellItemArray*, LPWSTR* ppszName) noexcept
 {
     if (!ppszName) return E_POINTER;
-    return SHStrDupW(L"Compress\u2026", ppszName);
+    return SHStrDupW(GetLocalizedString(StringId::CompressDialog).c_str(), ppszName);
 }
 
 STDMETHODIMP CompressDialogCommand::GetIcon(IShellItemArray*, LPWSTR* ppszIcon) noexcept
@@ -613,17 +677,19 @@ STDMETHODIMP PakkoRootCommand::EnumSubCommands(IEnumExplorerCommand** ppEnum) no
         *ppEnum = nullptr;
 
         auto pExtractDialog = Make<ExtractDialogCommand>();
+        auto pExtractHereFlat = Make<ExtractHereFlatCommand>();
         auto pExtractHere   = Make<ExtractHereCommand>();
         auto pExtractFolder = Make<ExtractFolderCommand>();
         auto pCompressDialog = Make<CompressDialogCommand>();
         auto pArchive       = Make<ArchiveCommand>();
         auto pTarArchive    = Make<TarArchiveCommand>();
         auto pTest          = Make<TestCommand>();
-        if (!pExtractDialog || !pExtractHere || !pExtractFolder || !pCompressDialog || !pArchive || !pTarArchive || !pTest)
+        if (!pExtractDialog || !pExtractHereFlat || !pExtractHere || !pExtractFolder || !pCompressDialog || !pArchive || !pTarArchive || !pTest)
             return E_OUTOFMEMORY;
 
-        ComPtr<IExplorerCommand> pCmdExtractDialog, pCmdA, pCmdB, pCmdCompressDialog, pCmdC, pCmdTarArchive, pCmdTest;
+        ComPtr<IExplorerCommand> pCmdExtractDialog, pCmdExtractHereFlat, pCmdA, pCmdB, pCmdCompressDialog, pCmdC, pCmdTarArchive, pCmdTest;
         HRESULT hr = pExtractDialog.As(&pCmdExtractDialog); if (FAILED(hr)) return hr;
+        hr = pExtractHereFlat.As(&pCmdExtractHereFlat);      if (FAILED(hr)) return hr;
         hr = pExtractHere.As(&pCmdA);                       if (FAILED(hr)) return hr;
         hr = pExtractFolder.As(&pCmdB);                      if (FAILED(hr)) return hr;
         hr = pCompressDialog.As(&pCmdCompressDialog);        if (FAILED(hr)) return hr;
@@ -638,8 +704,11 @@ STDMETHODIMP PakkoRootCommand::EnumSubCommands(IEnumExplorerCommand** ppEnum) no
         // deviation from NanaZip's own Test-before-Compress grouping, per project direction:
         // primary actions before Test, always). T-F105: "Add to X.tar" sits right after
         // "Add to X.zip" — both are one-click archive-creation commands, kept adjacent.
+        // T-F115: the new flat "Extract here" sits between the dialog and the (renamed)
+        // "...Intelligently" command, matching NanaZip's own three-way extract-verb layout.
         std::vector<ComPtr<IExplorerCommand>> commands;
         commands.push_back(std::move(pCmdExtractDialog));
+        commands.push_back(std::move(pCmdExtractHereFlat));
         commands.push_back(std::move(pCmdA));
         commands.push_back(std::move(pCmdB));
         commands.push_back(std::move(pCmdCompressDialog));

@@ -77,6 +77,7 @@ sequenceDiagram
     participant Root as PakkoRootCommand
     participant Enum as SubCommandEnum
     participant EDC as ExtractDialogCommand
+    participant EHF as ExtractHereFlatCommand
     participant EH as ExtractHereCommand
     participant EF as ExtractFolderCommand
     participant CDC as CompressDialogCommand
@@ -95,12 +96,13 @@ sequenceDiagram
     Explorer->>Root: GetFlags() → ECF_HASSUBCOMMANDS
     Explorer->>Root: EnumSubCommands()
     Root->>EDC: Make<ExtractDialogCommand>()
-    Root->>EH: Make<ExtractHereCommand>()
+    Root->>EHF: Make<ExtractHereFlatCommand>()<br/>(T-F115: new, genuinely flat extract)
+    Root->>EH: Make<ExtractHereCommand>()<br/>(T-F115: title now "...Intelligently" — behavior unchanged)
     Root->>EF: Make<ExtractFolderCommand>()
     Root->>CDC: Make<CompressDialogCommand>()
     Root->>AC: Make<ArchiveCommand>()
     Root->>TC: Make<TestCommand>()
-    Root->>Enum: SetCommands([EDC, EH, EF, CDC, AC, TC])<br/>ALWAYS all six, unconditionally —<br/>selection does not filter EnumSubCommands.<br/>Order mirrors NanaZip's real ContextMenu.cpp (T-F63):<br/>dialog command before its one-click sibling in each group.<br/>TC last: diagnostic/verification action, not primary —<br/>deliberate deviation from NanaZip's own Test-before-Compress grouping
+    Root->>Enum: SetCommands([EDC, EHF, EH, EF, CDC, AC, TC, ...])<br/>ALWAYS all, unconditionally — selection does not filter EnumSubCommands.<br/>Order mirrors NanaZip's real ContextMenu.cpp (T-F63) and its own three-way<br/>extract-verb layout (T-F115): dialog, then flat, then intelligent, then named-folder.<br/>TC last: diagnostic/verification action, not primary —<br/>deliberate deviation from NanaZip's own Test-before-Compress grouping.<br/>TarArchiveCommand (added T-F105) is omitted from this list — pre-existing<br/>diagram gap, not introduced here, see this file's own staleness note above
     Root-->>Explorer: Enum (IEnumExplorerCommand)
     loop Explorer drains the enumerator
         Explorer->>Enum: Next(celt, ...)
@@ -108,6 +110,7 @@ sequenceDiagram
     end
     Note over Explorer,TC: Visibility is decided per-command by GetState(),<br/>separately from enumeration
     Explorer->>EDC: GetState(psia) → ECS_ENABLED iff AnyPathIsSupportedArchive(paths), else ECS_HIDDEN<br/>(T-F86: also true for RAR/7z/tar-family when tar.exe exists — EDC routes<br/>to Archiver.App/IExtractionRouter, which supports those formats since T-F85)
+    Explorer->>EHF: GetState(psia) → ECS_ENABLED iff AllPathsAreSupportedArchive(paths), else ECS_HIDDEN<br/>(same condition as EH/EF — T-F115)
     Explorer->>EH: GetState(psia) → ECS_ENABLED iff AllPathsAreSupportedArchive(paths), else ECS_HIDDEN<br/>(T-F86: also true for RAR/7z/tar-family when tar.exe exists)
     Explorer->>EF: GetState(psia) → ECS_ENABLED iff AllPathsAreSupportedArchive(paths), else ECS_HIDDEN<br/>(T-F86: also true for RAR/7z/tar-family when tar.exe exists)
     Explorer->>CDC: GetState(psia) → always ECS_ENABLED (T-F63: shown for any selection,<br/>unlike AC below — archiving a .zip into a new .zip via the dialog is valid)
@@ -122,12 +125,12 @@ sequenceDiagram
         ShellExe->>App: Process.Start("pakko://extract?files=<base64>", UseShellExecute:true)<br/>— or pakko://archive — then ShellExe's Main returns/exits immediately —<br/>NO NativeProgressDialog, NO ZipArchiveService call in this branch at all
         Note over App: T-F83 (fixed 2026-07-06): cold start reads the activation via<br/>OnLaunched→AppInstance.GetCurrent().GetActivatedEventArgs(), not just<br/>the OnActivated event (which only fires for redirected/warm activation).<br/>Before the fix, a cold pakko:// launch silently opened an EMPTY window.
         App->>App: MainViewModel.AddPathsFromProtocolUri(uri)<br/>— files pre-loaded, user drives Archive/Extract from the full UI
-    else command is EH, EF, AC, or TC (silent form)
-        Explorer->>EH: Invoke(psia, pbc) — or EF / AC / TC, same shape
+    else command is EHF, EH, EF, AC, or TC (silent form)
+        Explorer->>EH: Invoke(psia, pbc) — or EHF / EF / AC / TC, same shape
         alt GetPathsFromShellItemArray(psia) empty
             EH-->>Explorer: E_INVALIDARG
         else paths present
-            EH->>ShellExe: LaunchShellExe(BuildExtractHereArgs(paths))<br/>— or BuildExtractFolderArgs / BuildArchiveArgs / BuildTestArgs<br/>CreateProcessW — PROCESS_INFORMATION handles<br/>closed immediately — does NOT wait for the child<br/>note: TC passes the FULL selection unfiltered — Core does the<br/>per-path IsZipFile gating, same as Extract already does
+            EH->>ShellExe: LaunchShellExe(BuildExtractHereArgs(paths))<br/>— or BuildExtractHereFlatArgs (T-F115, "--extract-flat") /<br/>BuildExtractFolderArgs / BuildArchiveArgs / BuildTestArgs<br/>CreateProcessW — PROCESS_INFORMATION handles<br/>closed immediately — does NOT wait for the child<br/>note: TC passes the FULL selection unfiltered — Core does the<br/>per-path IsZipFile gating, same as Extract already does
             ShellExe-->>Explorer: (no return channel — ShellExe runs independently)
             EH-->>Explorer: S_OK, or HRESULT_FROM_WIN32(GetLastError())<br/>on CreateProcess failure — returned the instant<br/>CreateProcess returns, NOT when the operation finishes
             ShellExe->>Dlg: new NativeProgressDialog(title)<br/>= new ProgressDialogCoClass() + StartProgressDialog

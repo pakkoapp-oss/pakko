@@ -26,6 +26,35 @@ public sealed class ShellArgumentParserTests
         result.Files.Should().Equal("a.zip", "b.zip", "c.zip");
     }
 
+    // --- Valid: --extract-flat (T-F115) ---
+
+    [Fact]
+    public void ExtractFlat_SingleFile_ReturnsExtractHereFlat()
+    {
+        ParsedCommand result = ShellArgumentParser.Parse(["--extract-flat", "archive.zip"]);
+
+        result.Type.Should().Be(CommandType.ExtractHereFlat);
+        result.Files.Should().Equal("archive.zip");
+        result.ErrorMessage.Should().BeNull();
+    }
+
+    [Fact]
+    public void ExtractFlat_MultipleFiles_ReturnsAllFiles()
+    {
+        ParsedCommand result = ShellArgumentParser.Parse(["--extract-flat", "a.zip", "b.zip", "c.zip"]);
+
+        result.Type.Should().Be(CommandType.ExtractHereFlat);
+        result.Files.Should().Equal("a.zip", "b.zip", "c.zip");
+    }
+
+    [Fact]
+    public void ExtractFlat_NoFiles_ReturnsInvalid()
+    {
+        ParsedCommand result = ShellArgumentParser.Parse(["--extract-flat"]);
+
+        result.Type.Should().Be(CommandType.Invalid);
+    }
+
     // --- Valid: --extract-folder ---
 
     [Fact]

@@ -77,6 +77,11 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <AdditionalIncludeDirectories>$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <!-- T-F115: without this, MSVC decodes non-BOM UTF-8 source (Localization.cpp's 37-locale
+           string table) using the system ANSI codepage instead of UTF-8, silently corrupting
+           every non-ASCII literal (confirmed empirically: cp1251 misreading turned "Д" (U+0414)
+           into "Р"+U+201D). Equivalent to /source-charset:utf-8 /execution-charset:utf-8. -->
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -115,6 +120,7 @@
     <ClInclude Include="pch.h" />
     <ClInclude Include="ShellExtUtils.h" />
     <ClInclude Include="ExplorerCommands.h" />
+    <ClInclude Include="Localization.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -123,6 +129,7 @@
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="ShellExtUtils.cpp" />
     <ClCompile Include="ExplorerCommands.cpp" />
+    <ClCompile Include="Localization.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Archiver.ShellExtension.def" />

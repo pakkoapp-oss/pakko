@@ -81,6 +81,10 @@
         are resolved when compiling ShellExtUtils.cpp directly.
       -->
       <AdditionalIncludeDirectories>$(SolutionDir)src\Archiver.ShellExtension;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <!-- T-F115: matches Archiver.ShellExtension.vcxproj's own /utf-8 flag - this project also
+           compiles Localization.cpp directly (see the ClCompile Include below), so it needs the
+           same non-BOM-UTF-8-source fix. -->
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -113,9 +117,11 @@
   <ItemGroup>
     <ClCompile Include="TestMain.cpp" />
     <ClCompile Include="ShellExtUtilsTests.cpp" />
+    <ClCompile Include="LocalizationTests.cpp" />
     <ClCompile Include="ComLoadTests.cpp" />
-    <!-- Compile ShellExtUtils.cpp directly to test free functions without COM -->
+    <!-- Compile ShellExtUtils.cpp/Localization.cpp directly to test free functions without COM -->
     <ClCompile Include="$(SolutionDir)src\Archiver.ShellExtension\ShellExtUtils.cpp" />
+    <ClCompile Include="$(SolutionDir)src\Archiver.ShellExtension\Localization.cpp" />
   </ItemGroup>
 
   <ItemGroup>

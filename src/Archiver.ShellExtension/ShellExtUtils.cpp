@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "ShellExtUtils.h"
+#include "Localization.h"
 
 using Microsoft::WRL::ComPtr;
 
@@ -252,6 +253,17 @@ std::wstring BuildExtractHereArgs(const std::vector<std::wstring>& paths)
     return args;
 }
 
+std::wstring BuildExtractHereFlatArgs(const std::vector<std::wstring>& paths)
+{
+    std::wstring args = L"--extract-flat";
+    for (const auto& p : paths)
+    {
+        args += L' ';
+        args += QuotePath(p);
+    }
+    return args;
+}
+
 std::wstring BuildExtractFolderArgs(const std::vector<std::wstring>& paths)
 {
     std::wstring args = L"--extract-folder";
@@ -315,9 +327,9 @@ std::wstring BuildOpenUiArchiveArgs(const std::vector<std::wstring>& paths)
     return args;
 }
 
-std::wstring BuildAddToArchiveTitle(const std::vector<std::wstring>& paths, const std::wstring& ext)
+std::wstring BuildAddToArchiveTitle(const std::vector<std::wstring>& paths, const std::wstring& ext, const std::wstring& localeTag)
 {
-    if (paths.empty()) return L"Add to archive\u2026";
+    if (paths.empty()) return GetLocalizedString(StringId::ArchiveFallback, localeTag);
 
     std::wstring name = paths.size() > 1
         ? GetParentFolderName(paths.front())
@@ -330,16 +342,18 @@ std::wstring BuildAddToArchiveTitle(const std::vector<std::wstring>& paths, cons
     // so name.back() == L':' alone doesn't catch it \u2014 check for a trailing backslash too.
     if (name.empty() || name.back() == L':' || name.back() == L'\\') name = L"archive";
 
-    return L"Add to \"" + TruncateMiddle(name) + ext + L"\"";
+    const std::wstring tmpl = GetLocalizedString(StringId::ArchiveNamedTemplate, localeTag);
+    return ApplyTemplate(tmpl, TruncateMiddle(name) + ext);
 }
 
-std::wstring BuildExtractFolderTitle(const std::vector<std::wstring>& paths)
+std::wstring BuildExtractFolderTitle(const std::vector<std::wstring>& paths, const std::wstring& localeTag)
 {
-    if (paths.empty()) return L"Extract to folder";
-    if (paths.size() > 1) return L"Extract each to its own folder";
+    if (paths.empty()) return GetLocalizedString(StringId::ExtractFolderFallback, localeTag);
+    if (paths.size() > 1) return GetLocalizedString(StringId::ExtractFolderMultiFallback, localeTag);
 
     const std::wstring name = GetFileNameWithoutExtension(paths.front());
-    if (name.empty()) return L"Extract to folder";
+    if (name.empty()) return GetLocalizedString(StringId::ExtractFolderFallback, localeTag);
 
-    return L"Extract to \"" + TruncateMiddle(name) + L"\\\"";
+    const std::wstring tmpl = GetLocalizedString(StringId::ExtractFolderNamedTemplate, localeTag);
+    return ApplyTemplate(tmpl, TruncateMiddle(name) + L"\\");
 }

@@ -159,6 +159,22 @@ TEST(BuildExtractHereArgs, CyrillicPath)
 }
 
 // ---------------------------------------------------------------------------
+// BuildExtractHereFlatArgs (T-F115)
+// ---------------------------------------------------------------------------
+
+TEST(BuildExtractHereFlatArgs, SingleFile)
+{
+    const auto args = BuildExtractHereFlatArgs({ L"C:\\archive.zip" });
+    EXPECT_EQ(args, L"--extract-flat \"C:\\archive.zip\"");
+}
+
+TEST(BuildExtractHereFlatArgs, MultipleFiles)
+{
+    const auto args = BuildExtractHereFlatArgs({ L"C:\\a.zip", L"C:\\b.zip" });
+    EXPECT_EQ(args, L"--extract-flat \"C:\\a.zip\" \"C:\\b.zip\"");
+}
+
+// ---------------------------------------------------------------------------
 // BuildExtractFolderArgs
 // ---------------------------------------------------------------------------
 
@@ -381,6 +397,17 @@ TEST(BuildAddToArchiveTitle, TarExtensionNameOverLimitIsTruncatedInTheMiddle)
     EXPECT_EQ(title, L"Add to \"My Very Long Project F\u202626 Final Report.tar\"");
 }
 
+// T-F115: explicit non-default localeTag flows through to the surrounding phrase.
+TEST(BuildAddToArchiveTitle, UkrainianLocaleTranslatesSurroundingPhrase)
+{
+    EXPECT_EQ(BuildAddToArchiveTitle({ L"C:\\Docs\\report.docx" }, L".zip", L"uk-UA"), L"\u0414\u043e\u0434\u0430\u0442\u0438 \u0434\u043e \"report.zip\"");
+}
+
+TEST(BuildAddToArchiveTitle, UkrainianLocaleEmptyVectorFallback)
+{
+    EXPECT_EQ(BuildAddToArchiveTitle({}, L".zip", L"uk-UA"), L"\u0414\u043e\u0434\u0430\u0442\u0438 \u0434\u043e \u0430\u0440\u0445\u0456\u0432\u0443\u2026");
+}
+
 // ---------------------------------------------------------------------------
 // BuildExtractFolderTitle
 // ---------------------------------------------------------------------------
@@ -424,4 +451,15 @@ TEST(BuildExtractFolderTitle, NameOverLimitIsTruncatedInTheMiddle)
     const auto title = BuildExtractFolderTitle(
         { L"C:\\My Very Long Project Folder Name With Lots Of Words 2026 Final Report.zip" });
     EXPECT_EQ(title, L"Extract to \"My Very Long Project F\u202626 Final Report\\\"");
+}
+
+// T-F115: explicit non-default localeTag flows through to the surrounding phrase.
+TEST(BuildExtractFolderTitle, UkrainianLocaleTranslatesSurroundingPhrase)
+{
+    EXPECT_EQ(BuildExtractFolderTitle({ L"C:\\Docs\\report.zip" }, L"uk-UA"), L"\u0412\u0438\u0434\u043e\u0431\u0443\u0442\u0438 \u0434\u043e \"report\\\"");
+}
+
+TEST(BuildExtractFolderTitle, UkrainianLocaleMultipleArchivesFallback)
+{
+    EXPECT_EQ(BuildExtractFolderTitle({ L"C:\\a.zip", L"C:\\b.zip" }, L"uk-UA"), L"\u0412\u0438\u0434\u043e\u0431\u0443\u0442\u0438 \u043a\u043e\u0436\u0435\u043d \u0443 \u0441\u0432\u043e\u044e \u043f\u0430\u043f\u043a\u0443");
 }

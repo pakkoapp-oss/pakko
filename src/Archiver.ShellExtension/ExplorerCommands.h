@@ -20,6 +20,10 @@ static const CLSID CLSID_PakkoRootCommand =
 static const CLSID CLSID_ExtractHereCommand =
     { 0x5677E0FB, 0x114E, 0x45D6, { 0x87, 0x75, 0x04, 0x17, 0x7F, 0x85, 0xE3, 0x46 } };
 
+// {1BC0E1C4-C5BC-48A4-B3F0-A72AC6A16B83}
+static const CLSID CLSID_ExtractHereFlatCommand =
+    { 0x1BC0E1C4, 0xC5BC, 0x48A4, { 0xB3, 0xF0, 0xA7, 0x2A, 0xC6, 0xA1, 0x6B, 0x83 } };
+
 // {52980F0F-55A8-458B-B68E-BECA0D142107}
 static const CLSID CLSID_ExtractFolderCommand =
     { 0x52980F0F, 0x55A8, 0x458B, { 0xB6, 0x8E, 0xBE, 0xCA, 0x0D, 0x14, 0x21, 0x07 } };
@@ -64,9 +68,33 @@ private:
 };
 
 // ---------------------------------------------------------------------------
-// Leaf command: "Extract here"
+// Leaf command: "Extract to current folder (Intelligently)" - T-F115 rename. Behavior unchanged:
+// single root folder in the archive -> strip prefix and merge; multiple roots -> wrap in one new
+// folder (ExtractMode.SeparateFolders). The class/CLSID name stays ExtractHereCommand (unchanged,
+// minimal diff) even though the title it now returns no longer says "here" - see
+// ExtractHereFlatCommand below for the new, genuinely flat command that took over that label.
 // ---------------------------------------------------------------------------
 class ExtractHereCommand final :
+    public RuntimeClass<RuntimeClassFlags<ClassicCom>, IExplorerCommand>
+{
+public:
+    STDMETHODIMP GetTitle(IShellItemArray* psia, LPWSTR* ppszName) noexcept override;
+    STDMETHODIMP GetIcon(IShellItemArray* psia, LPWSTR* ppszIcon) noexcept override;
+    STDMETHODIMP GetToolTip(IShellItemArray* psia, LPWSTR* ppszInfotip) noexcept override;
+    STDMETHODIMP GetCanonicalName(GUID* pguidCommandName) noexcept override;
+    STDMETHODIMP GetState(IShellItemArray* psia, BOOL fOkToBeSlow, EXPCMDSTATE* pCmdState) noexcept override;
+    STDMETHODIMP Invoke(IShellItemArray* psia, IBindCtx* pbc) noexcept override;
+    STDMETHODIMP GetFlags(EXPCMDFLAGS* pFlags) noexcept override;
+    STDMETHODIMP EnumSubCommands(IEnumExplorerCommand** ppEnum) noexcept override;
+};
+
+// ---------------------------------------------------------------------------
+// Leaf command: "Extract here" (T-F115) - genuinely flat: dumps every archive's contents
+// directly into its own containing folder, no new wrapper folder ever, regardless of how many
+// root entries the archive has (ExtractMode.SingleFolder with DestinationFolder = the archive's
+// own folder, no computed subfolder - see Archiver.Shell/Program.cs's RunExtractHereFlatAsync).
+// ---------------------------------------------------------------------------
+class ExtractHereFlatCommand final :
     public RuntimeClass<RuntimeClassFlags<ClassicCom>, IExplorerCommand>
 {
 public:
