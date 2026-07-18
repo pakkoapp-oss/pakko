@@ -497,6 +497,7 @@ DI duplication happened).
 | `Deploy.ps1`/`Setup-DevCert.ps1` behavior changes | `scripts/README.md` | `CONTRIBUTING.md`, `README.md` (Building and Deploying), `CLAUDE.md` (Build Commands) |
 | COM/shell, operation lifecycle, `ZipArchiveService` branching, or manifest changes | `DIAGRAMS.md` | Per its own DoD table |
 | New test or fixture added | `TESTING.md` | `tests/Archiver.Core.Tests.GenerateFixtures/README.md`, `CONTRIBUTING.md` |
+| New project added to `src/` or `tests/` | `ARCHITECTURE.md` (folder tree) | `CONTRIBUTING.md` (Project structure table) |
 
 Before deleting or merging any `.md` file, grep the whole repo for its filename first — dead
 references are easy to miss otherwise (this session found 5 lingering mentions of `AGENT.md`/
@@ -646,6 +647,9 @@ references are easy to miss otherwise (this session found 5 lingering mentions o
   (Segoe MDL2/Fluent, e.g. codepoint U+E890) risks silent corruption regardless of file type. Use a
   throwaway Python script via the `py` launcher, building the exact bytes with `chr(0xEXXX)`,
   for any edit touching such content.
+  **`py -3` heredocs from the Bash tool silently no-op on a `/tmp/...` path** — native Windows
+  Python doesn't resolve Git-Bash's `/tmp`, so a script reports success but writes nothing.
+  Use a full Windows-style path (e.g. this session's scratchpad dir) instead.
 - **Shared WinUI `x:Uid` across elements with different property sets is fatal, not a no-op:**
   giving a `Button` (`.Content`) and a `TextBlock` (`.Text`) the same `x:Uid` applies both resource
   keys to both elements regardless of which properties exist — crashes natively (`0xc000027b`) at
