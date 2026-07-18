@@ -711,6 +711,11 @@ references are easy to miss otherwise (this session found 5 lingering mentions o
   (Segoe MDL2/Fluent, e.g. codepoint U+E890) risks silent corruption regardless of file type. Use a
   throwaway Python script via the `py` launcher, building the exact bytes with `chr(0xEXXX)`,
   for any edit touching such content.
+- **Editing `Localization.cpp`'s per-locale table:** an Edit `old_string` containing a full
+  complex-script field (confirmed with Devanagari, T-F03) can silently fail to match even though
+  `Read` shows it identical to the file — likely invisible normalization variance. Don't retype the
+  translated text as a match target; use a `py` script that anchors on the line's ASCII locale tag
+  (e.g. finds `{ L"hi-IN",`) and inserts/edits by string index instead.
   **`py -3` heredocs from the Bash tool silently no-op on a `/tmp/...` path** — native Windows
   Python doesn't resolve Git-Bash's `/tmp`, so a script reports success but writes nothing.
   Use a full Windows-style path (e.g. this session's scratchpad dir) instead.
@@ -836,6 +841,10 @@ dotnet publish src/Archiver.App/Archiver.App.csproj \
 
 # Archiver.ShellExtension (C++ COM DLL) — not built or tested by dotnet build/test
 # Build via Visual Studio / MSBuild (x64 or ARM64 platform).
+# Archiver.ShellExtension.Tests.vcxproj only compiles the two COM-free files (ShellExtUtils.cpp,
+# Localization.cpp) directly — it does NOT compile ExplorerCommands.cpp/dllmain.cpp. To validate
+# a change to an IExplorerCommand class actually compiles, build the real DLL project too:
+# MSBuild src\Archiver.ShellExtension\Archiver.ShellExtension.vcxproj /p:Configuration=Debug /p:Platform=x64
 # Any dotnet build/publish/test command with /p:Key=Value flags must run via the PowerShell
 # tool, not Bash — Bash (Git Bash/MSYS) mangles "/p:" into a path-like token, failing with
 # "MSB1008: Only one project can be specified."
@@ -938,6 +947,14 @@ MSBuild tests\Archiver.ShellExtension.Tests\Archiver.ShellExtension.Tests.vcxpro
 > **`winget install`/`uninstall` needing elevation fails non-interactively** with
 > `0x800704c7` ("canceled by the user") — the UAC prompt has nothing to click it. Retry once
 > and ask the user to approve the UAC prompt that appears; the retry succeeds.
+>
+> **To verify a new/changed `IExplorerCommand`'s behavior via `windows` MCP, don't fight
+> Explorer's right-click menu automation** (already noted above as unconfirmed) — instead launch
+> the installed `Archiver.Shell.exe` directly with the exact args that command's `Invoke()`
+> constructs (e.g. `--open-ui --browse "<path>"`). This exercises the identical
+> `Archiver.Shell`→`pakko://`→`Archiver.App` pipeline the real menu click would trigger, minus
+> only the COM click itself (covered separately by `Archiver.ShellExtension.Tests`). Confirmed
+> T-F03.
 >
 > **A build failing with a file-lock-shaped error** (`MSB3231`/`Access to the path ... is
 > denied` on something under `bin`/`obj`/`AppPackages`) — first try `dotnet build-server
