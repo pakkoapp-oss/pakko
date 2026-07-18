@@ -3118,3 +3118,86 @@ tests), `tests/Archiver.Core.IntegrationTests/Fixtures/{encrypted.7z,encrypted_h
 encrypted.rar,encrypted_headers.rar}` (new fixtures) + `Fixtures/README.md`.
 
 ---
+
+### T-F123 — Archive Browser preview/nested-drill-down bypasses `IsBusy` entirely
+- [x] **Status:** done — on-device verified 2026-07-18. Real bug,
+      found earlier the same day during a full documentation audit while re-verifying
+      `DIAGRAMS.md`'s diagram 2 (`MainViewModel` operation lifecycle) against current source, not
+      while writing new code. `PreviewBrowserEntryAsync` (T-F97,
+      `src/Archiver.App/ViewModels/MainViewModel.cs:1080-1121`) and
+      `NavigateIntoNestedArchiveAsync` (T-F98, `MainViewModel.cs:765-829`) both call
+      `_extractionRouter.ExtractAsync(...)` directly — the same call diagram 2's whole
+      `Idle→Busy→...→Idle` state machine exists to guard — but neither goes through
+      `ArchiveCommand`/`ExtractCommand`'s `IsBusy`/`CanExecute` gating at all. Both are invoked
+      straight from a raw XAML `DoubleTapped` handler (`ArchiveBrowserList_DoubleTapped`,
+      `src/Archiver.App/MainWindow.xaml.cs:192-233`) with no busy-state check anywhere in the path.
+      **Fix (chosen without a separate reproduction pass — see acceptance criteria below for why):**
+      `ArchiveBrowserListView`'s `IsEnabled` bound to `ViewModel.IsNotBusy` in `MainWindow.xaml`,
+      the same pattern already used by every other action-triggering control in this window (9
+      other controls). A disabled `ListView` never dispatches `DoubleTapped`/`SelectionChanged` at
+      all, so `ArchiveBrowserList_DoubleTapped` — and therefore all three paths it can reach
+      (`PreviewBrowserEntryAsync`, `NavigateIntoNestedArchiveAsync`,
+      `ExtractSingleBrowserEntryWithWarningAsync`) — simply cannot fire while `Busy`. Chosen over
+      making the two methods participate in the state machine directly: it's the simpler of the
+      two options the original finding already named, closes the gap at the input layer (one XAML
+      attribute) instead of threading new guards through `MainViewModel`, and structurally
+      eliminates the concurrent-call scenario rather than just detecting it.
+- **Depends on:** none. **Related:** T-F97 (preview), T-F98 (nested drill-down) — both introduced
+      the affected methods; this task doesn't reopen either's own scope, just closes the gating gap
+      neither one added.
+
+**Concrete failure scenario:** a user starts a real Archive/Extract operation (`IsBusy=true`,
+`_cts` live), then — while it's still running — double-clicks a previewable file or a nested
+archive inside the Archive Browser. Both handlers fire a second, fully independent
+`ExtractAsync` call against the same `TarSandboxedService`/quarantine machinery the first
+operation is already using, with no check that one is already in flight. Whether this actually
+corrupts anything (two `TarSandboxScope`s can each get their own quarantine GUID subfolder, so
+outright data corruption isn't certain) or merely causes confusing double-progress/resource
+contention was never established empirically — the chosen fix makes the scenario structurally
+unreachable, so the question is now moot rather than answered.
+
+**Acceptance criteria:**
+- [x] Decide and implement a gate: either disable preview/drill-down interaction while `IsBusy`
+      (simplest, matches how every other action-triggering control already behaves), or make them
+      properly participate in the same busy/cancellation state machine diagram 2 describes — pick
+      one, don't leave both paths live. **Chose the first option** — see the `IsEnabled` fix above.
+      The "reproduce on a real build first" step this criterion originally led with was skipped
+      deliberately: the chosen fix removes the input path entirely regardless of what today's
+      actual failure mode is, so characterizing it first would not have changed the fix shape.
+- [x] `DIAGRAMS.md`'s diagram 2 updated to reflect the fix — its "Known gap" note now describes the
+      `IsEnabled` gate instead of the open gap.
+- [x] Test coverage decision: **no new automated test** — `MainViewModel` has no existing unit-test
+      host (it references `Microsoft.UI.Xaml`/`ResourceLoader`; no test project in this repo
+      instantiates it, matching the pre-existing `NativeProgressDialog` gap in the "Known test
+      gaps" section of `CLAUDE.md`). Building a WinUI test host to cover a one-line `IsEnabled`
+      binding was explicitly declined by the user (2026-07-18) in favor of the on-device check
+      below.
+- [x] On-device verification per this project's workflow rule (UI/interaction behavior, not
+      graduated on `dotnet test` alone), agent-driven via the `windows` MCP server at the user's
+      explicit request 2026-07-18: built a 40,000-file ZIP fixture to force a real multi-second
+      `Extract All`, confirmed `IsBusy` via a visible progress bar/Cancel button, then double-
+      clicked `file_1.bin` mid-extraction — `ArchiveBrowserListView`'s rows were visibly greyed and
+      the T-F109 confirm dialog never appeared, repeated twice for confidence. A positive control
+      (same double-click once the operation finished) correctly showed the dialog again, confirming
+      the gate is specific to `Busy` and not a general regression.
+      **False negative along the way, root-caused before trusting any result:** the first two
+      verification attempts (both via a bare `dotnet build .../Archiver.App.csproj /p:Platform=x64`
+      instead of `Deploy.ps1`) showed the dialog firing mid-extraction even with the fix in place —
+      looked like `IsEnabled=false` on a `ListView` doesn't block a bubbling `DoubleTapped`, so a
+      code-behind `if (ViewModel.IsBusy) return;` guard was added in
+      `MainWindow.xaml.cs`'s `ArchiveBrowserList_DoubleTapped` as a second layer. That *also*
+      appeared to fail identically. A `File.AppendAllText` trace planted at the top of the handler
+      then proved the handler wasn't being invoked at all during the "failing" runs — the installed
+      package was stale. This is CLAUDE.md's own documented "quick `dotnet build` can silently
+      install a stale MSIX" gotcha, hit in practice: rebuilding via the full
+      `.\scripts\Deploy.ps1 -Thumbprint ...` (which wipes `AppPackages` first) produced a build
+      where the trace fired correctly and the fix worked on the very first real attempt. The
+      code-behind guard was kept anyway as cheap defense-in-depth (comment updated to reflect that
+      `IsEnabled` alone is sufficient, confirmed empirically) rather than reverted, and the
+      diagnostic trace call was removed before the final build. **Takeaway:** a bare `dotnet build`
+      install is not just "might show a stale UI value" — it can silently keep running the
+      previous binary's *event-handler code* entirely, producing a completely convincing false
+      negative for an interaction-gating fix. Always use `Deploy.ps1` when verifying this class of
+      change, not just when a quick build "looks" like it worked.
+
+---

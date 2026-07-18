@@ -798,6 +798,19 @@ MSBuild tests\Archiver.ShellExtension.Tests\Archiver.ShellExtension.Tests.vcxpro
 > verifying a UI change on-device — run the full `.\scripts\Deploy.ps1` first (it wipes old
 > `AppPackages` output before rebuilding).
 >
+> **Correction (recurred 2026-07-18, T-F123, worse than the original symptom):** a bare
+> `dotnet build src/Archiver.App/Archiver.App.csproj /p:Platform=x64` was used to verify a
+> `MainWindow.xaml.cs` event-handler fix (an `IsBusy` guard on `ArchiveBrowserList_DoubleTapped`).
+> The fix appeared to fail identically across three separate rebuild-and-retest cycles — even
+> after the title-bar `Pakko — build <timestamp>` freshness check (below) looked correct each
+> time. A `File.AppendAllText` trace planted at the top of the handler proved the handler wasn't
+> being invoked at all: the installed package was running stale event-handler code despite a
+> fresh-looking title-bar timestamp and a "Build succeeded" log. Switching to the full
+> `.\scripts\Deploy.ps1 -Thumbprint ...` fixed it on the very next attempt. **Always use
+> `Deploy.ps1`, never a bare `dotnet build`, before any on-device verification of
+> `Archiver.App` — do not treat the title-bar timestamp as sufficient proof by itself; it can be
+> fresh while the packaged binary's actual logic is stale.**
+>
 > **Never trust build logs alone to prove an on-device check ran against fresh code — always
 > have the running window itself prove it.** `Archiver.App`'s title bar shows
 > `Pakko — build <yyyy-MM-dd HH:mm:ss>`, read from the running assembly's own file timestamp

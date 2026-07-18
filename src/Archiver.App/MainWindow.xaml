@@ -254,6 +254,7 @@
                 ItemsSource="{x:Bind ViewModel.CurrentFolderEntries, Mode=OneWay}"
                 SelectionMode="Multiple"
                 MinHeight="80"
+                IsEnabled="{x:Bind ViewModel.IsNotBusy, Mode=OneWay}"
                 SelectionChanged="ArchiveBrowserList_SelectionChanged"
                 DoubleTapped="ArchiveBrowserList_DoubleTapped">
                 <ListView.ItemsPanel>

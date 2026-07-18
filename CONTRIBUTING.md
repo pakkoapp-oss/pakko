@@ -30,6 +30,13 @@ The WinUI 3 application (`Archiver.App`) must be built and run from **Visual Stu
 compile-check on ViewModel/XAML changes without opening Visual Studio), though full MSIX
 packaging/signing/running still needs `Deploy.ps1` or Visual Studio.
 
+> **Never verify an on-device UI or interaction change against a package installed by a bare
+> `dotnet build`.** Its incremental packaging step can silently skip repackaging a changed DLL
+> into the installed `.msix` — confirmed to go as far as running a stale event handler's old
+> logic entirely, while still reporting "Build succeeded" and showing a fresh-looking title-bar
+> build timestamp. Always run the full `.\scripts\Deploy.ps1` (it wipes old `AppPackages` output
+> before rebuilding) before trusting any on-device check. See `scripts/README.md` for usage.
+
 ---
 
 ## Test fixtures

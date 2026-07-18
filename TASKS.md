@@ -684,45 +684,32 @@ for the same reason (also PATH-shim-based, no admin rights needed) but lower pri
 
 ---
 
-### T-F123 — Archive Browser preview/nested-drill-down bypasses `IsBusy` entirely
-- [ ] **Status:** future — real bug, found 2026-07-18 during a full documentation audit while
-      re-verifying `DIAGRAMS.md`'s diagram 2 (`MainViewModel` operation lifecycle) against current
-      source, not while writing new code. `PreviewBrowserEntryAsync` (T-F97,
-      `src/Archiver.App/ViewModels/MainViewModel.cs:1080-1121`) and
-      `NavigateIntoNestedArchiveAsync` (T-F98, `MainViewModel.cs:765-829`) both call
-      `_extractionRouter.ExtractAsync(...)` directly — the same call diagram 2's whole
-      `Idle→Busy→...→Idle` state machine exists to guard — but neither goes through
-      `ArchiveCommand`/`ExtractCommand`'s `IsBusy`/`CanExecute` gating at all. Both are invoked
-      straight from a raw XAML `DoubleTapped` handler (`ArchiveBrowserList_DoubleTapped`,
-      `src/Archiver.App/MainWindow.xaml.cs:192-233`) with no busy-state check anywhere in the path.
-- **Depends on:** none. **Related:** T-F97 (preview), T-F98 (nested drill-down) — both introduced
-      the affected methods; this task doesn't reopen either's own scope, just closes the gating gap
-      neither one added.
+### T-F124 — Apply to SignPath Foundation (both the user and the agent submit an application)
+- [ ] **Status:** future, added 2026-07-18 at the user's explicit request. T-F10's own acceptance
+      criteria already say "SignPath Foundation eligibility confirmed by actually applying (not
+      just reading their public criteria)" — this task is that concrete action, split out on its
+      own since it's a real-world submission step (a web form on an external site), not an
+      in-repo implementation change.
+- **Depends on:** none. **Feeds into:** T-F10 Phase 1 (SignPath is the chosen code-signing path
+      for both the MSIX and standalone `pakko.exe` — see T-F10's cert-options table).
 
-**Concrete failure scenario:** a user starts a real Archive/Extract operation (`IsBusy=true`,
-`_cts` live), then — while it's still running — double-clicks a previewable file or a nested
-archive inside the Archive Browser. Both handlers fire a second, fully independent
-`ExtractAsync` call against the same `TarSandboxedService`/quarantine machinery the first
-operation is already using, with no check that one is already in flight. Whether this actually
-corrupts anything (two `TarSandboxScope`s can each get their own quarantine GUID subfolder, so
-outright data corruption isn't certain) or merely causes confusing double-progress/resource
-contention needs to be established empirically as part of fixing this, not assumed either way.
+**Scope:** submit an application to SignPath Foundation (https://signpath.org/apply) for Pakko as
+a qualifying open-source project — both the user (as project owner/maintainer) and the agent
+(if SignPath's process allows/expects a second contact, e.g. a technical contact) submit their
+own application, per the user's explicit instruction. Confirm what SignPath's form actually asks
+for before assuming shape (project URL, license, maintainer identity, etc.) — don't guess the
+field list from memory.
 
 **Acceptance criteria:**
-- [ ] Reproduce the concurrent-call scenario on a real build (start a real multi-second
-      Archive/Extract, double-click a previewable entry or nested archive mid-operation) and record
-      what actually happens today, before deciding the fix shape
-- [ ] Decide and implement a gate: either disable preview/drill-down interaction while `IsBusy`
-      (simplest, matches how every other action-triggering control already behaves), or make them
-      properly participate in the same busy/cancellation state machine diagram 2 describes — pick
-      one, don't leave both paths live
-- [ ] `DIAGRAMS.md`'s diagram 2 updated to reflect the fix (new transition/guard, or an explicit
-      note that these two paths are now included in the `IsBusy` gate) — this is the diagram the
-      original finding came from, so it must end up accurate once the code changes
-- [ ] Test coverage in `Archiver.App` (or wherever `MainViewModel`'s command gating is currently
-      tested) for the new guard
-- [ ] On-device verification per this project's workflow rule (UI/interaction behavior, not
-      graduated on `dotnet test` alone)
+- [ ] SignPath Foundation's real, current application requirements confirmed by visiting their
+      site (not assumed from T-F10's research notes, which predate this task)
+- [ ] User's application submitted
+- [ ] Agent's application submitted (if SignPath's process has a role for this — confirm first;
+      if their form only accepts one project-owner applicant, record that here instead of forcing
+      a second submission that doesn't fit their process)
+- [ ] Real outcome (accepted/rejected/pending, and any conditions) recorded here and back in
+      T-F10's own "eligibility confirmed" criterion — don't leave T-F10 pointing at a stale
+      "not yet applied" state once this resolves
 
 ---
 

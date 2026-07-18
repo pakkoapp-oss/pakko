@@ -238,14 +238,19 @@ T-F109/T-F110). The state machine below is unchanged — same
 `IsBusy` sequencing — only the transition's trigger label gains three more command names that
 all lead to the identical `Busy` entry point via the same shared method body.
 
-**Known gap, not yet fixed (found 2026-07-18, tracked as T-F123):** `PreviewBrowserEntryAsync`
-(T-F97, `MainViewModel.cs:1080-1121`) and `NavigateIntoNestedArchiveAsync` (T-F98,
-`MainViewModel.cs:765-829`) both call `_extractionRouter.ExtractAsync(...)` directly from a raw
-XAML `DoubleTapped` handler — **outside this state machine entirely**, with no `IsBusy`/
-`CanExecute` gate. A user can trigger either mid-`Busy` and start a second, concurrent extraction
-against the same `TarSandboxedService`/quarantine machinery. This diagram intentionally does not
-draw a transition for them, since none exists in the code today — see T-F123 in `TASKS.md` for the
-fix; update this diagram once it lands.
+**Fixed 2026-07-18 (T-F123):** `PreviewBrowserEntryAsync` (T-F97, `MainViewModel.cs:1080-1121`)
+and `NavigateIntoNestedArchiveAsync` (T-F98, `MainViewModel.cs:765-829`) both call
+`_extractionRouter.ExtractAsync(...)` directly from a raw XAML `DoubleTapped` handler
+(`ArchiveBrowserList_DoubleTapped`, `MainWindow.xaml.cs:192`) — **outside this state machine
+entirely**, with no `IsBusy`/`CanExecute` gate of their own, so a user could previously trigger
+either mid-`Busy` and start a second, concurrent extraction against the same
+`TarSandboxedService`/quarantine machinery. Fixed at the input layer, not inside `MainViewModel`:
+`ArchiveBrowserListView`'s `IsEnabled` is now bound to `ViewModel.IsNotBusy` (`MainWindow.xaml`),
+the same pattern every other action-triggering control in this window already uses — a disabled
+`ListView` never dispatches `DoubleTapped`/`SelectionChanged` at all, so
+`ArchiveBrowserList_DoubleTapped` simply cannot fire while `Busy`. This diagram still does not draw
+a transition for these two methods, but now because the input that reaches them is gated shut
+during `Busy`, not because the gap is unaddressed.
 
 ```mermaid
 stateDiagram-v2

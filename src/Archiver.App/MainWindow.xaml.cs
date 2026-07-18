@@ -191,6 +191,12 @@ public sealed partial class MainWindow : Window
     // RunExtractAsync sequence as every other extraction path.
     private async void ArchiveBrowserList_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
     {
+        // T-F123: belt-and-suspenders alongside ArchiveBrowserListView's IsEnabled binding (which
+        // already stops this event from firing at all while Busy) — cheap insurance against any
+        // future change that fires DoubleTapped through a path IsEnabled doesn't cover.
+        if (ViewModel.IsBusy)
+            return;
+
         if (e.OriginalSource is not FrameworkElement { DataContext: ArchiveEntryViewModel entry })
             return;
 
