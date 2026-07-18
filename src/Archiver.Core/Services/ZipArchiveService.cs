@@ -511,9 +511,19 @@ public sealed class ZipArchiveService : IArchiveService
 
             if (!IsZipFile(archivePath))
             {
+                // T-F117: a known-but-unsupported format (RAR/7z/GZip/etc.) is a benign skip, but
+                // bytes matching no known archive signature at all (empty file, garbage, a
+                // truncated-past-recognition download) is not — it must surface as a real error,
+                // not a silent no-op, per this project's "loud error always" convention.
                 string? reason = GetKnownArchiveReason(archivePath);
                 if (reason is not null)
                     skippedFiles.Add(new SkippedFile { Path = archivePath, Reason = reason });
+                else
+                    errors.Add(new ArchiveError
+                    {
+                        SourcePath = archivePath,
+                        Message = "File is not a recognized archive format and cannot be extracted."
+                    });
                 if (!singleArchive) progress?.Report(new ProgressReport { Percent = (i + 1) * 100 / total, BytesTransferred = 0, TotalBytes = 0 });
                 continue;
             }
@@ -618,9 +628,17 @@ public sealed class ZipArchiveService : IArchiveService
 
             if (!IsZipFile(archivePath))
             {
+                // T-F117: see ExtractAsync's identical branch — unrecognized bytes are a real
+                // error, not a silent no-op, distinct from a known-but-unsupported format skip.
                 string? reason = GetKnownArchiveReason(archivePath);
                 if (reason is not null)
                     skippedFiles.Add(new SkippedFile { Path = archivePath, Reason = reason });
+                else
+                    errors.Add(new ArchiveError
+                    {
+                        SourcePath = archivePath,
+                        Message = "File is not a recognized archive format and cannot be tested."
+                    });
                 progress?.Report(new ProgressReport { Percent = (i + 1) * 100 / total, BytesTransferred = 0, TotalBytes = 0 });
                 continue;
             }

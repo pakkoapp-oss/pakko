@@ -416,6 +416,48 @@ failure — so a blocked/misconfigured sandbox would have crashed instead of yie
   T-F122's so there's exactly one planned path to CLI-Release publication (T-F122's CI workflow on
   a version-tag push), not a parallel manual step. No CI/publication code exists yet — T-F122
   itself is still `[ ]` future. See `TASKS_DONE.md`'s T-F120 entry and `TASKS.md`'s T-F122 entry.
+- **T-F117 (`[x]` done 2026-07-18)** — fixed the silent-success gap T-F116 found:
+  `ZipArchiveService.ExtractAsync`/`TestAsync`'s per-item gate now records a real `ArchiveError`
+  ("File is not a recognized archive format...") for a path matching no known archive signature at
+  all (empty file, garbage bytes, a real ZIP truncated to fewer than 4 magic-number bytes), instead
+  of silently recording nothing. A known-but-unsupported format (RAR/7z/GZip/etc.) keeps its
+  existing `SkippedFile` behavior — only the true "we don't know what this is" case changed.
+  Checked `TarSandboxedService` for the same gap — none found; it has no upfront format
+  short-circuit, so an unrecognized tar-family path already fails loudly via tar.exe's own nonzero
+  exit code. `Archiver.Core.Tests` grew from 312 to 315 (empty-file/truncated-ZIP/random-binary
+  cases across `ExtractAsync`/`TestAsync`, plus two pre-existing tests that had asserted the old
+  silent behavior — `ExtractAsync_NonExistentPath` and `ExtractAsync_ZipExtensionButWrongMagicBytes`
+  — updated to assert the new one). `Archiver.CLI.Tests`' two `SilentlyNoOpsPerPreExistingCoreBehavior`
+  tests (added by T-F116 to document the bug) renamed to `..._ErrorsAsUnrecognizedArchive` and now
+  assert exit code 2. **Graduated to `[x]` 2026-07-18, user-directed** — agent-driven on-device
+  verification via the local `windows` MCP server: a real `pakko://extract` activation against a
+  76-byte garbage `.zip` through the freshly `Deploy.ps1`-installed app produced the
+  operation-summary dialog correctly reading "Завершено з проблемами" / "Помилки (1)" / error text,
+  proving the fix end-to-end through `Archiver.App`, not just `dotnet test`. See `DECISIONS.md`'s
+  T-F117 entry.
+- **T-F118 (`[x]` done 2026-07-18)** — fixed the ZIP-vs-tar-family extraction smart-foldering
+  asymmetry T-F09 found: a multi-root-item archive (no single common containing folder) used to
+  wrap in an `<archive-base-name>\` subfolder for ZIP but land flat/unwrapped for tar-family.
+  User-directed decision (asked explicitly, since this is a product/UX call): unify tar-family to
+  match ZIP's existing T-14 smart-foldering, not the reverse. `TarSandboxedService.
+  ExtractSingleArchiveAsync` gained the identical `isSingleRootFolder`/`isSingleRootFile`/
+  `alreadyIsolated`/`isSelectedSubset` algorithm `ZipArchiveService.ExtractWithSmartFolderingAsync`
+  already used — derived from the entry-name list `ScanForUnsafeEntriesAsync`'s existing `-tf`
+  pre-scan already returns, no second tar.exe call needed. `Archiver.Shell/Program.cs`'s
+  `--extract-flat` doc comment corrected (no longer claims "no wrapper folder ever created" — was
+  already inaccurate for ZIP's own multi-root case). Test fallout across two projects:
+  `TarSandboxedServiceExtractTests`' `ExtractAsync_ValidTar_ExtractsFilesWithContent` and
+  `TarSandboxedServiceCompressTests`'
+  `CompressAsync_MultipleSourcesFromDifferentParents_PreservesRelativeStructure` (both had
+  genuinely-multi-root fixtures) updated to expect the new wrapper subfolder; three new direct
+  tests added mirroring `ZipArchiveServiceExtractTests`' equivalents.
+  `Archiver.CLI.Tests`' `Extract_TarGzHappyPath_ExtractsFilesAndExitsZero` — the exact test T-F118
+  named as asserting the old asymmetry — updated to match the ZIP fixture's own wrapping.
+  `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` green repo-wide (600 tests).
+  **Graduated to `[x]` 2026-07-18, user-directed** — same on-device session as T-F117's: a real
+  `multiroot.tar.gz` (two root files, no common folder, built via real `tar.exe`) extracted through
+  the installed app via `pakko://extract` landed under a `multiroot\` subfolder with both files
+  byte-correct, confirmed on disk. See `DECISIONS.md`'s T-F118 entry.
 - MSIX signed with dev cert via Deploy.ps1 (see T-F10 for production-grade cert)
 - Async streaming (CopyToAsync) — CancellationToken respected mid-file
 - Temp file/dir pattern — no partial files on cancel or failure

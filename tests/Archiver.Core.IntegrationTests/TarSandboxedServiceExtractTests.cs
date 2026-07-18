@@ -20,6 +20,9 @@ public sealed class TarSandboxedServiceExtractTests : IDisposable
 
     public void Dispose() => _temp.Dispose();
 
+    // T-F118: "a.txt" (root file) + "sub/b.txt" (nested) is a multi-root archive — no single
+    // common containing folder — so this now lands under a "valid" subfolder named after the
+    // archive, matching ZipArchiveService's smart-foldering for the identical shape.
     [Integration]
     public async Task ExtractAsync_ValidTar_ExtractsFilesWithContent()
     {
@@ -40,8 +43,86 @@ public sealed class TarSandboxedServiceExtractTests : IDisposable
 
         result.Success.Should().BeTrue();
         result.Errors.Should().BeEmpty();
-        File.ReadAllText(Path.Combine(destDir, "a.txt")).Should().Be("hello");
-        File.ReadAllText(Path.Combine(destDir, "sub", "b.txt")).Should().Be("world");
+        File.ReadAllText(Path.Combine(destDir, "valid", "a.txt")).Should().Be("hello");
+        File.ReadAllText(Path.Combine(destDir, "valid", "sub", "b.txt")).Should().Be("world");
+    }
+
+    // T-F118: mirrors ZipArchiveServiceExtractTests.ExtractAsync_SingleRootFolder_
+    // ExtractsWithoutDoubleNesting — an archive whose every entry sits under one common top-level
+    // folder unwraps that folder entirely rather than doubly nesting it under destDir.
+    [Integration]
+    public async Task ExtractAsync_SingleRootFolder_ExtractsWithoutDoubleNesting()
+    {
+        string archivePath = Path.Combine(_temp.Path, "wrapped.tar");
+        TarBuilder.WriteTar(archivePath,
+        [
+            new TarBuilder.Entry { Name = "myFolder/a.txt", Content = Encoding.ASCII.GetBytes("hello") },
+            new TarBuilder.Entry { Name = "myFolder/b.txt", Content = Encoding.ASCII.GetBytes("world") },
+        ]);
+
+        string destDir = Path.Combine(_temp.Path, "out");
+        var result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [archivePath],
+            DestinationFolder = destDir,
+            Mode = ExtractMode.SingleFolder,
+        });
+
+        result.Success.Should().BeTrue();
+        File.Exists(Path.Combine(destDir, "a.txt")).Should().BeTrue();
+        File.Exists(Path.Combine(destDir, "b.txt")).Should().BeTrue();
+        Directory.Exists(Path.Combine(destDir, "myFolder")).Should().BeFalse();
+    }
+
+    // T-F118: mirrors ZipArchiveServiceExtractTests.ExtractAsync_MultipleRootItems_
+    // CreatesSubfolderNamedAfterArchive — two root-level files with no common containing folder.
+    [Integration]
+    public async Task ExtractAsync_MultipleRootItems_CreatesSubfolderNamedAfterArchive()
+    {
+        string archivePath = Path.Combine(_temp.Path, "bundle.tar");
+        TarBuilder.WriteTar(archivePath,
+        [
+            new TarBuilder.Entry { Name = "file1.txt", Content = Encoding.ASCII.GetBytes("one") },
+            new TarBuilder.Entry { Name = "file2.txt", Content = Encoding.ASCII.GetBytes("two") },
+        ]);
+
+        string destDir = Path.Combine(_temp.Path, "out");
+        var result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [archivePath],
+            DestinationFolder = destDir,
+            Mode = ExtractMode.SingleFolder,
+        });
+
+        result.Success.Should().BeTrue();
+        File.Exists(Path.Combine(destDir, "bundle", "file1.txt")).Should().BeTrue();
+        File.Exists(Path.Combine(destDir, "bundle", "file2.txt")).Should().BeTrue();
+    }
+
+    // T-F118: SeparateFolders mode already isolates destDir per-archive (alreadyIsolated=true) —
+    // smart-foldering must not double-wrap on top of that, matching ZIP's identical rule.
+    [Integration]
+    public async Task ExtractAsync_SeparateFoldersMode_MultiRootArchive_DoesNotDoubleWrap()
+    {
+        string archivePath = Path.Combine(_temp.Path, "bundle.tar");
+        TarBuilder.WriteTar(archivePath,
+        [
+            new TarBuilder.Entry { Name = "file1.txt", Content = Encoding.ASCII.GetBytes("one") },
+            new TarBuilder.Entry { Name = "file2.txt", Content = Encoding.ASCII.GetBytes("two") },
+        ]);
+
+        string destDir = Path.Combine(_temp.Path, "out");
+        var result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [archivePath],
+            DestinationFolder = destDir,
+            Mode = ExtractMode.SeparateFolders,
+        });
+
+        result.Success.Should().BeTrue();
+        File.Exists(Path.Combine(destDir, "bundle", "file1.txt")).Should().BeTrue();
+        File.Exists(Path.Combine(destDir, "bundle", "file2.txt")).Should().BeTrue();
+        Directory.Exists(Path.Combine(destDir, "bundle", "bundle")).Should().BeFalse();
     }
 
     [Integration]

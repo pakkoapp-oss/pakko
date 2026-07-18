@@ -3225,3 +3225,82 @@ document.
 **See:** `TASKS.md`'s T-F122 entry for the live, still-`[ ]` acceptance criteria this absorbed.
 
 ---
+
+### T-F117 — Silent Success on an Unrecognized Single Archive Path (Extraction)
+- [x] **Status:** done — implemented, tested, and on-device verified 2026-07-18 (agent-driven via
+      the local `windows` MCP server, user-directed). See `DECISIONS.md`'s T-F117 entry for the
+      full fix (and its T-F116 entry for the original repro).
+- **Depends on:** none
+
+**What:** `ZipArchiveService.ExtractAsync`'s per-item gate (`if (!IsZipFile(archivePath))`) only
+records a `SkippedFile` when `GetKnownArchiveReason` recognizes the bytes as a *different* known
+archive format (GZip/BZip2/RAR/etc.). For bytes matching no known magic number at all — an empty
+file, plain garbage, a truncated/corrupted download — `reason` is `null` and the loop just
+`continue`s with **nothing recorded**: `ArchiveResult.Success` stays `true`, no error, no skipped
+entry. Confirmed via both the CLI's `-si` path and a real on-disk garbage `.zip` fed to plain `x`
+— identical silent exit 0. This contradicts this project's own "loud error always" rule
+(`CLI.md`'s three-way-input philosophy, `CLAUDE.md`'s general stance) even though it predates T-F09
+and isn't CLI-specific — it's just never been noticed before because the GUI always shows an
+operation summary either way.
+
+**Acceptance criteria:**
+- [x] `ZipArchiveService.ExtractAsync`/`TestAsync`'s per-item loop records a real `ArchiveError` (or
+      at minimum a `SkippedFile` with a named reason) when a path is neither a valid ZIP nor
+      matches any of `GetKnownArchiveReason`'s known-format signatures — decide which (error vs.
+      skip) matches this project's existing severity conventions for "not a valid archive at all"
+      (decided: `ArchiveError` — matches the existing "known-but-unsupported = skip,
+      unrecognized/corrupted = error" split already in the same method)
+- [x] `Archiver.Core.Tests` covers: empty file, plain garbage bytes, truncated real ZIP
+- [x] `Archiver.CLI.Tests`' `Extract_SiWithEmptyStdin_SilentlyNoOpsPerPreExistingCoreBehavior`/
+      `Extract_SiWithGarbageBytes_SilentlyNoOpsPerPreExistingCoreBehavior` updated to assert the
+      new (non-silent) behavior, renamed to match
+- [x] Checked whether `TarSandboxedService`'s extraction path has the same gap for a
+      non-tar/non-recognized input, and fixed there too if so (for parity, not assumed) — checked,
+      no gap: it has no upfront format short-circuit, so an unrecognized archive already fails
+      loudly via tar.exe's `-tf` exit code → `IOException` → `ArchiveError`
+- [x] `Archiver.App`'s operation-summary dialog still reads correctly for this case (a real error
+      now appears where none did before — confirm it doesn't regress a currently-passing manual
+      test path) — verified on-device 2026-07-18: launched the installed app via a real
+      `pakko://extract` activation against a 76-byte garbage `.zip`, clicked "Розпакувати", and the
+      operation-summary dialog correctly showed "Завершено з проблемами" / "Помилки (1)" /
+      `garbage.zip` / "File is not a recognized archive format and cannot be extracted."
+
+---
+
+### T-F118 — ZIP vs. Tar-Family Extraction Smart-Foldering Asymmetry
+- [x] **Status:** done — implemented, tested, and on-device verified 2026-07-18 (agent-driven via
+      the local `windows` MCP server, user-directed). User-directed decision: unify tar-family to
+      match ZIP's smart-foldering (not the reverse). See `DECISIONS.md`'s T-F118 entry (and T-F09
+      "Implementation" entry for the original repro).
+- **Depends on:** none
+
+**What:** extracting a multi-root-item archive (two or more root-level files/folders with no single
+common containing folder) behaves differently depending on format: `ZipArchiveService.ExtractAsync`
+wraps the result in a `<destDir>/<archive-base-name>/` subfolder (T-14's "smart foldering",
+confirmed to apply even under `ExtractMode.SingleFolder`), while `TarSandboxedService.ExtractAsync`
+has no equivalent — files land directly in `destDir`, unwrapped. `Archiver.Shell`'s
+`--extract-flat` (T-F115) inherits the ZIP behavior too despite its own doc comment claiming "no
+wrapper folder ever created," which is only accurate for the common single-root case.
+
+**Acceptance criteria:**
+- [x] Decide the intended behavior — match tar-family to ZIP's smart-foldering, match ZIP to
+      tar-family's flat behavior, or keep the asymmetry but fix `Archiver.Shell`'s misleading doc
+      comment — this is a product decision, not purely technical; needs a Plan Mode session before
+      touching code (decided: match tar-family to ZIP, user-directed — see `DECISIONS.md`)
+- [x] Whichever direction is chosen, both `ZipArchiveServiceTests` and
+      `TarSandboxedServiceExtractionTests` (or equivalent) cover the multi-root-item, no-common-
+      folder case explicitly — `TarSandboxedServiceExtractTests` gained three new tests plus one
+      updated pre-existing one
+- [x] `Archiver.Shell/Program.cs`'s `--extract-flat` doc comment corrected to match actual verified
+      behavior, not the aspirational "no wrapper folder ever" claim
+- [x] `Archiver.CLI.Tests`' existing test asserting the ZIP-wraps/tar-doesn't-wrap asymmetry
+      updated to match whichever new unified behavior is chosen
+      (`Extract_TarGzHappyPath_ExtractsFilesAndExitsZero`)
+- [x] On-device verification — a real `Deploy.ps1` build + a genuine multi-root `.tar.gz` fixture
+      (two root-level files, no common containing folder) extracted through the installed app via
+      a real `pakko://extract` activation, confirmed on disk: output landed under a
+      `multiroot\` subfolder (named after the archive) containing both files with correct content,
+      matching `ZipArchiveServiceExtractTests.ExtractAsync_MultipleRootItems_
+      CreatesSubfolderNamedAfterArchive`'s exact behavior.
+
+---

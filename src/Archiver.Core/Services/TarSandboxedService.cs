@@ -116,8 +116,9 @@ public sealed class TarSandboxedService : ITarService
 
             try
             {
+                bool alreadyIsolated = options.Mode == ExtractMode.SeparateFolders;
                 var (actualDest, anyExtracted) = await ExtractSingleArchiveAsync(
-                    archivePath, destDir, conflictResolver, skippedFiles,
+                    archivePath, destDir, alreadyIsolated, conflictResolver, skippedFiles,
                     options.ConfirmCompressionBombExtraction, options.SelectedEntryPaths,
                     cancellationToken)
                     .ConfigureAwait(false);
@@ -205,6 +206,7 @@ public sealed class TarSandboxedService : ITarService
     private static async Task<(string ActualDest, bool AnyExtracted)> ExtractSingleArchiveAsync(
         string archivePath,
         string destDir,
+        bool alreadyIsolated,
         ConflictResolver conflictResolver,
         List<SkippedFile> skippedFiles,
         Func<CompressionBombWarning, Task<bool>>? confirmCompressionBombExtraction,
@@ -221,6 +223,29 @@ public sealed class TarSandboxedService : ITarService
         // validated regardless of what subset the caller eventually asks tar.exe to extract).
         var (declaredUncompressedSize, allNames) = await ScanForUnsafeEntriesAsync(scope, cancellationToken)
             .ConfigureAwait(false);
+
+        // T-F118: mirrors ZipArchiveService.ExtractWithSmartFolderingAsync's identical algorithm
+        // exactly — allNames already carries tar's own trailing '/' convention for directory
+        // entries (see ScanForUnsafeEntriesAsync's comment), so "file entries" can be derived the
+        // same way ZIP derives them from ZipArchiveEntry.FullName, with no second tar.exe call.
+        // A selected subset (T-F05/T-F98 drill-down) has no single meaningful "root" to collapse,
+        // same reasoning as ZIP's isSelectedSubset — always extract straight into destDir.
+        bool isSelectedSubset = selectedEntryPaths is { Count: > 0 };
+        var fileNames = allNames.Where(n => !n.EndsWith('/')).ToList();
+
+        bool isSingleRootFolder = !isSelectedSubset
+            && fileNames.Count > 0
+            && fileNames.All(n => n.Contains('/'))
+            && fileNames
+                .Select(n => n[..n.IndexOf('/')])
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Count() == 1;
+
+        bool isSingleRootFile = !isSelectedSubset && fileNames.Count == 1 && !fileNames[0].Contains('/');
+
+        string actualDest = (isSingleRootFolder || isSingleRootFile || alreadyIsolated || isSelectedSubset)
+            ? destDir
+            : Path.Combine(destDir, ArchiveNaming.GetBaseName(archivePath));
 
         // T-F94: whole-archive compression-ratio decision. compressedFileSize reads the
         // ORIGINAL archivePath (not the staged copy — same size either way, hardlink or copy,
@@ -281,7 +306,7 @@ public sealed class TarSandboxedService : ITarService
         if (exitCode != 0)
             throw new IOException($"tar.exe extraction failed: {stdErr.Trim()}");
 
-        Directory.CreateDirectory(destDir);
+        Directory.CreateDirectory(actualDest);
 
         int totalFiles = 0;
         int extractedCount = 0;
@@ -292,7 +317,23 @@ public sealed class TarSandboxedService : ITarService
             totalFiles++;
 
             string relativePath = Path.GetRelativePath(scope.OutputDirectory!, file);
-            string finalFilePath = Path.GetFullPath(Path.Combine(destDir, relativePath));
+
+            // T-F118: matches ZipArchiveService.ExtractWithSmartFolderingAsync's identical strip —
+            // when the whole archive collapses to one root folder, actualDest already stands in
+            // for that folder, so its own name is dropped from the path being written.
+            if (isSingleRootFolder)
+            {
+                int sep = relativePath.IndexOf(Path.DirectorySeparatorChar);
+                if (sep < 0)
+                {
+                    // Defensive only — every file walked here came from a fileNames entry that
+                    // was confirmed to contain '/' for isSingleRootFolder to be true at all.
+                    continue;
+                }
+                relativePath = relativePath[(sep + 1)..];
+            }
+
+            string finalFilePath = Path.GetFullPath(Path.Combine(actualDest, relativePath));
 
             if (File.Exists(finalFilePath))
             {
@@ -331,10 +372,10 @@ public sealed class TarSandboxedService : ITarService
                 Path = archivePath,
                 Reason = "No entries were extracted from this archive — every entry was skipped."
             });
-            return (destDir, false);
+            return (actualDest, false);
         }
 
-        return (destDir, true);
+        return (actualDest, true);
     }
 
     // Rejects the whole archive (throws TarArchiveRejectedException) if any entry name is

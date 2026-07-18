@@ -96,11 +96,15 @@ static async Task RunExtractHereAsync(IReadOnlyList<string> archivePaths)
 }
 
 // -------------------------------------------------------------------------
-// --extract-flat (T-F115): genuinely flat - dump every archive's contents directly into its
-// own containing folder, no wrapper folder ever created, regardless of the archive's internal
-// structure. ExtractMode.SingleFolder already means exactly this once DestinationFolder points
-// straight at the archive's own folder (no subfolder computed) - contrast with
-// RunExtractFolderAsync below, which pre-computes a fresh subfolder and passes that instead.
+// --extract-flat (T-F115): dump every archive's contents directly into its own containing
+// folder — but this is NOT "no wrapper folder ever", despite the name. ExtractMode.SingleFolder
+// still runs T-14's smart-foldering (ZipArchiveService and, since T-F118, TarSandboxedService
+// alike): a single-root-folder archive unwraps its own top-level folder, but a genuinely
+// multi-root archive (no common containing folder) still gets an <archive_name>\ wrapper
+// created under DestinationFolder — the same T-14 logic --extract-here (SeparateFolders mode,
+// above) uses, just without --extract-here's own extra per-run numbered-folder isolation.
+// Contrast with RunExtractFolderAsync below, which unconditionally pre-computes a fresh
+// subfolder regardless of the archive's own root shape.
 // -------------------------------------------------------------------------
 static async Task RunExtractHereFlatAsync(IReadOnlyList<string> archivePaths)
 {

@@ -123,7 +123,7 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
     }
 
     [Fact]
-    public async Task ExtractAsync_NonExistentPath_SkippedSilently()
+    public async Task ExtractAsync_NonExistentPath_ReportsErrorAsUnrecognizedFormat()
     {
         var options = new ExtractOptions
         {
@@ -133,9 +133,10 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
 
         var result = await _sut.ExtractAsync(options);
 
-        // Non-existent file fails magic-byte check → silently skipped
-        result.Success.Should().BeTrue();
-        result.Errors.Should().BeEmpty();
+        // T-F117: non-existent file fails the magic-byte check the same way unrecognized bytes
+        // do — now a real error rather than a silent skip.
+        result.Success.Should().BeFalse();
+        result.Errors.Should().ContainSingle(e => e.Message == "File is not a recognized archive format and cannot be extracted.");
     }
 
     [Fact]
@@ -160,7 +161,7 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
     }
 
     [Fact]
-    public async Task ExtractAsync_ZipExtensionButWrongMagicBytes_SkippedSilently()
+    public async Task ExtractAsync_ZipExtensionButWrongMagicBytes_ReportsErrorAsUnrecognizedFormat()
     {
         var fakePath = Path.Combine(_temp.Path, "not_really.zip");
         File.WriteAllBytes(fakePath, [0x00, 0x01, 0x02, 0x03]);
@@ -173,8 +174,11 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
 
         var result = await _sut.ExtractAsync(options);
 
-        result.Success.Should().BeTrue();
-        result.Errors.Should().BeEmpty();
+        // T-F117: a ".zip" extension is not itself evidence of format — wrong magic bytes with
+        // no other recognized signature now reports a real error rather than a silent skip.
+        result.Success.Should().BeFalse();
+        result.Errors.Should().ContainSingle(e => e.SourcePath == fakePath
+            && e.Message == "File is not a recognized archive format and cannot be extracted.");
     }
 
     [Fact]
@@ -262,8 +266,10 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
     }
 
     [Fact]
-    public async Task ExtractAsync_RandomBinaryFile_NotInSkippedFilesOrErrors()
+    public async Task ExtractAsync_RandomBinaryFile_ReportsErrorAsUnrecognizedFormat()
     {
+        // T-F117: bytes matching no known archive signature at all must surface as a real
+        // error, not the silent no-op this project shipped with previously.
         var binaryPath = Path.Combine(_temp.Path, "data.bin");
         File.WriteAllBytes(binaryPath, [0xDE, 0xAD, 0xBE, 0xEF, 0x00, 0x11]);
 
@@ -275,8 +281,52 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
 
         var result = await _sut.ExtractAsync(options);
 
-        result.Success.Should().BeTrue();
-        result.Errors.Should().BeEmpty();
+        result.Success.Should().BeFalse();
+        result.Errors.Should().ContainSingle(e => e.SourcePath == binaryPath
+            && e.Message == "File is not a recognized archive format and cannot be extracted.");
+        result.SkippedFiles.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ExtractAsync_EmptyFile_ReportsErrorAsUnrecognizedFormat()
+    {
+        var emptyPath = Path.Combine(_temp.Path, "empty.zip");
+        File.WriteAllBytes(emptyPath, []);
+
+        var options = new ExtractOptions
+        {
+            ArchivePaths = [emptyPath],
+            DestinationFolder = _temp.Path
+        };
+
+        var result = await _sut.ExtractAsync(options);
+
+        result.Success.Should().BeFalse();
+        result.Errors.Should().ContainSingle(e => e.SourcePath == emptyPath
+            && e.Message == "File is not a recognized archive format and cannot be extracted.");
+        result.SkippedFiles.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ExtractAsync_TruncatedPastRecognitionZip_ReportsErrorAsUnrecognizedFormat()
+    {
+        // Fewer than 4 bytes — even the leading ZIP magic-number check can't complete, unlike
+        // "valid magic bytes followed by garbage" cases elsewhere in this file which DO read as
+        // a ZIP signature and instead fail later with a corruption-specific message.
+        var truncatedPath = Path.Combine(_temp.Path, "truncated.zip");
+        File.WriteAllBytes(truncatedPath, [0x50, 0x4B]);
+
+        var options = new ExtractOptions
+        {
+            ArchivePaths = [truncatedPath],
+            DestinationFolder = _temp.Path
+        };
+
+        var result = await _sut.ExtractAsync(options);
+
+        result.Success.Should().BeFalse();
+        result.Errors.Should().ContainSingle(e => e.SourcePath == truncatedPath
+            && e.Message == "File is not a recognized archive format and cannot be extracted.");
         result.SkippedFiles.Should().BeEmpty();
     }
 

@@ -42,6 +42,23 @@ public sealed class ZipArchiveServiceTestAsyncTests
     }
 
     [Fact]
+    public async Task TestAsync_RandomBinaryFile_ReportsErrorAsUnrecognizedFormat()
+    {
+        // T-F117: TestAsync shares ExtractAsync's IsZipFile/GetKnownArchiveReason gate — bytes
+        // matching no known archive signature must surface as a real error, not a silent no-op.
+        using var temp = new TempDirectory();
+        var binaryPath = Path.Combine(temp.Path, "data.bin");
+        File.WriteAllBytes(binaryPath, [0xDE, 0xAD, 0xBE, 0xEF, 0x00, 0x11]);
+
+        var result = await _sut.TestAsync([binaryPath]);
+
+        result.Success.Should().BeFalse();
+        result.Errors.Should().ContainSingle(e => e.SourcePath == binaryPath
+            && e.Message == "File is not a recognized archive format and cannot be tested.");
+        result.SkippedFiles.Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task TestAsync_MultipleArchives_OneCorruptedOneValid_ReportsOnlyTheCorruptedOne()
     {
         var result = await _sut.TestAsync([

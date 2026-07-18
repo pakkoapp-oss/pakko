@@ -42,9 +42,11 @@ public sealed class CliSubprocessTests
 
         exitCode.Should().Be(0);
         stdErr.Should().BeEmpty();
-        // Unlike ZipArchiveService, ITarService's extraction has no smart-foldering equivalent —
-        // entries land directly in the destination for multi-root-item archives.
-        File.Exists(Path.Combine(destDir, "a.txt")).Should().BeTrue();
+        // T-F118: TarSandboxedService's extraction now shares ZipArchiveService's smart-foldering
+        // exactly — two root-level files with no common containing folder wrap in a subfolder
+        // named after the archive, same as the ZIP fixture above (this fixture's SourceDir is the
+        // same a.txt/b.txt shape).
+        File.Exists(Path.Combine(destDir, "valid", "a.txt")).Should().BeTrue();
     }
 
     [RequiresTarCapability("7z")]
@@ -246,30 +248,29 @@ public sealed class CliSubprocessTests
         stdOut.Should().BeEmpty();
     }
 
-    // T-F116 empirical finding: a genuinely unrecognized single archive path (empty file, or
-    // bytes that match no known archive magic number) was ALREADY, before this task, silently
-    // treated as a no-op success by ZipArchiveService.ExtractAsync's per-item IsZipFile/
-    // GetKnownArchiveReason gate (neither an error nor a skipped-file entry is recorded when
-    // GetKnownArchiveReason returns null) — confirmed by reproducing the identical exit-0 result
-    // against a real on-disk garbage .zip via plain 'x' (no -si involved at all). -si's staged
-    // temp file hits this same pre-existing gate; it is not a regression or gap introduced by
-    // streaming, so these tests assert the real (inherited) behavior rather than the exit-2
-    // behavior the initial plan assumed without checking. See DECISIONS.md's T-F116 entry.
+    // T-F116 originally found a genuinely unrecognized single archive path (empty file, or bytes
+    // that match no known archive magic number) was silently treated as a no-op success by
+    // ZipArchiveService.ExtractAsync's per-item IsZipFile/GetKnownArchiveReason gate (neither an
+    // error nor a skipped-file entry was recorded when GetKnownArchiveReason returned null) —
+    // confirmed by reproducing the identical exit-0 result against a real on-disk garbage .zip via
+    // plain 'x' (no -si involved at all). That Core-level gap is now fixed by T-F117 (a real
+    // ArchiveError is recorded), so these tests assert the new loud-error behavior instead. See
+    // DECISIONS.md's T-F116/T-F117 entries.
     [Fact]
-    public void Extract_SiWithEmptyStdin_SilentlyNoOpsPerPreExistingCoreBehavior()
+    public void Extract_SiWithEmptyStdin_ErrorsAsUnrecognizedArchive()
     {
         string destDir = CliFixtureFiles.CreateScratchDir();
 
         (int exitCode, byte[] stdOut, string stdErr) = CliProcessRunner.RunWithBinaryStdio(
             stdinBytes: [], "x", "-si", $"-o{destDir}");
 
-        exitCode.Should().Be(0);
-        stdErr.Should().BeEmpty();
+        exitCode.Should().Be(2);
+        stdErr.Should().Contain("File is not a recognized archive format");
         Directory.GetFiles(destDir, "*", SearchOption.AllDirectories).Should().BeEmpty();
     }
 
     [Fact]
-    public void Extract_SiWithGarbageBytes_SilentlyNoOpsPerPreExistingCoreBehavior()
+    public void Extract_SiWithGarbageBytes_ErrorsAsUnrecognizedArchive()
     {
         string destDir = CliFixtureFiles.CreateScratchDir();
         byte[] garbage = System.Text.Encoding.UTF8.GetBytes("this is not an archive, just plain garbage text data");
@@ -277,8 +278,8 @@ public sealed class CliSubprocessTests
         (int exitCode, byte[] stdOut, string stdErr) = CliProcessRunner.RunWithBinaryStdio(
             garbage, "x", "-si", $"-o{destDir}");
 
-        exitCode.Should().Be(0);
-        stdErr.Should().BeEmpty();
+        exitCode.Should().Be(2);
+        stdErr.Should().Contain("File is not a recognized archive format");
         Directory.GetFiles(destDir, "*", SearchOption.AllDirectories).Should().BeEmpty();
     }
 
