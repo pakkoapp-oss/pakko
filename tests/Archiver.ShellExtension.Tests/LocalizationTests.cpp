@@ -15,6 +15,14 @@ TEST(GetLocalizedString, KnownTagReturnsExactString)
     EXPECT_EQ(GetLocalizedString(StringId::TestArchive, L"en-US"), L"Test archive");
 }
 
+TEST(GetLocalizedString, BrowseArchiveKnownTagReturnsExactString)
+{
+    // T-F03: no ellipsis - a direct action, matches ExtractHereFlat/TestArchive's convention,
+    // not ExtractDialog/CompressDialog's.
+    EXPECT_EQ(GetLocalizedString(StringId::BrowseArchive, L"en-US"), L"Open");
+    EXPECT_EQ(GetLocalizedString(StringId::BrowseArchive, L"uk-UA"), L"Відкрити");
+}
+
 TEST(GetLocalizedString, KnownNonEnglishTagReturnsExactString)
 {
     // uk-UA's ExtractHereIntelligent is authored to match NanaZip's own text verbatim.
@@ -33,7 +41,8 @@ TEST(GetLocalizedString, EveryFieldIsNonEmptyForEnUS)
     for (auto id : { StringId::ExtractDialog, StringId::ExtractHereFlat, StringId::ExtractHereIntelligent,
                       StringId::ExtractFolderFallback, StringId::ExtractFolderMultiFallback,
                       StringId::ExtractFolderNamedTemplate, StringId::CompressDialog,
-                      StringId::ArchiveFallback, StringId::ArchiveNamedTemplate, StringId::TestArchive })
+                      StringId::ArchiveFallback, StringId::ArchiveNamedTemplate, StringId::TestArchive,
+                      StringId::BrowseArchive })
     {
         EXPECT_FALSE(GetLocalizedString(id, L"en-US").empty());
     }
@@ -85,6 +94,17 @@ TEST(LocalizationDataIntegrity, EveryLocaleResolvesToItselfNotTheEnUSFallback)
         if (std::wstring(tag) == L"en-US") continue;
         EXPECT_NE(GetLocalizedString(StringId::TestArchive, tag), GetLocalizedString(StringId::TestArchive, L"en-US"))
             << "locale: " << tag;
+    }
+}
+
+TEST(LocalizationDataIntegrity, EveryLocaleBrowseArchiveIsNonEmpty)
+{
+    // T-F03: the most direct catch for a row where the new 11th field was left unset (nullptr) -
+    // GetLocalizedString would construct std::wstring from a null pointer, so a bad row here
+    // crashes rather than merely mismatching.
+    for (const wchar_t* tag : kAllLocaleTags)
+    {
+        EXPECT_FALSE(GetLocalizedString(StringId::BrowseArchive, tag).empty()) << "locale: " << tag;
     }
 }
 

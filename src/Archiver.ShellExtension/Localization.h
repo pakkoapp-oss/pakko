@@ -22,6 +22,10 @@ enum class StringId
     ArchiveFallback,
     ArchiveNamedTemplate,
     TestArchive,
+    // T-F03: "Open" verb — launches straight into the Archive Browser (T-F05) instead of the
+    // pending-list/extract-options view. No ellipsis: unlike ExtractDialog/CompressDialog, this
+    // never shows a further dialog, matching ExtractHereFlat/TestArchive's plain-verb convention.
+    BrowseArchive,
 };
 
 // Resolves the calling thread's preferred UI language as a BCP-47 tag (e.g. L"uk-UA"), matching

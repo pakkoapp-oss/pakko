@@ -68,6 +68,10 @@ std::wstring BuildTestArgs(const std::vector<std::wstring>& paths);
 // (ShellArgumentParser.ParseOpenUi) instead of running silently.
 std::wstring BuildOpenUiExtractArgs(const std::vector<std::wstring>& paths);
 std::wstring BuildOpenUiArchiveArgs(const std::vector<std::wstring>& paths);
+// T-F03: launches straight into the Archive Browser (T-F05) instead of the pending-list/
+// extract-options view. BrowseCommand::Invoke only ever calls this with exactly one path
+// (GetState gates on paths.size() == 1), but this builder itself stays generic like its siblings.
+std::wstring BuildOpenUiBrowseArgs(const std::vector<std::wstring>& paths);
 
 // Builds the "Add to <name><ext>" context-menu title (ext defaults to ".zip"; T-F105's
 // TarArchiveCommand passes ".tar"). For a single selected path, <name> is that path's file name

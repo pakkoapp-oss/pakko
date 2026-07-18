@@ -48,6 +48,10 @@ static const CLSID CLSID_ExtractDialogCommand =
 static const CLSID CLSID_CompressDialogCommand =
     { 0xADB98ED2, 0x801C, 0x418D, { 0xBE, 0x22, 0x95, 0xAB, 0xA4, 0xDA, 0x58, 0xD0 } };
 
+// {996B23C2-AD0A-4B5E-9FEB-DCFEB6143A78}
+static const CLSID CLSID_BrowseCommand =
+    { 0x996B23C2, 0xAD0A, 0x4B5E, { 0x9F, 0xEB, 0xDC, 0xFE, 0xB6, 0x14, 0x3A, 0x78 } };
+
 // ---------------------------------------------------------------------------
 // IEnumExplorerCommand implementation that owns a snapshot of sub-commands.
 // ---------------------------------------------------------------------------
@@ -209,6 +213,29 @@ public:
 // unlike ArchiveCommand which hides when the selection is all-.zip.
 // ---------------------------------------------------------------------------
 class CompressDialogCommand final :
+    public RuntimeClass<RuntimeClassFlags<ClassicCom>, IExplorerCommand>
+{
+public:
+    STDMETHODIMP GetTitle(IShellItemArray* psia, LPWSTR* ppszName) noexcept override;
+    STDMETHODIMP GetIcon(IShellItemArray* psia, LPWSTR* ppszIcon) noexcept override;
+    STDMETHODIMP GetToolTip(IShellItemArray* psia, LPWSTR* ppszInfotip) noexcept override;
+    STDMETHODIMP GetCanonicalName(GUID* pguidCommandName) noexcept override;
+    STDMETHODIMP GetState(IShellItemArray* psia, BOOL fOkToBeSlow, EXPCMDSTATE* pCmdState) noexcept override;
+    STDMETHODIMP Invoke(IShellItemArray* psia, IBindCtx* pbc) noexcept override;
+    STDMETHODIMP GetFlags(EXPCMDFLAGS* pFlags) noexcept override;
+    STDMETHODIMP EnumSubCommands(IEnumExplorerCommand** ppEnum) noexcept override;
+};
+
+// ---------------------------------------------------------------------------
+// Leaf command: "Open" (T-F03) - launches straight into the Archive Browser (T-F05) instead of
+// the pending-list/extract-options view. Mirrors NanaZip's real kOpen verb (confirmed against
+// NanaZip.UI.Modern/SevenZip/CPP/7zip/UI/Explorer/ContextMenu.cpp/.h): a command distinct from,
+// and NOT a replacement for, the dialog-form Extract - NanaZip's kOpen launches its own file
+// manager (7zFM.exe) with the archive path, entirely separate from kExtract/kExtractHere/kExtractTo.
+// Only shown for a single-item selection - browsing more than one archive at once has no meaning
+// (mirrors FileActivationRouter's identical one-archive-only rule for double-click, T-F100).
+// ---------------------------------------------------------------------------
+class BrowseCommand final :
     public RuntimeClass<RuntimeClassFlags<ClassicCom>, IExplorerCommand>
 {
 public:

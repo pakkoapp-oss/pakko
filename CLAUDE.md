@@ -458,6 +458,22 @@ failure — so a blocked/misconfigured sandbox would have crashed instead of yie
   `multiroot.tar.gz` (two root files, no common folder, built via real `tar.exe`) extracted through
   the installed app via `pakko://extract` landed under a `multiroot\` subfolder with both files
   byte-correct, confirmed on disk. See `DECISIONS.md`'s T-F118 entry.
+- **T-F03 (`[x]` done 2026-07-18)** — re-scoped from its original stub ("dedicated Extract
+  window") to a new Explorer "Open"/"Відкрити" context-menu command that launches straight into
+  the Archive Browser (T-F05), after researching NanaZip's real `ContextMenu.h`/`.cpp` and finding
+  its `kOpen` is a distinct command coexisting with `kExtract`, not a replacement for it — Pakko
+  mirrors that exactly. New `BrowseCommand` (`Archiver.ShellExtension`, added first in
+  `PakkoRootCommand::EnumSubCommands`, mirroring NanaZip's own `kOpen`-before-`kExtract` order;
+  shown only for a single-item archive selection), a third `pakko://browse` protocol route
+  (`Archiver.App.Core.ProtocolActivationRouter`, branching in `App.xaml.cs` before
+  `MainViewModel.AddPathsFromProtocolUri` runs), and a new `--open-ui --browse` `Archiver.Shell`
+  sub-command reusing the existing `LaunchOpenUi` helper unchanged. New `StringId::BrowseArchive`
+  translated across all 37 `Archiver.ShellExtension` locales (plain "Open" verb, no ellipsis).
+  Agent-driven on-device verification (2026-07-18, user-directed via the `windows` MCP server):
+  after a full `Deploy.ps1` install, launched the exact CLI pipeline `BrowseCommand::Invoke`
+  builds against a real ZIP fixture — `Archiver.App` came up landing directly in the Archive
+  Browser (breadcrumb, real folder/file listing, Extract Selected/All), no pending-list view at
+  all. See `TASKS_DONE.md`'s T-F03 entry.
 - MSIX signed with dev cert via Deploy.ps1 (see T-F10 for production-grade cert)
 - Async streaming (CopyToAsync) — CancellationToken respected mid-file
 - Temp file/dir pattern — no partial files on cancel or failure

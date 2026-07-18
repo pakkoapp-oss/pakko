@@ -129,13 +129,6 @@ Separate window for archive configuration instead of inline controls.
 
 ---
 
-### T-F03 — Dedicated Extract Window
-- [ ] **Status:** future
-
-Separate window for extract configuration.
-
----
-
 ### T-F04 — TAR/GZip/BZip2/XZ Support via Windows tar.exe
 - [ ] **Status:** future
 

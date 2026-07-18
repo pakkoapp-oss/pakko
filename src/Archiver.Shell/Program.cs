@@ -27,6 +27,10 @@ switch (command.Type)
         LaunchOpenUi("archive", command.Files);
         break;
 
+    case CommandType.OpenUiBrowse:
+        LaunchOpenUi("browse", command.Files);
+        break;
+
     case CommandType.ExtractHere:
         await RunExtractHereAsync(command.Files).ConfigureAwait(false);
         break;

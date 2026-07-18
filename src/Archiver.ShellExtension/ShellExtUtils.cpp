@@ -327,6 +327,17 @@ std::wstring BuildOpenUiArchiveArgs(const std::vector<std::wstring>& paths)
     return args;
 }
 
+std::wstring BuildOpenUiBrowseArgs(const std::vector<std::wstring>& paths)
+{
+    std::wstring args = L"--open-ui --browse";
+    for (const auto& p : paths)
+    {
+        args += L' ';
+        args += QuotePath(p);
+    }
+    return args;
+}
+
 std::wstring BuildAddToArchiveTitle(const std::vector<std::wstring>& paths, const std::wstring& ext, const std::wstring& localeTag)
 {
     if (paths.empty()) return GetLocalizedString(StringId::ArchiveFallback, localeTag);

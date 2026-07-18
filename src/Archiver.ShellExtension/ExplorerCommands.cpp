@@ -614,6 +614,74 @@ STDMETHODIMP CompressDialogCommand::EnumSubCommands(IEnumExplorerCommand** ppEnu
 }
 
 // ---------------------------------------------------------------------------
+// BrowseCommand (T-F03)
+// ---------------------------------------------------------------------------
+
+STDMETHODIMP BrowseCommand::GetTitle(IShellItemArray*, LPWSTR* ppszName) noexcept
+{
+    if (!ppszName) return E_POINTER;
+    return SHStrDupW(GetLocalizedString(StringId::BrowseArchive).c_str(), ppszName);
+}
+
+STDMETHODIMP BrowseCommand::GetIcon(IShellItemArray*, LPWSTR* ppszIcon) noexcept
+{
+    if (!ppszIcon) return E_POINTER;
+    *ppszIcon = nullptr;
+    return E_NOTIMPL;
+}
+
+STDMETHODIMP BrowseCommand::GetToolTip(IShellItemArray*, LPWSTR* ppszInfotip) noexcept
+{
+    if (!ppszInfotip) return E_POINTER;
+    *ppszInfotip = nullptr;
+    return E_NOTIMPL;
+}
+
+STDMETHODIMP BrowseCommand::GetCanonicalName(GUID* pguidCommandName) noexcept
+{
+    if (!pguidCommandName) return E_POINTER;
+    *pguidCommandName = CLSID_BrowseCommand;
+    return S_OK;
+}
+
+STDMETHODIMP BrowseCommand::GetState(IShellItemArray* psia, BOOL, EXPCMDSTATE* pCmdState) noexcept
+{
+    if (!pCmdState) return E_POINTER;
+    // Only a single-item selection: browsing more than one archive at once has no meaning (same
+    // one-archive-only rule FileActivationRouter already enforces for double-click, T-F100). With
+    // exactly one path, AllPathsAreSupportedArchive/AnyPathIsSupportedArchive are equivalent, so
+    // no new predicate is needed.
+    const auto paths = GetPathsFromShellItemArray(psia);
+    *pCmdState = (paths.size() == 1 && AllPathsAreSupportedArchive(paths)) ? ECS_ENABLED : ECS_HIDDEN;
+    return S_OK;
+}
+
+STDMETHODIMP BrowseCommand::Invoke(IShellItemArray* psia, IBindCtx*) noexcept
+{
+    try
+    {
+        const auto paths = GetPathsFromShellItemArray(psia);
+        if (paths.size() != 1) return E_INVALIDARG;
+        return LaunchShellExe(BuildOpenUiBrowseArgs(paths));
+    }
+    catch (...) { return E_FAIL; }
+}
+
+STDMETHODIMP BrowseCommand::GetFlags(EXPCMDFLAGS* pFlags) noexcept
+{
+    if (!pFlags) return E_POINTER;
+    *pFlags = ECF_DEFAULT;
+    return S_OK;
+}
+
+STDMETHODIMP BrowseCommand::EnumSubCommands(IEnumExplorerCommand** ppEnum) noexcept
+{
+    if (!ppEnum) return E_POINTER;
+    *ppEnum = nullptr;
+    return E_NOTIMPL;
+}
+
+// ---------------------------------------------------------------------------
 // PakkoRootCommand
 // ---------------------------------------------------------------------------
 
@@ -676,6 +744,7 @@ STDMETHODIMP PakkoRootCommand::EnumSubCommands(IEnumExplorerCommand** ppEnum) no
         if (!ppEnum) return E_POINTER;
         *ppEnum = nullptr;
 
+        auto pBrowse        = Make<BrowseCommand>();
         auto pExtractDialog = Make<ExtractDialogCommand>();
         auto pExtractHereFlat = Make<ExtractHereFlatCommand>();
         auto pExtractHere   = Make<ExtractHereCommand>();
@@ -684,11 +753,12 @@ STDMETHODIMP PakkoRootCommand::EnumSubCommands(IEnumExplorerCommand** ppEnum) no
         auto pArchive       = Make<ArchiveCommand>();
         auto pTarArchive    = Make<TarArchiveCommand>();
         auto pTest          = Make<TestCommand>();
-        if (!pExtractDialog || !pExtractHereFlat || !pExtractHere || !pExtractFolder || !pCompressDialog || !pArchive || !pTarArchive || !pTest)
+        if (!pBrowse || !pExtractDialog || !pExtractHereFlat || !pExtractHere || !pExtractFolder || !pCompressDialog || !pArchive || !pTarArchive || !pTest)
             return E_OUTOFMEMORY;
 
-        ComPtr<IExplorerCommand> pCmdExtractDialog, pCmdExtractHereFlat, pCmdA, pCmdB, pCmdCompressDialog, pCmdC, pCmdTarArchive, pCmdTest;
-        HRESULT hr = pExtractDialog.As(&pCmdExtractDialog); if (FAILED(hr)) return hr;
+        ComPtr<IExplorerCommand> pCmdBrowse, pCmdExtractDialog, pCmdExtractHereFlat, pCmdA, pCmdB, pCmdCompressDialog, pCmdC, pCmdTarArchive, pCmdTest;
+        HRESULT hr = pBrowse.As(&pCmdBrowse);                if (FAILED(hr)) return hr;
+        hr = pExtractDialog.As(&pCmdExtractDialog);          if (FAILED(hr)) return hr;
         hr = pExtractHereFlat.As(&pCmdExtractHereFlat);      if (FAILED(hr)) return hr;
         hr = pExtractHere.As(&pCmdA);                       if (FAILED(hr)) return hr;
         hr = pExtractFolder.As(&pCmdB);                      if (FAILED(hr)) return hr;
@@ -706,7 +776,11 @@ STDMETHODIMP PakkoRootCommand::EnumSubCommands(IEnumExplorerCommand** ppEnum) no
         // "Add to X.zip" — both are one-click archive-creation commands, kept adjacent.
         // T-F115: the new flat "Extract here" sits between the dialog and the (renamed)
         // "...Intelligently" command, matching NanaZip's own three-way extract-verb layout.
+        // T-F03: "Open" (BrowseCommand) goes FIRST, ahead of even the Extract dialog — confirmed
+        // against NanaZip's real ContextMenu.cpp, whose kOpen is inserted before its kExtract
+        // group. It's a separate, coexisting command, not a replacement for Extract.
         std::vector<ComPtr<IExplorerCommand>> commands;
+        commands.push_back(std::move(pCmdBrowse));
         commands.push_back(std::move(pCmdExtractDialog));
         commands.push_back(std::move(pCmdExtractHereFlat));
         commands.push_back(std::move(pCmdA));

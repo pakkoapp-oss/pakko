@@ -58,7 +58,8 @@ do not edit by pattern-matching the diagram's previous shape.
 Sources read for this diagram: `src/Archiver.ShellExtension/dllmain.cpp`,
 `src/Archiver.ShellExtension/ExplorerCommands.cpp`, `src/Archiver.ShellExtension/ShellExtUtils.cpp`,
 `src/Archiver.Shell/Program.cs`, `src/Archiver.Shell/ShellResultPresenter.cs`,
-`src/Archiver.Shell/NativeProgressDialog.cs`, `src/Archiver.App/App.xaml.cs`.
+`src/Archiver.Shell/NativeProgressDialog.cs`, `src/Archiver.App/App.xaml.cs`,
+`src/Archiver.App.Core/ProtocolActivationRouter.cs` (T-F03).
 
 **T-F99 (2026-07-13):** `Package.appxmanifest` now also registers `PakkoRootCommand`'s verb for
 `desktop10:ItemType Type="Drive"`, alongside the existing `*`/`Directory` entries this diagram
@@ -76,6 +77,7 @@ sequenceDiagram
     participant Factory as PakkoClassFactory<PakkoRootCommand>
     participant Root as PakkoRootCommand
     participant Enum as SubCommandEnum
+    participant BC as BrowseCommand
     participant EDC as ExtractDialogCommand
     participant EHF as ExtractHereFlatCommand
     participant EH as ExtractHereCommand
@@ -95,6 +97,7 @@ sequenceDiagram
     Factory->>Root: Make<PakkoRootCommand>()
     Explorer->>Root: GetFlags() → ECF_HASSUBCOMMANDS
     Explorer->>Root: EnumSubCommands()
+    Root->>BC: Make<BrowseCommand>()<br/>(T-F03: "Open" — mirrors NanaZip's real kOpen, a separate<br/>coexisting command, NOT a replacement for ExtractDialogCommand)
     Root->>EDC: Make<ExtractDialogCommand>()
     Root->>EHF: Make<ExtractHereFlatCommand>()<br/>(T-F115: new, genuinely flat extract)
     Root->>EH: Make<ExtractHereCommand>()<br/>(T-F115: title now "...Intelligently" — behavior unchanged)
@@ -102,13 +105,14 @@ sequenceDiagram
     Root->>CDC: Make<CompressDialogCommand>()
     Root->>AC: Make<ArchiveCommand>()
     Root->>TC: Make<TestCommand>()
-    Root->>Enum: SetCommands([EDC, EHF, EH, EF, CDC, AC, TC, ...])<br/>ALWAYS all, unconditionally — selection does not filter EnumSubCommands.<br/>Order mirrors NanaZip's real ContextMenu.cpp (T-F63) and its own three-way<br/>extract-verb layout (T-F115): dialog, then flat, then intelligent, then named-folder.<br/>TC last: diagnostic/verification action, not primary —<br/>deliberate deviation from NanaZip's own Test-before-Compress grouping.<br/>TarArchiveCommand (added T-F105) is omitted from this list — pre-existing<br/>diagram gap, not introduced here, see this file's own staleness note above
+    Root->>Enum: SetCommands([BC, EDC, EHF, EH, EF, CDC, AC, TC, ...])<br/>ALWAYS all, unconditionally — selection does not filter EnumSubCommands.<br/>Order mirrors NanaZip's real ContextMenu.cpp (T-F63) and its own three-way<br/>extract-verb layout (T-F115): dialog, then flat, then intelligent, then named-folder.<br/>BC FIRST (T-F03): mirrors NanaZip's own kOpen-before-kExtract insertion order.<br/>TC last: diagnostic/verification action, not primary —<br/>deliberate deviation from NanaZip's own Test-before-Compress grouping.<br/>TarArchiveCommand (added T-F105) is omitted from this list — pre-existing<br/>diagram gap, not introduced here, see this file's own staleness note above
     Root-->>Explorer: Enum (IEnumExplorerCommand)
     loop Explorer drains the enumerator
         Explorer->>Enum: Next(celt, ...)
         Enum-->>Explorer: fetched items,<br/>S_OK if fetched==celt, else S_FALSE<br/>S_FALSE is a SUCCESS code here, not failure
     end
     Note over Explorer,TC: Visibility is decided per-command by GetState(),<br/>separately from enumeration
+    Explorer->>BC: GetState(psia) → ECS_ENABLED iff paths.size()==1 AND AllPathsAreSupportedArchive(paths), else ECS_HIDDEN<br/>(T-F03: single-item only — browsing more than one archive at once has no meaning,<br/>same one-archive-only rule FileActivationRouter already enforces for double-click, T-F100)
     Explorer->>EDC: GetState(psia) → ECS_ENABLED iff AnyPathIsSupportedArchive(paths), else ECS_HIDDEN<br/>(T-F86: also true for RAR/7z/tar-family when tar.exe exists — EDC routes<br/>to Archiver.App/IExtractionRouter, which supports those formats since T-F85)
     Explorer->>EHF: GetState(psia) → ECS_ENABLED iff AllPathsAreSupportedArchive(paths), else ECS_HIDDEN<br/>(same condition as EH/EF — T-F115)
     Explorer->>EH: GetState(psia) → ECS_ENABLED iff AllPathsAreSupportedArchive(paths), else ECS_HIDDEN<br/>(T-F86: also true for RAR/7z/tar-family when tar.exe exists)
@@ -118,7 +122,13 @@ sequenceDiagram
     Explorer->>AC: GetTitle(psia) → BuildAddToArchiveTitle(paths)<br/>dynamic "Add to <name>.zip", truncated middle if >40 chars
     Explorer->>TC: GetState(psia) → ECS_ENABLED iff AnyPathIsZip(paths), else ECS_HIDDEN<br/>(T-F62: AnyPathIsZip, NOT AllPathsAreZip — shows on a mixed selection too —<br/>T-F86: deliberately UNCHANGED — ITarService has no Test/verify method,<br/>so enabling this for RAR/7z would run ZipArchiveService.TestAsync,<br/>which skips non-zip paths internally and would report a false<br/>"No errors detected" — see DECISIONS.md's T-F86 entry)
     User->>Explorer: click one visible leaf command
-    alt command is EDC or CDC (dialog form, T-F63)
+    alt command is BC (Open, T-F03)
+        Explorer->>BC: Invoke(psia, pbc)
+        BC->>ShellExe: LaunchShellExe(BuildOpenUiBrowseArgs(paths))<br/>i.e. "--open-ui --browse <path>" — paths.size() is always 1 here, enforced by GetState
+        BC-->>Explorer: S_OK, or HRESULT_FROM_WIN32(GetLastError())
+        ShellExe->>App: Process.Start("pakko://browse?files=<base64>", UseShellExecute:true)<br/>then ShellExe's Main returns/exits immediately — same LaunchOpenUi helper EDC/CDC use
+        App->>App: ProtocolActivationRouter.TryGetBrowsePath(uri, out path) → true<br/>window.ActivationGate.RunOrDefer(...) → MainViewModel.EnterBrowseModeAsync(path)<br/>— skips the pending-list/extract-options view entirely, the same destination<br/>FileActivationRouter already routes a double-clicked single archive to (T-F100)
+    else command is EDC or CDC (dialog form, T-F63)
         Explorer->>EDC: Invoke(psia, pbc) — or CDC, same shape
         EDC->>ShellExe: LaunchShellExe(BuildOpenUiExtractArgs(paths))<br/>— or BuildOpenUiArchiveArgs for CDC —<br/>i.e. "--open-ui --extract/--archive <paths>"
         EDC-->>Explorer: S_OK, or HRESULT_FROM_WIN32(GetLastError())
@@ -168,6 +178,12 @@ sequenceDiagram
 ```
 
 **What this catches (verified against the real bugs already fixed here):**
+- **`BC` (T-F03) is a third, distinct `pakko://` destination — not a variant of `EDC`/`CDC`'s
+  flow.** It reuses the identical `LaunchOpenUi`/`Process.Start`/`UseShellExecute` mechanism, but
+  `App.xaml.cs`'s protocol handler branches on `ProtocolActivationRouter.TryGetBrowsePath` *before*
+  reaching `MainViewModel.AddPathsFromProtocolUri` — `pakko://browse` never touches the pending-
+  list/extract-options view at all, unlike `pakko://extract`/`pakko://archive`. A future change to
+  `AddPathsFromProtocolUri` does not automatically apply to this path, and vice versa.
 - `EH`/`EF`/`AC`/`EDC`/`CDC`/`TC` `Invoke()` never awaits the operation — Explorer's HRESULT comes
   back the instant `CreateProcess` returns. Anything that assumes Explorer "waits" for Pakko's
   result is wrong.

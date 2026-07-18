@@ -3304,3 +3304,70 @@ wrapper folder ever created," which is only accurate for the common single-root 
       CreatesSubfolderNamedAfterArchive`'s exact behavior.
 
 ---
+
+### T-F03 — Explorer "Open" command → Archive Browser
+- [x] **Status:** done 2026-07-18. Re-scoped
+      from the original stub ("separate window for extract configuration") — that need is already
+      met by the Archive Browser (T-F05), which is a mode-swap in `Archiver.App`'s existing
+      window, not a second window. Researched NanaZip's real `ContextMenu.h`/`.cpp` first (per
+      this project's pre-implementation research rule): NanaZip has a distinct `kOpen` command,
+      separate from and coexisting with `kExtract`/`kExtractHere`/`kExtractTo` — it launches
+      `7zFM.exe` directly with the archive path. Pakko mirrors this with a new "Open" leaf command
+      that launches straight into the Archive Browser, alongside the existing "Extract…"
+      (`ExtractDialogCommand`), not replacing it.
+- **Depends on:** T-F05 (Archive Browser), T-F100 (`FileActivationRouter`'s single-archive rule)
+
+**What shipped:**
+- `Archiver.App.Core/ProtocolActivationRouter.cs` — new, WinUI-free `TryGetBrowsePath(rawUri, out
+  path)`, mirrors `FileActivationRouter`'s decide-then-branch split for protocol (not file)
+  activation. Only recognizes a single-file `pakko://browse?files=...` URI; `pakko://extract`/
+  `pakko://archive` are unaffected.
+- `App.xaml.cs`'s `Protocol` activation branch checks `ProtocolActivationRouter.TryGetBrowsePath`
+  before falling back to the existing `MainViewModel.AddPathsFromProtocolUri` — a browse request
+  calls `EnterBrowseModeAsync` directly (same destination `FileActivationRouter` already routes a
+  double-clicked single archive to, T-F100), skipping the pending-list/extract-options view
+  entirely.
+- `Archiver.Shell`: new `--open-ui --browse` sub-command (`CommandType.OpenUiBrowse`), handled via
+  the existing `LaunchOpenUi("browse", files)` helper — identical mechanism to `--extract`/
+  `--archive`, just a third `pakko://` host.
+- `Archiver.ShellExtension`: new `BrowseCommand` leaf (`CLSID_BrowseCommand`), `GetState` enabled
+  only for a single-item selection that's a supported archive (`paths.size() == 1 &&
+  AllPathsAreSupportedArchive`) — browsing more than one archive at once has no meaning. `Invoke`
+  calls the new `BuildOpenUiBrowseArgs` (mirrors `BuildOpenUiExtractArgs`/`BuildOpenUiArchiveArgs`).
+  Added to `PakkoRootCommand::EnumSubCommands` **first**, ahead of even `ExtractDialogCommand` —
+  mirrors NanaZip's own `kOpen`-before-`kExtract` insertion order. No `Package.appxmanifest` entry
+  needed (only the root command's CLSID is ever registered there, confirmed T-F105).
+- New `StringId::BrowseArchive` in `Localization.h`/`.cpp` — a plain "Open" verb (no ellipsis,
+  matching `ExtractHereFlat`/`TestArchive`'s direct-action convention, not `ExtractDialog`/
+  `CompressDialog`'s dialog-form one), translated across all 37 locales.
+- Tests: `ProtocolActivationRouterTests.cs` (6 cases, `Archiver.App.Core.Tests`),
+  `ShellArgumentParserTests.cs` (+2, `Archiver.Shell.Tests`), `ShellExtUtilsTests.cpp`
+  (`BuildOpenUiBrowseArgs`, +2), `LocalizationTests.cpp` (+2 spot checks, +1 all-37-locales
+  non-empty check, `Archiver.ShellExtension.Tests`). `dotnet test`/`Archiver.ShellExtension.Tests.exe`
+  both green (89/89 C++ tests, was 85).
+
+**Acceptance criteria:**
+- [x] Right-clicking a single ZIP/RAR/7z/tar-family archive shows an "Open"/"Відкрити" entry in
+      the "Pakko >" submenu, ahead of "Extract…"
+- [x] The entry is hidden for a multi-item selection or a non-archive selection
+- [x] Clicking it launches `Archiver.App` directly into the Archive Browser for that archive, with
+      no intermediate pending-list/extract-options view
+- [x] "Extract…" stays present and unchanged — this is an additional command, not a replacement
+- [x] Agent-driven on-device verification (2026-07-18, user-directed via the `windows` MCP
+      server, same substitution precedent as T-F52/T-F97/etc.): after a full `Deploy.ps1`
+      build+sign+install (1.4.0.12), launched the exact real pipeline
+      `BrowseCommand::Invoke` constructs — `Archiver.Shell.exe --open-ui --browse
+      "<path-to-a-real-zip>"` (a copy of the `valid_nested_folders.zip` fixture) — from the
+      installed package. The real `Archiver.App` window came up with the title bar's freshness
+      timestamp matching the just-completed deploy, landing directly in the Archive Browser (no
+      pending-list/extract-options view at all): breadcrumb showing the archive's own name, the
+      real `docs`/`src` folders and `root.txt` file listed with correct size/CRC, and
+      "Розпакувати вибране"/"Розпакувати все" visible — confirming `ProtocolActivationRouter`/
+      `EnterBrowseModeAsync` wiring works end-to-end. The literal Explorer right-click →
+      "Pakko > Open" click was not separately driven (Explorer's native context menu remains
+      unconfirmed for automation per this project's existing MCP notes) — that COM-layer leg is
+      covered instead by `Archiver.ShellExtension.Tests`' passing build/tests (`GetState`/
+      `GetTitle`/`BuildOpenUiBrowseArgs`) plus the identical CLI invocation `Invoke()` itself
+      constructs, verified above.
+
+---

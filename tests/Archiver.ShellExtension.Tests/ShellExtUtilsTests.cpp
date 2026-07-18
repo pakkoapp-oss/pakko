@@ -298,6 +298,22 @@ TEST(BuildOpenUiArchiveArgs, MultipleFiles)
 }
 
 // ---------------------------------------------------------------------------
+// BuildOpenUiBrowseArgs (T-F03)
+// ---------------------------------------------------------------------------
+
+TEST(BuildOpenUiBrowseArgs, SingleFile)
+{
+    const auto args = BuildOpenUiBrowseArgs({ L"C:\\archive.zip" });
+    EXPECT_EQ(args, L"--open-ui --browse \"C:\\archive.zip\"");
+}
+
+TEST(BuildOpenUiBrowseArgs, MultipleFiles)
+{
+    const auto args = BuildOpenUiBrowseArgs({ L"C:\\a.zip", L"C:\\b.zip" });
+    EXPECT_EQ(args, L"--open-ui --browse \"C:\\a.zip\" \"C:\\b.zip\"");
+}
+
+// ---------------------------------------------------------------------------
 // BuildAddToArchiveTitle
 // ---------------------------------------------------------------------------
 

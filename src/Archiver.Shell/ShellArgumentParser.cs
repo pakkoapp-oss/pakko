@@ -12,6 +12,7 @@ public enum CommandType
     Test,
     OpenUiExtract,
     OpenUiArchive,
+    OpenUiBrowse,
     Invalid,
 }
 
@@ -100,6 +101,7 @@ public static class ShellArgumentParser
         {
             "--extract" => new ParsedCommand { Type = CommandType.OpenUiExtract, Files = files },
             "--archive" => new ParsedCommand { Type = CommandType.OpenUiArchive, Files = files },
+            "--browse"  => new ParsedCommand { Type = CommandType.OpenUiBrowse, Files = files },
             var other   => Invalid($"Unknown --open-ui sub-command: {other}"),
         };
     }

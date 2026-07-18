@@ -114,7 +114,8 @@ src/
 │   │                              without a WinUI test host
 │   ├── ArchiveEntryViewModel.cs / ArchiveTreeIndex.cs   ← Archive Browser tree/breadcrumb building
 │   ├── FileSystemBrowser.cs                             ← T-F107: real-filesystem climb past archive root
-│   ├── FileActivationRouter.cs                          ← T-F100: file/protocol activation routing
+│   ├── FileActivationRouter.cs                          ← T-F100: file activation routing
+│   ├── ProtocolActivationRouter.cs                      ← T-F03: pakko://browse detection
 │   ├── NestedArchiveCache.cs / NestedArchivePolicy.cs   ← T-F98: nested-archive drill-down
 │   ├── PreviewCache.cs                                  ← T-F97: preview extraction cache
 │   └── DeferredActionGate.cs                            ← T-F106: defers activation past first layout pass
@@ -622,12 +623,16 @@ showing progress via the in-process `IProgressDialog` COM object (`NativeProgres
 
 **T-F61 — `Archiver.ShellExtension` (in-process COM DLL, C++/WRL):**
 - One registered CLSID: `PakkoRootCommand` (`1EABC7CE-20A4-48EE-A99F-43D4E0F58D6A`), `ThreadingModel STA`
-- Sub-commands (`ExtractDialogCommand`, `ExtractHereCommand`, `ExtractFolderCommand`,
+- Sub-commands (`BrowseCommand`, `ExtractDialogCommand`, `ExtractHereCommand`, `ExtractFolderCommand`,
   `CompressDialogCommand`, `ArchiveCommand`, `TestCommand`) returned at runtime via
   `IExplorerCommand::EnumSubCommands` — not separately registered in the manifest
-- Selection logic in `EnumSubCommands` (order mirrors NanaZip's real `ContextMenu.cpp`: dialog
-  command before its one-click sibling in each group; `TestCommand` always last per Pakko's own
-  primary-actions-before-diagnostic rule, `CLAUDE.md`): `ExtractDialogCommand`/`TestCommand` shown
+- Selection logic in `EnumSubCommands` (order mirrors NanaZip's real `ContextMenu.cpp`: `BrowseCommand`
+  ("Open") first, mirroring NanaZip's own `kOpen`-before-`kExtract` order (T-F03) — a separate,
+  coexisting command, not a replacement for `ExtractDialogCommand`; dialog command before its
+  one-click sibling in each group; `TestCommand` always last per Pakko's own
+  primary-actions-before-diagnostic rule, `CLAUDE.md`): `BrowseCommand` shown only for a single-item
+  selection that's a supported archive (`paths.size() == 1 && AllPathsAreSupportedArchive`);
+  `ExtractDialogCommand`/`TestCommand` shown
   whenever selection contains ≥1 `.zip` (`AnyPathIsZip`); `ExtractHereCommand`/`ExtractFolderCommand`
   shown only when all paths are `.zip` (`AllPathsAreZip`); `CompressDialogCommand` always shown;
   `ArchiveCommand` shown unless all paths are `.zip`

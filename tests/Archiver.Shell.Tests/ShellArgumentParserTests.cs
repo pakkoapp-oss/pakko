@@ -238,6 +238,27 @@ public sealed class ShellArgumentParserTests
         result.Files.Should().Equal("file1.txt", "file2.docx");
     }
 
+    // --- Valid: --open-ui --browse (T-F03) ---
+
+    [Fact]
+    public void OpenUiBrowse_SingleFile_ReturnsOpenUiBrowse()
+    {
+        ParsedCommand result = ShellArgumentParser.Parse(["--open-ui", "--browse", "archive.zip"]);
+
+        result.Type.Should().Be(CommandType.OpenUiBrowse);
+        result.Files.Should().Equal("archive.zip");
+        result.ErrorMessage.Should().BeNull();
+    }
+
+    [Fact]
+    public void OpenUiBrowse_NoFiles_ReturnsInvalid()
+    {
+        ParsedCommand result = ShellArgumentParser.Parse(["--open-ui", "--browse"]);
+
+        result.Type.Should().Be(CommandType.Invalid);
+        result.ErrorMessage.Should().NotBeNullOrEmpty();
+    }
+
     // --- Invalid: no arguments ---
 
     [Fact]
