@@ -369,6 +369,37 @@ failure — so a blocked/misconfigured sandbox would have crashed instead of yie
   small files, including at least one genuinely empty file, via the installed Pakko GUI/context
   menu, confirm the result opens cleanly in Explorer/7-Zip/WinRAR/NanaZip) — not graduated on
   `dotnet test` alone, per this project's workflow rule.
+- **T-F09 (`Archiver.CLI`, 7z-familiar CLI) is `[~]` implementation complete 2026-07-18** — a
+  fourth thin frontend over `Archiver.Core`, no DI container (mirrors `Archiver.Shell`'s manual
+  construction pattern). Supports `x`/`t`/`i`/`a`/`l`, the full three-way unknown-input rule from
+  `CLI.md`, and ships as its own standalone self-contained per-architecture download (see
+  `scripts/Publish-Cli.ps1`, `CLI.md`'s "Distribution" section) — no MSIX/GUI required, no bundled
+  `tar.exe`. New `tests/Archiver.CLI.Tests/` (94 tests: parser/mapper/help-text/formatter unit
+  tests plus a new `Subprocess/` layer that `Process.Start`s the real built exe against real
+  fixtures — the first test layer in this repo to do that). `CLI.md`'s `a`/`l`/`-t{type}` rows
+  were found stale (predating T-F105/T-F05) and corrected before implementation started. Stays
+  `[~]` until the user's own on-device terminal run of all five commands plus the three error
+  cases — not graduated on `dotnet test` alone. See `DECISIONS.md`'s T-F09 entries.
+- **T-F116 (Archiver.CLI `-si`/`-so` stdin/stdout streaming) is `[~]` implementation complete
+  2026-07-18** — scoped out of T-F09 at the user's explicit request, plan redone through `advisor`
+  first. Implemented entirely inside `Archiver.CLI/CliStreamStaging.cs` via private `%TEMP%`
+  staging, zero `Archiver.Core` changes. Empirically confirmed (not assumed) that native
+  PowerShell 5.1 silently corrupts binary data piped between two executables while PowerShell 7+
+  and `cmd /c "..."` do not — documented in `CLI.md`, `CliHelpText.Text`, and `DECISIONS.md`'s
+  T-F116 entry, which also records a real pre-existing (not new) `ZipArchiveService` finding: an
+  unrecognized single archive path silently no-ops as success rather than erroring. `Archiver.CLI.
+  Tests` grew from 94 to 121 (parser cases, a new `CliStreamStagingTests.cs`, and subprocess tests
+  including one that launches `cmd.exe` itself to prove the documented pipe recipe actually
+  works). Stays `[~]` until the user's own on-device confirmation of a real piped round trip. Same
+  session: the built exe was renamed `Archiver.CLI.exe` → **`pakko.exe`** (`AssemblyName` only —
+  project folder/namespace unchanged), matching the `pakko:` prefix `--help`/stderr already used;
+  not added to `PATH` automatically (matches ripgrep/fd/bat's own zip-distribution norm, confirmed
+  via research, not assumed) — see `CLI.md`'s Distribution section for the `AppExecutionAlias`/
+  `WindowsApps`-PATH-shadowing pitfall this surfaced (no live collision today, since Pakko's
+  manifest registers no alias, but a real future constraint on any GUI terminal alias). Rebuild +
+  full manual smoke test (all five commands, all three error cases, a real `cmd /c "pakko a -so
+  ... | pakko x -si ... > log"` pipe) run by the agent after the rename; repo-wide tests stayed
+  green. See `DECISIONS.md`'s T-F116 follow-up entry.
 - MSIX signed with dev cert via Deploy.ps1 (see T-F10 for production-grade cert)
 - Async streaming (CopyToAsync) — CancellationToken respected mid-file
 - Temp file/dir pattern — no partial files on cancel or failure
@@ -671,6 +702,8 @@ windows-archiver-wrapper/
 │   │   └── Strings/en-US/          ← ResW localization
 │   ├── Archiver.Shell/             ← net8.0-windows WinExe, shell-triggered ops, no WinUI
 │   │   └── NativeProgressDialog.cs ← IProgressDialog COM interop (in-process progress UI)
+│   ├── Archiver.CLI/                ← net8.0 Exe (real console), 7z-familiar CLI (T-F09), no
+│   │                                   WinUI, standalone self-contained distribution
 │   └── Archiver.ShellExtension/    ← C++ COM DLL, IExplorerCommand (T-F61), x64+ARM64
 ├── tests/
 │   ├── Archiver.Core.Tests/        ← xunit (see "Current State" for current count)
@@ -679,6 +712,8 @@ windows-archiver-wrapper/
 │   ├── Archiver.Core.PerformanceTests/ ← xunit, T-F114: ZIP perf vs. vendored 7za.exe reference,
 │   │                                     [Trait("Category","Slow")], see TESTING.md
 │   ├── Archiver.Shell.Tests/       ← xunit (see "Current State" for current count)
+│   ├── Archiver.CLI.Tests/          ← xunit, parser/mapper unit tests + a Subprocess/ layer that
+│   │                                  Process.Starts the real built exe (T-F09), see TESTING.md
 │   ├── Archiver.ShellExtension.Tests/  ← C++ Google Test, run separately (see Build Commands)
 │   └── Archiver.Core.Tests.GenerateFixtures/  ← fixture generator
 ├── CLAUDE.md                       ← you are here
@@ -715,6 +750,11 @@ dotnet publish src/Archiver.App/Archiver.App.csproj \
     /p:Configuration=Release /p:Platform=x64 \
     /p:RuntimeIdentifier=win-x64 /p:SelfContained=true \
     /p:GenerateAppxPackageOnBuild=true /p:AppxPackageSigningEnabled=false
+
+# Publish the standalone Archiver.CLI (T-F09) — independent of the MSIX, no cert needed.
+# Must run via the PowerShell tool (uses /p: flags). See scripts/README.md.
+.\scripts\Publish-Cli.ps1                    # both architectures -> artifacts/cli/
+.\scripts\Publish-Cli.ps1 -Architecture x64  # one architecture only
 
 # Archiver.ShellExtension (C++ COM DLL) — not built or tested by dotnet build/test
 # Build via Visual Studio / MSBuild (x64 or ARM64 platform).
@@ -926,6 +966,13 @@ Task<IReadOnlyList<string>> PickFoldersAsync()
   run, then passed immediately on rerun in isolation — looks like parallel-execution timing
   noise, not a real regression. If a test fails once, rerun before treating it as caused by
   your change.
+  **Recurred 2026-07-18** (1–5 `Archiver.Core.IntegrationTests` failures in a full repo-wide
+  `dotnet test` run, always passing in isolation and on a plain rerun) right after
+  `Archiver.CLI.Tests`' new `Subprocess/` layer (T-F09) started launching real
+  `TarSandboxedService`-driven subprocesses concurrently with `Archiver.Core.IntegrationTests`'
+  own sandbox tests — same shared `Pakko.TarSandbox` AppContainer profile/quarantine ACL under
+  more concurrent load than before. Same rule applies: rerun once before treating a failure here
+  as a real regression.
 
 ---
 

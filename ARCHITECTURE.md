@@ -90,6 +90,14 @@ src/
 │   ├── ShellArgumentParser.cs
 │   └── NativeProgressDialog.cs   ← IProgressDialog COM interop (in-process progress UI)
 │
+├── Archiver.CLI/              ← standalone console frontend (T-F09); net8.0; Exe (real console,
+│   │                             not WinExe); no WinUI; ships independently of the MSIX
+│   ├── Program.cs
+│   ├── CliArgumentParser.cs
+│   ├── CliCompressionLevelMapper.cs
+│   ├── CliHelpText.cs
+│   └── CliEntryFormatter.cs
+│
 └── Archiver.ShellExtension/   ← IExplorerCommand COM DLL (T-F61); C++/WRL, x64+ARM64, static CRT
     ├── dllmain.cpp                    ← DllGetClassObject, DllCanUnloadNow
     ├── ExplorerCommands.cpp/.h        ← PakkoRootCommand, SubCommandEnum, ExtractHereCommand,
@@ -943,6 +951,105 @@ is unchanged). On the .NET side, `ShellArgumentParser.ParseArchive` consumes an 
 constructs `new ArchiveCreationRouter(new ZipArchiveService(), new TarSandboxedService())` directly
 (no DI container in this console entry point) instead of calling `ZipArchiveService.ArchiveAsync`,
 and sets `ArchiveOptions.Format` from the parsed switch.
+
+---
+
+### v1.5 — Archiver.CLI (T-F09)
+
+A fourth thin frontend over `Archiver.Core`, alongside App/Shell/ShellExtension — 7z-familiar
+single-letter commands (`x`/`t`/`i`/`a`/`l`), specified in full in `CLI.md`. Ships as a separate,
+standalone, self-contained downloadable artifact (see `CLI.md`'s "Distribution" section and
+`scripts/README.md`) — it does not require the MSIX/GUI to be installed and is never packaged
+into it.
+
+**No DI container** — mirrors `Archiver.Shell/Program.cs`'s pattern exactly (manual `new
+ZipArchiveService()`/`new TarSandboxedService()` construction, `await
+tarService.DetectCapabilitiesAsync()` once, then `new` the relevant router directly per command),
+not `Archiver.App`'s `ServiceCollection`. Both `ZipArchiveService` and `TarSandboxedService` are
+parameterless, so there is nothing to inject.
+
+`CliArgumentParser.Parse(string[])` (in `Archiver.CLI/CliArgumentParser.cs`) never throws — mirrors
+`ShellArgumentParser`'s shape:
+
+```csharp
+public enum CliCommandType { Extract, Test, Info, Archive, List, Help, Invalid }
+
+public sealed record ParsedCliCommand
+{
+    public CliCommandType Type { get; init; }
+    public IReadOnlyList<string> ArchivePaths { get; init; } = [];   // x, t, l
+    public IReadOnlyList<string> SourcePaths { get; init; } = [];    // a
+    public string? ArchivePathArg { get; init; }                     // a: raw positional[0]
+    public string? OutputDirectory { get; init; }                    // -o{dir}, x only
+    public bool AssumeYes { get; init; }                              // -y
+    public ConflictBehavior? OverwriteMode { get; init; }             // -ao{a|s|u}, x only
+    public ArchiveContainerFormat ArchiveFormat { get; init; } = ArchiveContainerFormat.Zip; // a
+    public CompressionLevel? CompressionLevel { get; init; }          // -mx=N, a only
+    public string? ErrorMessage { get; init; }
+}
+```
+
+Per-command allowed-switch enforcement lives inside the parser itself — any switch token not on a
+command's own allowed list is rejected with CLI.md's three-way rule (case 1: unparseable token;
+case 2: a real 7z command Pakko deliberately doesn't implement, e.g. `u`/`d`/`rn`/`b`/`e`; case 3: a
+real, supported command with an unsupported switch). Never a silent no-op.
+
+**Command → Core API mapping:**
+
+| Command | Core API | Notes |
+|---|---|---|
+| `x` | `IExtractionRouter.ExtractAsync` | `ExtractMode.SingleFolder`; `OnConflict = -ao ?? (-y ? Overwrite : Skip)`; `ConfirmCompressionBombExtraction` set only when `-y` |
+| `t` | `IArchiveService.TestAsync` (ZIP-only, called directly — `ITarService` has no Test method) | tar-family paths become `SkippedFile`s with a named reason, not silently dropped |
+| `i` | `ITarService.DetectCapabilitiesAsync` | no other Core call; ZIP/Tar/GZip always listed, the rest gated on the live `TarCapabilities` |
+| `a` | `IArchiveCreationRouter.ArchiveAsync` | always `ArchiveMode.SingleArchive`; `ArchiveNaming.GetBaseName` derives the name |
+| `l` | `IArchiveListingRouter.ListEntriesAsync` | looped once per archive path (the router itself takes one path at a time) |
+
+`-y` wiring: `ArchiveOptions`/`ExtractOptions` already default to `Skip`/auto-decline when their
+callback delegates are null — the CLI needs to do nothing special in `-y`'s *absence*. `-y` only
+*overrides* those defaults (`ConfirmCompressionBombExtraction` → always-confirm,
+`OnConflict` → `Overwrite`), and an explicit `-ao` always wins over `-y` when both are given.
+
+**`-mx` bucketing** (`CliCompressionLevelMapper.TryMap(int)`), documented rather than a naive
+`/9*4` approximation:
+
+| `-mx` | `CompressionLevel` |
+|---|---|
+| `0` | `NoCompression` |
+| `1`–`2` | `Fastest` |
+| `3`–`6` | `Optimal` (7z's own default `-mx5` lands here, matching `ArchiveOptions`' own default) |
+| `7`–`9` | `SmallestSize` |
+
+**Exit codes** (7z-familiar, documented in `--help`/`CLI.md`):
+
+| Code | Meaning |
+|---|---|
+| `0` | Success, nothing skipped |
+| `1` | Success, but `SkippedFiles` were present (e.g. a conflict/bomb declined without `-y`, or `t` hit a tar-family archive) |
+| `2` | Operation failed (`ArchiveResult.Success == false`, listing failed, or real Test corruption) |
+| `7` | Command-line error — any of the three three-way-rule categories, distinguished by stderr text, not exit code |
+
+Test project `Archiver.CLI.Tests` has two layers: parser/mapper/help-text/formatter unit tests
+(no process spawn), and a new `Subprocess/` layer that `Process.Start`s the real built
+`pakko.exe` (the `Archiver.CLI` project's `AssemblyName`) against real fixtures and asserts real
+exit codes/stdout/stderr — see `TESTING.md`. Distribution (`scripts/Publish-Cli.ps1`) is
+documented in `scripts/README.md`.
+
+**`-si`/`-so` stdin/stdout streaming (T-F116):** `ParsedCliCommand` gained `ReadFromStdin`/
+`WriteToStdout` bools. `-si` (valid on `x`/`t`/`l`) and `-so` (valid on `x`/`a`) are implemented
+entirely inside `Archiver.CLI/CliStreamStaging.cs` — **zero `Archiver.Core` changes**. `-si` copies
+`Console.OpenStandardInput()` into a private `%TEMP%\Archiver.CLI.Stdin\<guid>\stdin.bin` file
+before the command runs, then proceeds exactly as if that path had been typed; `-so` runs the
+operation into a private `%TEMP%\Archiver.CLI.Stdout\<guid>\` folder instead of the real
+destination, then streams the single resulting file to `Console.OpenStandardOutput()`
+(`CliStreamStaging.StreamSingleFileAsync` takes the destination `Stream` as a parameter
+specifically so the broken-pipe path is unit-testable without a real OS pipe). Both staging
+locations are deleted in a `finally` block in every `Program.cs` command handler that uses them.
+Rejected out of scope: true zero-copy streaming through Core — `ZipArchive` needs a seekable
+stream to read its central directory, `TarSandboxedService`'s T-F49 pre-scan needs a real file to
+scan before extraction runs, and `SandboxedProcessLauncher` has no stdin-redirection plumbing —
+see `DECISIONS.md`'s T-F116 entry, which also records the empirical finding that native
+PowerShell 5.1 (not just old cmd.exe) silently corrupts binary data piped between two native
+executables, while `cmd /c "..."` does not, on any PowerShell version.
 
 ---
 

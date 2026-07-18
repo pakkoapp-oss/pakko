@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>12</LangVersion>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="6.0.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
+    <PackageReference Include="xunit" Version="2.5.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.5.3" />
+    <PackageReference Include="FluentAssertions" Version="6.*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Archiver.CLI\Archiver.CLI.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Reuse Archiver.Core.IntegrationTests' committed 7z/RAR fixtures (tar.exe/libarchive can
+         only read, never write, those formats) rather than a third fixture set. -->
+    <None Include="..\Archiver.Core.IntegrationTests\Fixtures\valid.7z">
+      <Link>Fixtures\valid.7z</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="..\Archiver.Core.IntegrationTests\Fixtures\valid.rar">
+      <Link>Fixtures\valid.rar</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+</Project>

@@ -94,6 +94,24 @@ Pakko should launch and begin extracting the specified archive.
 
 ---
 
+## Publishing the standalone CLI (Archiver.CLI, T-F09)
+
+`Publish-Cli.ps1` is **independent of everything above** — `Archiver.CLI` is never packaged into
+the MSIX, needs no dev-signing certificate, and `Deploy.ps1` never touches it.
+
+```powershell
+.\scripts\Publish-Cli.ps1                    # both architectures (default)
+.\scripts\Publish-Cli.ps1 -Architecture x64  # one architecture only
+```
+
+Publishes a self-contained build per architecture to `artifacts/cli/<rid>/` (gitignored) — the
+built exe is `pakko.exe` (`AssemblyName`, distinct from the `Archiver.CLI` project/folder name) —
+zips each as `pakko-<rid>.zip`, and writes a `SHA256SUMS` file covering both zips — ready to
+attach directly to a GitHub Release. See `CLI.md`'s "Distribution" section for why no `tar.exe`
+copy is bundled alongside it.
+
+---
+
 ## Notes
 
 - `PakkoDev.cer` is gitignored — never commit certificates to the repository.

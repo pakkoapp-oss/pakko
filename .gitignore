@@ -10,6 +10,7 @@ obj/
 src/Archiver.App/AppPackages/
 src/Archiver.App/BundleArtifacts/
 pakko-current.zip
+/artifacts/
 
 # NuGet
 packages/

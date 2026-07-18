@@ -375,9 +375,12 @@ Click ZIP in list → read-only tree view of contents via `ZipFile.OpenRead`. No
 ---
 
 ### T-F09 — CLI Core (Archiver.CLI, 7z-Familiar Syntax)
-- [ ] **Status:** future — scope pivoted 2026-07-12 from the original GNU-style
-      `--src/--dest` sketch (kept below the divider, per the "never silently deprecate" rule) to
-      a `7z`-*familiar* command syntax, per user request. Advisor-reviewed before writing this.
+- [~] **Status:** implementation complete 2026-07-18, on-device verification pending. Scope
+      pivoted 2026-07-12 from the original GNU-style `--src/--dest` sketch (kept below the divider,
+      per the "never silently deprecate" rule) to a `7z`-*familiar* command syntax, per user
+      request. Advisor-reviewed before writing this. `CLI.md`'s `a`/`l`/`-t{type}` rows were found
+      stale relative to T-F105/T-F05 (both shipped after `CLI.md` was last edited) and corrected
+      before implementation started — see `DECISIONS.md`'s T-F09 "Implementation" entry.
 - **Depends on:** none
 
 **Full command/switch specification lives in [`CLI.md`](CLI.md)** — the goal statement,
@@ -386,45 +389,96 @@ three-way unknown-input rule are all there now (moved 2026-07-13 to stop duplica
 tables in both files; `CLI.md` is the canonical owner per `CLAUDE.md`'s Documentation Map).
 
 **Acceptance criteria:**
-- [ ] New `src/Archiver.CLI/` project, references `Archiver.Core` directly (in-process, no
-      subprocess indirection) — mirrors `Archiver.Shell`'s DI/constructor pattern
-- [ ] Supported commands implemented: `x` (extract), `t` (test, ZIP only — tar reports "not
-      supported" per the three-way rule), `i` (info/capabilities), `a` (archive, ZIP-create only)
-- [ ] `l` (list) implemented only after T-F05's listing API exists in `Archiver.Core` — this task
-      consumes that API, doesn't duplicate archive-listing logic
-- [ ] Three-way unknown-command/switch handling implemented and tested (unparseable vs.
+- [x] New `src/Archiver.CLI/` project, references `Archiver.Core` directly (in-process, no
+      subprocess indirection) — mirrors `Archiver.Shell`'s constructor pattern (no DI container —
+      confirmed during implementation this is Shell's actual pattern, not "DI" in the
+      `ServiceCollection` sense `Archiver.App` uses)
+- [x] Supported commands implemented: `x` (extract), `t` (test, ZIP only — tar reports "not
+      supported" per the three-way rule), `i` (info/capabilities), `a` (archive — ZIP **and** all
+      6 tar-family creation formats, per the `CLI.md` correction above)
+- [x] `l` (list) implemented, consuming `IArchiveListingRouter` (T-F05)
+- [x] Three-way unknown-command/switch handling implemented and tested (unparseable vs.
       deliberately-unsupported vs. unsupported-switch-on-a-supported-command)
-- [ ] Per-switch fidelity table above reflected in actual behavior — no switch silently accepted
+- [x] Per-switch fidelity table above reflected in actual behavior — no switch silently accepted
       and ignored; unsupported switches hit the three-way rule, not silent no-ops
-- [ ] `-mx` bucketing onto `CompressionLevel` documented (in `--help` output and in
+- [x] `-mx` bucketing onto `CompressionLevel` documented (in `--help` output and in
       `ARCHITECTURE.md`), not left as an undocumented approximation
-- [ ] Argument parsing extracted into its own testable class (e.g. `CliArgumentParser`, mirroring
+- [x] Argument parsing extracted into its own testable class (`CliArgumentParser`, mirroring
       `Archiver.Shell`'s existing `ShellArgumentParser`/`ShellArgumentParserTests` split — parsing
       logic never inline in `Main`), unit-tested in-process, no process spawned — covers the
       three-way unknown-command/switch handling and every supported command's argument shape
-- [ ] **Real subprocess invocation tests against real archive fixtures — a genuinely new test
-      layer for this repo, not an existing pattern to reuse.** Checked first: `Archiver.Shell.Tests`
-      only unit-tests its parser class, never spawns `Archiver.Shell.exe`; no C# test project in
-      this repo currently launches a built `.exe` and asserts on its real exit code/stdout — that's
-      only done manually per `TESTING.md`'s smoke-test cycle. This doesn't transfer to
-      `Archiver.CLI` as-is: `Archiver.Shell.exe`'s arguments are only ever generated
-      programmatically by the shell extension, never typed by a person, so testing its parser
-      class in isolation is sufficient. `Archiver.CLI` is different — a user or script invokes it
-      directly, so its actual exit code and stdout/stderr text **are** the public contract, not an
-      implementation detail; a parser-only test suite would never catch a real process returning
-      the wrong exit code or malformed output. New tests (own test class/project, or a clearly
-      separated section of `Archiver.CLI.Tests` — decide during implementation) that `Process.Start`
-      the actual built `Archiver.CLI.exe` against real archive fixtures (reuse
-      `Archiver.Core.IntegrationTests/Fixtures/` where formats overlap, e.g. `valid.7z`/`valid.rar`,
-      rather than a third fixture set) covering: each supported command's happy path (`x`, `t`, `i`,
-      `a`) with real output verified on disk/in stdout, and at least one real case of each of the
-      three unknown-input categories (unparseable token, deliberately-unsupported real 7z command,
-      unsupported switch on a supported command) with the real exit code and real stderr text
-      asserted, not just that *some* non-zero exit happened
-- [ ] `dotnet test --filter "Category!=Slow"` passes with both new test layers included
+      (`tests/Archiver.CLI.Tests/CliArgumentParserTests.cs`, 46 tests)
+- [x] **Real subprocess invocation tests against real archive fixtures** —
+      `tests/Archiver.CLI.Tests/Subprocess/CliSubprocessTests.cs`, a genuinely new test layer for
+      this repo (plain `System.Diagnostics.Process`, not Core's internal
+      `SandboxedProcessLauncher` — that machinery sandboxes untrusted external binaries, not a
+      trusted first-party sibling exe). Reuses `Archiver.Core.IntegrationTests/Fixtures/valid.7z`/
+      `valid.rar` via a `Link`-mapped `None` item; builds its own ZIP/`.tar.gz` fixtures inline
+      rather than depending on that project further. Covers each command's happy path (`x`
+      against ZIP/`.tar.gz`/`valid.7z`/`valid.rar`, `t` against ZIP and a tar-family skip, `i`,
+      `a` creating both ZIP and `.tar.gz`, `l`) with real output verified on disk/in stdout, plus
+      one real instance of each of the three unknown-input categories with real exit code and
+      real stderr text asserted
+- [x] `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` passes with both new test layers
+      included (94 tests in `Archiver.CLI.Tests`, part of a 567-test green run repo-wide)
 - [ ] Manual on-device verification: real `pakko x archive.zip`, `pakko t archive.zip`,
       `pakko i`, `pakko a archive.zip file1 file2` against real archives, plus one of each
       three-way error case, confirmed by the user personally
+- [x] `Archiver.CLI` published self-contained per architecture (`win-x64`, `win-arm64`) as a
+      standalone downloadable artifact via `scripts/Publish-Cli.ps1`, with a `SHA256SUMS` file for
+      verification — separate from the MSIX, confirmed to run standalone outside the repo/dev
+      machine's SDK-adjacent state with no GUI/MSIX installed. See `CLI.md`'s "Distribution"
+      section. (GitHub Release publication itself is a release-time action, not part of this
+      implementation round.)
+- [x] No bundled copy of `tar.exe` — `Archiver.CLI` calls the OS-provided
+      `C:\Windows\System32\tar.exe` via the existing `TarSandboxedService`, same as every other
+      frontend (decision + rationale in `DECISIONS.md`'s T-F09 "Distribution" entry)
+
+---
+
+### T-F116 — Archiver.CLI stdin/stdout streaming (`-si`/`-so`)
+- [~] **Status:** implementation complete 2026-07-18, on-device verification pending. Scoped as a
+      separate task, split out of T-F09 at the user's explicit request. Plan redone through
+      `advisor` before implementation — see `DECISIONS.md`'s T-F116 entry for the empirical
+      PowerShell/cmd binary-pipe findings that materially changed the test/doc plan. Same session,
+      the built exe was renamed `Archiver.CLI.exe` → `pakko.exe` (`AssemblyName` only) after
+      research into how ripgrep/fd/bat handle Windows distribution/`PATH` — see `DECISIONS.md`'s
+      T-F116 follow-up entry.
+- **Depends on:** T-F09 (CLI Core)
+
+**Full specification lives in [`CLI.md`](CLI.md)'s "Stdin/stdout streaming" section** — switch
+table rows, per-command applicability, and the empirically-verified shell-compatibility table
+(native `|`/`>` byte-perfect on PowerShell 7+, silently corrupts binary data on Windows
+PowerShell 5.1, `cmd /c "..."` is byte-perfect everywhere).
+
+**Acceptance criteria:**
+- [x] `-si` (read archive from stdin) implemented on `x`/`t`/`l`; rejected with a named reason on
+      `a`/`i` and when combined with an explicit archive-path argument
+- [x] `-so` (write output to stdout) implemented on `x` (only when extraction resolves to exactly
+      one file — named error otherwise) and `a`; rejected with a named reason on `t`/`l`/`i` and
+      when combined with `-o` on `x`
+- [x] Zero `Archiver.Core` changes — implemented entirely via private `%TEMP%` staging inside
+      `Archiver.CLI/CliStreamStaging.cs` (see `ARCHITECTURE.md`'s T-F116 entry for why true
+      zero-copy streaming through Core was rejected)
+- [x] Broken-downstream-pipe handling (e.g. `pakko a -so ... | head`) exits cleanly (2), no
+      unhandled exception — unit-tested deterministically via an injectable destination `Stream`
+      (`CliStreamStagingTests`), after a real-subprocess broken-pipe simulation proved racy/
+      unreliable in practice (see `DECISIONS.md`)
+- [x] `CliArgumentParserTests.cs` covers every `-si`/`-so` valid/rejected combination per command
+- [x] `Subprocess/CliSubprocessTests.cs` covers: a full `a -so` → `x -si` byte round trip via real
+      subprocess `RedirectStandardInput`/`RedirectStandardOutput`; `-so` on `x` against real
+      `valid.7z`/`valid.rar` fixtures; `-so` on `x` against a multi-file archive (named-count
+      error); `-si` on `a` (three-way-rule case); and a `cmd.exe /c "pakko ... | pakko ... > out"`
+      subprocess test that launches `cmd.exe` itself, proving the documented shell recipe actually
+      works, not just .NET's own `Process` plumbing
+- [x] `CliHelpText.Text` and `CLI.md` document `-si`/`-so`, the buffered-not-zero-copy note, and
+      the shell-compatibility table (`cmd /c "..."` recipe) — public-facing, not just an
+      implementation note
+- [x] `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` passes repo-wide (594 tests,
+      `Archiver.CLI.Tests` grew from 94 to 121)
+- [ ] Manual on-device verification: real `pakko a -so ...` piped into `pakko x -si ...` via both
+      a real PowerShell 7 session and (if available) real Windows PowerShell 5.1 using the
+      documented `cmd /c "..."` recipe, confirmed byte-correct by the user personally
 
 ---
 

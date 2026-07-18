@@ -86,6 +86,17 @@ compression tools — to read RAR/7z/tar/gz/bz2/xz/zst/lzma, and to create tar-f
 
 ---
 
+## Command-Line Interface
+
+`pakko.exe` (project name `Archiver.CLI`) is a standalone, self-contained command-line build with
+7z-familiar commands (`x`/`t`/`i`/`a`/`l`) — it runs independently of the GUI/MSIX. See `CLI.md`
+for the full command/switch specification. Download it as its own per-architecture zip (with a
+`SHA256SUMS` file for verification) from the project's GitHub Releases page. It is not
+automatically added to `PATH` — see `CLI.md`'s "Distribution" section for how to make it available
+from any terminal.
+
+---
+
 ## Project Status
 
 **v1.1 complete** (tagged `v1.1.0`) — GitHub-only release for early testers.

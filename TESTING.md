@@ -386,6 +386,59 @@ pass (untagged, fast) — no new Slow/VeryLarge tier was needed for T-F35 itself
 
 ---
 
+## Archiver.CLI.Tests (v1.5, T-F09)
+
+Project: `tests/Archiver.CLI.Tests/`. Two layers, both run as part of the default
+`dotnet test --filter "Category!=Slow&Category!=VeryLarge"` pass — neither carries multi-second
+cost, so no `Slow`/`VeryLarge` tag was needed.
+
+**Unit tests** (no process spawn) — `CliArgumentParserTests.cs` (every command's happy path, every
+`-mx`/`-ao`/`-t` value, and at least one real case of each of `CLI.md`'s three unknown-input
+categories), `CliCompressionLevelMapperTests.cs` (boundary values at every `-mx` bucket edge),
+`CliHelpTextTests.cs` (every command/switch mentioned, and the printed compression-level table
+checked against the real bucket boundaries so it can't silently drift from the mapper),
+`CliEntryFormatterTests.cs` (the `l` command's TSV row formatting, including the `-`/`f`/`d`
+sentinels for nullable/tar-family fields).
+
+**Subprocess layer** (`Subprocess/CliSubprocessTests.cs`) — genuinely new to this repo, per
+`TASKS.md`'s T-F09 acceptance criteria: unlike `Archiver.Shell` (whose arguments are only ever
+generated programmatically by the COM shell extension, so unit-testing its parser class alone is
+sufficient), a human or script types `Archiver.CLI`'s arguments directly — its real exit code and
+stdout/stderr text *are* the public contract. `CliProcessRunner.cs` launches the actual built
+`pakko.exe` (the project's built `AssemblyName`) via plain `System.Diagnostics.Process` (deliberately not `Archiver.Core`'s
+internal `SandboxedProcessLauncher` — that machinery sandboxes *untrusted* external binaries via
+Job Objects/AppContainer; `pakko.exe` is a trusted, first-party sibling build artifact, not
+something that needs containing) and resolves the exe path by walking up from
+`AppContext.BaseDirectory` to `windows-archiver-wrapper.sln`, then mirroring the same trailing
+`<Configuration>\<TFM>` segments onto `src/Archiver.CLI/bin/...` — robust to Debug/Release without
+hardcoding either. `CliFixtureFiles.cs` builds its own fixtures once per test run (a ZIP via
+`ZipFile.CreateFromDirectory`, and — when `C:\Windows\System32\tar.exe` is present — a `.tar.gz`
+by shelling directly to it) rather than depending on `Archiver.Core.IntegrationTests` as a project
+reference, keeping this test layer decoupled; tar-family scenarios are gated behind a local
+`RequiresTarExeAttribute` (duplicated from `Archiver.Core.IntegrationTests`' `IntegrationAttribute`
+on purpose, same reasoning). Covers each command's happy path with real output verified on disk/in
+stdout, plus one real instance of each of the three three-way-rule categories with the real exit
+code and real stderr substring asserted — `pakko.exe` must be built (`dotnet build
+src/Archiver.CLI` or a prior `dotnet test`/`dotnet build` at the repo root) before running this
+layer, or `CliProcessRunner` throws with a clear message naming the expected path.
+
+**T-F116 additions (`-si`/`-so` streaming):** `CliStreamStagingTests.cs` (new unit-test file, no
+process spawn) covers `CliStreamStaging.StreamSingleFileAsync`'s three outcomes — exactly one file
+copied byte-for-byte, zero/multiple files named in the error message, and a destination `Stream`
+that throws `IOException` on write (simulating a broken downstream pipe) returning a clean error
+instead of propagating the exception. `CliProcessRunner.RunWithBinaryStdio` extends the subprocess
+layer with raw byte stdin-in/stdout-out capture (a text `string` capture would corrupt or mask the
+exact byte comparisons T-F116's round-trip tests need). `CliSubprocessTests.cs` adds a full
+`a -so` → `x -si` byte round trip, `-so` against the `valid.7z`/`valid.rar` fixtures, a named-count
+error for `-so` against a multi-file archive, `-si`/`-so` graceful handling of empty/garbage input,
+and — the test that actually proves the documented shell recipe works, not just .NET's own
+`Process` plumbing — `CmdPipe_ArchiveSoToExtractSi_RoundTripsBytesExactly`, which launches
+`cmd.exe /c "pakko a -so ... | pakko x -si ... > log"` as the subprocess under test. See
+`DECISIONS.md`'s T-F116 entry for the empirical PowerShell-pipe findings that shaped this test
+list, and for why a real-subprocess broken-pipe simulation was tried first and abandoned as racy.
+
+---
+
 ## Manual Smoke Test Cycle (Full Stack)
 
 Ordered simplest → most complex. Confirms Core, Shell, ShellExtension (COM), and the WinUI app
