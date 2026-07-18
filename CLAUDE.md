@@ -642,6 +642,19 @@ references are easy to miss otherwise (this session found 5 lingering mentions o
   leaf command (`ArchiveCommand`, `TarArchiveCommand`, etc.) is instantiated internally via
   `Make<T>()` inside `PakkoRootCommand::EnumSubCommands` — confirmed T-F105 by grepping the
   manifest for every existing leaf CLSID and finding none.
+- **`System.IO.Compression.DeflateStream` writes literally 0 output bytes for zero-byte input**
+  (not a minimal valid empty final block) — confirmed empirically. Any hand-rolled ZIP writer
+  that tags a zero-length entry's method as Deflate based on the requested compression level
+  (instead of checking actual output length) produces an entry real deflate readers (7-Zip)
+  reject as corrupt, while .NET's own lenient reader accepts it silently — invisible to
+  `dotnet test` unless checked against an independent reader. Real `ZipArchiveEntry` always
+  uses `Store` for empty entries regardless of requested level; match that. Real bug: found via
+  on-device NanaZip cross-check on `ZipEntryCompressor` (T-F35 follow-up, `DECISIONS.md`).
+- **Diagnosing ZIP format bugs:** `7za.exe l -slt <archive>` (the vendored copy under
+  `tests/Archiver.Core.PerformanceTests/Tools/7-Zip/x64/`) dumps per-entry technical fields
+  (Method, Size, Packed Size, CRC, Attributes) — the fastest way to see exactly what a hand-rolled
+  writer actually produced, and to reproduce a real-world `7za`/NanaZip extraction failure
+  without needing NanaZip itself installed.
 
 ---
 
@@ -748,6 +761,11 @@ MSBuild tests\Archiver.ShellExtension.Tests\Archiver.ShellExtension.Tests.vcxpro
 > (`#Requires -Version 5.1`). The PowerShell tool runs pwsh 7+, which defaults to UTF-8 and
 > will NOT reproduce non-BOM-file ANSI-codepage bugs (see T-F84). To actually verify a fix,
 > invoke `powershell.exe` explicitly rather than relying on the tool's default interpreter.
+>
+> **Running `Deploy.ps1`/any `.ps1` via the Bash tool's `powershell.exe` fails outright** —
+> `cannot be loaded because running scripts is disabled on this system` (default Restricted
+> execution policy for that invocation path). Use the PowerShell tool instead (its pwsh 7 session
+> already runs unrestricted) — don't try `-ExecutionPolicy Bypass` workarounds from Bash.
 >
 > **Writing a new throwaway script with non-ASCII content (translations, Cyrillic, etc.):**
 > the opposite applies — run it via the PowerShell tool's default pwsh 7, NOT `powershell.exe`.
