@@ -606,6 +606,12 @@ references are easy to miss otherwise (this session found 5 lingering mentions o
   `IProgressDialog.HasUserCancelled` always read back `false` (Cancel appeared to do nothing)
   until `[PreserveSig]` was added — see `Archiver.Shell/NativeProgressDialog.cs`.
 - **Low IL sandbox:** P/Invoke is acceptable for security-critical process isolation code (v1.4)
+- **`Microsoft.Win32.Registry` (`RegistryKey`) is usable from `Archiver.Core` (plain `net8.0`,
+  not `net8.0-windows`) with zero new NuGet package reference** — confirmed via a throwaway probe
+  build; it's already part of the Windows runtime pack pulled in transitively, not something this
+  project's "zero dependencies" constraint blocks. Mark the call site
+  `[SupportedOSPlatform("windows")]` to make the resulting `CA1416` warning meaningful instead of
+  leaving it unaddressed (T-F51, `GroupPolicyService`/`Win32RegistryReader`).
 - **UI-thread marshaling for Core→App callbacks:** any delegate `Archiver.Core` invokes that ends
   up showing WinUI (e.g. `ExtractOptions.ConfirmCompressionBombExtraction` → `ContentDialog`) must
   marshal onto `Window.DispatcherQueue` inside the App-layer implementation —
@@ -631,6 +637,12 @@ references are easy to miss otherwise (this session found 5 lingering mentions o
   tests in other projects (`Archiver.Shell.Tests`, future `Archiver.CLI.Tests`) need to be updated
   or extended. Internal implementation changes (private methods, buffers, sorting) require only
   `Archiver.Core.Tests` coverage.
+- Before threading a new `Archiver.Core` constructor parameter (e.g. a new cross-cutting service)
+  through every consumer, grep the whole repo for every `new ZipArchiveService(`/
+  `new TarSandboxedService(`/etc. call site rather than trusting an older written plan's
+  enumerated list — a plan can predate a newer frontend shipping. Real gap: T-F51's plan (written
+  2026-07-17) enumerated only `Archiver.Shell`'s call sites; `Archiver.CLI` shipped the next day
+  and was missing from it entirely.
 - Prefer simple and explicit over clever and implicit. If a task can be solved with a
   straightforward script step (copy, move, delete) versus a complex MSBuild/pipeline hook, choose
   the script. Reserve MSBuild targets and build pipeline customization for cases where a script
