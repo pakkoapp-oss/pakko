@@ -90,17 +90,27 @@ catch (IOException ex)
 - Services injected via constructor (no service locator, no static access)
 
 ```csharp
-// Correct ViewModel constructor
-public MainViewModel(IArchiveService archiveService, IDialogService dialogService)
+// Correct ViewModel constructor — real current shape, not a simplified example. MainViewModel
+// depends on the routers (IArchiveCreationRouter/IExtractionRouter/IArchiveListingRouter), never
+// IArchiveService/ITarService directly — routing by detected/requested format is the router's job.
+public MainViewModel(
+    IArchiveCreationRouter archiveCreationRouter,
+    IExtractionRouter extractionRouter,
+    IArchiveListingRouter archiveListingRouter,
+    IDialogService dialogService,
+    ILogService logService)
 {
-    _archiveService = archiveService;
+    _archiveCreationRouter = archiveCreationRouter;
+    _extractionRouter = extractionRouter;
+    _archiveListingRouter = archiveListingRouter;
     _dialogService = dialogService;
+    _logService = logService;
 }
 
 // Wrong
 public MainViewModel()
 {
-    _archiveService = new ZipArchiveService(); // hard dependency
+    _extractionRouter = new ExtractionRouter(...); // hard dependency
 }
 ```
 

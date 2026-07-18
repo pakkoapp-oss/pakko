@@ -124,7 +124,7 @@ sequenceDiagram
         EDC-->>Explorer: S_OK, or HRESULT_FROM_WIN32(GetLastError())
         ShellExe->>App: Process.Start("pakko://extract?files=<base64>", UseShellExecute:true)<br/>— or pakko://archive — then ShellExe's Main returns/exits immediately —<br/>NO NativeProgressDialog, NO ZipArchiveService call in this branch at all
         Note over App: T-F83 (fixed 2026-07-06): cold start reads the activation via<br/>OnLaunched→AppInstance.GetCurrent().GetActivatedEventArgs(), not just<br/>the OnActivated event (which only fires for redirected/warm activation).<br/>Before the fix, a cold pakko:// launch silently opened an EMPTY window.
-        App->>App: MainViewModel.AddPathsFromProtocolUri(uri)<br/>— files pre-loaded, user drives Archive/Extract from the full UI
+        App->>App: window.ActivationGate.RunOrDefer(...) → MainViewModel.AddPathsFromProtocolUri(uri)<br/>— files pre-loaded, user drives Archive/Extract from the full UI.<br/>T-F106: wrapped in ActivationGate/DeferredActionGate so this runs AFTER<br/>the first layout pass, not synchronously inline as drawn in earlier versions<br/>of this diagram — a UI-thread timing detail, not a new process/COM contract
     else command is EHF, EH, EF, AC, or TC (silent form)
         Explorer->>EH: Invoke(psia, pbc) — or EHF / EF / AC / TC, same shape
         alt GetPathsFromShellItemArray(psia) empty
@@ -232,10 +232,20 @@ branch — so this diagram's content is otherwise unaffected by that change.
 **T-F05 (Archive Browser):** `ExtractAsync()`'s body was extracted into a shared
 `RunExtractAsync(archivePaths, selectedEntryPaths)`, now also called by
 `ExtractSelectedFromBrowserCommand`/`ExtractAllFromBrowserCommand`/
-`ExtractSingleBrowserEntryAsync`. The state machine below is unchanged — same
+`ExtractSingleBrowserEntryWithWarningAsync` (renamed from `ExtractSingleBrowserEntryAsync` by
+T-F109/T-F110). The state machine below is unchanged — same
 `Idle→Busy→{AwaitingSummaryDialog|AwaitingErrorDialog|CancelledNoDialog}→Idle` shape, same
 `IsBusy` sequencing — only the transition's trigger label gains three more command names that
 all lead to the identical `Busy` entry point via the same shared method body.
+
+**Known gap, not yet fixed (found 2026-07-18, tracked as T-F123):** `PreviewBrowserEntryAsync`
+(T-F97, `MainViewModel.cs:1080-1121`) and `NavigateIntoNestedArchiveAsync` (T-F98,
+`MainViewModel.cs:765-829`) both call `_extractionRouter.ExtractAsync(...)` directly from a raw
+XAML `DoubleTapped` handler — **outside this state machine entirely**, with no `IsBusy`/
+`CanExecute` gate. A user can trigger either mid-`Busy` and start a second, concurrent extraction
+against the same `TarSandboxedService`/quarantine machinery. This diagram intentionally does not
+draw a transition for them, since none exists in the code today — see T-F123 in `TASKS.md` for the
+fix; update this diagram once it lands.
 
 ```mermaid
 stateDiagram-v2
@@ -452,7 +462,10 @@ flowchart TD
     F -- no --> RejTar2["throw TarArchiveRejectedException<br/>('listing is inconsistent')"]
     F -- yes --> G{"for each -tvf line:<br/>char[0] == '-' or 'd'?"}
     G -- "no (l/h/b/c/p/s)" --> RejTar3["throw TarArchiveRejectedException<br/>('symlink, hardlink, device...')<br/>⚠ THIS is the gate that blocks the confirmed<br/>symlink-escape exploit — see DECISIONS.md's T-F49 entry"]
-    G -- "yes, every entry '-' or 'd'" --> PreDir["Pre-create every directory allNames implies,<br/>via Directory.CreateDirectory at Pakko's OWN<br/>(unsandboxed) identity under scope.OutputDirectory —<br/>libarchive's own implicit parent-dir creation was found<br/>to fail under the AppContainer even with a correctly<br/>ACL'd out\; see DECISIONS.md's T-F52 entry"]
+    G -- "yes, every entry '-' or 'd'" --> Bomb{"T-F94: ArchiveEntrySecurity.EvaluateCompressionBombAsync<br/>(declaredUncompressedSize from the scan above,<br/>compressedFileSize = original archivePath's FileInfo.Length,<br/>free space at destDir, confirmCompressionBombExtraction callback)"}
+    Bomb -- "InsufficientDiskSpace" --> BombSkip1["SkippedFiles += 'destination has N bytes free,<br/>archive declares M uncompressed'; return (destDir, false)<br/>— scope disposed, no -xf ever runs"]
+    Bomb -- "UserDeclined<br/>(callback null → defaults to declined, e.g. Archiver.Shell/CLI)" --> BombSkip2["SkippedFiles += 'suspicious ratio N:1'; return (destDir, false)<br/>— scope disposed, no -xf ever runs"]
+    Bomb -- "NotABomb, or UserConfirmed" --> PreDir["Pre-create every directory allNames implies,<br/>via Directory.CreateDirectory at Pakko's OWN<br/>(unsandboxed) identity under scope.OutputDirectory —<br/>libarchive's own implicit parent-dir creation was found<br/>to fail under the AppContainer even with a correctly<br/>ACL'd out\; see DECISIONS.md's T-F52 entry"]
     PreDir --> G2{"T-F05: options.SelectedEntryPaths<br/>set and non-empty?<br/>(gates D-G above already ran<br/>UNCONDITIONALLY — the pre-scan<br/>never branches on this)"}
     G2 -- no --> H["scope.RunAsync(['-xf', scope.StagedArchivePath,<br/>'-C', scope.OutputDirectory])"]
     G2 -- yes --> G3["ExpandSelection(allNames, SelectedEntryPaths):<br/>each selected path → its exact -tf name<br/>(file or dir form) + every -tf name it's<br/>a '/'-prefix of (descendants) — built from<br/>the SAME name list gate D already validated,<br/>never a second '-tf' call"]
@@ -484,6 +497,19 @@ flowchart TD
 ```
 
 **What this catches — the confirmed exploit, and one new finding:**
+- **Added 2026-07-18 (doc-only, found during a documentation audit — no code gap):** the
+  whole-archive compression-bomb decision (`Bomb` node, `TarSandboxedService.cs:225-256`, T-F94)
+  had never been drawn here despite sitting directly inside this diagram's own declared source
+  function, between gate G and `PreDir`. It runs unconditionally after the pre-scan passes,
+  independent of `SelectedEntryPaths` (node G2) — the same "validate the whole archive regardless
+  of what subset gets extracted" principle gates D–G already follow.
+- **Not drawn here, by the same precedent diagram 3 already established:** T-F113's proactive
+  RAR-encryption rejection (`TarSandboxedService.ExtractAsync`'s outer per-archive loop, not
+  `ExtractSingleArchiveAsync`) and its reactive `IsLikelyEncryptionFailure` reclassification sit
+  outside this diagram's declared scope, the same way diagram 3 excludes `ZipArchiveService.
+  ExtractAsync`'s own outer-loop `IsEncryptedZip`/`IsZipFile` gates. Flagged here per the Ground
+  Truth Rule rather than silently added or silently ignored — if a future maintainer decides the
+  outer-loop exclusion should end, both diagrams need the same call, not just this one.
 - **Gate G is the load-bearing check.** It is the only thing standing between this pipeline and
   the reproduced symlink-escape exploit in `DECISIONS.md`'s T-F49 entry (a `link -> ..` symlink
   entry followed by `link/escaped.txt`, which made raw tar.exe write one directory level above

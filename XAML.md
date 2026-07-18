@@ -3,12 +3,11 @@
 > **Historical note:** This file originally contained the bootstrap skeleton for MainWindow.
 > The UI is now fully implemented. This file describes the current actual structure.
 
-> **Staleness note (2026-07-16):** the row diagram below predates T-F05's archive-browser mode
-> (a second Row 1/Row 3 sibling `Grid` pair toggled by `IsBrowsingArchiveVisibility`), T-F06's
-> "Ask" conflict item, the CRC-32 column, and the actual current 8-row `Grid` (this doc still
-> shows 7). Only the Format combobox line below (T-F105 Phase B) was added/verified this session
-> — the rest was not re-verified against `MainWindow.xaml` and should not be trusted as current
-> without checking the real file first, per this project's own "verify docs against files" lesson.
+> **Last verified against `src/Archiver.App/MainWindow.xaml` directly, 2026-07-18** (full
+> documentation audit) — the tree below reflects the real 8-row `Grid`, not an earlier 7-row
+> draft. If you touch `MainWindow.xaml`'s row structure, re-verify this section the same way
+> (read the file, don't pattern-match the old tree) per `DIAGRAMS.md`'s Ground Truth Rule, which
+> applies just as much to this file.
 
 ---
 
@@ -16,48 +15,79 @@
 
 ```
 Window
-└── Grid (RowDefinitions="Auto,*,Auto,Auto,Auto,Auto,Auto" Padding="16" RowSpacing="12")
+└── Grid (RowDefinitions="Auto,* MinHeight=140,Auto,Auto,Auto,Auto,Auto,Auto" Padding="16" RowSpacing="12")
+    │   — 8 rows. Row 1's MinHeight lives on the RowDefinition itself, not a child control
+    │     (T-F106 — a child's own MinHeight does not force a Star row to grow).
     │
-    ├── [tb:TaskbarIcon] — system tray (not in grid flow, Grid.RowSpan="7")
+    ├── [tb:TaskbarIcon] — system tray (not in grid flow)
     │
-    ├── Row 0: StackPanel (Horizontal) — Add files / Add folder buttons
+    ├── Row 0 (pending mode): Grid (Auto,Auto,*,Auto,Auto) — Add Files / Add Folder / (spacer) /
+    │       Hash / About buttons. Visibility=IsPendingListVisibility.
+    ├── Row 0 (browse mode): Grid (*,Auto) — only an About button, right-aligned.
+    │       Visibility=IsBrowsingArchiveVisibility. Info/Close were both removed from here
+    │       (design review 2026-07-13; see notes below) — do not assume they still exist.
     │
-    ├── Row 1: Grid (RowDefinitions="Auto,*") — File table
-    │   ├── Row 0: Border — column header (Name / Type / Size / Modified)
-    │   │           sortable buttons, Background=SubtleFillColorSecondaryBrush
-    │   └── Row 1: Grid — body
-    │       ├── ListView (AllowDrop, DragOver, Drop handlers)
-    │       │   └── DataTemplate → Grid (4 columns) + ContextFlyout "Remove"
-    │       └── StackPanel (overlay, IsHitTestVisible=False)
-    │               empty-state hint, Visibility=IsFileListEmptyVisibility
+    ├── Row 1 (pending mode): Grid (RowDefinitions="Auto,*") — File table.
+    │       Visibility=IsPendingListVisibility.
+    │   ├── Header: Border → Grid (*,80,100,90,140) — Name/Type/Size/Crc/Modified,
+    │   │       each a sortable Button (SortByCommand), Background=SubtleFillColorSecondaryBrush
+    │   └── Body: Grid — ListView (AllowDrop/DragOver/Drop/DoubleTapped→PendingList_DoubleTapped)
+    │       │       ItemTemplate: Grid (*,80,100,90,140) — Name/Type/Size/Crc32Display/
+    │       │       ModifiedDisplay TextBlocks + ContextFlyout "Remove"
+    │       └── StackPanel overlay (IsHitTestVisible=False) — empty-state hint,
+    │               Visibility=IsFileListEmptyVisibility
     │
-    ├── Row 2: Grid (3 columns) — Destination path
-    │   ├── TextBlock x:Uid="DestinationLabel"
-    │   ├── TextBox (IsReadOnly, bound to DestinationPath)
-    │   └── Button "..."
+    ├── Row 1 (browse mode): Grid (RowDefinitions="Auto,Auto,*") — Archive Browser.
+    │       Visibility=IsBrowsingArchiveVisibility.
+    │   ├── Grid (Auto,*) — Up button (NavigateUpCommand, T-F107 — climbs past the archive root
+    │   │       into the real filesystem, never exits the browser) + BreadcrumbBar
+    │   ├── Header: Border → Grid (Auto,*,100,100,90,140) — icon column (T-F110) has no header
+    │   │       text, then Name/Size/Packed/Crc/Modified TextBlocks (not sortable buttons here,
+    │   │       unlike the pending-mode header)
+    │   └── ListView (SelectionMode=Multiple, VirtualizingStackPanel, SelectionChanged +
+    │           DoubleTapped→ArchiveBrowserList_DoubleTapped)
+    │       ItemTemplate: Grid (Auto,*,100,100,90,140) — FontIcon(Icon)/Name/SizeDisplay/
+    │       CompressedSizeDisplay/CrcDisplay/ModifiedDisplay
     │
-    ├── Row 3: Grid (3 columns) — Action buttons
-    │   ├── Button x:Uid="ArchiveButton" (AccentButtonStyle)
-    │   ├── Button x:Uid="ExtractButton"
-    │   └── Button x:Uid="ClearButton"
+    ├── Row 2 (shared, both modes): Grid (Auto,Auto,*,Auto) — Destination path.
+    │       DestinationLabel, an Up button (NavigateDestinationUpCommand — real-filesystem
+    │       parent-folder navigation, disabled at a drive root; a DIFFERENT command from Row 1
+    │       browse mode's Up button despite the identical glyph — don't assume they're the same
+    │       control), read-only TextBox bound to DestinationPath, "..." browse Button.
     │
-    ├── Row 4: StackPanel — Archive options
-    │   ├── RadioButtons: Mode (One archive / Separate archives)
-    │   ├── Grid: Name field (TextBox, disabled in SeparateArchives mode)
-    │   ├── StackPanel: Format ComboBox (Zip/Tar/TarGz/TarBz2/TarXz/TarZst/TarLzma — T-F105)
-    │   └── StackPanel: Compression ComboBox (Fast/Normal/Best/None; IsEnabled greys out only
-    │           when plain Tar is selected — IsCompressionLevelEnabled, T-F105)
+    ├── Row 3 (pending mode): Grid (*,*,Auto) — Archive/Extract/Clear buttons.
+    │       Visibility=IsPendingListVisibility.
+    ├── Row 3 (browse mode): Grid (*,*) — Extract Selected / Extract All buttons, deliberately
+    │       anchored here (not moved to Row 0) since they consume Row 2/6's destination/conflict
+    │       options below them. Visibility=IsBrowsingArchiveVisibility.
     │
-    ├── Row 5: StackPanel — Shared options + checkboxes
-    │   ├── StackPanel: "If file exists" ComboBox (Overwrite/Skip/Rename)
-    │   ├── CheckBox x:Uid="OpenDestinationCheck"
-    │   ├── CheckBox x:Uid="DeleteSourceCheck"
-    │   └── CheckBox x:Uid="DeleteArchiveCheck"
+    ├── Row 4: TextBlock — Operation Outcome subtitle. Text=OperationOutcomeText,
+    │       Visibility=OperationOutcomeVisibility (= !IsBrowsingArchive && FileItems.Count>0).
     │
-    └── Row 6: Grid (RowDefinitions="Auto,Auto") — Status bar
-        ├── ProgressBar (Value, IsIndeterminate, Visibility=IsOperationRunning)
-        └── TextBlock (StatusMessage, Opacity=0.7, FontSize=12)
+    ├── Row 5: one Grid (not per-row StackPanels, so column 0's Auto width aligns across every
+    │       row regardless of locale string length — see "No IsSharedSizeScope" below), 4 rows —
+    │       Mode (RadioButtons: One archive / Separate archives), Name (TextBox, disabled in
+    │       SeparateArchives mode), Format (ComboBox — Zip + 6 tar variants, T-F105), Compression
+    │       (ComboBox; IsCompressionLevelEnabled greys it out only when plain Tar is selected).
+    │
+    ├── Row 6 (shared, both modes): StackPanel — "If file exists" ComboBox with 4 items
+    │       (Overwrite/Skip/Rename/**Ask**, T-F06 — not 3), OpenDestinationCheck, and a single
+    │       **DeleteAfterOperationCheck** (the old separate DeleteSourceCheck/DeleteArchiveCheck
+    │       were consolidated into one checkbox — do not document them as two).
+    │
+    └── Row 7: Grid (RowDefinitions="Auto,Auto") — Status bar.
+        ├── Grid (*,Auto) — ProgressBar (Value/IsIndeterminate/Visibility=IsOperationRunning) +
+        │       a Cancel Button (same row, same Visibility condition — easy to miss since it
+        │       wasn't in earlier drafts of this doc)
+        └── TextBlock (StatusMessage, Opacity=0.7, FontSize=12, TextTrimming=CharacterEllipsis)
 ```
+
+**Two distinct "Up" buttons, easy to conflate:** Row 1 browse mode's Up button
+(`NavigateUpCommand`) climbs *inside* the archive/real-filesystem browse stack (T-F98/T-F107).
+Row 2's Up button (`NavigateDestinationUpCommand`) walks the chosen **destination** folder up one
+level via `Path.GetDirectoryName`. Both use the identical Segoe MDL2 `&#xE74A;` glyph and near-
+identical markup, but they bind to different commands with different `CanExecute` gates — a future
+edit to one must not assume it covers the other.
 
 ---
 
@@ -113,12 +143,17 @@ arithmetic — a rough sibling-row height estimate undershot the real tuned valu
 ```xml
 xmlns:tb="using:H.NotifyIcon"
 
-<tb:TaskbarIcon ToolTipText="Pakko" IconSource="Assets/Square44x44Logo.ico">
+<!-- Real markup binds Command, not Click — TrayOpenCommand/TrayAboutCommand/TrayExitCommand/
+     TrayLeftClickCommand are RelayCommand/AsyncRelayCommand properties on MainWindow itself
+     (constructed before InitializeComponent, see ARCHITECTURE.md's DI section), not code-behind
+     event handlers. LeftClickCommand toggles the window via AppWindow.IsVisible/Hide/Activate. -->
+<tb:TaskbarIcon ToolTipText="Pakko" IconSource="Assets/Square44x44Logo.ico"
+                LeftClickCommand="{x:Bind TrayLeftClickCommand}">
     <tb:TaskbarIcon.ContextFlyout>   <!-- NOT ContextMenu — that's 2.4+ -->
         <MenuFlyout>
-            <MenuFlyoutItem Text="Open Pakko" Click="TrayOpen_Click"/>
-            <MenuFlyoutSeparator/>
-            <MenuFlyoutItem Text="Exit" Click="TrayExit_Click"/>
+            <MenuFlyoutItem x:Uid="TrayOpenMenuItem" Command="{x:Bind TrayOpenCommand}"/>
+            <MenuFlyoutItem x:Uid="TrayAboutMenuItem" Command="{x:Bind TrayAboutCommand}"/>
+            <MenuFlyoutItem x:Uid="TrayExitMenuItem" Command="{x:Bind TrayExitCommand}"/>
         </MenuFlyout>
     </tb:TaskbarIcon.ContextFlyout>
 </tb:TaskbarIcon>

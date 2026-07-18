@@ -317,6 +317,16 @@ failure — so a blocked/misconfigured sandbox would have crashed instead of yie
   C++ `Archiver.ShellExtension.Tests` (Google Test,
   68/68 — was 59, +9 from T-F105 Phase C's `BuildArchiveArgs`/`BuildAddToArchiveTitle` `.tar`
   cases) run separately, not covered by `dotnet test`
+- **Current true total (2026-07-18, after T-F115's localization pass and T-F09/T-F116's new
+  `Archiver.CLI` project): 594 .NET tests** via
+  `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` — 312 Archiver.Core.Tests,
+  5 Archiver.Core.PerformanceTests, 46 Archiver.Shell.Tests (T-F115's flat-extract/localization
+  cases), 55 Archiver.App.Core.Tests, 55 Archiver.Core.IntegrationTests, and a new
+  121 Archiver.CLI.Tests (parser/mapper/help-text/formatter unit tests plus the `Subprocess/`
+  layer, T-F09/T-F116). C++ `Archiver.ShellExtension.Tests`: **85/85** (was 68, +17 from
+  T-F115's `LocalizationTests.cpp` plus new `ShellExtUtilsTests`/`ShellArgumentParser` cases).
+  Don't trust the 468/316/414/68 figures above as current — this bullet supersedes them; run
+  `dotnet test` (and the built `Archiver.ShellExtension.Tests.exe`) for ground truth either way.
 - **T-F35 (`[~]` implementation complete, on-device verification pending, 2026-07-18)** —
   `ZipArchiveService.ArchiveAsync`'s `SingleArchive` mode gates on file count
   (`ParallelPipelineFileCountThreshold = 64`): below it, archiving is completely unchanged

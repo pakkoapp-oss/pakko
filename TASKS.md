@@ -629,6 +629,103 @@ for the same reason (also PATH-shim-based, no admin rights needed) but lower pri
 
 ---
 
+### T-F122 — GitHub Actions CI: build MSIX + `pakko.exe` automatically
+- [ ] **Status:** future. Raised 2026-07-18: the repo has no `.github/workflows/` content at all
+      today (confirmed empty) — every build (`Deploy.ps1` for the MSIX, `Publish-Cli.ps1` for the
+      CLI) is a manual, local, developer-machine action. User wants GitHub itself to build both
+      artifacts on every push/release, starting with the existing local self-signed dev cert
+      (`Setup-DevCert.ps1`'s `CN=Pakko Dev`, stored as a GitHub Actions secret instead of only on
+      one machine), then swapping to a real signing identity once T-F10 (SignPath Foundation,
+      Phase 1) actually lands — this task is the CI/build-automation piece, T-F10 owns which
+      certificate is used and stays the single source of truth for signing strategy; don't
+      duplicate its cert-comparison table here.
+- **Depends on:** none to start (self-signed interim). **Feeds into:** T-F10 Phase 1 (swaps the
+      secret this workflow uses), overlaps with T-F120 (CLI GitHub Releases publication — this
+      task's CLI build job can supersede T-F120's manual attach step if scoped to also publish to
+      a Release, a decision to make during implementation, not assumed here)
+
+**Known complexity to research before implementing, not assumed away:**
+- [ ] Confirm `windows-latest` GitHub-hosted runners actually have the Windows App SDK / WinUI 3
+      MSBuild workload preinstalled, or need an explicit setup step (`Setup-VSSDK`-style action or
+      a `vswhere`/`Add-AppxPackage` bootstrap) — `CONTRIBUTING.md`/`CLAUDE.md` currently say
+      `Archiver.App` "must be built from Visual Studio 2022," which may or may not hold on a bare
+      hosted runner; verify empirically, don't assume either way
+- [ ] `Archiver.ShellExtension` (C++ COM DLL) is built via direct `MSBuild.exe` on the `.vcxproj`
+      with an explicit `/p:SolutionDir`, never through the `.sln` — confirm the hosted runner's
+      MSBuild + C++ workload can do this unchanged, or document what's missing
+- [ ] Storing `PakkoDev.cer`/its `.pfx`+password as a GitHub Actions secret is a new supply-chain
+      surface (a compromised repo/org secret could sign a malicious build) — flag this explicitly
+      in `SECURITY.md` once implemented, per that file's canonical ownership of supply-chain
+      rationale (this task may only *propose* the `SECURITY.md` wording — CLAUDE.md requires
+      separate explicit confirmation before actually editing `SECURITY.md`)
+- [ ] Decide artifact retention/publication: workflow artifacts only (every run), a GitHub Release
+      (only on tag push), or both — and whether this replaces or complements T-F120's manual step
+
+**Acceptance criteria:**
+- [ ] `.github/workflows/build.yml` (or similarly named) triggered at minimum on push to `main`
+      and on version tags, builds both the MSIX (`Archiver.App`, signed with the interim
+      self-signed cert from a GitHub secret) and `pakko.exe` for both `win-x64`/`win-arm64` (via
+      the existing `scripts/Publish-Cli.ps1`, unsigned or interim-signed to match)
+- [ ] `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` runs as a required job before any
+      build/publish job, so a red test suite blocks a published artifact
+      `Archiver.ShellExtension.Tests.exe` runs too if the runner supports it (see research bullet
+      above) — document if it has to be skipped in CI for a real, stated reason
+- [ ] Built artifacts (MSIX + both CLI zips + `SHA256SUMS`) uploaded as workflow artifacts at
+      minimum; GitHub Release attachment decided per the bullet above
+- [ ] `scripts/README.md` updated to document the new CI path alongside the existing manual
+      `Deploy.ps1`/`Publish-Cli.ps1` instructions (manual path stays — CI doesn't replace local dev
+      builds)
+- [ ] A clear, findable TODO/comment in the workflow file (and a note in this task) marking exactly
+      where the self-signed cert gets swapped for SignPath once T-F10 Phase 1 completes — so this
+      isn't forgotten as a silent permanent state
+- [ ] `Get-AuthenticodeSignature`/MSIX install verified against a CI-produced artifact at least
+      once (download a real workflow run's output, install it locally) — not just "the job went
+      green"
+
+---
+
+### T-F123 — Archive Browser preview/nested-drill-down bypasses `IsBusy` entirely
+- [ ] **Status:** future — real bug, found 2026-07-18 during a full documentation audit while
+      re-verifying `DIAGRAMS.md`'s diagram 2 (`MainViewModel` operation lifecycle) against current
+      source, not while writing new code. `PreviewBrowserEntryAsync` (T-F97,
+      `src/Archiver.App/ViewModels/MainViewModel.cs:1080-1121`) and
+      `NavigateIntoNestedArchiveAsync` (T-F98, `MainViewModel.cs:765-829`) both call
+      `_extractionRouter.ExtractAsync(...)` directly — the same call diagram 2's whole
+      `Idle→Busy→...→Idle` state machine exists to guard — but neither goes through
+      `ArchiveCommand`/`ExtractCommand`'s `IsBusy`/`CanExecute` gating at all. Both are invoked
+      straight from a raw XAML `DoubleTapped` handler (`ArchiveBrowserList_DoubleTapped`,
+      `src/Archiver.App/MainWindow.xaml.cs:192-233`) with no busy-state check anywhere in the path.
+- **Depends on:** none. **Related:** T-F97 (preview), T-F98 (nested drill-down) — both introduced
+      the affected methods; this task doesn't reopen either's own scope, just closes the gating gap
+      neither one added.
+
+**Concrete failure scenario:** a user starts a real Archive/Extract operation (`IsBusy=true`,
+`_cts` live), then — while it's still running — double-clicks a previewable file or a nested
+archive inside the Archive Browser. Both handlers fire a second, fully independent
+`ExtractAsync` call against the same `TarSandboxedService`/quarantine machinery the first
+operation is already using, with no check that one is already in flight. Whether this actually
+corrupts anything (two `TarSandboxScope`s can each get their own quarantine GUID subfolder, so
+outright data corruption isn't certain) or merely causes confusing double-progress/resource
+contention needs to be established empirically as part of fixing this, not assumed either way.
+
+**Acceptance criteria:**
+- [ ] Reproduce the concurrent-call scenario on a real build (start a real multi-second
+      Archive/Extract, double-click a previewable entry or nested archive mid-operation) and record
+      what actually happens today, before deciding the fix shape
+- [ ] Decide and implement a gate: either disable preview/drill-down interaction while `IsBusy`
+      (simplest, matches how every other action-triggering control already behaves), or make them
+      properly participate in the same busy/cancellation state machine diagram 2 describes — pick
+      one, don't leave both paths live
+- [ ] `DIAGRAMS.md`'s diagram 2 updated to reflect the fix (new transition/guard, or an explicit
+      note that these two paths are now included in the `IsBusy` gate) — this is the diagram the
+      original finding came from, so it must end up accurate once the code changes
+- [ ] Test coverage in `Archiver.App` (or wherever `MainViewModel`'s command gating is currently
+      tested) for the new guard
+- [ ] On-device verification per this project's workflow rule (UI/interaction behavior, not
+      graduated on `dotnet test` alone)
+
+---
+
 ### T-F09 (original, pre-2026-07-12 scope, superseded by the expanded entry above — kept per the
 "never silently deprecate" rule)
 

@@ -131,8 +131,8 @@ filesystem), TAR creation via `tar.exe`, and the AppContainer sandbox are all do
   manual extract, climb past the archive root into the real filesystem
 - ✅ RAR/7z/tar-family extraction runs inside an AppContainer sandbox — quarantine staging, ACL'd
   output directory, Job Object process limits, no network capability
-- ✅ 414/414 .NET tests pass (`dotnet test --filter "Category!=Slow"`) — a separate C++ Google
-  Test suite covers the `Archiver.ShellExtension` COM DLL
+- ✅ 594/594 .NET tests pass (`dotnet test --filter "Category!=Slow&Category!=VeryLarge"`) — a
+  separate C++ Google Test suite covers the `Archiver.ShellExtension` COM DLL
 
 Microsoft Store release planned once Group Policy/ADMX support (T-F51) is done. v1.1–v1.4 are
 GitHub-only releases for early testers.

@@ -44,7 +44,7 @@ is a teaser only, per `CLAUDE.md`'s Documentation Map).
 | Format | Status | Method |
 |--------|--------|--------|
 | ZIP | ✅ v1.0 (read+write) | `System.IO.Compression.ZipFile` |
-| TAR/GZ/BZ2/XZ/ZST/LZMA | ✅ v1.3 (read), 🔜 v1.4 (write, T-F105) | `tar.exe` (Windows built-in) |
+| TAR/GZ/BZ2/XZ/ZST/LZMA | ✅ v1.3 (read), ✅ v1.4 (write, T-F105) | `tar.exe` (Windows built-in) |
 | RAR | ✅ v1.3 (read only — no libarchive writer exists) | `tar.exe` (Windows built-in) |
 | 7z | ✅ v1.3 (read only — no libarchive writer exists) | `tar.exe` (Windows built-in) |
 | Encrypted archives | ❌ Out of scope | — |
@@ -135,11 +135,14 @@ Errors must **never crash the app**. Each failed item should be reported individ
 
 Pakko v1.2 adds a native Windows 11 context menu via `IExplorerCommand`:
 
-- Registered via MSIX AppExtension — appears in modern context menu (no "Show more options" click required)
-- **Commands available on ZIP files:** Extract here · Extract to `<folder_name>\` · Open with Pakko
-- **Commands available on any files/folders:** Archive with Pakko
+- Registered via packaged COM (`com:SurrogateServer` in `Package.appxmanifest`) — appears in the
+  modern context menu (no "Show more options" click required)
+- **Commands available on a supported archive:** Extract… (dialog) · Extract here (flat) · Extract
+  to current folder (intelligently) · Extract to `<folder_name>\` · Test archive
+- **Commands available on any files/folders:** Compress… (dialog) · Add to `<name>.zip` · Add to
+  `<name>.tar`
 
-Implementation: `Archiver.ShellExtension` project, COM-based `IExplorerCommand`, registered in `Package.appxmanifest`.
+Implementation: `Archiver.ShellExtension` project, COM-based `IExplorerCommand`, registered in `Package.appxmanifest`. See `DIAGRAMS.md`'s diagram 1 for the full sequence and every command's exact enable/visibility condition.
 
 ---
 
@@ -180,7 +183,10 @@ Implementation: `FileStream` opened with ADS path `file.txt:Zone.Identifier`.
 ### Process Isolation
 
 - v1.3: `tar.exe` runs at Medium IL (inherits from Pakko process)
-- v1.4: restricted token via P/Invoke (`CreateRestrictedToken`, `SetNamedSecurityInfo`) — Low IL quarantine directory
+- v1.4: AppContainer sandbox (T-F52) — `CreateAppContainerProfile` +
+  `PROC_THREAD_ATTRIBUTE_SECURITY_CAPABILITIES`, own Job Object, ACL'd quarantine directory, no
+  network capability. Chosen over a Low-IL restricted token — see `SECURITY.md`'s canonical
+  "Process Isolation Levels" rationale for why; don't restate the comparison here.
 
 ### Quarantine Pattern
 
@@ -194,12 +200,14 @@ Registry path: `HKLM\Software\Policies\Pakko\`
 
 | Key | Type | Effect |
 |-----|------|--------|
-| `EnforceMOTW` | DWORD | Force MOTW propagation even if user disables |
+| `EnforceMOTW` | DWORD | Controls MOTW propagation (`0`=disabled, `1`=all files, `2`=unsafe extensions only) |
 | `AllowedFormats` | multi-string | Whitelist of allowed formats |
-| `StrictZipBombMode` | DWORD | Lower compression ratio threshold |
-| `DisableTarExtraction` | DWORD | Block all tar.exe extraction |
+| `BlockedFormats` | multi-string | Blocklist — takes precedence over `AllowedFormats` |
+| `DisableTarExtraction` | DWORD | Block all tar.exe extraction and creation, hide those formats in the UI |
 
-ADMX/ADML template provided for enterprise Group Policy deployment.
+ADMX/ADML template provided for enterprise Group Policy deployment. `POLICIES.md` is the canonical
+spec for this table (full value vocabulary, defaults, interaction rules) — this section is a
+teaser only; don't let it drift from `POLICIES.md` again.
 
 ---
 

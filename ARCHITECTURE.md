@@ -1,6 +1,7 @@
 # ARCHITECTURE.md — Architecture and Layer Contracts
 
-> **Current as of v1.0.** All signatures reflect actual implemented code.
+> **Current as of v1.4/v1.5 (last synced 2026-07-18).** All signatures reflect actual implemented
+> code, verified by reading it — see `CLAUDE.md`'s Documentation Map for when to update this file.
 
 ---
 
@@ -56,53 +57,89 @@ Windows.ApplicationModel.Resources, or any UI assembly.
 
 ```
 src/
-├── Archiver.Core/
+├── Archiver.Core/              ← net8.0, zero UI deps, zero NuGet packages
 │   ├── Interfaces/
-│   │   └── IArchiveService.cs
+│   │   ├── IArchiveService.cs
+│   │   ├── IArchiveCreationRouter.cs   ← T-F105: routes ArchiveAsync by ArchiveContainerFormat
+│   │   ├── IArchiveListingRouter.cs    ← T-F05: routes ListEntriesAsync by detected format
+│   │   ├── IExtractionRouter.cs        ← T-F85: routes ExtractAsync/TestAsync by detected format
+│   │   └── ITarService.cs
 │   ├── Services/
-│   │   └── ZipArchiveService.cs
+│   │   ├── ZipArchiveService.cs
+│   │   ├── TarSandboxedService.cs      ← T-F52: replaced TarProcessService outright, no fallback
+│   │   ├── ArchiveCreationRouter.cs / ArchiveListingRouter.cs / ExtractionRouter.cs
+│   │   ├── ArchiveEntrySecurity.cs     ← ADS/reserved-name/reparse-point/bomb checks, shared
+│   │   ├── ArchiveFormatDetector.cs    ← magic-byte sniffing, not extension-based
+│   │   ├── ArchiveNaming.cs            ← compound-extension-aware naming (T-F103)
+│   │   ├── ConflictResolver.cs         ← T-F06: resolves ConflictBehavior.Ask
+│   │   ├── PreviewPolicy.cs            ← T-F97/T-F109: safe-preview allowlist
+│   │   ├── TarVersionParser.cs
+│   │   ├── Sandbox/                    ← T-F52: AppContainer subsystem for tar.exe
+│   │   │   ├── AppContainerProfile.cs / QuarantineAcl.cs / QuarantineStaging.cs
+│   │   │   ├── SandboxJobObject.cs / SandboxedProcessLauncher.cs / SandboxHandles.cs
+│   │   │   ├── SecurityCapabilitiesAttributeList.cs
+│   │   │   └── TarSandboxScope.cs / TarSignatureVerifier.cs
+│   │   └── Zip/                        ← T-F35: parallel SingleArchive compression pipeline
+│   │       ├── WorkItemEnumerator.cs / FileWorkItem.cs / WorkResult.cs
+│   │       ├── ParallelSingleArchiveWriter.cs
+│   │       └── ZipEntryWriter.cs / ZipEntryCompressor.cs / DosDateTime.cs
+│   ├── IO/
+│   │   ├── Crc32.cs                    ← public (T-F110), reused by pending-list CRC display too
+│   │   └── ProgressStream.cs           ← T-F16: byte-accurate IProgress<int> wrapper
 │   └── Models/
-│       ├── ArchiveOptions.cs
-│       ├── ExtractOptions.cs
-│       ├── ArchiveResult.cs
-│       ├── ArchiveError.cs
-│       └── SkippedFile.cs
+│       ├── ArchiveOptions.cs / ExtractOptions.cs / ArchiveResult.cs
+│       ├── ArchiveError.cs / SkippedFile.cs / ProgressReport.cs
+│       ├── ArchiveFormat.cs / ArchiveContainerFormat.cs   ← detection vs. creation enums
+│       ├── ArchiveEntryInfo.cs / ArchiveListResult.cs     ← T-F05: browse-mode listing
+│       ├── ConflictInfo.cs / ConflictDecision.cs          ← T-F06
+│       ├── CompressionBombWarning.cs                      ← T-F94
+│       └── TarCapabilities.cs
 │
-├── Archiver.App/              ← WinUI 3 main app; packages all three EXEs via MSIX
+├── Archiver.App/               ← WinUI 3 main app; packages all satellite EXEs via MSIX
 │   ├── MainWindow.xaml / .cs
+│   ├── App.xaml.cs             ← ConfigureServices (DI), OnLaunched/OnActivated (T-F83/T-F100)
 │   ├── ViewModels/
 │   │   └── MainViewModel.cs
 │   ├── Services/
-│   │   ├── IDialogService.cs
-│   │   ├── DialogService.cs
-│   │   ├── ILogService.cs
-│   │   └── LogService.cs
+│   │   ├── IDialogService.cs / DialogService.cs
+│   │   └── ILogService.cs / LogService.cs
 │   ├── Models/
-│   │   └── FileItem.cs
+│   │   └── FileItem.cs         ← ObservableObject, [ObservableProperty]-generated (CommunityToolkit MVVM)
 │   ├── Converters/
 │   │   └── BoolToVisibilityConverter.cs
-│   └── Strings/
-│       └── en-US/
-│           └── Resources.resw
+│   └── Strings/                ← 37 locales (T-F91), en-US is the fallback
+│       └── en-US/Resources.resw
 │
-├── Archiver.Shell/            ← shell extension entry point; net8.0-windows; WinExe; no WinUI
+├── Archiver.App.Core/          ← net8.0, WinUI-free helpers for Archiver.App (T-F05), unit-testable
+│   │                              without a WinUI test host
+│   ├── ArchiveEntryViewModel.cs / ArchiveTreeIndex.cs   ← Archive Browser tree/breadcrumb building
+│   ├── FileSystemBrowser.cs                             ← T-F107: real-filesystem climb past archive root
+│   ├── FileActivationRouter.cs                          ← T-F100: file/protocol activation routing
+│   ├── NestedArchiveCache.cs / NestedArchivePolicy.cs   ← T-F98: nested-archive drill-down
+│   ├── PreviewCache.cs                                  ← T-F97: preview extraction cache
+│   └── DeferredActionGate.cs                            ← T-F106: defers activation past first layout pass
+│
+├── Archiver.Shell/             ← shell-triggered operation entry point; net8.0-windows; WinExe; no WinUI
 │   ├── Program.cs
 │   ├── ShellArgumentParser.cs
-│   └── NativeProgressDialog.cs   ← IProgressDialog COM interop (in-process progress UI)
+│   ├── ShellResultPresenter.cs         ← T-F68: classifies ArchiveResult into Failed/SkippedOnly/Success
+│   └── NativeProgressDialog.cs         ← IProgressDialog COM interop (in-process progress UI)
 │
-├── Archiver.CLI/              ← standalone console frontend (T-F09); net8.0; Exe (real console,
-│   │                             not WinExe); no WinUI; ships independently of the MSIX
+├── Archiver.CLI/                ← standalone console frontend (T-F09); net8.0; Exe (real console,
+│   │                                not WinExe); no WinUI; built as pakko.exe; ships independently
+│   │                                of the MSIX (scripts/Publish-Cli.ps1)
 │   ├── Program.cs
 │   ├── CliArgumentParser.cs
-│   ├── CliCompressionLevelMapper.cs
-│   ├── CliHelpText.cs
-│   └── CliEntryFormatter.cs
+│   ├── CliStreamStaging.cs             ← T-F116: -si/-so buffer-then-proceed staging, zero Core changes
+│   ├── CliCompressionLevelMapper.cs / CliEntryFormatter.cs / CliHelpText.cs
 │
-└── Archiver.ShellExtension/   ← IExplorerCommand COM DLL (T-F61); C++/WRL, x64+ARM64, static CRT
-    ├── dllmain.cpp                    ← DllGetClassObject, DllCanUnloadNow
-    ├── ExplorerCommands.cpp/.h        ← PakkoRootCommand, SubCommandEnum, ExtractHereCommand,
-    │                                    ExtractFolderCommand, ArchiveCommand
-    └── ShellExtUtils.cpp/.h           ← COM-free logic, unit-tested via Archiver.ShellExtension.Tests
+└── Archiver.ShellExtension/    ← IExplorerCommand COM DLL (T-F61); C++/WRL, x64+ARM64, static CRT
+    ├── dllmain.cpp                     ← DllGetClassObject, DllCanUnloadNow
+    ├── ExplorerCommands.cpp/.h         ← PakkoRootCommand, SubCommandEnum, and every leaf command
+    │                                     (ExtractDialog/ExtractHereFlat/ExtractHere/ExtractFolder/
+    │                                     CompressDialog/Archive/TarArchive/Test)
+    ├── ShellExtUtils.cpp/.h            ← COM-free logic, unit-tested via Archiver.ShellExtension.Tests
+    └── Localization.cpp/.h             ← T-F115: 37-locale context-menu string table
 ```
 
 ---
@@ -149,6 +186,13 @@ public sealed record ExtractOptions
     public IReadOnlyList<string> ArchivePaths { get; init; } = [];
     public string DestinationFolder { get; init; } = string.Empty;
     public ExtractMode Mode { get; init; } = ExtractMode.SeparateFolders;
+
+    // Overrides the per-archive subfolder name Mode.SeparateFolders would otherwise derive from
+    // the archive's own file name. Only meaningful when ArchivePaths has exactly one entry — used
+    // by Archiver.Shell for "always create a fresh named folder" behavior (see CLAUDE.md's hard
+    // constraint on ConflictBehavior.Rename vs. this field).
+    public string? SeparateFolderName { get; init; }
+
     public ConflictBehavior OnConflict { get; init; } = ConflictBehavior.Skip;
     public bool OpenDestinationFolder { get; init; } = false;
     public bool DeleteArchiveAfterExtraction { get; init; } = false;
@@ -158,6 +202,11 @@ public sealed record ExtractOptions
     // space to hold it. True proceeds with extraction, false declines. Null (default) auto-
     // declines — the safe behavior for callers that don't wire a callback (Archiver.Shell).
     public Func<CompressionBombWarning, Task<bool>>? ConfirmCompressionBombExtraction { get; init; }
+
+    // T-F05: non-null/non-empty restricts extraction to just these archive-internal entry paths
+    // instead of every entry — "Extract selected" from the Archive Browser. A selected directory
+    // path implies its full nested contents. Only meaningful with exactly one archive path.
+    public IReadOnlyList<string>? SelectedEntryPaths { get; init; }
 
     // T-F06: invoked once per conflicting entry when OnConflict == Ask. Same null-safe-default
     // (Skip) and delegate shape as ArchiveOptions.ResolveConflictAsync above.
@@ -191,7 +240,7 @@ public sealed record ConflictDecision
 // instance is constructed per ArchiveAsync/ExtractAsync call, before any loop, so "apply to all"
 // spans every archive/entry in that call. Wired into all four existing conflict-resolution call
 // sites (ZipArchiveService.ArchiveAsync's two modes, ZipArchiveService.ExtractAsync,
-// TarProcessService.ExtractAsync) — see DECISIONS.md's T-F06 entry and DIAGRAMS.md's diagrams 3/5.
+// TarSandboxedService.ExtractAsync) — see DECISIONS.md's T-F06 entry and DIAGRAMS.md's diagrams 3/5.
 internal sealed class ConflictResolver(
     ConflictBehavior configured,
     Func<ConflictInfo, Task<ConflictDecision>>? resolveConflictAsync)
@@ -291,6 +340,7 @@ public interface IDialogService
     Task<IReadOnlyList<string>> PickFoldersAsync();
     Task ShowOperationSummaryAsync(string operationName, ArchiveResult result);
     Task ShowAboutAsync();
+    Task ShowFileHashAsync();
 
     // T-F94: called from a thread-pool thread by the extractors — implementation must marshal
     // onto the window's DispatcherQueue before showing a ContentDialog. See DECISIONS.md's
@@ -299,6 +349,12 @@ public interface IDialogService
 
     // T-F06: same DispatcherQueue-marshaling requirement as ShowCompressionBombConfirmAsync above.
     Task<ConflictDecision> ShowConflictDialogAsync(ConflictInfo conflict);
+
+    // T-F97: opens a previewed/extracted file with the OS default handler. Process.Start
+    // (UseShellExecute:true), not StorageFile/Launcher — the latter silently fails for an
+    // arbitrary %TEMP% path even from this app's full-trust packaged identity (see DECISIONS.md's
+    // T-F97 entry).
+    Task<bool> OpenFileWithDefaultAppAsync(string filePath);
 }
 ```
 
@@ -479,17 +535,28 @@ disk-space risk that direct streaming never had. Insufficient space is reported 
 
 ```csharp
 // App.xaml.cs — ConfigureServices()
+services.AddSingleton<ILogService, LogService>();
 services.AddSingleton<IArchiveService, ZipArchiveService>();
 services.AddSingleton<IDialogService, DialogService>();
-services.AddSingleton<ILogService, LogService>();
+services.AddSingleton<ITarService, TarSandboxedService>();
+services.AddSingleton<TarCapabilities>(sp =>
+    sp.GetRequiredService<ITarService>().DetectCapabilitiesAsync().GetAwaiter().GetResult());
+services.AddSingleton<IExtractionRouter, ExtractionRouter>();
+services.AddSingleton<IArchiveListingRouter, ArchiveListingRouter>();
+services.AddSingleton<IArchiveCreationRouter, ArchiveCreationRouter>();
 services.AddTransient<MainViewModel>();
+// T-F48: TarCapabilities is force-resolved once right after BuildServiceProvider() — a
+// factory-registered singleton only runs on first resolution, and nothing else injects it eagerly.
 ```
 
 | Type | Lifetime | Reason |
 |------|----------|--------|
+| `LogService` | Singleton | Holds file path, lock object |
 | `ZipArchiveService` | Singleton | Stateless |
 | `DialogService` | Singleton | Holds window reference |
-| `LogService` | Singleton | Holds file path, lock object |
+| `TarSandboxedService` | Singleton | Stateless (per-call sandbox scope, not per-instance state) |
+| `TarCapabilities` | Singleton, factory-resolved | Probed once at startup (T-F48), never changes at runtime |
+| `ExtractionRouter` / `ArchiveListingRouter` / `ArchiveCreationRouter` | Singleton | Stateless — route by detected/requested format only |
 | `MainViewModel` | Transient | Fresh state per window |
 
 ### ViewModel Resolution
@@ -498,13 +565,45 @@ services.AddTransient<MainViewModel>();
 // MainWindow.xaml.cs
 public MainWindow()
 {
+    // Tray commands (TrayOpenCommand/TrayAboutCommand/TrayExitCommand/TrayLeftClickCommand/
+    // HashFilesCommand) are constructed here, before InitializeComponent() — omitted below.
     InitializeComponent();
     ViewModel = App.Services.GetRequiredService<MainViewModel>();
-    this.AppWindow.Resize(new Windows.Graphics.SizeInt32(800, 700));
-    this.AppWindow.Title = "Pakko";
-    // ... icon, tray setup
+
+    // 1100x780, floor 900x780 via OverlappedPresenter.PreferredMinimumWidth/Height — re-tuned
+    // twice by T-F106; see DECISIONS.md's T-F106 entry for the full before/after account. Not
+    // 800x700 — that size predates T-F105/T-F106 and could clamp the file table to zero height.
+    this.AppWindow.Resize(new Windows.Graphics.SizeInt32(1100, 780));
+    if (this.AppWindow.Presenter is Microsoft.UI.Windowing.OverlappedPresenter presenter)
+    {
+        presenter.PreferredMinimumWidth = 900;
+        presenter.PreferredMinimumHeight = 780;
+    }
+
+    // Title bar shows the running assembly's own file-write timestamp, not a static "Pakko" or a
+    // manually-bumped version — makes every on-device screenshot self-certifying proof a fresh
+    // Deploy.ps1 build is actually installed (see CLAUDE.md's "never trust build logs alone" note).
+    var buildTime = System.IO.File.GetLastWriteTime(
+        System.Reflection.Assembly.GetExecutingAssembly().Location);
+    this.AppWindow.Title = $"Pakko — build {buildTime:yyyy-MM-dd HH:mm:ss}";
+
+    this.AppWindow.SetIcon("Assets/Square44x44Logo.ico");
+    this.Activated += OnFirstActivated;
+    RootGrid.Loaded += RootGrid_Loaded;
+    this.Closed += (_, _) =>
+    {
+        TrayIcon.Dispose();
+        ActivationGate.Cancel();
+        PreviewCache.DeleteAll();      // T-F97
+        NestedArchiveCache.DeleteAll(); // T-F98
+    };
 }
 ```
+
+`ActivationGate` (`DeferredActionGate`, `Archiver.App.Core`) defers File/Protocol-activation
+mutations (`FileItems`, `IsBrowsingArchive`) until after `RootGrid`'s first `Loaded`/layout pass —
+mutating them synchronously right after `Activate()` realizes `ListView` containers against an
+incomplete layout, leaving rows permanently blank (T-F106).
 
 ### Rules
 
@@ -764,7 +863,7 @@ public interface IArchiveListingRouter
 }
 ```
 
-Implementation: `ArchiveListingRouter` in `Archiver.Core/Services/`. `TarProcessService.ListEntriesAsync`
+Implementation: `ArchiveListingRouter` in `Archiver.Core/Services/`. `TarSandboxedService.ListEntriesAsync`
 is built on the existing `RunTarAsync` primitive (`-tf` + `-tvf`), deliberately **not** reusing
 `ScanForUnsafeEntriesAsync` — listing must never be gated on the security pre-scan that only
 matters once bytes are about to be written to disk.
@@ -780,10 +879,12 @@ folder implies its full nested contents); `null` (default) is unaffected — eve
 extracts everything, as before. Rides through `ExtractionRouter`'s existing
 `options with { ArchivePaths = ... }` pattern for free — `ExtractionRouter.cs` itself needed zero
 changes. Both `ZipArchiveService.ExtractWithSmartFolderingAsync` and
-`TarProcessService.ExtractSingleArchiveAsync` implement the filtering; the tar side's
+`TarSandboxedService.ExtractSingleArchiveAsync` implement the filtering; the tar side's
 whole-archive pre-scan (T-F49) still runs **unconditionally** before the subset is ever computed
 — see `DECISIONS.md`'s T-F05 entry for the tar.exe selective-extraction spike this was verified
-against.
+against. (`TarSandboxedService` replaced `TarProcessService` outright in T-F52 — fail-closed, no
+unsandboxed fallback; every reference to `TarProcessService` elsewhere in this file describes
+pre-T-F52 history and is dated accordingly.)
 
 DI registration adds:
 
@@ -805,6 +906,12 @@ public sealed record ArchiveEntryViewModel
     public long CompressedSize { get; init; }
     public uint? Crc32 { get; init; }
     public DateTime? Modified { get; init; }
+
+    // T-F98: true only for a nested-archive row where drilling in would exceed
+    // NestedArchivePolicy.MaxDepth — the one case where double-clicking an archive entry does
+    // NOT transparently drill in. Drives the Icon property's View-vs-Hide glyph choice (T-F110).
+    public bool NestedDepthLimitReached { get; init; }
+
     // + ModifiedDisplay/SizeDisplay/CompressedSizeDisplay/CrcDisplay/Icon computed properties
 }
 
@@ -845,7 +952,7 @@ when that returns `null` (a drive root or an unrooted path).
 `MainWindow.xaml`) rather than a separate Info dialog; `IDialogService.ShowEntryInfoAsync` was
 removed the same day it shipped (design review 2026-07-13) once every field it showed had a
 table-column equivalent. Note `CompressedSizeDisplay`/`CrcDisplay` are both blank for every
-tar-routed format (RAR/7z/tar.*) — `TarProcessService`'s listing path never populates
+tar-routed format (RAR/7z/tar.*) — `TarSandboxedService`'s listing path never populates
 `CompressedSize`/`Crc32` (no per-entry concept for either in a tar-family archive) — so both
 columns only ever show a value for ZIP. `CrcDisplay` guards on `Crc32 is null`, not `<= 0` —
 unlike a size, `0` is a legitimate CRC-32 (an empty file), so it cannot double as a
@@ -1057,17 +1164,25 @@ executables, while `cmd /c "..."` does not, on any PowerShell version.
 
 ```csharp
 // Models/FileItem.cs (Archiver.App only)
-public sealed class FileItem
+// CommunityToolkit.Mvvm ObservableObject, not plain mutable auto-properties — Size/SizeBytes/
+// Crc32Display/Crc32 are all [ObservableProperty] source-generated fields (real property names
+// Size/SizeBytes/Crc32Display/Crc32, backing fields _size/_sizeBytes/_crc32Display/_crc32), so
+// LoadFolderSizeAsync/LoadCrc32Async's writes to them raise INotifyPropertyChanged for free.
+public sealed partial class FileItem : ObservableObject
 {
     public string FullPath { get; }
     public string Name { get; }
-    public string Type { get; }           // extension uppercase or "Folder"
-    public string Size { get; set; }      // "1.2 MB", "345 KB", "12 bytes"
-    public long SizeBytes { get; set; }
-    public string Crc32Display { get; set; } // "..." while computing, "?" on read error, hex once done, empty for folders
-    public uint? Crc32 { get; set; }
+    public string Type { get; }              // extension uppercase or "Folder"
     public DateTime Modified { get; }
-    public string ModifiedDisplay { get; } // "yyyy-MM-dd HH:mm"
+    public string ModifiedDisplay { get; }   // "yyyy-MM-dd HH:mm"
+
+    [ObservableProperty] private string _size = "...";       // "1.2 MB", "345 KB", "12 bytes"
+    [ObservableProperty] private long _sizeBytes = -1;
+    [ObservableProperty] private string _crc32Display = "";  // "..." while computing, "?" on read error, hex once done, empty for folders
+    [ObservableProperty] private uint? _crc32;
+
+    // Real constructor also starts LoadFolderSizeAsync (folders) or LoadCrc32Async (files) —
+    // both async, fire-and-forget, throttled via a shared static SemaphoreSlim(4) for CRC reads.
 }
 ```
 
