@@ -258,4 +258,21 @@
   <data name="ConflictDialogApplyToAllCheck" xml:space="preserve">
     <value>Aplicar a todos os conflitos restantes</value>
   </data>
+
+  <!-- About dialog -->
+  <data name="AboutDialogTitle" xml:space="preserve">
+    <value>Sobre o Pakko</value>
+  </data>
+  <data name="AboutTagline" xml:space="preserve">
+    <value>Compactador nativo e leve para Windows</value>
+  </data>
+  <data name="AboutLicense" xml:space="preserve">
+    <value>Licença: Apache 2.0</value>
+  </data>
+  <data name="AboutPrivacyLinkText" xml:space="preserve">
+    <value>Política de Privacidade</value>
+  </data>
+  <data name="AboutCloseButtonText" xml:space="preserve">
+    <value>Fechar</value>
+  </data>
 </root>

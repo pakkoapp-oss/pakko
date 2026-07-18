@@ -258,4 +258,21 @@
   <data name="ConflictDialogApplyToAllCheck" xml:space="preserve">
     <value>החל על כל שאר ההתנגשויות</value>
   </data>
+
+  <!-- About dialog -->
+  <data name="AboutDialogTitle" xml:space="preserve">
+    <value>אודות Pakko</value>
+  </data>
+  <data name="AboutTagline" xml:space="preserve">
+    <value>כלי ארכוב קליל וילידי ל-Windows</value>
+  </data>
+  <data name="AboutLicense" xml:space="preserve">
+    <value>רישיון: Apache 2.0</value>
+  </data>
+  <data name="AboutPrivacyLinkText" xml:space="preserve">
+    <value>מדיניות פרטיות</value>
+  </data>
+  <data name="AboutCloseButtonText" xml:space="preserve">
+    <value>סגור</value>
+  </data>
 </root>

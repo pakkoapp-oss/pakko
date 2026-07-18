@@ -258,4 +258,21 @@
   <data name="ConflictDialogApplyToAllCheck" xml:space="preserve">
     <value>Alkalmazás az összes hátralévő ütközésre</value>
   </data>
+
+  <!-- About dialog -->
+  <data name="AboutDialogTitle" xml:space="preserve">
+    <value>A Pakko névjegye</value>
+  </data>
+  <data name="AboutTagline" xml:space="preserve">
+    <value>Könnyűsúlyú natív Windows tömörítő</value>
+  </data>
+  <data name="AboutLicense" xml:space="preserve">
+    <value>Licenc: Apache 2.0</value>
+  </data>
+  <data name="AboutPrivacyLinkText" xml:space="preserve">
+    <value>Adatvédelmi irányelvek</value>
+  </data>
+  <data name="AboutCloseButtonText" xml:space="preserve">
+    <value>Bezárás</value>
+  </data>
 </root>

@@ -258,4 +258,21 @@
   <data name="ConflictDialogApplyToAllCheck" xml:space="preserve">
     <value>Kalan tüm çakışmalara uygula</value>
   </data>
+
+  <!-- About dialog -->
+  <data name="AboutDialogTitle" xml:space="preserve">
+    <value>Pakko Hakkında</value>
+  </data>
+  <data name="AboutTagline" xml:space="preserve">
+    <value>Hafif, yerel Windows arşivleyicisi</value>
+  </data>
+  <data name="AboutLicense" xml:space="preserve">
+    <value>Lisans: Apache 2.0</value>
+  </data>
+  <data name="AboutPrivacyLinkText" xml:space="preserve">
+    <value>Gizlilik Politikası</value>
+  </data>
+  <data name="AboutCloseButtonText" xml:space="preserve">
+    <value>Kapat</value>
+  </data>
 </root>

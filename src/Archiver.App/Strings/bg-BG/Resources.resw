@@ -258,4 +258,21 @@
   <data name="ConflictDialogApplyToAllCheck" xml:space="preserve">
     <value>Прилагане за всички оставащи конфликти</value>
   </data>
+
+  <!-- About dialog -->
+  <data name="AboutDialogTitle" xml:space="preserve">
+    <value>Относно Pakko</value>
+  </data>
+  <data name="AboutTagline" xml:space="preserve">
+    <value>Лек, роден Windows архиватор</value>
+  </data>
+  <data name="AboutLicense" xml:space="preserve">
+    <value>Лиценз: Apache 2.0</value>
+  </data>
+  <data name="AboutPrivacyLinkText" xml:space="preserve">
+    <value>Политика за поверителност</value>
+  </data>
+  <data name="AboutCloseButtonText" xml:space="preserve">
+    <value>Затвори</value>
+  </data>
 </root>

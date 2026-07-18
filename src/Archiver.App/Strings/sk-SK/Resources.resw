@@ -258,4 +258,21 @@
   <data name="ConflictDialogApplyToAllCheck" xml:space="preserve">
     <value>Použiť na všetky zostávajúce konflikty</value>
   </data>
+
+  <!-- About dialog -->
+  <data name="AboutDialogTitle" xml:space="preserve">
+    <value>O aplikácii Pakko</value>
+  </data>
+  <data name="AboutTagline" xml:space="preserve">
+    <value>Odľahčený natívny archivátor pre Windows</value>
+  </data>
+  <data name="AboutLicense" xml:space="preserve">
+    <value>Licencia: Apache 2.0</value>
+  </data>
+  <data name="AboutPrivacyLinkText" xml:space="preserve">
+    <value>Zásady ochrany osobných údajov</value>
+  </data>
+  <data name="AboutCloseButtonText" xml:space="preserve">
+    <value>Zavrieť</value>
+  </data>
 </root>

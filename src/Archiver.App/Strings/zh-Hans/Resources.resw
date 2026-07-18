@@ -258,4 +258,21 @@
   <data name="ConflictDialogApplyToAllCheck" xml:space="preserve">
     <value>应用于所有剩余冲突</value>
   </data>
+
+  <!-- About dialog -->
+  <data name="AboutDialogTitle" xml:space="preserve">
+    <value>关于 Pakko</value>
+  </data>
+  <data name="AboutTagline" xml:space="preserve">
+    <value>轻量级原生 Windows 压缩软件</value>
+  </data>
+  <data name="AboutLicense" xml:space="preserve">
+    <value>许可证：Apache 2.0</value>
+  </data>
+  <data name="AboutPrivacyLinkText" xml:space="preserve">
+    <value>隐私政策</value>
+  </data>
+  <data name="AboutCloseButtonText" xml:space="preserve">
+    <value>关闭</value>
+  </data>
 </root>

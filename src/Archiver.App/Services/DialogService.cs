@@ -350,19 +350,19 @@ public sealed class DialogService : IDialogService
         });
         panel.Children.Add(new TextBlock
         {
-            Text = "Lightweight native Windows archiver",
+            Text = _res.GetString("AboutTagline"),
             TextWrapping = TextWrapping.Wrap
         });
         panel.Children.Add(new TextBlock
         {
-            Text = "License: Apache 2.0",
+            Text = _res.GetString("AboutLicense"),
             Opacity = 0.7
         });
 
         var githubBtn = new HyperlinkButton { Content = "GitHub", Padding = new Thickness(0) };
         githubBtn.Click += async (_, _) => await Launcher.LaunchUriAsync(new Uri(githubUrl));
 
-        var privacyBtn = new HyperlinkButton { Content = "Privacy Policy", Padding = new Thickness(0) };
+        var privacyBtn = new HyperlinkButton { Content = _res.GetString("AboutPrivacyLinkText"), Padding = new Thickness(0) };
         privacyBtn.Click += async (_, _) => await Launcher.LaunchUriAsync(new Uri(privacyUrl));
 
         // T-F93: same visual weight and style as GitHub/Privacy Policy, deliberately — a donate
@@ -378,9 +378,9 @@ public sealed class DialogService : IDialogService
 
         var dialog = new ContentDialog
         {
-            Title = "About Pakko",
+            Title = _res.GetString("AboutDialogTitle"),
             Content = panel,
-            CloseButtonText = "Close",
+            CloseButtonText = _res.GetString("AboutCloseButtonText"),
             XamlRoot = _window!.Content.XamlRoot
         };
         await dialog.ShowAsync();

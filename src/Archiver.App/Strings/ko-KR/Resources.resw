@@ -258,4 +258,21 @@
   <data name="ConflictDialogApplyToAllCheck" xml:space="preserve">
     <value>남은 모든 충돌에 적용</value>
   </data>
+
+  <!-- About dialog -->
+  <data name="AboutDialogTitle" xml:space="preserve">
+    <value>Pakko 정보</value>
+  </data>
+  <data name="AboutTagline" xml:space="preserve">
+    <value>가벼운 네이티브 Windows 압축 프로그램</value>
+  </data>
+  <data name="AboutLicense" xml:space="preserve">
+    <value>라이선스: Apache 2.0</value>
+  </data>
+  <data name="AboutPrivacyLinkText" xml:space="preserve">
+    <value>개인정보 처리방침</value>
+  </data>
+  <data name="AboutCloseButtonText" xml:space="preserve">
+    <value>닫기</value>
+  </data>
 </root>

@@ -258,4 +258,21 @@
   <data name="ConflictDialogApplyToAllCheck" xml:space="preserve">
     <value>นำไปใช้กับความขัดแย้งที่เหลือทั้งหมด</value>
   </data>
+
+  <!-- About dialog -->
+  <data name="AboutDialogTitle" xml:space="preserve">
+    <value>เกี่ยวกับ Pakko</value>
+  </data>
+  <data name="AboutTagline" xml:space="preserve">
+    <value>โปรแกรมบีบอัดไฟล์แบบเนทีฟที่มีขนาดเล็กสำหรับ Windows</value>
+  </data>
+  <data name="AboutLicense" xml:space="preserve">
+    <value>ใบอนุญาต: Apache 2.0</value>
+  </data>
+  <data name="AboutPrivacyLinkText" xml:space="preserve">
+    <value>นโยบายความเป็นส่วนตัว</value>
+  </data>
+  <data name="AboutCloseButtonText" xml:space="preserve">
+    <value>ปิด</value>
+  </data>
 </root>

@@ -258,4 +258,21 @@
   <data name="ConflictDialogApplyToAllCheck" xml:space="preserve">
     <value>残りのすべての競合に適用する</value>
   </data>
+
+  <!-- About dialog -->
+  <data name="AboutDialogTitle" xml:space="preserve">
+    <value>Pakko について</value>
+  </data>
+  <data name="AboutTagline" xml:space="preserve">
+    <value>軽量なネイティブ Windows アーカイバー</value>
+  </data>
+  <data name="AboutLicense" xml:space="preserve">
+    <value>ライセンス: Apache 2.0</value>
+  </data>
+  <data name="AboutPrivacyLinkText" xml:space="preserve">
+    <value>プライバシーポリシー</value>
+  </data>
+  <data name="AboutCloseButtonText" xml:space="preserve">
+    <value>閉じる</value>
+  </data>
 </root>

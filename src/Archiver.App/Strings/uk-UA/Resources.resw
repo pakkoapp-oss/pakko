@@ -274,4 +274,21 @@
   <data name="ConflictDialogApplyToAllCheck" xml:space="preserve">
     <value>Застосувати до всіх решти конфліктів</value>
   </data>
+
+  <!-- About dialog -->
+  <data name="AboutDialogTitle" xml:space="preserve">
+    <value>Про Pakko</value>
+  </data>
+  <data name="AboutTagline" xml:space="preserve">
+    <value>Легкий рідний архіватор для Windows</value>
+  </data>
+  <data name="AboutLicense" xml:space="preserve">
+    <value>Ліцензія: Apache 2.0</value>
+  </data>
+  <data name="AboutPrivacyLinkText" xml:space="preserve">
+    <value>Політика конфіденційності</value>
+  </data>
+  <data name="AboutCloseButtonText" xml:space="preserve">
+    <value>Закрити</value>
+  </data>
 </root>

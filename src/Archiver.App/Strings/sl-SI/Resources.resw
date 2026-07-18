@@ -258,4 +258,21 @@
   <data name="ConflictDialogApplyToAllCheck" xml:space="preserve">
     <value>Uporabi za vse preostale spore</value>
   </data>
+
+  <!-- About dialog -->
+  <data name="AboutDialogTitle" xml:space="preserve">
+    <value>O programu Pakko</value>
+  </data>
+  <data name="AboutTagline" xml:space="preserve">
+    <value>Lahek izvorni arhivator za Windows</value>
+  </data>
+  <data name="AboutLicense" xml:space="preserve">
+    <value>Licenca: Apache 2.0</value>
+  </data>
+  <data name="AboutPrivacyLinkText" xml:space="preserve">
+    <value>Pravilnik o zasebnosti</value>
+  </data>
+  <data name="AboutCloseButtonText" xml:space="preserve">
+    <value>Zapri</value>
+  </data>
 </root>

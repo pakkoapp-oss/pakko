@@ -258,4 +258,21 @@
   <data name="ConflictDialogApplyToAllCheck" xml:space="preserve">
     <value>Aplică la toate conflictele rămase</value>
   </data>
+
+  <!-- About dialog -->
+  <data name="AboutDialogTitle" xml:space="preserve">
+    <value>Despre Pakko</value>
+  </data>
+  <data name="AboutTagline" xml:space="preserve">
+    <value>Arhivator nativ ușor pentru Windows</value>
+  </data>
+  <data name="AboutLicense" xml:space="preserve">
+    <value>Licență: Apache 2.0</value>
+  </data>
+  <data name="AboutPrivacyLinkText" xml:space="preserve">
+    <value>Politica de confidențialitate</value>
+  </data>
+  <data name="AboutCloseButtonText" xml:space="preserve">
+    <value>Închide</value>
+  </data>
 </root>

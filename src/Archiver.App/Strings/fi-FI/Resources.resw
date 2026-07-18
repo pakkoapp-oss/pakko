@@ -258,4 +258,21 @@
   <data name="ConflictDialogApplyToAllCheck" xml:space="preserve">
     <value>Käytä kaikkiin jäljellä oleviin ristiriitoihin</value>
   </data>
+
+  <!-- About dialog -->
+  <data name="AboutDialogTitle" xml:space="preserve">
+    <value>Tietoja Pakko-sovelluksesta</value>
+  </data>
+  <data name="AboutTagline" xml:space="preserve">
+    <value>Kevyt natiivi Windows-pakkausohjelma</value>
+  </data>
+  <data name="AboutLicense" xml:space="preserve">
+    <value>Lisenssi: Apache 2.0</value>
+  </data>
+  <data name="AboutPrivacyLinkText" xml:space="preserve">
+    <value>Tietosuojakäytäntö</value>
+  </data>
+  <data name="AboutCloseButtonText" xml:space="preserve">
+    <value>Sulje</value>
+  </data>
 </root>

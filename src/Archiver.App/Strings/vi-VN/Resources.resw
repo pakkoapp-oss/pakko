@@ -258,4 +258,21 @@
   <data name="ConflictDialogApplyToAllCheck" xml:space="preserve">
     <value>Áp dụng cho tất cả xung đột còn lại</value>
   </data>
+
+  <!-- About dialog -->
+  <data name="AboutDialogTitle" xml:space="preserve">
+    <value>Giới thiệu về Pakko</value>
+  </data>
+  <data name="AboutTagline" xml:space="preserve">
+    <value>Trình nén gọn nhẹ, nguyên bản cho Windows</value>
+  </data>
+  <data name="AboutLicense" xml:space="preserve">
+    <value>Giấy phép: Apache 2.0</value>
+  </data>
+  <data name="AboutPrivacyLinkText" xml:space="preserve">
+    <value>Chính sách quyền riêng tư</value>
+  </data>
+  <data name="AboutCloseButtonText" xml:space="preserve">
+    <value>Đóng</value>
+  </data>
 </root>

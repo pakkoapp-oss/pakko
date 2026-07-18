@@ -258,4 +258,21 @@
   <data name="ConflictDialogApplyToAllCheck" xml:space="preserve">
     <value>Rakenda kõigile ülejäänud konfliktidele</value>
   </data>
+
+  <!-- About dialog -->
+  <data name="AboutDialogTitle" xml:space="preserve">
+    <value>Teave Pakko kohta</value>
+  </data>
+  <data name="AboutTagline" xml:space="preserve">
+    <value>Kergekaaluline natiivne Windowsi arhiveerija</value>
+  </data>
+  <data name="AboutLicense" xml:space="preserve">
+    <value>Litsents: Apache 2.0</value>
+  </data>
+  <data name="AboutPrivacyLinkText" xml:space="preserve">
+    <value>Privaatsuspoliitika</value>
+  </data>
+  <data name="AboutCloseButtonText" xml:space="preserve">
+    <value>Sulge</value>
+  </data>
 </root>

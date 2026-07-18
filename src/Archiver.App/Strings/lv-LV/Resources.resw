@@ -258,4 +258,21 @@
   <data name="ConflictDialogApplyToAllCheck" xml:space="preserve">
     <value>Piemērot visiem atlikušajiem konfliktiem</value>
   </data>
+
+  <!-- About dialog -->
+  <data name="AboutDialogTitle" xml:space="preserve">
+    <value>Par Pakko</value>
+  </data>
+  <data name="AboutTagline" xml:space="preserve">
+    <value>Viegls natīvs Windows arhivators</value>
+  </data>
+  <data name="AboutLicense" xml:space="preserve">
+    <value>Licence: Apache 2.0</value>
+  </data>
+  <data name="AboutPrivacyLinkText" xml:space="preserve">
+    <value>Konfidencialitātes politika</value>
+  </data>
+  <data name="AboutCloseButtonText" xml:space="preserve">
+    <value>Aizvērt</value>
+  </data>
 </root>

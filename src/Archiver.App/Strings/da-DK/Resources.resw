@@ -258,4 +258,21 @@
   <data name="ConflictDialogApplyToAllCheck" xml:space="preserve">
     <value>Anvend på alle resterende konflikter</value>
   </data>
+
+  <!-- About dialog -->
+  <data name="AboutDialogTitle" xml:space="preserve">
+    <value>Om Pakko</value>
+  </data>
+  <data name="AboutTagline" xml:space="preserve">
+    <value>Letvægts, nativt Windows-arkiveringsprogram</value>
+  </data>
+  <data name="AboutLicense" xml:space="preserve">
+    <value>Licens: Apache 2.0</value>
+  </data>
+  <data name="AboutPrivacyLinkText" xml:space="preserve">
+    <value>Privatlivspolitik</value>
+  </data>
+  <data name="AboutCloseButtonText" xml:space="preserve">
+    <value>Luk</value>
+  </data>
 </root>

@@ -258,4 +258,21 @@
   <data name="ConflictDialogApplyToAllCheck" xml:space="preserve">
     <value>शेष सभी संघर्षों पर लागू करें</value>
   </data>
+
+  <!-- About dialog -->
+  <data name="AboutDialogTitle" xml:space="preserve">
+    <value>Pakko के बारे में</value>
+  </data>
+  <data name="AboutTagline" xml:space="preserve">
+    <value>हल्का नेटिव Windows आर्काइवर</value>
+  </data>
+  <data name="AboutLicense" xml:space="preserve">
+    <value>लाइसेंस: Apache 2.0</value>
+  </data>
+  <data name="AboutPrivacyLinkText" xml:space="preserve">
+    <value>गोपनीयता नीति</value>
+  </data>
+  <data name="AboutCloseButtonText" xml:space="preserve">
+    <value>बंद करें</value>
+  </data>
 </root>

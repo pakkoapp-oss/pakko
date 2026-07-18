@@ -253,6 +253,21 @@
   <data name="AboutKofiUrl" xml:space="preserve">
     <value>https://ko-fi.com/pakko_app</value>
   </data>
+  <data name="AboutDialogTitle" xml:space="preserve">
+    <value>About Pakko</value>
+  </data>
+  <data name="AboutTagline" xml:space="preserve">
+    <value>Lightweight native Windows archiver</value>
+  </data>
+  <data name="AboutLicense" xml:space="preserve">
+    <value>License: Apache 2.0</value>
+  </data>
+  <data name="AboutPrivacyLinkText" xml:space="preserve">
+    <value>Privacy Policy</value>
+  </data>
+  <data name="AboutCloseButtonText" xml:space="preserve">
+    <value>Close</value>
+  </data>
 
   <!-- Dialog strings -->
   <data name="ErrorDialogTitle" xml:space="preserve">
