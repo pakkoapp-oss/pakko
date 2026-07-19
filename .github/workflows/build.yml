@@ -22,43 +22,34 @@ env:
   DOTNET_NOLOGO: true
   DOTNET_CLI_TELEMETRY_OPTOUT: true
 
-# All jobs pin `windows-2022` rather than `windows-latest` deliberately (T-F122, 2026-07-19).
-# `windows-latest` silently started resolving to the windows-2025 image, whose preinstalled VS
-# has the v143 (VS2022) toolset for x64 but not for ARM64 -- Archiver.ShellExtension.vcxproj pins
-# PlatformToolset=v143, so its ARM64 leg failed with MSB8020 there even after three attempts to
-# install the missing component via vs_installer.exe (it kept reporting success near-instantly
-# without doing real work, because the ARM64 component for the *2026* toolset was already
-# present -- just not the v143 one this project's project files actually request). windows-2022
-# ships the ARM64 v143 toolset out of the box, so no extra install step is needed here.
+# test/build-cli/release stay on `windows-latest` (currently the windows-2025 image) -- it's
+# confirmed green there (3 consecutive runs). Only build-msix pins `windows-2022` explicitly
+# (T-F122, 2026-07-19): Archiver.ShellExtension.vcxproj pins PlatformToolset=v143, and
+# windows-2025's preinstalled VS has a newer default ARM64 toolset but not the ARM64 variant of
+# v143 specifically, so the ARM64 leg failed there with MSB8020 (confirmed after three failed
+# attempts to install the missing v143 ARM64 component via vs_installer.exe -- it kept reporting
+# success near-instantly without doing real work, because the *2026* toolset's ARM64 component
+# was already present, just not v143's). windows-2022 ships the ARM64 v143 toolset out of the
+# box, so build-msix needs no extra install step there.
+#
+# Pinning windows-2022 for *every* job (an earlier version of this fix) was reverted: doing so
+# also moved the `test` job there, and Archiver.Core.Tests' TarSignatureVerifier.Verify(tar.exe)
+# (a native WinVerifyTrust/CryptQueryObject P/Invoke check, see that class's own doc comment)
+# started returning false specifically on windows-2022, even though plain PowerShell
+# Get-AuthenticodeSignature on the exact same file on the exact same runner reports a genuinely
+# valid Microsoft signature. That's a real, separate, unresolved discrepancy in this project's own
+# native verification code across Windows Server 2022 vs. 2025/11 -- worth its own investigation
+# (not a CI-infra problem), but out of scope for T-F122. Keeping `test` on windows-latest sidesteps
+# it entirely for now, since build-msix is the only job that actually needs windows-2022.
 jobs:
   test:
-    runs-on: windows-2022
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "8.0.x"
-
-      # Diagnostic only (T-F122): TarSignatureVerifier.Verify(tar.exe) started returning false on
-      # windows-2022, unlike windows-latest/windows-2025 where it passed 3 runs in a row. Print
-      # what's actually on disk before the real test run, so the cause is visible instead of
-      # guessed. Never fails the job.
-      - name: Diagnose tar.exe on this runner
-        shell: pwsh
-        continue-on-error: true
-        run: |
-          $tarPath = "C:\Windows\System32\tar.exe"
-          Write-Host "Exists: $(Test-Path $tarPath)"
-          if (Test-Path $tarPath) {
-            & $tarPath --version
-            $sig = Get-AuthenticodeSignature -FilePath $tarPath
-            Write-Host "Signature Status: $($sig.Status)"
-            Write-Host "Signature StatusMessage: $($sig.StatusMessage)"
-            if ($sig.SignerCertificate) {
-              Write-Host "Signer Subject: $($sig.SignerCertificate.Subject)"
-            }
-          }
 
       - name: Run .NET test suite
         run: dotnet test --filter "Category!=Slow&Category!=VeryLarge"
@@ -129,7 +120,7 @@ jobs:
   build-cli:
     needs: test
     if: github.event_name == 'push'
-    runs-on: windows-2022
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -149,7 +140,7 @@ jobs:
   release:
     needs: [build-msix, build-cli]
     if: startsWith(github.ref, 'refs/tags/')
-    runs-on: windows-2022
+    runs-on: windows-latest
     permissions:
       contents: write
     steps:
