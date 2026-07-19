@@ -266,6 +266,34 @@ TEST(BuildTestArgs, MultipleFiles)
 }
 
 // ---------------------------------------------------------------------------
+// BuildHashArgs (T-F128)
+// ---------------------------------------------------------------------------
+
+TEST(BuildHashArgs, Crc32SingleFile)
+{
+    const auto args = BuildHashArgs({ L"C:\\document.txt" }, L"crc32");
+    EXPECT_EQ(args, L"--hash --algorithm crc32 \"C:\\document.txt\"");
+}
+
+TEST(BuildHashArgs, Sha256SingleFile)
+{
+    const auto args = BuildHashArgs({ L"C:\\document.txt" }, L"sha256");
+    EXPECT_EQ(args, L"--hash --algorithm sha256 \"C:\\document.txt\"");
+}
+
+TEST(BuildHashArgs, MultipleFiles)
+{
+    const auto args = BuildHashArgs({ L"C:\\a.txt", L"C:\\b.txt" }, L"crc32");
+    EXPECT_EQ(args, L"--hash --algorithm crc32 \"C:\\a.txt\" \"C:\\b.txt\"");
+}
+
+TEST(BuildHashArgs, FolderPath)
+{
+    const auto args = BuildHashArgs({ L"C:\\MyFolder" }, L"sha256");
+    EXPECT_EQ(args, L"--hash --algorithm sha256 \"C:\\MyFolder\"");
+}
+
+// ---------------------------------------------------------------------------
 // BuildOpenUiExtractArgs (T-F63)
 // ---------------------------------------------------------------------------
 

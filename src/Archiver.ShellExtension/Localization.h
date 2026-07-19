@@ -26,6 +26,10 @@ enum class StringId
     // pending-list/extract-options view. No ellipsis: unlike ExtractDialog/CompressDialog, this
     // never shows a further dialog, matching ExtractHereFlat/TestArchive's plain-verb convention.
     BrowseArchive,
+    // T-F128: the "Хеш-суми" submenu's own parent title (ECF_HASSUBCOMMANDS). The two leaf items
+    // under it ("CRC-32"/"SHA-256") are hardcoded literals, not localized — algorithm names stay
+    // untranslated Latin script everywhere, matching T-F105's tar format names.
+    HashSubmenu,
 };
 
 // Resolves the calling thread's preferred UI language as a BCP-47 tag (e.g. L"uk-UA"), matching

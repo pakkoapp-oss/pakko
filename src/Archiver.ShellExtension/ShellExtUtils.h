@@ -63,6 +63,10 @@ std::wstring BuildExtractFolderArgs(const std::vector<std::wstring>& paths);
 // "tar" (emits "--format tar", consumed by ShellArgumentParser.ParseArchive on the .NET side).
 std::wstring BuildArchiveArgs(const std::vector<std::wstring>& paths, const std::wstring& format = L"zip");
 std::wstring BuildTestArgs(const std::vector<std::wstring>& paths);
+// T-F128: algorithm is "crc32" or "sha256" - always emitted explicitly (unlike BuildArchiveArgs'
+// format parameter, which stays flag-less for its zip default), matching ShellArgumentParser's
+// ParseHash, which always requires "--algorithm" right after "--hash".
+std::wstring BuildHashArgs(const std::vector<std::wstring>& paths, const std::wstring& algorithm);
 
 // Dialog-form commands (T-F63): launch Archiver.App via Archiver.Shell's --open-ui flow
 // (ShellArgumentParser.ParseOpenUi) instead of running silently.

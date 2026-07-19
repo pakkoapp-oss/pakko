@@ -5330,3 +5330,81 @@ each round) — never auto-approved or bypassed. Real findings from the pass its
   was removed and the two files copied into `PolicyDefinitions` were deleted in a final elevated
   pass (a 4th UAC round), confirmed via `Test-Path` returning `False` for all three afterward — the
   machine was left exactly as it was found.
+
+---
+
+## T-F128 — "Хеш-суми" Explorer submenu: two re-scopes, and NanaZip's real folder-hash algorithm
+
+**First re-scope (dialog → context menu).** The task started as "add SHA-256 alongside CRC-32 in
+a dropdown" and was first implemented as a `ComboBox` inside the existing WinUI
+`DialogService.ShowFileHashAsync` dialog (the "Hash" button) — resolved via `AskUserQuestion`
+against the only two existing hash-adjacent surfaces in the code (the Hash dialog, and the Archive
+Browser's fixed CRC-32 column). That implementation worked and was tested, but the user then shared
+real screenshots of NanaZip's own right-click menu: a cascaded "CRC SHA" submenu directly under
+NanaZip's top-level entry, with leaf items CRC-32/CRC-64/SHA-1/SHA-256/*. That's a third surface
+neither original option considered — a native Explorer context-menu submenu, not anything inside
+the WinUI app. The ComboBox change was fully reverted (confirmed byte-identical to
+pre-session `DialogService.cs` via `git diff`) and the task rebuilt as a pure
+`Archiver.ShellExtension` (C++ COM) + `Archiver.Shell`/`Archiver.Core` feature — see `TASKS.md`'s
+T-F128 entry for the final implementation shape (`HashCommand`/`HashCrc32Command`/
+`HashSha256Command`, `--hash --algorithm` CLI switch, `FileHashService`).
+
+**Second re-scope (files only → folders too, NanaZip-compatible).** The same screenshots also
+showed NanaZip hashing a *folder*, not just files. Per this project's COM/shell
+pre-implementation-research norm, the actual algorithm was verified against NanaZip's real source
+(`NanaZip.UI.Modern/SevenZip/CPP/7zip/UI/Common/HashCalc.cpp`) rather than assumed — fetched via
+`curl https://raw.githubusercontent.com/M2Team/NanaZip/main/...`, not reconstructed from memory.
+
+**The real algorithm (`CHashBundle::Final`/`AddDigests`/`CHasherState::WriteToString`):**
+- A folder's combined hash is **two** values: **DataSum** (all file contents combined) and
+  **NamesSum** (all file names+paths+contents combined) — not a single value, and not a simple
+  concatenation-then-rehash. Each is a running **byte-wise multi-precision addition with carry**
+  (`AddDigests`) across every file's own digest, into a `digestSize + 8`-byte accumulator (the
+  extra 8 bytes absorb carry overflow — real for CRC-32's 4-byte digest, since summing more than
+  a couple of near-random 32-bit values overflows 32 bits almost immediately).
+- This addition is **commutative** — file enumeration order never affects the final DataSum/
+  NamesSum value. This was the key fact that unblocked recursive folder support: it means every
+  real file's contribution (at any nesting depth) is safely order-independent, since it's just
+  "sum all the file-level digests," regardless of what order they were visited in.
+- NamesSum's per-file contribution isn't just the content digest — it's
+  `Hash(pre[16 zero bytes] ++ fileContentDigest ++ UTF16LE-bytes-of-relativePath)`, i.e. a fresh
+  hash of the file's own digest plus its path (forward-slash-normalized), then *that* result gets
+  added into the running NamesSum accumulator.
+- **The one real order-dependency, and why it's a deliberate, documented Pakko divergence:**
+  NanaZip's code also calls the exact same `Final()` step for *directory entries themselves*
+  (`isDir=true`) — but for a directory, it skips computing a fresh content digest and instead
+  hashes whatever digest bytes happen to be "left over" (`h.Digests[0]`) from the previous file
+  processed in their specific traversal order. That makes a subfolder-as-an-item's own NamesSum
+  contribution genuinely order-dependent on NanaZip's undocumented enumeration order — reproducing
+  it bit-for-bit would require exactly matching that order, which isn't documented and isn't worth
+  chasing. **Decision (confirmed with the user via two rounds of `AskUserQuestion`):** Pakko
+  supports full recursive folder hashing — DataSum is always exactly reproducible regardless of
+  nesting (directories never touch DataSum in NanaZip's own code either), and NamesSum is exactly
+  reproducible for every real file at any depth, but omits each subfolder *object's* own
+  contribution. This is the one documented, approved divergence from NanaZip — not a bug, a
+  deliberate scope line.
+- **Display formatting** (`CHasherState::WriteToString`/`HashHexToString`) has its own real
+  quirks, also reproduced exactly: a digest `<=8` bytes (CRC-32's 4-byte digest, and the 4-or-8-
+  byte extra-carry suffix regardless of the main digest's own size) displays **upper case, byte
+  order reversed** from storage order; a digest `>8` bytes (SHA-256's 32 bytes) displays **lower
+  case, storage byte order**. Whenever 2+ items were combined, a `-XXXXXXXX` (or 16-hex-digit)
+  suffix is always appended, even when its bytes are all zero. This cosmetic convention is scoped
+  *only* to the new folder DataSum/NamesSum strings — the pre-existing single-file CRC-32/SHA-256
+  displays (this feature's own per-file lines, and the Archive Browser's T-F110 CRC-32 column)
+  keep Pakko's own established lower-case/non-reversed convention unchanged.
+- **A single `Add()` call can only ever carry at most 1 unit** past the digest into the 8-byte
+  extra region (summing two N-byte numbers plus a carry bit is always `< 2^(8N+1)`) — meaning the
+  code path that picks an 8-byte (vs. 4-byte) extra-suffix length needs on the order of `2^32`
+  file additions to ever actually trigger. Kept in `HashDigestAccumulator` for exact source
+  fidelity, but genuinely untestable via any realistic scenario — see
+  `HashDigestAccumulatorTests`' own comment for why only the 4-byte path is unit-tested.
+
+**Real cross-tool verification, not just internal consistency.** The vendored `7za.exe`
+(`tests/Archiver.Core.PerformanceTests/Tools/7-Zip/`, T-F114) runs the exact same
+NanaZip/HashCalc.cpp code via its own `h` (hash) command. `7za h -scrcCRC32`/`-scrcSHA256` was run
+against a real fixture folder, and the printed "for data"/"for data and names" values were
+hardcoded into `FileHashServiceTests` as expected values — a genuine external-tool parity proof
+that the from-scratch `HashDigestAccumulator` reimplementation is correct, not an assumption. A
+second, nested-folder fixture confirmed DataSum still matches 7za exactly regardless of nesting,
+while NamesSum was only asserted to be well-formed (not equal to 7za's value, which does include
+the subfolder-object's own contribution per the documented divergence above).

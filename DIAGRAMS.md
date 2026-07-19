@@ -85,6 +85,7 @@ sequenceDiagram
     participant CDC as CompressDialogCommand
     participant AC as ArchiveCommand
     participant TC as TestCommand
+    participant HC as HashCommand
     participant ShellExe as Archiver.Shell.exe
     participant Core as ZipArchiveService
     participant Dlg as IProgressDialog (shell32)
@@ -105,7 +106,8 @@ sequenceDiagram
     Root->>CDC: Make<CompressDialogCommand>()
     Root->>AC: Make<ArchiveCommand>()
     Root->>TC: Make<TestCommand>()
-    Root->>Enum: SetCommands([BC, EDC, EHF, EH, EF, CDC, AC, TC, ...])<br/>ALWAYS all, unconditionally — selection does not filter EnumSubCommands.<br/>Order mirrors NanaZip's real ContextMenu.cpp (T-F63) and its own three-way<br/>extract-verb layout (T-F115): dialog, then flat, then intelligent, then named-folder.<br/>BC FIRST (T-F03): mirrors NanaZip's own kOpen-before-kExtract insertion order.<br/>TC last: diagnostic/verification action, not primary —<br/>deliberate deviation from NanaZip's own Test-before-Compress grouping.<br/>TarArchiveCommand (added T-F105) is omitted from this list — pre-existing<br/>diagram gap, not introduced here, see this file's own staleness note above
+    Root->>HC: Make<HashCommand>()<br/>(T-F128: "Хеш-суми" — itself ECF_HASSUBCOMMANDS, joins TC last since it's<br/>also a diagnostic/utility action, and applies to any file type, not just archives)
+    Root->>Enum: SetCommands([BC, EDC, EHF, EH, EF, CDC, AC, TC, HC, ...])<br/>ALWAYS all, unconditionally — selection does not filter EnumSubCommands.<br/>Order mirrors NanaZip's real ContextMenu.cpp (T-F63) and its own three-way<br/>extract-verb layout (T-F115): dialog, then flat, then intelligent, then named-folder.<br/>BC FIRST (T-F03): mirrors NanaZip's own kOpen-before-kExtract insertion order.<br/>TC then HC last: diagnostic/verification/utility actions, not primary —<br/>deliberate deviation from NanaZip's own Test-before-Compress grouping.<br/>TarArchiveCommand (added T-F105) is omitted from this list — pre-existing<br/>diagram gap, not introduced here, see this file's own staleness note above
     Root-->>Explorer: Enum (IEnumExplorerCommand)
     loop Explorer drains the enumerator
         Explorer->>Enum: Next(celt, ...)
@@ -121,6 +123,7 @@ sequenceDiagram
     Explorer->>AC: GetState(psia) → ECS_HIDDEN iff AllPathsAreZip(paths), else ECS_ENABLED<br/>(condition is INVERTED vs. EH/EF — T-F86: deliberately UNCHANGED —<br/>still AllPathsAreZip, not AllPathsAreSupportedArchive — archiving an<br/>all-RAR selection into a new ZIP stays valid, same reasoning as CDC)
     Explorer->>AC: GetTitle(psia) → BuildAddToArchiveTitle(paths)<br/>dynamic "Add to <name>.zip", truncated middle if >40 chars
     Explorer->>TC: GetState(psia) → ECS_ENABLED iff AnyPathIsZip(paths), else ECS_HIDDEN<br/>(T-F62: AnyPathIsZip, NOT AllPathsAreZip — shows on a mixed selection too —<br/>T-F86: deliberately UNCHANGED — ITarService has no Test/verify method,<br/>so enabling this for RAR/7z would run ZipArchiveService.TestAsync,<br/>which skips non-zip paths internally and would report a false<br/>"No errors detected" — see DECISIONS.md's T-F86 entry)
+    Explorer->>HC: GetState(psia) → ECS_ENABLED iff paths non-empty, else ECS_HIDDEN<br/>(T-F128: any file type, not archive-specific — files AND folders both enable it)
     User->>Explorer: click one visible leaf command
     alt command is BC (Open, T-F03)
         Explorer->>BC: Invoke(psia, pbc)
@@ -174,6 +177,15 @@ sequenceDiagram
                 ShellExe->>User: MessageBoxW("No errors detected in the archive(s).", MB_ICONINFORMATION)<br/>Test-only: unlike Extract/Archive, success has no visible disk<br/>side effect, so silent success would look like nothing happened
             end
         end
+    else command is a Hash leaf, HashCrc32Command or HashSha256Command (T-F128, reached via<br/>HC's own EnumSubCommands/GetState, not drawn separately — same shape either way)
+        Note over HC: structurally distinct from every branch above — never touches<br/>Core (ZipArchiveService)/ArchiveResult/ShellResultPresenter at all
+        Explorer->>HC: Invoke(psia, pbc) — really the leaf's own Invoke, same shape for both algorithms
+        HC->>ShellExe: LaunchShellExe(BuildHashArgs(paths, "crc32"|"sha256"))<br/>i.e. "--hash --algorithm crc32|sha256 <paths>"
+        HC-->>Explorer: S_OK, or HRESULT_FROM_WIN32(GetLastError())
+        ShellExe->>Dlg: new NativeProgressDialog(title) — same cancel-poll/Timer pattern as the silent-form branch above
+        ShellExe->>ShellExe: FileHashService.ComputeAsync(paths, algorithm, progress, ct)<br/>single file / multi-file independently / single-folder recursive<br/>(NanaZip-compatible DataSum+NamesSum via HashDigestAccumulator — DECISIONS.md's T-F128 entry)
+        ShellExe->>Dlg: Dispose() → StopProgressDialog
+        ShellExe->>User: MessageBoxW(per-file "name: hash" lines, plus DataSum/NamesSum<br/>summary lines if a folder was hashed, MB_ICONINFORMATION or MB_ICONWARNING)
     end
 ```
 

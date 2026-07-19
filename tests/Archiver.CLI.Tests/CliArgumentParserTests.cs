@@ -243,6 +243,115 @@ public sealed class CliArgumentParserTests
         result.Type.Should().Be(CliCommandType.Invalid);
     }
 
+    // --- Valid: h (T-F128/T-F09 follow-up) ---
+
+    [Fact]
+    public void Hash_SingleFile_DefaultsToCrc32()
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse(["h", "document.txt"]);
+
+        result.Type.Should().Be(CliCommandType.Hash);
+        result.SourcePaths.Should().Equal("document.txt");
+        result.HashAlgorithm.Should().Be(HashAlgorithmKind.Crc32);
+        result.ErrorMessage.Should().BeNull();
+    }
+
+    [Fact]
+    public void Hash_MultipleFiles_ReturnsAllPaths()
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse(["h", "a.txt", "b.txt"]);
+
+        result.Type.Should().Be(CliCommandType.Hash);
+        result.SourcePaths.Should().Equal("a.txt", "b.txt");
+    }
+
+    [Fact]
+    public void Hash_OneFolder_ReturnsFolderPath()
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse(["h", @"C:\MyFolder"]);
+
+        result.Type.Should().Be(CliCommandType.Hash);
+        result.SourcePaths.Should().Equal(@"C:\MyFolder");
+    }
+
+    [Fact]
+    public void Hash_ScrcCrc32_ReturnsCrc32()
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse(["h", "-scrcCRC32", "document.txt"]);
+
+        result.HashAlgorithm.Should().Be(HashAlgorithmKind.Crc32);
+        result.ErrorMessage.Should().BeNull();
+    }
+
+    [Fact]
+    public void Hash_ScrcSha256_ReturnsSha256()
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse(["h", "-scrcSHA256", "document.txt"]);
+
+        result.HashAlgorithm.Should().Be(HashAlgorithmKind.Sha256);
+    }
+
+    [Fact]
+    public void Hash_ScrcLowerCase_IsCaseInsensitive()
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse(["h", "-scrcsha256", "document.txt"]);
+
+        result.HashAlgorithm.Should().Be(HashAlgorithmKind.Sha256);
+    }
+
+    [Fact]
+    public void Hash_ScrcUnknownMethod_ReturnsInvalidNamingSupportedMethods()
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse(["h", "-scrcSHA1", "document.txt"]);
+
+        result.Type.Should().Be(CliCommandType.Invalid);
+        result.ErrorMessage.Should().Contain("not supported by Pakko");
+    }
+
+    [Fact]
+    public void Hash_ScrcMissingValue_ReturnsInvalid()
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse(["h", "-scrc", "document.txt"]);
+
+        result.Type.Should().Be(CliCommandType.Invalid);
+    }
+
+    [Fact]
+    public void Hash_NoPaths_ReturnsInvalid()
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse(["h"]);
+
+        result.Type.Should().Be(CliCommandType.Invalid);
+        result.ErrorMessage.Should().Contain("at least one file or folder path");
+    }
+
+    [Fact]
+    public void Hash_StdinFlag_SetsReadFromStdin()
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse(["h", "-si"]);
+
+        result.Type.Should().Be(CliCommandType.Hash);
+        result.ReadFromStdin.Should().BeTrue();
+        result.SourcePaths.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Hash_StdinCombinedWithPath_ReturnsInvalid()
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse(["h", "-si", "document.txt"]);
+
+        result.Type.Should().Be(CliCommandType.Invalid);
+    }
+
+    [Fact]
+    public void Hash_ScrcSwitchOnUnsupportedCommand_ReturnsInvalidNamingCommand()
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse(["x", "-scrcSHA256", "archive.zip"]);
+
+        result.Type.Should().Be(CliCommandType.Invalid);
+        result.ErrorMessage.Should().Contain("only meaningful for 'h'");
+    }
+
     // --- Invalid: case 1 (unparseable / typo) ---
 
     [Fact]

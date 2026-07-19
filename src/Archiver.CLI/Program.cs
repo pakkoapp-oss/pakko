@@ -22,6 +22,7 @@ return command.Type switch
     CliCommandType.Info => await RunInfoAsync().ConfigureAwait(false),
     CliCommandType.Archive => await RunArchiveAsync(command, policy).ConfigureAwait(false),
     CliCommandType.List => await RunListAsync(command).ConfigureAwait(false),
+    CliCommandType.Hash => await RunHashAsync(command).ConfigureAwait(false),
     _ => 2,
 };
 
@@ -283,6 +284,58 @@ static async Task<int> RunListAsync(ParsedCliCommand command)
         if (stagedStdinPath is not null)
             CliStreamStaging.CleanupStagedStdin(stagedStdinPath);
     }
+}
+
+// -------------------------------------------------------------------------
+// h: hash arbitrary files/a single folder (T-F128/T-F09 follow-up) — real 7z 'h' hashes files on
+// disk, unrelated to archive entries (CLI.md's original row description of this command predated
+// T-F128 and was corrected alongside this). Maps directly onto FileHashService.ComputeAsync,
+// exactly the same engine the Explorer context-menu "Хеш-суми" submenu uses.
+//
+// -si is a genuine single-pass stream here, unlike x/t/l's -si — CRC-32/SHA-256 need no seeking,
+// so stdin is hashed directly via FileHashService.ComputeStreamDigestAsync with no intermediate
+// temp file (contrast CliStreamStaging.StageStdinAsync, which x/t/l genuinely need because ZIP's
+// central directory / tar.exe's pre-scan require a real seekable file).
+// -------------------------------------------------------------------------
+static async Task<int> RunHashAsync(ParsedCliCommand command)
+{
+    string label = command.HashAlgorithm == HashAlgorithmKind.Crc32 ? "CRC32" : "SHA256";
+
+    if (command.ReadFromStdin)
+    {
+        await using Stream stdin = Console.OpenStandardInput();
+        string hash = await FileHashService.ComputeStreamDigestAsync(stdin, command.HashAlgorithm, CancellationToken.None).ConfigureAwait(false);
+        Console.Out.WriteLine($"{hash}  (stdin)");
+        return 0;
+    }
+
+    HashResult result = await FileHashService.ComputeAsync(command.SourcePaths, command.HashAlgorithm, progress: null, CancellationToken.None).ConfigureAwait(false);
+
+    int errorCount = 0;
+    foreach (HashEntry entry in result.Entries)
+    {
+        if (entry.Error is not null)
+        {
+            Console.Error.WriteLine($"pakko: error: {entry.SourcePath}: {entry.Error}");
+            errorCount++;
+        }
+        else
+        {
+            Console.Out.WriteLine($"{entry.Hash}  {entry.SourcePath}");
+        }
+    }
+
+    if (result.Folder is { } folder)
+    {
+        Console.Out.WriteLine();
+        Console.Out.WriteLine($"Files: {folder.FileCount}");
+        Console.Out.WriteLine($"{label} for data:           {folder.DataSum}");
+        Console.Out.WriteLine($"{label} for data and names: {folder.NamesSum}");
+    }
+
+    if (errorCount == result.Entries.Count)
+        return 2;
+    return errorCount > 0 ? 1 : 0;
 }
 
 // -------------------------------------------------------------------------

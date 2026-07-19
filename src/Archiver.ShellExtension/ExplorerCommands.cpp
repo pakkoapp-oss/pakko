@@ -682,6 +682,207 @@ STDMETHODIMP BrowseCommand::EnumSubCommands(IEnumExplorerCommand** ppEnum) noexc
 }
 
 // ---------------------------------------------------------------------------
+// HashCrc32Command / HashSha256Command (T-F128)
+// ---------------------------------------------------------------------------
+
+STDMETHODIMP HashCrc32Command::GetTitle(IShellItemArray*, LPWSTR* ppszName) noexcept
+{
+    if (!ppszName) return E_POINTER;
+    return SHStrDupW(L"CRC-32", ppszName);
+}
+
+STDMETHODIMP HashCrc32Command::GetIcon(IShellItemArray*, LPWSTR* ppszIcon) noexcept
+{
+    if (!ppszIcon) return E_POINTER;
+    *ppszIcon = nullptr;
+    return E_NOTIMPL;
+}
+
+STDMETHODIMP HashCrc32Command::GetToolTip(IShellItemArray*, LPWSTR* ppszInfotip) noexcept
+{
+    if (!ppszInfotip) return E_POINTER;
+    *ppszInfotip = nullptr;
+    return E_NOTIMPL;
+}
+
+STDMETHODIMP HashCrc32Command::GetCanonicalName(GUID* pguidCommandName) noexcept
+{
+    if (!pguidCommandName) return E_POINTER;
+    *pguidCommandName = CLSID_HashCrc32Command;
+    return S_OK;
+}
+
+STDMETHODIMP HashCrc32Command::GetState(IShellItemArray* psia, BOOL, EXPCMDSTATE* pCmdState) noexcept
+{
+    if (!pCmdState) return E_POINTER;
+    *pCmdState = GetPathsFromShellItemArray(psia).empty() ? ECS_HIDDEN : ECS_ENABLED;
+    return S_OK;
+}
+
+STDMETHODIMP HashCrc32Command::Invoke(IShellItemArray* psia, IBindCtx*) noexcept
+{
+    try
+    {
+        const auto paths = GetPathsFromShellItemArray(psia);
+        if (paths.empty()) return E_INVALIDARG;
+        return LaunchShellExe(BuildHashArgs(paths, L"crc32"));
+    }
+    catch (...) { return E_FAIL; }
+}
+
+STDMETHODIMP HashCrc32Command::GetFlags(EXPCMDFLAGS* pFlags) noexcept
+{
+    if (!pFlags) return E_POINTER;
+    *pFlags = ECF_DEFAULT;
+    return S_OK;
+}
+
+STDMETHODIMP HashCrc32Command::EnumSubCommands(IEnumExplorerCommand** ppEnum) noexcept
+{
+    if (!ppEnum) return E_POINTER;
+    *ppEnum = nullptr;
+    return E_NOTIMPL;
+}
+
+STDMETHODIMP HashSha256Command::GetTitle(IShellItemArray*, LPWSTR* ppszName) noexcept
+{
+    if (!ppszName) return E_POINTER;
+    return SHStrDupW(L"SHA-256", ppszName);
+}
+
+STDMETHODIMP HashSha256Command::GetIcon(IShellItemArray*, LPWSTR* ppszIcon) noexcept
+{
+    if (!ppszIcon) return E_POINTER;
+    *ppszIcon = nullptr;
+    return E_NOTIMPL;
+}
+
+STDMETHODIMP HashSha256Command::GetToolTip(IShellItemArray*, LPWSTR* ppszInfotip) noexcept
+{
+    if (!ppszInfotip) return E_POINTER;
+    *ppszInfotip = nullptr;
+    return E_NOTIMPL;
+}
+
+STDMETHODIMP HashSha256Command::GetCanonicalName(GUID* pguidCommandName) noexcept
+{
+    if (!pguidCommandName) return E_POINTER;
+    *pguidCommandName = CLSID_HashSha256Command;
+    return S_OK;
+}
+
+STDMETHODIMP HashSha256Command::GetState(IShellItemArray* psia, BOOL, EXPCMDSTATE* pCmdState) noexcept
+{
+    if (!pCmdState) return E_POINTER;
+    *pCmdState = GetPathsFromShellItemArray(psia).empty() ? ECS_HIDDEN : ECS_ENABLED;
+    return S_OK;
+}
+
+STDMETHODIMP HashSha256Command::Invoke(IShellItemArray* psia, IBindCtx*) noexcept
+{
+    try
+    {
+        const auto paths = GetPathsFromShellItemArray(psia);
+        if (paths.empty()) return E_INVALIDARG;
+        return LaunchShellExe(BuildHashArgs(paths, L"sha256"));
+    }
+    catch (...) { return E_FAIL; }
+}
+
+STDMETHODIMP HashSha256Command::GetFlags(EXPCMDFLAGS* pFlags) noexcept
+{
+    if (!pFlags) return E_POINTER;
+    *pFlags = ECF_DEFAULT;
+    return S_OK;
+}
+
+STDMETHODIMP HashSha256Command::EnumSubCommands(IEnumExplorerCommand** ppEnum) noexcept
+{
+    if (!ppEnum) return E_POINTER;
+    *ppEnum = nullptr;
+    return E_NOTIMPL;
+}
+
+// ---------------------------------------------------------------------------
+// HashCommand (T-F128) — parent of the "Хеш-суми" submenu, mirrors PakkoRootCommand's own
+// pure-submenu-container shape.
+// ---------------------------------------------------------------------------
+
+STDMETHODIMP HashCommand::GetTitle(IShellItemArray*, LPWSTR* ppszName) noexcept
+{
+    if (!ppszName) return E_POINTER;
+    return SHStrDupW(GetLocalizedString(StringId::HashSubmenu).c_str(), ppszName);
+}
+
+STDMETHODIMP HashCommand::GetIcon(IShellItemArray*, LPWSTR* ppszIcon) noexcept
+{
+    if (!ppszIcon) return E_POINTER;
+    *ppszIcon = nullptr;
+    return E_NOTIMPL;
+}
+
+STDMETHODIMP HashCommand::GetToolTip(IShellItemArray*, LPWSTR* ppszInfotip) noexcept
+{
+    if (!ppszInfotip) return E_POINTER;
+    *ppszInfotip = nullptr;
+    return E_NOTIMPL;
+}
+
+STDMETHODIMP HashCommand::GetCanonicalName(GUID* pguidCommandName) noexcept
+{
+    if (!pguidCommandName) return E_POINTER;
+    *pguidCommandName = CLSID_HashCommand;
+    return S_OK;
+}
+
+STDMETHODIMP HashCommand::GetState(IShellItemArray* psia, BOOL, EXPCMDSTATE* pCmdState) noexcept
+{
+    if (!pCmdState) return E_POINTER;
+    *pCmdState = GetPathsFromShellItemArray(psia).empty() ? ECS_HIDDEN : ECS_ENABLED;
+    return S_OK;
+}
+
+STDMETHODIMP HashCommand::Invoke(IShellItemArray*, IBindCtx*) noexcept
+{
+    return E_NOTIMPL;
+}
+
+STDMETHODIMP HashCommand::GetFlags(EXPCMDFLAGS* pFlags) noexcept
+{
+    if (!pFlags) return E_POINTER;
+    *pFlags = ECF_HASSUBCOMMANDS;
+    return S_OK;
+}
+
+STDMETHODIMP HashCommand::EnumSubCommands(IEnumExplorerCommand** ppEnum) noexcept
+{
+    try
+    {
+        if (!ppEnum) return E_POINTER;
+        *ppEnum = nullptr;
+
+        auto pCrc32 = Make<HashCrc32Command>();
+        auto pSha256 = Make<HashSha256Command>();
+        if (!pCrc32 || !pSha256)
+            return E_OUTOFMEMORY;
+
+        ComPtr<IExplorerCommand> pCmdCrc32, pCmdSha256;
+        HRESULT hr = pCrc32.As(&pCmdCrc32);   if (FAILED(hr)) return hr;
+        hr = pSha256.As(&pCmdSha256);         if (FAILED(hr)) return hr;
+
+        std::vector<ComPtr<IExplorerCommand>> commands;
+        commands.push_back(std::move(pCmdCrc32));
+        commands.push_back(std::move(pCmdSha256));
+
+        auto pEnum = Make<SubCommandEnum>();
+        if (!pEnum) return E_OUTOFMEMORY;
+        pEnum->SetCommands(std::move(commands));
+        return pEnum.CopyTo(ppEnum);
+    }
+    catch (...) { return E_FAIL; }
+}
+
+// ---------------------------------------------------------------------------
 // PakkoRootCommand
 // ---------------------------------------------------------------------------
 
@@ -753,10 +954,11 @@ STDMETHODIMP PakkoRootCommand::EnumSubCommands(IEnumExplorerCommand** ppEnum) no
         auto pArchive       = Make<ArchiveCommand>();
         auto pTarArchive    = Make<TarArchiveCommand>();
         auto pTest          = Make<TestCommand>();
-        if (!pBrowse || !pExtractDialog || !pExtractHereFlat || !pExtractHere || !pExtractFolder || !pCompressDialog || !pArchive || !pTarArchive || !pTest)
+        auto pHash          = Make<HashCommand>();
+        if (!pBrowse || !pExtractDialog || !pExtractHereFlat || !pExtractHere || !pExtractFolder || !pCompressDialog || !pArchive || !pTarArchive || !pTest || !pHash)
             return E_OUTOFMEMORY;
 
-        ComPtr<IExplorerCommand> pCmdBrowse, pCmdExtractDialog, pCmdExtractHereFlat, pCmdA, pCmdB, pCmdCompressDialog, pCmdC, pCmdTarArchive, pCmdTest;
+        ComPtr<IExplorerCommand> pCmdBrowse, pCmdExtractDialog, pCmdExtractHereFlat, pCmdA, pCmdB, pCmdCompressDialog, pCmdC, pCmdTarArchive, pCmdTest, pCmdHash;
         HRESULT hr = pBrowse.As(&pCmdBrowse);                if (FAILED(hr)) return hr;
         hr = pExtractDialog.As(&pCmdExtractDialog);          if (FAILED(hr)) return hr;
         hr = pExtractHereFlat.As(&pCmdExtractHereFlat);      if (FAILED(hr)) return hr;
@@ -766,6 +968,7 @@ STDMETHODIMP PakkoRootCommand::EnumSubCommands(IEnumExplorerCommand** ppEnum) no
         hr = pArchive.As(&pCmdC);                            if (FAILED(hr)) return hr;
         hr = pTarArchive.As(&pCmdTarArchive);                if (FAILED(hr)) return hr;
         hr = pTest.As(&pCmdTest);                            if (FAILED(hr)) return hr;
+        hr = pHash.As(&pCmdHash);                            if (FAILED(hr)) return hr;
 
         // Order mirrors NanaZip's real ContextMenu.cpp: within each group, the dialog-based
         // command precedes its one-click siblings (kExtract before kExtractHere/kExtractTo;
@@ -779,6 +982,8 @@ STDMETHODIMP PakkoRootCommand::EnumSubCommands(IEnumExplorerCommand** ppEnum) no
         // T-F03: "Open" (BrowseCommand) goes FIRST, ahead of even the Extract dialog — confirmed
         // against NanaZip's real ContextMenu.cpp, whose kOpen is inserted before its kExtract
         // group. It's a separate, coexisting command, not a replacement for Extract.
+        // T-F128: "Хеш-суми" (HashCommand) joins Test at the very end — also a diagnostic/
+        // utility action, not a primary one, and applies to any file type (not archive-specific).
         std::vector<ComPtr<IExplorerCommand>> commands;
         commands.push_back(std::move(pCmdBrowse));
         commands.push_back(std::move(pCmdExtractDialog));
@@ -789,6 +994,7 @@ STDMETHODIMP PakkoRootCommand::EnumSubCommands(IEnumExplorerCommand** ppEnum) no
         commands.push_back(std::move(pCmdC));
         commands.push_back(std::move(pCmdTarArchive));
         commands.push_back(std::move(pCmdTest));
+        commands.push_back(std::move(pCmdHash));
 
         auto pEnum = Make<SubCommandEnum>();
         if (!pEnum) return E_OUTOFMEMORY;

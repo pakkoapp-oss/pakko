@@ -92,7 +92,7 @@ Rejected 2026-07-18; see `DECISIONS.md`'s T-F09 "Distribution" entry.
 | `l` | List contents | Supported — consumes `IArchiveListingRouter` (T-F05, shipped), looped once per archive path given |
 | `b` | Benchmark | Not supported, deliberately out of scope (same reasoning as T-F05's NanaZip-toolbar scope cuts) |
 | `i` | Info (list supported archive formats/codecs) | Not implemented, but trivial — would report ZIP (always) + live `TarCapabilities` (detected formats) |
-| `h` | Hash | Partial — T-F46 hashes arbitrary files (SHA-256) via the GUI, but nothing hashes *entries inside* an archive specifically |
+| `h` | Hash | **Supported (added 2026-07-20, T-F128/T-F09 follow-up).** Real 7z `h` hashes files on disk, not archive entries — the original row here predated T-F128 and described the wrong thing. Maps onto `FileHashService.ComputeAsync` (same engine the Explorer context-menu "Хеш-суми" submenu uses): one or more files hashed independently, or exactly one folder recursed with a combined DataSum/NamesSum printed (NanaZip-compatible, verified against the vendored `7za.exe`) |
 | `rn` | Rename entries in an archive | Not supported, deliberately — in-place mutation, same reasoning as `d` |
 
 ## Switch fidelity — per-switch, not full coverage
@@ -109,19 +109,30 @@ Rejected 2026-07-18; see `DECISIONS.md`'s T-F09 "Distribution" entry.
 | `-m{params}` (e.g. `-mx=9`) | Compression method/level | Partial — 7z's 0–9 scale doesn't map 1:1 onto `System.IO.Compression.CompressionLevel`'s four discrete values (`NoCompression`/`Fastest`/`Optimal`/`SmallestSize`); needs an explicit, documented bucketing, not a naive `/9*4` — resolved: `0`->`NoCompression`, `1-2`->`Fastest`, `3-6`->`Optimal` (7z's own default `-mx5` lands here), `7-9`->`SmallestSize` |
 | `-ao{a\|s\|u\|t}` | Overwrite mode | Mostly supported — maps to `ExtractOptions.OnConflict` (Overwrite/Skip/Rename); 7z's 4th variant (`t`, rename existing instead of new) has no Pakko equivalent |
 | `-scc`/`-ssc` | Console charset / case-sensitivity | `-scc` not applicable (.NET is Unicode-native); case-sensitive matching is an open question worth a decision, not an assumption |
-| `-si` | Read the archive from stdin | Supported on `x`/`t`/`l` (T-F116). Buffered, not zero-copy — see below |
-| `-so` | Write output to stdout | Supported on `x` (only when extraction resolves to exactly one file) and `a` (T-F116). Buffered, not zero-copy — see below |
+| `-si` | Read the archive from stdin | Supported on `x`/`t`/`l` (T-F116, buffered — stages stdin to a temp file first, see below) and on `h` (T-F128/T-F09 follow-up, **genuinely zero-copy** — CRC-32/SHA-256 need no seeking, so `ComputeStreamDigestAsync` hashes stdin directly, no temp file at all; the only `-si` on any command that's a real single-pass stream) |
+| `-so` | Write output to stdout | Supported on `x` (only when extraction resolves to exactly one file) and `a` (T-F116). Not applicable to `h` — its report already prints to stdout by default, there's no separate result file to stream |
+| `-scrc{method}` | Hash method | Only meaningful for `h` (added T-F128/T-F09 follow-up). Two real spellings map onto `HashAlgorithmKind`: `-scrcCRC32` (default when `-scrc` is omitted, matching real 7z's own default) and `-scrcSHA256`, case-insensitive. Every other real 7z method (`CRC64`, `SHA1`, `SHA3-256`, `XXH64`, `BLAKE2SP`, etc.) is recognized but rejected — Pakko only implements the two `Archiver.Core.IO`/`System.Security.Cryptography` already provided elsewhere in the app |
 
 ---
 
 ## Stdin/stdout streaming (`-si`/`-so`, T-F116)
 
-Buffered, not zero-copy: `-si` stages the full stdin stream to a private temp file before the
-operation starts; `-so` runs the operation to a private temp location, then streams the single
-resulting file to stdout once it's complete. A failed operation never emits partial output. `-so`
-on `x` requires the extraction to resolve to exactly one file (multiple files → a named error,
-exit 2). `Archiver.Core`'s public API is unchanged — see `ARCHITECTURE.md`'s T-F116 entry for why
-true zero-copy streaming was rejected.
+Buffered, not zero-copy, **for `x`/`t`/`l`/`a`**: `-si` stages the full stdin stream to a private
+temp file before the operation starts; `-so` runs the operation to a private temp location, then
+streams the single resulting file to stdout once it's complete. A failed operation never emits
+partial output. `-so` on `x` requires the extraction to resolve to exactly one file (multiple
+files → a named error, exit 2). `Archiver.Core`'s public API is unchanged — see `ARCHITECTURE.md`'s
+T-F116 entry for why true zero-copy streaming was rejected for these commands: `ZipArchive` needs a
+seekable file to read its central directory, and `TarSandboxedService`'s whole-archive pre-scan
+(T-F49) needs a real file to scan before extraction runs — neither can operate on a raw pipe
+mid-stream.
+
+**`h -si` is the one genuine exception (T-F128/T-F09 follow-up).** CRC-32/SHA-256 are single-pass,
+no-seek algorithms, so nothing forces staging to disk first — `FileHashService.
+ComputeStreamDigestAsync` reads directly from `Console.OpenStandardInput()` and hashes as it goes,
+with no intermediate temp file at all. Confirmed via a real subprocess test piping raw bytes to the
+built `pakko.exe`'s stdin (`CliSubprocessTests.Hash_StdinCrc32_MatchesKnownValue`/
+`Hash_StdinSha256_MatchesKnownValue`).
 
 **Shell compatibility — verified empirically, not assumed.** A raw `<` input-redirection operator
 does not exist in PowerShell (any version — both 5.1 and 7 reject it as a reserved token). Native

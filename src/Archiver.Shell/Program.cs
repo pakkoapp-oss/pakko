@@ -55,6 +55,10 @@ switch (command.Type)
     case CommandType.Test:
         await RunTestAsync(command.Files, policy).ConfigureAwait(false);
         break;
+
+    case CommandType.Hash:
+        await RunHashAsync(command.Files, command.Algorithm).ConfigureAwait(false);
+        break;
 }
 
 // -------------------------------------------------------------------------
@@ -344,6 +348,93 @@ static async Task<ArchiveResult> RunWithProgressWindowAsync(
 const uint MB_ICONERROR = 0x10;
 const uint MB_ICONWARNING = 0x30;
 const int MaxErrorLinesShown = 10;
+
+// -------------------------------------------------------------------------
+// --hash: T-F128. Computes CRC-32/SHA-256 for the "Хеш-суми" context-menu submenu. Doesn't
+// reuse RunWithProgressWindowAsync above -- that helper is typed around Task<ArchiveResult>,
+// and FileHashService.HashResult doesn't fit that shape (it carries computed hash strings, not
+// created files/archive errors) -- so this mirrors its dialog/cancel-poll/progress plumbing
+// directly instead of forcing an ill-fitting abstraction onto a differently-shaped result.
+// -------------------------------------------------------------------------
+static async Task RunHashAsync(IReadOnlyList<string> paths, HashAlgorithmKind algorithm)
+{
+    string label = algorithm == HashAlgorithmKind.Crc32 ? "CRC-32" : "SHA-256";
+    string title = paths.Count == 1
+        ? $"{label}: {Path.GetFileName(paths[0].TrimEnd('\\'))}"
+        : $"{label}: {paths.Count} files";
+
+    NativeProgressDialog? dialog;
+    try { dialog = new NativeProgressDialog(title); }
+    catch (COMException) { dialog = null; }
+
+    HashResult result;
+    try
+    {
+        if (dialog is null)
+        {
+            result = await FileHashService.ComputeAsync(paths, algorithm, null, CancellationToken.None).ConfigureAwait(false);
+        }
+        else
+        {
+            using (dialog)
+            {
+                using var cts = new CancellationTokenSource();
+                var dialogLock = new object();
+
+                using var cancelPoll = new Timer(_ =>
+                {
+                    lock (dialogLock)
+                    {
+                        if (dialog.HasUserCancelled())
+                            cts.Cancel();
+                    }
+                }, null, TimeSpan.Zero, TimeSpan.FromMilliseconds(250));
+
+                var progress = new Progress<ProgressReport>(r =>
+                {
+                    lock (dialogLock)
+                    {
+                        if (r.CurrentFile is not null)
+                            dialog.SetLine(1, r.CurrentFile);
+                        dialog.SetLine(2, FormatStatus(r));
+                        dialog.SetProgress(r.BytesTransferred, r.TotalBytes);
+                    }
+                });
+
+                result = await FileHashService.ComputeAsync(paths, algorithm, progress, cts.Token).ConfigureAwait(false);
+            }
+        }
+    }
+    catch (OperationCanceledException)
+    {
+        return;
+    }
+
+    ShowHashResults(title, result);
+}
+
+static void ShowHashResults(string title, HashResult result)
+{
+    var lines = new List<string>();
+    if (result.Folder is { } folder)
+    {
+        lines.Add($"Files: {folder.FileCount}");
+        lines.Add($"DataSum: {folder.DataSum}");
+        lines.Add($"NamesSum: {folder.NamesSum}");
+        lines.Add(string.Empty);
+    }
+
+    lines.AddRange(result.Entries.Take(MaxErrorLinesShown)
+        .Select(e => e.Error is null
+            ? $"{Path.GetFileName(e.SourcePath)}: {e.Hash}"
+            : $"{Path.GetFileName(e.SourcePath)}: {e.Error}"));
+    if (result.Entries.Count > MaxErrorLinesShown)
+        lines.Add($"…and {result.Entries.Count - MaxErrorLinesShown} more");
+
+    var message = string.Join(Environment.NewLine, lines);
+    bool anyErrors = result.Entries.Any(e => e.Error is not null);
+    MessageBoxW(IntPtr.Zero, message, title, anyErrors ? MB_ICONWARNING : MB_ICONINFORMATION);
+}
 
 static void ShowErrorSummary(string title, IReadOnlyList<ArchiveError> errors)
 {

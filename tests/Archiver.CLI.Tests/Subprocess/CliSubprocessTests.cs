@@ -154,6 +154,100 @@ public sealed class CliSubprocessTests
         stdOut.Should().Contain("b.txt");
     }
 
+    // --- h: happy path (T-F128/T-F09 follow-up) ---
+
+    [Fact]
+    public void Hash_SingleFile_PrintsCrc32AndExitsZero()
+    {
+        (int exitCode, string stdOut, string stdErr) = CliProcessRunner.Run("h", CliFixtureFiles.SourceFileA);
+
+        exitCode.Should().Be(0);
+        stdErr.Should().BeEmpty();
+        stdOut.Should().Contain($"0D4A1185  {CliFixtureFiles.SourceFileA}");
+    }
+
+    [Fact]
+    public void Hash_ScrcSha256_PrintsSha256AndExitsZero()
+    {
+        (int exitCode, string stdOut, string stdErr) = CliProcessRunner.Run("h", "-scrcSHA256", CliFixtureFiles.SourceFileA);
+
+        exitCode.Should().Be(0);
+        stdOut.Should().Contain($"b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9  {CliFixtureFiles.SourceFileA}");
+    }
+
+    [Fact]
+    public void Hash_MultipleFiles_PrintsEachIndependently_NoFolderSummary()
+    {
+        (int exitCode, string stdOut, string stdErr) = CliProcessRunner.Run("h", CliFixtureFiles.SourceFileA, CliFixtureFiles.SourceFileB);
+
+        exitCode.Should().Be(0);
+        stdOut.Should().Contain($"0D4A1185  {CliFixtureFiles.SourceFileA}");
+        stdOut.Should().Contain($"735AF9A0  {CliFixtureFiles.SourceFileB}");
+        stdOut.Should().NotContain("DataSum");
+    }
+
+    [Fact]
+    public void Hash_OneFolder_PrintsDataSumAndNamesSumMatchingSevenZip()
+    {
+        // Real value cross-checked against the vendored 7za.exe (same technique as
+        // FileHashServiceTests) for this exact fixture pair (a.txt="hello world",
+        // b.txt="second file") — proves the real built pakko.exe's 'h' command, not just the
+        // library call, produces NanaZip-compatible output end to end.
+        (int exitCode, string stdOut, string stdErr) = CliProcessRunner.Run("h", CliFixtureFiles.SourceDir);
+
+        exitCode.Should().Be(0);
+        stdOut.Should().Contain("Files: 2");
+        stdOut.Should().Contain("CRC32 for data:           80A50B25-00000000");
+        stdOut.Should().Contain("CRC32 for data and names: 064959A3-00000001");
+    }
+
+    [Fact]
+    public void Hash_MissingFile_ExitsTwoAndReportsError()
+    {
+        string missing = Path.Combine(CliFixtureFiles.CreateScratchDir(), "does-not-exist.txt");
+
+        (int exitCode, string stdOut, string stdErr) = CliProcessRunner.Run("h", missing);
+
+        exitCode.Should().Be(2);
+        stdErr.Should().Contain(missing);
+    }
+
+    [Fact]
+    public void Hash_UnknownScrcMethod_ExitsSevenNamingSupportedMethods()
+    {
+        (int exitCode, string stdOut, string stdErr) = CliProcessRunner.Run("h", "-scrcSHA1", CliFixtureFiles.SourceFileA);
+
+        exitCode.Should().Be(7);
+        stdErr.Should().Contain("not supported by Pakko");
+    }
+
+    // Real proof of the genuine single-pass streaming path (no CliStreamStaging temp file
+    // involved for 'h', unlike x/t/l's -si) — pipes "hello world"'s exact bytes to the real
+    // built pakko.exe's stdin and checks the same known-correct CRC-32 comes back.
+    [Fact]
+    public void Hash_StdinCrc32_MatchesKnownValue()
+    {
+        byte[] stdinBytes = "hello world"u8.ToArray();
+
+        (int exitCode, byte[] stdOutBytes, string stdErr) = CliProcessRunner.RunWithBinaryStdio(stdinBytes, "h", "-si");
+
+        exitCode.Should().Be(0);
+        stdErr.Should().BeEmpty();
+        System.Text.Encoding.UTF8.GetString(stdOutBytes).Should().Contain("0D4A1185  (stdin)");
+    }
+
+    [Fact]
+    public void Hash_StdinSha256_MatchesKnownValue()
+    {
+        byte[] stdinBytes = "hello world"u8.ToArray();
+
+        (int exitCode, byte[] stdOutBytes, string stdErr) = CliProcessRunner.RunWithBinaryStdio(stdinBytes, "h", "-scrcSHA256", "-si");
+
+        exitCode.Should().Be(0);
+        System.Text.Encoding.UTF8.GetString(stdOutBytes)
+            .Should().Contain("b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9  (stdin)");
+    }
+
     // --- three-way rule: one real instance of each category ---
 
     [Fact]

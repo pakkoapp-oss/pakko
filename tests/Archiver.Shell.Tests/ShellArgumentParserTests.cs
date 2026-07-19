@@ -196,6 +196,74 @@ public sealed class ShellArgumentParserTests
         result.ErrorMessage.Should().NotBeNullOrEmpty();
     }
 
+    // --- Valid: --hash (T-F128) ---
+
+    [Fact]
+    public void Hash_Crc32SingleFile_ReturnsHashAndAlgorithm()
+    {
+        ParsedCommand result = ShellArgumentParser.Parse(["--hash", "--algorithm", "crc32", "document.txt"]);
+
+        result.Type.Should().Be(CommandType.Hash);
+        result.Algorithm.Should().Be(HashAlgorithmKind.Crc32);
+        result.Files.Should().Equal("document.txt");
+        result.ErrorMessage.Should().BeNull();
+    }
+
+    [Fact]
+    public void Hash_Sha256MultipleFiles_ReturnsHashAndAllFiles()
+    {
+        ParsedCommand result = ShellArgumentParser.Parse(["--hash", "--algorithm", "sha256", "a.txt", "b.txt"]);
+
+        result.Type.Should().Be(CommandType.Hash);
+        result.Algorithm.Should().Be(HashAlgorithmKind.Sha256);
+        result.Files.Should().Equal("a.txt", "b.txt");
+    }
+
+    [Fact]
+    public void Hash_MissingAlgorithmFlag_ReturnsInvalid()
+    {
+        ParsedCommand result = ShellArgumentParser.Parse(["--hash", "document.txt"]);
+
+        result.Type.Should().Be(CommandType.Invalid);
+        result.ErrorMessage.Should().NotBeNullOrEmpty();
+    }
+
+    [Fact]
+    public void Hash_UnknownAlgorithmValue_ReturnsInvalid()
+    {
+        ParsedCommand result = ShellArgumentParser.Parse(["--hash", "--algorithm", "sha1", "document.txt"]);
+
+        result.Type.Should().Be(CommandType.Invalid);
+        result.ErrorMessage.Should().NotBeNullOrEmpty();
+    }
+
+    [Fact]
+    public void Hash_AlgorithmFlagMissingValue_ReturnsInvalid()
+    {
+        ParsedCommand result = ShellArgumentParser.Parse(["--hash", "--algorithm"]);
+
+        result.Type.Should().Be(CommandType.Invalid);
+        result.ErrorMessage.Should().NotBeNullOrEmpty();
+    }
+
+    [Fact]
+    public void Hash_AlgorithmFlagWithNoFilesAfterValue_ReturnsInvalid()
+    {
+        ParsedCommand result = ShellArgumentParser.Parse(["--hash", "--algorithm", "crc32"]);
+
+        result.Type.Should().Be(CommandType.Invalid);
+        result.ErrorMessage.Should().NotBeNullOrEmpty();
+    }
+
+    [Fact]
+    public void Hash_NoArgumentsAtAll_ReturnsInvalid()
+    {
+        ParsedCommand result = ShellArgumentParser.Parse(["--hash"]);
+
+        result.Type.Should().Be(CommandType.Invalid);
+        result.ErrorMessage.Should().NotBeNullOrEmpty();
+    }
+
     // --- Valid: --open-ui --extract ---
 
     [Fact]

@@ -74,6 +74,7 @@ src/
 │   │   ├── ConflictResolver.cs         ← T-F06: resolves ConflictBehavior.Ask
 │   │   ├── PreviewPolicy.cs            ← T-F97/T-F109: safe-preview allowlist
 │   │   ├── TarVersionParser.cs
+│   │   ├── FileHashService.cs          ← T-F128: single-file/multi-file/single-folder-recursive hashing
 │   │   ├── Sandbox/                    ← T-F52: AppContainer subsystem for tar.exe
 │   │   │   ├── AppContainerProfile.cs / QuarantineAcl.cs / QuarantineStaging.cs
 │   │   │   ├── SandboxJobObject.cs / SandboxedProcessLauncher.cs / SandboxHandles.cs
@@ -85,7 +86,8 @@ src/
 │   │       └── ZipEntryWriter.cs / ZipEntryCompressor.cs / DosDateTime.cs
 │   ├── IO/
 │   │   ├── Crc32.cs                    ← public (T-F110), reused by pending-list CRC display too
-│   │   └── ProgressStream.cs           ← T-F16: byte-accurate IProgress<int> wrapper
+│   │   ├── ProgressStream.cs           ← T-F16: byte-accurate IProgress<int> wrapper
+│   │   └── HashDigestAccumulator.cs    ← T-F128: NanaZip-compatible folder DataSum/NamesSum combine
 │   └── Models/
 │       ├── ArchiveOptions.cs / ExtractOptions.cs / ArchiveResult.cs
 │       ├── ArchiveError.cs / SkippedFile.cs / ProgressReport.cs
@@ -93,6 +95,7 @@ src/
 │       ├── ArchiveEntryInfo.cs / ArchiveListResult.cs     ← T-F05: browse-mode listing
 │       ├── ConflictInfo.cs / ConflictDecision.cs          ← T-F06
 │       ├── CompressionBombWarning.cs                      ← T-F94
+│       ├── HashAlgorithmKind.cs                           ← T-F128: Crc32 | Sha256
 │       └── TarCapabilities.cs
 │
 ├── Archiver.App/               ← WinUI 3 main app; packages all satellite EXEs via MSIX
@@ -138,7 +141,9 @@ src/
     ├── dllmain.cpp                     ← DllGetClassObject, DllCanUnloadNow
     ├── ExplorerCommands.cpp/.h         ← PakkoRootCommand, SubCommandEnum, and every leaf command
     │                                     (ExtractDialog/ExtractHereFlat/ExtractHere/ExtractFolder/
-    │                                     CompressDialog/Archive/TarArchive/Test)
+    │                                     CompressDialog/Archive/TarArchive/Test/Browse/Hash) —
+    │                                     T-F128: HashCommand (ECF_HASSUBCOMMANDS) + its two leaves
+    │                                     HashCrc32Command/HashSha256Command
     ├── ShellExtUtils.cpp/.h            ← COM-free logic, unit-tested via Archiver.ShellExtension.Tests
     └── Localization.cpp/.h             ← T-F115: 37-locale context-menu string table
 ```
@@ -527,6 +532,54 @@ reusing the same T-F94 helper the extraction-side compression-bomb check already
 the bomb defense); the temp-file redesign introduced a real, if best-effort-only-mitigated, new
 disk-space risk that direct streaming never had. Insufficient space is reported as a per-file
 `ArchiveError`, no disk touched — see `DECISIONS.md`.
+
+---
+
+## FileHashService — Current Signature (T-F128)
+
+Static, stateless — mirrors `ArchiveNaming`/`ArchiveFormatRegistryNames`'s "no DI needed" shape,
+not a constructor-injected service. Consumed directly by `Archiver.Shell.Program.RunHashAsync`
+(the Explorer context-menu's "Хеш-суми" submenu — see `ExplorerCommands.cpp`'s `HashCommand`).
+
+```csharp
+// Models/HashAlgorithmKind.cs
+public enum HashAlgorithmKind { Crc32, Sha256 }
+
+// Services/FileHashService.cs
+public sealed record HashEntry(string SourcePath, string? Hash, string? Error);
+public sealed record FolderHashSummary(string DataSum, string NamesSum, int FileCount);
+
+public sealed class HashResult
+{
+    public IReadOnlyList<HashEntry> Entries { get; init; }
+    public FolderHashSummary? Folder { get; init; } // non-null only for a single-folder input
+}
+
+public static class FileHashService
+{
+    public static Task<HashResult> ComputeAsync(
+        IReadOnlyList<string> paths,
+        HashAlgorithmKind algorithm,
+        IProgress<ProgressReport>? progress,
+        CancellationToken ct);
+}
+
+// IO/HashDigestAccumulator.cs (internal — NanaZip-compatible combine algorithm, see
+// DECISIONS.md's T-F128 entry for the full byte-level derivation against real NanaZip source)
+internal sealed class HashDigestAccumulator
+{
+    public HashDigestAccumulator(int digestSize);
+    public void Add(ReadOnlySpan<byte> itemDigest);
+    public string ToDisplayString(); // e.g. "3B4FE1AC-00000001" once 2+ items are combined
+}
+```
+
+**Branching in `ComputeAsync`:** exactly one folder path → recursive whole-tree hash with a
+combined `Folder` summary (DataSum always NanaZip-exact regardless of nesting; NamesSum exact per
+file, but omits each subfolder object's own contribution — see `DECISIONS.md`). Anything else
+(one or more files, or a folder mixed into a larger selection) → each path hashed independently
+into `Entries`, `Folder` stays `null`; a folder encountered in this branch is recorded as a
+skipped `HashEntry`, not summed.
 
 ---
 

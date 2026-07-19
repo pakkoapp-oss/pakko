@@ -13,6 +13,7 @@ public enum CommandType
     OpenUiExtract,
     OpenUiArchive,
     OpenUiBrowse,
+    Hash,
     Invalid,
 }
 
@@ -27,6 +28,10 @@ public sealed record ParsedCommand
     // "--archive". Defaults to Zip, matching Archiver.ShellExtension.dll's BuildArchiveArgs,
     // which stays flag-less for the pre-existing zip one-click command.
     public ArchiveContainerFormat Format { get; init; } = ArchiveContainerFormat.Zip;
+
+    // T-F128: only Hash uses this — set from the required "--algorithm crc32|sha256" pair right
+    // after "--hash" (unlike Format above, there's no default: BuildHashArgs always emits it).
+    public HashAlgorithmKind Algorithm { get; init; } = HashAlgorithmKind.Sha256;
 }
 
 /// <summary>
@@ -52,8 +57,34 @@ public static class ShellArgumentParser
             "--extract-folder" => ParseFileList(CommandType.ExtractFolder, args),
             "--archive"        => ParseArchive(args),
             "--test"           => ParseFileList(CommandType.Test, args),
+            "--hash"           => ParseHash(args),
             var other          => Invalid($"Unknown command: {other}"),
         };
+    }
+
+    // T-F128: "--hash" always requires "--algorithm crc32|sha256" right after it (unlike
+    // "--archive"'s optional "--format", every Hash invocation names its algorithm explicitly —
+    // BuildHashArgs never leaves it flag-less), then ≥1 file/folder path.
+    private static ParsedCommand ParseHash(string[] args)
+    {
+        var rest = args[1..];
+        if (rest.Length < 2 || rest[0] != "--algorithm")
+            return Invalid("--hash requires --algorithm crc32|sha256.");
+
+        var algorithm = rest[1] switch
+        {
+            "crc32"  => HashAlgorithmKind.Crc32,
+            "sha256" => HashAlgorithmKind.Sha256,
+            _        => (HashAlgorithmKind)(-1),
+        };
+        if ((int)algorithm == -1)
+            return Invalid($"Unknown --algorithm value: {rest[1]}");
+
+        rest = rest[2..];
+        if (rest.Length == 0)
+            return Invalid("--hash requires at least one file.");
+
+        return new ParsedCommand { Type = CommandType.Hash, Files = rest, Algorithm = algorithm };
     }
 
     // T-F105: "--archive" alone means ZIP (unchanged pre-existing behavior); an optional

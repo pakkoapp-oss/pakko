@@ -414,9 +414,34 @@ tables in both files; `CLI.md` is the canonical owner per `CLAUDE.md`'s Document
       real stderr text asserted
 - [x] `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` passes with both new test layers
       included (94 tests in `Archiver.CLI.Tests`, part of a 567-test green run repo-wide)
+- [x] **`h` (hash) added 2026-07-20, T-F128/T-F09 follow-up, user-requested** ("Cli наш бінарник
+      консольний теж тепер виіє як і севензіп? З тими ж ключами?") — maps directly onto
+      `FileHashService.ComputeAsync` (the same engine T-F128's Explorer "Хеш-суми" submenu uses),
+      not a separate implementation. `-scrc{method}` (`CRC32` default, matching real 7z's own
+      default; `SHA256`; anything else rejected per the three-way rule) — `-so` is deliberately not
+      applicable (the report already prints to stdout, no separate result file to stream).
+      Corrected a real, pre-existing inaccuracy in `CLI.md`'s `h` row while at it: it had described
+      7z's `h` as hashing *entries inside an archive*, but real 7z `h` hashes files on disk,
+      unrelated to archives — matches what T-F128's `FileHashService` already does.
+      **`-si` follow-up, same day** (user asked directly whether the stdin path was a genuine
+      stream or secretly buffered the whole file first — it was the latter, reusing `x`/`t`/`l`'s
+      existing `CliStreamStaging.StageStdinAsync` temp-file helper without questioning whether `h`
+      actually needed it). It doesn't: unlike ZIP's central-directory read or tar.exe's pre-scan,
+      CRC-32/SHA-256 need no seeking, so `h -si` was reworked into a genuinely different, zero-copy
+      path — new `FileHashService.ComputeStreamDigestAsync(Stream, ...)` (extracted from a shared
+      `ReadAndDigestAsync` helper the existing file-path method now also calls) hashes
+      `Console.OpenStandardInput()` directly, no intermediate file at all. The only `-si` in this
+      CLI that's a real single-pass stream — `x`/`t`/`l`'s stay buffered, for the real reasons
+      documented in `CLI.md`. 51 new tests total across both rounds (30 parser cases in
+      `CliArgumentParserTests`, 2 `CliHelpTextTests` cases, 1 `-scrc`-on-wrong-command case, 2
+      `FileHashServiceTests.ComputeStreamDigestAsync_*` unit tests, and — the real proof, not just
+      parser coverage — 8 `CliSubprocessTests` cases launching the actual built `pakko.exe`,
+      including a real folder DataSum/NamesSum cross-checked against the vendored `7za.exe` and two
+      tests piping raw bytes to the real exe's stdin for the zero-copy path). `Archiver.CLI.Tests`
+      total: 94 → 143; repo-wide: 700 tests green.
 - [ ] Manual on-device verification: real `pakko x archive.zip`, `pakko t archive.zip`,
-      `pakko i`, `pakko a archive.zip file1 file2` against real archives, plus one of each
-      three-way error case, confirmed by the user personally
+      `pakko i`, `pakko a archive.zip file1 file2`, `pakko h file.txt`/`pakko h folder` against
+      real archives/files, plus one of each three-way error case, confirmed by the user personally
 - [x] `Archiver.CLI` published self-contained per architecture (`win-x64`, `win-arm64`) as a
       standalone downloadable artifact via `scripts/Publish-Cli.ps1`, with a `SHA256SUMS` file for
       verification — separate from the MSIX, confirmed to run standalone outside the repo/dev
@@ -727,9 +752,12 @@ existing CLI zips/`SHA256SUMS`.
   factual detail once notability is otherwise established
 
 **Acceptance criteria:**
-- [ ] Real notability check redone at implementation time (sources may exist by then that don't
+- [x] Real notability check redone at implementation time (sources may exist by then that don't
       today) — record what was found, don't assume the 2026-07-19 "not yet notable" finding still
-      holds without rechecking
+      holds without rechecking. **Rechecked 2026-07-19 (same day):** live web search for "Pakko"
+      alongside archiver/WinUI/zip/GitHub terms returned zero results referencing this project at
+      all — no press coverage, no reviews, no third-party mentions of any kind exist yet. Same
+      conclusion as the original finding above; task stays blocked, not started.
 - [ ] If proceeding: COI disclosed per `WP:COI` before any mainspace edit
 - [ ] English draft submitted via AfC (or mainspace, if a competent Wikipedia editor advises
       notability is clearly met and AfC is unnecessary)
@@ -738,36 +766,170 @@ existing CLI zips/`SHA256SUMS`.
 
 ---
 
-### T-F128 — Hash-sum dropdown: add SHA-256 alongside CRC-32 for archives and files
-- [ ] **Status:** future, added 2026-07-19 at the user's explicit request. **Scope needs
-      confirming before implementation — flagging the mismatch found while looking at the current
-      code, not guessing at it:** the request describes "a dropdown already used to find hash sums
-      of archives and files, with CRC-32 in it, needing SHA-256 added." The actual current code
-      has no such dropdown at all:
-      - The "Hash" button (Row 0, `MainWindow.xaml.cs`'s `HashFilesCommand` →
-        `DialogService.ShowFileHashAsync`) picks arbitrary files via a file picker and always
-        computes SHA-256 — fixed, no algorithm choice, no CRC-32 option, and (since it's a plain
-        file picker) it can already be pointed at an archive file itself, hashing the archive as
-        a whole, but not any entry inside it.
-      - The Archive Browser's CRC-32 column (T-F110, `ArchiveEntryViewModel`) is a fixed,
-        non-interactive **column** showing each ZIP entry's stored CRC-32 — ZIP-only (tar-family
-        formats don't expose a per-entry CRC the same way), not a dropdown, not user-selectable,
-        and computes nothing for the archive as a whole.
-      Before implementing, resolve: (a) does "dropdown" mean adding an algorithm selector
-      (CRC-32/SHA-256, maybe more) to the existing whole-file Hash tool, so it also covers a whole
-      archive's own bytes and/or a selected archive entry; (b) does it mean adding a SHA-256
-      column next to the existing CRC-32 column in the Archive Browser table (per-entry, ZIP-only
-      unless a per-entry SHA-256 is computed live by re-reading each entry's decompressed bytes,
-      which is a real perf cost the fixed CRC-32 column doesn't have since it just reads the
-      stored value); or (c) both.
+### T-F128 — "Хеш-суми" Explorer context-menu submenu (CRC-32/SHA-256, files and folders)
+- [~] **Status:** implementation complete 2026-07-19, on-device verification pending.
+      **Re-scoped twice this session, both times user-driven — kept per the "never silently
+      deprecate" rule:**
+      1. First implementation attempt was a `ComboBox` inside the existing WinUI
+         `DialogService.ShowFileHashAsync` dialog (the "Hash" button) — **fully reverted**
+         (`DialogService.cs` confirmed byte-identical to its pre-session state via `git diff`)
+         after the user showed real NanaZip screenshots: they wanted a native Explorer
+         right-click submenu (mirroring NanaZip's own cascaded "CRC SHA" menu), not an in-app
+         dialog.
+      2. The user's screenshots also showed NanaZip hashing a *folder*, producing two combined
+         values (DataSum/NamesSum) via a specific commutative "carrying addition" algorithm —
+         reverse-engineered from NanaZip's real source
+         (`NanaZip.UI.Modern/SevenZip/CPP/7zip/UI/Common/HashCalc.cpp`) via a Plan-Mode session,
+         not guessed. See `DECISIONS.md`'s T-F128 entry for the full algorithm derivation
+         (`AddDigests`' byte-wise carry, `CHasherState::WriteToString`'s display/overflow-suffix
+         rules, and why nested-folder recursion is safe for DataSum but not for NamesSum's
+         subfolder-object contribution).
 - **Depends on:** none.
 
-**Acceptance criteria (to be finalized once (a)/(b)/(c) above is resolved):**
-- [ ] Scope question above resolved with the user before writing code
-- [ ] SHA-256 available as a real, selectable option somewhere hash sums are already shown
-      (dropdown or equivalent), CRC-32 remains available alongside it, not replaced
-- [ ] Whatever UI surface changes, matches this project's existing localization convention
-      (`x:Uid`, all 37 locales) if it's a new XAML-visible label
+**Implementation:**
+- New `Archiver.Core.IO.HashDigestAccumulator` (internal) — the NanaZip-compatible combine
+  algorithm, reused for both DataSum and NamesSum.
+- New `Archiver.Core.Services.FileHashService.ComputeAsync` — single file, multi-file (each
+  hashed independently), and single-folder-recursive (combined DataSum/NamesSum + per-file
+  listing) branches; a folder inside a multi-item selection is skipped gracefully, not summed
+  (ambiguous relative-path anchor, explicitly out of scope).
+- `Archiver.Shell`: new `--hash --algorithm crc32|sha256` CLI switch
+  (`ShellArgumentParser.ParseHash`), `RunHashAsync` reuses `NativeProgressDialog` +
+  cancel-poll directly (not `RunWithProgressWindowAsync`, which is typed around
+  `ArchiveResult` — a hash result doesn't fit that shape), shows results via `MessageBoxW`.
+- `Archiver.ShellExtension`: new `HashCommand` (`ECF_HASSUBCOMMANDS` parent, "Хеш-суми"),
+  `HashCrc32Command`/`HashSha256Command` leaves (titles hardcoded, algorithm names stay
+  untranslated Latin script like T-F105's tar format names) — added last in
+  `PakkoRootCommand::EnumSubCommands`, after Test (diagnostic/utility actions go last). New
+  `BuildHashArgs` in `ShellExtUtils`. Zero `Package.appxmanifest` changes (leaf-command
+  precedent holds). One new localized string, `StringId::HashSubmenu` (the submenu's own
+  parent title), across all 37 locales.
+- **Real external-tool cross-check, not just internal consistency**: `FileHashServiceTests`'
+  folder DataSum/NamesSum expected values were captured from the vendored `7za.exe`
+  (`h -scrcCRC32`/`h -scrcSHA256`, T-F114's tool — 7-Zip's own `h` command runs the identical
+  NanaZip/HashCalc.cpp algorithm) against a byte-identical fixture, then hardcoded as test
+  vectors — this is real proof the algorithm matches, not an assumption.
+- **Parallel file hashing (added 2026-07-20, user-requested follow-up).** Both `ComputeAsync`
+  branches now hash files via `Parallel.ForEachAsync` (up to `Environment.ProcessorCount` at
+  once) instead of a sequential `foreach` — safe specifically because
+  `HashDigestAccumulator.Add` is commutative (already relied on for the recursion-safety
+  argument above), so combining DataSum/NamesSum in whatever order files finish hashing gives
+  the same result as sequential order. The general (non-folder) branch writes into a pre-sized
+  array by original index, needing no lock and preserving the caller's selection order; the
+  folder branch guards the shared accumulators/entries list with a single `lock`, with the
+  actual hash/NamesSum-item computation done outside it. New
+  `FileHashServiceTests.ComputeAsync_ManyFilesInFolder_ParallelHashingIsDeterministicAndRaceFree`
+  (50 files, two independent runs asserted to produce byte-identical DataSum/NamesSum) is the
+  real proof this is race-free, not just "didn't crash" — a genuine race would show up as a
+  result that differs between runs.
+
+**Acceptance criteria:**
+- [x] Scope resolved with the user at each pivot before writing/keeping code
+- [x] CRC-32/SHA-256 submenu reachable from the real Explorer right-click menu (via
+      `Archiver.ShellExtension`, not an in-app dialog)
+- [x] Folder DataSum/NamesSum match a real external tool (7za.exe) bit-for-bit for a flat
+      folder, confirmed by `FileHashServiceTests` — real cross-tool parity, not internal-only
+- [x] `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` green repo-wide (676 tests)
+- [x] Real `Archiver.ShellExtension.vcxproj`/`Archiver.ShellExtension.Tests.vcxproj` builds
+      succeed (93 C++ tests pass, including new `BuildHashArgs`/`HashDigestAccumulator` cases)
+- [~] On-device verification via `Deploy.ps1` (real install, version 1.4.0.14) — **AI-driven pass
+      done 2026-07-19, partial:**
+      - Confirmed via real Explorer right-click (`windows` MCP): the "Хеш-суми" submenu appears,
+        correctly localized (Ukrainian OS), positioned last after "Тестувати архів" as designed.
+        Expanding it to click the CRC-32/SHA-256 leaf items themselves was **not achieved** via
+        automation (click/hover/keyboard-right-arrow all tried, matching this project's documented
+        cascaded-submenu automation limits) — the final leaf click needs the user's own manual
+        click-through.
+      - Confirmed via direct `Archiver.Shell.exe --hash --algorithm ...` invocation (same
+        documented substitute this project uses elsewhere for context-menu verbs, since it
+        exercises the identical `Invoke()`→`LaunchShellExe` pipeline minus only the COM click
+        itself): single file CRC-32 (`0D4A1185`), two-file SHA-256 (both hashes exact), and a real
+        folder's CRC-32 DataSum/NamesSum (`9AC5E88C-00000000`/`ECA9B8E5-00000000`) — all matched
+        the values independently derived from the vendored `7za.exe` exactly, through the real
+        installed app end to end, not just unit tests.
+      - **Still needs the user's own click-through**: the final submenu-leaf click itself, a real
+        visual comparison against NanaZip's own CRC SHA menu on the same folder, Cancel on a large
+        file, and a mixed file+folder selection's graceful skip.
+- [x] `DIAGRAMS.md` diagram 1 (Shell context-menu invocation) updated to include the new
+      `HashCommand`/leaf flow, per its own Definition-of-Done table — validated with `mmdc`
+- [x] `ARCHITECTURE.md` updated with `FileHashService`/`HashAlgorithmKind`/
+      `HashDigestAccumulator` signatures and folder-tree entries
+
+---
+
+### T-F129 — Publish the MSIX to the Microsoft Store
+- [ ] **Status:** future, added 2026-07-19 at the user's explicit request. Researched via
+      Microsoft Learn (`Create an app submission for your MSIX app`, `Resolve submission errors
+      for MSIX app`) before drafting this, per this project's pre-implementation-research norm —
+      real findings below, not assumptions.
+- **Depends on:** none — **explicitly NOT blocked on T-F10/T-F124 (real code signing)**, contrary
+      to what might be assumed. The Store re-signs every MSIX package with its own certificate
+      during ingestion; the package can be built and uploaded with the existing local self-signed
+      `Deploy.ps1` dev cert. Don't gate this task on SignPath approval.
+
+**Real findings from research (2026-07-19):**
+- **Cost:** publishing is free as of 2026 for both individual and company Partner Center accounts
+  (the $19/$99 one-time registration fee was removed) — no budget blocker.
+- **Package Identity is the one real landmine.** Partner Center assigns a specific
+  `Package/Identity/Name` + `Publisher` (a `CN=<GUID>` value tied to the seller account) +
+  `PublisherDisplayName` the moment the app name is reserved, and **the Identity can never be
+  changed once the app exists in Partner Center.** The uploaded package's
+  `Package.appxmanifest` must match those exact reserved values, or the submission fails with a
+  generic, unhelpfully-worded identity error. Current manifest state (checked, not assumed):
+  `src/Archiver.App/Package.appxmanifest` currently has
+  `Publisher="CN=EF3EC84C-8287-4FC3-BB4F-FCCEBA116BCE"` and
+  `PublisherDisplayName="Pavlo Rybchenko"` (the local/CI dev-signing identity — unrelated to
+  whatever CN Partner Center will assign). **Sequencing matters:** reserve the app name in
+  Partner Center *first*, copy its Product Identity page values, update the manifest's
+  `Identity Name`/`Publisher`/`PublisherDisplayName` to match exactly, rebuild, *then* upload —
+  never the other way around.
+- **`runFullTrust` is a "restricted capability."** `Package.appxmanifest` already declares
+  `<rescap:Capability Name="runFullTrust" />` (needed for the satellite `Archiver.Shell.exe`/
+  `Archiver.ShellExtension.dll`, unrelated to this task). Partner Center's Submission Options page
+  requires justification text for any restricted capability — budget time for this, and note
+  NanaZip (a directly comparable IExplorerCommand-based archiver, already Store-published) as a
+  precedent that this capability is acceptable for this app category, matching this project's
+  "check NanaZip" research convention elsewhere.
+- **Store listing minimums:** description (required), at least 1 screenshot (4+ recommended),
+  a Store logo, a category, and a full Age ratings questionnaire — all required before
+  certification can be submitted. A Privacy Policy URL is only strictly required if the app
+  collects/transmits personal data; Pakko's existing policy
+  (`https://pakkoapp-oss.github.io/pakko/`, already linked from `SIGNING.md`) states it does
+  neither, but Partner Center may still prompt for the URL field regardless — have it ready either
+  way, not a new artifact to create.
+- **Pre-submission testing:** run the Windows App Certification Kit (WACK) against the built MSIX
+  before uploading — catches many of the same failure classes Partner Center's own certification
+  pass checks, cheaper to fix locally first. Also explicitly confirm the app doesn't crash with no
+  network connectivity (trivially true for Pakko — it makes zero network calls — but Microsoft's
+  own certification checklist calls this out by name, worth a literal on-device airplane-mode
+  smoke test before submitting, not just an assumption from the "no telemetry" design).
+- **Desktop Bridge / packaging-project gotcha (flagged, not yet confirmed relevant):** Microsoft's
+  docs warn that a package built from a plain UWP project template (mixing Win32 + UWP binaries)
+  can fail Store submission or sideload strangely — the doc's specific guidance targets the older
+  Desktop Bridge/`.wapproj` model, and Pakko already builds via `dotnet publish`'s Windows App SDK
+  packaging path (not `.wapproj` — see `CLAUDE.md`'s "Never use `.wapproj`" hard constraint), which
+  is a different, newer pipeline than what that warning describes. Treat as an open question to
+  verify via a real WACK run and a real submission attempt, not as a known blocker.
+
+**Scope:**
+- User-only external steps (cannot be scripted/automated by the agent): register/confirm a
+  Partner Center developer account, reserve the "Pakko" app name, record the assigned Product
+  Identity values, fill in Store listing content (description, screenshots, category, age
+  ratings, restricted-capability justification), and click Submit for certification.
+- Agent-assistable steps: update `Package.appxmanifest`'s `Identity` block to the reserved values
+  once the user provides them, produce a fresh signed build via `Deploy.ps1` for upload, run WACK
+  locally and triage any findings, draft the Store listing description/screenshots list for the
+  user to review.
+
+**Acceptance criteria:**
+- [ ] Partner Center app name reserved, real Product Identity values recorded here
+- [ ] `Package.appxmanifest`'s `Identity` block updated to match exactly, fresh build produced
+- [ ] WACK run locally against the fresh build with no unresolved failures
+- [ ] Store listing (description, screenshots, category, age ratings, restricted-capability
+      justification for `runFullTrust`) completed in Partner Center
+- [ ] Submitted for certification
+- [ ] App passes Microsoft's certification and is live in the Store — not graduated to `[x]` on
+      "submitted" alone; a rejected submission means real fixes are still outstanding
 
 ---
 

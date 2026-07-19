@@ -11,6 +11,7 @@ public enum CliCommandType
     Info,
     Archive,
     List,
+    Hash,
     Help,
     Invalid,
 }
@@ -20,14 +21,15 @@ public sealed record ParsedCliCommand
 {
     public CliCommandType Type { get; init; }
     public IReadOnlyList<string> ArchivePaths { get; init; } = [];   // x, t, l
-    public IReadOnlyList<string> SourcePaths { get; init; } = [];    // a
+    public IReadOnlyList<string> SourcePaths { get; init; } = [];    // a, h
     public string? ArchivePathArg { get; init; }                     // a: raw positional[0] (name/path)
     public string? OutputDirectory { get; init; }                    // -o{dir}, x only
     public bool AssumeYes { get; init; }                              // -y
     public ConflictBehavior? OverwriteMode { get; init; }             // -ao{a|s|u}, x only
     public ArchiveContainerFormat ArchiveFormat { get; init; } = ArchiveContainerFormat.Zip; // -t{type}, a only
     public CompressionLevel? CompressionLevel { get; init; }          // -mx=N, a only (null = default Optimal)
-    public bool ReadFromStdin { get; init; }                          // -si, x/t/l only (T-F116)
+    public HashAlgorithmKind HashAlgorithm { get; init; } = HashAlgorithmKind.Crc32; // -scrc{method}, h only (T-F128/T-F09 follow-up); Crc32 matches real 7z's own default hash method
+    public bool ReadFromStdin { get; init; }                          // -si, x/t/l/h only (T-F116)
     public bool WriteToStdout { get; init; }                          // -so, x/a only (T-F116)
     public string? ErrorMessage { get; init; }
 }
@@ -54,6 +56,7 @@ public static class CliArgumentParser
             "i" => ParseInfo(rest),
             "a" => ParseArchive(rest),
             "l" => ParseList(rest),
+            "h" => ParseHash(rest),
             "u" or "d" or "rn" or "b" or "e" => Invalid(NotSupportedCommandReason(args[0])),
             var other => Invalid($"Incorrect command line: unknown command '{other}'"),
         };
@@ -308,6 +311,64 @@ public static class CliArgumentParser
         return new ParsedCliCommand { Type = CliCommandType.List, ArchivePaths = archivePaths, ReadFromStdin = readFromStdin };
     }
 
+    // --- h (Hash, T-F128/T-F09 follow-up) ---
+
+    private static ParsedCliCommand ParseHash(string[] rest)
+    {
+        var paths = new List<string>();
+        var algorithm = HashAlgorithmKind.Crc32; // matches real 7z's own default hash method
+        bool readFromStdin = false;
+
+        foreach (string token in rest)
+        {
+            if (!IsSwitchToken(token))
+            {
+                paths.Add(token);
+                continue;
+            }
+
+            if (token == "-si")
+            {
+                readFromStdin = true;
+                continue;
+            }
+
+            if (token.StartsWith("-scrc", StringComparison.Ordinal))
+            {
+                if (token.Length <= 5)
+                    return Invalid("-scrc requires a method, e.g. -scrcCRC32 or -scrcSHA256");
+
+                string method = token[5..];
+                HashAlgorithmKind? mapped = method.ToUpperInvariant() switch
+                {
+                    "CRC32" => HashAlgorithmKind.Crc32,
+                    "SHA256" => HashAlgorithmKind.Sha256,
+                    _ => null,
+                };
+                if (mapped is null)
+                    return Invalid($"not supported by Pakko: -scrc{method} — only CRC32 and SHA256 are implemented");
+
+                algorithm = mapped.Value;
+                continue;
+            }
+
+            return Invalid(UnsupportedSwitchReason(token));
+        }
+
+        if (readFromStdin && paths.Count > 0)
+            return Invalid("'-si' cannot be combined with an explicit path");
+        if (!readFromStdin && paths.Count == 0)
+            return Invalid("'h' requires at least one file or folder path");
+
+        return new ParsedCliCommand
+        {
+            Type = CliCommandType.Hash,
+            SourcePaths = paths,
+            HashAlgorithm = algorithm,
+            ReadFromStdin = readFromStdin,
+        };
+    }
+
     // --- shared helpers ---
 
     private static bool IsSwitchToken(string token) => token.Length > 0 && token[0] == '-';
@@ -339,6 +400,8 @@ public static class CliArgumentParser
             return "not supported on this command: -m{params} is only meaningful for 'a' (archive creation)";
         if (token.StartsWith("-t", StringComparison.Ordinal))
             return "not supported on this command: -t{type} is only meaningful for 'a' (archive creation)";
+        if (token.StartsWith("-scrc", StringComparison.Ordinal))
+            return "not supported on this command: -scrc{method} is only meaningful for 'h' (hash)";
         if (token.StartsWith("-o", StringComparison.Ordinal))
             return "not supported on this command";
         if (token.StartsWith("-p", StringComparison.Ordinal))

@@ -10,6 +10,7 @@ public sealed class CliHelpTextTests
     [InlineData("t")]
     [InlineData("l")]
     [InlineData("a")]
+    [InlineData("h")]
     [InlineData("i")]
     public void Text_MentionsEveryCommandLetter(string command)
     {
@@ -22,6 +23,7 @@ public sealed class CliHelpTextTests
     [InlineData("-ao{a|s|u}")]
     [InlineData("-t<type>")]
     [InlineData("-mx=<0-9>")]
+    [InlineData("-scrc<method>")]
     [InlineData("-si")]
     [InlineData("-so")]
     public void Text_MentionsEverySupportedSwitch(string switchToken)
