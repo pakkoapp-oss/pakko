@@ -81,6 +81,12 @@ for full details. The short version:
    > Use `.\scripts\Deploy.ps1` from the terminal for a full build + deploy
    > outside of Visual Studio.
 
+> **CI:** every push to `main` and every pull request also builds and tests automatically via
+> `.github/workflows/build.yml` — this doesn't replace the local steps above, it just means a red
+> test suite or a broken build/sign step gets caught before merge. See
+> [`scripts/README.md`](scripts/README.md)'s "Continuous Integration" section for what it builds
+> and how it's signed.
+
 ---
 
 ## Testing protocol activation (pakko://)

@@ -112,6 +112,35 @@ copy is bundled alongside it.
 
 ---
 
+## Continuous Integration (T-F122)
+
+`.github/workflows/build.yml` builds both artifacts automatically — it is a separate, CI-only
+path alongside everything above, not a replacement for local `Deploy.ps1`/`Publish-Cli.ps1` use:
+
+- **On every push to `main` and on pull requests into `main`:** runs
+  `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` plus the C++
+  `Archiver.ShellExtension.Tests` suite. A red suite blocks every downstream job.
+- **On every push to `main` (after tests pass):** builds and signs the MSIX for both `x64` and
+  `arm64` via a new CI-only script, `scripts/CI-Build-Msix.ps1` (a `Deploy.ps1` sibling covering
+  just the build+sign steps — no install, no version bump), and publishes `pakko.exe` for both
+  architectures via the existing `Publish-Cli.ps1` unchanged. Both are uploaded as workflow
+  artifacts.
+- **On a version tag push (`v*`):** additionally creates a real GitHub Release for that tag and
+  attaches `pakko-win-x64.zip`, `pakko-win-arm64.zip`, and `SHA256SUMS` via the `gh` CLI. This is
+  now the **only** planned CLI-Release publication path — there is no separate manual publish
+  step to remember. The MSIX is *not* attached to the public Release (it's still signed with a
+  sideload-only self-signed cert — see below); it stays a workflow-run artifact, downloaded
+  manually to hand to testers, same as today.
+
+**Signing identity:** CI signs with the exact same local `CN=Pakko Dev` dev cert `Deploy.ps1`
+uses (thumbprint `D2EC5F2C451ED0EBE94B8168A68E5B813954CC75`), exported once as a PFX and stored
+as two repo secrets, `PAKKO_DEV_CERT_PFX_BASE64` and `PAKKO_DEV_CERT_PASSWORD`. See
+`build.yml`'s header comment for the exact swap point once T-F10 (SignPath Foundation) issues a
+real certificate — only those two secrets (and the thumbprint constant next to them) need to
+change, nothing else in the workflow.
+
+---
+
 ## Notes
 
 - `PakkoDev.cer` is gitignored — never commit certificates to the repository.

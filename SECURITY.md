@@ -350,6 +350,33 @@ the full design rationale.
 
 ---
 
+## CI Signing Secret: New Supply-Chain Surface (T-F122)
+
+`.github/workflows/build.yml` signs the MSIX with the same local self-signed `CN=Pakko Dev`
+development certificate `Deploy.ps1` uses, exported once as a PFX and stored as two GitHub
+Actions repo secrets (`PAKKO_DEV_CERT_PFX_BASE64`, `PAKKO_DEV_CERT_PASSWORD`). This is a new
+supply-chain surface worth naming explicitly: a compromised repository or organization secret
+could be used to sign a malicious build that carries this project's dev-cert identity.
+
+**Why the residual risk is limited today:** the cert is the same self-signed, sideload-only
+certificate already described above — it carries no elevated trust of its own. It is not in the
+Windows Trusted Root chain and is not recognized by SmartScreen; a package signed with it still
+cannot install on a machine that hasn't separately been given `PakkoDev.cer` and had it placed in
+`Cert:\LocalMachine\TrustedPeople` (see "Self-signed" in `TASKS.md`'s T-F10 cert-options table).
+In practice this means a compromised secret could produce a signed-looking package, but it could
+not silently install anywhere Pakko isn't already explicitly trusted — the blast radius is
+bounded by the same manual-trust step that already limits this cert's legitimate use.
+
+**This changes once T-F10 (SignPath Foundation) lands:** a SignPath-issued certificate carries
+real, broadly-trusted Authenticode reputation, so the same secret-compromise scenario would then
+let an attacker produce a package that installs and runs without any of the manual-trust
+friction above. At that point this section should be revisited — likely tightening the workflow
+to require signing approval via SignPath's own managed CI integration rather than a bare
+PFX-in-secrets model, since SignPath's whole design point is to avoid handing the raw private key
+to CI at all. Tracked as a T-F10 Phase 1 follow-up, not solved by this task.
+
+---
+
 ## Recommended Usage Context
 
 This tool is appropriate for:

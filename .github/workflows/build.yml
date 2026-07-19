@@ -1,0 +1,150 @@
+name: Build
+
+# T-F122: builds the MSIX + pakko.exe on every push to main and on version tags, gated on a
+# green test suite, and publishes the CLI zips + SHA256SUMS to a real GitHub Release on tag push
+# (absorbs the deleted T-F120 — this is now the only planned CLI-Release publication path).
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+    branches: [main]
+
+# ── Interim signing identity (T-F122) ──────────────────────────────────────────────────────────
+# Signs with the same local self-signed "CN=Pakko Dev" dev cert Deploy.ps1 already uses
+# (thumbprint below), stored as two repo secrets. TODO(T-F10): once SignPath Foundation issues a
+# real cert, swap PAKKO_DEV_CERT_PFX_BASE64 / PAKKO_DEV_CERT_PASSWORD for the new cert's export
+# and update PAKKO_DEV_CERT_THUMBPRINT below — nothing else in this file should need to change.
+#   PAKKO_DEV_CERT_PFX_BASE64 (secret) — base64-encoded, password-protected PFX export
+#   PAKKO_DEV_CERT_PASSWORD   (secret) — the PFX export password
+env:
+  PAKKO_DEV_CERT_THUMBPRINT: D2EC5F2C451ED0EBE94B8168A68E5B813954CC75
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Run .NET test suite
+        run: dotnet test --filter "Category!=Slow&Category!=VeryLarge"
+
+      - name: Set up MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Set up NuGet
+        uses: nuget/setup-nuget@v2
+
+      - name: Restore Archiver.ShellExtension.Tests packages
+        run: nuget restore tests\Archiver.ShellExtension.Tests\Archiver.ShellExtension.Tests.vcxproj -SolutionDirectory .
+
+      - name: Build Archiver.ShellExtension.Tests
+        run: msbuild tests\Archiver.ShellExtension.Tests\Archiver.ShellExtension.Tests.vcxproj /p:SolutionDir=${{ github.workspace }}\ /p:Configuration=Debug /p:Platform=x64
+
+      - name: Run Archiver.ShellExtension.Tests
+        shell: pwsh
+        run: |
+          & "tests\Archiver.ShellExtension.Tests\bin\x64\Debug\Archiver.ShellExtension.Tests.exe"
+          if ($LASTEXITCODE -ne 0) { throw "Archiver.ShellExtension.Tests failed (exit $LASTEXITCODE)" }
+
+  build-msix:
+    needs: test
+    if: github.event_name == 'push'
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # NOTE (T-F122, unconfirmed as of first CI run): cross-compiling the ARM64 leg of
+        # Archiver.ShellExtension (C++) requires the "MSVC v143 ARM64 build tools" optional
+        # component. TASKS.md flagged this as unverified on windows-latest — if this leg fails
+        # with an ARM64 toolset error, add an explicit VS component install step here (e.g. via
+        # the vs_installer modify path) rather than assuming it's missing.
+        architecture: [x64, arm64]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Set up MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Import signing certificate
+        shell: pwsh
+        env:
+          PFX_BASE64: ${{ secrets.PAKKO_DEV_CERT_PFX_BASE64 }}
+          PFX_PASSWORD: ${{ secrets.PAKKO_DEV_CERT_PASSWORD }}
+        run: |
+          if (-not $env:PFX_BASE64 -or -not $env:PFX_PASSWORD) {
+            throw "PAKKO_DEV_CERT_PFX_BASE64 / PAKKO_DEV_CERT_PASSWORD secrets are not set. See scripts/README.md's Continuous Integration section."
+          }
+          $pfxPath = Join-Path $env:RUNNER_TEMP "PakkoDev.pfx"
+          [System.IO.File]::WriteAllBytes($pfxPath, [Convert]::FromBase64String($env:PFX_BASE64))
+          $securePassword = ConvertTo-SecureString -String $env:PFX_PASSWORD -AsPlainText -Force
+          Import-PfxCertificate -FilePath $pfxPath -CertStoreLocation Cert:\CurrentUser\My -Password $securePassword | Out-Null
+          Remove-Item $pfxPath -Force
+
+      - name: Build and sign MSIX
+        shell: pwsh
+        run: .\scripts\CI-Build-Msix.ps1 -Architecture ${{ matrix.architecture }} -Thumbprint $env:PAKKO_DEV_CERT_THUMBPRINT -MsBuildPath msbuild
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pakko-msix-${{ matrix.architecture }}
+          path: |
+            src/Archiver.App/AppPackages/**/*.msix
+            src/Archiver.App/AppPackages/**/*.msixbundle
+          if-no-files-found: error
+
+  build-cli:
+    needs: test
+    if: github.event_name == 'push'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Publish pakko.exe (both architectures)
+        run: .\scripts\Publish-Cli.ps1
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pakko-cli
+          path: artifacts/cli/**
+          if-no-files-found: error
+
+  release:
+    needs: [build-msix, build-cli]
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: pakko-cli
+          path: artifacts/cli
+
+      - name: Create GitHub Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ github.ref_name }}" `
+            artifacts/cli/pakko-win-x64.zip `
+            artifacts/cli/pakko-win-arm64.zip `
+            artifacts/cli/SHA256SUMS `
+            --title "${{ github.ref_name }}" `
+            --notes-file .github/RELEASE_NOTES_TEMPLATE.md
