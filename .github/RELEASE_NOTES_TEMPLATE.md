@@ -14,7 +14,10 @@ command reference.
 
 ---
 
-The MSIX (GUI app) is **not** attached to this release. It's still signed with a self-signed
-development certificate — sideload-only, blocked for public installs by SmartScreen/AppLocker
-until real code signing (see `TASKS.md`'s T-F10) lands — and is handed to testers directly in
-the meantime.
+## Pakko — MSIX (GUI app)
+
+The `.msix`/`.msixbundle` below is signed with a **self-signed development certificate**, not a
+publicly trusted one — installing it will trigger SmartScreen/AppLocker warnings, and it will not
+sideload at all unless the signing certificate is explicitly trusted on the target machine first
+(see `scripts/README.md`). Public installs without warnings are planned once real code signing
+lands (see `TASKS.md`'s T-F10/T-F124).
