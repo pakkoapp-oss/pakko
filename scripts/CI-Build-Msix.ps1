@@ -81,9 +81,15 @@ Remove-Item -Recurse -Force $shellExtObjDir, $shellExtBinDir -ErrorAction Silent
 if ($LASTEXITCODE -ne 0) { Write-Error "Archiver.ShellExtension build failed (exit $LASTEXITCODE)."; exit $LASTEXITCODE }
 
 # ── dotnet publish: package and sign ──────────────────────────────────────────
+# Archiver.App.csproj's DeployMsix target (AfterTargets="Build") tries to Add-AppxPackage the
+# freshly built package whenever Configuration=Release, unless PAKKO_DEPLOYING=1 — the same guard
+# Deploy.ps1 sets before its own publish call. CI has no LocalMachine\TrustedPeople trust for the
+# signing cert, so that auto-install fails outright (0x800B0109) and takes the whole publish down
+# with it if this isn't set.
 Write-Host ""
 Write-Host "Publishing Pakko ($Architecture)..." -ForegroundColor Cyan
 
+$env:PAKKO_DEPLOYING = '1'
 & dotnet publish $csprojPath `
     /p:Configuration=Release `
     "/p:Platform=$platform" `
@@ -92,7 +98,9 @@ Write-Host "Publishing Pakko ($Architecture)..." -ForegroundColor Cyan
     /p:GenerateAppxPackageOnBuild=true `
     /p:AppxPackageSigningEnabled=true `
     "/p:PackageCertificateThumbprint=$Thumbprint"
-if ($LASTEXITCODE -ne 0) { Write-Error "dotnet publish failed (exit $LASTEXITCODE)."; exit $LASTEXITCODE }
+$publishExitCode = $LASTEXITCODE
+$env:PAKKO_DEPLOYING = $null
+if ($publishExitCode -ne 0) { Write-Error "dotnet publish failed (exit $publishExitCode)."; exit $publishExitCode }
 
 # ── Locate the produced package ───────────────────────────────────────────────
 # T-F91: 24+ locale resource packages force a .msixbundle instead of a flat .msix.
