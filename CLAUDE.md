@@ -696,8 +696,13 @@ references are easy to miss otherwise (this session found 5 lingering mentions o
   actually verified this way and shipped with an undeclared XML namespace for ~4 months before
   being caught — see the "Correction — SurrogateServer" entry in `DECISIONS.md`.)
   `gh` CLI **is** installed and authenticated in this environment (confirmed T-F122, 2026-07-19 —
-  used extensively for `gh run`/`gh release`/`gh secret`). GitHub's code search still requires
-  sign-in even for public repos, so for reading a third-party repo's source, prefer:
+  used extensively for `gh run`/`gh release`/`gh secret`).
+  **It is authenticated as the `pakkoapp-oss` GitHub account itself** (`gh auth status`) — real
+  push/release/tag/API write access to the live repo, not a read-only token. `pakkoapp-oss` is a
+  personal **User** account, not an Organization — collaborators only get push access, never
+  Admin/Maintain/Triage (those roles only exist on org-owned repos).
+  GitHub's code search still requires sign-in even for public repos, so for reading a
+  third-party repo's source, prefer:
   `curl -s "https://api.github.com/repos/<owner>/<repo>/git/trees/main?recursive=1"`
   lists every file path unauthenticated — grep it for the area you need, then WebFetch the raw
   file (`raw.githubusercontent.com/<owner>/<repo>/main/<path>`) to read real code.
@@ -749,6 +754,8 @@ references are easy to miss otherwise (this session found 5 lingering mentions o
   **`py -3` heredocs from the Bash tool silently no-op on a `/tmp/...` path** — native Windows
   Python doesn't resolve Git-Bash's `/tmp`, so a script reports success but writes nothing.
   Use a full Windows-style path (e.g. this session's scratchpad dir) instead.
+  **Plain `python` (no `py -3`) fails outright via the Bash tool** — exit code ~49, no real
+  error text, even for a trivial script. Always invoke `py -3 <script.py>`, never bare `python`.
 - **Shared WinUI `x:Uid` across elements with different property sets is fatal, not a no-op:**
   giving a `Button` (`.Content`) and a `TextBlock` (`.Text`) the same `x:Uid` applies both resource
   keys to both elements regardless of which properties exist — crashes natively (`0xc000027b`) at
@@ -1009,6 +1016,9 @@ MSBuild tests\Archiver.ShellExtension.Tests\Archiver.ShellExtension.Tests.vcxpro
 > - `gh run view --job=<id> --log`/`--log-failed` only returns output **after the whole workflow
 >   run completes**, not just that one job — "run ... is still in progress" otherwise, even if the
 >   specific job you want logs for already finished.
+> - `gh attestation verify` (and possibly other `gh` subcommands) can print nothing to stdout/
+>   stderr yet still exit 0 via the Bash tool — pass `--format json` for reliable output instead
+>   of trusting empty plain-text as a failure signal.
 > - `vs_installer.exe modify --add <component>` is unreliable on GitHub-hosted Windows runners —
 >   confirmed it returns exit code 0 in under 30ms regardless of `--wait`/`--nocache`/running it
 >   twice, without actually installing anything. Don't trust it for CI component installation;
