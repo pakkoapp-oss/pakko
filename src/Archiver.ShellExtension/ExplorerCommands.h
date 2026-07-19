@@ -52,10 +52,6 @@ static const CLSID CLSID_CompressDialogCommand =
 static const CLSID CLSID_BrowseCommand =
     { 0x996B23C2, 0xAD0A, 0x4B5E, { 0x9F, 0xEB, 0xDC, 0xFE, 0xB6, 0x14, 0x3A, 0x78 } };
 
-// {5FFA06F4-D608-4B14-B84A-56CAC77EDEC5}
-static const CLSID CLSID_HashCommand =
-    { 0x5FFA06F4, 0xD608, 0x4B14, { 0xB8, 0x4A, 0x56, 0xCA, 0xC7, 0x7E, 0xDE, 0xC5 } };
-
 // {2C3D0C54-C8B3-469C-BE57-6D913C90FB8B}
 static const CLSID CLSID_HashCrc32Command =
     { 0x2C3D0C54, 0xC8B3, 0x469C, { 0xBE, 0x57, 0x6D, 0x91, 0x3C, 0x90, 0xFB, 0x8B } };
@@ -262,10 +258,13 @@ public:
 };
 
 // ---------------------------------------------------------------------------
-// Leaf command: "CRC-32" (T-F128) — under the "Хеш-суми" submenu. Title is a hardcoded literal,
-// not a StringId — algorithm names stay untranslated Latin script everywhere (T-F105 precedent).
-// Enabled for any non-empty selection (files and/or folders); Archiver.Shell's FileHashService
-// decides how to handle each shape (single file, multi-file, or a single folder recursively).
+// Leaf command: "Хеш-суми: CRC-32" (T-F128) — a direct PakkoRootCommand child, not nested under
+// an intermediate submenu container (an earlier HashCommand-as-parent design hit a real Explorer
+// rendering bug — see DECISIONS.md's T-F128 follow-up entry). Title prefix is localized
+// (StringId::HashSubmenu); the algorithm name itself stays untranslated Latin script (T-F105
+// precedent). Enabled for any non-empty selection (files and/or folders); Archiver.Shell's
+// FileHashService decides how to handle each shape (single file, multi-file, or a single folder
+// recursively).
 // ---------------------------------------------------------------------------
 class HashCrc32Command final :
     public RuntimeClass<RuntimeClassFlags<ClassicCom>, IExplorerCommand>
@@ -285,25 +284,6 @@ public:
 // Leaf command: "SHA-256" (T-F128) — sibling of HashCrc32Command above, same shape.
 // ---------------------------------------------------------------------------
 class HashSha256Command final :
-    public RuntimeClass<RuntimeClassFlags<ClassicCom>, IExplorerCommand>
-{
-public:
-    STDMETHODIMP GetTitle(IShellItemArray* psia, LPWSTR* ppszName) noexcept override;
-    STDMETHODIMP GetIcon(IShellItemArray* psia, LPWSTR* ppszIcon) noexcept override;
-    STDMETHODIMP GetToolTip(IShellItemArray* psia, LPWSTR* ppszInfotip) noexcept override;
-    STDMETHODIMP GetCanonicalName(GUID* pguidCommandName) noexcept override;
-    STDMETHODIMP GetState(IShellItemArray* psia, BOOL fOkToBeSlow, EXPCMDSTATE* pCmdState) noexcept override;
-    STDMETHODIMP Invoke(IShellItemArray* psia, IBindCtx* pbc) noexcept override;
-    STDMETHODIMP GetFlags(EXPCMDFLAGS* pFlags) noexcept override;
-    STDMETHODIMP EnumSubCommands(IEnumExplorerCommand** ppEnum) noexcept override;
-};
-
-// ---------------------------------------------------------------------------
-// Parent command: "Хеш-суми" (T-F128) — always ECF_HASSUBCOMMANDS, enumerates
-// HashCrc32Command/HashSha256Command. Mirrors PakkoRootCommand's own pure-submenu-container
-// shape (Invoke -> E_NOTIMPL, never called directly).
-// ---------------------------------------------------------------------------
-class HashCommand final :
     public RuntimeClass<RuntimeClassFlags<ClassicCom>, IExplorerCommand>
 {
 public:

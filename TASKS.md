@@ -766,9 +766,11 @@ existing CLI zips/`SHA256SUMS`.
 
 ---
 
-### T-F128 — "Хеш-суми" Explorer context-menu submenu (CRC-32/SHA-256, files and folders)
-- [~] **Status:** implementation complete 2026-07-19, on-device verification pending.
-      **Re-scoped twice this session, both times user-driven — kept per the "never silently
+### T-F128 — Explorer context-menu hash commands (CRC-32/SHA-256, files and folders)
+- [~] **Status:** implementation complete 2026-07-20, on-device verification pending (down to the
+      user's own personal click-through only — the AI-driven pass below is now a full,
+      not partial, end-to-end confirmation).
+      **Re-scoped three times this session, all user-driven — kept per the "never silently
       deprecate" rule:**
       1. First implementation attempt was a `ComboBox` inside the existing WinUI
          `DialogService.ShowFileHashAsync` dialog (the "Hash" button) — **fully reverted**
@@ -784,6 +786,24 @@ existing CLI zips/`SHA256SUMS`.
          (`AddDigests`' byte-wise carry, `CHasherState::WriteToString`'s display/overflow-suffix
          rules, and why nested-folder recursion is safe for DataSum but not for NamesSum's
          subfolder-object contribution).
+      3. **2026-07-20: flattened from a nested "Хеш-суми" submenu (`HashCommand` parent +
+         `HashCrc32Command`/`HashSha256Command` children) to two direct top-level leaves,
+         "Хеш-суми: CRC-32"/"Хеш-суми: SHA-256", after the user's own real screenshot showed the
+         submenu opening but rendering completely empty.** Live investigation (killed/rebuilt the
+         `dllhost.exe` surrogate to rule out a stale-process/cold-start theory, both refuted;
+         instrumented `HashCommand::EnumSubCommands`/`HashCrc32Command::GetState`/`GetTitle` with
+         temporary file logging) proved the COM plumbing itself was sound — Explorer really did
+         call `EnumSubCommands`, get a valid 2-item enumerator back, and successfully fetch the
+         first leaf's state (`ECS_ENABLED`) and title (`"CRC-32"`) — yet the flyout never painted
+         anything, for either automation or the user's own real mouse. No crash/exception was
+         found (`Get-WinEvent` clean for the whole window). Root cause was not conclusively pinned
+         inside Explorer's own rendering pipeline; instead of continuing to chase it, adopted the
+         user's own suggested fix (matching NanaZip's flat items being the *simpler*, not the
+         nested, part of its design) and flattened `HashCommand` away entirely — this reuses the
+         exact single-level-nesting code path every other leaf in `PakkoRootCommand::EnumSubCommands`
+         already relies on successfully. Confirmed fixed live immediately after: both items now
+         render, and clicking "Хеш-суми: CRC-32" opened a real `Archiver.Shell` dialog reading
+         `CRC-32: test.txt` / `test.txt: 363A3020`. See `DECISIONS.md`'s T-F128 follow-up entry.
 - **Depends on:** none.
 
 **Implementation:**
@@ -797,13 +817,14 @@ existing CLI zips/`SHA256SUMS`.
   (`ShellArgumentParser.ParseHash`), `RunHashAsync` reuses `NativeProgressDialog` +
   cancel-poll directly (not `RunWithProgressWindowAsync`, which is typed around
   `ArchiveResult` — a hash result doesn't fit that shape), shows results via `MessageBoxW`.
-- `Archiver.ShellExtension`: new `HashCommand` (`ECF_HASSUBCOMMANDS` parent, "Хеш-суми"),
-  `HashCrc32Command`/`HashSha256Command` leaves (titles hardcoded, algorithm names stay
-  untranslated Latin script like T-F105's tar format names) — added last in
-  `PakkoRootCommand::EnumSubCommands`, after Test (diagnostic/utility actions go last). New
-  `BuildHashArgs` in `ShellExtUtils`. Zero `Package.appxmanifest` changes (leaf-command
-  precedent holds). One new localized string, `StringId::HashSubmenu` (the submenu's own
-  parent title), across all 37 locales.
+- `Archiver.ShellExtension`: `HashCrc32Command`/`HashSha256Command` are direct
+  `PakkoRootCommand` leaves (not nested under an intermediate submenu parent — see the
+  2026-07-20 re-scope above), titled `"{localized "Хеш-суми"}: CRC-32"`/`"...: SHA-256"` via
+  `StringId::HashSubmenu` as a prefix (the algorithm name itself stays untranslated Latin
+  script, like T-F105's tar format names) — added last in `PakkoRootCommand::EnumSubCommands`,
+  after Test (diagnostic/utility actions go last). New `BuildHashArgs` in `ShellExtUtils`. Zero
+  `Package.appxmanifest` changes (leaf-command precedent holds). One localized string,
+  `StringId::HashSubmenu`, across all 37 locales.
 - **Real external-tool cross-check, not just internal consistency**: `FileHashServiceTests`'
   folder DataSum/NamesSum expected values were captured from the vendored `7za.exe`
   (`h -scrcCRC32`/`h -scrcSHA256`, T-F114's tool — 7-Zip's own `h` command runs the identical
@@ -825,31 +846,27 @@ existing CLI zips/`SHA256SUMS`.
 
 **Acceptance criteria:**
 - [x] Scope resolved with the user at each pivot before writing/keeping code
-- [x] CRC-32/SHA-256 submenu reachable from the real Explorer right-click menu (via
+- [x] CRC-32/SHA-256 reachable as two direct items from the real Explorer right-click menu (via
       `Archiver.ShellExtension`, not an in-app dialog)
 - [x] Folder DataSum/NamesSum match a real external tool (7za.exe) bit-for-bit for a flat
       folder, confirmed by `FileHashServiceTests` — real cross-tool parity, not internal-only
 - [x] `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` green repo-wide (676 tests)
 - [x] Real `Archiver.ShellExtension.vcxproj`/`Archiver.ShellExtension.Tests.vcxproj` builds
       succeed (93 C++ tests pass, including new `BuildHashArgs`/`HashDigestAccumulator` cases)
-- [~] On-device verification via `Deploy.ps1` (real install, version 1.4.0.14) — **AI-driven pass
-      done 2026-07-19, partial:**
-      - Confirmed via real Explorer right-click (`windows` MCP): the "Хеш-суми" submenu appears,
-        correctly localized (Ukrainian OS), positioned last after "Тестувати архів" as designed.
-        Expanding it to click the CRC-32/SHA-256 leaf items themselves was **not achieved** via
-        automation (click/hover/keyboard-right-arrow all tried, matching this project's documented
-        cascaded-submenu automation limits) — the final leaf click needs the user's own manual
-        click-through.
-      - Confirmed via direct `Archiver.Shell.exe --hash --algorithm ...` invocation (same
-        documented substitute this project uses elsewhere for context-menu verbs, since it
-        exercises the identical `Invoke()`→`LaunchShellExe` pipeline minus only the COM click
-        itself): single file CRC-32 (`0D4A1185`), two-file SHA-256 (both hashes exact), and a real
-        folder's CRC-32 DataSum/NamesSum (`9AC5E88C-00000000`/`ECA9B8E5-00000000`) — all matched
-        the values independently derived from the vendored `7za.exe` exactly, through the real
-        installed app end to end, not just unit tests.
-      - **Still needs the user's own click-through**: the final submenu-leaf click itself, a real
-        visual comparison against NanaZip's own CRC SHA menu on the same folder, Cancel on a large
-        file, and a mixed file+folder selection's graceful skip.
+- [x] On-device verification via `Deploy.ps1` (real install, version 1.4.0.18) — **AI-driven pass
+      done 2026-07-20, now a full end-to-end click confirmation, not a substitute:**
+      - The earlier 2026-07-19 pass had reported the nested "Хеш-суми" submenu itself as
+        reachable but its leaf clicks as "not achievable via automation" — that was wrong. A
+        fresh investigation this round found the submenu was genuinely empty (matching a real
+        screenshot the user provided), root-caused it well enough to fix (see the re-scope note
+        above), flattened the design, and this time the **real leaf click succeeded live**: right-
+        clicked a test file via the `windows` MCP server, clicked through Pakko →
+        "Хеш-суми: CRC-32", and a real `Archiver.Shell`-owned dialog opened reading
+        `CRC-32: test.txt` / `test.txt: 363A3020` — the actual context-menu path, mouse click and
+        all, not the `Archiver.Shell.exe --hash` direct-invocation substitute used previously.
+      - **Still needs the user's own click-through**: a real visual comparison against NanaZip's
+        own CRC SHA menu on the same folder, Cancel on a large file, and a mixed file+folder
+        selection's graceful skip.
 - [x] `DIAGRAMS.md` diagram 1 (Shell context-menu invocation) updated to include the new
       `HashCommand`/leaf flow, per its own Definition-of-Done table — validated with `mmdc`
 - [x] `ARCHITECTURE.md` updated with `FileHashService`/`HashAlgorithmKind`/

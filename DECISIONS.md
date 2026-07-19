@@ -5333,7 +5333,7 @@ each round) — never auto-approved or bypassed. Real findings from the pass its
 
 ---
 
-## T-F128 — "Хеш-суми" Explorer submenu: two re-scopes, and NanaZip's real folder-hash algorithm
+## T-F128 — Explorer hash commands: three re-scopes, and NanaZip's real folder-hash algorithm
 
 **First re-scope (dialog → context menu).** The task started as "add SHA-256 alongside CRC-32 in
 a dropdown" and was first implemented as a `ComboBox` inside the existing WinUI
@@ -5408,3 +5408,52 @@ that the from-scratch `HashDigestAccumulator` reimplementation is correct, not a
 second, nested-folder fixture confirmed DataSum still matches 7za exactly regardless of nesting,
 while NamesSum was only asserted to be well-formed (not equal to 7za's value, which does include
 the subfolder-object's own contribution per the documented divergence above).
+
+**Third re-scope (2026-07-20): nested "Хеш-суми" submenu flattened to two top-level items, after
+a real empty-flyout bug.** The 2026-07-19 on-device pass had reported the nested submenu as
+reachable with only the final leaf click unconfirmed (blamed on automation limits). The user then
+sent a real screenshot: right-clicking Pakko → "Хеш-суми" opened the flyout, but it was completely
+empty — no CRC-32/SHA-256 items at all, not a rendering delay.
+
+**Investigation, cheapest theory first:**
+1. *Stale build.* Ruled out — the item itself ("Хеш-суми") only exists in post-T-F128 code, so its
+   presence already proved a fresh DLL was loaded. Rebuilt via `Deploy.ps1` anyway; bug persisted.
+2. *Stale `dllhost.exe` surrogate holding an old DLL in memory* — a real, previously-documented
+   gotcha in this file's Windows Packaging section. Found a surrogate process alive since
+   2026-07-17 (three days old). Killed all `dllhost.exe` processes, retried; bug persisted
+   identically even against a guaranteed-fresh surrogate.
+3. *2-level submenu nesting unsupported by Explorer for this app's registration shape.* Tested
+   directly: right-clicked the same file → NanaZip → "CRC SHA" (NanaZip's own real cascaded
+   submenu, the exact pattern T-F128 copied) via the same `windows` MCP automation — CRC-32/
+   CRC-64/SHA-1/SHA-256/`*` all rendered correctly. This proved 2-level nesting works fine in this
+   OS/Explorer build in general, ruling out a blanket depth limitation.
+4. *A crash in the `dllhost.exe` surrogate mid-enumeration.* Checked `Get-WinEvent` for
+   `Application Error`/`.NET Runtime`/`Windows Error Reporting` entries around the exact
+   interaction window — none found. The surrogate process was never observed to die.
+5. *Live instrumentation* (temporary file-logging added to `HashCommand::GetFlags`/
+   `EnumSubCommands` and `HashCrc32Command::GetState`/`GetTitle`, removed again once done):
+   confirmed `GetFlags` returns `ECF_HASSUBCOMMANDS`, `EnumSubCommands` returns `S_OK` with a
+   valid 2-item enumerator, and Explorer genuinely calls the first leaf's `GetState` (→
+   `ECS_ENABLED`, real non-null `psia`, `pathCount=1`) and `GetTitle` (→ `"CRC-32"`) successfully.
+   The second leaf (`SHA-256`) was never queried in any repeated attempt. Despite this valid,
+   enabled, correctly-titled first item existing at the COM level, nothing ever painted — for
+   automation *and*, more importantly, for the user's own real mouse per their screenshot.
+
+No single root cause inside Explorer's own flyout-population/paint pipeline was conclusively
+pinned down beyond that point, and continuing to chase it (attaching a debugger to `dllhost.exe`,
+etc.) would cost more than the fix was worth. **Decision:** stop investigating and adopt the fix
+the user had already suggested in the same message that reported the bug — "why not two separate
+top-level items like NanaZip" — which happens to also sidestep the exact failing code path.
+`HashCommand` (the `ECF_HASSUBCOMMANDS` intermediate parent) was deleted outright; `HashCrc32Command`/
+`HashSha256Command` became direct `PakkoRootCommand` children (titled `"Хеш-суми: CRC-32"`/
+`"Хеш-суми: SHA-256"`, `StringId::HashSubmenu` reused as a prefix so the existing 37-locale
+translation work wasn't wasted), reusing the exact single-level-nesting shape every other leaf in
+this file (`TestCommand`, `ArchiveCommand`, etc.) already relies on successfully. Confirmed fixed
+immediately after rebuild+redeploy: both items render, and clicking "Хеш-суми: CRC-32" through the
+real Explorer context menu (via `windows` MCP mouse automation, not the `Archiver.Shell.exe
+--hash` direct-invocation substitute used in the 2026-07-19 pass) opened a real `Archiver.Shell`
+dialog reading `CRC-32: test.txt` / `test.txt: 363A3020` — the genuine end-to-end context-menu
+path, not a proxy for it. Note for future `IExplorerCommand` work in this codebase: a 2-level
+`ECF_HASSUBCOMMANDS`-under-`ECF_HASSUBCOMMANDS` submenu is not proven reliable here even though
+NanaZip's own equivalent works — prefer flat top-level leaves unless a real design reason forces
+nesting, and budget on-device verification time accordingly if it's used.
