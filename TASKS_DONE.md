@@ -3371,3 +3371,106 @@ wrapper folder ever created," which is only accurate for the common single-root 
       constructs, verified above.
 
 ---
+
+### T-F122 — GitHub Actions CI: build MSIX + `pakko.exe` automatically, publish CLI to Releases
+- [x] **Status:** done 2026-07-19. Absorbed the deleted T-F120 (CLI GitHub Releases publication)
+      as planned. New `.github/workflows/build.yml` (three jobs — `test`, a matrixed
+      `build-msix`/`build-cli`, `release`) plus a new CI-only build script,
+      `scripts/CI-Build-Msix.ps1` (build+sign only, no install/version-bump, deliberately skips
+      `Deploy.ps1`'s MSB3231 staleness-tolerance logic since a fresh CI checkout can't hit it).
+      Signs with the exact same local `CN=Pakko Dev` cert `Deploy.ps1` already uses (thumbprint
+      `D2EC5F2C451ED0EBE94B8168A68E5B813954CC75`), exported once and stored as two repo secrets
+      (`PAKKO_DEV_CERT_PFX_BASE64`/`PAKKO_DEV_CERT_PASSWORD`) — confirmed via a read-only
+      `Get-ChildItem` that this is the cert actually in use, not `Setup-DevCert.ps1`'s
+      documentation alone. `release` uses the `gh` CLI (first-party, no third-party release
+      Action) to attach `pakko-win-x64.zip`/`pakko-win-arm64.zip`/`SHA256SUMS` to a real GitHub
+      Release on a version-tag push, with a `.github/RELEASE_NOTES_TEMPLATE.md` body containing
+      the SHA256 verification command. MSIX stays a workflow artifact only, never a public
+      Release asset (a self-signed cert can't install for the public anyway — confirmed via the
+      GitHub API that the repo had zero prior Releases despite two prior version tags).
+- **Depends on:** T-F09 (done). **Feeds into:** T-F10 Phase 1 (swaps the two cert secrets for a
+      SignPath-issued cert — the exact swap point is a TODO comment in `build.yml` itself, next to
+      the secret references).
+
+**Real bugs found and fixed during the first several live CI runs (not from `dotnet test` — from
+watching actual `windows-2022`/`windows-latest` runner behavior), each its own commit:**
+- `Archiver.App.csproj`'s `DeployMsix` post-build target (`AfterTargets="Build"`, guarded by
+  `PAKKO_DEPLOYING`) tries to `Add-AppxPackage` the freshly built package on every Release build —
+  `CI-Build-Msix.ps1` initially didn't set `PAKKO_DEPLOYING=1` before publishing (the same guard
+  `Deploy.ps1` sets before its own publish call), so the CI runner's missing
+  `LocalMachine\TrustedPeople` trust for the cert took the whole `dotnet publish` down with
+  `0x800B0109`. Fixed by setting/clearing the env var around the publish call, mirroring
+  `Deploy.ps1` exactly.
+- **`windows-latest` silently relabeled to the `windows-2025` image mid-project** (a real, external
+  environment change, not a Pakko bug) — its preinstalled VS keeps the v143 (VS2022) toolset for
+  x64 but not the ARM64 variant of v143 specifically, so `Archiver.ShellExtension.vcxproj`'s
+  ARM64 leg (`PlatformToolset=v143`) failed with `MSB8020`. Three attempts to install the missing
+  component via `vs_installer.exe modify` on the hosted runner all failed — confirmed empirically
+  that `vs_installer.exe` returns exit code 0 in under 30ms regardless of `--wait`/`--nocache`/
+  running it twice (a documented `actions/runner-images#9701` recipe), never doing real work,
+  because the *2025* image's own newer default ARM64 toolset was already present — just not v143's
+  specifically. A second opinion (the user's own research via another AI assistant) correctly
+  diagnosed this from the `...\18\Enterprise` VS path logged in CI output. Fixed by pinning
+  `build-msix` specifically to `windows-2022` (which ships the ARM64 v143 toolset out of the box)
+  — `test`/`build-cli`/`release` have no C++ dependency and stay on `windows-latest`, since
+  blanket-pinning `windows-2022` for every job surfaced a second, separate issue (below) in the
+  `test` job specifically.
+- Pinning `windows-2022` for the `test` job (before it was scoped back to `build-msix` only)
+  surfaced a real, separate, unresolved discrepancy: `Archiver.Core.Tests`'
+  `TarSignatureVerifier.Verify(C:\Windows\System32\tar.exe)` (native `WinVerifyTrust`/
+  `CryptQueryObject` P/Invoke check) returns `false` specifically on `windows-2022`, even though
+  plain PowerShell `Get-AuthenticodeSignature` on the exact same file on the exact same runner
+  reports a genuinely valid Microsoft signature. Considered vendoring a self-built `bsdtar.exe`
+  (mirroring T-F114's 7-Zip pattern) so tests wouldn't depend on whichever tar.exe a given CI OS
+  image ships; confirmed via the GitHub API that libarchive's official releases contain only
+  source archives, no prebuilt Windows binaries, so this would have meant compiling libarchive
+  from source ourselves. **Decided against it (user direction, 2026-07-19):** simpler to keep
+  `test` on `windows-latest`, where this doesn't reproduce. The `TarSignatureVerifier`-on-
+  `windows-2022` discrepancy itself stays open as a known, documented, deprioritized finding (see
+  `build.yml`'s own comment above `jobs:`) — real for Windows Server images specifically, not
+  confirmed relevant to Pakko's actual desktop Windows 10/11 target audience, and no longer
+  blocking CI since `test` doesn't run on `windows-2022`.
+- Confirmed (2026-07-19, same CI session) that the pre-existing `Archiver.Core.IntegrationTests`
+  sandbox-concurrency flakiness this project's `CLAUDE.md` already documented for local full-suite
+  runs (2026-07-07, recurred 2026-07-18) also reproduces in GitHub Actions CI itself — 2 of 60
+  `IntegrationTests` failed on the first real `windows-latest` `test` run after the `windows-2022`
+  rescoping fix, passed 100% clean on an immediate `gh run rerun --failed` with no code changes in
+  between. Documented in `CLAUDE.md`'s existing flakiness note with the exact test names and the
+  explicit "rerun once via `gh run rerun`" rule for CI specifically, so this doesn't read as a
+  broken CI setup to a future reader.
+
+**Acceptance criteria:**
+- [x] `.github/workflows/build.yml` triggered on push to `main`, on version tags, and (for `test`
+      only) on pull requests into `main` — builds the MSIX (`build-msix`, matrixed `x64`/`arm64`)
+      and `pakko.exe` for both RIDs (`build-cli`)
+- [x] `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` plus
+      `Archiver.ShellExtension.Tests.exe` run as a required `test` job before any build/publish job
+      — both run successfully on `windows-latest` with zero extra setup steps, confirming this
+      project's original research (VS2022 + Windows App SDK + MSIX Packaging + C++ workload are
+      all preinstalled) held for the OS image actually in use
+- [x] Built artifacts (MSIX + both CLI zips + `SHA256SUMS`) uploaded as workflow artifacts on
+      every push; on a version tag push, the CLI zips + `SHA256SUMS` are also attached to a real
+      GitHub Release automatically via `gh release create` — verified end-to-end against a real
+      disposable tag (`v1.1.1-ci-test`), then the tag/Release deleted afterward
+- [x] `README.md` links the Releases page next to the existing CLI-download paragraph;
+      `.github/RELEASE_NOTES_TEMPLATE.md` puts `Get-FileHash`/`SHA256SUMS` verification
+      instructions directly on the Release page itself, not just in `CLI.md`
+- [x] `scripts/README.md`'s new "Continuous Integration" section documents `build.yml` alongside
+      the existing manual `Deploy.ps1`/`Publish-Cli.ps1` instructions, and states CLI Release
+      publication is now CI-only; `CONTRIBUTING.md` cascades a short pointer to it
+- [x] `build.yml` has an explicit `TODO(T-F10)` comment right next to the `PAKKO_DEV_CERT_*`
+      secret references marking exactly where the SignPath swap happens
+- [x] `SECURITY.md`'s new "CI Signing Secret: New Supply-Chain Surface" section (proposed by the
+      agent, then applied verbatim after the user's separate explicit confirmation, per this
+      project's hard constraint on editing that file) covers the new repo-secret supply-chain risk
+      and why it's bounded today
+- [x] **Graduation gate — done 2026-07-19, not on green Actions runs alone:** downloaded the real
+      `pakko-msix-x64` artifact and the real CLI release zip from the disposable tag's workflow
+      run; `Get-AuthenticodeSignature` reported `Valid`; `Add-AppxPackage`-installed it over the
+      existing local `1.4.0.13` dev build (now `1.4.0.14`); launched the real GUI (title bar
+      confirmed the fresh build timestamp), ran a real Add-files → Archive → Extract round trip
+      through the actual UI with Cyrillic content, both succeeding; separately verified the
+      downloaded `pakko.exe`'s SHA-256 against `SHA256SUMS`, ran `--help`, and ran a real
+      `a`/`x` round trip with Cyrillic content and an emoji filename, both correct.
+
+---

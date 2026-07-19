@@ -414,8 +414,10 @@ failure — so a blocked/misconfigured sandbox would have crashed instead of yie
   implemented.** T-F120 (manual CLI GitHub Releases publication) and T-F122 (GitHub Actions CI for
   the MSIX + `pakko.exe`) overlapped by design; T-F120's acceptance criteria were folded into
   T-F122's so there's exactly one planned path to CLI-Release publication (T-F122's CI workflow on
-  a version-tag push), not a parallel manual step. No CI/publication code exists yet — T-F122
-  itself is still `[ ]` future. See `TASKS_DONE.md`'s T-F120 entry and `TASKS.md`'s T-F122 entry.
+  a version-tag push), not a parallel manual step. **T-F122 itself is now `[x]` done (2026-07-19)**
+  — see `TASKS_DONE.md`'s T-F122 entry for the full account, including the real `windows-latest`→
+  `windows-2025` relabel it uncovered mid-implementation and the on-device verification against a
+  real CI-produced MSIX + `pakko.exe`.
 - **T-F117 (`[x]` done 2026-07-18)** — fixed the silent-success gap T-F116 found:
   `ZipArchiveService.ExtractAsync`/`TestAsync`'s per-item gate now records a real `ArchiveError`
   ("File is not a recognized archive format...") for a path matching no known archive signature at
@@ -474,6 +476,20 @@ failure — so a blocked/misconfigured sandbox would have crashed instead of yie
   builds against a real ZIP fixture — `Archiver.App` came up landing directly in the Archive
   Browser (breadcrumb, real folder/file listing, Extract Selected/All), no pending-list view at
   all. See `TASKS_DONE.md`'s T-F03 entry.
+- **T-F122 (`[x]` done 2026-07-19)** — GitHub Actions CI (`.github/workflows/build.yml`) now
+  builds the MSIX + `pakko.exe` on every push/tag and publishes the CLI zips + `SHA256SUMS` to a
+  real GitHub Release on a version tag (absorbing the deleted T-F120). Signs with the exact same
+  local `CN=Pakko Dev` cert `Deploy.ps1` uses, via two new repo secrets. Uncovered a real external
+  environment change mid-implementation — `windows-latest` silently relabeled to the `windows-2025`
+  image, which lacks the ARM64 variant of the `v143` toolset `Archiver.ShellExtension.vcxproj`
+  pins — fixed by scoping an explicit `windows-2022` pin to just the `build-msix` job. Also
+  surfaced (and left open, deliberately out of scope) a real discrepancy in this project's own
+  `TarSignatureVerifier` native P/Invoke code specifically on `windows-2022`, and confirmed the
+  pre-existing `Archiver.Core.IntegrationTests` sandbox-concurrency flakiness also reproduces in
+  CI itself (see this file's "Known test gaps" section). Graduated only after downloading a real
+  CI-produced MSIX + `pakko.exe` from a disposable test-tag release, installing/running both, and
+  confirming a real Archive/Extract round trip through each — not on green Actions runs alone. See
+  `TASKS_DONE.md`'s T-F122 entry for the full account.
 - MSIX signed with dev cert via Deploy.ps1 (see T-F10 for production-grade cert)
 - Async streaming (CopyToAsync) — CancellationToken respected mid-file
 - Temp file/dir pattern — no partial files on cancel or failure
