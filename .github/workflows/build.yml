@@ -60,11 +60,6 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # NOTE (T-F122, unconfirmed as of first CI run): cross-compiling the ARM64 leg of
-        # Archiver.ShellExtension (C++) requires the "MSVC v143 ARM64 build tools" optional
-        # component. TASKS.md flagged this as unverified on windows-latest — if this leg fails
-        # with an ARM64 toolset error, add an explicit VS component install step here (e.g. via
-        # the vs_installer modify path) rather than assuming it's missing.
         architecture: [x64, arm64]
     steps:
       - uses: actions/checkout@v4
@@ -75,6 +70,19 @@ jobs:
 
       - name: Set up MSBuild
         uses: microsoft/setup-msbuild@v2
+
+      # T-F122, confirmed on the first real CI run (2026-07-19): windows-latest's preinstalled
+      # VS2022 has the v143 host (x64) toolset but not the v143 ARM64 cross-compile component,
+      # so Archiver.ShellExtension.vcxproj's ARM64 leg fails with MSB8020. Install it explicitly.
+      - name: Install ARM64 C++ build tools
+        if: matrix.architecture == 'arm64'
+        shell: pwsh
+        run: |
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $vsPath = & $vswhere -latest -property installationPath
+          $installer = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vs_installer.exe"
+          & $installer modify --installPath "$vsPath" --add Microsoft.VisualStudio.Component.VC.Tools.ARM64 --quiet --norestart --wait
+          if ($LASTEXITCODE -ne 0) { throw "vs_installer modify failed (exit $LASTEXITCODE)" }
 
       - name: Import signing certificate
         shell: pwsh
