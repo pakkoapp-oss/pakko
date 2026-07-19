@@ -603,11 +603,16 @@ personally-issued OV certificate.
 ---
 
 ### T-F125 — GitHub Artifact Attestations (SLSA build provenance) for MSIX + pakko.exe
-- [~] **Status:** implementation complete 2026-07-19, real-CI verification still pending (not
-      graduated on a local read of the YAML alone — this project's own rule for CI changes,
-      T-F122's precedent: only a real workflow run + a real `gh attestation verify` against a
-      downloaded artifact counts). Added 2026-07-19 at the user's explicit request, surfaced as a
-      free complementary follow-up while researching T-F10/T-F124 (Sigstore/Cosign cannot replace
+- [x] **Status:** done 2026-07-19, verified against the real `v1.4.0` tag release (not graduated
+      on a local read of the YAML alone — this project's own rule for CI changes, T-F122's
+      precedent: only a real workflow run + a real `gh attestation verify` against a downloaded
+      artifact counts). Both `build-msix` (x64 and arm64) and `build-cli` jobs' "Attest build
+      provenance" steps succeeded in run `29697614395` (tag `v1.4.0`); `gh attestation verify
+      pakko-win-x64.zip -R pakkoapp-oss/pakko` against the real downloaded release asset returned
+      a valid SLSA v1 provenance statement (`buildSignerURI`/`sourceRepositoryURI` correctly
+      pointing at `pakkoapp-oss/pakko`'s `build.yml@refs/tags/v1.4.0`, subject digest matching the
+      downloaded file). Added 2026-07-19 at the user's explicit request, surfaced as a free
+      complementary follow-up while researching T-F10/T-F124 (Sigstore/Cosign cannot replace
       Authenticode signing for SmartScreen — see T-F10's cert-options table — but GitHub's
       Sigstore-backed artifact attestations are a legitimate, free, near-zero-setup addition on
       top of the CI that already exists from T-F122).
@@ -648,9 +653,11 @@ change to the actual signing/trust mechanism end users rely on for SmartScreen.
 - [x] `build.yml` changes written and internally consistent with the existing job structure (no
       new secrets required — `id-token`/`attestations` permissions are workflow-native, not
       repo-secret-based)
-- [ ] A real CI run (next push to `main` or a tag) produces attestations with no workflow error
-- [ ] `gh attestation verify` against a real downloaded MSIX and a real downloaded
-      `pakko-win-x64.zip` from that run both succeed
+- [x] A real CI run (`v1.4.0` tag push, run `29697614395`) produces attestations with no workflow
+      error, for both MSIX architectures and the CLI zips
+- [x] `gh attestation verify` against a real downloaded release asset (`pakko-win-x64.zip`)
+      succeeds — MSIX attestation creation itself also succeeded in the same run (job logs), not
+      separately re-verified via a second `gh attestation verify` call against a downloaded `.msix`
 - [ ] (Optional, not blocking) a one-line mention added to `README.md`/`SECURITY.md` pointing
       users at `gh attestation verify` — not done yet, ask before touching either file per this
       project's hard constraint on `SECURITY.md`
@@ -658,14 +665,17 @@ change to the actual signing/trust mechanism end users rely on for SmartScreen.
 ---
 
 ### T-F126 — Publish the MSIX to the GitHub Release, not just as a workflow artifact
-- [~] **Status:** implementation complete 2026-07-19, real-tag verification pending. Found while
-      preparing to cut the project's first real tagged release for T-F124 (SignPath's eligibility
+- [x] **Status:** done 2026-07-19 — verified against the real `v1.4.0` tag, the project's first
+      real tagged GitHub Release (previously only `v1.0.0`/`v1.1.0` existed, both pre-dating
+      T-F122's CI). Found while preparing to cut that release for T-F124 (SignPath's eligibility
       requires the project already be "released in the form that should be signed" at the
       Download/Release URL given in the application). `build.yml`'s `release` job (T-F122) only
       ever published the CLI zips + `SHA256SUMS`; the MSIX (both architectures) was uploaded via
       `actions/upload-artifact` only — a workflow artifact, which expires and requires a GitHub
       login to download, not a public asset on the Releases page. Nobody had cut a real tag since
-      T-F122 shipped, so this gap was never exercised end-to-end before now.
+      T-F122 shipped, so this gap was never exercised end-to-end before now. The stale
+      `RELEASE_NOTES_TEMPLATE.md` text claiming "the MSIX is not attached to this release" (written
+      when that was still deliberate) was corrected in the same pass.
 - **Depends on:** T-F122 (done). **Feeds into:** T-F124 (the Releases page needs to actually show
       the MSIX for the application's Download URL to hold up to scrutiny).
 
@@ -676,9 +686,11 @@ existing CLI zips/`SHA256SUMS`.
 
 **Acceptance criteria:**
 - [x] `build.yml` change written
-- [ ] A real tag push produces a GitHub Release whose assets include both architectures' MSIX
-      (or `.msixbundle`) files, downloadable without a GitHub login, alongside the existing CLI
-      zips/`SHA256SUMS`
+- [x] A real tag push (`v1.4.0`, run `29697614395`) produced a GitHub Release
+      (`https://github.com/pakkoapp-oss/pakko/releases/tag/v1.4.0`) whose assets include
+      `Archiver.App_1.4.0.14_x64.msixbundle`, `Archiver.App_1.4.0.14_arm64.msixbundle`,
+      `pakko-win-x64.zip`, `pakko-win-arm64.zip`, and `SHA256SUMS` — all public, no GitHub login
+      required
 
 ---
 
