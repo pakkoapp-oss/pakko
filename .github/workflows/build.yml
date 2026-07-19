@@ -40,6 +40,26 @@ jobs:
         with:
           dotnet-version: "8.0.x"
 
+      # Diagnostic only (T-F122): TarSignatureVerifier.Verify(tar.exe) started returning false on
+      # windows-2022, unlike windows-latest/windows-2025 where it passed 3 runs in a row. Print
+      # what's actually on disk before the real test run, so the cause is visible instead of
+      # guessed. Never fails the job.
+      - name: Diagnose tar.exe on this runner
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          $tarPath = "C:\Windows\System32\tar.exe"
+          Write-Host "Exists: $(Test-Path $tarPath)"
+          if (Test-Path $tarPath) {
+            & $tarPath --version
+            $sig = Get-AuthenticodeSignature -FilePath $tarPath
+            Write-Host "Signature Status: $($sig.Status)"
+            Write-Host "Signature StatusMessage: $($sig.StatusMessage)"
+            if ($sig.SignerCertificate) {
+              Write-Host "Signer Subject: $($sig.SignerCertificate.Subject)"
+            }
+          }
+
       - name: Run .NET test suite
         run: dotnet test --filter "Category!=Slow&Category!=VeryLarge"
 
