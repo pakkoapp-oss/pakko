@@ -75,11 +75,13 @@ jobs:
       # VS2022 has the v143 host (x64) toolset but not the v143 ARM64 cross-compile component,
       # so Archiver.ShellExtension.vcxproj's ARM64 leg fails with MSB8020. Install it explicitly.
       #
-      # First attempt (--wait, no --nocache) completed in ~4s with no output and didn't fix the
-      # error — the runner image's local VS package cache doesn't carry the ARM64 payload, and
-      # without --nocache, `modify` treats the (stale/incomplete) cache as authoritative and
-      # no-ops instead of fetching it. Matches actions/runner-images#9701, which also runs the
-      # modify command twice — the first invocation can just update the installer itself.
+      # Two earlier attempts (first with --wait, then with --nocache + running modify twice per
+      # actions/runner-images#9701's own recipe) both returned exit code 0 in under 30ms — far
+      # too fast to have done real work, and MSB8020 persisted either way. Confirmed empirically:
+      # vs_installer.exe hands off to a background worker and returns almost immediately
+      # regardless of flags; it does not block until the component is actually installed. This
+      # third attempt stops trusting the exit code and instead polls the filesystem for the real
+      # ARM64 compiler binary, with a timeout.
       - name: Install ARM64 C++ build tools
         if: matrix.architecture == 'arm64'
         shell: pwsh
@@ -87,13 +89,34 @@ jobs:
           $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
           $vsPath = & $vswhere -latest -property installationPath
           Write-Host "VS install path: $vsPath"
-          $installer = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vs_installer.exe"
-          for ($i = 1; $i -le 2; $i++) {
-            Write-Host "vs_installer modify attempt $i..."
-            & $installer modify --installPath "$vsPath" --add Microsoft.VisualStudio.Component.VC.Tools.ARM64 --quiet --norestart --nocache
-            Write-Host "  exit code: $LASTEXITCODE"
+
+          function Test-Arm64Toolset {
+            return [bool](Get-ChildItem -Path "$vsPath\VC\Tools\MSVC" -Filter "cl.exe" -Recurse -ErrorAction SilentlyContinue |
+              Where-Object { $_.FullName -match '\\bin\\Host\w+\\arm64\\cl\.exe$' } |
+              Select-Object -First 1)
           }
-          if ($LASTEXITCODE -ne 0) { throw "vs_installer modify failed (exit $LASTEXITCODE)" }
+
+          if (Test-Arm64Toolset) {
+            Write-Host "ARM64 toolset already present."
+          } else {
+            $installer = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vs_installer.exe"
+            for ($i = 1; $i -le 2; $i++) {
+              Write-Host "vs_installer modify attempt $i..."
+              & $installer modify --installPath "$vsPath" --add Microsoft.VisualStudio.Component.VC.Tools.ARM64 --quiet --norestart --nocache
+              Write-Host "  exit code: $LASTEXITCODE"
+            }
+
+            $deadline = (Get-Date).AddMinutes(10)
+            while (-not (Test-Arm64Toolset) -and (Get-Date) -lt $deadline) {
+              Write-Host "Waiting for the ARM64 toolset to appear on disk..."
+              Start-Sleep -Seconds 15
+            }
+
+            if (-not (Test-Arm64Toolset)) {
+              throw "ARM64 MSVC toolset still missing after waiting 10 minutes -- vs_installer modify did not complete in time (or failed silently)."
+            }
+            Write-Host "ARM64 toolset confirmed present."
+          }
 
       - name: Import signing certificate
         shell: pwsh
