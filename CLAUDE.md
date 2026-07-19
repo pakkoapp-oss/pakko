@@ -695,8 +695,10 @@ references are easy to miss otherwise (this session found 5 lingering mentions o
   implementing. (The `com:InProcessServer` schema in the original T-F61 decision was never
   actually verified this way and shipped with an undeclared XML namespace for ~4 months before
   being caught — see the "Correction — SurrogateServer" entry in `DECISIONS.md`.)
-  `gh` CLI is not installed in this environment, and GitHub's code search requires sign-in even
-  for public repos. Instead: `curl -s "https://api.github.com/repos/<owner>/<repo>/git/trees/main?recursive=1"`
+  `gh` CLI **is** installed and authenticated in this environment (confirmed T-F122, 2026-07-19 —
+  used extensively for `gh run`/`gh release`/`gh secret`). GitHub's code search still requires
+  sign-in even for public repos, so for reading a third-party repo's source, prefer:
+  `curl -s "https://api.github.com/repos/<owner>/<repo>/git/trees/main?recursive=1"`
   lists every file path unauthenticated — grep it for the area you need, then WebFetch the raw
   file (`raw.githubusercontent.com/<owner>/<repo>/main/<path>`) to read real code.
   Same method applies beyond COM/shell/packaging: fetching NanaZip's real `NanaZip.Modern/` source
@@ -899,6 +901,13 @@ MSBuild tests\Archiver.ShellExtension.Tests\Archiver.ShellExtension.Tests.vcxpro
 > verifying a UI change on-device — run the full `.\scripts\Deploy.ps1` first (it wipes old
 > `AppPackages` output before rebuilding).
 >
+> **`DeployMsix`'s post-build `Add-AppxPackage` also actively fails a Release `dotnet
+> publish`/`build` outright (not just silently) on any machine without the signing cert in
+> `LocalMachine\TrustedPeople`** — e.g. a fresh CI runner (`0x800B0109`, "root certificate ...
+> must be trusted"). Set `$env:PAKKO_DEPLOYING = '1'` before the call and clear it after (see
+> `Deploy.ps1`'s own use of this exact guard) to suppress the target entirely. Found T-F122,
+> 2026-07-19 — the first real CI run failed on this before it was noticed.
+>
 > **Correction (recurred 2026-07-18, T-F123, worse than the original symptom):** a bare
 > `dotnet build src/Archiver.App/Archiver.App.csproj /p:Platform=x64` was used to verify a
 > `MainWindow.xaml.cs` event-handler fix (an `IsBusy` guard on `ArchiveBrowserList_DoubleTapped`).
@@ -995,6 +1004,19 @@ MSBuild tests\Archiver.ShellExtension.Tests\Archiver.ShellExtension.Tests.vcxpro
 > `git status` can still show the same modified files. Always verify with `git status` after
 > any `stash push`; if changes persist, finish the revert manually with `git checkout --
 > <files>` (the stash already has a safe backup, so this is not destructive).
+>
+> **GitHub Actions CI (`.github/workflows/build.yml`, T-F122):**
+> - `gh run view --job=<id> --log`/`--log-failed` only returns output **after the whole workflow
+>   run completes**, not just that one job — "run ... is still in progress" otherwise, even if the
+>   specific job you want logs for already finished.
+> - `vs_installer.exe modify --add <component>` is unreliable on GitHub-hosted Windows runners —
+>   confirmed it returns exit code 0 in under 30ms regardless of `--wait`/`--nocache`/running it
+>   twice, without actually installing anything. Don't trust it for CI component installation;
+>   pin a runner image that already ships what you need instead (see next point).
+> - The `windows-latest` GitHub Actions runner label is not a stable OS pin — it silently moved
+>   from the `windows-2022` image to `windows-2025` mid-project (confirmed T-F122, 2026-07-19),
+>   breaking ARM64 C++ builds that worked before. Pin an explicit version (`windows-2022`) for any
+>   job where toolchain reproducibility matters.
 >
 > **Deploy shortcuts:**
 > Release build in VS triggers `Deploy.ps1 -DeployOnly` automatically (post-build event).
