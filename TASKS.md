@@ -694,6 +694,83 @@ existing CLI zips/`SHA256SUMS`.
 
 ---
 
+### T-F127 — Wikipedia page (Ukrainian + English)
+- [ ] **Status:** future, added 2026-07-19 at the user's explicit request. **Real risk flagged
+      before any work starts, per this project's pre-implementation-research norm:** checked
+      Wikipedia's actual notability guideline for software (`WP:NSOFT`/
+      `Wikipedia:Notability (software)`) — it requires significant coverage of the *software
+      itself* in independent, reliable secondary sources (press reviews, printed manuals, or
+      recognized historical/technical significance), not just an active public GitHub repo. As of
+      2026-07-19 Pakko has no independent press coverage at all (GitHub-only releases for early
+      testers, no reviews, no news mentions found) — an article created now would very likely be
+      speedy-deleted (`WP:CSD` A7) or fail an Articles-for-Deletion discussion for lack of
+      notability, on both `en.wikipedia.org` and `uk.wikipedia.org` (Ukrainian Wikipedia applies
+      an equivalent standard). This is not a formatting/writing problem, it's an eligibility
+      problem — no amount of good prose fixes it.
+- **Depends on:** none technically, but see the note above — realistically blocked on Pakko
+      accumulating independent secondary-source coverage first (e.g. a tech-press review, a
+      notable government/enterprise adoption case covered by a third party). **Not blocked on**
+      T-F124/T-F10 (code signing) or the Microsoft Store listing — those aren't Wikipedia
+      notability sources either.
+
+**Scope (once notability is realistically met):**
+- Draft the article once via a shared source (English first, then a Ukrainian translation, or
+  vice versa — not two independently-drafted articles, to avoid the two language versions
+  drifting on basic facts like license/version/feature list)
+- Disclose the conflict of interest: per `WP:COI`, the project's own maintainer writing about
+  their own project is a connected contribution — must be disclosed on the article's talk page
+  (`{{connected contributor}}` template) and the editor's own user page, and the recommended path
+  is submitting via Articles for Creation (`WP:AFC`) as a draft for independent review, not
+  publishing directly to mainspace
+- Cite only independent secondary sources for notability-relevant claims — this repo's own
+  `README.md`/`SECURITY.md`/`TASKS.md` are primary sources and don't establish notability, only
+  factual detail once notability is otherwise established
+
+**Acceptance criteria:**
+- [ ] Real notability check redone at implementation time (sources may exist by then that don't
+      today) — record what was found, don't assume the 2026-07-19 "not yet notable" finding still
+      holds without rechecking
+- [ ] If proceeding: COI disclosed per `WP:COI` before any mainspace edit
+- [ ] English draft submitted via AfC (or mainspace, if a competent Wikipedia editor advises
+      notability is clearly met and AfC is unnecessary)
+- [ ] Ukrainian draft submitted via Ukrainian Wikipedia's equivalent process
+- [ ] Both articles survive their respective new-article review process without deletion
+
+---
+
+### T-F128 — Hash-sum dropdown: add SHA-256 alongside CRC-32 for archives and files
+- [ ] **Status:** future, added 2026-07-19 at the user's explicit request. **Scope needs
+      confirming before implementation — flagging the mismatch found while looking at the current
+      code, not guessing at it:** the request describes "a dropdown already used to find hash sums
+      of archives and files, with CRC-32 in it, needing SHA-256 added." The actual current code
+      has no such dropdown at all:
+      - The "Hash" button (Row 0, `MainWindow.xaml.cs`'s `HashFilesCommand` →
+        `DialogService.ShowFileHashAsync`) picks arbitrary files via a file picker and always
+        computes SHA-256 — fixed, no algorithm choice, no CRC-32 option, and (since it's a plain
+        file picker) it can already be pointed at an archive file itself, hashing the archive as
+        a whole, but not any entry inside it.
+      - The Archive Browser's CRC-32 column (T-F110, `ArchiveEntryViewModel`) is a fixed,
+        non-interactive **column** showing each ZIP entry's stored CRC-32 — ZIP-only (tar-family
+        formats don't expose a per-entry CRC the same way), not a dropdown, not user-selectable,
+        and computes nothing for the archive as a whole.
+      Before implementing, resolve: (a) does "dropdown" mean adding an algorithm selector
+      (CRC-32/SHA-256, maybe more) to the existing whole-file Hash tool, so it also covers a whole
+      archive's own bytes and/or a selected archive entry; (b) does it mean adding a SHA-256
+      column next to the existing CRC-32 column in the Archive Browser table (per-entry, ZIP-only
+      unless a per-entry SHA-256 is computed live by re-reading each entry's decompressed bytes,
+      which is a real perf cost the fixed CRC-32 column doesn't have since it just reads the
+      stored value); or (c) both.
+- **Depends on:** none.
+
+**Acceptance criteria (to be finalized once (a)/(b)/(c) above is resolved):**
+- [ ] Scope question above resolved with the user before writing code
+- [ ] SHA-256 available as a real, selectable option somewhere hash sums are already shown
+      (dropdown or equivalent), CRC-32 remains available alongside it, not replaced
+- [ ] Whatever UI surface changes, matches this project's existing localization convention
+      (`x:Uid`, all 37 locales) if it's a new XAML-visible label
+
+---
+
 ### T-F09 (original, pre-2026-07-12 scope, superseded by the expanded entry above — kept per the
 "never silently deprecate" rule)
 
