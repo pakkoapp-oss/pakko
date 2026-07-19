@@ -1093,6 +1093,19 @@ Task<IReadOnlyList<string>> PickFoldersAsync()
   own sandbox tests — same shared `Pakko.TarSandbox` AppContainer profile/quarantine ACL under
   more concurrent load than before. Same rule applies: rerun once before treating a failure here
   as a real regression.
+  **Confirmed the same flakiness also reproduces in GitHub Actions CI, not just on a local dev
+  machine (2026-07-19, T-F122's `build.yml` `test` job):** a full `dotnet test` run failed on
+  `TarSandboxScopeTests.RunAsync_PreScanThenExtractionWithinOneScope_BothSucceed` and
+  `TarSandboxedServiceCompressedFormatsTests.ExtractAsync_TarGz_SeparateFoldersMode_StripsCompoundExtensionForSubfolderName`
+  (2 of 60 `Archiver.Core.IntegrationTests`, every other project 100% green) on the very first
+  real CI run after both this doc's prior 2026-07-18 entry and T-F117/T-F118 shipped, then passed
+  100% clean on an immediate `gh run rerun --failed` with zero code changes in between — same
+  root cause (AppContainer/Job-Object contention under CI's own parallel test execution), not a
+  new bug. **If `build.yml`'s `test` job goes red, rerun it once via `gh run rerun <run-id>
+  --failed` (or the Actions "Re-run failed jobs" button) before investigating further** — this is
+  expected, not a sign the CI setup itself is broken. A real regression looks different: the same
+  test(s) failing on a second consecutive rerun, or a failure outside `Archiver.Core.IntegrationTests`'
+  sandbox-adjacent tests.
 
 ---
 
