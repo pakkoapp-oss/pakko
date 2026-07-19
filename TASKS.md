@@ -804,6 +804,32 @@ existing CLI zips/`SHA256SUMS`.
          already relies on successfully. Confirmed fixed live immediately after: both items now
          render, and clicking "Хеш-суми: CRC-32" opened a real `Archiver.Shell` dialog reading
          `CRC-32: test.txt` / `test.txt: 363A3020`. See `DECISIONS.md`'s T-F128 follow-up entry.
+      4. **2026-07-20: folder result trimmed to summary-only (no per-file dump), matching NanaZip
+         exactly; a Windows toast-notification replacement for `MessageBoxW` was attempted, then
+         reverted.** `ShowHashResults`'s folder branch used to append the full per-file listing
+         underneath DataSum/NamesSum — the user pointed out NanaZip only shows the aggregate sums,
+         so the dump was dropped (kept for the non-folder branches, which are a genuine per-file
+         table, not a sum). Separately, the user asked about replacing the classic `MessageBoxW`
+         with a modern toast notification; implemented via a `HashToastNotifier` WinRT wrapper and
+         an `Archiver.Shell`/`Archiver.Shell.Tests` TFM bump to `net8.0-windows10.0.17763.0` (for
+         compile-time `Windows.UI.Notifications` projections, zero new NuGet packages) — this
+         surfaced a real, independent bug: `Archiver.App.csproj`'s `Content Include` paths for
+         `Archiver.Shell.exe`/`.dll`/`.deps.json`/`.runtimeconfig.json`, and `Deploy.ps1`'s own
+         `$shellExeSourcePath`, all hardcoded the literal `net8.0-windows` build-output segment;
+         once the TFM changed, MSBuild's real output folder moved but these four paths silently
+         kept pointing at the old, no-longer-updated folder, so `Deploy.ps1` kept installing a
+         stale pre-toast DLL despite reporting success and a fresh file timestamp. Fixed alongside
+         the toast work, then reverted together with it (see below) — worth remembering if this
+         TFM is ever bumped again for a real reason. On-device testing then found
+         `ToastNotifier.Setting` was `DisabledForUser`, traced to `HKCU\...\PushNotifications\
+         ToastEnabled=0` — Windows notifications are off machine-wide on this dev box, unrelated
+         to Pakko. The `NotificationSetting.Enabled`-gated fallback-to-`MessageBoxW` design worked
+         exactly as intended in this state, but the toast itself couldn't be visually confirmed
+         without a global OS settings change. **User's call: revert the toast entirely and keep
+         the classic dialog** (`HashToastNotifier.cs` deleted, `ShowHashResults`'s toast branch
+         removed, both TFM bumps and the four path fixes rolled back since they only existed to
+         support the toast) — "something that will definitely work," with a possible future task
+         for a custom-drawn info window instead of a system toast, not opened yet.
 - **Depends on:** none.
 
 **Implementation:**

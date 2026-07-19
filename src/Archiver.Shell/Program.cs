@@ -415,21 +415,25 @@ static async Task RunHashAsync(IReadOnlyList<string> paths, HashAlgorithmKind al
 
 static void ShowHashResults(string title, HashResult result)
 {
-    var lines = new List<string>();
+    // T-F128 follow-up: a folder result shows only the aggregate DataSum/NamesSum, matching
+    // NanaZip's own folder-hash summary - no per-file dump underneath (dropped per the user's
+    // explicit ask; the per-file entries still exist on HashResult for the non-folder branches
+    // below, which are a genuine per-file table, not a sum, so they keep listing each file).
+    string[] lines;
     if (result.Folder is { } folder)
     {
-        lines.Add($"Files: {folder.FileCount}");
-        lines.Add($"DataSum: {folder.DataSum}");
-        lines.Add($"NamesSum: {folder.NamesSum}");
-        lines.Add(string.Empty);
+        lines = [$"Files: {folder.FileCount}", $"DataSum: {folder.DataSum}", $"NamesSum: {folder.NamesSum}"];
     }
-
-    lines.AddRange(result.Entries.Take(MaxErrorLinesShown)
-        .Select(e => e.Error is null
-            ? $"{Path.GetFileName(e.SourcePath)}: {e.Hash}"
-            : $"{Path.GetFileName(e.SourcePath)}: {e.Error}"));
-    if (result.Entries.Count > MaxErrorLinesShown)
-        lines.Add($"…and {result.Entries.Count - MaxErrorLinesShown} more");
+    else
+    {
+        var entryLines = result.Entries.Take(MaxErrorLinesShown)
+            .Select(e => e.Error is null
+                ? $"{Path.GetFileName(e.SourcePath)}: {e.Hash}"
+                : $"{Path.GetFileName(e.SourcePath)}: {e.Error}");
+        lines = result.Entries.Count > MaxErrorLinesShown
+            ? [.. entryLines, $"…and {result.Entries.Count - MaxErrorLinesShown} more"]
+            : [.. entryLines];
+    }
 
     var message = string.Join(Environment.NewLine, lines);
     bool anyErrors = result.Entries.Any(e => e.Error is not null);

@@ -5457,3 +5457,61 @@ path, not a proxy for it. Note for future `IExplorerCommand` work in this codeba
 `ECF_HASSUBCOMMANDS`-under-`ECF_HASSUBCOMMANDS` submenu is not proven reliable here even though
 NanaZip's own equivalent works — prefer flat top-level leaves unless a real design reason forces
 nesting, and budget on-device verification time accordingly if it's used.
+
+**Fourth follow-up (2026-07-20): folder summary trimmed to match NanaZip, and a toast-notification
+attempt that got reverted — with a real, generically useful build-path bug found along the way.**
+
+*Trim.* `ShowHashResults` used to append the folder's full per-file hash list underneath
+DataSum/NamesSum. The user pointed out NanaZip only ever shows the two aggregate sums for a
+folder, never a per-file dump — Pakko's extra listing was clutter, not a feature worth keeping.
+Removed for the folder branch only; the non-folder branches (a single file, or several
+individually-selected files) still list each file's own hash, since that's a genuine per-file
+table in NanaZip's own UI too, not a sum to collapse.
+
+*Toast attempt.* The user separately asked whether the classic `MessageBoxW` result dialog could
+become a modern Windows 10/11 toast notification. Implemented as `HashToastNotifier`
+(`Windows.UI.Notifications.ToastNotificationManager` + a plain XML `ToastGeneric` payload,
+`SecurityElement.Escape`d — zero new NuGet packages), used only for the two "short" result shapes
+(single file, or a folder summary) with the genuine multi-file list staying on `MessageBoxW` — a
+scope explicitly chosen via `AskUserQuestion` since toast real estate can't hold an open-ended
+file list and the user declined building a details-button/COM-activation path for it.
+
+Showing a toast from a WinRT API requires compile-time WinRT projections, which requires
+`Archiver.Shell`'s `TargetFramework` to include a Windows version — bumped from `net8.0-windows`
+to `net8.0-windows10.0.17763.0` (matching `Archiver.App.csproj` exactly), same for
+`Archiver.Shell.Tests.csproj` (a `NU1201` project-reference incompatibility otherwise). This
+single change surfaced a real, independent, previously-undetected bug: `Archiver.App.csproj`'s
+four `Content Include` items for `Archiver.Shell.exe`/`.dll`/`.deps.json`/`.runtimeconfig.json`,
+and `Deploy.ps1`'s own `$shellExeSourcePath` (used by its T-F102 post-publish completeness check),
+all hardcoded the literal path segment `net8.0-windows` instead of deriving it from the project's
+actual TFM. The moment the real TFM changed, MSBuild started writing `Archiver.Shell`'s output to
+a *different* folder (`net8.0-windows10.0.17763.0\...`), but these five hardcoded references kept
+pointing at the old folder — which still had a real, validly-dated `Archiver.Shell.dll` sitting in
+it from a build *before* the TFM change (the last commit's build), so `Deploy.ps1` kept picking it
+up, signing it, and reporting a clean "installed successfully" with a fresh package version number
+and a fresh top-level `.exe` timestamp (the apphost stub, which is TFM-agnostic and barely changes
+size across builds) while the actual managed `.dll` inside the installed package was silently
+stale. Caught only because `HashToastNotifier`'s own diagnostic logging (added to debug an
+unrelated `NotificationSetting` question, see below) never wrote anything at all across several
+redeploys — traced by comparing `Archiver.Shell.dll`'s *file size*, not the `.exe`'s timestamp
+(36864 bytes installed vs. 38912 bytes in the correct fresh output folder). Fixed by updating all
+five hardcoded segments to the new TFM string. **General lesson, not just for this feature:** this
+project's own `CLAUDE.md` already warns that the `.exe` apphost's timestamp isn't sufficient proof
+of a fresh `Archiver.App` deploy — this is the same failure mode one level down, for a *satellite*
+project's own TFM change silently invalidating hardcoded build-output paths elsewhere in the repo.
+Grep for a project's own TFM string across `.csproj`/`.ps1` files before changing it.
+
+*Why it was reverted.* On-device, `HashToastNotifier`'s `NotificationSetting` check correctly
+returned `DisabledForUser` and the code correctly fell back to `MessageBoxW` exactly as designed —
+but that meant the toast itself could never be visually confirmed working. Traced the real cause
+via registry, not guessed: `HKCU\Software\Microsoft\Windows\CurrentVersion\PushNotifications\
+ToastEnabled = 0` — Windows notifications are switched off machine-wide on this dev box (a
+pre-existing environment setting, unrelated to Pakko's own AUMID/manifest — neither the `App` nor
+`ShellHelper` AUMID had ever been registered in `HKCU\...\Notifications\Settings` at all, since no
+toast had ever fired from any Pakko identity before). Rather than flip a global, machine-wide OS
+setting just to visually confirm one feature, the user chose to revert the toast entirely and keep
+the classic dialog ("something that will definitely work"), floating a possible future task for a
+custom-drawn info window instead of a system toast — not opened as a tracked task yet.
+`HashToastNotifier.cs` was deleted, `ShowHashResults`' toast branch removed, and both TFM bumps
+plus all five hardcoded-path fixes were rolled back together (they existed only to support the
+toast) — the final, kept diff is exactly the folder-summary trim described above, nothing else.
