@@ -175,14 +175,28 @@ jobs:
           name: pakko-cli
           path: artifacts/cli
 
+      # T-F126: pakko-msix-x64 / pakko-msix-arm64 (from build-msix's matrix legs) merged into one
+      # directory -- each still nested under its original src/Archiver.App/AppPackages/... path.
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: pakko-msix-*
+          path: artifacts/msix
+          merge-multiple: true
+
       - name: Create GitHub Release
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "${{ github.ref_name }}" `
-            artifacts/cli/pakko-win-x64.zip `
-            artifacts/cli/pakko-win-arm64.zip `
-            artifacts/cli/SHA256SUMS `
+          $msixAssets = Get-ChildItem -Path artifacts/msix -Recurse -Include *.msix, *.msixbundle | Select-Object -ExpandProperty FullName
+          if (-not $msixAssets) {
+            throw "No .msix/.msixbundle files found under artifacts/msix -- build-msix artifacts missing or layout changed."
+          }
+          $assets = @(
+            "artifacts/cli/pakko-win-x64.zip",
+            "artifacts/cli/pakko-win-arm64.zip",
+            "artifacts/cli/SHA256SUMS"
+          ) + $msixAssets
+          gh release create "${{ github.ref_name }}" @assets `
             --title "${{ github.ref_name }}" `
             --notes-file .github/RELEASE_NOTES_TEMPLATE.md

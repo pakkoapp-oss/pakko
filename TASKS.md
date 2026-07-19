@@ -657,6 +657,31 @@ change to the actual signing/trust mechanism end users rely on for SmartScreen.
 
 ---
 
+### T-F126 — Publish the MSIX to the GitHub Release, not just as a workflow artifact
+- [~] **Status:** implementation complete 2026-07-19, real-tag verification pending. Found while
+      preparing to cut the project's first real tagged release for T-F124 (SignPath's eligibility
+      requires the project already be "released in the form that should be signed" at the
+      Download/Release URL given in the application). `build.yml`'s `release` job (T-F122) only
+      ever published the CLI zips + `SHA256SUMS`; the MSIX (both architectures) was uploaded via
+      `actions/upload-artifact` only — a workflow artifact, which expires and requires a GitHub
+      login to download, not a public asset on the Releases page. Nobody had cut a real tag since
+      T-F122 shipped, so this gap was never exercised end-to-end before now.
+- **Depends on:** T-F122 (done). **Feeds into:** T-F124 (the Releases page needs to actually show
+      the MSIX for the application's Download URL to hold up to scrutiny).
+
+**Fix:** `release` job now also downloads both `pakko-msix-x64`/`pakko-msix-arm64` artifacts
+(`actions/download-artifact@v4`, `pattern: pakko-msix-*`, `merge-multiple: true`), globs the real
+`.msix`/`.msixbundle` file(s) out of them, and passes them to `gh release create` alongside the
+existing CLI zips/`SHA256SUMS`.
+
+**Acceptance criteria:**
+- [x] `build.yml` change written
+- [ ] A real tag push produces a GitHub Release whose assets include both architectures' MSIX
+      (or `.msixbundle`) files, downloadable without a GitHub login, alongside the existing CLI
+      zips/`SHA256SUMS`
+
+---
+
 ### T-F09 (original, pre-2026-07-12 scope, superseded by the expanded entry above — kept per the
 "never silently deprecate" rule)
 
