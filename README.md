@@ -152,7 +152,9 @@ Prerequisites: Visual Studio 2022 (Windows App SDK / WinUI 3 + Desktop C++ workl
 ```
 
 See [`scripts/README.md`](scripts/README.md) for full details and [`CONTRIBUTING.md`](CONTRIBUTING.md)
-for the contributor workflow. Production code signing with a trusted certificate is planned (T-F10).
+for the contributor workflow. Production code signing with a trusted certificate is planned (T-F10)
+— see [`SIGNING.md`](SIGNING.md) for Pakko's Code Signing Policy (team roles, build process, and
+artifacts covered).
 
 ---
 

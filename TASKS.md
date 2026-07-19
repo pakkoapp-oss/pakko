@@ -539,32 +539,121 @@ for the same reason (also PATH-shim-based, no admin rights needed) but lower pri
 
 ---
 
-### T-F124 — Apply to SignPath Foundation (both the user and the agent submit an application)
-- [ ] **Status:** future, added 2026-07-18 at the user's explicit request. T-F10's own acceptance
-      criteria already say "SignPath Foundation eligibility confirmed by actually applying (not
-      just reading their public criteria)" — this task is that concrete action, split out on its
-      own since it's a real-world submission step (a web form on an external site), not an
-      in-repo implementation change.
+### T-F124 — Apply to SignPath Foundation (solo-maintainer application, Paul as sole team member)
+- [ ] **Status:** planning complete 2026-07-19 (research + advisor review), submission itself not
+      yet done. Added 2026-07-18 at the user's explicit request. T-F10's own acceptance criteria
+      already say "SignPath Foundation eligibility confirmed by actually applying (not just
+      reading their public criteria)" — this task is that concrete action, split out on its own
+      since it's a real-world submission step (a web form on an external site), not an in-repo
+      implementation change.
+      **Corrected premise (2026-07-19):** the original framing — "both the user and the agent
+      submit an application" — does not match SignPath's real account model. Confirmed via
+      `docs.signpath.io/users`: SignPath has exactly two account types, "Interactive User" (a real
+      person, via Google/Microsoft/Okta/enterprise SSO) and "CI User" (an API-token-only service
+      account for build automation, not a role a person or agent occupies). There is no third
+      category and no concept of a second "technical contact" applicant. An agent cannot complete
+      a social-login identity flow and cannot be the accountable party SignPath's terms require
+      (they reserve the right to investigate conduct-violation allegations against team members —
+      that requires a real, legally accountable person). **Only the user applies, as sole project
+      owner**, and per SignPath Foundation's own solo-maintainer accommodation (confirmed via a
+      real precedent, the Kieirra/murmure project — GitHub discussion #92 — going from
+      non-compliant to approved in ~1 month, most of it spent on doc prep, not review time), one
+      person holds all three required team roles (Author/Reviewer/Approver) themselves — see the
+      new `SIGNING.md` draft (below) for how Pakko documents that.
 - **Depends on:** none. **Feeds into:** T-F10 Phase 1 (SignPath is the chosen code-signing path
       for both the MSIX and standalone `pakko.exe` — see T-F10's cert-options table).
 
 **Scope:** submit an application to SignPath Foundation (https://signpath.org/apply) for Pakko as
-a qualifying open-source project — both the user (as project owner/maintainer) and the agent
-(if SignPath's process allows/expects a second contact, e.g. a technical contact) submit their
-own application, per the user's explicit instruction. Confirm what SignPath's form actually asks
-for before assuming shape (project URL, license, maintainer identity, etc.) — don't guess the
-field list from memory.
+a qualifying open-source project, submitted solely by the user as project owner/maintainer.
+Confirm what SignPath's form actually asks for before assuming shape (project URL, license,
+maintainer identity, etc.) — don't guess the field list from memory.
+
+**Pre-submission gap analysis (2026-07-19, against SignPath Foundation's real published
+eligibility criteria at `signpath.org/terms.html`, not assumed from memory):** Pakko already
+satisfies the OSI-license, active-maintenance, already-released, and automated-CI-build
+requirements, and already has a real, strong privacy policy
+(`https://pakkoapp-oss.github.io/pakko/` — explicitly "no data collection, no network requests, no
+telemetry"). Three things were missing and are now drafted (not yet published/committed pending
+the user's review): a published "Code Signing Policy" document (new `SIGNING.md` at repo root —
+deliberately not reusing `POLICIES.md`, which is Pakko's own unrelated Windows Group Policy admin
+reference), a published Author/Reviewer/Approver team-roles statement (folded into the same
+`SIGNING.md` draft), and confirmation that the user's GitHub account has MFA enabled (a real-world
+account setting only the user can act on — not agent-doable).
+
+**Real decision the user already confirmed (2026-07-19):** SignPath Foundation issues the
+certificate to *itself* ("SignPath Foundation" is the certificate Subject/publisher, not Pakko or
+Paul R — they aren't a CA and cannot issue a cert directly to the applicant). Once wired in
+(T-F10 Phase 1), Windows/Explorer will show **"SignPath Foundation"** as the publisher on every
+install prompt, not "Pakko"/"Paul R" — user confirmed this is acceptable over paying for a
+personally-issued OV certificate.
 
 **Acceptance criteria:**
-- [ ] SignPath Foundation's real, current application requirements confirmed by visiting their
-      site (not assumed from T-F10's research notes, which predate this task)
-- [ ] User's application submitted
-- [ ] Agent's application submitted (if SignPath's process has a role for this — confirm first;
-      if their form only accepts one project-owner applicant, record that here instead of forcing
-      a second submission that doesn't fit their process)
+- [x] SignPath Foundation's real, current application requirements confirmed by visiting their
+      site and cross-checking a real solo-maintainer precedent (not assumed from T-F10's research
+      notes, which predate this task)
+- [ ] `SIGNING.md` reviewed by the user, GitHub handle fields filled in, and published (linked
+      from `README.md` and/or the app's About dialog, matching what SignPath expects to find on
+      the project's "home page")
+- [ ] User's GitHub account MFA confirmed enabled
+- [ ] User's application submitted (sole applicant — see corrected premise above)
 - [ ] Real outcome (accepted/rejected/pending, and any conditions) recorded here and back in
       T-F10's own "eligibility confirmed" criterion — don't leave T-F10 pointing at a stale
       "not yet applied" state once this resolves
+
+---
+
+### T-F125 — GitHub Artifact Attestations (SLSA build provenance) for MSIX + pakko.exe
+- [~] **Status:** implementation complete 2026-07-19, real-CI verification still pending (not
+      graduated on a local read of the YAML alone — this project's own rule for CI changes,
+      T-F122's precedent: only a real workflow run + a real `gh attestation verify` against a
+      downloaded artifact counts). Added 2026-07-19 at the user's explicit request, surfaced as a
+      free complementary follow-up while researching T-F10/T-F124 (Sigstore/Cosign cannot replace
+      Authenticode signing for SmartScreen — see T-F10's cert-options table — but GitHub's
+      Sigstore-backed artifact attestations are a legitimate, free, near-zero-setup addition on
+      top of the CI that already exists from T-F122).
+- **Depends on:** T-F122 (`build.yml`, done). **Independent of T-F10/T-F124** — provenance
+      attestation and Authenticode/SmartScreen trust are two different mechanisms; this does not
+      block or get blocked by the SignPath application.
+
+**Scope:** add `actions/attest-build-provenance` to `.github/workflows/build.yml`'s `build-msix`
+and `build-cli` jobs, so every MSIX (both architectures) and every `pakko.exe` release zip gets a
+signed SLSA Build Level 2 provenance attestation (Sigstore public-good instance, since this is a
+public repo) — verifiable by anyone via `gh attestation verify <file> -R pakkoapp-oss/pakko`,
+proving the artifact was really built by this repository's own workflow from a specific commit,
+not tampered with or substituted after the fact. Fits Pakko's existing auditability/transparency
+positioning (`SECURITY.md`) at effectively no cost — no new secrets, no new external account, no
+change to the actual signing/trust mechanism end users rely on for SmartScreen.
+
+**Implementation:**
+- `build-msix` job: added a job-level `permissions:` block (`id-token: write`, `contents: read`,
+  `attestations: write` — not previously granted; the job inherited only default read permissions
+  before this), and an `actions/attest-build-provenance@v4` step right after "Build and sign MSIX"
+  (before upload), pointed at the same `**/*.msix` / `**/*.msixbundle` glob the existing
+  `upload-artifact` step already uses. Runs once per matrix leg (x64, arm64) on its own runner —
+  no cross-leg collision, since each job invocation only ever sees its own local build output.
+- `build-cli` job: same `permissions:` block, plus an `actions/attest-build-provenance@v4` step
+  right after `Publish-Cli.ps1` (before upload), using `subject-checksums:
+  artifacts/cli/SHA256SUMS` — reuses the checksums file `Publish-Cli.ps1` already generates
+  (standard `sha256sum`-compatible two-column format) instead of re-hashing the zips separately.
+- Deliberately **not** added to the `test` job (produces no distributable artifact) or the
+  `release` job (only republishes what `build-cli` already produced/attested).
+- `actions/attest-build-provenance@v4` is itself now a thin wrapper around the lower-level
+  `actions/attest` (confirmed via its own README — not a deprecated/abandoned action, still
+  actively released as of 2026-07-19) — used the build-provenance-specific action anyway since its
+  whole purpose (SLSA build provenance, correct predicate type by default) matches this task
+  exactly, rather than reaching for the generic `actions/attest` and specifying a predicate type
+  by hand.
+
+**Acceptance criteria:**
+- [x] `build.yml` changes written and internally consistent with the existing job structure (no
+      new secrets required — `id-token`/`attestations` permissions are workflow-native, not
+      repo-secret-based)
+- [ ] A real CI run (next push to `main` or a tag) produces attestations with no workflow error
+- [ ] `gh attestation verify` against a real downloaded MSIX and a real downloaded
+      `pakko-win-x64.zip` from that run both succeed
+- [ ] (Optional, not blocking) a one-line mention added to `README.md`/`SECURITY.md` pointing
+      users at `gh attestation verify` — not done yet, ask before touching either file per this
+      project's hard constraint on `SECURITY.md`
 
 ---
 
@@ -615,6 +704,7 @@ you're required to already hold your own Authenticode cert before submitting.**
 | OV certificate (DigiCert, Sectigo, etc.) | $150–300/yr | Worldwide | Reputation builds over time | Fallback if SignPath Foundation eligibility doesn't pan out in practice |
 | EV certificate | $400+/yr | Worldwide | **No longer instant** — Microsoft removed EV's SmartScreen-bypass-on-first-download behavior in 2024; EV now builds reputation the same way OV does | Not worth the premium anymore, purely for SmartScreen purposes (older docs/advice claiming "immediate trust" are stale) |
 | Self-signed | Free | — | Blocks install for public users; fine for enterprise-managed trust | For Ukrainian government deployment specifically: self-signed with the root cert distributed via Group Policy remains viable for *internal* rollout, independent of whatever's chosen for public GitHub distribution |
+| Sigstore / Cosign | Free | Worldwide | **None — does not apply** | **Not a substitute for the above, added 2026-07-19 per user request for comparison.** Confirmed via research (not assumed): Sigstore's Fulcio CA is not in the Microsoft Trusted Root Program, so a Sigstore/Cosign signature is not an Authenticode signature — Windows SmartScreen/AppLocker/WDAC never see it and a `pakko.exe` signed only this way still shows "Unknown Publisher." `cosign sign-blob` also produces a detached signature bundle, not a PKCS#7 signature embedded in the PE file the way `signtool`/SignPath do. Solves a genuinely different problem (supply-chain provenance/attestation — proving a given binary was really built by this repo's own CI, verifiable via `cosign verify-blob`/`gh attestation verify`) than the one T-F10 exists to solve (SmartScreen warnings blocking install for a government/defense audience). **Worth adding anyway, as a free complement, not a replacement:** GitHub Actions' built-in `actions/attest-build-provenance` (public repos, free, Sigstore-backed, near-zero setup on top of the existing `build.yml`) gives SLSA Build Level 2 provenance attestations for the MSIX and `pakko.exe` — fits Pakko's whole auditability/transparency positioning (`SECURITY.md`) as a nice-to-have, independent of and in addition to whichever Authenticode option above is chosen. Tracked as T-F125, not a candidate for T-F10's actual cert decision. |
 
 **Working plan — two phases, researched 2026-07-18 after the user asked whether one SignPath
 certificate could cover both the MSIX and `pakko.exe`, and how that combines with an eventual

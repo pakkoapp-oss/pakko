@@ -80,6 +80,13 @@ jobs:
       fail-fast: false
       matrix:
         architecture: [x64, arm64]
+    # T-F125: id-token/attestations grant a signed SLSA build-provenance attestation via
+    # actions/attest-build-provenance below — no new secret involved, unrelated to the
+    # PAKKO_DEV_CERT_* Authenticode signing above (see that block's own comment / T-F10).
+    permissions:
+      id-token: write
+      contents: read
+      attestations: write
     steps:
       - uses: actions/checkout@v4
 
@@ -109,6 +116,13 @@ jobs:
         shell: pwsh
         run: .\scripts\CI-Build-Msix.ps1 -Architecture ${{ matrix.architecture }} -Thumbprint $env:PAKKO_DEV_CERT_THUMBPRINT -MsBuildPath msbuild
 
+      - name: Attest build provenance (SLSA, T-F125)
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: |
+            src/Archiver.App/AppPackages/**/*.msix
+            src/Archiver.App/AppPackages/**/*.msixbundle
+
       - uses: actions/upload-artifact@v4
         with:
           name: pakko-msix-${{ matrix.architecture }}
@@ -121,6 +135,11 @@ jobs:
     needs: test
     if: github.event_name == 'push'
     runs-on: windows-latest
+    # T-F125: see build-msix's identical permissions comment above.
+    permissions:
+      id-token: write
+      contents: read
+      attestations: write
     steps:
       - uses: actions/checkout@v4
 
@@ -130,6 +149,11 @@ jobs:
 
       - name: Publish pakko.exe (both architectures)
         run: .\scripts\Publish-Cli.ps1
+
+      - name: Attest build provenance (SLSA, T-F125)
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-checksums: artifacts/cli/SHA256SUMS
 
       - uses: actions/upload-artifact@v4
         with:
