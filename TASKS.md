@@ -1063,25 +1063,139 @@ existing CLI zips/`SHA256SUMS`.
   is a different, newer pipeline than what that warning describes. Treat as an open question to
   verify via a real WACK run and a real submission attempt, not as a known blocker.
 
+**Follow-up research (2026-07-20, user-requested): official-doc corrections + real-world/community
+submission experience (Reddit, Microsoft Q&A, GitHub, NanaZip's own history) — full sourced
+account in `DECISIONS.md`'s T-F129 entry, summary here:**
+- **Individual developer registration now requires identity verification (government ID + selfie,
+  the mobile-driven flow at storedeveloper.microsoft.com)** — stricter/slower than the
+  2026-07-19 research implied (which only confirmed "free"). Budget real calendar days for this
+  before anything else in this task can start.
+- **`runFullTrust` is gated by a *second*, separate approval layer beyond the Submission Options
+  justification text:** a developer *account* has to be authorized by Microsoft to submit
+  `runFullTrust` apps at all (confirmed via two real Microsoft Q&A threads quoting the exact
+  rejection: "Your developer account isn't authorized to submit apps that use the runFullTrust
+  capability"), requested through Developer Support — no published SLA for this approval. The
+  Submission Options justification text is necessary but may not be sufficient by itself; a vague
+  "the framework requires it" justification has been rejected for other WinUI3/Uno/MAUI submitters
+  in practice — write a concrete, app-specific justification (Pakko needs `runFullTrust` for the
+  satellite `Archiver.Shell.exe` process and the `IExplorerCommand` COM registration, not for the
+  main WinUI window) and cite NanaZip as a real precedent for this exact app category.
+- **`%TEMP%` is confirmed NOT virtualized under MSIX (only `%LOCALAPPDATA%` is)** — Store
+  publication changes nothing about `TarSandboxedService`'s existing `%TEMP%`-rooted quarantine
+  staging (T-F52); no new risk here, just confirmed rather than assumed.
+- **Certification turnaround is officially "usually a few hours, up to 3 business days" per SLA**
+  — useful for setting expectations, not a blocker.
+- **NanaZip's own history (github.com/M2Team/NanaZip issues/PRs) is a real, directly relevant
+  precedent** — its MSIX packaging hit two shell-extension-specific problems worth watching for in
+  Pakko too: (1) registering a verb for the wildcard `"*"` file type was rejected the same way
+  normal extension/Directory verbs are (PR #205, issues #193/#203) — not currently something Pakko
+  attempts, but worth remembering if a future task considers it; (2) **the context-menu item has
+  disappeared after Windows updates on multiple separate occasions** (issues #505, #317, #193,
+  recurring across 2024–2025) — a known *recurring*, not one-time, risk class for MSIX-packaged
+  shell extensions specifically. This is the same failure shape already documented in this file's
+  own T-F101 investigation (Explorer verb/icon-cache artifact) — Store publication doesn't
+  introduce this risk, but it's worth an explicit standing check, not just a pre-submission one.
+
 **Scope:**
-- User-only external steps (cannot be scripted/automated by the agent): register/confirm a
-  Partner Center developer account, reserve the "Pakko" app name, record the assigned Product
-  Identity values, fill in Store listing content (description, screenshots, category, age
-  ratings, restricted-capability justification), and click Submit for certification.
+- User-only external steps (cannot be scripted/automated by the agent): register an individual
+  Partner Center developer account and complete identity verification (government ID + selfie),
+  reserve the "Pakko" app name, record the assigned Product Identity values, request
+  `runFullTrust` account-level authorization via Developer Support if the automated check blocks
+  submission, fill in Store listing content (description, screenshots, category, age ratings,
+  restricted-capability justification), and click Submit for certification.
 - Agent-assistable steps: update `Package.appxmanifest`'s `Identity` block to the reserved values
   once the user provides them, produce a fresh signed build via `Deploy.ps1` for upload, run WACK
-  locally and triage any findings, draft the Store listing description/screenshots list for the
-  user to review.
+  locally and triage any findings, draft the Store listing description/screenshots list and the
+  `runFullTrust` justification text for the user to review.
 
 **Acceptance criteria:**
-- [ ] Partner Center app name reserved, real Product Identity values recorded here
-- [ ] `Package.appxmanifest`'s `Identity` block updated to match exactly, fresh build produced
+- [x] Partner Center individual account registered, identity verification complete — done by the
+      user in March 2026 (predates this task's 2026-07-19 drafting)
+- [x] Partner Center app name reserved, real Product Identity values recorded here — confirmed
+      2026-07-20 via a real Partner Center screenshot (`Apps and games` → `Pakko` → `Product
+      Identity`): `Package/Identity/Name = PavloRybchenko.Pakko`,
+      `Package/Identity/Publisher = CN=EF3EC84C-8287-4FC3-BB4F-FCCEBA116BCE`,
+      `Package/Properties/PublisherDisplayName = Pavlo Rybchenko`. Store ID `9P5MW010D8PR`,
+      PFN `PavloRybchenko.Pakko_955q7mnhfhmp4`. Product status shown as "In draft" /
+      "Not started" (no submission made yet).
+- [ ] `runFullTrust` account-level authorization confirmed (via Developer Support if the automated
+      check blocks it) — don't assume the Submission Options justification text alone is enough
+- [x] `Package.appxmanifest`'s `Identity` block already matches the reserved values exactly (`Name`,
+      `Publisher`, `PublisherDisplayName` all confirmed identical 2026-07-20 — the local dev cert
+      was apparently issued against this same reserved identity back in March, per Microsoft's own
+      recommended practice of aligning the dev-signing cert Subject with the Store identity from
+      the start). No manifest edit needed for this criterion.
+- [x] WACK run locally (2026-07-20) via the CLI (`appcert.exe test -apptype packagedwin32
+      -appxpackagepath ...` — needs elevation) against the current v1.4.1.0 x64 MSIX
+      (`Archiver.App_1.4.1.0_x64.msix`, same build as the `chore(release): bump to v1.4.1` commit
+      timestamp). **`OVERALL_RESULT="WARNING"`, no non-optional FAIL** — full report saved outside
+      the repo (not committed; regenerate via the same command before the real submission since
+      this one predates any of this task's follow-up fixes). Four non-PASS items, none blocking:
+      - `[FAIL, optional]` **Application count** — package declares 2 `<Application>` entries
+        (`Archiver.App` + `Archiver.Shell`). Expected/by-design (CLAUDE.md's own hard constraint:
+        every `CreateProcess`-launched satellite EXE needs its own manifest `<Application>` entry)
+        — no fix, keep the rationale ready in case Partner Center asks.
+      - `[FAIL, optional]` **App resources** — a real, fixable bug: `Square44x44Logo.scale-200.png`
+        (88×88 expected), `Square150x150Logo.scale-200.png` (300×300), `Wide310x150Logo.scale-200.png`
+        (620×300), and `SplashScreen.scale-200.png` (1240×600) are all present but not actually
+        sized to match their own scale-suffix filenames. Needs real image regeneration before
+        submission — tracked as a follow-up below, not yet fixed.
+      - `[FAIL, optional]` **Blocked executables** — almost entirely noise from the self-contained
+        .NET 8 runtime's own DLLs (`coreclr.dll`, `clrjit.dll`, `System.Linq.Expressions.dll`, etc.)
+        matching WACK's substring scanner for process-launch APIs/blocked-executable-name strings
+        (some matches are absurd, e.g. `"rcsI"` flagged as `"cmd"` — a known false-positive class
+        for self-contained .NET deployments, not a real problem). The genuine hits
+        (`Archiver.Shell.exe`/`Archiver.App.exe`/`Archiver.Core.dll`/`Archiver.ShellExtension.dll`
+        referencing `ShellExecuteW`/`CreateProcessW`/`Process.Start`) are all load-bearing to
+        Pakko's actual design (opening the destination folder, sandboxed `tar.exe` launches) — no
+        fix, expected.
+      - `[WARNING, non-optional]` **DPIAwarenessValidation** — the one non-optional finding:
+        `Archiver.Shell.exe` has no `PerMonitorV2` DPI-awareness manifest entry and calls no DPI
+        Awareness API. `Archiver.App` (WinUI 3/Windows App SDK) is DPI-aware by default; the
+        satellite `Archiver.Shell.exe` (which hosts `NativeProgressDialog`'s `IProgressDialog` COM
+        UI) currently is not declared as such. Real, fixable, not yet fixed — tracked below.
+      - **Both real follow-up fixes done the same session (2026-07-20).** First pass: fixed the
+        four undersized Store-asset PNGs via Lanczos resampling (upscaling the existing artwork,
+        or downscaling the higher-res 256×256 frame already embedded in `Square44x44Logo.ico`),
+        and rebuilt `SplashScreen.scale-200.png` from a mis-sized 256×256 copy of the square tile
+        icon into a correct 1240×600 transparent canvas with the brand mark centered. Added
+        `src/Archiver.Shell/app.manifest` (`PerMonitorV2` `dpiAwareness`) wired via
+        `<ApplicationManifest>` in `Archiver.Shell.csproj`. Rebuilt via `Deploy.ps1`, re-ran WACK:
+        `OVERALL_RESULT` improved from `WARNING` to `PASS`.
+      - **Second pass, same day, user-driven:** the user judged the upscaled `Wide310x150Logo`
+        genuinely ugly (soft/blurry rounded corners, a real artifact of 2× Lanczos-upscaling a
+        low-res 310×150 source) and supplied the actual vector source,
+        `src/Archiver.App/Assets/pakko-icon.svg` (a 256×256 viewBox: rounded-rect `#1D5FA8`
+        background `rx=56`, a white glyph built from 3 rounded rects). All 5 previously-touched
+        assets, plus `StoreLogo.png` for consistency, were re-rendered directly from this vector
+        geometry via a small custom supersampled rasterizer (draw at 8× target resolution with
+        `ImageDraw.rounded_rectangle`, downsample with Lanczos) — mathematically exact edges, no
+        upscale blur anywhere. `Wide310x150Logo`'s layout (glyph bbox, corner radius) has no
+        vector source of its own (the SVG is square-only), so it was reverse-measured pixel-exact
+        from the original hand-made 310×150 artwork (`git show HEAD`, before this task touched it)
+        and re-expressed as canvas fractions, not guessed. A real regression from the *first* pass
+        was caught this way: `Square44x44Logo`'s two variants, sourced from `Square44x44Logo.ico`'s
+        embedded 256×256 frame, had accidentally lost their rounded corners (the `.ico` frame turned
+        out to be a flatter, unrounded rendering, unlike the SVG and the true original PNG) — this
+        second pass restored them, confirmed by inspecting the original 44×44 file's corner pixels
+        via `git show HEAD` before assuming. All 6 regenerated files re-verified against their
+        required pixel dimensions in a script (all `OK`), then rebuilt via `Deploy.ps1`. A third
+        WACK re-run to reconfirm was attempted but blocked by two consecutive UAC cancellations —
+        not chased further (3-attempt rule) since only pixel *content* changed, not the file
+        *dimensions* WACK's `App resources` test actually checks, so a regression there is not
+        plausible. See `DECISIONS.md`'s T-F129 WACK entries for the full before/after detail and
+        the exact geometry math.
 - [ ] WACK run locally against the fresh build with no unresolved failures
 - [ ] Store listing (description, screenshots, category, age ratings, restricted-capability
-      justification for `runFullTrust`) completed in Partner Center
+      justification for `runFullTrust`, citing NanaZip as a same-category precedent) completed in
+      Partner Center
 - [ ] Submitted for certification
 - [ ] App passes Microsoft's certification and is live in the Store — not graduated to `[x]` on
       "submitted" alone; a rejected submission means real fixes are still outstanding
+- [ ] A standing post-Windows-update check ("does Pakko's context-menu entry still appear?") is
+      documented in `CLAUDE.md`'s Known-test-gaps-style notes — NanaZip's own history shows this
+      recurring after Windows updates for MSIX-packaged shell extensions specifically, not a
+      one-time submission-day risk
 
 ---
 

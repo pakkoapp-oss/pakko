@@ -545,6 +545,7 @@ this table and its owners instead.
 | `README.md` | Public GitHub landing page | User-facing — not an agent instruction source | Public messaging changes; must link to `SECURITY.md`/`SPEC.md`, never restate their tables |
 | `CONTRIBUTING.md` | Contributor onboarding summary | Before a contributor's first build | Build/deploy steps change — update `scripts/README.md` first, then sync the summary here |
 | `scripts/README.md` | **Canonical owner of build/sign/deploy steps** (`Deploy.ps1`, `Setup-DevCert.ps1`) | Running or changing the deploy scripts | `Deploy.ps1`/`Setup-DevCert.ps1` behavior changes |
+| `CHANGELOG.md` | **Canonical owner of per-release history** — one section per version tag, plain-language summary of the `T-Fxx` tasks shipped since the previous tag | Cutting a release | Every version tag — see this file's "Deployment" section |
 
 **Canonical topic owners — do not duplicate, link instead:**
 - Security/threat-model/CVE/supply-chain rationale → `SECURITY.md` only. `SPEC.md`/`README.md` keep at most a 2-line teaser with a link.
@@ -575,6 +576,7 @@ DI duplication happened).
 | Task starts/completes, or a new `T-Fxx` is claimed | `TASKS.md` | `TASKS_DONE.md` (graduation on completion), `CLAUDE.md` (Current State), `README.md` (Project Status) |
 | Version scope/roadmap changes | `SPEC.md` | `CLAUDE.md` (Roadmap Summary), `README.md` (Roadmap) |
 | `Deploy.ps1`/`Setup-DevCert.ps1` behavior changes | `scripts/README.md` | `CONTRIBUTING.md`, `README.md` (Building and Deploying), `CLAUDE.md` (Build Commands) |
+| A release is tagged (`vX.Y.Z`) | `CHANGELOG.md` | — (single owner, see "Deployment") |
 | COM/shell, operation lifecycle, `ZipArchiveService` branching, or manifest changes | `DIAGRAMS.md` | Per its own DoD table |
 | New test or fixture added | `TESTING.md` | `tests/Archiver.Core.Tests.GenerateFixtures/README.md`, `CONTRIBUTING.md` |
 | New project added to `src/` or `tests/` | `ARCHITECTURE.md` (folder tree) | `CONTRIBUTING.md` (Project structure table) |
@@ -1236,6 +1238,13 @@ Two more, not duplicated elsewhere:
   never enters this pipeline.** `Deploy.ps1` only publishes `src/Archiver.App`; nothing under
   `tests/` is packaged, signed, or installed. See `SECURITY.md`'s "Vendored 7-Zip" section if this
   ever needs re-confirming.
+- **Cutting a public release (a `vX.Y.Z` git tag, distinct from the internal MSIX packaging
+  number above):** before the `chore(release): bump to vX.Y.Z` commit, add a new section to
+  `CHANGELOG.md` (newest first) listing the `T-Fxx` tasks completed since the previous tag, in
+  plain language — check `TASKS_DONE.md`/`git log <prev-tag>..HEAD` for what actually shipped,
+  don't guess from memory. Keep it in the same commit as the version bump. `CHANGELOG.md` is the
+  canonical, human-browsable release history; `.github/RELEASE_NOTES_TEMPLATE.md` stays a static
+  per-release download blurb and is not the place for a task list.
 
 ---
 

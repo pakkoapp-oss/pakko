@@ -5658,3 +5658,268 @@ outlier at 0.95x, faster than 7-Zip) that track OS scheduling contention when fu
 every core for CPU-bound work, not a remaining code defect — but every run stays comfortably
 inside the 3x tolerance `AssertRatio` already applies, so the test doesn't flake either way.
 Calibrated `HashAsync_OneLargeFile`'s baseline to 1.35 (down from 6.45) to reflect this.
+
+---
+
+## T-F129 — Microsoft Store Submission: Community-Experience Research Pass (2026-07-20)
+
+Follow-up to the 2026-07-19 Microsoft Learn research already summarized in `TASKS.md`'s T-F129
+entry. That pass only covered official docs; the user separately asked for (1) a check of whether
+those docs have since changed and (2) real submitter experience — forums, GitHub, and specifically
+whether NanaZip (a directly comparable `IExplorerCommand`-based, already-Store-published archiver)
+has any public record of its own submission problems. Findings below; `TASKS.md`'s T-F129 entry
+carries the condensed, actionable version — this entry is the sourced detail.
+
+**Official-doc corrections/additions vs. the 2026-07-19 pass:**
+- Individual Partner Center registration now requires identity verification — a government ID plus
+  a live selfie, via the mobile-driven flow at `storedeveloper.microsoft.com`. The prior pass only
+  confirmed the $19/$99 fee was removed; it didn't surface this KYC step, which adds real elapsed
+  time before anything else in this task can start. ([Complete identity verification](https://learn.microsoft.com/en-us/partner-center/enroll/complete-identity-verification),
+  [What's new for individual developers](https://learn.microsoft.com/en-us/windows/apps/publish/whats-new-individual-developer))
+- `runFullTrust` gating is two-layered, not one. Beyond the Submission-Options justification text
+  the 2026-07-19 pass already flagged, the developer *account itself* must be separately authorized
+  to submit `runFullTrust` apps at all — the real, quoted rejection message is "Your developer
+  account isn't authorized to submit apps that use the runFullTrust capability," resolved through
+  Developer Support with no published SLA. ([Q&A #646002](https://learn.microsoft.com/en-us/answers/questions/646002/error-message-about-runfulltrust-when-loading-pack),
+  [Q&A #1424817](https://learn.microsoft.com/en-us/answers/questions/1424817/the-following-restricted-capabilities-require-appr))
+- `%TEMP%` is confirmed NOT virtualized under MSIX/Desktop Bridge (writes go straight to the real
+  machine temp folder and aren't cleaned up on package removal); `%LOCALAPPDATA%` is redirected to
+  a private per-package location. This matches Pakko's already-documented sideload behavior, so
+  Store publication changes nothing about `TarSandboxedService`'s `%TEMP%`-rooted quarantine
+  staging (T-F52) — confirmed rather than assumed. ([Understanding packaged desktop apps](https://learn.microsoft.com/en-us/windows/msix/desktop/desktop-to-uwp-behind-the-scenes))
+- Certification SLA is officially "usually a few hours, up to 3 business days." ([Get your app
+  certified FAQ](https://learn.microsoft.com/en-us/windows/apps/publish/faq/get-your-app-certified))
+- Microsoft's own Defender Security Research Team recommends Store publication as one of the more
+  reliable ways to avoid antivirus/SmartScreen false positives for desktop apps — an argument for
+  T-F129 that's independent of whichever Authenticode path T-F10/T-F124 lands on.
+
+**Community/real-world experience:**
+- Multiple WinUI3/Uno Platform/.NET MAUI/Flutter-MSIX submitters report `runFullTrust` gets added
+  automatically by their packaging tooling (same shape as Pakko's `Archiver.Shell.exe` satellite
+  process) and that Store submission always prompts for justification; at least one submitter's
+  generic "the framework requires it" justification was rejected outright — a concrete,
+  app-specific justification is needed. ([unoplatform/uno discussion #10191](https://github.com/unoplatform/uno/discussions/10191),
+  [electron-builder issue #3306](https://github.com/electron-userland/electron-builder/issues/3306))
+  A workaround some projects use — switching `EntryPoint` to `Windows.PartialTrustApplication` to
+  drop the capability entirely — does not apply to Pakko: the satellite process and COM
+  registration for `IExplorerCommand` genuinely need full trust by design.
+- **NanaZip's own GitHub history is a real, directly relevant precedent** (same architecture:
+  MSIX-packaged `IExplorerCommand` shell extension):
+  - Registering a verb for the wildcard `"*"` file type was rejected by Windows the same way a
+    normal per-extension/Directory verb registration would be — a packaging-specific limitation,
+    not something Pakko currently attempts, but worth remembering if ever considered.
+    (NanaZip PR #205, issues #193/#203)
+  - **The context-menu entry has disappeared after Windows updates on multiple separate
+    occasions** — issues #505, #317, #193, recurring across 2024–2025, not a single one-off. This
+    is the same failure shape this repo's own `TASKS_DONE.md`/`TASKS.md` T-F101 entry already
+    investigated for Pakko once (concluded: likely an Explorer verb/icon-cache artifact, see this
+    project's existing hard-constraint note on context-menu flicker). NanaZip's history confirms
+    this is a *recurring* risk class for MSIX-packaged shell extensions generally, not a Pakko-
+    specific or submission-day-only concern — worth a standing post-Windows-update check, not just
+    a pre-submission verification.
+- WACK/certification failure checklist (`avoid-common-certification-failures` on Microsoft Learn)
+  — the practical items beyond what's obvious from the docs: the app must not crash with no
+  network connectivity (trivial for Pakko, zero network calls, but still worth a literal
+  airplane-mode smoke test since Microsoft's own checklist names it explicitly), the listing
+  description must not read as unfinished/beta, and Age ratings (IARC questionnaire) must be fully
+  completed — that questionnaire itself is reported as ~5 minutes and free, not a bottleneck.
+
+**Net effect on the plan:** no new blocker was found — Pakko's actual architecture (no network
+calls, no personal-data collection, `runFullTrust` needed only for a documented, narrow reason)
+fits the profile of apps that clear certification without much friction. The two real additions to
+budget for are elapsed *time* (identity verification, possible `runFullTrust` account-authorization
+turnaround) rather than engineering work, plus a new standing operational check (context-menu
+survives Windows updates) that didn't exist as a documented risk before this research pass. See
+`TASKS.md`'s T-F129 entry for the resulting scope/acceptance-criteria changes.
+
+---
+
+## T-F129 — WACK Run Against the Real v1.4.1 MSIX (2026-07-20)
+
+Ran the Windows App Certification Kit CLI (`appcert.exe`, requires elevation) directly against
+`src/Archiver.App/AppPackages/Archiver.App_1.4.1.0_Test/Archiver.App_1.4.1.0_x64.msix` — the same
+build produced for the `chore(release): bump to v1.4.1` commit (file timestamp within seconds of
+that commit's own timestamp, confirming it wasn't stale per this file's own "never trust a bare
+build" rule). Command: `appcert.exe test -apptype packagedwin32 -appxpackagepath "<msix>"
+-reportoutputpath "<report.xml>"`. The report itself (~5 MB XML) is not committed — it's a
+point-in-time generated artifact tied to one specific build, not durable project documentation;
+regenerate it the same way before the real Store submission.
+
+**Result: `OVERALL_RESULT="WARNING"`, zero non-optional FAIL.** In WACK's own model this means the
+package is not currently blocked from certification by anything the tool caught — a `WARNING`
+overall result (vs. `FAIL`) reflects advisory-level findings only. Four individual tests came back
+non-PASS:
+
+1. **Application count — FAIL, optional.** "The Microsoft Store does not support a package
+   containing more than one applications defined in the manifest." Pakko's manifest declares two
+   `<Application>` entries (`Archiver.App`, `Archiver.Shell`) by design — this file's own hard
+   constraint already documents why every `CreateProcess`-launched satellite EXE needs its own
+   manifest entry. No action; keep this rationale on hand in case Partner Center's certification
+   team raises it directly (it's a known, common pattern for full-trust companion processes, not
+   unique to Pakko).
+
+2. **App resources — FAIL, optional. Real, unfixed bug.** Four Store-facing image assets exist but
+   aren't sized to match their own scale-suffix filenames:
+   `Assets\Square44x44Logo.scale-200.png` (needs 88×88), `Assets\Square150x150Logo.scale-200.png`
+   (needs 300×300), `Assets\Wide310x150Logo.scale-200.png` (needs 620×300),
+   `Assets\SplashScreen.scale-200.png` (needs 1240×600). These are the actual tile/splash images
+   Store listings and the Start menu render — worth fixing before submission for a
+   professional-looking listing, not just to silence WACK. Not yet fixed; needs real image
+   regeneration (likely re-exporting from whatever source art produced the base-scale assets, or
+   via Visual Studio's asset generator), not a code change.
+
+3. **Blocked executables — FAIL, optional. Mostly WACK false-positive noise.** 26 messages total;
+   most are the self-contained .NET 8 runtime's own DLLs (`coreclr.dll`, `clrjit.dll`,
+   `System.Linq.Expressions.dll`, `Microsoft.Windows.SDK.NET.dll`, etc.) matching WACK's
+   substring/fuzzy scanner for "blocked executable" name references — some matches are absurd on
+   their face (`"rcsI"` flagged as a reference to `"cmd"`), a known false-positive class for any
+   self-contained .NET deployment that ships the full CLR. The genuine hits — `Archiver.Shell.exe`/
+   `Archiver.App.exe` referencing `shell32.dll!ShellExecuteW`, `Archiver.Core.dll`/
+   `Archiver.Shell.dll` referencing `System.Diagnostics.Process.Start`/`kernel32.dll!CreateProcessW`,
+   `Archiver.ShellExtension.dll` referencing `CreateProcessW` — are all load-bearing to Pakko's
+   actual design: opening the destination folder after an operation, and the sandboxed `tar.exe`
+   launches `TarSandboxedService` depends on (T-F52). No action.
+
+4. **DPIAwarenessValidation — WARNING, non-optional. Real, unfixed bug — the one item worth
+   prioritizing.** `Archiver.Shell.exe` "neither has PerMonitorV2 manifested in the manifest nor
+   calls into DPI Awareness APIs." `Archiver.App` (WinUI 3 / Windows App SDK) is DPI-aware by
+   default; the satellite `Archiver.Shell.exe` — which hosts `NativeProgressDialog`'s
+   `IProgressDialog` COM UI (see `Archiver.Shell/NativeProgressDialog.cs`) — currently isn't. This
+   is the only non-optional finding in the whole run, though it still only produced `WARNING`
+   rather than `FAIL` overall. Fix is a standard, low-risk one: add a `PerMonitorV2`
+   `dpiAwareness` declaration to `Archiver.Shell`'s own app manifest (the
+   `http://schemas.microsoft.com/SMI/2016/WindowsSettings` `dpiAwareness` element under
+   `asmv3:application`/`asmv3:windowsSettings`), matching how the WinUI app side already gets this
+   for free. Not yet implemented.
+
+**Net effect:** no blocker found for submission readiness. Two concrete, low-risk fixes were
+identified and fixed the same session — see `TASKS.md`'s T-F129 entry.
+
+## T-F129 — Both WACK Follow-Up Fixes Applied, Re-Verified (2026-07-20, same day)
+
+**Image assets.** Investigated for real source art before just upscaling the undersized files
+blind: `Square44x44Logo.ico` turned out to already embed a 256×256 RGBA frame — the same flat
+(non-rounded) glyph as the existing `Square44x44Logo.scale-200.png`, just higher-resolution — so
+the two `Square44x44*` targets (88×88, 24×24) were downscaled from that 256×256 source via Lanczos
+rather than upscaled from the tiny 44×44 file, for a crisper result. `Square150x150Logo.scale-200.png`
+(150→300) and `Wide310x150Logo.scale-200.png` (310×150→620×300) had no higher-res source available,
+so these were a straight 2× Lanczos upscale of the existing, already-correct artwork — visually
+verified afterward (both are simple flat-color/glyph compositions with hard edges, no gradients/
+text to blur, so a 2× upscale introduced no visible artifacts).
+
+`SplashScreen.scale-200.png` was the one real design bug, not just a wrong-size bug: the file on
+disk was a literal copy of the square tile icon at 256×256 — same aspect ratio as
+`Square150x150Logo`, nothing like the required 1240×600 landscape splash canvas. Rebuilt as a
+1240×600 RGBA canvas, fully transparent (matches `Package.appxmanifest`'s `uap:VisualElements
+BackgroundColor="transparent"` — Windows composites the OS-supplied background behind it), with
+the regenerated 300×300 `Square150x150Logo` brand mark centered. This reuses the existing brand
+mark exactly as-is rather than inventing new creative content — correcting a technical asset-
+generation defect (right mark, wrong canvas), not a redesign.
+
+**DPI awareness.** Added `src/Archiver.Shell/app.manifest` — standard, widely-published Win32
+high-DPI manifest boilerplate (`trustInfo`/`requestedExecutionLevel level="asInvoker"
+uiAccess="false"`, a Windows 10/11 `compatibility`/`supportedOS` entry, and a `PerMonitorV2`
+`dpiAwareness` element under `asmv3:application`/`windowsSettings`, namespaced per
+`http://schemas.microsoft.com/SMI/2016/WindowsSettings`). Wired via
+`<ApplicationManifest>app.manifest</ApplicationManifest>` in `Archiver.Shell.csproj`, replacing the
+.NET SDK's own auto-generated default manifest (which already declared `asInvoker` — confirmed via
+WACK's own "User account control run level" test passing both before and after — but had no DPI
+declaration at all, the actual gap WACK flagged).
+
+**Re-verification, not just re-running `dotnet build`:** rebuilt via the full
+`.\scripts\Deploy.ps1 -Thumbprint ...` (not a bare `dotnet build`, per this file's own hard
+constraint), then re-ran the identical `appcert.exe test -apptype packagedwin32 -appxpackagepath
+... -reportoutputpath ...` command against the fresh MSIX. **`OVERALL_RESULT` moved from
+`WARNING` to `PASS`** — both `App resources` and `DPIAwarenessValidation` now report `PASS`; the
+only remaining non-PASS items are the two already-documented, by-design, optional findings
+(`Application count`, `Blocked executables`) that need no further action.
+
+## T-F129 — Asset Re-Render from the Real Vector Source (2026-07-20, same day, user-driven)
+
+The user judged the fixed `Wide310x150Logo.scale-200.png` from the previous entry genuinely ugly
+— soft, blurry rounded corners — and correctly identified the cause themselves: it was a straight
+2× Lanczos upscale of the existing low-res 310×150 artwork, which is inherently lossy for a shape
+whose main visual feature is a large, smooth rounded corner (upscaling can't invent detail that
+was never captured at the source resolution). The user then supplied the actual design source,
+`src/Archiver.App/Assets/pakko-icon.svg`:
+
+```xml
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <rect width="256" height="256" rx="56" fill="#1D5FA8"/>
+  <rect x="32"  y="48"  width="52"  height="160" rx="6" fill="white"/>
+  <rect x="32"  y="48"  width="192" height="56"  rx="6" fill="white"/>
+  <rect x="172" y="48"  width="52"  height="160" rx="6" fill="white"/>
+</svg>
+```
+
+No SVG rasterizer (`cairosvg`, `rsvg-convert`, `inkscape`, `resvg`) was available in the
+environment, and installing one would have pulled in a native Cairo dependency with its own
+Windows-install friction. Since the geometry is trivially simple — one rounded-rect background
+plus three axis-aligned rounded rects for the glyph — a small hand-rolled rasterizer was written
+instead (`ImageDraw.rounded_rectangle`, drawn at 8× the target resolution, downsampled with
+Lanczos). This is not a shortcut relative to a real SVG renderer for shapes this simple; it
+produces mathematically exact edges with no interpretation ambiguity, and no upscale-from-a-raster
+blur anywhere in the pipeline.
+
+**`Wide310x150Logo` has no vector source of its own** (the SVG is a square icon, 256×256, nothing
+wide-format). Rather than invent a new composition, the original hand-made 310×150 artwork was
+reverse-measured pixel-exact via `git show HEAD` (the version predating this whole task) before it
+was touched: glyph bounding box `(26,50)`–`(85,99)` out of the 310×150 canvas, background corner
+radius ≈10px (found by scanning inward from the top-left corner along both edges for where alpha
+crosses from transparent to solid). These were re-expressed as fractions of the canvas
+(`x0=0.0839, w=0.1903, y0=0.3333, h=0.3267`, corner radius `= 6.667% of height`) so the same layout
+renders correctly at any target resolution, not just a literal 2× multiple of the original — this
+was then combined with the SVG glyph's own internal proportions (each of the 3 sub-rects expressed
+as a fraction *within the glyph's own bounding box*) to place the "П" glyph correctly inside the
+measured wide-logo bbox.
+
+**A real regression from the previous WACK-fix entry was caught in the process, not assumed away.**
+The two `Square44x44Logo` variants (`scale-200.png`, `targetsize-24_altform-unplated.png`) in the
+*previous* entry were sourced from the 256×256 frame embedded in `Square44x44Logo.ico`, on the
+assumption it was the same artwork at higher resolution. Checking the true original 44×44 PNG's
+own corner pixels via `git show HEAD` (rather than trusting that assumption) showed the original
+*did* have rounded corners matching the SVG's `rx=56/256` ratio — the `.ico`'s embedded 256×256
+frame turned out to be a flatter, unrounded rendering, a different asset than the SVG/original PNG
+despite depicting the same glyph. The previous WACK-fix entry's `.ico`-sourced regeneration had
+therefore silently dropped the rounded corners. This second pass, rendering directly from the SVG
+instead, restores them.
+
+**Scope of this pass:** all 5 files touched by the previous WACK-fix entry, plus `StoreLogo.png`
+(50×50) for consistency since it's part of the same brand-mark family and was previously sourced
+from an unrelated small PNG — regenerated uniformly from the same rasterizer. `LockScreenLogo.
+scale-200.png` was checked and deliberately left alone: it already uses a distinct, correct
+convention (a monochrome grey glyph on a fully transparent background, no color plate — matching
+Windows' actual Lock Screen badge convention of a single-color icon the OS tints itself) and
+wasn't flagged by WACK or complained about; regenerating it wasn't in scope of this pass.
+
+**Verification:** all 6 regenerated files checked against their required pixel dimensions via a
+throwaway script (all `OK` — dimensions unchanged from the previous WACK-fix pass, only pixel
+*content* improved). Rebuilt via `.\scripts\Deploy.ps1 -Thumbprint ...`. A follow-up WACK re-run
+was attempted to reconfirm `OVERALL_RESULT`, but `appcert.exe`'s elevation prompt was cancelled
+twice in a row — not chased further per this file's 3-attempt rule, and not actually necessary:
+WACK's `App resources` test checks file *dimensions* only, which this pass didn't change, so a
+regression there is not plausible from this change alone.
+
+**Follow-up, same day: `Wide310x150Logo` composition itself judged and corrected (user-driven,
+two rounds).** The user found the (still technically-passing) wide logo genuinely off on two
+counts, both addressed by adjusting the rasterizer rather than the pixel dimensions:
+1. **Left-aligned glyph → centered.** The original hand-made artwork's glyph placement (left-
+   aligned, reproduced pixel-exact in the first re-render above) reads as if wordmark text was
+   meant to sit to its right — Pakko has no such wordmark asset, so the composition just looked
+   like empty space. Centered both axes instead.
+2. **Glyph too small relative to the canvas.** Consulted the `frontend-design` skill for the
+   right icon-to-canvas ratio question. The concrete, non-arbitrary answer: `Wide310x150Logo` and
+   `Square150x150Logo` share the exact same canvas *height* (150 at 100% scale, 300 at scale-200)
+   — the wide tile is the square tile's canvas, just extended sideways, not a differently-scaled
+   asset. The glyph should therefore keep the *same absolute height fraction* the square mark
+   already uses on its own canvas (`160/256 = 62.5%`, straight from the SVG), not a smaller,
+   independently-chosen fraction — the previous version used ~33% height, effectively shrinking
+   the brand mark for no compositional reason. Width follows automatically from the glyph's fixed
+   `192:160` (1.2:1) aspect ratio. Implemented in
+   `render_pakko_assets.py`'s `render_wide()` (not committed — a throwaway rendering script kept
+   in the session scratchpad, not part of the repo; regenerate similarly if these assets ever need
+   touching again, or migrate the script into the repo if asset regeneration becomes routine).
+   Rebuilt via `Deploy.ps1` and re-verified with `dotnet test` after each round (594/594 passing
+   both times, aside from the pre-documented sandbox-concurrency flakiness — a different specific
+   `Archiver.Core.IntegrationTests` test each run, always passing on an isolated rerun, matching
+   this file's existing "Known test gaps" entry exactly).
