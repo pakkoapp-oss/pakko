@@ -89,6 +89,16 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <!--
+      T-F128 follow-up: Archiver.Shell.Resources/*.resx satellite assemblies (one per locale,
+      e.g. uk-UA\Archiver.Shell.resources.dll) live in per-culture subfolders the four items
+      above don't cover. %(RecursiveDir) preserves each culture subfolder in the package —
+      standard MSBuild pattern for satellite assemblies.
+    -->
+    <Content Include="..\Archiver.Shell\bin\$(Platform)\$(Configuration)\net8.0-windows\$(RuntimeIdentifier)\**\Archiver.Shell.resources.dll">
+      <Link>%(RecursiveDir)Archiver.Shell.resources.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <!--
       Archiver.ShellExtension.dll is a C++ DLL built by MSBuild (Deploy.ps1 step 1b).
       Always reference the Release build — Debug /MTd DLL must never enter an MSIX package.
     -->

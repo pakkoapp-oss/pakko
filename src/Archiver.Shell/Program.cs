@@ -415,14 +415,22 @@ static async Task RunHashAsync(IReadOnlyList<string> paths, HashAlgorithmKind al
 
 static void ShowHashResults(string title, HashResult result)
 {
-    // T-F128 follow-up: a folder result shows only the aggregate DataSum/NamesSum, matching
-    // NanaZip's own folder-hash summary - no per-file dump underneath (dropped per the user's
-    // explicit ask; the per-file entries still exist on HashResult for the non-folder branches
-    // below, which are a genuine per-file table, not a sum, so they keep listing each file).
+    // T-F128 follow-up: a folder result shows only the aggregate Files/Size/DataSum/NamesSum,
+    // matching NanaZip's own folder-hash summary - no per-file dump underneath (dropped per the
+    // user's explicit ask; the per-file entries still exist on HashResult for the non-folder
+    // branches below, which are a genuine per-file table, not a sum, so they keep listing each
+    // file). Labels are localized (HashResultLocalizer); filenames/hex hashes are literal data,
+    // not translated.
     string[] lines;
     if (result.Folder is { } folder)
     {
-        lines = [$"Files: {folder.FileCount}", $"DataSum: {folder.DataSum}", $"NamesSum: {folder.NamesSum}"];
+        lines =
+        [
+            HashResultLocalizer.Get("HashResultFilesLine", folder.FileCount),
+            HashResultLocalizer.Get("HashResultSizeLine", $"{FormatBytes(folder.TotalBytes)} ({folder.TotalBytes:N0} bytes)"),
+            HashResultLocalizer.Get("HashResultDataSumLine", folder.DataSum),
+            HashResultLocalizer.Get("HashResultNamesSumLine", folder.NamesSum)
+        ];
     }
     else
     {
@@ -431,7 +439,7 @@ static void ShowHashResults(string title, HashResult result)
                 ? $"{Path.GetFileName(e.SourcePath)}: {e.Hash}"
                 : $"{Path.GetFileName(e.SourcePath)}: {e.Error}");
         lines = result.Entries.Count > MaxErrorLinesShown
-            ? [.. entryLines, $"…and {result.Entries.Count - MaxErrorLinesShown} more"]
+            ? [.. entryLines, HashResultLocalizer.Get("HashResultAndMoreLine", result.Entries.Count - MaxErrorLinesShown)]
             : [.. entryLines];
     }
 

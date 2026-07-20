@@ -51,6 +51,20 @@ public static class SevenZipRunner
     /// </summary>
     public static void Test(string archivePath) => Run(["t", archivePath, "-bd"]);
 
+    /// <summary>
+    /// T-F128 follow-up: runs 7-Zip's own <c>h</c> (hash) command — the same real-tool reference
+    /// this project's <c>FileHashService</c>/<c>HashDigestAccumulator</c> tests already use for
+    /// cross-checking DataSum/NamesSum values, reused here as the performance baseline. Timed
+    /// like every other scenario in this class (elapsed wall time, not internal CPU time).
+    /// </summary>
+    public static TimeSpan Hash(string path, string algorithm, bool recursive = false)
+    {
+        var args = new List<string> { "h", $"-scrc{algorithm}", "-bd" };
+        if (recursive) args.Add("-r");
+        args.Add(path);
+        return Run(args);
+    }
+
     private static TimeSpan Run(IReadOnlyList<string> arguments)
     {
         if (!IsAvailable)

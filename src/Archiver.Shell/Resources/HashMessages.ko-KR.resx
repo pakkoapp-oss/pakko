@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="HashResultFilesLine" xml:space="preserve">
+    <value>파일: {0}</value>
+  </data>
+  <data name="HashResultSizeLine" xml:space="preserve">
+    <value>크기: {0}</value>
+  </data>
+  <data name="HashResultDataSumLine" xml:space="preserve">
+    <value>데이터 합계: {0}</value>
+  </data>
+  <data name="HashResultNamesSumLine" xml:space="preserve">
+    <value>데이터 및 이름 합계: {0}</value>
+  </data>
+  <data name="HashResultAndMoreLine" xml:space="preserve">
+    <value>…외 {0}개 더</value>
+  </data>
+</root>

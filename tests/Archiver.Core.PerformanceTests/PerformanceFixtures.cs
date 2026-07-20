@@ -24,6 +24,15 @@ public static class PerformanceFixtures
     public const long HybridMediumFileMinBytes = 5L * 1024 * 1024;
     public const long HybridMediumFileMaxBytes = 20L * 1024 * 1024;
 
+    // T-F128 follow-up: unlike the three fixtures above (all flat, no subfolders), this one has
+    // real nested subfolders — scaled down from the real-world 993-folder/14049-file case that
+    // surfaced the folder-hash performance question, but still large enough to exercise real
+    // subfolder recursion and relative-path computation cost, which none of the flat fixtures do.
+    public const int ManyFilesAndFoldersFolderCount = 300;
+    public const int ManyFilesAndFoldersFilesPerFolder = 10;
+    public const int ManyFilesAndFoldersMinBytes = 1_024;
+    public const int ManyFilesAndFoldersMaxBytes = 10_240;
+
     public static string CreateManySmallFilesFolder(string rootDir)
     {
         string dir = Path.Combine(rootDir, "many_small_files");
@@ -60,6 +69,24 @@ public static class PerformanceFixtures
         {
             long size = rng.NextInt64(HybridMediumFileMinBytes, HybridMediumFileMaxBytes + 1);
             WriteSemiCompressibleFile(Path.Combine(dir, $"medium_{i}.dat"), size, rng);
+        }
+        return dir;
+    }
+
+    public static string CreateManyFilesAndFoldersFolder(string rootDir)
+    {
+        string dir = Path.Combine(rootDir, "many_files_and_folders");
+        Directory.CreateDirectory(dir);
+        var rng = new Random(Seed);
+        for (int f = 0; f < ManyFilesAndFoldersFolderCount; f++)
+        {
+            string subDir = Path.Combine(dir, $"sub_{f}");
+            Directory.CreateDirectory(subDir);
+            for (int i = 0; i < ManyFilesAndFoldersFilesPerFolder; i++)
+            {
+                long size = rng.NextInt64(ManyFilesAndFoldersMinBytes, ManyFilesAndFoldersMaxBytes + 1);
+                WriteSemiCompressibleFile(Path.Combine(subDir, $"f{i}.dat"), size, rng);
+            }
         }
         return dir;
     }

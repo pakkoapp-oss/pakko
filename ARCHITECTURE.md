@@ -85,8 +85,18 @@ src/
 │   │       ├── ParallelSingleArchiveWriter.cs
 │   │       └── ZipEntryWriter.cs / ZipEntryCompressor.cs / DosDateTime.cs
 │   ├── IO/
-│   │   ├── Crc32.cs                    ← public (T-F110), reused by pending-list CRC display too
-│   │   ├── ProgressStream.cs           ← T-F16: byte-accurate IProgress<int> wrapper
+│   │   ├── Crc32.cs                    ← public (T-F110); slice-by-8 (T-F128 follow-up, was
+│   │   │                                  byte-at-a-time — real ~9x perf gap vs. 7-Zip found via
+│   │   │                                  HashPerformanceTests), reused by pending-list CRC too.
+│   │   │                                  Combine() (zlib crc32_combine reimplementation) lets
+│   │   │                                  FileHashService hash one large file's chunks in
+│   │   │                                  parallel then fold results back together in order
+│   │   ├── ProgressStream.cs           ← T-F16: byte-accurate IProgress<int> wrapper, per-stream
+│   │   ├── AggregateProgressTracker.cs ← T-F128 follow-up: shared byte counter across many
+│   │   │                                  concurrently-hashed files, folder-wide total (not
+│   │   │                                  per-file) — fixes ComputeFolderAsync's progress bug
+│   │   ├── AggregateProgressStream.cs  ← T-F128 follow-up: read-only wrapper reporting into the
+│   │   │                                  tracker above, used only by ComputeFolderAsync
 │   │   └── HashDigestAccumulator.cs    ← T-F128: NanaZip-compatible folder DataSum/NamesSum combine
 │   └── Models/
 │       ├── ArchiveOptions.cs / ExtractOptions.cs / ArchiveResult.cs
@@ -127,7 +137,13 @@ src/
 │   ├── Program.cs
 │   ├── ShellArgumentParser.cs
 │   ├── ShellResultPresenter.cs         ← T-F68: classifies ArchiveResult into Failed/SkippedOnly/Success
-│   └── NativeProgressDialog.cs         ← IProgressDialog COM interop (in-process progress UI)
+│   ├── NativeProgressDialog.cs         ← IProgressDialog COM interop (in-process progress UI)
+│   ├── HashResultLocalizer.cs          ← T-F128 follow-up: first localized text in Archiver.Shell —
+│   │                                      plain .resx/ResourceManager (not App's WinRT/.resw — needs
+│   │                                      no Windows-versioned TFM, see DECISIONS.md)
+│   └── Resources/
+│       ├── HashMessages.resx           ← neutral (English)
+│       └── HashMessages.<locale>.resx  ← 36 locales, matches Archiver.App/Strings/'s own set
 │
 ├── Archiver.CLI/                ← standalone console frontend (T-F09); net8.0; Exe (real console,
 │   │                                not WinExe); no WinUI; built as pakko.exe; ships independently
@@ -547,7 +563,7 @@ public enum HashAlgorithmKind { Crc32, Sha256 }
 
 // Services/FileHashService.cs
 public sealed record HashEntry(string SourcePath, string? Hash, string? Error);
-public sealed record FolderHashSummary(string DataSum, string NamesSum, int FileCount);
+public sealed record FolderHashSummary(string DataSum, string NamesSum, int FileCount, long TotalBytes); // TotalBytes: T-F128 follow-up
 
 public sealed class HashResult
 {

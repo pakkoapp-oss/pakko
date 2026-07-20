@@ -5515,3 +5515,146 @@ custom-drawn info window instead of a system toast — not opened as a tracked t
 `HashToastNotifier.cs` was deleted, `ShowHashResults`' toast branch removed, and both TFM bumps
 plus all five hardcoded-path fixes were rolled back together (they existed only to support the
 toast) — the final, kept diff is exactly the folder-summary trim described above, nothing else.
+
+**Fifth follow-up (2026-07-20): progress bug, Size line, full 37-locale localization, and a real
+CRC-32 performance investigation — all from one real on-device NanaZip-comparison screenshot.**
+
+*Progress bug.* `ComputeFolderAsync`'s parallel loop wrapped each file's own `FileStream` in a
+per-file `ProgressStream(fileStream, thatFile'sLength, ...)` — every file's progress restarted
+from 0% against its own size, never the folder's aggregate. Fixed with two new
+`Archiver.Core/IO/` classes (`AggregateProgressTracker`, a shared lock-guarded byte counter
+against the folder's precomputed total; `AggregateProgressStream`, a read-only wrapper reporting
+into it) rather than modifying the existing `ProgressStream` — that class is shared by
+`ZipArchiveService`'s read *and* write paths, and hashing only ever reads, so touching it risked
+unrelated archive/extract code for no benefit. `ComputeFileDigestAsync`'s signature changed from
+a bare `IProgress<ProgressReport>?` to `Func<FileStream, Stream>? wrapForProgress`, letting each
+caller (the general branch keeps its existing per-file `ProgressStream`; the folder branch uses
+the new aggregate one) decide how to wrap the already-open stream, reusing its own `.Length`
+instead of a redundant second stat call. The same upfront `DirectoryInfo.EnumerateFiles(...)`
+size-sum (not `Directory.EnumerateFiles`, which is paths-only — mirrors T-F35's own "merge
+redundant directory walks" fix) now also feeds `FolderHashSummary`'s new `TotalBytes` field,
+displayed as a new "Size" line in `ShowHashResults` ahead of DataSum/NamesSum, matching NanaZip's
+own field order from the screenshot.
+
+*Localization mechanism — resx, not resw, and why.* The user asked for full 37-locale parity for
+`Archiver.Shell`'s hash-result labels (confirmed via `AskUserQuestion` — not just uk-UA/en-US).
+`Archiver.Shell` had never had localized text before. `Archiver.App`'s own mechanism (WinRT
+`Windows.ApplicationModel.Resources.ResourceLoader` + `.resw`) needs a Windows-versioned TFM
+(`net8.0-windows10.0.17763.0`) for compile-time WinRT projections — the exact TFM bump that
+caused this same file's fourth follow-up entry's stale-build-path bug (`Content Include` paths
+hardcoded to the old TFM segment). Rather than reopen that risk for a feature that would actually
+ship this time (unlike the reverted toast), chose plain **.resx satellite-assembly localization**
+(`System.Resources.ResourceManager`) instead — the standard .NET mechanism, needs zero TFM change,
+and is arguably the more natural fit for a non-XAML console-style `WinExe` than repurposing
+WinUI's `x:Uid`-oriented resw convention anyway. New `HashResultLocalizer.cs` wraps a
+`ResourceManager` over `Archiver.Shell/Resources/HashMessages.resx` (neutral) plus one
+`HashMessages.<locale>.resx` per locale `Archiver.App/Strings/` already has (36 total) — 5 keys
+each. `uk-UA` mirrors NanaZip's own real field words (Файлів/Розмір) confirmed against the
+screenshot; the other 35 are direct, reasonable translations following this project's established
+localization-round precedent (T-F91/T-F105/T-F115/T-F03).
+
+Every `.resx` file was written directly with real Unicode text (not `\uXXXX` escapes) — a
+deliberate departure from this project's own standing caution about non-ASCII glyphs in
+Write/Edit tool-call params (three-plus prior corruption incidents: T-F64/T-F76/T-F63/T-F105/
+T-F110). Empirically re-verified first, not assumed safe: wrote the uk-UA file, then read it back
+byte-for-byte via a `py -3` script checking the actual Unicode codepoints (not just `print()`-ing
+them, since Git Bash's own console can visually mangle correctly-decoded UTF-8 on stdout in a way
+that looks like corruption but isn't — hit exactly this red herring once mid-session, confirmed
+via `ord()` on the parsed characters that the real file content was correct all along). Once
+confirmed safe in this specific harness, all 37 files (36 locale + neutral) were written the same
+way, then batch-verified with one script: valid XML, all 5 expected keys present, no U+FFFD
+replacement-character corruption, every value contains its `{0}` placeholder. All 37 passed clean
+on the first batch check. **Packaging**: `Archiver.App.csproj` needed one new wildcard
+`Content Include` (`...\**\Archiver.Shell.resources.dll` with `<Link>%(RecursiveDir)...` — the
+standard MSBuild satellite-assembly pattern) since the four pre-existing `Archiver.Shell.*`
+`Content Include` items only cover the top-level files, not per-culture subfolders.
+
+*Performance investigation — a real, root-caused, partially-fixed regression, not a "no bug found"
+close-out.* The user asked for real performance tests (T-F114's established same-machine,
+same-invocation ratio pattern against the vendored `7za.exe`) after a real on-device folder hash
+felt slower than NanaZip. New `HashPerformanceTests.cs` (mirrors `CompressionPerformanceTests.cs`
+exactly) found a real, reproducible **~9x** slowdown on a 300 MB single file
+(`HashAsync_OneLargeFile`, `Category=VeryLarge`): Pakko 1.5s vs. `7za h -scrcCRC32` 0.17s.
+Root-caused via a throwaway in-memory-only benchmark (deleted after use, same disposable-probe
+style as T-F35's own profiling pass) that isolated CRC-32 compute time from file I/O — plain
+synchronous file reads hit 4+ GB/s, even `await ReadAsync` on a `useAsync:false` `FileStream` hit
+~1.8 GB/s (async-over-sync ThreadPool dispatch overhead was a real but minor factor, not the
+dominant one — a 16x larger buffer barely moved the ratio), but `Crc32.Accumulator.Update` alone
+on an in-memory 300 MB buffer took ~1.2s, confirming the CRC-32 arithmetic itself was the
+bottleneck, not I/O or buffering. `Crc32.cs`'s original algorithm was a byte-at-a-time
+single-table lookup (correct, but far from the fastest pure-software approach).
+
+Since `Crc32.Accumulator` is shared well beyond hashing (`Services/Zip/ZipEntryWriter`,
+`Archiver.App`'s `FileItem` pending-list CRC-32 column), **confirmed the fix approach with the
+user via `AskUserQuestion` before touching it** rather than silently optimizing a widely-used
+class. Rewrote to **slice-by-8** (a standard, well-documented CRC-32 acceleration technique — see
+e.g. zlib's `crc32.c` — processes 8 bytes per iteration against 8 precomputed tables instead of 1
+byte against 1 table; no NuGet dependency needed, `Archiver.Core`'s zero-dependency rule stays
+intact, same public `Accumulator.Update`/`Finish()` API). That alone only closed the gap to ~7.5x
+— less than the 4-8x expected — so measured further: flattening the `uint[8][256]` jagged table
+into one contiguous `uint[2048]` array (fewer pointer dereferences per lookup, better cache
+locality — jagged arrays in .NET aren't contiguous memory) brought it to a settled **~6.4x**. Every
+existing CRC-32 known-value test and every 7za-cross-checked DataSum/NamesSum test still passes
+bit-for-bit after both rewrites (same polynomial/base table, only the iteration/memory-layout
+strategy changed) — real proof correctness wasn't traded for speed, not an assumption. Explicitly
+did **not** chase the remaining gap further: closing it to match 7-Zip's own CRC-32 (very likely
+hardware SSE4.2/PCLMULQDQ-accelerated internally) would need `System.Runtime.Intrinsics` SIMD
+code — a materially bigger, platform-specific (x64 vs. ARM64 code paths, scalar fallback) 
+undertaking clearly outside the "slice-by-8/16" scope the user actually approved; flagged as a
+possible future task rather than pursued silently. The `ManyFilesAndFolders` scenario (new
+`PerformanceFixtures.CreateManyFilesAndFoldersFolder` — 300 subfolders × 10 files, the first
+fixture in this test project with real nested subfolders, unlike the existing flat
+`ManySmallFiles`/`Hybrid` fixtures; `Category=Slow`) calibrated to ~1.3x, with more measurement
+noise than `OneLargeFile` given its much smaller absolute times (~200-280ms) — same reasoning
+T-F114's own `ManySmallFiles`/`Hybrid` scenarios already documented for the identical reason.
+
+**Sixth follow-up (2026-07-20): intra-file parallel CRC-32, closing most of the remaining gap.**
+The user asked a sharp follow-up question after the fifth entry above shipped: the existing
+`Parallel.ForEachAsync` pipeline parallelizes hashing *across* files, but a single large file (the
+`OneLargeFile` scenario, and any real folder dominated by one huge file) gets zero benefit from
+it — explaining why that scenario's ratio (6.45x) stayed so much worse than `ManyFilesAndFolders`'
+(~1.3x) even after the shared slice-by-8 rewrite. Confirmed with the user this should be built as
+genuine multi-threaded chunking with the *existing* slice-by-8 accumulator per chunk (not a
+SIMD/PCLMULQDQ rewrite — that remains explicitly out of scope, per the fifth entry above), chosen
+over hardware vectorization specifically because CRC-32 chunk+combine parallelism is well inside
+what a portable, dependency-free C# implementation can do reliably across x64 and ARM64 alike,
+where SIMD intrinsics would need two separate hand-verified code paths.
+
+*The technique*: CRC-32 combining (not just cross-file summing — a very different operation).
+`Crc32.Combine(crc1, crc2, len2)` is a faithful reimplementation of zlib's public-domain
+`crc32_combine` — treats the CRC register as an element of GF(2)[x] modulo the CRC-32 polynomial
+and represents "the CRC as if N zero bytes were appended" as a 32×32 bit matrix, computed via
+repeated squaring so combining costs O(log N) regardless of how large the second chunk is. Unlike
+`HashDigestAccumulator.Add`'s cross-file combining (commutative — files can finish and combine in
+any order), `Crc32.Combine` is **not** commutative — chunks must be folded back together in their
+original byte order. `FileHashService.ComputeFileCrc32ParallelAsync` splits any CRC-32 file at or
+above 8 MiB into 4 MiB chunks (below that, sequential slice-by-8 is already fast enough that
+chunking/coordination overhead isn't worth it), hashes each chunk independently via
+`RandomAccess.Read` on one shared `SafeFileHandle` (no per-chunk `FileStream`), then combines
+sequentially by chunk index (not as chunks complete) once every chunk is done. Verified via 9 new
+`Crc32Tests.cs` cases (arbitrary split points, uneven multi-chunk splits, a 1 MB random buffer
+split into deliberately uneven pieces) proving the reimplementation is exactly correct, plus 7 new
+`FileHashServiceTests.cs` cases (several sizes at/around the 8 MiB threshold including
+non-chunk-aligned sizes, a large file mixed into a folder's DataSum, and a progress-reporting
+check) proving the parallel path's *output* always matches sequential ground truth.
+
+*A real, measured stability problem, and the fix.* The first version used `Parallel.ForAsync` with
+`RandomAccess.ReadAsync` (true async I/O). Elapsed time for the same 300 MB file swung wildly
+between runs — 0.36s to over 1.2s, i.e. anywhere from parity with 7-Zip to barely better than the
+pre-parallelism baseline — clearly bimodal, not smooth noise. Root-caused (not left as
+unexplained flakiness) to .NET's default `ThreadPool` thread-injection policy: new worker threads
+are added gradually (roughly one per ~500 ms under sustained demand) unless the pool already has
+enough: a fresh process spinning up a sudden burst of parallel CPU+I/O work can hit this ramp-up
+delay on unlucky runs. Fixed two ways together: (1) switched from `Parallel.ForAsync`/
+`RandomAccess.ReadAsync` to a synchronous `Parallel.For`/`RandomAccess.Read` wrapped in one
+`Task.Run` — avoids async-state-machine/I/O-completion-port scheduling entirely, matching this
+project's own established "`useAsync: false` is faster on local disks" `FileStream` convention for
+the same underlying reason; (2) added a one-time `EnsureThreadPoolWarm()` (`ThreadPool.
+SetMinThreads(Environment.ProcessorCount, ...)`, guarded by an `Interlocked.Exchange` so it only
+runs once per process) called before the first parallel chunk burst. This is the user's own
+explicit ask — "стабільно із запасом" (stable, with margin) — not a nice-to-have: 12 runs on this
+12-logical-core dev machine still show two clusters (~7 runs at 1.31-1.37x, ~4 at 2.42-2.93x, one
+outlier at 0.95x, faster than 7-Zip) that track OS scheduling contention when fully saturating
+every core for CPU-bound work, not a remaining code defect — but every run stays comfortably
+inside the 3x tolerance `AssertRatio` already applies, so the test doesn't flake either way.
+Calibrated `HashAsync_OneLargeFile`'s baseline to 1.35 (down from 6.45) to reflect this.

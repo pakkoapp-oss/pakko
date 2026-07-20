@@ -326,6 +326,23 @@ regression.** A *repeatable* failure across reruns is the real signal. Scope is 
 tar-family) — `TarSandboxedService`'s AppContainer/sandbox overhead would make a shared tolerance
 band meaningless for that path; see `DECISIONS.md` if that's ever revisited.
 
+**`HashPerformanceTests.cs` (T-F128 follow-up, 2026-07-20)** extends this same pattern to
+`FileHashService`, using `7za h -scrcCRC32` (real 7-Zip's own hash command, same `HashCalc.cpp`
+algorithm this project's own DataSum/NamesSum reproduce) as the reference instead of ZIP
+archive/extract. Two scenarios: `HashAsync_OneLargeFile` (300 MB, `Category=VeryLarge`, reuses
+`PerformanceFixtures.CreateOneLargeFileFolder`) and `HashAsync_ManyFilesAndFolders`
+(`Category=Slow`, new `PerformanceFixtures.CreateManyFilesAndFoldersFolder` — 300 subfolders × 10
+files, the first fixture in this project with real nested subfolders). This suite is what found a
+real ~9x CRC-32 slowdown against 7-Zip, root-caused to `Crc32.cs`'s hashing algorithm itself (not
+I/O), improved to ~6.4x via a slice-by-8 rewrite, then to ~1.35x typical (worst observed ~2.9x,
+still comfortably inside the 3x tolerance) via genuine intra-file parallelism — `Crc32.Combine`
+(a zlib `crc32_combine` reimplementation) lets `FileHashService` hash one large file's chunks on
+separate threads and fold the results back together in order. See `DECISIONS.md`'s T-F128 entry
+for the full investigation, including a real `ThreadPool` ramp-up stability bug found and fixed
+along the way, and why the remaining gap (likely 7-Zip's own hardware-accelerated CRC-32) wasn't
+chased further this round. New `SevenZipRunner.Hash(path, algorithm, recursive)` method alongside
+the existing `Archive`/`Extract`/`Test` wrappers.
+
 ---
 
 ## T-F35 Parallel SingleArchive Pipeline Tests (v1.4+)

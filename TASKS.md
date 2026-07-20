@@ -830,6 +830,92 @@ existing CLI zips/`SHA256SUMS`.
          removed, both TFM bumps and the four path fixes rolled back since they only existed to
          support the toast) — "something that will definitely work," with a possible future task
          for a custom-drawn info window instead of a system toast, not opened yet.
+      5. **2026-07-20: folder-hash progress bug fixed, Size line added, full 37-locale
+         localization of `Archiver.Shell`'s hash-result labels, and a real ~9x CRC-32 performance
+         regression found and mostly closed — all from a real on-device NanaZip comparison
+         screenshot on a 993-folder/14049-file/9.3 GiB folder.** Root cause of the progress bug:
+         `ComputeFolderAsync`'s parallel loop wrapped every file's stream in a per-file
+         `ProgressStream(fileStream, thatFile'sOwnLength, ...)`, so the dialog's percent/byte
+         counters reset to 0% for every new file instead of tracking the whole folder — fixed with
+         two new `Archiver.Core/IO/` classes, `AggregateProgressTracker` (a shared, lock-guarded
+         byte counter against the folder's total size) and `AggregateProgressStream` (a read-only
+         wrapper reporting into it), wired in via a `ComputeFileDigestAsync` signature change
+         (`Func<FileStream, Stream>? wrapForProgress` instead of a bare `IProgress<ProgressReport>?`
+         — lets each caller decide how to wrap the already-open stream, using its own `.Length`
+         instead of a redundant stat call). `FolderHashSummary` gained `TotalBytes` (from the same
+         upfront `DirectoryInfo.EnumerateFiles` size-sum the tracker needs — zero extra I/O),
+         displayed as a new localized "Size" line in `ShowHashResults`, positioned before
+         DataSum/NamesSum to match NanaZip's own field order. The folder per-file dump the previous
+         follow-up removed stays removed.
+         **Localization** (real `AskUserQuestion` decision — full 37-locale parity, not just
+         uk-UA/en-US): `Archiver.Shell` had never had any localized text before this. Deliberately
+         used plain **.resx satellite-assembly localization**
+         (`System.Resources.ResourceManager`, new `HashResultLocalizer.cs`), not `Archiver.App`'s
+         own WinRT `ResourceLoader`/.resw — resw needs the same Windows-versioned TFM
+         (`net8.0-windows10.0.17763.0`) that caused the toast follow-up's stale-build-path bug;
+         .resx needs no TFM change at all and is a more natural fit for a non-XAML `WinExe` anyway.
+         New `src/Archiver.Shell/Resources/HashMessages.resx` (neutral/English) plus 36
+         locale-specific `.resx` files (every locale `Archiver.App/Strings/` already has), 5 keys
+         each (`HashResultFilesLine`/`SizeLine`/`DataSumLine`/`NamesSumLine`/`AndMoreLine`) —
+         `uk-UA` mirrors NanaZip's own real field words (Файлів/Розмір) confirmed against the
+         screenshot. Written directly (not via `\uXXXX` escapes) after confirming empirically this
+         session that plain Unicode text through the Write tool round-trips correctly here (see
+         `DECISIONS.md`); every file batch-verified afterward via a `py -3` script checking valid
+         XML, all 5 keys present, no U+FFFD replacement-character corruption, and a `{0}`
+         placeholder in every value — all 37 files clean. `Archiver.App.csproj` gained one new
+         wildcard `Content Include` (`**\Archiver.Shell.resources.dll` with `%(RecursiveDir)`) so
+         the per-culture satellite assemblies actually reach the MSIX — the four pre-existing
+         `Archiver.Shell.*` `Content Include` items don't cover subfolders. New
+         `HashResultLocalizerTests.cs` (6 tests: all 5 keys resolve with a working `{0}` in the
+         neutral culture, plus a real uk-UA round-trip assertion).
+         **Performance** (new `tests/Archiver.Core.PerformanceTests/HashPerformanceTests.cs`,
+         mirrors T-F114's `CompressionPerformanceTests` pattern exactly, plus a new
+         `SevenZipRunner.Hash`/`PerformanceFixtures.CreateManyFilesAndFoldersFolder` — the first
+         fixture in that project with real nested subfolders, 300×10 files, unlike the existing
+         flat `ManySmallFiles`/`Hybrid` fixtures): the `OneLargeFile` scenario (300 MB, `Category`
+         `VeryLarge`) found a real, reproducible **~9x** slowdown against `7za h -scrcCRC32`
+         (1.5s vs. 0.17s). Root-caused (not assumed) via a throwaway in-memory-only benchmark that
+         isolated CRC-32 compute time from file I/O — plain reads hit 4+ GB/s, even async
+         `ReadAsync` on a `useAsync:false` `FileStream` hit ~1.8 GB/s, but `Crc32.Accumulator`
+         alone took ~1.2s on an in-memory 300 MB buffer, confirming the CRC-32 math itself was the
+         bottleneck: `Crc32.cs`'s original algorithm was a byte-at-a-time single-table lookup.
+         **Confirmed with the user via `AskUserQuestion` before changing this shared class**
+         (used by `ZipEntryWriter` and `Archiver.App`'s `FileItem` CRC-32 column too, not just
+         hashing) — rewrote to **slice-by-8** (a standard technique, e.g. zlib's `crc32.c`; no
+         NuGet dependency, same public API), then further flattened the `uint[8][256]` jagged
+         table to one contiguous `uint[2048]` array (fewer pointer dereferences, better cache
+         locality) after slice-by-8 alone only closed the gap to ~7.5x. Settled at **~6.4x** —
+         every existing CRC-32 known-value/7za-cross-check test still passes bit-for-bit
+         (algorithm reorganized, output unchanged), proving correctness wasn't sacrificed for
+         speed. Closing the remaining gap to 7-Zip's own CRC-32 (likely hardware
+         SSE4.2/PCLMULQDQ-accelerated) would need SIMD intrinsics — explicitly scoped out as a
+         separate, materially bigger, platform-specific undertaking, not silently pursued further.
+         The `ManyFilesAndFolders` scenario (3,000 files/300 subfolders, `Category` `Slow`)
+         calibrated to ~1.3x — small absolute times (~200-280ms) mean run-to-run noise dominates
+         more there, same reasoning T-F114's own `ManySmallFiles`/`Hybrid` scenarios already use.
+      6. **2026-07-20: intra-file parallel CRC-32, closing most of the OneLargeFile gap (6.45x →
+         ~1.35x typical).** The existing cross-file `Parallel.ForEachAsync` gives a single large
+         file zero benefit (it only parallelizes *across* files) — the user asked specifically for
+         genuine multi-threaded chunking of one file, keeping slice-by-8 as the per-chunk
+         algorithm (not the SIMD/PCLMULQDQ route, still explicitly out of scope). New
+         `Crc32.Combine` (faithful reimplementation of zlib's public-domain `crc32_combine`, GF(2)
+         matrix math, O(log N)) folds independently-hashed chunks back together in original byte
+         order — unlike DataSum/NamesSum's cross-file combining, chunk order matters here.
+         `FileHashService.ComputeFileCrc32ParallelAsync` splits CRC-32 files ≥8 MiB into 4 MiB
+         chunks read via `RandomAccess.Read` on one shared handle. 9 new `Crc32Tests.cs` cases
+         prove `Combine` itself is correct; 7 new `FileHashServiceTests.cs` cases prove the
+         parallel path's output always matches sequential ground truth across several sizes
+         (including non-chunk-aligned ones), a folder-mixed large file, and progress reporting.
+         A real stability bug was found and fixed along the way: the first version
+         (`Parallel.ForAsync`/`RandomAccess.ReadAsync`) swung wildly run-to-run (0.36s-1.2s+ for
+         the same 300 MB file) — root-caused to .NET's default `ThreadPool` thread-injection
+         ramp-up, fixed by switching to synchronous `Parallel.For`/`RandomAccess.Read` in one
+         `Task.Run` plus a one-time `ThreadPool.SetMinThreads` bump. This was the user's own
+         explicit ask ("стабільно із запасом" — stable, with margin), not a nice-to-have.
+         Archive/Extract performance is unaffected — this parallelism lives entirely in
+         `FileHashService`, not in `Crc32` itself, so `ZipEntryCompressor`'s own sequential
+         per-entry CRC-32 (used while compressing) is untouched. See `DECISIONS.md`'s T-F128
+         entry for the full investigation, including the real measured bimodal timing pattern.
 - **Depends on:** none.
 
 **Implementation:**
@@ -876,9 +962,32 @@ existing CLI zips/`SHA256SUMS`.
       `Archiver.ShellExtension`, not an in-app dialog)
 - [x] Folder DataSum/NamesSum match a real external tool (7za.exe) bit-for-bit for a flat
       folder, confirmed by `FileHashServiceTests` — real cross-tool parity, not internal-only
-- [x] `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` green repo-wide (676 tests)
+- [x] `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` green repo-wide (707 tests as of
+      2026-07-20's progress/Size/i18n/perf follow-up — don't trust the older 676 figure)
 - [x] Real `Archiver.ShellExtension.vcxproj`/`Archiver.ShellExtension.Tests.vcxproj` builds
       succeed (93 C++ tests pass, including new `BuildHashArgs`/`HashDigestAccumulator` cases)
+- [~] **2026-07-20 follow-up (progress fix/Size/i18n/perf) on-device verification: partial.**
+      `dotnet test`-level correctness confirmed for all of it (aggregate-progress test, resx smoke
+      test, bit-identical CRC-32 known-value tests, both new perf scenarios). AI-driven pass via
+      the real installed package (version 1.4.0.24), through the actual Explorer context menu:
+      - **Confirmed live**: a real 20-file/10 MB folder and a real 30-file/510 MB folder both hash
+        correctly end-to-end (`ExplorerCommands.cpp` → `Archiver.Shell` → `FileHashService` →
+        `HashResultLocalizer`) with real localized Ukrainian output —
+        `"Файлів: 30\nРозмір: 509,5 MB (534 288 000 bytes)\nСума даних: E6545476-0000000F\n
+        Сума даних та імен: F415B066-0000000D"` — proves the Size line, the localized labels
+        (matching NanaZip's own Файлів/Розмір wording), and the satellite `.resources.dll`
+        packaging (36 locale subfolders confirmed present under the installed package's
+        `InstallLocation`) all work through the real installed MSIX, not just `dotnet test`.
+      - **Not visually confirmed this round**: the progress dialog smoothly progressing across a
+        whole folder instead of resetting per file. Ironically hard to reproduce locally anymore
+        — even a 510 MB/30-file folder now hashes fast enough (thanks to the same session's CRC-32
+        speedup) that `IProgressDialog`'s own `AutoTime` flag never showed the dialog at all before
+        the operation finished. The fix itself is proven correct by
+        `ComputeAsync_FlatFolder_ProgressReportsAggregateAcrossAllFiles` (asserts `TotalBytes` is
+        the folder's real combined size on every single progress report, not any one file's own
+        size) and by direct code review of the root cause, but a live look at a real large,
+        slow-enough folder (like the user's original 993-folder/14049-file/9.3 GiB one) is the
+        only way to see it visually — left to the user's own click-through.
 - [x] On-device verification via `Deploy.ps1` (real install, version 1.4.0.18) — **AI-driven pass
       done 2026-07-20, now a full end-to-end click confirmation, not a substitute:**
       - The earlier 2026-07-19 pass had reported the nested "Хеш-суми" submenu itself as

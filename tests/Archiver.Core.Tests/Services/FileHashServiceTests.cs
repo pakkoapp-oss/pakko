@@ -86,7 +86,33 @@ public sealed class FileHashServiceTests : IDisposable
         result.Folder!.FileCount.Should().Be(2);
         result.Folder.DataSum.Should().Be("9AC5E88C-00000000");
         result.Folder.NamesSum.Should().Be("ECA9B8E5-00000000");
+        result.Folder.TotalBytes.Should().Be("hello world".Length + "second file content here".Length);
         result.Entries.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public async Task ComputeAsync_FlatFolder_ProgressReportsAggregateAcrossAllFiles()
+    {
+        // T-F128 follow-up: proves the folder-hash progress bug is fixed. Before the fix, each
+        // file's own ProgressStream reported TotalBytes = that file's own size (varying per
+        // report, resetting for each new file); AggregateProgressTracker reports the whole
+        // folder's combined size on every single report, regardless of which file is currently
+        // being read — a broken version would fail the OnlyContain assertion below.
+        _temp.CreateFile("a.txt", new string('a', 50_000));
+        _temp.CreateFile("b.txt", new string('b', 100_000));
+        _temp.CreateFile("c.txt", new string('c', 150_000));
+        const long expectedTotal = 50_000 + 100_000 + 150_000;
+
+        var reports = new List<ProgressReport>();
+        var progress = new Progress<ProgressReport>(r => reports.Add(r));
+
+        var result = await FileHashService.ComputeAsync([_temp.Path], HashAlgorithmKind.Crc32, progress, CancellationToken.None);
+        await Task.Delay(50); // let Progress<ProgressReport> callbacks fire
+
+        result.Folder!.TotalBytes.Should().Be(expectedTotal);
+        reports.Should().NotBeEmpty();
+        reports.Should().OnlyContain(r => r.TotalBytes == expectedTotal);
+        reports.Max(r => r.BytesTransferred).Should().Be(expectedTotal);
     }
 
     [Fact]
@@ -180,5 +206,93 @@ public sealed class FileHashServiceTests : IDisposable
         var act = () => FileHashService.ComputeAsync([file], HashAlgorithmKind.Crc32, null, cts.Token);
 
         await act.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    // --- T-F128 follow-up: parallel intra-file CRC-32 (files >= 8 MiB split into chunks, folded
+    // back together via Crc32.Combine) ---
+
+    [Fact]
+    public async Task ComputeAsync_LargeFile_ParallelCrc32MatchesSequentialGroundTruth()
+    {
+        byte[] content = RandomBytes(seed: 1, sizeBytes: 12 * 1024 * 1024); // well above the 8 MiB threshold
+        string path = System.IO.Path.Combine(_temp.Path, "large.dat");
+        File.WriteAllBytes(path, content);
+        uint expected = SequentialCrc32(content);
+
+        var result = await FileHashService.ComputeAsync([path], HashAlgorithmKind.Crc32, null, CancellationToken.None);
+
+        result.Entries.Should().ContainSingle();
+        result.Entries[0].Error.Should().BeNull();
+        result.Entries[0].Hash.Should().Be(expected.ToString("X8"));
+    }
+
+    [Theory]
+    [InlineData(8 * 1024 * 1024)]       // exactly at the threshold
+    [InlineData(8 * 1024 * 1024 + 1)]   // just past it
+    [InlineData(10 * 1024 * 1024 - 3)]  // deliberately not a multiple of the 4 MiB chunk size
+    [InlineData(17 * 1024 * 1024)]      // spans more chunks than a typical core count
+    public async Task ComputeAsync_VariousSizesNearThreshold_ParallelCrc32MatchesSequentialGroundTruth(int sizeBytes)
+    {
+        byte[] content = RandomBytes(seed: sizeBytes, sizeBytes);
+        string path = System.IO.Path.Combine(_temp.Path, "sized.dat");
+        File.WriteAllBytes(path, content);
+        uint expected = SequentialCrc32(content);
+
+        var result = await FileHashService.ComputeAsync([path], HashAlgorithmKind.Crc32, null, CancellationToken.None);
+
+        result.Entries[0].Hash.Should().Be(expected.ToString("X8"));
+    }
+
+    [Fact]
+    public async Task ComputeAsync_LargeFileInFolder_ParallelCrc32ContributesCorrectlyToDataSum()
+    {
+        byte[] largeContent = RandomBytes(seed: 2, sizeBytes: 9 * 1024 * 1024);
+        File.WriteAllBytes(System.IO.Path.Combine(_temp.Path, "large.dat"), largeContent);
+        _temp.CreateFile("small.txt", "hello world");
+        uint expectedLargeCrc = SequentialCrc32(largeContent);
+        uint expectedSmallCrc = SequentialCrc32(System.Text.Encoding.ASCII.GetBytes("hello world"));
+        // DataSum combines files via commutative addition (HashDigestAccumulator.Add), not CRC
+        // combine — see the class doc comment — so compute the expected value the same way.
+        var acc = new Archiver.Core.IO.HashDigestAccumulator(4);
+        acc.Add(BitConverter.GetBytes(expectedLargeCrc));
+        acc.Add(BitConverter.GetBytes(expectedSmallCrc));
+
+        var result = await FileHashService.ComputeAsync([_temp.Path], HashAlgorithmKind.Crc32, null, CancellationToken.None);
+
+        result.Folder!.FileCount.Should().Be(2);
+        result.Folder.DataSum.Should().Be(acc.ToDisplayString());
+        result.Entries.Should().Contain(e => e.Hash == expectedLargeCrc.ToString("X8"));
+    }
+
+    [Fact]
+    public async Task ComputeAsync_LargeFile_ProgressReportsReachFullSize()
+    {
+        byte[] content = RandomBytes(seed: 3, sizeBytes: 12 * 1024 * 1024);
+        string path = System.IO.Path.Combine(_temp.Path, "large.dat");
+        File.WriteAllBytes(path, content);
+
+        var reports = new List<ProgressReport>();
+        var progress = new Progress<ProgressReport>(r => reports.Add(r));
+
+        await FileHashService.ComputeAsync([path], HashAlgorithmKind.Crc32, progress, CancellationToken.None);
+        await Task.Delay(50); // let Progress<ProgressReport> callbacks fire
+
+        reports.Should().NotBeEmpty();
+        reports.Should().OnlyContain(r => r.TotalBytes == content.Length);
+        reports.Max(r => r.BytesTransferred).Should().Be(content.Length);
+    }
+
+    private static byte[] RandomBytes(int seed, int sizeBytes)
+    {
+        var bytes = new byte[sizeBytes];
+        new Random(seed).NextBytes(bytes);
+        return bytes;
+    }
+
+    private static uint SequentialCrc32(byte[] data)
+    {
+        var acc = new Archiver.Core.IO.Crc32.Accumulator();
+        acc.Update(data);
+        return acc.Finish();
     }
 }
