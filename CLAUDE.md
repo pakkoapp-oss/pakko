@@ -746,6 +746,16 @@ references are easy to miss otherwise (this session found 5 lingering mentions o
   (Segoe MDL2/Fluent, e.g. codepoint U+E890) risks silent corruption regardless of file type. Use a
   throwaway Python script via the `py` launcher, building the exact bytes with `chr(0xEXXX)`,
   for any edit touching such content.
+  **Before concluding a Write/Edit call corrupted non-ASCII text, verify via actual bytes/
+  codepoints, not by eyeballing terminal output.** Git Bash's console can visually render
+  correctly-encoded UTF-8 (e.g. via `cat -A`, or a Python `print()`) as mangled/replacement-looking
+  characters even when the file on disk is byte-perfect — confirmed a false alarm (T-F128) where a
+  real ellipsis (U+2026) looked corrupted in `print(repr(...))` output but was proven correct via
+  `ord()` on the parsed string. Plain `Write` calls with direct Unicode text (Cyrillic, CJK, RTL)
+  for a brand-new file worked correctly across 36 locale files in this harness — the corruption
+  risk documented above is real but narrower than "any non-ASCII in a tool param": it's
+  specifically Edit `old_string` matching against complex scripts, and literal `\uXXXX` escape
+  sequences getting re-decoded, not plain direct-Unicode `Write` calls for new content.
 - **Editing `Localization.cpp`'s per-locale table:** an Edit `old_string` containing a full
   complex-script field (confirmed with Devanagari, T-F03) can silently fail to match even though
   `Read` shows it identical to the file — likely invisible normalization variance. Don't retype the
@@ -1179,6 +1189,16 @@ quick-reference list only, to avoid known failure modes without re-reading the f
 
 Two more, not duplicated elsewhere:
 
+- **A satellite project's `TargetFramework` is embedded literally in other projects' `Content
+  Include` paths and in `Deploy.ps1`.** Bumping `Archiver.Shell.csproj`'s TFM (e.g. to
+  `net8.0-windows10.0.17763.0` for WinRT APIs) silently moved its real build output to a new
+  folder, but `Archiver.App.csproj`'s four `Content Include` items and `Deploy.ps1`'s
+  `$shellExeSourcePath` kept pointing at the old TFM segment — `Deploy.ps1` kept reporting
+  "installed successfully" with a fresh version number and a fresh `.exe` apphost timestamp while
+  silently installing a stale managed `.dll`. Caught only by comparing the `.dll`'s file *size*,
+  not the `.exe`'s timestamp (the apphost stub barely changes across builds). Grep every
+  `net8.0-windows`-style TFM literal across `.csproj`/`.ps1` files before changing any project's
+  TFM, not just the one project's own file (T-F128).
 - **A COM surrogate (`dllhost.exe`) hosting `Archiver.ShellExtension.dll` can lock the DLL/PDB**
   after testing the context menu, causing `C1041`/file-in-use errors on the next rebuild. Run
   `taskkill /F /IM dllhost.exe` (or find the specific PID) before rebuilding if this happens.
@@ -1221,6 +1241,15 @@ Two more, not duplicated elsewhere:
 
 ## Workflow Tips
 
+- **Benchmarking new CPU-bound parallel code in a fresh `dotnet test` process can show wildly
+  bimodal timing** (e.g. 0.36s vs 1.2s+ for the identical 300 MB CRC-32 chunk-hash) — root cause
+  was .NET's default `ThreadPool` thread-injection ramp-up (~1 new thread per ~500 ms under
+  demand), not the algorithm. Fix: a one-time `ThreadPool.SetMinThreads(Environment.ProcessorCount,
+  ...)` before the parallel section, and prefer synchronous `Parallel.For`/`RandomAccess.Read`
+  over `Parallel.ForAsync`/`RandomAccess.ReadAsync` for CPU+I/O-bound chunked work — avoids
+  async-state-machine/completion-port scheduling entirely (same reasoning as the `useAsync: false`
+  `FileStream` convention already noted above). See `FileHashService.
+  ComputeFileCrc32ParallelAsync`/`Crc32.Combine` (T-F128) for the working pattern.
 - For complex tasks (architecture changes, new services, multi-file refactoring)
   use Plan Mode before writing any code — activate with /plan in Claude Code.
 - **Before committing any task marked complete or partial:** run the full
