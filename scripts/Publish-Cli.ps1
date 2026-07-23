@@ -8,7 +8,7 @@
 
     For each requested architecture:
       1. dotnet publish with SelfContained=true (runs on a machine with no separate
-         .NET install, and without Pakko's GUI/MSIX installed — see CLI.md's
+         .NET install, and without Pakko's GUI/MSIX installed — see docs/CLI.md's
          "Distribution" section).
       2. Zips the publish output as pakko-<rid>.zip.
     Then writes a SHA256SUMS file covering every zip produced, so a script or a user

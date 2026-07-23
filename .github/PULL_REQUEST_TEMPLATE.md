@@ -5,7 +5,7 @@ What does this PR change, and why?
 ## Related issue / task
 
 Closes #... (if applicable). If this addresses a `T-Fxx` task tracked in
-`TASKS.md`, name it here.
+`docs/TASKS.md`, name it here.
 
 ## Testing
 

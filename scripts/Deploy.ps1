@@ -158,7 +158,7 @@ if (-not $DeployOnly) {
     $env:PAKKO_DEPLOYING = $null
 
     if ($publishExitCode -ne 0) {
-        # T-F96 (see DECISIONS.md): the MSIX packaging pipeline can fail with
+        # T-F96 (see docs/DECISIONS.md): the MSIX packaging pipeline can fail with
         # MSB3231 "Unable to remove directory ... AppPackages/PackageLayout ..." while
         # cleaning up its own intermediate output -- AFTER a valid .msix/.msixbundle has
         # already been written. Root cause still open (leading theory: Search Indexer

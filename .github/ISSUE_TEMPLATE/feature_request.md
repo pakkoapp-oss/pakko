@@ -16,7 +16,7 @@ What would you like to happen?
 
 ## Scope check
 
-Pakko is deliberately minimal — see `SPEC.md`'s roadmap and non-goals, and
+Pakko is deliberately minimal — see `docs/SPEC.md`'s roadmap and non-goals, and
 `README.md`'s "Why Not 7-Zip or WinRAR?" section, before requesting a
 feature. In particular, out of scope by design:
 

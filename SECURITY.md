@@ -164,7 +164,7 @@ Implementation: `FileStream` with ADS path `"extractedfile.txt:Zone.Identifier"`
 
 **For system administrators:** the planned v1.4 Group Policy surface (`EnforceMOTW`,
 `AllowedFormats`/`BlockedFormats`, `DisableTarExtraction` under `HKLM\Software\Policies\Pakko\`) is
-documented in full, with deployment instructions, in [`POLICIES.md`](POLICIES.md) — not yet
+documented in full, with deployment instructions, in [`POLICIES.md`](docs/POLICIES.md) — not yet
 implemented (tracked as `T-F51`), see that file's status banner.
 
 ---

@@ -2,7 +2,7 @@
 
 This folder contains the Group Policy administrative template for Pakko's four policy keys
 (`EnforceMOTW`, `AllowedFormats`, `BlockedFormats`, `DisableTarExtraction`), read from
-`HKLM\Software\Policies\Pakko\`. See [`POLICIES.md`](../POLICIES.md) at the repo root for what
+`HKLM\Software\Policies\Pakko\`. See [`POLICIES.md`](../docs/POLICIES.md) for what
 each key does and why; this file only covers installing the templates themselves.
 
 ```

@@ -112,15 +112,15 @@ Pakko should launch and begin extracting the specified archive.
 | `Archiver.App` | WinUI 3 main application |
 | `Archiver.Shell` | Shell-triggered operation entry point (silent CLI, launched by the shell extension); shows progress via the Windows Shell's built-in `IProgressDialog`, in-process |
 | `Archiver.ShellExtension` | C++ COM DLL implementing `IExplorerCommand` (the actual right-click context menu) — built via MSBuild, not `dotnet build`; see `CLAUDE.md` Build Commands |
-| `Archiver.CLI` | Standalone console frontend (T-F09), built as `pakko.exe` — no WinUI, no MSIX, ships as its own self-contained per-architecture download via `scripts/Publish-Cli.ps1`; see `CLI.md` |
+| `Archiver.CLI` | Standalone console frontend (T-F09), built as `pakko.exe` — no WinUI, no MSIX, ships as its own self-contained per-architecture download via `scripts/Publish-Cli.ps1`; see `docs/CLI.md` |
 | `Archiver.Core.Tests` | Unit tests for core compression/extraction logic |
 | `Archiver.Core.IntegrationTests` | Tests that shell out to the real `C:\Windows\System32\tar.exe` (tagged `[Integration]`) |
-| `Archiver.Core.PerformanceTests` | ZIP compression/extraction performance-regression tests vs. a vendored, sandboxed `7za.exe` reference (T-F114); see `TESTING.md` |
+| `Archiver.Core.PerformanceTests` | ZIP compression/extraction performance-regression tests vs. a vendored, sandboxed `7za.exe` reference (T-F114); see `docs/TESTING.md` |
 | `Archiver.App.Core.Tests` | Unit tests for `Archiver.App.Core`'s WinUI-free helpers |
 | `Archiver.Shell.Tests` | Argument parser tests for `Archiver.Shell` |
 | `Archiver.ShellExtension.Tests` | C++ Google Test suite for `Archiver.ShellExtension`'s COM-free logic — run separately, not covered by `dotnet test`; see `CLAUDE.md` Build Commands |
-| `Archiver.CLI.Tests` | Parser/mapper/help-text unit tests for `Archiver.CLI` plus a `Subprocess/` layer that launches the real built `pakko.exe`; see `CLI.md` |
+| `Archiver.CLI.Tests` | Parser/mapper/help-text unit tests for `Archiver.CLI` plus a `Subprocess/` layer that launches the real built `pakko.exe`; see `docs/CLI.md` |
 | `Archiver.Core.Tests.GenerateFixtures` | Fixture generator (see above) |
 
 > There is no `Archiver.ProgressWindow` project — an earlier design (a second WinUI 3 satellite
-> `.exe` talking to `Archiver.Shell` over a named pipe) was removed; see `DECISIONS.md` (T-F65).
+> `.exe` talking to `Archiver.Shell` over a named pipe) was removed; see `docs/DECISIONS.md` (T-F65).

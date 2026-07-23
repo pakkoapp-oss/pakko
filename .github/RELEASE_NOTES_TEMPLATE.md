@@ -9,7 +9,7 @@ Get-FileHash .\pakko-win-x64.zip -Algorithm SHA256
 
 Compare the printed hash against the matching line in `SHA256SUMS`.
 
-`pakko.exe` runs standalone — no installation, no GUI/MSIX required. See `CLI.md` for the full
+`pakko.exe` runs standalone — no installation, no GUI/MSIX required. See `docs/CLI.md` for the full
 command reference.
 
 ---
@@ -20,4 +20,4 @@ The `.msix`/`.msixbundle` below is signed with a **self-signed development certi
 publicly trusted one — installing it will trigger SmartScreen/AppLocker warnings, and it will not
 sideload at all unless the signing certificate is explicitly trusted on the target machine first
 (see `scripts/README.md`). Public installs without warnings are planned once real code signing
-lands (see `TASKS.md`'s T-F10/T-F124).
+lands (see `docs/TASKS.md`'s T-F10/T-F124).

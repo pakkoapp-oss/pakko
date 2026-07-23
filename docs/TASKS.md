@@ -565,8 +565,17 @@ for the same reason (also PATH-shim-based, no admin rights needed) but lower pri
 ---
 
 ### T-F124 — Apply to SignPath Foundation (solo-maintainer application, Paul as sole team member)
-- [ ] **Status:** planning complete 2026-07-19 (research + advisor review), submission itself not
-      yet done. Added 2026-07-18 at the user's explicit request. T-F10's own acceptance criteria
+- [x] **Status:** done 2026-07-23 — application submitted and a real decision received: **rejected**.
+      SignPath's rejection email cites insufficient public-visibility signals (GitHub
+      stars/forks/contributors, external articles/independent references on Reddit/Stack
+      Overflow/YouTube, institutional backing, evidence of sustained external engagement) — not a
+      quality judgment on the project itself. They explicitly invite reapplying once the project
+      has broader recognition, and offered a paid SignPath subscription
+      (https://docs.signpath.io/change-subscription) as an immediate alternative. See
+      `DECISIONS.md`'s new T-F124 rejection entry for the full text and the resulting fallback
+      decision for T-F10.
+      Planning complete 2026-07-19 (research + advisor review). Added 2026-07-18 at the user's
+      explicit request. T-F10's own acceptance criteria
       already say "SignPath Foundation eligibility confirmed by actually applying (not just
       reading their public criteria)" — this task is that concrete action, split out on its own
       since it's a real-world submission step (a web form on an external site), not an in-repo
@@ -585,8 +594,9 @@ for the same reason (also PATH-shim-based, no admin rights needed) but lower pri
       non-compliant to approved in ~1 month, most of it spent on doc prep, not review time), one
       person holds all three required team roles (Author/Reviewer/Approver) themselves — see the
       new `SIGNING.md` draft (below) for how Pakko documents that.
-- **Depends on:** none. **Feeds into:** T-F10 Phase 1 (SignPath is the chosen code-signing path
-      for both the MSIX and standalone `pakko.exe` — see T-F10's cert-options table).
+- **Depends on:** none. **Fed into:** T-F10 Phase 1 (SignPath was the originally-chosen
+      code-signing path — rejected, see Status). **T-F10 now depends on T-F129** (Microsoft Store
+      submission) as the trigger to reapply — see T-F10's Status.
 
 **Scope:** submit an application to SignPath Foundation (https://signpath.org/apply) for Pakko as
 a qualifying open-source project, submitted solely by the user as project owner/maintainer.
@@ -616,14 +626,15 @@ personally-issued OV certificate.
 - [x] SignPath Foundation's real, current application requirements confirmed by visiting their
       site and cross-checking a real solo-maintainer precedent (not assumed from T-F10's research
       notes, which predate this task)
-- [ ] `SIGNING.md` reviewed by the user, GitHub handle fields filled in, and published (linked
-      from `README.md` and/or the app's About dialog, matching what SignPath expects to find on
-      the project's "home page")
-- [ ] User's GitHub account MFA confirmed enabled
-- [ ] User's application submitted (sole applicant — see corrected premise above)
-- [ ] Real outcome (accepted/rejected/pending, and any conditions) recorded here and back in
-      T-F10's own "eligibility confirmed" criterion — don't leave T-F10 pointing at a stale
-      "not yet applied" state once this resolves
+- [x] `SIGNING.md` published (committed, `2f91664`)
+- [x] User's GitHub account MFA confirmed enabled (implied — SignPath reviewed and responded to a
+      real submission, so the account-level prerequisites were satisfied enough to be considered)
+- [x] User's application submitted (sole applicant — see corrected premise above)
+- [x] Real outcome recorded: **rejected, 2026-07-23** — insufficient public-visibility signals
+      (stars/forks/contributors, external articles/references, institutional backing, sustained
+      external engagement), not a quality judgment. Reapplication invited once the project has
+      broader recognition. See `DECISIONS.md`'s T-F124 entry for the full rationale and what this
+      means for T-F10's plan.
 
 ---
 
@@ -1213,7 +1224,21 @@ archiver extract --src C:\backup.zip --dest C:\output
 ---
 
 ### T-F10 — Code Signing
-- [ ] **Status:** future. Scope explicitly includes `Archiver.CLI`'s `pakko.exe`/`pakko-win-*.zip`
+- [ ] **Status:** future. **SignPath Foundation eligibility resolved 2026-07-23: rejected** (see
+      T-F124's Status and `DECISIONS.md`'s T-F124 rejection entry) — insufficient public-visibility
+      signals, not a quality judgment; reapplication invited once Pakko has broader external
+      recognition (stars/forks/contributors/articles). **Phase 1 below as originally written
+      (SignPath Foundation as "the chosen path") is no longer the active plan** — next real
+      decision needed is which fallback from the cert-options table to pursue now (paid SignPath
+      subscription, an OV cert, or staying self-signed for internal Ukrainian-gov distribution
+      while continuing to grow public visibility toward a future SignPath Foundation reapplication)
+      **Decided 2026-07-23 (user):** stay self-signed for internal/Ukrainian-gov distribution for
+      now — no paid SignPath subscription or OV cert purchase yet. Revisit once T-F129 (Microsoft
+      Store submission) actually resolves: a live Store listing is itself a real public-visibility/
+      institutional-backing signal, and is the intended trigger to reapply to SignPath Foundation
+      rather than paying immediately. T-F10 stays blocked/dormant on that outcome, not actively
+      worked until then.
+      Scope explicitly includes `Archiver.CLI`'s `pakko.exe`/`pakko-win-*.zip`
       (T-F09/T-F116, added 2026-07-18) — not just the MSIX. `pakko.exe` is downloaded and run
       standalone, outside any package-manager trust chain, so it hits the exact SmartScreen/
       AppLocker friction described below on its own, independent of whether the MSIX is signed.
@@ -1241,7 +1266,8 @@ you're required to already hold your own Authenticode cert before submitting.**
 | Option | Cost | Availability | SmartScreen | Notes |
 |--------|------|------|------|------|
 | **Microsoft Store (MSIX)** | Free | Worldwide | No warnings | Already covers `Archiver.App`'s MSIX if/when submitted — doesn't touch `pakko.exe` |
-| **SignPath Foundation** | **Free**, for qualifying open-source projects | No geographic restriction found | Reputation builds over time like a paid cert, but the cert itself is free | **Best fit for `pakko.exe`** — Pakko is already Apache 2.0 and public on GitHub, matching their eligibility criteria; provides real OV-level Authenticode signing through a managed CI pipeline |
+| **SignPath Foundation** | **Free**, for qualifying open-source projects | No geographic restriction found | Reputation builds over time like a paid cert, but the cert itself is free | **Applied 2026-07-23, rejected** (T-F124) — real eligibility bar is public-visibility signals (stars/forks/contributors/external articles/institutional backing), not just license+CI+privacy-policy checkboxes as the pre-application gap analysis assumed. Reapply once those signals grow. |
+| SignPath (paid subscription) | Paid, tier per `docs.signpath.io/change-subscription` | Same infra as the Foundation program | Same reputation-building model | Offered directly in SignPath's rejection email as the immediate alternative to waiting for Foundation eligibility — pricing not yet checked against this project's budget |
 | Azure Artifact Signing (formerly "Trusted Signing") | ~$9.99/mo | Individuals: **USA/Canada only**. Organizations: also EU/UK | Reputation builds over time | Blocks an individual developer submitting from Ukraine — would need to register as an org in an eligible region, or use a different option |
 | OV certificate (DigiCert, Sectigo, etc.) | $150–300/yr | Worldwide | Reputation builds over time | Fallback if SignPath Foundation eligibility doesn't pan out in practice |
 | EV certificate | $400+/yr | Worldwide | **No longer instant** — Microsoft removed EV's SmartScreen-bypass-on-first-download behavior in 2024; EV now builds reputation the same way OV does | Not worth the premium anymore, purely for SmartScreen purposes (older docs/advice claiming "immediate trust" are stale) |
@@ -1277,8 +1303,10 @@ release automatically) — but `pakko.exe` keeps needing its own binary signing 
 a portable CLI exe isn't something that goes through Store certification the way an MSIX does.
 
 **Acceptance criteria (when implemented):**
-- [ ] SignPath Foundation eligibility confirmed by actually applying (not just reading their public
-      criteria) — record the real outcome here before relying on it as the plan
+- [x] SignPath Foundation eligibility confirmed by actually applying (not just reading their public
+      criteria) — **rejected 2026-07-23** (T-F124). Real outcome, not a stale "not yet applied"
+      state — Phase 1 below assumed this would be approved and needs re-deciding against the
+      fallback options in the cert-options table above before any of the checkboxes below proceed.
 - [ ] Phase 1: `Identity Publisher` in `Package.appxmanifest` updated to match the SignPath-issued
       certificate's Subject; `Deploy.ps1`'s signing step re-pointed from local `SignTool` + dev
       cert to SignPath's CI-integrated signing

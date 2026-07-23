@@ -122,7 +122,7 @@ Until `deploy/Pakko.admx`/`deploy/Pakko.adml` ship, the same effect can be achie
 
 ## See also
 
-- [`SECURITY.md`](SECURITY.md) — threat model and rationale behind MOTW propagation, the tar.exe
+- [`SECURITY.md`](../SECURITY.md) — threat model and rationale behind MOTW propagation, the tar.exe
   sandbox, and format-related risk classification.
 - [`TASKS.md`](TASKS.md) — `T-F51` entry: full implementation design, current status, and
   real-world grounding research behind this policy set.

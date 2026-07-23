@@ -511,7 +511,7 @@ failure — so a blocked/misconfigured sandbox would have crashed instead of yie
 
 ## Roadmap Summary
 
-Version-to-focus table: see `SPEC.md`'s "Future Roadmap" section (the sole owner, per T-F72 —
+Version-to-focus table: see `docs/SPEC.md`'s "Future Roadmap" section (the sole owner, per T-F72 —
 `README.md`'s roadmap links there too now). Per-version completion detail beyond a one-line scope
 description lives in this file's "Current State" section above instead of a second table.
 
@@ -523,36 +523,46 @@ description lives in this file's "Current State" section above instead of a seco
 competing entry point (its own "Read Order", its own stale hard-constraints subset) — it was
 deleted 2026-07-05 once this map fully absorbed its role (see git history if you need it).
 `BOOTSTRAP.md` was deleted the same day — its content is now the "Dependency Injection &
-Startup" section of `ARCHITECTURE.md` (it had drifted into a near-duplicate of a section
-`ARCHITECTURE.md` already had). Do not create a third map file or a new DI-wiring file; extend
+Startup" section of `docs/ARCHITECTURE.md` (it had drifted into a near-duplicate of a section
+`docs/ARCHITECTURE.md` already had). Do not create a third map file or a new DI-wiring file; extend
 this table and its owners instead.
+
+**Root layout (2026-07-23, T-F126):** only files GitHub/tooling specifically look for at repo
+root stay there — `README.md`, `LICENSE`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`,
+`CHANGELOG.md` — plus `CLAUDE.md` itself (Claude Code only auto-loads a *root* `CLAUDE.md`, so it
+can never move). Every other doc below lives under `docs/`. **This table gives the real, current
+path for each file — trust it over any bare filename mentioned in this file's own "Current State"
+history narrative below, which predates the move and was not mechanically rewritten throughout
+(too large a diff for a cosmetic path change; the content itself is still accurate).**
 
 | File | Purpose | Read when | Update when |
 |---|---|---|---|
 | **CLAUDE.md** (here) | Session context, hard constraints, build commands, this map | Every session (auto-loaded) | Project status changes, a hard constraint changes, build/deploy commands change |
-| `TASKS.md` | Active/future task backlog, acceptance criteria, `T-Fxx` numbering | Starting any implementation task | A task starts/completes/changes scope; a new `T-Fxx` is claimed |
-| `TASKS_DONE.md` | Archive of completed v1.0 tasks | Need historical task detail | Never — append-only via tasks graduating out of `TASKS.md` |
-| `ARCHITECTURE.md` | Current C# layer diagram + signatures + DI wiring/startup | Before writing code that touches a public signature or a DI-registered service | A public signature/model/interface in `Archiver.Core` changes, or DI registration/lifetime changes |
-| `XAML.md` | Current `MainWindow.xaml` structure + WinUI 3 gotchas | Touching `Archiver.App`'s XAML | XAML structure changes, a new WinUI 3 constraint is discovered |
-| `CONVENTIONS.md` | Coding style, naming, async, error-handling, per-project package whitelist | Before writing any code | A new convention is adopted, or a code example goes stale |
+| `docs/TASKS.md` | Active/future task backlog, acceptance criteria, `T-Fxx` numbering | Starting any implementation task | A task starts/completes/changes scope; a new `T-Fxx` is claimed |
+| `docs/TASKS_DONE.md` | Archive of completed v1.0 tasks | Need historical task detail | Never — append-only via tasks graduating out of `docs/TASKS.md` |
+| `docs/ARCHITECTURE.md` | Current C# layer diagram + signatures + DI wiring/startup | Before writing code that touches a public signature or a DI-registered service | A public signature/model/interface in `Archiver.Core` changes, or DI registration/lifetime changes |
+| `docs/XAML.md` | Current `MainWindow.xaml` structure + WinUI 3 gotchas | Touching `Archiver.App`'s XAML | XAML structure changes, a new WinUI 3 constraint is discovered |
+| `docs/CONVENTIONS.md` | Coding style, naming, async, error-handling, per-project package whitelist | Before writing any code | A new convention is adopted, or a code example goes stale |
 | `SECURITY.md` | Threat model — **canonical owner of all security/CVE/supply-chain/MOTW rationale** | Modifying compression, traversal, or extraction logic | Threat model changes, a new mitigation is added |
-| `DECISIONS.md` | Architectural decisions + rejected approaches, with root-cause detail | Before implementing packaging, COM, or shell integration | An approach is chosen, rejected, or corrected |
-| `DIAGRAMS.md` | Required sequence/state/activity/component diagrams, Ground Truth Rule | Touching COM/shell, operation lifecycle, `ZipArchiveService` branching, or the manifest | Per its own DoD table — same commit as the code |
-| `TESTING.md` | Test plan and fixture inventory for `Archiver.Core` | Writing or running tests | New test category, fixture, or test count changes |
-| `tests/Archiver.Core.Tests.GenerateFixtures/README.md` | Fixture-generation mechanics only (subordinate to `TESTING.md`) | Adding a fixture-dependent test | A new fixture scenario is added |
-| `SPEC.md` | Product specification — **canonical owner of the version roadmap table, feature scope, non-goals** | Scoping a new feature, checking what's out of scope | Scope or roadmap changes |
-| `CLI.md` | **Canonical owner of Archiver.CLI's (T-F09) command/switch specification** — 7z→Pakko command table, switch fidelity, three-way unknown-input rule | Implementing or extending T-F09 | The planned CLI command/switch surface changes |
-| `README.md` | Public GitHub landing page | User-facing — not an agent instruction source | Public messaging changes; must link to `SECURITY.md`/`SPEC.md`, never restate their tables |
+| `docs/DECISIONS.md` | Architectural decisions + rejected approaches, with root-cause detail | Before implementing packaging, COM, or shell integration | An approach is chosen, rejected, or corrected |
+| `docs/DIAGRAMS.md` | Required sequence/state/activity/component diagrams, Ground Truth Rule | Touching COM/shell, operation lifecycle, `ZipArchiveService` branching, or the manifest | Per its own DoD table — same commit as the code |
+| `docs/TESTING.md` | Test plan and fixture inventory for `Archiver.Core` | Writing or running tests | New test category, fixture, or test count changes |
+| `tests/Archiver.Core.Tests.GenerateFixtures/README.md` | Fixture-generation mechanics only (subordinate to `docs/TESTING.md`) | Adding a fixture-dependent test | A new fixture scenario is added |
+| `docs/SPEC.md` | Product specification — **canonical owner of the version roadmap table, feature scope, non-goals** | Scoping a new feature, checking what's out of scope | Scope or roadmap changes |
+| `docs/CLI.md` | **Canonical owner of Archiver.CLI's (T-F09) command/switch specification** — 7z→Pakko command table, switch fidelity, three-way unknown-input rule | Implementing or extending T-F09 | The planned CLI command/switch surface changes |
+| `docs/POLICIES.md` | Group Policy/ADMX admin reference (T-F51) | Touching GPO-controlled behavior | GPO-controlled behavior changes |
+| `docs/SIGNING.md` | Code Signing Policy (team roles, build process, artifacts covered) — published for SignPath Foundation eligibility (T-F124) | Touching signing/release process | Signing process or team roles change |
+| `README.md` | Public GitHub landing page | User-facing — not an agent instruction source | Public messaging changes; must link to `SECURITY.md`/`docs/SPEC.md`, never restate their tables |
 | `CONTRIBUTING.md` | Contributor onboarding summary | Before a contributor's first build | Build/deploy steps change — update `scripts/README.md` first, then sync the summary here |
 | `scripts/README.md` | **Canonical owner of build/sign/deploy steps** (`Deploy.ps1`, `Setup-DevCert.ps1`) | Running or changing the deploy scripts | `Deploy.ps1`/`Setup-DevCert.ps1` behavior changes |
 | `CHANGELOG.md` | **Canonical owner of per-release history** — one section per version tag, plain-language summary of the `T-Fxx` tasks shipped since the previous tag | Cutting a release | Every version tag — see this file's "Deployment" section |
 
 **Canonical topic owners — do not duplicate, link instead:**
-- Security/threat-model/CVE/supply-chain rationale → `SECURITY.md` only. `SPEC.md`/`README.md` keep at most a 2-line teaser with a link.
-- Version roadmap table → `SPEC.md` only. `CLAUDE.md`/`README.md`/`TASKS.md` reference it by version number instead of repeating the table (existing duplicates tracked as `T-F72`).
+- Security/threat-model/CVE/supply-chain rationale → `SECURITY.md` only. `docs/SPEC.md`/`README.md` keep at most a 2-line teaser with a link.
+- Version roadmap table → `docs/SPEC.md` only. `CLAUDE.md`/`README.md`/`docs/TASKS.md` reference it by version number instead of repeating the table (existing duplicates tracked as `T-F72`).
 - Build/sign/deploy steps → `scripts/README.md` only. `CONTRIBUTING.md` and this file's "Build Commands" section link to it rather than repeating steps.
 - Hard constraints → `CLAUDE.md` (this file) only — the richest and most current copy.
-- Current C# signatures and DI wiring → `ARCHITECTURE.md` only (stale signature there tracked as `T-F73`).
+- Current C# signatures and DI wiring → `docs/ARCHITECTURE.md` only (stale signature there tracked as `T-F73`).
 
 If you're updating a doc and find yourself retyping a table that already exists elsewhere in
 this list, stop — link to the canonical owner instead. If no owner is obvious for a new topic,
@@ -567,23 +577,30 @@ DI duplication happened).
 
 | Change | Primary doc | Cascade — check these too |
 |---|---|---|
-| Public signature/model change in `Archiver.Core` | `ARCHITECTURE.md` | `CONVENTIONS.md` (XML-doc example), `TASKS.md` (mark task done) |
-| DI registration or lifetime change | `ARCHITECTURE.md` | — (single owner now, no cascade) |
-| `MainWindow.xaml` structure or new WinUI 3 gotcha | `XAML.md` | — (leaf doc) |
-| New coding convention adopted | `CONVENTIONS.md` | — |
-| Threat model or mitigation changes | `SECURITY.md` | `SPEC.md` (teaser), `README.md` (teaser) |
-| Approach chosen/rejected/corrected (COM, packaging, shell) | `DECISIONS.md` | `ARCHITECTURE.md`, `CLAUDE.md` (hard constraints), `scripts/README.md`, `DIAGRAMS.md` |
-| Task starts/completes, or a new `T-Fxx` is claimed | `TASKS.md` | `TASKS_DONE.md` (graduation on completion), `CLAUDE.md` (Current State), `README.md` (Project Status) |
-| Version scope/roadmap changes | `SPEC.md` | `CLAUDE.md` (Roadmap Summary), `README.md` (Roadmap) |
+| Public signature/model change in `Archiver.Core` | `docs/ARCHITECTURE.md` | `docs/CONVENTIONS.md` (XML-doc example), `docs/TASKS.md` (mark task done) |
+| DI registration or lifetime change | `docs/ARCHITECTURE.md` | — (single owner now, no cascade) |
+| `MainWindow.xaml` structure or new WinUI 3 gotcha | `docs/XAML.md` | — (leaf doc) |
+| New coding convention adopted | `docs/CONVENTIONS.md` | — |
+| Threat model or mitigation changes | `SECURITY.md` | `docs/SPEC.md` (teaser), `README.md` (teaser) |
+| Approach chosen/rejected/corrected (COM, packaging, shell) | `docs/DECISIONS.md` | `docs/ARCHITECTURE.md`, `CLAUDE.md` (hard constraints), `scripts/README.md`, `docs/DIAGRAMS.md` |
+| Task starts/completes, or a new `T-Fxx` is claimed | `docs/TASKS.md` | `docs/TASKS_DONE.md` (graduation on completion), `CLAUDE.md` (Current State), `README.md` (Project Status) |
+| Version scope/roadmap changes | `docs/SPEC.md` | `CLAUDE.md` (Roadmap Summary), `README.md` (Roadmap) |
 | `Deploy.ps1`/`Setup-DevCert.ps1` behavior changes | `scripts/README.md` | `CONTRIBUTING.md`, `README.md` (Building and Deploying), `CLAUDE.md` (Build Commands) |
 | A release is tagged (`vX.Y.Z`) | `CHANGELOG.md` | — (single owner, see "Deployment") |
-| COM/shell, operation lifecycle, `ZipArchiveService` branching, or manifest changes | `DIAGRAMS.md` | Per its own DoD table |
-| New test or fixture added | `TESTING.md` | `tests/Archiver.Core.Tests.GenerateFixtures/README.md`, `CONTRIBUTING.md` |
-| New project added to `src/` or `tests/` | `ARCHITECTURE.md` (folder tree) | `CONTRIBUTING.md` (Project structure table) |
+| COM/shell, operation lifecycle, `ZipArchiveService` branching, or manifest changes | `docs/DIAGRAMS.md` | Per its own DoD table |
+| New test or fixture added | `docs/TESTING.md` | `tests/Archiver.Core.Tests.GenerateFixtures/README.md`, `CONTRIBUTING.md` |
+| New project added to `src/` or `tests/` | `docs/ARCHITECTURE.md` (folder tree) | `CONTRIBUTING.md` (Project structure table) |
+| A root `.md` file is added, removed, or moved | `CLAUDE.md` (Documentation Map + Repo Layout) | Re-run the dangling-link grep below |
 
 Before deleting or merging any `.md` file, grep the whole repo for its filename first — dead
 references are easy to miss otherwise (this session found 5 lingering mentions of `AGENT.md`/
 `BOOTSTRAP.md` after removing them).
+
+**Dangling-link grep after moving/renaming any `.md` file (T-F126):** markdown-link syntax only —
+`rg '\]\([A-Za-z0-9_./-]*\.md[^)]*\)' --glob '*.md'` from repo root. Real cross-references show up
+in non-obvious places beyond the doc itself: `.github/*_TEMPLATE.md`, `deploy/README.md`,
+`scripts/*.ps1` comments — grep those separately for bare filename mentions too, not just `.md`
+files.
 
 ---
 
@@ -768,6 +785,10 @@ references are easy to miss otherwise (this session found 5 lingering mentions o
   Use a full Windows-style path (e.g. this session's scratchpad dir) instead.
   **Plain `python` (no `py -3`) fails outright via the Bash tool** — exit code ~49, no real
   error text, even for a trivial script. Always invoke `py -3 <script.py>`, never bare `python`.
+  **`py -3 -c "..."` one-liners with an embedded Windows backslash path are fragile** — produced
+  `SyntaxError: unterminated string literal`. Always write the script to a real `.py` file
+  (Write tool or a heredoc to a Windows-style scratchpad path) and run `py -3 script.py`, never a
+  `-c` one-liner with a literal Windows path inside it.
 - **Shared WinUI `x:Uid` across elements with different property sets is fatal, not a no-op:**
   giving a `Button` (`.Content`) and a `TextBlock` (`.Text`) the same `x:Uid` applies both resource
   keys to both elements regardless of which properties exist — crashes natively (`0xc000027b`) at
@@ -842,18 +863,27 @@ windows-archiver-wrapper/
 │   ├── Archiver.App.Core.Tests/    ← xunit, ArchiveTreeIndex coverage (T-F05)
 │   ├── Archiver.Core.IntegrationTests/ ← xunit, real tar.exe via [Integration]/TarBuilder
 │   ├── Archiver.Core.PerformanceTests/ ← xunit, T-F114: ZIP perf vs. vendored 7za.exe reference,
-│   │                                     [Trait("Category","Slow")], see TESTING.md
+│   │                                     [Trait("Category","Slow")], see docs/TESTING.md
 │   ├── Archiver.Shell.Tests/       ← xunit (see "Current State" for current count)
 │   ├── Archiver.CLI.Tests/          ← xunit, parser/mapper unit tests + a Subprocess/ layer that
-│   │                                  Process.Starts the real built exe (T-F09), see TESTING.md
+│   │                                  Process.Starts the real built exe (T-F09), see docs/TESTING.md
 │   ├── Archiver.ShellExtension.Tests/  ← C++ Google Test, run separately (see Build Commands)
 │   └── Archiver.Core.Tests.GenerateFixtures/  ← fixture generator
-├── CLAUDE.md                       ← you are here
-├── TASKS.md                        ← active/future tasks
-├── TASKS_DONE.md                   ← completed tasks archive
-├── ARCHITECTURE.md
-├── CONVENTIONS.md
-├── SECURITY.md
+├── docs/                            ← everything except the root-convention files below (T-F126)
+│   ├── TASKS.md                     ← active/future tasks
+│   ├── TASKS_DONE.md                ← completed tasks archive
+│   ├── ARCHITECTURE.md
+│   ├── CONVENTIONS.md
+│   ├── DECISIONS.md
+│   ├── DIAGRAMS.md
+│   ├── SPEC.md
+│   ├── CLI.md
+│   ├── POLICIES.md
+│   ├── SIGNING.md
+│   ├── TESTING.md
+│   └── XAML.md
+├── CLAUDE.md                        ← you are here — stays at root, Claude Code only auto-loads it here
+├── SECURITY.md                      ← stays at root — GitHub-recognized community-health file
 └── README.md
 ```
 
@@ -1040,6 +1070,12 @@ MSBuild tests\Archiver.ShellExtension.Tests\Archiver.ShellExtension.Tests.vcxpro
 >   breaking ARM64 C++ builds that worked before. Pin an explicit version (`windows-2022`) for any
 >   job where toolchain reproducibility matters.
 >
+> **Windows App Certification Kit (`appcert.exe`) requires elevation** — a bare invocation fails
+> with "requires elevation." Run it via `Start-Process -Verb RunAs -Wait` from the PowerShell
+> tool. Its report is XML: `<REPORT OVERALL_RESULT="...">`, per-check `<TEST><RESULT>PASS/FAIL
+> </RESULT><MESSAGES><MESSAGE TEXT="..."/></MESSAGES></TEST>` — parse for `FAIL`/`WARNING` rather
+> than reading the whole report by eye.
+>
 > **Deploy shortcuts:**
 > Release build in VS triggers `Deploy.ps1 -DeployOnly` automatically (post-build event).
 > For manual deploy from terminal: `.\scripts\Deploy.ps1` (full build + sign + install)
@@ -1088,7 +1124,7 @@ MSBuild tests\Archiver.ShellExtension.Tests\Archiver.ShellExtension.Tests.vcxpro
 > `dotnet publish` fails on that same path, it's a transient live handle (Search Indexer is the
 > top suspect), not a wedged folder — a version bump won't reliably fix this variant.
 > `Deploy.ps1` now tolerates this specific shape (MSB3231 on `AppPackages`/`PackageLayout` with a
-> valid `.msix` already written) instead of aborting a good build — see T-F96 in `TASKS.md`.
+> valid `.msix` already written) instead of aborting a good build — see T-F96 in `docs/TASKS.md`.
 
 ---
 
@@ -1122,12 +1158,12 @@ Task<IReadOnlyList<string>> PickFoldersAsync()
 
 ## Do Not
 
-- Do not re-implement anything from `TASKS_DONE.md`
+- Do not re-implement anything from `docs/TASKS_DONE.md`
 - Do not add NuGet packages to `Archiver.Core` (zero dependencies)
 - Do not modify `CLAUDE.md`, `SECURITY.md` unless explicitly asked
   (a Plan that merely *proposes* editing one of these two is not itself "explicitly asked" —
   get separate explicit confirmation before touching either, even after plan approval)
-- Do not implement features not listed in `TASKS.md` or `SPEC.md`
+- Do not implement features not listed in `docs/TASKS.md` or `docs/SPEC.md`
 - Do not use `Thread.Sleep` — use `await Task.Delay` if needed
 - Do not use `static` mutable fields in services
 - Do not use legacy `IContextMenu` shell extension — use `IExplorerCommand`
@@ -1171,7 +1207,7 @@ Task<IReadOnlyList<string>> PickFoldersAsync()
 
 ## Windows Packaging Best Practices
 
-Root-cause detail for the first six points below lives in `DECISIONS.md` ("MSIX Satellite EXE
+Root-cause detail for the first six points below lives in `docs/DECISIONS.md` ("MSIX Satellite EXE
 Packaging", "MSIX Signing", "Context Menu Appeared But Commands Did Nothing") — this is the
 quick-reference list only, to avoid known failure modes without re-reading the full postmortems:
 
@@ -1191,6 +1227,19 @@ quick-reference list only, to avoid known failure modes without re-reading the f
 
 Two more, not duplicated elsewhere:
 
+- **A hidden satellite `<Application>` (`AppListEntry="none"`, e.g. `Archiver.Shell.exe`'s entry)
+  triggers a Store "headless app" rejection.** Requires a separate account-level
+  `HeadlessAppBypass` waiver request from Microsoft — not a manifest fix, since removing
+  `AppListEntry="none"` would break the intended hidden-process UX. Budget real calendar time for
+  Microsoft's response before assuming a Store submission is close to done.
+- **`Package.appxmanifest`'s `Version` 4th segment (revision) must be `0` at Store submission
+  time** — a nonzero revision (e.g. from `Deploy.ps1`'s auto-bump) is rejected outright. Rebuild
+  with `-SkipVersionBump` (or manually reset to `X.X.X.0`) before uploading to Partner Center.
+- **`src/Archiver.App/Assets/pakko-icon.svg` is the canonical vector source for every brand-mark
+  asset** (Square44x44/150x150Logo, Wide310x150Logo, SplashScreen, StoreLogo). Regenerate raster
+  assets from this SVG's real geometry, never by upscaling an existing `.png` — confirmed via a
+  real regression this session (upscaling silently lost rounded corners present in the true
+  original, caught only by checking `git show HEAD:<path>` pixel values, not by eyeballing output).
 - **A satellite project's `TargetFramework` is embedded literally in other projects' `Content
   Include` paths and in `Deploy.ps1`.** Bumping `Archiver.Shell.csproj`'s TFM (e.g. to
   `net8.0-windows10.0.17763.0` for WinRT APIs) silently moved its real build output to a new
@@ -1225,7 +1274,7 @@ Two more, not duplicated elsewhere:
 - The version format is `1.4.0.X` — only the last segment changes.
   Example: `1.4.0.0` → `1.4.0.1`. (Bumped from `1.2.0.x` 2026-07-17 — this is `Package.appxmanifest`'s
   internal MSIX packaging number, tracked independently of the roadmap version labels in
-  `SPEC.md`; it was already `1.2.0.x` throughout all of v1.3's development, so don't read the
+  `docs/SPEC.md`; it was already `1.2.0.x` throughout all of v1.3's development, so don't read the
   first three segments as a live indicator of roadmap completeness.)
 - Do not change the first three segments unless explicitly instructed.
 - If bumping manually (e.g. outside `Deploy.ps1`), only edit the `Version` attribute on
@@ -1241,7 +1290,7 @@ Two more, not duplicated elsewhere:
 - **Cutting a public release (a `vX.Y.Z` git tag, distinct from the internal MSIX packaging
   number above):** before the `chore(release): bump to vX.Y.Z` commit, add a new section to
   `CHANGELOG.md` (newest first) listing the `T-Fxx` tasks completed since the previous tag, in
-  plain language — check `TASKS_DONE.md`/`git log <prev-tag>..HEAD` for what actually shipped,
+  plain language — check `docs/TASKS_DONE.md`/`git log <prev-tag>..HEAD` for what actually shipped,
   don't guess from memory. Keep it in the same commit as the version bump. `CHANGELOG.md` is the
   canonical, human-browsable release history; `.github/RELEASE_NOTES_TEMPLATE.md` stays a static
   per-release download blurb and is not the place for a task list.
@@ -1269,7 +1318,7 @@ Two more, not duplicated elsewhere:
   If the user explicitly directs it, performing that verification yourself via the local
   `windows` MCP server (see `.claude.local.md`) is an accepted substitute for asking — still
   don't graduate a task on `dotnet test` alone without one or the other.
-- **`TASKS.md`'s task-graduation edits** (moving completed entries to `TASKS_DONE.md`) tend to
+- **`docs/TASKS.md`'s task-graduation edits** (moving completed entries to `docs/TASKS_DONE.md`) tend to
   land in large diff hunks that intermingle several unrelated tasks — `git add -p` can't
   cleanly split one task's doc update out of such a hunk. When committing narrowly, stage
   specific files/whole hunks deliberately, or commit the doc consolidation separately.
@@ -1278,11 +1327,11 @@ Two more, not duplicated elsewhere:
   `LocalApplicationData` per-package. Find it at
   `%LOCALAPPDATA%\Packages\<PackageFamilyName>\LocalCache\Local\Pakko\logs\pakko.log`
   (get `<PackageFamilyName>` via `Get-AppxPackage *Pakko*`).
-- **Editing unicode-heavy docs (`DIAGRAMS.md` mermaid blocks, `DECISIONS.md`) with the Edit
+- **Editing unicode-heavy docs (`docs/DIAGRAMS.md` mermaid blocks, `docs/DECISIONS.md`) with the Edit
   tool:** a multi-line `old_string` spanning several em-dash (—)/arrow (→) characters can
   silently fail to match even though `Read` shows it verbatim. Split into smaller edits
   (isolate one such character per edit) to work around it.
-- **`DIAGRAMS.md` mermaid blocks are never auto-validated — nothing in this repo's workflow
+- **`docs/DIAGRAMS.md` mermaid blocks are never auto-validated — nothing in this repo's workflow
   renders them.** After editing, run each block through `npx @mermaid-js/mermaid-cli` (`mmdc -i
   diagram.mmd -o diagram.svg`) before considering the edit done. A bare `;` or an unescaped
   `"quoted phrase"` inside unquoted label/message/transition text breaks the parser in

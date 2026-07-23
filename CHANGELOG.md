@@ -2,10 +2,10 @@
 
 Human-readable summary of what shipped in each tagged release. One section per version tag,
 newest first. This file starts at `v1.4.1` — earlier releases (`v1.0.0`, `v1.1.0`, `v1.4.0`) are
-not backfilled; see `TASKS_DONE.md` and `git log` if you need that history.
+not backfilled; see `docs/TASKS_DONE.md` and `git log` if you need that history.
 
 Each entry lists the `T-Fxx` tasks completed since the previous release tag, in plain language —
-not a re-statement of `TASKS_DONE.md`'s full acceptance-criteria detail. See `TASKS_DONE.md` for
+not a re-statement of `docs/TASKS_DONE.md`'s full acceptance-criteria detail. See `docs/TASKS_DONE.md` for
 the technical account of any task named here.
 
 ---

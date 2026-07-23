@@ -5923,3 +5923,52 @@ counts, both addressed by adjusting the rasterizer rather than the pixel dimensi
    both times, aside from the pre-documented sandbox-concurrency flakiness — a different specific
    `Archiver.Core.IntegrationTests` test each run, always passing on an isolated rerun, matching
    this file's existing "Known test gaps" entry exactly).
+
+## T-F124 — SignPath Foundation Application Rejected (2026-07-23)
+
+**What happened:** the solo-maintainer SignPath Foundation application (T-F124, submitted after
+the 2026-07-19 planning/gap-analysis pass and `SIGNING.md` publication, commit `2f91664`) was
+reviewed and **rejected**. The rejection email is explicit that this is not a judgment on code
+quality: SignPath's OSS Request Form review looks for external public-visibility signals —
+GitHub stars/forks/contributor count, independent articles or references (Reddit, Stack Overflow,
+YouTube), institutional backing, and evidence of sustained external engagement over time. Pakko's
+pre-application gap analysis (2026-07-19) checked license/CI/privacy-policy/team-roles-document
+boxes and concluded those were the real bar — that assumption was wrong. The actual bar is
+external community traction, which those boxes don't measure and which a solo, freshly-public
+project realistically doesn't have yet regardless of code/documentation quality.
+
+**What SignPath offered instead:** (1) explicit invitation to reapply once the project has grown
+enough public recognition — no penalty or blacklist implied by this rejection; (2) a paid SignPath
+subscription (`docs.signpath.io/change-subscription`) as an immediate alternative bypassing the
+Foundation program's eligibility bar entirely, since it's a commercial relationship rather than a
+sponsored one.
+
+**Effect on T-F10:** Phase 1 of T-F10's working plan was written assuming SignPath Foundation was
+"the chosen code-signing path" for both the MSIX and standalone `pakko.exe`. That assumption no
+longer holds. T-F10's cert-options table now needs a real decision among the remaining live
+options — paid SignPath subscription, a purchased OV certificate (~$150-300/yr, worldwide,
+previously listed as exactly this fallback), or staying self-signed (viable today for internal
+Ukrainian-government deployment via Group Policy-distributed trust, per `SECURITY.md`'s existing
+model) while continuing to build public visibility toward a future Foundation reapplication. This
+is a cost/timeline decision for the user to make, not something to default on without asking —
+T-F10 stays `[ ]` future with this open question flagged, not silently picked by the agent.
+
+**Not yet decided:** which fallback to pursue, or whether to keep growing the project or a period
+before reapplying to the Foundation program instead of paying immediately. No code/manifest
+changes follow from this entry by itself.
+
+## T-F10 — Fallback Decision After SignPath Foundation Rejection (2026-07-23, same day, user-directed)
+
+**User's decision:** don't pay for SignPath or an OV certificate right now. Stay self-signed for
+internal/Ukrainian-government distribution (already the working model — see `SECURITY.md`), and
+defer the whole T-F10 decision until **T-F129 (Microsoft Store submission) resolves**. Reasoning:
+a live Microsoft Store listing is itself a real, external, hard-to-fake public-visibility/
+institutional-backing signal — exactly the category of evidence SignPath's rejection said Pakko is
+currently missing — so a post-Store-launch SignPath Foundation reapplication has a materially
+better chance than reapplying today, without spending money on a paid subscription or OV cert in
+the meantime.
+
+**Practical effect:** T-F10 is now dormant, gated on T-F129's outcome, not actively worked. No
+code/manifest changes. When T-F129 reaches "app live in Store," the next action is a SignPath
+Foundation *reapplication* (not a fresh T-F124 from scratch — reuse `SIGNING.md` and the existing
+gap-analysis, add the live Store listing as new evidence), not an immediate purchase decision.

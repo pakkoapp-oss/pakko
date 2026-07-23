@@ -89,12 +89,12 @@ compression tools — to read RAR/7z/tar/gz/bz2/xz/zst/lzma, and to create tar-f
 ## Command-Line Interface
 
 `pakko.exe` (project name `Archiver.CLI`) is a standalone, self-contained command-line build with
-7z-familiar commands (`x`/`t`/`i`/`a`/`l`) — it runs independently of the GUI/MSIX. See `CLI.md`
+7z-familiar commands (`x`/`t`/`i`/`a`/`l`) — it runs independently of the GUI/MSIX. See `docs/CLI.md`
 for the full command/switch specification. Download it as its own per-architecture zip (with a
 `SHA256SUMS` file for verification) from the
 [project's GitHub Releases page](https://github.com/pakkoapp-oss/pakko/releases) — every version
 tag is built and published there automatically. It is not automatically added to `PATH` — see
-`CLI.md`'s "Distribution" section for how to make it available from any terminal.
+`docs/CLI.md`'s "Distribution" section for how to make it available from any terminal.
 
 ---
 
@@ -137,8 +137,8 @@ and Group Policy/ADMX support (T-F51) are all implemented and on-device verified
 
 Microsoft Store release planned for v1.5. v1.1–v1.4 are GitHub-only releases for early testers.
 
-See `SPEC.md`'s "Future Roadmap" section for the version-to-focus table, and `TASKS.md` for the
-detailed task list.
+See `docs/SPEC.md`'s "Future Roadmap" section for the version-to-focus table, and `docs/TASKS.md`
+for the detailed task list.
 
 ---
 
@@ -153,7 +153,7 @@ Prerequisites: Visual Studio 2022 (Windows App SDK / WinUI 3 + Desktop C++ workl
 
 See [`scripts/README.md`](scripts/README.md) for full details and [`CONTRIBUTING.md`](CONTRIBUTING.md)
 for the contributor workflow. Production code signing with a trusted certificate is planned (T-F10)
-— see [`SIGNING.md`](SIGNING.md) for Pakko's Code Signing Policy (team roles, build process, and
+— see [`SIGNING.md`](docs/SIGNING.md) for Pakko's Code Signing Policy (team roles, build process, and
 artifacts covered).
 
 ---
