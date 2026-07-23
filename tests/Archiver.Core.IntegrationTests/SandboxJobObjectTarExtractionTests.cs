@@ -12,6 +12,7 @@ namespace Archiver.Core.IntegrationTests;
 /// that make it work against a real destination folder, arrives in step 6's TarSandboxScope) —
 /// this test isolates the Job Object dimension only.
 /// </summary>
+[Collection("TarSandbox")]
 public sealed class SandboxJobObjectTarExtractionTests : IDisposable
 {
     private const string TarExecutablePath = @"C:\Windows\System32\tar.exe";

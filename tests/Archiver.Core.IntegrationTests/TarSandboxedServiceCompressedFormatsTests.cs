@@ -12,6 +12,7 @@ namespace Archiver.Core.IntegrationTests;
 /// [SkipIfFormatUnsupported]-gated test body, not in shared setup, so an unsupported format
 /// skips cleanly instead of throwing during fixture creation.
 /// </summary>
+[Collection("TarSandbox")]
 public sealed class TarSandboxedServiceCompressedFormatsTests : IDisposable
 {
     private readonly TarSandboxedService _sut = new();

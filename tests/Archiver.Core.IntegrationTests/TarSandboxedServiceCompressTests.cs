@@ -13,6 +13,7 @@ namespace Archiver.Core.IntegrationTests;
 /// service's own ExtractAsync to verify content, matching T-F50's established "round-trip
 /// through the real tar.exe" pattern rather than asserting on raw tar.exe output directly.
 /// </summary>
+[Collection("TarSandbox")]
 public sealed class TarSandboxedServiceCompressTests : IDisposable
 {
     private readonly TarSandboxedService _sut = new();

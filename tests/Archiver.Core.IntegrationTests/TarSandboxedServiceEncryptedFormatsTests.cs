@@ -12,6 +12,7 @@ namespace Archiver.Core.IntegrationTests;
 /// inspectable the way RAR's is — see DECISIONS.md's T-F113 entry for the full empirical trail
 /// and Fixtures/README.md for how these four fixtures were built.
 /// </summary>
+[Collection("TarSandbox")]
 public sealed class TarSandboxedServiceEncryptedFormatsTests : IDisposable
 {
     private const string ExpectedExtractMessage = "This archive is password-protected and cannot be extracted.";

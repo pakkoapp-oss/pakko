@@ -9,6 +9,7 @@ namespace Archiver.Core.IntegrationTests;
 /// has no encoder available on this machine at all - see Fixtures/README.md) - use a committed
 /// binary fixture instead of test-time generation.
 /// </summary>
+[Collection("TarSandbox")]
 public sealed class TarSandboxedServiceExternalFormatsTests : IDisposable
 {
     private readonly TarSandboxedService _sut = new();

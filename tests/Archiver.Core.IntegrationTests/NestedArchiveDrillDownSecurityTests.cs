@@ -12,6 +12,7 @@ namespace Archiver.Core.IntegrationTests;
 /// extracted — these tests exercise exactly that two-call shape (no App-layer/ViewModel code is
 /// involved) to confirm nesting doesn't accidentally weaken either mechanism.
 /// </summary>
+[Collection("TarSandbox")]
 public sealed class NestedArchiveDrillDownSecurityTests : IDisposable
 {
     private readonly TarSandboxedService _sut = new();

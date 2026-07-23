@@ -12,6 +12,7 @@ namespace Archiver.Core.IntegrationTests;
 /// tar.exe-specific child-spawn test would prove nothing real). See DECISIONS.md's T-F52 entries
 /// for the full empirical trail these mechanisms were built against.
 /// </summary>
+[Collection("TarSandbox")]
 public sealed class TarSandboxedServiceSandboxBehaviorTests
 {
     private const string CmdExecutablePath = @"C:\Windows\System32\cmd.exe";

@@ -9,6 +9,7 @@ namespace Archiver.Core.IntegrationTests;
 /// (see DECISIONS.md's T-F52 Phase 0 entry) into the production ACL primitive. Uses its own
 /// throwaway AppContainer profile — never the shared production profile name.
 /// </summary>
+[Collection("TarSandbox")]
 public sealed class QuarantineAclTests : IDisposable
 {
     private const string TarExecutablePath = @"C:\Windows\System32\tar.exe";

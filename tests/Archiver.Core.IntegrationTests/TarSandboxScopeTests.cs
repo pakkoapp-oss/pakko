@@ -11,6 +11,7 @@ namespace Archiver.Core.IntegrationTests;
 /// see DECISIONS.md's T-F52 entry for why "same disk as destination" was dropped after an
 /// AppContainer ancestor-traversal failure was found empirically.
 /// </summary>
+[Collection("TarSandbox")]
 public sealed class TarSandboxScopeTests : IDisposable
 {
     private readonly TempDirectory _temp = new();

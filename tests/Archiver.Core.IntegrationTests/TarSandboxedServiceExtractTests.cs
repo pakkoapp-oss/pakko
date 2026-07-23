@@ -13,6 +13,7 @@ namespace Archiver.Core.IntegrationTests;
 /// symlink-escape test, which is a regression test for a confirmed sandbox escape found while
 /// designing this pipeline.
 /// </summary>
+[Collection("TarSandbox")]
 public sealed class TarSandboxedServiceExtractTests : IDisposable
 {
     private readonly TarSandboxedService _sut = new();

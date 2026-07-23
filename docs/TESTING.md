@@ -229,6 +229,16 @@ No `[Trait("Category", "Sandbox")]` was added — per-test wall time measured at
 reuse means no registry-provisioning cost per test), so there was nothing to gain from a
 filterable-but-not-excluded category; add one later only if a real cost is measured.
 
+**All 10 test classes in this project are grouped into one xUnit `[Collection("TarSandbox")]`**
+(`TarSandboxCollection.cs`, `DisableParallelization = true`, added T-F130) — they now run
+sequentially relative to each other while still running in parallel with unrelated test
+projects/collections. Likely root cause of the CI flakiness documented in `CLAUDE.md`'s "Known
+test gaps": concurrent AppContainer profile/Job Object/quarantine ACL calls across different test
+classes racing under xUnit's default parallel-by-class execution, not a real product bug and not
+a per-test cost problem. Passes locally (60/60) — **CI confirmation still pending as of
+2026-07-24**; see `CLAUDE.md`'s T-F130 note for current status before assuming this is fully
+verified.
+
 ### Tags
 
 - `[Integration]` — custom `FactAttribute` (`IntegrationAttribute.cs`), skipped automatically if
