@@ -1170,6 +1170,19 @@ Task<IReadOnlyList<string>> PickFoldersAsync()
 - Do not call `tar.exe` via PATH — always absolute path `C:\Windows\System32\tar.exe`
 - Do not extract tar/RAR/7z formats in-process — only via `tar.exe` subprocess
 
+**Public-repo hygiene (this repo is public — audited 2026-07-24, clean, keep it that way):**
+- Do not commit real secret/credential/token/private-key *values* into any file. GitHub Actions
+  secret **names** (`$env:PFX_PASSWORD`, etc.) are fine to reference by name — the values only
+  ever live in GitHub Actions Secrets, never in tracked files. A certificate **thumbprint** (e.g.
+  `Deploy.ps1`'s signing thumbprint) is a public hash, not the private key — safe to keep visible.
+- Do not commit personal email/phone/home-address, unless it's a deliberate, required public
+  disclosure (e.g. `docs/SIGNING.md`'s SignPath-mandated Author/Reviewer/Approver names/handles).
+- Do not hardcode an absolute path containing the real OS username (`C:\Users\<name>\...`) in any
+  tracked file — machine-specific paths belong in `.claude.local.md` (gitignored), not here.
+- If a secret is ever accidentally committed, `git rm`/deleting the file does **not** remove it
+  from git history — needs `git filter-repo`/BFG on the whole history, and the secret must be
+  rotated regardless of whether history gets scrubbed.
+
 ---
 
 ## Known test gaps — manual verification required
