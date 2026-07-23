@@ -47,11 +47,13 @@ MOTW checks `ZipArchiveService` already had were moved into a new shared
 T-F95 (root "Pakko" context-menu icon missing in Explorer) is complete — `Archiver.App.csproj` had
 no `<ApplicationIcon>`, so the built exe had zero icon resources; fixed by pointing it at the
 existing `Assets\Square44x44Logo.ico`, confirmed on-device by the user 2026-07-07. Found along the
-way: `Deploy.ps1`/`dotnet publish` currently fails with `MSB3231` cleaning up its own
-`AppPackages`/`obj` output *after* a valid `.msix` is already written — worked around this once via
-a direct `Add-AppxPackage`, root cause still open, tracked as T-F96 (recurred 4 consecutive times
-during the 2026-07-13 T-F99/T-F100 session — see `DECISIONS.md`, `[~]` on hold, not being actively
-chased right now).
+way: `Deploy.ps1`/`dotnet publish` intermittently fails with `MSB3231` cleaning up its own
+`AppPackages`/`obj` output *after* a valid `.msix` is already written (recurred 4 consecutive times
+during the 2026-07-13 T-F99/T-F100 session). **T-F96 is `[~]` closed as non-blocking** — root cause
+was never confirmed (leading suspect: Windows Search Indexer race), but `Deploy.ps1`'s own
+tolerance mitigation has absorbed every real recurrence since 2026-07-07 without ever failing a
+build; not on active investigation unless the mitigation itself ever stops working. See
+`docs/DECISIONS.md`'s T-F96 entry for the ranked root-cause scenarios if this ever needs revisiting.
 **T-F05 (Archive Browser) is `[~]` partial** — versioned into v1.4, all implementation done
 (Core `ListEntriesAsync`/`IArchiveListingRouter`, `ExtractOptions.SelectedEntryPaths`, new
 `Archiver.App.Core` project, full `MainWindow.xaml`/`MainViewModel` wiring for the breadcrumb +
@@ -97,11 +99,12 @@ user-directed Windows MCP automation pass (see `DECISIONS.md`'s T-F99/T-F100 ent
 on-device verification surfaced three more real bugs beyond the manifest fix — a
 command-line-corrupting `QuotePath` trailing-backslash bug, and two independent archive-auto-naming
 code paths both producing a bare `.zip` for a drive-root source — all fixed and tested; see
-`DECISIONS.md`. **T-F101** (Pakko missing from the classic "Show more options" menu) was diagnosed
-2026-07-13 (repro confirmed, stale-build and crash-during-enumeration theories both ruled out, no
-fix made) but stopped reproducing on its own by 2026-07-14 — root cause still unconfirmed, leading
-guess is a side effect of T-F100's manifest change invalidating an Explorer verb/icon cache; see
-`DECISIONS.md`. **T-F103** (extraction destination folder misnamed for compound extensions,
+`DECISIONS.md`. **T-F101** (Pakko missing from the classic "Show more options" menu) is `[x]`
+resolved (no code fix; cause unconfirmed) — diagnosed 2026-07-13 (repro confirmed, stale-build and
+crash-during-enumeration theories both ruled out), then confirmed no longer reproducing 2026-07-14
+across two repeated on-device checks. Leading (unverified) guess is a side effect of T-F100's
+manifest change invalidating an Explorer verb/icon cache; see `docs/DECISIONS.md`'s T-F101 entry.
+**T-F103** (extraction destination folder misnamed for compound extensions,
 `browse_test.tar.gz` → `browse_test.tar` instead of `browse_test`) is now `[x]` fixed — new shared
 `Archiver.Core.Services.ArchiveNaming` helper strips tar.exe's five compound extensions as a unit,
 wired into all five buggy call sites across `ZipArchiveService.cs`/`TarProcessService.cs`/
