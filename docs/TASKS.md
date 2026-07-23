@@ -2606,3 +2606,62 @@ current folder without creating some destination folder first.
 
 ---
 
+
+### T-F131 — Recognize .jar/.war/.ear/.apk as ZIP-Format Archives (Explorer + FileTypeAssociation)
+- [x] **Status:** done 2026-07-24 — `Deploy.ps1` build+sign+install completed, then AI-driven
+      on-device verification via a real, freshly-built `app.jar` (real `PK\x03\x04` bytes,
+      confirmed byte-for-byte before testing) in Explorer: right-click showed "Pakko" →
+      "Відкрити"/"Видобути файли..."/"Видобути до поточної папки"/"Видобути до поточної папки
+      (Інтелектуально)"/"Видобути до \"app\\\"\"/"Стиснути..."/"Тестувати архів"/hash commands, all
+      present where previously only "Стиснути..." would have shown. Functionally exercised, not
+      just menu visibility: "Тестувати архів" against the real `.jar` returned "No errors detected
+      in the archive(s)."; "Видобути до \"app\\\"" produced real extracted files
+      (`Main.class`/`readme.txt`) with byte-identical content confirmed via direct file read.
+      Added at the
+      user's explicit request after a question about how Pakko handles a ZIP-container file with a
+      non-`.zip` extension (e.g. a `.jar`). `ArchiveFormatDetector.Detect()`'s magic-byte sniffing
+      already classified these correctly with no change needed — the actual gap was the
+      extension-only fast paths (Explorer context menu, `FileTypeAssociation`) that gate *before*
+      any file is opened (see `DECISIONS.md`'s T-F86 entry for why those stay extension-only, not
+      magic-byte, deliberately). Scope decided via `AskUserQuestion`: `.jar`/`.war`/`.ear` (Java)
+      and `.apk` (Android) only — explicitly **not** Office/OpenDocument (`.docx`/`.xlsx`/`.pptx`/
+      `.odt`/etc.) or `.epub`, since those would put "Extract"/"Test archive" on every document a
+      typical user has, which is real UX noise for a general audience even though they're
+      technically valid ZIP containers too. See `DECISIONS.md`'s T-F131 entry.
+- **Depends on:** none
+
+**Scope:**
+- `Archiver.Core/Services/ArchiveFormatDetector.cs` — `.jar`/`.war`/`.ear`/`.apk` added to
+  `_recognizedExtensions` (feeds `IsRecognizedArchiveExtension`, used by `MainViewModel`'s
+  extract-selection detection and T-F98's nested-archive drill-down candidacy check).
+- `Archiver.ShellExtension/ShellExtUtils.cpp` — `HasZipExtension` widened from a single `.zip`
+  check to a new `kZipContainerExtensions` list (`.zip`/`.jar`/`.war`/`.ear`/`.apk`); flows through
+  unchanged to `AllPathsAreZip`/`AnyPathIsZip`/`AllPathsAreSupportedArchive` and therefore to every
+  context-menu command's `GetState()` gating (Extract here/to folder, Test archive, Extract dialog).
+- `Package.appxmanifest` — the four extensions added to the existing `archivefile`
+  `FileTypeAssociation` group (`DisplayName="Pakko Archive"`) rather than a new group, since the
+  practical effect (register as a capable Explorer/"Open with" handler) is identical regardless of
+  which engine (`ZipArchiveService` vs `ITarService`) actually handles the file internally.
+- New test coverage: `ArchiveFormatDetectorTests.IsRecognizedArchiveExtension_RecognizedExtension_ReturnsTrue`
+  gained 4 `[InlineData]` cases; `ShellExtUtilsTests.cpp` gained 3 new `TEST()`s
+  (`AllPathsAreZip.TrueForJarWarEarApk`, `AnyPathIsZip.TrueForJarAmongOthers`,
+  `AllPathsAreZip.JarCaseInsensitive`).
+- `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` green (397 Archiver.Core.Tests, was
+  393). C++ `Archiver.ShellExtension.Tests.exe`: 96/96 (built and run directly via MSBuild, real
+  `Archiver.ShellExtension.vcxproj` DLL project also confirmed compiling clean, not just the
+  COM-free test project).
+
+**Acceptance criteria:**
+- [x] `dotnet test` green with new coverage
+- [x] Real `Archiver.ShellExtension.vcxproj` DLL compiles (not just the test project, which only
+      links `ShellExtUtils.cpp`/`Localization.cpp` directly)
+- [x] C++ Google Test suite green (96/96)
+- [x] `Deploy.ps1` build+sign+install + on-device Explorer context-menu check against a real
+      `.jar`: Extract/Test both confirmed present and functionally correct (see Status above).
+      **Not separately verified this round:** double-click / "Open with" → Pakko → Archive Browser
+      for a `.jar` specifically — the `FileTypeAssociation` registration itself was confirmed
+      installed (Deploy.ps1 succeeded, manifest change is live), but the actual double-click/"Open
+      with" flow wasn't clicked through this session. Low risk (same `pakko://browse`/File-
+      activation code path T-F03/T-F100 already cover for every other registered extension,
+      nothing `.jar`-specific in that path), but flagging honestly rather than claiming it was
+      checked when it wasn't.

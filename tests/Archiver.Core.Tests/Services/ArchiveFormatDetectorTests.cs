@@ -105,6 +105,10 @@ public sealed class ArchiveFormatDetectorTests : IDisposable
     [InlineData("clip.tzst")]
     [InlineData("clip.lzma")]
     [InlineData("nested/path/clip.zip")]
+    [InlineData("app.jar")]
+    [InlineData("site.WAR")]
+    [InlineData("enterprise.ear")]
+    [InlineData("app.apk")]
     public void IsRecognizedArchiveExtension_RecognizedExtension_ReturnsTrue(string fileName)
     {
         ArchiveFormatDetector.IsRecognizedArchiveExtension(fileName).Should().BeTrue();

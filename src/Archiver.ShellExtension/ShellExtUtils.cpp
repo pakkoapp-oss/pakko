@@ -25,15 +25,29 @@ static std::wstring QuotePath(const std::wstring& path)
     return L'"' + escaped + L'"';
 }
 
+// T-F131: .jar/.war/.ear (Java) and .apk (Android) are real ZIP-format containers — deliberately
+// narrower than "every possible ZIP container" (no Office/OpenDocument/.epub), per the user's
+// explicit choice. See DECISIONS.md's T-F131 entry.
+static const wchar_t* const kZipContainerExtensions[] = {
+    L".zip", L".jar", L".war", L".ear", L".apk"
+};
+
 static bool HasZipExtension(const std::wstring& path)
 {
     const wchar_t* pExt = PathFindExtensionW(path.c_str());
-    return pExt != nullptr && _wcsicmp(pExt, L".zip") == 0;
+    if (pExt == nullptr || *pExt == L'\0') return false;
+
+    for (const wchar_t* ext : kZipContainerExtensions)
+    {
+        if (_wcsicmp(pExt, ext) == 0) return true;
+    }
+    return false;
 }
 
 // T-F86: non-ZIP formats Archiver.Core routes to ITarService - kept in sync with
-// Archiver.App/ViewModels/MainViewModel.cs's _extractableTypes (minus "ZIP", handled separately
-// above). See DECISIONS.md's T-F86 entry for why extension-only, not magic-byte, at gating time.
+// Archiver.Core/Services/ArchiveFormatDetector.cs's _recognizedExtensions (minus the ZIP-container
+// group above, handled separately). See DECISIONS.md's T-F86 entry for why extension-only, not
+// magic-byte, at gating time.
 static const wchar_t* const kSupportedNonZipArchiveExtensions[] = {
     L".rar", L".7z", L".tar", L".gz", L".tgz", L".bz2", L".tbz2",
     L".xz", L".txz", L".zst", L".tzst", L".lzma"

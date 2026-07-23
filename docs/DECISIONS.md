@@ -5972,3 +5972,65 @@ the meantime.
 code/manifest changes. When T-F129 reaches "app live in Store," the next action is a SignPath
 Foundation *reapplication* (not a fresh T-F124 from scratch — reuse `SIGNING.md` and the existing
 gap-analysis, add the live Store listing as new evidence), not an immediate purchase decision.
+
+## T-F131 — Recognizing .jar/.war/.ear/.apk as ZIP-Format Archives (2026-07-24)
+
+**Question that started this:** how does Pakko behave when a file is a real ZIP container (magic
+bytes `PK\x03\x04`) but carries a non-`.zip` extension, e.g. a `.jar`? Investigation found the
+answer was split across layers:
+
+- `ArchiveFormatDetector.Detect()` (magic-byte sniffing) already classified any ZIP-signature file
+  as `ArchiveFormat.Zip` regardless of extension — no change needed there. This is why `pakko.exe x
+  file.jar` and the GUI's manual file picker already worked correctly before this task.
+- Windows Explorer double-click routes purely by `FileTypeAssociation` (an OS mechanism keyed on
+  extension) — a `.jar` was never registered, so double-click never offered Pakko at all.
+- The Explorer right-click context menu gates `Extract`/`Test archive`/etc. visibility via
+  `ShellExtUtils.cpp`'s `HasZipExtension`/`HasSupportedNonZipArchiveExtension` — a deliberate
+  extension-only allowlist (T-F86), not magic-byte sniffing, specifically to avoid opening every
+  selected file on every right-click just to draw a menu (confirmed this is also NanaZip's own
+  approach, not something Pakko under-implemented). `.jar` wasn't on either allowlist, so the menu
+  never offered Extract for one.
+
+**Decision — extend the extension allowlists rather than add magic-byte sniffing at gating time.**
+Since `.jar`/`.war`/`.ear`/`.apk` are ZIP-format *by specification*, not by accident, an
+extension-based allowlist is exactly as reliable for these four as it already is for `.zip` itself
+— no need to compromise T-F86's no-disk-I/O-at-gating-time principle to support them.
+
+**Scope decision — Java (`.jar`/`.war`/`.ear`) and Android (`.apk`) only, not Office/OpenDocument
+or `.epub`.** Asked the user directly via `AskUserQuestion` rather than assuming "any known ZIP
+container" was wanted. Office formats (`.docx`/`.xlsx`/`.pptx`) and OpenDocument (`.odt`/`.ods`/
+`.odp`) are also real ZIP containers, but putting "Extract"/"Test archive" on every Word/Excel
+document a typical user has would be real UX noise for Pakko's general audience — a meaningfully
+different tradeoff than Java/Android archives, which are near-exclusively touched by developers who
+already think of them as archives. This mirrors the same reasoning `SECURITY.md`/T-F97's preview
+allowlist already uses (deliberately narrower than what's technically possible, for this project's
+own audience).
+
+**Implementation — single choke point kept single.** `ShellExtUtils.cpp`'s `HasZipExtension` was
+already the one function `AllPathsAreZip`/`AnyPathIsZip`/`AllPathsAreSupportedArchive` all route
+through (per T-F86's own design) — widening its internal check from a bare `.zip` string compare to
+a small `kZipContainerExtensions` array required no changes anywhere else in the C++ layer. Same
+shape on the C# side: `ArchiveFormatDetector._recognizedExtensions` is already the single source of
+truth `MainViewModel` and T-F98's nested-drill-down candidacy check both consume.
+
+**`Package.appxmanifest`:** added the four extensions to the existing `archivefile`
+`FileTypeAssociation` group (`DisplayName="Pakko Archive"`) instead of creating a third group.
+Windows' file-type-association registration only affects "Open with" / default-app eligibility, not
+which engine Pakko uses internally — `ExtractionRouter`'s magic-byte `Detect()` call still decides
+`ZipArchiveService` vs `ITarService` at the moment extraction actually runs, same as always.
+
+**Not yet done:** on-device `Deploy.ps1` + Explorer verification (real `.jar` file, real right-click,
+real "Open with" flow) — implementation is `dotnet test`/C++ Google Test green only so far, per this
+project's own rule against graduating shell-triggered changes without a real device check.
+
+**On-device verification (2026-07-24, same day):** `Deploy.ps1` build+sign+install, then a real
+`app.jar` (built via `Compress-Archive` + rename, confirmed real `PK\x03\x04` magic bytes before
+testing) right-clicked in Explorer. Confirmed the full Pakko submenu now appears for a `.jar`
+(previously only "Стиснути..." would have shown) — Відкрити/Видобути файли.../Видобути до поточної
+папки/Видобути до поточної папки (Інтелектуально)/Видобути до "app\"/Стиснути.../Тестувати архів/
+hash commands. Functionally exercised, not just menu visibility: "Тестувати архів" against the real
+`.jar` returned "No errors detected in the archive(s)."; "Видобути до \"app\\\"" produced real
+extracted files with byte-identical content to the originals, confirmed via direct file read.
+Double-click/"Open with" → Archive Browser specifically wasn't separately clicked through this
+round — see `TASKS.md`'s T-F131 acceptance criteria for the honest scope of what was and wasn't
+checked.

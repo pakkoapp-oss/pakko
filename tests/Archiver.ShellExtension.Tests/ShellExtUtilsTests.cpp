@@ -45,6 +45,22 @@ TEST(AnyPathIsZip, ReturnsFalseWhenNoneAreZip)
     EXPECT_FALSE(AnyPathIsZip({ L"C:\\file.txt", L"C:\\image.png" }));
 }
 
+// T-F131: .jar/.war/.ear/.apk are real ZIP-format containers, treated as ZIP for gating purposes.
+TEST(AllPathsAreZip, TrueForJarWarEarApk)
+{
+    EXPECT_TRUE(AllPathsAreZip({ L"C:\\app.jar", L"C:\\site.war", L"C:\\enterprise.ear", L"C:\\app.apk" }));
+}
+
+TEST(AnyPathIsZip, TrueForJarAmongOthers)
+{
+    EXPECT_TRUE(AnyPathIsZip({ L"C:\\file.txt", L"C:\\build.jar" }));
+}
+
+TEST(AllPathsAreZip, JarCaseInsensitive)
+{
+    EXPECT_TRUE(AllPathsAreZip({ L"C:\\App.JAR", L"C:\\Site.War" }));
+}
+
 // ---------------------------------------------------------------------------
 // HasSupportedNonZipArchiveExtension / AllPathsAreSupportedArchive / AnyPathIsSupportedArchive
 // (T-F86)

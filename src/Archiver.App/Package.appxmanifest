@@ -60,10 +60,16 @@
         <!-- T-F100: extensions Archiver.Core actually routes to ITarService/tar.exe today.
              Reuses ShellExtUtils.cpp's kSupportedNonZipArchiveExtensions list (already the
              project's single source of truth for this set, kept in sync with
-             MainViewModel.cs's _extractableTypes) rather than NanaZip's much larger ~60-extension
-             list, since Pakko doesn't support most of those. Runtime capability gaps (older
-             Windows without a capable tar.exe) still surface ArchiveListingRouter/
-             ExtractionRouter's existing "not supported" error instead of a silent failure. -->
+             Archiver.Core/Services/ArchiveFormatDetector.cs's _recognizedExtensions) rather than
+             NanaZip's much larger ~60-extension list, since Pakko doesn't support most of those.
+             Runtime capability gaps (older Windows without a capable tar.exe) still surface
+             ArchiveListingRouter/ExtractionRouter's existing "not supported" error instead of a
+             silent failure.
+             T-F131: .jar/.war/.ear/.apk are real ZIP-format containers (ZipArchiveService handles
+             them directly, no tar.exe involved) - included here anyway rather than a separate
+             association group, since the practical effect (register as a capable Explorer/"Open
+             with" handler) is identical. See DECISIONS.md's T-F131 entry for why these four and
+             not Office/OpenDocument/.epub. -->
         <uap:Extension Category="windows.fileTypeAssociation">
           <uap:FileTypeAssociation Name="archivefile">
             <uap:SupportedFileTypes>
@@ -79,6 +85,10 @@
               <uap:FileType>.zst</uap:FileType>
               <uap:FileType>.tzst</uap:FileType>
               <uap:FileType>.lzma</uap:FileType>
+              <uap:FileType>.jar</uap:FileType>
+              <uap:FileType>.war</uap:FileType>
+              <uap:FileType>.ear</uap:FileType>
+              <uap:FileType>.apk</uap:FileType>
             </uap:SupportedFileTypes>
             <uap:DisplayName>Pakko Archive</uap:DisplayName>
             <uap:Logo>Assets\Square44x44Logo.png</uap:Logo>

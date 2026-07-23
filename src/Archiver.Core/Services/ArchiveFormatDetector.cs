@@ -14,9 +14,16 @@ public static class ArchiveFormatDetector
     // decide whether an in-archive entry (not yet extracted, so Detect's magic-byte sniff can't
     // run against it) is a drill-down candidate, and by MainViewModel.IsExtractOnlySelection for
     // the pending list. The real magic-byte Detect() call still runs after extraction to confirm.
+    // T-F131: .jar/.war/.ear (Java) and .apk (Android) are real ZIP-format containers (PK\x03\x04
+    // signature) — Detect() already classified them as ArchiveFormat.Zip via magic bytes with no
+    // change needed there. This list only gates the *extension-based, no-disk-I/O* fast paths
+    // (Explorer context menu, FileTypeAssociation, this recognized-extension check) — kept
+    // deliberately narrower than "every possible ZIP container" (no Office/OpenDocument/.epub) per
+    // the user's explicit choice; see DECISIONS.md's T-F131 entry.
     private static readonly HashSet<string> _recognizedExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
-        ".zip", ".rar", ".7z", ".tar", ".gz", ".tgz", ".bz2", ".tbz2", ".xz", ".txz", ".zst", ".tzst", ".lzma"
+        ".zip", ".jar", ".war", ".ear", ".apk",
+        ".rar", ".7z", ".tar", ".gz", ".tgz", ".bz2", ".tbz2", ".xz", ".txz", ".zst", ".tzst", ".lzma"
     };
 
     public static bool IsRecognizedArchiveExtension(string fileName) =>
