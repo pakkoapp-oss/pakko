@@ -1214,16 +1214,14 @@ Task<IReadOnlyList<string>> PickFoldersAsync()
   100% clean on an immediate `gh run rerun --failed` with zero code changes in between — same
   root cause (AppContainer/Job-Object contention under CI's own parallel test execution), not a
   new bug.
-  **Likely root cause found, fix implemented 2026-07-24 (T-F130), CI confirmation pending:** all
-  10 `Archiver.Core.IntegrationTests` classes
+  **Root-caused and fixed 2026-07-24 (T-F130):** all 10 `Archiver.Core.IntegrationTests` classes
   that drive real AppContainer/Job Object/quarantine ACL calls were racing against *each other*
   under xUnit's default parallel-by-class execution — grouped into one
   `[Collection("TarSandbox", DisableParallelization = true)]` (see `docs/TESTING.md`) so they run
   sequentially relative to each other while still running in parallel with unrelated projects.
-  Passes locally (`dotnet test tests/Archiver.Core.IntegrationTests`, 60/60); **not yet confirmed
-  in CI** — the "clean rerun" mentioned above was of the *old* code, before this fix, and only
-  demonstrated the pre-existing intermittent-failure pattern, not this fix's effect. Watch the next
-  real CI run on this change before treating the flakiness as actually resolved. If this specific
+  **Confirmed in a real CI run on the actual fix** (run `30037580723`, 2026-07-23: 60/60,
+  0 failures, 8s — not just the local `dotnet test` pass or the earlier pre-fix "clean rerun,"
+  which only demonstrated the intermittent-failure pattern, not this fix's effect). If this specific
   flakiness class recurs
   recurs anyway, the likely remaining vector is cross-*project* contention (`Archiver.CLI.Tests`'
   `Subprocess/` layer launching real sandboxed subprocesses concurrently with this project, not

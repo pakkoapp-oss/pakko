@@ -235,9 +235,9 @@ sequentially relative to each other while still running in parallel with unrelat
 projects/collections. Likely root cause of the CI flakiness documented in `CLAUDE.md`'s "Known
 test gaps": concurrent AppContainer profile/Job Object/quarantine ACL calls across different test
 classes racing under xUnit's default parallel-by-class execution, not a real product bug and not
-a per-test cost problem. Passes locally (60/60) — **CI confirmation still pending as of
-2026-07-24**; see `CLAUDE.md`'s T-F130 note for current status before assuming this is fully
-verified.
+a per-test cost problem. **Confirmed fixed via a real CI run on the actual fix** (60/60, 0
+failures — not just a local `dotnet test` pass); if flakiness ever recurs here, it's a real
+regression worth investigating, not the old expected noise.
 
 ### Tags
 
