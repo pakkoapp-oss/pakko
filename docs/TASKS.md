@@ -2665,3 +2665,49 @@ current folder without creating some destination folder first.
       activation code path T-F03/T-F100 already cover for every other registered extension,
       nothing `.jar`-specific in that path), but flagging honestly rather than claiming it was
       checked when it wasn't.
+
+### T-F132 — Sandbox the ZIP Path Like tar.exe (speculative, not scheduled)
+- [ ] **Status:** future, deferred indefinitely — recorded so the idea isn't lost, not because it's
+      planned work. Added 2026-07-24 after a hypothetical raised during a Reddit-thread security
+      discussion (see `SECURITY.md`'s "Native decompression 0-day in the ZIP path" row in Known
+      Limitations, added the same session). **Do not pick this up without a real trigger** — see
+      Acceptance criteria below for what that trigger looks like.
+- **Depends on:** none
+
+**The question:** could `ZipArchiveService`'s ZIP handling (`System.IO.Compression`) be sandboxed
+the same way `TarSandboxedService` sandboxes tar.exe (T-F52)?
+
+**Answer: technically yes, but not justified today.** The sandbox subsystem
+(`AppContainerProfile`/`QuarantineAcl`/`SandboxJobObject`/`SandboxedProcessLauncher`) is already
+generic, not tar.exe-specific — but AppContainer confines a *process*, not a code region within
+one. ZIP currently runs as an in-process library call inside `Archiver.App`/`Archiver.Shell`
+itself; sandboxing it the same way would require carving it out into a new standalone worker
+executable (a real new build/sign/ship artifact) launched via the existing launcher, not a config
+flag on the current code.
+
+**Why not now:**
+- **No confirmed exploit to close.** T-F52's tar.exe sandbox was justified by a *demonstrated*
+  exploit (T-F49's symlink escape) — this would be preemptive hardening against a theoretical
+  native-decompression memory-corruption bug with no track record against this specific code path.
+  `System.IO.Compression` is one of the most widely used, most audited parts of the entire .NET
+  BCL — arguably broader real-world scrutiny than libarchive ever had.
+- **Real performance cost, not hypothetical.** T-F35's parallel ZIP pipeline gets its speed from
+  multiple threads inside one process; T-F114 already measured process-spawn overhead as the
+  dominant cost in the many-small-files scenario for an *external* tool (7za.exe) — the same
+  overhead would apply here, on every operation (or every batch, if redesigned to spawn once per
+  batch instead of per file — a real design question, not solved by this entry).
+- **New artifact, new attack surface of its own** (a new signed exe, new IPC protocol for
+  progress/results across the process boundary) — not free to add.
+
+**What would actually trigger picking this up:**
+- [ ] A real CVE lands against `System.IO.Compression`'s Deflate path (or the native zlib-derived
+      component it calls into) that plausibly affects Pakko's usage — not a CVE in an unrelated
+      part of the BCL.
+- [ ] Or: a concrete threat-model change for the target audience makes the current "accepted risk"
+      framing in `SECURITY.md` no longer acceptable to them.
+
+**If it's ever picked up, first design questions to answer (not answered here):** spawn a fresh
+sandboxed worker per archive operation, or per batch (perf tradeoff above)? Reuse
+`Archiver.Shell.exe`/`pakko.exe` as the worker, or a new dedicated executable? What IPC shape
+carries `ProgressReport`/`ArchiveResult` back across the process boundary without reintroducing the
+same "opening every file just to check" cost class T-F86 already rejected for a different reason?
