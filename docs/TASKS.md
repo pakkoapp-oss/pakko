@@ -2711,3 +2711,19 @@ sandboxed worker per archive operation, or per batch (perf tradeoff above)? Reus
 `Archiver.Shell.exe`/`pakko.exe` as the worker, or a new dedicated executable? What IPC shape
 carries `ProgressReport`/`ArchiveResult` back across the process boundary without reintroducing the
 same "opening every file just to check" cost class T-F86 already rejected for a different reason?
+
+**Empirical spike run 2026-07-24 — real numbers, still doesn't flip the decision above.** Built
+`tools/ZipSandboxSpike/` (a committed, not throwaway, worker calling `ZipArchiveService` directly
+inside the real sandbox primitives — new profile `Pakko.ZipSandboxSpike`, independent of
+production `Pakko.TarSandbox`) plus `tests/Archiver.Core.PerformanceTests/ZipSandboxSpikePerformanceTests.cs`
+to actually measure the "real performance cost" bullet above instead of leaving it asserted.
+See `DECISIONS.md`'s new T-F132 entry for the full results table and machine spec. Headline: pure
+launch/AppContainer/Job-Object overhead is a real, consistent **~90 ms fixed cost per operation**
+(not per file — confirms the "amortizes" framing). But relative impact turned out to hinge on
+operation length, not file count: negligible (3.6%) for a 10 s archive, dominant (37–77%) for
+sub-second operations — and a second, previously-unconsidered cost (worker-process JIT cold-start,
+which a discarded warmup *launch* cannot remove since each launch is a fresh process) contributed
+more to the delta than the sandbox primitives themselves in 3 of 4 scenarios. Still no confirmed
+CVE, so the "no confirmed exploit to close" reasoning above is unchanged and this stays deferred —
+but if ever revisited, `PublishReadyToRun`/a persistent pre-warmed worker is now a known real
+question, not just AppContainer/Job-Object setup cost (which this spike shows is already cheap).

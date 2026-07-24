@@ -6034,3 +6034,63 @@ extracted files with byte-identical content to the originals, confirmed via dire
 Double-click/"Open with" → Archive Browser specifically wasn't separately clicked through this
 round — see `TASKS.md`'s T-F131 acceptance criteria for the honest scope of what was and wasn't
 checked.
+
+## T-F132 — Empirical Spike Findings (Sandboxed ZIP Worker Overhead, 2026-07-24)
+
+**Method:** a real committed spike, not throwaway-uncommitted like T-F52's Phase 0 —
+`tools/ZipSandboxSpike/` (a minimal worker calling `ZipArchiveService.ArchiveAsync`/`ExtractAsync`
+directly, bypassing `ExtractionRouter`/`ArchiveCreationRouter` so an unrelated `tar.exe --version`
+capability-check spawn doesn't pollute the number) launched inside a real AppContainer +
+Job Object via the exact same, unmodified `SandboxedProcessLauncher`/`SandboxJobObject`/
+`AppContainerProfile`/`QuarantineAcl` primitives `TarSandboxedService` already uses in production —
+new profile identity `Pakko.ZipSandboxSpike`, independent of and non-interfering with production
+`Pakko.TarSandbox` (SIDs are deterministically derived from the profile-name string alone).
+New test file `tests/Archiver.Core.PerformanceTests/ZipSandboxSpikePerformanceTests.cs` reuses the
+same `PerformanceFixtures`/warmup-then-timed-pass pattern `CompressionPerformanceTests` already
+established, plus a negative-control test (mirroring `QuarantineAclTests`' own no-grant test)
+confirmed passing before any timing number below was trusted — proof the AppContainer confinement
+is real, not a no-op producing coincidentally-plausible numbers.
+
+**Machine (these are absolute wall-clock milliseconds, not ratios — do not treat as portable
+across machines, unlike `CompressionPerformanceTests`' calibrated ratios):** AMD Ryzen 5 PRO 4650U,
+30 GB RAM, Windows 11 Pro build 26200.
+
+**Results** (in-process = existing `ZipArchiveService` baseline; sandboxed-total = whole launcher-side
+wall time around `SandboxedProcessLauncher.RunAsync`; worker-internal = the worker's own
+`Stopwatch`-measured `ZipArchiveService` call time, parsed from its `internal_elapsed_ms=` stderr line):
+
+| Scenario | In-process | Sandboxed-total | Worker-internal | Delta (total − in-process) |
+|---|---|---|---|---|
+| Archive / ManySmallFiles (5,000 files) | 490.7 ms | 869.0 ms | 781.0 ms | +378.3 ms (+77.1%) |
+| Extract / ManySmallFiles (5,000 files) | 13,257.8 ms | 11,578.7 ms | 11,491.0 ms | −1,679.1 ms (−12.7%) |
+| Archive / OneLargeFile (300 MB) | 10,148.3 ms | 10,516.1 ms | 10,420.2 ms | +367.9 ms (+3.6%) |
+| Extract / OneLargeFile (300 MB) | 329.5 ms | 451.7 ms | 359.4 ms | +122.3 ms (+37.1%) |
+
+**Decomposing the delta — two distinct costs, not one:** `sandboxed-total − worker-internal` isolates
+pure process-launch/AppContainer/Job-Object/pipe overhead, excluding the ZIP work itself. This came
+out remarkably consistent across all four scenarios regardless of workload: **88.0 ms, 87.7 ms,
+95.9 ms, 92.3 ms** — a real, ~90 ms fixed cost per sandboxed launch, matching the "amortized once per
+operation, not per file" intuition exactly. The rest of the delta — `worker-internal − in-process` —
+is a second, distinct cost the original hypothesis (T-F132's "Do not pick this up without a real
+trigger" framing, and the earlier chat discussion assuming "cost is only in process initialization")
+did not anticipate: the *same* `ZipArchiveService` code measurably ran slower inside a freshly-launched
+worker process than in the already-warm test process, on 3 of 4 scenarios (+290.3 ms /
+Archive-ManySmallFiles, +271.9 ms / Archive-OneLargeFile, +29.9 ms / Extract-OneLargeFile) —
+consistent with JIT/cold-start cost that a discarded warmup *launch* cannot remove, because each
+launch is a brand-new process with its own JIT cache; unlike the in-process baseline, where warmup
+and the timed run share one process and one JIT cache. The one scenario where this reversed
+(Extract-ManySmallFiles, worker-internal 1,766.8 ms *faster*) is the single-threaded, ~13-second,
+many-small-file extraction path — at that scale, ordinary disk-I/O run-to-run noise plausibly swamps
+a few-hundred-millisecond JIT effect entirely.
+
+**Verdict:** the original "amortizes per operation, not per file" framing is correct but incomplete.
+Relative impact is not primarily about file count — it's dominated by how long the underlying
+operation already takes. For short operations (sub-second to ~1 s), the ~90 ms fixed launch cost
+plus JIT cold-start is a large, clearly visible fraction (37–77% observed here). For long operations
+(≥10 s), the same absolute overhead is negligible (3.6% observed). This does **not** change T-F132's
+"no confirmed exploit to close" reasoning for staying deferred — no CVE surfaced, the threat is still
+theoretical — but it does sharpen what a future implementation would need to solve if ever picked up:
+the real cost center for typical (short) user operations is worker cold-start, not sandbox
+setup/teardown, so `PublishReadyToRun`/a persistent pre-warmed worker process would need real
+investigation before any production integration, not just AppContainer/Job-Object primitives (which
+are already cheap and already proven, per the ~90 ms figure above).
