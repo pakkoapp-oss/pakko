@@ -2729,11 +2729,13 @@ but if ever revisited, `PublishReadyToRun`/a persistent pre-warmed worker is now
 question, not just AppContainer/Job-Object setup cost (which this spike shows is already cheap).
 
 ### T-F133 — Recognize .asice/.asics/.bdoc as ZIP-Format Archives (Explorer + FileTypeAssociation)
-- [~] **Status:** implementation complete 2026-07-25, on-device verification pending. Same pattern
-      as T-F131 (`.jar`/`.war`/`.ear`/`.apk`), different format family: `.asice`/`.asics` (ASiC-E/
-      ASiC-S, ETSI TS 102 918 signed containers) and `.bdoc` (Estonia's national ASiC-E profile) —
-      all real ZIP-format containers, added together as one family per the user's "add it like the
-      other similar ones" request. See `DECISIONS.md`'s T-F133 entry.
+- [x] **Status:** done 2026-07-25 — `Deploy.ps1` build+sign+install completed (v1.4.2.0), then the
+      user's own personal on-device click-through against a real `test.asice` file confirmed the
+      full Pakko context-menu (Extract/Test/etc.) appears and works, same as T-F131's `.jar` check.
+      Same pattern as T-F131 (`.jar`/`.war`/`.ear`/`.apk`), different format family: `.asice`/`.asics`
+      (ASiC-E/ASiC-S, ETSI TS 102 918 signed containers) and `.bdoc` (Estonia's national ASiC-E
+      profile) — all real ZIP-format containers, added together as one family per the user's "add it
+      like the other similar ones" request. See `DECISIONS.md`'s T-F133 entry.
 - **Depends on:** none
 
 **Scope:** `ArchiveFormatDetector.cs`'s `_recognizedExtensions`, `ShellExtUtils.cpp`'s
@@ -2747,6 +2749,6 @@ compiling clean.
 **Acceptance criteria:**
 - [x] `dotnet test` green with new coverage (400/400 `Archiver.Core.Tests`)
 - [x] C++ Google Test suite green (98/98)
-- [ ] `Deploy.ps1` build+sign+install + on-device Explorer check with a real `.asice`/`.bdoc` file —
-      **not yet done this session**, per this project's rule against graduating shell-triggered
+- [x] `Deploy.ps1` build+sign+install + on-device Explorer check with a real `.asice`/`.bdoc` file —
+      user's own personal click-through, 2026-07-25, per this project's rule against graduating shell-triggered
       changes on `dotnet test` alone
