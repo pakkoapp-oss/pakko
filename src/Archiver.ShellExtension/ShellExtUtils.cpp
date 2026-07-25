@@ -28,8 +28,10 @@ static std::wstring QuotePath(const std::wstring& path)
 // T-F131: .jar/.war/.ear (Java) and .apk (Android) are real ZIP-format containers — deliberately
 // narrower than "every possible ZIP container" (no Office/OpenDocument/.epub), per the user's
 // explicit choice. See DECISIONS.md's T-F131 entry.
+// T-F133: .asice/.asics (ASiC-E/ASiC-S signed containers, ETSI TS 102 918) and .bdoc (Estonia's
+// national ASiC-E profile) — also real ZIP-format containers. See DECISIONS.md's T-F133 entry.
 static const wchar_t* const kZipContainerExtensions[] = {
-    L".zip", L".jar", L".war", L".ear", L".apk"
+    L".zip", L".jar", L".war", L".ear", L".apk", L".asice", L".asics", L".bdoc"
 };
 
 static bool HasZipExtension(const std::wstring& path)

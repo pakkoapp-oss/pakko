@@ -69,7 +69,9 @@
              them directly, no tar.exe involved) - included here anyway rather than a separate
              association group, since the practical effect (register as a capable Explorer/"Open
              with" handler) is identical. See DECISIONS.md's T-F131 entry for why these four and
-             not Office/OpenDocument/.epub. -->
+             not Office/OpenDocument/.epub.
+             T-F133: .asice/.asics/.bdoc (ASiC-E/ASiC-S/Estonia's BDOC signed containers) are also
+             real ZIP-format containers, same reasoning. See DECISIONS.md's T-F133 entry. -->
         <uap:Extension Category="windows.fileTypeAssociation">
           <uap:FileTypeAssociation Name="archivefile">
             <uap:SupportedFileTypes>
@@ -89,6 +91,9 @@
               <uap:FileType>.war</uap:FileType>
               <uap:FileType>.ear</uap:FileType>
               <uap:FileType>.apk</uap:FileType>
+              <uap:FileType>.asice</uap:FileType>
+              <uap:FileType>.asics</uap:FileType>
+              <uap:FileType>.bdoc</uap:FileType>
             </uap:SupportedFileTypes>
             <uap:DisplayName>Pakko Archive</uap:DisplayName>
             <uap:Logo>Assets\Square44x44Logo.png</uap:Logo>

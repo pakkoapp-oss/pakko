@@ -61,6 +61,17 @@ TEST(AllPathsAreZip, JarCaseInsensitive)
     EXPECT_TRUE(AllPathsAreZip({ L"C:\\App.JAR", L"C:\\Site.War" }));
 }
 
+// T-F133: .asice/.asics/.bdoc (ASiC signed containers) are also real ZIP-format containers.
+TEST(AllPathsAreZip, TrueForAsiceAsicsBdoc)
+{
+    EXPECT_TRUE(AllPathsAreZip({ L"C:\\signed.asice", L"C:\\signed.asics", L"C:\\document.bdoc" }));
+}
+
+TEST(AnyPathIsZip, TrueForAsiceAmongOthers)
+{
+    EXPECT_TRUE(AnyPathIsZip({ L"C:\\file.txt", L"C:\\signed.asice" }));
+}
+
 // ---------------------------------------------------------------------------
 // HasSupportedNonZipArchiveExtension / AllPathsAreSupportedArchive / AnyPathIsSupportedArchive
 // (T-F86)

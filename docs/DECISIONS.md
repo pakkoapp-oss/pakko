@@ -6094,3 +6094,34 @@ the real cost center for typical (short) user operations is worker cold-start, n
 setup/teardown, so `PublishReadyToRun`/a persistent pre-warmed worker process would need real
 investigation before any production integration, not just AppContainer/Job-Object primitives (which
 are already cheap and already proven, per the ~90 ms figure above).
+
+## T-F133 — Recognizing .asice/.asics/.bdoc as ZIP-Format Archives (2026-07-25)
+
+**Same pattern as T-F131, different format family.** User reported `.asice` (ASiC-E, "Associated
+Signature Container — Extended") not offering Extract/Test via Explorer despite being a real
+ZIP-format container — identical root cause to T-F131: `ArchiveFormatDetector.Detect()`'s
+magic-byte sniffing already handled it correctly (no change needed there), but the
+extension-only fast paths (Explorer context menu allowlist, `FileTypeAssociation`) didn't know
+about it.
+
+**Scope — the ASiC family, not "every possible signed-document container":** ASiC-E (`.asice`)
+and ASiC-S (`.asics`, single-document profile) are two profiles of the same ETSI TS 102 918 /
+EN 319 162 container spec — both real ZIP files with a `mimetype` entry and XAdES/CAdES
+signatures under `META-INF/`. `.bdoc` is Estonia's own named national profile of ASiC-E
+(digital-signature ecosystem, relevant given this project's government/defense-adjacent
+audience and Ukraine's EU-integration context). All three added together since they're the same
+underlying container format, not a broader "any signed document" scope — this mirrors T-F131's
+own "Java family together, not every ZIP container" reasoning, not a new precedent.
+
+**Implementation — identical shape to T-F131, same single choke points extended:**
+- `ArchiveFormatDetector.cs`'s `_recognizedExtensions`
+- `ShellExtUtils.cpp`'s `kZipContainerExtensions` (flows through `HasZipExtension` to every
+  context-menu command's gating, unchanged)
+- `Package.appxmanifest`'s existing `archivefile` `FileTypeAssociation` group
+
+No new design questions — T-F131 already established the pattern; this is a straightforward
+extension of the same allowlist, not a new decision.
+
+**Test coverage:** `ArchiveFormatDetectorTests` +3 `[InlineData]` cases (400 total, was 397);
+`ShellExtUtilsTests.cpp` +2 `TEST()`s (98/98, was 96). `dotnet build`/MSBuild both confirmed
+compiling clean for the real `Archiver.ShellExtension.vcxproj` DLL, not just the test project.

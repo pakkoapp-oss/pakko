@@ -109,6 +109,9 @@ public sealed class ArchiveFormatDetectorTests : IDisposable
     [InlineData("site.WAR")]
     [InlineData("enterprise.ear")]
     [InlineData("app.apk")]
+    [InlineData("signed.asice")]
+    [InlineData("signed.ASICS")]
+    [InlineData("document.bdoc")]
     public void IsRecognizedArchiveExtension_RecognizedExtension_ReturnsTrue(string fileName)
     {
         ArchiveFormatDetector.IsRecognizedArchiveExtension(fileName).Should().BeTrue();

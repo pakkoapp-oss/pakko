@@ -20,9 +20,12 @@ public static class ArchiveFormatDetector
     // (Explorer context menu, FileTypeAssociation, this recognized-extension check) — kept
     // deliberately narrower than "every possible ZIP container" (no Office/OpenDocument/.epub) per
     // the user's explicit choice; see DECISIONS.md's T-F131 entry.
+    // T-F133: .asice/.asics (ASiC-E/ASiC-S, ETSI TS 102 918 signed containers) and .bdoc (Estonia's
+    // national ASiC-E profile) — also real ZIP-format containers, same reasoning as T-F131. See
+    // DECISIONS.md's T-F133 entry.
     private static readonly HashSet<string> _recognizedExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
-        ".zip", ".jar", ".war", ".ear", ".apk",
+        ".zip", ".jar", ".war", ".ear", ".apk", ".asice", ".asics", ".bdoc",
         ".rar", ".7z", ".tar", ".gz", ".tgz", ".bz2", ".tbz2", ".xz", ".txz", ".zst", ".tzst", ".lzma"
     };
 
