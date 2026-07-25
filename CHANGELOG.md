@@ -10,6 +10,25 @@ the technical account of any task named here.
 
 ---
 
+## v1.4.2 — 2026-07-25
+
+Point release widening ZIP-format recognition to two more container-file families, plus
+Microsoft Store submission preparation.
+
+- **T-F131** — Explorer/file-association recognition of `.jar`/`.war`/`.ear` (Java) and `.apk`
+  (Android) as ZIP-format archives, so the full Pakko context menu (Extract/Test/etc.) works on
+  them directly.
+- **T-F133** — Same recognition extended to `.asice`/`.asics` (ASiC-E/ASiC-S signed containers)
+  and `.bdoc` (Estonia's ASiC-E profile), at a user's request.
+- **T-F129** — Microsoft Store submission preparation: WACK (Windows App Certification Kit)
+  fixes, vector-accurate brand assets regenerated from the canonical SVG source, and an
+  `Package.appxmanifest` revision-segment fix required for submission. The Store listing itself
+  is not live yet.
+- **T-F130** — Fixed intermittent CI test failures in `Archiver.Core.IntegrationTests` caused by
+  sandboxed tests racing each other under parallel execution.
+
+---
+
 ## v1.4.1 — 2026-07-20
 
 Point release covering Explorer hash commands and a `pakko.exe` CLI addition.
