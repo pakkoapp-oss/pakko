@@ -2752,3 +2752,29 @@ compiling clean.
 - [x] `Deploy.ps1` build+sign+install + on-device Explorer check with a real `.asice`/`.bdoc` file —
       user's own personal click-through, 2026-07-25, per this project's rule against graduating shell-triggered
       changes on `dotnet test` alone
+
+### T-F134 — `pakko -v`/`--version` CLI Flag
+- [x] **Status:** done 2026-07-26 — user asked directly whether `Archiver.CLI` had a `version`
+      command; it didn't, and `Archiver.CLI.csproj` had no `<Version>` at all (silently defaulting
+      to .NET's `1.0.0.0`), so `pakko --version` would have been actively misleading even if added
+      naively. Console-only change (no shell/UI surface) — agent-driven smoke test against the real
+      built `pakko.exe` (both `-v`/`--version`, plus a real archive/extract round trip through the
+      same binary confirming no regression) passed, accepted as sufficient per this project's rule
+      (the `Deploy.ps1` on-device-click-through requirement is specifically for shell-triggered/UI
+      behavior). See `DECISIONS.md`'s T-F134 entry.
+- **Depends on:** none
+
+**Scope:** new `CliCommandType.Version` in `CliArgumentParser.cs` (`-v`/`--version`, parsed
+alongside `-h`/`--help`); `Program.cs`'s `RunVersion()` prints `pakko X.Y.Z` from the executing
+assembly's `AssemblyVersion`, exit 0. `Archiver.CLI.csproj` gained a real `<Version>1.4.2</Version>`
+(previously absent). `scripts/Publish-Cli.ps1` gained a `-Version` override parameter
+(`/p:Version` passed to `dotnet publish`); `.github/workflows/build.yml`'s `build-cli` job now
+passes the pushed git tag (stripped of its leading `v`) on a tag push, so a released `pakko.exe`
+always reports the exact tag it shipped under regardless of the csproj's own checked-in default.
+`docs/CLI.md` documents why this diverges from real 7z (which has no `version` subcommand — it
+prints a compiled-in banner on every invocation instead).
+
+**Acceptance criteria:**
+- [x] `dotnet test` green (`Archiver.CLI.Tests` 147/147, was 143 — 4 new: 2 parser, 2 subprocess)
+- [x] Real built `pakko.exe -v`/`--version` (both flags) smoke-tested, printing `pakko X.Y.Z` and
+      exiting 0

@@ -95,6 +95,18 @@ Rejected 2026-07-18; see `DECISIONS.md`'s T-F09 "Distribution" entry.
 | `h` | Hash | **Supported (added 2026-07-20, T-F128/T-F09 follow-up).** Real 7z `h` hashes files on disk, not archive entries — the original row here predated T-F128 and described the wrong thing. Maps onto `FileHashService.ComputeAsync` (same engine the Explorer context-menu "Хеш-суми" submenu uses): one or more files hashed independently, or exactly one folder recursed with a combined DataSum/NamesSum printed (NanaZip-compatible, verified against the vendored `7za.exe`) |
 | `rn` | Rename entries in an archive | Not supported, deliberately — in-place mutation, same reasoning as `d` |
 
+## Version reporting — deliberately not a 7z pattern
+
+Real 7z has no `version` subcommand — it isn't one of the 11 characters in `g_Commands`. Instead
+every 7z invocation prints a startup banner (`7-Zip 19.00 (x64) : Copyright ...`) built from a
+version constant compiled into the binary. Pakko's CLI diverges here on purpose: a banner on every
+command's output would add noise to scripted/piped usage (`-so`/`h` output especially), so instead
+`pakko -v`/`pakko --version` (added 2026-07-26) is a dedicated flag, printing just `pakko X.Y.Z`
+and exiting 0 — closer to `git --version`/`rg --version` convention than 7z's own. The version
+comes from `Archiver.CLI.csproj`'s `<Version>` MSBuild property, which `scripts/Publish-Cli.ps1`
+overrides via `/p:Version` at release-build time (CI passes the pushed git tag, stripped of its
+leading `v`) so a released `pakko.exe` always reports the exact tag it shipped under.
+
 ## Switch fidelity — per-switch, not full coverage
 
 | 7z switch | Meaning | Pakko mapping |

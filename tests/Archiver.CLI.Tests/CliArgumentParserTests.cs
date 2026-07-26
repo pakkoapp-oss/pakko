@@ -32,6 +32,24 @@ public sealed class CliArgumentParserTests
         result.Type.Should().Be(CliCommandType.Help);
     }
 
+    // --- Version ---
+
+    [Fact]
+    public void DashDashVersion_ReturnsVersion()
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse(["--version"]);
+
+        result.Type.Should().Be(CliCommandType.Version);
+    }
+
+    [Fact]
+    public void DashV_ReturnsVersion()
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse(["-v"]);
+
+        result.Type.Should().Be(CliCommandType.Version);
+    }
+
     // --- Valid: x ---
 
     [Fact]

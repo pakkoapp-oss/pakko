@@ -19,16 +19,23 @@
     Build configuration (default: Release).
 .PARAMETER OutputRoot
     Directory to publish into (default: artifacts/cli under the repo root).
+.PARAMETER Version
+    Overrides Archiver.CLI.csproj's <Version> for this publish (drives `pakko --version`'s
+    output). CI passes the pushed git tag here (stripped of its leading "v") so a released
+    pakko.exe always reports the exact tag it shipped under, regardless of the csproj's own
+    checked-in default. Omit for a local/dev publish to just use the csproj's value.
 .EXAMPLE
     .\Publish-Cli.ps1
     .\Publish-Cli.ps1 -Architecture x64
+    .\Publish-Cli.ps1 -Version 1.4.2
 #>
 [CmdletBinding()]
 param(
     [ValidateSet('x64', 'arm64', 'both')]
     [string] $Architecture = 'both',
     [string] $Configuration = 'Release',
-    [string] $OutputRoot
+    [string] $OutputRoot,
+    [string] $Version
 )
 
 Set-StrictMode -Version Latest
@@ -55,12 +62,17 @@ foreach ($arch in $architectures) {
     $publishDir = Join-Path $OutputRoot $rid
 
     Write-Host "Publishing Archiver.CLI for $rid ..."
-    & dotnet publish $csproj `
-        /p:Configuration=$Configuration `
-        "/p:Platform=$platform" `
-        "/p:RuntimeIdentifier=$rid" `
-        /p:SelfContained=true `
+    $publishArgs = @(
+        "/p:Configuration=$Configuration",
+        "/p:Platform=$platform",
+        "/p:RuntimeIdentifier=$rid",
+        "/p:SelfContained=true",
         "/p:PublishDir=$publishDir"
+    )
+    if ($Version) {
+        $publishArgs += "/p:Version=$Version"
+    }
+    & dotnet publish $csproj @publishArgs
     if ($LASTEXITCODE -ne 0) {
         throw "dotnet publish failed for $rid (exit code $LASTEXITCODE)"
     }

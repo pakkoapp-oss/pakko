@@ -13,6 +13,7 @@ public enum CliCommandType
     List,
     Hash,
     Help,
+    Version,
     Invalid,
 }
 
@@ -47,6 +48,9 @@ public static class CliArgumentParser
     {
         if (args.Length == 0 || args[0] is "-h" or "--help")
             return new ParsedCliCommand { Type = CliCommandType.Help };
+
+        if (args[0] is "-v" or "--version")
+            return new ParsedCliCommand { Type = CliCommandType.Version };
 
         var rest = args[1..];
         return args[0] switch

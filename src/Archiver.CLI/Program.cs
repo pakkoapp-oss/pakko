@@ -16,6 +16,7 @@ var command = CliArgumentParser.Parse(args);
 return command.Type switch
 {
     CliCommandType.Help => RunHelp(),
+    CliCommandType.Version => RunVersion(),
     CliCommandType.Invalid => RunInvalid(command),
     CliCommandType.Extract => await RunExtractAsync(command, policy).ConfigureAwait(false),
     CliCommandType.Test => await RunTestAsync(command, policy).ConfigureAwait(false),
@@ -29,6 +30,16 @@ return command.Type switch
 static int RunHelp()
 {
     Console.Out.WriteLine(CliHelpText.Text);
+    return 0;
+}
+
+static int RunVersion()
+{
+    // MSBuild's <Version> (Archiver.CLI.csproj) is padded to a 4-segment AssemblyVersion at
+    // compile time; ToString(3) drops the always-zero 4th (revision) segment, matching how
+    // release git tags (vX.Y.Z) are written elsewhere in this repo.
+    var version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+    Console.Out.WriteLine($"pakko {version?.ToString(3) ?? "0.0.0"}");
     return 0;
 }
 

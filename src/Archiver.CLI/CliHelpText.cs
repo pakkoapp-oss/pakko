@@ -13,6 +13,8 @@ public static class CliHelpText
 
         USAGE:
           pakko <command> [switches] <archive> [files...]
+          pakko -h | --help        Show this help text
+          pakko -v | --version     Show version number
 
         COMMANDS:
           x   Extract archive(s) with full paths        [ZIP, tar-family]

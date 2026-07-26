@@ -493,6 +493,15 @@ failure — so a blocked/misconfigured sandbox would have crashed instead of yie
   CI-produced MSIX + `pakko.exe` from a disposable test-tag release, installing/running both, and
   confirming a real Archive/Extract round trip through each — not on green Actions runs alone. See
   `TASKS_DONE.md`'s T-F122 entry for the full account.
+- **T-F131/T-F133 (`[x]` done 2026-07-24/25)** widened ZIP-format recognition to
+  `.jar`/`.war`/`.ear`/`.apk` and `.asice`/`.asics`/`.bdoc`; **T-F129 (`[x]` done)** did Microsoft
+  Store submission prep (WACK fixes, regenerated brand assets, manifest revision-segment fix);
+  **T-F130 (`[x]` done)** fixed intermittent CI sandbox-test flakiness via a `DisableParallelization`
+  xUnit collection. Released as `v1.4.2` (2026-07-25) — see `CHANGELOG.md`.
+  **T-F134 (`[x]` done 2026-07-26)** added a `pakko -v`/`--version` flag to
+  `Archiver.CLI` (real 7z has no `version` subcommand — it prints a compiled-in banner on every
+  invocation instead; see `docs/DECISIONS.md`'s T-F134 entry for why Pakko diverges). Released as
+  `v1.4.3`.
 - MSIX signed with dev cert via Deploy.ps1 (see T-F10 for production-grade cert)
 - Async streaming (CopyToAsync) — CancellationToken respected mid-file
 - Temp file/dir pattern — no partial files on cancel or failure

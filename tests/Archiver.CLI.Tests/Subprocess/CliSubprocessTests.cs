@@ -104,6 +104,28 @@ public sealed class CliSubprocessTests
         stdOut.Should().Contain("zip");
     }
 
+    // --- --version / -v ---
+
+    [Fact]
+    public void DashDashVersion_ExitsZeroAndPrintsPakkoPrefixedVersion()
+    {
+        (int exitCode, string stdOut, string stdErr) = CliProcessRunner.Run("--version");
+
+        exitCode.Should().Be(0);
+        stdErr.Should().BeEmpty();
+        stdOut.Trim().Should().MatchRegex(@"^pakko \d+\.\d+\.\d+$");
+    }
+
+    [Fact]
+    public void DashV_ExitsZeroAndPrintsPakkoPrefixedVersion()
+    {
+        (int exitCode, string stdOut, string stdErr) = CliProcessRunner.Run("-v");
+
+        exitCode.Should().Be(0);
+        stdErr.Should().BeEmpty();
+        stdOut.Trim().Should().MatchRegex(@"^pakko \d+\.\d+\.\d+$");
+    }
+
     // --- a: happy path ---
 
     [Fact]

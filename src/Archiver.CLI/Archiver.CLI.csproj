@@ -7,6 +7,10 @@
     <LangVersion>12</LangVersion>
     <AssemblyName>pakko</AssemblyName>
     <RootNamespace>Archiver.CLI</RootNamespace>
+    <!-- Default only: Publish-Cli.ps1 overrides this with the real vX.Y.Z release tag via
+         /p:Version at CI release-build time (see build.yml's build-cli job). Bump manually here
+         only if a local, non-CI publish needs a meaningful "pakko -v" output. -->
+    <Version>1.4.2</Version>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\Archiver.Core\Archiver.Core.csproj" />

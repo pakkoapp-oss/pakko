@@ -148,7 +148,16 @@ jobs:
           dotnet-version: "8.0.x"
 
       - name: Publish pakko.exe (both architectures)
-        run: .\scripts\Publish-Cli.ps1
+        shell: pwsh
+        run: |
+          # On a version-tag push, stamp the exact tag (minus the leading "v") into the built
+          # exe so `pakko --version` always matches the GitHub Release it shipped under, even if
+          # Archiver.CLI.csproj's own checked-in <Version> default was never bumped for this tag.
+          if ("${{ github.ref }}".StartsWith("refs/tags/v")) {
+            .\scripts\Publish-Cli.ps1 -Version "${{ github.ref_name }}".TrimStart('v')
+          } else {
+            .\scripts\Publish-Cli.ps1
+          }
 
       - name: Attest build provenance (SLSA, T-F125)
         uses: actions/attest-build-provenance@v4

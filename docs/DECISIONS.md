@@ -6125,3 +6125,29 @@ extension of the same allowlist, not a new decision.
 **Test coverage:** `ArchiveFormatDetectorTests` +3 `[InlineData]` cases (400 total, was 397);
 `ShellExtUtilsTests.cpp` +2 `TEST()`s (98/98, was 96). `dotnet build`/MSBuild both confirmed
 compiling clean for the real `Archiver.ShellExtension.vcxproj` DLL, not just the test project.
+
+## T-F134 — `pakko -v`/`--version` CLI Flag (2026-07-26)
+
+**Not a 7z pattern, deliberately.** Real 7z has no `version` subcommand — `g_Commands` is exactly
+11 characters (`audtexlbih`) plus the `rn` special case; version is never queried, it's printed as
+part of a startup banner (`7-Zip 19.00 (x64) : Copyright ...`) on *every* invocation, built from a
+version constant compiled into the binary. A banner-on-every-command would add noise to
+`pakko`'s scripted/piped usage (`-so`/`h` output especially write straight to stdout with nothing
+else expected there), so a dedicated `-v`/`--version` flag — closer to `git --version`/
+`rg --version` convention — was chosen instead of imitating 7z's banner.
+
+**Real gap found while investigating:** `Archiver.CLI.csproj` had no `<Version>` MSBuild property
+at all, so the assembly silently carried .NET's default `1.0.0.0` — a naive `--version`
+implementation would have printed a value that never once matched an actual release tag. Fixed by
+giving the csproj a real `<Version>1.4.2</Version>` default, and — since a checked-in default will
+inevitably go stale between releases (the exact drift class this repo has hit before with TFM
+literals and satellite-EXE staleness) — `scripts/Publish-Cli.ps1` gained a `-Version` parameter
+that overrides it via `/p:Version` at publish time. `.github/workflows/build.yml`'s `build-cli`
+job now derives that value directly from the pushed git tag on a release (`github.ref_name`,
+leading `v` stripped) rather than trusting the csproj default, so a shipped `pakko.exe` always
+reports the exact tag it was built for regardless of whether anyone remembered to bump the csproj.
+
+**Verification:** `dotnet test` green (`Archiver.CLI.Tests` 147/147, was 143). Console-only change
+— no shell/UI surface touched — so this project's `Deploy.ps1`-plus-personal-click-through
+graduation rule doesn't apply; an agent-driven smoke test against the real built `pakko.exe`
+(both `-v` and `--version`, run this same session) is the appropriate verification tier instead.
