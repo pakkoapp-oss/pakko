@@ -10,6 +10,15 @@ the technical account of any task named here.
 
 ---
 
+## v1.4.3 — 2026-07-26
+
+Point release adding a version flag to the CLI.
+
+- **T-F134** — `pakko -v`/`--version` prints the CLI's own version and exits 0. A released
+  `pakko.exe` now always reports the exact release tag it shipped under.
+
+---
+
 ## v1.4.2 — 2026-07-25
 
 Point release widening ZIP-format recognition to two more container-file families, plus
