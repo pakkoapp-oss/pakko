@@ -62,6 +62,10 @@ internal static class SandboxedProcessLauncher
 
         // attributeList must stay pinned from the moment its raw handle is read into
         // lpAttributeList through CreateProcessW, the call that actually dereferences it (S3869).
+        // T-F138: this specific read can't be converted to a SafeHandle-typed P/Invoke parameter —
+        // lpAttributeList is a plain IntPtr field inside STARTUPINFOEX, a blittable struct passed
+        // by ref, not a P/Invoke parameter the marshaller can intercept on its own. DangerousAddRef/
+        // Release remains the real (manual) protection for this read.
         bool attrRefAdded = false;
         bool created;
         PROCESS_INFORMATION processInfo;
@@ -69,7 +73,7 @@ internal static class SandboxedProcessLauncher
         {
             if (attributeList is not null)
                 attributeList.DangerousAddRef(ref attrRefAdded);
-            startupInfoEx.lpAttributeList = attributeList?.DangerousGetHandle() ?? IntPtr.Zero; // NOSONAR: S3869 — DangerousAddRef/Release above already pins this; full elimination via SafeHandle-typed P/Invoke params tracked as T-F138
+            startupInfoEx.lpAttributeList = attributeList?.DangerousGetHandle() ?? IntPtr.Zero; // NOSONAR: S3869 — struct field, not a P/Invoke parameter; see comment above
 
             created = NativeMethods.CreateProcessW(
                 lpApplicationName: null,
@@ -105,73 +109,46 @@ internal static class SandboxedProcessLauncher
         using var processHandle = new SafeProcessOrThreadHandle(processInfo.hProcess);
         using var threadHandle = new SafeProcessOrThreadHandle(processInfo.hThread);
 
-        // Both handles are dereferenced repeatedly throughout the block below (including inside
-        // WaitForExitAsync) — pinning them once here for the whole span is simpler and just as
-        // correct as re-pinning around every individual call (S3869).
-        bool processRefAdded = false;
-        bool threadRefAdded = false;
+        // T-F138: every native call below takes processHandle/threadHandle/jobObject directly as
+        // SafeHandle-typed P/Invoke parameters — the CLR marshaller pins/releases each one
+        // automatically around its own call, so no manual DangerousAddRef/DangerousGetHandle/
+        // DangerousRelease is needed here anymore (this used to wrap the whole block, S3869).
         try
         {
-            processHandle.DangerousAddRef(ref processRefAdded);
-            threadHandle.DangerousAddRef(ref threadRefAdded);
-
-            try
+            if (jobObject is not null && !NativeMethods.AssignProcessToJobObject(jobObject, processHandle))
             {
-                if (jobObject is not null)
-                {
-                    bool jobRefAdded = false;
-                    try
-                    {
-                        jobObject.DangerousAddRef(ref jobRefAdded);
-                        if (!NativeMethods.AssignProcessToJobObject(jobObject.DangerousGetHandle(), processHandle.DangerousGetHandle())) // NOSONAR: S3869 — DangerousAddRef/Release above already pins this; full elimination via SafeHandle-typed P/Invoke params tracked as T-F138
-                        {
-                            int error = Marshal.GetLastWin32Error();
-                            try { NativeMethods.TerminateProcess(processHandle.DangerousGetHandle(), 1); } catch { /* best-effort */ } // NOSONAR: S3869 — DangerousAddRef/Release above already pins this; full elimination via SafeHandle-typed P/Invoke params tracked as T-F138
-                            throw new IOException($"AssignProcessToJobObject failed (Win32 error {error}).");
-                        }
-                    }
-                    finally
-                    {
-                        if (jobRefAdded)
-                            jobObject.DangerousRelease();
-                    }
-                }
-
-                if (NativeMethods.ResumeThread(threadHandle.DangerousGetHandle()) == uint.MaxValue) // NOSONAR: S3869 — DangerousAddRef/Release above already pins this; full elimination via SafeHandle-typed P/Invoke params tracked as T-F138
-                {
-                    int error = Marshal.GetLastWin32Error();
-                    try { NativeMethods.TerminateProcess(processHandle.DangerousGetHandle(), 1); } catch { /* best-effort */ } // NOSONAR: S3869 — DangerousAddRef/Release above already pins this; full elimination via SafeHandle-typed P/Invoke params tracked as T-F138
-                    throw new IOException($"ResumeThread failed (Win32 error {error}).");
-                }
-
-                using var stdOutStream = new FileStream(new SafeFileHandle(stdOutRead, ownsHandle: true), FileAccess.Read);
-                using var stdErrStream = new FileStream(new SafeFileHandle(stdErrRead, ownsHandle: true), FileAccess.Read);
-                using var stdOutReader = new StreamReader(stdOutStream);
-                using var stdErrReader = new StreamReader(stdErrStream);
-
-                Task<string> stdOutTask = stdOutReader.ReadToEndAsync(cancellationToken);
-                Task<string> stdErrTask = stdErrReader.ReadToEndAsync(cancellationToken);
-                await Task.WhenAll(stdOutTask, stdErrTask).ConfigureAwait(false);
-
-                await WaitForExitAsync(processHandle, cancellationToken).ConfigureAwait(false);
-
-                if (!NativeMethods.GetExitCodeProcess(processHandle.DangerousGetHandle(), out uint exitCode)) // NOSONAR: S3869 — DangerousAddRef/Release above already pins this; full elimination via SafeHandle-typed P/Invoke params tracked as T-F138
-                    throw new IOException($"GetExitCodeProcess failed (Win32 error {Marshal.GetLastWin32Error()}).");
-
-                return ((int)exitCode, stdOutTask.Result, stdErrTask.Result);
+                int error = Marshal.GetLastWin32Error();
+                try { NativeMethods.TerminateProcess(processHandle, 1); } catch { /* best-effort */ }
+                throw new IOException($"AssignProcessToJobObject failed (Win32 error {error}).");
             }
-            catch (OperationCanceledException)
+
+            if (NativeMethods.ResumeThread(threadHandle) == uint.MaxValue)
             {
-                try { NativeMethods.TerminateProcess(processHandle.DangerousGetHandle(), 1); } catch { /* best-effort */ } // NOSONAR: S3869 — DangerousAddRef/Release above already pins this; full elimination via SafeHandle-typed P/Invoke params tracked as T-F138
-                throw;
+                int error = Marshal.GetLastWin32Error();
+                try { NativeMethods.TerminateProcess(processHandle, 1); } catch { /* best-effort */ }
+                throw new IOException($"ResumeThread failed (Win32 error {error}).");
             }
+
+            using var stdOutStream = new FileStream(new SafeFileHandle(stdOutRead, ownsHandle: true), FileAccess.Read);
+            using var stdErrStream = new FileStream(new SafeFileHandle(stdErrRead, ownsHandle: true), FileAccess.Read);
+            using var stdOutReader = new StreamReader(stdOutStream);
+            using var stdErrReader = new StreamReader(stdErrStream);
+
+            Task<string> stdOutTask = stdOutReader.ReadToEndAsync(cancellationToken);
+            Task<string> stdErrTask = stdErrReader.ReadToEndAsync(cancellationToken);
+            await Task.WhenAll(stdOutTask, stdErrTask).ConfigureAwait(false);
+
+            await WaitForExitAsync(processHandle, cancellationToken).ConfigureAwait(false);
+
+            if (!NativeMethods.GetExitCodeProcess(processHandle, out uint exitCode))
+                throw new IOException($"GetExitCodeProcess failed (Win32 error {Marshal.GetLastWin32Error()}).");
+
+            return ((int)exitCode, stdOutTask.Result, stdErrTask.Result);
         }
-        finally
+        catch (OperationCanceledException)
         {
-            if (processRefAdded)
-                processHandle.DangerousRelease();
-            if (threadRefAdded)
-                threadHandle.DangerousRelease();
+            try { NativeMethods.TerminateProcess(processHandle, 1); } catch { /* best-effort */ }
+            throw;
         }
     }
 
@@ -184,13 +161,17 @@ internal static class SandboxedProcessLauncher
 
         // The raw handle is only read once here, to construct a second, independent SafeHandle
         // (ownsHandle: false) that the OS wait APIs dereference from then on — pin processHandle
-        // just for this one read (S3869).
+        // just for this one read (S3869). T-F138: not convertible the same way as the other call
+        // sites in this file — ManualResetEvent.SafeWaitHandle needs an already-constructed
+        // SafeWaitHandle instance, not a P/Invoke parameter the marshaller can intercept, so a raw
+        // handle value has to be extracted somewhere to build it. DangerousAddRef/Release remains
+        // the real (manual) protection for this one read.
         bool refAdded = false;
         IntPtr rawHandle;
         try
         {
             processHandle.DangerousAddRef(ref refAdded);
-            rawHandle = processHandle.DangerousGetHandle(); // NOSONAR: S3869 — DangerousAddRef/Release above already pins this; full elimination via SafeHandle-typed P/Invoke params tracked as T-F138
+            rawHandle = processHandle.DangerousGetHandle(); // NOSONAR: S3869 — not a P/Invoke parameter; see comment above
         }
         finally
         {
@@ -349,19 +330,19 @@ internal static class SandboxedProcessLauncher
             out PROCESS_INFORMATION lpProcessInformation);
 
         [DllImport("kernel32.dll", SetLastError = true)]
-        public static extern uint ResumeThread(IntPtr hThread);
+        public static extern uint ResumeThread(SafeProcessOrThreadHandle hThread);
 
         [DllImport("kernel32.dll", SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
-        public static extern bool TerminateProcess(IntPtr hProcess, uint uExitCode);
+        public static extern bool TerminateProcess(SafeProcessOrThreadHandle hProcess, uint uExitCode);
 
         [DllImport("kernel32.dll", SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
-        public static extern bool GetExitCodeProcess(IntPtr hProcess, out uint lpExitCode);
+        public static extern bool GetExitCodeProcess(SafeProcessOrThreadHandle hProcess, out uint lpExitCode);
 
         [DllImport("kernel32.dll", SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
-        public static extern bool AssignProcessToJobObject(IntPtr hJob, IntPtr hProcess);
+        public static extern bool AssignProcessToJobObject(SafeJobObjectHandle hJob, SafeProcessOrThreadHandle hProcess);
 
         [DllImport("kernel32.dll", SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]

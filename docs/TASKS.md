@@ -3151,7 +3151,7 @@ robustness to future change"* — today that rule has no analyzer feeding it in 
 ---
 
 ### T-F138 — Eliminate `SafeHandle.DangerousGetHandle` via SafeHandle-typed P/Invoke parameters
-- [ ] **Status:** future — split out of T-F136 2026-07-27 after T-F136's own fix (adding
+- [x] **Status:** done 2026-07-27. Split out of T-F136 the same day, after T-F136's own fix (adding
       `DangerousAddRef`/`DangerousRelease` ref-counting around each call) turned out to satisfy
       neither the real risk nor SonarCloud's rule. **Real correction, found via T-F136's own second
       analysis:** rule S3869's actual title is *"SafeHandle.DangerousGetHandle should not be
@@ -3187,18 +3187,56 @@ prior-incident track record with subtly wrong P/Invoke marshaling (`[PreserveSig
 `// NOSONAR: S3869 — see T-F138` comment plus the `DangerousAddRef`/`DangerousRelease` ref-counting
 already added — real defense-in-depth kept, just not sufficient for this specific rule.
 
+**Real result:** of the 14 flagged lines (15 findings), **10 converted** to real SafeHandle-typed
+P/Invoke parameters and **4 stayed as permanently-justified suppressions**, matching the
+individual-review bucketing the "What" section above called for — not a mechanical find-replace.
+Converted: `SandboxJobObject.SetInformationJobObject` (both call sites, one signature),
+`SecurityCapabilitiesAttributeList.InitializeProcThreadAttributeList`/`UpdateProcThreadAttribute`,
+and `SandboxedProcessLauncher.AssignProcessToJobObject`/`TerminateProcess` (3 call sites, one
+signature)/`ResumeThread`/`GetExitCodeProcess` — each now takes its real `SafeJobObjectHandle`/
+`SafeProcessOrThreadHandle`/`SafeProcThreadAttributeListHandle` directly, letting the CLR
+marshaller pin/release automatically; the manual `DangerousAddRef`/`DangerousGetHandle`/
+`DangerousRelease` wrapping around these call sites was removed as dead weight once the automatic
+mechanism covers them. **Real bug caught immediately by the test suite, not by inspection:** the
+`InitializeProcThreadAttributeList` conversion broke the existing two-call size-then-allocate idiom
+— the first call intentionally passes a null/zero handle (no real attribute-list buffer exists yet)
+to just query the required size, but a `SafeHandle`-typed P/Invoke parameter throws
+`ArgumentNullException` on `null` rather than marshaling it as a zero handle the way the old raw
+`IntPtr.Zero` did. Fixed with a second, `IntPtr`-typed `DllImport` declaration
+(`InitializeProcThreadAttributeListSizeProbe`, same `EntryPoint`) used only for that one probe call
+— a legitimate, documented pattern for exactly this two-call-idiom case, not a workaround. **Left
+as permanently-justified `NOSONAR: S3869`, each with its own inline reason** (not "tracked as
+T-F138" anymore, since this is the actual final call): `QuarantineAcl.cs`'s `TRUSTEE_W.ptstrName`
+and `SecurityCapabilitiesAttributeList.cs`'s `SECURITY_CAPABILITIES.AppContainerSid` (both hold a
+raw `PSID`, not a kernel handle — released via `FreeSid`, not `CloseHandle`, so `SafeHandle`'s
+pin/release contract doesn't apply, and both are unmanaged struct-field assignments, not P/Invoke
+parameters the marshaller could intercept even if it did); `SandboxedProcessLauncher.cs`'s
+`STARTUPINFOEX.lpAttributeList` (same struct-field-not-parameter reasoning); and its
+`WaitForExitAsync`'s one raw-handle read (needed to construct a `SafeWaitHandle` for
+`ManualResetEvent`, which requires an already-built instance, not something a P/Invoke parameter
+type could intercept). `dotnet build` clean (0 errors, same 6 pre-existing unrelated warnings as
+before this task), `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` 740/740 green,
+including the full 60/60 `Archiver.Core.IntegrationTests` run (`TarSandboxScopeTests`,
+`QuarantineAclTests`, `TarSandboxedServiceSandboxBehaviorTests`, etc. all re-run and passing against
+the real AppContainer/Job-Object/quarantine-ACL machinery, not just a compile check) and the
+`Archiver.Core.Tests` `Sandbox/` suite (`SandboxedProcessLauncherTests`,
+`SecurityCapabilitiesAttributeListTests`). Last acceptance criterion (a real SonarCloud analysis
+confirming these 15 findings no longer read as open) needs a push + CI round trip — pending below.
+
 **Acceptance criteria:**
-- [ ] All ~9 P/Invoke signatures in scope reviewed individually; each either converted to a
+- [x] All ~9 P/Invoke signatures in scope reviewed individually; each either converted to a
       `SafeHandle`-typed parameter (confirmed via a real test, not just "it compiles") or left with
       a specific, individually-justified reason if a genuine blocker exists (e.g. the `PSID`
-      case above, which isn't a real OS handle at all)
-- [ ] Every `// NOSONAR: S3869` marker T-F136 added (14 lines, one covering 2 flagged calls —
+      case above, which isn't a real OS handle at all) — 7 signatures converted, 4 call sites left
+      justified, see Status above
+- [x] Every `// NOSONAR: S3869` marker T-F136 added (14 lines, one covering 2 flagged calls —
       `SonarCloud` reported 15 open findings against this count at T-F136's second analysis)
       removed as each corresponding call site is actually fixed — not left in place alongside a
-      fix (stale suppression comments are their own kind of rot)
-- [ ] `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` green, plus the existing
+      fix (stale suppression comments are their own kind of rot) — 10 removed, 4 stayed as
+      permanently-justified suppressions with updated reasons (no longer say "tracked as T-F138")
+- [x] `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` green, plus the existing
       `TarSandboxedServiceSandboxBehaviorTests`/`QuarantineAclTests`/sandbox integration suite
       re-run specifically (this touches security-critical AppContainer/Job-Object code — the same
-      standard T-F52 already holds itself to)
+      standard T-F52 already holds itself to) — 740/740, full 60/60 IntegrationTests run
 - [ ] A real SonarCloud analysis confirms `new_reliability_rating` (and overall `reliability_rating`)
       no longer flags these 16 as open

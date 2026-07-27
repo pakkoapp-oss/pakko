@@ -72,18 +72,14 @@ internal sealed class SandboxJobObject : IDisposable
 
         int size = Marshal.SizeOf<JOBOBJECT_EXTENDED_LIMIT_INFORMATION>();
         IntPtr buffer = Marshal.AllocHGlobal(size);
-        bool refAdded = false;
         try
         {
             Marshal.StructureToPtr(info, buffer, fDeleteOld: false);
-            handle.DangerousAddRef(ref refAdded);
-            if (!NativeMethods.SetInformationJobObject(handle.DangerousGetHandle(), JobObjectExtendedLimitInformation, buffer, (uint)size)) // NOSONAR: S3869 — DangerousAddRef/Release above already pins this; full elimination via SafeHandle-typed P/Invoke params tracked as T-F138
+            if (!NativeMethods.SetInformationJobObject(handle, JobObjectExtendedLimitInformation, buffer, (uint)size))
                 throw new InvalidOperationException($"SetInformationJobObject (extended limits) failed (Win32 error {Marshal.GetLastWin32Error()}).");
         }
         finally
         {
-            if (refAdded)
-                handle.DangerousRelease();
             Marshal.FreeHGlobal(buffer);
         }
     }
@@ -94,18 +90,14 @@ internal sealed class SandboxJobObject : IDisposable
 
         int size = Marshal.SizeOf<JOBOBJECT_BASIC_UI_RESTRICTIONS>();
         IntPtr buffer = Marshal.AllocHGlobal(size);
-        bool refAdded = false;
         try
         {
             Marshal.StructureToPtr(restrictions, buffer, fDeleteOld: false);
-            handle.DangerousAddRef(ref refAdded);
-            if (!NativeMethods.SetInformationJobObject(handle.DangerousGetHandle(), JobObjectBasicUIRestrictions, buffer, (uint)size)) // NOSONAR: S3869 — DangerousAddRef/Release above already pins this; full elimination via SafeHandle-typed P/Invoke params tracked as T-F138
+            if (!NativeMethods.SetInformationJobObject(handle, JobObjectBasicUIRestrictions, buffer, (uint)size))
                 throw new InvalidOperationException($"SetInformationJobObject (UI restrictions) failed (Win32 error {Marshal.GetLastWin32Error()}).");
         }
         finally
         {
-            if (refAdded)
-                handle.DangerousRelease();
             Marshal.FreeHGlobal(buffer);
         }
     }
@@ -162,6 +154,6 @@ internal sealed class SandboxJobObject : IDisposable
         [DllImport("kernel32.dll", SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
         public static extern bool SetInformationJobObject(
-            IntPtr hJob, int jobObjectInfoClass, IntPtr lpJobObjectInfo, uint cbJobObjectInfoLength);
+            SafeJobObjectHandle hJob, int jobObjectInfoClass, IntPtr lpJobObjectInfo, uint cbJobObjectInfoLength);
     }
 }

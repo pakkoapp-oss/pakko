@@ -64,7 +64,7 @@ internal static class QuarantineAcl
                         MultipleTrusteeOperation = 0,
                         TrusteeForm = 0, // TRUSTEE_IS_SID
                         TrusteeType = 0, // TRUSTEE_IS_UNKNOWN
-                        ptstrName = sid.DangerousGetHandle(), // NOSONAR: S3869 — DangerousAddRef/Release above already pins this; full elimination via SafeHandle-typed P/Invoke params tracked as T-F138
+                        ptstrName = sid.DangerousGetHandle(), // NOSONAR: S3869 — PSID struct field (TRUSTEE_W), not a P/Invoke parameter the marshaller can intercept, and not a kernel handle at all (freed via FreeSid, not CloseHandle) — SafeHandle typing doesn't apply here; DangerousAddRef/Release above is the real protection (T-F138)
                     },
                 };
 

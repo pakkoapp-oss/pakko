@@ -31,8 +31,9 @@ internal sealed class SecurityCapabilitiesAttributeList : IDisposable
     {
         IntPtr size = IntPtr.Zero;
         // First call is expected to "fail" (ERROR_INSUFFICIENT_BUFFER) — its only job is to
-        // report the required buffer size via lpSize.
-        NativeMethods.InitializeProcThreadAttributeList(IntPtr.Zero, 1, 0, ref size);
+        // report the required buffer size via lpSize. No SafeProcThreadAttributeListHandle exists
+        // yet to pass, so this uses the IntPtr.Zero-only size-probe overload (see NativeMethods).
+        NativeMethods.InitializeProcThreadAttributeListSizeProbe(IntPtr.Zero, 1, 0, ref size);
 
         var attributeListHandle = new SafeProcThreadAttributeListHandle();
         attributeListHandle.SetBuffer(Marshal.AllocHGlobal(size));
@@ -41,26 +42,30 @@ internal sealed class SecurityCapabilitiesAttributeList : IDisposable
         // TarSandboxScope (the only caller) keeps its own SafeSidHandle rooted as a field for the
         // scope's whole lifetime, which is what actually protects the raw pointer value written
         // into the unmanaged SECURITY_CAPABILITIES buffer below until the real CreateProcessW
-        // dereferences it. The AddRef/Release pairs here only need to cover these individual reads
-        // (S3869) — they are not, by themselves, what keeps the SID alive through process creation.
+        // dereferences it.
+        //
+        // T-F138: InitializeProcThreadAttributeList takes attributeListHandle directly (SafeHandle-
+        // typed P/Invoke parameter — the CLR marshaller pins/releases it automatically, no manual
+        // DangerousGetHandle()). AppContainerSid below is a genuine exception, not an oversight:
+        // it's a PSID written into a plain unmanaged struct field (SECURITY_CAPABILITIES), not a
+        // P/Invoke parameter the marshaller can intercept, and a PSID isn't a kernel handle at all
+        // (released via FreeSid, not CloseHandle) — SafeHandle's pin/release contract doesn't apply
+        // to it. DangerousAddRef/Release stays as the real (if manual) protection for this one read.
         bool sidRefAdded = false;
-        bool initAttrRefAdded = false;
         SECURITY_CAPABILITIES securityCapabilities;
         try
         {
-            appContainerSid.DangerousAddRef(ref sidRefAdded);
-            attributeListHandle.DangerousAddRef(ref initAttrRefAdded);
-
-            if (!NativeMethods.InitializeProcThreadAttributeList(attributeListHandle.DangerousGetHandle(), 1, 0, ref size)) // NOSONAR: S3869 — DangerousAddRef/Release above already pins this; full elimination via SafeHandle-typed P/Invoke params tracked as T-F138
+            if (!NativeMethods.InitializeProcThreadAttributeList(attributeListHandle, 1, 0, ref size))
             {
                 int error = Marshal.GetLastWin32Error();
                 attributeListHandle.Dispose();
                 throw new InvalidOperationException($"InitializeProcThreadAttributeList failed (Win32 error {error}).");
             }
 
+            appContainerSid.DangerousAddRef(ref sidRefAdded);
             securityCapabilities = new SECURITY_CAPABILITIES
             {
-                AppContainerSid = appContainerSid.DangerousGetHandle(), // NOSONAR: S3869 — DangerousAddRef/Release above already pins this; full elimination via SafeHandle-typed P/Invoke params tracked as T-F138
+                AppContainerSid = appContainerSid.DangerousGetHandle(), // NOSONAR: S3869 — PSID struct field, not a P/Invoke parameter the marshaller can intercept; DangerousAddRef/Release above pins it for this read (see comment above)
                 Capabilities = IntPtr.Zero,
                 CapabilityCount = 0,
                 Reserved = 0,
@@ -70,8 +75,6 @@ internal sealed class SecurityCapabilitiesAttributeList : IDisposable
         {
             if (sidRefAdded)
                 appContainerSid.DangerousRelease();
-            if (initAttrRefAdded)
-                attributeListHandle.DangerousRelease();
         }
 
         int structSize = Marshal.SizeOf<SECURITY_CAPABILITIES>();
@@ -81,25 +84,14 @@ internal sealed class SecurityCapabilitiesAttributeList : IDisposable
         // UpdateProcThreadAttribute only stores a pointer to this buffer — it must stay alive
         // (not be freed) until the attribute list itself is torn down, which is why both buffers
         // are released together in Dispose(), not individually right after this call returns.
-        bool attrRefAdded = false;
-        bool updated;
-        try
-        {
-            attributeListHandle.DangerousAddRef(ref attrRefAdded);
-            updated = NativeMethods.UpdateProcThreadAttribute(
-                attributeListHandle.DangerousGetHandle(), // NOSONAR: S3869 — DangerousAddRef/Release above already pins this; full elimination via SafeHandle-typed P/Invoke params tracked as T-F138
-                dwFlags: 0,
-                ProcThreadAttributeSecurityCapabilities,
-                securityCapabilitiesBuffer,
-                (IntPtr)structSize,
-                IntPtr.Zero,
-                IntPtr.Zero);
-        }
-        finally
-        {
-            if (attrRefAdded)
-                attributeListHandle.DangerousRelease();
-        }
+        bool updated = NativeMethods.UpdateProcThreadAttribute(
+            attributeListHandle,
+            dwFlags: 0,
+            ProcThreadAttributeSecurityCapabilities,
+            securityCapabilitiesBuffer,
+            (IntPtr)structSize,
+            IntPtr.Zero,
+            IntPtr.Zero);
 
         if (!updated)
         {
@@ -134,12 +126,22 @@ internal sealed class SecurityCapabilitiesAttributeList : IDisposable
         [DllImport("kernel32.dll", SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
         public static extern bool InitializeProcThreadAttributeList(
+            SafeProcThreadAttributeListHandle lpAttributeList, int dwAttributeCount, int dwFlags, ref IntPtr lpSize);
+
+        // Separate IntPtr-typed overload for the buffer-size probe call only (Create() below,
+        // before any SafeProcThreadAttributeListHandle exists to pass) — a SafeHandle-typed
+        // P/Invoke parameter throws ArgumentNullException on null rather than marshaling it as a
+        // zero handle, so the two-call size-then-allocate idiom needs this real IntPtr.Zero entry
+        // point.
+        [DllImport("kernel32.dll", SetLastError = true, EntryPoint = "InitializeProcThreadAttributeList")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool InitializeProcThreadAttributeListSizeProbe(
             IntPtr lpAttributeList, int dwAttributeCount, int dwFlags, ref IntPtr lpSize);
 
         [DllImport("kernel32.dll", SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
         public static extern bool UpdateProcThreadAttribute(
-            IntPtr lpAttributeList,
+            SafeProcThreadAttributeListHandle lpAttributeList,
             uint dwFlags,
             IntPtr attribute,
             IntPtr lpValue,
