@@ -46,11 +46,16 @@ public sealed record ArchiveEntryViewModel
     // Segoe MDL2 Assets glyphs (folder / view / hide) — \uXXXX escapes only, never a literal
     // non-ASCII character in source (CONVENTIONS.md; this has shipped as a mojibake bug three
     // times already in this repo per CLAUDE.md's feedback note).
-    public string Icon => IsFolder
-        ? "\uE8B7"
-        : Archiver.Core.Services.ArchiveFormatDetector.IsRecognizedArchiveExtension(Name)
-            ? (NestedDepthLimitReached ? "\uED1A" : "\uE890")
-            : (Archiver.Core.Services.PreviewPolicy.IsPreviewable(Name) ? "\uE890" : "\uED1A");
+    public string Icon
+    {
+        get
+        {
+            if (IsFolder) return "\uE8B7";
+            if (Archiver.Core.Services.ArchiveFormatDetector.IsRecognizedArchiveExtension(Name))
+                return NestedDepthLimitReached ? "\uED1A" : "\uE890";
+            return Archiver.Core.Services.PreviewPolicy.IsPreviewable(Name) ? "\uE890" : "\uED1A";
+        }
+    }
 
     private static string FormatSize(long bytes) => bytes switch
     {

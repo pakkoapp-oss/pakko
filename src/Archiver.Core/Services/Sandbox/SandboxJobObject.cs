@@ -72,14 +72,18 @@ internal sealed class SandboxJobObject : IDisposable
 
         int size = Marshal.SizeOf<JOBOBJECT_EXTENDED_LIMIT_INFORMATION>();
         IntPtr buffer = Marshal.AllocHGlobal(size);
+        bool refAdded = false;
         try
         {
             Marshal.StructureToPtr(info, buffer, fDeleteOld: false);
+            handle.DangerousAddRef(ref refAdded);
             if (!NativeMethods.SetInformationJobObject(handle.DangerousGetHandle(), JobObjectExtendedLimitInformation, buffer, (uint)size))
                 throw new InvalidOperationException($"SetInformationJobObject (extended limits) failed (Win32 error {Marshal.GetLastWin32Error()}).");
         }
         finally
         {
+            if (refAdded)
+                handle.DangerousRelease();
             Marshal.FreeHGlobal(buffer);
         }
     }
@@ -90,14 +94,18 @@ internal sealed class SandboxJobObject : IDisposable
 
         int size = Marshal.SizeOf<JOBOBJECT_BASIC_UI_RESTRICTIONS>();
         IntPtr buffer = Marshal.AllocHGlobal(size);
+        bool refAdded = false;
         try
         {
             Marshal.StructureToPtr(restrictions, buffer, fDeleteOld: false);
+            handle.DangerousAddRef(ref refAdded);
             if (!NativeMethods.SetInformationJobObject(handle.DangerousGetHandle(), JobObjectBasicUIRestrictions, buffer, (uint)size))
                 throw new InvalidOperationException($"SetInformationJobObject (UI restrictions) failed (Win32 error {Marshal.GetLastWin32Error()}).");
         }
         finally
         {
+            if (refAdded)
+                handle.DangerousRelease();
             Marshal.FreeHGlobal(buffer);
         }
     }

@@ -161,10 +161,10 @@ public static class FileHashService
         };
     }
 
-    // Mirrors NanaZip's CHashBundle::Final: Hash(pre[16 zero bytes] ++ fileDigest ++
-    // UTF16LE-bytes-of-relativePath). "pre" stays all-zero here since this is only ever called
-    // for real files (isDir=false in their code never sets pre[0]) — see this class's doc comment
-    // for the documented subfolder-object omission.
+    // Mirrors NanaZip's CHashBundle::Final: Hash(pre[16 zero bytes] ++ fileDigest ++ UTF16LE-bytes-of-relativePath). // NOSONAR: prose, not commented-out code (S125 false positive)
+    // "pre" stays all-zero here since this is only ever called for real files (isDir=false in
+    // their code never sets pre[0]) — see this class's doc comment for the documented
+    // subfolder-object omission.
     private static byte[] ComputeNamesSumItemDigest(HashAlgorithmKind algorithm, byte[] fileDigest, string relativePath)
     {
         Span<byte> pre = stackalloc byte[16];

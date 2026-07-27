@@ -50,16 +50,16 @@ internal sealed class ProgressStream : Stream
         return read;
     }
 
-    public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken ct)
+    public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
     {
-        int read = await _inner.ReadAsync(buffer, offset, count, ct).ConfigureAwait(false);
+        int read = await _inner.ReadAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
         Report(read);
         return read;
     }
 
-    public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken ct = default)
+    public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
     {
-        int read = await _inner.ReadAsync(buffer, ct).ConfigureAwait(false);
+        int read = await _inner.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
         Report(read);
         return read;
     }
@@ -70,15 +70,15 @@ internal sealed class ProgressStream : Stream
         Report(count);
     }
 
-    public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken ct)
+    public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
     {
-        await _inner.WriteAsync(buffer, offset, count, ct).ConfigureAwait(false);
+        await _inner.WriteAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
         Report(count);
     }
 
-    public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken ct = default)
+    public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
     {
-        await _inner.WriteAsync(buffer, ct).ConfigureAwait(false);
+        await _inner.WriteAsync(buffer, cancellationToken).ConfigureAwait(false);
         Report(buffer.Length);
     }
 

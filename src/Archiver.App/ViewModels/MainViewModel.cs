@@ -477,11 +477,11 @@ public sealed partial class MainViewModel : ObservableObject
                     {
                         foreach (var f in Directory.EnumerateFiles(p, "*", SearchOption.AllDirectories))
                         {
-                            try { totalBytes += new FileInfo(f).Length; fileCount++; } catch { }
+                            try { totalBytes += new FileInfo(f).Length; fileCount++; } catch { /* best-effort */ }
                         }
                     }
                 }
-                catch { }
+                catch { /* best-effort */ }
             }
 
             string sizeStr = totalBytes switch
@@ -1160,7 +1160,7 @@ public sealed partial class MainViewModel : ObservableObject
                     if (Directory.Exists(path)) Directory.Delete(path, recursive: true);
                     else if (File.Exists(path)) File.Delete(path);
                 }
-                catch { }
+                catch { /* best-effort */ }
             }
         }).ConfigureAwait(false);
     }

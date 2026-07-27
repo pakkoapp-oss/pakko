@@ -390,16 +390,18 @@ public static class CliArgumentParser
 
     // Case 3 (a real, known 7z switch not allowed on this command) vs. case 1 (not a real 7z
     // switch at all — a typo) of the three-way rule. Matched against CLI.md's switch table.
+    private const string NotSupportedOnThisCommand = "not supported on this command";
+
     private static string UnsupportedSwitchReason(string token)
     {
         if (token == "-si")
-            return "not supported on this command";
+            return NotSupportedOnThisCommand;
         if (token == "-so")
-            return "not supported on this command";
+            return NotSupportedOnThisCommand;
         if (token == "-y")
-            return "not supported on this command";
+            return NotSupportedOnThisCommand;
         if (token.StartsWith("-ao", StringComparison.Ordinal))
-            return "not supported on this command";
+            return NotSupportedOnThisCommand;
         if (token.StartsWith("-mx", StringComparison.Ordinal) || token.StartsWith("-m", StringComparison.Ordinal))
             return "not supported on this command: -m{params} is only meaningful for 'a' (archive creation)";
         if (token.StartsWith("-t", StringComparison.Ordinal))
@@ -407,7 +409,7 @@ public static class CliArgumentParser
         if (token.StartsWith("-scrc", StringComparison.Ordinal))
             return "not supported on this command: -scrc{method} is only meaningful for 'h' (hash)";
         if (token.StartsWith("-o", StringComparison.Ordinal))
-            return "not supported on this command";
+            return NotSupportedOnThisCommand;
         if (token.StartsWith("-p", StringComparison.Ordinal))
             return "not supported: System.IO.Compression has no ZIP encryption support";
         if (token.StartsWith("-r", StringComparison.Ordinal))

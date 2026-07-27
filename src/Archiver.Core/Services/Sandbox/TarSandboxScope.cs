@@ -160,7 +160,7 @@ internal sealed class TarSandboxScope : IDisposable
         _sid.Dispose();
         // The AppContainer profile itself is never deleted here — it's created once, lazily,
         // and reused for the lifetime of the install (see DECISIONS.md's T-F52 follow-up entry).
-        try { if (Directory.Exists(_quarantineRoot)) Directory.Delete(_quarantineRoot, recursive: true); } catch { }
+        try { if (Directory.Exists(_quarantineRoot)) Directory.Delete(_quarantineRoot, recursive: true); } catch { /* best-effort cleanup */ }
     }
 }
 

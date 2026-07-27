@@ -11,8 +11,10 @@ namespace Archiver.Core.Services.Zip;
 /// </summary>
 internal static class DosDateTime
 {
-    private static readonly DateTime MinDosDateTime = new(1980, 1, 1, 0, 0, 0);
-    private static readonly DateTime MaxDosDateTime = new(2107, 12, 31, 23, 59, 58);
+    // Unspecified, not Local/Utc — DOS timestamps carry no timezone concept at all, matching
+    // .NET's own internal ZipHelper.DateTimeToDosTime handling of the same field.
+    private static readonly DateTime MinDosDateTime = new(1980, 1, 1, 0, 0, 0, DateTimeKind.Unspecified);
+    private static readonly DateTime MaxDosDateTime = new(2107, 12, 31, 23, 59, 58, DateTimeKind.Unspecified);
 
     /// <summary>
     /// Encodes <paramref name="dateTime"/> into a packed 32-bit value: high 16 bits are the
@@ -21,11 +23,10 @@ internal static class DosDateTime
     /// </summary>
     public static uint Encode(DateTime dateTime)
     {
-        DateTime clamped = dateTime < MinDosDateTime
-            ? MinDosDateTime
-            : dateTime > MaxDosDateTime
-                ? MaxDosDateTime
-                : dateTime;
+        DateTime clamped;
+        if (dateTime < MinDosDateTime) clamped = MinDosDateTime;
+        else if (dateTime > MaxDosDateTime) clamped = MaxDosDateTime;
+        else clamped = dateTime;
 
         return (uint)(
             ((clamped.Year - 1980) & 0x7F) << 25 |
@@ -46,6 +47,6 @@ internal static class DosDateTime
         int minute = (int)(packed >> 5) & 0x3F;
         int second = (int)(packed & 0x1F) * 2;
 
-        return new DateTime(year, month, day, hour, minute, second);
+        return new DateTime(year, month, day, hour, minute, second, DateTimeKind.Unspecified);
     }
 }

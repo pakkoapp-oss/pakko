@@ -50,11 +50,7 @@ public sealed class ZipArchiveService : IArchiveService
             // now a reachable single-source selection via the shell extension's Drive ItemType —
             // falls back to "archive" the same way BuildAddToArchiveTitle already does for the
             // context-menu title text, instead of silently naming the archive ".zip".
-            string archiveName = options.ArchiveName ?? (options.SourcePaths.Count == 1
-                ? Path.GetFileNameWithoutExtension(options.SourcePaths[0]) is { Length: > 0 } name
-                    ? name
-                    : "archive"
-                : "archive");
+            string archiveName = ArchiveNaming.ResolveSingleArchiveName(options.ArchiveName, options.SourcePaths);
 
             string destPath = Path.Combine(options.DestinationFolder, archiveName + ArchiveNaming.GetExtension(ArchiveContainerFormat.Zip));
 
@@ -137,7 +133,7 @@ public sealed class ZipArchiveService : IArchiveService
                         // Compute source size for offset tracking (best-effort)
                         long pathSize = 0;
                         if (File.Exists(sourcePath))
-                            try { pathSize = new FileInfo(sourcePath).Length; } catch { }
+                            try { pathSize = new FileInfo(sourcePath).Length; } catch { /* best-effort */ }
                         else if (Directory.Exists(sourcePath))
                             pathSize = ComputeDirectoryBytes(sourcePath);
 
@@ -159,7 +155,7 @@ public sealed class ZipArchiveService : IArchiveService
                             {
                                 string entryName = GetUniqueEntryName(usedEntryNames, Path.GetFileName(sourcePath));
                                 await AddDirectoryToArchiveAsync(archive, sourcePath, sourcePath, entryName,
-                                    options.CompressionLevel, cancellationToken, skippedFiles.Add, errors.Add, totalSourceBytes, byteOffset, progress);
+                                    options.CompressionLevel, skippedFiles.Add, errors.Add, totalSourceBytes, byteOffset, progress, cancellationToken);
                             }
                             else if (File.Exists(sourcePath))
                             {
@@ -213,17 +209,17 @@ public sealed class ZipArchiveService : IArchiveService
                 }
                 else
                 {
-                    try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { }
+                    try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { /* best-effort */ }
                 }
             }
             catch (OperationCanceledException)
             {
-                try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { }
+                try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { /* best-effort */ }
                 throw;
             }
             catch (IOException ex)
             {
-                try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { }
+                try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { /* best-effort */ }
                 errors.Add(new ArchiveError
                 {
                     SourcePath = destPath,
@@ -233,7 +229,7 @@ public sealed class ZipArchiveService : IArchiveService
             }
             catch (UnauthorizedAccessException ex)
             {
-                try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { }
+                try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { /* best-effort */ }
                 errors.Add(new ArchiveError
                 {
                     SourcePath = destPath,
@@ -243,7 +239,7 @@ public sealed class ZipArchiveService : IArchiveService
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { }
+                try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { /* best-effort */ }
                 errors.Add(new ArchiveError
                 {
                     SourcePath = destPath,
@@ -374,7 +370,7 @@ public sealed class ZipArchiveService : IArchiveService
 
         if (result.Success && options.OpenDestinationFolder)
         {
-            try { Process.Start(new ProcessStartInfo("explorer.exe", options.DestinationFolder) { UseShellExecute = true }); } catch { }
+            ExplorerLauncher.OpenFolder(options.DestinationFolder);
         }
 
         return result;
@@ -407,7 +403,7 @@ public sealed class ZipArchiveService : IArchiveService
     {
         long pathSize = 0;
         if (File.Exists(sourcePath))
-            try { pathSize = new FileInfo(sourcePath).Length; } catch { }
+            try { pathSize = new FileInfo(sourcePath).Length; } catch { /* best-effort */ }
         else if (Directory.Exists(sourcePath))
             pathSize = ComputeDirectoryBytes(sourcePath);
 
@@ -419,7 +415,7 @@ public sealed class ZipArchiveService : IArchiveService
             {
                 using var archive = ZipFile.Open(separateTempPath, ZipArchiveMode.Create);
                 await AddDirectoryToArchiveAsync(archive, sourcePath, sourcePath, Path.GetFileName(sourcePath),
-                    compressionLevel, cancellationToken, skippedFiles.Add, errors.Add, totalSourceBytes, baseOffset, progress)
+                    compressionLevel, skippedFiles.Add, errors.Add, totalSourceBytes, baseOffset, progress, cancellationToken)
                     .ConfigureAwait(false);
             }
             else if (File.Exists(sourcePath))
@@ -449,18 +445,18 @@ public sealed class ZipArchiveService : IArchiveService
             }
             else
             {
-                try { if (File.Exists(separateTempPath)) File.Delete(separateTempPath); } catch { }
+                try { if (File.Exists(separateTempPath)) File.Delete(separateTempPath); } catch { /* best-effort */ }
             }
         }
         catch (OperationCanceledException)
         {
-            try { if (File.Exists(separateTempPath)) File.Delete(separateTempPath); } catch { }
+            try { if (File.Exists(separateTempPath)) File.Delete(separateTempPath); } catch { /* best-effort */ }
             Interlocked.Add(ref completedBytesBox[0], pathSize);
             throw;
         }
         catch (IOException ex)
         {
-            try { if (File.Exists(separateTempPath)) File.Delete(separateTempPath); } catch { }
+            try { if (File.Exists(separateTempPath)) File.Delete(separateTempPath); } catch { /* best-effort */ }
             errors.Add(new ArchiveError
             {
                 SourcePath = sourcePath,
@@ -470,7 +466,7 @@ public sealed class ZipArchiveService : IArchiveService
         }
         catch (UnauthorizedAccessException ex)
         {
-            try { if (File.Exists(separateTempPath)) File.Delete(separateTempPath); } catch { }
+            try { if (File.Exists(separateTempPath)) File.Delete(separateTempPath); } catch { /* best-effort */ }
             errors.Add(new ArchiveError
             {
                 SourcePath = sourcePath,
@@ -480,7 +476,7 @@ public sealed class ZipArchiveService : IArchiveService
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            try { if (File.Exists(separateTempPath)) File.Delete(separateTempPath); } catch { }
+            try { if (File.Exists(separateTempPath)) File.Delete(separateTempPath); } catch { /* best-effort */ }
             errors.Add(new ArchiveError
             {
                 SourcePath = sourcePath,
@@ -612,7 +608,7 @@ public sealed class ZipArchiveService : IArchiveService
 
         if (result.Success && options.OpenDestinationFolder)
         {
-            try { Process.Start(new ProcessStartInfo("explorer.exe", options.DestinationFolder) { UseShellExecute = true }); } catch { }
+            ExplorerLauncher.OpenFolder(options.DestinationFolder);
         }
 
         return result;
@@ -1008,7 +1004,7 @@ public sealed class ZipArchiveService : IArchiveService
         }
         catch (OperationCanceledException)
         {
-            try { if (Directory.Exists(tempDest)) Directory.Delete(tempDest, recursive: true); } catch { }
+            try { if (Directory.Exists(tempDest)) Directory.Delete(tempDest, recursive: true); } catch { /* best-effort */ }
             throw;
         }
 
@@ -1072,7 +1068,7 @@ public sealed class ZipArchiveService : IArchiveService
         // archive runs over identical inputs produce byte-identical ZIPs.
         // Without this, ZipArchiveEntry defaults to DateTimeOffset.UtcNow (creation time),
         // which makes the archive non-deterministic.
-        try { entry.LastWriteTime = File.GetLastWriteTime(sourcePath); } catch { }
+        try { entry.LastWriteTime = File.GetLastWriteTime(sourcePath); } catch { /* best-effort */ }
 
         if (progress != null && totalBytes > 0)
         {
@@ -1103,12 +1099,12 @@ public sealed class ZipArchiveService : IArchiveService
         string rootDir,
         string entryPrefix,
         CompressionLevel compressionLevel,
-        CancellationToken cancellationToken,
         Action<SkippedFile> reportSkipped,
         Action<ArchiveError> reportError,
         long totalBytes = 0,
         long startOffset = 0,
-        IProgress<ProgressReport>? progress = null)
+        IProgress<ProgressReport>? progress = null,
+        CancellationToken cancellationToken = default)
     {
         // T-F66: A directory with no files and no subdirectories writes no entry at all
         // otherwise — for a top-level empty folder, that leaves HasTempEntries() false and
@@ -1146,7 +1142,7 @@ public sealed class ZipArchiveService : IArchiveService
             }
 
             long fileSize = 0;
-            try { fileSize = new FileInfo(filePath).Length; } catch { }
+            try { fileSize = new FileInfo(filePath).Length; } catch { /* best-effort */ }
 
             string relativePath = Path.GetRelativePath(rootDir, filePath).Replace('\\', '/');
             string entryName = entryPrefix + "/" + relativePath;
@@ -1201,7 +1197,7 @@ public sealed class ZipArchiveService : IArchiveService
             }
 
             startOffset = await AddDirectoryToArchiveAsync(archive, subDir, rootDir, entryPrefix, compressionLevel,
-                cancellationToken, reportSkipped, reportError, totalBytes, startOffset, progress);
+                reportSkipped, reportError, totalBytes, startOffset, progress, cancellationToken);
         }
 
         return startOffset;
@@ -1218,7 +1214,7 @@ public sealed class ZipArchiveService : IArchiveService
                 if (File.Exists(p)) total += new FileInfo(p).Length;
                 else if (Directory.Exists(p)) total += ComputeDirectoryBytes(p);
             }
-            catch { }
+            catch { /* best-effort */ }
         }
         return total;
     }
@@ -1233,7 +1229,7 @@ public sealed class ZipArchiveService : IArchiveService
             foreach (string filePath in Directory.EnumerateFiles(dir, "*", SearchOption.TopDirectoryOnly))
             {
                 if (!ArchiveEntrySecurity.IsReparsePoint(filePath))
-                    try { total += new FileInfo(filePath).Length; } catch { }
+                    try { total += new FileInfo(filePath).Length; } catch { /* best-effort */ }
             }
             foreach (string subDir in Directory.EnumerateDirectories(dir, "*", SearchOption.TopDirectoryOnly))
             {
@@ -1241,7 +1237,7 @@ public sealed class ZipArchiveService : IArchiveService
                     total += ComputeDirectoryBytes(subDir);
             }
         }
-        catch { }
+        catch { /* best-effort */ }
         return total;
     }
 
@@ -1273,7 +1269,7 @@ public sealed class ZipArchiveService : IArchiveService
                     fileCount += count;
                 }
             }
-            catch { }
+            catch { /* best-effort */ }
         }
         return (totalBytes, fileCount);
     }
@@ -1292,7 +1288,7 @@ public sealed class ZipArchiveService : IArchiveService
                     totalBytes += fileInfo.Length;
                     fileCount++;
                 }
-                catch { }
+                catch { /* best-effort */ }
             }
             foreach (var dirInfo in new DirectoryInfo(dir).EnumerateDirectories("*", SearchOption.TopDirectoryOnly))
             {
@@ -1302,7 +1298,7 @@ public sealed class ZipArchiveService : IArchiveService
                 fileCount += count;
             }
         }
-        catch { }
+        catch { /* best-effort */ }
         return (totalBytes, fileCount);
     }
 

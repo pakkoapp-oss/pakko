@@ -34,9 +34,9 @@ internal interface IProgressDialog
 }
 
 [Flags]
-internal enum ProgressDialogFlags : uint
+internal enum ProgressDialogOptions : uint
 {
-    Normal = 0x00000000,
+    None = 0x00000000,
     AutoTime = 0x00000002,
     NoMinimize = 0x00000008,
 }
@@ -50,7 +50,7 @@ internal sealed class NativeProgressDialog : IDisposable
         _dialog = (IProgressDialog)new ProgressDialogCoClass();
         _dialog.SetTitle(title);
         _dialog.StartProgressDialog(IntPtr.Zero, null,
-            (uint)(ProgressDialogFlags.Normal | ProgressDialogFlags.AutoTime | ProgressDialogFlags.NoMinimize),
+            (uint)(ProgressDialogOptions.None | ProgressDialogOptions.AutoTime | ProgressDialogOptions.NoMinimize),
             IntPtr.Zero);
     }
 

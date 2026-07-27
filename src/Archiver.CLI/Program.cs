@@ -174,10 +174,11 @@ static async Task<int> RunInfoAsync()
     Console.Out.WriteLine("  zip       create, extract, test, list   (always)");
     Console.Out.WriteLine("  tar       create, extract, list         (always)");
     Console.Out.WriteLine("  tar.gz    create, extract, list         (always)");
-    PrintFormatLine("tar.bz2", "create, extract, list", capabilities.SupportsBz2);
-    PrintFormatLine("tar.xz", "create, extract, list", capabilities.SupportsXz);
-    PrintFormatLine("tar.zst", "create, extract, list", capabilities.SupportsZstd);
-    PrintFormatLine("tar.lzma", "create, extract, list", capabilities.SupportsLzma);
+    const string CreateExtractList = "create, extract, list";
+    PrintFormatLine("tar.bz2", CreateExtractList, capabilities.SupportsBz2);
+    PrintFormatLine("tar.xz", CreateExtractList, capabilities.SupportsXz);
+    PrintFormatLine("tar.zst", CreateExtractList, capabilities.SupportsZstd);
+    PrintFormatLine("tar.lzma", CreateExtractList, capabilities.SupportsLzma);
     PrintFormatLine("7z", "extract, list", capabilities.Supports7z);
     PrintFormatLine("rar", "extract, list", capabilities.SupportsRar);
     Console.Out.WriteLine();

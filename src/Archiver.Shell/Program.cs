@@ -254,7 +254,7 @@ static async Task RunTestAsync(IReadOnlyList<string> archivePaths, GroupPolicyOp
         .ConfigureAwait(false);
 
     if (result.Success)
-        MessageBoxW(IntPtr.Zero, "No errors detected in the archive(s).", title, MB_ICONINFORMATION);
+        _ = MessageBoxW(IntPtr.Zero, "No errors detected in the archive(s).", title, MB_ICONINFORMATION);
 }
 
 // Returns "name", or "name (1)", "name (2)", ... if "name" already exists under parentDir.
@@ -445,14 +445,14 @@ static void ShowHashResults(string title, HashResult result)
 
     var message = string.Join(Environment.NewLine, lines);
     bool anyErrors = result.Entries.Any(e => e.Error is not null);
-    MessageBoxW(IntPtr.Zero, message, title, anyErrors ? MB_ICONWARNING : MB_ICONINFORMATION);
+    _ = MessageBoxW(IntPtr.Zero, message, title, anyErrors ? MB_ICONWARNING : MB_ICONINFORMATION);
 }
 
 static void ShowErrorSummary(string title, IReadOnlyList<ArchiveError> errors)
 {
     if (errors.Count == 0)
     {
-        MessageBoxW(IntPtr.Zero, "The operation failed.", title, MB_ICONERROR);
+        _ = MessageBoxW(IntPtr.Zero, "The operation failed.", title, MB_ICONERROR);
         return;
     }
 
@@ -462,11 +462,11 @@ static void ShowErrorSummary(string title, IReadOnlyList<ArchiveError> errors)
     if (errors.Count > MaxErrorLinesShown)
         message += $"{Environment.NewLine}…and {errors.Count - MaxErrorLinesShown} more";
 
-    MessageBoxW(IntPtr.Zero, message, title, MB_ICONERROR);
+    _ = MessageBoxW(IntPtr.Zero, message, title, MB_ICONERROR);
 }
 
 static void ShowSkippedSummary(string title, IReadOnlyList<SkippedFile> skipped) =>
-    MessageBoxW(IntPtr.Zero, ShellResultPresenter.BuildSkippedMessage(skipped), title, MB_ICONWARNING);
+    _ = MessageBoxW(IntPtr.Zero, ShellResultPresenter.BuildSkippedMessage(skipped), title, MB_ICONWARNING);
 
 [DllImport("user32.dll", CharSet = CharSet.Unicode)]
 static extern int MessageBoxW(IntPtr hWnd, string text, string caption, uint type);

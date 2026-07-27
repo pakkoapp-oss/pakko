@@ -72,7 +72,7 @@ public sealed partial class FileItem : ObservableObject
             {
                 long total = 0;
                 foreach (var f in Directory.EnumerateFiles(path, "*", SearchOption.AllDirectories))
-                    try { total += new FileInfo(f).Length; } catch { }
+                    try { total += new FileInfo(f).Length; } catch { /* best-effort */ }
                 return total;
             }
             catch { return -1L; }

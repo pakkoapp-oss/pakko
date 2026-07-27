@@ -53,7 +53,6 @@ internal static class SandboxedProcessLauncher
         startupInfoEx.StartupInfo.hStdOutput = stdOutWrite;
         startupInfoEx.StartupInfo.hStdError = stdErrWrite;
         startupInfoEx.StartupInfo.hStdInput = IntPtr.Zero;
-        startupInfoEx.lpAttributeList = attributeList?.DangerousGetHandle() ?? IntPtr.Zero;
 
         uint creationFlags = CREATE_NO_WINDOW | CREATE_SUSPENDED;
         if (attributeList is not null)
@@ -61,17 +60,34 @@ internal static class SandboxedProcessLauncher
 
         var commandLineBuffer = new StringBuilder(BuildCommandLine(fileName, arguments));
 
-        bool created = NativeMethods.CreateProcessW(
-            lpApplicationName: null,
-            commandLineBuffer,
-            lpProcessAttributes: IntPtr.Zero,
-            lpThreadAttributes: IntPtr.Zero,
-            bInheritHandles: true,
-            creationFlags,
-            lpEnvironment: IntPtr.Zero,
-            lpCurrentDirectory: null,
-            ref startupInfoEx,
-            out PROCESS_INFORMATION processInfo);
+        // attributeList must stay pinned from the moment its raw handle is read into
+        // lpAttributeList through CreateProcessW, the call that actually dereferences it (S3869).
+        bool attrRefAdded = false;
+        bool created;
+        PROCESS_INFORMATION processInfo;
+        try
+        {
+            if (attributeList is not null)
+                attributeList.DangerousAddRef(ref attrRefAdded);
+            startupInfoEx.lpAttributeList = attributeList?.DangerousGetHandle() ?? IntPtr.Zero;
+
+            created = NativeMethods.CreateProcessW(
+                lpApplicationName: null,
+                commandLineBuffer,
+                lpProcessAttributes: IntPtr.Zero,
+                lpThreadAttributes: IntPtr.Zero,
+                bInheritHandles: true,
+                creationFlags,
+                lpEnvironment: IntPtr.Zero,
+                lpCurrentDirectory: null,
+                ref startupInfoEx,
+                out processInfo);
+        }
+        finally
+        {
+            if (attrRefAdded)
+                attributeList!.DangerousRelease();
+        }
 
         // The child inherited its own copies of the write ends — our copies must close regardless
         // of success, otherwise the read ends never see EOF (classic pipe-handle-leak deadlock).
@@ -89,43 +105,73 @@ internal static class SandboxedProcessLauncher
         using var processHandle = new SafeProcessOrThreadHandle(processInfo.hProcess);
         using var threadHandle = new SafeProcessOrThreadHandle(processInfo.hThread);
 
+        // Both handles are dereferenced repeatedly throughout the block below (including inside
+        // WaitForExitAsync) — pinning them once here for the whole span is simpler and just as
+        // correct as re-pinning around every individual call (S3869).
+        bool processRefAdded = false;
+        bool threadRefAdded = false;
         try
         {
-            if (jobObject is not null &&
-                !NativeMethods.AssignProcessToJobObject(jobObject.DangerousGetHandle(), processHandle.DangerousGetHandle()))
+            processHandle.DangerousAddRef(ref processRefAdded);
+            threadHandle.DangerousAddRef(ref threadRefAdded);
+
+            try
             {
-                int error = Marshal.GetLastWin32Error();
-                try { NativeMethods.TerminateProcess(processHandle.DangerousGetHandle(), 1); } catch { }
-                throw new IOException($"AssignProcessToJobObject failed (Win32 error {error}).");
-            }
+                if (jobObject is not null)
+                {
+                    bool jobRefAdded = false;
+                    try
+                    {
+                        jobObject.DangerousAddRef(ref jobRefAdded);
+                        if (!NativeMethods.AssignProcessToJobObject(jobObject.DangerousGetHandle(), processHandle.DangerousGetHandle()))
+                        {
+                            int error = Marshal.GetLastWin32Error();
+                            try { NativeMethods.TerminateProcess(processHandle.DangerousGetHandle(), 1); } catch { /* best-effort */ }
+                            throw new IOException($"AssignProcessToJobObject failed (Win32 error {error}).");
+                        }
+                    }
+                    finally
+                    {
+                        if (jobRefAdded)
+                            jobObject.DangerousRelease();
+                    }
+                }
 
-            if (NativeMethods.ResumeThread(threadHandle.DangerousGetHandle()) == uint.MaxValue)
+                if (NativeMethods.ResumeThread(threadHandle.DangerousGetHandle()) == uint.MaxValue)
+                {
+                    int error = Marshal.GetLastWin32Error();
+                    try { NativeMethods.TerminateProcess(processHandle.DangerousGetHandle(), 1); } catch { /* best-effort */ }
+                    throw new IOException($"ResumeThread failed (Win32 error {error}).");
+                }
+
+                using var stdOutStream = new FileStream(new SafeFileHandle(stdOutRead, ownsHandle: true), FileAccess.Read);
+                using var stdErrStream = new FileStream(new SafeFileHandle(stdErrRead, ownsHandle: true), FileAccess.Read);
+                using var stdOutReader = new StreamReader(stdOutStream);
+                using var stdErrReader = new StreamReader(stdErrStream);
+
+                Task<string> stdOutTask = stdOutReader.ReadToEndAsync(cancellationToken);
+                Task<string> stdErrTask = stdErrReader.ReadToEndAsync(cancellationToken);
+                await Task.WhenAll(stdOutTask, stdErrTask).ConfigureAwait(false);
+
+                await WaitForExitAsync(processHandle, cancellationToken).ConfigureAwait(false);
+
+                if (!NativeMethods.GetExitCodeProcess(processHandle.DangerousGetHandle(), out uint exitCode))
+                    throw new IOException($"GetExitCodeProcess failed (Win32 error {Marshal.GetLastWin32Error()}).");
+
+                return ((int)exitCode, stdOutTask.Result, stdErrTask.Result);
+            }
+            catch (OperationCanceledException)
             {
-                int error = Marshal.GetLastWin32Error();
-                try { NativeMethods.TerminateProcess(processHandle.DangerousGetHandle(), 1); } catch { }
-                throw new IOException($"ResumeThread failed (Win32 error {error}).");
+                try { NativeMethods.TerminateProcess(processHandle.DangerousGetHandle(), 1); } catch { /* best-effort */ }
+                throw;
             }
-
-            using var stdOutStream = new FileStream(new SafeFileHandle(stdOutRead, ownsHandle: true), FileAccess.Read);
-            using var stdErrStream = new FileStream(new SafeFileHandle(stdErrRead, ownsHandle: true), FileAccess.Read);
-            using var stdOutReader = new StreamReader(stdOutStream);
-            using var stdErrReader = new StreamReader(stdErrStream);
-
-            Task<string> stdOutTask = stdOutReader.ReadToEndAsync(cancellationToken);
-            Task<string> stdErrTask = stdErrReader.ReadToEndAsync(cancellationToken);
-            await Task.WhenAll(stdOutTask, stdErrTask).ConfigureAwait(false);
-
-            await WaitForExitAsync(processHandle, cancellationToken).ConfigureAwait(false);
-
-            if (!NativeMethods.GetExitCodeProcess(processHandle.DangerousGetHandle(), out uint exitCode))
-                throw new IOException($"GetExitCodeProcess failed (Win32 error {Marshal.GetLastWin32Error()}).");
-
-            return ((int)exitCode, stdOutTask.Result, stdErrTask.Result);
         }
-        catch (OperationCanceledException)
+        finally
         {
-            try { NativeMethods.TerminateProcess(processHandle.DangerousGetHandle(), 1); } catch { }
-            throw;
+            if (processRefAdded)
+                processHandle.DangerousRelease();
+            if (threadRefAdded)
+                threadHandle.DangerousRelease();
         }
     }
 
@@ -135,9 +181,26 @@ internal static class SandboxedProcessLauncher
     private static Task WaitForExitAsync(SafeProcessOrThreadHandle processHandle, CancellationToken cancellationToken)
     {
         var tcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        // The raw handle is only read once here, to construct a second, independent SafeHandle
+        // (ownsHandle: false) that the OS wait APIs dereference from then on — pin processHandle
+        // just for this one read (S3869).
+        bool refAdded = false;
+        IntPtr rawHandle;
+        try
+        {
+            processHandle.DangerousAddRef(ref refAdded);
+            rawHandle = processHandle.DangerousGetHandle();
+        }
+        finally
+        {
+            if (refAdded)
+                processHandle.DangerousRelease();
+        }
+
         var waitHandle = new ManualResetEvent(false)
         {
-            SafeWaitHandle = new SafeWaitHandle(processHandle.DangerousGetHandle(), ownsHandle: false),
+            SafeWaitHandle = new SafeWaitHandle(rawHandle, ownsHandle: false),
         };
 
         RegisteredWaitHandle registeredWait = ThreadPool.RegisterWaitForSingleObject(

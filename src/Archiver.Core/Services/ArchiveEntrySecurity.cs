@@ -46,7 +46,7 @@ internal static class ArchiveEntrySecurity
     // Filesystem compatibility:
     //   FAT32/exFAT : always false — these filesystems have no reparse points.
     //   ReFS        : correctly true for symlinks and junctions (same as NTFS).
-    //   SMB/UNC     : true when the server propagates FILE_ATTRIBUTE_REPARSE_POINT;
+    //   SMB/UNC     : true when the server propagates FILE_ATTRIBUTE_REPARSE_POINT; // NOSONAR: prose, not commented-out code (S125 false positive)
     //                 DFS junctions are followed transparently by the SMB redirector
     //                 and appear as normal directories (false) — not detected here.
     //   Linux/Samba : Linux symlinks are NOT exposed as reparse points to Windows

@@ -45,27 +45,41 @@ internal static class QuarantineAcl
 
         try
         {
-            var explicitAccess = new EXPLICIT_ACCESS_W
+            // DangerousAddRef/Release pins sid alive across SetEntriesInAclW, the call that
+            // actually dereferences the raw PSID from DangerousGetHandle() — without it, nothing
+            // keeps sid reachable for the GC between the two calls (S3869).
+            bool sidRefAdded = false;
+            IntPtr newAcl;
+            try
             {
-                grfAccessPermissions = accessMask,
-                grfAccessMode = 1, // GRANT_ACCESS
-                grfInheritance = (uint)inheritance,
-                Trustee = new TRUSTEE_W
+                sid.DangerousAddRef(ref sidRefAdded);
+                var explicitAccess = new EXPLICIT_ACCESS_W
                 {
-                    pMultipleTrustee = IntPtr.Zero,
-                    MultipleTrusteeOperation = 0,
-                    TrusteeForm = 0, // TRUSTEE_IS_SID
-                    TrusteeType = 0, // TRUSTEE_IS_UNKNOWN
-                    ptstrName = sid.DangerousGetHandle(),
-                },
-            };
+                    grfAccessPermissions = accessMask,
+                    grfAccessMode = 1, // GRANT_ACCESS
+                    grfInheritance = (uint)inheritance,
+                    Trustee = new TRUSTEE_W
+                    {
+                        pMultipleTrustee = IntPtr.Zero,
+                        MultipleTrusteeOperation = 0,
+                        TrusteeForm = 0, // TRUSTEE_IS_SID
+                        TrusteeType = 0, // TRUSTEE_IS_UNKNOWN
+                        ptstrName = sid.DangerousGetHandle(),
+                    },
+                };
 
-            // Passing the folder's existing DACL as OldAcl merges this grant in — it does not
-            // replace owner/SYSTEM/Administrators entries, which the previous naive draft of
-            // this method would have wiped out (see this method's own doc comment).
-            uint setEntriesResult = NativeMethods.SetEntriesInAclW(1, ref explicitAccess, existingAcl, out IntPtr newAcl);
-            if (setEntriesResult != 0)
-                throw new InvalidOperationException($"SetEntriesInAclW('{path}') failed (Win32 error {setEntriesResult}).");
+                // Passing the folder's existing DACL as OldAcl merges this grant in — it does not
+                // replace owner/SYSTEM/Administrators entries, which the previous naive draft of
+                // this method would have wiped out (see this method's own doc comment).
+                uint setEntriesResult = NativeMethods.SetEntriesInAclW(1, ref explicitAccess, existingAcl, out newAcl);
+                if (setEntriesResult != 0)
+                    throw new InvalidOperationException($"SetEntriesInAclW('{path}') failed (Win32 error {setEntriesResult}).");
+            }
+            finally
+            {
+                if (sidRefAdded)
+                    sid.DangerousRelease();
+            }
 
             try
             {

@@ -28,6 +28,22 @@ public static class ArchiveNaming
         return Path.GetFileNameWithoutExtension(archivePath);
     }
 
+    // T-F99: shared by ZipArchiveService.ArchiveAsync and TarSandboxedService.CompressAsync — an
+    // explicit user-provided name always wins; otherwise falls back to the sole source path's own
+    // file name, or "archive" when that's empty (a drive-root selection like "Z:\" via the shell
+    // extension's Drive ItemType has no file name component to fall back to).
+    public static string ResolveSingleArchiveName(string? explicitName, IReadOnlyList<string> sourcePaths)
+    {
+        if (explicitName is not null)
+            return explicitName;
+
+        if (sourcePaths.Count != 1)
+            return "archive";
+
+        string name = Path.GetFileNameWithoutExtension(sourcePaths[0]);
+        return name.Length > 0 ? name : "archive";
+    }
+
     public static string GetExtension(ArchiveContainerFormat format) => format switch
     {
         ArchiveContainerFormat.Zip => ".zip",

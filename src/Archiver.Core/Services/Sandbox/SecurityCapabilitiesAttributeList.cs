@@ -37,20 +37,42 @@ internal sealed class SecurityCapabilitiesAttributeList : IDisposable
         var attributeListHandle = new SafeProcThreadAttributeListHandle();
         attributeListHandle.SetBuffer(Marshal.AllocHGlobal(size));
 
-        if (!NativeMethods.InitializeProcThreadAttributeList(attributeListHandle.DangerousGetHandle(), 1, 0, ref size))
+        // appContainerSid's underlying memory stays reachable well past this method returns —
+        // TarSandboxScope (the only caller) keeps its own SafeSidHandle rooted as a field for the
+        // scope's whole lifetime, which is what actually protects the raw pointer value written
+        // into the unmanaged SECURITY_CAPABILITIES buffer below until the real CreateProcessW
+        // dereferences it. The AddRef/Release pairs here only need to cover these individual reads
+        // (S3869) — they are not, by themselves, what keeps the SID alive through process creation.
+        bool sidRefAdded = false;
+        bool initAttrRefAdded = false;
+        SECURITY_CAPABILITIES securityCapabilities;
+        try
         {
-            int error = Marshal.GetLastWin32Error();
-            attributeListHandle.Dispose();
-            throw new InvalidOperationException($"InitializeProcThreadAttributeList failed (Win32 error {error}).");
-        }
+            appContainerSid.DangerousAddRef(ref sidRefAdded);
+            attributeListHandle.DangerousAddRef(ref initAttrRefAdded);
 
-        var securityCapabilities = new SECURITY_CAPABILITIES
+            if (!NativeMethods.InitializeProcThreadAttributeList(attributeListHandle.DangerousGetHandle(), 1, 0, ref size))
+            {
+                int error = Marshal.GetLastWin32Error();
+                attributeListHandle.Dispose();
+                throw new InvalidOperationException($"InitializeProcThreadAttributeList failed (Win32 error {error}).");
+            }
+
+            securityCapabilities = new SECURITY_CAPABILITIES
+            {
+                AppContainerSid = appContainerSid.DangerousGetHandle(),
+                Capabilities = IntPtr.Zero,
+                CapabilityCount = 0,
+                Reserved = 0,
+            };
+        }
+        finally
         {
-            AppContainerSid = appContainerSid.DangerousGetHandle(),
-            Capabilities = IntPtr.Zero,
-            CapabilityCount = 0,
-            Reserved = 0,
-        };
+            if (sidRefAdded)
+                appContainerSid.DangerousRelease();
+            if (initAttrRefAdded)
+                attributeListHandle.DangerousRelease();
+        }
 
         int structSize = Marshal.SizeOf<SECURITY_CAPABILITIES>();
         IntPtr securityCapabilitiesBuffer = Marshal.AllocHGlobal(structSize);
@@ -59,14 +81,25 @@ internal sealed class SecurityCapabilitiesAttributeList : IDisposable
         // UpdateProcThreadAttribute only stores a pointer to this buffer — it must stay alive
         // (not be freed) until the attribute list itself is torn down, which is why both buffers
         // are released together in Dispose(), not individually right after this call returns.
-        bool updated = NativeMethods.UpdateProcThreadAttribute(
-            attributeListHandle.DangerousGetHandle(),
-            dwFlags: 0,
-            ProcThreadAttributeSecurityCapabilities,
-            securityCapabilitiesBuffer,
-            (IntPtr)structSize,
-            IntPtr.Zero,
-            IntPtr.Zero);
+        bool attrRefAdded = false;
+        bool updated;
+        try
+        {
+            attributeListHandle.DangerousAddRef(ref attrRefAdded);
+            updated = NativeMethods.UpdateProcThreadAttribute(
+                attributeListHandle.DangerousGetHandle(),
+                dwFlags: 0,
+                ProcThreadAttributeSecurityCapabilities,
+                securityCapabilitiesBuffer,
+                (IntPtr)structSize,
+                IntPtr.Zero,
+                IntPtr.Zero);
+        }
+        finally
+        {
+            if (attrRefAdded)
+                attributeListHandle.DangerousRelease();
+        }
 
         if (!updated)
         {

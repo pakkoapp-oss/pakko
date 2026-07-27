@@ -52,7 +52,6 @@ internal sealed class ZipEntryWriter : IAsyncDisposable
         compressionLevel == CompressionLevel.NoCompression ? StoredMethod : DeflateMethod;
 
     private const int CopyBufferSize = 81920; // matches ZipArchiveService.CopyBufferSize
-    private const int FileStreamBufferSize = 262144; // matches ZipArchiveService.FileStreamBufferSize
 
     private const uint DirectoryExternalAttributes = 0x10; // FILE_ATTRIBUTE_DIRECTORY
     private const uint FileExternalAttributes = 0x20; // FILE_ATTRIBUTE_ARCHIVE

@@ -25,6 +25,7 @@ public static class PreviewCache
         }
         catch
         {
+            // best-effort cleanup — never surfaces to the caller
         }
     }
 }

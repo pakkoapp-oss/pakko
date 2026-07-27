@@ -167,7 +167,7 @@ public sealed class ZipSandboxSpikePerformanceTests : IDisposable
             $"delta: {deltaMs:F1}ms ({deltaPercent:F1}%)");
     }
 
-    private void GrantWholeRoot(string path)
+    private static void GrantWholeRoot(string path)
     {
         Profile.EnsureExists();
         using SafeSidHandle sid = Profile.GetSid();
@@ -204,7 +204,7 @@ public sealed class ZipSandboxSpikePerformanceTests : IDisposable
         return stopwatch.Elapsed;
     }
 
-    private async Task<WorkerRunResult> RunWorkerAsync(string operation, string sourcePath, string destPath)
+    private static async Task<WorkerRunResult> RunWorkerAsync(string operation, string sourcePath, string destPath)
     {
         string toolExePath = ToolExePath.Value;
 

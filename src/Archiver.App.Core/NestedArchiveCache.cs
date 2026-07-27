@@ -29,6 +29,7 @@ public static class NestedArchiveCache
         }
         catch
         {
+            // best-effort cleanup — never surfaces to the caller
         }
     }
 
@@ -41,6 +42,7 @@ public static class NestedArchiveCache
         }
         catch
         {
+            // best-effort cleanup — never surfaces to the caller
         }
     }
 }

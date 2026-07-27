@@ -88,7 +88,7 @@ internal static class ParallelSingleArchiveWriter
             // RunPipelineAsync's own cleanup) — this just removes the now-empty per-operation
             // folder itself. Best-effort: if something unexpected is still in there, leave it
             // rather than risk deleting content that isn't ours.
-            try { Directory.Delete(chunkDirectory); } catch { }
+            try { Directory.Delete(chunkDirectory); } catch { /* best-effort */ }
         }
     }
 
@@ -164,7 +164,7 @@ internal static class ParallelSingleArchiveWriter
             {
                 pipeline.Writer.Complete(ex);
             }
-        });
+        }, cancellationToken);
 
         try
         {
@@ -231,10 +231,10 @@ internal static class ParallelSingleArchiveWriter
             // moment (e.g. the consumer loop exited early on cancellation, before draining
             // everything the producer had already dispatched) could add to pendingTempFiles AFTER
             // the sweep below already ran, leaving a real orphaned temp file on disk.
-            try { await producer.ConfigureAwait(false); } catch { }
+            try { await producer.ConfigureAwait(false); } catch { /* best-effort */ }
             foreach (var dispatched in dispatchedTasks)
             {
-                try { await dispatched.ConfigureAwait(false); } catch { }
+                try { await dispatched.ConfigureAwait(false); } catch { /* best-effort */ }
             }
 
             // Best-effort sweep: anything still tracked here was produced by a worker but never
@@ -242,7 +242,7 @@ internal static class ParallelSingleArchiveWriter
             // an unhandled exception cut the operation short after some temp files were written.
             foreach (var leftoverPath in pendingTempFiles.Keys)
             {
-                try { File.Delete(leftoverPath); } catch { }
+                try { File.Delete(leftoverPath); } catch { /* best-effort */ }
             }
         }
     }
@@ -370,7 +370,7 @@ internal static class ParallelSingleArchiveWriter
 
     private static void TryDeleteTempFile(string path, ConcurrentDictionary<string, byte>? pendingTempFiles)
     {
-        try { File.Delete(path); } catch { }
+        try { File.Delete(path); } catch { /* best-effort */ }
         pendingTempFiles?.TryRemove(path, out _);
     }
 }

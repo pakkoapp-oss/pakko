@@ -192,7 +192,7 @@ public sealed class TarSandboxedService : ITarService
 
         if (result.Success && options.OpenDestinationFolder)
         {
-            try { Process.Start(new ProcessStartInfo("explorer.exe", options.DestinationFolder) { UseShellExecute = true }); } catch { }
+            ExplorerLauncher.OpenFolder(options.DestinationFolder);
         }
 
         return result;
@@ -605,11 +605,7 @@ public sealed class TarSandboxedService : ITarService
             // T-F99: same drive-root/empty-name fallback ZipArchiveService.ArchiveAsync already
             // uses for a single-source drive-root selection (e.g. "Z:\" via the shell extension's
             // Drive ItemType) instead of silently naming the archive after the bare extension.
-            string archiveName = options.ArchiveName ?? (options.SourcePaths.Count == 1
-                ? Path.GetFileNameWithoutExtension(options.SourcePaths[0]) is { Length: > 0 } name
-                    ? name
-                    : "archive"
-                : "archive");
+            string archiveName = ArchiveNaming.ResolveSingleArchiveName(options.ArchiveName, options.SourcePaths);
 
             string destPath = Path.Combine(options.DestinationFolder, archiveName + extension);
 
@@ -695,7 +691,7 @@ public sealed class TarSandboxedService : ITarService
 
         if (result.Success && options.OpenDestinationFolder)
         {
-            try { Process.Start(new ProcessStartInfo("explorer.exe", options.DestinationFolder) { UseShellExecute = true }); } catch { }
+            ExplorerLauncher.OpenFolder(options.DestinationFolder);
         }
 
         return result;
@@ -783,7 +779,7 @@ public sealed class TarSandboxedService : ITarService
 
             if (exitCode != 0 || !File.Exists(tempPath))
             {
-                try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { }
+                try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { /* best-effort */ }
                 errors.Add(new ArchiveError { SourcePath = destPath, Message = $"tar.exe failed to create archive: {stdErr.Trim()}" });
                 return;
             }
@@ -794,17 +790,17 @@ public sealed class TarSandboxedService : ITarService
         }
         catch (OperationCanceledException)
         {
-            try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { }
+            try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { /* best-effort */ }
             throw;
         }
         catch (IOException ex)
         {
-            try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { }
+            try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { /* best-effort */ }
             errors.Add(new ArchiveError { SourcePath = destPath, Message = $"Cannot create archive: {ex.Message}", Exception = ex });
         }
         catch (UnauthorizedAccessException ex)
         {
-            try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { }
+            try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { /* best-effort */ }
             errors.Add(new ArchiveError { SourcePath = destPath, Message = $"Access denied creating archive: {ex.Message}", Exception = ex });
         }
     }
@@ -897,7 +893,7 @@ public sealed class TarSandboxedService : ITarService
         }
         catch (OperationCanceledException)
         {
-            try { process.Kill(entireProcessTree: true); } catch { }
+            try { process.Kill(entireProcessTree: true); } catch { /* best-effort */ }
             throw;
         }
 

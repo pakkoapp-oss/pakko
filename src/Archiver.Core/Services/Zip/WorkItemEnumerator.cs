@@ -118,7 +118,7 @@ internal static class WorkItemEnumerator
     private static FileWorkItem BuildFileItem(FileInfo fileInfo, string entryName)
     {
         long size = 0;
-        try { size = fileInfo.Length; } catch { }
+        try { size = fileInfo.Length; } catch { /* best-effort */ }
 
         // T-F31: pinned to the source file's real mtime, same as AddEntryFromFileAsync — kept
         // as local time (LastWriteTime, not LastWriteTimeUtc) to match the existing

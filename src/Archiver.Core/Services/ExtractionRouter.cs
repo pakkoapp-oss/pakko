@@ -98,12 +98,7 @@ public sealed class ExtractionRouter(
 
         if (merged.Success && options.OpenDestinationFolder)
         {
-            try
-            {
-                System.Diagnostics.Process.Start(
-                    new System.Diagnostics.ProcessStartInfo("explorer.exe", options.DestinationFolder) { UseShellExecute = true });
-            }
-            catch { }
+            ExplorerLauncher.OpenFolder(options.DestinationFolder);
         }
 
         return merged;

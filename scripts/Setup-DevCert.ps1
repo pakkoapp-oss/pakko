@@ -19,8 +19,8 @@ $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIde
 )
 if (-not $isAdmin) {
     Write-Host "Not running as Administrator - relaunching elevated..." -ForegroundColor Yellow
-    $args = '-NoProfile -ExecutionPolicy Bypass -File "{0}"' -f $MyInvocation.MyCommand.Path
-    Start-Process powershell -Verb RunAs -ArgumentList $args
+    $relaunchArgs = '-NoProfile -ExecutionPolicy Bypass -File "{0}"' -f $MyInvocation.MyCommand.Path
+    Start-Process powershell -Verb RunAs -ArgumentList $relaunchArgs
     exit
 }
 

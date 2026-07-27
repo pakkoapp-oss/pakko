@@ -65,7 +65,7 @@ internal static class TarSignatureVerifier
             // WTD_STATEACTION_CLOSE must run regardless of the verify result — hWVTStateData is
             // a documented easy leak otherwise.
             trustData.dwStateAction = WTD_STATEACTION_CLOSE;
-            NativeMethods.WinVerifyTrust(InvalidHandleValue, ref action, ref trustData);
+            NativeMethods.WinVerifyTrust(InvalidHandleValue, ref action, ref trustData); // NOSONAR: close-action return is meaningless — the real verify result is already captured in 'result' above
 
             return result == 0; // ERROR_SUCCESS
         }
