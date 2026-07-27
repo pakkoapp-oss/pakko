@@ -3220,8 +3220,13 @@ including the full 60/60 `Archiver.Core.IntegrationTests` run (`TarSandboxScopeT
 `QuarantineAclTests`, `TarSandboxedServiceSandboxBehaviorTests`, etc. all re-run and passing against
 the real AppContainer/Job-Object/quarantine-ACL machinery, not just a compile check) and the
 `Archiver.Core.Tests` `Sandbox/` suite (`SandboxedProcessLauncherTests`,
-`SecurityCapabilitiesAttributeListTests`). Last acceptance criterion (a real SonarCloud analysis
-confirming these 15 findings no longer read as open) needs a push + CI round trip — pending below.
+`SecurityCapabilitiesAttributeListTests`). **Pushed (`3058d20`), real CI run
+(`30298363738`) green** — SonarCloud confirms `bugs: 0`, `reliability_rating: 1.0` (A, best
+value), `new_reliability_rating: 1.0`, and a direct `rules=csharpsquid:S3869` issue-search query
+returns `total: 0` open findings — the fix is real, not just locally green. Quality Gate itself
+still reads `ERROR`, but solely on `new_coverage` (63.2% < 80%, same already-accepted T-F136
+diff-attribution pattern for a commit that touches many lines without adding new tests) — not a
+regression from this task, which owns reliability only.
 
 **Acceptance criteria:**
 - [x] All ~9 P/Invoke signatures in scope reviewed individually; each either converted to a
@@ -3238,5 +3243,6 @@ confirming these 15 findings no longer read as open) needs a push + CI round tri
       `TarSandboxedServiceSandboxBehaviorTests`/`QuarantineAclTests`/sandbox integration suite
       re-run specifically (this touches security-critical AppContainer/Job-Object code — the same
       standard T-F52 already holds itself to) — 740/740, full 60/60 IntegrationTests run
-- [ ] A real SonarCloud analysis confirms `new_reliability_rating` (and overall `reliability_rating`)
-      no longer flags these 16 as open
+- [x] A real SonarCloud analysis confirms `new_reliability_rating` (and overall `reliability_rating`)
+      no longer flags these 16 as open — `bugs: 0`, `reliability_rating: 1.0`,
+      `new_reliability_rating: 1.0`, `rules=csharpsquid:S3869` issue search returns 0 open
