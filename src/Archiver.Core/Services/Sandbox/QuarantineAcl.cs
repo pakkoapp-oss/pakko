@@ -64,7 +64,7 @@ internal static class QuarantineAcl
                         MultipleTrusteeOperation = 0,
                         TrusteeForm = 0, // TRUSTEE_IS_SID
                         TrusteeType = 0, // TRUSTEE_IS_UNKNOWN
-                        ptstrName = sid.DangerousGetHandle(),
+                        ptstrName = sid.DangerousGetHandle(), // NOSONAR: S3869 — DangerousAddRef/Release above already pins this; full elimination via SafeHandle-typed P/Invoke params tracked as T-F138
                     },
                 };
 

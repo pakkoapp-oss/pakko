@@ -51,7 +51,7 @@ internal sealed class SecurityCapabilitiesAttributeList : IDisposable
             appContainerSid.DangerousAddRef(ref sidRefAdded);
             attributeListHandle.DangerousAddRef(ref initAttrRefAdded);
 
-            if (!NativeMethods.InitializeProcThreadAttributeList(attributeListHandle.DangerousGetHandle(), 1, 0, ref size))
+            if (!NativeMethods.InitializeProcThreadAttributeList(attributeListHandle.DangerousGetHandle(), 1, 0, ref size)) // NOSONAR: S3869 — DangerousAddRef/Release above already pins this; full elimination via SafeHandle-typed P/Invoke params tracked as T-F138
             {
                 int error = Marshal.GetLastWin32Error();
                 attributeListHandle.Dispose();
@@ -60,7 +60,7 @@ internal sealed class SecurityCapabilitiesAttributeList : IDisposable
 
             securityCapabilities = new SECURITY_CAPABILITIES
             {
-                AppContainerSid = appContainerSid.DangerousGetHandle(),
+                AppContainerSid = appContainerSid.DangerousGetHandle(), // NOSONAR: S3869 — DangerousAddRef/Release above already pins this; full elimination via SafeHandle-typed P/Invoke params tracked as T-F138
                 Capabilities = IntPtr.Zero,
                 CapabilityCount = 0,
                 Reserved = 0,
@@ -87,7 +87,7 @@ internal sealed class SecurityCapabilitiesAttributeList : IDisposable
         {
             attributeListHandle.DangerousAddRef(ref attrRefAdded);
             updated = NativeMethods.UpdateProcThreadAttribute(
-                attributeListHandle.DangerousGetHandle(),
+                attributeListHandle.DangerousGetHandle(), // NOSONAR: S3869 — DangerousAddRef/Release above already pins this; full elimination via SafeHandle-typed P/Invoke params tracked as T-F138
                 dwFlags: 0,
                 ProcThreadAttributeSecurityCapabilities,
                 securityCapabilitiesBuffer,

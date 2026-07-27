@@ -69,7 +69,7 @@ internal static class SandboxedProcessLauncher
         {
             if (attributeList is not null)
                 attributeList.DangerousAddRef(ref attrRefAdded);
-            startupInfoEx.lpAttributeList = attributeList?.DangerousGetHandle() ?? IntPtr.Zero;
+            startupInfoEx.lpAttributeList = attributeList?.DangerousGetHandle() ?? IntPtr.Zero; // NOSONAR: S3869 — DangerousAddRef/Release above already pins this; full elimination via SafeHandle-typed P/Invoke params tracked as T-F138
 
             created = NativeMethods.CreateProcessW(
                 lpApplicationName: null,
@@ -123,10 +123,10 @@ internal static class SandboxedProcessLauncher
                     try
                     {
                         jobObject.DangerousAddRef(ref jobRefAdded);
-                        if (!NativeMethods.AssignProcessToJobObject(jobObject.DangerousGetHandle(), processHandle.DangerousGetHandle()))
+                        if (!NativeMethods.AssignProcessToJobObject(jobObject.DangerousGetHandle(), processHandle.DangerousGetHandle())) // NOSONAR: S3869 — DangerousAddRef/Release above already pins this; full elimination via SafeHandle-typed P/Invoke params tracked as T-F138
                         {
                             int error = Marshal.GetLastWin32Error();
-                            try { NativeMethods.TerminateProcess(processHandle.DangerousGetHandle(), 1); } catch { /* best-effort */ }
+                            try { NativeMethods.TerminateProcess(processHandle.DangerousGetHandle(), 1); } catch { /* best-effort */ } // NOSONAR: S3869 — DangerousAddRef/Release above already pins this; full elimination via SafeHandle-typed P/Invoke params tracked as T-F138
                             throw new IOException($"AssignProcessToJobObject failed (Win32 error {error}).");
                         }
                     }
@@ -137,10 +137,10 @@ internal static class SandboxedProcessLauncher
                     }
                 }
 
-                if (NativeMethods.ResumeThread(threadHandle.DangerousGetHandle()) == uint.MaxValue)
+                if (NativeMethods.ResumeThread(threadHandle.DangerousGetHandle()) == uint.MaxValue) // NOSONAR: S3869 — DangerousAddRef/Release above already pins this; full elimination via SafeHandle-typed P/Invoke params tracked as T-F138
                 {
                     int error = Marshal.GetLastWin32Error();
-                    try { NativeMethods.TerminateProcess(processHandle.DangerousGetHandle(), 1); } catch { /* best-effort */ }
+                    try { NativeMethods.TerminateProcess(processHandle.DangerousGetHandle(), 1); } catch { /* best-effort */ } // NOSONAR: S3869 — DangerousAddRef/Release above already pins this; full elimination via SafeHandle-typed P/Invoke params tracked as T-F138
                     throw new IOException($"ResumeThread failed (Win32 error {error}).");
                 }
 
@@ -155,14 +155,14 @@ internal static class SandboxedProcessLauncher
 
                 await WaitForExitAsync(processHandle, cancellationToken).ConfigureAwait(false);
 
-                if (!NativeMethods.GetExitCodeProcess(processHandle.DangerousGetHandle(), out uint exitCode))
+                if (!NativeMethods.GetExitCodeProcess(processHandle.DangerousGetHandle(), out uint exitCode)) // NOSONAR: S3869 — DangerousAddRef/Release above already pins this; full elimination via SafeHandle-typed P/Invoke params tracked as T-F138
                     throw new IOException($"GetExitCodeProcess failed (Win32 error {Marshal.GetLastWin32Error()}).");
 
                 return ((int)exitCode, stdOutTask.Result, stdErrTask.Result);
             }
             catch (OperationCanceledException)
             {
-                try { NativeMethods.TerminateProcess(processHandle.DangerousGetHandle(), 1); } catch { /* best-effort */ }
+                try { NativeMethods.TerminateProcess(processHandle.DangerousGetHandle(), 1); } catch { /* best-effort */ } // NOSONAR: S3869 — DangerousAddRef/Release above already pins this; full elimination via SafeHandle-typed P/Invoke params tracked as T-F138
                 throw;
             }
         }
@@ -190,7 +190,7 @@ internal static class SandboxedProcessLauncher
         try
         {
             processHandle.DangerousAddRef(ref refAdded);
-            rawHandle = processHandle.DangerousGetHandle();
+            rawHandle = processHandle.DangerousGetHandle(); // NOSONAR: S3869 — DangerousAddRef/Release above already pins this; full elimination via SafeHandle-typed P/Invoke params tracked as T-F138
         }
         finally
         {

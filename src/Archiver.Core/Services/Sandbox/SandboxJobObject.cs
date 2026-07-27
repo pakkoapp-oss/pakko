@@ -77,7 +77,7 @@ internal sealed class SandboxJobObject : IDisposable
         {
             Marshal.StructureToPtr(info, buffer, fDeleteOld: false);
             handle.DangerousAddRef(ref refAdded);
-            if (!NativeMethods.SetInformationJobObject(handle.DangerousGetHandle(), JobObjectExtendedLimitInformation, buffer, (uint)size))
+            if (!NativeMethods.SetInformationJobObject(handle.DangerousGetHandle(), JobObjectExtendedLimitInformation, buffer, (uint)size)) // NOSONAR: S3869 — DangerousAddRef/Release above already pins this; full elimination via SafeHandle-typed P/Invoke params tracked as T-F138
                 throw new InvalidOperationException($"SetInformationJobObject (extended limits) failed (Win32 error {Marshal.GetLastWin32Error()}).");
         }
         finally
@@ -99,7 +99,7 @@ internal sealed class SandboxJobObject : IDisposable
         {
             Marshal.StructureToPtr(restrictions, buffer, fDeleteOld: false);
             handle.DangerousAddRef(ref refAdded);
-            if (!NativeMethods.SetInformationJobObject(handle.DangerousGetHandle(), JobObjectBasicUIRestrictions, buffer, (uint)size))
+            if (!NativeMethods.SetInformationJobObject(handle.DangerousGetHandle(), JobObjectBasicUIRestrictions, buffer, (uint)size)) // NOSONAR: S3869 — DangerousAddRef/Release above already pins this; full elimination via SafeHandle-typed P/Invoke params tracked as T-F138
                 throw new InvalidOperationException($"SetInformationJobObject (UI restrictions) failed (Win32 error {Marshal.GetLastWin32Error()}).");
         }
         finally

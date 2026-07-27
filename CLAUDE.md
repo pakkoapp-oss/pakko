@@ -626,6 +626,11 @@ files.
 - MVVM: no business logic in `.xaml.cs` files
 - `PublishTrimmed` must be `false` for `Archiver.App` — WinUI 3 `x:Bind` generated code is not trim-compatible. Trimming silently breaks event handlers and Command bindings in Release builds.
 - **tar.exe:** always use `C:\Windows\System32\tar.exe` (absolute path) — never via PATH
+- **Any `Process.Start` of a system-provided executable must use an absolute path, not a bare
+  relative name** — same reasoning as the tar.exe rule above (PATH-hijack resistance), generalized
+  after SonarCloud (S4036) caught 5 `Process.Start("explorer.exe", ...)` call sites doing exactly
+  the relative-name thing the tar.exe rule was meant to prevent. See
+  `Archiver.Core/Services/ExplorerLauncher.cs` for the shared helper (T-F136).
 - **tar.exe format support:** can *create* tar/gz/bz2/xz/zst/lzma (compression filters on a
   ustar/pax/cpio/shar writer) but can only *read* 7z/rar — libarchive has no writer for either
   (`tar --help`'s `--format` lists only `ustar|pax|cpio|shar`). Confirmed empirically while
@@ -653,6 +658,16 @@ files.
   `IProgressDialog.HasUserCancelled` always read back `false` (Cancel appeared to do nothing)
   until `[PreserveSig]` was added — see `Archiver.Shell/NativeProgressDialog.cs`.
 - **Low IL sandbox:** P/Invoke is acceptable for security-critical process isolation code (v1.4)
+- **`SafeHandle.DangerousGetHandle()` must be paired with `DangerousAddRef`/`DangerousRelease`
+  spanning the actual dereference** — without it, nothing keeps the handle reachable for the GC
+  between the two calls (a handle-recycling race), even though `using`/async-state-machine capture
+  often makes it work by accident. Same "provable from the line itself, not hand-traced" standard
+  as bounds checks. Found 16 real instances via SonarCloud S3869 — see
+  `Archiver.Core/Services/Sandbox/` for the pattern (T-F136).
+- **Every intentionally-empty `catch` block needs a one-line comment stating why** (e.g.
+  `/* best-effort */`) — an empty catch's WHY is exactly the non-obvious case this file's own
+  comment policy already carves out an exception for. Also satisfies SonarCloud's S108/S2486 by
+  construction instead of accumulating findings (44 found at once in one first scan, T-F136).
 - **`Microsoft.Win32.Registry` (`RegistryKey`) is usable from `Archiver.Core` (plain `net8.0`,
   not `net8.0-windows`) with zero new NuGet package reference** — confirmed via a throwaway probe
   build; it's already part of the Windows runtime pack pulled in transitively, not something this
@@ -668,6 +683,10 @@ files.
 - **Solution platforms:** x64 and ARM64 only — never add `Any CPU` or `x86` configuration entries
   to the `.sln` file. When adding a new project, mirror the `Debug|x64` / `Release|x64` entries
   from `Archiver.Shell` exactly (two lines per config, right-hand side maps to project's `Any CPU`).
+- **Pin third-party GitHub Actions (`org/action@vX`) to a full commit SHA, not a mutable version
+  tag** — `actions/*` (first-party GitHub actions) are exempt by convention; everything else
+  (`microsoft/setup-msbuild`, `nuget/setup-nuget`, etc.) should be SHA-pinned with a `# vX.Y.Z`
+  trailing comment. Found via SonarCloud S7637 (T-F136).
 - When adding or modifying tests, always run `dotnet test --filter "Category!=Slow&Category!=VeryLarge"`
   with no path argument — never scope to a single test project. **Plain `Category!=Slow` alone is
   not sufficient** — a test tagged only `VeryLarge` (not `Slow`) is not excluded by `!=Slow`, so it

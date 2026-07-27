@@ -42,4 +42,42 @@ public sealed class ArchiveNamingTests
     {
         ArchiveNaming.GetExtension(format).Should().Be(expected);
     }
+
+    [Fact]
+    public void ResolveSingleArchiveName_ExplicitNameGiven_ExplicitNameWins()
+    {
+        ArchiveNaming.ResolveSingleArchiveName("MyArchive", [@"C:\Docs\file.txt"]).Should().Be("MyArchive");
+    }
+
+    [Fact]
+    public void ResolveSingleArchiveName_ExplicitNameGiven_WinsEvenWithMultipleSources()
+    {
+        ArchiveNaming.ResolveSingleArchiveName("MyArchive", [@"C:\a.txt", @"C:\b.txt"]).Should().Be("MyArchive");
+    }
+
+    [Fact]
+    public void ResolveSingleArchiveName_NoExplicitName_SingleSource_UsesSourceFileName()
+    {
+        ArchiveNaming.ResolveSingleArchiveName(null, [@"C:\Docs\report.txt"]).Should().Be("report");
+    }
+
+    [Fact]
+    public void ResolveSingleArchiveName_NoExplicitName_MultipleSources_FallsBackToArchive()
+    {
+        ArchiveNaming.ResolveSingleArchiveName(null, [@"C:\a.txt", @"C:\b.txt"]).Should().Be("archive");
+    }
+
+    [Fact]
+    public void ResolveSingleArchiveName_NoExplicitName_EmptySources_FallsBackToArchive()
+    {
+        ArchiveNaming.ResolveSingleArchiveName(null, []).Should().Be("archive");
+    }
+
+    [Fact]
+    public void ResolveSingleArchiveName_NoExplicitName_DriveRootSource_FallsBackToArchive()
+    {
+        // T-F99: Path.GetFileNameWithoutExtension("Z:\") returns "" — the drive-root case this
+        // fallback exists for (e.g. a single-source Drive ItemType selection via the shell extension).
+        ArchiveNaming.ResolveSingleArchiveName(null, [@"Z:\"]).Should().Be("archive");
+    }
 }

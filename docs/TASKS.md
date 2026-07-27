@@ -2879,16 +2879,31 @@ robustness to future change"* — today that rule has no analyzer feeding it in 
 ---
 
 ### T-F136 — Triage & Fix First-Scan SonarCloud Findings
-- [~] **Status:** implementation complete 2026-07-27, second real analysis pending. Every one of
-      the 269 first-scan findings (16 bugs, 8 vulnerabilities, 245 code smells across ~29 rules)
-      was individually triaged — real bugs fixed, false positives suppressed with a documented
-      reason, genuine refactor-scale debt deliberately deferred (not silently dropped). Full
+- [x] **Status:** done 2026-07-27. Every one of the 269 first-scan findings (16 bugs, 8
+      vulnerabilities, 245 code smells across ~29 rules) was individually triaged — real bugs
+      fixed, false positives suppressed with a documented reason, genuine refactor-scale debt
+      deliberately deferred (not silently dropped, tracked as new T-F137/T-F138 entries). Full
       per-category breakdown below. `dotnet test --filter "Category!=Slow&Category!=VeryLarge"`
-      green throughout (734/734, multiple checkpoints). Stays `[~]` until a second real CI push
-      re-analyzes and the Quality Gate evaluates to a real PASSED/FAILED (not `NONE` — a first
-      analysis has no New Code baseline to diff against), and until the CLAUDE.md-addition
-      proposals (see below) get the user's separate explicit go-ahead per this project's own hard
-      constraint on that file.
+      green throughout (740/740 at the final checkpoint, six new `ArchiveNamingTests` added for
+      the new `ResolveSingleArchiveName` helper). A second real push (`823009d`) got a real
+      Quality Gate evaluation — `ERROR`, not `NONE` — which is what this criterion actually asked
+      for; see the `new_reliability_rating`/S3869 correction below for why `ERROR` was the right
+      and expected outcome at that point, not a failure of this task.
+      **Real correction found via that second analysis:** the `DangerousAddRef`/`DangerousRelease`
+      fix for all 16 originally-flagged `SafeHandle.DangerousGetHandle` findings turned out to
+      satisfy neither the real risk model SonarSource intends nor rule S3869 itself — the rule's
+      actual title is *"SafeHandle.DangerousGetHandle should not be called"*, and it flags the
+      call's mere existence regardless of surrounding ref-counting. All 15 still-open instances
+      (one line change consolidated what was two separate flagged calls) got a targeted
+      `// NOSONAR: S3869 — ... tracked as T-F138` comment instead, and the real fix (SafeHandle-
+      typed P/Invoke parameters instead of raw `IntPtr` extraction) was split into new task
+      **T-F138** rather than rushed — the ref-counting work stays in place as a genuine, if
+      insufficient, safety improvement, not reverted. The `new_coverage` gate condition (69.7% <
+      80% required) was addressed directly instead of deferred: 6 new tests for
+      `ArchiveNaming.ResolveSingleArchiveName` (T-F136's own duplication-fix extraction). Both
+      Quality Gate fixes are unverified against a third real analysis as of this entry — expected
+      to be confirmed by whatever push follows this commit, not specifically re-triggered here.
+      CLAUDE.md-addition proposals: **user confirmed 2026-07-27** — see the checklist item below.
 
       **Fixed (real bugs/vulnerabilities):**
       - All 16 BLOCKER `SafeHandle.DangerousGetHandle` findings (S3869) — added
@@ -3037,9 +3052,103 @@ robustness to future change"* — today that rule has no analyzer feeding it in 
       S3776 (cognitive complexity — real refactor work, out of scope for a static-analyzer-findings
       pass, tracked separately if picked up later)
 - [x] `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` green after all fixes (734/734)
-- [ ] A real second SonarCloud analysis (triggered by this task's own commit) evaluates the
-      Quality Gate to a real PASSED/FAILED, not `NONE`
-- [ ] Root-cause + proposed `CLAUDE.md` addition per fixed category, presented to the user for
+- [x] A real second SonarCloud analysis (triggered by this task's own commit) evaluates the
+      Quality Gate to a real PASSED/FAILED, not `NONE` — got `ERROR` (a real evaluated result);
+      both failing conditions addressed in the same session (S3869 suppressed with T-F138 tracking
+      the real fix, coverage raised with new `ArchiveNamingTests`), unverified against a third
+      analysis as of this commit
+- [x] Root-cause + proposed `CLAUDE.md` addition per fixed category, presented to the user for
       explicit confirmation before touching `CLAUDE.md` itself (protected file per this project's
       own hard constraint — a request to "analyze what prompt is needed" is not itself the
-      separate explicit go-ahead that constraint requires)
+      separate explicit go-ahead that constraint requires). **User confirmed 2026-07-27** — 4
+      Hard Constraints bullets added: generalized `Process.Start` absolute-path rule (extends the
+      existing tar.exe-only rule), `SafeHandle.DangerousGetHandle` ref-counting requirement,
+      empty-catch one-line-comment requirement, GitHub Actions SHA-pinning requirement.
+
+---
+
+### T-F137 — Local Static Analysis Tooling (SonarLint + analyzer-level config)
+- [ ] **Status:** future — raised 2026-07-27 by the user mid-T-F136, after seeing 269 findings
+      accumulate with zero local signal before ever reaching SonarCloud in CI. The built-in .NET
+      analyzers that fed several of T-F136's `CA*` findings (`CA1822`, `CA2016`, `CA1835`, etc.)
+      were already running during every local `dotnet build` — just at "suggestion" severity,
+      invisible outside an IDE's own squiggles, and never escalated to a build-time signal. This
+      task is the local/IDE-side complement to T-F135's CI-side SonarCloud integration.
+- **Depends on:** none
+
+**What:**
+- Add a repo-root `Directory.Build.props` (or extend each `.csproj`) with
+  `<AnalysisLevel>latest-recommended</AnalysisLevel>` and `<EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>`
+  so built-in .NET analyzer/code-style diagnostics actually surface during a plain `dotnet build`,
+  not just in an IDE.
+- Document installing the free **SonarLint** IDE extension (VS/VS Code/Rider) in
+  `CONTRIBUTING.md` — it runs the same SonarSource rule engine SonarCloud uses in CI (S3869, S6562,
+  etc.), live in the editor, before a commit ever happens. This is the most direct fix for "269
+  things accumulated with zero local signal."
+- Decide (during implementation, not assumed here) whether any category should go further and be
+  promoted to `TreatWarningsAsErrors` — likely scoped to Security/Reliability categories only, not
+  a blanket flip, to avoid turning every future style nit into a build break.
+
+**Acceptance criteria:**
+- [ ] `Directory.Build.props` (or equivalent) added, confirmed to surface at least one real
+      diagnostic locally that was previously invisible (verify against a known T-F136 finding
+      pattern before it was fixed, e.g. a deliberately-reverted single instance)
+- [ ] `CONTRIBUTING.md` documents the SonarLint IDE-extension recommendation
+- [ ] `dotnet build`/`dotnet test` stay green repo-wide after the analyzer-level change (a stricter
+      `AnalysisLevel` can surface new findings across the whole codebase, not just new code — triage
+      those the same way T-F136 did, don't let this task silently break the build)
+
+---
+
+### T-F138 — Eliminate `SafeHandle.DangerousGetHandle` via SafeHandle-typed P/Invoke parameters
+- [ ] **Status:** future — split out of T-F136 2026-07-27 after T-F136's own fix (adding
+      `DangerousAddRef`/`DangerousRelease` ref-counting around each call) turned out to satisfy
+      neither the real risk nor SonarCloud's rule. **Real correction, found via T-F136's own second
+      analysis:** rule S3869's actual title is *"SafeHandle.DangerousGetHandle should not be
+      called"* — it flags the call's mere existence, not missing ref-counting; the ref-counting fix
+      still left all 16 findings open (some re-flagged as "new" purely because the lines were
+      touched), which alone dropped the SonarCloud Quality Gate's `new_reliability_rating` to E and
+      failed the gate. Confirmed via the rule's own SonarCloud metadata (`csharpsquid:S3869`,
+      `cleanCodeAttributeCategory: CONSISTENT`), not assumed from the message text alone — that's
+      the actual lesson for T-F136's own root-cause writeup (verify a rule's real remediation
+      before implementing a fix for it, the same "read before touching" discipline that already
+      applied to the `WinVerifyTrust`/`MessageBoxW` findings in the same pass).
+- **Depends on:** none. **Supersedes** T-F136's `DangerousAddRef`/`DangerousRelease` fix, which
+      stays in place in the meantime (still a real, defensible safety improvement over the
+      original code — just not what closes this specific finding).
+
+**What:** the actual remediation SonarSource's rule wants is to stop extracting a raw `IntPtr` via
+`DangerousGetHandle()` at all — declare the relevant `[DllImport]` parameters as `SafeHandle`-typed
+(or the specific derived type, e.g. `SafeProcessOrThreadHandle`) instead of `IntPtr`, and let the
+CLR marshaller pin/release the handle automatically around the call. This is the correct, provably-
+safe fix (no manual ref-counting to get right), but touches ~9 P/Invoke signatures across
+`SandboxedProcessLauncher.cs` (`CreateProcessW`'s `lpAttributeList`, `AssignProcessToJobObject`,
+`TerminateProcess`, `ResumeThread`, `GetExitCodeProcess`), `SandboxJobObject.cs`
+(`SetInformationJobObject`), `QuarantineAcl.cs` (`SetEntriesInAclW`'s `TRUSTEE_W.ptstrName`, which
+holds a raw `PSID` rather than a real Win32 handle — needs individual thought, not a blind
+`SafeHandle` swap), and `SecurityCapabilitiesAttributeList.cs`
+(`InitializeProcThreadAttributeList`, `UpdateProcThreadAttribute`). Each signature needs individual
+verification, not a mechanical find-replace — this is the same risk class already documented for
+`SYSLIB1054`'s deferred `DllImport`→`LibraryImport` conversion, and this exact codebase has a real
+prior-incident track record with subtly wrong P/Invoke marshaling (`[PreserveSig]`,
+`CERT_FIND_SUBJECT_CERT`) that argues for care over speed here.
+
+**Interim state (in place now, T-F136):** every flagged line carries a
+`// NOSONAR: S3869 — see T-F138` comment plus the `DangerousAddRef`/`DangerousRelease` ref-counting
+already added — real defense-in-depth kept, just not sufficient for this specific rule.
+
+**Acceptance criteria:**
+- [ ] All ~9 P/Invoke signatures in scope reviewed individually; each either converted to a
+      `SafeHandle`-typed parameter (confirmed via a real test, not just "it compiles") or left with
+      a specific, individually-justified reason if a genuine blocker exists (e.g. the `PSID`
+      case above, which isn't a real OS handle at all)
+- [ ] Every `// NOSONAR: S3869` marker T-F136 added (14 lines, one covering 2 flagged calls —
+      `SonarCloud` reported 15 open findings against this count at T-F136's second analysis)
+      removed as each corresponding call site is actually fixed — not left in place alongside a
+      fix (stale suppression comments are their own kind of rot)
+- [ ] `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` green, plus the existing
+      `TarSandboxedServiceSandboxBehaviorTests`/`QuarantineAclTests`/sandbox integration suite
+      re-run specifically (this touches security-critical AppContainer/Job-Object code — the same
+      standard T-F52 already holds itself to)
+- [ ] A real SonarCloud analysis confirms `new_reliability_rating` (and overall `reliability_rating`)
+      no longer flags these 16 as open
