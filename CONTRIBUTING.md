@@ -39,6 +39,21 @@ packaging/signing/running still needs `Deploy.ps1` or Visual Studio.
 
 ---
 
+## Static analysis
+
+`Directory.Build.props` enables `AnalysisLevel=latest-recommended` + `EnforceCodeStyleInBuild`
+repo-wide, so a plain `dotnet build`/`dotnet test` already surfaces real .NET analyzer findings
+(reviewed severity overrides for known-noisy families live in `.editorconfig`) — no separate step
+needed to see these locally.
+
+For the same SonarSource rule engine SonarCloud runs in CI (S3869, S6562, etc.), install the free
+**SonarLint** extension for your editor — [Visual Studio](https://marketplace.visualstudio.com/items?itemName=SonarSource.SonarLintforVisualStudio2022),
+[VS Code](https://marketplace.visualstudio.com/items?itemName=SonarSource.sonarlint-vscode), or
+[Rider](https://plugins.jetbrains.com/plugin/7973-sonarlint). It flags the same issues live in the
+editor, before a commit ever reaches CI. See `docs/TASKS.md`'s T-F137 entry for the rationale.
+
+---
+
 ## Test fixtures
 
 `tests/Archiver.Core.Tests.GenerateFixtures` is a standalone console project that creates

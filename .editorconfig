@@ -1,0 +1,78 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = crlf
+indent_style = space
+indent_size = 4
+trim_trailing_whitespace = true
+insert_final_newline = true
+
+[*.cs]
+# Namespace style
+csharp_style_namespace_declarations = file_scoped:error
+
+# var preferences
+csharp_style_var_for_built_in_types = false:suggestion
+csharp_style_var_when_type_is_apparent = true:suggestion
+csharp_style_var_elsewhere = false:suggestion
+
+# Expression-bodied members
+csharp_style_expression_bodied_methods = false:silent
+csharp_style_expression_bodied_properties = true:suggestion
+
+# Null checking
+dotnet_style_null_propagation = true:suggestion
+dotnet_style_coalesce_expression = true:suggestion
+
+# Using directives
+csharp_using_directive_placement = outside_namespace:error
+
+# Modifier order
+csharp_preferred_modifier_order = public,private,protected,internal,static,extern,new,virtual,abstract,sealed,override,readonly,unsafe,volatile,async:suggestion
+
+# Naming rules
+dotnet_naming_rule.private_fields_should_be_camel_case.severity = warning
+dotnet_naming_rule.private_fields_should_be_camel_case.symbols = private_fields
+dotnet_naming_rule.private_fields_should_be_camel_case.style = camel_case_underscore_prefix
+
+dotnet_naming_symbols.private_fields.applicable_kinds = field
+dotnet_naming_symbols.private_fields.applicable_accessibilities = private
+
+dotnet_naming_style.camel_case_underscore_prefix.capitalization = camel_case
+dotnet_naming_style.camel_case_underscore_prefix.required_prefix = _
+
+# T-F137: family-level severity overrides for built-in .NET analyzer diagnostics that
+# AnalysisLevel=latest-recommended (Directory.Build.props) now surfaces at plain `dotnet build`.
+# Each override below is a reviewed decision, not a blanket mute — see docs/TASKS.md's T-F137
+# entry for the full accounting of every diagnostic family this build produces.
+
+# CA1305 (locale-dependent formatting/parsing): Pakko is a desktop UI app shipped only as a
+# packaged Windows app, never a redistributed library — every hit reviewed is either UI status
+# text (correctly locale-sensitive) or ASCII-only tar.exe/CRC output (locale-invariant in
+# practice). Not a defect class worth flagging repo-wide.
+dotnet_diagnostic.CA1305.severity = none
+
+# CA1805 (explicit default-value field initializer): every hit is an explicit `= false` on an
+# ArchiveOptions/ExtractOptions bool property — self-documenting intent for a public options
+# model read by multiple frontends, not redundancy worth flagging.
+dotnet_diagnostic.CA1805.severity = none
+
+[tests/**.cs]
+# CA1707 (identifiers should not contain underscores): this repo's entire test suite uses the
+# established Method_Scenario_ExpectedResult xUnit naming convention (see any test file, e.g.
+# ArchiveNamingTests.cs) — 1130 of 1218 warnings this build produces are this single, intentional
+# pattern. Scoped to tests/ only so a real underscore in a public src/ identifier still surfaces.
+dotnet_diagnostic.CA1707.severity = none
+
+[*.xaml]
+indent_size = 4
+
+[*.md]
+trim_trailing_whitespace = false
+
+[*.json]
+indent_size = 2
+
+[*.{csproj,props,targets}]
+indent_size = 2

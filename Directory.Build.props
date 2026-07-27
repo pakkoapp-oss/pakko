@@ -1,0 +1,11 @@
+<Project>
+
+  <!-- T-F137: surfaces built-in .NET analyzer/code-style diagnostics during a plain `dotnet build`
+       for every project in the repo, instead of only as IDE-only suggestions invisible until
+       SonarCloud's CI-side run (T-F135/T-F136). -->
+  <PropertyGroup>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+  </PropertyGroup>
+
+</Project>

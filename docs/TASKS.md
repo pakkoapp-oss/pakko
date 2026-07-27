@@ -3084,12 +3084,44 @@ robustness to future change"* — today that rule has no analyzer feeding it in 
 ---
 
 ### T-F137 — Local Static Analysis Tooling (SonarLint + analyzer-level config)
-- [ ] **Status:** future — raised 2026-07-27 by the user mid-T-F136, after seeing 269 findings
+- [x] **Status:** done 2026-07-27. Raised by the user mid-T-F136, after seeing 269 findings
       accumulate with zero local signal before ever reaching SonarCloud in CI. The built-in .NET
       analyzers that fed several of T-F136's `CA*` findings (`CA1822`, `CA2016`, `CA1835`, etc.)
       were already running during every local `dotnet build` — just at "suggestion" severity,
       invisible outside an IDE's own squiggles, and never escalated to a build-time signal. This
       task is the local/IDE-side complement to T-F135's CI-side SonarCloud integration.
+      **Real result:** a root `Directory.Build.props` (`AnalysisLevel=latest-recommended` +
+      `EnforceCodeStyleInBuild`) turned a plain `dotnet build windows-archiver-wrapper.sln` from
+      0 warnings into 609 (1218 raw lines across two build passes) — confirming the mechanism
+      works, but also proving the naive version would just replace "no signal" with "unreadable
+      signal." **Found along the way: `docs/CONVENTIONS.md` has documented a full root
+      `.editorconfig` block since before this task ("Place this file at the repository root") but
+      the file was never actually created** — a real, pre-existing drift between documented and
+      actual repo state, fixed here by creating it with exactly that content, plus new sections.
+      Broke the 609 down by rule: `CA1707` (1130 of 1218 raw hits, "identifiers should not contain
+      underscores") is entirely this repo's own established xUnit `Method_Scenario_Expected`
+      test-naming convention firing across every one of its ~60 test files — not a defect,
+      silenced via `dotnet_diagnostic.CA1707.severity = none` scoped to `tests/**.cs` only (so a
+      real underscore in a public `src/` identifier still surfaces). `CA1305` (46, locale-
+      dependent formatting) and `CA1805` (8, explicit default-value initializers) were reviewed
+      and silenced repo-wide with an inline reason each — Pakko is a shipped desktop UI app, not a
+      redistributed library, and every `ArchiveOptions`/`ExtractOptions` `= false` is deliberate
+      self-documentation, not redundancy. Net result: 609 → 17 real warnings, 0 errors,
+      `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` still 740/740 green. The
+      remaining 17 were individually reviewed, not bulk-suppressed: `CA1001` on
+      `MainViewModel._cts` (owns a disposable field, isn't itself disposable) is a real but
+      low-risk gap — every use already disposes it in a `finally` block, so the only real leak
+      window is the ViewModel itself being torn down mid-operation, which doesn't happen in this
+      app's single-window WinUI lifecycle; left as a visible warning, no fix forced here. `CA1838`
+      (`SandboxedProcessLauncher.cs:341`, StringBuilder P/Invoke parameter) overlaps T-F138's own
+      scope and is left for that task rather than fixed in isolation. The rest (`CA1835` x3,
+      `CA1859` x2, `CA1711`, `CA2201` x2, `CA1861` x2, `CA1844`, `CA1826`) are minor, genuine,
+      newly-visible suggestions — left as live local signal, not fixed reflexively, matching this
+      task's actual scope (tooling, not a fix pass). **`TreatWarningsAsErrors` decision:** not
+      enabled in this pass, for any category — 17 warnings is a small enough surface that a future
+      task can revisit promoting Security/Reliability-tagged rules once their steady-state count is
+      known; a blanket flip now would fail the build on the next legitimate finding with zero
+      triage time built in.
 - **Depends on:** none
 
 **What:**
@@ -3106,13 +3138,15 @@ robustness to future change"* — today that rule has no analyzer feeding it in 
   a blanket flip, to avoid turning every future style nit into a build break.
 
 **Acceptance criteria:**
-- [ ] `Directory.Build.props` (or equivalent) added, confirmed to surface at least one real
-      diagnostic locally that was previously invisible (verify against a known T-F136 finding
-      pattern before it was fixed, e.g. a deliberately-reverted single instance)
-- [ ] `CONTRIBUTING.md` documents the SonarLint IDE-extension recommendation
-- [ ] `dotnet build`/`dotnet test` stay green repo-wide after the analyzer-level change (a stricter
-      `AnalysisLevel` can surface new findings across the whole codebase, not just new code — triage
-      those the same way T-F136 did, don't let this task silently break the build)
+- [x] `Directory.Build.props` added; confirmed to surface real, previously-invisible diagnostics —
+      `CA1835` (the same rule T-F136's writeup names as having fed CI findings) fires on
+      `ProgressStream.cs`/`AggregateProgressStream.cs` at plain `dotnet build`, and `CA1806` fires
+      on `TarSignatureVerifier.cs`'s `WinVerifyTrust` call, neither visible before this change
+- [x] `CONTRIBUTING.md` documents the SonarLint IDE-extension recommendation (new "Static
+      analysis" section, links for VS/VS Code/Rider)
+- [x] `dotnet build`/`dotnet test` stay green repo-wide after the analyzer-level change — 0 errors
+      (17 warnings, down from a naive 609 after `.editorconfig` severity triage, see Status above);
+      `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` 740/740 passed
 
 ---
 
