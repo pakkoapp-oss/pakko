@@ -2818,6 +2818,25 @@ prints a compiled-in banner on every invocation instead).
       resulting reports via `/d:sonar.cs.cobertura.reportsPaths="**/coverage.cobertura.xml"`. This
       feeds a real number into the gate; it does not guarantee that number clears 80% — a real gate
       failure from insufficient coverage on new code is a legitimate signal, not a setup bug.
+      **Branch-naming bug found and fixed, same day:** SonarCloud's manual project creation
+      defaulted the designated "Main Branch" to the literal name `master`, which this repo has
+      never had (only `main`) — every real analysis was landing on a short-lived, non-main branch
+      record instead, so `qualitygates/project_status` returned `NONE` and the README badge would
+      have shown a stale/unanalyzed state indefinitely. Fixed via SonarCloud's Administration →
+      Branches → Rename Branch (`master` → `main`); confirmed via `api/project_branches/list`
+      that `main` is now `isMain: true`, `type: LONG`. A second real CI run (empty commit
+      `9144efa`, pushed specifically to re-trigger analysis against the corrected branch) confirmed
+      via `api/ce/component` (status `SUCCESS`, `branch: main`, `branchType: LONG`) and
+      `api/measures/component` real project-wide numbers: 16 bugs, 8 vulnerabilities, 245 code
+      smells, 74.8% coverage, 2.1% duplication, reliability E, security C, maintainability A.
+      **Quality Gate itself still reads `NONE` — expected, not a bug:** all 6 "Sonar way"
+      conditions evaluate against *New Code* (delta from a previous analysis), and this was the
+      first-ever analysis of the correctly-named branch, so there's no prior baseline to diff
+      against yet. It becomes evaluable starting with the next analysis.
+      **Still open before `[x]`:** (1) a third analysis, so the Quality Gate actually evaluates to
+      a real PASSED/FAILED instead of `NONE`; (2) the "existing findings triaged" acceptance
+      criterion below — 16 bugs / 8 vulnerabilities / 245 code smells currently sit unreviewed,
+      real remaining work, not a CI-wiring gap.
 - **Depends on:** T-F122 (`build.yml` CI workflow, done)
 
 **What:** wire SonarCloud into `.github/workflows/build.yml` so every push/PR gets a real static-
