@@ -17,8 +17,16 @@ on:
 # and update PAKKO_DEV_CERT_THUMBPRINT below — nothing else in this file should need to change.
 #   PAKKO_DEV_CERT_PFX_BASE64 (secret) — base64-encoded, password-protected PFX export
 #   PAKKO_DEV_CERT_PASSWORD   (secret) — the PFX export password
+#
+# ── SonarCloud (T-F135) ────────────────────────────────────────────────────────────────────────
+#   SONAR_TOKEN (secret) — SonarCloud analysis token, OSS plan (public repo), org key
+#   "pakkoapp-oss-1" (note the "-1" — the plain "pakkoapp-oss" key was already taken on
+#   sonarcloud.io, so this is NOT the same string as the GitHub org/account name). Confirmed real
+#   via SonarCloud's public API (api/components/show?component=pakkoapp-oss-1_pakko) 2026-07-27.
 env:
   PAKKO_DEV_CERT_THUMBPRINT: D2EC5F2C451ED0EBE94B8168A68E5B813954CC75
+  SONAR_PROJECT_KEY: pakkoapp-oss-1_pakko
+  SONAR_ORGANIZATION: pakkoapp-oss-1
   DOTNET_NOLOGO: true
   DOTNET_CLI_TELEMETRY_OPTOUT: true
 
@@ -46,13 +54,68 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # SonarCloud wants real git history (blame/new-code detection), not the default
+          # single-commit shallow clone.
+          fetch-depth: 0
 
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "8.0.x"
 
+      # ── SonarCloud (T-F135) ──────────────────────────────────────────────────────────────────
+      # Only runs with a real SONAR_TOKEN available: pushes to main/tags, and PRs from this same
+      # repo (not forks — GitHub withholds secrets from fork-originated pull_request runs, so a
+      # fork PR would otherwise fail here with a confusing missing-token error instead of just
+      # skipping cleanly).
+      - name: Set up JDK (required by dotnet-sonarscanner)
+        if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Cache SonarCloud packages
+        if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+        uses: actions/cache@v4
+        with:
+          path: ~\.sonar\cache
+          key: ${{ runner.os }}-sonar
+
+      - name: Install dotnet-sonarscanner
+        if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+        shell: pwsh
+        run: dotnet tool update dotnet-sonarscanner --tool-path .\.sonar\scanner
+
+      - name: Begin SonarCloud analysis
+        if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+        shell: pwsh
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          if (-not $env:SONAR_TOKEN) {
+            throw "SONAR_TOKEN secret is not set. See scripts/README.md's Continuous Integration section."
+          }
+          .\.sonar\scanner\dotnet-sonarscanner begin `
+            /k:"$env:SONAR_PROJECT_KEY" `
+            /o:"$env:SONAR_ORGANIZATION" `
+            /d:sonar.token="$env:SONAR_TOKEN" `
+            /d:sonar.host.url="https://sonarcloud.io" `
+            /d:sonar.cs.cobertura.reportsPaths="**/coverage.cobertura.xml"
+
       - name: Run .NET test suite
-        run: dotnet test --filter "Category!=Slow&Category!=VeryLarge"
+        # --collect:"XPlat Code Coverage" uses the coverlet.collector package already referenced
+        # by every test project (T-F135) — no new package, just feeds SonarCloud's
+        # "New code has sufficient test coverage" quality-gate condition instead of leaving it at
+        # "no data". Writes one coverage.cobertura.xml per test project under **/TestResults/.
+        run: dotnet test --filter "Category!=Slow&Category!=VeryLarge" --collect:"XPlat Code Coverage"
+
+      - name: End SonarCloud analysis
+        if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+        shell: pwsh
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: .\.sonar\scanner\dotnet-sonarscanner end /d:sonar.token="$env:SONAR_TOKEN"
 
       - name: Set up MSBuild
         uses: microsoft/setup-msbuild@v2

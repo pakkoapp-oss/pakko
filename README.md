@@ -4,6 +4,8 @@ Minimal WinUI 3 GUI wrapper for Windows built-in ZIP support.
 
 **No 7-Zip. No WinRAR. No third-party compression code.**
 
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=pakkoapp-oss-1_pakko&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=pakkoapp-oss-1_pakko)
+
 [☕ Support the project on Ko-fi](https://ko-fi.com/pakko_app)
 
 ---

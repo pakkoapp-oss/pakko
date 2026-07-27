@@ -141,6 +141,57 @@ change, nothing else in the workflow.
 
 ---
 
+## SonarCloud static analysis (T-F135)
+
+The `test` job runs a SonarCloud scan wrapped around the existing `dotnet test` invocation (JDK
+setup → `dotnet-sonarscanner begin` → `dotnet test` → `dotnet-sonarscanner end`), on every push to
+`main`/tags and on same-repo pull requests. Free tier — SonarCloud analysis is free for genuinely
+public repositories, which this one is. Fork-originated PRs skip the Sonar steps entirely (no
+`SONAR_TOKEN` secret available to them) rather than failing.
+
+**Real organization/project keys (confirmed via SonarCloud's public API, 2026-07-27) — note the
+`-1` suffix on the org key, since the plain `pakkoapp-oss` key was already taken on sonarcloud.io
+when the project was created, so it does NOT match the GitHub org/account name:**
+- Organization key: `pakkoapp-oss-1`
+- Project key: `pakkoapp-oss-1_pakko`
+
+Both are wired into `build.yml`'s `SONAR_PROJECT_KEY`/`SONAR_ORGANIZATION` env vars and into
+`README.md`'s badge — don't reuse `pakkoapp-oss`/`pakkoapp-oss_pakko` (an earlier guessed
+placeholder that turned out wrong) anywhere new.
+
+**Coverage:** the org's default "Sonar way" quality gate requires new code coverage ≥ 80% — with
+no coverage data submitted, that condition reads as "no data" and fails the gate outright. The
+`test` job's `dotnet test` step therefore also passes `--collect:"XPlat Code Coverage"` (using the
+`coverlet.collector` package every test project already references — no new dependency), and the
+`dotnet-sonarscanner begin` step passes
+`/d:sonar.cs.cobertura.reportsPaths="**/coverage.cobertura.xml"` to pick up the resulting
+per-test-project Cobertura reports. This makes the condition evaluate against a real number — it
+does not guarantee the actual number clears 80%; if the real coverage on new code comes in lower,
+the gate can still fail, and that's a legitimate signal to act on (write more tests), not a CI bug.
+
+**One-time setup (already done 2026-07-27 — kept here for reference / re-setup):**
+1. Sign in to [sonarcloud.io](https://sonarcloud.io), create the org, import the
+   `pakkoapp-oss/pakko` repository as a new project (done manually, without GitHub-App binding,
+   since the importing account had no Admin on the repo — see `DECISIONS.md`'s T-F135 entry).
+2. Generate an analysis token (My Account → Security) and add it as a repo secret named
+   `SONAR_TOKEN` (Settings → Secrets and variables → Actions) — done.
+3. Analysis Method should already be "CI-based" — the manual/"Other CI" `dotnet-sonarscanner`
+   setup snippet SonarCloud generated (see below) only exists for CI-based projects; Automatic
+   Analysis needs the GitHub App installed with repo Admin, which was never available for this
+   import (step 1). Not independently eyeballed on the Administration → Analysis Method page, but
+   this project structurally couldn't have ended up in Automatic mode.
+4. Once a real scan has run, confirm the quality-gate results against the actual SonarCloud
+   project dashboard (https://sonarcloud.io/project/overview?id=pakkoapp-oss-1_pakko), not just a
+   green GitHub Actions run — same rule this project already applies to every other CI change
+   (T-F122/T-F125 precedent).
+
+The C++ `Archiver.ShellExtension`/`Archiver.ShellExtension.Tests` projects are **not** covered by
+this scan (SonarCloud's C/C++ analysis needs a separate `build-wrapper` tool and has its own
+licensing terms — not yet evaluated for the free tier). Only the .NET projects are analyzed for
+now.
+
+---
+
 ## Notes
 
 - `PakkoDev.cer` is gitignored — never commit certificates to the repository.

@@ -2778,3 +2778,81 @@ prints a compiled-in banner on every invocation instead).
 - [x] `dotnet test` green (`Archiver.CLI.Tests` 147/147, was 143 — 4 new: 2 parser, 2 subprocess)
 - [x] Real built `pakko.exe -v`/`--version` (both flags) smoke-tested, printing `pakko X.Y.Z` and
       exiting 0
+
+---
+
+### T-F135 — SonarCloud Static Analysis Integration (CI)
+- [~] **Status:** partial — 2026-07-27. `build.yml`'s `test` job runs JDK setup →
+      `dotnet-sonarscanner begin` → the existing `dotnet test` → `dotnet-sonarscanner end`, guarded
+      to skip cleanly (not fail) on fork-originated PRs that have no `SONAR_TOKEN` available. Real
+      SonarCloud org/project now exist and are confirmed reachable via SonarCloud's public API
+      (org key **`pakkoapp-oss-1`**, project key **`pakkoapp-oss-1_pakko`** — note the `-1`, since
+      the plain `pakkoapp-oss` key was already taken when the org was created; this does NOT match
+      the GitHub org/account name, don't assume it does). `SONAR_TOKEN` repo secret added by the
+      user 2026-07-27 (confirmed present via `gh secret list`, value itself not readable/verified
+      by the agent). Both keys wired into `build.yml`'s env vars and `README.md`'s quality-gate
+      badge; `scripts/README.md` documents the real keys and remaining manual steps.
+      **Correction:** the org/project were created via SonarCloud's "Analyze manually" flow (not
+      GitHub-App binding), because the importing account lacked Admin on the repo — `pakkoapp-oss`
+      is a personal GitHub User account, and personal-account repos don't grant collaborators
+      Admin/Maintain roles (same fact already noted elsewhere in this file for T-F124). This means
+      PR decoration/auto-binding is not automatically part of this setup; CI-based analysis via the
+      scanner still works regardless. **Analysis Method:** high-confidence CI-based already, by
+      construction rather than a direct settings check — the user received SonarCloud's
+      "Other CI"/manual `dotnet-sonarscanner begin`/`end` setup snippet, which SonarCloud only
+      surfaces for CI-based projects (Automatic Analysis needs the GitHub App installed with repo
+      Admin, which was never available here — see the "Analyze manually" correction above; that
+      path structurally can't end up in Automatic mode). Not a substitute for eyeballing
+      Administration → Analysis Method directly, but strong enough not to block on. **Still open
+      before this graduates to `[x]`:** one real CI run (a push, since PR runs against `main` need
+      an actual PR) completing successfully, then checking the result against the live SonarCloud
+      dashboard, not just a green Actions run. C++ (`Archiver.ShellExtension`) stays deliberately
+      out of scope for this pass. This project's own rule for CI changes (T-F122/T-F125
+      precedent): don't graduate on YAML/API-reachability alone — a real analyzed commit has to
+      show up on the dashboard.
+      **Coverage follow-up, same day:** the org's default "Sonar way" quality gate requires new
+      code coverage ≥ 80% — with no coverage submitted, that condition reports "no data" and fails
+      the gate regardless of everything else. `dotnet test` now runs with
+      `--collect:"XPlat Code Coverage"` (via the `coverlet.collector` package every test project
+      already references — no new dependency) and `dotnet-sonarscanner begin` picks up the
+      resulting reports via `/d:sonar.cs.cobertura.reportsPaths="**/coverage.cobertura.xml"`. This
+      feeds a real number into the gate; it does not guarantee that number clears 80% — a real gate
+      failure from insufficient coverage on new code is a legitimate signal, not a setup bug.
+- **Depends on:** T-F122 (`build.yml` CI workflow, done)
+
+**What:** wire SonarCloud into `.github/workflows/build.yml` so every push/PR gets a real static-
+analysis pass (bugs, vulnerabilities, code smells, duplication) across the .NET projects, not just
+`dotnet test` green. Must stay **free** — SonarCloud's free tier only applies to genuinely public
+repositories, which this repo is (confirmed: `origin` is `github.com/pakkoapp-oss/pakko`, public).
+Directly continues this project's own hard constraint: *"A CI-run static analyzer's findings on
+your own PR/commit get fixed in the same pass ... tests prove behavior, an analyzer proves
+robustness to future change"* — today that rule has no analyzer feeding it in CI at all.
+
+**Acceptance criteria:**
+- [ ] Confirm the project qualifies for SonarCloud's free plan (public GitHub repo, no private
+      forks in scope) before doing any setup work — don't assume, check their current published
+      terms at the time this is picked up
+- [ ] SonarCloud project created and linked to `pakkoapp-oss/pakko` (organization + project key)
+- [ ] `SONAR_TOKEN` added as a GitHub Actions secret (repo secret, never committed to a tracked
+      file — per this project's public-repo-hygiene rule)
+- [ ] New step(s) in `build.yml`'s `test` job (or a new dedicated job) run the SonarCloud C#
+      scanner (`dotnet-sonarscanner begin`/`end`) wrapping the existing `dotnet build`/`dotnet
+      test` invocation, so coverage/analysis data comes from a real build+test run, not a
+      standalone lint pass
+- [ ] Scan scope covers the .NET projects (`Archiver.Core`, `Archiver.App`, `Archiver.App.Core`,
+      `Archiver.Shell`, `Archiver.CLI`) — decide during implementation whether the C++
+      `Archiver.ShellExtension` project is in scope for this same pass or deferred (SonarCloud's
+      C++ analysis has separate licensing/setup considerations; don't assume it's free-tier
+      covered without checking)
+- [ ] A real CI run (not just a local read of the YAML) completes and a real SonarCloud project
+      dashboard shows results — this project's own rule for CI changes (T-F122/T-F125 precedent):
+      graduate only after a real workflow run + a real check against the actual SonarCloud UI, not
+      on green YAML syntax alone
+- [ ] `README.md` gets a SonarCloud quality-gate badge (standard practice for public OSS repos
+      using it) — small, teaser-only, per this project's canonical-topic-owner rule (no duplicated
+      detail, just the badge/link)
+- [ ] Any findings SonarCloud reports against **existing** code at first-scan time are triaged (not
+      silently ignored) — real bugs/vulnerabilities fixed, accepted false positives suppressed with
+      a reason via SonarCloud's own suppression mechanism, not a blanket `// NOSONAR` sweep
+- [ ] `docs/TASKS.md`/`CLAUDE.md` updated once this ships, so the existing "CI-run static analyzer"
+      hard constraint has a real analyzer to point at
