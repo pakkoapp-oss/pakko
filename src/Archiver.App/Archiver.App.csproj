@@ -3,6 +3,10 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows10.0.17763.0</TargetFramework>
     <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <!-- Lets `dotnet restore` resolve this Windows-targeted TFM on a non-Windows CI runner (e.g.
+         GitHub's Automatic Dependency Submission workflow) without NETSDK1100; no effect on an
+         actual Windows build. -->
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <RootNamespace>Archiver.App</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Assets\Square44x44Logo.ico</ApplicationIcon>
