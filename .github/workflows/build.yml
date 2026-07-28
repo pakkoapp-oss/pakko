@@ -74,28 +74,29 @@ jobs:
       # Only runs with a real SONAR_TOKEN available: pushes to main/tags, and PRs from this same
       # repo (not forks — GitHub withholds secrets from fork-originated pull_request runs, so a
       # fork PR would otherwise fail here with a confusing missing-token error instead of just
-      # skipping cleanly).
+      # skipping cleanly). Dependabot PRs are excluded too — GitHub withholds repo secrets from
+      # them the same way even though they aren't forks (confirmed via a real failed run).
       - name: Set up JDK (required by dotnet-sonarscanner)
-        if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+        if: (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository) && github.actor != 'dependabot[bot]'
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
 
       - name: Cache SonarCloud packages
-        if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+        if: (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository) && github.actor != 'dependabot[bot]'
         uses: actions/cache@v4
         with:
           path: ~\.sonar\cache
           key: ${{ runner.os }}-sonar
 
       - name: Install dotnet-sonarscanner
-        if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+        if: (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository) && github.actor != 'dependabot[bot]'
         shell: pwsh
         run: dotnet tool update dotnet-sonarscanner --tool-path .\.sonar\scanner
 
       - name: Begin SonarCloud analysis
-        if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+        if: (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository) && github.actor != 'dependabot[bot]'
         shell: pwsh
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -118,7 +119,7 @@ jobs:
         run: dotnet test --filter "Category!=Slow&Category!=VeryLarge" --collect:"XPlat Code Coverage"
 
       - name: End SonarCloud analysis
-        if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+        if: (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository) && github.actor != 'dependabot[bot]'
         shell: pwsh
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
