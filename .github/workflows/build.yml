@@ -10,6 +10,13 @@ on:
   pull_request:
     branches: [main]
 
+# Workflow-level default (CodeQL actions/missing-workflow-permissions) — the `test` job below has
+# no job-level override, so this is what actually applies to it. build-msix/build-cli/release each
+# already declare their own broader job-level permissions (id-token/attestations/contents:write)
+# and are unaffected by this default.
+permissions:
+  contents: read
+
 # ── Interim signing identity (T-F122) ──────────────────────────────────────────────────────────
 # Signs with the same local self-signed "CN=Pakko Dev" dev cert Deploy.ps1 already uses
 # (thumbprint below), stored as two repo secrets. TODO(T-F10): once SignPath Foundation issues a
