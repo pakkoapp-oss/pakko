@@ -1107,6 +1107,42 @@ account in `DECISIONS.md`'s T-F129 entry, summary here:**
   own T-F101 investigation (Explorer verb/icon-cache artifact) — Store publication doesn't
   introduce this risk, but it's worth an explicit standing check, not just a pre-submission one.
 
+**Real correspondence from Microsoft Support, 2026-07-28 (user forwarded the reply email):**
+- **`HeadlessAppBypass` waiver request (see `CLAUDE.md`'s "Windows Packaging Best Practices" —
+  the hidden `Archiver.Shell.exe` satellite `<Application>` entry, `AppListEntry="none"`, is what
+  triggers this) — status: submitted by the user, forwarded by support to "the designated team"
+  for review, no SLA given.** Microsoft will follow up through the same support case. This item
+  was flagged as a real blocker in `CLAUDE.md` but had never actually been added to this task's
+  own acceptance criteria — added below, now that a real request is in flight.
+- **`runFullTrust` clarification:** support describes this as reviewed *as part of the standard
+  app-certification pass*, driven by the justification text entered on Partner Center's
+  Submission Options page during submission — not framed as a separate pre-submission approval
+  gate the way the 2026-07-20 research (two Microsoft Q&A threads) suggested. Doesn't overturn
+  that research outright (a past account-level rejection is still a real, quoted failure mode for
+  other developers) — read as: submit with a strong, specific justification and watch for that
+  exact rejection message during certification, rather than trying to pre-clear it through
+  Developer Support before submitting at all. Support explicitly asked for a "detailed business
+  justification" — drafted below since this task's own Scope section already committed to
+  drafting this text for the user to review, and it's now a live blocker on their queue, not
+  future work:
+
+  > Pakko is a minimal, from-scratch ZIP/tar archiver for Windows built entirely on
+  > `System.IO.Compression` and the system `tar.exe` — no bundled third-party compression code.
+  > `runFullTrust` is required for two specific, narrow purposes, neither of which is optional for
+  > the app's core function: (1) a Win32 `IExplorerCommand` COM DLL
+  > (`Archiver.ShellExtension.dll`) that registers Pakko's right-click context-menu entries in
+  > File Explorer — Explorer shell-extension COM registration has no non-full-trust equivalent in
+  > the Windows App SDK; (2) a small satellite process (`Archiver.Shell.exe`) that the shell
+  > extension launches to run the actual archive/extract operation and show native progress UI,
+  > since a COM DLL loaded into `explorer.exe` cannot itself host a Windows App SDK window. Both
+  > are declared as separate `<Application>` entries in the package manifest per Microsoft's own
+  > guidance for this pattern. The app makes zero network calls, collects no personal data, and
+  > declares no other restricted or device capability — `runFullTrust` is the sole exception,
+  > scoped to shell integration that is the primary way users are expected to invoke the app.
+  > NanaZip (github.com/M2Team/NanaZip), a directly comparable open-source `IExplorerCommand`-based
+  > archiver already published on the Microsoft Store, uses this exact same architecture for the
+  > same reason.
+
 **Scope:**
 - User-only external steps (cannot be scripted/automated by the agent): register an individual
   Partner Center developer account and complete identity verification (government ID + selfie),
@@ -1130,7 +1166,11 @@ account in `DECISIONS.md`'s T-F129 entry, summary here:**
       PFN `PavloRybchenko.Pakko_955q7mnhfhmp4`. Product status shown as "In draft" /
       "Not started" (no submission made yet).
 - [ ] `runFullTrust` account-level authorization confirmed (via Developer Support if the automated
-      check blocks it) — don't assume the Submission Options justification text alone is enough
+      check blocks it) — don't assume the Submission Options justification text alone is enough.
+      Submission Options justification text drafted 2026-07-28 (see the Microsoft Support
+      correspondence above) — ready for the user to paste in, not yet submitted
+- [ ] `HeadlessAppBypass` waiver granted — submitted by the user, forwarded by Microsoft Support
+      to their review team 2026-07-28, no SLA given; follow up via the same support case
 - [x] `Package.appxmanifest`'s `Identity` block already matches the reserved values exactly (`Name`,
       `Publisher`, `PublisherDisplayName` all confirmed identical 2026-07-20 — the local dev cert
       was apparently issued against this same reserved identity back in March, per Microsoft's own
