@@ -252,6 +252,35 @@ a:focus-visible, button:focus-visible {
 .term-cmd .name { color: var(--code-accent); }
 .term-cmd .desc { color: var(--code-muted); }
 
+/* screenshot showcase */
+.showcase {
+  padding-top: 0;
+  padding-bottom: var(--space-8);
+}
+
+.showcase-frame {
+  border-radius: 14px;
+  overflow: hidden;
+  background: linear-gradient(180deg, var(--surface) 0%, var(--paper) 100%);
+  border: 1px solid var(--line);
+  padding: clamp(16px, 4vw, 40px);
+  display: flex;
+  justify-content: center;
+}
+
+.showcase-frame img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+.showcase-caption {
+  margin-top: var(--space-4);
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
 /* ---------- sections ---------- */
 section { padding-top: var(--space-8); padding-bottom: var(--space-8); }
 section.divider { border-top: 1px solid var(--line); }
