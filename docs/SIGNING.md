@@ -48,7 +48,7 @@ All SignPath and GitHub account access for the above uses multi-factor authentic
 
 Pakko collects no data, makes no network requests, and has no telemetry, analytics, crash
 reporting, or update checks. See the full
-[Privacy Policy](https://pakkoapp-oss.github.io/pakko/) for details.
+[Privacy Policy](https://pakkoapp-oss.github.io/pakko/privacy.html) for details.
 
 ## Reporting a concern
 

@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pakko — архіватор для Windows з відкритим кодом (ZIP, TAR, RAR, 7-Zip)</title>
+<meta name="description" content="Pakko — безкоштовний архіватор для Windows з відкритим кодом на основі власних API стиснення .NET та вбудованого, ізольованого в пісочниці tar.exe — без 7-Zip, WinRAR і стороннього коду стиснення. ZIP читання/запис, TAR/RAR/7-Zip читання, інтеграція з Провідником і окремий CLI.">
+<link rel="canonical" href="https://pakkoapp-oss.github.io/pakko/uk/">
+<link rel="alternate" hreflang="en" href="https://pakkoapp-oss.github.io/pakko/">
+<link rel="alternate" hreflang="uk" href="https://pakkoapp-oss.github.io/pakko/uk/">
+<link rel="alternate" hreflang="x-default" href="https://pakkoapp-oss.github.io/pakko/">
+<meta name="theme-color" content="#1D5FA8">
+<link rel="icon" href="../assets/pakko-mark.svg" type="image/svg+xml">
+<link rel="alternate icon" href="../assets/favicon.ico">
+<link rel="stylesheet" href="../assets/style.css">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Pakko">
+<meta property="og:locale" content="uk_UA">
+<meta property="og:locale:alternate" content="en_US">
+<meta property="og:title" content="Pakko — архіватор для Windows з відкритим кодом">
+<meta property="og:description" content="Без 7-Zip. Без WinRAR. Без стороннього коду стиснення. ZIP, TAR, RAR і 7-Zip через власні API Windows та ізольований у пісочниці tar.exe.">
+<meta property="og:url" content="https://pakkoapp-oss.github.io/pakko/uk/">
+<meta property="og:image" content="https://pakkoapp-oss.github.io/pakko/assets/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Pakko — архіватор для Windows з відкритим кодом">
+<meta name="twitter:description" content="Без 7-Zip. Без WinRAR. Без стороннього коду стиснення. ZIP, TAR, RAR і 7-Zip через власні API Windows та ізольований у пісочниці tar.exe.">
+<meta name="twitter:image" content="https://pakkoapp-oss.github.io/pakko/assets/og-image.png">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Pakko",
+  "inLanguage": "uk",
+  "url": "https://pakkoapp-oss.github.io/pakko/uk/",
+  "image": "https://pakkoapp-oss.github.io/pakko/assets/og-image.png",
+  "description": "Архіватор для Windows з відкритим кодом для ZIP, TAR, RAR і 7-Zip, побудований на власних API стиснення .NET та ізольованій копії вбудованого tar.exe.",
+  "applicationCategory": "UtilitiesApplication",
+  "operatingSystem": "Windows 10 1809+, Windows 11",
+  "license": "https://github.com/pakkoapp-oss/pakko/blob/main/LICENSE",
+  "downloadUrl": "https://github.com/pakkoapp-oss/pakko/releases/latest",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "sameAs": ["https://github.com/pakkoapp-oss/pakko"]
+}
+</script>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap">
+    <a class="brand" href="../">
+      <img src="../assets/pakko-mark.svg" width="30" height="30" alt="">
+      <span>Pakko</span>
+    </a>
+    <nav class="nav">
+      <a class="hide-xs" href="#why">Чому</a>
+      <a class="hide-xs" href="#features">Можливості</a>
+      <a class="hide-xs" href="#download">Завантажити</a>
+      <a href="https://github.com/pakkoapp-oss/pakko">GitHub</a>
+      <div class="lang-switch" aria-label="Мова">
+        <a href="../" lang="en" hreflang="en">EN</a>
+        <span aria-current="page">UK</span>
+      </div>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <section class="hero">
+    <div class="wrap">
+      <div>
+        <p class="eyebrow">Архіватор для Windows з відкритим кодом</p>
+        <h1>ZIP-інструмент, якому нічого приховувати.</h1>
+        <p class="lede">
+          Pakko розпаковує та створює архіви ZIP, TAR, RAR і 7-Zip, використовуючи лише власні
+          API стиснення Windows та вбудований, ізольований у пісочниці <code>tar.exe</code> —
+          жодного 7-Zip, WinRAR чи стороннього коду стиснення в застосунку.
+        </p>
+        <div class="cta-row">
+          <a class="btn btn-primary" href="https://github.com/pakkoapp-oss/pakko/releases/latest">Завантажити останній реліз</a>
+          <a class="btn btn-ghost" href="https://github.com/pakkoapp-oss/pakko">Переглянути код на GitHub</a>
+        </div>
+        <p class="audience-note">
+          Створено для інженерів, які перевіряють ланцюг постачання, дослідників безпеки та
+          всіх, хто не хоче довіряти архіватору, вихідний код якого не можна прочитати.
+        </p>
+      </div>
+      <div>
+        <div class="term">
+          <div class="term-bar">
+            <span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span>
+            <span class="term-title">pakko.exe — командний рядок</span>
+          </div>
+          <div class="term-body">
+            <div><span class="term-prompt">$</span> pakko --help</div>
+            <div class="term-cmds">
+              <div class="term-cmd"><b>a</b><span class="name">Archive</span><span class="desc">створити архів ZIP або одного з форматів TAR</span></div>
+              <div class="term-cmd"><b>x</b><span class="name">Extract</span><span class="desc">розпакувати зі збереженням шляхів</span></div>
+              <div class="term-cmd"><b>t</b><span class="name">Test</span><span class="desc">перевірити цілісність архіву</span></div>
+              <div class="term-cmd"><b>l</b><span class="name">List</span><span class="desc">показати вміст архіву</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="divider" id="why">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="eyebrow">Модель довіри</p>
+        <h2>Чому не 7-Zip і не WinRAR?</h2>
+        <p>
+          Обидва — цілком робочі інструменти, це не твердження про перевагу в безпеці. Йдеться
+          про інший набір залежностей у ланцюгу постачання. Весь стек стиснення Pakko — це або
+          частина рантайму .NET, або підписаний Microsoft <code>tar.exe</code>: компоненти з
+          публічним процесом CVE, відтворюваними збірками та слідом спільнотного аудиту, який
+          вимагають деякі безпеко-орієнтовані середовища — державний сектор, оборона, регульовані
+          галузі — і з якого може скористатись будь-хто інший.
+        </p>
+      </div>
+      <div class="pillars">
+        <div class="pillar">
+          <h3>Мінімальна поверхня атаки</h3>
+          <p>Стиснення працює через <code>System.IO.Compression</code> — жодного стороннього коду 7-Zip, WinRAR чи libarchive у застосунку.</p>
+        </div>
+        <div class="pillar">
+          <h3>Ізоляція під час розпакування</h3>
+          <p>Архіви RAR, 7-Zip і TAR читаються через підписаний Windows <code>tar.exe</code>, запущений в AppContainer без мережевих можливостей і з обмеженням процесів через Job Object.</p>
+        </div>
+        <div class="pillar">
+          <h3>Нічого не телефонує додому</h3>
+          <p>Жодної телеметрії, аналітики, звітів про збої чи перевірок оновлень. Pakko не робить жодних мережевих запитів — так само, як і ця сторінка.</p>
+        </div>
+        <div class="pillar">
+          <h3>Відкритий для аудиту</h3>
+          <p>Apache-2.0, повний код на GitHub. Кожне твердження тут можна перевірити в коді, а не прийняти на віру.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="divider" id="features">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="eyebrow">Що зроблено</p>
+        <h2>Що реалізовано</h2>
+        <p>Нижче немає нічого з розряду «плануємо» — кожен пункт уже реалізовано і перевірено на реальному Провіднику Windows, а не лише в тестах.</p>
+      </div>
+      <div class="manifest">
+        <div class="manifest-group">
+          <h3>Формати</h3>
+          <ul class="manifest-list">
+            <li><span class="check">✓</span><span>ZIP — читання й запис, через <code>System.IO.Compression</code></span></li>
+            <li><span class="check">✓</span><span>TAR / GZ / BZ2 / XZ / ZST / LZMA — читання й запис, через <code>tar.exe</code></span></li>
+            <li><span class="check">✓</span><span>RAR — лише читання, через <code>tar.exe</code></span></li>
+            <li><span class="check">✓</span><span>7-Zip — лише читання, через <code>tar.exe</code></span></li>
+          </ul>
+        </div>
+        <div class="manifest-group">
+          <h3>Інтеграція з Windows</h3>
+          <ul class="manifest-list">
+            <li><span class="check">✓</span><span>Нативне контекстне меню — Розпакувати, Додати до архіву, Перевірити архів</span></li>
+            <li><span class="check">✓</span><span>Прив'язка типів файлів — одразу відкриває переглядач архівів</span></li>
+            <li><span class="check">✓</span><span>Переглядач архівів — навігація, розпакування вибраного, перегляд файлів</span></li>
+            <li><span class="check">✓</span><span>Мітка Mark-of-the-Web поширюється на кожен розпакований файл</span></li>
+            <li><span class="check">✓</span><span>Адміністративні політики Group Policy / ADMX</span></li>
+          </ul>
+        </div>
+        <div class="manifest-group">
+          <h3>Командний рядок</h3>
+          <ul class="manifest-list">
+            <li><span class="check">✓</span><span><code>pakko.exe</code> — окремий, самодостатній, без встановлення</span></li>
+            <li><span class="check">✓</span><span>Команди у стилі 7-Zip — <code>a</code> / <code>x</code> / <code>t</code> / <code>l</code></span></li>
+            <li><span class="check">✓</span><span>Кожен реліз супроводжується файлом <code>SHA256SUMS</code></span></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="divider" id="download">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="eyebrow">Отримати</p>
+        <h2>Завантажити</h2>
+        <p>Дві незалежні збірки з одного релізу на GitHub — оберіть потрібну.</p>
+      </div>
+      <div class="downloads">
+        <div class="dl-card">
+          <h3>GUI-застосунок (MSIX)</h3>
+          <p>Нативне контекстне меню Провідника, переглядач архівів, іконка в треї. Windows 10 1809+ або Windows 11.</p>
+          <p class="note">Рання версія: підписана dev-сертифікатом, ще не в Microsoft Store. Для встановлення потрібно спершу довірити цей сертифікат — кроки описані в нотатках релізу.</p>
+          <div class="cta-row">
+            <a class="btn btn-primary" href="https://github.com/pakkoapp-oss/pakko/releases/latest">Останній реліз</a>
+          </div>
+        </div>
+        <div class="dl-card">
+          <h3>Командний рядок (pakko.exe)</h3>
+          <p>Самодостатній, без інсталятора, без прав адміністратора. <code>pakko x archive.7z -o .\out</code></p>
+          <p class="note">Ті самі команди у стилі 7-Zip, що й вище. Див. <a href="https://github.com/pakkoapp-oss/pakko/blob/main/docs/CLI.md">повний довідник команд</a>.</p>
+          <div class="cta-row">
+            <a class="btn btn-primary" href="https://github.com/pakkoapp-oss/pakko/releases/latest">Останній реліз</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="footer-grid">
+      <a class="brand" href="../">
+        <img src="../assets/pakko-mark.svg" width="26" height="26" alt="">
+        <span>Pakko</span>
+      </a>
+      <div class="footer-links">
+        <a href="https://github.com/pakkoapp-oss/pakko">GitHub</a>
+        <a href="https://github.com/pakkoapp-oss/pakko/releases">Релізи</a>
+        <a href="https://github.com/pakkoapp-oss/pakko/blob/main/docs/CLI.md">Документація CLI</a>
+        <a href="../privacy.html">Політика конфіденційності</a>
+        <a href="https://ko-fi.com/pakko_app">Ko-fi</a>
+      </div>
+    </div>
+    <p class="footer-note">
+      Ліцензія Apache-2.0. Жодної телеметрії, аналітики чи сторонніх запитів — ні на цьому
+      сайті, ні в самому застосунку.
+    </p>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -3,178 +3,234 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Pakko — Privacy Policy</title>
-<style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+<title>Pakko — Open-Source Windows Archiver (ZIP, TAR, RAR, 7-Zip)</title>
+<meta name="description" content="Pakko is a free, open-source Windows archiver built on .NET's own compression APIs and the built-in, sandboxed tar.exe — no 7-Zip, no WinRAR, no third-party compression code. ZIP read/write, TAR/RAR/7-Zip read, Explorer integration, and a standalone CLI.">
+<link rel="canonical" href="https://pakkoapp-oss.github.io/pakko/">
+<link rel="alternate" hreflang="en" href="https://pakkoapp-oss.github.io/pakko/">
+<link rel="alternate" hreflang="uk" href="https://pakkoapp-oss.github.io/pakko/uk/">
+<link rel="alternate" hreflang="x-default" href="https://pakkoapp-oss.github.io/pakko/">
+<meta name="theme-color" content="#1D5FA8">
+<link rel="icon" href="assets/pakko-mark.svg" type="image/svg+xml">
+<link rel="alternate icon" href="assets/favicon.ico">
+<link rel="stylesheet" href="assets/style.css">
 
-  body {
-    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-    background: #0f0f0f;
-    color: #e0e0e0;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 64px 24px;
-  }
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Pakko">
+<meta property="og:locale" content="en_US">
+<meta property="og:locale:alternate" content="uk_UA">
+<meta property="og:title" content="Pakko — Open-Source Windows Archiver">
+<meta property="og:description" content="No 7-Zip. No WinRAR. No third-party compression code. ZIP, TAR, RAR, and 7-Zip through Windows' own APIs and a sandboxed tar.exe.">
+<meta property="og:url" content="https://pakkoapp-oss.github.io/pakko/">
+<meta property="og:image" content="https://pakkoapp-oss.github.io/pakko/assets/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Pakko — Open-Source Windows Archiver">
+<meta name="twitter:description" content="No 7-Zip. No WinRAR. No third-party compression code. ZIP, TAR, RAR, and 7-Zip through Windows' own APIs and a sandboxed tar.exe.">
+<meta name="twitter:image" content="https://pakkoapp-oss.github.io/pakko/assets/og-image.png">
 
-  .card {
-    max-width: 640px;
-    width: 100%;
-  }
-
-  .logo {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    margin-bottom: 48px;
-  }
-
-  .logo svg {
-    flex-shrink: 0;
-  }
-
-  .logo-text {
-    font-size: 22px;
-    font-weight: 600;
-    color: #fff;
-    letter-spacing: -.02em;
-  }
-
-  .logo-sub {
-    font-size: 12px;
-    color: #555;
-    margin-top: 2px;
-    letter-spacing: .04em;
-    text-transform: uppercase;
-  }
-
-  h1 {
-    font-size: 13px;
-    font-weight: 600;
-    letter-spacing: .12em;
-    text-transform: uppercase;
-    color: #1D5FA8;
-    margin-bottom: 32px;
-  }
-
-  section {
-    margin-bottom: 36px;
-  }
-
-  h2 {
-    font-size: 14px;
-    font-weight: 600;
-    color: #fff;
-    margin-bottom: 10px;
-  }
-
-  p {
-    font-size: 14px;
-    line-height: 1.75;
-    color: #999;
-  }
-
-  .highlight {
-    display: inline-block;
-    background: #1D5FA820;
-    border-left: 3px solid #1D5FA8;
-    padding: 14px 18px;
-    border-radius: 0 6px 6px 0;
-    font-size: 14px;
-    line-height: 1.7;
-    color: #ccc;
-    margin-top: 4px;
-    width: 100%;
-  }
-
-  footer {
-    margin-top: 56px;
-    padding-top: 24px;
-    border-top: 1px solid #1e1e1e;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: gap;
-    gap: 12px;
-  }
-
-  footer span {
-    font-size: 12px;
-    color: #444;
-  }
-
-  footer a {
-    font-size: 12px;
-    color: #1D5FA8;
-    text-decoration: none;
-  }
-
-  footer a:hover {
-    text-decoration: underline;
-  }
-</style>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Pakko",
+  "url": "https://pakkoapp-oss.github.io/pakko/",
+  "image": "https://pakkoapp-oss.github.io/pakko/assets/og-image.png",
+  "description": "Open-source Windows archiver for ZIP, TAR, RAR, and 7-Zip archives, built on .NET's own compression APIs and a sandboxed copy of Windows' built-in tar.exe.",
+  "applicationCategory": "UtilitiesApplication",
+  "operatingSystem": "Windows 10 1809+, Windows 11",
+  "license": "https://github.com/pakkoapp-oss/pakko/blob/main/LICENSE",
+  "downloadUrl": "https://github.com/pakkoapp-oss/pakko/releases/latest",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "sameAs": ["https://github.com/pakkoapp-oss/pakko"]
+}
+</script>
 </head>
 <body>
-<div class="card">
 
-  <div class="logo">
-    <svg width="40" height="40" viewBox="0 0 256 256">
-      <rect width="256" height="256" rx="56" fill="#1D5FA8"/>
-      <rect x="32" y="48" width="52" height="160" rx="6" fill="white"/>
-      <rect x="32" y="48" width="192" height="56" rx="6" fill="white"/>
-      <rect x="172" y="48" width="52" height="160" rx="6" fill="white"/>
-    </svg>
-    <div>
-      <div class="logo-text">Pakko</div>
-      <div class="logo-sub">Windows Archiver</div>
-    </div>
+<header class="site-header">
+  <div class="wrap">
+    <a class="brand" href=".">
+      <img src="assets/pakko-mark.svg" width="30" height="30" alt="">
+      <span>Pakko</span>
+    </a>
+    <nav class="nav">
+      <a class="hide-xs" href="#why">Why</a>
+      <a class="hide-xs" href="#features">Features</a>
+      <a class="hide-xs" href="#download">Download</a>
+      <a href="https://github.com/pakkoapp-oss/pakko">GitHub</a>
+      <div class="lang-switch" aria-label="Language">
+        <span aria-current="page">EN</span>
+        <a href="uk/" lang="uk" hreflang="uk">UK</a>
+      </div>
+    </nav>
   </div>
+</header>
 
-  <h1>Privacy Policy</h1>
+<main>
+  <section class="hero">
+    <div class="wrap">
+      <div>
+        <p class="eyebrow">Open-source Windows archiver</p>
+        <h1>A ZIP tool with nothing to hide.</h1>
+        <p class="lede">
+          Pakko extracts and creates ZIP, TAR, RAR, and 7-Zip archives using only Windows' own
+          compression APIs and its built-in, sandboxed <code>tar.exe</code> — no 7-Zip, no
+          WinRAR, no third-party compression code anywhere in the app.
+        </p>
+        <div class="cta-row">
+          <a class="btn btn-primary" href="https://github.com/pakkoapp-oss/pakko/releases/latest">Download latest release</a>
+          <a class="btn btn-ghost" href="https://github.com/pakkoapp-oss/pakko">View source on GitHub</a>
+        </div>
+        <p class="audience-note">
+          Built for engineers auditing their supply chain, security researchers, and anyone
+          who'd rather not trust an archiver they can't read the source of.
+        </p>
+      </div>
+      <div>
+        <div class="term">
+          <div class="term-bar">
+            <span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span>
+            <span class="term-title">pakko.exe — command line</span>
+          </div>
+          <div class="term-body">
+            <div><span class="term-prompt">$</span> pakko --help</div>
+            <div class="term-cmds">
+              <div class="term-cmd"><b>a</b><span class="name">Archive</span><span class="desc">create a ZIP or TAR-family archive</span></div>
+              <div class="term-cmd"><b>x</b><span class="name">Extract</span><span class="desc">extract with full paths</span></div>
+              <div class="term-cmd"><b>t</b><span class="name">Test</span><span class="desc">verify archive integrity</span></div>
+              <div class="term-cmd"><b>l</b><span class="name">List</span><span class="desc">show what's inside</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
 
-  <section>
-    <h2>No data collection</h2>
-    <p class="highlight">
-      Pakko does not collect, transmit, store, or share any personal data or usage information.
-      All operations are performed locally on your device.
+  <section class="divider" id="why">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="eyebrow">The trust model</p>
+        <h2>Why not 7-Zip or WinRAR?</h2>
+        <p>
+          Both are capable tools — this isn't a claim of security superiority. It's a different
+          set of supply-chain dependencies. Pakko's entire compression stack is either part of
+          the .NET runtime or Microsoft's own signed <code>tar.exe</code>: components with a
+          public CVE process, reproducible builds, and a community audit trail that some
+          security-conscious environments — government, defense, regulated industries — require
+          and everyone else can still benefit from.
+        </p>
+      </div>
+      <div class="pillars">
+        <div class="pillar">
+          <h3>Minimal attack surface</h3>
+          <p>Compression runs through <code>System.IO.Compression</code> — no vendored 7-Zip, WinRAR, or libarchive code linked into the app.</p>
+        </div>
+        <div class="pillar">
+          <h3>Sandboxed extraction</h3>
+          <p>RAR, 7-Zip, and TAR archives are read via Windows' signed <code>tar.exe</code>, launched inside an AppContainer with no network capability and a Job Object process limit.</p>
+        </div>
+        <div class="pillar">
+          <h3>Nothing phones home</h3>
+          <p>No telemetry, no analytics, no crash reporting, no update checks. Pakko makes zero network requests — and so does this page.</p>
+        </div>
+        <div class="pillar">
+          <h3>Open to audit</h3>
+          <p>Apache-2.0, full source on GitHub. Every claim here is something you can verify in the code, not take on faith.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="divider" id="features">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="eyebrow">What's built</p>
+        <h2>What's implemented</h2>
+        <p>Nothing below is aspirational — every item has shipped and been verified against the real Windows shell, not just a test suite.</p>
+      </div>
+      <div class="manifest">
+        <div class="manifest-group">
+          <h3>Formats</h3>
+          <ul class="manifest-list">
+            <li><span class="check">✓</span><span>ZIP — read &amp; write, via <code>System.IO.Compression</code></span></li>
+            <li><span class="check">✓</span><span>TAR / GZ / BZ2 / XZ / ZST / LZMA — read &amp; write, via <code>tar.exe</code></span></li>
+            <li><span class="check">✓</span><span>RAR — read only, via <code>tar.exe</code></span></li>
+            <li><span class="check">✓</span><span>7-Zip — read only, via <code>tar.exe</code></span></li>
+          </ul>
+        </div>
+        <div class="manifest-group">
+          <h3>Windows integration</h3>
+          <ul class="manifest-list">
+            <li><span class="check">✓</span><span>Native right-click menu — Extract, Add to archive, Test archive</span></li>
+            <li><span class="check">✓</span><span>File-type association — opens straight into the Archive Browser</span></li>
+            <li><span class="check">✓</span><span>Archive Browser — navigate, extract a selection, preview files</span></li>
+            <li><span class="check">✓</span><span>Mark-of-the-Web propagated to every extracted file</span></li>
+            <li><span class="check">✓</span><span>Group Policy / ADMX administrative controls</span></li>
+          </ul>
+        </div>
+        <div class="manifest-group">
+          <h3>Command line</h3>
+          <ul class="manifest-list">
+            <li><span class="check">✓</span><span><code>pakko.exe</code> — standalone, self-contained, no install</span></li>
+            <li><span class="check">✓</span><span>7-Zip-familiar commands — <code>a</code> / <code>x</code> / <code>t</code> / <code>l</code></span></li>
+            <li><span class="check">✓</span><span>Every release ships a <code>SHA256SUMS</code> file</span></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="divider" id="download">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="eyebrow">Get it</p>
+        <h2>Download</h2>
+        <p>Two independent builds, both from the same GitHub Release — pick the one you need.</p>
+      </div>
+      <div class="downloads">
+        <div class="dl-card">
+          <h3>GUI app (MSIX)</h3>
+          <p>Right-click Explorer integration, Archive Browser, system tray. Windows 10 1809+ or Windows 11.</p>
+          <p class="note">Early access: signed with a development certificate, not yet on the Microsoft Store. Installing it means trusting that certificate first — the release notes walk through it.</p>
+          <div class="cta-row">
+            <a class="btn btn-primary" href="https://github.com/pakkoapp-oss/pakko/releases/latest">Latest release</a>
+          </div>
+        </div>
+        <div class="dl-card">
+          <h3>Command line (pakko.exe)</h3>
+          <p>Self-contained, no installer, no admin rights. <code>pakko x archive.7z -o .\out</code></p>
+          <p class="note">Same 7-Zip-familiar commands shown above. See the <a href="https://github.com/pakkoapp-oss/pakko/blob/main/docs/CLI.md">full command reference</a>.</p>
+          <div class="cta-row">
+            <a class="btn btn-primary" href="https://github.com/pakkoapp-oss/pakko/releases/latest">Latest release</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="footer-grid">
+      <a class="brand" href=".">
+        <img src="assets/pakko-mark.svg" width="26" height="26" alt="">
+        <span>Pakko</span>
+      </a>
+      <div class="footer-links">
+        <a href="https://github.com/pakkoapp-oss/pakko">GitHub</a>
+        <a href="https://github.com/pakkoapp-oss/pakko/releases">Releases</a>
+        <a href="https://github.com/pakkoapp-oss/pakko/blob/main/docs/CLI.md">CLI docs</a>
+        <a href="privacy.html">Privacy Policy</a>
+        <a href="https://ko-fi.com/pakko_app">Ko-fi</a>
+      </div>
+    </div>
+    <p class="footer-note">
+      Apache-2.0 licensed. No telemetry, no analytics, no third-party requests — on this website
+      or in the app itself.
     </p>
-  </section>
+  </div>
+</footer>
 
-  <section>
-    <h2>No network access</h2>
-    <p>Pakko does not make any network requests. It has no telemetry, analytics, crash reporting,
-    or update checks. The application operates entirely offline.</p>
-  </section>
-
-  <section>
-    <h2>Files</h2>
-    <p>Files you choose to compress or extract are processed locally using the operating system's
-    built-in compression APIs. No file content leaves your device.</p>
-  </section>
-
-  <section>
-    <h2>Third-party services</h2>
-    <p>Pakko does not integrate with any third-party services, SDKs, or advertising networks.</p>
-  </section>
-
-  <section>
-    <h2>Open source</h2>
-    <p>Pakko is open source and licensed under the Apache License 2.0. You can review the full
-    source code to verify these claims.</p>
-  </section>
-
-  <section>
-    <h2>Contact</h2>
-    <p>Questions? Open an issue on GitHub or email
-    <a href="mailto:pakko.app@gmail.com" style="color:#1D5FA8;">pakko.app@gmail.com</a>.</p>
-  </section>
-
-  <footer>
-    <span>Effective date: March 2026 · Last updated: March 2026</span>
-    <a href="https://github.com/pakkoapp-oss/pakko" target="_blank">GitHub →</a>
-  </footer>
-
-</div>
 </body>
 </html>

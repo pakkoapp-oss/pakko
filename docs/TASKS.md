@@ -607,8 +607,8 @@ maintainer identity, etc.) — don't guess the field list from memory.
 eligibility criteria at `signpath.org/terms.html`, not assumed from memory):** Pakko already
 satisfies the OSI-license, active-maintenance, already-released, and automated-CI-build
 requirements, and already has a real, strong privacy policy
-(`https://pakkoapp-oss.github.io/pakko/` — explicitly "no data collection, no network requests, no
-telemetry"). Three things were missing and are now drafted (not yet published/committed pending
+(`https://pakkoapp-oss.github.io/pakko/privacy.html` — explicitly "no data collection, no network
+requests, no telemetry"). Three things were missing and are now drafted (not yet published/committed pending
 the user's review): a published "Code Signing Policy" document (new `SIGNING.md` at repo root —
 deliberately not reusing `POLICIES.md`, which is Pakko's own unrelated Windows Group Policy admin
 reference), a published Author/Reviewer/Approver team-roles statement (folded into the same
@@ -1057,9 +1057,9 @@ existing CLI zips/`SHA256SUMS`.
   a Store logo, a category, and a full Age ratings questionnaire — all required before
   certification can be submitted. A Privacy Policy URL is only strictly required if the app
   collects/transmits personal data; Pakko's existing policy
-  (`https://pakkoapp-oss.github.io/pakko/`, already linked from `SIGNING.md`) states it does
-  neither, but Partner Center may still prompt for the URL field regardless — have it ready either
-  way, not a new artifact to create.
+  (`https://pakkoapp-oss.github.io/pakko/privacy.html`, already linked from `SIGNING.md`) states it
+  does neither, but Partner Center may still prompt for the URL field regardless — have it ready
+  either way, not a new artifact to create.
 - **Pre-submission testing:** run the Windows App Certification Kit (WACK) against the built MSIX
   before uploading — catches many of the same failure classes Partner Center's own certification
   pass checks, cheaper to fix locally first. Also explicitly confirm the app doesn't crash with no
