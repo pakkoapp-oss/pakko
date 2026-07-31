@@ -568,6 +568,7 @@ history narrative below, which predates the move and was not mechanically rewrit
 | `CONTRIBUTING.md` | Contributor onboarding summary | Before a contributor's first build | Build/deploy steps change — update `scripts/README.md` first, then sync the summary here |
 | `scripts/README.md` | **Canonical owner of build/sign/deploy steps** (`Deploy.ps1`, `Setup-DevCert.ps1`) | Running or changing the deploy scripts | `Deploy.ps1`/`Setup-DevCert.ps1` behavior changes |
 | `CHANGELOG.md` | **Canonical owner of per-release history** — one section per version tag, plain-language summary of the `T-Fxx` tasks shipped since the previous tag | Cutting a release | Every version tag — see this file's "Deployment" section |
+| `docs/index.html` + `docs/uk/index.html` | Public project website (GitHub Pages, served from `/docs`) — bilingual EN/UK landing page: trust model, what's implemented, download links | User-facing — not an agent instruction source | Supported-format list changes, a major feature ships, download/release mechanics change, or roadmap/version-status changes — keep both language versions in sync with each other and with `README.md`'s "Project Status"/"Supported Formats" |
 
 **Canonical topic owners — do not duplicate, link instead:**
 - Security/threat-model/CVE/supply-chain rationale → `SECURITY.md` only. `docs/SPEC.md`/`README.md` keep at most a 2-line teaser with a link.
@@ -597,6 +598,7 @@ DI duplication happened).
 | Approach chosen/rejected/corrected (COM, packaging, shell) | `docs/DECISIONS.md` | `docs/ARCHITECTURE.md`, `CLAUDE.md` (hard constraints), `scripts/README.md`, `docs/DIAGRAMS.md` |
 | Task starts/completes, or a new `T-Fxx` is claimed | `docs/TASKS.md` | `docs/TASKS_DONE.md` (graduation on completion), `CLAUDE.md` (Current State), `README.md` (Project Status) |
 | Version scope/roadmap changes | `docs/SPEC.md` | `CLAUDE.md` (Roadmap Summary), `README.md` (Roadmap) |
+| Supported-format list or a major feature ships/changes | `README.md` (Supported Formats / Project Status) | `docs/index.html` + `docs/uk/index.html` (What's Implemented section, kept identical in substance across both languages) |
 | `Deploy.ps1`/`Setup-DevCert.ps1` behavior changes | `scripts/README.md` | `CONTRIBUTING.md`, `README.md` (Building and Deploying), `CLAUDE.md` (Build Commands) |
 | A release is tagged (`vX.Y.Z`) | `CHANGELOG.md` | — (single owner, see "Deployment") |
 | COM/shell, operation lifecycle, `ZipArchiveService` branching, or manifest changes | `docs/DIAGRAMS.md` | Per its own DoD table |
@@ -912,7 +914,10 @@ windows-archiver-wrapper/
 │   ├── POLICIES.md
 │   ├── SIGNING.md
 │   ├── TESTING.md
-│   └── XAML.md
+│   ├── XAML.md
+│   ├── index.html / uk/index.html  ← public project website (GitHub Pages serves /docs directly)
+│   ├── privacy.html                ← Privacy Policy (linked from the app's About dialog)
+│   └── assets/                     ← site-only CSS/OG image/brand-mark copy, no build step
 ├── CLAUDE.md                        ← you are here — stays at root, Claude Code only auto-loads it here
 ├── SECURITY.md                      ← stays at root — GitHub-recognized community-health file
 └── README.md
