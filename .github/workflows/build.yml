@@ -274,6 +274,100 @@ jobs:
             src/Archiver.App/AppPackages/**/*.msixbundle
           if-no-files-found: error
 
+  # T-F129: merges build-store-msix's two single-architecture bundles into one real multi-arch
+  # bundle. A .msixbundle's own Identity carries no ProcessorArchitecture (only its inner
+  # packages do) -- so two *separate* single-arch bundles both compute to the exact same full
+  # package name ("..._Neutral_...") despite having different contents, and Partner Center
+  # rejects the upload outright ("must be uniquely identified by their full names"). Confirmed
+  # against a real submission, 2026-08-01. The fix is a single bundle listing both
+  # <Package Architecture="x64"> and <Package Architecture="arm64"> entries -- this is also
+  # Microsoft's own documented shape for a multi-architecture Store app.
+  bundle-store-msix:
+    needs: build-store-msix
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: windows-2022
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: pakko-store-msix-x64
+          path: artifacts/store-x64
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: pakko-store-msix-arm64
+          path: artifacts/store-arm64
+
+      - name: Import Store signing certificate
+        shell: pwsh
+        env:
+          PFX_BASE64: ${{ secrets.PAKKO_STORE_CERT_PFX_BASE64 }}
+          PFX_PASSWORD: ${{ secrets.PAKKO_STORE_CERT_PASSWORD }}
+        run: |
+          if (-not $env:PFX_BASE64 -or -not $env:PFX_PASSWORD) {
+            throw "PAKKO_STORE_CERT_PFX_BASE64 / PAKKO_STORE_CERT_PASSWORD secrets are not set. See scripts/README.md's Continuous Integration section."
+          }
+          $pfxPath = Join-Path $env:RUNNER_TEMP "PakkoStore.pfx"
+          [System.IO.File]::WriteAllBytes($pfxPath, [Convert]::FromBase64String($env:PFX_BASE64))
+          $securePassword = ConvertTo-SecureString -String $env:PFX_PASSWORD -AsPlainText -Force
+          Import-PfxCertificate -FilePath $pfxPath -CertStoreLocation Cert:\CurrentUser\My -Password $securePassword | Out-Null
+          Remove-Item $pfxPath -Force
+
+      - name: Unbundle, merge, and re-sign
+        shell: pwsh
+        run: |
+          $sdkBin = "${env:ProgramFiles(x86)}\Windows Kits\10\bin"
+          $makeappx = Get-ChildItem $sdkBin -Recurse -Filter "makeappx.exe" | Where-Object { $_.FullName -match '\\x64\\' } | Select-Object -First 1 -ExpandProperty FullName
+          $signtool  = Get-ChildItem $sdkBin -Recurse -Filter "signtool.exe"  | Where-Object { $_.FullName -match '\\x64\\' } | Select-Object -First 1 -ExpandProperty FullName
+          if (-not $makeappx -or -not $signtool) { throw "makeappx.exe/signtool.exe not found under $sdkBin" }
+
+          $x64Bundle   = Get-ChildItem artifacts/store-x64   -Recurse -Filter "*.msixbundle" | Select-Object -First 1 -ExpandProperty FullName
+          $arm64Bundle = Get-ChildItem artifacts/store-arm64 -Recurse -Filter "*.msixbundle" | Select-Object -First 1 -ExpandProperty FullName
+          if (-not $x64Bundle -or -not $arm64Bundle) { throw "Expected one .msixbundle per architecture artifact." }
+
+          & $makeappx unbundle /p $x64Bundle   /d unbundled-x64
+          & $makeappx unbundle /p $arm64Bundle /d unbundled-arm64
+          if ($LASTEXITCODE -ne 0) { throw "makeappx unbundle failed (exit $LASTEXITCODE)." }
+
+          New-Item -ItemType Directory -Path combined -Force | Out-Null
+          Get-ChildItem unbundled-x64   -Filter "*.msix" | Copy-Item -Destination combined
+          Get-ChildItem unbundled-arm64 -Filter "*.msix" | Copy-Item -Destination combined
+
+          # Read the real app version out of one of the just-built packages rather than
+          # hardcoding it, so this job never needs editing on a version bump.
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $innerMsix = Get-ChildItem combined -Filter "*_x64.msix" | Select-Object -First 1 -ExpandProperty FullName
+          $zip = [System.IO.Compression.ZipFile]::OpenRead($innerMsix)
+          $entry = $zip.Entries | Where-Object { $_.Name -eq 'AppxManifest.xml' }
+          $reader = New-Object System.IO.StreamReader($entry.Open())
+          $manifestText = $reader.ReadToEnd()
+          $reader.Close()
+          $zip.Dispose()
+          $versionMatch = [regex]::Match($manifestText, 'Version="(\d+\.\d+\.\d+\.\d+)"')
+          if (-not $versionMatch.Success) { throw "Could not read Version from $innerMsix's AppxManifest.xml." }
+          $appVersion = $versionMatch.Groups[1].Value
+          Write-Host "App version: $appVersion"
+
+          $outBundle = "Archiver.App_${appVersion}.msixbundle"
+          & $makeappx bundle /d combined /p $outBundle /bv $appVersion
+          if ($LASTEXITCODE -ne 0) { throw "makeappx bundle failed (exit $LASTEXITCODE)." }
+
+          & $signtool sign /fd SHA256 /sha1 $env:PAKKO_STORE_CERT_THUMBPRINT $outBundle
+          if ($LASTEXITCODE -ne 0) { throw "signtool sign failed (exit $LASTEXITCODE)." }
+
+          $sig = Get-AuthenticodeSignature -FilePath $outBundle
+          if ($sig.Status -ne 'Valid') { throw "Merged bundle signature is $($sig.Status), not Valid." }
+
+          New-Item -ItemType Directory -Path out -Force | Out-Null
+          Move-Item $outBundle out/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pakko-store-msixbundle
+          path: out/*.msixbundle
+          if-no-files-found: error
+
   build-cli:
     needs: test
     if: github.event_name == 'push'

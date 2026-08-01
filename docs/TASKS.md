@@ -1221,6 +1221,27 @@ account in `DECISIONS.md`'s T-F129 entry, summary here:**
       `scripts/README.md`'s new "Store-submission builds" section for the full how-to. Local
       machines stay for dev/test builds only going forward — every package actually uploaded to
       Partner Center should come from this CI job.
+- [x] **Second real bug found the same day, via an actual Partner Center upload of the two
+      `build-store-msix` artifacts:** "All .msix and .appx packages ... must be uniquely
+      identified by their full names. You have provided two packages with the full name
+      PavloRybchenko.Pakko_1.4.4.0_Neutral_... which have different contents." Root cause: a
+      `.msixbundle`'s own `Identity` element carries no `ProcessorArchitecture` attribute at all
+      (confirmed by reading a real `AppxBundleManifest.xml`) — only the packages *inside* a bundle
+      do. Two independently-built single-architecture bundles (x64-only, arm64-only) therefore
+      compute to the identical full package name despite different content, and Partner Center
+      rejects the pair outright. **Fixed** with a third CI job, `bundle-store-msix` (`needs:
+      build-store-msix`), that downloads both single-arch bundles, `makeappx unbundle`s each,
+      `makeappx bundle`s the two inner `.msix` files into one real multi-architecture bundle
+      (explicit `/bv <version>` — `makeappx` otherwise stamps a timestamp-derived bundle version
+      instead of the app's real version, a second smaller bug caught during the same local dry
+      run), and `signtool sign`s the result again (bundling strips the original per-bundle
+      signature). Verified locally before moving the recipe into CI: the merged bundle's real
+      `AppxBundleManifest.xml` lists both `<Package Architecture="x64">` and
+      `<Package Architecture="arm64">` under one `<Packages>`, and
+      `Get-AuthenticodeSignature` reports `Valid`. Uploads a single `pakko-store-msixbundle`
+      workflow artifact — this is the one file to actually hand to Partner Center, not the two
+      `pakko-store-msix-{x64,arm64}` artifacts from the prior job. See `scripts/README.md`'s
+      Store-submission section (expanded) for the full recipe/rationale.
 - [x] WACK run locally (2026-07-20) via the CLI (`appcert.exe test -apptype packagedwin32
       -appxpackagepath ...` — needs elevation) against the current v1.4.1.0 x64 MSIX
       (`Archiver.App_1.4.1.0_x64.msix`, same build as the `chore(release): bump to v1.4.1` commit

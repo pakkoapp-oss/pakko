@@ -156,13 +156,24 @@ Center rejects it outright. Confirmed against a real submission attempt, 2026-08
 signed with the correct-Subject cert. See `docs/DECISIONS.md`'s T-F129 entry for the full trail.
 
 **Run it:** Actions tab → Build → Run workflow, against the tag/ref you're about to submit. Two
-architecture legs (`x64`, `arm64`) run on `windows-2022` (same ARM64-v143-toolset reasoning as
-`build-msix`), each uploaded as its own workflow artifact (`pakko-store-msix-x64` /
-`pakko-store-msix-arm64`) — download both from the run's Summary page and upload them together to
-Partner Center's Packages step. **Not** attached to the public GitHub Release: a differently-
-signed package with a different `Publisher` would be confusing for end users to stumble onto, and
-Microsoft re-signs for real distribution anyway once certification passes, so the local signature
-here only needs to make packaging/upload succeed.
+architecture legs (`x64`, `arm64`) build+sign on `windows-2022` (`build-store-msix`, same
+ARM64-v143-toolset reasoning as `build-msix`) as single-architecture `.msixbundle`s, then a third
+job (`bundle-store-msix`) unbundles both, merges them into **one** real multi-architecture
+`.msixbundle`, and re-signs it — download that single `pakko-store-msixbundle` artifact from the
+run's Summary page and upload it to Partner Center's Packages step. **Not** attached to the public
+GitHub Release: a differently-signed package with a different `Publisher` would be confusing for
+end users to stumble onto, and Microsoft re-signs for real distribution anyway once certification
+passes, so the local signature here only needs to make packaging/upload succeed.
+
+**Why the merge step exists:** a `.msixbundle`'s own `Identity` carries no `ProcessorArchitecture`
+attribute — only the packages *inside* it do. Two separately-built single-architecture bundles
+(one containing only the x64 `.msix`, one containing only the arm64 `.msix`) therefore compute to
+the exact same full package name (`..._Neutral_...`) despite having different contents byte-for-
+byte, and Partner Center rejects the upload outright: "All .msix and .appx packages ... must be
+uniquely identified by their full names." Confirmed against a real submission, 2026-08-01. The fix
+is `makeappx unbundle` on each, `makeappx bundle /bv <version>` on the combined inner `.msix`
+files, then `signtool sign` again (bundling strips the original per-bundle signature) — this is
+also Microsoft's own documented shape for a multi-architecture Store app, not a workaround.
 
 **Local machines are not the reference for this build.** `scripts/Setup-StoreCert.ps1` exists so a
 developer *can* build and smoke-test a Store-identity package locally (useful for verifying the
