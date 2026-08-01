@@ -1242,6 +1242,33 @@ account in `DECISIONS.md`'s T-F129 entry, summary here:**
       workflow artifact — this is the one file to actually hand to Partner Center, not the two
       `pakko-store-msix-{x64,arm64}` artifacts from the prior job. See `scripts/README.md`'s
       Store-submission section (expanded) for the full recipe/rationale.
+- [x] **Third real bug, same day:** `bundle-store-msix`'s first real run failed its own
+      `Get-AuthenticodeSignature` gate (`Status=UnknownError`) right after `signtool` reported a
+      successful sign — the CI cert-import step only imported into `Cert:\CurrentUser\My` (enough
+      to sign with), never into a trusted store (needed for the *status* check to read `Valid`).
+      Fixed by also importing into `Cert:\LocalMachine\TrustedPeople`, mirroring what
+      `Setup-StoreCert.ps1` already does locally. Confirmed fixed by a clean end-to-end CI run.
+- [x] **Fourth real bug, same day — Partner Center's package "full name" uniqueness check is
+      scoped to the developer account, not the submission draft, and survives deletion.**
+      Re-uploading the corrected bundle (still `Version="1.4.4.0"`) kept hitting "Package full
+      name in conflict: PavloRybchenko.Pakko_1.4.4.0_Arm64_" even after deleting every package in
+      the submission, and even after **deleting and recreating the whole draft submission from
+      scratch** — confirmed by the user reproducing the identical error post-recreation. Every CI
+      rebuild signs fresh (byte-different output) under the same full name
+      (Name+Publisher+Version+Architecture); Microsoft's backend remembers every full-name→content
+      pairing ever uploaded for the app, permanently, independent of which submission uploaded it
+      — exactly what the error's own remedy text says ("increment the version..."). Fixed by
+      bumping `Package.appxmanifest`'s **third** segment to `1.4.5.0` (not the fourth/revision,
+      which must stay `.0` for Store submission) for a genuinely new full name. This intentionally
+      diverges from the public `v1.4.4` GitHub Release's internal version (stays `1.4.4.0`,
+      `CN=Pakko Dev` signed) — separate distribution channels now, tracked independently per this
+      repo's existing convention.
+- [x] **Real Partner Center upload of `Archiver.App_1.4.5.0.msixbundle` (110.5 MB) succeeded** —
+      confirmed via a real Partner Center screenshot, 2026-08-01: no red package-validation
+      errors, only the expected yellow `runFullTrust` warning (a separate, already-tracked
+      criterion below). Device family availability table correctly shows one package,
+      `v1.4.5.0, Neutral`, ranked first across Desktop/Mobile/Team/Mixed Reality. This is the
+      first time any Pakko package has cleared Partner Center's package-validation step.
 - [x] WACK run locally (2026-07-20) via the CLI (`appcert.exe test -apptype packagedwin32
       -appxpackagepath ...` — needs elevation) against the current v1.4.1.0 x64 MSIX
       (`Archiver.App_1.4.1.0_x64.msix`, same build as the `chore(release): bump to v1.4.1` commit

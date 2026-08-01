@@ -10,6 +10,25 @@ the technical account of any task named here.
 
 ---
 
+## v1.4.5 — 2026-08-01
+
+CI/tooling release — no user-facing app changes. Builds Pakko's first Microsoft Store submission
+pipeline (T-F129).
+
+- **T-F129** — added `build-store-msix` and `bundle-store-msix`, two new `workflow_dispatch`-only
+  CI jobs that produce a single, correctly-identified multi-architecture (`x64`+`arm64`) MSIX
+  bundle signed with Pakko's reserved Partner Center Publisher identity — distinct from the
+  tester-facing `CN=Pakko Dev` cert used everywhere else. Fixed four real, previously-undiscovered
+  MSIX/Partner Center packaging quirks along the way (Publisher gets silently rewritten to match
+  the signing cert at build time; a `.msixbundle`'s own identity carries no architecture, so
+  separate single-arch bundles collide; a re-signed bundle needs its cert trusted, not just
+  present, for signature verification to read `Valid`; Partner Center's package-identity
+  uniqueness check is scoped to the developer account and survives submission deletion). First
+  real Partner Center upload of the resulting package succeeded 2026-08-01. See
+  `docs/TASKS.md`'s T-F129 entry for the full trail.
+
+---
+
 ## v1.4.4 — 2026-08-01
 
 Security-hardening and CI/tooling release — no user-facing feature changes.
