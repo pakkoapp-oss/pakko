@@ -10,6 +10,33 @@ the technical account of any task named here.
 
 ---
 
+## v1.4.4 — 2026-08-01
+
+Security-hardening and CI/tooling release — no user-facing feature changes.
+
+- **T-F135** — SonarCloud static analysis wired into CI (`build.yml`'s `test` job), with code
+  coverage fed into the quality gate. Real analysis confirmed against the live SonarCloud
+  dashboard, not just a green Actions run.
+- **T-F136** — All 269 findings from SonarCloud's first scan individually triaged: real bugs
+  fixed, false positives suppressed with a documented reason, genuine refactor-scale debt tracked
+  as new follow-up tasks rather than silently dropped.
+- **T-F137** — Local static-analysis tooling (SonarLint-equivalent analyzer config) added so the
+  same rule set SonarCloud enforces in CI is visible during local development too.
+- **T-F138** — Fixed the real defect behind SonarCloud's `S3869` findings: several
+  `SafeHandle.DangerousGetHandle()` calls in the AppContainer sandbox's P/Invoke layer
+  (`QuarantineAcl`, `SecurityCapabilitiesAttributeList`, `SandboxedProcessLauncher`) are now
+  `SafeHandle`-typed parameters instead of raw handle extraction, closing a handle-recycling race
+  window during sandboxed `tar.exe` launches. Confirmed via SonarCloud: `bugs: 0`,
+  `reliability_rating: A`.
+- Dependency hygiene: `CommunityToolkit.Mvvm` version synced between `Archiver.App` and
+  `Archiver.App.Core`; `System.Net.Http`/`System.Text.RegularExpressions` pinned to patched
+  versions in test projects.
+- CI fixes: explicit workflow-level permissions on `build.yml`, cross-platform NuGet restore
+  enabled, `global.json` SDK version corrected for `setup-dotnet`, Dependabot reverted to
+  security-only updates.
+
+---
+
 ## v1.4.3 — 2026-07-26
 
 Point release adding a version flag to the CLI.
