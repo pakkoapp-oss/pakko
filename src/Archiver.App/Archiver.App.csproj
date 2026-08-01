@@ -32,6 +32,19 @@
       byte-identical in size to the un-split intermediate resources.pri.
     -->
     <AppxBundleAutoResourcePackageQualifiers>Scale|DXFeatureLevel</AppxBundleAutoResourcePackageQualifiers>
+    <!--
+      T-F139 follow-up: without Language-based splitting, resource-package count no longer crosses
+      the packaging pipeline's own flat-vs-bundle threshold, so a plain `dotnet publish` now emits
+      a flat .msix with the WindowsAppSDK runtime staged as loose sibling files under
+      Dependencies\<arch>\Microsoft.WindowsAppRuntime.1.8.msix instead of one self-contained
+      .msixbundle. Harmless standalone, but build.yml's release job uploads both x64 and arm64
+      artifacts together — the two architectures' identically-named Dependencies files collided as
+      GitHub Release assets (HTTP 404 from a duplicate-name upload, first hit on the v1.4.6 tag
+      push). Forcing bundle output keeps the single self-contained per-architecture download this
+      project's tester releases have always shipped, with every locale still embedded (verified:
+      the bundle's one inner package's own <Resources> block lists all 37 languages).
+    -->
+    <AppxBundle>Always</AppxBundle>
     <Nullable>enable</Nullable>
 	<ImplicitUsings>enable</ImplicitUsings>
 	<LangVersion>12</LangVersion>

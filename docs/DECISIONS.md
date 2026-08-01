@@ -6206,11 +6206,26 @@ property is `AppxBundleAutoResourcePackageQualifiers`, confirmed by grepping
 `Microsoft.Windows.SDK.BuildTools.MSIX.Pri.targets` directly in the local NuGet cache rather than
 guessing from memory.)
 
-**Not yet done as of this entry:** re-cutting the public `v1.4.5` GitHub Release and re-running
-`build-store-msix`/`bundle-store-msix` with this fix in place, then re-verifying the rebuilt
-package's `AppxManifest.xml`/`resources.pri` end-to-end (both architectures) before treating the
-public release or the Store submission as actually fixed — the fix is confirmed at the `csproj`+
-clean-local-build level only so far.
+**Follow-up, same day — cutting the public `v1.4.6` release surfaced a second real regression
+from this fix:** without `Language` in the auto-split qualifier list, resource-package count no
+longer crosses the packaging pipeline's own flat-vs-bundle decision threshold, so a plain `dotnet
+publish` started emitting a flat `.msix` with the WindowsAppSDK runtime staged as loose sibling
+files under `Dependencies\<arch>\Microsoft.WindowsAppRuntime.1.8.msix`, instead of one
+self-contained `.msixbundle` the way every prior tester release shipped. Harmless on its own, but
+`build.yml`'s `release` job uploads the x64 and arm64 `build-msix` artifacts together as GitHub
+Release assets — both architectures' `Dependencies\*\Microsoft.WindowsAppRuntime.1.8.msix` files
+share the exact same basename, and `gh release create` rejects the second upload with `HTTP 404:
+Not Found` (a duplicate-asset-name failure, not a real 404) rather than a clearer duplicate-name
+error. First hit on the real `v1.4.6` tag-push CI run — `test`/`build-msix`/`build-cli` all passed,
+only the `release` job's asset-upload step failed, and `gh release create` had not left a partial
+release behind (confirmed via `gh release view v1.4.6` returning "not found" before retrying).
+Fixed by adding `<AppxBundle>Always</AppxBundle>` alongside the qualifier fix — forces bundle
+output unconditionally regardless of resource-package count, restoring the single self-contained
+per-architecture `.msixbundle` download this project's releases have always shipped, with every
+locale still correctly embedded in that bundle's one inner package (reverified: `<Resources>`
+lists all 37 languages). Verified via the same three-pass discipline as the qualifier fix itself
+— property-override test first, then moved into the tracked `Archiver.App.csproj`, then reverified
+via the real, unmodified `scripts/CI-Build-Msix.ps1` with zero property overrides.
 
 See [[project_pakko_tf129_store_signing]] / [[project_pakko_status_july2026]] for the broader
 Store-submission session this was found during.
