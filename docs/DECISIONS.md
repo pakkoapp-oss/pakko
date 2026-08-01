@@ -6151,3 +6151,66 @@ reports the exact tag it was built for regardless of whether anyone remembered t
 — no shell/UI surface touched — so this project's `Deploy.ps1`-plus-personal-click-through
 graduation rule doesn't apply; an agent-driven smoke test against the real built `pakko.exe`
 (both `-v` and `--version`, run this same session) is the appropriate verification tier instead.
+
+---
+
+## T-F139 — Packaged MSIX Silently Shipped English-Only Resources Since Resource-Package Splitting Activated (2026-08-01)
+
+**Found while investigating why Partner Center's "Manage Store listing languages" page showed only
+English as supported**, despite Pakko having 37 localized `Strings/<locale>/Resources.resw`
+folders (T-F91) and `Package.appxmanifest` declaring `<Resource Language="x-generate"/>`.
+Extracted `AppxManifest.xml` from both the just-built Store package and the actual public `v1.4.5`
+GitHub Release `.msixbundle` (downloaded fresh via `gh release download`, unbundled with
+`makeappx unbundle`) — both declared only `<Resource Language="EN-US"/>`, and the packaged
+`resources.pri` itself was truncated to ~19 KB (vs. a correct ~122 KB), with every locale's
+`Archiver.Shell.resources.dll` satellite folder missing from the package root entirely. This is
+not cosmetic Store-listing metadata — the actual shipped resource index was missing 36 of 37
+locales.
+
+**Root cause, confirmed via a from-scratch clean build (deleted `obj`/`bin`/`AppPackages` for all
+five projects first — the previous "it works locally" result had been resting on stale
+incrementally-built `obj`/`bin` folders accumulated over many past sessions, which is why this
+went unnoticed):** the single-project MSIX packaging pipeline's default
+`AppxBundleAutoResourcePackageQualifiers` (`Language|Scale|DXFeatureLevel`, defined in
+`Microsoft.Windows.SDK.BuildTools.MSIX.Pri.targets`) tries to auto-split resources into separate
+per-language resource-only packages for Store-style granular download — `obj\...\win-x64\` did
+contain correctly-generated `split.language-<code>.pri` fragments for all 37 locales, proving
+MakePri itself detected every locale fine. But the packaging step that should turn each fragment
+into its own resource-only `.msix` and fold it into the bundle never actually produced them —
+the final package (bundle or flat, depending on whether resource-package count crosses the
+bundling threshold) ends up with only the "default"/neutral-language (`en-US`) resources embedded,
+and the other 36 locales' content is silently dropped, not warned about anywhere in the build log.
+Confirmed this is **not CI-specific** — the identical truncation reproduced on a clean local build
+via the same `CI-Build-Msix.ps1` script. Exact trigger for when this started is unconfirmed (a
+WindowsAppSDK/Windows.SDK.BuildTools version bump, or simply the locale count crossing whatever
+threshold flips flat-package output to bundle output — see T-F91's own already-documented
+"25+ locales forces a bundle" note, later corrected to "not a fixed threshold" at 37 locales) —
+worth treating as a real risk for every CI-built release since resource-package splitting first
+silently activated, not just today's Store-signing work.
+
+**Fix:** `Archiver.App.csproj` gained
+`<AppxBundleAutoResourcePackageQualifiers>Scale|DXFeatureLevel</AppxBundleAutoResourcePackageQualifiers>`
+— drops `Language` from the auto-split qualifier list, so PRI generation stops trying (and
+failing) to carve languages into separate packages and instead embeds all 37 locales' resources
+inline in the single package again, matching the pre-regression shape. Verified on **three**
+separate from-scratch clean builds: (1) baseline reproduction confirmed the bug on a genuinely
+clean build, ruling out "local machine is fine, only CI is broken"; (2) a property-override test
+(`/p:AppxBundleAutoResourcePackageQualifiers=Scale|DXFeatureLevel` passed directly to `dotnet
+publish`) confirmed the fix — all 37 languages present, `resources.pri` back to the full ~122 KB,
+satellite locale folders (`uk-UA`, `ar-SA`, etc.) all present; (3) the fix was then moved into the
+tracked `Archiver.App.csproj` itself and reverified via the real, unmodified
+`scripts/CI-Build-Msix.ps1` with zero property overrides — same clean 37/37 result. (An earlier
+attempt using the differently-named `AppxAutoResourcePackage=false` property was tried first and
+had **no effect** — that property doesn't exist in this SDK's actual packaging targets; the real
+property is `AppxBundleAutoResourcePackageQualifiers`, confirmed by grepping
+`Microsoft.Windows.SDK.BuildTools.MSIX.Pri.targets` directly in the local NuGet cache rather than
+guessing from memory.)
+
+**Not yet done as of this entry:** re-cutting the public `v1.4.5` GitHub Release and re-running
+`build-store-msix`/`bundle-store-msix` with this fix in place, then re-verifying the rebuilt
+package's `AppxManifest.xml`/`resources.pri` end-to-end (both architectures) before treating the
+public release or the Store submission as actually fixed — the fix is confirmed at the `csproj`+
+clean-local-build level only so far.
+
+See [[project_pakko_tf129_store_signing]] / [[project_pakko_status_july2026]] for the broader
+Store-submission session this was found during.

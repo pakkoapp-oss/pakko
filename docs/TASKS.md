@@ -1269,6 +1269,20 @@ account in `DECISIONS.md`'s T-F129 entry, summary here:**
       criterion below). Device family availability table correctly shows one package,
       `v1.4.5.0, Neutral`, ranked first across Desktop/Mobile/Team/Mixed Reality. This is the
       first time any Pakko package has cleared Partner Center's package-validation step.
+- [~] **Sixth real issue, found the same day while checking the "Manage Store listing languages"
+      page: the uploaded `1.4.5.0` package (and the public `v1.4.4`/`v1.4.5` GitHub Releases)
+      only actually shipped `EN-US` — 36 of Pakko's 37 locales were silently dropped from the
+      compiled MSIX, not just missing from the Store listing metadata.** Root cause, fix, and
+      three separate clean-build verification passes: see `DECISIONS.md`'s new **T-F139** entry.
+      Fixed in `Archiver.App.csproj`
+      (`AppxBundleAutoResourcePackageQualifiers=Scale|DXFeatureLevel`). Internal MSIX version
+      bumped `1.4.5.0` → `1.4.6.0` (public `v1.4.6` GitHub Release) — required regardless of the
+      locale fix itself, since re-uploading any content under the already-uploaded `1.4.5.0` full
+      name would hit the same account-scoped full-name collision documented above. **In
+      progress:** re-cutting `v1.4.6`, re-running `build-store-msix`/`bundle-store-msix` against
+      it, and re-verifying the rebuilt package's `AppxManifest.xml`/`resources.pri` (both x64 and
+      arm64) before re-uploading to Partner Center — the Store package currently sitting in the
+      draft submission predates this fix and still has the bug.
 - [x] WACK run locally (2026-07-20) via the CLI (`appcert.exe test -apptype packagedwin32
       -appxpackagepath ...` — needs elevation) against the current v1.4.1.0 x64 MSIX
       (`Archiver.App_1.4.1.0_x64.msix`, same build as the `chore(release): bump to v1.4.1` commit

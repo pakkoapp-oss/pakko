@@ -10,6 +10,23 @@ the technical account of any task named here.
 
 ---
 
+## v1.4.6 — 2026-08-01
+
+Bug-fix release — restores full localization to the shipped MSIX. Affects `v1.4.5` (and likely
+earlier CI-built releases) too: only English shipped despite 37 supported locales.
+
+- **T-F139** — the MSIX packaging pipeline's default auto-resource-package split
+  (`AppxBundleAutoResourcePackageQualifiers=Language|Scale|DXFeatureLevel`) tried to carve each
+  locale's resources into its own resource-only package, then silently failed to actually produce
+  them — the shipped package ended up with only `en-US`, even though every locale was correctly
+  detected during the build. Confirmed on a truly clean build (not just CI) via
+  `docs/DECISIONS.md`'s T-F139 entry. Fixed by dropping `Language` from the auto-split qualifier
+  list, so all 37 locales are embedded directly in the single package again, matching the
+  pre-regression shape. If you installed `v1.4.5` (or possibly earlier), update to this release to
+  restore non-English UI.
+
+---
+
 ## v1.4.5 — 2026-08-01
 
 CI/tooling release — no user-facing app changes. Builds Pakko's first Microsoft Store submission

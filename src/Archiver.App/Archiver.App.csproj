@@ -17,6 +17,21 @@
     <EnableMsixTooling>true</EnableMsixTooling>
     <GenerateAppxPackageOnBuild>false</GenerateAppxPackageOnBuild>
     <AppxPackageSigningEnabled>false</AppxPackageSigningEnabled>
+    <!--
+      T-F139: the MSIX packaging pipeline's default auto-resource-package split
+      (Language|Scale|DXFeatureLevel) tries to carve each locale's resources.pri content out of
+      the main package into a separate per-language resource-only package for a .msixbundle, then
+      silently fails to actually produce those packages — the shipped package (and bundle, when
+      one is produced) ends up with only EN-US, even though every intermediate PRI artifact
+      (obj\...\split.language-*.pri) proves all 37 locales were correctly detected. Confirmed on a
+      truly clean build (deleted obj/bin/AppPackages first) both locally and via CI-Build-Msix.ps1
+      — this is not CI-specific, and it silently regressed every release since resource-package
+      splitting first activated (exact trigger unconfirmed - see DECISIONS.md's T-F139 entry).
+      Dropping Language from the qualifier list keeps the single package format (matching the
+      pre-regression shape) and embeds every locale's resources.pri content inline again, verified
+      byte-identical in size to the un-split intermediate resources.pri.
+    -->
+    <AppxBundleAutoResourcePackageQualifiers>Scale|DXFeatureLevel</AppxBundleAutoResourcePackageQualifiers>
     <Nullable>enable</Nullable>
 	<ImplicitUsings>enable</ImplicitUsings>
 	<LangVersion>12</LangVersion>
