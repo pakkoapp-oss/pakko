@@ -1176,11 +1176,51 @@ account in `DECISIONS.md`'s T-F129 entry, summary here:**
       WACK entry below) rather than assumed from the email alone; still worth a real Partner Center
       submission attempt to see the hidden-satellite-app warning actually clear, since WACK itself
       has no check for this specific waiver.
-- [x] `Package.appxmanifest`'s `Identity` block already matches the reserved values exactly (`Name`,
-      `Publisher`, `PublisherDisplayName` all confirmed identical 2026-07-20 — the local dev cert
-      was apparently issued against this same reserved identity back in March, per Microsoft's own
-      recommended practice of aligning the dev-signing cert Subject with the Store identity from
-      the start). No manifest edit needed for this criterion.
+- [ ] **Correction, 2026-08-01: the 2026-07-20 `[x]` above was wrong — verified only the checked-in
+      source XML, not the actual compiled artifact.** Real Partner Center upload of
+      `Archiver.App_1.4.4.0_{x64,arm64}.msixbundle` rejected both packages: "Invalid package
+      publisher name: CN=Pakko Dev (expected: CN=EF3EC84C-8287-4FC3-BB4F-FCCEBA116BCE)" (the PFN
+      mismatch it also reports, `...9hkd8feqeqbr4` vs. expected `...955q7mnhfhmp4`, is a derived
+      symptom of the same root cause, not a second bug). Confirmed by inspecting a real compiled
+      `AppxManifest.xml` under `bin\x64\Release\...\`: `Identity ... Publisher="CN=Pakko Dev"` —
+      the checked-in `Package.appxmanifest` source still correctly says
+      `Publisher="CN=EF3EC84C-8287-4FC3-BB4F-FCCEBA116BCE"`, but it's not what ships. **Root cause:**
+      `dotnet publish` with `/p:AppxPackageSigningEnabled=true /p:PackageCertificateThumbprint=...`
+      (used by both `Deploy.ps1` and CI's `CI-Build-Msix.ps1`/`build.yml`) resolves the cert by
+      thumbprint and rewrites the generated manifest's `Identity/Publisher` to that certificate's
+      own Subject — by design, so a package always signs and sideloads cleanly regardless of whose
+      machine builds it, at the cost of silently discarding whatever Publisher the source manifest
+      declares. Since `Setup-DevCert.ps1`'s cert Subject is the human-readable `CN=Pakko Dev`
+      (never the reserved GUID-style identity), every `Deploy.ps1`/CI-built package to date has
+      shipped with the wrong Publisher for Store purposes — this was never caught before because
+      nothing had actually tried a real Partner Center upload until now.
+- [x] **Fixed, same day.** Chose the second-cert option (user decision, over building unsigned) —
+      keeps the Store package signed and locally smoke-testable, and collapses the "two-artifact"
+      problem back into a single build+sign path. `scripts/Setup-StoreCert.ps1` (new) creates a
+      second self-signed cert, Subject `CN=EF3EC84C-8287-4FC3-BB4F-FCCEBA116BCE` (thumbprint
+      `CD8DE1646CBF5A52046001FB32B0B60B797E7497`), separate from the tester-facing `CN=Pakko Dev`
+      cert `Setup-DevCert.ps1` creates. A local x64 build (`Deploy.ps1 -Thumbprint <that
+      thumbprint> -SkipVersionBump`) was verified byte-for-byte: the real compiled
+      `AppxManifest.xml` inside the produced `.msix` now reads
+      `Publisher="CN=EF3EC84C-8287-4FC3-BB4F-FCCEBA116BCE"`, and the installed package's own PFN
+      (`PavloRybchenko.Pakko_1.4.4.0_x64__955q7mnhfhmp4`) matches Partner Center's expected value
+      exactly. **The local ARM64 leg failed** (`MSB8020`, missing ARM64 v143 C++ toolset on this
+      specific dev machine) — the same toolset gap `build.yml` already works around for CI via a
+      `windows-2022` pin (T-F122), just newly discovered locally since ARM64 had never been built
+      on this machine before.
+- [x] **CI-side fix, same day, user-directed:** rather than treat the local machine as the
+      reference for Store builds at all, added a new `workflow_dispatch`-only job,
+      `build-store-msix`, to `.github/workflows/build.yml` — matrix `[x64, arm64]` on
+      `windows-2022` (same ARM64-toolset reasoning as `build-msix`), reusing
+      `scripts/CI-Build-Msix.ps1` unchanged with the new Store cert's thumbprint. Both legs upload
+      as their own workflow artifacts (`pakko-store-msix-x64`/`-arm64`), deliberately **not**
+      attached to the public GitHub Release (a different Publisher would confuse end users, and
+      Partner Center/Microsoft re-signs on certification anyway). The local Store cert was
+      exported to a PFX and stored as two new repo secrets, `PAKKO_STORE_CERT_PFX_BASE64` /
+      `PAKKO_STORE_CERT_PASSWORD`, mirroring the existing dev-cert-secret pattern. See
+      `scripts/README.md`'s new "Store-submission builds" section for the full how-to. Local
+      machines stay for dev/test builds only going forward — every package actually uploaded to
+      Partner Center should come from this CI job.
 - [x] WACK run locally (2026-07-20) via the CLI (`appcert.exe test -apptype packagedwin32
       -appxpackagepath ...` — needs elevation) against the current v1.4.1.0 x64 MSIX
       (`Archiver.App_1.4.1.0_x64.msix`, same build as the `chore(release): bump to v1.4.1` commit

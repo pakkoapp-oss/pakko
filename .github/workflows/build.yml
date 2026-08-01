@@ -9,6 +9,11 @@ on:
     tags: ["v*"]
   pull_request:
     branches: [main]
+  # T-F129: manual-only trigger for build-store-msix (Store-submission packages, signed with the
+  # reserved Partner Center Publisher identity instead of the tester-facing "CN=Pakko Dev" cert).
+  # Deliberately not tied to push/tags -- a real Store submission is a deliberate, occasional act,
+  # not something that should fire on every commit the way the tester release pipeline does.
+  workflow_dispatch:
 
 # Workflow-level default (CodeQL actions/missing-workflow-permissions) — the `test` job below has
 # no job-level override, so this is what actually applies to it. build-msix/build-cli/release each
@@ -25,6 +30,18 @@ permissions:
 #   PAKKO_DEV_CERT_PFX_BASE64 (secret) — base64-encoded, password-protected PFX export
 #   PAKKO_DEV_CERT_PASSWORD   (secret) — the PFX export password
 #
+# ── Store-submission signing identity (T-F129) ─────────────────────────────────────────────────
+# build-store-msix (workflow_dispatch only) signs with a second, separate self-signed cert whose
+# Subject is the reserved Partner Center Publisher identity itself
+# (CN=EF3EC84C-8287-4FC3-BB4F-FCCEBA116BCE) -- NOT the "CN=Pakko Dev" cert above. dotnet publish's
+# MSIX packaging rewrites the built package's Identity/Publisher to match whatever cert signs it,
+# so a package signed with "CN=Pakko Dev" ships with the wrong Publisher and Partner Center
+# rejects it outright (confirmed 2026-08-01 against a real submission -- see docs/TASKS.md's
+# T-F129 entry and scripts/Setup-StoreCert.ps1's own header). Local machines are for dev/test
+# builds only now -- every package actually uploaded to Partner Center should come from this job.
+#   PAKKO_STORE_CERT_PFX_BASE64  (secret) — base64-encoded, password-protected PFX export
+#   PAKKO_STORE_CERT_PASSWORD    (secret) — the PFX export password
+#
 # ── SonarCloud (T-F135) ────────────────────────────────────────────────────────────────────────
 #   SONAR_TOKEN (secret) — SonarCloud analysis token, OSS plan (public repo), org key
 #   "pakkoapp-oss-1" (note the "-1" — the plain "pakkoapp-oss" key was already taken on
@@ -32,14 +49,16 @@ permissions:
 #   via SonarCloud's public API (api/components/show?component=pakkoapp-oss-1_pakko) 2026-07-27.
 env:
   PAKKO_DEV_CERT_THUMBPRINT: D2EC5F2C451ED0EBE94B8168A68E5B813954CC75
+  PAKKO_STORE_CERT_THUMBPRINT: CD8DE1646CBF5A52046001FB32B0B60B797E7497
   SONAR_PROJECT_KEY: pakkoapp-oss-1_pakko
   SONAR_ORGANIZATION: pakkoapp-oss-1
   DOTNET_NOLOGO: true
   DOTNET_CLI_TELEMETRY_OPTOUT: true
 
 # test/build-cli/release stay on `windows-latest` (currently the windows-2025 image) -- it's
-# confirmed green there (3 consecutive runs). Only build-msix pins `windows-2022` explicitly
-# (T-F122, 2026-07-19): Archiver.ShellExtension.vcxproj pins PlatformToolset=v143, and
+# confirmed green there (3 consecutive runs). build-msix and build-store-msix both pin
+# `windows-2022` explicitly (T-F122, 2026-07-19; extended to build-store-msix at T-F129):
+# Archiver.ShellExtension.vcxproj pins PlatformToolset=v143, and
 # windows-2025's preinstalled VS has a newer default ARM64 toolset but not the ARM64 variant of
 # v143 specifically, so the ARM64 leg failed there with MSB8020 (confirmed after three failed
 # attempts to install the missing v143 ARM64 component via vs_installer.exe -- it kept reporting
@@ -197,6 +216,59 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: pakko-msix-${{ matrix.architecture }}
+          path: |
+            src/Archiver.App/AppPackages/**/*.msix
+            src/Archiver.App/AppPackages/**/*.msixbundle
+          if-no-files-found: error
+
+  # T-F129: Store-submission MSIX, signed with the reserved Partner Center Publisher identity.
+  # Manual-only (workflow_dispatch) -- run this from the Actions tab against the tag/ref you're
+  # about to submit, download both architecture legs' artifacts, and upload them together to
+  # Partner Center. Not attached to any GitHub Release: a different Publisher than the public
+  # tester build would be confusing to end users, and this is meant for Partner Center upload
+  # only (Microsoft re-signs for real distribution).
+  build-store-msix:
+    needs: test
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: windows-2022
+    strategy:
+      fail-fast: false
+      matrix:
+        architecture: [x64, arm64]
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Set up MSBuild
+        uses: microsoft/setup-msbuild@6fb02220983dee41ce7ae257b6f4d8f9bf5ed4ce # v2.0.0
+
+      - name: Import Store signing certificate
+        shell: pwsh
+        env:
+          PFX_BASE64: ${{ secrets.PAKKO_STORE_CERT_PFX_BASE64 }}
+          PFX_PASSWORD: ${{ secrets.PAKKO_STORE_CERT_PASSWORD }}
+        run: |
+          if (-not $env:PFX_BASE64 -or -not $env:PFX_PASSWORD) {
+            throw "PAKKO_STORE_CERT_PFX_BASE64 / PAKKO_STORE_CERT_PASSWORD secrets are not set. See scripts/README.md's Continuous Integration section."
+          }
+          $pfxPath = Join-Path $env:RUNNER_TEMP "PakkoStore.pfx"
+          [System.IO.File]::WriteAllBytes($pfxPath, [Convert]::FromBase64String($env:PFX_BASE64))
+          $securePassword = ConvertTo-SecureString -String $env:PFX_PASSWORD -AsPlainText -Force
+          Import-PfxCertificate -FilePath $pfxPath -CertStoreLocation Cert:\CurrentUser\My -Password $securePassword | Out-Null
+          Remove-Item $pfxPath -Force
+
+      - name: Build and sign Store MSIX
+        shell: pwsh
+        run: .\scripts\CI-Build-Msix.ps1 -Architecture ${{ matrix.architecture }} -Thumbprint $env:PAKKO_STORE_CERT_THUMBPRINT -MsBuildPath msbuild
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pakko-store-msix-${{ matrix.architecture }}
           path: |
             src/Archiver.App/AppPackages/**/*.msix
             src/Archiver.App/AppPackages/**/*.msixbundle

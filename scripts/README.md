@@ -141,6 +141,46 @@ change, nothing else in the workflow.
 
 ---
 
+## Store-submission builds (`build-store-msix`, T-F129)
+
+A separate, `workflow_dispatch`-only job in the same `build.yml`, for packages actually uploaded
+to Partner Center — kept out of the automatic push/tag pipeline since a real Store submission is
+a deliberate, occasional act, not something that should fire on every commit.
+
+**Why a separate job at all:** `dotnet publish`'s MSIX packaging rewrites the built package's
+`Identity/Publisher` to match whatever certificate signs it. Every package built with the
+tester-facing `CN=Pakko Dev` cert above therefore ships with `Publisher="CN=Pakko Dev"` — not
+Pakko's reserved Partner Center identity (`CN=EF3EC84C-8287-4FC3-BB4F-FCCEBA116BCE`) — and Partner
+Center rejects it outright. Confirmed against a real submission attempt, 2026-08-01: both
+`Invalid package publisher name` and the derived `Invalid package family name` errors clear once
+signed with the correct-Subject cert. See `docs/DECISIONS.md`'s T-F129 entry for the full trail.
+
+**Run it:** Actions tab → Build → Run workflow, against the tag/ref you're about to submit. Two
+architecture legs (`x64`, `arm64`) run on `windows-2022` (same ARM64-v143-toolset reasoning as
+`build-msix`), each uploaded as its own workflow artifact (`pakko-store-msix-x64` /
+`pakko-store-msix-arm64`) — download both from the run's Summary page and upload them together to
+Partner Center's Packages step. **Not** attached to the public GitHub Release: a differently-
+signed package with a different `Publisher` would be confusing for end users to stumble onto, and
+Microsoft re-signs for real distribution anyway once certification passes, so the local signature
+here only needs to make packaging/upload succeed.
+
+**Local machines are not the reference for this build.** `scripts/Setup-StoreCert.ps1` exists so a
+developer *can* build and smoke-test a Store-identity package locally (useful for verifying the
+fix before relying on CI, or if the cert ever needs rotating), but the artifact actually uploaded
+to Partner Center should always come from this CI job, not a local `Deploy.ps1` run — confirmed
+2026-08-01 that a real dev machine may simply be missing the ARM64 v143 C++ toolset MSVC needs
+(a genuine, not-uncommon local environment gap; `windows-2022` runners have it out of the box).
+
+**Signing identity:** a second self-signed cert, Subject `CN=EF3EC84C-8287-4FC3-BB4F-FCCEBA116BCE`
+(thumbprint `CD8DE1646CBF5A52046001FB32B0B60B797E7497`), created via `Setup-StoreCert.ps1` and
+exported once as a PFX into two more repo secrets, `PAKKO_STORE_CERT_PFX_BASE64` and
+`PAKKO_STORE_CERT_PASSWORD` — same pattern as the dev cert pair, just a different Subject/secret
+names. This is also a self-signed cert, not a "real" purchased one: Partner Center accepts
+self-signed-cert-signed uploads routinely, since Microsoft re-signs on successful certification —
+the Subject matching the reserved Publisher is what actually matters here, not the cert's issuer.
+
+---
+
 ## SonarCloud static analysis (T-F135)
 
 The `test` job runs a SonarCloud scan wrapped around the existing `dotnet test` invocation (JDK
@@ -194,7 +234,7 @@ now.
 
 ## Notes
 
-- `PakkoDev.cer` is gitignored — never commit certificates to the repository.
+- `PakkoDev.cer` and `PakkoStore.cer` are gitignored — never commit certificates to the repository.
 - All paths in the scripts are resolved relative to `$PSScriptRoot`, so they
   work regardless of your current working directory.
 - The self-signed certificate is for **local development only**. Store/release
