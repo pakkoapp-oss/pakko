@@ -1269,20 +1269,33 @@ account in `DECISIONS.md`'s T-F129 entry, summary here:**
       criterion below). Device family availability table correctly shows one package,
       `v1.4.5.0, Neutral`, ranked first across Desktop/Mobile/Team/Mixed Reality. This is the
       first time any Pakko package has cleared Partner Center's package-validation step.
-- [~] **Sixth real issue, found the same day while checking the "Manage Store listing languages"
+- [x] **Sixth real issue, found the same day while checking the "Manage Store listing languages"
       page: the uploaded `1.4.5.0` package (and the public `v1.4.4`/`v1.4.5` GitHub Releases)
       only actually shipped `EN-US` — 36 of Pakko's 37 locales were silently dropped from the
       compiled MSIX, not just missing from the Store listing metadata.** Root cause, fix, and
-      three separate clean-build verification passes: see `DECISIONS.md`'s new **T-F139** entry.
-      Fixed in `Archiver.App.csproj`
-      (`AppxBundleAutoResourcePackageQualifiers=Scale|DXFeatureLevel`). Internal MSIX version
-      bumped `1.4.5.0` → `1.4.6.0` (public `v1.4.6` GitHub Release) — required regardless of the
-      locale fix itself, since re-uploading any content under the already-uploaded `1.4.5.0` full
-      name would hit the same account-scoped full-name collision documented above. **In
-      progress:** re-cutting `v1.4.6`, re-running `build-store-msix`/`bundle-store-msix` against
-      it, and re-verifying the rebuilt package's `AppxManifest.xml`/`resources.pri` (both x64 and
-      arm64) before re-uploading to Partner Center — the Store package currently sitting in the
-      draft submission predates this fix and still has the bug.
+      full verification trail: see `DECISIONS.md`'s **T-F139** entry (including a same-day
+      follow-up bug the fix itself caused — a flat-vs-bundle packaging-threshold side effect that
+      broke the `v1.4.6` release job's asset upload, fixed via `AppxBundle=Always`). Internal MSIX
+      version bumped `1.4.5.0` → `1.4.6.0` (public `v1.4.6` GitHub Release) to escape Partner
+      Center's account-scoped full-name collision on re-upload.
+      **Fully verified end-to-end 2026-08-01, both distribution channels:**
+      - Public tester release: real `v1.4.6` GitHub Release created via the automatic tag-push CI
+        pipeline (`test`→`build-msix`×2→`build-cli`→`release`), assets are clean single
+        `.msixbundle` files per architecture again (no more loose `Dependencies\*` collision).
+        Downloaded `Archiver.App_1.4.6.0_x64.msixbundle` directly from the real GitHub Release via
+        `gh release download` and confirmed 37/37 languages in
+        `AppxMetadata\AppxBundleManifest.xml`, correct `CN=Pakko Dev` Publisher.
+      - Store submission package: triggered `build-store-msix`+`bundle-store-msix`
+        (`workflow_dispatch`) against the `v1.4.6` tag, both green. Downloaded the real
+        `pakko-store-msixbundle` CI artifact and confirmed: both `x64`/`arm64` inner packages
+        present, 37/37 languages in the bundle manifest, correct Store Publisher identity
+        (`CN=EF3EC84C-...`), `Version="1.4.6.0"` (never previously uploaded — clears the full-name
+        collision), `Get-AuthenticodeSignature` reports `Valid`, and — deepest check — the inner
+        x64 package's own `resources.pri` is the full, un-truncated 121,600 bytes with the `uk-UA`
+        satellite folder physically present inside the package.
+      **Remaining, user-only step:** upload this newly-built `pakko-store-msixbundle` artifact
+      (not the old `1.4.5.0` one already sitting in the Partner Center draft) to Partner Center
+      and re-submit.
 - [x] WACK run locally (2026-07-20) via the CLI (`appcert.exe test -apptype packagedwin32
       -appxpackagepath ...` — needs elevation) against the current v1.4.1.0 x64 MSIX
       (`Archiver.App_1.4.1.0_x64.msix`, same build as the `chore(release): bump to v1.4.1` commit
