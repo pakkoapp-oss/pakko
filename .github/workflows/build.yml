@@ -312,6 +312,10 @@ jobs:
           [System.IO.File]::WriteAllBytes($pfxPath, [Convert]::FromBase64String($env:PFX_BASE64))
           $securePassword = ConvertTo-SecureString -String $env:PFX_PASSWORD -AsPlainText -Force
           Import-PfxCertificate -FilePath $pfxPath -CertStoreLocation Cert:\CurrentUser\My -Password $securePassword | Out-Null
+          # Also trust it (LocalMachine\TrustedPeople) -- unlike build-store-msix, this job calls
+          # Get-AuthenticodeSignature as a hard gate after re-signing, and Status only reports
+          # 'Valid' for a chain the machine actually trusts, not merely a well-formed signature.
+          Import-PfxCertificate -FilePath $pfxPath -CertStoreLocation Cert:\LocalMachine\TrustedPeople -Password $securePassword | Out-Null
           Remove-Item $pfxPath -Force
 
       - name: Unbundle, merge, and re-sign
