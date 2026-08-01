@@ -1169,8 +1169,13 @@ account in `DECISIONS.md`'s T-F129 entry, summary here:**
       check blocks it) — don't assume the Submission Options justification text alone is enough.
       Submission Options justification text drafted 2026-07-28 (see the Microsoft Support
       correspondence above) — ready for the user to paste in, not yet submitted
-- [ ] `HeadlessAppBypass` waiver granted — submitted by the user, forwarded by Microsoft Support
-      to their review team 2026-07-28, no SLA given; follow up via the same support case
+- [x] `HeadlessAppBypass` waiver granted — confirmed via a real reply email from Microsoft Support
+      (Hanan, v-halhariry@microsoft.com) received 2026-08-01: "the HeadlessAppBypass waiver has
+      been enabled for your product 'Pakko' (9P5MW010D8PR)." Support asked the user to confirm the
+      issue is resolved on their end — verified locally via a fresh WACK run the same day (see the
+      WACK entry below) rather than assumed from the email alone; still worth a real Partner Center
+      submission attempt to see the hidden-satellite-app warning actually clear, since WACK itself
+      has no check for this specific waiver.
 - [x] `Package.appxmanifest`'s `Identity` block already matches the reserved values exactly (`Name`,
       `Publisher`, `PublisherDisplayName` all confirmed identical 2026-07-20 — the local dev cert
       was apparently issued against this same reserved identity back in March, per Microsoft's own
@@ -1236,7 +1241,16 @@ account in `DECISIONS.md`'s T-F129 entry, summary here:**
         *dimensions* WACK's `App resources` test actually checks, so a regression there is not
         plausible. See `DECISIONS.md`'s T-F129 WACK entries for the full before/after detail and
         the exact geometry math.
-- [ ] WACK run locally against the fresh build with no unresolved failures
+- [x] WACK run locally against the fresh build with no unresolved failures — re-run 2026-08-01
+      (`appcert.exe test -apptype packagedwin32`, elevated) against a fresh `Deploy.ps1` build,
+      `Archiver.App_1.4.2.1_x64.msix`. **`OVERALL_RESULT="PASS"`**, 24 tests, only 2 non-PASS —
+      both `optional=TRUE` and both already documented above as expected/by-design (`Application
+      count` — 2 `<Application>` entries, by design; `Blocked executables` — self-contained .NET 8
+      runtime DLL false positives plus load-bearing `ShellExecuteW`/`CreateProcessW`/
+      `Process.Start` references). `DPIAwarenessValidation` and `App resources` — the two real
+      fixes from the 2026-07-20 pass — both confirmed still `PASS`, closing out that pass's
+      unconfirmed third re-run. Full XML report not committed (regenerate the same way before the
+      real submission).
 - [ ] Store listing (description, screenshots, category, age ratings, restricted-capability
       justification for `runFullTrust`, citing NanaZip as a same-category precedent) completed in
       Partner Center
