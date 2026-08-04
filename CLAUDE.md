@@ -550,16 +550,20 @@ failure — so a blocked/misconfigured sandbox would have crashed instead of yie
   `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` green repo-wide. User-confirmed
   on-device across three `Deploy.ps1` iterations that same session. See `docs/TASKS_DONE.md`'s
   T-F140 entry and `docs/DECISIONS.md`'s three T-F140 entries for the full account.
-  **T-F141 (found same session, not yet implemented)** — while T-F140 was mid-deployment, the user
-  raised a related but separate risk: `ParallelSingleArchiveWriter`'s hidden chunk temp files are
-  reopened with `FileShare.None` by the writer thread after a worker finishes writing them: if a
-  cloud-sync client (Google Drive, etc.), antivirus, or Search Indexer briefly opens a finished
-  chunk file in that window, the reopen throws `IOException` — and that specific read isn't
-  wrapped in the per-item try/catch every worker's own compression already has, so it would abort
-  the *entire* archive operation, not skip one file. Unconfirmed whether this actually reproduces
-  (e.g. Google Drive may already skip Hidden-attributed folders) — see `docs/TASKS.md`'s T-F141
-  entry for the acceptance criteria (confirm empirically first, then harden with retry-with-backoff
-  only if real).
+  **T-F141 (`[x]` done 2026-08-04)** — while T-F140 was mid-deployment, the user raised a related
+  but separate risk: `ParallelSingleArchiveWriter`'s hidden chunk temp files were reopened with
+  `FileShare.None` by the writer thread after a worker finished writing them — if a cloud-sync
+  client (Google Drive, etc.), antivirus, or Search Indexer briefly opened a finished chunk file in
+  that window, the reopen threw `IOException`, uncaught, aborting the *entire* archive operation
+  rather than skipping one file. This dev machine has no cloud-sync client active, so the real
+  vendor-behavior question stayed unconfirmed — resolved instead on structural grounds (`advisor`-
+  reviewed): the read-back's `FileShare.None` never protected any real invariant (the file was
+  already fully written and closed by its worker; the *write* side's own `FileShare.None` is what
+  actually matters). Fixed with a one-word change to `FileShare.Read` — no retry machinery needed.
+  New regression test uses `RunPipelineAsync`'s existing injectable seam to hold a real second
+  handle open deterministically, first confirmed to fail against a revert, then restored passing.
+  `Archiver.Core.Tests` 408 → 409. See `docs/TASKS_DONE.md`'s T-F141 entry and `docs/DECISIONS.md`'s
+  T-F141 entry for the full account.
 - **T-F142 (found/claimed same session, not yet implemented)** — user requested a
   compression/decompression speed display for every archive format, with tests. Scoping surfaced a
   real latent bug, not just a UI gap: `Archiver.App`'s `MainViewModel` already has an EMA-smoothed

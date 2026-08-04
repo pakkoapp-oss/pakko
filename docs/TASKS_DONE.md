@@ -3570,3 +3570,55 @@ watching actual `windows-2022`/`windows-latest` runner behavior), each its own c
   against "SICHER! B2 CD" (4 folders, ~5.1 GB) — screenshot showed the Archiving dialog stuck at
   1% / 69,2 MB of 5,1 GB with a visibly growing `.zip.tmp` alongside an already-finished `.tar`.
 
+---
+
+### T-F141 — Chunk Temp File Read-Back Requested Unnecessary Exclusivity
+- [x] **Status:** done 2026-08-04. Found while T-F140 was mid-deployment — the user asked whether a
+      cloud-sync client (Google Drive was the example given) watching the destination folder could
+      interfere with `ParallelSingleArchiveWriter`'s chunk-temp-file cleanup. Reading the actual
+      code showed the real risk was broader than cleanup: the consumer's read-back of a finished
+      chunk file (`RunPipelineAsync`'s `TempFileCompressed` case) opened it with
+      `FileMode.Open, FileAccess.Read, FileShare.None` — requesting *exclusive* access to a file
+      that was already fully written and closed by its worker. Any external process (an AV
+      real-time scanner, a cloud-sync file watcher, Windows Search Indexer — the same class of
+      transient locker already documented racing `AppPackages` in T-F96) opening that same file in
+      the window between the worker closing it and the writer reopening it would throw a
+      sharing-violation `IOException` there, uncaught, aborting the *entire* archive operation
+      rather than skipping one file.
+
+      This dev machine has no cloud-sync client active (no `GoogleDrive`/`OneDrive`/`Dropbox`
+      process, no OneDrive account signed in, no Google Drive install), so the original acceptance
+      criteria's "reproduce empirically against a real synced folder" path could not be carried out
+      literally. Resolved instead on structural grounds (`advisor`-reviewed): the read-back's
+      `FileShare.None` never protected any real invariant — the write side's own `FileShare.None`
+      is what actually prevents anyone from reading a half-written chunk, and a second concurrent
+      *reader* of an already-finished, already-closed file threatens nothing. Changed the read-back
+      to `FileShare.Read`, which removes the failure mode for any external reader that itself opens
+      with `FileShare.Read` (the standard behavior for AV/sync/indexer file-watching) — no retry
+      loop, no backoff, no retry-exhaustion semantics needed. Also confirmed cleanup itself was
+      never actually at risk — every delete site (`TryDeleteTempFile`, the leftover sweep, the
+      final `Directory.Delete(chunkDirectory)`) was already best-effort `try/catch` before this
+      task; the real exposure was entirely the read-back's gratuitous exclusivity.
+- **Acceptance criteria:**
+  - [x] Confirmed the underlying vulnerability structurally (reading the actual sharing-mode
+        semantics) rather than empirically against a live vendor sync client, since none was
+        available on this dev machine — recorded as a deliberate deviation from the original
+        acceptance criteria in `DECISIONS.md`'s T-F141 entry
+  - [x] Hardened the read-back: `FileShare.None` → `FileShare.Read` on
+        `ParallelSingleArchiveWriter.cs`'s `TempFileCompressed` consumer reopen (one-word fix, no
+        retry machinery added — none needed once the request itself stopped being unnecessarily
+        exclusive)
+  - [x] `docs/DECISIONS.md` gets a T-F141 entry recording the environment constraint, the
+        structural fix rationale, and the finding that cleanup was never actually at risk
+  - [x] `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` green repo-wide (409/409
+        Archiver.Core.Tests + full suite) — new regression test
+        `RunPipelineAsync_ExternalReaderHoldsChunkFileOpen_WriterStillReadsItSuccessfully` uses
+        `RunPipelineAsync`'s existing injectable `compressToTempFile` seam to hold a real second
+        `FileShare.Read` handle open on the chunk file deterministically (no timing race, no sleep),
+        first confirmed to actually FAIL with the exact sharing-violation `IOException` against a
+        temporary revert to `FileShare.None`, then restored and confirmed passing
+- **Depends on:** none — independent of T-F140, found while T-F140 was mid-deployment
+- **Reported by:** user, 2026-08-04, as a question about cloud-sync interaction with temp-file
+  cleanup during T-F140's on-device deployment; scoping the question surfaced the real operation-
+  aborting risk beyond cleanup.
+

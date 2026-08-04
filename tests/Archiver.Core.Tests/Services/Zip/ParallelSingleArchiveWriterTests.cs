@@ -425,6 +425,68 @@ public sealed class ParallelSingleArchiveWriterTests : IDisposable
         reports.Should().Contain(r => r.CurrentFile == "source/small.bin");
     }
 
+    // T-F141 regression: the consumer's read-back of a finished chunk temp file used to open it
+    // with FileShare.None (see DECISIONS.md's T-F141 entry), which had no correctness purpose --
+    // the file was already fully written and closed by its worker. But it meant a transient
+    // external reader (AV scanner, cloud-sync file watcher, Search Indexer) touching the file in
+    // the window between the worker closing it and the writer reopening it would throw a sharing
+    // violation IOException here, uncaught, aborting the whole archive operation. This drives that
+    // exact window deterministically via RunPipelineAsync's injectable compressToTempFile seam --
+    // no timing race, no real cloud-sync client needed -- by having the fake compressor open and
+    // hold its own second FileShare.Read handle on the chunk file before returning, simulating
+    // exactly that external reader.
+    [Fact]
+    public async Task RunPipelineAsync_ExternalReaderHoldsChunkFileOpen_WriterStillReadsItSuccessfully()
+    {
+        string chunkDir = Path.Combine(_tempDir, "chunks");
+        Directory.CreateDirectory(chunkDir);
+        byte[] content = BuildContent(4096);
+
+        var externalHandles = new List<FileStream>();
+        try
+        {
+            Func<FileWorkItem, CancellationToken, Task<WorkResult>> compressToTempFile = (item, ct) =>
+            {
+                string tempFilePath = Path.Combine(chunkDir, $"chunk-{Guid.NewGuid():N}.tmp");
+                File.WriteAllBytes(tempFilePath, content);
+
+                // Simulate an external process (AV real-time scanner, cloud-sync file watcher)
+                // observing the finished chunk file and opening its own read handle on it, still
+                // open when the writer thread below goes to read it back.
+                externalHandles.Add(new FileStream(tempFilePath, FileMode.Open, FileAccess.Read, FileShare.Read));
+
+                uint crc = Archiver.Core.IO.Crc32.Compute(new MemoryStream(content));
+                return Task.FromResult(WorkResult.ForTempFileCompressed(
+                    item.EntryName, tempFilePath, crc, content.Length, content.Length,
+                    ZipEntryWriter.StoredMethod, item.LastWriteTime));
+            };
+
+            // Declared FileSize must exceed InMemoryCompressByteThreshold so RunPipelineAsync's own
+            // producer routes this item to compressToTempFile (the seam this test targets) instead
+            // of compressInMemory -- independent of the fake's real (small) on-disk content above.
+            var items = new[]
+            {
+                new FileWorkItem("a", "a.bin", FileWorkKind.File,
+                    ParallelSingleArchiveWriter.InMemoryCompressByteThreshold + 1, DateTime.Now),
+            };
+            string archivePath = TempArchivePath;
+
+            var act = async () => await ParallelSingleArchiveWriter.RunPipelineAsync(
+                archivePath, items, NeverCalledInMemoryCompressor, compressToTempFile, windowCapacity: 2,
+                totalBytes: content.Length, progress: null, reportError: _ => { }, CancellationToken.None);
+
+            await act.Should().NotThrowAsync(
+                "the writer's read-back must tolerate a concurrent external reader holding a shared read handle");
+
+            using var archive = ZipFile.OpenRead(archivePath);
+            VerifyEntryContent(archive, "a.bin", content);
+        }
+        finally
+        {
+            foreach (var handle in externalHandles) handle.Dispose();
+        }
+    }
+
     // The per-operation hidden chunk folder sits directly inside the destination directory,
     // named ".pakko-tmp-{guid}" (see ParallelSingleArchiveWriter.WriteAsync). Directory.GetDirectories
     // finds it regardless of the Hidden attribute (unlike Explorer's default view).
@@ -453,6 +515,9 @@ public sealed class ParallelSingleArchiveWriterTests : IDisposable
     // violated that assumption instead of silently masking it.
     private static readonly Func<FileWorkItem, CancellationToken, Task<WorkResult>> NeverCalledTempFileCompressor =
         (_, _) => throw new InvalidOperationException("Temp-file compressor should not be invoked for small items in these tests.");
+
+    private static readonly Func<FileWorkItem, CancellationToken, Task<WorkResult>> NeverCalledInMemoryCompressor =
+        (_, _) => throw new InvalidOperationException("In-memory compressor should not be invoked for temp-file items in these tests.");
 
     private static async Task WaitUntilAsync(Func<bool> condition, TimeSpan timeout)
     {

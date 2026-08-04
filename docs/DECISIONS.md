@@ -6388,3 +6388,81 @@ ReportsEntryNameOnCompletion`); the existing Slow `WriteAsync_OneLargeFile_...` 
 `"<folder-name>/<file>"`, not bare `<file>`, confirmed by the first assertion attempt's actual
 failure output rather than assumed. `dotnet test --filter "Category!=Slow&Category!=VeryLarge"`
 green repo-wide (408/408 Archiver.Core.Tests + full suite, 62/62 IntegrationTests unaffected).
+
+---
+
+## T-F141 — Chunk Temp File Read-Back Requested Unnecessary Exclusivity (2026-08-04)
+
+**Found from a user question** raised while T-F140 was mid-deployment: if a cloud-sync client
+(Google Drive was the example given) is watching the destination folder, could it interfere with
+`ParallelSingleArchiveWriter`'s chunk-temp-file cleanup? Reading the actual code showed the real
+risk was broader than cleanup — `RunPipelineAsync`'s consumer reopens each finished chunk file
+with `FileMode.Open, FileAccess.Read, FileShare.None` (`ParallelSingleArchiveWriter.cs`, the
+`WorkResultKind.TempFileCompressed` case) before copying it into the final archive. That
+`FileShare.None` request means *nobody else* may have the file open at all, even just for
+reading — so any external process opening the same file in the window between a worker closing it
+and the writer reopening it (an AV real-time scanner, a cloud-sync client's file watcher, or
+Windows Search Indexer — the same class of transient locker already documented racing
+`AppPackages` in T-F96) throws a sharing-violation `IOException` here. That exception is not
+caught per-item the way each worker's own compression already is — it propagates straight out of
+the `await foreach` consumer loop in `RunPipelineAsync`, aborting the *entire* archive operation,
+not just the one entry.
+
+**Environment check before designing anything:** this dev machine has no cloud-sync client
+active — `Get-Process` found no `GoogleDrive`/`OneDrive`/`Dropbox` process running, no OneDrive
+account is signed in (`HKCU:\Software\Microsoft\OneDrive` has no `UserFolder`/`UserEmail`), and no
+Google Drive installation exists at all. So T-F141's original acceptance criteria (confirm
+empirically whether a real vendor client actually touches files in a `.`-prefixed `Hidden` temp
+folder, then only add retry-with-backoff if so) could not be carried out as written — there was no
+live sync client on this machine to observe, and installing/signing into one is an invasive
+environment change not undertaken for a diagnostic check like this.
+
+**Resolved differently, via `advisor` review, on structural grounds instead of empirical
+reproduction:** the `FileShare.None` on the *read-back* side never protected any real invariant.
+Contrast the *write* side (`CompressToTempFileAsync`'s `FileMode.Create, FileAccess.Write,
+FileShare.None`), which genuinely matters — it stops any other reader from ever seeing a
+half-written chunk. By the time the consumer's read-back runs, the chunk file is already fully
+written and closed by its worker; nothing about a second concurrent *reader* threatens
+correctness. Windows sharing-mode arbitration is symmetric in the sense that matters here: an AV
+scanner or sync-client watcher opens with `FileAccess.Read, FileShare.Read`, and Pakko's own
+`FileShare.None` request is what turns that otherwise-harmless coexistence into a thrown
+exception. Changing the read-back to `FileShare.Read` removes the failure mode entirely for any
+external reader that itself requests `FileShare.Read` (the overwhelmingly common case for
+AV/sync/indexer file-watching) — no retry loop, no backoff constants, no retry-exhaustion
+semantics needed. The one residual case this doesn't cover — an external process that itself opens
+with `FileShare.None` — has no fix on Pakko's side by definition (neither process's share mode can
+be satisfied simultaneously), and per T-F141's own third acceptance criterion, that's exactly the
+"risk that doesn't materialize in practice" not worth building retry machinery for absent
+evidence.
+
+**Also worth recording explicitly, since it directly answers the user's original question:**
+cleanup was never actually at risk. `TryDeleteTempFile` (the per-chunk delete), the leftover sweep
+in `RunPipelineAsync`'s outer `finally`, and the final `Directory.Delete(chunkDirectory)` in
+`WriteAsync`'s `finally` were all already wrapped in best-effort `try/catch` before this task —
+a delete failing because some other process still has the file open silently leaves it for a later
+sweep/OS cleanup rather than crashing anything. The real exposure was entirely the read-back's
+gratuitous exclusivity, not deletion.
+
+**Fix:** one-word change, `ParallelSingleArchiveWriter.cs`'s `TempFileCompressed` case:
+`FileShare.None` → `FileShare.Read` on the consumer's reopen, with a comment explaining why
+(referencing this entry). **Regression test:** `RunPipelineAsync_ExternalReaderHoldsChunkFileOpen_
+WriterStillReadsItSuccessfully` uses the existing injectable `compressToTempFile` seam on
+`RunPipelineAsync` (the same seam other tests in this file already use) rather than a real timing
+race — the fake compressor writes a real chunk file, closes it, then opens and holds a second
+`FileShare.Read` handle on it before returning `WorkResult.ForTempFileCompressed(...)`, so the
+consumer's reopen deterministically happens against a live foreign handle every run, no sleeps or
+flakiness. Following this project's own revert-and-confirm-fail discipline (see T-F140's entry
+above): reverted to `FileShare.None`, confirmed the test failed with the exact predicted sharing
+violation (`IOException` at the consumer's `new FileStream(...)` call), then restored the fix and
+confirmed it passed. `Archiver.Core.Tests` grew from 408 to 409. Declared `FileWorkItem.FileSize`
+in the test had to exceed `InMemoryCompressByteThreshold` — `RunPipelineAsync`'s own producer
+picks `compressInMemory` vs. `compressToTempFile` based on that field, independent of how large
+the fake's actual on-disk content is; the first attempt used a small declared size and silently
+exercised the wrong compressor, caught by the test failing for the wrong reason before this was
+noticed and fixed.
+
+`dotnet test --filter "Category!=Slow&Category!=VeryLarge"` green repo-wide (409/409
+Archiver.Core.Tests + full suite). Not on-device verified — this is a pure `Archiver.Core`
+concurrency/robustness fix with no shell-triggered or UI-visible behavior change, so per this
+project's own workflow rule, `dotnet test` alone is sufficient to graduate it (the on-device-
+verification requirement is specifically for shell-triggered/UI behavior).

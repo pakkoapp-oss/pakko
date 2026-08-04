@@ -260,8 +260,18 @@ internal static class ParallelSingleArchiveWriter
                         break;
 
                     case WorkResultKind.TempFileCompressed:
+                        // T-F141: FileShare.Read, not FileShare.None. This chunk file was already
+                        // fully written and closed by its worker (the write side's own
+                        // FileShare.None, in CompressToTempFileAsync below, is what actually
+                        // prevents anyone from reading a half-written chunk) -- nothing about this
+                        // read-back needs exclusivity. Requesting it anyway meant a transient
+                        // external reader (AV real-time scanner, cloud-sync client's file watcher,
+                        // Search Indexer -- the same class of process T-F96 already documented
+                        // racing AppPackages) touching a finished chunk in this window threw a
+                        // sharing-violation IOException here, uncaught, aborting the entire archive
+                        // operation instead of just this one entry. See DECISIONS.md's T-F141 entry.
                         using (var tempStream = new FileStream(result.TempFilePath, FileMode.Open, FileAccess.Read,
-                            FileShare.None, bufferSize: CopyBufferSize, useAsync: false))
+                            FileShare.Read, bufferSize: CopyBufferSize, useAsync: false))
                         {
                             await writer.WriteCompressedEntryFromStreamAsync(
                                     result.EntryName, tempStream, result.CompressedSize, result.UncompressedSize,
