@@ -131,7 +131,7 @@ internal sealed class ZipEntryWriter : IAsyncDisposable
     internal static async Task<(long Total, uint Crc32)> CopyWithCrcAsync(
         FileStream source, Stream destination, byte[] buffer,
         IProgress<ProgressReport>? progress, long totalBytes, long startOffset, string entryName,
-        CancellationToken ct)
+        CancellationToken ct, Action<long>? onBytesRead = null)
     {
         var acc = new Crc32.Accumulator();
         long total = 0;
@@ -141,6 +141,7 @@ internal sealed class ZipEntryWriter : IAsyncDisposable
             acc.Update(buffer.AsSpan(0, read));
             await destination.WriteAsync(buffer.AsMemory(0, read), ct).ConfigureAwait(false);
             total += read;
+            onBytesRead?.Invoke(read);
 
             if (progress != null && totalBytes > 0)
             {

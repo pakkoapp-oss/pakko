@@ -6229,3 +6229,162 @@ via the real, unmodified `scripts/CI-Build-Msix.ps1` with zero property override
 
 See [[project_pakko_tf129_store_signing]] / [[project_pakko_status_july2026]] for the broader
 Store-submission session this was found during.
+
+---
+
+## T-F140 — Archive-Creation Progress Reporting Accuracy (ZIP parallel pipeline, TAR percent denominator)
+
+**Found from a real user report (2026-08-04):** right-clicking a folder set ("SICHER! B2 CD", 4
+subfolders CD1/CD2/DVD1/DVD2, ~5.1 GB) and choosing Add to .zip/.tar via Explorer showed the
+Archiving dialog stuck at 1% / 69,2 MB of 5,1 GB for an extended period, even though
+`SICHER! B2 CD.zip.tmp` was visibly growing on disk and the sibling `.tar` (same source) had
+already finished with no visible progress movement either. Two distinct root causes, not one bug —
+found by reading the actual code rather than assuming a single shared cause, then confirmed each
+independently before designing a fix (an `advisor` review session caught that the TAR half needed
+its own empirical check — specifically, whether `tar -v`'s lines even reach the app's line
+callback via stderr — rather than assuming the same shape as the ZIP bug from the user's wording
+alone).
+
+**ZIP root cause (`Archiver.Core/Services/Zip/ParallelSingleArchiveWriter.cs`, a T-F35 regression):**
+`CompressToTempFileAsync` passed `progress: null` into `ZipEntryWriter.CopyWithCrcAsync` — a file
+streamed into its private temp chunk reported zero progress while compressing. The only update came
+from the single writer/consumer thread's `bytesWritten`, which only advanced once a `WorkResult` was
+fully drained and written into the final archive — i.e. only after a file was **completely**
+compressed. For a source dominated by a few large files (audio tracks/disc images, as in the
+report), the bar sat frozen for however long each file took to compress, then jumped. The
+pre-T-F35 sequential path (below the 64-file `ParallelPipelineFileCountThreshold` gate) never had
+this problem — it already used `ProgressStream` for real per-byte reporting (T-F16); the regression
+was scoped to the parallel path only, introduced when T-F35 added it.
+
+**ZIP fix:** a new `ParallelSingleArchiveWriter.ProgressTracker` (internal, not private — nested
+class parameters on an `internal` method must be at least as accessible as the method itself,
+`CS0051`) is constructed once in `WriteAsync` and captured by the two compress-worker lambdas
+(kept out of `RunPipelineAsync`'s own signature deliberately, so the existing whitebox tests that
+inject fake compressors of the unchanged `Func<FileWorkItem, CancellationToken, Task<WorkResult>>`
+shape keep compiling unmodified). `ZipEntryWriter.CopyWithCrcAsync` gained a new optional
+`Action<long>? onBytesRead` parameter (its only two call sites are both inside
+`CompressToTempFileAsync`, confirmed via a repo-wide grep before extending the signature, so this
+was a safe, non-breaking addition) — each chunk read now calls `tracker?.ReportBytes(delta)`.
+In-memory small files (`CompressEligibleFileAsync`, ≤ 1 MiB) report their whole size in one shot on
+completion instead — they're too small/fast for mid-file reporting to matter.
+
+`ProgressTracker.ReportBytes` is intentionally NOT a "report on every chunk" design — an
+advisor-session review flagged two real problems with that shape before implementation started: (1)
+several concurrent workers computing percent independently can report out of order (a visible
+backward jump `IProgressDialog` would render), fixed with a `CompareExchange` loop that only
+publishes when the new percent is strictly greater than the last published one; (2) reporting every
+64/80 KB chunk from up to 16 concurrent workers would flood `IProgressDialog`'s COM/UI-thread
+marshaling, fixed with a ~100ms time-based throttle (`Stopwatch`-based, also via
+`CompareExchange` so only one racing thread wins a given throttle window). Worker-reported percent
+is clamped to 99 — compression can finish well before the single writer thread has copied the last
+multi-GB temp file into the actual archive, and a skipped/errored source file would otherwise leave
+a permanent gap in `bytesWritten`'s totalBytes accounting — so the *only* place that ever reports
+100% is `RunPipelineAsync`, once, right after every entry has actually finished draining.
+
+**TAR root cause (`TarSandboxedService.CompressToArchiveAsync`):** `entryCount` counted only the
+*top-level* `options.SourcePaths` handed to `tar -cf` (4, in the reported case — one per selected
+folder), not the real number of files tar.exe archives once it recurses into them.
+`RunUnsandboxedTarAsync`'s own pre-existing comment already documents that tar.exe's `-v` per-entry
+lines arrive via **stderr**, confirmed empirically — so the line callback (`OnVerboseLine`) does
+fire correctly, once per real archived entry. But `reportedFiles` (incremented per real entry) very
+quickly exceeds the wrong, much-smaller `entryCount`, so `Math.Min(99, reportedFiles * 100 /
+entryCount)` clamped to 99% almost immediately and then sat unmoving for the rest of the run, until
+the one terminal `Report(100)` on success. Different symptom from the ZIP bug (stuck near 100%, not
+near 0%) but the same class of "denominator doesn't reflect real work" issue — this is why the tar
+half of the user's report showed no visible movement too, despite finishing correctly.
+
+**TAR fix:** a new `CountRecursiveEntries` helper (a plain file is 1; a directory is itself plus
+every `Directory.EnumerateFileSystemEntries(..., SearchOption.AllDirectories)` result under it) is
+summed across every valid source path into `totalEntriesForProgress`, used as the percent
+denominator instead of `entryCount` (which is left unchanged for its original, unrelated purpose —
+the `entryCount == 0` "nothing to archive" guard). Deliberately approximate, not exact — it doesn't
+replicate tar.exe's own symlink-following rules — since the existing `Math.Min(99, ...)` clamp
+already tolerates undercounting, and a rough-but-linear percentage is a large improvement over a
+denominator that was wrong by an order of magnitude for any folder with more than a handful of
+files. No byte-based progress was added for TAR (unlike ZIP's `BytesTransferred`/`TotalBytes`) —
+the dialog never showed byte counts for tar.exe operations to begin with, so entry-count-based
+percent alone is enough.
+
+**Tests (both bugs independently proven to actually reproduce, not just "fixed and hoped"):**
+before finalizing either fix, the corresponding new test was run against the **original buggy
+code** (a temporary revert, not a hypothetical) and confirmed to fail — `CompressAsync_
+TarWithManyFilesInFolder_ProgressAdvancesGraduallyNotClampedImmediately` failed with a single
+repeated `{99}` percent against the old `entryCount`-based denominator; `WriteAsync_OneLargeFile_
+ReportsProgressDuringCompressionNotOnlyAtCompletion` failed to find any report with
+`BytesTransferred` strictly between 0 and the file size when `onBytesRead` was temporarily
+disabled — only the terminal 100% report existed, exactly reproducing the reported symptom. A third
+new test, `CopyWithCrcAsync_MultiChunkFile_InvokesOnBytesReadPerChunkSummingToFileLength`, is a
+fast, deterministic (no wall-clock dependency) direct test of the new `onBytesRead` hook itself.
+The `WriteAsync_OneLargeFile_...` test is tagged `[Trait("Category", "Slow")]` (a genuinely large,
+incompressible 48 MB file is needed so real Deflate compression time reliably crosses the
+tracker's ~100ms throttle window regardless of machine speed) — same convention as this project's
+other real-wall-clock-cost tests (Zip64, T-F114).
+
+**Status:** implementation complete, `dotnet test --filter "Category!=Slow&Category!=VeryLarge"`
+green repo-wide (407/407 Archiver.Core.Tests + full suite). Stays `[~]` in `docs/TASKS.md` pending
+on-device verification (Deploy.ps1 build+sign+install, a real Explorer Add-to-.zip/.tar against a
+similarly-shaped multi-GB, few-large-files source) — not graduated on `dotnet test` alone, per this
+project's standard workflow rule for anything touching UI-visible/shell-triggered behavior.
+
+**Same-day follow-up — TAR dialog richness gap, found by the user during on-device verification:**
+after confirming the TAR percentage now actually moves (a real on-device screenshot showed 48% on
+a live archive), the user noticed the dialog showed nothing else — no filename, no byte counts —
+unlike ZIP's "{Percent}% · {bytes}/{total}" plus a live filename line. Root cause:
+`Archiver.Shell/Program.cs`'s `FormatStatus` falls back to a bare `"{Percent}%"` whenever
+`TotalBytes <= 0` (always true for TAR, by T-F140's original design — see `BytesTransferred = 0,
+TotalBytes = 0` above), and `SetLine(1, r.CurrentFile)` is only ever called `if (r.CurrentFile is
+not null)` — also always null for TAR. The filename was available the whole time and simply
+discarded: `RunUnsandboxedTarAsync`'s own `onStdErrLine` callback already documents tar.exe's `-v`
+creation-mode output as `"a <name>"` per entry, but `OnVerboseLine`'s parameter was named `_` and
+never read.
+
+**Fix:** `CountRecursiveEntries` became `CountRecursiveEntriesAndBytes`, returning
+`(EntryCount, TotalBytes)` — the real recursive sum of source file sizes (directories contribute 0),
+stat'd during the same pre-scan walk, summed into a new `totalBytesForProgress`. A new
+`ParseTarVerboseEntryName` strips the fixed `"a "` prefix from each verbose line (falls back to the
+raw line unchanged on any format surprise, never throws) and feeds `ProgressReport.CurrentFile`.
+`BytesTransferred` is deliberately **not** a real running byte total — tar.exe's `-v` output during
+creation carries no per-file byte/throughput info, only "entry finished" events, and matching a
+finished entry's name back to a pre-scanned size table was considered and rejected as needless risk
+(path-separator/case/normalization mismatches between tar.exe's own entry-naming and a hand-rolled
+lookup key, for a display-only feature) in favor of a simpler, always-consistent approximation:
+`BytesTransferred = totalBytesForProgress * reportedFiles / totalEntriesForProgress` — the same
+ratio already driving `Percent`, so the two numbers in the dialog always agree with each other, and
+both are exactly right at 0% and 100% regardless of how uneven the real file sizes are.
+
+New `Archiver.Core.IntegrationTests` test
+`CompressAsync_TarWithMultipleFiles_ReportsRealFilenameAndByteTotals` (62/62 IntegrationTests,
+`dotnet test --filter "Category!=Slow&Category!=VeryLarge"` green repo-wide, 407/407
+Archiver.Core.Tests unaffected). Still pending the same on-device re-verification as the rest of
+T-F140 — not graduated on `dotnet test` alone.
+
+**Second same-day follow-up — the user immediately spotted the identical gap on the ZIP side**
+after the TAR fix deployed: ZIP's dialog already showed real bytes/percent (T-F140's original
+fix) but no filename either — `ProgressTracker.ReportBytes(long delta)` never received or
+forwarded an entry name. Fix: `ReportBytes` gained an optional `currentFile` parameter, stored in
+a new `_currentFile` field (plain reference write, not `Interlocked` — with up to 16 concurrent
+workers, which file's name shows in a given throttled report is inherently cosmetic, unlike
+`Percent`/`BytesTransferred`, which stay exact); both call sites now pass `item.EntryName`
+(`CompressEligibleFileAsync` for small in-memory files, `CompressToTempFileAsync`'s `OnChunkRead`
+for the temp-file path).
+
+Writing the fast, deterministic companion test (`WriteAsync_SmallInMemoryFile_
+ReportsEntryNameOnCompletion`, mirroring the Slow `OneLargeFile` test's new `CurrentFile`
+assertion) surfaced a real, independent latent bug in `ProgressTracker` itself, not just a missing
+field: `_lastReportTimestamp` was initialized to `Stopwatch.GetTimestamp()` at tracker
+construction, so the very first `ReportBytes` call for any operation that completes inside the
+first ~100ms throttle window (any small-file-dominated archive) was silently swallowed — no
+worker-side report ever fired, only the terminal 100%. This didn't surface in the earlier
+byte/percent testing because that test used a genuinely large (48 MB) file guaranteed to cross
+multiple throttle windows regardless; a small-file test caught what the large-file test
+structurally couldn't. Fixed by backdating the initial timestamp by one full throttle window
+(`Stopwatch.GetTimestamp() - ThrottleTicks`), so the first report is never gated on time having
+already passed since construction.
+
+`Archiver.Core.Tests` grew from 407 to 408 (`WriteAsync_SmallInMemoryFile_
+ReportsEntryNameOnCompletion`); the existing Slow `WriteAsync_OneLargeFile_...` test gained a
+`CurrentFile` assertion (no new test count there). Both entry-name assertions had to account for
+`WorkItemEnumerator`'s real naming convention — an archived folder's contents are named
+`"<folder-name>/<file>"`, not bare `<file>`, confirmed by the first assertion attempt's actual
+failure output rather than assumed. `dotnet test --filter "Category!=Slow&Category!=VeryLarge"`
+green repo-wide (408/408 Archiver.Core.Tests + full suite, 62/62 IntegrationTests unaffected).

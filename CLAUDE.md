@@ -528,6 +528,47 @@ failure — so a blocked/misconfigured sandbox would have crashed instead of yie
   `Archiver.Shell.exe`, including — for the first time from the Store-signed package identity
   specifically — a real `.7z`/`.rar` extraction through `TarSandboxedService`'s AppContainer
   sandbox. See `docs/TASKS.md`'s T-F129 entry for the full account.
+- **T-F140 (`[x]` done 2026-08-04)** — fixed archive-creation progress reporting for both formats,
+  found from a real user report (right-clicking "SICHER! B2 CD", 4 large folders, via Explorer's
+  Add to .zip/.tar) that the dialog appeared frozen. Two independent root causes: ZIP's
+  `ParallelSingleArchiveWriter` (T-F35's parallel path) passed `progress: null` into its temp-file
+  compression, so a large file reported nothing until fully done — fixed with a new
+  `ProgressTracker` (throttled ~100ms, monotonic, clamped to 99% until one terminal 100% report)
+  wired into `ZipEntryWriter.CopyWithCrcAsync` via a new `onBytesRead` hook. TAR's
+  `TarSandboxedService.CompressToArchiveAsync` computed its percent denominator from the count of
+  top-level *selected paths* instead of the real recursive entry count, so it clamped to 99%
+  almost instantly for any folder with more than a handful of files — fixed with a new
+  `CountRecursiveEntriesAndBytes` pre-scan. Two same-day follow-ups (both found by the user
+  immediately after each prior fix deployed): TAR's dialog also gained a real filename (parsed
+  from tar.exe's own `-v` "a &lt;name&gt;" output, previously discarded) and real byte totals,
+  matching ZIP's "{Percent}% · {bytes}/{total}" richness; ZIP then turned out to have the identical
+  missing-filename gap, fixed by threading `item.EntryName` through `ProgressTracker.ReportBytes` —
+  writing that fix's own test caught a second, independent bug (the tracker's throttle could
+  swallow the very first report entirely for a small-file-dominated archive), fixed by backdating
+  the initial throttle timestamp. Three new tests, each proven to actually fail against a
+  temporary revert of its own fix before being left passing. `Archiver.Core.Tests` 407 → 408,
+  `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` green repo-wide. User-confirmed
+  on-device across three `Deploy.ps1` iterations that same session. See `docs/TASKS_DONE.md`'s
+  T-F140 entry and `docs/DECISIONS.md`'s three T-F140 entries for the full account.
+  **T-F141 (found same session, not yet implemented)** — while T-F140 was mid-deployment, the user
+  raised a related but separate risk: `ParallelSingleArchiveWriter`'s hidden chunk temp files are
+  reopened with `FileShare.None` by the writer thread after a worker finishes writing them: if a
+  cloud-sync client (Google Drive, etc.), antivirus, or Search Indexer briefly opens a finished
+  chunk file in that window, the reopen throws `IOException` — and that specific read isn't
+  wrapped in the per-item try/catch every worker's own compression already has, so it would abort
+  the *entire* archive operation, not skip one file. Unconfirmed whether this actually reproduces
+  (e.g. Google Drive may already skip Hidden-attributed folders) — see `docs/TASKS.md`'s T-F141
+  entry for the acceptance criteria (confirm empirically first, then harden with retry-with-backoff
+  only if real).
+- **T-F142 (found/claimed same session, not yet implemented)** — user requested a
+  compression/decompression speed display for every archive format, with tests. Scoping surfaced a
+  real latent bug, not just a UI gap: `Archiver.App`'s `MainViewModel` already has an EMA-smoothed
+  speed/ETA feature (zero test coverage), but it silently never activates for tar-family
+  extraction, since `ExtractionRouter.AdaptProgress` hardcodes `BytesTransferred = 0, TotalBytes =
+  0` when bridging `TarSandboxedService.ExtractAsync`'s bare `IProgress<int>` — unlike TAR
+  *archiving*, which T-F140 already gave real approximate bytes this same session. See
+  `docs/TASKS.md`'s T-F142 entry for the full scope (TAR extraction byte-reporting fix, extracting
+  the speed calculator into a shared testable helper, wiring it into `Archiver.Shell`'s dialog too).
 - Next work: Future tasks in `TASKS.md`
 
 ## Roadmap Summary
@@ -675,6 +716,11 @@ files.
   often makes it work by accident. Same "provable from the line itself, not hand-traced" standard
   as bounds checks. Found 16 real instances via SonarCloud S3869 — see
   `Archiver.Core/Services/Sandbox/` for the pattern (T-F136).
+- **A `private` nested class cannot be a parameter type on an `internal` (or more accessible)
+  method — `CS0051` "Inconsistent accessibility."** Bump the nested class to `internal` instead
+  (still invisible outside the assembly without `InternalsVisibleTo`). Hit adding
+  `ParallelSingleArchiveWriter.ProgressTracker` as a parameter on the existing `internal static
+  CompressToTempFileAsync` (T-F140).
 - **Every intentionally-empty `catch` block needs a one-line comment stating why** (e.g.
   `/* best-effort */`) — an empty catch's WHY is exactly the non-obvious case this file's own
   comment policy already carves out an exception for. Also satisfies SonarCloud's S108/S2486 by
@@ -710,6 +756,13 @@ files.
   "Category=VeryLarge"` (the >4 GiB Zip64 test, T-F114's one-large-file scenarios) is on-demand
   only — never run automatically as part of either of the above, only when deliberately verifying
   that specific path.
+- **When writing a regression test for a just-fixed bug, temporarily revert the fix and confirm
+  the new test actually fails before restoring it and leaving the test green** — a test that only
+  ever ran against already-fixed code can pass for the wrong reason (e.g. testing a whitebox seam
+  that bypasses the real bug). This discipline itself caught a second, independent bug this way
+  (T-F140): a progress-throttle timestamp initialized at construction silently swallowed the very
+  first report for any fast/small-file operation — invisible until a fast-operation test was
+  deliberately run against the pre-fix code and didn't fail as expected.
 - If a change modifies a public interface, model, or contract in `Archiver.Core`, check whether
   tests in other projects (`Archiver.Shell.Tests`, future `Archiver.CLI.Tests`) need to be updated
   or extended. Internal implementation changes (private methods, buffers, sorting) require only
@@ -1134,6 +1187,13 @@ MSBuild tests\Archiver.ShellExtension.Tests\Archiver.ShellExtension.Tests.vcxpro
 > Release build in VS triggers `Deploy.ps1 -DeployOnly` automatically (post-build event).
 > For manual deploy from terminal: `.\scripts\Deploy.ps1` (full build + sign + install)
 > or `.\scripts\Deploy.ps1 -DeployOnly` (install only, no build).
+>
+> **Distinguishing an installed dev build from a Store build (or confirming only one is present):**
+> `Get-AppxPackage *Pakko* | Select-Object Name, PackageFullName, Publisher, SignatureKind,
+> InstallLocation` — `Publisher: CN=Pakko Dev` + `SignatureKind: Developer` is the local sideload;
+> a Store install shows a different Publisher and `SignatureKind: Store`. Combine with `Get-Item
+> <InstallLocation>\Archiver.App.exe | LastWriteTime` vs. current time to confirm freshness,
+> complementing (not replacing) the title-bar build-timestamp trick above.
 >
 > **Localization (`Strings/<locale>/Resources.resw`, T-F91):** `Package.appxmanifest`'s
 > `<Resource Language="x-generate"/>` auto-detects every `Strings/<locale>/` folder at build —

@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.IO.Compression;
 using System.Threading.Channels;
 using Archiver.Core.Models;
@@ -22,8 +23,11 @@ namespace Archiver.Core.Services.Zip;
 /// any per-file size ceiling to keep that gap small. Same-volume-as-destination plus a hidden
 /// folder gets both properties: natural disk-space locality and invisible-by-default in Explorer.
 /// A single writer thread drains results strictly in enqueue order (not completion order), so
-/// T-F31/T-F32 determinism holds by construction and no <see cref="Interlocked"/> progress
-/// bookkeeping is needed (only one thread ever reports).
+/// T-F31/T-F32 determinism holds by construction regardless of progress reporting. Progress itself
+/// (T-F140 fix) is reported live, from every compression worker as it reads chunks — not only when
+/// the single writer thread finishes draining a completed entry — since waiting for whole-file
+/// completion left the reported percentage frozen for as long as a single large file took to
+/// compress. This needs real <see cref="Interlocked"/> bookkeeping: see <see cref="ProgressTracker"/>.
 /// </summary>
 internal static class ParallelSingleArchiveWriter
 {
@@ -40,6 +44,78 @@ internal static class ParallelSingleArchiveWriter
     private const int CopyBufferSize = 81920;
 
     public static int ComputeWindowCapacity() => Math.Clamp(Environment.ProcessorCount, 2, 16);
+
+    /// <summary>
+    /// T-F140: thread-safe, time-throttled, monotonic byte-progress reporting shared across every
+    /// concurrent compression worker. Workers call <see cref="ReportBytes"/> as they read chunks
+    /// (or once, for a small in-memory file compressed in a single shot) — this is what makes the
+    /// dialog move DURING compression of a large file instead of only once it's fully done. Reports
+    /// are throttled to roughly every 100ms (not every chunk) to avoid flooding
+    /// <c>IProgressDialog</c>'s COM/UI-thread marshaling under up to 16 concurrent workers, and are
+    /// clamped to 99% here — the single writer thread can still be mid-copy on the last large temp
+    /// file (or a skipped/errored source can leave a permanent byte-count gap) after every worker
+    /// has finished, so the real 100% is only ever reported once by <see cref="ReportComplete"/>
+    /// after the whole pipeline actually finishes draining.
+    /// </summary>
+    internal sealed class ProgressTracker
+    {
+        private static readonly long ThrottleTicks = Stopwatch.Frequency / 10;
+
+        private readonly IProgress<ProgressReport>? _progress;
+        private readonly long _totalBytes;
+        private long _processedBytes;
+        private int _lastReportedPercent = -1;
+
+        // Backdated by a full throttle window so the very first ReportBytes call is never
+        // swallowed just because it happens quickly after the tracker was constructed — an
+        // operation dominated by small/fast files could otherwise complete inside the first
+        // throttle window and emit no worker-side report at all (only the terminal 100%).
+        private long _lastReportTimestamp = Stopwatch.GetTimestamp() - ThrottleTicks;
+        private string? _currentFile;
+
+        public ProgressTracker(IProgress<ProgressReport>? progress, long totalBytes)
+        {
+            _progress = progress;
+            _totalBytes = totalBytes;
+        }
+
+        // currentFile is whichever entry the calling worker is compressing — with up to 16 workers
+        // reporting concurrently, the name shown in a given throttled report is simply whichever one
+        // last called this before the throttle window elapsed (a plain, non-Interlocked reference
+        // write is fine here: string reference assignment is already atomic, and which of several
+        // simultaneously-compressing files' names appears is cosmetic, not a correctness concern —
+        // unlike Percent/BytesTransferred, which must be exact and monotonic).
+        public void ReportBytes(long delta, string? currentFile = null)
+        {
+            if (currentFile != null) _currentFile = currentFile;
+            if (_progress == null || _totalBytes <= 0 || delta == 0) return;
+
+            long processed = Interlocked.Add(ref _processedBytes, delta);
+
+            long now = Stopwatch.GetTimestamp();
+            long lastReport = Volatile.Read(ref _lastReportTimestamp);
+            if (now - lastReport < ThrottleTicks) return;
+            if (Interlocked.CompareExchange(ref _lastReportTimestamp, now, lastReport) != lastReport) return;
+
+            int percent = (int)Math.Min(99, processed * 100L / _totalBytes);
+            int previousPercent = Volatile.Read(ref _lastReportedPercent);
+            while (percent > previousPercent)
+            {
+                if (Interlocked.CompareExchange(ref _lastReportedPercent, percent, previousPercent) == previousPercent)
+                {
+                    _progress.Report(new ProgressReport
+                    {
+                        Percent = percent,
+                        BytesTransferred = Math.Min(processed, _totalBytes),
+                        TotalBytes = _totalBytes,
+                        CurrentFile = _currentFile,
+                    });
+                    break;
+                }
+                previousPercent = Volatile.Read(ref _lastReportedPercent);
+            }
+        }
+    }
 
     public static async Task WriteAsync(
         string tempPath,
@@ -73,12 +149,14 @@ internal static class ParallelSingleArchiveWriter
         Directory.CreateDirectory(chunkDirectory);
         File.SetAttributes(chunkDirectory, File.GetAttributes(chunkDirectory) | FileAttributes.Hidden);
 
+        var tracker = new ProgressTracker(progress, totalBytes);
+
         try
         {
             await RunPipelineAsync(
                     tempPath, items,
-                    (item, ct) => CompressEligibleFileAsync(item, compressionLevel, ct),
-                    (item, ct) => CompressToTempFileAsync(item, chunkDirectory, compressionLevel, ct),
+                    (item, ct) => CompressEligibleFileAsync(item, compressionLevel, tracker, ct),
+                    (item, ct) => CompressToTempFileAsync(item, chunkDirectory, compressionLevel, tracker, ct),
                     ComputeWindowCapacity(), totalBytes, progress, reportError, cancellationToken)
                 .ConfigureAwait(false);
         }
@@ -169,7 +247,6 @@ internal static class ParallelSingleArchiveWriter
         try
         {
             await using var writer = new ZipEntryWriter(tempPath);
-            long bytesWritten = 0;
 
             await foreach (var task in pipeline.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
             {
@@ -180,7 +257,6 @@ internal static class ParallelSingleArchiveWriter
                     case WorkResultKind.Compressed:
                         await writer.WriteCompressedEntryAsync(result.EntryName, result.Compressed, result.LastWriteTime, cancellationToken)
                             .ConfigureAwait(false);
-                        bytesWritten += result.Compressed.UncompressedLength;
                         break;
 
                     case WorkResultKind.TempFileCompressed:
@@ -193,7 +269,6 @@ internal static class ParallelSingleArchiveWriter
                                 .ConfigureAwait(false);
                         }
                         TryDeleteTempFile(result.TempFilePath, pendingTempFiles);
-                        bytesWritten += result.UncompressedSize;
                         break;
 
                     case WorkResultKind.DirectoryPlaceholder:
@@ -210,19 +285,19 @@ internal static class ParallelSingleArchiveWriter
                         });
                         break;
                 }
-
-                if (progress != null && totalBytes > 0)
-                {
-                    progress.Report(new ProgressReport
-                    {
-                        Percent = (int)(bytesWritten * 100L / totalBytes),
-                        BytesTransferred = bytesWritten,
-                        TotalBytes = totalBytes,
-                    });
-                }
             }
 
             await producer.ConfigureAwait(false);
+
+            // Real progress (see ProgressTracker) is reported live by the compression workers
+            // themselves and clamped to 99% there — this is the only place that ever reports 100%,
+            // once every entry has actually been drained and written, not merely once accumulated
+            // compressed bytes reach totalBytes (a skipped/errored source file would otherwise leave
+            // a permanent gap and the dialog would never reach 100).
+            if (progress != null && totalBytes > 0)
+            {
+                progress.Report(new ProgressReport { Percent = 100, BytesTransferred = totalBytes, TotalBytes = totalBytes });
+            }
         }
         finally
         {
@@ -265,7 +340,7 @@ internal static class ParallelSingleArchiveWriter
     }
 
     private static Task<WorkResult> CompressEligibleFileAsync(
-        FileWorkItem item, CompressionLevel compressionLevel, CancellationToken cancellationToken) =>
+        FileWorkItem item, CompressionLevel compressionLevel, ProgressTracker? tracker, CancellationToken cancellationToken) =>
         Task.Run(() =>
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -274,6 +349,10 @@ internal static class ParallelSingleArchiveWriter
                 using var fileStream = new FileStream(item.SourcePath, FileMode.Open, FileAccess.Read,
                     FileShare.Read, bufferSize: FileReadBufferSize, useAsync: false);
                 var compressed = ZipEntryCompressor.Compress(fileStream, compressionLevel);
+                // In-memory files are small (<= InMemoryCompressByteThreshold) and compressed in one
+                // shot, not chunked — a single report on completion is enough; they never cause the
+                // "frozen mid-file" symptom the temp-file path's per-chunk reporting below fixes.
+                tracker?.ReportBytes(compressed.UncompressedLength, item.EntryName);
                 return WorkResult.ForCompressed(item.EntryName, compressed, item.LastWriteTime);
             }
             catch (IOException ex)
@@ -291,7 +370,7 @@ internal static class ParallelSingleArchiveWriter
     // FileSize) — no real disk has enough free space to fail this check "for real" otherwise.
     internal static Task<WorkResult> CompressToTempFileAsync(
         FileWorkItem item, string chunkDirectory, CompressionLevel compressionLevel,
-        CancellationToken cancellationToken) =>
+        ProgressTracker? tracker, CancellationToken cancellationToken) =>
         Task.Run(async () =>
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -327,11 +406,17 @@ internal static class ParallelSingleArchiveWriter
                 long uncompressedTotal;
                 uint crc;
 
+                // T-F140: real live progress for this file comes from onBytesRead (per chunk, fed
+                // into the shared ProgressTracker) — the progress/totalBytes/startOffset params
+                // below stay unused (null/0/0) because they model a single-stream, sequential
+                // report shape that doesn't fit several concurrent workers sharing one percentage.
+                void OnChunkRead(long delta) => tracker?.ReportBytes(delta, item.EntryName);
+
                 if (method == ZipEntryWriter.StoredMethod)
                 {
                     (uncompressedTotal, crc) = await ZipEntryWriter.CopyWithCrcAsync(
                         source, tempOut, buffer, progress: null, totalBytes: 0, startOffset: 0,
-                        item.EntryName, cancellationToken).ConfigureAwait(false);
+                        item.EntryName, cancellationToken, onBytesRead: OnChunkRead).ConfigureAwait(false);
                 }
                 else
                 {
@@ -340,7 +425,7 @@ internal static class ParallelSingleArchiveWriter
                     {
                         (uncompressedTotal, crc) = await ZipEntryWriter.CopyWithCrcAsync(
                             source, deflate, buffer, progress: null, totalBytes: 0, startOffset: 0,
-                            item.EntryName, cancellationToken).ConfigureAwait(false);
+                            item.EntryName, cancellationToken, onBytesRead: OnChunkRead).ConfigureAwait(false);
                     }
                 }
 

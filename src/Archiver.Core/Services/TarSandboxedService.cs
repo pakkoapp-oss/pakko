@@ -722,6 +722,21 @@ public sealed class TarSandboxedService : ITarService
 
         int entryCount = 0;
 
+        // T-F140: the percent denominator used below must reflect the real number of entries
+        // tar.exe will emit a "-v" line for (every file AND directory recursed into), not just the
+        // count of top-level selected source paths — a source folder tree with more than a handful
+        // of files made reportedFiles below race past entryCount almost instantly, clamping the
+        // dialog at 99% for the rest of a multi-minute operation. totalBytesForProgress is the real
+        // sum of source file sizes, used only to give the dialog a "X GB / Y GB" readout matching
+        // ZIP's — tar.exe's "-v" output during creation carries no per-file byte/throughput info
+        // (only "a <name>" once a whole entry is done), so BytesTransferred below is deliberately
+        // entry-count-weighted (totalBytesForProgress * reportedFiles / totalEntriesForProgress),
+        // not a real running byte total — it's an approximation that's always exactly right at 0%
+        // and 100%, and reasonably represents progress in between for a typical mixed file set.
+        // See DECISIONS.md's T-F140 entry.
+        long totalEntriesForProgress = 0;
+        long totalBytesForProgress = 0;
+
         foreach (string sourcePath in sortedSourcePaths)
         {
             if (ArchiveEntrySecurity.IsReparsePoint(sourcePath))
@@ -761,16 +776,29 @@ public sealed class TarSandboxedService : ITarService
             }
 
             entryCount++;
+            (long entries, long bytes) = CountRecursiveEntriesAndBytes(fullSource);
+            totalEntriesForProgress += entries;
+            totalBytesForProgress += bytes;
         }
 
         if (entryCount == 0)
             return;
 
         int reportedFiles = 0;
-        void OnVerboseLine(string _)
+        void OnVerboseLine(string line)
         {
             reportedFiles++;
-            progress?.Report(new ProgressReport { Percent = Math.Min(99, reportedFiles * 100 / Math.Max(entryCount, 1)), BytesTransferred = 0, TotalBytes = 0 });
+            long denominator = Math.Max(totalEntriesForProgress, 1);
+            long bytesTransferred = totalBytesForProgress > 0
+                ? Math.Min(totalBytesForProgress, totalBytesForProgress * reportedFiles / denominator)
+                : 0;
+            progress?.Report(new ProgressReport
+            {
+                Percent = Math.Min(99, (int)(reportedFiles * 100L / denominator)),
+                BytesTransferred = bytesTransferred,
+                TotalBytes = totalBytesForProgress,
+                CurrentFile = ParseTarVerboseEntryName(line),
+            });
         }
 
         try
@@ -786,7 +814,7 @@ public sealed class TarSandboxedService : ITarService
 
             File.Move(tempPath, destPath, overwrite: true);
             createdFiles.Add(destPath);
-            progress?.Report(new ProgressReport { Percent = 100, BytesTransferred = 0, TotalBytes = 0 });
+            progress?.Report(new ProgressReport { Percent = 100, BytesTransferred = totalBytesForProgress, TotalBytes = totalBytesForProgress });
         }
         catch (OperationCanceledException)
         {
@@ -804,6 +832,57 @@ public sealed class TarSandboxedService : ITarService
             errors.Add(new ArchiveError { SourcePath = destPath, Message = $"Access denied creating archive: {ex.Message}", Exception = ex });
         }
     }
+
+    // T-F140: real count of entries tar.exe will emit a "-v" line for when archiving this one
+    // source path — a plain file is exactly 1; a directory is itself plus every file/subdirectory
+    // recursed into. Only an approximation of the denominator used for the progress percentage
+    // (not exact — e.g. it doesn't replicate tar.exe's own symlink-following rules), which is fine
+    // since OnVerboseLine's Math.Min(99, ...) clamp already tolerates undercounting, and a rough
+    // but roughly-linear percentage is a large improvement over the prior top-level-path-only count
+    // that clamped to 99% almost instantly for any folder with more than a handful of files.
+    // TotalBytes is the real sum of file sizes (directories contribute 0) — used only for the
+    // dialog's "X GB / Y GB" readout (see OnVerboseLine's own remarks on why BytesTransferred is
+    // entry-count-weighted, not a real running byte total).
+    private static (long EntryCount, long TotalBytes) CountRecursiveEntriesAndBytes(string sourcePath)
+    {
+        if (!Directory.Exists(sourcePath))
+        {
+            long size = 0;
+            try { size = new FileInfo(sourcePath).Length; }
+            catch (IOException) { /* best-effort estimate */ }
+            catch (UnauthorizedAccessException) { /* same */ }
+            return (1, size); // plain file (or something that no longer exists by the time we get here)
+        }
+
+        long count = 1; // the directory itself gets its own tar entry
+        long totalBytes = 0;
+        try
+        {
+            foreach (string entry in Directory.EnumerateFileSystemEntries(sourcePath, "*", SearchOption.AllDirectories))
+            {
+                count++;
+                try
+                {
+                    if ((File.GetAttributes(entry) & FileAttributes.Directory) == 0)
+                        totalBytes += new FileInfo(entry).Length;
+                }
+                catch (IOException) { /* best-effort estimate — the Math.Min(99, ...) clamp above tolerates undercounting */ }
+                catch (UnauthorizedAccessException) { /* same */ }
+            }
+        }
+        catch (UnauthorizedAccessException) { /* same */ }
+        catch (IOException) { /* same */ }
+
+        return (count, totalBytes);
+    }
+
+    // tar.exe's "-v" creation-mode output is "a <name>" per entry (confirmed empirically —
+    // RunUnsandboxedTarAsync's own comment documents this), with no size/throughput info. Strips
+    // the fixed "a " prefix so the dialog can show the real entry name instead of the raw line;
+    // falls back to the raw line unchanged if it doesn't match the expected shape, so a format
+    // surprise degrades to "a slightly odd-looking filename shown", never a thrown exception.
+    private static string ParseTarVerboseEntryName(string verboseLine) =>
+        verboseLine.StartsWith("a ", StringComparison.Ordinal) ? verboseLine[2..] : verboseLine;
 
     // Maps the selected container format + the existing ZIP CompressionLevel enum (reused as the
     // UI-facing knob rather than inventing a second one) to tar.exe's real

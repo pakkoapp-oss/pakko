@@ -3440,3 +3440,122 @@ regression from this task, which owns reliability only.
 - [x] A real SonarCloud analysis confirms `new_reliability_rating` (and overall `reliability_rating`)
       no longer flags these 16 as open — `bugs: 0`, `reliability_rating: 1.0`,
       `new_reliability_rating: 1.0`, `rules=csharpsquid:S3869` issue search returns 0 open
+
+---
+
+### T-F141 — Cloud-Sync/AV Lock Contention on ParallelSingleArchiveWriter's Chunk Temp Files
+
+- [ ] **Status:** open, found 2026-08-04 by the user while T-F140 was being deployed for on-device
+      verification — raised as a question ("if a sync client like Google Drive is watching the
+      destination folder, could it interfere with cleanup of the temp chunk files?"), which on
+      reading the actual code turned out to be a real risk beyond just cleanup: it can abort the
+      whole archive operation, not merely leave an orphaned temp file.
+
+      `ParallelSingleArchiveWriter`'s temp-file compression path (T-F35, `.pakko-tmp-<guid>` hidden
+      folder next to the destination) opens each chunk file with `FileShare.None` on both sides —
+      `CompressToTempFileAsync`'s write (`FileMode.Create, FileAccess.Write, FileShare.None`) and
+      the single writer thread's later read-back in `RunPipelineAsync`
+      (`FileMode.Open, FileAccess.Read, FileShare.None`). While a worker is actively writing a
+      chunk, no other process can open it at all — good, nothing can ever read a partial/corrupt
+      chunk. But there's a real window between a worker closing a finished chunk file and the
+      writer thread reopening it to copy into the final archive, during which the file sits
+      complete and closed on disk. If any external process — a cloud-sync client's file watcher
+      (Google Drive, OneDrive, Dropbox), an antivirus real-time scanner, or Windows Search Indexer
+      (the same class of transient lock already documented for `AppPackages` in T-F96) — opens the
+      file during that window, the writer thread's own `FileMode.Open` with `FileShare.None`
+      requests *exclusive* access and will throw `IOException` ("used by another process") if
+      anyone else has it open at all, even just for reading.
+
+      That specific read is **not** wrapped in a per-item try/catch the way each worker's own
+      compression already is — the exception propagates straight out of `RunPipelineAsync`'s
+      `await foreach` consumer loop, aborting the *entire* archive operation (not skipping one
+      file). Whether Google Drive's desktop sync client actually opens files inside a `.`-prefixed,
+      `FileAttributes.Hidden` folder at all is unconfirmed — worth checking empirically (Google
+      Drive, OneDrive, and most AV real-time scanners have their own exclusion heuristics for
+      hidden/temp files, but none of that is verified for this specific case) before assuming the
+      worst, per this project's own "verify against real behavior, don't guess" research norm.
+- **Acceptance criteria:**
+  - [ ] Confirm empirically whether this is a real, reproducible risk on this machine (e.g. put the
+        destination folder under a real Google-Drive-synced path, archive something large enough
+        that the temp-file window is observable, and watch for either a sync client touching
+        `.pakko-tmp-*` or the actual `IOException` occurring) before designing a fix around a
+        theoretical mechanism
+  - [ ] If confirmed real: harden the writer thread's chunk-file reopen (and, if the same risk
+        exists there, the worker's initial chunk-file create) with a bounded retry-with-backoff for
+        a sharing-violation `IOException`, matching the tolerance pattern `Deploy.ps1` already uses
+        for the analogous Search Indexer race (T-F96) — don't let a transient external lock crash
+        an otherwise-successful multi-GB archive operation
+  - [ ] If NOT reproducible (e.g. confirmed Google Drive already skips Hidden-attributed folders):
+        document that finding in `DECISIONS.md` and close this task without a code change, rather
+        than adding retry complexity for a risk that doesn't materialize in practice
+  - [ ] `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` green repo-wide
+- **Depends on:** none — independent of T-F140, found while T-F140 was mid-deployment
+
+---
+
+### T-F142 — Show Compression/Decompression Speed for Every Archive Format (Archive + Extract)
+
+- [ ] **Status:** open, requested by the user 2026-08-04 right after T-F140 shipped ("show
+      compression and decompression speed, for all archive types, with tests"). Scoping research
+      done before writing acceptance criteria (per this project's own research-before-writing-
+      tasks norm), since "for all archive types" turns out to depend on a real prerequisite gap,
+      not just a UI addition:
+
+      **Current state, checked directly in code:**
+      - `Archiver.App`'s `MainViewModel.UpdateOperationStatus` already computes and displays a
+        speed readout (EMA-smoothed, `SpeedAlpha = 0.25`, sampled every ≥0.25s) plus an ETA, in the
+        WinUI status line — for **both** Archive and Extract (two separate call sites,
+        `_operationStopwatch` started around both directions). This logic is private, lives only in
+        the ViewModel, and has **zero existing test coverage** (confirmed via a repo-wide grep for
+        `UpdateOperationStatus`/`SmoothedBytesPerSec` under `tests/` — no hits).
+      - `Archiver.Shell`'s `IProgressDialog` (the shell-triggered right-click dialog — the one
+        T-F140 already touched this same session) has **no speed or ETA display at all** —
+        `FormatStatus` only ever shows `"{Percent}%"` or `"{Percent}% · {bytes}/{total}"`.
+      - Byte-level progress, the prerequisite for computing any speed: ZIP Archive (T-F16) and ZIP
+        Extract already report real bytes. TAR Archive now reports an entry-count-weighted
+        approximation of bytes (T-F140, this same session). **TAR Extract does not** —
+        `ExtractionRouter.AdaptProgress` unconditionally hardcodes
+        `BytesTransferred = 0, TotalBytes = 0` when bridging `TarSandboxedService.ExtractAsync`'s
+        plain `IProgress<int>` (percent-only, no bytes model at all) into the shared
+        `ProgressReport` shape. This is not cosmetic: `MainViewModel`'s existing speed feature
+        already silently guards on `report.TotalBytes > 0` — meaning **the App's own already-
+        shipped speed display is presently non-functional for every tar-family extraction**
+        (`.tar`/`.tar.gz`/`.tar.bz2`/`.tar.xz`/`.tar.zst`/`.tar.lzma`/`.7z`/`.rar`), a real latent
+        bug this task's scoping surfaced, not a new feature gap.
+- **Acceptance criteria:**
+  - [ ] TAR extraction reports real bytes instead of the hardcoded `0, 0` — likely via a `tar -tvf`
+        pre-listing pass (reusing/extending the existing `ParseTarListingSize` column-parsing
+        helper already used elsewhere in `TarSandboxedService` for a related purpose) to get a real
+        total-byte figure before extraction starts, mirroring T-F140's `CountRecursiveEntriesAndBytes`
+        pre-scan approach on the archive-creation side. Covers every tar-family extraction format
+        (including 7z/RAR) through the one shared `ExtractAsync` path.
+  - [ ] The EMA speed/ETA calculation currently embedded in `MainViewModel.UpdateOperationStatus`
+        is extracted into a shared, non-WinUI, directly-testable helper (e.g. `Archiver.Core` or
+        `Archiver.App.Core`) — both `Archiver.App`'s status line and `Archiver.Shell`'s
+        `IProgressDialog` consume the same tested logic instead of the dialog reimplementing it
+        from scratch or lacking it
+  - [ ] `Archiver.Shell/Program.cs`'s progress dialog (`FormatStatus`/`RunWithProgressWindowAsync`)
+        gains a speed readout for both Archive and Extract, for every recognized format (ZIP and
+        every tar-family variant) — matching the richness the App's own status line already has
+  - [ ] Verify (not just assume) that the App's own existing speed display now actually produces a
+        real reading for tar-family extraction once the byte-reporting gap above is fixed — this is
+        a regression check on already-shipped functionality, not only new-feature verification
+  - [ ] Tests for the shared speed/ETA calculator: EMA smoothing behaves as designed, a
+        zero-elapsed-time sample is ignored (no division-by-zero/spurious spike), a
+        `TotalBytes <= 0` report produces no speed, monotonic-non-decreasing-bytes assumption holds
+        against out-of-order reports if that's a real possibility for either format's pipeline —
+        this helper currently has 0% coverage, so this is genuinely new ground, not a regression
+        suite
+  - [ ] A test proving TAR extraction's `ProgressReport.BytesTransferred`/`TotalBytes` are no
+        longer hardcoded to 0 — built and run against a real tar.exe extraction
+        (`Archiver.Core.IntegrationTests`, matching T-F140's real-process-over-fakes precedent),
+        and — following this session's own established rigor — first confirmed to actually FAIL
+        against a temporary revert of the fix before being left in its passing state
+  - [ ] On-device verified via a real Explorer right-click Extract/Archive against both a ZIP and a
+        tar-family archive large enough for a speed reading to actually appear (small/fast
+        operations may never leave the "starting…" state before finishing) — not graduated on
+        `dotnet test` alone, per this project's standard workflow rule for shell-triggered/UI
+        behavior
+  - [ ] `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` green repo-wide
+- **Reported by:** user, 2026-08-04, immediately after T-F140 shipped — explicit request for
+  compression/decompression speed display across all archive formats, with tests.

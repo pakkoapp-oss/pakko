@@ -284,4 +284,99 @@ public sealed class TarSandboxedServiceCompressTests : IDisposable
         long smallestSize = new FileInfo(Path.Combine(_temp.Path, "smallest.tar.gz")).Length;
         smallestSize.Should().BeLessThan(noCompressionSize);
     }
+
+    // T-F140 regression: CompressToArchiveAsync used to compute its progress percentage as
+    // reportedFiles * 100 / entryCount, where entryCount only counted top-level SELECTED SOURCE
+    // PATHS (here: 1, this single folder) rather than the real number of entries tar.exe recurses
+    // into and emits a "-v" line for. Archiving the very first file inside the folder already
+    // computed 100/1 = 100%, clamped to 99 by Math.Min — every subsequent file repeated that same
+    // 99% for the rest of the run (this is exactly the real user report: a few large folders,
+    // dialog stuck near-instantly, not moving again until completion). With the real recursive
+    // entry count as denominator, the percentage must advance across multiple distinct values.
+    [Integration]
+    public async Task CompressAsync_TarWithManyFilesInFolder_ProgressAdvancesGraduallyNotClampedImmediately()
+    {
+        string sourceDir = Path.Combine(_temp.Path, "many");
+        Directory.CreateDirectory(sourceDir);
+        const int fileCount = 40;
+        for (int i = 0; i < fileCount; i++)
+            File.WriteAllText(Path.Combine(sourceDir, $"f{i}.txt"), $"content {i}");
+
+        var reports = new List<ProgressReport>();
+        var progress = new Progress<ProgressReport>(reports.Add);
+
+        var result = await _sut.CompressAsync(new ArchiveOptions
+        {
+            SourcePaths = [sourceDir],
+            DestinationFolder = _temp.Path,
+            ArchiveName = "many",
+            Format = ArchiveContainerFormat.Tar,
+        }, progress);
+
+        result.Success.Should().BeTrue(because: string.Join("; ", result.Errors.Select(e => e.Message)));
+
+        // Progress<T> marshals callbacks onto a captured SynchronizationContext asynchronously —
+        // give the final posted callback a moment to actually run before asserting on `reports`.
+        await WaitUntilAsync(() => reports.Count > 0 && reports[^1].Percent == 100, TimeSpan.FromSeconds(5));
+
+        var distinctNonTerminalPercents = reports.Where(r => r.Percent < 100).Select(r => r.Percent).Distinct().ToList();
+        distinctNonTerminalPercents.Should().HaveCountGreaterThan(1,
+            "the old top-level-path-count denominator clamped to a single repeated 99% value " +
+            "almost immediately for any folder with more than a handful of files");
+    }
+
+    // T-F140 follow-up: the dialog used to show a bare percentage for TAR — no filename (SetLine(1)
+    // was never called, since CurrentFile was always null) and no byte totals (BytesTransferred/
+    // TotalBytes were always 0, so FormatStatus fell back to "{Percent}%" with nothing else),
+    // unlike ZIP's "{Percent}% · {bytes}/{total}" plus a live filename. tar.exe's own "-v" output
+    // ("a <name>" per entry) already carried the filename — it was just being discarded.
+    [Integration]
+    public async Task CompressAsync_TarWithMultipleFiles_ReportsRealFilenameAndByteTotals()
+    {
+        string sourceDir = Path.Combine(_temp.Path, "withbytes");
+        Directory.CreateDirectory(sourceDir);
+        byte[] contentA = new byte[10_000];
+        byte[] contentB = new byte[20_000];
+        Array.Fill(contentA, (byte)'A');
+        Array.Fill(contentB, (byte)'B');
+        File.WriteAllBytes(Path.Combine(sourceDir, "a.bin"), contentA);
+        File.WriteAllBytes(Path.Combine(sourceDir, "b.bin"), contentB);
+        long expectedTotalBytes = contentA.Length + contentB.Length;
+
+        var reports = new List<ProgressReport>();
+        var progress = new Progress<ProgressReport>(reports.Add);
+
+        var result = await _sut.CompressAsync(new ArchiveOptions
+        {
+            SourcePaths = [sourceDir],
+            DestinationFolder = _temp.Path,
+            ArchiveName = "withbytes",
+            Format = ArchiveContainerFormat.Tar,
+        }, progress);
+
+        result.Success.Should().BeTrue(because: string.Join("; ", result.Errors.Select(e => e.Message)));
+        await WaitUntilAsync(() => reports.Count > 0 && reports[^1].Percent == 100, TimeSpan.FromSeconds(5));
+
+        reports.Should().Contain(r => r.CurrentFile != null && r.CurrentFile.Contains("a.bin"),
+            "the real entry name from tar.exe's own \"-v\" output must reach the dialog, not stay null");
+        reports.Should().Contain(r => r.CurrentFile != null && r.CurrentFile.Contains("b.bin"));
+        reports.Should().OnlyContain(r => r.CurrentFile == null || !r.CurrentFile.StartsWith("a ", StringComparison.Ordinal),
+            "the \"a \" prefix from tar's raw verbose line must be stripped, not shown to the user");
+
+        reports[^1].TotalBytes.Should().Be(expectedTotalBytes,
+            "the real recursive byte sum must reach the dialog instead of the old hardcoded 0");
+        reports[^1].BytesTransferred.Should().Be(expectedTotalBytes);
+        reports.Should().Contain(r => r.TotalBytes == expectedTotalBytes && r.BytesTransferred > 0 && r.BytesTransferred <= expectedTotalBytes);
+    }
+
+    private static async Task WaitUntilAsync(Func<bool> condition, TimeSpan timeout)
+    {
+        var deadline = DateTime.UtcNow + timeout;
+        while (!condition())
+        {
+            if (DateTime.UtcNow > deadline)
+                throw new TimeoutException("Condition was not met within the timeout.");
+            await Task.Delay(10);
+        }
+    }
 }

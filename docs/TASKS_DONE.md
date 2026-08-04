@@ -3474,3 +3474,99 @@ watching actual `windows-2022`/`windows-latest` runner behavior), each its own c
       `a`/`x` round trip with Cyrillic content and an emoji filename, both correct.
 
 ---
+
+### T-F140 — Archive-Creation Progress Reporting Accuracy (ZIP parallel-pipeline stalls, TAR percent denominator)
+- [x] **Status:** done 2026-08-04. Found from
+      a real user report — right-clicking "SICHER! B2 CD"
+      (4 folders: CD1/CD2/DVD1/DVD2, ~5.1 GB) and choosing Add to .zip/.tar via Explorer's context
+      menu, the Archiving dialog showed 1% / 69,2 MB of 5,1 GB and the progress bar visibly did not
+      move for an extended period, even though `SICHER! B2 CD.zip.tmp` was actively growing on disk
+      and the sibling `.tar` (same source) had already finished by the time of the screenshot with
+      no perceptible progress movement either. Two distinct, independently confirmed root causes —
+      not one bug:
+
+      **ZIP (`Archiver.Core/Services/Zip/ParallelSingleArchiveWriter.cs`, T-F35's parallel path,
+      active above the 64-file `ParallelPipelineFileCountThreshold` gate — confirmed active in this
+      exact report by the `.pakko-tmp-<guid>` hidden chunk folder visible in the user's own
+      screenshot):** `CompressToTempFileAsync` passes `progress: null` into
+      `ZipEntryWriter.CopyWithCrcAsync` (lines 333 and 341) — a file streamed into its private temp
+      chunk reports zero progress while it's compressing. The only progress update comes from the
+      single consumer/writer thread's `bytesWritten`, which advances once per fully-drained
+      `WorkResult` (lines 174-222) — i.e. only after a file is *completely* compressed AND written
+      into the final archive. For a source dominated by a handful of large files (audio tracks/disc
+      images here), the bar sits frozen for however long each individual file takes to compress,
+      then jumps. The pre-T-F35 sequential path (below the 64-file gate) does not have this problem
+      — it already uses `ProgressStream` for real per-byte reporting (T-F16); this is a regression
+      scoped to the parallel path only.
+
+      **TAR (`TarSandboxedService.CompressToArchiveAsync`):** `entryCount` (line 723) counts only
+      the top-level `options.SourcePaths` handed to `tar -cf` (4 in the reported case — one per
+      selected folder), not the real number of files tar.exe archives once it recurses into them.
+      `tar -v`'s per-entry lines do arrive correctly via stderr (`RunUnsandboxedTarAsync`'s own
+      comment already documents this: "-v" writes to STDERR, not stdout, confirmed empirically) —
+      but since `reportedFiles` (incremented once per real archived file) very quickly exceeds the
+      wrong, much-smaller `entryCount`, `Math.Min(99, reportedFiles * 100 / entryCount)` (line 773)
+      clamps to 99% almost immediately and then sits unmoving for the rest of the run, until the one
+      terminal `Report(100)` on success (line 789). Different symptom (stuck near 100%, not near 0%)
+      from the ZIP bug, but the same class of "progress denominator doesn't reflect real work" issue.
+- **Acceptance criteria:**
+  - [x] ZIP: `ParallelSingleArchiveWriter`'s temp-file compression workers report real, byte-level
+        progress while a large file is mid-compression, not only at whole-file completion — proven
+        against the actual production `WriteAsync`/`CompressToTempFileAsync` path (not the whitebox
+        `RunPipelineAsync` seam with injected fake compressors, which bypasses the real code under
+        test and would pass both before and after a fix), via a test asserting multiple
+        `ProgressReport`s with `BytesTransferred` strictly between 0 and a single large file's size.
+        New `ProgressTracker` class + `ZipEntryWriter.CopyWithCrcAsync`'s new `onBytesRead` param;
+        see `DECISIONS.md`'s T-F140 entry
+  - [x] ZIP: progress reports from concurrent workers are monotonically non-decreasing (no visible
+        backward jumps from out-of-order worker completions) and end with one terminal 100% report
+        after the writer has actually finished draining every entry — not merely once accumulated
+        bytes reach `totalBytes`, since a skipped/errored source file would otherwise leave a
+        permanent gap and the dialog would never reach 100
+  - [x] ZIP: report rate is throttled (time-based, roughly every 100 ms) rather than reporting on
+        every 64/80 KB chunk from every worker — avoids flooding `IProgressDialog`'s COM/UI-thread
+        marshaling under high parallelism (up to 16 concurrent workers)
+  - [x] ZIP: `ParallelSingleArchiveWriter`'s class doc comment (currently claims "no `Interlocked`
+        progress bookkeeping is needed... only one thread ever reports") is corrected to match
+        whatever the new design actually does
+  - [x] TAR: `CompressToArchiveAsync`'s percent denominator reflects the real total number of
+        entries tar.exe will archive (recursive), not the count of top-level selected source paths
+        — needs a pre-scan (recursive file count only, no need for byte totals — TAR's dialog has
+        never shown `BytesTransferred`/`TotalBytes`) before invoking tar.exe, similar in spirit to
+        `ZipArchiveService.ComputeSingleArchiveTotals`'s existing walk. New
+        `TarSandboxedService.CountRecursiveEntries` helper
+  - [x] **Follow-up, same on-device session:** TAR's dialog now also shows the real current
+        filename (parsed from tar.exe's own `-v` "a &lt;name&gt;" output, previously discarded) and
+        real byte totals (`CountRecursiveEntriesAndBytes`'s recursive size sum), matching ZIP's
+        "{Percent}% · {bytes}/{total}" richness instead of a bare percentage — found by the user
+        immediately after confirming the percent-denominator fix worked. `BytesTransferred` is an
+        entry-count-weighted approximation, not a real running byte total (tar.exe's `-v` gives no
+        per-file byte info) — always exactly right at 0%/100%, consistent with `Percent`. See
+        `DECISIONS.md`'s T-F140 follow-up entry
+  - [x] **Second follow-up, same on-device session:** ZIP had the identical filename gap (bytes and
+        percent already worked, but no entry name) — `ParallelSingleArchiveWriter.ProgressTracker.
+        ReportBytes` now takes and forwards a `currentFile` name from both compress paths. Writing
+        this fix's own fast unit test caught a second, independent bug: `ReportBytes`'s time
+        throttle could swallow the very first report entirely for a small-file-dominated archive
+        (nothing emitted until the terminal 100%), fixed by backdating the tracker's initial
+        timestamp by one throttle window. `Archiver.Core.Tests` 407 → 408. See `DECISIONS.md`'s
+        T-F140 second follow-up entry
+  - [x] Both: on-device verified against a real multi-GB, few-large-files source (reusing a
+        similarly-shaped fixture to the reported case, not a many-tiny-files one) for both
+        Add-to-.zip and Add-to-.tar — confirm the bar visibly advances throughout the operation,
+        not just at the very start and very end. **User-confirmed 2026-08-04**, across three
+        Deploy.ps1 iterations that same session (base fix, TAR filename/bytes follow-up, ZIP
+        filename follow-up) — real Explorer Add-to-.zip/Add-to-.tar against "SICHER! B2 CD"
+  - [x] `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` green repo-wide (407/407
+        Archiver.Core.Tests + full suite) — three new tests, each first confirmed to actually FAIL
+        against a temporary revert of its corresponding fix before being left in its passing state:
+        `CopyWithCrcAsync_MultiChunkFile_InvokesOnBytesReadPerChunkSummingToFileLength` (fast,
+        deterministic), `WriteAsync_OneLargeFile_ReportsProgressDuringCompressionNotOnlyAtCompletion`
+        (`[Trait("Category","Slow")]`, ZIP), `CompressAsync_TarWithManyFilesInFolder_
+        ProgressAdvancesGraduallyNotClampedImmediately` (TAR, `Archiver.Core.IntegrationTests`)
+  - [x] `docs/DECISIONS.md` gets a T-F140 entry recording both root causes and the fix shape, per
+        this file's own Update Cascades table
+- **Reported by:** user, 2026-08-04, via a real on-device Explorer right-click Add-to-.zip/Add-to-.tar
+  against "SICHER! B2 CD" (4 folders, ~5.1 GB) — screenshot showed the Archiving dialog stuck at
+  1% / 69,2 MB of 5,1 GB with a visibly growing `.zip.tmp` alongside an already-finished `.tar`.
+

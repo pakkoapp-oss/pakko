@@ -209,7 +209,7 @@ public sealed class ParallelSingleArchiveWriterTests : IDisposable
         var item = new FileWorkItem(sourceFile, "small.bin", FileWorkKind.File, long.MaxValue / 2, DateTime.Now);
 
         WorkResult result = await ParallelSingleArchiveWriter.CompressToTempFileAsync(
-            item, chunkDir, CompressionLevel.Optimal, CancellationToken.None);
+            item, chunkDir, CompressionLevel.Optimal, null, CancellationToken.None);
 
         result.Kind.Should().Be(WorkResultKind.Error);
         result.ErrorMessage.Should().Contain("Not enough free disk space");
@@ -323,6 +323,106 @@ public sealed class ParallelSingleArchiveWriterTests : IDisposable
 
         await task;
         FindChunkDirectories().Should().BeEmpty("the folder must be gone once archiving completes");
+    }
+
+    // T-F140 regression: CompressToTempFileAsync's two ZipEntryWriter.CopyWithCrcAsync calls used
+    // to pass progress: null (see DECISIONS.md's T-F140 entry) — a file streamed into its private
+    // temp chunk reported nothing until fully done. This drives the real onBytesRead hook directly
+    // against a real multi-chunk FileStream (deterministic, no wall-clock dependency, unlike the
+    // WriteAsync-level test below) and proves every chunk read is actually observed.
+    [Fact]
+    public async Task CopyWithCrcAsync_MultiChunkFile_InvokesOnBytesReadPerChunkSummingToFileLength()
+    {
+        const int chunkSize = 81920; // matches ParallelSingleArchiveWriter.CopyBufferSize
+        byte[] content = BuildContent(chunkSize * 3 + 1234); // spans 4 reads, last one partial
+        string sourcePath = Path.Combine(_tempDir, "multi-chunk.bin");
+        File.WriteAllBytes(sourcePath, content);
+
+        var deltas = new List<long>();
+        using var source = new FileStream(sourcePath, FileMode.Open, FileAccess.Read, FileShare.Read,
+            bufferSize: chunkSize, useAsync: false);
+        using var destination = new MemoryStream();
+
+        (long total, _) = await ZipEntryWriter.CopyWithCrcAsync(
+            source, destination, new byte[chunkSize], progress: null, totalBytes: 0, startOffset: 0,
+            "multi-chunk.bin", CancellationToken.None, onBytesRead: deltas.Add);
+
+        total.Should().Be(content.Length);
+        deltas.Should().HaveCountGreaterThan(1, "a file spanning several chunk-sized reads must report more than one delta");
+        deltas.Sum().Should().Be(content.Length, "the sum of every reported delta must account for the whole file");
+        deltas.Should().OnlyContain(d => d > 0, "a zero-byte delta would mean a phantom callback invocation");
+    }
+
+    // T-F140 end-to-end regression: proves the real production WriteAsync -> CompressToTempFileAsync
+    // -> CopyWithCrcAsync -> ProgressTracker wiring actually reports progress WHILE a large file is
+    // mid-compression, not only once it's fully done — the exact symptom from the real user report
+    // (SICHER! B2 CD, a few large files, dialog frozen at 1% for an extended period). Uses a large
+    // enough random (incompressible, so Deflate can't shortcut) file that compression takes long
+    // enough to cross the tracker's ~100ms throttle window on ordinary hardware — tagged Slow like
+    // this project's other real-wall-clock-cost tests (Zip64, T-F114) to keep the default run fast.
+    [Fact]
+    [Trait("Category", "Slow")]
+    public async Task WriteAsync_OneLargeFile_ReportsProgressDuringCompressionNotOnlyAtCompletion()
+    {
+        string sourceDir = Path.Combine(_tempDir, "source");
+        Directory.CreateDirectory(sourceDir);
+        byte[] content = BuildContent(48 * 1024 * 1024); // large + incompressible enough to take real time
+        File.WriteAllBytes(Path.Combine(sourceDir, "big.bin"), content);
+        long totalBytes = content.Length;
+
+        var reports = new List<ProgressReport>();
+        var progress = new Progress<ProgressReport>(reports.Add);
+
+        string archivePath = TempArchivePath;
+        await ParallelSingleArchiveWriter.WriteAsync(
+            archivePath, [sourceDir], CompressionLevel.Optimal, totalBytes,
+            reportSkipped: _ => { }, reportError: _ => { }, progress, CancellationToken.None);
+
+        // Progress<T> marshals callbacks onto a captured SynchronizationContext asynchronously —
+        // give the final posted callbacks a moment to actually run before asserting on `reports`.
+        await WaitUntilAsync(() => reports.Count > 0 && reports[^1].Percent == 100, TimeSpan.FromSeconds(5));
+
+        reports.Should().NotBeEmpty();
+        reports.Select(r => r.Percent).Should().BeInAscendingOrder("percent must never visibly jump backward");
+        reports[^1].Percent.Should().Be(100, "the operation must end with an explicit terminal 100% report");
+        reports[^1].BytesTransferred.Should().Be(totalBytes);
+
+        reports.Should().Contain(
+            r => r.BytesTransferred > 0 && r.BytesTransferred < totalBytes,
+            "at least one report must land strictly mid-file — this is what distinguishes live " +
+            "per-chunk reporting from the old bug (progress only updated once a whole file finished)");
+        reports.Where(r => r.Percent < 100).Should().OnlyContain(r => r.Percent <= 99,
+            "workers must clamp to 99% — only the final drain-loop report may claim 100");
+
+        // Same-session follow-up to T-F140: the ZIP dialog showed real byte totals but no
+        // filename, exactly like TAR's own initial gap — ReportBytes never received the entry
+        // name being compressed. This must reach the dialog too, not just BytesTransferred/Percent.
+        reports.Should().Contain(r => r.CurrentFile == "source/big.bin",
+            "the real entry name being compressed must reach the dialog, matching TAR's own fix");
+    }
+
+    // Fast, deterministic companion to the Slow "OneLargeFile" test above — proves the in-memory
+    // small-file path (CompressEligibleFileAsync) also reports its entry name, not only the
+    // temp-file path exercised there.
+    [Fact]
+    public async Task WriteAsync_SmallInMemoryFile_ReportsEntryNameOnCompletion()
+    {
+        string sourceDir = Path.Combine(_tempDir, "source");
+        Directory.CreateDirectory(sourceDir);
+        byte[] content = BuildContent(1024); // well below InMemoryCompressByteThreshold
+        File.WriteAllBytes(Path.Combine(sourceDir, "small.bin"), content);
+
+        var reports = new List<ProgressReport>();
+        var progress = new Progress<ProgressReport>(reports.Add);
+
+        string archivePath = TempArchivePath;
+        await ParallelSingleArchiveWriter.WriteAsync(
+            archivePath, [sourceDir], CompressionLevel.Optimal, totalBytes: content.Length,
+            reportSkipped: _ => { }, reportError: _ => { }, progress, CancellationToken.None);
+
+        await WaitUntilAsync(() => reports.Count > 0 && reports[^1].Percent == 100, TimeSpan.FromSeconds(5));
+
+        reports.Should().Contain(r => r.CurrentFile == "source/small.bin");
     }
 
     // The per-operation hidden chunk folder sits directly inside the destination directory,
