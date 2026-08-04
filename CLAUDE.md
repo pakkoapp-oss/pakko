@@ -1136,6 +1136,12 @@ MSBuild tests\Archiver.ShellExtension.Tests\Archiver.ShellExtension.Tests.vcxpro
 > **Monitor tool commands run in POSIX/Git-Bash syntax**, even when polling a Windows path —
 > use `[ -f "/c/Program Files/..." ]`, not `Test-Path`, or the wait-loop never fires.
 >
+> **Pass `& $exe` arguments as separate array elements, never manually quoted inside a string** —
+> `& $exe $path1 $path2`, not `` & $exe "`"$path1`"" ``. The latter embeds literal `"` characters
+> into the argument itself once PowerShell's own tokenizer is done, corrupting the path (confirmed:
+> `IOException` with a visibly quote-mangled path, T-F142 on-device check). Let PowerShell's own
+> array-argument passing handle spaces — don't hand-roll quoting.
+>
 > **Windows MCP (`mcp__windows__*`) synthesizing a WinUI `DoubleTapped` gesture is coordinate-
 > space sensitive, not fundamentally unreliable.** `mouse_control`'s `double_click` failed across
 > ~6 attempts in one session (T-F98/T-F109) when driven by `windowHandle`-relative coordinates or
@@ -1159,6 +1165,12 @@ MSBuild tests\Archiver.ShellExtension.Tests\Archiver.ShellExtension.Tests.vcxpro
 > `Archiver.Shell`→`pakko://`→`Archiver.App` pipeline the real menu click would trigger, minus
 > only the COM click itself (covered separately by `Archiver.ShellExtension.Tests`). Confirmed
 > T-F03.
+>
+> **`Archiver.Shell.exe`'s CLI commands (`--archive`, `--extract-here`, `--extract-folder`,
+> `--test`, `--hash`) take only source/archive paths — never an explicit destination.** The
+> destination is always auto-computed (folder-of-source for extract, `<name>.zip` next to the
+> source for archive — same naming Explorer's "Add to X.zip" verb produces). Passing an extra path
+> as a destination gets silently treated as another source/archive path instead (T-F142).
 >
 > **A build failing with a file-lock-shaped error** (`MSB3231`/`Access to the path ... is
 > denied` on something under `bin`/`obj`/`AppPackages`) — first try `dotnet build-server
@@ -1187,6 +1199,11 @@ MSBuild tests\Archiver.ShellExtension.Tests\Archiver.ShellExtension.Tests.vcxpro
 >   from the `windows-2022` image to `windows-2025` mid-project (confirmed T-F122, 2026-07-19),
 >   breaking ARM64 C++ builds that worked before. Pin an explicit version (`windows-2022`) for any
 >   job where toolchain reproducibility matters.
+> - **`gh workflow run build.yml --ref <tag>` (workflow_dispatch) is safe to run again on a tag that
+>   already has a push-triggered release** — `build-msix`/`build-cli`/`release` all correctly report
+>   `skipped` (not a conflict/failure) on a manual dispatch, since their own `if:` conditions gate
+>   them to the push/tag-trigger path only; just `build-store-msix`/`bundle-store-msix` actually
+>   run. Confirmed T-F142/v1.4.7 — no duplicate-release error, no wasted red X.
 >
 > **Windows App Certification Kit (`appcert.exe`) requires elevation** — a bare invocation fails
 > with "requires elevation." Run it via `Start-Process -Verb RunAs -Wait` from the PowerShell
@@ -1440,7 +1457,13 @@ Two more, not duplicated elsewhere:
   plain language — check `docs/TASKS_DONE.md`/`git log <prev-tag>..HEAD` for what actually shipped,
   don't guess from memory. Keep it in the same commit as the version bump. `CHANGELOG.md` is the
   canonical, human-browsable release history; `.github/RELEASE_NOTES_TEMPLATE.md` stays a static
-  per-release download blurb and is not the place for a task list.
+  per-release download blurb, not a task list.
+  **The section header format is load-bearing, not just style (fixed 2026-08-04):** `build.yml`'s
+  `release` job extracts the new tag's own `## v<tag> — <date>` section (sections split on a bare
+  `---` line) and prepends it to the actual GitHub Release notes, ahead of the static template —
+  before this fix, every prior release's GitHub-side notes were the template alone, with no
+  changelog content at all. Get the header wrong or omit a tag's section and that release's notes
+  silently fall back to template-only again.
 
 ---
 
