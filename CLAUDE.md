@@ -564,15 +564,22 @@ failure — so a blocked/misconfigured sandbox would have crashed instead of yie
   handle open deterministically, first confirmed to fail against a revert, then restored passing.
   `Archiver.Core.Tests` 408 → 409. See `docs/TASKS_DONE.md`'s T-F141 entry and `docs/DECISIONS.md`'s
   T-F141 entry for the full account.
-- **T-F142 (found/claimed same session, not yet implemented)** — user requested a
-  compression/decompression speed display for every archive format, with tests. Scoping surfaced a
-  real latent bug, not just a UI gap: `Archiver.App`'s `MainViewModel` already has an EMA-smoothed
-  speed/ETA feature (zero test coverage), but it silently never activates for tar-family
-  extraction, since `ExtractionRouter.AdaptProgress` hardcodes `BytesTransferred = 0, TotalBytes =
-  0` when bridging `TarSandboxedService.ExtractAsync`'s bare `IProgress<int>` — unlike TAR
-  *archiving*, which T-F140 already gave real approximate bytes this same session. See
-  `docs/TASKS.md`'s T-F142 entry for the full scope (TAR extraction byte-reporting fix, extracting
-  the speed calculator into a shared testable helper, wiring it into `Archiver.Shell`'s dialog too).
+- **T-F142 (`[~]` implementation complete 2026-08-04, on-device visual check pending)** — real TAR
+  extraction byte progress (`ITarService.ExtractAsync` now takes `IProgress<ProgressReport>`, was
+  `IProgress<int>`; `ExtractionRouter.AdaptProgress` deleted) via a poll of the sandboxed
+  quarantine output directory (no streamed subprocess channel exists for a sandboxed launch — see
+  `DECISIONS.md`), plus a new shared, tested `Archiver.Core.Services.ProgressSpeedSampler` (not
+  `Archiver.App.Core` — matches the `Crc32` precedent) consumed by both `MainViewModel` and
+  `Archiver.Shell`'s dialog. Two real bugs caught via `advisor` review before shipping: a mixed
+  zip+tar selection would have restarted tar's progress from 0% after zip already reached 100%
+  (fixed — tar only gets real progress when zip didn't also run); a selected-subset extraction
+  (Archive Browser "Extract Selected") would have reported the whole archive's byte total instead
+  of the subset's (fixed via a new per-entry `SizeByName` map from the existing pre-scan). 8 new
+  tests (6 `ProgressSpeedSamplerTests` + 2 `TarSandboxedServiceExtractTests`), both revert-confirmed
+  per this session's own discipline. `dotnet test` green repo-wide; `Deploy.ps1` run and a real
+  320 MB `.tar.gz` extraction confirmed byte-correct — the visible speed-readout rendering itself
+  still needs the user's own on-device look (no `windows` MCP available this session). See
+  `docs/TASKS.md`'s and `docs/DECISIONS.md`'s T-F142 entries for the full account.
 - Next work: Future tasks in `TASKS.md`
 
 ## Roadmap Summary

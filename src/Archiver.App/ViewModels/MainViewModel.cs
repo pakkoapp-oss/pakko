@@ -69,10 +69,10 @@ public sealed partial class MainViewModel : ObservableObject
     private CancellationTokenSource? _cts;
 
     private System.Diagnostics.Stopwatch? _operationStopwatch;
-    private long _lastBytesTransferred;
-    private DateTime _lastSpeedSampleTime;
-    private double _smoothedBytesPerSec;
-    private const double SpeedAlpha = 0.25;
+    // T-F142: the EMA-sampling arithmetic itself moved to Archiver.Core.Services.ProgressSpeedSampler
+    // (shared with Archiver.Shell's dialog) — a fresh instance per operation is the reset, by
+    // design (see that class's own doc comment for why there is no Reset() method instead).
+    private ProgressSpeedSampler? _speedSampler;
     private string _operationStatusPrefix = string.Empty;
 
     [ObservableProperty]
@@ -495,9 +495,7 @@ public sealed partial class MainViewModel : ObservableObject
             _operationStatusPrefix = $"Archiving... ({fileCount} files, {sizeStr})";
             StatusMessage = _operationStatusPrefix;
             _operationStopwatch = System.Diagnostics.Stopwatch.StartNew();
-            _lastBytesTransferred = 0;
-            _lastSpeedSampleTime = DateTime.UtcNow;
-            _smoothedBytesPerSec = 0;
+            _speedSampler = new ProgressSpeedSampler();
 
             var progress = new Progress<ProgressReport>(r =>
             {
@@ -608,9 +606,7 @@ public sealed partial class MainViewModel : ObservableObject
             _operationStatusPrefix = $"Extracting... ({options.ArchivePaths.Count} archive(s))";
             StatusMessage = _operationStatusPrefix;
             _operationStopwatch = System.Diagnostics.Stopwatch.StartNew();
-            _lastBytesTransferred = 0;
-            _lastSpeedSampleTime = DateTime.UtcNow;
-            _smoothedBytesPerSec = 0;
+            _speedSampler = new ProgressSpeedSampler();
 
             var progress = new Progress<ProgressReport>(r =>
             {
@@ -1177,27 +1173,16 @@ public sealed partial class MainViewModel : ObservableObject
 
         if (report.TotalBytes > 0)
         {
-            long bytesDelta = report.BytesTransferred - _lastBytesTransferred;
-            double timeDelta = (now - _lastSpeedSampleTime).TotalSeconds;
+            double smoothedBytesPerSec = _speedSampler?.Sample(report.BytesTransferred, now) ?? 0;
 
-            if (timeDelta >= 0.25 && bytesDelta > 0)
+            if (smoothedBytesPerSec >= 1)
             {
-                double instantSpeed = bytesDelta / timeDelta;
-                _smoothedBytesPerSec = _smoothedBytesPerSec < 1
-                    ? instantSpeed
-                    : SpeedAlpha * instantSpeed + (1 - SpeedAlpha) * _smoothedBytesPerSec;
-                _lastBytesTransferred = report.BytesTransferred;
-                _lastSpeedSampleTime = now;
-            }
-
-            if (_smoothedBytesPerSec >= 1)
-            {
-                speedPart = _smoothedBytesPerSec switch
+                speedPart = smoothedBytesPerSec switch
                 {
-                    >= 1_073_741_824 => $"{_smoothedBytesPerSec / 1_073_741_824:F1} GB/s",
-                    >= 1_048_576     => $"{_smoothedBytesPerSec / 1_048_576:F1} MB/s",
-                    >= 1_024         => $"{_smoothedBytesPerSec / 1_024:F0} KB/s",
-                    _                => $"{_smoothedBytesPerSec:F0} B/s"
+                    >= 1_073_741_824 => $"{smoothedBytesPerSec / 1_073_741_824:F1} GB/s",
+                    >= 1_048_576     => $"{smoothedBytesPerSec / 1_048_576:F1} MB/s",
+                    >= 1_024         => $"{smoothedBytesPerSec / 1_024:F0} KB/s",
+                    _                => $"{smoothedBytesPerSec:F0} B/s"
                 };
             }
 

@@ -39,7 +39,7 @@ file sealed class FakeTarService : ITarService
 
     public Task<TarCapabilities> DetectCapabilitiesAsync() => Task.FromResult(new TarCapabilities());
 
-    public Task<ArchiveResult> ExtractAsync(ExtractOptions options, IProgress<int>? progress = null, CancellationToken cancellationToken = default)
+    public Task<ArchiveResult> ExtractAsync(ExtractOptions options, IProgress<ProgressReport>? progress = null, CancellationToken cancellationToken = default)
         => throw new NotImplementedException();
 
     public Task<ArchiveListResult> ListEntriesAsync(string archivePath, CancellationToken cancellationToken = default)

@@ -6466,3 +6466,156 @@ Archiver.Core.Tests + full suite). Not on-device verified — this is a pure `Ar
 concurrency/robustness fix with no shell-triggered or UI-visible behavior change, so per this
 project's own workflow rule, `dotnet test` alone is sufficient to graduate it (the on-device-
 verification requirement is specifically for shell-triggered/UI behavior).
+
+---
+
+## T-F142 — Compression/Decompression Speed Display for Every Archive Format (2026-08-04)
+
+**Requested by the user immediately after T-F140 shipped.** Scoping (before writing any code)
+found the real prerequisite gap driving the whole task: `Archiver.App`'s `MainViewModel` already
+had an EMA-smoothed speed/ETA feature with zero test coverage, silently non-functional for every
+tar-family extraction because `ExtractionRouter.AdaptProgress` unconditionally hardcoded
+`BytesTransferred = 0, TotalBytes = 0` when bridging `ITarService.ExtractAsync`'s old
+`IProgress<int>` into the shared `ProgressReport` shape — a real latent bug the speed-display
+request surfaced, not a new feature gap. `Archiver.Shell`'s dialog had no speed display at all.
+
+### Interface change: `ITarService.ExtractAsync` now takes `IProgress<ProgressReport>`
+
+Was `IProgress<int>`. This is the real fix, not a workaround: `ITarService.CompressAsync` already
+used `IProgress<ProgressReport>` (T-F105/T-F140) specifically to match `IArchiveService`'s
+contract; `ExtractAsync` was the one asymmetric holdout. With this change,
+`ExtractionRouter.ExtractAsync` no longer needs an adapter at all — `AdaptProgress` is deleted
+outright, `progress` passes straight through to both sub-services. Six call sites updated: the
+interface, `TarSandboxedService`'s implementation, `ExtractionRouter`, and three hand-rolled
+`ITarService` test fakes (`ArchiveCreationRouterTests`, `ArchiveListingRouterTests`,
+`ExtractionRouterTests` — no mocking library is used anywhere in this repo).
+
+### TAR extraction byte progress: polling the quarantine output directory, not a streamed subprocess channel
+
+`TarSandboxedService.ExtractAsync`'s previous progress reporting was coarser than assumed going
+in: it never had any per-entry granularity at all — `ExtractSingleArchiveAsync` took no `progress`
+parameter, and the only report per archive came from the outer loop's `(i + 1) * 100 / total`,
+once per whole archive. Unlike `CompressAsync` (T-F140), which hooks `tar -cf -v`'s per-entry
+stderr lines directly via `RunUnsandboxedTarAsync` (archive creation reads trusted local files, so
+it runs unsandboxed), extraction runs `tar -xf` *inside* the AppContainer via
+`TarSandboxScope.RunAsync` → `SandboxedProcessLauncher.RunAsync`, which only returns buffered
+stdout/stderr once the whole process exits — there is no streaming channel out of the sandbox to
+hook a per-entry line from. Adding one would mean touching security-critical sandbox launch code
+(`SandboxedProcessLauncher`, `TarSandboxScope`) for a progress readout — the wrong trade, flagged
+directly during `advisor` review before any such code was written.
+
+Instead: Pakko's own (unsandboxed) process polls how many bytes tar.exe has written into the
+quarantine `out\` directory *while extraction runs concurrently* — real bytes landing on disk, not
+an approximation, and requiring zero sandbox-code changes. `declaredUncompressedSize` from the
+existing T-F49 whole-archive pre-scan (`ScanForUnsafeEntriesAsync`) is already the exact total
+`ArchiveEntrySecurity.EvaluateCompressionBombAsync` uses — **this means the acceptance criteria's
+originally-planned second `tar -tvf` pre-listing pass was never needed**; the pre-scan already had
+the data. `PollExtractionProgressAsync` runs concurrently with `scope.RunAsync(tarArgs, ...)` via
+`Task.WhenAny(extractionTask, Task.Delay(...))`, reserving 0-94% of the percent range for this
+phase. The post-`-xf` move-to-destination phase (quarantine `out\` → the real destination, a real
+copy on a cross-volume move, not free) gets its own 95-99% slice via a simple count-based
+`extractedCount`/`totalFileEntries` percent in the existing move loop — a single-threaded
+sequential loop, so a plain `Stopwatch`-based throttle is enough, no `Interlocked` needed (unlike
+`ProgressTracker`'s multi-worker case in T-F140). The terminal 100% report is explicit, matching
+T-F140's own established discipline of never letting a report "naturally" reach 100.
+
+**Poll cost was measured empirically, not assumed safe.** A throwaway console probe against a
+synthetic 20,000-file tree found `Directory.EnumerateFiles(..., AllDirectories)` +
+per-file `FileInfo.Length` already costs ~450-550ms on ordinary local storage — longer than a
+naive fixed 250ms poll interval, which would have made the loop spend most of its time re-walking
+the tree instead of waiting, competing with tar.exe's own I/O for no real benefit (a poll can't
+usefully report faster than it can compute). Fixed with an adaptive backoff: the wait before the
+next poll is `Math.Max(250ms, lastPollCost * 2)`, keeping the walk itself bounded to roughly a
+third of the loop's time regardless of tree size, while staying at a smooth ~250ms cadence for the
+common case (an archive small/fast enough that the walk is cheap).
+
+**`CurrentFile` during the extraction-phase poll:** there is no real per-entry signal available
+during this phase (see above — no streamed line to parse). Approximated via the most-recently-
+written file in the quarantine output directory (`FileInfo.LastWriteTimeUtc`, read from the same
+stat `FileInfo.Length` already performs — no extra syscall) — tar.exe writes files roughly in
+archive order, so the most recently modified file is very likely the one actively being written.
+Without this, `Archiver.Shell`'s dialog would show a blank filename line for the whole extraction
+phase (only the move phase would set `CurrentFile`) — the same missing-filename complaint T-F140
+already fixed once for archiving, just arriving from extraction instead. Caught via `advisor`
+review, not discovered on-device.
+
+### Two more real bugs caught via `advisor` review before shipping
+
+**Mixed zip+tar selection restart-dip.** `ZipArchiveService.ExtractAsync` already granted real
+byte-level progress whenever `zipPaths.Count == 1` (pre-existing, unrelated to this task) — with
+`TarSandboxedService.ExtractAsync` now doing the same for `tarPaths.Count == 1`, a selection of
+exactly one zip + one tar archive would make BOTH services independently believe themselves "the
+sole archive" (each only sees its own bucket's count, with no visibility into the other). Since
+`ExtractionRouter` always runs zip before tar, the sequence would be: zip climbs 0→100% (real,
+smooth, unchanged), then tar's *new* real climb restarts near 0% — a visible dip back down in the
+dialog right after it had already reached 100%. Fixed with the minimal, order-aware guard: tar
+only receives the real `progress` sink when `zipPaths.Count == 0` (i.e., zip did not also run in
+this call); zip's own pass-through stays unconditional, matching its pre-existing behavior exactly
+(it was never the source of the regression — always ran first, so its own climb never restarts
+against anything). A genuinely mixed selection keeps the pre-existing percent-only shape on the
+tar side — no worse than before this task, just not improved for that specific case. Two new
+`ExtractionRouterTests` (a hand-rolled fake recording whether it received a non-null `progress`)
+prove both the suppression and that a pure tar-only selection is unaffected.
+
+**Selected-subset (Archive Browser "Extract Selected") progress used the wrong byte total.**
+`declaredUncompressedSize` from `ScanForUnsafeEntriesAsync` is deliberately whole-archive (T-F94's
+compression-bomb check stays conservative even for a subset selection — see that check's own
+comment). Using it directly as the *progress* denominator too meant a subset extraction's poll
+would stall well short of 94% (it can only ever observe the subset's own bytes) and the terminal
+report would claim the whole archive's bytes were transferred when only a fraction actually were.
+Fixed by extending `ScanForUnsafeEntriesAsync` to also return a per-entry `Dictionary<string,
+long> SizeByName` (parsed in the same `-tvf` pass that already reads every line's size column —
+no second tar.exe invocation), then computing a separate `progressTotalBytes` — the sum over
+`ExpandSelection(allNames, selectedEntryPaths)`'s own result when a subset is selected, the
+whole-archive total otherwise. The move-phase denominator (`totalFileEntries`) gets the identical
+subset-vs-whole-archive treatment. New integration test builds an archive with one large unselected
+file and one small selected file, extracts only the selected one, and asserts every report's
+`TotalBytes` equals the small file's size — proven to fail with the whole archive's total (65,544
+vs. the expected 8) against a temporary revert before being left passing.
+
+### Shared `ProgressSpeedSampler`: `Archiver.Core`, not `Archiver.App.Core`
+
+The EMA-sampling arithmetic (not the byte/speed string formatting, which stays separate per
+frontend — localization-adjacent in `Archiver.App`, plain text in `Archiver.Shell` — and not the
+ETA-from-`Percent` logic, which already works today and isn't shared) was extracted from
+`MainViewModel.UpdateOperationStatus` into a new public `Archiver.Core.Services.
+ProgressSpeedSampler`. First floated as `Archiver.App.Core` (mirroring where `ArchiveEntryViewModel`/
+`ArchiveTreeIndex` already live) — corrected after checking whether `Archiver.Shell` actually
+references that project: it doesn't, and adding a `Shell → App.Core` reference just to consume a
+dependency-free arithmetic helper would be the wrong trade, plus a class named for the App project
+being consumed by the shell frontend would read as a mistake to the next person who opens it.
+`Archiver.Core.IO.Crc32` is the exact precedent already in this repo for this shape (pure
+algorithm, zero dependencies, needed by multiple frontends, made `public` specifically so
+`Archiver.App`'s `FileItem` could reuse it) — `ProgressSpeedSampler` follows the same pattern.
+The `< 1` sentinel check (rather than an explicit `_hasSample` bool) is preserved verbatim from the
+original `MainViewModel` arithmetic for exact behavioral identity, with a comment explaining why —
+otherwise a future reader (or a static analyzer) would "clean it up" into a bool and silently
+change behavior in a case no test covers. `TotalBytes > 0` stays a call-site gate in both
+`MainViewModel` and `Archiver.Shell`'s `FormatStatus`, not inside the sampler — keeps it a pure
+function of (bytes, time), at the cost of two near-identical `if` gates instead of one, which
+`advisor` review confirmed was the right trade.
+
+Six new `ProgressSpeedSamplerTests` (zero-elapsed-time, below-min-interval, first-sample-raw,
+second-sample-blended, non-increasing-bytes-tolerated, many-iterations-never-negative) — this
+arithmetic had never been tested before, despite already shipping in the App. `MainViewModel`
+swapped to construct a fresh `ProgressSpeedSampler` per operation (Archive/Extract) instead of
+resetting three separate fields — matches the class's own "no `Reset()` by design" convention.
+Verified all three original reset assignments (`_lastBytesTransferred = 0`, `_lastSpeedSampleTime
+= DateTime.UtcNow`, `_smoothedBytesPerSec = 0`) have exact counterparts in the one-line
+`_speedSampler = new ProgressSpeedSampler()` replacement, per `advisor`'s explicit checklist.
+
+### Status at close of this session
+
+Implementation complete: `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` green
+repo-wide across every project (417 Archiver.Core.Tests, up from 407 — +6 `ProgressSpeedSamplerTests`
++ 2 new `ExtractionRouterTests` + 2 new `TarSandboxedServiceExtractTests` in
+`Archiver.Core.IntegrationTests`, 64 total there). A full `Deploy.ps1` build+sign+install completed
+(v1.4.6.4) and a real `Archiver.Shell.exe --extract-here` run against a 320 MB single-file
+`.tar.gz` (built via real `tar.exe`, incompressible random content) confirmed the extraction itself
+completes correctly (335,544,320 bytes round-tripped byte-for-byte). **The specific new UI
+deliverable — a visible speed readout in both the Shell dialog and the App status line — was not
+visually confirmed this session:** no `windows` MCP UI-automation server was available in this
+environment to screenshot/inspect the dialog, and the native `IProgressDialog`/App window can't be
+verified any other way (this project's own established rule: don't graduate a shell-triggered/
+UI-visible task on `dotnet test` alone). Left for the user's own on-device check — repro fixture
+already built at `%TEMP%\pakko-tf142-verify\big.tar.gz`.

@@ -82,10 +82,22 @@ public sealed class ExtractionRouter(
                 progress, cancellationToken).ConfigureAwait(false)
             : EmptyResult();
 
+        // T-F142: real byte-level progress for tar-family extraction is only granted when tar
+        // handles the WHOLE selection alone (zipPaths is empty) — not just when tarPaths.Count == 1.
+        // TarSandboxedService.ExtractAsync decides "am I extracting a single archive?" purely from
+        // its OWN subset's count, with no visibility into whether ZIP also ran first in this same
+        // call. In a mixed selection (e.g. one .zip + one .tar.gz), zipResult above already ran
+        // its own real per-byte climb to 100% (zip always runs before tar here, unconditionally,
+        // matching its pre-existing behavior) — if tar then also believed itself "alone" (its own
+        // bucket count == 1) it would restart a second real 0->100 climb, visibly dropping the
+        // dialog back down after it had already reached 100%. Suppressing tar's real reporting
+        // whenever zip also ran keeps the existing (pre-T-F142) percent-only per-archive-slice
+        // shape for that case — no worse than before this task, just not improved for a mixed
+        // selection specifically.
         ArchiveResult tarResult = tarPaths.Count > 0
             ? await tarService.ExtractAsync(
                 options with { ArchivePaths = tarPaths, OpenDestinationFolder = false },
-                AdaptProgress(progress), cancellationToken).ConfigureAwait(false)
+                zipPaths.Count == 0 ? progress : null, cancellationToken).ConfigureAwait(false)
             : EmptyResult();
 
         var merged = new ArchiveResult
@@ -127,9 +139,4 @@ public sealed class ExtractionRouter(
         ArchiveFormat.Lzma => $"LZMA is not supported by this system's tar.exe (version {caps.Version}).",
         _ => $"This archive format is not supported by this system's tar.exe (version {caps.Version}).",
     };
-
-    private static IProgress<int>? AdaptProgress(IProgress<ProgressReport>? progress) =>
-        progress is null
-            ? null
-            : new Progress<int>(percent => progress.Report(new ProgressReport { Percent = percent, BytesTransferred = 0, TotalBytes = 0 }));
 }

@@ -79,7 +79,7 @@ public sealed class TarSandboxedService : ITarService
     /// <inheritdoc/>
     public async Task<ArchiveResult> ExtractAsync(
         ExtractOptions options,
-        IProgress<int>? progress = null,
+        IProgress<ProgressReport>? progress = null,
         CancellationToken cancellationToken = default)
     {
         var errors = new List<ArchiveError>();
@@ -94,6 +94,12 @@ public sealed class TarSandboxedService : ITarService
         Directory.CreateDirectory(options.DestinationFolder);
 
         int total = options.ArchivePaths.Count;
+        // T-F142: real BytesTransferred/TotalBytes/CurrentFile only make sense for one archive at
+        // a time (see ExtractSingleArchiveAsync's own polling-based reporting) — matches
+        // ZipArchiveService.ExtractAsync's identical singleArchive convention for a multi-archive
+        // selection, where per-archive percent-only progress (bytes = 0,0) is the existing,
+        // already-accepted shape.
+        bool singleArchive = total == 1;
 
         for (int i = 0; i < total; i++)
         {
@@ -119,17 +125,19 @@ public sealed class TarSandboxedService : ITarService
                     SourcePath = archivePath,
                     Message = "This archive is password-protected and cannot be extracted."
                 });
-                progress?.Report((i + 1) * 100 / total);
+                if (!singleArchive)
+                    progress?.Report(new ProgressReport { Percent = (i + 1) * 100 / total, BytesTransferred = 0, TotalBytes = 0 });
                 continue;
             }
 
             try
             {
+                IProgress<ProgressReport>? archiveProgress = singleArchive ? progress : null;
                 bool alreadyIsolated = options.Mode == ExtractMode.SeparateFolders;
                 var (actualDest, anyExtracted) = await ExtractSingleArchiveAsync(
                     archivePath, destDir, alreadyIsolated, conflictResolver, skippedFiles,
                     options.ConfirmCompressionBombExtraction, options.SelectedEntryPaths,
-                    _policy.MotwMode, cancellationToken)
+                    _policy.MotwMode, archiveProgress, cancellationToken)
                     .ConfigureAwait(false);
 
                 // T-F87: an archive whose entries were all individually skipped (e.g. every
@@ -179,7 +187,8 @@ public sealed class TarSandboxedService : ITarService
                 });
             }
 
-            progress?.Report((i + 1) * 100 / total);
+            if (!singleArchive)
+                progress?.Report(new ProgressReport { Percent = (i + 1) * 100 / total, BytesTransferred = 0, TotalBytes = 0 });
         }
 
         var result = new ArchiveResult
@@ -221,6 +230,7 @@ public sealed class TarSandboxedService : ITarService
         Func<CompressionBombWarning, Task<bool>>? confirmCompressionBombExtraction,
         IReadOnlyList<string>? selectedEntryPaths,
         MotwMode motwMode,
+        IProgress<ProgressReport>? progress,
         CancellationToken cancellationToken)
     {
         using TarSandboxScope scope = await TarSandboxScope.CreateAsync(archivePath, needsOutputDir: true, cancellationToken)
@@ -231,7 +241,7 @@ public sealed class TarSandboxedService : ITarService
         // subset will be extracted (see T-F49's exploit finding in DECISIONS.md: a symlink entry
         // can escape quarantine before any per-entry check runs, so the whole archive must be
         // validated regardless of what subset the caller eventually asks tar.exe to extract).
-        var (declaredUncompressedSize, allNames) = await ScanForUnsafeEntriesAsync(scope, cancellationToken)
+        var (declaredUncompressedSize, allNames, sizeByName) = await ScanForUnsafeEntriesAsync(scope, cancellationToken)
             .ConfigureAwait(false);
 
         // T-F118: mirrors ZipArchiveService.ExtractWithSmartFolderingAsync's identical algorithm
@@ -242,6 +252,17 @@ public sealed class TarSandboxedService : ITarService
         // same reasoning as ZIP's isSelectedSubset — always extract straight into destDir.
         bool isSelectedSubset = selectedEntryPaths is { Count: > 0 };
         var fileNames = allNames.Where(n => !n.EndsWith('/')).ToList();
+
+        // T-F142: the exact set of names that will actually be passed to "-xf" (computed once
+        // here, reused below both for the tar.exe argument list and for the progress byte total)
+        // — a subset selection must progress-report against its OWN byte total, not
+        // declaredUncompressedSize (deliberately whole-archive, for the T-F94 bomb check below).
+        // Using the whole-archive total for a subset extraction would stall the poll well short
+        // of 94% and claim bytes in the terminal report that were never written.
+        List<string>? expandedSelection = isSelectedSubset ? ExpandSelection(allNames, selectedEntryPaths!) : null;
+        long progressTotalBytes = expandedSelection != null
+            ? expandedSelection.Sum(n => sizeByName.GetValueOrDefault(n, 0L))
+            : declaredUncompressedSize;
 
         bool isSingleRootFolder = !isSelectedSubset
             && fileNames.Count > 0
@@ -308,10 +329,30 @@ public sealed class TarSandboxedService : ITarService
         }
 
         var tarArgs = new List<string> { "-xf", scope.StagedArchivePath, "-C", scope.OutputDirectory! };
-        if (selectedEntryPaths is { Count: > 0 })
-            tarArgs.AddRange(ExpandSelection(allNames, selectedEntryPaths));
+        if (expandedSelection != null)
+            tarArgs.AddRange(expandedSelection);
 
-        var (exitCode, _, stdErr) = await scope.RunAsync(tarArgs, cancellationToken).ConfigureAwait(false);
+        // T-F142: real byte-level progress for a single-archive extraction (progress is only
+        // non-null in that case — see ExtractAsync's singleArchive gate). tar.exe runs sandboxed
+        // here (unlike CompressAsync's unsandboxed launch), so there is no per-entry stderr line
+        // to hook the way T-F140 did for archiving — SandboxedProcessLauncher only returns
+        // buffered output once the whole process exits, and adding a streaming channel out of the
+        // AppContainer would mean touching security-critical sandbox code for a progress readout.
+        // Instead, Pakko's own (unsandboxed) process polls how many bytes tar.exe has actually
+        // written into the quarantine "out\" directory while extraction runs — real bytes landing
+        // on disk, not an approximation. progressTotalBytes (computed above) is already the right
+        // total for whatever is actually being extracted (whole archive or a selected subset), so
+        // no second tar.exe listing pass is needed.
+        Task<(int ExitCode, string StdOut, string StdErr)> extractionTask = scope.RunAsync(tarArgs, cancellationToken);
+
+        if (progress != null && progressTotalBytes > 0)
+        {
+            await PollExtractionProgressAsync(
+                scope.OutputDirectory!, progressTotalBytes, progress, extractionTask, cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        var (exitCode, _, stdErr) = await extractionTask.ConfigureAwait(false);
 
         if (exitCode != 0)
             throw new IOException($"tar.exe extraction failed: {stdErr.Trim()}");
@@ -320,6 +361,16 @@ public sealed class TarSandboxedService : ITarService
 
         int totalFiles = 0;
         int extractedCount = 0;
+        // The move phase (quarantine "out\" -> the real destination) is not free — a cross-volume
+        // move is a real copy, not a rename — so it gets its own slice of the percentage (95-99)
+        // rather than leaving the dialog sitting at whatever the extraction-phase poll last saw.
+        // Uses the same expandedSelection-vs-whole-archive distinction as progressTotalBytes above
+        // — a subset selection only ever moves its own subset of files, not fileNames.Count.
+        int totalFileEntries = expandedSelection != null
+            ? expandedSelection.Count(n => !n.EndsWith('/'))
+            : fileNames.Count;
+        var moveReportStopwatch = System.Diagnostics.Stopwatch.StartNew();
+        long lastMoveReportMs = -MoveReportThrottleMs;
 
         foreach (string file in EnumerateFilesGuarded(scope.OutputDirectory!))
         {
@@ -369,6 +420,21 @@ public sealed class TarSandboxedService : ITarService
             ArchiveEntrySecurity.TryPropagateMotw(archivePath, finalFilePath, motwMode);
 
             extractedCount++;
+
+            if (progress != null && totalFileEntries > 0 &&
+                (moveReportStopwatch.ElapsedMilliseconds - lastMoveReportMs >= MoveReportThrottleMs
+                    || extractedCount == totalFileEntries))
+            {
+                lastMoveReportMs = moveReportStopwatch.ElapsedMilliseconds;
+                int movePercent = 95 + (int)(extractedCount * 4L / totalFileEntries);
+                progress.Report(new ProgressReport
+                {
+                    Percent = Math.Min(99, movePercent),
+                    BytesTransferred = progressTotalBytes,
+                    TotalBytes = progressTotalBytes,
+                    CurrentFile = relativePath,
+                });
+            }
         }
 
         // T-F87: every extracted file was individually skipped (already existed at the
@@ -382,10 +448,113 @@ public sealed class TarSandboxedService : ITarService
                 Path = archivePath,
                 Reason = "No entries were extracted from this archive — every entry was skipped."
             });
+            progress?.Report(new ProgressReport { Percent = 100, BytesTransferred = progressTotalBytes, TotalBytes = progressTotalBytes });
             return (actualDest, false);
         }
 
+        progress?.Report(new ProgressReport { Percent = 100, BytesTransferred = progressTotalBytes, TotalBytes = progressTotalBytes });
         return (actualDest, true);
+    }
+
+    // T-F142: how often the move-phase loop is allowed to report progress — same ~100ms throttle
+    // convention T-F140's ProgressTracker already uses for the (much higher-frequency) ZIP
+    // parallel-pipeline case. This loop is single-threaded/sequential (one archive extracted at a
+    // time, never concurrent workers), so a plain Stopwatch is enough — no Interlocked/thread-
+    // safety needed here, unlike ProgressTracker.
+    private const long MoveReportThrottleMs = 100;
+
+    // T-F142: polls how many bytes tar.exe has written into the quarantine output directory while
+    // extractionTask runs, reporting real (not approximated) BytesTransferred against the known
+    // declaredUncompressedSize total. Reserves 94% as the ceiling for this phase — the remaining
+    // 95-99% belongs to the move-to-destination phase that runs after tar.exe exits (see the
+    // caller). Percent/BytesTransferred are clamped monotonic (never allowed to regress) since a
+    // directory enumeration racing tar.exe's own writes can observe a transient dip (a file
+    // renamed/replaced mid-write) — a real dip reported to the UI would look like a bug.
+    //
+    // The wait between polls is adaptive, not a fixed 250ms: a real measurement against a 20,000-
+    // file tree found ComputeDirectoryByteSize's own full recursive walk+stat already costs
+    // ~450-550ms on ordinary local storage — a fixed short interval would make this loop spend most
+    // of its time re-walking the tree instead of waiting, competing with tar.exe's own I/O for no
+    // real reporting benefit (the UI can't usefully show updates faster than a poll can produce
+    // them anyway). Backing the next wait off to twice the last poll's own cost keeps the walk
+    // itself bounded to roughly a third of this loop's time regardless of tree size, while still
+    // polling every ~250ms for the common case of an archive small/fast enough that the walk itself
+    // is cheap.
+    private static async Task PollExtractionProgressAsync(
+        string outputDirectory, long totalBytes, IProgress<ProgressReport> progress,
+        Task extractionTask, CancellationToken cancellationToken)
+    {
+        const int MinPollIntervalMs = 250;
+        const int ExtractionPhaseMaxPercent = 94;
+        long lastReportedBytes = 0;
+        int nextWaitMs = MinPollIntervalMs;
+
+        while (!extractionTask.IsCompleted)
+        {
+            await Task.WhenAny(extractionTask, Task.Delay(nextWaitMs, cancellationToken)).ConfigureAwait(false);
+            if (cancellationToken.IsCancellationRequested)
+                break;
+            if (extractionTask.IsCompleted)
+                break;
+
+            var pollStopwatch = System.Diagnostics.Stopwatch.StartNew();
+            (long observedBytes, string? currentFile) = ComputeDirectoryStateSnapshot(outputDirectory);
+            nextWaitMs = Math.Max(MinPollIntervalMs, (int)Math.Min(int.MaxValue, pollStopwatch.ElapsedMilliseconds * 2));
+
+            long clampedBytes = Math.Max(lastReportedBytes, Math.Min(observedBytes, totalBytes));
+            lastReportedBytes = clampedBytes;
+
+            int percent = (int)Math.Min(ExtractionPhaseMaxPercent, clampedBytes * 100L / totalBytes);
+            progress.Report(new ProgressReport
+            {
+                Percent = percent,
+                BytesTransferred = clampedBytes,
+                TotalBytes = totalBytes,
+                CurrentFile = currentFile,
+            });
+        }
+    }
+
+    // Best-effort: the directory tree is actively being written to by a concurrently-running
+    // tar.exe process, so a file can appear, grow, or vanish between being listed and being
+    // stat'd — any such race is tolerated as a slightly stale progress reading, never a thrown
+    // exception (this is a progress estimate, not a correctness-critical read).
+    //
+    // T-F142: also returns the most-recently-written file's relative path, as an approximate
+    // "currently extracting" name — there is no real per-entry signal available during this phase
+    // (see PollExtractionProgressAsync's own remarks on why), but tar.exe writes files roughly in
+    // archive order and the one most recently modified is very likely the one it's actively
+    // writing right now. Without this, Archiver.Shell's dialog would show a blank filename line for
+    // the whole extraction phase (only the move phase afterward sets CurrentFile) — the same
+    // missing-filename complaint T-F140 already fixed once, just arriving from a different code
+    // path. FileInfo.LastWriteTimeUtc costs nothing extra here — it's read from the same stat
+    // FileInfo.Length already performs, not a second syscall.
+    private static (long TotalBytes, string? MostRecentFileRelativePath) ComputeDirectoryStateSnapshot(string directory)
+    {
+        long total = 0;
+        string? mostRecentRelativePath = null;
+        DateTime mostRecentWriteTimeUtc = DateTime.MinValue;
+        try
+        {
+            foreach (string file in Directory.EnumerateFiles(directory, "*", SearchOption.AllDirectories))
+            {
+                try
+                {
+                    var info = new FileInfo(file);
+                    total += info.Length;
+                    if (info.LastWriteTimeUtc > mostRecentWriteTimeUtc)
+                    {
+                        mostRecentWriteTimeUtc = info.LastWriteTimeUtc;
+                        mostRecentRelativePath = Path.GetRelativePath(directory, file);
+                    }
+                }
+                catch (IOException) { /* file mid-write or vanished since being listed — best-effort estimate */ }
+                catch (UnauthorizedAccessException) { /* same */ }
+            }
+        }
+        catch (IOException) { /* directory tree changing under us — best-effort estimate */ }
+        catch (UnauthorizedAccessException) { /* same */ }
+        return (total, mostRecentRelativePath);
     }
 
     // Rejects the whole archive (throws TarArchiveRejectedException) if any entry name is
@@ -403,7 +572,7 @@ public sealed class TarSandboxedService : ITarService
     // accumulated here, in the same single "-tvf" pass that already reads the type column, to
     // avoid a second tar.exe invocation just to re-derive it (matches T-F90's original rationale
     // for extending this one pass in the first place).
-    private static async Task<(long TotalDeclaredSize, string[] Names)> ScanForUnsafeEntriesAsync(
+    private static async Task<(long TotalDeclaredSize, string[] Names, Dictionary<string, long> SizeByName)> ScanForUnsafeEntriesAsync(
         TarSandboxScope scope, CancellationToken cancellationToken)
     {
         var (nameExitCode, nameStdOut, nameStdErr) = await scope.RunAsync(
@@ -434,16 +603,28 @@ public sealed class TarSandboxedService : ITarService
         // the same pass — see DECISIONS.md's T-F90 entry for why the size column, unlike the
         // date column, is safe to parse regardless of locale.
         long totalDeclaredSize = 0;
+        // T-F142: per-entry sizes, keyed by the same raw name form as `names` — needed so a
+        // selected-subset extraction (Archive Browser -> Extract Selected) can compute its own
+        // subset byte total for progress reporting, distinct from totalDeclaredSize (deliberately
+        // whole-archive, for the T-F94 compression-bomb check — see that check's own comment).
+        // Retained here rather than re-parsed with a second "-tvf" pass, since this loop already
+        // reads every line's size column once.
+        var sizeByName = new Dictionary<string, long>(names.Length, StringComparer.Ordinal);
 
-        foreach (string line in typeLines)
+        for (int i = 0; i < typeLines.Length; i++)
         {
+            string line = typeLines[i];
             char typeChar = line.Length > 0 ? line[0] : '?';
             if (typeChar != '-' && typeChar != 'd')
                 throw new TarArchiveRejectedException(
                     "Archive contains a symlink, hardlink, device, or other special entry and cannot be safely extracted.");
 
             if (typeChar == '-')
-                totalDeclaredSize += ParseTarListingSize(line);
+            {
+                long size = ParseTarListingSize(line);
+                totalDeclaredSize += size;
+                sizeByName[names[i]] = size;
+            }
         }
 
         // T-F05: the raw names (with tar's own trailing '/' on directory entries preserved) are
@@ -451,7 +632,7 @@ public sealed class TarSandboxedService : ITarService
         // member argument list without a second "-tf" invocation, and so the exact path form
         // tar.exe itself uses is what's ever passed back to it (see DECISIONS.md's T-F05 spike
         // entry — an unmatched/mismatched member name makes the whole "-xf" call fail non-zero).
-        return (totalDeclaredSize, names);
+        return (totalDeclaredSize, names, sizeByName);
     }
 
     // T-F05: expands a UI-selected set of archive-internal paths (ArchiveEntryInfo.Path's

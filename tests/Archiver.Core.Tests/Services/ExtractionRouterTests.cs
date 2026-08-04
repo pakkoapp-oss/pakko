@@ -14,6 +14,10 @@ file sealed class FakeArchiveService : IArchiveService
     public ExtractOptions? LastExtractOptions;
     public int ExtractCallCount;
     public ArchiveResult ExtractResult = new() { Success = true };
+    // T-F142: records whether ExtractionRouter passed a real progress sink through, so tests can
+    // assert the mixed-selection real-byte-progress suppression without needing an actual
+    // IProgress<T> implementation.
+    public bool LastExtractReceivedNonNullProgress;
 
     public Task<ArchiveResult> ArchiveAsync(ArchiveOptions options, IProgress<ProgressReport>? progress = null, CancellationToken cancellationToken = default)
         => throw new NotImplementedException();
@@ -22,6 +26,7 @@ file sealed class FakeArchiveService : IArchiveService
     {
         ExtractCallCount++;
         LastExtractOptions = options;
+        LastExtractReceivedNonNullProgress = progress != null;
         return Task.FromResult(ExtractResult);
     }
 
@@ -37,13 +42,15 @@ file sealed class FakeTarService : ITarService
     public ExtractOptions? LastExtractOptions;
     public int ExtractCallCount;
     public ArchiveResult ExtractResult = new() { Success = true };
+    public bool LastExtractReceivedNonNullProgress;
 
     public Task<TarCapabilities> DetectCapabilitiesAsync() => Task.FromResult(new TarCapabilities());
 
-    public Task<ArchiveResult> ExtractAsync(ExtractOptions options, IProgress<int>? progress = null, CancellationToken cancellationToken = default)
+    public Task<ArchiveResult> ExtractAsync(ExtractOptions options, IProgress<ProgressReport>? progress = null, CancellationToken cancellationToken = default)
     {
         ExtractCallCount++;
         LastExtractOptions = options;
+        LastExtractReceivedNonNullProgress = progress != null;
         return Task.FromResult(ExtractResult);
     }
 
@@ -158,6 +165,54 @@ public sealed class ExtractionRouterTests : IDisposable
         result.Errors.Should().HaveCount(1);
         result.SkippedFiles.Should().HaveCount(1);
         result.Success.Should().BeTrue();
+    }
+
+    // T-F142 regression: found via advisor review before this shipped. TarSandboxedService now
+    // gives real byte-level progress to a single-archive extraction (tarPaths.Count == 1) — but a
+    // MIXED selection of exactly one zip + one tar means BOTH services independently believe
+    // themselves "the sole archive" (each only sees its own bucket's count). Since zip always runs
+    // first and already used real progress before this task, letting tar ALSO believe itself alone
+    // would restart a second real 0->100 climb after zip's had already finished — a visible dip
+    // back down in the dialog. ExtractionRouter must suppress tar's real progress whenever zip also
+    // ran (zipPaths non-empty), while leaving zip's own (pre-existing, unconditional) progress
+    // pass-through untouched.
+    [Fact]
+    public async Task ExtractAsync_MixedSelectionOfExactlyOneZipAndOneTar_SuppressesTarRealProgressNotZips()
+    {
+        var zip = WriteZip("a.zip");
+        var tar = WriteTar("b.tar");
+
+        var zipService = new FakeArchiveService();
+        var tarService = new FakeTarService();
+        var router = new ExtractionRouter(zipService, tarService, AllSupported);
+
+        var progress = new Progress<ProgressReport>(_ => { });
+        await router.ExtractAsync(
+            new ExtractOptions { ArchivePaths = [zip, tar], DestinationFolder = _temp.Path }, progress);
+
+        zipService.LastExtractReceivedNonNullProgress.Should().BeTrue(
+            "zip's own progress pass-through is unconditional and pre-existing — this task must not change it");
+        tarService.LastExtractReceivedNonNullProgress.Should().BeFalse(
+            "tar must not receive real progress when zip also ran in the same mixed selection, or its own " +
+            "single-archive real-byte climb would restart and visibly dip the dialog after zip already reached 100%");
+    }
+
+    // T-F142: the flip side of the mixed-selection test above — a PURE tar-only selection (no zip
+    // bucket at all) must still get real progress, proving the mixed-selection suppression above is
+    // scoped correctly and doesn't regress the common single-format case.
+    [Fact]
+    public async Task ExtractAsync_PureTarSelection_StillReceivesRealProgress()
+    {
+        var tar = WriteTar("b.tar");
+        var zipService = new FakeArchiveService();
+        var tarService = new FakeTarService();
+        var router = new ExtractionRouter(zipService, tarService, AllSupported);
+
+        var progress = new Progress<ProgressReport>(_ => { });
+        await router.ExtractAsync(
+            new ExtractOptions { ArchivePaths = [tar], DestinationFolder = _temp.Path }, progress);
+
+        tarService.LastExtractReceivedNonNullProgress.Should().BeTrue();
     }
 
     [Fact]

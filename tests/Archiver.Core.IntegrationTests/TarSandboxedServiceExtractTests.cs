@@ -461,6 +461,53 @@ public sealed class TarSandboxedServiceExtractTests : IDisposable
         Directory.Exists(Path.Combine(destDir, "src")).Should().BeFalse();
     }
 
+    // T-F142 regression: the progress byte total for a SelectedEntryPaths extraction (Archive
+    // Browser's "Extract Selected") must reflect only the subset actually being extracted, not
+    // declaredUncompressedSize (deliberately whole-archive, for the T-F94 compression-bomb check).
+    // Using the whole-archive total here would stall the poll well short of its ceiling and claim
+    // in the terminal report that bytes were transferred that were never written — caught during
+    // an advisor review before this ever shipped. "big.bin" is deliberately much larger than the
+    // selected "small.bin" so a whole-archive-total bug would be obvious (TotalBytes far exceeding
+    // the real extracted content) rather than accidentally matching by coincidence.
+    [Integration]
+    public async Task ExtractAsync_SelectedEntryPaths_ProgressReportsSubsetByteTotalNotWholeArchive()
+    {
+        string archivePath = Path.Combine(_temp.Path, "mixed_sizes.tar");
+        byte[] smallContent = Encoding.ASCII.GetBytes("selected");
+        byte[] bigContent = new byte[64 * 1024];
+        new Random(20260804).NextBytes(bigContent);
+        TarBuilder.WriteTar(archivePath,
+        [
+            new TarBuilder.Entry { Name = "small.bin", Content = smallContent },
+            new TarBuilder.Entry { Name = "big.bin", Content = bigContent },
+        ]);
+
+        var reports = new List<ProgressReport>();
+        var progress = new Progress<ProgressReport>(reports.Add);
+
+        string destDir = Path.Combine(_temp.Path, "out");
+        var result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [archivePath],
+            DestinationFolder = destDir,
+            Mode = ExtractMode.SingleFolder,
+            SelectedEntryPaths = ["small.bin"],
+        }, progress);
+
+        result.Success.Should().BeTrue();
+        File.Exists(Path.Combine(destDir, "small.bin")).Should().BeTrue();
+        File.Exists(Path.Combine(destDir, "big.bin")).Should().BeFalse();
+
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(5);
+        while ((reports.Count == 0 || reports[^1].Percent != 100) && DateTime.UtcNow < deadline)
+            await Task.Delay(10);
+
+        reports.Should().NotBeEmpty();
+        reports.Should().OnlyContain(r => r.TotalBytes == smallContent.Length,
+            "the progress total must be the SELECTED subset's byte size, not the whole archive's (which includes the much larger, unselected big.bin)");
+        reports[^1].BytesTransferred.Should().Be(smallContent.Length);
+    }
+
     // T-F05: a selected folder path pulls in every entry nested under it, expanded to explicit
     // descendant member names before the "-xf" call (see DECISIONS.md's T-F05 spike entry).
     [Integration]
@@ -518,5 +565,48 @@ public sealed class TarSandboxedServiceExtractTests : IDisposable
         result.Errors.Should().ContainSingle();
         File.Exists(Path.Combine(_temp.Path, "escaped.txt")).Should().BeFalse();
         Directory.Exists(Path.Combine(destDir, "link")).Should().BeFalse();
+    }
+
+    // T-F142 regression: ExtractionRouter.AdaptProgress used to unconditionally hardcode
+    // BytesTransferred = 0, TotalBytes = 0 when bridging TarSandboxedService's old
+    // IProgress<int> into the shared ProgressReport shape — meaning MainViewModel's speed/ETA
+    // feature (which guards on TotalBytes > 0) was silently non-functional for every tar-family
+    // extraction. ITarService.ExtractAsync now takes IProgress<ProgressReport> directly (matching
+    // IArchiveService's contract), with real bytes for a single-archive extraction. This exercises
+    // the real TarSandboxedService.ExtractAsync -> ExtractSingleArchiveAsync ->
+    // PollExtractionProgressAsync/move-phase-reporting path against real tar.exe, not a fake.
+    [Integration]
+    public async Task ExtractAsync_SingleArchive_ReportsRealBytesTransferredNotHardcodedZero()
+    {
+        string archivePath = Path.Combine(_temp.Path, "sized.tar");
+        byte[] content = new byte[64 * 1024];
+        new Random(20260804).NextBytes(content);
+        TarBuilder.WriteTar(archivePath, [new TarBuilder.Entry { Name = "a.bin", Content = content }]);
+
+        var reports = new List<ProgressReport>();
+        var progress = new Progress<ProgressReport>(reports.Add);
+
+        string destDir = Path.Combine(_temp.Path, "out");
+        var result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [archivePath],
+            DestinationFolder = destDir,
+            Mode = ExtractMode.SingleFolder,
+        }, progress);
+
+        result.Success.Should().BeTrue();
+
+        // Progress<T> marshals callbacks onto a captured SynchronizationContext asynchronously —
+        // give the final posted callback a moment to actually run before asserting on `reports`.
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(5);
+        while ((reports.Count == 0 || reports[^1].Percent != 100) && DateTime.UtcNow < deadline)
+            await Task.Delay(10);
+
+        reports.Should().NotBeEmpty();
+        reports.Should().Contain(r => r.TotalBytes == content.Length,
+            "TotalBytes must reflect the archive's real declared uncompressed size, not the hardcoded 0 from before this fix");
+        reports[^1].Percent.Should().Be(100, "the operation must end with an explicit terminal 100% report");
+        reports[^1].BytesTransferred.Should().Be(content.Length);
+        reports[^1].TotalBytes.Should().Be(content.Length);
     }
 }

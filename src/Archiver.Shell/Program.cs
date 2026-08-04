@@ -295,6 +295,7 @@ static async Task<ArchiveResult> RunWithProgressWindowAsync(
     {
         using var cts = new CancellationTokenSource();
         var dialogLock = new object();
+        var speedSampler = new ProgressSpeedSampler();
 
         // Polls independently of progress reporting: Report() only fires when a
         // ProgressStream was constructed (totalBytes > 0), so gating Cancel on it left
@@ -315,7 +316,7 @@ static async Task<ArchiveResult> RunWithProgressWindowAsync(
             {
                 if (r.CurrentFile is not null)
                     dialog.SetLine(1, r.CurrentFile);
-                dialog.SetLine(2, FormatStatus(r));
+                dialog.SetLine(2, FormatStatus(r, speedSampler));
                 dialog.SetProgress(r.BytesTransferred, r.TotalBytes);
             }
         });
@@ -380,6 +381,7 @@ static async Task RunHashAsync(IReadOnlyList<string> paths, HashAlgorithmKind al
             {
                 using var cts = new CancellationTokenSource();
                 var dialogLock = new object();
+                var speedSampler = new ProgressSpeedSampler();
 
                 using var cancelPoll = new Timer(_ =>
                 {
@@ -396,7 +398,7 @@ static async Task RunHashAsync(IReadOnlyList<string> paths, HashAlgorithmKind al
                     {
                         if (r.CurrentFile is not null)
                             dialog.SetLine(1, r.CurrentFile);
-                        dialog.SetLine(2, FormatStatus(r));
+                        dialog.SetLine(2, FormatStatus(r, speedSampler));
                         dialog.SetProgress(r.BytesTransferred, r.TotalBytes);
                     }
                 });
@@ -471,8 +473,21 @@ static void ShowSkippedSummary(string title, IReadOnlyList<SkippedFile> skipped)
 [DllImport("user32.dll", CharSet = CharSet.Unicode)]
 static extern int MessageBoxW(IntPtr hWnd, string text, string caption, uint type);
 
-static string FormatStatus(ProgressReport r) =>
-    r.TotalBytes <= 0 ? $"{r.Percent}%" : $"{r.Percent}%  ·  {FormatBytes(r.BytesTransferred)} / {FormatBytes(r.TotalBytes)}";
+// T-F142: speedSampler is per-operation (a fresh ProgressSpeedSampler constructed alongside each
+// call site's own dialogLock/cts, matching Archiver.App's MainViewModel convention of a fresh
+// instance per operation instead of a Reset()) — null for a caller that doesn't track speed
+// (there is none left; both call sites below always pass one), matching the existing bytes-total
+// gate (r.TotalBytes <= 0 shows no speed either, same as it shows no byte total).
+static string FormatStatus(ProgressReport r, ProgressSpeedSampler? speedSampler)
+{
+    if (r.TotalBytes <= 0)
+        return $"{r.Percent}%";
+
+    string bytesPart = $"{FormatBytes(r.BytesTransferred)} / {FormatBytes(r.TotalBytes)}";
+    double speedBytesPerSec = speedSampler?.Sample(r.BytesTransferred, DateTime.UtcNow) ?? 0;
+    string speedPart = speedBytesPerSec >= 1 ? $"  ·  {FormatSpeed(speedBytesPerSec)}" : string.Empty;
+    return $"{r.Percent}%  ·  {bytesPart}{speedPart}";
+}
 
 static string FormatBytes(long bytes) => bytes switch
 {
@@ -480,4 +495,12 @@ static string FormatBytes(long bytes) => bytes switch
     >= 1_048_576 => $"{bytes / 1_048_576.0:F1} MB",
     >= 1_024 => $"{bytes / 1_024.0:F0} KB",
     _ => $"{bytes} B"
+};
+
+static string FormatSpeed(double bytesPerSecond) => bytesPerSecond switch
+{
+    >= 1_073_741_824 => $"{bytesPerSecond / 1_073_741_824:F1} GB/s",
+    >= 1_048_576 => $"{bytesPerSecond / 1_048_576:F1} MB/s",
+    >= 1_024 => $"{bytesPerSecond / 1_024:F0} KB/s",
+    _ => $"{bytesPerSecond:F0} B/s"
 };

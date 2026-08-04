@@ -766,6 +766,17 @@ public interface ITarService
 }
 ```
 
+**Correction (T-F142, 2026-08-04):** `ExtractAsync`'s `progress` parameter is now
+`IProgress<ProgressReport>?`, not `IProgress<int>?` as shown above — matching `CompressAsync`'s
+and `IArchiveService.ExtractAsync`'s contract exactly, so `IExtractionRouter` passes `progress`
+straight through to both sub-services with no adapter in between (the `AdaptProgress` method
+described below, under IExtractionRouter, no longer exists). `TarSandboxedService.ExtractAsync`
+reports real `BytesTransferred`/`TotalBytes`/`CurrentFile` — not just `Percent` — for a
+single-archive extraction, via a poll of the sandboxed quarantine output directory rather than a
+streamed subprocess channel (see `DECISIONS.md`'s T-F142 entry for why: tar.exe runs inside the
+AppContainer for extraction, unlike `CompressAsync`'s unsandboxed launch, so there is no per-entry
+stderr line to hook the way T-F140 did for archiving).
+
 Implementation: `TarProcessService` in `Archiver.Core/Services/`.
 
 - Always invokes `C:\Windows\System32\tar.exe` (absolute path)
@@ -818,9 +829,16 @@ Implementation: `ExtractionRouter` in `Archiver.Core/Services/`. Classifies ever
 RAR/7z/xz/zstd via header bytes, plain `.tar` via the `ustar` string at offset 257), routes
 ZIP to `IArchiveService` and tar-family formats `TarCapabilities` reports supported to
 `ITarService` (both sub-calls get `OpenDestinationFolder = false` — the router opens it itself,
-once, after merging), adapts `ITarService`'s `IProgress<int>` into `IProgress<ProgressReport>`,
-and merges both `ArchiveResult`s. A tar-family format the installed tar.exe doesn't support
-becomes a `SkippedFiles` entry with a specific reason, not a generic message.
+once, after merging), and merges both `ArchiveResult`s. **T-F142 correction:** no adapter step
+exists any more — `ITarService.ExtractAsync` takes `IProgress<ProgressReport>?` directly (see the
+correction note above), so `progress` passes straight through. The one exception: for a MIXED
+selection (both a zip and a tar-family path in the same call), `progress` is passed to tar only
+when `zipPaths` is empty — otherwise each sub-service would independently believe itself "the
+sole archive" (each only sees its own bucket's count) and both would run a real 0→100 climb,
+visibly dipping the dialog back down when tar's climb restarts after zip's already finished. ZIP's
+own pass-through stays unconditional (pre-existing, zip always runs first). A tar-family format
+the installed tar.exe doesn't support becomes a `SkippedFiles` entry with a specific reason, not a
+generic message.
 
 `ZipArchiveService.GetKnownArchiveReason` is deliberately not refactored to share
 `ArchiveFormatDetector` — see `DECISIONS.md`-equivalent reasoning in `TASKS_DONE.md`'s T-F85 entry

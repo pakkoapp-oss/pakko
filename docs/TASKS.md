@@ -3446,67 +3446,51 @@ regression from this task, which owns reliability only.
 
 ### T-F142 — Show Compression/Decompression Speed for Every Archive Format (Archive + Extract)
 
-- [ ] **Status:** open, requested by the user 2026-08-04 right after T-F140 shipped ("show
-      compression and decompression speed, for all archive types, with tests"). Scoping research
-      done before writing acceptance criteria (per this project's own research-before-writing-
-      tasks norm), since "for all archive types" turns out to depend on a real prerequisite gap,
-      not just a UI addition:
-
-      **Current state, checked directly in code:**
-      - `Archiver.App`'s `MainViewModel.UpdateOperationStatus` already computes and displays a
-        speed readout (EMA-smoothed, `SpeedAlpha = 0.25`, sampled every ≥0.25s) plus an ETA, in the
-        WinUI status line — for **both** Archive and Extract (two separate call sites,
-        `_operationStopwatch` started around both directions). This logic is private, lives only in
-        the ViewModel, and has **zero existing test coverage** (confirmed via a repo-wide grep for
-        `UpdateOperationStatus`/`SmoothedBytesPerSec` under `tests/` — no hits).
-      - `Archiver.Shell`'s `IProgressDialog` (the shell-triggered right-click dialog — the one
-        T-F140 already touched this same session) has **no speed or ETA display at all** —
-        `FormatStatus` only ever shows `"{Percent}%"` or `"{Percent}% · {bytes}/{total}"`.
-      - Byte-level progress, the prerequisite for computing any speed: ZIP Archive (T-F16) and ZIP
-        Extract already report real bytes. TAR Archive now reports an entry-count-weighted
-        approximation of bytes (T-F140, this same session). **TAR Extract does not** —
-        `ExtractionRouter.AdaptProgress` unconditionally hardcodes
-        `BytesTransferred = 0, TotalBytes = 0` when bridging `TarSandboxedService.ExtractAsync`'s
-        plain `IProgress<int>` (percent-only, no bytes model at all) into the shared
-        `ProgressReport` shape. This is not cosmetic: `MainViewModel`'s existing speed feature
-        already silently guards on `report.TotalBytes > 0` — meaning **the App's own already-
-        shipped speed display is presently non-functional for every tar-family extraction**
-        (`.tar`/`.tar.gz`/`.tar.bz2`/`.tar.xz`/`.tar.zst`/`.tar.lzma`/`.7z`/`.rar`), a real latent
-        bug this task's scoping surfaced, not a new feature gap.
+- [~] **Status:** implementation complete 2026-08-04, on-device visual verification pending (the
+      user will check personally — no `windows` MCP UI-automation server was available this
+      session to do it in-agent). Requested right after T-F140 shipped ("show compression and
+      decompression speed, for all archive types, with tests"). Scoping surfaced a real
+      prerequisite gap, not just a UI addition: `MainViewModel`'s existing EMA speed/ETA feature
+      was silently non-functional for every tar-family extraction, since `ExtractionRouter.
+      AdaptProgress` hardcoded `BytesTransferred = 0, TotalBytes = 0` bridging `ITarService.
+      ExtractAsync`'s old `IProgress<int>` into `ProgressReport`. See `DECISIONS.md`'s T-F142 entry
+      for the full design account, including two real bugs (a mixed zip+tar progress restart-dip,
+      a selected-subset progress total using the whole archive's size) caught via `advisor` review
+      before shipping, and why the originally-planned second `tar -tvf` pass wasn't needed.
 - **Acceptance criteria:**
-  - [ ] TAR extraction reports real bytes instead of the hardcoded `0, 0` — likely via a `tar -tvf`
-        pre-listing pass (reusing/extending the existing `ParseTarListingSize` column-parsing
-        helper already used elsewhere in `TarSandboxedService` for a related purpose) to get a real
-        total-byte figure before extraction starts, mirroring T-F140's `CountRecursiveEntriesAndBytes`
-        pre-scan approach on the archive-creation side. Covers every tar-family extraction format
-        (including 7z/RAR) through the one shared `ExtractAsync` path.
-  - [ ] The EMA speed/ETA calculation currently embedded in `MainViewModel.UpdateOperationStatus`
-        is extracted into a shared, non-WinUI, directly-testable helper (e.g. `Archiver.Core` or
-        `Archiver.App.Core`) — both `Archiver.App`'s status line and `Archiver.Shell`'s
-        `IProgressDialog` consume the same tested logic instead of the dialog reimplementing it
-        from scratch or lacking it
-  - [ ] `Archiver.Shell/Program.cs`'s progress dialog (`FormatStatus`/`RunWithProgressWindowAsync`)
-        gains a speed readout for both Archive and Extract, for every recognized format (ZIP and
-        every tar-family variant) — matching the richness the App's own status line already has
+  - [x] TAR extraction reports real bytes instead of the hardcoded `0, 0` — via a poll of the
+        sandboxed quarantine output directory while `tar -xf` runs (not a second `tar -tvf` pass —
+        `ScanForUnsafeEntriesAsync`'s existing pre-scan already had the total), covering every
+        tar-family extraction format (including 7z/RAR) through the one shared `ExtractAsync` path.
+        `ITarService.ExtractAsync` now takes `IProgress<ProgressReport>` (was `IProgress<int>`),
+        matching `CompressAsync`'s and `IArchiveService`'s contract — `ExtractionRouter.
+        AdaptProgress` deleted outright.
+  - [x] The EMA speed/ETA calculation is extracted into a shared, non-WinUI, directly-testable
+        helper — `Archiver.Core.Services.ProgressSpeedSampler` (not `Archiver.App.Core` as
+        originally floated — see `DECISIONS.md` for why). Both `Archiver.App`'s status line and
+        `Archiver.Shell`'s `IProgressDialog` consume the same tested sampling logic.
+  - [x] `Archiver.Shell/Program.cs`'s progress dialog (`FormatStatus`) gains a speed readout for
+        both Archive and Extract, for every recognized format — matching the App's own richness.
   - [ ] Verify (not just assume) that the App's own existing speed display now actually produces a
-        real reading for tar-family extraction once the byte-reporting gap above is fixed — this is
-        a regression check on already-shipped functionality, not only new-feature verification
-  - [ ] Tests for the shared speed/ETA calculator: EMA smoothing behaves as designed, a
-        zero-elapsed-time sample is ignored (no division-by-zero/spurious spike), a
-        `TotalBytes <= 0` report produces no speed, monotonic-non-decreasing-bytes assumption holds
-        against out-of-order reports if that's a real possibility for either format's pipeline —
-        this helper currently has 0% coverage, so this is genuinely new ground, not a regression
-        suite
-  - [ ] A test proving TAR extraction's `ProgressReport.BytesTransferred`/`TotalBytes` are no
-        longer hardcoded to 0 — built and run against a real tar.exe extraction
-        (`Archiver.Core.IntegrationTests`, matching T-F140's real-process-over-fakes precedent),
-        and — following this session's own established rigor — first confirmed to actually FAIL
-        against a temporary revert of the fix before being left in its passing state
-  - [ ] On-device verified via a real Explorer right-click Extract/Archive against both a ZIP and a
-        tar-family archive large enough for a speed reading to actually appear (small/fast
-        operations may never leave the "starting…" state before finishing) — not graduated on
-        `dotnet test` alone, per this project's standard workflow rule for shell-triggered/UI
-        behavior
-  - [ ] `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` green repo-wide
+        real reading for tar-family extraction — **pending the user's own on-device check**; a
+        320 MB single-file `.tar.gz` fixture is already built at
+        `%TEMP%\pakko-tf142-verify\big.tar.gz` for this (real extraction via that fixture already
+        confirmed byte-correct via `Archiver.Shell.exe --extract-here` this session — only the
+        visible speed-readout rendering itself is unverified)
+  - [x] Tests for `ProgressSpeedSampler` (6 new, `Archiver.Core.Tests`): zero-elapsed-time ignored,
+        below-min-interval ignored, first sample returns raw instant speed, second sample blends
+        via EMA, non-increasing/repeated bytes tolerated without a spike or negative, many
+        iterations never go negative.
+  - [x] Test proving TAR extraction's `ProgressReport.BytesTransferred`/`TotalBytes` are no longer
+        hardcoded to 0 — real tar.exe extraction, `Archiver.Core.IntegrationTests`, first confirmed
+        to FAIL against a temporary revert before being left passing. A second new integration test
+        proves the selected-subset case reports the subset's own byte total, not the whole
+        archive's — also revert-confirmed.
+  - [ ] On-device verified via a real Explorer right-click Extract/Archive (or the App's own
+        Extract) against a tar-family archive large enough for a speed reading to actually appear —
+        **pending the user's own check**; not graduated on `dotnet test` alone, per this project's
+        standard workflow rule for shell-triggered/UI behavior
+  - [x] `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` green repo-wide (417
+        Archiver.Core.Tests, 64 Archiver.Core.IntegrationTests, full suite otherwise unaffected)
 - **Reported by:** user, 2026-08-04, immediately after T-F140 shipped — explicit request for
   compression/decompression speed display across all archive formats, with tests.
