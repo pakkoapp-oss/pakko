@@ -433,6 +433,33 @@ jobs:
           path: artifacts/msix
           merge-multiple: true
 
+      # Prepends this tag's own CHANGELOG.md section (if one exists) ahead of the static
+      # download-instructions template, so a GitHub Release's own notes actually say what
+      # changed instead of only how to install it -- CHANGELOG.md previously had no path into
+      # the release notes body at all (found 2026-08-04: every prior release's notes were the
+      # template only). CHANGELOG.md sections are separated by a bare "---" line and each starts
+      # "## v<version> -- <date>"; matched against github.ref_name so this never needs editing
+      # per release. Missing a section (e.g. a tag CHANGELOG.md was never updated for) falls
+      # back to the template alone rather than failing the release.
+      - name: Build release notes (CHANGELOG.md section + download template)
+        shell: pwsh
+        run: |
+          $changelog = Get-Content CHANGELOG.md -Raw
+          $tag = "${{ github.ref_name }}"
+          $sections = [regex]::Split($changelog, '(?m)^---\s*$')
+          $escapedTag = [regex]::Escape($tag)
+          $section = $sections | Where-Object { $_ -match "(?m)^##\s+$escapedTag\s+—" } | Select-Object -First 1
+          $template = Get-Content .github/RELEASE_NOTES_TEMPLATE.md -Raw
+          if (-not $section) {
+            Write-Warning "No CHANGELOG.md section found for '$tag' -- release notes will use the download template only."
+            $notesBody = $template
+          } else {
+            $notesBody = $section.Trim() + "`n`n---`n`n" + $template
+          }
+          $notesPath = Join-Path $env:RUNNER_TEMP "release-notes.md"
+          Set-Content -Path $notesPath -Value $notesBody -NoNewline
+          "NOTES_PATH=$notesPath" | Out-File -FilePath $env:GITHUB_ENV -Append
+
       - name: Create GitHub Release
         shell: pwsh
         env:
@@ -449,4 +476,4 @@ jobs:
           ) + $msixAssets
           gh release create "${{ github.ref_name }}" @assets `
             --title "${{ github.ref_name }}" `
-            --notes-file .github/RELEASE_NOTES_TEMPLATE.md
+            --notes-file $env:NOTES_PATH
