@@ -10,6 +10,33 @@ the technical account of any task named here.
 
 ---
 
+## v1.4.7 — 2026-08-04
+
+Feature + bug-fix release — real progress reporting for archive creation and extraction, plus a
+live speed readout.
+
+- **T-F129** — Pakko's Microsoft Store listing is now live
+  (https://apps.microsoft.com/detail/9p5mw010d8pr) — certification passed and the listing was
+  confirmed genuinely public via a real `winget install --source msstore`, followed by a
+  functional smoke test (test/extract/archive, including `.7z`/`.rar` through the AppContainer
+  sandbox) against that exact Store-installed package.
+- **T-F140** — fixed archive-creation progress reporting for both ZIP and TAR, found from a real
+  user report of a frozen-looking dialog on a large multi-folder source. ZIP's parallel
+  compression pipeline was passing no progress at all into its temp-file path; TAR's percent was
+  computed from the wrong (too-small) denominator. Both now report real, live bytes and the
+  current filename during compression.
+- **T-F141** — hardened `ParallelSingleArchiveWriter`'s chunk-temp-file handling: the writer
+  thread's read-back of a finished chunk requested needless exclusive access, so a transient
+  external file lock (antivirus, cloud-sync client, Search Indexer) could abort an entire archive
+  operation instead of just one file. Narrowed to a shared read.
+- **T-F142** — TAR extraction now reports real byte progress instead of always showing 0 bytes
+  (`ITarService.ExtractAsync` gained the same `IProgress<ProgressReport>` contract ZIP already
+  had), and both the app's status line and the Explorer right-click progress dialog now show a
+  live compression/decompression speed readout, backed by a new shared, tested speed-sampling
+  helper.
+
+---
+
 ## v1.4.6 — 2026-08-01
 
 Bug-fix release — restores full localization to the shipped MSIX. Affects `v1.4.5` (and likely
