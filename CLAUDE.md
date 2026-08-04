@@ -494,8 +494,10 @@ failure — so a blocked/misconfigured sandbox would have crashed instead of yie
   confirming a real Archive/Extract round trip through each — not on green Actions runs alone. See
   `TASKS_DONE.md`'s T-F122 entry for the full account.
 - **T-F131/T-F133 (`[x]` done 2026-07-24/25)** widened ZIP-format recognition to
-  `.jar`/`.war`/`.ear`/`.apk` and `.asice`/`.asics`/`.bdoc`; **T-F129 (`[x]` done)** did Microsoft
-  Store submission prep (WACK fixes, regenerated brand assets, manifest revision-segment fix);
+  `.jar`/`.war`/`.ear`/`.apk` and `.asice`/`.asics`/`.bdoc`; **T-F129's prep work (`[x]` done, this
+  round)** did Microsoft Store submission prep (WACK fixes, regenerated brand assets, manifest
+  revision-segment fix) — the actual submission/certification/publish followed later, see this
+  section's newer T-F129 bullet below;
   **T-F130 (`[x]` done)** fixed intermittent CI sandbox-test flakiness via a `DisableParallelization`
   xUnit collection. Released as `v1.4.2` (2026-07-25) — see `CHANGELOG.md`.
   **T-F134 (`[x]` done 2026-07-26)** added a `pakko -v`/`--version` flag to
@@ -517,8 +519,15 @@ failure — so a blocked/misconfigured sandbox would have crashed instead of yie
 - `.zip` file type association (T-F44) — double-click opens Pakko with archive pre-loaded; `AppInstance.Activated` handles both cold-start and warm file activation
 - MOTW propagation (T-F45) — `Zone.Identifier` ADS copied from archive to every extracted file; best-effort, never fatal; no P/Invoke
 - Status line shows operation name, file stats, speed, and ETA during operation; elapsed time after completion
-- **Store release planned for v1.3** — when shell extension, MOTW propagation,
-  and tar.exe integration are complete. v1.1 and v1.2 are GitHub-only releases.
+- **Microsoft Store release is live (T-F129, done 2026-08-04)** —
+  https://apps.microsoft.com/detail/9p5mw010d8pr?hl=uk-UA&gl=UA. Certification passed, the user
+  clicked "Publish now" in Partner Center, and the listing was confirmed genuinely public (not
+  just Partner-Center-side) via `winget install --id 9P5MW010D8PR --source msstore`. An
+  agent-driven functional smoke test against that exact installed Store package (not the local
+  dev sideload) then confirmed `--test`/`--extract-here`/`--archive` all work correctly through
+  `Archiver.Shell.exe`, including — for the first time from the Store-signed package identity
+  specifically — a real `.7z`/`.rar` extraction through `TarSandboxedService`'s AppContainer
+  sandbox. See `docs/TASKS.md`'s T-F129 entry for the full account.
 - Next work: Future tasks in `TASKS.md`
 
 ## Roadmap Summary
@@ -753,6 +762,15 @@ files.
   push/release/tag/API write access to the live repo, not a read-only token. `pakkoapp-oss` is a
   personal **User** account, not an Organization — collaborators only get push access, never
   Admin/Maintain/Triage (those roles only exist on org-owned repos).
+  **This machine can have a second `gh`-logged-in account (e.g. `user137`) active instead of
+  `pakkoapp-oss`** — check `gh auth status`'s `Active account: true` line before any repo-admin
+  call (topics, settings, branch protection, etc.). The wrong active account fails such calls
+  with a misleading `HTTP 404: Not Found`, not a `403`, since GitHub reports resources the active
+  token can't administer as not-found rather than forbidden. Fix: `gh auth switch --hostname
+  github.com --user pakkoapp-oss` before the call, then switch back afterward
+  (`gh auth switch --hostname github.com --user <other>`) so the machine's default identity isn't
+  left changed for unrelated work. `gh run`/`gh release`/`gh secret`/reads generally work fine
+  either way — this specifically bit `gh repo edit --add-topic` (2026-08-02).
   GitHub's code search still requires sign-in even for public repos, so for reading a
   third-party repo's source, prefer:
   `curl -s "https://api.github.com/repos/<owner>/<repo>/git/trees/main?recursive=1"`

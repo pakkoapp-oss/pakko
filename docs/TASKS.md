@@ -1021,10 +1021,33 @@ existing CLI zips/`SHA256SUMS`.
 ---
 
 ### T-F129 — Publish the MSIX to the Microsoft Store
-- [ ] **Status:** future, added 2026-07-19 at the user's explicit request. Researched via
-      Microsoft Learn (`Create an app submission for your MSIX app`, `Resolve submission errors
-      for MSIX app`) before drafting this, per this project's pre-implementation-research norm —
-      real findings below, not assumptions.
+- [x] **Status:** done 2026-08-04 — certification passed and the listing was published
+      (`Publish now` clicked by the user in Partner Center after a "Ready to publish"/all-green
+      Submission→Pre-processing→Certification status). Confirmed genuinely live, not just
+      Partner-Center-side: `winget search Pakko` resolved it via the `msstore` source
+      (`9P5MW010D8PR`), and `winget install --id 9P5MW010D8PR --source msstore` installed it
+      successfully — `Get-AppxPackage *Pakko*` afterward showed a real second package,
+      `PavloRybchenko.Pakko_1.4.6.0_x64`, installed alongside the existing local
+      `CN=Pakko Dev`-signed sideload. The local sideload was then removed (`Remove-AppxPackage`)
+      so only the real Store package remains installed. **Functional smoke test against the Store
+      package itself** (agent-driven, `Archiver.Shell.exe` launched directly from
+      `C:\Program Files\WindowsApps\PavloRybchenko.Pakko_1.4.6.0_x64__955q7mnhfhmp4\`, screenshots
+      taken of each result dialog): `--test` against a real `.zip` reported "No errors detected";
+      `--test` against real `.7z`/`.rar` fixtures correctly reported "format is not supported —
+      only ZIP-based formats are supported" (the long-standing, deliberate `TestCommand`
+      ZIP-only scope — see this file's `DECISIONS.md`-linked note near T-F85, not a regression);
+      `--extract-here` correctly extracted all three (`.zip`/`.7z`/`.rar`, content verified
+      byte-for-byte) — the `.7z`/`.rar` cases are the first confirmation that
+      `TarSandboxedService`'s AppContainer/Job-Object sandbox works from the *Store-signed*
+      package identity specifically (T-F52 had only ever confirmed it from the local `CN=Pakko
+      Dev`-signed sideload); `--archive` against two new files produced a correct `.zip` with
+      both entries verified via `ZipFile.OpenRead`. No `Application Error`/`.NET Runtime` crash
+      events logged throughout. Store listing:
+      https://apps.microsoft.com/detail/9p5mw010d8pr?hl=uk-UA&gl=UA. Task originally added
+      2026-07-19 at the user's explicit request; researched via Microsoft Learn (`Create an app
+      submission for your MSIX app`, `Resolve submission errors for MSIX app`) before drafting,
+      per this project's pre-implementation-research norm — real findings below, kept for the
+      historical record.
 - **Depends on:** none — **explicitly NOT blocked on T-F10/T-F124 (real code signing)**, contrary
       to what might be assumed. The Store re-signs every MSIX package with its own certificate
       during ingestion; the package can be built and uploaded with the existing local self-signed
@@ -1366,16 +1389,16 @@ account in `DECISIONS.md`'s T-F129 entry, summary here:**
       fixes from the 2026-07-20 pass — both confirmed still `PASS`, closing out that pass's
       unconfirmed third re-run. Full XML report not committed (regenerate the same way before the
       real submission).
-- [ ] Store listing (description, screenshots, category, age ratings, restricted-capability
+- [x] Store listing (description, screenshots, category, age ratings, restricted-capability
       justification for `runFullTrust`, citing NanaZip as a same-category precedent) completed in
       Partner Center
-- [ ] Submitted for certification
-- [ ] App passes Microsoft's certification and is live in the Store — not graduated to `[x]` on
-      "submitted" alone; a rejected submission means real fixes are still outstanding
-- [ ] A standing post-Windows-update check ("does Pakko's context-menu entry still appear?") is
+- [x] Submitted for certification
+- [x] App passes Microsoft's certification and is live in the Store — confirmed 2026-08-04 via a
+      real `winget install --source msstore` round trip (see Status above), not "submitted" alone
+- [x] A standing post-Windows-update check ("does Pakko's context-menu entry still appear?") is
       documented in `CLAUDE.md`'s Known-test-gaps-style notes — NanaZip's own history shows this
       recurring after Windows updates for MSIX-packaged shell extensions specifically, not a
-      one-time submission-day risk
+      one-time submission-day risk. See `CLAUDE.md`'s "Known test gaps" section.
 
 ---
 
@@ -1406,7 +1429,9 @@ archiver extract --src C:\backup.zip --dest C:\output
       Store submission) actually resolves: a live Store listing is itself a real public-visibility/
       institutional-backing signal, and is the intended trigger to reapply to SignPath Foundation
       rather than paying immediately. T-F10 stays blocked/dormant on that outcome, not actively
-      worked until then.
+      worked until then. **Trigger condition met 2026-08-04** — T-F129 is now `[x]` done and the
+      Store listing is live (see its entry above); the SignPath Foundation reapplication decision
+      itself is still open and needs the user's call, not auto-started here.
       Scope explicitly includes `Archiver.CLI`'s `pakko.exe`/`pakko-win-*.zip`
       (T-F09/T-F116, added 2026-07-18) — not just the MSIX. `pakko.exe` is downloaded and run
       standalone, outside any package-manager trust chain, so it hits the exact SmartScreen/

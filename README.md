@@ -6,7 +6,7 @@ Minimal WinUI 3 GUI wrapper for Windows built-in ZIP support.
 
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=pakkoapp-oss-1_pakko&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=pakkoapp-oss-1_pakko)
 
-[🌐 Project website](https://pakkoapp-oss.github.io/pakko/) · [☕ Support the project on Ko-fi](https://ko-fi.com/pakko_app)
+[🌐 Project website](https://pakkoapp-oss.github.io/pakko/) · [🛒 Get it from Microsoft Store](https://apps.microsoft.com/detail/9p5mw010d8pr) · [☕ Support the project on Ko-fi](https://ko-fi.com/pakko_app)
 
 ---
 
@@ -137,7 +137,9 @@ and Group Policy/ADMX support (T-F51) are all implemented and on-device verified
 - ✅ 594/594 .NET tests pass (`dotnet test --filter "Category!=Slow&Category!=VeryLarge"`) — a
   separate C++ Google Test suite covers the `Archiver.ShellExtension` COM DLL
 
-Microsoft Store release planned for v1.5. v1.1–v1.4 are GitHub-only releases for early testers.
+**Now available on the Microsoft Store:** https://apps.microsoft.com/detail/9p5mw010d8pr
+(also installable via `winget install 9P5MW010D8PR --source msstore`). GitHub Releases remain
+available as an alternative for every version tag.
 
 See `docs/SPEC.md`'s "Future Roadmap" section for the version-to-focus table, and `docs/TASKS.md`
 for the detailed task list.
