@@ -217,6 +217,30 @@ public sealed class ParallelSingleArchiveWriterTests : IDisposable
     }
 
     [Fact]
+    public async Task CompressToTempFileAsync_NoCompressionLevel_UsesStoredMethod()
+    {
+        // T-F143: covers CompressToTempFileAsync's StoredMethod branch -- every existing test
+        // driving this method through WriteAsync uses the default Optimal compression level,
+        // which always takes the Deflate branch instead.
+        string sourceFile = Path.Combine(_tempDir, "big.bin");
+        byte[] content = BuildContent(2 * 1024 * 1024); // above the 1 MiB in-memory threshold
+        File.WriteAllBytes(sourceFile, content);
+        string chunkDir = Path.Combine(_tempDir, "chunks");
+        Directory.CreateDirectory(chunkDir);
+
+        var item = new FileWorkItem(sourceFile, "big.bin", FileWorkKind.File, content.Length, DateTime.Now);
+
+        WorkResult result = await ParallelSingleArchiveWriter.CompressToTempFileAsync(
+            item, chunkDir, CompressionLevel.NoCompression, null, CancellationToken.None);
+
+        result.Kind.Should().Be(WorkResultKind.TempFileCompressed);
+        result.Method.Should().Be(ZipEntryWriter.StoredMethod);
+        result.CompressedSize.Should().Be(content.Length);
+        result.UncompressedSize.Should().Be(content.Length);
+        File.ReadAllBytes(result.TempFilePath).Should().Equal(content);
+    }
+
+    [Fact]
     public async Task WriteAsync_FilesAboveInMemoryThreshold_UseTempFilePathAndCleanUpAfterSuccess()
     {
         string sourceDir = Path.Combine(_tempDir, "source");

@@ -480,7 +480,9 @@ public sealed class TarSandboxedService : ITarService
     // itself bounded to roughly a third of this loop's time regardless of tree size, while still
     // polling every ~250ms for the common case of an archive small/fast enough that the walk itself
     // is cheap.
-    private static async Task PollExtractionProgressAsync(
+    // internal (not private) so a test can drive the polling loop directly against a real temp
+    // directory with a controllable "extraction" Task, without needing a real tar.exe run (T-F143).
+    internal static async Task PollExtractionProgressAsync(
         string outputDirectory, long totalBytes, IProgress<ProgressReport> progress,
         Task extractionTask, CancellationToken cancellationToken)
     {
@@ -529,7 +531,8 @@ public sealed class TarSandboxedService : ITarService
     // missing-filename complaint T-F140 already fixed once, just arriving from a different code
     // path. FileInfo.LastWriteTimeUtc costs nothing extra here — it's read from the same stat
     // FileInfo.Length already performs, not a second syscall.
-    private static (long TotalBytes, string? MostRecentFileRelativePath) ComputeDirectoryStateSnapshot(string directory)
+    // internal (not private) — same T-F143 rationale as PollExtractionProgressAsync above.
+    internal static (long TotalBytes, string? MostRecentFileRelativePath) ComputeDirectoryStateSnapshot(string directory)
     {
         long total = 0;
         string? mostRecentRelativePath = null;

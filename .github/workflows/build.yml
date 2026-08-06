@@ -15,13 +15,6 @@ on:
   # not something that should fire on every commit the way the tester release pipeline does.
   workflow_dispatch:
 
-# Workflow-level default (CodeQL actions/missing-workflow-permissions) — the `test` job below has
-# no job-level override, so this is what actually applies to it. build-msix/build-cli/release each
-# already declare their own broader job-level permissions (id-token/attestations/contents:write)
-# and are unaffected by this default.
-permissions:
-  contents: read
-
 # ── Interim signing identity (T-F122) ──────────────────────────────────────────────────────────
 # Signs with the same local self-signed "CN=Pakko Dev" dev cert Deploy.ps1 already uses
 # (thumbprint below), stored as two repo secrets. TODO(T-F10): once SignPath Foundation issues a
@@ -76,8 +69,15 @@ env:
 # (not a CI-infra problem), but out of scope for T-F122. Keeping `test` on windows-latest sidesteps
 # it entirely for now, since build-msix is the only job that actually needs windows-2022.
 jobs:
+  # T-F143 (SonarCloud S8264): `contents: read` is declared here at job level instead of at
+  # workflow level (which used to apply to this job by default) — every other job in this file
+  # already declares its own job-level permissions, so this was the one job actually relying on
+  # the removed workflow-level default. All this job does is checkout + build + test + a SonarCloud
+  # analysis upload, none of which need more than read access to repo contents.
   test:
     runs-on: windows-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
         with:

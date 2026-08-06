@@ -701,6 +701,62 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
     }
 
     [Fact]
+    public async Task ArchiveAsync_SingleArchiveMode_DestinationTempFileLocked_RecordsIOExceptionError()
+    {
+        // T-F143: covers ArchiveAsync's SingleArchive-mode OUTER IOException catch, which is only
+        // reached when ZipFile.Open(tempPath, Create) itself fails -- distinct from the per-file
+        // catch inside AddDirectoryToArchiveAsync that
+        // ArchiveAsync_FileLockedDuringDirectoryTraversal_PerFileErrorRemainingFilesArchived above
+        // already covers.
+        var file = _temp.CreateFile("document.txt");
+        string destPath = Path.Combine(_temp.Path, "locked_archive.zip");
+        string tempPath = destPath + ".tmp";
+
+        ArchiveResult result;
+        using (new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None))
+        {
+            result = await _sut.ArchiveAsync(new ArchiveOptions
+            {
+                SourcePaths = [file],
+                DestinationFolder = _temp.Path,
+                ArchiveName = "locked_archive",
+                Mode = ArchiveMode.SingleArchive
+            });
+        }
+
+        result.Success.Should().BeFalse();
+        result.Errors.Should().ContainSingle(e => e.SourcePath == destPath);
+        result.CreatedFiles.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ArchiveAsync_SeparateArchivesMode_DestinationTempFileLocked_RecordsIOExceptionError()
+    {
+        // T-F143: mirrors the SingleArchive-mode test above, but for
+        // ArchiveSingleSeparatePathAsync's own outer IOException catch (separateTempPath).
+        string sourceDir = Path.Combine(_temp.Path, "source_dir");
+        Directory.CreateDirectory(sourceDir);
+        File.WriteAllText(Path.Combine(sourceDir, "inner.txt"), "content");
+        string destPath = Path.Combine(_temp.Path, "source_dir.zip");
+        string separateTempPath = destPath + ".tmp";
+
+        ArchiveResult result;
+        using (new FileStream(separateTempPath, FileMode.Create, FileAccess.Write, FileShare.None))
+        {
+            result = await _sut.ArchiveAsync(new ArchiveOptions
+            {
+                SourcePaths = [sourceDir],
+                DestinationFolder = _temp.Path,
+                Mode = ArchiveMode.SeparateArchives
+            });
+        }
+
+        result.Success.Should().BeFalse();
+        result.Errors.Should().ContainSingle(e => e.SourcePath == sourceDir);
+        result.CreatedFiles.Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task ArchiveAsync_TopLevelSymlinkSource_SymlinkSkippedOperationSucceeds()
     {
         // A top-level source path that is itself a symlink should be skipped

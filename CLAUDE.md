@@ -1366,6 +1366,19 @@ Task<IReadOnlyList<string>> PickFoldersAsync()
   `Subprocess/` layer launching real sandboxed subprocesses concurrently with this project, not
   just within it) — that would need a similar fix scoped across both projects, not assumed already
   covered by the single-project Collection above.
+- **T-F143 SonarCloud coverage triage (2026-08-06) — categories left deliberately uncovered by
+  design, not by oversight:** `ExplorerLauncher`'s OS-side-effect callers (4 call sites — opening
+  a real Explorer window isn't something a unit test should trigger); native Win32/subprocess
+  fault-injection paths (`SandboxedProcessLauncher`, `TarSandboxedService.RunUnsandboxedTarAsync`'s
+  `process.Kill()` cleanup — forcing these requires simulating OS-level failures, not worth the
+  brittleness); best-effort estimation-helper `catch` blocks; duplicate `UnauthorizedAccessException`/
+  generic-`Exception` catch variants where only the `IOException` sibling is tested (same code
+  shape, marginal value); and `ZipArchiveService.ArchiveSingleSeparatePathAsync`'s "zero entries
+  written" branch (line ~448) plus `ParallelSingleArchiveWriter`'s CAS-retry-loop race — both left
+  open questions, the exact real-world trigger for the former wasn't confirmed within that task's
+  budget (T-F66 already makes plain empty folders write a placeholder entry, so what else still
+  reaches it is unclear). See `docs/TASKS.md`'s T-F143 entry for the full triage and the 40 tests
+  that *were* added to close the actual gate-blocking gaps.
 
 ---
 

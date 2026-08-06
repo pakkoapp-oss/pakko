@@ -3494,3 +3494,148 @@ regression from this task, which owns reliability only.
         Archiver.Core.Tests, 64 Archiver.Core.IntegrationTests, full suite otherwise unaffected)
 - **Reported by:** user, 2026-08-04, immediately after T-F140 shipped — explicit request for
   compression/decompression speed display across all archive formats, with tests.
+
+### T-F143 — SonarCloud Remediation Plan + Coverage-Gap Test Pass
+
+- [x] **Status:** done 2026-08-06 — user explicitly confirmed both the `CLAUDE.md` edit and the
+      commit/push. Freshness confirmed first — SonarCloud's last analysis
+      (`14a7e1e`, 2026-08-04T21:02:45Z) matches `main`'s HEAD exactly, so the 134-issue backlog and
+      quality-gate failure below are current, not stale. Quality Gate is `ERROR`: `new_security_rating`
+      = 3 (needs ≤1, driven by the one open Vulnerability) and `new_coverage` = 67.6% (needs ≥80%).
+      Both conditions are scoped to the `previous_version` period, whose real baseline is analysis
+      revision `9144efab91` (2026-07-27T20:12:05+03:00, the T-F135 "trigger SonarCloud re-analysis"
+      commit) — **not** the `v1.4.6` git tag, which predates it by under an hour. Confirmed by diffing
+      `9144efab91..HEAD` against SonarCloud's own per-file `new_uncovered_lines` measures: every
+      figure matched exactly once the right baseline was used (a first attempt diffing against the
+      `v1.4.6` tag did not match and was discarded).
+- **Full backlog (134 open issues: 1 Vulnerability, 133 Code Smells, 0 pending Security Hotspots)
+  triaged into four buckets — see `DECISIONS.md`'s T-F143 entry for the complete per-rule detail:**
+  1. **Fix now (gate-blocking):** the Vulnerability (`githubactions:S8264`, `.github/workflows/
+     build.yml:23` — `read` permission declared at workflow level instead of job level).
+  2. **Fix now (gate-blocking, new-code coverage):** every uncovered line the diff against
+     `9144efab91` actually introduced, restricted to code safely unit-testable without a real OS
+     side effect or disproportionate fault-injection scaffolding — see the coverage checklist below.
+     Deliberately **not** chasing overall/old-code coverage (67 files' worth) — the gate only scores
+     new code, and old-code coverage gaps predate this task.
+  3. **Documented, deliberately deferred (non-gate-blocking, real regression risk):** `S3776`
+     Cognitive Complexity (24 findings, CRITICAL severity but `new_maintainability_rating` is
+     already `OK`) — the worst is `ZipArchiveService.ArchiveAsync` at complexity 132 vs. the
+     allowed 15, in the exact method with a documented history of silent regressions (zero-byte
+     deflate, Zip64 offset swap, temp-file races — see this file's T-F35 entries). A blanket
+     refactor of `ZipArchiveService`/`TarSandboxedService` in the same pass as everything else in
+     this task would be exactly the kind of large, un-scoped, high-blast-radius change
+     `CLAUDE.md`'s Workflow Tips ask to route through Plan Mode on its own. Left as individual
+     future backlog candidates, one method at a time, each requiring its own characterization tests
+     *before* any restructuring — not opened as part of T-F143.
+  4. **Documented, deliberately not fixed (real regression risk, no gate impact):**
+     `external_roslyn:SYSLIB1054` (36 — `DllImport`→`LibraryImportAttribute` in the `Sandbox/`
+     P/Invoke files specifically; changes marshalling/`SetLastError`/`SafeHandle` generation in the
+     exact code class T-F138's SafeHandle work already had to fix once) and `csharpsquid:S101`
+     (13 — Win32 interop struct names like `TRUSTEE_W`; renaming breaks verifiability against the
+     real SDK header, which this project's own P/Invoke convention deliberately leans on). Both are
+     INFO/MAJOR severity with zero `new_coverage`/`new_security_rating` gate impact.
+- **Coverage-gap checklist (new code only, `9144efab91..HEAD`) — each line below independently
+  confirmed uncovered via a real local `dotnet test --collect:"XPlat Code Coverage"` run
+  (cobertura, normalized/merged across all 6 test-project reports) intersected against the diff's
+  own added-line ranges, not guessed from file-level percentages:**
+  - [x] `Archiver.Core/IO/ProgressStream.cs` — the `byte[]`-based `Read`/`ReadAsync`/`Write`/
+        `WriteAsync(byte[], int, int, ...)` overloads (only the `Memory<byte>` overloads were ever
+        exercised, via `Stream.CopyToAsync`'s modern default path). New `ProgressStreamTests.cs`
+        (16 tests) — file now 0 new-code uncovered lines (was 2).
+  - [x] `Archiver.Core/IO/AggregateProgressStream.cs` — same gap, the `byte[]`-based `ReadAsync`
+        overload. New `AggregateProgressStreamTests.cs` (11 tests) — 0 new-code uncovered lines
+        (was 1).
+  - [x] `Archiver.Core/Services/TarSandboxedService.cs`'s `PollExtractionProgressAsync` +
+        `ComputeDirectoryStateSnapshot` (T-F142's new quarantine-directory byte-progress poll —
+        the same logic CLAUDE.md's T-F142 entry flagged as needing an on-device *visual* check;
+        the underlying math is independently unit-testable without tar.exe or real timing
+        flakiness, since `PollExtractionProgressAsync` already takes its "extraction" `Task` as a
+        parameter). Bumped both from `private static` to `internal static` (T-F94/T-F114
+        precedent — `InternalsVisibleTo` already covers `Archiver.Core.Tests`). New
+        `TarSandboxedServiceProgressPollingTests.cs` (7 tests): monotonic clamped percent, the
+        94%-ceiling cap, most-recently-written-file detection, empty/nested-directory byte sums,
+        already-cancelled short-circuit.
+  - [x] `Archiver.Core/Services/ZipArchiveService.cs` — the `SingleArchive` mode's outer
+        `IOException` catch (reached only when `ZipFile.Open(tempPath, Create)` itself fails, not
+        a per-file error inside it — distinct from the already-tested
+        `ArchiveAsync_FileLockedDuringDirectoryTraversal_PerFileErrorRemainingFilesArchived`), the
+        mirrored `SeparateArchives`-mode outer catch in `ArchiveSingleSeparatePathAsync`, and an
+        `ExtractAsync` mid-extraction (not upfront-token) cancellation test — the existing
+        `ExtractAsync_Cancelled_LeavesNoTempDirectory` cancels *before* entering the copy loop, so
+        it never reached the mid-loop `OperationCanceledException` cleanup catch. 3 new tests in
+        `ZipArchiveServiceArchiveTests.cs`/`ZipArchiveServiceExtractTests.cs`.
+  - [x] `Archiver.Core/Services/Zip/ParallelSingleArchiveWriter.cs` — `CompressToTempFileAsync`'s
+        `StoredMethod` branch (already-`internal` per its own T-F35 comment — no existing test
+        drove a temp-file-sized `NoCompression` source through it, only the `Deflate` branch). 1
+        new test in `ParallelSingleArchiveWriterTests.cs`.
+  - [x] Re-ran `dotnet test --filter "Category!=Slow&Category!=VeryLarge" --collect:"XPlat Code
+        Coverage"` after the additions above (790 tests, all green — was 750) and confirmed via
+        the same diff-intersected-with-cobertura method used to build this checklist: new-code
+        uncovered lines across the 8 targeted files dropped from 86 to 40, with every remaining
+        line falling into the "deliberately left uncovered" categories below (none newly
+        discovered required a 5th category) — not a round-trip through CI/SonarCloud to check.
+- **Deliberately left uncovered (40 new-code lines across the 8 targeted files, confirmed via a
+  post-fix coverage re-run — see the last checklist item above), documented as a `CLAUDE.md` Known
+  Test Gap (see that file's update in this task) rather than forced with an artificial seam:**
+  - `Archiver.Core/Services/ExplorerLauncher.cs` (new in T-F136, 5 lines) and its three callers —
+    `ZipArchiveService.cs` (`OpenDestinationFolder` on both `ArchiveAsync` return paths),
+    `TarSandboxedService.CompressAsync`'s equivalent, and `ExtractionRouter.cs`'s merged-result
+    equivalent (one line each, found via the post-fix coverage re-run) — all four launch a real
+    `explorer.exe` window via `Process.Start(UseShellExecute: true)`. Triggering this for real
+    from an automated test would open a literal Explorer window on whatever machine runs the
+    suite (local or CI); same category as the already-documented `NativeProgressDialog` gap.
+  - `Archiver.Core/Services/Sandbox/SandboxedProcessLauncher.cs`'s three native-failure fallback
+    paths (`AssignProcessToJobObject`/`ResumeThread` Win32 failure → `TerminateProcess`, and the
+    cancellation-triggered `TerminateProcess`), plus the same pattern found in
+    `TarSandboxedService.RunUnsandboxedTarAsync`'s own cancellation → `process.Kill()` cleanup —
+    all would need genuine Win32/subprocess fault injection to trigger deterministically,
+    disproportionate to the risk for a defensive best-effort cleanup call.
+  - Every bare `catch { /* best-effort */ }` inside a byte-count *estimation* helper
+    (`ZipArchiveService.ComputeTotalBytes`/`ComputeDirectoryBytes`/`ComputeSingleArchiveTotals`/
+    `ComputeDirectoryTotals`, `TarSandboxedService.CountRecursiveEntriesAndBytes`'s two catch
+    clauses, `TarSandboxedService.ComputeDirectoryStateSnapshot`'s per-file catch) — these only
+    ever feed an approximate progress-percentage denominator, never a correctness path, and
+    reproducing the underlying race (a file vanishing/locking mid-enumeration) deterministically
+    would need disproportionate scaffolding for a best-effort estimate.
+  - The `UnauthorizedAccessException`/generic-`Exception` variants of the two `ZipArchiveService`
+    outer-catch cleanup blocks this task DID add a test for (the `IOException` variant) — all
+    three variants run identical cleanup+error-add logic, so the `IOException` test already proves
+    the shared pattern; reproducing the other two exception types would need real ACL manipulation
+    for marginal duplicate coverage. Same reasoning for `TarSandboxedService.CompressAsync`'s
+    mirrored three-variant outer catch (never exercised at all this round — it wraps a real
+    `tar.exe` subprocess invocation, not an in-memory `ZipFile.Open`, so forcing it needs the
+    slower `Archiver.Core.IntegrationTests` tier; left for a future round rather than expanding
+    this task's scope into subprocess fault injection).
+  - `ZipArchiveService.ArchiveSingleSeparatePathAsync`'s "zero entries written, delete temp"
+    branch (`SeparateArchives` mode) — `AddDirectoryToArchiveAsync`'s T-F66 fix already makes a
+    genuinely empty top-level folder write an explicit placeholder entry, so this branch is now
+    reached only by a narrower case (e.g. a top-level directory symlink, skipped entirely by a
+    reparse-point check with zero entries added) that wasn't confirmed reachable within this
+    task's time budget — left as an open question rather than guessed at.
+  - `ParallelSingleArchiveWriter`'s `ProgressTracker.ReportBytes` CAS-retry-loop re-read branch —
+    only reached under genuine concurrent contention on the same percent bump; a real concurrency
+    race, not a design gap.
+- **Acceptance criteria:**
+  - [x] SonarCloud data confirmed current against `main`'s actual HEAD before any triage (see
+        Status above) — not assumed stale-safe.
+  - [x] Full 134-issue backlog fetched and triaged into the four buckets above, with rationale.
+  - [x] `.github/workflows/build.yml`'s `S8264` vulnerability fixed — `read` permission moved from
+        workflow level to job level (onto the `test` job specifically, the only one that had been
+        relying on the workflow-level default — every other job already declared its own
+        job-level `permissions:` block, confirmed by grep before editing). YAML re-validated with
+        `yaml.safe_load`.
+  - [x] All checklist items above implemented; `dotnet test --filter "Category!=Slow&Category!=
+        VeryLarge"` green repo-wide — 790/790 (was 750/750; +40 new tests: 16 `ProgressStream`,
+        11 `AggregateProgressStream`, 7 `TarSandboxedService` polling, 3 `ZipArchiveService`
+        outer-catch/cancellation, 1 `ParallelSingleArchiveWriter` StoredMethod, 2 job/YAML-only —
+        see each file's own test count above for the precise split).
+  - [x] `CLAUDE.md`'s Known Test Gaps section updated with the deliberately-uncovered categories
+        above — applied 2026-08-06, user explicitly confirmed.
+  - [x] Local coverage re-collection confirms the targeted new-code lines are now hit — new-code
+        uncovered lines across the 8 targeted files: 86 → 40, with the remaining 40 lines mapped
+        to the five documented categories above, none newly discovered outside them. Live
+        SonarCloud re-analysis happens automatically once this task's commit is pushed to `main`
+        (CI-triggered) — not separately re-verified by the agent in this session.
+- **Reported by:** user, 2026-08-06 — "check what SonarCloud found," then, after triage: "build a
+  fix plan, also analyze parts of the code without tests and create tests where possible, open a
+  task for this and execute — but make sure this is current data from the latest check."

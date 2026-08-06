@@ -598,6 +598,47 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
         Directory.GetDirectories(_temp.Path, "*_tmp").Should().BeEmpty();
     }
 
+    // System.Progress<T> posts its callback via SynchronizationContext/ThreadPool, which would
+    // race against this test's need to cancel synchronously, mid-copy, from within Report().
+    private sealed class SynchronousProgress<T>(Action<T> onReport) : IProgress<T>
+    {
+        public void Report(T value) => onReport(value);
+    }
+
+    [Fact]
+    public async Task ExtractAsync_CancelledMidEntryCopy_TempDirectoryCleanedUpAndCancellationRethrown()
+    {
+        // T-F143: covers ExtractAsync's mid-loop OperationCanceledException cleanup catch --
+        // distinct from ExtractAsync_Cancelled_LeavesNoTempDirectory above, which cancels the
+        // token BEFORE the extraction loop is ever entered and so never reaches this catch.
+        string largeContent = new string('x', 256 * 1024);
+        var files = Enumerable.Range(1, 3).Select(i => _temp.CreateFile($"big{i}.txt", largeContent)).ToList();
+        var archiveOptions = new ArchiveOptions
+        {
+            SourcePaths = files,
+            DestinationFolder = _temp.Path,
+            ArchiveName = "cancel_extract_test"
+        };
+        await _sut.ArchiveAsync(archiveOptions);
+        string archivePath = Path.Combine(_temp.Path, "cancel_extract_test.zip");
+
+        using var destDir = new TempDirectory();
+        using var cts = new CancellationTokenSource();
+        var progress = new SynchronousProgress<ProgressReport>(_ => cts.Cancel());
+
+        var options = new ExtractOptions
+        {
+            ArchivePaths = [archivePath],
+            DestinationFolder = destDir.Path,
+            Mode = ExtractMode.SeparateFolders
+        };
+
+        var act = async () => await _sut.ExtractAsync(options, progress, cts.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        Directory.GetDirectories(destDir.Path, "*_tmp").Should().BeEmpty();
+    }
+
     [Fact]
     public async Task ExtractAsync_EntryWithColonInName_IsSkipped()
     {
