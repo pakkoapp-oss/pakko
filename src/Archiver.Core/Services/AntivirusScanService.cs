@@ -354,15 +354,7 @@ public sealed class AntivirusScanService : IAntivirusScanService
                 ? expandedSelection.Count(n => !n.EndsWith('/'))
                 : allNames.Count(n => !n.EndsWith('/'));
 
-            // T-F52: pre-create every directory the archive implies, at Pakko's own (unsandboxed)
-            // identity, before tar.exe ever runs — same libarchive-under-AppContainer workaround
-            // ExtractSingleArchiveAsync already relies on.
-            foreach (string name in allNames)
-            {
-                string? relativeDir = name.EndsWith('/') ? name.TrimEnd('/') : Path.GetDirectoryName(name);
-                if (!string.IsNullOrEmpty(relativeDir))
-                    Directory.CreateDirectory(Path.Combine(scope.OutputDirectory!, relativeDir));
-            }
+            PreCreateOutputDirectories(allNames, scope.OutputDirectory!);
 
             var tarArgs = new List<string> { "-xf", scope.StagedArchivePath, "-C", scope.OutputDirectory! };
             if (expandedSelection != null)
@@ -380,45 +372,9 @@ public sealed class AntivirusScanService : IAntivirusScanService
                 return;
             }
 
-            int entriesDone = 0;
-            foreach (string file in TarSandboxedService.EnumerateFilesGuarded(scope.OutputDirectory!))
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                string relativePath = Path.GetRelativePath(scope.OutputDirectory!, file).Replace('\\', '/');
-                try
-                {
-                    long length = new FileInfo(file).Length;
-                    ThreatFinding finding = await ScanOneEntryAsync(
-                        archivePath, relativePath, length,
-                        () => new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.Read),
-                        scanner, cancellationToken)
-                        .ConfigureAwait(false);
-                    findings.Add(finding);
-                }
-                catch (OperationCanceledException) { throw; }
-                // Phase 0 spike (docs/DECISIONS.md's T-F146 entry): Defender's real-time on-access
-                // scanner can independently remove/lock a file inside the quarantine "out\"
-                // directory between EnumerateFilesGuarded listing it and this code reading it —
-                // that is a real, observed race, not a hypothetical one, and must never crash the
-                // whole scan or silently drop the entry.
-                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or FileNotFoundException)
-                {
-                    findings.Add(new ThreatFinding
-                    {
-                        ArchivePath = archivePath,
-                        EntryPath = relativePath,
-                        Verdict = ThreatVerdict.Inconclusive,
-                        Reason = "Removed or blocked before Pakko could scan it directly.",
-                    });
-                }
-                finally
-                {
-                    // Fires exactly once per file regardless of which branch above ran (oversized
-                    // skip inside ScanOneEntryAsync, a clean scan, or the vanished/blocked catch
-                    // above) — a single point to advance real per-entry progress.
-                    reportProgress(++entriesDone, totalEntries);
-                }
-            }
+            await ScanExtractedFilesAsync(
+                scope.OutputDirectory!, archivePath, totalEntries, scanner, findings, reportProgress, cancellationToken)
+                .ConfigureAwait(false);
         }
         catch (OperationCanceledException) { throw; }
         catch (Exception ex) when (ex is TarSandboxedService.TarArchiveRejectedException
@@ -436,6 +392,64 @@ public sealed class AntivirusScanService : IAntivirusScanService
         finally
         {
             scope?.Dispose();
+        }
+    }
+
+    // T-F52: pre-create every directory the archive implies, at Pakko's own (unsandboxed)
+    // identity, before tar.exe ever runs — same libarchive-under-AppContainer workaround
+    // ExtractSingleArchiveAsync already relies on.
+    private static void PreCreateOutputDirectories(string[] allNames, string outputDirectory)
+    {
+        foreach (string name in allNames)
+        {
+            string? relativeDir = name.EndsWith('/') ? name.TrimEnd('/') : Path.GetDirectoryName(name);
+            if (!string.IsNullOrEmpty(relativeDir))
+                Directory.CreateDirectory(Path.Combine(outputDirectory, relativeDir));
+        }
+    }
+
+    private static async Task ScanExtractedFilesAsync(
+        string outputDirectory, string archivePath, int totalEntries, IAmsiScanner scanner,
+        List<ThreatFinding> findings, Action<int, int> reportProgress, CancellationToken cancellationToken)
+    {
+        int entriesDone = 0;
+        foreach (string file in TarSandboxedService.EnumerateFilesGuarded(outputDirectory))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            string relativePath = Path.GetRelativePath(outputDirectory, file).Replace('\\', '/');
+            try
+            {
+                long length = new FileInfo(file).Length;
+                ThreatFinding finding = await ScanOneEntryAsync(
+                    archivePath, relativePath, length,
+                    () => new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.Read),
+                    scanner, cancellationToken)
+                    .ConfigureAwait(false);
+                findings.Add(finding);
+            }
+            catch (OperationCanceledException) { throw; }
+            // Phase 0 spike (docs/DECISIONS.md's T-F146 entry): Defender's real-time on-access
+            // scanner can independently remove/lock a file inside the quarantine "out\" directory
+            // between EnumerateFilesGuarded listing it and this code reading it — that is a real,
+            // observed race, not a hypothetical one, and must never crash the whole scan or
+            // silently drop the entry.
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or FileNotFoundException)
+            {
+                findings.Add(new ThreatFinding
+                {
+                    ArchivePath = archivePath,
+                    EntryPath = relativePath,
+                    Verdict = ThreatVerdict.Inconclusive,
+                    Reason = "Removed or blocked before Pakko could scan it directly.",
+                });
+            }
+            finally
+            {
+                // Fires exactly once per file regardless of which branch above ran (oversized
+                // skip inside ScanOneEntryAsync, a clean scan, or the vanished/blocked catch
+                // above) — a single point to advance real per-entry progress.
+                reportProgress(++entriesDone, totalEntries);
+            }
         }
     }
 }

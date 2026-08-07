@@ -154,8 +154,9 @@ public sealed class ZipArchiveService : IArchiveService
                             if (Directory.Exists(sourcePath))
                             {
                                 string entryName = GetUniqueEntryName(usedEntryNames, Path.GetFileName(sourcePath));
-                                await AddDirectoryToArchiveAsync(archive, sourcePath, sourcePath, entryName,
-                                    options.CompressionLevel, skippedFiles.Add, errors.Add, totalSourceBytes, byteOffset, progress, cancellationToken);
+                                var context = new DirectoryArchiveContext(
+                                    sourcePath, entryName, options.CompressionLevel, skippedFiles.Add, errors.Add, totalSourceBytes, progress);
+                                await AddDirectoryToArchiveAsync(archive, sourcePath, context, byteOffset, cancellationToken);
                             }
                             else if (File.Exists(sourcePath))
                             {
@@ -334,9 +335,8 @@ public sealed class ZipArchiveService : IArchiveService
                     plans.Add((sourcePath, destPath));
                 }
 
-                var concurrentErrors = new ConcurrentBag<ArchiveError>();
-                var concurrentCreated = new ConcurrentBag<string>();
-                var concurrentSkipped = new ConcurrentBag<SkippedFile>();
+                var concurrentSink = new ArchiveResultSink(
+                    new ConcurrentBag<ArchiveError>(), new ConcurrentBag<string>(), new ConcurrentBag<SkippedFile>());
                 long[] completedBytesBox = [0];
 
                 await Parallel.ForEachAsync(
@@ -344,13 +344,12 @@ public sealed class ZipArchiveService : IArchiveService
                     new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount, CancellationToken = cancellationToken },
                     async (plan, token) => await ArchiveSingleSeparatePathAsync(
                         plan.SourcePath, plan.DestPath!, options.CompressionLevel,
-                        concurrentErrors, concurrentCreated, concurrentSkipped,
-                        totalSourceBytes, completedBytesBox, progress, token).ConfigureAwait(false)
+                        concurrentSink, totalSourceBytes, completedBytesBox, progress, token).ConfigureAwait(false)
                 ).ConfigureAwait(false);
 
-                foreach (var e in concurrentErrors) errors.Add(e);
-                foreach (var c in concurrentCreated) createdFiles.Add(c);
-                foreach (var s in concurrentSkipped) skippedFiles.Add(s);
+                foreach (var e in concurrentSink.Errors) errors.Add(e);
+                foreach (var c in concurrentSink.CreatedFiles) createdFiles.Add(c);
+                foreach (var s in concurrentSink.SkippedFiles) skippedFiles.Add(s);
 
                 // Concurrent workers report progress off a shared-but-approximate byte baseline
                 // (see ArchiveSingleSeparatePathAsync) — force one final, exact 100% report here so
@@ -389,13 +388,19 @@ public sealed class ZipArchiveService : IArchiveService
     // mid-flight at once (their in-progress bytes briefly overlap in the reported total), which
     // is acceptable for a progress bar; ArchiveAsync reports an explicit final 100% after all
     // workers complete so callers always see a deterministic completion value.
+    // The three ConcurrentBag sinks ArchiveSingleSeparatePathAsync's parallel workers all write
+    // into — bundled to cut S107's parameter count; each worker still just calls .Add on the
+    // field it needs, same as before.
+    private sealed record ArchiveResultSink(
+        ConcurrentBag<ArchiveError> Errors,
+        ConcurrentBag<string> CreatedFiles,
+        ConcurrentBag<SkippedFile> SkippedFiles);
+
     private static async Task ArchiveSingleSeparatePathAsync(
         string sourcePath,
         string destPath,
         CompressionLevel compressionLevel,
-        ConcurrentBag<ArchiveError> errors,
-        ConcurrentBag<string> createdFiles,
-        ConcurrentBag<SkippedFile> skippedFiles,
+        ArchiveResultSink sink,
         long totalSourceBytes,
         long[] completedBytesBox,
         IProgress<ProgressReport>? progress,
@@ -414,8 +419,9 @@ public sealed class ZipArchiveService : IArchiveService
             if (Directory.Exists(sourcePath))
             {
                 using var archive = ZipFile.Open(separateTempPath, ZipArchiveMode.Create);
-                await AddDirectoryToArchiveAsync(archive, sourcePath, sourcePath, Path.GetFileName(sourcePath),
-                    compressionLevel, skippedFiles.Add, errors.Add, totalSourceBytes, baseOffset, progress, cancellationToken)
+                var context = new DirectoryArchiveContext(
+                    sourcePath, Path.GetFileName(sourcePath), compressionLevel, sink.SkippedFiles.Add, sink.Errors.Add, totalSourceBytes, progress);
+                await AddDirectoryToArchiveAsync(archive, sourcePath, context, baseOffset, cancellationToken)
                     .ConfigureAwait(false);
             }
             else if (File.Exists(sourcePath))
@@ -427,7 +433,7 @@ public sealed class ZipArchiveService : IArchiveService
             }
             else
             {
-                errors.Add(new ArchiveError
+                sink.Errors.Add(new ArchiveError
                 {
                     SourcePath = sourcePath,
                     Message = $"Source path does not exist: {sourcePath}"
@@ -441,23 +447,23 @@ public sealed class ZipArchiveService : IArchiveService
             if (HasTempEntries(separateTempPath))
             {
                 File.Move(separateTempPath, destPath, overwrite: true);
-                createdFiles.Add(destPath);
+                sink.CreatedFiles.Add(destPath);
             }
             else
             {
-                try { if (File.Exists(separateTempPath)) File.Delete(separateTempPath); } catch { /* best-effort */ }
+                TryDeleteBestEffort(separateTempPath);
             }
         }
         catch (OperationCanceledException)
         {
-            try { if (File.Exists(separateTempPath)) File.Delete(separateTempPath); } catch { /* best-effort */ }
+            TryDeleteBestEffort(separateTempPath);
             Interlocked.Add(ref completedBytesBox[0], pathSize);
             throw;
         }
         catch (IOException ex)
         {
-            try { if (File.Exists(separateTempPath)) File.Delete(separateTempPath); } catch { /* best-effort */ }
-            errors.Add(new ArchiveError
+            TryDeleteBestEffort(separateTempPath);
+            sink.Errors.Add(new ArchiveError
             {
                 SourcePath = sourcePath,
                 Message = $"Cannot access file: {ex.Message}",
@@ -466,8 +472,8 @@ public sealed class ZipArchiveService : IArchiveService
         }
         catch (UnauthorizedAccessException ex)
         {
-            try { if (File.Exists(separateTempPath)) File.Delete(separateTempPath); } catch { /* best-effort */ }
-            errors.Add(new ArchiveError
+            TryDeleteBestEffort(separateTempPath);
+            sink.Errors.Add(new ArchiveError
             {
                 SourcePath = sourcePath,
                 Message = $"Access denied: {ex.Message}",
@@ -476,8 +482,8 @@ public sealed class ZipArchiveService : IArchiveService
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            try { if (File.Exists(separateTempPath)) File.Delete(separateTempPath); } catch { /* best-effort */ }
-            errors.Add(new ArchiveError
+            TryDeleteBestEffort(separateTempPath);
+            sink.Errors.Add(new ArchiveError
             {
                 SourcePath = sourcePath,
                 Message = $"Unexpected error: {ex.Message}",
@@ -486,6 +492,11 @@ public sealed class ZipArchiveService : IArchiveService
         }
 
         Interlocked.Add(ref completedBytesBox[0], pathSize);
+    }
+
+    private static void TryDeleteBestEffort(string path)
+    {
+        try { if (File.Exists(path)) File.Delete(path); } catch { /* best-effort */ }
     }
 
     /// <inheritdoc/>
@@ -514,85 +525,17 @@ public sealed class ZipArchiveService : IArchiveService
 
             string archivePath = options.ArchivePaths[i];
 
-            if (!IsZipFile(archivePath))
+            if (!TryRejectUnsupportedOrEncryptedZip(archivePath, errors, skippedFiles))
             {
-                // T-F117: a known-but-unsupported format (RAR/7z/GZip/etc.) is a benign skip, but
-                // bytes matching no known archive signature at all (empty file, garbage, a
-                // truncated-past-recognition download) is not — it must surface as a real error,
-                // not a silent no-op, per this project's "loud error always" convention.
-                string? reason = GetKnownArchiveReason(archivePath);
-                if (reason is not null)
-                    skippedFiles.Add(new SkippedFile { Path = archivePath, Reason = reason });
-                else
-                    errors.Add(new ArchiveError
-                    {
-                        SourcePath = archivePath,
-                        Message = "File is not a recognized archive format and cannot be extracted."
-                    });
-                if (!singleArchive) progress?.Report(new ProgressReport { Percent = (i + 1) * 100 / total, BytesTransferred = 0, TotalBytes = 0 });
-                continue;
-            }
+                string destDir = options.Mode == ExtractMode.SeparateFolders
+                    ? Path.Combine(options.DestinationFolder,
+                        options.SeparateFolderName ?? ArchiveNaming.GetBaseName(archivePath))
+                    : options.DestinationFolder;
 
-            if (IsEncryptedZip(archivePath))
-            {
-                errors.Add(new ArchiveError
-                {
-                    SourcePath = archivePath,
-                    Message = "This archive is password-protected and cannot be extracted."
-                });
-                if (!singleArchive) progress?.Report(new ProgressReport { Percent = (i + 1) * 100 / total, BytesTransferred = 0, TotalBytes = 0 });
-                continue;
-            }
-
-            string destDir = options.Mode == ExtractMode.SeparateFolders
-                ? Path.Combine(options.DestinationFolder,
-                    options.SeparateFolderName ?? ArchiveNaming.GetBaseName(archivePath))
-                : options.DestinationFolder;
-
-            try
-            {
                 IProgress<ProgressReport>? archiveProgress = singleArchive ? progress : null;
-                bool alreadyIsolated = options.Mode == ExtractMode.SeparateFolders;
-                var (actualDest, anyExtracted) = await Task.Run(async () =>
-                    await ExtractWithSmartFolderingAsync(archivePath, destDir, alreadyIsolated,
-                        conflictResolver, skippedFiles, archiveProgress,
-                        options.ConfirmCompressionBombExtraction, options.SelectedEntryPaths,
-                        _policy.MotwMode, cancellationToken),
-                    cancellationToken).ConfigureAwait(false);
-
-                // T-F87: an archive whose entries were all individually skipped (e.g. every
-                // entry already exists at the destination with OnConflict=Skip) must not be
-                // reported as CreatedFiles — MainViewModel uses this list to decide whether
-                // DeleteAfterOperation may delete the source archive.
-                if (anyExtracted)
-                    createdFiles.Add(actualDest);
-            }
-            catch (IOException ex)
-            {
-                errors.Add(new ArchiveError
-                {
-                    SourcePath = archivePath,
-                    Message = $"Cannot extract archive: {ex.Message}",
-                    Exception = ex
-                });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                errors.Add(new ArchiveError
-                {
-                    SourcePath = archivePath,
-                    Message = $"Access denied extracting archive: {ex.Message}",
-                    Exception = ex
-                });
-            }
-            catch (InvalidDataException ex)
-            {
-                errors.Add(new ArchiveError
-                {
-                    SourcePath = archivePath,
-                    Message = "File has ZIP signature but appears corrupted or incomplete.",
-                    Exception = ex
-                });
+                await ExtractOneZipWithErrorMappingAsync(
+                    archivePath, destDir, options, conflictResolver, skippedFiles, createdFiles, errors,
+                    archiveProgress, cancellationToken).ConfigureAwait(false);
             }
 
             if (!singleArchive) progress?.Report(new ProgressReport { Percent = (i + 1) * 100 / total, BytesTransferred = 0, TotalBytes = 0 });
@@ -612,6 +555,92 @@ public sealed class ZipArchiveService : IArchiveService
         }
 
         return result;
+    }
+
+    // T-F117: a known-but-unsupported format (RAR/7z/GZip/etc.) is a benign skip, but bytes
+    // matching no known archive signature at all (empty file, garbage, a truncated-past-
+    // recognition download) is not — it must surface as a real error, not a silent no-op, per
+    // this project's "loud error always" convention. Returns true when the archive was rejected
+    // (recorded into errors/skippedFiles already) and extraction should not run at all.
+    private static bool TryRejectUnsupportedOrEncryptedZip(
+        string archivePath, List<ArchiveError> errors, List<SkippedFile> skippedFiles)
+    {
+        if (!IsZipFile(archivePath))
+        {
+            string? reason = GetKnownArchiveReason(archivePath);
+            if (reason is not null)
+                skippedFiles.Add(new SkippedFile { Path = archivePath, Reason = reason });
+            else
+                errors.Add(new ArchiveError
+                {
+                    SourcePath = archivePath,
+                    Message = "File is not a recognized archive format and cannot be extracted."
+                });
+            return true;
+        }
+
+        if (IsEncryptedZip(archivePath))
+        {
+            errors.Add(new ArchiveError
+            {
+                SourcePath = archivePath,
+                Message = "This archive is password-protected and cannot be extracted."
+            });
+            return true;
+        }
+
+        return false;
+    }
+
+    private async Task ExtractOneZipWithErrorMappingAsync(
+        string archivePath, string destDir, ExtractOptions options, ConflictResolver conflictResolver,
+        List<SkippedFile> skippedFiles, List<string> createdFiles, List<ArchiveError> errors,
+        IProgress<ProgressReport>? archiveProgress, CancellationToken cancellationToken)
+    {
+        try
+        {
+            bool alreadyIsolated = options.Mode == ExtractMode.SeparateFolders;
+            var (actualDest, anyExtracted) = await Task.Run(async () =>
+                await ExtractWithSmartFolderingAsync(archivePath, destDir, alreadyIsolated,
+                    conflictResolver, skippedFiles, archiveProgress,
+                    options.ConfirmCompressionBombExtraction, options.SelectedEntryPaths,
+                    _policy.MotwMode, cancellationToken),
+                cancellationToken).ConfigureAwait(false);
+
+            // T-F87: an archive whose entries were all individually skipped (e.g. every entry
+            // already exists at the destination with OnConflict=Skip) must not be reported as
+            // CreatedFiles — MainViewModel uses this list to decide whether DeleteAfterOperation
+            // may delete the source archive.
+            if (anyExtracted)
+                createdFiles.Add(actualDest);
+        }
+        catch (IOException ex)
+        {
+            errors.Add(new ArchiveError
+            {
+                SourcePath = archivePath,
+                Message = $"Cannot extract archive: {ex.Message}",
+                Exception = ex
+            });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            errors.Add(new ArchiveError
+            {
+                SourcePath = archivePath,
+                Message = $"Access denied extracting archive: {ex.Message}",
+                Exception = ex
+            });
+        }
+        catch (InvalidDataException ex)
+        {
+            errors.Add(new ArchiveError
+            {
+                SourcePath = archivePath,
+                Message = "File has ZIP signature but appears corrupted or incomplete.",
+                Exception = ex
+            });
+        }
     }
 
     /// <inheritdoc/>
@@ -1093,17 +1122,34 @@ public sealed class ZipArchiveService : IArchiveService
     // own immediate parent, so every level below the first lost its accumulated prefix (e.g.
     // "notes/sub/file.txt" became just "sub/file.txt" — silently wrong, and deep enough nesting
     // could collide two distinct source files into the same entry name). See DECISIONS.md.
+    // T-F75's fixed rootDir/entryPrefix plus the report-sink/progress plumbing every recursive
+    // call passes down unchanged — bundled so the recursive self-call (and both top-level call
+    // sites) don't repeat an 11-parameter list. sourceDir/startOffset are the only things that
+    // vary per recursion level, so they stay separate params on AddDirectoryToArchiveAsync itself.
+    private sealed record DirectoryArchiveContext(
+        string RootDir,
+        string EntryPrefix,
+        CompressionLevel CompressionLevel,
+        Action<SkippedFile> ReportSkipped,
+        Action<ArchiveError> ReportError,
+        long TotalBytes,
+        IProgress<ProgressReport>? Progress);
+
+    // T-F23: Manual recursive traversal so we can inspect FileAttributes before entering each
+    // directory. Returns the updated startOffset for progress tracking.
+    // T-F21: errors list receives per-file ArchiveErrors so that a single inaccessible file
+    // does not abort the rest of the directory — operation continues for all remaining files.
+    // T-F75: rootDir is the original top-level directory being archived and stays FIXED across
+    // every recursion level — relative paths (and therefore ZIP entry names) are always computed
+    // against it. Before this fix, relative paths were computed against each recursion level's
+    // own immediate parent, so every level below the first lost its accumulated prefix (e.g.
+    // "notes/sub/file.txt" became just "sub/file.txt" — silently wrong, and deep enough nesting
+    // could collide two distinct source files into the same entry name). See DECISIONS.md.
     private static async Task<long> AddDirectoryToArchiveAsync(
         ZipArchive archive,
         string sourceDir,
-        string rootDir,
-        string entryPrefix,
-        CompressionLevel compressionLevel,
-        Action<SkippedFile> reportSkipped,
-        Action<ArchiveError> reportError,
-        long totalBytes = 0,
+        DirectoryArchiveContext context,
         long startOffset = 0,
-        IProgress<ProgressReport>? progress = null,
         CancellationToken cancellationToken = default)
     {
         // T-F66: A directory with no files and no subdirectories writes no entry at all
@@ -1113,10 +1159,10 @@ public sealed class ZipArchiveService : IArchiveService
         // directory entry preserves the folder and keeps the archive from being discarded.
         if (!Directory.EnumerateFileSystemEntries(sourceDir).Any())
         {
-            string relativeDir = Path.GetRelativePath(rootDir, sourceDir);
+            string relativeDir = Path.GetRelativePath(context.RootDir, sourceDir);
             string emptyEntryName = relativeDir == "."
-                ? entryPrefix + "/"
-                : entryPrefix + "/" + relativeDir.Replace('\\', '/') + "/";
+                ? context.EntryPrefix + "/"
+                : context.EntryPrefix + "/" + relativeDir.Replace('\\', '/') + "/";
             archive.CreateEntry(emptyEntryName);
             return startOffset;
         }
@@ -1133,7 +1179,7 @@ public sealed class ZipArchiveService : IArchiveService
             // T-F23: Skip file-level symlinks (reparse points)
             if (ArchiveEntrySecurity.IsReparsePoint(filePath))
             {
-                reportSkipped(new SkippedFile
+                context.ReportSkipped(new SkippedFile
                 {
                     Path = filePath,
                     Reason = "Symbolic links and reparse points are not archived."
@@ -1144,8 +1190,8 @@ public sealed class ZipArchiveService : IArchiveService
             long fileSize = 0;
             try { fileSize = new FileInfo(filePath).Length; } catch { /* best-effort */ }
 
-            string relativePath = Path.GetRelativePath(rootDir, filePath).Replace('\\', '/');
-            string entryName = entryPrefix + "/" + relativePath;
+            string relativePath = Path.GetRelativePath(context.RootDir, filePath).Replace('\\', '/');
+            string entryName = context.EntryPrefix + "/" + relativePath;
 
             // T-F21: Catch per-file IO failures. A file may be deleted or locked between
             // Directory.EnumerateFiles discovery and the FileStream.Open inside
@@ -1153,12 +1199,12 @@ public sealed class ZipArchiveService : IArchiveService
             // IOException are subclasses of IOException and handled here.
             try
             {
-                await AddEntryFromFileAsync(archive, filePath, entryName, compressionLevel, cancellationToken,
-                    totalBytes, startOffset, progress);
+                await AddEntryFromFileAsync(archive, filePath, entryName, context.CompressionLevel, cancellationToken,
+                    context.TotalBytes, startOffset, context.Progress);
             }
             catch (IOException ex)
             {
-                reportError(new ArchiveError
+                context.ReportError(new ArchiveError
                 {
                     SourcePath = filePath,
                     Message = $"Cannot access file: {ex.Message}",
@@ -1167,7 +1213,7 @@ public sealed class ZipArchiveService : IArchiveService
             }
             catch (UnauthorizedAccessException ex)
             {
-                reportError(new ArchiveError
+                context.ReportError(new ArchiveError
                 {
                     SourcePath = filePath,
                     Message = $"Access denied: {ex.Message}",
@@ -1188,7 +1234,7 @@ public sealed class ZipArchiveService : IArchiveService
             // T-F23: Skip NTFS junctions and directory symlinks — prevents infinite loops
             if (ArchiveEntrySecurity.IsReparsePoint(subDir))
             {
-                reportSkipped(new SkippedFile
+                context.ReportSkipped(new SkippedFile
                 {
                     Path = subDir,
                     Reason = "NTFS junctions and directory symbolic links are not followed during archiving."
@@ -1196,8 +1242,7 @@ public sealed class ZipArchiveService : IArchiveService
                 continue;
             }
 
-            startOffset = await AddDirectoryToArchiveAsync(archive, subDir, rootDir, entryPrefix, compressionLevel,
-                reportSkipped, reportError, totalBytes, startOffset, progress, cancellationToken);
+            startOffset = await AddDirectoryToArchiveAsync(archive, subDir, context, startOffset, cancellationToken);
         }
 
         return startOffset;

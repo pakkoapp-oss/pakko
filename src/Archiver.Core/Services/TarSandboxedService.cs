@@ -117,74 +117,22 @@ public sealed class TarSandboxedService : ITarService
             // 7z and RAR's rarer header-encrypted case aren't cheaply detectable this way (see
             // ArchiveFormatDetector.IsEncryptedRar's doc comment) — those are instead caught
             // reactively below via IsLikelyEncryptionFailure once tar.exe actually fails.
-            if (ArchiveFormatDetector.Detect(archivePath) == ArchiveFormat.Rar
-                && ArchiveFormatDetector.IsEncryptedRar(archivePath))
+            if (IsKnownEncryptedRar(archivePath))
             {
                 errors.Add(new ArchiveError
                 {
                     SourcePath = archivePath,
                     Message = "This archive is password-protected and cannot be extracted."
                 });
-                if (!singleArchive)
-                    progress?.Report(new ProgressReport { Percent = (i + 1) * 100 / total, BytesTransferred = 0, TotalBytes = 0 });
-                continue;
             }
-
-            try
+            else
             {
                 IProgress<ProgressReport>? archiveProgress = singleArchive ? progress : null;
-                bool alreadyIsolated = options.Mode == ExtractMode.SeparateFolders;
-                var (actualDest, anyExtracted) = await ExtractSingleArchiveAsync(
-                    archivePath, destDir, alreadyIsolated, conflictResolver, skippedFiles,
-                    options.ConfirmCompressionBombExtraction, options.SelectedEntryPaths,
-                    _policy.MotwMode, archiveProgress, cancellationToken)
-                    .ConfigureAwait(false);
-
-                // T-F87: an archive whose entries were all individually skipped (e.g. every
-                // entry already exists at the destination with OnConflict=Skip) must not be
-                // reported as CreatedFiles — MainViewModel uses this list to decide whether
-                // DeleteAfterOperation may delete the source archive.
-                if (anyExtracted)
-                    createdFiles.Add(actualDest);
-            }
-            catch (OperationCanceledException)
-            {
-                break;
-            }
-            catch (TarArchiveRejectedException ex)
-            {
-                errors.Add(new ArchiveError { SourcePath = archivePath, Message = ex.Message });
-            }
-            catch (TarSignatureVerificationException ex)
-            {
-                errors.Add(new ArchiveError { SourcePath = archivePath, Message = ex.Message });
-            }
-            catch (SandboxSetupException ex)
-            {
-                errors.Add(new ArchiveError { SourcePath = archivePath, Message = ex.Message, Exception = ex });
-            }
-            catch (IOException ex)
-            {
-                // T-F113: covers 7z (both encryption modes) and RAR's header-encrypted case —
-                // the proactive check above only catches RAR's more common data-only case
-                // before staging even begins.
-                errors.Add(new ArchiveError
-                {
-                    SourcePath = archivePath,
-                    Message = IsLikelyEncryptionFailure(ex.Message)
-                        ? "This archive is password-protected and cannot be extracted."
-                        : $"Cannot extract archive: {ex.Message}",
-                    Exception = ex
-                });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                errors.Add(new ArchiveError
-                {
-                    SourcePath = archivePath,
-                    Message = $"Access denied extracting archive: {ex.Message}",
-                    Exception = ex
-                });
+                bool wasCancelled = await ExtractOneArchiveAsync(
+                    archivePath, destDir, options, conflictResolver, skippedFiles, createdFiles, errors,
+                    archiveProgress, cancellationToken).ConfigureAwait(false);
+                if (wasCancelled)
+                    break;
             }
 
             if (!singleArchive)
@@ -205,6 +153,83 @@ public sealed class TarSandboxedService : ITarService
         }
 
         return result;
+    }
+
+    private static bool IsKnownEncryptedRar(string archivePath) =>
+        ArchiveFormatDetector.Detect(archivePath) == ArchiveFormat.Rar
+            && ArchiveFormatDetector.IsEncryptedRar(archivePath);
+
+    // The try/6-catch error-mapping body of ExtractAsync's per-archive loop, pulled out so the
+    // loop itself reads as "known-encrypted-RAR short-circuit, else extract-and-map-errors" at a
+    // glance. Returns true when extraction observed real cancellation (the loop breaks in that
+    // case, matching ExtractAsync's original inline `break`); every other outcome is recorded
+    // into errors/createdFiles and returns false so the loop continues to the next archive.
+    private async Task<bool> ExtractOneArchiveAsync(
+        string archivePath, string destDir, ExtractOptions options, ConflictResolver conflictResolver,
+        List<SkippedFile> skippedFiles, List<string> createdFiles, List<ArchiveError> errors,
+        IProgress<ProgressReport>? archiveProgress, CancellationToken cancellationToken)
+    {
+        try
+        {
+            bool alreadyIsolated = options.Mode == ExtractMode.SeparateFolders;
+            var (actualDest, anyExtracted) = await ExtractSingleArchiveAsync(
+                archivePath, destDir, alreadyIsolated, conflictResolver, skippedFiles,
+                options.ConfirmCompressionBombExtraction, options.SelectedEntryPaths,
+                _policy.MotwMode, archiveProgress, cancellationToken)
+                .ConfigureAwait(false);
+
+            // T-F87: an archive whose entries were all individually skipped (e.g. every entry
+            // already exists at the destination with OnConflict=Skip) must not be reported as
+            // CreatedFiles — MainViewModel uses this list to decide whether DeleteAfterOperation
+            // may delete the source archive.
+            if (anyExtracted)
+                createdFiles.Add(actualDest);
+            return false;
+        }
+        catch (OperationCanceledException)
+        {
+            return true;
+        }
+        catch (TarArchiveRejectedException ex)
+        {
+            errors.Add(new ArchiveError { SourcePath = archivePath, Message = ex.Message });
+            return false;
+        }
+        catch (TarSignatureVerificationException ex)
+        {
+            errors.Add(new ArchiveError { SourcePath = archivePath, Message = ex.Message });
+            return false;
+        }
+        catch (SandboxSetupException ex)
+        {
+            errors.Add(new ArchiveError { SourcePath = archivePath, Message = ex.Message, Exception = ex });
+            return false;
+        }
+        catch (IOException ex)
+        {
+            // T-F113: covers 7z (both encryption modes) and RAR's header-encrypted case — the
+            // proactive check above only catches RAR's more common data-only case before staging
+            // even begins.
+            errors.Add(new ArchiveError
+            {
+                SourcePath = archivePath,
+                Message = IsLikelyEncryptionFailure(ex.Message)
+                    ? "This archive is password-protected and cannot be extracted."
+                    : $"Cannot extract archive: {ex.Message}",
+                Exception = ex
+            });
+            return false;
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            errors.Add(new ArchiveError
+            {
+                SourcePath = archivePath,
+                Message = $"Access denied extracting archive: {ex.Message}",
+                Exception = ex
+            });
+            return false;
+        }
     }
 
     // T-F49: whole-archive pre-scan (name + type) runs before any -xf call. tar.exe does not
@@ -675,8 +700,7 @@ public sealed class TarSandboxedService : ITarService
         // IsEncryptedRar check) — a data-only-encrypted RAR's filenames are still readable, so
         // listing should still succeed there, matching ZipArchiveService.ListEntriesAsync's and
         // 7z's own parity (only extraction refuses for data-only encryption, not browsing).
-        if (ArchiveFormatDetector.Detect(archivePath) == ArchiveFormat.Rar
-            && ArchiveFormatDetector.IsRarHeaderEncrypted(archivePath))
+        if (IsHeaderEncryptedRar(archivePath))
         {
             return new ArchiveListResult
             {
@@ -690,52 +714,18 @@ public sealed class TarSandboxedService : ITarService
             using TarSandboxScope scope = await TarSandboxScope.CreateAsync(archivePath, needsOutputDir: false, cancellationToken)
                 .ConfigureAwait(false);
 
-            var (nameExitCode, nameStdOut, nameStdErr) = await scope.RunAsync(
-                ["-tf", scope.StagedArchivePath], cancellationToken).ConfigureAwait(false);
-            if (nameExitCode != 0)
-                return new ArchiveListResult
-                {
-                    Success = false,
-                    ErrorMessage = IsLikelyEncryptionFailure(nameStdErr)
-                        ? "This archive is password-protected and cannot be browsed."
-                        : nameStdErr.Trim()
-                };
+            var (names, nameError) = await RunListingCommandAsync(scope, "-tf", cancellationToken).ConfigureAwait(false);
+            if (nameError is not null)
+                return nameError;
 
-            string[] names = SplitLines(nameStdOut);
+            var (typeLines, typeError) = await RunListingCommandAsync(scope, "-tvf", cancellationToken).ConfigureAwait(false);
+            if (typeError is not null)
+                return typeError;
 
-            var (typeExitCode, typeStdOut, typeStdErr) = await scope.RunAsync(
-                ["-tvf", scope.StagedArchivePath], cancellationToken).ConfigureAwait(false);
-            if (typeExitCode != 0)
-                return new ArchiveListResult
-                {
-                    Success = false,
-                    ErrorMessage = IsLikelyEncryptionFailure(typeStdErr)
-                        ? "This archive is password-protected and cannot be browsed."
-                        : typeStdErr.Trim()
-                };
-
-            string[] typeLines = SplitLines(typeStdOut);
             if (typeLines.Length != names.Length)
                 return new ArchiveListResult { Success = false, ErrorMessage = "Archive listing is inconsistent." };
 
-            var entries = new List<ArchiveEntryInfo>(names.Length);
-            for (int i = 0; i < names.Length; i++)
-            {
-                char typeChar = typeLines[i].Length > 0 ? typeLines[i][0] : '?';
-                entries.Add(new ArchiveEntryInfo
-                {
-                    Path = names[i].TrimEnd('/'),
-                    Size = typeChar == '-' ? ParseTarListingSize(typeLines[i]) : 0,
-                    CompressedSize = 0,
-                    // Date column was observed locale-mangled (see this method's sibling
-                    // ScanForUnsafeEntriesAsync's comment and DECISIONS.md's T-F84 entry) — left
-                    // null rather than risk a half-correct parse; the UI shows "—" instead.
-                    Modified = null,
-                    IsDirectory = typeChar == 'd',
-                });
-            }
-
-            return new ArchiveListResult { Success = true, Entries = entries };
+            return new ArchiveListResult { Success = true, Entries = BuildEntryList(names, typeLines) };
         }
         catch (TarSignatureVerificationException ex)
         {
@@ -749,6 +739,53 @@ public sealed class TarSandboxedService : ITarService
         {
             return new ArchiveListResult { Success = false, ErrorMessage = ex.Message };
         }
+    }
+
+    private static bool IsHeaderEncryptedRar(string archivePath) =>
+        ArchiveFormatDetector.Detect(archivePath) == ArchiveFormat.Rar
+            && ArchiveFormatDetector.IsRarHeaderEncrypted(archivePath);
+
+    // Runs one of ListEntriesAsync's two tar.exe listing calls ("-tf" for names, "-tvf" for
+    // type/size lines) and maps a nonzero exit code to an ArchiveListResult the same way both
+    // calls already did identically. Error is non-null exactly when the call failed.
+    private static async Task<(string[] Lines, ArchiveListResult? Error)> RunListingCommandAsync(
+        TarSandboxScope scope, string listFlag, CancellationToken cancellationToken)
+    {
+        var (exitCode, stdOut, stdErr) = await scope.RunAsync(
+            [listFlag, scope.StagedArchivePath], cancellationToken).ConfigureAwait(false);
+        if (exitCode != 0)
+        {
+            return ([], new ArchiveListResult
+            {
+                Success = false,
+                ErrorMessage = IsLikelyEncryptionFailure(stdErr)
+                    ? "This archive is password-protected and cannot be browsed."
+                    : stdErr.Trim()
+            });
+        }
+
+        return (SplitLines(stdOut), null);
+    }
+
+    private static List<ArchiveEntryInfo> BuildEntryList(string[] names, string[] typeLines)
+    {
+        var entries = new List<ArchiveEntryInfo>(names.Length);
+        for (int i = 0; i < names.Length; i++)
+        {
+            char typeChar = typeLines[i].Length > 0 ? typeLines[i][0] : '?';
+            entries.Add(new ArchiveEntryInfo
+            {
+                Path = names[i].TrimEnd('/'),
+                Size = typeChar == '-' ? ParseTarListingSize(typeLines[i]) : 0,
+                CompressedSize = 0,
+                // Date column was observed locale-mangled (see this method's sibling
+                // ScanForUnsafeEntriesAsync's comment and DECISIONS.md's T-F84 entry) — left null
+                // rather than risk a half-correct parse; the UI shows "—" instead.
+                Modified = null,
+                IsDirectory = typeChar == 'd',
+            });
+        }
+        return entries;
     }
 
     /// <inheritdoc/>
@@ -788,79 +825,32 @@ public sealed class TarSandboxedService : ITarService
             // uses for a single-source drive-root selection (e.g. "Z:\" via the shell extension's
             // Drive ItemType) instead of silently naming the archive after the bare extension.
             string archiveName = ArchiveNaming.ResolveSingleArchiveName(options.ArchiveName, options.SourcePaths);
-
             string destPath = Path.Combine(options.DestinationFolder, archiveName + extension);
 
-            if (File.Exists(destPath))
+            var (outcome, resolvedDestPath) = await ResolveDestinationConflictAsync(destPath, conflictResolver).ConfigureAwait(false);
+            if (outcome == DestinationConflictOutcome.Skip)
             {
-                switch (await conflictResolver.ResolveAsync(destPath).ConfigureAwait(false))
+                return new ArchiveResult
                 {
-                    case ConflictBehavior.Skip:
-                        return new ArchiveResult
-                        {
-                            Success = true,
-                            CreatedFiles = [],
-                            Errors = [],
-                            SkippedFiles = [.. options.SourcePaths.Select(p => new SkippedFile
-                            {
-                                Path = p,
-                                Reason = $"Archive '{Path.GetFileName(destPath)}' already exists at the destination and was skipped."
-                            })],
-                        };
-                    case ConflictBehavior.Overwrite:
-                        File.Delete(destPath);
-                        break;
-                    case ConflictBehavior.Rename:
-                        destPath = GetUniqueFilePath(destPath);
-                        break;
-                }
+                    Success = true,
+                    CreatedFiles = [],
+                    Errors = [],
+                    SkippedFiles = [.. options.SourcePaths.Select(p => new SkippedFile
+                    {
+                        Path = p,
+                        Reason = $"Archive '{Path.GetFileName(destPath)}' already exists at the destination and was skipped."
+                    })],
+                };
             }
 
-            await CompressToArchiveAsync(options, destPath, createdFiles, errors, skippedFiles, progress, cancellationToken)
+            await CompressToArchiveAsync(options, resolvedDestPath, createdFiles, errors, skippedFiles, progress, cancellationToken)
                 .ConfigureAwait(false);
         }
         else // ArchiveMode.SeparateArchives — one archive per top-level source path
         {
-            var sortedSourcePaths = options.SourcePaths.OrderBy(p => p, StringComparer.OrdinalIgnoreCase).ToList();
-
-            foreach (string sourcePath in sortedSourcePaths)
-            {
-                if (cancellationToken.IsCancellationRequested)
-                    break;
-
-                if (!File.Exists(sourcePath) && !Directory.Exists(sourcePath))
-                {
-                    errors.Add(new ArchiveError { SourcePath = sourcePath, Message = $"Source path does not exist: {sourcePath}" });
-                    continue;
-                }
-
-                string baseName = Path.GetFileNameWithoutExtension(sourcePath);
-                string destPath = Path.Combine(options.DestinationFolder, baseName + extension);
-
-                if (File.Exists(destPath))
-                {
-                    switch (await conflictResolver.ResolveAsync(destPath).ConfigureAwait(false))
-                    {
-                        case ConflictBehavior.Skip:
-                            skippedFiles.Add(new SkippedFile
-                            {
-                                Path = sourcePath,
-                                Reason = $"Archive '{Path.GetFileName(destPath)}' already exists at the destination and was skipped."
-                            });
-                            continue;
-                        case ConflictBehavior.Overwrite:
-                            File.Delete(destPath);
-                            break;
-                        case ConflictBehavior.Rename:
-                            destPath = GetUniqueFilePath(destPath);
-                            break;
-                    }
-                }
-
-                var singleOptions = options with { SourcePaths = [sourcePath] };
-                await CompressToArchiveAsync(singleOptions, destPath, createdFiles, errors, skippedFiles, progress, cancellationToken)
-                    .ConfigureAwait(false);
-            }
+            await ProcessSeparateArchivesAsync(
+                options, extension, conflictResolver, createdFiles, errors, skippedFiles, progress, cancellationToken)
+                .ConfigureAwait(false);
         }
 
         var result = new ArchiveResult
@@ -879,6 +869,71 @@ public sealed class TarSandboxedService : ITarService
         return result;
     }
 
+    private enum DestinationConflictOutcome { Proceed, Skip }
+
+    // Shared by CompressAsync's SingleArchive branch and ProcessSeparateArchivesAsync -- both used
+    // to run the identical File.Exists+switch(ConflictBehavior) block, just with different Skip
+    // handling (a whole-method early return vs. a per-item skippedFiles.Add+continue), which stays
+    // the caller's job. Returns the destination path to actually write to (renamed if the conflict
+    // resolution was Rename, unchanged otherwise).
+    private static async Task<(DestinationConflictOutcome Outcome, string DestPath)> ResolveDestinationConflictAsync(
+        string destPath, ConflictResolver conflictResolver)
+    {
+        if (!File.Exists(destPath))
+            return (DestinationConflictOutcome.Proceed, destPath);
+
+        switch (await conflictResolver.ResolveAsync(destPath).ConfigureAwait(false))
+        {
+            case ConflictBehavior.Skip:
+                return (DestinationConflictOutcome.Skip, destPath);
+            case ConflictBehavior.Overwrite:
+                File.Delete(destPath);
+                return (DestinationConflictOutcome.Proceed, destPath);
+            case ConflictBehavior.Rename:
+                return (DestinationConflictOutcome.Proceed, GetUniqueFilePath(destPath));
+            default:
+                return (DestinationConflictOutcome.Proceed, destPath);
+        }
+    }
+
+    private static async Task ProcessSeparateArchivesAsync(
+        ArchiveOptions options, string extension, ConflictResolver conflictResolver,
+        List<string> createdFiles, List<ArchiveError> errors, List<SkippedFile> skippedFiles,
+        IProgress<ProgressReport>? progress, CancellationToken cancellationToken)
+    {
+        var sortedSourcePaths = options.SourcePaths.OrderBy(p => p, StringComparer.OrdinalIgnoreCase).ToList();
+
+        foreach (string sourcePath in sortedSourcePaths)
+        {
+            if (cancellationToken.IsCancellationRequested)
+                break;
+
+            if (!File.Exists(sourcePath) && !Directory.Exists(sourcePath))
+            {
+                errors.Add(new ArchiveError { SourcePath = sourcePath, Message = $"Source path does not exist: {sourcePath}" });
+                continue;
+            }
+
+            string baseName = Path.GetFileNameWithoutExtension(sourcePath);
+            string destPath = Path.Combine(options.DestinationFolder, baseName + extension);
+
+            var (outcome, resolvedDestPath) = await ResolveDestinationConflictAsync(destPath, conflictResolver).ConfigureAwait(false);
+            if (outcome == DestinationConflictOutcome.Skip)
+            {
+                skippedFiles.Add(new SkippedFile
+                {
+                    Path = sourcePath,
+                    Reason = $"Archive '{Path.GetFileName(destPath)}' already exists at the destination and was skipped."
+                });
+                continue;
+            }
+
+            var singleOptions = options with { SourcePaths = [sourcePath] };
+            await CompressToArchiveAsync(singleOptions, resolvedDestPath, createdFiles, errors, skippedFiles, progress, cancellationToken)
+                .ConfigureAwait(false);
+        }
+    }
+
     // Runs one tar.exe -cf invocation writing to a ".tmp" path, then atomically moves it to
     // destPath only if at least one entry was actually written — mirrors ZipArchiveService's
     // temp-then-commit pattern (no partial files on cancel or failure, CLAUDE.md hard
@@ -895,27 +950,87 @@ public sealed class TarSandboxedService : ITarService
     {
         string tempPath = destPath + ".tmp";
 
-        var sortedSourcePaths = options.SourcePaths.OrderBy(p => p, StringComparer.OrdinalIgnoreCase).ToList();
         var tarArgs = new List<string>();
         AppendCompressionFilterArgs(tarArgs, options.Format, options.CompressionLevel);
         tarArgs.Add("-v");
         tarArgs.Add("-cf");
         tarArgs.Add(tempPath);
 
-        int entryCount = 0;
+        var sortedSourcePaths = options.SourcePaths.OrderBy(p => p, StringComparer.OrdinalIgnoreCase).ToList();
+        (int entryCount, long totalEntriesForProgress, long totalBytesForProgress) =
+            AppendSourcesToTarArgs(tarArgs, sortedSourcePaths, errors, skippedFiles);
 
-        // T-F140: the percent denominator used below must reflect the real number of entries
-        // tar.exe will emit a "-v" line for (every file AND directory recursed into), not just the
-        // count of top-level selected source paths — a source folder tree with more than a handful
-        // of files made reportedFiles below race past entryCount almost instantly, clamping the
-        // dialog at 99% for the rest of a multi-minute operation. totalBytesForProgress is the real
-        // sum of source file sizes, used only to give the dialog a "X GB / Y GB" readout matching
-        // ZIP's — tar.exe's "-v" output during creation carries no per-file byte/throughput info
-        // (only "a <name>" once a whole entry is done), so BytesTransferred below is deliberately
-        // entry-count-weighted (totalBytesForProgress * reportedFiles / totalEntriesForProgress),
-        // not a real running byte total — it's an approximation that's always exactly right at 0%
-        // and 100%, and reasonably represents progress in between for a typical mixed file set.
-        // See DECISIONS.md's T-F140 entry.
+        if (entryCount == 0)
+            return;
+
+        int reportedFiles = 0;
+        void OnVerboseLine(string line)
+        {
+            reportedFiles++;
+            long denominator = Math.Max(totalEntriesForProgress, 1);
+            long bytesTransferred = totalBytesForProgress > 0
+                ? Math.Min(totalBytesForProgress, totalBytesForProgress * reportedFiles / denominator)
+                : 0;
+            progress?.Report(new ProgressReport
+            {
+                Percent = Math.Min(99, (int)(reportedFiles * 100L / denominator)),
+                BytesTransferred = bytesTransferred,
+                TotalBytes = totalBytesForProgress,
+                CurrentFile = ParseTarVerboseEntryName(line),
+            });
+        }
+
+        try
+        {
+            var (exitCode, _, stdErr) = await RunUnsandboxedTarAsync(tarArgs, OnVerboseLine, cancellationToken).ConfigureAwait(false);
+
+            if (exitCode != 0 || !File.Exists(tempPath))
+            {
+                TryDeleteBestEffort(tempPath);
+                errors.Add(new ArchiveError { SourcePath = destPath, Message = $"tar.exe failed to create archive: {stdErr.Trim()}" });
+                return;
+            }
+
+            File.Move(tempPath, destPath, overwrite: true);
+            createdFiles.Add(destPath);
+            progress?.Report(new ProgressReport { Percent = 100, BytesTransferred = totalBytesForProgress, TotalBytes = totalBytesForProgress });
+        }
+        catch (OperationCanceledException)
+        {
+            TryDeleteBestEffort(tempPath);
+            throw;
+        }
+        catch (IOException ex)
+        {
+            TryDeleteBestEffort(tempPath);
+            errors.Add(new ArchiveError { SourcePath = destPath, Message = $"Cannot create archive: {ex.Message}", Exception = ex });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            TryDeleteBestEffort(tempPath);
+            errors.Add(new ArchiveError { SourcePath = destPath, Message = $"Access denied creating archive: {ex.Message}", Exception = ex });
+        }
+    }
+
+    private static void TryDeleteBestEffort(string path)
+    {
+        try { if (File.Exists(path)) File.Delete(path); } catch { /* best-effort */ }
+    }
+
+    // T-F140: the percent denominator used by CompressToArchiveAsync's OnVerboseLine must reflect
+    // the real number of entries tar.exe will emit a "-v" line for (every file AND directory
+    // recursed into), not just the count of top-level selected source paths — a source folder
+    // tree with more than a handful of files made reportedFiles race past entryCount almost
+    // instantly, clamping the dialog at 99% for the rest of a multi-minute operation.
+    // TotalBytes is the real sum of source file sizes, used only to give the dialog a
+    // "X GB / Y GB" readout matching ZIP's — tar.exe's "-v" output during creation carries no
+    // per-file byte/throughput info (only "a <name>" once a whole entry is done), so
+    // BytesTransferred in OnVerboseLine is deliberately entry-count-weighted, not a real running
+    // byte total. See DECISIONS.md's T-F140 entry.
+    private static (int EntryCount, long TotalEntriesForProgress, long TotalBytesForProgress) AppendSourcesToTarArgs(
+        List<string> tarArgs, IReadOnlyList<string> sortedSourcePaths, List<ArchiveError> errors, List<SkippedFile> skippedFiles)
+    {
+        int entryCount = 0;
         long totalEntriesForProgress = 0;
         long totalBytesForProgress = 0;
 
@@ -963,56 +1078,7 @@ public sealed class TarSandboxedService : ITarService
             totalBytesForProgress += bytes;
         }
 
-        if (entryCount == 0)
-            return;
-
-        int reportedFiles = 0;
-        void OnVerboseLine(string line)
-        {
-            reportedFiles++;
-            long denominator = Math.Max(totalEntriesForProgress, 1);
-            long bytesTransferred = totalBytesForProgress > 0
-                ? Math.Min(totalBytesForProgress, totalBytesForProgress * reportedFiles / denominator)
-                : 0;
-            progress?.Report(new ProgressReport
-            {
-                Percent = Math.Min(99, (int)(reportedFiles * 100L / denominator)),
-                BytesTransferred = bytesTransferred,
-                TotalBytes = totalBytesForProgress,
-                CurrentFile = ParseTarVerboseEntryName(line),
-            });
-        }
-
-        try
-        {
-            var (exitCode, _, stdErr) = await RunUnsandboxedTarAsync(tarArgs, OnVerboseLine, cancellationToken).ConfigureAwait(false);
-
-            if (exitCode != 0 || !File.Exists(tempPath))
-            {
-                try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { /* best-effort */ }
-                errors.Add(new ArchiveError { SourcePath = destPath, Message = $"tar.exe failed to create archive: {stdErr.Trim()}" });
-                return;
-            }
-
-            File.Move(tempPath, destPath, overwrite: true);
-            createdFiles.Add(destPath);
-            progress?.Report(new ProgressReport { Percent = 100, BytesTransferred = totalBytesForProgress, TotalBytes = totalBytesForProgress });
-        }
-        catch (OperationCanceledException)
-        {
-            try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { /* best-effort */ }
-            throw;
-        }
-        catch (IOException ex)
-        {
-            try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { /* best-effort */ }
-            errors.Add(new ArchiveError { SourcePath = destPath, Message = $"Cannot create archive: {ex.Message}", Exception = ex });
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { /* best-effort */ }
-            errors.Add(new ArchiveError { SourcePath = destPath, Message = $"Access denied creating archive: {ex.Message}", Exception = ex });
-        }
+        return (entryCount, totalEntriesForProgress, totalBytesForProgress);
     }
 
     // T-F140: real count of entries tar.exe will emit a "-v" line for when archiving this one
