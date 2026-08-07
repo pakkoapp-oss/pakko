@@ -9,8 +9,8 @@ namespace Archiver.Core.Tests.Services;
 // (keyPath, valueName) so a test can simulate an absent key/value simply by not adding an entry.
 file sealed class FakeRegistryReader : IRegistryReader
 {
-    private readonly Dictionary<(string KeyPath, string ValueName), int> _dwords = new();
-    private readonly Dictionary<(string KeyPath, string ValueName), string[]> _multiStrings = new();
+    private readonly Dictionary<(string KeyPath, string ValueName), int> _dwords = [];
+    private readonly Dictionary<(string KeyPath, string ValueName), string[]> _multiStrings = [];
 
     public FakeRegistryReader WithDword(string keyPath, string valueName, int value)
     {

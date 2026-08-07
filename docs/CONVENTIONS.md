@@ -317,12 +317,31 @@ downstream service calls. Do not add path content checks to `ShellArgumentParser
 ## SonarCloud Won't-Fix Conventions
 
 These rule categories are **intentionally left unaddressed** in this codebase — not oversights.
-When SonarCloud (or a local Roslyn `dotnet build`) flags a new instance, mark the exact flagged
-line with `// NOSONAR: SXXXX — <one-line reason>` (see any existing `Sandbox/*.cs` file for the
-style) rather than "fixing" it — the `NOSONAR` marker suppresses the finding on the SonarCloud
-dashboard itself (confirmed working, T-F138), even though the local Roslyn analyzer will keep
-emitting the build-time warning regardless (it doesn't honor `NOSONAR`, which is a SonarCloud-
-server-side convention, not a compiler one — that's expected noise, not a bug).
+Which suppression mechanism to use depends on **which engine reports the rule** — get this wrong
+and the marker silently does nothing (found T-F147: a `// NOSONAR` sat on a real finding across
+two full analysis cycles before the mismatch was caught):
+
+- **`csharpsquid:SXXXX` rules** (SonarCloud's own native C# analyzer — cognitive complexity,
+  naming, commented-out code, etc.): mark the exact flagged line with
+  `// NOSONAR: SXXXX — <one-line reason>` (see any existing `Sandbox/*.cs` file for the style).
+  This suppresses the finding on the SonarCloud dashboard itself (confirmed working, T-F138 and
+  re-confirmed T-F147 — the S101/S1075/S3871 markers below all disappeared from the very next
+  scan). The local Roslyn analyzer still emits its own build-time warning regardless (it doesn't
+  honor `NOSONAR`, a SonarCloud-server-side convention, not a compiler one) — that's expected
+  noise, not a bug.
+- **`external_roslyn:CAXXXX`/`IDEXXXX`/`SYSLIB1054` rules** (imported from the real `dotnet build`
+  warning log, not SonarCloud's own engine): `NOSONAR` has **no effect** — confirmed empirically
+  T-F147, where an already-`NOSONAR`'d `CA1835` finding was still open on the very next scan while
+  a same-round `csharpsquid:S101` NOSONAR next to it was gone. Use
+  `#pragma warning disable CAXXXX // <reason>` / `#pragma warning restore CAXXXX` (or
+  `[SuppressMessage]`) instead — this stops the warning from being emitted into the build log at
+  all, so it can never be imported. This has the added benefit of also silencing the local build
+  warning, unlike the `csharpsquid` case above. **Verify locally before pushing** — every
+  `external_roslyn` finding already appears verbatim in a plain `dotnet build`, so a clean build
+  (0 warnings) is a reliable pre-push proxy for this whole rule family; no CI/SonarCloud round
+  trip needed to confirm.
+
+Won't-fix categories recorded so far:
 
 - **S101 (naming convention) on P/Invoke struct names** (`SECURITY_ATTRIBUTES`, `STARTUPINFO`,
   `TRUSTEE_W`, etc., in `Archiver.Core/Services/Sandbox/`): these deliberately mirror the real
@@ -338,10 +357,27 @@ server-side convention, not a compiler one — that's expected noise, not a bug)
   per this file's own "`Archiver.Core` services must never throw to callers" rule). Making them
   `public` would be pure API-surface bloat against that rule, not a fix — a genuinely public
   exception type implies external callers should catch it specifically, which none ever do here.
+- **CA1711 (type name ends in "Collection") on `TarSandboxTestCollection`**
+  (`tests/Archiver.Core.IntegrationTests/`): xUnit's own `[CollectionDefinition]` marker-class
+  convention names these classes `XCollection` (xUnit's own docs use `DatabaseCollection` as the
+  canonical example) — no name avoiding the suffix stays idiomatic, so renaming further (as an
+  earlier T-F147 pass tried, `TarSandboxCollection` → `TarSandboxTestCollection`) cannot actually
+  satisfy this rule; only `#pragma warning disable CA1711` (per the mechanism note above, since
+  this is an `external_roslyn` rule) stops it.
+- **S1135 (complete this TODO) on `ArchiveEntrySecurity.cs:56` and `.github/workflows/build.yml`**:
+  both TODOs are legitimate, already-tracked future work (not abandoned placeholders) — left as
+  plain TODOs, not suppressed. Don't "fix" these by deleting the comment or completing the task
+  out of scope of whatever triage pass finds them.
+
+**`SYSLIB1054` (`DllImport` → `LibraryImportAttribute`, ~40 findings across
+`Archiver.Core/Services/Sandbox/`) is deferred, not won't-fix** — it needs its own focused pass
+with its own design-first review and full sandbox test run (security-critical native interop),
+not a mechanical batch conversion inside an unrelated triage task. Tracked as **T-F148**.
 
 A rule not in this list that gets flagged and reasoned through as a genuine won't-fix should be
-added here at the same time its `NOSONAR` marker is added — that's the whole point (see T-F147):
-prose reasoning in a task-history doc alone doesn't stop the finding from resurfacing next triage.
+added here at the same time its suppression marker is added — that's the whole point (see
+T-F147): prose reasoning in a task-history doc alone doesn't stop the finding from resurfacing
+next triage.
 
 ---
 

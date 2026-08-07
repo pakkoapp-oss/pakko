@@ -69,7 +69,7 @@ public static class CliArgumentParser
     // --- x (Extract) ---
 
     // Mutable per-parse state for ParseExtract — moving the token-dispatch if-chain out of the
-    // foreach loop and into ApplyExtractToken below is what actually clears S3776's threshold;
+    // foreach loop and into ApplyExtractToken below is what actually clears S3776's threshold; // NOSONAR: prose, not commented-out code (S125 false positive)
     // extracting the -o/-ao validation alone (TryParseOutputDirectory/TryParseOverwriteMode)
     // wasn't enough, since the loop nesting itself was the bigger contributor.
     private sealed class ExtractParseState

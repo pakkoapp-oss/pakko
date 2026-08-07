@@ -7,7 +7,11 @@ namespace Archiver.Core.IntegrationTests;
 /// "Known test gaps" section — concurrent AppContainer profile/Job Object calls across test
 /// classes were racing under xUnit's default parallel-by-class execution, not a real product bug.
 /// </summary>
+// CA1711: xUnit's own CollectionDefinition marker-class convention names these "XCollection"
+// (see docs/CONVENTIONS.md) — no name avoiding the "Collection" suffix stays idiomatic here.
+#pragma warning disable CA1711
 [CollectionDefinition("TarSandbox", DisableParallelization = true)]
 public sealed class TarSandboxTestCollection
 {
 }
+#pragma warning restore CA1711

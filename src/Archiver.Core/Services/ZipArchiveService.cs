@@ -237,8 +237,9 @@ public sealed class ZipArchiveService : IArchiveService
                     break;
 
                 byteOffset += await AddOneSourcePathToArchiveAsync(
-                    archive, sortedSourcePaths[i], compressionLevel, totalSourceBytes, byteOffset,
-                    usedEntryNames, sink, progress, cancellationToken).ConfigureAwait(false);
+                    archive, sortedSourcePaths[i], compressionLevel,
+                    new EntryWriteProgress(totalSourceBytes, byteOffset, progress),
+                    usedEntryNames, sink, cancellationToken).ConfigureAwait(false);
             }
         }, cancellationToken).ConfigureAwait(false);
     }
@@ -247,8 +248,8 @@ public sealed class ZipArchiveService : IArchiveService
     // size of the source), which the caller adds to its running byteOffset regardless of outcome
     // — matches the original inline loop's unconditional trailing `byteOffset += pathSize`.
     private static async Task<long> AddOneSourcePathToArchiveAsync(
-        ZipArchive archive, string sourcePath, CompressionLevel compressionLevel, long totalSourceBytes, long byteOffset,
-        HashSet<string> usedEntryNames, ArchiveWorkSink sink, IProgress<ProgressReport>? progress, CancellationToken cancellationToken)
+        ZipArchive archive, string sourcePath, CompressionLevel compressionLevel, EntryWriteProgress progressInfo,
+        HashSet<string> usedEntryNames, ArchiveWorkSink sink, CancellationToken cancellationToken)
     {
         // Compute source size for offset tracking (best-effort)
         long pathSize = 0;
@@ -274,14 +275,14 @@ public sealed class ZipArchiveService : IArchiveService
             {
                 string entryName = GetUniqueEntryName(usedEntryNames, Path.GetFileName(sourcePath));
                 var context = new DirectoryArchiveContext(
-                    sourcePath, entryName, compressionLevel, sink.SkippedFiles.Add, sink.Errors.Add, totalSourceBytes, progress);
-                await AddDirectoryToArchiveAsync(archive, sourcePath, context, byteOffset, cancellationToken).ConfigureAwait(false);
+                    sourcePath, entryName, compressionLevel, sink.SkippedFiles.Add, sink.Errors.Add, progressInfo.TotalBytes, progressInfo.Progress);
+                await AddDirectoryToArchiveAsync(archive, sourcePath, context, progressInfo.StartOffset, cancellationToken).ConfigureAwait(false);
             }
             else if (File.Exists(sourcePath))
             {
                 string entryName = GetUniqueEntryName(usedEntryNames, Path.GetFileName(sourcePath));
                 await AddEntryFromFileAsync(archive, sourcePath, entryName,
-                    compressionLevel, new EntryWriteProgress(totalSourceBytes, byteOffset, progress), cancellationToken).ConfigureAwait(false);
+                    compressionLevel, progressInfo, cancellationToken).ConfigureAwait(false);
             }
             else
             {
@@ -340,8 +341,7 @@ public sealed class ZipArchiveService : IArchiveService
         var plans = await ResolveSeparateArchivePlansAsync(
             sortedSourcePaths, options.DestinationFolder, conflictResolver, skippedFiles).ConfigureAwait(false);
 
-        var concurrentSink = new ArchiveResultSink(
-            new ConcurrentBag<ArchiveError>(), new ConcurrentBag<string>(), new ConcurrentBag<SkippedFile>());
+        var concurrentSink = new ArchiveResultSink([], [], []);
         var progressContext = new SeparateArchiveProgressContext(totalSourceBytes, [0], progress);
 
         await Parallel.ForEachAsync(
@@ -859,7 +859,7 @@ public sealed class ZipArchiveService : IArchiveService
         }
     }
 
-    // Already split via ZipExtractionContext/ExtractionPlan/TryExtractSingleEntryAsync (T-F147);
+    // Already split via ZipExtractionContext/ExtractionPlan/TryExtractSingleEntryAsync (T-F147); // NOSONAR: prose, not commented-out code (S125 false positive)
     // the residual complexity below is the smart-foldering decision + whole-archive compression-
     // bomb gate, both order-sensitive and security-relevant (T-F94/T-F105 history) — further
     // splitting risks separating checks whose safety currently reads directly off this one method
@@ -872,11 +872,8 @@ public sealed class ZipArchiveService : IArchiveService
         ZipExtractionContext context,
         CancellationToken cancellationToken)
     {
-        ConflictResolver conflictResolver = context.ConflictResolver;
         List<SkippedFile> skippedFiles = context.SkippedFiles;
-        IProgress<ProgressReport>? progress = context.Progress;
         Func<CompressionBombWarning, Task<bool>>? confirmCompressionBombExtraction = context.ConfirmCompressionBombExtraction;
-        MotwMode motwMode = context.MotwMode;
         using var archive = ZipFile.OpenRead(archivePath);
 
         var allFileEntries = archive.Entries
@@ -1085,36 +1082,11 @@ public sealed class ZipArchiveService : IArchiveService
                 return (false, entry.Length);
         }
 
-        // T-F38: Reject entries with Alternate Data Stream marker
-        if (ArchiveEntrySecurity.HasAlternateDataStreamMarker(entry.FullName))
+        // T-F38/T-F39: Reject ADS-marked, reserved-name, or control-character entry names
+        string? nameRejectionReason = GetEntryNameRejectionReason(entry.FullName);
+        if (nameRejectionReason != null)
         {
-            context.SkippedFiles.Add(new SkippedFile
-            {
-                Path = entry.FullName,
-                Reason = "Alternate Data Stream entry rejected for security."
-            });
-            return (false, entry.Length);
-        }
-
-        // T-F39: Reject reserved Windows device names
-        if (ArchiveEntrySecurity.HasReservedName(entry.FullName))
-        {
-            context.SkippedFiles.Add(new SkippedFile
-            {
-                Path = entry.FullName,
-                Reason = "Entry name matches a reserved Windows device name and was skipped."
-            });
-            return (false, entry.Length);
-        }
-
-        // T-F39: Reject entries with control characters in name
-        if (ArchiveEntrySecurity.HasControlCharacters(entry.FullName))
-        {
-            context.SkippedFiles.Add(new SkippedFile
-            {
-                Path = entry.FullName,
-                Reason = "Entry name contains control characters and was skipped."
-            });
+            context.SkippedFiles.Add(new SkippedFile { Path = entry.FullName, Reason = nameRejectionReason });
             return (false, entry.Length);
         }
 
@@ -1158,6 +1130,27 @@ public sealed class ZipArchiveService : IArchiveService
         }
         claimedFinalPaths.Add(finalFilePath);
 
+        await CopyEntryToDestinationAsync(entry, destFilePath, archivePath, totalUncompressedBytes,
+            bytesReadSoFar, context, cancellationToken).ConfigureAwait(false);
+
+        return (true, entry.Length);
+    }
+
+    private static string? GetEntryNameRejectionReason(string entryFullName)
+    {
+        if (ArchiveEntrySecurity.HasAlternateDataStreamMarker(entryFullName))
+            return "Alternate Data Stream entry rejected for security.";
+        if (ArchiveEntrySecurity.HasReservedName(entryFullName))
+            return "Entry name matches a reserved Windows device name and was skipped.";
+        if (ArchiveEntrySecurity.HasControlCharacters(entryFullName))
+            return "Entry name contains control characters and was skipped.";
+        return null;
+    }
+
+    private static async Task CopyEntryToDestinationAsync(
+        ZipArchiveEntry entry, string destFilePath, string archivePath, long totalUncompressedBytes,
+        long bytesReadSoFar, ZipExtractionContext context, CancellationToken cancellationToken)
+    {
         if (context.Progress != null && totalUncompressedBytes > 0)
         {
             var entryStream = entry.Open();
@@ -1186,8 +1179,6 @@ public sealed class ZipArchiveService : IArchiveService
 
         // T-F45: Propagate Zone.Identifier ADS from archive to extracted file
         ArchiveEntrySecurity.TryPropagateMotw(archivePath, destFilePath, context.MotwMode);
-
-        return (true, entry.Length);
     }
 
     // The progress-tracking trio AddEntryFromFileAsync's 3 call sites all pass explicitly —

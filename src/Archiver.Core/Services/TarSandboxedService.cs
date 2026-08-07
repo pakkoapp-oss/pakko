@@ -285,10 +285,8 @@ public sealed class TarSandboxedService : ITarService
         TarExtractionContext context,
         CancellationToken cancellationToken)
     {
-        ConflictResolver conflictResolver = context.ConflictResolver;
         List<SkippedFile> skippedFiles = context.SkippedFiles;
         Func<CompressionBombWarning, Task<bool>>? confirmCompressionBombExtraction = context.ConfirmCompressionBombExtraction;
-        MotwMode motwMode = context.MotwMode;
         IProgress<ProgressReport>? progress = context.Progress;
 
         using TarSandboxScope scope = await TarSandboxScope.CreateAsync(archivePath, needsOutputDir: true, cancellationToken)
@@ -674,9 +672,10 @@ public sealed class TarSandboxedService : ITarService
 
         string[] names = SplitLines(nameStdOut);
 
-        foreach (string name in names.Where(IsDangerousEntryName))
+        string? unsafeName = names.FirstOrDefault(IsDangerousEntryName);
+        if (unsafeName != null)
             throw new TarArchiveRejectedException(
-                $"Archive contains an unsafe entry path ('{name}') and cannot be safely extracted.");
+                $"Archive contains an unsafe entry path ('{unsafeName}') and cannot be safely extracted.");
 
         var (typeExitCode, typeStdOut, typeStdErr) = await scope.RunAsync(
             ["-tvf", scope.StagedArchivePath], cancellationToken).ConfigureAwait(false);
@@ -934,7 +933,7 @@ public sealed class TarSandboxedService : ITarService
 
     // Shared by CompressAsync's SingleArchive branch and ProcessSeparateArchivesAsync -- both used
     // to run the identical File.Exists+switch(ConflictBehavior) block, just with different Skip
-    // handling (a whole-method early return vs. a per-item skippedFiles.Add+continue), which stays
+    // handling (a whole-method early return vs. a per-item skippedFiles.Add+continue), which stays // NOSONAR: prose, not commented-out code (S125 false positive)
     // the caller's job. Returns the destination path to actually write to (renamed if the conflict
     // resolution was Rename, unchanged otherwise).
     private static async Task<(DestinationConflictOutcome Outcome, string DestPath)> ResolveDestinationConflictAsync(
