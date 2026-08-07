@@ -3819,58 +3819,106 @@ regression from this task, which owns reliability only.
 
 ### T-F147 — SonarCloud triage: existing code-quality findings on `main`
 
-- [ ] **Status:** not started.
-- **Context:** a SonarCloud dashboard check during T-F146's session
-  (https://sonarcloud.io/summary/overall?id=pakkoapp-oss-1_pakko&branch=main) surfaced 134
-  pre-existing issues on `main`, predating T-F146 entirely — none are in T-F146's own new files.
-  T-F146 itself got a same-session self-review pass against the same rule categories (a nested
-  ternary and two high-cognitive-complexity methods fixed before committing — see
-  `docs/DECISIONS.md`'s T-F146 entry) precisely because this backlog existed and made those rule
-  categories visible; this task is the deliberate, scoped follow-up to actually triage the rest,
-  not a repeat of that same-session spot-fix.
-- **Snapshot at time of reporting (2026-08-07, re-check via the dashboard/API before starting —
-  this list will drift as other work lands):**
-  - **CRITICAL (9) — cognitive complexity > 15 (S3776):** `Archiver.CLI/CliArgumentParser.cs`
-    (3 methods, complexity 16–40), `Archiver.CLI/Program.cs` (3 static functions, 16–21),
-    `Archiver.Core/Services/ExtractionRouter.cs:16` (complexity 20 — likely already resolved as a
-    side effect of T-F146's `ArchiveFormatPolicy` extraction; **re-verify against current `main`
-    before touching**, don't assume the old number still applies),
-    `Archiver.Core/Services/TarSandboxedService.cs` (2 methods, 38/40 — `ExtractSingleArchiveAsync`/
-    `ScanForUnsafeEntriesAsync`-adjacent code), `Archiver.Core/Services/Zip/
-    ParallelSingleArchiveWriter.cs:179` (27), `Archiver.Core/Services/ZipArchiveService.cs` (2
-    methods, complexity 33 and **132** — the highest single number in the whole report, real
-    priority target), `Archiver.Shell/Program.cs:360` (19).
-  - **MAJOR (43):** a nested ternary in `ExtractionRouter.cs:100` (S3358 — confirmed still present
-    on the current `main` post-T-F146, in code T-F146 didn't touch); `S125` commented-out code in
-    `TarSandboxedService.cs:1062`; `S107` too-many-parameters across `TarSandboxedService.cs`,
-    `ZipArchiveService.cs`, `Zip/ParallelSingleArchiveWriter.cs`, `Zip/ZipEntryWriter.cs` (8–10
-    params, threshold 7); 23 `S6966` "await WriteLineAsync instead" instances concentrated in
-    `Archiver.CLI/Program.cs`; a handful of Roslyn-analyzer MAJORs (`CA1711`/`CA1835`/`CA1861`/
-    `CA1844`) already individually well-understood (`CA1835`/`CA1844` are the same
-    `ReadAsync`/`WriteAsync`-overload style note repeated at different call sites); one
-    `S8264` MAJOR **vulnerability** — `.github/workflows/build.yml:23`, move a `read` permission
-    to job level (security-relevant, CI file — do this one regardless of how the rest of the
-    triage is scoped).
-  - **INFO (6):** `SYSLIB1054` — 5 P/Invoke sites in `Sandbox/SandboxedProcessLauncher.cs`/
-    `SecurityCapabilitiesAttributeList.cs` could use `LibraryImportAttribute` (source-generated
-    marshalling) instead of `DllImport`; one `S1135` TODO-comment nag in `build.yml:27`.
-  - **MINOR (1):** `S3267` — simplify a loop with LINQ `Where` in `Zip/ZipEntryWriter.cs:331`.
-- **Scoping questions to resolve before implementation (ask the user, don't assume):**
-  1. Fix everything in one pass, or triage by severity first (e.g. CRITICAL+the one Vulnerability
-     now, MAJOR/INFO/MINOR as separate follow-up work)?
-  2. The three complexity-132/40/38 methods (`ZipArchiveService.ArchiveAsync`-area,
-     `TarSandboxedService`'s two) are core archive/extract pipelines this project treats with
-     extra caution (see `CLAUDE.md`'s 3-attempt rule and "provable from the line itself" bounds-
-     safety standard) — a real refactor of these needs the same design-first discipline T-F146
-     itself used (advisor consult before restructuring, `dotnet test` green at each step), not a
-     quick mechanical split. Confirm the user wants this depth of change now versus a lighter
-     pass (e.g. just the S107/S125/S3358/mechanical items) first.
-  3. `S6966`'s 23 instances are concentrated in one file (`Archiver.CLI/Program.cs`) and look
-     mechanically fixable as a batch — confirm before doing a 23-site sweep in one commit versus
-     spreading it across smaller ones.
-- **Explicitly not yet decided — do not assume:** whether this becomes one task or splits into
-  several once the user answers the scoping questions above (e.g. a separate task for the
-  `ZipArchiveService`/`TarSandboxedService` complexity refactors specifically, given their
-  higher-caution profile).
+- [~] **Status:** implementation complete 2026-08-08, on-device verification pending (user doing
+  it themselves — not graduating on `dotnet test`/CI alone, since this touches
+  `ZipArchiveService`/`TarSandboxedService` directly, per this project's standing rule).
+- **Context:** the original 2026-08-07 snapshot (134 issues) turned out stale before work even
+  started — the last 3 CI pushes on `main` had all failed (T-F146's `AmsiScannerTests` assume a
+  working AMSI provider, which GitHub's `windows-2022` runner doesn't have; a separate progress-
+  polling test had a real timing-margin race), so SonarCloud hadn't re-analyzed `main` in 3 days.
+  Fixed CI first (`SkipIfAmsiScanUnavailableAttribute`, widened poll-test margin), then rebuilt the
+  real worklist from the CI build log itself (SonarAnalyzer.CSharp's own MSBuild warnings, which
+  reflect the exact analyzed commit) rather than trusting the stale dashboard snapshot.
+- **User decisions (AskUserQuestion, this session):** do all complexity refactors now, not deferred
+  (including the 132-complexity method); S101/S1075/S3871 → Won't-Fix + document, don't change the
+  code; `SYSLIB1054` (~40 findings, `DllImport`→`LibraryImportAttribute` across the sandbox P/Invoke
+  layer) → out of scope, separate task (now **T-F148**); fix CI first.
+- **Fixed (real findings, not suppressed):**
+  - 6 cognitive-complexity methods over threshold (S3776), including `ZipArchiveService.ArchiveAsync`
+    (was **132**, the highest single number in the original report) — split via
+    Single/Separate-mode extraction, purpose-specific context/sink records
+    (`ArchiveWorkSink`, `ArchiveResultSink` ×2, `SeparateArchiveProgressContext`,
+    `DirectoryArchiveContext`, `EntryWriteProgress`, `ZipExtractionContext`, `ExtractionPlan`,
+    `TarExtractionContext`), and per-item-loop extraction into `TryXxxAsync` helpers returning
+    tuples (not `ref`/`out` — disallowed on `async` methods). `ZipArchiveService.
+    ExtractWithSmartFolderingAsync`/`TarSandboxedService.ExtractSingleArchiveAsync` kept
+    algorithmically identical throughout, per the T-F118 invariant.
+  - `SandboxedProcessLauncher.RunAsync` / `ParallelSingleArchiveWriter.RunPipelineAsync`: partial
+    extraction only (pipe-pair setup; the 4 `switch`-case bodies) — the residual complexity is
+    provably load-bearing (documented `CreateProcessW`→`AssignJobObject`→`ResumeThread` sequence;
+    producer/consumer/ordered-cleanup `finally`), left as one unit with
+    `// NOSONAR: S3776 — <reason>` rather than a risky restructure.
+  - S107 too-many-parameters, same methods as above plus `CliArgumentParser.cs`/`Program.cs`
+    (`Archiver.CLI`, `Archiver.Shell`) — token-dispatch moved out of the parsing `foreach` loops
+    into `Apply*Token` handlers over small mutable state objects (extracting validation-only
+    helpers first was insufficient — SonarCloud weighs branches nested inside loops much more
+    heavily than the same branches at top level; this was the actual fix, not the first pass).
+  - S3267 (7, mechanical `foreach`→`.Where()`), S3358 (nested ternary, `ExtractionRouter.cs`),
+    S6966 (20, `Console.Out/Error.WriteLine`→`await ...WriteLineAsync` in `Archiver.CLI/Program.cs`),
+    CA1310, CA1711 (2 real cases; a 3rd — see Won't-Fix below), CA1806, CA1835 (3 production sites),
+    CA1838 (`CreateProcessW`'s `StringBuilder`→char-buffer), CA1844, CA1861, CA2201 (2), and the
+    two genuine `IDE0028`s a same-session `CA1861` fix introduced (real collection-expression
+    syntax fix, not suppression).
+  - Two real self-introduced regressions caught by a **second** fresh SonarCloud scan after the
+    first round of fixes landed: S1481 (5 dead locals — a context/sink record was unwrapped into
+    locals that were then only read via `context.X` directly elsewhere; confirmed dead, not a
+    wiring bug, before deleting) and S1751 (an S3267 rewrite turned a multi-iteration loop into one
+    that can only ever run once, since its body unconditionally throws — replaced with
+    `FirstOrDefault`). Also: a **third** finding class — three `NOSONAR` markers added in the first
+    round (`CA1711`, `CA1835` ×2) turned out to have no effect at all, see below.
+- **Suppressed (Won't-Fix, documented in `docs/CONVENTIONS.md`'s "SonarCloud Won't-Fix
+  Conventions" section — not left as bare task-history prose, the exact gap that let this
+  category recur after T-F136/T-F137):**
+  - S101 (13 P/Invoke struct names mirroring real Win32 SDK names), S1075 (2 hardcoded
+    `tar.exe`/quarantine absolute paths, security-motivated per `CLAUDE.md`'s Hard Constraints),
+    S3871 (3 deliberately-`internal` exception types) — the same 3 categories T-F136 already
+    reasoned through in prose only, this time actually marked in code too.
+  - CA1711 on `TarSandboxTestCollection` (xUnit's own `[CollectionDefinition]` marker-class
+    convention names these `XCollection` — no name avoiding the suffix stays idiomatic; an
+    earlier pass in this same session tried renaming `TarSandboxCollection` →
+    `TarSandboxTestCollection`, which cannot work since both end in "Collection").
+  - S1135 TODOs in `ArchiveEntrySecurity.cs`/`build.yml` — legitimate tracked future work, left as
+    plain TODOs.
+  - **Real mid-task discovery: `// NOSONAR` only works for `csharpsquid:*` rules (SonarCloud's own
+    native analyzer).** `external_roslyn:*` rules (`CA*`/`IDE*`/`SYSLIB1054`, imported from the
+    real `dotnet build` warning log) never pass through SonarCloud's own NOSONAR filter — confirmed
+    empirically: a `NOSONAR`'d `CA1835` finding was still open on the next scan while same-round
+    `csharpsquid:S101` NOSONAR markers had correctly vanished. Fixed by switching CA1711/CA1835 to
+    `#pragma warning disable/restore` instead (which also silences the local build warning, unlike
+    NOSONAR). This distinction is now recorded in `docs/CONVENTIONS.md` so it isn't rediscovered
+    the hard way again.
+- **Deferred:** `SYSLIB1054` (`DllImport`→`LibraryImportAttribute`, ~40 findings across
+  `Archiver.Core/Services/Sandbox/`) — needs its own design-first pass with a full sandbox test
+  run, not a mechanical batch conversion inside this triage. Tracked as **T-F148**.
+- **Verification:** `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` green repo-wide
+  (817/817) across every commit in this task, including a clean isolated rerun of the one test
+  that failed once under full-suite load (matches this project's documented ThreadPool-contention
+  flakiness class, not a real regression). `dotnet build` across every touched project: 0 warnings,
+  0 errors. Full `Deploy.ps1` build+sign+install succeeded (v1.4.7.5). Pushed across 9 commits,
+  each confirmed green on CI with a fresh SonarCloud analysis; open issue count went 134 (stale
+  snapshot) → 76 (first real scan, post-CI-fix) → **45** (final) — 42 are the deferred T-F148
+  `SYSLIB1054` batch and 2 are the accepted S1135 TODOs, i.e. every actionable finding from this
+  triage is now either fixed or durably suppressed with a documented reason.
 - **Reported by:** user, 2026-08-07, after sharing the SonarCloud dashboard link mid-T-F146-session
   and asking for a dedicated follow-up task to triage it.
+
+### T-F148 — Convert Sandbox P/Invoke layer from `DllImport` to `LibraryImportAttribute`
+
+- [ ] **Status:** not started.
+- **Context:** split out of T-F147, deliberately out of scope there per the user's explicit
+  decision — `SYSLIB1054` (~40 findings across `Archiver.Core/Services/Sandbox/`, e.g.
+  `SandboxedProcessLauncher.cs`, `SecurityCapabilitiesAttributeList.cs`, `QuarantineAcl.cs`,
+  `SandboxJobObject.cs`, `TarSignatureVerifier.cs`) flags every remaining `[DllImport]` P/Invoke
+  declaration as eligible for the source-generated `[LibraryImport]` marshalling attribute
+  instead. This is the security-critical AppContainer/Job-Object/quarantine-ACL native interop
+  layer (T-F52) — needs its own design-first pass (advisor consult before restructuring, same
+  discipline T-F146/T-F147 used) and a full `dotnet test` run of the sandbox-behavior test suite
+  at each step, not a mechanical batch find-and-replace.
+- **Acceptance criteria (draft — refine at implementation time):** every `[DllImport]` in
+  `Services/Sandbox/` converted to `[LibraryImport]` (partial method, marshalling attributes
+  explicit per parameter where the source generator needs them); `dotnet test --filter
+  "Category!=Slow&Category!=VeryLarge"` green repo-wide, with particular attention to
+  `TarSandboxedServiceSandboxBehaviorTests.cs` (writes outside quarantine denied, spawned child
+  process killed by the Job Object, socket-connect denied in the AppContainer); a real on-device
+  `.tar.gz`/`.7z`/`.rar` extraction through the installed, packaged app, not `dotnet test` alone.
+- **Reported by:** user, 2026-08-07/08, via T-F147's scoping decision ("Окрема задача").

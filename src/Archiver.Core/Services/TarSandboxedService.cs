@@ -932,8 +932,8 @@ public sealed class TarSandboxedService : ITarService
     private enum DestinationConflictOutcome { Proceed, Skip }
 
     // Shared by CompressAsync's SingleArchive branch and ProcessSeparateArchivesAsync -- both used
-    // to run the identical File.Exists+switch(ConflictBehavior) block, just with different Skip
-    // handling (a whole-method early return vs. a per-item skippedFiles.Add+continue), which stays // NOSONAR: prose, not commented-out code (S125 false positive)
+    // to run the identical File.Exists+switch(ConflictBehavior) block, just with different Skip // NOSONAR: prose, not commented-out code (S125 false positive)
+    // handling (a whole-method early return vs. a per-item skippedFiles.Add+continue), which stays
     // the caller's job. Returns the destination path to actually write to (renamed if the conflict
     // resolution was Rename, unchanged otherwise).
     private static async Task<(DestinationConflictOutcome Outcome, string DestPath)> ResolveDestinationConflictAsync(
