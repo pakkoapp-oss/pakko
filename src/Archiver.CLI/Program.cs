@@ -104,7 +104,7 @@ static async Task<int> RunExtractAsync(ParsedCliCommand command, GroupPolicyOpti
         string? streamError = await CliStreamStaging.StreamSingleFileToStdoutAsync(stdoutStagingDir!, CancellationToken.None).ConfigureAwait(false);
         if (streamError is not null)
         {
-            Console.Error.WriteLine($"pakko: error: {streamError}");
+            await Console.Error.WriteLineAsync($"pakko: error: {streamError}").ConfigureAwait(false);
             return 2;
         }
         return code;
@@ -170,24 +170,24 @@ static async Task<int> RunInfoAsync()
     var tarService = new TarSandboxedService();
     TarCapabilities capabilities = await tarService.DetectCapabilitiesAsync().ConfigureAwait(false);
 
-    Console.Out.WriteLine("Pakko CLI — supported formats on this system:");
-    Console.Out.WriteLine("  zip       create, extract, test, list   (always)");
-    Console.Out.WriteLine("  tar       create, extract, list         (always)");
-    Console.Out.WriteLine("  tar.gz    create, extract, list         (always)");
+    await Console.Out.WriteLineAsync("Pakko CLI — supported formats on this system:").ConfigureAwait(false);
+    await Console.Out.WriteLineAsync("  zip       create, extract, test, list   (always)").ConfigureAwait(false);
+    await Console.Out.WriteLineAsync("  tar       create, extract, list         (always)").ConfigureAwait(false);
+    await Console.Out.WriteLineAsync("  tar.gz    create, extract, list         (always)").ConfigureAwait(false);
     const string CreateExtractList = "create, extract, list";
-    PrintFormatLine("tar.bz2", CreateExtractList, capabilities.SupportsBz2);
-    PrintFormatLine("tar.xz", CreateExtractList, capabilities.SupportsXz);
-    PrintFormatLine("tar.zst", CreateExtractList, capabilities.SupportsZstd);
-    PrintFormatLine("tar.lzma", CreateExtractList, capabilities.SupportsLzma);
-    PrintFormatLine("7z", "extract, list", capabilities.Supports7z);
-    PrintFormatLine("rar", "extract, list", capabilities.SupportsRar);
-    Console.Out.WriteLine();
-    Console.Out.WriteLine($"tar.exe: C:\\Windows\\System32\\tar.exe (version {capabilities.Version})");
+    await PrintFormatLineAsync("tar.bz2", CreateExtractList, capabilities.SupportsBz2).ConfigureAwait(false);
+    await PrintFormatLineAsync("tar.xz", CreateExtractList, capabilities.SupportsXz).ConfigureAwait(false);
+    await PrintFormatLineAsync("tar.zst", CreateExtractList, capabilities.SupportsZstd).ConfigureAwait(false);
+    await PrintFormatLineAsync("tar.lzma", CreateExtractList, capabilities.SupportsLzma).ConfigureAwait(false);
+    await PrintFormatLineAsync("7z", "extract, list", capabilities.Supports7z).ConfigureAwait(false);
+    await PrintFormatLineAsync("rar", "extract, list", capabilities.SupportsRar).ConfigureAwait(false);
+    await Console.Out.WriteLineAsync().ConfigureAwait(false);
+    await Console.Out.WriteLineAsync($"tar.exe: C:\\Windows\\System32\\tar.exe (version {capabilities.Version})").ConfigureAwait(false);
 
     return 0;
 
-    static void PrintFormatLine(string format, string capabilitiesText, bool supported) =>
-        Console.Out.WriteLine($"  {format,-9} {capabilitiesText,-22}  ({(supported ? "supported" : "not supported")})");
+    static Task PrintFormatLineAsync(string format, string capabilitiesText, bool supported) =>
+        Console.Out.WriteLineAsync($"  {format,-9} {capabilitiesText,-22}  ({(supported ? "supported" : "not supported")})");
 }
 
 // -------------------------------------------------------------------------
@@ -233,7 +233,7 @@ static async Task<int> RunArchiveAsync(ParsedCliCommand command, GroupPolicyOpti
         string? streamError = await CliStreamStaging.StreamSingleFileToStdoutAsync(stdoutStagingDir!, CancellationToken.None).ConfigureAwait(false);
         if (streamError is not null)
         {
-            Console.Error.WriteLine($"pakko: error: {streamError}");
+            await Console.Error.WriteLineAsync($"pakko: error: {streamError}").ConfigureAwait(false);
             return 2;
         }
         return code;
@@ -271,22 +271,22 @@ static async Task<int> RunListAsync(ParsedCliCommand command)
         foreach (string archivePath in archivePaths)
         {
             if (multiple)
-                Console.Out.WriteLine($"# archive: {archivePath}");
+                await Console.Out.WriteLineAsync($"# archive: {archivePath}").ConfigureAwait(false);
 
             ArchiveListResult listResult = await router.ListEntriesAsync(archivePath, CancellationToken.None).ConfigureAwait(false);
             if (!listResult.Success)
             {
-                Console.Error.WriteLine($"pakko: error: {archivePath}: {listResult.ErrorMessage}");
+                await Console.Error.WriteLineAsync($"pakko: error: {archivePath}: {listResult.ErrorMessage}").ConfigureAwait(false);
                 anyFailed = true;
                 continue;
             }
 
-            Console.Out.WriteLine(CliEntryFormatter.Header);
+            await Console.Out.WriteLineAsync(CliEntryFormatter.Header).ConfigureAwait(false);
             foreach (ArchiveEntryInfo entry in listResult.Entries)
-                Console.Out.WriteLine(CliEntryFormatter.FormatRow(entry));
+                await Console.Out.WriteLineAsync(CliEntryFormatter.FormatRow(entry)).ConfigureAwait(false);
 
             if (multiple)
-                Console.Out.WriteLine($"# total: {listResult.Entries.Count} entries");
+                await Console.Out.WriteLineAsync($"# total: {listResult.Entries.Count} entries").ConfigureAwait(false);
         }
 
         return anyFailed ? 2 : 0;
@@ -317,7 +317,7 @@ static async Task<int> RunHashAsync(ParsedCliCommand command)
     {
         await using Stream stdin = Console.OpenStandardInput();
         string hash = await FileHashService.ComputeStreamDigestAsync(stdin, command.HashAlgorithm, CancellationToken.None).ConfigureAwait(false);
-        Console.Out.WriteLine($"{hash}  (stdin)");
+        await Console.Out.WriteLineAsync($"{hash}  (stdin)").ConfigureAwait(false);
         return 0;
     }
 
@@ -328,21 +328,21 @@ static async Task<int> RunHashAsync(ParsedCliCommand command)
     {
         if (entry.Error is not null)
         {
-            Console.Error.WriteLine($"pakko: error: {entry.SourcePath}: {entry.Error}");
+            await Console.Error.WriteLineAsync($"pakko: error: {entry.SourcePath}: {entry.Error}").ConfigureAwait(false);
             errorCount++;
         }
         else
         {
-            Console.Out.WriteLine($"{entry.Hash}  {entry.SourcePath}");
+            await Console.Out.WriteLineAsync($"{entry.Hash}  {entry.SourcePath}").ConfigureAwait(false);
         }
     }
 
     if (result.Folder is { } folder)
     {
-        Console.Out.WriteLine();
-        Console.Out.WriteLine($"Files: {folder.FileCount}");
-        Console.Out.WriteLine($"{label} for data:           {folder.DataSum}");
-        Console.Out.WriteLine($"{label} for data and names: {folder.NamesSum}");
+        await Console.Out.WriteLineAsync().ConfigureAwait(false);
+        await Console.Out.WriteLineAsync($"Files: {folder.FileCount}").ConfigureAwait(false);
+        await Console.Out.WriteLineAsync($"{label} for data:           {folder.DataSum}").ConfigureAwait(false);
+        await Console.Out.WriteLineAsync($"{label} for data and names: {folder.NamesSum}").ConfigureAwait(false);
     }
 
     if (errorCount == result.Entries.Count)

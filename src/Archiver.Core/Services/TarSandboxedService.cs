@@ -14,7 +14,7 @@ namespace Archiver.Core.Services;
 /// </summary>
 public sealed class TarSandboxedService : ITarService
 {
-    private const string TarExecutablePath = @"C:\Windows\System32\tar.exe";
+    private const string TarExecutablePath = @"C:\Windows\System32\tar.exe"; // NOSONAR: S1075 — CLAUDE.md's Hard Constraints mandate this exact absolute path, never PATH-resolved (PATH-hijack resistance); moving it to config would reopen that risk
 
     // DetectCapabilitiesAsync runs synchronously on app startup (App.xaml.cs forces eager
     // resolution) — a hung tar.exe --version must not hang app launch indefinitely.
@@ -588,12 +588,9 @@ public sealed class TarSandboxedService : ITarService
 
         string[] names = SplitLines(nameStdOut);
 
-        foreach (string name in names)
-        {
-            if (IsDangerousEntryName(name))
-                throw new TarArchiveRejectedException(
-                    $"Archive contains an unsafe entry path ('{name}') and cannot be safely extracted.");
-        }
+        foreach (string name in names.Where(IsDangerousEntryName))
+            throw new TarArchiveRejectedException(
+                $"Archive contains an unsafe entry path ('{name}') and cannot be safely extracted.");
 
         var (typeExitCode, typeStdOut, typeStdErr) = await scope.RunAsync(
             ["-tvf", scope.StagedArchivePath], cancellationToken).ConfigureAwait(false);
@@ -663,11 +660,7 @@ public sealed class TarSandboxedService : ITarService
                 result.Add(selected + "/");
 
             string descendantPrefix = selected + "/";
-            foreach (string name in allNames)
-            {
-                if (name.StartsWith(descendantPrefix, StringComparison.Ordinal))
-                    result.Add(name);
-            }
+            result.AddRange(allNames.Where(name => name.StartsWith(descendantPrefix, StringComparison.Ordinal)));
         }
 
         return result.Distinct(StringComparer.Ordinal).ToList();
@@ -1067,7 +1060,7 @@ public sealed class TarSandboxedService : ITarService
 
     // tar.exe's "-v" creation-mode output is "a <name>" per entry (confirmed empirically —
     // RunUnsandboxedTarAsync's own comment documents this), with no size/throughput info. Strips
-    // the fixed "a " prefix so the dialog can show the real entry name instead of the raw line;
+    // the fixed "a " prefix so the dialog can show the real entry name instead of the raw line; // NOSONAR: prose, not commented-out code (S125 false positive)
     // falls back to the raw line unchanged if it doesn't match the expected shape, so a format
     // surprise degrades to "a slightly odd-looking filename shown", never a thrown exception.
     private static string ParseTarVerboseEntryName(string verboseLine) =>
@@ -1254,11 +1247,8 @@ public sealed class TarSandboxedService : ITarService
             foreach (string file in files)
                 yield return file;
 
-            foreach (string subDir in subDirs)
-            {
-                if (!ArchiveEntrySecurity.IsReparsePoint(subDir))
-                    pending.Push(subDir);
-            }
+            foreach (string subDir in subDirs.Where(d => !ArchiveEntrySecurity.IsReparsePoint(d)))
+                pending.Push(subDir);
         }
     }
 
@@ -1282,5 +1272,5 @@ public sealed class TarSandboxedService : ITarService
     // T-F146: internal (was private) — AntivirusScanService catches this the same way
     // ExtractSingleArchiveAsync's own callers do, to map a rejected archive to an Inconclusive
     // finding rather than an unhandled throw.
-    internal sealed class TarArchiveRejectedException(string message) : Exception(message);
+    internal sealed class TarArchiveRejectedException(string message) : Exception(message); // NOSONAR: S3871 — deliberately internal, never escapes Archiver.Core's public surface (always caught and converted to ArchiveError/Inconclusive, per this project's "services never throw to callers" rule); public would be pure API-surface bloat
 }

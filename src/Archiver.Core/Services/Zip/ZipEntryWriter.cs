@@ -326,12 +326,7 @@ internal sealed class ZipEntryWriter : IAsyncDisposable
         WriteUInt16(0); // comment length
     }
 
-    private static bool IsAsciiOnly(string value)
-    {
-        foreach (char c in value)
-            if (c > 0x7F) return false;
-        return true;
-    }
+    private static bool IsAsciiOnly(string value) => value.All(c => c <= 0x7F);
 
     private void WriteUInt16(ushort value)
     {

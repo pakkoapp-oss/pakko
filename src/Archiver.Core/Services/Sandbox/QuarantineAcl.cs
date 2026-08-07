@@ -101,7 +101,7 @@ internal static class QuarantineAcl
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    private struct TRUSTEE_W
+    private struct TRUSTEE_W // NOSONAR: S101 — mirrors the real Win32 SDK struct name (see docs/CONVENTIONS.md)
     {
         public IntPtr pMultipleTrustee;
         public int MultipleTrusteeOperation;
@@ -111,7 +111,7 @@ internal static class QuarantineAcl
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    private struct EXPLICIT_ACCESS_W
+    private struct EXPLICIT_ACCESS_W // NOSONAR: S101 — mirrors the real Win32 SDK struct name (see docs/CONVENTIONS.md)
     {
         public uint grfAccessPermissions;
         public int grfAccessMode;

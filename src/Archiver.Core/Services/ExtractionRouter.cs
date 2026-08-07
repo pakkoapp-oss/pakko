@@ -44,10 +44,11 @@ public sealed class ExtractionRouter(
         // whenever zip also ran keeps the existing (pre-T-F142) percent-only per-archive-slice
         // shape for that case — no worse than before this task, just not improved for a mixed
         // selection specifically.
+        IProgress<ProgressReport>? tarProgress = zipPaths.Count == 0 ? progress : null;
         ArchiveResult tarResult = tarPaths.Count > 0
             ? await tarService.ExtractAsync(
                 options with { ArchivePaths = tarPaths, OpenDestinationFolder = false },
-                zipPaths.Count == 0 ? progress : null, cancellationToken).ConfigureAwait(false)
+                tarProgress, cancellationToken).ConfigureAwait(false)
             : EmptyResult();
 
         var merged = new ArchiveResult

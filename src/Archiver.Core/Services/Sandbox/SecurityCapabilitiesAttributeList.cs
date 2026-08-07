@@ -113,7 +113,7 @@ internal sealed class SecurityCapabilitiesAttributeList : IDisposable
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    private struct SECURITY_CAPABILITIES
+    private struct SECURITY_CAPABILITIES // NOSONAR: S101 — mirrors the real Win32 SDK struct name (see docs/CONVENTIONS.md)
     {
         public IntPtr AppContainerSid;
         public IntPtr Capabilities;

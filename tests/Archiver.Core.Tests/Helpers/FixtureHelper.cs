@@ -17,7 +17,8 @@ public static class FixtureHelper
     {
         var path = Path.Combine(ArchivesDir, name);
         if (!File.Exists(path))
-            throw new Exception($"Fixture not found: {name} — run: dotnet run --project tests/Archiver.Core.Tests.GenerateFixtures");
+            throw new FileNotFoundException(
+                $"Fixture not found: {name} — run: dotnet run --project tests/Archiver.Core.Tests.GenerateFixtures", name);
         return path;
     }
 
@@ -38,7 +39,8 @@ public static class FixtureHelper
     {
         var path = Path.Combine(FilesDir, name);
         if (!File.Exists(path))
-            throw new Exception($"Fixture not found: {name} — run: dotnet run --project tests/Archiver.Core.Tests.GenerateFixtures");
+            throw new FileNotFoundException(
+                $"Fixture not found: {name} — run: dotnet run --project tests/Archiver.Core.Tests.GenerateFixtures", name);
         return path;
     }
 }

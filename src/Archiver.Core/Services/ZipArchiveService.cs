@@ -1226,15 +1226,15 @@ public sealed class ZipArchiveService : IArchiveService
         long total = 0;
         try
         {
-            foreach (string filePath in Directory.EnumerateFiles(dir, "*", SearchOption.TopDirectoryOnly))
+            foreach (string filePath in Directory.EnumerateFiles(dir, "*", SearchOption.TopDirectoryOnly)
+                .Where(f => !ArchiveEntrySecurity.IsReparsePoint(f)))
             {
-                if (!ArchiveEntrySecurity.IsReparsePoint(filePath))
-                    try { total += new FileInfo(filePath).Length; } catch { /* best-effort */ }
+                try { total += new FileInfo(filePath).Length; } catch { /* best-effort */ }
             }
-            foreach (string subDir in Directory.EnumerateDirectories(dir, "*", SearchOption.TopDirectoryOnly))
+            foreach (string subDir in Directory.EnumerateDirectories(dir, "*", SearchOption.TopDirectoryOnly)
+                .Where(d => !ArchiveEntrySecurity.IsReparsePoint(d)))
             {
-                if (!ArchiveEntrySecurity.IsReparsePoint(subDir))
-                    total += ComputeDirectoryBytes(subDir);
+                total += ComputeDirectoryBytes(subDir);
             }
         }
         catch { /* best-effort */ }

@@ -19,11 +19,10 @@ public static class ArchiveNaming
     {
         string fileName = Path.GetFileName(archivePath);
 
-        foreach (string ext in CompoundExtensions)
-        {
-            if (fileName.EndsWith(ext, StringComparison.OrdinalIgnoreCase))
-                return fileName[..^ext.Length];
-        }
+        string? matchedExt = CompoundExtensions.FirstOrDefault(
+            ext => fileName.EndsWith(ext, StringComparison.OrdinalIgnoreCase));
+        if (matchedExt is not null)
+            return fileName[..^matchedExt.Length];
 
         return Path.GetFileNameWithoutExtension(archivePath);
     }

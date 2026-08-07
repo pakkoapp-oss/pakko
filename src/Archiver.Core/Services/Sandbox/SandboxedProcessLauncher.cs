@@ -58,7 +58,12 @@ internal static class SandboxedProcessLauncher
         if (attributeList is not null)
             creationFlags |= EXTENDED_STARTUPINFO_PRESENT;
 
-        var commandLineBuffer = new StringBuilder(BuildCommandLine(fileName, arguments));
+        // char[] (not StringBuilder) -- avoids the extra native<->managed StringBuilder marshaling
+        // copy CA1838 flags; CreateProcessW's real lpCommandLine is a writable LPWSTR buffer, so
+        // this still needs to be a genuinely mutable array, not a string.
+        string commandLine = BuildCommandLine(fileName, arguments);
+        var commandLineBuffer = new char[commandLine.Length + 1];
+        commandLine.CopyTo(0, commandLineBuffer, 0, commandLine.Length);
 
         // attributeList must stay pinned from the moment its raw handle is read into
         // lpAttributeList through CreateProcessW, the call that actually dereferences it (S3869).
@@ -258,7 +263,7 @@ internal static class SandboxedProcessLauncher
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    private struct SECURITY_ATTRIBUTES
+    private struct SECURITY_ATTRIBUTES // NOSONAR: S101 — mirrors the real Win32 SDK struct name (see docs/CONVENTIONS.md)
     {
         public int nLength;
         public IntPtr lpSecurityDescriptor;
@@ -266,7 +271,7 @@ internal static class SandboxedProcessLauncher
     }
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
-    private struct STARTUPINFO
+    private struct STARTUPINFO // NOSONAR: S101 — mirrors the real Win32 SDK struct name (see docs/CONVENTIONS.md)
     {
         public int cb;
         public IntPtr lpReserved;
@@ -289,14 +294,14 @@ internal static class SandboxedProcessLauncher
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    private struct STARTUPINFOEX
+    private struct STARTUPINFOEX // NOSONAR: S101 — mirrors the real Win32 SDK struct name (see docs/CONVENTIONS.md)
     {
         public STARTUPINFO StartupInfo;
         public IntPtr lpAttributeList;
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    private struct PROCESS_INFORMATION
+    private struct PROCESS_INFORMATION // NOSONAR: S101 — mirrors the real Win32 SDK struct name (see docs/CONVENTIONS.md)
     {
         public IntPtr hProcess;
         public IntPtr hThread;
@@ -319,7 +324,7 @@ internal static class SandboxedProcessLauncher
         [return: MarshalAs(UnmanagedType.Bool)]
         public static extern bool CreateProcessW(
             string? lpApplicationName,
-            StringBuilder lpCommandLine,
+            char[] lpCommandLine,
             IntPtr lpProcessAttributes,
             IntPtr lpThreadAttributes,
             [MarshalAs(UnmanagedType.Bool)] bool bInheritHandles,

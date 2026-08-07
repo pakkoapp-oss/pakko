@@ -281,6 +281,37 @@ downstream service calls. Do not add path content checks to `ShellArgumentParser
 
 ---
 
+## SonarCloud Won't-Fix Conventions
+
+These rule categories are **intentionally left unaddressed** in this codebase — not oversights.
+When SonarCloud (or a local Roslyn `dotnet build`) flags a new instance, mark the exact flagged
+line with `// NOSONAR: SXXXX — <one-line reason>` (see any existing `Sandbox/*.cs` file for the
+style) rather than "fixing" it — the `NOSONAR` marker suppresses the finding on the SonarCloud
+dashboard itself (confirmed working, T-F138), even though the local Roslyn analyzer will keep
+emitting the build-time warning regardless (it doesn't honor `NOSONAR`, which is a SonarCloud-
+server-side convention, not a compiler one — that's expected noise, not a bug).
+
+- **S101 (naming convention) on P/Invoke struct names** (`SECURITY_ATTRIBUTES`, `STARTUPINFO`,
+  `TRUSTEE_W`, etc., in `Archiver.Core/Services/Sandbox/`): these deliberately mirror the real
+  Win32 SDK struct names for MSDN/sample-code cross-referencing — the same reasoning this file's
+  C++ section already applies to COM parameter names. Renaming to PascalCase would break that.
+- **S1075 (hardcoded absolute path/URI) on `TarExecutablePath`** (`TarSandboxScope.cs`,
+  `TarSandboxedService.cs`): `CLAUDE.md`'s Hard Constraints mandate this exact hardcoded absolute
+  path (`C:\Windows\System32\tar.exe`), specifically to resist PATH-hijacking. Moving it to
+  configuration would reopen that exact risk — this is a security-motivated hardcode, not laziness.
+- **S3871 (exception should be `public`) on `TarSignatureVerificationException`,
+  `SandboxSetupException`, `TarArchiveRejectedException`**: all three are deliberately `internal`,
+  never escape `Archiver.Core`'s public surface (always caught and converted to `ArchiveError`,
+  per this file's own "`Archiver.Core` services must never throw to callers" rule). Making them
+  `public` would be pure API-surface bloat against that rule, not a fix — a genuinely public
+  exception type implies external callers should catch it specifically, which none ever do here.
+
+A rule not in this list that gets flagged and reasoned through as a genuine won't-fix should be
+added here at the same time its `NOSONAR` marker is added — that's the whole point (see T-F147):
+prose reasoning in a task-history doc alone doesn't stop the finding from resurfacing next triage.
+
+---
+
 ## Packages Allowed per Project
 
 | Package | Project | Purpose |

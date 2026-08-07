@@ -131,7 +131,7 @@ public sealed class ProgressStreamTests
         using var stream = new ProgressStream(inner, totalBytes: 10, new SynchronousProgress<ProgressReport>(r => reports.Add(r)));
 
         var buffer = new byte[10];
-        int read = await stream.ReadAsync(buffer, 0, 10, CancellationToken.None);
+        int read = await stream.ReadAsync(buffer, 0, 10, CancellationToken.None); // NOSONAR: CA1835 — deliberately exercises the legacy byte[] overload under test, not a perf-sensitive call site
 
         read.Should().Be(10);
         reports.Should().ContainSingle(r => r.Percent == 100);
@@ -170,7 +170,7 @@ public sealed class ProgressStreamTests
         var reports = new List<ProgressReport>();
         using var stream = new ProgressStream(inner, totalBytes: 5, new SynchronousProgress<ProgressReport>(r => reports.Add(r)));
 
-        await stream.WriteAsync([1, 2, 3, 4, 5], 0, 5, CancellationToken.None);
+        await stream.WriteAsync([1, 2, 3, 4, 5], 0, 5, CancellationToken.None); // NOSONAR: CA1835 — deliberately exercises the legacy byte[] overload under test, not a perf-sensitive call site
 
         reports.Should().ContainSingle(r => r.Percent == 100);
     }

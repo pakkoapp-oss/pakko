@@ -65,7 +65,7 @@ internal static class TarSignatureVerifier
             // WTD_STATEACTION_CLOSE must run regardless of the verify result — hWVTStateData is
             // a documented easy leak otherwise.
             trustData.dwStateAction = WTD_STATEACTION_CLOSE;
-            NativeMethods.WinVerifyTrust(InvalidHandleValue, ref action, ref trustData); // NOSONAR: close-action return is meaningless — the real verify result is already captured in 'result' above
+            _ = NativeMethods.WinVerifyTrust(InvalidHandleValue, ref action, ref trustData);
 
             return result == 0; // ERROR_SUCCESS
         }
@@ -159,7 +159,7 @@ internal static class TarSignatureVerifier
     private const uint WTD_CACHE_ONLY_URL_RETRIEVAL = 0x00000004;
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
-    private struct WINTRUST_FILE_INFO
+    private struct WINTRUST_FILE_INFO // NOSONAR: S101 — mirrors the real Win32 SDK struct name (see docs/CONVENTIONS.md)
     {
         public uint cbStruct;
         [MarshalAs(UnmanagedType.LPWStr)] public string pcwszFilePath;
@@ -168,7 +168,7 @@ internal static class TarSignatureVerifier
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    private struct WINTRUST_DATA
+    private struct WINTRUST_DATA // NOSONAR: S101 — mirrors the real Win32 SDK struct name (see docs/CONVENTIONS.md)
     {
         public uint cbStruct;
         public IntPtr pPolicyCallbackData;

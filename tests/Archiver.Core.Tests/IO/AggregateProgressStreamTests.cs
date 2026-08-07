@@ -121,7 +121,7 @@ public sealed class AggregateProgressStreamTests
         using var stream = new AggregateProgressStream(inner, MakeTracker(4, reports), currentFile: "file.bin");
 
         var buffer = new byte[4];
-        int read = await stream.ReadAsync(buffer, 0, 4, CancellationToken.None);
+        int read = await stream.ReadAsync(buffer, 0, 4, CancellationToken.None); // NOSONAR: CA1835 — deliberately exercises the legacy byte[] overload under test, not a perf-sensitive call site
 
         read.Should().Be(4);
         reports.Should().ContainSingle(r => r.Percent == 100 && r.CurrentFile == "file.bin");

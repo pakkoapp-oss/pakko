@@ -8,6 +8,6 @@ namespace Archiver.Core.IntegrationTests;
 /// classes were racing under xUnit's default parallel-by-class execution, not a real product bug.
 /// </summary>
 [CollectionDefinition("TarSandbox", DisableParallelization = true)]
-public sealed class TarSandboxCollection
+public sealed class TarSandboxTestCollection
 {
 }

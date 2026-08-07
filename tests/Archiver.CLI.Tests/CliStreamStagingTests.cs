@@ -82,5 +82,7 @@ public sealed class CliStreamStagingTests
             throw new IOException("The pipe has been ended.");
         public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) =>
             throw new IOException("The pipe has been ended.");
+        public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default) =>
+            throw new IOException("The pipe has been ended.");
     }
 }

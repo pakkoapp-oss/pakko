@@ -52,7 +52,7 @@ internal sealed class ProgressStream : Stream
 
     public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
     {
-        int read = await _inner.ReadAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
+        int read = await _inner.ReadAsync(buffer.AsMemory(offset, count), cancellationToken).ConfigureAwait(false);
         Report(read);
         return read;
     }
@@ -72,7 +72,7 @@ internal sealed class ProgressStream : Stream
 
     public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
     {
-        await _inner.WriteAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
+        await _inner.WriteAsync(buffer.AsMemory(offset, count), cancellationToken).ConfigureAwait(false);
         Report(count);
     }
 

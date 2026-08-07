@@ -105,7 +105,7 @@ internal sealed class SandboxJobObject : IDisposable
     public void Dispose() => _handle.Dispose();
 
     [StructLayout(LayoutKind.Sequential)]
-    private struct JOBOBJECT_BASIC_LIMIT_INFORMATION
+    private struct JOBOBJECT_BASIC_LIMIT_INFORMATION // NOSONAR: S101 — mirrors the real Win32 SDK struct name (see docs/CONVENTIONS.md)
     {
         public long PerProcessUserTimeLimit;
         public long PerJobUserTimeLimit;
@@ -119,7 +119,7 @@ internal sealed class SandboxJobObject : IDisposable
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    private struct IO_COUNTERS
+    private struct IO_COUNTERS // NOSONAR: S101 — mirrors the real Win32 SDK struct name (see docs/CONVENTIONS.md)
     {
         public ulong ReadOperationCount;
         public ulong WriteOperationCount;
@@ -130,7 +130,7 @@ internal sealed class SandboxJobObject : IDisposable
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    private struct JOBOBJECT_EXTENDED_LIMIT_INFORMATION
+    private struct JOBOBJECT_EXTENDED_LIMIT_INFORMATION // NOSONAR: S101 — mirrors the real Win32 SDK struct name (see docs/CONVENTIONS.md)
     {
         public JOBOBJECT_BASIC_LIMIT_INFORMATION BasicLimitInformation;
         public IO_COUNTERS IoInfo;
@@ -141,7 +141,7 @@ internal sealed class SandboxJobObject : IDisposable
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    private struct JOBOBJECT_BASIC_UI_RESTRICTIONS
+    private struct JOBOBJECT_BASIC_UI_RESTRICTIONS // NOSONAR: S101 — mirrors the real Win32 SDK struct name (see docs/CONVENTIONS.md)
     {
         public uint UIRestrictionsClass;
     }

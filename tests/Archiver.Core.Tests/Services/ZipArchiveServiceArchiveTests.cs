@@ -1196,7 +1196,7 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
         var contents = result.CreatedFiles.Select(zipPath =>
         {
             using var zip = System.IO.Compression.ZipFile.OpenRead(zipPath);
-            var entry = zip.Entries.Single(e => e.FullName.EndsWith("pic.txt"));
+            var entry = zip.Entries.Single(e => e.FullName.EndsWith("pic.txt", StringComparison.Ordinal));
             using var reader = new StreamReader(entry.Open());
             return reader.ReadToEnd();
         }).ToList();

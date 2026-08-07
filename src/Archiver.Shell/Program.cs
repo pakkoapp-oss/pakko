@@ -549,7 +549,7 @@ static void ShowScanResults(string title, ThreatScanResult result)
             ? $"{Path.GetFileName(f.ArchivePath)}/{entry}"
             : Path.GetFileName(f.ArchivePath);
         // ThreatName is realistically always null -- AMSI's own contract never returns one (see
-        // AmsiScanner's doc comment) -- so the generic localized phrase is what actually ships;
+        // AmsiScanner's doc comment) -- so the generic localized phrase is what actually ships; // NOSONAR: prose, not commented-out code (S125 false positive)
         // ThreatName is only used on the rare chance a future provider surfaces one.
         string detail = f.Verdict == ThreatVerdict.ThreatDetected
             ? f.ThreatName ?? ScanResultLocalizer.Get("ScanThreatDetectedGeneric")

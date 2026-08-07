@@ -43,7 +43,7 @@ internal sealed class AggregateProgressStream : Stream
 
     public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
     {
-        int read = await _inner.ReadAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
+        int read = await _inner.ReadAsync(buffer.AsMemory(offset, count), cancellationToken).ConfigureAwait(false);
         _tracker.Report(read, _currentFile);
         return read;
     }

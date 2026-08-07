@@ -34,6 +34,8 @@ file sealed class FakeRegistryReader : IRegistryReader
 public sealed class GroupPolicyServiceTests
 {
     private const string PolicyKeyPath = @"Software\Policies\Pakko";
+    private static readonly string[] ZipTarFormats = ["zip", "tar"];
+    private static readonly string[] RarFormat = ["rar"];
 
     [Fact]
     public void Load_NoValuesPresent_ReturnsShippedDefaults()
@@ -80,8 +82,8 @@ public sealed class GroupPolicyServiceTests
 
         GroupPolicyOptions options = GroupPolicyService.Load(reader);
 
-        options.AllowedFormats.Should().BeEquivalentTo(new[] { "zip", "tar" });
-        options.BlockedFormats.Should().BeEquivalentTo(new[] { "rar" });
+        options.AllowedFormats.Should().BeEquivalentTo(ZipTarFormats);
+        options.BlockedFormats.Should().BeEquivalentTo(RarFormat);
     }
 
     [Fact]

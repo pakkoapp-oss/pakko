@@ -10,7 +10,7 @@ namespace Archiver.Core.Services.Sandbox;
 /// </summary>
 internal sealed class TarSandboxScope : IDisposable
 {
-    private const string TarExecutablePath = @"C:\Windows\System32\tar.exe";
+    private const string TarExecutablePath = @"C:\Windows\System32\tar.exe"; // NOSONAR: S1075 — CLAUDE.md's Hard Constraints mandate this exact absolute path, never PATH-resolved (PATH-hijack resistance); moving it to config would reopen that risk
     private const long RamLimitBytes = 512L * 1024 * 1024;
     private static readonly TimeSpan CpuTimeLimit = TimeSpan.FromMinutes(5);
 
@@ -169,7 +169,7 @@ internal sealed class TarSandboxScope : IDisposable
 /// check fails — fail-closed: this is treated as an ordinary per-archive error by callers, never
 /// a silent fallback to running tar.exe unsandboxed or unverified.
 /// </summary>
-internal sealed class TarSignatureVerificationException(string tarExecutablePath)
+internal sealed class TarSignatureVerificationException(string tarExecutablePath) // NOSONAR: S3871 — deliberately internal, never escapes Archiver.Core's public surface (always caught and converted to ArchiveError, per this project's "services never throw to callers" rule); public would be pure API-surface bloat
     : Exception($"'{tarExecutablePath}' failed Authenticode signature verification.");
 
 /// <summary>
@@ -178,5 +178,5 @@ internal sealed class TarSignatureVerificationException(string tarExecutablePath
 /// blocked by group policy) — fail-closed: treated as an ordinary per-archive error by callers,
 /// never a silent fallback to unsandboxed extraction.
 /// </summary>
-internal sealed class SandboxSetupException(string message, Exception innerException)
+internal sealed class SandboxSetupException(string message, Exception innerException) // NOSONAR: S3871 — deliberately internal, never escapes Archiver.Core's public surface (see comment above)
     : Exception(message, innerException);
