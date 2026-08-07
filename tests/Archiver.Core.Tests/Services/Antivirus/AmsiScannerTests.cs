@@ -18,7 +18,7 @@ public sealed class AmsiScannerTests
     private static string BuildEicarString() =>
         "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*";
 
-    [Fact]
+    [SkipIfAmsiScanUnavailable]
     public void ScanBuffer_EicarTestString_ReturnsThreatDetected()
     {
         using AmsiScanner scanner = new("PakkoTests");
@@ -29,7 +29,7 @@ public sealed class AmsiScannerTests
         verdict.Should().Be(ThreatVerdict.ThreatDetected);
     }
 
-    [Fact]
+    [SkipIfAmsiScanUnavailable]
     public void ScanBuffer_CleanBuffer_ReturnsClean()
     {
         using AmsiScanner scanner = new("PakkoTests");
@@ -40,7 +40,7 @@ public sealed class AmsiScannerTests
         verdict.Should().Be(ThreatVerdict.Clean);
     }
 
-    [Fact]
+    [SkipIfAmsiScanUnavailable]
     public void ScanBuffer_MultipleCallsOnSameInstance_BothSucceed()
     {
         // One AMSI session is reused across multiple buffers (matches AntivirusScanService's own

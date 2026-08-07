@@ -88,7 +88,10 @@ public sealed class TarSandboxedServiceProgressPollingTests
         var reports = new List<ProgressReport>();
         var progress = new SynchronousProgress<ProgressReport>(r => reports.Add(r));
 
-        var extractionTask = Task.Delay(400);
+        // Wide margin over the 250ms poll interval -- a tight margin here raced against CI
+        // scheduling jitter (the first poll tick landing late enough that the "extraction" had
+        // already completed), producing zero reports intermittently on GitHub Actions runners.
+        var extractionTask = Task.Delay(1500);
 
         await TarSandboxedService.PollExtractionProgressAsync(
             temp.Path, totalBytes: 100, progress, extractionTask, CancellationToken.None);
