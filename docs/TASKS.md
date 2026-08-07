@@ -3816,3 +3816,61 @@ regression from this task, which owns reliability only.
   refined 2026-08-07 after the user asked for a full design pass ("Продумай задачу з додаванням
   перевірки антивірусом. Порадся з адвізором та дизайнером...") — see `docs/DECISIONS.md`'s
   T-F146 entry for the full options considered and why each was accepted/rejected.
+
+### T-F147 — SonarCloud triage: existing code-quality findings on `main`
+
+- [ ] **Status:** not started.
+- **Context:** a SonarCloud dashboard check during T-F146's session
+  (https://sonarcloud.io/summary/overall?id=pakkoapp-oss-1_pakko&branch=main) surfaced 134
+  pre-existing issues on `main`, predating T-F146 entirely — none are in T-F146's own new files.
+  T-F146 itself got a same-session self-review pass against the same rule categories (a nested
+  ternary and two high-cognitive-complexity methods fixed before committing — see
+  `docs/DECISIONS.md`'s T-F146 entry) precisely because this backlog existed and made those rule
+  categories visible; this task is the deliberate, scoped follow-up to actually triage the rest,
+  not a repeat of that same-session spot-fix.
+- **Snapshot at time of reporting (2026-08-07, re-check via the dashboard/API before starting —
+  this list will drift as other work lands):**
+  - **CRITICAL (9) — cognitive complexity > 15 (S3776):** `Archiver.CLI/CliArgumentParser.cs`
+    (3 methods, complexity 16–40), `Archiver.CLI/Program.cs` (3 static functions, 16–21),
+    `Archiver.Core/Services/ExtractionRouter.cs:16` (complexity 20 — likely already resolved as a
+    side effect of T-F146's `ArchiveFormatPolicy` extraction; **re-verify against current `main`
+    before touching**, don't assume the old number still applies),
+    `Archiver.Core/Services/TarSandboxedService.cs` (2 methods, 38/40 — `ExtractSingleArchiveAsync`/
+    `ScanForUnsafeEntriesAsync`-adjacent code), `Archiver.Core/Services/Zip/
+    ParallelSingleArchiveWriter.cs:179` (27), `Archiver.Core/Services/ZipArchiveService.cs` (2
+    methods, complexity 33 and **132** — the highest single number in the whole report, real
+    priority target), `Archiver.Shell/Program.cs:360` (19).
+  - **MAJOR (43):** a nested ternary in `ExtractionRouter.cs:100` (S3358 — confirmed still present
+    on the current `main` post-T-F146, in code T-F146 didn't touch); `S125` commented-out code in
+    `TarSandboxedService.cs:1062`; `S107` too-many-parameters across `TarSandboxedService.cs`,
+    `ZipArchiveService.cs`, `Zip/ParallelSingleArchiveWriter.cs`, `Zip/ZipEntryWriter.cs` (8–10
+    params, threshold 7); 23 `S6966` "await WriteLineAsync instead" instances concentrated in
+    `Archiver.CLI/Program.cs`; a handful of Roslyn-analyzer MAJORs (`CA1711`/`CA1835`/`CA1861`/
+    `CA1844`) already individually well-understood (`CA1835`/`CA1844` are the same
+    `ReadAsync`/`WriteAsync`-overload style note repeated at different call sites); one
+    `S8264` MAJOR **vulnerability** — `.github/workflows/build.yml:23`, move a `read` permission
+    to job level (security-relevant, CI file — do this one regardless of how the rest of the
+    triage is scoped).
+  - **INFO (6):** `SYSLIB1054` — 5 P/Invoke sites in `Sandbox/SandboxedProcessLauncher.cs`/
+    `SecurityCapabilitiesAttributeList.cs` could use `LibraryImportAttribute` (source-generated
+    marshalling) instead of `DllImport`; one `S1135` TODO-comment nag in `build.yml:27`.
+  - **MINOR (1):** `S3267` — simplify a loop with LINQ `Where` in `Zip/ZipEntryWriter.cs:331`.
+- **Scoping questions to resolve before implementation (ask the user, don't assume):**
+  1. Fix everything in one pass, or triage by severity first (e.g. CRITICAL+the one Vulnerability
+     now, MAJOR/INFO/MINOR as separate follow-up work)?
+  2. The three complexity-132/40/38 methods (`ZipArchiveService.ArchiveAsync`-area,
+     `TarSandboxedService`'s two) are core archive/extract pipelines this project treats with
+     extra caution (see `CLAUDE.md`'s 3-attempt rule and "provable from the line itself" bounds-
+     safety standard) — a real refactor of these needs the same design-first discipline T-F146
+     itself used (advisor consult before restructuring, `dotnet test` green at each step), not a
+     quick mechanical split. Confirm the user wants this depth of change now versus a lighter
+     pass (e.g. just the S107/S125/S3358/mechanical items) first.
+  3. `S6966`'s 23 instances are concentrated in one file (`Archiver.CLI/Program.cs`) and look
+     mechanically fixable as a batch — confirm before doing a 23-site sweep in one commit versus
+     spreading it across smaller ones.
+- **Explicitly not yet decided — do not assume:** whether this becomes one task or splits into
+  several once the user answers the scoping questions above (e.g. a separate task for the
+  `ZipArchiveService`/`TarSandboxedService` complexity refactors specifically, given their
+  higher-caution profile).
+- **Reported by:** user, 2026-08-07, after sharing the SonarCloud dashboard link mid-T-F146-session
+  and asking for a dedicated follow-up task to triage it.
