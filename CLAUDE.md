@@ -774,6 +774,11 @@ files.
   (still invisible outside the assembly without `InternalsVisibleTo`). Hit adding
   `ParallelSingleArchiveWriter.ProgressTracker` as a parameter on the existing `internal static
   CompressToTempFileAsync` (T-F140).
+- **A `file`-scoped type (e.g. a hand-rolled `file sealed class FakeX` test fake) cannot appear in
+  the signature of a non-`file`-scoped member — `CS9051`.** If a test helper method needs the fake
+  as an explicit parameter type, drop the `file` modifier on the fake class instead (plain
+  top-level `internal` is fine — it's still test-assembly-only). Only matters when a shared helper
+  takes the fake by type; a fake only ever assigned to `var` never hits this (T-F146).
 - **Every intentionally-empty `catch` block needs a one-line comment stating why** (e.g.
   `/* best-effort */`) — an empty catch's WHY is exactly the non-obvious case this file's own
   comment policy already carves out an exception for. Also satisfies SonarCloud's S108/S2486 by
@@ -784,6 +789,13 @@ files.
   project's "zero dependencies" constraint blocks. Mark the call site
   `[SupportedOSPlatform("windows")]` to make the resulting `CA1416` warning meaningful instead of
   leaving it unaddressed (T-F51, `GroupPolicyService`/`Win32RegistryReader`).
+  **Don't over-annotate:** only the member that directly touches the Windows-only BCL API needs
+  `[SupportedOSPlatform("windows")]` — a raw P/Invoke wrapper class calling its own `DllImport`s
+  (e.g. `Services/Sandbox/`, `Services/Antivirus/AmsiScanner.cs`) needs no annotation at all, since
+  `DllImport` itself isn't BCL-platform-tagged. Annotating the whole class anyway makes `CA1416`
+  propagate into every caller, including test projects on a plain `net8.0` TFM — confirmed
+  T-F146, where a class-level annotation forced two unrelated test classes to also carry the
+  attribute before the warnings cleared.
 - **UI-thread marshaling for Core→App callbacks:** any delegate `Archiver.Core` invokes that ends
   up showing WinUI (e.g. `ExtractOptions.ConfirmCompressionBombExtraction` → `ContentDialog`) must
   marshal onto `Window.DispatcherQueue` inside the App-layer implementation —
@@ -793,10 +805,23 @@ files.
 - **Solution platforms:** x64 and ARM64 only — never add `Any CPU` or `x86` configuration entries
   to the `.sln` file. When adding a new project, mirror the `Debug|x64` / `Release|x64` entries
   from `Archiver.Shell` exactly (two lines per config, right-hand side maps to project's `Any CPU`).
+- **`Archiver.Shell/Program.cs` is top-level statements — local functions there can forward-
+  reference each other, but a local `const` cannot be used before its own textual declaration
+  (`CS0841`), unlike a real class's fields.** `MB_ICONERROR`/`MB_ICONWARNING`/`MaxErrorLinesShown`
+  are declared partway through the file, not at the top. When adding a new `--xxx` command's
+  handler function, insert it **after** any consts it reads (e.g. right after the most similar
+  existing command's own function), not simply appended after the dispatch `switch` — confirmed
+  T-F146, moving `RunScanAsync`/`ShowScanResults` down past those consts fixed it.
 - **Pin third-party GitHub Actions (`org/action@vX`) to a full commit SHA, not a mutable version
   tag** — `actions/*` (first-party GitHub actions) are exempt by convention; everything else
   (`microsoft/setup-msbuild`, `nuget/setup-nuget`, etc.) should be SHA-pinned with a `# vX.Y.Z`
   trailing comment. Found via SonarCloud S7637 (T-F136).
+- **Checking current SonarCloud findings:** the dashboard
+  (`sonarcloud.io/summary/overall?id=pakkoapp-oss-1_pakko&branch=main`) is a JS SPA a plain fetch
+  won't render — use the public REST API instead, no auth needed for this public project:
+  `sonarcloud.io/api/issues/search?componentKeys=pakkoapp-oss-1_pakko&branch=main&resolved=false&ps=100`
+  (WebFetch renders it fine). Reflects the last CI-analyzed push, not uncommitted local changes —
+  re-check after pushing if verifying a specific fix landed clean.
 - When adding or modifying tests, always run `dotnet test --filter "Category!=Slow&Category!=VeryLarge"`
   with no path argument — never scope to a single test project. **Plain `Category!=Slow` alone is
   not sufficient** — a test tagged only `VeryLarge` (not `Slow`) is not excluded by `!=Slow`, so it
