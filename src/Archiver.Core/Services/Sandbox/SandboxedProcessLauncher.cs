@@ -34,15 +34,8 @@ internal static class SandboxedProcessLauncher
             bInheritHandle = true,
         };
 
-        if (!NativeMethods.CreatePipe(out IntPtr stdOutRead, out IntPtr stdOutWrite, ref pipeSecurity, 0))
-            throw new IOException("CreatePipe (stdout) failed.");
-        if (!NativeMethods.SetHandleInformation(stdOutRead, HANDLE_FLAG_INHERIT, 0))
-            throw new IOException("SetHandleInformation (stdout read end) failed.");
-
-        if (!NativeMethods.CreatePipe(out IntPtr stdErrRead, out IntPtr stdErrWrite, ref pipeSecurity, 0))
-            throw new IOException("CreatePipe (stderr) failed.");
-        if (!NativeMethods.SetHandleInformation(stdErrRead, HANDLE_FLAG_INHERIT, 0))
-            throw new IOException("SetHandleInformation (stderr read end) failed.");
+        CreateInheritablePipe(out IntPtr stdOutRead, out IntPtr stdOutWrite, ref pipeSecurity, "stdout");
+        CreateInheritablePipe(out IntPtr stdErrRead, out IntPtr stdErrWrite, ref pipeSecurity, "stderr");
 
         var startupInfoEx = new STARTUPINFOEX();
         // Must be sizeof(STARTUPINFOEX), not sizeof(STARTUPINFO) — CreateProcessW uses this field
@@ -155,6 +148,18 @@ internal static class SandboxedProcessLauncher
             try { NativeMethods.TerminateProcess(processHandle, 1); } catch { /* best-effort */ }
             throw;
         }
+    }
+
+    // Pure pipe-pair setup, no process-lifecycle ordering to preserve — safe to extract unlike the
+    // CreateProcessW->AssignJobObject->ResumeThread sequence above, which stays a single unit (see
+    // this project's own "provable from the line itself" standard for why that sequence isn't
+    // split further: every step there exists because of a specific, previously-debugged race).
+    private static void CreateInheritablePipe(out IntPtr readEnd, out IntPtr writeEnd, ref SECURITY_ATTRIBUTES pipeSecurity, string pipeName)
+    {
+        if (!NativeMethods.CreatePipe(out readEnd, out writeEnd, ref pipeSecurity, 0))
+            throw new IOException($"CreatePipe ({pipeName}) failed.");
+        if (!NativeMethods.SetHandleInformation(readEnd, HANDLE_FLAG_INHERIT, 0))
+            throw new IOException($"SetHandleInformation ({pipeName} read end) failed.");
     }
 
     // Waits for the process handle to become signaled (process exit) without blocking a

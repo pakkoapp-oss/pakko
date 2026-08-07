@@ -46,317 +46,18 @@ public sealed class ZipArchiveService : IArchiveService
 
         if (options.Mode == ArchiveMode.SingleArchive)
         {
-            // T-F99: Path.GetFileNameWithoutExtension returns "" for a drive root (e.g. "Z:\"),
-            // now a reachable single-source selection via the shell extension's Drive ItemType —
-            // falls back to "archive" the same way BuildAddToArchiveTitle already does for the
-            // context-menu title text, instead of silently naming the archive ".zip".
-            string archiveName = ArchiveNaming.ResolveSingleArchiveName(options.ArchiveName, options.SourcePaths);
-
-            string destPath = Path.Combine(options.DestinationFolder, archiveName + ArchiveNaming.GetExtension(ArchiveContainerFormat.Zip));
-
-            Directory.CreateDirectory(options.DestinationFolder);
-
-            if (File.Exists(destPath))
-            {
-                switch (await conflictResolver.ResolveAsync(destPath).ConfigureAwait(false))
-                {
-                    case ConflictBehavior.Skip:
-                        // T-F87: report every source as skipped (not just a bare empty result) so
-                        // MainViewModel's DeleteAfterOperation cleanup can tell these sources were
-                        // never archived and must not be deleted.
-                        return new ArchiveResult
-                        {
-                            Success = true,
-                            CreatedFiles = [],
-                            Errors = [],
-                            SkippedFiles = [.. options.SourcePaths.Select(p => new SkippedFile
-                            {
-                                Path = p,
-                                Reason = $"Archive '{Path.GetFileName(destPath)}' already exists at the destination and was skipped."
-                            })],
-                        };
-                    case ConflictBehavior.Overwrite:
-                        File.Delete(destPath);
-                        break;
-                    case ConflictBehavior.Rename:
-                        destPath = GetUniqueFilePath(destPath);
-                        break;
-                }
-            }
-
-            string tempPath = destPath + ".tmp";
-
-            // T-F35 profiling (2026-07-18) found ComputeTotalBytes and the gate's file count used
-            // to walk the same directory tree in two separate passes (~193ms combined against a
-            // 5,000-file fixture, ~20-25% of total archiving time) — merged into one combined walk.
-            (long totalSourceBytes, int totalFileCount) = ComputeSingleArchiveTotals(options.SourcePaths);
-            progress?.Report(new ProgressReport { Percent = 0, BytesTransferred = 0, TotalBytes = totalSourceBytes });
-
-            // T-F31/T-F32: Sort source paths for deterministic archive entry order (ordinal, case-insensitive).
-            // This ensures identical inputs always produce identical archives regardless of the order
-            // in which the caller supplies paths or the OS enumerates them.
-            var sortedSourcePaths = options.SourcePaths
-                .OrderBy(p => p, StringComparer.OrdinalIgnoreCase)
-                .ToList();
-
-            // T-F35: gate the parallel pipeline behind a file-count threshold — see the constant's
-            // own comment.
-            bool useParallelPipeline = totalFileCount > ParallelPipelineFileCountThreshold;
-
-            try
-            {
-                if (useParallelPipeline)
-                {
-                    await Zip.ParallelSingleArchiveWriter.WriteAsync(
-                        tempPath, sortedSourcePaths, options.CompressionLevel, totalSourceBytes,
-                        skippedFiles.Add, errors.Add, progress, cancellationToken).ConfigureAwait(false);
-                }
-                else
-                {
-                    await Task.Run(async () =>
-                    {
-                    using var archive = ZipFile.Open(tempPath, ZipArchiveMode.Create);
-                    int total = sortedSourcePaths.Count;
-                    long byteOffset = 0;
-                    // T-F30: multiple top-level SourcePaths can share a basename (e.g. two
-                    // selected files both named "report.txt" from different folders) — track
-                    // names already claimed at the archive root and rename later occurrences,
-                    // the same way GetUniqueFilePath renames colliding output files on disk.
-                    var usedEntryNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                    for (int i = 0; i < total; i++)
-                    {
-                        if (cancellationToken.IsCancellationRequested)
-                            break;
-
-                        string sourcePath = sortedSourcePaths[i];
-
-                        // Compute source size for offset tracking (best-effort)
-                        long pathSize = 0;
-                        if (File.Exists(sourcePath))
-                            try { pathSize = new FileInfo(sourcePath).Length; } catch { /* best-effort */ }
-                        else if (Directory.Exists(sourcePath))
-                            pathSize = ComputeDirectoryBytes(sourcePath);
-
-                        // T-F23: Skip top-level symlinks and NTFS junctions
-                        if (ArchiveEntrySecurity.IsReparsePoint(sourcePath))
-                        {
-                            skippedFiles.Add(new SkippedFile
-                            {
-                                Path = sourcePath,
-                                Reason = "Symbolic links and NTFS junctions are not archived."
-                            });
-                            byteOffset += pathSize;
-                            continue;
-                        }
-
-                        try
-                        {
-                            if (Directory.Exists(sourcePath))
-                            {
-                                string entryName = GetUniqueEntryName(usedEntryNames, Path.GetFileName(sourcePath));
-                                var context = new DirectoryArchiveContext(
-                                    sourcePath, entryName, options.CompressionLevel, skippedFiles.Add, errors.Add, totalSourceBytes, progress);
-                                await AddDirectoryToArchiveAsync(archive, sourcePath, context, byteOffset, cancellationToken);
-                            }
-                            else if (File.Exists(sourcePath))
-                            {
-                                string entryName = GetUniqueEntryName(usedEntryNames, Path.GetFileName(sourcePath));
-                                await AddEntryFromFileAsync(archive, sourcePath, entryName,
-                                    options.CompressionLevel, cancellationToken, totalSourceBytes, byteOffset, progress);
-                            }
-                            else
-                            {
-                                errors.Add(new ArchiveError
-                                {
-                                    SourcePath = sourcePath,
-                                    Message = $"Source path does not exist: {sourcePath}"
-                                });
-                            }
-                        }
-                        catch (IOException ex)
-                        {
-                            errors.Add(new ArchiveError
-                            {
-                                SourcePath = sourcePath,
-                                Message = $"Cannot access file: {ex.Message}",
-                                Exception = ex
-                            });
-                        }
-                        catch (UnauthorizedAccessException ex)
-                        {
-                            errors.Add(new ArchiveError
-                            {
-                                SourcePath = sourcePath,
-                                Message = $"Access denied: {ex.Message}",
-                                Exception = ex
-                            });
-                        }
-
-                        byteOffset += pathSize;
-                    }
-                    }, cancellationToken).ConfigureAwait(false);
-                }
-
-                // T-F21: Commit the archive even when per-item errors occurred so that
-                // successfully archived files are preserved. Fatal errors (IOException
-                // creating the archive itself) are still caught below and delete the temp.
-                // T-F60: Only commit if at least one entry was written. When every source
-                // path failed (missing, locked, etc.) the temp is an empty ZIP — discard it
-                // so no zero-entry archive and no leftover .tmp lands on disk.
-                if (HasTempEntries(tempPath))
-                {
-                    File.Move(tempPath, destPath, overwrite: true);
-                    createdFiles.Add(destPath);
-                }
-                else
-                {
-                    try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { /* best-effort */ }
-                }
-            }
-            catch (OperationCanceledException)
-            {
-                try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { /* best-effort */ }
-                throw;
-            }
-            catch (IOException ex)
-            {
-                try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { /* best-effort */ }
-                errors.Add(new ArchiveError
-                {
-                    SourcePath = destPath,
-                    Message = $"Cannot create archive: {ex.Message}",
-                    Exception = ex
-                });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { /* best-effort */ }
-                errors.Add(new ArchiveError
-                {
-                    SourcePath = destPath,
-                    Message = $"Access denied creating archive: {ex.Message}",
-                    Exception = ex
-                });
-            }
-            catch (Exception ex) when (ex is not OperationCanceledException)
-            {
-                try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { /* best-effort */ }
-                errors.Add(new ArchiveError
-                {
-                    SourcePath = destPath,
-                    Message = $"Unexpected error: {ex.Message}",
-                    Exception = ex
-                });
-            }
+            ArchiveResult? skipResult = await ArchiveSingleArchiveModeAsync(
+                options, conflictResolver, errors, createdFiles, skippedFiles, progress, cancellationToken).ConfigureAwait(false);
+            // T-F87: an already-exists+Skip conflict returns its own complete result immediately
+            // (every source reported skipped) — bypasses OpenDestinationFolder below entirely,
+            // matching this method's original behavior.
+            if (skipResult is not null)
+                return skipResult;
         }
         else // SeparateArchives
         {
-            Directory.CreateDirectory(options.DestinationFolder);
-
-            long totalSourceBytes = ComputeTotalBytes(options.SourcePaths);
-            progress?.Report(new ProgressReport { Percent = 0, BytesTransferred = 0, TotalBytes = totalSourceBytes });
-
-            // A token already cancelled before this call must produce a graceful empty result,
-            // matching the old sequential loop's top-of-iteration IsCancellationRequested check
-            // (which simply broke out before doing any work). Parallel.ForEachAsync instead
-            // throws immediately if handed an already-cancelled token, so that case is guarded
-            // here rather than left to the loop itself.
-            if (!cancellationToken.IsCancellationRequested)
-            {
-                // T-F31/T-F32: Sort source paths for deterministic archive entry order (ordinal, case-insensitive).
-                var sortedSourcePaths = options.SourcePaths
-                    .OrderBy(p => p, StringComparer.OrdinalIgnoreCase)
-                    .ToList();
-
-                // T-F12: each SourcePath produces a fully independent .zip, so the whole batch can
-                // run in parallel. But conflict/collision resolution (OnConflict, and two different
-                // SourcePaths sharing a basename) must stay a SEQUENTIAL pre-pass: the original
-                // sequential loop relied on File.Exists(destPath) reflecting every prior iteration's
-                // completed write, which parallel execution can no longer guarantee (two workers
-                // could both observe "doesn't exist yet" and race to write the same .tmp path).
-                // Resolving every path's final destination up front — using an in-memory
-                // claimedDestPaths set alongside the on-disk check — reproduces the same outcome
-                // deterministically before any parallel work starts. See DECISIONS.md's T-F12 entry
-                // for the one behavior change this introduces (Overwrite + same-run collision).
-                var claimedDestPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                var plans = new List<(string SourcePath, string? DestPath)>();
-
-                foreach (string sourcePath in sortedSourcePaths)
-                {
-                    // T-F23: Skip top-level symlinks and NTFS junctions
-                    if (ArchiveEntrySecurity.IsReparsePoint(sourcePath))
-                    {
-                        skippedFiles.Add(new SkippedFile
-                        {
-                            Path = sourcePath,
-                            Reason = "Symbolic links and NTFS junctions are not archived."
-                        });
-                        plans.Add((sourcePath, null));
-                        continue;
-                    }
-
-                    string baseName = Path.GetFileNameWithoutExtension(sourcePath);
-                    string destPath = Path.Combine(options.DestinationFolder, baseName + ArchiveNaming.GetExtension(ArchiveContainerFormat.Zip));
-                    bool onDiskConflict = File.Exists(destPath);
-                    bool sameRunConflict = claimedDestPaths.Contains(destPath);
-
-                    if (onDiskConflict || sameRunConflict)
-                    {
-                        switch (await conflictResolver.ResolveAsync(destPath).ConfigureAwait(false))
-                        {
-                            case ConflictBehavior.Skip:
-                                // T-F87: record the skip so DeleteAfterOperation cleanup (keyed off
-                                // SkippedFiles) doesn't delete a source that was never archived.
-                                skippedFiles.Add(new SkippedFile
-                                {
-                                    Path = sourcePath,
-                                    Reason = $"Archive '{Path.GetFileName(destPath)}' already exists at the destination and was skipped."
-                                });
-                                plans.Add((sourcePath, null));
-                                continue;
-                            case ConflictBehavior.Overwrite:
-                                if (onDiskConflict && !sameRunConflict)
-                                    File.Delete(destPath);
-                                else
-                                    // Two SourcePaths in this same batch share a basename — actually
-                                    // overwriting one worker's output from another would race under
-                                    // parallel execution, so this same-run collision is renamed
-                                    // instead (deliberate, narrow deviation from Overwrite's usual
-                                    // "replace" semantics for this edge case only).
-                                    destPath = GetUniqueFilePath(destPath, claimedDestPaths);
-                                break;
-                            case ConflictBehavior.Rename:
-                                destPath = GetUniqueFilePath(destPath, claimedDestPaths);
-                                break;
-                        }
-                    }
-
-                    claimedDestPaths.Add(destPath);
-                    plans.Add((sourcePath, destPath));
-                }
-
-                var concurrentSink = new ArchiveResultSink(
-                    new ConcurrentBag<ArchiveError>(), new ConcurrentBag<string>(), new ConcurrentBag<SkippedFile>());
-                long[] completedBytesBox = [0];
-
-                await Parallel.ForEachAsync(
-                    plans.Where(p => p.DestPath is not null),
-                    new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount, CancellationToken = cancellationToken },
-                    async (plan, token) => await ArchiveSingleSeparatePathAsync(
-                        plan.SourcePath, plan.DestPath!, options.CompressionLevel,
-                        concurrentSink, totalSourceBytes, completedBytesBox, progress, token).ConfigureAwait(false)
-                ).ConfigureAwait(false);
-
-                foreach (var e in concurrentSink.Errors) errors.Add(e);
-                foreach (var c in concurrentSink.CreatedFiles) createdFiles.Add(c);
-                foreach (var s in concurrentSink.SkippedFiles) skippedFiles.Add(s);
-
-                // Concurrent workers report progress off a shared-but-approximate byte baseline
-                // (see ArchiveSingleSeparatePathAsync) — force one final, exact 100% report here so
-                // callers always observe a deterministic completion value regardless of how the
-                // parallel workers' individual reports interleaved.
-                progress?.Report(new ProgressReport { Percent = 100, BytesTransferred = totalSourceBytes, TotalBytes = totalSourceBytes });
-            }
+            await ArchiveSeparateArchivesModeAsync(
+                options, conflictResolver, errors, createdFiles, skippedFiles, progress, cancellationToken).ConfigureAwait(false);
         }
 
         var result = new ArchiveResult
@@ -373,6 +74,351 @@ public sealed class ZipArchiveService : IArchiveService
         }
 
         return result;
+    }
+
+    // Returns non-null only for the already-exists+Skip conflict case, which the caller must
+    // return immediately as ArchiveAsync's own result (see the comment at that call site) — every
+    // other outcome (including all errors) is recorded into errors/createdFiles/skippedFiles and
+    // this returns null so the caller proceeds to its normal result assembly.
+    private async Task<ArchiveResult?> ArchiveSingleArchiveModeAsync(
+        ArchiveOptions options, ConflictResolver conflictResolver,
+        List<ArchiveError> errors, List<string> createdFiles, List<SkippedFile> skippedFiles,
+        IProgress<ProgressReport>? progress, CancellationToken cancellationToken)
+    {
+        // T-F99: Path.GetFileNameWithoutExtension returns "" for a drive root (e.g. "Z:\"), now a
+        // reachable single-source selection via the shell extension's Drive ItemType — falls back
+        // to "archive" the same way BuildAddToArchiveTitle already does for the context-menu
+        // title text, instead of silently naming the archive ".zip".
+        string archiveName = ArchiveNaming.ResolveSingleArchiveName(options.ArchiveName, options.SourcePaths);
+        string destPath = Path.Combine(options.DestinationFolder, archiveName + ArchiveNaming.GetExtension(ArchiveContainerFormat.Zip));
+
+        Directory.CreateDirectory(options.DestinationFolder);
+
+        if (File.Exists(destPath))
+        {
+            switch (await conflictResolver.ResolveAsync(destPath).ConfigureAwait(false))
+            {
+                case ConflictBehavior.Skip:
+                    // T-F87: report every source as skipped (not just a bare empty result) so
+                    // MainViewModel's DeleteAfterOperation cleanup can tell these sources were
+                    // never archived and must not be deleted.
+                    return new ArchiveResult
+                    {
+                        Success = true,
+                        CreatedFiles = [],
+                        Errors = [],
+                        SkippedFiles = [.. options.SourcePaths.Select(p => new SkippedFile
+                        {
+                            Path = p,
+                            Reason = $"Archive '{Path.GetFileName(destPath)}' already exists at the destination and was skipped."
+                        })],
+                    };
+                case ConflictBehavior.Overwrite:
+                    File.Delete(destPath);
+                    break;
+                case ConflictBehavior.Rename:
+                    destPath = GetUniqueFilePath(destPath);
+                    break;
+            }
+        }
+
+        string tempPath = destPath + ".tmp";
+
+        // T-F35 profiling (2026-07-18) found ComputeTotalBytes and the gate's file count used to
+        // walk the same directory tree in two separate passes (~193ms combined against a
+        // 5,000-file fixture, ~20-25% of total archiving time) — merged into one combined walk.
+        (long totalSourceBytes, int totalFileCount) = ComputeSingleArchiveTotals(options.SourcePaths);
+        progress?.Report(new ProgressReport { Percent = 0, BytesTransferred = 0, TotalBytes = totalSourceBytes });
+
+        // T-F31/T-F32: Sort source paths for deterministic archive entry order (ordinal, case-insensitive).
+        // This ensures identical inputs always produce identical archives regardless of the order
+        // in which the caller supplies paths or the OS enumerates them.
+        var sortedSourcePaths = options.SourcePaths
+            .OrderBy(p => p, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        // T-F35: gate the parallel pipeline behind a file-count threshold — see the constant's
+        // own comment.
+        bool useParallelPipeline = totalFileCount > ParallelPipelineFileCountThreshold;
+
+        try
+        {
+            if (useParallelPipeline)
+            {
+                await Zip.ParallelSingleArchiveWriter.WriteAsync(
+                    tempPath, sortedSourcePaths, options.CompressionLevel, totalSourceBytes,
+                    skippedFiles.Add, errors.Add, progress, cancellationToken).ConfigureAwait(false);
+            }
+            else
+            {
+                await WriteSequentialSingleArchiveAsync(
+                    tempPath, sortedSourcePaths, options, totalSourceBytes, errors, skippedFiles, progress, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+
+            // T-F21: Commit the archive even when per-item errors occurred so that successfully
+            // archived files are preserved. Fatal errors (IOException creating the archive
+            // itself) are still caught below and delete the temp.
+            // T-F60: Only commit if at least one entry was written. When every source path
+            // failed (missing, locked, etc.) the temp is an empty ZIP — discard it so no
+            // zero-entry archive and no leftover .tmp lands on disk.
+            if (HasTempEntries(tempPath))
+            {
+                File.Move(tempPath, destPath, overwrite: true);
+                createdFiles.Add(destPath);
+            }
+            else
+            {
+                TryDeleteBestEffort(tempPath);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            TryDeleteBestEffort(tempPath);
+            throw;
+        }
+        catch (IOException ex)
+        {
+            TryDeleteBestEffort(tempPath);
+            errors.Add(new ArchiveError
+            {
+                SourcePath = destPath,
+                Message = $"Cannot create archive: {ex.Message}",
+                Exception = ex
+            });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            TryDeleteBestEffort(tempPath);
+            errors.Add(new ArchiveError
+            {
+                SourcePath = destPath,
+                Message = $"Access denied creating archive: {ex.Message}",
+                Exception = ex
+            });
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            TryDeleteBestEffort(tempPath);
+            errors.Add(new ArchiveError
+            {
+                SourcePath = destPath,
+                Message = $"Unexpected error: {ex.Message}",
+                Exception = ex
+            });
+        }
+
+        return null;
+    }
+
+    private static async Task WriteSequentialSingleArchiveAsync(
+        string tempPath, List<string> sortedSourcePaths, ArchiveOptions options, long totalSourceBytes,
+        List<ArchiveError> errors, List<SkippedFile> skippedFiles, IProgress<ProgressReport>? progress,
+        CancellationToken cancellationToken)
+    {
+        await Task.Run(async () =>
+        {
+            using var archive = ZipFile.Open(tempPath, ZipArchiveMode.Create);
+            int total = sortedSourcePaths.Count;
+            long byteOffset = 0;
+            // T-F30: multiple top-level SourcePaths can share a basename (e.g. two selected
+            // files both named "report.txt" from different folders) — track names already
+            // claimed at the archive root and rename later occurrences, the same way
+            // GetUniqueFilePath renames colliding output files on disk.
+            var usedEntryNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            for (int i = 0; i < total; i++)
+            {
+                if (cancellationToken.IsCancellationRequested)
+                    break;
+
+                string sourcePath = sortedSourcePaths[i];
+
+                // Compute source size for offset tracking (best-effort)
+                long pathSize = 0;
+                if (File.Exists(sourcePath))
+                    try { pathSize = new FileInfo(sourcePath).Length; } catch { /* best-effort */ }
+                else if (Directory.Exists(sourcePath))
+                    pathSize = ComputeDirectoryBytes(sourcePath);
+
+                // T-F23: Skip top-level symlinks and NTFS junctions
+                if (ArchiveEntrySecurity.IsReparsePoint(sourcePath))
+                {
+                    skippedFiles.Add(new SkippedFile
+                    {
+                        Path = sourcePath,
+                        Reason = "Symbolic links and NTFS junctions are not archived."
+                    });
+                    byteOffset += pathSize;
+                    continue;
+                }
+
+                try
+                {
+                    if (Directory.Exists(sourcePath))
+                    {
+                        string entryName = GetUniqueEntryName(usedEntryNames, Path.GetFileName(sourcePath));
+                        var context = new DirectoryArchiveContext(
+                            sourcePath, entryName, options.CompressionLevel, skippedFiles.Add, errors.Add, totalSourceBytes, progress);
+                        await AddDirectoryToArchiveAsync(archive, sourcePath, context, byteOffset, cancellationToken);
+                    }
+                    else if (File.Exists(sourcePath))
+                    {
+                        string entryName = GetUniqueEntryName(usedEntryNames, Path.GetFileName(sourcePath));
+                        await AddEntryFromFileAsync(archive, sourcePath, entryName,
+                            options.CompressionLevel, cancellationToken, totalSourceBytes, byteOffset, progress);
+                    }
+                    else
+                    {
+                        errors.Add(new ArchiveError
+                        {
+                            SourcePath = sourcePath,
+                            Message = $"Source path does not exist: {sourcePath}"
+                        });
+                    }
+                }
+                catch (IOException ex)
+                {
+                    errors.Add(new ArchiveError
+                    {
+                        SourcePath = sourcePath,
+                        Message = $"Cannot access file: {ex.Message}",
+                        Exception = ex
+                    });
+                }
+                catch (UnauthorizedAccessException ex)
+                {
+                    errors.Add(new ArchiveError
+                    {
+                        SourcePath = sourcePath,
+                        Message = $"Access denied: {ex.Message}",
+                        Exception = ex
+                    });
+                }
+
+                byteOffset += pathSize;
+            }
+        }, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task ArchiveSeparateArchivesModeAsync(
+        ArchiveOptions options, ConflictResolver conflictResolver,
+        List<ArchiveError> errors, List<string> createdFiles, List<SkippedFile> skippedFiles,
+        IProgress<ProgressReport>? progress, CancellationToken cancellationToken)
+    {
+        Directory.CreateDirectory(options.DestinationFolder);
+
+        long totalSourceBytes = ComputeTotalBytes(options.SourcePaths);
+        progress?.Report(new ProgressReport { Percent = 0, BytesTransferred = 0, TotalBytes = totalSourceBytes });
+
+        // A token already cancelled before this call must produce a graceful empty result,
+        // matching the old sequential loop's top-of-iteration IsCancellationRequested check
+        // (which simply broke out before doing any work). Parallel.ForEachAsync instead throws
+        // immediately if handed an already-cancelled token, so that case is guarded here rather
+        // than left to the loop itself.
+        if (cancellationToken.IsCancellationRequested)
+            return;
+
+        // T-F31/T-F32: Sort source paths for deterministic archive entry order (ordinal, case-insensitive).
+        var sortedSourcePaths = options.SourcePaths
+            .OrderBy(p => p, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var plans = await ResolveSeparateArchivePlansAsync(
+            sortedSourcePaths, options.DestinationFolder, conflictResolver, skippedFiles).ConfigureAwait(false);
+
+        var concurrentSink = new ArchiveResultSink(
+            new ConcurrentBag<ArchiveError>(), new ConcurrentBag<string>(), new ConcurrentBag<SkippedFile>());
+        long[] completedBytesBox = [0];
+
+        await Parallel.ForEachAsync(
+            plans.Where(p => p.DestPath is not null),
+            new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount, CancellationToken = cancellationToken },
+            async (plan, token) => await ArchiveSingleSeparatePathAsync(
+                plan.SourcePath, plan.DestPath!, options.CompressionLevel,
+                concurrentSink, totalSourceBytes, completedBytesBox, progress, token).ConfigureAwait(false)
+        ).ConfigureAwait(false);
+
+        foreach (var e in concurrentSink.Errors) errors.Add(e);
+        foreach (var c in concurrentSink.CreatedFiles) createdFiles.Add(c);
+        foreach (var s in concurrentSink.SkippedFiles) skippedFiles.Add(s);
+
+        // Concurrent workers report progress off a shared-but-approximate byte baseline (see
+        // ArchiveSingleSeparatePathAsync) — force one final, exact 100% report here so callers
+        // always observe a deterministic completion value regardless of how the parallel
+        // workers' individual reports interleaved.
+        progress?.Report(new ProgressReport { Percent = 100, BytesTransferred = totalSourceBytes, TotalBytes = totalSourceBytes });
+    }
+
+    // T-F12: each SourcePath produces a fully independent .zip, so the whole batch can run in
+    // parallel. But conflict/collision resolution (OnConflict, and two different SourcePaths
+    // sharing a basename) must stay a SEQUENTIAL pre-pass: the original sequential loop relied on
+    // File.Exists(destPath) reflecting every prior iteration's completed write, which parallel
+    // execution can no longer guarantee (two workers could both observe "doesn't exist yet" and
+    // race to write the same .tmp path). Resolving every path's final destination up front —
+    // using an in-memory claimedDestPaths set alongside the on-disk check — reproduces the same
+    // outcome deterministically before any parallel work starts. See DECISIONS.md's T-F12 entry
+    // for the one behavior change this introduces (Overwrite + same-run collision).
+    private static async Task<List<(string SourcePath, string? DestPath)>> ResolveSeparateArchivePlansAsync(
+        List<string> sortedSourcePaths, string destinationFolder, ConflictResolver conflictResolver, List<SkippedFile> skippedFiles)
+    {
+        var claimedDestPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var plans = new List<(string SourcePath, string? DestPath)>();
+
+        foreach (string sourcePath in sortedSourcePaths)
+        {
+            // T-F23: Skip top-level symlinks and NTFS junctions
+            if (ArchiveEntrySecurity.IsReparsePoint(sourcePath))
+            {
+                skippedFiles.Add(new SkippedFile
+                {
+                    Path = sourcePath,
+                    Reason = "Symbolic links and NTFS junctions are not archived."
+                });
+                plans.Add((sourcePath, null));
+                continue;
+            }
+
+            string baseName = Path.GetFileNameWithoutExtension(sourcePath);
+            string destPath = Path.Combine(destinationFolder, baseName + ArchiveNaming.GetExtension(ArchiveContainerFormat.Zip));
+            bool onDiskConflict = File.Exists(destPath);
+            bool sameRunConflict = claimedDestPaths.Contains(destPath);
+
+            if (onDiskConflict || sameRunConflict)
+            {
+                switch (await conflictResolver.ResolveAsync(destPath).ConfigureAwait(false))
+                {
+                    case ConflictBehavior.Skip:
+                        // T-F87: record the skip so DeleteAfterOperation cleanup (keyed off
+                        // SkippedFiles) doesn't delete a source that was never archived.
+                        skippedFiles.Add(new SkippedFile
+                        {
+                            Path = sourcePath,
+                            Reason = $"Archive '{Path.GetFileName(destPath)}' already exists at the destination and was skipped."
+                        });
+                        plans.Add((sourcePath, null));
+                        continue;
+                    case ConflictBehavior.Overwrite:
+                        if (onDiskConflict && !sameRunConflict)
+                            File.Delete(destPath);
+                        else
+                            // Two SourcePaths in this same batch share a basename — actually
+                            // overwriting one worker's output from another would race under
+                            // parallel execution, so this same-run collision is renamed instead
+                            // (deliberate, narrow deviation from Overwrite's usual "replace"
+                            // semantics for this edge case only).
+                            destPath = GetUniqueFilePath(destPath, claimedDestPaths);
+                        break;
+                    case ConflictBehavior.Rename:
+                        destPath = GetUniqueFilePath(destPath, claimedDestPaths);
+                        break;
+                }
+            }
+
+            claimedDestPaths.Add(destPath);
+            plans.Add((sourcePath, destPath));
+        }
+
+        return plans;
     }
 
     // T-F12: archives a single SourcePath (already assigned its final, collision-free destPath
@@ -600,11 +646,11 @@ public sealed class ZipArchiveService : IArchiveService
         try
         {
             bool alreadyIsolated = options.Mode == ExtractMode.SeparateFolders;
+            var context = new ZipExtractionContext(
+                conflictResolver, skippedFiles, options.ConfirmCompressionBombExtraction, _policy.MotwMode, archiveProgress);
             var (actualDest, anyExtracted) = await Task.Run(async () =>
                 await ExtractWithSmartFolderingAsync(archivePath, destDir, alreadyIsolated,
-                    conflictResolver, skippedFiles, archiveProgress,
-                    options.ConfirmCompressionBombExtraction, options.SelectedEntryPaths,
-                    _policy.MotwMode, cancellationToken),
+                    options.SelectedEntryPaths, context, cancellationToken),
                 cancellationToken).ConfigureAwait(false);
 
             // T-F87: an archive whose entries were all individually skipped (e.g. every entry
@@ -788,14 +834,15 @@ public sealed class ZipArchiveService : IArchiveService
         string archivePath,
         string destDir,
         bool alreadyIsolated,
-        ConflictResolver conflictResolver,
-        List<SkippedFile> skippedFiles,
-        IProgress<ProgressReport>? progress,
-        Func<CompressionBombWarning, Task<bool>>? confirmCompressionBombExtraction,
         IReadOnlyList<string>? selectedEntryPaths,
-        MotwMode motwMode,
+        ZipExtractionContext context,
         CancellationToken cancellationToken)
     {
+        ConflictResolver conflictResolver = context.ConflictResolver;
+        List<SkippedFile> skippedFiles = context.SkippedFiles;
+        IProgress<ProgressReport>? progress = context.Progress;
+        Func<CompressionBombWarning, Task<bool>>? confirmCompressionBombExtraction = context.ConfirmCompressionBombExtraction;
+        MotwMode motwMode = context.MotwMode;
         using var archive = ZipFile.OpenRead(archivePath);
 
         var allFileEntries = archive.Entries
@@ -905,130 +952,14 @@ public sealed class ZipArchiveService : IArchiveService
                 if (cancellationToken.IsCancellationRequested)
                     break;
 
-                string relativePath = entry.FullName.Replace('/', Path.DirectorySeparatorChar);
+                var (extracted, bytesConsumed) = await TryExtractSingleEntryAsync(
+                    entry, isSingleRootFolder, tempDest, fullTempDest, actualDest, archivePath,
+                    claimedFinalPaths, totalUncompressedBytes, bytesRead, context, cancellationToken)
+                    .ConfigureAwait(false);
 
-                if (isSingleRootFolder)
-                {
-                    var sep = relativePath.IndexOf(Path.DirectorySeparatorChar);
-                    relativePath = relativePath[(sep + 1)..];
-                    if (string.IsNullOrEmpty(relativePath))
-                    {
-                        bytesRead += entry.Length;
-                        continue;
-                    }
-                }
-
-                // T-F38: Reject entries with Alternate Data Stream marker
-                if (ArchiveEntrySecurity.HasAlternateDataStreamMarker(entry.FullName))
-                {
-                    skippedFiles.Add(new SkippedFile
-                    {
-                        Path = entry.FullName,
-                        Reason = "Alternate Data Stream entry rejected for security."
-                    });
-                    bytesRead += entry.Length;
-                    continue;
-                }
-
-                // T-F39: Reject reserved Windows device names
-                if (ArchiveEntrySecurity.HasReservedName(entry.FullName))
-                {
-                    skippedFiles.Add(new SkippedFile
-                    {
-                        Path = entry.FullName,
-                        Reason = $"Entry name matches a reserved Windows device name and was skipped."
-                    });
-                    bytesRead += entry.Length;
-                    continue;
-                }
-
-                // T-F39: Reject entries with control characters in name
-                if (ArchiveEntrySecurity.HasControlCharacters(entry.FullName))
-                {
-                    skippedFiles.Add(new SkippedFile
-                    {
-                        Path = entry.FullName,
-                        Reason = "Entry name contains control characters and was skipped."
-                    });
-                    bytesRead += entry.Length;
-                    continue;
-                }
-
-                string destFilePath = Path.GetFullPath(Path.Combine(tempDest, relativePath));
-
-                if (!destFilePath.StartsWith(fullTempDest, StringComparison.OrdinalIgnoreCase))
-                    throw new InvalidDataException($"ZIP entry '{entry.FullName}' would extract outside destination directory.");
-
-                Directory.CreateDirectory(Path.GetDirectoryName(destFilePath)!);
-
-                // T-F37: Reject entries whose path traverses a reparse point (symlink/junction)
-                if (ArchiveEntrySecurity.PathContainsReparsePoint(destFilePath, fullTempDest))
-                {
-                    skippedFiles.Add(new SkippedFile
-                    {
-                        Path = entry.FullName,
-                        Reason = "Entry path traverses a reparse point (symlink or junction) and was skipped."
-                    });
-                    bytesRead += entry.Length;
-                    continue;
-                }
-
-                // T-F94: per-entry compression-ratio check removed — superseded by the
-                // whole-archive check above (before tempDest was created).
-
-                // Conflict check against the final destination, not the temp dir — plus
-                // T-F30: against every finalFilePath already claimed earlier in this same run,
-                // which catches a duplicate entry name inside this archive that File.Exists
-                // alone can't see (see claimedFinalPaths comment above).
-                string finalFilePath = Path.GetFullPath(Path.Combine(actualDest, relativePath));
-                if (File.Exists(finalFilePath) || claimedFinalPaths.Contains(finalFilePath))
-                {
-                    ConflictBehavior resolvedConflict = await conflictResolver.ResolveAsync(finalFilePath).ConfigureAwait(false);
-                    if (resolvedConflict == ConflictBehavior.Skip)
-                    {
-                        bytesRead += entry.Length;
-                        continue;
-                    }
-                    if (resolvedConflict == ConflictBehavior.Rename)
-                    {
-                        string uniqueFinal = GetUniqueFilePath(finalFilePath, claimedFinalPaths);
-                        destFilePath = Path.Combine(Path.GetDirectoryName(destFilePath)!, Path.GetFileName(uniqueFinal));
-                        finalFilePath = uniqueFinal;
-                    }
-                }
-                claimedFinalPaths.Add(finalFilePath);
-
-                if (progress != null && totalUncompressedBytes > 0)
-                {
-                    var entryStream = entry.Open();
-                    await using var ps = new ProgressStream(entryStream, totalUncompressedBytes, bytesRead, progress, entry.Name);
-                    using var fileStream = new FileStream(
-                        destFilePath,
-                        FileMode.Create,
-                        FileAccess.Write,
-                        FileShare.None,
-                        bufferSize: CopyBufferSize,
-                        useAsync: true);
-                    await ps.CopyToAsync(fileStream, CopyBufferSize, cancellationToken).ConfigureAwait(false);
-                }
-                else
-                {
-                    using var entryStream = entry.Open();
-                    using var fileStream = new FileStream(
-                        destFilePath,
-                        FileMode.Create,
-                        FileAccess.Write,
-                        FileShare.None,
-                        bufferSize: CopyBufferSize,
-                        useAsync: true);
-                    await entryStream.CopyToAsync(fileStream, CopyBufferSize, cancellationToken).ConfigureAwait(false);
-                }
-
-                // T-F45: Propagate Zone.Identifier ADS from archive to extracted file
-                ArchiveEntrySecurity.TryPropagateMotw(archivePath, destFilePath, motwMode);
-
-                extractedCount++;
-                bytesRead += entry.Length;
+                if (extracted)
+                    extractedCount++;
+                bytesRead += bytesConsumed;
             }
         }
         catch (OperationCanceledException)
@@ -1069,6 +1000,143 @@ public sealed class ZipArchiveService : IArchiveService
         }
 
         return (actualDest, true);
+    }
+
+    // The plumbing every entry of an ExtractWithSmartFolderingAsync call shares, cut from that
+    // method's own parameter list to fix S107 — mirrors TarSandboxedService's identically-shaped
+    // context for ExtractSingleArchiveAsync (T-F118: the two methods are deliberately kept
+    // algorithmically identical).
+    internal sealed record ZipExtractionContext(
+        ConflictResolver ConflictResolver,
+        List<SkippedFile> SkippedFiles,
+        Func<CompressionBombWarning, Task<bool>>? ConfirmCompressionBombExtraction,
+        MotwMode MotwMode,
+        IProgress<ProgressReport>? Progress);
+
+    // One entry of ExtractWithSmartFolderingAsync's loop — every one of the 6 skip-gates below is
+    // already commented with its own T-Fxx tag and is self-contained. Returns whether the entry
+    // was actually written, and how many bytes to advance the caller's running bytesRead by
+    // (always entry.Length, on every path, matching the original inline loop's per-branch
+    // `bytesRead += entry.Length`) — kept as an explicit return rather than a ref/out parameter so
+    // the caller's accumulation stays visibly in its own hands.
+    private static async Task<(bool Extracted, long BytesConsumed)> TryExtractSingleEntryAsync(
+        ZipArchiveEntry entry, bool isSingleRootFolder, string tempDest, string fullTempDest, string actualDest,
+        string archivePath, HashSet<string> claimedFinalPaths, long totalUncompressedBytes, long bytesReadSoFar,
+        ZipExtractionContext context, CancellationToken cancellationToken)
+    {
+        string relativePath = entry.FullName.Replace('/', Path.DirectorySeparatorChar);
+
+        if (isSingleRootFolder)
+        {
+            var sep = relativePath.IndexOf(Path.DirectorySeparatorChar);
+            relativePath = relativePath[(sep + 1)..];
+            if (string.IsNullOrEmpty(relativePath))
+                return (false, entry.Length);
+        }
+
+        // T-F38: Reject entries with Alternate Data Stream marker
+        if (ArchiveEntrySecurity.HasAlternateDataStreamMarker(entry.FullName))
+        {
+            context.SkippedFiles.Add(new SkippedFile
+            {
+                Path = entry.FullName,
+                Reason = "Alternate Data Stream entry rejected for security."
+            });
+            return (false, entry.Length);
+        }
+
+        // T-F39: Reject reserved Windows device names
+        if (ArchiveEntrySecurity.HasReservedName(entry.FullName))
+        {
+            context.SkippedFiles.Add(new SkippedFile
+            {
+                Path = entry.FullName,
+                Reason = "Entry name matches a reserved Windows device name and was skipped."
+            });
+            return (false, entry.Length);
+        }
+
+        // T-F39: Reject entries with control characters in name
+        if (ArchiveEntrySecurity.HasControlCharacters(entry.FullName))
+        {
+            context.SkippedFiles.Add(new SkippedFile
+            {
+                Path = entry.FullName,
+                Reason = "Entry name contains control characters and was skipped."
+            });
+            return (false, entry.Length);
+        }
+
+        string destFilePath = Path.GetFullPath(Path.Combine(tempDest, relativePath));
+
+        if (!destFilePath.StartsWith(fullTempDest, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException($"ZIP entry '{entry.FullName}' would extract outside destination directory.");
+
+        Directory.CreateDirectory(Path.GetDirectoryName(destFilePath)!);
+
+        // T-F37: Reject entries whose path traverses a reparse point (symlink/junction)
+        if (ArchiveEntrySecurity.PathContainsReparsePoint(destFilePath, fullTempDest))
+        {
+            context.SkippedFiles.Add(new SkippedFile
+            {
+                Path = entry.FullName,
+                Reason = "Entry path traverses a reparse point (symlink or junction) and was skipped."
+            });
+            return (false, entry.Length);
+        }
+
+        // T-F94: per-entry compression-ratio check removed — superseded by the whole-archive
+        // check before tempDest was created.
+
+        // Conflict check against the final destination, not the temp dir — plus T-F30: against
+        // every finalFilePath already claimed earlier in this same run, which catches a
+        // duplicate entry name inside this archive that File.Exists alone can't see (see
+        // claimedFinalPaths' own comment at its declaration).
+        string finalFilePath = Path.GetFullPath(Path.Combine(actualDest, relativePath));
+        if (File.Exists(finalFilePath) || claimedFinalPaths.Contains(finalFilePath))
+        {
+            ConflictBehavior resolvedConflict = await context.ConflictResolver.ResolveAsync(finalFilePath).ConfigureAwait(false);
+            if (resolvedConflict == ConflictBehavior.Skip)
+                return (false, entry.Length);
+            if (resolvedConflict == ConflictBehavior.Rename)
+            {
+                string uniqueFinal = GetUniqueFilePath(finalFilePath, claimedFinalPaths);
+                destFilePath = Path.Combine(Path.GetDirectoryName(destFilePath)!, Path.GetFileName(uniqueFinal));
+                finalFilePath = uniqueFinal;
+            }
+        }
+        claimedFinalPaths.Add(finalFilePath);
+
+        if (context.Progress != null && totalUncompressedBytes > 0)
+        {
+            var entryStream = entry.Open();
+            await using var ps = new ProgressStream(entryStream, totalUncompressedBytes, bytesReadSoFar, context.Progress, entry.Name);
+            using var fileStream = new FileStream(
+                destFilePath,
+                FileMode.Create,
+                FileAccess.Write,
+                FileShare.None,
+                bufferSize: CopyBufferSize,
+                useAsync: true);
+            await ps.CopyToAsync(fileStream, CopyBufferSize, cancellationToken).ConfigureAwait(false);
+        }
+        else
+        {
+            using var entryStream = entry.Open();
+            using var fileStream = new FileStream(
+                destFilePath,
+                FileMode.Create,
+                FileAccess.Write,
+                FileShare.None,
+                bufferSize: CopyBufferSize,
+                useAsync: true);
+            await entryStream.CopyToAsync(fileStream, CopyBufferSize, cancellationToken).ConfigureAwait(false);
+        }
+
+        // T-F45: Propagate Zone.Identifier ADS from archive to extracted file
+        ArchiveEntrySecurity.TryPropagateMotw(archivePath, destFilePath, context.MotwMode);
+
+        return (true, entry.Length);
     }
 
     private static async Task AddEntryFromFileAsync(

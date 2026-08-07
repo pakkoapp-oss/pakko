@@ -260,25 +260,7 @@ internal static class ParallelSingleArchiveWriter
                         break;
 
                     case WorkResultKind.TempFileCompressed:
-                        // T-F141: FileShare.Read, not FileShare.None. This chunk file was already
-                        // fully written and closed by its worker (the write side's own
-                        // FileShare.None, in CompressToTempFileAsync below, is what actually
-                        // prevents anyone from reading a half-written chunk) -- nothing about this
-                        // read-back needs exclusivity. Requesting it anyway meant a transient
-                        // external reader (AV real-time scanner, cloud-sync client's file watcher,
-                        // Search Indexer -- the same class of process T-F96 already documented
-                        // racing AppPackages) touching a finished chunk in this window threw a
-                        // sharing-violation IOException here, uncaught, aborting the entire archive
-                        // operation instead of just this one entry. See DECISIONS.md's T-F141 entry.
-                        using (var tempStream = new FileStream(result.TempFilePath, FileMode.Open, FileAccess.Read,
-                            FileShare.Read, bufferSize: CopyBufferSize, useAsync: false))
-                        {
-                            await writer.WriteCompressedEntryFromStreamAsync(
-                                    result.EntryName, tempStream, result.CompressedSize, result.UncompressedSize,
-                                    result.Crc32, result.Method, result.LastWriteTime, cancellationToken)
-                                .ConfigureAwait(false);
-                        }
-                        TryDeleteTempFile(result.TempFilePath, pendingTempFiles);
+                        await WriteTempFileResultAsync(writer, result, pendingTempFiles, cancellationToken).ConfigureAwait(false);
                         break;
 
                     case WorkResultKind.DirectoryPlaceholder:
@@ -330,6 +312,28 @@ internal static class ParallelSingleArchiveWriter
                 try { File.Delete(leftoverPath); } catch { /* best-effort */ }
             }
         }
+    }
+
+    // T-F141: FileShare.Read, not FileShare.None. This chunk file was already fully written and
+    // closed by its worker (the write side's own FileShare.None, in CompressToTempFileAsync
+    // below, is what actually prevents anyone from reading a half-written chunk) -- nothing about
+    // this read-back needs exclusivity. Requesting it anyway meant a transient external reader
+    // (AV real-time scanner, cloud-sync client's file watcher, Search Indexer -- the same class
+    // of process T-F96 already documented racing AppPackages) touching a finished chunk in this
+    // window threw a sharing-violation IOException here, uncaught, aborting the entire archive
+    // operation instead of just this one entry. See DECISIONS.md's T-F141 entry.
+    private static async Task WriteTempFileResultAsync(
+        ZipEntryWriter writer, WorkResult result, ConcurrentDictionary<string, byte> pendingTempFiles, CancellationToken cancellationToken)
+    {
+        using (var tempStream = new FileStream(result.TempFilePath, FileMode.Open, FileAccess.Read,
+            FileShare.Read, bufferSize: CopyBufferSize, useAsync: false))
+        {
+            await writer.WriteCompressedEntryFromStreamAsync(
+                    result.EntryName, tempStream, result.CompressedSize, result.UncompressedSize,
+                    result.Crc32, result.Method, result.LastWriteTime, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        TryDeleteTempFile(result.TempFilePath, pendingTempFiles);
     }
 
     private static async Task<WorkResult> RunGatedAsync(

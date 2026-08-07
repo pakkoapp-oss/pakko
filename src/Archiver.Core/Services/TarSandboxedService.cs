@@ -172,10 +172,10 @@ public sealed class TarSandboxedService : ITarService
         try
         {
             bool alreadyIsolated = options.Mode == ExtractMode.SeparateFolders;
+            var context = new TarExtractionContext(
+                conflictResolver, skippedFiles, options.ConfirmCompressionBombExtraction, _policy.MotwMode, archiveProgress);
             var (actualDest, anyExtracted) = await ExtractSingleArchiveAsync(
-                archivePath, destDir, alreadyIsolated, conflictResolver, skippedFiles,
-                options.ConfirmCompressionBombExtraction, options.SelectedEntryPaths,
-                _policy.MotwMode, archiveProgress, cancellationToken)
+                archivePath, destDir, alreadyIsolated, options.SelectedEntryPaths, context, cancellationToken)
                 .ConfigureAwait(false);
 
             // T-F87: an archive whose entries were all individually skipped (e.g. every entry
@@ -250,14 +250,16 @@ public sealed class TarSandboxedService : ITarService
         string archivePath,
         string destDir,
         bool alreadyIsolated,
-        ConflictResolver conflictResolver,
-        List<SkippedFile> skippedFiles,
-        Func<CompressionBombWarning, Task<bool>>? confirmCompressionBombExtraction,
         IReadOnlyList<string>? selectedEntryPaths,
-        MotwMode motwMode,
-        IProgress<ProgressReport>? progress,
+        TarExtractionContext context,
         CancellationToken cancellationToken)
     {
+        ConflictResolver conflictResolver = context.ConflictResolver;
+        List<SkippedFile> skippedFiles = context.SkippedFiles;
+        Func<CompressionBombWarning, Task<bool>>? confirmCompressionBombExtraction = context.ConfirmCompressionBombExtraction;
+        MotwMode motwMode = context.MotwMode;
+        IProgress<ProgressReport>? progress = context.Progress;
+
         using TarSandboxScope scope = await TarSandboxScope.CreateAsync(archivePath, needsOutputDir: true, cancellationToken)
             .ConfigureAwait(false);
 
@@ -402,47 +404,10 @@ public sealed class TarSandboxedService : ITarService
             cancellationToken.ThrowIfCancellationRequested();
             totalFiles++;
 
-            string relativePath = Path.GetRelativePath(scope.OutputDirectory!, file);
-
-            // T-F118: matches ZipArchiveService.ExtractWithSmartFolderingAsync's identical strip —
-            // when the whole archive collapses to one root folder, actualDest already stands in
-            // for that folder, so its own name is dropped from the path being written.
-            if (isSingleRootFolder)
-            {
-                int sep = relativePath.IndexOf(Path.DirectorySeparatorChar);
-                if (sep < 0)
-                {
-                    // Defensive only — every file walked here came from a fileNames entry that
-                    // was confirmed to contain '/' for isSingleRootFolder to be true at all.
-                    continue;
-                }
-                relativePath = relativePath[(sep + 1)..];
-            }
-
-            string finalFilePath = Path.GetFullPath(Path.Combine(actualDest, relativePath));
-
-            if (File.Exists(finalFilePath))
-            {
-                ConflictBehavior resolvedConflict = await conflictResolver.ResolveAsync(finalFilePath).ConfigureAwait(false);
-                if (resolvedConflict == ConflictBehavior.Skip)
-                {
-                    skippedFiles.Add(new SkippedFile { Path = relativePath, Reason = "File already exists at destination." });
-                    continue;
-                }
-                if (resolvedConflict == ConflictBehavior.Rename)
-                {
-                    finalFilePath = GetUniqueFilePath(finalFilePath);
-                }
-            }
-
-            Directory.CreateDirectory(Path.GetDirectoryName(finalFilePath)!);
-            File.Move(file, finalFilePath, overwrite: true);
-
-            // T-F45: propagate Zone.Identifier ADS from the ORIGINAL archive (never the staged
-            // quarantine copy) to the extracted file — the staged copy is a Pakko-internal
-            // implementation detail and may not even carry a Zone.Identifier depending on
-            // hardlink-vs-copy staging; MOTW must reflect the real source the user chose.
-            ArchiveEntrySecurity.TryPropagateMotw(archivePath, finalFilePath, motwMode);
+            var (extracted, relativePath) = await TryMoveSingleEntryAsync(
+                file, scope.OutputDirectory!, isSingleRootFolder, actualDest, archivePath, context).ConfigureAwait(false);
+            if (!extracted)
+                continue;
 
             extractedCount++;
 
@@ -479,6 +444,71 @@ public sealed class TarSandboxedService : ITarService
 
         progress?.Report(new ProgressReport { Percent = 100, BytesTransferred = progressTotalBytes, TotalBytes = progressTotalBytes });
         return (actualDest, true);
+    }
+
+    // The plumbing every call to ExtractSingleArchiveAsync shares, cut from that method's own
+    // parameter list to fix S107 — same field names as ZipArchiveService.ZipExtractionContext
+    // (T-F118: the two methods are deliberately kept algorithmically identical), though it's its
+    // own record type since the two services share no common base to hang a single shared type on.
+    private sealed record TarExtractionContext(
+        ConflictResolver ConflictResolver,
+        List<SkippedFile> SkippedFiles,
+        Func<CompressionBombWarning, Task<bool>>? ConfirmCompressionBombExtraction,
+        MotwMode MotwMode,
+        IProgress<ProgressReport>? Progress);
+
+    // One file of ExtractSingleArchiveAsync's move-phase loop (quarantine "out\" -> the real
+    // destination) — conflict-resolve, move, propagate MOTW. Returns whether the file was
+    // actually moved (false for both the already-exists+Skip case and the defensive-only
+    // isSingleRootFolder edge case, matching the original inline loop's two `continue` sites) and
+    // the relative path actually used, for the caller's own progress-report CurrentFile.
+    private static async Task<(bool Extracted, string? RelativePath)> TryMoveSingleEntryAsync(
+        string file, string outputDirectory, bool isSingleRootFolder, string actualDest, string archivePath,
+        TarExtractionContext context)
+    {
+        string relativePath = Path.GetRelativePath(outputDirectory, file);
+
+        // T-F118: matches ZipArchiveService.ExtractWithSmartFolderingAsync's identical strip —
+        // when the whole archive collapses to one root folder, actualDest already stands in for
+        // that folder, so its own name is dropped from the path being written.
+        if (isSingleRootFolder)
+        {
+            int sep = relativePath.IndexOf(Path.DirectorySeparatorChar);
+            if (sep < 0)
+            {
+                // Defensive only — every file walked here came from a fileNames entry that was
+                // confirmed to contain '/' for isSingleRootFolder to be true at all.
+                return (false, null);
+            }
+            relativePath = relativePath[(sep + 1)..];
+        }
+
+        string finalFilePath = Path.GetFullPath(Path.Combine(actualDest, relativePath));
+
+        if (File.Exists(finalFilePath))
+        {
+            ConflictBehavior resolvedConflict = await context.ConflictResolver.ResolveAsync(finalFilePath).ConfigureAwait(false);
+            if (resolvedConflict == ConflictBehavior.Skip)
+            {
+                context.SkippedFiles.Add(new SkippedFile { Path = relativePath, Reason = "File already exists at destination." });
+                return (false, relativePath);
+            }
+            if (resolvedConflict == ConflictBehavior.Rename)
+            {
+                finalFilePath = GetUniqueFilePath(finalFilePath);
+            }
+        }
+
+        Directory.CreateDirectory(Path.GetDirectoryName(finalFilePath)!);
+        File.Move(file, finalFilePath, overwrite: true);
+
+        // T-F45: propagate Zone.Identifier ADS from the ORIGINAL archive (never the staged
+        // quarantine copy) to the extracted file — the staged copy is a Pakko-internal
+        // implementation detail and may not even carry a Zone.Identifier depending on
+        // hardlink-vs-copy staging; MOTW must reflect the real source the user chose.
+        ArchiveEntrySecurity.TryPropagateMotw(archivePath, finalFilePath, context.MotwMode);
+
+        return (true, relativePath);
     }
 
     // T-F142: how often the move-phase loop is allowed to report progress — same ~100ms throttle
