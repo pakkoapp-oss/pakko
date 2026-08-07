@@ -80,7 +80,7 @@ public sealed class ZipArchiveService : IArchiveService
     // return immediately as ArchiveAsync's own result (see the comment at that call site) — every
     // other outcome (including all errors) is recorded into errors/createdFiles/skippedFiles and
     // this returns null so the caller proceeds to its normal result assembly.
-    private async Task<ArchiveResult?> ArchiveSingleArchiveModeAsync(
+    private static async Task<ArchiveResult?> ArchiveSingleArchiveModeAsync(
         ArchiveOptions options, ConflictResolver conflictResolver,
         List<ArchiveError> errors, List<string> createdFiles, List<SkippedFile> skippedFiles,
         IProgress<ProgressReport>? progress, CancellationToken cancellationToken)
@@ -281,7 +281,7 @@ public sealed class ZipArchiveService : IArchiveService
             {
                 string entryName = GetUniqueEntryName(usedEntryNames, Path.GetFileName(sourcePath));
                 await AddEntryFromFileAsync(archive, sourcePath, entryName,
-                    compressionLevel, cancellationToken, new EntryWriteProgress(totalSourceBytes, byteOffset, progress)).ConfigureAwait(false);
+                    compressionLevel, new EntryWriteProgress(totalSourceBytes, byteOffset, progress), cancellationToken).ConfigureAwait(false);
             }
             else
             {
@@ -314,7 +314,7 @@ public sealed class ZipArchiveService : IArchiveService
         return pathSize;
     }
 
-    private async Task ArchiveSeparateArchivesModeAsync(
+    private static async Task ArchiveSeparateArchivesModeAsync(
         ArchiveOptions options, ConflictResolver conflictResolver,
         List<ArchiveError> errors, List<string> createdFiles, List<SkippedFile> skippedFiles,
         IProgress<ProgressReport>? progress, CancellationToken cancellationToken)
@@ -496,7 +496,7 @@ public sealed class ZipArchiveService : IArchiveService
             {
                 using var archive = ZipFile.Open(separateTempPath, ZipArchiveMode.Create);
                 await AddEntryFromFileAsync(archive, sourcePath, Path.GetFileName(sourcePath),
-                    compressionLevel, cancellationToken, new EntryWriteProgress(totalSourceBytes, baseOffset, progress))
+                    compressionLevel, new EntryWriteProgress(totalSourceBytes, baseOffset, progress), cancellationToken)
                     .ConfigureAwait(false);
             }
             else
@@ -1199,8 +1199,8 @@ public sealed class ZipArchiveService : IArchiveService
         string sourcePath,
         string entryName,
         CompressionLevel compressionLevel,
-        CancellationToken cancellationToken,
-        EntryWriteProgress progressInfo)
+        EntryWriteProgress progressInfo,
+        CancellationToken cancellationToken)
     {
         // T-F21: Open the source file BEFORE creating the archive entry.
         // If the file has been deleted or locked since it was discovered by
@@ -1333,8 +1333,8 @@ public sealed class ZipArchiveService : IArchiveService
             // IOException are subclasses of IOException and handled here.
             try
             {
-                await AddEntryFromFileAsync(archive, filePath, entryName, context.CompressionLevel, cancellationToken,
-                    new EntryWriteProgress(context.TotalBytes, startOffset, context.Progress));
+                await AddEntryFromFileAsync(archive, filePath, entryName, context.CompressionLevel,
+                    new EntryWriteProgress(context.TotalBytes, startOffset, context.Progress), cancellationToken);
             }
             catch (IOException ex)
             {
