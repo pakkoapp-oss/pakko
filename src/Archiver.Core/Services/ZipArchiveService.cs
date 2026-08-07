@@ -145,9 +145,10 @@ public sealed class ZipArchiveService : IArchiveService
         {
             if (useParallelPipeline)
             {
+                var callbacks = new Zip.ParallelSingleArchiveWriter.ReportCallbacks(skippedFiles.Add, errors.Add);
                 await Zip.ParallelSingleArchiveWriter.WriteAsync(
                     tempPath, sortedSourcePaths, options.CompressionLevel, totalSourceBytes,
-                    skippedFiles.Add, errors.Add, progress, cancellationToken).ConfigureAwait(false);
+                    callbacks, progress, cancellationToken).ConfigureAwait(false);
             }
             else
             {
@@ -220,9 +221,6 @@ public sealed class ZipArchiveService : IArchiveService
         string tempPath, List<string> sortedSourcePaths, CompressionLevel compressionLevel, long totalSourceBytes,
         ArchiveWorkSink sink, IProgress<ProgressReport>? progress, CancellationToken cancellationToken)
     {
-        List<ArchiveError> errors = sink.Errors;
-        List<SkippedFile> skippedFiles = sink.SkippedFiles;
-
         await Task.Run(async () =>
         {
             using var archive = ZipFile.Open(tempPath, ZipArchiveMode.Create);
@@ -238,73 +236,82 @@ public sealed class ZipArchiveService : IArchiveService
                 if (cancellationToken.IsCancellationRequested)
                     break;
 
-                string sourcePath = sortedSourcePaths[i];
-
-                // Compute source size for offset tracking (best-effort)
-                long pathSize = 0;
-                if (File.Exists(sourcePath))
-                    try { pathSize = new FileInfo(sourcePath).Length; } catch { /* best-effort */ }
-                else if (Directory.Exists(sourcePath))
-                    pathSize = ComputeDirectoryBytes(sourcePath);
-
-                // T-F23: Skip top-level symlinks and NTFS junctions
-                if (ArchiveEntrySecurity.IsReparsePoint(sourcePath))
-                {
-                    skippedFiles.Add(new SkippedFile
-                    {
-                        Path = sourcePath,
-                        Reason = "Symbolic links and NTFS junctions are not archived."
-                    });
-                    byteOffset += pathSize;
-                    continue;
-                }
-
-                try
-                {
-                    if (Directory.Exists(sourcePath))
-                    {
-                        string entryName = GetUniqueEntryName(usedEntryNames, Path.GetFileName(sourcePath));
-                        var context = new DirectoryArchiveContext(
-                            sourcePath, entryName, compressionLevel, skippedFiles.Add, errors.Add, totalSourceBytes, progress);
-                        await AddDirectoryToArchiveAsync(archive, sourcePath, context, byteOffset, cancellationToken);
-                    }
-                    else if (File.Exists(sourcePath))
-                    {
-                        string entryName = GetUniqueEntryName(usedEntryNames, Path.GetFileName(sourcePath));
-                        await AddEntryFromFileAsync(archive, sourcePath, entryName,
-                            compressionLevel, cancellationToken, new EntryWriteProgress(totalSourceBytes, byteOffset, progress));
-                    }
-                    else
-                    {
-                        errors.Add(new ArchiveError
-                        {
-                            SourcePath = sourcePath,
-                            Message = $"Source path does not exist: {sourcePath}"
-                        });
-                    }
-                }
-                catch (IOException ex)
-                {
-                    errors.Add(new ArchiveError
-                    {
-                        SourcePath = sourcePath,
-                        Message = $"Cannot access file: {ex.Message}",
-                        Exception = ex
-                    });
-                }
-                catch (UnauthorizedAccessException ex)
-                {
-                    errors.Add(new ArchiveError
-                    {
-                        SourcePath = sourcePath,
-                        Message = $"Access denied: {ex.Message}",
-                        Exception = ex
-                    });
-                }
-
-                byteOffset += pathSize;
+                byteOffset += await AddOneSourcePathToArchiveAsync(
+                    archive, sortedSourcePaths[i], compressionLevel, totalSourceBytes, byteOffset,
+                    usedEntryNames, sink, progress, cancellationToken).ConfigureAwait(false);
             }
         }, cancellationToken).ConfigureAwait(false);
+    }
+
+    // One source path of WriteSequentialSingleArchiveAsync's loop. Returns pathSize (best-effort
+    // size of the source), which the caller adds to its running byteOffset regardless of outcome
+    // — matches the original inline loop's unconditional trailing `byteOffset += pathSize`.
+    private static async Task<long> AddOneSourcePathToArchiveAsync(
+        ZipArchive archive, string sourcePath, CompressionLevel compressionLevel, long totalSourceBytes, long byteOffset,
+        HashSet<string> usedEntryNames, ArchiveWorkSink sink, IProgress<ProgressReport>? progress, CancellationToken cancellationToken)
+    {
+        // Compute source size for offset tracking (best-effort)
+        long pathSize = 0;
+        if (File.Exists(sourcePath))
+            try { pathSize = new FileInfo(sourcePath).Length; } catch { /* best-effort */ }
+        else if (Directory.Exists(sourcePath))
+            pathSize = ComputeDirectoryBytes(sourcePath);
+
+        // T-F23: Skip top-level symlinks and NTFS junctions
+        if (ArchiveEntrySecurity.IsReparsePoint(sourcePath))
+        {
+            sink.SkippedFiles.Add(new SkippedFile
+            {
+                Path = sourcePath,
+                Reason = "Symbolic links and NTFS junctions are not archived."
+            });
+            return pathSize;
+        }
+
+        try
+        {
+            if (Directory.Exists(sourcePath))
+            {
+                string entryName = GetUniqueEntryName(usedEntryNames, Path.GetFileName(sourcePath));
+                var context = new DirectoryArchiveContext(
+                    sourcePath, entryName, compressionLevel, sink.SkippedFiles.Add, sink.Errors.Add, totalSourceBytes, progress);
+                await AddDirectoryToArchiveAsync(archive, sourcePath, context, byteOffset, cancellationToken).ConfigureAwait(false);
+            }
+            else if (File.Exists(sourcePath))
+            {
+                string entryName = GetUniqueEntryName(usedEntryNames, Path.GetFileName(sourcePath));
+                await AddEntryFromFileAsync(archive, sourcePath, entryName,
+                    compressionLevel, cancellationToken, new EntryWriteProgress(totalSourceBytes, byteOffset, progress)).ConfigureAwait(false);
+            }
+            else
+            {
+                sink.Errors.Add(new ArchiveError
+                {
+                    SourcePath = sourcePath,
+                    Message = $"Source path does not exist: {sourcePath}"
+                });
+            }
+        }
+        catch (IOException ex)
+        {
+            sink.Errors.Add(new ArchiveError
+            {
+                SourcePath = sourcePath,
+                Message = $"Cannot access file: {ex.Message}",
+                Exception = ex
+            });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            sink.Errors.Add(new ArchiveError
+            {
+                SourcePath = sourcePath,
+                Message = $"Access denied: {ex.Message}",
+                Exception = ex
+            });
+        }
+
+        return pathSize;
     }
 
     private async Task ArchiveSeparateArchivesModeAsync(
@@ -852,7 +859,12 @@ public sealed class ZipArchiveService : IArchiveService
         }
     }
 
-    private static async Task<(string ActualDest, bool AnyExtracted)> ExtractWithSmartFolderingAsync(
+    // Already split via ZipExtractionContext/ExtractionPlan/TryExtractSingleEntryAsync (T-F147);
+    // the residual complexity below is the smart-foldering decision + whole-archive compression-
+    // bomb gate, both order-sensitive and security-relevant (T-F94/T-F105 history) — further
+    // splitting risks separating checks whose safety currently reads directly off this one method
+    // body. Kept paired 1:1 with TarSandboxedService.ExtractSingleArchiveAsync (T-F118).
+    private static async Task<(string ActualDest, bool AnyExtracted)> ExtractWithSmartFolderingAsync( // NOSONAR: S3776 — see comment above
         string archivePath,
         string destDir,
         bool alreadyIsolated,
@@ -1279,6 +1291,19 @@ public sealed class ZipArchiveService : IArchiveService
         // T-F32: Sort files and subdirectories for deterministic traversal order.
         // Directory.EnumerateFiles/EnumerateDirectories return items in filesystem order,
         // which is non-deterministic across runs and filesystems.
+        startOffset = await AddFilesInDirectoryAsync(archive, sourceDir, context, startOffset, cancellationToken)
+            .ConfigureAwait(false);
+
+        // Recurse into subdirectories, skipping junctions and directory symlinks
+        startOffset = await AddSubdirectoriesAsync(archive, sourceDir, context, startOffset, cancellationToken)
+            .ConfigureAwait(false);
+
+        return startOffset;
+    }
+
+    private static async Task<long> AddFilesInDirectoryAsync(
+        ZipArchive archive, string sourceDir, DirectoryArchiveContext context, long startOffset, CancellationToken cancellationToken)
+    {
         foreach (string filePath in Directory.EnumerateFiles(sourceDir, "*", SearchOption.TopDirectoryOnly)
             .OrderBy(p => p, StringComparer.OrdinalIgnoreCase))
         {
@@ -1333,7 +1358,12 @@ public sealed class ZipArchiveService : IArchiveService
             startOffset += fileSize;
         }
 
-        // Recurse into subdirectories, skipping junctions and directory symlinks
+        return startOffset;
+    }
+
+    private static async Task<long> AddSubdirectoriesAsync(
+        ZipArchive archive, string sourceDir, DirectoryArchiveContext context, long startOffset, CancellationToken cancellationToken)
+    {
         foreach (string subDir in Directory.EnumerateDirectories(sourceDir, "*", SearchOption.TopDirectoryOnly)
             .OrderBy(p => p, StringComparer.OrdinalIgnoreCase))
         {
@@ -1351,7 +1381,8 @@ public sealed class ZipArchiveService : IArchiveService
                 continue;
             }
 
-            startOffset = await AddDirectoryToArchiveAsync(archive, subDir, context, startOffset, cancellationToken);
+            startOffset = await AddDirectoryToArchiveAsync(archive, subDir, context, startOffset, cancellationToken)
+                .ConfigureAwait(false);
         }
 
         return startOffset;

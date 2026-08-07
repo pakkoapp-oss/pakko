@@ -94,12 +94,6 @@ public sealed class TarSandboxedService : ITarService
         Directory.CreateDirectory(options.DestinationFolder);
 
         int total = options.ArchivePaths.Count;
-        // T-F142: real BytesTransferred/TotalBytes/CurrentFile only make sense for one archive at
-        // a time (see ExtractSingleArchiveAsync's own polling-based reporting) — matches
-        // ZipArchiveService.ExtractAsync's identical singleArchive convention for a multi-archive
-        // selection, where per-archive percent-only progress (bytes = 0,0) is the existing,
-        // already-accepted shape.
-        bool singleArchive = total == 1;
         var sink = new ArchiveResultSink(errors, createdFiles, skippedFiles);
 
         for (int i = 0; i < total; i++)
@@ -108,7 +102,7 @@ public sealed class TarSandboxedService : ITarService
                 break;
 
             bool wasCancelled = await ExtractArchiveAtIndexAsync(
-                options, i, total, singleArchive, conflictResolver, sink, progress, cancellationToken).ConfigureAwait(false);
+                options, i, total, conflictResolver, sink, progress, cancellationToken).ConfigureAwait(false);
             if (wasCancelled)
                 break;
         }
@@ -140,9 +134,15 @@ public sealed class TarSandboxedService : ITarService
     // before the progress-report line); every other outcome falls through to the report and
     // returns false so the caller's loop continues.
     private async Task<bool> ExtractArchiveAtIndexAsync(
-        ExtractOptions options, int i, int total, bool singleArchive, ConflictResolver conflictResolver,
+        ExtractOptions options, int i, int total, ConflictResolver conflictResolver,
         ArchiveResultSink sink, IProgress<ProgressReport>? progress, CancellationToken cancellationToken)
     {
+        // T-F142: real BytesTransferred/TotalBytes/CurrentFile only make sense for one archive at
+        // a time (see ExtractSingleArchiveAsync's own polling-based reporting) — matches
+        // ZipArchiveService.ExtractAsync's identical singleArchive convention for a multi-archive
+        // selection, where per-archive percent-only progress (bytes = 0,0) is the existing,
+        // already-accepted shape.
+        bool singleArchive = total == 1;
         string archivePath = options.ArchivePaths[i];
         string destDir = options.Mode == ExtractMode.SeparateFolders
             ? Path.Combine(options.DestinationFolder,
@@ -272,7 +272,12 @@ public sealed class TarSandboxedService : ITarService
     // already exist in quarantine\in\. This means a declined/blocked bomb no longer leaves
     // "nothing to clean up" the way it used to — the `using` on scope below disposes the
     // quarantine directory on every exit path, early or not.
-    private static async Task<(string ActualDest, bool AnyExtracted)> ExtractSingleArchiveAsync(
+    // Already split via TarExtractionContext/TryMoveSingleEntryAsync (T-F147); the residual
+    // complexity below is the whole-archive pre-scan/smart-foldering decision/compression-bomb
+    // gate, all order-sensitive and security-relevant (T-F49/T-F52/T-F94 history) — further
+    // splitting risks separating checks whose safety currently reads directly off this one method
+    // body. Kept paired 1:1 with ZipArchiveService.ExtractWithSmartFolderingAsync (T-F118).
+    private static async Task<(string ActualDest, bool AnyExtracted)> ExtractSingleArchiveAsync( // NOSONAR: S3776 — see comment above
         string archivePath,
         string destDir,
         bool alreadyIsolated,

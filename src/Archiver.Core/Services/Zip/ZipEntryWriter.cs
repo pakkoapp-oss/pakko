@@ -97,7 +97,13 @@ internal sealed class ZipEntryWriter : IAsyncDisposable
     /// threshold that used to gate this could be removed once compression stopped needing an
     /// in-memory buffer for the "not tiny" case).
     /// </summary>
-    public async Task WriteCompressedEntryFromStreamAsync(
+    // T-F147: each parameter here is an independent raw ZIP-format field (crc/size/method/offset)
+    // this hand-rolled writer has no reason to know more about than its literal value — unlike
+    // this project's usual S107 fix (bundling params that cluster by shared purpose into a
+    // record), these don't cluster; a wrapper type here would just move the same field list into
+    // a struct without reducing what the method actually needs to know. Deferred, low value —
+    // same reasoning as the SYSLIB1054 P/Invoke conversions this triage also left out of scope.
+    public async Task WriteCompressedEntryFromStreamAsync( // NOSONAR: S107 — see comment above
         string entryName, Stream compressedSource, long compressedLength, long uncompressedLength,
         uint crc32, ushort method, DateTime lastWriteTime, CancellationToken ct)
     {
@@ -128,7 +134,7 @@ internal sealed class ZipEntryWriter : IAsyncDisposable
     /// <c>ParallelSingleArchiveWriter</c>'s temp-file compression worker, so a file's CRC is
     /// computed in the same single read pass as compression instead of a second full read.
     /// </summary>
-    internal static async Task<(long Total, uint Crc32)> CopyWithCrcAsync(
+    internal static async Task<(long Total, uint Crc32)> CopyWithCrcAsync( // NOSONAR: S107 — same reasoning as WriteCompressedEntryFromStreamAsync above (independent fields, not a clustering S107 fix would help)
         FileStream source, Stream destination, byte[] buffer,
         IProgress<ProgressReport>? progress, long totalBytes, long startOffset, string entryName,
         CancellationToken ct, Action<long>? onBytesRead = null)
@@ -200,7 +206,7 @@ internal sealed class ZipEntryWriter : IAsyncDisposable
         return buffer;
     }
 
-    private void RecordEntry(
+    private void RecordEntry( // NOSONAR: S107 — same reasoning as WriteCompressedEntryFromStreamAsync above (independent fields, not a clustering S107 fix would help)
         string entryName, DateTime lastWriteTime, uint crc32, ushort method, long compressedSize,
         long uncompressedSize, long localHeaderOffset, bool isDirectory)
     {

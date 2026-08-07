@@ -117,13 +117,16 @@ internal static class ParallelSingleArchiveWriter
         }
     }
 
+    // The two report-sink callbacks WriteAsync's caller (ZipArchiveService) provides — bundled to
+    // cut S107's parameter count on this public entry point.
+    public sealed record ReportCallbacks(Action<SkippedFile> ReportSkipped, Action<ArchiveError> ReportError);
+
     public static async Task WriteAsync(
         string tempPath,
         IReadOnlyList<string> sortedSourcePaths,
         CompressionLevel compressionLevel,
         long totalBytes,
-        Action<SkippedFile> reportSkipped,
-        Action<ArchiveError> reportError,
+        ReportCallbacks callbacks,
         IProgress<ProgressReport>? progress,
         CancellationToken cancellationToken)
     {
@@ -137,7 +140,7 @@ internal static class ParallelSingleArchiveWriter
             return;
         }
 
-        var items = WorkItemEnumerator.Enumerate(sortedSourcePaths, reportSkipped, reportError);
+        var items = WorkItemEnumerator.Enumerate(sortedSourcePaths, callbacks.ReportSkipped, callbacks.ReportError);
 
         // A per-operation hidden subfolder next to the destination archive — not loose files
         // scattered in that folder (confusing, per on-device verification), and not the system
@@ -157,7 +160,7 @@ internal static class ParallelSingleArchiveWriter
                     tempPath, items,
                     (item, ct) => CompressEligibleFileAsync(item, compressionLevel, tracker, ct),
                     (item, ct) => CompressToTempFileAsync(item, chunkDirectory, compressionLevel, tracker, ct),
-                    ComputeWindowCapacity(), totalBytes, progress, reportError, cancellationToken)
+                    ComputeWindowCapacity(), totalBytes, progress, callbacks.ReportError, cancellationToken)
                 .ConfigureAwait(false);
         }
         finally
@@ -176,7 +179,14 @@ internal static class ParallelSingleArchiveWriter
     /// <paramref name="windowCapacity"/> to prove backpressure actually engages (see
     /// ParallelSingleArchiveWriterTests) instead of only trusting the production numbers.
     /// </summary>
-    internal static async Task RunPipelineAsync(
+    // T-F147: complexity/param-count both left as-is deliberately — the switch's two heaviest
+    // cases are already extracted (WriteTempFileResultAsync), and every remaining branch here
+    // exists because of a specific, previously-debugged race (the dispatchedTasks-await-before-
+    // sweep ordering in the outer finally, the computeGate concurrency fix documented inline
+    // above) — see CONVENTIONS.md's "Method Complexity & Parameter Count" section for why this
+    // project doesn't force a split here. The 9 parameters are the same "decoupled for whitebox
+    // testing" design this method's own doc comment already explains, not accidental sprawl.
+    internal static async Task RunPipelineAsync( // NOSONAR: S3776, S107 — see comment above
         string tempPath,
         IEnumerable<FileWorkItem> items,
         Func<FileWorkItem, CancellationToken, Task<WorkResult>> compressInMemory,

@@ -110,7 +110,7 @@ public sealed class ParallelSingleArchiveWriterTests : IDisposable
         string archivePath = TempArchivePath;
         var act = async () => await ParallelSingleArchiveWriter.WriteAsync(
             archivePath, sortedSourcePaths: ["C:\\does-not-matter.txt"], CompressionLevel.Optimal,
-            totalBytes: 0, reportSkipped: _ => { }, reportError: _ => { }, progress: null, cts.Token);
+            totalBytes: 0, new ParallelSingleArchiveWriter.ReportCallbacks(_ => { }, _ => { }), progress: null, cts.Token);
 
         await act.Should().NotThrowAsync();
 
@@ -256,7 +256,7 @@ public sealed class ParallelSingleArchiveWriterTests : IDisposable
         string archivePath = TempArchivePath;
         await ParallelSingleArchiveWriter.WriteAsync(
             archivePath, [sourceDir], CompressionLevel.Optimal, totalBytes,
-            reportSkipped: _ => { }, reportError: _ => { }, progress: null, CancellationToken.None);
+            new ParallelSingleArchiveWriter.ReportCallbacks(_ => { }, _ => { }), progress: null, CancellationToken.None);
 
         using (var archive = ZipFile.OpenRead(archivePath))
         {
@@ -286,7 +286,7 @@ public sealed class ParallelSingleArchiveWriterTests : IDisposable
         {
             await ParallelSingleArchiveWriter.WriteAsync(
                 archivePath, [sourceDir], CompressionLevel.Optimal, totalBytes: 4 * 1024 * 1024,
-                reportSkipped: _ => { }, reportError: reportedErrors.Add, progress: null, CancellationToken.None);
+                new ParallelSingleArchiveWriter.ReportCallbacks(_ => { }, reportedErrors.Add), progress: null, CancellationToken.None);
         }
 
         reportedErrors.Should().ContainSingle(e => e.SourcePath == lockedPath);
@@ -311,7 +311,7 @@ public sealed class ParallelSingleArchiveWriterTests : IDisposable
 
         var task = ParallelSingleArchiveWriter.WriteAsync(
             archivePath, [sourceDir], CompressionLevel.Optimal, totalBytes: 24 * 1024 * 1024,
-            reportSkipped: _ => { }, reportError: _ => { }, progress: null, cts.Token);
+            new ParallelSingleArchiveWriter.ReportCallbacks(_ => { }, _ => { }), progress: null, cts.Token);
 
         await Task.Delay(15); // let some temp-file compression start
         cts.Cancel();
@@ -334,7 +334,7 @@ public sealed class ParallelSingleArchiveWriterTests : IDisposable
         string archivePath = TempArchivePath;
         var task = ParallelSingleArchiveWriter.WriteAsync(
             archivePath, [sourceDir], CompressionLevel.Optimal, totalBytes: 64 * 1024 * 1024,
-            reportSkipped: _ => { }, reportError: _ => { }, progress: null, CancellationToken.None);
+            new ParallelSingleArchiveWriter.ReportCallbacks(_ => { }, _ => { }), progress: null, CancellationToken.None);
 
         string[] seenDuringRun = [];
         await WaitUntilAsync(() => (seenDuringRun = FindChunkDirectories()).Length > 0, TimeSpan.FromSeconds(2));
@@ -400,7 +400,7 @@ public sealed class ParallelSingleArchiveWriterTests : IDisposable
         string archivePath = TempArchivePath;
         await ParallelSingleArchiveWriter.WriteAsync(
             archivePath, [sourceDir], CompressionLevel.Optimal, totalBytes,
-            reportSkipped: _ => { }, reportError: _ => { }, progress, CancellationToken.None);
+            new ParallelSingleArchiveWriter.ReportCallbacks(_ => { }, _ => { }), progress, CancellationToken.None);
 
         // Progress<T> marshals callbacks onto a captured SynchronizationContext asynchronously —
         // give the final posted callbacks a moment to actually run before asserting on `reports`.
@@ -442,7 +442,7 @@ public sealed class ParallelSingleArchiveWriterTests : IDisposable
         string archivePath = TempArchivePath;
         await ParallelSingleArchiveWriter.WriteAsync(
             archivePath, [sourceDir], CompressionLevel.Optimal, totalBytes: content.Length,
-            reportSkipped: _ => { }, reportError: _ => { }, progress, CancellationToken.None);
+            new ParallelSingleArchiveWriter.ReportCallbacks(_ => { }, _ => { }), progress, CancellationToken.None);
 
         await WaitUntilAsync(() => reports.Count > 0 && reports[^1].Percent == 100, TimeSpan.FromSeconds(5));
 
