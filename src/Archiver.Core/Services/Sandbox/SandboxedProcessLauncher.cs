@@ -235,31 +235,38 @@ internal static class SandboxedProcessLauncher
         {
             char c = argument[i++];
             if (c == '\\')
-            {
-                int backslashCount = 1;
-                while (i < argument.Length && argument[i] == '\\')
-                {
-                    backslashCount++;
-                    i++;
-                }
-
-                if (i == argument.Length)
-                    sb.Append('\\', backslashCount * 2);
-                else if (argument[i] == '"')
-                {
-                    sb.Append('\\', backslashCount * 2 + 1);
-                    sb.Append('"');
-                    i++;
-                }
-                else
-                    sb.Append('\\', backslashCount);
-            }
+                AppendBackslashRun(sb, argument, ref i);
             else if (c == '"')
                 sb.Append('\\').Append('"');
             else
                 sb.Append(c);
         }
         sb.Append('"');
+    }
+
+    // A run of backslashes must be doubled when followed by a literal quote (so the quote itself
+    // still escapes correctly), or left as-is otherwise -- one already-consumed backslash plus
+    // however many more immediately follow it. `i` is the index right after the already-consumed
+    // backslash; advanced in place to just past the run this call accounts for.
+    private static void AppendBackslashRun(StringBuilder sb, string argument, ref int i)
+    {
+        int backslashCount = 1;
+        while (i < argument.Length && argument[i] == '\\')
+        {
+            backslashCount++;
+            i++;
+        }
+
+        if (i == argument.Length)
+            sb.Append('\\', backslashCount * 2);
+        else if (argument[i] == '"')
+        {
+            sb.Append('\\', backslashCount * 2 + 1);
+            sb.Append('"');
+            i++;
+        }
+        else
+            sb.Append('\\', backslashCount);
     }
 
     [StructLayout(LayoutKind.Sequential)]

@@ -39,51 +39,60 @@ public static class ArchiveFormatDetector
             using var fs = File.OpenRead(path);
             Span<byte> header = stackalloc byte[262];
             int read = fs.Read(header);
-
-            if (read >= 4 && header[0] == 0x50 && header[1] == 0x4B && header[2] == 0x03 && header[3] == 0x04)
-                return ArchiveFormat.Zip;
-
-            if (read >= 2 && header[0] == 0x1F && header[1] == 0x8B)
-                return ArchiveFormat.GZip;
-
-            if (read >= 3 && header[0] == 0x42 && header[1] == 0x5A && header[2] == 0x68)
-                return ArchiveFormat.Bz2;
-
-            // RAR: "Rar!" (52 61 72 21) — shared by both RAR4 and RAR5 signatures, same 4-byte
-            // check ZipArchiveService.GetKnownArchiveReason already uses.
-            if (read >= 4 && header[0] == 0x52 && header[1] == 0x61 && header[2] == 0x72 && header[3] == 0x21)
-                return ArchiveFormat.Rar;
-
-            if (read >= 6 && header[0] == 0x37 && header[1] == 0x7A && header[2] == 0xBC
-                && header[3] == 0xAF && header[4] == 0x27 && header[5] == 0x1C)
-                return ArchiveFormat.SevenZip;
-
-            if (read >= 6 && header[0] == 0xFD && header[1] == 0x37 && header[2] == 0x7A
-                && header[3] == 0x58 && header[4] == 0x5A && header[5] == 0x00)
-                return ArchiveFormat.Xz;
-
-            if (read >= 4 && header[0] == 0x28 && header[1] == 0xB5 && header[2] == 0x2F && header[3] == 0xFD)
-                return ArchiveFormat.Zstd;
-
-            // Plain/uncompressed tar has no magic number at offset 0 — the real signature is
-            // the "ustar" string at header offset 257 (POSIX ustar format).
-            if (read >= 262
-                && header[257] == (byte)'u' && header[258] == (byte)'s' && header[259] == (byte)'t'
-                && header[260] == (byte)'a' && header[261] == (byte)'r')
-                return ArchiveFormat.Tar;
-
-            // NOTE: raw .lzma (LZMA_Alone) streams have no reliable magic number — cannot be
-            // distinguished from arbitrary binary data by header bytes alone. Files in this
-            // format will classify as Unknown until a future extension-assisted fallback is
-            // added; this is a known gap, not an oversight.
-
-            return ArchiveFormat.Unknown;
+            return DetectFormatFromHeader(header, read);
         }
         catch
         {
             return ArchiveFormat.Unknown;
         }
     }
+
+    // NOTE: raw .lzma (LZMA_Alone) streams have no reliable magic number — cannot be
+    // distinguished from arbitrary binary data by header bytes alone. Files in this format will
+    // classify as Unknown until a future extension-assisted fallback is added; this is a known
+    // gap, not an oversight.
+    private static ArchiveFormat DetectFormatFromHeader(ReadOnlySpan<byte> header, int read)
+    {
+        if (IsZipSignature(header, read)) return ArchiveFormat.Zip;
+        if (IsGZipSignature(header, read)) return ArchiveFormat.GZip;
+        if (IsBz2Signature(header, read)) return ArchiveFormat.Bz2;
+        if (IsRarSignature(header, read)) return ArchiveFormat.Rar;
+        if (IsSevenZipSignature(header, read)) return ArchiveFormat.SevenZip;
+        if (IsXzSignature(header, read)) return ArchiveFormat.Xz;
+        if (IsZstdSignature(header, read)) return ArchiveFormat.Zstd;
+        if (IsTarSignature(header, read)) return ArchiveFormat.Tar;
+        return ArchiveFormat.Unknown;
+    }
+
+    private static bool IsZipSignature(ReadOnlySpan<byte> h, int read) =>
+        read >= 4 && h[0] == 0x50 && h[1] == 0x4B && h[2] == 0x03 && h[3] == 0x04;
+
+    private static bool IsGZipSignature(ReadOnlySpan<byte> h, int read) =>
+        read >= 2 && h[0] == 0x1F && h[1] == 0x8B;
+
+    private static bool IsBz2Signature(ReadOnlySpan<byte> h, int read) =>
+        read >= 3 && h[0] == 0x42 && h[1] == 0x5A && h[2] == 0x68;
+
+    // RAR: "Rar!" (52 61 72 21) — shared by both RAR4 and RAR5 signatures, same 4-byte check
+    // ZipArchiveService.GetKnownArchiveReason already uses.
+    private static bool IsRarSignature(ReadOnlySpan<byte> h, int read) =>
+        read >= 4 && h[0] == 0x52 && h[1] == 0x61 && h[2] == 0x72 && h[3] == 0x21;
+
+    private static bool IsSevenZipSignature(ReadOnlySpan<byte> h, int read) =>
+        read >= 6 && h[0] == 0x37 && h[1] == 0x7A && h[2] == 0xBC && h[3] == 0xAF && h[4] == 0x27 && h[5] == 0x1C;
+
+    private static bool IsXzSignature(ReadOnlySpan<byte> h, int read) =>
+        read >= 6 && h[0] == 0xFD && h[1] == 0x37 && h[2] == 0x7A && h[3] == 0x58 && h[4] == 0x5A && h[5] == 0x00;
+
+    private static bool IsZstdSignature(ReadOnlySpan<byte> h, int read) =>
+        read >= 4 && h[0] == 0x28 && h[1] == 0xB5 && h[2] == 0x2F && h[3] == 0xFD;
+
+    // Plain/uncompressed tar has no magic number at offset 0 — the real signature is the "ustar"
+    // string at header offset 257 (POSIX ustar format).
+    private static bool IsTarSignature(ReadOnlySpan<byte> h, int read) =>
+        read >= 262
+            && h[257] == (byte)'u' && h[258] == (byte)'s' && h[259] == (byte)'t'
+            && h[260] == (byte)'a' && h[261] == (byte)'r';
 
     // T-F113: RAR5 signature (8 bytes, ends "01 00"). Legacy RAR4's 7-byte signature (ends
     // "00" with no version byte) is deliberately not handled below — an accepted scope cut,

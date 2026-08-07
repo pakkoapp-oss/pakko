@@ -368,48 +368,14 @@ static async Task RunHashAsync(IReadOnlyList<string> paths, HashAlgorithmKind al
         ? $"{label}: {Path.GetFileName(paths[0].TrimEnd('\\'))}"
         : $"{label}: {paths.Count} files";
 
-    NativeProgressDialog? dialog;
-    try { dialog = new NativeProgressDialog(title); }
-    catch (COMException) { dialog = null; }
+    NativeProgressDialog? dialog = TryCreateProgressDialog(title);
 
     HashResult result;
     try
     {
-        if (dialog is null)
-        {
-            result = await FileHashService.ComputeAsync(paths, algorithm, null, CancellationToken.None).ConfigureAwait(false);
-        }
-        else
-        {
-            using (dialog)
-            {
-                using var cts = new CancellationTokenSource();
-                var dialogLock = new object();
-                var speedSampler = new ProgressSpeedSampler();
-
-                using var cancelPoll = new Timer(_ =>
-                {
-                    lock (dialogLock)
-                    {
-                        if (dialog.HasUserCancelled())
-                            cts.Cancel();
-                    }
-                }, null, TimeSpan.Zero, TimeSpan.FromMilliseconds(250));
-
-                var progress = new Progress<ProgressReport>(r =>
-                {
-                    lock (dialogLock)
-                    {
-                        if (r.CurrentFile is not null)
-                            dialog.SetLine(1, r.CurrentFile);
-                        dialog.SetLine(2, FormatStatus(r, speedSampler));
-                        dialog.SetProgress(r.BytesTransferred, r.TotalBytes);
-                    }
-                });
-
-                result = await FileHashService.ComputeAsync(paths, algorithm, progress, cts.Token).ConfigureAwait(false);
-            }
-        }
+        result = dialog is null
+            ? await FileHashService.ComputeAsync(paths, algorithm, null, CancellationToken.None).ConfigureAwait(false)
+            : await ComputeHashWithDialogAsync(dialog, paths, algorithm).ConfigureAwait(false);
     }
     catch (OperationCanceledException)
     {
@@ -418,6 +384,50 @@ static async Task RunHashAsync(IReadOnlyList<string> paths, HashAlgorithmKind al
 
     ShowHashResults(title, result);
 }
+
+static async Task<HashResult> ComputeHashWithDialogAsync(NativeProgressDialog dialog, IReadOnlyList<string> paths, HashAlgorithmKind algorithm)
+{
+    using (dialog)
+    {
+        using var cts = new CancellationTokenSource();
+        var dialogLock = new object();
+        var speedSampler = new ProgressSpeedSampler();
+        using var cancelPoll = CreateCancelPollTimer(dialog, dialogLock, cts);
+
+        var progress = new Progress<ProgressReport>(r =>
+        {
+            lock (dialogLock)
+            {
+                if (r.CurrentFile is not null)
+                    dialog.SetLine(1, r.CurrentFile);
+                dialog.SetLine(2, FormatStatus(r, speedSampler));
+                dialog.SetProgress(r.BytesTransferred, r.TotalBytes);
+            }
+        });
+
+        return await FileHashService.ComputeAsync(paths, algorithm, progress, cts.Token).ConfigureAwait(false);
+    }
+}
+
+// Shared by RunHashAsync/RunScanAsync -- both mirror RunWithProgressWindowAsync's dialog/cancel-
+// poll plumbing directly (see the comment above RunHashAsync for why they don't reuse that
+// ArchiveResult-typed helper), so at least the identical dialog-creation and cancel-poll-timer
+// setup itself is not duplicated three times over.
+static NativeProgressDialog? TryCreateProgressDialog(string title)
+{
+    try { return new NativeProgressDialog(title); }
+    catch (COMException) { return null; }
+}
+
+static Timer CreateCancelPollTimer(NativeProgressDialog dialog, object dialogLock, CancellationTokenSource cts) =>
+    new(_ =>
+    {
+        lock (dialogLock)
+        {
+            if (dialog.HasUserCancelled())
+                cts.Cancel();
+        }
+    }, null, TimeSpan.Zero, TimeSpan.FromMilliseconds(250));
 
 static void ShowHashResults(string title, HashResult result)
 {
@@ -468,49 +478,15 @@ static async Task RunScanAsync(IReadOnlyList<string> archivePaths, GroupPolicyOp
         : $"Scanning {archivePaths.Count} archives";
 
     var service = await BuildAntivirusScanServiceAsync(policy).ConfigureAwait(false);
-
-    NativeProgressDialog? dialog;
-    try { dialog = new NativeProgressDialog(title); }
-    catch (COMException) { dialog = null; }
+    NativeProgressDialog? dialog = TryCreateProgressDialog(title);
+    var options = new AntivirusScanOptions { ArchivePaths = archivePaths };
 
     ThreatScanResult result;
     try
     {
-        var options = new AntivirusScanOptions { ArchivePaths = archivePaths };
-        if (dialog is null)
-        {
-            result = await service.ScanAsync(options, null, CancellationToken.None).ConfigureAwait(false);
-        }
-        else
-        {
-            using (dialog)
-            {
-                using var cts = new CancellationTokenSource();
-                var dialogLock = new object();
-
-                using var cancelPoll = new Timer(_ =>
-                {
-                    lock (dialogLock)
-                    {
-                        if (dialog.HasUserCancelled())
-                            cts.Cancel();
-                    }
-                }, null, TimeSpan.Zero, TimeSpan.FromMilliseconds(250));
-
-                var progress = new Progress<ProgressReport>(r =>
-                {
-                    lock (dialogLock)
-                    {
-                        if (r.CurrentFile is not null)
-                            dialog.SetLine(1, r.CurrentFile);
-                        dialog.SetLine(2, $"{r.Percent}%");
-                        dialog.SetProgress(r.Percent, 100);
-                    }
-                });
-
-                result = await service.ScanAsync(options, progress, cts.Token).ConfigureAwait(false);
-            }
-        }
+        result = dialog is null
+            ? await service.ScanAsync(options, null, CancellationToken.None).ConfigureAwait(false)
+            : await ScanWithDialogAsync(dialog, service, options).ConfigureAwait(false);
     }
     catch (OperationCanceledException)
     {
@@ -518,6 +494,29 @@ static async Task RunScanAsync(IReadOnlyList<string> archivePaths, GroupPolicyOp
     }
 
     ShowScanResults(title, result);
+}
+
+static async Task<ThreatScanResult> ScanWithDialogAsync(NativeProgressDialog dialog, AntivirusScanService service, AntivirusScanOptions options)
+{
+    using (dialog)
+    {
+        using var cts = new CancellationTokenSource();
+        var dialogLock = new object();
+        using var cancelPoll = CreateCancelPollTimer(dialog, dialogLock, cts);
+
+        var progress = new Progress<ProgressReport>(r =>
+        {
+            lock (dialogLock)
+            {
+                if (r.CurrentFile is not null)
+                    dialog.SetLine(1, r.CurrentFile);
+                dialog.SetLine(2, $"{r.Percent}%");
+                dialog.SetProgress(r.Percent, 100);
+            }
+        });
+
+        return await service.ScanAsync(options, progress, cts.Token).ConfigureAwait(false);
+    }
 }
 
 // T-F85-style: one AntivirusScanService per invocation, DetectCapabilitiesAsync called exactly

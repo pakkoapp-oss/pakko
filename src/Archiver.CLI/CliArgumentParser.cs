@@ -105,30 +105,15 @@ public static class CliArgumentParser
 
             if (token.StartsWith("-o", StringComparison.Ordinal))
             {
-                if (token.Length == 2)
-                    return Invalid("-o requires a directory, e.g. -oC:\\dest");
-                outputDirectory = token[2..];
+                if (!TryParseOutputDirectory(token, out outputDirectory, out string? error))
+                    return Invalid(error!);
                 continue;
             }
 
             if (token.StartsWith("-ao", StringComparison.Ordinal))
             {
-                if (token.Length != 4)
-                    return Invalid("-ao requires exactly one mode letter: a, s, u, or t (e.g. -aoa)");
-
-                char mode = token[3];
-                if (mode == 't')
-                    return Invalid("not supported by Pakko: -aot (rename existing file instead of new) has no equivalent");
-
-                overwriteMode = mode switch
-                {
-                    'a' => ConflictBehavior.Overwrite,
-                    's' => ConflictBehavior.Skip,
-                    'u' => ConflictBehavior.Rename,
-                    _ => (ConflictBehavior?)null,
-                };
-                if (overwriteMode is null)
-                    return Invalid($"unknown -ao mode: '{mode}' (expected a, s, u, or t)");
+                if (!TryParseOverwriteMode(token, out overwriteMode, out string? error))
+                    return Invalid(error!);
                 continue;
             }
 
@@ -152,6 +137,52 @@ public static class CliArgumentParser
             ReadFromStdin = readFromStdin,
             WriteToStdout = writeToStdout,
         };
+    }
+
+    private static bool TryParseOutputDirectory(string token, out string? outputDirectory, out string? error)
+    {
+        if (token.Length == 2)
+        {
+            outputDirectory = null;
+            error = "-o requires a directory, e.g. -oC:\\dest";
+            return false;
+        }
+        outputDirectory = token[2..];
+        error = null;
+        return true;
+    }
+
+    private static bool TryParseOverwriteMode(string token, out ConflictBehavior? overwriteMode, out string? error)
+    {
+        overwriteMode = null;
+        if (token.Length != 4)
+        {
+            error = "-ao requires exactly one mode letter: a, s, u, or t (e.g. -aoa)";
+            return false;
+        }
+
+        char mode = token[3];
+        if (mode == 't')
+        {
+            error = "not supported by Pakko: -aot (rename existing file instead of new) has no equivalent";
+            return false;
+        }
+
+        overwriteMode = mode switch
+        {
+            'a' => ConflictBehavior.Overwrite,
+            's' => ConflictBehavior.Skip,
+            'u' => ConflictBehavior.Rename,
+            _ => (ConflictBehavior?)null,
+        };
+        if (overwriteMode is null)
+        {
+            error = $"unknown -ao mode: '{mode}' (expected a, s, u, or t)";
+            return false;
+        }
+
+        error = null;
+        return true;
     }
 
     // --- t (Test) ---
@@ -229,45 +260,16 @@ public static class CliArgumentParser
 
             if (token.StartsWith("-mx", StringComparison.Ordinal))
             {
-                if (token.Length < 5 || token[3] != '=')
-                    return Invalid("-mx requires a value in the form -mx=<0-9>, e.g. -mx=9");
-
-                string valueText = token[4..];
-                if (!int.TryParse(valueText, out int mx))
-                    return Invalid($"-mx=<n> must be a number 0-9, got '{valueText}'");
-
-                CompressionLevel? level = CliCompressionLevelMapper.TryMap(mx);
-                if (level is null)
-                    return Invalid($"-mx=<n> must be 0-9, got '{mx}'");
-
-                compressionLevel = level;
+                if (!TryParseCompressionLevel(token, out compressionLevel, out string? error))
+                    return Invalid(error!);
                 continue;
             }
 
             if (token.StartsWith("-t", StringComparison.Ordinal))
             {
-                if (token.Length <= 2)
-                    return Invalid("-t requires a type, e.g. -tzip or -ttar.gz");
-
-                string typeValue = token[2..];
-                if (typeValue is "7z" or "rar")
-                    return Invalid($"not supported by Pakko: -t{typeValue} — Pakko can only create ZIP/tar-family archives, {typeValue} is extract-only");
-
-                ArchiveContainerFormat? format = typeValue switch
-                {
-                    "zip" => ArchiveContainerFormat.Zip,
-                    "tar" => ArchiveContainerFormat.Tar,
-                    "tar.gz" => ArchiveContainerFormat.TarGz,
-                    "tar.bz2" => ArchiveContainerFormat.TarBz2,
-                    "tar.xz" => ArchiveContainerFormat.TarXz,
-                    "tar.zst" => ArchiveContainerFormat.TarZst,
-                    "tar.lzma" => ArchiveContainerFormat.TarLzma,
-                    _ => null,
-                };
-                if (format is null)
-                    return Invalid($"unknown -t value: '{typeValue}' (expected zip, tar, tar.gz, tar.bz2, tar.xz, tar.zst, or tar.lzma)");
-
-                archiveFormat = format.Value;
+                if (!TryParseArchiveFormat(token, out ArchiveContainerFormat? format, out string? error))
+                    return Invalid(error!);
+                archiveFormat = format!.Value;
                 continue;
             }
 
@@ -287,6 +289,70 @@ public static class CliArgumentParser
             CompressionLevel = compressionLevel,
             WriteToStdout = writeToStdout,
         };
+    }
+
+    private static bool TryParseCompressionLevel(string token, out CompressionLevel? level, out string? error)
+    {
+        level = null;
+        if (token.Length < 5 || token[3] != '=')
+        {
+            error = "-mx requires a value in the form -mx=<0-9>, e.g. -mx=9";
+            return false;
+        }
+
+        string valueText = token[4..];
+        if (!int.TryParse(valueText, out int mx))
+        {
+            error = $"-mx=<n> must be a number 0-9, got '{valueText}'";
+            return false;
+        }
+
+        level = CliCompressionLevelMapper.TryMap(mx);
+        if (level is null)
+        {
+            error = $"-mx=<n> must be 0-9, got '{mx}'";
+            return false;
+        }
+
+        error = null;
+        return true;
+    }
+
+    private static bool TryParseArchiveFormat(string token, out ArchiveContainerFormat? format, out string? error)
+    {
+        format = null;
+        if (token.Length <= 2)
+        {
+            error = "-t requires a type, e.g. -tzip or -ttar.gz";
+            return false;
+        }
+
+        string typeValue = token[2..];
+        if (typeValue is "7z" or "rar")
+        {
+            error = $"not supported by Pakko: -t{typeValue} — Pakko can only create ZIP/tar-family archives, {typeValue} is extract-only";
+            return false;
+        }
+
+        format = typeValue switch
+        {
+            "zip" => ArchiveContainerFormat.Zip,
+            "tar" => ArchiveContainerFormat.Tar,
+            "tar.gz" => ArchiveContainerFormat.TarGz,
+            "tar.bz2" => ArchiveContainerFormat.TarBz2,
+            "tar.xz" => ArchiveContainerFormat.TarXz,
+            "tar.zst" => ArchiveContainerFormat.TarZst,
+            "tar.lzma" => ArchiveContainerFormat.TarLzma,
+            _ => null,
+        };
+        if (format is null)
+        {
+            error = $"unknown -t value: '{typeValue}' (expected zip, tar, tar.gz, tar.bz2, tar.xz, tar.zst, or tar.lzma)";
+            return false;
+        }
+
+        error = null;
+        return true;
     }
 
     // --- l (List) ---
@@ -339,20 +405,9 @@ public static class CliArgumentParser
 
             if (token.StartsWith("-scrc", StringComparison.Ordinal))
             {
-                if (token.Length <= 5)
-                    return Invalid("-scrc requires a method, e.g. -scrcCRC32 or -scrcSHA256");
-
-                string method = token[5..];
-                HashAlgorithmKind? mapped = method.ToUpperInvariant() switch
-                {
-                    "CRC32" => HashAlgorithmKind.Crc32,
-                    "SHA256" => HashAlgorithmKind.Sha256,
-                    _ => null,
-                };
-                if (mapped is null)
-                    return Invalid($"not supported by Pakko: -scrc{method} — only CRC32 and SHA256 are implemented");
-
-                algorithm = mapped.Value;
+                if (!TryParseHashAlgorithm(token, out HashAlgorithmKind? mapped, out string? error))
+                    return Invalid(error!);
+                algorithm = mapped!.Value;
                 continue;
             }
 
@@ -371,6 +426,32 @@ public static class CliArgumentParser
             HashAlgorithm = algorithm,
             ReadFromStdin = readFromStdin,
         };
+    }
+
+    private static bool TryParseHashAlgorithm(string token, out HashAlgorithmKind? algorithm, out string? error)
+    {
+        algorithm = null;
+        if (token.Length <= 5)
+        {
+            error = "-scrc requires a method, e.g. -scrcCRC32 or -scrcSHA256";
+            return false;
+        }
+
+        string method = token[5..];
+        algorithm = method.ToUpperInvariant() switch
+        {
+            "CRC32" => HashAlgorithmKind.Crc32,
+            "SHA256" => HashAlgorithmKind.Sha256,
+            _ => null,
+        };
+        if (algorithm is null)
+        {
+            error = $"not supported by Pakko: -scrc{method} — only CRC32 and SHA256 are implemented";
+            return false;
+        }
+
+        error = null;
+        return true;
     }
 
     // --- shared helpers ---
@@ -392,38 +473,35 @@ public static class CliArgumentParser
     // switch at all — a typo) of the three-way rule. Matched against CLI.md's switch table.
     private const string NotSupportedOnThisCommand = "not supported on this command";
 
+    // Ordered by prefix, not priority — every prefix below is mutually exclusive with every
+    // other (no real 7z switch name is a prefix of another in this table), so scan order doesn't
+    // affect the result. "-mx" needs no separate entry: it already starts with "-m".
+    private static readonly (string Prefix, string Message)[] UnsupportedSwitchPrefixes =
+    [
+        ("-ao", NotSupportedOnThisCommand),
+        ("-m", "not supported on this command: -m{params} is only meaningful for 'a' (archive creation)"),
+        ("-t", "not supported on this command: -t{type} is only meaningful for 'a' (archive creation)"),
+        ("-scrc", "not supported on this command: -scrc{method} is only meaningful for 'h' (hash)"),
+        ("-o", NotSupportedOnThisCommand),
+        ("-p", "not supported: System.IO.Compression has no ZIP encryption support"),
+        ("-r", "not supported: recurse-subdirectories toggle has no Pakko equivalent (archiving already recurses by default)"),
+        ("-i", "not supported: no wildcard include-pattern filtering exists in Pakko"),
+        ("-x", "not supported: no wildcard exclude-pattern filtering exists in Pakko"),
+        ("-v", "not supported: no multi-part/split-archive logic exists in Pakko"),
+        ("-scc", "not supported: .NET is Unicode-native, console charset switching has no effect"),
+        ("-ssc", "not supported: case-sensitive matching is not implemented"),
+    ];
+
     private static string UnsupportedSwitchReason(string token)
     {
-        if (token == "-si")
+        if (token is "-si" or "-so" or "-y")
             return NotSupportedOnThisCommand;
-        if (token == "-so")
-            return NotSupportedOnThisCommand;
-        if (token == "-y")
-            return NotSupportedOnThisCommand;
-        if (token.StartsWith("-ao", StringComparison.Ordinal))
-            return NotSupportedOnThisCommand;
-        if (token.StartsWith("-mx", StringComparison.Ordinal) || token.StartsWith("-m", StringComparison.Ordinal))
-            return "not supported on this command: -m{params} is only meaningful for 'a' (archive creation)";
-        if (token.StartsWith("-t", StringComparison.Ordinal))
-            return "not supported on this command: -t{type} is only meaningful for 'a' (archive creation)";
-        if (token.StartsWith("-scrc", StringComparison.Ordinal))
-            return "not supported on this command: -scrc{method} is only meaningful for 'h' (hash)";
-        if (token.StartsWith("-o", StringComparison.Ordinal))
-            return NotSupportedOnThisCommand;
-        if (token.StartsWith("-p", StringComparison.Ordinal))
-            return "not supported: System.IO.Compression has no ZIP encryption support";
-        if (token.StartsWith("-r", StringComparison.Ordinal))
-            return "not supported: recurse-subdirectories toggle has no Pakko equivalent (archiving already recurses by default)";
-        if (token.StartsWith("-i", StringComparison.Ordinal))
-            return "not supported: no wildcard include-pattern filtering exists in Pakko";
-        if (token.StartsWith("-x", StringComparison.Ordinal))
-            return "not supported: no wildcard exclude-pattern filtering exists in Pakko";
-        if (token.StartsWith("-v", StringComparison.Ordinal))
-            return "not supported: no multi-part/split-archive logic exists in Pakko";
-        if (token.StartsWith("-scc", StringComparison.Ordinal))
-            return "not supported: .NET is Unicode-native, console charset switching has no effect";
-        if (token.StartsWith("-ssc", StringComparison.Ordinal))
-            return "not supported: case-sensitive matching is not implemented";
+
+        foreach ((string prefix, string message) in UnsupportedSwitchPrefixes)
+        {
+            if (token.StartsWith(prefix, StringComparison.Ordinal))
+                return message;
+        }
 
         return $"Incorrect command line: unknown switch '{token}'";
     }

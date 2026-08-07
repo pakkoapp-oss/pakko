@@ -80,8 +80,7 @@ static async Task<int> RunExtractAsync(ParsedCliCommand command, GroupPolicyOpti
         }
         else
         {
-            destination = command.OutputDirectory
-                ?? (command.ReadFromStdin ? "." : Path.GetDirectoryName(Path.GetFullPath(archivePaths[0])) ?? ".");
+            destination = ResolveExtractDestination(command, archivePaths);
         }
 
         var options = new ExtractOptions
@@ -101,13 +100,7 @@ static async Task<int> RunExtractAsync(ParsedCliCommand command, GroupPolicyOpti
         if (!command.WriteToStdout || code == 2)
             return code;
 
-        string? streamError = await CliStreamStaging.StreamSingleFileToStdoutAsync(stdoutStagingDir!, CancellationToken.None).ConfigureAwait(false);
-        if (streamError is not null)
-        {
-            await Console.Error.WriteLineAsync($"pakko: error: {streamError}").ConfigureAwait(false);
-            return 2;
-        }
-        return code;
+        return await StreamResultToStdoutIfSuccessfulAsync(stdoutStagingDir!, code).ConfigureAwait(false);
     }
     finally
     {
@@ -116,6 +109,23 @@ static async Task<int> RunExtractAsync(ParsedCliCommand command, GroupPolicyOpti
         if (stdoutStagingDir is not null)
             CliStreamStaging.CleanupOutputStagingDirectory(stdoutStagingDir);
     }
+}
+
+static string ResolveExtractDestination(ParsedCliCommand command, IReadOnlyList<string> archivePaths) =>
+    command.OutputDirectory
+        ?? (command.ReadFromStdin ? "." : Path.GetDirectoryName(Path.GetFullPath(archivePaths[0])) ?? ".");
+
+// Shared by RunExtractAsync and RunArchiveAsync -- both stream the single staged output file to
+// stdout the same way once the underlying operation already reported success.
+static async Task<int> StreamResultToStdoutIfSuccessfulAsync(string stdoutStagingDir, int code)
+{
+    string? streamError = await CliStreamStaging.StreamSingleFileToStdoutAsync(stdoutStagingDir, CancellationToken.None).ConfigureAwait(false);
+    if (streamError is not null)
+    {
+        await Console.Error.WriteLineAsync($"pakko: error: {streamError}").ConfigureAwait(false);
+        return 2;
+    }
+    return code;
 }
 
 // -------------------------------------------------------------------------
@@ -230,13 +240,7 @@ static async Task<int> RunArchiveAsync(ParsedCliCommand command, GroupPolicyOpti
         if (!command.WriteToStdout || code == 2)
             return code;
 
-        string? streamError = await CliStreamStaging.StreamSingleFileToStdoutAsync(stdoutStagingDir!, CancellationToken.None).ConfigureAwait(false);
-        if (streamError is not null)
-        {
-            await Console.Error.WriteLineAsync($"pakko: error: {streamError}").ConfigureAwait(false);
-            return 2;
-        }
-        return code;
+        return await StreamResultToStdoutIfSuccessfulAsync(stdoutStagingDir!, code).ConfigureAwait(false);
     }
     finally
     {
@@ -270,23 +274,8 @@ static async Task<int> RunListAsync(ParsedCliCommand command)
 
         foreach (string archivePath in archivePaths)
         {
-            if (multiple)
-                await Console.Out.WriteLineAsync($"# archive: {archivePath}").ConfigureAwait(false);
-
-            ArchiveListResult listResult = await router.ListEntriesAsync(archivePath, CancellationToken.None).ConfigureAwait(false);
-            if (!listResult.Success)
-            {
-                await Console.Error.WriteLineAsync($"pakko: error: {archivePath}: {listResult.ErrorMessage}").ConfigureAwait(false);
+            if (!await PrintArchiveListingAsync(archivePath, router, multiple).ConfigureAwait(false))
                 anyFailed = true;
-                continue;
-            }
-
-            await Console.Out.WriteLineAsync(CliEntryFormatter.Header).ConfigureAwait(false);
-            foreach (ArchiveEntryInfo entry in listResult.Entries)
-                await Console.Out.WriteLineAsync(CliEntryFormatter.FormatRow(entry)).ConfigureAwait(false);
-
-            if (multiple)
-                await Console.Out.WriteLineAsync($"# total: {listResult.Entries.Count} entries").ConfigureAwait(false);
         }
 
         return anyFailed ? 2 : 0;
@@ -296,6 +285,29 @@ static async Task<int> RunListAsync(ParsedCliCommand command)
         if (stagedStdinPath is not null)
             CliStreamStaging.CleanupStagedStdin(stagedStdinPath);
     }
+}
+
+// Prints one archive's listing (or its error) to stdout/stderr. Returns false on failure.
+static async Task<bool> PrintArchiveListingAsync(string archivePath, ArchiveListingRouter router, bool multiple)
+{
+    if (multiple)
+        await Console.Out.WriteLineAsync($"# archive: {archivePath}").ConfigureAwait(false);
+
+    ArchiveListResult listResult = await router.ListEntriesAsync(archivePath, CancellationToken.None).ConfigureAwait(false);
+    if (!listResult.Success)
+    {
+        await Console.Error.WriteLineAsync($"pakko: error: {archivePath}: {listResult.ErrorMessage}").ConfigureAwait(false);
+        return false;
+    }
+
+    await Console.Out.WriteLineAsync(CliEntryFormatter.Header).ConfigureAwait(false);
+    foreach (ArchiveEntryInfo entry in listResult.Entries)
+        await Console.Out.WriteLineAsync(CliEntryFormatter.FormatRow(entry)).ConfigureAwait(false);
+
+    if (multiple)
+        await Console.Out.WriteLineAsync($"# total: {listResult.Entries.Count} entries").ConfigureAwait(false);
+
+    return true;
 }
 
 // -------------------------------------------------------------------------
@@ -311,20 +323,36 @@ static async Task<int> RunListAsync(ParsedCliCommand command)
 // -------------------------------------------------------------------------
 static async Task<int> RunHashAsync(ParsedCliCommand command)
 {
-    string label = command.HashAlgorithm == HashAlgorithmKind.Crc32 ? "CRC32" : "SHA256";
-
     if (command.ReadFromStdin)
-    {
-        await using Stream stdin = Console.OpenStandardInput();
-        string hash = await FileHashService.ComputeStreamDigestAsync(stdin, command.HashAlgorithm, CancellationToken.None).ConfigureAwait(false);
-        await Console.Out.WriteLineAsync($"{hash}  (stdin)").ConfigureAwait(false);
-        return 0;
-    }
+        return await RunHashStdinAsync(command.HashAlgorithm).ConfigureAwait(false);
 
     HashResult result = await FileHashService.ComputeAsync(command.SourcePaths, command.HashAlgorithm, progress: null, CancellationToken.None).ConfigureAwait(false);
 
+    int errorCount = await PrintHashEntriesAsync(result.Entries).ConfigureAwait(false);
+
+    if (result.Folder is { } folder)
+    {
+        string label = command.HashAlgorithm == HashAlgorithmKind.Crc32 ? "CRC32" : "SHA256";
+        await PrintHashFolderSummaryAsync(folder, label).ConfigureAwait(false);
+    }
+
+    if (errorCount == result.Entries.Count)
+        return 2;
+    return errorCount > 0 ? 1 : 0;
+}
+
+static async Task<int> RunHashStdinAsync(HashAlgorithmKind algorithm)
+{
+    await using Stream stdin = Console.OpenStandardInput();
+    string hash = await FileHashService.ComputeStreamDigestAsync(stdin, algorithm, CancellationToken.None).ConfigureAwait(false);
+    await Console.Out.WriteLineAsync($"{hash}  (stdin)").ConfigureAwait(false);
+    return 0;
+}
+
+static async Task<int> PrintHashEntriesAsync(IReadOnlyList<HashEntry> entries)
+{
     int errorCount = 0;
-    foreach (HashEntry entry in result.Entries)
+    foreach (HashEntry entry in entries)
     {
         if (entry.Error is not null)
         {
@@ -336,18 +364,15 @@ static async Task<int> RunHashAsync(ParsedCliCommand command)
             await Console.Out.WriteLineAsync($"{entry.Hash}  {entry.SourcePath}").ConfigureAwait(false);
         }
     }
+    return errorCount;
+}
 
-    if (result.Folder is { } folder)
-    {
-        await Console.Out.WriteLineAsync().ConfigureAwait(false);
-        await Console.Out.WriteLineAsync($"Files: {folder.FileCount}").ConfigureAwait(false);
-        await Console.Out.WriteLineAsync($"{label} for data:           {folder.DataSum}").ConfigureAwait(false);
-        await Console.Out.WriteLineAsync($"{label} for data and names: {folder.NamesSum}").ConfigureAwait(false);
-    }
-
-    if (errorCount == result.Entries.Count)
-        return 2;
-    return errorCount > 0 ? 1 : 0;
+static async Task PrintHashFolderSummaryAsync(FolderHashSummary folder, string label)
+{
+    await Console.Out.WriteLineAsync().ConfigureAwait(false);
+    await Console.Out.WriteLineAsync($"Files: {folder.FileCount}").ConfigureAwait(false);
+    await Console.Out.WriteLineAsync($"{label} for data:           {folder.DataSum}").ConfigureAwait(false);
+    await Console.Out.WriteLineAsync($"{label} for data and names: {folder.NamesSum}").ConfigureAwait(false);
 }
 
 // -------------------------------------------------------------------------
