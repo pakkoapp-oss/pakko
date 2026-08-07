@@ -35,6 +35,39 @@ AI agents must follow these rules in all generated code.
 
 ---
 
+## Method Complexity & Parameter Count
+
+- Keep cognitive complexity ≤ 15 (SonarCloud's `S3776` threshold) and parameter count ≤ 7
+  (`S107`) for new/touched methods. When a method drifts past either, extract before it grows
+  further — see T-F147's actual before/after examples across `ZipArchiveService.cs`/
+  `TarSandboxedService.cs`/`Archiver.CLI`'s `CliArgumentParser.cs` for the real patterns used:
+  - **A linear sequence of independent checks** (magic-byte signatures, per-switch-token
+    validation) → one small predicate/`TryParseXxx` method per check, or a table-driven dispatch
+    (`ArchiveFormatDetector.Detect`, `CliArgumentParser.UnsupportedSwitchReason`).
+  - **A per-item loop body with several skip-gates** → extract the loop body into its own
+    `TryXxxAsync` helper returning what the caller needs to keep accumulating (extracted/bytes
+    consumed/etc.), not a `ref`/`out` parameter on an `async` method (C# disallows those) —
+    return a tuple instead (`ZipArchiveService.TryExtractSingleEntryAsync`).
+  - **Too many parameters that cluster by purpose** → bundle into small, purpose-specific
+    `sealed record`s (a report-sink record, a progress-context record), not one large catch-all
+    options bag — matches `Zip/ParallelSingleArchiveWriter.cs`'s own existing style of several
+    small typed pieces (`FileWorkItem`, `WorkResult`) over a single mega-type.
+  - **Two call sites with the identical block** (a conflict-resolution `switch`, a temp-file
+    delete-on-error `try/catch`) → extract once, reuse — this alone often resolves the complexity
+    finding as a side effect of removing the duplication.
+- **When a method's complexity is provably load-bearing, don't force a risky split for the
+  metric.** If every branch exists because of a specific, already-debugged race or OS-lifecycle
+  requirement (documented inline — see `SandboxedProcessLauncher.RunAsync`'s `CreateProcessW`→
+  `AssignProcessToJobObject`→`ResumeThread` sequence, or `ParallelSingleArchiveWriter.
+  RunPipelineAsync`'s producer/consumer/ordered-cleanup `finally`), extract only the genuinely
+  boundary-safe pieces and leave the core sequence as one unit. Add
+  `// NOSONAR: S3776 — <specific reason, pointing at the inline race/lifecycle comment>` on the
+  residual finding rather than restructuring code whose current shape is the fix for a real,
+  previously-found bug. This is the same "provable from the line itself" standard this file
+  already holds bounds/security checks to (see `CLAUDE.md`'s Hard Constraints).
+
+---
+
 ## Async Rules
 
 - All IO operations must be `async/await`

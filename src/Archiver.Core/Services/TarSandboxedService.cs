@@ -128,9 +128,9 @@ public sealed class TarSandboxedService : ITarService
             else
             {
                 IProgress<ProgressReport>? archiveProgress = singleArchive ? progress : null;
+                var sink = new ArchiveResultSink(errors, createdFiles, skippedFiles);
                 bool wasCancelled = await ExtractOneArchiveAsync(
-                    archivePath, destDir, options, conflictResolver, skippedFiles, createdFiles, errors,
-                    archiveProgress, cancellationToken).ConfigureAwait(false);
+                    archivePath, destDir, options, conflictResolver, sink, archiveProgress, cancellationToken).ConfigureAwait(false);
                 if (wasCancelled)
                     break;
             }
@@ -159,6 +159,15 @@ public sealed class TarSandboxedService : ITarService
         ArchiveFormatDetector.Detect(archivePath) == ArchiveFormat.Rar
             && ArchiveFormatDetector.IsEncryptedRar(archivePath);
 
+    // The three List sinks ExtractOneArchiveAsync/ProcessSeparateArchivesAsync write into —
+    // bundled to cut S107's parameter count, same reasoning as ZipArchiveService's own
+    // (ConcurrentBag-typed, for its parallel workers) ArchiveResultSink; this one stays List-typed
+    // since neither of this file's two call sites is itself parallelized across archives.
+    private sealed record ArchiveResultSink(
+        List<ArchiveError> Errors,
+        List<string> CreatedFiles,
+        List<SkippedFile> SkippedFiles);
+
     // The try/6-catch error-mapping body of ExtractAsync's per-archive loop, pulled out so the
     // loop itself reads as "known-encrypted-RAR short-circuit, else extract-and-map-errors" at a
     // glance. Returns true when extraction observed real cancellation (the loop breaks in that
@@ -166,14 +175,13 @@ public sealed class TarSandboxedService : ITarService
     // into errors/createdFiles and returns false so the loop continues to the next archive.
     private async Task<bool> ExtractOneArchiveAsync(
         string archivePath, string destDir, ExtractOptions options, ConflictResolver conflictResolver,
-        List<SkippedFile> skippedFiles, List<string> createdFiles, List<ArchiveError> errors,
-        IProgress<ProgressReport>? archiveProgress, CancellationToken cancellationToken)
+        ArchiveResultSink sink, IProgress<ProgressReport>? archiveProgress, CancellationToken cancellationToken)
     {
         try
         {
             bool alreadyIsolated = options.Mode == ExtractMode.SeparateFolders;
             var context = new TarExtractionContext(
-                conflictResolver, skippedFiles, options.ConfirmCompressionBombExtraction, _policy.MotwMode, archiveProgress);
+                conflictResolver, sink.SkippedFiles, options.ConfirmCompressionBombExtraction, _policy.MotwMode, archiveProgress);
             var (actualDest, anyExtracted) = await ExtractSingleArchiveAsync(
                 archivePath, destDir, alreadyIsolated, options.SelectedEntryPaths, context, cancellationToken)
                 .ConfigureAwait(false);
@@ -183,7 +191,7 @@ public sealed class TarSandboxedService : ITarService
             // CreatedFiles — MainViewModel uses this list to decide whether DeleteAfterOperation
             // may delete the source archive.
             if (anyExtracted)
-                createdFiles.Add(actualDest);
+                sink.CreatedFiles.Add(actualDest);
             return false;
         }
         catch (OperationCanceledException)
@@ -192,17 +200,17 @@ public sealed class TarSandboxedService : ITarService
         }
         catch (TarArchiveRejectedException ex)
         {
-            errors.Add(new ArchiveError { SourcePath = archivePath, Message = ex.Message });
+            sink.Errors.Add(new ArchiveError { SourcePath = archivePath, Message = ex.Message });
             return false;
         }
         catch (TarSignatureVerificationException ex)
         {
-            errors.Add(new ArchiveError { SourcePath = archivePath, Message = ex.Message });
+            sink.Errors.Add(new ArchiveError { SourcePath = archivePath, Message = ex.Message });
             return false;
         }
         catch (SandboxSetupException ex)
         {
-            errors.Add(new ArchiveError { SourcePath = archivePath, Message = ex.Message, Exception = ex });
+            sink.Errors.Add(new ArchiveError { SourcePath = archivePath, Message = ex.Message, Exception = ex });
             return false;
         }
         catch (IOException ex)
@@ -210,7 +218,7 @@ public sealed class TarSandboxedService : ITarService
             // T-F113: covers 7z (both encryption modes) and RAR's header-encrypted case — the
             // proactive check above only catches RAR's more common data-only case before staging
             // even begins.
-            errors.Add(new ArchiveError
+            sink.Errors.Add(new ArchiveError
             {
                 SourcePath = archivePath,
                 Message = IsLikelyEncryptionFailure(ex.Message)
@@ -222,7 +230,7 @@ public sealed class TarSandboxedService : ITarService
         }
         catch (UnauthorizedAccessException ex)
         {
-            errors.Add(new ArchiveError
+            sink.Errors.Add(new ArchiveError
             {
                 SourcePath = archivePath,
                 Message = $"Access denied extracting archive: {ex.Message}",
@@ -878,8 +886,8 @@ public sealed class TarSandboxedService : ITarService
         }
         else // ArchiveMode.SeparateArchives — one archive per top-level source path
         {
-            await ProcessSeparateArchivesAsync(
-                options, extension, conflictResolver, createdFiles, errors, skippedFiles, progress, cancellationToken)
+            var sink = new ArchiveResultSink(errors, createdFiles, skippedFiles);
+            await ProcessSeparateArchivesAsync(options, extension, conflictResolver, sink, progress, cancellationToken)
                 .ConfigureAwait(false);
         }
 
@@ -928,8 +936,7 @@ public sealed class TarSandboxedService : ITarService
 
     private static async Task ProcessSeparateArchivesAsync(
         ArchiveOptions options, string extension, ConflictResolver conflictResolver,
-        List<string> createdFiles, List<ArchiveError> errors, List<SkippedFile> skippedFiles,
-        IProgress<ProgressReport>? progress, CancellationToken cancellationToken)
+        ArchiveResultSink sink, IProgress<ProgressReport>? progress, CancellationToken cancellationToken)
     {
         var sortedSourcePaths = options.SourcePaths.OrderBy(p => p, StringComparer.OrdinalIgnoreCase).ToList();
 
@@ -940,7 +947,7 @@ public sealed class TarSandboxedService : ITarService
 
             if (!File.Exists(sourcePath) && !Directory.Exists(sourcePath))
             {
-                errors.Add(new ArchiveError { SourcePath = sourcePath, Message = $"Source path does not exist: {sourcePath}" });
+                sink.Errors.Add(new ArchiveError { SourcePath = sourcePath, Message = $"Source path does not exist: {sourcePath}" });
                 continue;
             }
 
@@ -950,7 +957,7 @@ public sealed class TarSandboxedService : ITarService
             var (outcome, resolvedDestPath) = await ResolveDestinationConflictAsync(destPath, conflictResolver).ConfigureAwait(false);
             if (outcome == DestinationConflictOutcome.Skip)
             {
-                skippedFiles.Add(new SkippedFile
+                sink.SkippedFiles.Add(new SkippedFile
                 {
                     Path = sourcePath,
                     Reason = $"Archive '{Path.GetFileName(destPath)}' already exists at the destination and was skipped."
@@ -959,7 +966,7 @@ public sealed class TarSandboxedService : ITarService
             }
 
             var singleOptions = options with { SourcePaths = [sourcePath] };
-            await CompressToArchiveAsync(singleOptions, resolvedDestPath, createdFiles, errors, skippedFiles, progress, cancellationToken)
+            await CompressToArchiveAsync(singleOptions, resolvedDestPath, sink.CreatedFiles, sink.Errors, sink.SkippedFiles, progress, cancellationToken)
                 .ConfigureAwait(false);
         }
     }

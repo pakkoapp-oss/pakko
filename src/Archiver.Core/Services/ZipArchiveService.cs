@@ -151,8 +151,9 @@ public sealed class ZipArchiveService : IArchiveService
             }
             else
             {
+                var sink = new ArchiveWorkSink(errors, skippedFiles);
                 await WriteSequentialSingleArchiveAsync(
-                    tempPath, sortedSourcePaths, options, totalSourceBytes, errors, skippedFiles, progress, cancellationToken)
+                    tempPath, sortedSourcePaths, options.CompressionLevel, totalSourceBytes, sink, progress, cancellationToken)
                     .ConfigureAwait(false);
             }
 
@@ -211,11 +212,17 @@ public sealed class ZipArchiveService : IArchiveService
         return null;
     }
 
+    // The two List sinks WriteSequentialSingleArchiveAsync/AddDirectoryToArchiveAsync's callers
+    // write into — bundled to cut S107's parameter count.
+    private sealed record ArchiveWorkSink(List<ArchiveError> Errors, List<SkippedFile> SkippedFiles);
+
     private static async Task WriteSequentialSingleArchiveAsync(
-        string tempPath, List<string> sortedSourcePaths, ArchiveOptions options, long totalSourceBytes,
-        List<ArchiveError> errors, List<SkippedFile> skippedFiles, IProgress<ProgressReport>? progress,
-        CancellationToken cancellationToken)
+        string tempPath, List<string> sortedSourcePaths, CompressionLevel compressionLevel, long totalSourceBytes,
+        ArchiveWorkSink sink, IProgress<ProgressReport>? progress, CancellationToken cancellationToken)
     {
+        List<ArchiveError> errors = sink.Errors;
+        List<SkippedFile> skippedFiles = sink.SkippedFiles;
+
         await Task.Run(async () =>
         {
             using var archive = ZipFile.Open(tempPath, ZipArchiveMode.Create);
@@ -258,14 +265,14 @@ public sealed class ZipArchiveService : IArchiveService
                     {
                         string entryName = GetUniqueEntryName(usedEntryNames, Path.GetFileName(sourcePath));
                         var context = new DirectoryArchiveContext(
-                            sourcePath, entryName, options.CompressionLevel, skippedFiles.Add, errors.Add, totalSourceBytes, progress);
+                            sourcePath, entryName, compressionLevel, skippedFiles.Add, errors.Add, totalSourceBytes, progress);
                         await AddDirectoryToArchiveAsync(archive, sourcePath, context, byteOffset, cancellationToken);
                     }
                     else if (File.Exists(sourcePath))
                     {
                         string entryName = GetUniqueEntryName(usedEntryNames, Path.GetFileName(sourcePath));
                         await AddEntryFromFileAsync(archive, sourcePath, entryName,
-                            options.CompressionLevel, cancellationToken, totalSourceBytes, byteOffset, progress);
+                            compressionLevel, cancellationToken, new EntryWriteProgress(totalSourceBytes, byteOffset, progress));
                     }
                     else
                     {
@@ -328,14 +335,14 @@ public sealed class ZipArchiveService : IArchiveService
 
         var concurrentSink = new ArchiveResultSink(
             new ConcurrentBag<ArchiveError>(), new ConcurrentBag<string>(), new ConcurrentBag<SkippedFile>());
-        long[] completedBytesBox = [0];
+        var progressContext = new SeparateArchiveProgressContext(totalSourceBytes, [0], progress);
 
         await Parallel.ForEachAsync(
             plans.Where(p => p.DestPath is not null),
             new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount, CancellationToken = cancellationToken },
             async (plan, token) => await ArchiveSingleSeparatePathAsync(
                 plan.SourcePath, plan.DestPath!, options.CompressionLevel,
-                concurrentSink, totalSourceBytes, completedBytesBox, progress, token).ConfigureAwait(false)
+                concurrentSink, progressContext, token).ConfigureAwait(false)
         ).ConfigureAwait(false);
 
         foreach (var e in concurrentSink.Errors) errors.Add(e);
@@ -442,16 +449,24 @@ public sealed class ZipArchiveService : IArchiveService
         ConcurrentBag<string> CreatedFiles,
         ConcurrentBag<SkippedFile> SkippedFiles);
 
+    // The progress-tracking trio ArchiveSingleSeparatePathAsync's parallel workers all share —
+    // bundled to cut S107's parameter count. CompletedBytesBox stays a raw long[] (not e.g. a
+    // single long field) since every worker mutates it via Interlocked on the same shared instance.
+    private sealed record SeparateArchiveProgressContext(
+        long TotalSourceBytes, long[] CompletedBytesBox, IProgress<ProgressReport>? Progress);
+
     private static async Task ArchiveSingleSeparatePathAsync(
         string sourcePath,
         string destPath,
         CompressionLevel compressionLevel,
         ArchiveResultSink sink,
-        long totalSourceBytes,
-        long[] completedBytesBox,
-        IProgress<ProgressReport>? progress,
+        SeparateArchiveProgressContext progressContext,
         CancellationToken cancellationToken)
     {
+        long totalSourceBytes = progressContext.TotalSourceBytes;
+        long[] completedBytesBox = progressContext.CompletedBytesBox;
+        IProgress<ProgressReport>? progress = progressContext.Progress;
+
         long pathSize = 0;
         if (File.Exists(sourcePath))
             try { pathSize = new FileInfo(sourcePath).Length; } catch { /* best-effort */ }
@@ -474,7 +489,7 @@ public sealed class ZipArchiveService : IArchiveService
             {
                 using var archive = ZipFile.Open(separateTempPath, ZipArchiveMode.Create);
                 await AddEntryFromFileAsync(archive, sourcePath, Path.GetFileName(sourcePath),
-                    compressionLevel, cancellationToken, totalSourceBytes, baseOffset, progress)
+                    compressionLevel, cancellationToken, new EntryWriteProgress(totalSourceBytes, baseOffset, progress))
                     .ConfigureAwait(false);
             }
             else
@@ -579,9 +594,9 @@ public sealed class ZipArchiveService : IArchiveService
                     : options.DestinationFolder;
 
                 IProgress<ProgressReport>? archiveProgress = singleArchive ? progress : null;
+                var sink = new ZipExtractResultSink(errors, createdFiles, skippedFiles);
                 await ExtractOneZipWithErrorMappingAsync(
-                    archivePath, destDir, options, conflictResolver, skippedFiles, createdFiles, errors,
-                    archiveProgress, cancellationToken).ConfigureAwait(false);
+                    archivePath, destDir, options, conflictResolver, sink, archiveProgress, cancellationToken).ConfigureAwait(false);
             }
 
             if (!singleArchive) progress?.Report(new ProgressReport { Percent = (i + 1) * 100 / total, BytesTransferred = 0, TotalBytes = 0 });
@@ -638,16 +653,23 @@ public sealed class ZipArchiveService : IArchiveService
         return false;
     }
 
+    // The three List sinks ExtractOneZipWithErrorMappingAsync writes into — bundled to cut S107's
+    // parameter count. Named distinctly from ArchiveSingleSeparatePathAsync's own ArchiveResultSink
+    // (ConcurrentBag-typed, for its parallel workers) since this one is plain List-typed.
+    private sealed record ZipExtractResultSink(
+        List<ArchiveError> Errors,
+        List<string> CreatedFiles,
+        List<SkippedFile> SkippedFiles);
+
     private async Task ExtractOneZipWithErrorMappingAsync(
         string archivePath, string destDir, ExtractOptions options, ConflictResolver conflictResolver,
-        List<SkippedFile> skippedFiles, List<string> createdFiles, List<ArchiveError> errors,
-        IProgress<ProgressReport>? archiveProgress, CancellationToken cancellationToken)
+        ZipExtractResultSink sink, IProgress<ProgressReport>? archiveProgress, CancellationToken cancellationToken)
     {
         try
         {
             bool alreadyIsolated = options.Mode == ExtractMode.SeparateFolders;
             var context = new ZipExtractionContext(
-                conflictResolver, skippedFiles, options.ConfirmCompressionBombExtraction, _policy.MotwMode, archiveProgress);
+                conflictResolver, sink.SkippedFiles, options.ConfirmCompressionBombExtraction, _policy.MotwMode, archiveProgress);
             var (actualDest, anyExtracted) = await Task.Run(async () =>
                 await ExtractWithSmartFolderingAsync(archivePath, destDir, alreadyIsolated,
                     options.SelectedEntryPaths, context, cancellationToken),
@@ -658,11 +680,11 @@ public sealed class ZipArchiveService : IArchiveService
             // CreatedFiles — MainViewModel uses this list to decide whether DeleteAfterOperation
             // may delete the source archive.
             if (anyExtracted)
-                createdFiles.Add(actualDest);
+                sink.CreatedFiles.Add(actualDest);
         }
         catch (IOException ex)
         {
-            errors.Add(new ArchiveError
+            sink.Errors.Add(new ArchiveError
             {
                 SourcePath = archivePath,
                 Message = $"Cannot extract archive: {ex.Message}",
@@ -671,7 +693,7 @@ public sealed class ZipArchiveService : IArchiveService
         }
         catch (UnauthorizedAccessException ex)
         {
-            errors.Add(new ArchiveError
+            sink.Errors.Add(new ArchiveError
             {
                 SourcePath = archivePath,
                 Message = $"Access denied extracting archive: {ex.Message}",
@@ -680,7 +702,7 @@ public sealed class ZipArchiveService : IArchiveService
         }
         catch (InvalidDataException ex)
         {
-            errors.Add(new ArchiveError
+            sink.Errors.Add(new ArchiveError
             {
                 SourcePath = archivePath,
                 Message = "File has ZIP signature but appears corrupted or incomplete.",
@@ -945,6 +967,8 @@ public sealed class ZipArchiveService : IArchiveService
         // silently overwrite the first one's file in tempDest.
         var claimedFinalPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
+        var plan = new ExtractionPlan(tempDest, fullTempDest, actualDest, isSingleRootFolder, totalUncompressedBytes, claimedFinalPaths);
+
         try
         {
             foreach (var entry in fileEntries)
@@ -953,8 +977,7 @@ public sealed class ZipArchiveService : IArchiveService
                     break;
 
                 var (extracted, bytesConsumed) = await TryExtractSingleEntryAsync(
-                    entry, isSingleRootFolder, tempDest, fullTempDest, actualDest, archivePath,
-                    claimedFinalPaths, totalUncompressedBytes, bytesRead, context, cancellationToken)
+                    entry, archivePath, bytesRead, plan, context, cancellationToken)
                     .ConfigureAwait(false);
 
                 if (extracted)
@@ -1013,6 +1036,17 @@ public sealed class ZipArchiveService : IArchiveService
         MotwMode MotwMode,
         IProgress<ProgressReport>? Progress);
 
+    // The per-call setup ExtractWithSmartFolderingAsync computes once and every entry of its loop
+    // reads unchanged — cut into its own type alongside ZipExtractionContext so
+    // TryExtractSingleEntryAsync's own parameter count stays under S107's threshold.
+    private sealed record ExtractionPlan(
+        string TempDest,
+        string FullTempDest,
+        string ActualDest,
+        bool IsSingleRootFolder,
+        long TotalUncompressedBytes,
+        HashSet<string> ClaimedFinalPaths);
+
     // One entry of ExtractWithSmartFolderingAsync's loop — every one of the 6 skip-gates below is
     // already commented with its own T-Fxx tag and is self-contained. Returns whether the entry
     // was actually written, and how many bytes to advance the caller's running bytesRead by
@@ -1020,13 +1054,18 @@ public sealed class ZipArchiveService : IArchiveService
     // `bytesRead += entry.Length`) — kept as an explicit return rather than a ref/out parameter so
     // the caller's accumulation stays visibly in its own hands.
     private static async Task<(bool Extracted, long BytesConsumed)> TryExtractSingleEntryAsync(
-        ZipArchiveEntry entry, bool isSingleRootFolder, string tempDest, string fullTempDest, string actualDest,
-        string archivePath, HashSet<string> claimedFinalPaths, long totalUncompressedBytes, long bytesReadSoFar,
+        ZipArchiveEntry entry, string archivePath, long bytesReadSoFar, ExtractionPlan plan,
         ZipExtractionContext context, CancellationToken cancellationToken)
     {
+        string tempDest = plan.TempDest;
+        string fullTempDest = plan.FullTempDest;
+        string actualDest = plan.ActualDest;
+        HashSet<string> claimedFinalPaths = plan.ClaimedFinalPaths;
+        long totalUncompressedBytes = plan.TotalUncompressedBytes;
+
         string relativePath = entry.FullName.Replace('/', Path.DirectorySeparatorChar);
 
-        if (isSingleRootFolder)
+        if (plan.IsSingleRootFolder)
         {
             var sep = relativePath.IndexOf(Path.DirectorySeparatorChar);
             relativePath = relativePath[(sep + 1)..];
@@ -1139,15 +1178,17 @@ public sealed class ZipArchiveService : IArchiveService
         return (true, entry.Length);
     }
 
+    // The progress-tracking trio AddEntryFromFileAsync's 3 call sites all pass explicitly —
+    // bundled to cut S107's parameter count.
+    private sealed record EntryWriteProgress(long TotalBytes, long StartOffset, IProgress<ProgressReport>? Progress);
+
     private static async Task AddEntryFromFileAsync(
         ZipArchive archive,
         string sourcePath,
         string entryName,
         CompressionLevel compressionLevel,
         CancellationToken cancellationToken,
-        long totalBytes = 0,
-        long startOffset = 0,
-        IProgress<ProgressReport>? progress = null)
+        EntryWriteProgress progressInfo)
     {
         // T-F21: Open the source file BEFORE creating the archive entry.
         // If the file has been deleted or locked since it was discovered by
@@ -1167,10 +1208,10 @@ public sealed class ZipArchiveService : IArchiveService
         // which makes the archive non-deterministic.
         try { entry.LastWriteTime = File.GetLastWriteTime(sourcePath); } catch { /* best-effort */ }
 
-        if (progress != null && totalBytes > 0)
+        if (progressInfo.Progress != null && progressInfo.TotalBytes > 0)
         {
             var entryStream = entry.Open();
-            await using var ps = new ProgressStream(entryStream, totalBytes, startOffset, progress, entryName);
+            await using var ps = new ProgressStream(entryStream, progressInfo.TotalBytes, progressInfo.StartOffset, progressInfo.Progress, entryName);
             await fileStream.CopyToAsync(ps, CopyBufferSize, cancellationToken).ConfigureAwait(false);
         }
         else
@@ -1268,7 +1309,7 @@ public sealed class ZipArchiveService : IArchiveService
             try
             {
                 await AddEntryFromFileAsync(archive, filePath, entryName, context.CompressionLevel, cancellationToken,
-                    context.TotalBytes, startOffset, context.Progress);
+                    new EntryWriteProgress(context.TotalBytes, startOffset, context.Progress));
             }
             catch (IOException ex)
             {
