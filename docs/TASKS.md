@@ -3894,11 +3894,11 @@ regression from this task, which owns reliability only.
   (817/817) across every commit in this task, including a clean isolated rerun of the one test
   that failed once under full-suite load (matches this project's documented ThreadPool-contention
   flakiness class, not a real regression). `dotnet build` across every touched project: 0 warnings,
-  0 errors. Full `Deploy.ps1` build+sign+install succeeded (v1.4.7.5). Pushed across 9 commits,
+  0 errors. Full `Deploy.ps1` build+sign+install succeeded (v1.4.7.5). Pushed across 10 commits,
   each confirmed green on CI with a fresh SonarCloud analysis; open issue count went 134 (stale
-  snapshot) → 76 (first real scan, post-CI-fix) → **45** (final) — 42 are the deferred T-F148
-  `SYSLIB1054` batch and 2 are the accepted S1135 TODOs, i.e. every actionable finding from this
-  triage is now either fixed or durably suppressed with a documented reason.
+  snapshot) → 76 (first real scan, post-CI-fix) → **44** (final, `d5745bc`) — 42 are the deferred
+  T-F148 `SYSLIB1054` batch and 2 are the accepted S1135 TODOs, i.e. every actionable finding from
+  this triage is now either fixed or durably suppressed with a documented reason.
 - **Reported by:** user, 2026-08-07, after sharing the SonarCloud dashboard link mid-T-F146-session
   and asking for a dedicated follow-up task to triage it.
 
