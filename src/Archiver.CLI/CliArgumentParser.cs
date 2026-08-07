@@ -68,75 +68,82 @@ public static class CliArgumentParser
 
     // --- x (Extract) ---
 
+    // Mutable per-parse state for ParseExtract — moving the token-dispatch if-chain out of the
+    // foreach loop and into ApplyExtractToken below is what actually clears S3776's threshold;
+    // extracting the -o/-ao validation alone (TryParseOutputDirectory/TryParseOverwriteMode)
+    // wasn't enough, since the loop nesting itself was the bigger contributor.
+    private sealed class ExtractParseState
+    {
+        public List<string> ArchivePaths { get; } = [];
+        public string? OutputDirectory { get; set; }
+        public bool AssumeYes { get; set; }
+        public ConflictBehavior? OverwriteMode { get; set; }
+        public bool ReadFromStdin { get; set; }
+        public bool WriteToStdout { get; set; }
+    }
+
     private static ParsedCliCommand ParseExtract(string[] rest)
     {
-        var archivePaths = new List<string>();
-        string? outputDirectory = null;
-        bool assumeYes = false;
-        ConflictBehavior? overwriteMode = null;
-        bool readFromStdin = false;
-        bool writeToStdout = false;
+        var state = new ExtractParseState();
 
         foreach (string token in rest)
         {
-            if (!IsSwitchToken(token))
-            {
-                archivePaths.Add(token);
-                continue;
-            }
-
-            if (token == "-si")
-            {
-                readFromStdin = true;
-                continue;
-            }
-
-            if (token == "-so")
-            {
-                writeToStdout = true;
-                continue;
-            }
-
-            if (token == "-y")
-            {
-                assumeYes = true;
-                continue;
-            }
-
-            if (token.StartsWith("-o", StringComparison.Ordinal))
-            {
-                if (!TryParseOutputDirectory(token, out outputDirectory, out string? error))
-                    return Invalid(error!);
-                continue;
-            }
-
-            if (token.StartsWith("-ao", StringComparison.Ordinal))
-            {
-                if (!TryParseOverwriteMode(token, out overwriteMode, out string? error))
-                    return Invalid(error!);
-                continue;
-            }
-
-            return Invalid(UnsupportedSwitchReason(token));
+            string? error = ApplyExtractToken(token, state);
+            if (error is not null)
+                return Invalid(error);
         }
 
-        if (readFromStdin && archivePaths.Count > 0)
+        if (state.ReadFromStdin && state.ArchivePaths.Count > 0)
             return Invalid("'-si' cannot be combined with an explicit archive path");
-        if (writeToStdout && outputDirectory is not null)
+        if (state.WriteToStdout && state.OutputDirectory is not null)
             return Invalid("'-so' cannot be combined with '-o' (mutually exclusive destinations)");
-        if (!readFromStdin && archivePaths.Count == 0)
+        if (!state.ReadFromStdin && state.ArchivePaths.Count == 0)
             return Invalid("'x' requires at least one archive path");
 
         return new ParsedCliCommand
         {
             Type = CliCommandType.Extract,
-            ArchivePaths = archivePaths,
-            OutputDirectory = outputDirectory,
-            AssumeYes = assumeYes,
-            OverwriteMode = overwriteMode,
-            ReadFromStdin = readFromStdin,
-            WriteToStdout = writeToStdout,
+            ArchivePaths = state.ArchivePaths,
+            OutputDirectory = state.OutputDirectory,
+            AssumeYes = state.AssumeYes,
+            OverwriteMode = state.OverwriteMode,
+            ReadFromStdin = state.ReadFromStdin,
+            WriteToStdout = state.WriteToStdout,
         };
+    }
+
+    // Returns an error message if the token was invalid/unsupported, null on success (including
+    // a plain archive-path token). Mutates state in place — matches the original inline loop's
+    // per-token behavior exactly, just without the loop's own nesting contributing to complexity.
+    private static string? ApplyExtractToken(string token, ExtractParseState state)
+    {
+        if (!IsSwitchToken(token))
+        {
+            state.ArchivePaths.Add(token);
+            return null;
+        }
+
+        if (token == "-si") { state.ReadFromStdin = true; return null; }
+        if (token == "-so") { state.WriteToStdout = true; return null; }
+        if (token == "-y") { state.AssumeYes = true; return null; }
+
+        if (token.StartsWith("-o", StringComparison.Ordinal))
+        {
+            if (!TryParseOutputDirectory(token, out string? outputDirectory, out string? error))
+                return error;
+            state.OutputDirectory = outputDirectory;
+            return null;
+        }
+
+        if (token.StartsWith("-ao", StringComparison.Ordinal))
+        {
+            if (!TryParseOverwriteMode(token, out ConflictBehavior? overwriteMode, out string? error))
+                return error;
+            state.OverwriteMode = overwriteMode;
+            return null;
+        }
+
+        return UnsupportedSwitchReason(token);
     }
 
     private static bool TryParseOutputDirectory(string token, out string? outputDirectory, out string? error)
@@ -226,69 +233,76 @@ public static class CliArgumentParser
 
     // --- a (Archive) ---
 
+    // Mirrors ExtractParseState/ApplyExtractToken's shape — see that pair's comment for why the
+    // dispatch has to move out of the foreach loop, not just have its per-switch validation
+    // extracted, to actually clear S3776's threshold.
+    private sealed class ArchiveParseState
+    {
+        public string? ArchivePathArg { get; set; }
+        public List<string> SourcePaths { get; } = [];
+        public bool AssumeYes { get; set; }
+        public ArchiveContainerFormat ArchiveFormat { get; set; } = ArchiveContainerFormat.Zip;
+        public CompressionLevel? CompressionLevel { get; set; }
+        public bool WriteToStdout { get; set; }
+    }
+
     private static ParsedCliCommand ParseArchive(string[] rest)
     {
-        string? archivePathArg = null;
-        var sourcePaths = new List<string>();
-        bool assumeYes = false;
-        var archiveFormat = ArchiveContainerFormat.Zip;
-        CompressionLevel? compressionLevel = null;
-        bool writeToStdout = false;
+        var state = new ArchiveParseState();
 
         foreach (string token in rest)
         {
-            if (!IsSwitchToken(token))
-            {
-                if (archivePathArg is null)
-                    archivePathArg = token;
-                else
-                    sourcePaths.Add(token);
-                continue;
-            }
-
-            if (token == "-so")
-            {
-                writeToStdout = true;
-                continue;
-            }
-
-            if (token == "-y")
-            {
-                assumeYes = true;
-                continue;
-            }
-
-            if (token.StartsWith("-mx", StringComparison.Ordinal))
-            {
-                if (!TryParseCompressionLevel(token, out compressionLevel, out string? error))
-                    return Invalid(error!);
-                continue;
-            }
-
-            if (token.StartsWith("-t", StringComparison.Ordinal))
-            {
-                if (!TryParseArchiveFormat(token, out ArchiveContainerFormat? format, out string? error))
-                    return Invalid(error!);
-                archiveFormat = format!.Value;
-                continue;
-            }
-
-            return Invalid(UnsupportedSwitchReason(token));
+            string? error = ApplyArchiveToken(token, state);
+            if (error is not null)
+                return Invalid(error);
         }
 
-        if (archivePathArg is null || sourcePaths.Count == 0)
+        if (state.ArchivePathArg is null || state.SourcePaths.Count == 0)
             return Invalid("'a' requires an archive name and at least one source file");
 
         return new ParsedCliCommand
         {
             Type = CliCommandType.Archive,
-            ArchivePathArg = archivePathArg,
-            SourcePaths = sourcePaths,
-            AssumeYes = assumeYes,
-            ArchiveFormat = archiveFormat,
-            CompressionLevel = compressionLevel,
-            WriteToStdout = writeToStdout,
+            ArchivePathArg = state.ArchivePathArg,
+            SourcePaths = state.SourcePaths,
+            AssumeYes = state.AssumeYes,
+            ArchiveFormat = state.ArchiveFormat,
+            CompressionLevel = state.CompressionLevel,
+            WriteToStdout = state.WriteToStdout,
         };
+    }
+
+    private static string? ApplyArchiveToken(string token, ArchiveParseState state)
+    {
+        if (!IsSwitchToken(token))
+        {
+            if (state.ArchivePathArg is null)
+                state.ArchivePathArg = token;
+            else
+                state.SourcePaths.Add(token);
+            return null;
+        }
+
+        if (token == "-so") { state.WriteToStdout = true; return null; }
+        if (token == "-y") { state.AssumeYes = true; return null; }
+
+        if (token.StartsWith("-mx", StringComparison.Ordinal))
+        {
+            if (!TryParseCompressionLevel(token, out CompressionLevel? compressionLevel, out string? error))
+                return error;
+            state.CompressionLevel = compressionLevel;
+            return null;
+        }
+
+        if (token.StartsWith("-t", StringComparison.Ordinal))
+        {
+            if (!TryParseArchiveFormat(token, out ArchiveContainerFormat? format, out string? error))
+                return error;
+            state.ArchiveFormat = format!.Value;
+            return null;
+        }
+
+        return UnsupportedSwitchReason(token);
     }
 
     private static bool TryParseCompressionLevel(string token, out CompressionLevel? level, out string? error)

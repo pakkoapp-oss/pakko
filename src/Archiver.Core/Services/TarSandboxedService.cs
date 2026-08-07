@@ -100,43 +100,17 @@ public sealed class TarSandboxedService : ITarService
         // selection, where per-archive percent-only progress (bytes = 0,0) is the existing,
         // already-accepted shape.
         bool singleArchive = total == 1;
+        var sink = new ArchiveResultSink(errors, createdFiles, skippedFiles);
 
         for (int i = 0; i < total; i++)
         {
             if (cancellationToken.IsCancellationRequested)
                 break;
 
-            string archivePath = options.ArchivePaths[i];
-            string destDir = options.Mode == ExtractMode.SeparateFolders
-                ? Path.Combine(options.DestinationFolder,
-                    options.SeparateFolderName ?? ArchiveNaming.GetBaseName(archivePath))
-                : options.DestinationFolder;
-
-            // T-F113: cheap proactive check, no sandbox/tar.exe launch needed for a known-
-            // encrypted RAR — mirrors ZipArchiveService.ExtractAsync's IsEncryptedZip placement.
-            // 7z and RAR's rarer header-encrypted case aren't cheaply detectable this way (see
-            // ArchiveFormatDetector.IsEncryptedRar's doc comment) — those are instead caught
-            // reactively below via IsLikelyEncryptionFailure once tar.exe actually fails.
-            if (IsKnownEncryptedRar(archivePath))
-            {
-                errors.Add(new ArchiveError
-                {
-                    SourcePath = archivePath,
-                    Message = "This archive is password-protected and cannot be extracted."
-                });
-            }
-            else
-            {
-                IProgress<ProgressReport>? archiveProgress = singleArchive ? progress : null;
-                var sink = new ArchiveResultSink(errors, createdFiles, skippedFiles);
-                bool wasCancelled = await ExtractOneArchiveAsync(
-                    archivePath, destDir, options, conflictResolver, sink, archiveProgress, cancellationToken).ConfigureAwait(false);
-                if (wasCancelled)
-                    break;
-            }
-
-            if (!singleArchive)
-                progress?.Report(new ProgressReport { Percent = (i + 1) * 100 / total, BytesTransferred = 0, TotalBytes = 0 });
+            bool wasCancelled = await ExtractArchiveAtIndexAsync(
+                options, i, total, singleArchive, conflictResolver, sink, progress, cancellationToken).ConfigureAwait(false);
+            if (wasCancelled)
+                break;
         }
 
         var result = new ArchiveResult
@@ -158,6 +132,50 @@ public sealed class TarSandboxedService : ITarService
     private static bool IsKnownEncryptedRar(string archivePath) =>
         ArchiveFormatDetector.Detect(archivePath) == ArchiveFormat.Rar
             && ArchiveFormatDetector.IsEncryptedRar(archivePath);
+
+    // One iteration of ExtractAsync's per-archive loop — moved out so the loop itself reads as
+    // "check cancellation, extract one, check cancellation" at a glance. Returns true exactly
+    // when extraction observed real cancellation, in which case the caller must break WITHOUT
+    // reporting progress for this iteration (matches the original inline loop's `break` landing
+    // before the progress-report line); every other outcome falls through to the report and
+    // returns false so the caller's loop continues.
+    private async Task<bool> ExtractArchiveAtIndexAsync(
+        ExtractOptions options, int i, int total, bool singleArchive, ConflictResolver conflictResolver,
+        ArchiveResultSink sink, IProgress<ProgressReport>? progress, CancellationToken cancellationToken)
+    {
+        string archivePath = options.ArchivePaths[i];
+        string destDir = options.Mode == ExtractMode.SeparateFolders
+            ? Path.Combine(options.DestinationFolder,
+                options.SeparateFolderName ?? ArchiveNaming.GetBaseName(archivePath))
+            : options.DestinationFolder;
+
+        // T-F113: cheap proactive check, no sandbox/tar.exe launch needed for a known-encrypted
+        // RAR — mirrors ZipArchiveService.ExtractAsync's IsEncryptedZip placement. 7z and RAR's
+        // rarer header-encrypted case aren't cheaply detectable this way (see ArchiveFormatDetector.
+        // IsEncryptedRar's doc comment) — those are instead caught reactively below via
+        // IsLikelyEncryptionFailure once tar.exe actually fails.
+        if (IsKnownEncryptedRar(archivePath))
+        {
+            sink.Errors.Add(new ArchiveError
+            {
+                SourcePath = archivePath,
+                Message = "This archive is password-protected and cannot be extracted."
+            });
+        }
+        else
+        {
+            IProgress<ProgressReport>? archiveProgress = singleArchive ? progress : null;
+            bool wasCancelled = await ExtractOneArchiveAsync(
+                archivePath, destDir, options, conflictResolver, sink, archiveProgress, cancellationToken).ConfigureAwait(false);
+            if (wasCancelled)
+                return true;
+        }
+
+        if (!singleArchive)
+            progress?.Report(new ProgressReport { Percent = (i + 1) * 100 / total, BytesTransferred = 0, TotalBytes = 0 });
+
+        return false;
+    }
 
     // The three List sinks ExtractOneArchiveAsync/ProcessSeparateArchivesAsync write into —
     // bundled to cut S107's parameter count, same reasoning as ZipArchiveService's own

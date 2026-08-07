@@ -83,17 +83,7 @@ static async Task<int> RunExtractAsync(ParsedCliCommand command, GroupPolicyOpti
             destination = ResolveExtractDestination(command, archivePaths);
         }
 
-        var options = new ExtractOptions
-        {
-            ArchivePaths = archivePaths,
-            DestinationFolder = destination,
-            Mode = ExtractMode.SingleFolder,
-            // -ao wins over -y when both are given; without either, Core's own null-callback
-            // defaults (Skip / auto-decline) are already the safe, non-interactive behavior a CLI
-            // needs, so -y only needs to override them, never set them.
-            OnConflict = command.OverwriteMode ?? (command.AssumeYes ? ConflictBehavior.Overwrite : ConflictBehavior.Skip),
-            ConfirmCompressionBombExtraction = command.AssumeYes ? (_ => Task.FromResult(true)) : null,
-        };
+        var options = BuildExtractOptions(command, archivePaths, destination);
 
         ArchiveResult result = await router.ExtractAsync(options, progress: null, CancellationToken.None).ConfigureAwait(false);
         int code = ReportResult(result);
@@ -114,6 +104,19 @@ static async Task<int> RunExtractAsync(ParsedCliCommand command, GroupPolicyOpti
 static string ResolveExtractDestination(ParsedCliCommand command, IReadOnlyList<string> archivePaths) =>
     command.OutputDirectory
         ?? (command.ReadFromStdin ? "." : Path.GetDirectoryName(Path.GetFullPath(archivePaths[0])) ?? ".");
+
+static ExtractOptions BuildExtractOptions(ParsedCliCommand command, IReadOnlyList<string> archivePaths, string destination) =>
+    new()
+    {
+        ArchivePaths = archivePaths,
+        DestinationFolder = destination,
+        Mode = ExtractMode.SingleFolder,
+        // -ao wins over -y when both are given; without either, Core's own null-callback defaults
+        // (Skip / auto-decline) are already the safe, non-interactive behavior a CLI needs, so -y
+        // only needs to override them, never set them.
+        OnConflict = command.OverwriteMode ?? (command.AssumeYes ? ConflictBehavior.Overwrite : ConflictBehavior.Skip),
+        ConfirmCompressionBombExtraction = command.AssumeYes ? (_ => Task.FromResult(true)) : null,
+    };
 
 // Shared by RunExtractAsync and RunArchiveAsync -- both stream the single staged output file to
 // stdout the same way once the underlying operation already reported success.
