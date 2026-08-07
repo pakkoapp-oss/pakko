@@ -275,4 +275,22 @@
   <data name="AboutCloseButtonText" xml:space="preserve">
     <value>بند کریں</value>
   </data>
+  <data name="ScanButton.Content" xml:space="preserve">
+    <value>خطرات کے لیے اسکین کریں</value>
+  </data>
+  <data name="ScanResultDialogTitle" xml:space="preserve">
+    <value>خطرات کے لیے اسکین کریں</value>
+  </data>
+  <data name="ScanNoThreatsFound" xml:space="preserve">
+    <value>اس آرکائیو میں کوئی خطرہ نہیں ملا۔</value>
+  </data>
+  <data name="ScanThreatDetectedGeneric" xml:space="preserve">
+    <value>خطرہ معلوم ہوا</value>
+  </data>
+  <data name="ScanThreatSectionHeader" xml:space="preserve">
+    <value>معلوم شدہ خطرات</value>
+  </data>
+  <data name="ScanInconclusiveSectionHeader" xml:space="preserve">
+    <value>غیر حتمی</value>
+  </data>
 </root>

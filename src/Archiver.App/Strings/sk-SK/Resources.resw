@@ -275,4 +275,22 @@
   <data name="AboutCloseButtonText" xml:space="preserve">
     <value>Zavrieť</value>
   </data>
+  <data name="ScanButton.Content" xml:space="preserve">
+    <value>Skontrolovať hrozby</value>
+  </data>
+  <data name="ScanResultDialogTitle" xml:space="preserve">
+    <value>Skontrolovať hrozby</value>
+  </data>
+  <data name="ScanNoThreatsFound" xml:space="preserve">
+    <value>V tomto archíve neboli nájdené žiadne hrozby.</value>
+  </data>
+  <data name="ScanThreatDetectedGeneric" xml:space="preserve">
+    <value>zistená hrozba</value>
+  </data>
+  <data name="ScanThreatSectionHeader" xml:space="preserve">
+    <value>Zistené hrozby</value>
+  </data>
+  <data name="ScanInconclusiveSectionHeader" xml:space="preserve">
+    <value>Nejednoznačné</value>
+  </data>
 </root>

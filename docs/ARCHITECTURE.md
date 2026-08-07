@@ -63,11 +63,17 @@ src/
 │   │   ├── IArchiveCreationRouter.cs   ← T-F105: routes ArchiveAsync by ArchiveContainerFormat
 │   │   ├── IArchiveListingRouter.cs    ← T-F05: routes ListEntriesAsync by detected format
 │   │   ├── IExtractionRouter.cs        ← T-F85: routes ExtractAsync/TestAsync by detected format
+│   │   ├── IAntivirusScanService.cs    ← T-F146: AMSI-based threat scan, NOT an IArchiveService/
+│   │   │                                  ITarService extension (see ARCHITECTURE.md's own section)
 │   │   └── ITarService.cs
 │   ├── Services/
 │   │   ├── ZipArchiveService.cs
 │   │   ├── TarSandboxedService.cs      ← T-F52: replaced TarProcessService outright, no fallback
 │   │   ├── ArchiveCreationRouter.cs / ArchiveListingRouter.cs / ExtractionRouter.cs
+│   │   ├── AntivirusScanService.cs     ← T-F146: dispatches per-archive to a ZIP in-memory scan or
+│   │   │                                  a tar-family quarantine scan (see below)
+│   │   ├── ArchiveFormatPolicy.cs      ← T-F146: zip/tar/unsupported classify + Group Policy gate,
+│   │   │                                  extracted from ExtractionRouter, shared by both routers
 │   │   ├── ArchiveEntrySecurity.cs     ← ADS/reserved-name/reparse-point/bomb checks, shared
 │   │   ├── ArchiveFormatDetector.cs    ← magic-byte sniffing, not extension-based
 │   │   ├── ArchiveNaming.cs            ← compound-extension-aware naming (T-F103)
@@ -75,6 +81,9 @@ src/
 │   │   ├── PreviewPolicy.cs            ← T-F97/T-F109: safe-preview allowlist
 │   │   ├── TarVersionParser.cs
 │   │   ├── FileHashService.cs          ← T-F128: single-file/multi-file/single-folder-recursive hashing
+│   │   ├── Antivirus/                  ← T-F146: AMSI P/Invoke subsystem
+│   │   │   ├── IAmsiScanner.cs / AmsiScanner.cs
+│   │   │   └── AmsiProviderCheck.cs
 │   │   ├── Sandbox/                    ← T-F52: AppContainer subsystem for tar.exe
 │   │   │   ├── AppContainerProfile.cs / QuarantineAcl.cs / QuarantineStaging.cs
 │   │   │   ├── SandboxJobObject.cs / SandboxedProcessLauncher.cs / SandboxHandles.cs
@@ -106,6 +115,7 @@ src/
 │       ├── ConflictInfo.cs / ConflictDecision.cs          ← T-F06
 │       ├── CompressionBombWarning.cs                      ← T-F94
 │       ├── HashAlgorithmKind.cs                           ← T-F128: Crc32 | Sha256
+│       ├── ThreatScanResult.cs / AntivirusScanOptions.cs   ← T-F146
 │       └── TarCapabilities.cs
 │
 ├── Archiver.App/               ← WinUI 3 main app; packages all satellite EXEs via MSIX
@@ -615,6 +625,7 @@ services.AddSingleton<TarCapabilities>(sp =>
 services.AddSingleton<IExtractionRouter, ExtractionRouter>();
 services.AddSingleton<IArchiveListingRouter, ArchiveListingRouter>();
 services.AddSingleton<IArchiveCreationRouter, ArchiveCreationRouter>();
+services.AddSingleton<IAntivirusScanService, AntivirusScanService>();
 services.AddTransient<MainViewModel>();
 // T-F48: TarCapabilities is force-resolved once right after BuildServiceProvider() — a
 // factory-registered singleton only runs on first resolution, and nothing else injects it eagerly.
@@ -1391,3 +1402,114 @@ file's bytes is real disk I/O, and queuing many/large files at once (loose files
 individually, not one collapsed folder row) would otherwise spawn an unbounded number of
 concurrent `Task.Run` reads. No cancellation if an item is removed mid-read — same tradeoff
 `LoadFolderSizeAsync` already accepts.
+
+### v1.4 — IAntivirusScanService (T-F146, AMSI-based threat scanning)
+
+A standalone service, deliberately **not** an `IExtractionRouter`-style extension of
+`IArchiveService`/`ITarService` — a scan never writes to a real destination and has no
+conflict/MOTW dimension, and adding a method to those two interfaces would ripple through every
+hand-rolled test fake in the repo (no mocking library is used anywhere) for a capability that
+isn't a variant of extraction. See `docs/DECISIONS.md`'s T-F146 entry for the full option-space
+writeup (AMSI vs. `MpCmdRun.exe`/WMI) and the empirical Phase 0 findings this design rests on.
+
+```csharp
+// Interfaces/IAntivirusScanService.cs
+public interface IAntivirusScanService
+{
+    Task<ThreatScanResult> ScanAsync(
+        AntivirusScanOptions options,
+        IProgress<ProgressReport>? progress = null,
+        CancellationToken cancellationToken = default);
+}
+```
+
+```csharp
+// Models/ThreatScanResult.cs
+public enum ThreatVerdict { Clean, ThreatDetected, Inconclusive }
+
+public sealed record ThreatFinding
+{
+    public required string ArchivePath { get; init; }
+    public string? EntryPath { get; init; }          // null = whole-archive-level finding
+    public required ThreatVerdict Verdict { get; init; }
+    public string? ThreatName { get; init; }          // AMSI never actually returns one
+    public string? Reason { get; init; }              // set for Inconclusive
+}
+
+public sealed record ThreatScanResult
+{
+    public required ThreatVerdict OverallVerdict { get; init; }
+    public IReadOnlyList<ThreatFinding> Findings { get; init; } = [];
+}
+```
+
+Named `ThreatVerdict`/`ThreatFinding`/`ThreatScanResult` (not `Scan*`) deliberately —
+`TarSandboxedService.ScanForUnsafeEntriesAsync` already owns "Scan" for the unrelated T-F49
+traversal/symlink pre-scan; keeping the two grep-separable avoids confusing them.
+
+**Implementation (`Archiver.Core/Services/AntivirusScanService.cs`)** dispatches each archive path
+to one of two independent scan flows via `ArchiveFormatPolicy.Classify` (see below):
+
+- **ZIP** — in-process, no disk writes at all. Opens the archive via the same
+  `System.IO.Compression.ZipFile.OpenRead` `ZipArchiveService` itself uses, reads each (optionally
+  `SelectedEntryPaths`-filtered) entry's bytes into a rented buffer, and calls
+  `IAmsiScanner.ScanBuffer` directly — no quarantine, no temp files.
+- **tar-family** — reuses `TarSandboxScope`/T-F49's whole-archive pre-scan and T-F52's
+  AppContainer sandbox exactly as a real Extract would (`TarSandboxedService.
+  ScanForUnsafeEntriesAsync`/`ExpandSelection`/`EnumerateFilesGuarded` were bumped from `private`
+  to `internal` for this reuse, zero external API change), extracting into
+  `TarSandboxScope.OutputDirectory` — but **stops there**. No move-to-destination phase ever runs;
+  `using (scope)` guarantees the quarantine directory is deleted in every case (clean, threat, or
+  a mid-scan failure).
+
+Before scanning anything, `Archiver.Core/Services/Antivirus/AmsiProviderCheck.
+IsAnyProviderRegistered()` checks `HKLM\SOFTWARE\Microsoft\AMSI\Providers` (readable non-elevated,
+same `Microsoft.Win32.Registry` access `GroupPolicyService`/`Win32RegistryReader` already
+established) — `AmsiScanBuffer` alone can't distinguish "no AV is listening" from "AV says clean"
+(both return `AMSI_RESULT_NOT_DETECTED`), so an empty key forces every finding to `Inconclusive`
+without ever calling `AmsiScanBuffer`. A 64 MiB per-entry cap (`AntivirusScanService.
+MaxScannableEntryBytes`) also forces `Inconclusive` for anything too large to buffer — a
+deliberately conservative first-pass constant, not AMSI's own documented limit (none is
+published); see `docs/DECISIONS.md`'s "Known limitation" note on the deferred `MpCmdRun.exe`/
+chunked-scan fallback for oversized entries.
+
+`Archiver.Core/Services/Antivirus/AmsiScanner.cs` is the real P/Invoke wrapper (`amsi.dll`'s
+`AmsiInitialize`/`AmsiOpenSession`/`AmsiScanBuffer`/`AmsiCloseSession`/`AmsiUninitialize`), one
+instance = one AMSI session reused across every buffer in a single `ScanAsync` call (never called
+concurrently — AMSI session thread-safety is undocumented). `IAmsiScanner` is an `internal` seam
+(`Archiver.Core.Tests`/`Archiver.Core.IntegrationTests` both have `InternalsVisibleTo`) so
+`AntivirusScanService`'s orchestration logic (subset filtering, size-cap skip, provider-empty
+gate, tar per-file-failure handling) is unit-testable via a hand-rolled `FakeAmsiScanner` without
+depending on the test machine's actual registered AV.
+
+`Archiver.Core/Services/ArchiveFormatPolicy.cs` is a small shared helper extracted from
+`ExtractionRouter`'s own per-path classify loop (zip/tar/unsupported split + `BlockedFormats`/
+`AllowedFormats`/`DisableTarExtraction` Group Policy gating) — used by **both**
+`ExtractionRouter` and `AntivirusScanService` now, so a scan can never silently drift from what
+real extraction would allow or refuse (a tar-family scan spawns tar.exe in the same AppContainer a
+real extraction does, so it must be gated identically). Behavior-preserving refactor —
+`ExtractionRouterTests` stayed green unmodified.
+
+DI registration adds:
+
+```csharp
+services.AddSingleton<IAntivirusScanService, AntivirusScanService>();
+```
+
+**Frontends.** `Archiver.Shell/Program.cs` gained a `--scan` CLI switch
+(`ShellArgumentParser.CommandType.Scan`) and `RunScanAsync`/`ShowScanResults`, patterned directly
+after `RunHashAsync`/`ShowHashResults` (T-F128) rather than `RunWithProgressWindowAsync` — a
+`ThreatScanResult` is a genuine three-state result, not a success/failure `ArchiveResult`, so it
+needs its own dialog/cancel-poll/progress plumbing. `Archiver.ShellExtension` gained a `ScanCommand`
+leaf `IExplorerCommand`, gated on `AnyPathIsSupportedArchive` (not `AnyPathIsZip` like
+`TestCommand` — T-F86's ZIP-only reasoning for Test doesn't apply here, since the scan path
+genuinely supports tar-family via the quarantine flow), registered in `PakkoRootCommand::
+EnumSubCommands` right after `TestCommand`. `Archiver.App`'s `MainViewModel` gained
+`ScanArchiveFromBrowserCommand` — one combined button (scans the current `SelectedBrowserEntries`
+selection if any, else the whole `BrowsedArchivePath` archive — deliberately not two separate
+Selected/All buttons, to keep the Archive Browser's command row from getting crowded for a
+lower-frequency diagnostic action) — and `IDialogService` gained `ShowThreatScanResultAsync`,
+grouping `ThreatDetected`/`Inconclusive` findings into two sections mirroring
+`ShowOperationSummaryAsync`'s existing Errors/SkippedFiles pattern. Clean-result copy is
+deliberately "No threats found in this archive" everywhere, never "safe" — Pakko doesn't recurse
+into nested archives and can't make that broader claim.

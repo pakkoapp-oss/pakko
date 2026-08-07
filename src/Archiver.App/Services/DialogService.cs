@@ -269,6 +269,89 @@ public sealed class DialogService : IDialogService
         await dialog.ShowAsync();
     }
 
+    // T-F146. Clean copy is deliberately "No threats found in this archive" -- never "safe" --
+    // Pakko doesn't recurse into nested archives and can't make that broader claim (docs/
+    // DECISIONS.md's T-F146 entry). Threats/Inconclusive get their own sections, mirroring
+    // ShowOperationSummaryAsync's Errors/SkippedFiles two-section pattern above -- ThreatScanResult
+    // deliberately isn't ArchiveResult, but the presentation shape (grouped problem list) is the
+    // same established pattern.
+    public async Task ShowThreatScanResultAsync(ThreatScanResult result)
+    {
+        if (result.OverallVerdict == ThreatVerdict.Clean)
+        {
+            var cleanDialog = new ContentDialog
+            {
+                Title = _res.GetString("ScanResultDialogTitle"),
+                Content = _res.GetString("ScanNoThreatsFound"),
+                CloseButtonText = "OK",
+                XamlRoot = _window!.Content.XamlRoot
+            };
+            await cleanDialog.ShowAsync();
+            return;
+        }
+
+        var panel = new StackPanel { Spacing = 8 };
+        var threats = result.Findings.Where(f => f.Verdict == ThreatVerdict.ThreatDetected).ToList();
+        var inconclusive = result.Findings.Where(f => f.Verdict == ThreatVerdict.Inconclusive).ToList();
+
+        void AddSection(string header, IReadOnlyList<ThreatFinding> findings, Func<ThreatFinding, string> detailSelector)
+        {
+            if (findings.Count == 0) return;
+
+            panel.Children.Add(new TextBlock
+            {
+                Text = $"⚠ {header} ({findings.Count})",
+                FontWeight = FontWeights.SemiBold
+            });
+
+            foreach (var finding in findings)
+            {
+                var itemPanel = new StackPanel { Margin = new Thickness(12, 0, 0, 4) };
+                itemPanel.Children.Add(new TextBlock
+                {
+                    Text = finding.EntryPath is { } entry
+                        ? $"{Path.GetFileName(finding.ArchivePath)}/{entry}"
+                        : Path.GetFileName(finding.ArchivePath),
+                    FontWeight = FontWeights.SemiBold
+                });
+                itemPanel.Children.Add(new TextBlock
+                {
+                    Text = detailSelector(finding),
+                    TextWrapping = TextWrapping.Wrap,
+                    Opacity = 0.7
+                });
+                panel.Children.Add(itemPanel);
+            }
+        }
+
+        AddSection(
+            $"{_res.GetString("ScanThreatSectionHeader")}",
+            threats,
+            f => f.ThreatName ?? _res.GetString("ScanThreatDetectedGeneric"));
+
+        // Reason is always set for an Inconclusive finding by AntivirusScanService -- this
+        // fallback is defensive only, should never actually be shown.
+        AddSection(
+            $"{_res.GetString("ScanInconclusiveSectionHeader")}",
+            inconclusive,
+            f => f.Reason ?? "unknown");
+
+        var dialog = new ContentDialog
+        {
+            Title = _res.GetString("ScanResultDialogTitle"),
+            Content = new ScrollViewer
+            {
+                Content = panel,
+                MaxHeight = 400,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto
+            },
+            CloseButtonText = "OK",
+            XamlRoot = _window!.Content.XamlRoot
+        };
+
+        await dialog.ShowAsync();
+    }
+
     public async Task ShowFileHashAsync()
     {
         var files = await PickFilesAsync();

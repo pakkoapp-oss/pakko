@@ -275,4 +275,22 @@
   <data name="AboutCloseButtonText" xml:space="preserve">
     <value>Đóng</value>
   </data>
+  <data name="ScanButton.Content" xml:space="preserve">
+    <value>Quét mối đe dọa</value>
+  </data>
+  <data name="ScanResultDialogTitle" xml:space="preserve">
+    <value>Quét mối đe dọa</value>
+  </data>
+  <data name="ScanNoThreatsFound" xml:space="preserve">
+    <value>Không tìm thấy mối đe dọa nào trong tệp lưu trữ này.</value>
+  </data>
+  <data name="ScanThreatDetectedGeneric" xml:space="preserve">
+    <value>đã phát hiện mối đe dọa</value>
+  </data>
+  <data name="ScanThreatSectionHeader" xml:space="preserve">
+    <value>Mối đe dọa được phát hiện</value>
+  </data>
+  <data name="ScanInconclusiveSectionHeader" xml:space="preserve">
+    <value>Không xác định được</value>
+  </data>
 </root>

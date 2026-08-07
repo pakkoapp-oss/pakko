@@ -3622,3 +3622,31 @@ watching actual `windows-2022`/`windows-latest` runner behavior), each its own c
   cleanup during T-F140's on-device deployment; scoping the question surfaced the real operation-
   aborting risk beyond cleanup.
 
+
+---
+
+### T-F145 — Windows Defender scan for archive files (closed — merged into T-F146)
+- [x] **Status:** closed 2026-08-07, user-directed design consolidation — **not implemented**.
+      No AV-scan code/UI exists yet; what happened here is the design-and-scope decision itself
+      (a design pass with the advisor and `frontend-design` skill, plus an empirical AMSI probe),
+      not the underlying feature. Recorded here only so the task number is not silently dropped —
+      do not read this entry as "AV scanning ships."
+
+**What happened:** the user asked for a full design pass on antivirus scanning, explicitly
+broadening the original T-F145 ask (archives only, mechanism undecided) into a real architecture
+question — where to hook in, how deep to scan per mode, and whether to also cover plain
+files/folders. T-F145's own two invocation-mechanism candidates (`MpCmdRun.exe`, WMI
+`MSFT_MpScan`) both turned out to require an elevated process per Microsoft's documentation — a
+dead end for a permanent context-menu entry. AMSI (`amsi.dll`) was identified as a third
+candidate and confirmed empirically (non-elevated `AmsiScanBuffer` call correctly detected a
+standard EICAR test buffer and passed a clean buffer) to work without elevation, provider-
+agnostic to whatever AV/EDR is registered. The user then chose, via explicit scoping questions:
+archive-only entry points (no generic file/folder scan — Windows already ships a native "Scan
+with Microsoft Defender" verb for those), deep/quarantine-expanded scanning only (no shallow
+container-only mode), and no pre-commit auto-scan integration for now. All resolved decisions and
+acceptance criteria were folded directly into a new task, T-F146, in `docs/TASKS.md`, and this
+standalone section was deleted rather than kept as a parallel, now-stale-question task.
+
+**Why not archived as silently deleted:** this project's `CLAUDE.md` source-of-truth rule says
+never silently deprecate — this entry is that header note, applied to a task number instead of a
+document.

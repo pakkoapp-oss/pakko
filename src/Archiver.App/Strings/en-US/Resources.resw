@@ -303,4 +303,22 @@
   <data name="ConflictDialogApplyToAllCheck" xml:space="preserve">
     <value>Apply to all remaining conflicts</value>
   </data>
+  <data name="ScanButton.Content" xml:space="preserve">
+    <value>Scan for threats</value>
+  </data>
+  <data name="ScanResultDialogTitle" xml:space="preserve">
+    <value>Scan for threats</value>
+  </data>
+  <data name="ScanNoThreatsFound" xml:space="preserve">
+    <value>No threats found in this archive.</value>
+  </data>
+  <data name="ScanThreatDetectedGeneric" xml:space="preserve">
+    <value>threat detected</value>
+  </data>
+  <data name="ScanThreatSectionHeader" xml:space="preserve">
+    <value>Threats detected</value>
+  </data>
+  <data name="ScanInconclusiveSectionHeader" xml:space="preserve">
+    <value>Inconclusive</value>
+  </data>
 </root>

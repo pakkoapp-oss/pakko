@@ -10,6 +10,7 @@ public interface IDialogService
     Task<IReadOnlyList<string>> PickFilesAsync();
     Task<IReadOnlyList<string>> PickFoldersAsync();
     Task ShowOperationSummaryAsync(string operationName, ArchiveResult result);
+    Task ShowThreatScanResultAsync(ThreatScanResult result);
     Task ShowAboutAsync();
     Task ShowFileHashAsync();
     Task<bool> ShowCompressionBombConfirmAsync(CompressionBombWarning warning);

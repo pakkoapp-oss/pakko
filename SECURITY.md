@@ -452,6 +452,59 @@ raw reparse tag (`IO_REPARSE_TAG_CLOUD_*` vs. `IO_REPARSE_TAG_SYMLINK` /
 
 ---
 
+## AMSI-Based Threat Scanning (T-F146)
+
+"Scan for threats" (Explorer context menu, Archive Browser) calls the Windows Antimalware Scan
+Interface (`amsi.dll`), the same non-elevated API PowerShell, browsers, and Office VBA/JScript
+hosts use to ask the OS's registered AV/EDR "is this content safe" before acting on it. Pakko
+never talks to a specific antivirus product directly — AMSI dispatches to
+whichever provider is actually registered, which resolved a real design worry for free: a
+third-party EDR shadowing Defender-only tooling is a non-issue here, since AMSI is provider-
+agnostic by construction.
+
+**Provider dependency.** If no AMSI provider is registered (AV disabled, uninstalled, or one that
+never registers as a provider), a scan can't produce a real verdict. `AmsiScanBuffer` alone can't
+tell this apart from "a provider is registered and says clean" — both return
+`AMSI_RESULT_NOT_DETECTED`. Pakko checks `HKLM\SOFTWARE\Microsoft\AMSI\Providers` before scanning
+and forces every finding to `Inconclusive` when it's empty, rather than risk rendering an
+unscanned archive as `Clean`. `Inconclusive` is a first-class, distinctly-labeled result — never
+silently collapsed into `Clean` anywhere in the UI.
+
+**Report-only — with a caveat.** Pakko's own code never deletes, quarantines, or otherwise acts on
+a detection; it reports and stops, the same "verify, don't act" posture as Test Archive. This is
+*not* a guarantee that nothing on the machine reacts, though: when Defender is the registered AMSI
+provider, it can and does act independently of Pakko's call — confirmed empirically during design
+(a spike where Defender's own real-time on-access scanner intercepted a plain on-disk EICAR file
+being read by `tar.exe`, logged as a separate detection from the AMSI call itself). Whatever
+antivirus is installed governs its own behavior; Pakko's contribution is asking the question and
+reporting the answer.
+
+**Scan depth and target.** Deep/quarantine-expanded scanning only — no shallow "hash the archive
+file as one opaque blob" mode, since Windows Explorer already ships a native "Scan with Microsoft
+Defender" verb for any file/folder/drive that covers that case. Pakko's differentiated value is
+scanning what that OS verb cannot reliably reach: an archive's *expanded* contents, especially for
+tar-family formats it doesn't natively understand. ZIP entries are read and scanned entirely
+in-process, straight from `System.IO.Compression` — no bytes ever touch disk. tar-family archives
+reuse the exact same `TarSandboxScope` AppContainer quarantine T-F49/T-F52 already established for
+extraction, extracting into the quarantine "out\" directory and stopping there — no
+move-to-destination phase ever runs, and the quarantine is deleted (`using`/`Dispose()`) whether
+the scan finds a threat, comes back clean, or fails partway through.
+
+**Size limit.** Entries above 64 MiB (`AntivirusScanService.MaxScannableEntryBytes`) are reported
+`Inconclusive` rather than buffered whole into memory — `AmsiScanBuffer`'s contract is an
+in-memory buffer with no documented size limit and no streaming variant simple to implement
+correctly from .NET (`IAmsiStream` is a COM interface the caller would have to implement). This is
+a deliberately conservative first-pass constant, not solved further — a real large-entry case
+would need a chunked `AmsiScanBuffer` sequence or an `MpCmdRun.exe` subprocess fallback, neither
+built speculatively ahead of an actual need.
+
+**Not recursive.** A scan does not look inside a nested archive found within the archive being
+scanned (unlike the Archive Browser's T-F98 drill-down, which is a separate, unrelated feature).
+This is why every "no threats found" message says exactly that — never "this archive is safe" —
+since a nested archive's own contents were never examined.
+
+---
+
 ## Reporting Vulnerabilities
 
 Report security issues via GitHub Security Advisories (private disclosure).

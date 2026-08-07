@@ -275,4 +275,22 @@
   <data name="AboutCloseButtonText" xml:space="preserve">
     <value>Zapri</value>
   </data>
+  <data name="ScanButton.Content" xml:space="preserve">
+    <value>Preveri grožnje</value>
+  </data>
+  <data name="ScanResultDialogTitle" xml:space="preserve">
+    <value>Preveri grožnje</value>
+  </data>
+  <data name="ScanNoThreatsFound" xml:space="preserve">
+    <value>V tem arhivu ni bilo najdenih groženj.</value>
+  </data>
+  <data name="ScanThreatDetectedGeneric" xml:space="preserve">
+    <value>zaznana grožnja</value>
+  </data>
+  <data name="ScanThreatSectionHeader" xml:space="preserve">
+    <value>Zaznane grožnje</value>
+  </data>
+  <data name="ScanInconclusiveSectionHeader" xml:space="preserve">
+    <value>Neopredeljivo</value>
+  </data>
 </root>

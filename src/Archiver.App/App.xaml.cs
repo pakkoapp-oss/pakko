@@ -39,6 +39,7 @@ public partial class App : Application
         services.AddSingleton<IExtractionRouter, ExtractionRouter>();
         services.AddSingleton<IArchiveListingRouter, ArchiveListingRouter>();
         services.AddSingleton<IArchiveCreationRouter, ArchiveCreationRouter>();
+        services.AddSingleton<IAntivirusScanService, AntivirusScanService>();
         services.AddTransient<MainViewModel>();
 
         var provider = services.BuildServiceProvider();

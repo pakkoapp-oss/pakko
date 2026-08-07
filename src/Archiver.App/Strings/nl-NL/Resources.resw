@@ -275,4 +275,22 @@
   <data name="AboutCloseButtonText" xml:space="preserve">
     <value>Sluiten</value>
   </data>
+  <data name="ScanButton.Content" xml:space="preserve">
+    <value>Scannen op bedreigingen</value>
+  </data>
+  <data name="ScanResultDialogTitle" xml:space="preserve">
+    <value>Scannen op bedreigingen</value>
+  </data>
+  <data name="ScanNoThreatsFound" xml:space="preserve">
+    <value>Geen bedreigingen gevonden in dit archief.</value>
+  </data>
+  <data name="ScanThreatDetectedGeneric" xml:space="preserve">
+    <value>bedreiging gedetecteerd</value>
+  </data>
+  <data name="ScanThreatSectionHeader" xml:space="preserve">
+    <value>Gedetecteerde bedreigingen</value>
+  </data>
+  <data name="ScanInconclusiveSectionHeader" xml:space="preserve">
+    <value>Niet doorslaggevend</value>
+  </data>
 </root>

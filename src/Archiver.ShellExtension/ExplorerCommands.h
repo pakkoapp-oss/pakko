@@ -40,6 +40,10 @@ static const CLSID CLSID_TarArchiveCommand =
 static const CLSID CLSID_TestCommand =
     { 0xBA69EF3A, 0xF324, 0x46CB, { 0x93, 0x91, 0x6D, 0x14, 0xFE, 0x95, 0x97, 0xD3 } };
 
+// {1E694800-18F6-4C35-A82B-8E34A94948F9}
+static const CLSID CLSID_ScanCommand =
+    { 0x1E694800, 0x18F6, 0x4C35, { 0xA8, 0x2B, 0x8E, 0x34, 0xA9, 0x49, 0x48, 0xF9 } };
+
 // {01564B8D-111A-4999-83B9-A2D1EE2BCD79}
 static const CLSID CLSID_ExtractDialogCommand =
     { 0x01564B8D, 0x111A, 0x4999, { 0x83, 0xB9, 0xA2, 0xD1, 0xEE, 0x2B, 0xCD, 0x79 } };
@@ -182,6 +186,28 @@ public:
 // when every item does (contrast with ExtractHereCommand/ExtractFolderCommand's AllPathsAreZip).
 // ---------------------------------------------------------------------------
 class TestCommand final :
+    public RuntimeClass<RuntimeClassFlags<ClassicCom>, IExplorerCommand>
+{
+public:
+    STDMETHODIMP GetTitle(IShellItemArray* psia, LPWSTR* ppszName) noexcept override;
+    STDMETHODIMP GetIcon(IShellItemArray* psia, LPWSTR* ppszIcon) noexcept override;
+    STDMETHODIMP GetToolTip(IShellItemArray* psia, LPWSTR* ppszInfotip) noexcept override;
+    STDMETHODIMP GetCanonicalName(GUID* pguidCommandName) noexcept override;
+    STDMETHODIMP GetState(IShellItemArray* psia, BOOL fOkToBeSlow, EXPCMDSTATE* pCmdState) noexcept override;
+    STDMETHODIMP Invoke(IShellItemArray* psia, IBindCtx* pbc) noexcept override;
+    STDMETHODIMP GetFlags(EXPCMDFLAGS* pFlags) noexcept override;
+    STDMETHODIMP EnumSubCommands(IEnumExplorerCommand** ppEnum) noexcept override;
+};
+
+// ---------------------------------------------------------------------------
+// Leaf command: "Scan for threats" (T-F146) — AMSI-based scan of an archive's quarantine-
+// expanded contents. Shown whenever the selection contains at least one supported archive
+// (AnyPathIsSupportedArchive, not AnyPathIsZip like TestCommand — unlike Test, this genuinely
+// supports tar-family archives via AntivirusScanService's quarantine-extraction path, so gating
+// it to ZIP-only would silently hide the feature for every non-ZIP archive). Positioned after
+// TestCommand — diagnostic/verification commands go last, after every Extract/Archive variant.
+// ---------------------------------------------------------------------------
+class ScanCommand final :
     public RuntimeClass<RuntimeClassFlags<ClassicCom>, IExplorerCommand>
 {
 public:

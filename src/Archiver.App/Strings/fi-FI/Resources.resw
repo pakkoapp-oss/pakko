@@ -275,4 +275,22 @@
   <data name="AboutCloseButtonText" xml:space="preserve">
     <value>Sulje</value>
   </data>
+  <data name="ScanButton.Content" xml:space="preserve">
+    <value>Tarkista uhat</value>
+  </data>
+  <data name="ScanResultDialogTitle" xml:space="preserve">
+    <value>Tarkista uhat</value>
+  </data>
+  <data name="ScanNoThreatsFound" xml:space="preserve">
+    <value>Tästä arkistosta ei löytynyt uhkia.</value>
+  </data>
+  <data name="ScanThreatDetectedGeneric" xml:space="preserve">
+    <value>uhka havaittu</value>
+  </data>
+  <data name="ScanThreatSectionHeader" xml:space="preserve">
+    <value>Havaitut uhat</value>
+  </data>
+  <data name="ScanInconclusiveSectionHeader" xml:space="preserve">
+    <value>Epäselvä</value>
+  </data>
 </root>

@@ -275,4 +275,22 @@
   <data name="AboutCloseButtonText" xml:space="preserve">
     <value>Fechar</value>
   </data>
+  <data name="ScanButton.Content" xml:space="preserve">
+    <value>Procurar ameaças</value>
+  </data>
+  <data name="ScanResultDialogTitle" xml:space="preserve">
+    <value>Procurar ameaças</value>
+  </data>
+  <data name="ScanNoThreatsFound" xml:space="preserve">
+    <value>Não foram encontradas ameaças neste arquivo.</value>
+  </data>
+  <data name="ScanThreatDetectedGeneric" xml:space="preserve">
+    <value>ameaça detetada</value>
+  </data>
+  <data name="ScanThreatSectionHeader" xml:space="preserve">
+    <value>Ameaças detetadas</value>
+  </data>
+  <data name="ScanInconclusiveSectionHeader" xml:space="preserve">
+    <value>Inconclusivo</value>
+  </data>
 </root>

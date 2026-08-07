@@ -46,6 +46,7 @@ documentation that lies.
 | MSIX manifest `<Application>` entries, `com:ComServer` registration, packaging of a new satellite EXE | **4. Component** | Catches "works in VS, `ERROR_ACCESS_DENIED` when packaged" — an EXE that isn't its own declared `Application` entry. |
 | New branch in `TarSandboxedService`'s pre-scan/extraction/conflict pipeline | **5. Activity (tar.exe)** | Whole-archive-reject means a single scan gap silently lets an entire class of unsafe entries through — there's no per-entry fallback the way ZIP has, so a missed branch here is higher-severity, not lower. |
 | `MainWindow.xaml` row added/removed, or any row's `Visibility` binding changed; new `IsBrowsingArchive`-gated (or should-be-gated) UI element | **6. State (UI mode)** | Exactly the category that missed Row 0 never hiding in browse mode (found 2026-07-13 by manual comparison, not by this table) — a per-row visibility table is the only thing that would have caught it before shipping. |
+| New branch in `AntivirusScanService`'s ZIP-vs-tar-family dispatch, or either scan path's error handling | **7. Sequence (AMSI scan)** | A scan silently returning `Clean` for a path it never actually examined (unsupported format, no provider, oversized entry, a vanished tar quarantine file) is the exact failure class this feature exists to prevent — a missed branch here is a false negative, the highest-severity outcome this diagram category can catch. |
 
 Update the diagram in the same commit as the code change, alongside `dotnet test` — not as a
 follow-up. Re-derive the affected part from the current source per the Ground Truth Rule above;
@@ -743,7 +744,7 @@ stateDiagram-v2
 | 1 (browse) | Up-arrow + Breadcrumb, icon/Name/Size/Packed/CRC-32/Modified header (T-F110's icon column), entry `ListView` | `IsBrowsingArchiveVisibility` | Yes |
 | 2 | Up-arrow + Destination path + "…" browse button | none (deliberately shared — see code comment at `MainViewModel.cs:209-212`) | Yes, by design |
 | 3 (pending) | Archive/Extract/Clear buttons | `IsPendingListVisibility` | Yes |
-| 3 (browse) | Extract Selected, Extract All | `IsBrowsingArchiveVisibility` | Yes (Info/Close moved out to Row 0, then both removed — see notes above) |
+| 3 (browse) | Extract Selected, Extract All, Scan for threats (T-F146) | `IsBrowsingArchiveVisibility` | Yes (Info/Close moved out to Row 0, then both removed — see notes above; Scan added 2026-08-07 as a 3rd column, same row) |
 | 4 | Operation-outcome subtitle | `OperationOutcomeVisibility` = `!IsBrowsingArchive && FileItems.Count>0` | Yes |
 | 5 | Mode (One/Separate archive), Archive Name, **Формат** (Format, T-F105 — 7 items: Zip + 6 tar variants), Compression (`IsCompressionLevelEnabled` greys it out only for plain Tar) | `ArchiveOptionsVisibility` = `!IsBrowsingArchive && !IsExtractOnlySelection` | Yes |
 | 6 | Conflict combo, Open-destination checkbox, Delete-after checkbox | none (deliberately shared — same comment as Row 2) | Yes, by design |
@@ -760,6 +761,90 @@ unconditionally in both modes, confirmed both by reading the XAML (no `Visibilit
 Row 0 `Grid`) and by an on-device screenshot of Pakko browsing a real `.7z` (2026-07-13, side-by-side
 with NanaZip's equivalent view). Fixed by splitting Row 0 into two mode-gated sibling `Grid`s, same
 pattern as Rows 1/3; "About" stays in both variants (matches NanaZip's own always-visible "?" icon).
+
+---
+
+## 7. Sequence — AMSI threat scan (T-F146)
+
+Sources read for this diagram: `src/Archiver.ShellExtension/ExplorerCommands.cpp` (`ScanCommand`),
+`src/Archiver.Shell/Program.cs` (`RunScanAsync`), `src/Archiver.Core/Services/
+AntivirusScanService.cs`, `src/Archiver.Core/Services/Antivirus/AmsiScanner.cs`/
+`AmsiProviderCheck.cs`, `src/Archiver.Core/Services/Sandbox/TarSandboxScope.cs`,
+`src/Archiver.App/ViewModels/MainViewModel.cs` (`ScanArchiveFromBrowserAsync`),
+`src/Archiver.App/Services/DialogService.cs` (`ShowThreatScanResultAsync`). Two independent
+entry points converge on the same `AntivirusScanService.ScanAsync` — this diagram draws the
+Explorer path in full and shows the Archive Browser path joining at the same point, since
+everything downstream of `ScanAsync` is identical for both.
+
+```mermaid
+sequenceDiagram
+    participant Explorer
+    participant ScanCommand as ScanCommand (COM)
+    participant Shell as Archiver.Shell (RunScanAsync)
+    participant Browser as MainViewModel<br/>(ScanArchiveFromBrowserAsync)
+    participant Service as AntivirusScanService
+    participant Provider as AmsiProviderCheck
+    participant Amsi as AmsiScanner (amsi.dll)
+    participant Sandbox as TarSandboxScope<br/>(AppContainer)
+    participant Dialog as ShowScanResults /<br/>ShowThreatScanResultAsync
+
+    Explorer->>ScanCommand: Invoke (AnyPathIsSupportedArchive-gated)
+    ScanCommand->>Shell: CreateProcess("--scan" + paths)
+    Shell->>Service: ScanAsync(options)
+    Browser->>Service: ScanAsync(options)<br/>(same call, different frontend)
+
+    Service->>Service: ArchiveFormatPolicy.Classify<br/>(zip / tar-family / unsupported+policy-blocked)
+    Note over Service: unsupported/blocked paths become<br/>Inconclusive findings immediately, no AMSI call
+
+    Service->>Provider: IsAnyProviderRegistered()
+    alt no provider registered
+        Provider-->>Service: false
+        Service-->>Dialog: every archive Inconclusive<br/>("No antivirus is registered to scan with")
+    else provider registered
+        Provider-->>Service: true
+        Service->>Amsi: new AmsiScanner("Pakko")<br/>(one session for the whole operation)
+
+        loop each ZIP archive
+            Service->>Service: ZipFile.OpenRead, read entry bytes<br/>(no disk writes, size-cap enforced)
+            Service->>Amsi: ScanBuffer(bytes, entryName)
+            Amsi-->>Service: Clean / ThreatDetected
+        end
+
+        loop each tar-family archive
+            Service->>Sandbox: CreateAsync (T-F49 pre-scan)
+            alt archive rejected (symlink/traversal/signature)
+                Sandbox-->>Service: throws (TarArchiveRejectedException etc.)
+                Service-->>Service: whole-archive Inconclusive finding
+            else archive accepted
+                Sandbox->>Sandbox: tar -xf into quarantine "out\"<br/>(exactly like a real Extract — but stops here)
+                loop each extracted file
+                    Service->>Service: read bytes (size-cap enforced)
+                    alt file vanished/blocked mid-scan (real-time AV race)
+                        Service-->>Service: per-entry Inconclusive<br/>("removed or blocked before Pakko could scan it")
+                    else read succeeded
+                        Service->>Amsi: ScanBuffer(bytes, relativePath)
+                        Amsi-->>Service: Clean / ThreatDetected
+                    end
+                end
+                Sandbox->>Sandbox: Dispose() — quarantine deleted<br/>(always, regardless of outcome)
+            end
+        end
+
+        Service->>Amsi: Dispose() (CloseSession, Uninitialize)
+        Service-->>Dialog: ThreatScanResult (OverallVerdict, Findings)
+    end
+
+    Dialog->>Dialog: Clean → "No threats found in this archive"<br/>Threat/Inconclusive → grouped per-finding list<br/>(Inconclusive NEVER rendered as Clean)
+```
+
+**Why this is a real defense, not decoration:** every branch that doesn't reach `Amsi.ScanBuffer`
+(unsupported format, blocked by policy, no provider, rejected tar archive, oversized entry,
+vanished quarantine file) produces an explicit `Inconclusive` finding with a stated reason —
+there is no path through `AntivirusScanService.ScanAsync` that silently returns `Clean` for an
+archive or entry it never actually examined. This was the exact concern `advisor` raised before
+implementation started (docs/DECISIONS.md's T-F146 entry) and is what the Phase A test suite
+(`AntivirusScanServiceTests.cs`, `AntivirusScanServiceTarTests.cs`) exercises directly, one branch
+at a time.
 
 ---
 

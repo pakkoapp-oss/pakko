@@ -275,4 +275,22 @@
   <data name="AboutCloseButtonText" xml:space="preserve">
     <value>Aizvērt</value>
   </data>
+  <data name="ScanButton.Content" xml:space="preserve">
+    <value>Pārbaudīt draudus</value>
+  </data>
+  <data name="ScanResultDialogTitle" xml:space="preserve">
+    <value>Pārbaudīt draudus</value>
+  </data>
+  <data name="ScanNoThreatsFound" xml:space="preserve">
+    <value>Šajā arhīvā draudi nav atrasti.</value>
+  </data>
+  <data name="ScanThreatDetectedGeneric" xml:space="preserve">
+    <value>konstatēts drauds</value>
+  </data>
+  <data name="ScanThreatSectionHeader" xml:space="preserve">
+    <value>Konstatētie draudi</value>
+  </data>
+  <data name="ScanInconclusiveSectionHeader" xml:space="preserve">
+    <value>Nav skaidrs</value>
+  </data>
 </root>

@@ -3694,64 +3694,125 @@ regression from this task, which owns reliability only.
 
 ---
 
-### T-F145 — Windows Defender scan for archive files (Explorer context menu + Archive Browser)
+### T-F146 — AMSI-based "Scan for threats" for archives (Explorer context menu + Archive Browser)
 
-- [ ] **Status:** not started — needs a design/research pass before implementation (COM/shell +
-      a new native-tool invocation, both areas `CLAUDE.md`'s "Pre-implementation research" hard
-      constraint applies to). Requested as two distinct entry points for the same capability.
-- **Context:** Pakko's existing threat model already treats every archive as untrusted (T-F49's
-  whole-archive pre-scan, T-F52's AppContainer sandbox) — an explicit "scan this archive with
-  Windows Defender" action is a natural extra layer for the government/defense audience `SECURITY.md`
-  targets, and a good complement to the existing "Test archive" (T-F62) diagnostic command in the
-  same spirit (verify before you trust, not just after extraction).
-- **Two required entry points (both requested explicitly, not optional):**
-  1. **Explorer right-click dropdown** — a new leaf `IExplorerCommand` in `Archiver.ShellExtension`
-     (`PakkoRootCommand::EnumSubCommands`), analogous to the existing `TestCommand`. Per this
-     file's hard-constraint on context-menu ordering, a diagnostic/security command like this
-     belongs after the primary Extract/Archive actions, alongside or near "Test archive" — not
-     before them.
-  2. **Archive Browser (T-F05/T-F97/T-F98)** — a scan action reachable from inside
-     `MainWindow.xaml`'s browse-mode UI, presumably next to Extract Selected/Extract All, scoped
-     to either the whole open archive or the current selection.
-- **Open design questions to resolve before implementation (do not guess — research first, per
-  `CLAUDE.md`):**
-  - **Invocation mechanism.** Two candidates: (a) `MpCmdRun.exe` (Windows Defender's bundled CLI
-    scanner) launched as a subprocess via absolute path, matching this project's existing
-    tar.exe/`ExplorerLauncher` convention (`Process.Start` of a system-provided exe must use an
-    absolute path — never PATH-relative) — but `MpCmdRun.exe`'s real install path varies across
-    Windows versions/Defender platform updates and needs to be located robustly, not hardcoded to
-    one guessed path; (b) the `MSFT_MpScan` WMI class (`ROOT\Microsoft\Windows\Defender`
-    namespace) — avoids a subprocess but needs a WMI-access path from .NET, which may require a
-    new package reference (checking whether one is already available transitively, the way
-    `Microsoft.Win32.Registry` turned out to be for T-F51, is exactly the kind of thing to
-    verify with a throwaway probe before committing to an approach — don't assume either way).
-  - **Scan target.** Whether to scan the archive file itself as one opaque file (fast, but
-    Defender's own built-in archive introspection isn't guaranteed for every format Pakko
-    supports — rar/7z-in-tar wrapping especially) vs. extracting to the existing sandboxed
-    quarantine location first (reusing T-F49/T-F52's machinery) and scanning the expanded
-    contents — the latter is more thorough and fits the project's existing "don't trust the
-    bytes, not just the container" philosophy, at the cost of doing a real extraction before the
-    user has decided whether they want the files at all.
-  - **Result surfacing.** How a "threat found" result should be presented — likely needs its own
-    dialog/status treatment, not silently folded into the existing `ArchiveResult`/`ArchiveError`
-    shape used for IO failures, since a Defender detection is a different kind of outcome than an
-    extraction error.
-  - **Localization.** A new context-menu string needs `StringId` entries across all 37
-    `Archiver.ShellExtension` locales (T-F91 precedent), and any Archive Browser button needs
-    `x:Uid` wiring in `MainWindow.xaml` across `Archiver.App`'s locale `.resw` files.
+- [~] **Status:** implementation complete 2026-08-07 (Core service + tests, `Archiver.Shell`
+      CLI/dialog, `Archiver.ShellExtension` context-menu entry, `Archiver.App` Archive Browser
+      entry, full 37-locale localization across all three frontends) — on-device verification
+      still pending (see acceptance criteria below), per this project's standing rule that
+      shell-triggered/UI behavior never graduates on `dotnet test` alone. Built via a plan
+      reviewed by `advisor` before any code was written, including a Phase 0 empirical spike
+      (real EICAR through a real `.tar.gz`) that corrected the original "AMSI never
+      deletes/quarantines" remediation-policy claim and confirmed a no-provider-registered
+      discriminator — see `docs/DECISIONS.md`'s T-F146 entry for both findings.
+      Supersedes T-F145 (see `docs/TASKS_DONE.md`'s T-F145 entry) — T-F145's own two required
+      entry points and government/defense-audience rationale carry over unchanged, only the
+      invocation mechanism and scan-target questions it left open are now resolved below.
+- **Context:** same as T-F145's — Pakko's threat model already treats every archive as untrusted
+  (T-F49's whole-archive pre-scan, T-F52's AppContainer sandbox); an explicit "scan this archive
+  for threats" action is a natural complement to the existing "Test archive" (T-F62) diagnostic
+  command (verify before you trust).
+- **Resolved design decisions (session 2026-08-07 — full rationale, the AMSI probe transcript,
+  and the rejected alternatives belong in `docs/DECISIONS.md`'s T-F146 entry before code is
+  written):**
+  - **Invocation mechanism: AMSI** (`amsi.dll` — `AmsiInitialize`/`AmsiOpenSession`/
+    `AmsiScanBuffer`), not `MpCmdRun.exe` or WMI `MSFT_MpScan` as T-F145's stub proposed. Both of
+    those require an elevated process per Microsoft's own docs — a permanent context-menu entry
+    that UAC-prompts on every click was never going to ship. AMSI needs no elevation (confirmed
+    empirically: a non-elevated `AmsiScanBuffer` call against a standard EICAR test buffer
+    returned `AMSI_RESULT_DETECTED` on this dev machine, and a clean buffer returned
+    `AMSI_RESULT_NOT_DETECTED`), dispatches to whichever AV/EDR is actually registered as the
+    AMSI provider (not Defender-specific, so the "third-party EDR shadows Defender" branch T-F145
+    worried about no longer needs separate handling), and is plain P/Invoke — zero new NuGet
+    references, same pattern as `Services/Sandbox/`. `MpCmdRun.exe` stays a documented-but-not-
+    implemented fallback idea for content too large to buffer in memory for `AmsiScanBuffer` (see
+    "Not in scope" below) — do not build it speculatively until a real large-archive case proves
+    AMSI's practical buffer limit is actually hit.
+  - **Scan target/depth: quarantine-expanded contents only, no shallow "scan the archive file as
+    one opaque blob" mode.** Windows Explorer already ships a native "Scan with Microsoft
+    Defender" verb for any file/folder/drive (confirmed via research) — a shallow scan of the
+    archive file itself would just duplicate that. Pakko's actual differentiated value is
+    scanning what the OS verb cannot reliably reach: the *expanded* contents, reusing T-F49's
+    pre-scan and T-F52's `TarSandboxScope.OutputDirectory` quarantine machinery so this costs no
+    extra extraction beyond what a real Extract would already do.
+  - **No generic "scan any file/folder" context-menu entry.** Explicitly scoped out — archive
+    selections only, both entry points. Rationale: the OS-native verb already covers plain
+    files/folders; adding Pakko's own would be pure duplication with no depth/format advantage
+    (unlike the archive case).
+  - **Result model: three states, not two.** `Clean` / `ThreatDetected` / `Inconclusive` (AV
+    unavailable, provider call failed, or content skipped as un-scannable) — `Inconclusive` must
+    never be silently rendered as `Clean`. Kept out of `ArchiveResult`/`ArchiveError` entirely
+    (T-F145's own note, reaffirmed) — needs its own result type and its own dialog, patterned
+    after `RunHashAsync`/`ShowHashResults` (T-F128) rather than the extraction-summary dialog.
+  - **Remediation policy: report-only.** AMSI itself never deletes/quarantines anything — it only
+    answers "is this safe." Pakko does not take any destructive action on a detection; it reports
+    and stops (same "verify, don't act" posture as Test Archive). A detected threat aborts the
+    whole operation — no partial extraction is ever left behind, and the quarantine directory is
+    deleted whether the scan finds something or not.
+  - **Two required entry points (unchanged from T-F145):**
+    1. **Explorer right-click dropdown** — a new leaf `IExplorerCommand` in
+       `Archiver.ShellExtension` (`PakkoRootCommand::EnumSubCommands`), shown only for archive
+       selections, positioned after "Test archive" (same diagnostic-command-ordering rule).
+       Default and only mode is the deep/quarantine-expanded scan above — no separate
+       shallow-mode menu entry.
+    2. **Archive Browser (T-F05/T-F97/T-F98)** — a scan action next to Extract Selected/Extract
+       All, scoped to the whole open archive or the current selection via the same
+       `ExtractOptions.SelectedEntryPaths` machinery T-F97/T-F98 already use.
+  - **Not in scope for this task (deferred, do not implement speculatively):**
+    - A pre-commit auto-scan wired into every ordinary Extract (scanning quarantine contents
+      before they're copied to the user's real destination, as an opt-in setting). Real idea,
+      genuinely the strongest security posture, but a separate scope/UX decision (a setting,
+      default-on-or-off, performance cost on every extraction) — track as a future task if wanted
+      once T-F146 itself has shipped and been used.
+    - `MpCmdRun.exe` fallback for oversized content (see invocation mechanism above).
+    - A generic file/folder scan entry point (see above).
+  - **Localization.** New context-menu string needs `StringId` entries across all 37
+    `Archiver.ShellExtension` locales (T-F91 precedent); the Archive Browser button needs `x:Uid`
+    wiring across `Archiver.App`'s locale `.resw` files; the three result states (Clean/Threat/
+    Inconclusive) need their own localized copy, written in the interface's plain, active-voice
+    register (no apology on detection, no vague "something went wrong" for Inconclusive — state
+    what's actually known: no active AV / provider call failed).
 - **Acceptance criteria:**
-  - [ ] Invocation mechanism and scan-target questions above resolved and documented in
-        `docs/DECISIONS.md` before code is written (per this project's COM/shell/native-tool
-        research norm).
-  - [ ] Explorer context-menu entry point implemented, ordered correctly relative to
-        Extract/Archive/Test, localized across all 37 locales.
-  - [ ] Archive Browser entry point implemented (scope: whole archive and/or current selection —
-        to be settled during design), localized in `Archiver.App`.
-  - [ ] `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` green repo-wide.
+  - [x] AMSI wrapper (`Archiver.Core/Services/Antivirus/AmsiScanner.cs` + `AmsiProviderCheck.cs`,
+        orchestrated by `Archiver.Core/Services/AntivirusScanService.cs`) implemented and
+        unit-tested against a real EICAR buffer (generated at runtime, never committed to disk)
+        and a clean buffer, mirroring the probe already run during design
+        (`tests/Archiver.Core.Tests/Services/Antivirus/AmsiScannerTests.cs`). A shared
+        `ArchiveFormatPolicy` (extracted from `ExtractionRouter`, behavior-preserving) keeps
+        Group Policy gating identical between Extract and Scan. Tar-family quarantine-scan path
+        additionally covered end-to-end against real `tar.exe` in
+        `tests/Archiver.Core.IntegrationTests/AntivirusScanServiceTarTests.cs`.
+  - [x] Explorer context-menu entry point implemented (`ScanCommand` in
+        `Archiver.ShellExtension/ExplorerCommands.cpp`, `AnyPathIsSupportedArchive`-gated so
+        tar-family archives show it too — deliberately not `AnyPathIsZip` like `TestCommand`),
+        ordered after "Test archive", localized across all 37 `Archiver.ShellExtension` locales
+        (`Localization.cpp`).
+  - [x] Archive Browser entry point implemented (`MainViewModel.ScanArchiveFromBrowserCommand`,
+        one combined button — scans the current selection if any is checked, else the whole open
+        archive), scoped via `AntivirusScanOptions.SelectedEntryPaths`, localized across all 37
+        `Archiver.App` locale `.resw` files.
+  - [x] Three-state result dialog implemented — `Archiver.Shell`'s `RunScanAsync`/
+        `ShowScanResults` (pattern: `RunHashAsync`/`ShowHashResults`) and `Archiver.App`'s
+        `IDialogService.ShowThreatScanResultAsync` — never collapsing `Inconclusive` into `Clean`;
+        clean copy is "No threats found in this archive," never "safe" (Pakko doesn't recurse
+        into nested archives).
+  - [x] A detected threat aborts the operation cleanly — the tar-family path's quarantine
+        directory is always deleted via `TarSandboxScope.Dispose()` (`using`), and the ZIP path
+        never writes to disk at all; nothing is ever extracted to a real destination by a scan.
+  - [x] `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` green repo-wide (Core service
+        tests, tar-family integration tests, `ShellArgumentParser` `--scan` tests), plus the C++
+        `Archiver.ShellExtension.Tests.exe` suite (`BuildScanArgs` cases) — all green.
   - [ ] On-device verification per this project's standing rule (shell-triggered/UI behavior is
-        not graduated on `dotnet test` alone) — including a real detection case if a safe EICAR
-        test file can be used, not just a clean-archive happy path.
-- **Reported by:** user, 2026-08-06 — "Додай таску щоб можна було викликати перевірку віндовс
-  дефендера для файлів архіву. Один для випадаючого списку в експлорері. Інший у в'ювері архівів."
-  (Add a task so a Windows Defender check can be invoked for archive files — one for the Explorer
-  dropdown, another in the archive viewer.)
+        not graduated on `dotnet test` alone) — including a real EICAR-file detection case
+        through both entry points, not just a clean-archive happy path, and a check of the
+        `Inconclusive` path (e.g. with Defender's real-time protection temporarily disabled/no
+        AMSI provider active). The tar-family EICAR case needs a temporary Defender exclusion
+        folder added/removed by the user themselves — see `docs/DECISIONS.md`'s Phase 0 finding
+        for why this can't be scripted by the agent.
+- **Reported by:** user, 2026-08-06 (original ask, as T-F145) — "Додай таску щоб можна було
+  викликати перевірку віндовс дефендера для файлів архіву. Один для випадаючого списку в
+  експлорері. Інший у в'ювері архівів." (Add a task so a Windows Defender check can be invoked
+  for archive files — one for the Explorer dropdown, another in the archive viewer.) Scope
+  refined 2026-08-07 after the user asked for a full design pass ("Продумай задачу з додаванням
+  перевірки антивірусом. Порадся з адвізором та дизайнером...") — see `docs/DECISIONS.md`'s
+  T-F146 entry for the full options considered and why each was accepted/rejected.

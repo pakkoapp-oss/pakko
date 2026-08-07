@@ -275,4 +275,22 @@
   <data name="AboutCloseButtonText" xml:space="preserve">
     <value>Tutup</value>
   </data>
+  <data name="ScanButton.Content" xml:space="preserve">
+    <value>Pindai ancaman</value>
+  </data>
+  <data name="ScanResultDialogTitle" xml:space="preserve">
+    <value>Pindai ancaman</value>
+  </data>
+  <data name="ScanNoThreatsFound" xml:space="preserve">
+    <value>Tidak ditemukan ancaman dalam arsip ini.</value>
+  </data>
+  <data name="ScanThreatDetectedGeneric" xml:space="preserve">
+    <value>ancaman terdeteksi</value>
+  </data>
+  <data name="ScanThreatSectionHeader" xml:space="preserve">
+    <value>Ancaman terdeteksi</value>
+  </data>
+  <data name="ScanInconclusiveSectionHeader" xml:space="preserve">
+    <value>Tidak meyakinkan</value>
+  </data>
 </root>

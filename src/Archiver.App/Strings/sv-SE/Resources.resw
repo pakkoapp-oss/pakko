@@ -275,4 +275,22 @@
   <data name="AboutCloseButtonText" xml:space="preserve">
     <value>Stäng</value>
   </data>
+  <data name="ScanButton.Content" xml:space="preserve">
+    <value>Sök efter hot</value>
+  </data>
+  <data name="ScanResultDialogTitle" xml:space="preserve">
+    <value>Sök efter hot</value>
+  </data>
+  <data name="ScanNoThreatsFound" xml:space="preserve">
+    <value>Inga hot hittades i det här arkivet.</value>
+  </data>
+  <data name="ScanThreatDetectedGeneric" xml:space="preserve">
+    <value>hot upptäckt</value>
+  </data>
+  <data name="ScanThreatSectionHeader" xml:space="preserve">
+    <value>Upptäckta hot</value>
+  </data>
+  <data name="ScanInconclusiveSectionHeader" xml:space="preserve">
+    <value>Ej entydigt</value>
+  </data>
 </root>

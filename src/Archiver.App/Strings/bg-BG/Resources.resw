@@ -275,4 +275,22 @@
   <data name="AboutCloseButtonText" xml:space="preserve">
     <value>Затвори</value>
   </data>
+  <data name="ScanButton.Content" xml:space="preserve">
+    <value>Сканиране за заплахи</value>
+  </data>
+  <data name="ScanResultDialogTitle" xml:space="preserve">
+    <value>Сканиране за заплахи</value>
+  </data>
+  <data name="ScanNoThreatsFound" xml:space="preserve">
+    <value>В този архив не са открити заплахи.</value>
+  </data>
+  <data name="ScanThreatDetectedGeneric" xml:space="preserve">
+    <value>открита заплаха</value>
+  </data>
+  <data name="ScanThreatSectionHeader" xml:space="preserve">
+    <value>Открити заплахи</value>
+  </data>
+  <data name="ScanInconclusiveSectionHeader" xml:space="preserve">
+    <value>Неопределено</value>
+  </data>
 </root>

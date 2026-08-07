@@ -22,6 +22,9 @@ enum class StringId
     ArchiveFallback,
     ArchiveNamedTemplate,
     TestArchive,
+    // T-F146: "Scan for threats" — plain verb, no ellipsis (same reasoning as TestArchive: never
+    // shows a further dialog).
+    ScanArchive,
     // T-F03: "Open" verb — launches straight into the Archive Browser (T-F05) instead of the
     // pending-list/extract-options view. No ellipsis: unlike ExtractDialog/CompressDialog, this
     // never shows a further dialog, matching ExtractHereFlat/TestArchive's plain-verb convention.

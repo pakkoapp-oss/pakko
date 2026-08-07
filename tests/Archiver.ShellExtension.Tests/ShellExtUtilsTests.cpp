@@ -293,6 +293,22 @@ TEST(BuildTestArgs, MultipleFiles)
 }
 
 // ---------------------------------------------------------------------------
+// BuildScanArgs (T-F146)
+// ---------------------------------------------------------------------------
+
+TEST(BuildScanArgs, SingleFile)
+{
+    const auto args = BuildScanArgs({ L"C:\\archive.zip" });
+    EXPECT_EQ(args, L"--scan \"C:\\archive.zip\"");
+}
+
+TEST(BuildScanArgs, MultipleFiles)
+{
+    const auto args = BuildScanArgs({ L"C:\\a.zip", L"C:\\b.tar.gz" });
+    EXPECT_EQ(args, L"--scan \"C:\\a.zip\" \"C:\\b.tar.gz\"");
+}
+
+// ---------------------------------------------------------------------------
 // BuildHashArgs (T-F128)
 // ---------------------------------------------------------------------------
 

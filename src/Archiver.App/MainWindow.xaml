@@ -370,7 +370,7 @@
         <!-- Row 3 (T-F05): Archive Browser Action Buttons — Info/Close moved to the Row 0
              command bar above (design review 2026-07-13); these two stay anchored here, next to
              the destination path/conflict-behavior options (Row 2/Row 6) they actually consume. -->
-        <Grid Grid.Row="3" ColumnDefinitions="*,*" MinHeight="40"
+        <Grid Grid.Row="3" ColumnDefinitions="*,*,*" MinHeight="40"
               Visibility="{x:Bind ViewModel.IsBrowsingArchiveVisibility, Mode=OneWay}">
 
             <Button
@@ -385,6 +385,13 @@
                 Margin="8,0,0,0"
                 HorizontalAlignment="Stretch"
                 Command="{x:Bind ViewModel.ExtractAllFromBrowserCommand, Mode=OneWay}"/>
+
+            <Button
+                Grid.Column="2"
+                x:Uid="ScanButton"
+                Margin="8,0,0,0"
+                HorizontalAlignment="Stretch"
+                Command="{x:Bind ViewModel.ScanArchiveFromBrowserCommand, Mode=OneWay}"/>
         </Grid>
 
         <!-- Row 4: Operation Outcome Subtitle -->

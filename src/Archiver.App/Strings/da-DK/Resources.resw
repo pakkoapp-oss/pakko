@@ -275,4 +275,22 @@
   <data name="AboutCloseButtonText" xml:space="preserve">
     <value>Luk</value>
   </data>
+  <data name="ScanButton.Content" xml:space="preserve">
+    <value>Scan for trusler</value>
+  </data>
+  <data name="ScanResultDialogTitle" xml:space="preserve">
+    <value>Scan for trusler</value>
+  </data>
+  <data name="ScanNoThreatsFound" xml:space="preserve">
+    <value>Der blev ikke fundet trusler i dette arkiv.</value>
+  </data>
+  <data name="ScanThreatDetectedGeneric" xml:space="preserve">
+    <value>trussel fundet</value>
+  </data>
+  <data name="ScanThreatSectionHeader" xml:space="preserve">
+    <value>Fundne trusler</value>
+  </data>
+  <data name="ScanInconclusiveSectionHeader" xml:space="preserve">
+    <value>Ikke afgørende</value>
+  </data>
 </root>

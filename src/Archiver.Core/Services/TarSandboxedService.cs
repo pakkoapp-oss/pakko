@@ -575,7 +575,10 @@ public sealed class TarSandboxedService : ITarService
     // accumulated here, in the same single "-tvf" pass that already reads the type column, to
     // avoid a second tar.exe invocation just to re-derive it (matches T-F90's original rationale
     // for extending this one pass in the first place).
-    private static async Task<(long TotalDeclaredSize, string[] Names, Dictionary<string, long> SizeByName)> ScanForUnsafeEntriesAsync(
+    // T-F146: internal (was private) so AntivirusScanService can reuse the exact same T-F49
+    // pre-scan for its own tar-family quarantine-extraction flow, without a second implementation
+    // that could silently drift from what real extraction actually rejects.
+    internal static async Task<(long TotalDeclaredSize, string[] Names, Dictionary<string, long> SizeByName)> ScanForUnsafeEntriesAsync(
         TarSandboxScope scope, CancellationToken cancellationToken)
     {
         var (nameExitCode, nameStdOut, nameStdErr) = await scope.RunAsync(
@@ -645,7 +648,9 @@ public sealed class TarSandboxedService : ITarService
     // relying on tar.exe auto-recursing a bare directory-member argument — confirmed empirically
     // (DECISIONS.md's T-F05 entry) that tar.exe does auto-recurse, but this method doesn't depend
     // on that behavior continuing to hold.
-    private static List<string> ExpandSelection(string[] allNames, IReadOnlyList<string> selectedEntryPaths)
+    // T-F146: internal (was private) — AntivirusScanService's own selected-subset scan reuses this
+    // exact expansion rather than re-deriving it.
+    internal static List<string> ExpandSelection(string[] allNames, IReadOnlyList<string> selectedEntryPaths)
     {
         var allNamesSet = new HashSet<string>(allNames, StringComparer.Ordinal);
         var result = new List<string>();
@@ -1223,7 +1228,9 @@ public sealed class TarSandboxedService : ITarService
     // directory and could walk straight out of quarantine. The pre-scan already rejects any
     // archive containing a symlink entry, so this is defense-in-depth for anything the scan
     // didn't anticipate, not the primary safety mechanism.
-    private static IEnumerable<string> EnumerateFilesGuarded(string root)
+    // T-F146: internal (was private) — AntivirusScanService walks the same quarantine output
+    // directory shape and reuses this exact reparse-point-safe walk.
+    internal static IEnumerable<string> EnumerateFilesGuarded(string root)
     {
         var pending = new Stack<string>();
         pending.Push(root);
@@ -1272,5 +1279,8 @@ public sealed class TarSandboxedService : ITarService
         return candidate;
     }
 
-    private sealed class TarArchiveRejectedException(string message) : Exception(message);
+    // T-F146: internal (was private) — AntivirusScanService catches this the same way
+    // ExtractSingleArchiveAsync's own callers do, to map a rejected archive to an Inconclusive
+    // finding rather than an unhandled throw.
+    internal sealed class TarArchiveRejectedException(string message) : Exception(message);
 }

@@ -580,6 +580,48 @@ failure — so a blocked/misconfigured sandbox would have crashed instead of yie
   320 MB `.tar.gz` extraction confirmed byte-correct — the visible speed-readout rendering itself
   still needs the user's own on-device look (no `windows` MCP available this session). See
   `docs/TASKS.md`'s and `docs/DECISIONS.md`'s T-F142 entries for the full account.
+- **T-F146 (`[~]` implementation complete 2026-08-07, on-device verification pending)** —
+  AMSI-based "Scan for threats" for archives (Explorer context menu + Archive Browser), built via
+  a plan reviewed by `advisor` before any code was written. New standalone `Archiver.Core`
+  service (`IAntivirusScanService`/`AntivirusScanService`, deliberately not an `IArchiveService`/
+  `ITarService` extension — see `docs/DECISIONS.md`), a real P/Invoke `amsi.dll` wrapper
+  (`Services/Antivirus/AmsiScanner.cs`), and `AmsiProviderCheck` (reads `HKLM\SOFTWARE\Microsoft\
+  AMSI\Providers` to force `Inconclusive` when no provider is registered — `AmsiScanBuffer` alone
+  can't tell "no AV" from "AV says clean"). ZIP entries scan entirely in-process/in-memory,
+  never touching disk; tar-family archives reuse T-F49/T-F52's `TarSandboxScope` AppContainer
+  quarantine exactly as a real Extract would, but stop at the quarantine directory — no
+  move-to-destination phase, quarantine always deleted. A shared `ArchiveFormatPolicy` (extracted
+  from `ExtractionRouter`, behavior-preserving) keeps Group Policy gating identical between
+  Extract and Scan. A Phase 0 empirical spike before writing any code (real EICAR through a real
+  `.tar.gz`) corrected the original design assumption "AMSI never deletes/quarantines anything" —
+  Defender's own real-time on-access scanner acts independently of AMSI and intercepted the EICAR
+  file before tar.exe could even read it; `docs/DECISIONS.md`'s T-F146 entry has the full trace.
+  New entry points: `Archiver.Shell`'s `--scan` CLI switch + `RunScanAsync`/`ShowScanResults`
+  (pattern: `RunHashAsync`/`ShowHashResults`, T-F128); a `ScanCommand` leaf `IExplorerCommand`
+  (`AnyPathIsSupportedArchive`-gated, unlike ZIP-only `TestCommand`) registered right after "Test
+  archive"; `MainViewModel.ScanArchiveFromBrowserCommand` (one combined button — selection if any
+  checked, else the whole open archive) plus `IDialogService.ShowThreatScanResultAsync`. Full
+  37-locale localization across all three frontends (`Archiver.ShellExtension/Localization.cpp`,
+  a new `Archiver.Shell/Resources/ScanMessages.*.resx` set, and 5 new `Archiver.App` resw keys) —
+  clean-result copy is deliberately "No threats found in this archive," never "safe" (Pakko
+  doesn't recurse into nested archives). New tests: `Archiver.Core.Tests/Services/Antivirus/`
+  (`AmsiScannerTests` against a runtime-generated EICAR buffer, never committed to disk;
+  `AntivirusScanServiceTests` via a hand-rolled `FakeAmsiScanner`), a real-`tar.exe`
+  `AntivirusScanServiceTarTests.cs` in `Archiver.Core.IntegrationTests`, `--scan`
+  `ShellArgumentParser` cases, and `BuildScanArgs` C++ cases.
+  **Same-day follow-up (user-driven):** progress reporting was originally coarse — one report per
+  archive completed, so a single-archive scan (the common case for both entry points) showed
+  nothing until it finished. Fixed to real per-entry progress with zero extra I/O (entry counts
+  were already computed as a side effect of the real scan work — ZIP's already-enumerated
+  `fileEntries.Count`, tar-family's already-returned pre-scan entry list, the same
+  `totalFileEntries` computation T-F142's move-phase progress already uses); see
+  `docs/DECISIONS.md`'s T-F146 follow-up entry. `dotnet test
+  --filter "Category!=Slow&Category!=VeryLarge"` green repo-wide (817 .NET tests + 100 C++ tests)
+  and `Deploy.ps1` build+sign+install succeeded. Stays `[~]` until the user's own on-device
+  verification (a real EICAR-in-archive detection through both entry points — the tar-family case
+  needs a temporary Defender exclusion folder the user adds/removes themselves, not something the
+  agent should script — plus a check of the `Inconclusive` path with no AMSI provider active). See
+  `docs/TASKS.md`'s and `docs/DECISIONS.md`'s T-F146 entries for the full account.
 - Next work: Future tasks in `TASKS.md`
 
 ## Roadmap Summary

@@ -10,6 +10,7 @@ public enum CommandType
     ExtractFolder,
     Archive,
     Test,
+    Scan,
     OpenUiExtract,
     OpenUiArchive,
     OpenUiBrowse,
@@ -57,6 +58,7 @@ public static class ShellArgumentParser
             "--extract-folder" => ParseFileList(CommandType.ExtractFolder, args),
             "--archive"        => ParseArchive(args),
             "--test"           => ParseFileList(CommandType.Test, args),
+            "--scan"           => ParseFileList(CommandType.Scan, args),
             "--hash"           => ParseHash(args),
             var other          => Invalid($"Unknown command: {other}"),
         };

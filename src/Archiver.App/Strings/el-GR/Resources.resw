@@ -275,4 +275,22 @@
   <data name="AboutCloseButtonText" xml:space="preserve">
     <value>Κλείσιμο</value>
   </data>
+  <data name="ScanButton.Content" xml:space="preserve">
+    <value>Έλεγχος για απειλές</value>
+  </data>
+  <data name="ScanResultDialogTitle" xml:space="preserve">
+    <value>Έλεγχος για απειλές</value>
+  </data>
+  <data name="ScanNoThreatsFound" xml:space="preserve">
+    <value>Δεν εντοπίστηκαν απειλές σε αυτό το αρχείο.</value>
+  </data>
+  <data name="ScanThreatDetectedGeneric" xml:space="preserve">
+    <value>εντοπίστηκε απειλή</value>
+  </data>
+  <data name="ScanThreatSectionHeader" xml:space="preserve">
+    <value>Εντοπισμένες απειλές</value>
+  </data>
+  <data name="ScanInconclusiveSectionHeader" xml:space="preserve">
+    <value>Ασαφές</value>
+  </data>
 </root>

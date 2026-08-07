@@ -196,6 +196,36 @@ public sealed class ShellArgumentParserTests
         result.ErrorMessage.Should().NotBeNullOrEmpty();
     }
 
+    // --- Valid: --scan (T-F146) ---
+
+    [Fact]
+    public void Scan_SingleFile_ReturnsScan()
+    {
+        ParsedCommand result = ShellArgumentParser.Parse(["--scan", "archive.zip"]);
+
+        result.Type.Should().Be(CommandType.Scan);
+        result.Files.Should().Equal("archive.zip");
+        result.ErrorMessage.Should().BeNull();
+    }
+
+    [Fact]
+    public void Scan_MultipleFiles_ReturnsAllFiles()
+    {
+        ParsedCommand result = ShellArgumentParser.Parse(["--scan", "a.zip", "b.tar.gz"]);
+
+        result.Type.Should().Be(CommandType.Scan);
+        result.Files.Should().Equal("a.zip", "b.tar.gz");
+    }
+
+    [Fact]
+    public void Scan_NoFiles_ReturnsInvalid()
+    {
+        ParsedCommand result = ShellArgumentParser.Parse(["--scan"]);
+
+        result.Type.Should().Be(CommandType.Invalid);
+        result.ErrorMessage.Should().NotBeNullOrEmpty();
+    }
+
     // --- Valid: --hash (T-F128) ---
 
     [Fact]

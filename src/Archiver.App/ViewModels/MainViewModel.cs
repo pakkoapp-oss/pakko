@@ -38,6 +38,7 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly IArchiveCreationRouter _archiveCreationRouter;
     private readonly IExtractionRouter _extractionRouter;
     private readonly IArchiveListingRouter _archiveListingRouter;
+    private readonly IAntivirusScanService _antivirusScanService;
     private readonly IDialogService _dialogService;
     private readonly ILogService _logService;
     private readonly GroupPolicyOptions _policy;
@@ -337,6 +338,7 @@ public sealed partial class MainViewModel : ObservableObject
         IArchiveCreationRouter archiveCreationRouter,
         IExtractionRouter extractionRouter,
         IArchiveListingRouter archiveListingRouter,
+        IAntivirusScanService antivirusScanService,
         IDialogService dialogService,
         ILogService logService,
         GroupPolicyOptions groupPolicyOptions)
@@ -344,6 +346,7 @@ public sealed partial class MainViewModel : ObservableObject
         _archiveCreationRouter = archiveCreationRouter;
         _extractionRouter = extractionRouter;
         _archiveListingRouter = archiveListingRouter;
+        _antivirusScanService = antivirusScanService;
         _dialogService = dialogService;
         _logService = logService;
         _policy = groupPolicyOptions;
@@ -1061,6 +1064,56 @@ public sealed partial class MainViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(CanExtractAllFromBrowser))]
     private Task ExtractAllFromBrowserAsync() =>
         RunExtractAsync([BrowsedArchivePath!], selectedEntryPaths: null);
+
+    // T-F146: scans the current selection if any entries are checked, otherwise the whole open
+    // archive — one combined button rather than separate Selected/All variants (keeps the browse
+    // command row from getting crowded; this is a lower-frequency diagnostic action, not a bulk
+    // Extract). BrowsedArchivePath is the correct target even N levels deep into a nested archive
+    // (T-F98) — it already resolves to whatever the browse stack currently has open, real file or
+    // NestedArchiveCache temp path, exactly what ExtractSelected/ExtractAll above use identically.
+    private bool CanScanArchiveFromBrowser() => !IsBusy && BrowsedArchivePath is not null;
+
+    [RelayCommand(CanExecute = nameof(CanScanArchiveFromBrowser))]
+    private async Task ScanArchiveFromBrowserAsync()
+    {
+        _cts = new CancellationTokenSource();
+        IsBusy = true;
+        CancelCommand.NotifyCanExecuteChanged();
+        Progress = 0;
+        try
+        {
+            var options = new AntivirusScanOptions
+            {
+                ArchivePaths = [BrowsedArchivePath!],
+                SelectedEntryPaths = SelectedBrowserEntries.Count > 0
+                    ? [.. SelectedBrowserEntries.Select(e => e.FullPath)]
+                    : null,
+            };
+
+            StatusMessage = _res.GetString("ScanResultDialogTitle");
+            var progress = new Progress<ProgressReport>(r => Progress = r.Percent);
+
+            var result = await _antivirusScanService.ScanAsync(options, progress, _cts.Token);
+            _logService.Info($"Scan completed — {BrowsedArchivePath} — {result.OverallVerdict}");
+            await _dialogService.ShowThreatScanResultAsync(result);
+        }
+        catch (OperationCanceledException)
+        {
+            StatusMessage = _res.GetString("StatusCancelled");
+        }
+        catch (Exception ex)
+        {
+            _logService.Error("Unexpected error during scan", ex);
+            await _dialogService.ShowErrorAsync("Error", ex.Message);
+        }
+        finally
+        {
+            _cts?.Dispose();
+            _cts = null;
+        }
+        IsBusy = false;
+        StatusMessage = _res.GetString("StatusReady");
+    }
 
     // T-F109: double-clicking a file type outside PreviewPolicy's allowlist is a real security
     // boundary (see SECURITY.md's T-F97 section), not just an inconvenience — 7-Zip/NanaZip have

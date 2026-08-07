@@ -275,4 +275,22 @@
   <data name="AboutCloseButtonText" xml:space="preserve">
     <value>Uždaryti</value>
   </data>
+  <data name="ScanButton.Content" xml:space="preserve">
+    <value>Tikrinti grėsmes</value>
+  </data>
+  <data name="ScanResultDialogTitle" xml:space="preserve">
+    <value>Tikrinti grėsmes</value>
+  </data>
+  <data name="ScanNoThreatsFound" xml:space="preserve">
+    <value>Šiame archyve grėsmių nerasta.</value>
+  </data>
+  <data name="ScanThreatDetectedGeneric" xml:space="preserve">
+    <value>aptikta grėsmė</value>
+  </data>
+  <data name="ScanThreatSectionHeader" xml:space="preserve">
+    <value>Aptiktos grėsmės</value>
+  </data>
+  <data name="ScanInconclusiveSectionHeader" xml:space="preserve">
+    <value>Neaišku</value>
+  </data>
 </root>

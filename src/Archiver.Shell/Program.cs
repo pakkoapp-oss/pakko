@@ -56,6 +56,10 @@ switch (command.Type)
         await RunTestAsync(command.Files, policy).ConfigureAwait(false);
         break;
 
+    case CommandType.Scan:
+        await RunScanAsync(command.Files, policy).ConfigureAwait(false);
+        break;
+
     case CommandType.Hash:
         await RunHashAsync(command.Files, command.Algorithm).ConfigureAwait(false);
         break;
@@ -448,6 +452,119 @@ static void ShowHashResults(string title, HashResult result)
     var message = string.Join(Environment.NewLine, lines);
     bool anyErrors = result.Entries.Any(e => e.Error is not null);
     _ = MessageBoxW(IntPtr.Zero, message, title, anyErrors ? MB_ICONWARNING : MB_ICONINFORMATION);
+}
+
+// -------------------------------------------------------------------------
+// --scan: T-F146. AMSI-based threat scan of an archive's quarantine-expanded contents. Doesn't
+// reuse RunWithProgressWindowAsync (typed around Task<ArchiveResult>) or RunTestAsync's simpler
+// single-message pattern -- ThreatScanResult is a genuine three-state result, not a success/
+// failure one, so this mirrors RunHashAsync/ShowHashResults' dialog/cancel-poll/progress plumbing
+// directly, same reasoning that comment already documents for Hash.
+// -------------------------------------------------------------------------
+static async Task RunScanAsync(IReadOnlyList<string> archivePaths, GroupPolicyOptions policy)
+{
+    string title = archivePaths.Count == 1
+        ? $"Scanning: {Path.GetFileName(archivePaths[0])}"
+        : $"Scanning {archivePaths.Count} archives";
+
+    var service = await BuildAntivirusScanServiceAsync(policy).ConfigureAwait(false);
+
+    NativeProgressDialog? dialog;
+    try { dialog = new NativeProgressDialog(title); }
+    catch (COMException) { dialog = null; }
+
+    ThreatScanResult result;
+    try
+    {
+        var options = new AntivirusScanOptions { ArchivePaths = archivePaths };
+        if (dialog is null)
+        {
+            result = await service.ScanAsync(options, null, CancellationToken.None).ConfigureAwait(false);
+        }
+        else
+        {
+            using (dialog)
+            {
+                using var cts = new CancellationTokenSource();
+                var dialogLock = new object();
+
+                using var cancelPoll = new Timer(_ =>
+                {
+                    lock (dialogLock)
+                    {
+                        if (dialog.HasUserCancelled())
+                            cts.Cancel();
+                    }
+                }, null, TimeSpan.Zero, TimeSpan.FromMilliseconds(250));
+
+                var progress = new Progress<ProgressReport>(r =>
+                {
+                    lock (dialogLock)
+                    {
+                        if (r.CurrentFile is not null)
+                            dialog.SetLine(1, r.CurrentFile);
+                        dialog.SetLine(2, $"{r.Percent}%");
+                        dialog.SetProgress(r.Percent, 100);
+                    }
+                });
+
+                result = await service.ScanAsync(options, progress, cts.Token).ConfigureAwait(false);
+            }
+        }
+    }
+    catch (OperationCanceledException)
+    {
+        return;
+    }
+
+    ShowScanResults(title, result);
+}
+
+// T-F85-style: one AntivirusScanService per invocation, DetectCapabilitiesAsync called exactly
+// once and shared across every archive in the selection, mirroring BuildExtractionRouterAsync.
+static async Task<AntivirusScanService> BuildAntivirusScanServiceAsync(GroupPolicyOptions policy)
+{
+    var tarService = new TarSandboxedService(policy);
+    var capabilities = await tarService.DetectCapabilitiesAsync().ConfigureAwait(false);
+    return new AntivirusScanService(capabilities, policy);
+}
+
+// Clean copy is deliberately "No threats found in this archive" -- never "safe" -- Pakko doesn't
+// recurse into nested archives and can't make that broader claim (design guidance, docs/
+// DECISIONS.md's T-F146 entry). Only problem entries (ThreatDetected/Inconclusive) are listed --
+// mirrors ShowErrorSummary/ShowSkippedSummary's "only list what's wrong" convention, not a dump
+// of every clean entry, which would be pure noise for a large archive.
+static void ShowScanResults(string title, ThreatScanResult result)
+{
+    if (result.OverallVerdict == ThreatVerdict.Clean)
+    {
+        _ = MessageBoxW(IntPtr.Zero, ScanResultLocalizer.Get("ScanNoThreatsFound"), title, MB_ICONINFORMATION);
+        return;
+    }
+
+    var problems = result.Findings.Where(f => f.Verdict != ThreatVerdict.Clean).ToList();
+    var lines = problems.Take(MaxErrorLinesShown).Select(f =>
+    {
+        string label = f.EntryPath is { } entry
+            ? $"{Path.GetFileName(f.ArchivePath)}/{entry}"
+            : Path.GetFileName(f.ArchivePath);
+        // ThreatName is realistically always null -- AMSI's own contract never returns one (see
+        // AmsiScanner's doc comment) -- so the generic localized phrase is what actually ships;
+        // ThreatName is only used on the rare chance a future provider surfaces one.
+        string detail = f.Verdict == ThreatVerdict.ThreatDetected
+            ? f.ThreatName ?? ScanResultLocalizer.Get("ScanThreatDetectedGeneric")
+            // Reason is always set for an Inconclusive finding by AntivirusScanService -- this
+            // fallback is defensive only, should never actually be shown.
+            : f.Reason ?? "unknown";
+        return $"{label}: {detail}";
+    }).ToList();
+
+    if (problems.Count > MaxErrorLinesShown)
+        lines.Add(ScanResultLocalizer.Get("ScanAndMoreLine", problems.Count - MaxErrorLinesShown));
+
+    var message = string.Join(Environment.NewLine, lines);
+    bool anyThreat = problems.Any(f => f.Verdict == ThreatVerdict.ThreatDetected);
+    _ = MessageBoxW(IntPtr.Zero, message, title, anyThreat ? MB_ICONERROR : MB_ICONWARNING);
 }
 
 static void ShowErrorSummary(string title, IReadOnlyList<ArchiveError> errors)

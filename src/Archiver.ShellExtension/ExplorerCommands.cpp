@@ -479,6 +479,73 @@ STDMETHODIMP TestCommand::EnumSubCommands(IEnumExplorerCommand** ppEnum) noexcep
 }
 
 // ---------------------------------------------------------------------------
+// ScanCommand (T-F146)
+// ---------------------------------------------------------------------------
+
+STDMETHODIMP ScanCommand::GetTitle(IShellItemArray*, LPWSTR* ppszName) noexcept
+{
+    if (!ppszName) return E_POINTER;
+    return SHStrDupW(GetLocalizedString(StringId::ScanArchive).c_str(), ppszName);
+}
+
+STDMETHODIMP ScanCommand::GetIcon(IShellItemArray*, LPWSTR* ppszIcon) noexcept
+{
+    if (!ppszIcon) return E_POINTER;
+    *ppszIcon = nullptr;
+    return E_NOTIMPL;
+}
+
+STDMETHODIMP ScanCommand::GetToolTip(IShellItemArray*, LPWSTR* ppszInfotip) noexcept
+{
+    if (!ppszInfotip) return E_POINTER;
+    *ppszInfotip = nullptr;
+    return E_NOTIMPL;
+}
+
+STDMETHODIMP ScanCommand::GetCanonicalName(GUID* pguidCommandName) noexcept
+{
+    if (!pguidCommandName) return E_POINTER;
+    *pguidCommandName = CLSID_ScanCommand;
+    return S_OK;
+}
+
+STDMETHODIMP ScanCommand::GetState(IShellItemArray* psia, BOOL, EXPCMDSTATE* pCmdState) noexcept
+{
+    if (!pCmdState) return E_POINTER;
+    // T-F146: AnyPathIsSupportedArchive, not AnyPathIsZip like TestCommand — unlike Test (T-F86:
+    // no tar Test method exists), the scan path genuinely supports tar-family archives via
+    // AntivirusScanService's own quarantine-extraction flow, so gating this to ZIP-only would
+    // silently hide the feature for every non-ZIP archive.
+    *pCmdState = AnyPathIsSupportedArchive(GetPathsFromShellItemArray(psia)) ? ECS_ENABLED : ECS_HIDDEN;
+    return S_OK;
+}
+
+STDMETHODIMP ScanCommand::Invoke(IShellItemArray* psia, IBindCtx*) noexcept
+{
+    try
+    {
+        const auto paths = GetPathsFromShellItemArray(psia);
+        if (paths.empty()) return E_INVALIDARG;
+        return LaunchShellExe(BuildScanArgs(paths));
+    }
+    catch (...) { return E_FAIL; }
+}
+
+STDMETHODIMP ScanCommand::GetFlags(EXPCMDFLAGS* pFlags) noexcept
+{
+    if (!pFlags) return E_POINTER;
+    *pFlags = ECF_DEFAULT;
+    return S_OK;
+}
+
+STDMETHODIMP ScanCommand::EnumSubCommands(IEnumExplorerCommand** ppEnum) noexcept
+{
+    if (!ppEnum) return E_POINTER;
+    *ppEnum = nullptr;
+    return E_NOTIMPL;
+}
+
+// ---------------------------------------------------------------------------
 // ExtractDialogCommand
 // ---------------------------------------------------------------------------
 
@@ -877,12 +944,13 @@ STDMETHODIMP PakkoRootCommand::EnumSubCommands(IEnumExplorerCommand** ppEnum) no
         auto pArchive       = Make<ArchiveCommand>();
         auto pTarArchive    = Make<TarArchiveCommand>();
         auto pTest          = Make<TestCommand>();
+        auto pScan          = Make<ScanCommand>();
         auto pHashCrc32     = Make<HashCrc32Command>();
         auto pHashSha256    = Make<HashSha256Command>();
-        if (!pBrowse || !pExtractDialog || !pExtractHereFlat || !pExtractHere || !pExtractFolder || !pCompressDialog || !pArchive || !pTarArchive || !pTest || !pHashCrc32 || !pHashSha256)
+        if (!pBrowse || !pExtractDialog || !pExtractHereFlat || !pExtractHere || !pExtractFolder || !pCompressDialog || !pArchive || !pTarArchive || !pTest || !pScan || !pHashCrc32 || !pHashSha256)
             return E_OUTOFMEMORY;
 
-        ComPtr<IExplorerCommand> pCmdBrowse, pCmdExtractDialog, pCmdExtractHereFlat, pCmdA, pCmdB, pCmdCompressDialog, pCmdC, pCmdTarArchive, pCmdTest, pCmdHashCrc32, pCmdHashSha256;
+        ComPtr<IExplorerCommand> pCmdBrowse, pCmdExtractDialog, pCmdExtractHereFlat, pCmdA, pCmdB, pCmdCompressDialog, pCmdC, pCmdTarArchive, pCmdTest, pCmdScan, pCmdHashCrc32, pCmdHashSha256;
         HRESULT hr = pBrowse.As(&pCmdBrowse);                if (FAILED(hr)) return hr;
         hr = pExtractDialog.As(&pCmdExtractDialog);          if (FAILED(hr)) return hr;
         hr = pExtractHereFlat.As(&pCmdExtractHereFlat);      if (FAILED(hr)) return hr;
@@ -892,6 +960,7 @@ STDMETHODIMP PakkoRootCommand::EnumSubCommands(IEnumExplorerCommand** ppEnum) no
         hr = pArchive.As(&pCmdC);                            if (FAILED(hr)) return hr;
         hr = pTarArchive.As(&pCmdTarArchive);                if (FAILED(hr)) return hr;
         hr = pTest.As(&pCmdTest);                            if (FAILED(hr)) return hr;
+        hr = pScan.As(&pCmdScan);                            if (FAILED(hr)) return hr;
         hr = pHashCrc32.As(&pCmdHashCrc32);                  if (FAILED(hr)) return hr;
         hr = pHashSha256.As(&pCmdHashSha256);                if (FAILED(hr)) return hr;
 
@@ -907,6 +976,9 @@ STDMETHODIMP PakkoRootCommand::EnumSubCommands(IEnumExplorerCommand** ppEnum) no
         // T-F03: "Open" (BrowseCommand) goes FIRST, ahead of even the Extract dialog — confirmed
         // against NanaZip's real ContextMenu.cpp, whose kOpen is inserted before its kExtract
         // group. It's a separate, coexisting command, not a replacement for Extract.
+        // T-F146: "Scan for threats" sits right after Test — same diagnostic/verification group,
+        // AnyPathIsSupportedArchive-gated (see ScanCommand::GetState) so it appears for tar-family
+        // archives too, unlike Test which stays ZIP-only for T-F86 reasons.
         // T-F128: CRC-32/SHA-256 join Test at the very end as two separate top-level leaves, not
         // a nested "Хеш-суми" submenu container — an earlier HashCommand-as-parent design
         // (mirroring NanaZip's own cascaded "CRC SHA" submenu) shipped a real bug where Explorer
@@ -924,6 +996,7 @@ STDMETHODIMP PakkoRootCommand::EnumSubCommands(IEnumExplorerCommand** ppEnum) no
         commands.push_back(std::move(pCmdC));
         commands.push_back(std::move(pCmdTarArchive));
         commands.push_back(std::move(pCmdTest));
+        commands.push_back(std::move(pCmdScan));
         commands.push_back(std::move(pCmdHashCrc32));
         commands.push_back(std::move(pCmdHashSha256));
 

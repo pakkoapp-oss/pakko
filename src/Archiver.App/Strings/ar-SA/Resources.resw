@@ -275,4 +275,22 @@
   <data name="AboutCloseButtonText" xml:space="preserve">
     <value>إغلاق</value>
   </data>
+  <data name="ScanButton.Content" xml:space="preserve">
+    <value>فحص التهديدات</value>
+  </data>
+  <data name="ScanResultDialogTitle" xml:space="preserve">
+    <value>فحص التهديدات</value>
+  </data>
+  <data name="ScanNoThreatsFound" xml:space="preserve">
+    <value>لم يتم العثور على تهديدات في هذا الأرشيف.</value>
+  </data>
+  <data name="ScanThreatDetectedGeneric" xml:space="preserve">
+    <value>تم اكتشاف تهديد</value>
+  </data>
+  <data name="ScanThreatSectionHeader" xml:space="preserve">
+    <value>تهديدات مكتشفة</value>
+  </data>
+  <data name="ScanInconclusiveSectionHeader" xml:space="preserve">
+    <value>غير حاسم</value>
+  </data>
 </root>

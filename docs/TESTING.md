@@ -466,6 +466,48 @@ list, and for why a real-subprocess broken-pipe simulation was tried first and a
 
 ---
 
+## AMSI Antivirus Scan Tests (T-F146, v1.4+)
+
+`tests/Archiver.Core.Tests/Services/Antivirus/`:
+- `AmsiScannerTests.cs` — real `amsi.dll` P/Invoke against a runtime-generated EICAR buffer (never
+  committed to disk — Defender would quarantine a committed EICAR fixture on clone/build) and a
+  clean buffer, mirroring the probe run during design (`docs/DECISIONS.md`'s T-F146 entry).
+  Environment-dependent by nature — exercises whatever AV is actually registered on the machine
+  running the suite, same as any real AMSI consumer.
+- `AmsiProviderCheckTests.cs` — smoke test only (`IsAnyProviderRegistered()` never throws); the
+  actual registered-provider state isn't asserted, since that would make the suite depend on the
+  test machine's own AV configuration.
+- `AntivirusScanServiceTests.cs` — orchestration logic via a hand-rolled `FakeAmsiScanner` (no
+  mocking library, matching repo convention): clean/`ThreatDetected` ZIP archives,
+  `SelectedEntryPaths` subset scanning, the 64 MiB oversized-entry skip
+  (`AntivirusScanService.MaxScannableEntryBytes`), the no-provider-registered gate, Group Policy
+  blocked-format handling, and an unrecognized-file-doesn't-throw case.
+
+`tests/Archiver.Core.IntegrationTests/AntivirusScanServiceTarTests.cs` (`[Collection("TarSandbox")]`,
+same T-F130 serialization as every other real-sandbox test class) — the tar-family quarantine-scan
+path against real `tar.exe`: clean/threat-detected archives, subset scanning, and a symlink-entry
+archive confirming T-F49's pre-scan rejection becomes an `Inconclusive` finding rather than an
+unhandled throw.
+
+`tests/Archiver.Shell.Tests/ShellArgumentParserTests.cs` gained a `--scan` block (`Scan_SingleFile_
+ReturnsScan`/`Scan_MultipleFiles_ReturnsAllFiles`/`Scan_NoFiles_ReturnsInvalid`), mirroring the
+existing `--test` block exactly.
+
+`tests/Archiver.ShellExtension.Tests/ShellExtUtilsTests.cpp` gained `BuildScanArgs` cases
+(`SingleFile`/`MultipleFiles`), mirroring `BuildTestArgs`.
+
+**Not covered by `dotnet test`, needs on-device verification** (per this project's standing rule —
+shell-triggered/UI behavior never graduates on automated tests alone):
+- A real EICAR-in-archive detection through both entry points (Explorer `Scan for threats`,
+  Archive Browser's scan button) — for the tar-family case specifically, this needs a temporary
+  Defender exclusion folder added by the user first (`docs/DECISIONS.md`'s Phase 0 finding: real-time
+  protection intercepts a plain on-disk EICAR file before tar.exe can even read it, independent of
+  Pakko's own AMSI call).
+- The `Inconclusive` path with no AMSI provider registered (e.g. Defender real-time protection
+  temporarily disabled) — confirms the three-state dialog never renders it as `Clean`.
+- A clean real-world archive through both entry points, confirming "No threats found in this
+  archive" copy and that nothing is left on disk afterward (tar-family quarantine cleanup).
+
 ## Manual Smoke Test Cycle (Full Stack)
 
 Ordered simplest → most complex. Confirms Core, Shell, ShellExtension (COM), and the WinUI app

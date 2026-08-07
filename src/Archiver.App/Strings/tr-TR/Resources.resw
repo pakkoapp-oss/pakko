@@ -275,4 +275,22 @@
   <data name="AboutCloseButtonText" xml:space="preserve">
     <value>Kapat</value>
   </data>
+  <data name="ScanButton.Content" xml:space="preserve">
+    <value>Tehditleri tara</value>
+  </data>
+  <data name="ScanResultDialogTitle" xml:space="preserve">
+    <value>Tehditleri tara</value>
+  </data>
+  <data name="ScanNoThreatsFound" xml:space="preserve">
+    <value>Bu arşivde tehdit bulunamadı.</value>
+  </data>
+  <data name="ScanThreatDetectedGeneric" xml:space="preserve">
+    <value>tehdit algılandı</value>
+  </data>
+  <data name="ScanThreatSectionHeader" xml:space="preserve">
+    <value>Algılanan tehditler</value>
+  </data>
+  <data name="ScanInconclusiveSectionHeader" xml:space="preserve">
+    <value>Belirsiz</value>
+  </data>
 </root>

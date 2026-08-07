@@ -275,4 +275,22 @@
   <data name="AboutCloseButtonText" xml:space="preserve">
     <value>Bezárás</value>
   </data>
+  <data name="ScanButton.Content" xml:space="preserve">
+    <value>Fenyegetések keresése</value>
+  </data>
+  <data name="ScanResultDialogTitle" xml:space="preserve">
+    <value>Fenyegetések keresése</value>
+  </data>
+  <data name="ScanNoThreatsFound" xml:space="preserve">
+    <value>Ebben az archívumban nem található fenyegetés.</value>
+  </data>
+  <data name="ScanThreatDetectedGeneric" xml:space="preserve">
+    <value>fenyegetés észlelve</value>
+  </data>
+  <data name="ScanThreatSectionHeader" xml:space="preserve">
+    <value>Észlelt fenyegetések</value>
+  </data>
+  <data name="ScanInconclusiveSectionHeader" xml:space="preserve">
+    <value>Nem egyértelmű</value>
+  </data>
 </root>

@@ -321,6 +321,17 @@ std::wstring BuildTestArgs(const std::vector<std::wstring>& paths)
     return args;
 }
 
+std::wstring BuildScanArgs(const std::vector<std::wstring>& paths)
+{
+    std::wstring args = L"--scan";
+    for (const auto& p : paths)
+    {
+        args += L' ';
+        args += QuotePath(p);
+    }
+    return args;
+}
+
 std::wstring BuildHashArgs(const std::vector<std::wstring>& paths, const std::wstring& algorithm)
 {
     std::wstring args = L"--hash --algorithm ";

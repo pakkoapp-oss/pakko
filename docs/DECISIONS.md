@@ -6619,3 +6619,192 @@ environment to screenshot/inspect the dialog, and the native `IProgressDialog`/A
 verified any other way (this project's own established rule: don't graduate a shell-triggered/
 UI-visible task on `dotnet test` alone). Left for the user's own on-device check — repro fixture
 already built at `%TEMP%\pakko-tf142-verify\big.tar.gz`.
+
+---
+
+## T-F146 — Antivirus Scanning Design: AMSI Chosen Over MpCmdRun/WMI (2026-08-07)
+
+### Context
+
+User asked for a full design pass on antivirus scanning for Pakko — broader than T-F145's
+original archive-only stub, which left the invocation mechanism as an open question between
+`MpCmdRun.exe` and WMI `MSFT_MpScan`. Request explicitly asked to consult `advisor` and a
+"designer" (`frontend-design` skill), include UML, and rule out dead-end scenarios before
+finalizing scope. Full option-space writeup was built as a private Claude Artifact (mermaid
+component/sequence/state diagrams, comparison tables) so the user could review before choosing;
+this entry records only the resolved decisions and the empirical evidence behind them, per this
+project's convention of not duplicating exploratory material into permanent docs.
+
+### The elevation dead end (why T-F145's own two candidates were rejected)
+
+Both `MpCmdRun.exe` and the `MSFT_MpScan` WMI class are documented by Microsoft as needing an
+elevated process (`learn.microsoft.com/en-us/defender-endpoint/command-line-arguments-microsoft-
+defender-antivirus`: "You need to run MpCmdRun in an elevated Command Prompt"; PowerShell's
+`Start-MpScan`/Defender module carries the same recommendation). A UAC prompt on every click of a
+permanent Explorer context-menu entry is not shippable — it would be the only Pakko command that
+behaves this way. This alone rules out both of T-F145's candidates as the primary mechanism.
+
+### AMSI — identified via `advisor`, confirmed empirically
+
+`advisor` (consulted before drafting the proposal, per this project's standing practice) proposed
+AMSI (`amsi.dll`) as a third candidate: the Win32 API Microsoft designed specifically for "an
+application asks the installed AV whether content is safe before acting on it" — the same
+mechanism browsers and script hosts use, and explicitly documented as callable from non-elevated
+processes.
+
+**Confirmed on this dev machine, non-elevated** (PowerShell `Add-Type` throwaway probe, same
+"probe before committing" discipline `CLAUDE.md` cites for T-F51's `Microsoft.Win32.Registry`
+check):
+
+```
+Running as elevated: False
+EICAR buffer: result=32768 detected=True | Clean buffer: result=1 detected=False
+```
+
+`AmsiScanBuffer` against a standard EICAR test string (industry-standard for exactly this kind of
+verification — not a real virus) returned `AMSI_RESULT_DETECTED` (32768); a harmless control
+buffer returned `AMSI_RESULT_NOT_DETECTED` (1). No elevation, no admin prompt. AMSI also
+dispatches to whichever AV/EDR is actually registered as the AMSI provider — not Defender-
+specific — which independently resolves T-F145's open worry about a third-party EDR shadowing
+Defender-only tooling.
+
+**Decision: AMSI is the mechanism for T-F146, full stop.** `MpCmdRun.exe` is not being built as a
+fallback speculatively — see "Known limitation" below for the one case that might eventually need
+it, and the explicit instruction not to build it until that case is real.
+
+### Known limitation
+
+`AmsiScanBuffer` scans an in-memory buffer — there's no way to hand it a `FileStream` directly.
+AMSI does define `IAmsiStream` for streamed content, but that's a COM interface the *caller*
+implements, materially uglier to implement correctly from .NET than a buffer call. For very large
+archive entries, buffering the whole entry in RAM before scanning isn't a good default. This is
+deferred, not solved: T-F146's acceptance criteria doesn't require a large-file answer yet, and
+`MpCmdRun.exe` (or a chunked multi-call `AmsiScanBuffer` sequence within one session — untested)
+remains the candidate fallback *if and when* a real archive exposes this as an actual problem, not
+before.
+
+### Scope decisions (user-directed, via explicit multi-part question)
+
+Presented as four independent forks, each with a recommendation; user accepted all four
+recommendations:
+
+1. **Generic file/folder scan entry point: rejected.** Windows Explorer already ships a native
+   "Scan with Microsoft Defender" verb for any file/folder/drive (shell verb GUID
+   `{09A47860-11B0-4DA5-AFA5-26D86198A780}`, confirmed via research) whenever Defender is the
+   active AV. Pakko's own generic version would be pure duplication. The genuinely differentiated
+   capability — scanning an archive's *expanded* contents, which the OS verb cannot reliably do
+   for tar-family/nested-archive formats — is archive-specific, so the feature stays archive-only.
+2. **Scan depth in Explorer: deep/quarantine-expanded only, no separate shallow mode.** A
+   container-only scan of the archive file as one opaque blob would again mostly just duplicate
+   what the OS verb already does. The one mode kept reuses T-F49's whole-archive pre-scan and
+   T-F52's `TarSandboxScope.OutputDirectory` quarantine — the same data a real Extract already
+   stages, so no extra I/O cost beyond what extraction already pays.
+3. **Pre-commit auto-scan (scanning quarantine contents before every ordinary Extract, as an
+   opt-in setting): deferred, not in T-F146's scope.** Real idea — it's the strongest version of
+   this feature (catches a threat before the user ever has the file, zero extra I/O since the
+   data's already staged) — but it's a distinct product decision (a setting, default on/off,
+   performance cost on every extraction) that deserves its own scoping once T-F146 has shipped
+   and been used, not a bundled add-on decided under time pressure alongside the two explicit
+   entry points the user originally asked for.
+4. **Tracking: new task, not an expansion of T-F145.** T-F145 is closed and moved to
+   `docs/TASKS_DONE.md` as "merged into T-F146" (same pattern as T-F120→T-F122) rather than left
+   open with stale, now-answered design questions — avoids two tracker entries describing the
+   same capability with diverging state, which is exactly the kind of dead end the user asked to
+   avoid.
+
+### Result model
+
+Three states — `Clean` / `ThreatDetected` / `Inconclusive` — not two. `Inconclusive` (no AMSI
+provider registered, Defender disabled, a provider call failure, or content skipped as too large
+to buffer) must never be silently collapsed into `Clean`; a scan Pakko couldn't actually perform
+is a different fact than a scan that came back negative, and conflating them would be worse than
+not having the feature. Kept out of `ArchiveResult`/`ArchiveError` (T-F145's own note, reaffirmed
+here) — its own result type, its own dialog, patterned after `RunHashAsync`/`ShowHashResults`
+(T-F128) rather than the extraction-summary dialog, since a scan is not an extraction outcome.
+
+### Remediation policy
+
+Report-only **from Pakko's own code** — Pakko itself never deletes or quarantines anything on a
+detection; it reports and stops, matching the "verify, don't act" posture Test Archive (T-F62)
+already established. **Correction from the original wording above ("AMSI itself never
+deletes/quarantines anything"): that claim was wrong, confirmed empirically in the Phase 0 spike
+below.** When Defender is the registered AMSI provider, it can and does act on its own — both on a
+plain `AmsiScanBuffer` call and via its independent real-time on-access scanner — outside Pakko's
+control. The "report-only" guarantee is about Pakko's own code path only; it was never a guarantee
+that nothing on the machine reacts to the scan. A detected threat still aborts the whole scan
+operation cleanly on Pakko's side — the quarantine directory is deleted in every case (clean,
+threat, or inconclusive), and nothing partially lands in the user's real destination folder.
+
+### Phase 0 spike findings (2026-08-07, before any implementation code was written)
+
+Per `advisor`'s review before implementation started, two things were verified empirically rather
+than assumed, since both would have silently broken the feature if wrong.
+
+**1. No-AMSI-provider discriminator, confirmed available.** `AmsiScanBuffer` alone cannot
+distinguish "no AV is listening" from "AV is listening and says clean" — both plausibly return
+`AMSI_RESULT_NOT_DETECTED`, and rendering the former as `Clean` is exactly the silent-Inconclusive-
+as-Clean failure the result model forbids. Checked `HKLM\SOFTWARE\Microsoft\AMSI\Providers` on this
+dev machine (non-elevated `Get-ChildItem`): it has one subkey (Defender's own registered provider
+GUID) when Defender is active. `AntivirusScanService` must enumerate this key before scanning and
+force `Inconclusive` whenever it's empty/missing, regardless of what `AmsiScanBuffer` itself would
+return — this is a real gate, not a defensive nicety.
+
+**2. Defender's real-time on-access scanner independently intercepts EICAR at the filesystem
+level, outside AMSI entirely — this breaks naive tar-family fixture building, not just tar.exe
+extraction.** Spike: wrote a real EICAR test file to disk, ran real `tar.exe -czf` to archive it,
+then `tar.exe -xzf` to extract it back out.
+- `tar -czf` itself failed to *read* the plain on-disk EICAR source file
+  (`tar.exe: Couldn't open eicar.txt: Invalid argument`) — Defender's on-access filter blocked the
+  read before tar.exe could compress it, so the resulting `.tar.gz` silently doesn't contain the
+  entry at all (`tar` still exited 0, since from libarchive's perspective the one input path
+  merely failed to open).
+- The subsequent extract therefore also legitimately found nothing to extract (exit 0, target file
+  absent) — not a bug in the extraction path, a correct report of an archive that never got the
+  entry in the first place.
+- `Get-MpThreatDetection` confirmed two independent real detections from this one spike: one
+  attributed to `pwsh.exe` via `DetectionSourceTypeID` indicating AMSI (this session's earlier
+  probe call), and a **separate** one attributed to `tar.exe` itself via the on-access
+  (`DetectionSourceTypeID: 3`) path, pointing straight at the on-disk source file — confirming
+  Defender's real-time protection acts independently of, and in addition to, whatever AMSI itself
+  reports.
+
+**Consequences for the implementation:**
+- The tar-family scan path (`AntivirusScanService` walking `TarSandboxScope.OutputDirectory` after
+  extraction) must treat a missing/unreadable file as its own `Inconclusive` finding for that entry
+  (real reason: "removed or blocked before Pakko could scan it directly"), never crash, and never
+  silently skip it as if it were never in the archive. Wrap the per-file read in
+  `catch (IOException or UnauthorizedAccessException or FileNotFoundException)`, matching
+  `EnumerateFilesGuarded`'s existing best-effort discipline for this exact directory.
+- An EICAR fixture cannot be committed to the repo (Defender quarantines it on clone/build in any
+  case) and cannot even be reliably staged as a loose on-disk file for a tar-family test on a
+  machine with real-time protection on — the in-memory `AmsiScanBuffer` unit tests (ZIP path, AC
+  #1) generate EICAR bytes at runtime and never touch disk, which sidesteps this entirely. The
+  on-device tar-family EICAR case (AC's on-device verification step) needs a temporary Defender
+  exclusion folder for that one manual check, added and removed by the user — not something the
+  agent should attempt to script (modifying live Defender exclusions is exactly the kind of
+  shared-system, hard-to-reverse action this project's own risk-confirmation rules gate on).
+
+### Follow-up: real per-entry progress, not just per-archive (2026-08-07, user-driven)
+
+Shipped `ScanAsync`'s original progress design deliberately coarse — one `IProgress<ProgressReport>`
+report per **archive completed**, not per entry — to avoid a second listing pass (a duplicate
+`tar -tvf`/`ZipFile.OpenRead` just to count entries before the real scan). The user asked directly
+how a long scan's progress is shown and, once told the honest answer (a single-archive scan — the
+common case, both entry points — produces exactly one report, at the very end, with nothing visible
+while it's actually running), asked for it to be fixed.
+
+Fixed without any extra I/O: the entry counts were already being computed as a side effect of the
+real scan work (`fileEntries.Count` for ZIP, already-enumerated before the loop; `allNames`/
+`expandedSelection`'s file-only count for tar-family, already returned by T-F49's pre-scan — the
+identical `totalFileEntries` computation `TarSandboxedService.ExtractSingleArchiveAsync` already
+does for its own T-F142 move-phase progress, reused here rather than re-derived). `ScanZipArchiveAsync`/
+`ScanTarArchiveAsync` gained an `Action<int, int> reportProgress` parameter, called once per entry
+(success, oversized-skip, or error — every processed entry, via a `finally` block so it fires
+exactly once regardless of which branch ran). `ScanAsync` gives each archive its own
+`1/totalArchives`-sized slice of the bar, filled in smoothly by that archive's own entries
+(`archivesCompleted + entriesDone/entriesTotal, scaled by totalArchives`) — a multi-archive
+selection's progress never jumps backward between archives, and a single-archive scan (previously
+one report, at 100%, at the end) now reports real intermediate percentages as each entry finishes.
+New regression test `AntivirusScanServiceTests.ScanAsync_SingleArchiveWithMultipleEntries_
+ReportsRealIntermediateProgress` asserts at least one report lands strictly between 0 and 100 for a
+4-entry single archive — the exact gap the user identified.

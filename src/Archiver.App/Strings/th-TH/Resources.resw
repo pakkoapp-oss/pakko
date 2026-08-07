@@ -275,4 +275,22 @@
   <data name="AboutCloseButtonText" xml:space="preserve">
     <value>ปิด</value>
   </data>
+  <data name="ScanButton.Content" xml:space="preserve">
+    <value>สแกนหาภัยคุกคาม</value>
+  </data>
+  <data name="ScanResultDialogTitle" xml:space="preserve">
+    <value>สแกนหาภัยคุกคาม</value>
+  </data>
+  <data name="ScanNoThreatsFound" xml:space="preserve">
+    <value>ไม่พบภัยคุกคามในไฟล์บีบอัดนี้</value>
+  </data>
+  <data name="ScanThreatDetectedGeneric" xml:space="preserve">
+    <value>ตรวจพบภัยคุกคาม</value>
+  </data>
+  <data name="ScanThreatSectionHeader" xml:space="preserve">
+    <value>ตรวจพบภัยคุกคาม</value>
+  </data>
+  <data name="ScanInconclusiveSectionHeader" xml:space="preserve">
+    <value>ไม่สามารถสรุปได้</value>
+  </data>
 </root>

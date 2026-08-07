@@ -275,4 +275,22 @@
   <data name="AboutCloseButtonText" xml:space="preserve">
     <value>סגור</value>
   </data>
+  <data name="ScanButton.Content" xml:space="preserve">
+    <value>סריקה לאיתור איומים</value>
+  </data>
+  <data name="ScanResultDialogTitle" xml:space="preserve">
+    <value>סריקה לאיתור איומים</value>
+  </data>
+  <data name="ScanNoThreatsFound" xml:space="preserve">
+    <value>לא נמצאו איומים בארכיון זה.</value>
+  </data>
+  <data name="ScanThreatDetectedGeneric" xml:space="preserve">
+    <value>זוהה איום</value>
+  </data>
+  <data name="ScanThreatSectionHeader" xml:space="preserve">
+    <value>איומים שזוהו</value>
+  </data>
+  <data name="ScanInconclusiveSectionHeader" xml:space="preserve">
+    <value>לא חד-משמעי</value>
+  </data>
 </root>

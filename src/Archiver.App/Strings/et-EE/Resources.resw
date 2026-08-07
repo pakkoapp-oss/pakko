@@ -275,4 +275,22 @@
   <data name="AboutCloseButtonText" xml:space="preserve">
     <value>Sulge</value>
   </data>
+  <data name="ScanButton.Content" xml:space="preserve">
+    <value>Kontrolli ohte</value>
+  </data>
+  <data name="ScanResultDialogTitle" xml:space="preserve">
+    <value>Kontrolli ohte</value>
+  </data>
+  <data name="ScanNoThreatsFound" xml:space="preserve">
+    <value>Selles arhiivis ohte ei leitud.</value>
+  </data>
+  <data name="ScanThreatDetectedGeneric" xml:space="preserve">
+    <value>tuvastati oht</value>
+  </data>
+  <data name="ScanThreatSectionHeader" xml:space="preserve">
+    <value>Tuvastatud ohud</value>
+  </data>
+  <data name="ScanInconclusiveSectionHeader" xml:space="preserve">
+    <value>Ebaselge</value>
+  </data>
 </root>
