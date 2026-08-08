@@ -123,12 +123,24 @@ jobs:
           if (-not $env:SONAR_TOKEN) {
             throw "SONAR_TOKEN secret is not set. See scripts/README.md's Continuous Integration section."
           }
+          # T-F149: sonar.coverage.exclusions removes these paths from the coverage denominator
+          # only -- they stay fully analyzed for code smells/bugs/vulnerabilities, same as every
+          # other file (this is NOT sonar.exclusions, which would drop them from analysis
+          # entirely). All four are genuinely unreachable by coverlet, not just untested:
+          # Archiver.Shell/Program.cs and NativeProgressDialog.cs drive a real COM IProgressDialog
+          # (CLAUDE.md's "Known test gaps" already names NativeProgressDialog explicitly),
+          # ExplorerLauncher.cs opens a real Explorer window (accepted uncovered by design, T-F143),
+          # and Archiver.CLI/Program.cs IS exercised -- by Archiver.CLI.Tests' Subprocess/ layer,
+          # which Process.Starts the real built exe -- but coverlet cannot instrument a spawned
+          # child process, so those lines read as 0% despite being under real test coverage.
+          # See docs/CONVENTIONS.md's "SonarCloud Coverage Exclusions" section.
           .\.sonar\scanner\dotnet-sonarscanner begin `
             /k:"$env:SONAR_PROJECT_KEY" `
             /o:"$env:SONAR_ORGANIZATION" `
             /d:sonar.token="$env:SONAR_TOKEN" `
             /d:sonar.host.url="https://sonarcloud.io" `
-            /d:sonar.cs.cobertura.reportsPaths="**/coverage.cobertura.xml"
+            /d:sonar.cs.cobertura.reportsPaths="**/coverage.cobertura.xml" `
+            /d:sonar.coverage.exclusions="src/Archiver.Shell/Program.cs,src/Archiver.Shell/NativeProgressDialog.cs,src/Archiver.Core/Services/ExplorerLauncher.cs,src/Archiver.CLI/Program.cs"
 
       - name: Run .NET test suite
         # --collect:"XPlat Code Coverage" uses the coverlet.collector package already referenced

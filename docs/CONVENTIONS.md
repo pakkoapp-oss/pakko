@@ -381,6 +381,34 @@ next triage.
 
 ---
 
+## SonarCloud Coverage Exclusions
+
+`.github/workflows/build.yml`'s `sonar.coverage.exclusions` (added T-F149) removes exactly four
+files from the `new_coverage` gate's denominator — they stay fully analyzed for every other rule
+(bugs, vulnerabilities, code smells); this is `sonar.coverage.exclusions`, not `sonar.exclusions`,
+which would drop a file from analysis entirely and lose its findings too. All four are genuinely
+unreachable by `coverlet` (the coverage collector `dotnet test --collect:"XPlat Code Coverage"`
+uses), not merely untested:
+
+- **`Archiver.Shell/Program.cs`, `Archiver.Shell/NativeProgressDialog.cs`**: drive a real COM
+  `IProgressDialog` — `CLAUDE.md`'s "Known test gaps" section already names
+  `NativeProgressDialog` explicitly as a COM UI object that isn't unit-testable.
+- **`Archiver.Core/Services/ExplorerLauncher.cs`**: opens a real Explorer window as its only
+  meaningful behavior — already accepted as deliberately uncovered by design in T-F143's
+  coverage triage.
+- **`Archiver.CLI/Program.cs`**: the one different case — this file **is** exercised, by
+  `Archiver.CLI.Tests`' `Subprocess/` layer, which `Process.Start`s the real built `pakko.exe`
+  against real fixtures (this project's console-frontend testing convention, above, requires
+  exactly this for a directly-user-invoked frontend). `coverlet` cannot instrument a spawned
+  child process, so these lines read as 0% covered despite being under real test coverage — the
+  exclusion here is about a collector limitation, not an untestable-by-design admission.
+
+Adding a 5th exclusion needs the same bar as adding a new won't-fix rule above: a specific,
+verified reason the collector (or a unit test) genuinely cannot reach the code — not "coverage is
+inconvenient to write."
+
+---
+
 ## Packages Allowed per Project
 
 | Package | Project | Purpose |

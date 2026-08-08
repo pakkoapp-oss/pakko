@@ -3921,3 +3921,27 @@ regression from this task, which owns reliability only.
   process killed by the Job Object, socket-connect denied in the AppContainer); a real on-device
   `.tar.gz`/`.7z`/`.rar` extraction through the installed, packaged app, not `dotnet test` alone.
 - **Reported by:** user, 2026-08-07/08, via T-F147's scoping decision ("Окрема задача").
+
+### T-F149 — Raise SonarCloud `new_coverage` above the 81% Quality Gate margin
+
+- [ ] **Status:** in progress.
+- **Context:** post-T-F147, the `new_coverage` Quality Gate condition (SonarCloud's own
+  `Sonar way` default, `LT 80`) was failing at 76.8%. User asked explicitly for test coverage to
+  reach 81% so the gate stops erroring.
+- **Approach (user-confirmed, blended):**
+  1. **Coverage exclusions** (`sonar.coverage.exclusions` in `build.yml`, T-F149) for 4 files
+     genuinely unreachable by `coverlet`: `Archiver.Shell/Program.cs`,
+     `Archiver.Shell/NativeProgressDialog.cs` (COM `IProgressDialog`, already a documented "Known
+     test gap"), `Archiver.Core/Services/ExplorerLauncher.cs` (opens real Explorer, already
+     accepted uncovered by design in T-F143), `Archiver.CLI/Program.cs` (tested via
+     `Archiver.CLI.Tests`' `Subprocess/` layer, but `coverlet` cannot instrument a spawned child
+     process). Documented in `docs/CONVENTIONS.md`'s new "SonarCloud Coverage Exclusions" section.
+  2. Real tests for the remaining genuinely-coverable gap, targeting the exact new-and-uncovered
+     line intersection from `api/sources/lines` (not local overall coverage, which mixes in
+     already-covered old code) in `TarSandboxedService.cs`, `ZipArchiveService.cs`,
+     `AntivirusScanService.cs`, `CliArgumentParser.cs`, `ArchiveFormatPolicy.cs`,
+     `AmsiScanner.cs`, and a handful of single-digit files.
+- **Verification:** push, confirm CI green, confirm a fresh SonarCloud analysis shows
+  `new_coverage >= 81` and the Quality Gate no longer errors on that condition.
+- **Reported by:** user, 2026-08-08 — "Доведи покриття тестами до 81 відсотка. Щоб сонар клоуд на
+  те не лаївся."
