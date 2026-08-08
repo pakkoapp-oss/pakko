@@ -3819,9 +3819,8 @@ regression from this task, which owns reliability only.
 
 ### T-F147 — SonarCloud triage: existing code-quality findings on `main`
 
-- [~] **Status:** implementation complete 2026-08-08, on-device verification pending (user doing
-  it themselves — not graduating on `dotnet test`/CI alone, since this touches
-  `ZipArchiveService`/`TarSandboxedService` directly, per this project's standing rule).
+- [x] **Status:** done 2026-08-08. User confirmed on-device verification (archive + extract round
+  trip through the installed `Deploy.ps1` build, v1.4.7.5) — "перевірив все наче працює локально".
 - **Context:** the original 2026-08-07 snapshot (134 issues) turned out stale before work even
   started — the last 3 CI pushes on `main` had all failed (T-F146's `AmsiScannerTests` assume a
   working AMSI provider, which GitHub's `windows-2022` runner doesn't have; a separate progress-
