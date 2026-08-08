@@ -622,7 +622,41 @@ failure — so a blocked/misconfigured sandbox would have crashed instead of yie
   needs a temporary Defender exclusion folder the user adds/removes themselves, not something the
   agent should script — plus a check of the `Inconclusive` path with no AMSI provider active). See
   `docs/TASKS.md`'s and `docs/DECISIONS.md`'s T-F146 entries for the full account.
-- Next work: Future tasks in `TASKS.md`
+- **T-F147 (`[x]` done 2026-08-08)** — SonarCloud triage of the pre-existing findings backlog
+  (134 issues at the original stale snapshot; the real worklist had to be rebuilt from a fresh CI
+  build log after finding the last 3 pushes on `main` had all failed, so SonarCloud hadn't
+  re-analyzed in 3 days — fixed CI first: `SkipIfAmsiScanUnavailableAttribute` for T-F146's
+  GitHub-runner-incompatible AMSI tests, widened a progress-poll test's timing margin). Did every
+  cognitive-complexity refactor in one pass per the user's explicit direction, including
+  `ZipArchiveService.ArchiveAsync` (was complexity **132**, the highest in the whole report) —
+  split via Single/Separate-mode extraction and purpose-specific context/sink records throughout
+  both `ZipArchiveService.cs` and `TarSandboxedService.cs`, keeping
+  `ExtractWithSmartFolderingAsync`/`ExtractSingleArchiveAsync` algorithmically identical per the
+  T-F118 invariant. Two provably load-bearing residuals (`SandboxedProcessLauncher.RunAsync`,
+  `ParallelSingleArchiveWriter.RunPipelineAsync`) were left as one unit with a documented
+  `NOSONAR` rather than forced apart. S101/S1075/S3871 (P/Invoke struct naming, hardcoded
+  `tar.exe`/quarantine paths, internal-only exception types) and a 4th case found mid-task
+  (CA1711 on `TarSandboxTestCollection`, xUnit's own `[CollectionDefinition]` marker-class
+  convention) were marked Won't-Fix and, critically, actually documented in
+  `docs/CONVENTIONS.md`'s new "SonarCloud Won't-Fix Conventions" section — the exact gap that let
+  this same finding category resurface after T-F136/T-F137, whose reasoning lived only in
+  task-history prose. Real mid-task discovery: `// NOSONAR` only suppresses `csharpsquid:*`
+  findings (SonarCloud's own analyzer) — `external_roslyn:*` findings (`CA*`/`IDE*`/`SYSLIB1054`,
+  imported from the real `dotnet build` warning log) need `#pragma warning disable/restore`
+  instead, since NOSONAR never touches that log; confirmed empirically when an already-NOSONAR'd
+  `CA1835` finding was still open on the next scan. Also caught two real regressions from this
+  task's own earlier refactoring via a second fresh scan (5 dead local variables left over from a
+  context-record extraction, S1481; a `foreach`+`.Where()` rewrite that could only ever run its
+  body once, S1751) — both fixed. `SYSLIB1054` (~40 `DllImport`→`LibraryImportAttribute` findings
+  across the sandbox P/Invoke layer) was explicitly scoped out per the user's decision and opened
+  as its own task, **T-F148**. Final SonarCloud count: 134 → 76 (post-CI-fix) → **44** (final) —
+  42 are T-F148's deferred batch, 2 are accepted `S1135` TODOs, i.e. everything actionable from
+  this triage is fixed or durably suppressed. `dotnet test --filter
+  "Category!=Slow&Category!=VeryLarge"`: 817/817 green across every commit; `dotnet build`: 0
+  warnings, 0 errors. User confirmed on-device (`Deploy.ps1` v1.4.7.5, archive + extract round
+  trip). See `docs/TASKS.md`'s T-F147 entry for the full fixed/suppressed/deferred breakdown.
+- Next work: Future tasks in `TASKS.md`, including new **T-F148** (SYSLIB1054 conversion, split
+  out of T-F147)
 
 ## Roadmap Summary
 
