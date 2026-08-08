@@ -1743,7 +1743,9 @@ WorkItemEnumerator (deterministic T-F31/T-F32/T-F30/T-F66/T-F23/T-F75-preserving
   documented for this exact machine (T-F96/T-F141 — AV real-time scanner, cloud-sync client,
   Search Indexer briefly touching a just-emptied folder). Fixed with a bounded 3-attempt retry
   (`TryDeleteEmptyDirectoryWithRetryAsync`, short `Task.Delay` backoff between attempts) — no
-  behavior change to the chunk-file-level cleanup, which was never the problem.
+  behavior change to the chunk-file-level cleanup, which was never the problem. User confirmed
+  on-device 2026-08-08 ("Наче все працює") — this specific fix only, not the broader corruption-
+  check criterion below, which stays unchecked.
 
 **Files:**
 - `src/Archiver.Core/Services/Zip/DosDateTime.cs`, `ZipEntryCompressor.cs`, `ZipEntryWriter.cs`,
@@ -3812,7 +3814,9 @@ regression from this task, which owns reliability only.
         construction-time (both-default, i.e. disabled) state forever. Fixed by adding the missing
         attribute to `_isBusy`, `_isBrowsingArchive`, and `_browsedArchivePath` — same pattern
         `ExtractAllFromBrowserCommand`/`ExtractSelectedFromBrowserCommand` already had, which is
-        why only the newer Scan command was affected.
+        why only the newer Scan command was affected. User confirmed on-device 2026-08-08 the
+        button now enables and the Row 0 relocation reads correctly — the EICAR-detection and
+        `Inconclusive`-path criteria below still need their own dedicated check.
   - [x] Three-state result dialog implemented — `Archiver.Shell`'s `RunScanAsync`/
         `ShowScanResults` (pattern: `RunHashAsync`/`ShowHashResults`) and `Archiver.App`'s
         `IDialogService.ShowThreatScanResultAsync` — never collapsing `Inconclusive` into `Clean`;
