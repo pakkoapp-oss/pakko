@@ -79,12 +79,22 @@
              Modified fields all now live directly on the entry table below (Row 1 browse). The
              Close button that replaced it was removed in the same follow-up round — the up-arrow
              now in front of the breadcrumb (Row 1 browse) doubles as the exit affordance (see
-             MainViewModel.NavigateUpOrExitBrowser): only About remains here. -->
-        <Grid Grid.Row="0" ColumnDefinitions="*,Auto" MinHeight="40"
+             MainViewModel.NavigateUpOrExitBrowser). Scan (T-F146) was moved here from Row 3
+             (2026-08-08, user-driven design feedback): it's a diagnostic action, not a primary
+             one, so it sits with About rather than crowding the Extract Selected/Extract All pair
+             users expect there — mirrors Row 0's own Hash-next-to-About placement in pending-list
+             mode above. -->
+        <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto" MinHeight="40"
               Visibility="{x:Bind ViewModel.IsBrowsingArchiveVisibility, Mode=OneWay}">
             <Button
                 Grid.Column="1"
+                x:Uid="ScanButton"
+                HorizontalAlignment="Right"
+                Command="{x:Bind ViewModel.ScanArchiveFromBrowserCommand, Mode=OneWay}"/>
+            <Button
+                Grid.Column="2"
                 x:Uid="AboutButton"
+                Margin="8,0,0,0"
                 HorizontalAlignment="Right"
                 Command="{x:Bind TrayAboutCommand, Mode=OneTime}"/>
         </Grid>
@@ -369,8 +379,9 @@
 
         <!-- Row 3 (T-F05): Archive Browser Action Buttons — Info/Close moved to the Row 0
              command bar above (design review 2026-07-13); these two stay anchored here, next to
-             the destination path/conflict-behavior options (Row 2/Row 6) they actually consume. -->
-        <Grid Grid.Row="3" ColumnDefinitions="*,*,*" MinHeight="40"
+             the destination path/conflict-behavior options (Row 2/Row 6) they actually consume.
+             Scan (T-F146) moved out to Row 0 (2026-08-08) — see that Grid's own comment. -->
+        <Grid Grid.Row="3" ColumnDefinitions="*,*" MinHeight="40"
               Visibility="{x:Bind ViewModel.IsBrowsingArchiveVisibility, Mode=OneWay}">
 
             <Button
@@ -385,13 +396,6 @@
                 Margin="8,0,0,0"
                 HorizontalAlignment="Stretch"
                 Command="{x:Bind ViewModel.ExtractAllFromBrowserCommand, Mode=OneWay}"/>
-
-            <Button
-                Grid.Column="2"
-                x:Uid="ScanButton"
-                Margin="8,0,0,0"
-                HorizontalAlignment="Stretch"
-                Command="{x:Bind ViewModel.ScanArchiveFromBrowserCommand, Mode=OneWay}"/>
         </Grid>
 
         <!-- Row 4: Operation Outcome Subtitle -->

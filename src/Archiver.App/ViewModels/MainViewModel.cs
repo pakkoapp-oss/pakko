@@ -85,6 +85,7 @@ public sealed partial class MainViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(CancelCommand))]
     [NotifyCanExecuteChangedFor(nameof(ExtractAllFromBrowserCommand))]
     [NotifyCanExecuteChangedFor(nameof(ExtractSelectedFromBrowserCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ScanArchiveFromBrowserCommand))]
     [NotifyPropertyChangedFor(nameof(IsOperationRunning))]
     [NotifyPropertyChangedFor(nameof(IsOperationRunningVisibility))]
     [NotifyPropertyChangedFor(nameof(ArchiveButtonText))]
@@ -301,6 +302,7 @@ public sealed partial class MainViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(OperationOutcomeVisibility))]
     [NotifyCanExecuteChangedFor(nameof(ExtractAllFromBrowserCommand))]
     [NotifyCanExecuteChangedFor(nameof(ExtractSelectedFromBrowserCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ScanArchiveFromBrowserCommand))]
     private bool _isBrowsingArchive = false;
 
     public Visibility IsPendingListVisibility =>
@@ -312,6 +314,7 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(ExtractAllFromBrowserCommand))]
     [NotifyCanExecuteChangedFor(nameof(ExtractSelectedFromBrowserCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ScanArchiveFromBrowserCommand))]
     private string? _browsedArchivePath;
 
     [ObservableProperty]

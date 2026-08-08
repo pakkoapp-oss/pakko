@@ -1734,6 +1734,16 @@ WorkItemEnumerator (deterministic T-F31/T-F32/T-F30/T-F66/T-F23/T-F75-preserving
   isolation — see `DECISIONS.md`.
 - **Progress reporting needs no `Interlocked`** — since exactly one thread (the writer/consumer)
   ever calls `progress.Report`, unlike T-F12's `SeparateArchives` mode.
+- **Real on-device bug found 2026-08-08** (user report, screenshot of Explorer after archiving
+  several large folders): the hidden per-operation `.pakko-tmp-<guid>` chunk folder was
+  consistently left behind next to the finished archive — empty inside, confirmed by the user, so
+  every individual chunk file had already been cleaned up correctly; only the final
+  `Directory.Delete(chunkDirectory)` itself (a single, unretried attempt) was failing and being
+  silently swallowed by its own best-effort `catch`. Same transient-handle-open race class already
+  documented for this exact machine (T-F96/T-F141 — AV real-time scanner, cloud-sync client,
+  Search Indexer briefly touching a just-emptied folder). Fixed with a bounded 3-attempt retry
+  (`TryDeleteEmptyDirectoryWithRetryAsync`, short `Task.Delay` backoff between attempts) — no
+  behavior change to the chunk-file-level cleanup, which was never the problem.
 
 **Files:**
 - `src/Archiver.Core/Services/Zip/DosDateTime.cs`, `ZipEntryCompressor.cs`, `ZipEntryWriter.cs`,
@@ -3755,9 +3765,13 @@ regression from this task, which owns reliability only.
        selections, positioned after "Test archive" (same diagnostic-command-ordering rule).
        Default and only mode is the deep/quarantine-expanded scan above — no separate
        shallow-mode menu entry.
-    2. **Archive Browser (T-F05/T-F97/T-F98)** — a scan action next to Extract Selected/Extract
-       All, scoped to the whole open archive or the current selection via the same
-       `ExtractOptions.SelectedEntryPaths` machinery T-F97/T-F98 already use.
+    2. **Archive Browser (T-F05/T-F97/T-F98)** — a scan action scoped to the whole open archive or
+       the current selection via the same `ExtractOptions.SelectedEntryPaths` machinery T-F97/T-F98
+       already use. **Relocated 2026-08-08** (user design feedback, real on-device screenshot):
+       originally placed as a third button next to Extract Selected/Extract All in Row 3; moved to
+       Row 0 next to "Про програму"/About instead, since it's a diagnostic action (same category as
+       "Test archive"), and users expect just the Extract pair in the row they already know from
+       every other archiver.
   - **Not in scope for this task (deferred, do not implement speculatively):**
     - A pre-commit auto-scan wired into every ordinary Extract (scanning quarantine contents
       before they're copied to the user's real destination, as an opt-in setting). Real idea,
@@ -3790,7 +3804,15 @@ regression from this task, which owns reliability only.
   - [x] Archive Browser entry point implemented (`MainViewModel.ScanArchiveFromBrowserCommand`,
         one combined button — scans the current selection if any is checked, else the whole open
         archive), scoped via `AntivirusScanOptions.SelectedEntryPaths`, localized across all 37
-        `Archiver.App` locale `.resw` files.
+        `Archiver.App` locale `.resw` files. **Real bug found 2026-08-08** (user screenshot: the
+        button was permanently disabled while browsing any ZIP): `CanScanArchiveFromBrowser()`
+        reads `IsBusy`/`BrowsedArchivePath`, but neither `[ObservableProperty]` field carried
+        `[NotifyCanExecuteChangedFor(nameof(ScanArchiveFromBrowserCommand))]` — the command's
+        `CanExecute` was never re-evaluated after either changed, so it stayed at its
+        construction-time (both-default, i.e. disabled) state forever. Fixed by adding the missing
+        attribute to `_isBusy`, `_isBrowsingArchive`, and `_browsedArchivePath` — same pattern
+        `ExtractAllFromBrowserCommand`/`ExtractSelectedFromBrowserCommand` already had, which is
+        why only the newer Scan command was affected.
   - [x] Three-state result dialog implemented — `Archiver.Shell`'s `RunScanAsync`/
         `ShowScanResults` (pattern: `RunHashAsync`/`ShowHashResults`) and `Archiver.App`'s
         `IDialogService.ShowThreatScanResultAsync` — never collapsing `Inconclusive` into `Clean`;

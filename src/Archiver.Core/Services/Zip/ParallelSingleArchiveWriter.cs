@@ -167,9 +167,32 @@ internal static class ParallelSingleArchiveWriter
         {
             // The inner pipeline already deletes every individual chunk file it created (see
             // RunPipelineAsync's own cleanup) — this just removes the now-empty per-operation
-            // folder itself. Best-effort: if something unexpected is still in there, leave it
-            // rather than risk deleting content that isn't ours.
-            try { Directory.Delete(chunkDirectory); } catch { /* best-effort */ }
+            // folder itself.
+            await TryDeleteEmptyDirectoryWithRetryAsync(chunkDirectory).ConfigureAwait(false);
+        }
+    }
+
+    // A single-attempt Directory.Delete here regularly left an empty ".pakko-tmp-..." folder
+    // behind next to the destination archive (real on-device report, 2026-08-08) — the same class
+    // of transient handle-open race T-F96/T-F141 already documented (AV real-time scanner, cloud-
+    // sync client, Search Indexer briefly touching a just-emptied folder). Three short-spaced
+    // attempts absorbs that window; if the folder is still gone after them, leave it rather than
+    // risk deleting content that isn't ours.
+    private static async Task TryDeleteEmptyDirectoryWithRetryAsync(string directoryPath)
+    {
+        const int maxAttempts = 3;
+        for (int attempt = 1; attempt <= maxAttempts; attempt++)
+        {
+            try
+            {
+                Directory.Delete(directoryPath);
+                return;
+            }
+            catch when (attempt < maxAttempts)
+            {
+                await Task.Delay(50 * attempt).ConfigureAwait(false);
+            }
+            catch { /* best-effort */ }
         }
     }
 
