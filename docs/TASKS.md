@@ -3924,7 +3924,8 @@ regression from this task, which owns reliability only.
 
 ### T-F149 — Raise SonarCloud `new_coverage` above the 81% Quality Gate margin
 
-- [ ] **Status:** in progress.
+- [x] **Status:** done 2026-08-08 — target reached via step 1 alone, step 2 turned out
+  unnecessary (see below).
 - **Context:** post-T-F147, the `new_coverage` Quality Gate condition (SonarCloud's own
   `Sonar way` default, `LT 80`) was failing at 76.8%. User asked explicitly for test coverage to
   reach 81% so the gate stops erroring.
@@ -3936,12 +3937,12 @@ regression from this task, which owns reliability only.
      accepted uncovered by design in T-F143), `Archiver.CLI/Program.cs` (tested via
      `Archiver.CLI.Tests`' `Subprocess/` layer, but `coverlet` cannot instrument a spawned child
      process). Documented in `docs/CONVENTIONS.md`'s new "SonarCloud Coverage Exclusions" section.
-  2. Real tests for the remaining genuinely-coverable gap, targeting the exact new-and-uncovered
-     line intersection from `api/sources/lines` (not local overall coverage, which mixes in
-     already-covered old code) in `TarSandboxedService.cs`, `ZipArchiveService.cs`,
-     `AntivirusScanService.cs`, `CliArgumentParser.cs`, `ArchiveFormatPolicy.cs`,
-     `AmsiScanner.cs`, and a handful of single-digit files.
-- **Verification:** push, confirm CI green, confirm a fresh SonarCloud analysis shows
-  `new_coverage >= 81` and the Quality Gate no longer errors on that condition.
+  2. Real tests for the remaining genuinely-coverable gap — **not needed**: a fresh SonarCloud
+     scan of the exclusion-only commit (`9fc6c1f`) already showed `new_coverage` at **86.3%**
+     and the Quality Gate flipping to `OK`, comfortably clearing both the 80% gate and the user's
+     81% target. Verified this before writing any tests, per plan, to avoid unnecessary work —
+     step 2 stays available as a real option if a future change narrows the margin again.
+- **Verification:** pushed, CI green, fresh SonarCloud analysis of `9fc6c1f` confirms
+  `new_coverage = 86.3` and Quality Gate `OK` on every condition.
 - **Reported by:** user, 2026-08-08 — "Доведи покриття тестами до 81 відсотка. Щоб сонар клоуд на
   те не лаївся."
