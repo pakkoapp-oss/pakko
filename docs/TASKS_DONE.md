@@ -3650,3 +3650,94 @@ standalone section was deleted rather than kept as a parallel, now-stale-questio
 **Why not archived as silently deleted:** this project's `CLAUDE.md` source-of-truth rule says
 never silently deprecate — this entry is that header note, applied to a task number instead of a
 document.
+
+---
+
+### T-F150 — Static Analyzers/Linters on Every Build, Every Language, With Mandatory Reaction
+
+- [x] **Status:** done 2026-08-10. CI run `31405002014` confirmed all three gates green
+  end-to-end: `test`, `lint-ps1` (0 PSScriptAnalyzer findings), `build-msix (x64)`, and
+  `build-msix (arm64)` (MSVC `/analyze` clean on the ARM64 v143 toolset this dev machine lacks
+  locally) all passed. User confirmed on-device the installed app still works correctly
+  post-Deploy.ps1.
+  **C++:** `/analyze` enabled on both `.vcxproj` files. First real run found 2 findings, both
+  fixed (not suppressed): `dllmain.cpp`'s `DllGetClassObject`/`DllCanUnloadNow` were missing SAL
+  annotations `combaseapi.h` declares for them (C28251) — added `_Check_return_`/`_In_`/
+  `_Outptr_`/`__control_entrypoint(DllExport)` to match exactly. The test project separately
+  found 292 `C6326` hits from vendored GoogleTest headers (excluded via `/external:I` +
+  `/analyze:external-`, not our code) plus 270 more from `EXPECT_*`/`ASSERT_*` macro expansion in
+  our own `*Tests.cpp` files (suppressed via `/wd6326`, scoped to the test project only — the
+  C++/GoogleTest equivalent of T-F137's `CA1707`-in-tests precedent) and one real bug
+  (`TestMain.cpp`'s `CoInitializeEx` return value silently ignored, C6031 — now
+  `ASSERT_TRUE(SUCCEEDED(hr))`). Gated: `Archiver.ShellExtension.vcxproj` dropped `/analyze:WX-`
+  once triaged to zero (it already had `TreatWarningAsError=true` for regular warnings); the test
+  project keeps `TreatWarningAsError=false` as before. x64 Debug+Release both rebuild clean (0
+  warnings, 0 errors), 100/100 C++ tests pass. ARM64 confirmed clean via CI's `build-msix` job
+  (pinned `windows-2022`, which has the ARM64 v143 toolset this dev machine lacks) — run
+  `31405002014`, `build-msix (arm64)` passed.
+  **C#:** re-measured first — count had already fallen from T-F137's 17 to 4
+  (`CA1001`/`CA1716`/`CA1826`/`CA1859`) via T-F138/T-F147/T-F148's unrelated work. `CA1826`/
+  `CA1859` fixed directly (indexer instead of `.FirstOrDefault()` in `MainViewModel.cs`;
+  `ConfigureServices()`'s return type narrowed to `ServiceProvider` in `App.xaml.cs`). `CA1001`/
+  `CA1716` suppressed with a documented reason (`MainViewModel._cts` disposal — re-affirms
+  T-F137's own review; `ILogService.Error`'s reserved-keyword clash — renaming breaks
+  `CLAUDE.md`'s documented public signature for no real benefit). `Directory.Build.props` gained
+  `TreatWarningsAsErrors=true`; **confirmed the gate actually fires** by temporarily introducing
+  an unused-variable warning, watching it fail the build with `CS0219`, then reverting. Full
+  `dotnet build`/`dotnet test --filter "Category!=Slow&Category!=VeryLarge"` green afterward (837
+  tests, 0 failures).
+  **PowerShell:** `Invoke-ScriptAnalyzer` against `scripts/*.ps1` found 64 findings, all
+  `Warning`-severity, none `Error`: 60 `PSAvoidUsingWriteHost` (excluded via a new
+  `scripts/PSScriptAnalyzerSettings.psd1` — these are interactive operator-facing scripts, not
+  reusable modules, so colored console feedback via `Write-Host` is correct, not an anti-pattern)
+  and 4 `PSUseBOMForUnicodeEncodedFile` on `CI-Build-Msix.ps1`/`Deploy.ps1`/`Publish-Cli.ps1`/
+  `Setup-DevCert.ps1` — **fixed, not suppressed**: these files contain non-ASCII characters
+  without a BOM, exactly the codepage-corruption risk class this project has already been bitten
+  by under `powershell.exe` 5.1 (T-F84) — prepended the 3-byte UTF-8 BOM at the byte level
+  (verified content otherwise byte-identical via `git diff`, and that it still decodes as valid
+  UTF-8 with the expected non-ASCII character counts). New `lint-ps1` job in
+  `.github/workflows/build.yml` runs `Invoke-ScriptAnalyzer` with the settings file and fails on
+  any remaining finding; `build-msix` now depends on it (`needs: [test, lint-ps1]`). Confirmed
+  0 findings both locally and in the real CI job run (`31405002014`, `lint-ps1`: success).
+  **Docs:** `docs/CONVENTIONS.md`'s SonarCloud-only Won't-Fix section retitled and extended with
+  a new C++ subsection (mirrors the C#/SonarCloud mechanism-selection framing already there);
+  `docs/DECISIONS.md` has the T-F150 supersession entry.
+- **Context:** T-F135 (SonarCloud, CI-only) and T-F137 (local .NET analyzer surfacing) already
+  exist, but neither is a build-time *gate* — T-F137 explicitly declined
+  `TreatWarningsAsErrors` ("a blanket flip now would fail the build on the next legitimate
+  finding with zero triage time built in"), and coverage was .NET-only: C++
+  (`Archiver.ShellExtension` + its Google Test project) and PowerShell (`scripts/*.ps1`,
+  `.github/workflows/*.yml` inline `run:` blocks) have zero static-analysis signal at all. User
+  explicitly asked for analyzers/linters to run on every build across every language this repo
+  uses, with mandatory reaction — i.e., this supersedes T-F137's deferral decision for C#, not
+  just adds new coverage. See `docs/DECISIONS.md`'s T-F150 entry for the supersession rationale.
+- **Mandatory reaction, defined:** a finding is either fixed, or suppressed with an inline
+  reason pointing at the owning task/rationale (same convention `docs/CONVENTIONS.md`'s
+  "Static-Analysis Won't-Fix Conventions" section already established, T-F147) — never silently
+  left as a visible-but-ignored warning. Once triaged to zero unaddressed findings, the relevant
+  build/CI step is gated (fails on a new finding) so this stays true going forward, not just at
+  triage time.
+- **Acceptance criteria:**
+  - [x] `docs/DECISIONS.md` has a T-F150 entry superseding T-F137's gating deferral
+  - [x] Both `Archiver.ShellExtension` `.vcxproj` files build with `/analyze` enabled; findings
+        triaged to zero unaddressed (fixed or suppressed-with-reason) — confirmed locally (x64
+        Debug+Release) and in CI (`build-msix (arm64)`, run `31405002014`)
+  - [x] C# analyzer warnings triaged to zero unaddressed; build gated (errors on a new finding,
+        empirically confirmed via a temporary probe) without breaking `dotnet build`/`dotnet test
+        --filter "Category!=Slow&Category!=VeryLarge"`
+  - [x] `PSScriptAnalyzer` runs in `.github/workflows/build.yml` (own job, `lint-ps1`, gating
+        `build-msix`) against `scripts/*.ps1`, fails on any finding not covered by a documented
+        exclusion in `scripts/PSScriptAnalyzerSettings.psd1` — stronger than the originally-planned
+        "`Error`-severity only" once the one reviewed idiom (`PSAvoidUsingWriteHost`) was excluded.
+        A separate job rather than a step inside `test`, so the SonarCloud upload step is
+        unaffected by construction. Confirmed in the real CI job run (`31405002014`).
+  - [x] `docs/CONVENTIONS.md` documents the suppression convention for all three languages
+  - [x] Full local verification: `dotnet build`, `dotnet test --filter
+        "Category!=Slow&Category!=VeryLarge"` (837 tests), and the C++ `.vcxproj`/test exe build
+        (100 tests) all green. Real CI run (`31405002014`) confirmed all three gates fire
+        correctly: `test`, `lint-ps1`, `build-msix (x64)`, `build-msix (arm64)`, `build-cli` all
+        succeeded.
+  - [x] User's own on-device confirmation — `Deploy.ps1` build+sign+install, user confirmed the
+        installed app works correctly, 2026-08-10.
+- **Reported by:** user, 2026-08-10 — "потрібен статичні аналізатори і лінтери при кожному білді
+  на кожну мову яку ми використовуємо із обов'язковою реакцією на них."

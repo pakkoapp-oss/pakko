@@ -655,7 +655,21 @@ failure — so a blocked/misconfigured sandbox would have crashed instead of yie
   "Category!=Slow&Category!=VeryLarge"`: 817/817 green across every commit; `dotnet build`: 0
   warnings, 0 errors. User confirmed on-device (`Deploy.ps1` v1.4.7.5, archive + extract round
   trip). See `docs/TASKS.md`'s T-F147 entry for the full fixed/suppressed/deferred breakdown.
-- Next work: Future tasks in `TASKS.md`, including new **T-F148** (SYSLIB1054 conversion, split
+- **T-F150 (`[x]` done 2026-08-10)** — static analyzers/linters now run on every build, for every
+  language in the repo, with mandatory reaction (fix or suppress-with-documented-reason, never
+  silently ignored). **C#:** `Directory.Build.props` gained `TreatWarningsAsErrors=true`
+  (supersedes T-F137's earlier deferral — see `docs/DECISIONS.md`'s T-F150 entry), after
+  triaging the 4 residual warnings (`CA1001`/`CA1716`/`CA1826`/`CA1859`) to zero. **C++:** MSVC
+  `/analyze` enabled on both `Archiver.ShellExtension` `.vcxproj` files; found and fixed 2 real
+  bugs (missing SAL annotations on `DllGetClassObject`/`DllCanUnloadNow`, an ignored
+  `CoInitializeEx` return value in the test project), plus documented suppressions for vendored
+  GoogleTest headers and macro-expansion noise. **PowerShell:** new `lint-ps1` CI job runs
+  `PSScriptAnalyzer` against `scripts/*.ps1` (`scripts/PSScriptAnalyzerSettings.psd1`), gating
+  `build-msix`; fixed 4 real missing-BOM files (same corruption class as T-F84). CI run
+  `31405002014` confirmed all gates green end-to-end, including the ARM64 `/analyze` leg this dev
+  machine can't build locally. User confirmed on-device. See `docs/TASKS_DONE.md`'s T-F150 entry
+  and `docs/CONVENTIONS.md`'s "Static-Analysis Won't-Fix Conventions" section.
+- Next work: Future tasks in `TASKS.md`, including **T-F148** (SYSLIB1054 conversion, split
   out of T-F147)
 
 ## Roadmap Summary
