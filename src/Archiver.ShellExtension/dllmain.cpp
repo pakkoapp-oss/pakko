@@ -63,7 +63,8 @@ BOOL WINAPI DllMain(HMODULE hModule, DWORD dwReason, LPVOID /*lpReserved*/)
 // Only PakkoRootCommand is registered in the manifest; other command classes
 // are instantiated internally by PakkoRootCommand::EnumSubCommands.
 // ---------------------------------------------------------------------------
-STDAPI DllGetClassObject(REFCLSID rclsid, REFIID riid, void** ppv)
+_Check_return_
+STDAPI DllGetClassObject(_In_ REFCLSID rclsid, _In_ REFIID riid, _Outptr_ void** ppv)
 {
     if (!ppv) return E_POINTER;
     *ppv = nullptr;
@@ -82,7 +83,8 @@ STDAPI DllGetClassObject(REFCLSID rclsid, REFIID riid, void** ppv)
 // DllCanUnloadNow \u2014 exported via .def file.
 // Returns S_OK when all WRL-tracked objects have been released.
 // ---------------------------------------------------------------------------
-STDAPI DllCanUnloadNow()
+__control_entrypoint(DllExport)
+STDAPI DllCanUnloadNow(void)
 {
     return Module<InProc>::GetModule().GetObjectCount() == 0 ? S_OK : S_FALSE;
 }

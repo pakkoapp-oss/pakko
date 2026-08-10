@@ -84,7 +84,19 @@
       <!-- T-F115: matches Archiver.ShellExtension.vcxproj's own /utf-8 flag - this project also
            compiles Localization.cpp directly (see the ClCompile Include below), so it needs the
            same non-BOM-UTF-8-source fix. -->
-      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+      <!-- T-F150: same MSVC static analyzer as Archiver.ShellExtension.vcxproj — see that
+           project's own comment and docs/DECISIONS.md's T-F150 entry. TreatWarningAsError is
+           already false here, so /analyze:WX- isn't load-bearing, but kept for consistency.
+           /external:I + /analyze:external- excludes the vendored GoogleTest NuGet package's own
+           headers from analysis (its own internals tripped C6326 292 times). /wd6326 additionally
+           suppresses C6326 ("comparison of a constant with another constant") repo-wide within
+           THIS test project only — every EXPECT_TRUE/EXPECT_FALSE/EXPECT_EQ/ASSERT_EQ call
+           against a literal expands into exactly that shape (270 hits across every *Tests.cpp
+           file, confirmed not a real defect by inspection), the same class of test-framework-
+           inherent noise T-F137 already silenced for CA1707 in C# test files — see
+           docs/CONVENTIONS.md's "SonarCloud/Static-Analysis Won't-Fix Conventions" section. Not
+           applied to Archiver.ShellExtension.vcxproj itself, which has no test macros. -->
+      <AdditionalOptions>/utf-8 /analyze /analyze:WX- /analyze:external- /external:I "$(SolutionDir)packages" /wd6326 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

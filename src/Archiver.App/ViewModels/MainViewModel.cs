@@ -31,6 +31,12 @@ public enum ArchiveBrowseScope
     ThisPc,
 }
 
+// CA1001 (owns disposable field '_cts', isn't itself disposable): reviewed T-F137, re-reviewed
+// T-F150 — every use already disposes _cts in a finally block; the only real leak window is the
+// ViewModel itself being torn down mid-operation, which this app's single-window WinUI lifecycle
+// never does. Adding IDisposable/Dispose() here would be dead code with no caller, not a real
+// fix — see docs/CONVENTIONS.md's "Static-Analysis Won't-Fix Conventions" section.
+#pragma warning disable CA1001
 public sealed partial class MainViewModel : ObservableObject
 {
     private static readonly ResourceLoader _res = ResourceLoader.GetForViewIndependentUse();
@@ -1167,7 +1173,7 @@ public sealed partial class MainViewModel : ObservableObject
             if (!result.Success || result.CreatedFiles.Count == 0)
             {
                 await _dialogService.ShowErrorAsync("Error",
-                    result.Errors.FirstOrDefault()?.Message ?? _res.GetString("StatusIssues"));
+                    (result.Errors.Count > 0 ? result.Errors[0] : null)?.Message ?? _res.GetString("StatusIssues"));
                 return;
             }
 
@@ -1332,3 +1338,4 @@ public sealed partial class MainViewModel : ObservableObject
         AddPaths(paths);
     }
 }
+#pragma warning restore CA1001

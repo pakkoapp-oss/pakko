@@ -314,7 +314,7 @@ downstream service calls. Do not add path content checks to `ShellArgumentParser
 
 ---
 
-## SonarCloud Won't-Fix Conventions
+## Static-Analysis Won't-Fix Conventions (SonarCloud, MSVC `/analyze`)
 
 These rule categories are **intentionally left unaddressed** in this codebase — not oversights.
 Which suppression mechanism to use depends on **which engine reports the rule** — get this wrong
@@ -373,6 +373,34 @@ Won't-fix categories recorded so far:
 `Archiver.Core/Services/Sandbox/`) is deferred, not won't-fix** — it needs its own focused pass
 with its own design-first review and full sandbox test run (security-critical native interop),
 not a mechanical batch conversion inside an unrelated triage task. Tracked as **T-F148**.
+
+### C++ (`Archiver.ShellExtension`): MSVC `/analyze`, T-F150
+
+Enabled repo-wide (both `.vcxproj` files) via `/analyze` in `AdditionalOptions` — see each
+project's own comment block for the exact flags. Unlike SonarCloud's per-line
+`NOSONAR`/`#pragma warning disable`, MSVC static-analysis suppressions here are project-scoped
+compiler flags, since native `/analyze` findings don't support a source-level per-finding
+suppression comment the way C#'s two mechanisms above do (`#pragma warning(disable: NNNN)`
+exists but scoping it around every macro-expanded assertion individually isn't practical — see
+below).
+
+- **C6326 ("comparison of a constant with another constant") suppressed via `/wd6326`, scoped to
+  `Archiver.ShellExtension.Tests.vcxproj` only, never the main `Archiver.ShellExtension.vcxproj`
+  DLL project:** every `EXPECT_TRUE`/`EXPECT_FALSE`/`EXPECT_EQ`/`ASSERT_EQ` call against a literal
+  expands into exactly this shape (270 hits across every `*Tests.cpp` file on first run) — the
+  C++/GoogleTest equivalent of C#'s `CA1707`-in-tests precedent above (test-framework-inherent
+  noise, not a defect), inspected and confirmed not a real bug before suppressing.
+- **The vendored GoogleTest NuGet package's own headers** (`gtest-internal.h`,
+  `gtest-param-util.h`, `gtest-port.h` under `packages/Microsoft.googletest...`) are excluded from
+  analysis entirely via `/external:I "$(SolutionDir)packages" /analyze:external-`, rather than
+  suppressed by warning code — this is third-party vendored code we don't own and can't fix, the
+  same reasoning `SECURITY.md` already applies to the vendored `7za.exe` test dependency (T-F114).
+- Real findings **were** fixed, not suppressed: `dllmain.cpp`'s `DllGetClassObject`/
+  `DllCanUnloadNow` were missing the SAL annotations (`_Check_return_`/`_In_`/`_Outptr_`/
+  `__control_entrypoint`) that `combaseapi.h` declares for them (C28251) — added to match the SDK
+  exactly. `TestMain.cpp`'s `CoInitializeEx` return value was silently ignored (C6031) — now
+  asserted via `ASSERT_TRUE(SUCCEEDED(hr))`, a real (if low-probability) correctness gap in the
+  test fixture itself, not framework noise.
 
 A rule not in this list that gets flagged and reasoned through as a genuine won't-fix should be
 added here at the same time its suppression marker is added — that's the whole point (see

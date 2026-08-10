@@ -20,7 +20,8 @@ class ComEnvironment : public ::testing::Environment
 public:
     void SetUp() override
     {
-        CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+        const HRESULT hr = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+        ASSERT_TRUE(SUCCEEDED(hr));
     }
 
     void TearDown() override

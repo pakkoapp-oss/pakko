@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
     CI-only build+sign of the Pakko MSIX package. No install, no version bump.

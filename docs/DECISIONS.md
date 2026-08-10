@@ -6808,3 +6808,44 @@ one report, at 100%, at the end) now reports real intermediate percentages as ea
 New regression test `AntivirusScanServiceTests.ScanAsync_SingleArchiveWithMultipleEntries_
 ReportsRealIntermediateProgress` asserts at least one report lands strictly between 0 and 100 for a
 4-entry single archive — the exact gap the user identified.
+
+---
+
+## T-F150 — Superseding T-F137's `TreatWarningsAsErrors` Deferral (2026-08-10)
+
+### What T-F137 decided, and why it's being reversed
+
+T-F137 added `Directory.Build.props` (`AnalysisLevel=latest-recommended` +
+`EnforceCodeStyleInBuild`), surfacing built-in .NET analyzer diagnostics during a plain
+`dotnet build`. It explicitly declined to gate the build on them: "17 warnings is a small enough
+surface that a future task can revisit promoting Security/Reliability-tagged rules once their
+steady-state count is known; a blanket flip now would fail the build on the next legitimate
+finding with zero triage time built in." That was a reasonable call at the time — no triage
+budget existed in that task's scope.
+
+T-F150 supersedes that deferral directly, by explicit user request ("потрібен статичні
+аналізатори і лінтери при кожному білді на кожну мову яку ми використовуємо із обов'язковою
+реакцією на них" — static analyzers/linters on every build, every language used, with mandatory
+reaction to findings), not because a new technical fact invalidated T-F137's reasoning. The
+triage budget T-F137 said it lacked is this task's explicit scope. Recorded here per this
+project's own rule that a reversed decision needs a `DECISIONS.md` entry, not just a new
+`TASKS.md` item that quietly does the opposite of a prior one — otherwise a future session
+re-reads T-F137 alone and re-defers the same gate.
+
+### Scope beyond C#
+
+T-F137 was .NET-only. This task also covers C++ (`Archiver.ShellExtension` +
+`Archiver.ShellExtension.Tests`, zero static-analysis signal before this task — MSVC `/analyze`)
+and PowerShell (`scripts/*.ps1`, no compiled build step, so gated via a new CI step instead —
+`PSScriptAnalyzer` in `.github/workflows/build.yml`). XAML and Markdown are explicitly excluded —
+neither has a natural "reacts on build" hook in this repo's tooling. See `docs/TASKS.md`'s T-F150
+entry for the acceptance criteria and per-language build-vs-CI distinction.
+
+### Ordering, so the C# flag flip doesn't repeat T-F137's own warning
+
+Flipping `TreatWarningsAsErrors` (or a scoped `WarningsAsErrors`) before triaging the live warning
+set fails the build on the very next legitimate finding — the exact risk T-F137 already named.
+This task re-measures the current warning count first (it may have drifted from T-F137's 17 since
+T-F138/T-F147/T-F148 landed), fixes or suppresses each with a documented reason, then gates.
+C++'s `/analyze` is enabled first regardless, since it starts from zero signal and can only add
+value — no existing warning set to destabilize.

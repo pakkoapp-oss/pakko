@@ -6,6 +6,16 @@
   <PropertyGroup>
     <AnalysisLevel>latest-recommended</AnalysisLevel>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <!-- T-F150: T-F137 deliberately deferred this ("a blanket flip now would fail the build on
+         the next legitimate finding with zero triage time built in") until its live warning count
+         was known and small. That triage happened here: the count had already fallen from 17 to 4
+         since T-F137 (T-F138/T-F147/T-F148 fixed the rest along the way), and the remaining 4
+         (CA1001, CA1716, CA1826, CA1859) were each fixed or suppressed-with-reason (see
+         docs/CONVENTIONS.md's "Static-Analysis Won't-Fix Conventions" section and
+         docs/DECISIONS.md's T-F150 entry). A `dotnet_diagnostic.*.severity = none` override in
+         .editorconfig (CA1305/CA1707/CA1805) is unaffected by this flag — a suppressed diagnostic
+         is never emitted, so there's nothing for TreatWarningsAsErrors to promote. -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
 
 </Project>

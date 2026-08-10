@@ -23,7 +23,7 @@ public partial class App : Application
         Services = ConfigureServices();
     }
 
-    private static IServiceProvider ConfigureServices()
+    private static ServiceProvider ConfigureServices()
     {
         var services = new ServiceCollection();
 

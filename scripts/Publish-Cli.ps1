@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
     Publishes Archiver.CLI as a standalone, self-contained downloadable artifact.

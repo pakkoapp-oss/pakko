@@ -81,7 +81,12 @@
            string table) using the system ANSI codepage instead of UTF-8, silently corrupting
            every non-ASCII literal (confirmed empirically: cp1251 misreading turned "Д" (U+0414)
            into "Р"+U+201D). Equivalent to /source-charset:utf-8 /execution-charset:utf-8. -->
-      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+      <!-- T-F150: MSVC static analyzer (PREfast, C6xxx diagnostics) on every build, gated the same
+           way as regular compiler warnings (Level4/TreatWarningAsError=true above). First real run
+           found 2 findings (C28251, missing SAL annotations on DllGetClassObject/DllCanUnloadNow
+           vs. combaseapi.h's declared ones) — fixed by matching the SDK's own annotations, not
+           suppressed. See docs/DECISIONS.md's T-F150 entry. -->
+      <AdditionalOptions>/utf-8 /analyze %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>

@@ -174,8 +174,35 @@ jobs:
           & "tests\Archiver.ShellExtension.Tests\bin\x64\Debug\Archiver.ShellExtension.Tests.exe"
           if ($LASTEXITCODE -ne 0) { throw "Archiver.ShellExtension.Tests failed (exit $LASTEXITCODE)" }
 
+  # T-F150: PowerShell has no compiled build step, so its static-analysis gate lives here instead
+  # of inside a .vcxproj/.csproj (see docs/DECISIONS.md's T-F150 entry). No dependency on `test` —
+  # this is fast and independent, so it runs in parallel rather than waiting.
+  lint-ps1:
+    runs-on: windows-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Ensure PSScriptAnalyzer is available
+        shell: pwsh
+        run: |
+          if (-not (Get-Module -ListAvailable -Name PSScriptAnalyzer)) {
+            Install-Module -Name PSScriptAnalyzer -Force -Scope CurrentUser -SkipPublisherCheck
+          }
+
+      - name: Run PSScriptAnalyzer against scripts/*.ps1
+        shell: pwsh
+        run: |
+          $results = Invoke-ScriptAnalyzer -Path scripts -Recurse -Settings scripts\PSScriptAnalyzerSettings.psd1
+          if ($results.Count -gt 0) {
+            $results | Format-Table -AutoSize | Out-String | Write-Output
+            throw "PSScriptAnalyzer found $($results.Count) finding(s) in scripts/*.ps1 — fix or add a documented exclusion to scripts\PSScriptAnalyzerSettings.psd1."
+          }
+          Write-Output "PSScriptAnalyzer: 0 findings."
+
   build-msix:
-    needs: test
+    needs: [test, lint-ps1]
     if: github.event_name == 'push'
     runs-on: windows-2022
     strategy:
