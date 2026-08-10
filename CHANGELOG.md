@@ -10,6 +10,41 @@ the technical account of any task named here.
 
 ---
 
+## v1.4.8 — 2026-08-10
+
+Security feature + code-quality release — AMSI-based threat scanning for archives, a large
+SonarCloud triage/refactor pass, and mandatory static-analysis gating for every language in the
+repo.
+
+- **T-F146** — new "Scan for threats" action for archives (Explorer context menu + Archive
+  Browser), via AMSI (`amsi.dll`) — works with whatever antivirus/EDR is registered on the
+  machine, no elevation required. ZIP entries scan entirely in memory; tar-family archives reuse
+  the existing AppContainer sandbox up through the quarantine stage only (no extraction to
+  destination). Reports `Inconclusive` rather than a false "clean" when no AMSI provider is
+  registered. Localized across all 37 locales. Two same-day follow-up fixes: the Scan button's
+  enabled state wasn't being re-evaluated (stayed permanently disabled), and the button was moved
+  next to About instead of crowding the Extract Selected/Extract All pair — it's a diagnostic
+  action, not a primary one.
+- **T-F147** — triaged the SonarCloud findings backlog (134 issues) down to 44 (42 deferred as
+  their own task, 2 accepted TODOs) — every real cognitive-complexity hotspot was refactored,
+  including `ZipArchiveService.ArchiveAsync` (was the single highest-complexity method in the
+  whole report). Also fixed a temp-folder cleanup bug found the same week: a hidden per-operation
+  chunk folder was regularly left behind, empty, after archiving, due to an unretried delete
+  losing a transient file-lock race (antivirus/cloud-sync/Search Indexer) — now retries.
+- **T-F149** — raised automated test coverage on new code to clear SonarCloud's Quality Gate
+  (86.3%, comfortably above the 80% threshold) by excluding a handful of files that are
+  structurally unreachable by the test runner (real Explorer-launching side effects, a spawned
+  child process's own entry point) rather than writing tests that could only exercise a mock.
+- **T-F150** — static analyzers and linters now run on every build, for every language in the
+  repo (C#, C++, PowerShell), each gated to fail the build/CI on any new, undocumented finding.
+  Found and fixed 2 real bugs along the way: two COM entry points in the shell extension were
+  missing SAL annotations the Windows SDK declares for them, and a test helper was silently
+  ignoring a COM initialization failure. Also fixed 4 PowerShell deploy/build scripts that were
+  missing a UTF-8 byte-order mark, the same encoding-corruption risk class an earlier release
+  (T-F84) had already been bitten by once.
+
+---
+
 ## v1.4.7 — 2026-08-04
 
 Feature + bug-fix release — real progress reporting for archive creation and extraction, plus a
