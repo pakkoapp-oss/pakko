@@ -3972,3 +3972,46 @@ regression from this task, which owns reliability only.
   `new_coverage = 86.3` and Quality Gate `OK` on every condition.
 - **Reported by:** user, 2026-08-08 — "Доведи покриття тестами до 81 відсотка. Щоб сонар клоуд на
   те не лаївся."
+
+---
+
+### T-F152 — VirusTotal Hash Lookup Link in Archive Browser (deferred — rejected as-scoped)
+
+- [~] **Status:** deferred 2026-08-10, user-directed — **not implemented, kept as a real backlog
+  entry rather than silently dropped.**
+- **Context:** user proposed replacing (or adding alongside) the Archive Browser's per-entry CRC32
+  column with a SHA256/MD5 value, shown as a clickable link that opens
+  `virustotal.com/gui/file/<hash>` in the user's default browser — hash-only lookup, no file
+  upload, nothing sent from Pakko's own code (`Launcher.LaunchUriAsync`, the same mechanism
+  already used for the About dialog's GitHub/Ko-fi/Privacy links). Later refined during scoping:
+  keep CRC32 as-is (it's free — already read from the ZIP header, zero extra compute), and only
+  compute SHA256/MD5 on an explicit double-click (opens the link), with a single click copying the
+  hash to the clipboard instead — so the cost only exists at the moment a user asks for it, not on
+  every browse.
+- **Why deferred, not designed further this round:** the real blocker isn't the UI or the compute
+  cost — both are solvable (the double-click/single-click split, and SHA256 needing a real
+  recompute since it isn't already available like CRC32 is, especially costly for tar-family
+  entries which would need the same quarantine/sandbox path a real Extract uses). The blocker is
+  that Pakko's published Privacy Policy (`docs/privacy.html`), `SECURITY.md`, and `README.md` all
+  currently make an unqualified claim: "Pakko does not make any network requests... does not
+  integrate with any third-party services." A VirusTotal link is not a network call *from Pakko's
+  own code* — it opens the user's own browser, the user's own click, the user's own hash — but
+  Pakko's specific audience (Ukrainian government/defense, per `CLAUDE.md`'s stated positioning)
+  chose this app partly *because of* that unqualified "zero network" claim, and a third-party-
+  service link risks reading as a quiet walk-back of that promise even though it's technically
+  accurate that the app itself stays offline. Asked the user whether to draft an explicit, honest
+  carve-out for the Privacy Policy/SECURITY.md/README ("Pakko does not make network requests,
+  except when you explicitly click a VirusTotal link, which opens your own browser") before
+  writing any UI code — **user's answer: leave the policy text as-is; don't implement this
+  feature.** Recorded here as the actual decision, not as an open question, so this isn't
+  re-litigated from scratch in a future session without this context.
+- **If ever revisited:** this is not a "come back once you've done more design work" deferral —
+  it's a "the user weighed the tradeoff and chose the current unqualified policy text over this
+  feature" deferral. Revisiting it means asking the user again whether that tradeoff has changed
+  (e.g. if a herметичний, hash-only VirusTotal *file-scan* extension of the existing sandboxed
+  AMSI scanning is what's wanted instead — see the CI-side "upload release artifacts to VirusTotal"
+  idea floated in the same conversation, which is a different, also-deferred idea about signing
+  releases, not this per-entry Archive Browser feature).
+- **Reported by:** user, 2026-08-10 — floated the idea, then explicitly declined once the Privacy
+  Policy conflict was surfaced: "ні нехай буде як є просто додай беклог як і рішення по цьому."
+- **Depends on:** none

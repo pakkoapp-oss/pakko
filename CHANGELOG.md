@@ -10,6 +10,22 @@ the technical account of any task named here.
 
 ---
 
+## v1.4.9 — 2026-08-10
+
+Small follow-up to v1.4.8's antivirus scanning — raises the per-entry size limit and improves
+progress feedback for large scans.
+
+- **T-F151** — the "Scan for threats" size cap was raised from 64 MiB to 256 MiB per entry. An
+  empirical spike compared AMSI's real disk-streaming mechanism (`IAmsiStream`) against the
+  simpler, already-shipped buffer-based call against the actual registered antivirus provider —
+  the streaming approach turned out to fail above ~16-20 MiB in practice, while the existing
+  method scanned real content up to 256 MiB with no error, so the existing mechanism was kept and
+  its limit raised instead. Scan progress now also shows the name of the specific file being
+  scanned (not just the containing archive), since a single large entry's scan can now take
+  several seconds.
+
+---
+
 ## v1.4.8 — 2026-08-10
 
 Security feature + code-quality release — AMSI-based threat scanning for archives, a large

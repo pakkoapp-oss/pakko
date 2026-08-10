@@ -3741,3 +3741,59 @@ document.
         installed app works correctly, 2026-08-10.
 - **Reported by:** user, 2026-08-10 — "потрібен статичні аналізатори і лінтери при кожному білді
   на кожну мову яку ми використовуємо із обов'язковою реакцією на них."
+
+---
+
+### T-F151 — Raise Antivirus Scan Entry Size Cap (256 MiB, via Phase 0 Spike)
+
+- [x] **Status:** done 2026-08-10. Agent-driven smoke test (user-directed substitute for a
+  personal click-through, ahead of a Store submission): launched the real installed
+  `Archiver.Shell.exe --scan` against two freshly-built ZIP fixtures. A 100 MiB entry (above the
+  old 64 MiB cap) scanned cleanly — real dialog text "У цьому архіві загроз не виявлено." — and a
+  300 MiB entry (above the new 256 MiB cap) correctly reported "Entry is larger than 256 MiB and
+  was not scanned." — confirming the new limit is a real, exact boundary, not a disabled check.
+  Raised `AntivirusScanService.MaxScannableEntryBytes` from 64 MiB to 256 MiB. A Phase 0 empirical
+  spike (throwaway console probe, not committed) tested the alternative — real `IAmsiStream`/
+  `IAntimalware::Scan` COM streaming (per-position `Read()` callbacks, no whole-file memory
+  buffer) — against the actual registered Defender AMSI provider, and found it fails above
+  ~16-20 MiB on this machine, while the existing, already-shipped `AmsiScanBuffer` call scanned
+  real on-disk content up to 256 MiB with no error. The simpler mechanism already in production
+  beat the theoretically more scalable one, so streaming was not adopted. See
+  `docs/DECISIONS.md`'s T-F151 entry for the full spike account.
+  Bundled fix: `ScanAsync`'s progress-reporting delegates now carry the entry name being scanned
+  (`ProgressReport.CurrentFile`), not just the containing archive's path, and report at the START
+  of each entry's scan (not just completion) — with the raised cap, a single entry's
+  `AmsiScanBuffer` call can now run for several real seconds, and the old per-archive-only display
+  would have looked frozen for that whole span.
+  `dotnet test tests/Archiver.Core.Tests`: 472/472 (the existing oversized-entry test already
+  reads `MaxScannableEntryBytes + 1` rather than a hardcoded number, so it covers the new boundary
+  with zero test changes). `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` green
+  repo-wide except one pre-existing, already-documented `Archiver.Core.IntegrationTests` flake
+  (passed cleanly in isolation and in a full project rerun) — not a regression.
+- **Context:** user asked, after T-F150's CI confirmation, whether the AMSI 64 MiB cap from
+  T-F146 could be raised, specifically floating `IAmsiStream`'s disk-streaming mechanism as a way
+  to remove the cap entirely. The spike above answered that concretely rather than by assumption.
+- **What:**
+  - `src/Archiver.Core/Services/AntivirusScanService.cs`: `MaxScannableEntryBytes` 64 MiB →
+    256 MiB; `ScanAsync`/`ScanZipArchiveAsync`/`ScanTarArchiveAsync`/`ScanExtractedFilesAsync`'s
+    progress callbacks widened to also carry the current entry path.
+  - `SECURITY.md`: updated the "Size limit" paragraph to state 256 MiB and reference the spike,
+    instead of the old "64 MiB, not solved further" framing.
+  - `docs/DECISIONS.md`: new T-F151 entry with the full spike methodology and numbers.
+- **Acceptance criteria:**
+  - [x] `MaxScannableEntryBytes` raised to an empirically-verified value (256 MiB), not a guessed
+        number
+  - [x] `IAmsiStream` streaming evaluated via a real Phase 0 spike against the real registered
+        provider, not assumed superior by design — found inferior in practice, decision recorded
+  - [x] Progress reporting shows the actual entry being scanned, not just the archive path, for
+        the now-more-likely case of a multi-second single-entry scan
+  - [x] `SECURITY.md` updated to match the new limit and cite the spike
+  - [x] `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` green repo-wide (one
+        pre-existing documented flake excepted, reconfirmed passing in isolation)
+  - [x] `Deploy.ps1` build+sign+install succeeded (v1.4.8.0)
+  - [x] On-device verification — agent-driven, user-directed: a 100 MiB entry (above the old
+        64 MiB cap) scanned successfully through the real installed app; a 300 MiB entry (above
+        the new 256 MiB cap) correctly reported oversized-and-skipped, confirming the exact new
+        boundary
+- **Reported by:** user, 2026-08-10 — "ок підемо цим шляхом 256 ліміт підвищим."
+- **Depends on:** T-F146 (AMSI scanning itself)

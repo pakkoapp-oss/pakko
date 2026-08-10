@@ -1099,8 +1099,16 @@ public sealed partial class MainViewModel : ObservableObject
                     : null,
             };
 
-            StatusMessage = _res.GetString("ScanResultDialogTitle");
-            var progress = new Progress<ProgressReport>(r => Progress = r.Percent);
+            string scanningLabel = _res.GetString("ScanResultDialogTitle");
+            StatusMessage = scanningLabel;
+            // T-F151: r.CurrentFile now names the actual entry being scanned (not just the
+            // archive path) — surfacing it here matters more now that a single large entry's
+            // AmsiScanBuffer call can run for several real seconds under the raised 256 MiB cap.
+            var progress = new Progress<ProgressReport>(r =>
+            {
+                Progress = r.Percent;
+                StatusMessage = r.CurrentFile is null ? scanningLabel : $"{scanningLabel} — {r.CurrentFile}";
+            });
 
             var result = await _antivirusScanService.ScanAsync(options, progress, _cts.Token);
             _logService.Info($"Scan completed — {BrowsedArchivePath} — {result.OverallVerdict}");

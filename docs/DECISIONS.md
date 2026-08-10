@@ -6849,3 +6849,122 @@ This task re-measures the current warning count first (it may have drifted from 
 T-F138/T-F147/T-F148 landed), fixes or suppresses each with a documented reason, then gates.
 C++'s `/analyze` is enabled first regardless, since it starts from zero signal and can only add
 value — no existing warning set to destabilize.
+
+---
+
+## T-F151 — Antivirus Scan Entry Size Cap Raised (Phase 0 Spike: `IAmsiStream` Streaming vs. `AmsiScanBuffer`, 2026-08-10)
+
+**Context.** T-F146's `AntivirusScanService.MaxScannableEntryBytes` was set to 64 MiB as a
+"deliberately conservative first-pass constant, not AMSI's own documented buffer limit (none is
+published)." The user asked whether that ceiling could be raised, and specifically whether AMSI's
+real streaming mechanism (`IAmsiStream`, a COM interface the caller implements so the provider
+pulls bytes on demand instead of the caller buffering the whole entry) would let large entries be
+scanned directly from disk with no size cap at all.
+
+**Phase 0 spike, before any production code changed.** A throwaway console probe (not committed —
+scratchpad only) verified, against the actual GUIDs in the real Windows SDK `amsi.h`
+(`IID_IAntimalware = 82d29c2e-...`, `CLSID_Antimalware = fdb00e52-...`, `IID_IAmsiStream =
+3e47f2e5-...`) and Microsoft's own published `AmsiStream` sample
+(`microsoft/Windows-classic-samples/Samples/AmsiStream`):
+
+1. `CoCreateInstance(CAntimalware)` succeeds non-elevated on this dev machine (matches
+   `AmsiInitialize`'s own already-confirmed non-elevated behavior from T-F146).
+2. A memory-backed `IAmsiStream` correctly round-trips small clean/EICAR content through the real
+   registered provider ("Антивірус для Microsoft Defender" — Defender itself, confirmed by
+   `IAntimalwareProvider::DisplayName`), proving the COM plumbing (marshaling, the two-phase
+   `GetAttribute` size-probe protocol, `IAmsiStream::Read`) is correctly wired.
+3. A real on-disk, `RandomAccess.Read`-backed `IAmsiStream` (never holding the whole file in a
+   managed byte array) works up to 16 MiB, then **fails with an unexplained `ArgumentException`
+   ("Value does not fall within the expected range") on every size from 20 MiB up through 200
+   MiB** — the failure happens before the probe's own `Read()` callback is even invoked, so it is
+   not a bug in the probe's stream implementation; it is a real ceiling in this environment's COM
+   marshaling/provider path for the streaming mechanism specifically.
+4. The SAME sizes, run through the **existing, already-shipped** `AmsiScanBuffer` call
+   (`AntivirusScanService`'s real production path) instead, scanned successfully with no error at
+   every size tested, up to and including 256 MiB.
+
+**Decision: raise `MaxScannableEntryBytes` to 256 MiB; do not adopt `IAmsiStream` streaming.**
+The theoretically more scalable mechanism (no whole-file memory buffer) turned out to have a
+*lower* real ceiling than the simpler mechanism already in production, on the one real provider
+available to test against. Building a new COM streaming layer would have added real surface
+(marshaling code, a new failure mode, more to review for a security-sensitive path) while
+performing *worse* than what already exists. 256 MiB was chosen as the empirically-verified
+number (not "some safety margin below the failure point") — the spike proved this exact value
+works, not a range estimated around it. If a future need arises for content genuinely larger than
+256 MiB, the honest options are: re-run this exact spike with a higher ceiling to find where
+`AmsiScanBuffer` itself actually breaks (never located in this session — 256 MiB was simply the
+largest size tested, not a discovered limit), or revisit `IAmsiStream` on a different machine/
+provider to see if the 16-20 MiB streaming ceiling is provider-specific rather than a fundamental
+AMSI constraint. Neither was pursued speculatively here.
+
+**Progress display fix bundled with the size raise.** Raising the cap makes single-entry scans
+that can run for several real seconds (one atomic `AmsiScanBuffer` call, no mid-call callback)
+much more likely in practice. `AntivirusScanService.ScanAsync`'s progress-reporting delegates were
+widened from `Action<int, int>` (entriesDone/entriesTotal only) to `Action<string?, int, int>` so
+`ProgressReport.CurrentFile` shows the actual entry name being scanned, not just the containing
+archive's path — the same "which specific thing is happening right now" gap T-F140 fixed for
+archive-creation progress. A progress report is now emitted at the START of each entry's scan
+(previously only at completion), so the UI advances to the new entry immediately instead of
+appearing frozen on the prior entry's percentage for the whole duration of a large scan.
+
+**Verification:** `dotnet build src/Archiver.Core` clean; `dotnet test tests/Archiver.Core.Tests`
+472/472 (unchanged from before this task — no new tests added, since the existing
+`AntivirusScanServiceTests`'s oversized-entry test already reads
+`AntivirusScanService.MaxScannableEntryBytes + 1` rather than a hardcoded byte count, so it
+automatically covers the new 256 MiB boundary with zero test changes needed);
+`dotnet test --filter "Category!=Slow&Category!=VeryLarge"` green repo-wide except one
+`Archiver.Core.IntegrationTests` failure that passed cleanly both in isolation and in a full
+project-level rerun — the pre-existing, already-documented AppContainer/Job-Object parallel-test-
+execution flakiness (see this file's "Known test gaps" section in `CLAUDE.md`), not a regression
+from this change.
+
+---
+
+## T-F152 — VirusTotal Hash Lookup Link Rejected: Conflicts With the "Zero Network" Privacy Claim (2026-08-10)
+
+**The idea.** Replace/extend the Archive Browser's CRC32 column with a SHA256/MD5 hash, shown as
+a link that opens VirusTotal's hash-lookup page (`virustotal.com/gui/file/<hash>`) in the user's
+own browser on double-click, with single-click copying the hash to clipboard instead. No file
+upload — hash-only lookup — and no network call from Pakko's own code; the app just builds a URL
+string and hands it to `Launcher.LaunchUriAsync`, exactly the mechanism the About dialog's GitHub/
+Ko-fi/Privacy Policy links already use.
+
+**Why this is not "free" the way CRC32 is.** CRC32 in the Archive Browser today is read straight
+from the ZIP entry's own header (`ZipArchiveService.ListEntriesAsync`, `e.Crc32`) — zero extra
+compute, it's metadata Pakko already has. SHA256 is not part of a ZIP entry's header at all; it
+would need a real hash computation over the entry's decompressed bytes, and for tar-family
+archives specifically, that means running the same `TarSandboxScope` AppContainer quarantine
+extraction T-F146's antivirus scan already uses, not something free to get. The double-click-to-
+compute / single-click-to-copy split the user proposed correctly scopes this cost to only the
+moment a user actually wants it, rather than on every browse — a sound design if this were built.
+
+**The actual blocker: not compute cost, not UI complexity — the published Privacy Policy.**
+`docs/privacy.html` (linked from the app's own About dialog and from the Microsoft Store listing),
+`SECURITY.md`, and `README.md` all currently state, unqualified: "Pakko does not make any network
+requests... does not integrate with any third-party services... operates entirely offline." A
+VirusTotal link is technically consistent with the *letter* of that claim — the network request
+happens in the user's own browser, triggered by the user's own explicit click, sending only a hash
+the user chose to look up, never a byte of file content, and Pakko's own process makes no network
+call. But this project's stated audience (`CLAUDE.md`: "Ukrainian government/defense — trust,
+auditability, minimal attack surface") plausibly chose Pakko specifically *because of* that
+unqualified zero-network claim, and a link to a third-party service — however hash-only and
+however user-initiated — risks reading as a quiet erosion of that promise, not a technicality a
+security-conscious user is obligated to parse charitably.
+
+**What was offered, and the user's actual answer.** Before writing any UI code, the user was asked
+whether to draft an explicit, honest carve-out for the Privacy Policy/SECURITY.md/README (e.g.
+"Pakko does not make network requests, except when you explicitly click a VirusTotal link, which
+opens your own browser") so the feature could ship truthfully rather than by omission. **The
+user's answer was not "yes, draft it" — it was "leave the policy text as-is; don't implement
+this feature."** That is the actual decision: the current unqualified "zero network" positioning
+was chosen over this feature, not merely deferred pending more design work. See `docs/TASKS.md`'s
+T-F152 entry for the full account and what it would take to legitimately revisit this later.
+
+**Separately floated, also not pursued this session:** an unrelated idea — uploading Pakko's own
+*released* build artifacts (the MSIX/CLI zips CI produces) to VirusTotal as a CI step, then
+linking the resulting scan report from the GitHub Release notes — was raised earlier in the same
+conversation as a way to let users verify a specific release build is clean. That is a
+fundamentally different proposal (a CI-time, one-directional upload of Pakko's own signed
+artifacts, not a runtime, per-archive-entry, user-file-hash lookup baked into the shipped app) and
+was explicitly parked as "for later," not rejected — do not conflate the two if this area comes
+up again.

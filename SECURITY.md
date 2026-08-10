@@ -490,13 +490,15 @@ extraction, extracting into the quarantine "out\" directory and stopping there �
 move-to-destination phase ever runs, and the quarantine is deleted (`using`/`Dispose()`) whether
 the scan finds a threat, comes back clean, or fails partway through.
 
-**Size limit.** Entries above 64 MiB (`AntivirusScanService.MaxScannableEntryBytes`) are reported
+**Size limit.** Entries above 256 MiB (`AntivirusScanService.MaxScannableEntryBytes`) are reported
 `Inconclusive` rather than buffered whole into memory — `AmsiScanBuffer`'s contract is an
-in-memory buffer with no documented size limit and no streaming variant simple to implement
-correctly from .NET (`IAmsiStream` is a COM interface the caller would have to implement). This is
-a deliberately conservative first-pass constant, not solved further — a real large-entry case
-would need a chunked `AmsiScanBuffer` sequence or an `MpCmdRun.exe` subprocess fallback, neither
-built speculatively ahead of an actual need.
+in-memory buffer with no documented size limit. T-F151's Phase 0 spike tried the alternative,
+`IAmsiStream`/`IAntimalware::Scan` (a real streaming COM interface the caller implements), and
+found it actually fails above ~16-20 MiB against the real registered Defender provider on this
+machine, while the simpler existing `AmsiScanBuffer` call scanned real content up to 256 MiB
+without error — see `docs/DECISIONS.md`'s T-F151 entry. 256 MiB is the empirically-verified
+ceiling, not a documented AMSI limit; raising it further would need re-verifying against a real
+provider rather than assumed safe by extrapolation.
 
 **Not recursive.** A scan does not look inside a nested archive found within the archive being
 scanned (unlike the Archive Browser's T-F98 drill-down, which is a separate, unrelated feature).

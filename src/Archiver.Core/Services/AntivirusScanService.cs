@@ -25,12 +25,14 @@ namespace Archiver.Core.Services;
 /// </remarks>
 public sealed class AntivirusScanService : IAntivirusScanService
 {
-    // 64 MiB — a reasoned, deliberately conservative first-pass constant, not AMSI's own
-    // documented buffer limit (none is published). An entry above this is reported Inconclusive
-    // rather than buffered whole into memory; a real large-entry case would need a streamed/
-    // chunked AmsiScanBuffer sequence or an MpCmdRun.exe fallback — deferred, not solved here
-    // (see docs/DECISIONS.md's T-F146 "Known limitation" section).
-    internal const long MaxScannableEntryBytes = 64L * 1024 * 1024;
+    // 256 MiB. T-F151's Phase 0 spike (real IAmsiStream/IAntimalware::Scan COM streaming vs. the
+    // existing AmsiScanBuffer path, both against the real registered Defender provider) found
+    // the streaming path actually fails above 16-20 MiB on this machine, while the existing
+    // AmsiScanBuffer path scanned real on-disk content up to 256 MiB correctly with no error —
+    // there is no documented AMSI buffer ceiling, and empirically the simpler existing call is
+    // also the one with more headroom. Raised from the original 64 MiB (T-F146) on that basis;
+    // see docs/DECISIONS.md's T-F151 entry for the full spike account.
+    internal const long MaxScannableEntryBytes = 256L * 1024 * 1024;
 
     private readonly TarCapabilities _tarCapabilities;
     private readonly GroupPolicyOptions _policy;
@@ -144,14 +146,19 @@ public sealed class AntivirusScanService : IAntivirusScanService
             // fully-finished archives) supplies the base offset so a multi-archive selection's
             // progress never jumps backward between archives.
             int archivesCompleted = 0;
-            void ReportProgress(string archivePath, int entriesDone, int entriesTotal)
+            // T-F151: CurrentFile now reports the entry actually being scanned, not just the
+            // archive path — with the size cap raised to 256 MiB, a single entry's own
+            // AmsiScanBuffer call can run for several seconds, and the old archive-path-only
+            // display looked frozen for that whole span even though ReportProgress WAS being
+            // called (at each entry boundary, just always with the same archivePath text).
+            void ReportProgress(string archivePath, string? entryPath, int entriesDone, int entriesTotal)
             {
                 double archiveFraction = entriesTotal > 0 ? Math.Min(1.0, (double)entriesDone / entriesTotal) : 1.0;
                 int percent = (int)((archivesCompleted + archiveFraction) * 100.0 / totalArchives);
                 progress?.Report(new ProgressReport
                 {
                     Percent = Math.Clamp(percent, 0, 100),
-                    CurrentFile = archivePath,
+                    CurrentFile = entryPath ?? archivePath,
                 });
             }
 
@@ -160,7 +167,7 @@ public sealed class AntivirusScanService : IAntivirusScanService
                 cancellationToken.ThrowIfCancellationRequested();
                 await ScanZipArchiveAsync(
                     archivePath, options.SelectedEntryPaths, scanner, findings,
-                    (done, total) => ReportProgress(archivePath, done, total), cancellationToken)
+                    (entry, done, total) => ReportProgress(archivePath, entry, done, total), cancellationToken)
                     .ConfigureAwait(false);
                 archivesCompleted++;
                 // Explicit end-of-archive report (not just relying on the last per-entry
@@ -175,7 +182,7 @@ public sealed class AntivirusScanService : IAntivirusScanService
                 cancellationToken.ThrowIfCancellationRequested();
                 await ScanTarArchiveAsync(
                     archivePath, options.SelectedEntryPaths, scanner, findings,
-                    (done, total) => ReportProgress(archivePath, done, total), cancellationToken)
+                    (entry, done, total) => ReportProgress(archivePath, entry, done, total), cancellationToken)
                     .ConfigureAwait(false);
                 archivesCompleted++;
                 progress?.Report(new ProgressReport { Percent = archivesCompleted * 100 / totalArchives, CurrentFile = archivePath });
@@ -204,7 +211,7 @@ public sealed class AntivirusScanService : IAntivirusScanService
         IReadOnlyList<string>? selectedEntryPaths,
         IAmsiScanner scanner,
         List<ThreatFinding> findings,
-        Action<int, int> reportProgress,
+        Action<string?, int, int> reportProgress,
         CancellationToken cancellationToken)
     {
         List<ZipArchiveEntry> fileEntries;
@@ -246,6 +253,13 @@ public sealed class AntivirusScanService : IAntivirusScanService
             foreach (ZipArchiveEntry entry in fileEntries)
             {
                 cancellationToken.ThrowIfCancellationRequested();
+                // T-F151: reported BEFORE scanning starts, not just after — AmsiScanBuffer is one
+                // atomic call with no mid-call progress callback, so a large entry (up to the new
+                // 256 MiB cap) would otherwise leave the bar sitting on the PRIOR entry's
+                // percentage for the whole duration of its own scan. This at least advances the
+                // bar (and CurrentFile) to this entry's own starting position immediately, instead
+                // of only at the end of a potentially multi-second single scan.
+                reportProgress(entry.FullName, entriesDone, fileEntries.Count);
                 try
                 {
                     ThreatFinding finding = await ScanOneEntryAsync(
@@ -265,7 +279,7 @@ public sealed class AntivirusScanService : IAntivirusScanService
                 }
                 finally
                 {
-                    reportProgress(++entriesDone, fileEntries.Count);
+                    reportProgress(entry.FullName, ++entriesDone, fileEntries.Count);
                 }
             }
         }
@@ -329,7 +343,7 @@ public sealed class AntivirusScanService : IAntivirusScanService
         IReadOnlyList<string>? selectedEntryPaths,
         IAmsiScanner scanner,
         List<ThreatFinding> findings,
-        Action<int, int> reportProgress,
+        Action<string?, int, int> reportProgress,
         CancellationToken cancellationToken)
     {
         TarSandboxScope? scope = null;
@@ -410,13 +424,18 @@ public sealed class AntivirusScanService : IAntivirusScanService
 
     private static async Task ScanExtractedFilesAsync(
         string outputDirectory, string archivePath, int totalEntries, IAmsiScanner scanner,
-        List<ThreatFinding> findings, Action<int, int> reportProgress, CancellationToken cancellationToken)
+        List<ThreatFinding> findings, Action<string?, int, int> reportProgress, CancellationToken cancellationToken)
     {
         int entriesDone = 0;
         foreach (string file in TarSandboxedService.EnumerateFilesGuarded(outputDirectory))
         {
             cancellationToken.ThrowIfCancellationRequested();
             string relativePath = Path.GetRelativePath(outputDirectory, file).Replace('\\', '/');
+            // T-F151: see the identical call in ScanZipArchiveAsync — advances the bar (and
+            // CurrentFile) to this entry's own starting position before a potentially multi-second
+            // single AmsiScanBuffer call, rather than leaving it frozen on the previous entry's
+            // percentage throughout.
+            reportProgress(relativePath, entriesDone, totalEntries);
             try
             {
                 long length = new FileInfo(file).Length;
@@ -448,7 +467,7 @@ public sealed class AntivirusScanService : IAntivirusScanService
                 // Fires exactly once per file regardless of which branch above ran (oversized
                 // skip inside ScanOneEntryAsync, a clean scan, or the vanished/blocked catch
                 // above) — a single point to advance real per-entry progress.
-                reportProgress(++entriesDone, totalEntries);
+                reportProgress(relativePath, ++entriesDone, totalEntries);
             }
         }
     }

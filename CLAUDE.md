@@ -669,6 +669,26 @@ failure — so a blocked/misconfigured sandbox would have crashed instead of yie
   `31405002014` confirmed all gates green end-to-end, including the ARM64 `/analyze` leg this dev
   machine can't build locally. User confirmed on-device. See `docs/TASKS_DONE.md`'s T-F150 entry
   and `docs/CONVENTIONS.md`'s "Static-Analysis Won't-Fix Conventions" section.
+- **T-F151 (`[x]` done 2026-08-10)** — the "Scan for threats" (T-F146) per-entry size cap was
+  raised from 64 MiB to 256 MiB. An empirical Phase 0 spike compared AMSI's real disk-streaming
+  mechanism (`IAmsiStream`/`IAntimalware::Scan`, a COM interface the caller implements so the
+  provider pulls bytes on demand) against the simpler, already-shipped `AmsiScanBuffer` call,
+  against the real registered Defender provider — the streaming approach failed above ~16-20 MiB
+  in practice, while the existing buffer-based call scanned real content up to 256 MiB with no
+  error, so the existing mechanism was kept and its limit raised instead of building new COM
+  streaming code. Bundled fix: scan progress now shows the specific entry being scanned (not just
+  the containing archive), since a single large entry's own scan can take several real seconds
+  under the new cap. Agent-driven smoke test (user-directed, ahead of a Store submission):
+  a 100 MiB entry scanned cleanly through the real installed app, a 300 MiB entry correctly
+  reported oversized-and-skipped — confirming the new limit is a real, exact boundary. See
+  `docs/TASKS_DONE.md`'s T-F151 entry and `docs/DECISIONS.md`'s T-F151 entry for the full spike
+  methodology.
+- **T-F152 (deferred 2026-08-10, user-directed)** — a proposal to add a VirusTotal hash-lookup
+  link (SHA256/MD5, double-click to open, single-click to copy) to the Archive Browser's entry
+  table was floated, then explicitly declined once the conflict with the published Privacy Policy/
+  `SECURITY.md`/`README.md`'s unqualified "zero network requests" claim was surfaced — user chose
+  to keep the current policy text over shipping this feature, not "come back later with a better
+  design." See `docs/TASKS.md`'s T-F152 entry and `docs/DECISIONS.md`'s T-F152 entry.
 - Next work: Future tasks in `TASKS.md`, including **T-F148** (SYSLIB1054 conversion, split
   out of T-F147)
 
