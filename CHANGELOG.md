@@ -10,6 +10,20 @@ the technical account of any task named here.
 
 ---
 
+## v1.4.10 — 2026-08-11
+
+Bug-fix release — a real archive-creation defect found during a broad pre-Store-submission
+smoke test.
+
+- **T-F153** — a source path ending in a trailing directory separator (typed or tab-completed in
+  a terminal — never produced by the GUI's own folder picker or drag-and-drop) silently corrupted
+  archive creation two ways: entries were written without their real parent folder name, and the
+  Explorer "Add to X.zip" one-click command (and the equivalent CLI switch) placed the new archive
+  **inside the folder being archived** instead of next to it, naming it generically instead of
+  after the real source. Both are now fixed at the source.
+
+---
+
 ## v1.4.9 — 2026-08-10
 
 Small follow-up to v1.4.8's antivirus scanning — raises the per-entry size limit and improves
