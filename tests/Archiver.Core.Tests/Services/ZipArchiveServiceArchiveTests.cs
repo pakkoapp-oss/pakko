@@ -1151,12 +1151,11 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
         });
 
         extractResult.Success.Should().BeTrue();
-        // T-14 smart foldering: "notes" and "notes (1)" are two distinct roots, so extraction
-        // wraps them in a subfolder named after the archive itself ("dup_dirs"), same as any
-        // other multi-root archive (see extract_multiple_root_items.zip fixture scenario).
-        string wrapped = Path.Combine(extractDest.Path, "dup_dirs");
-        File.ReadAllText(Path.Combine(wrapped, "notes", "file.txt")).Should().Be("from A");
-        File.ReadAllText(Path.Combine(wrapped, "notes (1)", "file.txt")).Should().Be("from B");
+        // T-F156: "notes" and "notes (1)" are two distinct roots, but SingleFolder mode no longer
+        // wraps a multi-root archive in a subfolder named after the archive (T-14/T-F118 used to);
+        // see DECISIONS.md's T-F156 entry.
+        File.ReadAllText(Path.Combine(extractDest.Path, "notes", "file.txt")).Should().Be("from A");
+        File.ReadAllText(Path.Combine(extractDest.Path, "notes (1)", "file.txt")).Should().Be("from B");
     }
 
     // T-F12: SeparateArchives now runs each SourcePath's archive in parallel via

@@ -25,12 +25,36 @@ public sealed class CliSubprocessTests
 
         exitCode.Should().Be(0);
         stdErr.Should().BeEmpty();
-        // Two root-level files with no common containing folder → Core's existing smart-foldering
-        // wraps them in a subfolder named after the archive (same mechanism Archiver.Shell's own
-        // "extract flat" command already relies on) — not a CLI-specific behavior.
-        string extractedFile = Path.Combine(destDir, "valid", "a.txt");
+        // T-F156: two root-level files with no common containing folder no longer get wrapped in a
+        // subfolder named after the archive under SingleFolder mode (`pakko.exe x` always uses it) —
+        // reversed per a direct user decision; see DECISIONS.md's T-F156 entry.
+        string extractedFile = Path.Combine(destDir, "a.txt");
         File.Exists(extractedFile).Should().BeTrue();
         File.ReadAllText(extractedFile).Should().Be("hello world");
+    }
+
+    // T-F154: pakko.exe's own "x" command always uses ExtractMode.SingleFolder (see
+    // Archiver.CLI/Program.cs's BuildExtractOptions) — never SeparateFolders, the mode the T-F154
+    // bug actually lived in (App's default Extract button, Explorer's "Extract Here"). Confirms
+    // that directly, rather than leaving it as an inference from Extract_SevenZipFixture's own
+    // single-file fixture a few tests down.
+    [Fact]
+    public void Extract_SingleFileZip_ExtractsDirectlyWithoutWrapperFolder()
+    {
+        string scratchDir = CliFixtureFiles.CreateScratchDir();
+        string zipPath = Path.Combine(scratchDir, "photo.zip");
+        string sourceFile = Path.Combine(scratchDir, "photo.png");
+        File.WriteAllText(sourceFile, "not a real png, just single-file content");
+        using (var archive = ZipFile.Open(zipPath, ZipArchiveMode.Create))
+            archive.CreateEntryFromFile(sourceFile, "photo.png");
+
+        string destDir = CliFixtureFiles.CreateScratchDir();
+        (int exitCode, string stdOut, string stdErr) = CliProcessRunner.Run("x", $"-o{destDir}", zipPath);
+
+        exitCode.Should().Be(0);
+        stdErr.Should().BeEmpty();
+        File.Exists(Path.Combine(destDir, "photo.png")).Should().BeTrue("a single-file archive should not get a wrapper subfolder");
+        Directory.Exists(Path.Combine(destDir, "photo")).Should().BeFalse();
     }
 
     [RequiresTarExe]
@@ -42,11 +66,11 @@ public sealed class CliSubprocessTests
 
         exitCode.Should().Be(0);
         stdErr.Should().BeEmpty();
-        // T-F118: TarSandboxedService's extraction now shares ZipArchiveService's smart-foldering
-        // exactly — two root-level files with no common containing folder wrap in a subfolder
-        // named after the archive, same as the ZIP fixture above (this fixture's SourceDir is the
-        // same a.txt/b.txt shape).
-        File.Exists(Path.Combine(destDir, "valid", "a.txt")).Should().BeTrue();
+        // T-F156: `pakko.exe x` always uses SingleFolder mode, and two root-level files with no
+        // common containing folder no longer get wrapped in a subfolder named after the archive
+        // (T-F118 used to do this) — reversed per a direct user decision; see DECISIONS.md's
+        // T-F156 entry. This is exactly the "dumb mode should extract flat" case the user reported.
+        File.Exists(Path.Combine(destDir, "a.txt")).Should().BeTrue();
     }
 
     [RequiresTarCapability("7z")]
@@ -318,13 +342,11 @@ public sealed class CliSubprocessTests
         extractExit.Should().Be(0);
         extractErr.Should().BeEmpty();
         extractStdOut.Should().BeEmpty();
-        // Two root-level files, no common folder → smart-foldering wraps them in a subfolder
-        // named after ArchiveNaming.GetBaseName(archivePath) — since -si's archivePath is the
-        // staged temp file "stdin.bin", the wrapper folder is literally "stdin". A real, accepted
-        // consequence of buffering -si through a private temp file (see DECISIONS.md's T-F116
-        // entry), not a bug.
-        File.ReadAllText(Path.Combine(destDir, "stdin", "a.txt")).Should().Be("hello world");
-        File.ReadAllText(Path.Combine(destDir, "stdin", "b.txt")).Should().Be("second file");
+        // T-F156: two root-level files, no common folder — SingleFolder mode no longer wraps them
+        // in a subfolder at all (see DECISIONS.md's T-F156 entry), so the private staged-temp-file
+        // naming quirk T-F116 documented here no longer surfaces either.
+        File.ReadAllText(Path.Combine(destDir, "a.txt")).Should().Be("hello world");
+        File.ReadAllText(Path.Combine(destDir, "b.txt")).Should().Be("second file");
     }
 
     [RequiresTarCapability("7z")]

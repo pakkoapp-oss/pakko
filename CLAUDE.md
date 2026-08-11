@@ -705,8 +705,61 @@ failure — so a blocked/misconfigured sandbox would have crashed instead of yie
   drive-root case and was corrected. Agent-driven on-device rerun of the exact original repro
   against the real installed app confirmed the fix. See `docs/TASKS_DONE.md`'s T-F153 entry and
   `docs/DECISIONS.md`'s T-F153 entry for the full discovery/fix account.
+- **T-F154 (`[x]` done 2026-08-11)** — user-reported bug: extracting an archive created from a
+  single file landed that file inside a same-named wrapper folder
+  (`<Destination>\photo\photo.png`) instead of directly (`<Destination>\photo.png`), unlike a real
+  archiver. Root cause: `ZipArchiveService`/`TarSandboxedService`'s `isSingleRootFile` flag was
+  computed but never actually consulted under `ExtractMode.SeparateFolders` (the App's default
+  Extract button and Explorer's "Extract Here"). `Archiver.CLI`'s `x` command confirmed unaffected
+  (always uses `SingleFolder`, where the flag already worked). Fixed via an explicit
+  `unisolatedDestDir` parameter threaded through both engines, gated on
+  `alreadyIsolated && isSingleRootFile && !isSelectedSubset` so `--extract-folder`'s own
+  always-wrap contract stays untouched; also re-anchored `ZipArchiveService`'s temp-staging path
+  (previously derived from the final destination, which the fix could turn into a shared folder).
+  Consulted `advisor` before implementing. 4 pre-existing tests had accidentally used single-file
+  fixtures to test unrelated behavior and were widened; a 5th had its assertion corrected. 5 new
+  tests across Core/Integration/CLI, each confirmed to fail against a revert first. `dotnet test`
+  green repo-wide (824/824). `Deploy.ps1` build+sign+install (v1.4.10.1) and an agent-driven
+  on-device check confirmed both entry points fixed on the real installed app. Also surfaced (not
+  yet actioned) a genuinely new collision surface: Explorer's own extraction now resolves a
+  single-file re-extract conflict silently via auto-rename, with no interactive prompt — unlike the
+  App's `Overwrite`/`Rename`/`Skip`+"apply to all" dialog (T-F06) — reported to the user as a
+  follow-up decision, not built. **Not in `v1.4.10`** (already tagged/Store-built before this was
+  found) — lands in `v1.4.11`. See `docs/TASKS_DONE.md`'s T-F154 entry and `docs/DECISIONS.md`'s
+  T-F154 entry for the full account.
+- **T-F156 (`[x]` done 2026-08-11)** —
+  immediately after T-F154 shipped, the user found `ExtractMode.SingleFolder` ("all archives -> one
+  flat folder" per its own doc comment) still wrapped a genuinely multi-root archive (several files,
+  no common folder) in an `<archive-base-name>\` subfolder — the same T-14 smart-foldering
+  wrapping T-F118 (2026-07-18) had made *deliberate and user-confirmed* at the time. Surfaced this
+  conflict explicitly via `AskUserQuestion` (quoting T-F118's own decision text) rather than
+  silently reversing or keeping it — **user confirmed reversing it for `SingleFolder` mode only**
+  ("Так, скасувати для SingleFolder"); `SeparateFolders` mode's unconditional per-archive wrapping
+  is untouched. Root cause was a single `actualDest` ternary branch in
+  `ZipArchiveService.ExtractWithSmartFolderingAsync`/`TarSandboxedService.ExtractSingleArchiveAsync`
+  reachable *only* in this exact case — removed outright. `Archiver.Shell`'s `--extract-flat` doc
+  comment corrected back to "no wrapper folder ever created". 8 pre-existing tests across 4
+  projects flipped (including T-14's own original v1.0-era test, renamed), found by running the
+  full suite. New/flipped tests confirmed to fail against a `git stash` scoped to just the two
+  service files before being restored passing; also closed a coverage gap the advisor flagged in
+  T-F154's review (`SeparateFolderName` + single-root-file combination, previously untested in
+  either direction). `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` green repo-wide
+  (826/826); `Archiver.ShellExtension.Tests.exe` (C++, unaffected) reconfirmed 100/100.
+  `Deploy.ps1` build+sign+install (v1.4.10.2) plus an agent-driven on-device check confirmed all
+  three affected entry points: `Archiver.Shell.exe --extract-flat` and `pakko.exe x` both now
+  extract a real multi-root archive flat with no wrapper, while `--extract-here` (SeparateFolders)
+  was confirmed still wrapping per-archive, unchanged. **Not in `v1.4.10`** — lands in `v1.4.11`
+  alongside T-F154. See `docs/TASKS_DONE.md`'s and `docs/DECISIONS.md`'s T-F156 entries.
+- **T-F155 (not started)** — backlog-only entry, per the user's explicit request, for adding an
+  interactive `Overwrite`/`Rename`/`Skip`+"apply to all" conflict dialog to `Archiver.Shell` (the
+  non-WinUI Explorer extraction path — currently silent/non-interactive, see T-F154's own
+  "genuinely new collision surface" finding above) — bringing it to parity with the WinUI App's
+  existing T-F06 dialog. Real design question flagged but not yet spiked: `MessageBoxW` can't
+  produce custom button labels, so `TaskDialogIndirect` (comctl32) is the likely primitive, and
+  whether `Archiver.Shell` already has the activation context it needs is unconfirmed. See
+  `docs/TASKS.md`'s T-F155 entry.
 - Next work: Future tasks in `TASKS.md`, including **T-F148** (SYSLIB1054 conversion, split
-  out of T-F147)
+  out of T-F147), **T-F155** (interactive Shell conflict dialog)
 
 ## Roadmap Summary
 

@@ -201,7 +201,7 @@ public sealed class TarSandboxedService : ITarService
             var context = new TarExtractionContext(
                 conflictResolver, sink.SkippedFiles, options.ConfirmCompressionBombExtraction, _policy.MotwMode, archiveProgress);
             var (actualDest, anyExtracted) = await ExtractSingleArchiveAsync(
-                archivePath, destDir, alreadyIsolated, options.SelectedEntryPaths, context, cancellationToken)
+                archivePath, destDir, alreadyIsolated, options.DestinationFolder, options.SelectedEntryPaths, context, cancellationToken)
                 .ConfigureAwait(false);
 
             // T-F87: an archive whose entries were all individually skipped (e.g. every entry
@@ -281,6 +281,7 @@ public sealed class TarSandboxedService : ITarService
         string archivePath,
         string destDir,
         bool alreadyIsolated,
+        string unisolatedDestDir,
         IReadOnlyList<string>? selectedEntryPaths,
         TarExtractionContext context,
         CancellationToken cancellationToken)
@@ -330,9 +331,19 @@ public sealed class TarSandboxedService : ITarService
 
         bool isSingleRootFile = !isSelectedSubset && fileNames.Count == 1 && !fileNames[0].Contains('/');
 
-        string actualDest = (isSingleRootFolder || isSingleRootFile || alreadyIsolated || isSelectedSubset)
-            ? destDir
-            : Path.Combine(destDir, ArchiveNaming.GetBaseName(archivePath));
+        // T-F154: mirrors ZipArchiveService.ExtractWithSmartFolderingAsync's identical fix exactly
+        // (T-F118 kept the two algorithmically in sync) — a single bare file at the archive's own
+        // root has no folder name to unwrap the way isSingleRootFolder already does, so a
+        // SeparateFolders-mode extraction (alreadyIsolated) previously always dropped it into the
+        // pre-computed per-archive subfolder (destDir) regardless. Bypass destDir entirely in that
+        // one case and extract straight into the caller's real, un-isolated target.
+        bool unwrapSingleFile = alreadyIsolated && isSingleRootFile && !isSelectedSubset;
+
+        // T-F156: mirrors ZipArchiveService.ExtractWithSmartFolderingAsync's identical fix exactly
+        // (T-F118 kept the two algorithmically in sync) — a genuinely multi-root archive no longer
+        // gets wrapped in an "<archive-base-name>\" subfolder in SingleFolder mode; see
+        // DECISIONS.md's T-F156 entry.
+        string actualDest = unwrapSingleFile ? unisolatedDestDir : destDir;
 
         // T-F94: whole-archive compression-ratio decision. compressedFileSize reads the
         // ORIGINAL archivePath (not the staged copy — same size either way, hardlink or copy,

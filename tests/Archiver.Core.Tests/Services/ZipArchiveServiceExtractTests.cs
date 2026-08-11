@@ -57,8 +57,11 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
     [Fact]
     public async Task ExtractAsync_SeparateFoldersMode_CreatesSubfolderPerArchive()
     {
-        var zip1 = CreateTestZip("first.zip", "a.txt");
-        var zip2 = CreateTestZip("second.zip", "b.txt");
+        // T-F154: multi-file, not single-file — a single-root-file archive bypasses the
+        // per-archive subfolder entirely (see ExtractAsync_SeparateFoldersMode_SingleRootFile_
+        // ExtractsDirectlyWithoutWrapper below), which would defeat this test's actual point.
+        var zip1 = CreateTestZip("first.zip", "a.txt", "a2.txt");
+        var zip2 = CreateTestZip("second.zip", "b.txt", "b2.txt");
         var destDir = Path.Combine(_temp.Path, "extracted");
 
         var options = new ExtractOptions
@@ -81,7 +84,9 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
     [Fact]
     public async Task ExtractAsync_SeparateFoldersMode_StripsCompoundTarExtension()
     {
-        var zip = CreateTestZip("browse_test.tar.gz", "a.txt");
+        // T-F154: multi-file, so the wrapper folder this test verifies actually gets created —
+        // a single-root-file archive would bypass it entirely.
+        var zip = CreateTestZip("browse_test.tar.gz", "a.txt", "b.txt");
         var destDir = Path.Combine(_temp.Path, "extracted");
 
         var options = new ExtractOptions
@@ -104,7 +109,10 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
     [Fact]
     public async Task ExtractAsync_SeparateFolderName_OverridesArchiveDerivedName()
     {
-        var zip = CreateTestZip("first.zip", "a.txt");
+        // T-F154: multi-file — a single-root-file archive bypasses SeparateFolderName entirely
+        // (see ExtractAsync_SeparateFoldersMode_SingleRootFile_ExtractsDirectlyWithoutWrapper),
+        // which would defeat this test's actual point (verifying the override mechanism itself).
+        var zip = CreateTestZip("first.zip", "a.txt", "a2.txt");
         var destDir = Path.Combine(_temp.Path, "extracted");
 
         var options = new ExtractOptions
@@ -120,6 +128,143 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
         result.Success.Should().BeTrue();
         Directory.Exists(Path.Combine(destDir, "first (1)")).Should().BeTrue();
         Directory.Exists(Path.Combine(destDir, "first")).Should().BeFalse();
+    }
+
+    // T-F154: closes the coverage gap the previous test's fixture widening left open — a
+    // single-root-file archive bypasses destDir (and therefore any SeparateFolderName override
+    // baked into it) entirely, landing straight in DestinationFolder. Locks in that decision
+    // explicitly rather than leaving the combination untested in either direction.
+    [Fact]
+    public async Task ExtractAsync_SeparateFolderName_SingleRootFile_BypassesOverride()
+    {
+        var zip = CreateTestZip("photo.zip", "photo.png");
+        var destDir = Path.Combine(_temp.Path, "extracted");
+
+        var options = new ExtractOptions
+        {
+            ArchivePaths = [zip],
+            DestinationFolder = destDir,
+            Mode = ExtractMode.SeparateFolders,
+            SeparateFolderName = "photo (1)"
+        };
+
+        var result = await _sut.ExtractAsync(options);
+
+        result.Success.Should().BeTrue();
+        File.Exists(Path.Combine(destDir, "photo.png")).Should().BeTrue();
+        Directory.Exists(Path.Combine(destDir, "photo (1)")).Should().BeFalse();
+        Directory.Exists(Path.Combine(destDir, "photo")).Should().BeFalse();
+    }
+
+    // T-F154: a single bare file at an archive's own root (e.g. "photo.zip" containing only
+    // "photo.png") has no folder name of its own to unwrap the way a single-root-FOLDER archive
+    // already does — so SeparateFolders mode (the App's default Extract button and Explorer's
+    // "Extract Here"/--extract-here) previously always dropped it into the pre-computed
+    // per-archive subfolder regardless, landing at "<Destination>\photo\photo.png" instead of
+    // "<Destination>\photo.png". Real archivers (NanaZip/7-Zip) extract a single-file archive
+    // directly with no wrapper folder at all.
+    [Fact]
+    public async Task ExtractAsync_SeparateFoldersMode_SingleRootFile_ExtractsDirectlyWithoutWrapper()
+    {
+        var zip = CreateTestZip("photo.zip", "photo.png");
+        var destDir = Path.Combine(_temp.Path, "output");
+
+        var options = new ExtractOptions
+        {
+            ArchivePaths = [zip],
+            DestinationFolder = destDir,
+            Mode = ExtractMode.SeparateFolders
+        };
+
+        var result = await _sut.ExtractAsync(options);
+
+        result.Success.Should().BeTrue();
+        File.Exists(Path.Combine(destDir, "photo.png")).Should().BeTrue("a single-file archive should not get a wrapper subfolder");
+        Directory.Exists(Path.Combine(destDir, "photo")).Should().BeFalse("no per-archive subfolder should be created for a single-file archive");
+    }
+
+    // T-F154 negative case: --extract-folder's contract (a caller-pre-set destination subfolder,
+    // Mode.SingleFolder, alreadyIsolated == false) is "always a subfolder regardless of internal
+    // structure" — the SeparateFolders-only unwrap above must not leak into this path.
+    [Fact]
+    public async Task ExtractAsync_SingleFolderModeWithPresetSubfolder_SingleRootFile_StillWraps()
+    {
+        var zip = CreateTestZip("photo.zip", "photo.png");
+        var presetSubfolder = Path.Combine(_temp.Path, "output", "photo");
+
+        var options = new ExtractOptions
+        {
+            ArchivePaths = [zip],
+            DestinationFolder = presetSubfolder,
+            Mode = ExtractMode.SingleFolder
+        };
+
+        var result = await _sut.ExtractAsync(options);
+
+        result.Success.Should().BeTrue();
+        File.Exists(Path.Combine(presetSubfolder, "photo.png")).Should().BeTrue();
+    }
+
+    // T-F154: two single-file archives extracted together, both containing an identically-named
+    // file — previously kept apart by each archive's own wrapper subfolder, now land in the same
+    // shared destination and must go through ordinary file-level conflict resolution instead
+    // (matches how a real archiver batch-extracts single-file archives; the resolver already
+    // handles this class of collision for every other extraction path).
+    [Fact]
+    public async Task ExtractAsync_SeparateFoldersMode_TwoSingleRootFileArchivesWithSameEntryName_RenamesSecond()
+    {
+        var zip1 = CreateTestZip("first.zip", "shared.txt");
+        var zip2SourceFile = _temp.CreateFile("shared.txt", "second content");
+        var zip2 = Path.Combine(_temp.Path, "second.zip");
+        using (var archive = ZipFile.Open(zip2, ZipArchiveMode.Create))
+            archive.CreateEntryFromFile(zip2SourceFile, "shared.txt");
+        var destDir = Path.Combine(_temp.Path, "output");
+
+        var options = new ExtractOptions
+        {
+            ArchivePaths = [zip1, zip2],
+            DestinationFolder = destDir,
+            Mode = ExtractMode.SeparateFolders,
+            OnConflict = ConflictBehavior.Rename,
+        };
+
+        var result = await _sut.ExtractAsync(options);
+
+        result.Success.Should().BeTrue();
+        Directory.Exists(Path.Combine(destDir, "first")).Should().BeFalse();
+        Directory.Exists(Path.Combine(destDir, "second")).Should().BeFalse();
+        File.Exists(Path.Combine(destDir, "shared.txt")).Should().BeTrue();
+        File.Exists(Path.Combine(destDir, "shared (1).txt")).Should().BeTrue();
+    }
+
+    // T-F156 (user-reported 2026-08-11): a multi-root archive (several files, no common containing
+    // folder — CreateTestZip's plain flat fixture) extracted via SingleFolder mode ("dumb"/flat
+    // mode — the CLI's `pakko.exe x` and --extract-folder's own pre-computed subfolder both use it)
+    // used to still get wrapped in a "<archive-base-name>\" subfolder by T-14/T-F118's
+    // smart-foldering, contradicting ExtractMode.SingleFolder's own doc comment ("all archives ->
+    // one flat folder"). Reverses T-F118's wrapping decision specifically for this mode, per a
+    // second, later, explicit user decision — see DECISIONS.md's T-F156 entry for the conflict
+    // with T-F118 and the user's direct confirmation to reverse it.
+    [Fact]
+    public async Task ExtractAsync_SingleFolderMode_MultiRootArchive_ExtractsFlatWithoutWrapper()
+    {
+        var zip = CreateTestZip("many.zip", "file1.txt", "file2.txt", "file3.txt");
+        var destDir = Path.Combine(_temp.Path, "output");
+
+        var options = new ExtractOptions
+        {
+            ArchivePaths = [zip],
+            DestinationFolder = destDir,
+            Mode = ExtractMode.SingleFolder
+        };
+
+        var result = await _sut.ExtractAsync(options);
+
+        result.Success.Should().BeTrue();
+        File.Exists(Path.Combine(destDir, "file1.txt")).Should().BeTrue();
+        File.Exists(Path.Combine(destDir, "file2.txt")).Should().BeTrue();
+        File.Exists(Path.Combine(destDir, "file3.txt")).Should().BeTrue();
+        Directory.Exists(Path.Combine(destDir, "many")).Should().BeFalse("SingleFolder mode must never wrap a multi-root archive per T-F156");
     }
 
     [Fact]
@@ -203,8 +348,12 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
         Directory.Exists(Path.Combine(destDir, "myFolder")).Should().BeFalse();
     }
 
+    // T-F156: this originally asserted T-14's own original design — multi-root items got wrapped
+    // in a subfolder named after the archive even in SingleFolder mode. Reversed per a direct user
+    // decision once real testing showed it contradicts SingleFolder's own "all archives -> one
+    // flat folder" doc comment; see DECISIONS.md's T-F156 entry.
     [Fact]
-    public async Task ExtractAsync_MultipleRootItems_CreatesSubfolderNamedAfterArchive()
+    public async Task ExtractAsync_MultipleRootItems_ExtractsFlatWithoutSubfolder()
     {
         var zip = CreateTestZip("bundle.zip", "file1.txt", "file2.txt");
         var destDir = Path.Combine(_temp.Path, "output");
@@ -219,9 +368,9 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
         var result = await _sut.ExtractAsync(options);
 
         result.Success.Should().BeTrue();
-        // Files must land in destDir/bundle/, not directly in destDir
-        File.Exists(Path.Combine(destDir, "bundle", "file1.txt")).Should().BeTrue();
-        File.Exists(Path.Combine(destDir, "bundle", "file2.txt")).Should().BeTrue();
+        File.Exists(Path.Combine(destDir, "file1.txt")).Should().BeTrue();
+        File.Exists(Path.Combine(destDir, "file2.txt")).Should().BeTrue();
+        Directory.Exists(Path.Combine(destDir, "bundle")).Should().BeFalse();
     }
 
     [Fact]
@@ -874,7 +1023,8 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
         result.Success.Should().BeTrue();
         result.SkippedFiles.Should().BeEmpty();
         result.CreatedFiles.Should().ContainSingle();
-        File.ReadAllText(Path.Combine(destDir, "test_bomb", "compressible.txt")).Should().Be(content);
+        // T-F154: a single-root-file archive bypasses the "test_bomb" wrapper subfolder entirely.
+        File.ReadAllText(Path.Combine(destDir, "compressible.txt")).Should().Be(content);
     }
 
     [Fact]

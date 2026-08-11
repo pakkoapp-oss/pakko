@@ -42,11 +42,14 @@ public sealed class TarSandboxedServiceCompressedFormatsTests : IDisposable
     // file name — "browse_test.tar.gz" must produce a "browse_test" subfolder, not "browse_test.tar".
     // This mode wasn't previously exercised by this file (every other test here uses SingleFolder
     // with an explicit destDir), so the naming bug went uncaught until T-F05's real on-device use.
+    // T-F154: two entries, not one — a single-root-file archive bypasses the wrapper subfolder
+    // entirely (see ExtractAsync_TarGz_SeparateFoldersMode_SingleRootFile_
+    // ExtractsDirectlyWithoutWrapper below), which would defeat this test's actual point.
     [Integration]
     public async Task ExtractAsync_TarGz_SeparateFoldersMode_StripsCompoundExtensionForSubfolderName()
     {
         string archivePath = Path.Combine(_temp.Path, "browse_test.tar.gz");
-        ExternalTarFixtureBuilder.CreateCompressedTar(archivePath, "-czf", [("a.txt", "hello gz")]);
+        ExternalTarFixtureBuilder.CreateCompressedTar(archivePath, "-czf", [("a.txt", "hello gz"), ("b.txt", "world gz")]);
 
         string destDir = Path.Combine(_temp.Path, "out");
         var result = await _sut.ExtractAsync(new ExtractOptions
@@ -59,6 +62,29 @@ public sealed class TarSandboxedServiceCompressedFormatsTests : IDisposable
         result.Success.Should().BeTrue();
         File.ReadAllText(Path.Combine(destDir, "browse_test", "a.txt")).Should().Be("hello gz");
         Directory.Exists(Path.Combine(destDir, "browse_test.tar")).Should().BeFalse();
+    }
+
+    // T-F154: mirrors ZipArchiveServiceExtractTests.ExtractAsync_SeparateFoldersMode_
+    // SingleRootFile_ExtractsDirectlyWithoutWrapper — a single-file tar.gz archive extracted via
+    // SeparateFolders mode must land next to the archive with no wrapper subfolder, matching how
+    // a real archiver (NanaZip/7-Zip) handles a single-file archive.
+    [Integration]
+    public async Task ExtractAsync_TarGz_SeparateFoldersMode_SingleRootFile_ExtractsDirectlyWithoutWrapper()
+    {
+        string archivePath = Path.Combine(_temp.Path, "photo.tar.gz");
+        ExternalTarFixtureBuilder.CreateCompressedTar(archivePath, "-czf", [("photo.png", "binary-ish content")]);
+
+        string destDir = Path.Combine(_temp.Path, "out");
+        var result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [archivePath],
+            DestinationFolder = destDir,
+            Mode = ExtractMode.SeparateFolders,
+        });
+
+        result.Success.Should().BeTrue();
+        File.Exists(Path.Combine(destDir, "photo.png")).Should().BeTrue("a single-file archive should not get a wrapper subfolder");
+        Directory.Exists(Path.Combine(destDir, "photo")).Should().BeFalse("no per-archive subfolder should be created for a single-file archive");
     }
 
     [SkipIfFormatUnsupported("bz2")]

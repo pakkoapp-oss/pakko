@@ -81,8 +81,10 @@ static void LaunchOpenUi(string operation, IReadOnlyList<string> files)
 
 // -------------------------------------------------------------------------
 // --extract-here: extract each archive to its own sibling directory.
-// Uses T-14 smart folder logic in ZipArchiveService (SeparateFolders mode):
-// single root folder → strips prefix; multiple roots → creates wrapper folder.
+// Uses T-14 smart folder logic in ZipArchiveService (SeparateFolders mode): single root folder →
+// strips prefix; multiple roots → creates wrapper folder; single root FILE (T-F154) → bypasses
+// the per-archive subfolder entirely and lands next to the archive, matching how a real archiver
+// (NanaZip/7-Zip) handles a single-file archive.
 // -------------------------------------------------------------------------
 static async Task RunExtractHereAsync(IReadOnlyList<string> archivePaths, GroupPolicyOptions policy)
 {
@@ -114,14 +116,15 @@ static async Task RunExtractHereAsync(IReadOnlyList<string> archivePaths, GroupP
 
 // -------------------------------------------------------------------------
 // --extract-flat (T-F115): dump every archive's contents directly into its own containing
-// folder — but this is NOT "no wrapper folder ever", despite the name. ExtractMode.SingleFolder
-// still runs T-14's smart-foldering (ZipArchiveService and, since T-F118, TarSandboxedService
-// alike): a single-root-folder archive unwraps its own top-level folder, but a genuinely
-// multi-root archive (no common containing folder) still gets an <archive_name>\ wrapper
-// created under DestinationFolder — the same T-14 logic --extract-here (SeparateFolders mode,
-// above) uses, just without --extract-here's own extra per-run numbered-folder isolation.
-// Contrast with RunExtractFolderAsync below, which unconditionally pre-computes a fresh
-// subfolder regardless of the archive's own root shape.
+// folder. ExtractMode.SingleFolder still runs T-14's smart-foldering (ZipArchiveService and,
+// since T-F118, TarSandboxedService alike) for the single-root-folder/single-root-file cases —
+// a single-root-folder archive unwraps its own top-level folder. But since T-F156 (reversing
+// T-F118 for this one mode, per a direct user decision — see DECISIONS.md), a genuinely
+// multi-root archive (no common containing folder) no longer gets an <archive_name>\ wrapper
+// here either — it really is "no wrapper folder ever" now, matching the name. Contrast with
+// --extract-here (SeparateFolders mode, above), which always wraps per archive by design, and
+// with RunExtractFolderAsync below, which unconditionally pre-computes a fresh subfolder
+// regardless of the archive's own root shape.
 // -------------------------------------------------------------------------
 static async Task RunExtractHereFlatAsync(IReadOnlyList<string> archivePaths, GroupPolicyOptions policy)
 {

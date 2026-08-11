@@ -689,7 +689,7 @@ public sealed class ZipArchiveService : IArchiveService
                 conflictResolver, sink.SkippedFiles, options.ConfirmCompressionBombExtraction, _policy.MotwMode, archiveProgress);
             var (actualDest, anyExtracted) = await Task.Run(async () =>
                 await ExtractWithSmartFolderingAsync(archivePath, destDir, alreadyIsolated,
-                    options.SelectedEntryPaths, context, cancellationToken),
+                    options.DestinationFolder, options.SelectedEntryPaths, context, cancellationToken),
                 cancellationToken).ConfigureAwait(false);
 
             // T-F87: an archive whose entries were all individually skipped (e.g. every entry
@@ -878,6 +878,7 @@ public sealed class ZipArchiveService : IArchiveService
         string archivePath,
         string destDir,
         bool alreadyIsolated,
+        string unisolatedDestDir,
         IReadOnlyList<string>? selectedEntryPaths,
         ZipExtractionContext context,
         CancellationToken cancellationToken)
@@ -926,9 +927,30 @@ public sealed class ZipArchiveService : IArchiveService
         bool isSingleRootFile = !isSelectedSubset
             && fileEntries.Count == 1 && !fileEntries[0].FullName.Contains('/');
 
-        string actualDest = (isSingleRootFolder || isSingleRootFile || alreadyIsolated || isSelectedSubset)
-            ? destDir
-            : Path.Combine(destDir, ArchiveNaming.GetBaseName(archivePath));
+        // T-F154: a single bare file at the archive's own root has no folder name of its own to
+        // "unwrap" the way isSingleRootFolder already does — so a SeparateFolders-mode extraction
+        // (alreadyIsolated) previously always dropped it into the pre-computed per-archive
+        // subfolder (destDir) regardless, e.g. "photo.zip" containing just "photo.png" landed at
+        // "<Destination>\photo\photo.png" instead of "<Destination>\photo.png". Bypass destDir
+        // entirely in that one case and extract straight into the caller's real, un-isolated
+        // target — matches how isSingleRootFolder already avoids a redundant wrapper, and how a
+        // real archiver (NanaZip/7-Zip) handles a single-file archive. Does not apply to
+        // --extract-folder's ExtractMode.SingleFolder-with-a-pre-set-subfolder path
+        // (alreadyIsolated is false there — that command's whole contract is "always a subfolder
+        // regardless of internal structure").
+        bool unwrapSingleFile = alreadyIsolated && isSingleRootFile && !isSelectedSubset;
+
+        // T-F156: a genuinely multi-root archive (no single common containing folder) used to get
+        // wrapped in an extra "<archive-base-name>\" subfolder even in SingleFolder mode ("all
+        // archives -> one flat folder" per ExtractMode's own doc comment) — this branch was the
+        // ONLY caller that could ever produce that wrap (it's unreachable whenever alreadyIsolated,
+        // isSingleRootFolder, isSingleRootFile, or isSelectedSubset is true, since each of those
+        // already resolves to destDir on its own). T-F118 (2026-07-18) made this wrapping
+        // deliberate and user-confirmed at the time; reversed here per a second, later, explicit
+        // user decision (2026-08-11) once real testing showed it contradicts SingleFolder's own
+        // flat-folder contract — see DECISIONS.md's T-F156 entry for the full conflict and the
+        // user's direct confirmation to reverse T-F118 for this one mode.
+        string actualDest = unwrapSingleFile ? unisolatedDestDir : destDir;
 
         // T-F94: whole-archive compression-ratio check, run BEFORE tempDest is created so a
         // declined/blocked bomb leaves nothing to clean up. Deliberately whole-archive rather
@@ -967,7 +989,12 @@ public sealed class ZipArchiveService : IArchiveService
             return (destDir, false);
         }
 
-        string tempDest = actualDest + "_tmp";
+        // T-F154: stage into a path derived from destDir (always archive-specific — either the
+        // pre-computed per-archive subfolder or the caller's plain destination), never from
+        // actualDest directly — when unwrapSingleFile bypasses destDir as the final target,
+        // actualDest can be a shared folder (or even a drive root) that many archives in the same
+        // batch resolve to, and "<sharedFolder>_tmp" would be an unsafe, colliding sibling path.
+        string tempDest = (unwrapSingleFile ? destDir : actualDest) + "_tmp";
 
         Directory.CreateDirectory(tempDest);
         string fullTempDest = Path.GetFullPath(tempDest).TrimEnd(Path.DirectorySeparatorChar)

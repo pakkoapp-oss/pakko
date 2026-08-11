@@ -3861,3 +3861,88 @@ document.
   прискіпливо перевір скриншоти щоб воги відпрвідали поведінці вцілому а не рільки тестованого
   сценарію."
 - **Depends on:** none
+
+---
+
+### T-F154 — Single-File Archive Extracted Into a Same-Named Wrapper Folder Instead of Directly
+
+- [x] **Status:** done 2026-08-11. Found by the user personally, while extracting an archive they
+  had created from a single file. `ZipArchiveService.ExtractWithSmartFolderingAsync` (and
+  `TarSandboxedService`'s identically-shaped `ExtractSingleArchiveAsync`) already computed an
+  `isSingleRootFile` flag but never actually used it to change where the file landed under
+  `ExtractMode.SeparateFolders` (the App's default Extract button and Explorer's "Extract
+  Here"/`--extract-here`) — a single-file archive like `photo.zip` extracted to
+  `<Destination>\photo\photo.png` instead of `<Destination>\photo.png`, unlike a real archiver
+  (NanaZip/7-Zip/WinRAR). `Archiver.CLI`'s `x` command was confirmed unaffected (always uses
+  `ExtractMode.SingleFolder`, where the flag already worked correctly). Consulted `advisor` before
+  implementing, given the fix touches two extraction engines at once. Fixed by threading a new
+  explicit `unisolatedDestDir` parameter (the caller's real `options.DestinationFolder`, already
+  available — no path-string derivation) into both engines' smart-foldering methods, gated
+  precisely on `alreadyIsolated && isSingleRootFile && !isSelectedSubset` so `--extract-folder`'s
+  own "always wrap regardless of structure" contract stays untouched. A second ripple caught before
+  shipping: `ZipArchiveService`'s temp-staging path was derived from the final destination
+  (`actualDest + "_tmp"`), which — once the final destination could become a *shared* folder
+  several archives resolve to — would have been an unsafe colliding sibling path; re-anchored to
+  the always-archive-specific `destDir` instead. Four pre-existing tests had accidentally used
+  single-file fixtures to test something unrelated (per-archive subfolder creation, compound-
+  extension stripping, `SeparateFolderName` override) and were widened to 2-file fixtures so their
+  actual point survives the fix; a fifth genuinely was single-file and had its assertion corrected
+  to the new (correct) path, doubling as a regression guard. New tests across three projects, each
+  confirmed to actually fail against a temporary revert before being restored passing:
+  `ZipArchiveServiceExtractTests` (the core fix, a negative case proving `--extract-folder` is
+  unaffected, and a multi-archive-batch collision case), a real-`tar.exe`
+  `TarSandboxedServiceCompressedFormatsTests` mirror, and a `pakko.exe` subprocess regression guard
+  documenting the CLI was never affected. `dotnet test --filter "Category!=Slow&Category!=
+  VeryLarge"` green repo-wide (824/824). `Deploy.ps1` build+sign+install (v1.4.10.1) and an
+  agent-driven on-device check against the real installed, packaged app confirmed both entry points
+  (App's Extract button via `pakko://extract`, and the real installed `Archiver.Shell.exe
+  --extract-here`) land a single-file archive directly, byte-correct, no wrapper folder. See
+  `docs/DECISIONS.md`'s T-F154 entry for the full account, including a genuinely new collision
+  surface the fix exposes in Explorer's extraction (now resolved silently via auto-rename, no
+  interactive prompt — reported to the user as a follow-up decision point, not yet actioned) and
+  the answered-but-not-implemented conflict-dialog-shape question.
+- **Not yet released:** `v1.4.10` was already tagged with its Store-signed MSIX built before this
+  bug was found — it does not contain this fix. Lands in `v1.4.11` instead.
+- **Reported by:** user, 2026-08-11 — "Знайшов дивну поведінку - при розпакуванні файлу який був
+  зарахівований один він видобувається у папку зі своїм іменем і не у файл яким він був зархіований."
+- **Depends on:** none
+
+---
+
+### T-F156 — SingleFolder ("flat") Mode Wrapped a Multi-Root Archive in a Subfolder, Contradicting Its Own Contract
+
+- [x] **Status:** done 2026-08-11. Found by the
+  user immediately after T-F154 shipped, testing extraction of an archive with several files and no
+  common folder. `ExtractMode.SingleFolder`'s own doc comment says "all archives -> one flat
+  folder", but a genuinely multi-root archive still landed inside an extra
+  `<archive-base-name>\` subfolder — the same T-14 smart-foldering mechanism T-F118 (2026-07-18) had
+  *deliberately, explicitly, on-device confirmed* made apply here too. This is a real conflict with
+  a prior explicit user decision, not a plain bugfix — surfaced via `AskUserQuestion` quoting
+  T-F118's own text rather than silently reversing it; user confirmed reversing it for SingleFolder
+  mode specifically ("Так, скасувати для SingleFolder"), leaving SeparateFolders mode's own
+  unconditional per-archive wrapping untouched. Root cause was a single ternary branch in
+  `ZipArchiveService.ExtractWithSmartFolderingAsync`/`TarSandboxedService.ExtractSingleArchiveAsync`
+  reachable only in exactly this case — removed outright rather than further gated, since no other
+  caller could ever reach it. `Archiver.Shell`'s `--extract-flat` doc comment corrected back to "no
+  wrapper folder ever created". 8 pre-existing tests across 4 projects (including T-14's own
+  original v1.0-era `ExtractAsync_MultipleRootItems_CreatesSubfolderNamedAfterArchive` test, renamed
+  to `..._ExtractsFlatWithoutSubfolder`) flipped to the new expectation, found by running the full
+  suite rather than assumed exhaustive up front. New/flipped regression tests confirmed to actually
+  fail against a scoped `git stash` of just the two service files (tests left in place) before being
+  restored passing. Also closed a coverage gap the advisor flagged in T-F154's own review: a new
+  test locks in that a single-root-file archive bypasses any caller-supplied `SeparateFolderName`
+  too. `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` green repo-wide (826/826).
+  `Archiver.ShellExtension.Tests.exe` (C++, unaffected) reconfirmed 100/100. **Graduated to `[x]`
+  2026-08-11** via `Deploy.ps1` build+sign+install (v1.4.10.2) plus an agent-driven on-device
+  check against the real installed package: `Archiver.Shell.exe --extract-flat` against a real
+  3-file no-common-folder ZIP landed all three files directly next to the archive with no wrapper
+  subfolder; `pakko.exe x` (a fresh Debug build from this session) did the same into an explicit
+  destination; `Archiver.Shell.exe --extract-here` (SeparateFolders mode) was separately confirmed
+  UNCHANGED — it still wraps the same archive into its own per-archive subfolder, as designed.
+  See `docs/DECISIONS.md`'s T-F156 entry for the full account, including the conflict with T-F118
+  and the user's direct confirmation to reverse it.
+- **Not yet released:** lands in `v1.4.11` alongside T-F154 — `v1.4.10` does not contain this fix.
+- **Reported by:** user, 2026-08-11 — "додай тест багато файлів без папки. Він знову видобуваю у
+  папку в тупому режимі і в інтелектуальному. Хоча повинен був видубути файли окремі в дурному
+  режимі."
+- **Depends on:** none

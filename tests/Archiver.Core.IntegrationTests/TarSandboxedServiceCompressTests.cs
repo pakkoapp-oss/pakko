@@ -178,13 +178,13 @@ public sealed class TarSandboxedServiceCompressTests : IDisposable
             Mode = ExtractMode.SingleFolder,
         });
 
-        // T-F118: "one.txt", "folder/", and "two.txt" are three root-level items with no common
-        // containing folder — smart-foldering (now shared with ZipArchiveService) wraps them under
-        // a "multi" subfolder named after the archive.
+        // T-F156: "one.txt", "folder/", and "two.txt" are three root-level items with no common
+        // containing folder. SingleFolder mode no longer wraps this in a "multi" subfolder (T-F118
+        // used to) — reversed per a direct user decision; see DECISIONS.md's T-F156 entry.
         extractResult.Success.Should().BeTrue();
-        File.ReadAllText(Path.Combine(destDir, "multi", "one.txt")).Should().Be("one");
-        File.ReadAllText(Path.Combine(destDir, "multi", "folder", "nested.txt")).Should().Be("nested");
-        File.ReadAllText(Path.Combine(destDir, "multi", "two.txt")).Should().Be("two");
+        File.ReadAllText(Path.Combine(destDir, "one.txt")).Should().Be("one");
+        File.ReadAllText(Path.Combine(destDir, "folder", "nested.txt")).Should().Be("nested");
+        File.ReadAllText(Path.Combine(destDir, "two.txt")).Should().Be("two");
     }
 
     // T-F153: a source folder path ending in a directory separator (e.g. typed with tab-

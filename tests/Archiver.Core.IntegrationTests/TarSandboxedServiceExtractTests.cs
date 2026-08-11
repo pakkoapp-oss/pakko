@@ -42,10 +42,12 @@ public sealed class TarSandboxedServiceExtractTests : IDisposable
             Mode = ExtractMode.SingleFolder,
         });
 
+        // T-F156: "a.txt" and "sub/b.txt" have no common containing folder — SingleFolder mode no
+        // longer wraps this in a "valid" subfolder (T-F118 used to); see DECISIONS.md's T-F156 entry.
         result.Success.Should().BeTrue();
         result.Errors.Should().BeEmpty();
-        File.ReadAllText(Path.Combine(destDir, "valid", "a.txt")).Should().Be("hello");
-        File.ReadAllText(Path.Combine(destDir, "valid", "sub", "b.txt")).Should().Be("world");
+        File.ReadAllText(Path.Combine(destDir, "a.txt")).Should().Be("hello");
+        File.ReadAllText(Path.Combine(destDir, "sub", "b.txt")).Should().Be("world");
     }
 
     // T-F118: mirrors ZipArchiveServiceExtractTests.ExtractAsync_SingleRootFolder_
@@ -75,10 +77,12 @@ public sealed class TarSandboxedServiceExtractTests : IDisposable
         Directory.Exists(Path.Combine(destDir, "myFolder")).Should().BeFalse();
     }
 
-    // T-F118: mirrors ZipArchiveServiceExtractTests.ExtractAsync_MultipleRootItems_
-    // CreatesSubfolderNamedAfterArchive — two root-level files with no common containing folder.
+    // T-F156: mirrors ZipArchiveServiceExtractTests.ExtractAsync_MultipleRootItems_
+    // ExtractsFlatWithoutSubfolder — two root-level files with no common containing folder no
+    // longer get wrapped in a subfolder named after the archive under SingleFolder mode (T-F118
+    // used to) — reversed per a direct user decision; see DECISIONS.md's T-F156 entry.
     [Integration]
-    public async Task ExtractAsync_MultipleRootItems_CreatesSubfolderNamedAfterArchive()
+    public async Task ExtractAsync_MultipleRootItems_ExtractsFlatWithoutSubfolder()
     {
         string archivePath = Path.Combine(_temp.Path, "bundle.tar");
         TarBuilder.WriteTar(archivePath,
@@ -96,8 +100,9 @@ public sealed class TarSandboxedServiceExtractTests : IDisposable
         });
 
         result.Success.Should().BeTrue();
-        File.Exists(Path.Combine(destDir, "bundle", "file1.txt")).Should().BeTrue();
-        File.Exists(Path.Combine(destDir, "bundle", "file2.txt")).Should().BeTrue();
+        File.Exists(Path.Combine(destDir, "file1.txt")).Should().BeTrue();
+        File.Exists(Path.Combine(destDir, "file2.txt")).Should().BeTrue();
+        Directory.Exists(Path.Combine(destDir, "bundle")).Should().BeFalse();
     }
 
     // T-F118: SeparateFolders mode already isolates destDir per-archive (alreadyIsolated=true) —

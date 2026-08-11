@@ -4016,3 +4016,44 @@ regression from this task, which owns reliability only.
   Policy conflict was surfaced: "ні нехай буде як є просто додай беклог як і рішення по цьому."
 - **Depends on:** none
 
+---
+
+### T-F155 — Interactive Conflict-Resolution Dialog for `Archiver.Shell` (Explorer Extraction Path)
+
+- [ ] **Status:** not started — created as a backlog entry only, not implemented this round, per
+  the user's own explicit answer when asked ("Створити нову задачу (T-F155) на інтерактивний
+  діалог").
+- **Context:** surfaced while fixing T-F154. `Archiver.Shell` (the Explorer-triggered,
+  non-WinUI extraction path — `--extract-here`, `--extract-flat`, `--extract-folder`) never wires
+  `ExtractOptions.ResolveConflictAsync` — it's always `null`, so every conflict resolves
+  non-interactively (`RunExtractHereAsync` sets `OnConflict = ConflictBehavior.Rename`; other
+  commands default to `Skip`). This was already true before T-F154, but T-F154's fix made it
+  newly *visible*: verified on a real unpackaged build that running `Archiver.Shell.exe
+  --extract-here` twice against the same single-file `photo.zip` silently produces `photo.png` →
+  `photo (1).png` → `photo (2).png`, no prompt ever appearing. The WinUI App's own Extract flow
+  already has an interactive `Overwrite`/`Rename`/`Skip` + "apply to all" `ContentDialog`
+  (T-F06, `DialogService.cs`) for the identical situation — this task is about bringing
+  `Archiver.Shell` to parity with that, not designing new conflict-resolution UX from scratch.
+- **Design note (advisor-flagged, not yet resolved):** `Archiver.Shell` is a plain console/Win32
+  process, not WinUI — there is no `ContentDialog` available. `MessageBoxW` cannot produce custom
+  button labels ("Overwrite"/"Rename"/"Skip" — only fixed sets like OK/Cancel/Yes/No/Retry/Cancel
+  are available), so the real primitive here is almost certainly `TaskDialogIndirect`
+  (comctl32, supports arbitrary custom buttons — this is what Explorer's own native file-conflict
+  dialog uses). Whether `Archiver.Shell` currently has the comctl32 v6 manifest/activation context
+  `TaskDialogIndirect` needs is an open question, not yet spiked — budget this as a real
+  investigation at implementation time, not a fill-in-the-blank task.
+- **Acceptance criteria (draft — refine at implementation time):** a real interactive dialog
+  (likely `TaskDialogIndirect`-based) shown from `Archiver.Shell` on a genuine extraction conflict,
+  offering Overwrite/Rename/Skip plus an "apply to all" option, matching T-F06's shape;
+  `ExtractOptions.ResolveConflictAsync` wired to it for every `Archiver.Shell` extraction command
+  (`--extract-here`, `--extract-flat`, `--extract-folder`); new localized strings across all 37
+  locales, matching this project's existing localization convention for shell-triggered dialogs
+  (see T-F146's `ScanMessages.*.resx` precedent); tests for the dialog's decision-mapping logic
+  (hand-rolled fakes, no mocking library, per this project's convention) plus a real on-device
+  check (repeat `--extract-here` against a colliding archive, click each of Overwrite/Rename/Skip/
+  apply-to-all in turn) — not graduated on `dotnet test` alone.
+- **Reported by:** user, 2026-08-11, in direct response to being asked whether to leave the silent
+  auto-rename behavior as-is or create a follow-up task: "Створити нову задачу (T-F155) на
+  інтерактивний діалог."
+- **Depends on:** none (T-F154 is the context that surfaced this, already shipped)
+
