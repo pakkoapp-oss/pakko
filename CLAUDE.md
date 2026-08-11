@@ -1323,6 +1323,15 @@ MSBuild tests\Archiver.ShellExtension.Tests\Archiver.ShellExtension.Tests.vcxpro
 > source for archive — same naming Explorer's "Add to X.zip" verb produces). Passing an extra path
 > as a destination gets silently treated as another source/archive path instead (T-F142).
 >
+> **Any Pakko command that shows a native modal (`IProgressDialog`, `MessageBoxW` result dialogs —
+> `--archive`, `--extract-*`, `--test`, `--scan`, `--hash`) blocks forever if invoked directly
+> (`& $exe args`) from the PowerShell tool** — the call never returns because the dialog waits for
+> a click. Launch via `Start-Process -FilePath $exe -ArgumentList @(...)` (detached) instead, then
+> poll for the dialog with `EnumWindows`/`GetWindowThreadProcessId` filtered to the child PID, read
+> its result text via `EnumChildWindows`, and dismiss with `SendMessage(hWnd, 0x00F5, ...)`
+> (BM_CLICK) on the OK button's handle. If a call hangs anyway, `taskkill /F /IM
+> Archiver.Shell.exe` clears the stuck modal before retrying (T-F151/T-F153 smoke tests).
+>
 > **A build failing with a file-lock-shaped error** (`MSB3231`/`Access to the path ... is
 > denied` on something under `bin`/`obj`/`AppPackages`) — first try `dotnet build-server
 > shutdown` (kills lingering MSBuild/VBCSCompiler nodes that can hold output handles open)
@@ -1355,6 +1364,10 @@ MSBuild tests\Archiver.ShellExtension.Tests\Archiver.ShellExtension.Tests.vcxpro
 >   `skipped` (not a conflict/failure) on a manual dispatch, since their own `if:` conditions gate
 >   them to the push/tag-trigger path only; just `build-store-msix`/`bundle-store-msix` actually
 >   run. Confirmed T-F142/v1.4.7 — no duplicate-release error, no wasted red X.
+> - **`gh release download`/other repo-scoped `gh` commands need `--repo pakkoapp-oss/pakko`**
+>   when the Bash tool's cwd isn't inside the git repo (e.g. downloading a release artifact into
+>   the scratchpad for a real-artifact smoke test) — otherwise it fails with a misleading `fatal:
+>   not a git repository`, not a permissions/network error (T-F151/T-F153 smoke tests).
 >
 > **Windows App Certification Kit (`appcert.exe`) requires elevation** — a bare invocation fails
 > with "requires elevation." Run it via `Start-Process -Verb RunAs -Wait` from the PowerShell
