@@ -78,6 +78,12 @@ src/
 │   │   ├── ArchiveFormatDetector.cs    ← magic-byte sniffing, not extension-based
 │   │   ├── ArchiveNaming.cs            ← compound-extension-aware naming (T-F103)
 │   │   ├── ConflictResolver.cs         ← T-F06: resolves ConflictBehavior.Ask
+│   │   ├── ExtractionDestinationPlanner.cs ← T-F157: shared actualDest/StripRootPrefix decision,
+│   │   │                                  was hand-kept-in-sync between ZipArchiveService and
+│   │   │                                  TarSandboxedService (T-F118)
+│   │   ├── DestinationConflictResolver.cs ← T-F158: archive-creation-side analogue of T-F157 —
+│   │   │                                  shared Skip/Overwrite/Rename decision for a candidate
+│   │   │                                  archive destination path
 │   │   ├── PreviewPolicy.cs            ← T-F97/T-F109: safe-preview allowlist
 │   │   ├── TarVersionParser.cs
 │   │   ├── FileHashService.cs          ← T-F128: single-file/multi-file/single-folder-recursive hashing
@@ -278,6 +284,47 @@ internal sealed class ConflictResolver(
     Func<ConflictInfo, Task<ConflictDecision>>? resolveConflictAsync)
 {
     public Task<ConflictBehavior> ResolveAsync(string existingPath);
+}
+```
+
+```csharp
+// Services/ExtractionDestinationPlanner.cs — internal, Archiver.Core.Services
+// T-F157: the actualDest/StripRootPrefix decision ZipArchiveService.
+// ExtractWithSmartFolderingAsync and TarSandboxedService.ExtractSingleArchiveAsync used to
+// hand-duplicate (T-F118's "kept algorithmically in sync" promise, broken twice in one day by
+// T-F154/T-F156) — now one shared, pure, unit-testable function. RootShape.Classify and
+// Resolve's 8 arms are spelled out explicitly (no discard) for auditability, not compiler
+// exhaustiveness — Roslyn's enum-exhaustiveness check treats named members as an open set, so a
+// discard-less switch still needs the `_ => throw` arm; the real "new RootShape must be handled"
+// guard is ExtractionDestinationPlannerTests' enumeration theory. See DECISIONS.md's T-F157 entry.
+internal enum RootShape { SingleFolder, SingleFile, MultiRoot, SelectedSubset }
+
+internal static class ExtractionDestinationPlanner
+{
+    public static RootShape Classify(bool isSelectedSubset, bool isSingleRootFolder, bool isSingleRootFile);
+
+    public static (string ActualDest, bool StripRootPrefix) Resolve(
+        bool alreadyIsolated, RootShape shape, string destDir, string unisolatedDestDir);
+}
+```
+
+```csharp
+// Services/DestinationConflictResolver.cs — internal, Archiver.Core.Services
+// T-F158: the archive-creation-side analogue of ExtractionDestinationPlanner (T-F157) — the
+// Skip/Overwrite/Rename decision for a candidate destination archive path, previously
+// hand-duplicated in ZipArchiveService.ArchiveSingleArchiveModeAsync,
+// ZipArchiveService.ResolveSeparateArchivePlansAsync (with an extra same-run-collision wrinkle,
+// see DECISIONS.md's T-F158 entry), and TarSandboxedService's own private
+// ResolveDestinationConflictAsync (deleted). Deliberately pure aside from awaiting
+// conflictResolver — no File.Exists/File.Delete inside; ProceedAfterDeletingExisting leaves the
+// actual delete to the caller.
+internal enum DestinationConflictOutcome { Proceed, ProceedAfterDeletingExisting, Skip }
+
+internal static class DestinationConflictResolver
+{
+    public static Task<(DestinationConflictOutcome Outcome, string ResolvedDestPath)> ResolveAsync(
+        string destPath, bool onDiskConflict, bool sameRunConflict,
+        ConflictResolver conflictResolver, Func<string, string> renameCandidate);
 }
 ```
 

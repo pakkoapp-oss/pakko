@@ -331,19 +331,15 @@ public sealed class TarSandboxedService : ITarService
 
         bool isSingleRootFile = !isSelectedSubset && fileNames.Count == 1 && !fileNames[0].Contains('/');
 
-        // T-F154: mirrors ZipArchiveService.ExtractWithSmartFolderingAsync's identical fix exactly
-        // (T-F118 kept the two algorithmically in sync) — a single bare file at the archive's own
-        // root has no folder name to unwrap the way isSingleRootFolder already does, so a
-        // SeparateFolders-mode extraction (alreadyIsolated) previously always dropped it into the
-        // pre-computed per-archive subfolder (destDir) regardless. Bypass destDir entirely in that
-        // one case and extract straight into the caller's real, un-isolated target.
-        bool unwrapSingleFile = alreadyIsolated && isSingleRootFile && !isSelectedSubset;
-
-        // T-F156: mirrors ZipArchiveService.ExtractWithSmartFolderingAsync's identical fix exactly
-        // (T-F118 kept the two algorithmically in sync) — a genuinely multi-root archive no longer
-        // gets wrapped in an "<archive-base-name>\" subfolder in SingleFolder mode; see
-        // DECISIONS.md's T-F156 entry.
-        string actualDest = unwrapSingleFile ? unisolatedDestDir : destDir;
+        // T-F157: mirrors ZipArchiveService.ExtractWithSmartFolderingAsync exactly — the
+        // actualDest/StripRootPrefix decision (T-F154's single-file unwrap, T-F156's multi-root-in-
+        // SingleFolder-mode fix, and the pre-existing isSingleRootFolder strip) now lives in the
+        // shared ExtractionDestinationPlanner instead of two hand-kept-in-sync copies (T-F118's own
+        // comment called that sync a documentation-enforced promise) — see DECISIONS.md's T-F157
+        // entry.
+        var rootShape = ExtractionDestinationPlanner.Classify(isSelectedSubset, isSingleRootFolder, isSingleRootFile);
+        var (actualDest, stripRootPrefix) = ExtractionDestinationPlanner.Resolve(
+            alreadyIsolated, rootShape, destDir, unisolatedDestDir);
 
         // T-F94: whole-archive compression-ratio decision. compressedFileSize reads the
         // ORIGINAL archivePath (not the staged copy — same size either way, hardlink or copy,
@@ -445,7 +441,7 @@ public sealed class TarSandboxedService : ITarService
             totalFiles++;
 
             var (extracted, relativePath) = await TryMoveSingleEntryAsync(
-                file, scope.OutputDirectory!, isSingleRootFolder, actualDest, archivePath, context).ConfigureAwait(false);
+                file, scope.OutputDirectory!, stripRootPrefix, actualDest, archivePath, context).ConfigureAwait(false);
             if (!extracted)
                 continue;
 
@@ -503,21 +499,23 @@ public sealed class TarSandboxedService : ITarService
     // isSingleRootFolder edge case, matching the original inline loop's two `continue` sites) and
     // the relative path actually used, for the caller's own progress-report CurrentFile.
     private static async Task<(bool Extracted, string? RelativePath)> TryMoveSingleEntryAsync(
-        string file, string outputDirectory, bool isSingleRootFolder, string actualDest, string archivePath,
+        string file, string outputDirectory, bool stripRootPrefix, string actualDest, string archivePath,
         TarExtractionContext context)
     {
         string relativePath = Path.GetRelativePath(outputDirectory, file);
 
-        // T-F118: matches ZipArchiveService.ExtractWithSmartFolderingAsync's identical strip —
-        // when the whole archive collapses to one root folder, actualDest already stands in for
-        // that folder, so its own name is dropped from the path being written.
-        if (isSingleRootFolder)
+        // T-F118/T-F157: matches ZipArchiveService.ExtractWithSmartFolderingAsync's identical
+        // strip (now via the shared ExtractionDestinationPlanner) — when the whole archive
+        // collapses to one root folder, actualDest already stands in for that folder, so its own
+        // name is dropped from the path being written.
+        if (stripRootPrefix)
         {
             int sep = relativePath.IndexOf(Path.DirectorySeparatorChar);
             if (sep < 0)
             {
                 // Defensive only — every file walked here came from a fileNames entry that was
-                // confirmed to contain '/' for isSingleRootFolder to be true at all.
+                // confirmed to contain '/' for stripRootPrefix (RootShape.SingleFolder) to be
+                // true at all.
                 return (false, null);
             }
             relativePath = relativePath[(sep + 1)..];
@@ -906,7 +904,11 @@ public sealed class TarSandboxedService : ITarService
             string archiveName = ArchiveNaming.ResolveSingleArchiveName(options.ArchiveName, options.SourcePaths);
             string destPath = Path.Combine(options.DestinationFolder, archiveName + extension);
 
-            var (outcome, resolvedDestPath) = await ResolveDestinationConflictAsync(destPath, conflictResolver).ConfigureAwait(false);
+            // T-F158: shared with ZipArchiveService's equivalent conflict decision — see
+            // DestinationConflictResolver and DECISIONS.md's T-F158 entry.
+            var (outcome, resolvedDestPath) = await DestinationConflictResolver.ResolveAsync(
+                destPath, onDiskConflict: File.Exists(destPath), sameRunConflict: false,
+                conflictResolver, renameCandidate: p => GetUniqueFilePath(p)).ConfigureAwait(false);
             if (outcome == DestinationConflictOutcome.Skip)
             {
                 return new ArchiveResult
@@ -921,6 +923,8 @@ public sealed class TarSandboxedService : ITarService
                     })],
                 };
             }
+            if (outcome == DestinationConflictOutcome.ProceedAfterDeletingExisting)
+                File.Delete(destPath);
 
             await CompressToArchiveAsync(options, resolvedDestPath, createdFiles, errors, skippedFiles, progress, cancellationToken)
                 .ConfigureAwait(false);
@@ -948,33 +952,6 @@ public sealed class TarSandboxedService : ITarService
         return result;
     }
 
-    private enum DestinationConflictOutcome { Proceed, Skip }
-
-    // Shared by CompressAsync's SingleArchive branch and ProcessSeparateArchivesAsync -- both used
-    // to run the identical File.Exists+switch(ConflictBehavior) block, just with different Skip // NOSONAR: prose, not commented-out code (S125 false positive)
-    // handling (a whole-method early return vs. a per-item skippedFiles.Add+continue), which stays
-    // the caller's job. Returns the destination path to actually write to (renamed if the conflict
-    // resolution was Rename, unchanged otherwise).
-    private static async Task<(DestinationConflictOutcome Outcome, string DestPath)> ResolveDestinationConflictAsync(
-        string destPath, ConflictResolver conflictResolver)
-    {
-        if (!File.Exists(destPath))
-            return (DestinationConflictOutcome.Proceed, destPath);
-
-        switch (await conflictResolver.ResolveAsync(destPath).ConfigureAwait(false))
-        {
-            case ConflictBehavior.Skip:
-                return (DestinationConflictOutcome.Skip, destPath);
-            case ConflictBehavior.Overwrite:
-                File.Delete(destPath);
-                return (DestinationConflictOutcome.Proceed, destPath);
-            case ConflictBehavior.Rename:
-                return (DestinationConflictOutcome.Proceed, GetUniqueFilePath(destPath));
-            default:
-                return (DestinationConflictOutcome.Proceed, destPath);
-        }
-    }
-
     private static async Task ProcessSeparateArchivesAsync(
         ArchiveOptions options, string extension, ConflictResolver conflictResolver,
         ArchiveResultSink sink, IProgress<ProgressReport>? progress, CancellationToken cancellationToken)
@@ -995,7 +972,9 @@ public sealed class TarSandboxedService : ITarService
             string baseName = Path.GetFileNameWithoutExtension(sourcePath);
             string destPath = Path.Combine(options.DestinationFolder, baseName + extension);
 
-            var (outcome, resolvedDestPath) = await ResolveDestinationConflictAsync(destPath, conflictResolver).ConfigureAwait(false);
+            var (outcome, resolvedDestPath) = await DestinationConflictResolver.ResolveAsync(
+                destPath, onDiskConflict: File.Exists(destPath), sameRunConflict: false,
+                conflictResolver, renameCandidate: p => GetUniqueFilePath(p)).ConfigureAwait(false);
             if (outcome == DestinationConflictOutcome.Skip)
             {
                 sink.SkippedFiles.Add(new SkippedFile
@@ -1005,6 +984,8 @@ public sealed class TarSandboxedService : ITarService
                 });
                 continue;
             }
+            if (outcome == DestinationConflictOutcome.ProceedAfterDeletingExisting)
+                File.Delete(destPath);
 
             var singleOptions = options with { SourcePaths = [sourcePath] };
             await CompressToArchiveAsync(singleOptions, resolvedDestPath, sink.CreatedFiles, sink.Errors, sink.SkippedFiles, progress, cancellationToken)

@@ -3946,3 +3946,50 @@ document.
   папку в тупому режимі і в інтелектуальному. Хоча повинен був видубути файли окремі в дурному
   режимі."
 - **Depends on:** none
+
+---
+
+### T-F157 — Shared `ExtractionDestinationPlanner` (kills the hand-synced T-F118 decision)
+
+- [x] **Status:** done 2026-08-11. `ZipArchiveService.ExtractWithSmartFolderingAsync` and
+  `TarSandboxedService.ExtractSingleArchiveAsync` each independently computed the same
+  `actualDest`/`isSingleRootFolder` decision from four loose booleans — T-F118's own comment
+  called the two copies "kept algorithmically in sync," a documentation-enforced promise T-F154
+  and T-F156 both had to honor by hand, in the same day. Motivated by the user's exploratory
+  question about whether a deterministic action/state "matrix" made sense here; scope narrowed to
+  exactly this one decision (no GUI/Explorer/CLI router — that axis has no hidden complexity).
+  Designed via Plan Mode + `advisor`, which corrected two points in the original pitch before
+  implementation: (1) a discard-less `switch` over `(bool, RootShape)` does NOT get genuine
+  compiler-enforced exhaustiveness under `TreatWarningsAsErrors` — verified via a throwaway
+  scratch build, which failed with `CS8524` even with every named member handled (Roslyn's
+  enum-exhaustiveness check treats named members as an open set); kept `ArchiveNaming.
+  GetExtension`'s existing `_ => throw
+  ArgumentOutOfRangeException` convention instead, and moved the real exhaustiveness guarantee
+  into a test (`Resolve_EveryRealRootShapeValue_NeverThrows`, iterating the real enum via
+  `Enum.GetValues<RootShape>()`); (2) `tempDest`'s `unwrapSingleFile ? destDir : actualDest`
+  ternary was a no-op (both branches always reduced to `destDir + "_tmp"`) — reduced outright
+  instead of re-deriving `unwrapSingleFile` at the call site, which would have recreated the exact
+  duplication this task exists to kill. New `internal static class ExtractionDestinationPlanner`
+  (`Classify`/`Resolve`) in `src/Archiver.Core/Services/ExtractionDestinationPlanner.cs`, called
+  identically by both engines; `ExtractionPlan.IsSingleRootFolder`/`TryMoveSingleEntryAsync`'s
+  `isSingleRootFolder` parameter renamed to `StripRootPrefix`/`stripRootPrefix`. Pure refactor —
+  zero existing test assertions changed anywhere; 13 new tests
+  (`ExtractionDestinationPlannerTests`: 8 `[Fact]`s per `(alreadyIsolated, RootShape)` combination
+  — not `[Theory]`/`[InlineData]` directly over `RootShape`, since that's `internal` and hits
+  `CS0051` on xUnit's required-public test method — plus the exhaustiveness `[Fact]` and 4
+  `Classify` precedence facts). Mutation check (flipped the `(true, RootShape.SingleFile)` arm,
+  confirmed 4 real failures including T-F154's own `..._BypassesOverride` coverage, restored)
+  proved the table is genuinely wired into both call sites. `dotnet test --filter
+  "Category!=Slow&Category!=VeryLarge"` green repo-wide (491/491 in `Archiver.Core.Tests`, up from
+  479; every other project unchanged). `docs/DIAGRAMS.md` diagram 3 updated to name the new
+  mechanism (validated via `mmdc`); `docs/ARCHITECTURE.md` gained the new type's signatures.
+  **Graduated to `[x]` 2026-08-11** via `Deploy.ps1` build+sign+install (v1.4.10.3) plus a
+  fresh Debug `pakko.exe` build — re-ran T-F156's exact three-entry-point check against a fresh
+  multi-root ZIP fixture: `Archiver.Shell.exe --extract-flat` and `pakko.exe x` both still land
+  flat with no wrapper; `Archiver.Shell.exe --extract-here` (SeparateFolders) still wraps,
+  unchanged. No behavior drift from the refactor. See `docs/DECISIONS.md`'s T-F157 entry for the
+  full advisor-corrected design account.
+- **Reported by:** user, 2026-08-11 — "Заведи на це таску подумай яку краще першою робити цю чи
+  155. Додай в таску загальну ідею з втоїми пропозиціями." (task creation) and "Давай 157 з
+  адвізором та кращими практиками для такої задачі." (implementation directive).
+- **Depends on:** none (motivated by T-F154/T-F156, both already shipped)

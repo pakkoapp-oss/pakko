@@ -758,8 +758,59 @@ failure — so a blocked/misconfigured sandbox would have crashed instead of yie
   produce custom button labels, so `TaskDialogIndirect` (comctl32) is the likely primitive, and
   whether `Archiver.Shell` already has the activation context it needs is unconfirmed. See
   `docs/TASKS.md`'s T-F155 entry.
+- **T-F157 (`[x]` done 2026-08-11)** — new shared `internal static class
+  ExtractionDestinationPlanner` (`Classify`/`Resolve`, `src/Archiver.Core/Services/
+  ExtractionDestinationPlanner.cs`) replaces the `actualDest`/`isSingleRootFolder` decision
+  `ZipArchiveService.ExtractWithSmartFolderingAsync`/`TarSandboxedService.
+  ExtractSingleArchiveAsync` used to hand-duplicate — T-F118's own comment called that duplication
+  "kept algorithmically in sync," a promise T-F154/T-F156 both had to honor manually in one day.
+  Designed via Plan Mode + `advisor`, which corrected two points before implementation: a
+  discard-less `switch` over `(bool, RootShape)` does NOT get real compiler-enforced
+  exhaustiveness under `TreatWarningsAsErrors` — verified via a throwaway scratch build, which
+  failed with `CS8524` even with all 8 named combinations present (Roslyn's enum-exhaustiveness
+  check treats named members as an open set) — so the design kept `ArchiveNaming.GetExtension`'s
+  existing `_ => throw
+  ArgumentOutOfRangeException` convention and moved the real exhaustiveness guarantee into a test
+  instead (`Resolve_EveryRealRootShapeValue_NeverThrows`, iterating the real enum); and
+  `tempDest`'s `unwrapSingleFile ? destDir : actualDest` ternary was algebraically a no-op,
+  reduced to `destDir + "_tmp"` outright rather than re-deriving `unwrapSingleFile` at the call
+  site. Pure refactor — zero existing test assertions changed; 13 new tests, plus a mutation
+  check (flip one arm, confirm 4 real failures including T-F154's own coverage, restore) proving
+  the table is genuinely wired in. `dotnet test --filter "Category!=Slow&Category!=VeryLarge"`
+  green repo-wide (491/491 in `Archiver.Core.Tests`). `docs/DIAGRAMS.md` diagram 3 updated
+  (validated via `mmdc`). `Deploy.ps1` build+sign+install (v1.4.10.3) plus a fresh Debug
+  `pakko.exe` build confirmed no behavior drift across all three entry points. See
+  `docs/TASKS_DONE.md`'s and `docs/DECISIONS.md`'s T-F157 entries.
+- **T-F158 (`[~]` implementation complete 2026-08-11, one on-device path unverified)** — the
+  archive-creation-side analogue of T-F157, same day, user-directed: new `internal static class
+  DestinationConflictResolver` (`src/Archiver.Core/Services/DestinationConflictResolver.cs`)
+  replaces three hand-duplicated copies of the destination-archive-path Skip/Overwrite/Rename
+  decision — `ZipArchiveService.ArchiveSingleArchiveModeAsync`/`ResolveSeparateArchivePlansAsync`
+  (the latter also tracks in-memory same-run collisions for T-F12's parallel `SeparateArchives`
+  mode) and `TarSandboxedService`'s own already-self-shared `ResolveDestinationConflictAsync`
+  (deleted outright). Designed via Plan Mode + `advisor`, which caught two real issues before
+  implementation — `File.Delete` inside the shared resolver would have broken its testability the
+  same way Tar's original helper was untestable (fixed via a `ProceedAfterDeletingExisting`
+  outcome, delete stays at each call site); an unverified truth-table claim about which
+  `(onDiskConflict, sameRunConflict)` combinations are reachable (built and confirmed explicitly:
+  `(true, true)` is unreachable today, every reachable cell matches pre-refactor behavior exactly).
+  A third issue was caught independently: advisor's cited existing-test coverage for the
+  same-run-`Overwrite` arm was checked against the real file and found to test an unrelated code
+  path (T-30's ZIP-entry-name collision) — a genuine coverage gap, closed with a new test. Pure
+  refactor — zero existing test assertions changed; `Archiver.Core.Tests` 491→501,
+  `Archiver.Core.IntegrationTests` 70→72. Mutation check (forced `Overwrite` to never rename on a
+  same-run collision) produced 3 real failures, then restored. `Deploy.ps1` build+sign+install
+  (v1.4.10.4) plus a fresh Debug `pakko.exe` confirmed both Zip's and Tar's `SingleArchive`
+  conflict arms through the real CLI (`pakko a` / `pakko a -y` / `pakko a -ttar` against real
+  pre-existing archives). **Stays `[~]`:** `ResolveSeparateArchivePlansAsync`'s same-run-collision
+  arm is reachable only through the WinUI App's `SeparateArchives` mode (neither
+  `Archiver.Shell.exe --archive` nor `pakko a` ever constructs it), and no `windows` MCP
+  automation was available this session to drive it — rests on the mutation check + full
+  `dotnet test` pass until the user's own click-through or an agent-driven MCP pass closes it.
+  See `docs/TASKS.md`'s and `docs/DECISIONS.md`'s T-F158 entries.
 - Next work: Future tasks in `TASKS.md`, including **T-F148** (SYSLIB1054 conversion, split
-  out of T-F147), **T-F155** (interactive Shell conflict dialog)
+  out of T-F147), **T-F159** (unify `GetUniqueFilePath`, split out of T-F158), **T-F155**
+  (interactive Shell conflict dialog)
 
 ## Roadmap Summary
 

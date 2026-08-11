@@ -7247,3 +7247,205 @@ all three files inside it, exactly as SeparateFolders mode is supposed to.
 **T-F155 also created this session** (separate, not implemented here) — the silent, non-interactive
 Explorer conflict-resolution gap T-F154 surfaced (`Archiver.Shell` has no wired `ResolveConflictAsync`)
 gets its own task per the user's explicit direction; see `docs/TASKS.md`'s T-F155 entry.
+
+---
+
+### T-F157 — Shared `ExtractionDestinationPlanner` (kills the hand-synced T-F118 decision)
+
+**Motivation:** `ZipArchiveService.ExtractWithSmartFolderingAsync` and `TarSandboxedService.
+ExtractSingleArchiveAsync` each independently computed the same `actualDest`/`isSingleRootFolder`
+decision from four loose booleans (`alreadyIsolated`, `isSingleRootFolder`, `isSingleRootFile`,
+`isSelectedSubset`). T-F118's own comment called the two copies "kept algorithmically in sync" —
+a documentation-enforced promise, not a compiler- or test-enforced one. T-F154 and T-F156, both
+shipped the same day, each had to edit both files in lockstep to honor it. User floated
+(exploratory) whether a deterministic action/state "matrix" made sense for this shape of problem
+across the whole app; scope was narrowed in `docs/TASKS.md`'s T-F157 entry to exactly this one
+decision — no GUI/Explorer/CLI axis exists here with any hidden complexity (every frontend
+already just builds an `ExtractOptions` and calls the same `Core`).
+
+**Design:** new `internal enum RootShape { SingleFolder, SingleFile, MultiRoot, SelectedSubset }`
++ `internal static class ExtractionDestinationPlanner` in
+`src/Archiver.Core/Services/ExtractionDestinationPlanner.cs` — `Classify(isSelectedSubset,
+isSingleRootFolder, isSingleRootFile) -> RootShape`, then `Resolve(alreadyIsolated, shape,
+destDir, unisolatedDestDir) -> (ActualDest, StripRootPrefix)`. Both `ZipArchiveService.
+ExtractWithSmartFolderingAsync` and `TarSandboxedService.ExtractSingleArchiveAsync` now call the
+same two functions instead of duplicating the decision; `ExtractionPlan.IsSingleRootFolder`
+(Zip) and `TryMoveSingleEntryAsync`'s `isSingleRootFolder` parameter (Tar) were renamed to
+`StripRootPrefix`/`stripRootPrefix` to match what they now actually hold.
+
+**Corrected pre-implementation, via `advisor` (both verified empirically, not assumed):**
+1. The original pitch was a discard-less `switch` expression over `(bool, RootShape)` for
+   compiler-enforced exhaustiveness under this repo's `TreatWarningsAsErrors` (T-F150) — the
+   claim being that a future `RootShape` member with no matching arm would fail the build.
+   **Verified, not just recalled** (advisor flagged the first draft of this entry for stating the
+   compiler behavior as fact without having built it — corrected here): a throwaway discard-less
+   copy of this exact switch, built via a scratch console project with `TreatWarningsAsErrors`
+   set, failed with `CS8524: The switch expression does not handle some values of its input
+   type... For example, the pattern '(true, (RootShape)4)' is not covered` — with all 8 named
+   combinations present. Roslyn's enum-exhaustiveness analysis treats a plain enum's named
+   members as an open set (any `int` is a legal value via an explicit cast), so this really does
+   not compile clean under `TreatWarningsAsErrors` — chasing "no discard" here would have either
+   failed to build or forced landing on the exact
+   `_ => throw new ArgumentOutOfRangeException(...)` shape `ArchiveNaming.GetExtension` already
+   uses, with extra churn to get there. **Kept `ArchiveNaming`'s existing convention as-is** (all
+   8 arms spelled out, plus the `_ => throw` fallback) and moved the real exhaustiveness
+   guarantee into a test instead: `ExtractionDestinationPlannerTests.
+   Resolve_EveryRealRootShapeValue_NeverThrows` iterates `Enum.GetValues<RootShape>()` and asserts
+   `Resolve` never throws for any real member — a genuinely provable guard against the actual
+   runtime enum, independent of whatever Roslyn's tuple-pattern warning behavior turns out to be.
+   **Keep this as the standing precedent** against future "the compiler will catch it" claims
+   about discard-less enum/tuple switches in this repo — it doesn't, at least not reliably enough
+   to rely on for `TreatWarningsAsErrors` to do the enforcing.
+2. `tempDest = (unwrapSingleFile ? destDir : actualDest) + "_tmp"` in
+   `ExtractWithSmartFolderingAsync` (Zip) was a no-op ternary: `actualDest` already equals
+   `destDir` in every case except `unwrapSingleFile`, so both branches always reduced to
+   `destDir + "_tmp"`. Replaced with the reduced form outright — the original plan would have
+   re-derived `unwrapSingleFile` (`alreadyIsolated && shape == RootShape.SingleFile`) at the Zip
+   call site just to feed this ternary, recreating exactly the kind of decision-duplication this
+   task exists to remove.
+
+**Explicit scope fence, held to during implementation:** Zip's `fileEntries.Count == 0` early
+return was left untouched (no new `Empty` `RootShape` member — T-F87 territory, and Tar reaches
+the same net outcome via its own pre-existing route, falling through to `MultiRoot`);
+`ZipExtractionContext`/`TarExtractionContext` were left as separate record types (T-F118's "share
+no common base" note was about those two record shapes specifically, not license to merge them
+here — only the *decision* is shared); `ArchiveEntrySecurity.GetAvailableFreeSpace(destDir)` still
+reads `destDir`, never `actualDest`.
+
+**Testing:** new `tests/Archiver.Core.Tests/Services/ExtractionDestinationPlannerTests.cs` — one
+`[Fact]` per `(alreadyIsolated, RootShape)` combination (8 total, not a `[Theory]`/`[InlineData]`
+directly over `RootShape` — that hits `CS0051`, since `RootShape` is `internal` and xUnit test
+methods must be `public`; same rule as this project's documented "private nested class as
+parameter" constraint, generalized to internal enums), the enumeration-based exhaustiveness
+`[Fact]` described above, and 4 `Classify` precedence `[Fact]`s (subset wins over folder/file,
+folder wins over file, neither → `MultiRoot`). **Zero existing test assertions changed anywhere**
+— this was a pure refactor, confirmed by a full `dotnet test --filter
+"Category!=Slow&Category!=VeryLarge"` run before and after (491/491 in `Archiver.Core.Tests`,
+up from 479 with this entry's 13 new tests; every other project's count unchanged). **Mutation
+check** (this project's revert-confirm discipline applied to a refactor instead of a bugfix):
+temporarily flipped the `(true, RootShape.SingleFile)` arm to `(destDir, false)`, ran the affected
+subset — 4 real failures, including `ExtractAsync_SeparateFolderName_SingleRootFile_
+BypassesOverride` (T-F154's own coverage for exactly this arm) and the new
+`Resolve_AlreadyIsolated_SingleFile_BypassesToUnisolatedDest` test — then restored and reconfirmed
+491/491 green. Proves the shared table is actually wired into both call sites, not shadowed by
+something upstream.
+
+**On-device (2026-08-11):** `Deploy.ps1` build+sign+install (v1.4.10.3, auto-bumped to 1.4.10.4
+for the next run) against the real installed package, plus a fresh Debug `pakko.exe` build —
+re-ran the exact three-entry-point check T-F156 already established, against a fresh 3-file
+no-common-folder `many.zip` (`Compress-Archive`): `Archiver.Shell.exe --extract-flat many.zip`
+and `pakko.exe x many.zip -o<dest>` both still land all three files flat with no `many\` wrapper;
+`Archiver.Shell.exe --extract-here many.zip` (SeparateFolders) still wraps into `many\`,
+unchanged. No behavior drift from the refactor.
+
+---
+
+### T-F158 — Shared `DestinationConflictResolver` (archiving-side analogue of T-F157)
+
+**Motivation:** immediately after T-F157 shipped, the user asked to apply the same principle to
+archive *creation*. Investigation found the same class of duplication on the destination-conflict
+decision (`File.Exists` a candidate archive path → `Skip`/`Overwrite`/`Rename`), present in three
+places: `ZipArchiveService.ArchiveSingleArchiveModeAsync` (inline), `ZipArchiveService.
+ResolveSeparateArchivePlansAsync` (also inline, plus an extra wrinkle — T-F12 made
+`SeparateArchives` mode archive sources in parallel, so this method also tracks in-memory
+`claimedDestPaths` for same-run collisions between two sources that would produce the same
+archive name in one batch, and `Overwrite` behaves differently there — renames instead of
+deleting, to avoid a race against an in-flight worker), and `TarSandboxedService.
+ResolveDestinationConflictAsync` (already its own shared private helper *within* Tar, used by
+both Tar's `SingleArchive` and `SeparateArchives` branches, but never shared *with* Zip).
+
+**Design:** new `internal static class DestinationConflictResolver` in
+`src/Archiver.Core/Services/DestinationConflictResolver.cs` — `ResolveAsync(destPath,
+onDiskConflict, sameRunConflict, conflictResolver, renameCandidate) -> (DestinationConflictOutcome,
+ResolvedDestPath)`, `DestinationConflictOutcome { Proceed, ProceedAfterDeletingExisting, Skip }`.
+All three call sites now route through it: `ZipArchiveService.ArchiveSingleArchiveModeAsync`
+(`sameRunConflict: false`), `ZipArchiveService.ResolveSeparateArchivePlansAsync` (both flags real,
+unchanged computation), and `TarSandboxedService`'s two former `ResolveDestinationConflictAsync`
+call sites (`sameRunConflict: false`, that private method + its nested enum deleted outright).
+
+**Corrections made during design, both against `advisor`'s own draft:**
+1. **Advisor's original sketch put `File.Delete` inside the shared resolver.** That would have
+   made it as untestable as Tar's original `ResolveDestinationConflictAsync` (which had the same
+   flaw and was never directly unit-tested for exactly that reason) and broken the actual T-F157
+   principle being invoked — `ExtractionDestinationPlanner.Resolve` has zero I/O.
+   `DestinationConflictOutcome.ProceedAfterDeletingExisting` was added instead, leaving
+   `File.Delete` at each of the three call sites; the resolver's only unavoidable side effect is
+   awaiting `conflictResolver.ResolveAsync`, which may prompt the user — a genuine query, not an
+   action taken on its own.
+2. **Verified the unification with an explicit truth table** over
+   `(onDiskConflict, sameRunConflict) × {Skip, Overwrite, Rename}` before trusting it — confirmed
+   `(true, true)` is unreachable in production today (Zip's pre-pass loop is synchronous: an
+   `Overwrite` that deletes on-disk always completes before the next same-basename source is even
+   evaluated, so by the time a real same-run collision is seen `onDiskConflict` has already gone
+   back to `false`), and confirmed every reachable cell reduces to the exact same outcome across
+   all three pre-refactor implementations. `Resolve` still defines an answer for `(true, true)`
+   (renames, matching the `sameRunConflict`-wins rule) rather than leaving it unhandled, in case it
+   ever becomes reachable.
+3. **Independently caught, not advisor-flagged:** advisor's draft named
+   `ArchiveAsync_TwoSourceDirectoriesShareBasename_SecondRenamedWithSuffix` as the existing test
+   covering the same-run-collision-under-`Overwrite` arm. Reading the actual test
+   (`ZipArchiveServiceArchiveTests.cs:1119`) showed it uses the default `Mode` (`SingleArchive`)
+   and default `OnConflict` (`Skip`) — it exercises T-F30's *ZIP-entry-name* collision
+   (`GetUniqueEntryName`) inside one archive, an unrelated code path. There was in fact **no
+   existing test** for `ResolveSeparateArchivePlansAsync`'s same-run-collision-under-`Overwrite`
+   arm specifically — the one sibling scenario that exists,
+   `ArchiveAsync_SeparateArchivesMode_TwoSourcesShareBasename_BothPreservedDistinctly`, uses
+   `OnConflict = ConflictBehavior.Rename`, which reaches the same *outcome* via the unconditional
+   rename arm, never the `Overwrite`-with-same-run-collision arm specifically. **Kept as a
+   standing precedent:** verify a specific test/file citation against the real file before treating
+   it as an established anchor — the same discipline this file already applies to any other claim
+   (e.g. the CS8524 compiler check T-F157's own entry above records).
+
+**Explicit scope fence, held to during implementation:** `GetUniqueFilePath` stays duplicated
+between `ZipArchiveService` (has an optional `claimedPaths` param) and `TarSandboxedService`
+(doesn't) — a real, separate duplication, but unifying it would also touch the extraction call
+sites `TryExtractSingleEntryAsync`/`TryMoveSingleEntryAsync`, just refactored and on-device
+verified under T-F157; recorded as its own new backlog task in `docs/TASKS.md` instead of being
+bundled here. `ZipArchiveService`'s T-F12 parallel-archiving architecture
+(`Parallel.ForEachAsync` over `plans`, the sequential-pre-pass rationale) is unchanged — only the
+conflict *decision* inside the existing pre-pass loop is extracted. `ArchiveResultSink` stays two
+separate record types (Zip's/Tar's) — same T-F118-precedent reasoning as T-F157's
+`ZipExtractionContext`/`TarExtractionContext` fence.
+
+**Testing:** new `tests/Archiver.Core.Tests/Services/DestinationConflictResolverTests.cs` — 9
+`[Fact]`s (not `[Theory]`/`[InlineData]` directly over `DestinationConflictOutcome` — internal,
+`CS0051` on xUnit's public test method, same rule as T-F157's `RootShape`), one per reachable
+`(onDiskConflict, sameRunConflict, ConflictBehavior)` combination plus a no-conflict short-circuit
+guard (a `ConflictBehavior.Ask` resolver whose callback throws, proving the resolver is never
+awaited when there is no conflict at all) — using `new ConflictResolver(configured, null)`, the
+same deterministic construction `ConflictResolverTests.cs` already uses. New production test
+closing the real gap found in point 3 above:
+`ZipArchiveServiceArchiveTests.ArchiveAsync_SeparateArchivesMode_TwoSourcesShareBasename_
+OverwriteRenamesInsteadOfDeleting`. New Tar coverage (its `CompressAsync` conflict path had zero
+`Overwrite`/`Skip` tests before this — only `Rename` — and this refactor deletes its own private
+resolver, so its arms need direct coverage):
+`TarSandboxedServiceCompressTests.CompressAsync_OverwriteConflict_ReplacesExistingArchive` /
+`..._SkipConflict_LeavesExistingArchiveUntouched`. **Zero existing test assertions changed
+anywhere** — pure refactor, confirmed via `dotnet test --filter
+"Category!=Slow&Category!=VeryLarge"` (`Archiver.Core.Tests` 491 → 501, `Archiver.Core.
+IntegrationTests` 70 → 72, every other project unchanged). **Mutation check:** temporarily forced
+the `Overwrite` arm to always return `ProceedAfterDeletingExisting` (never rename on a same-run
+collision) — 3 real failures (`DestinationConflictResolverTests.
+ResolveAsync_SameRunOnly_Overwrite_RenamesInsteadOfDeleting`,
+`..._BothConflicts_Overwrite_RenamesInsteadOfDeleting`, and the new production test above), then
+restored and reconfirmed green. One `Archiver.Core.IntegrationTests` failure
+(`TarSandboxedServiceExtractTests.ExtractAsync_SingleArchive_ReportsRealBytesTransferredNotHardcodedZero`)
+appeared twice during this session's full-suite runs and passed both times in isolation — the
+same pre-existing documented AppContainer/sandbox-contention flakiness noted in this file's
+"Known test gaps" section and T-F156's own entry, not caused by this change (this refactor never
+touches extraction/progress code).
+
+**On-device (2026-08-11):** `Deploy.ps1` build+sign+install (v1.4.10.4) plus a fresh Debug
+`pakko.exe` build. Confirmed through the real CLI, against real archives: `pakko a` with default
+(`Skip`) against a pre-existing `Photos.zip` left it untouched; `pakko a -y` (`Overwrite`)
+replaced it with a real ZIP containing the new source's content — the exact
+`ArchiveSingleArchiveModeAsync` arm. `pakko a -ttar` against a pre-existing `Photos.tar` repeated
+the same Skip-then-Overwrite check through the real `tar.exe` path, confirmed via `tar -tvf` —
+the exact `TarSandboxedService.CompressAsync` arm whose own private resolver was deleted this
+round. **Not independently on-device-verified:** `ResolveSeparateArchivePlansAsync`'s
+same-run-collision behavior specifically — `SeparateArchives` mode is only reachable through the
+WinUI App itself (neither `Archiver.Shell.exe --archive` nor `pakko a` ever constructs
+`ArchiveMode.SeparateArchives`, confirmed by reading both entry points), and no `windows` MCP
+automation was available this session to drive the App's UI. Rests on the mutation check above
+plus the full `dotnet test` pass — stated honestly rather than overclaimed, matching this
+project's existing convention for a partially-verified task.

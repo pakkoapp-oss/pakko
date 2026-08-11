@@ -1232,6 +1232,46 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
         contents.Should().BeEquivalentTo(["from A", "from B"]);
     }
 
+    // T-F158: closes a real coverage gap found while unifying the conflict decision into
+    // DestinationConflictResolver — no prior test exercised Overwrite specifically against a
+    // same-run collision (only the on-disk case, ArchiveAsync_ConflictOverwrite_ReplacesExistingZip,
+    // and the Rename sibling above, which reaches the same outcome via a different arm). Under a
+    // same-run collision there may be nothing on disk yet to overwrite (another in-flight worker
+    // owns creating it) — Overwrite renames instead of deleting, same as Rename would.
+    [Fact]
+    public async Task ArchiveAsync_SeparateArchivesMode_TwoSourcesShareBasename_OverwriteRenamesInsteadOfDeleting()
+    {
+        string parentA = Path.Combine(_temp.Path, "A");
+        string parentB = Path.Combine(_temp.Path, "B");
+        Directory.CreateDirectory(Path.Combine(parentA, "Photos"));
+        Directory.CreateDirectory(Path.Combine(parentB, "Photos"));
+        File.WriteAllText(Path.Combine(parentA, "Photos", "pic.txt"), "from A");
+        File.WriteAllText(Path.Combine(parentB, "Photos", "pic.txt"), "from B");
+
+        var options = new ArchiveOptions
+        {
+            SourcePaths = [Path.Combine(parentA, "Photos"), Path.Combine(parentB, "Photos")],
+            DestinationFolder = _temp.Path,
+            Mode = ArchiveMode.SeparateArchives,
+            OnConflict = ConflictBehavior.Overwrite
+        };
+
+        var result = await _sut.ArchiveAsync(options);
+
+        result.Success.Should().BeTrue();
+        result.CreatedFiles.Should().HaveCount(2);
+
+        var contents = result.CreatedFiles.Select(zipPath =>
+        {
+            using var zip = System.IO.Compression.ZipFile.OpenRead(zipPath);
+            var entry = zip.Entries.Single(e => e.FullName.EndsWith("pic.txt", StringComparison.Ordinal));
+            using var reader = new StreamReader(entry.Open());
+            return reader.ReadToEnd();
+        }).ToList();
+
+        contents.Should().BeEquivalentTo(["from A", "from B"]);
+    }
+
     [Fact]
     public async Task ArchiveAsync_SeparateArchivesMode_MaxDegreeOfParallelismCapped_StillCompletesCorrectly()
     {

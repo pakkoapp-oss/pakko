@@ -328,11 +328,12 @@ Source read for this diagram: `ExtractWithSmartFolderingAsync` in
 ```mermaid
 flowchart TD
     A0[allFileEntries = every non-dir ZIP entry] --> A1{"T-F05: options.SelectedEntryPaths<br/>set and non-empty?"}
-    A1 -- no --> A2[fileEntries = allFileEntries;<br/>isSingleRootFolder/isSingleRootFile<br/>computed normally]
-    A1 -- yes --> A3["fileEntries = allFileEntries filtered to<br/>the selected paths + anything nested<br/>under a selected folder path.<br/>isSingleRootFolder/isSingleRootFile forced<br/>false — actualDest = destDir always,<br/>no smart-foldering collapse for a subset"]
-    A2 --> A4["Compression-bomb check (below) still sums<br/>allFileEntries, NOT the filtered subset —<br/>conservative: may over-warn, never under-warns.<br/>See DECISIONS.md's T-F05 entry."]
-    A3 --> A4
-    A4 --> A["For each entry in fileEntries<br/>— the (possibly filtered) set from A2/A3"] --> C{isSingleRootFolder:<br/>strip leading segment}
+    A1 -- no --> A2["fileEntries = allFileEntries;<br/>isSingleRootFolder/isSingleRootFile computed<br/>normally, fed into ExtractionDestinationPlanner.<br/>Classify → RootShape (T-F157)"]
+    A1 -- yes --> A3["fileEntries = allFileEntries filtered to<br/>the selected paths + anything nested<br/>under a selected folder path.<br/>isSingleRootFolder/isSingleRootFile forced<br/>false → RootShape.SelectedSubset —<br/>ExtractionDestinationPlanner.Resolve always<br/>returns destDir for this shape (T-F157)"]
+    A2 --> A3B["ExtractionDestinationPlanner.Resolve(alreadyIsolated,<br/>shape, destDir, unisolatedDestDir)<br/>→ (actualDest, stripRootPrefix) — same decision<br/>ZipArchiveService and TarSandboxedService now<br/>share, not two hand-synced copies (T-F118/T-F157)"]
+    A3 --> A3B
+    A3B --> A4["Compression-bomb check (below) still sums<br/>allFileEntries, NOT the filtered subset —<br/>conservative: may over-warn, never under-warns.<br/>See DECISIONS.md's T-F05 entry."]
+    A4 --> A["For each entry in fileEntries<br/>— the (possibly filtered) set from A2/A3"] --> C{stripRootPrefix:<br/>strip leading segment}
     C -- stripped to empty --> Z[bytesRead += Length; no output]
     C -- non-empty, or not applicable --> D{"':' in entry name?<br/>(Alternate Data Stream) T-F38"}
     D -- yes --> S1[SkippedFiles += ADS reason]
@@ -431,7 +432,12 @@ diagram's declared source is `ExtractWithSmartFolderingAsync` only — `ArchiveA
 scope here even before T-F06. Both gates are structurally simpler than this one (a single
 decision per call, or one decision per source in a plain pre-pass loop — no per-entry loop, no
 smart-foldering), so a full flowchart wasn't judged to add signal beyond this note. See
-`DECISIONS.md`'s T-F06 entry for the full detail on both.
+`DECISIONS.md`'s T-F06 entry for the full detail on both. **Update (T-F158, 2026-08-11):** the
+Skip/Overwrite/Rename decision itself inside both gates now routes through the shared
+`DestinationConflictResolver` (`Archiver.Core/Services/DestinationConflictResolver.cs`) —
+previously "identical treatment" by convention/copy, now literally the same function, also shared
+with `TarSandboxedService`'s equivalent gates. Still no flowchart here — same reasoning as above,
+now with less duplication risk behind it, not more. See `DECISIONS.md`'s T-F158 entry.
 
 ---
 

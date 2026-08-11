@@ -104,33 +104,32 @@ public sealed class ZipArchiveService : IArchiveService
 
         Directory.CreateDirectory(options.DestinationFolder);
 
-        if (File.Exists(destPath))
+        // T-F158: shared with TarSandboxedService's equivalent conflict decision — see
+        // DestinationConflictResolver and DECISIONS.md's T-F158 entry.
+        var (outcome, resolvedDestPath) = await DestinationConflictResolver.ResolveAsync(
+            destPath, onDiskConflict: File.Exists(destPath), sameRunConflict: false,
+            conflictResolver, renameCandidate: p => GetUniqueFilePath(p)).ConfigureAwait(false);
+
+        if (outcome == DestinationConflictOutcome.Skip)
         {
-            switch (await conflictResolver.ResolveAsync(destPath).ConfigureAwait(false))
+            // T-F87: report every source as skipped (not just a bare empty result) so
+            // MainViewModel's DeleteAfterOperation cleanup can tell these sources were
+            // never archived and must not be deleted.
+            return new ArchiveResult
             {
-                case ConflictBehavior.Skip:
-                    // T-F87: report every source as skipped (not just a bare empty result) so
-                    // MainViewModel's DeleteAfterOperation cleanup can tell these sources were
-                    // never archived and must not be deleted.
-                    return new ArchiveResult
-                    {
-                        Success = true,
-                        CreatedFiles = [],
-                        Errors = [],
-                        SkippedFiles = [.. options.SourcePaths.Select(p => new SkippedFile
-                        {
-                            Path = p,
-                            Reason = $"Archive '{Path.GetFileName(destPath)}' already exists at the destination and was skipped."
-                        })],
-                    };
-                case ConflictBehavior.Overwrite:
-                    File.Delete(destPath);
-                    break;
-                case ConflictBehavior.Rename:
-                    destPath = GetUniqueFilePath(destPath);
-                    break;
-            }
+                Success = true,
+                CreatedFiles = [],
+                Errors = [],
+                SkippedFiles = [.. options.SourcePaths.Select(p => new SkippedFile
+                {
+                    Path = p,
+                    Reason = $"Archive '{Path.GetFileName(destPath)}' already exists at the destination and was skipped."
+                })],
+            };
         }
+        if (outcome == DestinationConflictOutcome.ProceedAfterDeletingExisting)
+            File.Delete(destPath);
+        destPath = resolvedDestPath;
 
         string tempPath = destPath + ".tmp";
 
@@ -407,36 +406,30 @@ public sealed class ZipArchiveService : IArchiveService
             bool onDiskConflict = File.Exists(destPath);
             bool sameRunConflict = claimedDestPaths.Contains(destPath);
 
-            if (onDiskConflict || sameRunConflict)
+            // T-F158: shared with ZipArchiveService.ArchiveSingleArchiveModeAsync and
+            // TarSandboxedService's equivalent conflict decision — see DestinationConflictResolver
+            // and DECISIONS.md's T-F158 entry. Overwrite's same-run-collision-renames-instead
+            // behavior (two SourcePaths in this batch sharing a basename would otherwise race
+            // under parallel execution) now lives in the shared resolver.
+            var (outcome, resolvedDestPath) = await DestinationConflictResolver.ResolveAsync(
+                destPath, onDiskConflict, sameRunConflict,
+                conflictResolver, renameCandidate: p => GetUniqueFilePath(p, claimedDestPaths)).ConfigureAwait(false);
+
+            if (outcome == DestinationConflictOutcome.Skip)
             {
-                switch (await conflictResolver.ResolveAsync(destPath).ConfigureAwait(false))
+                // T-F87: record the skip so DeleteAfterOperation cleanup (keyed off
+                // SkippedFiles) doesn't delete a source that was never archived.
+                skippedFiles.Add(new SkippedFile
                 {
-                    case ConflictBehavior.Skip:
-                        // T-F87: record the skip so DeleteAfterOperation cleanup (keyed off
-                        // SkippedFiles) doesn't delete a source that was never archived.
-                        skippedFiles.Add(new SkippedFile
-                        {
-                            Path = sourcePath,
-                            Reason = $"Archive '{Path.GetFileName(destPath)}' already exists at the destination and was skipped."
-                        });
-                        plans.Add((sourcePath, null));
-                        continue;
-                    case ConflictBehavior.Overwrite:
-                        if (onDiskConflict && !sameRunConflict)
-                            File.Delete(destPath);
-                        else
-                            // Two SourcePaths in this same batch share a basename — actually
-                            // overwriting one worker's output from another would race under
-                            // parallel execution, so this same-run collision is renamed instead
-                            // (deliberate, narrow deviation from Overwrite's usual "replace"
-                            // semantics for this edge case only).
-                            destPath = GetUniqueFilePath(destPath, claimedDestPaths);
-                        break;
-                    case ConflictBehavior.Rename:
-                        destPath = GetUniqueFilePath(destPath, claimedDestPaths);
-                        break;
-                }
+                    Path = sourcePath,
+                    Reason = $"Archive '{Path.GetFileName(destPath)}' already exists at the destination and was skipped."
+                });
+                plans.Add((sourcePath, null));
+                continue;
             }
+            if (outcome == DestinationConflictOutcome.ProceedAfterDeletingExisting)
+                File.Delete(destPath);
+            destPath = resolvedDestPath;
 
             claimedDestPaths.Add(destPath);
             plans.Add((sourcePath, destPath));
@@ -927,30 +920,14 @@ public sealed class ZipArchiveService : IArchiveService
         bool isSingleRootFile = !isSelectedSubset
             && fileEntries.Count == 1 && !fileEntries[0].FullName.Contains('/');
 
-        // T-F154: a single bare file at the archive's own root has no folder name of its own to
-        // "unwrap" the way isSingleRootFolder already does — so a SeparateFolders-mode extraction
-        // (alreadyIsolated) previously always dropped it into the pre-computed per-archive
-        // subfolder (destDir) regardless, e.g. "photo.zip" containing just "photo.png" landed at
-        // "<Destination>\photo\photo.png" instead of "<Destination>\photo.png". Bypass destDir
-        // entirely in that one case and extract straight into the caller's real, un-isolated
-        // target — matches how isSingleRootFolder already avoids a redundant wrapper, and how a
-        // real archiver (NanaZip/7-Zip) handles a single-file archive. Does not apply to
-        // --extract-folder's ExtractMode.SingleFolder-with-a-pre-set-subfolder path
-        // (alreadyIsolated is false there — that command's whole contract is "always a subfolder
-        // regardless of internal structure").
-        bool unwrapSingleFile = alreadyIsolated && isSingleRootFile && !isSelectedSubset;
-
-        // T-F156: a genuinely multi-root archive (no single common containing folder) used to get
-        // wrapped in an extra "<archive-base-name>\" subfolder even in SingleFolder mode ("all
-        // archives -> one flat folder" per ExtractMode's own doc comment) — this branch was the
-        // ONLY caller that could ever produce that wrap (it's unreachable whenever alreadyIsolated,
-        // isSingleRootFolder, isSingleRootFile, or isSelectedSubset is true, since each of those
-        // already resolves to destDir on its own). T-F118 (2026-07-18) made this wrapping
-        // deliberate and user-confirmed at the time; reversed here per a second, later, explicit
-        // user decision (2026-08-11) once real testing showed it contradicts SingleFolder's own
-        // flat-folder contract — see DECISIONS.md's T-F156 entry for the full conflict and the
-        // user's direct confirmation to reverse T-F118 for this one mode.
-        string actualDest = unwrapSingleFile ? unisolatedDestDir : destDir;
+        // T-F157: the actualDest/StripRootPrefix decision (T-F154's single-file unwrap, T-F156's
+        // multi-root-in-SingleFolder-mode fix, and the pre-existing isSingleRootFolder strip) now
+        // lives in ExtractionDestinationPlanner, shared with TarSandboxedService.
+        // ExtractSingleArchiveAsync instead of hand-kept-in-sync per T-F118's own comment — see
+        // DECISIONS.md's T-F157 entry.
+        var rootShape = ExtractionDestinationPlanner.Classify(isSelectedSubset, isSingleRootFolder, isSingleRootFile);
+        var (actualDest, stripRootPrefix) = ExtractionDestinationPlanner.Resolve(
+            alreadyIsolated, rootShape, destDir, unisolatedDestDir);
 
         // T-F94: whole-archive compression-ratio check, run BEFORE tempDest is created so a
         // declined/blocked bomb leaves nothing to clean up. Deliberately whole-archive rather
@@ -991,10 +968,11 @@ public sealed class ZipArchiveService : IArchiveService
 
         // T-F154: stage into a path derived from destDir (always archive-specific — either the
         // pre-computed per-archive subfolder or the caller's plain destination), never from
-        // actualDest directly — when unwrapSingleFile bypasses destDir as the final target,
-        // actualDest can be a shared folder (or even a drive root) that many archives in the same
-        // batch resolve to, and "<sharedFolder>_tmp" would be an unsafe, colliding sibling path.
-        string tempDest = (unwrapSingleFile ? destDir : actualDest) + "_tmp";
+        // actualDest directly — when the planner bypasses destDir as the final target (T-F154's
+        // single-file unwrap), actualDest can be a shared folder (or even a drive root) that many
+        // archives in the same batch resolve to, and "<sharedFolder>_tmp" would be an unsafe,
+        // colliding sibling path.
+        string tempDest = destDir + "_tmp";
 
         Directory.CreateDirectory(tempDest);
         string fullTempDest = Path.GetFullPath(tempDest).TrimEnd(Path.DirectorySeparatorChar)
@@ -1013,7 +991,7 @@ public sealed class ZipArchiveService : IArchiveService
         // silently overwrite the first one's file in tempDest.
         var claimedFinalPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        var plan = new ExtractionPlan(tempDest, fullTempDest, actualDest, isSingleRootFolder, totalUncompressedBytes, claimedFinalPaths);
+        var plan = new ExtractionPlan(tempDest, fullTempDest, actualDest, stripRootPrefix, totalUncompressedBytes, claimedFinalPaths);
 
         try
         {
@@ -1089,7 +1067,7 @@ public sealed class ZipArchiveService : IArchiveService
         string TempDest,
         string FullTempDest,
         string ActualDest,
-        bool IsSingleRootFolder,
+        bool StripRootPrefix,
         long TotalUncompressedBytes,
         HashSet<string> ClaimedFinalPaths);
 
@@ -1111,7 +1089,7 @@ public sealed class ZipArchiveService : IArchiveService
 
         string relativePath = entry.FullName.Replace('/', Path.DirectorySeparatorChar);
 
-        if (plan.IsSingleRootFolder)
+        if (plan.StripRootPrefix)
         {
             var sep = relativePath.IndexOf(Path.DirectorySeparatorChar);
             relativePath = relativePath[(sep + 1)..];

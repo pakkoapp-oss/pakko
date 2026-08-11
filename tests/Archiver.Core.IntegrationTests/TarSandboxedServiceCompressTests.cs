@@ -265,6 +265,55 @@ public sealed class TarSandboxedServiceCompressTests : IDisposable
         File.ReadAllText(existingDest).Should().Be("not a real tar, just occupying the name");
     }
 
+    // T-F158: CompressAsync's Overwrite/Skip arms had no direct coverage before this task deleted
+    // TarSandboxedService's own private ResolveDestinationConflictAsync in favor of the shared
+    // DestinationConflictResolver — only Rename (above) was tested. Mirrors
+    // ZipArchiveServiceArchiveTests.ArchiveAsync_ConflictOverwrite_ReplacesExistingZip.
+    [Integration]
+    public async Task CompressAsync_OverwriteConflict_ReplacesExistingArchive()
+    {
+        string srcFile = Path.Combine(_temp.Path, "a.txt");
+        File.WriteAllText(srcFile, "new content");
+        string existingDest = Path.Combine(_temp.Path, "out.tar");
+        File.WriteAllText(existingDest, "not a real tar, just occupying the name");
+
+        var result = await _sut.CompressAsync(new ArchiveOptions
+        {
+            SourcePaths = [srcFile],
+            DestinationFolder = _temp.Path,
+            ArchiveName = "out",
+            Format = ArchiveContainerFormat.Tar,
+            OnConflict = ConflictBehavior.Overwrite,
+        });
+
+        result.Success.Should().BeTrue(because: string.Join("; ", result.Errors.Select(e => e.Message)));
+        result.CreatedFiles.Should().ContainSingle().Which.Should().Be(existingDest);
+        (await ExtractAndReadAsync(existingDest, "a.txt")).Should().Be("new content");
+    }
+
+    [Integration]
+    public async Task CompressAsync_SkipConflict_LeavesExistingArchiveUntouched()
+    {
+        string srcFile = Path.Combine(_temp.Path, "a.txt");
+        File.WriteAllText(srcFile, "new content");
+        string existingDest = Path.Combine(_temp.Path, "out.tar");
+        File.WriteAllText(existingDest, "not a real tar, just occupying the name");
+
+        var result = await _sut.CompressAsync(new ArchiveOptions
+        {
+            SourcePaths = [srcFile],
+            DestinationFolder = _temp.Path,
+            ArchiveName = "out",
+            Format = ArchiveContainerFormat.Tar,
+            OnConflict = ConflictBehavior.Skip,
+        });
+
+        result.Success.Should().BeTrue();
+        result.CreatedFiles.Should().BeEmpty();
+        result.SkippedFiles.Should().ContainSingle();
+        File.ReadAllText(existingDest).Should().Be("not a real tar, just occupying the name");
+    }
+
     [Integration]
     public async Task CompressAsync_MissingSource_ReportsErrorInsteadOfThrowing()
     {
