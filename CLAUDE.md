@@ -1696,6 +1696,22 @@ Task<IReadOnlyList<string>> PickFoldersAsync()
   `Subprocess/` layer launching real sandboxed subprocesses concurrently with this project, not
   just within it) — that would need a similar fix scoped across both projects, not assumed already
   covered by the single-project Collection above.
+  **Recurred 2026-08-11 (T-F162), same predicted vector, different symptom:** the v1.4.11 release
+  CI run failed `TarSandboxedServiceExtractTests.ExtractAsync_SingleArchive_
+  ReportsRealBytesTransferredNotHardcodedZero` and
+  `TarSandboxedServiceCompressTests.CompressAsync_TarWithMultipleFiles_ReportsRealFilenameAndByteTotals`
+  twice in a row (`Percent` 99 instead of the expected terminal 100), then passed clean on a third
+  rerun with zero code changes — not an AppContainer-setup race this time, but `System.Progress<T>`
+  posting its callback via `ThreadPool.QueueUserWorkItem` (no captured `SynchronizationContext` in
+  a console test host) racing against each test's own bounded 5-second wait-loop. An isolated probe
+  (saturate the ThreadPool with 5,000 blocking work items, then call `Progress<T>.Report` and time
+  the callback) confirmed the callback can be delayed past 30 seconds under contention, not just a
+  few milliseconds — exactly the shape of a CI runner under full-suite parallel load. Fixed by
+  switching both tests to the same hand-rolled synchronous `IProgress<T>` fake already used this
+  way in ~8 other files across `Archiver.Core.Tests` (e.g.
+  `TarSandboxedServiceProgressPollingTests`), which reports on the calling thread with no
+  marshaling at all — removes the race by construction rather than widening the timeout. See
+  `docs/DECISIONS.md`'s T-F162 entry for the full probe methodology.
 - **T-F143 SonarCloud coverage triage (2026-08-06) — categories left deliberately uncovered by
   design, not by oversight:** `ExplorerLauncher`'s OS-side-effect callers (4 call sites — opening
   a real Explorer window isn't something a unit test should trigger); native Win32/subprocess

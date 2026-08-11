@@ -16,6 +16,18 @@ namespace Archiver.Core.IntegrationTests;
 [Collection("TarSandbox")]
 public sealed class TarSandboxedServiceCompressTests : IDisposable
 {
+    // T-F162: System.Progress<T> posts its callback via SynchronizationContext/ThreadPool, which
+    // races against this test's own assertions right after CompressAsync returns -- under a
+    // CI runner's heavier ThreadPool contention (many other tests' subprocesses/tasks queued
+    // ahead of it) that post can be delayed well past any bounded wait, not just a handful of
+    // milliseconds. Reporting synchronously on the calling thread instead removes the race
+    // entirely; matches the same-named helper already used this way across Archiver.Core.Tests
+    // (e.g. TarSandboxedServiceProgressPollingTests).
+    private sealed class SynchronousProgress<T>(Action<T> onReport) : IProgress<T>
+    {
+        public void Report(T value) => onReport(value);
+    }
+
     private readonly TarSandboxedService _sut = new();
     private readonly TempDirectory _temp = new();
 
@@ -386,7 +398,7 @@ public sealed class TarSandboxedServiceCompressTests : IDisposable
             File.WriteAllText(Path.Combine(sourceDir, $"f{i}.txt"), $"content {i}");
 
         var reports = new List<ProgressReport>();
-        var progress = new Progress<ProgressReport>(reports.Add);
+        var progress = new SynchronousProgress<ProgressReport>(reports.Add);
 
         var result = await _sut.CompressAsync(new ArchiveOptions
         {
@@ -397,10 +409,6 @@ public sealed class TarSandboxedServiceCompressTests : IDisposable
         }, progress);
 
         result.Success.Should().BeTrue(because: string.Join("; ", result.Errors.Select(e => e.Message)));
-
-        // Progress<T> marshals callbacks onto a captured SynchronizationContext asynchronously —
-        // give the final posted callback a moment to actually run before asserting on `reports`.
-        await WaitUntilAsync(() => reports.Count > 0 && reports[^1].Percent == 100, TimeSpan.FromSeconds(5));
 
         var distinctNonTerminalPercents = reports.Where(r => r.Percent < 100).Select(r => r.Percent).Distinct().ToList();
         distinctNonTerminalPercents.Should().HaveCountGreaterThan(1,
@@ -427,7 +435,7 @@ public sealed class TarSandboxedServiceCompressTests : IDisposable
         long expectedTotalBytes = contentA.Length + contentB.Length;
 
         var reports = new List<ProgressReport>();
-        var progress = new Progress<ProgressReport>(reports.Add);
+        var progress = new SynchronousProgress<ProgressReport>(reports.Add);
 
         var result = await _sut.CompressAsync(new ArchiveOptions
         {
@@ -438,7 +446,6 @@ public sealed class TarSandboxedServiceCompressTests : IDisposable
         }, progress);
 
         result.Success.Should().BeTrue(because: string.Join("; ", result.Errors.Select(e => e.Message)));
-        await WaitUntilAsync(() => reports.Count > 0 && reports[^1].Percent == 100, TimeSpan.FromSeconds(5));
 
         reports.Should().Contain(r => r.CurrentFile != null && r.CurrentFile.Contains("a.bin"),
             "the real entry name from tar.exe's own \"-v\" output must reach the dialog, not stay null");
@@ -450,16 +457,5 @@ public sealed class TarSandboxedServiceCompressTests : IDisposable
             "the real recursive byte sum must reach the dialog instead of the old hardcoded 0");
         reports[^1].BytesTransferred.Should().Be(expectedTotalBytes);
         reports.Should().Contain(r => r.TotalBytes == expectedTotalBytes && r.BytesTransferred > 0 && r.BytesTransferred <= expectedTotalBytes);
-    }
-
-    private static async Task WaitUntilAsync(Func<bool> condition, TimeSpan timeout)
-    {
-        var deadline = DateTime.UtcNow + timeout;
-        while (!condition())
-        {
-            if (DateTime.UtcNow > deadline)
-                throw new TimeoutException("Condition was not met within the timeout.");
-            await Task.Delay(10);
-        }
     }
 }

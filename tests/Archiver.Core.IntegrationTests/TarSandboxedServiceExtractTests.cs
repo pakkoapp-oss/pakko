@@ -16,6 +16,18 @@ namespace Archiver.Core.IntegrationTests;
 [Collection("TarSandbox")]
 public sealed class TarSandboxedServiceExtractTests : IDisposable
 {
+    // T-F162: System.Progress<T> posts its callback via SynchronizationContext/ThreadPool, which
+    // races against this test's own assertions right after ExtractAsync returns -- under a CI
+    // runner's heavier ThreadPool contention (many other tests' subprocesses/tasks queued ahead
+    // of it) that post can be delayed well past any bounded wait, not just a handful of
+    // milliseconds. Reporting synchronously on the calling thread instead removes the race
+    // entirely; matches the same-named helper already used this way across Archiver.Core.Tests
+    // (e.g. TarSandboxedServiceProgressPollingTests).
+    private sealed class SynchronousProgress<T>(Action<T> onReport) : IProgress<T>
+    {
+        public void Report(T value) => onReport(value);
+    }
+
     private readonly TarSandboxedService _sut = new();
     private readonly TempDirectory _temp = new();
 
@@ -488,7 +500,7 @@ public sealed class TarSandboxedServiceExtractTests : IDisposable
         ]);
 
         var reports = new List<ProgressReport>();
-        var progress = new Progress<ProgressReport>(reports.Add);
+        var progress = new SynchronousProgress<ProgressReport>(reports.Add);
 
         string destDir = Path.Combine(_temp.Path, "out");
         var result = await _sut.ExtractAsync(new ExtractOptions
@@ -502,10 +514,6 @@ public sealed class TarSandboxedServiceExtractTests : IDisposable
         result.Success.Should().BeTrue();
         File.Exists(Path.Combine(destDir, "small.bin")).Should().BeTrue();
         File.Exists(Path.Combine(destDir, "big.bin")).Should().BeFalse();
-
-        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(5);
-        while ((reports.Count == 0 || reports[^1].Percent != 100) && DateTime.UtcNow < deadline)
-            await Task.Delay(10);
 
         reports.Should().NotBeEmpty();
         reports.Should().OnlyContain(r => r.TotalBytes == smallContent.Length,
@@ -589,7 +597,7 @@ public sealed class TarSandboxedServiceExtractTests : IDisposable
         TarBuilder.WriteTar(archivePath, [new TarBuilder.Entry { Name = "a.bin", Content = content }]);
 
         var reports = new List<ProgressReport>();
-        var progress = new Progress<ProgressReport>(reports.Add);
+        var progress = new SynchronousProgress<ProgressReport>(reports.Add);
 
         string destDir = Path.Combine(_temp.Path, "out");
         var result = await _sut.ExtractAsync(new ExtractOptions
@@ -600,12 +608,6 @@ public sealed class TarSandboxedServiceExtractTests : IDisposable
         }, progress);
 
         result.Success.Should().BeTrue();
-
-        // Progress<T> marshals callbacks onto a captured SynchronizationContext asynchronously —
-        // give the final posted callback a moment to actually run before asserting on `reports`.
-        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(5);
-        while ((reports.Count == 0 || reports[^1].Percent != 100) && DateTime.UtcNow < deadline)
-            await Task.Delay(10);
 
         reports.Should().NotBeEmpty();
         reports.Should().Contain(r => r.TotalBytes == content.Length,

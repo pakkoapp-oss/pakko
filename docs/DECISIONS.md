@@ -7686,3 +7686,85 @@ Result: both loose files renamed to `(1)` variants, both nested files under the 
 `Sub\` subfolder correctly merged in, no crash, no leftover `_tmp` folder, zero new
 `.NET Runtime`/`Application Error` event log entries — the literal reproduction of the user's
 original report, now completing successfully. See `docs/TASKS_DONE.md`'s T-F161 entry.
+
+---
+
+### T-F162 — Two IntegrationTests flaked twice in a row on CI, root-caused to `Progress<T>`'s ThreadPool marshaling, not sandbox contention
+
+**Reported by:** the user, immediately after the v1.4.11 release CI run (triggered while preparing
+the Store submission) failed its `test` job on the very first attempt, then failed *again* on an
+immediate `gh run rerun --failed` — two consecutive failures, not the single-flake-then-clean-rerun
+pattern T-F130's own "Known test gaps" note already anticipated for this codebase's sandbox tests.
+User's literal request: "Треба зробити щось з цими тестами, які падають через конкурентність" (do
+something about these tests failing due to concurrency) — not "just rerun again."
+
+**Symptom:** `TarSandboxedServiceExtractTests.ExtractAsync_SingleArchive_
+ReportsRealBytesTransferredNotHardcodedZero` (attempt 1) and
+`TarSandboxedServiceCompressTests.CompressAsync_TarWithMultipleFiles_ReportsRealFilenameAndByteTotals`
++ the same Extract test again (attempt 2) each failed with the identical assertion shape:
+`Expected reports[^1].Percent to be 100 ... but found 99`. Both tests already anticipated *some*
+asynchrony — each ends with a bounded wait-loop (5 seconds) polling `reports[^1].Percent` before
+asserting, with a comment explaining why: `Progress<T>` marshals its callback onto a captured
+`SynchronizationContext` asynchronously. The two failures meant that 5-second budget was
+insufficient on the actual CI runner, not that the underlying byte-progress math was wrong.
+
+**Investigation (test-first, per this project's own standing discipline and the user's separately
+recorded general preference for it):**
+1. Ran the flaky Extract test in isolation, three times locally, immediately after the CI
+   failure — passed clean every time, ruling out a deterministic production bug reachable from a
+   plain run.
+2. Read `TarSandboxedService.ExtractAsync`/`CompressAsync`'s progress-reporting code directly:
+   both paths end with an explicit, unconditional
+   `progress?.Report(new ProgressReport { Percent = 100, ... })` call before returning — so the
+   *data* is always correct; the only open question was whether the test could reliably observe it
+   in time.
+3. Confirmed via the BCL source behavior that `Progress<T>` captures
+   `SynchronizationContext.Current` at construction time, and falls back to a default context
+   whose `Post` implementation is `ThreadPool.QueueUserWorkItem` when none is captured — exactly
+   the case for a plain xUnit test host with no UI/ASP.NET context. This means every
+   `progress.Report(...)` call in these tests returns *before* its callback has actually run; the
+   callback's execution time is entirely at the mercy of ThreadPool scheduling latency.
+4. Built an isolated probe (`ProgressRaceProbe`, a throwaway console app, not committed) that
+   saturates the ThreadPool with 5,000 blocking work items (200 ms `Thread.Sleep` each — modeling
+   many concurrent tests' own blocking waits, e.g. `Process.WaitForExit`, running under CI's real
+   parallel test execution), then calls `Progress<T>.Report` and times how long the callback takes
+   to actually run. Result: the callback had **not run even after 30 seconds** — confirming the
+   marshaling delay under contention is not a matter of a few extra milliseconds, but can exceed
+   any reasonable fixed budget outright. This is the same class of ThreadPool-injection-rate issue
+   already documented in this file's "Workflow Tips" section (~1 new thread per ~500 ms under
+   demand) — GitHub's `windows-2022` runners are 2-core, making this specific starvation shape far
+   more likely there than on a typical multi-core dev machine, which is also why 3 local runs never
+   reproduced it.
+
+**Decision:** fix the two tests, not the production code (which was already correct), and fix them
+by removing the ThreadPool-marshaling dependency entirely rather than by widening the 5-second
+timeout to something larger. A bigger timeout is still a guess at an upper bound under unknown
+future CI contention; a synchronous, non-marshaling `IProgress<T>` implementation removes the race
+by construction. This exact pattern — a private `SynchronousProgress<T> : IProgress<T>` whose
+`Report` calls the supplied delegate directly, with a comment citing the identical
+`Progress<T>`/`SynchronizationContext`/`ThreadPool` reasoning — already exists in ~8 other files
+across `Archiver.Core.Tests` (`ProgressStreamTests`, `AggregateProgressStreamTests`,
+`FileHashServiceTests`, `ZipArchiveServiceArchiveTests`, `ZipArchiveServiceExtractTests`,
+`ParallelSingleArchiveWriterTests`, `AntivirusScanServiceTests`,
+`TarSandboxedServiceProgressPollingTests`) — the two flaky `Archiver.Core.IntegrationTests` files
+were simply the outliers still using real `System.Progress<T>` plus a manual wait-loop instead of
+this established convention.
+
+**Fix:** added the same `SynchronousProgress<T>` private nested class to both
+`TarSandboxedServiceExtractTests.cs` and `TarSandboxedServiceCompressTests.cs`; replaced all four
+`new Progress<ProgressReport>(reports.Add)` call sites with
+`new SynchronousProgress<ProgressReport>(reports.Add)`; deleted the two now-unnecessary 5-second
+wait-loops (one inline per Extract test) and the file-local `WaitUntilAsync` helper in the Compress
+test file (both its call sites were the two fixed tests; no other caller existed). Since the
+supplied `IProgress<ProgressReport>` reports synchronously on the calling thread, the terminal 100%
+report is guaranteed to already be in `reports` by the time `await ExtractAsync(...)`/
+`CompressAsync(...)` returns — no waiting needed at all.
+
+**Testing:** `dotnet test tests/Archiver.Core.IntegrationTests --filter
+"Category!=Slow&Category!=VeryLarge"` — 72/72 green (was already 72/72 before, confirming no
+behavior change, only removed flakiness surface). Full repo-wide
+`dotnet test --filter "Category!=Slow&Category!=VeryLarge"` — 1089/1089 green across all 6
+projects. No production code touched, so no on-device verification is applicable — this is a
+test-infrastructure fix only, matching T-F130's own precedent (documented in this file and
+`CLAUDE.md` without a dedicated `docs/TASKS.md`/`docs/TASKS_DONE.md` task lifecycle, since neither
+introduces or changes shipped product behavior).
