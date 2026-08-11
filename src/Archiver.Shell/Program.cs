@@ -89,6 +89,10 @@ static void LaunchOpenUi(string operation, IReadOnlyList<string> files)
 static async Task RunExtractHereAsync(IReadOnlyList<string> archivePaths, GroupPolicyOptions policy)
 {
     var router = await BuildExtractionRouterAsync(policy).ConfigureAwait(false);
+    // T-F155: one wrapper per Explorer invocation (not per archive) so "apply to all" spans the
+    // whole multi-select — see StickyApplyToAllConflictResolver's own doc comment for why a raw
+    // ResolveConflictAsync = ShellConflictDialog.ShowAsync wire-through would re-prompt per archive.
+    var conflictResolver = new StickyApplyToAllConflictResolver(ShellConflictDialog.ShowAsync);
 
     foreach (var archivePath in archivePaths)
     {
@@ -104,7 +108,11 @@ static async Task RunExtractHereAsync(IReadOnlyList<string> archivePaths, GroupP
             DestinationFolder = destFolder,
             Mode = ExtractMode.SeparateFolders,
             SeparateFolderName = folderName,
-            OnConflict = ConflictBehavior.Rename,
+            // T-F155: the fresh numbered folder above makes a real per-file conflict unreachable
+            // for a multi-file archive, but T-F154's unisolatedDestDir bypass means a single-root-
+            // FILE archive still lands directly in destFolder — the exact case that can collide.
+            OnConflict = ConflictBehavior.Ask,
+            ResolveConflictAsync = conflictResolver.ResolveAsync,
         };
 
         string title = $"Extracting: {Path.GetFileName(archivePath)}";
@@ -129,6 +137,7 @@ static async Task RunExtractHereAsync(IReadOnlyList<string> archivePaths, GroupP
 static async Task RunExtractHereFlatAsync(IReadOnlyList<string> archivePaths, GroupPolicyOptions policy)
 {
     var router = await BuildExtractionRouterAsync(policy).ConfigureAwait(false);
+    var conflictResolver = new StickyApplyToAllConflictResolver(ShellConflictDialog.ShowAsync);
 
     foreach (var archivePath in archivePaths)
     {
@@ -138,7 +147,10 @@ static async Task RunExtractHereFlatAsync(IReadOnlyList<string> archivePaths, Gr
             ArchivePaths = [archivePath],
             DestinationFolder = destFolder,
             Mode = ExtractMode.SingleFolder,
-            OnConflict = ConflictBehavior.Rename,
+            // T-F155: this is the path that collides on essentially every file when an archive
+            // is re-extracted into its own containing folder a second time.
+            OnConflict = ConflictBehavior.Ask,
+            ResolveConflictAsync = conflictResolver.ResolveAsync,
         };
 
         string title = $"Extracting: {Path.GetFileName(archivePath)}";
@@ -155,6 +167,7 @@ static async Task RunExtractHereFlatAsync(IReadOnlyList<string> archivePaths, Gr
 static async Task RunExtractFolderAsync(IReadOnlyList<string> archivePaths, GroupPolicyOptions policy)
 {
     var router = await BuildExtractionRouterAsync(policy).ConfigureAwait(false);
+    var conflictResolver = new StickyApplyToAllConflictResolver(ShellConflictDialog.ShowAsync);
 
     foreach (var archivePath in archivePaths)
     {
@@ -166,7 +179,12 @@ static async Task RunExtractFolderAsync(IReadOnlyList<string> archivePaths, Grou
             ArchivePaths = [archivePath],
             DestinationFolder = destFolder,
             Mode = ExtractMode.SingleFolder,
-            OnConflict = ConflictBehavior.Rename,
+            // T-F155: destFolder is always a fresh numbered folder, so this realistically stays
+            // inert (no on-disk conflict possible) except for duplicate in-archive entry names —
+            // wired for parity/consistency with the other two commands, not because it's expected
+            // to fire in practice.
+            OnConflict = ConflictBehavior.Ask,
+            ResolveConflictAsync = conflictResolver.ResolveAsync,
         };
 
         string title = $"Extracting: {Path.GetFileName(archivePath)}";

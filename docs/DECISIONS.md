@@ -7475,3 +7475,135 @@ was proving the whole pipeline (UI → `MainViewModel` → `ArchiveOptions` →
 this exact scenario end-to-end, which it does regardless of which of the two equivalent
 `ConflictBehavior` values was actually selected. **Graduated to `[x]`** on this basis — see
 `docs/TASKS_DONE.md`'s T-F158 entry.
+
+---
+
+### T-F155 — Interactive Conflict-Resolution Dialog for `Archiver.Shell`
+
+**Motivation:** `Archiver.Shell` (the Explorer-triggered `--extract-here`/`--extract-flat`/
+`--extract-folder` commands — confirmed to be literally the same binary Explorer's own
+`IExplorerCommand::Invoke` shells out to via `CreateProcess`, not a separate code path) never wired
+`ExtractOptions.ResolveConflictAsync` — every conflict resolved to a silent rename
+(`ConflictBehavior.Rename`), unlike the WinUI App's own interactive T-F06 `ContentDialog`
+(Overwrite/Rename/Skip + "apply to all"). Surfaced while fixing T-F154.
+
+**Design:** the only Win32 primitive with custom button labels is `TaskDialogIndirect`
+(`MessageBoxW` only offers fixed OK/Cancel/Yes/No/Retry/Cancel sets). Implemented via raw P/Invoke
+(no NuGet package — matches this repo's zero-dependency convention for every shipped project, not
+just `Archiver.Core`) in a new `Archiver.Shell/ShellConflictDialog.cs`, with the button-ID/checkbox
+→ `ConflictDecision` mapping (`MapResult`) kept pure and separately unit-tested from the P/Invoke
+body itself (which, like `NativeProgressDialog`, isn't unit-testable — real native UI). A new
+`Archiver.Shell/StickyApplyToAllConflictResolver.cs` bridges a real scope gap: Core's own
+`ConflictResolver` (T-F06) only remembers "apply to all" for one `ExtractAsync` call, but
+`RunExtractHereAsync`/`RunExtractHereFlatAsync`/`RunExtractFolderAsync` each construct a fresh
+`ExtractOptions` (and therefore a fresh Core-side `ConflictResolver`) once **per archive** inside a
+`foreach` — a raw `ResolveConflictAsync = ShellConflictDialog.ShowAsync` wire-through would have
+silently re-prompted after every archive in a multi-select even with the box checked. One wrapper
+instance is constructed once per `Run*Async` call, before its loop, so "apply to all" spans the
+whole Explorer selection. The 6 `ConflictDialog*` strings (Title/Message/Overwrite/Rename/Skip/
+ApplyToAllCheck) are copied verbatim from `Archiver.App`'s already-translated
+`Strings/*/Resources.resw` (T-F06) across all 37 locales via a one-off Python script using a real
+XML parser (never manual string edits — this repo's own mojibake lessons), into a new
+`Archiver.Shell/Resources/ConflictMessages*.resx` set + `ConflictDialogLocalizer.cs` mirroring
+`ScanResultLocalizer.cs` exactly.
+
+**Real empirical findings from a Phase 0 spike (a throwaway console project, built and driven via
+the `windows` MCP server before touching any real code) — advisor had flagged two real unknowns
+worth spiking first, and both turned into genuine, non-obvious bugs:**
+
+1. **`TASKDIALOG_BUTTON` needs `[StructLayout(..., Pack = 1)]`, not natural alignment.**
+   `commctrl.h` declares `TASKDIALOG_BUTTON` and `TASKDIALOGCONFIG` back-to-back inside the *same*
+   `pshpack1.h`/`poppack.h` block — advisor correctly flagged that `TASKDIALOGCONFIG` needs
+   `Pack = 1` (confirmed: `Marshal.SizeOf` = 160, matching the well-known real x64 `cbSize`), but
+   the original plan assumed `TASKDIALOG_BUTTON` (declared, it turns out, *inside* that same pack
+   scope, not before it) could stay at natural alignment. A naturally-aligned button struct
+   (`int` at offset 0, 4 bytes of padding, pointer at offset 8 — `Marshal.SizeOf` = 16) reliably
+   crashed `TaskDialogIndirect` with `AccessViolationException` the instant a real button array
+   was passed (confirmed via a bisection: 0 buttons = fine, 1+ buttons = crash, regardless of
+   flags/DefaultButtonId) — comctl32 reads `pszButtonText` at the packed offset (4), not 8, so it
+   dereferenced 4 leftover uninitialized `AllocHGlobal` bytes as a string pointer. `Pack = 1`
+   (size 12, matching the real native layout) fixed it outright — confirmed via the identical
+   repro now rendering a real, correctly-labeled dialog with zero crash.
+2. **A missing comctl32 v6 activation context does NOT fail the way the backlog entry assumed.**
+   The original T-F155 backlog text worried about `EntryPointNotFoundException` from the P/Invoke
+   call itself if the manifest dependency were missing. The real failure mode, discovered when the
+   *first* real manifest edit (before the bug below was found) still failed identically to no
+   dependency at all, is at **process activation**, before any managed code runs at all —
+   `Start-Process`/`CreateProcess` itself fails with "The application has failed to start because
+   its side-by-side configuration is incorrect," logged to the Application event log under
+   provider `SideBySide` (event ID 59) with the real reason (`Get-WinEvent -FilterHashtable
+   @{LogName='Application'; ProviderName='SideBySide'}`) — not something `try`/`catch` in
+   `ShowAsync` can ever intercept, since the process never starts. Confirmed this reproduces
+   identically for both the plain unpackaged Debug build and the installed MSIX build.
+3. **The Windows SxS manifest parser rejects a plain XML comment placed between `</trustInfo>`
+   and `<dependency>` in `app.manifest` — with a genuinely misleading diagnostic.** The very first
+   `<dependency>` addition (syntactically valid, well-formed XML — confirmed byte-for-byte via a
+   raw `FindResource`/`LoadResource`/`LockResource` dump of the actual embedded `RT_MANIFEST`
+   resource, not just the source file) failed to activate with the SxS error above. `mt.exe
+   -inputresource:file;#1` reported "Windows was unable to parse the requested XML data" against
+   that same extracted, well-formed-XML manifest — a red herring pointing at the wrong layer. The
+   real event-log detail (`SideBySide` event 59: "Error in manifest or policy file ... on line 10.
+   Invalid Xml syntax") pinpointed a `</trustInfo>` closing tag that is completely valid XML on its
+   own — the actual cause, confirmed by bisection, was the multi-line `<!-- T-F155: ... -->` XML
+   comment positioned right after it and before `<dependency>`. Removing the comment (moving the
+   explanation into `ShellConflictDialog.cs`'s own code comment instead) fixed activation for both
+   the unpackaged build and, separately re-confirmed, the installed MSIX build. Lesson: Windows'
+   native SxS manifest parser is not a generic, spec-compliant XML parser — don't assume comments
+   are safe everywhere in `app.manifest`, and don't trust `mt.exe`'s own parse-error line number
+   over the real `SideBySide` event-log detail when the two disagree.
+
+**Testing:** `ShellConflictDialogTests.cs` (`MapResult` — every button ID plus `IDCANCEL` and an
+unrecognized ID, each mutation-checked: flipped the Overwrite/Rename mapping, confirmed 4/8 tests
+failed, restored) and `StickyApplyToAllConflictResolverTests.cs` (first-call-always-invokes,
+`ApplyToAll=false` re-invokes, `ApplyToAll=true` short-circuits every subsequent call — mutation-
+checked by inverting the sticky condition, confirmed all 3 tests failed with either a wrong count
+or a `NullReferenceException`, restored) both hand-rolled, no mocking library. `ConflictDialogLocalizerTests.cs`
+closes a real gap the copy script could have introduced silently: the App's own `.resw` values are
+consumed via `.Replace("{0}", …)` (tolerant of any brace content anywhere in the string), but
+`ConflictDialogLocalizer.Get` uses `string.Format` (throws `FormatException` on any unescaped/
+unmatched brace, not just the `{0}` placeholder) — a loop over all 37 cultures × all 6 keys proved
+every copied value survives the semantic change unharmed (223/223 green; no stray braces existed in
+practice, but this wasn't assumed, it was checked).
+
+**On-device (real installed MSIX, not just `dotnet build`):** after the manifest-comment fix, a
+full `Deploy.ps1` build+sign+install succeeded and the packaged `Archiver.Shell.exe` (from
+`Program Files\WindowsApps\...`) launched correctly — confirming the SxS fix holds for the
+packaged activation context too, not just the unpackaged Debug build. Driven via the `windows` MCP
+server (the current UI culture is Ukrainian on this machine, so the real dialog rendered with
+correctly-resolved Ukrainian text — "Файл вже існує" / "Перезаписати" / "Перейменувати" /
+"Пропустити" / "Застосувати до всіх решти конфліктів" — proving the satellite-resource pipeline end
+to end, not just the neutral/English fallback): `--extract-here` against a real single-file
+archive with a colliding destination file confirmed all three resolutions in turn (`Skip` via the
+default button/`Enter`; `Rename` via `Shift+Tab ×1` + `Space`, producing a real `photo (1).png`;
+`Overwrite` via `Shift+Tab ×2` + `Space`, replacing the on-disk content with the archive's own) —
+matching T-F154's own finding that a single-root-file archive is the one shape where `--extract-
+here` actually reaches a per-file conflict at all (a multi-file archive there gets a fresh numbered
+folder from `GetUniqueFolderName` first and never collides). `--extract-flat` against a real
+3-file archive, re-extracted a second time after modifying all three on-disk files, confirmed
+"apply to all" + `Overwrite` on the *first* conflict silently resolved the other two with zero
+further prompts — `StickyApplyToAllConflictResolver` working end-to-end, not just at the unit
+level. `--extract-folder` was confirmed to stay inert (a fresh numbered subfolder every run, no
+dialog) as expected, since its destination is never a pre-existing path. `Get-WinEvent` against
+both `.NET Runtime` and `SideBySide` providers showed zero new failures across the whole session.
+**Native `TaskDialogIndirect` button clicks could not be triggered via `ui_click`/`mouse_control`
+in this window class** (the same automation-limitation pattern already documented for other native
+dialogs in this project — clicks reported "success" without dismissing the dialog, and absolute-
+screen coordinates from `ui_find`/`screenshot_control` resolved to the wrong underlying window);
+`Tab`/`Shift+Tab` + `Space`/`Enter` keyboard navigation worked reliably instead and is what
+actually produced the on-device confirmations above — not a weaker substitute, since it exercises
+the exact same `TaskDialogIndirect` return values a mouse click would.
+
+Investigated in the same session, at the user's explicit prompt, whether the WinUI App's own
+Archive Browser (`ExtractSelectedFromBrowserAsync`/`ExtractAllFromBrowserAsync`,
+`MainViewModel.cs`) has a second, separate conflict-resolution implementation that this task should
+have unified alongside T-F157/T-F158. It does not: both browser commands call the same shared
+`RunExtractAsync` helper the pending-list Extract flow already uses, which wires the identical
+`OnConflict = OnConflict` / `ResolveConflictAsync = _dialogService.ShowConflictDialogAsync` — no
+duplication exists there to unify.
+
+**Scope fence:** `Archiver.CLI`'s `pakko x` has the identical non-interactive gap and is explicitly
+out of scope (a real console/CI-invoked frontend has no natural place for a modal prompt anyway).
+`RunArchiveAsync`'s archive-creation-side conflict handling is untouched (`ArchiveOptions.
+ResolveConflictAsync` stays null for Shell, unchanged — a real difference from `ExtractOptions.
+ResolveConflictAsync`, which is now wired for all three extract commands). See `docs/TASKS_DONE.md`'s
+T-F155 entry.

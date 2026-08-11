@@ -349,7 +349,7 @@ flowchart TD
     I -- yes --> S5[SkippedFiles += suspicious ratio]
     I -- no --> J{File.Exists at finalFilePath<br/>= actualDest + relativePath ?}
     J -- no --> K
-    J -- yes --> J0["T-F06: resolvedConflict = await conflictResolver.ResolveAsync(finalFilePath)<br/>configured != Ask → passes through unchanged;<br/>configured == Ask → invokes options.ResolveConflictAsync(ConflictInfo)<br/>(or defaults to Skip if that callback is null, e.g. Archiver.Shell),<br/>remembering the decision for the rest of THIS ExtractAsync call<br/>if ApplyToAll was set — see DECISIONS.md's T-F06 entry"]
+    J -- yes --> J0["T-F06: resolvedConflict = await conflictResolver.ResolveAsync(finalFilePath)<br/>configured != Ask → passes through unchanged;<br/>configured == Ask → invokes options.ResolveConflictAsync(ConflictInfo)<br/>(or defaults to Skip if that callback is null -- e.g. Archiver.CLI's pakko x;<br/>Archiver.Shell's three extract commands wire a real one since T-F155, ShellConflictDialog),<br/>remembering the decision for the rest of THIS ExtractAsync call<br/>if ApplyToAll was set — see DECISIONS.md's T-F06 entry"]
     J0 -- "resolvedConflict==Skip" --> S6["bytesRead += Length; continue<br/>(no SkippedFiles entry recorded for this case)"]
     J0 -- "resolvedConflict==Rename" --> K2[destFilePath renamed via GetUniqueFilePath]
     J0 -- "resolvedConflict==Overwrite" --> K3["NO explicit branch — falls through<br/>unchanged to K with ORIGINAL destFilePath;<br/>actual overwrite happens later, only if the merge<br/>step's File.Move(overwrite:true) runs"]

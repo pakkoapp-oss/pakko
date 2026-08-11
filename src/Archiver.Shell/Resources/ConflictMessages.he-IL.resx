@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="ConflictDialogTitle" xml:space="preserve">
+    <value>הקובץ כבר קיים</value>
+  </data>
+  <data name="ConflictDialogMessage" xml:space="preserve">
+    <value>"{0}" כבר קיים ביעד. מה תרצה לעשות?</value>
+  </data>
+  <data name="ConflictDialogOverwriteButton" xml:space="preserve">
+    <value>החלף</value>
+  </data>
+  <data name="ConflictDialogRenameButton" xml:space="preserve">
+    <value>שנה שם</value>
+  </data>
+  <data name="ConflictDialogSkipButton" xml:space="preserve">
+    <value>דלג</value>
+  </data>
+  <data name="ConflictDialogApplyToAllCheck" xml:space="preserve">
+    <value>החל על כל שאר ההתנגשויות</value>
+  </data>
+</root>

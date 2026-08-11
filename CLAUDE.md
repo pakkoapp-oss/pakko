@@ -815,9 +815,44 @@ failure — so a blocked/misconfigured sandbox would have crashed instead of yie
   collision by construction (both hit the same `renameCandidate` arm) and
   `DestinationConflictResolverTests` already isolates `Overwrite` specifically at the unit level.
   See `docs/TASKS_DONE.md`'s and `docs/DECISIONS.md`'s T-F158 entries.
+- **T-F155 (`[x]` done 2026-08-11)** — `Archiver.Shell`'s three extract commands (`--extract-here`,
+  `--extract-flat`, `--extract-folder`) now show a real interactive Overwrite/Rename/Skip +
+  "apply to all" conflict dialog (`ShellConflictDialog`, `TaskDialogIndirect`-based — the only
+  Win32 primitive with custom button labels), at parity with the WinUI App's own T-F06
+  `ContentDialog`. New `StickyApplyToAllConflictResolver` bridges a real scope gap: Core's
+  `ConflictResolver` only remembers "apply to all" for one `ExtractAsync` call, but Shell's three
+  commands each build a fresh one per archive in a loop — without the wrapper, a multi-select
+  would silently re-prompt after every archive even with the box checked. New
+  `Archiver.Shell/Resources/ConflictMessages*.resx` (37 locales, values copied verbatim from
+  `Archiver.App`'s own already-translated strings, not re-translated) + `ConflictDialogLocalizer`.
+  A Phase 0 spike (throwaway console project, driven via `windows` MCP) caught three real bugs
+  before any production code shipped: (1) `TASKDIALOG_BUTTON` needs `Pack = 1` — it's declared
+  inside the *same* `pshpack1.h` block as `TASKDIALOGCONFIG` in `commctrl.h`, contrary to the
+  original plan's assumption; a naturally-aligned button struct crashed `TaskDialogIndirect` with
+  `AccessViolationException` the instant a real button array was passed; (2) a missing/broken
+  comctl32 v6 activation context fails at **process activation** itself (`CreateProcess` refusing
+  to start the exe with a `SideBySide`-provider event-log error), not as a catchable
+  `EntryPointNotFoundException` — the original backlog text's failure-mode assumption was wrong;
+  (3) the Windows SxS manifest parser rejected a syntactically valid XML comment placed between
+  `</trustInfo>` and the new `<dependency>` element in `app.manifest` — confirmed via a raw
+  `RT_MANIFEST` resource dump that the embedded manifest was byte-for-byte well-formed XML, yet
+  activation still failed; removing the comment fixed it for both the unpackaged and installed-
+  MSIX builds. Mutation-checked tests for `MapResult`/`StickyApplyToAllConflictResolver`; a new
+  `ConflictDialogLocalizerTests` loop (37 cultures × 6 keys, 223 cases) proved every copied `.resw`
+  value survives the `.Replace`→`string.Format` semantic change unharmed. On-device (real
+  installed MSIX, via `windows` MCP): all three commands confirmed against real fixtures,
+  including "apply to all" correctly silencing further prompts across a whole archive's remaining
+  conflicts. Native `TaskDialogIndirect` buttons resisted `ui_click`/`mouse_control` (same
+  automation-limitation class as other native dialogs in this project) — `Tab`/`Shift+Tab` +
+  `Space`/`Enter` keyboard navigation worked reliably instead and produced every confirmation.
+  Also confirmed, at the user's prompt, that the Archive Browser's own Extract Selected/All
+  already shares the exact same `ConflictResolver`/T-F06 pipeline — no separate duplication to
+  unify there. `Archiver.CLI`'s `pakko x` has the identical gap, opened as its own backlog task
+  **T-F160** (whether a modal popup even suits a console/CI tool is a real open question). See
+  `docs/TASKS_DONE.md`'s and `docs/DECISIONS.md`'s T-F155 entries.
 - Next work: Future tasks in `TASKS.md`, including **T-F148** (SYSLIB1054 conversion, split
-  out of T-F147), **T-F159** (unify `GetUniqueFilePath`, split out of T-F158), **T-F155**
-  (interactive Shell conflict dialog)
+  out of T-F147), **T-F159** (unify `GetUniqueFilePath`, split out of T-F158), **T-F160**
+  (interactive conflict dialog for `Archiver.CLI`'s `pakko x`, parity with T-F155)
 
 ## Roadmap Summary
 

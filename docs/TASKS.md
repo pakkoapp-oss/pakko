@@ -4018,47 +4018,6 @@ regression from this task, which owns reliability only.
 
 ---
 
-### T-F155 — Interactive Conflict-Resolution Dialog for `Archiver.Shell` (Explorer Extraction Path)
-
-- [ ] **Status:** not started — created as a backlog entry only, not implemented this round, per
-  the user's own explicit answer when asked ("Створити нову задачу (T-F155) на інтерактивний
-  діалог").
-- **Context:** surfaced while fixing T-F154. `Archiver.Shell` (the Explorer-triggered,
-  non-WinUI extraction path — `--extract-here`, `--extract-flat`, `--extract-folder`) never wires
-  `ExtractOptions.ResolveConflictAsync` — it's always `null`, so every conflict resolves
-  non-interactively (`RunExtractHereAsync` sets `OnConflict = ConflictBehavior.Rename`; other
-  commands default to `Skip`). This was already true before T-F154, but T-F154's fix made it
-  newly *visible*: verified on a real unpackaged build that running `Archiver.Shell.exe
-  --extract-here` twice against the same single-file `photo.zip` silently produces `photo.png` →
-  `photo (1).png` → `photo (2).png`, no prompt ever appearing. The WinUI App's own Extract flow
-  already has an interactive `Overwrite`/`Rename`/`Skip` + "apply to all" `ContentDialog`
-  (T-F06, `DialogService.cs`) for the identical situation — this task is about bringing
-  `Archiver.Shell` to parity with that, not designing new conflict-resolution UX from scratch.
-- **Design note (advisor-flagged, not yet resolved):** `Archiver.Shell` is a plain console/Win32
-  process, not WinUI — there is no `ContentDialog` available. `MessageBoxW` cannot produce custom
-  button labels ("Overwrite"/"Rename"/"Skip" — only fixed sets like OK/Cancel/Yes/No/Retry/Cancel
-  are available), so the real primitive here is almost certainly `TaskDialogIndirect`
-  (comctl32, supports arbitrary custom buttons — this is what Explorer's own native file-conflict
-  dialog uses). Whether `Archiver.Shell` currently has the comctl32 v6 manifest/activation context
-  `TaskDialogIndirect` needs is an open question, not yet spiked — budget this as a real
-  investigation at implementation time, not a fill-in-the-blank task.
-- **Acceptance criteria (draft — refine at implementation time):** a real interactive dialog
-  (likely `TaskDialogIndirect`-based) shown from `Archiver.Shell` on a genuine extraction conflict,
-  offering Overwrite/Rename/Skip plus an "apply to all" option, matching T-F06's shape;
-  `ExtractOptions.ResolveConflictAsync` wired to it for every `Archiver.Shell` extraction command
-  (`--extract-here`, `--extract-flat`, `--extract-folder`); new localized strings across all 37
-  locales, matching this project's existing localization convention for shell-triggered dialogs
-  (see T-F146's `ScanMessages.*.resx` precedent); tests for the dialog's decision-mapping logic
-  (hand-rolled fakes, no mocking library, per this project's convention) plus a real on-device
-  check (repeat `--extract-here` against a colliding archive, click each of Overwrite/Rename/Skip/
-  apply-to-all in turn) — not graduated on `dotnet test` alone.
-- **Reported by:** user, 2026-08-11, in direct response to being asked whether to leave the silent
-  auto-rename behavior as-is or create a follow-up task: "Створити нову задачу (T-F155) на
-  інтерактивний діалог."
-- **Depends on:** none (T-F154 is the context that surfaced this, already shipped)
-
----
-
 ### T-F159 — Unify `GetUniqueFilePath` between `ZipArchiveService` and `TarSandboxedService`
 
 - [ ] **Status:** not started — scoped out of T-F158 deliberately (advisor: bundling it would mix
@@ -4081,4 +4040,20 @@ regression from this task, which owns reliability only.
   operations.
 - **Reported by:** advisor, during T-F158's design review, 2026-08-11.
 - **Depends on:** none (T-F157 and T-F158, both already shipped/mostly-shipped)
+
+---
+
+### T-F160 — Interactive conflict dialog for `Archiver.CLI`'s `pakko x` (parity with T-F155)
+
+- [ ] **Status:** not started — backlog only, deliberately scoped out of T-F155.
+- **Context:** T-F155 brought `Archiver.Shell`'s three extract commands to parity with the WinUI
+  App's own T-F06 interactive conflict dialog, using a `TaskDialogIndirect`-based
+  `ShellConflictDialog`. `Archiver.CLI`'s `pakko x` still passes a null `ResolveConflictAsync` (see
+  `ConflictResolver`'s own documented null-callback default), so it's the one remaining
+  non-interactive extraction path in this repo.
+- **Design note (not yet resolved):** whether a modal `TaskDialogIndirect` popup even makes sense
+  for a real console/CI-invoked tool is a genuine open question — 7z's own CLI just always
+  auto-renames/skips based on a switch, never prompts. This may end up being a "decline, document
+  as intentional" outcome rather than a real implementation, same shape as T-F152's resolution.
+- **Depends on:** none (T-F155, already shipped)
 

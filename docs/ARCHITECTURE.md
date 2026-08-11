@@ -157,9 +157,22 @@ src/
 │   ├── HashResultLocalizer.cs          ← T-F128 follow-up: first localized text in Archiver.Shell —
 │   │                                      plain .resx/ResourceManager (not App's WinRT/.resw — needs
 │   │                                      no Windows-versioned TFM, see DECISIONS.md)
+│   ├── ShellConflictDialog.cs          ← T-F155: TaskDialogIndirect-based Overwrite/Rename/Skip +
+│   │                                      "apply to all" dialog (needs the comctl32 v6 dependency
+│   │                                      in app.manifest — see DECISIONS.md's T-F155 entry for
+│   │                                      the TASKDIALOG_BUTTON packing gotcha)
+│   ├── StickyApplyToAllConflictResolver.cs  ← T-F155: bridges "apply to all" across a whole
+│   │                                      multi-archive Explorer selection — Core's own
+│   │                                      ConflictResolver only remembers it for one ExtractAsync
+│   │                                      call (= one archive)
+│   ├── ConflictDialogLocalizer.cs      ← T-F155: mirrors ScanResultLocalizer's own pattern; the 6
+│   │                                      ConflictDialog* values are copied from Archiver.App's own
+│   │                                      already-translated Strings/*/Resources.resw, not re-translated
 │   └── Resources/
-│       ├── HashMessages.resx           ← neutral (English)
-│       └── HashMessages.<locale>.resx  ← 36 locales, matches Archiver.App/Strings/'s own set
+│       ├── HashMessages.resx / HashMessages.<locale>.resx      ← 36 locales
+│       ├── ScanMessages.resx / ScanMessages.<locale>.resx      ← 36 locales
+│       └── ConflictMessages.resx / ConflictMessages.<locale>.resx  ← 36 locales, matches
+│                                                                     Archiver.App/Strings/'s own set
 │
 ├── Archiver.CLI/                ← standalone console frontend (T-F09); net8.0; Exe (real console,
 │   │                                not WinExe); no WinUI; built as pakko.exe; ships independently
@@ -325,6 +338,38 @@ internal static class DestinationConflictResolver
     public static Task<(DestinationConflictOutcome Outcome, string ResolvedDestPath)> ResolveAsync(
         string destPath, bool onDiskConflict, bool sameRunConflict,
         ConflictResolver conflictResolver, Func<string, string> renameCandidate);
+}
+```
+
+```csharp
+// Archiver.Shell/ShellConflictDialog.cs — public, Archiver.Shell
+// T-F155: brings Archiver.Shell's three extract commands to parity with the WinUI App's own T-F06
+// ContentDialog, via TaskDialogIndirect (comctl32 v6 — see app.manifest's <dependency>). MapResult
+// is the pure, unit-tested seam; ShowAsync/ShowCore do the P/Invoke and degrade to Skip on any
+// failure (missing/broken activation context, etc.) — see DECISIONS.md's T-F155 entry for the
+// TASKDIALOG_BUTTON packing bug this uncovered.
+public static class ShellConflictDialog
+{
+    public static ConflictDecision MapResult(int buttonId, bool applyToAllChecked);
+    public static Task<ConflictDecision> ShowAsync(ConflictInfo conflict);
+}
+
+// Archiver.Shell/StickyApplyToAllConflictResolver.cs — public, Archiver.Shell
+// T-F155: Core's own ConflictResolver only remembers "apply to all" for the lifetime of one
+// ExtractAsync call, but RunExtractHereAsync/RunExtractHereFlatAsync/RunExtractFolderAsync each
+// construct a fresh ExtractOptions (and therefore a fresh Core-side ConflictResolver) once PER
+// ARCHIVE in a foreach. One instance of this wrapper, constructed once before that foreach, makes
+// "apply to all" span the whole Explorer multi-select instead of resetting every archive.
+public sealed class StickyApplyToAllConflictResolver(Func<ConflictInfo, Task<ConflictDecision>> inner)
+{
+    public Task<ConflictDecision> ResolveAsync(ConflictInfo conflict);
+}
+
+// Archiver.Shell/ConflictDialogLocalizer.cs — public, Archiver.Shell
+// T-F155: mirrors ScanResultLocalizer.cs exactly (ResourceManager over Resources/ConflictMessages).
+public static class ConflictDialogLocalizer
+{
+    public static string Get(string key, params object[] args);
 }
 ```
 

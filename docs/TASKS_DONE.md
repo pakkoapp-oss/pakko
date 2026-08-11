@@ -4051,3 +4051,80 @@ document.
   за тим же принципом щоі для розархівування" (implementation), then "Заведи задачу на T-F158
   залишок через MCP і закрий її" (close the remainder via MCP).
 - **Depends on:** none (motivated by T-F157, already shipped)
+
+---
+
+### T-F155 — Interactive Conflict-Resolution Dialog for `Archiver.Shell`
+
+- [x] **Done 2026-08-11.** `Archiver.Shell`'s three extract commands (`--extract-here`,
+  `--extract-flat`, `--extract-folder`) are now at parity with the WinUI App's own T-F06
+  `ContentDialog` — real Overwrite/Rename/Skip + "apply to all" prompts on a genuine extraction
+  conflict, via a new `TaskDialogIndirect`-based `ShellConflictDialog` (comctl32; `MessageBoxW`
+  can't produce custom button labels) plus a `StickyApplyToAllConflictResolver` that bridges a
+  real scope gap (Core's own `ConflictResolver` only remembers "apply to all" for one
+  `ExtractAsync` call, but Shell's three commands each construct one per archive in a loop). The 6
+  dialog strings are copied verbatim from `Archiver.App`'s already-translated
+  `Strings/*/Resources.resw` across all 37 locales via a one-off script, into a new
+  `Archiver.Shell/Resources/ConflictMessages*.resx` + `ConflictDialogLocalizer.cs` (mirrors
+  `ScanResultLocalizer.cs`). Designed via Plan Mode + `advisor` (8 points folded in, most
+  importantly: spike the native call in total isolation before writing any real code, and hoist a
+  sticky wrapper so "apply to all" spans a whole Explorer multi-select, not just one archive).
+- **Three real, non-obvious bugs found via a Phase 0 spike (throwaway console project, driven via
+  the `windows` MCP server) before any production code was written:**
+  1. `TASKDIALOG_BUTTON` needs `[StructLayout(..., Pack = 1)]`, not natural alignment —
+     `commctrl.h` declares it inside the *same* `pshpack1.h` block as `TASKDIALOGCONFIG`, contrary
+     to the original plan's assumption. A naturally-aligned button struct (16 bytes) reliably
+     crashed `TaskDialogIndirect` with `AccessViolationException` the instant a real button array
+     was passed; `Pack = 1` (12 bytes, matching the real native layout) fixed it outright —
+     confirmed via bisection (0 buttons = fine, 1+ = crash) before and after the fix.
+  2. A missing/broken comctl32 v6 activation context fails at **process activation** itself
+     (`CreateProcess`/`Start-Process` failing with "side-by-side configuration is incorrect,"
+     logged to the `SideBySide` Application-event-log provider, event ID 59) — not as a
+     `EntryPointNotFoundException` the P/Invoke's own `try`/`catch` could ever intercept, since the
+     process never starts. The original backlog text's assumption about the failure mode was wrong.
+  3. The Windows SxS manifest parser rejected a syntactically valid, well-formed XML comment placed
+     between `</trustInfo>` and the new `<dependency>` element in `app.manifest` — confirmed the
+     embedded manifest itself was byte-for-byte well-formed XML (via a raw `FindResource`/
+     `LoadResource` dump), yet activation still failed with "Invalid Xml syntax" pointing at an
+     unrelated, definitely-valid closing tag. Removing the comment (moving the explanation into
+     `ShellConflictDialog.cs`'s own code comment) fixed activation for both the unpackaged build
+     and the installed MSIX build. `mt.exe`'s own manifest-parse error was a red herring pointing
+     at the wrong layer entirely — the real diagnostic was the `SideBySide` event-log entry.
+- **Testing:** `ShellConflictDialogTests.cs` (pure `MapResult`, mutation-checked) and
+  `StickyApplyToAllConflictResolverTests.cs` (mutation-checked) both hand-rolled, no mocking
+  library; `ConflictDialogLocalizerTests.cs` closes a real semantic-change gap the copy script
+  could have introduced silently (App's `.resw` values are `.Replace`-based, tolerant of any brace
+  content; the new `Get()` is `string.Format`-based, which throws on any unescaped/unmatched
+  brace) — a loop over all 37 cultures × 6 keys (223 cases) proved every copied value survives
+  unharmed. `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` green repo-wide.
+- **On-device (real installed MSIX, via `windows` MCP, current UI culture Ukrainian on this
+  machine):** the packaged `Archiver.Shell.exe` launched correctly after the manifest-comment fix
+  (confirming the SxS fix holds for the packaged activation context, not just unpackaged Debug);
+  the real dialog rendered correctly in Ukrainian ("Файл вже існує" / "Перезаписати" /
+  "Перейменувати" / "Пропустити" / "Застосувати до всіх решти конфліктів"); `--extract-here`
+  against a real single-file archive (the one shape where this command actually reaches a
+  per-file conflict, per T-F154) confirmed all three resolutions in turn — `Skip` via the default
+  button/`Enter`, `Rename` via keyboard navigation producing a real `photo (1).png`, `Overwrite`
+  replacing the on-disk content with the archive's own; `--extract-flat` against a real 3-file
+  archive re-extracted a second time confirmed "apply to all" + `Overwrite` on the first conflict
+  silently resolved the other two with zero further prompts; `--extract-folder` confirmed inert
+  (fresh numbered subfolder every run) as expected. `Get-WinEvent` against both `.NET Runtime` and
+  `SideBySide` providers showed zero new failures. **One real automation limitation, documented
+  rather than hidden:** native `TaskDialogIndirect` button clicks could not be triggered via
+  `ui_click`/`mouse_control` in this window class (clicks reported "success" without dismissing
+  the dialog); `Tab`/`Shift+Tab` + `Space`/`Enter` keyboard navigation worked reliably instead and
+  produced every on-device confirmation above — not a weaker substitute, since it exercises the
+  exact same `TaskDialogIndirect` return values a mouse click would.
+- **Same-session investigation (user-prompted):** checked whether the WinUI App's own Archive
+  Browser (`ExtractSelectedFromBrowserAsync`/`ExtractAllFromBrowserAsync`) has a second, separate
+  conflict-resolution implementation this task should have unified alongside T-F157/T-F158. It
+  does not — both browser commands share the same `RunExtractAsync` helper the pending-list
+  Extract flow already uses, wiring the identical `ConflictResolver`/T-F06 `ContentDialog`. No
+  unification work was needed there.
+- **Scope fence:** `Archiver.CLI`'s `pakko x` has the identical non-interactive gap — opened as its
+  own backlog task, **T-F160**, since whether a modal popup even suits a console/CI tool is a real
+  open design question, not a mechanical port of this task's approach.
+- **Reported by:** user, 2026-08-11 — "Продовжуй 155 з адвізором планом, тестами до та після...";
+  the Explorer-vs-Shell scope question ("Чому тільки для шелл?") and the Archive Browser
+  duplication question were both raised and answered mid-session.
+- **Depends on:** none (T-F154 is the context that surfaced this, already shipped)
