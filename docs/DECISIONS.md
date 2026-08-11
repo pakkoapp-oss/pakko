@@ -6968,3 +6968,74 @@ fundamentally different proposal (a CI-time, one-directional upload of Pakko's o
 artifacts, not a runtime, per-archive-entry, user-file-hash lookup baked into the shipped app) and
 was explicitly parked as "for later," not rejected — do not conflate the two if this area comes
 up again.
+
+---
+
+## T-F153 — Trailing Directory Separator Silently Corrupted Archive-Creation Naming/Rooting (2026-08-11)
+
+**How this was found.** Not a design review — a real bug caught by a broad post-release smoke
+test the user asked for ahead of a Store submission (v1.4.9, following T-F151). One of the CLI
+commands run during that pass used a source path with a trailing separator
+(`pakko a archived.tar.gz src/`, Bash-tool tab-completion habit). The resulting archive listed
+correctly in `pakko l`, but the Archive Browser screenshot taken afterward showed one row with a
+folder icon and no visible name above the real "nested" row — a real UI anomaly, not a rendering
+glitch, that led back to the actual entry names on disk.
+
+**Root cause.** `Path.GetFileName("src/")` returns `""`, not `"src"` — confirmed directly
+(`[System.IO.Path]::GetFileName('src/')` → empty string), and cross-checked against an
+independent, non-.NET reader (the vendored `7za.exe` from T-F114) so this wasn't just .NET's own
+lenient interpretation of what the archive contains. Five call sites in `Archiver.Core` compute
+an entry's top-level name via `Path.GetFileName(sourcePath)` directly on the caller-supplied,
+unnormalized source path (`ZipArchiveService.cs` x3, `WorkItemEnumerator.cs` x2) — with a trailing
+separator, every one of them silently produced entries rooted at the archive's own top level
+(`/binary.dat`) instead of under the real parent folder (`src/binary.dat`).
+
+**A second, independent instance in `Archiver.Shell/Program.cs`.** `RunArchiveAsync`'s own
+`destFolder`/`archiveName` computation (used for the one-click Explorer "Add to X.zip" command and
+the `--archive` CLI switch) has the identical bug, but with a worse practical consequence:
+`Path.GetDirectoryName("C:\...\src\")` returns `src`'s own full path, not its parent — so the new
+archive was placed **inside the source folder being archived**, not next to it. Confirmed by
+running the exact repro three times and finding `archive.zip`, `archive (1).zip`,
+`archive (2).zip` all created inside `src\` itself. `RunHashAsync`'s dialog-title computation had
+a partial, backslash-only guard (`.TrimEnd('\')`) already in place — evidence this exact
+trailing-separator class was known about for *display text* in one place, but never generalized
+to the functional archive-creation path.
+
+**Why this wasn't caught earlier.** Every existing input path into archive creation is
+separator-free in practice: `FolderPicker.PickSingleFolderAsync()`'s `StorageFolder.Path` (WinRT)
+never has a trailing separator, and neither does a WinUI drag-and-drop `StorageItem.Path` —
+confirmed by reading both call sites (`DialogService.PickFoldersAsync`,
+`MainWindow.xaml.cs`'s `FileList_Drop`). The only realistic way to trigger this is a
+terminal/CLI argument a human typed or tab-completed, which is exactly the CLI-first smoke test
+that found it — GUI-only testing (the `windows` MCP path used in prior sessions) would never have
+exercised this.
+
+**Fix.** `Path.TrimEndingDirectorySeparator` (not a bare `.TrimEnd('\')`) applied once, at the top
+of each affected public entry point, before any of the vulnerable logic runs:
+`ZipArchiveService.ArchiveAsync`, `TarSandboxedService.CompressAsync`, and
+`Archiver.Shell/Program.cs`'s `RunArchiveAsync` (plus `RunHashAsync`'s existing display-only guard,
+upgraded to the same real method for forward-slash coverage). `Path.TrimEndingDirectorySeparator`
+was chosen specifically because it leaves a genuine drive root (`"C:\"`) untouched — confirmed
+empirically — so it does not regress T-F99's existing drive-root handling in `ArchiveNaming`
+(`ResolveSingleArchiveName`'s "Z:\" → "archive" fallback stays correct, verified by rerunning that
+exact test after the fix). One pre-existing test
+(`ZipArchiveServiceArchiveTests.ArchiveAsync_NullArchiveName_SingleSourceEndingInSeparator_FallsBackToArchive`)
+had used an ordinary folder-plus-trailing-separator as a stand-in for the real drive-root case it
+was meant to test — that conflation is exactly what this bug exposed; the test was corrected to
+assert the new, correct behavior (uses the real folder name, not "archive") and renamed
+accordingly, while `ArchiveNamingTests.ResolveSingleArchiveName_NoExplicitName_DriveRootSource_...`
+(which already used a real `"Z:\"`) needed no change.
+
+**New tests**, each confirmed to actually fail against a temporary revert before being restored
+passing (this repo's standard regression-test discipline): a ZIP test asserting the real entry
+name (`ZipArchiveServiceArchiveTests.ArchiveAsync_SourceEndingInSeparator_EntriesAreRootedUnderFolderName`)
+and a real-`tar.exe` integration test doing the same for the tar-family path
+(`TarSandboxedServiceCompressTests.CompressAsync_SourceEndingInSeparator_EntryStaysRootedUnderFolderName`).
+
+**Verification:** `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` green repo-wide
+(819/819, two isolated AppContainer-contention flakes reconfirmed passing on rerun — the
+documented pre-existing pattern, not new). `Deploy.ps1` build+sign+install (v1.4.9.1) and an
+agent-driven on-device re-run of the exact original repro through the real installed
+`Archiver.Shell.exe --archive` confirmed the archive now lands next to `src\` (not inside it), is
+named `src.zip` (not `archive.zip`), and its entries list as `src/binary.dat` etc. (not
+`/binary.dat`) via the real `pakko.exe l` reader.

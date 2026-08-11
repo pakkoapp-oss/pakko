@@ -49,12 +49,15 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
         result.CreatedFiles.Should().ContainSingle(f => Path.GetFileName(f) == "my_folder.zip");
     }
 
-    // T-F99: Path.GetFileNameWithoutExtension returns "" for a path ending in a directory
-    // separator with no name component (a real drive root, e.g. "Z:\", behaves the same way) -
-    // a bare-drive-root single source became reachable once the shell extension registered a
-    // Drive ItemType. Without the fallback this silently created a file literally named ".zip".
+    // T-F153: a source path ending in an ordinary directory separator (e.g. typed with tab-
+    // completion, or "my_folder\") must still resolve to that folder's own real name, not fall
+    // back to "archive" — ArchiveAsync normalizes the trailing separator away before naming, so
+    // this now behaves identically to the no-trailing-separator case. The "falls back to archive"
+    // scenario (ArchiveNamingTests.ResolveSingleArchiveName_NoExplicitName_DriveRootSource_...)
+    // is reserved for a REAL drive root ("Z:\", where TrimEndingDirectorySeparator deliberately
+    // leaves the separator in place) — this test used to conflate the two.
     [Fact]
-    public async Task ArchiveAsync_NullArchiveName_SingleSourceEndingInSeparator_FallsBackToArchive()
+    public async Task ArchiveAsync_NullArchiveName_SingleSourceEndingInSeparator_UsesFolderNameNotArchive()
     {
         var dir = Path.Combine(_temp.Path, "my_folder");
         Directory.CreateDirectory(dir);
@@ -68,7 +71,33 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
         var result = await _sut.ArchiveAsync(options);
 
         result.Success.Should().BeTrue();
-        result.CreatedFiles.Should().ContainSingle(f => Path.GetFileName(f) == "archive.zip");
+        result.CreatedFiles.Should().ContainSingle(f => Path.GetFileName(f) == "my_folder.zip");
+    }
+
+    // T-F153: the real bug this was found from — a trailing separator on the source path made
+    // Path.GetFileName(sourcePath) return "", so every entry was written rooted at the archive's
+    // own top level ("/binary.dat") instead of under the source folder's own name
+    // ("my_folder/binary.dat"). Confirmed via a real 7za.exe read-back during the original repro
+    // (an independent reader, not just .NET's own lenient ZipArchive), not just this test's own
+    // ZipFile-based assertion.
+    [Fact]
+    public async Task ArchiveAsync_SourceEndingInSeparator_EntriesAreRootedUnderFolderName()
+    {
+        var dir = Path.Combine(_temp.Path, "my_folder");
+        Directory.CreateDirectory(dir);
+        File.WriteAllText(Path.Combine(dir, "inner.txt"), "content");
+        var options = new ArchiveOptions
+        {
+            SourcePaths = [dir + Path.DirectorySeparatorChar],
+            DestinationFolder = _temp.Path,
+            ArchiveName = "output"
+        };
+
+        var result = await _sut.ArchiveAsync(options);
+
+        result.Success.Should().BeTrue();
+        using var archive = System.IO.Compression.ZipFile.OpenRead(result.CreatedFiles[0]);
+        archive.Entries.Should().ContainSingle(e => e.FullName == "my_folder/inner.txt");
     }
 
     [Fact]

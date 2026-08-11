@@ -3797,3 +3797,67 @@ document.
         boundary
 - **Reported by:** user, 2026-08-10 — "ок підемо цим шляхом 256 ліміт підвищим."
 - **Depends on:** T-F146 (AMSI scanning itself)
+---
+
+### T-F153 — Trailing Directory Separator Corrupted Archive-Creation Naming/Rooting
+
+- [x] **Status:** done 2026-08-11. Found during a user-requested broad post-release smoke test
+  (v1.4.9, ahead of a Store submission). `Path.GetFileName("src/")` returns `""`, not `"src"` —
+  every source path ending in a trailing separator (realistic via CLI/terminal tab-completion,
+  not via GUI FolderPicker/drag-and-drop, which never produce one) silently corrupted archive
+  creation two independent ways: (1) `Archiver.Core`'s `ZipArchiveService`/`WorkItemEnumerator`
+  wrote entries rooted at the archive's own top level (`/binary.dat`) instead of under the real
+  parent folder (`src/binary.dat`) — confirmed against an independent reader (vendored `7za.exe`),
+  not just .NET's own lenient ZipArchive; (2) `Archiver.Shell/Program.cs`'s `RunArchiveAsync`
+  placed the new archive **inside the source folder being archived** instead of next to it, and
+  named it the generic "archive" instead of the real folder name — confirmed by reproducing three
+  times and finding `archive.zip`/`archive (1).zip`/`archive (2).zip` all created inside `src\`
+  itself. Fixed via `Path.TrimEndingDirectorySeparator` (correctly leaves a real drive root like
+  `"C:\"` untouched, confirmed empirically — does not regress T-F99's drive-root handling) applied
+  once at the top of `ZipArchiveService.ArchiveAsync`, `TarSandboxedService.CompressAsync`, and
+  `Archiver.Shell/Program.cs`'s `RunArchiveAsync`/`RunHashAsync`. Two new regression tests, each
+  confirmed to actually fail against a temporary revert before being restored passing. One
+  pre-existing test had conflated this scenario with the real drive-root case — corrected and
+  renamed, not just patched around. `dotnet test --filter "Category!=Slow&Category!=VeryLarge"`
+  green repo-wide (819/819). `Deploy.ps1` build+sign+install (v1.4.9.1) and an agent-driven
+  on-device rerun of the exact original repro against the real installed `Archiver.Shell.exe`
+  confirmed the fix end-to-end. See `docs/DECISIONS.md`'s T-F153 entry for the full account.
+- **Context:** discovered mid-smoke-test, not from a design review or a user bug report about a
+  specific archive — the user asked for a broad functional smoke test of every major mode ahead of
+  publishing v1.4.9 to the Microsoft Store, and this surfaced from a real CLI invocation during
+  that pass.
+- **What:**
+  - `src/Archiver.Core/Services/ZipArchiveService.cs`: normalize `options.SourcePaths` via
+    `Path.TrimEndingDirectorySeparator` at the very top of `ArchiveAsync`.
+  - `src/Archiver.Core/Services/TarSandboxedService.cs`: identical normalization at the top of
+    `CompressAsync`.
+  - `src/Archiver.Shell/Program.cs`: identical normalization at the top of `RunArchiveAsync`
+    (functional fix — this is the one that misplaced the archive) and upgraded `RunHashAsync`'s
+    existing backslash-only `.TrimEnd('\')` display-title guard to the same real method (covers
+    forward slash too).
+  - `tests/Archiver.Core.Tests/Services/ZipArchiveServiceArchiveTests.cs`: corrected
+    `ArchiveAsync_NullArchiveName_SingleSourceEndingInSeparator_FallsBackToArchive` (renamed to
+    `..._UsesFolderNameNotArchive`, was conflating this bug's scenario with the real drive-root
+    case) and added `ArchiveAsync_SourceEndingInSeparator_EntriesAreRootedUnderFolderName`.
+  - `tests/Archiver.Core.IntegrationTests/TarSandboxedServiceCompressTests.cs`: added
+    `CompressAsync_SourceEndingInSeparator_EntryStaysRootedUnderFolderName`.
+- **Acceptance criteria:**
+  - [x] Trailing-separator source paths no longer corrupt entry names/rooting in either
+        `ZipArchiveService` or `TarSandboxedService`
+  - [x] `Archiver.Shell`'s one-click "Add to X.zip"/`--archive` CLI path no longer places the new
+        archive inside its own source folder, and names it after the real source, not "archive"
+  - [x] Fix confirmed to leave T-F99's real drive-root handling (`"C:\"`) unaffected —
+        `ArchiveNamingTests.ResolveSingleArchiveName_NoExplicitName_DriveRootSource_...` still
+        passes unmodified
+  - [x] New regression tests confirmed to actually fail against a temporary revert before being
+        restored passing (ZIP unit test + real-tar.exe integration test)
+  - [x] `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` green repo-wide (819/819)
+  - [x] `Deploy.ps1` build+sign+install succeeded (v1.4.9.1)
+  - [x] On-device verification — agent-driven, user-directed: reran the exact original repro
+        against the real installed `Archiver.Shell.exe --archive`, confirmed both the placement
+        and naming fixes, and the entries' correct rooting via `pakko.exe l`
+- **Reported by:** found by the agent during a user-requested smoke test, 2026-08-11 — "перевір
+  швиденько увесь проект смоуку тестами основні режими які зачіпають усі основні функкції.
+  прискіпливо перевір скриншоти щоб воги відпрвідали поведінці вцілому а не рільки тестованого
+  сценарію."
+- **Depends on:** none

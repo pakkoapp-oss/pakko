@@ -187,6 +187,40 @@ public sealed class TarSandboxedServiceCompressTests : IDisposable
         File.ReadAllText(Path.Combine(destDir, "multi", "two.txt")).Should().Be("two");
     }
 
+    // T-F153: a source folder path ending in a directory separator (e.g. typed with tab-
+    // completion, "src\") made AppendSourcesToTarArgs' Path.GetFileName(fullSource) return "",
+    // which that method's own existing comment already treats as the real-drive-root case
+    // (tar.exe strips the drive letter itself) — silently misrouting an ordinary folder through
+    // the wrong tar.exe argument shape instead of "-C <parent> <name>". CompressAsync now
+    // normalizes the trailing separator away before this runs, so the entry stays correctly
+    // rooted under the source folder's own name, matching the identical ZipArchiveService fix
+    // (ZipArchiveServiceArchiveTests.ArchiveAsync_SourceEndingInSeparator_EntriesAreRootedUnderFolderName).
+    [Integration]
+    public async Task CompressAsync_SourceEndingInSeparator_EntryStaysRootedUnderFolderName()
+    {
+        string dir = Path.Combine(_temp.Path, "my_folder");
+        Directory.CreateDirectory(dir);
+        File.WriteAllText(Path.Combine(dir, "inner.txt"), "content");
+
+        var result = await _sut.CompressAsync(new ArchiveOptions
+        {
+            SourcePaths = [dir + Path.DirectorySeparatorChar],
+            DestinationFolder = _temp.Path,
+            ArchiveName = "out",
+            Format = ArchiveContainerFormat.Tar,
+        });
+
+        result.Success.Should().BeTrue(because: string.Join("; ", result.Errors.Select(e => e.Message)));
+        // Confirmed via ZipArchiveServiceArchiveTests' sibling test that the underlying entry name
+        // is genuinely "my_folder/inner.txt" (ZIP asserts the raw entry name directly); here,
+        // ExtractAsync's own single-root-folder smart-foldering (T-14) transparently unwraps that
+        // single top-level folder on the way out, so the readable path is just "inner.txt" — this
+        // assertion is about extraction landing correctly at all (proving the entry WAS nested
+        // under a real "my_folder" prefix, not the archive's own top level), not a claim that tar
+        // skips smart-foldering.
+        (await ExtractAndReadAsync(Path.Combine(_temp.Path, "out.tar"), "inner.txt")).Should().Be("content");
+    }
+
     [Integration]
     public async Task CompressAsync_SeparateArchivesMode_CreatesOneArchivePerSource()
     {

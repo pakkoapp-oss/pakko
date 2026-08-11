@@ -689,6 +689,22 @@ failure — so a blocked/misconfigured sandbox would have crashed instead of yie
   `SECURITY.md`/`README.md`'s unqualified "zero network requests" claim was surfaced — user chose
   to keep the current policy text over shipping this feature, not "come back later with a better
   design." See `docs/TASKS.md`'s T-F152 entry and `docs/DECISIONS.md`'s T-F152 entry.
+- **T-F153 (`[x]` done 2026-08-11)** — a real, independently-confirmed bug found during a
+  user-requested broad smoke test ahead of the v1.4.9 Store submission: a source path ending in a
+  trailing directory separator (realistic via CLI/terminal tab-completion, not GUI FolderPicker/
+  drag-and-drop, which never produce one) silently corrupted archive creation two ways —
+  `ZipArchiveService`/`TarSandboxedService` rooted entries at the archive's own top level instead
+  of under the real parent folder (confirmed against the vendored `7za.exe`, an independent
+  reader, not just .NET's own lenient ZipArchive), and `Archiver.Shell/Program.cs`'s
+  `RunArchiveAsync` placed the new archive **inside its own source folder** and named it the
+  generic "archive" instead of the real folder name. Fixed via `Path.TrimEndingDirectorySeparator`
+  (deliberately chosen over a bare `TrimEnd('\')` — leaves a real drive root like `"C:\"`
+  untouched, confirmed not to regress T-F99's drive-root handling) applied once at the top of each
+  affected entry point. Two new regression tests, each confirmed to actually fail against a
+  temporary revert first; one pre-existing test had conflated this bug's scenario with the real
+  drive-root case and was corrected. Agent-driven on-device rerun of the exact original repro
+  against the real installed app confirmed the fix. See `docs/TASKS_DONE.md`'s T-F153 entry and
+  `docs/DECISIONS.md`'s T-F153 entry for the full discovery/fix account.
 - Next work: Future tasks in `TASKS.md`, including **T-F148** (SYSLIB1054 conversion, split
   out of T-F147)
 

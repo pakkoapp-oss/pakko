@@ -861,6 +861,14 @@ public sealed class TarSandboxedService : ITarService
         IProgress<ProgressReport>? progress = null,
         CancellationToken cancellationToken = default)
     {
+        // T-F153: see ZipArchiveService.ArchiveAsync's identical normalization for the full
+        // rationale — a trailing separator on a source path made Path.GetFileName(sourcePath)
+        // return "" in AppendSourcesToTarArgs, which this class's own comment there already
+        // treats as the drive-root case (tar.exe strips the drive letter itself) even for an
+        // ordinary folder like "src\" — silently misrouting it through the wrong tar.exe argument
+        // shape instead of the normal "-C <parent> <name>" one.
+        options = options with { SourcePaths = [.. options.SourcePaths.Select(Path.TrimEndingDirectorySeparator)] };
+
         var errors = new List<ArchiveError>();
         var createdFiles = new List<string>();
         var skippedFiles = new List<SkippedFile>();

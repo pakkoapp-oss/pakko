@@ -39,6 +39,16 @@ public sealed class ZipArchiveService : IArchiveService
         IProgress<ProgressReport>? progress = null,
         CancellationToken cancellationToken = default)
     {
+        // T-F153: a source path ending in a directory separator (e.g. "src/" or "src\" — common
+        // from shell tab-completion or a manually-typed CLI argument) made every downstream
+        // Path.GetFileName(sourcePath) call return "" instead of the real folder name, silently
+        // producing entries rooted at the archive's own top level ("/binary.dat") instead of under
+        // their real parent folder ("src/binary.dat"). Path.TrimEndingDirectorySeparator correctly
+        // leaves a true drive root ("C:\") untouched — see ArchiveNaming's own drive-root handling
+        // for why that distinction matters (T-F99). Normalized once here, at the top, so every
+        // downstream Path.GetFileName call in this class already sees a clean path.
+        options = options with { SourcePaths = [.. options.SourcePaths.Select(Path.TrimEndingDirectorySeparator)] };
+
         var errors = new List<ArchiveError>();
         var createdFiles = new List<string>();
         var skippedFiles = new List<SkippedFile>();

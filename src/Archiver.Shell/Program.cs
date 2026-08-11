@@ -191,6 +191,15 @@ static async Task<IExtractionRouter> BuildExtractionRouterAsync(GroupPolicyOptio
 // -------------------------------------------------------------------------
 static async Task RunArchiveAsync(IReadOnlyList<string> sourcePaths, ArchiveContainerFormat format, GroupPolicyOptions policy)
 {
+    // T-F153: a source path ending in a directory separator (e.g. an "--archive" CLI argument
+    // typed/tab-completed with a trailing "\") made Path.GetDirectoryName(firstPath) below return
+    // firstPath's OWN full path instead of its parent — placing the new archive INSIDE the source
+    // folder itself rather than next to it — and separately made Path.GetFileNameWithoutExtension
+    // return "", falling the archive's name back to the generic "archive" instead of the real
+    // folder name. ArchiveCreationRouter/ZipArchiveService/TarSandboxedService normalize this
+    // internally too (see ZipArchiveService.ArchiveAsync's identical comment), but this
+    // destFolder/archiveName computation happens here, before any of that code runs.
+    sourcePaths = [.. sourcePaths.Select(Path.TrimEndingDirectorySeparator)];
     var firstPath = sourcePaths[0];
     // T-F99: Path.GetDirectoryName returns null when firstPath is itself a root (e.g. "Z:\",
     // now a reachable single-item selection via the shell extension's Drive ItemType) — a root
@@ -364,8 +373,11 @@ const int MaxErrorLinesShown = 10;
 static async Task RunHashAsync(IReadOnlyList<string> paths, HashAlgorithmKind algorithm)
 {
     string label = algorithm == HashAlgorithmKind.Crc32 ? "CRC-32" : "SHA-256";
+    // T-F153: Path.TrimEndingDirectorySeparator (not just a bare TrimEnd('\\')) also handles a
+    // forward-slash trailing separator — see RunArchiveAsync's identical fix for the full
+    // rationale. Display-only here (the title bar), but kept consistent with the functional fix.
     string title = paths.Count == 1
-        ? $"{label}: {Path.GetFileName(paths[0].TrimEnd('\\'))}"
+        ? $"{label}: {Path.GetFileName(Path.TrimEndingDirectorySeparator(paths[0]))}"
         : $"{label}: {paths.Count} files";
 
     NativeProgressDialog? dialog = TryCreateProgressDialog(title);

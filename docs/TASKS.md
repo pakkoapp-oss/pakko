@@ -4015,3 +4015,4 @@ regression from this task, which owns reliability only.
 - **Reported by:** user, 2026-08-10 — floated the idea, then explicitly declined once the Privacy
   Policy conflict was surfaced: "ні нехай буде як є просто додай беклог як і рішення по цьому."
 - **Depends on:** none
+
