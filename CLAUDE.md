@@ -781,14 +781,14 @@ failure — so a blocked/misconfigured sandbox would have crashed instead of yie
   (validated via `mmdc`). `Deploy.ps1` build+sign+install (v1.4.10.3) plus a fresh Debug
   `pakko.exe` build confirmed no behavior drift across all three entry points. See
   `docs/TASKS_DONE.md`'s and `docs/DECISIONS.md`'s T-F157 entries.
-- **T-F158 (`[~]` implementation complete 2026-08-11, one on-device path unverified)** — the
-  archive-creation-side analogue of T-F157, same day, user-directed: new `internal static class
-  DestinationConflictResolver` (`src/Archiver.Core/Services/DestinationConflictResolver.cs`)
-  replaces three hand-duplicated copies of the destination-archive-path Skip/Overwrite/Rename
-  decision — `ZipArchiveService.ArchiveSingleArchiveModeAsync`/`ResolveSeparateArchivePlansAsync`
-  (the latter also tracks in-memory same-run collisions for T-F12's parallel `SeparateArchives`
-  mode) and `TarSandboxedService`'s own already-self-shared `ResolveDestinationConflictAsync`
-  (deleted outright). Designed via Plan Mode + `advisor`, which caught two real issues before
+- **T-F158 (`[x]` done 2026-08-11)** — the archive-creation-side analogue of T-F157, same day,
+  user-directed: new `internal static class DestinationConflictResolver`
+  (`src/Archiver.Core/Services/DestinationConflictResolver.cs`) replaces three hand-duplicated
+  copies of the destination-archive-path Skip/Overwrite/Rename decision —
+  `ZipArchiveService.ArchiveSingleArchiveModeAsync`/`ResolveSeparateArchivePlansAsync` (the latter
+  also tracks in-memory same-run collisions for T-F12's parallel `SeparateArchives` mode) and
+  `TarSandboxedService`'s own already-self-shared `ResolveDestinationConflictAsync` (deleted
+  outright). Designed via Plan Mode + `advisor`, which caught two real issues before
   implementation — `File.Delete` inside the shared resolver would have broken its testability the
   same way Tar's original helper was untestable (fixed via a `ProceedAfterDeletingExisting`
   outcome, delete stays at each call site); an unverified truth-table claim about which
@@ -802,12 +802,19 @@ failure — so a blocked/misconfigured sandbox would have crashed instead of yie
   same-run collision) produced 3 real failures, then restored. `Deploy.ps1` build+sign+install
   (v1.4.10.4) plus a fresh Debug `pakko.exe` confirmed both Zip's and Tar's `SingleArchive`
   conflict arms through the real CLI (`pakko a` / `pakko a -y` / `pakko a -ttar` against real
-  pre-existing archives). **Stays `[~]`:** `ResolveSeparateArchivePlansAsync`'s same-run-collision
-  arm is reachable only through the WinUI App's `SeparateArchives` mode (neither
-  `Archiver.Shell.exe --archive` nor `pakko a` ever constructs it), and no `windows` MCP
-  automation was available this session to drive it — rests on the mutation check + full
-  `dotnet test` pass until the user's own click-through or an agent-driven MCP pass closes it.
-  See `docs/TASKS.md`'s and `docs/DECISIONS.md`'s T-F158 entries.
+  pre-existing archives). **`ResolveSeparateArchivePlansAsync`'s same-run-collision arm** — only
+  reachable through the WinUI App's `SeparateArchives` mode — was closed the same day via an
+  agent-driven `windows` MCP pass, user-directed: launched the real app via the real
+  `pakko://archive?files=<base64>` protocol URI (the exact mechanism `Archiver.Shell.exe`'s
+  `LaunchOpenUi` uses) with two same-basename `Photos` folders, selected "Окремі архіви" via
+  `ui_click`, ran Archive, and confirmed on disk both `Photos.zip`/`Photos (1).zip` with correct
+  distinct content plus a matching `pakko.log` line. One real automation limit hit and documented
+  rather than hidden: the "If file exists" `ComboBox`'s selected value resisted `ui_find`/`ui_read`
+  (WinUI popup items don't expose cleanly, OCR fell back to whole-window garbled text) — not a gap
+  in the actual proof, since `Overwrite` and `Rename` are behaviorally identical for a same-run
+  collision by construction (both hit the same `renameCandidate` arm) and
+  `DestinationConflictResolverTests` already isolates `Overwrite` specifically at the unit level.
+  See `docs/TASKS_DONE.md`'s and `docs/DECISIONS.md`'s T-F158 entries.
 - Next work: Future tasks in `TASKS.md`, including **T-F148** (SYSLIB1054 conversion, split
   out of T-F147), **T-F159** (unify `GetUniqueFilePath`, split out of T-F158), **T-F155**
   (interactive Shell conflict dialog)

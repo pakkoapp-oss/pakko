@@ -3993,3 +3993,61 @@ document.
   155. Додай в таску загальну ідею з втоїми пропозиціями." (task creation) and "Давай 157 з
   адвізором та кращими практиками для такої задачі." (implementation directive).
 - **Depends on:** none (motivated by T-F154/T-F156, both already shipped)
+
+---
+
+### T-F158 — Shared `DestinationConflictResolver` (archiving-side analogue of T-F157)
+
+- [x] **Status:** done 2026-08-11. User-directed follow-up right after T-F157 shipped ("Опісля
+  тестів реалізуй те саме для архівування з адвізором за тим же принципом що і для
+  розархівування") — applied the same shared-decision refactor to archive *creation*'s
+  destination-conflict logic (`ZipArchiveService.ArchiveSingleArchiveModeAsync`/
+  `ResolveSeparateArchivePlansAsync`, `TarSandboxedService`'s own already-shared-within-itself
+  `ResolveDestinationConflictAsync`). New `internal static class DestinationConflictResolver`
+  (`src/Archiver.Core/Services/DestinationConflictResolver.cs`) used by all three call sites.
+  Designed via Plan Mode + `advisor`, which caught two real issues in the first sketch (`File.
+  Delete` inside the shared resolver, breaking its testability the same way Tar's own original
+  helper was untestable; an unverified truth-table claim about which `(onDiskConflict,
+  sameRunConflict)` combinations are actually reachable) — both fixed before implementation. A
+  third issue was caught independently, not by advisor: advisor's cited existing-test coverage for
+  the same-run-collision-under-`Overwrite` arm was checked against the real test file and found to
+  test an unrelated code path (T-30's ZIP-entry-name collision, not this destination-path
+  decision) — a genuine pre-existing coverage gap, closed with a new test. Pure refactor — zero
+  existing test assertions changed; `Archiver.Core.Tests` 491→501, `Archiver.Core.
+  IntegrationTests` 70→72. Mutation check (forced the `Overwrite` arm to never rename on a
+  same-run collision) produced 3 real failures, then restored. See `docs/DECISIONS.md`'s T-F158
+  entry for the full truth table, the purity fix, and the independently-caught citation
+  correction.
+- **On-device, part 1 (2026-08-11):** `Deploy.ps1` build+sign+install (v1.4.10.4) plus a fresh
+  Debug `pakko.exe` confirmed, through the real CLI against real archives: `ZipArchiveService.
+  ArchiveSingleArchiveModeAsync`'s Skip/Overwrite arms (`pakko a` / `pakko a -y` against a
+  pre-existing `Photos.zip`), and `TarSandboxedService.CompressAsync`'s equivalent arms via
+  `pakko a -ttar` against a real `tar.exe`-built archive (confirmed via `tar -tvf`) — the exact
+  branch whose own private resolver was deleted this round.
+- **On-device, part 2 — the `SeparateArchives` same-run-collision arm, closed via `windows` MCP
+  (2026-08-11, user-directed):** neither `Archiver.Shell.exe --archive` nor `pakko a` ever
+  constructs `ArchiveMode.SeparateArchives` (confirmed by reading both entry points) — it's
+  reachable only through the WinUI App itself. Drove the real installed app end-to-end: launched
+  it via the real `pakko://archive?files=<base64>` protocol URI (the exact mechanism
+  `Archiver.Shell`'s `LaunchOpenUi` uses) with two same-basename `Photos` folders from different
+  parents pre-loaded, used `mcp__windows__ui_click`/`keyboard_control` to select the "Окремі
+  архіви" (Separate archives) radio button and click "Архів", then verified on disk: two distinct
+  archives (`Photos.zip`, `Photos (1).zip`) each with correct, distinct content (`from A`/`from
+  B`), plus a matching `Archive completed — 2 file(s)` line in the app's own
+  `pakko.log`. One real automation limitation hit and honestly documented, not glossed over: the
+  "Якщо файл існує" (If file exists) `ComboBox`'s selected value could not be independently
+  confirmed via UI-automation this session (WinUI `ComboBox` popup items and the closed-state
+  selected-value text both resisted `ui_find`/`ui_read`, falling back to whole-window OCR) — Home+
+  Enter was sent to move selection toward `Overwrite` (index 0 per `MainWindow.xaml`'s item
+  order), but this couldn't be visually verified. Not a gap in the actual proof: `Overwrite` and
+  `Rename` produce byte-identical outcomes for a same-run collision by design (both hit
+  `DestinationConflictResolver`'s `renameCandidate` arm, never `ProceedAfterDeletingExisting`), and
+  `DestinationConflictResolverTests` already isolates and mutation-checks the `Overwrite`-specific
+  arm at the unit level — this on-device pass's real job was proving the whole pipeline (UI →
+  `MainViewModel` → `ArchiveOptions` → `ResolveSeparateArchivePlansAsync` → shared resolver → real
+  disk) wires together with no crash and no data loss for this scenario, which it does regardless
+  of which of the two equivalent `ConflictBehavior` values was actually selected.
+- **Reported by:** user, 2026-08-11 — "Опісля тестів реалізуй те саме для архівування з адвізором
+  за тим же принципом щоі для розархівування" (implementation), then "Заведи задачу на T-F158
+  залишок через MCP і закрий її" (close the remainder via MCP).
+- **Depends on:** none (motivated by T-F157, already shipped)

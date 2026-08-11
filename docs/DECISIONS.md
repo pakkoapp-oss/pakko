@@ -7442,10 +7442,36 @@ replaced it with a real ZIP containing the new source's content — the exact
 `ArchiveSingleArchiveModeAsync` arm. `pakko a -ttar` against a pre-existing `Photos.tar` repeated
 the same Skip-then-Overwrite check through the real `tar.exe` path, confirmed via `tar -tvf` —
 the exact `TarSandboxedService.CompressAsync` arm whose own private resolver was deleted this
-round. **Not independently on-device-verified:** `ResolveSeparateArchivePlansAsync`'s
-same-run-collision behavior specifically — `SeparateArchives` mode is only reachable through the
-WinUI App itself (neither `Archiver.Shell.exe --archive` nor `pakko a` ever constructs
-`ArchiveMode.SeparateArchives`, confirmed by reading both entry points), and no `windows` MCP
-automation was available this session to drive the App's UI. Rests on the mutation check above
-plus the full `dotnet test` pass — stated honestly rather than overclaimed, matching this
-project's existing convention for a partially-verified task.
+round.
+
+**Follow-up, same day, user-directed — closed the one remaining gap via `windows` MCP:**
+`ResolveSeparateArchivePlansAsync`'s same-run-collision arm is only reachable through the WinUI
+App itself (neither `Archiver.Shell.exe --archive` nor `pakko a` ever constructs
+`ArchiveMode.SeparateArchives`, confirmed by reading both entry points). Drove the real installed
+app: launched it via the real `pakko://archive?files=<base64 JSON array>` protocol URI — the
+exact mechanism `Archiver.Shell.exe`'s own `LaunchOpenUi` uses (`Program.cs`), so this exercises
+the identical activation path a real Explorer/Shell launch would — with two same-basename
+`Photos` folders from different parents pre-loaded, then used `mcp__windows__ui_click` to select
+"Окремі архіви" and click "Архів". Result on disk: `Photos.zip` (content "from A") and
+`Photos (1).zip` (content "from B") — correct, distinct, no data loss — plus a matching
+`Archive completed — 2 file(s)` line in the app's own `pakko.log`
+(`%LOCALAPPDATA%\Packages\<PFN>\LocalCache\Local\Pakko\logs\pakko.log`).
+
+**One real automation limitation, documented rather than hidden:** the "Якщо файл існує"
+`ComboBox`'s selected value could not be independently confirmed via UI-automation — WinUI
+`ComboBox` popup items and the closed-state selected-value text both resisted
+`ui_find`/`ui_read` (falling back to whole-window OCR, which returned garbled unscoped text).
+`Home`+`Enter` were sent to move the selection toward index 0 (`Overwrite`, per
+`MainWindow.xaml`'s `ComboBoxItem` order: Overwrite/Skip/Rename/Ask), but this could not be
+visually verified this session. This does not weaken the actual proof: `Overwrite` and `Rename`
+are behaviorally identical for a same-run collision by construction —
+`DestinationConflictResolver.ResolveAsync`'s `Overwrite` arm routes to the same
+`renameCandidate`-based `Proceed` outcome as its `Rename`/default arm whenever `sameRunConflict`
+is true, never `ProceedAfterDeletingExisting` — and `DestinationConflictResolverTests` already
+isolates and mutation-checks the `Overwrite`-specific arm at the unit level
+(`ResolveAsync_SameRunOnly_Overwrite_RenamesInsteadOfDeleting`). This on-device pass's actual job
+was proving the whole pipeline (UI → `MainViewModel` → `ArchiveOptions` →
+`ResolveSeparateArchivePlansAsync` → shared resolver → real disk) wires together correctly for
+this exact scenario end-to-end, which it does regardless of which of the two equivalent
+`ConflictBehavior` values was actually selected. **Graduated to `[x]`** on this basis — see
+`docs/TASKS_DONE.md`'s T-F158 entry.
