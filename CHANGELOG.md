@@ -10,6 +10,19 @@ the technical account of any task named here.
 
 ---
 
+## v1.4.12 — 2026-08-11
+
+Localization follow-up to v1.4.11's new conflict dialog, plus a CI stability fix.
+
+- **T-F163** — Explorer's "Extract Here"/"Extract to"/"Extract" summary dialogs (shown after a
+  Skip, or after any error) were hardcoded English regardless of the active Windows UI language —
+  found by a user running under Ukrainian right after using v1.4.11's new conflict dialog. Now
+  localized across all 37 supported languages, matching every other native dialog in this app.
+- **T-F162** — Fixed intermittent CI test failures in two archive-extraction progress-reporting
+  tests, caused by a background-thread timing race under heavy CI load (not a real product bug).
+
+---
+
 ## v1.4.11 — 2026-08-11
 
 Extraction-conflict release — a new interactive conflict dialog for the Explorer extraction
