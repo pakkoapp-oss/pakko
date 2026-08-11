@@ -4208,3 +4208,60 @@ multi-file/multi-folder archive re-extracted into an existing destination
   `File.Move`, not a whole-tree `Directory.Move`) and does not share this bug — no parallel fix
   needed there.
 - **Depends on:** none (surfaced by real usage of T-F155, already shipped).
+
+---
+
+### T-F163 — `Archiver.Shell`'s operation-result dialogs (skip/error/"no errors"/"operation
+failed") were hardcoded English, never localized
+
+- [x] **Status:** done 2026-08-11 — implementation, tests, and on-device verification all
+  complete.
+- **Reported by:** the user, using T-F155's own conflict dialog against a real re-extraction of a
+  personal archive into an already-populated destination (every entry genuinely conflicted, so
+  choosing "Пропустити" + "apply to all" correctly extracted nothing) — the resulting summary
+  dialog's header showed in English ("1 entry skipped:") despite running under `uk-UA`: "Чомусь
+  повідомлення англійською хоча стоїть українська версія. Як ми могли пропустити таке?"
+- **Root cause:** `ShellResultPresenter.BuildSkippedMessage` hand-rolled English noun
+  pluralization (`"{0} entry/entries skipped:"`), and `Program.cs`'s `ShowErrorSummary`/
+  `RunTestAsync` had three more hardcoded literals ("The operation failed.", "…and {0} more",
+  "No errors detected in the archive(s)."). Predates and survived T-F128/T-F146/T-F155's own
+  37-locale localization of `HashMessages`/`ScanMessages`/`ConflictMessages` — this specific
+  dialog (T-F68, 2026-07-06) is older than all three and nobody had revisited it since. Per-item
+  skip/error *reason* text stays English by design (`Archiver.Core` has zero localization
+  dependency, matching the WinUI App's own T-F89 precedent) — only the Shell-owned header/label
+  text was in scope.
+- **Fix:** new `Archiver.Shell/Resources/ResultMessages.resx` (+ 36 locale files) and
+  `ResultMessagesLocalizer` (same pattern as `HashResultLocalizer`/`ScanResultLocalizer`), 4 keys:
+  `ResultSkippedHeader` ("Skipped ({0}):" — drops English's noun-pluralization branch entirely
+  rather than translate it, matching the App's own T-F89 "Skipped (N)" convention), `ResultAndMoreLine`,
+  `ResultNoErrorsDetected`, `ResultOperationFailed`. Two of the four values were reused verbatim
+  from already-translated, already-shipped strings rather than re-translated — `ResultSkippedHeader`'s
+  word from the App's `SkippedSectionHeader` (T-F89), `ResultAndMoreLine` from Shell's own
+  `ScanMessages.ScanAndMoreLine` (T-F146) — only the two "no errors"/"operation failed" phrases
+  needed genuinely fresh translation across 36 locales. `BuildSkippedMessage`/`ShowErrorSummary`/
+  `RunTestAsync` now call `ResultMessagesLocalizer.Get(...)` instead of the hardcoded literals.
+- **Testing (test-first):** updated `ShellResultPresenterTests.cs`'s three `BuildSkippedMessage_*`
+  tests (explicit `en-US` culture pin — this dev machine's own OS UI culture is `uk-UA`, so an
+  unpinned assertion first failed against the *correct* localized Ukrainian output, confirming the
+  fix rather than a stale assertion). New `ResultMessagesLocalizerTests.cs` mirrors
+  `HashResultLocalizerTests`' neutral/`uk-UA` smoke checks plus `ConflictDialogLocalizerTests`'
+  all-37-locale × all-4-key `FormatException` loop. `dotnet test tests/Archiver.Shell.Tests` —
+  447/447 green. `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` green repo-wide.
+- **On-device verification (2026-08-11, agent-driven via the local `windows` MCP server):**
+  `Deploy.ps1` build+sign+install (v1.4.11.0). Built a minimal repro (destination folder with an
+  existing `hello.txt`, a `test.zip` containing a conflicting `hello.txt`), launched the installed
+  `Archiver.Shell.exe --extract-flat test.zip` directly, checked "Застосувати до всіх решти
+  конфліктів" and clicked "Пропустити" on the real native `ShellConflictDialog` (T-F155) — this
+  time `ui_click` worked directly on both the checkbox and the button, unlike T-F161's on-device
+  pass, which needed keyboard-navigation fallback for the same dialog class. Confirmed the
+  resulting summary `MessageBoxW` reads "Пропущено (1):\ntest.zip: No entries were extracted from
+  this archive — every entry was skipped." — header correctly localized to Ukrainian; per-item
+  reason text stays English by design.
+- **Not fixed, by design:** the user separately asked whether showing a warning-icon summary
+  dialog at all is "best practice" when the user explicitly chose Skip themselves (contrasting
+  NanaZip's silence in this scenario). Left unchanged — this same code path also fires for skips
+  the user never explicitly agreed to (ADS/reserved-name/zip-bomb/unsupported-format rejections),
+  and `SkippedFile` carries no marker distinguishing those from a T-F155 self-chosen Skip, so
+  softening it specifically for the self-chosen case would need a real design change, not a copy
+  fix. See `docs/DECISIONS.md`'s T-F163 entry.
+- **Depends on:** none (surfaced by real usage of T-F155, already shipped).

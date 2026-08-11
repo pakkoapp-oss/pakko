@@ -1,3 +1,4 @@
+using System.Globalization;
 using Archiver.Core.Models;
 using FluentAssertions;
 
@@ -61,44 +62,76 @@ public sealed class ShellResultPresenterTests
     }
 
     // --- BuildSkippedMessage ---
+    // T-F163: the header used to hand-roll English noun pluralization ("1 entry skipped:" / "2
+    // entries skipped:"), hardcoded regardless of CurrentUICulture -- a real user on uk-UA got
+    // this exact English text back after choosing Skip in T-F155's own interactive dialog. Now
+    // routed through ResultMessagesLocalizer's count-suffixed, pluralization-free "Skipped (N):"
+    // header (matches the WinUI App's own T-F89 "Skipped (N)" convention).
 
     [Fact]
-    public void BuildSkippedMessage_SingleEntry_UsesSingularNoun()
+    public void BuildSkippedMessage_SingleEntry_UsesLocalizedHeader()
     {
-        var skipped = new[] { new SkippedFile { Path = @"C:\dir\bad.txt", Reason = "ADS entry" } };
+        var original = CultureInfo.CurrentUICulture;
+        try
+        {
+            CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("en-US");
+            var skipped = new[] { new SkippedFile { Path = @"C:\dir\bad.txt", Reason = "ADS entry" } };
 
-        var message = ShellResultPresenter.BuildSkippedMessage(skipped);
+            var message = ShellResultPresenter.BuildSkippedMessage(skipped);
 
-        message.Should().StartWith("1 entry skipped:");
-        message.Should().Contain("bad.txt: ADS entry");
+            message.Should().StartWith("Skipped (1):");
+            message.Should().Contain("bad.txt: ADS entry");
+        }
+        finally
+        {
+            CultureInfo.CurrentUICulture = original;
+        }
     }
 
     [Fact]
-    public void BuildSkippedMessage_MultipleEntries_UsesPluralNounAndListsAll()
+    public void BuildSkippedMessage_MultipleEntries_UsesLocalizedHeaderAndListsAll()
     {
-        var skipped = new[]
+        var original = CultureInfo.CurrentUICulture;
+        try
         {
-            new SkippedFile { Path = "a.txt", Reason = "reserved name" },
-            new SkippedFile { Path = "b.txt", Reason = "ADS entry" },
-        };
+            CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("en-US");
+            var skipped = new[]
+            {
+                new SkippedFile { Path = "a.txt", Reason = "reserved name" },
+                new SkippedFile { Path = "b.txt", Reason = "ADS entry" },
+            };
 
-        var message = ShellResultPresenter.BuildSkippedMessage(skipped);
+            var message = ShellResultPresenter.BuildSkippedMessage(skipped);
 
-        message.Should().StartWith("2 entries skipped:");
-        message.Should().Contain("a.txt: reserved name");
-        message.Should().Contain("b.txt: ADS entry");
+            message.Should().StartWith("Skipped (2):");
+            message.Should().Contain("a.txt: reserved name");
+            message.Should().Contain("b.txt: ADS entry");
+        }
+        finally
+        {
+            CultureInfo.CurrentUICulture = original;
+        }
     }
 
     [Fact]
     public void BuildSkippedMessage_MoreThanMaxLines_TruncatesWithCount()
     {
-        var skipped = Enumerable.Range(0, 12)
-            .Select(i => new SkippedFile { Path = $"file{i}.txt", Reason = "reserved name" })
-            .ToList();
+        var original = CultureInfo.CurrentUICulture;
+        try
+        {
+            CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("en-US");
+            var skipped = Enumerable.Range(0, 12)
+                .Select(i => new SkippedFile { Path = $"file{i}.txt", Reason = "reserved name" })
+                .ToList();
 
-        var message = ShellResultPresenter.BuildSkippedMessage(skipped, maxLinesShown: 10);
+            var message = ShellResultPresenter.BuildSkippedMessage(skipped, maxLinesShown: 10);
 
-        message.Should().Contain("…and 2 more");
-        message.Should().NotContain("file10.txt");
+            message.Should().Contain("…and 2 more");
+            message.Should().NotContain("file10.txt");
+        }
+        finally
+        {
+            CultureInfo.CurrentUICulture = original;
+        }
     }
 }

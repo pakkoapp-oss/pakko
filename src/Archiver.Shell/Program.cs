@@ -288,7 +288,7 @@ static async Task RunTestAsync(IReadOnlyList<string> archivePaths, GroupPolicyOp
         .ConfigureAwait(false);
 
     if (result.Success)
-        _ = MessageBoxW(IntPtr.Zero, "No errors detected in the archive(s).", title, MB_ICONINFORMATION);
+        _ = MessageBoxW(IntPtr.Zero, ResultMessagesLocalizer.Get("ResultNoErrorsDetected"), title, MB_ICONINFORMATION);
 }
 
 // Returns "name", or "name (1)", "name (2)", ... if "name" already exists under parentDir.
@@ -603,7 +603,7 @@ static void ShowErrorSummary(string title, IReadOnlyList<ArchiveError> errors)
 {
     if (errors.Count == 0)
     {
-        _ = MessageBoxW(IntPtr.Zero, "The operation failed.", title, MB_ICONERROR);
+        _ = MessageBoxW(IntPtr.Zero, ResultMessagesLocalizer.Get("ResultOperationFailed"), title, MB_ICONERROR);
         return;
     }
 
@@ -611,7 +611,7 @@ static void ShowErrorSummary(string title, IReadOnlyList<ArchiveError> errors)
         .Select(e => $"{Path.GetFileName(e.SourcePath)}: {e.Message}");
     var message = string.Join(Environment.NewLine, lines);
     if (errors.Count > MaxErrorLinesShown)
-        message += $"{Environment.NewLine}…and {errors.Count - MaxErrorLinesShown} more";
+        message += $"{Environment.NewLine}{ResultMessagesLocalizer.Get("ResultAndMoreLine", errors.Count - MaxErrorLinesShown)}";
 
     _ = MessageBoxW(IntPtr.Zero, message, title, MB_ICONERROR);
 }

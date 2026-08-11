@@ -870,6 +870,28 @@ failure — so a blocked/misconfigured sandbox would have crashed instead of yie
   repro (files+folder, Rename+"apply to all", re-extract into an existing destination) via
   `--extract-flat` now completes cleanly with no crash and no leftover `_tmp` folder. See
   `docs/TASKS_DONE.md`'s and `docs/DECISIONS.md`'s T-F161 entries.
+- **T-F163 (`[x]` done 2026-08-11)** — `Archiver.Shell`'s operation-result dialogs
+  (`ShellResultPresenter.BuildSkippedMessage`'s header, plus `Program.cs`'s "The operation
+  failed."/"…and N more"/"No errors detected in the archive(s).") were hardcoded English, never
+  localized — found by the user getting an English summary back under `uk-UA` right after using
+  T-F155's own conflict dialog. Predates and survived T-F128/T-F146/T-F155's own 37-locale
+  localization of every *other* native Shell dialog (`HashMessages`/`ScanMessages`/
+  `ConflictMessages`) since this one is older than all three. Fixed via a new
+  `Archiver.Shell/Resources/ResultMessages.resx` (37 locales) + `ResultMessagesLocalizer`, 4 keys
+  (`ResultSkippedHeader` drops English's noun-pluralization branch entirely — "Skipped ({0}):",
+  matching the WinUI App's own T-F89 "Skipped (N)" convention; `ResultAndMoreLine`;
+  `ResultNoErrorsDetected`; `ResultOperationFailed`) — two of the four values reused already-
+  translated strings verbatim (`SkippedSectionHeader`/T-F89, `ScanAndMoreLine`/T-F146) rather than
+  re-translating identical text. Per-item skip/error reason text stays English by design
+  (`Archiver.Core` has zero localization dependency). `Archiver.Shell.Tests` 407 → 447.
+  On-device confirmed 2026-08-11 (`Deploy.ps1` v1.4.11.0, agent-driven via `windows` MCP): a
+  real conflict → Skip → "apply to all" through the installed app's `ShellConflictDialog` now
+  produces "Пропущено (1): ..." instead of English "1 entry skipped: ...". A separate UX question
+  the user raised (whether the warning dialog should show at all for a self-chosen Skip, unlike
+  NanaZip's silence there) was answered but deliberately not acted on — `SkippedFile` has no
+  marker distinguishing a self-chosen Skip from a Core-side rejection, so softening it needs a
+  real design change, not this fix. See `docs/TASKS_DONE.md`'s and `docs/DECISIONS.md`'s T-F163
+  entries.
 - Next work: Future tasks in `TASKS.md`, including **T-F148** (SYSLIB1054 conversion, split
   out of T-F147), **T-F159** (unify `GetUniqueFilePath`, split out of T-F158), **T-F160**
   (interactive conflict dialog for `Archiver.CLI`'s `pakko x`, parity with T-F155)
