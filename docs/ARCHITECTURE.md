@@ -507,6 +507,14 @@ public interface ILogService
 - **Threading:** `Task.Run` wraps all IO — never blocks UI thread
 - **Indeterminate:** single source/archive >10 MB → `progress?.Report(-1)`
 - **Lazy enumeration:** `Directory.EnumerateFiles` — no upfront collection for large directories
+- **Commit resilience (T-F161):** `internal static ZipArchiveService.
+  CommitTempDestToActualDest(string tempDest, string actualDest, Action<string,string>?
+  moveOverride = null)` — the fast-path `Directory.Move(tempDest, actualDest)` (used when
+  `actualDest` doesn't already exist) falls back to the existing per-file merge-and-delete path on
+  `IOException`, since Windows fails the whole `Directory.Move` if any single file anywhere in the
+  source tree is transiently locked by another process (confirmed empirically — see `DECISIONS.md`'s
+  T-F161 entry). `ExtractWithSmartFolderingAsync`'s entry-extraction loop also now cleans up
+  `tempDest` on any exception, not just `OperationCanceledException`.
 
 ---
 

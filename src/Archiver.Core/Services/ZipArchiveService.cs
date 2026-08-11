@@ -1009,29 +1009,17 @@ public sealed class ZipArchiveService : IArchiveService
                 bytesRead += bytesConsumed;
             }
         }
-        catch (OperationCanceledException)
+        catch (Exception)
         {
+            // T-F161: clean up on ANY failure partway through extraction (a path-traversal
+            // rejection, a locked source entry, disk-full, cancellation, etc.) — not just
+            // cancellation. Leaving the "_tmp" staging folder behind is how a stray leftover
+            // folder ends up sitting on a real destination, itself risking a future collision.
             try { if (Directory.Exists(tempDest)) Directory.Delete(tempDest, recursive: true); } catch { /* best-effort */ }
             throw;
         }
 
-        // Commit: if final dest doesn't exist, fast-path rename; otherwise merge extracted
-        // files in so pre-existing files (e.g. skipped/renamed) are preserved.
-        if (!Directory.Exists(actualDest))
-        {
-            Directory.Move(tempDest, actualDest);
-        }
-        else
-        {
-            foreach (string file in Directory.EnumerateFiles(tempDest, "*", SearchOption.AllDirectories))
-            {
-                string relative = Path.GetRelativePath(tempDest, file);
-                string finalFile = Path.Combine(actualDest, relative);
-                Directory.CreateDirectory(Path.GetDirectoryName(finalFile)!);
-                File.Move(file, finalFile, overwrite: true);
-            }
-            Directory.Delete(tempDest, recursive: true);
-        }
+        CommitTempDestToActualDest(tempDest, actualDest);
 
         // T-F87: every entry was individually skipped (conflict/ADS/reserved name/reparse point/
         // zip bomb) — nothing was actually extracted, so the caller must not count this archive
@@ -1047,6 +1035,49 @@ public sealed class ZipArchiveService : IArchiveService
         }
 
         return (actualDest, true);
+    }
+
+    // T-F161: commits tempDest into actualDest — fast-path atomic rename if actualDest doesn't
+    // exist yet, otherwise a per-file merge so pre-existing files (e.g. skipped/renamed) are
+    // preserved. moveOverride exists purely for test injection (defaults to the real
+    // Directory.Move) — never a static field, per this project's own "no static mutable fields in
+    // services" rule.
+    //
+    // The fast path's Directory.Move fails the WHOLE source tree with IOException — naming only
+    // tempDest's own path, never the specific offending file — whenever ANY file anywhere inside
+    // it is transiently held open by another process (real-time antivirus scan, cloud-sync
+    // filter, Search Indexer), even though every file Pakko itself wrote has already been closed
+    // by this point. Confirmed empirically, not assumed — see DECISIONS.md's T-F161 entry.
+    // Falling back to the per-file merge below tolerates one still-locked file instead of losing
+    // the whole extraction to it.
+    internal static void CommitTempDestToActualDest(
+        string tempDest, string actualDest, Action<string, string>? moveOverride = null)
+    {
+        if (!Directory.Exists(actualDest))
+        {
+            try
+            {
+                (moveOverride ?? Directory.Move)(tempDest, actualDest);
+                return;
+            }
+            catch (IOException)
+            {
+                Directory.CreateDirectory(actualDest);
+            }
+        }
+
+        foreach (string file in Directory.EnumerateFiles(tempDest, "*", SearchOption.AllDirectories).ToList())
+        {
+            string relative = Path.GetRelativePath(tempDest, file);
+            string finalFile = Path.Combine(actualDest, relative);
+            Directory.CreateDirectory(Path.GetDirectoryName(finalFile)!);
+            File.Move(file, finalFile, overwrite: true);
+        }
+
+        // Every real file has already been moved out above — a failure here (the same class of
+        // transient external lock, now on tempDest's own now-empty directory structure) must not
+        // fail an otherwise-successful extraction.
+        try { Directory.Delete(tempDest, recursive: true); } catch { /* best-effort */ }
     }
 
     // The plumbing every entry of an ExtractWithSmartFolderingAsync call shares, cut from that

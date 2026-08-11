@@ -4128,3 +4128,83 @@ document.
   the Explorer-vs-Shell scope question ("Чому тільки для шелл?") and the Archive Browser
   duplication question were both raised and answered mid-session.
 - **Depends on:** none (T-F154 is the context that surfaced this, already shipped)
+
+---
+
+### T-F161 — `ZipArchiveService.ExtractAsync` crash on Rename+"apply to all" for a
+multi-file/multi-folder archive re-extracted into an existing destination
+
+- [x] **Status:** done 2026-08-11 — implementation, tests, and on-device re-verification all
+  complete.
+- **Reported by:** the user, via a real on-device repro (T-F155's just-shipped interactive
+  dialog) — right-clicking a real ~4-file/1-folder archive's "Extract Here", choosing
+  Rename+"apply to all" on the conflict prompt, got: "SICHER! B2 CD.zip: Cannot extract archive:
+  Access to the path '\\?\...\SICHER! B2 CD_tmp' is denied." — files extracted, the folder did
+  not, and the user explicitly asked for a reproducing test to be written **before** any fix
+  ("Спочатку тест потім рішення").
+- **Root cause (confirmed via an isolated `Directory.Move` platform probe before touching
+  production code, not guessed):** `ExtractWithSmartFolderingAsync`'s commit phase fast-paths via
+  `Directory.Move(tempDest, actualDest)` whenever `actualDest` doesn't already exist. Windows'
+  `Directory.Move`/`MoveFileEx` fails the **whole** source tree with a plain `IOException` —
+  naming only the top-level source directory, never the specific offending file — the instant
+  *any* file anywhere inside that tree is transiently held open by another process (real-time
+  antivirus scan, a cloud-sync filter driver, Search Indexer), even though every file Pakko
+  itself had already finished writing and closed. This exactly matches the user's report: the
+  `IOException` catch branch's own `"Cannot extract archive: {ex.Message}"` prefix, and a bare
+  `"...SICHER! B2 CD_tmp"` path with no nested subpath (`ex.Message` never names the actual
+  locked file). The user's own hypothesis ("something prematurely deletes the temp folder") was
+  reasonable but not what was happening — nothing deletes tempDest early; the fast-path move
+  itself throws and the archive's whole subfolder is simply never committed.
+  A second, independent bug was found by reasoning through the same code path: the
+  entry-extraction loop's `try/catch` only cleaned up `tempDest` on `OperationCanceledException` —
+  any *other* mid-loop failure (a path-traversal rejection, a locked source entry, disk-full,
+  etc.) leaked the `"_tmp"` staging folder on disk permanently, a very plausible way a stray
+  `_tmp` folder could end up sitting on a real destination in the first place.
+- **Fix:** extracted the commit logic into a new `internal static
+  ZipArchiveService.CommitTempDestToActualDest(tempDest, actualDest, moveOverride = null)` —
+  the fast-path `Directory.Move` is now wrapped in `try/catch (IOException)`, falling back to the
+  existing per-file merge-and-delete path on failure (tolerating one still-locked file instead of
+  losing the whole extraction to it); the merge path's own final `Directory.Delete(tempDest, ...)`
+  is now best-effort (`catch { }`) since every real file has already been moved out by that point.
+  The entry-loop's `catch (OperationCanceledException)` was widened to `catch (Exception)` so
+  *any* mid-loop failure cleans up `tempDest` before rethrowing, closing the leaked-folder bug too.
+  `moveOverride` exists purely so a test can inject a controlled failing/succeeding move without
+  needing a real external file lock — never a static field, per this project's own "no static
+  mutable fields in services" rule.
+- **Testing (test-first, exactly as the user asked):** new
+  `tests/Archiver.Core.Tests/Services/ZipArchiveServiceExtractTempDestResilienceTests.cs` — (1)
+  `DirectoryMove_FileLockedDeepInsideSourceTree_ThrowsIOExceptionNamingOnlyTopLevelPath`, a pure
+  platform-behavior lock-in confirming the exact `Directory.Move` failure shape above (run and
+  confirmed to pass *before* any production code changed — this is what actually pinned down the
+  root cause, not a guess); (2)
+  `ExtractAsync_EntryPathTraversal_DoesNotLeaveOrphanedTempFolder`, confirmed failing against the
+  original code (`tempDest` existed after a rejected traversal entry) before the `catch`
+  broadening fixed it; (3)/(4)
+  `CommitTempDestToActualDest_MoveThrowsIOException_FallsBackToPerFileMerge` and
+  `_ActualDestDoesNotExist_UsesFastPathMove`, exercising the new method directly via
+  `InternalsVisibleTo` (already wired for `Archiver.Core.Tests`) with an injected failing/real
+  move delegate — the first confirmed failing (unhandled `IOException` from the test's own fake)
+  against a temporary revert of the `try/catch` fallback. All four temporarily reverted and
+  reconfirmed to fail, then restored passing — this project's own mutation-check discipline.
+  `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` green repo-wide (Archiver.Core.Tests
+  505, up from 501; every other project unchanged).
+- **On-device verification (2026-08-11, agent-driven via `Deploy.ps1` v1.4.10.7 + direct
+  `Archiver.Shell.exe` launches, the documented pattern for verifying shell-triggered behavior
+  without fighting Explorer's own context-menu automation):** two real repros against the
+  installed MSIX. (1) `--extract-here` against a fresh 4-file/1-folder archive, then re-run
+  against the same archive a second time (a fresh numbered destination folder each run, so no
+  conflict — confirms the ordinary path stayed correct). (2) `--extract-flat` against a second
+  archive extracted twice into the same already-populated folder — this is the shape that
+  actually collides (`SingleFolder` mode's `actualDest` already exists on the second run,
+  reaching the exact merge branch this fix touches). The real `ShellConflictDialog` appeared
+  ("Файл вже існує"); checked "Застосувати до всіх решти конфліктів" and clicked "Перейменувати"
+  via keyboard navigation (native `TaskDialogIndirect` buttons still resist `ui_click`, same
+  limitation T-F155 already documented). Result: both loose files renamed to `(1)` variants, and
+  both nested files under the pre-existing `Sub\` subfolder also correctly merged in — no crash,
+  no leftover `_tmp` folder, no `.NET Runtime`/`Application Error` event log entries. This is the
+  literal reproduction of the user's original report (files-plus-folder, Rename+"apply to all",
+  re-extract into an existing destination), now completing successfully.
+  `TarSandboxedService` was checked for the same shape (`TryMoveSingleEntryAsync`'s per-file
+  `File.Move`, not a whole-tree `Directory.Move`) and does not share this bug — no parallel fix
+  needed there.
+- **Depends on:** none (surfaced by real usage of T-F155, already shipped).

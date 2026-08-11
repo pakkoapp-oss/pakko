@@ -850,6 +850,26 @@ failure — so a blocked/misconfigured sandbox would have crashed instead of yie
   unify there. `Archiver.CLI`'s `pakko x` has the identical gap, opened as its own backlog task
   **T-F160** (whether a modal popup even suits a console/CI tool is a real open question). See
   `docs/TASKS_DONE.md`'s and `docs/DECISIONS.md`'s T-F155 entries.
+- **T-F161 (`[x]` done 2026-08-11)** — real user report found by using T-F155 the same day it
+  shipped: extracting an archive with files plus a folder, choosing Rename+"apply to all" on a
+  conflict, crashed with `"Cannot extract archive: Access to the path '...\<name>_tmp' is
+  denied."`, and the archive's own folder never appeared. Root cause (confirmed via an isolated
+  `Directory.Move` platform probe, per the user's explicit "test first" instruction — not
+  guessed): `ExtractWithSmartFolderingAsync`'s commit-phase fast path
+  (`Directory.Move(tempDest, actualDest)`) fails the **whole** source tree with a plain
+  `IOException` — naming only the top-level `_tmp` path, never the actual file — the instant any
+  single file anywhere inside is transiently locked by another process (antivirus, cloud sync,
+  Search Indexer), even though every file Pakko itself had already finished writing. Fixed via a
+  new `internal static ZipArchiveService.CommitTempDestToActualDest(tempDest, actualDest,
+  moveOverride = null)` that falls back to the existing per-file merge on `IOException`; also
+  widened the entry-loop's cleanup `catch` from `OperationCanceledException` to `Exception` (a
+  second, independent bug — any mid-loop failure used to leak the `_tmp` staging folder on disk
+  forever). 4 new tests in `ZipArchiveServiceExtractTempDestResilienceTests.cs`
+  (`Archiver.Core.Tests` 501 → 505), each written and confirmed failing before the fix, then
+  restored passing. On-device confirmed 2026-08-11 (`Deploy.ps1` v1.4.10.7): the literal user
+  repro (files+folder, Rename+"apply to all", re-extract into an existing destination) via
+  `--extract-flat` now completes cleanly with no crash and no leftover `_tmp` folder. See
+  `docs/TASKS_DONE.md`'s and `docs/DECISIONS.md`'s T-F161 entries.
 - Next work: Future tasks in `TASKS.md`, including **T-F148** (SYSLIB1054 conversion, split
   out of T-F147), **T-F159** (unify `GetUniqueFilePath`, split out of T-F158), **T-F160**
   (interactive conflict dialog for `Archiver.CLI`'s `pakko x`, parity with T-F155)
