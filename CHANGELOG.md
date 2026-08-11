@@ -10,6 +10,38 @@ the technical account of any task named here.
 
 ---
 
+## v1.4.11 — 2026-08-11
+
+Extraction-conflict release — a new interactive conflict dialog for the Explorer extraction
+commands, two wrapping-behavior corrections, a shared decision-table refactor, and a crash fix
+found via real use of the new dialog on the same day it shipped.
+
+- **T-F154** — extracting an archive created from a single file used to land it inside a
+  same-named wrapper folder (`<Destination>\photo\photo.png`) instead of directly
+  (`<Destination>\photo.png`) when using the App's default Extract button or Explorer's "Extract
+  Here." Now matches a real archiver's behavior.
+- **T-F156** — "extract to one flat folder" mode still wrapped a genuinely multi-root archive
+  (several files, no common folder) in a subfolder, contradicting its own "no wrapper, ever"
+  contract. Fixed to never wrap in this mode; the per-archive Explorer "Extract Here" mode still
+  wraps, unchanged.
+- **T-F157 / T-F158** — the destination-conflict and smart-foldering decisions that
+  `ZipArchiveService` and `TarSandboxedService` used to hand-duplicate (and had to keep manually
+  in sync across T-F154/T-F156 in a single day) are now two shared, tested decision tables
+  (`ExtractionDestinationPlanner`, `DestinationConflictResolver`) — a pure refactor, no behavior
+  change.
+- **T-F155** — `Archiver.Shell`'s three Explorer extract commands now show a real interactive
+  Overwrite/Rename/Skip + "apply to all" conflict dialog, matching the WinUI app's own dialog.
+  Previously these commands resolved conflicts silently with no prompt at all.
+- **T-F161** — found via real use of T-F155 the same day it shipped: extracting an archive with
+  files plus a folder, choosing Rename + "apply to all" on a conflict, could crash with an
+  "Access is denied" error on a temporary staging folder — files extracted, but the archive's own
+  folder and the operation as a whole did not complete. Caused by a Windows filesystem behavior
+  where a whole-folder move fails outright if any single file inside is briefly locked by another
+  process (antivirus, cloud sync, Search Indexer); now falls back to moving files individually
+  when that happens, and no longer leaves a stray temp folder behind on any other failure either.
+
+---
+
 ## v1.4.10 — 2026-08-11
 
 Bug-fix release — a real archive-creation defect found during a broad pre-Store-submission
