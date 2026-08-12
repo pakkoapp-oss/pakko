@@ -148,6 +148,19 @@ public sealed class ZipArchiveServiceFixtureTests : IDisposable
         result.Errors.Should().ContainSingle(e => e.Message.Contains("password-protected"));
     }
 
+    // T-F167: IsEncryptedZip reads the general-purpose bit-0 encryption flag on the first local
+    // header — encryption-method-agnostic by construction (ZipCrypto and AES-256/WinZip AES both
+    // set this same bit, just with different method IDs), but only ZipCrypto had a real fixture
+    // exercising the check until this test.
+    [Fact]
+    public async Task Extract_EncryptedAes256_ReturnsError()
+    {
+        var result = await _sut.ExtractAsync(SeparateFolders(FixtureHelper.Archive("encrypted_aes256.zip")));
+
+        result.Success.Should().BeFalse();
+        result.Errors.Should().ContainSingle(e => e.Message.Contains("password-protected"));
+    }
+
     // ── ZIP slip protection (T-14) ────────────────────────────────────────
 
     [Fact]

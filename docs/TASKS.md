@@ -4107,26 +4107,6 @@ regression from this task, which owns reliability only.
 
 ---
 
-### T-F167 — Test gap: AES‑256‑encrypted ZIP fixture exists but no test consumes it
-
-- [ ] **Status:** not started — a test-coverage gap identified during the v1.4.12 pre-release
-  verification pass (2026-08-12); not a known bug, since ZipCrypto encryption is already covered
-  by the same local-header encryption-bit check.
-- **Context:** `tests/Archiver.Core.Tests/Fixtures/archives/encrypted_aes256.zip_MANUAL.txt`
-  documents how to manually generate a real AES‑256-encrypted ZIP fixture (via `7z a
-  -p"testpassword" -mem=AES256 ...`), but no committed fixture or test actually exercises it —
-  every existing encrypted-ZIP test (`ExtractAsync_PasswordProtectedZip_...`,
-  `Extract_EncryptedZipCrypto_ReturnsError`, `TestAsync_EncryptedArchive_ReturnsError`) uses only
-  the older ZipCrypto encryption method.
-- **Acceptance criteria (draft):** generate and commit a real `encrypted_aes256.zip` fixture per
-  the existing manual-generation instructions; add test coverage mirroring the existing ZipCrypto
-  tests (`ExtractAsync`/`TestAsync` both refuse with a clear message) to confirm the same
-  local-header encryption-bit detection actually catches AES‑256, not just ZipCrypto's older bit
-  pattern — these are two different encryption method IDs in the ZIP spec, so this isn't
-  guaranteed by the ZipCrypto test alone. `dotnet test` green repo-wide.
-- **Reported by:** user-directed pre-release verification pass, 2026-08-12.
-- **Depends on:** none.
-
 ---
 
 ### T-F168 — Test gap: duplicate entry names inside a Tar-family archive

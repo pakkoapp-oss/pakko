@@ -32,9 +32,6 @@
  * Some fixtures require external tools. Instructions are in *_MANUAL.txt files
  * in the archives/ directory. Create the file, delete the .txt, commit.
  *
- *   encrypted_aes256.zip     — requires 7-Zip:
- *                              7z a -p"testpassword" -mem=AES256 encrypted_aes256.zip compressible.txt
- *
  *   created_by_7zip.zip      — requires 7-Zip:
  *                              7z a created_by_7zip.zip compressible.txt
  *
@@ -380,11 +377,9 @@ var encryptedZipCrypto = Path.Combine(archivesDir, "encrypted_zipcrypto.zip");
 }
 Record(encryptedZipCrypto, "ZipCrypto encryption flag set — T-25 detection target");
 
-// AES-256 — manual
-WriteManual(archivesDir, "encrypted_aes256.zip",
-    "7-Zip: 7z a -p\"testpassword\" -mem=AES256 encrypted_aes256.zip ..\\..\\files\\compressible.txt\n" +
-    "Password for tests: testpassword");
-manual.Add(("encrypted_aes256.zip", "requires 7-Zip CLI"));
+// AES-256 — generated once (T-F167) via the vendored 7za.exe and committed as a real binary
+// fixture; no longer a _MANUAL.txt placeholder. Regenerate with:
+//   7za.exe a -tzip -mem=AES256 -ptestpassword encrypted_aes256.zip ..\..\files\compressible.txt
 
 // ── Third-party tool archives (manual) ───────────────────────────────────────
 

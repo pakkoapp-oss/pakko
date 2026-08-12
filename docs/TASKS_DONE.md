@@ -4294,3 +4294,30 @@ failed") were hardcoded English, never localized
   "Category!=Slow&Category!=VeryLarge"` green repo-wide.
 - **Reported by:** user-directed pre-release verification pass, 2026-08-12.
 - **Depends on:** none.
+
+---
+
+### T-F167 — Test gap: AES‑256‑encrypted ZIP fixture exists but no test consumes it
+
+- [x] **Status:** done 2026-08-12.
+- **Context:** `tests/Archiver.Core.Tests/Fixtures/archives/encrypted_aes256.zip_MANUAL.txt`
+  documented how to manually generate a real AES-256-encrypted ZIP fixture, but no committed
+  fixture or test exercised it — every existing encrypted-ZIP test used only the older ZipCrypto
+  method.
+- **Fix/coverage:** generated the real fixture with the vendored
+  `tests/Archiver.Core.PerformanceTests/Tools/7-Zip/x64/7za.exe` (`a -tzip -mem=AES256
+  -ptestpassword`), confirmed `Method = AES-256 Deflate` via `7za.exe l -slt` before committing;
+  deleted the `_MANUAL.txt` placeholder. New `Extract_EncryptedAes256_ReturnsError`
+  (`ZipArchiveServiceFixtureTests.cs`) and `TestAsync_EncryptedAes256Archive_ReturnsError`
+  (`ZipArchiveServiceTestAsyncTests.cs`) mirror the existing ZipCrypto tests exactly, proving
+  `IsEncryptedZip`'s general-purpose bit-0 check (encryption-method-agnostic by construction) also
+  catches AES-256, not just ZipCrypto's bit pattern.
+- **Housekeeping:** `tests/Archiver.Core.Tests.GenerateFixtures/Program.cs`'s `WriteManual` call
+  for this fixture removed (it unconditionally rewrote the `_MANUAL.txt` placeholder on every
+  generator run, which would have recreated it next to the now-permanent real fixture) and its
+  header-comment listing updated; `MANIFEST.sha256` updated with the real hash, moved out of the
+  "Manual fixtures — not generated" list.
+- **Testing:** `Archiver.Core.Tests` 508 → 510. `dotnet test --filter
+  "Category!=Slow&Category!=VeryLarge"` green repo-wide.
+- **Reported by:** user-directed pre-release verification pass, 2026-08-12.
+- **Depends on:** none.

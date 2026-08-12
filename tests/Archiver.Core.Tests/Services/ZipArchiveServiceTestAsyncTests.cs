@@ -41,6 +41,17 @@ public sealed class ZipArchiveServiceTestAsyncTests
         result.Errors.Should().ContainSingle(e => e.Message.Contains("password-protected"));
     }
 
+    // T-F167: same bit-0 general-purpose-flag check as ExtractAsync, now proven against a real
+    // AES-256/WinZip AES fixture rather than only ZipCrypto's older method.
+    [Fact]
+    public async Task TestAsync_EncryptedAes256Archive_ReturnsError()
+    {
+        var result = await _sut.TestAsync([FixtureHelper.Archive("encrypted_aes256.zip")]);
+
+        result.Success.Should().BeFalse();
+        result.Errors.Should().ContainSingle(e => e.Message.Contains("password-protected"));
+    }
+
     [Fact]
     public async Task TestAsync_RandomBinaryFile_ReportsErrorAsUnrecognizedFormat()
     {
