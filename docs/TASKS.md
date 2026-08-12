@@ -4134,24 +4134,3 @@ regression from this task, which owns reliability only.
 
 ---
 
-### T-F170 — Test gap: destination file locked by another process during extraction
-
-- [ ] **Status:** not started — a test-coverage gap identified during the v1.4.12 pre-release
-  verification pass (2026-08-12); not a known bug — T-F161 (2026-08-11) just added exactly this
-  kind of resilience for the *commit* step's `Directory.Move`, but no test locks an individual
-  destination file during the per-entry extraction loop itself.
-- **Context:** locked-file coverage exists for archive-creation (source file locked during
-  directory traversal, destination temp-file locked) but nothing exercises a locked *destination*
-  file specifically during `ZipArchiveService.ExtractAsync`/`TarSandboxedService.ExtractAsync`'s
-  per-entry write, as distinct from T-F161's already-tested locked-file-during-final-move
-  scenario.
-- **Acceptance criteria (draft):** a test that holds a destination file open (`FileShare.None`)
-  while extracting an archive containing an entry with that same name, confirming the per-entry
-  behavior is a clean per-item `ArchiveError`/skip rather than aborting the whole operation or
-  crashing — for both `ZipArchiveService` and `TarSandboxedService`. `dotnet test` green
-  repo-wide.
-- **Reported by:** user-directed pre-release verification pass, 2026-08-12.
-- **Depends on:** none.
-
----
-

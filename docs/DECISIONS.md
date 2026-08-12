@@ -7916,3 +7916,64 @@ stdout-splitting mechanism above, plus directory-source collision staging on the
 (`TarSandboxedServiceExtractTests.cs`) — `Archiver.Core.IntegrationTests` 72 → 74. `dotnet build
 src/Archiver.Core` clean; `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` green
 repo-wide.
+
+---
+
+### T-F170 — Locked destination file during extraction aborted the WHOLE archive, not a per-item skip, in both engines
+
+Filed as "not a known bug — T-F161 already added exactly this kind of resilience for the commit
+step's `Directory.Move`, but no test locks an individual destination file during the per-entry
+extraction loop itself." Writing the test first, per this project's own rule, immediately
+disproved that framing: this was a real, live bug in both engines, not just a coverage gap.
+
+**Test-first, confirmed via a throwaway console repro (not just the xUnit test itself) before
+touching production code:** a destination folder with a pre-existing `conflict.txt` held open via
+`FileShare.Read`, extracting an archive containing `conflict.txt` (colliding) + `safe.txt` (not
+colliding) with `OnConflict = Overwrite`. Actual pre-fix result:
+`Errors: ["Access denied extracting archive: Access to the path is denied."]`,
+`destDir` contained only the original `conflict.txt` — **`safe.txt` never arrived at all**, even
+though it has no conflict of its own. Root cause, ZIP: `CommitTempDestToActualDest`'s per-file
+merge loop (`ZipArchiveService.cs`) had no `try`/`catch` around its `File.Move(file, finalFile,
+overwrite: true)` call — a single locked file's exception aborted every remaining iteration of the
+loop, exactly the same whole-operation-abort shape T-F161 fixed for the *fast-path* `Directory.Move`,
+just one level deeper (the merge-loop fallback T-F161 itself introduced was never hardened this way).
+Root cause, Tar: `TryMoveSingleEntryAsync`'s own `File.Move` had the identical gap — T-F161's own
+entry had explicitly checked this method and concluded "no parallel fix was needed," which was true
+for the *directory-move* bug specifically (Tar moves one file at a time, never a whole subtree) but
+missed that the per-file move itself was still unguarded.
+
+**A second, real finding mid-investigation:** the throwaway repro's actual exception was
+`UnauthorizedAccessException`, not `IOException` as the fast-path's own `Directory.Move` throws for
+the identical locked-file scenario — confirmed empirically, not assumed, exactly the same way
+T-F161's own investigation probed real platform behavior before writing any fix. The two exception
+types don't share a base class in .NET, so a catch scoped to `IOException` alone (matching T-F161's
+fast-path catch) silently missed the real failure mode here — caught only because the test was run
+against the first attempt and still failed identically.
+
+**Fix, both engines:** `CommitTempDestToActualDest`'s per-file loop and `TryMoveSingleEntryAsync`'s
+`File.Move` now each catch `IOException`/`UnauthorizedAccessException` and record a per-item
+`ArchiveError` ("Cannot write '{relativePath}': destination file is locked by another process.")
+instead of propagating. **`ArchiveError`, not `SkippedFile`, was chosen deliberately** (a real
+design decision, not the plan's original guess of `SkippedFile`): a locked-destination failure
+means a file the user explicitly asked to be written did not arrive — the same "real data loss,
+not a benign decision" distinction T-F87 already drew between `Errors` and `SkippedFiles` elsewhere
+in this exact commit-phase code. `ArchiveError`/`ArchiveResult.Success` correctly reads
+`errors.Count == 0`, so this now flips `Success` to `false` while every *other* entry in the
+archive still lands — the literal "clean per-item failure, not aborting the whole operation"
+behavior the task's acceptance criteria asked for.
+
+Threading the error back out required adding a new `List<ArchiveError> Errors` field to both
+`ZipExtractionContext` and `TarExtractionContext` (previously only `SkippedFiles` existed there) —
+`CommitTempDestToActualDest`'s signature changed from `void` to `IReadOnlyList<string>` (the
+locked relative paths), converted to `ArchiveError`s by its one caller in
+`ExtractWithSmartFolderingAsync`.
+
+**Testing (test-first, exactly as required):** `ExtractAsync_DestinationFileLockedDuringCommitMerge_
+OtherEntriesStillExtractPerItemErrorRecorded` (`ZipArchiveServiceExtractTempDestResilienceTests.cs`)
+was written and run against the unmodified code first — confirmed failing with the whole-archive
+`UnauthorizedAccessException` shape described above — before either fix landed. The mirrored Tar
+test (`ExtractAsync_DestinationFileLockedDuringMovePhase_OtherEntriesStillExtractPerItemErrorRecorded`,
+`TarSandboxedServiceExtractTests.cs`) passed on the first run once the Zip-side investigation had
+already identified both exception types to catch. `Archiver.Core.Tests` 510 → 511;
+`Archiver.Core.IntegrationTests` 76 → 77. `dotnet test --filter
+"Category!=Slow&Category!=VeryLarge"` green repo-wide.

@@ -4379,3 +4379,40 @@ failed") were hardcoded English, never localized
   "Category!=Slow&Category!=VeryLarge"` green repo-wide.
 - **Reported by:** user-directed pre-release verification pass, 2026-08-12.
 - **Depends on:** none.
+
+---
+
+### T-F170 — Test gap: destination file locked by another process during extraction
+
+- [x] **Status:** done 2026-08-12 — a real bug, not just a coverage gap; see `docs/DECISIONS.md`'s
+  T-F170 entry for the full investigation.
+- **Context:** filed as "not a known bug" by analogy with T-F161's own commit-step fix. Writing
+  the reproducing test first (per this project's own rule) immediately disproved that: a real
+  throwaway repro showed a locked destination file aborted the ENTIRE extraction — an unrelated
+  `safe.txt` entry with no conflict of its own never arrived either.
+- **Root cause, both engines:** `ZipArchiveService.CommitTempDestToActualDest`'s per-file merge
+  loop and `TarSandboxedService.TryMoveSingleEntryAsync` both called `File.Move(..., overwrite:
+  true)` with no `try`/`catch` at all — a single locked file's exception propagated out and
+  aborted every remaining file in the same move-phase loop. T-F161's own entry had explicitly
+  checked `TryMoveSingleEntryAsync` and found "no parallel fix was needed" — true for the
+  *directory-move* bug specifically, but it missed that the per-file move itself was still
+  unguarded.
+- **A second real finding:** the actual exception thrown was `UnauthorizedAccessException`, not
+  `IOException` as the fast-path's own `Directory.Move` throws for the same locked-file scenario —
+  confirmed empirically via a throwaway repro, not assumed. The two don't share a base type, so
+  the first fix attempt (catching only `IOException`) still failed the test.
+- **Fix:** both engines now catch `IOException`/`UnauthorizedAccessException` per-file and record
+  a per-item `ArchiveError` (not `SkippedFile` — a locked-destination failure is real data loss,
+  the same distinction T-F87 already drew elsewhere in this exact code) instead of propagating.
+  `CommitTempDestToActualDest`'s signature changed `void` → `IReadOnlyList<string>` (locked
+  relative paths); a new `List<ArchiveError> Errors` field was added to both
+  `ZipExtractionContext` and `TarExtractionContext`.
+- **Testing (test-first, confirmed failing before either fix):**
+  `ExtractAsync_DestinationFileLockedDuringCommitMerge_OtherEntriesStillExtractPerItemErrorRecorded`
+  (`ZipArchiveServiceExtractTempDestResilienceTests.cs`) and
+  `ExtractAsync_DestinationFileLockedDuringMovePhase_OtherEntriesStillExtractPerItemErrorRecorded`
+  (`TarSandboxedServiceExtractTests.cs`). `Archiver.Core.Tests` 510 → 511;
+  `Archiver.Core.IntegrationTests` 76 → 77. `dotnet test --filter
+  "Category!=Slow&Category!=VeryLarge"` green repo-wide.
+- **Reported by:** user-directed pre-release verification pass, 2026-08-12.
+- **Depends on:** none.

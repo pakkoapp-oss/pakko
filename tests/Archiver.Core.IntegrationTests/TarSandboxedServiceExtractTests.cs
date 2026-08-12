@@ -118,6 +118,46 @@ public sealed class TarSandboxedServiceExtractTests : IDisposable
             because: "TarSandboxScope's own quarantine directory must be cleaned up on cancellation, not just on success");
     }
 
+    // T-F170: mirrors ZipArchiveServiceExtractTempDestResilienceTests.ExtractAsync_
+    // DestinationFileLockedDuringCommitMerge_OtherEntriesStillExtractPerItemErrorRecorded —
+    // TryMoveSingleEntryAsync's File.Move used to have no try/catch at all, so a single locked
+    // destination file aborted every remaining file in ExtractSingleArchiveAsync's move-phase loop
+    // too (uncaught UnauthorizedAccessException, confirmed empirically same as the ZIP side — see
+    // DECISIONS.md's T-F170 entry).
+    [Integration]
+    public async Task ExtractAsync_DestinationFileLockedDuringMovePhase_OtherEntriesStillExtractPerItemErrorRecorded()
+    {
+        string destDir = Path.Combine(_temp.Path, "out");
+        Directory.CreateDirectory(destDir);
+        string lockedDestFile = Path.Combine(destDir, "conflict.txt");
+        File.WriteAllText(lockedDestFile, "pre-existing locked content");
+
+        string archivePath = Path.Combine(_temp.Path, "archive.tar");
+        TarBuilder.WriteTar(archivePath,
+        [
+            new TarBuilder.Entry { Name = "conflict.txt", Content = Encoding.ASCII.GetBytes("new content that should overwrite") },
+            new TarBuilder.Entry { Name = "safe.txt", Content = Encoding.ASCII.GetBytes("unrelated entry") },
+        ]);
+
+        using var handle = File.Open(lockedDestFile, FileMode.Open, FileAccess.Read, FileShare.Read);
+
+        var result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [archivePath],
+            DestinationFolder = destDir,
+            Mode = ExtractMode.SingleFolder,
+            OnConflict = ConflictBehavior.Overwrite,
+        });
+
+        // T-F170 fix: a locked destination file is a per-item failure, not a whole-archive one —
+        // safe.txt (no conflict) must still land, and the archive is NOT silently reported as a
+        // full success (a file the user asked to overwrite did not arrive).
+        result.Success.Should().BeFalse();
+        File.ReadAllText(Path.Combine(destDir, "safe.txt")).Should().Be("unrelated entry");
+        File.ReadAllText(lockedDestFile).Should().Be("pre-existing locked content",
+            "the locked file could not be overwritten, so its original content must survive untouched");
+    }
+
     // T-F168: unlike ZipArchiveService (which controls per-entry extraction itself and can rename
     // a colliding entry via ConflictResolver before writing it), tar.exe performs the actual
     // on-disk write during its own "-xf" — confirmed via a Phase 0 spike that two same-named

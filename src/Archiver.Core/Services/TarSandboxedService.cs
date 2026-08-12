@@ -199,7 +199,7 @@ public sealed class TarSandboxedService : ITarService
         {
             bool alreadyIsolated = options.Mode == ExtractMode.SeparateFolders;
             var context = new TarExtractionContext(
-                conflictResolver, sink.SkippedFiles, options.ConfirmCompressionBombExtraction, _policy.MotwMode, archiveProgress);
+                conflictResolver, sink.SkippedFiles, options.ConfirmCompressionBombExtraction, _policy.MotwMode, archiveProgress, sink.Errors);
             var (actualDest, anyExtracted) = await ExtractSingleArchiveAsync(
                 archivePath, destDir, alreadyIsolated, options.DestinationFolder, options.SelectedEntryPaths, context, cancellationToken)
                 .ConfigureAwait(false);
@@ -491,7 +491,11 @@ public sealed class TarSandboxedService : ITarService
         List<SkippedFile> SkippedFiles,
         Func<CompressionBombWarning, Task<bool>>? ConfirmCompressionBombExtraction,
         MotwMode MotwMode,
-        IProgress<ProgressReport>? Progress);
+        IProgress<ProgressReport>? Progress,
+        // T-F170: mirrors ZipExtractionContext's identical addition — a per-item failure to move
+        // a file out of the quarantine (destination locked by another process), distinct from
+        // SkippedFiles since data the user asked for genuinely failed to arrive.
+        List<ArchiveError> Errors);
 
     // One file of ExtractSingleArchiveAsync's move-phase loop (quarantine "out\" -> the real
     // destination) — conflict-resolve, move, propagate MOTW. Returns whether the file was
@@ -538,7 +542,27 @@ public sealed class TarSandboxedService : ITarService
         }
 
         Directory.CreateDirectory(Path.GetDirectoryName(finalFilePath)!);
-        File.Move(file, finalFilePath, overwrite: true);
+
+        // T-F170: this used to be a bare File.Move — a single locked destination file (e.g.
+        // re-extracting into an existing folder while one file is open elsewhere) threw
+        // uncaught, aborting every remaining file in ExtractSingleArchiveAsync's move-phase loop
+        // too, not just this one entry. Catches both IOException AND UnauthorizedAccessException,
+        // same as ZipArchiveService.CommitTempDestToActualDest's identical T-F170 fix — a real
+        // locked-file File.Move(overwrite: true) was confirmed empirically to throw
+        // UnauthorizedAccessException, not IOException.
+        try
+        {
+            File.Move(file, finalFilePath, overwrite: true);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            context.Errors.Add(new ArchiveError
+            {
+                SourcePath = archivePath,
+                Message = $"Cannot write '{relativePath}': destination file is locked by another process."
+            });
+            return (false, relativePath);
+        }
 
         // T-F45: propagate Zone.Identifier ADS from the ORIGINAL archive (never the staged
         // quarantine copy) to the extracted file — the staged copy is a Pakko-internal

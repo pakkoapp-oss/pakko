@@ -679,7 +679,7 @@ public sealed class ZipArchiveService : IArchiveService
         {
             bool alreadyIsolated = options.Mode == ExtractMode.SeparateFolders;
             var context = new ZipExtractionContext(
-                conflictResolver, sink.SkippedFiles, options.ConfirmCompressionBombExtraction, _policy.MotwMode, archiveProgress);
+                conflictResolver, sink.SkippedFiles, options.ConfirmCompressionBombExtraction, _policy.MotwMode, archiveProgress, sink.Errors);
             var (actualDest, anyExtracted) = await Task.Run(async () =>
                 await ExtractWithSmartFolderingAsync(archivePath, destDir, alreadyIsolated,
                     options.DestinationFolder, options.SelectedEntryPaths, context, cancellationToken),
@@ -1019,7 +1019,14 @@ public sealed class ZipArchiveService : IArchiveService
             throw;
         }
 
-        CommitTempDestToActualDest(tempDest, actualDest);
+        foreach (string relativePath in CommitTempDestToActualDest(tempDest, actualDest))
+        {
+            context.Errors.Add(new ArchiveError
+            {
+                SourcePath = archivePath,
+                Message = $"Cannot write '{relativePath}': destination file is locked by another process."
+            });
+        }
 
         // T-F87: every entry was individually skipped (conflict/ADS/reserved name/reparse point/
         // zip bomb) — nothing was actually extracted, so the caller must not count this archive
@@ -1050,7 +1057,17 @@ public sealed class ZipArchiveService : IArchiveService
     // by this point. Confirmed empirically, not assumed — see DECISIONS.md's T-F161 entry.
     // Falling back to the per-file merge below tolerates one still-locked file instead of losing
     // the whole extraction to it.
-    internal static void CommitTempDestToActualDest(
+    //
+    // T-F170: the per-file merge loop itself used to have no try/catch, so a SINGLE locked
+    // destination file (e.g. re-extracting into an existing folder while one file is open
+    // elsewhere) aborted every remaining file in the loop too — the same whole-operation-abort
+    // shape T-F161 fixed for the fast path, one level deeper. Returns the relative paths that
+    // could not be moved so the caller can record a per-item ArchiveError instead of losing the
+    // whole commit to one lock. Catches both IOException AND UnauthorizedAccessException — a real
+    // locked-file File.Move(overwrite: true) was confirmed empirically (throwaway repro, not
+    // assumed) to throw UnauthorizedAccessException here, not IOException as the fast-path's own
+    // Directory.Move does; the two don't share a base type in .NET's exception hierarchy.
+    internal static IReadOnlyList<string> CommitTempDestToActualDest(
         string tempDest, string actualDest, Action<string, string>? moveOverride = null)
     {
         if (!Directory.Exists(actualDest))
@@ -1058,7 +1075,7 @@ public sealed class ZipArchiveService : IArchiveService
             try
             {
                 (moveOverride ?? Directory.Move)(tempDest, actualDest);
-                return;
+                return [];
             }
             catch (IOException)
             {
@@ -1066,18 +1083,31 @@ public sealed class ZipArchiveService : IArchiveService
             }
         }
 
+        var lockedRelativePaths = new List<string>();
         foreach (string file in Directory.EnumerateFiles(tempDest, "*", SearchOption.AllDirectories).ToList())
         {
             string relative = Path.GetRelativePath(tempDest, file);
             string finalFile = Path.Combine(actualDest, relative);
             Directory.CreateDirectory(Path.GetDirectoryName(finalFile)!);
-            File.Move(file, finalFile, overwrite: true);
+            try
+            {
+                File.Move(file, finalFile, overwrite: true);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                lockedRelativePaths.Add(relative);
+            }
         }
 
-        // Every real file has already been moved out above — a failure here (the same class of
-        // transient external lock, now on tempDest's own now-empty directory structure) must not
-        // fail an otherwise-successful extraction.
+        // Any file left behind above is one that failed to move (locked) — deleting it here
+        // along with the rest of tempDest's now-processed structure is correct: the freshly
+        // extracted copy can't reach its destination anyway, and leaving it in a leftover tempDest
+        // forever would violate this project's "no partial/leftover temp files" rule. A failure
+        // here (the same class of transient external lock, now on tempDest's own structure) must
+        // not fail an otherwise-successful extraction.
         try { Directory.Delete(tempDest, recursive: true); } catch { /* best-effort */ }
+
+        return lockedRelativePaths;
     }
 
     // The plumbing every entry of an ExtractWithSmartFolderingAsync call shares, cut from that
@@ -1089,7 +1119,11 @@ public sealed class ZipArchiveService : IArchiveService
         List<SkippedFile> SkippedFiles,
         Func<CompressionBombWarning, Task<bool>>? ConfirmCompressionBombExtraction,
         MotwMode MotwMode,
-        IProgress<ProgressReport>? Progress);
+        IProgress<ProgressReport>? Progress,
+        // T-F170: a per-item failure to commit a file into actualDest (destination locked by
+        // another process) — distinct from SkippedFiles (a deliberate, non-lossy decision like
+        // Skip/ADS/reparse-point) since data the user asked for genuinely failed to arrive.
+        List<ArchiveError> Errors);
 
     // The per-call setup ExtractWithSmartFolderingAsync computes once and every entry of its loop
     // reads unchanged — cut into its own type alongside ZipExtractionContext so

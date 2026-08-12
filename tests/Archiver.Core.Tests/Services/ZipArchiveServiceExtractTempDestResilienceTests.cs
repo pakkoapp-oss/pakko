@@ -111,12 +111,57 @@ public sealed class ZipArchiveServiceExtractTempDestResilienceTests : IDisposabl
             throw new IOException($"Access to the path '{src}' is denied.");
         }
 
-        ZipArchiveService.CommitTempDestToActualDest(tempDest, actualDest, FailingMove);
+        var lockedRelativePaths = ZipArchiveService.CommitTempDestToActualDest(tempDest, actualDest, FailingMove);
 
         moveAttempts.Should().Be(1);
+        lockedRelativePaths.Should().BeEmpty("the fast path failed, but the per-file merge fallback moved every real file successfully");
         File.Exists(Path.Combine(actualDest, "loose1.txt")).Should().BeTrue();
         File.Exists(Path.Combine(actualDest, "Sub", "nested1.txt")).Should().BeTrue();
         Directory.Exists(tempDest).Should().BeFalse("every file was successfully merged out, so the empty staging folder must be cleaned up");
+    }
+
+    // T-F170: a distinct failure mode from the fast-path Directory.Move bug above — this locks a
+    // file directly at the FINAL destination path (not source-tree-internal), forcing
+    // CommitTempDestToActualDest into its per-file merge loop (actualDest already exists), where
+    // File.Move(file, finalFile, overwrite: true) has no try/catch at all. First written to
+    // confirm today's real (broken) behavior before any fix, per this project's test-first rule —
+    // see DECISIONS.md's T-F170 entry for the confirmed pre-fix outcome.
+    [Fact]
+    public async Task ExtractAsync_DestinationFileLockedDuringCommitMerge_OtherEntriesStillExtractPerItemErrorRecorded()
+    {
+        string destDir = Path.Combine(_temp.Path, "out");
+        Directory.CreateDirectory(destDir);
+        string lockedDestFile = Path.Combine(destDir, "conflict.txt");
+        File.WriteAllText(lockedDestFile, "pre-existing locked content");
+
+        string zipPath = Path.Combine(_temp.Path, "archive.zip");
+        using (var archive = ZipFile.Open(zipPath, ZipArchiveMode.Create))
+        {
+            using (var s = archive.CreateEntry("conflict.txt").Open())
+            using (var w = new StreamWriter(s))
+                w.Write("new content that should overwrite");
+            using (var s = archive.CreateEntry("safe.txt").Open())
+            using (var w = new StreamWriter(s))
+                w.Write("unrelated entry");
+        }
+
+        using var handle = File.Open(lockedDestFile, FileMode.Open, FileAccess.Read, FileShare.Read);
+
+        var result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [zipPath],
+            DestinationFolder = destDir,
+            Mode = ExtractMode.SingleFolder,
+            OnConflict = ConflictBehavior.Overwrite,
+        });
+
+        // T-F170 fix: a locked destination file is a per-item failure, not a whole-archive one —
+        // safe.txt (no conflict) must still land, and the archive is NOT silently reported as a
+        // full success (a file the user asked to overwrite did not arrive).
+        result.Success.Should().BeFalse();
+        File.ReadAllText(Path.Combine(destDir, "safe.txt")).Should().Be("unrelated entry");
+        File.ReadAllText(lockedDestFile).Should().Be("pre-existing locked content",
+            "the locked file could not be overwritten, so its original content must survive untouched");
     }
 
     [Fact]
