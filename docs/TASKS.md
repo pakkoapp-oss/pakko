@@ -4082,28 +4082,6 @@ regression from this task, which owns reliability only.
 
 ---
 
-### T-F165 — `docs/DIAGRAMS.md` diagram 3 (extract commit step) stale after T-F161
-
-- [ ] **Status:** not started — a documentation-only fix, found during the v1.4.12 pre-release
-  verification pass (2026-08-12).
-- **Context:** diagram 3's node N still describes the pre-T-F161 unconditional two-branch commit
-  (`Directory.Move(tempDest→actualDest)` if `actualDest` doesn't exist, else a plain per-file
-  merge) — it was never updated when T-F161 wrapped that move in a
-  `CommitTempDestToActualDest(tempDest, actualDest, moveOverride)` helper with an
-  `IOException`-triggered fallback to per-file merge (the exact fix for the real "Access denied on
-  a transiently-locked file" crash T-F161 closed). Confirmed by grep: zero mentions of `T-F161` or
-  `CommitTempDestToActualDest` anywhere in `docs/DIAGRAMS.md`. This is a real violation of this
-  project's own Diagrams DoD rule ("same commit as the code") — T-F161's own commit updated
-  `docs/TASKS_DONE.md`/`docs/DECISIONS.md` but not this diagram.
-- **Acceptance criteria:** node N (and its surrounding prose in the "What this catches"/"Fixed
-  downstream" sections right below the flowchart) updated to describe the real
-  `CommitTempDestToActualDest` fallback behavior; render the edited mermaid block through
-  `mmdc` before considering this done, per this repo's own "never auto-validated" rule.
-- **Reported by:** user-directed pre-release verification pass, 2026-08-12.
-- **Depends on:** none (T-F161, already shipped).
-
----
-
 ### T-F171 — Real Tar-family duplicate-entry-name parity with ZIP (T-F30), split from T-F168
 
 - [ ] **Status:** not started — split out of T-F168 once its investigation showed genuine parity

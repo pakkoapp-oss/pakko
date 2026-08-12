@@ -4416,3 +4416,27 @@ failed") were hardcoded English, never localized
   "Category!=Slow&Category!=VeryLarge"` green repo-wide.
 - **Reported by:** user-directed pre-release verification pass, 2026-08-12.
 - **Depends on:** none.
+
+---
+
+### T-F165 — `docs/DIAGRAMS.md` diagram 3 (extract commit step) stale after T-F161
+
+- [x] **Status:** done 2026-08-12.
+- **Context:** diagram 3's node N still described the pre-T-F161 unconditional two-branch commit
+  (plain `Directory.Move` if `actualDest` doesn't exist, else a plain per-file merge) — never
+  updated when T-F161 wrapped that move in `CommitTempDestToActualDest` with an
+  `IOException`-triggered fallback. Confirmed by grep: zero mentions of `T-F161` anywhere in
+  `docs/DIAGRAMS.md` before this fix — a real violation of this project's own Diagrams DoD rule.
+- **Fix:** node N's label rewritten to describe the real `CommitTempDestToActualDest` call (fast
+  path attempted first, falls back to per-file merge on `IOException`); a new annotation paragraph
+  added below the flowchart (matching the diagram's existing T-F06/T-F158 annotation style)
+  covering both T-F161's fast-path fallback and **T-F170's same-day fix** (each per-file
+  `File.Move` in the merge now also catches `IOException`/`UnauthorizedAccessException`, recording
+  a per-item `ArchiveError` instead of aborting the remaining files) — done in this order
+  deliberately, after T-F170 landed in the same batch, so the diagram describes the final
+  behavior, not an intermediate state.
+- **Validation:** the edited mermaid block was extracted and rendered via `npx
+  @mermaid-js/mermaid-cli` (`mmdc`) — produced a valid SVG with no syntax errors, per this repo's
+  own "diagrams are never auto-validated" rule.
+- **Reported by:** user-directed pre-release verification pass, 2026-08-12.
+- **Depends on:** none (T-F161/T-F170, both already shipped).

@@ -360,7 +360,7 @@ flowchart TD
     L --> M
     Z --> M
     M -- yes --> A
-    M -- no --> N["Commit: Directory.Move(tempDest→actualDest) if actualDest<br/>doesn't exist yet; ELSE merge each tempDest file into<br/>actualDest via File.Move(overwrite:true) — this is where<br/>an Overwrite-conflict entry actually overwrites"]
+    M -- no --> N["Commit: CommitTempDestToActualDest(tempDest, actualDest).<br/>Fast path: Directory.Move(tempDest→actualDest) if actualDest<br/>doesn't exist yet. T-F161: on IOException (a locked file anywhere<br/>in the tree), falls back to a per-file merge instead of failing —<br/>this is also where an Overwrite-conflict entry actually overwrites.<br/>T-F170: each per-file File.Move in the merge now catches<br/>IOException/UnauthorizedAccessException too, recording a per-item<br/>ArchiveError instead of aborting every remaining file in the loop"]
     N --> N2{"extractedCount == 0?<br/>(T-F87 — every entry hit S1-S6, nothing<br/>actually written to tempDest)"}
     N2 -- yes --> N3["SkippedFiles += whole-archive entry<br/>(Path == archivePath); caller does NOT<br/>add this archive to CreatedFiles"]
     N2 -- no --> O
@@ -384,6 +384,20 @@ caller (`ZipArchiveService.ExtractAsync`) excludes that archive from `CreatedFil
 `MainViewModel.GetDeletableSources` then filters `DeleteAfterOperation`'s cleanup list against
 `SkippedFiles` by full path — per-entry skips (S1-S6, relative entry names) never match a source's
 full path, so only a genuine whole-archive skip blocks deletion. See `DECISIONS.md`'s "T-F87" entry.
+
+**T-F161 (2026-08-11) / T-F170 (2026-08-12): node N's commit step is resilient to a locked file,
+not a bare `Directory.Move`.** The original diagram (and the original code) described the commit
+as a single unconditional `Directory.Move`/per-file-merge choice with no failure handling at all.
+Two real bugs were found and fixed here, both from a locked-file scenario a cloud-sync client,
+real-time antivirus, or Search Indexer can trigger transiently: T-F161 found that the fast-path
+`Directory.Move` fails the *whole* tree with `IOException` the instant any single file inside it
+is locked — even a file Pakko itself had already finished writing — so it now falls back to a
+per-file merge instead of failing the extraction outright. T-F170 then found the per-file merge
+loop had the identical gap one level deeper: a single locked *destination* file's `File.Move`
+threw uncaught (confirmed empirically as `UnauthorizedAccessException`, not `IOException`),
+aborting every remaining file in that same loop. Both are now caught per-file, recording a
+per-item `ArchiveError` for the locked file while every other entry still lands — see
+`DECISIONS.md`'s T-F161 and T-F170 entries.
 
 **Not updated for `TestAsync` (T-F62), by decision:** `TestAsync` is a separate, structurally
 simpler method — a flat per-archive loop with no foldering, no conflict handling, no path-escape
