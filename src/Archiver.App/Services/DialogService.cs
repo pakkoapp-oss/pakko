@@ -1,8 +1,8 @@
 using System.Diagnostics;
 using System.IO;
-using System.Security.Cryptography;
 using Archiver.App.Models;
 using Archiver.Core.Models;
+using Archiver.Core.Services;
 using Windows.ApplicationModel.Resources;
 using Windows.System;
 using Microsoft.UI.Text;
@@ -352,38 +352,34 @@ public sealed class DialogService : IDialogService
         await dialog.ShowAsync();
     }
 
+    // T-F164: routes through FileHashService.ComputeAsync (the same engine Archiver.Shell's
+    // --hash and Archiver.CLI's pakko h already use) instead of an ad-hoc inline
+    // SHA256.HashDataAsync call — fixes a real three-way inconsistency (Shell/CLI default to
+    // CRC-32 and let the user pick; this dialog was SHA-256-only with no way to pick CRC-32).
+    // Deliberately kept SHA-256-only, not given an algorithm picker — a product decision, see
+    // docs/DECISIONS.md's T-F164 entry.
     public async Task ShowFileHashAsync()
     {
         var files = await PickFilesAsync();
         if (files.Count == 0)
             return;
 
+        var result = await FileHashService.ComputeAsync(files, HashAlgorithmKind.Sha256, progress: null, CancellationToken.None);
+
         var panel = new StackPanel { Spacing = 12 };
 
-        foreach (var path in files)
+        foreach (var entry in result.Entries)
         {
             var itemPanel = new StackPanel { Spacing = 2 };
             itemPanel.Children.Add(new TextBlock
             {
-                Text = Path.GetFileName(path),
+                Text = Path.GetFileName(entry.SourcePath),
                 FontWeight = FontWeights.SemiBold
             });
 
-            string hashText;
-            try
-            {
-                await using var stream = File.OpenRead(path);
-                var hash = await SHA256.HashDataAsync(stream);
-                hashText = Convert.ToHexString(hash).ToLowerInvariant();
-            }
-            catch (Exception ex)
-            {
-                hashText = $"Error: {ex.Message}";
-            }
-
             itemPanel.Children.Add(new TextBlock
             {
-                Text = hashText,
+                Text = entry.Hash ?? $"Error: {entry.Error}",
                 FontFamily = new FontFamily("Consolas"),
                 IsTextSelectionEnabled = true,
                 TextWrapping = TextWrapping.Wrap,

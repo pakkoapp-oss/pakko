@@ -7977,3 +7977,35 @@ test (`ExtractAsync_DestinationFileLockedDuringMovePhase_OtherEntriesStillExtrac
 already identified both exception types to catch. `Archiver.Core.Tests` 510 → 511;
 `Archiver.Core.IntegrationTests` 76 → 77. `dotnet test --filter
 "Category!=Slow&Category!=VeryLarge"` green repo-wide.
+
+---
+
+### T-F164 — GUI Hash dialog stays SHA-256-only (user decision), routing fixed to `FileHashService`
+
+Found during the v1.4.12 pre-release verification pass: `DialogService.ShowFileHashAsync`
+computed a hash inline via its own `SHA256.HashDataAsync` call, a completely separate
+implementation from the one `Archiver.Shell`'s `--hash --algorithm crc32|sha256` and
+`Archiver.CLI`'s `pakko h -scrc{CRC32|SHA256}` both use (`FileHashService.ComputeAsync`,
+default CRC-32 in both other frontends, matching real 7z). The GUI's "Hash…" button offered no
+algorithm choice and no CRC-32 at all — a genuine three-way inconsistency, not just a missing
+feature.
+
+**Decision, asked of the user directly since it changes visible UI (not a mechanical fix alone):**
+keep the GUI dialog SHA-256-only rather than adding a CRC-32/SHA-256 picker to match Shell/CLI's
+two-option shape. The user chose this explicitly over adding the picker.
+
+**Fix (mechanical):** `ShowFileHashAsync` now calls `FileHashService.ComputeAsync(files,
+HashAlgorithmKind.Sha256, progress: null, CancellationToken.None)` instead of its own inline
+`SHA256.HashDataAsync` loop, mapping `HashResult.Entries` (`HashEntry.Hash`/`.Error`) onto the
+same per-file `TextBlock` UI as before — `FileHashService`'s `FormatDigest` for SHA-256 is
+`Convert.ToHexString(digest).ToLowerInvariant()`, byte-for-byte identical to the old inline
+formatting, so there is no visible output change. Removed the now-unused `System.Security.
+Cryptography` `using`.
+
+**No new unit test possible for this specific glue code:** `DialogService` is WinUI
+`ContentDialog`-based, the same untestable-without-a-WinUI-host shape as every other
+`DialogService` method (see `CLAUDE.md`'s "Known test gaps" section) — coverage comes from
+`FileHashService.ComputeAsync` already being tested (T-F128) plus a `dotnet build src/Archiver.App`
+compile check (0 warnings under `TreatWarningsAsErrors`). Stays `[~]` in `docs/TASKS.md` until the
+user's own on-device check that the Hash dialog still shows correct SHA-256 values — not graduated
+on a compile check alone, per this project's UI-verification rule.

@@ -4061,24 +4061,21 @@ regression from this task, which owns reliability only.
 
 ### T-F164 — GUI "Hash…" button is SHA‑256‑only, ad‑hoc, not routed through `FileHashService`
 
-- [ ] **Status:** not started — found during the v1.4.12 pre-release verification pass
-  (2026-08-12), confirmed live against the installed release build, not just by reading code.
-- **Context:** `DialogService.ShowFileHashAsync` computes a hash inline via
-  `SHA256.HashDataAsync` — a separate implementation from the one `Archiver.Shell`'s
-  `--hash --algorithm crc32|sha256` and `Archiver.CLI`'s `pakko h -scrc{CRC32|SHA256}` both use
-  (`FileHashService`/`HashAlgorithmKind`, default CRC‑32 in both other frontends, matching real
-  7z). The GUI's "Hash…" toolbar button offers no algorithm choice and no CRC‑32 at all — a real
-  three-way inconsistency, not just a missing feature: two frontends default to CRC‑32, the third
-  is SHA‑256-only with no way to pick CRC‑32.
-- **Acceptance criteria (draft):** `ShowFileHashAsync` (or its caller) routes through
-  `FileHashService.ComputeAsync` instead of its own inline `SHA256.HashDataAsync` call; the GUI
-  either gains a simple algorithm choice (matching Shell/CLI's two-option shape) or is
-  deliberately kept SHA‑256-only with that decision documented in `docs/DECISIONS.md` — this is a
-  product decision, not purely mechanical, since it changes visible UI. New
-  `Archiver.App.Core.Tests`/`Archiver.Core.Tests` coverage for whichever shape is chosen (none
-  exists today for this code path — confirmed absent during this task's own investigation).
-  `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` green repo-wide; on-device
-  verification per this project's own rule for UI-visible changes.
+- [~] **Status:** implementation complete 2026-08-12, on-device verification pending. Found
+  during the v1.4.12 pre-release verification pass, confirmed live against the installed release
+  build, not just by reading code.
+- **Context/decision:** `DialogService.ShowFileHashAsync` computed a hash inline via
+  `SHA256.HashDataAsync`, a separate implementation from the one `Archiver.Shell`/`Archiver.CLI`
+  both use (`FileHashService`/`HashAlgorithmKind`, default CRC‑32 in both, matching real 7z). Asked
+  the user directly (product decision, changes visible UI): **keep the GUI dialog SHA-256-only**
+  rather than adding a CRC-32/SHA-256 picker — see `docs/DECISIONS.md`'s T-F164 entry.
+- **Fix:** `ShowFileHashAsync` now routes through `FileHashService.ComputeAsync(files,
+  HashAlgorithmKind.Sha256, ...)` instead of its own inline call — same visible output (SHA-256's
+  `FormatDigest` is byte-identical to the old inline formatting), just the mechanical
+  inconsistency fixed. No new unit test possible for this WinUI `ContentDialog`-based glue code
+  (see `CLAUDE.md`'s "Known test gaps"); coverage comes from `FileHashService.ComputeAsync`
+  already being tested (T-F128) plus a clean `dotnet build src/Archiver.App`.
+  `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` green repo-wide.
 - **Reported by:** user-directed pre-release verification pass, 2026-08-12 (agent-driven, via the
   local `windows` MCP server against the real installed v1.4.12 MSIX).
 - **Depends on:** none.
