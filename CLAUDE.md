@@ -14,887 +14,337 @@ Target audience: Ukrainian government/defense — trust, auditability, minimal a
 
 ## Current State
 
-**v1.1 complete** — tagged `v1.1.0`. GitHub-only release for early testers.
-**v1.2 (shell extension) complete** — Archiver.Shell, protocol activation, file association,
-and MOTW are complete; `IExplorerCommand` COM DLL (T-F61) is complete. Progress UI is shown via
-the Windows Shell's built-in `IProgressDialog` (see `Archiver.Shell/NativeProgressDialog.cs`) —
-the earlier `Archiver.ProgressWindow` satellite WinUI 3 app was removed (T-F65; see
-`DECISIONS.md`). Both T-F61 and T-F65 manually smoke-tested end-to-end and confirmed 2026-07-05.
-T-F62 (Test archive) is complete — manually smoke-tested in Explorer and confirmed 2026-07-06.
-T-F68 (shell extract silently ignoring `SkippedFiles`) and T-F63 (Extract…/Compress… dialogs) are
-both complete — manually smoke-tested and confirmed 2026-07-06. All planned v1.2 shell-extension
-work is now done. T-F63's manual test surfaced T-F83 — a cold-start protocol/file activation bug
-in `Archiver.App` (pre-dating T-F63, in already-shipped T-F44/T-F56 code) — fixed the same day;
-see `DECISIONS.md`. T-F83's last criterion (reverifying T-F44's file-activation cold-start claim
-on a machine where Pakko owns the `.zip` association) was completed 2026-07-06 — Pakko was set as
-the default `.zip` handler and a cold-start double-click (simulated via `Start-Process`) correctly
-populated the file list. T-F83 is now fully complete.
-**v1.3 (tar.exe integration) complete; v1.4 complete except Group Policy/ADMX support (T-F51,
-still open/future — see `SPEC.md`'s roadmap table)** — T-F47 (`ITarService`/`TarCapabilities`
-scaffolding)
-and T-F48 (capability detection) are complete. T-F49 (`TarProcessService.ExtractAsync()`
-pipeline) is `[x]` complete — implementation, tests, and a `Deploy.ps1`-driven on-device
-`.tar.gz`/`.7z` extraction through the installed app were all confirmed 2026-07-07 (graduated by
-the agent at the user's explicit request that round, not a personal user click-through — flagged
-in `TASKS.md`; real `.rar` stayed unverified then, since no RAR-capable encoder existed on this
-machine — since fixed, see `TASKS_DONE.md`'s T-F85 entry). While designing
-T-F49, empirically confirmed a real sandbox-escape exploit against a naive tar.exe
-quarantine-then-validate model (a symlink entry writes outside the quarantine directory before
-any validation code runs) — see `DECISIONS.md`'s T-F49 entry; `ExtractAsync` instead pre-scans
-and rejects the whole archive before extraction ever runs. The ADS/reserved-name/reparse-point/
-MOTW checks `ZipArchiveService` already had were moved into a new shared
-`ArchiveEntrySecurity` class so both extractors stay in sync.
-T-F95 (root "Pakko" context-menu icon missing in Explorer) is complete — `Archiver.App.csproj` had
-no `<ApplicationIcon>`, so the built exe had zero icon resources; fixed by pointing it at the
-existing `Assets\Square44x44Logo.ico`, confirmed on-device by the user 2026-07-07. Found along the
-way: `Deploy.ps1`/`dotnet publish` intermittently fails with `MSB3231` cleaning up its own
-`AppPackages`/`obj` output *after* a valid `.msix` is already written (recurred 4 consecutive times
-during the 2026-07-13 T-F99/T-F100 session). **T-F96 is `[~]` closed as non-blocking** — root cause
-was never confirmed (leading suspect: Windows Search Indexer race), but `Deploy.ps1`'s own
-tolerance mitigation has absorbed every real recurrence since 2026-07-07 without ever failing a
-build; not on active investigation unless the mitigation itself ever stops working. See
-`docs/DECISIONS.md`'s T-F96 entry for the ranked root-cause scenarios if this ever needs revisiting.
-**T-F05 (Archive Browser) is `[~]` partial** — versioned into v1.4, all implementation done
-(Core `ListEntriesAsync`/`IArchiveListingRouter`, `ExtractOptions.SelectedEntryPaths`, new
-`Archiver.App.Core` project, full `MainWindow.xaml`/`MainViewModel` wiring for the breadcrumb +
-per-folder browser view and Extract Selected/All/Info commands), `dotnet test` green, and a full
-`Deploy.ps1` build+sign+install completed 2026-07-13. AI-driven on-device verification passed
-2026-07-13 (browsed real ZIP/7z/rar/tar.gz fixtures, extracted a selection and all, viewed Info) —
-stays partial until the user's own on-device click-through is confirmed. See `DECISIONS.md`'s
-T-F05 entry for the tar.exe selective-extraction spike findings and the subset-compression-bomb-
-check tradeoff made while implementing it.
-**Same-day UI design-review pass on T-F05** (user-driven, comparing a real on-device screenshot
-against NanaZip's own archive-viewing UI): added `DIAGRAMS.md`'s new diagram 6 (no prior category
-covered `MainWindow`'s row-visibility state machine — the gap itself was real), which formalized a
-genuine bug — Row 0 (Add Files/Add Folder/Hash) never hid during browse mode. Fixed by splitting
-Row 0 into mode-gated variants; `Info`/`Close` moved into the new browse-mode Row 0 as a
-text-labeled top command bar (advisor: `frontend-design` skill), while `Extract Selected`/
-`Extract All` deliberately stayed anchored next to the destination/options below rather than also
-moving up, to avoid a "configure below, commit above" flow. Window's initial size grew
-`800x700` → `1100x650` (file listings want width, not a near-square shape). See `DECISIONS.md`'s
-T-F05 "UI Design-Review Pass" entry.
-**Three same-day follow-ups on T-F05, all user-driven** (see `DECISIONS.md`'s three follow-up
-entries for full detail): (1) the Info dialog was deleted entirely and its fields (Size, Packed)
-folded into the browse-mode table as columns; (2) the standalone Close button was also removed,
-replaced by a single up-arrow (in front of the breadcrumb, and separately next to the Destination
-Path row) that steps up a folder level or exits the browser at the archive root — plus a CRC-32
-column (`uint?`, ZIP-only) and a full localization pass (`en-US`/`uk-UA`) converting every
-remaining hardcoded string in `MainWindow.xaml` to `x:Uid`; this round's first real on-device
-launch hard-crashed (`0xc000027b` in `Microsoft.UI.Xaml.dll`) from two invented, unverified `x:Uid`
-patterns (a `Uid` shared between a `Button`'s `.Content` and a `TextBlock`'s `.Text`, and a bracket-
-syntax `ToolTipService.ToolTip` key) — root-caused and fixed the same round; (3) CRC-32 was
-extended to the pending (archive-creation) list too (`FileItem`, async + throttled via a shared
-`SemaphoreSlim(4)`, reusing `Archiver.Core.IO.Crc32` made `public`), and a genuine blank-row
-regression was found and fixed — an unneeded explicit `VirtualizingStackPanel` added to the
-pending-list `ListView` this session (it already virtualizes by default) raced with a large file's
-async CRC completion, leaving a second item's row visually/UIA-blank until a forced re-layout; data
-was never lost (count/archiving always read the real collection). Reverting that `ItemsPanel`
-fixed it, confirmed via direct on-device relaunch. `ArchiveTreeIndex`/browse-mode rendering were
-separately reviewed for the large-entry-count question this same round and found already sound
-(O(n) build, per-folder-scoped sort, pre-existing virtualization, no per-item async work) — no fix
-needed there.
-**T-F99 (drive-root context menu) and T-F100 (file-activation routing) are both `[x]` done** —
-implemented and AI-driven on-device verified 2026-07-13, then re-confirmed 2026-07-14 via a
-user-directed Windows MCP automation pass (see `DECISIONS.md`'s T-F99/T-F100 entries). T-F99's
-on-device verification surfaced three more real bugs beyond the manifest fix — a
-command-line-corrupting `QuotePath` trailing-backslash bug, and two independent archive-auto-naming
-code paths both producing a bare `.zip` for a drive-root source — all fixed and tested; see
-`DECISIONS.md`. **T-F101** (Pakko missing from the classic "Show more options" menu) is `[x]`
-resolved (no code fix; cause unconfirmed) — diagnosed 2026-07-13 (repro confirmed, stale-build and
-crash-during-enumeration theories both ruled out), then confirmed no longer reproducing 2026-07-14
-across two repeated on-device checks. Leading (unverified) guess is a side effect of T-F100's
-manifest change invalidating an Explorer verb/icon cache; see `docs/DECISIONS.md`'s T-F101 entry.
-**T-F103** (extraction destination folder misnamed for compound extensions,
-`browse_test.tar.gz` → `browse_test.tar` instead of `browse_test`) is now `[x]` fixed — new shared
-`Archiver.Core.Services.ArchiveNaming` helper strips tar.exe's five compound extensions as a unit,
-wired into all five buggy call sites across `ZipArchiveService.cs`/`TarProcessService.cs`/
-`Archiver.Shell/Program.cs`, plus the native `ShellExtUtils.cpp` title-display equivalent;
-on-device verified 2026-07-14. See `DECISIONS.md`'s T-F103 entry.
-**T-F06** (Ask on Conflict Dialog) is now `[x]` done — designed via Plan Mode, `ConflictBehavior`
-gained a 4th value `Ask` resolved per-conflict through a new Core→UI callback mirroring T-F94's
-existing `ConfirmCompressionBombExtraction` pattern, wired into both Archive-creation modes and
-both Zip/Tar extraction engines via a shared `ConflictResolver` helper; on-device verified
-2026-07-14 for both Archive and Extract directions, all three resolutions plus "apply to all". See
-`DECISIONS.md`'s T-F06 entry.
-**T-F52 (AppContainer Sandbox for tar.exe) is `[x]` complete — Phase 1 implementation (11 of 13
-planned steps) complete 2026-07-14.** `TarProcessService.cs` is deleted outright (fail-closed, no
-unsandboxed fallback) and replaced by `TarSandboxedService`, which routes every tar.exe launch
-through a new `Archiver.Core/Services/Sandbox/` subsystem (`AppContainerProfile`, `QuarantineAcl`,
-`QuarantineStaging`, `SandboxJobObject`, `SandboxedProcessLauncher`,
-`SecurityCapabilitiesAttributeList`, `TarSignatureVerifier`, `TarSandboxScope`). Confirmed on
-real hardware, not just `dotnet test`: an on-device probe proved AppContainer +
-`PROC_THREAD_ATTRIBUTE_SECURITY_CAPABILITIES` works from the actual packaged (MSIX
-`FullTrustApplication`) process identity, not only from an unpackaged test host. DI wired at all 3
-touch points (`Archiver.App`, `Archiver.Shell`, `SkipIfFormatUnsupportedAttribute`); the 3 existing
-integration test files plus 2 unit test files were renamed to match, and a new
-`TarSandboxedServiceSandboxBehaviorTests.cs` proves the three properties that matter (writes
-outside quarantine denied, a spawned child process never completes under the Job Object, a
-socket-connect fails inside the AppContainer while succeeding unsandboxed against the same
-listener). Several real bugs found and fixed along the way (wrong `CERT_FIND_SUBJECT_CERT`
-constant, hardlinked staged files not inheriting the quarantine folder's ACL, libarchive's
-implicit parent-directory creation failing under AppContainer, a quarantine-location design
-correction from "same disk as destination" to a fixed `%TEMP%`-rooted path) — see `DECISIONS.md`'s
-several T-F52 entries for the full empirical trail. All 13 planned steps are now done, including a
-full `Deploy.ps1` build+sign+install and AI-driven on-device verification (`.tar.gz` with nested
-subdirectories, `.7z`, and `.rar` all extracted correctly through the installed, packaged
-`Archiver.Shell.exe`). **Graduated to `[x]` 2026-07-15, user-directed**, after a second on-device
-pass through the actual packaged GUI app itself (not just `Archiver.Shell.exe`): the `windows`
-MCP UI-automation server drove a real `pakko://extract` launch with three fresh archives
-(a `.tar.gz` built with a nested subdirectory, plus the committed `valid.7z`/`valid.rar`
-fixtures) and a real click on "Розпакувати" — all resulting files confirmed present with correct
-content on disk afterward. The user explicitly directed this MCP-driven pass as an accepted
-substitute for their own personal click-through (see the Workflow Tips section below). A fourth
-real bug was found via advisor review right after
-Step 13 (no existing test exercised it): `ExtractAsync`/`ListEntriesAsync` didn't catch
-`InvalidOperationException`, the type every sandbox-setup call (`AppContainerProfile`,
-`QuarantineAcl`, `SecurityCapabilitiesAttributeList`, `SandboxJobObject`) throws on a Win32
-failure — so a blocked/misconfigured sandbox would have crashed instead of yielding an
-`ArchiveError`. Fixed with a new `SandboxSetupException` caught at the same boundary as
-`TarSignatureVerificationException`; see `DECISIONS.md`'s T-F52 entry.
-- T-01 through T-35 + T-11, and T-F16/T-F17/T-F18/T-F26–T-F29/T-F37–T-F39/T-F44/T-F45 complete
-- **T-F105 (TAR archive creation) — `[x]` complete 2026-07-16, all four phases done.** Pulled
-  forward from v1.5 to v1.4 at user's explicit request, overriding T-F36's 2026-07-07 deferral
-  (re-scoped exactly as that deferral recommended: a `CompressAsync` method on the existing
-  `ITarService`, not a new `IArchiveEngine`). **Phase A (Core):** `ArchiveContainerFormat` enum,
-  `ArchiveOptions.Format`, `ITarService.CompressAsync`/`TarSandboxedService` (deliberately
-  **unsandboxed** — creation reads trusted local files, not an untrusted archive; see
-  `SECURITY.md`), `IArchiveCreationRouter`, and `ArchiveNaming.GetExtension()`. **Phase B (App
-  layer):** a "Формат" `ComboBox` in `MainWindow.xaml` (ZIP default + 6 tar variants) localized
-  across all 37 locales (format names stay untranslated Latin script everywhere, matching Windows
-  Explorer's own convention — only the label word is translated); the Compression combobox now
-  greys out only when plain `Tar` is selected (`IsCompressionLevelEnabled`); `MainViewModel` calls
-  `IArchiveCreationRouter` instead of `IArchiveService` directly. **Phase C (Shell layer):** a new
-  one-click "Add to X.tar" `IExplorerCommand` (`TarArchiveCommand`, plain tar only — the full
-  6-variant selector stays dialog-only) registered right after "Add to X.zip"; needs no
-  `Package.appxmanifest` entry (only the root command's CLSID is ever registered there); new
-  `--format zip|tar` CLI switch through `ShellArgumentParser`/`Archiver.Shell/Program.cs`. Caught
-  and fixed a real mojibake bug mid-session (a literal ellipsis typed into a new C++ string
-  literal — the same bug class that's shipped 3 times before) via re-reading the file, not at
-  deploy time. **Phase D (on-device, user-directed via the `windows` MCP server):** full
-  `Deploy.ps1` build+sign+install, then three real checks against the installed packaged app —
-  the one-click path via direct `Archiver.Shell.exe --archive --format tar` invocation (correct
-  `.tar` produced), the Compress dialog's format selector via real `pakko://archive` GUI
-  activation (all 7 formats present, created a real gzip-compressed `.tar.gz`, confirmed via
-  `tar -tzvf`), and the Compression combobox visibly greying out for plain TAR only (screenshot-
-  confirmed) — all three passed with no fixes needed. 316/316 .NET tests pass, 68/68 C++ tests
-  pass (was 309/59 before Phase C). See `TASKS_DONE.md`'s T-F105 entry and `DECISIONS.md`'s T-F105
-  entry (Phase 0 empirical findings on tar.exe's real compression-level mechanism, plus the Phase
-  B/C addendum).
-- **T-F106 (`[x]` resolved 2026-07-16)** — pending-list `ListView` rows rendered blank
-  (`ui_find` showed correct bound data but `(0,0)` position) when files were added at
-  window-activation time. **Root cause: never a WinUI rendering bug** — `RootGrid`'s file-table
-  row had no `MinHeight` on its own `RowDefinition`, only on the `ListView` child (which doesn't
-  force the row to grow); at a fixed 650px window height, the pending-list mode's other rows
-  (Archive Options — 4 rows, taller since T-F105's new Format row — plus Shared Options/action
-  buttons/status bar) collectively demanded more height than existed, clamping the table's Star
-  row to 0. Five unrelated fix hypotheses (population-timing gates, collection-mutation shape,
-  immutable-record rewrites, `ListView` structural copies, a full data-pipeline duplication) were
-  tried and disproven before this was found. Fixed by raising the default window size to
-  1100×900, giving the table row an explicit `MinHeight="200"`, and setting
-  `PreferredMinimumWidth="900"`/`PreferredMinimumHeight` (**850** — corrected same day from an
-  initial 700, which left the table visible but clipped the Shared Options checkboxes and status
-  bar below it off the bottom of the window) via `OverlappedPresenter` — confirmed on-device at
-  both default size and the enforced minimum (Windows clamps a smaller resize request to ~900×850,
-  everything — table, all options, both checkboxes, status bar — stays fully visible). This also
-  resolved the responsive/minimum-window-size sub-scope that had been widened into this same
-  ticket — see `DECISIONS.md`'s final T-F106 entry for the full account, including why Archive
-  Browser mode never showed the bug and why it first appeared during T-F105.
-  **Also added, same session:** the app's title bar now shows `Pakko — build <timestamp>`, read
-  from the running assembly's own file `LastWriteTime` — see this file's "Build Commands" section
-  for why (never trust build logs alone to prove an on-device check ran against fresh code).
-- **T-F107 (`[x]` done 2026-07-16)** — the Archive Browser's "Up" button used to exit the browser
-  entirely once it reached an archive's own root; now it keeps climbing past the archive root into
-  the archive's real containing folder, up through real parent folders, up to a drive root, and up
-  to a synthetic "This PC" node listing all drives (greying out only there), patterned after
-  NanaZip's classic FileManager. New `ArchiveBrowseScope` (`Archive`/`RealFileSystem`/`ThisPc`) on
-  `MainViewModel` plus a new `FileSystemBrowser` static helper in `Archiver.App.Core`
-  (`ListFolder`/`ListDrives`, reusing `ArchiveEntryViewModel` unchanged) drive it;
-  `NavigateUpOrExitBrowser` was renamed to `NavigateUp`/`CanNavigateUp()` and `ExitBrowseMode()`
-  deleted outright (no callers left). AI-driven on-device verification (2026-07-16) confirmed
-  climbing from inside a real archive up through Desktop/Users/`C:\` to "Цей комп'ютер" (up button
-  UIA-confirmed disabled there), descending back into a drive via double-click, opening a different
-  real archive fresh via double-click while browsing real folders, and Extract Selected/All staying
-  disabled throughout real-filesystem browsing and re-enabling immediately back inside an archive.
-  See `DECISIONS.md`'s T-F107 entry.
-- **T-F97 (`[x]` done 2026-07-16)** — double-clicking an image/text file inside the Archive
-  Browser now silently extracts just that entry to a shared `%TEMP%\PakkoPreview\` cache and opens
-  it with the OS default handler (only a quiet "Opening..."/"Відкриття..." status-line change, no
-  progress bar/summary dialog), instead of always running a full Extract. New
-  `Archiver.Core.Services.PreviewPolicy.IsPreviewable` allowlist (images + plain text only — see
-  `SECURITY.md`); new `Archiver.App.Core.PreviewCache` (one shared root, fresh `Guid` subfolder per
-  preview, deleted on window close). Deliberately reuses the real `IExtractionRouter` pipeline via
-  `ExtractOptions.SelectedEntryPaths` rather than a bespoke extraction path, so T-F49's whole-
-  archive pre-scan and MOTW propagation both apply with zero new code. Two real bugs found via
-  on-device testing, neither caught by `dotnet test`: `Launcher.LaunchFileAsync`/`StorageFile`
-  silently fails for an arbitrary `%TEMP%` path even from this app's full-trust packaged identity
-  (fixed with `Process.Start(UseShellExecute=true)`, same mechanism already used elsewhere for
-  "open destination folder"); `ArchiveResult.CreatedFiles` lists per-archive destination
-  *folders*, not individual file paths (the previewed file's path has to be computed directly).
-  AI-driven on-device verification confirmed a ZIP's `.txt`/`.jpg` and a `.tar.gz`'s `.txt` all
-  preview correctly with a real propagated MOTW tag, a non-allowlisted `.docx` still runs the full
-  Extract flow, and the cache is gone after closing the window. See `DECISIONS.md`'s T-F97 entry.
-- **T-F93 (`[x]` done 2026-07-16)** — Ko-fi donate link (`https://ko-fi.com/pakko_app`) added to
-  both `README.md` (small link under the title) and the About dialog (a third `HyperlinkButton`,
-  "Ko-fi", in the existing GitHub/Privacy Policy row — same style/weight, no icon, no redesign).
-  User explicitly asked whether the dialog needed a redesign to fit the link well; the design
-  answer was no — see `DECISIONS.md`'s T-F93 entry for why more visual weight on a donate link
-  would work against Pakko's minimal/trust-focused positioning for its government/defense
-  audience. New `AboutKofiUrl` resw key (en-US only, non-translatable, matching
-  `AboutGitHubUrl`/`AboutPrivacyUrl`'s existing convention). On-device verified.
-- **T-F108/T-F98/T-F109/T-F110 (all `[x]` done 2026-07-17)** — same session, Archive Browser
-  work. **T-F108:** fixed the extraction destination defaulting to Desktop instead of the
-  archive's own folder when browsing without any pending files queued
-  (`MainViewModel.EnterBrowseModeAsync`). **T-F98:** double-clicking an archive found *inside*
-  the currently browsed archive drills straight into it, up to 4 nesting levels
-  (`NestedArchivePolicy.MaxDepth`), reusing T-F49/T-F90/T-F94's per-extraction security
-  machinery unmodified at every level (`Archiver.App.Core.NestedArchiveCache`,
-  `MainViewModel`'s browse-stack model). **T-F109:** widened the Archive Browser's safe-preview
-  allowlist to include video/audio (`PreviewPolicy`, PDF deliberately excluded); anything still
-  outside it now shows a confirm dialog and extracts to a subfolder next to the archive on disk
-  instead of the old silent full-extract-to-Destination-field behavior. **T-F110:** the entry
-  table's icon column distinguishes preview-vs-extract-only per row (Segoe MDL2 `View`/`Hide`
-  glyphs); a nested-archive row shows `View` (it drills in transparently) unless drilling in
-  would exceed T-F98's depth limit, in which case it shows `Hide`
-  (`ArchiveEntryViewModel.NestedDepthLimitReached`). All four verified on-device, both via a real
-  automated Windows MCP pass and the user's own personal click-through.
-- **T-F114 (`[x]` done 2026-07-17)** — ZIP-only compression/extraction performance-regression
-  tests comparing Pakko's own `ZipArchiveService` against a vendored, pinned, hash-verified
-  `7za.exe` reference (`tests/Archiver.Core.PerformanceTests/Tools/7-Zip/`, LGPL-attributed,
-  test-only — never shipped in the MSIX). Designed via a design-advisor session plus real
-  engineering-practice research (BenchmarkDotNet/criterion.rs/benchstat all converge on
-  same-machine, same-invocation ratio comparison as the only pattern that generalizes across
-  arbitrary machines — no cross-machine cached-baseline mechanism exists in any of them, so that
-  approach — floated during scoping — was explicitly dropped). Each of the 6 scenarios (archive +
-  extract × one-large-file ~300 MB / 5,000-small-files / hybrid) runs one discarded warmup pass
-  then one timed pass per engine and asserts the elapsed-time ratio against a per-scenario
-  calibrated constant (observed 2026-07-17: 1.06–6.02 depending on scenario — the many-small-files
-  case is highest since 7za's absolute time there is dominated by near-instant process-spawn
-  overhead, not real compression work) with a 3x tolerance multiplier for cross-machine headroom.
-  tar-family formats are explicitly out of scope — `TarSandboxedService`'s AppContainer/Job-Object
-  overhead would make a shared tolerance band meaningless. The many-small-files/hybrid scenarios
-  (4 tests) are tagged `[Trait("Category","Slow")]`, run via `dotnet test --filter "Category=Slow"`
-  alongside T-F20's Zip64 tests; the one-large-file scenarios (2 tests, ~300 MB) are tagged
-  `[Trait("Category","VeryLarge")]` instead — on demand only via `Category=VeryLarge`, per user
-  request, alongside Zip64's own >4 GiB test (also moved to `VeryLarge`, see below). Every
-  `7za.exe` launch runs under a basic sandbox reused from tar.exe's own subsystem (`SandboxJobObject`
-  via `SandboxedProcessLauncher` — Job Object only, no AppContainer/quarantine, so raw I/O
-  performance is unaffected) — mitigates the vendored-binary-compromised risk without biasing the
-  timing being measured; see `SECURITY.md`. A perf-test failure should be rerun once before being
-  treated as a real regression (unlike Zip64's tests, it carries a nonzero chance of being machine
-  noise). See `TESTING.md`'s new section and `DECISIONS.md`'s T-F114 entry for the full
-  research/rationale.
-- 414/414 .NET tests pass (`dotnet test --filter "Category!=Slow"`: 269 Archiver.Core.Tests +
-  43 Archiver.Shell.Tests + 47 Archiver.Core.IntegrationTests + 55 Archiver.App.Core.Tests — the
-  jump from 284 to 309 reflects T-F105 Phase A's new `TarSandboxedServiceCompressTests` (real
-  tar.exe round-trips for all 6 creation formats), `ArchiveNamingTests.GetExtension`, and
-  `ArchiveCreationRouterTests`; 309 to 316 reflects Phase C's new `ShellArgumentParser`
-  `--format` switch tests; 316 to 326 reflects T-F107's new `FileSystemBrowserTests`; 326 to 353
-  reflects T-F97's new `PreviewPolicyTests`/`PreviewCacheTests`; 353 to 387 reflects T-F98's new
-  `ArchiveFormatDetectorTests`/`NestedArchivePolicyTests`/`NestedArchiveCacheTests`/
-  `NestedArchiveDrillDownSecurityTests`; 387 to 402 reflects T-F109's widened
-  `PreviewPolicyTests`; 402 to 414 reflects T-F110's `ArchiveEntryViewModelTests.Icon*` cases).
-  4 Zip64 tests (T-F20) are split across two tiers — 3 are tagged
-  `[Trait("Category", "Slow")]` (excluded from this default run, real wall-clock cost from
-  >65535-file archiving/extraction/listing; run via `dotnet test --filter "Category=Slow"` before
-  a release or when touching Zip64-adjacent code), and 1 (the >4 GiB round trip) is tagged
-  `[Trait("Category", "VeryLarge")]` instead — on demand only, via
-  `dotnet test --filter "Category=VeryLarge"` (2026-07-17: gated separately from `Slow` per user
-  request, so a routine pre-release `Slow` run never pays its cost unless deliberately asked to).
-  **Current true total (2026-07-18, after T-F35 + its temp-file-compression follow-up +
-  the zero-byte-file fix): 468 tests** via
-  `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` — 310 Archiver.Core.Tests
-  (+22 from T-F35: `DosDateTimeTests`, `ParallelSingleArchiveWriterTests` (8, including 3 new
-  temp-file cleanup tests from the follow-up redesign and one disk-space-pre-check test),
-  `ZipArchiveServiceParallelPipelineTests`) + 5 Archiver.Core.PerformanceTests
-  (`ZipEntryWriterCompatibilityTests`, +1 from the zero-byte-file real-on-device bug — a new
-  end-to-end test through the real `ZipArchiveService.ArchiveAsync` API reproducing the exact
-  NanaZip "Data error" report, confirmed to actually catch the regression via a temporary revert)
-  + 43 Archiver.Shell.Tests + 55 Archiver.App.Core.Tests + 55 Archiver.Core.IntegrationTests.
-  Don't trust the 414/316/269 figures in the paragraph below as current — this bullet is the
-  freshest count; run `dotnet test` for ground truth either way.
-  **T-F114 (2026-07-17)** added a second project, `Archiver.Core.PerformanceTests` (6 tests:
-  archive+extract × one-large-file/many-small-files/hybrid, each comparing Pakko's ZIP path
-  against a sandboxed, vendored `7za.exe` reference on a same-run ratio basis — see
-  `TESTING.md`/`DECISIONS.md`/`SECURITY.md`) — the many-small-files/hybrid tests (4) are tagged
-  `Slow`, the one-large-file tests (2) are tagged `VeryLarge`, same on-demand-only split as Zip64's.
-  C++ `Archiver.ShellExtension.Tests` (Google Test,
-  68/68 — was 59, +9 from T-F105 Phase C's `BuildArchiveArgs`/`BuildAddToArchiveTitle` `.tar`
-  cases) run separately, not covered by `dotnet test`
-- **Current true total (2026-07-18, after T-F115's localization pass and T-F09/T-F116's new
-  `Archiver.CLI` project): 594 .NET tests** via
-  `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` — 312 Archiver.Core.Tests,
-  5 Archiver.Core.PerformanceTests, 46 Archiver.Shell.Tests (T-F115's flat-extract/localization
-  cases), 55 Archiver.App.Core.Tests, 55 Archiver.Core.IntegrationTests, and a new
-  121 Archiver.CLI.Tests (parser/mapper/help-text/formatter unit tests plus the `Subprocess/`
-  layer, T-F09/T-F116). C++ `Archiver.ShellExtension.Tests`: **85/85** (was 68, +17 from
-  T-F115's `LocalizationTests.cpp` plus new `ShellExtUtilsTests`/`ShellArgumentParser` cases).
-  Don't trust the 468/316/414/68 figures above as current — this bullet supersedes them; run
-  `dotnet test` (and the built `Archiver.ShellExtension.Tests.exe`) for ground truth either way.
-- **T-F35 (`[~]` implementation complete, on-device verification pending, 2026-07-18)** —
-  `ZipArchiveService.ArchiveAsync`'s `SingleArchive` mode gates on file count
-  (`ParallelPipelineFileCountThreshold = 64`): below it, archiving is completely unchanged
-  (original sequential `ZipArchive`-based code); above it, a new `Archiver.Core/Services/Zip/`
-  subsystem (`WorkItemEnumerator`, `ParallelSingleArchiveWriter`, `ZipEntryWriter`,
-  `ZipEntryCompressor`, `DosDateTime`) compresses EVERY non-placeholder file in parallel
-  regardless of size — small files (≤1 MiB) in memory, everything else into a private per-worker
-  temp file — writing the final ZIP through a hand-rolled container-format writer since
-  `System.IO.Compression.ZipArchive` gives no API to compress independently of the live archive
-  and splice the result in later. Built to fix the ~6x `SingleArchive`-vs-7z gap T-F114 measured
-  for many-small-files archiving. Two real bugs were caught by the test suite before the initial
-  ship: a bounded-channel-alone-doesn't-bound-concurrency concurrency bug (whitebox test) and a
-  Zip64 local-header field-offset swap that corrupted output silently as far as .NET's own reader
-  was concerned but was rejected outright by an independent `7za.exe` integrity check. A follow-up
-  profiling pass (temporary `Stopwatch`/`GC`-instrumented probe, deleted after use) found the
-  pipeline itself was already performing close to the 7z reference — the real dominant remaining
-  cost was three redundant full directory-tree walks before any real work started; merged two of
-  them into one `ComputeSingleArchiveTotals` walk. A second same-day follow-up (user question: "why
-  does a file-size limit need to exist at all?") replaced the original design's 4 MiB "large files
-  stream sequentially, single-threaded" fallback with **per-worker temp-file compression** — the
-  size threshold (lowered to 1 MiB) now only decides in-memory-buffer vs. temp-file, never
-  parallel-vs-sequential; `WriteStreamedEntryAsync` and its placeholder-then-patch mechanism were
-  deleted outright. This surfaced one more real concurrency bug (temp-file cleanup could race with
-  a still-running straggler task under cancellation — caught by a test that failed only under
-  full-suite parallel load, not in isolation) — fixed by awaiting every dispatched task before
-  sweeping. Three further same-day follow-ups reworked where per-worker temp files live (loose in
-  the destination folder → shared `%TEMP%` → a per-operation **hidden subfolder next to the
-  destination**, after the user's own on-device screenshot showed visible chunk-file flicker in
-  Explorer) and added a disk-space pre-check (`ArchiveEntrySecurity.GetAvailableFreeSpace`, reusing
-  T-F94's helper) before each temp-file compression, since the redesign introduced a real transient
-  disk-space cost the old streaming path never had. A fourth, more serious bug was then caught by
-  the user's own real on-device comparison against NanaZip (not `dotnet test`): a real ~2.8 GB
-  folder containing genuinely empty files (`.gitkeep`, `gc.properties`, etc.) compressed by Pakko
-  produced entries NanaZip's real 7-Zip engine rejected with `Data error`, while Pakko's own
-  extraction of the same archive reported no error at all. Root cause: `ZipEntryCompressor`
-  tagged zero-byte files as `Deflate` even though .NET's `DeflateStream` emits literally 0 output
-  bytes for zero input (not a valid deflate stream) — real `ZipArchiveEntry` always uses `Store`
-  for empty entries regardless of requested level, and this hand-rolled compressor didn't match
-  that. Fixed by forcing `StoredMethod` whenever the compressed uncompressed-length is 0; folded
-  into `ZipEntryWriterCompatibilityTests`' shared archive-building helper (so the 7-Zip-integrity
-  and raw-structural-parse tests all now cover it too), no new test count. This bug is exactly why
-  the "not graduated on `dotnet test` alone" rule below exists — it round-tripped clean through
-  .NET's own lenient reader and was invisible to every existing automated test until an independent
-  third-party reader was used. See `DECISIONS.md`'s T-F35 entry and its four follow-up entries for
-  the full stage-by-stage/bug-by-bug trail. Final T-F114 ratios: `ArchiveAsync_ManySmallFiles`
-  6.02 → ~1.0, `ArchiveAsync_Hybrid` 3.47 → ~1.3 (the real target of the temp-file redesign — its
-  medium 5-20 MB files were exactly what the old ceiling excluded from parallelism),
-  `ArchiveAsync_OneLargeFile` 1.22 → 1.18 (unaffected throughout — a single large file's file count
-  never crosses the gate). Stays `[~]` until a manual on-device verification (archive 100+ real
-  small files, including at least one genuinely empty file, via the installed Pakko GUI/context
-  menu, confirm the result opens cleanly in Explorer/7-Zip/WinRAR/NanaZip) — not graduated on
-  `dotnet test` alone, per this project's workflow rule.
-- **T-F09 (`Archiver.CLI`, 7z-familiar CLI) is `[~]` implementation complete 2026-07-18** — a
-  fourth thin frontend over `Archiver.Core`, no DI container (mirrors `Archiver.Shell`'s manual
-  construction pattern). Supports `x`/`t`/`i`/`a`/`l`, the full three-way unknown-input rule from
-  `CLI.md`, and ships as its own standalone self-contained per-architecture download (see
-  `scripts/Publish-Cli.ps1`, `CLI.md`'s "Distribution" section) — no MSIX/GUI required, no bundled
-  `tar.exe`. New `tests/Archiver.CLI.Tests/` (94 tests: parser/mapper/help-text/formatter unit
-  tests plus a new `Subprocess/` layer that `Process.Start`s the real built exe against real
-  fixtures — the first test layer in this repo to do that). `CLI.md`'s `a`/`l`/`-t{type}` rows
-  were found stale (predating T-F105/T-F05) and corrected before implementation started. Stays
-  `[~]` until the user's own on-device terminal run of all five commands plus the three error
-  cases — not graduated on `dotnet test` alone. See `DECISIONS.md`'s T-F09 entries.
-- **T-F116 (Archiver.CLI `-si`/`-so` stdin/stdout streaming) is `[~]` implementation complete
-  2026-07-18** — scoped out of T-F09 at the user's explicit request, plan redone through `advisor`
-  first. Implemented entirely inside `Archiver.CLI/CliStreamStaging.cs` via private `%TEMP%`
-  staging, zero `Archiver.Core` changes. Empirically confirmed (not assumed) that native
-  PowerShell 5.1 silently corrupts binary data piped between two executables while PowerShell 7+
-  and `cmd /c "..."` do not — documented in `CLI.md`, `CliHelpText.Text`, and `DECISIONS.md`'s
-  T-F116 entry, which also records a real pre-existing (not new) `ZipArchiveService` finding: an
-  unrecognized single archive path silently no-ops as success rather than erroring. `Archiver.CLI.
-  Tests` grew from 94 to 121 (parser cases, a new `CliStreamStagingTests.cs`, and subprocess tests
-  including one that launches `cmd.exe` itself to prove the documented pipe recipe actually
-  works). Stays `[~]` until the user's own on-device confirmation of a real piped round trip. Same
-  session: the built exe was renamed `Archiver.CLI.exe` → **`pakko.exe`** (`AssemblyName` only —
-  project folder/namespace unchanged), matching the `pakko:` prefix `--help`/stderr already used;
-  not added to `PATH` automatically (matches ripgrep/fd/bat's own zip-distribution norm, confirmed
-  via research, not assumed) — see `CLI.md`'s Distribution section for the `AppExecutionAlias`/
-  `WindowsApps`-PATH-shadowing pitfall this surfaced (no live collision today, since Pakko's
-  manifest registers no alias, but a real future constraint on any GUI terminal alias). Rebuild +
-  full manual smoke test (all five commands, all three error cases, a real `cmd /c "pakko a -so
-  ... | pakko x -si ... > log"` pipe) run by the agent after the rename; repo-wide tests stayed
-  green. See `DECISIONS.md`'s T-F116 follow-up entry.
-- **T-F120 closed 2026-07-18, user-directed backlog consolidation — merged into T-F122, not
-  implemented.** T-F120 (manual CLI GitHub Releases publication) and T-F122 (GitHub Actions CI for
-  the MSIX + `pakko.exe`) overlapped by design; T-F120's acceptance criteria were folded into
-  T-F122's so there's exactly one planned path to CLI-Release publication (T-F122's CI workflow on
-  a version-tag push), not a parallel manual step. **T-F122 itself is now `[x]` done (2026-07-19)**
-  — see `TASKS_DONE.md`'s T-F122 entry for the full account, including the real `windows-latest`→
-  `windows-2025` relabel it uncovered mid-implementation and the on-device verification against a
-  real CI-produced MSIX + `pakko.exe`.
-- **T-F117 (`[x]` done 2026-07-18)** — fixed the silent-success gap T-F116 found:
-  `ZipArchiveService.ExtractAsync`/`TestAsync`'s per-item gate now records a real `ArchiveError`
-  ("File is not a recognized archive format...") for a path matching no known archive signature at
-  all (empty file, garbage bytes, a real ZIP truncated to fewer than 4 magic-number bytes), instead
-  of silently recording nothing. A known-but-unsupported format (RAR/7z/GZip/etc.) keeps its
-  existing `SkippedFile` behavior — only the true "we don't know what this is" case changed.
-  Checked `TarSandboxedService` for the same gap — none found; it has no upfront format
-  short-circuit, so an unrecognized tar-family path already fails loudly via tar.exe's own nonzero
-  exit code. `Archiver.Core.Tests` grew from 312 to 315 (empty-file/truncated-ZIP/random-binary
-  cases across `ExtractAsync`/`TestAsync`, plus two pre-existing tests that had asserted the old
-  silent behavior — `ExtractAsync_NonExistentPath` and `ExtractAsync_ZipExtensionButWrongMagicBytes`
-  — updated to assert the new one). `Archiver.CLI.Tests`' two `SilentlyNoOpsPerPreExistingCoreBehavior`
-  tests (added by T-F116 to document the bug) renamed to `..._ErrorsAsUnrecognizedArchive` and now
-  assert exit code 2. **Graduated to `[x]` 2026-07-18, user-directed** — agent-driven on-device
-  verification via the local `windows` MCP server: a real `pakko://extract` activation against a
-  76-byte garbage `.zip` through the freshly `Deploy.ps1`-installed app produced the
-  operation-summary dialog correctly reading "Завершено з проблемами" / "Помилки (1)" / error text,
-  proving the fix end-to-end through `Archiver.App`, not just `dotnet test`. See `DECISIONS.md`'s
-  T-F117 entry.
-- **T-F118 (`[x]` done 2026-07-18)** — fixed the ZIP-vs-tar-family extraction smart-foldering
-  asymmetry T-F09 found: a multi-root-item archive (no single common containing folder) used to
-  wrap in an `<archive-base-name>\` subfolder for ZIP but land flat/unwrapped for tar-family.
-  User-directed decision (asked explicitly, since this is a product/UX call): unify tar-family to
-  match ZIP's existing T-14 smart-foldering, not the reverse. `TarSandboxedService.
-  ExtractSingleArchiveAsync` gained the identical `isSingleRootFolder`/`isSingleRootFile`/
-  `alreadyIsolated`/`isSelectedSubset` algorithm `ZipArchiveService.ExtractWithSmartFolderingAsync`
-  already used — derived from the entry-name list `ScanForUnsafeEntriesAsync`'s existing `-tf`
-  pre-scan already returns, no second tar.exe call needed. `Archiver.Shell/Program.cs`'s
-  `--extract-flat` doc comment corrected (no longer claims "no wrapper folder ever created" — was
-  already inaccurate for ZIP's own multi-root case). Test fallout across two projects:
-  `TarSandboxedServiceExtractTests`' `ExtractAsync_ValidTar_ExtractsFilesWithContent` and
-  `TarSandboxedServiceCompressTests`'
-  `CompressAsync_MultipleSourcesFromDifferentParents_PreservesRelativeStructure` (both had
-  genuinely-multi-root fixtures) updated to expect the new wrapper subfolder; three new direct
-  tests added mirroring `ZipArchiveServiceExtractTests`' equivalents.
-  `Archiver.CLI.Tests`' `Extract_TarGzHappyPath_ExtractsFilesAndExitsZero` — the exact test T-F118
-  named as asserting the old asymmetry — updated to match the ZIP fixture's own wrapping.
-  `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` green repo-wide (600 tests).
-  **Graduated to `[x]` 2026-07-18, user-directed** — same on-device session as T-F117's: a real
-  `multiroot.tar.gz` (two root files, no common folder, built via real `tar.exe`) extracted through
-  the installed app via `pakko://extract` landed under a `multiroot\` subfolder with both files
-  byte-correct, confirmed on disk. See `DECISIONS.md`'s T-F118 entry.
-- **T-F03 (`[x]` done 2026-07-18)** — re-scoped from its original stub ("dedicated Extract
-  window") to a new Explorer "Open"/"Відкрити" context-menu command that launches straight into
-  the Archive Browser (T-F05), after researching NanaZip's real `ContextMenu.h`/`.cpp` and finding
-  its `kOpen` is a distinct command coexisting with `kExtract`, not a replacement for it — Pakko
-  mirrors that exactly. New `BrowseCommand` (`Archiver.ShellExtension`, added first in
-  `PakkoRootCommand::EnumSubCommands`, mirroring NanaZip's own `kOpen`-before-`kExtract` order;
-  shown only for a single-item archive selection), a third `pakko://browse` protocol route
-  (`Archiver.App.Core.ProtocolActivationRouter`, branching in `App.xaml.cs` before
-  `MainViewModel.AddPathsFromProtocolUri` runs), and a new `--open-ui --browse` `Archiver.Shell`
-  sub-command reusing the existing `LaunchOpenUi` helper unchanged. New `StringId::BrowseArchive`
-  translated across all 37 `Archiver.ShellExtension` locales (plain "Open" verb, no ellipsis).
-  Agent-driven on-device verification (2026-07-18, user-directed via the `windows` MCP server):
-  after a full `Deploy.ps1` install, launched the exact CLI pipeline `BrowseCommand::Invoke`
-  builds against a real ZIP fixture — `Archiver.App` came up landing directly in the Archive
-  Browser (breadcrumb, real folder/file listing, Extract Selected/All), no pending-list view at
-  all. See `TASKS_DONE.md`'s T-F03 entry.
-- **T-F122 (`[x]` done 2026-07-19)** — GitHub Actions CI (`.github/workflows/build.yml`) now
-  builds the MSIX + `pakko.exe` on every push/tag and publishes the CLI zips + `SHA256SUMS` to a
-  real GitHub Release on a version tag (absorbing the deleted T-F120). Signs with the exact same
-  local `CN=Pakko Dev` cert `Deploy.ps1` uses, via two new repo secrets. Uncovered a real external
-  environment change mid-implementation — `windows-latest` silently relabeled to the `windows-2025`
-  image, which lacks the ARM64 variant of the `v143` toolset `Archiver.ShellExtension.vcxproj`
-  pins — fixed by scoping an explicit `windows-2022` pin to just the `build-msix` job. Also
-  surfaced (and left open, deliberately out of scope) a real discrepancy in this project's own
-  `TarSignatureVerifier` native P/Invoke code specifically on `windows-2022`, and confirmed the
-  pre-existing `Archiver.Core.IntegrationTests` sandbox-concurrency flakiness also reproduces in
-  CI itself (see this file's "Known test gaps" section). Graduated only after downloading a real
-  CI-produced MSIX + `pakko.exe` from a disposable test-tag release, installing/running both, and
-  confirming a real Archive/Extract round trip through each — not on green Actions runs alone. See
-  `TASKS_DONE.md`'s T-F122 entry for the full account.
-- **T-F131/T-F133 (`[x]` done 2026-07-24/25)** widened ZIP-format recognition to
-  `.jar`/`.war`/`.ear`/`.apk` and `.asice`/`.asics`/`.bdoc`; **T-F129's prep work (`[x]` done, this
-  round)** did Microsoft Store submission prep (WACK fixes, regenerated brand assets, manifest
-  revision-segment fix) — the actual submission/certification/publish followed later, see this
-  section's newer T-F129 bullet below;
-  **T-F130 (`[x]` done)** fixed intermittent CI sandbox-test flakiness via a `DisableParallelization`
-  xUnit collection. Released as `v1.4.2` (2026-07-25) — see `CHANGELOG.md`.
-  **T-F134 (`[x]` done 2026-07-26)** added a `pakko -v`/`--version` flag to
-  `Archiver.CLI` (real 7z has no `version` subcommand — it prints a compiled-in banner on every
-  invocation instead; see `docs/DECISIONS.md`'s T-F134 entry for why Pakko diverges). Released as
-  `v1.4.3`.
-- MSIX signed with dev cert via Deploy.ps1 (see T-F10 for production-grade cert)
-- Async streaming (CopyToAsync) — CancellationToken respected mid-file
-- Temp file/dir pattern — no partial files on cancel or failure
-- ZIP bomb detection via compression ratio (1000:1 threshold)
-- UTF-8 round-trip verified for Cyrillic and emoji filenames
-- Button text changes to "Archiving..." / "Extracting..." during operation
-- Post-op cleanup (DeleteSourceFiles, DeleteArchiveAfterExtraction) runs with IsBusy=true
-- SHA-256 integrity manifest removed — redundant with ZIP built-in CRC-32
-- ADS blocking (T-F38), reserved filename filtering (T-F39), reparse point protection (T-F37)
-- Byte-accurate progress reporting (T-F16) — `ProgressStream` wraps IO streams; `IsIndeterminate` removed
-- Option controls disabled during operations — `IsNotBusy` / `IsArchiveNameAndNotBusy` properties; all option controls bind `IsEnabled`
-- FileStream perf: `useAsync: false`, `bufferSize: 262144` in all `ZipArchiveService` streams (faster on local disks from ThreadPool)
-- `.zip` file type association (T-F44) — double-click opens Pakko with archive pre-loaded; `AppInstance.Activated` handles both cold-start and warm file activation
-- MOTW propagation (T-F45) — `Zone.Identifier` ADS copied from archive to every extracted file; best-effort, never fatal; no P/Invoke
-- Status line shows operation name, file stats, speed, and ETA during operation; elapsed time after completion
-- **Microsoft Store release is live (T-F129, done 2026-08-04)** —
-  https://apps.microsoft.com/detail/9p5mw010d8pr?hl=uk-UA&gl=UA. Certification passed, the user
-  clicked "Publish now" in Partner Center, and the listing was confirmed genuinely public (not
-  just Partner-Center-side) via `winget install --id 9P5MW010D8PR --source msstore`. An
-  agent-driven functional smoke test against that exact installed Store package (not the local
-  dev sideload) then confirmed `--test`/`--extract-here`/`--archive` all work correctly through
-  `Archiver.Shell.exe`, including — for the first time from the Store-signed package identity
-  specifically — a real `.7z`/`.rar` extraction through `TarSandboxedService`'s AppContainer
-  sandbox. See `docs/TASKS.md`'s T-F129 entry for the full account.
-- **T-F140 (`[x]` done 2026-08-04)** — fixed archive-creation progress reporting for both formats,
-  found from a real user report (right-clicking "SICHER! B2 CD", 4 large folders, via Explorer's
-  Add to .zip/.tar) that the dialog appeared frozen. Two independent root causes: ZIP's
-  `ParallelSingleArchiveWriter` (T-F35's parallel path) passed `progress: null` into its temp-file
-  compression, so a large file reported nothing until fully done — fixed with a new
-  `ProgressTracker` (throttled ~100ms, monotonic, clamped to 99% until one terminal 100% report)
-  wired into `ZipEntryWriter.CopyWithCrcAsync` via a new `onBytesRead` hook. TAR's
-  `TarSandboxedService.CompressToArchiveAsync` computed its percent denominator from the count of
-  top-level *selected paths* instead of the real recursive entry count, so it clamped to 99%
-  almost instantly for any folder with more than a handful of files — fixed with a new
-  `CountRecursiveEntriesAndBytes` pre-scan. Two same-day follow-ups (both found by the user
-  immediately after each prior fix deployed): TAR's dialog also gained a real filename (parsed
-  from tar.exe's own `-v` "a &lt;name&gt;" output, previously discarded) and real byte totals,
-  matching ZIP's "{Percent}% · {bytes}/{total}" richness; ZIP then turned out to have the identical
-  missing-filename gap, fixed by threading `item.EntryName` through `ProgressTracker.ReportBytes` —
-  writing that fix's own test caught a second, independent bug (the tracker's throttle could
-  swallow the very first report entirely for a small-file-dominated archive), fixed by backdating
-  the initial throttle timestamp. Three new tests, each proven to actually fail against a
-  temporary revert of its own fix before being left passing. `Archiver.Core.Tests` 407 → 408,
-  `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` green repo-wide. User-confirmed
-  on-device across three `Deploy.ps1` iterations that same session. See `docs/TASKS_DONE.md`'s
-  T-F140 entry and `docs/DECISIONS.md`'s three T-F140 entries for the full account.
-  **T-F141 (`[x]` done 2026-08-04)** — while T-F140 was mid-deployment, the user raised a related
-  but separate risk: `ParallelSingleArchiveWriter`'s hidden chunk temp files were reopened with
-  `FileShare.None` by the writer thread after a worker finished writing them — if a cloud-sync
-  client (Google Drive, etc.), antivirus, or Search Indexer briefly opened a finished chunk file in
-  that window, the reopen threw `IOException`, uncaught, aborting the *entire* archive operation
-  rather than skipping one file. This dev machine has no cloud-sync client active, so the real
-  vendor-behavior question stayed unconfirmed — resolved instead on structural grounds (`advisor`-
-  reviewed): the read-back's `FileShare.None` never protected any real invariant (the file was
-  already fully written and closed by its worker; the *write* side's own `FileShare.None` is what
-  actually matters). Fixed with a one-word change to `FileShare.Read` — no retry machinery needed.
-  New regression test uses `RunPipelineAsync`'s existing injectable seam to hold a real second
-  handle open deterministically, first confirmed to fail against a revert, then restored passing.
-  `Archiver.Core.Tests` 408 → 409. See `docs/TASKS_DONE.md`'s T-F141 entry and `docs/DECISIONS.md`'s
-  T-F141 entry for the full account.
-- **T-F142 (`[~]` implementation complete 2026-08-04, on-device visual check pending)** — real TAR
-  extraction byte progress (`ITarService.ExtractAsync` now takes `IProgress<ProgressReport>`, was
-  `IProgress<int>`; `ExtractionRouter.AdaptProgress` deleted) via a poll of the sandboxed
-  quarantine output directory (no streamed subprocess channel exists for a sandboxed launch — see
-  `DECISIONS.md`), plus a new shared, tested `Archiver.Core.Services.ProgressSpeedSampler` (not
-  `Archiver.App.Core` — matches the `Crc32` precedent) consumed by both `MainViewModel` and
-  `Archiver.Shell`'s dialog. Two real bugs caught via `advisor` review before shipping: a mixed
-  zip+tar selection would have restarted tar's progress from 0% after zip already reached 100%
-  (fixed — tar only gets real progress when zip didn't also run); a selected-subset extraction
-  (Archive Browser "Extract Selected") would have reported the whole archive's byte total instead
-  of the subset's (fixed via a new per-entry `SizeByName` map from the existing pre-scan). 8 new
-  tests (6 `ProgressSpeedSamplerTests` + 2 `TarSandboxedServiceExtractTests`), both revert-confirmed
-  per this session's own discipline. `dotnet test` green repo-wide; `Deploy.ps1` run and a real
-  320 MB `.tar.gz` extraction confirmed byte-correct — the visible speed-readout rendering itself
-  still needs the user's own on-device look (no `windows` MCP available this session). See
-  `docs/TASKS.md`'s and `docs/DECISIONS.md`'s T-F142 entries for the full account.
-- **T-F146 (`[~]` implementation complete 2026-08-07, on-device verification pending)** —
-  AMSI-based "Scan for threats" for archives (Explorer context menu + Archive Browser), built via
-  a plan reviewed by `advisor` before any code was written. New standalone `Archiver.Core`
-  service (`IAntivirusScanService`/`AntivirusScanService`, deliberately not an `IArchiveService`/
-  `ITarService` extension — see `docs/DECISIONS.md`), a real P/Invoke `amsi.dll` wrapper
-  (`Services/Antivirus/AmsiScanner.cs`), and `AmsiProviderCheck` (reads `HKLM\SOFTWARE\Microsoft\
-  AMSI\Providers` to force `Inconclusive` when no provider is registered — `AmsiScanBuffer` alone
-  can't tell "no AV" from "AV says clean"). ZIP entries scan entirely in-process/in-memory,
-  never touching disk; tar-family archives reuse T-F49/T-F52's `TarSandboxScope` AppContainer
-  quarantine exactly as a real Extract would, but stop at the quarantine directory — no
-  move-to-destination phase, quarantine always deleted. A shared `ArchiveFormatPolicy` (extracted
-  from `ExtractionRouter`, behavior-preserving) keeps Group Policy gating identical between
-  Extract and Scan. A Phase 0 empirical spike before writing any code (real EICAR through a real
-  `.tar.gz`) corrected the original design assumption "AMSI never deletes/quarantines anything" —
-  Defender's own real-time on-access scanner acts independently of AMSI and intercepted the EICAR
-  file before tar.exe could even read it; `docs/DECISIONS.md`'s T-F146 entry has the full trace.
-  New entry points: `Archiver.Shell`'s `--scan` CLI switch + `RunScanAsync`/`ShowScanResults`
-  (pattern: `RunHashAsync`/`ShowHashResults`, T-F128); a `ScanCommand` leaf `IExplorerCommand`
-  (`AnyPathIsSupportedArchive`-gated, unlike ZIP-only `TestCommand`) registered right after "Test
-  archive"; `MainViewModel.ScanArchiveFromBrowserCommand` (one combined button — selection if any
-  checked, else the whole open archive) plus `IDialogService.ShowThreatScanResultAsync`. Full
-  37-locale localization across all three frontends (`Archiver.ShellExtension/Localization.cpp`,
-  a new `Archiver.Shell/Resources/ScanMessages.*.resx` set, and 5 new `Archiver.App` resw keys) —
-  clean-result copy is deliberately "No threats found in this archive," never "safe" (Pakko
-  doesn't recurse into nested archives). New tests: `Archiver.Core.Tests/Services/Antivirus/`
-  (`AmsiScannerTests` against a runtime-generated EICAR buffer, never committed to disk;
-  `AntivirusScanServiceTests` via a hand-rolled `FakeAmsiScanner`), a real-`tar.exe`
-  `AntivirusScanServiceTarTests.cs` in `Archiver.Core.IntegrationTests`, `--scan`
-  `ShellArgumentParser` cases, and `BuildScanArgs` C++ cases.
-  **Same-day follow-up (user-driven):** progress reporting was originally coarse — one report per
-  archive completed, so a single-archive scan (the common case for both entry points) showed
-  nothing until it finished. Fixed to real per-entry progress with zero extra I/O (entry counts
-  were already computed as a side effect of the real scan work — ZIP's already-enumerated
-  `fileEntries.Count`, tar-family's already-returned pre-scan entry list, the same
-  `totalFileEntries` computation T-F142's move-phase progress already uses); see
-  `docs/DECISIONS.md`'s T-F146 follow-up entry. `dotnet test
-  --filter "Category!=Slow&Category!=VeryLarge"` green repo-wide (817 .NET tests + 100 C++ tests)
-  and `Deploy.ps1` build+sign+install succeeded. Stays `[~]` until the user's own on-device
-  verification (a real EICAR-in-archive detection through both entry points — the tar-family case
-  needs a temporary Defender exclusion folder the user adds/removes themselves, not something the
-  agent should script — plus a check of the `Inconclusive` path with no AMSI provider active). See
-  `docs/TASKS.md`'s and `docs/DECISIONS.md`'s T-F146 entries for the full account.
-- **T-F147 (`[x]` done 2026-08-08)** — SonarCloud triage of the pre-existing findings backlog
-  (134 issues at the original stale snapshot; the real worklist had to be rebuilt from a fresh CI
-  build log after finding the last 3 pushes on `main` had all failed, so SonarCloud hadn't
-  re-analyzed in 3 days — fixed CI first: `SkipIfAmsiScanUnavailableAttribute` for T-F146's
-  GitHub-runner-incompatible AMSI tests, widened a progress-poll test's timing margin). Did every
-  cognitive-complexity refactor in one pass per the user's explicit direction, including
-  `ZipArchiveService.ArchiveAsync` (was complexity **132**, the highest in the whole report) —
-  split via Single/Separate-mode extraction and purpose-specific context/sink records throughout
-  both `ZipArchiveService.cs` and `TarSandboxedService.cs`, keeping
-  `ExtractWithSmartFolderingAsync`/`ExtractSingleArchiveAsync` algorithmically identical per the
-  T-F118 invariant. Two provably load-bearing residuals (`SandboxedProcessLauncher.RunAsync`,
-  `ParallelSingleArchiveWriter.RunPipelineAsync`) were left as one unit with a documented
-  `NOSONAR` rather than forced apart. S101/S1075/S3871 (P/Invoke struct naming, hardcoded
-  `tar.exe`/quarantine paths, internal-only exception types) and a 4th case found mid-task
-  (CA1711 on `TarSandboxTestCollection`, xUnit's own `[CollectionDefinition]` marker-class
-  convention) were marked Won't-Fix and, critically, actually documented in
-  `docs/CONVENTIONS.md`'s new "SonarCloud Won't-Fix Conventions" section — the exact gap that let
-  this same finding category resurface after T-F136/T-F137, whose reasoning lived only in
-  task-history prose. Real mid-task discovery: `// NOSONAR` only suppresses `csharpsquid:*`
-  findings (SonarCloud's own analyzer) — `external_roslyn:*` findings (`CA*`/`IDE*`/`SYSLIB1054`,
-  imported from the real `dotnet build` warning log) need `#pragma warning disable/restore`
-  instead, since NOSONAR never touches that log; confirmed empirically when an already-NOSONAR'd
-  `CA1835` finding was still open on the next scan. Also caught two real regressions from this
-  task's own earlier refactoring via a second fresh scan (5 dead local variables left over from a
-  context-record extraction, S1481; a `foreach`+`.Where()` rewrite that could only ever run its
-  body once, S1751) — both fixed. `SYSLIB1054` (~40 `DllImport`→`LibraryImportAttribute` findings
-  across the sandbox P/Invoke layer) was explicitly scoped out per the user's decision and opened
-  as its own task, **T-F148**. Final SonarCloud count: 134 → 76 (post-CI-fix) → **44** (final) —
-  42 are T-F148's deferred batch, 2 are accepted `S1135` TODOs, i.e. everything actionable from
-  this triage is fixed or durably suppressed. `dotnet test --filter
-  "Category!=Slow&Category!=VeryLarge"`: 817/817 green across every commit; `dotnet build`: 0
-  warnings, 0 errors. User confirmed on-device (`Deploy.ps1` v1.4.7.5, archive + extract round
-  trip). See `docs/TASKS.md`'s T-F147 entry for the full fixed/suppressed/deferred breakdown.
-- **T-F150 (`[x]` done 2026-08-10)** — static analyzers/linters now run on every build, for every
-  language in the repo, with mandatory reaction (fix or suppress-with-documented-reason, never
-  silently ignored). **C#:** `Directory.Build.props` gained `TreatWarningsAsErrors=true`
-  (supersedes T-F137's earlier deferral — see `docs/DECISIONS.md`'s T-F150 entry), after
-  triaging the 4 residual warnings (`CA1001`/`CA1716`/`CA1826`/`CA1859`) to zero. **C++:** MSVC
-  `/analyze` enabled on both `Archiver.ShellExtension` `.vcxproj` files; found and fixed 2 real
-  bugs (missing SAL annotations on `DllGetClassObject`/`DllCanUnloadNow`, an ignored
-  `CoInitializeEx` return value in the test project), plus documented suppressions for vendored
-  GoogleTest headers and macro-expansion noise. **PowerShell:** new `lint-ps1` CI job runs
-  `PSScriptAnalyzer` against `scripts/*.ps1` (`scripts/PSScriptAnalyzerSettings.psd1`), gating
-  `build-msix`; fixed 4 real missing-BOM files (same corruption class as T-F84). CI run
-  `31405002014` confirmed all gates green end-to-end, including the ARM64 `/analyze` leg this dev
-  machine can't build locally. User confirmed on-device. See `docs/TASKS_DONE.md`'s T-F150 entry
-  and `docs/CONVENTIONS.md`'s "Static-Analysis Won't-Fix Conventions" section.
-- **T-F151 (`[x]` done 2026-08-10)** — the "Scan for threats" (T-F146) per-entry size cap was
-  raised from 64 MiB to 256 MiB. An empirical Phase 0 spike compared AMSI's real disk-streaming
-  mechanism (`IAmsiStream`/`IAntimalware::Scan`, a COM interface the caller implements so the
-  provider pulls bytes on demand) against the simpler, already-shipped `AmsiScanBuffer` call,
-  against the real registered Defender provider — the streaming approach failed above ~16-20 MiB
-  in practice, while the existing buffer-based call scanned real content up to 256 MiB with no
-  error, so the existing mechanism was kept and its limit raised instead of building new COM
-  streaming code. Bundled fix: scan progress now shows the specific entry being scanned (not just
-  the containing archive), since a single large entry's own scan can take several real seconds
-  under the new cap. Agent-driven smoke test (user-directed, ahead of a Store submission):
-  a 100 MiB entry scanned cleanly through the real installed app, a 300 MiB entry correctly
-  reported oversized-and-skipped — confirming the new limit is a real, exact boundary. See
-  `docs/TASKS_DONE.md`'s T-F151 entry and `docs/DECISIONS.md`'s T-F151 entry for the full spike
-  methodology.
-- **T-F152 (deferred 2026-08-10, user-directed)** — a proposal to add a VirusTotal hash-lookup
-  link (SHA256/MD5, double-click to open, single-click to copy) to the Archive Browser's entry
-  table was floated, then explicitly declined once the conflict with the published Privacy Policy/
-  `SECURITY.md`/`README.md`'s unqualified "zero network requests" claim was surfaced — user chose
-  to keep the current policy text over shipping this feature, not "come back later with a better
-  design." See `docs/TASKS.md`'s T-F152 entry and `docs/DECISIONS.md`'s T-F152 entry.
-- **T-F153 (`[x]` done 2026-08-11)** — a real, independently-confirmed bug found during a
-  user-requested broad smoke test ahead of the v1.4.9 Store submission: a source path ending in a
-  trailing directory separator (realistic via CLI/terminal tab-completion, not GUI FolderPicker/
-  drag-and-drop, which never produce one) silently corrupted archive creation two ways —
-  `ZipArchiveService`/`TarSandboxedService` rooted entries at the archive's own top level instead
-  of under the real parent folder (confirmed against the vendored `7za.exe`, an independent
-  reader, not just .NET's own lenient ZipArchive), and `Archiver.Shell/Program.cs`'s
-  `RunArchiveAsync` placed the new archive **inside its own source folder** and named it the
-  generic "archive" instead of the real folder name. Fixed via `Path.TrimEndingDirectorySeparator`
-  (deliberately chosen over a bare `TrimEnd('\')` — leaves a real drive root like `"C:\"`
-  untouched, confirmed not to regress T-F99's drive-root handling) applied once at the top of each
-  affected entry point. Two new regression tests, each confirmed to actually fail against a
-  temporary revert first; one pre-existing test had conflated this bug's scenario with the real
-  drive-root case and was corrected. Agent-driven on-device rerun of the exact original repro
-  against the real installed app confirmed the fix. See `docs/TASKS_DONE.md`'s T-F153 entry and
-  `docs/DECISIONS.md`'s T-F153 entry for the full discovery/fix account.
-- **T-F154 (`[x]` done 2026-08-11)** — user-reported bug: extracting an archive created from a
-  single file landed that file inside a same-named wrapper folder
-  (`<Destination>\photo\photo.png`) instead of directly (`<Destination>\photo.png`), unlike a real
-  archiver. Root cause: `ZipArchiveService`/`TarSandboxedService`'s `isSingleRootFile` flag was
-  computed but never actually consulted under `ExtractMode.SeparateFolders` (the App's default
-  Extract button and Explorer's "Extract Here"). `Archiver.CLI`'s `x` command confirmed unaffected
-  (always uses `SingleFolder`, where the flag already worked). Fixed via an explicit
-  `unisolatedDestDir` parameter threaded through both engines, gated on
-  `alreadyIsolated && isSingleRootFile && !isSelectedSubset` so `--extract-folder`'s own
-  always-wrap contract stays untouched; also re-anchored `ZipArchiveService`'s temp-staging path
-  (previously derived from the final destination, which the fix could turn into a shared folder).
-  Consulted `advisor` before implementing. 4 pre-existing tests had accidentally used single-file
-  fixtures to test unrelated behavior and were widened; a 5th had its assertion corrected. 5 new
-  tests across Core/Integration/CLI, each confirmed to fail against a revert first. `dotnet test`
-  green repo-wide (824/824). `Deploy.ps1` build+sign+install (v1.4.10.1) and an agent-driven
-  on-device check confirmed both entry points fixed on the real installed app. Also surfaced (not
-  yet actioned) a genuinely new collision surface: Explorer's own extraction now resolves a
-  single-file re-extract conflict silently via auto-rename, with no interactive prompt — unlike the
-  App's `Overwrite`/`Rename`/`Skip`+"apply to all" dialog (T-F06) — reported to the user as a
-  follow-up decision, not built. **Not in `v1.4.10`** (already tagged/Store-built before this was
-  found) — lands in `v1.4.11`. See `docs/TASKS_DONE.md`'s T-F154 entry and `docs/DECISIONS.md`'s
-  T-F154 entry for the full account.
-- **T-F156 (`[x]` done 2026-08-11)** —
-  immediately after T-F154 shipped, the user found `ExtractMode.SingleFolder` ("all archives -> one
-  flat folder" per its own doc comment) still wrapped a genuinely multi-root archive (several files,
-  no common folder) in an `<archive-base-name>\` subfolder — the same T-14 smart-foldering
-  wrapping T-F118 (2026-07-18) had made *deliberate and user-confirmed* at the time. Surfaced this
-  conflict explicitly via `AskUserQuestion` (quoting T-F118's own decision text) rather than
-  silently reversing or keeping it — **user confirmed reversing it for `SingleFolder` mode only**
-  ("Так, скасувати для SingleFolder"); `SeparateFolders` mode's unconditional per-archive wrapping
-  is untouched. Root cause was a single `actualDest` ternary branch in
-  `ZipArchiveService.ExtractWithSmartFolderingAsync`/`TarSandboxedService.ExtractSingleArchiveAsync`
-  reachable *only* in this exact case — removed outright. `Archiver.Shell`'s `--extract-flat` doc
-  comment corrected back to "no wrapper folder ever created". 8 pre-existing tests across 4
-  projects flipped (including T-14's own original v1.0-era test, renamed), found by running the
-  full suite. New/flipped tests confirmed to fail against a `git stash` scoped to just the two
-  service files before being restored passing; also closed a coverage gap the advisor flagged in
-  T-F154's review (`SeparateFolderName` + single-root-file combination, previously untested in
-  either direction). `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` green repo-wide
-  (826/826); `Archiver.ShellExtension.Tests.exe` (C++, unaffected) reconfirmed 100/100.
-  `Deploy.ps1` build+sign+install (v1.4.10.2) plus an agent-driven on-device check confirmed all
-  three affected entry points: `Archiver.Shell.exe --extract-flat` and `pakko.exe x` both now
-  extract a real multi-root archive flat with no wrapper, while `--extract-here` (SeparateFolders)
-  was confirmed still wrapping per-archive, unchanged. **Not in `v1.4.10`** — lands in `v1.4.11`
-  alongside T-F154. See `docs/TASKS_DONE.md`'s and `docs/DECISIONS.md`'s T-F156 entries.
-- **T-F155 (not started)** — backlog-only entry, per the user's explicit request, for adding an
-  interactive `Overwrite`/`Rename`/`Skip`+"apply to all" conflict dialog to `Archiver.Shell` (the
-  non-WinUI Explorer extraction path — currently silent/non-interactive, see T-F154's own
-  "genuinely new collision surface" finding above) — bringing it to parity with the WinUI App's
-  existing T-F06 dialog. Real design question flagged but not yet spiked: `MessageBoxW` can't
-  produce custom button labels, so `TaskDialogIndirect` (comctl32) is the likely primitive, and
-  whether `Archiver.Shell` already has the activation context it needs is unconfirmed. See
-  `docs/TASKS.md`'s T-F155 entry.
-- **T-F157 (`[x]` done 2026-08-11)** — new shared `internal static class
-  ExtractionDestinationPlanner` (`Classify`/`Resolve`, `src/Archiver.Core/Services/
-  ExtractionDestinationPlanner.cs`) replaces the `actualDest`/`isSingleRootFolder` decision
-  `ZipArchiveService.ExtractWithSmartFolderingAsync`/`TarSandboxedService.
-  ExtractSingleArchiveAsync` used to hand-duplicate — T-F118's own comment called that duplication
-  "kept algorithmically in sync," a promise T-F154/T-F156 both had to honor manually in one day.
-  Designed via Plan Mode + `advisor`, which corrected two points before implementation: a
-  discard-less `switch` over `(bool, RootShape)` does NOT get real compiler-enforced
-  exhaustiveness under `TreatWarningsAsErrors` — verified via a throwaway scratch build, which
-  failed with `CS8524` even with all 8 named combinations present (Roslyn's enum-exhaustiveness
-  check treats named members as an open set) — so the design kept `ArchiveNaming.GetExtension`'s
-  existing `_ => throw
-  ArgumentOutOfRangeException` convention and moved the real exhaustiveness guarantee into a test
-  instead (`Resolve_EveryRealRootShapeValue_NeverThrows`, iterating the real enum); and
-  `tempDest`'s `unwrapSingleFile ? destDir : actualDest` ternary was algebraically a no-op,
-  reduced to `destDir + "_tmp"` outright rather than re-deriving `unwrapSingleFile` at the call
-  site. Pure refactor — zero existing test assertions changed; 13 new tests, plus a mutation
-  check (flip one arm, confirm 4 real failures including T-F154's own coverage, restore) proving
-  the table is genuinely wired in. `dotnet test --filter "Category!=Slow&Category!=VeryLarge"`
-  green repo-wide (491/491 in `Archiver.Core.Tests`). `docs/DIAGRAMS.md` diagram 3 updated
-  (validated via `mmdc`). `Deploy.ps1` build+sign+install (v1.4.10.3) plus a fresh Debug
-  `pakko.exe` build confirmed no behavior drift across all three entry points. See
-  `docs/TASKS_DONE.md`'s and `docs/DECISIONS.md`'s T-F157 entries.
-- **T-F158 (`[x]` done 2026-08-11)** — the archive-creation-side analogue of T-F157, same day,
-  user-directed: new `internal static class DestinationConflictResolver`
-  (`src/Archiver.Core/Services/DestinationConflictResolver.cs`) replaces three hand-duplicated
-  copies of the destination-archive-path Skip/Overwrite/Rename decision —
-  `ZipArchiveService.ArchiveSingleArchiveModeAsync`/`ResolveSeparateArchivePlansAsync` (the latter
-  also tracks in-memory same-run collisions for T-F12's parallel `SeparateArchives` mode) and
-  `TarSandboxedService`'s own already-self-shared `ResolveDestinationConflictAsync` (deleted
-  outright). Designed via Plan Mode + `advisor`, which caught two real issues before
-  implementation — `File.Delete` inside the shared resolver would have broken its testability the
-  same way Tar's original helper was untestable (fixed via a `ProceedAfterDeletingExisting`
-  outcome, delete stays at each call site); an unverified truth-table claim about which
-  `(onDiskConflict, sameRunConflict)` combinations are reachable (built and confirmed explicitly:
-  `(true, true)` is unreachable today, every reachable cell matches pre-refactor behavior exactly).
-  A third issue was caught independently: advisor's cited existing-test coverage for the
-  same-run-`Overwrite` arm was checked against the real file and found to test an unrelated code
-  path (T-30's ZIP-entry-name collision) — a genuine coverage gap, closed with a new test. Pure
-  refactor — zero existing test assertions changed; `Archiver.Core.Tests` 491→501,
-  `Archiver.Core.IntegrationTests` 70→72. Mutation check (forced `Overwrite` to never rename on a
-  same-run collision) produced 3 real failures, then restored. `Deploy.ps1` build+sign+install
-  (v1.4.10.4) plus a fresh Debug `pakko.exe` confirmed both Zip's and Tar's `SingleArchive`
-  conflict arms through the real CLI (`pakko a` / `pakko a -y` / `pakko a -ttar` against real
-  pre-existing archives). **`ResolveSeparateArchivePlansAsync`'s same-run-collision arm** — only
-  reachable through the WinUI App's `SeparateArchives` mode — was closed the same day via an
-  agent-driven `windows` MCP pass, user-directed: launched the real app via the real
-  `pakko://archive?files=<base64>` protocol URI (the exact mechanism `Archiver.Shell.exe`'s
-  `LaunchOpenUi` uses) with two same-basename `Photos` folders, selected "Окремі архіви" via
-  `ui_click`, ran Archive, and confirmed on disk both `Photos.zip`/`Photos (1).zip` with correct
-  distinct content plus a matching `pakko.log` line. One real automation limit hit and documented
-  rather than hidden: the "If file exists" `ComboBox`'s selected value resisted `ui_find`/`ui_read`
-  (WinUI popup items don't expose cleanly, OCR fell back to whole-window garbled text) — not a gap
-  in the actual proof, since `Overwrite` and `Rename` are behaviorally identical for a same-run
-  collision by construction (both hit the same `renameCandidate` arm) and
-  `DestinationConflictResolverTests` already isolates `Overwrite` specifically at the unit level.
-  See `docs/TASKS_DONE.md`'s and `docs/DECISIONS.md`'s T-F158 entries.
-- **T-F155 (`[x]` done 2026-08-11)** — `Archiver.Shell`'s three extract commands (`--extract-here`,
-  `--extract-flat`, `--extract-folder`) now show a real interactive Overwrite/Rename/Skip +
-  "apply to all" conflict dialog (`ShellConflictDialog`, `TaskDialogIndirect`-based — the only
-  Win32 primitive with custom button labels), at parity with the WinUI App's own T-F06
-  `ContentDialog`. New `StickyApplyToAllConflictResolver` bridges a real scope gap: Core's
-  `ConflictResolver` only remembers "apply to all" for one `ExtractAsync` call, but Shell's three
-  commands each build a fresh one per archive in a loop — without the wrapper, a multi-select
-  would silently re-prompt after every archive even with the box checked. New
-  `Archiver.Shell/Resources/ConflictMessages*.resx` (37 locales, values copied verbatim from
-  `Archiver.App`'s own already-translated strings, not re-translated) + `ConflictDialogLocalizer`.
-  A Phase 0 spike (throwaway console project, driven via `windows` MCP) caught three real bugs
-  before any production code shipped: (1) `TASKDIALOG_BUTTON` needs `Pack = 1` — it's declared
-  inside the *same* `pshpack1.h` block as `TASKDIALOGCONFIG` in `commctrl.h`, contrary to the
-  original plan's assumption; a naturally-aligned button struct crashed `TaskDialogIndirect` with
-  `AccessViolationException` the instant a real button array was passed; (2) a missing/broken
-  comctl32 v6 activation context fails at **process activation** itself (`CreateProcess` refusing
-  to start the exe with a `SideBySide`-provider event-log error), not as a catchable
-  `EntryPointNotFoundException` — the original backlog text's failure-mode assumption was wrong;
-  (3) the Windows SxS manifest parser rejected a syntactically valid XML comment placed between
-  `</trustInfo>` and the new `<dependency>` element in `app.manifest` — confirmed via a raw
-  `RT_MANIFEST` resource dump that the embedded manifest was byte-for-byte well-formed XML, yet
-  activation still failed; removing the comment fixed it for both the unpackaged and installed-
-  MSIX builds. Mutation-checked tests for `MapResult`/`StickyApplyToAllConflictResolver`; a new
-  `ConflictDialogLocalizerTests` loop (37 cultures × 6 keys, 223 cases) proved every copied `.resw`
-  value survives the `.Replace`→`string.Format` semantic change unharmed. On-device (real
-  installed MSIX, via `windows` MCP): all three commands confirmed against real fixtures,
-  including "apply to all" correctly silencing further prompts across a whole archive's remaining
-  conflicts. Native `TaskDialogIndirect` buttons resisted `ui_click`/`mouse_control` (same
-  automation-limitation class as other native dialogs in this project) — `Tab`/`Shift+Tab` +
-  `Space`/`Enter` keyboard navigation worked reliably instead and produced every confirmation.
-  Also confirmed, at the user's prompt, that the Archive Browser's own Extract Selected/All
-  already shares the exact same `ConflictResolver`/T-F06 pipeline — no separate duplication to
-  unify there. `Archiver.CLI`'s `pakko x` has the identical gap, opened as its own backlog task
-  **T-F160** (whether a modal popup even suits a console/CI tool is a real open question). See
-  `docs/TASKS_DONE.md`'s and `docs/DECISIONS.md`'s T-F155 entries.
-- **T-F161 (`[x]` done 2026-08-11)** — real user report found by using T-F155 the same day it
-  shipped: extracting an archive with files plus a folder, choosing Rename+"apply to all" on a
-  conflict, crashed with `"Cannot extract archive: Access to the path '...\<name>_tmp' is
-  denied."`, and the archive's own folder never appeared. Root cause (confirmed via an isolated
-  `Directory.Move` platform probe, per the user's explicit "test first" instruction — not
-  guessed): `ExtractWithSmartFolderingAsync`'s commit-phase fast path
-  (`Directory.Move(tempDest, actualDest)`) fails the **whole** source tree with a plain
-  `IOException` — naming only the top-level `_tmp` path, never the actual file — the instant any
-  single file anywhere inside is transiently locked by another process (antivirus, cloud sync,
-  Search Indexer), even though every file Pakko itself had already finished writing. Fixed via a
-  new `internal static ZipArchiveService.CommitTempDestToActualDest(tempDest, actualDest,
-  moveOverride = null)` that falls back to the existing per-file merge on `IOException`; also
-  widened the entry-loop's cleanup `catch` from `OperationCanceledException` to `Exception` (a
-  second, independent bug — any mid-loop failure used to leak the `_tmp` staging folder on disk
-  forever). 4 new tests in `ZipArchiveServiceExtractTempDestResilienceTests.cs`
-  (`Archiver.Core.Tests` 501 → 505), each written and confirmed failing before the fix, then
-  restored passing. On-device confirmed 2026-08-11 (`Deploy.ps1` v1.4.10.7): the literal user
-  repro (files+folder, Rename+"apply to all", re-extract into an existing destination) via
-  `--extract-flat` now completes cleanly with no crash and no leftover `_tmp` folder. See
-  `docs/TASKS_DONE.md`'s and `docs/DECISIONS.md`'s T-F161 entries.
-- **T-F163 (`[x]` done 2026-08-11)** — `Archiver.Shell`'s operation-result dialogs
-  (`ShellResultPresenter.BuildSkippedMessage`'s header, plus `Program.cs`'s "The operation
-  failed."/"…and N more"/"No errors detected in the archive(s).") were hardcoded English, never
-  localized — found by the user getting an English summary back under `uk-UA` right after using
-  T-F155's own conflict dialog. Predates and survived T-F128/T-F146/T-F155's own 37-locale
-  localization of every *other* native Shell dialog (`HashMessages`/`ScanMessages`/
-  `ConflictMessages`) since this one is older than all three. Fixed via a new
-  `Archiver.Shell/Resources/ResultMessages.resx` (37 locales) + `ResultMessagesLocalizer`, 4 keys
-  (`ResultSkippedHeader` drops English's noun-pluralization branch entirely — "Skipped ({0}):",
-  matching the WinUI App's own T-F89 "Skipped (N)" convention; `ResultAndMoreLine`;
-  `ResultNoErrorsDetected`; `ResultOperationFailed`) — two of the four values reused already-
-  translated strings verbatim (`SkippedSectionHeader`/T-F89, `ScanAndMoreLine`/T-F146) rather than
-  re-translating identical text. Per-item skip/error reason text stays English by design
-  (`Archiver.Core` has zero localization dependency). `Archiver.Shell.Tests` 407 → 447.
-  On-device confirmed 2026-08-11 (`Deploy.ps1` v1.4.11.0, agent-driven via `windows` MCP): a
-  real conflict → Skip → "apply to all" through the installed app's `ShellConflictDialog` now
-  produces "Пропущено (1): ..." instead of English "1 entry skipped: ...". A separate UX question
-  the user raised (whether the warning dialog should show at all for a self-chosen Skip, unlike
-  NanaZip's silence there) was answered but deliberately not acted on — `SkippedFile` has no
-  marker distinguishing a self-chosen Skip from a Core-side rejection, so softening it needs a
-  real design change, not this fix. See `docs/TASKS_DONE.md`'s and `docs/DECISIONS.md`'s T-F163
-  entries.
-- Next work: Future tasks in `TASKS.md`, including **T-F148** (SYSLIB1054 conversion, split
-  out of T-F147), **T-F159** (unify `GetUniqueFilePath`, split out of T-F158), **T-F160**
-  (interactive conflict dialog for `Archiver.CLI`'s `pakko x`, parity with T-F155)
+**v1.1** tagged `v1.1.0` (GitHub-only early-tester release). **v1.2 (shell extension)**,
+**v1.3 (tar.exe integration)**, and **v1.4** are all complete except **T-F51** (Group
+Policy/ADMX support, still open — see `docs/SPEC.md`'s roadmap table). Full per-task detail for
+everything marked `[x]` below lives in `docs/TASKS_DONE.md` and `docs/DECISIONS.md` (each task's
+own entry there) — this section only tracks current status, not the investigation trail.
+
+**v1.2 shell extension:** `Archiver.Shell`, protocol activation, file association, MOTW, and the
+`IExplorerCommand` COM DLL (T-F61) are complete. Progress UI uses the Shell's native
+`IProgressDialog` (T-F61/T-F65 — the earlier `Archiver.ProgressWindow` satellite app was removed,
+see `docs/DECISIONS.md`). T-F62 (Test archive), T-F68 (shell extract silently ignoring
+`SkippedFiles`), T-F63 (Extract/Compress dialogs), and T-F83 (a cold-start protocol/file
+activation bug T-F63's testing surfaced, predating T-F63 itself) are all done.
+
+**v1.3/v1.4 tar.exe integration:** T-F47/T-F48 (`ITarService`/`TarCapabilities` scaffolding +
+capability detection) done. T-F49 (`TarProcessService.ExtractAsync`) done — while designing it, a
+real sandbox-escape exploit was confirmed against a naive tar.exe quarantine-then-validate model
+(a symlink entry writes outside quarantine before validation runs); `ExtractAsync` instead
+pre-scans and rejects the whole archive before extraction runs. The ADS/reserved-name/
+reparse-point/MOTW checks were shared into `ArchiveEntrySecurity` so both extractors (later ZIP
+and Tar) stay in sync. T-F95 (root context-menu icon missing — `Archiver.App.csproj` had no
+`<ApplicationIcon>`) fixed. **T-F96** (`Deploy.ps1`/`dotnet publish` intermittent `MSB3231` on its
+own `AppPackages`/`obj` cleanup) is `[~]` **closed as non-blocking** — root cause unconfirmed
+(leading suspect: Search Indexer race), but `Deploy.ps1`'s own tolerance mitigation has absorbed
+every recurrence since 2026-07-07; see `docs/TASKS.md`'s T-F96 entry if this needs revisiting.
+
+**T-F05 (Archive Browser) is `[~]` partial** — all implementation done (Core
+`ListEntriesAsync`/`IArchiveListingRouter`, `ExtractOptions.SelectedEntryPaths`, the
+`Archiver.App.Core` project, full breadcrumb/per-folder browser + Extract Selected/All/Info
+wiring), AI-driven on-device verification passed 2026-07-13; stays partial until the user's own
+on-device click-through. A same-day UI design-review pass (comparing a real screenshot against
+NanaZip) found and fixed a genuine bug (Row 0's Add Files/Add Folder/Hash never hid during browse
+mode) and resized the window `800x700` -> `1100x650`. Three same-day follow-ups: the Info dialog
+was deleted (fields folded into the browse-mode table as columns, plus a ZIP-only CRC-32 column);
+the standalone Close button was replaced by a single up-arrow; and CRC-32 was extended to the
+pending list too, which both surfaced and fixed a real blank-row regression (an unneeded explicit
+`VirtualizingStackPanel` racing an async CRC completion) — see `docs/DECISIONS.md`'s three T-F05
+follow-up entries for the full account, including a native-crash root-cause from two invented,
+unverified `x:Uid` patterns that was fixed the same round.
+
+**T-F99/T-F100 (drive-root context menu / file-activation routing)** are `[x]` done — on-device
+testing surfaced and fixed a command-line-corrupting `QuotePath` trailing-backslash bug and two
+independent archive-auto-naming bugs for drive-root sources. **T-F101** (Pakko missing from the
+classic "Show more options" menu) is `[x]` resolved with no code fix — stopped reproducing after
+T-F100 shipped; leading guess is an Explorer verb/icon-cache side effect of T-F100's manifest
+change. **T-F103** (extraction destination misnamed for compound extensions, e.g.
+`archive.tar.gz` -> `archive.tar` instead of `archive`) fixed via a shared `ArchiveNaming` helper
+wired into every affected call site plus the native title-display equivalent.
+
+**T-F06 (Ask on Conflict dialog)** done — `ConflictBehavior` gained a 4th value `Ask`, resolved
+per-conflict through a Core->UI callback (`ConflictResolver` helper), wired into both
+Archive-creation modes and both Zip/Tar extraction engines.
+
+**T-F52 (AppContainer Sandbox for tar.exe)** is `[x]` complete — `TarProcessService` was deleted
+outright (fail-closed, no unsandboxed fallback) and replaced by `TarSandboxedService`, routing
+every tar.exe launch through a new `Archiver.Core/Services/Sandbox/` subsystem
+(`AppContainerProfile`, `QuarantineAcl`, `QuarantineStaging`, `SandboxJobObject`,
+`SandboxedProcessLauncher`, `SecurityCapabilitiesAttributeList`, `TarSignatureVerifier`,
+`TarSandboxScope`). Confirmed on real hardware from the actual packaged (MSIX
+`FullTrustApplication`) process identity, not just a test host. Several real bugs found and fixed
+along the way (wrong `CERT_FIND_SUBJECT_CERT` constant, hardlinked staged files not inheriting
+the quarantine ACL, libarchive's implicit parent-directory creation failing under AppContainer, a
+quarantine-location correction to a fixed `%TEMP%`-rooted path) — see `docs/DECISIONS.md`'s several
+T-F52 entries. Graduated via an MCP-driven on-device pass (user-directed accepted substitute for
+a personal click-through) plus a 4th bug found via advisor review post-Step-13: sandbox-setup
+`InvalidOperationException` wasn't caught, now wrapped in `SandboxSetupException`.
+
+**T-F105 (TAR archive creation)** is `[x]` complete, all four phases — `ITarService.CompressAsync`
+(deliberately unsandboxed, since creation reads trusted local files, not an untrusted archive; see
+`SECURITY.md`), a Format combobox in `MainWindow.xaml` (localized across all 37 locales), a
+one-click "Add to X.tar" `IExplorerCommand`, and a `--format zip|tar` CLI switch. On-device
+verification (via `windows` MCP) confirmed all three entry points.
+
+**T-F106** (pending-list `ListView` rows rendering blank at window-activation time) is `[x]`
+resolved — root cause was never a WinUI rendering bug: `RootGrid`'s file-table row had no
+`MinHeight` on its own `RowDefinition` (only the `ListView` child did, which doesn't force the
+row to grow), so at a fixed window height the other rows' `Auto` sizing clamped the table's Star
+row to 0. Fixed via a larger default window (`1100x900`), an explicit `MinHeight="200"` on the
+row, and `PreferredMinimumWidth`/`Height` via `OverlappedPresenter`. Same session: the title bar
+now shows `Pakko - build <timestamp>`, read from the running assembly's own file `LastWriteTime`
+(see this file's Build Commands section for why this matters).
+
+**T-F107** (Archive Browser's "Up" button now climbs past the archive root into the real
+containing folder, up to a drive root, and up to a synthetic "This PC" node) is `[x]` done — new
+`ArchiveBrowseScope` + `FileSystemBrowser` helper. **T-F97** (double-clicking an image/text file
+in the Archive Browser silently previews it via a shared `%TEMP%\PakkoPreview\` cache instead of
+running a full Extract) is `[x]` done — new `PreviewPolicy` allowlist + `PreviewCache`, reusing
+the real `IExtractionRouter` pipeline so T-F49's pre-scan and MOTW propagation both apply for
+free. Two real bugs fixed along the way: `Launcher.LaunchFileAsync` silently failing for an
+arbitrary `%TEMP%` path (fixed via `Process.Start(UseShellExecute=true)`), and
+`ArchiveResult.CreatedFiles` listing destination folders rather than individual file paths.
+**T-F93** (Ko-fi donate link in `README.md` and the About dialog) is `[x]` done.
+
+**T-F108/T-F98/T-F109/T-F110** (all `[x]` done, same session) — T-F108 fixed the extraction
+destination defaulting to Desktop instead of the archive's own folder when browsing with no
+pending files queued; T-F98 lets double-clicking a nested archive inside the browser drill
+straight into it (up to 4 levels, `NestedArchivePolicy.MaxDepth`), reusing T-F49/T-F90/T-F94's
+security machinery unmodified at every level; T-F109 widened the safe-preview allowlist to
+video/audio, with anything else now confirming before extracting to a subfolder next to the
+archive; T-F110 added a preview-vs-extract-only icon per row. All four verified on-device.
+
+**T-F114** (ZIP-only compression/extraction performance-regression tests vs. a vendored,
+hash-verified `7za.exe` reference) is `[x]` done — 6 scenarios (archive+extract x
+one-large-file/many-small-files/hybrid), same-run ratio comparison against a per-scenario
+calibrated constant with 3x cross-machine tolerance, tar-family explicitly out of scope. Every
+`7za.exe` launch runs under tar.exe's own `SandboxJobObject` (Job Object only, no
+AppContainer/quarantine, so timing is unaffected). Many-small-files/hybrid tests are tagged
+`Category=Slow`; the one-large-file tests are tagged `Category=VeryLarge` (on-demand only).
+
+**T-F35** (parallel ZIP compression above a 64-file threshold) is `[~]` **implementation complete,
+on-device verification pending** — a new `Archiver.Core/Services/Zip/` subsystem
+(`WorkItemEnumerator`, `ParallelSingleArchiveWriter`, `ZipEntryWriter`, `ZipEntryCompressor`,
+`DosDateTime`) compresses every non-placeholder file in parallel (small files in memory,
+everything else via a per-worker temp file) through a hand-rolled ZIP container writer, since
+`ZipArchive` gives no API to compress independently and splice the result in later. Built to fix
+the ~6x gap T-F114 measured for many-small-files archiving. Two bugs were caught by tests before
+first ship (a bounded-channel concurrency bug, a Zip64 field-offset swap rejected by `7za.exe`
+but not .NET's own lenient reader). Follow-ups: merged three redundant directory walks into one;
+replaced the original 4 MiB "stream sequentially" fallback with per-worker temp-file compression
+at all sizes (surfaced and fixed a temp-file-cleanup/cancellation race); relocated temp files to
+a hidden subfolder next to the destination (after visible chunk-file flicker in Explorer) and
+added a disk-space pre-check. A real on-device NanaZip comparison then caught a genuine
+compatibility bug invisible to `dotnet test`: zero-byte files were tagged `Deflate` even though
+`DeflateStream` emits 0 bytes for empty input (not a valid deflate stream) — real `ZipArchiveEntry`
+always uses `Store` for empty entries; fixed to match. Final T-F114 ratios:
+`ManySmallFiles` 6.02 -> ~1.0, `Hybrid` 3.47 -> ~1.3, `OneLargeFile` 1.22 -> 1.18 (unaffected, as
+expected). Stays `[~]` until a manual on-device archive+verify of 100+ real small files including
+a genuinely empty one — not graduated on `dotnet test` alone, per this project's workflow rule.
+See `docs/DECISIONS.md`'s T-F35 entry and its four follow-ups for the full stage-by-stage trail.
+
+**T-F09 (`Archiver.CLI`, 7z-familiar CLI)** is `[~]` **implementation complete** — a fourth thin
+frontend over `Archiver.Core` (no DI container, manual construction like `Archiver.Shell`),
+supporting `x`/`t`/`i`/`a`/`l` and the full three-way unknown-input rule from `docs/CLI.md`, shipped as
+its own standalone self-contained per-architecture download. New `Archiver.CLI.Tests` includes a
+`Subprocess/` layer that `Process.Start`s the real built exe against real fixtures — the first
+test layer in this repo to do that. Stays `[~]` until the user's own on-device terminal run of all
+five commands plus the three error cases.
+
+**T-F116** (`Archiver.CLI` `-si`/`-so` stdin/stdout streaming) is `[~]` **implementation
+complete** — implemented via private `%TEMP%` staging in `CliStreamStaging.cs`, zero
+`Archiver.Core` changes. Empirically confirmed native PowerShell 5.1 silently corrupts binary
+data piped between two executables while PowerShell 7+/`cmd /c` do not (documented in `docs/CLI.md`).
+Same session: the built exe was renamed `Archiver.CLI.exe` -> **`pakko.exe`** (not added to PATH
+automatically, matching ripgrep/fd/bat convention). Stays `[~]` until the user's own on-device
+confirmation of a real piped round trip.
+
+**T-F120** was closed 2026-07-18 and merged into **T-F122** (its acceptance criteria folded in,
+not separately implemented). **T-F122** (GitHub Actions CI, `.github/workflows/build.yml`) is
+`[x]` done — builds the MSIX + `pakko.exe` on every push/tag and publishes CLI zips + `SHA256SUMS`
+to a GitHub Release on a version tag. Uncovered a real external environment change mid-
+implementation: `windows-latest` silently relabeled to `windows-2025`, which lacks the ARM64
+`v143` toolset variant — fixed by pinning `windows-2022` for the `build-msix` job specifically.
+Graduated only after downloading and running a real CI-produced MSIX + `pakko.exe`.
+
+**T-F117** (a silent no-op in `ExtractAsync`/`TestAsync` for a truly unrecognized archive format)
+is `[x]` done — now records a real `ArchiveError` instead of silently succeeding; a
+known-but-unsupported format keeps its existing `SkippedFile` behavior. **T-F118** (ZIP-vs-tar
+extraction smart-foldering asymmetry — a multi-root archive wrapped in a subfolder for ZIP but
+landed flat for tar-family) is `[x]` done — tar-family now matches ZIP's existing T-14
+smart-foldering algorithm exactly. **T-F03** (a new Explorer "Open" command that launches
+straight into the Archive Browser, mirroring NanaZip's real `kOpen`/`kExtract` split) is `[x]`
+done — new `BrowseCommand`, a third `pakko://browse` protocol route, and a `--browse` Shell
+switch.
+
+**T-F131/T-F133** (`[x]` done) widened ZIP-format recognition to `.jar`/`.war`/`.ear`/`.apk` and
+`.asice`/`.asics`/`.bdoc`. **T-F129's prep work** (`[x]` done) did Microsoft Store submission prep
+(WACK fixes, brand assets, manifest revision fix) — the actual submission/certification/publish
+landed later (see below). **T-F130** (`[x]` done) fixed intermittent CI sandbox-test flakiness via
+a `DisableParallelization` xUnit collection. Released as `v1.4.2`. **T-F134** (`[x]` done) added a
+`pakko -v`/`--version` flag (real 7z has no `version` subcommand; see `docs/DECISIONS.md` for why
+Pakko diverges). Released as `v1.4.3`.
+
+**Core implemented features (quick reference):** MSIX signed with dev cert via `Deploy.ps1` (see
+T-F10 for production-grade cert); async streaming (`CopyToAsync`) with `CancellationToken`
+respected mid-file; temp file/dir pattern — no partial files on cancel or failure; ZIP bomb
+detection via compression ratio (1000:1 threshold); UTF-8 round-trip verified for Cyrillic and
+emoji filenames; button text changes to "Archiving..."/"Extracting..." during operation; post-op
+cleanup (`DeleteSourceFiles`, `DeleteArchiveAfterExtraction`) runs with `IsBusy=true`; SHA-256
+integrity manifest removed (redundant with ZIP built-in CRC-32); ADS blocking (T-F38), reserved
+filename filtering (T-F39), reparse point protection (T-F37); byte-accurate progress reporting
+(T-F16) — `ProgressStream` wraps IO streams, `IsIndeterminate` removed; option controls disabled
+during operations via `IsNotBusy`/`IsArchiveNameAndNotBusy`, all bind `IsEnabled`; FileStream
+perf uses `useAsync: false`, `bufferSize: 262144` in all `ZipArchiveService` streams (faster on
+local disks from ThreadPool); `.zip` file type association (T-F44) — double-click opens Pakko
+with the archive pre-loaded, `AppInstance.Activated` handles both cold-start and warm file
+activation; MOTW propagation (T-F45) — `Zone.Identifier` ADS copied to every extracted file,
+best-effort, never fatal, no P/Invoke; status line shows operation name/file stats/speed/ETA
+during an operation, elapsed time after completion.
+
+**Microsoft Store release is live** (T-F129, done 2026-08-04) —
+https://apps.microsoft.com/detail/9p5mw010d8pr. Certification passed and the listing was
+confirmed genuinely public via `winget install --id 9P5MW010D8PR --source msstore`. An
+agent-driven functional smoke test against that exact Store-installed package confirmed
+`--test`/`--extract-here`/`--archive` all work, including a real `.7z`/`.rar` extraction through
+`TarSandboxedService`'s AppContainer sandbox from the Store-signed identity specifically.
+
+**T-F140** (`[x]` done) fixed archive-creation progress reporting for both formats (found from a
+real user report that a 4-large-folder archive looked frozen) — ZIP's parallel writer was passing
+`progress: null` into temp-file compression (fixed via a new throttled `ProgressTracker`); TAR's
+percent denominator used top-level selected-path count instead of the real recursive entry count
+(fixed via a `CountRecursiveEntriesAndBytes` pre-scan). Two same-day follow-ups added real
+filenames and byte totals to both dialogs, and fixed a throttle bug that could swallow the very
+first progress report for a small-file-dominated archive. **T-F141** (`[x]` done, same day) fixed
+a related risk the user raised independently: `ParallelSingleArchiveWriter`'s hidden chunk temp
+files were reopened with `FileShare.None`, which could abort the entire operation if a cloud-sync
+client or AV briefly opened a finished chunk file — the read-back never needed exclusivity in the
+first place, so this was a one-word fix to `FileShare.Read`.
+
+**T-F142** (`[~]` **implementation complete, on-device visual check pending**) — real TAR
+extraction byte progress via a poll of the sandboxed quarantine output directory (no streamed
+subprocess channel exists for a sandboxed launch), plus a new shared `ProgressSpeedSampler`
+consumed by both `MainViewModel` and `Archiver.Shell`'s dialog. Advisor review caught two real
+bugs before shipping: a mixed zip+tar selection would have restarted tar's progress from 0% after
+zip already reached 100%; a selected-subset extraction would have reported the whole archive's
+byte total instead of the subset's. Both fixed. The visible speed-readout rendering itself still
+needs the user's own on-device look.
+
+**T-F146** (`[~]` **implementation complete, on-device verification pending**) — AMSI-based "Scan
+for threats" for archives (Explorer context menu + Archive Browser). New standalone
+`IAntivirusScanService`/`AntivirusScanService` (deliberately not folded into
+`IArchiveService`/`ITarService`), a real P/Invoke `amsi.dll` wrapper, and `AmsiProviderCheck`
+(forces `Inconclusive` when no AV provider is registered). ZIP entries scan entirely in-memory;
+tar-family reuses T-F49/T-F52's `TarSandboxScope` quarantine but stops before the move-to-
+destination phase. A Phase 0 empirical spike (real EICAR through a real `.tar.gz`) corrected the
+original design assumption that AMSI never quarantines anything — Defender's own real-time
+on-access scanner intercepted the file independently of AMSI; see `docs/DECISIONS.md`. New entry
+points across all three frontends, full 37-locale localization. A same-day follow-up fixed
+progress reporting from one-report-per-archive to real per-entry progress at zero extra I/O
+cost. Stays `[~]` until the user's own on-device verification (a real EICAR-in-archive detection
+through both entry points, plus the no-AMSI-provider `Inconclusive` path).
+
+**T-F147** (`[x]` done) — SonarCloud triage of the findings backlog (134 -> 44), including
+splitting `ZipArchiveService.ArchiveAsync` (cognitive complexity 132, the highest in the report)
+and `TarSandboxedService` into purpose-specific context/sink records, keeping
+`ExtractWithSmartFolderingAsync`/`ExtractSingleArchiveAsync` algorithmically identical per the
+T-F118 invariant. Won't-Fix findings (P/Invoke struct naming, hardcoded tar.exe/quarantine paths,
+internal-only exception types, xUnit's `[CollectionDefinition]` convention) are now documented in
+`docs/CONVENTIONS.md`'s "SonarCloud Won't-Fix Conventions" section, closing the gap that let this
+same finding category resurface after earlier rounds. `SYSLIB1054` conversion (~40 findings) was
+scoped out as its own task, **T-F148**.
+
+**T-F150** (`[x]` done) — static analyzers now run on every build for every language, with
+mandatory fix-or-documented-suppress: C# `TreatWarningsAsErrors=true`; C++ MSVC `/analyze` on
+both `Archiver.ShellExtension` `.vcxproj` files (found 2 real bugs — missing SAL annotations, an
+ignored `CoInitializeEx` return); PowerShell `PSScriptAnalyzer` as a new CI job (found 4 real
+missing-BOM files, same corruption class as T-F84). See `docs/CONVENTIONS.md`'s "Static-Analysis
+Won't-Fix Conventions" section.
+
+**T-F151** (`[x]` done) — the AMSI scan's per-entry size cap was raised from 64 MiB to 256 MiB
+after a Phase 0 spike found AMSI's `IAmsiStream` COM-streaming mechanism fails above ~16-20 MiB
+in practice against the real Defender provider, while the existing simpler `AmsiScanBuffer` call
+scans up to 256 MiB with no error — kept the existing mechanism, raised its limit instead of
+building new streaming code.
+
+**T-F152** (deferred, user-directed) — a VirusTotal hash-lookup link for the Archive Browser was
+proposed then explicitly declined once it was found to conflict with the published Privacy
+Policy/`SECURITY.md`/`README.md`'s unqualified "zero network requests" claim.
+
+**T-F153** (`[x]` done) — a source path ending in a trailing directory separator (realistic via
+CLI tab-completion) silently corrupted archive creation two ways (wrong entry root in both
+engines; `Archiver.Shell`'s `RunArchiveAsync` placing the new archive inside its own source
+folder with a generic name). Fixed via `Path.TrimEndingDirectorySeparator` at each affected entry
+point (chosen over a bare `TrimEnd` so a real drive root like `"C:\"` stays untouched).
+
+**T-F154** (`[x]` done) — extracting a single-file archive landed the file inside a redundant
+same-named wrapper folder under `ExtractMode.SeparateFolders` (Explorer's "Extract Here" and the
+App's default Extract) — the `isSingleRootFile` flag was computed but never consulted there.
+Fixed via an explicit `unisolatedDestDir` parameter. Also surfaced (not yet built) a new
+collision-dialog gap in `Archiver.Shell`, tracked as the second, later T-F155 entry below.
+
+**T-F156** (`[x]` done, immediately after T-F154 shipped) — `ExtractMode.SingleFolder` still
+wrapped a genuinely multi-root archive in a subfolder, contradicting T-F118's deliberate
+smart-foldering decision. Surfaced the conflict via `AskUserQuestion`; **user confirmed reversing
+it for `SingleFolder` mode only** — `SeparateFolders` mode's unconditional per-archive wrapping is
+unchanged.
+
+**T-F157** (`[x]` done) — new shared `ExtractionDestinationPlanner` (`Classify`/`Resolve`)
+replaces the hand-duplicated `actualDest`/`isSingleRootFolder` decision logic between
+`ZipArchiveService`/`TarSandboxedService` that T-F118's own comment had called "kept
+algorithmically in sync" — a promise T-F154/T-F156 both had to honor manually in one day. Advisor
+review corrected two design points before implementation (a discard-less `switch` does not get
+real compiler exhaustiveness under `TreatWarningsAsErrors`, confirmed via a scratch build). Pure
+refactor, mutation-checked. **T-F158** (`[x]` done, same day) — the archive-creation-side
+analogue: new shared `DestinationConflictResolver` replaces three hand-duplicated copies of the
+Skip/Overwrite/Rename decision. Advisor caught two real issues pre-implementation and a third was
+found independently (a stale test-coverage claim). The one arm only reachable through the WinUI
+App's `SeparateArchives` mode was closed via a real `windows` MCP pass against the actual protocol
+activation.
+
+**T-F155** (`[x]` done) — `Archiver.Shell`'s three extract commands now show a real interactive
+Overwrite/Rename/Skip + "apply to all" conflict dialog (`ShellConflictDialog`, `TaskDialogIndirect`
+— the only Win32 primitive with custom button labels), at parity with the WinUI App's own T-F06
+dialog. A Phase 0 spike caught three real bugs before any production code shipped: `TASKDIALOG_
+BUTTON` needs `Pack = 1`; a missing/broken comctl32 v6 activation context fails at process
+activation itself, not as a catchable exception; and the Windows SxS manifest parser rejected a
+syntactically-valid XML comment between two manifest elements. New `StickyApplyToAllConflictResolver`
+bridges a real scope gap (Core's `ConflictResolver` only remembers "apply to all" for one
+`ExtractAsync` call; Shell's three commands each build a fresh one per archive in a loop). Opened
+**T-F160** for the identical gap in `Archiver.CLI`'s `pakko x`.
+
+**T-F161** (`[x]` done) — a real user report found the same day T-F155 shipped: extraction's
+commit-phase `Directory.Move` fast path failed the *whole* tree with a misleading error (naming
+only the top-level `_tmp` path) if any single file anywhere inside was transiently locked by
+another process, even after Pakko itself had finished writing every file. Fixed via
+`CommitTempDestToActualDest`, falling back to the existing per-file merge on `IOException`; also
+fixed an independent `_tmp`-folder leak on any mid-loop failure.
+
+**T-F163** (`[x]` done) — `Archiver.Shell`'s operation-result dialogs (skip/error header lines,
+"operation failed", "no errors detected") were hardcoded English, predating and surviving three
+earlier localization passes on Shell's *other* native dialogs. Fixed via a new
+`ResultMessages.resx` across all 37 locales.
+
+**v1.4.12 pre-release verification pass** (2026-08-12, user-directed, agent-driven via `windows`
+MCP against the real installed release MSIX + release `pakko.exe`) — a full action inventory
+across all 4 frontends cross-referenced against the test suite's 20 toxic/adversarial-input
+categories; live smoke tests confirmed no blocking issues (all security gates hold; the reactive
+tar.exe stderr "encrypt"-substring detection is not locale-sensitive even under real `uk-UA`; all
+three documented `-si`/`-so` pipe recipes behave as documented). Opened **T-F164**/**T-F165** (two
+real findings) and **T-F166**-**T-F170** (five pre-existing test-coverage gaps, not bugs).
+
+**Test count:** run `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` for current ground
+truth (as of 2026-08-11: ~826 .NET tests across `Archiver.Core.Tests`,
+`Archiver.Core.PerformanceTests`, `Archiver.Shell.Tests`, `Archiver.App.Core.Tests`,
+`Archiver.Core.IntegrationTests`, `Archiver.CLI.Tests`; C++ `Archiver.ShellExtension.Tests.exe`
+separately, 100/100 as of T-F150) — don't trust any older count in git history as current.
+
+**Next work:** Future tasks in `docs/TASKS.md`, including **T-F148** (SYSLIB1054 conversion, split
+out of T-F147), **T-F159** (unify `GetUniqueFilePath`, split out of T-F158), **T-F160**
+(interactive conflict dialog for `Archiver.CLI`'s `pakko x`, parity with T-F155), **T-F164** (GUI
+Hash lacks CRC-32, not routed through `FileHashService`), **T-F165** (`docs/DIAGRAMS.md` diagram 3
+stale after T-F161), **T-F166**-**T-F170** (test-coverage gaps: real junctions, AES-256 ZIP, Tar
+duplicate-entry-names, in-flight Tar cancellation, locked destination on extract).
 
 ## Roadmap Summary
 
