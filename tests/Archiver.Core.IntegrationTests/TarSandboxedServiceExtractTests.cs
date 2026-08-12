@@ -62,6 +62,62 @@ public sealed class TarSandboxedServiceExtractTests : IDisposable
         File.ReadAllText(Path.Combine(destDir, "sub", "b.txt")).Should().Be("world");
     }
 
+    // T-F169: mirrors ZipArchiveServiceArchiveTests.ArchiveAsync_CancelMidArchive_
+    // NoUnhandledException's tolerant shape (cancellation may land before/during/after the real
+    // sandboxed subprocess) — no prior test in this repo cancelled a real in-flight
+    // TarSandboxedService.ExtractAsync call; only test-harness-local cancellations existed
+    // (TarSandboxedServiceProgressPollingTests cancels just the progress-polling sub-component).
+    // Also confirms no orphaned quarantine directory survives: TarSandboxScope is IDisposable and
+    // disposed via `using` even when the call is cancelled, so its Guid-named quarantine root
+    // under %TEMP%\PakkoTarSandbox\ should never linger — snapshot the parent directory's real
+    // subfolders before/after rather than reaching into TarSandboxScope's private naming (the
+    // scope instance itself never escapes ExtractSingleArchiveAsync to a caller).
+    [Integration]
+    public async Task ExtractAsync_CancelMidExtraction_NoUnhandledExceptionNoOrphanedQuarantineDir()
+    {
+        string sandboxParent = Path.Combine(Path.GetTempPath(), "PakkoTarSandbox");
+        var quarantineDirsBefore = Directory.Exists(sandboxParent)
+            ? Directory.GetDirectories(sandboxParent).ToHashSet()
+            : [];
+
+        string archivePath = Path.Combine(_temp.Path, "cancel_test.tar");
+        var entries = Enumerable.Range(1, 20)
+            .Select(i => new TarBuilder.Entry
+            {
+                Name = $"file{i}.txt",
+                Content = Encoding.ASCII.GetBytes(new string('x', 64 * 1024)),
+            })
+            .ToArray();
+        TarBuilder.WriteTar(archivePath, entries);
+
+        string destDir = Path.Combine(_temp.Path, "out");
+        using var cts = new CancellationTokenSource();
+        _ = Task.Delay(5).ContinueWith(_ => cts.Cancel());
+
+        ArchiveResult? result = null;
+        try
+        {
+            result = await _sut.ExtractAsync(new ExtractOptions
+            {
+                ArchivePaths = [archivePath],
+                DestinationFolder = destDir,
+                Mode = ExtractMode.SingleFolder,
+            }, cancellationToken: cts.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            // Expected when cancellation fires mid-operation.
+        }
+
+        result?.Errors.Should().BeEmpty();
+
+        var quarantineDirsAfter = Directory.Exists(sandboxParent)
+            ? Directory.GetDirectories(sandboxParent).ToHashSet()
+            : [];
+        quarantineDirsAfter.Except(quarantineDirsBefore).Should().BeEmpty(
+            because: "TarSandboxScope's own quarantine directory must be cleaned up on cancellation, not just on success");
+    }
+
     // T-F168: unlike ZipArchiveService (which controls per-entry extraction itself and can rename
     // a colliding entry via ConflictResolver before writing it), tar.exe performs the actual
     // on-disk write during its own "-xf" — confirmed via a Phase 0 spike that two same-named

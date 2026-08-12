@@ -4134,28 +4134,6 @@ regression from this task, which owns reliability only.
 
 ---
 
-### T-F169 — Test gap: cancelling `TarSandboxedService.ExtractAsync`/`CompressAsync` mid-flight
-
-- [ ] **Status:** not started — a test-coverage gap identified during the v1.4.12 pre-release
-  verification pass (2026-08-12); not a known bug — `CancellationToken` is threaded through both
-  methods and the sandboxed-process launcher already, this is purely a missing regression test.
-- **Context:** `tests/Archiver.Core.IntegrationTests/` has no test that cancels a real in-flight
-  `TarSandboxedService.ExtractAsync`/`CompressAsync` call — every `CancellationToken` usage found
-  there is either `CancellationToken.None` or unrelated test-harness cleanup
-  (`TarSandboxedServiceSandboxBehaviorTests`'s `cts.Cancel()` cancels a test-local TCP listener, not
-  a Pakko operation). `TarSandboxedServiceProgressPollingTests.
-  PollExtractionProgressAsync_AlreadyCancelled_StopsWithoutReporting` only cancels the
-  progress-polling sub-component, not the real extraction/compression call.
-- **Acceptance criteria (draft):** at least one test that starts a real
-  `TarSandboxedService.ExtractAsync`/`CompressAsync` against a large-enough real fixture, cancels
-  the token mid-operation, and confirms graceful `OperationCanceledException`/no-hang behavior plus
-  no orphaned quarantine/staging directories — mirroring the ZIP engine's existing
-  `ArchiveAsync_CancelMidArchive_NoUnhandledException`-style tests. `dotnet test` green repo-wide.
-- **Reported by:** user-directed pre-release verification pass, 2026-08-12.
-- **Depends on:** none.
-
----
-
 ### T-F170 — Test gap: destination file locked by another process during extraction
 
 - [ ] **Status:** not started — a test-coverage gap identified during the v1.4.12 pre-release

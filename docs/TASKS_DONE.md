@@ -4354,3 +4354,28 @@ failed") were hardcoded English, never localized
   --filter "Category!=Slow&Category!=VeryLarge"` green repo-wide.
 - **Reported by:** user-directed pre-release verification pass, 2026-08-12.
 - **Depends on:** none.
+
+---
+
+### T-F169 — Test gap: cancelling `TarSandboxedService.ExtractAsync`/`CompressAsync` mid-flight
+
+- [x] **Status:** done 2026-08-12.
+- **Context:** no test in `Archiver.Core.IntegrationTests` cancelled a real in-flight
+  `TarSandboxedService.ExtractAsync`/`CompressAsync` call — existing `CancellationToken` usage was
+  either `CancellationToken.None` or cancelled an unrelated test-harness component
+  (`TarSandboxedServiceProgressPollingTests` only cancels the progress-polling sub-component).
+- **Fix/coverage:** two new tests mirroring `ArchiveAsync_CancelMidArchive_
+  NoUnhandledException`'s tolerant "may land before/during/after" shape — a real 20-file/64 KiB-
+  each tar/source-folder, cancellation fired via a 5 ms `Task.Delay`, asserting no unhandled
+  exception either way. `ExtractAsync_CancelMidExtraction_
+  NoUnhandledExceptionNoOrphanedQuarantineDir` (`TarSandboxedServiceExtractTests.cs`) additionally
+  snapshots `%TEMP%\PakkoTarSandbox\`'s real subdirectories before/after, confirming
+  `TarSandboxScope`'s `using`-disposed quarantine root never lingers on a cancelled call — no
+  reaching into the scope's own private naming needed, since it never escapes
+  `ExtractSingleArchiveAsync` to a caller. `CompressAsync_CancelMidCompression_
+  NoUnhandledExceptionNoLeftoverTempFile` (`TarSandboxedServiceCompressTests.cs`, unsandboxed —
+  no quarantine dir involved) confirms no leftover `.tar.tmp` staging file instead.
+- **Testing:** `Archiver.Core.IntegrationTests` 74 → 76. `dotnet test --filter
+  "Category!=Slow&Category!=VeryLarge"` green repo-wide.
+- **Reported by:** user-directed pre-release verification pass, 2026-08-12.
+- **Depends on:** none.

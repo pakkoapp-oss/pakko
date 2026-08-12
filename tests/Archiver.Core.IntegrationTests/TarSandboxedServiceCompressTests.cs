@@ -46,6 +46,42 @@ public sealed class TarSandboxedServiceCompressTests : IDisposable
         return File.ReadAllText(Path.Combine(destDir, relativeEntryPath));
     }
 
+    // T-F169: mirrors ZipArchiveServiceArchiveTests.ArchiveAsync_CancelMidArchive_
+    // NoUnhandledException's tolerant shape — CompressAsync is deliberately unsandboxed (see this
+    // file's own doc comment), so unlike ExtractAsync's cancel test there's no AppContainer/
+    // quarantine directory to check; the real leftover risk here is CompressToArchiveAsync's own
+    // ".tmp" staging file (see TryDeleteBestEffort's OperationCanceledException branch).
+    [Integration]
+    public async Task CompressAsync_CancelMidCompression_NoUnhandledExceptionNoLeftoverTempFile()
+    {
+        string sourceDir = Path.Combine(_temp.Path, "src");
+        Directory.CreateDirectory(sourceDir);
+        for (int i = 1; i <= 20; i++)
+            File.WriteAllText(Path.Combine(sourceDir, $"file{i}.txt"), new string('x', 64 * 1024));
+
+        using var cts = new CancellationTokenSource();
+        _ = Task.Delay(5).ContinueWith(_ => cts.Cancel());
+
+        ArchiveResult? result = null;
+        try
+        {
+            result = await _sut.CompressAsync(new ArchiveOptions
+            {
+                SourcePaths = [sourceDir],
+                DestinationFolder = _temp.Path,
+                ArchiveName = "cancel_test",
+                Format = ArchiveContainerFormat.Tar,
+            }, cancellationToken: cts.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            // Expected when cancellation fires mid-operation.
+        }
+
+        result?.Errors.Should().BeEmpty();
+        File.Exists(Path.Combine(_temp.Path, "cancel_test.tar.tmp")).Should().BeFalse();
+    }
+
     // T-F168: mirrors ZipArchiveServiceArchiveTests.ArchiveAsync_TwoSourceFilesShareBasename_
     // SecondRenamedWithSuffix — bsdtar has no --transform on this bundled build (confirmed via a
     // Phase 0 spike, see DECISIONS.md's T-F168 entry), so AppendSourcesToTarArgs stages the
