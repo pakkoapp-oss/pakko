@@ -4107,23 +4107,29 @@ regression from this task, which owns reliability only.
 
 ---
 
----
+### T-F171 — Real Tar-family duplicate-entry-name parity with ZIP (T-F30), split from T-F168
 
-### T-F168 — Test gap: duplicate entry names inside a Tar-family archive
-
-- [ ] **Status:** not started — a test-coverage gap identified during the v1.4.12 pre-release
-  verification pass (2026-08-12); not a known bug, since the ZIP engine's identical scenario is
-  already covered and `TarSandboxedService` shares the same `ConflictResolver`/rename-on-collision
-  machinery (T-F157/T-F158).
-- **Context:** T-F30 added duplicate-entry-name coverage for `ZipArchiveService` on both the
-  archive-creation side (`ArchiveAsync_TwoSourceFilesShareBasename_SecondRenamedWithSuffix`) and
-  the extraction side (`ExtractAsync_DuplicateEntryNames_RenameKeepsBothFilesDistinct`/
-  `_SkipKeepsOnlyFirst`) — no equivalent exists for `TarSandboxedService` anywhere in
-  `Archiver.Core.IntegrationTests`.
-- **Acceptance criteria (draft):** mirror T-F30's four ZIP tests for `TarSandboxedService`
-  (archive-creation collision + extraction Rename/Skip on a duplicate entry name inside a real
-  tar-family archive). `dotnet test` green repo-wide.
-- **Reported by:** user-directed pre-release verification pass, 2026-08-12.
+- [ ] **Status:** not started — split out of T-F168 once its investigation showed genuine parity
+  gaps, not just a missing test (see `docs/DECISIONS.md`'s T-F168 entry for the full spike
+  evidence).
+- **Context:** two Phase 0 spikes (raw duplicate-named tar via a `TarBuilder`-style script, real
+  bundled `tar.exe`) confirmed: (1) creation-side same-basename collisions across **directory**
+  sources are still unhandled — T-F168 fixed the file-source case only (stages a renamed temp
+  copy), but a colliding directory source would need a full recursive tree copy to give tar.exe a
+  renamed source to point at; (2) extraction-side duplicate entry names collapse to the *last*
+  entry's content on disk — tar.exe's own `-xf` does the actual write before
+  `TarSandboxedService`'s post-hoc quarantine move-phase ever sees the files, and this bundled
+  bsdtar 3.8.4 build has neither GNU tar's `--occurrence` nor a working `--transform`
+  (`tar.exe: Option --transform is not supported`, confirmed empirically).
+- **Acceptance criteria (draft):** directory-source collision staging (recursive copy into
+  `AppendSourcesToTarArgs`'s existing staging directory, mirroring the file-source fix); for
+  extraction, recovering both duplicate entries would need `tar.exe -O <name>` (writes all matching
+  entries' content concatenated to stdout in archive order) combined with per-entry byte lengths
+  from the existing `-tv` pre-scan to split the stream — this means capturing arbitrary-size binary
+  stdout through `SandboxedProcessLauncher` (security-critical sandbox code) and reworking
+  `ScanForUnsafeEntriesAsync`'s `sizeByName` dictionary (currently collapses duplicate keys). Scope
+  this as its own design pass before implementing — not a small mechanical addition.
+- **Reported by:** split from T-F168, 2026-08-12.
 - **Depends on:** none.
 
 ---

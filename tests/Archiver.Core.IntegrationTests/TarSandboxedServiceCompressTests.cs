@@ -46,6 +46,49 @@ public sealed class TarSandboxedServiceCompressTests : IDisposable
         return File.ReadAllText(Path.Combine(destDir, relativeEntryPath));
     }
 
+    // T-F168: mirrors ZipArchiveServiceArchiveTests.ArchiveAsync_TwoSourceFilesShareBasename_
+    // SecondRenamedWithSuffix — bsdtar has no --transform on this bundled build (confirmed via a
+    // Phase 0 spike, see DECISIONS.md's T-F168 entry), so AppendSourcesToTarArgs stages the
+    // colliding source under a renamed temp copy before invoking tar.exe.
+    [Integration]
+    public async Task CompressAsync_TwoFileSourcesShareBasename_SecondRenamedWithSuffix()
+    {
+        string folderA = Path.Combine(_temp.Path, "A");
+        string folderB = Path.Combine(_temp.Path, "B");
+        Directory.CreateDirectory(folderA);
+        Directory.CreateDirectory(folderB);
+        string fileA = Path.Combine(folderA, "report.txt");
+        string fileB = Path.Combine(folderB, "report.txt");
+        File.WriteAllText(fileA, "content from A");
+        File.WriteAllText(fileB, "content from B");
+
+        var result = await _sut.CompressAsync(new ArchiveOptions
+        {
+            SourcePaths = [fileA, fileB],
+            DestinationFolder = _temp.Path,
+            ArchiveName = "dup_files",
+            Format = ArchiveContainerFormat.Tar,
+        });
+
+        result.Success.Should().BeTrue(because: string.Join("; ", result.Errors.Select(e => e.Message)));
+        string destDir = Path.Combine(_temp.Path, "extract-" + Path.GetRandomFileName());
+        var extractResult = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [Path.Combine(_temp.Path, "dup_files.tar")],
+            DestinationFolder = destDir,
+            Mode = ExtractMode.SingleFolder,
+        });
+        extractResult.Success.Should().BeTrue(because: string.Join("; ", extractResult.Errors.Select(e => e.Message)));
+
+        var extractedFiles = Directory.GetFiles(destDir, "*.txt", SearchOption.AllDirectories)
+            .Select(Path.GetFileName).OrderBy(n => n).ToList();
+        extractedFiles.Should().Equal("report (1).txt", "report.txt");
+
+        var contents = Directory.GetFiles(destDir, "*.txt", SearchOption.AllDirectories)
+            .Select(File.ReadAllText).OrderBy(c => c).ToList();
+        contents.Should().Equal("content from A", "content from B");
+    }
+
     [Integration]
     public async Task CompressAsync_PlainTar_RoundTripsFileContent()
     {

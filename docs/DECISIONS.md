@@ -7852,3 +7852,67 @@ visible warning regardless of how a *different* skip in the same run happened to
 rejected this entry outright," so softening the dialog specifically for the self-chosen case would
 require a real design change (a new field threaded through `SkippedFile`/`ConflictResolver`), not
 a copy fix — left as a follow-up design question, not built this round.
+
+---
+
+### T-F168 — Tar duplicate entry names: real parity gap found, scope corrected mid-task
+
+Filed as a "test-coverage gap, not a known bug" (the task text's own framing, by analogy with
+`TarSandboxedService` already sharing `ConflictResolver`/rename-on-collision machinery with ZIP
+via T-F157/T-F158). Reading the actual implementation before writing tests showed that framing was
+wrong on both the creation and extraction sides — this entry records the two real Phase 0 spikes
+that proved it, consulted via `advisor` before deciding how much of the gap to actually close.
+
+**Spike 1 — creation side.** `AppendSourcesToTarArgs` passes each source straight through as
+`-C <parent> <name>` with no collision detection at all, unlike
+`ZipArchiveService.ArchiveSingleArchiveModeAsync`'s explicit `GetUniqueFilePath`-based rename.
+Confirmed empirically: `tar.exe -cvf out.tar -C A report.txt -C B report.txt` against two
+same-basename files from different folders produces a tar listing `report.txt` twice
+(`tar -tvf out.tar`), not a renamed second entry.
+
+**Spike 2 — extraction side.** Built a raw tar (via a throwaway script mirroring `TarBuilder`'s
+USTAR-header logic) with two entries both named `dup.txt` (`"first"`/`"second"` content) and
+extracted it with the real bundled `tar.exe` directly. `-tvf` correctly lists both entries; `-xvf`
+processes both (`x dup.txt` printed twice) but only **one** file survives on disk —
+`second content`, i.e. the later entry silently overwrote the earlier one during tar.exe's own
+`-xf`, before `TarSandboxedService.TryMoveSingleEntryAsync`'s conflict/rename logic ever runs on
+the quarantine output. Also confirmed `tar.exe --help` lists no `--occurrence`-style selector
+(this is bsdtar 3.8.4/libarchive, not GNU tar) and that `--transform` is compiled out of this
+specific Windows-bundled build (`tar.exe: Option --transform is not supported`) — ruling out both
+of libarchive's usual "rename during creation" mechanisms.
+
+**Decision (advisor-reviewed):** fix the creation side, document-and-lock-in the extraction side.
+
+- **Creation — fixed.** `AppendSourcesToTarArgs` now tracks a `HashSet<string>` of claimed
+  basenames (case-insensitive, matching ZIP's own collision convention); a colliding **file**
+  source is staged into a fresh `%TEMP%\PakkoTarStage_<guid>\` directory under a
+  `GetUniqueEntryName`-computed `"name (1).ext"` copy before being added to `tarArgs`, so tar.exe
+  writes the renamed copy under its own distinct entry name. The staging directory is cleaned up
+  in `CompressToArchiveAsync`'s own `finally` block regardless of outcome. **Directory-source**
+  basename collisions are deliberately NOT handled by this fix (would need a full recursive tree
+  copy, not a single-file stage, to give tar.exe a renamed source to point at) — see the T-F171
+  follow-up below.
+- **Extraction — not fixed, by design.** Recovering both duplicate-named entries after tar.exe's
+  own `-xf` has already collapsed them to one file on disk is not achievable within
+  `TarSandboxedService`'s current design. The only theoretical recovery path is `tar.exe`'s `-O`
+  (write matching entries to stdout, concatenated in archive order) combined with per-entry byte
+  lengths from a `-tv` pre-scan to split the stream back into distinct files — but that means
+  capturing arbitrary-size binary stdout through `SandboxedProcessLauncher` (security-critical
+  sandbox-boundary code) for what is a narrow edge case, and `ScanForUnsafeEntriesAsync`'s existing
+  `sizeByName` dictionary already collapses duplicate keys today and would need reworking too. Per
+  advisor's read (and this project's own proportionality convention — see T-F150's SYSLIB1054
+  split for the same "correct the scope, don't silently balloon the task" pattern), this is real
+  new engineering, not "add a missing test." Locked in as a regression test instead
+  (`ExtractAsync_DuplicateEntryNamesInArchive_CollapsesToLastEntryNoErrorNoCrash`) proving today's
+  actual behavior (last-entry-wins, `Success == true`, no error, no crash) rather than the
+  originally-hoped-for both-preserved outcome.
+
+**Follow-up filed as T-F171** (`docs/TASKS.md`) for real parity if ever wanted: the extraction-side
+stdout-splitting mechanism above, plus directory-source collision staging on the creation side.
+
+**Testing:** new `CompressAsync_TwoFileSourcesShareBasename_SecondRenamedWithSuffix`
+(`TarSandboxedServiceCompressTests.cs`, mirrors ZIP's own T-F30 test) and
+`ExtractAsync_DuplicateEntryNamesInArchive_CollapsesToLastEntryNoErrorNoCrash`
+(`TarSandboxedServiceExtractTests.cs`) — `Archiver.Core.IntegrationTests` 72 → 74. `dotnet build
+src/Archiver.Core` clean; `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` green
+repo-wide.

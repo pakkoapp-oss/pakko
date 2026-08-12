@@ -4321,3 +4321,36 @@ failed") were hardcoded English, never localized
   "Category!=Slow&Category!=VeryLarge"` green repo-wide.
 - **Reported by:** user-directed pre-release verification pass, 2026-08-12.
 - **Depends on:** none.
+
+---
+
+### T-F168 — Test gap: duplicate entry names inside a Tar-family archive
+
+- [x] **Status:** done 2026-08-12 — scope corrected mid-task; see `docs/DECISIONS.md`'s T-F168
+  entry for the full account.
+- **Context:** filed as "not a known bug" by analogy with ZIP's already-covered T-F30 scenario and
+  `TarSandboxedService` sharing ZIP's `ConflictResolver`/rename-on-collision machinery. Two Phase 0
+  spikes (advisor-reviewed before deciding scope) proved that analogy false: creation-side sources
+  get no collision detection at all (`tar -cvf` with two same-basename sources from different
+  parents writes two identically-named tar entries), and extraction-side duplicate entry names
+  collapse to the *last* entry's content on disk during tar.exe's own `-xf`, before Pakko's
+  post-hoc quarantine move-phase ever runs — this bundled bsdtar 3.8.4 build has neither GNU tar's
+  `--occurrence` nor a working `--transform`.
+- **Fix (creation, file sources only):** `AppendSourcesToTarArgs` now detects same-basename
+  collisions via an in-memory `HashSet<string>` and stages a colliding **file** source into a
+  uniquely-renamed temp copy (`%TEMP%\PakkoTarStage_<guid>\`, cleaned up in
+  `CompressToArchiveAsync`'s `finally`) before invoking tar.exe — mirrors ZIP's
+  `GetUniqueFilePath` naming convention. Directory-source collisions are explicitly out of scope
+  (would need a recursive tree copy) — split into **T-F171**.
+- **Not fixed, by design (extraction):** recovering both duplicate entries after tar.exe's own
+  extraction has already collapsed them is not a small fix — the only path is capturing binary
+  stdout through the security-critical `SandboxedProcessLauncher` via `tar.exe -O`, split by
+  per-entry byte offsets. Locked in as a regression test proving today's actual (last-wins)
+  behavior instead. Real parity, if ever wanted, is also folded into **T-F171**.
+- **Testing:** new `CompressAsync_TwoFileSourcesShareBasename_SecondRenamedWithSuffix`
+  (`TarSandboxedServiceCompressTests.cs`) and
+  `ExtractAsync_DuplicateEntryNamesInArchive_CollapsesToLastEntryNoErrorNoCrash`
+  (`TarSandboxedServiceExtractTests.cs`). `Archiver.Core.IntegrationTests` 72 → 74. `dotnet test
+  --filter "Category!=Slow&Category!=VeryLarge"` green repo-wide.
+- **Reported by:** user-directed pre-release verification pass, 2026-08-12.
+- **Depends on:** none.

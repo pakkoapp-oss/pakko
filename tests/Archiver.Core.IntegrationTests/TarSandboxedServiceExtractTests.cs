@@ -62,6 +62,39 @@ public sealed class TarSandboxedServiceExtractTests : IDisposable
         File.ReadAllText(Path.Combine(destDir, "sub", "b.txt")).Should().Be("world");
     }
 
+    // T-F168: unlike ZipArchiveService (which controls per-entry extraction itself and can rename
+    // a colliding entry via ConflictResolver before writing it), tar.exe performs the actual
+    // on-disk write during its own "-xf" — confirmed via a Phase 0 spike that two same-named
+    // entries collapse to one file on disk (the second entry's content wins) before
+    // TryMoveSingleEntryAsync's conflict/rename logic ever runs on the quarantine output. This is
+    // a locked-in regression test for that real, current limitation, not a fix — see
+    // DECISIONS.md's T-F168 entry and the docs/TASKS.md T-F171 follow-up for why full parity with
+    // ZIP's T-F30 would need capturing tar.exe's binary stdout through the AppContainer boundary.
+    [Integration]
+    public async Task ExtractAsync_DuplicateEntryNamesInArchive_CollapsesToLastEntryNoErrorNoCrash()
+    {
+        string archivePath = Path.Combine(_temp.Path, "dup.tar");
+        TarBuilder.WriteTar(archivePath,
+        [
+            new TarBuilder.Entry { Name = "dup.txt", Content = Encoding.ASCII.GetBytes("first") },
+            new TarBuilder.Entry { Name = "dup.txt", Content = Encoding.ASCII.GetBytes("second") },
+        ]);
+
+        string destDir = Path.Combine(_temp.Path, "out");
+        var result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [archivePath],
+            DestinationFolder = destDir,
+            Mode = ExtractMode.SingleFolder,
+        });
+
+        result.Success.Should().BeTrue();
+        result.Errors.Should().BeEmpty();
+        var extractedFiles = Directory.GetFiles(destDir, "*.txt", SearchOption.AllDirectories);
+        extractedFiles.Should().ContainSingle();
+        File.ReadAllText(extractedFiles[0]).Should().Be("second");
+    }
+
     // T-F118: mirrors ZipArchiveServiceExtractTests.ExtractAsync_SingleRootFolder_
     // ExtractsWithoutDoubleNesting — an archive whose every entry sits under one common top-level
     // folder unwraps that folder entirely rather than doubly nesting it under destDir.

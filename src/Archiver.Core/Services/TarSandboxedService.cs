@@ -1008,66 +1008,75 @@ public sealed class TarSandboxedService : ITarService
         CancellationToken cancellationToken)
     {
         string tempPath = destPath + ".tmp";
-
-        var tarArgs = new List<string>();
-        AppendCompressionFilterArgs(tarArgs, options.Format, options.CompressionLevel);
-        tarArgs.Add("-v");
-        tarArgs.Add("-cf");
-        tarArgs.Add(tempPath);
-
-        var sortedSourcePaths = options.SourcePaths.OrderBy(p => p, StringComparer.OrdinalIgnoreCase).ToList();
-        (int entryCount, long totalEntriesForProgress, long totalBytesForProgress) =
-            AppendSourcesToTarArgs(tarArgs, sortedSourcePaths, errors, skippedFiles);
-
-        if (entryCount == 0)
-            return;
-
-        int reportedFiles = 0;
-        void OnVerboseLine(string line)
-        {
-            reportedFiles++;
-            long denominator = Math.Max(totalEntriesForProgress, 1);
-            long bytesTransferred = totalBytesForProgress > 0
-                ? Math.Min(totalBytesForProgress, totalBytesForProgress * reportedFiles / denominator)
-                : 0;
-            progress?.Report(new ProgressReport
-            {
-                Percent = Math.Min(99, (int)(reportedFiles * 100L / denominator)),
-                BytesTransferred = bytesTransferred,
-                TotalBytes = totalBytesForProgress,
-                CurrentFile = ParseTarVerboseEntryName(line),
-            });
-        }
+        string? collisionStagingDir = null;
 
         try
         {
-            var (exitCode, _, stdErr) = await RunUnsandboxedTarAsync(tarArgs, OnVerboseLine, cancellationToken).ConfigureAwait(false);
+            var tarArgs = new List<string>();
+            AppendCompressionFilterArgs(tarArgs, options.Format, options.CompressionLevel);
+            tarArgs.Add("-v");
+            tarArgs.Add("-cf");
+            tarArgs.Add(tempPath);
 
-            if (exitCode != 0 || !File.Exists(tempPath))
-            {
-                TryDeleteBestEffort(tempPath);
-                errors.Add(new ArchiveError { SourcePath = destPath, Message = $"tar.exe failed to create archive: {stdErr.Trim()}" });
+            var sortedSourcePaths = options.SourcePaths.OrderBy(p => p, StringComparer.OrdinalIgnoreCase).ToList();
+            (int entryCount, long totalEntriesForProgress, long totalBytesForProgress, collisionStagingDir) =
+                AppendSourcesToTarArgs(tarArgs, sortedSourcePaths, errors, skippedFiles);
+
+            if (entryCount == 0)
                 return;
+
+            int reportedFiles = 0;
+            void OnVerboseLine(string line)
+            {
+                reportedFiles++;
+                long denominator = Math.Max(totalEntriesForProgress, 1);
+                long bytesTransferred = totalBytesForProgress > 0
+                    ? Math.Min(totalBytesForProgress, totalBytesForProgress * reportedFiles / denominator)
+                    : 0;
+                progress?.Report(new ProgressReport
+                {
+                    Percent = Math.Min(99, (int)(reportedFiles * 100L / denominator)),
+                    BytesTransferred = bytesTransferred,
+                    TotalBytes = totalBytesForProgress,
+                    CurrentFile = ParseTarVerboseEntryName(line),
+                });
             }
 
-            File.Move(tempPath, destPath, overwrite: true);
-            createdFiles.Add(destPath);
-            progress?.Report(new ProgressReport { Percent = 100, BytesTransferred = totalBytesForProgress, TotalBytes = totalBytesForProgress });
+            try
+            {
+                var (exitCode, _, stdErr) = await RunUnsandboxedTarAsync(tarArgs, OnVerboseLine, cancellationToken).ConfigureAwait(false);
+
+                if (exitCode != 0 || !File.Exists(tempPath))
+                {
+                    TryDeleteBestEffort(tempPath);
+                    errors.Add(new ArchiveError { SourcePath = destPath, Message = $"tar.exe failed to create archive: {stdErr.Trim()}" });
+                    return;
+                }
+
+                File.Move(tempPath, destPath, overwrite: true);
+                createdFiles.Add(destPath);
+                progress?.Report(new ProgressReport { Percent = 100, BytesTransferred = totalBytesForProgress, TotalBytes = totalBytesForProgress });
+            }
+            catch (OperationCanceledException)
+            {
+                TryDeleteBestEffort(tempPath);
+                throw;
+            }
+            catch (IOException ex)
+            {
+                TryDeleteBestEffort(tempPath);
+                errors.Add(new ArchiveError { SourcePath = destPath, Message = $"Cannot create archive: {ex.Message}", Exception = ex });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                TryDeleteBestEffort(tempPath);
+                errors.Add(new ArchiveError { SourcePath = destPath, Message = $"Access denied creating archive: {ex.Message}", Exception = ex });
+            }
         }
-        catch (OperationCanceledException)
+        finally
         {
-            TryDeleteBestEffort(tempPath);
-            throw;
-        }
-        catch (IOException ex)
-        {
-            TryDeleteBestEffort(tempPath);
-            errors.Add(new ArchiveError { SourcePath = destPath, Message = $"Cannot create archive: {ex.Message}", Exception = ex });
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            TryDeleteBestEffort(tempPath);
-            errors.Add(new ArchiveError { SourcePath = destPath, Message = $"Access denied creating archive: {ex.Message}", Exception = ex });
+            if (collisionStagingDir != null)
+                try { Directory.Delete(collisionStagingDir, recursive: true); } catch { /* best-effort */ }
         }
     }
 
@@ -1086,12 +1095,20 @@ public sealed class TarSandboxedService : ITarService
     // per-file byte/throughput info (only "a <name>" once a whole entry is done), so
     // BytesTransferred in OnVerboseLine is deliberately entry-count-weighted, not a real running
     // byte total. See DECISIONS.md's T-F140 entry.
-    private static (int EntryCount, long TotalEntriesForProgress, long TotalBytesForProgress) AppendSourcesToTarArgs(
+    // T-F168: tar.exe has no --transform on this bundled bsdtar build (confirmed empirically —
+    // "Option --transform is not supported"), so unlike ZipArchiveService (which writes entries
+    // programmatically and can just pick a different in-archive name), the only way to give a
+    // colliding FILE source a distinct entry name is to stage a real renamed copy and point tar.exe
+    // at that instead. Directory-source basename collisions are NOT handled here (would need a
+    // full recursive copy of the tree, not a single file) — see docs/TASKS.md's T-F171 follow-up.
+    private static (int EntryCount, long TotalEntriesForProgress, long TotalBytesForProgress, string? CollisionStagingDir) AppendSourcesToTarArgs(
         List<string> tarArgs, IReadOnlyList<string> sortedSourcePaths, List<ArchiveError> errors, List<SkippedFile> skippedFiles)
     {
         int entryCount = 0;
         long totalEntriesForProgress = 0;
         long totalBytesForProgress = 0;
+        var claimedNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        string? collisionStagingDir = null;
 
         foreach (string sourcePath in sortedSourcePaths)
         {
@@ -1126,6 +1143,18 @@ public sealed class TarSandboxedService : ITarService
             }
             else
             {
+                if (File.Exists(fullSource) && !claimedNames.Add(name))
+                {
+                    collisionStagingDir ??= Path.Combine(Path.GetTempPath(), "PakkoTarStage_" + Guid.NewGuid().ToString("N"));
+                    Directory.CreateDirectory(collisionStagingDir);
+                    string uniqueName = GetUniqueEntryName(name, claimedNames);
+                    claimedNames.Add(uniqueName);
+                    string stagedPath = Path.Combine(collisionStagingDir, uniqueName);
+                    File.Copy(fullSource, stagedPath);
+                    parent = collisionStagingDir;
+                    name = uniqueName;
+                }
+
                 tarArgs.Add("-C");
                 tarArgs.Add(parent!);
                 tarArgs.Add(name);
@@ -1137,7 +1166,21 @@ public sealed class TarSandboxedService : ITarService
             totalBytesForProgress += bytes;
         }
 
-        return (entryCount, totalEntriesForProgress, totalBytesForProgress);
+        return (entryCount, totalEntriesForProgress, totalBytesForProgress, collisionStagingDir);
+    }
+
+    // Same "name (1)", "name (2)", ... convention as GetUniqueFilePath below, but checked against
+    // an in-memory set of already-claimed entry names rather than disk existence — the candidate
+    // doesn't exist on disk yet (it's about to be staged into a fresh temp directory).
+    private static string GetUniqueEntryName(string name, HashSet<string> claimedNames)
+    {
+        string baseName = Path.GetFileNameWithoutExtension(name);
+        string ext = Path.GetExtension(name);
+        int i = 1;
+        string candidate;
+        do { candidate = $"{baseName} ({i++}){ext}"; }
+        while (claimedNames.Contains(candidate));
+        return candidate;
     }
 
     // T-F140: real count of entries tar.exe will emit a "-v" line for when archiving this one
