@@ -4265,3 +4265,32 @@ failed") were hardcoded English, never localized
   softening it specifically for the self-chosen case would need a real design change, not a copy
   fix. See `docs/DECISIONS.md`'s T-F163 entry.
 - **Depends on:** none (surfaced by real usage of T-F155, already shipped).
+
+---
+
+### T-F166 — Test gap: real Windows junction/reparse-point as an archive entry or as the extraction destination
+
+- [x] **Status:** done 2026-08-12.
+- **Context:** every existing "symlink and junction" test (T-F23) only created real symlinks via
+  `File.CreateSymbolicLink`/`Directory.CreateSymbolicLink` — none created a real NTFS junction
+  (`IO_REPARSE_TAG_MOUNT_POINT`, a different reparse tag than a symlink's `IO_REPARSE_TAG_SYMLINK`),
+  and none exercised `ArchiveEntrySecurity.PathContainsReparsePoint` (the function the extraction
+  pipeline calls, T-F37) directly at all.
+- **Fix/coverage:** new `ZipArchiveServiceArchiveTests.TryCreateJunction` helper shells out to
+  `C:\Windows\System32\cmd.exe /c mklink /J` (absolute path, per this project's system-executable
+  rule — .NET has no built-in junction API) and is reused across two new test files:
+  `ArchiveAsync_DirectoryWithJunction_JunctionSkippedRealFileArchived` mirrors the existing T-F23
+  symlink test with a real junction, confirming `ArchiveEntrySecurity.IsReparsePoint`'s
+  archive-side check also skips a junction, not just symlinks; new
+  `ArchiveEntrySecurityReparsePointTests.cs` directly unit-tests
+  `internal static ArchiveEntrySecurity.PathContainsReparsePoint` with a real junction as an
+  intermediate path component, confirming `true`, plus a plain-path `false` control case.
+- **Gotcha found along the way:** .NET's recursive `Directory.Delete` does not safely skip a
+  junction encountered mid-tree during cleanup — both new tests explicitly
+  `Directory.Delete(junctionDir, recursive: false)` (removes just the reparse point, never the
+  real target) in a `finally` block before the outer `TempDirectory.Dispose()` runs; without this,
+  cleanup threw `UnauthorizedAccessException`.
+- **Testing:** `Archiver.Core.Tests` 505 → 508. `dotnet test --filter
+  "Category!=Slow&Category!=VeryLarge"` green repo-wide.
+- **Reported by:** user-directed pre-release verification pass, 2026-08-12.
+- **Depends on:** none.

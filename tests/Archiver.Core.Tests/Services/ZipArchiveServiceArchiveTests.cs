@@ -686,6 +686,75 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
         zip.Entries.Should().Contain(e => e.FullName.Contains("file.txt"));
     }
 
+    // T-F166: a real NTFS junction is a different reparse tag (IO_REPARSE_TAG_MOUNT_POINT) than a
+    // symlink (IO_REPARSE_TAG_SYMLINK) — .NET has no CreateJunction API, so this shells out to the
+    // same `mklink /J` a developer would use manually, via cmd.exe's absolute path per this
+    // project's system-executable rule. Confirms ArchiveEntrySecurity.IsReparsePoint's generic
+    // FileAttributes.ReparsePoint check (used by the T-F23 symlink tests above) also catches a
+    // junction specifically, not just symlinks.
+    [Fact]
+    public async Task ArchiveAsync_DirectoryWithJunction_JunctionSkippedRealFileArchived()
+    {
+        string sourceDir = Path.Combine(_temp.Path, "source");
+        Directory.CreateDirectory(sourceDir);
+        string realTargetDir = Path.Combine(_temp.Path, "junction_target");
+        Directory.CreateDirectory(realTargetDir);
+        File.WriteAllText(Path.Combine(realTargetDir, "target_file.txt"), "target content");
+        string junctionDir = Path.Combine(sourceDir, "link_junction");
+
+        if (!TryCreateJunction(junctionDir, realTargetDir))
+            return; // junctions not supported on this system — skip
+
+        try
+        {
+            string realFile = Path.Combine(sourceDir, "real.txt");
+            File.WriteAllText(realFile, "real content");
+
+            var options = new ArchiveOptions
+            {
+                SourcePaths = [sourceDir],
+                DestinationFolder = _temp.Path,
+                ArchiveName = "junction_test"
+            };
+
+            var result = await _sut.ArchiveAsync(options);
+
+            result.Success.Should().BeTrue();
+            result.Errors.Should().BeEmpty();
+            result.SkippedFiles.Should().ContainSingle(s => s.Path == junctionDir);
+
+            using var zip = System.IO.Compression.ZipFile.OpenRead(result.CreatedFiles[0]);
+            zip.Entries.Select(e => e.Name).Should().Contain("real.txt");
+            zip.Entries.Should().NotContain(e => e.FullName.Contains("target_file.txt"));
+        }
+        finally
+        {
+            // .NET's recursive Directory.Delete (used by TempDirectory.Dispose) does not safely
+            // skip over a junction it encounters mid-tree — remove the reparse point itself
+            // (non-recursive: this deletes the junction, never the real target it points to)
+            // before the outer temp-dir cleanup runs.
+            Directory.Delete(junctionDir, recursive: false);
+        }
+    }
+
+    // Returns false (caller should skip the test) if junction creation isn't possible on this
+    // system — matches the existing symlink tests' IOException/UnauthorizedAccessException
+    // tolerance above.
+    internal static bool TryCreateJunction(string linkPath, string targetPath)
+    {
+        var psi = new System.Diagnostics.ProcessStartInfo
+        {
+            FileName = @"C:\Windows\System32\cmd.exe",
+            ArgumentList = { "/c", "mklink", "/J", linkPath, targetPath },
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+        };
+        using var process = System.Diagnostics.Process.Start(psi);
+        process!.WaitForExit();
+        return process.ExitCode == 0 && Directory.Exists(linkPath);
+    }
+
     // T-F21: Race Condition Handling During Traversal
 
     [Fact]

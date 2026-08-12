@@ -4059,3 +4059,135 @@ regression from this task, which owns reliability only.
 
 ---
 
+### T-F164 — GUI "Hash…" button is SHA‑256‑only, ad‑hoc, not routed through `FileHashService`
+
+- [ ] **Status:** not started — found during the v1.4.12 pre-release verification pass
+  (2026-08-12), confirmed live against the installed release build, not just by reading code.
+- **Context:** `DialogService.ShowFileHashAsync` computes a hash inline via
+  `SHA256.HashDataAsync` — a separate implementation from the one `Archiver.Shell`'s
+  `--hash --algorithm crc32|sha256` and `Archiver.CLI`'s `pakko h -scrc{CRC32|SHA256}` both use
+  (`FileHashService`/`HashAlgorithmKind`, default CRC‑32 in both other frontends, matching real
+  7z). The GUI's "Hash…" toolbar button offers no algorithm choice and no CRC‑32 at all — a real
+  three-way inconsistency, not just a missing feature: two frontends default to CRC‑32, the third
+  is SHA‑256-only with no way to pick CRC‑32.
+- **Acceptance criteria (draft):** `ShowFileHashAsync` (or its caller) routes through
+  `FileHashService.ComputeAsync` instead of its own inline `SHA256.HashDataAsync` call; the GUI
+  either gains a simple algorithm choice (matching Shell/CLI's two-option shape) or is
+  deliberately kept SHA‑256-only with that decision documented in `docs/DECISIONS.md` — this is a
+  product decision, not purely mechanical, since it changes visible UI. New
+  `Archiver.App.Core.Tests`/`Archiver.Core.Tests` coverage for whichever shape is chosen (none
+  exists today for this code path — confirmed absent during this task's own investigation).
+  `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` green repo-wide; on-device
+  verification per this project's own rule for UI-visible changes.
+- **Reported by:** user-directed pre-release verification pass, 2026-08-12 (agent-driven, via the
+  local `windows` MCP server against the real installed v1.4.12 MSIX).
+- **Depends on:** none.
+
+---
+
+### T-F165 — `docs/DIAGRAMS.md` diagram 3 (extract commit step) stale after T-F161
+
+- [ ] **Status:** not started — a documentation-only fix, found during the v1.4.12 pre-release
+  verification pass (2026-08-12).
+- **Context:** diagram 3's node N still describes the pre-T-F161 unconditional two-branch commit
+  (`Directory.Move(tempDest→actualDest)` if `actualDest` doesn't exist, else a plain per-file
+  merge) — it was never updated when T-F161 wrapped that move in a
+  `CommitTempDestToActualDest(tempDest, actualDest, moveOverride)` helper with an
+  `IOException`-triggered fallback to per-file merge (the exact fix for the real "Access denied on
+  a transiently-locked file" crash T-F161 closed). Confirmed by grep: zero mentions of `T-F161` or
+  `CommitTempDestToActualDest` anywhere in `docs/DIAGRAMS.md`. This is a real violation of this
+  project's own Diagrams DoD rule ("same commit as the code") — T-F161's own commit updated
+  `docs/TASKS_DONE.md`/`docs/DECISIONS.md` but not this diagram.
+- **Acceptance criteria:** node N (and its surrounding prose in the "What this catches"/"Fixed
+  downstream" sections right below the flowchart) updated to describe the real
+  `CommitTempDestToActualDest` fallback behavior; render the edited mermaid block through
+  `mmdc` before considering this done, per this repo's own "never auto-validated" rule.
+- **Reported by:** user-directed pre-release verification pass, 2026-08-12.
+- **Depends on:** none (T-F161, already shipped).
+
+---
+
+### T-F167 — Test gap: AES‑256‑encrypted ZIP fixture exists but no test consumes it
+
+- [ ] **Status:** not started — a test-coverage gap identified during the v1.4.12 pre-release
+  verification pass (2026-08-12); not a known bug, since ZipCrypto encryption is already covered
+  by the same local-header encryption-bit check.
+- **Context:** `tests/Archiver.Core.Tests/Fixtures/archives/encrypted_aes256.zip_MANUAL.txt`
+  documents how to manually generate a real AES‑256-encrypted ZIP fixture (via `7z a
+  -p"testpassword" -mem=AES256 ...`), but no committed fixture or test actually exercises it —
+  every existing encrypted-ZIP test (`ExtractAsync_PasswordProtectedZip_...`,
+  `Extract_EncryptedZipCrypto_ReturnsError`, `TestAsync_EncryptedArchive_ReturnsError`) uses only
+  the older ZipCrypto encryption method.
+- **Acceptance criteria (draft):** generate and commit a real `encrypted_aes256.zip` fixture per
+  the existing manual-generation instructions; add test coverage mirroring the existing ZipCrypto
+  tests (`ExtractAsync`/`TestAsync` both refuse with a clear message) to confirm the same
+  local-header encryption-bit detection actually catches AES‑256, not just ZipCrypto's older bit
+  pattern — these are two different encryption method IDs in the ZIP spec, so this isn't
+  guaranteed by the ZipCrypto test alone. `dotnet test` green repo-wide.
+- **Reported by:** user-directed pre-release verification pass, 2026-08-12.
+- **Depends on:** none.
+
+---
+
+### T-F168 — Test gap: duplicate entry names inside a Tar-family archive
+
+- [ ] **Status:** not started — a test-coverage gap identified during the v1.4.12 pre-release
+  verification pass (2026-08-12); not a known bug, since the ZIP engine's identical scenario is
+  already covered and `TarSandboxedService` shares the same `ConflictResolver`/rename-on-collision
+  machinery (T-F157/T-F158).
+- **Context:** T-F30 added duplicate-entry-name coverage for `ZipArchiveService` on both the
+  archive-creation side (`ArchiveAsync_TwoSourceFilesShareBasename_SecondRenamedWithSuffix`) and
+  the extraction side (`ExtractAsync_DuplicateEntryNames_RenameKeepsBothFilesDistinct`/
+  `_SkipKeepsOnlyFirst`) — no equivalent exists for `TarSandboxedService` anywhere in
+  `Archiver.Core.IntegrationTests`.
+- **Acceptance criteria (draft):** mirror T-F30's four ZIP tests for `TarSandboxedService`
+  (archive-creation collision + extraction Rename/Skip on a duplicate entry name inside a real
+  tar-family archive). `dotnet test` green repo-wide.
+- **Reported by:** user-directed pre-release verification pass, 2026-08-12.
+- **Depends on:** none.
+
+---
+
+### T-F169 — Test gap: cancelling `TarSandboxedService.ExtractAsync`/`CompressAsync` mid-flight
+
+- [ ] **Status:** not started — a test-coverage gap identified during the v1.4.12 pre-release
+  verification pass (2026-08-12); not a known bug — `CancellationToken` is threaded through both
+  methods and the sandboxed-process launcher already, this is purely a missing regression test.
+- **Context:** `tests/Archiver.Core.IntegrationTests/` has no test that cancels a real in-flight
+  `TarSandboxedService.ExtractAsync`/`CompressAsync` call — every `CancellationToken` usage found
+  there is either `CancellationToken.None` or unrelated test-harness cleanup
+  (`TarSandboxedServiceSandboxBehaviorTests`'s `cts.Cancel()` cancels a test-local TCP listener, not
+  a Pakko operation). `TarSandboxedServiceProgressPollingTests.
+  PollExtractionProgressAsync_AlreadyCancelled_StopsWithoutReporting` only cancels the
+  progress-polling sub-component, not the real extraction/compression call.
+- **Acceptance criteria (draft):** at least one test that starts a real
+  `TarSandboxedService.ExtractAsync`/`CompressAsync` against a large-enough real fixture, cancels
+  the token mid-operation, and confirms graceful `OperationCanceledException`/no-hang behavior plus
+  no orphaned quarantine/staging directories — mirroring the ZIP engine's existing
+  `ArchiveAsync_CancelMidArchive_NoUnhandledException`-style tests. `dotnet test` green repo-wide.
+- **Reported by:** user-directed pre-release verification pass, 2026-08-12.
+- **Depends on:** none.
+
+---
+
+### T-F170 — Test gap: destination file locked by another process during extraction
+
+- [ ] **Status:** not started — a test-coverage gap identified during the v1.4.12 pre-release
+  verification pass (2026-08-12); not a known bug — T-F161 (2026-08-11) just added exactly this
+  kind of resilience for the *commit* step's `Directory.Move`, but no test locks an individual
+  destination file during the per-entry extraction loop itself.
+- **Context:** locked-file coverage exists for archive-creation (source file locked during
+  directory traversal, destination temp-file locked) but nothing exercises a locked *destination*
+  file specifically during `ZipArchiveService.ExtractAsync`/`TarSandboxedService.ExtractAsync`'s
+  per-entry write, as distinct from T-F161's already-tested locked-file-during-final-move
+  scenario.
+- **Acceptance criteria (draft):** a test that holds a destination file open (`FileShare.None`)
+  while extracting an archive containing an entry with that same name, confirming the per-entry
+  behavior is a clean per-item `ArchiveError`/skip rather than aborting the whole operation or
+  crashing — for both `ZipArchiveService` and `TarSandboxedService`. `dotnet test` green
+  repo-wide.
+- **Reported by:** user-directed pre-release verification pass, 2026-08-12.
+- **Depends on:** none.
+
+---
+
