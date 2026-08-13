@@ -194,6 +194,8 @@ Always run without a path argument — all projects must stay green after every 
 
 ## Documents
 
+- [Developer / API Docs](https://pakkoapp-oss.github.io/pakko/dev/) — generated site: architecture,
+  conventions, CLI reference, and an API reference built from `Archiver.Core`'s own XML doc comments
 - [Changelog](CHANGELOG.md) — per-release history
 - [Security Policy](SECURITY.md) — threat model, CVE tables, mitigations
 - [Privacy Policy](docs/privacy.html)

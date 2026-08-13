@@ -204,6 +204,9 @@ dotnet test --filter "Category!=Slow&Category!=VeryLarge"
 
 ## Документи
 
+- [Документація для розробників / API](https://pakkoapp-oss.github.io/pakko/dev/) — згенерований
+  сайт: архітектура, конвенції, довідник CLI та API-довідник, зібраний з XML doc-коментарів
+  `Archiver.Core` (англійською)
 - [Журнал змін](CHANGELOG.md) — історія релізів (англійською)
 - [Політика безпеки](SECURITY.md) — модель загроз, таблиці CVE, заходи захисту (англійською)
 - [Політика приватності](docs/privacy.html)
