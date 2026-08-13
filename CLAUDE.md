@@ -333,6 +333,13 @@ tar.exe stderr "encrypt"-substring detection is not locale-sensitive even under 
 three documented `-si`/`-so` pipe recipes behave as documented). Opened **T-F164**/**T-F165** (two
 real findings) and **T-F166**-**T-F170** (five pre-existing test-coverage gaps, not bugs).
 
+**T-F172** (`[x]` done, 2026-08-13) — a DocFX developer/API docs site, user-requested (.NET
+equivalent of Rust's mdBook + generated API docs). `GenerateDocumentationFile=true` is now on for
+`Archiver.Core`/`Archiver.App.Core`, with a **temporary** `NoWarn CS1591` on both — full `///`
+coverage + dropping that `NoWarn` so CS1591 becomes a real enforced gate is split out as
+**T-F173** (not started). See this file's Documentation Map for `docfx.json`'s row and the Build
+Commands section for the local-preview command.
+
 **Test count:** run `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` for current ground
 truth (as of 2026-08-11: ~826 .NET tests across `Archiver.Core.Tests`,
 `Archiver.Core.PerformanceTests`, `Archiver.Shell.Tests`, `Archiver.App.Core.Tests`,
@@ -393,7 +400,8 @@ history narrative below, which predates the move and was not mechanically rewrit
 | `CONTRIBUTING.md` | Contributor onboarding summary | Before a contributor's first build | Build/deploy steps change — update `scripts/README.md` first, then sync the summary here |
 | `scripts/README.md` | **Canonical owner of build/sign/deploy steps** (`Deploy.ps1`, `Setup-DevCert.ps1`) | Running or changing the deploy scripts | `Deploy.ps1`/`Setup-DevCert.ps1` behavior changes |
 | `CHANGELOG.md` | **Canonical owner of per-release history** — one section per version tag, plain-language summary of the `T-Fxx` tasks shipped since the previous tag | Cutting a release | Every version tag — see this file's "Deployment" section |
-| `docs/index.html` + `docs/uk/index.html` | Public project website (GitHub Pages, served from `/docs`) — bilingual EN/UK landing page: trust model, what's implemented, download links | User-facing — not an agent instruction source | Supported-format list changes, a major feature ships, download/release mechanics change, or roadmap/version-status changes — keep both language versions in sync with each other and with `README.md`'s "Project Status"/"Supported Formats" |
+| `docs/index.html` + `docs/uk/index.html` | Public project website — bilingual EN/UK landing page: trust model, what's implemented, download links. **Deployment changed T-F172 (2026-08-13):** GitHub Pages is no longer served directly from the `/docs` branch path; `.github/workflows/build.yml`'s `docs`/`deploy-pages` jobs assemble these files (copied verbatim via an explicit allowlist) plus the DocFX site into one Pages artifact on every push to `main` — content and authoring are unchanged, only the delivery mechanism | User-facing — not an agent instruction source | Supported-format list changes, a major feature ships, download/release mechanics change, or roadmap/version-status changes — keep both language versions in sync with each other and with `README.md`'s "Project Status"/"Supported Formats" |
+| `docfx.json` + `toc.yml` + `index.md` + `api/index.md` (repo root) | DocFX config for the generated developer/API docs site (T-F172) — book content is the *existing* curated `docs/*.md`/root `*.md` files read in place (no duplication), API reference is generated from `Archiver.Core`/`Archiver.App.Core`'s own XML `///` comments. Live at `https://pakkoapp-oss.github.io/pakko/dev/` | Adding a new conceptual doc that should appear in the site's nav, or a new class library whose XML comments should be included in the API reference | The curated article list changes, or a new project's API should be included — remember to add its `.csproj` to `docfx.json`'s `metadata[0].src.files` too |
 
 **Canonical topic owners — do not duplicate, link instead:**
 - Security/threat-model/CVE/supply-chain rationale → `SECURITY.md` only. `docs/SPEC.md`/`README.md` keep at most a 2-line teaser with a link.
@@ -813,6 +821,11 @@ dotnet build src/Archiver.Core
 
 # Generate test fixtures
 dotnet run --project tests/Archiver.Core.Tests.GenerateFixtures
+
+# Build/preview the DocFX developer docs site (T-F172) — docfx is a pinned local tool
+# (.config/dotnet-tools.json), first use on a machine needs `dotnet tool restore`.
+dotnet docfx docfx.json           # build only, output to _site/ (gitignored)
+dotnet docfx docfx.json --serve   # build + serve at localhost:8080 for local preview
 
 # Build MSIX (requires Windows SDK)
 dotnet publish src/Archiver.App/Archiver.App.csproj \
