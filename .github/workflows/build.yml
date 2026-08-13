@@ -516,3 +516,65 @@ jobs:
           gh release create "${{ github.ref_name }}" @assets `
             --title "${{ github.ref_name }}" `
             --notes-file $env:NOTES_PATH
+
+  # DocFX developer/API docs site (docfx.json at repo root -- see index.md/toc.yml/api/index.md
+  # for the book+API structure). runs-on: ubuntu-latest, unlike every other job in this file --
+  # Archiver.Core and Archiver.App.Core are both plain net8.0 with zero WinUI/Windows-only deps
+  # (a repo hard constraint already, for unrelated reasons), so docfx's design-time build of them
+  # is genuinely portable and doesn't need a Windows runner's licensing cost.
+  docs:
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - uses: actions/configure-pages@v5
+
+      - name: Restore local dotnet tools (docfx)
+        run: dotnet tool restore
+
+      - name: Build DocFX site
+        run: dotnet docfx docfx.json
+
+      # Assembles the real Pages artifact: the existing hand-authored static site (docs/index.html
+      # and friends) copied verbatim, unchanged, plus the freshly built DocFX site under dev/. An
+      # explicit allowlist, not `cp -r docs/*` -- docs/ also holds TASKS.md/TASKS_DONE.md/
+      # DECISIONS.md (hundreds of KB of internal working notes) that must never land on the live
+      # public site root.
+      - name: Assemble Pages artifact
+        run: |
+          set -euo pipefail
+          mkdir -p _pages/uk _pages/assets _pages/dev
+          cp docs/index.html docs/privacy.html docs/sitemap.xml docs/googlec78fa6674eb7667f.html _pages/
+          cp -r docs/uk/. _pages/uk/
+          cp -r docs/assets/. _pages/assets/
+          cp -r _site/. _pages/dev/
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _pages
+
+  # Separate job (not a step in `docs`) per GitHub's own required Pages-deployment pattern --
+  # actions/deploy-pages needs the `pages: write` / `id-token: write` permissions and the
+  # `github-pages` environment, which stay scoped to this job alone rather than widening `docs`'s
+  # own permissions unnecessarily.
+  deploy-pages:
+    needs: docs
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
