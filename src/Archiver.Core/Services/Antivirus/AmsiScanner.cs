@@ -4,11 +4,12 @@ using Archiver.Core.Models;
 namespace Archiver.Core.Services.Antivirus;
 
 /// <summary>
-/// T-F146. Real AMSI-backed scanner (amsi.dll) — <see cref="AmsiInitialize"/>/
-/// <see cref="AmsiOpenSession"/> run once in the constructor and are reused across every
-/// <see cref="ScanBuffer"/> call for this instance's lifetime (matches AMSI's own "a session
-/// groups related scans" semantics), then torn down via Dispose
-/// (<see cref="AmsiCloseSession"/> then <see cref="AmsiUninitialize"/>, in that order — mirrors
+/// T-F146. Real AMSI-backed scanner (amsi.dll) — <see cref="NativeMethods.AmsiInitialize"/>/
+/// <see cref="NativeMethods.AmsiOpenSession"/> run once in the constructor and are reused across
+/// every <see cref="ScanBuffer"/> call for this instance's lifetime (matches AMSI's own "a
+/// session groups related scans" semantics), then torn down via Dispose
+/// (<see cref="NativeMethods.AmsiCloseSession"/> then <see cref="NativeMethods.AmsiUninitialize"/>,
+/// in that order — mirrors
 /// Services/Sandbox/AppContainerProfile.cs's own P/Invoke pattern). Confirmed empirically
 /// (docs/DECISIONS.md's T-F146 entry) to work non-elevated: a real EICAR buffer returns
 /// AMSI_RESULT_DETECTED (32768) and a clean buffer returns AMSI_RESULT_NOT_DETECTED (1) on this

@@ -8,7 +8,7 @@ internal enum WorkResultKind { Compressed, TempFileCompressed, DirectoryPlacehol
 /// <see cref="ParallelSingleArchiveWriter"/>. Reparse-point skips are reported directly during
 /// enumeration (never dispatched as work at all), so there is no "Skipped" case here.
 ///
-/// <see cref="TempFileCompressed"/> replaced the original "large files stream sequentially,
+/// <see cref="WorkResultKind.TempFileCompressed"/> replaced the original "large files stream sequentially,
 /// single-threaded" design (T-F35 follow-up) — a file above the in-memory threshold is now ALSO
 /// compressed in parallel, into a private temp file instead of a `byte[]`, removing the file-size
 /// ceiling that design needed (see DECISIONS.md). Both compressed cases know crc/compressed/

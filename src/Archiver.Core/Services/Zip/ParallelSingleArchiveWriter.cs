@@ -54,8 +54,9 @@ internal static class ParallelSingleArchiveWriter
     /// <c>IProgressDialog</c>'s COM/UI-thread marshaling under up to 16 concurrent workers, and are
     /// clamped to 99% here — the single writer thread can still be mid-copy on the last large temp
     /// file (or a skipped/errored source can leave a permanent byte-count gap) after every worker
-    /// has finished, so the real 100% is only ever reported once by <see cref="ReportComplete"/>
-    /// after the whole pipeline actually finishes draining.
+    /// has finished, so the real 100% is only ever reported once, directly via
+    /// <c>IProgress&lt;ProgressReport&gt;.Report</c>, after the whole pipeline actually finishes
+    /// draining.
     /// </summary>
     internal sealed class ProgressTracker
     {

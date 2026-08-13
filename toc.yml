@@ -1,0 +1,24 @@
+- name: Home
+  href: index.md
+- name: Specification
+  href: docs/SPEC.md
+- name: Architecture
+  href: docs/ARCHITECTURE.md
+- name: Conventions
+  href: docs/CONVENTIONS.md
+- name: CLI Reference
+  href: docs/CLI.md
+- name: Group Policy
+  href: docs/POLICIES.md
+- name: Testing
+  href: docs/TESTING.md
+- name: Code Signing
+  href: docs/SIGNING.md
+- name: Security
+  href: SECURITY.md
+- name: Contributing
+  href: CONTRIBUTING.md
+- name: Code of Conduct
+  href: CODE_OF_CONDUCT.md
+- name: API Reference
+  href: api/

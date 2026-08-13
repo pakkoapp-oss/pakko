@@ -1,0 +1,61 @@
+{
+  "$schema": "https://raw.githubusercontent.com/dotnet/docfx/main/schemas/docfx.schema.json",
+  "metadata": [
+    {
+      "src": [
+        {
+          "src": "src",
+          "files": [
+            "Archiver.Core/Archiver.Core.csproj",
+            "Archiver.App.Core/Archiver.App.Core.csproj"
+          ]
+        }
+      ],
+      "dest": "api"
+    }
+  ],
+  "build": {
+    "content": [
+      {
+        "files": [
+          "toc.yml",
+          "index.md",
+          "docs/SPEC.md",
+          "docs/ARCHITECTURE.md",
+          "docs/CONVENTIONS.md",
+          "docs/CLI.md",
+          "docs/POLICIES.md",
+          "docs/TESTING.md",
+          "docs/SIGNING.md",
+          "SECURITY.md",
+          "CONTRIBUTING.md",
+          "CODE_OF_CONDUCT.md",
+          "scripts/README.md",
+          "api/index.md",
+          "api/**.yml",
+          "api/toc.yml"
+        ]
+      }
+    ],
+    "resource": [
+      {
+        "files": [
+          "docs/assets/**"
+        ]
+      }
+    ],
+    "output": "_site",
+    "template": [
+      "default",
+      "modern"
+    ],
+    "globalMetadata": {
+      "_appName": "Pakko",
+      "_appTitle": "Pakko Developer Docs",
+      "_appFooter": "Pakko — minimal-trust ZIP/tar archiver for Windows. Apache 2.0.",
+      "_appLogoPath": "docs/assets/pakko-mark.svg",
+      "_appFaviconPath": "docs/assets/favicon.ico",
+      "_enableSearch": true
+    }
+  }
+}
