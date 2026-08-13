@@ -6,9 +6,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>12</LangVersion>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <!-- T-F172 phase 1: 15/71 files have no /// comments yet. Suppressed here so the DocFX API
-         site can ship now with whatever coverage exists; T-F172 (phase 2) backfills coverage and
-         removes this NoWarn so CS1591 becomes a real enforced gate against future drift. -->
+    <!-- T-F172: 15/71 files have no /// comments yet. Suppressed here so the DocFX API site can
+         ship now with whatever coverage exists; T-F173 backfills coverage and removes this
+         NoWarn so CS1591 becomes a real enforced gate against future drift. -->
     <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
 

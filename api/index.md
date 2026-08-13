@@ -14,5 +14,5 @@ rest of the app). Browse by namespace in the sidebar, or start here:
   nested-archive drill-down, file-activation routing) shared by the WinUI app
 
 Coverage is partial today — some members show no summary because their `///` doc comments haven't
-been written yet (tracked as T-F172, see `docs/TASKS.md`). Missing docs are not build errors yet;
+been written yet (tracked as T-F173, see `docs/TASKS.md`). Missing docs are not build errors yet;
 that's a deliberate first phase, not an oversight.

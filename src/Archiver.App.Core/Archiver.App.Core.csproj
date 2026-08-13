@@ -5,7 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <!-- T-F172 phase 1 — see Archiver.Core.csproj's identical NoWarn for the full rationale. -->
+    <!-- T-F172 — see Archiver.Core.csproj's identical NoWarn for the full rationale. -->
     <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
 

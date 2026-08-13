@@ -4109,3 +4109,55 @@ regression from this task, which owns reliability only.
 
 ---
 
+### T-F172 — DocFX developer/API docs site
+
+- [x] **Status:** done 2026-08-13. User asked for a .NET equivalent of Rust's mdBook plus
+  generated docs for the code's own API surface; DocFX (dotnet/docfx, stable 2.78.x — v3 is not
+  publicly usable, confirmed via research) does both in one tool. Real motivation beyond "nice to
+  have": `docs/ARCHITECTURE.md` hand-maintains a list of public `Archiver.Core` signatures and was
+  already flagged as a staleness risk (T-F73) — a generated API reference removes that risk
+  structurally instead of relying on cascade discipline.
+- **What shipped:** `docfx.json` + `toc.yml` + `index.md` + `api/index.md` at repo root. Book
+  content is the *existing* curated `docs/*.md`/root `*.md` files read in place (no duplication);
+  API reference is generated from `Archiver.Core` + `Archiver.App.Core`'s own XML `///` comments
+  (`GenerateDocumentationFile=true` on both, with a temporary `NoWarn CS1591` — see T-F173). New
+  `docs`/`deploy-pages` jobs in `.github/workflows/build.yml` (push-to-main only) assemble a Pages
+  artifact — the existing static marketing site copied via an explicit allowlist (never a
+  `docs/*` wildcard, which would publish `TASKS.md`/`TASKS_DONE.md`/`DECISIONS.md` at the site
+  root) plus the DocFX output under `dev/` — and deploy via `actions/deploy-pages`. Live at
+  <https://pakkoapp-oss.github.io/pakko/dev/>, linked from `README.md`/`README.uk.md`'s Documents
+  section and both `docs/index.html`/`docs/uk/index.html` footers.
+- **Found and fixed along the way:** turning on `GenerateDocumentationFile` surfaced 3 real
+  pre-existing broken `<see cref>` references (unqualified nested `NativeMethods` members in
+  `AmsiScanner.cs`; a cited member name that doesn't exist in `ParallelSingleArchiveWriter.cs` and
+  another in `WorkResult.cs`) — fixed all three rather than suppressing CS1574 too.
+- **Surprise vs. plan:** the plan treated the Pages settings switch (legacy branch source →
+  Actions-based deployment) as a separate, explicitly gated step, done last to avoid a live-site
+  outage window. In practice, the first successful `actions/deploy-pages` run already took over
+  live serving on its own — confirmed via real HTTP checks (root site, `/uk/`, `/assets/`,
+  `/privacy.html`, and the new `/dev/` all correct) — while `gh api repos/.../pages` still reports
+  `build_type: "legacy"` even after. User-directed: leave the settings API field as-is since the
+  live site already works correctly; no explicit `build_type=workflow` switch was made.
+- **Reported by:** user request, 2026-08-13.
+- **Depends on:** none.
+
+---
+
+### T-F173 — Full XML doc coverage for `Archiver.Core`/`Archiver.App.Core` + enforce CS1591
+
+- [ ] **Status:** not started — split out of T-F172 as its own follow-up (two-phase rollout,
+  user-confirmed 2026-08-13).
+- **Context:** T-F172 turned on `GenerateDocumentationFile` for both projects but added a
+  temporary `<NoWarn>$(NoWarn);CS1591</NoWarn>` since 15/71 files in `Archiver.Core` (and part of
+  `Archiver.App.Core`) have no `///` doc comments at all — enabling the warning as an error today
+  would break the build repo-wide under `TreatWarningsAsErrors=true` (T-F150).
+- **Acceptance criteria:** every public type/member in `Archiver.Core` and `Archiver.App.Core` has
+  a real `<summary>` (or `<inheritdoc/>` where genuinely appropriate — see `ZipArchiveService.cs`'s
+  existing pattern), then remove the temporary `NoWarn` from both `.csproj` files so CS1591 becomes
+  a real enforced gate against future signature-doc drift, same standing as any other warning
+  under `TreatWarningsAsErrors=true`.
+- **Reported by:** split from T-F172, 2026-08-13.
+- **Depends on:** none.
+
+---
+

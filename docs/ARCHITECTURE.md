@@ -3,6 +3,13 @@
 > **Current as of v1.4/v1.5 (last synced 2026-07-18).** All signatures reflect actual implemented
 > code, verified by reading it — see `CLAUDE.md`'s Documentation Map for when to update this file.
 
+> **Generated API reference (T-F172, 2026-08-13):** `Archiver.Core`'s and `Archiver.App.Core`'s
+> public members are also documented at <https://pakkoapp-oss.github.io/pakko/dev/api/>, generated
+> straight from their own XML `///` doc comments — coverage is partial today (full backfill +
+> CS1591 enforcement tracked as T-F173), but it won't drift the way a hand-maintained signature
+> list can. This file's own content is unchanged and remains the narrative/DI-wiring reference;
+> the generated site is a complement, not a replacement.
+
 ---
 
 ## Layer Diagram
