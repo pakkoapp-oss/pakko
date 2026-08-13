@@ -411,7 +411,8 @@ section.divider { border-top: 1px solid var(--line); }
 
 /* ---------- responsive ---------- */
 @media (max-width: 860px) {
-  .hero { grid-template-columns: 1fr; gap: var(--space-6); padding-top: var(--space-7); }
+  .hero { padding-top: var(--space-7); }
+  .hero .wrap { grid-template-columns: 1fr; gap: var(--space-6); }
   .pillars { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .manifest { grid-template-columns: 1fr; gap: var(--space-5); }
   .downloads { grid-template-columns: 1fr; }
