@@ -11,6 +11,7 @@ namespace Archiver.Core.Interfaces;
 /// </summary>
 public interface IArchiveListingRouter
 {
+    /// <summary>Lists a single archive's entries without extracting.</summary>
     Task<ArchiveListResult> ListEntriesAsync(
         string archivePath,
         CancellationToken cancellationToken = default);

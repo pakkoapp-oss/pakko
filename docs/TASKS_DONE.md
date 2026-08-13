@@ -4440,3 +4440,61 @@ failed") were hardcoded English, never localized
   own "diagrams are never auto-validated" rule.
 - **Reported by:** user-directed pre-release verification pass, 2026-08-12.
 - **Depends on:** none (T-F161/T-F170, both already shipped).
+
+---
+
+### T-F173 — Full XML doc coverage for `Archiver.Core`/`Archiver.App.Core` + enforce CS1591
+
+- [x] **Status:** done 2026-08-13 — split out of T-F172 as its own follow-up (two-phase rollout,
+  user-confirmed 2026-08-13), implemented the same day.
+- **Context:** T-F172 turned on `GenerateDocumentationFile` for both projects but added a
+  temporary `<NoWarn>$(NoWarn);CS1591</NoWarn>` since 15/71 files in `Archiver.Core` (and part of
+  `Archiver.App.Core`) had no `///` doc comments at all — enabling the warning as an error at that
+  point would have broken the build repo-wide under `TreatWarningsAsErrors=true` (T-F150).
+- **Real measurement first, not a guess:** building each project with `/p:NoWarn= /p:TreatWarningsAsErrors=false`
+  (bypassing the temporary suppression without editing the `.csproj`) found the real gap was far
+  smaller than the raw "public declaration line" count suggested — **143 unique CS1591 sites in
+  `Archiver.Core`, 39 in `Archiver.App.Core`** (182 total, not the 700+ a naive count implied),
+  because `Services/Zip`/`Services/Sandbox`/`Services/Antivirus` (T-F35/T-F52/T-F146's subsystems)
+  already had near-complete coverage from when those tasks shipped.
+- **Scope decision (advisor-reviewed, then user-confirmed via AskUserQuestion):** the advisor
+  flagged that literally documenting every self-documenting Model/ViewModel property
+  (`ArchiveResult.Success`, `ArchiveEntryViewModel.Icon`, etc. — 112 + 13 = 125 of the 182 sites)
+  would violate this project's own "no comments unless the WHY is non-obvious" rule at scale, and
+  that CONVENTIONS.md's existing Models/ViewModel exemption already said so. User chose: keep the
+  exemption, suppress CS1591 for it via a scoped `.editorconfig` section rather than blanket
+  `NoWarn`, but still write real `<summary>` content wherever a member carries information a name
+  can't (defaults, null-semantics, GPO field meaning, an enum value's non-obvious behavior) —
+  converting existing WHY-comments into the generated API site instead of leaving them as
+  invisible inline comments.
+- **What shipped:**
+  - Real `<summary>`/`<inheritdoc/>` on all 31 Interfaces/IO/Services-top-level gaps in
+    `Archiver.Core` and all 26 logic-class gaps in `Archiver.App.Core` (routers, caches, policies).
+  - `.editorconfig` gained two scoped `dotnet_diagnostic.CS1591.severity = none` sections —
+    `src/Archiver.Core/Models/*.cs` and `src/Archiver.App.Core/ArchiveEntryViewModel.cs` — each
+    with a comment explaining why, matching this file's existing T-F137 override style.
+  - ~35 Models members that do carry real information got a real `<summary>` anyway despite the
+    suppression (`ArchiveOptions.ArchiveName`'s null-semantics, `ConflictBehavior.Rename`'s
+    merge-vs-fresh-folder distinction — this project's own hard-constraint text, previously only
+    in `CLAUDE.md` — `ExtractMode.SingleFolder`'s T-F156 reversal, `GroupPolicyOptions`/
+    `TarCapabilities`/`ThreatVerdict` field meanings, etc.).
+  - `<param>` tags on `FileActivationRouter.cs`'s positional record confirmed Roslyn propagates
+    them to the synthesized constructor/properties (verified by rebuild, not assumed).
+  - The temporary `<NoWarn>$(NoWarn);CS1591</NoWarn>` removed from both `.csproj` files — CS1591 is
+    now a real build-breaking gate under `TreatWarningsAsErrors=true`, same standing as any other
+    warning.
+  - `docs/CONVENTIONS.md`'s XML Documentation section rewritten to match actual practice (the
+    summary-only interface style, the CS1591-gate framing, the `.editorconfig`-suppression
+    mechanism, the positional-record `<param>` pattern) instead of the aspirational
+    full-`<param>`-tags example it had before, which no real interface in the repo ever followed.
+  - `api/index.md`'s "coverage is partial" line corrected, and its four namespace links switched
+    from raw `.html` filenames to `xref:` syntax (fixed a pre-existing `InvalidFileLink` docfx
+    warning as a side effect of touching the file).
+  - `docs/ARCHITECTURE.md`'s T-F172 banner updated to say the gate is enforced, not partial.
+- **Verification:** `dotnet build` on both projects with no overrides (real `TreatWarningsAsErrors=true`)
+  succeeded with 0 warnings/0 errors; full `dotnet test --filter "Category!=Slow&Category!=VeryLarge"`
+  green (1249 tests, 0 failures) — doc-comment-only change, no test coverage gap introduced;
+  `dotnet docfx docfx.json` rebuilt locally and spot-checked that the new summaries render on the
+  generated API pages (not just that the build succeeded).
+- **Reported by:** split from T-F172, 2026-08-13.
+- **Depends on:** T-F172 (already shipped).

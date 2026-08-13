@@ -2,6 +2,10 @@ using Archiver.Core.Models;
 
 namespace Archiver.Core.Interfaces;
 
+/// <summary>
+/// ZIP archive/extract/test/list operations via <c>System.IO.Compression</c>. See
+/// <see cref="Archiver.Core.Services.ZipArchiveService"/> for the real implementation.
+/// </summary>
 public interface IArchiveService
 {
     /// <summary>

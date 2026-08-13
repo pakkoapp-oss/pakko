@@ -145,8 +145,10 @@ public static class Crc32
     {
         private uint _crc = 0xFFFFFFFF;
 
+        /// <summary>Starts a new running CRC-32 in its initial state.</summary>
         public Accumulator() { }
 
+        /// <summary>Folds another chunk of bytes into the running CRC-32.</summary>
         public void Update(ReadOnlySpan<byte> data)
         {
             uint crc = _crc;
@@ -173,6 +175,7 @@ public static class Crc32
             _crc = crc;
         }
 
+        /// <summary>Returns the final CRC-32 value for all bytes fed so far.</summary>
         public readonly uint Finish() => _crc ^ 0xFFFFFFFF;
     }
 }

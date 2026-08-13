@@ -9,9 +9,16 @@ namespace Archiver.Core.Models;
 /// </summary>
 public sealed record GroupPolicyOptions
 {
+    /// <summary>Whether the Zone.Identifier ADS gets propagated to extracted files, and for which ones.</summary>
     public MotwMode MotwMode { get; init; } = MotwMode.AllFiles;
+
+    /// <summary>ArchiveFormatRegistryNames names permitted for extraction/creation. Null/empty imposes no restriction.</summary>
     public IReadOnlyList<string>? AllowedFormats { get; init; }
+
+    /// <summary>ArchiveFormatRegistryNames names denied for extraction/creation. Takes precedence over <see cref="AllowedFormats"/>.</summary>
     public IReadOnlyList<string>? BlockedFormats { get; init; }
+
+    /// <summary>Disables tar-family (tar.exe-backed) extraction entirely when true.</summary>
     public bool DisableTarExtraction { get; init; }
 
     /// <summary>

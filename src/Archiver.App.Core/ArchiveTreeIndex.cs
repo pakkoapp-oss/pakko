@@ -11,6 +11,7 @@ namespace Archiver.App.Core;
 /// </summary>
 public static class ArchiveTreeIndex
 {
+    /// <summary>Builds the parent-path -&gt; children index for O(1) folder navigation.</summary>
     public static IReadOnlyDictionary<string, IReadOnlyList<ArchiveEntryViewModel>> Build(
         IReadOnlyList<ArchiveEntryInfo> flatEntries)
     {

@@ -15,6 +15,7 @@ public static class ArchiveNaming
         ".tar.gz", ".tar.bz2", ".tar.xz", ".tar.zst", ".tar.lzma"
     };
 
+    /// <summary>Strips an archive's extension, compound tar extensions included (see class remarks).</summary>
     public static string GetBaseName(string archivePath)
     {
         string fileName = Path.GetFileName(archivePath);
@@ -27,10 +28,12 @@ public static class ArchiveNaming
         return Path.GetFileNameWithoutExtension(archivePath);
     }
 
-    // T-F99: shared by ZipArchiveService.ArchiveAsync and TarSandboxedService.CompressAsync — an
-    // explicit user-provided name always wins; otherwise falls back to the sole source path's own
-    // file name, or "archive" when that's empty (a drive-root selection like "Z:\" via the shell
-    // extension's Drive ItemType has no file name component to fall back to).
+    /// <summary>
+    /// T-F99: shared by ZipArchiveService.ArchiveAsync and TarSandboxedService.CompressAsync — an
+    /// explicit user-provided name always wins; otherwise falls back to the sole source path's own
+    /// file name, or "archive" when that's empty (a drive-root selection like "Z:\" via the shell
+    /// extension's Drive ItemType has no file name component to fall back to).
+    /// </summary>
     public static string ResolveSingleArchiveName(string? explicitName, IReadOnlyList<string> sourcePaths)
     {
         if (explicitName is not null)
@@ -43,6 +46,7 @@ public static class ArchiveNaming
         return name.Length > 0 ? name : "archive";
     }
 
+    /// <summary>Maps a creation-time container format to its on-disk file extension.</summary>
     public static string GetExtension(ArchiveContainerFormat format) => format switch
     {
         ArchiveContainerFormat.Zip => ".zip",

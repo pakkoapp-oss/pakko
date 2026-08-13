@@ -8,6 +8,9 @@ namespace Archiver.Core.Interfaces;
 /// </summary>
 public interface IRegistryReader
 {
+    /// <summary>Reads a REG_DWORD value, or null if the key/value is absent or the wrong type.</summary>
     int? GetDword(string keyPath, string valueName);
+
+    /// <summary>Reads a REG_MULTI_SZ value, or null if the key/value is absent or the wrong type.</summary>
     string[]? GetMultiString(string keyPath, string valueName);
 }

@@ -9,6 +9,7 @@ namespace Archiver.Core.Interfaces;
 /// </summary>
 public interface IExtractionRouter
 {
+    /// <summary>Extracts one or more archives, routed per-archive by format.</summary>
     Task<ArchiveResult> ExtractAsync(
         ExtractOptions options,
         IProgress<ProgressReport>? progress = null,

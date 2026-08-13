@@ -160,28 +160,51 @@ public MainViewModel()
 
 ## XML Documentation
 
-Required on:
-- All `public` interfaces
-- All `public` service classes
-- All `public` methods in `Archiver.Core`
+`GenerateDocumentationFile` + CS1591 (missing XML comment) is a real enforced gate on
+`Archiver.Core` and `Archiver.App.Core` (T-F173, 2026-08-13) under this repo's
+`TreatWarningsAsErrors=true` — a public type/member with no `///` fails the build, same standing
+as any other warning. Backs the generated API site (`docfx.json`, T-F172), live at
+`https://pakkoapp-oss.github.io/pakko/dev/api/`.
 
-Not required on:
-- `private` members
-- ViewModels (UI layer)
-- Models (self-documenting by property names)
+Required on:
+- All `public` interfaces and their members — plain `<summary>` only, no `<param>`/`<returns>`
+  (matches every real interface in `Archiver.Core/Interfaces/` — see the example below). Adding
+  `<param>` tags for *some but not all* parameters trips CS1573; the rule is all params or none.
+- All `public` service classes — `/// <inheritdoc/>` on members that implement an interface
+  (see `ZipArchiveService.cs`), a real `<summary>` on anything that doesn't (constructors,
+  standalone public static helpers like `ArchiveNaming`/`ArchiveFormatDetector`).
+- Non-trivial public logic classes in `Archiver.App.Core` (routers, policies, caches) — same
+  bar as Core service classes, not the Models exemption below.
+
+Not required on (CS1591 suppressed per-file via `.editorconfig`, not left as unaddressed
+warnings — see the root `.editorconfig`'s `Models/*.cs`/`ArchiveEntryViewModel.cs` sections):
+- `private`/`internal` members
+- ViewModels (UI layer) — e.g. `ArchiveEntryViewModel`, a pure display-property bag
+- Models — property/enum-value names that are genuinely self-documenting (`ArchiveResult.Success`,
+  `ArchiveError.Message`). A model member that carries real information a name can't convey
+  (a default, null-semantics, a GPO field's meaning, an enum value's non-obvious behavior — see
+  `ArchiveOptions.ArchiveName`, `ConflictBehavior.Rename`, `ExtractOptions.SeparateFolderName` for
+  real examples) still gets a real `<summary>` despite the suppression; most Models members don't
+  need one and shouldn't get a paraphrase-of-the-name filler comment just to satisfy CS1591.
 
 ```csharp
 /// <summary>
 /// Creates ZIP archives from the provided options.
 /// </summary>
-/// <param name="options">Archive configuration including source paths and destination.</param>
-/// <param name="progress">Optional progress reporter (percent, bytes transferred/total, current file).</param>
-/// <param name="cancellationToken">Token to cancel the operation between items.</param>
-/// <returns>Result containing created file paths and any per-item errors.</returns>
 Task<ArchiveResult> ArchiveAsync(
     ArchiveOptions options,
     IProgress<ProgressReport>? progress = null,
     CancellationToken cancellationToken = default);
+```
+
+A positional record's constructor parameters (and their synthesized properties) are documented
+via `<param>` on the record declaration itself — Roslyn propagates it to both:
+
+```csharp
+/// <summary>Result of a routing decision.</summary>
+/// <param name="Mode">What the activation should do.</param>
+/// <param name="BrowsePath">Set only when <paramref name="Mode"/> is Browse.</param>
+public sealed record FileActivationDecision(FileActivationMode Mode, string? BrowsePath);
 ```
 
 ---

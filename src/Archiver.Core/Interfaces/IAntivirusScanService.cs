@@ -12,6 +12,10 @@ namespace Archiver.Core.Interfaces;
 /// </summary>
 public interface IAntivirusScanService
 {
+    /// <summary>
+    /// Scans one or more archives via AMSI. Never throws — a scan failure (no AV provider, a
+    /// per-entry read error) becomes an Inconclusive <see cref="ThreatFinding"/> instead.
+    /// </summary>
     Task<ThreatScanResult> ScanAsync(
         AntivirusScanOptions options,
         IProgress<ProgressReport>? progress = null,

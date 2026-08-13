@@ -24,6 +24,7 @@ public sealed class TarSandboxedService : ITarService
 
     // T-F51: optional so every existing `new TarSandboxedService()` call site keeps compiling —
     // a null policy means "everything allowed", matching today's shipped behavior exactly.
+    /// <summary>Creates the service. A null policy means everything allowed (today's shipped default).</summary>
     public TarSandboxedService(GroupPolicyOptions? policy = null)
     {
         _policy = policy ?? new GroupPolicyOptions();

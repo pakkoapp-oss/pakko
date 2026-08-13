@@ -58,6 +58,21 @@ dotnet_diagnostic.CA1305.severity = none
 # model read by multiple frontends, not redundancy worth flagging.
 dotnet_diagnostic.CA1805.severity = none
 
+[src/Archiver.Core/Models/*.cs]
+# T-F173: property/enum-value names in Models/ are self-documenting (ArchiveResult.Success,
+# ArchiveError.Message, etc.) — matches this file's CONVENTIONS.md's existing Models exemption.
+# Requiring a one-line paraphrase-of-the-name summary on every one of these ~110 members would be
+# exactly the filler this project's own comment policy bans ("no comments unless the WHY is
+# non-obvious"). Members that do carry real information (defaults, null-semantics, GPO field
+# meaning) still got a real /// summary despite this suppression — CS1591 just isn't required to
+# prove it. User-confirmed scope decision, 2026-08-13.
+dotnet_diagnostic.CS1591.severity = none
+
+[src/Archiver.App.Core/ArchiveEntryViewModel.cs]
+# T-F173: pure display-property bag (Icon, DisplayName, SizeDisplay, ...) — same reasoning as the
+# Models/ suppression above, and matches CONVENTIONS.md's existing "ViewModels not required" rule.
+dotnet_diagnostic.CS1591.severity = none
+
 [tests/**.cs]
 # CA1707 (identifiers should not contain underscores): this repo's entire test suite uses the
 # established Method_Scenario_ExpectedResult xUnit naming convention (see any test file, e.g.

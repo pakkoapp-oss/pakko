@@ -45,6 +45,7 @@ public sealed class AntivirusScanService : IAntivirusScanService
     // GroupPolicyService.Load()). The internal test constructor below takes that dependency as a
     // parameter instead, so it and the rest of this class stay unannotated and callable from
     // Archiver.Core.Tests' plain net8.0 TFM without needing its own annotation.
+    /// <summary>Creates a scanner wired to the real AMSI provider.</summary>
     [SupportedOSPlatform("windows")]
     public AntivirusScanService(TarCapabilities tarCapabilities, GroupPolicyOptions? groupPolicyOptions = null)
         : this(tarCapabilities, groupPolicyOptions, () => new AmsiScanner("Pakko"), AmsiProviderCheck.IsAnyProviderRegistered)

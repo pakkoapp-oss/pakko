@@ -11,6 +11,7 @@ namespace Archiver.Core.Services;
 /// </summary>
 public static class ArchiveFormatRegistryNames
 {
+    /// <summary>Maps a detected-on-extraction format to its GPO registry-string name.</summary>
     public static string ToRegistryName(ArchiveFormat format) => format switch
     {
         ArchiveFormat.Zip => "zip",
@@ -25,6 +26,7 @@ public static class ArchiveFormatRegistryNames
         _ => throw new ArgumentOutOfRangeException(nameof(format), format, null),
     };
 
+    /// <summary>Maps a creation-time container format to its GPO registry-string name.</summary>
     public static string ToRegistryName(ArchiveContainerFormat format) => format switch
     {
         ArchiveContainerFormat.Zip => "zip",

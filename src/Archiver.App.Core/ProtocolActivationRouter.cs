@@ -11,6 +11,7 @@ namespace Archiver.App.Core;
 /// </summary>
 public static class ProtocolActivationRouter
 {
+    /// <summary>True if <paramref name="rawUri"/> is a single-archive <c>pakko://browse</c> request; <paramref name="path"/> is the archive path.</summary>
     public static bool TryGetBrowsePath(string rawUri, out string? path)
     {
         path = null;

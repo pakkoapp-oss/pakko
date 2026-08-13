@@ -9,6 +9,7 @@ namespace Archiver.Core.Interfaces;
 /// </summary>
 public interface IArchiveCreationRouter
 {
+    /// <summary>Creates an archive in the format given by <c>options.Format</c>.</summary>
     Task<ArchiveResult> ArchiveAsync(
         ArchiveOptions options,
         IProgress<ProgressReport>? progress = null,

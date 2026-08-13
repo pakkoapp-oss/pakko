@@ -334,11 +334,24 @@ three documented `-si`/`-so` pipe recipes behave as documented). Opened **T-F164
 real findings) and **T-F166**-**T-F170** (five pre-existing test-coverage gaps, not bugs).
 
 **T-F172** (`[x]` done, 2026-08-13) — a DocFX developer/API docs site, user-requested (.NET
-equivalent of Rust's mdBook + generated API docs). `GenerateDocumentationFile=true` is now on for
-`Archiver.Core`/`Archiver.App.Core`, with a **temporary** `NoWarn CS1591` on both — full `///`
-coverage + dropping that `NoWarn` so CS1591 becomes a real enforced gate is split out as
-**T-F173** (not started). See this file's Documentation Map for `docfx.json`'s row and the Build
-Commands section for the local-preview command.
+equivalent of Rust's mdBook + generated API docs). `GenerateDocumentationFile=true` is on for
+`Archiver.Core`/`Archiver.App.Core`. See this file's Documentation Map for `docfx.json`'s row and
+the Build Commands section for the local-preview command.
+
+**T-F173** (`[x]` done, same day) — full XML `///` doc backfill for `Archiver.Core`/
+`Archiver.App.Core`, dropping T-F172's temporary `NoWarn CS1591` so it's now a real enforced build
+gate under `TreatWarningsAsErrors=true`. Real gap measured first (build with the suppression
+bypassed via `/p:NoWarn=`, not guessed): 182 unique sites, not the 700+ raw public-declaration
+count implied — `Services/Zip`/`Sandbox`/`Antivirus` were already near-fully covered from T-F35/
+T-F52/T-F146. Advisor-reviewed scope call, then user-confirmed: self-documenting Models/ViewModel
+properties (`ArchiveResult.Success`, `ArchiveEntryViewModel.Icon`, ~125 sites) keep
+CONVENTIONS.md's existing exemption, suppressed per-file via a new scoped `.editorconfig` section
+rather than blanket `NoWarn` — but ~35 of them that carry real information (defaults,
+null-semantics, `ConflictBehavior.Rename`'s merge-vs-fresh-folder distinction, T-F156's
+`ExtractMode.SingleFolder` reversal) got real `<summary>` content anyway. `docs/CONVENTIONS.md`'s
+XML Documentation section rewritten to match actual practice (summary-only interfaces, the
+`.editorconfig` mechanism, positional-record `<param>` propagation) instead of an aspirational
+example no real interface followed.
 
 **Test count:** run `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` for current ground
 truth (as of 2026-08-11: ~826 .NET tests across `Archiver.Core.Tests`,

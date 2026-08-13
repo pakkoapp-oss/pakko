@@ -14,8 +14,10 @@ public sealed record HashEntry(string SourcePath, string? Hash, string? Error);
 /// <see cref="FileHashService"/>'s doc comment for what these mean and their NanaZip parity.</summary>
 public sealed record FolderHashSummary(string DataSum, string NamesSum, int FileCount, long TotalBytes);
 
+/// <summary>Result of a <see cref="FileHashService.ComputeAsync"/> call.</summary>
 public sealed class HashResult
 {
+    /// <summary>One entry per input path, in the caller's original selection order.</summary>
     public IReadOnlyList<HashEntry> Entries { get; init; } = Array.Empty<HashEntry>();
 
     /// <summary>Non-null only when the input was exactly one folder (see
@@ -62,6 +64,11 @@ public static class FileHashService
     private const long ParallelCrc32MinFileBytes = 8 * 1024 * 1024;
     private const long ParallelCrc32ChunkBytes = 4 * 1024 * 1024;
 
+    /// <summary>
+    /// Hashes each of <paramref name="paths"/>. A single-folder selection is routed to the
+    /// recursive DataSum/NamesSum path instead (see <see cref="HashResult.Folder"/>); a mixed or
+    /// multi-item selection hashes each file independently in parallel.
+    /// </summary>
     public static async Task<HashResult> ComputeAsync(
         IReadOnlyList<string> paths,
         HashAlgorithmKind algorithm,

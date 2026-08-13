@@ -26,8 +26,11 @@ public sealed class ZipArchiveService : IArchiveService
 
     private readonly GroupPolicyOptions _policy;
 
-    // T-F51: optional so every existing `new ZipArchiveService()` call site keeps compiling —
-    // a null policy means "everything allowed", matching today's shipped behavior exactly.
+    /// <summary>
+    /// Creates the service. T-F51: policy is optional so every existing
+    /// <c>new ZipArchiveService()</c> call site keeps compiling — a null policy means "everything
+    /// allowed", matching today's shipped behavior exactly.
+    /// </summary>
     public ZipArchiveService(GroupPolicyOptions? policy = null)
     {
         _policy = policy ?? new GroupPolicyOptions();

@@ -15,9 +15,11 @@ public static class GroupPolicyService
 {
     private const string PolicyKeyPath = @"Software\Policies\Pakko";
 
+    /// <summary>Loads policy from the real Windows registry.</summary>
     [SupportedOSPlatform("windows")]
     public static GroupPolicyOptions Load() => Load(new Win32RegistryReader());
 
+    /// <summary>Loads policy via the given reader — the seam tests use to avoid touching the real registry.</summary>
     public static GroupPolicyOptions Load(IRegistryReader reader)
     {
         MotwMode motwMode = reader.GetDword(PolicyKeyPath, "EnforceMOTW") switch

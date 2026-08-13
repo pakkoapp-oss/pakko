@@ -24,6 +24,7 @@ public sealed class ProgressSpeedSampler
     private DateTime _lastSampleTimeUtc;
     private double _smoothedBytesPerSecond;
 
+    /// <summary>Starts a fresh sampler — construct one per operation (see class remarks).</summary>
     public ProgressSpeedSampler(DateTime? startTimeUtc = null)
     {
         _lastSampleTimeUtc = startTimeUtc ?? DateTime.UtcNow;

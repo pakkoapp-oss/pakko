@@ -1,8 +1,10 @@
 namespace Archiver.Core.Services;
 
-// T-F97: safe-preview-type allowlist for the Archive Browser's double-click-to-preview feature.
-// Deliberately conservative — only formats with no known code/macro/script execution path via
-// their typical OS default handler. See SECURITY.md.
+/// <summary>
+/// T-F97: safe-preview-type allowlist for the Archive Browser's double-click-to-preview feature.
+/// Deliberately conservative — only formats with no known code/macro/script execution path via
+/// their typical OS default handler. See SECURITY.md.
+/// </summary>
 public static class PreviewPolicy
 {
     private static readonly HashSet<string> _previewableExtensions = new(StringComparer.OrdinalIgnoreCase)
@@ -15,6 +17,7 @@ public static class PreviewPolicy
         ".mp3", ".wav", ".flac", ".ogg", ".m4a", ".aac",
     };
 
+    /// <summary>True if a double-click on this entry should preview instead of extract.</summary>
     public static bool IsPreviewable(string entryName) =>
         _previewableExtensions.Contains(Path.GetExtension(entryName));
 }

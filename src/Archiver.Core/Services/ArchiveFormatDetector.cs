@@ -29,9 +29,14 @@ public static class ArchiveFormatDetector
         ".rar", ".7z", ".tar", ".gz", ".tgz", ".bz2", ".tbz2", ".xz", ".txz", ".zst", ".tzst", ".lzma"
     };
 
+    /// <summary>
+    /// Fast, no-disk-I/O extension check — used only where <see cref="Detect"/>'s magic-byte
+    /// sniff can't run yet (e.g. an in-archive entry not extracted). Not the security boundary.
+    /// </summary>
     public static bool IsRecognizedArchiveExtension(string fileName) =>
         _recognizedExtensions.Contains(Path.GetExtension(fileName));
 
+    /// <summary>Detects an archive's real format from its magic bytes. Returns Unknown on any read failure.</summary>
     public static ArchiveFormat Detect(string path)
     {
         try

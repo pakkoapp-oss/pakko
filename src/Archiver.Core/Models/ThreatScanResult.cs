@@ -11,14 +11,23 @@ namespace Archiver.Core.Models;
 /// </summary>
 public enum ThreatVerdict
 {
+    /// <summary>Scanned successfully and no threat was found.</summary>
     Clean,
+
+    /// <summary>The AV provider flagged a threat.</summary>
     ThreatDetected,
+
+    /// <summary>
+    /// Pakko could not determine an answer (no AMSI provider registered, a provider call
+    /// failed, an entry was too large to buffer, etc.) — never treat this as Clean.
+    /// </summary>
     Inconclusive,
 }
 
 /// <summary>One entry-level (or whole-archive-level, when EntryPath is null) scan outcome.</summary>
 public sealed record ThreatFinding
 {
+    /// <summary>The archive this finding came from.</summary>
     public required string ArchivePath { get; init; }
 
     /// <summary>Null when the finding applies to the whole archive (e.g. an unsupported format, or
@@ -42,6 +51,12 @@ public sealed record ThreatFinding
 /// </summary>
 public sealed record ThreatScanResult
 {
+    /// <summary>
+    /// ThreatDetected if any finding is ThreatDetected; else Inconclusive if any finding is
+    /// Inconclusive; else Clean.
+    /// </summary>
     public required ThreatVerdict OverallVerdict { get; init; }
+
+    /// <summary>Every per-entry (or whole-archive) finding that produced <see cref="OverallVerdict"/>.</summary>
     public IReadOnlyList<ThreatFinding> Findings { get; init; } = [];
 }

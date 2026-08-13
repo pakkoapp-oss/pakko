@@ -12,12 +12,14 @@ public sealed class DeferredActionGate
     private readonly List<Action> _pending = [];
     private bool _open;
 
+    /// <summary>Runs <paramref name="action"/> now if open, otherwise queues it for the next <see cref="Open"/>.</summary>
     public void RunOrDefer(Action action)
     {
         if (_open) { action(); return; }
         _pending.Add(action);
     }
 
+    /// <summary>Opens the gate and flushes every queued action, in order. Idempotent.</summary>
     public void Open()
     {
         if (_open) return;

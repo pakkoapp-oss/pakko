@@ -9,6 +9,7 @@ namespace Archiver.App.Core;
 /// </summary>
 public static class FileSystemBrowser
 {
+    /// <summary>Lists a real folder's immediate children as browser rows (folders first, then files).</summary>
     public static IReadOnlyList<ArchiveEntryViewModel> ListFolder(string path)
     {
         try
@@ -60,6 +61,7 @@ public static class FileSystemBrowser
         }
     }
 
+    /// <summary>Lists every ready drive as browser rows for the synthetic "This PC" node.</summary>
     public static IReadOnlyList<ArchiveEntryViewModel> ListDrives() =>
         DriveInfo.GetDrives()
             .Where(d => d.IsReady)

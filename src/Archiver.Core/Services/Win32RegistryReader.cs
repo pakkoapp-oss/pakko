@@ -8,12 +8,14 @@ namespace Archiver.Core.Services;
 [SupportedOSPlatform("windows")]
 public sealed class Win32RegistryReader : IRegistryReader
 {
+    /// <inheritdoc/>
     public int? GetDword(string keyPath, string valueName)
     {
         object? value = ReadValue(keyPath, valueName);
         return value is int i ? i : null;
     }
 
+    /// <inheritdoc/>
     public string[]? GetMultiString(string keyPath, string valueName)
     {
         object? value = ReadValue(keyPath, valueName);

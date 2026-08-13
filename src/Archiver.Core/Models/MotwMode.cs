@@ -7,7 +7,12 @@ namespace Archiver.Core.Models;
 /// </summary>
 public enum MotwMode
 {
+    /// <summary>Never propagate Zone.Identifier to extracted files.</summary>
     Disabled = 0,
+
+    /// <summary>Propagate Zone.Identifier to every extracted file (today's shipped default).</summary>
     AllFiles = 1,
+
+    /// <summary>Propagate Zone.Identifier only to extensions with a known execution risk.</summary>
     UnsafeExtensionsOnly = 2,
 }

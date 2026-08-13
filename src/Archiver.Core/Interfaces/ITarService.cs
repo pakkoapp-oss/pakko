@@ -2,6 +2,12 @@ using Archiver.Core.Models;
 
 namespace Archiver.Core.Interfaces;
 
+/// <summary>
+/// tar.exe-backed archive/extract/list/compress operations for the tar family (tar, gz, bz2, xz,
+/// zst, lzma) plus read-only 7z/rar support. See
+/// <see cref="Archiver.Core.Services.TarSandboxedService"/> for the real implementation and its
+/// AppContainer sandboxing on the extraction path.
+/// </summary>
 public interface ITarService
 {
     /// <summary>
