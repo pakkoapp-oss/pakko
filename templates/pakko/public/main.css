@@ -1,0 +1,8 @@
+/* Overrides docfx's "modern" template's empty public/main.css hook (T-F172).
+   pakko-mark.svg is a 256x256 app-icon asset with explicit width/height on its <svg> root,
+   reused as-is here as the navbar logo (_appLogoPath) — nothing in docfx's own CSS constrains
+   #logo.svg, so without this it renders at full intrinsic size and overlaps the nav/content. */
+#logo.svg {
+  width: 28px;
+  height: 28px;
+}
