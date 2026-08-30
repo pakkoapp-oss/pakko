@@ -498,15 +498,54 @@ existing `--test` block exactly.
 
 **Not covered by `dotnet test`, needs on-device verification** (per this project's standing rule —
 shell-triggered/UI behavior never graduates on automated tests alone):
-- A real EICAR-in-archive detection through both entry points (Explorer `Scan for threats`,
-  Archive Browser's scan button) — for the tar-family case specifically, this needs a temporary
-  Defender exclusion folder added by the user first (`docs/DECISIONS.md`'s Phase 0 finding: real-time
-  protection intercepts a plain on-disk EICAR file before tar.exe can even read it, independent of
-  Pakko's own AMSI call).
+- A real EICAR-in-archive detection through both *shell-triggered UI* entry points (Explorer
+  `Scan for threats`, Archive Browser's scan button) — for the tar-family case specifically, this
+  needs a temporary Defender exclusion folder added by the user first (`docs/DECISIONS.md`'s
+  Phase 0 finding: real-time protection intercepts a plain on-disk EICAR file before tar.exe can
+  even read it, independent of Pakko's own AMSI call). **Partially superseded by T-F177
+  (2026-08-31):** the underlying `Core.AntivirusScanService.ScanAsync` orchestration itself (both
+  Zip in-memory and Tar quarantine paths) now has an automated regression test with real AMSI —
+  `AntivirusScanServiceEicarTests.cs` — so what's left uncovered here is specifically the two WinUI/
+  Shell UI entry points' own glue code, not the underlying scan logic.
 - The `Inconclusive` path with no AMSI provider registered (e.g. Defender real-time protection
   temporarily disabled) — confirms the three-state dialog never renders it as `Clean`.
 - A clean real-world archive through both entry points, confirming "No threats found in this
   archive" copy and that nothing is left on disk afterward (tar-family quarantine cleanup).
+
+## Test-Coverage Audit Follow-Ups (T-F174–T-F186, 2026-08-31)
+
+Sourced from a full three-stage QA/AppSec coverage audit — see `docs/TASKS.md`'s own
+"Test-Coverage Audit Follow-Ups" section for the complete per-task detail. This section only
+records the two accepted-scope-limitation decisions and one real finding that don't fit neatly
+into an existing section above.
+
+- **`tests/Archiver.Core.IntegrationTests/AntivirusScanServiceEicarTests.cs` (T-F177)** closes a
+  gap the AMSI section above didn't call out explicitly: every `ScanAsync_...DetectedEntry` test,
+  Zip and Tar alike, used `FakeAmsiScanner` — real EICAR bytes had only ever been driven through
+  `AmsiScanner.ScanBuffer` directly (`AmsiScannerTests`), never through `AntivirusScanService.
+  ScanAsync`'s real orchestration with the real scanner. Two new tests close that specifically;
+  the Tar variant accepts either `ThreatDetected` or "the fixture was intercepted by real-time AV
+  before AMSI ran" as passing, per T-F146's own already-documented Phase 0 finding that Defender's
+  on-access scanner can win that race. Confirmed working for real on a dev machine (both passed).
+- **`FileHashService`'s `Int64` byte-total summation near `Int64.MaxValue` is untested by design
+  (T-F181)** — real multi-exabyte fixtures are infeasible, and no injectable file-size abstraction
+  exists anywhere else in this codebase to test the arithmetic in isolation without adding one
+  solely for this purpose. User-directed decision: document, don't build a new seam.
+- **The `IsBusy`/rapid-repeated-invocation guard in `MainViewModel.cs` was verified, not
+  implemented, against (T-F183).** `ArchiveAsync` (line ~457) and `RunExtractAsync` (line ~596)
+  both set `IsBusy = true` as the literal first statement before any `await`; `MainWindow.xaml.cs`'s
+  `ArchiveBrowserList_DoubleTapped` (line ~197) checks `ViewModel.IsBusy` the same way, before any
+  `await`. On WinUI's single dispatcher thread this closes the TOCTOU window by construction — a
+  second click's check can only run after the first click's handler already set `IsBusy = true`.
+  T-F123 (the precedent this task was based on) was later root-caused as a stale `dotnet build`
+  masking an already-correct fix, not an actual race. **If a future refactor introduces an `await`
+  before either guard, re-verify this invariant before assuming it still holds** — nothing
+  currently enforces it structurally beyond the ordering itself.
+- **T-F178 finding:** `dotnet test`'s `testhost.exe` has no `app.manifest` (unlike `Archiver.App`/
+  `Archiver.Shell`), yet a real on-disk path over 260 characters archived/extracted successfully at
+  the `ZipArchiveService` layer with no special handling. This is .NET Core's own built-in
+  long-path File I/O support (present since .NET Core 2.1, independent of any Win32 manifest
+  declaration) — see `docs/DECISIONS.md`'s T-F178 entry for the full account.
 
 ## Manual Smoke Test Cycle (Full Stack)
 

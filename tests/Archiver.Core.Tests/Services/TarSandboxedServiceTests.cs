@@ -19,4 +19,21 @@ public sealed class TarSandboxedServiceTests
 
         result.Version.Should().NotBeNullOrEmpty();
     }
+
+    // T-F182 (test-coverage audit): the public DetectCapabilitiesAsync() always points at the
+    // hardcoded C:\Windows\System32\tar.exe const (CLAUDE.md's PATH-hijack hard constraint) — this
+    // exercises the same real detection logic against a path that doesn't exist on disk, via the
+    // internal test-only overload, to prove the documented "sensible all-false defaults if tar.exe
+    // is absent" contract (ITarService's own XML doc) holds for actual absence, not just
+    // unparseable --version output (already covered by TarVersionParserTests).
+    [Fact]
+    public async Task DetectCapabilitiesAsync_ExecutableMissingFromDisk_ReturnsAllFalseDefaultsNotThrow()
+    {
+        string missingPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N") + "-tar.exe");
+        File.Exists(missingPath).Should().BeFalse();
+
+        var result = await TarSandboxedService.DetectCapabilitiesAsync(missingPath);
+
+        result.Should().Be(new Archiver.Core.Models.TarCapabilities());
+    }
 }

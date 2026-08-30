@@ -405,6 +405,39 @@ public sealed class TarSandboxedServiceCompressTests : IDisposable
         File.ReadAllText(existingDest).Should().Be("not a real tar, just occupying the name");
     }
 
+    // T-F185 (test-coverage audit): CompressAsync is deliberately unsandboxed (trusted local
+    // input) and DestinationConflictResolver/ArchiveNaming only handle the Skip/Overwrite/Rename
+    // decision, never destination-path traversal — this is a genuine "observe, then assert" test
+    // per this task's own plan note, not a pre-committed pass/fail. ArchiveName flows straight into
+    // Path.Combine(options.DestinationFolder, archiveName + extension) with no sanitization.
+    [Integration]
+    public async Task CompressAsync_DestinationNameWithParentTraversalSegments_NeverWritesOutsideIntendedTree()
+    {
+        string srcFile = Path.Combine(_temp.Path, "payload.txt");
+        File.WriteAllText(srcFile, "traversal test content");
+        string destRoot = Path.Combine(_temp.Path, "dest-root");
+        Directory.CreateDirectory(destRoot);
+        string escapeTarget = Path.Combine(_temp.Path, "..\\..\\evil");
+
+        var result = await _sut.CompressAsync(new ArchiveOptions
+        {
+            SourcePaths = [srcFile],
+            DestinationFolder = destRoot,
+            ArchiveName = "..\\..\\evil",
+            Format = ArchiveContainerFormat.Tar,
+        });
+
+        // Whatever the outcome (success confined to destRoot, or a recorded error), the archive
+        // must never actually land outside destRoot's own tree.
+        bool escapedOutsideDestRoot = result.CreatedFiles.Any(f =>
+            !Path.GetFullPath(f).StartsWith(Path.GetFullPath(destRoot), StringComparison.OrdinalIgnoreCase));
+        escapedOutsideDestRoot.Should().BeFalse(
+            because: "a user-supplied ArchiveName containing \"..\\\" segments must never let the " +
+                     "created archive land outside its own DestinationFolder tree — " +
+                     $"CreatedFiles: {string.Join(", ", result.CreatedFiles)}");
+        File.Exists(escapeTarget + ".tar").Should().BeFalse("the traversal target itself must not exist on disk");
+    }
+
     [Integration]
     public async Task CompressAsync_MissingSource_ReportsErrorInsteadOfThrowing()
     {

@@ -31,6 +31,39 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
         result.CreatedFiles[0].Should().EndWith(".zip");
     }
 
+    // T-F178 (test-coverage audit): MAX_PATH (260 chars) was only tested at Archiver.Shell's
+    // argument-parser layer (ExtractHere_PathExceeding260Chars_ParsedCorrectlyNoTruncation) — never
+    // where the actual I/O happens. Builds a real on-disk source path over 260 chars via nested
+    // directories (not just a long single component) to match how a real deep folder tree gets
+    // long, then archives it — must never throw unhandled, per this project's own "IO exceptions
+    // caught per-item, methods never throw to callers" hard constraint.
+    [Fact]
+    public async Task ArchiveAsync_SourcePathBeyond260Chars_SucceedsOrRecordsPerItemErrorNeverThrows()
+    {
+        string deepDir = _temp.Path;
+        while (deepDir.Length < 300)
+        {
+            deepDir = Path.Combine(deepDir, new string('a', 40));
+            Directory.CreateDirectory(deepDir);
+        }
+        deepDir.Length.Should().BeGreaterThan(260);
+        File.WriteAllText(Path.Combine(deepDir, "deep.txt"), "long path content");
+
+        var options = new ArchiveOptions
+        {
+            SourcePaths = [deepDir],
+            DestinationFolder = _temp.Path,
+            ArchiveName = "long-path-output",
+        };
+
+        var result = await _sut.ArchiveAsync(options);
+
+        result.Should().NotBeNull();
+        (result.Success || result.Errors.Count > 0).Should().BeTrue(
+            "a >260-char source path must either succeed or record a per-item ArchiveError, " +
+            "never silently produce neither");
+    }
+
     [Fact]
     public async Task ArchiveAsync_NullArchiveName_SingleSource_AutoNamesFromSource()
     {
@@ -529,6 +562,81 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
         Directory.GetFiles(destDir.Path, "*", SearchOption.AllDirectories)
             .Select(Path.GetFileName)
             .Should().Contain(emojiName);
+    }
+
+    // T-F184 (test-coverage audit): the Unicode right-to-left-override character (U+202E) is a
+    // known filename-spoofing vector (e.g. disguising a real ".exe" as an apparent ".txt" when
+    // rendered right-to-left) — this test only proves the ZIP round-trip itself doesn't corrupt,
+    // truncate, or mishandle a filename containing it (a real security concern for THIS archiver:
+    // a crash/mis-parse on a hostile filename), not that Explorer's rendering is spoof-proof
+    // (that's a Windows shell display concern, out of this project's scope).
+    [Fact]
+    public async Task ArchiveAsync_RtlOverrideFilename_RoundTripsWithoutCorruptionOrCrash()
+    {
+        string rtlName = "invoice_‮txt.exe";
+        var file = _temp.CreateFile(rtlName);
+
+        var archiveResult = await _sut.ArchiveAsync(new ArchiveOptions
+        {
+            SourcePaths = [file],
+            DestinationFolder = _temp.Path,
+            ArchiveName = "rtl_test"
+        });
+        archiveResult.Success.Should().BeTrue();
+
+        using var destDir = new TempDirectory();
+        var result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [Path.Combine(_temp.Path, "rtl_test.zip")],
+            DestinationFolder = destDir.Path,
+            Mode = ExtractMode.SeparateFolders
+        });
+
+        result.Success.Should().BeTrue();
+        result.Errors.Should().BeEmpty();
+        Directory.GetFiles(destDir.Path, "*", SearchOption.AllDirectories)
+            .Select(Path.GetFileName)
+            .Should().Contain(rtlName);
+    }
+
+    // Zalgo-style heavily-stacked combining diacritical marks (U+0300-U+036F) — a real, if
+    // unusual, valid NTFS filename. Round-trips or fails safely (no crash, no silent truncation
+    // that could collide two distinct entries into one on extraction).
+    [Fact]
+    public async Task ArchiveAsync_ZalgoStyleCombiningCharacterFilename_RoundTripsOrFailsSafely()
+    {
+        var combining = Enumerable.Range(0, 40).Select(i => (char)(0x0300 + (i % 0x20)));
+        string zalgoName = "z" + new string(combining.ToArray()) + ".txt";
+        var file = _temp.CreateFile(zalgoName);
+
+        var archiveResult = await _sut.ArchiveAsync(new ArchiveOptions
+        {
+            SourcePaths = [file],
+            DestinationFolder = _temp.Path,
+            ArchiveName = "zalgo_test"
+        });
+
+        // "Fails safely" is an accepted outcome per this test's own name — but if it succeeds, the
+        // round trip must be byte-for-byte faithful, never a silently mangled/truncated name.
+        if (!archiveResult.Success)
+        {
+            archiveResult.Errors.Should().NotBeEmpty();
+            return;
+        }
+
+        using var destDir = new TempDirectory();
+        var result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [Path.Combine(_temp.Path, "zalgo_test.zip")],
+            DestinationFolder = destDir.Path,
+            Mode = ExtractMode.SeparateFolders
+        });
+
+        result.Success.Should().BeTrue();
+        Directory.GetFiles(destDir.Path, "*", SearchOption.AllDirectories).Should().HaveCount(1);
+        Directory.GetFiles(destDir.Path, "*", SearchOption.AllDirectories)
+            .Select(Path.GetFileName)
+            .Should().Contain(zalgoName);
     }
 
     // T-F22: Windows Long Path Support

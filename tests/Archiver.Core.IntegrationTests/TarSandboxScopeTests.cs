@@ -98,4 +98,40 @@ public sealed class TarSandboxScopeTests : IDisposable
         Action reuseProfile = () => profile.EnsureExists();
         reuseProfile.Should().NotThrow();
     }
+
+    [Fact]
+    public async Task RunAsync_TwoConcurrentScopes_BothSucceedWithDistinctQuarantineRoots()
+    {
+        // T-F175 (test-coverage audit): the shared AppContainer profile/ACL is deliberately
+        // create-once-reuse-forever (see Dispose_DeletesQuarantineDirectoryButNotAppContainerProfile
+        // above and DECISIONS.md's T-F52 entry), and each CreateAsync mints its own
+        // Guid.NewGuid()-based quarantineRoot — this proves two concurrent scopes genuinely don't
+        // cross-contaminate each other's quarantine directory or content under real parallel use
+        // (e.g. two extractions started back-to-back), not just that the shared profile is inert.
+        string archivePathA = Path.Combine(_temp.Path, "fixture-a.tar");
+        string archivePathB = Path.Combine(_temp.Path, "fixture-b.tar");
+        ExternalTarFixtureBuilder.CreateCompressedTar(archivePathA, "-cf", [("a.txt", "scope A content")]);
+        ExternalTarFixtureBuilder.CreateCompressedTar(archivePathB, "-cf", [("b.txt", "scope B content")]);
+
+        var scopeATask = TarSandboxScope.CreateAsync(archivePathA, needsOutputDir: true, CancellationToken.None);
+        var scopeBTask = TarSandboxScope.CreateAsync(archivePathB, needsOutputDir: true, CancellationToken.None);
+        await Task.WhenAll(scopeATask, scopeBTask);
+        using var scopeA = await scopeATask;
+        using var scopeB = await scopeBTask;
+
+        scopeA.QuarantineRoot.Should().NotBe(scopeB.QuarantineRoot);
+
+        var extractATask = scopeA.RunAsync(["-xf", scopeA.StagedArchivePath, "-C", scopeA.OutputDirectory!], CancellationToken.None);
+        var extractBTask = scopeB.RunAsync(["-xf", scopeB.StagedArchivePath, "-C", scopeB.OutputDirectory!], CancellationToken.None);
+        await Task.WhenAll(extractATask, extractBTask);
+        var (exitA, _, stdErrA) = await extractATask;
+        var (exitB, _, stdErrB) = await extractBTask;
+
+        exitA.Should().Be(0, because: stdErrA);
+        exitB.Should().Be(0, because: stdErrB);
+        File.ReadAllText(Path.Combine(scopeA.OutputDirectory!, "a.txt")).Should().Be("scope A content");
+        File.ReadAllText(Path.Combine(scopeB.OutputDirectory!, "b.txt")).Should().Be("scope B content");
+        File.Exists(Path.Combine(scopeA.OutputDirectory!, "b.txt")).Should().BeFalse();
+        File.Exists(Path.Combine(scopeB.OutputDirectory!, "a.txt")).Should().BeFalse();
+    }
 }

@@ -34,10 +34,23 @@ public static class ArchiveNaming
     /// file name, or "archive" when that's empty (a drive-root selection like "Z:\" via the shell
     /// extension's Drive ItemType has no file name component to fall back to).
     /// </summary>
+    /// <remarks>
+    /// T-F185: an explicit name is a bare file-name component, never a path — both callers combine
+    /// the return value directly with a separate DestinationFolder via Path.Combine, which does not
+    /// sanitize "..\" segments. Path.GetFileName strips any directory component (including a
+    /// leading "..\..\") down to the final segment, closing a real path-traversal write confirmed
+    /// via CompressAsync_DestinationNameWithParentTraversalSegments_NeverWritesOutsideIntendedTree
+    /// (a "..\..\evil" ArchiveName landed the created archive outside DestinationFolder entirely
+    /// before this fix). Falls back to "archive" if that strips the name down to nothing (e.g. an
+    /// explicit name of just "..\" or "\").
+    /// </remarks>
     public static string ResolveSingleArchiveName(string? explicitName, IReadOnlyList<string> sourcePaths)
     {
         if (explicitName is not null)
-            return explicitName;
+        {
+            string sanitized = Path.GetFileName(explicitName);
+            return sanitized.Length > 0 ? sanitized : "archive";
+        }
 
         if (sourcePaths.Count != 1)
             return "archive";

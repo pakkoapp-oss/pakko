@@ -4144,3 +4144,385 @@ regression from this task, which owns reliability only.
 
 ---
 
+## Test-Coverage Audit Follow-Ups (T-F174–T-F186)
+
+Sourced from a full three-stage QA/AppSec coverage audit (requirements extraction -> matrix vs.
+existing tests across Happy/Error/Misuse/Security/Boundary vectors -> gap analysis), 2026-08-30.
+Two gaps the audit surfaced were already tracked (T-F160 CLI conflict-dialog parity, T-F171
+Tar-family duplicate-entry-name parity) — not duplicated here, only cross-referenced. Priority
+tiers below (P0/P1/P2) reflect the audit's own ranking for a standalone security-sensitive desktop
+app, not strict execution order — `docs/DECISIONS.md` gets an entry once each task's real findings
+land, per this project's normal workflow.
+
+### T-F174 — Real COM entry points (`ExplorerCommands.cpp`/`dllmain.cpp`) have zero automated coverage
+- [x] **Status:** done 2026-08-31. **Priority: P0.** Three new `TEST_F(DllFixture, ...)` cases
+  added to `ComLoadTests.cpp` (zero `.vcxproj` changes): `RootCommand_Invoke_ReturnsENotImpl`,
+  `RootCommand_GetIcon_NeverReturnsSFalseWithNullOutParam` (asserts CLAUDE.md's COM HRESULT hard
+  constraint directly), `EnumSubCommands_ReturnsAllTwelveLeafCommandsInDocumentedOrder` (asserts
+  T-F62's Extract/Archive-before-Test/Scan ordering by checking all 12 real `GetCanonicalName`
+  GUIDs against `PakkoRootCommand::EnumSubCommands`'s real build order). Verified against the real
+  freshly-built DLL: `Archiver.ShellExtension.Tests.exe` 103/103 passing (was 100/100).
+- **Context:** `Archiver.ShellExtension.Tests.vcxproj` only compiles `ShellExtUtils.cpp` and
+  `Localization.cpp` (per `CLAUDE.md`'s Build Commands section) — `ExplorerCommands.cpp` and
+  `dllmain.cpp`, i.e. the actual `IExplorerCommand::Invoke`/`EnumSubCommands`/`GetIcon`/
+  `DllGetClassObject` a real right-click exercises, are never compiled into any test binary.
+  `ComLoadTests.cpp` only proves the DLL loads, not that its commands behave correctly.
+- **Corrected after Phase-0 exploration (2026-08-31):** coverage isn't literally zero —
+  `ComLoadTests.cpp`'s `DllFixture` already `LoadLibraryW`s the real built DLL and calls
+  `GetProcAddress("DllGetClassObject")`/`CreateInstance`/`GetTitle`, exercising real compiled
+  `dllmain.cpp`/`ExplorerCommands.cpp` object code dynamically. `EnumSubCommands`/`Invoke`/
+  `GetIcon` specifically are the actual gap. Compiling `dllmain.cpp` directly into the test
+  `.vcxproj` was evaluated and rejected: `TestMain.cpp` defines a `g_hModule` stub explicitly so
+  `ShellExtUtils.cpp` can link *without* `dllmain.cpp`, and `dllmain.cpp` defines the same global
+  — direct compilation collides (`LNK2005`) and, even fixed, `DllMain` would never fire under an
+  EXE loader, testing different behavior than production. The real-DLL-loader approach the fixture
+  already uses is both minimal-diff and more correct.
+- **Acceptance criteria (revised):**
+  - [ ] New `TEST_F(DllFixture, ...)` cases added to the existing `ComLoadTests.cpp` — **zero
+    `.vcxproj` changes** — that `CreateInstance` the real root command via the loaded DLL,
+    `QueryInterface` for `IExplorerCommand`, and call `EnumSubCommands`/`Next` in a loop asserting
+    the correct leaf-command count/order (T-F62's Extract-before-Test ordering constraint
+    included).
+  - [ ] `GetIcon` is exercised and asserted to never return `S_FALSE` with a null out-parameter
+    (per `CLAUDE.md`'s COM HRESULT hard constraint).
+  - [ ] `PakkoRootCommand::Invoke(nullptr, nullptr)` is asserted to return `E_NOTIMPL`.
+  - [ ] `MSBuild tests\Archiver.ShellExtension.Tests\Archiver.ShellExtension.Tests.vcxproj` green,
+    prior 100/100 still passing plus the new cases.
+- **Depends on:** none.
+
+### T-F175 — Sandbox scope has no reentrancy/concurrent-initialization test
+- [x] **Status:** done 2026-08-31. **Priority: P0.** New `[Fact]`
+  `RunAsync_TwoConcurrentScopes_BothSucceedWithDistinctQuarantineRoots` in
+  `TarSandboxScopeTests.cs` — two archives extracted via `Task.WhenAll` across two concurrently
+  created `TarSandboxScope`s, asserting distinct `QuarantineRoot`s and that neither scope's output
+  directory contains the other's file. Confirmed (Phase-0 exploration) no mutable shared state
+  exists in `Services/Sandbox/*` — each `CreateAsync` mints its own `Guid.NewGuid()`-based
+  quarantine root by construction. `dotnet test` green (`Archiver.Core.IntegrationTests`: 78/78).
+- **Context:** `Services/Sandbox/*` (AppContainer profile, quarantine ACL, Job Object) is the
+  single most security-critical subsystem in the repo (T-F52) and has the deepest existing unit
+  coverage of any area — but no test opens two `TarSandboxScope`s concurrently or re-enters setup
+  on an already-initialized profile/ACL. A misuse-path bug here (e.g. a second concurrent
+  extraction corrupting the first's quarantine ACL) would be a real sandbox-escape-adjacent risk,
+  not just a UX bug.
+- **Acceptance criteria:**
+  - [ ] Test: two `TarSandboxScope`s opened concurrently (parallel `Task.WhenAll`) each extract a
+    distinct archive without cross-contaminating the other's quarantine directory/ACL.
+  - [ ] Test: `SandboxSetupException` path (already exists per T-F52) is exercised specifically for
+    re-entrant/second-init-while-first-still-live, not just first-init failure.
+  - [ ] `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` green repo-wide, including a
+    rerun under `Category=Slow` if the new tests get tagged that way (real concurrent sandbox I/O).
+- **Depends on:** none.
+
+### T-F176 — `GroupPolicyService` has no tampered/oversized registry-value boundary test
+- [x] **Status:** done 2026-08-31. **Priority: P0.** Two new `FakeRegistryReader`-based tests —
+  `Load_PathologicallyLargeStringValue_DoesNotThrow`,
+  `Load_MalformedMultiStringWithEmbeddedNulls_DoesNotThrow`. The originally-planned "wrong
+  `RegistryValueKind`" case turned out unrepresentable at `IRegistryReader`'s boundary by
+  construction (`GetDword`/`GetMultiString` are already typed `int?`/`string[]?`) — verified by
+  inspection that `Win32RegistryReader`'s real pattern-match (`value is int i`, `value as
+  string[]`) is exhaustive-safe: any other CLR type `RegistryKey.GetValue` could return already
+  falls through to `null`, and `ReadValue`'s `try/catch` already treats every registry failure the
+  same way. A live test of that path would need an `HKLM` write (elevation), which
+  `Win32RegistryReader` has no injectable seam for by deliberate design — documented in the test
+  file's own comment rather than adding a seam solely to reach it. `dotnet test` green.
+- **Context:** Registry values under `HKLM\SOFTWARE\Policies\Pakko\` (T-F51) are a
+  locally-writable-by-admin-or-malware surface that directly gates extraction/creation behavior.
+  `GroupPolicyServiceTests`/`GroupPolicyOptionsTests` cover well-formed and empty values, but not
+  an oversized string, a wrong `RegistryValueKind`, or a malformed multi-string — any of which
+  could crash policy load (denial of service) or, worse, silently parse into a permissive default.
+- **Acceptance criteria:**
+  - [ ] Test: a pathologically large string value (MB-scale) does not crash or hang policy load.
+  - [ ] Test: a value written with the wrong `RegistryValueKind` (e.g. `DWORD` where a
+    `MultiString` is expected) fails closed (falls back to the safe default), never fails open.
+  - [ ] Test: a malformed `REG_MULTI_SZ` (embedded nulls in unexpected places) is handled without
+    throwing out of `Load`.
+- **Depends on:** none.
+
+### T-F177 — AMSI real-EICAR detection has no automated regression test (T-F146 stays manual-only)
+- [x] **Status:** done 2026-08-31. **Priority: P0.** New
+  `tests/Archiver.Core.IntegrationTests/AntivirusScanServiceEicarTests.cs` —
+  `ScanAsync_RealEicarInZipArchive_ReturnsThreatDetected` (real `AmsiScanner` via
+  `AntivirusScanService`'s real public constructor, not `FakeAmsiScanner`) and
+  `ScanAsync_RealEicarInTarArchive_ReturnsThreatDetectedOrFixtureInterceptedByRealTimeAv` (accepts
+  `ThreatDetected` or a real-time-AV-intercepted-the-fixture outcome as both passing, per the
+  revised acceptance criteria above). Gated by a new combined `SkipIfTarOrAmsiUnavailableAttribute`.
+  **Confirmed on this dev machine at first run: both tests passed for real** (2/2, real EICAR
+  detected through the actual `ScanAsync` orchestration on both the ZIP and Tar paths — the user's
+  own real-time Defender notification screenshot for the Tar fixture is independent confirmation).
+  Does not gate CI (expected to skip there per CLAUDE.md's documented windows-2022
+  `AmsiScanBuffer`/`ERROR_NOT_READY` limitation) — proves the real behavior locally when AMSI is
+  actually live.
+  **Same-session follow-up (found and fixed — advisor caught this before declaring done):** later
+  in this session, both new tests (and the pre-existing, untouched `AmsiScannerTests.
+  ScanBuffer_EicarTestString_ReturnsThreatDetected`) started consistently returning `Clean`
+  instead of `ThreatDetected` for the identical EICAR buffer — reproduced on a clean isolated
+  rerun, so not the usual parallel-execution flakiness class. `Get-MpPreference` confirmed
+  real-time monitoring was NOT disabled (`DisableRealtimeMonitoring: False`; exclusion lists
+  unreadable without admin); `Get-MpThreatDetection` showed 5 real EICAR detections this session,
+  the two most recent carrying a nonzero `ThreatStatusErrorCode` — suggestive of a live
+  Defender-side degradation after repeated detections in a short window, not conclusively proven
+  (stopped chasing further, per this task's own scope). **The real, fixable defect found in the
+  process:** both `SkipIfAmsiScanUnavailableAttribute` (pre-existing, `Archiver.Core.Tests`) and
+  the new `SkipIfTarOrAmsiUnavailableAttribute` only probed with an innocuous buffer and checked
+  that `ScanBuffer` didn't *throw* — a live-but-degraded provider passes that gate cleanly and
+  then fails the real assertion instead of skipping. **Fixed both** (same bug class, same
+  one-line-shape fix, touched the pre-existing attribute too since it was red for the identical
+  reason): each probe now scans a real EICAR buffer and requires an actual `ThreatDetected`
+  verdict, `Skip`-ping otherwise. Confirmed: all 5 previously-failing AMSI/EICAR tests across both
+  projects now skip cleanly (0 failed) instead of failing, with the honest reason recorded in
+  each `Skip` message.
+- **Context:** T-F146 (AMSI threat scanning) is `[~]` — implementation complete, but graduation
+  depends entirely on a one-time manual on-device EICAR pass. There is no automated test proving a
+  real EICAR string inside a real archive is actually flagged `Malicious`/`Suspicious` through
+  either the ZIP or Tar entry point — a future regression (e.g. a refactor that silently breaks the
+  `IAmsiStream` call) would only be caught by another manual pass, if anyone remembers to run one.
+- **Corrected after Phase-0 exploration (2026-08-31):** `ThreatVerdict` is a 3-state enum —
+  `Clean`/`ThreatDetected`/`Inconclusive` (no `Suspicious`/`Malicious`). EICAR is already used
+  safely (`AmsiScannerTests.ScanBuffer_EicarTestString_ReturnsThreatDetected`, runtime-built
+  string, never committed as a static literal) but only against `AmsiScanner.ScanBuffer` directly
+  — every `ScanAsync_...DetectedEntry` test (Zip and Tar) uses `FakeAmsiScanner`, not real AMSI.
+  The real gap is narrower: no test drives real EICAR bytes through the real `AmsiScanner` via
+  `ScanAsync`'s actual orchestration (entry extraction/quarantine + buffer scan). Also: CLAUDE.md
+  already records CI's windows-2022 runner hitting `ERROR_NOT_READY` on `AmsiScanBuffer` even with
+  a provider registered — this test cannot realistically gate CI, only run locally where Defender
+  is live. The Tar path also risks Defender's real-time on-access scanner intercepting/removing
+  the on-disk EICAR fixture before AMSI ever sees it (T-F146's own Phase-0 finding).
+- **Acceptance criteria (revised):**
+  - [ ] New `Archiver.Core.IntegrationTests` tests (gated by the existing
+    `[SkipIfAmsiScanUnavailableAttribute]`) build a real ZIP archive containing the EICAR test
+    string (via the same runtime-built-string pattern as `AmsiScannerTests`) and assert
+    `ScanAsync` (real `AmsiScanner`, not `FakeAmsiScanner`) returns `ThreatDetected` — this is the
+    primary, reliable automated regression (in-memory scan, no on-disk AV race).
+  - [ ] A matching Tar-family test exists, but accepts either `ThreatDetected` **or** "the fixture
+    file was removed/unreadable before scanning" as a passing outcome, documented inline as to why
+    (real-time AV can legitimately win the race against AMSI on the quarantine write) — not a
+    false failure.
+  - [ ] Both tests run in the normal CI `test` job; expected to skip cleanly there (not fail) via
+    the existing `SkipIfAmsiScanUnavailableAttribute` probe, and to actually exercise real AMSI
+    locally on a dev machine with Defender active.
+- **Depends on:** none.
+
+### T-F178 — No MAX_PATH boundary test at the `ZipArchiveService`/`TarSandboxedService` layer
+- [x] **Status:** done 2026-08-31. **Priority: P1.** Two new tests —
+  `ArchiveAsync_SourcePathBeyond260Chars_SucceedsOrRecordsPerItemErrorNeverThrows`
+  (`ZipArchiveServiceArchiveTests.cs`) and
+  `ExtractAsync_DestinationPathBeyond260Chars_SucceedsOrRecordsPerItemErrorNeverThrows`
+  (`ZipArchiveServiceExtractTests.cs`), both against a real on-disk nested-directory path over
+  260 chars. **Finding (per the advisor's own flagged caveat):** both pass — succeeding outright,
+  not just failing safely. `dotnet test`'s `testhost.exe` is a plain .NET Core process with no
+  `app.manifest`, confirming this is .NET Core's own built-in long-path File I/O support (present
+  since .NET Core 2.1, independent of any Win32 manifest `longPathAware` declaration) doing the
+  work — not something inherited from `Archiver.App`/`Archiver.Shell`'s manifests. Recorded in
+  `docs/DECISIONS.md`'s T-F178 entry.
+- **Context:** MAX_PATH (260 chars) is tested at `Archiver.Shell`'s argument-parser layer
+  (`ExtractHere_PathExceeding260Chars_ParsedCorrectlyNoTruncation`) but not where the actual I/O
+  happens — `ZipArchiveService.ArchiveAsync`/`ExtractAsync` and `TarSandboxedService`'s equivalents.
+  A path near/over 260 chars could still fail deep inside real file I/O even though the parser
+  accepted it cleanly.
+- **Acceptance criteria:**
+  - [ ] Test: archiving a source tree whose full path is at/just-over 260 chars either succeeds
+    (long-path-aware I/O) or fails with a per-item `ArchiveError`, never an unhandled exception.
+  - [ ] Same for extraction to a destination path at/over the boundary.
+  - [ ] Document the actual behavior found (does .NET's long-path opt-in already cover this, or is
+    there a real gap) in `docs/DECISIONS.md`.
+- **Depends on:** none.
+
+### T-F179 — Characterize `pakko x`'s current (non-interactive) conflict behavior with a test
+- [x] **Status:** done 2026-08-31. **Priority: P1.** **Corrected premise before writing the
+  test** (advisor caught this pre-implementation): `pakko x` never passes `ConflictBehavior.Ask`
+  at all, so `ConflictResolver`'s null-callback default is irrelevant here — `Archiver.CLI/
+  Program.cs` sets `OnConflict = command.OverwriteMode ?? (command.AssumeYes ? Overwrite : Skip)`,
+  a deliberate `Skip` chosen at the CLI argument-mapping layer itself. New subprocess test
+  `Extract_OverlappingFileTwiceNoOverwriteSwitch_TodaysBehaviorIsSkipNotOverwriteNotThrow` (real
+  `pakko.exe` run, no `-ao`/`-y`) confirms this empirically: a pre-existing file's content survives
+  extraction untouched, exit code 0. Feeds T-F160's eventual design decision with real evidence.
+- **Context:** Precursor to T-F160 (interactive conflict dialog for `Archiver.CLI`), which is
+  still an open design question. Before building the dialog, lock down *today's* actual behavior
+  (currently a null `ResolveConflictAsync` callback per `ConflictResolver`'s documented default)
+  with an explicit subprocess test, so T-F160's eventual change has a known baseline instead of an
+  assumed one.
+- **Acceptance criteria:**
+  - [ ] `Archiver.CLI.Tests`' `Subprocess/` layer gets a test that runs `pakko x` twice against the
+    same destination with an overlapping file and asserts today's real behavior (expected: silent
+    skip, per `ConflictResolver`'s null-callback default) — not throwing, not silently overwriting.
+  - [ ] Feeds directly into T-F160's eventual "decline, document as intentional" vs. "build the
+    dialog" decision with real evidence instead of a guess.
+- **Depends on:** none. **Feeds into:** T-F160.
+
+### T-F180 — No test that spoofed/truncated magic bytes can't route an archive past its sandbox
+- [x] **Status:** done 2026-08-31. **Priority: P1.** Two new tests in
+  `ArchiveFormatDetectorTests.cs`:
+  `Detect_ZipSignaturePrefixedOntoRealSevenZipContent_ClassifiesAsZipByDesignNotSevenZip`
+  (documents, rather than "fixes," the known/accepted magic-bytes-only detection behavior — the
+  actual safety boundary is downstream, in `ZipArchiveServiceExtractTests.
+  ExtractAsync_ZipMagicBytesButCorruptedContent_ReturnsArchiveError`, already existing, which
+  proves the unsandboxed ZIP path fails safely rather than misbehaving on non-ZIP content behind a
+  forged ZIP signature) and `Detect_TooShortForAnySignatureCheck_ReturnsUnknown`. `dotnet test`
+  green.
+- **Context:** `ArchiveFormatDetectorTests` has 24 cases already, but none explicitly proves a
+  format-confusion attempt (e.g. a RAR/7z payload's real content under a `.zip`-looking magic
+  byte prefix, or a truncated/ambiguous header) can't get misclassified into `ZipArchiveService`'s
+  unsandboxed path when it should have gone through `TarSandboxedService`'s AppContainer sandbox
+  (or vice versa).
+- **Acceptance criteria:**
+  - [ ] Test: a real 7z/RAR file's bytes with a forged ZIP local-file-header signature prepended/
+    substituted is either rejected outright or still correctly routed to the sandboxed extractor —
+    never accepted into `ZipArchiveService`'s in-process unsandboxed extraction path.
+  - [ ] Test: a truncated file (magic bytes only, no valid body) fails safely (per existing
+    `ExtractAsync_EmptyFile_ReportsErrorAsUnrecognizedFormat`-style contract) regardless of which
+    format the truncated magic bytes resemble.
+- **Depends on:** none.
+
+### T-F181 — `FileHashService` has no `Int64` byte-count boundary test
+- [x] **Status:** done 2026-08-31 — documented as an accepted risk, no implementation, per user
+  direction. **Priority: P1.**
+- **Context:** Existing large-file hash tests (T-F128) prove correctness at real large sizes, but
+  none specifically probes the byte-count arithmetic feeding `IProgress<int>`/total-bytes reporting
+  near `Int64.MaxValue`-adjacent values (relevant since totals are computed via a pre-scan sum
+  across potentially many files/folders).
+- **Corrected after Phase-0 exploration, user-directed (2026-08-31):** `FileHashService`'s byte
+  total is already a plain `long` (`files.Sum(f => f.Length)`), so there's no real seam to test
+  the arithmetic through — proving a boundary near `Int64.MaxValue` would require injecting a
+  `FileInfo`-like abstraction that exists nowhere else in the codebase today, purely to serve this
+  one test. Asked the user directly: build the new seam, or accept this as a documented risk per
+  this project's "no speculative abstractions" principle. **User chose: document, no new seam.**
+- **Acceptance criteria (revised):**
+  - [x] No code change. Added a note to `docs/TESTING.md`'s new "Test-Coverage Audit Follow-Ups"
+    section recording that `FileHashService`'s byte-total summation near `Int64.MaxValue` is
+    untested by design — real multi-exabyte fixtures are infeasible, and no injectable file-size
+    abstraction exists to test the arithmetic in isolation without adding one solely for this
+    purpose.
+- **Depends on:** none.
+
+### T-F182 — `DetectCapabilitiesAsync` untested for tar.exe physically absent from disk
+- [x] **Status:** done 2026-08-31. **Priority: P1.** Added the planned `internal static
+  Task<TarCapabilities> DetectCapabilitiesAsync(string tarExecutablePath)` overload (the public
+  parameterless method now delegates to it with the existing const — CA1822 required marking it
+  `static` since it touches no instance state). New test
+  `DetectCapabilitiesAsync_ExecutableMissingFromDisk_ReturnsAllFalseDefaultsNotThrow` in
+  `TarSandboxedServiceTests.cs` confirms a nonexistent path returns the documented all-false
+  default (caught by `TarSignatureVerifier.Verify`'s own existing failure path, before even
+  reaching `Process.Start`). `dotnet test` green.
+- **Context:** `ITarService.DetectCapabilitiesAsync`'s XML doc explicitly promises "sensible
+  all-false defaults if tar.exe is absent," and `TarVersionParserTests` covers unrecognized/empty
+  *output*, but no test simulates the executable genuinely missing from
+  `C:\Windows\System32\tar.exe` (process-start failure itself, not a probe that ran and returned
+  garbage).
+- **Corrected after Phase-0 exploration (2026-08-31):** confirmed no seam exists today — the path
+  is `private const string TarExecutablePath = @"C:\Windows\System32\tar.exe"` by deliberate
+  design (CLAUDE.md's PATH-hijack hard constraint). The fix is an `internal`-only test overload,
+  the same pattern already used for `AntivirusScanService`'s test-only constructor — the public
+  contract/const stays untouched.
+- **Acceptance criteria (revised):**
+  - [ ] `TarSandboxedService` gains an `internal Task<TarCapabilities>
+    DetectCapabilitiesAsync(string tarExecutablePath)` overload (the public parameterless method
+    delegates to it with the existing const) — no change to the public API or the hardcoded
+    default path.
+  - [ ] A new test (via `InternalsVisibleTo`, already wired for `Archiver.Core.Tests`) calls the
+    overload with a path pointing at a nonexistent file and asserts the documented all-false
+    `TarCapabilities` default, not an exception.
+- **Depends on:** none.
+
+### T-F183 — No regression test for rapid repeated UI invocation racing `IsBusy`
+- [x] **Status:** done 2026-08-31 — verified no real race exists, no implementation needed. **Priority: P2.**
+- **Context:** This exact bug class already happened once in this repo (T-F123's postmortem — a
+  stale build masked an `IsBusy`-guard regression on `ArchiveBrowserList_DoubleTapped` across three
+  verification cycles). `Archiver.App` has no automated UI test project at all (confirmed — only
+  `Archiver.App.Core.Tests` for logic split out of WinUI), so this class of bug currently has zero
+  automated safety net, only manual on-device click-through.
+- **Corrected after Phase-0 exploration (2026-08-31):** read the actual guarded call sites before
+  building anything. `MainViewModel.cs`'s `ArchiveAsync` (line 457) and `RunExtractAsync` (line
+  596) set `IsBusy = true` as the literal first statement, before any `await`; `MainWindow.xaml.cs`'s
+  `ArchiveBrowserList_DoubleTapped` (line 197) checks `ViewModel.IsBusy` the same way, synchronously
+  before any `await`. WinUI runs on a single dispatcher thread, and an `async` method's body before
+  its first `await` executes atomically relative to other queued input — so a second click's check
+  can only run after the first click's handler has already set `IsBusy = true`. **There is no real
+  TOCTOU window today.** T-F123 (the precedent this task was based on) was root-caused as a stale
+  `dotnet build` masking an already-correct fix, not an actual race, per its own postmortem.
+- **Acceptance criteria (revised):** no code/seam needed — `Archiver.App.Core` gains no new
+  `BusyGate`-style abstraction, since there is nothing for it to guard against today.
+  - [x] Verified (read `MainViewModel.cs:457/596`, `MainWindow.xaml.cs:197`) that both guarded
+    call sites set/check `IsBusy` synchronously pre-`await`, closing the TOCTOU window by
+    construction on WinUI's single-threaded dispatcher.
+  - [x] Finding recorded in `docs/TESTING.md` so a future refactor that introduces an `await`
+    before the guard doesn't silently reopen this without anyone noticing the invariant existed.
+- **Status:** done 2026-08-31 — verification-only, no implementation needed.
+- **Depends on:** none.
+
+### T-F184 — No test for Zalgo/RTL-override/zero-width filenames
+- [x] **Status:** done 2026-08-31. **Priority: P2.** Two new tests in
+  `ZipArchiveServiceArchiveTests.cs`: `ArchiveAsync_RtlOverrideFilename_RoundTripsWithoutCorruptionOrCrash`
+  (real U+202E character, verified correctly written via a byte/codepoint check, not eyeballed
+  terminal output — confirmed `0x202e` present, not mojibake) and
+  `ArchiveAsync_ZalgoStyleCombiningCharacterFilename_RoundTripsOrFailsSafely` (40 stacked combining
+  diacriticals, built programmatically rather than typed as a literal). Both round-trip correctly.
+  Scope note: proves the archiver itself doesn't corrupt/crash on these filenames — not that
+  Explorer's own RTL-override rendering is spoof-proof, which is a Windows shell display concern
+  outside this project.
+- **Context:** `ArchiveAsync_EmojiFilename_PreservedAfterRoundTrip` and the Unicode fixture tests
+  cover ordinary non-ASCII well, but combining-character stacks (Zalgo), the Unicode
+  right-to-left-override character (a known filename-spoofing vector — e.g. disguising a `.exe` as
+  a `.txt`), and zero-width characters are untested at both the Core archive layer and
+  `Archiver.CLI`'s argument parser.
+- **Acceptance criteria:**
+  - [x] Test: a filename containing U+202E (RTL override) round-trips through archive/extract
+    without corrupting the file table.
+  - [x] Test: a Zalgo-style heavily-combined filename round-trips or fails safely (no crash,
+    no truncation that collides with another entry).
+- **Depends on:** none.
+
+### T-F185 — `TarSandboxedService.CompressAsync`'s destination path isn't fuzzed for traversal
+- [x] **Status:** done 2026-08-31 — **found and fixed a real vulnerability, not just a coverage
+  gap.** **Priority: P2 (severity of the finding turned out higher — see below).**
+- **Finding:** `CompressAsync_DestinationNameWithParentTraversalSegments_NeverWritesOutsideIntendedTree`
+  (new, `TarSandboxedServiceCompressTests.cs`) proved a real path-traversal write: an
+  `ArchiveName` of `"..\..\evil"` made `ArchiveNaming.ResolveSingleArchiveName` return that string
+  verbatim, which both `TarSandboxedService.CompressAsync` and `ZipArchiveService.ArchiveAsync`
+  (identical `Path.Combine(DestinationFolder, archiveName + extension)` construction, confirmed by
+  grep — this was never Tar-specific) then combined with `DestinationFolder` unsanitized —
+  `Path.Combine` does not collapse `..\` segments, so the created archive genuinely landed outside
+  `DestinationFolder`, confirmed by a real file on disk two levels above the intended temp folder.
+- **Fix:** `ArchiveNaming.ResolveSingleArchiveName` now runs the explicit name through
+  `Path.GetFileName` before returning it — an archive name is a bare file-name component, never a
+  path, so this closes the traversal for both services from their one shared call site (no
+  Tar/Zip-specific fix needed). Falls back to `"archive"` if sanitization strips the name to
+  nothing (e.g. an explicit name of just `"..\"`). User-directed decision (asked directly, given
+  this expanded beyond the original test-only scope): fix now, both services, via the shared
+  helper — confirmed via `advisor`-adjacent reasoning that the same defect existed in
+  `ZipArchiveService.ArchiveAsync` (lines 106, 408 area) before the fix, not only in Tar.
+- **Verification:** the new test failed against pre-fix code (confirmed — real file written at
+  `...\dest-root\..\..\evil.tar`, escaping even the test's own TempDirectory), passed after the
+  fix. Full `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` green repo-wide (two
+  unrelated pre-existing-test failures observed during the full run — `AmsiScannerTests`'
+  real-EICAR assertions and one `CliSubprocessTests` RAR/7z subprocess test — both confirmed to be
+  this session's own documented AV-state/sandbox-contention flakiness classes via a clean isolated
+  rerun, and confirmed via `git status` to touch files this task never modified).
+- **Depends on:** none.
+- **Context:** Tar-family creation is deliberately unsandboxed (trusted local source files, per
+  `ITarService`'s own XML doc) — but the *destination* archive path is constructed from
+  CLI/Shell-supplied names and isn't explicitly tested against `..\..\` segments attempting to
+  write outside the intended folder.
+- **Acceptance criteria:**
+  - [ ] Test: an archive name/destination containing `..\` segments either resolves safely within
+    the intended directory or is rejected — never silently writes outside the source folder's
+    parent.
+- **Depends on:** none.
+
+### T-F186 — No boundary test at AMSI's ~256 MiB per-entry scan cap
+- [x] **Status:** done 2026-08-31. **Priority: P2.** New `ScanAsync_EntryExactlyAtCap_
+  IsScannedNotSkipped` in `AntivirusScanServiceTests.cs` — real 256 MiB entry (matching the
+  existing over-cap test's own established real-bytes-written precedent), confirms the real check
+  (`length > MaxScannableEntryBytes`, strict) still scans an entry exactly at the cap rather than
+  skipping it, closing the other side of the existing over-cap test.
+- **Context:** T-F151 raised the per-entry AMSI scan cap from 64 MiB to 256 MiB after a real
+  `IAmsiStream` failure was found above ~16-20 MiB. No test currently probes an entry sized exactly
+  at/just-over the new 256 MiB boundary to confirm the cap is enforced correctly (skipped/flagged
+  Inconclusive) rather than silently truncated or crashing.
+- **Acceptance criteria:**
+  - [ ] Test: an entry just under 256 MiB is scanned via the existing `AmsiScanBuffer` path; an
+    entry just over is handled per the documented cap behavior (skip/Inconclusive), not truncated
+    silently.
+- **Depends on:** none.
+
+---
+

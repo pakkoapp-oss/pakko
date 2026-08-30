@@ -31,7 +31,14 @@ public sealed class TarSandboxedService : ITarService
     }
 
     /// <inheritdoc/>
-    public async Task<TarCapabilities> DetectCapabilitiesAsync()
+    public Task<TarCapabilities> DetectCapabilitiesAsync() => DetectCapabilitiesAsync(TarExecutablePath);
+
+    // T-F182 (test-coverage audit): internal test-only overload — the const TarExecutablePath
+    // stays hardcoded for every real caller (CLAUDE.md's PATH-hijack hard constraint), but this
+    // lets Archiver.Core.Tests point the real detection logic at a path that doesn't exist, to
+    // prove "tar.exe physically absent" hits the same documented all-false-defaults path as every
+    // other failure mode here, without adding a public seam to the const itself.
+    internal static async Task<TarCapabilities> DetectCapabilitiesAsync(string tarExecutablePath)
     {
         try
         {
@@ -39,12 +46,12 @@ public sealed class TarSandboxedService : ITarService
             // eagerly-resolved startup probe, not an untrusted-archive operation. Still gated on
             // the signature check: a tampered tar.exe should fail closed here via the same
             // all-false-defaults path used for "tar.exe absent", not silently run --version.
-            if (!TarSignatureVerifier.Verify(TarExecutablePath))
+            if (!TarSignatureVerifier.Verify(tarExecutablePath))
                 return new TarCapabilities();
 
             var startInfo = new ProcessStartInfo
             {
-                FileName = TarExecutablePath,
+                FileName = tarExecutablePath,
                 Arguments = "--version",
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,

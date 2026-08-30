@@ -80,4 +80,30 @@ public sealed class ArchiveNamingTests
         // fallback exists for (e.g. a single-source Drive ItemType selection via the shell extension).
         ArchiveNaming.ResolveSingleArchiveName(null, [@"Z:\"]).Should().Be("archive");
     }
+
+    // T-F185: a real path-traversal write was found and fixed here — an explicit ArchiveName
+    // used to flow straight into Path.Combine(DestinationFolder, archiveName + extension)
+    // unsanitized, so "..\..\evil" landed the created archive two directories above
+    // DestinationFolder (confirmed via a real file on disk, see docs/DECISIONS.md's T-F185 entry).
+    // Path.GetFileName strips any directory component down to the final segment — an archive name
+    // is a bare file-name component, never a path.
+    [Theory]
+    [InlineData(@"..\..\evil", "evil")]
+    [InlineData(@"..\..\..\deep\evil", "evil")]
+    [InlineData(@"C:\Windows\System32\evil", "evil")]
+    [InlineData(@"subdir\evil", "evil")]
+    public void ResolveSingleArchiveName_ExplicitNameContainsPathSegments_SanitizedToFinalSegmentOnly(
+        string explicitName, string expected)
+    {
+        ArchiveNaming.ResolveSingleArchiveName(explicitName, [@"C:\Docs\file.txt"]).Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData(@"..\")]
+    [InlineData(@"\")]
+    [InlineData(@"..\..\")]
+    public void ResolveSingleArchiveName_ExplicitNameSanitizesToEmpty_FallsBackToArchive(string explicitName)
+    {
+        ArchiveNaming.ResolveSingleArchiveName(explicitName, [@"C:\Docs\file.txt"]).Should().Be("archive");
+    }
 }

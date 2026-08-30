@@ -364,7 +364,12 @@ out of T-F147), **T-F159** (unify `GetUniqueFilePath`, split out of T-F158), **T
 (interactive conflict dialog for `Archiver.CLI`'s `pakko x`, parity with T-F155), **T-F164** (GUI
 Hash lacks CRC-32, not routed through `FileHashService`), **T-F165** (`docs/DIAGRAMS.md` diagram 3
 stale after T-F161), **T-F166**-**T-F170** (test-coverage gaps: real junctions, AES-256 ZIP, Tar
-duplicate-entry-names, in-flight Tar cancellation, locked destination on extract).
+duplicate-entry-names, in-flight Tar cancellation, locked destination on extract). **T-F174**-
+**T-F186** (2026-08-30 QA/AppSec coverage-audit follow-ups: COM entry-point tests, sandbox
+reentrancy, GroupPolicy fuzzing, AMSI automated EICAR test, MAX_PATH at the service layer, CLI
+conflict-behavior characterization, format-spoofing routing safety, hash Int64 boundary, tar.exe-
+absent handling, UI double-invoke race, Zalgo/RTL-override filenames, Tar destination traversal,
+AMSI size-cap boundary — see `docs/TASKS.md`'s own section for full detail and priority tiers).
 
 ## Roadmap Summary
 

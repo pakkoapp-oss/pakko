@@ -159,6 +159,41 @@ public sealed class AntivirusScanServiceTests : IDisposable
         scanner.Calls.Should().BeEmpty("an oversized entry must never be buffered into memory for scanning");
     }
 
+    // T-F186 (test-coverage audit): the boundary companion to the over-cap test above — proves an
+    // entry exactly AT the cap (MaxScannableEntryBytes itself; the real check is a strict `>`) is
+    // still scanned, not skipped, closing the other side of T-F151's 64->256 MiB cap raise.
+    // Real-bytes-written, matching the existing over-cap test's own established cost/precedent
+    // (not tagged Slow there either) rather than a synthetic size that wouldn't exercise the real
+    // comparison meaningfully.
+    [Fact]
+    public async Task ScanAsync_EntryExactlyAtCap_IsScannedNotSkipped()
+    {
+        string atCapZip = Path.Combine(_temp.Path, "at-cap.zip");
+        using (var archive = ZipFile.Open(atCapZip, ZipArchiveMode.Create))
+        {
+            ZipArchiveEntry entry = archive.CreateEntry("at-cap.bin", CompressionLevel.NoCompression);
+            using Stream stream = entry.Open();
+            byte[] chunk = new byte[1024 * 1024];
+            long remaining = AntivirusScanService.MaxScannableEntryBytes;
+            while (remaining > 0)
+            {
+                int toWrite = (int)Math.Min(chunk.Length, remaining);
+                stream.Write(chunk, 0, toWrite);
+                remaining -= toWrite;
+            }
+        }
+
+        var scanner = new FakeAmsiScanner();
+        var service = CreateService(scanner);
+
+        var result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [atCapZip] });
+
+        result.Findings.Should().ContainSingle(f => f.EntryPath == "at-cap.bin" && f.Verdict == ThreatVerdict.Clean);
+        scanner.Calls.Should().ContainSingle(c => c.ContentName == "at-cap.bin"
+            && c.Length == AntivirusScanService.MaxScannableEntryBytes,
+            "an entry exactly at the cap must still be buffered and scanned, not skipped");
+    }
+
     [Fact]
     public async Task ScanAsync_NoProviderRegistered_ReturnsInconclusiveForEveryArchiveWithoutScanning()
     {

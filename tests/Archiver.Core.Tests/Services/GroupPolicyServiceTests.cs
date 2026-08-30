@@ -110,4 +110,37 @@ public sealed class GroupPolicyServiceTests
     {
         GroupPolicyService.Load(new FakeRegistryReader()).DisableTarExtraction.Should().BeFalse();
     }
+
+    // T-F176 (test-coverage audit): GroupPolicyService.Load's only input seam is IRegistryReader,
+    // whose contract (int?/string[]?) already makes a wrong RegistryValueKind unrepresentable at
+    // this boundary — Win32RegistryReader's own GetDword/GetMultiString pattern-match
+    // (`value is int i`, `value as string[]`) is exhaustive-safe by inspection: any CLR type
+    // RegistryKey.GetValue can return other than exactly int/string[] already falls through to
+    // null, and ReadValue's try/catch already treats any registry failure the same way. Testing
+    // that path live would need a real HKLM write, which needs elevation Win32RegistryReader
+    // hardcodes no seam to avoid — so these two cases exercise the boundary this seam CAN reach:
+    // a pathologically oversized string and a malformed multi-string, both via FakeRegistryReader.
+    [Fact]
+    public void Load_PathologicallyLargeStringValue_DoesNotThrow()
+    {
+        string oversized = new('a', 5_000_000);
+        var reader = new FakeRegistryReader()
+            .WithMultiString(PolicyKeyPath, "AllowedFormats", oversized);
+
+        Action act = () => GroupPolicyService.Load(reader);
+
+        act.Should().NotThrow();
+        GroupPolicyService.Load(reader).AllowedFormats.Should().BeEquivalentTo([oversized]);
+    }
+
+    [Fact]
+    public void Load_MalformedMultiStringWithEmbeddedNulls_DoesNotThrow()
+    {
+        var reader = new FakeRegistryReader()
+            .WithMultiString(PolicyKeyPath, "BlockedFormats", "zip\0tar", "\0\0\0", string.Empty);
+
+        Action act = () => GroupPolicyService.Load(reader);
+
+        act.Should().NotThrow();
+    }
 }

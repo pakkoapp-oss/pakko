@@ -90,6 +90,40 @@ public sealed class ArchiveFormatDetectorTests : IDisposable
         ArchiveFormatDetector.Detect(Path.Combine(_temp.Path, "does_not_exist.zip")).Should().Be(ArchiveFormat.Unknown);
     }
 
+    // T-F180 (test-coverage audit): Detect() trusts only the leading signature bytes — by design,
+    // per this file's own doc comment ("magic bytes only, no extension reliance"). A file with a
+    // forged ZIP signature prepended to real 7z content therefore classifies as Zip, not SevenZip
+    // — this test makes that known, accepted behavior explicit (not a bug) so a future reader
+    // doesn't "fix" it into something inconsistent. The actual safety boundary this behavior
+    // depends on is downstream, not here: ZipArchiveServiceExtractTests'
+    // ExtractAsync_ZipMagicBytesButCorruptedContent_ReturnsArchiveError already proves the
+    // unsandboxed ZIP path fails safely (ArchiveError, not a crash/hang/misbehavior) when content
+    // behind a real ZIP signature isn't actually valid ZIP — so a format-confusion attempt never
+    // gets to run 7z/rar content through the wrong (unsandboxed) extractor undetected.
+    [Fact]
+    public void Detect_ZipSignaturePrefixedOntoRealSevenZipContent_ClassifiesAsZipByDesignNotSevenZip()
+    {
+        byte[] sevenZipBody = [0x37, 0x7A, 0xBC, 0xAF, 0x27, 0x1C, 0, 0, 1, 2, 3, 4];
+        byte[] forged = [0x50, 0x4B, 0x03, 0x04, .. sevenZipBody];
+        var path = WriteBytes("forged.zip", forged);
+
+        ArchiveFormatDetector.Detect(path).Should().Be(ArchiveFormat.Zip,
+            "detection reads only the leading signature by design — routing safety for mismatched " +
+            "content is enforced downstream by the real ZIP parser rejecting non-ZIP bytes, not here");
+    }
+
+    // Complements Detect_UnrecognizedBytes_ReturnsUnknown: every existing signature test already
+    // writes a magic-bytes-only fixture (no real archive body), so truncation-to-magic-bytes is
+    // implicitly covered per format — this confirms a file that is ONLY a partial/ambiguous
+    // signature (too short to complete any known check) still classifies deterministically to
+    // Unknown rather than misfiring into a wrong format.
+    [Fact]
+    public void Detect_TooShortForAnySignatureCheck_ReturnsUnknown()
+    {
+        var path = WriteBytes("tiny.bin", [0x50, 0x4B]); // first 2 bytes of ZIP's 4-byte signature
+        ArchiveFormatDetector.Detect(path).Should().Be(ArchiveFormat.Unknown);
+    }
+
     [Theory]
     [InlineData("clip.zip")]
     [InlineData("clip.RAR")]

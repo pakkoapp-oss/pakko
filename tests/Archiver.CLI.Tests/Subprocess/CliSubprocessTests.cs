@@ -57,6 +57,30 @@ public sealed class CliSubprocessTests
         Directory.Exists(Path.Combine(destDir, "photo")).Should().BeFalse();
     }
 
+    // T-F179 (test-coverage audit): precursor to T-F160 (interactive conflict dialog for
+    // `pakko x`, still an open design question). Locks down today's real, observed behavior —
+    // not a guessed one — as a baseline before that design work happens. Confirmed by reading
+    // Archiver.CLI/Program.cs directly: `pakko x` never passes ConflictBehavior.Ask at all (the
+    // advisor's own caution before this was written) — OnConflict is
+    // `command.OverwriteMode ?? (command.AssumeYes ? Overwrite : Skip)`, so with neither `-ao`
+    // nor `-y` the real default is a deliberate Skip, not a fallthrough to ConflictResolver's
+    // null-callback default (that path is irrelevant here — Skip is chosen at the CLI argument-
+    // mapping layer itself, before ConflictResolver is ever consulted).
+    [Fact]
+    public void Extract_OverlappingFileTwiceNoOverwriteSwitch_TodaysBehaviorIsSkipNotOverwriteNotThrow()
+    {
+        string destDir = CliFixtureFiles.CreateScratchDir();
+        string preExistingFile = Path.Combine(destDir, "a.txt");
+        File.WriteAllText(preExistingFile, "pre-existing content that must survive a Skip");
+
+        (int exitCode, string stdOut, string stdErr) = CliProcessRunner.Run("x", $"-o{destDir}", CliFixtureFiles.ValidZip);
+
+        exitCode.Should().Be(0, because: stdErr);
+        File.ReadAllText(preExistingFile).Should().Be("pre-existing content that must survive a Skip",
+            "today's real, observed default (no -ao/-y switch) is Skip — the archive's own " +
+            "\"hello world\" content for a.txt must NOT overwrite what was already there");
+    }
+
     [RequiresTarExe]
     public void Extract_TarGzHappyPath_ExtractsFilesAndExitsZero()
     {

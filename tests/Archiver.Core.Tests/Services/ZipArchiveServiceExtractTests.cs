@@ -36,6 +36,34 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
         return zipPath;
     }
 
+    // T-F178 (test-coverage audit): companion to ArchiveAsync's own long-path test — same reasoning,
+    // destination side. Must never throw unhandled regardless of whether the underlying .NET Core
+    // File I/O actually needs the app.manifest's longPathAware declaration to reach here (that
+    // manifest is on Archiver.App/Archiver.Shell, not the dotnet-test host this test itself runs
+    // under) — see docs/DECISIONS.md's T-F178 entry for what was actually found.
+    [Fact]
+    public async Task ExtractAsync_DestinationPathBeyond260Chars_SucceedsOrRecordsPerItemErrorNeverThrows()
+    {
+        var zip = CreateTestZip("archive.zip", "file1.txt");
+        string deepDest = _temp.Path;
+        while (deepDest.Length < 300)
+            deepDest = Path.Combine(deepDest, new string('b', 40));
+        deepDest.Length.Should().BeGreaterThan(260);
+
+        var options = new ExtractOptions
+        {
+            ArchivePaths = [zip],
+            DestinationFolder = deepDest,
+        };
+
+        var result = await _sut.ExtractAsync(options);
+
+        result.Should().NotBeNull();
+        (result.Success || result.Errors.Count > 0).Should().BeTrue(
+            "a >260-char destination path must either succeed or record a per-item ArchiveError, " +
+            "never silently produce neither");
+    }
+
     [Fact]
     public async Task ExtractAsync_ValidZip_ExtractsFiles()
     {

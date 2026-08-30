@@ -8009,3 +8009,93 @@ Cryptography` `using`.
 compile check (0 warnings under `TreatWarningsAsErrors`). Stays `[~]` in `docs/TASKS.md` until the
 user's own on-device check that the Hash dialog still shows correct SHA-256 values — not graduated
 on a compile check alone, per this project's UI-verification rule.
+
+---
+
+### T-F185 — Real path-traversal write found via `ArchiveName`, fixed in the shared naming helper
+
+A test written for T-F185 (test-coverage audit, fuzzing `CompressAsync`'s destination path for
+traversal) found a genuine bug, not just a coverage gap: an `ArchiveOptions.ArchiveName` of
+`"..\..\evil"` made the created archive land two directories above the intended
+`DestinationFolder` — a real file on disk, not a theoretical finding. Root cause:
+`ArchiveNaming.ResolveSingleArchiveName`'s explicit-name branch returned the caller-supplied
+string verbatim; both `TarSandboxedService.CompressAsync` and `ZipArchiveService.ArchiveAsync`
+then combine it with `DestinationFolder` via a plain `Path.Combine(DestinationFolder, archiveName
++ extension)`, which does not collapse `..\` segments — confirmed via grep that both services
+share the exact same construction (Zip: lines ~106 and ~408; Tar: line ~930), so this was never
+Tar-specific despite T-F185's original framing.
+
+**Exploitability assessment:** lower severity than the codebase's other traversal defenses (T-F30
+Zip-Slip, T-F49's Tar-entry pre-scan) — those guard against a hostile *archive being opened*,
+crossing a real trust boundary. `ArchiveName` is typed by the same user creating their own
+archive (WinUI text box, CLI argument, or shell command line), so the direct exploit scenario is
+largely self-inflicted. Still fixed, for two reasons: (1) it's inconsistent with how carefully
+every other path in this codebase treats destination-path construction, and (2) a scripted/
+automated caller of `Archiver.CLI` could plausibly pass a name derived from less-trusted input
+(e.g. a filename pulled from an external feed) without realizing `ArchiveName` wasn't already
+being treated as untrusted.
+
+**Fix:** `ArchiveNaming.ResolveSingleArchiveName` now runs the explicit name through
+`Path.GetFileName` before returning — an archive name is a bare file-name component, never a
+path; `Path.GetFileName` collapses any `..\..\evil` down to just `evil`, closing the write for
+both services from their one shared call site. Falls back to `"archive"` if sanitization empties
+the name (e.g. an explicit name of just `"..\"`). No other call site needed changing — grep
+confirmed `options.ArchiveName` only ever reaches `ResolveSingleArchiveName` in both services;
+`SeparateArchives` mode derives its per-item names from real on-disk file names via
+`ArchiveNaming.GetBaseName` instead, which cannot contain a literal `\` (Windows disallows it in
+an actual file/folder name), so that path was never at risk.
+
+**Verification order (per this project's own regression-test rule):** the reproducing test
+(`CompressAsync_DestinationNameWithParentTraversalSegments_NeverWritesOutsideIntendedTree`,
+`TarSandboxedServiceCompressTests.cs`) was written and run against the unmodified code first —
+confirmed failing, with a real file written at
+`...\dest-root\..\..\evil.tar` (outside even the test's own `TempDirectory`) — before the fix
+landed, then passed immediately after. Full `dotnet test --filter
+"Category!=Slow&Category!=VeryLarge"` green repo-wide after the fix (two unrelated pre-existing
+test failures observed during the same session — `AmsiScannerTests`' real-EICAR assertions and a
+`CliSubprocessTests` RAR/7z subprocess test — both confirmed via clean isolated reruns and `git
+status` to be this session's own AV-state/sandbox-contention flakiness, not caused by this change;
+see `docs/TESTING.md`'s "Test-Coverage Audit Follow-Ups" section).
+
+**Reported by:** the user, asked directly via a scope-expansion question once the test proved a
+real bug rather than just confirming the coverage gap — chose "fix now, both services, via the
+shared helper" over filing a separate lower-priority task.
+
+**One user-visible behavior change, confirmed by grepping every `ArchiveName =` assignment across
+`src/`:** `Archiver.App`'s `MainViewModel.ArchiveAsync` binds its Archive Name text box directly
+to `options.ArchiveName` (`ArchiveNaming.cs`'s only free-text consumer — the CLI/Shell call sites
+already derive their name via `GetBaseName`, which was already `Path.GetFileName`-safe) — a user
+who previously typed something like `sub\name` into that text box got a `name.zip` written inside
+a `sub\` subfolder of `DestinationFolder`; after this fix it always lands as `name.zip` directly
+in `DestinationFolder`. Covered by the user's "fix now, both services" approval above; called out
+explicitly here since it's a real behavior change, not just a security hardening with no visible
+effect.
+
+---
+
+### T-F178 — MAX_PATH: .NET Core's own long-path support covers `Archiver.Core`, independent of any manifest
+
+T-F185's sibling test-coverage-audit task asked whether a source/destination path over 260
+characters is handled safely at the `ZipArchiveService`/`TarSandboxedService` layer — the only
+prior coverage was at `Archiver.Shell`'s argument-parser layer
+(`ExtractHere_PathExceeding260Chars_ParsedCorrectlyNoTruncation`, which only proves the string
+isn't truncated during parsing, never reaches real file I/O).
+
+Two new tests (`ArchiveAsync_SourcePathBeyond260Chars_SucceedsOrRecordsPerItemErrorNeverThrows`,
+`ExtractAsync_DestinationPathBeyond260Chars_SucceedsOrRecordsPerItemErrorNeverThrows`) built a
+real on-disk nested-directory path over 260 characters and ran it through `ZipArchiveService`
+directly. Both succeeded outright — not merely failing safely.
+
+**Why, given `app.manifest`'s `longPathAware` declaration lives only on `Archiver.App`/
+`Archiver.Shell`, not on `dotnet test`'s own `testhost.exe` process:** this is .NET Core's own
+built-in long-path File I/O support, present since .NET Core 2.1 and independent of any Win32
+manifest declaration — unlike classic Win32 APIs, .NET Core's `System.IO` normalizes and
+transparently handles paths beyond `MAX_PATH` (up to the ~32,767-character NTFS limit) as long as
+the OS itself is a build that supports long paths (Windows 10 1607+, true for every currently
+supported Windows version), with no per-process manifest opt-in required. `longPathAware` in
+`Archiver.App`/`Archiver.Shell`'s manifests matters for other, non-.NET-Core-managed code paths in
+those processes (native interop, `Directory.GetCurrentDirectory`-adjacent Win32 calls), not for
+`Archiver.Core`'s own plain `File`/`Directory`/`Path` usage.
+
+**Practical conclusion:** no gap to close here — `Archiver.Core`'s long-path handling was already
+correct, just previously unverified by an automated test at this layer.
