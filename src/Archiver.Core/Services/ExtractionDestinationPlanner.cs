@@ -27,11 +27,13 @@ internal enum RootShape
 /// </summary>
 internal static class ExtractionDestinationPlanner
 {
-    public static RootShape Classify(bool isSelectedSubset, bool isSingleRootFolder, bool isSingleRootFile) =>
-        isSelectedSubset ? RootShape.SelectedSubset
-        : isSingleRootFolder ? RootShape.SingleFolder
-        : isSingleRootFile ? RootShape.SingleFile
-        : RootShape.MultiRoot;
+    public static RootShape Classify(bool isSelectedSubset, bool isSingleRootFolder, bool isSingleRootFile)
+    {
+        if (isSelectedSubset) return RootShape.SelectedSubset;
+        if (isSingleRootFolder) return RootShape.SingleFolder;
+        if (isSingleRootFile) return RootShape.SingleFile;
+        return RootShape.MultiRoot;
+    }
 
     // T-F157: all 8 (alreadyIsolated, RootShape) combinations spelled out explicitly rather than
     // compressed into the two boolean formulas above — deliberately readable as an actual

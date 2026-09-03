@@ -10,9 +10,9 @@ namespace Archiver.Shell;
 //
 // TASKDIALOGCONFIG *and* TASKDIALOG_BUTTON are both declared inside commctrl.h's shared
 // pshpack1.h/poppack.h block -- both need Pack = 1. Confirmed empirically via a throwaway spike
-// (T-F155, DECISIONS.md): a plain [StructLayout(LayoutKind.Sequential)] TASKDIALOG_BUTTON (16
-// bytes, naturally aligned) reliably crashed TaskDialogIndirect with AccessViolationException;
-// Pack = 1 (12 bytes, tightly packed) fixed it. Don't "simplify" this back to natural alignment.
+// (T-F155, DECISIONS.md): a plain Sequential-layout TASKDIALOG_BUTTON, 16 bytes and naturally
+// aligned, reliably crashed TaskDialogIndirect with an AccessViolationException. Pack = 1,
+// giving 12 tightly-packed bytes, fixed it. Don't revert this to natural alignment.
 public static class ShellConflictDialog
 {
     private const int IdOverwrite = 1001;
@@ -41,9 +41,9 @@ public static class ShellConflictDialog
         }
         catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException or SEHException)
         {
-            // Missing/broken comctl32 v6 activation context (e.g. a packaged build without the
-            // manifest dependency wired correctly) must degrade, not crash the whole extraction --
-            // same reasoning as TryCreateProgressDialog's existing catch(COMException) in Program.cs.
+            // Missing/broken comctl32 v6 activation context -- e.g. a packaged build without the
+            // manifest dependency wired correctly -- must degrade, not crash the whole extraction,
+            // same reasoning as TryCreateProgressDialog's existing COMException catch in Program.cs.
             return Task.FromResult(new ConflictDecision { Resolution = ConflictResolution.Skip });
         }
     }
@@ -67,7 +67,7 @@ public static class ShellConflictDialog
             var config = new TaskDialogConfig
             {
                 Size = (uint)Marshal.SizeOf<TaskDialogConfig>(),
-                Flags = TaskDialogFlags.AllowDialogCancellation | TaskDialogFlags.SizeToContent,
+                Flags = TaskDialogOptions.AllowDialogCancellation | TaskDialogOptions.SizeToContent,
                 WindowTitle = ConflictDialogLocalizer.Get("ConflictDialogTitle"),
                 MainIcon = TaskDialogIcon.Warning,
                 MainInstruction = ConflictDialogLocalizer.Get("ConflictDialogMessage", Path.GetFileName(conflict.ExistingPath)),
@@ -94,7 +94,7 @@ public static class ShellConflictDialog
     }
 
     [Flags]
-    private enum TaskDialogFlags : uint
+    private enum TaskDialogOptions : uint
     {
         AllowDialogCancellation = 0x0008,
         SizeToContent = 0x01000000,
@@ -114,7 +114,7 @@ public static class ShellConflictDialog
         public uint Size;
         public IntPtr OwnerWindowHandle;
         public IntPtr InstanceHandle;
-        public TaskDialogFlags Flags;
+        public TaskDialogOptions Flags;
         public uint CommonButtons;
         [MarshalAs(UnmanagedType.LPWStr)] public string? WindowTitle;
         public IntPtr MainIcon;

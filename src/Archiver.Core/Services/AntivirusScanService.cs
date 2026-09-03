@@ -30,8 +30,8 @@ public sealed class AntivirusScanService : IAntivirusScanService
     // the streaming path actually fails above 16-20 MiB on this machine, while the existing
     // AmsiScanBuffer path scanned real on-disk content up to 256 MiB correctly with no error —
     // there is no documented AMSI buffer ceiling, and empirically the simpler existing call is
-    // also the one with more headroom. Raised from the original 64 MiB (T-F146) on that basis;
-    // see docs/DECISIONS.md's T-F151 entry for the full spike account.
+    // also the one with more headroom. Raised from the original 64 MiB per T-F146 on that
+    // basis. See docs/DECISIONS.md's T-F151 entry for the full spike account.
     internal const long MaxScannableEntryBytes = 256L * 1024 * 1024;
 
     private readonly TarCapabilities _tarCapabilities;

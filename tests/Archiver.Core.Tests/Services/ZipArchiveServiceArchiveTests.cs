@@ -573,7 +573,7 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
     [Fact]
     public async Task ArchiveAsync_RtlOverrideFilename_RoundTripsWithoutCorruptionOrCrash()
     {
-        string rtlName = "invoice_‮txt.exe";
+        string rtlName = "invoice_\u202Etxt.exe";
         var file = _temp.CreateFile(rtlName);
 
         var archiveResult = await _sut.ArchiveAsync(new ArchiveOptions
