@@ -4526,3 +4526,142 @@ land, per this project's normal workflow.
 
 ---
 
+### T-F187 — "Canary" scheduled CI build to catch toolchain/dependency drift before it hits users
+
+- [~] **Status:** implementation complete 2026-09-13, on-device/CI verification pending (a real
+  triggered `workflow_dispatch` run, per this project's own graduation rule for CI-facing tasks).
+- **Context:** `.github/workflows/build.yml`'s `test`/`build-cli` jobs run on `windows-latest`
+  (currently the `windows-2025` image) and `build-msix`/`build-store-msix` deliberately pin
+  `windows-2022` + MSVC `v143` after `windows-latest` silently relabeled mid-project and broke the
+  ARM64 leg (T-F122). That pin buys stability today but means a real future break (a toolset, SDK,
+  or NuGet-transitive version genuinely going away) would only surface the day someone finally
+  bumps the pin — potentially long after it happened, and possibly first noticed by a user's
+  own failed build rather than in CI. A separate, unpinned "canary" workflow that tracks the moving
+  target on a schedule catches that drift while it's still fresh and bisectable.
+- **What shipped:** new `.github/workflows/canary.yml` — `schedule` (`cron: "17 6 * * *"`,
+  deliberately not top-of-hour) + `workflow_dispatch`. `canary-dotnet` runs
+  `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` on floating `windows-latest` +
+  floating `dotnet-version: 8.0.x`; `canary-shellext` compiles
+  `Archiver.ShellExtension.vcxproj` directly (x64 only — see Decision 1 below) on the same
+  floating image. No signing, no MSIX packaging — packaging/signing stays covered by
+  `build.yml`'s own pinned path. Five jobs total: `canary-dotnet`, `canary-shellext`,
+  `canary-status` (always green, computes `today_failed`/`streak` outputs only),
+  `canary-failed-day` (the sentinel), and `canary-alert` (the only job allowed to actually fail).
+- **Corrected twice during implementation, both times by the `advisor` tool before shipping (see
+  `docs/DECISIONS.md`'s T-F187 entry for the full account of both):**
+  1. **Pre-implementation review:** the design agreed on 2026-09-13 had the escalation query the
+     *workflow run's own conclusion* as the per-day failure signal, while simultaneously masking
+     that exact conclusion via `continue-on-error` so days 1→2 stay green. Those are the same
+     bit — the streak could never advance past 1. **Fixed** via a dedicated sentinel job,
+     `canary-failed-day`, whose own conclusion across past runs (`success` = failed that day,
+     `skipped` = didn't) is the one bit of state this workflow actually persists, queried back via
+     `gh api repos/.../actions/runs/<id>/jobs`.
+  2. **Closing review (after the fix above was written):** the sentinel fix still had
+     `canary-failed-day` gated on `needs.canary-status.outputs.today_failed`, and `canary-status`
+     deliberately exited 1 on the escalation day itself — leaving an unresolved question of
+     whether a *failed* job's `outputs` reliably propagate to jobs that `needs` it. Getting this
+     wrong would silently produce a sawtooth streak (escalating roughly every third day with the
+     wrong count) rather than an obvious failure. **Fixed** by splitting the job further:
+     `canary-status` now always exits 0 (it only computes/outputs `today_failed` and `streak`);
+     a new `canary-alert` job (`needs: [canary-status, canary-failed-day]`) is the only job that
+     can actually exit 1, and nothing downstream consumes *its* outputs, so the propagation
+     question no longer matters for correctness anywhere in the workflow.
+- **Decisions made during implementation:**
+  1. **ARM64 excluded from `canary-shellext`'s escalation, user-confirmed 2026-09-13.**
+     `Archiver.ShellExtension.vcxproj` hardcodes `PlatformToolset=v143`, and `build.yml`'s own
+     header comment already documents `windows-latest`'s current image lacking the ARM64 `v143`
+     variant (MSB8020, confirmed unfixable after 3 attempts, T-F122). Escalating that here would
+     open a tracking Issue on day 3 that could never auto-close, since the cause isn't transient
+     — exactly the alert-fatigue outcome this design exists to prevent. `canary-shellext`
+     builds x64 only; ARM64-on-latest stays tracked solely via `build.yml`/T-F122.
+  2. **Every step in `canary-dotnet`/`canary-shellext` gets `continue-on-error: true`, not just
+     the build/test step** — an unmasked `actions/checkout`/`setup-dotnet`/`setup-msbuild` blip
+     would otherwise redden the job (and fire GitHub's default day-1 email) regardless of the
+     escalation logic. Each job's own "Record result" step ORs every prior step's real `.outcome`
+     into one `failed` job output.
+  3. **Cancelled runs are treated as inconclusive, not failures** — `canary-status` checks
+     `needs.*.result == 'cancelled'` explicitly and exits without touching the streak or any
+     open tracking Issue, so a human-cancelled run neither advances nor resets it.
+  4. **Retry is a 2-attempt loop inside one step** (not duplicated attempt1/attempt2 blocks):
+     `dotnet test` is simply re-run (it builds first, matching `build.yml`'s own proven command
+     exactly — no separate untested `dotnet build`/`dotnet clean` calls); the MSBuild leg passes
+     `/t:Rebuild` on its 2nd attempt only, to avoid a stale incremental artifact from attempt 1
+     masking the real signal. The MSBuild argument list is built as a PowerShell array and passed
+     via `@currentArgs` splatting (never a manually concatenated string, and deliberately not named
+     `$args`, a reserved PowerShell automatic variable) — matches this repo's own `& $exe`
+     argument-passing rule.
+  5. **`canary-status`'s own `gh api` streak query has its own small retry+fallback** — an API
+     blip there logs a `::warning::` and treats today as day 1 rather than silently mis-reading
+     the streak.
+  6. **Permissions, confirmed against GitHub's docs:** `canary-status` and `canary-alert` both run
+     on `ubuntu-latest`; `canary-status` needs `actions: read` (workflow-runs/jobs REST endpoints)
+     + `issues: write` (closing a resolved tracking Issue); `canary-alert` needs `issues: write`
+     only (create/comment). Neither needs `contents` or a checkout. `canary-dotnet`/
+     `canary-shellext` need only `contents: read`. `canary-failed-day`/`canary-alert` both gate on
+     `if: always() && needs.canary-status.outputs.today_failed == 'true'` — `always()` is
+     defensive here (matches the pattern) rather than load-bearing, since `canary-status` itself
+     never fails.
+  7. **Post-escalation cadence, decided explicitly rather than left implicit:** once escalated
+     (streak →= 3), `canary-alert` keeps failing (red + email) every subsequent day until the
+     underlying build is actually fixed — the tracking Issue is updated via `gh issue comment`
+     on each additional day rather than a new Issue being opened.
+  8. `gh issue create`/`list`/`close`/`comment` all confirmed usable — `gh repo view --json
+     hasIssuesEnabled` returned `true` for `pakkoapp-oss/pakko` before implementation. Both
+     `gh issue close`/`comment`/`create` calls are guarded with `|| echo "::warning::..."` so an
+     API blip there can never mask the real signal (a false failure email on an otherwise-green
+     day via the close call, or a swallowed `exit 1` reason on an escalation day).
+  9. **`canary-failed-day` gets an explicit `name:` key**, not relying on the jobs API defaulting
+     its display name to the job id — confirmed empirically first (`gh api .../actions/runs/
+     <id>/jobs --jq '.jobs[].name'` against a real `build.yml` run returned exactly the job ids
+     for every non-matrix job), then pinned anyway rather than resting on that default continuing.
+     The `gh issue list --search` used everywhere else for de-duplication already searches by
+     title text, not job/run names, so it was never at risk the same way. The green-day
+     `gh issue close` is also now gated to `github.event_name == 'schedule'` (a `workflow_dispatch`
+     happening to pass mid-outage no longer closes the tracking Issue prematurely), and the
+     history query's `per_page` was raised from 5 to 30 (the loop already breaks at the first
+     non-matching day, so this is free in the common case and just removes a streak-undercount
+     risk on a long outage).
+- **Verified so far:** `actionlint` (rhysd/actionlint v1.7.12, downloaded fresh for this check)
+  reports zero findings against `canary.yml` at every stage of this session's revisions, same as
+  the existing `build.yml` — confirms valid YAML, valid expression syntax, and clean
+  `shellcheck`-equivalent output for every `run:` block. `Archiver.ShellExtension.vcxproj` was
+  grepped directly (not assumed) to confirm it needs `/p:SolutionDir` (its `OutDir`/`IntDir`
+  reference `$(SolutionDir)`) but has zero `PackageReference`/`packages.config` entries, so no
+  NuGet restore step is needed for it (unlike the Tests project).
+- **Not yet verified (pending, per this task's own graduation rule):** a real `workflow_dispatch`
+  run confirming both `canary-dotnet` and `canary-shellext` go green on today's actual
+  `windows-latest` image (the x64 ShellExtension leg has never been built standalone outside the
+  Tests project's transitive `ProjectReference` build). The 3-day escalation path (streak →=
+  3) is verified by code review + the job-split design reasoning above (which removes the
+  dependency on any ambiguous GitHub Actions behavior, rather than relying on one), not by a real
+  3-day production run — genuinely hard to prove without waiting or deliberately forcing
+  failures on `workflow_dispatch` across several runs.
+- **Acceptance criteria:**
+  - [x] `.github/workflows/canary.yml` added: `schedule` + `workflow_dispatch` triggers, floating
+    `windows-latest` + floating `dotnet-version`, builds+tests the .NET solution and compiles
+    `Archiver.ShellExtension` from scratch (x64) — no signing, no MSIX packaging.
+  - [x] A transient failure (step-level retry) does not by itself count as a canary-day failure.
+  - [x] A single bad day does not fail the job outright or email anyone — logged as a
+    `::warning::` only.
+  - [x] 3 consecutive failed scheduled days (queried from real prior run history via the
+    `canary-failed-day` sentinel job, not the run's own masked conclusion) fails `canary-alert`
+    for real and creates/updates one persistent, de-duplicated tracking Issue; the Issue
+    auto-closes on the next green canary run. (Design no longer depends on failed-job-output
+    propagation — see Correction 2 above.)
+  - [x] Documented in this file's cascade targets: `CLAUDE.md`'s Documentation Map (new row, since
+    no row existed for `build.yml` either — out of this task's scope to add one), `CLAUDE.md`'s
+    Next Work line, `scripts/README.md`'s new Canary subsection, and `docs/DECISIONS.md`'s new
+    T-F187 entry (both advisor-caught corrections).
+  - [ ] Real `workflow_dispatch` run confirmed green for both `canary-dotnet` and
+    `canary-shellext` on the actual current `windows-latest` image.
+- **Reported by:** user request, 2026-09-13 (community best practice for a "canary"/nightly-drift
+  build with a 3-strike escalation). Design validated via an Explore research pass (repo
+  conventions) and a Plan-agent research pass (GitHub Actions mechanics) before implementation;
+  the `advisor` tool caught the masked-conclusion-as-state logic bug during the mandatory
+  pre-implementation review (before any YAML was written) and a second, related job-output-
+  propagation risk during the mandatory closing review (after the files were written but before
+  declaring the task done) — both fixed in this same pass.
+- **Depends on:** none.
+
+---
+

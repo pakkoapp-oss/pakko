@@ -8099,3 +8099,123 @@ those processes (native interop, `Directory.GetCurrentDirectory`-adjacent Win32 
 
 **Practical conclusion:** no gap to close here — `Archiver.Core`'s long-path handling was already
 correct, just previously unverified by an automated test at this layer.
+
+---
+
+### T-F187 — Canary CI Escalation Can't Read Its Own Masked Run Conclusion As State
+
+**The bug the advisor caught before any YAML was written:** the first design for T-F187's
+3-day-failure escalation (a scheduled "canary" build on a floating toolchain, meant to catch
+SDK/NuGet/MSVC drift before `build.yml`'s pinned `windows-2022`/`v143` combination needs bumping)
+queried the *canary workflow's own past run conclusions* via `gh api .../actions/workflows/
+canary.yml/runs` to reconstruct the consecutive-failure streak. Simultaneously, every step in the
+build jobs was wrapped in `continue-on-error: true` specifically so that a single bad day (or a
+transient network/runner blip) would report the job — and therefore the whole run — as
+`success`, avoiding a red X and GitHub's default failure email on days 1→2.
+
+Those two things use the same bit. Day 1 fails for real, but the masked run conclusion recorded in
+history is `success`. Day 2's query sees "no prior failure" and computes a streak of 1 again. The
+streak can never advance past 1, so the escalation path (streak →= 3) can never fire — not
+an edge case, a structural impossibility given the design as first written. Worse, if the masking
+were removed to fix this, the design would flip to the opposite failure: the one day the run *did*
+show red becomes the only `failure` conclusion in history, so the very next day's query computes
+streak 2 and goes green again, permanently oscillating instead of ever reaching 3.
+
+**Root cause:** conflating "the signal I want to hide from GitHub's own default notification
+plumbing" with "the state I need to persist across independent runs to count consecutive days."
+`continue-on-error` can mask the first without touching the second only if the second is tracked
+through some other channel entirely.
+
+**Fix:** a dedicated sentinel job, `canary-failed-day` (`needs: canary-status`, conditioned on
+`always() && needs.canary-status.outputs.today_failed == 'true'`). It does nothing but `echo` when
+it runs. Its own conclusion is never masked — `success` means today was a failure day, `skipped`
+means it wasn't — and that one bit, queried back across the last few scheduled runs via
+`gh api repos/.../actions/runs/<id>/jobs --jq '.jobs[] | select(.name=="canary-failed-day") |
+.conclusion'`, is the actual persisted state the streak count is built from. The `always()` in its
+`if:` condition is load-bearing: `canary-status` itself intentionally exits 1 once the streak hits
+3 (that's the whole point — a real red X and email on day 3), and GitHub's default behavior
+skips a downstream job outright if anything it `needs` failed, unless that job's own `if:`
+explicitly overrides it with `always()`. Without that, the one day the streak escalation actually
+mattered would be exactly the day the sentinel silently failed to record.
+
+**Two smaller findings from the same advisor pass, fixed in the same session, not separate
+entries:**
+- `msbuild ... $target` with `$target` set to an empty string on the first attempt passes a
+  literal empty positional argument. Fixed via array construction (`$msbuildArgs = @(...)`, then
+  appending `/t:Rebuild` to a copy of that array only on the 2nd attempt, `msbuild @args`),
+  matching this repo's existing `CLAUDE.md` rule for `& $exe` (array-element arguments, never
+  manually assembled strings).
+- The original draft retried a bare `dotnet build`/`dotnet clean` pair that no other job in this
+  repo actually exercises — `build.yml` only ever runs `dotnet test` (which builds first) at
+  the solution level. Retrying an unproven command path risked a false-positive failure mode of
+  its own. Changed to retry `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` alone,
+  identical to `build.yml`'s own already-proven command.
+
+**Also decided in the same pass (design choices, not bugs):** ARM64 is excluded from
+`canary-shellext`'s escalating build entirely — `Archiver.ShellExtension.vcxproj` hardcodes
+`PlatformToolset=v143`, and `build.yml`'s own header comment already documents `windows-latest`'s
+current image lacking the ARM64 `v143` variant (MSB8020, confirmed unfixable after 3 attempts,
+T-F122). Escalating that known, non-transient failure through this new 3-day mechanism would open
+a tracking Issue that could never auto-close — exactly the alert-fatigue outcome the whole
+design exists to prevent. User-confirmed via `AskUserQuestion` before implementation.
+
+**Verification:** `actionlint` (rhysd/actionlint v1.7.12) reports zero findings against the fixed
+`canary.yml`. The streak-reconstruction logic itself is verified by design review (the sentinel
+job's conclusion genuinely is independent of every masked signal), not by a real 3-consecutive-day
+production run — noted honestly in `docs/TASKS.md`'s T-F187 entry as the one remaining
+un-graduated acceptance criterion, alongside a real `workflow_dispatch` confirming both build jobs
+go green on today's actual `windows-latest` image.
+
+**Reported by:** the `advisor` tool, during the mandatory pre-implementation review this project's
+own `CLAUDE.md` requires for new CI subsystems — caught before any YAML was written, not during
+a later fix-up pass.
+
+**Follow-up (closing advisor review, same day, 2026-09-13):** the sentinel-job fix above still had
+`canary-failed-day` gated on `needs.canary-status.outputs.today_failed`, and `canary-status`
+deliberately exited 1 on exactly the day that gate mattered (the escalation day). Whether a
+*failed* job's own `outputs` reliably propagate to a job that `needs` it is not something this
+design should have depended on either way — getting it wrong wouldn't fail loudly, it would
+silently produce a sawtooth streak (escalating roughly every third day, with the wrong count each
+time), the same quiet-wrongness shape as the original bug.
+
+**Fix:** split the job once more instead of trying to establish which way GitHub's propagation
+behaves. `canary-status` now always exits 0 — it only ever computes and outputs `today_failed`
+and, when today failed, the reconstructed `streak`. A new job, `canary-alert` (`needs:
+[canary-status, canary-failed-day]`), is the only job in the whole workflow allowed to actually
+exit 1 (streak →= 3) or create/comment the tracking Issue. Nothing downstream consumes
+`canary-alert`'s own outputs, so whether *its* outputs would propagate on failure is moot — the
+only job whose outputs matter to another job (`canary-status`) is now a job that can never fail.
+This removes the open question structurally rather than resolving it empirically.
+
+**Two smaller defects fixed in the same pass, not worth their own entries:**
+- The MSBuild retry loop assigned to `$args`, a PowerShell automatic variable, instead of a plain
+  local name. Renamed to `$currentArgs`.
+- `gh issue close` (on the green-day recovery path) and `gh issue comment`/`gh issue create` (on
+  the escalation path) were unguarded under `set -e`. An API blip on the close call would have
+  turned an otherwise-green day red with a spurious failure email — exactly the false-positive
+  class this whole design exists to avoid. All three now fall back to a `::warning::` on failure
+  instead of aborting the step.
+
+**Verification:** `actionlint` re-run clean (zero findings) against the restructured file.
+
+**Reported by:** the `advisor` tool, during the mandatory closing review this project's own
+`CLAUDE.md` requires before declaring a hard-to-revert change done — run after the files were
+written and durable, per that same rule, and caught this before the task was reported complete.
+
+**Second follow-up (same closing review, immediately after the fix above was verified sound):**
+the sentinel query matches `select(.name=="canary-failed-day")` against the jobs API's *display*
+name, which the job has no explicit `name:` key for — it depends on GitHub defaulting that
+display name to the job id. Getting this wrong has the exact same quiet-wrongness shape as both
+prior bugs: every prior day would read as "not a failure day," pinning the streak at 1 forever,
+with no visible error anywhere. **Confirmed empirically before trusting it**, not assumed: `gh api
+repos/pakkoapp-oss/pakko/actions/runs/<a real recent build.yml run>/jobs --jq '.jobs[].name'`
+against a real completed `build.yml` run returned exactly the job ids (`test`, `lint-ps1`,
+`release`, etc. — none of which declare `name:` either) for every non-matrix job, confirming
+the default holds. **Pinned anyway** by adding an explicit `name: canary-failed-day` to the
+sentinel job, removing the dependency on that default entirely rather than resting on the one
+empirical check. Two more cheap corrections from the same pass: the green-day `gh issue close` is
+now gated to `github.event_name == 'schedule'` (a `workflow_dispatch` run happening to pass
+mid-outage no longer closes the tracking Issue prematurely — the streak history was already
+schedule-only, this just makes the close action consistent with it), and the history query's
+`per_page` was raised from 5 to 30 (the loop already breaks at the first non-matching day, so this
+costs nothing in the common case and just removes a streak-undercount risk on a long outage).

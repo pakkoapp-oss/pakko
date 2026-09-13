@@ -141,6 +141,48 @@ change, nothing else in the workflow.
 
 ---
 
+## Canary build (T-F187)
+
+A separate workflow, `.github/workflows/canary.yml`, runs daily (`cron: "17 6 * * *"`) plus
+`workflow_dispatch` on demand. Unlike `build.yml` above, it runs on a deliberately **floating**
+toolchain (`windows-latest`, floating `dotnet-version: 8.0.x`) instead of the pinned
+`windows-2022`/MSVC `v143` combination `build-msix` relies on for stability. The goal is to catch
+SDK/NuGet/MSVC toolset drift on the day it actually happens, rather than waiting for someone to
+eventually bump `build.yml`'s pin and discover the break then (the exact class of surprise T-F122
+already produced once).
+
+`canary-dotnet` runs the same `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` command
+as `build.yml`'s own `test` job; `canary-shellext` compiles `Archiver.ShellExtension.vcxproj`
+directly, **x64 only** — ARM64-on-`windows-latest` is already a known, unrelated, unfixed failure
+(MSB8020, see `build.yml`'s own header comment / T-F122), so it's deliberately excluded here to
+avoid escalating a permanent condition as if it were new drift. No signing, no MSIX packaging —
+that stays covered entirely by `build.yml`'s own pinned path.
+
+**Escalation, not immediate alerting:** every step in both build jobs is wrapped in
+`continue-on-error: true`, so a transient network/runner blip is retried in-run (2 attempts) and
+never reddens the workflow by itself. A genuine failure only shows as a `::warning::` log
+annotation for its first two occurrences — no red X, no email. Only the **3rd consecutive**
+scheduled-day failure fails the run for real (GitHub's default failure email) and creates/updates
+one de-duplicated tracking Issue titled `CI Canary: build failing for 3+ consecutive days`, which
+auto-closes on the next green run. Once escalated, the run keeps failing daily (Issue updated via
+comment) until the underlying build is actually fixed — it doesn't go quiet just because the Issue
+already exists.
+
+The 3-day streak is reconstructed from a dedicated sentinel job, `canary-failed-day` (runs only
+when a day fails; its own recorded conclusion across past runs, queried via the Actions REST API,
+is the one bit of state this workflow persists) — not from the workflow run's own conclusion,
+which is deliberately masked on days 1-2 and so cannot double as the failure signal. `canary-status`
+computes today's result and the streak but always exits 0 itself; `canary-alert` is the only job
+that can actually fail or touch the tracking Issue — check its log first when investigating an
+escalation. See `docs/DECISIONS.md`'s T-F187 entry for why the more obvious single-job approach
+doesn't work.
+
+**Note:** GitHub auto-disables scheduled workflows after 60 days of repository inactivity — if the
+canary goes silent, check whether it's actually still enabled (Actions tab) before reading silence
+as "everything's fine."
+
+---
+
 ## Store-submission builds (`build-store-msix`, T-F129)
 
 A separate, `workflow_dispatch`-only job in the same `build.yml`, for packages actually uploaded

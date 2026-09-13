@@ -370,6 +370,8 @@ reentrancy, GroupPolicy fuzzing, AMSI automated EICAR test, MAX_PATH at the serv
 conflict-behavior characterization, format-spoofing routing safety, hash Int64 boundary, tar.exe-
 absent handling, UI double-invoke race, Zalgo/RTL-override filenames, Tar destination traversal,
 AMSI size-cap boundary — see `docs/TASKS.md`'s own section for full detail and priority tiers).
+**T-F187** (canary CI build for toolchain-drift detection) is `[~]` implementation complete,
+pending a real triggered `workflow_dispatch` run.
 
 ## Roadmap Summary
 
@@ -420,6 +422,7 @@ history narrative below, which predates the move and was not mechanically rewrit
 | `CHANGELOG.md` | **Canonical owner of per-release history** — one section per version tag, plain-language summary of the `T-Fxx` tasks shipped since the previous tag | Cutting a release | Every version tag — see this file's "Deployment" section |
 | `docs/index.html` + `docs/uk/index.html` | Public project website — bilingual EN/UK landing page: trust model, what's implemented, download links. **Deployment changed T-F172 (2026-08-13):** GitHub Pages is no longer served directly from the `/docs` branch path; `.github/workflows/build.yml`'s `docs`/`deploy-pages` jobs assemble these files (copied verbatim via an explicit allowlist) plus the DocFX site into one Pages artifact on every push to `main` — content and authoring are unchanged, only the delivery mechanism | User-facing — not an agent instruction source | Supported-format list changes, a major feature ships, download/release mechanics change, or roadmap/version-status changes — keep both language versions in sync with each other and with `README.md`'s "Project Status"/"Supported Formats" |
 | `docfx.json` + `toc.yml` + `index.md` + `api/index.md` (repo root) | DocFX config for the generated developer/API docs site (T-F172) — book content is the *existing* curated `docs/*.md`/root `*.md` files read in place (no duplication), API reference is generated from `Archiver.Core`/`Archiver.App.Core`'s own XML `///` comments. Live at `https://pakkoapp-oss.github.io/pakko/dev/` | Adding a new conceptual doc that should appear in the site's nav, or a new class library whose XML comments should be included in the API reference | The curated article list changes, or a new project's API should be included — remember to add its `.csproj` to `docfx.json`'s `metadata[0].src.files` too |
+| `.github/workflows/canary.yml` | Daily canary build on floating toolchain versions (T-F187) — catches SDK/NuGet/MSVC drift before `build.yml`'s pin needs bumping; 3-day-streak escalation to a tracking GitHub Issue | Investigating a canary failure or its tracking Issue | Escalation logic, schedule, or build scope changes |
 
 **Canonical topic owners — do not duplicate, link instead:**
 - Security/threat-model/CVE/supply-chain rationale → `SECURITY.md` only. `docs/SPEC.md`/`README.md` keep at most a 2-line teaser with a link.

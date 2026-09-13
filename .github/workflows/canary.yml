@@ -1,0 +1,286 @@
+name: Canary
+
+# T-F187: daily build on a deliberately FLOATING toolchain (unlike build.yml's pinned
+# windows-2022/v143) to catch SDK/NuGet/MSVC drift before build.yml's own pin eventually needs
+# bumping -- the same class of break T-F122 already hit once (windows-latest silently relabeled
+# windows-2022 -> windows-2025 mid-project and broke the ARM64 leg).
+#
+# 3-day escalation, no crying wolf on a single bad day: canary-dotnet/canary-shellext mask every
+# step's real pass/fail behind `continue-on-error: true` (so a transient network/runner blip is
+# retried in-run and never reddens the workflow by itself) and report their true result as a job
+# output instead. canary-status always exits 0 -- it only ever computes and outputs `today_failed`
+# and, if today failed, the real consecutive-failure `streak` (reconstructed from real history via
+# canary-failed-day, a trivial sentinel job that only runs when today failed, so its own recorded
+# conclusion -- success = failed that day, skipped = didn't -- across past runs IS the persisted
+# state). canary-alert is the ONLY job allowed to actually fail: streak < 3 -> it exits 0 with a
+# `::warning::` only (no red X, no email); streak >= 3 -> it exits 1 for real (GitHub's default
+# failure email) and creates/updates one de-duplicated tracking Issue, closed automatically on the
+# next green run. Deliberately keeping canary-status itself always-green (rather than having it
+# both compute the streak AND be the job that fails) sidesteps an unresolved question about
+# whether a failed job's own `outputs` reliably propagate to jobs that `needs` it -- see
+# docs/DECISIONS.md's T-F187 entry for the full account, including why the streak can't simply be
+# read off the workflow run's own conclusion (it's the exact thing being masked).
+#
+# ARM64 is deliberately out of scope for canary-shellext: Archiver.ShellExtension.vcxproj
+# hardcodes PlatformToolset=v143, and build.yml's own header comment already documents that
+# windows-latest's current image lacks the ARM64 v143 variant (MSB8020, confirmed unfixable after
+# three attempts, T-F122). Escalating that here would open a tracking Issue that could never
+# auto-close, since the cause isn't transient. That gap stays tracked only via build.yml/T-F122.
+on:
+  schedule:
+    # Deliberately not top-of-hour -- GitHub's own scheduling docs note :00 is the most delayed/
+    # contended slot for scheduled workflows.
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  canary-dotnet:
+    runs-on: windows-latest
+    permissions:
+      contents: read
+    outputs:
+      failed: ${{ steps.record.outputs.failed }}
+    steps:
+      - uses: actions/checkout@v4
+        continue-on-error: true
+        id: checkout
+
+      - uses: actions/setup-dotnet@v4
+        continue-on-error: true
+        id: setup_dotnet
+        with:
+          dotnet-version: "8.0.x"
+
+      # Same command as build.yml's own `test` job -- `dotnet test` builds first, so no separate
+      # `dotnet build` step is needed. Retried once (matches this repo's own documented
+      # occasional cross-project TarSandbox-contention flakiness) before counting as a real
+      # failure; each attempt runs the full suite fresh rather than reusing `--no-build` state.
+      - name: Run .NET test suite (2 attempts)
+        id: build_test
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          $attempts = 2
+          for ($i = 1; $i -le $attempts; $i++) {
+            if ($i -gt 1) { Start-Sleep -Seconds 15 }
+            dotnet test --filter "Category!=Slow&Category!=VeryLarge"
+            if ($LASTEXITCODE -eq 0) { exit 0 }
+          }
+          throw "dotnet test failed after $attempts attempt(s)."
+
+      - name: Record result
+        id: record
+        if: always()
+        shell: pwsh
+        run: |
+          $outcomes = @('${{ steps.checkout.outcome }}', '${{ steps.setup_dotnet.outcome }}', '${{ steps.build_test.outcome }}')
+          $failed = ($outcomes -contains 'failure') -or ($outcomes -contains 'cancelled')
+          "failed=$($failed.ToString().ToLower())" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+  canary-shellext:
+    runs-on: windows-latest
+    permissions:
+      contents: read
+    outputs:
+      failed: ${{ steps.record.outputs.failed }}
+    steps:
+      - uses: actions/checkout@v4
+        continue-on-error: true
+        id: checkout
+
+      - name: Set up MSBuild
+        uses: microsoft/setup-msbuild@6fb02220983dee41ce7ae257b6f4d8f9bf5ed4ce # v2.0.0
+        continue-on-error: true
+        id: setup_msbuild
+
+      # x64 only -- see this file's header comment for why ARM64 is deliberately excluded.
+      # /p:SolutionDir is required (not auto-set outside a real .sln build, same as CLAUDE.md's
+      # Build Commands note for the Tests project) since the vcxproj's OutDir/IntDir reference it.
+      - name: Build Archiver.ShellExtension (x64, 2 attempts)
+        id: build_x64
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          $msbuildArgs = @(
+            "src\Archiver.ShellExtension\Archiver.ShellExtension.vcxproj",
+            "/p:SolutionDir=${{ github.workspace }}\",
+            "/p:Configuration=Debug",
+            "/p:Platform=x64"
+          )
+          $attempts = 2
+          for ($i = 1; $i -le $attempts; $i++) {
+            if ($i -gt 1) { Start-Sleep -Seconds 15 }
+            # $currentArgs, not $args -- $args is a PowerShell automatic variable; reusing it
+            # here would shadow a reserved name for no benefit.
+            $currentArgs = $msbuildArgs
+            if ($i -gt 1) { $currentArgs += "/t:Rebuild" }
+            msbuild @currentArgs
+            if ($LASTEXITCODE -eq 0) { exit 0 }
+          }
+          throw "Archiver.ShellExtension x64 build failed after $attempts attempt(s)."
+
+      - name: Record result
+        id: record
+        if: always()
+        shell: pwsh
+        run: |
+          $outcomes = @('${{ steps.checkout.outcome }}', '${{ steps.setup_msbuild.outcome }}', '${{ steps.build_x64.outcome }}')
+          $failed = ($outcomes -contains 'failure') -or ($outcomes -contains 'cancelled')
+          "failed=$($failed.ToString().ToLower())" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+  # Deliberately always exits 0 -- this job's outputs are consumed by canary-failed-day and
+  # canary-alert below, and whether a *failed* job's outputs reliably propagate to jobs that
+  # `needs` it is not something this design wants to depend on. See docs/DECISIONS.md's T-F187
+  # entry for the failure mode this sidesteps.
+  canary-status:
+    needs: [canary-dotnet, canary-shellext]
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      issues: write
+    outputs:
+      today_failed: ${{ steps.evaluate.outputs.today_failed }}
+      streak: ${{ steps.evaluate.outputs.streak }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TRACKING_TITLE: "CI Canary: build failing for 3+ consecutive days"
+    steps:
+      - name: Evaluate today's result and compute the streak
+        id: evaluate
+        shell: bash
+        run: |
+          set -euo pipefail
+          dotnet_result="${{ needs.canary-dotnet.result }}"
+          shellext_result="${{ needs.canary-shellext.result }}"
+          dotnet_failed_flag="${{ needs.canary-dotnet.outputs.failed }}"
+          shellext_failed_flag="${{ needs.canary-shellext.outputs.failed }}"
+
+          # A human-cancelled run is neither a pass nor a real failure -- don't advance or
+          # reset the streak, and leave any existing tracking Issue exactly as it is.
+          if [ "$dotnet_result" = "cancelled" ] || [ "$shellext_result" = "cancelled" ]; then
+            echo "Run was cancelled -- not counted toward the failure streak, tracking Issue left untouched."
+            echo "today_failed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          today_failed=false
+          if [ "$dotnet_failed_flag" = "true" ] || [ "$dotnet_result" != "success" ]; then today_failed=true; fi
+          if [ "$shellext_failed_flag" = "true" ] || [ "$shellext_result" != "success" ]; then today_failed=true; fi
+          echo "today_failed=$today_failed" >> "$GITHUB_OUTPUT"
+
+          if [ "$today_failed" = "false" ]; then
+            echo "Canary green today."
+            # Only a real scheduled run closes the tracking Issue -- the streak history itself is
+            # scheduled-only (see below), and a one-off workflow_dispatch happening to pass mid-
+            # outage shouldn't close it prematurely (it would just reopen as a new Issue on the
+            # next scheduled failure, but there's no reason to allow that churn).
+            if [ "${{ github.event_name }}" = "schedule" ]; then
+              existing_issue=$(gh issue list --state open --search "in:title \"$TRACKING_TITLE\"" --json number,title \
+                --jq ".[] | select(.title == \"$TRACKING_TITLE\") | .number" | head -n1 || true)
+              if [ -n "$existing_issue" ]; then
+                gh issue close "$existing_issue" --comment "Canary is green again as of this run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+                  || echo "::warning::Failed to close tracking Issue #$existing_issue -- it may need closing manually."
+              fi
+            fi
+            exit 0
+          fi
+
+          # Reconstruct the consecutive-failure streak from canary-failed-day's own recorded
+          # conclusion across past scheduled runs -- real persisted state, not the workflow run's
+          # own (deliberately masked) conclusion. See this file's header comment.
+          gh_api_retry() {
+            local url="$1" jq_filter="$2" result
+            for attempt in 1 2; do
+              if result=$(gh api "$url" --jq "$jq_filter" 2>/dev/null); then
+                echo "$result"
+                return 0
+              fi
+              echo "::warning::gh api query failed (attempt $attempt): $url" >&2
+              sleep 5
+            done
+            return 1
+          }
+
+          if ! run_ids_json=$(gh_api_retry \
+              "repos/${{ github.repository }}/actions/workflows/canary.yml/runs?event=schedule&status=completed&branch=main&per_page=30" \
+              '[.workflow_runs[].id]'); then
+            echo "::warning::Could not determine prior canary run history -- treating today as day 1 for escalation purposes."
+            echo "streak=1" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          streak=1
+          for id in $(echo "$run_ids_json" | jq -r '.[]'); do
+            concl=$(gh_api_retry "repos/${{ github.repository }}/actions/runs/$id/jobs" \
+              '.jobs[] | select(.name=="canary-failed-day") | .conclusion' || echo "")
+            if [ "$concl" = "success" ]; then
+              streak=$((streak + 1))
+            else
+              break
+            fi
+          done
+
+          echo "Consecutive failure streak (including today): $streak"
+          echo "streak=$streak" >> "$GITHUB_OUTPUT"
+
+  # Sentinel job, T-F187: deliberately trivial. Its own conclusion (success = ran = today failed;
+  # skipped = today didn't) is what canary-status's "Evaluate" step reads back from past runs via
+  # the Actions REST API to reconstruct the streak -- it is the ONE bit of state this workflow
+  # persists across days, since every other signal (step/job/run conclusion) is deliberately
+  # masked by continue-on-error for days 1-2. canary-status always exits 0 (see its own comment
+  # above), so the default "skip if a needed job failed" gating never applies here in the first
+  # place -- `always()` is kept anyway as a defensive default, matching canary-alert below.
+  canary-failed-day:
+    # Explicit `name:` so canary-status's jobs-API query (`select(.name=="canary-failed-day")`)
+    # never depends on GitHub's un-configured default (confirmed empirically to equal the job ID
+    # for a non-matrix job, but pinned explicitly here rather than relying on that continuing).
+    name: canary-failed-day
+    needs: canary-status
+    if: always() && needs.canary-status.outputs.today_failed == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Record today as a failure day
+        run: echo "Canary failed today -- this job's own success/skip status is read back by future runs to reconstruct the consecutive-failure streak."
+
+  # The ONLY job in this workflow allowed to actually fail. Nothing downstream consumes its
+  # outputs, so whether a failed job's outputs propagate correctly is a non-issue here -- unlike
+  # canary-status, which deliberately never fails for exactly that reason.
+  canary-alert:
+    needs: [canary-status, canary-failed-day]
+    if: always() && needs.canary-status.outputs.today_failed == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TRACKING_TITLE: "CI Canary: build failing for 3+ consecutive days"
+    steps:
+      - name: Escalate if the streak has reached 3
+        shell: bash
+        run: |
+          set -euo pipefail
+          streak="${{ needs.canary-status.outputs.streak }}"
+
+          if [ -z "$streak" ] || [ "$streak" -lt 3 ]; then
+            echo "::warning::Canary build failed today (day ${streak:-1} of 3 before escalation) -- see canary-dotnet/canary-shellext job logs."
+            exit 0
+          fi
+
+          run_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          body="Canary build has failed $streak consecutive scheduled days. Latest failing run: $run_url"
+          existing_issue=$(gh issue list --state open --search "in:title \"$TRACKING_TITLE\"" --json number,title \
+            --jq ".[] | select(.title == \"$TRACKING_TITLE\") | .number" | head -n1 || true)
+          if [ -n "$existing_issue" ]; then
+            gh issue comment "$existing_issue" --body "$body" || echo "::warning::Failed to comment on tracking Issue #$existing_issue"
+          else
+            gh issue create --title "$TRACKING_TITLE" --body "$body" || echo "::warning::Failed to create tracking Issue"
+          fi
+          echo "::error::Canary build failed for the ${streak}th consecutive scheduled day -- see tracking Issue."
+          exit 1
