@@ -370,8 +370,8 @@ reentrancy, GroupPolicy fuzzing, AMSI automated EICAR test, MAX_PATH at the serv
 conflict-behavior characterization, format-spoofing routing safety, hash Int64 boundary, tar.exe-
 absent handling, UI double-invoke race, Zalgo/RTL-override filenames, Tar destination traversal,
 AMSI size-cap boundary — see `docs/TASKS.md`'s own section for full detail and priority tiers).
-**T-F187** (canary CI build for toolchain-drift detection) is `[~]` implementation complete,
-pending a real triggered `workflow_dispatch` run.
+**T-F187** (canary CI build for toolchain-drift detection) is `[x]` done — a real triggered
+`workflow_dispatch` run confirmed both build jobs green on the current `windows-latest` image.
 
 ## Roadmap Summary
 

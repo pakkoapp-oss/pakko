@@ -4528,8 +4528,13 @@ land, per this project's normal workflow.
 
 ### T-F187 — "Canary" scheduled CI build to catch toolchain/dependency drift before it hits users
 
-- [~] **Status:** implementation complete 2026-09-13, on-device/CI verification pending (a real
-  triggered `workflow_dispatch` run, per this project's own graduation rule for CI-facing tasks).
+- [x] **Status:** done 2026-09-13 — real `workflow_dispatch` run confirmed both build jobs green
+  on the actual current `windows-latest` image (run 34771775975: `canary-shellext` in 34s,
+  `canary-dotnet` in 2m29s, `canary-status` correctly computed a green day, `canary-failed-day`/
+  `canary-alert` correctly skipped). The 3-day escalation firing for real remains something only a
+  genuine future outage (or a deliberately forced one) will exercise end-to-end — accepted per the
+  design-review verification already recorded below, same as any other cron-driven behavior whose
+  full cycle can't be manufactured on demand.
 - **Context:** `.github/workflows/build.yml`'s `test`/`build-cli` jobs run on `windows-latest`
   (currently the `windows-2025` image) and `build-msix`/`build-store-msix` deliberately pin
   `windows-2022` + MSVC `v143` after `windows-latest` silently relabeled mid-project and broke the
@@ -4652,8 +4657,8 @@ land, per this project's normal workflow.
     no row existed for `build.yml` either — out of this task's scope to add one), `CLAUDE.md`'s
     Next Work line, `scripts/README.md`'s new Canary subsection, and `docs/DECISIONS.md`'s new
     T-F187 entry (both advisor-caught corrections).
-  - [ ] Real `workflow_dispatch` run confirmed green for both `canary-dotnet` and
-    `canary-shellext` on the actual current `windows-latest` image.
+  - [x] Real `workflow_dispatch` run confirmed green for both `canary-dotnet` and
+    `canary-shellext` on the actual current `windows-latest` image (run 34771775975).
 - **Reported by:** user request, 2026-09-13 (community best practice for a "canary"/nightly-drift
   build with a 3-strike escalation). Design validated via an Explore research pass (repo
   conventions) and a Plan-agent research pass (GitHub Actions mechanics) before implementation;
