@@ -166,7 +166,7 @@ internal static class RawZipEntryLocator
 
         for (int i = tail.Length - 22; i >= 0; i--)
         {
-            if (tail[i] == 0x50 && tail[i + 1] == 0x4B && tail[i + 2] == 0x05 && tail[i + 3] == 0x06)
+            if (BitConverter.ToUInt32(tail, i) == EndOfCentralDirectorySignature)
                 return zipStream.Length - searchLength + i;
         }
 
