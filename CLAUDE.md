@@ -372,6 +372,18 @@ absent handling, UI double-invoke race, Zalgo/RTL-override filenames, Tar destin
 AMSI size-cap boundary — see `docs/TASKS.md`'s own section for full detail and priority tiers).
 **T-F187** (canary CI build for toolchain-drift detection) is `[x]` done — a real triggered
 `workflow_dispatch` run confirmed both build jobs green on the current `windows-latest` image.
+**T-F188** (ZIP password decrypt engine — ZipCrypto + WinZip AE, internal only) is `[x]` done —
+tests-first, mutation-checked, 18 new tests, `docs/DECISIONS.md`'s T-F188 entry has the full
+design + a real finding (buffers a whole entry in memory rather than streaming — WinZip AE's HMAC
+requires authenticating the full ciphertext before releasing any plaintext, so this isn't purely
+an oversight, but T-F189 must decide how this interacts with `ProgressStream`/T-F16's byte-
+accurate progress for a large encrypted entry). **T-F189**-**T-F192** (public API/pipeline wiring,
+WinUI/CLI/Shell UX) and **T-F193** (future phase — creating password-protected ZIP, AES-only) are
+not started. **T-F194** (AMSI scan, T-F146, currently can't see inside a password-protected entry
+at all — flagged by the user, real evasion-technique concern for this project's threat model) is
+also new, not started. See `docs/TASKS.md`'s "ZIP Password Support" section. This reverses
+`SPEC.md`/`SECURITY.md`'s "Encrypted archives — Out of scope" line, a deliberate user-confirmed
+scope change.
 
 ## Roadmap Summary
 

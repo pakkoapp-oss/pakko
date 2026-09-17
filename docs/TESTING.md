@@ -140,6 +140,26 @@ Located at `tests/Archiver.Core.Tests/Fixtures/`.
 - `created_by_7zip.zip`, `created_by_winrar.zip`, `created_by_macos.zip`
 - `pakko_integrity_valid.zip`, `pakko_integrity_tampered.zip` — after T-34
 
+**T-F188 (ZIP password reading) real crypto fixtures** — password `"testpassword"` for all of
+them; regeneration commands are in `GenerateFixtures/Program.cs`'s header comment, not run
+automatically (same manual-tool pattern as `encrypted_aes256.zip` above):
+- `encrypted_aes128.zip`, `encrypted_zipcrypto_real.zip` — real WinZip AES-128 / real PKWARE
+  ZipCrypto, generated via the vendored `7za.exe` (T-F114). `encrypted_zipcrypto_real.zip` is
+  distinct from the older `encrypted_zipcrypto.zip` above, which only sets the encryption flag
+  over fake bytes for T-25's *detection* tests — it is not real cipher output and cannot be
+  decrypted.
+- `mixed_encrypted_and_plain.zip` — one plain entry (`readme.txt`) + one AES-256-encrypted entry
+  (`compressible.txt`) in the same archive, for the no-second-extraction-path invariant.
+- `encrypted_aes256_ae1.zip` — **SYNTHETIC**, not a `7za.exe` output. `7za.exe` (26.02) only ever
+  emits WinZip AE-2; this fixture is `encrypted_aes256.zip` byte-patched (extra-field version
+  2→1, plus the real CRC-32 of `compressible.txt` injected into both the local and central
+  headers) to exercise the AE-1 code path, where the header CRC-32 is real rather than zeroed.
+  Cross-checked against the vendored `7za.exe` itself (still decrypts correctly after patching).
+- `encrypted_aes256_tampered.zip` — **SYNTHETIC**, one ciphertext byte flipped in
+  `encrypted_aes256.zip` (inside the AES-CTR data, not the salt/password-verification prefix) —
+  the real password still verifies, but the HMAC-SHA1 authentication tag must reject the result.
+  Cross-checked: the vendored `7za.exe` itself also reports `"Data Error"` against this fixture.
+
 **Tests with missing manual fixtures are skipped (yellow), not failed.**
 `dotnet test` returns success even with skipped tests.
 

@@ -387,6 +387,14 @@ Won't-fix categories recorded so far:
   earlier T-F147 pass tried, `TarSandboxCollection` → `TarSandboxTestCollection`) cannot actually
   satisfy this rule; only `#pragma warning disable CA1711` (per the mechanism note above, since
   this is an `external_roslyn` rule) stops it.
+- **CA5379/CA5350 (weak PBKDF2/HMAC hash algorithm) on `WinZipAesReader.cs`'s `Rfc2898DeriveBytes`/
+  `HMACSHA1` use** (T-F188): the WinZip AE-1/AE-2 file format specification itself hardcodes
+  PBKDF2-HMAC-SHA1 (1000 iterations) and HMAC-SHA1 for its authentication tag — this is real-world
+  ZIP-password compatibility, not an algorithm choice this code is free to make. Switching to
+  SHA-256/384/512 would derive a different key/tag from the same password and simply fail to
+  decrypt any real WinZip-AES-encrypted archive. Suppressed via `#pragma warning disable
+  CA5379, CA5350` at the exact two call sites (both `external_roslyn` rules — see this section's
+  mechanism note above).
 - **S1135 (complete this TODO) on `ArchiveEntrySecurity.cs:56` and `.github/workflows/build.yml`**:
   both TODOs are legitimate, already-tracked future work (not abandoned placeholders) — left as
   plain TODOs, not suppressed. Don't "fix" these by deleting the comment or completing the task

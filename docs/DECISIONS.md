@@ -8219,3 +8219,140 @@ mid-outage no longer closes the tracking Issue prematurely — the streak histor
 schedule-only, this just makes the close action consistent with it), and the history query's
 `per_page` was raised from 5 to 30 (the loop already breaks at the first non-matching day, so this
 costs nothing in the common case and just removes a streak-undercount risk on a long outage).
+
+---
+
+## T-F188 — ZIP Password Reading: Decryption Engine Design (2026-09-17)
+
+**Trigger:** user request to prepare password-protected ZIP reading, reversing `SPEC.md`/
+`SECURITY.md`'s previously deliberate "Encrypted archives — Out of scope" line. Planned via
+Plan Mode + two `advisor` review passes before any code, per this project's own gate for
+architectural/security-sensitive changes. Confirmed scope with the user first (see
+`docs/TASKS.md`'s "ZIP Password Support" section header for the full confirmed-scope writeup):
+ZIP only (RAR/7z stay diagnostics-only), reading only this round (writing is T-F193, AES-only,
+future), both legacy ZipCrypto and WinZip AE-1/AE-2 for reading.
+
+**Why not `System.IO.Compression`:** it has zero ZIP-decryption support, and `ZipArchiveEntry`
+exposes neither a raw entry's local-header offset nor its raw (possibly encrypted) bytes.
+Reflecting into BCL internals was rejected outright — fragile across .NET version bumps, and
+against this project's "provable from the line" standard. Instead, `RawZipEntryLocator`
+(`src/Archiver.Core/Services/Zip/Decryption/RawZipEntryLocator.cs`) parses the central directory
+and local file header directly from the file's own bytes, independent of `ZipArchiveEntry` — the
+same category of direct-byte-read this project already relies on for
+`ArchiveFormatDetector.IsEncryptedZip` and T-F35's hand-rolled ZIP writer subsystem.
+
+**Real cryptography is 100% BCL** (`System.Security.Cryptography`): `Aes`, `Rfc2898DeriveBytes`
+(PBKDF2), `HMACSHA1`. This project's own cross-language rule carves out security-critical
+primitives as the one standing exception to "prefer hand-rolled over a dependency" — but the
+inverse also holds here: hand-rolling the *ZIP-specific protocol framing* around those audited
+primitives (salt/verification-value layout, building AES-CTR from a plain ECB block encryptor,
+the PKWARE traditional stream cipher's 3-key schedule) is a faithful transcription of a published
+specification (APPNOTE.TXT §6.1, WinZip's own AE-1/AE-2 spec), not inventing a cipher — the
+"reference-implementation of a spec" exception the same rule names explicitly.
+
+**Empirical findings that shaped scope, confirmed this session, not assumed:**
+- `tar.exe` (bsdtar 3.8.8/libarchive 3.8.8, `C:\Windows\System32\tar.exe`) has zero passphrase
+  support (`tar --help`/`--version` — no mention of password/passphrase at all) — this is what
+  ruled out RAR/7z password support entirely; there is no way to add it without replacing tar.exe
+  as the extraction engine, which the project's own hard constraint forbids.
+- The vendored, hash-verified `7za.exe` (T-F114) supports `-mem=AES256`/`-mem=AES128`/
+  `-mem=ZipCrypto` and was used to generate every real (non-synthetic) fixture — confirmed via a
+  real invocation of each before writing the fixture generator's documentation, not assumed from
+  memory (per this project's own "verify before trusting a specific command" discipline).
+- **AE-1 vs AE-2 is not cosmetic.** WinZip AE's extra field (0x9901) carries a version number:
+  AE-2 (version 2) always zeroes the entry's stored CRC-32 and relies solely on the trailing
+  10-byte HMAC-SHA1 tag for integrity; AE-1 (version 1) keeps the real CRC-32. Confirmed
+  empirically: the vendored `7za.exe` (26.02) **only ever emits AE-2** — parsed the raw extra
+  field of both a real `encrypted_aes256.zip` and `encrypted_aes128.zip` and found `version = 2`
+  in both. No AE-1-emitting tool exists in this repo's toolchain, so the AE-1 code path is tested
+  against a **synthetic** fixture (`encrypted_aes256_ae1.zip`) — a real AE-2 archive byte-patched
+  (version field 2→1, real CRC-32 of the plaintext injected into both the local and central
+  directory headers) via a throwaway Python script, cross-checked by confirming the vendored
+  `7za.exe` itself still decrypts it correctly after patching. `encrypted_aes256_tampered.zip`
+  (one ciphertext byte flipped, outside the salt/password-verification prefix) is the equivalent
+  synthetic fixture for the "HMAC must reject tampered data" path — cross-checked the same way:
+  `7za.exe` itself reports `"Data Error in encrypted file. Wrong password?"` against it, agreeing
+  independently that the fixture is genuinely corrupted, not just corrupted-according-to-our-code.
+
+**Design invariant (no second extraction path):** this project has already paid twice for
+hand-duplicated extraction/creation decision logic (T-F154/T-F156 forced T-F157's
+`ExtractionDestinationPlanner`; the same for the creation side forced T-F158's
+`DestinationConflictResolver`) — the same risk class here would be worse, since it's security
+logic. `EncryptedZipEntryReader.TryOpen` is deliberately scoped to produce **only** a decrypted
+`Stream` for one entry — no destination planning, no conflict resolution, no security checks of
+its own. It is designed to plug in at the exact point the normal extraction pipeline currently
+calls `ZipArchiveEntry.Open()` (wiring lands in T-F189); every other safeguard (ADS/reserved-name/
+reparse-point checks, compression-bomb evaluation, MOTW, `ExtractionDestinationPlanner`,
+`ConflictResolver`, the temp-dir/atomic-commit pattern) stays exactly as-is, unaware anything
+changed.
+
+**One shared resolver for both read and write, from day one — the T-F157→T-F158 lesson applied
+in advance:** the user independently raised this exact precedent mid-design (unprompted, from
+memory of T-F157/T-F158 — see this session's plan review). `ExtractOptions.ResolvePasswordAsync`
+and `ArchiveOptions.ResolvePasswordAsync` (T-F189) will share one internal `PasswordResolver`
+class and the identical callback shape already used by `ResolveConflictAsync` on both option
+records — built this way from T-F189 onward rather than extraction-only now and retrofitted for
+T-F193 (creation) later, the way T-F157 had to be redone as T-F158 the very next day.
+
+**`WrongPassword` vs `Corrupted` split, found by a real test failure, not designed up front:**
+the first implementation had `WinZipAesReader.TryDecrypt` return a plain `bool`, collapsing "the
+2-byte password-verification value didn't match" and "the password verified but the HMAC
+authentication tag didn't" into the same failure. A test
+(`TryOpen_TamperedAesCiphertext_HmacRejectsEvenWithCorrectPassword`) caught this immediately: the
+tampered-ciphertext fixture (correct password, only the ciphertext tampered — the salt and
+password-verification bytes are untouched) returned `WrongPassword` instead of the expected
+`Corrupted`, because both checks fed the same boolean. Fixed by splitting the return into
+`WinZipAesDecryptOutcome { Success, WrongPassword, AuthenticationFailed }`, so a verified-correct
+password whose ciphertext still fails HMAC is reported as data corruption, not a bad password —
+matters for the eventual UI, since one should re-prompt for a password and the other shouldn't.
+
+**Mutation-checked, not just passing:** temporarily short-circuited the password-verification
+check in `WinZipAesReader.TryDecrypt` (`if (false && ...)`) and reran the Decryption test suite —
+3 of 18 tests failed exactly as expected (`TryOpen_WrongPassword_*` for both AES fixtures, plus
+the empty-password test), confirming the tests genuinely exercise that check rather than passing
+vacuously. Reverted immediately after confirming.
+
+**Static-analysis suppression, not a workaround:** `WinZipAesReader.cs` triggers CA5379/CA5350
+("weak" PBKDF2/HMAC hash algorithm) on its `Rfc2898DeriveBytes`/`HMACSHA1` use — both are mandated
+by the WinZip AE specification itself (PBKDF2-HMAC-SHA1, 1000 iterations; HMAC-SHA1 for the
+authentication tag), not a choice this code is free to make; switching to SHA-256+ would derive a
+different key/tag and simply fail to read any real WinZip-AES-encrypted archive. Suppressed via
+`#pragma warning disable CA5379, CA5350` at the two exact call sites, recorded in
+`docs/CONVENTIONS.md`'s Static-Analysis Won't-Fix Conventions.
+
+**Testing:** new `tests/Archiver.Core.Tests/Services/Zip/Decryption/` —
+`RawZipEntryLocatorTests` (6 facts: correct offset/method/AE-version/strength per fixture, mixed
+archive resolves both entries independently, missing entry throws) and
+`EncryptedZipEntryReaderTests` (12 facts across all four required scenario categories — Happy
+path for ZipCrypto/AES-128/AES-256/synthetic-AE-1/mixed-archive; Security & Boundary for wrong
+password on all three real schemes, tampered-ciphertext HMAC rejection, empty password; Misuse &
+Fool/Error path for calling the reader on an unencrypted entry and for a nonexistent entry name).
+Written first and confirmed failing (no `Decryption` namespace existed yet) before any production
+code. `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` green repo-wide (`Archiver.
+Core.Tests` 528→546, every other project unchanged: 149 CLI, 81 Integration, 61 App.Core, 447
+Shell, 5 Performance).
+
+**Files:** `src/Archiver.Core/Services/Zip/Decryption/{RawZipEntryLocator,ZipCryptoStream,
+WinZipAesReader,EncryptedZipEntryReader}.cs` (all `internal` — no public API or frontend wiring
+yet; that's T-F189). New fixtures documented in `docs/TESTING.md`; regeneration commands recorded
+in `GenerateFixtures/Program.cs`'s header comment (the synthetic AE-1/tampered fixtures are
+explicitly *not* reproducible by a plain `7za.exe` invocation — the patch script is throwaway,
+not committed, per the same manual-fixture convention `encrypted_aes256.zip` already used).
+
+**Scope fence:** no wiring into `ZipArchiveService`, no public `Archiver.Core` interface change,
+no frontend UI — all tracked separately as T-F189 through T-F193 in `docs/TASKS.md`.
+
+**Known trade-off, flagged by the user during review, not resolved here — carried into T-F189:**
+`EncryptedZipEntryReader` buffers a whole entry's compressed bytes, decrypted bytes, and
+decompressed bytes in memory, rather than streaming through `ProgressStream`/`CopyToAsync` the way
+the rest of `ZipArchiveService`'s extraction path does (T-F16's byte-accurate progress). This is
+**not purely an oversight**: WinZip AE's HMAC-SHA1 tag authenticates the entire ciphertext, and
+releasing decrypted plaintext before that check completes is a real "decrypt-before-verify"
+anti-pattern (an attacker-controlled partial-plaintext oracle), not just a missed optimization —
+so buffering the ciphertext fully before decrypting anything is the security-correct order for
+AES, unlike plain unencrypted ZIP extraction, which has no per-entry authentication step blocking
+incremental release. What's still an open, undecided cost: no `ProgressStream` involvement means
+no mid-entry progress feedback for a large encrypted file, and the decompressed output is also
+fully materialized rather than streamed to disk. T-F189 must decide and document how this
+interacts with progress reporting before wiring this engine into the real pipeline — not
+silently inherit whichever behavior falls out of a straightforward integration.

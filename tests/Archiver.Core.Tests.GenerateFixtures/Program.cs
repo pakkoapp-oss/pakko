@@ -41,6 +41,20 @@
  *   created_by_macos.zip     — requires macOS:
  *                              zip -r created_by_macos.zip folder/
  *
+ *   T-F188 (ZIP password reading) real crypto fixtures — generated once via the vendored
+ *   7za.exe (tests/Archiver.Core.PerformanceTests/Tools/7-Zip/x64/7za.exe) and committed as real
+ *   binary fixtures, same pattern as encrypted_aes256.zip below. Password is "testpassword" for
+ *   all of them. Regenerate with:
+ *     7za.exe a -tzip -mem=AES128 -ptestpassword encrypted_aes128.zip compressible.txt
+ *     7za.exe a -tzip -mem=ZipCrypto -ptestpassword encrypted_zipcrypto_real.zip compressible.txt
+ *     7za.exe a -tzip -mem=AES256 mixed_encrypted_and_plain.zip readme.txt
+ *     7za.exe a -tzip -mem=AES256 -ptestpassword mixed_encrypted_and_plain.zip compressible.txt
+ *   encrypted_aes256_ae1.zip and encrypted_aes256_tampered.zip are SYNTHETIC — byte-patched from
+ *   encrypted_aes256.zip by a throwaway script (not committed; see docs/DECISIONS.md's T-F188
+ *   entry), because 7za.exe only ever emits WinZip AE-2 (never AE-1), and a real bit-flip is the
+ *   simplest way to produce a fixture whose HMAC authentication must fail. Regenerating either
+ *   means re-running that patch, not a plain 7za.exe invocation.
+ *
  *   pakko_integrity_valid.zip    — generate after T-34: run Pakko to archive compressible.txt
  *   pakko_integrity_tampered.zip — generate after T-34: copy valid, flip one byte in manifest
  *
@@ -78,6 +92,11 @@
  *     pakko_integrity_valid.zip       — MANUAL, after T-34
  *     pakko_integrity_tampered.zip    — MANUAL, after T-34
  *     encrypted_aes256.zip            — MANUAL, requires 7-Zip
+ *     encrypted_aes128.zip            — MANUAL, requires 7-Zip (T-F188, real AES-128)
+ *     encrypted_zipcrypto_real.zip    — MANUAL, requires 7-Zip (T-F188, real PKWARE ZipCrypto)
+ *     mixed_encrypted_and_plain.zip   — MANUAL, requires 7-Zip (T-F188, plain + AES entry)
+ *     encrypted_aes256_ae1.zip        — MANUAL, SYNTHETIC byte-patch (T-F188, AE-1 test path)
+ *     encrypted_aes256_tampered.zip   — MANUAL, SYNTHETIC byte-flip (T-F188, HMAC-reject test)
  *     created_by_7zip.zip             — MANUAL
  *     created_by_winrar.zip           — MANUAL
  *     created_by_macos.zip            — MANUAL

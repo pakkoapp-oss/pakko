@@ -20,6 +20,11 @@ e4e7d376be86480819cd0caf40638fcd2ccd3954d80b74352104025fa5f76ac2  corrupted_cent
 cf267ce926cd12f37528bb7cae38cfd5074b372f13acbb0aba754ded5ec7e05a  corrupted_crc_stored.zip  # Stored entry data flipped after write — CRC-32 mismatch, read still succeeds
 1a89e4b06ec7611bdb318f9e8dab5645e111a776d58bdde2cf557d426ba45b00  encrypted_zipcrypto.zip  # ZipCrypto encryption flag set — T-25 detection target
 593fb4b8091822dbe2a92f1136bd9f82fb7b0e20c9ca1394751b1d8cf45e395a  encrypted_aes256.zip  # T-F167: AES-256/WinZip AES encryption flag set, generated via vendored 7za.exe
+410a4d7fddeab0f3c9e77230b2a181d7f9123cf3af7d69c076c3305301e0d0fb  encrypted_aes128.zip  # T-F188: real WinZip AES-128, password "testpassword", generated via vendored 7za.exe
+3b0de361749c6396989179336a355adb60a9666f73e3dd35fe865621676442ba  encrypted_zipcrypto_real.zip  # T-F188: real PKWARE ZipCrypto (not the T-25 fake-flag fixture), password "testpassword", generated via vendored 7za.exe
+ac3155094ae4e8d22247ecae9eba304b331235ea7496add299bcee9cb1cc531b  mixed_encrypted_and_plain.zip  # T-F188: readme.txt plain + compressible.txt AES-256-encrypted (password "testpassword") in one archive
+95a7801fc891a540b3700992ee431f4be1c20760967c42cee606cb0bb9b73270  encrypted_aes256_ae1.zip  # T-F188: SYNTHETIC — byte-patched from encrypted_aes256.zip (AE version 2->1 + real injected CRC-32), since 7za.exe only emits AE-2
+26d2c9caaa86ae884c0eccdad907b68777ef2e2b08ad4e5a1e74ac8e1f6b9ea5  encrypted_aes256_tampered.zip  # T-F188: byte-flipped ciphertext of encrypted_aes256.zip — HMAC must reject, confirmed 7za.exe itself also reports "Data Error"
 48d1ff086a37bb3fd4f929a8e0efdef619d1abab3c444b463b68ed11a606fbb8  zipslip_traversal.zip  # ZIP slip: path traversal entries — T-14 ZIP slip protection target
 
 # Manual fixtures — not generated:
