@@ -176,11 +176,20 @@ src/
 │   ├── ConflictDialogLocalizer.cs      ← T-F155: mirrors ScanResultLocalizer's own pattern; the 6
 │   │                                      ConflictDialog* values are copied from Archiver.App's own
 │   │                                      already-translated Strings/*/Resources.resw, not re-translated
+│   ├── PasswordDialogTemplateBuilder.cs ← T-F192: pure byte[]-returning DLGTEMPLATEEX builder,
+│   │                                      separate from the P/Invoke body so its byte-layout is
+│   │                                      unit-testable (see DECISIONS.md for the design research)
+│   ├── PasswordDialog.cs               ← T-F192: DialogBoxIndirectParamW-based password prompt,
+│   │                                      same ShowAsync/MapResult split as ShellConflictDialog
+│   ├── StickyPasswordResolver.cs       ← T-F192: same "apply to remaining spans a whole Explorer
+│   │                                      multi-select" bridge as StickyApplyToAllConflictResolver
+│   ├── PasswordDialogLocalizer.cs      ← T-F192: mirrors ConflictDialogLocalizer's own pattern
 │   └── Resources/
 │       ├── HashMessages.resx / HashMessages.<locale>.resx      ← 36 locales
 │       ├── ScanMessages.resx / ScanMessages.<locale>.resx      ← 36 locales
-│       └── ConflictMessages.resx / ConflictMessages.<locale>.resx  ← 36 locales, matches
-│                                                                     Archiver.App/Strings/'s own set
+│       ├── ConflictMessages.resx / ConflictMessages.<locale>.resx  ← 36 locales, matches
+│       │                                                             Archiver.App/Strings/'s own set
+│       └── PasswordMessages.resx / PasswordMessages.<locale>.resx  ← 36 locales, same reuse pattern
 │
 ├── Archiver.CLI/                ← standalone console frontend (T-F09); net8.0; Exe (real console,
 │   │                                not WinExe); no WinUI; built as pakko.exe; ships independently
@@ -424,6 +433,46 @@ public sealed class StickyApplyToAllConflictResolver(Func<ConflictInfo, Task<Con
 // Archiver.Shell/ConflictDialogLocalizer.cs — public, Archiver.Shell
 // T-F155: mirrors ScanResultLocalizer.cs exactly (ResourceManager over Resources/ConflictMessages).
 public static class ConflictDialogLocalizer
+{
+    public static string Get(string key, params object[] args);
+}
+
+// Archiver.Shell/PasswordDialog.cs — public, Archiver.Shell
+// T-F192: same ShowAsync/MapResult split and Skip-on-failure degradation as ShellConflictDialog,
+// via an in-memory DLGTEMPLATEEX + DialogBoxIndirectParamW instead of TaskDialogIndirect (no
+// text-input capability there) — see DECISIONS.md for the NanaZip research that settled this over
+// CredUIPromptForCredentialsW, and the Phase 0 spike that found DialogBoxIndirectParamW's dialog
+// needs an explicit SetWindowPos(HWND_TOPMOST, ...) in WM_INITDIALOG to actually become visible
+// from this call site (a background thread, with Archiver.Shell's own IProgressDialog already
+// showing) — plain SetForegroundWindow alone is not reliable there.
+public static class PasswordDialog
+{
+    public static PasswordDecision MapResult(int buttonId, string editText, bool applyToRemainingChecked);
+    public static Task<PasswordDecision> ShowAsync(PasswordPromptInfo info, bool canApplyToRemaining);
+}
+
+// Archiver.Shell/PasswordDialogTemplateBuilder.cs — internal, Archiver.Shell (InternalsVisibleTo
+// Archiver.Shell.Tests, same convention Archiver.Core.csproj uses)
+// T-F192: pure DLGTEMPLATEEX byte-buffer builder, kept separate from PasswordDialog's P/Invoke
+// body so byte-layout mistakes are unit-testable instead of only surfacing on-device.
+internal static class PasswordDialogTemplateBuilder
+{
+    public static byte[] Build(string title, string message, bool canApplyToRemaining,
+        string applyToRemainingLabel, string showPasswordLabel, string okLabel, string cancelLabel);
+}
+
+// Archiver.Shell/StickyPasswordResolver.cs — public, Archiver.Shell
+// T-F192: same scope-bridging shape as StickyApplyToAllConflictResolver, for PasswordDecision
+// instead of ConflictDecision — Core's own PasswordResolver._sticky only lasts one ExtractAsync
+// call (= one archive), this wrapper spans the whole Explorer multi-select.
+public sealed class StickyPasswordResolver(Func<PasswordPromptInfo, bool, Task<PasswordDecision>> inner, bool canApplyToRemaining)
+{
+    public Task<PasswordDecision> ResolveAsync(PasswordPromptInfo info);
+}
+
+// Archiver.Shell/PasswordDialogLocalizer.cs — public, Archiver.Shell
+// T-F192: mirrors ConflictDialogLocalizer.cs exactly (ResourceManager over Resources/PasswordMessages).
+public static class PasswordDialogLocalizer
 {
     public static string Get(string key, params object[] args);
 }

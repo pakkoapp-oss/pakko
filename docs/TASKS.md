@@ -4962,32 +4962,43 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
 
 ### T-F192 — `Archiver.Shell`: native password prompt for Explorer extract commands
 
-- [ ] **Status:** not started — depends on T-F189. Blocked on a design decision, not just
-  implementation.
+- [~] **Status:** implementation complete, 2026-09-18 — stays `[~]` until the user's own on-device
+  Explorer click-through, per this project's UI-graduation convention (same as T-F190).
 - **Context:** `ShellConflictDialog.cs`'s `TaskDialogIndirect` has no text-input capability, so it
   cannot be reused as-is for a masked password field.
-- **Design decision needed before implementation (this project's hard constraint: research real
-  working examples — fetch NanaZip's actual source — before writing COM/shell dialog code):**
-  - `CredUIPromptForCredentialsW`/`CredUIPromptForWindowsCredentials` — standard Windows dialog,
-    masking built in, but default wording is credential-oriented ("User name"/"Password").
-  - A custom `DIALOGEX` resource with an `ES_PASSWORD` field via `DialogBoxParamW`, fully
-    localized per Shell's existing `ResultMessages.resx` (37-locale) convention — more code, full
-    control over strings.
-- **Acceptance criteria (draft):**
-  - [ ] Decision recorded in `docs/DECISIONS.md` with the NanaZip research findings.
-  - [ ] New `StickyPasswordResolver` (mirroring `StickyApplyToAllConflictResolver`) so "apply to
+- **Design decision (resolved via real research, per this project's hard constraint):** fetched
+  NanaZip's actual `PasswordDialog.rc`/`.cpp` — confirmed 7-Zip/NanaZip use a **custom `DIALOGEX`**
+  (`EDITTEXT` with `ES_PASSWORD | ES_AUTOHSCROLL` + a "Show password" checkbox toggling
+  `EM_SETPASSWORDCHAR`), never `CredUIPromptForCredentialsW`. Implemented as an in-memory
+  `DLGTEMPLATEEX` byte buffer + `DialogBoxIndirectParamW` (no `.rc`/resource-compile step needed —
+  `Archiver.Shell` is a plain C# project) rather than a compiled resource. Full rationale, the
+  NanaZip source excerpts, and a Phase 0 spike's findings (a `SetForegroundWindow`-alone trap and
+  its `HWND_TOPMOST` fix) are in `docs/DECISIONS.md`'s T-F192 entry.
+- **Acceptance criteria:**
+  - [x] Decision recorded in `docs/DECISIONS.md` with the NanaZip research findings.
+  - [x] New `StickyPasswordResolver` (mirroring `StickyApplyToAllConflictResolver`) so "apply to
     remaining" spans a whole Explorer multi-select, not just one archive.
-  - [ ] Localized across all 37 locales.
-  - [ ] `Deploy.ps1` build+sign+install + manual on-device verification via a real Explorer
-    "Extract Here" against an encrypted fixture.
+  - [x] Localized across all 37 locales (6 keys reused from `Archiver.App`'s T-F190 strings + 1
+    new `PasswordDialogShowPasswordCheck`, translated fresh).
+  - [x] `Deploy.ps1` build+sign+install + agent-driven on-device verification (`windows` MCP)
+    against the real installed MSIX via all 3 extract commands (`--extract-here`, `--extract-
+    folder`, `--extract-flat`) against real encrypted fixtures, under real Ukrainian OS UI culture,
+    including a genuine occlusion test (dialog rendering on top of a restored, foreground terminal
+    window, not just one that happened to be minimized) — confirmed masked entry,
+    wrong-password retry, correct-password extraction, multi-archive "apply to remaining" with
+    zero re-prompt (and correct coexistence with T-F155's own conflict dialog), and Cancel
+    producing the exact unchanged pre-existing rejection message. Stays pending the user's own
+    personal Explorer click-through.
   - [ ] **Once this ships, update the trust documents in one pass** (user-confirmed 2026-09-18,
     after T-F190's on-device pass raised the question): `SECURITY.md` (needs explicit permission
     per `CLAUDE.md`'s hard Do-Not), `docs/SPEC.md`, `README.md`, `docs/index.html` +
     `docs/uk/index.html` all still say "Encrypted archives — out of scope," stale since before
-    T-F188. User deliberately chose to update all of them together once every real entry point
-    (App done, CLI/Shell here) has working UI, rather than in three separate partial passes.
+    T-F188. **This checkbox is now unblocked** — T-F192 was the last of the three gating tasks
+    (App/T-F190, CLI/T-F191, Shell/T-F192), all three now shipped with verified password UI. Still
+    not started automatically — raise it explicitly with the user rather than starting it as part
+    of closing T-F192 out, since it touches `SECURITY.md`.
 - **Reported by:** user request, 2026-09-17 (design session).
-- **Depends on:** T-F189.
+- **Depends on:** T-F189 (done).
 
 ---
 

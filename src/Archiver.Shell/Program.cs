@@ -93,6 +93,9 @@ static async Task RunExtractHereAsync(IReadOnlyList<string> archivePaths, GroupP
     // whole multi-select — see StickyApplyToAllConflictResolver's own doc comment for why a raw
     // ResolveConflictAsync = ShellConflictDialog.ShowAsync wire-through would re-prompt per archive.
     var conflictResolver = new StickyApplyToAllConflictResolver(ShellConflictDialog.ShowAsync);
+    // T-F192: same reasoning as conflictResolver above, applied to PasswordDialog — one sticky
+    // wrapper per Explorer invocation so "apply to remaining" spans the whole multi-select.
+    var passwordResolver = new StickyPasswordResolver(PasswordDialog.ShowAsync, canApplyToRemaining: archivePaths.Count > 1);
 
     foreach (var archivePath in archivePaths)
     {
@@ -113,6 +116,7 @@ static async Task RunExtractHereAsync(IReadOnlyList<string> archivePaths, GroupP
             // FILE archive still lands directly in destFolder — the exact case that can collide.
             OnConflict = ConflictBehavior.Ask,
             ResolveConflictAsync = conflictResolver.ResolveAsync,
+            ResolvePasswordAsync = passwordResolver.ResolveAsync,
         };
 
         string title = $"Extracting: {Path.GetFileName(archivePath)}";
@@ -138,6 +142,7 @@ static async Task RunExtractHereFlatAsync(IReadOnlyList<string> archivePaths, Gr
 {
     var router = await BuildExtractionRouterAsync(policy).ConfigureAwait(false);
     var conflictResolver = new StickyApplyToAllConflictResolver(ShellConflictDialog.ShowAsync);
+    var passwordResolver = new StickyPasswordResolver(PasswordDialog.ShowAsync, canApplyToRemaining: archivePaths.Count > 1);
 
     foreach (var archivePath in archivePaths)
     {
@@ -151,6 +156,7 @@ static async Task RunExtractHereFlatAsync(IReadOnlyList<string> archivePaths, Gr
             // is re-extracted into its own containing folder a second time.
             OnConflict = ConflictBehavior.Ask,
             ResolveConflictAsync = conflictResolver.ResolveAsync,
+            ResolvePasswordAsync = passwordResolver.ResolveAsync,
         };
 
         string title = $"Extracting: {Path.GetFileName(archivePath)}";
@@ -168,6 +174,7 @@ static async Task RunExtractFolderAsync(IReadOnlyList<string> archivePaths, Grou
 {
     var router = await BuildExtractionRouterAsync(policy).ConfigureAwait(false);
     var conflictResolver = new StickyApplyToAllConflictResolver(ShellConflictDialog.ShowAsync);
+    var passwordResolver = new StickyPasswordResolver(PasswordDialog.ShowAsync, canApplyToRemaining: archivePaths.Count > 1);
 
     foreach (var archivePath in archivePaths)
     {
@@ -185,6 +192,7 @@ static async Task RunExtractFolderAsync(IReadOnlyList<string> archivePaths, Grou
             // to fire in practice.
             OnConflict = ConflictBehavior.Ask,
             ResolveConflictAsync = conflictResolver.ResolveAsync,
+            ResolvePasswordAsync = passwordResolver.ResolveAsync,
         };
 
         string title = $"Extracting: {Path.GetFileName(archivePath)}";

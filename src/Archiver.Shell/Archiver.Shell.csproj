@@ -14,4 +14,10 @@
   <ItemGroup>
     <ProjectReference Include="..\Archiver.Core\Archiver.Core.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- T-F192: lets Archiver.Shell.Tests unit-test PasswordDialogTemplateBuilder's byte-layout
+         logic directly, matching Archiver.Core.csproj's identical InternalsVisibleTo convention
+         (see CLAUDE.md) rather than making an implementation-detail class public. -->
+    <InternalsVisibleTo Include="Archiver.Shell.Tests" />
+  </ItemGroup>
 </Project>

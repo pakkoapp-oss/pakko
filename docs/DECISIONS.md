@@ -8748,3 +8748,147 @@ wrong tab.
 `CliPasswordPromptTests.cs`, `Subprocess/CliSubprocessTests.cs`,
 `Subprocess/CliProcessRunner.cs` (stdin-redirect fix), `Archiver.CLI.Tests.csproj` (fixture link).
 No `Archiver.Core` diff.
+
+---
+
+## T-F192 — `Archiver.Shell`: native password prompt for Explorer extract commands (2026-09-18)
+
+**Design decision, research-backed per this project's hard COM/shell-dialog constraint.** Fetched
+NanaZip's real, currently-shipping source before writing any code:
+`NanaZip.Core/SevenZip/CPP/7zip/UI/FileManager/PasswordDialog.{rc,h,cpp}`. Confirmed: 7-Zip/NanaZip
+use a **custom `DIALOGEX`-shaped dialog** — `IDD_PASSWORD` with an `EDITTEXT` control
+(`ES_PASSWORD | ES_AUTOHSCROLL`) and a "Show password" checkbox that toggles
+`_passwordEdit.SetPasswordChar(ShowPassword ? 0 : TEXT('*'))` — **never**
+`CredUIPromptForCredentialsW`. This settles the design question the plan left open in favor of the
+custom-dialog path, and gives the exact control shape (label, password edit, show-password
+checkbox, OK/Cancel) `PasswordDialogTemplateBuilder` mirrors.
+
+**Implementation shape, not a compiled `.rc` resource.** `Archiver.Shell` is a plain C# project
+with no existing native-resource-compilation step (unlike `Archiver.ShellExtension`'s C++
+project), and this project's own hard constraint prefers a script/in-memory-struct approach over
+new build-pipeline customization wherever one works. `PasswordDialogTemplateBuilder.Build(...)`
+hand-builds an in-memory `DLGTEMPLATEEX` + `DLGITEMTEMPLATEEX[]` byte buffer (title, message,
+password edit, optional "apply to remaining" checkbox, "show password" checkbox, OK/Cancel),
+shown via `DialogBoxIndirectParamW` — the same "build the native struct in memory, no resource
+file" philosophy `ShellConflictDialog` already established for `TaskDialogIndirect`. Kept as a
+pure `byte[]`-returning function, separate from the P/Invoke body, specifically so byte-layout
+mistakes are catchable by `Archiver.Shell.Tests` (`PasswordDialogTemplateBuilderTests.cs` — item
+count, DLGTEMPLATEEX signature/version markers, UTF-16 string embedding including non-ASCII, and
+a from-scratch DWORD-alignment walk of every item using only the documented field widths) instead
+of only surfacing as "the dialog didn't appear" on-device.
+
+**Phase 0 spike (advisor-mandated before writing production code) reproduced the REAL invocation
+shape** — a standalone throwaway console project (never committed) that started a real shell
+`IProgressDialog` (the same COM object `NativeProgressDialog` wraps) and then, from a background
+thread while that progress dialog was already showing, called the candidate `PasswordDialog.Show`.
+This caught a real bug a simpler spike (dialog shown alone, no background thread, no progress
+dialog already up) would have missed entirely:
+
+- **Plain `SetForegroundWindow` is not reliable from this call site.** The dialog was created
+  successfully (confirmed via `EnumWindows`/`IsWindowVisible` — true) but stayed behind every
+  other window, completely unreachable, until a 30-second timeout killed the whole spike process.
+  Root cause: Windows' foreground-lock heuristic silently blocks a background process with no
+  recent user input from stealing foreground focus — `SetForegroundWindow`'s return value doesn't
+  even signal the failure. **Fix:** `SetWindowPos(hwndDlg, HWND_TOPMOST, ...)` in `WM_INITDIALOG`
+  — Z-order changes need no foreground-donation permission, unlike focus/activation. Combined with
+  `SetForegroundWindow`/`SetActiveWindow`/`BringWindowToTop`/`FlashWindow` as best-effort
+  supplements, but `HWND_TOPMOST` is the one that actually guarantees visibility. Once fixed,
+  confirmed end-to-end via the spike: masked entry (`*` per character, matching NanaZip's own
+  echo model), the "Show password" checkbox correctly toggling `EM_SETPASSWORDCHAR`, and both
+  OK/Cancel returning the right values — before any of this was wired into a real extraction
+  command.
+- **A real, unrelated automation trap, distinct from both T-F190's and T-F191's own entries:**
+  launching the spike via `mcp__windows__app` initially appeared to attach the process to *this
+  session's own* Windows Terminal tab rather than a new window (the tab's title briefly read
+  "pakko" — this session's own project-named tab — not the spike's). A screenshot of that handle
+  showed this session's own chat transcript, not the spike. Caught before any keystroke was sent
+  to it; the fix was to always match the window by its title (a console app's default title is its
+  full exe path when it never calls `SetConsoleTitle`) rather than a loose `processName` filter,
+  and to visually confirm a screenshot's actual content before typing into any window found this
+  way — the same lesson T-F191's own trap entry drew, now confirmed to generalize beyond that one
+  incident.
+- **Empty dialog title also broke automation, not just UX.** `mcp__windows__window_management`'s
+  own window listing silently omits windows with no title at all — meaning the production dialog
+  needed a real caption regardless of the automation concern, since an untitled dialog also looks
+  unbranded/broken next to NanaZip's "Enter password" convention. Fixed by giving it the same
+  title T-F190's WinUI dialog already uses ("Password required" / `PasswordDialogTitle`).
+
+**"The hang that wasn't a hang" — a real lesson for reading on-device test results, not a bug.**
+Early on-device passes (Cancel path, and a multi-archive apply-to-remaining run) looked stuck:
+the `Archiver.Shell.exe` process stayed alive and its progress dialog window stayed visible for
+well over a minute after the password dialog itself had visibly closed. A temporary trace-logging
+pass (`File.AppendAllText` at each step, the same technique this project's own CLAUDE.md
+documents for exactly this situation) proved the real code path — `ShowAsync` → `ShowCore` →
+`DialogBoxIndirectParam` → `TryRejectUnsupportedOrEncryptedZipAsync` →
+`RunWithProgressWindowAsync`'s `using (dialog)` block — completed in well under a second every
+time. What was actually happening: `RunWithProgressWindowAsync`'s existing, pre-T-F192
+`ShowErrorSummary`/`ShowSkippedSummary` step (a plain `MessageBoxW`, T-F163) shows its own summary
+dialog *after* the progress dialog closes, and that dialog was simply never found/dismissed during
+the rushed first pass — not because it was hidden, but because the operator (this session) hadn't
+looked for a *second* dialog beyond the password prompt. Confirmed: `window_management(list)`
+found it immediately once actually searched for, screenshotted correctly on the first attempt
+(title matched the extraction's own title, e.g. `"Extracting: trace_test.zip"`), and clicking its
+OK button let the process exit cleanly within a second. No code change resulted from this — it
+is purely a verification-methodology note for the next on-device pass on this codebase: **a
+Cancel/rejected-password/error path here always produces a second, separate summary dialog beyond
+the password prompt itself; account for it before concluding a process is stuck.** The trace-log
+statements themselves were removed before considering the task done — they were a diagnostic aid,
+never meant to ship.
+
+**`StickyPasswordResolver` widens an already-accepted scope, doesn't introduce a new tradeoff.**
+Mirrors `StickyApplyToAllConflictResolver` (T-F155) exactly: one instance per Explorer invocation,
+constructed before the `foreach` over `archivePaths`, so "apply to remaining" spans the whole
+multi-select instead of resetting per archive (Core's own `PasswordResolver._sticky` only lasts
+one `ExtractAsync` call). Core's own doc comment already accepts that once `ApplyToRemaining` is
+set, a differently-keyed later archive skips `verify()` entirely and surfaces as normal per-entry
+"wrong password" `ArchiveError`s rather than a re-prompt — this wrapper just extends that same,
+already-accepted tradeoff across archive boundaries instead of only within one archive's entries.
+
+**On-device verification (agent-driven via `windows` MCP, real installed MSIX v1.4.12.1/.2,
+Ukrainian OS UI culture — localization confirmed correct automatically, no code needed for it):**
+launched the real `Archiver.Shell.exe --extract-here`, `--extract-folder`, and `--extract-flat`
+(all 3 extract commands individually confirmed, not just the first with the other two smoke-
+tested) against copies of the same `encrypted_aes256.zip`/`encrypted_zipcrypto_real.zip` fixtures
+T-F189 uses. Confirmed: masked entry; a wrong password shows "Неправильний пароль. Спробуйте ще
+раз." and re-prompts; a correct password on retry extracts the real 40803-byte
+`compressible.txt`; a 2-archive selection with "Застосувати до решти архівів" checked produces
+zero re-prompt on the second archive (and, as an incidental but genuine confirmation, correctly
+coexists with T-F155's own conflict dialog when both fixtures happened to decrypt to the same
+entry name); Cancel produces the exact unchanged "password-protected and cannot be extracted"
+message with zero partial output. **The `HWND_TOPMOST` fix was verified against real occlusion,
+not just absence of occlusion:** the first verification pass ran with this session's own terminal
+window minimized (so its dialog reaching the screen proved nothing about occlusion resistance);
+caught before drawing that conclusion, the terminal was restored to its normal foreground position
+directly over the screen region the dialog appears in, and a fresh `--extract-flat` run confirmed
+the password dialog rendering cleanly on top of the now-visible, foreground terminal (screenshot:
+`shot_occlusion.jpg`) with no manual intervention — a stricter test than T-F190's session needed,
+since that dialog only had to survive being *behind* the terminal, not appear *while* the terminal
+was both visible and had just been foreground.
+
+**Deliberately not wired this round:** `--test`. `Archiver.Shell`'s `RunTestAsync` calls
+`IArchiveService.TestAsync`, whose `resolvePasswordAsync` parameter (added T-F189) is left at its
+default `null` here — an encrypted archive via `--test` still gets the unchanged "password-
+protected and cannot be tested" rejection, unlike `--extract-*`. This is a real, narrow scope gap
+(one line of wiring plus a `StickyPasswordResolver` instance would close it), not "no such
+interactive surface exists" — `Archiver.CLI`'s `t` already got real `-p{pwd}` support in T-F191, so
+Shell's `--test` is now the one remaining ZIP-password-blind entry point. Left out because it was
+outside T-F192's stated acceptance criteria (Explorer *extract* commands only); worth a small
+follow-up task if the user wants parity.
+
+**Trust documents:** T-F192 was the last of the three gating tasks (App/T-F190, CLI/T-F191,
+Shell/T-F192) the user named when choosing to defer `SECURITY.md`/`SPEC.md`/`README.md`/
+`docs/index.html`'s "Encrypted archives — out of scope" reversal into one combined pass (see the
+T-F190 entry above and the `project_pakko_trust_docs_deferred` memory). All three now have real,
+verified password UI — the combined update is unblocked, but `SECURITY.md` stays untouched here
+too, since it's under `CLAUDE.md`'s hard "Do Not modify without explicit permission" rule; raised
+explicitly to the user rather than started automatically as part of closing this task out.
+
+**Files:** new `src/Archiver.Shell/PasswordDialog.cs`,
+`src/Archiver.Shell/PasswordDialogTemplateBuilder.cs`,
+`src/Archiver.Shell/PasswordDialogLocalizer.cs`, `src/Archiver.Shell/StickyPasswordResolver.cs`;
+`src/Archiver.Shell/Program.cs` (3 call sites: `RunExtractHereAsync`/`RunExtractHereFlatAsync`/
+`RunExtractFolderAsync`); `src/Archiver.Shell/Archiver.Shell.csproj` (`InternalsVisibleTo`); 37×
+new `src/Archiver.Shell/Resources/PasswordMessages(.{locale}).resx` (6 keys reused from
+`Archiver.App`'s T-F190 strings + 1 new `PasswordDialogShowPasswordCheck`, translated fresh across
+all 37 locales). Test-side: new `PasswordDialogTests.cs`, `PasswordDialogTemplateBuilderTests.cs`,
+`PasswordDialogLocalizerTests.cs`, `StickyPasswordResolverTests.cs`. No `Archiver.Core` diff.

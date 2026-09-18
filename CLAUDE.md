@@ -403,8 +403,21 @@ console; a CLI-specific "incorrect password" line added on top of Core's generic
 result. Agent-driven verification via `windows` MCP against the real built `pakko.exe` in a
 genuine interactive console confirmed the masked prompt, wrong-password retry hint, and full
 retry-to-success loop all work end to end — see `docs/DECISIONS.md`'s T-F191 entry. Stays `[~]`
-until the user's own terminal click-through. **T-F192** (Shell UX) and **T-F193** (future phase — creating password-protected
-ZIP, AES-only) are not started. **T-F194** (AMSI scan, T-F146, currently can't see inside a
+until the user's own terminal click-through. **T-F192** (`Archiver.Shell` native password prompt)
+is `[~]` implementation complete, 2026-09-18 — a custom in-memory `DLGTEMPLATEEX` dialog via
+`DialogBoxIndirectParamW` (NOT `CredUIPromptForCredentialsW`, confirmed by fetching NanaZip's real
+`PasswordDialog.rc`/`.cpp`, which use exactly this custom-dialog shape), wired into all 3 extract
+commands via a new `StickyPasswordResolver`, localized across all 37 locales. A Phase 0 spike
+found `SetForegroundWindow` alone unreliable from this call site (a background thread with
+Archiver.Shell's own `IProgressDialog` already showing) — fixed via `SetWindowPos(HWND_TOPMOST,
+...)`. Agent-driven on-device verification via `windows` MCP against the real installed MSIX
+(all 3 extract commands, real Ukrainian OS UI, including a genuine occlusion test against a
+restored foreground terminal) confirmed every branch — `--test` deliberately stays without
+password support this round (CLI's `t` got it in T-F191; Shell's is a real, narrow, documented
+gap, not an oversight). Stays `[~]` until the user's own Explorer click-through. See
+`docs/DECISIONS.md`'s T-F192
+entry for the full design/spike/verification trail. **T-F193** (future phase — creating password-protected
+ZIP, AES-only) is not started. **T-F194** (AMSI scan, T-F146, currently can't see inside a
 password-protected entry at all — flagged by the user, real evasion-technique concern for this
 project's threat model) is also new, not started. See `docs/TASKS.md`'s "ZIP Password Support"
 section. This reverses
