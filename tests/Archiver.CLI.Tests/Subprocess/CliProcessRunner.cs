@@ -21,6 +21,7 @@ internal static class CliProcessRunner
     {
         var startInfo = new ProcessStartInfo(ExePath)
         {
+            RedirectStandardInput = true,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
@@ -31,6 +32,11 @@ internal static class CliProcessRunner
 
         using Process process = Process.Start(startInfo)
             ?? throw new InvalidOperationException($"Failed to start {ExePath}");
+        // T-F191: without this, the child inherits whatever stdin handle this test host process
+        // itself has — an interactive `dotnet test` run would leave Console.IsInputRedirected
+        // false in the child, so a test that (deliberately or by a bug) reaches pakko's masked
+        // password prompt would hang forever waiting for a keypress instead of failing fast.
+        process.StandardInput.Close();
 
         string stdOut = process.StandardOutput.ReadToEnd();
         string stdErr = process.StandardError.ReadToEnd();

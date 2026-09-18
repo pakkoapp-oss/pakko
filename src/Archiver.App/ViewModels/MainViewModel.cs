@@ -612,6 +612,7 @@ public sealed partial class MainViewModel : ObservableObject
                 DeleteArchiveAfterExtraction = DeleteAfterOperation,
                 ConfirmCompressionBombExtraction = _dialogService.ShowCompressionBombConfirmAsync,
                 ResolveConflictAsync = _dialogService.ShowConflictDialogAsync,
+                ResolvePasswordAsync = info => _dialogService.ShowPasswordPromptAsync(info, archivePaths.Count > 1),
                 SelectedEntryPaths = selectedEntryPaths,
             };
 
@@ -805,6 +806,7 @@ public sealed partial class MainViewModel : ObservableObject
             Mode = ExtractMode.SingleFolder,
             SelectedEntryPaths = [entry.FullPath],
             ConfirmCompressionBombExtraction = _dialogService.ShowCompressionBombConfirmAsync,
+            ResolvePasswordAsync = info => _dialogService.ShowPasswordPromptAsync(info, canApplyToRemaining: false),
         };
 
         StatusMessage = _res.GetString("StatusOpening");
@@ -1175,6 +1177,7 @@ public sealed partial class MainViewModel : ObservableObject
                 Mode = ExtractMode.SingleFolder,
                 SelectedEntryPaths = [entry.FullPath],
                 ConfirmCompressionBombExtraction = _dialogService.ShowCompressionBombConfirmAsync,
+                ResolvePasswordAsync = info => _dialogService.ShowPasswordPromptAsync(info, canApplyToRemaining: false),
             };
 
             var result = await _extractionRouter.ExtractAsync(options);

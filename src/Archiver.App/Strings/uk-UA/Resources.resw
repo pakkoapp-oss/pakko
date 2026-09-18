@@ -274,6 +274,24 @@
   <data name="ConflictDialogApplyToAllCheck" xml:space="preserve">
     <value>Застосувати до всіх решти конфліктів</value>
   </data>
+  <data name="PasswordDialogTitle" xml:space="preserve">
+    <value>Потрібен пароль</value>
+  </data>
+  <data name="PasswordDialogMessage" xml:space="preserve">
+    <value>"{0}" захищено паролем. Введіть пароль, щоб продовжити.</value>
+  </data>
+  <data name="PasswordDialogWrongPasswordHint" xml:space="preserve">
+    <value>Неправильний пароль. Спробуйте ще раз.</value>
+  </data>
+  <data name="PasswordDialogApplyToRemainingCheck" xml:space="preserve">
+    <value>Застосувати до решти архівів</value>
+  </data>
+  <data name="PasswordDialogOkButton" xml:space="preserve">
+    <value>Гаразд</value>
+  </data>
+  <data name="PasswordDialogCancelButton" xml:space="preserve">
+    <value>Скасувати</value>
+  </data>
 
   <!-- About dialog -->
   <data name="AboutDialogTitle" xml:space="preserve">

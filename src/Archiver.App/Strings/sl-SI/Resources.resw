@@ -258,6 +258,24 @@
   <data name="ConflictDialogApplyToAllCheck" xml:space="preserve">
     <value>Uporabi za vse preostale spore</value>
   </data>
+  <data name="PasswordDialogTitle" xml:space="preserve">
+    <value>Zahtevano geslo</value>
+  </data>
+  <data name="PasswordDialogMessage" xml:space="preserve">
+    <value>"{0}" je zaščiten z geslom. Vnesite geslo za nadaljevanje.</value>
+  </data>
+  <data name="PasswordDialogWrongPasswordHint" xml:space="preserve">
+    <value>Napačno geslo. Poskusite znova.</value>
+  </data>
+  <data name="PasswordDialogApplyToRemainingCheck" xml:space="preserve">
+    <value>Uporabi za preostale arhive</value>
+  </data>
+  <data name="PasswordDialogOkButton" xml:space="preserve">
+    <value>V redu</value>
+  </data>
+  <data name="PasswordDialogCancelButton" xml:space="preserve">
+    <value>Prekliči</value>
+  </data>
 
   <!-- About dialog -->
   <data name="AboutDialogTitle" xml:space="preserve">

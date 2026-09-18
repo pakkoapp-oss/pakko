@@ -258,6 +258,24 @@
   <data name="ConflictDialogApplyToAllCheck" xml:space="preserve">
     <value>Εφαρμογή σε όλες τις υπόλοιπες συγκρούσεις</value>
   </data>
+  <data name="PasswordDialogTitle" xml:space="preserve">
+    <value>Απαιτείται κωδικός πρόσβασης</value>
+  </data>
+  <data name="PasswordDialogMessage" xml:space="preserve">
+    <value>Το "{0}" προστατεύεται με κωδικό πρόσβασης. Εισαγάγετε τον κωδικό για να συνεχίσετε.</value>
+  </data>
+  <data name="PasswordDialogWrongPasswordHint" xml:space="preserve">
+    <value>Λανθασμένος κωδικός πρόσβασης. Δοκιμάστε ξανά.</value>
+  </data>
+  <data name="PasswordDialogApplyToRemainingCheck" xml:space="preserve">
+    <value>Εφαρμογή στα υπόλοιπα αρχεία</value>
+  </data>
+  <data name="PasswordDialogOkButton" xml:space="preserve">
+    <value>OK</value>
+  </data>
+  <data name="PasswordDialogCancelButton" xml:space="preserve">
+    <value>Άκυρο</value>
+  </data>
 
   <!-- About dialog -->
   <data name="AboutDialogTitle" xml:space="preserve">

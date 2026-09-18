@@ -258,6 +258,24 @@
   <data name="ConflictDialogApplyToAllCheck" xml:space="preserve">
     <value>Appliquer à tous les conflits restants</value>
   </data>
+  <data name="PasswordDialogTitle" xml:space="preserve">
+    <value>Mot de passe requis</value>
+  </data>
+  <data name="PasswordDialogMessage" xml:space="preserve">
+    <value>« {0} » est protégé par un mot de passe. Saisissez le mot de passe pour continuer.</value>
+  </data>
+  <data name="PasswordDialogWrongPasswordHint" xml:space="preserve">
+    <value>Mot de passe incorrect. Veuillez réessayer.</value>
+  </data>
+  <data name="PasswordDialogApplyToRemainingCheck" xml:space="preserve">
+    <value>Appliquer aux archives restantes</value>
+  </data>
+  <data name="PasswordDialogOkButton" xml:space="preserve">
+    <value>OK</value>
+  </data>
+  <data name="PasswordDialogCancelButton" xml:space="preserve">
+    <value>Annuler</value>
+  </data>
 
   <!-- About dialog -->
   <data name="AboutDialogTitle" xml:space="preserve">

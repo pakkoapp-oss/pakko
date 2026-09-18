@@ -409,12 +409,75 @@ public sealed class CliArgumentParserTests
     // --- Invalid: case 3 (unsupported switch on a supported command) ---
 
     [Fact]
-    public void Extract_PasswordSwitch_ReturnsInvalidNamingEncryptionGap()
+    public void Extract_RecurseSwitch_ReturnsInvalidNamingUnsupportedSwitch()
     {
-        ParsedCliCommand result = CliArgumentParser.Parse(["x", "-psecret", "archive.zip"]);
+        // Case 3 (a real 7z switch, deliberately unsupported on any command) — kept as a
+        // still-genuinely-unsupported switch after T-F191 gave '-p' a real meaning on 'x'/'t'.
+        ParsedCliCommand result = CliArgumentParser.Parse(["x", "-r0", "archive.zip"]);
 
         result.Type.Should().Be(CliCommandType.Invalid);
-        result.ErrorMessage.Should().Contain("encryption");
+        result.ErrorMessage.Should().Contain("not supported");
+    }
+
+    // --- T-F191: -p{pwd} ---
+
+    [Theory]
+    [InlineData("x")]
+    [InlineData("t")]
+    public void PasswordSwitch_OnExtractOrTest_IsParsedAndDoesNotError(string command)
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse([command, "-pSecret123", "archive.zip"]);
+
+        result.Type.Should().Be(command == "x" ? CliCommandType.Extract : CliCommandType.Test);
+        result.Password.Should().Be("Secret123");
+    }
+
+    [Fact]
+    public void PasswordSwitch_Bare_ReturnsInvalidRequiringAValue()
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse(["x", "-p", "archive.zip"]);
+
+        result.Type.Should().Be(CliCommandType.Invalid);
+        result.ErrorMessage.Should().Contain("-p requires a password");
+    }
+
+    [Theory]
+    [InlineData("l")]
+    [InlineData("h")]
+    public void PasswordSwitch_OnCommandThatNeedsNoPassword_ReturnsInvalid(string command)
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse([command, "-pSecret123", "archive.zip"]);
+
+        result.Type.Should().Be(CliCommandType.Invalid);
+        result.ErrorMessage.Should().Contain("not supported");
+    }
+
+    [Fact]
+    public void PasswordSwitch_OnArchiveCreation_ReturnsInvalid()
+    {
+        // T-F193 (future phase) will give 'a' real -p support, AES-only — not yet.
+        ParsedCliCommand result = CliArgumentParser.Parse(["a", "out.zip", "-pSecret123", "file.txt"]);
+
+        result.Type.Should().Be(CliCommandType.Invalid);
+        result.ErrorMessage.Should().Contain("not supported");
+    }
+
+    [Fact]
+    public void PasswordSwitch_GivenTwice_LastOneWins()
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse(["x", "-pFirst", "-pSecond", "archive.zip"]);
+
+        result.Type.Should().Be(CliCommandType.Extract);
+        result.Password.Should().Be("Second");
+    }
+
+    [Fact]
+    public void NoPasswordSwitch_ArchivePathsStillParsed()
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse(["x", "archive.zip"]);
+
+        result.Type.Should().Be(CliCommandType.Extract);
+        result.Password.Should().BeNull();
     }
 
     [Fact]

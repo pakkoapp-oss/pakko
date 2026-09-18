@@ -258,6 +258,24 @@
   <data name="ConflictDialogApplyToAllCheck" xml:space="preserve">
     <value>Käytä kaikkiin jäljellä oleviin ristiriitoihin</value>
   </data>
+  <data name="PasswordDialogTitle" xml:space="preserve">
+    <value>Salasana vaaditaan</value>
+  </data>
+  <data name="PasswordDialogMessage" xml:space="preserve">
+    <value>"{0}" on salasanasuojattu. Anna salasana jatkaaksesi.</value>
+  </data>
+  <data name="PasswordDialogWrongPasswordHint" xml:space="preserve">
+    <value>Väärä salasana. Yritä uudelleen.</value>
+  </data>
+  <data name="PasswordDialogApplyToRemainingCheck" xml:space="preserve">
+    <value>Käytä jäljellä oleviin arkistoihin</value>
+  </data>
+  <data name="PasswordDialogOkButton" xml:space="preserve">
+    <value>OK</value>
+  </data>
+  <data name="PasswordDialogCancelButton" xml:space="preserve">
+    <value>Peruuta</value>
+  </data>
 
   <!-- About dialog -->
   <data name="AboutDialogTitle" xml:space="preserve">

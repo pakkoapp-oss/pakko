@@ -147,6 +147,87 @@ public sealed class DialogService : IDialogService
         return tcs.Task;
     }
 
+    // T-F190: same DispatcherQueue-marshaling need as ShowConflictDialogAsync above — ZipArchiveService
+    // calls ResolvePasswordAsync from a background thread, once per encrypted archive, before its
+    // entry loop runs (see docs/DECISIONS.md's T-F189 entry). canApplyToRemaining is decided by the
+    // caller (a batch of >1 ArchivePaths) rather than carried on PasswordPromptInfo itself, since
+    // Archiver.Core has no notion of "frontend batch shape" — Archiver.Shell's future T-F192 loop
+    // calls ExtractAsync once per archive and would always see Count==1 there.
+    public Task<PasswordDecision> ShowPasswordPromptAsync(PasswordPromptInfo info, bool canApplyToRemaining)
+    {
+        var tcs = new TaskCompletionSource<PasswordDecision>();
+
+        bool enqueued = _window!.DispatcherQueue.TryEnqueue(async () =>
+        {
+            try
+            {
+                var passwordBox = new PasswordBox();
+
+                var panel = new StackPanel { Spacing = 8 };
+                panel.Children.Add(new TextBlock
+                {
+                    Text = _res.GetString("PasswordDialogMessage").Replace("{0}", info.ArchiveName),
+                    TextWrapping = TextWrapping.Wrap
+                });
+                panel.Children.Add(passwordBox);
+
+                if (info.PreviousAttemptWasWrong)
+                {
+                    panel.Children.Add(new TextBlock
+                    {
+                        Text = _res.GetString("PasswordDialogWrongPasswordHint"),
+                        Foreground = new SolidColorBrush(Microsoft.UI.Colors.Red),
+                        TextWrapping = TextWrapping.Wrap
+                    });
+                }
+
+                CheckBox? applyToRemainingCheck = null;
+                if (canApplyToRemaining)
+                {
+                    applyToRemainingCheck = new CheckBox
+                    {
+                        Content = _res.GetString("PasswordDialogApplyToRemainingCheck"),
+                        Margin = new Thickness(0, 4, 0, 0)
+                    };
+                    panel.Children.Add(applyToRemainingCheck);
+                }
+
+                var dialog = new ContentDialog
+                {
+                    Title = _res.GetString("PasswordDialogTitle"),
+                    Content = panel,
+                    PrimaryButtonText = _res.GetString("PasswordDialogOkButton"),
+                    CloseButtonText = _res.GetString("PasswordDialogCancelButton"),
+                    DefaultButton = ContentDialogButton.Primary,
+                    XamlRoot = _window!.Content.XamlRoot
+                };
+                // Without this, focus lands on the primary button and the user has to click into
+                // the box before typing — a real papercut on a dialog whose only real input is the
+                // password field.
+                dialog.Opened += (_, _) => passwordBox.Focus(FocusState.Programmatic);
+
+                var result = await dialog.ShowAsync();
+
+                tcs.SetResult(result == ContentDialogResult.Primary
+                    ? new PasswordDecision
+                    {
+                        Password = passwordBox.Password,
+                        ApplyToRemaining = applyToRemainingCheck?.IsChecked == true
+                    }
+                    : new PasswordDecision { Password = null });
+            }
+            catch (Exception ex)
+            {
+                tcs.SetException(ex);
+            }
+        });
+
+        if (!enqueued)
+            tcs.SetResult(new PasswordDecision { Password = null });
+
+        return tcs.Task;
+    }
+
     // T-F97: opens an Archive Browser preview file with the OS's default handler for its type.
     // Process.Start(UseShellExecute=true), not Launcher.LaunchFileAsync/StorageFile — confirmed
     // on-device that the WinRT Storage broker rejects an arbitrary %TEMP% path from this app's

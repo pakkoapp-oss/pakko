@@ -258,6 +258,24 @@
   <data name="ConflictDialogApplyToAllCheck" xml:space="preserve">
     <value>Áp dụng cho tất cả xung đột còn lại</value>
   </data>
+  <data name="PasswordDialogTitle" xml:space="preserve">
+    <value>Yêu cầu mật khẩu</value>
+  </data>
+  <data name="PasswordDialogMessage" xml:space="preserve">
+    <value>"{0}" được bảo vệ bằng mật khẩu. Nhập mật khẩu để tiếp tục.</value>
+  </data>
+  <data name="PasswordDialogWrongPasswordHint" xml:space="preserve">
+    <value>Sai mật khẩu. Vui lòng thử lại.</value>
+  </data>
+  <data name="PasswordDialogApplyToRemainingCheck" xml:space="preserve">
+    <value>Áp dụng cho các tệp lưu trữ còn lại</value>
+  </data>
+  <data name="PasswordDialogOkButton" xml:space="preserve">
+    <value>OK</value>
+  </data>
+  <data name="PasswordDialogCancelButton" xml:space="preserve">
+    <value>Hủy</value>
+  </data>
 
   <!-- About dialog -->
   <data name="AboutDialogTitle" xml:space="preserve">

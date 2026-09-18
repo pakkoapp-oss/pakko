@@ -226,6 +226,11 @@ public sealed record ArchiveOptions
     // T-F06: invoked once per conflicting destination path when OnConflict == Ask. Null (e.g.
     // Archiver.Shell, or a test that doesn't wire it) falls back to Skip — see ConflictResolver.
     public Func<ConflictInfo, Task<ConflictDecision>>? ResolveConflictAsync { get; init; }
+
+    // T-F193 (future, AES-only archive creation) — no caller yet. Added now, alongside
+    // ExtractOptions.ResolvePasswordAsync below, so T-F193 adds a call site rather than
+    // retrofitting this field's shape (T-F157→T-F158 precedent, see DECISIONS.md's T-F189 entry).
+    public Func<PasswordPromptInfo, Task<PasswordDecision>>? ResolvePasswordAsync { get; init; }
 }
 
 public enum ArchiveMode { SingleArchive, SeparateArchives }
@@ -270,9 +275,52 @@ public sealed record ExtractOptions
     // T-F06: invoked once per conflicting entry when OnConflict == Ask. Same null-safe-default
     // (Skip) and delegate shape as ArchiveOptions.ResolveConflictAsync above.
     public Func<ConflictInfo, Task<ConflictDecision>>? ResolveConflictAsync { get; init; }
+
+    // T-F189: invoked once per encrypted ZIP archive, before its entry loop runs, when the archive
+    // contains at least one encrypted entry. Null (Archiver.Shell until T-F192 ships, or a test
+    // that doesn't wire it) preserves the pre-T-F189 "password-protected and cannot be extracted"
+    // rejection exactly. Archiver.CLI wires this via -p{pwd}/an interactive masked prompt since
+    // T-F191. See DECISIONS.md's T-F189/T-F191 entries.
+    public Func<PasswordPromptInfo, Task<PasswordDecision>>? ResolvePasswordAsync { get; init; }
 }
 
 public enum ExtractMode { SeparateFolders, SingleFolder }
+```
+
+```csharp
+// Models/PasswordPromptInfo.cs — T-F189
+public enum PasswordPurpose { Decrypt, Encrypt }  // Encrypt has no caller until T-F193
+
+public sealed record PasswordPromptInfo
+{
+    public required string ArchiveName { get; init; }
+    public required PasswordPurpose Purpose { get; init; }
+    public int AttemptNumber { get; init; } = 1;           // 1-based
+    public bool PreviousAttemptWasWrong { get; init; }
+}
+
+public sealed record PasswordDecision
+{
+    public string? Password { get; init; }        // null = user cancelled
+    public bool ApplyToRemaining { get; init; }    // mirrors ConflictDecision.ApplyToAll
+}
+```
+
+```csharp
+// Services/PasswordResolver.cs — internal, Archiver.Core.Services (T-F189)
+// Resolves an encrypted archive's password via the caller's ResolvePasswordAsync callback,
+// retrying up to maxAttempts times and remembering an ApplyToRemaining choice for its own
+// lifetime — same shape as ConflictResolver. One shared class for both Decrypt (ExtractAsync/
+// TestAsync, maxAttempts=3) and the future Encrypt direction (T-F193's ArchiveAsync, maxAttempts=1)
+// — maxAttempts is a per-call-site parameter, not a constant, so there is no Purpose-branch inside
+// the retry loop. verify is caller-supplied so this class stays format-agnostic (no ZIP knowledge).
+internal sealed class PasswordResolver(
+    Func<PasswordPromptInfo, Task<PasswordDecision>>? resolvePasswordAsync,
+    int maxAttempts)
+{
+    public Task<string?> ResolveAsync(
+        string archiveName, PasswordPurpose purpose, Func<string, bool> verify);
+}
 ```
 
 ```csharp
@@ -442,9 +490,14 @@ public interface IArchiveService
 
     // T-F62: verifies every entry's CRC-32 against its declared header value without
     // writing anything to disk. Never throws — mismatches surface as ArchiveResult.Errors.
+    // T-F189: resolvePasswordAsync mirrors ExtractOptions.ResolvePasswordAsync — TestAsync takes a
+    // flat path list rather than an Options record, so it's a trailing parameter instead of a
+    // field. Placed before cancellationToken per CA1068 (CancellationToken must be last), which is
+    // why the two existing call sites (Archiver.CLI/Archiver.Shell) pass cancellationToken: named.
     Task<ArchiveResult> TestAsync(
         IReadOnlyList<string> archivePaths,
         IProgress<ProgressReport>? progress = null,
+        Func<PasswordPromptInfo, Task<PasswordDecision>>? resolvePasswordAsync = null,
         CancellationToken cancellationToken = default);
 
     // T-F05: lists entries without extracting — flat, not hierarchical. Never throws — a
@@ -487,6 +540,11 @@ public interface IDialogService
     // arbitrary %TEMP% path even from this app's full-trust packaged identity (see DECISIONS.md's
     // T-F97 entry).
     Task<bool> OpenFileWithDefaultAppAsync(string filePath);
+
+    // T-F190: same DispatcherQueue-marshaling requirement as ShowCompressionBombConfirmAsync
+    // above. canApplyToRemaining is a caller-supplied bool, not a PasswordPromptInfo field —
+    // Archiver.Core has no notion of a frontend's batch shape (see DECISIONS.md's T-F190 entry).
+    Task<PasswordDecision> ShowPasswordPromptAsync(PasswordPromptInfo info, bool canApplyToRemaining);
 }
 ```
 
@@ -1469,6 +1527,21 @@ scan before extraction runs, and `SandboxedProcessLauncher` has no stdin-redirec
 see `DECISIONS.md`'s T-F116 entry, which also records the empirical finding that native
 PowerShell 5.1 (not just old cmd.exe) silently corrupts binary data piped between two native
 executables, while `cmd /c "..."` does not, on any PowerShell version.
+
+**`-p{pwd}` password support (T-F191):** `ParsedCliCommand` gained `Password` (valid on `x`/`t`
+only — `l` needs no password, `a` is `-p`-less until T-F193). `Program.cs`'s
+`BuildPasswordResolver(string? password, bool assumeYes)` picks one of three
+`ExtractOptions.ResolvePasswordAsync`/`IArchiveService.TestAsync`'s `resolvePasswordAsync`
+shapes: `-p` given → try it once, printing a specific "incorrect password" line on a second call
+(Core's `PasswordResolver` collapses never-wired/cancelled/exhausted-attempts into the same null
+result, so the CLI has to add this distinction itself — see `DECISIONS.md`); no `-p` and
+`Console.IsInputRedirected`/`-y` → `null` (no resolver at all), preserving the exact pre-T-F191
+rejection message, which also covers `-si` since stdin is already consumed by the piped archive
+bytes; no `-p` and a real interactive console → a masked prompt. The masked-input editing logic
+itself lives in a separate, directly unit-tested class, `CliPasswordPrompt.Read(Func<ConsoleKeyInfo>
+readKey, Action<char>? echo = null)` — `Program.cs` only supplies the real `Console.ReadKey`/
+`Console.Error.Write` glue, since the `Subprocess/` test layer always redirects the built exe's
+stdin and can never reach this path end-to-end.
 
 ---
 

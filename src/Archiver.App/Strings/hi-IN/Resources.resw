@@ -258,6 +258,24 @@
   <data name="ConflictDialogApplyToAllCheck" xml:space="preserve">
     <value>शेष सभी संघर्षों पर लागू करें</value>
   </data>
+  <data name="PasswordDialogTitle" xml:space="preserve">
+    <value>पासवर्ड आवश्यक है</value>
+  </data>
+  <data name="PasswordDialogMessage" xml:space="preserve">
+    <value>"{0}" पासवर्ड से सुरक्षित है। जारी रखने के लिए पासवर्ड दर्ज करें।</value>
+  </data>
+  <data name="PasswordDialogWrongPasswordHint" xml:space="preserve">
+    <value>गलत पासवर्ड। कृपया पुनः प्रयास करें।</value>
+  </data>
+  <data name="PasswordDialogApplyToRemainingCheck" xml:space="preserve">
+    <value>शेष अभिलेखागार पर लागू करें</value>
+  </data>
+  <data name="PasswordDialogOkButton" xml:space="preserve">
+    <value>ठीक है</value>
+  </data>
+  <data name="PasswordDialogCancelButton" xml:space="preserve">
+    <value>रद्द करें</value>
+  </data>
 
   <!-- About dialog -->
   <data name="AboutDialogTitle" xml:space="preserve">

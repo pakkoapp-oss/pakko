@@ -258,6 +258,24 @@
   <data name="ConflictDialogApplyToAllCheck" xml:space="preserve">
     <value>Zastosuj do wszystkich pozostałych konfliktów</value>
   </data>
+  <data name="PasswordDialogTitle" xml:space="preserve">
+    <value>Wymagane hasło</value>
+  </data>
+  <data name="PasswordDialogMessage" xml:space="preserve">
+    <value>"{0}" jest chronione hasłem. Wprowadź hasło, aby kontynuować.</value>
+  </data>
+  <data name="PasswordDialogWrongPasswordHint" xml:space="preserve">
+    <value>Nieprawidłowe hasło. Spróbuj ponownie.</value>
+  </data>
+  <data name="PasswordDialogApplyToRemainingCheck" xml:space="preserve">
+    <value>Zastosuj do pozostałych archiwów</value>
+  </data>
+  <data name="PasswordDialogOkButton" xml:space="preserve">
+    <value>OK</value>
+  </data>
+  <data name="PasswordDialogCancelButton" xml:space="preserve">
+    <value>Anuluj</value>
+  </data>
 
   <!-- About dialog -->
   <data name="AboutDialogTitle" xml:space="preserve">

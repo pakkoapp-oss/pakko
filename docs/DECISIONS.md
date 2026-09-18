@@ -8356,3 +8356,395 @@ no mid-entry progress feedback for a large encrypted file, and the decompressed 
 fully materialized rather than streamed to disk. T-F189 must decide and document how this
 interacts with progress reporting before wiring this engine into the real pipeline — not
 silently inherit whichever behavior falls out of a straightforward integration.
+
+---
+
+## T-F189 — ZIP Password Reading: Public API + Pipeline Wiring (2026-09-18)
+
+**Trigger:** T-F188's engine shipped internal-only; this task wires it into `ZipArchiveService`'s
+real `ExtractAsync`/`TestAsync`/`ListEntriesAsync`. Before implementing, the user was asked
+explicitly which way to resolve T-F188's flagged streaming/memory design point (per that task's
+own "call it out to the user before choosing" requirement) — see the next section.
+
+**Design point resolved: option (b), stream the decrypted plaintext out only after authentication
+succeeds.** `EncryptedZipEntryReader.TryOpen` still buffers the raw ciphertext (unavoidable — AE's
+HMAC must authenticate the whole ciphertext before any plaintext is trusted, and that check stays
+eager, before any stream is constructed), but no longer eagerly decrypts-then-decompresses into a
+full byte array. Instead it returns a `Stream`: `MemoryStream`/`DeflateStream` directly for AE-2
+(HMAC-only, header CRC-32 is zeroed by design — no further check possible or needed), or that same
+stream wrapped in a new `TrailerCrcCheckStream` for ZipCrypto/AE-1, which runs a `Crc32.Accumulator`
+over bytes as the caller reads them and throws `InvalidDataException` only once end-of-stream is
+reached and the running CRC doesn't match `StoredCrc32` — catching content corruption/tampering
+independent of the password itself without ever materializing the full decompressed content.
+**The real payoff, not just "T-F188's TODO closed":** `CopyEntryToDestinationAsync` wraps this
+stream in `ProgressStream` exactly the way it already wraps `entry.Open()`'s stream — an encrypted
+entry gets genuine byte-accurate T-F16 progress with zero special-casing, not the "0%→100% jump"
+fallback design option (a) would have been. `ExtractAsync_EncryptedEntry_
+ReportsRealByteAccurateFinalProgress` proves the final report's `BytesTransferred` equals the
+entry's real uncompressed size (asserting on the final report's value, not report *count* — a
+~40 KB entry against an 80 KB copy buffer can legitimately produce just one report).
+
+**Where the plug-in point actually is:** `entry.Open()` throws `InvalidDataException` ("The
+archive entry was compressed using an unsupported compression method") for ANY encrypted entry —
+confirmed empirically via a throwaway scratch program against real fixtures before writing any
+production code, not assumed. `ZipFile.OpenRead`/`archive.Entries` enumeration itself does NOT
+throw for WinZip AE (method 99) entries, and `entry.Length`/`entry.FullName` read correctly (also
+confirmed empirically) — this is what makes "reuse the existing entry loop, swap only the stream
+source" work at all. The swap lives in a new `OpenEntryContentStream` helper, called from
+`TryExtractSingleEntryAsync` right before the (now stream-accepting) `CopyEntryToDestinationAsync`
+— every check before that point (`GetEntryNameRejectionReason` for ADS/reserved-name, the
+`destFilePath.StartsWith(fullTempDest)` traversal check, the reparse-point check, the conflict
+check) is untouched code, still operating on `entry.FullName`/`entry.Length` exactly as before
+encrypted-ZIP support existed at all — ZIP entry *names* are never encrypted by the format itself.
+
+**Positional pairing (`RawZipEntryLocator.LocateAll`), not name-based lookup, for production
+wiring — an advisor-caught hazard, not a hypothetical:** `RawZipEntryLocator.Locate(stream, name)`
+(T-F188, kept for its own existing name-based tests) compares `Encoding.UTF8.GetBytes(name)`
+against raw central-directory name bytes. That only holds when a per-entry UTF-8 flag is set; a
+legacy (non-UTF-8-flagged) non-ASCII name decodes differently in `ZipArchiveEntry.FullName` than
+this naive byte-compare assumes, and `Archiver.Core`'s zero-NuGet-dependency constraint rules out
+`System.Text.Encoding.CodePages` to decode it correctly. `ZipArchiveService` never does name-based
+lookup for its real entry loop: `RawZipEntryLocator.LocateAll` walks the central directory once,
+in the same order `ZipArchive.Entries` populates its own list (`ReadCentralDirectory`'s single
+forward scan is now split from local-header seeking specifically so this order is never disturbed
+mid-scan — the first refactor attempt seeked to a local header mid-central-directory-walk and
+corrupted the read position for every following entry, caught immediately by the new
+`LocateAllTests`), and `ZipArchiveService` zips the two lists together by index into a
+`Dictionary<ZipArchiveEntry, LocatedZipEntry>`. `encrypted_aes256_cyrillic_name.zip` (real
+7za.exe-generated, entry name `unicode_filename_привіт.txt`) exercises this end-to-end — though
+7za.exe itself sets the UTF-8 flag for this name (`Characteristics = ... UTF8` per `7za l -slt`),
+so this fixture alone doesn't reproduce the legacy-codepage hazard the positional design defends
+against; that residual case is accepted (structurally impossible to hit given positional pairing),
+not chased with a synthetic non-UTF-8 fixture.
+
+**`IsEncryptedZip` widened to scan the whole central directory — fixing a real pre-existing bug,
+not just enabling passwords:** the original check read only the FIRST local header's
+general-purpose bit. This project's own `mixed_encrypted_and_plain.zip` fixture (generated T-F188)
+puts its plain `readme.txt` entry first and its encrypted `compressible.txt` entry second —
+exactly the case the old check misses. Pre-T-F189, extracting this fixture with no resolver wired
+silently fell through to "File has ZIP signature but appears corrupted or incomplete" (the generic
+`InvalidDataException` catch, triggered when `entry.Open()` throws deeper in the pipeline for the
+un-detected encrypted entry) instead of the correct password-protected rejection. `IsEncryptedZip`
+now tries the cheap first-header check first (kept as a fast path — it's also the ONLY thing that
+can detect encryption on a file with a valid local header but no real end-of-central-directory
+record at all, which a hand-crafted regression-test fixture in `ZipArchiveServiceExtractTests`
+relies on), falling through to a full `RawZipEntryLocator.HasAnyEncryptedEntry` central-directory
+scan only when the cheap check says no. The characterization tests reflect this precisely: a
+fully-encrypted fixture's rejection message is asserted byte-identical to pre-T-F189
+(`ExtractAsync_NoResolverWired_FullyEncryptedArchiveMessageIsByteIdenticalToPreT189`); the mixed
+fixture's message is asserted to have *changed* to the correct one, with an explicit comment that
+this is the bug fix, not a broken characterization test
+(`ExtractAsync_NoResolverWired_MixedArchiveNowCorrectlyReportsPasswordProtectedNotCorrupted`).
+`ListEntriesAsync` reuses the same cheap-check gate before its own `LocateAll` call (needed there
+to null out an AE-2 entry's misleading `Crc32 = 0`) — an unencrypted archive's Archive Browser
+navigation still pays only the one cheap first-header read, not a full second central-directory
+parse; only an encrypted archive pays the extra scan.
+
+**Zip64-sized entry: a real uncaught-exception path, caught by advisor review before any test
+covered it.** `RawZipEntryLocator.BuildFromLocalHeader` doesn't parse the Zip64 (0x0001) extra
+field, so a genuinely Zip64-sized entry (or any entry lying about its size) reads back
+`CompressedSize` as the raw 32-bit field value — up to `0xFFFFFFFF`. `EncryptedZipEntryReader.
+TryOpen`'s `new byte[located.CompressedSize]` would throw `OutOfMemoryException`/
+`OverflowException` for that — an *unstructured* exception type matching none of the `catch`
+clauses anywhere in the call chain (`ResolveArchivePasswordAsync`'s guard only catches
+`IOException`/`InvalidDataException`/`EndOfStreamException`; `ExtractOneZipWithErrorMappingAsync`'s
+catches similarly don't include those two), so it would have propagated all the way out of
+`ExtractAsync`/`TestAsync` themselves — a direct violation of "`Archiver.Core` services never
+throw to callers." Fixed with an explicit guard in `TryOpen` (`CompressedSize is < 0 or >=
+int.MaxValue` → throw a caught-compatible `InvalidDataException`) before the allocation. A second,
+related gap the same review caught: `ResolveArchivePasswordAsync`'s try/catch originally wrapped
+only the `LocateAll` call, not the `verify` callback a few lines later that also calls `TryOpen` —
+widened to wrap the whole method body. A third call site needed the identical treatment, caught by
+a closing-gate `advisor` review after the first pass already looked done:
+`ListEntriesAsync`'s own `LocateAll` call (used for the AE-2 `Crc32 = null` refinement) had no
+guard at all — a Zip64-sized entry would have made the WHOLE `ListEntriesAsync` call fail with a
+raw exception message, a real regression for the Archive Browser (it could list that exact archive
+fine before T-F189, just without the AE-2 refinement). Wrapped in the same
+`IOException`/`InvalidDataException`/`EndOfStreamException` catch, falling back to
+`encryptedEntryMap = null` — listing still works, an AE-2 entry in that specific archive just keeps
+reporting a misleading `0` instead of `null` (the exact pre-T-F189 behavior). Net effect across all
+three call sites: a fully-encrypted Zip64 archive fails closed to today's ordinary
+"password-protected and cannot be extracted/tested" message for `ExtractAsync`/`TestAsync`
+(classic-EOCD-only `LocateAll` throws on the malformed/oversized record, caught, treated as
+password-resolution failure), and `ListEntriesAsync` keeps listing it — rather than any of the
+three crashing — deliberately not "supported," since real Zip64 extra-field parsing for encrypted
+entries is out of this task's scope. Run `Category=Slow` Zip64 tests before a release as usual;
+this is expected fail-closed behavior for an *encrypted* Zip64 archive specifically, not a
+regression.
+
+**Hard-invariant traversal fixture — two failed attempts before landing on the fixture that
+actually proves the invariant, both caught by advisor review, not by a passing-for-the-wrong-
+reason test slipping through:**
+1. A hand-rolled fake-ciphertext fixture (encrypted bit set, 32 arbitrary "ciphertext" bytes, a
+   fake CRC) — `ZipCryptoStream`'s check-byte derived from garbage ciphertext fails password
+   verification with ~255/256 probability, so `ResolveArchivePasswordAsync` rejects the archive at
+   the *password* stage, before the entry loop (and therefore the traversal check) ever runs. A
+   test written against this fixture would have passed for the wrong reason.
+2. Byte-patching a real single-entry fixture (`encrypted_aes256.zip`, entry name `compressible.txt`
+   → `../evil_trav.txt`, same 16-byte length, both local+central copies, ciphertext/HMAC
+   untouched) fixes the password-stage problem but hits a different one: with only one entry,
+   `ExtractWithSmartFolderingCoreAsync`'s smart-foldering heuristic (T-F156) sees a single "root
+   segment" (`..`) and treats it as a legitimate common-root-folder name to strip via
+   `StripRootPrefix` — silently turning `../evil_trav.txt` into harmless `evil_trav.txt` before the
+   real `destFilePath.StartsWith(fullTempDest)` check ever sees the unmodified name. Confirmed via
+   a scratch repro (`Success=True`, no rejection) before committing the fixture.
+3. The fixture actually committed is byte-patched from **`mixed_encrypted_and_plain.zip`** instead
+   (two entries: `readme.txt` plain, `compressible.txt` encrypted — only the latter is renamed to
+   `../evil_trav.txt`). `readme.txt` has no `/` at all, so `isSingleRootFolder` is false and no
+   prefix-stripping happens; the traversal name reaches the real check unmodified and the whole
+   archive extraction correctly fails with `InvalidDataException` ("File has ZIP signature but
+   appears corrupted or incomplete" — the same generic message any other traversal-triggered
+   failure produces), with nothing committed outside the destination and no leftover `_tmp`
+   staging folder. See `MANIFEST.sha256`'s entry for this fixture for the exact byte-patch recipe.
+
+**`TestAsync`'s new `resolvePasswordAsync` parameter placement — CA1068, not a style choice:**
+`TestAsync` takes a flat `IReadOnlyList<string>` rather than an Options record (no natural home for
+a new callback field), so the callback was added as a new trailing parameter instead. Initially
+appended after `cancellationToken` (preserving every existing 2-/3-arg call site verbatim) — CA1068
+("CancellationToken must be the last parameter") rejected that at build time. Moved before
+`cancellationToken` instead, which meant the two existing positional call sites
+(`Archiver.CLI/Program.cs`, `Archiver.Shell/Program.cs`) needed `cancellationToken:` named
+explicitly rather than positionally — a one-line fix at each, not a functional change.
+
+**Testing:** new `tests/Archiver.Core.Tests/Services/PasswordResolverTests.cs` (13 facts, no ZIP
+dependency — retry/cancel/sticky/no-resolver matrix against a fake `resolvePasswordAsync`) and
+`tests/Archiver.Core.Tests/Services/ZipArchiveServicePasswordTests.cs` (24 facts, end-to-end
+through the real `ZipArchiveService`: happy path for all 4 schemes + the Cyrillic-name fixture,
+mixed-archive single-prompt, `ApplyToRemaining` across two archives, wrong-password/cancel
+rejection with no partial files left behind, tampered-AES HMAC rejection, the traversal
+hard-invariant, MOTW propagation, byte-accurate final progress, `TestAsync` for all 3 real schemes
+plus tampered/wrong-password, both characterization tests, and `ListEntriesAsync`'s AE-2/ZipCrypto
+`Crc32` nullability). Plus new `RawZipEntryLocatorTests` cases for `LocateAll` (order/count parity
+with `ZipArchive.Entries`, the Cyrillic fixture, the traversal fixture, a plain archive). `dotnet
+test --filter "Category!=Slow&Category!=VeryLarge"` green repo-wide: `Archiver.Core.Tests`
+546→583, every other project unchanged (149 CLI, 81 Integration, 61 App.Core, 447 Shell, 5
+Performance).
+
+**Files:** `src/Archiver.Core/Models/PasswordPromptInfo.cs` (new — `PasswordPurpose`,
+`PasswordPromptInfo`, `PasswordDecision`); `ArchiveOptions.cs`/`ExtractOptions.cs`
+(`ResolvePasswordAsync` field); `src/Archiver.Core/Services/PasswordResolver.cs` (new, internal);
+`src/Archiver.Core/Interfaces/IArchiveService.cs` (`TestAsync`'s new parameter);
+`ZipArchiveService.cs` (`TryRejectUnsupportedOrEncryptedZipAsync`, `ResolveArchivePasswordAsync`,
+`ExtractWithSmartFolderingCoreAsync` split, `OpenEntryContentStream`, `TestEncryptedEntry`,
+`IsEncryptedZip`/`IsFirstLocalHeaderEncrypted`/`HasAnyEncryptedEntryViaCentralDirectory`,
+`ListEntriesAsync`'s AE-2 gate); `Services/Zip/Decryption/RawZipEntryLocator.cs` (`LocateAll`,
+`HasAnyEncryptedEntry`, the `ReadCentralDirectory`/`BuildFromLocalHeader` split);
+`Services/Zip/Decryption/EncryptedZipEntryReader.cs` (streaming rewrite, `TrailerCrcCheckStream`,
+the `(Stream, LocatedZipEntry, string)` overload, the Zip64-sentinel guard); two call-site fixes in
+`Archiver.CLI/Program.cs`/`Archiver.Shell/Program.cs` for the `TestAsync` parameter reorder. New
+fixtures: `encrypted_aes256_cyrillic_name.zip` (real, 7za.exe), `encrypted_with_traversal_entry.zip`
+(synthetic byte-patch, see above) — both documented in `MANIFEST.sha256`/`GenerateFixtures/
+Program.cs`'s header comment.
+
+**Scope fence:** no WinUI/CLI/Shell UI wiring — `ResolvePasswordAsync` has no caller outside this
+project's own tests until T-F190 (WinUI)/T-F191 (CLI)/T-F192 (Shell) ship. `ArchiveOptions.
+ResolvePasswordAsync` still has no caller at all until T-F193 (password-protected archive
+creation).
+
+## T-F190 — WinUI App: password prompt dialog (2026-09-18)
+
+Wired T-F189's `ExtractOptions.ResolvePasswordAsync` into `Archiver.App`: a new
+`IDialogService.ShowPasswordPromptAsync(PasswordPromptInfo, bool canApplyToRemaining)`, built
+exactly on `ShowConflictDialogAsync`'s `DispatcherQueue.TryEnqueue`/`TaskCompletionSource` shape
+(`DialogService.cs`), wired at `MainViewModel.cs`'s 3 real `ExtractOptions` construction sites.
+
+**`canApplyToRemaining` is a second method parameter, not a `PasswordPromptInfo` field — caught by
+advisor before any code was written.** The original plan (mirroring `PasswordPromptInfo` 1:1) would
+have had `Archiver.Core` compute it from `options.ArchivePaths.Count`, but that's the wrong number
+for the frontend that most needs the checkbox: `Archiver.Shell`'s future T-F192 calls `ExtractAsync`
+once per archive in its own loop, so Core would always see `Count == 1` there — exactly the case
+`StickyApplyToAllConflictResolver` already exists to handle for conflicts. Batch shape is frontend
+knowledge, not Core knowledge, so each App-layer call site closes over its own real count instead:
+`archivePaths.Count > 1` at the main Extract site (`RunExtractAsync`), `canApplyToRemaining: false`
+at both Archive Browser sites (`PreviewBrowserEntryAsync` T-F97, `NavigateIntoNestedArchiveAsync`
+T-F98 — both always extract exactly one archive at a time, so the checkbox would be a meaningless
+no-op there). This kept `Archiver.Core`'s public model untouched — zero `PasswordResolverTests`
+churn, zero `ARCHITECTURE.md` cascade on the Core side.
+
+**"the same dialog reopens... not a new dialog" (the draft acceptance criterion) is unachievable as
+literally worded.** `PasswordResolver`'s retry loop re-invokes the `resolvePasswordAsync` callback
+per attempt; each attempt is necessarily a fresh `ContentDialog` instance — WinUI has no API to
+"reopen" a dialog that already closed, and restructuring `PasswordResolver` to hold one dialog
+instance open across awaits would tangle Core's format-agnostic resolver with a WinUI control
+lifetime. What ships instead: identical title/message/layout on every attempt, plus the red
+`PasswordDialogWrongPasswordHint` line once `info.PreviousAttemptWasWrong` is true — the same
+perceived continuity the wording was reaching for, achieved without holding UI state across the
+resolver's retry loop.
+
+**`dialog.Opened += (_, _) => passwordBox.Focus(FocusState.Programmatic);`** — without it, focus
+lands on the primary button (`ContentDialog`'s default) and the user has to click into the box
+before typing. A small thing, but this dialog's only real input *is* the password field, so the
+papercut would hit on every single use.
+
+**Localization: 6 new plain (non-dotted) resw keys** (`PasswordDialogTitle`/`Message`/
+`WrongPasswordHint`/`ApplyToRemainingCheck`/`OkButton`/`CancelButton`) across all 37 locales,
+inserted via a `py -3` script (never manual retyping — this project's own "bulk copy through a
+script" rule) anchored on the existing `ConflictDialogApplyToAllCheck` block, run through the
+PowerShell tool's default pwsh 7 (never `powershell.exe`, which would corrupt the non-ASCII
+translations via ANSI-codepage decoding — T-F105's documented gotcha). Non-dotted per T-F104: this
+dialog is built in C# and reads every string via manual `_res.GetString(...)`, and a dotted key
+with no matching `x:Uid` in XAML silently resolves to an empty string.
+
+**On-device verification was agent-driven (`windows` MCP), not the user's own click-through** —
+this project's documented accepted substitute when the user directs it, still gating `[~]` not
+`[x]` until the user's own pass. Launched the real installed MSIX via
+`Archiver.Shell.exe --open-ui --extract|--browse <path>` (the same `pakko://` pipeline a genuine
+Explorer/file-association activation drives — not a debug host). Confirmed with real screenshots:
+wrong-password red-hint retry; correct-password single-archive extraction
+(`encrypted_aes256.zip`); a 2-archive batch (`mixed_encrypted_and_plain.zip` +
+`encrypted_zipcrypto_real.zip`) showing the checkbox and, once checked, zero re-prompt on the
+second archive; T-F98 nested drill-in through a new AES-256-encrypted archive containing a plain
+`inner.zip`; T-F97 preview of an entry inside `encrypted_aes256.zip` decrypting into the
+`PreviewCache` scope and opening in Notepad.
+
+**A real `windows`-MCP automation trap, worth recording for the next on-device pass:** the first
+several `ui_click`/`mouse_control` calls against the "Extract" button silently did nothing —
+`ui_click` reported `success: true` each time, but the app's state never changed. Root cause: this
+session's own `WindowsTerminal` window was layered directly on top of the right ~55% of the Pakko
+window (confirmed via a full-desktop screenshot), so a coordinate-based `mouse_control` click
+landed on the terminal underneath, not on Pakko — despite `window_management(activate)` having
+just reported `isForeground: true` for the Pakko window a moment earlier. Minimizing the terminal
+window before clicking fixed it immediately. Lesson: `isForeground: true` proves Win32 focus, not
+that nothing else visually occludes the target screen region — when a click reports success but
+nothing happens, check for an overlapping window before assuming the click coordinates or the UIA
+element resolution are wrong.
+
+**New fixture, deliberately not a `dotnet test` fixture:**
+`tests/Archiver.Core.Tests/Fixtures/archives/outer_encrypted_with_nested_zip.zip` — an AES-256
+outer ZIP (password `testpassword`, same convention as T-F188's other real-crypto fixtures)
+containing a plain `inner.zip`, generated via
+`7za a -tzip inner.zip compressible.txt && 7za a -tzip -mem=AES256 -ptestpassword
+outer_encrypted_with_nested_zip.zip inner.zip`. No such "encrypted archive containing another
+archive" fixture existed after T-F188/T-F189 (their automated suite never needed one), but T-F98's
+nested drill-in specifically needed it for a real on-device pass. Not wired into
+`GenerateFixtures/Program.cs` or any xunit test, but recorded in `MANIFEST.sha256` with a comment
+marking it MANUAL/on-device-only — same treatment T-F189 gave its two synthetic fixtures — so the
+folder's own manifest stays a complete, honest inventory rather than silently missing one binary.
+
+**Files:** `src/Archiver.App/Services/IDialogService.cs`/`DialogService.cs`
+(`ShowPasswordPromptAsync`); `src/Archiver.App/ViewModels/MainViewModel.cs` (3 call sites); 37×
+`src/Archiver.App/Strings/<locale>/Resources.resw` (6 new keys each). No `Archiver.Core` diff.
+
+---
+
+## T-F191 — `Archiver.CLI`: real `-p{pwd}` support + interactive masked prompt (2026-09-18)
+
+**Design, advisor-reviewed before implementation.** `-p{pwd}` on `x`/`t` wires directly onto
+T-F189's already-shipped `ExtractOptions.ResolvePasswordAsync`/`IArchiveService.TestAsync`'s
+`resolvePasswordAsync` — zero `Archiver.Core` changes, exactly as T-F189's own doc comment
+predicted ("Archiver.Shell/Archiver.CLI until T-F191/T-F192 ship"). Three resolver shapes, chosen
+in `Program.cs`'s `BuildPasswordResolver(string? password, bool assumeYes)`:
+
+1. **`-p` given** — try it once; on a second call (meaning the first was rejected) print a
+   CLI-specific "incorrect password" line to stderr *before* declining, then let Core's own
+   generic "password-protected and cannot be extracted/tested" print as usual.
+2. **No `-p`, and either `Console.IsInputRedirected` or `-y`** — return `null` (no resolver wired
+   at all, not a resolver that always declines), which is what actually preserves the pre-T-F191
+   message byte-for-byte. This also transparently covers `-si`: stdin is already consumed by the
+   piped archive bytes in that case, so `Console.IsInputRedirected` being true there means the
+   interactive branch is correctly never attempted — no special-casing needed.
+3. **No `-p`, a real interactive console** — a masked `Console.ReadKey(intercept: true)` prompt,
+   retried by Core's own `PasswordResolver` up to its `maxAttempts` (3).
+
+**Why the CLI needs its own "incorrect password" line (advisor-caught before writing code):**
+`PasswordResolver.ResolveAsync` returns `null` for three different situations — no resolver
+wired, the user cancelled, and every attempt was rejected — and every one of those maps to the
+exact same generic `ArchiveError` message at the `ZipArchiveService` call site. Without the
+CLI-side line, `pakko x -pWrongPassword foo.zip` would print only "password-protected and cannot
+be extracted" — technically true (it wasn't decrypted) but misleading, since the user did supply
+a password and it just happened to be wrong. Rather than teach Core to distinguish these three
+cases (which none of its other callers need), the CLI adds the one bit of context it alone has:
+whether `-p` was given at all.
+
+**`CliPasswordPrompt.Read(Func<ConsoleKeyInfo>, Action<char>?)` is its own class, not inlined in
+`Program.cs`** — forced twice over. This project's own hard constraint requires console-frontend
+parsing/editing logic to be extracted out of `Main` and unit-tested in-process (`CliArgumentParser`
+already does this). More specifically here: `Archiver.CLI.Tests`' `Subprocess/` layer
+(`CliProcessRunner.Run`) always redirects the built exe's stdin, so the real interactive masked
+prompt is structurally unreachable from any end-to-end subprocess test — the *only* way to cover
+Enter/Backspace/Escape/non-printable-key handling is a fake `Func<ConsoleKeyInfo>` key source
+feeding the extracted class directly (`CliPasswordPromptTests.cs`, 7 tests). `Program.cs` supplies
+only the real `Console.ReadKey`/`Console.Error.Write` glue around it.
+
+**`CliProcessRunner.Run` now explicitly redirects and immediately closes stdin** (previously it
+inherited whatever stdin handle the `dotnet test` host process itself had). Found while designing
+the "no `-p`, non-interactive" characterization test: an interactive `dotnet test` run would have
+left `Console.IsInputRedirected` false in the *child* pakko.exe process, so a test reaching the
+encrypted-archive-without-`-p` path would have hung the whole test run waiting for a keypress that
+could never arrive, rather than failing fast. Closing stdin immediately after `Process.Start` both
+guarantees `Console.IsInputRedirected` is true in the child and gives any accidental blocking read
+an immediate EOF instead of a hang — a general robustness fix for the whole subprocess test layer,
+not just this task's own tests.
+
+**Fixture reuse, not a third copy:** `Archiver.CLI.Tests.csproj` links
+`Archiver.Core.Tests/Fixtures/archives/encrypted_aes256.zip` (password `testpassword`, already
+hash-verified in that folder's own `MANIFEST.sha256`) into its own `Fixtures/` output folder,
+exactly the same `<None Include>`/`<Link>`/`CopyToOutputDirectory` pattern already used for
+`valid.7z`/`valid.rar` there. The new `Extract_EncryptedZipWithCorrectPassword_...` subprocess
+test asserts the extracted plaintext's full SHA-256 against that same fixture's own known content
+hash (`f4493...ebce00`, from `compressible.txt`'s manifest entry) rather than embedding the
+fixture's real Ukrainian-language plaintext as a string literal in test source — sidesteps this
+project's own documented Edit-tool corruption risk for complex-script literals entirely, without
+needing to determine whether a given attempt actually corrupted the file or was only a Git-Bash
+terminal-rendering artifact (CLAUDE.md documents both failure modes look identical in a `repr()`
+dump — an initial attempt this session to write the Cyrillic content directly triggered exactly
+that ambiguity and was replaced with the hash assertion rather than spending time proving which
+one it was).
+
+**Two pre-existing tests repointed, not just flipped:** `Extract_PasswordSwitch_
+ReturnsInvalidNamingEncryptionGap`/`UnsupportedSwitchOnSupportedCommand_ExitsSevenNamingSwitch`
+existed to cover the three-way rule's case 3 (a real 7z switch, deliberately unsupported on a
+given command) using `-p` as the example switch. Since `-p` is now genuinely supported on `x`/`t`,
+both were repointed at `-r0` (still genuinely unsupported everywhere) instead of just having their
+assertions changed — otherwise case 3 would have silently lost its only subprocess-level test
+while `-p` gained coverage.
+
+**Process-list exposure, documented in `CLI.md` (not `SECURITY.md`):** `-p<pwd>` is visible in the
+process's own command line for as long as `pakko.exe` runs (`Get-Process`/Process Explorer, or any
+other process on the machine enumerating command lines) — the same exposure every CLI tool's
+`-p`/`--password`-shaped flag has. `SECURITY.md` stays untouched per the user's explicit
+"Почекати до T-F192" decision (see the T-F190 entry above and `project_pakko_trust_docs_deferred`
+memory) — this caveat is accurate, narrowly scoped CLI documentation, not a trust-model claim, so
+it goes in `CLI.md`'s `-p{pwd}` row now rather than waiting for the deferred combined pass.
+
+**Test coverage:** `CliArgumentParserTests.cs` (parser shape: happy — `-p` parses on `x`/`t`;
+boundary — bare `-p` errors; misuse — `-p` on `l`/`h`/`a`, `-p` given twice keeps the last value)
++ `CliPasswordPromptTests.cs` (7 tests, the masked-input editing logic) +
+`CliSubprocessTests.cs`'s new `-p{pwd}` block (happy — correct password on `x` and `t`; boundary —
+wrong password fails cleanly with zero partial files in the destination; error/characterization —
+no `-p` + redirected stdin produces byte-identical stderr text and exit code to the pre-T-F191
+behavior, since that exact path already passed before this task's change).
+
+**Closing advisor review caught a real gap: zero execution evidence for the interactive prompt.**
+Every automated test (unit and subprocess) exercises `-p` given or stdin redirected — the
+`Console.IsInputRedirected == false` branch, the one thing T-F191 is nominally about, had never
+actually run. Verified via `windows` MCP: launched the real `pakko.exe` (`mcp__windows__app`)
+against `encrypted_aes256.zip` with no `-p`, found its console window, and drove it with
+`keyboard_control`. Confirmed: the masked prompt appears
+(`Password for encrypted_aes256.zip: `), typing `testpassword` echoes 12 `*` characters, Enter
+extracts the real 40803-byte `compressible.txt`; a second run typing a wrong password first shows
+`pakko: incorrect password, try again` and re-prompts, and a correct password on the retry then
+completes the extraction — the full 3-line prompt/hint/retry loop, exactly as designed.
+
+**A real automation trap hit along the way, distinct from T-F190's window-occlusion one:**
+`mcp__windows__app`'s launch result reports "window did not appear within timeout" for a
+console-subsystem exe every time (`waitForWindow` apparently doesn't recognize a new Windows
+Terminal tab as the app's window) — expected, not a failure, just call `window_management(action:
+list, filter: "pakko.exe")` afterward. The real trap: **Windows Terminal can host this session's
+own Claude Code CLI tab and the freshly spawned `pakko.exe` tab side by side, and a
+`processName: "pakko"` filter matches both** (this session's own tab was titled literally "pakko"
+already, presumably after the repo/project name). The first attempt activated and read the wrong
+tab — this session's own terminal, mid-transcript — and very nearly sent keystrokes into it before
+the mistake was caught by inspecting the captured screenshot's actual content rather than trusting
+the window search result. Fix: match on the *exe's full path* as the window title
+(`C:\...\pakko.exe`, the default Windows Terminal gives an unfocused console tab that never called
+`SetConsoleTitle`) rather than a bare process-name substring, and always look at the screenshot's
+real content before typing into a window found via a loose filter, not just its metadata. The
+process was killed (`Stop-Process`) the moment this was noticed, before any keystroke reached the
+wrong tab.
+
+**Files:** `src/Archiver.CLI/CliArgumentParser.cs`, `src/Archiver.CLI/Program.cs`, new
+`src/Archiver.CLI/CliPasswordPrompt.cs`; test-side: `CliArgumentParserTests.cs`, new
+`CliPasswordPromptTests.cs`, `Subprocess/CliSubprocessTests.cs`,
+`Subprocess/CliProcessRunner.cs` (stdin-redirect fix), `Archiver.CLI.Tests.csproj` (fixture link).
+No `Archiver.Core` diff.

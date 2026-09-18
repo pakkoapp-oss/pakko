@@ -55,6 +55,29 @@
  *   simplest way to produce a fixture whose HMAC authentication must fail. Regenerating either
  *   means re-running that patch, not a plain 7za.exe invocation.
  *
+ *   encrypted_with_traversal_entry.zip is SYNTHETIC — byte-patched from
+ *   mixed_encrypted_and_plain.zip (readme.txt plain + compressible.txt AES-256-encrypted) by a
+ *   throwaway script (not committed; see docs/DECISIONS.md's T-F189 entry): the entry name
+ *   "compressible.txt" (16 bytes) is replaced with "../evil_trav.txt" (also 16 bytes, both local
+ *   header and central directory copies) — same length keeps every offset valid, and the name is
+ *   outside the AES key derivation/HMAC scope, so the real ciphertext still decrypts correctly
+ *   with password "testpassword". Two deliberate choices, not shortcuts:
+ *     (1) NOT a hand-rolled fake-ciphertext fixture — one fails password verification before
+ *         ExtractAsync's entry loop is ever reached, so it can't actually exercise the traversal
+ *         check it exists to test.
+ *     (2) Sourced from the MIXED (two-entry) fixture, not a single-entry one — a lone entry named
+ *         "../evil_trav.txt" gets its ".." prefix silently stripped by T-F156's smart-foldering
+ *         "single root folder" heuristic (indistinguishable from a legitimate common-root-folder
+ *         name to strip) before the real destFilePath.StartsWith(fullTempDest) check ever runs.
+ *         readme.txt's differently-shaped name (no '/' at all) keeps isSingleRootFolder false.
+ *
+ *   encrypted_aes256_cyrillic_name.zip — T-F189: real WinZip AES-256, entry name is
+ *   unicode_filename_привіт.txt (7za.exe sets the UTF-8 language-encoding flag for it —
+ *   confirmed via `7za.exe l -slt`'s "Characteristics = ... UTF8" — so this fixture alone doesn't
+ *   exercise a legacy non-UTF-8 codepage name; see docs/DECISIONS.md's T-F189 entry for why that
+ *   residual case is accepted rather than chased). Regenerate with:
+ *     7za.exe a -tzip -mem=AES256 -ptestpassword encrypted_aes256_cyrillic_name.zip unicode_filename_привіт.txt
+ *
  *   pakko_integrity_valid.zip    — generate after T-34: run Pakko to archive compressible.txt
  *   pakko_integrity_tampered.zip — generate after T-34: copy valid, flip one byte in manifest
  *
@@ -97,6 +120,8 @@
  *     mixed_encrypted_and_plain.zip   — MANUAL, requires 7-Zip (T-F188, plain + AES entry)
  *     encrypted_aes256_ae1.zip        — MANUAL, SYNTHETIC byte-patch (T-F188, AE-1 test path)
  *     encrypted_aes256_tampered.zip   — MANUAL, SYNTHETIC byte-flip (T-F188, HMAC-reject test)
+ *     encrypted_aes256_cyrillic_name.zip — MANUAL, requires 7-Zip (T-F189, non-ASCII entry name)
+ *     encrypted_with_traversal_entry.zip — MANUAL, SYNTHETIC byte-patch (T-F189, hard invariant)
  *     created_by_7zip.zip             — MANUAL
  *     created_by_winrar.zip           — MANUAL
  *     created_by_macos.zip            — MANUAL
@@ -395,6 +420,11 @@ var encryptedZipCrypto = Path.Combine(archivesDir, "encrypted_zipcrypto.zip");
     File.WriteAllBytes(encryptedZipCrypto, ms.ToArray());
 }
 Record(encryptedZipCrypto, "ZipCrypto encryption flag set — T-25 detection target");
+
+// encrypted_with_traversal_entry.zip is SYNTHETIC — see the T-F189 manual-fixtures note below.
+// Not generated here: a hand-rolled fake-ciphertext version (this file's earlier approach) fails
+// password verification before ExtractAsync's entry loop is ever reached, so it can't actually
+// exercise the traversal check it exists to test — must be a byte-patched REAL encrypted fixture.
 
 // AES-256 — generated once (T-F167) via the vendored 7za.exe and committed as a real binary
 // fixture; no longer a _MANUAL.txt placeholder. Regenerate with:

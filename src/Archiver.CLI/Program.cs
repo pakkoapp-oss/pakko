@@ -116,7 +116,68 @@ static ExtractOptions BuildExtractOptions(ParsedCliCommand command, IReadOnlyLis
         // only needs to override them, never set them.
         OnConflict = command.OverwriteMode ?? (command.AssumeYes ? ConflictBehavior.Overwrite : ConflictBehavior.Skip),
         ConfirmCompressionBombExtraction = command.AssumeYes ? (_ => Task.FromResult(true)) : null,
+        ResolvePasswordAsync = BuildPasswordResolver(command.Password, command.AssumeYes),
     };
+
+// -------------------------------------------------------------------------
+// T-F191: -p{pwd} support for x/t. Three shapes, in order of precedence:
+//   1. -p<pwd> given                  -> try it once; a second call (wrong password) reports a
+//                                         specific "incorrect password" line before declining, so
+//                                         the CLI-known fact "a password WAS supplied" isn't lost
+//                                         in Core's generic "password-protected" message (Core's
+//                                         PasswordResolver collapses never-wired/cancelled/
+//                                         exhausted-attempts into the same null result — see
+//                                         docs/DECISIONS.md's T-F191 entry).
+//   2. no -p, stdin redirected or -y  -> no resolver at all, preserving the exact pre-T-F191
+//                                         "password-protected and cannot be extracted/tested"
+//                                         message (also covers -si, since stdin is already
+//                                         consumed by the piped archive bytes in that case).
+//   3. no -p, real interactive stdin  -> masked Console.ReadKey prompt, retried by Core's own
+//                                         PasswordResolver up to its maxAttempts.
+// -------------------------------------------------------------------------
+static Func<PasswordPromptInfo, Task<PasswordDecision>>? BuildPasswordResolver(string? password, bool assumeYes)
+{
+    if (password is not null)
+        return info => Task.FromResult(ResolveFixedPassword(info, password));
+
+    if (Console.IsInputRedirected || assumeYes)
+        return null;
+
+    return info => Task.FromResult(PromptForPasswordInteractively(info));
+}
+
+static PasswordDecision ResolveFixedPassword(PasswordPromptInfo info, string password)
+{
+    if (info.AttemptNumber > 1)
+    {
+        Console.Error.WriteLine($"pakko: error: {info.ArchiveName}: incorrect password (-p)");
+        return new PasswordDecision { Password = null };
+    }
+    return new PasswordDecision { Password = password };
+}
+
+static PasswordDecision PromptForPasswordInteractively(PasswordPromptInfo info)
+{
+    if (info.PreviousAttemptWasWrong)
+        Console.Error.WriteLine("pakko: incorrect password, try again");
+
+    Console.Error.Write($"Password for {info.ArchiveName}: ");
+
+    bool previousTreatControlCAsInput = Console.TreatControlCAsInput;
+    Console.TreatControlCAsInput = true;
+    try
+    {
+        string? password = CliPasswordPrompt.Read(() => Console.ReadKey(intercept: true), EchoMaskChar);
+        Console.Error.WriteLine();
+        return new PasswordDecision { Password = password };
+    }
+    finally
+    {
+        Console.TreatControlCAsInput = previousTreatControlCAsInput;
+    }
+}
+
+static void EchoMaskChar(char c) => Console.Error.Write(c == '\b' ? "\b \b" : "*");
 
 // Shared by RunExtractAsync and RunArchiveAsync -- both stream the single staged output file to
 // stdout the same way once the underlying operation already reported success.
@@ -161,7 +222,11 @@ static async Task<int> RunTestAsync(ParsedCliCommand command, GroupPolicyOptions
         }
 
         ArchiveResult result = zipPaths.Count > 0
-            ? await new ZipArchiveService(policy).TestAsync(zipPaths, progress: null, CancellationToken.None).ConfigureAwait(false)
+            ? await new ZipArchiveService(policy).TestAsync(
+                zipPaths,
+                progress: null,
+                resolvePasswordAsync: BuildPasswordResolver(command.Password, assumeYes: false),
+                cancellationToken: CancellationToken.None).ConfigureAwait(false)
             : new ArchiveResult { Success = true };
 
         result = result with { SkippedFiles = [.. result.SkippedFiles, .. skippedNonZip] };

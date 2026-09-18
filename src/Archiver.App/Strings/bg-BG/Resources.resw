@@ -258,6 +258,24 @@
   <data name="ConflictDialogApplyToAllCheck" xml:space="preserve">
     <value>Прилагане за всички оставащи конфликти</value>
   </data>
+  <data name="PasswordDialogTitle" xml:space="preserve">
+    <value>Изисква се парола</value>
+  </data>
+  <data name="PasswordDialogMessage" xml:space="preserve">
+    <value>"{0}" е защитен с парола. Въведете паролата, за да продължите.</value>
+  </data>
+  <data name="PasswordDialogWrongPasswordHint" xml:space="preserve">
+    <value>Грешна парола. Опитайте отново.</value>
+  </data>
+  <data name="PasswordDialogApplyToRemainingCheck" xml:space="preserve">
+    <value>Приложи към останалите архиви</value>
+  </data>
+  <data name="PasswordDialogOkButton" xml:space="preserve">
+    <value>ОК</value>
+  </data>
+  <data name="PasswordDialogCancelButton" xml:space="preserve">
+    <value>Отказ</value>
+  </data>
 
   <!-- About dialog -->
   <data name="AboutDialogTitle" xml:space="preserve">

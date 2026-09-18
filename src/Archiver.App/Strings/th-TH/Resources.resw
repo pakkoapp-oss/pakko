@@ -258,6 +258,24 @@
   <data name="ConflictDialogApplyToAllCheck" xml:space="preserve">
     <value>นำไปใช้กับความขัดแย้งที่เหลือทั้งหมด</value>
   </data>
+  <data name="PasswordDialogTitle" xml:space="preserve">
+    <value>ต้องใช้รหัสผ่าน</value>
+  </data>
+  <data name="PasswordDialogMessage" xml:space="preserve">
+    <value>"{0}" ได้รับการป้องกันด้วยรหัสผ่าน กรุณาป้อนรหัสผ่านเพื่อดำเนินการต่อ</value>
+  </data>
+  <data name="PasswordDialogWrongPasswordHint" xml:space="preserve">
+    <value>รหัสผ่านไม่ถูกต้อง กรุณาลองอีกครั้ง</value>
+  </data>
+  <data name="PasswordDialogApplyToRemainingCheck" xml:space="preserve">
+    <value>ใช้กับไฟล์ที่เหลือ</value>
+  </data>
+  <data name="PasswordDialogOkButton" xml:space="preserve">
+    <value>ตกลง</value>
+  </data>
+  <data name="PasswordDialogCancelButton" xml:space="preserve">
+    <value>ยกเลิก</value>
+  </data>
 
   <!-- About dialog -->
   <data name="AboutDialogTitle" xml:space="preserve">

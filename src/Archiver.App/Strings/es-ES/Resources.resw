@@ -258,6 +258,24 @@
   <data name="ConflictDialogApplyToAllCheck" xml:space="preserve">
     <value>Aplicar a todos los conflictos restantes</value>
   </data>
+  <data name="PasswordDialogTitle" xml:space="preserve">
+    <value>Se requiere contraseña</value>
+  </data>
+  <data name="PasswordDialogMessage" xml:space="preserve">
+    <value>"{0}" está protegido con contraseña. Introduzca la contraseña para continuar.</value>
+  </data>
+  <data name="PasswordDialogWrongPasswordHint" xml:space="preserve">
+    <value>Contraseña incorrecta. Inténtelo de nuevo.</value>
+  </data>
+  <data name="PasswordDialogApplyToRemainingCheck" xml:space="preserve">
+    <value>Aplicar a los archivos restantes</value>
+  </data>
+  <data name="PasswordDialogOkButton" xml:space="preserve">
+    <value>Aceptar</value>
+  </data>
+  <data name="PasswordDialogCancelButton" xml:space="preserve">
+    <value>Cancelar</value>
+  </data>
 
   <!-- About dialog -->
   <data name="AboutDialogTitle" xml:space="preserve">

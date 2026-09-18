@@ -258,6 +258,24 @@
   <data name="ConflictDialogApplyToAllCheck" xml:space="preserve">
     <value>باقی تمام تنازعات پر لاگو کریں</value>
   </data>
+  <data name="PasswordDialogTitle" xml:space="preserve">
+    <value>پاس ورڈ درکار ہے</value>
+  </data>
+  <data name="PasswordDialogMessage" xml:space="preserve">
+    <value>"{0}" پاس ورڈ سے محفوظ ہے۔ جاری رکھنے کے لیے پاس ورڈ درج کریں۔</value>
+  </data>
+  <data name="PasswordDialogWrongPasswordHint" xml:space="preserve">
+    <value>غلط پاس ورڈ۔ براہ کرم دوبارہ کوشش کریں۔</value>
+  </data>
+  <data name="PasswordDialogApplyToRemainingCheck" xml:space="preserve">
+    <value>باقی آرکائیوز پر لاگو کریں</value>
+  </data>
+  <data name="PasswordDialogOkButton" xml:space="preserve">
+    <value>ٹھیک ہے</value>
+  </data>
+  <data name="PasswordDialogCancelButton" xml:space="preserve">
+    <value>منسوخ کریں</value>
+  </data>
 
   <!-- About dialog -->
   <data name="AboutDialogTitle" xml:space="preserve">

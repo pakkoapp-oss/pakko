@@ -44,6 +44,17 @@ public sealed record ExtractOptions
     /// it) falls back to Skip — see ConflictResolver.
     /// </summary>
     public Func<ConflictInfo, Task<ConflictDecision>>? ResolveConflictAsync { get; init; }
+
+    /// <summary>
+    /// T-F189: invoked once per encrypted ZIP archive, before its entry loop runs, when the
+    /// archive contains at least one encrypted entry. Null (e.g. Archiver.Shell/Archiver.CLI until
+    /// T-F191/T-F192 ship, or a test that doesn't wire it) preserves the pre-T-F189 behavior
+    /// exactly: the archive is rejected with "password-protected and cannot be extracted." Mirrors
+    /// <see cref="Models.ArchiveOptions.ResolvePasswordAsync"/> (same field name/type on both
+    /// records, added there too even though it has no caller yet — see the T-F157→T-F158
+    /// retrofit precedent in docs/DECISIONS.md).
+    /// </summary>
+    public Func<PasswordPromptInfo, Task<PasswordDecision>>? ResolvePasswordAsync { get; init; }
 }
 
 /// <summary>How multiple archives being extracted at once land relative to each other.</summary>

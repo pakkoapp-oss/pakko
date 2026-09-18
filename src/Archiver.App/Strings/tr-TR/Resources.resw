@@ -258,6 +258,24 @@
   <data name="ConflictDialogApplyToAllCheck" xml:space="preserve">
     <value>Kalan tüm çakışmalara uygula</value>
   </data>
+  <data name="PasswordDialogTitle" xml:space="preserve">
+    <value>Parola gerekli</value>
+  </data>
+  <data name="PasswordDialogMessage" xml:space="preserve">
+    <value>"{0}" parola korumalı. Devam etmek için parolayı girin.</value>
+  </data>
+  <data name="PasswordDialogWrongPasswordHint" xml:space="preserve">
+    <value>Parola yanlış. Lütfen tekrar deneyin.</value>
+  </data>
+  <data name="PasswordDialogApplyToRemainingCheck" xml:space="preserve">
+    <value>Kalan arşivlere uygula</value>
+  </data>
+  <data name="PasswordDialogOkButton" xml:space="preserve">
+    <value>Tamam</value>
+  </data>
+  <data name="PasswordDialogCancelButton" xml:space="preserve">
+    <value>İptal</value>
+  </data>
 
   <!-- About dialog -->
   <data name="AboutDialogTitle" xml:space="preserve">

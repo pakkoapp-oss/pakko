@@ -303,6 +303,24 @@
   <data name="ConflictDialogApplyToAllCheck" xml:space="preserve">
     <value>Apply to all remaining conflicts</value>
   </data>
+  <data name="PasswordDialogTitle" xml:space="preserve">
+    <value>Password required</value>
+  </data>
+  <data name="PasswordDialogMessage" xml:space="preserve">
+    <value>"{0}" is password-protected. Enter the password to continue.</value>
+  </data>
+  <data name="PasswordDialogWrongPasswordHint" xml:space="preserve">
+    <value>Incorrect password. Please try again.</value>
+  </data>
+  <data name="PasswordDialogApplyToRemainingCheck" xml:space="preserve">
+    <value>Apply to remaining archives</value>
+  </data>
+  <data name="PasswordDialogOkButton" xml:space="preserve">
+    <value>OK</value>
+  </data>
+  <data name="PasswordDialogCancelButton" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
   <data name="ScanButton.Content" xml:space="preserve">
     <value>Scan for threats</value>
   </data>

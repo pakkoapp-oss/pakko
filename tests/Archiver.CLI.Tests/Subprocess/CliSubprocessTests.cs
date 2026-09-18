@@ -1,4 +1,5 @@
 using System.IO.Compression;
+using System.Security.Cryptography;
 using FluentAssertions;
 
 namespace Archiver.CLI.Tests.Subprocess;
@@ -139,6 +140,70 @@ public sealed class CliSubprocessTests
 
         exitCode.Should().Be(1);
         stdErr.Should().Contain("tar-family archives have no test capability");
+    }
+
+    // --- T-F191: -p{pwd} ---
+
+    private static string EncryptedZipPath => Path.Combine(AppContext.BaseDirectory, "Fixtures", "encrypted_aes256.zip");
+
+    [Fact]
+    public void Extract_EncryptedZipWithCorrectPassword_ExtractsRealContentAndExitsZero()
+    {
+        string destDir = CliFixtureFiles.CreateScratchDir();
+
+        (int exitCode, string stdOut, string stdErr) = CliProcessRunner.Run(
+            "x", "-ptestpassword", $"-o{destDir}", EncryptedZipPath);
+
+        exitCode.Should().Be(0);
+        stdErr.Should().BeEmpty();
+        string extracted = Path.Combine(destDir, "compressible.txt");
+        File.Exists(extracted).Should().BeTrue();
+        // Full-content hash match against the known plaintext fixture (MANIFEST.sha256's own
+        // "compressible.txt" entry) rather than a text comparison — avoids embedding this
+        // fixture's real non-ASCII content as a literal in source (see CLAUDE.md's documented
+        // Edit-tool corruption risk for complex-script literals).
+        byte[] extractedBytes = File.ReadAllBytes(extracted);
+        Convert.ToHexString(SHA256.HashData(extractedBytes)).ToLowerInvariant()
+            .Should().Be("f4493c3682d924e263f2573f7700fe8a417af61759cd700f56bba849e8ebce00");
+    }
+
+    [Fact]
+    public void Test_EncryptedZipWithCorrectPassword_ExitsZero()
+    {
+        (int exitCode, string stdOut, string stdErr) = CliProcessRunner.Run("t", "-ptestpassword", EncryptedZipPath);
+
+        exitCode.Should().Be(0);
+        stdErr.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Extract_EncryptedZipWithWrongPassword_FailsCleanlyWithNoPartialFiles()
+    {
+        string destDir = CliFixtureFiles.CreateScratchDir();
+
+        (int exitCode, string stdOut, string stdErr) = CliProcessRunner.Run(
+            "x", "-pWrongPassword", $"-o{destDir}", EncryptedZipPath);
+
+        exitCode.Should().Be(2);
+        stdErr.Should().Contain("incorrect password");
+        Directory.GetFileSystemEntries(destDir).Should().BeEmpty("a rejected password must not leave any partial output");
+    }
+
+    [Fact]
+    public void Extract_EncryptedZipNoPasswordSwitch_FailsWithSamePreT191MessageAsToday()
+    {
+        // Characterization test (docs/DECISIONS.md's T-F191 entry) — this exact behavior already
+        // passes before this task's change, since CliProcessRunner.Run always redirects stdin
+        // (never a real interactive console), so BuildPasswordResolver never wires a resolver here
+        // regardless of -y. Pins the pre-existing message so a future change doesn't silently
+        // alter it while adding real -p support alongside it.
+        string destDir = CliFixtureFiles.CreateScratchDir();
+
+        (int exitCode, string stdOut, string stdErr) = CliProcessRunner.Run("x", $"-o{destDir}", EncryptedZipPath);
+
+        exitCode.Should().Be(2);
+        stdErr.Should().Contain("password-protected and cannot be extracted");
+        Directory.GetFileSystemEntries(destDir).Should().BeEmpty();
     }
 
     // --- i: happy path ---
@@ -341,10 +406,13 @@ public sealed class CliSubprocessTests
     [Fact]
     public void UnsupportedSwitchOnSupportedCommand_ExitsSevenNamingSwitch()
     {
-        (int exitCode, string stdOut, string stdErr) = CliProcessRunner.Run("x", "-psecret", "archive.zip");
+        // Case 3 (a real 7z switch, deliberately unsupported on any command) — kept as a
+        // still-genuinely-unsupported switch after T-F191 gave '-p' a real meaning on 'x'/'t'
+        // (see the parser-level test of the same shape in CliArgumentParserTests.cs).
+        (int exitCode, string stdOut, string stdErr) = CliProcessRunner.Run("x", "-r0", "archive.zip");
 
         exitCode.Should().Be(7);
-        stdErr.Should().Contain("encryption");
+        stdErr.Should().Contain("not supported");
     }
 
     // --- T-F116: -si / -so streaming ---

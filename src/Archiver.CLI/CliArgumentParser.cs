@@ -32,6 +32,7 @@ public sealed record ParsedCliCommand
     public HashAlgorithmKind HashAlgorithm { get; init; } = HashAlgorithmKind.Crc32; // -scrc{method}, h only (T-F128/T-F09 follow-up); Crc32 matches real 7z's own default hash method
     public bool ReadFromStdin { get; init; }                          // -si, x/t/l/h only (T-F116)
     public bool WriteToStdout { get; init; }                          // -so, x/a only (T-F116)
+    public string? Password { get; init; }                            // -p{pwd}, x/t only (T-F191)
     public string? ErrorMessage { get; init; }
 }
 
@@ -80,6 +81,7 @@ public static class CliArgumentParser
         public ConflictBehavior? OverwriteMode { get; set; }
         public bool ReadFromStdin { get; set; }
         public bool WriteToStdout { get; set; }
+        public string? Password { get; set; }
     }
 
     private static ParsedCliCommand ParseExtract(string[] rest)
@@ -109,6 +111,7 @@ public static class CliArgumentParser
             OverwriteMode = state.OverwriteMode,
             ReadFromStdin = state.ReadFromStdin,
             WriteToStdout = state.WriteToStdout,
+            Password = state.Password,
         };
     }
 
@@ -143,7 +146,28 @@ public static class CliArgumentParser
             return null;
         }
 
+        if (token.StartsWith("-p", StringComparison.Ordinal))
+        {
+            if (!TryParsePassword(token, out string? password, out string? error))
+                return error;
+            state.Password = password;
+            return null;
+        }
+
         return UnsupportedSwitchReason(token);
+    }
+
+    private static bool TryParsePassword(string token, out string? password, out string? error)
+    {
+        if (token.Length == 2)
+        {
+            password = null;
+            error = "-p requires a password, e.g. -pSecret123";
+            return false;
+        }
+        password = token[2..];
+        error = null;
+        return true;
     }
 
     private static bool TryParseOutputDirectory(string token, out string? outputDirectory, out string? error)
@@ -198,11 +222,18 @@ public static class CliArgumentParser
     {
         var archivePaths = new List<string>();
         bool readFromStdin = false;
+        string? password = null;
         foreach (string token in rest)
         {
             if (token == "-si")
             {
                 readFromStdin = true;
+                continue;
+            }
+            if (token.StartsWith("-p", StringComparison.Ordinal))
+            {
+                if (!TryParsePassword(token, out password, out string? error))
+                    return Invalid(error!);
                 continue;
             }
             if (IsSwitchToken(token))
@@ -215,7 +246,7 @@ public static class CliArgumentParser
         if (!readFromStdin && archivePaths.Count == 0)
             return Invalid("'t' requires at least one archive path");
 
-        return new ParsedCliCommand { Type = CliCommandType.Test, ArchivePaths = archivePaths, ReadFromStdin = readFromStdin };
+        return new ParsedCliCommand { Type = CliCommandType.Test, ArchivePaths = archivePaths, ReadFromStdin = readFromStdin, Password = password };
     }
 
     // --- i (Info) ---
@@ -497,7 +528,7 @@ public static class CliArgumentParser
         ("-t", "not supported on this command: -t{type} is only meaningful for 'a' (archive creation)"),
         ("-scrc", "not supported on this command: -scrc{method} is only meaningful for 'h' (hash)"),
         ("-o", NotSupportedOnThisCommand),
-        ("-p", "not supported: System.IO.Compression has no ZIP encryption support"),
+        ("-p", "not supported on this command: -p{pwd} decrypts a password-protected ZIP — only valid with 'x' (extract) or 't' (test)"),
         ("-r", "not supported: recurse-subdirectories toggle has no Pakko equivalent (archiving already recurses by default)"),
         ("-i", "not supported: no wildcard include-pattern filtering exists in Pakko"),
         ("-x", "not supported: no wildcard exclude-pattern filtering exists in Pakko"),

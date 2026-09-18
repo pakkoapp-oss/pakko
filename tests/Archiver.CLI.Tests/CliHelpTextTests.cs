@@ -19,6 +19,7 @@ public sealed class CliHelpTextTests
 
     [Theory]
     [InlineData("-o<dir>")]
+    [InlineData("-p<pwd>")]
     [InlineData("-y")]
     [InlineData("-ao{a|s|u}")]
     [InlineData("-t<type>")]

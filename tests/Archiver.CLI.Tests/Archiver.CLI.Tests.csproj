@@ -41,6 +41,13 @@
       <Link>Fixtures\valid.rar</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <!-- T-F191: reuse Archiver.Core.Tests' own encrypted ZIP fixture (password "testpassword",
+         see its MANIFEST.sha256) rather than a third copy — same reuse pattern as valid.7z/rar
+         above. -->
+    <None Include="..\Archiver.Core.Tests\Fixtures\archives\encrypted_aes256.zip">
+      <Link>Fixtures\encrypted_aes256.zip</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>

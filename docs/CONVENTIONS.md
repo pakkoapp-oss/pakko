@@ -399,6 +399,17 @@ Won't-fix categories recorded so far:
   both TODOs are legitimate, already-tracked future work (not abandoned placeholders) — left as
   plain TODOs, not suppressed. Don't "fix" these by deleting the comment or completing the task
   out of scope of whatever triage pass finds them.
+- **CodeQL `cs/ecb-encryption` ("Encryption using ECB") on `WinZipAesReader.cs`'s
+  `aes.Mode = CipherMode.ECB`** (T-F188): this `Aes` instance is never used to encrypt more than
+  one 16-byte block directly — it's the single-block primitive `DecryptCtr` uses to build AES-CTR
+  by hand (encrypt the counter, XOR the result with ciphertext; see that method's own comment,
+  the standard NIST SP 800-38A construction, not a custom cipher). CodeQL's rule flags any `ECB`
+  mode as "same plaintext -> same ciphertext -> replay risk," which is the real risk for
+  multi-block ECB use but doesn't apply here: the "plaintext" ECB actually encrypts is the
+  never-repeating 128-bit counter (`IncrementCounter` guarantees a fresh value per block), so the
+  keystream block is never reused. Switching to a "real" `CipherMode.CTR`-labeled mode isn't an
+  option — .NET's `Aes` class has no built-in CTR mode. Dismissed on GitHub as a false positive
+  with a link to this entry; don't "fix" by rewriting the construction.
 
 **`SYSLIB1054` (`DllImport` → `LibraryImportAttribute`, ~40 findings across
 `Archiver.Core/Services/Sandbox/`) is deferred, not won't-fix** — it needs its own focused pass

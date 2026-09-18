@@ -26,6 +26,10 @@ public static class CliHelpText
 
         SWITCHES:
           -o<dir>          Output directory                                    (x)
+          -p<pwd>          Password for a ZIP-encrypted archive (ZipCrypto/     (x, t)
+                           AES). Without -p on an encrypted archive: prompts
+                           with masked input on a real interactive console, or
+                           fails immediately when piped/scripted/-y is given.
           -y               Assume yes: auto-overwrite conflicts, auto-confirm
                            compression-bomb warnings. Without -y, both default
                            to a safe decline (file skipped, reported at the end).

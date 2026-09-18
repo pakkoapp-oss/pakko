@@ -1,6 +1,8 @@
+using System.Linq;
 using System.Text;
 
 namespace Archiver.Core.Services.Zip.Decryption;
+
 
 /// <summary>
 /// Raw facts about one ZIP entry read directly from the central directory / local file header
@@ -41,6 +43,60 @@ internal static class RawZipEntryLocator
     {
         byte[] targetBytes = Encoding.UTF8.GetBytes(entryFullName);
 
+        foreach (var record in ReadCentralDirectory(zipStream))
+        {
+            if (record.NameBytes.AsSpan().SequenceEqual(targetBytes))
+                return BuildFromLocalHeader(zipStream, record.LocalHeaderOffset, record.Crc32, record.CompressedSize);
+        }
+
+        throw new FileNotFoundException($"Entry not found in ZIP central directory: {entryFullName}");
+    }
+
+    /// <summary>
+    /// Walks the whole central directory once and returns every entry's <see cref="LocatedZipEntry"/>
+    /// in central-directory order — the same order <see cref="System.IO.Compression.ZipArchive.Entries"/>
+    /// populates its own list in, so a caller can pair the two positionally by index. Deliberately
+    /// NOT name-based: a legacy (non-UTF-8-flagged) entry name decodes differently in
+    /// <see cref="System.IO.Compression.ZipArchiveEntry.FullName"/> than a naive
+    /// <see cref="Encoding.UTF8"/> byte-compare here would assume, and <c>Archiver.Core</c>'s
+    /// zero-NuGet-dependency constraint rules out pulling in
+    /// <c>System.Text.Encoding.CodePages</c> to decode it correctly — see docs/DECISIONS.md's
+    /// T-F189 entry. Positional pairing sidesteps the encoding question entirely.
+    /// <para>
+    /// Two full passes over <paramref name="zipStream"/> deliberately: <see cref="ReadCentralDirectory"/>
+    /// reads only the central directory (one contiguous forward scan, no seeking away), THEN this
+    /// method seeks out to each entry's local header one at a time — interleaving the two (seeking
+    /// to a local header mid-central-directory-scan) would corrupt the central directory read
+    /// position for every entry after the first.
+    /// </para>
+    /// </summary>
+    public static List<LocatedZipEntry> LocateAll(Stream zipStream)
+    {
+        var records = ReadCentralDirectory(zipStream);
+        var result = new List<LocatedZipEntry>(records.Count);
+        foreach (var record in records)
+            result.Add(BuildFromLocalHeader(zipStream, record.LocalHeaderOffset, record.Crc32, record.CompressedSize));
+        return result;
+    }
+
+    /// <summary>
+    /// T-F189: cheap "does this archive need a password prompt at all" gate — reads only the
+    /// central directory's own general-purpose bit flag per entry (no local-header seeks), so it
+    /// stays fast even for a large archive. Deliberately checks EVERY entry, not just the first —
+    /// this project's own <c>mixed_encrypted_and_plain.zip</c> test fixture puts its unencrypted
+    /// entry first and its encrypted entry second, which a first-entry-only check (the pre-T-F189
+    /// behavior) would silently miss. See docs/DECISIONS.md's T-F189 entry.
+    /// </summary>
+    public static bool HasAnyEncryptedEntry(Stream zipStream) =>
+        ReadCentralDirectory(zipStream).Any(record => (record.GeneralPurposeFlag & 0x0001) != 0);
+
+    private sealed record CentralDirectoryRecord(
+        byte[] NameBytes, long LocalHeaderOffset, uint Crc32, uint CompressedSize, ushort GeneralPurposeFlag);
+
+    private static List<CentralDirectoryRecord> ReadCentralDirectory(Stream zipStream)
+    {
+        var records = new List<CentralDirectoryRecord>();
+
         long eocdOffset = FindEndOfCentralDirectory(zipStream);
         zipStream.Seek(eocdOffset + 16, SeekOrigin.Begin); // offset of start of central directory
         uint centralDirOffset = ReadUInt32(zipStream);
@@ -72,13 +128,10 @@ internal static class RawZipEntryLocator
             ReadBytes(zipStream, extraLength); // central directory's own extra copy — unused
             ReadBytes(zipStream, commentLength);
 
-            if (nameBytes.AsSpan().SequenceEqual(targetBytes))
-            {
-                return BuildFromLocalHeader(zipStream, localHeaderOffset, crc32, compressedSize);
-            }
+            records.Add(new CentralDirectoryRecord(nameBytes, localHeaderOffset, crc32, compressedSize, generalPurposeFlag));
         }
 
-        throw new FileNotFoundException($"Entry not found in ZIP central directory: {entryFullName}");
+        return records;
     }
 
     private static LocatedZipEntry BuildFromLocalHeader(

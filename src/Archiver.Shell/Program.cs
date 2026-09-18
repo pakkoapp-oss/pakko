@@ -284,7 +284,7 @@ static async Task RunTestAsync(IReadOnlyList<string> archivePaths, GroupPolicyOp
         : $"Testing {archivePaths.Count} archives";
 
     var result = await RunWithProgressWindowAsync(title,
-        (progress, ct) => service.TestAsync(archivePaths, progress, ct))
+        (progress, ct) => service.TestAsync(archivePaths, progress, cancellationToken: ct))
         .ConfigureAwait(false);
 
     if (result.Success)

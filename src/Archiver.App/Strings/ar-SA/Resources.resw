@@ -258,6 +258,24 @@
   <data name="ConflictDialogApplyToAllCheck" xml:space="preserve">
     <value>تطبيق على جميع التعارضات المتبقية</value>
   </data>
+  <data name="PasswordDialogTitle" xml:space="preserve">
+    <value>مطلوب كلمة مرور</value>
+  </data>
+  <data name="PasswordDialogMessage" xml:space="preserve">
+    <value>"{0}" محمي بكلمة مرور. أدخل كلمة المرور للمتابعة.</value>
+  </data>
+  <data name="PasswordDialogWrongPasswordHint" xml:space="preserve">
+    <value>كلمة المرور غير صحيحة. حاول مرة أخرى.</value>
+  </data>
+  <data name="PasswordDialogApplyToRemainingCheck" xml:space="preserve">
+    <value>تطبيق على الأرشيفات المتبقية</value>
+  </data>
+  <data name="PasswordDialogOkButton" xml:space="preserve">
+    <value>موافق</value>
+  </data>
+  <data name="PasswordDialogCancelButton" xml:space="preserve">
+    <value>إلغاء</value>
+  </data>
 
   <!-- About dialog -->
   <data name="AboutDialogTitle" xml:space="preserve">

@@ -373,15 +373,41 @@ AMSI size-cap boundary — see `docs/TASKS.md`'s own section for full detail and
 **T-F187** (canary CI build for toolchain-drift detection) is `[x]` done — a real triggered
 `workflow_dispatch` run confirmed both build jobs green on the current `windows-latest` image.
 **T-F188** (ZIP password decrypt engine — ZipCrypto + WinZip AE, internal only) is `[x]` done —
-tests-first, mutation-checked, 18 new tests, `docs/DECISIONS.md`'s T-F188 entry has the full
-design + a real finding (buffers a whole entry in memory rather than streaming — WinZip AE's HMAC
-requires authenticating the full ciphertext before releasing any plaintext, so this isn't purely
-an oversight, but T-F189 must decide how this interacts with `ProgressStream`/T-F16's byte-
-accurate progress for a large encrypted entry). **T-F189**-**T-F192** (public API/pipeline wiring,
-WinUI/CLI/Shell UX) and **T-F193** (future phase — creating password-protected ZIP, AES-only) are
-not started. **T-F194** (AMSI scan, T-F146, currently can't see inside a password-protected entry
-at all — flagged by the user, real evasion-technique concern for this project's threat model) is
-also new, not started. See `docs/TASKS.md`'s "ZIP Password Support" section. This reverses
+tests-first, mutation-checked, 18 new tests. **T-F189** (public API: `ResolvePasswordAsync` +
+shared `PasswordResolver`, wired into `ZipArchiveService.ExtractAsync`/`TestAsync`/
+`ListEntriesAsync`) is `[x]` done, 2026-09-18 — user chose design option (b) (stream the decrypted
+plaintext out only after authentication succeeds) when asked explicitly before implementation, so
+an encrypted entry now gets real byte-accurate T-F16 progress via `ProgressStream` with zero
+special-casing. Along the way: `IsEncryptedZip` widened to scan the whole central directory
+(fixing a real pre-existing bug where a mixed plain-then-encrypted archive fell through to a
+misleading "corrupted" message instead of the correct password-protected rejection); a Zip64-sized
+entry's declared size no longer risks an uncaught `OutOfMemoryException` (fails closed to the
+ordinary rejection message instead); `ListEntriesAsync` now reports `Crc32 = null` (not a
+misleading `0`) for an AE-2 entry. Full design rationale, two failed fixture-design attempts
+before the traversal hard-invariant test actually proved anything, and the advisor-caught
+Zip64/exception-safety gaps are in `docs/DECISIONS.md`'s T-F189 entry. **T-F190** (WinUI App
+password prompt dialog) is `[~]` implementation complete, 2026-09-18 — `IDialogService.
+ShowPasswordPromptAsync` wired at `MainViewModel`'s 3 real `ExtractOptions` sites (main Extract,
+T-F97 preview, T-F98 nested drill-in), 37-locale localized, agent-driven on-device pass (`windows`
+MCP) confirmed wrong-password retry, correct-password extraction, multi-archive "apply to
+remaining", and both Archive Browser surfaces all work against the real installed MSIX; stays
+`[~]` until the user's own click-through. `canApplyToRemaining` is a `ShowPasswordPromptAsync`
+parameter the App layer computes per call site, not a `PasswordPromptInfo` field — see
+`docs/DECISIONS.md`'s T-F190 entry for why Core can't compute it correctly for every frontend.
+**T-F191** (`Archiver.CLI` real `-p{pwd}` support) is `[~]` implementation complete, 2026-09-18 —
+`-p{pwd}` on `x`/`t` wired onto T-F189's `ResolvePasswordAsync`/`TestAsync` hooks with zero
+`Archiver.Core` diff; a masked interactive prompt (new `CliPasswordPrompt` class, unit-tested via
+a fake key source since the Subprocess test layer always redirects stdin) when no `-p` and a real
+console; a CLI-specific "incorrect password" line added on top of Core's generic message, since
+`PasswordResolver` itself collapses never-wired/cancelled/exhausted-attempts into the same null
+result. Agent-driven verification via `windows` MCP against the real built `pakko.exe` in a
+genuine interactive console confirmed the masked prompt, wrong-password retry hint, and full
+retry-to-success loop all work end to end — see `docs/DECISIONS.md`'s T-F191 entry. Stays `[~]`
+until the user's own terminal click-through. **T-F192** (Shell UX) and **T-F193** (future phase — creating password-protected
+ZIP, AES-only) are not started. **T-F194** (AMSI scan, T-F146, currently can't see inside a
+password-protected entry at all — flagged by the user, real evasion-technique concern for this
+project's threat model) is also new, not started. See `docs/TASKS.md`'s "ZIP Password Support"
+section. This reverses
 `SPEC.md`/`SECURITY.md`'s "Encrypted archives — Out of scope" line, a deliberate user-confirmed
 scope change.
 

@@ -21,6 +21,14 @@ public sealed record ArchiveOptions
     /// it) falls back to Skip — see ConflictResolver.
     /// </summary>
     public Func<ConflictInfo, Task<ConflictDecision>>? ResolveConflictAsync { get; init; }
+
+    /// <summary>
+    /// T-F193 (future phase, AES-only password-protected archive creation) — no caller invokes
+    /// this yet. Added now, alongside <see cref="Models.ExtractOptions.ResolvePasswordAsync"/>,
+    /// so T-F193 adds a call site rather than retrofitting this field's shape (see the
+    /// T-F157→T-F158 precedent in docs/DECISIONS.md).
+    /// </summary>
+    public Func<PasswordPromptInfo, Task<PasswordDecision>>? ResolvePasswordAsync { get; init; }
 }
 
 /// <summary>Whether multiple source items produce one archive or one archive each.</summary>

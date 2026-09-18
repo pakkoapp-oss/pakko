@@ -16,4 +16,8 @@ public interface IDialogService
     Task<bool> ShowCompressionBombConfirmAsync(CompressionBombWarning warning);
     Task<ConflictDecision> ShowConflictDialogAsync(ConflictInfo conflict);
     Task<bool> OpenFileWithDefaultAppAsync(string filePath);
+
+    // T-F190: canApplyToRemaining is a caller/frontend decision (batch shape), not something
+    // Archiver.Core's PasswordPromptInfo carries — see docs/DECISIONS.md's T-F190 entry.
+    Task<PasswordDecision> ShowPasswordPromptAsync(PasswordPromptInfo info, bool canApplyToRemaining);
 }

@@ -30,9 +30,21 @@ public interface IArchiveService
     /// Verifies every entry's CRC-32 against its declared value without writing any files
     /// to disk. Never throws — errors are captured in ArchiveResult.Errors.
     /// </summary>
+    /// <param name="archivePaths">The ZIP archives to verify.</param>
+    /// <param name="progress">Optional overall-progress reporter.</param>
+    /// <param name="resolvePasswordAsync">
+    /// T-F189: invoked once per encrypted archive, mirroring
+    /// <see cref="Models.ExtractOptions.ResolvePasswordAsync"/>. Null (the default — every
+    /// existing caller until T-F191/T-F192 wire this) preserves the pre-T-F189 behavior exactly:
+    /// "password-protected and cannot be tested." Not folded into an options record since
+    /// TestAsync takes a flat path list rather than an Options type; placed before
+    /// <paramref name="cancellationToken"/> (CA1068 — CancellationToken must be last).
+    /// </param>
+    /// <param name="cancellationToken">Cancels the operation.</param>
     Task<ArchiveResult> TestAsync(
         IReadOnlyList<string> archivePaths,
         IProgress<ProgressReport>? progress = null,
+        Func<PasswordPromptInfo, Task<PasswordDecision>>? resolvePasswordAsync = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
