@@ -4285,8 +4285,9 @@ regression from this task, which owns reliability only.
   and submenu (Pakko root, Extract Here/to folder/Open, Add to X.zip/.tar, Test, Scan for threats,
   Hash submenu) on files, folders, multi-selection and a drive root; every dialog (conflict,
   password decrypt/encrypt, summary, bomb warning, About); the CLI commands including the real-
-  console prompts; ZIP and tar-family formats; Ukrainian and English UI. Each defect found becomes
-  its own task, tests first. **Method (user instruction 2026-09-24):** before the first click,
+  console prompts; ZIP and tar-family formats; Ukrainian and English UI. **Discovery only (user
+  decision 2026-09-24):** every defect found, however small, becomes its own task with repro steps
+  and priority; fixes go to a separate follow-up batch (with T-F198-T-F201), tests first. **Method (user instruction 2026-09-24):** before the first click,
   build a coverage table — one row per action or menu item, including every Explorer context-menu
   dropdown submenu and the classic "Show more options" menu: surface, menu path, selection context,
   expected behavior, visual check (icon, text, locale, order, separators, enabled state,
