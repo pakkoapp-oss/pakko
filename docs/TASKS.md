@@ -4227,6 +4227,13 @@ regression from this task, which owns reliability only.
   unconfirmed: the commit phase from `tempDest` to the final destination moves files only
   (`CommitTempDestToActualDest`'s per-file merge), so a directory with no files never arrives.
   Check the other extraction modes and the tar-family engine for the same gap before fixing.
+  **T-F202 discovery (2026-09-24, CI build 1.4.12.9):** the tar-family engine drops empty folders
+  too — `pakko a -ttar` of a folder holding an empty `порожня\` lists the `d` entry, but `pakko x`
+  of that `.tar` does not recreate it. For ZIP, note `ZipArchiveService.ExtractWithSmartFolderingCoreAsync`
+  builds `allFileEntries` with `.Where(e => !e.FullName.EndsWith('/'))` — directory entries are
+  filtered out before extraction even starts, so the commit-phase suspect above may not be the
+  (only) cause. Directory entries also feed the single-root classification (see T-F205), so write
+  the tests against the current root-shape behavior first.
 - **Tests first:** an empty folder (top level and nested) survives a Pakko archive-then-extract
   round trip in every `ExtractMode`; once fixed, restore the on-disk assertion in
   `ZipArchiveServiceEncryptTests.ArchiveAsync_WithPassword_WritesAe2Aes256EntriesThatRoundTrip`.
@@ -4245,6 +4252,14 @@ regression from this task, which owns reliability only.
   4. The title's "build <timestamp>" (a dev freshness check) ships in the Store build too —
      show it only in dev/sideload builds.
   5. A disabled, unchecked CheckBox renders a dash (indeterminate look) — confirm the cause first.
+     Related (T-F202, 2026-09-24): switching Format to TAR leaves "Encrypt with password" checked
+     but disabled, which reads as if encryption will still happen.
+  6. (T-F202) Both "Up" buttons (browse row, destination row) have no UIA name; their tooltip is a
+     hardcoded English "Up" with no `x:Uid`. The three ComboBoxes (Format, Compression, If file
+     exists) have no UIA name either. The Cancel button's UIA name includes the glyph
+     ("✕ Скасувати").
+  7. (T-F202) The browse-mode "confirm extract" dialog for a non-previewable entry (T-F109) has
+     English "Yes"/"No" buttons under a Ukrainian message.
 - **Reported by:** user-requested UI/UX review, 2026-09-24.
 
 ### T-F199 — Archive/browse window layout redesign (+ inline encryption password)
@@ -4259,6 +4274,9 @@ regression from this task, which owns reliability only.
   "encrypted (AES-256)" badge and lock icons, makes "Extract all" the primary action, explains the
   empty CRC column/encryption overhead. Security condition: the inline password is cleared after
   the operation and never persisted.
+  **T-F202 additions (2026-09-24):** the App's decrypt prompt has no "Show password" toggle while
+  Shell's native prompt does — bring the inline redesign to parity. Browse mode also shows no
+  encrypted marker for a ZipCrypto/AES archive until a password is asked for.
 - **Reported by:** user-requested UI/UX review, 2026-09-24. **Depends on:** T-F198.
 
 ### T-F200 — Archive Browser asks for the password again for every previewed file
@@ -4274,6 +4292,9 @@ regression from this task, which owns reliability only.
   already open started a second `Archiver.App` process at identical bounds, hiding the first.
   Check the intended single-instance redirection (T-F83's `AppInstance` handling) before choosing
   a fix: redirect into the running instance, or at least offset/foreground the new window.
+  **T-F202 (2026-09-24):** also reproduces through the file-type association, not only
+  `pakko://`: opening a `.7z` (associated with Pakko) twice started a second `Archiver.App`
+  process at nearly identical bounds.
 - **Reported by:** UI/UX review, 2026-09-24.
 
 ### T-F203 — SonarCloud findings from the T-F160/T-F195/T-F193 pushes
@@ -4291,6 +4312,17 @@ regression from this task, which owns reliability only.
 
 ### T-F202 — Full UI smoke test: every feature, every menu and submenu (batch gate)
 
+- [~] **Progress 2026-09-24 (discovery pass run against CI build 1.4.12.9):** covered — Explorer
+  menu in all 9 selection contexts plus the classic menu, every Explorer command via
+  `Archiver.Shell.exe` (incl. conflict, password, bomb dialogs), both App modes control by control,
+  `.7z` cold/warm activation, every CLI command and most switches, and heavy scenarios on
+  multi-GB real data (3.4 GB ZIP test/extract, 5.1 GB ZIP and TAR create + round trip, all
+  byte-identical to the source). Findings filed as T-F204-T-F225 (plus additions to T-F197,
+  T-F198, T-F199, T-F201). **Still open:** light theme and en-US (need a system setting change),
+  keyboard-only pass (focus not reliably visible to automation), tray icon, the CLI in a real
+  console (masked `-p`, Y/N/A/S/U/Q, Ctrl+C, PowerShell 5.1). Caveat: the test machine's ANSI code
+  page is 65001, so code-page bugs 1251/1252 users would hit are invisible here. Coverage table,
+  results and the N-number-to-task mapping: batch plan section 5.
 - [ ] **Status:** open — a required gate for closing this batch (user instruction 2026-09-24: the
   app is live on the Microsoft Store and earlier self-testing missed real defects). Agent-driven via
   `windows` MCP against the freshly deployed MSIX, with a written checklist and a pass/fail per item:
@@ -4313,6 +4345,279 @@ regression from this task, which owns reliability only.
   documented as deliberate in `docs/CLI.md` or filed as a defect. Also carries the diagram gap from DECISIONS' T-F193 entry (no
   diagram models `ArchiveAsync` routing; diagram 3 has no encrypted-entry branch).
 - **Reported by:** user instruction, 2026-09-24.
+
+### T-F202 findings (T-F204 onward) — discovery pass 2026-09-24
+
+All found against the CI build of commit 8952c12 (MSIX 1.4.12.9 x64, CI run 36020977383, and that
+run's `pakko.exe` win-x64), agent-driven via the `windows` MCP plus direct `Archiver.Shell.exe`
+launches with the exact arguments each `IExplorerCommand::Invoke` builds. Paths are shown relative
+(`<scratch>\...`). Priority: **P0** = data loss/corruption or a broken core flow, **P1** = broken
+or misleading feature, **P2** = polish/consistency. Fixes belong to the follow-up fix batch, tests
+first (user decision 2026-09-24). Items marked **decision** reverse or touch an earlier documented
+choice — ask the user before implementing, like T-F118/T-F156 were.
+
+### T-F204 — tar.exe paths: filenames outside the system code page break or silently corrupt (P0)
+
+- [ ] **Status:** open. The machine under test runs ANSI code page 65001 (UTF-8), so Cyrillic and
+  `é` pass; a check mark (U+2713) does not:
+  - **Create:** `pakko a -ttar out.tar s3` where `s3\` holds `tick <U+2713>.txt` -> exit 2,
+    "tar.exe failed to create archive: a s3". Explorer "Add to X.tar" and the App (Format = TAR)
+    fail the same way. A direct `C:\Windows\System32\tar.exe -cf x.tar s3` crashes with
+    0xC0000005 (tar.exe 3.8.8). No partial output is left behind (good).
+  - **Extract 7z:** a `.7z` made by 7-Zip holding that file -> `pakko x`/`l` exit 2, "Archive
+    entry has empty or unreadable filename ... skipping". The whole archive is refused.
+  - **Extract tar (silent corruption):** a `.tar` made by 7-Zip holding that file -> `pakko x`
+    exits 0 and writes the file as `tick тЬУ.txt` (UTF-8 bytes re-read in another code page).
+  - **List:** `pakko l cafe.7z` shows `cafe.txt` while `pakko x` writes `café.txt`.
+  Re-test on an en-US machine with a legacy ANSI code page (1252): Cyrillic names probably break
+  there too. Decide the fix shape: pass `--options hdrcharset=UTF-8`/set the tar.exe process code
+  page, pre-validate names with a clear error, or refuse creation up front.
+- **Tests first:** round-trip names with U+2713, Cyrillic, and `é` through tar create/extract/list
+  and 7z extract/list (integration layer, real tar.exe).
+- **Reported by:** T-F202, 2026-09-24.
+
+### T-F205 — SingleFolder extraction drops an archive's only root folder (P1, decision)
+
+- [ ] **Status:** open. `ExtractionDestinationPlanner.Resolve` returns `StripRootPrefix = true`
+  for `(alreadyIsolated: false, RootShape.SingleFolder)`, so in SingleFolder mode the archive's
+  single root folder name is lost and its contents spill straight into the destination.
+  Repro: `singleroot.zip` = `root/in/c.txt`; Explorer "Extract here" (flat, `--extract-flat`)
+  -> `<dir>\in\c.txt` (no `root\`). `pakko x -o<d> out.zip` (entries `src/...`) -> `<d>\a.txt`,
+  `<d>\sub\...`; real 7-Zip `7za x` -> `<d>\src\...`. `docs/DECISIONS.md` T-F156 calls
+  single-root unwrapping "still correct and unaffected", so this is long-standing, not a T-F156
+  regression — but it contradicts `docs/CLI.md`'s `x` row ("Extract with full paths") and
+  NanaZip/7-Zip behavior. Related: "Extract here (smart)" renames the root to the archive name
+  (`singleroot\in\c.txt` instead of `root\in\c.txt`).
+  Real-data confirmation (S3, 2026-09-24): Explorer "Add to SICHER! B2 CD.zip" on a 5.1 GB,
+  304-file folder, then `pakko x -o<x>` -> all 304 files byte-identical, but under `<x>\` directly;
+  `<x>\SICHER! B2 CD\` does not exist.
+- **Decision needed:** keep the root folder in SingleFolder mode (7-Zip parity) or document the
+  strip. Check which existing tests encode today's behavior before changing it.
+- **Reported by:** T-F202, 2026-09-24.
+
+### T-F206 — `pakko x` without `-o` extracts next to the archive, not into the current directory (P1, decision)
+
+- [ ] **Status:** open. `Archiver.CLI/Program.cs` defaults the destination to
+  `Path.GetDirectoryName(archive)`; 7-Zip extracts into the current directory. Repro: from an empty
+  folder, `pakko x ..\out.zip` -> nothing in the current folder; files land beside `out.zip`
+  (and, with T-F205, without their root folder). Undocumented in `docs/CLI.md`. Either adopt cwd
+  (7z habit) or document the divergence prominently in `--help` and CLI.md.
+- **Reported by:** T-F202, 2026-09-24.
+
+### T-F207 — "Delete after operation" deletes sources permanently, with no confirmation (P1)
+
+- [ ] **Status:** open. App, archive mode: tick "Видалити після операції", click Archive -> the
+  source folder is deleted outright; it is not in the Recycle Bin, and no confirmation appears
+  before or after. T-F199 already asks for a warning; this task covers the irreversibility itself
+  (send to Recycle Bin via `FileSystem.DeleteDirectory(..., RecycleOption.SendToRecycleBin)` or
+  equivalent, or an explicit confirm naming the item count). Check `DeleteArchiveAfterExtraction`
+  (extract mode) for the same.
+- **Reported by:** T-F202, 2026-09-24.
+
+### T-F208 — Archiver.Shell dialog titles and size units are English in a localized UI (P1)
+
+- [ ] **Status:** open. Under uk-UA: progress/result titles "Testing: X", "Testing 2 archives",
+  "Scanning: X", "Extracting: X", "Archiving: X", "CRC-32: 2 files"; hash result "Розмір: 6 B
+  (6 bytes)". T-F163 localized the result bodies but not the titles. Move to `.resx`, 37 locales.
+- **Reported by:** T-F202, 2026-09-24.
+
+### T-F209 — Archiver.Core error/skip messages are always English (P2, architecture)
+
+- [ ] **Status:** open. Under uk-UA every Core-originated reason is English: "File has ZIP
+  signature but appears corrupted or incomplete.", "GZip format is not supported. Only ZIP-based
+  formats are supported.", "Suspicious compression ratio (1028:1, ...) ... declined",
+  "File is not a recognized archive format and cannot be extracted.", "No entries were extracted
+  from this archive — every entry was skipped." Core has no `ResourceLoader` by hard constraint,
+  so this needs a design (error codes/keys in Core, text in each frontend), not string edits.
+- **Reported by:** T-F202, 2026-09-24.
+
+### T-F210 — Browse mode is a dead end once "Up" leaves the archive (P1, decision)
+
+- [ ] **Status:** open. After "Up" climbs past the archive root into real folders (T-F107,
+  deliberate), there is no way back to the create/pending-list mode (Add files, Archive): no
+  button, no menu; only closing the window. Both Extract buttons are disabled with no hint, and
+  "Open destination"/"Delete after operation" stay visible where they do nothing. T-F107 removed
+  the exit on purpose — decide how the user returns to create mode.
+- **Reported by:** T-F202, 2026-09-24.
+
+### T-F211 — A successful App operation shows no visible outcome (P1)
+
+- [ ] **Status:** open. On success with no errors/skips, `MainViewModel` sets "Розпаковано за N с
+  — файлів: M" and then, a few lines later, unconditionally resets `StatusMessage` to
+  "Готово" (`MainViewModel.cs` ~line 702, and the matching reset in `ArchiveAsync` ~line 603);
+  `ShowOperationSummaryAsync` returns early when there is nothing to report. Net effect: the user
+  never sees what happened. Repro: browse `enc.zip`, Extract all, password -> status "Готово";
+  files actually landed as `a (1).txt`/`b (1).txt` (Rename into an existing folder) with no
+  mention anywhere. T-F70 made the reset deliberate for busy-state reasons; keep the outcome text
+  visible (or use the Row 4 outcome subtitle) without breaking T-F70.
+- **Reported by:** T-F202, 2026-09-24.
+
+### T-F212 — "Extract" is enabled when the pending list holds only folders (P1)
+
+- [ ] **Status:** open. App create mode with two folders in the list: the Extract button is
+  enabled; clicking it runs and reports "Помилки (2): s1 — File is not a recognized archive format
+  and cannot be extracted." (a folder called a "File"). Disable Extract unless at least one listed
+  item is a supported archive (the Explorer menu already applies that rule), or explain why.
+- **Reported by:** T-F202, 2026-09-24.
+
+### T-F213 — Auto archive name for several sources is "archive", not the first item's name (P1)
+
+- [ ] **Status:** open. App create mode, One archive, Name left empty (placeholder "Авто (за назвою
+  першого файлу/папки)"), two folders `s2` + `s4` -> `archive.zip` (TAR: `archive.tar`). The
+  placeholder promises `s2.zip`. Either follow the placeholder or change it. Explorer multi-select
+  names the archive after the parent folder (`M.zip`), which is fine; for a drive root it is
+  `archive.zip` by design (T-F99/T-F100) — a drive letter/label name would be friendlier (P2).
+- **Reported by:** T-F202, 2026-09-24.
+
+### T-F214 — Tar-family listing shows no modified date and "0" packed size (P2)
+
+- [ ] **Status:** open. `pakko l sr.tar.gz`/`multi.7z` and the Archive Browser show Modified "-"/"—"
+  and Compressed `0`, although `tar.exe -tvf` prints the dates. Parse the verbose listing's
+  mtime; show "—" (not 0) where packed size is unknown.
+- **Reported by:** T-F202, 2026-09-24.
+
+### T-F215 — tar.exe failure messages show its verbose stdout, stderr is mojibake (P2)
+
+- [ ] **Status:** open. A failed tar creation reports "tar.exe failed to create archive: a s3 / a
+  s3/a.txt / ..." — the `-v` progress lines, not the reason; the first run also showed tar.exe's
+  stderr in the wrong code page (`a src/???????`). Surface the actual stderr, decoded correctly.
+- **Reported by:** T-F202, 2026-09-24.
+
+### T-F216 — Shell "Test archive" on a mixed selection shows two modal dialogs (P2)
+
+- [ ] **Status:** open. `--test multi.zip sr.tar.gz` -> first "Пропущено (1): sr.tar.gz: GZip
+  format is not supported...", then a second box "У архіві (архівах) не виявлено помилок." One
+  combined result dialog. Similarly, after the user explicitly chose "Skip, apply to all" in the
+  conflict dialog, Shell still warns "No entries were extracted — every entry was skipped".
+- **Reported by:** T-F202, 2026-09-24.
+
+### T-F217 — Shell declines a compression bomb with no way forward (P2)
+
+- [ ] **Status:** open. Explorer "Extract here" on a 1029:1 ZIP -> "Пропущено (1): Suspicious
+  compression ratio ... declined as a precaution" — no confirm (the App asks via
+  `ShowCompressionBombConfirmAsync`), no hint how to proceed. Safe, but a dead end for a
+  legitimate highly-compressible archive. Offer the same confirm, or tell the user to open it in
+  Pakko. Check T-F94's entry for whether Shell-without-confirm was an explicit choice.
+- **Reported by:** T-F202, 2026-09-24.
+
+### T-F218 — Title "build <timestamp>" is the MSIX install time, not the build time (P2)
+
+- [ ] **Status:** open. The CI package (run finished 18:43 local) showed "build 2026-09-24
+  18:47:17", which is the install/staging time of `Archiver.App.dll` under `WindowsApps`. The
+  freshness check `CLAUDE.md` prescribes before on-device verification therefore proves "freshly
+  installed", not "freshly built". Embed the real build time (or commit SHA) at build time.
+  Related to T-F198 item 4 (hide it in Store builds). `CLAUDE.md` wording needs the user's OK.
+- **Reported by:** T-F202, 2026-09-24.
+
+### T-F219 — "Hash..." ignores the pending list and is SHA-256 only (P2)
+
+- [ ] **Status:** open. With items already in the list, "Хеш..." opens a separate file picker; the
+  result dialog shows only SHA-256 with no Copy button. Extends T-F164 (CRC-32 missing, not routed
+  through `FileHashService`): hash the listed items, offer both algorithms, add Copy.
+- **Reported by:** T-F202, 2026-09-24.
+
+### T-F220 — UI wording and small UX inconsistencies (P2)
+
+- [ ] **Status:** open. Each sub-item is small; split when fixing if preferred.
+  1. Terminology: Explorer says "Видобути…"/"Стиснути…"/"Тестувати архів"; the App says
+     "Розпакувати"/"Архів". Pick one vocabulary.
+  2. Conflict dialogs (Shell and App): "Застосувати до всіх решти конфліктів" is ungrammatical
+     ("до решти конфліктів"/"до всіх інших конфліктів"); neither shows sizes/dates of the two
+     files; the App dialog has no "cancel the whole operation" button.
+  3. The row context menu's "Видалити" only removes the row from the list, while "Видалити після
+     операції" deletes files — use "Прибрати зі списку".
+  4. Column sorting works but shows no direction indicator.
+  5. The status line for a nested-archive scan shows the internal temp path
+     (`%TEMP%\PakkoNestedArchive\<guid>\l4.zip`) instead of `outer.zip > ... > l4.zip`.
+- **Reported by:** T-F202, 2026-09-24.
+
+### T-F221 — CLI error and help messages (P2)
+
+- [ ] **Status:** open.
+  1. Missing input: `t missing.tar.gz`/`x nosuch.zip` -> "File is not a recognized archive
+     format"; `l`/`h` -> raw .NET "Could not find file '<full path>'". Say "not found".
+  2. `t enc.zip` (piped, no `-p`) -> "password-protected and cannot be tested" with no hint to
+     use `-p`; with a wrong `-p`, two lines, the second contradicting the first.
+  3. `x` onto existing files when piped -> "every entry was skipped", exit 1, with no reason and
+     no hint (`-aoa`/`-y`).
+  4. Empty stdin: `l -si` -> "Central Directory corrupt" plus the internal staging path
+     `%TEMP%\Archiver.CLI.Stdin\<guid>\stdin.bin`; `t/x -si` -> "stdin.bin: not a recognized
+     archive". Say "stdin was empty / not an archive".
+  5. `a -so` with stdout on a console writes binary into the terminal; 7-Zip/gzip/zstd refuse.
+  6. `a -t<type> name.out` silently changes the name (`name.tar`, `x.gz` -> `x.gz.tar.gz`);
+     7-Zip writes exactly the given name. Fix or document.
+  7. `l` has no encrypted marker (7-Zip shows `+`/an Encrypted column).
+  8. `pakko i` columns are misaligned ("(always)" vs "(supported)").
+  9. No progress output at all on long operations (`a`/`x` on multi-GB input stay silent for
+     tens of seconds); 7-Zip prints a percentage, curl/gh a TTY progress bar. Show progress on
+     stderr only when it is a console.
+  10. `h <folder>` prints absolute paths; 7-Zip prints paths relative to the given folder.
+- **Reported by:** T-F202, 2026-09-24.
+
+### T-F222 — CLI version and docs drift (P2)
+
+- [ ] **Status:** open.
+  1. A non-tag CI build reports `pakko 1.4.2` (the stale `<Version>` default in
+     `Archiver.CLI.csproj`) — indistinguishable from the real v1.4.2. Report e.g.
+     `1.4.12-dev+<sha>` for non-release builds.
+  2. `docs/CLI.md`: the `i` row still says "Not implemented" (it works); the `h` row mentions the
+     "Хеш-суми" submenu, flattened by T-F128; `x` row claims full paths (see T-F205/T-F206);
+     `--help` lists `-ao{a|s|u}` while the error text says "a, s, u, or t" (`-aot` is rejected).
+  3. `docs/TASKS.md` T-F202 text still says "Hash submenu".
+- **Reported by:** T-F202, 2026-09-24.
+
+### T-F224 — Minimum window height 780 exceeds small screens (P1)
+
+- [ ] **Status:** open. `MainWindow.xaml.cs` sets `PreferredMinimumWidth = 900`,
+  `PreferredMinimumHeight = 780` (T-F106's blank-row fix). On a 1366x768 display at 100% (work
+  area ~728 px after the taskbar) the window probably cannot fit, leaving the bottom rows
+  (status, Cancel) unreachable — **hypothesis, not yet reproduced** on such a display; check
+  1920x1080 at 150% (1280x720 effective) too. Verified here only that the window refuses to shrink
+  below 886x773. Needs a layout that scrolls or compresses instead of a
+  hard minimum — likely part of T-F199's redesign, but the regression risk is P1 on its own.
+- **Reported by:** T-F202, 2026-09-24.
+
+### T-F225 — Folder hash "data and names" never matches 7-Zip/NanaZip (P1)
+
+- [ ] **Status:** open. DataSum matches the vendored `7za.exe h` exactly, but NamesSum differs for
+  every folder tried — including a folder holding a single ASCII file with no subfolders:
+  `one\a.txt` -> Pakko `CRC32 for data and names: 680B36C2`, 7za `FBAAC368-00000000`; two files
+  -> `A2D28CEB-00000000` vs `44372226-00000002`; a real 27-file CD folder (SHA-256) ->
+  `6cfbbed9...-0000000E` vs `88737e7e...-0000000C`. `docs/DECISIONS.md`'s T-F128 entry documents a
+  divergence only for *subfolder* objects, but 7-Zip also counts the root folder itself as an item,
+  so no folder ever matches; the item-count suffix differs too, and a one-item result drops the
+  `-00000000` suffix 7-Zip always prints. `docs/CLI.md` still claims "NanaZip-compatible, verified
+  against the vendored 7za.exe". Either reproduce 7-Zip exactly (including directory items) or
+  correct the docs and label the value as Pakko-specific. Affects `pakko h`, Explorer Hash, and
+  the App.
+- **Tests first:** a parity test against the vendored `7za.exe h` for a one-file folder, a flat
+  folder, and a nested folder.
+- **Reported by:** T-F202 heavy scenario S5, 2026-09-24.
+
+### T-F226 — Architecture review of the whole implementation against our rules (next research step)
+
+- [ ] **Status:** planned 2026-09-24, not started; discovery only, like T-F202. A senior-architect
+  review of all projects against the written rules (global `CLAUDE.md` Code Behavior,
+  `~/.claude/dev-practices.md` sections 2-5, 7, 8, `cross-language-style.md`, this repo's Hard
+  Constraints/Do Not, `docs/CONVENTIONS.md`, `SECURITY.md`, `docs/ARCHITECTURE.md`,
+  `docs/DIAGRAMS.md`). Checks: resources, bounds provable from the line, immutability/static state,
+  recursion over untrusted input, the "never throw" error contract, concurrency and UI marshaling,
+  the three safety legs, architecture boundaries and duplicated decision logic (a four-frontend
+  parity matrix), test categories and isolation level, docs/diagrams ground truth, CI tier (fuzzing,
+  sanitizers, dependency audit), the `pakko://`/file-association activation surface as untrusted
+  input, and code-page handling at every process/console boundary (the test machine runs ANSI
+  65001, which hides code-page bugs). First pass: sweep for siblings of the bug classes T-F202 found
+  (T-F204, T-F205, T-F207, T-F211). Done = every component x check cell is checked with
+  `file:line`, filed as a finding (T-F227 onward), or N/A with a reason. Full method: the batch plan's
+  section 6.
+- **Reported by:** user request, 2026-09-24.
+
+### T-F223 — Diagram gap from T-F193 (P2)
+
+- [ ] **Status:** open. Carried by T-F202 from `docs/DECISIONS.md`'s T-F193 entry: no diagram in
+  `docs/DIAGRAMS.md` models `ArchiveAsync` routing (ZIP sequential/parallel/encrypted vs tar),
+  and diagram 3 has no encrypted-entry branch. Validate with mermaid-cli per the DoD.
+- **Reported by:** T-F202, 2026-09-24.
 
 ---
 
