@@ -4607,6 +4607,10 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   `static` mutable state (`FileHashService._threadPoolWarmed` is a process-wide one-shot latch around
   a process-wide setting), `ArchiveTreeIndex` recursion (iterative; memory issue is T-F237),
   `QuotePath` quoting, Authenticode verification, Job Object/attribute-list lifetimes.
+  Performance (one run of `Category=Slow`, all 10 pass within the 3x tolerance): Archive/
+  ManySmallFiles 1.61, Archive/Hybrid 2.47, Extract/ManySmallFiles 2.08, Extract/Hybrid 2.33,
+  Hash 0.98 (Pakko/7za). The archive ratios are well above T-F35's recorded ~1.0/~1.3 — rerun
+  on an idle machine before calling it a regression.
   Original plan text follows. Discovery only, like T-F202. A senior-architect
   review of all projects against the written rules (global `CLAUDE.md` Code Behavior,
   `~/.claude/dev-practices.md` sections 2-5, 7, 8, `cross-language-style.md`, this repo's Hard
