@@ -394,7 +394,9 @@ Won't-fix categories recorded so far:
   SHA-256/384/512 would derive a different key/tag from the same password and simply fail to
   decrypt any real WinZip-AES-encrypted archive. Suppressed via `#pragma warning disable
   CA5379, CA5350` at the exact two call sites (both `external_roslyn` rules — see this section's
-  mechanism note above).
+  mechanism note above). SonarCloud's own `csharpsquid:S5344` (PBKDF2 iterations) and `S4790`
+  (weak hash) flag the same two lines for the same spec-mandated reason and carry `// NOSONAR`
+  markers instead, per the same mechanism note — T-F193's AES writer follows both conventions.
 - **S1135 (complete this TODO) on `ArchiveEntrySecurity.cs:56` and `.github/workflows/build.yml`**:
   both TODOs are legitimate, already-tracked future work (not abandoned placeholders) — left as
   plain TODOs, not suppressed. Don't "fix" these by deleting the comment or completing the task

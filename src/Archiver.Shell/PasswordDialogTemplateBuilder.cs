@@ -81,7 +81,7 @@ internal static class PasswordDialogTemplateBuilder
         SzOrOrdEmpty(); // windowClass
         Str(title);
         // DS_SETFONT block — the EXTENDED form carries pointsize + weight + italic + charset
-        // before the typeface (the non-extended DLGTEMPLATE form only has pointsize + typeface;
+        // before the typeface (the non-extended DLGTEMPLATE form only has pointsize and typeface —
         // mixing the two produces a dialog that silently fails to create).
         U16(9);   // pointsize
         U16(400); // weight (FW_NORMAL)
@@ -90,7 +90,7 @@ internal static class PasswordDialogTemplateBuilder
         Str("MS Shell Dlg");
 
         int realItemCount = 0;
-        void AddItem(uint style, short x, short y, short cx, short cy, int id, ushort classAtom, string text)
+        void AddItem(uint style, short x, short y, short cx, short cy, int id, ushort classAtom, string text) // NOSONAR: S107 — one parameter per DLGITEMTEMPLATEEX field, not a clustering candidate
         {
             Align4();
             U32(0); // helpID

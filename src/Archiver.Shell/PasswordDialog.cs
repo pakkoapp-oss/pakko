@@ -57,65 +57,13 @@ public static class PasswordDialog
             okLabel: PasswordDialogLocalizer.Get("PasswordDialogOkButton"),
             cancelLabel: PasswordDialogLocalizer.Get("PasswordDialogCancelButton"));
 
-        string editText = string.Empty;
-        bool applyChecked = false;
-        int buttonResult = IdCancel;
+        var state = new DialogState();
 
-        NativeMethods.DialogProcDelegate proc = (hwndDlg, msg, wParam, lParam) =>
+        NativeMethods.DialogProcDelegate proc = (hwndDlg, msg, wParam, lParam) => msg switch
         {
-            switch (msg)
-            {
-                case NativeMethods.WM_INITDIALOG:
-                    // Plain SetForegroundWindow is NOT reliable from this call site — the caller
-                    // runs on a background thread while Archiver.Shell's own IProgressDialog is
-                    // already showing (see RunWithProgressWindowAsync), and Windows' foreground-
-                    // lock heuristic silently blocks a background process from stealing focus.
-                    // Confirmed empirically in a Phase 0 spike (DECISIONS.md): without the
-                    // SetWindowPos(HWND_TOPMOST) below, the dialog was created successfully
-                    // (IsWindowVisible true) but stayed behind every other window, unreachable,
-                    // until it timed out. HWND_TOPMOST only changes Z-order, which a window's own
-                    // owning process can always do — no foreground-donation permission needed.
-                    NativeMethods.SetWindowPos(hwndDlg, NativeMethods.HWND_TOPMOST, 0, 0, 0, 0,
-                        NativeMethods.SWP_NOMOVE | NativeMethods.SWP_NOSIZE | NativeMethods.SWP_SHOWWINDOW);
-                    NativeMethods.SetForegroundWindow(hwndDlg);
-                    NativeMethods.SetActiveWindow(hwndDlg);
-                    NativeMethods.BringWindowToTop(hwndDlg);
-                    NativeMethods.FlashWindow(hwndDlg, true);
-                    NativeMethods.SetFocus(NativeMethods.GetDlgItem(hwndDlg, PasswordDialogTemplateBuilder.IdEdit));
-                    return IntPtr.Zero; // we set focus ourselves -> return FALSE
-
-                case NativeMethods.WM_COMMAND:
-                    int controlId = (int)(wParam.ToInt64() & 0xFFFF);
-                    int notifyCode = (int)((wParam.ToInt64() >> 16) & 0xFFFF);
-
-                    if (controlId == PasswordDialogTemplateBuilder.IdShowPassword && notifyCode == NativeMethods.BN_CLICKED)
-                    {
-                        IntPtr editHwnd = NativeMethods.GetDlgItem(hwndDlg, PasswordDialogTemplateBuilder.IdEdit);
-                        bool nowChecked = NativeMethods.IsDlgButtonChecked(hwndDlg, PasswordDialogTemplateBuilder.IdShowPassword) != 0;
-                        NativeMethods.SendMessage(editHwnd, NativeMethods.EM_SETPASSWORDCHAR, nowChecked ? IntPtr.Zero : (IntPtr)'*', IntPtr.Zero);
-                        NativeMethods.InvalidateRect(editHwnd, IntPtr.Zero, true);
-                        return (IntPtr)1;
-                    }
-
-                    if (controlId == IdOk || controlId == IdCancel)
-                    {
-                        if (controlId == IdOk)
-                        {
-                            var buffer = new char[256];
-                            int length = NativeMethods.GetDlgItemText(hwndDlg, PasswordDialogTemplateBuilder.IdEdit, buffer, buffer.Length);
-                            editText = new string(buffer, 0, length);
-                            if (canApplyToRemaining)
-                                applyChecked = NativeMethods.IsDlgButtonChecked(hwndDlg, PasswordDialogTemplateBuilder.IdApplyToRemaining) != 0;
-                        }
-                        buttonResult = controlId;
-                        NativeMethods.EndDialog(hwndDlg, controlId);
-                        return (IntPtr)1;
-                    }
-                    return IntPtr.Zero;
-
-                default:
-                    return IntPtr.Zero;
-            }
+            NativeMethods.WM_INITDIALOG => OnInitDialog(hwndDlg),
+            NativeMethods.WM_COMMAND => OnCommand(hwndDlg, wParam, canApplyToRemaining, state),
+            _ => IntPtr.Zero,
         };
 
         IntPtr templatePtr = Marshal.AllocHGlobal(template.Length);
@@ -131,7 +79,66 @@ public static class PasswordDialog
             GC.KeepAlive(proc);
         }
 
-        return MapResult(buttonResult, editText, applyChecked);
+        return MapResult(state.ButtonResult, state.EditText, state.ApplyChecked);
+    }
+
+    // What the dialog procedure records for ShowCore to read back once DialogBoxIndirectParam returns.
+    private sealed class DialogState
+    {
+        public string EditText { get; set; } = string.Empty;
+        public bool ApplyChecked { get; set; }
+        public int ButtonResult { get; set; } = IdCancel;
+    }
+
+    private static IntPtr OnInitDialog(IntPtr hwndDlg)
+    {
+        // Plain SetForegroundWindow is NOT reliable from this call site — the caller
+        // runs on a background thread while Archiver.Shell's own IProgressDialog is
+        // already showing (see RunWithProgressWindowAsync), and Windows' foreground-
+        // lock heuristic silently blocks a background process from stealing focus.
+        // Confirmed empirically in a Phase 0 spike (DECISIONS.md): without the
+        // SetWindowPos(HWND_TOPMOST) below, the dialog was created successfully
+        // (IsWindowVisible true) but stayed behind every other window, unreachable,
+        // until it timed out. HWND_TOPMOST only changes Z-order, which a window's own
+        // owning process can always do — no foreground-donation permission needed.
+        NativeMethods.SetWindowPos(hwndDlg, NativeMethods.HWND_TOPMOST, 0, 0, 0, 0,
+            NativeMethods.SWP_NOMOVE | NativeMethods.SWP_NOSIZE | NativeMethods.SWP_SHOWWINDOW);
+        NativeMethods.SetForegroundWindow(hwndDlg);
+        NativeMethods.SetActiveWindow(hwndDlg);
+        NativeMethods.BringWindowToTop(hwndDlg);
+        NativeMethods.FlashWindow(hwndDlg, true);
+        NativeMethods.SetFocus(NativeMethods.GetDlgItem(hwndDlg, PasswordDialogTemplateBuilder.IdEdit));
+        return IntPtr.Zero; // we set focus ourselves -> return FALSE
+    }
+
+    private static IntPtr OnCommand(IntPtr hwndDlg, IntPtr wParam, bool canApplyToRemaining, DialogState state)
+    {
+        int controlId = (int)(wParam.ToInt64() & 0xFFFF);
+        int notifyCode = (int)((wParam.ToInt64() >> 16) & 0xFFFF);
+
+        if (controlId == PasswordDialogTemplateBuilder.IdShowPassword && notifyCode == NativeMethods.BN_CLICKED)
+        {
+            IntPtr editHwnd = NativeMethods.GetDlgItem(hwndDlg, PasswordDialogTemplateBuilder.IdEdit);
+            bool nowChecked = NativeMethods.IsDlgButtonChecked(hwndDlg, PasswordDialogTemplateBuilder.IdShowPassword) != 0;
+            NativeMethods.SendMessage(editHwnd, NativeMethods.EM_SETPASSWORDCHAR, nowChecked ? IntPtr.Zero : (IntPtr)'*', IntPtr.Zero);
+            NativeMethods.InvalidateRect(editHwnd, IntPtr.Zero, true);
+            return (IntPtr)1;
+        }
+
+        if (controlId != IdOk && controlId != IdCancel)
+            return IntPtr.Zero;
+
+        if (controlId == IdOk)
+        {
+            var buffer = new char[256];
+            int length = NativeMethods.GetDlgItemText(hwndDlg, PasswordDialogTemplateBuilder.IdEdit, buffer, buffer.Length);
+            state.EditText = new string(buffer, 0, length);
+            if (canApplyToRemaining)
+                state.ApplyChecked = NativeMethods.IsDlgButtonChecked(hwndDlg, PasswordDialogTemplateBuilder.IdApplyToRemaining) != 0;
+        }
+        state.ButtonResult = controlId;
+        NativeMethods.EndDialog(hwndDlg, controlId);
+        return (IntPtr)1;
     }
 
     private static class NativeMethods

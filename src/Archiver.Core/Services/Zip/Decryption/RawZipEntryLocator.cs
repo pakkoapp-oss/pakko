@@ -45,13 +45,9 @@ internal static class RawZipEntryLocator
     {
         byte[] targetBytes = Encoding.UTF8.GetBytes(entryFullName);
 
-        foreach (var record in ReadCentralDirectory(zipStream))
-        {
-            if (record.NameBytes.AsSpan().SequenceEqual(targetBytes))
-                return BuildFromLocalHeader(zipStream, record.LocalHeaderOffset, record.Crc32, record.CompressedSize);
-        }
-
-        throw new FileNotFoundException($"Entry not found in ZIP central directory: {entryFullName}");
+        var record = ReadCentralDirectory(zipStream).FirstOrDefault(r => r.NameBytes.AsSpan().SequenceEqual(targetBytes))
+            ?? throw new FileNotFoundException($"Entry not found in ZIP central directory: {entryFullName}");
+        return BuildFromLocalHeader(zipStream, record.LocalHeaderOffset, record.Crc32, record.CompressedSize);
     }
 
     /// <summary>
@@ -113,7 +109,7 @@ internal static class RawZipEntryLocator
             ReadUInt16(zipStream); // version made by
             ReadUInt16(zipStream); // version needed
             ushort generalPurposeFlag = ReadUInt16(zipStream);
-            ushort method = ReadUInt16(zipStream);
+            ReadUInt16(zipStream); // compression method — the local header's copy is the one used
             ReadUInt16(zipStream); // last mod time
             ReadUInt16(zipStream); // last mod date
             uint crc32 = ReadUInt32(zipStream);

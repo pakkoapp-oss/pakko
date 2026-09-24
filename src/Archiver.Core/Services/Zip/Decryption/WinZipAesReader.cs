@@ -64,7 +64,7 @@ internal static class WinZipAesReader
         // ZIP. See docs/CONVENTIONS.md's Static-Analysis Won't-Fix Conventions.
 #pragma warning disable CA5379, CA5350
         using var pbkdf2 = new Rfc2898DeriveBytes(
-            Encoding.UTF8.GetBytes(password), salt, Pbkdf2Iterations, HashAlgorithmName.SHA1);
+            Encoding.UTF8.GetBytes(password), salt, Pbkdf2Iterations, HashAlgorithmName.SHA1); // NOSONAR: S5344 — 1000 iterations are fixed by the WinZip AE spec (see CONVENTIONS.md)
         byte[] derived = pbkdf2.GetBytes(keyLength * 2 + PasswordVerificationLength);
         byte[] encryptionKey = derived[..keyLength];
         byte[] authenticationKey = derived[keyLength..(keyLength * 2)];
@@ -76,7 +76,7 @@ internal static class WinZipAesReader
             return WinZipAesDecryptOutcome.WrongPassword;
         }
 
-        using var hmac = new HMACSHA1(authenticationKey);
+        using var hmac = new HMACSHA1(authenticationKey); // NOSONAR: S4790 — HMAC-SHA1 is fixed by the WinZip AE spec (see CONVENTIONS.md)
 #pragma warning restore CA5379, CA5350
         byte[] computedTag = hmac.ComputeHash(ciphertext);
         if (!computedTag.AsSpan(0, AuthenticationCodeLength).SequenceEqual(storedAuthenticationCode))

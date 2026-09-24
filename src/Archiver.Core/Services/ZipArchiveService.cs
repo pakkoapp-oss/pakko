@@ -1085,7 +1085,8 @@ public sealed class ZipArchiveService : IArchiveService
         }
         finally
         {
-            rawArchiveStream?.Dispose();
+            if (rawArchiveStream is not null)
+                await rawArchiveStream.DisposeAsync().ConfigureAwait(false);
         }
     }
 
