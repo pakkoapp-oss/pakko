@@ -4217,6 +4217,21 @@ regression from this task, which owns reliability only.
   (2/3 and 3/3 red). Installed-build smoke: 4 concurrent `./` archives, 200 files each.
 - **Reported by:** agent observation, 2026-09-24. **Depends on:** none.
 
+### T-F197 — ZIP extraction drops empty folders
+
+- [ ] **Status:** open — found 2026-09-24 while writing T-F193 phase 2's round-trip tests;
+  pre-existing and unrelated to encryption. Pakko writes an empty folder as a `name/` entry
+  (T-F66), but extracting that archive back leaves no folder on disk. Reproduced with a plain,
+  unencrypted archive of `src/{empty/, f0.txt, f1.txt}` extracted in `ExtractMode.SingleFolder`,
+  through both the sequential (2 files) and the parallel (80 files) writer. Leading suspect,
+  unconfirmed: the commit phase from `tempDest` to the final destination moves files only
+  (`CommitTempDestToActualDest`'s per-file merge), so a directory with no files never arrives.
+  Check the other extraction modes and the tar-family engine for the same gap before fixing.
+- **Tests first:** an empty folder (top level and nested) survives a Pakko archive-then-extract
+  round trip in every `ExtractMode`; once fixed, restore the on-disk assertion in
+  `ZipArchiveServiceEncryptTests.ArchiveAsync_WithPassword_WritesAe2Aes256EntriesThatRoundTrip`.
+- **Reported by:** agent observation, 2026-09-24. **Depends on:** none.
+
 ---
 
 ## Test-Coverage Audit Follow-Ups (T-F174–T-F186)

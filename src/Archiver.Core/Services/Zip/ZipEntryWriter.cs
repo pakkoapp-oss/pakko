@@ -42,6 +42,14 @@ internal sealed class ZipEntryWriter : IAsyncDisposable
     private const ushort DefaultVersionNeeded = 20;
     private const ushort Zip64VersionNeeded = 45;
 
+    // T-F193: WinZip AE-2 (WinZip's AES specification) — method 99 in the header, the real method
+    // in a 0x9901 extra, CRC-32 hidden (always 0; the HMAC authenticates instead).
+    private const ushort WinZipAesMethod = 99;
+    private const ushort WinZipAesExtraFieldTag = 0x9901;
+    private const ushort WinZipAesVendorVersion = 2; // AE-2
+    private const ushort AesVersionNeeded = 51;
+    private const ushort EncryptedFlag = 0x0001;
+
     // internal — reused by ParallelSingleArchiveWriter's temp-file compression worker, which
     // needs to pick the same ZIP method code before writing the header for a not-yet-in-memory,
     // not-yet-fully-known entry (T-F35 follow-up: compress-to-temp-file path, no size limit).
@@ -78,11 +86,12 @@ internal sealed class ZipEntryWriter : IAsyncDisposable
         bool needsZip64 = data.UncompressedLength >= Zip64Threshold;
         long localHeaderOffset = _output.Position;
 
+        var method = new EntryMethod(data.Method, data.IsAesEncrypted);
         WriteLocalFileHeader(entryName, lastWriteTime, data.Crc32, data.CompressedBytes.Length,
-            data.UncompressedLength, data.Method, needsZip64);
+            data.UncompressedLength, method, needsZip64);
         await _output.WriteAsync(data.CompressedBytes, ct).ConfigureAwait(false);
 
-        RecordEntry(entryName, lastWriteTime, data.Crc32, data.Method, data.CompressedBytes.Length,
+        RecordEntry(entryName, lastWriteTime, data.Crc32, method, data.CompressedBytes.Length,
             data.UncompressedLength, localHeaderOffset, isDirectory: false);
     }
 
@@ -105,7 +114,7 @@ internal sealed class ZipEntryWriter : IAsyncDisposable
     // same reasoning as the SYSLIB1054 P/Invoke conversions this triage also left out of scope.
     public async Task WriteCompressedEntryFromStreamAsync( // NOSONAR: S107 — see comment above
         string entryName, Stream compressedSource, long compressedLength, long uncompressedLength,
-        uint crc32, ushort method, DateTime lastWriteTime, CancellationToken ct)
+        uint crc32, EntryMethod method, DateTime lastWriteTime, CancellationToken ct)
     {
         bool needsZip64 = uncompressedLength >= Zip64Threshold || compressedLength >= Zip64Threshold;
         long localHeaderOffset = _output.Position;
@@ -121,8 +130,8 @@ internal sealed class ZipEntryWriter : IAsyncDisposable
     {
         long localHeaderOffset = _output.Position;
         WriteLocalFileHeader(entryName, lastWriteTime, crc32: 0, compressedSize: 0, uncompressedSize: 0,
-            StoredMethod, needsZip64: false);
-        RecordEntry(entryName, lastWriteTime, crc32: 0, StoredMethod, compressedSize: 0, uncompressedSize: 0,
+            new EntryMethod(StoredMethod), needsZip64: false);
+        RecordEntry(entryName, lastWriteTime, crc32: 0, new EntryMethod(StoredMethod), compressedSize: 0, uncompressedSize: 0,
             localHeaderOffset, isDirectory: true);
         return Task.CompletedTask;
     }
@@ -166,25 +175,26 @@ internal sealed class ZipEntryWriter : IAsyncDisposable
 
     private void WriteLocalFileHeader(
         string entryName, DateTime lastWriteTime, uint crc32, long compressedSize, long uncompressedSize,
-        ushort method, bool needsZip64)
+        EntryMethod method, bool needsZip64)
     {
         byte[] nameBytes = Encoding.UTF8.GetBytes(entryName);
-        ushort flags = IsAsciiOnly(entryName) ? (ushort)0 : (ushort)0x0800; // bit 11 = UTF-8 name/comment
-        ushort versionNeeded = needsZip64 ? Zip64VersionNeeded : DefaultVersionNeeded;
+        ushort flags = (ushort)((IsAsciiOnly(entryName) ? 0 : 0x0800) | method.Flags); // bit 11 = UTF-8 name/comment
+        ushort versionNeeded = method.VersionNeeded(needsZip64);
         uint dosDateTime = DosDateTime.Encode(lastWriteTime);
 
         byte[] extra = needsZip64
             ? BuildZip64LocalExtraField((ulong)uncompressedSize, (ulong)compressedSize)
             : [];
+        extra = [.. extra, .. method.ExtraField()];
 
         WriteUInt32(LocalFileHeaderSignature);
         WriteUInt16(versionNeeded);
         WriteUInt16(flags);
-        WriteUInt16(method);
+        WriteUInt16(method.HeaderMethod);
         WriteUInt16((ushort)(dosDateTime & 0xFFFF));
         WriteUInt16((ushort)(dosDateTime >> 16));
 
-        WriteUInt32(crc32);
+        WriteUInt32(method.HeaderCrc32(crc32));
         WriteUInt32(needsZip64 ? Zip32Marker : (uint)compressedSize);
         WriteUInt32(needsZip64 ? Zip32Marker : (uint)uncompressedSize);
 
@@ -207,7 +217,7 @@ internal sealed class ZipEntryWriter : IAsyncDisposable
     }
 
     private void RecordEntry( // NOSONAR: S107 — same reasoning as WriteCompressedEntryFromStreamAsync above (independent fields, not a clustering S107 fix would help)
-        string entryName, DateTime lastWriteTime, uint crc32, ushort method, long compressedSize,
+        string entryName, DateTime lastWriteTime, uint crc32, EntryMethod method, long compressedSize,
         long uncompressedSize, long localHeaderOffset, bool isDirectory)
     {
         _records.Add(new CentralDirectoryRecord(
@@ -238,19 +248,20 @@ internal sealed class ZipEntryWriter : IAsyncDisposable
             || record.LocalHeaderOffset >= Zip64Threshold;
 
         byte[] nameBytes = Encoding.UTF8.GetBytes(record.EntryName);
-        ushort flags = IsAsciiOnly(record.EntryName) ? (ushort)0 : (ushort)0x0800;
-        ushort versionNeeded = needsZip64 ? Zip64VersionNeeded : DefaultVersionNeeded;
+        ushort flags = (ushort)((IsAsciiOnly(record.EntryName) ? 0 : 0x0800) | record.Method.Flags);
+        ushort versionNeeded = record.Method.VersionNeeded(needsZip64);
         byte[] extra = needsZip64 ? BuildZip64CentralExtraField(record) : [];
+        extra = [.. extra, .. record.Method.ExtraField()];
         uint externalAttributes = record.IsDirectory ? DirectoryExternalAttributes : FileExternalAttributes;
 
         WriteUInt32(CentralDirectorySignature);
         WriteUInt16(versionNeeded); // version made by — host byte 0 (MS-DOS-compatible), same low byte as version-needed
         WriteUInt16(versionNeeded);
         WriteUInt16(flags);
-        WriteUInt16(record.Method);
+        WriteUInt16(record.Method.HeaderMethod);
         WriteUInt16((ushort)(record.DosDateTime & 0xFFFF));
         WriteUInt16((ushort)(record.DosDateTime >> 16));
-        WriteUInt32(record.Crc32);
+        WriteUInt32(record.Method.HeaderCrc32(record.Crc32));
         WriteUInt32(needsZip64 && record.CompressedSize >= Zip64Threshold ? Zip32Marker : (uint)record.CompressedSize);
         WriteUInt32(needsZip64 && record.UncompressedSize >= Zip64Threshold ? Zip32Marker : (uint)record.UncompressedSize);
         WriteUInt16((ushort)nameBytes.Length);
@@ -364,7 +375,43 @@ internal sealed class ZipEntryWriter : IAsyncDisposable
     private static void WriteUInt64To(Span<byte> buffer, int offset, ulong value) =>
         System.Buffers.Binary.BinaryPrimitives.WriteUInt64LittleEndian(buffer[offset..], value);
 
+    /// <summary>
+    /// An entry's real compression method plus whether it is wrapped in WinZip AES (T-F193) — the
+    /// one place that turns that pair into the header's method/flags/version/CRC/extra, so the
+    /// local and central headers can never disagree.
+    /// </summary>
+    internal readonly record struct EntryMethod(ushort RealMethod, bool IsAesEncrypted = false)
+    {
+        public ushort HeaderMethod => IsAesEncrypted ? WinZipAesMethod : RealMethod;
+        public ushort Flags => IsAesEncrypted ? EncryptedFlag : (ushort)0;
+        public uint HeaderCrc32(uint crc32) => IsAesEncrypted ? 0 : crc32;
+
+        public ushort VersionNeeded(bool needsZip64)
+        {
+            if (IsAesEncrypted)
+                return AesVersionNeeded;
+            return needsZip64 ? Zip64VersionNeeded : DefaultVersionNeeded;
+        }
+
+        // version(2) + vendor "AE"(2) + strength(1) + real compression method(2)
+        public byte[] ExtraField()
+        {
+            if (!IsAesEncrypted)
+                return [];
+            const ushort dataSize = 7;
+            var field = new byte[4 + dataSize];
+            WriteUInt16To(field, 0, WinZipAesExtraFieldTag);
+            WriteUInt16To(field, 2, dataSize);
+            WriteUInt16To(field, 4, WinZipAesVendorVersion);
+            field[6] = (byte)'A';
+            field[7] = (byte)'E';
+            field[8] = WinZipAesEncryptStream.StrengthCode;
+            WriteUInt16To(field, 9, RealMethod);
+            return field;
+        }
+    }
+
     private sealed record CentralDirectoryRecord(
-        string EntryName, ushort Method, uint DosDateTime, uint Crc32, long CompressedSize,
+        string EntryName, EntryMethod Method, uint DosDateTime, uint Crc32, long CompressedSize,
         long UncompressedSize, long LocalHeaderOffset, bool IsDirectory);
 }

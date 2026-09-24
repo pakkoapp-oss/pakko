@@ -944,6 +944,18 @@ public sealed class TarSandboxedService : ITarService
         var skippedFiles = new List<SkippedFile>();
         var conflictResolver = new ConflictResolver(options.OnConflict, options.ResolveConflictAsync);
 
+        // T-F193: tar.exe/libarchive has no encrypting writer. Refuse outright — before any
+        // prompt — rather than silently writing an unencrypted archive the user asked to protect.
+        if (options.ResolvePasswordAsync is not null)
+        {
+            errors.Add(new ArchiveError
+            {
+                SourcePath = options.DestinationFolder,
+                Message = "Password protection is only available for ZIP archives."
+            });
+            return new ArchiveResult { Success = false, CreatedFiles = createdFiles, Errors = errors, SkippedFiles = skippedFiles };
+        }
+
         if (!TarSignatureVerifier.Verify(TarExecutablePath))
         {
             errors.Add(new ArchiveError

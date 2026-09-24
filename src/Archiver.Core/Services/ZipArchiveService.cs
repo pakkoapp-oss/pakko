@@ -25,6 +25,8 @@ public sealed class ZipArchiveService : IArchiveService
     // regression against a 7z reference. See DECISIONS.md's T-F35 entry.
     private const int ParallelPipelineFileCountThreshold = 64;
 
+    private const int MaxEncryptionPasswordLength = 99;
+
     private readonly GroupPolicyOptions _policy;
 
     /// <summary>
@@ -58,10 +60,23 @@ public sealed class ZipArchiveService : IArchiveService
         var skippedFiles = new List<SkippedFile>();
         var conflictResolver = new ConflictResolver(options.OnConflict, options.ResolveConflictAsync);
 
+        // T-F193: resolved before either mode runs, never after the destination-conflict step —
+        // that step can already have deleted an existing archive the user chose to overwrite, and
+        // a cancelled prompt afterward would leave them with neither the old archive nor a new one.
+        string? password = null;
+        if (options.ResolvePasswordAsync is not null)
+        {
+            ArchiveError? passwordError;
+            (password, passwordError) = await ResolveEncryptionPasswordAsync(options).ConfigureAwait(false);
+            if (passwordError is not null)
+                return new ArchiveResult { Success = false, CreatedFiles = [], Errors = [passwordError], SkippedFiles = [] };
+        }
+        var run = new ArchiveRunContext(conflictResolver, password);
+
         if (options.Mode == ArchiveMode.SingleArchive)
         {
             ArchiveResult? skipResult = await ArchiveSingleArchiveModeAsync(
-                options, conflictResolver, errors, createdFiles, skippedFiles, progress, cancellationToken).ConfigureAwait(false);
+                options, run, errors, createdFiles, skippedFiles, progress, cancellationToken).ConfigureAwait(false);
             // T-F87: an already-exists+Skip conflict returns its own complete result immediately
             // (every source reported skipped) — bypasses OpenDestinationFolder below entirely,
             // matching this method's original behavior.
@@ -71,7 +86,7 @@ public sealed class ZipArchiveService : IArchiveService
         else // SeparateArchives
         {
             await ArchiveSeparateArchivesModeAsync(
-                options, conflictResolver, errors, createdFiles, skippedFiles, progress, cancellationToken).ConfigureAwait(false);
+                options, run, errors, createdFiles, skippedFiles, progress, cancellationToken).ConfigureAwait(false);
         }
 
         var result = new ArchiveResult
@@ -90,12 +105,47 @@ public sealed class ZipArchiveService : IArchiveService
         return result;
     }
 
+    // The per-call state both archive modes share — bundled to keep S107's parameter count down.
+    // Password is null for an ordinary unencrypted archive (T-F193).
+    private sealed record ArchiveRunContext(ConflictResolver ConflictResolver, string? Password);
+
+    // T-F193: one prompt per ArchiveAsync call, never retried — there is nothing to verify a new
+    // password against, so a wrong attempt cannot exist (maxAttempts: 1). The App/CLI prompts ask
+    // for a confirmation themselves; Core only refuses a cancelled or empty answer.
+    private static async Task<(string? Password, ArchiveError? Error)> ResolveEncryptionPasswordAsync(ArchiveOptions options)
+    {
+        string archiveName = ArchiveNaming.ResolveSingleArchiveName(options.ArchiveName, options.SourcePaths)
+            + ArchiveNaming.GetExtension(ArchiveContainerFormat.Zip);
+        var resolver = new PasswordResolver(options.ResolvePasswordAsync, maxAttempts: 1);
+        string? password = await resolver.ResolveAsync(archiveName, PasswordPurpose.Encrypt, verify: _ => true).ConfigureAwait(false);
+
+        // Mirrors 7-Zip's own creation rule (ZipHandlerOut.cpp: IsSimpleAsciiString, and
+        // NWzAes::kPasswordSizeMax for AES) — user decision 2026-09-24. 7-Zip decodes a ZIP password
+        // through the ANSI code page, not UTF-8, so a Cyrillic password would produce an archive
+        // 7-Zip/NanaZip report as "Wrong password"; refusing it up front is the interoperable choice.
+        string? failure = password switch
+        {
+            null => "Archive was not created: no password was entered.",
+            "" => "Archive was not created: the password is empty.",
+            _ when password.Any(c => c < 0x20 || c > 0x7F) =>
+                "Archive was not created: the password may contain only English letters, digits, spaces and " +
+                "ASCII punctuation; other ZIP tools such as 7-Zip cannot open an archive protected by any other characters.",
+            _ when password.Length > MaxEncryptionPasswordLength =>
+                $"Archive was not created: the password is longer than {MaxEncryptionPasswordLength} characters, " +
+                "the most 7-Zip accepts for an AES-encrypted ZIP.",
+            _ => null,
+        };
+        return failure is null
+            ? (password, null)
+            : (null, new ArchiveError { SourcePath = options.DestinationFolder, Message = failure });
+    }
+
     // Returns non-null only for the already-exists+Skip conflict case, which the caller must
     // return immediately as ArchiveAsync's own result (see the comment at that call site) — every
     // other outcome (including all errors) is recorded into errors/createdFiles/skippedFiles and
     // this returns null so the caller proceeds to its normal result assembly.
     private static async Task<ArchiveResult?> ArchiveSingleArchiveModeAsync(
-        ArchiveOptions options, ConflictResolver conflictResolver,
+        ArchiveOptions options, ArchiveRunContext run,
         List<ArchiveError> errors, List<string> createdFiles, List<SkippedFile> skippedFiles,
         IProgress<ProgressReport>? progress, CancellationToken cancellationToken)
     {
@@ -112,7 +162,7 @@ public sealed class ZipArchiveService : IArchiveService
         // DestinationConflictResolver and DECISIONS.md's T-F158 entry.
         var (outcome, resolvedDestPath) = await DestinationConflictResolver.ResolveAsync(
             destPath, onDiskConflict: File.Exists(destPath), sameRunConflict: false,
-            conflictResolver, renameCandidate: p => GetUniqueFilePath(p)).ConfigureAwait(false);
+            run.ConflictResolver, renameCandidate: p => GetUniqueFilePath(p)).ConfigureAwait(false);
 
         if (outcome == DestinationConflictOutcome.Skip)
         {
@@ -151,8 +201,9 @@ public sealed class ZipArchiveService : IArchiveService
             .ToList();
 
         // T-F35: gate the parallel pipeline behind a file-count threshold — see the constant's
-        // own comment.
-        bool useParallelPipeline = totalFileCount > ParallelPipelineFileCountThreshold;
+        // own comment. T-F193: encryption exists only in the hand-rolled writer (ZipArchive has no
+        // encrypting API), so a password always takes that path regardless of file count.
+        bool useParallelPipeline = run.Password is not null || totalFileCount > ParallelPipelineFileCountThreshold;
 
         try
         {
@@ -160,8 +211,8 @@ public sealed class ZipArchiveService : IArchiveService
             {
                 var callbacks = new Zip.ParallelSingleArchiveWriter.ReportCallbacks(skippedFiles.Add, errors.Add);
                 await Zip.ParallelSingleArchiveWriter.WriteAsync(
-                    tempPath, sortedSourcePaths, options.CompressionLevel, totalSourceBytes,
-                    callbacks, progress, cancellationToken).ConfigureAwait(false);
+                    tempPath, sortedSourcePaths, new Zip.ParallelSingleArchiveWriter.CompressionSettings(options.CompressionLevel, run.Password),
+                    totalSourceBytes, callbacks, progress, cancellationToken).ConfigureAwait(false);
             }
             else
             {
@@ -329,7 +380,7 @@ public sealed class ZipArchiveService : IArchiveService
     }
 
     private static async Task ArchiveSeparateArchivesModeAsync(
-        ArchiveOptions options, ConflictResolver conflictResolver,
+        ArchiveOptions options, ArchiveRunContext run,
         List<ArchiveError> errors, List<string> createdFiles, List<SkippedFile> skippedFiles,
         IProgress<ProgressReport>? progress, CancellationToken cancellationToken)
     {
@@ -352,16 +403,23 @@ public sealed class ZipArchiveService : IArchiveService
             .ToList();
 
         var plans = await ResolveSeparateArchivePlansAsync(
-            sortedSourcePaths, options.DestinationFolder, conflictResolver, skippedFiles).ConfigureAwait(false);
+            sortedSourcePaths, options.DestinationFolder, run.ConflictResolver, skippedFiles).ConfigureAwait(false);
 
         var concurrentSink = new ArchiveResultSink([], [], []);
         var progressContext = new SeparateArchiveProgressContext(totalSourceBytes, [0], progress);
 
+        // T-F193: an encrypted archive runs ParallelSingleArchiveWriter, which already compresses
+        // with up to ComputeWindowCapacity() workers of its own — divide the outer parallelism so
+        // the two levels together stay near the core count instead of multiplying.
+        int degreeOfParallelism = run.Password is null
+            ? Environment.ProcessorCount
+            : Math.Max(1, Environment.ProcessorCount / Zip.ParallelSingleArchiveWriter.ComputeWindowCapacity());
+
         await Parallel.ForEachAsync(
             plans.Where(p => p.DestPath is not null),
-            new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount, CancellationToken = cancellationToken },
+            new ParallelOptions { MaxDegreeOfParallelism = degreeOfParallelism, CancellationToken = cancellationToken },
             async (plan, token) => await ArchiveSingleSeparatePathAsync(
-                plan.SourcePath, plan.DestPath!, options.CompressionLevel,
+                plan.SourcePath, plan.DestPath!, new Zip.ParallelSingleArchiveWriter.CompressionSettings(options.CompressionLevel, run.Password),
                 concurrentSink, progressContext, token).ConfigureAwait(false)
         ).ConfigureAwait(false);
 
@@ -472,7 +530,7 @@ public sealed class ZipArchiveService : IArchiveService
     private static async Task ArchiveSingleSeparatePathAsync(
         string sourcePath,
         string destPath,
-        CompressionLevel compressionLevel,
+        Zip.ParallelSingleArchiveWriter.CompressionSettings settings,
         ArchiveResultSink sink,
         SeparateArchiveProgressContext progressContext,
         CancellationToken cancellationToken)
@@ -489,9 +547,20 @@ public sealed class ZipArchiveService : IArchiveService
 
         long baseOffset = Interlocked.Read(ref completedBytesBox[0]);
         string separateTempPath = destPath + ".tmp";
+        CompressionLevel compressionLevel = settings.Level;
         try
         {
-            if (Directory.Exists(sourcePath))
+            if (settings.Password is not null && (Directory.Exists(sourcePath) || File.Exists(sourcePath)))
+            {
+                // T-F193: the only writer that can encrypt. A one-source "single archive" of its
+                // own; WorkItemEnumerator names the entries exactly as the branches below do.
+                var callbacks = new Zip.ParallelSingleArchiveWriter.ReportCallbacks(sink.SkippedFiles.Add, sink.Errors.Add);
+                var offsetProgress = progress is null ? null : new OffsetProgress(progress, baseOffset, totalSourceBytes);
+                await Zip.ParallelSingleArchiveWriter.WriteAsync(
+                    separateTempPath, [sourcePath], settings, pathSize, callbacks, offsetProgress, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            else if (Directory.Exists(sourcePath))
             {
                 using var archive = ZipFile.Open(separateTempPath, ZipArchiveMode.Create);
                 var context = new DirectoryArchiveContext(
@@ -569,6 +638,28 @@ public sealed class ZipArchiveService : IArchiveService
         Interlocked.Add(ref completedBytesBox[0], pathSize);
     }
 
+    // T-F193: maps one encrypted SeparateArchives worker's own 0..totalBytes progress onto the
+    // whole operation's scale, from the same approximate shared baseline the unencrypted workers
+    // use, capped at 99 so no single archive's own finish (including the inner writer's terminal
+    // 100%) reads as the whole operation's: ArchiveSeparateArchivesModeAsync alone reports the
+    // real 100% once every archive is done.
+    private sealed class OffsetProgress(IProgress<ProgressReport> inner, long baseOffset, long totalBytes) : IProgress<ProgressReport>
+    {
+        public void Report(ProgressReport value)
+        {
+            if (totalBytes <= 0)
+                return;
+            long transferred = Math.Min(baseOffset + value.BytesTransferred, totalBytes);
+            inner.Report(new ProgressReport
+            {
+                Percent = (int)Math.Min(99, transferred * 100L / totalBytes),
+                BytesTransferred = transferred,
+                TotalBytes = totalBytes,
+                CurrentFile = value.CurrentFile,
+            });
+        }
+    }
+
     private static void TryDeleteBestEffort(string path)
     {
         try { if (File.Exists(path)) File.Delete(path); } catch { /* best-effort */ }
@@ -587,8 +678,8 @@ public sealed class ZipArchiveService : IArchiveService
         // "apply to all" decision on one archive's conflict survives across every subsequent
         // archive in this same ArchivePaths batch, not just the current archive's entries.
         var conflictResolver = new ConflictResolver(options.OnConflict, options.ResolveConflictAsync);
-        // T-F189: 3 attempts — wrong-password retries make sense for reading (unlike a future
-        // Encrypt-direction caller, which would pass 1; see PasswordResolver's own doc comment).
+        // T-F189: 3 attempts — wrong-password retries make sense for reading (unlike ArchiveAsync's
+        // Encrypt direction, which passes 1; see PasswordResolver's own doc comment).
         var passwordResolver = new PasswordResolver(options.ResolvePasswordAsync, maxAttempts: 3);
 
         Directory.CreateDirectory(options.DestinationFolder);

@@ -5,9 +5,8 @@ namespace Archiver.Core.Services;
 // T-F189: resolves an encrypted archive's password via the caller's ResolvePasswordAsync
 // callback, retrying up to maxAttempts times and remembering an "apply to remaining" choice for
 // the rest of this instance's lifetime — same shape as ConflictResolver (one instance per
-// ArchiveAsync/ExtractAsync call). Shared by both directions (Decrypt today, Encrypt from T-F193
-// onward) per the plan's "one mechanism, not two copies" decision — maxAttempts is a parameter
-// from each call site (ExtractAsync passes 3, a future ArchiveAsync passes 1) rather than a
+// ArchiveAsync/ExtractAsync call). Shared by both directions (Decrypt, and Encrypt since T-F193) per the plan's "one mechanism, not two copies" decision — maxAttempts is a parameter
+// from each call site (ExtractAsync passes 3, ArchiveAsync passes 1) rather than a
 // constant baked in here, so there is no Purpose-branch inside the retry loop itself. verify is
 // caller-supplied so this class stays format-agnostic — it knows nothing about ZIP/AES/ZipCrypto.
 internal sealed class PasswordResolver(

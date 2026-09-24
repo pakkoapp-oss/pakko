@@ -95,7 +95,7 @@ public sealed class ZipEntryWriterCompatibilityTests : IDisposable
             using var ms = new MemoryStream(tinyContent);
             await writer.WriteCompressedEntryFromStreamAsync(
                 "forced.bin", ms, compressedLength: hugeSize, uncompressedLength: hugeSize,
-                crc32: 0, ZipEntryWriter.StoredMethod, DateTime.UtcNow, CancellationToken.None);
+                crc32: 0, new ZipEntryWriter.EntryMethod(ZipEntryWriter.StoredMethod), DateTime.UtcNow, CancellationToken.None);
         }
 
         byte[] bytes = await File.ReadAllBytesAsync(archivePath);
@@ -225,7 +225,7 @@ public sealed class ZipEntryWriterCompatibilityTests : IDisposable
                 using var compressedMs = new MemoryStream(compressed.CompressedBytes);
                 await writer.WriteCompressedEntryFromStreamAsync(
                     "streamed.bin", compressedMs, compressed.CompressedBytes.Length, compressed.UncompressedLength,
-                    compressed.Crc32, compressed.Method, DateTime.UtcNow, CancellationToken.None);
+                    compressed.Crc32, new ZipEntryWriter.EntryMethod(compressed.Method), DateTime.UtcNow, CancellationToken.None);
             }
             expected["streamed.bin"] = largeContent;
         }

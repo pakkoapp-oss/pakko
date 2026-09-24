@@ -570,4 +570,34 @@ public sealed class TarSandboxedServiceCompressTests : IDisposable
         reports[^1].BytesTransferred.Should().Be(expectedTotalBytes);
         reports.Should().Contain(r => r.TotalBytes == expectedTotalBytes && r.BytesTransferred > 0 && r.BytesTransferred <= expectedTotalBytes);
     }
+
+    // T-F193: encryption is ZIP-only (tar.exe/libarchive has no encrypting writer). A caller that
+    // wires a password for a tar-family format must get an explicit error, never a silently
+    // unencrypted archive — and the user must not be asked for a password that will not be used.
+    [Integration]
+    public async Task CompressAsync_WithPasswordResolver_RejectsWithoutPromptingOrCreatingAnything()
+    {
+        string srcFile = Path.Combine(_temp.Path, "a.txt");
+        File.WriteAllText(srcFile, "secret");
+        string outDir = Path.Combine(_temp.Path, "out");
+        int prompts = 0;
+
+        var result = await _sut.CompressAsync(new ArchiveOptions
+        {
+            SourcePaths = [srcFile],
+            DestinationFolder = outDir,
+            Format = ArchiveContainerFormat.Tar,
+            ResolvePasswordAsync = _ =>
+            {
+                prompts++;
+                return Task.FromResult(new PasswordDecision { Password = "pw" });
+            },
+        });
+
+        result.Success.Should().BeFalse();
+        result.Errors.Should().ContainSingle().Which.Message.Should().Contain("ZIP");
+        result.CreatedFiles.Should().BeEmpty();
+        prompts.Should().Be(0);
+        (Directory.Exists(outDir) ? Directory.GetFileSystemEntries(outDir) : []).Should().BeEmpty();
+    }
 }

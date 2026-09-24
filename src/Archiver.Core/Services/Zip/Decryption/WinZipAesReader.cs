@@ -65,64 +65,25 @@ internal static class WinZipAesReader
 }
 
 /// <summary>
-/// Pass 2: WinZip AE's AES-CTR — a 128-bit little-endian counter starting at 1, keystream from a
-/// plain AES-ECB encryptor (the standard NIST SP 800-38A construction; .NET has no named CTR mode).
-/// Generates keystream for many blocks per encryptor call rather than one block at a time.
+/// Pass 2: decrypts as the caller reads, XOR-ing with <see cref="AesCtrKeystream"/>.
 /// </summary>
 internal sealed class WinZipAesCtrStream : Stream
 {
-    private const int BlockSize = 16;
-    private const int BlocksPerBatch = 4096; // 64 KiB of keystream per ECB call
-
     private readonly Stream _ciphertext;
-    private readonly Aes _aes;
-    private readonly ICryptoTransform _encryptor;
-    private readonly byte[] _counter = new byte[BlockSize];
-    private readonly byte[] _counterBatch = new byte[BlockSize * BlocksPerBatch];
-    private readonly byte[] _keystream = new byte[BlockSize * BlocksPerBatch];
-    private int _keystreamOffset = BlockSize * BlocksPerBatch;
+    private readonly AesCtrKeystream _keystream;
 
     public WinZipAesCtrStream(Stream ciphertext, byte[] key)
     {
         _ciphertext = ciphertext;
-        _aes = Aes.Create();
-        _aes.Key = key;
-        _aes.Mode = CipherMode.ECB;
-        _aes.Padding = PaddingMode.None;
-        _encryptor = _aes.CreateEncryptor();
-        _counter[0] = 1;
+        _keystream = new AesCtrKeystream(key);
     }
 
     public override int Read(byte[] buffer, int offset, int count)
     {
         int read = _ciphertext.Read(buffer, offset, count);
-        for (int i = 0; i < read; i++)
-        {
-            if (_keystreamOffset >= _keystream.Length)
-                RefillKeystream();
-            buffer[offset + i] ^= _keystream[_keystreamOffset++];
-        }
+        var chunk = buffer.AsSpan(offset, read);
+        _keystream.Apply(chunk, chunk);
         return read;
-    }
-
-    private void RefillKeystream()
-    {
-        for (int block = 0; block < BlocksPerBatch; block++)
-        {
-            Buffer.BlockCopy(_counter, 0, _counterBatch, block * BlockSize, BlockSize);
-            IncrementCounter();
-        }
-        _encryptor.TransformBlock(_counterBatch, 0, _counterBatch.Length, _keystream, 0);
-        _keystreamOffset = 0;
-    }
-
-    private void IncrementCounter()
-    {
-        for (int i = 0; i < _counter.Length; i++)
-        {
-            if (++_counter[i] != 0)
-                break;
-        }
     }
 
     public override bool CanRead => true;
@@ -143,8 +104,7 @@ internal sealed class WinZipAesCtrStream : Stream
     {
         if (disposing)
         {
-            _encryptor.Dispose();
-            _aes.Dispose();
+            _keystream.Dispose();
             _ciphertext.Dispose();
         }
         base.Dispose(disposing);

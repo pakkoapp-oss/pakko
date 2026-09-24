@@ -26,6 +26,9 @@ internal sealed record WorkResult
     public long CompressedSize { get; init; }
     public long UncompressedSize { get; init; }
     public ushort Method { get; init; }
+
+    /// <summary>T-F193: the temp file holds a WinZip AES payload around <see cref="Method"/>'s output.</summary>
+    public bool IsAesEncrypted { get; init; }
     public string? ErrorMessage { get; init; }
     public Exception? ErrorException { get; init; }
 
@@ -34,13 +37,13 @@ internal sealed record WorkResult
         Kind = WorkResultKind.Compressed, EntryName = entryName, Compressed = data, LastWriteTime = lastWriteTime,
     };
 
-    public static WorkResult ForTempFileCompressed(
+    public static WorkResult ForTempFileCompressed( // NOSONAR: S107 — independent raw ZIP fields, same reasoning as ZipEntryWriter.WriteCompressedEntryFromStreamAsync
         string entryName, string tempFilePath, uint crc32, long compressedSize, long uncompressedSize,
-        ushort method, DateTime lastWriteTime) => new()
+        ushort method, DateTime lastWriteTime, bool isAesEncrypted = false) => new()
     {
         Kind = WorkResultKind.TempFileCompressed, EntryName = entryName, TempFilePath = tempFilePath,
         Crc32 = crc32, CompressedSize = compressedSize, UncompressedSize = uncompressedSize,
-        Method = method, LastWriteTime = lastWriteTime,
+        Method = method, LastWriteTime = lastWriteTime, IsAesEncrypted = isAesEncrypted,
     };
 
     public static WorkResult ForDirectoryPlaceholder(string entryName, DateTime lastWriteTime) => new()

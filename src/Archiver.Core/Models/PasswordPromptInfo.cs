@@ -3,13 +3,12 @@ namespace Archiver.Core.Models;
 /// <summary>Which direction a password is being requested for — see <see cref="PasswordPromptInfo.Purpose"/>.</summary>
 public enum PasswordPurpose
 {
-    /// <summary>Reading a password-protected archive (T-F189). The only value with a real caller today.</summary>
+    /// <summary>Reading a password-protected archive (T-F189).</summary>
     Decrypt,
 
     /// <summary>
-    /// Creating a password-protected archive (T-F193, future phase — AES-only). No caller invokes
-    /// this yet; the case exists now so <see cref="Models.ArchiveOptions.ResolvePasswordAsync"/> and
-    /// this enum don't need a later retrofit (see the T-F157→T-F158 precedent in docs/DECISIONS.md).
+    /// Creating a password-protected ZIP (T-F193, AES-256 only) — asked once per ArchiveAsync call,
+    /// never retried, since there is nothing to check a new password against.
     /// </summary>
     Encrypt
 }

@@ -23,10 +23,12 @@ public sealed record ArchiveOptions
     public Func<ConflictInfo, Task<ConflictDecision>>? ResolveConflictAsync { get; init; }
 
     /// <summary>
-    /// T-F193 (future phase, AES-only password-protected archive creation) — no caller invokes
-    /// this yet. Added now, alongside <see cref="Models.ExtractOptions.ResolvePasswordAsync"/>,
-    /// so T-F193 adds a call site rather than retrofitting this field's shape (see the
-    /// T-F157→T-F158 precedent in docs/DECISIONS.md).
+    /// T-F193: when set, the ZIP is password-protected with WinZip AES-256 (AE-2) — every file
+    /// entry, never directory entries. Invoked once per call, before any destination conflict is
+    /// resolved, with <see cref="PasswordPurpose.Encrypt"/>. A cancelled (null), empty, non-ASCII
+    /// or longer-than-99-character answer fails the call without creating anything (7-Zip's own
+    /// creation rule — it cannot open anything else). Tar-family formats have no encrypting
+    /// writer: setting this for them is an error, never a silently unencrypted archive.
     /// </summary>
     public Func<PasswordPromptInfo, Task<PasswordDecision>>? ResolvePasswordAsync { get; init; }
 }

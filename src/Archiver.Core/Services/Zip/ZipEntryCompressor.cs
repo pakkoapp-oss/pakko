@@ -3,12 +3,17 @@ using Archiver.Core.IO;
 
 namespace Archiver.Core.Services.Zip;
 
-/// <summary>Result of compressing one file's bytes fully into memory.</summary>
+/// <summary>
+/// Result of compressing one file's bytes fully into memory. <see cref="Method"/> is always the
+/// real compression method; when <see cref="IsAesEncrypted"/> is set (T-F193), the bytes are the
+/// complete WinZip AES payload wrapped around that method's output.
+/// </summary>
 internal readonly record struct CompressedEntryData(
     byte[] CompressedBytes,
     uint Crc32,
     long UncompressedLength,
-    ushort Method);
+    ushort Method,
+    bool IsAesEncrypted = false);
 
 /// <summary>
 /// Compresses a file's bytes into an in-memory buffer, independent of any live
@@ -25,7 +30,19 @@ internal static class ZipEntryCompressor
     private const ushort StoredMethod = 0;
     private const ushort DeflateMethod = 8;
 
-    public static CompressedEntryData Compress(Stream sourceStream, CompressionLevel compressionLevel)
+    public static CompressedEntryData Compress(Stream sourceStream, CompressionLevel compressionLevel, string? password = null)
+    {
+        var plain = CompressPlain(sourceStream, compressionLevel);
+        if (password is null)
+            return plain;
+
+        using var encrypted = new MemoryStream(plain.CompressedBytes.Length + WinZipAesEncryptStream.Overhead);
+        using (var aes = new WinZipAesEncryptStream(encrypted, password))
+            aes.Write(plain.CompressedBytes);
+        return plain with { CompressedBytes = encrypted.ToArray(), IsAesEncrypted = true };
+    }
+
+    private static CompressedEntryData CompressPlain(Stream sourceStream, CompressionLevel compressionLevel)
     {
         var acc = new Crc32.Accumulator();
         using var buffer = new MemoryStream();

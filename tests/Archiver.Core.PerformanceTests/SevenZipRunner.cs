@@ -64,6 +64,17 @@ public static class SevenZipRunner
         Run(["t", $"-p{password}", "-bd", archivePath]);
 
     /// <summary>
+    /// T-F193: extracts with a password. Stronger than <see cref="TestEncrypted"/> for AE-2 entries,
+    /// whose CRC is 0 by design: a test run only checks the HMAC over the ciphertext, so a wrong
+    /// keystream would still pass it — comparing the extracted bytes catches that.
+    /// </summary>
+    public static void ExtractEncrypted(string archivePath, string destinationDir, string password)
+    {
+        Directory.CreateDirectory(destinationDir);
+        Run(["x", $"-p{password}", archivePath, $"-o{destinationDir}", "-y", "-bd"]);
+    }
+
+    /// <summary>
     /// T-F128 follow-up: runs 7-Zip's own <c>h</c> (hash) command — the same real-tool reference
     /// this project's <c>FileHashService</c>/<c>HashDigestAccumulator</c> tests already use for
     /// cross-checking DataSum/NamesSum values, reused here as the performance baseline. Timed

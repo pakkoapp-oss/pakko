@@ -46,6 +46,16 @@ internal static class ParallelSingleArchiveWriter
     public static int ComputeWindowCapacity() => Math.Clamp(Environment.ProcessorCount, 2, 16);
 
     /// <summary>
+    /// How each file entry is encoded. A non-null <see cref="Password"/> (T-F193) wraps every file
+    /// entry in WinZip AES-256 (AE-2); directory placeholders carry no data and stay unencrypted.
+    /// Converts implicitly from a bare <see cref="CompressionLevel"/> for the unencrypted case.
+    /// </summary>
+    internal readonly record struct CompressionSettings(CompressionLevel Level, string? Password = null)
+    {
+        public static implicit operator CompressionSettings(CompressionLevel level) => new(level);
+    }
+
+    /// <summary>
     /// T-F140: thread-safe, time-throttled, monotonic byte-progress reporting shared across every
     /// concurrent compression worker. Workers call <see cref="ReportBytes"/> as they read chunks
     /// (or once, for a small in-memory file compressed in a single shot) — this is what makes the
@@ -125,7 +135,7 @@ internal static class ParallelSingleArchiveWriter
     public static async Task WriteAsync(
         string tempPath,
         IReadOnlyList<string> sortedSourcePaths,
-        CompressionLevel compressionLevel,
+        CompressionSettings settings,
         long totalBytes,
         ReportCallbacks callbacks,
         IProgress<ProgressReport>? progress,
@@ -159,8 +169,8 @@ internal static class ParallelSingleArchiveWriter
         {
             await RunPipelineAsync(
                     tempPath, items,
-                    (item, ct) => CompressEligibleFileAsync(item, compressionLevel, tracker, ct),
-                    (item, ct) => CompressToTempFileAsync(item, chunkDirectory, compressionLevel, tracker, ct),
+                    (item, ct) => CompressEligibleFileAsync(item, settings, tracker, ct),
+                    (item, ct) => CompressToTempFileAsync(item, chunkDirectory, settings, tracker, ct),
                     ComputeWindowCapacity(), totalBytes, progress, callbacks.ReportError, cancellationToken)
                 .ConfigureAwait(false);
         }
@@ -364,7 +374,8 @@ internal static class ParallelSingleArchiveWriter
         {
             await writer.WriteCompressedEntryFromStreamAsync(
                     result.EntryName, tempStream, result.CompressedSize, result.UncompressedSize,
-                    result.Crc32, result.Method, result.LastWriteTime, cancellationToken)
+                    result.Crc32, new ZipEntryWriter.EntryMethod(result.Method, result.IsAesEncrypted),
+                    result.LastWriteTime, cancellationToken)
                 .ConfigureAwait(false);
         }
         TryDeleteTempFile(result.TempFilePath, pendingTempFiles);
@@ -388,7 +399,7 @@ internal static class ParallelSingleArchiveWriter
     }
 
     private static Task<WorkResult> CompressEligibleFileAsync(
-        FileWorkItem item, CompressionLevel compressionLevel, ProgressTracker? tracker, CancellationToken cancellationToken) =>
+        FileWorkItem item, CompressionSettings settings, ProgressTracker? tracker, CancellationToken cancellationToken) =>
         Task.Run(() =>
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -396,7 +407,7 @@ internal static class ParallelSingleArchiveWriter
             {
                 using var fileStream = new FileStream(item.SourcePath, FileMode.Open, FileAccess.Read,
                     FileShare.Read, bufferSize: FileReadBufferSize, useAsync: false);
-                var compressed = ZipEntryCompressor.Compress(fileStream, compressionLevel);
+                var compressed = ZipEntryCompressor.Compress(fileStream, settings.Level, settings.Password);
                 // In-memory files are small (<= InMemoryCompressByteThreshold) and compressed in one
                 // shot, not chunked — a single report on completion is enough; they never cause the
                 // "frozen mid-file" symptom the temp-file path's per-chunk reporting below fixes.
@@ -417,7 +428,7 @@ internal static class ParallelSingleArchiveWriter
     // hand-crafted FileWorkItem (a real small source file, but an artificially huge declared
     // FileSize) — no real disk has enough free space to fail this check "for real" otherwise.
     internal static Task<WorkResult> CompressToTempFileAsync(
-        FileWorkItem item, string chunkDirectory, CompressionLevel compressionLevel,
+        FileWorkItem item, string chunkDirectory, CompressionSettings settings,
         ProgressTracker? tracker, CancellationToken cancellationToken) =>
         Task.Run(async () =>
         {
@@ -449,7 +460,7 @@ internal static class ParallelSingleArchiveWriter
                 using var tempOut = new FileStream(tempFilePath, FileMode.Create, FileAccess.Write,
                     FileShare.None, bufferSize: CopyBufferSize, useAsync: false);
 
-                ushort method = ZipEntryWriter.SelectMethod(compressionLevel);
+                ushort method = ZipEntryWriter.SelectMethod(settings.Level);
                 var buffer = new byte[CopyBufferSize];
                 long uncompressedTotal;
                 uint crc;
@@ -460,26 +471,35 @@ internal static class ParallelSingleArchiveWriter
                 // report shape that doesn't fit several concurrent workers sharing one percentage.
                 void OnChunkRead(long delta) => tracker?.ReportBytes(delta, item.EntryName);
 
-                if (method == ZipEntryWriter.StoredMethod)
+                // T-F193: dispose order matters — the compressor flushes its tail into the AES
+                // stream, whose own dispose then appends the authentication code, and only after
+                // both is tempOut.Length the entry's real compressed size.
+                var aes = settings.Password is null ? null : new WinZipAesEncryptStream(tempOut, settings.Password);
+                using (aes)
                 {
-                    (uncompressedTotal, crc) = await ZipEntryWriter.CopyWithCrcAsync(
-                        source, tempOut, buffer, progress: null, totalBytes: 0, startOffset: 0,
-                        item.EntryName, cancellationToken, onBytesRead: OnChunkRead).ConfigureAwait(false);
-                }
-                else
-                {
-                    var deflate = new DeflateStream(tempOut, compressionLevel, leaveOpen: true);
-                    await using (deflate.ConfigureAwait(false))
+                    Stream target = (Stream?)aes ?? tempOut;
+                    if (method == ZipEntryWriter.StoredMethod)
                     {
                         (uncompressedTotal, crc) = await ZipEntryWriter.CopyWithCrcAsync(
-                            source, deflate, buffer, progress: null, totalBytes: 0, startOffset: 0,
+                            source, target, buffer, progress: null, totalBytes: 0, startOffset: 0,
                             item.EntryName, cancellationToken, onBytesRead: OnChunkRead).ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        var deflate = new DeflateStream(target, settings.Level, leaveOpen: true);
+                        await using (deflate.ConfigureAwait(false))
+                        {
+                            (uncompressedTotal, crc) = await ZipEntryWriter.CopyWithCrcAsync(
+                                source, deflate, buffer, progress: null, totalBytes: 0, startOffset: 0,
+                                item.EntryName, cancellationToken, onBytesRead: OnChunkRead).ConfigureAwait(false);
+                        }
                     }
                 }
 
                 long compressedSize = tempOut.Length;
                 return WorkResult.ForTempFileCompressed(
-                    item.EntryName, tempFilePath, crc, compressedSize, uncompressedTotal, method, item.LastWriteTime);
+                    item.EntryName, tempFilePath, crc, compressedSize, uncompressedTotal, method, item.LastWriteTime,
+                    isAesEncrypted: aes is not null);
             }
             catch (IOException ex)
             {
