@@ -4295,6 +4295,9 @@ regression from this task, which owns reliability only.
   **T-F202 (2026-09-24):** also reproduces through the file-type association, not only
   `pakko://`: opening a `.7z` (associated with Pakko) twice started a second `Archiver.App`
   process at nearly identical bounds.
+  **T-F226 review:** a second process is by design — `docs/DECISIONS.md`'s T-F88 entry makes the
+  App deliberately multi-instance, like 7-Zip (`App.xaml.cs:56-61`). This is therefore a decision
+  fork, not a bug: keep multi-instance and only offset/foreground the new window, or reverse T-F88.
 - **Reported by:** UI/UX review, 2026-09-24.
 
 ### T-F203 — SonarCloud findings from the T-F160/T-F195/T-F193 pushes
@@ -4596,7 +4599,15 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 
 ### T-F226 — Architecture review of the whole implementation against our rules (next research step)
 
-- [ ] **Status:** planned 2026-09-24, not started; discovery only, like T-F202. A senior-architect
+- [~] **Status:** 2026-09-24 — findings filed as T-F227..T-F244 (plus additions to T-F201 and
+  T-F232). **Not closed:** the per-arrow ground-truth ritual over `docs/DIAGRAMS.md` was deferred,
+  not done — the fixes for T-F227/T-F228/T-F233/T-F236 will rewrite those diagrams, and T-F165/
+  T-F223 are already open; the review's exit criterion is therefore not met for that cell.
+  Checked with no finding: the fire-and-forget calls and `async void` (event handlers only),
+  `static` mutable state (`FileHashService._threadPoolWarmed` is a process-wide one-shot latch around
+  a process-wide setting), `ArchiveTreeIndex` recursion (iterative; memory issue is T-F237),
+  `QuotePath` quoting, Authenticode verification, Job Object/attribute-list lifetimes.
+  Original plan text follows. Discovery only, like T-F202. A senior-architect
   review of all projects against the written rules (global `CLAUDE.md` Code Behavior,
   `~/.claude/dev-practices.md` sections 2-5, 7, 8, `cross-language-style.md`, this repo's Hard
   Constraints/Do Not, `docs/CONVENTIONS.md`, `SECURITY.md`, `docs/ARCHITECTURE.md`,
@@ -4698,6 +4709,216 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   constructor (`FileItem.cs:58-60`), silently dropping the whole protocol list or escaping into a
   UI handler for drag-drop/file activation; `RequestedOperation` is set but never read (dead code).
   Check how browsers prompt before launching `pakko://` before choosing the fix.
+  `SECURITY.md:100-101` ("No network access ... by design") does not hold while a protocol URI can
+  point Pakko at a UNC path.
+- **Reported by:** T-F226 review, 2026-09-24.
+
+### T-F233 — Opening a tar-family archive permanently rewrites the original file's permissions (P0 or P1 — user decision)
+
+- [ ] **Status:** open — confirmed on device 2026-09-24 with both `pakko.exe` and the installed
+  Store build (`Archiver.Shell.exe --extract-folder`). When the archive is on the same volume as
+  `%TEMP%` (normally C:, i.e. Desktop/Documents/Downloads), `QuarantineStaging.StageArchive`
+  hardlinks it into `quarantine\in\` (`QuarantineStaging.cs:29-35`). A hardlink is the same file
+  object, so `QuarantineAcl.GrantReadExecute(stagedArchivePath)` (`TarSandboxScope.cs:120`, via
+  `SetNamedSecurityInfoW`, `QuarantineAcl.cs:115-119`) rewrites the **original** archive's DACL:
+  an explicit ACE for the sandbox AppContainer SID is added, and inherited ACEs are recomputed from
+  `quarantine\in\`, so the ACEs the file inherited from its real folder are lost.
+  Repro: folder `acl2\` granted `BUILTIN\Users:(OI)(CI)(R)`; `acl2\b.tar` shows
+  `BUILTIN\Users:(I)(R)`, SYSTEM, Administrators, `<user>`. After one `pakko l b.tar` it shows
+  `S-1-15-2-...:(RX)`, `S-1-15-2-...:(I)(RX)`, SYSTEM, Administrators, `<user>` — the Users ACE
+  is gone. Every tar-family operation triggers it (list, browse, extract, scan). On a shared
+  folder this silently removes other people's access.
+  Second failure (same root): a readable archive the user may not change the DACL of (not the
+  owner, or an `OWNER RIGHTS` ACE) cannot be opened at all — `Sandbox setup failed:
+  SetNamedSecurityInfoW('...\in\c.tar') failed (Win32 error 5)`, exit 2 — while a copy of the
+  same file opens fine.
+  This contradicts `QuarantineStaging`'s own doc comment ("The AppContainer SID is never granted an
+  ACE on the archive's original, user-chosen path") and `SECURITY.md:286` (the quarantine
+  directory, not the user's file, is ACL'd). `docs/DECISIONS.md`'s T-F52 Step 6 called the
+  per-file grant "harmless"; it is not harmless when staging hardlinked.
+  **Open decisions for the user:** P0 vs P1; the damage is permanent and fixing staging does not
+  restore ACEs already lost on files opened since v1.3, so decide whether to offer remediation or
+  a release note. (A read-only scan of this machine's Desktop/Documents/Downloads and the
+  `SICHER!` CD folders found no affected files.)
+  Fix direction: never change the original's security descriptor — stage by copy, or open the
+  file for read and hand tar.exe a handle, and re-check the pre-scan/extract identity.
+- **Tests first (Security & Boundary — missing today):** the original archive's DACL, owner and
+  inheritance are byte-identical before and after a scope, on both the hardlink (same-volume) and
+  copy paths; an archive without WRITE_DAC opens. The existing
+  `TarSandboxScopeTests.CreateAsync_StagedArchiveIsHardlinkedSameVolume_StillReadableInsideSandbox`
+  only proves the happy path.
+- **Reported by:** T-F226 review, 2026-09-24.
+
+### T-F234 — ZIP names without the UTF-8 flag are decoded as UTF-8: garbled names and silent loss of files (P0 candidate)
+
+- [ ] **Status:** open — confirmed on device 2026-09-24. Archives written by older Windows
+  "Compressed folders", 1C, scanners and other tools in a uk/ru locale store names in the OEM code
+  page (866) with general-purpose bit 11 clear. Every ZIP reader call opens archives without an
+  `entryNameEncoding` (`ZipFile.OpenRead`, e.g. `ZipArchiveService`, `AntivirusScanService.cs:228`,
+  listing), and on .NET Core that means UTF-8 on every machine.
+  Repro 1: one entry `Документ_квартал.txt` in cp866, flag bits 0 -> `pakko l` and `pakko x` show
+  and **write** `���㬥��_����⠫.txt`; 7za on the same file extracts `Документ_квартал.txt`.
+  Repro 2: entries `А.txt` (0x80) and `Б.txt` (0x81), flag bits 0 -> both decode to `�.txt`:
+  `pakko x -y` leaves one file holding B's content, `-aos` one file holding A's, both **exit 0**
+  with no warning; `-aou` renames the second to `� (1).txt`. 7za extracts both correctly. That is
+  silent data loss inside a single archive. Same family as T-F204 (text crossing a code-page
+  boundary).
+  Fix direction: decode non-flagged names with the OEM code page like 7-Zip (needs
+  `System.Text.Encoding.CodePages` — check against the "zero NuGet in Core" constraint; it ships in
+  the shared framework on .NET 8), and treat two entries resolving to the same output path as a
+  reported conflict, never a silent overwrite.
+- **Tests first (Security & Boundary, Misuse):** a cp866 non-flagged name round-trips to the right
+  Unicode name in `l`/`x`/browse/scan; two distinct raw names that decode to the same string are
+  both preserved or reported, never silently dropped.
+- **Reported by:** T-F226 review, 2026-09-24.
+
+### T-F235 — A large Explorer selection makes every Pakko command silently do nothing (P1)
+
+- [ ] **Status:** open — symptom confirmed on device 2026-09-24, cause likely (not isolated). The
+  extension passes the whole selection as one `CreateProcessW` command line
+  (`ShellExtUtils.cpp:228-253`, `Build*Args`), whose documented limit is 32,767 characters. When it
+  fails, `Invoke` returns the HRESULT (`ExplorerCommands.cpp:125` and siblings), which Explorer
+  ignores. Repro: 300 files with ~95-character names in `<scratch>\many\` (~71,400 characters
+  quoted), Ctrl+A, context menu, Pakko -> "Додати до "many.zip"" -> no process, no archive, no
+  message. Control: the same command on one file works. Not separated from a pure count limit
+  (a 300-file short-name run would confirm the cause).
+  Related: `GetPathsFromShellItemArray` silently skips items without `SIGDN_FILESYSPATH`
+  (library/virtual items), so part of a selection can vanish without notice.
+  Fix direction: hand the list to `Archiver.Shell` another way (a temp response file, or the
+  existing `pakko://`-style JSON), and never fail silently.
+- **Tests first:** a `Build*Args` over the limit is detected; the chosen transport carries 10,000
+  paths.
+- **Reported by:** T-F226 review, 2026-09-24.
+
+### T-F236 — One unreadable subfolder aborts creating the whole archive (P1)
+
+- [ ] **Status:** open — confirmed on device 2026-09-24. Parallel path (above 64 files): the
+  enumeration in `Zip/WorkItemEnumerator.cs:73,83,100` throws inside the producer and fails the
+  whole operation — 71 files, one subfolder with `deny RD` -> `pakko a` "Access denied creating
+  archive: Access to the path '...\src\locked' is denied.", exit 2, no archive. Sequential path:
+  the whole top-level source is dropped even though its other files are readable. 7za on the same
+  tree warns ("Access is denied", "Scan WARNINGS: 1"), exits 1 and still archives the readable
+  files. Violates the per-item error rule.
+- **Tests first (Error path):** an unreadable subfolder becomes one `SkippedFile`/`ArchiveError`,
+  every readable file is archived, on both the sequential and parallel paths.
+- **Reported by:** T-F226 review, 2026-09-24.
+
+### T-F237 — Deep folder trees crash Pakko; a deep ZIP entry name costs gigabytes in browse mode (P1)
+
+- [ ] **Status:** open — confirmed on device 2026-09-24.
+  1. **Stack overflow:** directory walks recurse without a depth bound —
+     `ZipArchiveService.ComputeDirectoryTotals` (`:1900-1926`), `WorkItemEnumerator.EnumerateDirectory`
+     (`:113`, nested iterators, also O(depth^2) time), `AddDirectoryToArchiveAsync` (`:1822`).
+     Folder depth 1,000 archives fine; 2,000 and above kill the process with `Stack overflow`
+     (0xC00000FD) — uncatchable, no message, in the App the whole window dies. Pakko can create
+     such a tree itself: a Python-made ZIP with one entry `"a/" * 2500 + "x.txt"` extracts with
+     `pakko x` (exit 0), then `pakko a` on the result crashes. Violates the global rule on
+     recursion over unbounded input.
+  2. **Memory:** `ArchiveTreeIndex.SynthesizeAncestorFolders` is iterative but allocates every
+     ancestor path as a new string (O(depth^2)): an 80 KB ZIP with one entry `"a/" * 20000 +
+     "x.txt"` holds the App at ~1.7 GB in browse mode (a 65,535-byte name gives ~4 GB; several
+     entries exhaust memory). The same archive through `pakko x` fails with a ~40 KB error message
+     (the whole path), as in T-F230.
+  Fix direction: iterative walks with an explicit stack, an entry-depth/length limit in the
+  pre-extraction checks, ancestor synthesis without per-level string copies.
+- **Tests first (Security & Boundary):** a 5,000-deep tree archives (or fails with a per-item
+  error) in all three walks; a 20,000-segment entry name is listed within a fixed memory budget.
+- **Reported by:** T-F226 review, 2026-09-24.
+
+### T-F238 — `pakko` redirected output loses characters outside the console code page (P2)
+
+- [ ] **Status:** open — confirmed on device 2026-09-24. `Archiver.CLI` never sets
+  `Console.OutputEncoding`, so redirected stdout uses the console code page. For uk-UA it is 866,
+  which has no `і/ї/є`: under `chcp 866`, `pakko l x.zip > list.txt` writes `Зв?т.txt` (byte 0x3F)
+  for `Звіт.txt`. 7za is lossy the same way by default (`_`) but offers `-scc`/`-sccUTF-8`; Pakko
+  has no equivalent, so a script cannot get exact names. Consider a `-scc` switch per
+  `docs/CLI.md`'s switch-fidelity rule. Family: T-F204, T-F234.
+- **Tests first (Subprocess layer):** `l` with redirected stdout and `-sccUTF-8` returns exact
+  bytes for a Cyrillic/CJK name.
+- **Reported by:** T-F226 review, 2026-09-24.
+
+### T-F239 — tar-family extraction decompresses the archive three times; a Job-limit kill reports nothing (P2)
+
+- [ ] **Status:** open — code-confirmed 2026-09-24. Each extraction runs `tar -tf`, `tar -tvf`
+  (`TarSandboxedService.cs:720,732`) and then `-xf` (`:421`) — three full decompressions of a
+  large `.tar.xz`/`.7z`. The Job Object caps each run at 5 minutes of CPU and 512 MB
+  (`TarSandboxScope.cs:14-15`); a legitimate large `.tar.bz2` or a `.7z` with a big dictionary may
+  hit either, and then `stderr` is empty and the user sees "tar.exe extraction failed: " with no
+  reason (`:433`). The kill itself is a hypothesis to reproduce; detect a Job-limit exit and say
+  so, and consider one `-tvf` pass.
+- **Reported by:** T-F226 review, 2026-09-24.
+
+### T-F240 — CI tier gaps for a project that parses untrusted input (P2)
+
+- [ ] **Status:** open — checked 2026-09-24 against `.github/workflows/build.yml`/`canary.yml`.
+  Missing: a `dotnet list package --vulnerable --include-transitive` gate (all 11 projects are
+  clean today); a `.github/dependabot.yml` (`build.yml:96` describes Dependabot PRs, but no config
+  exists); fuzzing of the untrusted-input parsers (Zip64 locator, `RawZipEntryLocator`, AES/ZipCrypto
+  readers, the `tar -tvf` output parser, the `pakko://` router); running tests on ARM64 (built,
+  never executed); `Category=Slow` (Zip64) in CI; AddressSanitizer for the C++ tests.
+- **Reported by:** T-F226 review, 2026-09-24.
+
+### T-F241 — Frontend feature gaps with no recorded decision (P2, decision)
+
+- [ ] **Status:** open. `pakko` has no threat scan (T-F146 added it to the App, Shell and
+  Explorer only); the App has no "Test archive" (Explorer, Shell and CLI have it). Neither is
+  recorded in `docs/DECISIONS.md` or `docs/CLI.md`. Decide: add, or document why not.
+- **Reported by:** T-F226 review, 2026-09-24.
+
+### T-F242 — App: cleanup errors swallowed, dead Core options, logic in code-behind (P2)
+
+- [ ] **Status:** open, from the T-F226 review.
+  1. `MainViewModel.RunCleanupAsync` (`:1243-1257`) deletes permanently and swallows every error
+     (`catch { best-effort }`): a locked source that was not deleted is never reported. See T-F207,
+     T-F229.
+  2. `ArchiveOptions.DeleteSourceFiles` and `ExtractOptions.DeleteArchiveAfterExtraction`
+     (`ArchiveOptions.cs:14`, `ExtractOptions.cs:19`) are never read by Core — dead fields that
+     suggest Core deletes.
+  3. `MainWindow.xaml.cs:168-238`: double-click routing (magic-byte detection, preview vs nested
+     vs extract) and file I/O live in code-behind on the UI thread, against the MVVM hard
+     constraint, with no unit tests.
+  4. `PendingList_DoubleTapped` (`:168-178`) has no `IsBusy` guard and `FileListView` has no
+     `IsEnabled` binding: double-clicking an archive in the list mid-operation may enter browse
+     mode (hypothesis — reproduce; sibling of T-F183).
+  5. The drag caption "Add to list" (`MainWindow.xaml.cs:131`) is hard-coded English.
+  6. Preview path (`MainViewModel.cs:1217`, `DialogService.cs:323-334`) is
+     `Path.Combine(scopeDir, entry.FullPath)` with no containment check; an absolute entry name
+     (`C:/Windows/win.ini`) yields that absolute path for ShellExecute. Today only
+     `CreatedFiles.Count == 0` prevents opening it (the preview shows "Error: Завершено з
+     проблемами." — English title, no reason). Defense in depth.
+- **Reported by:** T-F226 review, 2026-09-24.
+
+### T-F243 — ZIP reader hardening (P2)
+
+- [ ] **Status:** open, from the T-F226 review (reviewer agent + own reading); items marked
+  hypothesis need a repro first.
+  1. `ZipArchiveService.cs:1229-1236`: `\` in an entry name is not normalized when classifying
+     the root shape (hypothesis).
+  2. `EncryptedZipEntryReader.cs:119,198`: the ZipCrypto check byte with data-descriptor bit 3
+     (hypothesis — compatibility).
+  3. `ZipArchiveService.cs:799,858-865`: a wrong password that passes the 1-in-256 ZipCrypto check
+     reports "corrupted" instead of asking again.
+  4. `ArchiveEntrySecurity.cs:29-37`: reserved names `CON.a.b`, `NUL/x`, `CONIN$`, superscript
+     `COM¹` (hypothesis).
+  5. `RawZipEntryLocator` pairs local and central records by position only; Test and Extract can
+     disagree on a mismatch (`ZipArchiveService.cs:1037-1062`).
+  6. `Zip/ZipEntryWriter.cs:201,267`: `(ushort)nameBytes.Length` is unchecked — a name over 65,535
+     UTF-8 bytes writes a truncated length field and a corrupt archive (hypothesis).
+- **Reported by:** T-F226 review, 2026-09-24.
+
+### T-F244 — Sandbox launcher, crypto and CLI staging hygiene (P2)
+
+- [ ] **Status:** open, from the T-F226 review.
+  1. `SandboxedProcessLauncher.cs:116-133`: pipe handles leak if setup fails midway;
+     `:157-195`: `DangerousAddRef` does not span the wait.
+  2. `SandboxedProcessLauncher.cs:132-133`: tar.exe stdout is read as UTF-8, so the pre-scan may
+     see different names than tar writes (hypothesis; family of T-F204).
+  3. WinZip AES/ZipCrypto key material is never zeroed; the ZipCrypto password is UTF-8 only;
+     `PathContainsReparsePoint` does not check the staging root itself.
+  4. `CliStreamStaging.cs:13-26` + `Program.cs:84,284,445`: the `-si` staging path is recorded
+     only after the copy completes, so a failure mid-copy (disk full) leaks the folder; staging
+     uses `CancellationToken.None`, so Ctrl+C does not interrupt it; `x -so` leaves decrypted
+     plaintext in `%TEMP%` if the process dies.
 - **Reported by:** T-F226 review, 2026-09-24.
 
 ### T-F223 — Diagram gap from T-F193 (P2)
