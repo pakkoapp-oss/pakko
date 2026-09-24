@@ -316,7 +316,11 @@ public sealed class TarSandboxedService : ITarService
         // A selected subset (T-F05/T-F98 drill-down) has no single meaningful "root" to collapse,
         // same reasoning as ZIP's isSelectedSubset — always extract straight into destDir.
         bool isSelectedSubset = selectedEntryPaths is { Count: > 0 };
-        var fileNames = allNames.Where(n => !n.EndsWith('/')).ToList();
+        // T-F196: `tar -C dir .` (the most common way to make a tar) prefixes every member with
+        // "./". tar.exe itself resolves that away on disk (out\a.txt, not out\.\a.txt), so the
+        // root-shape decision must see the same names — otherwise "." reads as one shared root
+        // folder, and the move phase strips a real path segment (or silently drops a root file).
+        var fileNames = allNames.Where(n => !n.EndsWith('/')).Select(StripLeadingDotSlash).ToList();
 
         // T-F142: the exact set of names that will actually be passed to "-xf" (computed once
         // here, reused below both for the tar.exe argument list and for the progress byte total)
@@ -510,6 +514,13 @@ public sealed class TarSandboxedService : ITarService
     // actually moved (false for both the already-exists+Skip case and the defensive-only
     // isSingleRootFolder edge case, matching the original inline loop's two `continue` sites) and
     // the relative path actually used, for the caller's own progress-report CurrentFile.
+    private static string StripLeadingDotSlash(string name)
+    {
+        while (name.StartsWith("./", StringComparison.Ordinal))
+            name = name[2..];
+        return name;
+    }
+
     private static async Task<(bool Extracted, string? RelativePath)> TryMoveSingleEntryAsync(
         string file, string outputDirectory, bool stripRootPrefix, string actualDest, string archivePath,
         TarExtractionContext context)

@@ -8964,3 +8964,50 @@ Browser "Перевірити на загрози" → ContentDialog prompt → 
 scan), `Archiver.Shell/Program.cs` (`--scan`, `--test`). Three new fixtures. `SECURITY.md`'s
 AMSI/encrypted-archive wording is intentionally **not** updated here — pending the user's explicit
 permission (hard `CLAUDE.md` rule), bundled with the deferred trust-doc pass.
+
+---
+
+## T-F195 — Shared sandbox-parent ACL race (2026-09-24)
+
+**Symptom:** tar-sandbox tests failed only when `Archiver.CLI.Tests`' Subprocess layer and
+`Archiver.Core.IntegrationTests` ran concurrently (T-F130's per-project serialization didn't span
+processes).
+
+**Root cause — confirmed, not guessed.** `TarSandboxScope.CreateAsync` re-granted traverse on the
+one shared `%TEMP%\PakkoTarSandbox` parent for every scope via `SetNamedSecurityInfoW`, whose own
+documentation says it "automatically propagates any inheritable ACEs to existing child objects".
+That walk is a read-recompute-write of every live quarantine's `in\`/`out\` DACL, racing the owning
+scope's own read-modify-write of its Modify grant — a lost update leaves tar.exe without write
+access to its own `out\`. The race is between the two API calls, not between processes, so it was
+reproduced in one process (`QuarantineAclParentRaceTests`: 300 scopes, 4 threads hammering the
+parent grant — a live `out\` lost its Modify ACE in 2 of 3 runs). Also a real product bug: two
+simultaneous Explorer extractions (App + Shell, or two Shell instances) share the same parent.
+
+**Fix:** `QuarantineAcl.EnsureSharedParentTraverse` — `SetEntriesInAclW` merges a GRANT into an
+existing identical ACE, so a byte-identical result means "already granted" and nothing is written
+(the steady state: no propagation ever). The one-time first write goes through `SetFileSecurityW`,
+which per its docs is not inherited by children — documented as obsolete in favor of
+`SetNamedSecurityInfoW`, used deliberately for exactly that property. No named mutex was needed
+(which would also have needed proof it's shared between MSIX-packaged and unpackaged processes).
+Per-scope grants (unique GUID folders) are unchanged. Mutation-checked: reverting to the old path
+fails the race test 3/3.
+
+## T-F196 — `tar -C dir .` archives failed in the sandbox (2026-09-24)
+
+Pre-existing (reproduced identically with T-F195 reverted); found by T-F195's on-device smoke test
+using a tar made the everyday way. Two independent bugs, each mutation-checked separately:
+
+1. **ACL:** libarchive stats a bare `./` entry through the parent of tar.exe's `-C` directory
+   (the quarantine root), which only had Traverse. Every subset tried by elimination failed
+   (Traverse+ReadAttributes, +List, +ReadEA, +READ_CONTROL, without SYNCHRONIZE); the minimum that
+   works is Traverse | List Folder | Read Attributes | SYNCHRONIZE (`0x1000A1`), non-inheriting,
+   granted only on the per-scope quarantine root — it contains nothing but that scope's own
+   `in\`/`out\`, so listing it discloses nothing.
+2. **Root shape:** "./"-prefixed names made "." look like a single root folder, so the move phase
+   stripped a real segment — root-level files hit the "defensive" `sep < 0` branch and were
+   silently not extracted. Leading "./" is now stripped before the shape decision only; the names
+   passed to tar.exe (subset selection) are untouched.
+
+Covered by three parity tests (a `./` archive must extract to exactly the plain archive's tree for
+multi-root, single-folder, and single-file shapes). ZIP entries with a "./" prefix are rare and
+were not examined here.

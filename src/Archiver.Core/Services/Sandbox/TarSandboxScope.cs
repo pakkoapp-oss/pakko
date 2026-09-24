@@ -85,11 +85,11 @@ internal sealed class TarSandboxScope : IDisposable
             SafeSidHandle sid = profile.GetSid();
 
             Directory.CreateDirectory(SandboxParentDirectory);
-            QuarantineAcl.GrantTraverseOnly(SandboxParentDirectory, sid);
+            QuarantineAcl.EnsureSharedParentTraverse(SandboxParentDirectory, sid);
 
             string quarantineRoot = Path.Combine(SandboxParentDirectory, Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(quarantineRoot);
-            QuarantineAcl.GrantTraverseOnly(quarantineRoot, sid);
+            QuarantineAcl.GrantTraverseListReadAttributes(quarantineRoot, sid);
 
             string inDir = Path.Combine(quarantineRoot, "in");
             Directory.CreateDirectory(inDir);

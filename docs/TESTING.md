@@ -256,6 +256,12 @@ No `[Trait("Category", "Sandbox")]` was added — per-test wall time measured at
 reuse means no registry-provisioning cost per test), so there was nothing to gain from a
 filterable-but-not-excluded category; add one later only if a real cost is measured.
 
+**T-F195 correction (2026-09-24):** the remaining cross-*process* flakiness was in fact a real
+product race on the shared `%TEMP%\PakkoTarSandbox` parent's ACL, now fixed and pinned by
+`QuarantineAclParentRaceTests` (in-process reproduction, 300 scopes x 4 threads). T-F196 added
+`ExternalTarFixtureBuilder.CreateCompressedTarOfDotRoot` (the everyday `tar -C dir .` shape) and
+three `ExtractAsync_DotRoot*_MatchesPlainArchiveTree` parity tests.
+
 **All 10 test classes in this project are grouped into one xUnit `[Collection("TarSandbox")]`**
 (`TarSandboxCollection.cs`, `DisableParallelization = true`, added T-F130) — they now run
 sequentially relative to each other while still running in parallel with unrelated test

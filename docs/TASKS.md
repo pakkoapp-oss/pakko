@@ -4146,8 +4146,15 @@ regression from this task, which owns reliability only.
 
 ### T-F195 — Cross-project tar-sandbox test contention (`Archiver.CLI.Tests` Subprocess vs. `Archiver.Core.IntegrationTests`)
 
-- [ ] **Status:** not started — recurrence of the exact vector `CLAUDE.md`'s Known-test-gaps note
-  predicted T-F130 would NOT cover.
+- [x] **Status:** done 2026-09-24 — root cause was a real **product** race, not only a test one
+  (see `docs/DECISIONS.md`'s T-F195 entry). Every `TarSandboxScope`, in every Pakko process,
+  re-granted traverse on the one shared `%TEMP%\PakkoTarSandbox` parent via
+  `SetNamedSecurityInfoW`, which re-propagates inheritable ACEs to every existing child — a
+  read-recompute-write of other live scopes' `out\` DACLs that dropped a live Modify grant
+  (reproduced in-process: 2 of 3 runs at 300 scopes x 4 threads). Fix: `QuarantineAcl.
+  EnsureSharedParentTraverse` — no write at all once the ACE is present, and the one-time first
+  write via the non-propagating `SetFileSecurityW`. Mutation-checked 3/3; 4 concurrent installed-
+  build Shell extractions verified on device. Surfaced T-F196 along the way.
 - **Context:** T-F130 serialized every real-sandbox test class *within*
   `Archiver.Core.IntegrationTests` via `[Collection("TarSandbox", DisableParallelization = true)]`.
   `Archiver.CLI.Tests`' `Subprocess/` layer launches the real built `pakko.exe`, which drives the
@@ -4159,13 +4166,37 @@ regression from this task, which owns reliability only.
   `TarSandboxedServiceCompressedFormatsTests.ExtractAsync_TarGz_ExtractsFileWithContent`); both
   projects passed 100% when rerun individually, and the preceding/following full runs were green.
 - **Acceptance criteria (draft):**
-  - [ ] Root-cause which shared resource actually collides across processes (profile creation,
-    quarantine ACL, fixed `%TEMP%` quarantine root) — reproduce deliberately, don't guess.
-  - [ ] Fix by construction (e.g. per-process quarantine subfolder, or a cross-process named mutex
-    around sandbox setup), not by retry/timeout widening.
-  - [ ] Several consecutive full-suite runs green locally and in CI.
+  - [x] Root-cause which shared resource actually collides across processes — reproduced
+    deliberately (`QuarantineAclParentRaceTests`), not guessed.
+  - [x] Fix by construction (no write in steady state, non-propagating first write), not by
+    retry/timeout widening — no mutex needed.
+  - [x] Several consecutive full-suite runs green locally; CI confirmation on the next push.
 - **Reported by:** agent observation, 2026-09-24 (user-approved as a tracked task).
 - **Depends on:** none.
+
+---
+
+### T-F196 — Sandboxed tar extraction failed for any archive made with `tar -C dir .`
+
+- [x] **Status:** done 2026-09-24 — found during T-F195's on-device smoke test, pre-existing
+  (reproduced identically with T-F195's fix reverted). The most common way to make a tar
+  (`tar -czf x.tar.gz -C dir .`) starts with a bare `./` entry and prefixes every member `./`.
+  Two independent bugs:
+  1. **Sandbox ACL:** libarchive stats `./` via the PARENT of tar.exe's `-C` directory, and the
+     quarantine root only had Traverse — the whole extraction exited 1
+     ("./: Can't stat existing object: Permission denied"), reported as a failed archive. Minimum
+     grant found by elimination (every subset failed): Traverse | List Folder | Read Attributes |
+     SYNCHRONIZE (`0x1000A1`), non-inheriting, on the per-scope quarantine root only (holds
+     nothing but that scope's own `in\`/`out\`).
+  2. **Smart foldering:** "./a.txt"/"./sub/b.txt" read as one shared root folder ".", so the move
+     phase stripped a real path segment — root-level files were **silently dropped** (the
+     "defensive" `sep < 0` branch) and nested ones landed one level too high. Fixed by stripping
+     leading "./" before the root-shape decision.
+- **Tests:** three parity tests (`ExtractAsync_DotRoot*_MatchesPlainArchiveTree` — multi-root,
+  single-folder, single-file) assert the `./` archive extracts to exactly the same tree as the
+  same content archived without the prefix. Each half of the fix mutation-checked separately
+  (2/3 and 3/3 red). Installed-build smoke: 4 concurrent `./` archives, 200 files each.
+- **Reported by:** agent observation, 2026-09-24. **Depends on:** none.
 
 ---
 

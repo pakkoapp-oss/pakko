@@ -62,6 +62,53 @@ public sealed class TarSandboxedServiceExtractTests : IDisposable
         File.ReadAllText(Path.Combine(destDir, "sub", "b.txt")).Should().Be("world");
     }
 
+    // T-F196, found 2026-09-24 during T-F195's on-device smoke test: an archive made the most
+    // common real-world way (`tar -czf x.tar.gz -C dir .`) starts with a bare "./" entry and
+    // prefixes every member with "./". Two independent failures: the sandbox couldn't stat "./"
+    // ("Can't stat existing object: Permission denied"), and the root-shape decision read "." as a
+    // single root folder — silently dropping root-level files. Must produce the exact same tree as
+    // the same content archived without the "./" prefix, for every root shape.
+    [Integration]
+    public async Task ExtractAsync_DotRootMultiRoot_MatchesPlainArchiveTree()
+        => await AssertDotRootParityAsync([("a.txt", "hello"), ("sub/b.txt", "world")]);
+
+    [Integration]
+    public async Task ExtractAsync_DotRootSingleFolder_MatchesPlainArchiveTree()
+        => await AssertDotRootParityAsync([("proj/a.txt", "hello"), ("proj/sub/b.txt", "world")]);
+
+    [Integration]
+    public async Task ExtractAsync_DotRootSingleFile_MatchesPlainArchiveTree()
+        => await AssertDotRootParityAsync([("only.txt", "hello")]);
+
+    private async Task AssertDotRootParityAsync((string Name, string Content)[] entries)
+    {
+        string plainArchive = Path.Combine(_temp.Path, "plain.tar.gz");
+        string dotArchive = Path.Combine(_temp.Path, "dot.tar.gz");
+        ExternalTarFixtureBuilder.CreateCompressedTar(plainArchive, "-czf", entries);
+        ExternalTarFixtureBuilder.CreateCompressedTarOfDotRoot(dotArchive, "-czf", entries);
+
+        async Task<string[]> ExtractTreeAsync(string archive, string dest)
+        {
+            var result = await _sut.ExtractAsync(new ExtractOptions
+            {
+                ArchivePaths = [archive],
+                DestinationFolder = dest,
+                Mode = ExtractMode.SingleFolder,
+            });
+            result.Errors.Should().BeEmpty();
+            result.Success.Should().BeTrue();
+            return [.. Directory.GetFiles(dest, "*", SearchOption.AllDirectories)
+                .Select(f => Path.GetRelativePath(dest, f) + "=" + File.ReadAllText(f))
+                .Order(StringComparer.Ordinal)];
+        }
+
+        string[] plainTree = await ExtractTreeAsync(plainArchive, Path.Combine(_temp.Path, "out_plain"));
+        string[] dotTree = await ExtractTreeAsync(dotArchive, Path.Combine(_temp.Path, "out_dot"));
+
+        dotTree.Should().Equal(plainTree);
+        dotTree.Should().HaveCount(entries.Length);
+    }
+
     // T-F169: mirrors ZipArchiveServiceArchiveTests.ArchiveAsync_CancelMidArchive_
     // NoUnhandledException's tolerant shape (cancellation may land before/during/after the real
     // sandboxed subprocess) — no prior test in this repo cancelled a real in-flight

@@ -17,6 +17,21 @@ internal static class ExternalTarFixtureBuilder
         string destArchivePath,
         string compressionFlag,
         IEnumerable<(string Name, string Content)> entries)
+        => Create(destArchivePath, compressionFlag, entries, archiveDotRoot: false);
+
+    /// <summary>The very common real-world shape `tar -czf out.tar.gz -C dir .` — every entry is
+    /// prefixed "./" and the archive starts with a bare "./" directory entry.</summary>
+    public static void CreateCompressedTarOfDotRoot(
+        string destArchivePath,
+        string compressionFlag,
+        IEnumerable<(string Name, string Content)> entries)
+        => Create(destArchivePath, compressionFlag, entries, archiveDotRoot: true);
+
+    private static void Create(
+        string destArchivePath,
+        string compressionFlag,
+        IEnumerable<(string Name, string Content)> entries,
+        bool archiveDotRoot)
     {
         using var sourceDir = new TempDirectory();
         var names = new List<string>();
@@ -31,7 +46,10 @@ internal static class ExternalTarFixtureBuilder
         var args = new List<string>();
         args.AddRange(compressionFlag.Split(' ', StringSplitOptions.RemoveEmptyEntries));
         args.Add(destArchivePath);
-        args.AddRange(names);
+        if (archiveDotRoot)
+            args.Add(".");
+        else
+            args.AddRange(names);
 
         var startInfo = new ProcessStartInfo
         {
