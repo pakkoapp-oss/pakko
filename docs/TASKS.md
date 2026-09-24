@@ -4234,6 +4234,10 @@ regression from this task, which owns reliability only.
   filtered out before extraction even starts, so the commit-phase suspect above may not be the
   (only) cause. Directory entries also feed the single-root classification (see T-F205), so write
   the tests against the current root-shape behavior first.
+  **T-F226 review:** the suspected commit phase (`CommitTempDestToActualDest`,
+  `ZipArchiveService.cs:1386-1427`, file-only enumeration at `:1403`, `_tmp` delete at `:1424`) is
+  exactly the code T-F227 (unique owned staging folder) rewrites and T-F228 (normalized conflict
+  paths) touches — sequencing T-F197 before or together with them is a user decision.
 - **Tests first:** an empty folder (top level and nested) survives a Pakko archive-then-extract
   round trip in every `ExtractMode`; once fixed, restore the on-disk assertion in
   `ZipArchiveServiceEncryptTests.ArchiveAsync_WithPassword_WritesAe2Aes256EntriesThatRoundTrip`.
@@ -4602,7 +4606,8 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 - [~] **Status:** 2026-09-24 — findings filed as T-F227..T-F244 (plus additions to T-F201 and
   T-F232). **Not closed:** the per-arrow ground-truth ritual over `docs/DIAGRAMS.md` was deferred,
   not done — the fixes for T-F227/T-F228/T-F233/T-F236 will rewrite those diagrams, and T-F165/
-  T-F223 are already open; the review's exit criterion is therefore not met for that cell.
+  T-F223 are already open; the review's exit criterion is therefore not met for that cell. The
+  planned mutation spot-check of 3-5 critical tests (check K) was not run either.
   Checked with no finding: the fire-and-forget calls and `async void` (event handlers only),
   `static` mutable state (`FileHashService._threadPoolWarmed` is a process-wide one-shot latch around
   a process-wide setting), `ArchiveTreeIndex` recursion (iterative; memory issue is T-F237),
@@ -4742,8 +4747,13 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   per-file grant "harmless"; it is not harmless when staging hardlinked.
   **Open decisions for the user:** P0 vs P1; the damage is permanent and fixing staging does not
   restore ACEs already lost on files opened since v1.3, so decide whether to offer remediation or
-  a release note. (A read-only scan of this machine's Desktop/Documents/Downloads and the
-  `SICHER!` CD folders found no affected files.)
+  a release note. **Already happened in real use:** a read-only recursive scan of this machine's
+  Desktop/Documents/Downloads (tar-family/.7z/.rar files, matching the sandbox SID's shared
+  suffix `...-3482888831-986213358-2090939803-3632948546`, which both observed SIDs carry — the
+  CLI's and the Store package's differ in their leading subauthorities) found one of the user's
+  own archives, opened in Pakko before this review, carrying the Store-package SID ACE and missing
+  a local group's `(RX)` ACE that its folder grants by inheritance. The `SICHER!` CD folders were
+  scanned recursively too: no hits.
   Fix direction: never change the original's security descriptor — stage by copy, or open the
   file for read and hand tar.exe a handle, and re-check the pre-scan/extract identity.
 - **Tests first (Security & Boundary — missing today):** the original archive's DACL, owner and
@@ -4814,7 +4824,10 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
      `ZipArchiveService.ComputeDirectoryTotals` (`:1900-1926`), `WorkItemEnumerator.EnumerateDirectory`
      (`:113`, nested iterators, also O(depth^2) time), `AddDirectoryToArchiveAsync` (`:1822`).
      Folder depth 1,000 archives fine; 2,000 and above kill the process with `Stack overflow`
-     (0xC00000FD) — uncatchable, no message, in the App the whole window dies. Pakko can create
+     (0xC00000FD) — uncatchable, no message. Observed in `pakko a` and in the installed
+     `Archiver.Shell.exe --archive` (Explorer's "Add to X.zip": exit 0xC00000FD, Application Error
+     event 1000 in coreclr.dll, no dialog); the App runs the same Core walk (expected, not
+     observed), where the whole window would die. Pakko can create
      such a tree itself: a Python-made ZIP with one entry `"a/" * 2500 + "x.txt"` extracts with
      `pakko x` (exit 0), then `pakko a` on the result crashes. Violates the global rule on
      recursion over unbounded input.
