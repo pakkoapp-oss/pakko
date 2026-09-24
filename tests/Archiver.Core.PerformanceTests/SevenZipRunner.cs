@@ -52,6 +52,18 @@ public static class SevenZipRunner
     public static void Test(string archivePath) => Run(["t", archivePath, "-bd"]);
 
     /// <summary>
+    /// T-F193: builds a WinZip-AES-256 encrypted ZIP with the real reference tool (7-Zip only ever
+    /// writes AE-2) — the independent source of large encrypted entries Pakko's own reader is
+    /// checked against. <paramref name="store"/> keeps the ciphertext as large as the input.
+    /// </summary>
+    public static void ArchiveEncrypted(string destinationZipPath, string password, bool store, params string[] sources) =>
+        Run(["a", "-tzip", store ? "-mx=0" : "-mx=5", "-mem=AES256", $"-p{password}", "-bd", destinationZipPath, .. sources]);
+
+    /// <summary>T-F193: 7-Zip's integrity check with a password — validates Pakko-written AES entries.</summary>
+    public static void TestEncrypted(string archivePath, string password) =>
+        Run(["t", $"-p{password}", "-bd", archivePath]);
+
+    /// <summary>
     /// T-F128 follow-up: runs 7-Zip's own <c>h</c> (hash) command — the same real-tool reference
     /// this project's <c>FileHashService</c>/<c>HashDigestAccumulator</c> tests already use for
     /// cross-checking DataSum/NamesSum values, reused here as the performance baseline. Timed

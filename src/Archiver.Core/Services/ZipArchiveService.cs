@@ -706,13 +706,10 @@ public sealed class ZipArchiveService : IArchiveService
             return await passwordResolver.ResolveAsync(
                 Path.GetFileName(archivePath),
                 PasswordPurpose.Decrypt,
-                candidate =>
-                {
-                    fs.Position = 0;
-                    var (result, stream) = EncryptedZipEntryReader.TryOpen(fs, firstEncrypted, candidate);
-                    stream?.Dispose();
-                    return result != EncryptedZipReadResult.WrongPassword;
-                }).ConfigureAwait(false);
+                // T-F193: the cheap check only (AES verification value / ZipCrypto check byte) —
+                // a full open would now stream the whole entry through HMAC on every attempt.
+                candidate => EncryptedZipEntryReader.VerifyPassword(fs, firstEncrypted, candidate)
+                    != EncryptedZipReadResult.WrongPassword).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is IOException or InvalidDataException or EndOfStreamException)
         {

@@ -3,57 +3,60 @@ using System.Text;
 namespace Archiver.Core.Services.Zip.Decryption;
 
 /// <summary>
-/// Legacy PKWARE "traditional" ZIP encryption (APPNOTE.TXT section 6.1) — a direct transcription
-/// of the published algorithm, not a hand-rolled cipher: 3 running 32-bit keys updated one byte
-/// at a time via the same CRC-32 polynomial ZIP itself uses. Cryptographically weak (a known-
-/// plaintext attack breaks it in seconds) — kept only because it is still what many real-world
-/// ZIP files use; never used for writing (see <c>docs/SPEC.md</c>).
-/// <para>
-/// Uses its own small 256-entry CRC-32 table rather than <see cref="Archiver.Core.IO.Crc32"/> —
-/// that type's <c>Accumulator</c> always starts from the fixed initial register 0xFFFFFFFF and
-/// finishes with a fixed final XOR, matching the "hash a whole file" use case it exists for. This
-/// algorithm instead runs the same table one byte at a time from an arbitrary, continuously-
-/// evolving register with no final XOR — a different protocol role for the same table, not the
-/// same operation, so reusing that type would mean bolting on an escape hatch rather than sharing
-/// real behavior.
-/// </para>
+/// Traditional PKWARE encryption ("ZipCrypto") — read-only, decryption only: Pakko never writes it
+/// (it is cryptographically broken; T-F193 writes AES only). T-F193: a streaming decryptor — the
+/// 12-byte encryption header is checked up front, then the rest is decrypted as the caller reads.
+/// ZipCrypto has no authentication; its one-byte password check accepts ~1 in 256 wrong passwords,
+/// so callers rely on the content CRC-32 (TrailerCrcCheckStream) to reject that garbage.
 /// </summary>
-internal static class ZipCryptoStream
+internal sealed class ZipCryptoStream : Stream
 {
-    private const int EncryptionHeaderLength = 12;
+    public const int EncryptionHeaderLength = 12;
     private static readonly uint[] Table = BuildTable();
 
-    /// <summary>
-    /// Decrypts <paramref name="cipherWithHeader"/> (the 12-byte encryption header followed by the
-    /// encrypted compressed data, exactly as stored in the ZIP entry). Returns false — with no
-    /// exception — when the trailing byte of the decrypted header doesn't match
-    /// <paramref name="expectedCheckByte"/>, which is the standard fast, non-cryptographic
-    /// "probably wrong password" signal this format defines (a real CRC/decompression check is
-    /// still needed afterward for certainty).
-    /// </summary>
-    public static bool TryDecrypt(
-        ReadOnlySpan<byte> cipherWithHeader, string password, byte expectedCheckByte, out byte[] decrypted)
+    private readonly Stream _ciphertext;
+    private uint _key0;
+    private uint _key1;
+    private uint _key2;
+
+    private ZipCryptoStream(Stream ciphertext, uint key0, uint key1, uint key2)
     {
-        if (cipherWithHeader.Length < EncryptionHeaderLength)
-            throw new InvalidDataException("ZipCrypto entry data is shorter than the 12-byte encryption header.");
+        _ciphertext = ciphertext;
+        _key0 = key0;
+        _key1 = key1;
+        _key2 = key2;
+    }
+
+    /// <summary>
+    /// Reads and decrypts the 12-byte header from <paramref name="cipherWithHeader"/> and checks its
+    /// last byte. On success returns a stream decrypting the remaining bytes as they are read; on a
+    /// wrong password returns false (the caller still owns <paramref name="cipherWithHeader"/>).
+    /// </summary>
+    public static bool TryCreate(Stream cipherWithHeader, string password, byte expectedCheckByte, out Stream? plaintext)
+    {
+        Span<byte> header = stackalloc byte[EncryptionHeaderLength];
+        cipherWithHeader.ReadExactly(header);
 
         InitializeKeys(password, out uint key0, out uint key1, out uint key2);
-
-        Span<byte> header = stackalloc byte[EncryptionHeaderLength];
         for (int i = 0; i < EncryptionHeaderLength; i++)
-            header[i] = DecryptByte(cipherWithHeader[i], ref key0, ref key1, ref key2);
+            header[i] = DecryptByte(header[i], ref key0, ref key1, ref key2);
 
         if (header[EncryptionHeaderLength - 1] != expectedCheckByte)
         {
-            decrypted = [];
+            plaintext = null;
             return false;
         }
 
-        decrypted = new byte[cipherWithHeader.Length - EncryptionHeaderLength];
-        for (int i = 0; i < decrypted.Length; i++)
-            decrypted[i] = DecryptByte(cipherWithHeader[EncryptionHeaderLength + i], ref key0, ref key1, ref key2);
-
+        plaintext = new ZipCryptoStream(cipherWithHeader, key0, key1, key2);
         return true;
+    }
+
+    public override int Read(byte[] buffer, int offset, int count)
+    {
+        int read = _ciphertext.Read(buffer, offset, count);
+        for (int i = 0; i < read; i++)
+            buffer[offset + i] = DecryptByte(buffer[offset + i], ref _key0, ref _key1, ref _key2);
+        return read;
     }
 
     private static void InitializeKeys(string password, out uint key0, out uint key1, out uint key2)
@@ -94,5 +97,26 @@ internal static class ZipCryptoStream
             table[i] = c;
         }
         return table;
+    }
+
+    public override bool CanRead => true;
+    public override bool CanSeek => false;
+    public override bool CanWrite => false;
+    public override long Length => throw new NotSupportedException();
+    public override long Position
+    {
+        get => throw new NotSupportedException();
+        set => throw new NotSupportedException();
+    }
+    public override void Flush() { /* read-only */ }
+    public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+    public override void SetLength(long value) => throw new NotSupportedException();
+    public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+            _ciphertext.Dispose();
+        base.Dispose(disposing);
     }
 }
