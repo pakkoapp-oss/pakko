@@ -8984,13 +8984,24 @@ parent grant — a live `out\` lost its Modify ACE in 2 of 3 runs). Also a real 
 simultaneous Explorer extractions (App + Shell, or two Shell instances) share the same parent.
 
 **Fix:** `QuarantineAcl.EnsureSharedParentTraverse` — `SetEntriesInAclW` merges a GRANT into an
-existing identical ACE, so a byte-identical result means "already granted" and nothing is written
-(the steady state: no propagation ever). The one-time first write goes through `SetFileSecurityW`,
+existing identical ACE, so a byte-identical result is treated as "already granted" and skipped.
+(That the comparison really short-circuits in the steady state is expected but not directly
+asserted; correctness does not depend on it, since any write that does happen is non-propagating.) The one-time first write goes through `SetFileSecurityW`,
 which per its docs is not inherited by children — documented as obsolete in favor of
 `SetNamedSecurityInfoW`, used deliberately for exactly that property. No named mutex was needed
 (which would also have needed proof it's shared between MSIX-packaged and unpackaged processes).
 Per-scope grants (unique GUID folders) are unchanged. Mutation-checked: reverting to the old path
 fails the race test 3/3.
+
+**First-write path verified separately** (advisor-caught — a dev machine whose real parent already
+carried the ACE never exercised it): `QuarantineAclTests.EnsureSharedParentTraverse_FirstWriteOn
+FreshParent_...` writes a fresh parent first, then proves Pakko's own process can still build the
+scope tree below it, children still inherit its ACEs, and a real sandboxed tar.exe still works.
+Plus on device: the real `%TEMP%\PakkoTarSandbox` was moved aside and 4 concurrent installed-build
+Shell extractions recreated and first-wrote it under the MSIX identity (traverse ACE `(X)` present,
+inherited ACEs intact). No negative control for traverse itself: the AppContainer token keeps
+SeChangeNotifyPrivilege ("Bypass traverse checking"), so a missing ancestor traverse grant is not
+observable as a failure — the traverse grants are defense-in-depth, not load-bearing.
 
 ## T-F196 — `tar -C dir .` archives failed in the sandbox (2026-09-24)
 
@@ -9008,6 +9019,15 @@ using a tar made the everyday way. Two independent bugs, each mutation-checked s
    silently not extracted. Leading "./" is now stripped before the shape decision only; the names
    passed to tar.exe (subset selection) are untouched.
 
+3. **Archive Browser (advisor-prompted check, confirmed on device):** the listing reported the
+   names verbatim, so the browser's root was a lone folder named ".". `BuildEntryList` now strips
+   "./" (and skips the bare "./" entry), and `ExpandSelection` maps a listed, unprefixed path back
+   to the real "./"-prefixed member, so subset extraction, preview, nested drill-in, and the tar
+   AMSI scan (all share `ExpandSelection`) keep working. Fixing this in Core rather than in
+   `ArchiveTreeIndex` avoids touching breadcrumb/Up-navigation, which derive from `FullPath`.
+
 Covered by three parity tests (a `./` archive must extract to exactly the plain archive's tree for
-multi-root, single-folder, and single-file shapes). ZIP entries with a "./" prefix are rare and
-were not examined here.
+multi-root, single-folder, and single-file shapes), a list-then-extract-selected test, and a tar
+AMSI-scan test — each part mutation-checked. The UI click-through of "Extract Selected" on device
+was abandoned (coordinate clicks landed on an overlapping terminal window); the path is covered by
+the list-then-extract test instead. ZIP entries with a "./" prefix are rare and were not examined.

@@ -789,8 +789,9 @@ public sealed class TarSandboxedService : ITarService
         var allNamesSet = new HashSet<string>(allNames, StringComparer.Ordinal);
         var result = new List<string>();
 
-        foreach (string selected in selectedEntryPaths)
+        foreach (string requested in selectedEntryPaths)
         {
+            string selected = ToArchiveMemberName(allNamesSet, requested);
             if (allNamesSet.Contains(selected))
                 result.Add(selected);
             else if (allNamesSet.Contains(selected + "/"))
@@ -801,6 +802,16 @@ public sealed class TarSandboxedService : ITarService
         }
 
         return result.Distinct(StringComparer.Ordinal).ToList();
+    }
+
+    // T-F196: ListEntriesAsync strips tar's "./" member prefix (see BuildEntryList), so a path the
+    // Archive Browser hands back may need it restored to name the archive's real member.
+    private static string ToArchiveMemberName(HashSet<string> allNames, string requested)
+    {
+        if (allNames.Contains(requested) || allNames.Contains(requested + "/"))
+            return requested;
+        string dotted = "./" + requested;
+        return allNames.Contains(dotted) || allNames.Contains(dotted + "/") ? dotted : requested;
     }
 
     /// <inheritdoc/>
@@ -884,10 +895,17 @@ public sealed class TarSandboxedService : ITarService
         var entries = new List<ArchiveEntryInfo>(names.Length);
         for (int i = 0; i < names.Length; i++)
         {
+            // T-F196: `tar -C dir .` archives prefix every member "./" and start with a bare "./"
+            // — shown verbatim, the Archive Browser's root was a lone folder named ".". List the
+            // same paths the plain archive would; ExpandSelection maps them back for extraction.
+            string path = StripLeadingDotSlash(names[i]).TrimEnd('/');
+            if (path.Length == 0)
+                continue;
+
             char typeChar = typeLines[i].Length > 0 ? typeLines[i][0] : '?';
             entries.Add(new ArchiveEntryInfo
             {
-                Path = names[i].TrimEnd('/'),
+                Path = path,
                 Size = typeChar == '-' ? ParseTarListingSize(typeLines[i]) : 0,
                 CompressedSize = 0,
                 // Date column was observed locale-mangled (see this method's sibling

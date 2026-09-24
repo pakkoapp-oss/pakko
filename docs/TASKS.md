@@ -4146,7 +4146,7 @@ regression from this task, which owns reliability only.
 
 ### T-F195 — Cross-project tar-sandbox test contention (`Archiver.CLI.Tests` Subprocess vs. `Archiver.Core.IntegrationTests`)
 
-- [x] **Status:** done 2026-09-24 — root cause was a real **product** race, not only a test one
+- [~] **Status:** fix complete 2026-09-24, awaiting a green CI run — root cause was a real **product** race, not only a test one
   (see `docs/DECISIONS.md`'s T-F195 entry). Every `TarSandboxScope`, in every Pakko process,
   re-granted traverse on the one shared `%TEMP%\PakkoTarSandbox` parent via
   `SetNamedSecurityInfoW`, which re-propagates inheritable ACEs to every existing child — a
@@ -4170,7 +4170,8 @@ regression from this task, which owns reliability only.
     deliberately (`QuarantineAclParentRaceTests`), not guessed.
   - [x] Fix by construction (no write in steady state, non-propagating first write), not by
     retry/timeout widening — no mutex needed.
-  - [x] Several consecutive full-suite runs green locally; CI confirmation on the next push.
+  - [x] Several consecutive full-suite runs green locally.
+  - [ ] Green CI run on the pushed fix (the flake originally showed up in CI).
 - **Reported by:** agent observation, 2026-09-24 (user-approved as a tracked task).
 - **Depends on:** none.
 
@@ -4192,9 +4193,12 @@ regression from this task, which owns reliability only.
      phase stripped a real path segment — root-level files were **silently dropped** (the
      "defensive" `sep < 0` branch) and nested ones landed one level too high. Fixed by stripping
      leading "./" before the root-shape decision.
+  3. **Archive Browser:** the listing showed a lone "." folder at the root (confirmed on device).
+     Now listed without the "./" prefix; `ExpandSelection` maps selections back to real members.
 - **Tests:** three parity tests (`ExtractAsync_DotRoot*_MatchesPlainArchiveTree` — multi-root,
   single-folder, single-file) assert the `./` archive extracts to exactly the same tree as the
-  same content archived without the prefix. Each half of the fix mutation-checked separately
+  same content archived without the prefix; `ListThenExtractSelected_DotRootTarGz` and
+  `ScanAsync_DotRootTarGz_ScansEveryFileClean` cover the browser and AMSI paths. Each half of the fix mutation-checked separately
   (2/3 and 3/3 red). Installed-build smoke: 4 concurrent `./` archives, 200 files each.
 - **Reported by:** agent observation, 2026-09-24. **Depends on:** none.
 

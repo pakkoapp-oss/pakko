@@ -33,7 +33,7 @@ public sealed class QuarantineAclParentRaceTests : IDisposable
     {
         _profile.EnsureExists();
         using var sid = _profile.GetSid();
-        var sidIdentifier = new SecurityIdentifier(sid.DangerousGetHandle());
+        var sidIdentifier = ToSecurityIdentifier(sid);
         string parent = _temp.Path;
         QuarantineAcl.EnsureSharedParentTraverse(parent, sid);
 
@@ -90,7 +90,23 @@ public sealed class QuarantineAclParentRaceTests : IDisposable
         string after = new DirectoryInfo(parent).GetAccessControl().GetSecurityDescriptorSddlForm(AccessControlSections.Access);
 
         after.Should().Be(before);
-        before.Should().Contain(new SecurityIdentifier(sid.DangerousGetHandle()).Value);
+        before.Should().Contain(ToSecurityIdentifier(sid).Value);
+    }
+
+    // DangerousAddRef/Release spans the dereference, per CLAUDE.md's SafeHandle rule (S3869).
+    private static SecurityIdentifier ToSecurityIdentifier(SafeSidHandle sid)
+    {
+        bool added = false;
+        try
+        {
+            sid.DangerousAddRef(ref added);
+            return new SecurityIdentifier(sid.DangerousGetHandle());
+        }
+        finally
+        {
+            if (added)
+                sid.DangerousRelease();
+        }
     }
 
     private static bool HasExplicitModifyGrant(string path, SecurityIdentifier sid)

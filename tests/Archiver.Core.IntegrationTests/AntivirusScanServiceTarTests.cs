@@ -66,6 +66,25 @@ public sealed class AntivirusScanServiceTarTests : IDisposable
         scanner.Disposed.Should().BeTrue();
     }
 
+    // T-F196: a `tar -C dir .` archive used to come back Inconclusive for every entry — the same
+    // "./: Can't stat existing object" sandbox failure extraction hit, since the scan extracts
+    // into the quarantine exactly the same way.
+    [Integration]
+    public async Task ScanAsync_DotRootTarGz_ScansEveryFileClean()
+    {
+        string archivePath = Path.Combine(_temp.Path, "dotroot.tar.gz");
+        ExternalTarFixtureBuilder.CreateCompressedTarOfDotRoot(archivePath, "-czf",
+            [("a.txt", "hello"), ("sub/b.txt", "world")]);
+
+        var scanner = new FakeAmsiScanner();
+        var service = CreateService(scanner);
+
+        var result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [archivePath] });
+
+        result.OverallVerdict.Should().Be(ThreatVerdict.Clean);
+        scanner.ScannedContentNames.Should().BeEquivalentTo(["a.txt", "sub/b.txt"]);
+    }
+
     [Integration]
     public async Task ScanAsync_TarArchiveWithDetectedEntry_ReturnsThreatDetectedAndIdentifiesEntry()
     {

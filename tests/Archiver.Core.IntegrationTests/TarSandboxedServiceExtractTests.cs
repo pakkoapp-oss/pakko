@@ -80,6 +80,37 @@ public sealed class TarSandboxedServiceExtractTests : IDisposable
     public async Task ExtractAsync_DotRootSingleFile_MatchesPlainArchiveTree()
         => await AssertDotRootParityAsync([("only.txt", "hello")]);
 
+    // T-F196: the Archive Browser path. Listing used to report tar's own "./"-prefixed names
+    // verbatim, so the browser's root showed a lone folder named "." (confirmed on device). The
+    // listing now reports the same paths as the plain archive, and a subset extraction using
+    // exactly those listed paths must still map back to the real "./"-prefixed members.
+    [Integration]
+    public async Task ListThenExtractSelected_DotRootTarGz_ExtractsTheSelectedFile()
+    {
+        string archivePath = Path.Combine(_temp.Path, "dotroot_subset.tar.gz");
+        ExternalTarFixtureBuilder.CreateCompressedTarOfDotRoot(archivePath, "-czf",
+            [("a.txt", "hello"), ("sub/b.txt", "world")]);
+
+        var listing = await _sut.ListEntriesAsync(archivePath);
+        listing.Success.Should().BeTrue();
+        listing.Entries.Select(e => e.Path).Should().BeEquivalentTo(["a.txt", "sub", "sub/b.txt"]);
+        string listedB = "sub/b.txt";
+
+        string destDir = Path.Combine(_temp.Path, "out_subset");
+        var result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [archivePath],
+            DestinationFolder = destDir,
+            Mode = ExtractMode.SingleFolder,
+            SelectedEntryPaths = [listedB],
+        });
+
+        result.Errors.Should().BeEmpty();
+        Directory.GetFiles(destDir, "*", SearchOption.AllDirectories)
+            .Select(f => Path.GetRelativePath(destDir, f))
+            .Should().Equal([Path.Combine("sub", "b.txt")]);
+    }
+
     private async Task AssertDotRootParityAsync((string Name, string Content)[] entries)
     {
         string plainArchive = Path.Combine(_temp.Path, "plain.tar.gz");

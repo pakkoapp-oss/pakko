@@ -90,6 +90,55 @@ public sealed class QuarantineAclTests : IDisposable
         File.Exists(Path.Combine(neverAcldOutDir, "a.txt")).Should().BeFalse();
     }
 
+    // T-F195 (advisor-caught): EnsureSharedParentTraverse's one-time first write goes through
+    // SetFileSecurityW, not SetNamedSecurityInfoW — a path a dev machine never exercises once its
+    // real %TEMP%\PakkoTarSandbox already carries the ACE, but every fresh install and CI runner
+    // hits first. The real risk is a DACL written that way breaking something, so the write happens
+    // on a FRESH parent BEFORE anything exists below it: Pakko's own process must still create the
+    // scope tree there, children must still inherit the parent's inheritable ACEs, and a real
+    // sandboxed tar.exe must still work through it. (No negative control for traverse itself: the
+    // AppContainer token keeps SeChangeNotifyPrivilege, "Bypass traverse checking", so a missing
+    // traverse grant on an ancestor can't be observed as a failure.)
+    [Fact]
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+    public async Task EnsureSharedParentTraverse_FirstWriteOnFreshParent_KeepsOwnerAccessInheritanceAndSandboxWorking()
+    {
+        _profile.EnsureExists();
+        using var sid = _profile.GetSid();
+        using var securityCapabilities = SecurityCapabilitiesAttributeList.Create(sid);
+
+        string sharedParent = Path.Combine(_temp.Path, "PakkoTarSandbox");
+        Directory.CreateDirectory(sharedParent);
+        QuarantineAcl.GrantTraverseOnly(_temp.Path, sid);
+        QuarantineAcl.EnsureSharedParentTraverse(sharedParent, sid);
+
+        string scopeRoot = Path.Combine(sharedParent, Guid.NewGuid().ToString("N"));
+        string inDir = Path.Combine(scopeRoot, "in");
+        string outDir = Path.Combine(scopeRoot, "out");
+        Directory.CreateDirectory(inDir);
+        Directory.CreateDirectory(outDir);
+        string archivePath = Path.Combine(inDir, "fixture.tar");
+        ExternalTarFixtureBuilder.CreateCompressedTar(archivePath, "-cf", [("a.txt", "first write")]);
+
+        new DirectoryInfo(scopeRoot).GetAccessControl()
+            .GetAccessRules(includeExplicit: false, includeInherited: true, typeof(System.Security.Principal.SecurityIdentifier))
+            .Count.Should().BeGreaterThan(0, "children of the first-written parent must still inherit its inheritable ACEs");
+
+        QuarantineAcl.GrantTraverseListReadAttributes(scopeRoot, sid);
+        QuarantineAcl.GrantReadExecute(inDir, sid);
+        QuarantineAcl.GrantModify(outDir, sid);
+
+        var (exitCode, _, stdErr) = await SandboxedProcessLauncher.RunAsync(
+            TarExecutablePath,
+            ["-xf", archivePath, "-C", outDir],
+            securityCapabilities.AttributeList,
+            jobObject: null,
+            CancellationToken.None);
+
+        exitCode.Should().Be(0, because: stdErr);
+        File.ReadAllText(Path.Combine(outDir, "a.txt")).Should().Be("first write");
+    }
+
     // Real, deterministic Win32 setup failure (not simulated) — GetNamedSecurityInfoW fails for a
     // path that doesn't exist. This is the exact failure shape TarSandboxScope.CreateAsync now
     // catches and rewraps as SandboxSetupException (T-F52), so a blocked/misconfigured sandbox
