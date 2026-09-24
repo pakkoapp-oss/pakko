@@ -4612,6 +4612,94 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   section 6.
 - **Reported by:** user request, 2026-09-24.
 
+### T-F227 — ZIP extraction reuses and destroys an existing `<dest>_tmp` folder (P0)
+
+- [ ] **Status:** open — found by the T-F226 review (independent reviewer agent), confirmed on
+  device 2026-09-24. `ZipArchiveService` stages into `tempDest = destDir + "_tmp"`
+  (`ZipArchiveService.cs:1290`), `Directory.CreateDirectory` silently reuses an existing folder of
+  that name (`:1292`), the commit phase moves every file in it into the destination (`:1403-1410`)
+  and then deletes it recursively (`:1424`); the failure path deletes it too (`:1334`).
+  Repro 1 (Explorer "Extract to multi\"): a user folder `multi_tmp\my-important-notes.txt` next to
+  `multi.zip` -> after extraction `multi_tmp\` is gone and the note sits inside `multi\`.
+  Repro 2 (Explorer "Extract here", flat): `Projects\multi.zip` plus a sibling user folder
+  `Projects_tmp\backup.txt` -> `Projects_tmp\` is gone, `backup.txt` moved into `Projects\`.
+  Silent user-data loss/misplacement; a leftover `_tmp` from a crashed run also merges into the
+  next extraction. Use a unique, owned staging directory (random name, created fresh, never
+  reused), and never delete anything the current run did not create. Check the tar path's move
+  phase for the same pattern.
+- **Tests first:** a pre-existing `<dest>_tmp` with user files survives, untouched, both a
+  successful and a failed extraction, in every `ExtractMode`.
+- **Reported by:** T-F226 review, 2026-09-24.
+
+### T-F228 — A crafted ZIP entry bypasses the conflict policy and overwrites existing files (P0)
+
+- [ ] **Status:** open — found by the T-F226 reviewer agent, confirmed on device 2026-09-24. The
+  traversal check runs on the path normalized inside the staging folder, but the conflict check and
+  the duplicate-path set are computed from the un-normalized relative path against the final
+  destination (`ZipArchiveService.cs:~1477-1533`), and the commit phase moves files with
+  `overwrite: true` (`:1410`). An entry that climbs out of the staging folder and back into it
+  passes the traversal check and is never seen as a conflict. Repro: `t\b.txt` = "ORIGINAL";
+  `evil.zip` = `a.txt` + `../t_tmp/b.txt`; `pakko x -o<dir>\t -aos evil.zip` (skip existing) ->
+  exit 0 and `t\b.txt` now holds the archive's content. Fix: reject any entry name with a `..`
+  segment (the tar pre-scan already does) and build conflict/claimed paths from the normalized
+  path.
+- **Tests first:** the repro above for Skip, Ask, and Rename, ZIP and tar.
+- **Reported by:** T-F226 review, 2026-09-24.
+
+### T-F229 — "Delete after operation" deletes an archive whose entries were partly skipped (P0)
+
+- [ ] **Status:** open — confirmed on device 2026-09-24. `ArchiveResult.Success` is
+  `errors.Count == 0` (`ZipArchiveService.cs:714`); an entry rejected for its name (reserved
+  device name, ADS `:`, control characters) or a reparse point is recorded as a `SkippedFile` with
+  the *entry* name (`:1491`, `:1505`), so `MainViewModel.GetDeletableSources` (`:1237`) does not
+  exclude the archive and `RunCleanupAsync` deletes it permanently. Repro: `reserved.zip` holding
+  `ok.txt` and `CON.txt`; App, Extract with "Видалити після операції" -> only `ok.txt` on disk,
+  the archive is gone (not in the Recycle Bin), and the summary listing the skipped `CON.txt`
+  appears only after the deletion. Delete a source only when nothing from it was skipped or
+  failed; see also T-F207 (irreversible, no confirmation).
+- **Reported by:** T-F226 review, 2026-09-24.
+
+### T-F230 — One bad entry aborts the whole ZIP extraction with a misleading message (P1)
+
+- [ ] **Status:** open — confirmed on device 2026-09-24. Per-entry I/O failures are not caught
+  per entry (rule: every IO exception per item becomes an `ArchiveError`): `qmark.zip` =
+  `ok1.txt`, `What?.txt` (legal on macOS/Linux), `ok2.txt` -> `pakko x` exit 2 "Cannot extract
+  archive: The filename, directory name, or volume label syntax is incorrect. :
+  '<scratch>\q_tmp\What?.txt'" and nothing is extracted; the message also leaks the internal
+  staging path. A traversal-rejected entry is reported as "File has ZIP signature but appears
+  corrupted or incomplete" (Shell `--extract-folder evil.zip`), and that failed run leaves an
+  empty `evil (1)\` folder behind. Skip/record only the bad entry; say "unsafe path" for
+  traversal; remove the folder the run created.
+- **Reported by:** T-F226 review, 2026-09-24.
+
+### T-F231 — Decrypted ZIP entries are not capped at their declared size (P1)
+
+- [ ] **Status:** open — code-confirmed by the T-F226 reviewer agent, exploit not yet reproduced.
+  The compression-bomb and free-space gate uses declared sizes; the decrypting path wraps the
+  plaintext in an unbounded `DeflateStream` (`EncryptedZipEntryReader.cs:~229`), so a
+  password-protected archive can declare tiny sizes and expand far beyond them (a password shared
+  out of band is the normal case). Cap the output at the entry's declared length and fail beyond
+  it; confirm whether .NET caps the unencrypted path as assumed.
+- **Tests first:** an AE-2 entry whose inflated output exceeds its declared length is rejected and
+  the staging folder is cleaned.
+- **Reported by:** T-F226 review, 2026-09-24.
+
+### T-F232 — `pakko://` opens arbitrary local/UNC paths with no confirmation (P1)
+
+- [ ] **Status:** open — code-confirmed 2026-09-24. Any web page or link can launch
+  `pakko://browse?files=<base64 JSON>`; `ProtocolActivationRouter` accepts any single path and
+  `EnterBrowseModeAsync` reads it immediately (`App.xaml.cs:98`, `MainViewModel.cs:710-736`).
+  A UNC path (`\\host\share\x.zip`) makes Windows authenticate to that host over SMB (NTLM
+  credential exposure); tar-family paths also launch tar.exe on the remote file.
+  `pakko://archive|extract?files=[...]` pre-fills the list, and each `FileItem` immediately walks
+  folders recursively (`"C:\\"` walks the whole drive, no cancellation) and reads every file in
+  full for CRC-32 (`FileItem.cs:41-110`), UNC included. No filtering of network paths, no
+  confirmation for a protocol launch. Also: a missing path throws inside the `FileItem`
+  constructor (`FileItem.cs:58-60`), silently dropping the whole protocol list or escaping into a
+  UI handler for drag-drop/file activation; `RequestedOperation` is set but never read (dead code).
+  Check how browsers prompt before launching `pakko://` before choosing the fix.
+- **Reported by:** T-F226 review, 2026-09-24.
+
 ### T-F223 — Diagram gap from T-F193 (P2)
 
 - [ ] **Status:** open. Carried by T-F202 from `docs/DECISIONS.md`'s T-F193 entry: no diagram in
