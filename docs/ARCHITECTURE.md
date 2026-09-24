@@ -1683,7 +1683,12 @@ to one of two independent scan flows via `ArchiveFormatPolicy.Classify` (see bel
 - **ZIP** — in-process, no disk writes at all. Opens the archive via the same
   `System.IO.Compression.ZipFile.OpenRead` `ZipArchiveService` itself uses, reads each (optionally
   `SelectedEntryPaths`-filtered) entry's bytes into a rented buffer, and calls
-  `IAmsiScanner.ScanBuffer` directly — no quarantine, no temp files.
+  `IAmsiScanner.ScanBuffer` directly — no quarantine, no temp files. **T-F194:**
+  `AntivirusScanOptions.ResolvePasswordAsync` (same type as `ExtractOptions.ResolvePasswordAsync`)
+  lets an encrypted entry be decrypted in memory via `EncryptedZipEntryReader` and its plaintext
+  scanned; the password is resolved once per archive through `ZipArchiveService`'s own
+  `ResolveArchivePasswordAsync` (now `internal`). No password → that entry is `Inconclusive`, never
+  `Clean`; a decrypted entry is only reported `Clean` if its stream reaches a verified end (CRC).
 - **tar-family** — reuses `TarSandboxScope`/T-F49's whole-archive pre-scan and T-F52's
   AppContainer sandbox exactly as a real Extract would (`TarSandboxedService.
   ScanForUnsafeEntriesAsync`/`ExpandSelection`/`EnumerateFilesGuarded` were bumped from `private`

@@ -23,6 +23,49 @@ public sealed class EncryptedZipEntryReaderTests
     }
 
     [Fact]
+    public void TryOpen_Bzip2UnderAesCorrectPassword_ReturnsUnsupportedCompressionMethod()
+    {
+        var (result, content) = EncryptedZipEntryReader.TryOpen(
+            FixtureHelper.Archive("encrypted_aes256_bzip2.zip"), "compressible.txt", RealPassword);
+
+        result.Should().Be(EncryptedZipReadResult.UnsupportedCompressionMethod);
+        content.Should().BeNull();
+    }
+
+    // T-F194: the ciphertext buffer is sized from the LOCAL header's compressed size — attacker-
+    // controlled independently of the central directory. Before the fix, a 300 MiB claim on a
+    // ~41 KB file allocated 300 MiB, then failed with EndOfStreamException; up to ~2 GiB was
+    // reachable per call. Must fail closed before allocating, bounded by the real file length.
+    [Fact]
+    public void TryOpen_LocalHeaderCompressedSizeBeyondFileEnd_ThrowsInvalidDataBeforeAllocating()
+    {
+        string patched = Path.Combine(Path.GetTempPath(), $"pakko-oversized-{Guid.NewGuid():N}.zip");
+        try
+        {
+            byte[] bytes = File.ReadAllBytes(FixtureHelper.Archive("encrypted_aes256.zip"));
+            BitConverter.GetBytes(300u * 1024 * 1024).CopyTo(bytes, 18);
+            File.WriteAllBytes(patched, bytes);
+
+            Action act = () => EncryptedZipEntryReader.TryOpen(patched, "compressible.txt", RealPassword);
+
+            act.Should().Throw<InvalidDataException>();
+        }
+        finally
+        {
+            File.Delete(patched);
+        }
+    }
+
+    [Fact]
+    public void TryOpen_Bzip2UnderAesWrongPassword_StillReportsWrongPasswordFirst()
+    {
+        var (result, _) = EncryptedZipEntryReader.TryOpen(
+            FixtureHelper.Archive("encrypted_aes256_bzip2.zip"), "compressible.txt", "definitely-wrong");
+
+        result.Should().Be(EncryptedZipReadResult.WrongPassword);
+    }
+
+    [Fact]
     public void TryOpen_Aes256CorrectPassword_ReturnsByteExactContent()
     {
         var (result, content) = EncryptedZipEntryReader.TryOpen(

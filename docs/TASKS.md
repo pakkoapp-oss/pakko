@@ -4144,6 +4144,31 @@ regression from this task, which owns reliability only.
 
 ---
 
+### T-F195 — Cross-project tar-sandbox test contention (`Archiver.CLI.Tests` Subprocess vs. `Archiver.Core.IntegrationTests`)
+
+- [ ] **Status:** not started — recurrence of the exact vector `CLAUDE.md`'s Known-test-gaps note
+  predicted T-F130 would NOT cover.
+- **Context:** T-F130 serialized every real-sandbox test class *within*
+  `Archiver.Core.IntegrationTests` via `[Collection("TarSandbox", DisableParallelization = true)]`.
+  `Archiver.CLI.Tests`' `Subprocess/` layer launches the real built `pakko.exe`, which drives the
+  same shared `Pakko.TarSandbox` AppContainer profile/quarantine ACL from a different test process
+  concurrently. 2026-09-24 (T-F194 session): one full `dotnet test --filter
+  "Category!=Slow&Category!=VeryLarge"` run failed 4 tests at once across BOTH projects
+  (`CliSubprocessTests.Extract_SevenZipFixture*` ×2,
+  `AntivirusScanServiceTarTests.ScanAsync_SelectedEntryPathsSubset_OnlyScansSelectedEntries`,
+  `TarSandboxedServiceCompressedFormatsTests.ExtractAsync_TarGz_ExtractsFileWithContent`); both
+  projects passed 100% when rerun individually, and the preceding/following full runs were green.
+- **Acceptance criteria (draft):**
+  - [ ] Root-cause which shared resource actually collides across processes (profile creation,
+    quarantine ACL, fixed `%TEMP%` quarantine root) — reproduce deliberately, don't guess.
+  - [ ] Fix by construction (e.g. per-process quarantine subfolder, or a cross-process named mutex
+    around sandbox setup), not by retry/timeout widening.
+  - [ ] Several consecutive full-suite runs green locally and in CI.
+- **Reported by:** agent observation, 2026-09-24 (user-approved as a tracked task).
+- **Depends on:** none.
+
+---
+
 ## Test-Coverage Audit Follow-Ups (T-F174–T-F186)
 
 Sourced from a full three-stage QA/AppSec coverage audit (requirements extraction -> matrix vs.
@@ -4989,7 +5014,8 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
     zero re-prompt (and correct coexistence with T-F155's own conflict dialog), and Cancel
     producing the exact unchanged pre-existing rejection message. Stays pending the user's own
     personal Explorer click-through.
-  - [ ] **Once this ships, update the trust documents in one pass** (user-confirmed 2026-09-18,
+  - [x] **Once this ships, update the trust documents in one pass** (done 2026-09-24, user-approved,
+    together with T-F194's SECURITY.md paragraph — new "Password-Protected ZIP" section) (user-confirmed 2026-09-18,
     after T-F190's on-device pass raised the question): `SECURITY.md` (needs explicit permission
     per `CLAUDE.md`'s hard Do-Not), `docs/SPEC.md`, `README.md`, `docs/index.html` +
     `docs/uk/index.html` all still say "Encrypted archives — out of scope," stale since before
@@ -5004,8 +5030,11 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
 
 ### T-F194 — AMSI scan (T-F146) currently can't see inside a password-protected ZIP entry at all
 
-- [ ] **Status:** not started — real gap found by the user during T-F188's review, not part of
-  the original design. Depends on T-F189 (needs `EncryptedZipEntryReader`/a resolved password).
+- [~] **Status:** implementation complete, 2026-09-24 — agent-driven on-device verification via
+  `windows` MCP passed (Shell `--scan` — the Explorer command's target — and the App's Archive
+  Browser scan, both against real Defender and the real encrypted EICAR fixture, plus Shell `--test`); stays
+  `[~]` until the user's own click-through (`SECURITY.md` updated 2026-09-24 with permission). Full design + four advisor-caught defects in `docs/DECISIONS.md`'s T-F194 entry.
+  Same batch closed T-F192's Shell `--test` password gap.
 - **Context:** `AntivirusScanService.ScanZipArchiveAsync` opens each entry via plain
   `ZipArchiveEntry.Open()`/`DeflateStream` — for an encrypted entry this throws
   `InvalidDataException` (encrypted bytes aren't valid deflate), already caught by the existing
@@ -5016,21 +5045,21 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
   AV scanning, which is exactly this project's own threat model concern for its government/
   defense audience (see `SECURITY.md`).
 - **Acceptance criteria (draft):**
-  - [ ] `AntivirusScanService.ScanZipArchiveAsync` gains the same
+  - [x] `AntivirusScanService.ScanZipArchiveAsync` gains the same
     `Func<PasswordPromptInfo, Task<PasswordDecision>>? ResolvePasswordAsync` hook T-F189 adds to
     `ExtractOptions`/`ArchiveOptions` (third call site for the same shared `PasswordResolver` —
     reinforces, doesn't reopen, the "one shared mechanism" decision from T-F188/T-F189).
-  - [ ] When an entry's general-purpose encrypted bit is set and a password is available, the
+  - [x] When an entry's general-purpose encrypted bit is set and a password is available, the
     entry is decrypted via `EncryptedZipEntryReader` before being handed to AMSI, instead of
     going straight to the existing `Inconclusive` fallback.
-  - [ ] Without a resolved password (Shell/CLI scan commands not yet wired, or the user declines
+  - [x] Without a resolved password (Shell/CLI scan commands not yet wired, or the user declines
     the prompt), behavior is unchanged — `Inconclusive`, not a silent "clean" — this is a strict
     improvement, never a regression on the fail-safe default.
-  - [ ] New Explorer/Archive Browser entry points for "Scan for threats" wired to prompt for a
+  - [x] New Explorer/Archive Browser entry points for "Scan for threats" wired to prompt for a
     password the same way Extract does.
-  - [ ] `SECURITY.md`'s "Encrypted-Archive Diagnostics"/AMSI sections updated to state this
+  - [x] `SECURITY.md`'s "Encrypted-Archive Diagnostics"/AMSI sections updated to state this
     explicitly (both the gap that existed before this task and the fix), not left implicit.
-  - [ ] New tests: an EICAR-in-encrypted-ZIP fixture, scanned with and without the correct
+  - [x] New tests: an EICAR-in-encrypted-ZIP fixture, scanned with and without the correct
     password, asserting `Inconclusive` (no password) vs. a real detection (correct password) —
     mirroring T-F146's own existing manual EICAR verification requirement.
 - **Reported by:** user, 2026-09-17 ("І в нас же є тест архів на віруси, треба не забути цю

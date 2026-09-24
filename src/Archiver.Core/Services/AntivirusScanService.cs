@@ -5,6 +5,7 @@ using Archiver.Core.Interfaces;
 using Archiver.Core.Models;
 using Archiver.Core.Services.Antivirus;
 using Archiver.Core.Services.Sandbox;
+using Archiver.Core.Services.Zip.Decryption;
 
 namespace Archiver.Core.Services;
 
@@ -163,11 +164,15 @@ public sealed class AntivirusScanService : IAntivirusScanService
                 });
             }
 
+            // T-F194: one instance for the whole call, same as ExtractAsync — an "apply to
+            // remaining" answer spans every archive in this multi-select.
+            var passwordResolver = new PasswordResolver(options.ResolvePasswordAsync, maxAttempts: 3);
+
             foreach (string archivePath in classification.ZipPaths)
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 await ScanZipArchiveAsync(
-                    archivePath, options.SelectedEntryPaths, scanner, findings,
+                    archivePath, options.SelectedEntryPaths, scanner, passwordResolver, findings,
                     (entry, done, total) => ReportProgress(archivePath, entry, done, total), cancellationToken)
                     .ConfigureAwait(false);
                 archivesCompleted++;
@@ -211,6 +216,7 @@ public sealed class AntivirusScanService : IAntivirusScanService
         string archivePath,
         IReadOnlyList<string>? selectedEntryPaths,
         IAmsiScanner scanner,
+        PasswordResolver passwordResolver,
         List<ThreatFinding> findings,
         Action<string?, int, int> reportProgress,
         CancellationToken cancellationToken)
@@ -234,6 +240,14 @@ public sealed class AntivirusScanService : IAntivirusScanService
 
         using (archive)
         {
+            // T-F194: an encrypted entry used to reach entry.Open() and fail as "Could not read
+            // entry" — never scanned at all, which is exactly how password-protected malware
+            // delivery evades AV. Now its decrypted plaintext is scanned when a password resolves.
+            using Stream? rawArchiveStream = TryMapEncryptedEntries(archivePath, archive, out var encryptedEntryMap);
+            string? password = encryptedEntryMap is null
+                ? null
+                : await ZipArchiveService.ResolveArchivePasswordAsync(archivePath, passwordResolver).ConfigureAwait(false);
+
             var allFileEntries = archive.Entries.Where(e => !e.FullName.EndsWith('/')).ToList();
 
             // Same subset-membership logic ZipArchiveService.ExtractWithSmartFolderingAsync
@@ -263,9 +277,15 @@ public sealed class AntivirusScanService : IAntivirusScanService
                 reportProgress(entry.FullName, entriesDone, fileEntries.Count);
                 try
                 {
-                    ThreatFinding finding = await ScanOneEntryAsync(
-                        archivePath, entry.FullName, entry.Length, entry.Open, scanner, cancellationToken)
-                        .ConfigureAwait(false);
+                    ThreatFinding finding = encryptedEntryMap is { } map
+                                            && map.TryGetValue(entry, out var located)
+                                            && located.GeneralPurposeEncryptedBit
+                        ? await ScanEncryptedEntryAsync(
+                            archivePath, entry, located, rawArchiveStream!, password, scanner, cancellationToken)
+                            .ConfigureAwait(false)
+                        : await ScanOneEntryAsync(
+                            archivePath, entry.FullName, entry.Length, entry.Open, scanner, cancellationToken)
+                            .ConfigureAwait(false);
                     findings.Add(finding);
                 }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
@@ -293,18 +313,10 @@ public sealed class AntivirusScanService : IAntivirusScanService
     // callers since each catches a different set of exception types with a different message.
     private static async Task<ThreatFinding> ScanOneEntryAsync(
         string archivePath, string entryPath, long length, Func<Stream> openStream,
-        IAmsiScanner scanner, CancellationToken cancellationToken)
+        IAmsiScanner scanner, CancellationToken cancellationToken, bool verifyIntegrityAfterScan = false)
     {
         if (length > MaxScannableEntryBytes)
-        {
-            return new ThreatFinding
-            {
-                ArchivePath = archivePath,
-                EntryPath = entryPath,
-                Verdict = ThreatVerdict.Inconclusive,
-                Reason = $"Entry is larger than {MaxScannableEntryBytes / (1024 * 1024)} MiB and was not scanned.",
-            };
-        }
+            return OversizedFinding(archivePath, entryPath);
 
         int intLength = (int)length;
         byte[] buffer = ArrayPool<byte>.Shared.Rent(Math.Max(intLength, 1));
@@ -321,6 +333,20 @@ public sealed class AntivirusScanService : IAntivirusScanService
             }
 
             (ThreatVerdict verdict, string? threatName) = scanner.ScanBuffer(buffer, totalRead, entryPath);
+
+            // T-F194 (advisor-caught): ZipCrypto's one-byte password check accepts ~1 in 256 wrong
+            // passwords, decrypting to garbage AMSI would happily call Clean. The trailer CRC-32
+            // only fires once the stream is read to its end — stopping at exactly `length` bytes
+            // never reaches it. One more read either hits end-of-stream (running that check) or
+            // finds content past the declared length; both failures mean the bytes scanned are
+            // not trustworthy. A real detection stands regardless — only Clean is downgraded.
+            if (verifyIntegrityAfterScan && verdict == ThreatVerdict.Clean
+                && !await ReachesVerifiedEndAsync(stream, cancellationToken).ConfigureAwait(false))
+            {
+                return InconclusiveFinding(archivePath, entryPath,
+                    "Decrypted content failed its integrity check (wrong password or corrupted entry) and was not reported clean.");
+            }
+
             return new ThreatFinding
             {
                 ArchivePath = archivePath,
@@ -334,6 +360,94 @@ public sealed class AntivirusScanService : IAntivirusScanService
             ArrayPool<byte>.Shared.Return(buffer);
         }
     }
+
+    private static async Task<bool> ReachesVerifiedEndAsync(Stream stream, CancellationToken cancellationToken)
+    {
+        try
+        {
+            byte[] probe = new byte[1];
+            return await stream.ReadAsync(probe, cancellationToken).ConfigureAwait(false) == 0;
+        }
+        catch (InvalidDataException)
+        {
+            return false;
+        }
+    }
+
+    // T-F194: positional pairing of archive.Entries with RawZipEntryLocator.LocateAll, the same way
+    // ZipArchiveService.TestArchiveEntries does it. Returns null (and no map) for a plain archive —
+    // zero extra parsing — or when the raw layout can't be read (Zip64/odd structure), in which
+    // case encrypted entries fall back to the pre-T-F194 "Could not read entry" Inconclusive.
+    private static FileStream? TryMapEncryptedEntries(
+        string archivePath, ZipArchive archive, out Dictionary<ZipArchiveEntry, LocatedZipEntry>? map)
+    {
+        map = null;
+        if (!ZipArchiveService.IsEncryptedZip(archivePath))
+            return null;
+
+        FileStream? raw = null;
+        try
+        {
+            raw = File.OpenRead(archivePath);
+            var located = RawZipEntryLocator.LocateAll(raw);
+            if (located.Count != archive.Entries.Count)
+            {
+                raw.Dispose();
+                return null;
+            }
+
+            map = new Dictionary<ZipArchiveEntry, LocatedZipEntry>(archive.Entries.Count);
+            for (int i = 0; i < archive.Entries.Count; i++)
+                map[archive.Entries[i]] = located[i];
+            return raw;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
+        {
+            raw?.Dispose();
+            map = null;
+            return null;
+        }
+    }
+
+    private static async Task<ThreatFinding> ScanEncryptedEntryAsync(
+        string archivePath, ZipArchiveEntry entry, LocatedZipEntry located, Stream rawArchiveStream,
+        string? password, IAmsiScanner scanner, CancellationToken cancellationToken)
+    {
+        if (password is null)
+            return InconclusiveFinding(archivePath, entry.FullName, "Entry is password-protected and was not scanned.");
+
+        // The size cap below (inside ScanOneEntryAsync) checks entry.Length from the central
+        // directory, but TryOpen buffers the whole ciphertext sized by the LOCAL header — an
+        // independently attacker-controlled field — so it needs its own cap before any allocation.
+        if (located.CompressedSize > MaxScannableEntryBytes || entry.Length > MaxScannableEntryBytes)
+            return OversizedFinding(archivePath, entry.FullName);
+
+        var (result, stream) = EncryptedZipEntryReader.TryOpen(rawArchiveStream, located, password);
+        return result switch
+        {
+            EncryptedZipReadResult.Success => await ScanOneEntryAsync(
+                archivePath, entry.FullName, entry.Length, () => stream!, scanner, cancellationToken,
+                verifyIntegrityAfterScan: true).ConfigureAwait(false),
+            EncryptedZipReadResult.WrongPassword => InconclusiveFinding(archivePath, entry.FullName,
+                "Entry is password-protected with a different password and was not scanned."),
+            EncryptedZipReadResult.UnsupportedCompressionMethod => InconclusiveFinding(archivePath, entry.FullName,
+                "Entry uses an unsupported compression method under encryption and was not scanned."),
+            _ => InconclusiveFinding(archivePath, entry.FullName,
+                "Entry failed decryption authentication (corrupted or tampered) and was not scanned."),
+        };
+    }
+
+    private static ThreatFinding OversizedFinding(string archivePath, string entryPath) =>
+        InconclusiveFinding(archivePath, entryPath,
+            $"Entry is larger than {MaxScannableEntryBytes / (1024 * 1024)} MiB and was not scanned.");
+
+    private static ThreatFinding InconclusiveFinding(string archivePath, string entryPath, string reason) => new()
+    {
+        ArchivePath = archivePath,
+        EntryPath = entryPath,
+        Verdict = ThreatVerdict.Inconclusive,
+        Reason = reason,
+    };
 
     // Tar-family: reuses T-F49/T-F52's exact quarantine machinery. Extracts into
     // scope.OutputDirectory exactly as a real Extract would, then stops — no move-to-destination

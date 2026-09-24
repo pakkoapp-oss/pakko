@@ -78,6 +78,19 @@
  *   residual case is accepted rather than chased). Regenerate with:
  *     7za.exe a -tzip -mem=AES256 -ptestpassword encrypted_aes256_cyrillic_name.zip unicode_filename_привіт.txt
  *
+ *   T-F194 (AMSI scan of encrypted entries), password "testpassword":
+ *     7za.exe a -tzip -mm=Copy -mem=ZipCrypto -ptestpassword encrypted_zipcrypto_store.zip compressible.txt
+ *     7za.exe a -tzip -mm=BZip2 -mem=AES256 -ptestpassword encrypted_aes256_bzip2.zip compressible.txt
+ *   encrypted_zipcrypto_store.zip is Store on purpose: "wrong103" collides with its one-byte
+ *   ZipCrypto check, and only Store lets that garbage reach AMSI instead of dying in DeflateStream.
+ *   Regenerating it changes the random header, so the colliding password must be re-found.
+ *   encrypted_aes256_eicar.zip is SYNTHETIC — EICAR piped from stdin (never written to disk):
+ *     printf '%s' '<EICAR string>' | 7za.exe a -tzip -mem=AES256 -ptestpassword -sieicar.txt encrypted_aes256_eicar.zip
+ *   then its local header byte-patched (stdin makes 7za write Zip64 sentinel sizes there): real
+ *   sizes 100/68 at offset 18, and the local Zip64 extra's ID renamed to 0xCAFE (the JAR-marker
+ *   ID -- ignored by every non-Java reader, which is all that matters here). See
+ *   docs/DECISIONS.md's T-F194 entry.
+ *
  *   pakko_integrity_valid.zip    — generate after T-34: run Pakko to archive compressible.txt
  *   pakko_integrity_tampered.zip — generate after T-34: copy valid, flip one byte in manifest
  *
@@ -122,6 +135,9 @@
  *     encrypted_aes256_tampered.zip   — MANUAL, SYNTHETIC byte-flip (T-F188, HMAC-reject test)
  *     encrypted_aes256_cyrillic_name.zip — MANUAL, requires 7-Zip (T-F189, non-ASCII entry name)
  *     encrypted_with_traversal_entry.zip — MANUAL, SYNTHETIC byte-patch (T-F189, hard invariant)
+ *     encrypted_zipcrypto_store.zip   — MANUAL, requires 7-Zip (T-F194, check-byte collision)
+ *     encrypted_aes256_bzip2.zip      — MANUAL, requires 7-Zip (T-F194, unsupported method)
+ *     encrypted_aes256_eicar.zip      — MANUAL, SYNTHETIC stdin + byte-patch (T-F194, real AMSI)
  *     created_by_7zip.zip             — MANUAL
  *     created_by_winrar.zip           — MANUAL
  *     created_by_macos.zip            — MANUAL

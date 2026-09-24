@@ -159,6 +159,13 @@ automatically (same manual-tool pattern as `encrypted_aes256.zip` above):
   `encrypted_aes256.zip` (inside the AES-CTR data, not the salt/password-verification prefix) —
   the real password still verifies, but the HMAC-SHA1 authentication tag must reject the result.
   Cross-checked: the vendored `7za.exe` itself also reports `"Data Error"` against this fixture.
+- T-F194 (all password `testpassword`): `encrypted_zipcrypto_store.zip` (ZipCrypto, **Store** —
+  `wrong103` collides with its one-byte password check, driving the "never report garbage as Clean"
+  test), `encrypted_aes256_bzip2.zip` (AES-256 over BZip2 — the unsupported-method-under-encryption
+  path), and `encrypted_aes256_eicar.zip` (**SYNTHETIC** — EICAR piped into `7za.exe` from stdin so
+  no plaintext EICAR ever hit disk, then its local header patched off 7za's stdin-only Zip64
+  sentinels). Regeneration commands in the GenerateFixtures header; rationale in
+  `docs/DECISIONS.md`'s T-F194 entry.
 
 **Tests with missing manual fixtures are skipped (yellow), not failed.**
 `dotnet test` returns success even with skipped tests.
@@ -501,7 +508,14 @@ list, and for why a real-subprocess broken-pipe simulation was tried first and a
   mocking library, matching repo convention): clean/`ThreatDetected` ZIP archives,
   `SelectedEntryPaths` subset scanning, the 64 MiB oversized-entry skip
   (`AntivirusScanService.MaxScannableEntryBytes`), the no-provider-registered gate, Group Policy
-  blocked-format handling, and an unrecognized-file-doesn't-throw case.
+  blocked-format handling, and an unrecognized-file-doesn't-throw case. T-F194 adds
+  password-protected ZIP coverage: no resolver / cancel / exhausted retries stay `Inconclusive`
+  with zero AMSI calls; a correct password hands AMSI the byte-exact decrypted plaintext (the fake
+  records scanned bytes, not just name+length); mixed archives prompt once; "apply to remaining"
+  spans a multi-archive call; a ZipCrypto check-byte collision is never `Clean`; BZip2-under-AES
+  and a local-header size past end-of-file end `Inconclusive` without throwing. The same file's
+  `AntivirusScanServiceEncryptedEicarTests` (gated by `[SkipIfAmsiScanUnavailable]`) runs real EICAR
+  from `encrypted_aes256_eicar.zip` through the real AMSI provider.
 
 `tests/Archiver.Core.IntegrationTests/AntivirusScanServiceTarTests.cs` (`[Collection("TarSandbox")]`,
 same T-F130 serialization as every other real-sandbox test class) — the tar-family quarantine-scan

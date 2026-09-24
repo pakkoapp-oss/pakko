@@ -412,17 +412,16 @@ found `SetForegroundWindow` alone unreliable from this call site (a background t
 Archiver.Shell's own `IProgressDialog` already showing) — fixed via `SetWindowPos(HWND_TOPMOST,
 ...)`. Agent-driven on-device verification via `windows` MCP against the real installed MSIX
 (all 3 extract commands, real Ukrainian OS UI, including a genuine occlusion test against a
-restored foreground terminal) confirmed every branch — `--test` deliberately stays without
-password support this round (CLI's `t` got it in T-F191; Shell's is a real, narrow, documented
-gap, not an oversight). Stays `[~]` until the user's own Explorer click-through. See
-`docs/DECISIONS.md`'s T-F192
-entry for the full design/spike/verification trail. **T-F193** (future phase — creating password-protected
-ZIP, AES-only) is not started. **T-F194** (AMSI scan, T-F146, currently can't see inside a
-password-protected entry at all — flagged by the user, real evasion-technique concern for this
-project's threat model) is also new, not started. See `docs/TASKS.md`'s "ZIP Password Support"
-section. This reverses
-`SPEC.md`/`SECURITY.md`'s "Encrypted archives — Out of scope" line, a deliberate user-confirmed
-scope change.
+restored foreground terminal) confirmed every branch; Shell `--test` got the same prompt
+2026-09-24. Stays `[~]` until the user's own Explorer click-through (`docs/DECISIONS.md`'s T-F192
+entry). **T-F194** (`[~]`, 2026-09-24) — "Scan for threats" now decrypts password-protected ZIP
+entries in memory and hands the plaintext to AMSI (all 3 frontends prompt); no password stays
+`Inconclusive`, never `Clean`. Four advisor-caught defects fixed test-first, incl. a fail-open
+`Clean` on a ZipCrypto check-byte collision and several hostile-header escapes from the "never
+throws" rule — see `docs/DECISIONS.md`'s T-F194 entry. The trust docs (`SECURITY.md`'s new
+"Password-Protected ZIP" section, `SPEC.md`, `README.md`, both `index.html`) were updated the
+same day with user permission. **T-F193** (creating encrypted ZIP, AES-only) is not started.
+**T-F195** (cross-project tar-sandbox test contention, T-F130's uncovered vector) is open.
 
 ## Roadmap Summary
 

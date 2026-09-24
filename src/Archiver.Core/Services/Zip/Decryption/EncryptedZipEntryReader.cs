@@ -22,6 +22,11 @@ internal enum EncryptedZipReadResult
     /// only once the caller reads all the way to its end, for a ZipCrypto/AE-1 CRC-32 mismatch
     /// (see T-F189's streaming design point in docs/DECISIONS.md).</summary>
     Corrupted,
+
+    /// <summary>T-F194: the password verified, but the entry's real compression method (e.g.
+    /// BZip2/LZMA under AES) is neither Store nor Deflate — the only two System.IO.Compression can
+    /// decode. Reported instead of throwing, so it can never escape a "never throws" service.</summary>
+    UnsupportedCompressionMethod,
 }
 
 /// <summary>
@@ -88,6 +93,13 @@ internal static class EncryptedZipEntryReader
             throw new InvalidDataException(
                 $"Encrypted entry compressed size ({located.CompressedSize}) is not supported (possibly Zip64).");
 
+        // T-F194: CompressedSize comes from the local header — attacker-controlled independently
+        // of the central directory — and sizes the allocation below. Bounding it by the bytes that
+        // actually exist makes the allocation provably no larger than the archive file itself.
+        if (located.CompressedSize > zipStream.Length - located.CompressedDataOffset)
+            throw new InvalidDataException(
+                $"Encrypted entry compressed size ({located.CompressedSize}) runs past the end of the archive.");
+
         zipStream.Seek(located.CompressedDataOffset, SeekOrigin.Begin);
         byte[] rawEntryData = new byte[located.CompressedSize];
         ReadExact(zipStream, rawEntryData);
@@ -110,6 +122,9 @@ internal static class EncryptedZipEntryReader
                 return (EncryptedZipReadResult.Corrupted, null);
         }
 
+        if (!IsSupportedMethod(located.RealCompressionMethod))
+            return (EncryptedZipReadResult.UnsupportedCompressionMethod, null);
+
         // AE-2 zeroes the header CRC-32 by design — HMAC (already checked above, before any
         // plaintext exists) is the sole authority there, so no trailer check is wrapped on.
         // AE-1 keeps the real CRC-32 — same trailer check ZipCrypto gets below.
@@ -125,9 +140,14 @@ internal static class EncryptedZipEntryReader
         if (!ZipCryptoStream.TryDecrypt(rawEntryData, password, expectedCheckByte, out byte[] decompressedInput))
             return (EncryptedZipReadResult.WrongPassword, null);
 
+        if (!IsSupportedMethod(located.CompressionMethod))
+            return (EncryptedZipReadResult.UnsupportedCompressionMethod, null);
+
         return (EncryptedZipReadResult.Success,
             WrapDecompression(decompressedInput, located.CompressionMethod, located.StoredCrc32));
     }
+
+    private static bool IsSupportedMethod(ushort method) => method is 0 or 8;
 
     private static Stream WrapDecompression(byte[] data, ushort method, uint? expectedCrc32)
     {

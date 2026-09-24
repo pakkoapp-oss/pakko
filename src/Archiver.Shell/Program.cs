@@ -292,7 +292,8 @@ static async Task RunTestAsync(IReadOnlyList<string> archivePaths, GroupPolicyOp
         : $"Testing {archivePaths.Count} archives";
 
     var result = await RunWithProgressWindowAsync(title,
-        (progress, ct) => service.TestAsync(archivePaths, progress, cancellationToken: ct))
+        (progress, ct) => service.TestAsync(archivePaths, progress,
+            info => PasswordDialog.ShowAsync(info, canApplyToRemaining: archivePaths.Count > 1), ct))
         .ConfigureAwait(false);
 
     if (result.Success)
@@ -520,7 +521,14 @@ static async Task RunScanAsync(IReadOnlyList<string> archivePaths, GroupPolicyOp
 
     var service = await BuildAntivirusScanServiceAsync(policy).ConfigureAwait(false);
     NativeProgressDialog? dialog = TryCreateProgressDialog(title);
-    var options = new AntivirusScanOptions { ArchivePaths = archivePaths };
+    // Single ScanAsync call spanning the whole selection, so Core's own PasswordResolver already
+    // keeps "apply to remaining" across archives — no StickyPasswordResolver needed (unlike the
+    // extract commands, which call ExtractAsync once per archive).
+    var options = new AntivirusScanOptions
+    {
+        ArchivePaths = archivePaths,
+        ResolvePasswordAsync = info => PasswordDialog.ShowAsync(info, canApplyToRemaining: archivePaths.Count > 1),
+    };
 
     ThreatScanResult result;
     try

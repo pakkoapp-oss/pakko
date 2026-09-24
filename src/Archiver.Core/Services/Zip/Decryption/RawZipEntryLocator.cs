@@ -38,6 +38,8 @@ internal static class RawZipEntryLocator
     private const uint EndOfCentralDirectorySignature = 0x06054b50;
     private const ushort WinZipAesExtraId = 0x9901;
     private const ushort WinZipAesCompressionMethod = 99;
+    // version(2) + vendor "AE"(2) + strength(1) + real compression method(2)
+    private const int WinZipAesExtraMinLength = 7;
 
     public static LocatedZipEntry Locate(Stream zipStream, string entryFullName)
     {
@@ -166,6 +168,8 @@ internal static class RawZipEntryLocator
             byte[] record = FindExtraRecord(extra, WinZipAesExtraId)
                 ?? throw new InvalidDataException(
                     "Entry's compression method is WinZip AES (99) but no 0x9901 extra field was found.");
+            if (record.Length < WinZipAesExtraMinLength)
+                throw new InvalidDataException("Malformed WinZip AES (0x9901) extra field (too short).");
 
             aeVersion = BitConverter.ToUInt16(record, 0);
             byte strengthCode = record[4]; // record[2..4] is the "AE" vendor id, skipped
@@ -203,6 +207,9 @@ internal static class RawZipEntryLocator
         {
             ushort id = BitConverter.ToUInt16(extra, position);
             ushort size = BitConverter.ToUInt16(extra, position + 2);
+            // T-F194: size is attacker-controlled — must fit what's actually left in the block.
+            if (size > extra.Length - position - 4)
+                throw new InvalidDataException("Malformed ZIP extra field (record size runs past the extra block).");
             if (id == headerId)
                 return extra.AsSpan(position + 4, size).ToArray();
             position += 4 + size;

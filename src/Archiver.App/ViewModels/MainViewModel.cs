@@ -1099,6 +1099,7 @@ public sealed partial class MainViewModel : ObservableObject
                 SelectedEntryPaths = SelectedBrowserEntries.Count > 0
                     ? [.. SelectedBrowserEntries.Select(e => e.FullPath)]
                     : null,
+                ResolvePasswordAsync = info => _dialogService.ShowPasswordPromptAsync(info, canApplyToRemaining: false),
             };
 
             string scanningLabel = _res.GetString("ScanResultDialogTitle");

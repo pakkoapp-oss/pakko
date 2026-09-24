@@ -685,7 +685,9 @@ public sealed class ZipArchiveService : IArchiveService
     // of that entry's real size) — good enough to decide "prompt again" vs "proceed"; a rare
     // per-entry-only failure later (a different password on a different entry, or corruption)
     // surfaces as a normal per-entry ArchiveError in the extraction loop instead.
-    private static async Task<string?> ResolveArchivePasswordAsync(string archivePath, PasswordResolver passwordResolver)
+    // T-F194: internal (not private) — AntivirusScanService resolves an archive's password through
+    // this exact same verify-against-first-encrypted-entry path rather than a second copy.
+    internal static async Task<string?> ResolveArchivePasswordAsync(string archivePath, PasswordResolver passwordResolver)
     {
         // T-F189 (advisor-caught): wraps the WHOLE method body, not just LocateAll — the verify
         // callback below also calls EncryptedZipEntryReader.TryOpen, which can throw
@@ -1015,6 +1017,13 @@ public sealed class ZipArchiveService : IArchiveService
                 {
                     SourcePath = archivePath,
                     Message = $"Entry '{entry.FullName}' could not be decrypted: authentication failed (corrupted or tampered)."
+                });
+                return;
+            case EncryptedZipReadResult.UnsupportedCompressionMethod:
+                errors.Add(new ArchiveError
+                {
+                    SourcePath = archivePath,
+                    Message = $"Entry '{entry.FullName}' uses an unsupported compression method under encryption."
                 });
                 return;
         }
@@ -1473,6 +1482,8 @@ public sealed class ZipArchiveService : IArchiveService
                 EncryptedZipReadResult.Success => (true, stream, null),
                 EncryptedZipReadResult.WrongPassword =>
                     (false, null, $"Entry '{entry.FullName}' could not be decrypted: wrong password."),
+                EncryptedZipReadResult.UnsupportedCompressionMethod =>
+                    (false, null, $"Entry '{entry.FullName}' uses an unsupported compression method under encryption."),
                 _ => (false, null,
                     $"Entry '{entry.FullName}' could not be decrypted: authentication failed (corrupted or tampered)."),
             };
@@ -1852,7 +1863,7 @@ public sealed class ZipArchiveService : IArchiveService
     // full central-directory scan only when the cheap check says "no" additionally catches this
     // project's own mixed_encrypted_and_plain.zip fixture, whose plain entry comes first — a case
     // the cheap check alone would silently miss. See docs/DECISIONS.md's T-F189 entry.
-    private static bool IsEncryptedZip(string path) =>
+    internal static bool IsEncryptedZip(string path) =>
         IsFirstLocalHeaderEncrypted(path) || HasAnyEncryptedEntryViaCentralDirectory(path);
 
     private static bool IsFirstLocalHeaderEncrypted(string path)

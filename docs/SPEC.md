@@ -47,7 +47,8 @@ is a teaser only, per `CLAUDE.md`'s Documentation Map).
 | TAR/GZ/BZ2/XZ/ZST/LZMA | ✅ v1.3 (read), ✅ v1.4 (write, T-F105) | `tar.exe` (Windows built-in) |
 | RAR | ✅ v1.3 (read only — no libarchive writer exists) | `tar.exe` (Windows built-in) |
 | 7z | ✅ v1.3 (read only — no libarchive writer exists) | `tar.exe` (Windows built-in) |
-| Encrypted archives | ❌ Out of scope | — |
+| Password-protected ZIP | ✅ v1.4 (read: ZipCrypto + WinZip AES; create AES-only planned, T-F193) | `System.IO.Compression` + .NET `System.Security.Cryptography` |
+| Encrypted 7z/RAR | ❌ Detected and refused with a clear error (T-F113) | — |
 | Multi-volume | ❌ Out of scope | — |
 
 ---

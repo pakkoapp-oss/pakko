@@ -1,4 +1,5 @@
 using System.IO.Compression;
+using System.Runtime.Versioning;
 using System.Text;
 using Archiver.Core.Models;
 using Archiver.Core.Services;
@@ -18,11 +19,16 @@ internal sealed class FakeAmsiScanner : IAmsiScanner
 {
     public HashSet<string> DetectedContentNames { get; } = new(StringComparer.Ordinal);
     public List<(string ContentName, int Length)> Calls { get; } = [];
+
+    // T-F194: the exact bytes handed to AMSI — name+length alone would pass for same-length
+    // garbage from a wrong-but-accepted ZipCrypto password, the exact bug class being guarded.
+    public Dictionary<string, byte[]> ScannedContent { get; } = new(StringComparer.Ordinal);
     public bool Disposed { get; private set; }
 
     public (ThreatVerdict Verdict, string? ThreatName) ScanBuffer(byte[] buffer, int length, string contentName)
     {
         Calls.Add((contentName, length));
+        ScannedContent[contentName] = buffer.AsSpan(0, length).ToArray();
         return DetectedContentNames.Contains(contentName)
             ? (ThreatVerdict.ThreatDetected, "Fake-Test-Threat")
             : (ThreatVerdict.Clean, null);
@@ -305,5 +311,281 @@ public sealed class AntivirusScanServiceTests : IDisposable
             "at least one report must show real intermediate progress, not just a jump from nothing to 100%");
         reports[^1].Percent.Should().Be(100);
         reports.Select(r => r.Percent).Should().BeInAscendingOrder();
+    }
+
+    // ── T-F194: password-protected ZIP entries ───────────────────────────────
+
+    private const string RealPassword = "testpassword";
+
+    private static Func<PasswordPromptInfo, Task<PasswordDecision>> FixedPassword(string password, bool applyToRemaining = false) =>
+        _ => Task.FromResult(new PasswordDecision { Password = password, ApplyToRemaining = applyToRemaining });
+
+    private static byte[] CompressibleBytes() =>
+        File.ReadAllBytes(Path.Combine(FixtureHelper.FilesDir, "compressible.txt"));
+
+    [Fact]
+    public async Task ScanAsync_EncryptedZipNoResolver_ReportsPasswordProtectedInconclusiveWithoutScanning()
+    {
+        var scanner = new FakeAmsiScanner();
+        var service = CreateService(scanner);
+
+        var result = await service.ScanAsync(new AntivirusScanOptions
+        {
+            ArchivePaths = [FixtureHelper.Archive("encrypted_aes256.zip")],
+        });
+
+        result.OverallVerdict.Should().Be(ThreatVerdict.Inconclusive);
+        result.Findings.Should().ContainSingle(f => f.EntryPath == "compressible.txt"
+            && f.Verdict == ThreatVerdict.Inconclusive
+            && f.Reason!.Contains("password-protected"));
+        scanner.Calls.Should().BeEmpty();
+    }
+
+    [Theory]
+    [InlineData("encrypted_aes256.zip")]
+    [InlineData("encrypted_aes128.zip")]
+    [InlineData("encrypted_aes256_ae1.zip")]
+    [InlineData("encrypted_zipcrypto_real.zip")]
+    [InlineData("encrypted_zipcrypto_store.zip")]
+    public async Task ScanAsync_EncryptedZipCorrectPassword_ScansByteExactDecryptedPlaintext(string fixtureName)
+    {
+        var scanner = new FakeAmsiScanner();
+        var service = CreateService(scanner);
+
+        var result = await service.ScanAsync(new AntivirusScanOptions
+        {
+            ArchivePaths = [FixtureHelper.Archive(fixtureName)],
+            ResolvePasswordAsync = FixedPassword(RealPassword),
+        });
+
+        result.OverallVerdict.Should().Be(ThreatVerdict.Clean);
+        scanner.ScannedContent["compressible.txt"].Should().Equal(CompressibleBytes());
+    }
+
+    [Fact]
+    public async Task ScanAsync_EncryptedZipCorrectPassword_ThreatInDecryptedEntryIsDetected()
+    {
+        var scanner = new FakeAmsiScanner();
+        scanner.DetectedContentNames.Add("compressible.txt");
+        var service = CreateService(scanner);
+
+        var result = await service.ScanAsync(new AntivirusScanOptions
+        {
+            ArchivePaths = [FixtureHelper.Archive("encrypted_aes256.zip")],
+            ResolvePasswordAsync = FixedPassword(RealPassword),
+        });
+
+        result.OverallVerdict.Should().Be(ThreatVerdict.ThreatDetected);
+        result.Findings.Should().ContainSingle(f => f.EntryPath == "compressible.txt" && f.Verdict == ThreatVerdict.ThreatDetected);
+    }
+
+    [Fact]
+    public async Task ScanAsync_MixedArchiveCorrectPassword_ScansBothEntriesAndPromptsOnce()
+    {
+        int prompts = 0;
+        var scanner = new FakeAmsiScanner();
+        var service = CreateService(scanner);
+
+        var result = await service.ScanAsync(new AntivirusScanOptions
+        {
+            ArchivePaths = [FixtureHelper.Archive("mixed_encrypted_and_plain.zip")],
+            ResolvePasswordAsync = _ =>
+            {
+                prompts++;
+                return Task.FromResult(new PasswordDecision { Password = RealPassword });
+            },
+        });
+
+        result.OverallVerdict.Should().Be(ThreatVerdict.Clean);
+        prompts.Should().Be(1);
+        scanner.ScannedContent.Keys.Should().BeEquivalentTo(["readme.txt", "compressible.txt"]);
+        scanner.ScannedContent["compressible.txt"].Should().Equal(CompressibleBytes());
+    }
+
+    [Fact]
+    public async Task ScanAsync_WrongPasswordEveryAttempt_ReportsInconclusiveAfterThreePrompts()
+    {
+        int prompts = 0;
+        var scanner = new FakeAmsiScanner();
+        var service = CreateService(scanner);
+
+        var result = await service.ScanAsync(new AntivirusScanOptions
+        {
+            ArchivePaths = [FixtureHelper.Archive("encrypted_aes256.zip")],
+            ResolvePasswordAsync = _ =>
+            {
+                prompts++;
+                return Task.FromResult(new PasswordDecision { Password = "definitely-wrong" });
+            },
+        });
+
+        prompts.Should().Be(3);
+        result.OverallVerdict.Should().Be(ThreatVerdict.Inconclusive);
+        result.Findings.Should().ContainSingle(f => f.Reason!.Contains("password-protected"));
+        scanner.Calls.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ScanAsync_UserCancelsPasswordPrompt_ReportsInconclusiveWithoutScanning()
+    {
+        var scanner = new FakeAmsiScanner();
+        var service = CreateService(scanner);
+
+        var result = await service.ScanAsync(new AntivirusScanOptions
+        {
+            ArchivePaths = [FixtureHelper.Archive("encrypted_aes256.zip")],
+            ResolvePasswordAsync = _ => Task.FromResult(new PasswordDecision { Password = null }),
+        });
+
+        result.OverallVerdict.Should().Be(ThreatVerdict.Inconclusive);
+        scanner.Calls.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ScanAsync_ApplyToRemainingAcrossTwoArchives_PromptsOnce()
+    {
+        string a = Path.Combine(_temp.Path, "a.zip");
+        string b = Path.Combine(_temp.Path, "b.zip");
+        File.Copy(FixtureHelper.Archive("encrypted_aes256.zip"), a);
+        File.Copy(FixtureHelper.Archive("encrypted_aes256.zip"), b);
+        int prompts = 0;
+        var scanner = new FakeAmsiScanner();
+        var service = CreateService(scanner);
+
+        var result = await service.ScanAsync(new AntivirusScanOptions
+        {
+            ArchivePaths = [a, b],
+            ResolvePasswordAsync = _ =>
+            {
+                prompts++;
+                return Task.FromResult(new PasswordDecision { Password = RealPassword, ApplyToRemaining = true });
+            },
+        });
+
+        prompts.Should().Be(1);
+        result.OverallVerdict.Should().Be(ThreatVerdict.Clean);
+        scanner.Calls.Should().HaveCount(2);
+    }
+
+    // ZipCrypto's password check is a single byte, so ~1 in 256 wrong passwords passes it and
+    // decrypts to garbage. "wrong103" is such a collision for encrypted_zipcrypto_store.zip (found
+    // offline by brute-forcing the check byte). Store method, deliberately: under Deflate, garbage
+    // usually dies in DeflateStream and would pass this test by luck. Only the trailer CRC-32
+    // (never reached if the scan stops at exactly entry.Length bytes) can tell — so this must
+    // never come back Clean.
+    [Fact]
+    public async Task ScanAsync_ZipCryptoCheckByteCollidingWrongPassword_IsNeverReportedClean()
+    {
+        var scanner = new FakeAmsiScanner();
+        var service = CreateService(scanner);
+
+        var result = await service.ScanAsync(new AntivirusScanOptions
+        {
+            ArchivePaths = [FixtureHelper.Archive("encrypted_zipcrypto_store.zip")],
+            ResolvePasswordAsync = FixedPassword("wrong103"),
+        });
+
+        result.OverallVerdict.Should().Be(ThreatVerdict.Inconclusive);
+        result.Findings.Should().ContainSingle(f => f.EntryPath == "compressible.txt"
+            && f.Verdict == ThreatVerdict.Inconclusive);
+    }
+
+    [Fact]
+    public async Task ScanAsync_Bzip2UnderAesCorrectPassword_ReportsInconclusiveWithoutThrowing()
+    {
+        var scanner = new FakeAmsiScanner();
+        var service = CreateService(scanner);
+
+        var result = await service.ScanAsync(new AntivirusScanOptions
+        {
+            ArchivePaths = [FixtureHelper.Archive("encrypted_aes256_bzip2.zip")],
+            ResolvePasswordAsync = FixedPassword(RealPassword),
+        });
+
+        result.OverallVerdict.Should().Be(ThreatVerdict.Inconclusive);
+        result.Findings.Should().ContainSingle(f => f.Reason!.Contains("unsupported compression method"));
+        scanner.Calls.Should().BeEmpty();
+    }
+
+    [Theory]
+    [InlineData((ushort)200)]
+    [InlineData((ushort)2)]
+    public async Task ScanAsync_MalformedAesExtraRecord_ReportsInconclusiveWithoutThrowing(ushort declaredSize)
+    {
+        string path = MalformedAesExtraFixture.Create(_temp.Path, declaredSize);
+        var scanner = new FakeAmsiScanner();
+        var service = CreateService(scanner);
+
+        var result = await service.ScanAsync(new AntivirusScanOptions
+        {
+            ArchivePaths = [path],
+            ResolvePasswordAsync = FixedPassword(RealPassword),
+        });
+
+        result.OverallVerdict.Should().Be(ThreatVerdict.Inconclusive);
+        scanner.Calls.Should().BeEmpty();
+    }
+
+    // EncryptedZipEntryReader buffers the whole ciphertext sized by the LOCAL header's compressed
+    // size — attacker-controlled independently of the central directory. A 300 MiB claim on a
+    // ~41 KB file must end Inconclusive (never Clean, never a throw); the allocation bound itself
+    // is pinned by EncryptedZipEntryReaderTests' own beyond-file-end test.
+    [Fact]
+    public async Task ScanAsync_EncryptedEntryLocalHeaderSizeBeyondFileEnd_ReportsInconclusiveWithoutScanning()
+    {
+        string patched = Path.Combine(_temp.Path, "oversized_local.zip");
+        byte[] bytes = File.ReadAllBytes(FixtureHelper.Archive("encrypted_aes256.zip"));
+        BitConverter.GetBytes(300u * 1024 * 1024).CopyTo(bytes, 18);
+        File.WriteAllBytes(patched, bytes);
+        var scanner = new FakeAmsiScanner();
+        var service = CreateService(scanner);
+
+        var result = await service.ScanAsync(new AntivirusScanOptions
+        {
+            ArchivePaths = [patched],
+            ResolvePasswordAsync = FixedPassword(RealPassword),
+        });
+
+        result.OverallVerdict.Should().Be(ThreatVerdict.Inconclusive);
+        result.Findings.Should().ContainSingle(f => f.Verdict == ThreatVerdict.Inconclusive);
+        scanner.Calls.Should().BeEmpty();
+    }
+}
+
+/// <summary>
+/// T-F194: real EICAR, AES-256-encrypted (encrypted_aes256_eicar.zip — built with 7za from stdin
+/// so no plaintext EICAR file ever touched disk; the committed ciphertext carries no EICAR
+/// signature for Defender to quarantine). Proves the decrypted plaintext actually reaches the real
+/// AMSI provider — the gap this task closes — and that without a password it stays Inconclusive.
+/// </summary>
+[SupportedOSPlatform("windows")]
+public sealed class AntivirusScanServiceEncryptedEicarTests
+{
+    [SkipIfAmsiScanUnavailable]
+    public async Task ScanAsync_RealEicarInEncryptedZip_CorrectPassword_ReturnsThreatDetected()
+    {
+        var service = new AntivirusScanService(new TarCapabilities());
+
+        var result = await service.ScanAsync(new AntivirusScanOptions
+        {
+            ArchivePaths = [FixtureHelper.Archive("encrypted_aes256_eicar.zip")],
+            ResolvePasswordAsync = _ => Task.FromResult(new PasswordDecision { Password = "testpassword" }),
+        });
+
+        result.OverallVerdict.Should().Be(ThreatVerdict.ThreatDetected);
+        result.Findings.Should().ContainSingle(f => f.EntryPath == "eicar.txt" && f.Verdict == ThreatVerdict.ThreatDetected);
+    }
+
+    [SkipIfAmsiScanUnavailable]
+    public async Task ScanAsync_RealEicarInEncryptedZip_NoPassword_ReturnsInconclusiveNeverClean()
+    {
+        var service = new AntivirusScanService(new TarCapabilities());
+
+        var result = await service.ScanAsync(new AntivirusScanOptions
+        {
+            ArchivePaths = [FixtureHelper.Archive("encrypted_aes256_eicar.zip")],
+        });
+
+        result.OverallVerdict.Should().Be(ThreatVerdict.Inconclusive);
     }
 }

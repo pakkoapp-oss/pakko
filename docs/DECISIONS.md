@@ -8874,6 +8874,10 @@ interactive surface exists" — `Archiver.CLI`'s `t` already got real `-p{pwd}` 
 Shell's `--test` is now the one remaining ZIP-password-blind entry point. Left out because it was
 outside T-F192's stated acceptance criteria (Explorer *extract* commands only); worth a small
 follow-up task if the user wants parity.
+**Closed 2026-09-24, alongside T-F194** (see that entry): `--test` now passes
+`info => PasswordDialog.ShowAsync(info, archivePaths.Count > 1)` directly — no
+`StickyPasswordResolver`, since `TestAsync` is one call for the whole selection and Core's own
+`PasswordResolver` already spans it.
 
 **Trust documents:** T-F192 was the last of the three gating tasks (App/T-F190, CLI/T-F191,
 Shell/T-F192) the user named when choosing to defer `SECURITY.md`/`SPEC.md`/`README.md`/
@@ -8892,3 +8896,71 @@ new `src/Archiver.Shell/Resources/PasswordMessages(.{locale}).resx` (6 keys reus
 `Archiver.App`'s T-F190 strings + 1 new `PasswordDialogShowPasswordCheck`, translated fresh across
 all 37 locales). Test-side: new `PasswordDialogTests.cs`, `PasswordDialogTemplateBuilderTests.cs`,
 `PasswordDialogLocalizerTests.cs`, `StickyPasswordResolverTests.cs`. No `Archiver.Core` diff.
+
+---
+
+## T-F194 — AMSI scan of password-protected ZIP entries (2026-09-24)
+
+**Gap closed:** `AntivirusScanService.ScanZipArchiveAsync` opened every entry via
+`ZipArchiveEntry.Open()`; an encrypted entry threw `InvalidDataException` and became
+`Inconclusive` ("Could not read entry") — fail-safe, but the payload was never actually scanned,
+which is exactly how password-protected malware delivery evades AV.
+
+**Design:** no second password mechanism. `AntivirusScanOptions` gains the same
+`ResolvePasswordAsync` hook `ExtractOptions` has; `ScanAsync` builds one `PasswordResolver`
+(`maxAttempts: 3`) per call, and `ScanZipArchiveAsync` reuses `ZipArchiveService`'s own
+`IsEncryptedZip`/`ResolveArchivePasswordAsync` (bumped `private` → `internal`) plus the same
+positional `RawZipEntryLocator.LocateAll` pairing `TestArchiveEntries` uses. Encrypted entries are
+decrypted in memory via `EncryptedZipEntryReader` and the plaintext goes to the existing
+`ScanOneEntryAsync`. No password / declined / exhausted → `Inconclusive` ("password-protected, not
+scanned"), never `Clean`. Plain entries and the tar path are unchanged.
+
+**Advisor-caught — four real defects (1-3 before implementation, 4 at the closing review), each with a red-first test:**
+1. **Fail-open Clean on a ZipCrypto check-byte collision.** ZipCrypto's password check is one byte
+   (~1/256 wrong passwords pass). `ScanOneEntryAsync` stops reading at exactly `entry.Length`, so
+   `TrailerCrcCheckStream`'s end-of-stream CRC check never ran — a colliding wrong password produced
+   garbage that AMSI called `Clean`. Fix: for encrypted entries, one extra read after the scan must
+   hit a verified end-of-stream; otherwise `Clean` is downgraded to `Inconclusive` (a real detection
+   stands). Test fixture `encrypted_zipcrypto_store.zip` is deliberately **Store** (under Deflate
+   garbage usually dies in `DeflateStream`, passing by luck); colliding password `wrong103` found
+   offline. Mutation-checked: disabling the check makes the test report `Clean`.
+2. **`NotSupportedException` escaping "never throws."** A non-Store/Deflate method under encryption
+   (e.g. 7za's `-mm=BZip2 -mem=AES256`) threw from `WrapDecompression` — inside
+   `ResolveArchivePasswordAsync`'s verify callback, whose catch filter didn't cover it — out of
+   `ExtractAsync`/`TestAsync` too (a pre-existing T-F189 bug scan made reachable). Fix: new
+   `EncryptedZipReadResult.UnsupportedCompressionMethod`, returned *after* password verification
+   (so verify still accepts a correct password) and mapped to a per-entry error / `Inconclusive`.
+3. **Unbounded allocation from the local header.** `TryOpen` allocated `located.CompressedSize`
+   (local header, attacker-controlled independently of the central directory) — up to ~2 GiB per
+   call, before any read could fail. Fix: `TryOpen` rejects a size running past the end of the
+   stream with `InvalidDataException` — the allocation is now provably ≤ the archive file's size.
+   Applies to extraction/test/list too, not just scan.
+4. **Malformed WinZip AES extra field escaping "never throws"** (caught by the closing advisor
+   review). `RawZipEntryLocator.FindExtraRecord` sliced `size` bytes without checking them against
+   the extra block, and `BuildFromLocalHeader` indexed the 0x9901 record's bytes 4-6 without a
+   length check — a crafted local header threw `ArgumentOutOfRange`/`IndexOutOfRange`, which no
+   caller's filter covers, out of `ScanAsync`/`ExtractAsync`/`TestAsync`/`ListEntriesAsync`
+   (`ZipFile.OpenRead` only reads the central directory, so it never rejects these first). Fixed
+   at the parser, not by widening four catch filters: both cases now throw `InvalidDataException`,
+   which every caller already maps. Red-first tests via `MalformedAesExtraFixture` (declared record
+   size 200 and 2) at the locator, scan, extract, and list levels.
+
+**EICAR fixture:** `encrypted_aes256_eicar.zip` was built with 7za from stdin
+(`printf ... | 7za a -tzip -mem=AES256 -ptestpassword -sieicar.txt`) so no plaintext EICAR ever
+touched disk; the ciphertext carries no EICAR signature for Defender to quarantine on clone.
+Stdin input made 7za write Zip64 sentinel sizes (0xFFFFFFFF) in the local header, which
+`RawZipEntryLocator` doesn't parse (Zip64 encrypted entries are out of scope per T-F189) — so it
+is **synthetic**: local sizes byte-patched to the central directory's real values and the local
+Zip64 extra's ID renamed to `0xCAFE` (same length) — that is `java.util.jar`'s JAR-marker ID, not a truly unassigned one, but every non-Java reader here (.NET, `RawZipEntryLocator`, `7za`) skips it as an unrecognized record, which is all the fixture needs. `7za t` still reports it OK.
+
+**On-device verification (2026-09-24, `windows` MCP, real installed MSIX, Ukrainian UI):** Shell
+`--scan` on the EICAR fixture → password dialog on top of the progress dialog → "eicar.txt:
+виявлено загрозу"; Shell `--test` on `encrypted_zipcrypto_real.zip` → wrong password shows the
+retry hint, correct one → "не виявлено помилок" (closes T-F192's `--test` gap); App Archive
+Browser "Перевірити на загрози" → ContentDialog prompt → "Виявлені загрози (1)".
+
+**Files:** `AntivirusScanOptions.cs`, `AntivirusScanService.cs`, `EncryptedZipEntryReader.cs`,
+`ZipArchiveService.cs` (visibility + two new result-arm mappings), `MainViewModel.cs` (browser
+scan), `Archiver.Shell/Program.cs` (`--scan`, `--test`). Three new fixtures. `SECURITY.md`'s
+AMSI/encrypted-archive wording is intentionally **not** updated here — pending the user's explicit
+permission (hard `CLAUDE.md` rule), bundled with the deferred trust-doc pass.

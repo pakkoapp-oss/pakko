@@ -289,8 +289,9 @@ In both cases: extraction goes to a staging directory, all output files are vali
 
 ### Encrypted-Archive Diagnostics (7z/RAR, T-F113)
 
-Pakko does not decrypt anything — this is diagnostics-only, so a password-protected archive
-fails with a clear message instead of raw libarchive stderr. Detection is asymmetric between the
+For 7z/RAR, Pakko does not decrypt anything — this is diagnostics-only, so a password-protected
+archive fails with a clear message instead of raw libarchive stderr. (Password-protected **ZIP** is
+different — Pakko reads it natively since T-F188–T-F192; see the next section.) Detection is asymmetric between the
 two formats, and deliberately so:
 
 - **RAR** is checked proactively, before tar.exe ever runs, by walking RAR5's own block/extra-area
@@ -311,6 +312,35 @@ two formats, and deliberately so:
   (case-insensitive) — confirmed empirically to catch every encryption-related libarchive failure
   message across both formats and both encryption modes. Exact byte offsets and stderr strings are
   recorded in `DECISIONS.md`'s T-F113 entry.
+
+### Password-Protected ZIP (T-F188–T-F194)
+
+Pakko reads password-protected ZIP entries — both legacy PKWARE ZipCrypto and WinZip AES
+(AE-1/AE-2, 128/192/256-bit) — for Extract, Test, the Archive Browser, and "Scan for threats",
+with a password prompt in every frontend (WinUI dialog, native Explorer dialog, `pakko x/t -p`).
+This reverses the earlier "encrypted archives are out of scope" position, a deliberate
+user-confirmed scope change. Writing encrypted ZIPs is not implemented yet; when it is (T-F193)
+it will be **AES-only** — ZipCrypto is cryptographically broken and Pakko never writes it.
+
+- **No second extraction path.** Decryption plugs in exactly where `ZipArchiveEntry.Open()` was
+  called; entry names are never encrypted by the ZIP format, so every existing traversal/ADS/
+  reserved-name/reparse-point/bomb/MOTW check runs unchanged before any ciphertext is touched.
+- **Cryptography is .NET's own**, not hand-rolled: PBKDF2-HMAC-SHA1 (`Rfc2898DeriveBytes`), AES,
+  and HMAC-SHA1 from `System.Security.Cryptography` — SHA-1 and 1000 iterations are fixed by the
+  WinZip AE specification, not chosen. Only the ZIP container parsing and the (spec-mandated,
+  broken-by-design) ZipCrypto stream cipher are Pakko code.
+- **Authenticate before release.** A WinZip AES entry's HMAC is verified over the whole
+  ciphertext before any plaintext is produced; a tampered entry is rejected, never extracted.
+  ZipCrypto has no authentication — its one-byte password check accepts ~1 in 256 wrong
+  passwords — so its content CRC-32 is always checked, and a mismatch fails the entry.
+- **Hostile headers fail closed.** Sizes and extra fields read from local headers are
+  attacker-controlled; the parser bounds every allocation by the archive file's real size and
+  rejects malformed WinZip AES extra records as a normal per-archive error, never an unhandled
+  exception. Zip64-sized encrypted entries are not supported and are refused.
+- **Pakko never logs or persists a password.** A password lives only for the one operation that
+  asked for it ("apply to remaining" spans one multi-archive selection, not the session). Caveat:
+  `pakko x -p{pwd}` puts the password on the command line, visible in shell history and the process
+  list exactly as with 7-Zip's own `-p` — omit `-p` to get the masked interactive prompt instead.
 
 ### Absolute Path Requirement
 
@@ -390,10 +420,12 @@ This tool is appropriate for:
 
 This tool is **not** a replacement for:
 
-- Full-featured archivers where RAR/7z/encrypted format support is required
-- Environments requiring FIPS 140-2 compliant cryptography (ZIP/7z/RAR encryption is not
-  implemented — a password-protected archive in any of these three formats is detected and
-  refused with a clear error, not silently mishandled; see "Encrypted-Archive Diagnostics" above)
+- Full-featured archivers where RAR/7z writing, encrypted 7z/RAR, or creating encrypted archives
+  is required
+- Environments requiring FIPS 140-2 validated cryptography (password-protected ZIP is readable via
+  .NET's own AES/HMAC/PBKDF2, but the WinZip AES format itself mandates SHA-1 and Pakko makes no
+  FIPS-validation claim; a password-protected 7z/RAR is detected and refused with a clear error,
+  not silently mishandled — see "Encrypted-Archive Diagnostics" above)
 
 ---
 
@@ -469,6 +501,17 @@ tell this apart from "a provider is registered and says clean" — both return
 and forces every finding to `Inconclusive` when it's empty, rather than risk rendering an
 unscanned archive as `Clean`. `Inconclusive` is a first-class, distinctly-labeled result — never
 silently collapsed into `Clean` anywhere in the UI.
+
+**Password-protected ZIP entries (T-F194).** Password-protecting a payload is a well-known way to
+slip malware past automated AV scanning, since the scanner can't see inside. Before T-F194 Pakko's
+scan had the same blind spot: an encrypted ZIP entry was reported `Inconclusive` ("could not
+read"), never actually scanned. Now "Scan for threats" asks for the password (same prompt as
+Extract) and hands AMSI the decrypted plaintext, entirely in memory — no plaintext touches disk.
+Without a password (declined, wrong, or none given) every encrypted entry stays `Inconclusive`
+("password-protected, not scanned") — never `Clean`. A decrypted entry is only reported `Clean`
+once its content integrity check also passes, so a wrong-but-accepted ZipCrypto password
+(garbage plaintext) can never masquerade as a clean scan. Encrypted 7z/RAR remain unscannable
+(they can't be decrypted at all) and stay `Inconclusive`.
 
 **Report-only — with a caveat.** Pakko's own code never deletes, quarantines, or otherwise acts on
 a detection; it reports and stops, the same "verify, don't act" posture as Test Archive. This is

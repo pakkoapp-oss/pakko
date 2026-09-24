@@ -144,4 +144,22 @@ public sealed class RawZipEntryLocatorTests
         located.Should().HaveCount(2);
         located.Should().ContainSingle(e => e.GeneralPurposeEncryptedBit);
     }
+
+    // T-F194 (advisor-caught): a crafted 0x9901 record size — past the end of the extra block
+    // (200), or too short to hold the AES fields (2) — used to throw ArgumentOutOfRange/
+    // IndexOutOfRange, which no caller's catch filter covers, escaping every "never throws" ZIP
+    // service. Must surface as the InvalidDataException every caller already maps.
+    [Theory]
+    [InlineData((ushort)200)]
+    [InlineData((ushort)2)]
+    public void LocateAll_MalformedAesExtraRecordSize_ThrowsInvalidData(ushort declaredSize)
+    {
+        using var temp = new TempDirectory();
+        string path = MalformedAesExtraFixture.Create(temp.Path, declaredSize);
+        using var fs = File.OpenRead(path);
+
+        Action act = () => RawZipEntryLocator.LocateAll(fs);
+
+        act.Should().Throw<InvalidDataException>();
+    }
 }

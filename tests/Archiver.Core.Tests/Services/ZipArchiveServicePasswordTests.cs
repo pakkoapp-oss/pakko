@@ -319,6 +319,69 @@ public sealed class ZipArchiveServicePasswordTests : IDisposable
         result.Errors.Should().ContainSingle(e => e.Message == "This archive is password-protected and cannot be tested.");
     }
 
+    // ── Unsupported compression method under encryption (T-F194, advisor-caught) ──
+    // encrypted_aes256_bzip2.zip: real 7za AES-256 over BZip2 (method 12). Before T-F194,
+    // WrapDecompression threw NotSupportedException — inside ResolveArchivePasswordAsync's verify
+    // callback, which none of its catch filters cover, so it escaped ExtractAsync/TestAsync
+    // entirely, violating "Archiver.Core services never throw to callers."
+
+    [Fact]
+    public async Task ExtractAsync_Bzip2UnderAesCorrectPassword_ReportsUnsupportedMethodWithoutThrowing()
+    {
+        var result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [FixtureHelper.Archive("encrypted_aes256_bzip2.zip")],
+            DestinationFolder = Path.Combine(_temp.Path, "out"),
+            Mode = ExtractMode.SingleFolder,
+            ResolvePasswordAsync = FixedPassword(RealPassword),
+        });
+
+        result.Success.Should().BeFalse();
+        result.Errors.Should().ContainSingle(e => e.Message.Contains("unsupported compression method"));
+    }
+
+    [Fact]
+    public async Task TestAsync_Bzip2UnderAesCorrectPassword_ReportsUnsupportedMethodWithoutThrowing()
+    {
+        var result = await _sut.TestAsync(
+            [FixtureHelper.Archive("encrypted_aes256_bzip2.zip")],
+            resolvePasswordAsync: FixedPassword(RealPassword));
+
+        result.Success.Should().BeFalse();
+        result.Errors.Should().ContainSingle(e => e.Message.Contains("unsupported compression method"));
+    }
+
+    [Theory]
+    [InlineData((ushort)200)]
+    [InlineData((ushort)2)]
+    public async Task ExtractAsync_MalformedAesExtraRecord_ReportsErrorWithoutThrowing(ushort declaredSize)
+    {
+        string path = MalformedAesExtraFixture.Create(_temp.Path, declaredSize);
+
+        var result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [path],
+            DestinationFolder = Path.Combine(_temp.Path, "out"),
+            Mode = ExtractMode.SingleFolder,
+            ResolvePasswordAsync = FixedPassword(RealPassword),
+        });
+
+        result.Success.Should().BeFalse();
+        result.Errors.Should().NotBeEmpty();
+    }
+
+    [Theory]
+    [InlineData((ushort)200)]
+    [InlineData((ushort)2)]
+    public async Task ListEntriesAsync_MalformedAesExtraRecord_DoesNotThrow(ushort declaredSize)
+    {
+        string path = MalformedAesExtraFixture.Create(_temp.Path, declaredSize);
+
+        Func<Task> act = () => _sut.ListEntriesAsync(path);
+
+        await act.Should().NotThrowAsync();
+    }
+
     // ── Characterization (regression, not failing-first — see docs/DECISIONS.md's T-F189 entry) ──
 
     [Fact]
