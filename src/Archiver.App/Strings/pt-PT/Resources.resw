@@ -311,4 +311,34 @@
   <data name="ScanInconclusiveSectionHeader" xml:space="preserve">
     <value>Inconclusivo</value>
   </data>
+  <data name="EncryptWithPasswordCheck.Content" xml:space="preserve">
+    <value>Encriptar com palavra-passe (AES-256)</value>
+  </data>
+  <data name="EncryptPasswordDialogTitle" xml:space="preserve">
+    <value>Proteger com palavra-passe</value>
+  </data>
+  <data name="EncryptPasswordDialogMessage" xml:space="preserve">
+    <value>O conteúdo dos ficheiros será encriptado com AES-256. Os nomes dos ficheiros e pastas no arquivo permanecem visíveis sem a palavra-passe.</value>
+  </data>
+  <data name="EncryptPasswordPlaceholder" xml:space="preserve">
+    <value>Palavra-passe</value>
+  </data>
+  <data name="EncryptPasswordConfirmPlaceholder" xml:space="preserve">
+    <value>Confirmar palavra-passe</value>
+  </data>
+  <data name="EncryptPasswordRuleHint" xml:space="preserve">
+    <value>Utilize apenas letras inglesas, algarismos, espaços e pontuação, até {0} carateres, para que o 7-Zip e outras ferramentas ZIP possam abrir o arquivo.</value>
+  </data>
+  <data name="EncryptPasswordErrorEmpty" xml:space="preserve">
+    <value>Introduza uma palavra-passe.</value>
+  </data>
+  <data name="EncryptPasswordErrorCharacters" xml:space="preserve">
+    <value>A palavra-passe contém carateres que outras ferramentas ZIP, como o 7-Zip, não conseguem processar. Utilize apenas letras inglesas, algarismos, espaços e pontuação.</value>
+  </data>
+  <data name="EncryptPasswordErrorTooLong" xml:space="preserve">
+    <value>A palavra-passe tem mais de {0} carateres.</value>
+  </data>
+  <data name="EncryptPasswordErrorMismatch" xml:space="preserve">
+    <value>As palavras-passe não coincidem.</value>
+  </data>
 </root>

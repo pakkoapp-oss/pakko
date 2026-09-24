@@ -311,4 +311,34 @@
   <data name="ScanInconclusiveSectionHeader" xml:space="preserve">
     <value>Ασαφές</value>
   </data>
+  <data name="EncryptWithPasswordCheck.Content" xml:space="preserve">
+    <value>Κρυπτογράφηση με κωδικό πρόσβασης (AES-256)</value>
+  </data>
+  <data name="EncryptPasswordDialogTitle" xml:space="preserve">
+    <value>Προστασία με κωδικό πρόσβασης</value>
+  </data>
+  <data name="EncryptPasswordDialogMessage" xml:space="preserve">
+    <value>Τα περιεχόμενα των αρχείων θα κρυπτογραφηθούν με AES-256. Τα ονόματα αρχείων και φακέλων μέσα στο αρχείο παραμένουν ορατά χωρίς τον κωδικό.</value>
+  </data>
+  <data name="EncryptPasswordPlaceholder" xml:space="preserve">
+    <value>Κωδικός πρόσβασης</value>
+  </data>
+  <data name="EncryptPasswordConfirmPlaceholder" xml:space="preserve">
+    <value>Επιβεβαίωση κωδικού</value>
+  </data>
+  <data name="EncryptPasswordRuleHint" xml:space="preserve">
+    <value>Χρησιμοποιήστε μόνο αγγλικά γράμματα, ψηφία, κενά και σημεία στίξης, έως {0} χαρακτήρες, ώστε το 7-Zip και άλλα εργαλεία ZIP να μπορούν να ανοίξουν το αρχείο.</value>
+  </data>
+  <data name="EncryptPasswordErrorEmpty" xml:space="preserve">
+    <value>Εισαγάγετε κωδικό πρόσβασης.</value>
+  </data>
+  <data name="EncryptPasswordErrorCharacters" xml:space="preserve">
+    <value>Ο κωδικός περιέχει χαρακτήρες που άλλα εργαλεία ZIP, όπως το 7-Zip, δεν μπορούν να χειριστούν. Χρησιμοποιήστε μόνο αγγλικά γράμματα, ψηφία, κενά και σημεία στίξης.</value>
+  </data>
+  <data name="EncryptPasswordErrorTooLong" xml:space="preserve">
+    <value>Ο κωδικός είναι μεγαλύτερος από {0} χαρακτήρες.</value>
+  </data>
+  <data name="EncryptPasswordErrorMismatch" xml:space="preserve">
+    <value>Οι κωδικοί δεν ταιριάζουν.</value>
+  </data>
 </root>

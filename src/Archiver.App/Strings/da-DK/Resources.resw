@@ -311,4 +311,34 @@
   <data name="ScanInconclusiveSectionHeader" xml:space="preserve">
     <value>Ikke afgørende</value>
   </data>
+  <data name="EncryptWithPasswordCheck.Content" xml:space="preserve">
+    <value>Krypter med adgangskode (AES-256)</value>
+  </data>
+  <data name="EncryptPasswordDialogTitle" xml:space="preserve">
+    <value>Beskyt med en adgangskode</value>
+  </data>
+  <data name="EncryptPasswordDialogMessage" xml:space="preserve">
+    <value>Filernes indhold krypteres med AES-256. Fil- og mappenavne i arkivet forbliver synlige uden adgangskoden.</value>
+  </data>
+  <data name="EncryptPasswordPlaceholder" xml:space="preserve">
+    <value>Adgangskode</value>
+  </data>
+  <data name="EncryptPasswordConfirmPlaceholder" xml:space="preserve">
+    <value>Bekræft adgangskode</value>
+  </data>
+  <data name="EncryptPasswordRuleHint" xml:space="preserve">
+    <value>Brug kun engelske bogstaver, tal, mellemrum og tegnsætning, højst {0} tegn, så 7-Zip og andre ZIP-værktøjer kan åbne arkivet.</value>
+  </data>
+  <data name="EncryptPasswordErrorEmpty" xml:space="preserve">
+    <value>Angiv en adgangskode.</value>
+  </data>
+  <data name="EncryptPasswordErrorCharacters" xml:space="preserve">
+    <value>Adgangskoden indeholder tegn, som andre ZIP-værktøjer som 7-Zip ikke kan håndtere. Brug kun engelske bogstaver, tal, mellemrum og tegnsætning.</value>
+  </data>
+  <data name="EncryptPasswordErrorTooLong" xml:space="preserve">
+    <value>Adgangskoden er længere end {0} tegn.</value>
+  </data>
+  <data name="EncryptPasswordErrorMismatch" xml:space="preserve">
+    <value>Adgangskoderne stemmer ikke overens.</value>
+  </data>
 </root>

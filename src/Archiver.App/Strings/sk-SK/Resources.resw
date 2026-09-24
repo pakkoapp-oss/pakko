@@ -311,4 +311,34 @@
   <data name="ScanInconclusiveSectionHeader" xml:space="preserve">
     <value>Nejednoznačné</value>
   </data>
+  <data name="EncryptWithPasswordCheck.Content" xml:space="preserve">
+    <value>Šifrovať heslom (AES-256)</value>
+  </data>
+  <data name="EncryptPasswordDialogTitle" xml:space="preserve">
+    <value>Ochrana heslom</value>
+  </data>
+  <data name="EncryptPasswordDialogMessage" xml:space="preserve">
+    <value>Obsah súborov bude zašifrovaný pomocou AES-256. Názvy súborov a priečinkov v archíve zostanú viditeľné aj bez hesla.</value>
+  </data>
+  <data name="EncryptPasswordPlaceholder" xml:space="preserve">
+    <value>Heslo</value>
+  </data>
+  <data name="EncryptPasswordConfirmPlaceholder" xml:space="preserve">
+    <value>Potvrdenie hesla</value>
+  </data>
+  <data name="EncryptPasswordRuleHint" xml:space="preserve">
+    <value>Používajte iba anglické písmená, číslice, medzery a interpunkciu, najviac {0} znakov, aby archív mohli otvoriť 7-Zip a ďalšie nástroje ZIP.</value>
+  </data>
+  <data name="EncryptPasswordErrorEmpty" xml:space="preserve">
+    <value>Zadajte heslo.</value>
+  </data>
+  <data name="EncryptPasswordErrorCharacters" xml:space="preserve">
+    <value>Heslo obsahuje znaky, ktoré iné nástroje ZIP, napríklad 7-Zip, nedokážu spracovať. Používajte iba anglické písmená, číslice, medzery a interpunkciu.</value>
+  </data>
+  <data name="EncryptPasswordErrorTooLong" xml:space="preserve">
+    <value>Heslo je dlhšie ako {0} znakov.</value>
+  </data>
+  <data name="EncryptPasswordErrorMismatch" xml:space="preserve">
+    <value>Heslá sa nezhodujú.</value>
+  </data>
 </root>

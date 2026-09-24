@@ -311,4 +311,34 @@
   <data name="ScanInconclusiveSectionHeader" xml:space="preserve">
     <value>Không xác định được</value>
   </data>
+  <data name="EncryptWithPasswordCheck.Content" xml:space="preserve">
+    <value>Mã hóa bằng mật khẩu (AES-256)</value>
+  </data>
+  <data name="EncryptPasswordDialogTitle" xml:space="preserve">
+    <value>Bảo vệ bằng mật khẩu</value>
+  </data>
+  <data name="EncryptPasswordDialogMessage" xml:space="preserve">
+    <value>Nội dung tệp sẽ được mã hóa bằng AES-256. Tên tệp và thư mục trong kho lưu trữ vẫn hiển thị mà không cần mật khẩu.</value>
+  </data>
+  <data name="EncryptPasswordPlaceholder" xml:space="preserve">
+    <value>Mật khẩu</value>
+  </data>
+  <data name="EncryptPasswordConfirmPlaceholder" xml:space="preserve">
+    <value>Xác nhận mật khẩu</value>
+  </data>
+  <data name="EncryptPasswordRuleHint" xml:space="preserve">
+    <value>Chỉ dùng chữ cái tiếng Anh, chữ số, dấu cách và dấu câu, tối đa {0} ký tự, để 7-Zip và các công cụ ZIP khác có thể mở kho lưu trữ.</value>
+  </data>
+  <data name="EncryptPasswordErrorEmpty" xml:space="preserve">
+    <value>Nhập mật khẩu.</value>
+  </data>
+  <data name="EncryptPasswordErrorCharacters" xml:space="preserve">
+    <value>Mật khẩu chứa ký tự mà các công cụ ZIP khác như 7-Zip không xử lý được. Chỉ dùng chữ cái tiếng Anh, chữ số, dấu cách và dấu câu.</value>
+  </data>
+  <data name="EncryptPasswordErrorTooLong" xml:space="preserve">
+    <value>Mật khẩu dài hơn {0} ký tự.</value>
+  </data>
+  <data name="EncryptPasswordErrorMismatch" xml:space="preserve">
+    <value>Mật khẩu không khớp.</value>
+  </data>
 </root>

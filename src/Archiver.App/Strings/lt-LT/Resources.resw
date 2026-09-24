@@ -311,4 +311,34 @@
   <data name="ScanInconclusiveSectionHeader" xml:space="preserve">
     <value>Neaišku</value>
   </data>
+  <data name="EncryptWithPasswordCheck.Content" xml:space="preserve">
+    <value>Šifruoti slaptažodžiu (AES-256)</value>
+  </data>
+  <data name="EncryptPasswordDialogTitle" xml:space="preserve">
+    <value>Apsaugoti slaptažodžiu</value>
+  </data>
+  <data name="EncryptPasswordDialogMessage" xml:space="preserve">
+    <value>Failų turinys bus užšifruotas AES-256. Failų ir aplankų pavadinimai archyve liks matomi ir be slaptažodžio.</value>
+  </data>
+  <data name="EncryptPasswordPlaceholder" xml:space="preserve">
+    <value>Slaptažodis</value>
+  </data>
+  <data name="EncryptPasswordConfirmPlaceholder" xml:space="preserve">
+    <value>Patvirtinkite slaptažodį</value>
+  </data>
+  <data name="EncryptPasswordRuleHint" xml:space="preserve">
+    <value>Naudokite tik anglų kalbos raides, skaitmenis, tarpus ir skyrybos ženklus, ne daugiau kaip {0} simbolių, kad 7-Zip ir kiti ZIP įrankiai galėtų atidaryti archyvą.</value>
+  </data>
+  <data name="EncryptPasswordErrorEmpty" xml:space="preserve">
+    <value>Įveskite slaptažodį.</value>
+  </data>
+  <data name="EncryptPasswordErrorCharacters" xml:space="preserve">
+    <value>Slaptažodyje yra simbolių, kurių kiti ZIP įrankiai, pvz., 7-Zip, negali apdoroti. Naudokite tik anglų kalbos raides, skaitmenis, tarpus ir skyrybos ženklus.</value>
+  </data>
+  <data name="EncryptPasswordErrorTooLong" xml:space="preserve">
+    <value>Slaptažodis ilgesnis nei {0} simbolių.</value>
+  </data>
+  <data name="EncryptPasswordErrorMismatch" xml:space="preserve">
+    <value>Slaptažodžiai nesutampa.</value>
+  </data>
 </root>

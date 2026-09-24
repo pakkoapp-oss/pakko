@@ -311,4 +311,34 @@
   <data name="ScanInconclusiveSectionHeader" xml:space="preserve">
     <value>Haielekei</value>
   </data>
+  <data name="EncryptWithPasswordCheck.Content" xml:space="preserve">
+    <value>Simba kwa nenosiri (AES-256)</value>
+  </data>
+  <data name="EncryptPasswordDialogTitle" xml:space="preserve">
+    <value>Linda kwa nenosiri</value>
+  </data>
+  <data name="EncryptPasswordDialogMessage" xml:space="preserve">
+    <value>Maudhui ya faili yatasimbwa kwa AES-256. Majina ya faili na folda ndani ya kumbukumbu yataendelea kuonekana bila nenosiri.</value>
+  </data>
+  <data name="EncryptPasswordPlaceholder" xml:space="preserve">
+    <value>Nenosiri</value>
+  </data>
+  <data name="EncryptPasswordConfirmPlaceholder" xml:space="preserve">
+    <value>Thibitisha nenosiri</value>
+  </data>
+  <data name="EncryptPasswordRuleHint" xml:space="preserve">
+    <value>Tumia herufi za Kiingereza, tarakimu, nafasi na alama za uakifishaji pekee, hadi herufi {0}, ili 7-Zip na zana zingine za ZIP ziweze kufungua kumbukumbu.</value>
+  </data>
+  <data name="EncryptPasswordErrorEmpty" xml:space="preserve">
+    <value>Weka nenosiri.</value>
+  </data>
+  <data name="EncryptPasswordErrorCharacters" xml:space="preserve">
+    <value>Nenosiri lina herufi ambazo zana zingine za ZIP kama 7-Zip haziwezi kushughulikia. Tumia herufi za Kiingereza, tarakimu, nafasi na alama za uakifishaji pekee.</value>
+  </data>
+  <data name="EncryptPasswordErrorTooLong" xml:space="preserve">
+    <value>Nenosiri ni refu kuliko herufi {0}.</value>
+  </data>
+  <data name="EncryptPasswordErrorMismatch" xml:space="preserve">
+    <value>Manenosiri hayalingani.</value>
+  </data>
 </root>

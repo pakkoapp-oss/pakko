@@ -311,4 +311,34 @@
   <data name="ScanInconclusiveSectionHeader" xml:space="preserve">
     <value>לא חד-משמעי</value>
   </data>
+  <data name="EncryptWithPasswordCheck.Content" xml:space="preserve">
+    <value>הצפנה באמצעות סיסמה (AES-256)</value>
+  </data>
+  <data name="EncryptPasswordDialogTitle" xml:space="preserve">
+    <value>הגנה באמצעות סיסמה</value>
+  </data>
+  <data name="EncryptPasswordDialogMessage" xml:space="preserve">
+    <value>תוכן הקבצים יוצפן באמצעות AES-256. שמות הקבצים והתיקיות בארכיון יישארו גלויים גם ללא הסיסמה.</value>
+  </data>
+  <data name="EncryptPasswordPlaceholder" xml:space="preserve">
+    <value>סיסמה</value>
+  </data>
+  <data name="EncryptPasswordConfirmPlaceholder" xml:space="preserve">
+    <value>אישור סיסמה</value>
+  </data>
+  <data name="EncryptPasswordRuleHint" xml:space="preserve">
+    <value>השתמשו רק באותיות אנגליות, ספרות, רווחים וסימני פיסוק, עד {0} תווים, כדי ש-7-Zip וכלי ZIP אחרים יוכלו לפתוח את הארכיון.</value>
+  </data>
+  <data name="EncryptPasswordErrorEmpty" xml:space="preserve">
+    <value>הזינו סיסמה.</value>
+  </data>
+  <data name="EncryptPasswordErrorCharacters" xml:space="preserve">
+    <value>הסיסמה מכילה תווים שכלי ZIP אחרים כמו 7-Zip אינם יכולים לטפל בהם. השתמשו רק באותיות אנגליות, ספרות, רווחים וסימני פיסוק.</value>
+  </data>
+  <data name="EncryptPasswordErrorTooLong" xml:space="preserve">
+    <value>הסיסמה ארוכה מ-{0} תווים.</value>
+  </data>
+  <data name="EncryptPasswordErrorMismatch" xml:space="preserve">
+    <value>הסיסמאות אינן תואמות.</value>
+  </data>
 </root>

@@ -432,13 +432,38 @@ public sealed class CliArgumentParserTests
         result.Password.Should().Be("Secret123");
     }
 
-    [Fact]
-    public void PasswordSwitch_Bare_ReturnsInvalidRequiringAValue()
+    // T-F193: a bare -p means "ask me", as in real 7z — it was rejected before.
+    [Theory]
+    [InlineData("x")]
+    [InlineData("t")]
+    public void PasswordSwitch_Bare_OnExtractOrTest_RequestsAPrompt(string command)
     {
-        ParsedCliCommand result = CliArgumentParser.Parse(["x", "-p", "archive.zip"]);
+        ParsedCliCommand result = CliArgumentParser.Parse([command, "-p", "archive.zip"]);
+
+        result.Type.Should().Be(command == "x" ? CliCommandType.Extract : CliCommandType.Test);
+        result.PromptForPassword.Should().BeTrue();
+        result.Password.Should().BeNull();
+    }
+
+    [Theory]
+    [InlineData("x")]
+    [InlineData("t")]
+    public void PasswordSwitch_Bare_WithStdinArchive_ReturnsInvalid(string command)
+    {
+        // -si already consumes stdin for the archive bytes, so nothing is left to type into.
+        ParsedCliCommand result = CliArgumentParser.Parse([command, "-p", "-si"]);
 
         result.Type.Should().Be(CliCommandType.Invalid);
-        result.ErrorMessage.Should().Contain("-p requires a password");
+        result.ErrorMessage.Should().Contain("-si");
+    }
+
+    [Fact]
+    public void PasswordSwitch_BareThenValued_ValueWins()
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse(["x", "-p", "-pSecret", "archive.zip"]);
+
+        result.Password.Should().Be("Secret");
+        result.PromptForPassword.Should().BeFalse();
     }
 
     [Theory]
@@ -452,14 +477,102 @@ public sealed class CliArgumentParserTests
         result.ErrorMessage.Should().Contain("not supported");
     }
 
+    // --- T-F193: -p on 'a' (AES-256 creation) ---
+
     [Fact]
-    public void PasswordSwitch_OnArchiveCreation_ReturnsInvalid()
+    public void Archive_PasswordSwitch_IsParsed()
     {
-        // T-F193 (future phase) will give 'a' real -p support, AES-only — not yet.
         ParsedCliCommand result = CliArgumentParser.Parse(["a", "out.zip", "-pSecret123", "file.txt"]);
 
+        result.Type.Should().Be(CliCommandType.Archive);
+        result.Password.Should().Be("Secret123");
+        result.SourcePaths.Should().Equal("file.txt");
+    }
+
+    [Fact]
+    public void Archive_BarePasswordSwitch_RequestsAPrompt()
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse(["a", "-p", "out.zip", "file.txt"]);
+
+        result.Type.Should().Be(CliCommandType.Archive);
+        result.PromptForPassword.Should().BeTrue();
+    }
+
+    [Theory]
+    [InlineData("-ttar")]
+    [InlineData("-ttar.gz")]
+    [InlineData("-ttar.zst")]
+    public void Archive_PasswordWithTarFormat_ReturnsInvalidRegardlessOfOrder(string typeSwitch)
+    {
+        ParsedCliCommand before = CliArgumentParser.Parse(["a", "-pSecret", typeSwitch, "out.tar", "file.txt"]);
+        ParsedCliCommand after = CliArgumentParser.Parse(["a", typeSwitch, "out.tar", "file.txt", "-p"]);
+
+        before.Type.Should().Be(CliCommandType.Invalid);
+        before.ErrorMessage.Should().Contain("ZIP");
+        after.Type.Should().Be(CliCommandType.Invalid);
+    }
+
+    [Fact]
+    public void Archive_PasswordWithExplicitZipFormat_IsParsed()
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse(["a", "-tzip", "-pSecret", "out.zip", "file.txt"]);
+
+        result.Type.Should().Be(CliCommandType.Archive);
+    }
+
+    [Fact]
+    public void Archive_NonAsciiPassword_IsParsedAndLeftToTheEncryptRuleAtRunTime()
+    {
+        // The parser stays format-agnostic; Program.cs applies EncryptionPasswordRule so x/t keep
+        // accepting any password for decryption.
+        ParsedCliCommand result = CliArgumentParser.Parse(["a", "-pпароль", "out.zip", "file.txt"]);
+
+        result.Type.Should().Be(CliCommandType.Archive);
+        result.Password.Should().Be("пароль");
+    }
+
+    [Theory]
+    [InlineData("-mem=AES256")]
+    [InlineData("-mem=aes256")]
+    public void Archive_EncryptionMethodAes256_IsAcceptedAsNoOp(string token)
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse(["a", "-pSecret", token, "out.zip", "file.txt"]);
+
+        result.Type.Should().Be(CliCommandType.Archive);
+        result.Password.Should().Be("Secret");
+    }
+
+    [Theory]
+    [InlineData("-mem=ZipCrypto")]
+    [InlineData("-mem=zipcrypto")]
+    [InlineData("-mem=AES128")]
+    [InlineData("-mem=AES192")]
+    public void Archive_WeakerEncryptionMethod_ReturnsInvalidExplainingAesOnly(string token)
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse(["a", "-pSecret", token, "out.zip", "file.txt"]);
+
         result.Type.Should().Be(CliCommandType.Invalid);
-        result.ErrorMessage.Should().Contain("not supported");
+        result.ErrorMessage.Should().Contain("not supported by Pakko").And.Contain("AES-256");
+    }
+
+    [Theory]
+    [InlineData("-mem=")]
+    [InlineData("-mem=Blowfish")]
+    public void Archive_UnknownEncryptionMethod_ReturnsInvalid(string token)
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse(["a", "-pSecret", token, "out.zip", "file.txt"]);
+
+        result.Type.Should().Be(CliCommandType.Invalid);
+        result.ErrorMessage.Should().Contain("-mem");
+    }
+
+    [Fact]
+    public void Archive_OtherMethodParameter_ReturnsInvalidWithoutClaimingItBelongsToA()
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse(["a", "-mhe=on", "out.zip", "file.txt"]);
+
+        result.Type.Should().Be(CliCommandType.Invalid);
+        result.ErrorMessage.Should().NotContain("only meaningful for 'a'");
     }
 
     [Fact]
@@ -478,6 +591,7 @@ public sealed class CliArgumentParserTests
 
         result.Type.Should().Be(CliCommandType.Extract);
         result.Password.Should().BeNull();
+        result.PromptForPassword.Should().BeFalse();
     }
 
     [Fact]

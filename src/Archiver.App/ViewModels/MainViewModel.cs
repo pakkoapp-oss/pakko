@@ -99,6 +99,7 @@ public sealed partial class MainViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(IsNotBusy))]
     [NotifyPropertyChangedFor(nameof(IsArchiveNameAndNotBusy))]
     [NotifyPropertyChangedFor(nameof(IsCompressionLevelEnabled))]
+    [NotifyPropertyChangedFor(nameof(IsEncryptionAvailable))]
     [NotifyCanExecuteChangedFor(nameof(NavigateDestinationUpCommand))]
     private bool _isBusy = false;
 
@@ -253,6 +254,7 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(FormatIndex))]
     [NotifyPropertyChangedFor(nameof(IsCompressionLevelEnabled))]
+    [NotifyPropertyChangedFor(nameof(IsEncryptionAvailable))]
     private ArchiveContainerFormat _selectedContainerFormat = ArchiveContainerFormat.Zip;
 
     public int FormatIndex
@@ -284,6 +286,13 @@ public sealed partial class MainViewModel : ObservableObject
     public bool IsPlainTarFormatSelected => SelectedContainerFormat == ArchiveContainerFormat.Tar;
 
     public bool IsCompressionLevelEnabled => IsNotBusy && !IsPlainTarFormatSelected;
+
+    // T-F193: only the ZIP writer can encrypt. The checkbox keeps its checked state when a tar
+    // format is picked (it's merely disabled), so ArchiveAsync checks the format again at use.
+    [ObservableProperty]
+    private bool _encryptWithPassword = false;
+
+    public bool IsEncryptionAvailable => IsNotBusy && SelectedContainerFormat == ArchiveContainerFormat.Zip;
 
     // T-F51: DisableTarExtraction also hides the 6 tar-family Format ComboBoxItems — GroupPolicy
     // is loaded once at process startup and never changes mid-session, so this is a fixed value
@@ -458,10 +467,19 @@ public sealed partial class MainViewModel : ObservableObject
         CancelCommand.NotifyCanExecuteChanged();
         Progress = 0;
         bool wasCancelled = false;
+        bool passwordPromptCancelled = false;
         try
         {
             var options = new ArchiveOptions
             {
+                ResolvePasswordAsync = EncryptWithPassword && SelectedContainerFormat == ArchiveContainerFormat.Zip
+                    ? async info =>
+                    {
+                        var decision = await _dialogService.ShowPasswordPromptAsync(info, canApplyToRemaining: false);
+                        passwordPromptCancelled = decision.Password is null;
+                        return decision;
+                    }
+                    : null,
                 SourcePaths = [.. FileItems.Select(x => x.FullPath)],
                 DestinationFolder = DestinationPath,
                 ArchiveName = string.IsNullOrWhiteSpace(ArchiveName) ? null : ArchiveName.Trim(),
@@ -525,6 +543,10 @@ public sealed partial class MainViewModel : ObservableObject
             });
 
             var result = await _archiveCreationRouter.ArchiveAsync(options, progress, _cts.Token);
+            // T-F193: Core created nothing and reports a generic error; the user only pressed
+            // Cancel, so this ends exactly like the Cancel button (T-F70 delay, no summary dialog).
+            if (passwordPromptCancelled)
+                throw new OperationCanceledException();
             if (result.Success && DeleteAfterOperation)
                 await RunCleanupAsync(GetDeletableSources(options.SourcePaths, result));
             _operationStopwatch?.Stop();

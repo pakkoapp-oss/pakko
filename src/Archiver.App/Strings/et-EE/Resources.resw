@@ -311,4 +311,34 @@
   <data name="ScanInconclusiveSectionHeader" xml:space="preserve">
     <value>Ebaselge</value>
   </data>
+  <data name="EncryptWithPasswordCheck.Content" xml:space="preserve">
+    <value>Krüpteeri parooliga (AES-256)</value>
+  </data>
+  <data name="EncryptPasswordDialogTitle" xml:space="preserve">
+    <value>Kaitse parooliga</value>
+  </data>
+  <data name="EncryptPasswordDialogMessage" xml:space="preserve">
+    <value>Failide sisu krüpteeritakse AES-256-ga. Arhiivis olevate failide ja kaustade nimed jäävad ilma paroolita nähtavaks.</value>
+  </data>
+  <data name="EncryptPasswordPlaceholder" xml:space="preserve">
+    <value>Parool</value>
+  </data>
+  <data name="EncryptPasswordConfirmPlaceholder" xml:space="preserve">
+    <value>Kinnita parool</value>
+  </data>
+  <data name="EncryptPasswordRuleHint" xml:space="preserve">
+    <value>Kasutage ainult ingliskeelseid tähti, numbreid, tühikuid ja kirjavahemärke, kuni {0} märki, et 7-Zip ja teised ZIP-tööriistad saaksid arhiivi avada.</value>
+  </data>
+  <data name="EncryptPasswordErrorEmpty" xml:space="preserve">
+    <value>Sisestage parool.</value>
+  </data>
+  <data name="EncryptPasswordErrorCharacters" xml:space="preserve">
+    <value>Parool sisaldab märke, mida teised ZIP-tööriistad, näiteks 7-Zip, ei suuda töödelda. Kasutage ainult ingliskeelseid tähti, numbreid, tühikuid ja kirjavahemärke.</value>
+  </data>
+  <data name="EncryptPasswordErrorTooLong" xml:space="preserve">
+    <value>Parool on pikem kui {0} märki.</value>
+  </data>
+  <data name="EncryptPasswordErrorMismatch" xml:space="preserve">
+    <value>Paroolid ei ühti.</value>
+  </data>
 </root>

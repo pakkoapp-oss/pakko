@@ -32,7 +32,8 @@ public sealed record ParsedCliCommand
     public HashAlgorithmKind HashAlgorithm { get; init; } = HashAlgorithmKind.Crc32; // -scrc{method}, h only (T-F128/T-F09 follow-up); Crc32 matches real 7z's own default hash method
     public bool ReadFromStdin { get; init; }                          // -si, x/t/l/h only (T-F116)
     public bool WriteToStdout { get; init; }                          // -so, x/a only (T-F116)
-    public string? Password { get; init; }                            // -p{pwd}, x/t only (T-F191)
+    public string? Password { get; init; }                            // -p{pwd}, x/t (T-F191), a (T-F193)
+    public bool PromptForPassword { get; init; }                      // bare -p: ask interactively, x/t/a (T-F193)
     public string? ErrorMessage { get; init; }
 }
 
@@ -82,6 +83,7 @@ public static class CliArgumentParser
         public bool ReadFromStdin { get; set; }
         public bool WriteToStdout { get; set; }
         public string? Password { get; set; }
+        public bool PromptForPassword { get; set; }
     }
 
     private static ParsedCliCommand ParseExtract(string[] rest)
@@ -99,6 +101,8 @@ public static class CliArgumentParser
             return Invalid("'-si' cannot be combined with an explicit archive path");
         if (state.WriteToStdout && state.OutputDirectory is not null)
             return Invalid("'-so' cannot be combined with '-o' (mutually exclusive destinations)");
+        if (state.ReadFromStdin && state.PromptForPassword)
+            return Invalid(BarePasswordWithStdinReason);
         if (!state.ReadFromStdin && state.ArchivePaths.Count == 0)
             return Invalid("'x' requires at least one archive path");
 
@@ -112,6 +116,7 @@ public static class CliArgumentParser
             ReadFromStdin = state.ReadFromStdin,
             WriteToStdout = state.WriteToStdout,
             Password = state.Password,
+            PromptForPassword = state.PromptForPassword,
         };
     }
 
@@ -148,27 +153,19 @@ public static class CliArgumentParser
 
         if (token.StartsWith("-p", StringComparison.Ordinal))
         {
-            if (!TryParsePassword(token, out string? password, out string? error))
-                return error;
-            state.Password = password;
+            (state.Password, state.PromptForPassword) = ParsePassword(token);
             return null;
         }
 
         return UnsupportedSwitchReason(token);
     }
 
-    private static bool TryParsePassword(string token, out string? password, out string? error)
-    {
-        if (token.Length == 2)
-        {
-            password = null;
-            error = "-p requires a password, e.g. -pSecret123";
-            return false;
-        }
-        password = token[2..];
-        error = null;
-        return true;
-    }
+    // T-F193: a bare -p means "prompt for it", as in real 7z. Whichever -p comes last wins.
+    private static (string? Password, bool Prompt) ParsePassword(string token) =>
+        token.Length == 2 ? (null, true) : (token[2..], false);
+
+    private const string BarePasswordWithStdinReason =
+        "a bare '-p' cannot be combined with '-si' — stdin already carries the archive, so there is nothing to type the password into; use -p<pwd>";
 
     private static bool TryParseOutputDirectory(string token, out string? outputDirectory, out string? error)
     {
@@ -223,6 +220,7 @@ public static class CliArgumentParser
         var archivePaths = new List<string>();
         bool readFromStdin = false;
         string? password = null;
+        bool promptForPassword = false;
         foreach (string token in rest)
         {
             if (token == "-si")
@@ -232,8 +230,7 @@ public static class CliArgumentParser
             }
             if (token.StartsWith("-p", StringComparison.Ordinal))
             {
-                if (!TryParsePassword(token, out password, out string? error))
-                    return Invalid(error!);
+                (password, promptForPassword) = ParsePassword(token);
                 continue;
             }
             if (IsSwitchToken(token))
@@ -245,8 +242,14 @@ public static class CliArgumentParser
             return Invalid("'-si' cannot be combined with an explicit archive path");
         if (!readFromStdin && archivePaths.Count == 0)
             return Invalid("'t' requires at least one archive path");
+        if (readFromStdin && promptForPassword)
+            return Invalid(BarePasswordWithStdinReason);
 
-        return new ParsedCliCommand { Type = CliCommandType.Test, ArchivePaths = archivePaths, ReadFromStdin = readFromStdin, Password = password };
+        return new ParsedCliCommand
+        {
+            Type = CliCommandType.Test, ArchivePaths = archivePaths, ReadFromStdin = readFromStdin,
+            Password = password, PromptForPassword = promptForPassword,
+        };
     }
 
     // --- i (Info) ---
@@ -275,6 +278,8 @@ public static class CliArgumentParser
         public ArchiveContainerFormat ArchiveFormat { get; set; } = ArchiveContainerFormat.Zip;
         public CompressionLevel? CompressionLevel { get; set; }
         public bool WriteToStdout { get; set; }
+        public string? Password { get; set; }
+        public bool PromptForPassword { get; set; }
     }
 
     private static ParsedCliCommand ParseArchive(string[] rest)
@@ -290,6 +295,9 @@ public static class CliArgumentParser
 
         if (state.ArchivePathArg is null || state.SourcePaths.Count == 0)
             return Invalid("'a' requires an archive name and at least one source file");
+        // Checked after the loop because -t may come after -p.
+        if ((state.Password is not null || state.PromptForPassword) && state.ArchiveFormat != ArchiveContainerFormat.Zip)
+            return Invalid("not supported by Pakko: -p on a tar-family archive — only ZIP archives can be password-protected");
 
         return new ParsedCliCommand
         {
@@ -300,6 +308,8 @@ public static class CliArgumentParser
             ArchiveFormat = state.ArchiveFormat,
             CompressionLevel = state.CompressionLevel,
             WriteToStdout = state.WriteToStdout,
+            Password = state.Password,
+            PromptForPassword = state.PromptForPassword,
         };
     }
 
@@ -333,7 +343,37 @@ public static class CliArgumentParser
             return null;
         }
 
+        if (token.StartsWith("-p", StringComparison.Ordinal))
+        {
+            (state.Password, state.PromptForPassword) = ParsePassword(token);
+            return null;
+        }
+
+        if (token.StartsWith("-mem", StringComparison.Ordinal))
+            return EncryptionMethodError(token);
+
+        if (token.StartsWith("-m", StringComparison.Ordinal))
+            return "not supported by Pakko: of 7z's -m{params}, only -mx=<0-9> and -mem=AES256 are implemented";
+
         return UnsupportedSwitchReason(token);
+    }
+
+    // T-F193: Pakko writes WinZip AES-256 only, so -mem=AES256 (what 7z itself writes for a ZIP
+    // given -p) is accepted as a no-op, and every weaker method is refused rather than silently
+    // upgraded.
+    private static string? EncryptionMethodError(string token)
+    {
+        if (!token.StartsWith("-mem=", StringComparison.Ordinal))
+            return "-mem requires a method, e.g. -mem=AES256";
+
+        string method = token[5..];
+        return method.ToUpperInvariant() switch
+        {
+            "AES256" => null,
+            "ZIPCRYPTO" or "AES128" or "AES192" =>
+                $"not supported by Pakko: -mem={method} — Pakko only creates AES-256 encrypted ZIP archives",
+            _ => $"unknown -mem value: '{method}' (Pakko supports only -mem=AES256)",
+        };
     }
 
     private static bool TryParseCompressionLevel(string token, out CompressionLevel? level, out string? error)
@@ -528,7 +568,7 @@ public static class CliArgumentParser
         ("-t", "not supported on this command: -t{type} is only meaningful for 'a' (archive creation)"),
         ("-scrc", "not supported on this command: -scrc{method} is only meaningful for 'h' (hash)"),
         ("-o", NotSupportedOnThisCommand),
-        ("-p", "not supported on this command: -p{pwd} decrypts a password-protected ZIP — only valid with 'x' (extract) or 't' (test)"),
+        ("-p", "not supported on this command: -p{pwd} is only valid with 'x' (extract), 't' (test) or 'a' (create an AES-256 ZIP)"),
         ("-r", "not supported: recurse-subdirectories toggle has no Pakko equivalent (archiving already recurses by default)"),
         ("-i", "not supported: no wildcard include-pattern filtering exists in Pakko"),
         ("-x", "not supported: no wildcard exclude-pattern filtering exists in Pakko"),

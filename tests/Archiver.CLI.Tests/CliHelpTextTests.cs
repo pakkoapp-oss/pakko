@@ -24,6 +24,7 @@ public sealed class CliHelpTextTests
     [InlineData("-ao{a|s|u}")]
     [InlineData("-t<type>")]
     [InlineData("-mx=<0-9>")]
+    [InlineData("-mem=AES256")]
     [InlineData("-scrc<method>")]
     [InlineData("-si")]
     [InlineData("-so")]

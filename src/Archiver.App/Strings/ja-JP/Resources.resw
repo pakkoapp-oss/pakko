@@ -311,4 +311,34 @@
   <data name="ScanInconclusiveSectionHeader" xml:space="preserve">
     <value>判定不能</value>
   </data>
+  <data name="EncryptWithPasswordCheck.Content" xml:space="preserve">
+    <value>パスワードで暗号化 (AES-256)</value>
+  </data>
+  <data name="EncryptPasswordDialogTitle" xml:space="preserve">
+    <value>パスワードで保護</value>
+  </data>
+  <data name="EncryptPasswordDialogMessage" xml:space="preserve">
+    <value>ファイルの内容は AES-256 で暗号化されます。アーカイブ内のファイル名とフォルダー名はパスワードなしでも表示されます。</value>
+  </data>
+  <data name="EncryptPasswordPlaceholder" xml:space="preserve">
+    <value>パスワード</value>
+  </data>
+  <data name="EncryptPasswordConfirmPlaceholder" xml:space="preserve">
+    <value>パスワードの確認</value>
+  </data>
+  <data name="EncryptPasswordRuleHint" xml:space="preserve">
+    <value>7-Zip などの ZIP ツールで開けるよう、英字、数字、スペース、記号のみを使い、{0} 文字以内にしてください。</value>
+  </data>
+  <data name="EncryptPasswordErrorEmpty" xml:space="preserve">
+    <value>パスワードを入力してください。</value>
+  </data>
+  <data name="EncryptPasswordErrorCharacters" xml:space="preserve">
+    <value>パスワードに 7-Zip などの ZIP ツールが扱えない文字が含まれています。英字、数字、スペース、記号のみを使用してください。</value>
+  </data>
+  <data name="EncryptPasswordErrorTooLong" xml:space="preserve">
+    <value>パスワードが {0} 文字を超えています。</value>
+  </data>
+  <data name="EncryptPasswordErrorMismatch" xml:space="preserve">
+    <value>パスワードが一致しません。</value>
+  </data>
 </root>

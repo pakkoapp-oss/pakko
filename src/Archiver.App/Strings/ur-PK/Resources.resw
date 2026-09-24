@@ -311,4 +311,34 @@
   <data name="ScanInconclusiveSectionHeader" xml:space="preserve">
     <value>غیر حتمی</value>
   </data>
+  <data name="EncryptWithPasswordCheck.Content" xml:space="preserve">
+    <value>پاس ورڈ کے ساتھ انکرپٹ کریں (AES-256)</value>
+  </data>
+  <data name="EncryptPasswordDialogTitle" xml:space="preserve">
+    <value>پاس ورڈ سے محفوظ کریں</value>
+  </data>
+  <data name="EncryptPasswordDialogMessage" xml:space="preserve">
+    <value>فائلوں کا مواد AES-256 سے انکرپٹ کیا جائے گا۔ آرکائیو کے اندر فائلوں اور فولڈرز کے نام پاس ورڈ کے بغیر بھی نظر آتے رہیں گے۔</value>
+  </data>
+  <data name="EncryptPasswordPlaceholder" xml:space="preserve">
+    <value>پاس ورڈ</value>
+  </data>
+  <data name="EncryptPasswordConfirmPlaceholder" xml:space="preserve">
+    <value>پاس ورڈ کی تصدیق کریں</value>
+  </data>
+  <data name="EncryptPasswordRuleHint" xml:space="preserve">
+    <value>صرف انگریزی حروف، ہندسے، خالی جگہیں اور رموزِ اوقاف استعمال کریں، زیادہ سے زیادہ {0} حروف، تاکہ 7-Zip اور دیگر ZIP ٹولز آرکائیو کھول سکیں۔</value>
+  </data>
+  <data name="EncryptPasswordErrorEmpty" xml:space="preserve">
+    <value>پاس ورڈ درج کریں۔</value>
+  </data>
+  <data name="EncryptPasswordErrorCharacters" xml:space="preserve">
+    <value>پاس ورڈ میں ایسے حروف ہیں جنہیں 7-Zip جیسے دیگر ZIP ٹولز نہیں سنبھال سکتے۔ صرف انگریزی حروف، ہندسے، خالی جگہیں اور رموزِ اوقاف استعمال کریں۔</value>
+  </data>
+  <data name="EncryptPasswordErrorTooLong" xml:space="preserve">
+    <value>پاس ورڈ {0} حروف سے لمبا ہے۔</value>
+  </data>
+  <data name="EncryptPasswordErrorMismatch" xml:space="preserve">
+    <value>پاس ورڈز مماثل نہیں ہیں۔</value>
+  </data>
 </root>

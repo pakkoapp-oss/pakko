@@ -456,16 +456,24 @@
                 IsEnabled="{x:Bind ViewModel.IsArchiveNameAndNotBusy, Mode=OneWay}"/>
 
             <TextBlock x:Uid="FormatLabel" Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" Style="{StaticResource CaptionTextBlockStyle}"/>
-            <ComboBox Grid.Row="2" Grid.Column="1" Margin="8,0,0,0" HorizontalAlignment="Left" MinHeight="32" SelectedIndex="{x:Bind ViewModel.FormatIndex, Mode=TwoWay}"
-                      IsEnabled="{x:Bind ViewModel.IsNotBusy, Mode=OneWay}">
-                <ComboBoxItem x:Uid="FormatZipItem"/>
-                <ComboBoxItem x:Uid="FormatTarItem" Visibility="{x:Bind ViewModel.TarFormatVisibility}"/>
-                <ComboBoxItem x:Uid="FormatTarGzItem" Visibility="{x:Bind ViewModel.TarFormatVisibility}"/>
-                <ComboBoxItem x:Uid="FormatTarBz2Item" Visibility="{x:Bind ViewModel.TarFormatVisibility}"/>
-                <ComboBoxItem x:Uid="FormatTarXzItem" Visibility="{x:Bind ViewModel.TarFormatVisibility}"/>
-                <ComboBoxItem x:Uid="FormatTarZstItem" Visibility="{x:Bind ViewModel.TarFormatVisibility}"/>
-                <ComboBoxItem x:Uid="FormatTarLzmaItem" Visibility="{x:Bind ViewModel.TarFormatVisibility}"/>
-            </ComboBox>
+            <!-- T-F193: the encrypt checkbox sits beside the format it depends on (ZIP only)
+                 instead of adding a row, so the T-F106 Star-row height budget is untouched. -->
+            <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Spacing="16" Margin="8,0,0,0">
+                <ComboBox MinHeight="32" SelectedIndex="{x:Bind ViewModel.FormatIndex, Mode=TwoWay}"
+                          IsEnabled="{x:Bind ViewModel.IsNotBusy, Mode=OneWay}">
+                    <ComboBoxItem x:Uid="FormatZipItem"/>
+                    <ComboBoxItem x:Uid="FormatTarItem" Visibility="{x:Bind ViewModel.TarFormatVisibility}"/>
+                    <ComboBoxItem x:Uid="FormatTarGzItem" Visibility="{x:Bind ViewModel.TarFormatVisibility}"/>
+                    <ComboBoxItem x:Uid="FormatTarBz2Item" Visibility="{x:Bind ViewModel.TarFormatVisibility}"/>
+                    <ComboBoxItem x:Uid="FormatTarXzItem" Visibility="{x:Bind ViewModel.TarFormatVisibility}"/>
+                    <ComboBoxItem x:Uid="FormatTarZstItem" Visibility="{x:Bind ViewModel.TarFormatVisibility}"/>
+                    <ComboBoxItem x:Uid="FormatTarLzmaItem" Visibility="{x:Bind ViewModel.TarFormatVisibility}"/>
+                </ComboBox>
+                <CheckBox
+                    x:Uid="EncryptWithPasswordCheck"
+                    IsChecked="{x:Bind ViewModel.EncryptWithPassword, Mode=TwoWay}"
+                    IsEnabled="{x:Bind ViewModel.IsEncryptionAvailable, Mode=OneWay}"/>
+            </StackPanel>
 
             <TextBlock x:Uid="CompressionLabel" Grid.Row="3" Grid.Column="0" VerticalAlignment="Center" Style="{StaticResource CaptionTextBlockStyle}"/>
             <ComboBox Grid.Row="3" Grid.Column="1" Margin="8,0,0,0" HorizontalAlignment="Left" MinHeight="32" SelectedIndex="{x:Bind ViewModel.CompressionLevelIndex, Mode=TwoWay}"

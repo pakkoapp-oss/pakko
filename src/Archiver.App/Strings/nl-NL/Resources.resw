@@ -311,4 +311,34 @@
   <data name="ScanInconclusiveSectionHeader" xml:space="preserve">
     <value>Niet doorslaggevend</value>
   </data>
+  <data name="EncryptWithPasswordCheck.Content" xml:space="preserve">
+    <value>Versleutelen met wachtwoord (AES-256)</value>
+  </data>
+  <data name="EncryptPasswordDialogTitle" xml:space="preserve">
+    <value>Beveiligen met een wachtwoord</value>
+  </data>
+  <data name="EncryptPasswordDialogMessage" xml:space="preserve">
+    <value>De inhoud van de bestanden wordt versleuteld met AES-256. Bestands- en mapnamen in het archief blijven zonder wachtwoord zichtbaar.</value>
+  </data>
+  <data name="EncryptPasswordPlaceholder" xml:space="preserve">
+    <value>Wachtwoord</value>
+  </data>
+  <data name="EncryptPasswordConfirmPlaceholder" xml:space="preserve">
+    <value>Wachtwoord bevestigen</value>
+  </data>
+  <data name="EncryptPasswordRuleHint" xml:space="preserve">
+    <value>Gebruik alleen Engelse letters, cijfers, spaties en leestekens, maximaal {0} tekens, zodat 7-Zip en andere ZIP-programma's het archief kunnen openen.</value>
+  </data>
+  <data name="EncryptPasswordErrorEmpty" xml:space="preserve">
+    <value>Voer een wachtwoord in.</value>
+  </data>
+  <data name="EncryptPasswordErrorCharacters" xml:space="preserve">
+    <value>Het wachtwoord bevat tekens die andere ZIP-programma's zoals 7-Zip niet kunnen verwerken. Gebruik alleen Engelse letters, cijfers, spaties en leestekens.</value>
+  </data>
+  <data name="EncryptPasswordErrorTooLong" xml:space="preserve">
+    <value>Het wachtwoord is langer dan {0} tekens.</value>
+  </data>
+  <data name="EncryptPasswordErrorMismatch" xml:space="preserve">
+    <value>De wachtwoorden komen niet overeen.</value>
+  </data>
 </root>

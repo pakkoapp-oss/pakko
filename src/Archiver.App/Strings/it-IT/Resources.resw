@@ -311,4 +311,34 @@
   <data name="ScanInconclusiveSectionHeader" xml:space="preserve">
     <value>Non conclusivo</value>
   </data>
+  <data name="EncryptWithPasswordCheck.Content" xml:space="preserve">
+    <value>Crittografa con password (AES-256)</value>
+  </data>
+  <data name="EncryptPasswordDialogTitle" xml:space="preserve">
+    <value>Proteggi con una password</value>
+  </data>
+  <data name="EncryptPasswordDialogMessage" xml:space="preserve">
+    <value>Il contenuto dei file verrà crittografato con AES-256. I nomi di file e cartelle nell'archivio restano visibili anche senza password.</value>
+  </data>
+  <data name="EncryptPasswordPlaceholder" xml:space="preserve">
+    <value>Password</value>
+  </data>
+  <data name="EncryptPasswordConfirmPlaceholder" xml:space="preserve">
+    <value>Conferma password</value>
+  </data>
+  <data name="EncryptPasswordRuleHint" xml:space="preserve">
+    <value>Usa solo lettere inglesi, cifre, spazi e punteggiatura, fino a {0} caratteri, affinché 7-Zip e altri strumenti ZIP possano aprire l'archivio.</value>
+  </data>
+  <data name="EncryptPasswordErrorEmpty" xml:space="preserve">
+    <value>Immetti una password.</value>
+  </data>
+  <data name="EncryptPasswordErrorCharacters" xml:space="preserve">
+    <value>La password contiene caratteri che altri strumenti ZIP come 7-Zip non sono in grado di gestire. Usa solo lettere inglesi, cifre, spazi e punteggiatura.</value>
+  </data>
+  <data name="EncryptPasswordErrorTooLong" xml:space="preserve">
+    <value>La password supera i {0} caratteri.</value>
+  </data>
+  <data name="EncryptPasswordErrorMismatch" xml:space="preserve">
+    <value>Le password non corrispondono.</value>
+  </data>
 </root>

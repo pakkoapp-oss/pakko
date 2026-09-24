@@ -311,4 +311,34 @@
   <data name="ScanInconclusiveSectionHeader" xml:space="preserve">
     <value>Neuverljivo</value>
   </data>
+  <data name="EncryptWithPasswordCheck.Content" xml:space="preserve">
+    <value>Šifruj lozinkom (AES-256)</value>
+  </data>
+  <data name="EncryptPasswordDialogTitle" xml:space="preserve">
+    <value>Zaštita lozinkom</value>
+  </data>
+  <data name="EncryptPasswordDialogMessage" xml:space="preserve">
+    <value>Sadržaj datoteka biće šifrovan pomoću AES-256. Nazivi datoteka i fascikli u arhivi ostaju vidljivi i bez lozinke.</value>
+  </data>
+  <data name="EncryptPasswordPlaceholder" xml:space="preserve">
+    <value>Lozinka</value>
+  </data>
+  <data name="EncryptPasswordConfirmPlaceholder" xml:space="preserve">
+    <value>Potvrdite lozinku</value>
+  </data>
+  <data name="EncryptPasswordRuleHint" xml:space="preserve">
+    <value>Koristite samo engleska slova, cifre, razmake i interpunkciju, najviše {0} znakova, kako bi 7-Zip i drugi ZIP alati mogli da otvore arhivu.</value>
+  </data>
+  <data name="EncryptPasswordErrorEmpty" xml:space="preserve">
+    <value>Unesite lozinku.</value>
+  </data>
+  <data name="EncryptPasswordErrorCharacters" xml:space="preserve">
+    <value>Lozinka sadrži znakove koje drugi ZIP alati poput 7-Zip-a ne mogu da obrade. Koristite samo engleska slova, cifre, razmake i interpunkciju.</value>
+  </data>
+  <data name="EncryptPasswordErrorTooLong" xml:space="preserve">
+    <value>Lozinka je duža od {0} znakova.</value>
+  </data>
+  <data name="EncryptPasswordErrorMismatch" xml:space="preserve">
+    <value>Lozinke se ne podudaraju.</value>
+  </data>
 </root>

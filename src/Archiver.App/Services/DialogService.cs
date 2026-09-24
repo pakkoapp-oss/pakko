@@ -155,6 +155,9 @@ public sealed class DialogService : IDialogService
     // calls ExtractAsync once per archive and would always see Count==1 there.
     public Task<PasswordDecision> ShowPasswordPromptAsync(PasswordPromptInfo info, bool canApplyToRemaining)
     {
+        if (info.Purpose == PasswordPurpose.Encrypt)
+            return ShowNewPasswordPromptAsync();
+
         var tcs = new TaskCompletionSource<PasswordDecision>();
 
         bool enqueued = _window!.DispatcherQueue.TryEnqueue(async () =>
@@ -227,6 +230,88 @@ public sealed class DialogService : IDialogService
 
         return tcs.Task;
     }
+
+    // T-F193: the Encrypt form of the T-F190 prompt — password + confirmation, checked here against
+    // EncryptionPasswordRule so the user fixes a bad entry in place (Core only ever gets one
+    // attempt). Names no archive: in SeparateArchives mode the one password covers them all.
+    private Task<PasswordDecision> ShowNewPasswordPromptAsync()
+    {
+        var tcs = new TaskCompletionSource<PasswordDecision>();
+
+        bool enqueued = _window!.DispatcherQueue.TryEnqueue(async () =>
+        {
+            try
+            {
+                var passwordBox = new PasswordBox { PlaceholderText = _res.GetString("EncryptPasswordPlaceholder") };
+                var confirmBox = new PasswordBox { PlaceholderText = _res.GetString("EncryptPasswordConfirmPlaceholder") };
+                var errorText = new TextBlock
+                {
+                    Foreground = new SolidColorBrush(Microsoft.UI.Colors.Red),
+                    TextWrapping = TextWrapping.Wrap,
+                    Visibility = Visibility.Collapsed
+                };
+
+                var panel = new StackPanel { Spacing = 8 };
+                panel.Children.Add(new TextBlock { Text = _res.GetString("EncryptPasswordDialogMessage"), TextWrapping = TextWrapping.Wrap });
+                panel.Children.Add(passwordBox);
+                panel.Children.Add(confirmBox);
+                panel.Children.Add(new TextBlock
+                {
+                    Text = _res.GetString("EncryptPasswordRuleHint").Replace("{0}", EncryptionPasswordRule.MaxLength.ToString()),
+                    TextWrapping = TextWrapping.Wrap,
+                    Style = (Style)Application.Current.Resources["CaptionTextBlockStyle"]
+                });
+                panel.Children.Add(errorText);
+
+                var dialog = new ContentDialog
+                {
+                    Title = _res.GetString("EncryptPasswordDialogTitle"),
+                    Content = panel,
+                    PrimaryButtonText = _res.GetString("PasswordDialogOkButton"),
+                    CloseButtonText = _res.GetString("PasswordDialogCancelButton"),
+                    DefaultButton = ContentDialogButton.Primary,
+                    XamlRoot = _window!.Content.XamlRoot
+                };
+                dialog.Opened += (_, _) => passwordBox.Focus(FocusState.Programmatic);
+                dialog.PrimaryButtonClick += (_, args) =>
+                {
+                    string? error = DescribeNewPasswordError(passwordBox.Password, confirmBox.Password);
+                    if (error is null)
+                        return;
+                    args.Cancel = true;
+                    errorText.Text = error;
+                    errorText.Visibility = Visibility.Visible;
+                };
+
+                var result = await dialog.ShowAsync();
+
+                tcs.SetResult(new PasswordDecision
+                {
+                    Password = result == ContentDialogResult.Primary ? passwordBox.Password : null
+                });
+            }
+            catch (Exception ex)
+            {
+                tcs.SetException(ex);
+            }
+        });
+
+        if (!enqueued)
+            tcs.SetResult(new PasswordDecision { Password = null });
+
+        return tcs.Task;
+    }
+
+    private static string? DescribeNewPasswordError(string password, string confirmation) =>
+        EncryptionPasswordRule.Check(password) switch
+        {
+            EncryptionPasswordProblem.Empty => _res.GetString("EncryptPasswordErrorEmpty"),
+            EncryptionPasswordProblem.UnsupportedCharacters => _res.GetString("EncryptPasswordErrorCharacters"),
+            EncryptionPasswordProblem.TooLong =>
+                _res.GetString("EncryptPasswordErrorTooLong").Replace("{0}", EncryptionPasswordRule.MaxLength.ToString()),
+            _ when password != confirmation => _res.GetString("EncryptPasswordErrorMismatch"),
+            _ => null,
+        };
 
     // T-F97: opens an Archive Browser preview file with the OS's default handler for its type.
     // Process.Start(UseShellExecute=true), not Launcher.LaunchFileAsync/StorageFile — confirmed

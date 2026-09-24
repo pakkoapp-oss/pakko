@@ -206,6 +206,99 @@ public sealed class CliSubprocessTests
         Directory.GetFileSystemEntries(destDir).Should().BeEmpty();
     }
 
+    // --- T-F193: a -p{pwd} (AES-256 creation) ---
+
+    private static (string ScratchDir, string SourceFile) CreateSourceFile()
+    {
+        string scratchDir = CliFixtureFiles.CreateScratchDir();
+        string sourceFile = Path.Combine(scratchDir, "secret.txt");
+        File.WriteAllText(sourceFile, "top secret content");
+        return (scratchDir, sourceFile);
+    }
+
+    [Fact]
+    public void Archive_WithPassword_CreatesEncryptedZipThatOnlyTheSamePasswordOpens()
+    {
+        (string scratchDir, string sourceFile) = CreateSourceFile();
+        string zipPath = Path.Combine(scratchDir, "out.zip");
+
+        (int exitCode, _, string stdErr) = CliProcessRunner.Run("a", "-pSecret123", "-mem=AES256", zipPath, sourceFile);
+
+        exitCode.Should().Be(0, because: stdErr);
+        CliProcessRunner.Run("x", "-pWrong", $"-o{CliFixtureFiles.CreateScratchDir()}", zipPath).ExitCode
+            .Should().Be(2, "the archive must really be encrypted, not stored in the clear");
+        CliProcessRunner.Run("t", "-pSecret123", zipPath).ExitCode.Should().Be(0);
+
+        string destDir = CliFixtureFiles.CreateScratchDir();
+        CliProcessRunner.Run("x", "-pSecret123", $"-o{destDir}", zipPath).ExitCode.Should().Be(0);
+        File.ReadAllText(Path.Combine(destDir, "secret.txt")).Should().Be("top secret content");
+    }
+
+    [Fact]
+    public void Archive_NonAsciiPassword_ExitsSevenAndCreatesNothing()
+    {
+        (string scratchDir, string sourceFile) = CreateSourceFile();
+        string zipPath = Path.Combine(scratchDir, "out.zip");
+
+        (int exitCode, _, string stdErr) = CliProcessRunner.Run("a", "-pпароль", zipPath, sourceFile);
+
+        exitCode.Should().Be(7);
+        stdErr.Should().Contain("English letters");
+        File.Exists(zipPath).Should().BeFalse();
+    }
+
+    [Fact]
+    public void Archive_PasswordWithTarFormat_ExitsSevenAndCreatesNothing()
+    {
+        (string scratchDir, string sourceFile) = CreateSourceFile();
+        string tarPath = Path.Combine(scratchDir, "out.tar");
+
+        (int exitCode, _, string stdErr) = CliProcessRunner.Run("a", "-pSecret123", "-ttar", tarPath, sourceFile);
+
+        exitCode.Should().Be(7);
+        stdErr.Should().Contain("only ZIP");
+        File.Exists(tarPath).Should().BeFalse();
+    }
+
+    [Fact]
+    public void Archive_ZipCryptoMethod_ExitsSevenAndCreatesNothing()
+    {
+        (string scratchDir, string sourceFile) = CreateSourceFile();
+        string zipPath = Path.Combine(scratchDir, "out.zip");
+
+        (int exitCode, _, string stdErr) = CliProcessRunner.Run("a", "-pSecret123", "-mem=ZipCrypto", zipPath, sourceFile);
+
+        exitCode.Should().Be(7);
+        stdErr.Should().Contain("AES-256");
+        File.Exists(zipPath).Should().BeFalse();
+    }
+
+    [Fact]
+    public void Archive_BarePasswordWithRedirectedStdin_ExitsSevenAndCreatesNothing()
+    {
+        // CliProcessRunner always redirects stdin, so there is no console to type into.
+        (string scratchDir, string sourceFile) = CreateSourceFile();
+        string zipPath = Path.Combine(scratchDir, "out.zip");
+
+        (int exitCode, _, string stdErr) = CliProcessRunner.Run("a", "-p", zipPath, sourceFile);
+
+        exitCode.Should().Be(7);
+        stdErr.Should().Contain("stdin is redirected");
+        File.Exists(zipPath).Should().BeFalse();
+    }
+
+    [Fact]
+    public void Extract_BarePasswordWithRedirectedStdin_ExitsSevenAndExtractsNothing()
+    {
+        string destDir = CliFixtureFiles.CreateScratchDir();
+
+        (int exitCode, _, string stdErr) = CliProcessRunner.Run("x", "-p", $"-o{destDir}", EncryptedZipPath);
+
+        exitCode.Should().Be(7);
+        stdErr.Should().Contain("stdin is redirected");
+        Directory.GetFileSystemEntries(destDir).Should().BeEmpty();
+    }
+
     // --- i: happy path ---
 
     [Fact]

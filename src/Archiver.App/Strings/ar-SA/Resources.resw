@@ -311,4 +311,34 @@
   <data name="ScanInconclusiveSectionHeader" xml:space="preserve">
     <value>غير حاسم</value>
   </data>
+  <data name="EncryptWithPasswordCheck.Content" xml:space="preserve">
+    <value>تشفير بكلمة مرور (AES-256)</value>
+  </data>
+  <data name="EncryptPasswordDialogTitle" xml:space="preserve">
+    <value>الحماية بكلمة مرور</value>
+  </data>
+  <data name="EncryptPasswordDialogMessage" xml:space="preserve">
+    <value>سيتم تشفير محتويات الملفات باستخدام AES-256. تبقى أسماء الملفات والمجلدات داخل الأرشيف مرئية دون كلمة المرور.</value>
+  </data>
+  <data name="EncryptPasswordPlaceholder" xml:space="preserve">
+    <value>كلمة المرور</value>
+  </data>
+  <data name="EncryptPasswordConfirmPlaceholder" xml:space="preserve">
+    <value>تأكيد كلمة المرور</value>
+  </data>
+  <data name="EncryptPasswordRuleHint" xml:space="preserve">
+    <value>استخدم الأحرف الإنجليزية والأرقام والمسافات وعلامات الترقيم فقط، بحد أقصى {0} حرفًا، حتى يتمكن 7-Zip وأدوات ZIP الأخرى من فتح الأرشيف.</value>
+  </data>
+  <data name="EncryptPasswordErrorEmpty" xml:space="preserve">
+    <value>أدخل كلمة مرور.</value>
+  </data>
+  <data name="EncryptPasswordErrorCharacters" xml:space="preserve">
+    <value>تحتوي كلمة المرور على أحرف لا تستطيع أدوات ZIP الأخرى مثل 7-Zip التعامل معها. استخدم الأحرف الإنجليزية والأرقام والمسافات وعلامات الترقيم فقط.</value>
+  </data>
+  <data name="EncryptPasswordErrorTooLong" xml:space="preserve">
+    <value>كلمة المرور أطول من {0} حرفًا.</value>
+  </data>
+  <data name="EncryptPasswordErrorMismatch" xml:space="preserve">
+    <value>كلمتا المرور غير متطابقتين.</value>
+  </data>
 </root>

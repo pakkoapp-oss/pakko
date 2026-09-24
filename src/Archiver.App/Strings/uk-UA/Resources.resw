@@ -327,4 +327,34 @@
   <data name="ScanInconclusiveSectionHeader" xml:space="preserve">
     <value>Не визначено</value>
   </data>
+  <data name="EncryptWithPasswordCheck.Content" xml:space="preserve">
+    <value>Зашифрувати паролем (AES-256)</value>
+  </data>
+  <data name="EncryptPasswordDialogTitle" xml:space="preserve">
+    <value>Захист паролем</value>
+  </data>
+  <data name="EncryptPasswordDialogMessage" xml:space="preserve">
+    <value>Вміст файлів буде зашифровано AES-256. Імена файлів і тек в архіві залишаться видимими без пароля.</value>
+  </data>
+  <data name="EncryptPasswordPlaceholder" xml:space="preserve">
+    <value>Пароль</value>
+  </data>
+  <data name="EncryptPasswordConfirmPlaceholder" xml:space="preserve">
+    <value>Підтвердіть пароль</value>
+  </data>
+  <data name="EncryptPasswordRuleHint" xml:space="preserve">
+    <value>Використовуйте лише англійські літери, цифри, пробіли й розділові знаки, не більше {0} символів, щоб архів могли відкрити 7-Zip та інші ZIP-програми.</value>
+  </data>
+  <data name="EncryptPasswordErrorEmpty" xml:space="preserve">
+    <value>Введіть пароль.</value>
+  </data>
+  <data name="EncryptPasswordErrorCharacters" xml:space="preserve">
+    <value>Пароль містить символи, з якими інші ZIP-програми, як-от 7-Zip, не працюють. Використовуйте лише англійські літери, цифри, пробіли й розділові знаки.</value>
+  </data>
+  <data name="EncryptPasswordErrorTooLong" xml:space="preserve">
+    <value>Пароль довший за {0} символів.</value>
+  </data>
+  <data name="EncryptPasswordErrorMismatch" xml:space="preserve">
+    <value>Паролі не збігаються.</value>
+  </data>
 </root>

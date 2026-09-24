@@ -311,4 +311,34 @@
   <data name="ScanInconclusiveSectionHeader" xml:space="preserve">
     <value>Nem egyértelmű</value>
   </data>
+  <data name="EncryptWithPasswordCheck.Content" xml:space="preserve">
+    <value>Titkosítás jelszóval (AES-256)</value>
+  </data>
+  <data name="EncryptPasswordDialogTitle" xml:space="preserve">
+    <value>Védelem jelszóval</value>
+  </data>
+  <data name="EncryptPasswordDialogMessage" xml:space="preserve">
+    <value>A fájlok tartalma AES-256 titkosítást kap. Az archívumban lévő fájlok és mappák neve jelszó nélkül is látható marad.</value>
+  </data>
+  <data name="EncryptPasswordPlaceholder" xml:space="preserve">
+    <value>Jelszó</value>
+  </data>
+  <data name="EncryptPasswordConfirmPlaceholder" xml:space="preserve">
+    <value>Jelszó megerősítése</value>
+  </data>
+  <data name="EncryptPasswordRuleHint" xml:space="preserve">
+    <value>Csak angol betűket, számjegyeket, szóközt és írásjeleket használjon, legfeljebb {0} karaktert, hogy a 7-Zip és más ZIP-eszközök is megnyithassák az archívumot.</value>
+  </data>
+  <data name="EncryptPasswordErrorEmpty" xml:space="preserve">
+    <value>Adjon meg egy jelszót.</value>
+  </data>
+  <data name="EncryptPasswordErrorCharacters" xml:space="preserve">
+    <value>A jelszó olyan karaktereket tartalmaz, amelyeket más ZIP-eszközök, például a 7-Zip, nem tudnak kezelni. Csak angol betűket, számjegyeket, szóközt és írásjeleket használjon.</value>
+  </data>
+  <data name="EncryptPasswordErrorTooLong" xml:space="preserve">
+    <value>A jelszó hosszabb {0} karakternél.</value>
+  </data>
+  <data name="EncryptPasswordErrorMismatch" xml:space="preserve">
+    <value>A jelszavak nem egyeznek.</value>
+  </data>
 </root>

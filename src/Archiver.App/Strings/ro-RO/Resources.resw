@@ -311,4 +311,34 @@
   <data name="ScanInconclusiveSectionHeader" xml:space="preserve">
     <value>Neconcludent</value>
   </data>
+  <data name="EncryptWithPasswordCheck.Content" xml:space="preserve">
+    <value>Criptează cu parolă (AES-256)</value>
+  </data>
+  <data name="EncryptPasswordDialogTitle" xml:space="preserve">
+    <value>Protejare cu parolă</value>
+  </data>
+  <data name="EncryptPasswordDialogMessage" xml:space="preserve">
+    <value>Conținutul fișierelor va fi criptat cu AES-256. Numele fișierelor și folderelor din arhivă rămân vizibile fără parolă.</value>
+  </data>
+  <data name="EncryptPasswordPlaceholder" xml:space="preserve">
+    <value>Parolă</value>
+  </data>
+  <data name="EncryptPasswordConfirmPlaceholder" xml:space="preserve">
+    <value>Confirmați parola</value>
+  </data>
+  <data name="EncryptPasswordRuleHint" xml:space="preserve">
+    <value>Folosiți doar litere englezești, cifre, spații și semne de punctuație, cel mult {0} caractere, pentru ca 7-Zip și alte instrumente ZIP să poată deschide arhiva.</value>
+  </data>
+  <data name="EncryptPasswordErrorEmpty" xml:space="preserve">
+    <value>Introduceți o parolă.</value>
+  </data>
+  <data name="EncryptPasswordErrorCharacters" xml:space="preserve">
+    <value>Parola conține caractere pe care alte instrumente ZIP, precum 7-Zip, nu le pot procesa. Folosiți doar litere englezești, cifre, spații și semne de punctuație.</value>
+  </data>
+  <data name="EncryptPasswordErrorTooLong" xml:space="preserve">
+    <value>Parola depășește {0} caractere.</value>
+  </data>
+  <data name="EncryptPasswordErrorMismatch" xml:space="preserve">
+    <value>Parolele nu se potrivesc.</value>
+  </data>
 </root>

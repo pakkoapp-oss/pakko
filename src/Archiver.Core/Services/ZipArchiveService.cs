@@ -25,8 +25,6 @@ public sealed class ZipArchiveService : IArchiveService
     // regression against a 7z reference. See DECISIONS.md's T-F35 entry.
     private const int ParallelPipelineFileCountThreshold = 64;
 
-    private const int MaxEncryptionPasswordLength = 99;
-
     private readonly GroupPolicyOptions _policy;
 
     /// <summary>
@@ -119,22 +117,21 @@ public sealed class ZipArchiveService : IArchiveService
         var resolver = new PasswordResolver(options.ResolvePasswordAsync, maxAttempts: 1);
         string? password = await resolver.ResolveAsync(archiveName, PasswordPurpose.Encrypt, verify: _ => true).ConfigureAwait(false);
 
-        // Mirrors 7-Zip's own creation rule (ZipHandlerOut.cpp: IsSimpleAsciiString, and
-        // NWzAes::kPasswordSizeMax for AES) — user decision 2026-09-24. 7-Zip decodes a ZIP password
-        // through the ANSI code page, not UTF-8, so a Cyrillic password would produce an archive
-        // 7-Zip/NanaZip report as "Wrong password"; refusing it up front is the interoperable choice.
-        string? failure = password switch
-        {
-            null => "Archive was not created: no password was entered.",
-            "" => "Archive was not created: the password is empty.",
-            _ when password.Any(c => c < 0x20 || c > 0x7F) =>
-                "Archive was not created: the password may contain only English letters, digits, spaces and " +
-                "ASCII punctuation; other ZIP tools such as 7-Zip cannot open an archive protected by any other characters.",
-            _ when password.Length > MaxEncryptionPasswordLength =>
-                $"Archive was not created: the password is longer than {MaxEncryptionPasswordLength} characters, " +
-                "the most 7-Zip accepts for an AES-encrypted ZIP.",
-            _ => null,
-        };
+        // User decision 2026-09-24 — see EncryptionPasswordRule for the 7-Zip sources.
+        string? failure = password is null
+            ? "Archive was not created: no password was entered."
+            : EncryptionPasswordRule.Check(password) switch
+            {
+                EncryptionPasswordProblem.None => null,
+                EncryptionPasswordProblem.Empty => "Archive was not created: the password is empty.",
+                EncryptionPasswordProblem.UnsupportedCharacters =>
+                    "Archive was not created: the password may contain only English letters, digits, spaces and " +
+                    "ASCII punctuation; other ZIP tools such as 7-Zip cannot open an archive protected by any other characters.",
+                EncryptionPasswordProblem.TooLong =>
+                    $"Archive was not created: the password is longer than {EncryptionPasswordRule.MaxLength} characters, " +
+                    "the most 7-Zip accepts for an AES-encrypted ZIP.",
+                var other => throw new System.Diagnostics.UnreachableException($"Unhandled {other}"),
+            };
         return failure is null
             ? (password, null)
             : (null, new ArchiveError { SourcePath = options.DestinationFolder, Message = failure });

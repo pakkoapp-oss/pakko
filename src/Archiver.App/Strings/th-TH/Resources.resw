@@ -311,4 +311,34 @@
   <data name="ScanInconclusiveSectionHeader" xml:space="preserve">
     <value>ไม่สามารถสรุปได้</value>
   </data>
+  <data name="EncryptWithPasswordCheck.Content" xml:space="preserve">
+    <value>เข้ารหัสด้วยรหัสผ่าน (AES-256)</value>
+  </data>
+  <data name="EncryptPasswordDialogTitle" xml:space="preserve">
+    <value>ป้องกันด้วยรหัสผ่าน</value>
+  </data>
+  <data name="EncryptPasswordDialogMessage" xml:space="preserve">
+    <value>เนื้อหาของไฟล์จะถูกเข้ารหัสด้วย AES-256 ชื่อไฟล์และโฟลเดอร์ในไฟล์เก็บถาวรจะยังมองเห็นได้โดยไม่ต้องใช้รหัสผ่าน</value>
+  </data>
+  <data name="EncryptPasswordPlaceholder" xml:space="preserve">
+    <value>รหัสผ่าน</value>
+  </data>
+  <data name="EncryptPasswordConfirmPlaceholder" xml:space="preserve">
+    <value>ยืนยันรหัสผ่าน</value>
+  </data>
+  <data name="EncryptPasswordRuleHint" xml:space="preserve">
+    <value>ใช้เฉพาะตัวอักษรภาษาอังกฤษ ตัวเลข ช่องว่าง และเครื่องหมายวรรคตอน ไม่เกิน {0} อักขระ เพื่อให้ 7-Zip และเครื่องมือ ZIP อื่นๆ เปิดไฟล์เก็บถาวรได้</value>
+  </data>
+  <data name="EncryptPasswordErrorEmpty" xml:space="preserve">
+    <value>ป้อนรหัสผ่าน</value>
+  </data>
+  <data name="EncryptPasswordErrorCharacters" xml:space="preserve">
+    <value>รหัสผ่านมีอักขระที่เครื่องมือ ZIP อื่นๆ เช่น 7-Zip ไม่สามารถจัดการได้ ใช้เฉพาะตัวอักษรภาษาอังกฤษ ตัวเลข ช่องว่าง และเครื่องหมายวรรคตอน</value>
+  </data>
+  <data name="EncryptPasswordErrorTooLong" xml:space="preserve">
+    <value>รหัสผ่านยาวเกิน {0} อักขระ</value>
+  </data>
+  <data name="EncryptPasswordErrorMismatch" xml:space="preserve">
+    <value>รหัสผ่านไม่ตรงกัน</value>
+  </data>
 </root>

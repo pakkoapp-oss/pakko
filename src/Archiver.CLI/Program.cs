@@ -18,6 +18,7 @@ return command.Type switch
     CliCommandType.Help => RunHelp(),
     CliCommandType.Version => RunVersion(),
     CliCommandType.Invalid => RunInvalid(command),
+    _ when command.PromptForPassword && Console.IsInputRedirected => RejectBarePasswordWithoutConsole(),
     CliCommandType.Extract => await RunExtractAsync(command, policy).ConfigureAwait(false),
     CliCommandType.Test => await RunTestAsync(command, policy).ConfigureAwait(false),
     CliCommandType.Info => await RunInfoAsync().ConfigureAwait(false),
@@ -46,6 +47,13 @@ static int RunVersion()
 static int RunInvalid(ParsedCliCommand command)
 {
     Console.Error.WriteLine($"pakko: {command.ErrorMessage}");
+    return 7;
+}
+
+// T-F193: the parser can't see whether stdin is a console, so this half of the bare -p rule lives here.
+static int RejectBarePasswordWithoutConsole()
+{
+    Console.Error.WriteLine("pakko: a bare '-p' asks for the password on the console, but stdin is redirected — use -p<pwd>");
     return 7;
 }
 
@@ -140,7 +148,7 @@ static ExtractOptions BuildExtractOptions(
             ? CliConflictPrompt.CreateResolver(ReadConflictAnswer, Console.Error.Write, quit).ResolveAsync
             : null,
         ConfirmCompressionBombExtraction = command.AssumeYes ? (_ => Task.FromResult(true)) : null,
-        ResolvePasswordAsync = BuildPasswordResolver(command.Password, command.AssumeYes),
+        ResolvePasswordAsync = BuildPasswordResolver(command, command.AssumeYes),
     };
 }
 
@@ -187,12 +195,14 @@ static int ReportUserStopped()
 //   3. no -p, real interactive stdin  -> masked Console.ReadKey prompt, retried by Core's own
 //                                         PasswordResolver up to its maxAttempts.
 // -------------------------------------------------------------------------
-static Func<PasswordPromptInfo, Task<PasswordDecision>>? BuildPasswordResolver(string? password, bool assumeYes)
+// T-F193: a bare -p asks even under -y — the user explicitly requested a prompt. RejectBarePasswordWithoutConsole
+// has already ruled out redirected stdin by the time this runs.
+static Func<PasswordPromptInfo, Task<PasswordDecision>>? BuildPasswordResolver(ParsedCliCommand command, bool assumeYes)
 {
-    if (password is not null)
+    if (command.Password is { } password)
         return info => Task.FromResult(ResolveFixedPassword(info, password));
 
-    if (Console.IsInputRedirected || assumeYes)
+    if (!command.PromptForPassword && (Console.IsInputRedirected || assumeYes))
         return null;
 
     return info => Task.FromResult(PromptForPasswordInteractively(info));
@@ -222,6 +232,20 @@ static PasswordDecision PromptForPasswordInteractively(PasswordPromptInfo info)
         string? password = CliPasswordPrompt.Read(() => Console.ReadKey(intercept: true), EchoMaskChar);
         Console.Error.WriteLine();
         return new PasswordDecision { Password = password };
+    }
+    finally
+    {
+        Console.TreatControlCAsInput = previousTreatControlCAsInput;
+    }
+}
+
+static CliPasswordPrompt.NewPasswordResult PromptForNewPasswordInteractively()
+{
+    bool previousTreatControlCAsInput = Console.TreatControlCAsInput;
+    Console.TreatControlCAsInput = true;
+    try
+    {
+        return CliPasswordPrompt.ReadNewPassword(() => Console.ReadKey(intercept: true), Console.Error.Write, EchoMaskChar);
     }
     finally
     {
@@ -277,7 +301,7 @@ static async Task<int> RunTestAsync(ParsedCliCommand command, GroupPolicyOptions
             ? await new ZipArchiveService(policy).TestAsync(
                 zipPaths,
                 progress: null,
-                resolvePasswordAsync: BuildPasswordResolver(command.Password, assumeYes: false),
+                resolvePasswordAsync: BuildPasswordResolver(command, assumeYes: false),
                 cancellationToken: CancellationToken.None).ConfigureAwait(false)
             : new ArchiveResult { Success = true };
 
@@ -326,6 +350,17 @@ static async Task<int> RunInfoAsync()
 // -------------------------------------------------------------------------
 static async Task<int> RunArchiveAsync(ParsedCliCommand command, GroupPolicyOptions policy)
 {
+    // T-F193: a -p<pwd> Pakko cannot encrypt with is a command-line error, found before any work.
+    if (command.Password is { } fixedPassword
+        && CliPasswordPrompt.DescribeEncryptProblem(EncryptionPasswordRule.Check(fixedPassword)) is { } fixedProblem)
+    {
+        Console.Error.WriteLine($"pakko: -p: {fixedProblem}");
+        return 7;
+    }
+
+    // The prompt's own outcome decides the report, never Core's English message: Core only sees a
+    // null password in both cases.
+    CliPasswordPrompt.NewPasswordResult? promptResult = null;
     string? stdoutStagingDir = null;
     try
     {
@@ -354,8 +389,30 @@ static async Task<int> RunArchiveAsync(ParsedCliCommand command, GroupPolicyOpti
             CompressionLevel = command.CompressionLevel ?? CompressionLevel.Optimal,
             Format = command.ArchiveFormat,
         };
+        if (command.Password is { } password)
+        {
+            options = options with { ResolvePasswordAsync = _ => Task.FromResult(new PasswordDecision { Password = password }) };
+        }
+        else if (command.PromptForPassword)
+        {
+            options = options with
+            {
+                ResolvePasswordAsync = _ =>
+                {
+                    promptResult = PromptForNewPasswordInteractively();
+                    return Task.FromResult(new PasswordDecision { Password = promptResult.Password });
+                },
+            };
+        }
 
         ArchiveResult result = await router.ArchiveAsync(options, progress: null, CancellationToken.None).ConfigureAwait(false);
+        if (promptResult is { Cancelled: true })
+            return ReportUserStopped();
+        if (promptResult?.Error is { } promptError)
+        {
+            Console.Error.WriteLine($"pakko: error: {promptError}");
+            return 2;
+        }
         int code = ReportResult(result);
         if (!command.WriteToStdout || code == 2)
             return code;

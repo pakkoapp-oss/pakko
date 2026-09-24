@@ -311,4 +311,34 @@
   <data name="ScanInconclusiveSectionHeader" xml:space="preserve">
     <value>Ej entydigt</value>
   </data>
+  <data name="EncryptWithPasswordCheck.Content" xml:space="preserve">
+    <value>Kryptera med lösenord (AES-256)</value>
+  </data>
+  <data name="EncryptPasswordDialogTitle" xml:space="preserve">
+    <value>Skydda med lösenord</value>
+  </data>
+  <data name="EncryptPasswordDialogMessage" xml:space="preserve">
+    <value>Filernas innehåll krypteras med AES-256. Fil- och mappnamn i arkivet förblir synliga utan lösenordet.</value>
+  </data>
+  <data name="EncryptPasswordPlaceholder" xml:space="preserve">
+    <value>Lösenord</value>
+  </data>
+  <data name="EncryptPasswordConfirmPlaceholder" xml:space="preserve">
+    <value>Bekräfta lösenord</value>
+  </data>
+  <data name="EncryptPasswordRuleHint" xml:space="preserve">
+    <value>Använd endast engelska bokstäver, siffror, blanksteg och skiljetecken, högst {0} tecken, så att 7-Zip och andra ZIP-verktyg kan öppna arkivet.</value>
+  </data>
+  <data name="EncryptPasswordErrorEmpty" xml:space="preserve">
+    <value>Ange ett lösenord.</value>
+  </data>
+  <data name="EncryptPasswordErrorCharacters" xml:space="preserve">
+    <value>Lösenordet innehåller tecken som andra ZIP-verktyg som 7-Zip inte kan hantera. Använd endast engelska bokstäver, siffror, blanksteg och skiljetecken.</value>
+  </data>
+  <data name="EncryptPasswordErrorTooLong" xml:space="preserve">
+    <value>Lösenordet är längre än {0} tecken.</value>
+  </data>
+  <data name="EncryptPasswordErrorMismatch" xml:space="preserve">
+    <value>Lösenorden matchar inte.</value>
+  </data>
 </root>

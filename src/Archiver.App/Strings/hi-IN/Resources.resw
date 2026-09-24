@@ -311,4 +311,34 @@
   <data name="ScanInconclusiveSectionHeader" xml:space="preserve">
     <value>अनिर्णायक</value>
   </data>
+  <data name="EncryptWithPasswordCheck.Content" xml:space="preserve">
+    <value>पासवर्ड से एन्क्रिप्ट करें (AES-256)</value>
+  </data>
+  <data name="EncryptPasswordDialogTitle" xml:space="preserve">
+    <value>पासवर्ड से सुरक्षित करें</value>
+  </data>
+  <data name="EncryptPasswordDialogMessage" xml:space="preserve">
+    <value>फ़ाइलों की सामग्री AES-256 से एन्क्रिप्ट की जाएगी। आर्काइव के अंदर फ़ाइलों और फ़ोल्डरों के नाम पासवर्ड के बिना भी दिखाई देते रहेंगे।</value>
+  </data>
+  <data name="EncryptPasswordPlaceholder" xml:space="preserve">
+    <value>पासवर्ड</value>
+  </data>
+  <data name="EncryptPasswordConfirmPlaceholder" xml:space="preserve">
+    <value>पासवर्ड की पुष्टि करें</value>
+  </data>
+  <data name="EncryptPasswordRuleHint" xml:space="preserve">
+    <value>केवल अंग्रेज़ी अक्षर, अंक, स्पेस और विराम चिह्न इस्तेमाल करें, अधिकतम {0} वर्ण, ताकि 7-Zip और अन्य ZIP टूल आर्काइव खोल सकें।</value>
+  </data>
+  <data name="EncryptPasswordErrorEmpty" xml:space="preserve">
+    <value>पासवर्ड दर्ज करें।</value>
+  </data>
+  <data name="EncryptPasswordErrorCharacters" xml:space="preserve">
+    <value>पासवर्ड में ऐसे वर्ण हैं जिन्हें 7-Zip जैसे अन्य ZIP टूल संभाल नहीं सकते। केवल अंग्रेज़ी अक्षर, अंक, स्पेस और विराम चिह्न इस्तेमाल करें।</value>
+  </data>
+  <data name="EncryptPasswordErrorTooLong" xml:space="preserve">
+    <value>पासवर्ड {0} वर्णों से लंबा है।</value>
+  </data>
+  <data name="EncryptPasswordErrorMismatch" xml:space="preserve">
+    <value>पासवर्ड मेल नहीं खाते।</value>
+  </data>
 </root>

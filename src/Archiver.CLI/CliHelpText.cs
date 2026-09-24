@@ -26,10 +26,17 @@ public static class CliHelpText
 
         SWITCHES:
           -o<dir>          Output directory                                    (x)
-          -p<pwd>          Password for a ZIP-encrypted archive (ZipCrypto/     (x, t)
-                           AES). Without -p on an encrypted archive: prompts
-                           with masked input on a real interactive console, or
-                           fails immediately when piped/scripted/-y is given.
+          -p<pwd>          Password. x/t: opens a ZipCrypto/AES-encrypted ZIP.  (x, t, a)
+                           a: encrypts the new ZIP with AES-256 (file names
+                           stay readable); printable ASCII only, at most 99
+                           characters, so 7-Zip can open it. A bare -p asks
+                           with masked input (twice for 'a') on a real
+                           interactive console. Without -p on an encrypted
+                           archive, x/t prompt the same way, or fail
+                           immediately when piped/scripted/-y is given.
+          -mem=AES256      Encryption method: accepted for 7z compatibility;   (a)
+                           AES-256 is the only one (ZipCrypto/AES128/AES192
+                           are refused)
           -y               Assume yes: auto-overwrite conflicts, auto-confirm
                            compression-bomb warnings. Without -y, a bomb warning
                            is declined; a file conflict prompts on a real

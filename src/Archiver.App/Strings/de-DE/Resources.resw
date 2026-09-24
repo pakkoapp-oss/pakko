@@ -311,4 +311,34 @@
   <data name="ScanInconclusiveSectionHeader" xml:space="preserve">
     <value>Nicht eindeutig</value>
   </data>
+  <data name="EncryptWithPasswordCheck.Content" xml:space="preserve">
+    <value>Mit Kennwort verschlüsseln (AES-256)</value>
+  </data>
+  <data name="EncryptPasswordDialogTitle" xml:space="preserve">
+    <value>Mit Kennwort schützen</value>
+  </data>
+  <data name="EncryptPasswordDialogMessage" xml:space="preserve">
+    <value>Die Dateiinhalte werden mit AES-256 verschlüsselt. Datei- und Ordnernamen im Archiv bleiben ohne Kennwort sichtbar.</value>
+  </data>
+  <data name="EncryptPasswordPlaceholder" xml:space="preserve">
+    <value>Kennwort</value>
+  </data>
+  <data name="EncryptPasswordConfirmPlaceholder" xml:space="preserve">
+    <value>Kennwort bestätigen</value>
+  </data>
+  <data name="EncryptPasswordRuleHint" xml:space="preserve">
+    <value>Verwenden Sie nur englische Buchstaben, Ziffern, Leerzeichen und Satzzeichen, höchstens {0} Zeichen, damit 7-Zip und andere ZIP-Programme das Archiv öffnen können.</value>
+  </data>
+  <data name="EncryptPasswordErrorEmpty" xml:space="preserve">
+    <value>Geben Sie ein Kennwort ein.</value>
+  </data>
+  <data name="EncryptPasswordErrorCharacters" xml:space="preserve">
+    <value>Das Kennwort enthält Zeichen, die andere ZIP-Programme wie 7-Zip nicht verarbeiten können. Verwenden Sie nur englische Buchstaben, Ziffern, Leerzeichen und Satzzeichen.</value>
+  </data>
+  <data name="EncryptPasswordErrorTooLong" xml:space="preserve">
+    <value>Das Kennwort ist länger als {0} Zeichen.</value>
+  </data>
+  <data name="EncryptPasswordErrorMismatch" xml:space="preserve">
+    <value>Die Kennwörter stimmen nicht überein.</value>
+  </data>
 </root>
