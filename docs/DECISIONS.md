@@ -9117,8 +9117,8 @@ of capping the writer (user decision 2026-09-24):
   available parallelism between concurrent writers, and each writer's progress is mapped onto the
   whole operation through `OffsetProgress`, capped at 99 so 100 only comes from the real finish.
 - **Encrypted archives are non-deterministic** — a random salt per entry means two runs over the
-  same input differ byte-for-byte. A deliberate exception to the reproducible-output expectation
-  of T-F31/T-F32; unencrypted archives are unaffected.
+  same input differ byte-for-byte. A deliberate exception to T-F31's deterministic output;
+  unencrypted archives are unaffected.
 - **Resolved once, before any destination-conflict step**, `maxAttempts: 1`: the conflict step can
   already delete an archive the user chose to overwrite, so a prompt cancelled after it would
   leave neither the old archive nor a new one.
@@ -9156,6 +9156,11 @@ of capping the writer (user decision 2026-09-24):
 (`windows` MCP, installed MSIX): mismatch and Cyrillic refused in the dialog, success verified by
 `7za` (`AES-256 Deflate`, `Encrypted = +`, wrong password rejected), Cancel creates nothing, TAR
 disables the option. Not yet exercised on a real console: the CLI double prompt.
+
+**Diagram coverage gap (stated, not fixed).** No diagram in `docs/DIAGRAMS.md` models
+`ArchiveAsync`'s routing (sequential vs. parallel writer, now forced by a password), and diagram 3
+(extract chain) has had no encrypted-entry branch since T-F189. Only diagram 2 was updated here
+(the cancelled Encrypt prompt). Tracked as a follow-up under T-F202.
 
 **Found along the way:** T-F197 (ZIP extraction drops empty folders — pre-existing, unrelated to
 encryption); a UI/UX review of the archive and browse windows (see TASKS.md, opened 2026-09-24).

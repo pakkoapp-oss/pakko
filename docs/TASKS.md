@@ -4286,7 +4286,8 @@ regression from this task, which owns reliability only.
   Hash submenu) on files, folders, multi-selection and a drive root; every dialog (conflict,
   password decrypt/encrypt, summary, bomb warning, About); the CLI commands including the real-
   console prompts; ZIP and tar-family formats; Ukrainian and English UI. Each defect found becomes
-  its own task, tests first.
+  its own task, tests first. Also carries the diagram gap from DECISIONS' T-F193 entry (no
+  diagram models `ArchiveAsync` routing; diagram 3 has no encrypted-entry branch).
 - **Reported by:** user instruction, 2026-09-24.
 
 ---

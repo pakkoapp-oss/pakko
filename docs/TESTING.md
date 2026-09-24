@@ -174,8 +174,10 @@ automatically (same manual-tool pattern as `encrypted_aes256.zip` above):
 **T-F193 (encrypted ZIP creation) tests.** `EncryptedZipStreamingReaderTests` (a 64 MiB 7za-made
 AES entry reads back within an 8 MB allocation bound; a > `int.MaxValue` entry is `VeryLarge`);
 `ZipArchiveServiceEncryptTests` (round trip through Pakko's reader, AE-2 header fields, fresh salt
-per entry, wrong password, cancelled prompt creates nothing and deletes no source, TAR/empty/
-non-ASCII/99-vs-100-character passwords); `EncryptionPasswordRuleTests` (boundaries 0x1F/0x20/
+per entry, wrong password, a cancelled prompt creates nothing and returns `Success = false` —
+the App deletes sources only on success, and that App-side step has no automated test — plus an
+existing destination left untouched, empty/non-ASCII/control-character/99-vs-100-character
+passwords); `EncryptionPasswordRuleTests` (boundaries 0x1F/0x20/
 0x7F/0x80, 99/100); `ZipEncryptionCompatibilityTests` in `Archiver.Core.PerformanceTests` (the
 independent reader: `7za.exe t`/`x` on Pakko archives byte-exact, and Pakko on 7za-written ones);
 a TAR-plus-password rejection in `TarSandboxedServiceCompressTests`. Mutation-checked: fixed salt,
