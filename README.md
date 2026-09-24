@@ -84,7 +84,7 @@ The entire compression stack is part of the .NET Base Class Library — maintain
 | TAR/GZ/BZ2/XZ/ZST/LZMA | ✅ read (v1.3) + create (v1.4) | `tar.exe` (Windows built-in), AppContainer-sandboxed for extraction |
 | RAR | ✅ read only, v1.3 | `tar.exe` (Windows built-in) — libarchive has no RAR writer |
 | 7z | ✅ read only, v1.3 | `tar.exe` (Windows built-in) — libarchive has no 7z writer |
-| Password-protected ZIP | ✅ read (ZipCrypto, WinZip AES) — create planned, AES-only | `System.IO.Compression` + .NET cryptography |
+| Password-protected ZIP | ✅ read (ZipCrypto, WinZip AES) and create (AES-256 only) | `System.IO.Compression` + .NET cryptography |
 | Encrypted 7z/RAR | ❌ detected and refused with a clear error | — |
 
 ---
@@ -132,7 +132,8 @@ verified.
 - ✅ Extract with smart folder logic, ZIP slip protection, and a per-conflict Ask/Overwrite/
   Rename/Skip resolution
 - ✅ Password-protected ZIP — extract, test, browse, and threat-scan (ZipCrypto + WinZip AES),
-  with a password prompt in the app, the Explorer menu, and the CLI (`-p`)
+  with a password prompt in the app, the Explorer menu, and the CLI (`-p`); create AES-256
+  encrypted ZIPs from the app or `pakko a -p` (file names inside the archive stay visible)
 - ✅ System tray icon
 - ✅ File log (`%LocalAppData%\Pakko\logs\pakko.log`)
 - ✅ i18n — 37 locales, OS-language auto-match with English fallback

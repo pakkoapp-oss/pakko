@@ -166,6 +166,20 @@ automatically (same manual-tool pattern as `encrypted_aes256.zip` above):
   no plaintext EICAR ever hit disk, then its local header patched off 7za's stdin-only Zip64
   sentinels). Regeneration commands in the GenerateFixtures header; rationale in
   `docs/DECISIONS.md`'s T-F194 entry.
+- T-F193 phase 0: `encrypted_aes256_stdin_zip64local.zip` (real `7za.exe` output from stdin, so
+  its local header carries 0xFFFFFFFF Zip64 size sentinels). `Helpers/Zip64DirectoryRewriter.cs`
+  rewrites a small fixture into the full Zip64 directory layout (Zip64 EOCD + locator, Zip64 extra
+  in central records) — validated with the vendored `7za.exe` — for `RawZipEntryLocatorTests`.
+
+**T-F193 (encrypted ZIP creation) tests.** `EncryptedZipStreamingReaderTests` (a 64 MiB 7za-made
+AES entry reads back within an 8 MB allocation bound; a > `int.MaxValue` entry is `VeryLarge`);
+`ZipArchiveServiceEncryptTests` (round trip through Pakko's reader, AE-2 header fields, fresh salt
+per entry, wrong password, cancelled prompt creates nothing and deletes no source, TAR/empty/
+non-ASCII/99-vs-100-character passwords); `EncryptionPasswordRuleTests` (boundaries 0x1F/0x20/
+0x7F/0x80, 99/100); `ZipEncryptionCompatibilityTests` in `Archiver.Core.PerformanceTests` (the
+independent reader: `7za.exe t`/`x` on Pakko archives byte-exact, and Pakko on 7za-written ones);
+a TAR-plus-password rejection in `TarSandboxedServiceCompressTests`. Mutation-checked: fixed salt,
+HMAC over plaintext, the 99 clamp, the TAR guard, both rule boundaries.
 
 **Tests with missing manual fixtures are skipped (yellow), not failed.**
 `dotnet test` returns success even with skipped tests.
@@ -496,6 +510,14 @@ and — the test that actually proves the documented shell recipe works, not jus
 `cmd.exe /c "pakko a -so ... | pakko x -si ... > log"` as the subprocess under test. See
 `DECISIONS.md`'s T-F116 entry for the empirical PowerShell-pipe findings that shaped this test
 list, and for why a real-subprocess broken-pipe simulation was tried first and abandoned as racy.
+
+**T-F193 additions (`a -p`, bare `-p`, `-mem`):** `CliArgumentParserTests` covers `-p`/bare `-p`
+on `a`/`x`/`t`, `-p` + `-t tar*` in either order, bare `-p` + `-si`, and every `-mem` value.
+`CliPasswordPromptTests` drives `ReadNewPassword` with a fake key source (match, mismatch, Esc,
+Ctrl+C, non-ASCII refused before the re-enter prompt, empty, 100 characters). `CliSubprocessTests`
+adds an `a -p` → `x -p` round trip (a wrong password must fail, proving real encryption), and exit 7
+for a non-ASCII `-p`, `-p` with `-ttar`, `-mem=ZipCrypto`, and a bare `-p` with redirected stdin on
+`a` and `x`. Not covered by any automated test: the real-console double prompt itself.
 
 ---
 

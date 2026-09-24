@@ -86,6 +86,9 @@ src/
 │   │   ├── ArchiveFormatDetector.cs    ← magic-byte sniffing, not extension-based
 │   │   ├── ArchiveNaming.cs            ← compound-extension-aware naming (T-F103)
 │   │   ├── ConflictResolver.cs         ← T-F06: resolves ConflictBehavior.Ask
+│   │   ├── EncryptionPasswordRule.cs   ← T-F193: public; which passwords a NEW encrypted ZIP accepts
+│   │   │                                  (printable ASCII, <= 99) — shared by App/CLI prompts and
+│   │   │                                  ZipArchiveService's own last-line check
 │   │   ├── StickyCallback.cs           ← T-F160: public; widens an "apply to all/remaining" answer
 │   │   │                                  across several Core calls for one user action (Shell's
 │   │   │                                  per-archive loop, CLI's zip/tar router split) — replaced
@@ -236,9 +239,11 @@ public sealed record ArchiveOptions
     // Archiver.Shell, or a test that doesn't wire it) falls back to Skip — see ConflictResolver.
     public Func<ConflictInfo, Task<ConflictDecision>>? ResolveConflictAsync { get; init; }
 
-    // T-F193 (future, AES-only archive creation) — no caller yet. Added now, alongside
-    // ExtractOptions.ResolvePasswordAsync below, so T-F193 adds a call site rather than
-    // retrofitting this field's shape (T-F157→T-F158 precedent, see DECISIONS.md's T-F189 entry).
+    // T-F193: non-null encrypts every ZIP file entry with WinZip AES-256 (AE-2); folder entries
+    // stay unencrypted. Called once, before any destination-conflict step, Purpose = Encrypt,
+    // maxAttempts = 1. A cancelled answer or one EncryptionPasswordRule refuses fails the call
+    // with nothing created; a tar-family Format with a resolver is an error (TarSandboxedService).
+    // Forces ParallelSingleArchiveWriter in both modes — ZipArchive cannot encrypt.
     public Func<PasswordPromptInfo, Task<PasswordDecision>>? ResolvePasswordAsync { get; init; }
 }
 
@@ -298,7 +303,7 @@ public enum ExtractMode { SeparateFolders, SingleFolder }
 
 ```csharp
 // Models/PasswordPromptInfo.cs — T-F189
-public enum PasswordPurpose { Decrypt, Encrypt }  // Encrypt has no caller until T-F193
+public enum PasswordPurpose { Decrypt, Encrypt }  // Encrypt: ArchiveAsync (T-F193)
 
 public sealed record PasswordPromptInfo
 {
@@ -320,7 +325,7 @@ public sealed record PasswordDecision
 // Resolves an encrypted archive's password via the caller's ResolvePasswordAsync callback,
 // retrying up to maxAttempts times and remembering an ApplyToRemaining choice for its own
 // lifetime — same shape as ConflictResolver. One shared class for both Decrypt (ExtractAsync/
-// TestAsync, maxAttempts=3) and the future Encrypt direction (T-F193's ArchiveAsync, maxAttempts=1)
+// TestAsync, maxAttempts=3) and the Encrypt direction (T-F193's ArchiveAsync, maxAttempts=1)
 // — maxAttempts is a per-call-site parameter, not a constant, so there is no Purpose-branch inside
 // the retry loop. verify is caller-supplied so this class stays format-agnostic (no ZIP knowledge).
 internal sealed class PasswordResolver(
@@ -329,6 +334,20 @@ internal sealed class PasswordResolver(
 {
     public Task<string?> ResolveAsync(
         string archiveName, PasswordPurpose purpose, Func<string, bool> verify);
+}
+```
+
+```csharp
+// Services/EncryptionPasswordRule.cs — public, Archiver.Core.Services (T-F193)
+// 7-Zip's own creation rule (ZipHandlerOut.cpp IsSimpleAsciiString; WzAes kPasswordSizeMax).
+// Frontends call Check inside their prompt to show a localized reason; ZipArchiveService
+// enforces the same rule again. Decrypt (T-F189) accepts any password.
+public enum EncryptionPasswordProblem { None, Empty, UnsupportedCharacters, TooLong }
+
+public static class EncryptionPasswordRule
+{
+    public const int MaxLength = 99;
+    public static EncryptionPasswordProblem Check(string password);  // chars checked before length
 }
 ```
 
@@ -1568,9 +1587,9 @@ see `DECISIONS.md`'s T-F116 entry, which also records the empirical finding that
 PowerShell 5.1 (not just old cmd.exe) silently corrupts binary data piped between two native
 executables, while `cmd /c "..."` does not, on any PowerShell version.
 
-**`-p{pwd}` password support (T-F191):** `ParsedCliCommand` gained `Password` (valid on `x`/`t`
-only — `l` needs no password, `a` is `-p`-less until T-F193). `Program.cs`'s
-`BuildPasswordResolver(string? password, bool assumeYes)` picks one of three
+**`-p{pwd}` password support (T-F191):** `ParsedCliCommand` gained `Password` (valid on `x`/`t`,
+and on `a` since T-F193 — `l` needs no password) and, in T-F193, `PromptForPassword` (a bare `-p`).
+`Program.cs`'s `BuildPasswordResolver(ParsedCliCommand, bool assumeYes)` picks one of three
 `ExtractOptions.ResolvePasswordAsync`/`IArchiveService.TestAsync`'s `resolvePasswordAsync`
 shapes: `-p` given → try it once, printing a specific "incorrect password" line on a second call
 (Core's `PasswordResolver` collapses never-wired/cancelled/exhausted-attempts into the same null
@@ -1582,6 +1601,12 @@ itself lives in a separate, directly unit-tested class, `CliPasswordPrompt.Read(
 readKey, Action<char>? echo = null)` — `Program.cs` only supplies the real `Console.ReadKey`/
 `Console.Error.Write` glue, since the `Subprocess/` test layer always redirects the built exe's
 stdin and can never reach this path end-to-end.
+
+**`a -p` (T-F193):** `RunArchiveAsync` checks a fixed `-p<pwd>` against `EncryptionPasswordRule`
+before any work (exit 7). A bare `-p` calls `CliPasswordPrompt.ReadNewPassword` (enter + re-enter,
+rule checked after the first entry, never re-asked); its `NewPasswordResult` — not Core's generic
+English error — decides the report: cancelled → 255, refused/mismatch → 2. A bare `-p` with
+redirected stdin exits 7 before dispatch (`RejectBarePasswordWithoutConsole`).
 
 ---
 

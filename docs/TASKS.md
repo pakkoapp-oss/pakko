@@ -4232,6 +4232,63 @@ regression from this task, which owns reliability only.
   `ZipArchiveServiceEncryptTests.ArchiveAsync_WithPassword_WritesAe2Aes256EntriesThatRoundTrip`.
 - **Reported by:** agent observation, 2026-09-24. **Depends on:** none.
 
+### T-F198 — UI quick fixes from the 2026-09-24 UI/UX review
+
+- [ ] **Status:** open. Point fixes, no layout change (the layout is T-F199):
+  1. English strings in a localized UI: "Archiving... (N files, size)"/"Extracting... (N
+     archive(s))" (`MainViewModel.cs`), "Folder"/"N bytes" (`FileItem.cs`,
+     `ArchiveEntryViewModel.cs`) — move to `.resw`, all 37 locales.
+  2. Accessibility: list rows expose the record `ToString()` as their UIA name
+     (`ArchiveEntryViewModel { FullPath = ... }`, `Archiver.App.Models.FileItem`); the decrypt
+     dialog's PasswordBox has no name; no `AutomationProperties` anywhere in `MainWindow.xaml`.
+  3. The status line says "Archiving..." while the Encrypt password dialog is still open.
+  4. The title's "build <timestamp>" (a dev freshness check) ships in the Store build too —
+     show it only in dev/sideload builds.
+  5. A disabled, unchecked CheckBox renders a dash (indeterminate look) — confirm the cause first.
+- **Reported by:** user-requested UI/UX review, 2026-09-24.
+
+### T-F199 — Archive/browse window layout redesign (+ inline encryption password)
+
+- [ ] **Status:** open — needs a plan and a mockup approved by the user before any XAML changes.
+  From the 2026-09-24 review: action buttons sit above the options they apply to; "Архів" is a
+  noun, Archive/Extract have equal weight; shared options float outside the options grid; "Delete
+  after operation" is a dangerous action with no warning and an ambiguous meaning in browse mode;
+  the encryption password lives in a modal that validates only after OK (a trap for a Ukrainian
+  keyboard layout). Proposal: options first, primary action last; password + confirmation inline
+  under the checkbox with live validation and a keyboard-layout hint; browse mode shows an
+  "encrypted (AES-256)" badge and lock icons, makes "Extract all" the primary action, explains the
+  empty CRC column/encryption overhead. Security condition: the inline password is cleared after
+  the operation and never persisted.
+- **Reported by:** user-requested UI/UX review, 2026-09-24. **Depends on:** T-F198.
+
+### T-F200 — Archive Browser asks for the password again for every previewed file
+
+- [ ] **Status:** open. Confirmed on device: preview a.txt (enter password), then b.txt -> prompted
+  again. The browse session should remember a password that verified (T-F97 preview, T-F98 nested
+  drill-in, Extract Selected/All), cleared when the browsed archive changes. Tests first.
+- **Reported by:** UI/UX review, 2026-09-24.
+
+### T-F201 — Opening an archive while Pakko is running starts a second, exactly stacked window
+
+- [ ] **Status:** open. Confirmed on device: a `pakko://browse` activation with a Pakko window
+  already open started a second `Archiver.App` process at identical bounds, hiding the first.
+  Check the intended single-instance redirection (T-F83's `AppInstance` handling) before choosing
+  a fix: redirect into the running instance, or at least offset/foreground the new window.
+- **Reported by:** UI/UX review, 2026-09-24.
+
+### T-F202 — Full UI smoke test: every feature, every menu and submenu (batch gate)
+
+- [ ] **Status:** open — a required gate for closing this batch (user instruction 2026-09-24: the
+  app is live on the Microsoft Store and earlier self-testing missed real defects). Agent-driven via
+  `windows` MCP against the freshly deployed MSIX, with a written checklist and a pass/fail per item:
+  every button and option of the main window in both modes; every Explorer context-menu command
+  and submenu (Pakko root, Extract Here/to folder/Open, Add to X.zip/.tar, Test, Scan for threats,
+  Hash submenu) on files, folders, multi-selection and a drive root; every dialog (conflict,
+  password decrypt/encrypt, summary, bomb warning, About); the CLI commands including the real-
+  console prompts; ZIP and tar-family formats; Ukrainian and English UI. Each defect found becomes
+  its own task, tests first.
+- **Reported by:** user instruction, 2026-09-24.
+
 ---
 
 ## Test-Coverage Audit Follow-Ups (T-F174–T-F186)
@@ -5133,25 +5190,27 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
 
 ---
 
-### T-F193 — Create password-protected ZIP archives (AES-only), future phase — NOT part of this round
+### T-F193 — Create password-protected ZIP archives (AES-256 only)
 
-- [ ] **Status:** not started — explicitly deferred by the user until T-F188–T-F192 (reading) ship.
-  Not to be bundled into any of the tasks above.
-- **Context:** the user confirmed reading should support both ZipCrypto and AES for compatibility,
-  but writing (creating new encrypted archives) must be AES-only, forever — ZipCrypto is
-  cryptographically broken (known-plaintext attack) and this project never writes it.
-- **Acceptance criteria (draft, to be refined when this task actually starts):**
-  - [ ] `ArchiveOptions.ResolvePasswordAsync` (already added in T-F189 with no caller) gets its
-    first real call site in `ArchiveAsync`, `Purpose: Encrypt`, `maxAttempts: 1` (no retry — a
-    password being set can't be "wrong").
-  - [ ] New encryption-on-write path in the `Archiver.Core/Services/Zip/` writer subsystem
-    (T-F35), AES-256/WinZip AE-2 only — no ZipCrypto writer, ever.
-  - [ ] Password field added to the WinUI Archive dialog and `pakko a -p{pwd}`.
-  - [ ] `SPEC.md`/`SECURITY.md`/`docs/CLI.md`/`README.md` updated to reflect real read+write
-    support, per this project's ship-time (not design-time) documentation-update convention.
-- **Reported by:** user request, 2026-09-17 (design session) — explicitly scoped out of the
-  current round.
-- **Depends on:** T-F188, T-F189 (for the shared `PasswordResolver`/models to already exist).
+- [~] **Status:** implementation complete 2026-09-24 (phases 0-3 code, phase 4 docs). Stays `[~]`
+  until the batch's full UI smoke test (T-F202) and the user's own click-through; the CLI's
+  real-console double prompt is not yet exercised on a real console.
+- **Context:** reading supports ZipCrypto and AES for compatibility; writing is AES-only, forever —
+  ZipCrypto is cryptographically broken (known-plaintext attack) and this project never writes it.
+- **Acceptance criteria:**
+  - [x] Phase 0: Zip64 directory support in `RawZipEntryLocator` (never write what Pakko can't
+    read back).
+  - [x] Phase 1: streaming two-pass reader — no entry-size limit, authentication still before any
+    plaintext.
+  - [x] Phase 2: `ArchiveOptions.ResolvePasswordAsync` wired in `ArchiveAsync` (`Purpose: Encrypt`,
+    `maxAttempts: 1`, before any conflict step); WinZip AES-256 AE-2 writer in the T-F35 pipeline;
+    TAR + password refused; 7za-verified.
+  - [x] Phase 3: public `EncryptionPasswordRule`; App checkbox + Encrypt dialog (37 locales);
+    `pakko a -p`, bare `-p`, `-mem`.
+  - [x] Phase 4: SECURITY/SPEC/README/both index.html/CLI.md/ARCHITECTURE/TESTING/XAML/DIAGRAMS/
+    DECISIONS.
+- **Rationale:** `docs/DECISIONS.md`'s T-F193 entry.
+- **Reported by:** user request, 2026-09-17. **Depends on:** T-F188, T-F189.
 
 ---
 

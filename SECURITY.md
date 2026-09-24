@@ -313,14 +313,16 @@ two formats, and deliberately so:
   message across both formats and both encryption modes. Exact byte offsets and stderr strings are
   recorded in `DECISIONS.md`'s T-F113 entry.
 
-### Password-Protected ZIP (T-F188–T-F194)
+### Password-Protected ZIP (T-F188–T-F194, T-F193)
 
 Pakko reads password-protected ZIP entries — both legacy PKWARE ZipCrypto and WinZip AES
 (AE-1/AE-2, 128/192/256-bit) — for Extract, Test, the Archive Browser, and "Scan for threats",
 with a password prompt in every frontend (WinUI dialog, native Explorer dialog, `pakko x/t -p`).
 This reverses the earlier "encrypted archives are out of scope" position, a deliberate
-user-confirmed scope change. Writing encrypted ZIPs is not implemented yet; when it is (T-F193)
-it will be **AES-only** — ZipCrypto is cryptographically broken and Pakko never writes it.
+user-confirmed scope change. Pakko also creates encrypted ZIPs (T-F193: the app's "Encrypt with
+password" option, `pakko a -p`), **AES-256 only** (WinZip AE-2) — ZipCrypto is cryptographically
+broken and Pakko never writes it, nor AES-128/192. The Explorer "Add to X.zip" command stays
+one-click and unencrypted.
 
 - **No second extraction path.** Decryption plugs in exactly where `ZipArchiveEntry.Open()` was
   called; entry names are never encrypted by the ZIP format, so every existing traversal/ADS/
@@ -329,18 +331,33 @@ it will be **AES-only** — ZipCrypto is cryptographically broken and Pakko neve
   and HMAC-SHA1 from `System.Security.Cryptography` — SHA-1 and 1000 iterations are fixed by the
   WinZip AE specification, not chosen. Only the ZIP container parsing and the (spec-mandated,
   broken-by-design) ZipCrypto stream cipher are Pakko code.
-- **Authenticate before release.** A WinZip AES entry's HMAC is verified over the whole
-  ciphertext before any plaintext is produced; a tampered entry is rejected, never extracted.
+- **Authenticate before release.** A WinZip AES entry is read in two passes: the first streams
+  the ciphertext from disk through HMAC-SHA1 only, and decryption starts only after the tag
+  matches, so no plaintext of a tampered entry is ever produced. The cost is reading the entry
+  twice, not holding it in memory — entry size is not limited.
   ZipCrypto has no authentication — its one-byte password check accepts ~1 in 256 wrong
   passwords — so its content CRC-32 is always checked, and a mismatch fails the entry.
 - **Hostile headers fail closed.** Sizes and extra fields read from local headers are
   attacker-controlled; the parser bounds every allocation by the archive file's real size and
   rejects malformed WinZip AES extra records as a normal per-archive error, never an unhandled
-  exception. Zip64-sized encrypted entries are not supported and are refused.
+  exception. Zip64 fields (entry sizes, offsets, the Zip64 end-of-central-directory) are
+  range-checked against the file the same way.
+- **What encryption does not hide.** The ZIP format encrypts file *contents* only: file and folder
+  names, sizes and timestamps stay readable without the password (the app's dialog says so).
+  Folder entries are never encrypted. AE-2 zeroes the CRC-32 in the headers, so it does not leak
+  a checksum of the plaintext.
+- **Fresh key material per entry.** Every encrypted entry gets its own random salt and PBKDF2
+  derivation, so no two entries share a key or an AES-CTR keystream.
+- **Only passwords every reader can use.** A new archive's password must be printable ASCII and
+  at most 99 characters. 7-Zip decodes ZIP passwords through the ANSI code page and rejects
+  longer AES passwords, so anything else would produce an archive 7-Zip cannot open. A cancelled
+  or refused password creates nothing, never an unencrypted archive; a tar-family format with a
+  password is refused, since tar has no encryption.
 - **Pakko never logs or persists a password.** A password lives only for the one operation that
   asked for it ("apply to remaining" spans one multi-archive selection, not the session). Caveat:
-  `pakko x -p{pwd}` puts the password on the command line, visible in shell history and the process
-  list exactly as with 7-Zip's own `-p` — omit `-p` to get the masked interactive prompt instead.
+  `pakko x|t|a -p{pwd}` puts the password on the command line, visible in shell history and the
+  process list exactly as with 7-Zip's own `-p` — use a bare `-p` (or, for `x`/`t`, omit it) to get
+  the masked interactive prompt instead.
 
 ### Absolute Path Requirement
 
@@ -420,10 +437,10 @@ This tool is appropriate for:
 
 This tool is **not** a replacement for:
 
-- Full-featured archivers where RAR/7z writing, encrypted 7z/RAR, or creating encrypted archives
-  is required
-- Environments requiring FIPS 140-2 validated cryptography (password-protected ZIP is readable via
-  .NET's own AES/HMAC/PBKDF2, but the WinZip AES format itself mandates SHA-1 and Pakko makes no
+- Full-featured archivers where RAR/7z writing, encrypted 7z/RAR, encrypted file names, or
+  encryption other than AES-256 ZIP is required
+- Environments requiring FIPS 140-2 validated cryptography (password-protected ZIP is read and
+  written via .NET's own AES/HMAC/PBKDF2, but the WinZip AES format itself mandates SHA-1 and Pakko makes no
   FIPS-validation claim; a password-protected 7z/RAR is detected and refused with a clear error,
   not silently mishandled — see "Encrypted-Archive Diagnostics" above)
 

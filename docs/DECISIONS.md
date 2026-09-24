@@ -9083,3 +9083,79 @@ empty `%TEMP%\PakkoTarSandbox\<guid>\in\` — `TarSandboxScope.CreateAsync` buil
 folders, then a staging failure (e.g. a vanished archive) threw before the scope object existed,
 so no `Dispose()` ever ran. Setup failures now delete what setup created and release the SID
 (red-first test; a full run now leaves zero new folders).
+
+---
+
+## T-F193 — Creating password-protected ZIP archives, AES-256 only (2026-09-24)
+
+**Principle: never write what Pakko cannot read back.** Before the writer existed, the read side
+had two limits an encrypted archive from Pakko itself could hit, so they were lifted first instead
+of capping the writer (user decision 2026-09-24):
+- **Phase 0 — Zip64 in `RawZipEntryLocator`.** The raw-entry locator used for every encrypted
+  entry stopped at the classic EOCD (a Zip64 EOCD + locator read as a malformed entry), ignored
+  the Zip64 extra behind central-record 0xFFFFFFFF sentinels, and took a local-header 0xFFFFFFFF
+  size literally (7-Zip writes that when compressing from stdin). Each gap was pinned red-first;
+  the new `Zip64DirectoryRewriter` test helper builds the full Zip64 layout from small fixtures,
+  validated with the vendored `7za.exe`.
+- **Phase 1 — streaming two-pass reader.** `EncryptedZipEntryReader` buffered the whole
+  ciphertext and plaintext (~201 MB for a 64 MiB entry; >= `int.MaxValue` refused). Now pass 1
+  streams the ciphertext from disk through HMAC-SHA1 only (constant-time tag compare, no
+  plaintext), pass 2 decrypts on read. T-F189's "no plaintext before authentication" invariant
+  holds unchanged; the cost is reading the entry twice, not memory. ZipCrypto stays one streaming
+  pass with its trailer CRC. A cheap `VerifyPassword` (AES verification value / ZipCrypto check
+  byte) backs the prompt's retry loop so a wrong attempt costs no HMAC pass.
+
+**Phase 2 — the writer (Core).**
+- **AE-2 everywhere, AES-256 only.** Matches what 7-Zip writes; AE-2 zeroes the header CRC-32, so
+  the archive does not leak a checksum of the plaintext. No ZipCrypto, AES-128 or AES-192 writer,
+  ever (user decision 2026-09-17). Folder entries are never encrypted (7-Zip does the same).
+- **Fresh salt and PBKDF2 per entry.** CTR always starts at counter 1, so a key shared between
+  entries would repeat the keystream (XOR of two ciphertexts = XOR of plaintexts). The shared
+  `AesCtrKeystream` serves both directions; derivation runs on the parallel workers.
+- **A password forces `ParallelSingleArchiveWriter` in both modes**, regardless of the 64-file
+  threshold — `ZipArchive` cannot encrypt. In SeparateArchives mode the outer loop divides the
+  available parallelism between concurrent writers, and each writer's progress is mapped onto the
+  whole operation through `OffsetProgress`, capped at 99 so 100 only comes from the real finish.
+- **Encrypted archives are non-deterministic** — a random salt per entry means two runs over the
+  same input differ byte-for-byte. A deliberate exception to the reproducible-output expectation
+  of T-F31/T-F32; unencrypted archives are unaffected.
+- **Resolved once, before any destination-conflict step**, `maxAttempts: 1`: the conflict step can
+  already delete an archive the user chose to overwrite, so a prompt cancelled after it would
+  leave neither the old archive nor a new one.
+- **Password rule = 7-Zip's creation rule.** Printable ASCII 0x20–0x7F, at most 99 characters,
+  never empty. Sources: 7-Zip `ZipHandlerOut.cpp` `IsSimpleAsciiString` refuses to create a ZIP
+  otherwise, and `ZipHandler.cpp` decodes the password through `CP_ACP`, not UTF-8 — a Cyrillic
+  password would give an archive 7-Zip/NanaZip report as "Wrong password" (user decision
+  2026-09-24: reject, don't transliterate). The 99 cap comes from `WzAes.cpp` `CryptoSetPassword`
+  (`kPasswordSizeMax`), which refuses a longer password **on read too**, so a longer one would be
+  unopenable in 7-Zip even though AES itself has no such limit (user confirmed keeping the cap
+  2026-09-24). Decrypt (T-F189) still accepts any password.
+- **Fail closed, never downgrade.** A cancelled or refused password creates nothing; a tar-family
+  format with a resolver is an error in `TarSandboxedService.CompressAsync`, never a silently
+  unencrypted archive.
+
+**Phase 3 — frontends.**
+- **`EncryptionPasswordRule` is public Core API**, so the App and CLI refuse bad input inside their
+  own prompt with their own text; Core's check stays as the last line of defence. Frontends never
+  branch on Core's English error message.
+- **App:** an "Encrypt with password (AES-256)" checkbox beside the Format combo (no new Grid row —
+  T-F106), enabled only for ZIP; the use site checks the format again because a disabled checkbox
+  keeps its checked state. The T-F190 dialog gained an Encrypt form (password + confirmation,
+  validated in place via `PrimaryButtonClick`'s `Cancel`). It names no archive: in SeparateArchives
+  mode one password covers every archive. A Cancel is rethrown as `OperationCanceledException` so
+  it ends exactly like the Cancel button (T-F70 delay, no summary dialog).
+- **CLI:** `a -p<pwd>` and a bare `-p` (7z semantics: prompt — once on `x`/`t`, twice on `a`).
+  A bare `-p` on `x`/`t` used to be a command-line error; it now prompts. Exit codes: a `-p<pwd>`
+  that breaks the rule is a command-line error (7, nothing done); at the interactive prompt a
+  mismatch or refusal exits 2 with its reason and is never re-asked (7-Zip behavior), Esc/Ctrl+C
+  exits 255. A bare `-p` with redirected stdin or `-si` exits 7. `-mem=AES256` is a no-op,
+  `ZipCrypto`/`AES128`/`AES192` are refused, not silently upgraded.
+
+**Verification.** Independent reader throughout (the T-F35 empty-entry lesson): the vendored
+`7za.exe` tests and extracts Pakko archives byte-exact and Pakko reads 7za-written ones. On device
+(`windows` MCP, installed MSIX): mismatch and Cyrillic refused in the dialog, success verified by
+`7za` (`AES-256 Deflate`, `Encrypted = +`, wrong password rejected), Cancel creates nothing, TAR
+disables the option. Not yet exercised on a real console: the CLI double prompt.
+
+**Found along the way:** T-F197 (ZIP extraction drops empty folders — pre-existing, unrelated to
+encryption); a UI/UX review of the archive and browse windows (see TASKS.md, opened 2026-09-24).

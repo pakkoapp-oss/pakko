@@ -308,10 +308,8 @@ Overwrite/Rename/Skip + "apply to all" conflict dialog (`ShellConflictDialog`, `
 dialog. A Phase 0 spike caught three real bugs before any production code shipped: `TASKDIALOG_
 BUTTON` needs `Pack = 1`; a missing/broken comctl32 v6 activation context fails at process
 activation itself, not as a catchable exception; and the Windows SxS manifest parser rejected a
-syntactically-valid XML comment between two manifest elements. New `StickyApplyToAllConflictResolver`
-bridges a real scope gap (Core's `ConflictResolver` only remembers "apply to all" for one
-`ExtractAsync` call; Shell's three commands each build a fresh one per archive in a loop). Opened
-**T-F160** for the identical gap in `Archiver.CLI`'s `pakko x`.
+syntactically-valid XML comment between two manifest elements. "Apply to all" across Shell's
+per-archive loop now goes through Core's shared `StickyCallback` (T-F160).
 
 **T-F161** (`[x]` done) — a real user report found the same day T-F155 shipped: extraction's
 commit-phase `Directory.Move` fast path failed the *whole* tree with a misleading error (naming
@@ -388,10 +386,7 @@ before the traversal hard-invariant test actually proved anything, and the advis
 Zip64/exception-safety gaps are in `docs/DECISIONS.md`'s T-F189 entry. **T-F190** (WinUI App
 password prompt dialog) is `[~]` implementation complete, 2026-09-18 — `IDialogService.
 ShowPasswordPromptAsync` wired at `MainViewModel`'s 3 real `ExtractOptions` sites (main Extract,
-T-F97 preview, T-F98 nested drill-in), 37-locale localized, agent-driven on-device pass (`windows`
-MCP) confirmed wrong-password retry, correct-password extraction, multi-archive "apply to
-remaining", and both Archive Browser surfaces all work against the real installed MSIX; stays
-`[~]` until the user's own click-through. `canApplyToRemaining` is a `ShowPasswordPromptAsync`
+T-F97 preview, T-F98 nested drill-in), 37-locale localized, agent-verified on device; stays `[~]` until the user's own click-through. `canApplyToRemaining` is a `ShowPasswordPromptAsync`
 parameter the App layer computes per call site, not a `PasswordPromptInfo` field — see
 `docs/DECISIONS.md`'s T-F190 entry for why Core can't compute it correctly for every frontend.
 **T-F191** (`Archiver.CLI` real `-p{pwd}` support) is `[~]` implementation complete, 2026-09-18 —
@@ -400,14 +395,12 @@ parameter the App layer computes per call site, not a `PasswordPromptInfo` field
 a fake key source since the Subprocess test layer always redirects stdin) when no `-p` and a real
 console; a CLI-specific "incorrect password" line added on top of Core's generic message, since
 `PasswordResolver` itself collapses never-wired/cancelled/exhausted-attempts into the same null
-result. Agent-driven verification via `windows` MCP against the real built `pakko.exe` in a
-genuine interactive console confirmed the masked prompt, wrong-password retry hint, and full
-retry-to-success loop all work end to end — see `docs/DECISIONS.md`'s T-F191 entry. Stays `[~]`
+result. Agent-verified in a real console (`docs/DECISIONS.md`'s T-F191 entry); stays `[~]`
 until the user's own terminal click-through. **T-F192** (`Archiver.Shell` native password prompt)
 is `[~]` implementation complete, 2026-09-18 — a custom in-memory `DLGTEMPLATEEX` dialog via
 `DialogBoxIndirectParamW` (NOT `CredUIPromptForCredentialsW`, confirmed by fetching NanaZip's real
 `PasswordDialog.rc`/`.cpp`, which use exactly this custom-dialog shape), wired into all 3 extract
-commands via a new `StickyPasswordResolver`, localized across all 37 locales. A Phase 0 spike
+commands (sticky via `StickyCallback`), 37 locales. A Phase 0 spike
 found `SetForegroundWindow` alone unreliable from this call site (a background thread with
 Archiver.Shell's own `IProgressDialog` already showing) — fixed via `SetWindowPos(HWND_TOPMOST,
 ...)`. Agent-driven on-device verification via `windows` MCP against the real installed MSIX
@@ -420,8 +413,13 @@ entries in memory and hands the plaintext to AMSI (all 3 frontends prompt); no p
 `Clean` on a ZipCrypto check-byte collision and several hostile-header escapes from the "never
 throws" rule — see `docs/DECISIONS.md`'s T-F194 entry. The trust docs (`SECURITY.md`'s new
 "Password-Protected ZIP" section, `SPEC.md`, `README.md`, both `index.html`) were updated the
-same day with user permission. **T-F193** (creating encrypted ZIP, AES-only) is not started.
-**T-F195** (cross-project tar-sandbox test contention, T-F130's uncovered vector) is open.
+same day with user permission. **T-F193** (`[~]`, 2026-09-24) — creating encrypted ZIPs, WinZip AES-256 AE-2 only: App checkbox +
+Encrypt dialog, `pakko a -p`/bare `-p`/`-mem`; public `EncryptionPasswordRule` (printable ASCII,
+<= 99 — 7-Zip's rule, user-confirmed); read side lifted first (Zip64 locator, streaming two-pass
+reader, no size limit). See `docs/DECISIONS.md`'s T-F193 entry. **Open from the same batch:**
+T-F197 (ZIP extract drops empty folders), T-F198-T-F201 (UI/UX review fixes, layout redesign,
+browse password re-prompt, stacked second window), **T-F202 (full UI + every-menu smoke test —
+required before this batch closes; the Store build is live).**
 
 ## Roadmap Summary
 

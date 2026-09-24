@@ -67,8 +67,11 @@ Window
     ├── Row 5: one Grid (not per-row StackPanels, so column 0's Auto width aligns across every
     │       row regardless of locale string length — see "No IsSharedSizeScope" below), 4 rows —
     │       Mode (RadioButtons: One archive / Separate archives), Name (TextBox, disabled in
-    │       SeparateArchives mode), Format (ComboBox — Zip + 6 tar variants, T-F105), Compression
-    │       (ComboBox; IsCompressionLevelEnabled greys it out only when plain Tar is selected).
+    │       SeparateArchives mode), Format (a horizontal StackPanel since T-F193: ComboBox — Zip +
+    │       6 tar variants, T-F105 — plus the "Encrypt with password (AES-256)" CheckBox, enabled
+    │       only for ZIP via IsEncryptionAvailable, kept in this row so no Grid row is added — see
+    │       T-F106's Star-row sizing), Compression (ComboBox; IsCompressionLevelEnabled greys it
+    │       out only when plain Tar is selected).
     │
     ├── Row 6 (shared, both modes): StackPanel — "If file exists" ComboBox with 4 items
     │       (Overwrite/Skip/Rename/**Ask**, T-F06 — not 3), OpenDestinationCheck, and a single
