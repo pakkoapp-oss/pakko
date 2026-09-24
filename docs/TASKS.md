@@ -4045,7 +4045,18 @@ regression from this task, which owns reliability only.
 
 ### T-F160 — Interactive conflict dialog for `Archiver.CLI`'s `pakko x` (parity with T-F155)
 
-- [ ] **Status:** not started — backlog only, deliberately scoped out of T-F155.
+- [~] **Status:** implementation complete, 2026-09-24 — the open design question resolved in favor
+  of building it: real 7-Zip's own console asks (fetched NanaZip's vendored
+  `UI/Console/ExtractCallbackConsole.cpp` `AskOverwrite` + `UserInputUtils.cpp`
+  `ScanUserYesNoAllQuit`), so `pakko x` now asks the same text prompt — not a `TaskDialog` —
+  `(Y)es / (N)o / (A)lways / (S)kip all / A(u)to rename all / (Q)uit?` on stderr, only on a real
+  interactive console with no `-ao`/`-y`/`-si` (scripted runs keep T-F179's pinned Skip). `Q`/EOF/
+  Ctrl+C stop cleanly with exit code 255. New public `Archiver.Core` `StickyCallback<TInfo,
+  TDecision>` replaced Shell's two hand-written sticky wrappers (T-F155/T-F192) and carries
+  "Always" across ExtractionRouter's separate zip/tar calls for the CLI. Agent-driven real-console
+  verification (`windows` MCP: invalid answer re-asks, `n`/`y` per file, `q` -> 255 with the
+  destination untouched); stays `[~]` until the user's own terminal run. See `docs/DECISIONS.md`'s
+  T-F160 entry.
 - **Context:** T-F155 brought `Archiver.Shell`'s three extract commands to parity with the WinUI
   App's own T-F06 interactive conflict dialog, using a `TaskDialogIndirect`-based
   `ShellConflictDialog`. `Archiver.CLI`'s `pakko x` still passes a null `ResolveConflictAsync` (see

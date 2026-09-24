@@ -86,6 +86,10 @@ src/
 │   │   ├── ArchiveFormatDetector.cs    ← magic-byte sniffing, not extension-based
 │   │   ├── ArchiveNaming.cs            ← compound-extension-aware naming (T-F103)
 │   │   ├── ConflictResolver.cs         ← T-F06: resolves ConflictBehavior.Ask
+│   │   ├── StickyCallback.cs           ← T-F160: public; widens an "apply to all/remaining" answer
+│   │   │                                  across several Core calls for one user action (Shell's
+│   │   │                                  per-archive loop, CLI's zip/tar router split) — replaced
+│   │   │                                  Shell's StickyApplyToAllConflictResolver/StickyPasswordResolver
 │   │   ├── ExtractionDestinationPlanner.cs ← T-F157: shared actualDest/StripRootPrefix decision,
 │   │   │                                  was hand-kept-in-sync between ZipArchiveService and
 │   │   │                                  TarSandboxedService (T-F118)
@@ -169,10 +173,6 @@ src/
 │   │                                      "apply to all" dialog (needs the comctl32 v6 dependency
 │   │                                      in app.manifest — see DECISIONS.md's T-F155 entry for
 │   │                                      the TASKDIALOG_BUTTON packing gotcha)
-│   ├── StickyApplyToAllConflictResolver.cs  ← T-F155: bridges "apply to all" across a whole
-│   │                                      multi-archive Explorer selection — Core's own
-│   │                                      ConflictResolver only remembers it for one ExtractAsync
-│   │                                      call (= one archive)
 │   ├── ConflictDialogLocalizer.cs      ← T-F155: mirrors ScanResultLocalizer's own pattern; the 6
 │   │                                      ConflictDialog* values are copied from Archiver.App's own
 │   │                                      already-translated Strings/*/Resources.resw, not re-translated
@@ -181,8 +181,6 @@ src/
 │   │                                      unit-testable (see DECISIONS.md for the design research)
 │   ├── PasswordDialog.cs               ← T-F192: DialogBoxIndirectParamW-based password prompt,
 │   │                                      same ShowAsync/MapResult split as ShellConflictDialog
-│   ├── StickyPasswordResolver.cs       ← T-F192: same "apply to remaining spans a whole Explorer
-│   │                                      multi-select" bridge as StickyApplyToAllConflictResolver
 │   ├── PasswordDialogLocalizer.cs      ← T-F192: mirrors ConflictDialogLocalizer's own pattern
 │   └── Resources/
 │       ├── HashMessages.resx / HashMessages.<locale>.resx      ← 36 locales
@@ -197,6 +195,8 @@ src/
 │   ├── Program.cs
 │   ├── CliArgumentParser.cs
 │   ├── CliStreamStaging.cs             ← T-F116: -si/-so buffer-then-proceed staging, zero Core changes
+│   ├── CliConflictPrompt.cs            ← T-F160: 7-Zip-style (Y/N/A/S/U/Q) overwrite prompt on stderr,
+│   │                                      injected line source; Q/EOF/Ctrl+C -> exit 255
 │   ├── CliCompressionLevelMapper.cs / CliEntryFormatter.cs / CliHelpText.cs
 │
 └── Archiver.ShellExtension/    ← IExplorerCommand COM DLL (T-F61); C++/WRL, x64+ARM64, static CRT
@@ -350,6 +350,17 @@ public sealed record ConflictDecision
 ```
 
 ```csharp
+// Services/StickyCallback.cs — public, Archiver.Core.Services (T-F160)
+// Core's ConflictResolver/PasswordResolver remember "apply to all/remaining" for ONE
+// ExtractAsync/TestAsync call. A frontend making several calls for one user action (Archiver.Shell's
+// per-archive loop, Archiver.CLI's zip/tar split through ExtractionRouter) wraps its prompt in one
+// instance, created per user action, and passes ResolveAsync as the Core callback.
+public sealed class StickyCallback<TInfo, TDecision>(
+    Func<TInfo, Task<TDecision>> inner, Func<TDecision, bool> isSticky) where TDecision : class
+{
+    public Task<TDecision> ResolveAsync(TInfo info);
+}
+
 // Services/ConflictResolver.cs — internal, Archiver.Core.Services
 // Resolves ConflictBehavior.Ask into a concrete Skip/Overwrite/Rename by invoking the caller's
 // ResolveConflictAsync callback, remembering an ApplyToAll choice for its own lifetime. One
@@ -419,17 +430,6 @@ public static class ShellConflictDialog
     public static Task<ConflictDecision> ShowAsync(ConflictInfo conflict);
 }
 
-// Archiver.Shell/StickyApplyToAllConflictResolver.cs — public, Archiver.Shell
-// T-F155: Core's own ConflictResolver only remembers "apply to all" for the lifetime of one
-// ExtractAsync call, but RunExtractHereAsync/RunExtractHereFlatAsync/RunExtractFolderAsync each
-// construct a fresh ExtractOptions (and therefore a fresh Core-side ConflictResolver) once PER
-// ARCHIVE in a foreach. One instance of this wrapper, constructed once before that foreach, makes
-// "apply to all" span the whole Explorer multi-select instead of resetting every archive.
-public sealed class StickyApplyToAllConflictResolver(Func<ConflictInfo, Task<ConflictDecision>> inner)
-{
-    public Task<ConflictDecision> ResolveAsync(ConflictInfo conflict);
-}
-
 // Archiver.Shell/ConflictDialogLocalizer.cs — public, Archiver.Shell
 // T-F155: mirrors ScanResultLocalizer.cs exactly (ResourceManager over Resources/ConflictMessages).
 public static class ConflictDialogLocalizer
@@ -459,15 +459,6 @@ internal static class PasswordDialogTemplateBuilder
 {
     public static byte[] Build(string title, string message, bool canApplyToRemaining,
         string applyToRemainingLabel, string showPasswordLabel, string okLabel, string cancelLabel);
-}
-
-// Archiver.Shell/StickyPasswordResolver.cs — public, Archiver.Shell
-// T-F192: same scope-bridging shape as StickyApplyToAllConflictResolver, for PasswordDecision
-// instead of ConflictDecision — Core's own PasswordResolver._sticky only lasts one ExtractAsync
-// call (= one archive), this wrapper spans the whole Explorer multi-select.
-public sealed class StickyPasswordResolver(Func<PasswordPromptInfo, bool, Task<PasswordDecision>> inner, bool canApplyToRemaining)
-{
-    public Task<PasswordDecision> ResolveAsync(PasswordPromptInfo info);
 }
 
 // Archiver.Shell/PasswordDialogLocalizer.cs — public, Archiver.Shell

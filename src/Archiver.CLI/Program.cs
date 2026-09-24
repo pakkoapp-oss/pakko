@@ -59,6 +59,11 @@ static async Task<int> RunExtractAsync(ParsedCliCommand command, GroupPolicyOpti
 {
     string? stagedStdinPath = null;
     string? stdoutStagingDir = null;
+    // T-F160: cancelled by the conflict prompt's (Q)uit / end of input, or by Ctrl+C — either way a
+    // clean Core cancellation (temp output removed) and exit code 255, 7-Zip's "user stopped".
+    using var quit = new CancellationTokenSource();
+    ConsoleCancelEventHandler onCtrlC = (_, e) => { e.Cancel = true; quit.Cancel(); };
+    Console.CancelKeyPress += onCtrlC;
     try
     {
         var tarService = new TarSandboxedService(policy);
@@ -83,17 +88,24 @@ static async Task<int> RunExtractAsync(ParsedCliCommand command, GroupPolicyOpti
             destination = ResolveExtractDestination(command, archivePaths);
         }
 
-        var options = BuildExtractOptions(command, archivePaths, destination);
+        var options = BuildExtractOptions(command, archivePaths, destination, quit);
 
-        ArchiveResult result = await router.ExtractAsync(options, progress: null, CancellationToken.None).ConfigureAwait(false);
+        ArchiveResult result = await router.ExtractAsync(options, progress: null, quit.Token).ConfigureAwait(false);
+        if (quit.IsCancellationRequested)
+            return ReportUserStopped();
         int code = ReportResult(result);
         if (!command.WriteToStdout || code == 2)
             return code;
 
         return await StreamResultToStdoutIfSuccessfulAsync(stdoutStagingDir!, code).ConfigureAwait(false);
     }
+    catch (OperationCanceledException) when (quit.IsCancellationRequested)
+    {
+        return ReportUserStopped();
+    }
     finally
     {
+        Console.CancelKeyPress -= onCtrlC;
         if (stagedStdinPath is not null)
             CliStreamStaging.CleanupStagedStdin(stagedStdinPath);
         if (stdoutStagingDir is not null)
@@ -105,19 +117,38 @@ static string ResolveExtractDestination(ParsedCliCommand command, IReadOnlyList<
     command.OutputDirectory
         ?? (command.ReadFromStdin ? "." : Path.GetDirectoryName(Path.GetFullPath(archivePaths[0])) ?? ".");
 
-static ExtractOptions BuildExtractOptions(ParsedCliCommand command, IReadOnlyList<string> archivePaths, string destination) =>
-    new()
+static ExtractOptions BuildExtractOptions(
+    ParsedCliCommand command, IReadOnlyList<string> archivePaths, string destination, CancellationTokenSource quit)
+{
+    // T-F160: like real 7-Zip, ask on a conflict only when nothing else decided it (-ao/-y) and a
+    // person can actually answer: stdin is a real console, not redirected and not -si's archive
+    // bytes. Otherwise the pre-T-F160 non-interactive Skip stays (pinned by T-F179's test).
+    bool askInteractively = command.OverwriteMode is null && !command.AssumeYes
+        && !command.ReadFromStdin && !Console.IsInputRedirected;
+
+    return new()
     {
         ArchivePaths = archivePaths,
         DestinationFolder = destination,
         Mode = ExtractMode.SingleFolder,
-        // -ao wins over -y when both are given; without either, Core's own null-callback defaults
-        // (Skip / auto-decline) are already the safe, non-interactive behavior a CLI needs, so -y
-        // only needs to override them, never set them.
-        OnConflict = command.OverwriteMode ?? (command.AssumeYes ? ConflictBehavior.Overwrite : ConflictBehavior.Skip),
+        // -ao wins over -y when both are given; -y only needs to override the safe defaults,
+        // never set them.
+        OnConflict = command.OverwriteMode
+            ?? (command.AssumeYes ? ConflictBehavior.Overwrite
+                : askInteractively ? ConflictBehavior.Ask : ConflictBehavior.Skip),
+        ResolveConflictAsync = askInteractively
+            ? CliConflictPrompt.CreateResolver(Console.ReadLine, Console.Error.Write, quit).ResolveAsync
+            : null,
         ConfirmCompressionBombExtraction = command.AssumeYes ? (_ => Task.FromResult(true)) : null,
         ResolvePasswordAsync = BuildPasswordResolver(command.Password, command.AssumeYes),
     };
+}
+
+static int ReportUserStopped()
+{
+    Console.Error.WriteLine("pakko: operation stopped by user");
+    return 255;
+}
 
 // -------------------------------------------------------------------------
 // T-F191: -p{pwd} support for x/t. Three shapes, in order of precedence:

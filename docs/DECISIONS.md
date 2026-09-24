@@ -9031,3 +9031,32 @@ multi-root, single-folder, and single-file shapes), a list-then-extract-selected
 AMSI-scan test — each part mutation-checked. The UI click-through of "Extract Selected" on device
 was abandoned (coordinate clicks landed on an overlapping terminal window); the path is covered by
 the list-then-extract test instead. ZIP entries with a "./" prefix are rare and were not examined.
+
+---
+
+## T-F160 — `pakko x` interactive conflict prompt + shared `StickyCallback` (2026-09-24)
+
+**Design question settled by the real reference, not a guess.** T-F160 had left open whether a
+console tool should prompt at all ("decline, document as intentional" was on the table). Fetched
+NanaZip's vendored 7-Zip console source: `ExtractCallbackConsole::AskOverwrite` prints "Would you
+like to replace the existing file: ... with the file from archive: ..." and
+`UserInputUtils.cpp::ScanUserYesNoAllQuit` loops on `(Y)es / (N)o / (A)lways / (S)kip all /
+A(u)to rename all / (Q)uit?` until exactly one valid letter, treating end of input as quit
+(`kEof -> E_ABORT`). Pakko mirrors that, with three deliberate deviations:
+- **stderr, not stdout** — `pakko x -so` streams file data on stdout, and T-F191's password prompt
+  already lives on stderr.
+- **Only when a person can answer** — no `-ao`/`-y`, not `-si`, stdin not redirected. Otherwise the
+  pre-existing Skip (pinned by T-F179's subprocess test) is unchanged, so scripts never hang.
+- **Exit code 255** for Q/EOF/Ctrl+C (7-Zip's own "user stopped" code), via a
+  `CancellationTokenSource` the prompt cancels plus a `Console.CancelKeyPress` handler — Core's
+  normal cancellation path cleans its temp output; the destination is left untouched.
+
+**`StickyCallback<TInfo, TDecision>` (public, Archiver.Core).** The CLI needed the same "apply to
+all spans more than one Core call" bridge Shell already had twice (`StickyApplyToAllConflict
+Resolver`, T-F155; `StickyPasswordResolver`, T-F192): `ExtractionRouter` makes separate Core calls
+for zip and tar, so "Always" on a mixed `pakko x a.zip b.tar` would otherwise re-prompt. Three
+consumers of an identical ~15-line pattern justified one shared generic (the earlier DDD
+discussion's one real pattern gap). Both Shell classes and their tests were replaced by
+`StickyCallbackTests`; the CLI's zip+tar prompt-once behavior is pinned by a real-router test
+(mutation-checked: disabling stickiness prompts twice). The CLI's password resolver did not need
+it — only ZIP entries are password-protected, and zips go through a single Core call.

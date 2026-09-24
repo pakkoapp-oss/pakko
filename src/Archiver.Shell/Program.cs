@@ -90,12 +90,13 @@ static async Task RunExtractHereAsync(IReadOnlyList<string> archivePaths, GroupP
 {
     var router = await BuildExtractionRouterAsync(policy).ConfigureAwait(false);
     // T-F155: one wrapper per Explorer invocation (not per archive) so "apply to all" spans the
-    // whole multi-select — see StickyApplyToAllConflictResolver's own doc comment for why a raw
+    // whole multi-select — see StickyCallback's own doc comment for why a raw
     // ResolveConflictAsync = ShellConflictDialog.ShowAsync wire-through would re-prompt per archive.
-    var conflictResolver = new StickyApplyToAllConflictResolver(ShellConflictDialog.ShowAsync);
+    var conflictResolver = new StickyCallback<ConflictInfo, ConflictDecision>(ShellConflictDialog.ShowAsync, d => d.ApplyToAll);
     // T-F192: same reasoning as conflictResolver above, applied to PasswordDialog — one sticky
     // wrapper per Explorer invocation so "apply to remaining" spans the whole multi-select.
-    var passwordResolver = new StickyPasswordResolver(PasswordDialog.ShowAsync, canApplyToRemaining: archivePaths.Count > 1);
+    var passwordResolver = new StickyCallback<PasswordPromptInfo, PasswordDecision>(
+        info => PasswordDialog.ShowAsync(info, canApplyToRemaining: archivePaths.Count > 1), d => d.ApplyToRemaining);
 
     foreach (var archivePath in archivePaths)
     {
@@ -141,8 +142,9 @@ static async Task RunExtractHereAsync(IReadOnlyList<string> archivePaths, GroupP
 static async Task RunExtractHereFlatAsync(IReadOnlyList<string> archivePaths, GroupPolicyOptions policy)
 {
     var router = await BuildExtractionRouterAsync(policy).ConfigureAwait(false);
-    var conflictResolver = new StickyApplyToAllConflictResolver(ShellConflictDialog.ShowAsync);
-    var passwordResolver = new StickyPasswordResolver(PasswordDialog.ShowAsync, canApplyToRemaining: archivePaths.Count > 1);
+    var conflictResolver = new StickyCallback<ConflictInfo, ConflictDecision>(ShellConflictDialog.ShowAsync, d => d.ApplyToAll);
+    var passwordResolver = new StickyCallback<PasswordPromptInfo, PasswordDecision>(
+        info => PasswordDialog.ShowAsync(info, canApplyToRemaining: archivePaths.Count > 1), d => d.ApplyToRemaining);
 
     foreach (var archivePath in archivePaths)
     {
@@ -173,8 +175,9 @@ static async Task RunExtractHereFlatAsync(IReadOnlyList<string> archivePaths, Gr
 static async Task RunExtractFolderAsync(IReadOnlyList<string> archivePaths, GroupPolicyOptions policy)
 {
     var router = await BuildExtractionRouterAsync(policy).ConfigureAwait(false);
-    var conflictResolver = new StickyApplyToAllConflictResolver(ShellConflictDialog.ShowAsync);
-    var passwordResolver = new StickyPasswordResolver(PasswordDialog.ShowAsync, canApplyToRemaining: archivePaths.Count > 1);
+    var conflictResolver = new StickyCallback<ConflictInfo, ConflictDecision>(ShellConflictDialog.ShowAsync, d => d.ApplyToAll);
+    var passwordResolver = new StickyCallback<PasswordPromptInfo, PasswordDecision>(
+        info => PasswordDialog.ShowAsync(info, canApplyToRemaining: archivePaths.Count > 1), d => d.ApplyToRemaining);
 
     foreach (var archivePath in archivePaths)
     {
@@ -522,7 +525,7 @@ static async Task RunScanAsync(IReadOnlyList<string> archivePaths, GroupPolicyOp
     var service = await BuildAntivirusScanServiceAsync(policy).ConfigureAwait(false);
     NativeProgressDialog? dialog = TryCreateProgressDialog(title);
     // Single ScanAsync call spanning the whole selection, so Core's own PasswordResolver already
-    // keeps "apply to remaining" across archives — no StickyPasswordResolver needed (unlike the
+    // keeps "apply to remaining" across archives — no StickyCallback wrapper needed (unlike the
     // extract commands, which call ExtractAsync once per archive).
     var options = new AntivirusScanOptions
     {

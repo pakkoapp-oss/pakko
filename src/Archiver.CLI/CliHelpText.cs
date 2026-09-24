@@ -31,8 +31,10 @@ public static class CliHelpText
                            with masked input on a real interactive console, or
                            fails immediately when piped/scripted/-y is given.
           -y               Assume yes: auto-overwrite conflicts, auto-confirm
-                           compression-bomb warnings. Without -y, both default
-                           to a safe decline (file skipped, reported at the end).
+                           compression-bomb warnings. Without -y, a bomb warning
+                           is declined; a file conflict prompts on a real
+                           interactive console (Y/N/A/S/U/Q, like 7-Zip) and is
+                           skipped when piped/scripted.
           -ao{a|s|u}       Overwrite mode: a=overwrite, s=skip, u=auto-rename   (x)
           -t<type>         Archive type: zip (default), tar, tar.gz, tar.bz2,
                            tar.xz, tar.zst, tar.lzma                            (a)
@@ -72,6 +74,7 @@ public static class CliHelpText
           u (update)   d (delete)   rn (rename)   b (benchmark)   e (extract, flat)
 
         EXIT CODES:  0 ok   1 ok with warnings   2 operation failed   7 command-line error
+                     255 stopped by user (Q at a prompt, or Ctrl+C)
 
         Full specification: CLI.md in the Pakko repository.
         """;
