@@ -36,6 +36,11 @@ internal static class RawZipEntryLocator
     private const uint CentralDirectorySignature = 0x02014b50;
     private const uint LocalFileHeaderSignature = 0x04034b50;
     private const uint EndOfCentralDirectorySignature = 0x06054b50;
+    private const uint Zip64EndOfCentralDirectorySignature = 0x06064b50;
+    private const uint Zip64EndOfCentralDirectoryLocatorSignature = 0x07064b50;
+    private const int Zip64LocatorLength = 20;
+    private const ushort Zip64ExtraId = 0x0001;
+    private const uint Zip32Sentinel = 0xFFFFFFFF;
     private const ushort WinZipAesExtraId = 0x9901;
     private const ushort WinZipAesCompressionMethod = 99;
     // version(2) + vendor "AE"(2) + strength(1) + real compression method(2)
@@ -89,18 +94,20 @@ internal static class RawZipEntryLocator
         ReadCentralDirectory(zipStream).Any(record => (record.GeneralPurposeFlag & 0x0001) != 0);
 
     private sealed record CentralDirectoryRecord(
-        byte[] NameBytes, long LocalHeaderOffset, uint Crc32, uint CompressedSize, ushort GeneralPurposeFlag);
+        byte[] NameBytes, long LocalHeaderOffset, uint Crc32, long CompressedSize, ushort GeneralPurposeFlag);
 
     private static List<CentralDirectoryRecord> ReadCentralDirectory(Stream zipStream)
     {
         var records = new List<CentralDirectoryRecord>();
 
-        long eocdOffset = FindEndOfCentralDirectory(zipStream);
-        zipStream.Seek(eocdOffset + 16, SeekOrigin.Begin); // offset of start of central directory
-        uint centralDirOffset = ReadUInt32(zipStream);
+        // T-F193 Phase 0: bounded by the directory's own declared extent, not "up to the classic
+        // EOCD" — in a Zip64 archive the Zip64 EOCD record and locator sit between the two, and
+        // used to be misread as a malformed directory entry.
+        var (centralDirOffset, centralDirSize) = FindCentralDirectory(zipStream);
+        long centralDirEnd = centralDirOffset + centralDirSize;
 
         zipStream.Seek(centralDirOffset, SeekOrigin.Begin);
-        while (zipStream.Position < eocdOffset)
+        while (zipStream.Position < centralDirEnd)
         {
             uint signature = ReadUInt32(zipStream);
             if (signature != CentralDirectorySignature)
@@ -114,7 +121,7 @@ internal static class RawZipEntryLocator
             ReadUInt16(zipStream); // last mod date
             uint crc32 = ReadUInt32(zipStream);
             uint compressedSize = ReadUInt32(zipStream);
-            ReadUInt32(zipStream); // uncompressed size
+            uint uncompressedSize = ReadUInt32(zipStream);
             ushort nameLength = ReadUInt16(zipStream);
             ushort extraLength = ReadUInt16(zipStream);
             ushort commentLength = ReadUInt16(zipStream);
@@ -123,17 +130,58 @@ internal static class RawZipEntryLocator
             ReadUInt32(zipStream); // external attributes
             uint localHeaderOffset = ReadUInt32(zipStream);
             byte[] nameBytes = ReadBytes(zipStream, nameLength);
-            ReadBytes(zipStream, extraLength); // central directory's own extra copy — unused
+            byte[] extra = ReadBytes(zipStream, extraLength);
             ReadBytes(zipStream, commentLength);
 
-            records.Add(new CentralDirectoryRecord(nameBytes, localHeaderOffset, crc32, compressedSize, generalPurposeFlag));
+            var (realCompressedSize, realLocalHeaderOffset) =
+                ResolveZip64Fields(extra, uncompressedSize, compressedSize, localHeaderOffset);
+            records.Add(new CentralDirectoryRecord(nameBytes, realLocalHeaderOffset, crc32, realCompressedSize, generalPurposeFlag));
         }
 
         return records;
     }
 
+    // T-F193 Phase 0: a central record whose 32-bit size/offset field holds the 0xFFFFFFFF sentinel
+    // carries the real value in its Zip64 (0x0001) extra field — in spec order (uncompressed,
+    // compressed, local-header offset), containing only the fields that were sentinels.
+    private static (long CompressedSize, long LocalHeaderOffset) ResolveZip64Fields(
+        byte[] extra, uint uncompressedSize, uint compressedSize, uint localHeaderOffset)
+    {
+        bool needUncompressed = uncompressedSize == Zip32Sentinel;
+        bool needCompressed = compressedSize == Zip32Sentinel;
+        bool needOffset = localHeaderOffset == Zip32Sentinel;
+        if (!needUncompressed && !needCompressed && !needOffset)
+            return (compressedSize, localHeaderOffset);
+
+        byte[] record = FindExtraRecord(extra, Zip64ExtraId)
+            ?? throw new InvalidDataException("ZIP entry uses Zip64 sentinel values but has no Zip64 extra field.");
+
+        int position = needUncompressed ? 8 : 0;
+        long realCompressed = compressedSize;
+        long realOffset = localHeaderOffset;
+        if (needCompressed)
+        {
+            realCompressed = ReadZip64Value(record, position);
+            position += 8;
+        }
+        if (needOffset)
+            realOffset = ReadZip64Value(record, position);
+
+        return (realCompressed, realOffset);
+    }
+
+    private static long ReadZip64Value(byte[] record, int position)
+    {
+        if (position > record.Length - 8)
+            throw new InvalidDataException("Malformed Zip64 extra field (too short).");
+        ulong value = BitConverter.ToUInt64(record, position);
+        if (value > long.MaxValue)
+            throw new InvalidDataException("Zip64 extra field value out of range.");
+        return (long)value;
+    }
+
     private static LocatedZipEntry BuildFromLocalHeader(
-        Stream zipStream, long localHeaderOffset, uint centralCrc32, uint centralCompressedSize)
+        Stream zipStream, long localHeaderOffset, uint centralCrc32, long centralCompressedSize)
     {
         zipStream.Seek(localHeaderOffset, SeekOrigin.Begin);
         uint signature = ReadUInt32(zipStream);
@@ -186,7 +234,9 @@ internal static class RawZipEntryLocator
         return new LocatedZipEntry
         {
             CompressedDataOffset = compressedDataOffset,
-            CompressedSize = localCompressedSize != 0 ? localCompressedSize : centralCompressedSize,
+            // T-F193 Phase 0: 0xFFFFFFFF means the real size is in a Zip64 extra (7-Zip writes this
+            // when reading from stdin) — the central directory's already-resolved value is used then.
+            CompressedSize = localCompressedSize is not 0 and not Zip32Sentinel ? localCompressedSize : centralCompressedSize,
             CompressionMethod = method,
             GeneralPurposeEncryptedBit = (generalPurposeFlag & 0x0001) != 0,
             StoredCrc32 = localCrc32 != 0 ? localCrc32 : centralCrc32,
@@ -211,6 +261,50 @@ internal static class RawZipEntryLocator
             position += 4 + size;
         }
         return null;
+    }
+
+    // Returns the central directory's offset and size — from the Zip64 end-of-central-directory
+    // record when a Zip64 locator immediately precedes the classic EOCD, otherwise from the classic
+    // EOCD itself. Both are checked against the stream's real length before use.
+    private static (long Offset, long Size) FindCentralDirectory(Stream zipStream)
+    {
+        long eocdOffset = FindEndOfCentralDirectory(zipStream);
+        zipStream.Seek(eocdOffset + 12, SeekOrigin.Begin);
+        long size = ReadUInt32(zipStream);
+        long offset = ReadUInt32(zipStream);
+
+        if (eocdOffset >= Zip64LocatorLength)
+        {
+            zipStream.Seek(eocdOffset - Zip64LocatorLength, SeekOrigin.Begin);
+            if (ReadUInt32(zipStream) == Zip64EndOfCentralDirectoryLocatorSignature)
+            {
+                ReadUInt32(zipStream); // disk with the Zip64 EOCD
+                long zip64EocdOffset = ReadInt64Checked(zipStream);
+                if (zip64EocdOffset > zipStream.Length - 56)
+                    throw new InvalidDataException("Zip64 end-of-central-directory offset is outside the archive.");
+
+                zipStream.Seek(zip64EocdOffset, SeekOrigin.Begin);
+                if (ReadUInt32(zipStream) != Zip64EndOfCentralDirectorySignature)
+                    throw new InvalidDataException("Malformed Zip64 end-of-central-directory record.");
+                zipStream.Seek(zip64EocdOffset + 40, SeekOrigin.Begin);
+                size = ReadInt64Checked(zipStream);
+                offset = ReadInt64Checked(zipStream);
+            }
+        }
+
+        if (offset > zipStream.Length || size > zipStream.Length - offset)
+            throw new InvalidDataException("ZIP central directory extends outside the archive.");
+        return (offset, size);
+    }
+
+    private static long ReadInt64Checked(Stream stream)
+    {
+        Span<byte> buffer = stackalloc byte[8];
+        ReadExactSpan(stream, buffer);
+        ulong value = BitConverter.ToUInt64(buffer);
+        if (value > long.MaxValue)
+            throw new InvalidDataException("ZIP field value out of range.");
+        return (long)value;
     }
 
     private static long FindEndOfCentralDirectory(Stream zipStream)

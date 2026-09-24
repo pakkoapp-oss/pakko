@@ -162,4 +162,56 @@ public sealed class RawZipEntryLocatorTests
 
         act.Should().Throw<InvalidDataException>();
     }
+
+    // ── T-F193 Phase 0: Zip64 directory layouts ──────────────────────────────
+    // "Never write what Pakko can't read back": T-F193's writer emits Zip64 for big archives, and
+    // real tools (7-Zip reading from stdin) already emit Zip64 local headers today.
+
+    [Theory]
+    [InlineData("encrypted_aes256.zip")]
+    [InlineData("mixed_encrypted_and_plain.zip")]
+    public void LocateAll_FullZip64Directory_ResolvesTheSameEntriesAsThePlainLayout(string fixture)
+    {
+        using var temp = new TempDirectory();
+        string rewritten = Path.Combine(temp.Path, "zip64.zip");
+        Zip64DirectoryRewriter.Rewrite(FixtureHelper.Archive(fixture), rewritten);
+
+        List<LocatedZipEntry> expected, actual;
+        using (var fs = File.OpenRead(FixtureHelper.Archive(fixture)))
+            expected = RawZipEntryLocator.LocateAll(fs);
+        using (var fs = File.OpenRead(rewritten))
+            actual = RawZipEntryLocator.LocateAll(fs);
+
+        actual.Should().BeEquivalentTo(expected);
+    }
+
+    [Fact]
+    public void LocateAll_StdinArchiveWithZip64LocalHeader_UsesTheRealCompressedSize()
+    {
+        // 7za from stdin writes 0xFFFFFFFF sizes + a Zip64 extra in the local header, real sizes
+        // in the central directory.
+        using var fs = File.OpenRead(FixtureHelper.Archive("encrypted_aes256_stdin_zip64local.zip"));
+
+        var located = RawZipEntryLocator.LocateAll(fs).Single();
+
+        located.CompressedSize.Should().BeLessThan(0xFFFFFFFFL);
+        located.CompressedSize.Should().BeGreaterThan(0);
+    }
+
+    [Fact]
+    [Trait("Category", "Slow")]
+    public void LocateAll_65536Entries_ReadsTheZip64EndOfCentralDirectory()
+    {
+        using var temp = new TempDirectory();
+        string path = Path.Combine(temp.Path, "many.zip");
+        using (var zip = System.IO.Compression.ZipFile.Open(path, System.IO.Compression.ZipArchiveMode.Create))
+        {
+            for (int i = 0; i < 65_536; i++)
+                zip.CreateEntry($"e{i}.txt");
+        }
+
+        using var fs = File.OpenRead(path);
+        RawZipEntryLocator.HasAnyEncryptedEntry(fs).Should().BeFalse();
+        RawZipEntryLocator.LocateAll(fs).Should().HaveCount(65_536);
+    }
 }

@@ -443,4 +443,44 @@ public sealed class ZipArchiveServicePasswordTests : IDisposable
         result.Success.Should().BeTrue();
         result.Entries.Should().ContainSingle().Which.Crc32.Should().NotBeNull().And.NotBe(0u);
     }
+
+    // ── T-F193 Phase 0: Zip64 layouts, end to end ─────────────────────────────
+
+    [Fact]
+    public async Task ExtractAsync_EncryptedArchiveWithFullZip64Directory_ExtractsByteExactContent()
+    {
+        string zip64 = Path.Combine(_temp.Path, "zip64.zip");
+        Zip64DirectoryRewriter.Rewrite(FixtureHelper.Archive("encrypted_aes256.zip"), zip64);
+        var destDir = Path.Combine(_temp.Path, "out");
+
+        var result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [zip64],
+            DestinationFolder = destDir,
+            Mode = ExtractMode.SingleFolder,
+            ResolvePasswordAsync = FixedPassword(RealPassword),
+        });
+
+        result.Errors.Should().BeEmpty();
+        File.ReadAllText(Directory.GetFiles(destDir, "compressible.txt", SearchOption.AllDirectories).Single())
+            .Should().Be(File.ReadAllText(Path.Combine(FixtureHelper.FilesDir, "compressible.txt")));
+    }
+
+    [Fact]
+    public async Task ExtractAsync_StdinArchiveWithZip64LocalHeader_ExtractsByteExactContent()
+    {
+        var destDir = Path.Combine(_temp.Path, "out");
+
+        var result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [FixtureHelper.Archive("encrypted_aes256_stdin_zip64local.zip")],
+            DestinationFolder = destDir,
+            Mode = ExtractMode.SingleFolder,
+            ResolvePasswordAsync = FixedPassword(RealPassword),
+        });
+
+        result.Errors.Should().BeEmpty();
+        File.ReadAllText(Directory.GetFiles(destDir, "compressible.txt", SearchOption.AllDirectories).Single())
+            .Should().Be(File.ReadAllText(Path.Combine(FixtureHelper.FilesDir, "compressible.txt")));
+    }
 }
