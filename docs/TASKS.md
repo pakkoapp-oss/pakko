@@ -4243,6 +4243,40 @@ regression from this task, which owns reliability only.
   `ZipArchiveServiceEncryptTests.ArchiveAsync_WithPassword_WritesAe2Aes256EntriesThatRoundTrip`.
 - **Reported by:** agent observation, 2026-09-24. **Depends on:** none.
 
+### Fix batch (next, after the current batch closes) — index
+
+User decision 2026-09-24: the current batch is discovery (T-F202, T-F226) plus the one fix T-F197;
+**every other fix below is a separate, next batch.** This index is the batch's scope and order; the
+task entries themselves hold the detail. Rules for every item: tests first (write the reproducing
+test, confirm it fails, then fix — `CLAUDE.md`'s revert-and-confirm rule), the four test
+categories, deploy and verify on device before marking done.
+
+**0. User decisions before any code** (each blocks the tasks it names):
+- T-F233 — P0 or P1; remediation or release note for archives whose permissions were already
+  rewritten (one real case found on the dev machine).
+- T-F234 — P0 or P1.
+- T-F197 — done in the current batch as planned, or folded in here with T-F227/T-F228 (same
+  `CommitTempDestToActualDest` code).
+- T-F201 — keep T-F88's multi-instance design (offset/foreground only) or reverse it.
+- T-F205, T-F206, T-F210 — each reverses or changes a documented behavior.
+- T-F241 — add the missing CLI scan / App test, or document why not.
+- T-F199 — the layout redesign needs a plan and a mockup approved first.
+
+**1. P0 — data loss or a broken core flow:** T-F227, T-F228, T-F229, T-F204, T-F233 (candidate),
+T-F234 (candidate). Suggested order: T-F227 + T-F228 together (same staging/commit code), then
+T-F229 with T-F207, then T-F233, T-F234, T-F204.
+
+**2. P1 — broken or misleading feature:** T-F230, T-F231, T-F232, T-F235, T-F236, T-F237,
+T-F200, T-F205, T-F206, T-F207, T-F208, T-F210, T-F211, T-F212, T-F213, T-F224, T-F225.
+
+**3. P2 — polish, consistency, hardening, debt:** T-F198, T-F199, T-F201, T-F203 (SonarCloud),
+T-F209, T-F214, T-F215, T-F216, T-F217, T-F218, T-F219, T-F220, T-F221, T-F222, T-F223 (+ T-F165,
+diagrams — redo the per-arrow ground-truth ritual T-F226 deferred, after the P0 fixes land),
+T-F238, T-F239, T-F240, T-F241, T-F242, T-F243, T-F244.
+
+**Not in this batch:** T-F202's user-only checks (light theme, en-US, keyboard-only, tray, CLI in a
+real console) and T-F226's unrun mutation spot-check — carried as open items on those tasks.
+
 ### T-F198 — UI quick fixes from the 2026-09-24 UI/UX review
 
 - [ ] **Status:** open. Point fixes, no layout change (the layout is T-F199):
