@@ -4276,6 +4276,19 @@ regression from this task, which owns reliability only.
   a fix: redirect into the running instance, or at least offset/foreground the new window.
 - **Reported by:** UI/UX review, 2026-09-24.
 
+### T-F203 — SonarCloud findings from the T-F160/T-F195/T-F193 pushes
+
+- [ ] **Status:** open — for the fix batch (user decision 2026-09-24: this batch is discovery only).
+  Open on `main` after the 2026-09-24 push (commit 8952c12), from the SonarCloud API:
+  - S3776 cognitive complexity: `Archiver.CLI/Program.cs` `RunArchiveAsync` (23, line ~351) and
+    `RunExtractAsync` (16, line ~66); `ZipArchiveService.cs` line ~527 (18); `CliLineInput.Read` (16).
+  - S6966 (await `WriteLineAsync`): `Program.cs` lines ~357, ~413.
+  - S3358 nested ternary: `Program.cs` line ~146 (`BuildExtractOptions`' `OnConflict`).
+  - SYSLIB1054 x4 in `QuarantineAcl.cs` — belongs to T-F148's deferred conversion, not here.
+  CodeQL `cs/ecb-encryption` alert #3 (`AesCtrKeystream.cs`) was triaged: dismissed as a false
+  positive, same as #2 (`docs/CONVENTIONS.md`'s Static-Analysis Won't-Fix section).
+- **Reported by:** SonarCloud, 2026-09-24.
+
 ### T-F202 — Full UI smoke test: every feature, every menu and submenu (batch gate)
 
 - [ ] **Status:** open — a required gate for closing this batch (user instruction 2026-09-24: the
