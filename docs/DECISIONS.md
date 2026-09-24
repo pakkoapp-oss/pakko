@@ -9060,3 +9060,26 @@ discussion's one real pattern gap). Both Shell classes and their tests were repl
 `StickyCallbackTests`; the CLI's zip+tar prompt-once behavior is pinned by a real-router test
 (mutation-checked: disabling stickiness prompts twice). The CLI's password resolver did not need
 it — only ZIP entries are password-protected, and zips go through a single Core call.
+
+**Closing-review follow-ups (advisor-caught, all verified).**
+- **Ctrl+C at the prompt did nothing** — confirmed on device: with `CancelKeyPress`'s
+  `e.Cancel = true`, a blocked `Console.ReadLine` never returns, so the prompt just sat there.
+  Fixed by reading the answer key by key under `Console.TreatControlCAsInput` (a new shared
+  `CliLineInput`, which the T-F191 password prompt now also uses), so Ctrl+C arrives as a key and
+  means quit. That surfaced a real T-F191 bug: the password prompt already read under
+  `TreatControlCAsInput`, so Ctrl+C was **appended to the password as a literal `\x03`** instead
+  of cancelling — fixed and pinned by a red-first test.
+- **"Q writes nothing further"** is now pinned for tar, zip, and zip-then-tar in one run by
+  real-router tests (mutation-checked: ignoring the token lets `b_fresh.txt`/the tar through).
+- **Verified without window focus** — after two focus-based keystrokes landed in an unrelated
+  terminal window, device checks switched to a helper that attaches to the pakko process's own
+  console and writes key events into its input buffer (`WriteConsoleInputW`) or raises
+  `CTRL_C_EVENT` there. Results: keyboard Ctrl+C at the prompt -> exit 255, destination untouched;
+  Ctrl+C 3.7 s into a 1.8 GB `-aos` tar extraction -> exit 255, zero files moved to the
+  destination, no quarantine folder left behind.
+
+**Adjacent pre-existing leak fixed (found while checking the above):** every full test run left one
+empty `%TEMP%\PakkoTarSandbox\<guid>\in\` — `TarSandboxScope.CreateAsync` built the quarantine
+folders, then a staging failure (e.g. a vanished archive) threw before the scope object existed,
+so no `Dispose()` ever ran. Setup failures now delete what setup created and release the SID
+(red-first test; a full run now leaves zero new folders).

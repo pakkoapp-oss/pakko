@@ -4055,7 +4055,10 @@ regression from this task, which owns reliability only.
   TDecision>` replaced Shell's two hand-written sticky wrappers (T-F155/T-F192) and carries
   "Always" across ExtractionRouter's separate zip/tar calls for the CLI. Agent-driven real-console
   verification (`windows` MCP: invalid answer re-asks, `n`/`y` per file, `q` -> 255 with the
-  destination untouched); stays `[~]` until the user's own terminal run. See `docs/DECISIONS.md`'s
+  destination untouched; keyboard Ctrl+C at the prompt and mid-extraction -> 255, nothing written);
+  stays `[~]` until the user's own terminal run. Also fixed along the way: T-F191's password
+  prompt appended Ctrl+C to the password instead of cancelling, and a quarantine-folder leak on
+  sandbox-setup failure. See `docs/DECISIONS.md`'s
   T-F160 entry.
 - **Context:** T-F155 brought `Archiver.Shell`'s three extract commands to parity with the WinUI
   App's own T-F06 interactive conflict dialog, using a `TaskDialogIndirect`-based

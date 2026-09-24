@@ -1,5 +1,3 @@
-using System.Text;
-
 namespace Archiver.CLI;
 
 /// <summary>
@@ -14,41 +12,12 @@ public static class CliPasswordPrompt
 {
     /// <summary>
     /// Reads a masked password one key at a time. Enter submits; Backspace deletes one character
-    /// (a no-op on an empty buffer); Escape cancels (returns null); a key with no printable
+    /// (a no-op on an empty buffer); Escape or Ctrl+C cancels (returns null); a key with no printable
     /// character (arrows, function keys, etc. — <see cref="ConsoleKeyInfo.KeyChar"/> is '\0') is
     /// ignored rather than appended. <paramref name="echo"/>, when given, is called once per
     /// accepted keystroke — '*' for an appended character, '\b' for a deleted one — so the caller
     /// can render the mask without this class touching Console output directly.
     /// </summary>
-    public static string? Read(Func<ConsoleKeyInfo> readKey, Action<char>? echo = null)
-    {
-        var buffer = new StringBuilder();
-
-        while (true)
-        {
-            ConsoleKeyInfo key = readKey();
-
-            if (key.Key == ConsoleKey.Enter)
-                return buffer.ToString();
-
-            if (key.Key == ConsoleKey.Escape)
-                return null;
-
-            if (key.Key == ConsoleKey.Backspace)
-            {
-                if (buffer.Length > 0)
-                {
-                    buffer.Length--;
-                    echo?.Invoke('\b');
-                }
-                continue;
-            }
-
-            if (key.KeyChar == '\0')
-                continue;
-
-            buffer.Append(key.KeyChar);
-            echo?.Invoke('*');
-        }
-    }
+    public static string? Read(Func<ConsoleKeyInfo> readKey, Action<char>? echo = null) =>
+        CliLineInput.Read(readKey, echo, mask: true);
 }

@@ -144,4 +144,108 @@ public sealed class CliConflictPromptTests : IDisposable
         File.ReadAllText(Path.Combine(dest, "from-zip.txt")).Should().Be("zip content");
         File.ReadAllText(Path.Combine(dest, "from-tar.txt")).Should().Be("tar content");
     }
+
+    private string MakeZip(string name, params (string Name, string Content)[] entries)
+    {
+        string path = Path.Combine(_temp, name);
+        using var zip = ZipFile.Open(path, ZipArchiveMode.Create);
+        foreach (var (entryName, content) in entries)
+        {
+            using var writer = new StreamWriter(zip.CreateEntry(entryName).Open());
+            writer.Write(content);
+        }
+        return path;
+    }
+
+    private async Task<string> MakeTarAsync(string name, params (string Name, string Content)[] entries)
+    {
+        string source = Path.Combine(_temp, name + "-src");
+        Directory.CreateDirectory(source);
+        var startInfo = new ProcessStartInfo(@"C:\Windows\System32\tar.exe") { UseShellExecute = false, CreateNoWindow = true };
+        string path = Path.Combine(_temp, name);
+        startInfo.ArgumentList.Add("-cf");
+        startInfo.ArgumentList.Add(path);
+        startInfo.ArgumentList.Add("-C");
+        startInfo.ArgumentList.Add(source);
+        foreach (var (entryName, content) in entries)
+        {
+            File.WriteAllText(Path.Combine(source, entryName), content);
+            startInfo.ArgumentList.Add(entryName);
+        }
+        using var tar = Process.Start(startInfo)!;
+        await tar.WaitForExitAsync();
+        tar.ExitCode.Should().Be(0);
+        return path;
+    }
+
+    // Mirrors Program.RunExtractAsync: the same token the prompt cancels is passed to the router.
+    private static async Task ExtractWithQuitAnswerAsync(string dest, params string[] archives)
+    {
+        using var quit = new CancellationTokenSource();
+        var resolver = CliConflictPrompt.CreateResolver(Lines("q"), _ => { }, quit);
+        var tarService = new TarSandboxedService();
+        var router = new ExtractionRouter(new ZipArchiveService(), tarService, await tarService.DetectCapabilitiesAsync());
+        try
+        {
+            await router.ExtractAsync(new ExtractOptions
+            {
+                ArchivePaths = archives,
+                DestinationFolder = dest,
+                Mode = ExtractMode.SingleFolder,
+                OnConflict = ConflictBehavior.Ask,
+                ResolveConflictAsync = resolver.ResolveAsync,
+            }, progress: null, quit.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            // Program.RunExtractAsync maps this to exit 255 — either outcome is fine here.
+        }
+        quit.IsCancellationRequested.Should().BeTrue();
+    }
+
+    private string DestWithExisting(string name)
+    {
+        string dest = Path.Combine(_temp, "dest-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dest);
+        File.WriteAllText(Path.Combine(dest, name), "old");
+        return dest;
+    }
+
+    // T-F160 (advisor-caught): "Q" must mean nothing further is written — not just "this one file
+    // is skipped". The tar move phase places files one at a time after the conflict prompt.
+    [RequiresTarExe]
+    public async Task Quit_InTar_WritesNoFurtherFiles()
+    {
+        string tar = await MakeTarAsync("q.tar", ("a_conflict.txt", "new"), ("b_fresh.txt", "new"));
+        string dest = DestWithExisting("a_conflict.txt");
+
+        await ExtractWithQuitAnswerAsync(dest, tar);
+
+        File.ReadAllText(Path.Combine(dest, "a_conflict.txt")).Should().Be("old");
+        File.Exists(Path.Combine(dest, "b_fresh.txt")).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Quit_InZip_WritesNoFurtherFiles()
+    {
+        string zip = MakeZip("q.zip", ("a_conflict.txt", "new"), ("b_fresh.txt", "new"));
+        string dest = DestWithExisting("a_conflict.txt");
+
+        await ExtractWithQuitAnswerAsync(dest, zip);
+
+        File.ReadAllText(Path.Combine(dest, "a_conflict.txt")).Should().Be("old");
+        File.Exists(Path.Combine(dest, "b_fresh.txt")).Should().BeFalse();
+    }
+
+    [RequiresTarExe]
+    public async Task Quit_InZip_TarInTheSameRunIsNotExtracted()
+    {
+        string zip = MakeZip("first.zip", ("a_conflict.txt", "new"));
+        string tar = await MakeTarAsync("second.tar", ("from_tar.txt", "new"));
+        string dest = DestWithExisting("a_conflict.txt");
+
+        await ExtractWithQuitAnswerAsync(dest, zip, tar);
+
+        File.Exists(Path.Combine(dest, "from_tar.txt")).Should().BeFalse();
+    }
 }

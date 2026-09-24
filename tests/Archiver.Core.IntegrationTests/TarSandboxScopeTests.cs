@@ -38,6 +38,24 @@ public sealed class TarSandboxScopeTests : IDisposable
         File.ReadAllText(Path.Combine(scope.OutputDirectory!, "a.txt")).Should().Be("scope test content");
     }
 
+    // Found 2026-09-24: every full test run left one empty "<guid>\in\" under %TEMP%\PakkoTarSandbox
+    // — CreateAsync created the quarantine folders, then staging threw (here: the archive is gone),
+    // and nothing owned the half-built folder yet, since the scope object is only constructed at
+    // the very end. Any setup failure must clean up what setup already created.
+    [Fact]
+    public async Task CreateAsync_StagingFails_LeavesNoQuarantineFolderBehind()
+    {
+        string parent = Path.Combine(Path.GetTempPath(), "PakkoTarSandbox");
+        Directory.CreateDirectory(parent);
+        var before = Directory.GetDirectories(parent).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        string missingArchive = Path.Combine(_temp.Path, "does-not-exist.tar");
+
+        Func<Task> act = () => TarSandboxScope.CreateAsync(missingArchive, needsOutputDir: true, CancellationToken.None);
+
+        await act.Should().ThrowAsync<Exception>();
+        Directory.GetDirectories(parent).Where(d => !before.Contains(d)).Should().BeEmpty();
+    }
+
     [Fact]
     public async Task CreateAsync_NeedsOutputDirFalse_NoOutFolderCreated()
     {

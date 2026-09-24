@@ -92,6 +92,20 @@ public sealed class CliPasswordPromptTests
         result.Should().BeNull();
     }
 
+    // T-F160 (found while making Ctrl+C work at the conflict prompt): the caller sets
+    // Console.TreatControlCAsInput = true while reading, so Ctrl+C arrives as KeyChar '\x03' —
+    // it used to be appended to the password as a literal control character instead of cancelling.
+    [Fact]
+    public void Read_CtrlC_ReturnsNullCancelledNotAppended()
+    {
+        var ctrlC = new ConsoleKeyInfo('\x03', ConsoleKey.C, shift: false, alt: false, control: true);
+        var keys = QueueOf(Key('a'), ctrlC, Special(ConsoleKey.Enter));
+
+        string? result = CliPasswordPrompt.Read(keys);
+
+        result.Should().BeNull();
+    }
+
     // --- Misuse & Fool ---
 
     [Fact]

@@ -78,16 +78,20 @@ internal sealed class TarSandboxScope : IDisposable
         if (!TarSignatureVerifier.Verify(TarExecutablePath))
             throw new TarSignatureVerificationException(TarExecutablePath);
 
+        // Owned by this method until the scope object exists (the very last statement) — any
+        // failure before that must release them itself, since no Dispose() will ever run.
+        SafeSidHandle? sid = null;
+        string? quarantineRoot = null;
         try
         {
             var profile = new AppContainerProfile(AppContainerProfile.ProductionProfileName);
             profile.EnsureExists();
-            SafeSidHandle sid = profile.GetSid();
+            sid = profile.GetSid();
 
             Directory.CreateDirectory(SandboxParentDirectory);
             QuarantineAcl.EnsureSharedParentTraverse(SandboxParentDirectory, sid);
 
-            string quarantineRoot = Path.Combine(SandboxParentDirectory, Guid.NewGuid().ToString("N"));
+            quarantineRoot = Path.Combine(SandboxParentDirectory, Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(quarantineRoot);
             QuarantineAcl.GrantTraverseListReadAttributes(quarantineRoot, sid);
 
@@ -119,12 +123,20 @@ internal sealed class TarSandboxScope : IDisposable
 
             return Task.FromResult(new TarSandboxScope(sid, securityCapabilities, quarantineRoot, stagedArchivePath, outDir));
         }
-        catch (InvalidOperationException ex)
+        catch (Exception ex)
         {
+            // Found 2026-09-24: a staging failure (e.g. the archive vanished) used to leave an
+            // empty "<guid>\in\" behind on every occurrence.
+            sid?.Dispose();
+            if (quarantineRoot is not null)
+                try { Directory.Delete(quarantineRoot, recursive: true); } catch { /* best-effort cleanup */ }
+
             // AppContainer/ACL/attribute-list setup can fail at runtime (e.g. group policy
             // blocking profile creation) — fail closed as an ordinary per-archive error, never
             // an unhandled crash. Callers catch this the same way as TarSignatureVerificationException.
-            throw new SandboxSetupException($"Sandbox setup failed: {ex.Message}", ex);
+            if (ex is InvalidOperationException)
+                throw new SandboxSetupException($"Sandbox setup failed: {ex.Message}", ex);
+            throw;
         }
     }
 

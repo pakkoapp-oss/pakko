@@ -137,12 +137,33 @@ static ExtractOptions BuildExtractOptions(
             ?? (command.AssumeYes ? ConflictBehavior.Overwrite
                 : askInteractively ? ConflictBehavior.Ask : ConflictBehavior.Skip),
         ResolveConflictAsync = askInteractively
-            ? CliConflictPrompt.CreateResolver(Console.ReadLine, Console.Error.Write, quit).ResolveAsync
+            ? CliConflictPrompt.CreateResolver(ReadConflictAnswer, Console.Error.Write, quit).ResolveAsync
             : null,
         ConfirmCompressionBombExtraction = command.AssumeYes ? (_ => Task.FromResult(true)) : null,
         ResolvePasswordAsync = BuildPasswordResolver(command.Password, command.AssumeYes),
     };
 }
+
+// T-F160: key by key with TreatControlCAsInput, exactly like the password prompt below — a plain
+// Console.ReadLine keeps blocking after a Ctrl+C that CancelKeyPress cancelled (confirmed on
+// device), so Ctrl+C at the prompt has to arrive as a key (CliLineInput maps it to quit).
+static string? ReadConflictAnswer()
+{
+    bool previousTreatControlCAsInput = Console.TreatControlCAsInput;
+    Console.TreatControlCAsInput = true;
+    try
+    {
+        string? answer = CliLineInput.Read(() => Console.ReadKey(intercept: true), EchoTypedChar, mask: false);
+        Console.Error.WriteLine();
+        return answer;
+    }
+    finally
+    {
+        Console.TreatControlCAsInput = previousTreatControlCAsInput;
+    }
+}
+
+static void EchoTypedChar(char c) => Console.Error.Write(c == '\b' ? "\b \b" : c.ToString());
 
 static int ReportUserStopped()
 {
