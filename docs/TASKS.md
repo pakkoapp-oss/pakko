@@ -3708,6 +3708,8 @@ regression from this task, which owns reliability only.
 
 ### T-F146 — AMSI-based "Scan for threats" for archives (Explorer context menu + Archive Browser)
 
+- **Blocked from graduating by T-F247** (2026-09-25): any archive containing an empty file makes
+  the scan throw; the Explorer command crashes silently.
 - [~] **Status:** implementation complete 2026-08-07 (Core service + tests, `Archiver.Shell`
       CLI/dialog, `Archiver.ShellExtension` context-menu entry, `Archiver.App` Archive Browser
       entry, full 37-locale localization across all three frontends) — on-device verification
@@ -4263,16 +4265,17 @@ categories, deploy and verify on device before marking done.
 - T-F199 — the layout redesign needs a plan and a mockup approved first.
 
 **1. P0 — data loss or a broken core flow:** T-F227, T-F228, T-F229, T-F204, T-F233 (candidate),
-T-F234 (candidate). Suggested order: T-F227 + T-F228 together (same staging/commit code), then
+T-F234 (candidate), T-F245 (with T-F229), T-F246 — both P0 by user decision 2026-09-25. Suggested order: T-F227 + T-F228 together (same staging/commit code), then
 T-F229 with T-F207, then T-F233, T-F234, T-F204.
 
 **2. P1 — broken or misleading feature:** T-F230, T-F231, T-F232, T-F235, T-F236, T-F237,
-T-F200, T-F205, T-F206, T-F207, T-F208, T-F210, T-F211, T-F212, T-F213, T-F224, T-F225.
+T-F200, T-F205, T-F206, T-F207, T-F208, T-F210, T-F211, T-F212, T-F213, T-F224, T-F225, T-F247,
+T-F248 (with T-F233).
 
 **3. P2 — polish, consistency, hardening, debt:** T-F198, T-F199, T-F201, T-F203 (SonarCloud),
 T-F209, T-F214, T-F215, T-F216, T-F217, T-F218, T-F219, T-F220, T-F221, T-F222, T-F223 (+ T-F165,
 diagrams — redo the per-arrow ground-truth ritual T-F226 deferred, after the P0 fixes land),
-T-F238, T-F239, T-F240, T-F241, T-F242, T-F243, T-F244.
+T-F238, T-F239, T-F240, T-F241, T-F242, T-F243, T-F244, T-F249.
 
 **Not in this batch:** T-F202's user-only checks (light theme, en-US, keyboard-only, tray, CLI in a
 real console) and T-F226's unrun mutation spot-check — carried as open items on those tasks.
@@ -4638,7 +4641,12 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 ### T-F226 — Architecture review of the whole implementation against our rules (next research step)
 
 - [~] **Status:** 2026-09-24 — findings filed as T-F227..T-F244 (plus additions to T-F201 and
-  T-F232). **Not closed:** the per-arrow ground-truth ritual over `docs/DIAGRAMS.md` was deferred,
+  T-F232); batch 2 (2026-09-25, the sandbox files, AMSI and format detection the first pass did
+  not reach) filed T-F245..T-F249 plus additions to T-F233 and T-F244. Still unchecked after
+  batch 2: `GroupPolicyService`, preview/nested-archive caches, `FileHashService`, Shell native
+  dialogs (`DLGTEMPLATEEX` password dialog, conflict dialog), `Localization.cpp`, `scripts/*.ps1`,
+  `SECURITY.md` claims against code, check K (mutation spot-check) and check L (diagrams outside
+  the T-F227/T-F228/T-F233/T-F236 area). **Not closed:** the per-arrow ground-truth ritual over `docs/DIAGRAMS.md` was deferred,
   not done — the fixes for T-F227/T-F228/T-F233/T-F236 will rewrite those diagrams, and T-F165/
   T-F223 are already open; the review's exit criterion is therefore not met for that cell. The
   planned mutation spot-check of 3-5 critical tests (check K) was not run either.
@@ -4790,6 +4798,11 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   scanned recursively too: no hits.
   Fix direction: never change the original's security descriptor — stage by copy, or open the
   file for read and hand tar.exe a handle, and re-check the pre-scan/extract identity.
+  (T-F226 batch 2) The hardlink is also not a snapshot: the pre-scan (`-tf`/`-tvf`) and the
+  extraction (`-xf`) read the same live file object, so an archive still being written (a download
+  in progress, a sync client) can pass the pre-scan with one content and be extracted with
+  another — the pre-scan's verdict is only valid for a private copy. Read-only archives also leak
+  the link: T-F248.
 - **Tests first (Security & Boundary — missing today):** the original archive's DACL, owner and
   inheritance are byte-identical before and after a scope, on both the hardlink (same-volume) and
   copy paths; an archive without WRITE_DAC opens. The existing
@@ -4970,7 +4983,131 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
      only after the copy completes, so a failure mid-copy (disk full) leaks the folder; staging
      uses `CancellationToken.None`, so Ctrl+C does not interrupt it; `x -so` leaves decrypted
      plaintext in `%TEMP%` if the process dies.
+  5. (T-F226 batch 2) `SandboxedProcessLauncher.cs:30-38`, `:81`: the stdout/stderr pipes are
+     created inheritable and `CreateProcessW` runs with `bInheritHandles: true` but no
+     `PROC_THREAD_ATTRIBUTE_HANDLE_LIST` and without the lock .NET's own `Process.Start` takes
+     around the same window — two concurrent launches (two scopes, as T-F175's test does, or an
+     unsandboxed `Process.Start` of tar for creation) can each inherit the other's pipe write ends,
+     including into the AppContainer child, and a reader then waits for EOF until the other child
+     exits (hypothesis, not reproduced).
 - **Reported by:** T-F226 review, 2026-09-24.
+
+### T-F245 — Cancelling a tar-family extraction reports success, so "Delete after operation" deletes the archive (P0)
+
+- [ ] **Status:** open — Core behavior confirmed 2026-09-25 with a scratch probe calling
+  `TarSandboxedService.ExtractAsync` directly on a 600 MB `.tar.bz2` (bomb prompt answered yes):
+  no cancel -> `Success=True created=1` after 10.7 s; cancel at 1.5 s / 4 s / 8 s -> returns
+  promptly (tar.exe is killed, no process left) with **`Success=True errors=0 skipped=0
+  created=0`**. The same probe on a 400 MB ZIP cancelled at 0.3 s throws
+  `TaskCanceledException` instead. Cause: `TarSandboxedService.ExtractOneArchiveAsync` turns an
+  `OperationCanceledException` into `return true` (`TarSandboxedService.cs:223-225`), the loop
+  breaks (`:107-116`) and the result is built as `Success = errors.Count == 0` (`:118-120`).
+  The same probe through `ExtractionRouter.ExtractAsync` (the path the App uses) returns the same
+  `Success=True created=0` at 1.56 s — the router merges results without checking cancellation
+  (`ExtractionRouter.cs:40-66`); in a mixed zip+tar selection the finished ZIP part is then
+  deletable as well. Consequence in the App (only the last step, the `:653` condition, is not
+  exercised on device — it deletes a file): `RunExtractAsync` only catches `OperationCanceledException` (`MainViewModel.cs:677`), so a
+  cancelled tar extraction reaches `if (result.Success && DeleteAfterOperation)`
+  (`MainViewModel.cs:653`) and `RunCleanupAsync` permanently deletes the archive although nothing
+  was extracted; with several archives selected, the ones never started are deleted too
+  (`GetDeletableSources`, `:1237-1241`, only excludes skipped paths — same gap as T-F229). The
+  status line then says "done, 0 files" instead of "Cancelled". The CLI is not affected (it checks
+  its own token, `Archiver.CLI/Program.cs:102`). Sibling: tar `CompressAsync` in
+  `SeparateArchives` mode breaks out of its loop on a cancel observed between two sources
+  (`TarSandboxedService.cs:1036-1037`) and also returns `Success=true`, so `MainViewModel.cs:550`
+  would delete sources that were never archived (narrow window: the in-flight tar call rethrows,
+  `:1133-1136`).
+  Fix direction: one cancellation contract for both engines (throw, as ZIP does), and delete only
+  sources that appear in `CreatedFiles`.
+- **Tests first:** cancel an in-flight tar extraction and a multi-archive tar extraction -> the
+  call throws (or reports cancellation) and no source is deletable; the existing T-F169 tests only
+  assert "no unhandled exception" and pass today.
+- **Reported by:** T-F226 batch 2, 2026-09-25.
+
+### T-F246 — ZIP extraction never checks CRC-32: a corrupted entry is written and reported as success (P0)
+
+- [ ] **Status:** open — confirmed 2026-09-25. `pakko a c.zip doc.txt -mx=0`, flip one byte
+  inside the stored data: `pakko t bad.zip` -> `Entry 'doc.txt' failed CRC-32 check (expected
+  FFF2F885, got E6BC4A3F)`, exit 2; `pakko x bad.zip` -> exit 0, `doc.txt` written and differs from
+  the original; `7za x` -> `ERROR: CRC Failed : doc.txt`. `TestAsync` computes CRC-32 itself
+  (`ZipArchiveService.cs:1026-1075`), but extraction only copies the stream
+  (`ZipArchiveService.cs:1610`, `:1623`) and .NET 8's `ZipArchiveEntry.Open()` does not validate
+  CRC on read. Same root, second shape: an entry whose declared uncompressed size is smaller than
+  its data is silently truncated to the declared size (`under10.zip`: 10 bytes written, exit 0).
+  Every frontend is affected (App, Shell, CLI, preview, nested drill-in); with "Delete after
+  operation" the archive is then deleted after a corrupt extraction. Silent data corruption, for
+  an audience that relies on the archive's integrity.
+  Fix direction: verify CRC-32 while copying (the pipeline already streams every byte through
+  `ProgressStream`), record a mismatch as an `ArchiveError` for that entry and do not commit it —
+  as `TestAsync` already does. AE-2 entries have no header CRC (HMAC is the authority) — keep that
+  exception. ZipCrypto entries are already CRC-checked on extraction (`SECURITY.md:338-339`), so
+  today only the unencrypted majority is unchecked.
+  **Design premise that turned out false:** the SHA-256 integrity manifest was removed as
+  "redundant with ZIP built-in CRC-32" (`docs/TASKS_DONE.md:204-205`, repeated in `CLAUDE.md`'s
+  Current State) — that is only true if extraction checks the CRC, which it does not.
+- **Tests first:** Error path — a one-byte-corrupted stored entry and a deflated entry with a
+  wrong CRC both fail extraction with a clear per-entry error, and the file is not left in the
+  destination; Security & Boundary — understated uncompressed size.
+- **Reported by:** T-F226 batch 2, 2026-09-25.
+
+### T-F247 — "Scan for threats" crashes on any archive that contains an empty file (P1)
+
+- [ ] **Status:** open — confirmed 2026-09-25. A plain ZIP made by `pakko a` from `a.txt` +
+  a zero-byte `empty.txt`, and a plain `tar -cf` of the same two files: `AntivirusScanService.
+  ScanAsync` throws `System.InvalidOperationException: AmsiScanBuffer failed (HRESULT 0x80070057)`
+  for both. `AmsiScanBuffer` rejects a zero-length buffer with `E_INVALIDARG`; `AmsiScanner`
+  turns every failing HRESULT into an exception (`Antivirus/AmsiScanner.cs:63-64`), and neither
+  per-entry catch filter includes `InvalidOperationException` (`AntivirusScanService.cs:291`,
+  `:570`). **On device** (installed CI MSIX 1.4.12.9): `Archiver.Shell.exe --scan withempty.zip`
+  (the Explorer "Scan for threats" command) exits `0xE0434352` after the progress dialog, with no
+  message to the user — only an `Application Error` / `.NET Runtime` event naming
+  `AmsiScanBuffer failed`. The App path lands in the generic `catch (Exception)` and shows the raw
+  message in an "Error" dialog (`MainViewModel.cs:1146-1149`). Empty files are common in real
+  archives, so the feature fails on ordinary input. Violates the "methods never throw" contract;
+  T-F177/T-F186 tested the size cap and a real EICAR but not the zero-length boundary.
+  Fix direction: a zero-length entry is trivially clean (nothing to scan) or skipped before the
+  AMSI call; a per-entry AMSI failure becomes an `Inconclusive` finding, never an exception.
+- **Tests first:** Boundary — a zero-byte entry in ZIP and tar yields a normal result; Error path
+  — a fake scanner that fails one entry yields `Inconclusive` for that entry and the rest scanned.
+- **Reported by:** T-F226 batch 2, 2026-09-25.
+
+### T-F248 — Read-only archives leave a hardlink to the user's archive in %TEMP% after every tar-family operation (P1)
+
+- [ ] **Status:** open — confirmed 2026-09-25. `tar -cf r.tar a.txt`, `attrib +R r.tar`, then
+  `pakko l r.tar` and `pakko x r.tar`: both succeed, and each leaves
+  `%TEMP%\PakkoTarSandbox\<guid>\in\r.tar` behind (`fsutil hardlink list` shows the original plus
+  two extra links). A hardlink shares the read-only attribute, and `Directory.Delete(recursive:
+  true)` does not delete read-only files, so the cleanup fails and the failure is swallowed
+  (`TarSandboxScope.cs:132`, `:175`). Every list, browse, extract, test and scan of a read-only
+  archive adds one more (files copied from CDs/ISOs, or extracted from other archives, are often
+  read-only). Consequences: when the user later deletes the archive, its data stays on disk
+  through the hidden link — a privacy problem for this project's audience; and when the archive
+  is on another volume, staging copies it (`QuarantineStaging.cs:34`, `File.Copy` keeps the
+  attribute), so each operation leaks a full-size copy. Related to T-F233 (the same hardlink
+  staging); a fix that switches staging to copying makes this leak larger unless cleanup handles
+  the attribute. Fix direction: on the copy path, clearing the attribute before deleting is fine;
+  on the hardlink path it is **not** — the link is the user's file object, so clearing read-only
+  there clears it on the original (T-F233's mistake with another attribute). Delete the link with
+  `SetFileInformationByHandle(FileDispositionInfoEx, FILE_DISPOSITION_FLAG_IGNORE_READONLY_ATTRIBUTE)`,
+  or stop hardlinking (T-F233).
+- **Tests first:** Recovery — after a scope over a read-only archive (hardlink and copy paths) the
+  quarantine root is gone and the original keeps its attribute and link count.
+- **Reported by:** T-F226 batch 2, 2026-09-25.
+
+### T-F249 — RAR encryption checks read the whole archive into memory (P2)
+
+- [ ] **Status:** open — confirmed 2026-09-25. `ArchiveFormatDetector.IsRarHeaderEncrypted` and
+  `IsEncryptedRar` call `File.ReadAllBytes(path)` (`ArchiveFormatDetector.cs:122`, `:155`) to
+  parse a header that sits in the first few hundred bytes. A 1.5 GB file starting with the RAR5
+  signature: `pakko x` peaks at 1531 MB working set and `pakko l` at 1530 MB. Called from
+  extraction and listing (`TarSandboxedService.cs:136`, `:163`, `:823`, `:869`, `:1448`), so the
+  App's browse mode pays it too. Above 2 GB `ReadAllBytes` throws, the catch-all returns
+  `false`, and the fast-path diagnostic silently stops working. `ReadVInt` (`:230-243`) has no
+  bound on `pos` or `shift`; safety relies on the catch-all, not on the line (global rule on
+  bounds provable from the line).
+- **Tests first:** Boundary — a large RAR5-signature file is classified without reading more than
+  a fixed header window; a truncated vint returns false.
+- **Reported by:** T-F226 batch 2, 2026-09-25.
 
 ### T-F223 — Diagram gap from T-F193 (P2)
 
