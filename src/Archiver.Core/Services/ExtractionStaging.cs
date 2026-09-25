@@ -75,6 +75,10 @@ internal sealed class ExtractionStaging : IDisposable
             }
         }
 
+        // T-F197: folders first, so an empty one arrives too.
+        foreach (string folder in Directory.EnumerateDirectories(Path, "*", SearchOption.AllDirectories).ToList())
+            Directory.CreateDirectory(System.IO.Path.Combine(actualDest, System.IO.Path.GetRelativePath(Path, folder)));
+
         var lockedRelativePaths = new List<string>();
         foreach (string file in Directory.EnumerateFiles(Path, "*", SearchOption.AllDirectories).ToList())
         {

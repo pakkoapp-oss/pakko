@@ -4222,6 +4222,13 @@ regression from this task, which owns reliability only.
 
 ### T-F197 — ZIP extraction drops empty folders
 
+- **Progress (2026-09-25, fix phase 2):** ZIP folder entries now go through the same unsafe-path,
+  name and reparse-point checks and are created in staging; `ExtractionStaging.CommitInto` carries
+  folders across on the merge path too. Tar creates folder entries from the pre-scanned names after
+  the move phase. Both engines count folder entries as roots, so `a.txt` + `empty/` is MultiRoot
+  (no longer the T-F154 single-file unwrap — intended). The on-disk assertion in
+  `ZipArchiveServiceEncryptTests` is restored. Device check pending (phase end).
+
 - [ ] **Status:** open — found 2026-09-24 while writing T-F193 phase 2's round-trip tests;
   pre-existing and unrelated to encryption. Pakko writes an empty folder as a `name/` entry
   (T-F66), but extracting that archive back leaves no folder on disk. Reproduced with a plain,

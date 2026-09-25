@@ -312,6 +312,9 @@ public sealed class TarSandboxedService : ITarService
         // root-shape decision must see the same names — otherwise "." reads as one shared root
         // folder, and the move phase strips a real path segment (or silently drops a root file).
         var fileNames = allNames.Where(n => !n.EndsWith('/')).Select(StripLeadingDotSlash).ToList();
+        // T-F197: folder entries count as roots too ("a.txt" + "empty/" is two roots). A bare
+        // "./" member names the archive's own top level, not a root.
+        var rootNames = allNames.Select(StripLeadingDotSlash).Where(n => n.Length > 0).ToList();
 
         // T-F142: the exact set of names that will actually be passed to "-xf" (computed once
         // here, reused below both for the tar.exe argument list and for the progress byte total)
@@ -325,14 +328,14 @@ public sealed class TarSandboxedService : ITarService
             : declaredUncompressedSize;
 
         bool isSingleRootFolder = !isSelectedSubset
-            && fileNames.Count > 0
-            && fileNames.All(n => n.Contains('/'))
-            && fileNames
+            && rootNames.Count > 0
+            && rootNames.All(n => n.Contains('/'))
+            && rootNames
                 .Select(n => n[..n.IndexOf('/')])
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .Count() == 1;
 
-        bool isSingleRootFile = !isSelectedSubset && fileNames.Count == 1 && !fileNames[0].Contains('/');
+        bool isSingleRootFile = !isSelectedSubset && rootNames.Count == 1 && !rootNames[0].Contains('/');
 
         // T-F157: mirrors ZipArchiveService.ExtractWithSmartFolderingAsync exactly — the
         // actualDest/StripRootPrefix decision (T-F154's single-file unwrap, T-F156's multi-root-in-
@@ -342,7 +345,7 @@ public sealed class TarSandboxedService : ITarService
         // entry.
         var rootShape = ExtractionDestinationPlanner.Classify(isSelectedSubset, isSingleRootFolder, isSingleRootFile);
         bool rootDuplicatesArchiveName = context.EliminateDuplicateRootFolder && isSingleRootFolder
-            && ExtractionDestinationPlanner.RootDuplicatesArchiveName(fileNames[0][..fileNames[0].IndexOf('/')], archivePath);
+            && ExtractionDestinationPlanner.RootDuplicatesArchiveName(rootNames[0][..rootNames[0].IndexOf('/')], archivePath);
         var (actualDest, stripRootPrefix) = ExtractionDestinationPlanner.Resolve(
             alreadyIsolated, rootShape, destDir, unisolatedDestDir, rootDuplicatesArchiveName);
 
@@ -468,6 +471,8 @@ public sealed class TarSandboxedService : ITarService
             }
         }
 
+        CreateFolderEntries((IEnumerable<string>?)expandedSelection ?? allNames, stripRootPrefix, actualDest);
+
         // T-F87: every extracted file was individually skipped (already existed at the
         // destination) — nothing was actually written, so the caller must not count this
         // archive as CreatedFiles (that list gates whether DeleteAfterOperation may delete
@@ -485,6 +490,27 @@ public sealed class TarSandboxedService : ITarService
 
         progress?.Report(new ProgressReport { Percent = 100, BytesTransferred = progressTotalBytes, TotalBytes = progressTotalBytes });
         return (actualDest, true);
+    }
+
+    // T-F197: the move phase walks files only, so folder entries are created here — from the
+    // names the pre-scan already validated (no "..", rooted, ADS or reserved names), with the
+    // same root strip the files get. Moving files first means a folder that also holds files
+    // already exists; only the empty ones are new.
+    private static void CreateFolderEntries(IEnumerable<string> names, bool stripRootPrefix, string actualDest)
+    {
+        foreach (string name in names)
+        {
+            if (!name.EndsWith('/'))
+                continue;
+            string relative = StripLeadingDotSlash(name).TrimEnd('/').Replace('/', Path.DirectorySeparatorChar);
+            if (stripRootPrefix)
+            {
+                int sep = relative.IndexOf(Path.DirectorySeparatorChar);
+                relative = sep < 0 ? string.Empty : relative[(sep + 1)..];
+            }
+            if (relative.Length > 0)
+                Directory.CreateDirectory(Path.Combine(actualDest, relative));
+        }
     }
 
     // The plumbing every call to ExtractSingleArchiveAsync shares, cut from that method's own

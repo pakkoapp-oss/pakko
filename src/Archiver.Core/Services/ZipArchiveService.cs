@@ -1266,6 +1266,9 @@ public sealed class ZipArchiveService : IArchiveService
         var allFileEntries = archive.Entries
             .Where(e => !e.FullName.EndsWith('/'))
             .ToList();
+        // T-F197: folder entries ("name/") are extracted too — an empty folder has nothing else
+        // that would bring it back.
+        var allEntries = archive.Entries.ToList();
 
         // T-F05: restrict to just the selected entries (plus anything nested under a selected
         // folder path) before any of the smart-foldering logic below runs. O(entries × selected)
@@ -1274,17 +1277,17 @@ public sealed class ZipArchiveService : IArchiveService
         // below deliberately still evaluates allFileEntries (the whole archive), not this subset —
         // see DECISIONS.md's T-F05 entry for why (conservative: may over-warn, never under-warns).
         bool isSelectedSubset = selectedEntryPaths is { Count: > 0 };
-        var fileEntries = allFileEntries;
+        var entries = allEntries;
         if (isSelectedSubset)
         {
             var selectedSet = new HashSet<string>(selectedEntryPaths!, StringComparer.Ordinal);
-            fileEntries = allFileEntries
+            entries = allEntries
                 .Where(e => selectedSet.Contains(e.FullName)
                          || selectedSet.Any(s => e.FullName.StartsWith(s + "/", StringComparison.Ordinal)))
                 .ToList();
         }
 
-        if (fileEntries.Count == 0)
+        if (entries.Count == 0)
         {
             Directory.CreateDirectory(destDir);
             return (destDir, true);
@@ -1293,15 +1296,16 @@ public sealed class ZipArchiveService : IArchiveService
         // A selected subset has no single meaningful "root" to collapse — it may span multiple
         // top-level folders/files depending on what the user checked. Skip the whole-archive
         // smart-foldering decision entirely and always extract straight into destDir.
+        // T-F197: folder entries count as roots too ("a.txt" + "empty/" is two roots).
         bool isSingleRootFolder = !isSelectedSubset
-            && fileEntries.All(e => e.FullName.Contains('/'))
-            && fileEntries
+            && entries.All(e => e.FullName.Contains('/'))
+            && entries
                 .Select(e => e.FullName[..e.FullName.IndexOf('/')])
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .Count() == 1;
 
         bool isSingleRootFile = !isSelectedSubset
-            && fileEntries.Count == 1 && !fileEntries[0].FullName.Contains('/');
+            && entries.Count == 1 && !entries[0].FullName.Contains('/');
 
         // T-F157: the actualDest/StripRootPrefix decision (T-F154's single-file unwrap, T-F156's
         // multi-root-in-SingleFolder-mode fix, and the pre-existing isSingleRootFolder strip) now
@@ -1311,7 +1315,7 @@ public sealed class ZipArchiveService : IArchiveService
         var rootShape = ExtractionDestinationPlanner.Classify(isSelectedSubset, isSingleRootFolder, isSingleRootFile);
         bool rootDuplicatesArchiveName = context.EliminateDuplicateRootFolder && isSingleRootFolder
             && ExtractionDestinationPlanner.RootDuplicatesArchiveName(
-                fileEntries[0].FullName[..fileEntries[0].FullName.IndexOf('/')], archivePath);
+                entries[0].FullName[..entries[0].FullName.IndexOf('/')], archivePath);
         var (actualDest, stripRootPrefix) = ExtractionDestinationPlanner.Resolve(
             alreadyIsolated, rootShape, destDir, unisolatedDestDir, rootDuplicatesArchiveName);
 
@@ -1377,7 +1381,7 @@ public sealed class ZipArchiveService : IArchiveService
 
         // T-F161: `staging` is disposed on ANY exit, including a failure or cancellation partway
         // through — a leftover staging folder never stays on a real destination.
-        foreach (var entry in fileEntries)
+        foreach (var entry in entries)
         {
             // T-F260: throw — a `break` here committed the entries extracted so far as if the
             // archive were finished.
@@ -1476,16 +1480,20 @@ public sealed class ZipArchiveService : IArchiveService
 
         string relativePath = entry.FullName.Replace('/', Path.DirectorySeparatorChar);
 
+        bool isFolder = entry.FullName.EndsWith('/');
+
         if (plan.StripRootPrefix)
         {
             var sep = relativePath.IndexOf(Path.DirectorySeparatorChar);
             relativePath = relativePath[(sep + 1)..];
+            // The stripped root folder itself: actualDest stands in for it.
             if (string.IsNullOrEmpty(relativePath))
-                return (false, entry.Length);
+                return (isFolder, entry.Length);
         }
 
         // T-F38/T-F39: Reject ADS-marked, reserved-name, or control-character entry names
-        string? nameRejectionReason = GetEntryNameRejectionReason(entry.FullName);
+        // (a folder entry's trailing '/' would hide its last segment from the reserved-name check)
+        string? nameRejectionReason = GetEntryNameRejectionReason(entry.FullName.TrimEnd('/'));
         if (nameRejectionReason != null)
         {
             context.SkippedFiles.Add(new SkippedFile { Path = entry.FullName, Reason = nameRejectionReason });
@@ -1494,6 +1502,8 @@ public sealed class ZipArchiveService : IArchiveService
 
         try
         {
+            if (isFolder)
+                return (TryCreateFolderEntry(entry, relativePath, plan, context), entry.Length);
             return await WriteEntryAsync(entry, relativePath, archivePath, bytesReadSoFar, plan, context, cancellationToken)
                 .ConfigureAwait(false);
         }
@@ -1516,6 +1526,30 @@ public sealed class ZipArchiveService : IArchiveService
             });
             return (false, entry.Length);
         }
+    }
+
+    // T-F197: a folder entry gets the same containment and reparse-point checks as a file entry,
+    // then is created in staging; the commit carries it across even when it stays empty.
+    private static bool TryCreateFolderEntry(
+        ZipArchiveEntry entry, string relativePath, ExtractionPlan plan, ZipExtractionContext context)
+    {
+        string folder = Path.TrimEndingDirectorySeparator(Path.GetFullPath(Path.Combine(plan.TempDest, relativePath)));
+
+        if (!folder.StartsWith(plan.FullTempDest, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException($"ZIP entry '{entry.FullName}' would extract outside destination directory.");
+
+        if (ArchiveEntrySecurity.PathContainsReparsePoint(folder, plan.FullTempDest))
+        {
+            context.SkippedFiles.Add(new SkippedFile
+            {
+                Path = entry.FullName,
+                Reason = "Entry path traverses a reparse point (symlink or junction) and was skipped."
+            });
+            return false;
+        }
+
+        Directory.CreateDirectory(folder);
+        return true;
     }
 
     // The write half of one entry: staging path, reparse-point check, conflict resolution, copy.

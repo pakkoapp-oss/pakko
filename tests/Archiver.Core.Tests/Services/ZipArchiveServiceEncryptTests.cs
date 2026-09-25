@@ -125,9 +125,8 @@ public sealed class ZipArchiveServiceEncryptTests : IDisposable
         string extracted = Path.Combine(await ExtractAsync(archive, Password), Path.GetFileName(src));
         File.ReadAllText(Path.Combine(extracted, "a.txt")).Should().Be(File.ReadAllText(Path.Combine(src, "a.txt")));
         File.ReadAllText(Path.Combine(extracted, "sub", "b.txt")).Should().Be("bravo");
-        // Checked on the archive, not on disk: extraction currently drops empty folders for
-        // every ZIP, encrypted or not (T-F197).
         EntryNames(archive).Should().Contain("src/empty/");
+        Directory.Exists(Path.Combine(extracted, "empty")).Should().BeTrue("T-F197: empty folders survive extraction");
     }
 
     [Theory]
