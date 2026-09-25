@@ -139,6 +139,8 @@ either. TAR-family formats (read and create) use the same `tar.exe` process.
 | tar.exe symlink entries escape a naive quarantine (confirmed exploit, T-F49) | High | Mitigated (T-F49, v1.3) — whole-archive pre-scan via `tar -tf`/`-tvf` rejects any archive containing a symlink/hardlink/device entry or a traversal/ADS/reserved name before `-xf` ever runs; see `DECISIONS.md`'s T-F49 entry |
 | Recursive decompression bomb via nested archives (an archive inside an archive inside an archive, multiplying expansion per level) | Medium | Mitigated (T-F98, v1.4) — Archive Browser drill-down into a nested archive is capped at 4 levels deep, and every level independently re-runs the same whole-archive pre-scan (T-F49) and compression-ratio + disk-space check (T-F90/T-F94) a normal extraction would — no shortcut or inherited "already checked" state from an outer level; see `DECISIONS.md`'s T-F98 entry |
 | Native decompression 0-day in the ZIP path (a memory-corruption bug in the native zlib-derived code `System.IO.Compression`'s `DeflateStream` calls across its managed→native boundary, triggered by a maliciously malformed compression stream — e.g. corrupted Huffman tables) | Low (theoretical) | **Accepted risk, not sandboxed.** Unlike tar-family extraction (AppContainer, T-F52), ZIP handling runs unsandboxed in-process by design — see "No format parsers beyond ZIP" above. Successful exploitation would execute with the app's own user-level privileges; no isolation boundary catches it. The only mitigation is indirect: Microsoft's MSRC CVE process on `dotnet/runtime`, the same trust basis this project already extends to `System.IO.Compression` generally. Sandboxing the ZIP path the same way as tar.exe is a real, undone option — not pursued, since it would add real overhead (cross-process marshaling for the common case) against a threat class with no track record against this specific code path so far. Revisit if that changes. |
+| Opening a tar-family archive changed that file's permissions (versions before fix phase 4) | High | Fixed (T-F233, fix phase 4) — tar.exe now reads the archive only as a handle Pakko opens itself; the sandbox gets no permission entry on the user's file. Older versions added an entry for the sandbox and replaced the entries the file inherited from its folder, which could remove other users' access on a shared folder. See "Advisory: Permissions Changed by Earlier Versions" below. |
+| Command-line option injection into tar.exe through a crafted file name ("WorstFit" best-fit mapping, e.g. U+FF02 becoming `"`) | High | Fixed (T-F266, fix phase 4) — every string passed to tar.exe must convert to the ANSI code page exactly (`WC_NO_BEST_FIT_CHARS`, no default character, exact round trip); a name that does not is refused before tar.exe runs, with a message pointing to ZIP. Archive creation is unsandboxed, so before this fix a selected file named this way could add tar options. |
 | Microsoft as trust anchor | Low-Medium | Accepted tradeoff for the target audience; .NET is open source and auditable |
 
 ---
@@ -276,10 +278,11 @@ trusted local files. The Authenticode signature check (above) still runs before 
 launch regardless of direction — cheap, and not specific to the extraction threat model — but
 `CompressAsync` gets no `TarSandboxScope`/quarantine/AppContainer/Job-Object machinery.
 
-If a future task ever wants defense-in-depth on the creation path anyway (e.g. against a
-maliciously-named source file tripping a hypothetical libarchive *writer*-side bug), that would be
-a new, separate decision with its own cost/benefit case — not an extension of T-F52's threat
-model, which is specifically about parsing untrusted archive bytes.
+The "maliciously-named source file" case this section once called hypothetical was real, but
+through the command line, not libarchive's writer: tar.exe converts its command line with
+best-fit mapping, and a file name with fullwidth quotes could add options (T-F266). It is closed by
+validating every argument (see the risk table), not by sandboxing creation; running creation in
+the sandbox stays a separate, open decision.
 
 ### Trust Chain
 
@@ -294,9 +297,23 @@ This is the same trust chain as `System.IO.Compression` via the .NET runtime —
 | Version | Isolation | Method |
 |---------|-----------|--------|
 | v1.3 | Medium IL | tar.exe inherits Pakko process token |
-| v1.4 | AppContainer | P/Invoke `CreateAppContainerProfile` + `PROC_THREAD_ATTRIBUTE_SECURITY_CAPABILITIES` (empty capability list — no network); quarantine directory ACL'd to the AppContainer SID via `SetNamedSecurityInfo`; Job Object (`ActiveProcessLimit = 1`, RAM/CPU limits). Chosen over a Low-IL restricted token because network isolation falls out of the empty capability list for free — no global firewall rule needed (see T-F52 in `TASKS_DONE.md`/`DECISIONS.md`) |
+| v1.4 | AppContainer | P/Invoke `CreateAppContainerProfile` + `PROC_THREAD_ATTRIBUTE_SECURITY_CAPABILITIES` (empty capability list — no network) + `PROC_THREAD_ATTRIBUTE_HANDLE_LIST` (the child inherits only its own stdin and pipes); the archive is passed as an inherited read-only handle, held open for the whole operation so it cannot change between the pre-scan and extraction; only Pakko's own quarantine folder is ACL'd to the AppContainer SID; Job Object (`ActiveProcessLimit = 1`, memory = half the machine's memory within 1–4 GiB, CPU time = at least 60 minutes plus one per 10 MB of archive). Chosen over a Low-IL restricted token because network isolation falls out of the empty capability list for free — no global firewall rule needed (see T-F52 in `TASKS_DONE.md`/`DECISIONS.md`) |
 
 In both cases: extraction goes to a staging directory, all output files are validated (ADS, reserved names, reparse points), then atomically moved to final destination. The staging-directory walk alone is **not** sufficient — a symlink entry can cause tar.exe to write outside the staging directory before any C# code inspects it, confirmed empirically in T-F49 (see `DECISIONS.md`). The primary defense is a whole-archive pre-scan (`tar -tf`/`-tvf`) that rejects any archive containing a symlink/hardlink/device entry or a traversal/rooted/ADS/reserved name before extraction ever runs. The same pre-scan also sums each entry's declared uncompressed size (from `-tvf`'s size column); if that total exceeds 1000x the compressed file's size on disk, extraction is blocked unless the destination has free space for the declared size AND the user explicitly confirms — the same shared evaluator (`ArchiveEntrySecurity.EvaluateCompressionBombAsync`) and confirm-if-it-fits model ZIP uses, computed once for the whole archive since tar-family compression wraps the entire stream rather than each entry independently (T-F94, v1.3; see `DECISIONS.md`'s T-F94 entry — supersedes T-F90's original auto-reject-only version).
+
+### Advisory: Permissions Changed by Earlier Versions (T-F233)
+
+Pakko versions before fix phase 4 staged a tar-family archive (.tar, .gz, .7z, .rar, ...) for the
+sandbox by hardlinking it into `%TEMP%`, then granted the sandbox access to that link. A hardlink is
+the same file, so each list, browse, extract, test or scan of such an archive:
+- added an entry for Pakko's sandbox (an `S-1-15-2-...` AppContainer SID) to the archive itself, and
+- replaced the permissions the archive inherited from its folder with those of the temporary folder —
+  on a shared folder, other people could lose access to that file.
+
+Nothing is repaired automatically. `scripts/Find-PakkoSandboxAce.ps1` lists affected files
+(read-only); `scripts/Repair-PakkoSandboxAce.ps1 -Path <file>` saves the current permissions with
+`icacls /save`, removes only Pakko's entries and makes the file inherit from its real folder again.
+Entries set explicitly for anyone else are kept.
 
 ### Encrypted-Archive Diagnostics (7z/RAR, T-F113)
 
