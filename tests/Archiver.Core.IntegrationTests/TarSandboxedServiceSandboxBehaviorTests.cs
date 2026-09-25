@@ -31,7 +31,6 @@ public sealed class TarSandboxedServiceSandboxBehaviorTests
         {
             profile.EnsureExists();
             using var sid = profile.GetSid();
-            using var securityCapabilities = SecurityCapabilitiesAttributeList.Create(sid);
 
             string neverAcldDir = Path.Combine(Path.GetTempPath(), "PakkoSandboxBehaviorTest_" + Guid.NewGuid());
             Directory.CreateDirectory(neverAcldDir);
@@ -42,8 +41,7 @@ public sealed class TarSandboxedServiceSandboxBehaviorTests
                 var (exitCode, _, stdErr) = await SandboxedProcessLauncher.RunAsync(
                     CmdExecutablePath,
                     ["/c", "echo blocked > " + targetFile],
-                    securityCapabilities.AttributeList,
-                    jobObject: null,
+                    new ProcessLaunchOptions(AppContainerSid: sid),
                     CancellationToken.None);
 
                 exitCode.Should().NotBe(0);
@@ -72,8 +70,7 @@ public sealed class TarSandboxedServiceSandboxBehaviorTests
         var (_, stdOut, _) = await SandboxedProcessLauncher.RunAsync(
             CmdExecutablePath,
             ["/c", "cmd /c \"exit 0\" && echo CHILD_COMPLETED"],
-            attributeList: null,
-            job.Handle,
+            new ProcessLaunchOptions(Job: job.Handle),
             CancellationToken.None);
 
         // The nested cmd.exe is a second active process under the same job — either its
@@ -133,13 +130,11 @@ public sealed class TarSandboxedServiceSandboxBehaviorTests
         {
             profile.EnsureExists();
             using var sid = profile.GetSid();
-            using var securityCapabilities = SecurityCapabilitiesAttributeList.Create(sid);
 
             var (sandboxedExitCode, _, _) = await SandboxedProcessLauncher.RunAsync(
                 CurlExecutablePath,
                 ["-s", "-m", "3", $"http://127.0.0.1:{port}/"],
-                securityCapabilities.AttributeList,
-                jobObject: null,
+                new ProcessLaunchOptions(AppContainerSid: sid),
                 CancellationToken.None);
 
             sandboxedExitCode.Should().NotBe(0,
@@ -150,8 +145,7 @@ public sealed class TarSandboxedServiceSandboxBehaviorTests
             var (unsandboxedExitCode, _, _) = await SandboxedProcessLauncher.RunAsync(
                 CurlExecutablePath,
                 ["-s", "-m", "3", $"http://127.0.0.1:{port}/"],
-                attributeList: null,
-                jobObject: null,
+                new ProcessLaunchOptions(),
                 CancellationToken.None);
 
             unsandboxedExitCode.Should().Be(0);

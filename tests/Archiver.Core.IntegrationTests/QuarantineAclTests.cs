@@ -28,7 +28,6 @@ public sealed class QuarantineAclTests : IDisposable
     {
         _profile.EnsureExists();
         using var sid = _profile.GetSid();
-        using var securityCapabilities = SecurityCapabilitiesAttributeList.Create(sid);
 
         string inDir = Path.Combine(_temp.Path, "in");
         string outDir = Path.Combine(_temp.Path, "out");
@@ -47,8 +46,7 @@ public sealed class QuarantineAclTests : IDisposable
         var (exitCode, _, stdErr) = await SandboxedProcessLauncher.RunAsync(
             TarExecutablePath,
             ["-xf", archivePath, "-C", outDir],
-            securityCapabilities.AttributeList,
-            jobObject: null,
+            new ProcessLaunchOptions(AppContainerSid: sid),
             CancellationToken.None);
 
         exitCode.Should().Be(0, because: stdErr);
@@ -64,7 +62,6 @@ public sealed class QuarantineAclTests : IDisposable
         // created it and can read/write it freely itself.
         _profile.EnsureExists();
         using var sid = _profile.GetSid();
-        using var securityCapabilities = SecurityCapabilitiesAttributeList.Create(sid);
 
         string inDir = Path.Combine(_temp.Path, "in_negative");
         string neverAcldOutDir = Path.Combine(_temp.Path, "out_never_acld");
@@ -81,8 +78,7 @@ public sealed class QuarantineAclTests : IDisposable
         var (exitCode, _, stdErr) = await SandboxedProcessLauncher.RunAsync(
             TarExecutablePath,
             ["-xf", archivePath, "-C", neverAcldOutDir],
-            securityCapabilities.AttributeList,
-            jobObject: null,
+            new ProcessLaunchOptions(AppContainerSid: sid),
             CancellationToken.None);
 
         exitCode.Should().NotBe(0);
@@ -105,7 +101,6 @@ public sealed class QuarantineAclTests : IDisposable
     {
         _profile.EnsureExists();
         using var sid = _profile.GetSid();
-        using var securityCapabilities = SecurityCapabilitiesAttributeList.Create(sid);
 
         string sharedParent = Path.Combine(_temp.Path, "PakkoTarSandbox");
         Directory.CreateDirectory(sharedParent);
@@ -131,8 +126,7 @@ public sealed class QuarantineAclTests : IDisposable
         var (exitCode, _, stdErr) = await SandboxedProcessLauncher.RunAsync(
             TarExecutablePath,
             ["-xf", archivePath, "-C", outDir],
-            securityCapabilities.AttributeList,
-            jobObject: null,
+            new ProcessLaunchOptions(AppContainerSid: sid),
             CancellationToken.None);
 
         exitCode.Should().Be(0, because: stdErr);

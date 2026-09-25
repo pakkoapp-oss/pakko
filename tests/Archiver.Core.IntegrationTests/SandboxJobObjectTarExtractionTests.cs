@@ -42,8 +42,7 @@ public sealed class SandboxJobObjectTarExtractionTests : IDisposable
         var (exitCode, _, stdErr) = await SandboxedProcessLauncher.RunAsync(
             TarExecutablePath,
             ["-xf", archivePath, "-C", destDir],
-            attributeList: null,
-            job.Handle,
+            new ProcessLaunchOptions(Job: job.Handle),
             CancellationToken.None);
 
         exitCode.Should().Be(0, because: stdErr);

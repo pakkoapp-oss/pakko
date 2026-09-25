@@ -49,34 +49,10 @@ public sealed class TarSandboxedService : ITarService
             if (!TarSignatureVerifier.Verify(tarExecutablePath))
                 return new TarCapabilities();
 
-            var startInfo = new ProcessStartInfo
-            {
-                FileName = tarExecutablePath,
-                Arguments = "--version",
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true,
-            };
-
-            using Process? process = Process.Start(startInfo);
-            if (process is null)
-                return new TarCapabilities();
-
             using var timeoutCts = new CancellationTokenSource(DetectionTimeout);
-
-            try
-            {
-                string output = await process.StandardOutput.ReadToEndAsync(timeoutCts.Token).ConfigureAwait(false);
-                await process.WaitForExitAsync(timeoutCts.Token).ConfigureAwait(false);
-
-                return TarVersionParser.Parse(output);
-            }
-            catch (OperationCanceledException)
-            {
-                process.Kill(entireProcessTree: true);
-                return new TarCapabilities();
-            }
+            var (_, output, _) = await SandboxedProcessLauncher.RunAsync(
+                tarExecutablePath, ["--version"], new ProcessLaunchOptions(), timeoutCts.Token).ConfigureAwait(false);
+            return TarVersionParser.Parse(output);
         }
         catch (Exception)
         {
@@ -1383,60 +1359,18 @@ public sealed class TarSandboxedService : ITarService
     }
 
     // Unsandboxed tar.exe launch for archive CREATION only (see CompressAsync's own comment for
-    // why this is safe to run outside the AppContainer). Mirrors TarSandboxScope.RunAsync's
-    // (exitCode, stdOut, stdErr) shape for consistency, but has no quarantine/ACL/Job-Object
-    // setup — just a plain redirected-IO process launch, the same shape
-    // DetectCapabilitiesAsync above already uses for its own deliberately-unsandboxed probe.
+    // why this is safe to run outside the AppContainer) — no AppContainer, no Job Object, but the
+    // same launcher as every sandboxed run, so the child inherits only its own pipes (T-F244
+    // item 5: a Process.Start child inherited every inheritable handle in this process).
     // onStdErrLine is invoked once per non-empty stderr line as it streams in — tar.exe's "-v"
     // writes each added entry's "a <name>" line to STDERR during creation (confirmed
     // empirically; NOT stdout), so this is how per-entry progress is derived.
-    private static async Task<(int ExitCode, string StdOut, string StdErr)> RunUnsandboxedTarAsync(
+    private static Task<(int ExitCode, string StdOut, string StdErr)> RunUnsandboxedTarAsync(
         IReadOnlyList<string> arguments,
         Action<string>? onStdErrLine,
         CancellationToken cancellationToken)
-    {
-        var startInfo = new ProcessStartInfo
-        {
-            FileName = TarExecutablePath,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true,
-        };
-        foreach (string arg in arguments)
-            startInfo.ArgumentList.Add(arg);
-
-        using Process process = new() { StartInfo = startInfo };
-
-        var stdOutBuilder = new System.Text.StringBuilder();
-        var stdErrBuilder = new System.Text.StringBuilder();
-
-        process.OutputDataReceived += (_, e) => { if (e.Data is not null) stdOutBuilder.AppendLine(e.Data); };
-        process.ErrorDataReceived += (_, e) =>
-        {
-            if (e.Data is null)
-                return;
-            stdErrBuilder.AppendLine(e.Data);
-            if (e.Data.Length > 0)
-                onStdErrLine?.Invoke(e.Data);
-        };
-
-        process.Start();
-        process.BeginOutputReadLine();
-        process.BeginErrorReadLine();
-
-        try
-        {
-            await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
-        }
-        catch (OperationCanceledException)
-        {
-            try { process.Kill(entireProcessTree: true); } catch { /* best-effort */ }
-            throw;
-        }
-
-        return (process.ExitCode, stdOutBuilder.ToString(), stdErrBuilder.ToString());
-    }
+        => SandboxedProcessLauncher.RunAsync(
+            TarExecutablePath, arguments, new ProcessLaunchOptions(OnStdErrLine: onStdErrLine), cancellationToken);
 
     // Column 4 (0-based) of "tar -tvf" output: mode, link-count, owner, group, size, month, day,
     // time, name. Locale-independent (plain ASCII decimal), unlike the date columns — see

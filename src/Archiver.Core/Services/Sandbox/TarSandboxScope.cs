@@ -15,7 +15,6 @@ internal sealed class TarSandboxScope : IDisposable
     private static readonly TimeSpan CpuTimeLimit = TimeSpan.FromMinutes(5);
 
     private readonly SafeSidHandle _sid;
-    private readonly SecurityCapabilitiesAttributeList _securityCapabilities;
     private readonly string _quarantineRoot;
 
     public string StagedArchivePath { get; }
@@ -28,13 +27,11 @@ internal sealed class TarSandboxScope : IDisposable
 
     private TarSandboxScope(
         SafeSidHandle sid,
-        SecurityCapabilitiesAttributeList securityCapabilities,
         string quarantineRoot,
         string stagedArchivePath,
         string? outputDirectory)
     {
         _sid = sid;
-        _securityCapabilities = securityCapabilities;
         _quarantineRoot = quarantineRoot;
         StagedArchivePath = stagedArchivePath;
         OutputDirectory = outputDirectory;
@@ -119,9 +116,7 @@ internal sealed class TarSandboxScope : IDisposable
             // correct for both cases.
             QuarantineAcl.GrantReadExecute(stagedArchivePath, sid);
 
-            SecurityCapabilitiesAttributeList securityCapabilities = SecurityCapabilitiesAttributeList.Create(sid);
-
-            return Task.FromResult(new TarSandboxScope(sid, securityCapabilities, quarantineRoot, stagedArchivePath, outDir));
+            return Task.FromResult(new TarSandboxScope(sid, quarantineRoot, stagedArchivePath, outDir));
         }
         catch (Exception ex)
         {
@@ -161,14 +156,13 @@ internal sealed class TarSandboxScope : IDisposable
         using (job)
         {
             return await SandboxedProcessLauncher.RunAsync(
-                TarExecutablePath, tarArguments, _securityCapabilities.AttributeList, job.Handle, cancellationToken)
+                TarExecutablePath, tarArguments, new ProcessLaunchOptions(AppContainerSid: _sid, Job: job.Handle), cancellationToken)
                 .ConfigureAwait(false);
         }
     }
 
     public void Dispose()
     {
-        _securityCapabilities.Dispose();
         _sid.Dispose();
         // The AppContainer profile itself is never deleted here — it's created once, lazily,
         // and reused for the lifetime of the install (see DECISIONS.md's T-F52 follow-up entry).

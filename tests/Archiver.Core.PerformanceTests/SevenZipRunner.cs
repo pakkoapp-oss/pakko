@@ -99,7 +99,7 @@ public static class SevenZipRunner
 
         var stopwatch = Stopwatch.StartNew();
         (int exitCode, string _, string stdErr) = SandboxedProcessLauncher.RunAsync(
-                ExePath, arguments, attributeList: null, job.Handle, CancellationToken.None)
+                ExePath, arguments, new ProcessLaunchOptions(Job: job.Handle), CancellationToken.None)
             .GetAwaiter().GetResult();
         stopwatch.Stop();
 

@@ -147,10 +147,9 @@ public sealed class ZipSandboxSpikePerformanceTests : IDisposable
 
         Profile.EnsureExists();
         using SafeSidHandle sid = Profile.GetSid();
-        using SecurityCapabilitiesAttributeList caps = SecurityCapabilitiesAttributeList.Create(sid);
 
         var (exitCode, _, _) = await SandboxedProcessLauncher.RunAsync(
-            toolExePath, ["archive", sourceDir, destZip], caps.AttributeList, jobObject: null, CancellationToken.None);
+            toolExePath, ["archive", sourceDir, destZip], new ProcessLaunchOptions(AppContainerSid: sid), CancellationToken.None);
 
         exitCode.Should().NotBe(0);
         File.Exists(destZip).Should().BeFalse();
@@ -210,12 +209,11 @@ public sealed class ZipSandboxSpikePerformanceTests : IDisposable
 
         Profile.EnsureExists();
         using SafeSidHandle sid = Profile.GetSid();
-        using SecurityCapabilitiesAttributeList caps = SecurityCapabilitiesAttributeList.Create(sid);
         using SandboxJobObject job = SandboxJobObject.Create(RamLimitBytes, CpuTimeLimit);
 
         var stopwatch = Stopwatch.StartNew();
         var (exitCode, _, stdErr) = await SandboxedProcessLauncher.RunAsync(
-            toolExePath, [operation, sourcePath, destPath], caps.AttributeList, job.Handle, CancellationToken.None);
+            toolExePath, [operation, sourcePath, destPath], new ProcessLaunchOptions(AppContainerSid: sid, Job: job.Handle), CancellationToken.None);
         stopwatch.Stop();
 
         return new WorkerRunResult(stopwatch.Elapsed, ParseInternalElapsedMs(stdErr), exitCode, stdErr);

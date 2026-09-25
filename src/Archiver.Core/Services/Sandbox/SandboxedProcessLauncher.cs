@@ -5,12 +5,13 @@ using Microsoft.Win32.SafeHandles;
 namespace Archiver.Core.Services.Sandbox;
 
 /// <summary>
-/// Raw CreateProcessW + STARTUPINFOEX launcher — managed Process.Start cannot express
-/// PROC_THREAD_ATTRIBUTE_SECURITY_CAPABILITIES, so every sandboxed tar.exe invocation goes
-/// through here instead of TarProcessService's original Process.Start-based RunTarAsync.
+/// Raw CreateProcessW + STARTUPINFOEX launcher for every tar.exe launch — managed Process.Start
+/// cannot express PROC_THREAD_ATTRIBUTE_SECURITY_CAPABILITIES or PROC_THREAD_ATTRIBUTE_HANDLE_LIST.
 /// Every process is created CREATE_SUSPENDED, optionally assigned to a Job Object, then resumed —
 /// this closes the race where a fast child could otherwise start running (and potentially spawn
-/// its own children) before AssignProcessToJobObject takes effect.
+/// its own children) before AssignProcessToJobObject takes effect. The child inherits exactly its
+/// own stdout/stderr pipe ends and nothing else (T-F244 item 5): with bInheritHandles = TRUE alone
+/// it inherited every inheritable handle in this process, including another launch's pipes.
 /// </summary>
 internal static class SandboxedProcessLauncher
 {
@@ -20,37 +21,59 @@ internal static class SandboxedProcessLauncher
     private const uint EXTENDED_STARTUPINFO_PRESENT = 0x00080000;
     private const uint HANDLE_FLAG_INHERIT = 0x00000001;
 
+    // How long a terminated child gets to actually go away before the call returns anyway.
+    private const uint TerminateWaitMilliseconds = 5000;
+
     public static async Task<(int ExitCode, string StdOut, string StdErr)> RunAsync(
         string fileName,
         IReadOnlyList<string> arguments,
-        SafeProcThreadAttributeListHandle? attributeList,
-        SafeJobObjectHandle? jobObject,
+        ProcessLaunchOptions options,
         CancellationToken cancellationToken)
     {
-        var pipeSecurity = new SECURITY_ATTRIBUTES
+        // T-F244 item 1: each pipe end is owned by a SafeHandle from the moment it exists, so a
+        // failure anywhere below releases every handle created so far.
+        CreateInheritablePipe(out SafeFileHandle stdOutRead, out SafeFileHandle stdOutWrite, "stdout");
+        using (stdOutRead)
+        using (stdOutWrite)
         {
-            nLength = Marshal.SizeOf<SECURITY_ATTRIBUTES>(),
-            lpSecurityDescriptor = IntPtr.Zero,
-            bInheritHandle = true,
-        };
+            CreateInheritablePipe(out SafeFileHandle stdErrRead, out SafeFileHandle stdErrWrite, "stderr");
+            using (stdErrRead)
+            using (stdErrWrite)
+            {
+                PROCESS_INFORMATION processInfo = CreateSuspendedProcess(fileName, arguments, options, stdOutWrite, stdErrWrite);
 
-        CreateInheritablePipe(out IntPtr stdOutRead, out IntPtr stdOutWrite, ref pipeSecurity, "stdout");
-        CreateInheritablePipe(out IntPtr stdErrRead, out IntPtr stdErrWrite, ref pipeSecurity, "stderr");
+                // The child holds its own copies of the write ends now — ours must close, otherwise
+                // the read ends never see EOF (classic pipe-handle-leak deadlock).
+                stdOutWrite.Dispose();
+                stdErrWrite.Dispose();
 
-        var startupInfoEx = new STARTUPINFOEX();
-        // Must be sizeof(STARTUPINFOEX), not sizeof(STARTUPINFO) — CreateProcessW uses this field
-        // to detect the extended struct is present, and a wrong size here is a documented easy
-        // mistake (see TASKS.md's T-F52 design notes).
-        startupInfoEx.StartupInfo.cb = Marshal.SizeOf<STARTUPINFOEX>();
-        startupInfoEx.StartupInfo.dwFlags = STARTF_USESTDHANDLES;
-        startupInfoEx.StartupInfo.hStdOutput = stdOutWrite;
-        startupInfoEx.StartupInfo.hStdError = stdErrWrite;
-        startupInfoEx.StartupInfo.hStdInput = IntPtr.Zero;
+                using var processHandle = new SafeProcessOrThreadHandle(processInfo.hProcess);
+                using var threadHandle = new SafeProcessOrThreadHandle(processInfo.hThread);
+                options.OnProcessStarted?.Invoke(processInfo.dwProcessId);
 
-        uint creationFlags = CREATE_NO_WINDOW | CREATE_SUSPENDED;
-        if (attributeList is not null)
-            creationFlags |= EXTENDED_STARTUPINFO_PRESENT;
+                try
+                {
+                    return await RunCreatedProcessAsync(processHandle, threadHandle, options, stdOutRead, stdErrRead, cancellationToken)
+                        .ConfigureAwait(false);
+                }
+                catch
+                {
+                    // Any failure or a cancel: the child must be gone before this returns — a
+                    // caller then deletes the folders it was writing into (T-F244 item 1).
+                    TerminateAndWait(processHandle);
+                    throw;
+                }
+            }
+        }
+    }
 
+    // CreateProcessW with STARTUPINFOEX: the attribute list (AppContainer + handle list) and every
+    // raw value it holds stay pinned until CreateProcessW has returned (S3869) — the list stores
+    // raw handle/SID values, not SafeHandles the marshaller could pin by itself.
+    private static PROCESS_INFORMATION CreateSuspendedProcess(
+        string fileName, IReadOnlyList<string> arguments, ProcessLaunchOptions options,
+        SafeFileHandle stdOutWrite, SafeFileHandle stdErrWrite)
+    {
         // char[] (not StringBuilder) -- avoids the extra native<->managed StringBuilder marshaling
         // copy CA1838 flags; CreateProcessW's real lpCommandLine is a writable LPWSTR buffer, so
         // this still needs to be a genuinely mutable array, not a string.
@@ -58,108 +81,146 @@ internal static class SandboxedProcessLauncher
         var commandLineBuffer = new char[commandLine.Length + 1];
         commandLine.CopyTo(0, commandLineBuffer, 0, commandLine.Length);
 
-        // attributeList must stay pinned from the moment its raw handle is read into
-        // lpAttributeList through CreateProcessW, the call that actually dereferences it (S3869).
-        // T-F138: this specific read can't be converted to a SafeHandle-typed P/Invoke parameter —
-        // lpAttributeList is a plain IntPtr field inside STARTUPINFOEX, a blittable struct passed
-        // by ref, not a P/Invoke parameter the marshaller can intercept on its own. DangerousAddRef/
-        // Release remains the real (manual) protection for this read.
-        bool attrRefAdded = false;
-        bool created;
-        PROCESS_INFORMATION processInfo;
+        bool outRef = false, errRef = false, sidRef = false;
         try
         {
-            if (attributeList is not null)
-                attributeList.DangerousAddRef(ref attrRefAdded);
-            startupInfoEx.lpAttributeList = attributeList?.DangerousGetHandle() ?? IntPtr.Zero; // NOSONAR: S3869 — struct field, not a P/Invoke parameter; see comment above
+            stdOutWrite.DangerousAddRef(ref outRef);
+            stdErrWrite.DangerousAddRef(ref errRef);
+            options.AppContainerSid?.DangerousAddRef(ref sidRef);
+            IntPtr rawStdOut = stdOutWrite.DangerousGetHandle(); // NOSONAR: S3869 — raw value goes into STARTUPINFO and the handle list; pinned by DangerousAddRef above until CreateProcessW returns
+            IntPtr rawStdErr = stdErrWrite.DangerousGetHandle(); // NOSONAR: S3869 — same
+            IntPtr rawSid = options.AppContainerSid?.DangerousGetHandle() ?? IntPtr.Zero; // NOSONAR: S3869 — PSID struct field, pinned the same way
 
-            created = NativeMethods.CreateProcessW(
-                lpApplicationName: null,
-                commandLineBuffer,
-                lpProcessAttributes: IntPtr.Zero,
-                lpThreadAttributes: IntPtr.Zero,
-                bInheritHandles: true,
-                creationFlags,
-                lpEnvironment: IntPtr.Zero,
-                lpCurrentDirectory: null,
-                ref startupInfoEx,
-                out processInfo);
+            using var attributes = LaunchAttributeList.Create(rawSid, [rawStdOut, rawStdErr]);
+
+            bool attrRef = false;
+            try
+            {
+                attributes.AttributeList.DangerousAddRef(ref attrRef);
+                var startupInfoEx = new STARTUPINFOEX();
+                // Must be sizeof(STARTUPINFOEX), not sizeof(STARTUPINFO) — CreateProcessW uses this
+                // field to detect the extended struct is present, and a wrong size here is a
+                // documented easy mistake (see TASKS.md's T-F52 design notes).
+                startupInfoEx.StartupInfo.cb = Marshal.SizeOf<STARTUPINFOEX>();
+                startupInfoEx.StartupInfo.dwFlags = STARTF_USESTDHANDLES;
+                startupInfoEx.StartupInfo.hStdOutput = rawStdOut;
+                startupInfoEx.StartupInfo.hStdError = rawStdErr;
+                startupInfoEx.StartupInfo.hStdInput = IntPtr.Zero;
+                startupInfoEx.lpAttributeList = attributes.AttributeList.DangerousGetHandle(); // NOSONAR: S3869 — struct field, pinned by DangerousAddRef above
+
+                bool created = NativeMethods.CreateProcessW(
+                    lpApplicationName: null,
+                    commandLineBuffer,
+                    lpProcessAttributes: IntPtr.Zero,
+                    lpThreadAttributes: IntPtr.Zero,
+                    bInheritHandles: true,
+                    CREATE_NO_WINDOW | CREATE_SUSPENDED | EXTENDED_STARTUPINFO_PRESENT,
+                    lpEnvironment: IntPtr.Zero,
+                    lpCurrentDirectory: null,
+                    ref startupInfoEx,
+                    out PROCESS_INFORMATION processInfo);
+
+                if (!created)
+                    throw new IOException($"CreateProcessW failed for '{fileName}' (Win32 error {Marshal.GetLastWin32Error()}).");
+                return processInfo;
+            }
+            finally
+            {
+                if (attrRef)
+                    attributes.AttributeList.DangerousRelease();
+            }
+        }
+        catch (InvalidOperationException ex)
+        {
+            // Attribute-list setup failure — same shape as a failed launch for every caller.
+            throw new IOException(ex.Message, ex);
         }
         finally
         {
-            if (attrRefAdded)
-                attributeList!.DangerousRelease();
-        }
-
-        // The child inherited its own copies of the write ends — our copies must close regardless
-        // of success, otherwise the read ends never see EOF (classic pipe-handle-leak deadlock).
-        NativeMethods.CloseHandle(stdOutWrite);
-        NativeMethods.CloseHandle(stdErrWrite);
-
-        if (!created)
-        {
-            int error = Marshal.GetLastWin32Error();
-            NativeMethods.CloseHandle(stdOutRead);
-            NativeMethods.CloseHandle(stdErrRead);
-            throw new IOException($"CreateProcessW failed for '{fileName}' (Win32 error {error}).");
-        }
-
-        using var processHandle = new SafeProcessOrThreadHandle(processInfo.hProcess);
-        using var threadHandle = new SafeProcessOrThreadHandle(processInfo.hThread);
-
-        // T-F138: every native call below takes processHandle/threadHandle/jobObject directly as
-        // SafeHandle-typed P/Invoke parameters — the CLR marshaller pins/releases each one
-        // automatically around its own call, so no manual DangerousAddRef/DangerousGetHandle/
-        // DangerousRelease is needed here anymore (this used to wrap the whole block, S3869).
-        try
-        {
-            if (jobObject is not null && !NativeMethods.AssignProcessToJobObject(jobObject, processHandle))
-            {
-                int error = Marshal.GetLastWin32Error();
-                try { NativeMethods.TerminateProcess(processHandle, 1); } catch { /* best-effort */ }
-                throw new IOException($"AssignProcessToJobObject failed (Win32 error {error}).");
-            }
-
-            if (NativeMethods.ResumeThread(threadHandle) == uint.MaxValue)
-            {
-                int error = Marshal.GetLastWin32Error();
-                try { NativeMethods.TerminateProcess(processHandle, 1); } catch { /* best-effort */ }
-                throw new IOException($"ResumeThread failed (Win32 error {error}).");
-            }
-
-            using var stdOutStream = new FileStream(new SafeFileHandle(stdOutRead, ownsHandle: true), FileAccess.Read);
-            using var stdErrStream = new FileStream(new SafeFileHandle(stdErrRead, ownsHandle: true), FileAccess.Read);
-            using var stdOutReader = new StreamReader(stdOutStream);
-            using var stdErrReader = new StreamReader(stdErrStream);
-
-            Task<string> stdOutTask = stdOutReader.ReadToEndAsync(cancellationToken);
-            Task<string> stdErrTask = stdErrReader.ReadToEndAsync(cancellationToken);
-            await Task.WhenAll(stdOutTask, stdErrTask).ConfigureAwait(false);
-
-            await WaitForExitAsync(processHandle, cancellationToken).ConfigureAwait(false);
-
-            if (!NativeMethods.GetExitCodeProcess(processHandle, out uint exitCode))
-                throw new IOException($"GetExitCodeProcess failed (Win32 error {Marshal.GetLastWin32Error()}).");
-
-            return ((int)exitCode, stdOutTask.Result, stdErrTask.Result);
-        }
-        catch (OperationCanceledException)
-        {
-            try { NativeMethods.TerminateProcess(processHandle, 1); } catch { /* best-effort */ }
-            throw;
+            if (sidRef)
+                options.AppContainerSid!.DangerousRelease();
+            if (errRef)
+                stdErrWrite.DangerousRelease();
+            if (outRef)
+                stdOutWrite.DangerousRelease();
         }
     }
 
-    // Pure pipe-pair setup, no process-lifecycle ordering to preserve — safe to extract unlike the
-    // CreateProcessW->AssignJobObject->ResumeThread sequence above, which stays a single unit (see
-    // this project's own "provable from the line itself" standard for why that sequence isn't
-    // split further: every step there exists because of a specific, previously-debugged race).
-    private static void CreateInheritablePipe(out IntPtr readEnd, out IntPtr writeEnd, ref SECURITY_ATTRIBUTES pipeSecurity, string pipeName)
+    // T-F138: every native call below takes processHandle/threadHandle/job directly as
+    // SafeHandle-typed P/Invoke parameters — the CLR marshaller pins/releases each one itself.
+    private static async Task<(int ExitCode, string StdOut, string StdErr)> RunCreatedProcessAsync(
+        SafeProcessOrThreadHandle processHandle, SafeProcessOrThreadHandle threadHandle, ProcessLaunchOptions options,
+        SafeFileHandle stdOutRead, SafeFileHandle stdErrRead, CancellationToken cancellationToken)
     {
+        if (options.Job is not null && !NativeMethods.AssignProcessToJobObject(options.Job, processHandle))
+            throw new IOException($"AssignProcessToJobObject failed (Win32 error {Marshal.GetLastWin32Error()}).");
+
+        if (NativeMethods.ResumeThread(threadHandle) == uint.MaxValue)
+            throw new IOException($"ResumeThread failed (Win32 error {Marshal.GetLastWin32Error()}).");
+
+        using var stdOutStream = new FileStream(stdOutRead, FileAccess.Read);
+        using var stdErrStream = new FileStream(stdErrRead, FileAccess.Read);
+        using var stdOutReader = new StreamReader(stdOutStream);
+        using var stdErrReader = new StreamReader(stdErrStream);
+
+        Task<string> stdOutTask = stdOutReader.ReadToEndAsync(cancellationToken);
+        Task<string> stdErrTask = options.OnStdErrLine is { } onLine
+            ? ReadLinesAsync(stdErrReader, onLine, cancellationToken)
+            : stdErrReader.ReadToEndAsync(cancellationToken);
+        await Task.WhenAll(stdOutTask, stdErrTask).ConfigureAwait(false);
+
+        await WaitForExitAsync(processHandle, cancellationToken).ConfigureAwait(false);
+
+        if (!NativeMethods.GetExitCodeProcess(processHandle, out uint exitCode))
+            throw new IOException($"GetExitCodeProcess failed (Win32 error {Marshal.GetLastWin32Error()}).");
+
+        return ((int)exitCode, stdOutTask.Result, stdErrTask.Result);
+    }
+
+    // tar.exe's "-v" writes one "a <name>" line per entry to stderr during creation — streamed so
+    // the caller can report progress while the process runs.
+    private static async Task<string> ReadLinesAsync(StreamReader reader, Action<string> onLine, CancellationToken cancellationToken)
+    {
+        var all = new StringBuilder();
+        while (await reader.ReadLineAsync(cancellationToken).ConfigureAwait(false) is { } line)
+        {
+            all.AppendLine(line);
+            if (line.Length > 0)
+                onLine(line);
+        }
+        return all.ToString();
+    }
+
+    private static void TerminateAndWait(SafeProcessOrThreadHandle processHandle)
+    {
+        try
+        {
+            // Terminate fails harmlessly if the child already exited; the wait covers both cases.
+            _ = NativeMethods.TerminateProcess(processHandle, 1);
+            _ = NativeMethods.WaitForSingleObject(processHandle, TerminateWaitMilliseconds);
+        }
+        catch { /* best-effort — the original exception is what the caller needs */ }
+    }
+
+    // Pure pipe-pair setup. The read end stays ours only (not inheritable); the write end is
+    // inheritable, but only a launch whose handle list names it can actually receive it.
+    private static void CreateInheritablePipe(out SafeFileHandle readEnd, out SafeFileHandle writeEnd, string pipeName)
+    {
+        var pipeSecurity = new SECURITY_ATTRIBUTES
+        {
+            nLength = Marshal.SizeOf<SECURITY_ATTRIBUTES>(),
+            lpSecurityDescriptor = IntPtr.Zero,
+            bInheritHandle = true,
+        };
         if (!NativeMethods.CreatePipe(out readEnd, out writeEnd, ref pipeSecurity, 0))
-            throw new IOException($"CreatePipe ({pipeName}) failed.");
+            throw new IOException($"CreatePipe ({pipeName}) failed (Win32 error {Marshal.GetLastWin32Error()}).");
         if (!NativeMethods.SetHandleInformation(readEnd, HANDLE_FLAG_INHERIT, 0))
-            throw new IOException($"SetHandleInformation ({pipeName} read end) failed.");
+        {
+            int error = Marshal.GetLastWin32Error();
+            readEnd.Dispose();
+            writeEnd.Dispose();
+            throw new IOException($"SetHandleInformation ({pipeName} read end) failed (Win32 error {error}).");
+        }
     }
 
     // Waits for the process handle to become signaled (process exit) without blocking a
@@ -169,25 +230,13 @@ internal static class SandboxedProcessLauncher
     {
         var tcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        // The raw handle is only read once here, to construct a second, independent SafeHandle
-        // (ownsHandle: false) that the OS wait APIs dereference from then on — pin processHandle
-        // just for this one read (S3869). T-F138: not convertible the same way as the other call
-        // sites in this file — ManualResetEvent.SafeWaitHandle needs an already-constructed
-        // SafeWaitHandle instance, not a P/Invoke parameter the marshaller can intercept, so a raw
-        // handle value has to be extracted somewhere to build it. DangerousAddRef/Release remains
-        // the real (manual) protection for this one read.
+        // The raw handle backs a second, non-owning SafeWaitHandle the OS wait dereferences for
+        // the whole wait — so the reference taken here is held until the wait is unregistered,
+        // not just for the read (T-F244 item 1, S3869). ManualResetEvent.SafeWaitHandle needs an
+        // already-constructed SafeWaitHandle, not a P/Invoke parameter the marshaller could pin.
         bool refAdded = false;
-        IntPtr rawHandle;
-        try
-        {
-            processHandle.DangerousAddRef(ref refAdded);
-            rawHandle = processHandle.DangerousGetHandle(); // NOSONAR: S3869 — not a P/Invoke parameter; see comment above
-        }
-        finally
-        {
-            if (refAdded)
-                processHandle.DangerousRelease();
-        }
+        processHandle.DangerousAddRef(ref refAdded);
+        IntPtr rawHandle = processHandle.DangerousGetHandle(); // NOSONAR: S3869 — pinned by DangerousAddRef until the continuation below releases it
 
         var waitHandle = new ManualResetEvent(false)
         {
@@ -205,9 +254,17 @@ internal static class SandboxedProcessLauncher
 
         return tcs.Task.ContinueWith(t =>
         {
-            registeredWait.Unregister(null);
+            // On a cancel the wait is still pending — only once the pool confirms it let go of the
+            // raw handle may the reference below be released.
+            using (var unregistered = new ManualResetEvent(false))
+            {
+                if (registeredWait.Unregister(unregistered))
+                    unregistered.WaitOne();
+            }
             ctr.Dispose();
             waitHandle.Dispose();
+            if (refAdded)
+                processHandle.DangerousRelease();
             return t;
         }, TaskScheduler.Default).Unwrap();
     }
@@ -326,11 +383,14 @@ internal static class SandboxedProcessLauncher
         [DllImport("kernel32.dll", SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
         public static extern bool CreatePipe(
-            out IntPtr hReadPipe, out IntPtr hWritePipe, ref SECURITY_ATTRIBUTES lpPipeAttributes, uint nSize);
+            out SafeFileHandle hReadPipe, out SafeFileHandle hWritePipe, ref SECURITY_ATTRIBUTES lpPipeAttributes, uint nSize);
 
         [DllImport("kernel32.dll", SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
-        public static extern bool SetHandleInformation(IntPtr hObject, uint dwMask, uint dwFlags);
+        public static extern bool SetHandleInformation(SafeFileHandle hObject, uint dwMask, uint dwFlags);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        public static extern uint WaitForSingleObject(SafeProcessOrThreadHandle hHandle, uint dwMilliseconds);
 
         [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
@@ -360,9 +420,5 @@ internal static class SandboxedProcessLauncher
         [DllImport("kernel32.dll", SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
         public static extern bool AssignProcessToJobObject(SafeJobObjectHandle hJob, SafeProcessOrThreadHandle hProcess);
-
-        [DllImport("kernel32.dll", SetLastError = true)]
-        [return: MarshalAs(UnmanagedType.Bool)]
-        public static extern bool CloseHandle(IntPtr hObject);
     }
 }
