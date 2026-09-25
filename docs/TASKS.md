@@ -4263,11 +4263,19 @@ and best practice for similar apps like NanaZip"). Criteria: the government/defe
 (trust, auditability, no silent data loss), then 7-Zip/NanaZip parity where users carry habits.
 - T-F233 — **P0.** Permanent, silent, affects other people's access on shared folders. No
   automatic remediation (rewriting users' ACLs is itself risky): a release note/security advisory
-  with a read-only detection script (files carrying the Pakko sandbox SID ACE) and the manual
-  `icacls /reset` fix. Fix: never touch the original's security descriptor (stage by copy).
-- T-F234 — **P0.** Silent loss of files inside one archive. Fix direction: 7-Zip's rule — a name
-  without the UTF-8 flag is decoded with the system OEM code page; plus a collision check so two
-  entries never collapse into one without an error.
+  with a read-only detection script (files carrying a Pakko sandbox SID ACE) and a manual fix that
+  removes **only** those ACEs and re-propagates inheritance (not `icacls /reset`, which would also
+  wipe explicit ACEs the user set on purpose), with `icacls /save` first. Validate both on the one
+  real affected file in Downloads. The advisory touches `SECURITY.md` — separate explicit user
+  permission. Fix: never touch the original's security descriptor (stage by copy).
+- T-F234 — **P0.** Silent loss of files inside one archive. Fix direction: 7-Zip's actual rule
+  (read in NanaZip's vendored `Archive/Zip/ZipItem.cpp:405-461` and `ZipItem.h:338-351`): bit 11
+  -> UTF-8; else a valid Info-ZIP Unicode Path extra field (0x7075); else by the central header's
+  host OS — Unix -> UTF-8, FAT/NTFS -> OEM code page, other -> ANSI code page. Plus a collision
+  check so two entries never collapse into one without an error. One decoder shared by extract,
+  list/browse, test and scan. Tests use explicit code pages (866/437/1252), never the machine's;
+  `CodePagesEncodingProvider` is registered once at a documented startup point, not in a
+  service's static state.
 - T-F201 — **keep T-F88's multi-instance design** (7-Zip File Manager and NanaZip open one window
   per archive too); fix only the stacking: offset the new window and bring it to the foreground.
 - T-F205 — **keep the archive's root folder** in SingleFolder mode ("extract with full paths",
@@ -4279,10 +4287,14 @@ and best practice for similar apps like NanaZip"). Criteria: the government/defe
   archive" command, also on Esc), as 7-Zip/NanaZip's file manager lets you leave an archive
   without closing the window.
 - T-F241 — **add "Test archive" to the App** (7-Zip/NanaZip file managers have it on the
-  toolbar); **no threat scan in the CLI** — `7z` has no such command and scripted scanning belongs
-  to `MpCmdRun`; record the reason in `docs/CLI.md`/`docs/DECISIONS.md`.
-- T-F207 — deletion after an operation goes to the **Recycle Bin**, never permanently, and only
-  after the T-F260 classifier says the source was fully processed.
+  toolbar); **no threat scan in the CLI for now** — `7z` has no such command. Stated limitation:
+  `MpCmdRun` scans ordinary archives but cannot see inside password-protected ZIPs (T-F194's
+  point), so a scripted scan of those needs the App or Explorer; record this in `docs/CLI.md`/
+  `docs/DECISIONS.md`, revisit on request.
+- T-F207 — deletion after an operation goes to the **Recycle Bin**, and only after the T-F260
+  classifier says the source was fully processed. Where the OS cannot recycle (network or
+  removable drive, item too large for the bin) an explicit "this deletes permanently" confirmation
+  naming the items is shown first; declining keeps the source.
 - T-F199 — direction: options before the action, primary action last, password inline; the
   mockup is still shown to the user before any XAML changes (visual design is not delegable blind).
 - T-F260 — **reverse DECISIONS T-F68/T-F87**: `ArchiveResult` gets an explicit outcome and a
@@ -4503,7 +4515,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   (extract mode) for the same.
 - **Reported by:** T-F202, 2026-09-24.
 - **Root:** T-F260 (`ArchiveResult` outcome contract) — only the "may this source be deleted" decision; the confirmation UI stays this task's own.
-- **Decision (2026-09-25):** delete to the Recycle Bin only, never permanently, and only for sources the T-F260 classifier reports as fully processed.
+- **Decision (2026-09-25):** delete to the Recycle Bin, only for sources the T-F260 classifier reports as fully processed; where recycling is impossible (network/removable drive, oversized), an explicit permanent-delete confirmation naming the items, declining keeps them.
 
 ### T-F208 — Archiver.Shell dialog titles and size units are English in a localized UI (P1)
 
@@ -4868,7 +4880,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   only proves the happy path.
 - **Reported by:** T-F226 review, 2026-09-24.
 - **Related:** T-F263 (staging/commit owner) — same tar-staging layer, but a unique-name/ACL staging primitive does not by itself stop a hardlink from rewriting the original's DACL; hardlink vs copy stays this task's own decision.
-- **Decision (2026-09-25):** P0; no automatic remediation — release note with a read-only detection script and the manual `icacls /reset` fix; stage by copy, never touch the original's security descriptor.
+- **Decision (2026-09-25):** P0; no automatic remediation — release note with a read-only detection script and a manual fix that removes only Pakko sandbox SID ACEs and re-propagates inheritance (`icacls /save` first; not `/reset`); validate on the real affected file; stage by copy, never touch the original's security descriptor. The `SECURITY.md` advisory needs separate user permission.
 
 ### T-F234 — ZIP names without the UTF-8 flag are decoded as UTF-8: garbled names and silent loss of files (P0 candidate)
 
@@ -4893,7 +4905,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   both preserved or reported, never silently dropped.
 - **Reported by:** T-F226 review, 2026-09-24.
 - **Root (grouping, architecture review 2026-09-25):** text crossing a process or format boundary with no explicit encoding (tar.exe arguments and output, ZIP names without the UTF-8 flag, redirected CLI output). Fix T-F204/T-F234/T-F238 (and T-F244's R14) with one encoding helper per boundary.
-- **Decision (2026-09-25):** P0; decode names without the UTF-8 flag with the system OEM code page (7-Zip's rule) and fail loudly on any post-decoding name collision.
+- **Decision (2026-09-25):** P0; 7-Zip's rule (bit 11 -> UTF-8; else Info-ZIP 0x7075; else host OS: Unix -> UTF-8, FAT/NTFS -> OEM, other -> ANSI — `ZipItem.cpp:405-461`, `ZipItem.h:338-351` in NanaZip); one decoder for extract/list/test/scan; fail loudly on a post-decoding collision; tests use explicit code pages.
 
 ### T-F235 — A large Explorer selection makes every Pakko command silently do nothing (P1)
 
@@ -4994,7 +5006,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   recorded in `docs/DECISIONS.md` or `docs/CLI.md`. Decide: add, or document why not.
 - **Reported by:** T-F226 review, 2026-09-24.
 - **Root:** T-F261 (single routing and Group Policy owner) — the part this leaf needs goes with it.
-- **Decision (2026-09-25):** add Test to the App; no CLI scan (no `7z` equivalent; `MpCmdRun` covers scripted scanning) — record why in `docs/CLI.md`/`docs/DECISIONS.md`.
+- **Decision (2026-09-25):** add Test to the App; no CLI scan for now (no `7z` equivalent) — record why, including that `MpCmdRun` cannot scan inside password-protected ZIPs (T-F194), in `docs/CLI.md`/`docs/DECISIONS.md`.
 
 ### T-F242 — App: cleanup errors swallowed, dead Core options, logic in code-behind (P2)
 
@@ -5468,9 +5480,9 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   extraction of `.7z`; the click reaches Shell's router, which refuses with a message — so not a
   bypass, but `docs/POLICIES.md:44` says the formats are hidden in the UI, and only the App does
   that (`MainViewModel.cs:301,376`).
-- **Fix:** read the two policy values in `ShellExtUtils.cpp` (fail-safe like
-  `Win32RegistryReader`) and hide the affected items in `GetState`; or narrow POLICIES.md to "the
-  App's UI". **Root:** T-F261.
+- **Fix (decided 2026-09-25 with T-F261):** read the two policy values in `ShellExtUtils.cpp`
+  (fail-safe like `Win32RegistryReader`) and hide the affected items in `GetState`. **Root:**
+  T-F261.
 - **Tests first:** `ShellExtUtils` unit tests with an injected registry reader: each policy value
   hides exactly the documented items; unreadable/missing key = nothing hidden.
 - **Reported by:** architecture review, 2026-09-25 (reviewer agent).
