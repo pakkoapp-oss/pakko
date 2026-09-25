@@ -472,7 +472,9 @@ public sealed class AntivirusScanServiceTests : IDisposable
     // offline by brute-forcing the check byte). Store method, deliberately: under Deflate, garbage
     // usually dies in DeflateStream and would pass this test by luck. Only the trailer CRC-32
     // (never reached if the scan stops at exactly entry.Length bytes) can tell — so this must
-    // never come back Clean.
+    // never come back Clean. T-F243: for this small entry the password is now rejected at prompt
+    // time; the above-limit case that still reaches the scan is
+    // ZipArchiveServiceZipCryptoCompatTests.ScanAsync_LargeEntry_CheckByteCollidingWrongPassword_IsNeverReportedClean.
     [Fact]
     public async Task ScanAsync_ZipCryptoCheckByteCollidingWrongPassword_IsNeverReportedClean()
     {

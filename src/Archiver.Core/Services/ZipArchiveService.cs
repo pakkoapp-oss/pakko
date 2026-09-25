@@ -858,17 +858,18 @@ public sealed class ZipArchiveService : IArchiveService
         {
             using var fs = File.OpenRead(archivePath);
             var located = RawZipEntryLocator.LocateAll(fs);
-            var firstEncrypted = located.FirstOrDefault(e => e.GeneralPurposeEncryptedBit);
-            if (firstEncrypted is null)
+            // T-F243: the smallest encrypted entry, so the full ZipCrypto check below stays cheap.
+            var probe = located.Where(e => e.GeneralPurposeEncryptedBit).MinBy(e => e.CompressedSize);
+            if (probe is null)
                 return null; // IsEncryptedZip said yes but nothing actually has the bit set — defensive, shouldn't happen
 
             return await passwordResolver.ResolveAsync(
                 Path.GetFileName(archivePath),
                 PasswordPurpose.Decrypt,
-                // T-F193: the cheap check only (AES verification value / ZipCrypto check byte) —
-                // a full open would now stream the whole entry through HMAC on every attempt.
-                candidate => EncryptedZipEntryReader.VerifyPassword(fs, firstEncrypted, candidate)
-                    != EncryptedZipReadResult.WrongPassword).ConfigureAwait(false);
+                // T-F193: the cheap check (AES verification value / ZipCrypto check byte) — a full
+                // AES open would stream the whole entry through HMAC on every attempt.
+                candidate => EncryptedZipEntryReader.VerifyPassword(fs, probe, candidate) != EncryptedZipReadResult.WrongPassword
+                    && ZipCryptoDecryptsIntact(fs, probe, candidate)).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is IOException or InvalidDataException or EndOfStreamException)
         {
@@ -876,6 +877,33 @@ public sealed class ZipArchiveService : IArchiveService
             // that has no real central directory/EOCD at all (e.g. a truncated or hand-crafted
             // minimal ZIP) — LocateAll needs a real EOCD to run.
             return null;
+        }
+    }
+
+    // T-F243 item 3: ZipCrypto's one-byte check accepts ~1 in 256 wrong passwords; the entry then
+    // failed later as "corrupted" with no second chance to type the password. A small ZipCrypto
+    // probe entry is decrypted in full and its CRC-32 checked while the user can still be asked
+    // again. AES needs nothing more (2-byte verifier + HMAC before any plaintext); a probe above
+    // the limit keeps the one-byte check, and its later CRC failure stays a per-entry error.
+    internal const long ZipCryptoFullCheckLimitBytes = 4L * 1024 * 1024;
+
+    private static bool ZipCryptoDecryptsIntact(Stream zipStream, LocatedZipEntry probe, string candidate)
+    {
+        if (probe.CompressionMethod == 99 || probe.CompressedSize > ZipCryptoFullCheckLimitBytes)
+            return true;
+
+        var (result, content) = EncryptedZipEntryReader.TryOpen(zipStream, probe, candidate);
+        if (result != EncryptedZipReadResult.Success)
+            return result == EncryptedZipReadResult.UnsupportedCompressionMethod;
+        try
+        {
+            using (content)
+                content!.CopyTo(Stream.Null);
+            return true;
+        }
+        catch (InvalidDataException)
+        {
+            return false;
         }
     }
 

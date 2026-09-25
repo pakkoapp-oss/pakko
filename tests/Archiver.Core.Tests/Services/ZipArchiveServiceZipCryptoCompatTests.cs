@@ -1,6 +1,8 @@
 using System.Text;
 using Archiver.Core.Models;
 using Archiver.Core.Services;
+using Archiver.Core.Services.Zip.Decryption;
+using Archiver.Core.Tests.Services.Antivirus;
 using Archiver.Core.Tests.Helpers;
 using FluentAssertions;
 
@@ -58,6 +60,85 @@ public sealed class ZipArchiveServiceZipCryptoCompatTests : IDisposable
         var result = await _sut.TestAsync([zip], resolvePasswordAsync: Fixed(Password));
 
         result.Success.Should().BeTrue(string.Join("; ", result.Errors.Select(e => e.Message)));
+    }
+
+    // T-F243 item 3: "wrong103" passes encrypted_zipcrypto_store.zip's one-byte check (see
+    // AntivirusScanServiceTests). It used to be accepted and the entry then failed as "corrupted";
+    // now the password is rejected up front and the user is asked again.
+    [Fact]
+    public async Task ExtractAsync_CheckByteCollidingWrongPassword_IsRejectedAndAskedAgain()
+    {
+        var answers = new Queue<string>(["wrong103", Password]);
+        int prompts = 0;
+        string dest = Path.Combine(_temp.Path, "collide");
+
+        var result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [FixtureHelper.Archive("encrypted_zipcrypto_store.zip")],
+            DestinationFolder = dest,
+            Mode = ExtractMode.SingleFolder,
+            ResolvePasswordAsync = _ =>
+            {
+                prompts++;
+                return Task.FromResult(new PasswordDecision { Password = answers.Dequeue() });
+            },
+        });
+
+        prompts.Should().Be(2);
+        result.Success.Should().BeTrue(string.Join("; ", result.Errors.Select(e => e.Message)));
+        File.ReadAllText(Path.Combine(dest, "compressible.txt"))
+            .Should().Be(File.ReadAllText(Path.Combine(FixtureHelper.FilesDir, "compressible.txt")));
+    }
+
+    [Fact]
+    public async Task TestAsync_CheckByteCollidingWrongPasswordOnly_ReportsPasswordNotCorruption()
+    {
+        var result = await _sut.TestAsync([FixtureHelper.Archive("encrypted_zipcrypto_store.zip")],
+            resolvePasswordAsync: Fixed("wrong103"));
+
+        result.Success.Should().BeFalse();
+        result.Errors.Should().NotContain(e => e.Message.Contains("CRC", StringComparison.OrdinalIgnoreCase));
+        result.Errors.Should().ContainSingle().Which.Message.Should().Contain("password");
+    }
+
+    // Above ZipCryptoFullCheckLimitBytes only the one-byte check runs at password time, so a
+    // colliding wrong password still gets through — the later CRC-32 must catch it everywhere.
+    private (string Zip, string CollidingPassword) LargeZipCryptoWithCollidingPassword()
+    {
+        byte[] content = new byte[(int)ZipArchiveService.ZipCryptoFullCheckLimitBytes + 4096];
+        new Random(3).NextBytes(content);
+        string zip = ZipCryptoFixture.Write(Path.Combine(_temp.Path, "large.zip"), "big.bin", content,
+            Encoding.ASCII.GetBytes(Password), dataDescriptor: false);
+
+        using var fs = File.OpenRead(zip);
+        var located = RawZipEntryLocator.LocateAll(fs).Single();
+        string colliding = Enumerable.Range(0, 100_000).Select(i => "wrong" + i)
+            .First(p => EncryptedZipEntryReader.VerifyPassword(fs, located, p) == EncryptedZipReadResult.Success);
+        return (zip, colliding);
+    }
+
+    [Fact]
+    public async Task ScanAsync_LargeEntry_CheckByteCollidingWrongPassword_IsNeverReportedClean()
+    {
+        var (zip, colliding) = LargeZipCryptoWithCollidingPassword();
+        var scanner = new FakeAmsiScanner();
+        var service = new AntivirusScanService(new TarCapabilities(), null, () => scanner, () => true);
+
+        var result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [zip], ResolvePasswordAsync = Fixed(colliding) });
+
+        result.Findings.Should().ContainSingle(f => f.EntryPath == "big.bin" && f.Verdict == ThreatVerdict.Inconclusive);
+    }
+
+    [Fact]
+    public async Task ExtractAsync_LargeEntry_CheckByteCollidingWrongPassword_FailsTheEntry()
+    {
+        var (zip, colliding) = LargeZipCryptoWithCollidingPassword();
+
+        var (result, dest) = await ExtractAsync(zip, colliding);
+
+        result.Success.Should().BeFalse();
+        result.Errors.Should().ContainSingle().Which.Message.Should().Contain("big.bin");
+        File.Exists(Path.Combine(dest, "big.bin")).Should().BeFalse();
     }
 
     [Fact]
