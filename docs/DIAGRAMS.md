@@ -329,51 +329,62 @@ stateDiagram-v2
 
 ## 3. Activity — Extract validation/foldering chain
 
-Source read for this diagram: `ExtractWithSmartFolderingAsync` in
-`src/Archiver.Core/Services/ZipArchiveService.cs`.
+Source read for this diagram (redrawn 2026-09-25, fix phase 2): `ExtractWithSmartFolderingCoreAsync`,
+`TryExtractSingleEntryAsync`, `TryCreateFolderEntry`, `WriteEntryAsync` and `CopyEntryToDestinationAsync` in
+`src/Archiver.Core/Services/ZipArchiveService.cs`, plus `ExtractionStaging.CommitInto` and
+`IO/VerifyingReadStream`.
 
 ```mermaid
 flowchart TD
-    A0[allFileEntries = every non-dir ZIP entry] --> A1{"T-F05: options.SelectedEntryPaths<br/>set and non-empty?"}
-    A1 -- no --> A2["fileEntries = allFileEntries;<br/>isSingleRootFolder/isSingleRootFile computed<br/>normally, fed into ExtractionDestinationPlanner.<br/>Classify → RootShape (T-F157)"]
-    A1 -- yes --> A3["fileEntries = allFileEntries filtered to<br/>the selected paths + anything nested<br/>under a selected folder path.<br/>isSingleRootFolder/isSingleRootFile forced<br/>false → RootShape.SelectedSubset —<br/>ExtractionDestinationPlanner.Resolve always<br/>returns destDir for this shape (T-F157)"]
-    A2 --> A3B["ExtractionDestinationPlanner.Resolve(alreadyIsolated,<br/>shape, destDir, unisolatedDestDir)<br/>→ (actualDest, stripRootPrefix) — same decision<br/>ZipArchiveService and TarSandboxedService now<br/>share, not two hand-synced copies (T-F118/T-F157)"]
+    A0["allEntries = every ZIP entry, files AND folder entries (T-F197)"] --> A1{"T-F05: options.SelectedEntryPaths<br/>set and non-empty?"}
+    A1 -- no --> A2["entries = allEntries.<br/>isSingleRootFolder/isSingleRootFile computed over files AND folders<br/>(a.txt + empty/ is MultiRoot), then<br/>ExtractionDestinationPlanner.Classify → RootShape (T-F157)"]
+    A1 -- yes --> A3["entries = allEntries filtered to the selected paths<br/>+ anything nested under a selected folder path<br/>→ RootShape.SelectedSubset"]
+    A2 --> A3B["ExtractionDestinationPlanner.Resolve(alreadyIsolated, shape, destDir,<br/>unisolatedDestDir, rootDuplicatesArchiveName)<br/>→ (actualDest, stripRootPrefix). T-F205: SingleFolder keeps the root<br/>unless EliminateDuplicateRootFolder is set and the root is named like the archive"]
     A3 --> A3B
-    A3B --> A4["Compression-bomb check (below) still sums<br/>allFileEntries, NOT the filtered subset —<br/>conservative: may over-warn, never under-warns.<br/>See DECISIONS.md's T-F05 entry."]
-    A4 --> A["For each entry in fileEntries<br/>— the (possibly filtered) set from A2/A3"] --> C{stripRootPrefix:<br/>strip leading segment}
-    C -- stripped to empty --> Z[bytesRead += Length; no output]
-    C -- non-empty, or not applicable --> D{"':' in entry name?<br/>(Alternate Data Stream) T-F38"}
-    D -- yes --> S1[SkippedFiles += ADS reason]
-    D -- no --> E{Last path segment matches<br/>CON/PRN/AUX/NUL/COM1-9/LPT1-9? T-F39}
-    E -- yes --> S2[SkippedFiles += reserved name]
-    E -- no --> F{Any char &lt; 0x20<br/>in entry name? T-F39}
-    F -- yes --> S3[SkippedFiles += control chars]
-    F -- no --> G{Resolved destFilePath does NOT<br/>start with fullTempDest?}
-    G -- yes --> X["throw InvalidDataException<br/>→ propagates out of Task.Run in ExtractAsync<br/>→ caught there as ArchiveError<br/>→ WHOLE ARCHIVE fails, not just this entry"]
-    G -- no --> H{PathContainsReparsePoint<br/>on any directory component? T-F37}
-    H -- yes --> S4[SkippedFiles += reparse point]
-    H -- no --> I{entry.CompressedLength&gt;0 &&<br/>entry.Length&gt;0 &&<br/>ratio &gt; 1000:1?}
-    I -- yes --> S5[SkippedFiles += suspicious ratio]
-    I -- no --> J{File.Exists at finalFilePath<br/>= actualDest + relativePath ?}
+    A3B --> A4["Compression-bomb check sums allFileEntries (whole archive),<br/>never the filtered subset — T-F05/T-F94"]
+    A4 --> ST["using staging = ExtractionStaging.Create(DestinationFolder)<br/>fresh hidden .pakko-x-pid-guid, never reused, disposed on every exit (T-F227)"]
+    ST --> A["For each entry in entries"] --> U{"HasUnsafePath: a .. segment (either separator)<br/>or a rooted / drive-relative name? (T-F228)"}
+    U -- yes --> E1["Errors += unsafe path, entry not extracted"]
+    U -- no --> C{"stripRootPrefix: strip leading segment"}
+    C -- "stripped to empty" --> Z["the root itself: actualDest stands in for it<br/>(counts as extracted only for a folder entry)"]
+    C -- "non-empty, or not applicable" --> D{"ADS marker, reserved device name<br/>or control chars in the name without its trailing slash?<br/>T-F38/T-F39"}
+    D -- yes --> S1["SkippedFiles += reason"]
+    D -- no --> T["try (T-F230) — IOException, UnauthorizedAccessException and<br/>InvalidDataException fail only this entry, except a full disk"]
+    T --> FD{"folder entry?"}
+    FD -- yes --> FC{"inside staging, no reparse point?"}
+    FC -- "reparse point" --> S4["SkippedFiles += reparse point"]
+    FC -- ok --> FK["Directory.CreateDirectory in staging"]
+    FD -- no --> G{"resolved path inside staging? then<br/>PathContainsReparsePoint? (T-F37)"}
+    G -- "reparse point" --> S4
+    G -- ok --> J{"file exists at finalFilePath, built from the path<br/>as resolved inside staging (T-F228), or already claimed?"}
     J -- no --> K
-    J -- yes --> J0["T-F06: resolvedConflict = await conflictResolver.ResolveAsync(finalFilePath)<br/>configured != Ask → passes through unchanged;<br/>configured == Ask → invokes options.ResolveConflictAsync(ConflictInfo)<br/>(or defaults to Skip if that callback is null -- e.g. Archiver.CLI's pakko x;<br/>Archiver.Shell's three extract commands wire a real one since T-F155, ShellConflictDialog),<br/>remembering the decision for the rest of THIS ExtractAsync call<br/>if ApplyToAll was set — see DECISIONS.md's T-F06 entry"]
-    J0 -- "resolvedConflict==Skip" --> S6["bytesRead += Length; continue<br/>(no SkippedFiles entry recorded for this case)"]
-    J0 -- "resolvedConflict==Rename" --> K2[destFilePath renamed via GetUniqueFilePath]
-    J0 -- "resolvedConflict==Overwrite" --> K3["NO explicit branch — falls through<br/>unchanged to K with ORIGINAL destFilePath;<br/>actual overwrite happens later, only if the merge<br/>step's File.Move(overwrite:true) runs"]
+    J -- yes --> J0["T-F06: conflictResolver.ResolveAsync(finalFilePath)<br/>Ask → options.ResolveConflictAsync, else configured value"]
+    J0 -- "Skip" --> S6["ConflictSkippedEntries += path (T-F260: archive Partial)"]
+    J0 -- "Rename" --> K2["unique name via GetUniqueFilePath"]
+    J0 -- "Overwrite" --> K
     K2 --> K
-    K3 --> K
-    K[Extract entry to destFilePath in tempDest;<br/>TryPropagateMotw best-effort] --> L[bytesRead += entry.Length]
-    S1 & S2 & S3 & S4 & S5 & S6 --> M{More entries?}
+    K["open content: VerifyingReadStream(entry.Open, Length, Crc32),<br/>or the decrypting stream, capped the same way (T-F246/T-F231).<br/>Copy to staging, delete a half-written file on failure, then MOTW"]
+    K -- "CRC mismatch / longer than declared / I/O error" --> E2["Errors += Cannot extract name: reason<br/>(destination path, never the staging path)"]
+    T -. "ERROR_DISK_FULL" .-> X["rethrown: one archive-level error"]
+    K --> L["extractedCount++"]
+    FK --> L
+    E1 & S1 & S4 & S6 & E2 & Z --> M{"More entries?"}
     L --> M
-    Z --> M
     M -- yes --> A
-    M -- no --> N["Commit: CommitTempDestToActualDest(tempDest, actualDest).<br/>Fast path: Directory.Move(tempDest→actualDest) if actualDest<br/>doesn't exist yet. T-F161: on IOException (a locked file anywhere<br/>in the tree), falls back to a per-file merge instead of failing —<br/>this is also where an Overwrite-conflict entry actually overwrites.<br/>T-F170: each per-file File.Move in the merge now catches<br/>IOException/UnauthorizedAccessException too, recording a per-item<br/>ArchiveError instead of aborting every remaining file in the loop"]
-    N --> N2{"extractedCount == 0?<br/>(T-F87 — every entry hit S1-S6, nothing<br/>actually written to tempDest)"}
-    N2 -- yes --> N3["SkippedFiles += whole-archive entry<br/>(Path == archivePath); caller does NOT<br/>add this archive to CreatedFiles"]
+    M -- no --> N["staging.CommitInto(actualDest): if actualDest is new, clear Hidden<br/>then Directory.Move (T-F161). Otherwise, or on IOException, merge:<br/>folders first (T-F197), then files with File.Move overwrite —<br/>a locked target becomes a per-item ArchiveError (T-F170)"]
+    N --> N2{"extractedCount == 0?"}
+    N2 -- yes --> N3["SkippedFiles += whole-archive entry (T-F87)<br/>archive not added to CreatedFiles"]
     N2 -- no --> O
-    N3 --> O["ArchiveResult.Success = errors.Count == 0 (unchanged).<br/>T-F260: ExtractAsync's outer loop also records one<br/>SourceResult per archive — Completed only if no error or<br/>SkippedFiles entry was added, CreatedFiles grew, and<br/>SelectedEntryPaths is null (T-F265). DeleteAfterOperation<br/>reads only FullyProcessedSources"]
-    O --> P{{"⚠ every per-entry branch (D,E,F,H,I,J-Skip) still feeds<br/>SkippedFiles, never errors — Success stays true for an<br/>all-entries-skipped archive, by design (T-F87 deliberately<br/>did not redefine Success — see DECISIONS.md). Since T-F260<br/>any S1-S6 skip makes the archive Partial, so<br/>DeleteAfterOperation keeps it (T-F229).<br/>T-F68 (fixed earlier): the shell path also shows a dialog<br/>for this case — see Program.cs's ShellResultPresenter."}}
+    N3 --> O["T-F260: one SourceResult per archive — Completed only with no error,<br/>skip or conflict-skip and no selection. ExtractAsync removes a<br/>DestinationFolder it created when nothing was produced (T-F230)"]
 ```
+
+**Fix phase 2 (2026-09-25) — what changed in this chain.** Folder entries are extracted (T-F197);
+an unsafe name is a per-entry `ArchiveError`, checked first (T-F228); any I/O, CRC-32 or
+declared-size failure fails only its entry (T-F230/T-F246/T-F231) — the old "WHOLE ARCHIVE fails"
+node for a path escape is gone; staging is a fresh owned folder, not `<dest>_tmp` (T-F227); the
+old per-entry ratio node (removed by T-F94 long ago) is dropped from the drawing. The paragraphs
+below are the history that led here; where they say a gate "routes to SkippedFiles, never
+ArchiveError", that now holds only for the name, reparse-point and conflict gates.
 
 **What this catches — a live finding, not a hypothetical:**
 Every validation gate in this chain (ADS, reserved name, control chars, reparse, ZIP bomb,
@@ -554,7 +565,7 @@ flowchart TD
     O["File.Move(file, finalFilePath, overwrite:true)<br/>ArchiveEntrySecurity.TryPropagateMotw(archivePath, finalFilePath)<br/>— reads the ORIGINAL archivePath's Zone.Identifier, never the<br/>staged in\ copy, which may not even carry one depending on<br/>hardlink-vs-copy staging"] --> Mloop
     P --> Mloop
     Mloop -- yes --> I
-    Mloop -- no --> Q2{"totalFiles &gt; 0 &&<br/>extractedCount == 0?<br/>(T-F87 - every file hit P, nothing moved)"}
+    Mloop -- no --> CF["T-F197: CreateFolderEntries — every folder entry from the pre-scanned<br/>names (or the expanded selection), same root strip, created under<br/>actualDest, so empty folders arrive too"] --> Q2{"totalFiles &gt; 0 &&<br/>extractedCount == 0?<br/>(T-F87 - every file hit P, nothing moved)"}
     Q2 -- yes --> Q3["SkippedFiles += whole-archive entry<br/>(Path == archivePath); caller does NOT<br/>add this archive to CreatedFiles"]
     Q2 -- no --> Q
     Q3 --> Q["return destDir<br/>(finally: scope.Dispose() — quarantine root deleted,<br/>AppContainer SID handle released; the AppContainer PROFILE<br/>itself is never deleted, it persists for reuse)"]

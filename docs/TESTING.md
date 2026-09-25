@@ -611,6 +611,19 @@ into an existing section above.
   long-path File I/O support (present since .NET Core 2.1, independent of any Win32 manifest
   declaration) — see `docs/DECISIONS.md`'s T-F178 entry for the full account.
 
+## ZIP Extraction Safety and Integrity (fix phase 2, 2026-09-25)
+
+One test class per fixed defect, each written red first (see `docs/DECISIONS.md`'s fix-phase-2
+entry): `ZipArchiveServiceExtractStagingTests` (T-F227 — a user's `<dest>_tmp` survives, no
+`.pakko-x-*` leftover, concurrent runs, extracted folder not Hidden),
+`ZipArchiveServiceExtractUnsafePathTests` (T-F228), `ZipArchiveServiceExtractPerEntryFailureTests`
+(T-F230, incl. the disk-full classifier), `ZipArchiveServiceExtractIntegrityTests` (T-F246/T-F231 —
+fixtures are built in the test by patching CRC/size fields of a fresh archive, not stored),
+`IO/VerifyingReadStreamTests`, `ZipArchiveServiceExtractRootFolderTests` +
+`TarSandboxedServiceRootFolderTests` (T-F205), `ZipArchiveServiceExtractEmptyFolderTests` +
+`TarSandboxedServiceEmptyFolderTests` (T-F197). Staging-leftover assertions look for
+`.pakko-x-*`; an assertion on the old `*_tmp` name would now pass vacuously.
+
 ## Manual Smoke Test Cycle (Full Stack)
 
 Ordered simplest → most complex. Confirms Core, Shell, ShellExtension (COM), and the WinUI app

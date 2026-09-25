@@ -96,6 +96,9 @@ src/
 │   │   ├── ExtractionDestinationPlanner.cs ← T-F157: shared actualDest/StripRootPrefix decision,
 │   │   │                                  was hand-kept-in-sync between ZipArchiveService and
 │   │   │                                  TarSandboxedService (T-F118)
+│   │   ├── ExtractionStaging.cs        ← T-F227 (T-F263 slice): fresh owned hidden
+│   │   │                                  .pakko-x-<pid>-<guid> staging folder + the T-F161/T-F170
+│   │   │                                  commit (CommitInto); ZIP only until fix phase 4
 │   │   ├── DestinationConflictResolver.cs ← T-F158: archive-creation-side analogue of T-F157 —
 │   │   │                                  shared Skip/Overwrite/Rename decision for a candidate
 │   │   │                                  archive destination path
@@ -121,6 +124,8 @@ src/
 │   │   │                                  Combine() (zlib crc32_combine reimplementation) lets
 │   │   │                                  FileHashService hash one large file's chunks in
 │   │   │                                  parallel then fold results back together in order
+│   │   ├── VerifyingReadStream.cs      ← T-F246/T-F231: CRC-32 at end of stream + declared-size
+│   │   │                                  cap for every extracted ZIP entry, plain or decrypted
 │   │   ├── ProgressStream.cs           ← T-F16: byte-accurate IProgress<int> wrapper, per-stream
 │   │   ├── AggregateProgressTracker.cs ← T-F128 follow-up: shared byte counter across many
 │   │   │                                  concurrently-hashed files, folder-wide total (not
@@ -272,6 +277,11 @@ public sealed record ExtractOptions
     // constraint on ConflictBehavior.Rename vs. this field).
     public string? SeparateFolderName { get; init; }
 
+    // T-F205: SingleFolder mode keeps an archive's single root folder; true drops it only when it
+    // is named like the archive (NanaZip's "Extract to name\" ElimDup). Set by Shell's
+    // --extract-folder only.
+    public bool EliminateDuplicateRootFolder { get; init; }
+
     public ConflictBehavior OnConflict { get; init; } = ConflictBehavior.Skip;
     public bool OpenDestinationFolder { get; init; } = false;
 
@@ -411,8 +421,12 @@ internal static class ExtractionDestinationPlanner
 {
     public static RootShape Classify(bool isSelectedSubset, bool isSingleRootFolder, bool isSingleRootFile);
 
+    // T-F205: (notIsolated, SingleFolder) strips only when rootDuplicatesArchiveName.
     public static (string ActualDest, bool StripRootPrefix) Resolve(
-        bool alreadyIsolated, RootShape shape, string destDir, string unisolatedDestDir);
+        bool alreadyIsolated, RootShape shape, string destDir, string unisolatedDestDir,
+        bool rootDuplicatesArchiveName = false);
+
+    public static bool RootDuplicatesArchiveName(string rootName, string archivePath);
 }
 ```
 

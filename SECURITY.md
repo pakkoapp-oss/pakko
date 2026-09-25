@@ -108,6 +108,16 @@ Each supported format adds parser attack surface. RAR and 7z are read-only, via 
 built-in `tar.exe` process — not an in-process parser — since libarchive has no writer for
 either. TAR-family formats (read and create) use the same `tar.exe` process.
 
+**ZIP extraction: staged, checked per entry, verified (fix phase 2, 2026-09-25)**
+- **Integrity.** Every extracted entry's content CRC-32 is checked against its header, and no entry
+  may produce more than its declared uncompressed size; a failing entry is reported and never
+  reaches the destination (T-F246, T-F231). .NET does not check CRC-32 on read by itself.
+- **Unsafe names.** An entry name with a `..` segment (either separator) or a rooted/drive-relative
+  path is rejected per entry and reported as an error, never normalized (T-F228) — the tar path
+  rejects such archives whole.
+- **Owned staging.** Extraction stages into a fresh, uniquely named folder the run creates and
+  removes itself, never a fixed `<dest>_tmp` name that could be a user's own folder (T-F227).
+
 **Minimal MSIX capabilities**
 `Package.appxmanifest` declares only `runFullTrust`. No `broadFileSystemAccess`, no `internetClient`, no device capabilities.
 
@@ -336,7 +346,9 @@ one-click and unencrypted.
   matches, so no plaintext of a tampered entry is ever produced. The cost is reading the entry
   twice, not holding it in memory — entry size is not limited.
   ZipCrypto has no authentication — its one-byte password check accepts ~1 in 256 wrong
-  passwords — so its content CRC-32 is always checked, and a mismatch fails the entry.
+  passwords — so its content CRC-32 is always checked (as for every unencrypted entry, T-F246),
+  and a mismatch fails the entry. Every decrypted entry is also capped at its declared size
+  (T-F231) — AE-2 has no CRC, so the cap is its only length check.
 - **Hostile headers fail closed.** Sizes and extra fields read from local headers are
   attacker-controlled; the parser bounds every allocation by the archive file's real size and
   rejects malformed WinZip AES extra records as a normal per-archive error, never an unhandled

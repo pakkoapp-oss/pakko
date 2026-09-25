@@ -3935,7 +3935,8 @@ regression from this task, which owns reliability only.
 - **Context:** split out of T-F147, deliberately out of scope there per the user's explicit
   decision — `SYSLIB1054` (~40 findings across `Archiver.Core/Services/Sandbox/`, e.g.
   `SandboxedProcessLauncher.cs`, `SecurityCapabilitiesAttributeList.cs`, `QuarantineAcl.cs`,
-  `SandboxJobObject.cs`, `TarSignatureVerifier.cs`) flags every remaining `[DllImport]` P/Invoke
+  `SandboxJobObject.cs`, `TarSignatureVerifier.cs`; since fix phase 1 also the 5 declarations in
+  `Archiver.App.Core/Win32SourceDeleteOperations.cs`) flags every remaining `[DllImport]` P/Invoke
   declaration as eligible for the source-generated `[LibraryImport]` marshalling attribute
   instead. This is the security-critical AppContainer/Job-Object/quarantine-ACL native interop
   layer (T-F52) — needs its own design-first pass (advisor consult before restructuring, same
