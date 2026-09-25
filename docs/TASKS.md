@@ -4944,7 +4944,14 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   per-entry error. Both repros now extract the real names (`legacy_oem866_7za.zip`, the 0x80/0x81
   pair). Found on the way: 7za/NanaZip's own default for Cyrillic names is exactly this shape
   (cp866, flag clear) plus a 0x7075 extra. See `docs/DECISIONS.md`'s fix-phase-3 entry.
-- [ ] **Status:** open — confirmed on device 2026-09-24. Archives written by older Windows
+  **Device check (2026-09-25, Deploy 1.4.12.12, title build 18:55:57, agent via `windows` MCP):**
+  a "Compressed folders"-style archive (cp866, flag clear, no 0x7075: `А.txt`, `Б.txt`,
+  `Тека/Документ_квартал.txt`) — Shell "Extract here" wrote all three real names with their own
+  content; Archive Browser listed `Тека`, `А.txt`, `Б.txt`; Shell Scan "no threats". A 7za
+  `-mcp=866` archive — `pakko l` real names, `pakko t` exit 0, `pakko x` real names on disk.
+  A ZipCrypto archive with the Cyrillic password in cp1251 (7za accepts it too) — Shell prompt,
+  typed `пароль`, extracted. Stays `[~]` until your own check.
+- [~] **Status:** fixed, awaiting user check. Original report: open — confirmed on device 2026-09-24. Archives written by older Windows
   "Compressed folders", 1C, scanners and other tools in a uk/ru locale store names in the OEM code
   page (866) with general-purpose bit 11 clear. Every ZIP reader call opens archives without an
   `entryNameEncoding` (`ZipFile.OpenRead`, e.g. `ZipArchiveService`, `AntivirusScanService.cs:228`,
@@ -5104,8 +5111,9 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   prompt time, so a colliding wrong password is asked again); item 4 fixed (9ae0a24 — every segment,
   part before the first dot, full Microsoft list); item 5 **not reproduced** (1110af2 —
   characterization test: Test and Extract share names and readers); item 6 fixed (1110af2 —
-  over-long names are a per-entry error on both write paths).
-- [ ] **Status:** open, from the T-F226 review (reviewer agent + own reading); items marked
+  over-long names are a per-entry error on both write paths). Covered by T-F234's device check
+  (same read path); items 2/3/6 are test-only (no realistic on-device fixture needed beyond it).
+- [~] **Status:** fixed except item 5 (not reproduced), awaiting user check. Original report: open, from the T-F226 review (reviewer agent + own reading); items marked
   hypothesis need a repro first.
   1. `ZipArchiveService.cs:1229-1236`: `\` in an entry name is not normalized when classifying
      the root shape (hypothesis).
@@ -5134,7 +5142,8 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   once each, all passing alone. Likely cause read in the code: on cancel `SandboxedProcessLauncher`
   calls `TerminateProcess` without waiting for exit and `TarSandboxScope.Dispose` deletes the
   quarantine best-effort at once; the other failures point at cross-project sandbox contention.
-- [ ] **Status:** open, from the T-F226 review.
+  Item 3's password part verified on device with T-F234 (cp1251 Cyrillic ZipCrypto password).
+- [ ] **Status:** open (items 1, 2, 4, 5 — fix phase 4/8), from the T-F226 review.
   1. `SandboxedProcessLauncher.cs:116-133`: pipe handles leak if setup fails midway;
      `:157-195`: `DangerousAddRef` does not span the wait.
   2. `SandboxedProcessLauncher.cs:132-133`: tar.exe stdout is read as UTF-8, so the pre-scan may
