@@ -4494,7 +4494,9 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   name\" — new `ExtractOptions.EliminateDuplicateRootFolder` (Shell `--extract-folder` only) drops
   the root only when it is named like the archive (NanaZip `ZipRegistry.cpp:583`,
   `Extract.cpp:104-230`). "Extract here (smart)" unchanged. User-visible — CHANGELOG at release:
-  Explorer "Extract here" (flat) and `pakko x` now keep the root folder (the App's Extract uses SeparateFolders — unchanged). Device check pending.
+  Explorer "Extract here" (flat) and `pakko x` now keep the root folder (the App's Extract uses SeparateFolders — unchanged). Agent-verified on device 2026-09-25 (Deploy
+  1.4.12.11): Shell --extract-flat keeps `root\` (ZIP and tar), --extract-folder strips it only for
+  `root.zip`, `pakko x` keeps it.
 
 - [~] **Status:** fixed in fix phase 2, stays `[~]` until the user's own check. Original: open. `ExtractionDestinationPlanner.Resolve` returns `StripRootPrefix = true`
   for `(alreadyIsolated: false, RootShape.SingleFolder)`, so in SingleFolder mode the archive's
@@ -5171,8 +5173,11 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 - **Progress (2026-09-25, fix phase 2):** every unencrypted entry is read through the new shared
   `IO/VerifyingReadStream` (CRC-32 at end of stream + declared-size cap); a mismatch is a per-entry
   `ArchiveError`, the file is deleted before commit, the archive is `Partial`. Stored entries with
-  an understated size hit the cap; deflated ones hit the CRC (.NET truncates them). Device check
-  pending (phase end).
+  an understated size hit the cap; deflated ones hit the CRC (.NET truncates them). Agent-verified
+  on device 2026-09-25 (Deploy 1.4.12.11): a stored entry with one flipped byte — Shell
+  --extract-here, `pakko x`, the App's Extract All and the App's preview (double-click) each report
+  the CRC-32 error for `doc.txt`; only `ok.txt` is written and no viewer opens. `TestAsync` now uses
+  the same check (closing review).
 
 - [~] **Status:** fixed in fix phase 2, stays `[~]` until the user's own check. Original: open — confirmed 2026-09-25. `pakko a c.zip doc.txt -mx=0`, flip one byte
   inside the stored data: `pakko t bad.zip` -> `Entry 'doc.txt' failed CRC-32 check (expected
