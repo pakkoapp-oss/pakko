@@ -400,7 +400,12 @@ public sealed class TarSandboxedService : ITarService
         if (exitCode != 0)
             throw new IOException($"tar.exe extraction failed: {DescribeFailure(stdErr)}");
 
-        Directory.CreateDirectory(actualDest);
+        // T-F263: the same staging + commit as ZIP extraction (ExtractionStaging) — files move from
+        // the quarantine into a staging folder on the destination's volume, and only a finished
+        // archive is committed, so a cancel or failure partway through leaves no partial files.
+        using var staging = ExtractionStaging.Create(unisolatedDestDir);
+        var plan = new TarCommitPlan(staging, actualDest, stripRootPrefix,
+            new HashSet<string>(StringComparer.OrdinalIgnoreCase));
 
         int totalFiles = 0;
         int extractedCount = 0;
@@ -421,7 +426,7 @@ public sealed class TarSandboxedService : ITarService
             totalFiles++;
 
             var (extracted, relativePath) = await TryMoveSingleEntryAsync(
-                file, scope.OutputDirectory!, stripRootPrefix, actualDest, archivePath, context).ConfigureAwait(false);
+                file, scope.OutputDirectory!, plan, archivePath, context).ConfigureAwait(false);
             if (!extracted)
                 continue;
 
@@ -443,7 +448,17 @@ public sealed class TarSandboxedService : ITarService
             }
         }
 
-        CreateFolderEntries((IEnumerable<string>?)expandedSelection ?? allNames, stripRootPrefix, actualDest);
+        CreateFolderEntries((IEnumerable<string>?)expandedSelection ?? allNames, stripRootPrefix, staging.Path);
+
+        cancellationToken.ThrowIfCancellationRequested();
+        foreach (string relativePath in staging.CommitInto(actualDest))
+        {
+            context.Errors.Add(new ArchiveError
+            {
+                SourcePath = archivePath,
+                Message = $"Cannot write '{relativePath}': destination file is locked by another process."
+            });
+        }
 
         // T-F87: every extracted file was individually skipped (already existed at the
         // destination) — nothing was actually written, so the caller must not count this
@@ -463,6 +478,12 @@ public sealed class TarSandboxedService : ITarService
         progress?.Report(new ProgressReport { Percent = 100, BytesTransferred = progressTotalBytes, TotalBytes = progressTotalBytes });
         return (actualDest, true);
     }
+
+    // Where ExtractSingleArchiveAsync's move phase puts each file: into Staging under the path it
+    // will have in ActualDest (T-F263). ClaimedFinalPaths is ZIP's T-F30 set — a name picked for a
+    // renamed conflict must not collide with another entry of the same archive already staged.
+    private sealed record TarCommitPlan(
+        ExtractionStaging Staging, string ActualDest, bool StripRootPrefix, HashSet<string> ClaimedFinalPaths);
 
     // T-F197: the move phase walks files only, so folder entries are created here — from the
     // names the pre-scan already validated (no "..", rooted, ADS or reserved names), with the
@@ -502,8 +523,8 @@ public sealed class TarSandboxedService : ITarService
         // T-F205: ExtractOptions.EliminateDuplicateRootFolder.
         bool EliminateDuplicateRootFolder);
 
-    // One file of ExtractSingleArchiveAsync's move-phase loop (quarantine "out\" -> the real
-    // destination) — conflict-resolve, move, propagate MOTW. Returns whether the file was
+    // One file of ExtractSingleArchiveAsync's move-phase loop (quarantine "out\" -> staging, then
+    // committed) — conflict-resolve, move, propagate MOTW. Returns whether the file was
     // actually moved (false for both the already-exists+Skip case and the defensive-only
     // isSingleRootFolder edge case, matching the original inline loop's two `continue` sites) and
     // the relative path actually used, for the caller's own progress-report CurrentFile.
@@ -515,10 +536,11 @@ public sealed class TarSandboxedService : ITarService
     }
 
     private static async Task<(bool Extracted, string? RelativePath)> TryMoveSingleEntryAsync(
-        string file, string outputDirectory, bool stripRootPrefix, string actualDest, string archivePath,
-        TarExtractionContext context)
+        string file, string outputDirectory, TarCommitPlan plan, string archivePath, TarExtractionContext context)
     {
         string relativePath = Path.GetRelativePath(outputDirectory, file);
+        bool stripRootPrefix = plan.StripRootPrefix;
+        string actualDest = plan.ActualDest;
 
         // T-F118/T-F157: matches ZipArchiveService.ExtractWithSmartFolderingAsync's identical
         // strip (now via the shared ExtractionDestinationPlanner) — when the whole archive
@@ -539,7 +561,9 @@ public sealed class TarSandboxedService : ITarService
 
         string finalFilePath = Path.GetFullPath(Path.Combine(actualDest, relativePath));
 
-        if (File.Exists(finalFilePath))
+        // Conflicts are decided against the destination plus every path already claimed in this
+        // run (T-F30, as in ZIP's WriteEntryAsync).
+        if (File.Exists(finalFilePath) || plan.ClaimedFinalPaths.Contains(finalFilePath))
         {
             ConflictBehavior resolvedConflict = await context.ConflictResolver.ResolveAsync(finalFilePath).ConfigureAwait(false);
             if (resolvedConflict == ConflictBehavior.Skip)
@@ -549,36 +573,35 @@ public sealed class TarSandboxedService : ITarService
             }
             if (resolvedConflict == ConflictBehavior.Rename)
             {
-                finalFilePath = GetUniqueFilePath(finalFilePath);
+                finalFilePath = GetUniqueFilePath(finalFilePath, plan.ClaimedFinalPaths);
             }
         }
+        plan.ClaimedFinalPaths.Add(finalFilePath);
 
-        Directory.CreateDirectory(Path.GetDirectoryName(finalFilePath)!);
+        // T-F263: staged under the path it will have in actualDest; the commit moves it there.
+        string stagedFilePath = Path.Combine(plan.Staging.Path, Path.GetRelativePath(actualDest, finalFilePath));
+        Directory.CreateDirectory(Path.GetDirectoryName(stagedFilePath)!);
 
-        // T-F170: this used to be a bare File.Move — a single locked destination file (e.g.
-        // re-extracting into an existing folder while one file is open elsewhere) threw
-        // uncaught, aborting every remaining file in ExtractSingleArchiveAsync's move-phase loop
-        // too, not just this one entry. Catches both IOException AND UnauthorizedAccessException,
-        // same as ZipArchiveService.CommitTempDestToActualDest's identical T-F170 fix — a real
-        // locked-file File.Move(overwrite: true) was confirmed empirically to throw
-        // UnauthorizedAccessException, not IOException.
+        // T-F170: a file that cannot be written fails only itself. A locked destination file is
+        // reported by the commit (ExtractionStaging.CommitInto), the same way as for ZIP.
         try
         {
-            File.Move(file, finalFilePath, overwrite: true);
+            File.Move(file, stagedFilePath, overwrite: true);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             context.Errors.Add(new ArchiveError
             {
                 SourcePath = archivePath,
-                Message = $"Cannot write '{relativePath}': destination file is locked by another process."
+                Message = $"Cannot extract '{relativePath}': {ex.Message}",
+                Exception = ex,
             });
             return (false, relativePath);
         }
 
         // T-F45: propagate Zone.Identifier ADS from the archive the user chose to the extracted
-        // file — MOTW must reflect the real source.
-        ArchiveEntrySecurity.TryPropagateMotw(archivePath, finalFilePath, context.MotwMode);
+        // file — MOTW must reflect the real source. The stream moves with the file at commit.
+        ArchiveEntrySecurity.TryPropagateMotw(archivePath, stagedFilePath, context.MotwMode);
 
         return (true, relativePath);
     }
@@ -1494,7 +1517,7 @@ public sealed class TarSandboxedService : ITarService
     // each file here is moved (not written) one at a time, so File.Exists sees every prior move
     // in this same run without needing an in-memory claimed-paths set the way ZIP's single-pass
     // write-then-commit flow does.
-    private static string GetUniqueFilePath(string path)
+    private static string GetUniqueFilePath(string path, HashSet<string>? claimedPaths = null)
     {
         string dir = Path.GetDirectoryName(path)!;
         string name = Path.GetFileNameWithoutExtension(path);
@@ -1502,7 +1525,7 @@ public sealed class TarSandboxedService : ITarService
         int i = 1;
         string candidate;
         do { candidate = Path.Combine(dir, $"{name} ({i++}){ext}"); }
-        while (File.Exists(candidate));
+        while (File.Exists(candidate) || (claimedPaths?.Contains(candidate) ?? false));
         return candidate;
     }
 

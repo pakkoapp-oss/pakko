@@ -236,6 +236,64 @@ public sealed class TarSandboxedServiceExtractTests : IDisposable
             "the locked file could not be overwritten, so its original content must survive untouched");
     }
 
+    // T-F263 (tar on the shared committer): the move phase used to write straight into the
+    // destination, so a cancel partway through left the files moved so far — against the
+    // hard constraint "no partial files on cancel or failure". Cancelling at the first move-phase
+    // progress report must leave the destination without a single new file.
+    [Integration]
+    public async Task ExtractAsync_CancelDuringMovePhase_DestinationGetsNoFiles()
+    {
+        string archivePath = Path.Combine(_temp.Path, "many.tar");
+        TarBuilder.WriteTar(archivePath, Enumerable.Range(0, 40)
+            .Select(i => new TarBuilder.Entry { Name = $"f{i:D2}.txt", Content = Encoding.ASCII.GetBytes("x" + i) }));
+        string destDir = Path.Combine(_temp.Path, "out");
+
+        using var cts = new CancellationTokenSource();
+        var progress = new SynchronousProgress<ProgressReport>(r =>
+        {
+            if (r.Percent >= 95 && r.Percent < 100)
+                cts.Cancel();
+        });
+
+        Func<Task> act = () => _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [archivePath], DestinationFolder = destDir, Mode = ExtractMode.SingleFolder,
+        }, progress, cts.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        cts.IsCancellationRequested.Should().BeTrue("the move phase must have been reached");
+        Directory.GetFiles(destDir, "*", SearchOption.AllDirectories).Should().BeEmpty();
+    }
+
+    // Rename on conflict picks "a (1).txt" by looking at the destination; with staging, an entry
+    // of this archive already named "a (1).txt" (moved first — it sorts before "a.txt") must not
+    // be overwritten by the renamed copy.
+    [Integration]
+    public async Task ExtractAsync_RenameOnConflict_DoesNotOverwriteAnEntryWithTheRenamedName()
+    {
+        string destDir = Path.Combine(_temp.Path, "out");
+        Directory.CreateDirectory(destDir);
+        File.WriteAllText(Path.Combine(destDir, "a.txt"), "already there");
+
+        string archivePath = Path.Combine(_temp.Path, "names.tar");
+        TarBuilder.WriteTar(archivePath,
+        [
+            new TarBuilder.Entry { Name = "a.txt", Content = Encoding.ASCII.GetBytes("archive a") },
+            new TarBuilder.Entry { Name = "a (1).txt", Content = Encoding.ASCII.GetBytes("archive a (1)") },
+        ]);
+
+        var result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [archivePath], DestinationFolder = destDir, Mode = ExtractMode.SingleFolder,
+            OnConflict = ConflictBehavior.Rename,
+        });
+
+        result.Success.Should().BeTrue(string.Join("; ", result.Errors.Select(e => e.Message)));
+        File.ReadAllText(Path.Combine(destDir, "a.txt")).Should().Be("already there");
+        File.ReadAllText(Path.Combine(destDir, "a (1).txt")).Should().Be("archive a (1)");
+        File.ReadAllText(Path.Combine(destDir, "a (2).txt")).Should().Be("archive a");
+    }
+
     // T-F168: unlike ZipArchiveService (which controls per-entry extraction itself and can rename
     // a colliding entry via ConflictResolver before writing it), tar.exe performs the actual
     // on-disk write during its own "-xf" — confirmed via a Phase 0 spike that two same-named
