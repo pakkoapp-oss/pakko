@@ -5,6 +5,7 @@ using Archiver.Core.Interfaces;
 using Archiver.Core.Models;
 using Archiver.Core.Services.Antivirus;
 using Archiver.Core.Services.Sandbox;
+using Archiver.Core.Services.Zip;
 using Archiver.Core.Services.Zip.Decryption;
 
 namespace Archiver.Core.Services;
@@ -69,6 +70,9 @@ public sealed class AntivirusScanService : IAntivirusScanService
         _scannerFactory = scannerFactory;
         _isProviderRegistered = isProviderRegistered;
     }
+
+    // T-F234: see ZipArchiveService.NameCodePages — scan reports the same names extraction writes.
+    internal ZipNameCodePages NameCodePages { get; init; } = ZipNameCodePages.System;
 
     /// <inheritdoc/>
     public async Task<ThreatScanResult> ScanAsync(
@@ -172,7 +176,7 @@ public sealed class AntivirusScanService : IAntivirusScanService
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 await ScanZipArchiveAsync(
-                    archivePath, options.SelectedEntryPaths, scanner, passwordResolver, findings,
+                    archivePath, options.SelectedEntryPaths, scanner, passwordResolver, NameCodePages, findings,
                     (entry, done, total) => ReportProgress(archivePath, entry, done, total), cancellationToken)
                     .ConfigureAwait(false);
                 archivesCompleted++;
@@ -217,15 +221,16 @@ public sealed class AntivirusScanService : IAntivirusScanService
         IReadOnlyList<string>? selectedEntryPaths,
         IAmsiScanner scanner,
         PasswordResolver passwordResolver,
+        ZipNameCodePages codePages,
         List<ThreatFinding> findings,
         Action<string?, int, int> reportProgress,
         CancellationToken cancellationToken)
     {
-        List<ZipArchiveEntry> fileEntries;
-        ZipArchive archive;
+        List<NamedZipEntry> fileEntries;
+        ZipArchiveReader reader;
         try
         {
-            archive = ZipFile.OpenRead(archivePath);
+            reader = ZipArchiveReader.Open(archivePath, codePages);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
         {
@@ -238,8 +243,9 @@ public sealed class AntivirusScanService : IAntivirusScanService
             return;
         }
 
-        using (archive)
+        using (reader)
         {
+            var archive = reader.Archive;
             // T-F194: an encrypted entry used to reach entry.Open() and fail as "Could not read
             // entry" — never scanned at all, which is exactly how password-protected malware
             // delivery evades AV. Now its decrypted plaintext is scanned when a password resolves.
@@ -248,7 +254,7 @@ public sealed class AntivirusScanService : IAntivirusScanService
                 ? null
                 : await ZipArchiveService.ResolveArchivePasswordAsync(archivePath, passwordResolver).ConfigureAwait(false);
 
-            var allFileEntries = archive.Entries.Where(e => !e.FullName.EndsWith('/')).ToList();
+            var allFileEntries = reader.Entries.Where(e => !e.FullName.EndsWith('/')).ToList();
 
             // Same subset-membership logic ZipArchiveService.ExtractWithSmartFolderingAsync
             // already has — small enough to duplicate rather than share (CLAUDE.md: three similar
@@ -265,8 +271,9 @@ public sealed class AntivirusScanService : IAntivirusScanService
             }
 
             int entriesDone = 0;
-            foreach (ZipArchiveEntry entry in fileEntries)
+            foreach (NamedZipEntry named in fileEntries)
             {
+                ZipArchiveEntry entry = named.Entry;
                 cancellationToken.ThrowIfCancellationRequested();
                 // T-F151: reported BEFORE scanning starts, not just after — AmsiScanBuffer is one
                 // atomic call with no mid-call progress callback, so a large entry (up to the new
@@ -274,17 +281,17 @@ public sealed class AntivirusScanService : IAntivirusScanService
                 // percentage for the whole duration of its own scan. This at least advances the
                 // bar (and CurrentFile) to this entry's own starting position immediately, instead
                 // of only at the end of a potentially multi-second single scan.
-                reportProgress(entry.FullName, entriesDone, fileEntries.Count);
+                reportProgress(named.FullName, entriesDone, fileEntries.Count);
                 try
                 {
                     ThreatFinding finding = encryptedEntryMap is { } map
                                             && map.TryGetValue(entry, out var located)
                                             && located.GeneralPurposeEncryptedBit
                         ? await ScanEncryptedEntryAsync(
-                            archivePath, entry, located, rawArchiveStream!, password, scanner, cancellationToken)
+                            archivePath, named.FullName, entry, located, rawArchiveStream!, password, scanner, cancellationToken)
                             .ConfigureAwait(false)
                         : await ScanOneEntryAsync(
-                            archivePath, entry.FullName, entry.Length, entry.Open, scanner, cancellationToken)
+                            archivePath, named.FullName, entry.Length, entry.Open, scanner, cancellationToken)
                             .ConfigureAwait(false);
                     findings.Add(finding);
                 }
@@ -293,14 +300,14 @@ public sealed class AntivirusScanService : IAntivirusScanService
                     findings.Add(new ThreatFinding
                     {
                         ArchivePath = archivePath,
-                        EntryPath = entry.FullName,
+                        EntryPath = named.FullName,
                         Verdict = ThreatVerdict.Inconclusive,
                         Reason = $"Could not read entry: {ex.Message}",
                     });
                 }
                 finally
                 {
-                    reportProgress(entry.FullName, ++entriesDone, fileEntries.Count);
+                    reportProgress(named.FullName, ++entriesDone, fileEntries.Count);
                 }
             }
         }
@@ -410,29 +417,29 @@ public sealed class AntivirusScanService : IAntivirusScanService
     }
 
     private static async Task<ThreatFinding> ScanEncryptedEntryAsync(
-        string archivePath, ZipArchiveEntry entry, LocatedZipEntry located, Stream rawArchiveStream,
+        string archivePath, string entryName, ZipArchiveEntry entry, LocatedZipEntry located, Stream rawArchiveStream,
         string? password, IAmsiScanner scanner, CancellationToken cancellationToken)
     {
         if (password is null)
-            return InconclusiveFinding(archivePath, entry.FullName, "Entry is password-protected and was not scanned.");
+            return InconclusiveFinding(archivePath, entryName, "Entry is password-protected and was not scanned.");
 
         // The size cap below (inside ScanOneEntryAsync) checks entry.Length from the central
         // directory, but TryOpen buffers the whole ciphertext sized by the LOCAL header — an
         // independently attacker-controlled field — so it needs its own cap before any allocation.
         if (located.CompressedSize > MaxScannableEntryBytes || entry.Length > MaxScannableEntryBytes)
-            return OversizedFinding(archivePath, entry.FullName);
+            return OversizedFinding(archivePath, entryName);
 
         var (result, stream) = EncryptedZipEntryReader.TryOpen(rawArchiveStream, located, password);
         return result switch
         {
             EncryptedZipReadResult.Success => await ScanOneEntryAsync(
-                archivePath, entry.FullName, entry.Length, () => stream!, scanner, cancellationToken,
+                archivePath, entryName, entry.Length, () => stream!, scanner, cancellationToken,
                 verifyIntegrityAfterScan: true).ConfigureAwait(false),
-            EncryptedZipReadResult.WrongPassword => InconclusiveFinding(archivePath, entry.FullName,
+            EncryptedZipReadResult.WrongPassword => InconclusiveFinding(archivePath, entryName,
                 "Entry is password-protected with a different password and was not scanned."),
-            EncryptedZipReadResult.UnsupportedCompressionMethod => InconclusiveFinding(archivePath, entry.FullName,
+            EncryptedZipReadResult.UnsupportedCompressionMethod => InconclusiveFinding(archivePath, entryName,
                 "Entry uses an unsupported compression method under encryption and was not scanned."),
-            _ => InconclusiveFinding(archivePath, entry.FullName,
+            _ => InconclusiveFinding(archivePath, entryName,
                 "Entry failed decryption authentication (corrupted or tampered) and was not scanned."),
         };
     }

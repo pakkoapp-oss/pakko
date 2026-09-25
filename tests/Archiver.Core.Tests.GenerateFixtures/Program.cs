@@ -91,6 +91,12 @@
  *   ID -- ignored by every non-Java reader, which is all that matters here). See
  *   docs/DECISIONS.md's T-F194 entry.
  *
+ *   T-F234 (legacy ZIP name encoding) — legacy_oem866_7za.zip, from a folder holding А.txt
+ *   ("A"), Б.txt ("B") and Тека/Документ_квартал.txt ("D"), run inside that folder:
+ *     7za.exe a -tzip -mcp=866 legacy_oem866_7za.zip .
+ *   -mcp=866 pins the OEM code page so the bytes don't depend on the machine. 7za writes the
+ *   names in cp866 with the UTF-8 flag clear AND adds a 0x7075 Unicode Path extra.
+ *
  *   pakko_integrity_valid.zip    — generate after T-34: run Pakko to archive compressible.txt
  *   pakko_integrity_tampered.zip — generate after T-34: copy valid, flip one byte in manifest
  *
@@ -138,6 +144,7 @@
  *     encrypted_zipcrypto_store.zip   — MANUAL, requires 7-Zip (T-F194, check-byte collision)
  *     encrypted_aes256_bzip2.zip      — MANUAL, requires 7-Zip (T-F194, unsupported method)
  *     encrypted_aes256_eicar.zip      — MANUAL, SYNTHETIC stdin + byte-patch (T-F194, real AMSI)
+ *     legacy_oem866_7za.zip           — MANUAL, requires 7-Zip (T-F234, cp866 names + 0x7075)
  *     created_by_7zip.zip             — MANUAL
  *     created_by_winrar.zip           — MANUAL
  *     created_by_macos.zip            — MANUAL

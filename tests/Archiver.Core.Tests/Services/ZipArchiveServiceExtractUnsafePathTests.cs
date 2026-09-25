@@ -77,7 +77,8 @@ public sealed class ZipArchiveServiceExtractUnsafePathTests : IDisposable
         var result = await ExtractIntoAsync(zip, dest, ConflictBehavior.Overwrite);
 
         result.Success.Should().BeFalse();
-        result.Errors.Should().ContainSingle().Which.Message.Should().Contain("unsafe path").And.Contain(unsafeName);
+        // T-F234: names are reported '/'-separated, the same form the listing shows.
+        result.Errors.Should().ContainSingle().Which.Message.Should().Contain("unsafe path").And.Contain(unsafeName.Replace('\\', '/'));
         File.ReadAllText(Path.Combine(dest, "good.txt")).Should().Be("ARCHIVE good.txt");
         Directory.GetFiles(_temp.Path, "*", SearchOption.AllDirectories)
             .Should().OnlyContain(f => f.EndsWith("evil.zip") || f.EndsWith("good.txt"));

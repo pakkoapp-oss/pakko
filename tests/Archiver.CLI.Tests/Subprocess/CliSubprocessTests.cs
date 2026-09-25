@@ -98,6 +98,23 @@ public sealed class CliSubprocessTests
         File.Exists(Path.Combine(destDir, "a.txt")).Should().BeTrue();
     }
 
+    // T-F234: 7za's own default for Cyrillic names — cp866 bytes, UTF-8 flag clear, plus a 0x7075
+    // Unicode Path extra — so the expected names hold on any machine's code pages. Used to be
+    // written as mojibake, and the two one-letter names collapsed into one file.
+    [Fact]
+    public void Extract_LegacyOemNamedZip_WritesRealNames()
+    {
+        string destDir = CliFixtureFiles.CreateScratchDir();
+        string zipPath = Path.Combine(AppContext.BaseDirectory, "Fixtures", "legacy_oem866_7za.zip");
+
+        (int exitCode, _, string stdErr) = CliProcessRunner.Run("x", $"-o{destDir}", zipPath);
+
+        exitCode.Should().Be(0, stdErr);
+        File.ReadAllText(Path.Combine(destDir, "А.txt")).Should().Be("A");
+        File.ReadAllText(Path.Combine(destDir, "Б.txt")).Should().Be("B");
+        File.ReadAllText(Path.Combine(destDir, "Тека", "Документ_квартал.txt")).Should().Be("D");
+    }
+
     [RequiresTarCapability("7z")]
     public void Extract_SevenZipFixture_ExtractsFileWithContentAndExitsZero()
     {

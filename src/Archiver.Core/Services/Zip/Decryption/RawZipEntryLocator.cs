@@ -53,9 +53,10 @@ internal static class RawZipEntryLocator
 
     public static LocatedZipEntry Locate(Stream zipStream, string entryFullName)
     {
-        byte[] targetBytes = Encoding.UTF8.GetBytes(entryFullName);
-
-        var record = ReadCentralDirectory(zipStream).FirstOrDefault(r => r.NameBytes.AsSpan().SequenceEqual(targetBytes))
+        // T-F234: matched by decoded name, the name every caller sees — a raw UTF-8 byte compare
+        // missed every legacy (OEM/ANSI) name.
+        var record = ReadCentralDirectory(zipStream).FirstOrDefault(r =>
+                ZipEntryNameDecoder.Decode(r.NameBytes, r.GeneralPurposeFlag, r.HostOs, r.Extra, ZipNameCodePages.System) == entryFullName)
             ?? throw new FileNotFoundException($"Entry not found in ZIP central directory: {entryFullName}");
         return BuildFromLocalHeader(zipStream, record);
     }
@@ -64,12 +65,8 @@ internal static class RawZipEntryLocator
     /// Walks the whole central directory once and returns every entry's <see cref="LocatedZipEntry"/>
     /// in central-directory order — the same order <see cref="System.IO.Compression.ZipArchive.Entries"/>
     /// populates its own list in, so a caller can pair the two positionally by index. Deliberately
-    /// NOT name-based: a legacy (non-UTF-8-flagged) entry name decodes differently in
-    /// <see cref="System.IO.Compression.ZipArchiveEntry.FullName"/> than a naive
-    /// <see cref="Encoding.UTF8"/> byte-compare here would assume, and <c>Archiver.Core</c>'s
-    /// zero-NuGet-dependency constraint rules out pulling in
-    /// <c>System.Text.Encoding.CodePages</c> to decode it correctly — see docs/DECISIONS.md's
-    /// T-F189 entry. Positional pairing sidesteps the encoding question entirely.
+    /// NOT name-based: positional pairing needs no name at all, so it stays exact even for two
+    /// entries with the same name. (T-F234: names themselves come from <see cref="ReadEntryNames"/>.)
     /// <para>
     /// Two full passes over <paramref name="zipStream"/> deliberately: <see cref="ReadCentralDirectory"/>
     /// reads only the central directory (one contiguous forward scan, no seeking away), THEN this
@@ -98,9 +95,20 @@ internal static class RawZipEntryLocator
     public static bool HasAnyEncryptedEntry(Stream zipStream) =>
         ReadCentralDirectory(zipStream).Any(record => (record.GeneralPurposeFlag & 0x0001) != 0);
 
+    /// <summary>
+    /// T-F234: every entry's name decoded by 7-Zip's rule (<see cref="ZipEntryNameDecoder"/>), with
+    /// its raw bytes, in central-directory order — the order <see cref="System.IO.Compression.ZipArchive.Entries"/>
+    /// uses, so the two pair positionally. Reads the central directory only: no local-header seeks
+    /// and no WinZip AES checks, so any archive whose directory .NET can read gets names too.
+    /// </summary>
+    public static List<(byte[] RawName, string Name)> ReadEntryNames(Stream zipStream, ZipNameCodePages codePages) =>
+        ReadCentralDirectory(zipStream)
+            .Select(r => (r.NameBytes, ZipEntryNameDecoder.Decode(r.NameBytes, r.GeneralPurposeFlag, r.HostOs, r.Extra, codePages)))
+            .ToList();
+
     private sealed record CentralDirectoryRecord(
         byte[] NameBytes, long LocalHeaderOffset, uint Crc32, long CompressedSize, long UncompressedSize,
-        ushort GeneralPurposeFlag);
+        ushort GeneralPurposeFlag, byte HostOs, byte[] Extra);
 
     private static List<CentralDirectoryRecord> ReadCentralDirectory(Stream zipStream)
     {
@@ -119,7 +127,7 @@ internal static class RawZipEntryLocator
             if (signature != CentralDirectorySignature)
                 throw new InvalidDataException("Malformed ZIP central directory (bad entry signature).");
 
-            ReadUInt16(zipStream); // version made by
+            ushort versionMadeBy = ReadUInt16(zipStream);
             ReadUInt16(zipStream); // version needed
             ushort generalPurposeFlag = ReadUInt16(zipStream);
             ReadUInt16(zipStream); // compression method — the local header's copy is the one used
@@ -142,7 +150,8 @@ internal static class RawZipEntryLocator
             var (realUncompressedSize, realCompressedSize, realLocalHeaderOffset) =
                 ResolveZip64Fields(extra, uncompressedSize, compressedSize, localHeaderOffset);
             records.Add(new CentralDirectoryRecord(
-                nameBytes, realLocalHeaderOffset, crc32, realCompressedSize, realUncompressedSize, generalPurposeFlag));
+                nameBytes, realLocalHeaderOffset, crc32, realCompressedSize, realUncompressedSize, generalPurposeFlag,
+                (byte)(versionMadeBy >> 8), extra));
         }
 
         return records;

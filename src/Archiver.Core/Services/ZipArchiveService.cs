@@ -4,6 +4,7 @@ using System.IO.Compression;
 using Archiver.Core.IO;
 using Archiver.Core.Interfaces;
 using Archiver.Core.Models;
+using Archiver.Core.Services.Zip;
 using Archiver.Core.Services.Zip.Decryption;
 
 namespace Archiver.Core.Services;
@@ -36,6 +37,10 @@ public sealed class ZipArchiveService : IArchiveService
     {
         _policy = policy ?? new GroupPolicyOptions();
     }
+
+    // T-F234: the OEM/ANSI pages entry names without the UTF-8 flag are decoded with. Tests pin
+    // them so expectations hold on a machine with other pages (the en-US CI runner).
+    internal ZipNameCodePages NameCodePages { get; init; } = ZipNameCodePages.System;
 
     /// <inheritdoc/>
     public async Task<ArchiveResult> ArchiveAsync(
@@ -892,7 +897,7 @@ public sealed class ZipArchiveService : IArchiveService
             bool alreadyIsolated = options.Mode == ExtractMode.SeparateFolders;
             var context = new ZipExtractionContext(
                 conflictResolver, sink.SkippedFiles, options.ConfirmCompressionBombExtraction, _policy.MotwMode, archiveProgress, sink.Errors,
-                sink.ConflictSkippedEntries, password, options.EliminateDuplicateRootFolder);
+                sink.ConflictSkippedEntries, NameCodePages, password, options.EliminateDuplicateRootFolder);
             var (actualDest, anyExtracted) = await Task.Run(async () =>
                 await ExtractWithSmartFolderingAsync(archivePath, destDir, alreadyIsolated,
                     options.DestinationFolder, options.SelectedEntryPaths, context, cancellationToken),
@@ -988,7 +993,7 @@ public sealed class ZipArchiveService : IArchiveService
 
             try
             {
-                await Task.Run(() => TestArchiveEntries(archivePath, password, errors, cancellationToken), cancellationToken)
+                await Task.Run(() => TestArchiveEntries(archivePath, password, NameCodePages, errors, cancellationToken), cancellationToken)
                     .ConfigureAwait(false);
             }
             catch (IOException ex)
@@ -1030,7 +1035,8 @@ public sealed class ZipArchiveService : IArchiveService
         {
             var entries = await Task.Run(() =>
             {
-                using var archive = ZipFile.OpenRead(archivePath);
+                using var reader = ZipArchiveReader.Open(archivePath, NameCodePages);
+                var archive = reader.Archive;
 
                 // T-F189: only paid for an archive that actually has an encrypted entry (the
                 // Archive Browser calls ListEntriesAsync on every navigation — see docs/DECISIONS.md's
@@ -1061,8 +1067,9 @@ public sealed class ZipArchiveService : IArchiveService
                     }
                 }
 
-                return archive.Entries.Select(e =>
+                return reader.Entries.Select(named =>
                 {
+                    var e = named.Entry;
                     // AE-2 zeroes the header CRC-32 by design (HMAC is the sole authority) — report
                     // null rather than a misleading 0, consistent with ArchiveEntryInfo.Crc32's
                     // existing nullable convention (0 is itself a legitimate CRC-32 for other entries).
@@ -1071,14 +1078,15 @@ public sealed class ZipArchiveService : IArchiveService
                         && located.CompressionMethod == 99
                         && located.AeVersion == 2;
 
+                    bool isDirectory = named.FullName.EndsWith('/');
                     return new ArchiveEntryInfo
                     {
-                        Path = e.FullName.TrimEnd('/'),
+                        Path = named.FullName.TrimEnd('/'),
                         Size = e.Length,
                         CompressedSize = e.CompressedLength,
                         Modified = e.LastWriteTime.DateTime,
-                        IsDirectory = e.FullName.EndsWith('/'),
-                        Crc32 = e.FullName.EndsWith('/') || isAe2WithZeroedCrc ? null : e.Crc32,
+                        IsDirectory = isDirectory,
+                        Crc32 = isDirectory || isAe2WithZeroedCrc ? null : e.Crc32,
                     };
                 }).ToList();
             }, cancellationToken).ConfigureAwait(false);
@@ -1098,9 +1106,11 @@ public sealed class ZipArchiveService : IArchiveService
     // archive contains at least one encrypted entry and a password was already resolved once,
     // upfront, in TestAsync — same "once per archive" rule as ExtractAsync.
     private static void TestArchiveEntries(
-        string archivePath, string? password, List<ArchiveError> errors, CancellationToken cancellationToken)
+        string archivePath, string? password, ZipNameCodePages codePages, List<ArchiveError> errors,
+        CancellationToken cancellationToken)
     {
-        using var archive = ZipFile.OpenRead(archivePath);
+        using var reader = ZipArchiveReader.Open(archivePath, codePages);
+        var archive = reader.Archive;
 
         Dictionary<ZipArchiveEntry, LocatedZipEntry>? encryptedEntryMap = null;
         using var rawArchiveStream = password is not null ? File.OpenRead(archivePath) : null;
@@ -1115,17 +1125,24 @@ public sealed class ZipArchiveService : IArchiveService
             }
         }
 
-        foreach (var entry in archive.Entries)
+        foreach (var named in reader.Entries)
         {
             if (cancellationToken.IsCancellationRequested)
                 break;
 
-            if (entry.FullName.EndsWith('/'))
+            var entry = named.Entry;
+            if (named.FullName.EndsWith('/'))
                 continue; // directory entry — no data to verify
+
+            if (named.CollidesAfterDecoding)
+            {
+                errors.Add(new ArchiveError { SourcePath = archivePath, Message = CollisionMessage(named.FullName) });
+                continue;
+            }
 
             if (encryptedEntryMap is { } map && map.TryGetValue(entry, out var located2) && located2.GeneralPurposeEncryptedBit)
             {
-                TestEncryptedEntry(archivePath, entry, located2, rawArchiveStream!, password!, errors);
+                TestEncryptedEntry(archivePath, named.FullName, located2, rawArchiveStream!, password!, errors);
                 continue;
             }
 
@@ -1141,7 +1158,7 @@ public sealed class ZipArchiveService : IArchiveService
                 errors.Add(new ArchiveError
                 {
                     SourcePath = archivePath,
-                    Message = $"Entry '{entry.FullName}': {ex.Message}",
+                    Message = $"Entry '{named.FullName}': {ex.Message}",
                     Exception = ex
                 });
             }
@@ -1155,7 +1172,7 @@ public sealed class ZipArchiveService : IArchiveService
     // design) — HMAC, already verified inside TryOpen before this method is even reached, is the
     // whole story there; draining just runs the decompression harmlessly.
     private static void TestEncryptedEntry(
-        string archivePath, ZipArchiveEntry entry, LocatedZipEntry located, Stream rawArchiveStream,
+        string archivePath, string entryName, LocatedZipEntry located, Stream rawArchiveStream,
         string password, List<ArchiveError> errors)
     {
         var (result, stream) = EncryptedZipEntryReader.TryOpen(rawArchiveStream, located, password);
@@ -1165,21 +1182,21 @@ public sealed class ZipArchiveService : IArchiveService
                 errors.Add(new ArchiveError
                 {
                     SourcePath = archivePath,
-                    Message = $"Entry '{entry.FullName}' could not be decrypted: wrong password."
+                    Message = $"Entry '{entryName}' could not be decrypted: wrong password."
                 });
                 return;
             case EncryptedZipReadResult.Corrupted:
                 errors.Add(new ArchiveError
                 {
                     SourcePath = archivePath,
-                    Message = $"Entry '{entry.FullName}' could not be decrypted: authentication failed (corrupted or tampered)."
+                    Message = $"Entry '{entryName}' could not be decrypted: authentication failed (corrupted or tampered)."
                 });
                 return;
             case EncryptedZipReadResult.UnsupportedCompressionMethod:
                 errors.Add(new ArchiveError
                 {
                     SourcePath = archivePath,
-                    Message = $"Entry '{entry.FullName}' uses an unsupported compression method under encryption."
+                    Message = $"Entry '{entryName}' uses an unsupported compression method under encryption."
                 });
                 return;
         }
@@ -1194,7 +1211,7 @@ public sealed class ZipArchiveService : IArchiveService
             errors.Add(new ArchiveError
             {
                 SourcePath = archivePath,
-                Message = $"Entry '{entry.FullName}': {ex.Message}",
+                Message = $"Entry '{entryName}': {ex.Message}",
                 Exception = ex
             });
         }
@@ -1212,7 +1229,8 @@ public sealed class ZipArchiveService : IArchiveService
         ZipExtractionContext context,
         CancellationToken cancellationToken)
     {
-        using var archive = ZipFile.OpenRead(archivePath);
+        using var reader = ZipArchiveReader.Open(archivePath, context.NameCodePages);
+        var archive = reader.Archive;
 
         // T-F189: only paid for an archive that actually has a resolved password (i.e. contains
         // at least one encrypted entry) — a plain archive incurs zero extra parsing here. Built
@@ -1236,7 +1254,7 @@ public sealed class ZipArchiveService : IArchiveService
         try
         {
             return await ExtractWithSmartFolderingCoreAsync(
-                archive, archivePath, destDir, alreadyIsolated, unisolatedDestDir, selectedEntryPaths,
+                reader.Entries, archivePath, destDir, alreadyIsolated, unisolatedDestDir, selectedEntryPaths,
                 context, encryptedEntryMap, rawArchiveStream, cancellationToken).ConfigureAwait(false);
         }
         finally
@@ -1252,7 +1270,7 @@ public sealed class ZipArchiveService : IArchiveService
     // splitting risks separating checks whose safety currently reads directly off this one method
     // body. Kept paired 1:1 with TarSandboxedService.ExtractSingleArchiveAsync (T-F118).
     private static async Task<(string ActualDest, bool AnyExtracted)> ExtractWithSmartFolderingCoreAsync( // NOSONAR: S3776 — see comment above
-        ZipArchive archive,
+        IReadOnlyList<NamedZipEntry> archiveEntries,
         string archivePath,
         string destDir,
         bool alreadyIsolated,
@@ -1266,12 +1284,12 @@ public sealed class ZipArchiveService : IArchiveService
         List<SkippedFile> skippedFiles = context.SkippedFiles;
         Func<CompressionBombWarning, Task<bool>>? confirmCompressionBombExtraction = context.ConfirmCompressionBombExtraction;
 
-        var allFileEntries = archive.Entries
+        var allFileEntries = archiveEntries
             .Where(e => !e.FullName.EndsWith('/'))
             .ToList();
         // T-F197: folder entries ("name/") are extracted too — an empty folder has nothing else
         // that would bring it back.
-        var allEntries = archive.Entries.ToList();
+        var allEntries = archiveEntries.ToList();
 
         // T-F05: restrict to just the selected entries (plus anything nested under a selected
         // folder path) before any of the smart-foldering logic below runs. O(entries × selected)
@@ -1328,7 +1346,7 @@ public sealed class ZipArchiveService : IArchiveService
         // TarProcessService's model and allows exactly one confirmation per archive. T-F05: uses
         // allFileEntries (not the filtered subset) even when extracting only a selection — see
         // DECISIONS.md's T-F05 entry for why this stays conservative rather than narrowed.
-        long declaredUncompressedSize = allFileEntries.Where(e => e.Length > 0).Sum(e => e.Length);
+        long declaredUncompressedSize = allFileEntries.Where(e => e.Entry.Length > 0).Sum(e => e.Entry.Length);
         long compressedFileSize = new FileInfo(archivePath).Length;
         var bombOutcome = await ArchiveEntrySecurity.EvaluateCompressionBombAsync(
             archivePath, declaredUncompressedSize, compressedFileSize,
@@ -1440,6 +1458,8 @@ public sealed class ZipArchiveService : IArchiveService
         List<ArchiveError> Errors,
         // T-F260: entries skipped because they already exist at the destination (see ExtractAsync).
         List<string> ConflictSkippedEntries,
+        // T-F234: see ZipArchiveService.NameCodePages.
+        ZipNameCodePages NameCodePages,
         // T-F189: non-null only when this archive contains at least one encrypted entry and a
         // password was already resolved once, upfront, in TryRejectUnsupportedOrEncryptedZipAsync.
         string? Password = null,
@@ -1467,23 +1487,30 @@ public sealed class ZipArchiveService : IArchiveService
     // `bytesRead += entry.Length`) — kept as an explicit return rather than a ref/out parameter so
     // the caller's accumulation stays visibly in its own hands.
     private static async Task<(bool Extracted, long BytesConsumed)> TryExtractSingleEntryAsync(
-        ZipArchiveEntry entry, string archivePath, long bytesReadSoFar, ExtractionPlan plan,
+        NamedZipEntry named, string archivePath, long bytesReadSoFar, ExtractionPlan plan,
         ZipExtractionContext context, CancellationToken cancellationToken)
     {
+        // T-F234: two different raw names that decode to one name would overwrite each other.
+        if (named.CollidesAfterDecoding)
+        {
+            context.Errors.Add(new ArchiveError { SourcePath = archivePath, Message = CollisionMessage(named.FullName) });
+            return (false, named.Entry.Length);
+        }
+
         // T-F228: before the name checks — "C:/x" must read as unsafe, not as an ADS name.
-        if (ArchiveEntrySecurity.HasUnsafePath(entry.FullName))
+        if (ArchiveEntrySecurity.HasUnsafePath(named.FullName))
         {
             context.Errors.Add(new ArchiveError
             {
                 SourcePath = archivePath,
-                Message = $"Entry '{entry.FullName}' has an unsafe path and was not extracted."
+                Message = $"Entry '{named.FullName}' has an unsafe path and was not extracted."
             });
-            return (false, entry.Length);
+            return (false, named.Entry.Length);
         }
 
-        string relativePath = entry.FullName.Replace('/', Path.DirectorySeparatorChar);
+        string relativePath = named.FullName.Replace('/', Path.DirectorySeparatorChar);
 
-        bool isFolder = entry.FullName.EndsWith('/');
+        bool isFolder = named.FullName.EndsWith('/');
 
         if (plan.StripRootPrefix)
         {
@@ -1491,23 +1518,23 @@ public sealed class ZipArchiveService : IArchiveService
             relativePath = relativePath[(sep + 1)..];
             // The stripped root folder itself: actualDest stands in for it.
             if (string.IsNullOrEmpty(relativePath))
-                return (isFolder && !Directory.Exists(plan.ActualDest), entry.Length);
+                return (isFolder && !Directory.Exists(plan.ActualDest), named.Entry.Length);
         }
 
         // T-F38/T-F39: Reject ADS-marked, reserved-name, or control-character entry names
         // (a folder entry's trailing '/' would hide its last segment from the reserved-name check)
-        string? nameRejectionReason = GetEntryNameRejectionReason(entry.FullName.TrimEnd('/'));
+        string? nameRejectionReason = GetEntryNameRejectionReason(named.FullName.TrimEnd('/'));
         if (nameRejectionReason != null)
         {
-            context.SkippedFiles.Add(new SkippedFile { Path = entry.FullName, Reason = nameRejectionReason });
-            return (false, entry.Length);
+            context.SkippedFiles.Add(new SkippedFile { Path = named.FullName, Reason = nameRejectionReason });
+            return (false, named.Entry.Length);
         }
 
         try
         {
             if (isFolder)
-                return (TryCreateFolderEntry(entry, relativePath, plan, context), entry.Length);
-            return await WriteEntryAsync(entry, relativePath, archivePath, bytesReadSoFar, plan, context, cancellationToken)
+                return (TryCreateFolderEntry(named, relativePath, plan, context), named.Entry.Length);
+            return await WriteEntryAsync(named, relativePath, archivePath, bytesReadSoFar, plan, context, cancellationToken)
                 .ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is UnauthorizedAccessException or InvalidDataException
@@ -1524,10 +1551,10 @@ public sealed class ZipArchiveService : IArchiveService
             context.Errors.Add(new ArchiveError
             {
                 SourcePath = archivePath,
-                Message = $"Cannot extract '{entry.FullName}': {message}",
+                Message = $"Cannot extract '{named.FullName}': {message}",
                 Exception = ex,
             });
-            return (false, entry.Length);
+            return (false, named.Entry.Length);
         }
     }
 
@@ -1536,18 +1563,18 @@ public sealed class ZipArchiveService : IArchiveService
     // as extracted only when the folder is new at the destination — otherwise re-extracting with
     // Skip would no longer report "nothing extracted" (T-F87).
     private static bool TryCreateFolderEntry(
-        ZipArchiveEntry entry, string relativePath, ExtractionPlan plan, ZipExtractionContext context)
+        NamedZipEntry named, string relativePath, ExtractionPlan plan, ZipExtractionContext context)
     {
         string folder = Path.TrimEndingDirectorySeparator(Path.GetFullPath(Path.Combine(plan.TempDest, relativePath)));
 
         if (!folder.StartsWith(plan.FullTempDest, StringComparison.OrdinalIgnoreCase))
-            throw new InvalidDataException($"ZIP entry '{entry.FullName}' would extract outside destination directory.");
+            throw new InvalidDataException($"ZIP entry '{named.FullName}' would extract outside destination directory.");
 
         if (ArchiveEntrySecurity.PathContainsReparsePoint(folder, plan.FullTempDest))
         {
             context.SkippedFiles.Add(new SkippedFile
             {
-                Path = entry.FullName,
+                Path = named.FullName,
                 Reason = "Entry path traverses a reparse point (symlink or junction) and was skipped."
             });
             return false;
@@ -1560,7 +1587,7 @@ public sealed class ZipArchiveService : IArchiveService
     // The write half of one entry: staging path, reparse-point check, conflict resolution, copy.
     // Every I/O failure in here is per entry (see the caller's catch).
     private static async Task<(bool Extracted, long BytesConsumed)> WriteEntryAsync(
-        ZipArchiveEntry entry, string relativePath, string archivePath, long bytesReadSoFar, ExtractionPlan plan,
+        NamedZipEntry named, string relativePath, string archivePath, long bytesReadSoFar, ExtractionPlan plan,
         ZipExtractionContext context, CancellationToken cancellationToken)
     {
         string fullTempDest = plan.FullTempDest;
@@ -1570,7 +1597,7 @@ public sealed class ZipArchiveService : IArchiveService
         string destFilePath = Path.GetFullPath(Path.Combine(plan.TempDest, relativePath));
 
         if (!destFilePath.StartsWith(fullTempDest, StringComparison.OrdinalIgnoreCase))
-            throw new InvalidDataException($"ZIP entry '{entry.FullName}' would extract outside destination directory.");
+            throw new InvalidDataException($"ZIP entry '{named.FullName}' would extract outside destination directory.");
 
         Directory.CreateDirectory(Path.GetDirectoryName(destFilePath)!);
 
@@ -1579,10 +1606,10 @@ public sealed class ZipArchiveService : IArchiveService
         {
             context.SkippedFiles.Add(new SkippedFile
             {
-                Path = entry.FullName,
+                Path = named.FullName,
                 Reason = "Entry path traverses a reparse point (symlink or junction) and was skipped."
             });
-            return (false, entry.Length);
+            return (false, named.Entry.Length);
         }
 
         // T-F94: per-entry compression-ratio check removed — superseded by the whole-archive
@@ -1601,7 +1628,7 @@ public sealed class ZipArchiveService : IArchiveService
             if (resolvedConflict == ConflictBehavior.Skip)
             {
                 context.ConflictSkippedEntries.Add(relativePath);
-                return (false, entry.Length);
+                return (false, named.Entry.Length);
             }
             if (resolvedConflict == ConflictBehavior.Rename)
             {
@@ -1617,17 +1644,17 @@ public sealed class ZipArchiveService : IArchiveService
         // this point — decryption plugs in only here, exactly where entry.Open() used to be
         // called directly. See the ZIP Password Support design's "no second extraction path"
         // invariant in docs/TASKS.md's T-F189 entry.
-        var (opened, entryStream, decryptErrorMessage) = OpenEntryContentStream(entry, plan, context);
+        var (opened, entryStream, decryptErrorMessage) = OpenEntryContentStream(named, plan, context);
         if (!opened)
         {
             context.Errors.Add(new ArchiveError { SourcePath = archivePath, Message = decryptErrorMessage! });
-            return (false, entry.Length);
+            return (false, named.Entry.Length);
         }
 
-        await CopyEntryToDestinationAsync(entry, entryStream!, destFilePath, archivePath, plan.TotalUncompressedBytes,
+        await CopyEntryToDestinationAsync(named, entryStream!, destFilePath, archivePath, plan.TotalUncompressedBytes,
             bytesReadSoFar, context, cancellationToken).ConfigureAwait(false);
 
-        return (true, entry.Length);
+        return (true, named.Entry.Length);
     }
 
     // T-F189: the encrypted-ZIP plug-in point — everything else about extraction (destination
@@ -1636,10 +1663,10 @@ public sealed class ZipArchiveService : IArchiveService
     // overwhelming majority of entries (plan.EncryptedEntryMap is null whenever the archive has no
     // encrypted entries at all).
     private static (bool Success, Stream? Stream, string? ErrorMessage) OpenEntryContentStream(
-        ZipArchiveEntry entry, ExtractionPlan plan, ZipExtractionContext context)
+        NamedZipEntry named, ExtractionPlan plan, ZipExtractionContext context)
     {
         if (plan.EncryptedEntryMap is { } map
-            && map.TryGetValue(entry, out var located)
+            && map.TryGetValue(named.Entry, out var located)
             && located.GeneralPurposeEncryptedBit)
         {
             var (result, stream) = EncryptedZipEntryReader.TryOpen(plan.RawArchiveStream!, located, context.Password!);
@@ -1647,18 +1674,21 @@ public sealed class ZipArchiveService : IArchiveService
             {
                 EncryptedZipReadResult.Success => (true, stream, null),
                 EncryptedZipReadResult.WrongPassword =>
-                    (false, null, $"Entry '{entry.FullName}' could not be decrypted: wrong password."),
+                    (false, null, $"Entry '{named.FullName}' could not be decrypted: wrong password."),
                 EncryptedZipReadResult.UnsupportedCompressionMethod =>
-                    (false, null, $"Entry '{entry.FullName}' uses an unsupported compression method under encryption."),
+                    (false, null, $"Entry '{named.FullName}' uses an unsupported compression method under encryption."),
                 _ => (false, null,
-                    $"Entry '{entry.FullName}' could not be decrypted: authentication failed (corrupted or tampered)."),
+                    $"Entry '{named.FullName}' could not be decrypted: authentication failed (corrupted or tampered)."),
             };
         }
 
         // T-F246: .NET does not check CRC-32 on read (and silently truncates a deflated entry to
         // its declared size) — without this a corrupted entry is written and reported as success.
-        return (true, new VerifyingReadStream(entry.Open(), entry.Length, entry.Crc32), null);
+        return (true, new VerifyingReadStream(named.Entry.Open(), named.Entry.Length, named.Entry.Crc32), null);
     }
+
+    private static string CollisionMessage(string entryName) =>
+        $"Entry '{entryName}' has the same name as another entry once decoded; it is not extracted, since one would overwrite the other.";
 
     // T-F230: a full disk fails every remaining entry the same way — one archive-level error, not
     // one per entry.
@@ -1681,12 +1711,12 @@ public sealed class ZipArchiveService : IArchiveService
     // identically either way. This is what gives an encrypted entry real byte-accurate T-F16
     // progress with no special-casing (see docs/DECISIONS.md's T-F189 streaming design point).
     private static async Task CopyEntryToDestinationAsync(
-        ZipArchiveEntry entry, Stream entryStream, string destFilePath, string archivePath, long totalUncompressedBytes,
+        NamedZipEntry named, Stream entryStream, string destFilePath, string archivePath, long totalUncompressedBytes,
         long bytesReadSoFar, ZipExtractionContext context, CancellationToken cancellationToken)
     {
         try
         {
-            await CopyEntryStreamAsync(entry, entryStream, destFilePath, totalUncompressedBytes, bytesReadSoFar, context, cancellationToken)
+            await CopyEntryStreamAsync(named, entryStream, destFilePath, totalUncompressedBytes, bytesReadSoFar, context, cancellationToken)
                 .ConfigureAwait(false);
         }
         catch
@@ -1701,12 +1731,12 @@ public sealed class ZipArchiveService : IArchiveService
     }
 
     private static async Task CopyEntryStreamAsync(
-        ZipArchiveEntry entry, Stream entryStream, string destFilePath, long totalUncompressedBytes,
+        NamedZipEntry named, Stream entryStream, string destFilePath, long totalUncompressedBytes,
         long bytesReadSoFar, ZipExtractionContext context, CancellationToken cancellationToken)
     {
         if (context.Progress != null && totalUncompressedBytes > 0)
         {
-            await using var ps = new ProgressStream(entryStream, totalUncompressedBytes, bytesReadSoFar, context.Progress, entry.Name);
+            await using var ps = new ProgressStream(entryStream, totalUncompressedBytes, bytesReadSoFar, context.Progress, Path.GetFileName(named.FullName));
             using var fileStream = new FileStream(
                 destFilePath,
                 FileMode.Create,
