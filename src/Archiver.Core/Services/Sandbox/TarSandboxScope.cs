@@ -20,8 +20,8 @@ internal sealed class TarSandboxScope : IDisposable
     private const string TarExecutablePath = @"C:\Windows\System32\tar.exe"; // NOSONAR: S1075 — CLAUDE.md's Hard Constraints mandate this exact absolute path, never PATH-resolved (PATH-hijack resistance); moving it to config would reopen that risk
     // Per tar.exe process. A decoder allocates the whole dictionary up front (7-Zip allows up to
     // 1.5 GB, zstd --long=31 2 GB, RAR5 up to 4 GB), and single-threaded decompression of a
-    // multi-GB .tar.xz takes well over the old 5 CPU minutes — 512 MB / 5 min refused real
-    // archives (raised 2026-09-25 at the user's request). The limits cap, they do not reserve;
+    // multi-GB .tar.xz takes well over the old 5 CPU minutes, so the old limits of 512 MB and
+    // five minutes refused real archives (raised 2026-09-25 at the user's request). The limits cap, they do not reserve;
     // cancellation stays the way out of a slow run.
     private const long GiB = 1024L * 1024 * 1024;
     private static readonly long RamLimitBytes = MemoryLimitFor(GC.GetGCMemoryInfo().TotalAvailableMemoryBytes);

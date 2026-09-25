@@ -251,14 +251,15 @@ public static class ArchiveFormatDetector
     private static int ReadVInt(byte[] data, ref int pos)
     {
         int result = 0;
-        for (int shift = 0; ; shift += 7)
+        for (int shift = 0; shift <= 28; shift += 7)
         {
-            if (pos < 0 || pos >= data.Length || shift > 28)
+            if (pos < 0 || pos >= data.Length)
                 throw new InvalidDataException("Malformed RAR5 vint.");
             byte b = data[pos++];
             result |= (b & 0x7F) << shift;
             if ((b & 0x80) == 0)
                 return result;
         }
+        throw new InvalidDataException("Malformed RAR5 vint.");
     }
 }

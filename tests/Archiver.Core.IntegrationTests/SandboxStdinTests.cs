@@ -23,10 +23,9 @@ public sealed class SandboxStdinTests : IDisposable
         try { _profile.Delete(); } catch { }
     }
 
-    public static TheoryData<string> Archives => new() { "gz", "7z" };
-
     [Theory]
-    [MemberData(nameof(Archives))]
+    [InlineData("gz")]
+    [InlineData("7z")]
     public async Task ArchiveAsStdin_NoGrantOnArchive_ListsAndExtractsInsideAppContainer(string kind)
     {
         _profile.EnsureExists();

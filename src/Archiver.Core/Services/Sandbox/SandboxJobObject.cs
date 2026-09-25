@@ -60,22 +60,19 @@ internal sealed class SandboxJobObject : IDisposable
             throw new InvalidOperationException($"CreateJobObjectW failed (Win32 error {Marshal.GetLastWin32Error()}).");
 
         var handle = new SafeJobObjectHandle(rawHandle);
-        SafeCompletionPortHandle? port = null;
 
         try
         {
             ApplyExtendedLimits(handle, ramLimitBytes, cpuTimeLimit);
             ApplyUiRestrictions(handle);
-            port = AssociateCompletionPort(handle);
+            // Last step: AssociateCompletionPort releases its own port if it fails.
+            return new SandboxJobObject(handle, AssociateCompletionPort(handle));
         }
         catch
         {
-            port?.Dispose();
             handle.Dispose();
             throw;
         }
-
-        return new SandboxJobObject(handle, port);
     }
 
     // T-F239: the job reports a limit it enforced on this port. A process over its memory limit

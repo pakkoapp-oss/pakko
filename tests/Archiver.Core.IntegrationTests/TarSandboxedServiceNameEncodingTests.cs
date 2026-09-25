@@ -21,10 +21,10 @@ public sealed class TarSandboxedServiceNameEncodingTests : IDisposable
 
     public void Dispose() => _temp.Dispose();
 
-    public static TheoryData<string> Layouts => new() { "utf8", "oem", "pax" };
-
     [Theory]
-    [MemberData(nameof(Layouts))]
+    [InlineData("utf8")]
+    [InlineData("oem")]
+    [InlineData("pax")]
     public async Task NonAsciiName_ExtractsAndListsTheRealName(string layout)
     {
         string? name = TarCodePage.PortableNonAsciiName();
