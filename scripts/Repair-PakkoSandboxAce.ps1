@@ -6,9 +6,9 @@
     Saves the file's current permissions first (icacls /save, next to this script's run in the
     given backup folder), then:
       1. removes only the explicit entries for Pakko's sandbox SID;
-      2. drops the inherited entries, which came from Pakko's temporary folder, not from the
-         file's own folder;
-      3. turns inheritance back on, so the file again inherits from the folder it is in.
+      2. if the file inherits permissions: drops the inherited entries, which came from Pakko's
+         temporary folder, not from the file's own folder, and inherits again from the folder
+         it is in. A file with inheritance turned off keeps it off.
     Entries the file had explicitly for anyone else are kept. This is not "icacls /reset",
     which would also drop them. Restore the backup with:
       icacls "<folder of the file>" /restore "<backup file>"
@@ -66,13 +66,17 @@ foreach ($sid in ($sandboxRules | ForEach-Object { $_.IdentityReference.Value } 
     }
 }
 
-& $icacls $file.FullName /inheritance:r | Out-Null
-if ($LASTEXITCODE -ne 0) {
-    throw "icacls /inheritance:r failed ($LASTEXITCODE). Restore with: icacls `"$($file.DirectoryName)`" /restore `"$backup`""
-}
-& $icacls $file.FullName /inheritance:e | Out-Null
-if ($LASTEXITCODE -ne 0) {
-    throw "icacls /inheritance:e failed ($LASTEXITCODE). Restore with: icacls `"$($file.DirectoryName)`" /restore `"$backup`""
+# A file whose inheritance was turned off on purpose kept it off - the old grant only added an
+# explicit entry there - so only an inheriting file gets its inherited entries recomputed.
+if (-not $acl.AreAccessRulesProtected) {
+    & $icacls $file.FullName /inheritance:r | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        throw "icacls /inheritance:r failed ($LASTEXITCODE). Restore with: icacls `"$($file.DirectoryName)`" /restore `"$backup`""
+    }
+    & $icacls $file.FullName /inheritance:e | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        throw "icacls /inheritance:e failed ($LASTEXITCODE). Restore with: icacls `"$($file.DirectoryName)`" /restore `"$backup`""
+    }
 }
 
 Write-Host "Repaired: $($file.FullName)"
