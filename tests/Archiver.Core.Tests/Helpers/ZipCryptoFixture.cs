@@ -14,13 +14,13 @@ internal static class ZipCryptoFixture
     public const ushort DosTime = 0xABCD;
     private const ushort DosDate = 0x5B21;
 
-    public static string Write(string path, string entryName, byte[] content, byte[] passwordBytes, bool dataDescriptor)
+    public static string Write(string path, string entryName, byte[] content, byte[] passwordBytes, bool dataDescriptor, int headerSeed = 7)
     {
         uint crc = Crc32.Compute(new MemoryStream(content));
         byte checkByte = dataDescriptor ? (byte)(DosTime >> 8) : (byte)(crc >> 24);
 
         var header = new byte[12];
-        new Random(7).NextBytes(header);
+        new Random(headerSeed).NextBytes(header);
         header[11] = checkByte;
         byte[] plain = [.. header, .. content];
 

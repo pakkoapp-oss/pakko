@@ -109,7 +109,7 @@ internal static class RawZipEntryLocator
     /// and no WinZip AES checks, so any archive whose directory .NET can read gets names too.
     /// </summary>
     public static List<(byte[] RawName, string Name)> ReadEntryNames(Stream zipStream, ZipNameCodePages codePages) =>
-        ReadCentralDirectory(zipStream)
+        ReadCentralDirectory(zipStream, resolveZip64: false)
             .Select(r => (r.NameBytes, ZipEntryNameDecoder.Decode(r.NameBytes, r.GeneralPurposeFlag, r.HostOs, r.Extra, codePages)))
             .ToList();
 
@@ -117,7 +117,9 @@ internal static class RawZipEntryLocator
         byte[] NameBytes, long LocalHeaderOffset, uint Crc32, long CompressedSize, long UncompressedSize,
         ushort GeneralPurposeFlag, byte HostOs, byte[] Extra);
 
-    private static List<CentralDirectoryRecord> ReadCentralDirectory(Stream zipStream)
+    // resolveZip64: false for the name pass — names need no sizes or offsets, and a size sentinel
+    // without a Zip64 extra (which .NET's own reader tolerates) must not make an archive unreadable.
+    private static List<CentralDirectoryRecord> ReadCentralDirectory(Stream zipStream, bool resolveZip64 = true)
     {
         var records = new List<CentralDirectoryRecord>();
 
@@ -154,8 +156,9 @@ internal static class RawZipEntryLocator
             byte[] extra = ReadBytes(zipStream, extraLength);
             ReadBytes(zipStream, commentLength);
 
-            var (realUncompressedSize, realCompressedSize, realLocalHeaderOffset) =
-                ResolveZip64Fields(extra, uncompressedSize, compressedSize, localHeaderOffset);
+            var (realUncompressedSize, realCompressedSize, realLocalHeaderOffset) = resolveZip64
+                ? ResolveZip64Fields(extra, uncompressedSize, compressedSize, localHeaderOffset)
+                : (uncompressedSize, compressedSize, localHeaderOffset);
             records.Add(new CentralDirectoryRecord(
                 nameBytes, realLocalHeaderOffset, crc32, realCompressedSize, realUncompressedSize, generalPurposeFlag,
                 (byte)(versionMadeBy >> 8), extra));

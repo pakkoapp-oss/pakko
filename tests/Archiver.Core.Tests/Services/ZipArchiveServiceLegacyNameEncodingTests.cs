@@ -319,6 +319,33 @@ public sealed class ZipArchiveServiceLegacyNameEncodingTests : IDisposable
         result.Entries.Select(e => e.Path).Should().Equal("А.txt");
     }
 
+    // Advisor-caught: names need no sizes, so a 0xFFFFFFFF size sentinel without a Zip64 extra
+    // (tolerated by .NET's reader) must not turn a listable archive into a "corrupted" one.
+    [Fact]
+    public async Task ListEntriesAsync_SizeSentinelWithoutZip64Extra_StillLists()
+    {
+        string zip = Legacy("sentinel.zip", Oem("А.txt", "A"));
+        byte[] bytes = File.ReadAllBytes(zip);
+        int central = bytes.AsSpan().IndexOf("PK\u0001\u0002"u8);
+        BitConverter.GetBytes(0xFFFFFFFFu).CopyTo(bytes, central + 20);
+        File.WriteAllBytes(zip, bytes);
+        int dotnetCount;
+        try
+        {
+            using var archive = ZipFile.OpenRead(zip);
+            dotnetCount = archive.Entries.Count;
+        }
+        catch (InvalidDataException)
+        {
+            return; // .NET itself rejects it — nothing to stay compatible with
+        }
+
+        var result = await _sut.ListEntriesAsync(zip);
+
+        result.Success.Should().BeTrue(result.ErrorMessage);
+        result.Entries.Should().HaveCount(dotnetCount);
+    }
+
     [Fact]
     public void ExistingZipFixtures_NewNameReaderAgreesWithZipArchiveOnEntryCount()
     {

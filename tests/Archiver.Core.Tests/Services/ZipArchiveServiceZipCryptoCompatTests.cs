@@ -106,7 +106,7 @@ public sealed class ZipArchiveServiceZipCryptoCompatTests : IDisposable
     // colliding wrong password still gets through — the later CRC-32 must catch it everywhere.
     private (string Zip, string CollidingPassword) LargeZipCryptoWithCollidingPassword()
     {
-        byte[] content = new byte[(int)ZipArchiveService.ZipCryptoFullCheckLimitBytes + 4096];
+        byte[] content = new byte[(int)ZipArchiveService.PasswordProbeFullCheckLimitBytes + 4096];
         new Random(3).NextBytes(content);
         string zip = ZipCryptoFixture.Write(Path.Combine(_temp.Path, "large.zip"), "big.bin", content,
             Encoding.ASCII.GetBytes(Password), dataDescriptor: false);
@@ -158,6 +158,44 @@ public sealed class ZipArchiveServiceZipCryptoCompatTests : IDisposable
             Encoding.ASCII.GetBytes("secret"), passwordBytes, dataDescriptor: false);
         var sut = new ZipArchiveService { NameCodePages = ZipNameCodePages.FromCodePages(866, 1251) };
         string dest = Path.Combine(_temp.Path, $"cyr-out{passwordCodePage}");
+
+        var result = await sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [zip],
+            DestinationFolder = dest,
+            Mode = ExtractMode.SingleFolder,
+            ResolvePasswordAsync = Fixed(cyrillic),
+        });
+
+        result.Success.Should().BeTrue(string.Join("; ", result.Errors.Select(e => e.Message)));
+        File.ReadAllText(Path.Combine(dest, "a.txt")).Should().Be("secret");
+    }
+
+    // Advisor-caught regression of the first T-F244 cut: the encoding was chosen per entry by the
+    // one-byte check alone, so for ~1 archive in 256 the WRONG encoding (ANSI bytes of a password
+    // really written as UTF-8) passed it, decrypted garbage and failed the right password. The
+    // encoding is now chosen once per archive by a full check of a small probe entry.
+    [Fact]
+    public async Task ExtractAsync_Utf8Password_WhoseAnsiBytesAlsoPassTheCheckByte_Extracts()
+    {
+        const string cyrillic = "пароль";
+        var ansi = CodePagesEncodingProvider.Instance.GetEncoding(1251)!;
+        string zip = Path.Combine(_temp.Path, "ambiguous.zip");
+        int seed = Enumerable.Range(0, 100_000).First(candidateSeed =>
+        {
+            ZipCryptoFixture.Write(zip, "a.txt", Encoding.ASCII.GetBytes("secret"), Encoding.UTF8.GetBytes(cyrillic),
+                dataDescriptor: false, headerSeed: candidateSeed);
+            using var fs = File.OpenRead(zip);
+            var located = RawZipEntryLocator.LocateAll(fs).Single();
+            using var region = new EntryRegionStream(fs, located.CompressedDataOffset, located.CompressedSize, ownsSource: false);
+            bool passes = ZipCryptoStream.TryCreate(region, ansi.GetBytes(cyrillic), located.ZipCryptoCheckByte, out Stream? plaintext);
+            plaintext?.Dispose();
+            return passes;
+        });
+        ZipCryptoFixture.Write(zip, "a.txt", Encoding.ASCII.GetBytes("secret"), Encoding.UTF8.GetBytes(cyrillic),
+            dataDescriptor: false, headerSeed: seed);
+        var sut = new ZipArchiveService { NameCodePages = ZipNameCodePages.FromCodePages(866, 1251) };
+        string dest = Path.Combine(_temp.Path, "ambiguous-out");
 
         var result = await sut.ExtractAsync(new ExtractOptions
         {

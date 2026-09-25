@@ -251,7 +251,7 @@ public sealed class AntivirusScanService : IAntivirusScanService
             // entry" — never scanned at all, which is exactly how password-protected malware
             // delivery evades AV. Now its decrypted plaintext is scanned when a password resolves.
             using Stream? rawArchiveStream = TryMapEncryptedEntries(archivePath, archive, out var encryptedEntryMap);
-            string? password = encryptedEntryMap is null
+            ZipArchiveService.ResolvedZipPassword? password = encryptedEntryMap is null
                 ? null
                 : await ZipArchiveService.ResolveArchivePasswordAsync(archivePath, passwordResolver, codePages).ConfigureAwait(false);
 
@@ -289,7 +289,7 @@ public sealed class AntivirusScanService : IAntivirusScanService
                                             && map.TryGetValue(entry, out var located)
                                             && located.GeneralPurposeEncryptedBit
                         ? await ScanEncryptedEntryAsync(
-                            archivePath, named.FullName, entry, located, rawArchiveStream!, password, codePages.Ansi, scanner, cancellationToken)
+                            archivePath, named.FullName, entry, located, rawArchiveStream!, password, scanner, cancellationToken)
                             .ConfigureAwait(false)
                         : await ScanOneEntryAsync(
                             archivePath, named.FullName, entry.Length, entry.Open, scanner, cancellationToken)
@@ -419,7 +419,7 @@ public sealed class AntivirusScanService : IAntivirusScanService
 
     private static async Task<ThreatFinding> ScanEncryptedEntryAsync(
         string archivePath, string entryName, ZipArchiveEntry entry, LocatedZipEntry located, Stream rawArchiveStream,
-        string? password, Encoding ansi, IAmsiScanner scanner, CancellationToken cancellationToken)
+        ZipArchiveService.ResolvedZipPassword? password, IAmsiScanner scanner, CancellationToken cancellationToken)
     {
         if (password is null)
             return InconclusiveFinding(archivePath, entryName, "Entry is password-protected and was not scanned.");
@@ -430,7 +430,7 @@ public sealed class AntivirusScanService : IAntivirusScanService
         if (located.CompressedSize > MaxScannableEntryBytes || entry.Length > MaxScannableEntryBytes)
             return OversizedFinding(archivePath, entryName);
 
-        var (result, stream) = EncryptedZipEntryReader.TryOpen(rawArchiveStream, located, password, ansi);
+        var (result, stream) = EncryptedZipEntryReader.TryOpen(rawArchiveStream, located, password.Text, password.Encoding);
         return result switch
         {
             EncryptedZipReadResult.Success => await ScanOneEntryAsync(

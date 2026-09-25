@@ -9390,8 +9390,12 @@ is what every security check needs, and on Windows it would be a separator anywa
   positionally (both walk the same central directory). The names come from the central directory
   only — no local-header seeks, no AES checks — so every archive whose directory .NET reads also
   gets names. A count mismatch fails closed ("corrupted"), never falls back to .NET's UTF-8 names
-  (that fallback is the bug); every committed fixture agrees (test). List, Test, Extract and Scan
-  all read through it; App, Shell and CLI get the fix through Core.
+  (that fallback is the bug). The name pass also skips Zip64 size resolution — the closing advisor
+  review found that a 0xFFFFFFFF size sentinel without a Zip64 extra, which .NET tolerates, made
+  the archive unreadable (test). Checked against every committed fixture (test) and a corpus of 278
+  real archives on this machine (NuGet packages, .docx/.xlsx/.zip/.jar from Documents/Downloads/
+  Desktop): .NET and the new reader agree on all 278. List, Test, Extract and Scan all read
+  through it; App, Shell and CLI get the fix through Core.
 - **Collisions.** Two entries with different raw bytes and the same decoded name are an error per
   entry in Extract and Test ("same name as another entry once decoded"), never a silent
   overwrite; byte-identical duplicates keep T-F30's conflict rules; folders are exempt.
@@ -9423,10 +9427,15 @@ from APPNOTE directly and cross-checked with the vendored 7za.
 **T-F243 item 3 — a wrong password that passes the one-byte check.** It was accepted for the
 whole archive and the entry later failed as a CRC mismatch — read as corruption, with no second
 chance to type the password. Password resolution now probes the *smallest* encrypted entry and,
-for ZipCrypto up to 4 MiB, decrypts it in full and checks its CRC-32 while the user can still be
-asked again. AES is unchanged (2-byte verifier, HMAC before any plaintext). Above the limit the
-one-byte check stays; the later CRC failure is a per-entry error and Scan still never reports it
-Clean (T-F194; kept covered by a large-entry test with a colliding password found in the test).
+for a ZipCrypto probe up to 4 MiB compressed AND declared uncompressed (the advisor's point: a
+small entry can declare gigabytes, and this runs before the compression-bomb gate), decrypts it in
+full and checks its CRC-32 while the user can still be asked again. AES keeps the cheap check only
+(2-byte verifier): an HMAC failure after a matching verifier means tampering and must stay
+"corrupted", never become "wrong password" — a first cut that full-checked AES too broke exactly
+that (caught by the existing tampered-AES tests). Above the limit the one-byte check stays; the
+later CRC failure is a per-entry error and Scan still never reports it Clean (T-F194; kept covered
+by a large-entry test with a colliding password found in the test). The verify callback runs off
+the UI thread (`PasswordResolver` awaits the prompt with `ConfigureAwait(false)`).
 
 **T-F243 item 4 — reserved names.** Windows reads a device name from the part before the *first*
 dot, trailing spaces dropped, in *any* segment; the check used the last segment without its last
@@ -9444,10 +9453,17 @@ and archive the rest; `ZipEntryWriter` itself refuses such a name before writing
 
 **T-F244 item 3.** (a) Password bytes: ZipCrypto tries ANSI then UTF-8, WinZip AES UTF-8 then
 ANSI — NanaZip's order (its `ZipHandler.cpp` uses CP_ACP for ZipCrypto and tries both for AES).
-The candidate is chosen by the password check alone (check byte / verifier) before anything is
-opened, so a failed candidate never disposes a stream the content will own, and nothing switches
-mid-stream. Pakko's own passwords are printable ASCII (`EncryptionPasswordRule`), so this only
-matters for third-party archives. (b) Derived keys, PBKDF2 output, password byte arrays, the
+The encoding is chosen ONCE per archive, at password resolution, by the same probe check as item 3,
+and carried with the password (`ResolvedZipPassword`) to every entry of Extract, Test and Scan.
+The first cut chose per entry by the one-byte check alone; the closing advisor review showed that
+for ~1 archive in 256 the wrong encoding passes it and the RIGHT password then fails — a
+regression for Cyrillic ZipCrypto archives from Linux/macOS tools, which only ever needed UTF-8
+(red test with a brute-forced header seed). Residual: when the smallest ZipCrypto entry is above
+the probe limit, an ambiguous check byte cannot be resolved, and a wrong-encoding pick fails the
+entries per entry (~1 in 256 of such archives with a non-ASCII password); a sticky "apply to
+remaining" answer that fits no encoding falls back to the first one, as before. Pakko's own
+passwords are printable ASCII (`EncryptionPasswordRule`), so this only concerns third-party
+archives. (b) Derived keys, PBKDF2 output, password byte arrays, the
 buffered AES-CTR keystream and ZipCrypto's key state are zeroed once no longer needed. (c)
 `PathContainsReparsePoint` now checks the staging root itself — a trailing separator on the root
 argument used to leave it out of the walk.
