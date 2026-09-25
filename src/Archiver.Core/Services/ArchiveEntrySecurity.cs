@@ -87,7 +87,7 @@ internal static class ArchiveEntrySecurity
     }
 
     // T-F37: Check whether any directory component of destFilePath (within rootPath) is a reparse point
-    // T-F37: No automated unit test — System.IO.Compression cannot create reparse points in test fixtures.
+    // (T-F166 covers it with a real junction.)
     public static bool PathContainsReparsePoint(string destFilePath, string rootPath)
     {
         // T-F244: a trailing separator on rootPath used to leave the root itself out of the walk.

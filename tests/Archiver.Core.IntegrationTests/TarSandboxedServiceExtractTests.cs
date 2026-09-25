@@ -781,7 +781,12 @@ public sealed class TarSandboxedServiceExtractTests : IDisposable
         });
 
         result.Success.Should().BeFalse();
-        result.Errors.Should().ContainSingle();
+        // T-F256: the pre-scan's own message, not just "some error" — the AppContainer also fails
+        // the symlink on its own (T-F52), which kept this test green with the pre-scan disabled.
+        // An escape would land in the quarantine root, which the scope deletes, so a file check
+        // alone cannot prove the pre-scan ran.
+        result.Errors.Should().ContainSingle()
+            .Which.Message.Should().Contain("symlink, hardlink, device");
         File.Exists(Path.Combine(_temp.Path, "escaped.txt")).Should().BeFalse();
         Directory.Exists(Path.Combine(destDir, "link")).Should().BeFalse();
     }
