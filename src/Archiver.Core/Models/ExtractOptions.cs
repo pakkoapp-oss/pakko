@@ -14,6 +14,14 @@ public sealed record ExtractOptions
     /// </summary>
     public string? SeparateFolderName { get; init; }
 
+    /// <summary>
+    /// T-F205: in <see cref="ExtractMode.SingleFolder"/>, drop an archive's single root folder when
+    /// it is named like the archive itself — NanaZip's "Extract to name\" (ElimDup, on by default
+    /// there), so <c>name.zip</c> holding <c>name/...</c> does not become <c>name\name\...</c>.
+    /// False (the default) keeps every root folder ("extract with full paths").
+    /// </summary>
+    public bool EliminateDuplicateRootFolder { get; init; }
+
     public ConflictBehavior OnConflict { get; init; } = ConflictBehavior.Skip;
     public bool OpenDestinationFolder { get; init; } = false;
 
@@ -66,9 +74,9 @@ public enum ExtractMode
     SeparateFolders,
 
     /// <summary>
-    /// All archives land in one flat destination folder. A multi-root archive is NOT wrapped in
-    /// a subfolder here (T-F156 reversed this for SingleFolder specifically, contradicting
-    /// SeparateFolders' unconditional wrap) — only a genuinely single-root archive gets isolated.
+    /// All archives land in one flat destination folder with full paths: a multi-root archive is
+    /// NOT wrapped in a subfolder (T-F156), and a single root folder is kept (T-F205), unless
+    /// <see cref="ExtractOptions.EliminateDuplicateRootFolder"/> applies.
     /// </summary>
     SingleFolder
 }

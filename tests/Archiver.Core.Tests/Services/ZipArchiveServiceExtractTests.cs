@@ -355,7 +355,7 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
     }
 
     [Fact]
-    public async Task ExtractAsync_SingleRootFolder_ExtractsWithoutDoubleNesting()
+    public async Task ExtractAsync_SingleRootFolder_KeepsRootFolder()
     {
         var zip = CreateTestZipWithFolder("wrapped.zip", "myFolder", "a.txt", "b.txt");
         var destDir = Path.Combine(_temp.Path, "output");
@@ -370,10 +370,10 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
         var result = await _sut.ExtractAsync(options);
 
         result.Success.Should().BeTrue();
-        // Files must land directly in destDir, not in destDir/myFolder/
-        File.Exists(Path.Combine(destDir, "a.txt")).Should().BeTrue();
-        File.Exists(Path.Combine(destDir, "b.txt")).Should().BeTrue();
-        Directory.Exists(Path.Combine(destDir, "myFolder")).Should().BeFalse();
+        // T-F205: extract with full paths — the single root folder is kept (7-Zip/NanaZip).
+        File.Exists(Path.Combine(destDir, "myFolder", "a.txt")).Should().BeTrue();
+        File.Exists(Path.Combine(destDir, "myFolder", "b.txt")).Should().BeTrue();
+        File.Exists(Path.Combine(destDir, "a.txt")).Should().BeFalse();
     }
 
     // T-F156: this originally asserted T-14's own original design — multi-root items got wrapped

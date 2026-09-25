@@ -207,7 +207,8 @@ public sealed class TarSandboxedService : ITarService
         {
             bool alreadyIsolated = options.Mode == ExtractMode.SeparateFolders;
             var context = new TarExtractionContext(
-                conflictResolver, sink.SkippedFiles, options.ConfirmCompressionBombExtraction, _policy.MotwMode, archiveProgress, sink.Errors);
+                conflictResolver, sink.SkippedFiles, options.ConfirmCompressionBombExtraction, _policy.MotwMode, archiveProgress, sink.Errors,
+                options.EliminateDuplicateRootFolder);
             var (actualDest, anyExtracted) = await ExtractSingleArchiveAsync(
                 archivePath, destDir, alreadyIsolated, options.DestinationFolder, options.SelectedEntryPaths, context, cancellationToken)
                 .ConfigureAwait(false);
@@ -340,8 +341,10 @@ public sealed class TarSandboxedService : ITarService
         // comment called that sync a documentation-enforced promise) — see DECISIONS.md's T-F157
         // entry.
         var rootShape = ExtractionDestinationPlanner.Classify(isSelectedSubset, isSingleRootFolder, isSingleRootFile);
+        bool rootDuplicatesArchiveName = context.EliminateDuplicateRootFolder && isSingleRootFolder
+            && ExtractionDestinationPlanner.RootDuplicatesArchiveName(fileNames[0][..fileNames[0].IndexOf('/')], archivePath);
         var (actualDest, stripRootPrefix) = ExtractionDestinationPlanner.Resolve(
-            alreadyIsolated, rootShape, destDir, unisolatedDestDir);
+            alreadyIsolated, rootShape, destDir, unisolatedDestDir, rootDuplicatesArchiveName);
 
         // T-F94: whole-archive compression-ratio decision. compressedFileSize reads the
         // ORIGINAL archivePath (not the staged copy — same size either way, hardlink or copy,
@@ -497,7 +500,9 @@ public sealed class TarSandboxedService : ITarService
         // T-F170: mirrors ZipExtractionContext's identical addition — a per-item failure to move
         // a file out of the quarantine (destination locked by another process), distinct from
         // SkippedFiles since data the user asked for genuinely failed to arrive.
-        List<ArchiveError> Errors);
+        List<ArchiveError> Errors,
+        // T-F205: ExtractOptions.EliminateDuplicateRootFolder.
+        bool EliminateDuplicateRootFolder);
 
     // One file of ExtractSingleArchiveAsync's move-phase loop (quarantine "out\" -> the real
     // destination) — conflict-resolve, move, propagate MOTW. Returns whether the file was

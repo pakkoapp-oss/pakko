@@ -60,8 +60,8 @@ public sealed class ZipArchiveServiceEncryptTests : IDisposable
         }, progress);
     }
 
-    // A single-root-folder archive extracts without its root folder (SingleFolder mode's
-    // no-double-nesting rule), so a "src/a.txt" entry lands at <returned>/a.txt.
+    // SingleFolder mode keeps a single root folder (T-F205): a "src/a.txt" entry lands at
+    // <returned>/src/a.txt, a lone root file at <returned>/file.
     private async Task<string> ExtractAsync(string archivePath, string password)
     {
         string destDir = Path.Combine(_temp.Path, "x-" + Path.GetRandomFileName());
@@ -122,7 +122,7 @@ public sealed class ZipArchiveServiceEncryptTests : IDisposable
         string archive = result.CreatedFiles.Should().ContainSingle().Subject;
         AssertFileEntriesAreAe2Aes256(archive);
 
-        string extracted = await ExtractAsync(archive, Password);
+        string extracted = Path.Combine(await ExtractAsync(archive, Password), Path.GetFileName(src));
         File.ReadAllText(Path.Combine(extracted, "a.txt")).Should().Be(File.ReadAllText(Path.Combine(src, "a.txt")));
         File.ReadAllText(Path.Combine(extracted, "sub", "b.txt")).Should().Be("bravo");
         // Checked on the archive, not on disk: extraction currently drops empty folders for
@@ -170,7 +170,7 @@ public sealed class ZipArchiveServiceEncryptTests : IDisposable
         result.Success.Should().BeTrue();
         string archive = result.CreatedFiles.Single();
         AssertFileEntriesAreAe2Aes256(archive);
-        string extracted = await ExtractAsync(archive, Password);
+        string extracted = Path.Combine(await ExtractAsync(archive, Password), Path.GetFileName(src));
         for (int i = 0; i < 80; i++)
             File.ReadAllText(Path.Combine(extracted, $"f{i:D3}.txt")).Should().Be($"content {i}");
     }
@@ -221,7 +221,7 @@ public sealed class ZipArchiveServiceEncryptTests : IDisposable
         string archive = result.CreatedFiles.Single();
         ReadRawEntries(archive).Where(e => !e.Name.EndsWith('/'))
             .Should().OnlyContain(e => e.Located.RealCompressionMethod == 0);
-        string extracted = await ExtractAsync(archive, Password);
+        string extracted = Path.Combine(await ExtractAsync(archive, Password), Path.GetFileName(src));
         File.ReadAllText(Path.Combine(extracted, "sub", "b.txt")).Should().Be("bravo");
     }
 
@@ -234,7 +234,7 @@ public sealed class ZipArchiveServiceEncryptTests : IDisposable
         var result = await ArchiveEncryptedAsync([src], Path.Combine(_temp.Path, "out"), password: printable);
 
         result.Success.Should().BeTrue(because: string.Join("; ", result.Errors.Select(e => e.Message)));
-        string extracted = await ExtractAsync(result.CreatedFiles.Single(), printable);
+        string extracted = Path.Combine(await ExtractAsync(result.CreatedFiles.Single(), printable), Path.GetFileName(src));
         File.ReadAllText(Path.Combine(extracted, "sub", "b.txt")).Should().Be("bravo");
     }
 

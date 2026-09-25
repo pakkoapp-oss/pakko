@@ -303,13 +303,10 @@ public sealed class TarSandboxedServiceCompressTests : IDisposable
 
         result.Success.Should().BeTrue(because: string.Join("; ", result.Errors.Select(e => e.Message)));
         // Confirmed via ZipArchiveServiceArchiveTests' sibling test that the underlying entry name
-        // is genuinely "my_folder/inner.txt" (ZIP asserts the raw entry name directly); here,
-        // ExtractAsync's own single-root-folder smart-foldering (T-14) transparently unwraps that
-        // single top-level folder on the way out, so the readable path is just "inner.txt" — this
-        // assertion is about extraction landing correctly at all (proving the entry WAS nested
-        // under a real "my_folder" prefix, not the archive's own top level), not a claim that tar
-        // skips smart-foldering.
-        (await ExtractAndReadAsync(Path.Combine(_temp.Path, "out.tar"), "inner.txt")).Should().Be("content");
+        // is genuinely "my_folder/inner.txt" (ZIP asserts the raw entry name directly); SingleFolder
+        // extraction keeps that root folder (T-F205), so the file reads back from under it.
+        (await ExtractAndReadAsync(Path.Combine(_temp.Path, "out.tar"), Path.Combine("my_folder", "inner.txt")))
+            .Should().Be("content");
     }
 
     [Integration]

@@ -269,11 +269,10 @@ public sealed class TarSandboxedServiceExtractTests : IDisposable
         File.ReadAllText(extractedFiles[0]).Should().Be("second");
     }
 
-    // T-F118: mirrors ZipArchiveServiceExtractTests.ExtractAsync_SingleRootFolder_
-    // ExtractsWithoutDoubleNesting — an archive whose every entry sits under one common top-level
-    // folder unwraps that folder entirely rather than doubly nesting it under destDir.
+    // T-F205: mirrors ZipArchiveServiceExtractTests.ExtractAsync_SingleRootFolder_KeepsRootFolder —
+    // SingleFolder mode extracts with full paths, keeping the single root folder.
     [Integration]
-    public async Task ExtractAsync_SingleRootFolder_ExtractsWithoutDoubleNesting()
+    public async Task ExtractAsync_SingleRootFolder_KeepsRootFolder()
     {
         string archivePath = Path.Combine(_temp.Path, "wrapped.tar");
         TarBuilder.WriteTar(archivePath,
@@ -291,9 +290,9 @@ public sealed class TarSandboxedServiceExtractTests : IDisposable
         });
 
         result.Success.Should().BeTrue();
-        File.Exists(Path.Combine(destDir, "a.txt")).Should().BeTrue();
-        File.Exists(Path.Combine(destDir, "b.txt")).Should().BeTrue();
-        Directory.Exists(Path.Combine(destDir, "myFolder")).Should().BeFalse();
+        File.Exists(Path.Combine(destDir, "myFolder", "a.txt")).Should().BeTrue();
+        File.Exists(Path.Combine(destDir, "myFolder", "b.txt")).Should().BeTrue();
+        File.Exists(Path.Combine(destDir, "a.txt")).Should().BeFalse();
     }
 
     // T-F156: mirrors ZipArchiveServiceExtractTests.ExtractAsync_MultipleRootItems_

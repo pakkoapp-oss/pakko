@@ -128,13 +128,9 @@ static async Task RunExtractHereAsync(IReadOnlyList<string> archivePaths, GroupP
 }
 
 // -------------------------------------------------------------------------
-// --extract-flat (T-F115): dump every archive's contents directly into its own containing
-// folder. ExtractMode.SingleFolder still runs T-14's smart-foldering (ZipArchiveService and,
-// since T-F118, TarSandboxedService alike) for the single-root-folder/single-root-file cases —
-// a single-root-folder archive unwraps its own top-level folder. But since T-F156 (reversing
-// T-F118 for this one mode, per a direct user decision — see DECISIONS.md), a genuinely
-// multi-root archive (no common containing folder) no longer gets an <archive_name>\ wrapper
-// here either — it really is "no wrapper folder ever" now, matching the name. Contrast with
+// --extract-flat (T-F115): extract every archive with full paths into its own containing folder
+// (7-Zip/NanaZip "Extract here"). No <archive_name>\ wrapper is ever added (T-F156), and since
+// T-F205 an archive's own single root folder is kept too, not unwrapped. Contrast with
 // --extract-here (SeparateFolders mode, above), which always wraps per archive by design, and
 // with RunExtractFolderAsync below, which unconditionally pre-computes a fresh subfolder
 // regardless of the archive's own root shape.
@@ -169,8 +165,9 @@ static async Task RunExtractHereFlatAsync(IReadOnlyList<string> archivePaths, Gr
 }
 
 // -------------------------------------------------------------------------
-// --extract-folder: always extract into an explicit <archive_name>\ subfolder,
-// regardless of the archive's internal structure.
+// --extract-folder: always extract into an explicit <archive_name>\ subfolder. T-F205: a single
+// root folder named like the archive is dropped (NanaZip's default ElimDup), so name.zip holding
+// name/... does not become name\name\...; any other root folder is kept.
 // -------------------------------------------------------------------------
 static async Task RunExtractFolderAsync(IReadOnlyList<string> archivePaths, GroupPolicyOptions policy)
 {
@@ -189,6 +186,7 @@ static async Task RunExtractFolderAsync(IReadOnlyList<string> archivePaths, Grou
             ArchivePaths = [archivePath],
             DestinationFolder = destFolder,
             Mode = ExtractMode.SingleFolder,
+            EliminateDuplicateRootFolder = true,
             // T-F155: destFolder is always a fresh numbered folder, so this realistically stays
             // inert (no on-disk conflict possible) except for duplicate in-archive entry names —
             // wired for parity/consistency with the other two commands, not because it's expected

@@ -7204,7 +7204,8 @@ keep the two in sync) and got the identical fix.
 
 **Fix:** collapsed both methods' `actualDest` ternary to `unwrapSingleFile ? unisolatedDestDir :
 destDir` — the T-F154 single-file bypass stays, everything else (including single-root-folder
-unwrapping, still correct and unaffected) now simply resolves to `destDir`, which for SingleFolder
+unwrapping, still correct and unaffected — **reversed by T-F205, 2026-09-25: SingleFolder now keeps
+the root folder; see the fix-phase-2 entry at the end of this file**) now simply resolves to `destDir`, which for SingleFolder
 mode already equals the caller's plain `DestinationFolder`. `Archiver.Shell/Program.cs`'s
 `--extract-flat` doc comment corrected back to "no wrapper folder ever created" — the claim T-F118
 had specifically invalidated is now true again.
@@ -9305,3 +9306,46 @@ unresolvable (never deleted), declined (kept, not reported), empty input, duplic
 resolution (local temp file -> fixed; `\\localhost\X$` -> never recyclable or unresolvable;
 missing path -> null). Mutation check: 4/4 killed (always recycle, skip the disk check, skip the
 confirmation, recycle an unresolvable path).
+
+## Fix phase 2 — ZIP extraction: staging, entry safety, integrity, root folder (2026-09-25)
+
+**T-F227 / T-F263 slice — `ExtractionStaging`.** ZIP extraction staged into a fixed
+`<destDir>_tmp`, reused an existing folder of that name, merged it into the destination and deleted
+it. Now each run creates a fresh hidden `.pakko-x-<pid>-<guid>` folder inside
+`ExtractOptions.DestinationFolder` (it always exists and shares the destination's volume, so the
+T-F161 fast path stays a rename; a drive root works too), never reuses one, and removes only
+itself. The PID is there for the later dead-process sweep (rest of T-F263). The fast-path
+`Directory.Move` renames the staging folder into place, carrying its attributes — Hidden is
+cleared first, otherwise "Extract here (smart)" would produce a hidden folder. Tar keeps its own
+move phase until fix phase 4.
+
+**T-F228 — unsafe entry names.** Any `..` segment (split on both separators) or rooted/drive-
+relative name is rejected per entry as an `ArchiveError` — an error, not a quiet skip, because it
+is hostile input — before the ADS name check (so `C:/x` is reported as unsafe, not as an ADS
+name). Rejecting, not normalizing, matches tar's pre-scan. The conflict path is derived from the
+path as it resolved inside staging. Tar still rejects such archives whole (T-F49's symlink-escape
+reasoning).
+
+**T-F230 — per-entry failures.** The write half of an entry (`WriteEntryAsync`) fails only that
+entry on `IOException`/`UnauthorizedAccessException`/`InvalidDataException`; the message names the
+destination path, never staging. A full disk (`ERROR_DISK_FULL`, `ERROR_HANDLE_DISK_FULL`) stays
+one archive-level error. `ExtractAsync` removes a `DestinationFolder` it created when nothing was
+produced (Shell's fresh "Extract to name\" folder), never one `CreatedFiles` names.
+
+**T-F246 / T-F231 — `VerifyingReadStream`.** One shared wrapper (replacing the decryption-only
+`TrailerCrcCheckStream`): CRC-32 at end of stream when a CRC is known, and a hard cap at the
+declared uncompressed size. Unencrypted entries get both (the premise behind removing the SHA-256
+manifest — "ZIP has CRC-32" — only holds if extraction checks it); decrypted entries get the cap
+always (AE-2 has no CRC) plus CRC for ZipCrypto/AE-1, in extract, Test and Scan. Measured: .NET
+returns every stored byte regardless of the declared size (so the cap catches an understated stored
+entry) and silently truncates a deflated one (so the CRC catches it). Overrides `Read(Span)` and
+`ReadAsync(Memory)` so the copy loop does not fall back to BeginRead/EndRead.
+
+**T-F205 — keep the root folder (user decision: NanaZip parity).** SingleFolder mode (Explorer
+"Extract here", `pakko x`, App Extract) now keeps an archive's single root folder, like 7-Zip/
+NanaZip "Extract here" and `7z x`. Shell's "Extract to name\" sets the new
+`ExtractOptions.EliminateDuplicateRootFolder`, which strips the root only when it is named like the
+archive — NanaZip's default for that command (`ZipRegistry.cpp:583` sets `ElimDup.Val = true`;
+`Extract.cpp:104-230` strips only when every item sits under a folder matching the output folder's
+name). Pakko compares with the archive's base name rather than the output folder, which Pakko may
+have numbered (`name (1)`). SeparateFolders ("Extract here (smart)") is unchanged.

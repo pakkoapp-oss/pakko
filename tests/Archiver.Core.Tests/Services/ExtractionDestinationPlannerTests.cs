@@ -45,10 +45,50 @@ public sealed class ExtractionDestinationPlannerTests
         AssertResolve(alreadyIsolated: false, RootShape.SingleFile, expectedDest: DestDir, expectedStrip: false);
     }
 
+    // T-F205: "extract with full paths" (7-Zip/NanaZip "Extract here", `7z x`) keeps the root.
     [Fact]
-    public void Resolve_NotIsolated_SingleFolder_UsesDestDirAndStrips()
+    public void Resolve_NotIsolated_SingleFolder_KeepsTheRootFolder()
     {
-        AssertResolve(alreadyIsolated: false, RootShape.SingleFolder, expectedDest: DestDir, expectedStrip: true);
+        AssertResolve(alreadyIsolated: false, RootShape.SingleFolder, expectedDest: DestDir, expectedStrip: false);
+    }
+
+    // T-F205: NanaZip's "Extract to name\" ElimDup — strip only a root named like the archive.
+    [Fact]
+    public void Resolve_NotIsolated_SingleFolderDuplicatingArchiveName_Strips()
+    {
+        AssertResolve(alreadyIsolated: false, RootShape.SingleFolder, expectedDest: DestDir, expectedStrip: true,
+            rootDuplicatesArchiveName: true);
+    }
+
+    [Fact]
+    public void Resolve_AlreadyIsolated_SingleFolder_StripsWhateverTheRootIsNamed()
+    {
+        AssertResolve(alreadyIsolated: true, RootShape.SingleFolder, expectedDest: DestDir, expectedStrip: true,
+            rootDuplicatesArchiveName: false);
+    }
+
+    [Fact]
+    public void Resolve_DuplicateFlagOutsideSingleFolder_NeverStrips()
+    {
+        foreach (RootShape shape in new[] { RootShape.MultiRoot, RootShape.SingleFile, RootShape.SelectedSubset })
+        {
+            foreach (bool alreadyIsolated in new[] { true, false })
+            {
+                ExtractionDestinationPlanner.Resolve(alreadyIsolated, shape, DestDir, UnisolatedDestDir, rootDuplicatesArchiveName: true)
+                    .StripRootPrefix.Should().BeFalse($"{shape}, alreadyIsolated={alreadyIsolated}");
+            }
+        }
+    }
+
+    [Theory]
+    [InlineData("root", @"C:\x\root.zip", true)]
+    [InlineData("ROOT", @"C:\x\root.zip", true)]
+    [InlineData("root", @"C:\x\root.tar.gz", true)]
+    [InlineData("root", @"C:\x\singleroot.zip", false)]
+    [InlineData("root (1)", @"C:\x\root.zip", false)]
+    public void RootDuplicatesArchiveName_ComparesWithTheArchiveBaseName(string rootName, string archivePath, bool expected)
+    {
+        ExtractionDestinationPlanner.RootDuplicatesArchiveName(rootName, archivePath).Should().Be(expected);
     }
 
     [Fact]
@@ -63,10 +103,11 @@ public sealed class ExtractionDestinationPlannerTests
         AssertResolve(alreadyIsolated: false, RootShape.SelectedSubset, expectedDest: DestDir, expectedStrip: false);
     }
 
-    private static void AssertResolve(bool alreadyIsolated, RootShape shape, string expectedDest, bool expectedStrip)
+    private static void AssertResolve(bool alreadyIsolated, RootShape shape, string expectedDest, bool expectedStrip,
+        bool rootDuplicatesArchiveName = false)
     {
         var (actualDest, stripRootPrefix) = ExtractionDestinationPlanner.Resolve(
-            alreadyIsolated, shape, DestDir, UnisolatedDestDir);
+            alreadyIsolated, shape, DestDir, UnisolatedDestDir, rootDuplicatesArchiveName);
 
         actualDest.Should().Be(expectedDest);
         stripRootPrefix.Should().Be(expectedStrip);

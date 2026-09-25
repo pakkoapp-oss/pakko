@@ -892,7 +892,7 @@ public sealed class ZipArchiveService : IArchiveService
             bool alreadyIsolated = options.Mode == ExtractMode.SeparateFolders;
             var context = new ZipExtractionContext(
                 conflictResolver, sink.SkippedFiles, options.ConfirmCompressionBombExtraction, _policy.MotwMode, archiveProgress, sink.Errors,
-                sink.ConflictSkippedEntries, password);
+                sink.ConflictSkippedEntries, password, options.EliminateDuplicateRootFolder);
             var (actualDest, anyExtracted) = await Task.Run(async () =>
                 await ExtractWithSmartFolderingAsync(archivePath, destDir, alreadyIsolated,
                     options.DestinationFolder, options.SelectedEntryPaths, context, cancellationToken),
@@ -1309,8 +1309,11 @@ public sealed class ZipArchiveService : IArchiveService
         // ExtractSingleArchiveAsync instead of hand-kept-in-sync per T-F118's own comment — see
         // DECISIONS.md's T-F157 entry.
         var rootShape = ExtractionDestinationPlanner.Classify(isSelectedSubset, isSingleRootFolder, isSingleRootFile);
+        bool rootDuplicatesArchiveName = context.EliminateDuplicateRootFolder && isSingleRootFolder
+            && ExtractionDestinationPlanner.RootDuplicatesArchiveName(
+                fileEntries[0].FullName[..fileEntries[0].FullName.IndexOf('/')], archivePath);
         var (actualDest, stripRootPrefix) = ExtractionDestinationPlanner.Resolve(
-            alreadyIsolated, rootShape, destDir, unisolatedDestDir);
+            alreadyIsolated, rootShape, destDir, unisolatedDestDir, rootDuplicatesArchiveName);
 
         // T-F94: whole-archive compression-ratio check, run BEFORE tempDest is created so a
         // declined/blocked bomb leaves nothing to clean up. Deliberately whole-archive rather
@@ -1432,7 +1435,9 @@ public sealed class ZipArchiveService : IArchiveService
         List<string> ConflictSkippedEntries,
         // T-F189: non-null only when this archive contains at least one encrypted entry and a
         // password was already resolved once, upfront, in TryRejectUnsupportedOrEncryptedZipAsync.
-        string? Password = null);
+        string? Password = null,
+        // T-F205: ExtractOptions.EliminateDuplicateRootFolder.
+        bool EliminateDuplicateRootFolder = false);
 
     // The per-call setup ExtractWithSmartFolderingAsync computes once and every entry of its loop
     // reads unchanged — cut into its own type alongside ZipExtractionContext so

@@ -4481,6 +4481,13 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 
 ### T-F205 — SingleFolder extraction drops an archive's only root folder (P1, decision)
 
+- **Progress (2026-09-25, fix phase 2):** SingleFolder keeps the root folder (planner arm
+  `(false, SingleFolder)`), both engines. User-chosen refinement: NanaZip parity for "Extract to
+  name\" — new `ExtractOptions.EliminateDuplicateRootFolder` (Shell `--extract-folder` only) drops
+  the root only when it is named like the archive (NanaZip `ZipRegistry.cpp:583`,
+  `Extract.cpp:104-230`). "Extract here (smart)" unchanged. User-visible — CHANGELOG at release:
+  Explorer "Extract here", `pakko x`, App Extract now keep the root folder. Device check pending.
+
 - [ ] **Status:** open. `ExtractionDestinationPlanner.Resolve` returns `StripRootPrefix = true`
   for `(alreadyIsolated: false, RootShape.SingleFolder)`, so in SingleFolder mode the archive's
   single root folder name is lost and its contents spill straight into the destination.

@@ -89,12 +89,13 @@ public sealed class ZipArchiveServicePropertyTests : IDisposable
         extractResult.Success.Should().BeTrue($"seed {seed}: extraction should succeed");
         extractResult.Errors.Should().BeEmpty($"seed {seed}");
 
-        // A single directory archived alone is always a single-root-folder case, so smart
-        // foldering strips sourceRoot's own name — extracted files keep the same relative paths.
+        // A single directory archived alone is a single-root-folder archive; SingleFolder mode keeps
+        // that root (T-F205), so files land under extractDest\<sourceRoot's name>.
+        string extractedRoot = Path.Combine(extractDest, Path.GetFileName(sourceRoot));
         foreach (var relativePath in relativeFilePaths)
         {
             string originalPath = Path.Combine(sourceRoot, relativePath);
-            string extractedPath = Path.Combine(extractDest, relativePath);
+            string extractedPath = Path.Combine(extractedRoot, relativePath);
 
             File.Exists(extractedPath).Should().BeTrue(
                 $"seed {seed}: '{relativePath}' should exist after round-trip at '{extractedPath}'");

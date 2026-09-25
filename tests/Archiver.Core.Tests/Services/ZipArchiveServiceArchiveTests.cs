@@ -1237,8 +1237,9 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
         });
 
         extractResult.Success.Should().BeTrue();
-        File.ReadAllText(Path.Combine(extractDest.Path, "a", "file.txt")).Should().Be("from a");
-        File.ReadAllText(Path.Combine(extractDest.Path, "b", "a", "file.txt")).Should().Be("from b/a");
+        // T-F205: the "notes" root folder is kept.
+        File.ReadAllText(Path.Combine(extractDest.Path, "notes", "a", "file.txt")).Should().Be("from a");
+        File.ReadAllText(Path.Combine(extractDest.Path, "notes", "b", "a", "file.txt")).Should().Be("from b/a");
     }
 
     // T-F30: Duplicate Filename Detection Inside Archive

@@ -19,11 +19,13 @@ internal enum RootShape
 /// archive's own root folder name is stripped from entry paths — the one piece of logic
 /// <see cref="ZipArchiveService.ExtractWithSmartFolderingAsync"/> and
 /// <see cref="TarSandboxedService.ExtractSingleArchiveAsync"/> must otherwise keep in sync by
-/// hand (T-F118). <see cref="Resolve"/> reproduces exactly two invariants both engines relied on
-/// before T-F157: <c>ActualDest == (alreadyIsolated &amp;&amp; shape == RootShape.SingleFile)
-/// ? unisolatedDestDir : destDir</c> (T-F154's single-file unwrap), and
-/// <c>StripRootPrefix == (shape == RootShape.SingleFolder)</c> (the pre-existing
-/// isSingleRootFolder strip). Check new arms against those two formulas, not just intuition.
+/// hand (T-F118). <see cref="Resolve"/>'s two invariants: <c>ActualDest == (alreadyIsolated
+/// &amp;&amp; shape == RootShape.SingleFile) ? unisolatedDestDir : destDir</c> (T-F154's
+/// single-file unwrap), and <c>StripRootPrefix == (shape == RootShape.SingleFolder &amp;&amp;
+/// (alreadyIsolated || rootDuplicatesArchiveName))</c> — T-F205: SingleFolder mode keeps the
+/// archive's root folder ("extract with full paths", 7-Zip/NanaZip), except where the caller asked
+/// to eliminate a root named like the archive (NanaZip's "Extract to name\" ElimDup). Check new
+/// arms against those two formulas, not just intuition.
 /// </summary>
 internal static class ExtractionDestinationPlanner
 {
@@ -45,7 +47,8 @@ internal static class ExtractionDestinationPlanner
     // "a new RootShape must be handled" guard is ExtractionDestinationPlannerTests' enumeration
     // theory, not the compiler. See DECISIONS.md's T-F157 entry.
     public static (string ActualDest, bool StripRootPrefix) Resolve(
-        bool alreadyIsolated, RootShape shape, string destDir, string unisolatedDestDir) =>
+        bool alreadyIsolated, RootShape shape, string destDir, string unisolatedDestDir,
+        bool rootDuplicatesArchiveName = false) =>
         (alreadyIsolated, shape) switch
         {
             (true, RootShape.SingleFile) => (unisolatedDestDir, false),
@@ -53,9 +56,16 @@ internal static class ExtractionDestinationPlanner
             (true, RootShape.MultiRoot) => (destDir, false),
             (true, RootShape.SelectedSubset) => (destDir, false),
             (false, RootShape.SingleFile) => (destDir, false),
-            (false, RootShape.SingleFolder) => (destDir, true),
+            (false, RootShape.SingleFolder) => (destDir, rootDuplicatesArchiveName),
             (false, RootShape.MultiRoot) => (destDir, false),
             (false, RootShape.SelectedSubset) => (destDir, false),
             _ => throw new ArgumentOutOfRangeException(nameof(shape), shape, null),
         };
+
+    /// <summary>T-F205: whether an archive's single root folder is named like the archive itself
+    /// (case-insensitive, compound extensions stripped) — the only root NanaZip's ElimDup removes.
+    /// Compared with the archive's name, not the destination folder's, which Pakko may have
+    /// numbered ("name (1)").</summary>
+    public static bool RootDuplicatesArchiveName(string rootName, string archivePath) =>
+        string.Equals(rootName, ArchiveNaming.GetBaseName(archivePath), StringComparison.OrdinalIgnoreCase);
 }

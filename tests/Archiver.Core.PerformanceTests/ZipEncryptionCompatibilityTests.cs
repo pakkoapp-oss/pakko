@@ -121,6 +121,6 @@ public sealed class ZipEncryptionCompatibilityTests : IDisposable
         });
 
         result.Success.Should().BeTrue(because: string.Join("; ", result.Errors.Select(e => e.Message)));
-        AssertSameFiles(source, destDir); // SingleFolder mode drops a lone root folder
+        AssertSameFiles(source, Path.Combine(destDir, Path.GetFileName(source))); // SingleFolder keeps the root folder (T-F205)
     }
 }

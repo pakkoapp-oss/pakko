@@ -83,15 +83,15 @@ public sealed class ZipArchiveServiceFixtureTests : IDisposable
     // ── Smart extract foldering (T-14) ────────────────────────────────────
 
     [Fact]
-    public async Task Extract_SingleRootFolder_NoDoubleNesting()
+    public async Task Extract_SingleRootFolder_KeepsRootFolder()
     {
         // ZIP contains: project/readme.txt, project/src/main.cs, project/src/utils.cs
-        // Smart foldering strips the "project/" prefix → files land directly in destDir
+        // T-F205: SingleFolder mode extracts with full paths — the "project/" root is kept.
         var result = await _sut.ExtractAsync(SingleFolder(FixtureHelper.Archive("extract_single_root_folder.zip")));
 
         result.Success.Should().BeTrue();
-        File.Exists(Path.Combine(_temp.Path, "readme.txt")).Should().BeTrue("file should land directly in destDir");
-        Directory.Exists(Path.Combine(_temp.Path, "project")).Should().BeFalse("root prefix should be stripped");
+        File.Exists(Path.Combine(_temp.Path, "project", "readme.txt")).Should().BeTrue("the root folder is kept");
+        File.Exists(Path.Combine(_temp.Path, "readme.txt")).Should().BeFalse();
     }
 
     [Fact]
