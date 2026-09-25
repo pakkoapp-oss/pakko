@@ -50,6 +50,7 @@ internal sealed class TarSandboxScope : IDisposable
     // "tar:" scopes the option to the tar reader; 7z/rar/zip ignore it (confirmed 2026-09-25).
     private const string Utf8HeaderOption = "tar:hdrcharset=UTF-8";
     private const string NotUtf8HeaderMessage = "Pathname can't be converted from UTF-8";
+    private const string UnreadableNameMessage = "empty or unreadable filename";
 
     private readonly SafeSidHandle _sid;
     private readonly string _quarantineRoot;
@@ -187,7 +188,15 @@ internal sealed class TarSandboxScope : IDisposable
         // once, on the first listing, and used for every later run of this scope.
         _utf8Headers = true;
         var result = await RunAsync(mode, [], cancellationToken).ConfigureAwait(false);
-        if (result.ExitCode == 0 || !result.StdErr.Contains(NotUtf8HeaderMessage, StringComparison.Ordinal))
+        if (result.ExitCode == 0)
+            return result;
+
+        // Valid UTF-8 names this code page cannot show: reading them as OEM would only produce
+        // other, wrong names, so this failure is the answer. Any other failure — invalid UTF-8, or
+        // a tar.exe (another Windows build's bsdtar) that rejects the option or words its errors
+        // differently — falls back to the plain reading used before fix phase 4.
+        if (result.StdErr.Contains(UnreadableNameMessage, StringComparison.Ordinal)
+            && !result.StdErr.Contains(NotUtf8HeaderMessage, StringComparison.Ordinal))
             return result;
 
         _utf8Headers = false;

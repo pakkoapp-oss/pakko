@@ -16,6 +16,28 @@ internal static class TarCodePage
 
     public static bool IsUtf8Ansi => Ansi == 65001;
 
+    // For failure messages: other Windows builds ship other bsdtar versions and locales.
+    public static string Describe()
+    {
+        string version;
+        try
+        {
+            var start = new System.Diagnostics.ProcessStartInfo(@"C:\Windows\System32\tar.exe", "--version")
+            {
+                RedirectStandardOutput = true,
+                UseShellExecute = false,
+            };
+            using var process = System.Diagnostics.Process.Start(start)!;
+            version = process.StandardOutput.ReadToEnd().Trim();
+            process.WaitForExit();
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)
+        {
+            version = ex.Message;
+        }
+        return $"[{version}; ACP {Ansi}; user ANSI {UserAnsi}; user OEM {UserOem}]";
+    }
+
     public static int UserAnsi => UserCodePage(LocaleIDefaultAnsiCodePage, (int)GetACP());
 
     public static int UserOem => UserCodePage(LocaleIDefaultCodePage, (int)GetOEMCP());

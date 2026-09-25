@@ -9547,3 +9547,16 @@ symlink, which kept it green with the pre-scan disabled). The pre-scan now also 
 
 **Deferred:** T-F214 (tar listing dates / packed size) to fix phase 9 — it changes the public
 `ArchiveEntryInfo` model and every frontend renderer. New `DllImport`s join T-F148.
+
+**Closing review (2026-09-26, advisor).** (a) The pushed 3dd289b failed CI: on the runner's
+bsdtar/locale a U+2713 UTF-8 name extracts fine, so the test now pins the real invariant — the real
+name or a clear failure, never mojibake — and prints `tar --version` and the code pages when it
+fails. (b) The header-charset choice no longer depends on 3.8.8's wording: any failure of the
+UTF-8 listing other than "valid UTF-8 the code page cannot show" falls back to the plain reading,
+so an older bsdtar that rejects the option behaves as before phase 4. (c) The profile fast path
+checks `Mappings\<SID>`; the packaged app uses a child SID whose mapping is not visible there.
+Device check on 1.4.12.13: 5 rounds x 8 concurrent Shell extractions, 40/40 fine — no named mutex
+added without a failure to fix. (d) `Repair-PakkoSandboxAce.ps1` re-enabled inheritance on a file
+that had it off; now only an inheriting file is re-inherited (validated with the old damage code,
+`QuarantineAcl.GrantReadExecute` on a hardlink, for both kinds; the old script fails the
+protected one).

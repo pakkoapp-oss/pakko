@@ -41,12 +41,12 @@ public sealed class TarSandboxedServiceNameEncodingTests : IDisposable
         TarBuilder.WriteTar(archivePath, entries);
 
         var list = await _sut.ListEntriesAsync(archivePath);
-        list.Success.Should().BeTrue(list.ErrorMessage);
-        list.Entries.Select(e => e.Path).Should().Equal(name);
+        list.Success.Should().BeTrue(list.ErrorMessage + " " + TarCodePage.Describe());
+        list.Entries.Select(e => e.Path).Should().Equal([name], TarCodePage.Describe());
 
         string dest = Path.Combine(_temp.Path, "out-" + layout);
         var result = await _sut.ExtractAsync(new ExtractOptions { ArchivePaths = [archivePath], DestinationFolder = dest, Mode = ExtractMode.SingleFolder });
-        result.Success.Should().BeTrue(string.Join("; ", result.Errors.Select(e => e.Message)));
+        result.Success.Should().BeTrue(string.Join("; ", result.Errors.Select(e => e.Message)) + " " + TarCodePage.Describe());
         File.ReadAllText(Path.Combine(dest, name)).Should().Be("payload");
         Directory.GetFiles(dest, "*", SearchOption.AllDirectories).Should().ContainSingle();
     }
@@ -71,11 +71,11 @@ public sealed class TarSandboxedServiceNameEncodingTests : IDisposable
         string[] written = Directory.Exists(dest) ? Directory.GetFiles(dest, "*", SearchOption.AllDirectories) : [];
         if (result.Success)
         {
-            written.Select(Path.GetFileName).Should().Equal(name);
+            written.Select(Path.GetFileName).Should().Equal([name], TarCodePage.Describe());
         }
         else
         {
-            result.Errors.Should().ContainSingle().Which.Message.Should().Contain("code page");
+            result.Errors.Should().ContainSingle().Which.Message.Should().Contain("code page", TarCodePage.Describe());
             written.Should().BeEmpty();
         }
     }
