@@ -1319,17 +1319,12 @@ public sealed class ZipArchiveService : IArchiveService
             return (destDir, false);
         }
 
-        // T-F154: stage into a path derived from destDir (always archive-specific — either the
-        // pre-computed per-archive subfolder or the caller's plain destination), never from
-        // actualDest directly — when the planner bypasses destDir as the final target (T-F154's
-        // single-file unwrap), actualDest can be a shared folder (or even a drive root) that many
-        // archives in the same batch resolve to, and "<sharedFolder>_tmp" would be an unsafe,
-        // colliding sibling path.
-        string tempDest = destDir + "_tmp";
-
-        Directory.CreateDirectory(tempDest);
-        string fullTempDest = Path.GetFullPath(tempDest).TrimEnd(Path.DirectorySeparatorChar)
-            + Path.DirectorySeparatorChar;
+        // T-F227: a fresh, uniquely named staging folder owned by this run — never a fixed name
+        // that could be a user's folder. Rooted in the caller's destination folder: it always
+        // exists and shares the volume with actualDest, so the commit is a rename.
+        using var staging = ExtractionStaging.Create(unisolatedDestDir);
+        string tempDest = staging.Path;
+        string fullTempDest = staging.FullPathWithSeparator;
 
         long totalUncompressedBytes = declaredUncompressedSize;
         long bytesRead = 0;
@@ -1347,34 +1342,24 @@ public sealed class ZipArchiveService : IArchiveService
         var plan = new ExtractionPlan(tempDest, fullTempDest, actualDest, stripRootPrefix, totalUncompressedBytes, claimedFinalPaths,
             encryptedEntryMap, rawArchiveStream);
 
-        try
+        // T-F161: `staging` is disposed on ANY exit, including a failure or cancellation partway
+        // through — a leftover staging folder never stays on a real destination.
+        foreach (var entry in fileEntries)
         {
-            foreach (var entry in fileEntries)
-            {
-                // T-F260: throw (the catch below removes tempDest) — a `break` here committed the
-                // entries extracted so far as if the archive were finished.
-                cancellationToken.ThrowIfCancellationRequested();
+            // T-F260: throw — a `break` here committed the entries extracted so far as if the
+            // archive were finished.
+            cancellationToken.ThrowIfCancellationRequested();
 
-                var (extracted, bytesConsumed) = await TryExtractSingleEntryAsync(
-                    entry, archivePath, bytesRead, plan, context, cancellationToken)
-                    .ConfigureAwait(false);
+            var (extracted, bytesConsumed) = await TryExtractSingleEntryAsync(
+                entry, archivePath, bytesRead, plan, context, cancellationToken)
+                .ConfigureAwait(false);
 
-                if (extracted)
-                    extractedCount++;
-                bytesRead += bytesConsumed;
-            }
-        }
-        catch (Exception)
-        {
-            // T-F161: clean up on ANY failure partway through extraction (a path-traversal
-            // rejection, a locked source entry, disk-full, cancellation, etc.) — not just
-            // cancellation. Leaving the "_tmp" staging folder behind is how a stray leftover
-            // folder ends up sitting on a real destination, itself risking a future collision.
-            try { if (Directory.Exists(tempDest)) Directory.Delete(tempDest, recursive: true); } catch { /* best-effort */ }
-            throw;
+            if (extracted)
+                extractedCount++;
+            bytesRead += bytesConsumed;
         }
 
-        foreach (string relativePath in CommitTempDestToActualDest(tempDest, actualDest))
+        foreach (string relativePath in staging.CommitInto(actualDest))
         {
             context.Errors.Add(new ArchiveError
             {
@@ -1397,72 +1382,6 @@ public sealed class ZipArchiveService : IArchiveService
         }
 
         return (actualDest, true);
-    }
-
-    // T-F161: commits tempDest into actualDest — fast-path atomic rename if actualDest doesn't
-    // exist yet, otherwise a per-file merge so pre-existing files (e.g. skipped/renamed) are
-    // preserved. moveOverride exists purely for test injection (defaults to the real
-    // Directory.Move) — never a static field, per this project's own "no static mutable fields in
-    // services" rule.
-    //
-    // The fast path's Directory.Move fails the WHOLE source tree with IOException — naming only
-    // tempDest's own path, never the specific offending file — whenever ANY file anywhere inside
-    // it is transiently held open by another process (real-time antivirus scan, cloud-sync
-    // filter, Search Indexer), even though every file Pakko itself wrote has already been closed
-    // by this point. Confirmed empirically, not assumed — see DECISIONS.md's T-F161 entry.
-    // Falling back to the per-file merge below tolerates one still-locked file instead of losing
-    // the whole extraction to it.
-    //
-    // T-F170: the per-file merge loop itself used to have no try/catch, so a SINGLE locked
-    // destination file (e.g. re-extracting into an existing folder while one file is open
-    // elsewhere) aborted every remaining file in the loop too — the same whole-operation-abort
-    // shape T-F161 fixed for the fast path, one level deeper. Returns the relative paths that
-    // could not be moved so the caller can record a per-item ArchiveError instead of losing the
-    // whole commit to one lock. Catches both IOException AND UnauthorizedAccessException — a real
-    // locked-file File.Move(overwrite: true) was confirmed empirically (throwaway repro, not
-    // assumed) to throw UnauthorizedAccessException here, not IOException as the fast-path's own
-    // Directory.Move does; the two don't share a base type in .NET's exception hierarchy.
-    internal static IReadOnlyList<string> CommitTempDestToActualDest(
-        string tempDest, string actualDest, Action<string, string>? moveOverride = null)
-    {
-        if (!Directory.Exists(actualDest))
-        {
-            try
-            {
-                (moveOverride ?? Directory.Move)(tempDest, actualDest);
-                return [];
-            }
-            catch (IOException)
-            {
-                Directory.CreateDirectory(actualDest);
-            }
-        }
-
-        var lockedRelativePaths = new List<string>();
-        foreach (string file in Directory.EnumerateFiles(tempDest, "*", SearchOption.AllDirectories).ToList())
-        {
-            string relative = Path.GetRelativePath(tempDest, file);
-            string finalFile = Path.Combine(actualDest, relative);
-            Directory.CreateDirectory(Path.GetDirectoryName(finalFile)!);
-            try
-            {
-                File.Move(file, finalFile, overwrite: true);
-            }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-            {
-                lockedRelativePaths.Add(relative);
-            }
-        }
-
-        // Any file left behind above is one that failed to move (locked) — deleting it here
-        // along with the rest of tempDest's now-processed structure is correct: the freshly
-        // extracted copy can't reach its destination anyway, and leaving it in a leftover tempDest
-        // forever would violate this project's "no partial/leftover temp files" rule. A failure
-        // here (the same class of transient external lock, now on tempDest's own structure) must
-        // not fail an otherwise-successful extraction.
-        try { Directory.Delete(tempDest, recursive: true); } catch { /* best-effort */ }
-
-        return lockedRelativePaths;
     }
 
     // The plumbing every entry of an ExtractWithSmartFolderingAsync call shares, cut from that

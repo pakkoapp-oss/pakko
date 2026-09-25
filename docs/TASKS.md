@@ -4753,6 +4753,11 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 
 ### T-F227 — ZIP extraction reuses and destroys an existing `<dest>_tmp` folder (P0)
 
+- **Progress (2026-09-25, fix phase 2):** ZIP now stages into a fresh hidden
+  `<DestinationFolder>\.pakko-x-<pid>-<guid>` owned by the run (`ExtractionStaging`, the T-F263
+  slice), never reused, removed on every exit; Hidden is cleared before the fast-path rename. Tar
+  moves to it in phase 4. Device check pending (phase end).
+
 - [ ] **Status:** open — found by the T-F226 review (independent reviewer agent), confirmed on
   device 2026-09-24. `ZipArchiveService` stages into `tempDest = destDir + "_tmp"`
   (`ZipArchiveService.cs:1290`), `Directory.CreateDirectory` silently reuses an existing folder of

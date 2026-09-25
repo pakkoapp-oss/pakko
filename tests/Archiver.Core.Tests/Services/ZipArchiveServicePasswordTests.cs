@@ -149,7 +149,7 @@ public sealed class ZipArchiveServicePasswordTests : IDisposable
         // per-archive outcome — the invariant that matters is that it stays EMPTY, and no "_tmp"
         // staging leftover survives a rejected archive.
         Directory.EnumerateFileSystemEntries(destDir).Should().BeEmpty();
-        Directory.EnumerateFileSystemEntries(_temp.Path).Should().NotContain(p => p.EndsWith("_tmp"));
+        Directory.EnumerateFileSystemEntries(_temp.Path).Should().NotContain(p => Path.GetFileName(p).StartsWith(".pakko-x-"));
     }
 
     [Fact]
@@ -209,7 +209,7 @@ public sealed class ZipArchiveServicePasswordTests : IDisposable
         // failure (same as any other traversal fixture in this suite), not a per-entry skip.
         result.Success.Should().BeFalse();
         File.Exists(Path.Combine(_temp.Path, "evil_trav.txt")).Should().BeFalse();
-        Directory.EnumerateFileSystemEntries(_temp.Path).Should().NotContain(p => p.EndsWith("_tmp"));
+        Directory.EnumerateFileSystemEntries(_temp.Path).Should().NotContain(p => Path.GetFileName(p).StartsWith(".pakko-x-"));
     }
 
     [Fact]

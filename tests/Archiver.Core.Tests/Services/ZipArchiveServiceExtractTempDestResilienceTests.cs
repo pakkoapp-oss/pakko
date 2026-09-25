@@ -87,18 +87,18 @@ public sealed class ZipArchiveServiceExtractTempDestResilienceTests : IDisposabl
         // message — the actual point of this test is the leaked tempDest below, not this text.
         result.Errors.Should().ContainSingle(e => e.Message == "File has ZIP signature but appears corrupted or incomplete.");
 
-        string tempDest = Path.Combine(_temp.Path, "out_tmp");
-        Directory.Exists(tempDest).Should().BeFalse("a failed extraction must not leave a stray _tmp staging folder behind");
+        Directory.GetDirectories(_temp.Path, ".pakko-x-*").Should().BeEmpty("a failed extraction must not leave a staging folder behind");
     }
 
-    // Exercises ZipArchiveService.CommitTempDestToActualDest directly (internal, via
+    // Exercises ExtractionStaging.CommitInto directly (internal, via
     // InternalsVisibleTo) with an injected move delegate that fails exactly like the real
     // Directory.Move does above — the cheapest deterministic way to prove the fast-path-to-merge
     // fallback actually runs, without needing a real external lock or a full ExtractAsync pass.
     [Fact]
-    public void CommitTempDestToActualDest_MoveThrowsIOException_FallsBackToPerFileMerge()
+    public void CommitInto_MoveThrowsIOException_FallsBackToPerFileMerge()
     {
-        string tempDest = Path.Combine(_temp.Path, "out_tmp");
+        using var staging = ExtractionStaging.Create(_temp.Path);
+        string tempDest = staging.Path;
         Directory.CreateDirectory(Path.Combine(tempDest, "Sub"));
         File.WriteAllText(Path.Combine(tempDest, "loose1.txt"), "loose1");
         File.WriteAllText(Path.Combine(tempDest, "Sub", "nested1.txt"), "nested1");
@@ -111,12 +111,13 @@ public sealed class ZipArchiveServiceExtractTempDestResilienceTests : IDisposabl
             throw new IOException($"Access to the path '{src}' is denied.");
         }
 
-        var lockedRelativePaths = ZipArchiveService.CommitTempDestToActualDest(tempDest, actualDest, FailingMove);
+        var lockedRelativePaths = staging.CommitInto(actualDest, FailingMove);
 
         moveAttempts.Should().Be(1);
         lockedRelativePaths.Should().BeEmpty("the fast path failed, but the per-file merge fallback moved every real file successfully");
         File.Exists(Path.Combine(actualDest, "loose1.txt")).Should().BeTrue();
         File.Exists(Path.Combine(actualDest, "Sub", "nested1.txt")).Should().BeTrue();
+        staging.Dispose();
         Directory.Exists(tempDest).Should().BeFalse("every file was successfully merged out, so the empty staging folder must be cleaned up");
     }
 
@@ -165,10 +166,10 @@ public sealed class ZipArchiveServiceExtractTempDestResilienceTests : IDisposabl
     }
 
     [Fact]
-    public void CommitTempDestToActualDest_ActualDestDoesNotExist_UsesFastPathMove()
+    public void CommitInto_ActualDestDoesNotExist_UsesFastPathMove()
     {
-        string tempDest = Path.Combine(_temp.Path, "out_tmp");
-        Directory.CreateDirectory(tempDest);
+        using var staging = ExtractionStaging.Create(_temp.Path);
+        string tempDest = staging.Path;
         File.WriteAllText(Path.Combine(tempDest, "loose1.txt"), "loose1");
         string actualDest = Path.Combine(_temp.Path, "out");
 
@@ -179,7 +180,7 @@ public sealed class ZipArchiveServiceExtractTempDestResilienceTests : IDisposabl
             Directory.Move(src, dst);
         }
 
-        ZipArchiveService.CommitTempDestToActualDest(tempDest, actualDest, RealMove);
+        staging.CommitInto(actualDest, RealMove);
 
         moveAttempts.Should().Be(1);
         File.Exists(Path.Combine(actualDest, "loose1.txt")).Should().BeTrue();
