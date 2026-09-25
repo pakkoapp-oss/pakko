@@ -4240,6 +4240,8 @@ regression from this task, which owns reliability only.
   `ZipArchiveService.cs:1386-1427`, file-only enumeration at `:1403`, `_tmp` delete at `:1424`) is
   exactly the code T-F227 (unique owned staging folder) rewrites and T-F228 (normalized conflict
   paths) touches — sequencing T-F197 before or together with them is a user decision.
+  **User decision 2026-09-25:** folded into the fix batch, done together with T-F227 + T-F228 (not
+  as a separate fix in the discovery batch).
 - **Tests first:** an empty folder (top level and nested) survives a Pakko archive-then-extract
   round trip in every `ExtractMode`; once fixed, restore the on-disk assertion in
   `ZipArchiveServiceEncryptTests.ArchiveAsync_WithPassword_WritesAe2Aes256EntriesThatRoundTrip`.
@@ -4247,8 +4249,9 @@ regression from this task, which owns reliability only.
 
 ### Fix batch (next, after the current batch closes) — index
 
-User decision 2026-09-24: the current batch is discovery (T-F202, T-F226) plus the one fix T-F197;
-**every other fix below is a separate, next batch.** This index is the batch's scope and order; the
+User decision 2026-09-24: the current batch is discovery (T-F202, T-F226);
+**every fix below is a separate, next batch** (T-F197 was the one planned exception — folded in
+here with T-F227/T-F228 by user decision 2026-09-25). This index is the batch's scope and order; the
 task entries themselves hold the detail. Rules for every item: tests first (write the reproducing
 test, confirm it fails, then fix — `CLAUDE.md`'s revert-and-confirm rule), the four test
 categories, deploy and verify on device before marking done.
@@ -4257,28 +4260,27 @@ categories, deploy and verify on device before marking done.
 - T-F233 — P0 or P1; remediation or release note for archives whose permissions were already
   rewritten (one real case found on the dev machine).
 - T-F234 — P0 or P1.
-- T-F197 — done in the current batch as planned, or folded in here with T-F227/T-F228 (same
-  `CommitTempDestToActualDest` code).
 - T-F201 — keep T-F88's multi-instance design (offset/foreground only) or reverse it.
 - T-F205, T-F206, T-F210 — each reverses or changes a documented behavior.
 - T-F241 — add the missing CLI scan / App test, or document why not.
 - T-F199 — the layout redesign needs a plan and a mockup approved first.
 
 **1. P0 — data loss or a broken core flow:** T-F227, T-F228, T-F229, T-F204, T-F233 (candidate),
-T-F234 (candidate), T-F245 (with T-F229), T-F246 — both P0 by user decision 2026-09-25. Suggested order: T-F227 + T-F228 together (same staging/commit code), then
+T-F234 (candidate), T-F245 (with T-F229), T-F246 — both P0 by user decision 2026-09-25. Suggested order: T-F227 + T-F228 + T-F197 together (same staging/commit code), then
 T-F229 with T-F207, then T-F233, T-F234, T-F204.
 
 **2. P1 — broken or misleading feature:** T-F230, T-F231, T-F232, T-F235, T-F236, T-F237,
 T-F200, T-F205, T-F206, T-F207, T-F208, T-F210, T-F211, T-F212, T-F213, T-F224, T-F225, T-F247,
-T-F248 (with T-F233).
+T-F248 (with T-F233), T-F250 (P1 kept, user decision 2026-09-25), T-F251 (with T-F236).
 
 **3. P2 — polish, consistency, hardening, debt:** T-F198, T-F199, T-F201, T-F203 (SonarCloud),
 T-F209, T-F214, T-F215, T-F216, T-F217, T-F218, T-F219, T-F220, T-F221, T-F222, T-F223 (+ T-F165,
 diagrams — redo the per-arrow ground-truth ritual T-F226 deferred, after the P0 fixes land),
-T-F238, T-F239, T-F240, T-F241, T-F242, T-F243, T-F244, T-F249.
+T-F238, T-F239, T-F240, T-F241, T-F242, T-F243, T-F244, T-F249, T-F252, T-F253, T-F254, T-F255,
+T-F256, T-F257, T-F258 (with T-F223/T-F165), T-F259.
 
 **Not in this batch:** T-F202's user-only checks (light theme, en-US, keyboard-only, tray, CLI in a
-real console) and T-F226's unrun mutation spot-check — carried as open items on those tasks.
+real console) and T-F226's deferred per-arrow diagram ritual — carried as open items on those tasks.
 
 ### T-F198 — UI quick fixes from the 2026-09-24 UI/UX review
 
@@ -4642,14 +4644,15 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 
 - [~] **Status:** 2026-09-24 — findings filed as T-F227..T-F244 (plus additions to T-F201 and
   T-F232); batch 2 (2026-09-25, the sandbox files, AMSI and format detection the first pass did
-  not reach) filed T-F245..T-F249 plus additions to T-F233 and T-F244. Still unchecked after
-  batch 2: `GroupPolicyService`, preview/nested-archive caches, `FileHashService`, Shell native
-  dialogs (`DLGTEMPLATEEX` password dialog, conflict dialog), `Localization.cpp`, `scripts/*.ps1`,
-  `SECURITY.md` claims against code, check K (mutation spot-check) and check L (diagrams outside
-  the T-F227/T-F228/T-F233/T-F236 area). **Not closed:** the per-arrow ground-truth ritual over `docs/DIAGRAMS.md` was deferred,
-  not done — the fixes for T-F227/T-F228/T-F233/T-F236 will rewrite those diagrams, and T-F165/
-  T-F223 are already open; the review's exit criterion is therefore not met for that cell. The
-  planned mutation spot-check of 3-5 critical tests (check K) was not run either.
+  not reach) filed T-F245..T-F249 plus additions to T-F233 and T-F244. Batch 3 (2026-09-25:
+  `GroupPolicyService`, preview/nested caches, `FileHashService`, Shell password and conflict
+  dialogs, `Localization.cpp`, `SECURITY.md` against code, check K, check L spot-check) filed
+  T-F250..T-F259; `scripts/*.ps1` were pattern-searched only (non-ASCII literals, BOMs, recursive
+  deletes). Check K ran: 7 mutants over the security gates, 6 killed by the right tests, 1
+  survivor (T-F256). **Not closed:** check L was a spot-check of diagrams 1, 2, 4, 7 (T-F258);
+  diagram 6 is unchecked and the per-arrow ground-truth ritual over `docs/DIAGRAMS.md` is still
+  deferred until the fixes for T-F227/T-F228/T-F233/T-F236 rewrite those diagrams (with T-F165/
+  T-F223) — the review's exit criterion is not met for that cell.
   Checked with no finding: the fire-and-forget calls and `async void` (event handlers only),
   `static` mutable state (`FileHashService._threadPoolWarmed` is a process-wide one-shot latch around
   a process-wide setting), `ArchiveTreeIndex` recursion (iterative; memory issue is T-F237),
@@ -5108,6 +5111,191 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 - **Tests first:** Boundary — a large RAR5-signature file is classified without reading more than
   a fixed header window; a truncated vint returns false.
 - **Reported by:** T-F226 batch 2, 2026-09-25.
+
+### T-F250 — Group Policy is not applied to archive listing: browse and `pakko l` read blocked formats with tar.exe (P1)
+
+- [ ] **Status:** open — code-confirmed 2026-09-25 (T-F226 batch 3). `ArchiveListingRouter`'s
+  constructor takes no `GroupPolicyOptions` at all (`ArchiveListingRouter.cs:7-10`); it dispatches
+  on format and tar capabilities only (`:17-30`). `ExtractionRouter`, `AntivirusScanService` and
+  `ArchiveCreationRouter` all apply `ArchiveFormatPolicy.Classify`/`IsFormatAllowed`, listing does
+  not. So with `BlockedFormats=sevenzip,rar` or `DisableTarExtraction=1`, every listing still
+  parses the blocked archive with tar.exe (sandboxed, but the same libarchive parser the policy is
+  meant to keep away): App browse mode (`MainViewModel.cs:773`), a `.7z`/`.rar` opened through the
+  file association or Explorer "Open", the listing after a nested drill-in, and `pakko l`
+  (`Archiver.CLI/Program.cs:440`, built with a policy-less `new ZipArchiveService()`).
+  `ZipArchiveService.TestAsync` also ignores `BlockedFormats=zip` (it reads `_policy` only for
+  MOTW). Separately, `DisableTarExtraction=1` still runs the unsandboxed `tar.exe --version`
+  probe (`TarSandboxedService.cs:41-85`) — at every App start (eager DI resolution,
+  `App.xaml.cs:38`) and in Shell/CLI for each extract/list/scan command (`Archiver.Shell/
+  Program.cs:214,579`, `Archiver.CLI/Program.cs:78,325,439`).
+  `docs/POLICIES.md:44` promises "`1` = Pakko never spawns `tar.exe` at all", and its banner says
+  every policy was "confirmed on real hardware ... matching this document exactly" — neither holds.
+  `ArchiveListingRouter.cs:33-35` also keeps its own copy of `IsSupported`/`BuildUnsupportedReason`
+  (already duplicated in `ArchiveFormatPolicy`) — the drift this task is an instance of.
+- **Tests first (Security & Boundary):** with a policy blocking the format, and with
+  `DisableTarExtraction=1`, `ListEntriesAsync` returns a policy error and no tar.exe process is
+  started (fake `ITarService` that fails the test if called); `TestAsync` on a blocked `zip`;
+  the capability probe is skipped under `DisableTarExtraction=1`.
+- **Reported by:** T-F226 batch 3, 2026-09-25.
+
+### T-F251 — Hashing a folder crashes on an unreadable subfolder or a junction loop (P1)
+
+- [ ] **Status:** open — confirmed 2026-09-25. `FileHashService.ComputeFolderAsync` enumerates
+  with `new DirectoryInfo(root).EnumerateFiles("*", SearchOption.AllDirectories).ToList()`
+  (`FileHashService.cs:128`) outside any try, with the default options: inaccessible folders
+  throw and reparse points are followed.
+  Repro 1: folder `h1\` with `sub\locked\` denied `RD` for the user -> `pakko h h1` dies with
+  `Unhandled exception. System.UnauthorizedAccessException ... FileHashService.cs:line 128`, exit
+  0xE0434352. The installed Store-shaped package (CI 1.4.12.9), `Archiver.Shell.exe --hash
+  --algorithm sha256 h1` (Explorer "Хеш-суми" -> SHA-256): exit 0xE0434352, no message to the user,
+  only `Application Error`/`.NET Runtime` events naming the same exception.
+  Repro 2: folder `h2\` with a junction `h2\loop -> h2` -> `pakko h h2` walks `loop\loop\...` and
+  dies after ~1.3 s with `System.IO.PathTooLongException`. A junction pointing elsewhere silently
+  adds files outside the folder to DataSum/NamesSum (archive creation skips reparse points, T-F23;
+  hashing does not).
+  The App's Hash dialog picks files only, so it is not affected.
+  Also code-confirmed: the parallel CRC-32 path (`:311-320`) stops on `read <= 0` for a file that
+  shrinks while hashed, yet `Crc32.Combine` still uses the chunk's declared length (`:303`, `:331`)
+  — a wrong CRC reported as a success, no error.
+  Sibling of T-F236 (same "one unreadable subfolder aborts everything" class) and T-F237.
+- **Tests first:** Error path — an unreadable subfolder becomes one per-item error and every
+  readable file is hashed; Security & Boundary — a junction loop and a junction to an outside
+  folder are skipped (NanaZip parity to be checked); a short read fails the file instead of
+  returning a CRC.
+- **Reported by:** T-F226 batch 3, 2026-09-25.
+
+### T-F252 — Closing any Pakko window deletes every other window's preview and nested-archive files (P2)
+
+- [ ] **Status:** open — confirmed on device 2026-09-25. `PreviewCache`/`NestedArchiveCache` use one
+  shared root each (`%TEMP%\PakkoPreview`, `%TEMP%\PakkoNestedArchive`), and every window's
+  `Closed` handler deletes both roots whole (`MainWindow.xaml.cs:101-107`). Pakko is deliberately
+  multi-process (T-F88), so closing window B deletes window A's live scopes. Repro: window A (CI
+  1.4.12.9, open since the T-F202 pass) had four nested-level scope folders and four preview scope
+  folders on disk (two holding files), plus a planted marker folder; a second window was started
+  from Start and closed -> both roots were gone. Any window currently inside a nested level loses
+  its extracted archive.
+  Second part: there is no startup cleanup anywhere, although `PreviewCache.DeleteAll`'s doc
+  comment says leftovers are "left for the next app start" and `SECURITY.md:212-214` says previews
+  are deleted on window close. After a crash or a kill, previewed entries stay in `%TEMP%` for
+  good — including the decrypted plaintext of password-protected entries (T-F190/T-F194 preview
+  path) and extracted nested archives. Same class as T-F244 item 4 (`x -so` plaintext).
+  Fix direction: a per-process (or per-window) subfolder, delete only your own; a startup sweep
+  that skips folders owned by live processes.
+- **Tests first:** Concurrency/Recovery — two cache owners, one closes, the other's scope
+  survives; a scope left by a dead process is removed at the next start.
+- **Reported by:** T-F226 batch 3, 2026-09-25.
+
+### T-F253 — Explorer's conflict dialog opens behind other windows and names only the file (P2)
+
+- [ ] **Status:** open — confirmed on device 2026-09-25. `ShellConflictDialog` calls
+  `TaskDialogIndirect` with no owner and none of the Z-order handling `PasswordDialog` needed
+  (`PasswordDialog.cs:95-110`, T-F192: `SetForegroundWindow` alone is unreliable from this call
+  site, fixed with `HWND_TOPMOST`). Same launch (`Archiver.Shell.exe --extract-here` from a
+  background process, installed CI 1.4.12.9): the password dialog is `WS_EX_TOPMOST`; the
+  conflict dialog ("Файл вже існує") is neither topmost nor foreground, and a screenshot shows it
+  underneath the foreground terminal window. The extraction waits on it invisibly.
+  UX, same dialog: the message shows only `Path.GetFileName(conflict.ExistingPath)`
+  (`ShellConflictDialog.cs:73`) — with same-named files in several subfolders the user cannot
+  tell which one is meant; no size/date comparison either (the App's T-F06 dialog — check parity).
+- **Reported by:** T-F226 batch 3, 2026-09-25.
+
+### T-F254 — Explorer menu stays English for Chinese and regional-variant Windows languages (P2)
+
+- [ ] **Status:** open — code-confirmed 2026-09-25. `Localization.cpp` looks the UI language up by
+  exact tag (`GetLocalizedString`, `:112-121`) from `GetThreadPreferredUILanguages` (`:94-110`).
+  Windows reports Simplified Chinese as `zh-CN` (Microsoft's language-pack table, fetched
+  2026-09-25), but the table's key is `zh-Hans` — it can never match, so Chinese users always get
+  the English menu. Regional variants with their own Windows language pack (`pt-BR`, `es-MX`,
+  `fr-CA`) and any user whose tag differs from the table's one region (`de-AT`, `de-CH`, ...) also
+  fall to English. The other frontends resolve differently: `Archiver.Shell`'s `.resx` use .NET's
+  parent chain (`zh-CN` -> `zh-Hans` works, `de-AT` -> `de` -> invariant does not), the App uses
+  MRT language matching (its `de-AT` behavior not verified) — so the menu, Shell dialogs and window
+  can disagree, localized in one and English in another.
+  `LocalizationTests.cpp:62` feeds only the table's own keys, so it cannot catch this.
+  `docs/DECISIONS.md`'s T-F115 entry (`:4816`) already noted `zh-Hans` does not map to a
+  classic tag, but not the lookup consequence.
+- **Tests first:** `GetLocalizedString(id, L"zh-CN")` returns the Chinese row; `pt-BR`/`de-AT`
+  fall back to their language, not en-US.
+- **Reported by:** T-F226 batch 3, 2026-09-25.
+
+### T-F255 — Explorer's password dialog silently cuts passwords at 255 characters (P2)
+
+- [ ] **Status:** open — code-confirmed 2026-09-25. `PasswordDialog.OnCommand` reads the edit
+  control into a fixed `char[256]` (`PasswordDialog.cs:133-135`) and the template sets no
+  `EM_LIMITTEXT`/max length, so a longer password (typed or pasted — decryption accepts any
+  length, `docs/CLI.md`) is truncated without notice and reported as a wrong password. The App's
+  decrypt `PasswordBox` (`DialogService.cs:167`) and the CLI prompt (`CliLineInput.cs:47`, an
+  unbounded `StringBuilder`) have no such cap, so the same
+  archive opens in the App and the CLI but not from Explorer. Minor: "Show password" restores the
+  mask as `'*'` (`:123`) instead of the system bullet the edit starts with.
+- **Tests first:** the read-back handles any length (query `GetWindowTextLength` first).
+- **Reported by:** T-F226 batch 3, 2026-09-25.
+
+### T-F256 — The T-F49 symlink-escape regression test no longer proves the pre-scan (P2, tests)
+
+- [ ] **Status:** open — confirmed 2026-09-25 by the T-F226 mutation spot-check (check K).
+  Mutant: `TarSandboxedService.cs:758` `if (typeChar != '-' && typeChar != 'd')` -> `if (false)`
+  (the pre-scan never rejects a symlink/hardlink/device entry). Result: `Archiver.Core.Tests` and
+  `Archiver.Core.IntegrationTests` all green (661 + 91). `ExtractAsync_ArchiveWithSymlinkEntry_
+  RejectsWholeArchiveAndDoesNotEscape` (`TarSandboxedServiceExtractTests.cs:766-788`) passes
+  because the sandbox fails the symlink instead (built mutant CLI on the evil archive: `tar.exe
+  extraction failed: link: Can't create '...\PakkoTarSandbox\<guid>\out\link': Invalid argument`,
+  no escaped file anywhere — Developer Mode is on here). The test asserts only `Success == false`
+  and one error, and looks for the escaped file in `_temp.Path` — an earlier extraction root
+  (quarantine staging moved to `%TEMP%\PakkoTarSandbox\<guid>\` during T-F52, `docs/DECISIONS.md`
+  near `:4596`), not the quarantine parent where an escape would land today. So the exploit's primary gate is
+  unpinned; only the second layer is tested, by accident.
+  Other mutants killed by the right tests: ADS marker, reserved names, ZIP traversal check,
+  `PathContainsReparsePoint`, MOTW mode, bomb-ratio threshold (list in the batch plan, 6.8).
+  Stale comment found along the way: `ArchiveEntrySecurity.cs:76` still says "No automated unit
+  test" — T-F166 added one.
+- **Fix:** assert the pre-scan's own rejection message, and check the quarantine parent (or use a
+  fake launcher that fails the test if `-xf` runs).
+- **Reported by:** T-F226 batch 3, 2026-09-25.
+
+### T-F257 — Security and convention docs contradict the code (P2, docs)
+
+- [ ] **Status:** open — checked 2026-09-25 (T-F226 batch 3, `SECURITY.md` against code).
+  1. `SECURITY.md:166-169` says the Group Policy surface is "planned ... not yet implemented
+     (tracked as T-F51)"; `GroupPolicyService` ships and `docs/POLICIES.md` says "shipped
+     2026-07-18". (What POLICIES.md itself over-promises is T-F250.)
+  2. `SECURITY.md:212-214` and `PreviewCache`'s doc comment: see T-F252.
+  3. `SECURITY.md:179-185` calls the preview allowlist free of "macro-capable" handlers; on a
+     machine with Office, `.csv` opens in Excel (`assoc .csv` = `Excel.CSV` here), which evaluates
+     formulas. Mitigated by Protected View only when the archive carried MOTW. Hypothesis — not
+     exercised; decide whether `.csv` stays or the claim is narrowed.
+  4. `docs/CONVENTIONS.md:313-320` and `CLAUDE.md`'s hard constraint forbid literal non-ASCII in
+     C++ string literals, yet `Localization.cpp` holds ~450 of them — safe only because
+     `Archiver.ShellExtension.vcxproj:80-89` compiles with `/utf-8` (T-F115). The rule should name
+     that exception (or the flag), or the next reader will "fix" one side.
+- **Reported by:** T-F226 batch 3, 2026-09-25.
+
+### T-F258 — Diagrams 1, 2, 4 and 7 are stale (P2, docs)
+
+- [ ] **Status:** open — spot-checked 2026-09-25 (T-F226 check L; not the full per-arrow ritual).
+  - Diagram 2 (operation lifecycle): no `RunCleanupAsync`/"Delete after operation" step at all —
+    the one destructive transition (T-F229, T-F245) — and it asserts every cancel ends in
+    `OperationCanceledException` -> `CancelledNoDialog`, which T-F245 disproves for tar. Line
+    references (`271-489 as of T-F85`) are stale.
+  - Diagram 7 (AMSI scan): no password branch for encrypted ZIP entries (T-F194), no
+    AMSI-failure branch (T-F247 crashes there), and "quarantine deleted (always)" is false for
+    read-only archives (T-F248).
+  - Diagram 1 (Explorer invocation): the extract flow has no conflict prompt (T-F155) or password
+    prompt (T-F192); the Hash branch has no failure path (T-F251).
+  - Diagram 4 (deployment): no tar.exe AppContainer child, quarantine, `pakko.exe`, file
+    association or `pakko://browse` — the biggest process boundary since T-F52 is missing.
+  - Not checked: diagram 6. Diagrams 3 and 5 are T-F165/T-F223 and the T-F227/T-F228/T-F233 area.
+  Redo per the Ground Truth Rule after the P0 fixes, together with T-F223.
+- **Reported by:** T-F226 batch 3, 2026-09-25.
+
+### T-F259 — `Publish-Cli.ps1 -OutputRoot` recursively deletes whatever folder it is given (P2)
+
+- [ ] **Status:** open — code-confirmed 2026-09-25. `scripts/Publish-Cli.ps1:51-53` runs
+  `Remove-Item -Recurse -Force $OutputRoot` on a user-supplied parameter documented as "Directory
+  to publish into", with no check that it is empty, under the repo, or created by the script —
+  `-OutputRoot $HOME\Desktop` wipes the Desktop. Delete only a folder the script owns (e.g. a
+  fixed `cli` subfolder, or refuse a non-empty foreign folder).
+- **Reported by:** T-F226 batch 3, 2026-09-25.
 
 ### T-F223 — Diagram gap from T-F193 (P2)
 
