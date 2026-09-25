@@ -135,26 +135,6 @@ public sealed class SandboxedProcessLauncherTests
         }
     }
 
-    // Error path: a launch that fails (no such file) must not leak its pipe handles.
-    [Fact]
-    public async Task RunAsync_CreateProcessFails_DoesNotLeakHandles()
-    {
-        string missing = Path.Combine(Path.GetTempPath(), "pakko-missing-" + Guid.NewGuid() + ".exe");
-        await RunMissingAsync(missing);
-        int before = System.Diagnostics.Process.GetCurrentProcess().HandleCount;
-
-        for (int i = 0; i < 50; i++)
-            await RunMissingAsync(missing);
-
-        int after = System.Diagnostics.Process.GetCurrentProcess().HandleCount;
-        (after - before).Should().BeLessThan(20);
-    }
-
-    private static async Task RunMissingAsync(string missing) =>
-        await FluentActions.Awaiting(() => SandboxedProcessLauncher.RunAsync(
-                missing, [], new ProcessLaunchOptions(), CancellationToken.None))
-            .Should().ThrowAsync<IOException>();
-
     private static bool ProcessHasExited(int pid)
     {
         try

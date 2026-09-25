@@ -23,29 +23,65 @@ internal sealed class AppContainerProfile
 
     public AppContainerProfile(string profileName) => _profileName = profileName;
 
+    // Where the OS records a profile (one key per AppContainer SID, confirmed 2026-09-25).
+    private const string MappingsKey = @"Software\Classes\Local Settings\Software\Microsoft\Windows\CurrentVersion\AppContainer\Mappings\";
+    private static readonly object CreateLock = new();
+
     /// <summary>
-    /// Creates the profile if it doesn't already exist. Safe to call on every operation —
-    /// ERROR_ALREADY_EXISTS is treated as success, not an error.
+    /// Creates the profile if it doesn't already exist. Safe to call on every operation.
+    /// T-F244 item 1: CreateAppContainerProfile on an existing profile rewrites its registry keys,
+    /// and concurrent calls failed with 0x800703FA/0x8000FFFF — two tar operations at once (two
+    /// processes, or two test projects) got a spurious "Sandbox setup failed". An existing
+    /// profile is now detected without calling it; creation is serialized in-process, and a
+    /// failed creation counts as success if another process registered the profile meanwhile.
     /// </summary>
     public void EnsureExists()
     {
-        int hr = NativeMethods.CreateAppContainerProfile(
-            _profileName,
-            _profileName,
-            _profileName,
-            pCapabilities: IntPtr.Zero,
-            dwCapabilityCount: 0,
-            out IntPtr sid);
-
-        if (hr == HResultAlreadyExists)
+        if (IsRegisteredOnWindows())
             return;
 
-        if (hr < 0)
-            throw new InvalidOperationException($"CreateAppContainerProfile failed (HRESULT 0x{hr:X8}).");
+        lock (CreateLock)
+        {
+            int hr = NativeMethods.CreateAppContainerProfile(
+                _profileName,
+                _profileName,
+                _profileName,
+                pCapabilities: IntPtr.Zero,
+                dwCapabilityCount: 0,
+                out IntPtr sid);
 
-        // Profile was just created — this call still yields a usable SID, but callers always
-        // re-derive it via GetSid() instead (deterministic, no cached live handle to manage).
-        NativeMethods.FreeSid(sid);
+            if (hr >= 0)
+            {
+                // Callers always re-derive the SID via GetSid() (deterministic, no cached live handle).
+                NativeMethods.FreeSid(sid);
+                return;
+            }
+
+            if (hr != HResultAlreadyExists && !IsRegisteredOnWindows())
+                throw new InvalidOperationException($"CreateAppContainerProfile failed (HRESULT 0x{hr:X8}).");
+        }
+    }
+
+    private bool IsRegisteredOnWindows() => OperatingSystem.IsWindows() && IsRegistered();
+
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+    private bool IsRegistered()
+    {
+        try
+        {
+            using SafeSidHandle sid = GetSid();
+            if (!NativeMethods.ConvertSidToStringSidW(sid, out IntPtr text))
+                return false;
+            string sidText;
+            try { sidText = Marshal.PtrToStringUni(text) ?? string.Empty; }
+            finally { NativeMethods.LocalFree(text); }
+            using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(MappingsKey + sidText);
+            return key is not null;
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or System.Security.SecurityException or UnauthorizedAccessException or IOException)
+        {
+            return false; // unknown — fall back to creating, which treats "already exists" as success
+        }
     }
 
     /// <summary>
@@ -97,5 +133,12 @@ internal sealed class AppContainerProfile
 
         [DllImport("advapi32.dll", SetLastError = true)]
         public static extern IntPtr FreeSid(IntPtr pSid);
+
+        [DllImport("advapi32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool ConvertSidToStringSidW(SafeSidHandle sid, out IntPtr stringSid);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        public static extern IntPtr LocalFree(IntPtr hMem);
     }
 }
