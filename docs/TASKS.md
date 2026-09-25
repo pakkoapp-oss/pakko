@@ -4042,6 +4042,7 @@ regression from this task, which owns reliability only.
   operations.
 - **Reported by:** advisor, during T-F158's design review, 2026-08-11.
 - **Depends on:** none (T-F157 and T-F158, both already shipped/mostly-shipped)
+- **Root:** T-F264 (single format and naming source).
 
 ---
 
@@ -4246,6 +4247,7 @@ regression from this task, which owns reliability only.
   round trip in every `ExtractMode`; once fixed, restore the on-disk assertion in
   `ZipArchiveServiceEncryptTests.ArchiveAsync_WithPassword_WritesAe2Aes256EntriesThatRoundTrip`.
 - **Reported by:** agent observation, 2026-09-24. **Depends on:** none.
+- **Root:** T-F263 (staging/commit owner) — do it with its leaves.
 
 ### Fix batch (next, after the current batch closes) — index
 
@@ -4264,6 +4266,18 @@ categories, deploy and verify on device before marking done.
 - T-F205, T-F206, T-F210 — each reverses or changes a documented behavior.
 - T-F241 — add the missing CLI scan / App test, or document why not.
 - T-F199 — the layout redesign needs a plan and a mockup approved first.
+- T-F260 — reverse DECISIONS T-F68/T-F87 ("don't change `ArchiveResult`, patch the consumer"),
+  and the cancellation rule for both engines (rethrow, or an explicit `Cancelled` outcome).
+- T-F261 — gate listing by Group Policy (T-F250 as filed) or narrow `docs/POLICIES.md:44`'s
+  "never spawns tar.exe"; `docs/ARCHITECTURE.md:1485` records the opposite of POLICIES.md.
+- T-F263 — per-process preview/nested cache roots (changes T-F97/T-F98's shared design) or keep
+  them shared and only fix T-F252.
+
+**Roots (architecture review 2026-09-25):** T-F260 (leaves T-F229, T-F245, T-F211, T-F242,
+T-F207), T-F261 (T-F250, T-F216, T-F241, T-F262), T-F263 (T-F227, T-F228, T-F197, T-F248, T-F252,
+T-F244, T-F233), T-F264 (T-F213, T-F159). Do each root in the same phase as its leaves. Grouping
+roots with no number: Core message codes (T-F209, T-F208, T-F215, T-F221, T-F254), one directory
+walker (T-F236, T-F237, T-F251), boundary encoding (T-F204, T-F234, T-F238).
 
 **1. P0 — data loss or a broken core flow:** T-F227, T-F228, T-F229, T-F204, T-F233 (candidate),
 T-F234 (candidate), T-F245 (with T-F229), T-F246 — both P0 by user decision 2026-09-25. Suggested order: T-F227 + T-F228 + T-F197 together (same staging/commit code), then
@@ -4271,13 +4285,14 @@ T-F229 with T-F207, then T-F233, T-F234, T-F204.
 
 **2. P1 — broken or misleading feature:** T-F230, T-F231, T-F232, T-F235, T-F236, T-F237,
 T-F200, T-F205, T-F206, T-F207, T-F208, T-F210, T-F211, T-F212, T-F213, T-F224, T-F225, T-F247,
-T-F248 (with T-F233), T-F250 (P1 kept, user decision 2026-09-25), T-F251 (with T-F236).
+T-F248 (with T-F233), T-F250 (P1 kept, user decision 2026-09-25), T-F251 (with T-F236), T-F260,
+T-F261, T-F263 (roots — with their leaves).
 
 **3. P2 — polish, consistency, hardening, debt:** T-F198, T-F199, T-F201, T-F203 (SonarCloud),
 T-F209, T-F214, T-F215, T-F216, T-F217, T-F218, T-F219, T-F220, T-F221, T-F222, T-F223 (+ T-F165,
 diagrams — redo the per-arrow ground-truth ritual T-F226 deferred, after the P0 fixes land),
 T-F238, T-F239, T-F240, T-F241, T-F242, T-F243, T-F244, T-F249, T-F252, T-F253, T-F254, T-F255,
-T-F256, T-F257, T-F258 (with T-F223/T-F165), T-F259.
+T-F256, T-F257, T-F258 (with T-F223/T-F165), T-F259, T-F262, T-F264.
 
 **Not in this batch:** T-F202's user-only checks (light theme, en-US, keyboard-only, tray, CLI in a
 real console) and T-F226's deferred per-arrow diagram ritual — carried as open items on those tasks.
@@ -4421,6 +4436,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 - **Tests first:** round-trip names with U+2713, Cyrillic, and `é` through tar create/extract/list
   and 7z extract/list (integration layer, real tar.exe).
 - **Reported by:** T-F202, 2026-09-24.
+- **Root (grouping, architecture review 2026-09-25):** text crossing a process or format boundary with no explicit encoding (tar.exe arguments and output, ZIP names without the UTF-8 flag, redirected CLI output). Fix T-F204/T-F234/T-F238 (and T-F244's R14) with one encoding helper per boundary.
 
 ### T-F205 — SingleFolder extraction drops an archive's only root folder (P1, decision)
 
@@ -4459,6 +4475,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   equivalent, or an explicit confirm naming the item count). Check `DeleteArchiveAfterExtraction`
   (extract mode) for the same.
 - **Reported by:** T-F202, 2026-09-24.
+- **Root:** T-F260 (`ArchiveResult` outcome contract) — do it with its leaves.
 
 ### T-F208 — Archiver.Shell dialog titles and size units are English in a localized UI (P1)
 
@@ -4466,6 +4483,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   "Scanning: X", "Extracting: X", "Archiving: X", "CRC-32: 2 files"; hash result "Розмір: 6 B
   (6 bytes)". T-F163 localized the result bodies but not the titles. Move to `.resx`, 37 locales.
 - **Reported by:** T-F202, 2026-09-24.
+- **Root (grouping, architecture review 2026-09-25):** Core reports errors and skips as English text with no code (`ArchiveError`/`SkippedFile` hold only strings), and the frontends localize through four separate mechanisms (App `.resw`, Shell `.resx`, `Localization.cpp`, none in the CLI). Fix T-F209/T-F208/T-F215/T-F221/T-F254 together: a code in the Core model, rendered per frontend.
 
 ### T-F209 — Archiver.Core error/skip messages are always English (P2, architecture)
 
@@ -4476,6 +4494,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   from this archive — every entry was skipped." Core has no `ResourceLoader` by hard constraint,
   so this needs a design (error codes/keys in Core, text in each frontend), not string edits.
 - **Reported by:** T-F202, 2026-09-24.
+- **Root (grouping, architecture review 2026-09-25):** Core reports errors and skips as English text with no code (`ArchiveError`/`SkippedFile` hold only strings), and the frontends localize through four separate mechanisms (App `.resw`, Shell `.resx`, `Localization.cpp`, none in the CLI). Fix T-F209/T-F208/T-F215/T-F221/T-F254 together: a code in the Core model, rendered per frontend.
 
 ### T-F210 — Browse mode is a dead end once "Up" leaves the archive (P1, decision)
 
@@ -4497,6 +4516,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   mention anywhere. T-F70 made the reset deliberate for busy-state reasons; keep the outcome text
   visible (or use the Row 4 outcome subtitle) without breaking T-F70.
 - **Reported by:** T-F202, 2026-09-24.
+- **Root:** T-F260 (`ArchiveResult` outcome contract) — do it with its leaves.
 
 ### T-F212 — "Extract" is enabled when the pending list holds only folders (P1)
 
@@ -4514,6 +4534,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   names the archive after the parent folder (`M.zip`), which is fine; for a drive root it is
   `archive.zip` by design (T-F99/T-F100) — a drive letter/label name would be friendlier (P2).
 - **Reported by:** T-F202, 2026-09-24.
+- **Root:** T-F264 (single format and naming source).
 
 ### T-F214 — Tar-family listing shows no modified date and "0" packed size (P2)
 
@@ -4528,6 +4549,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   s3/a.txt / ..." — the `-v` progress lines, not the reason; the first run also showed tar.exe's
   stderr in the wrong code page (`a src/???????`). Surface the actual stderr, decoded correctly.
 - **Reported by:** T-F202, 2026-09-24.
+- **Root (grouping, architecture review 2026-09-25):** Core reports errors and skips as English text with no code (`ArchiveError`/`SkippedFile` hold only strings), and the frontends localize through four separate mechanisms (App `.resw`, Shell `.resx`, `Localization.cpp`, none in the CLI). Fix T-F209/T-F208/T-F215/T-F221/T-F254 together: a code in the Core model, rendered per frontend.
 
 ### T-F216 — Shell "Test archive" on a mixed selection shows two modal dialogs (P2)
 
@@ -4536,6 +4558,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   combined result dialog. Similarly, after the user explicitly chose "Skip, apply to all" in the
   conflict dialog, Shell still warns "No entries were extracted — every entry was skipped".
 - **Reported by:** T-F202, 2026-09-24.
+- **Root:** T-F261 (single routing and Group Policy owner) — do it with its leaves.
 
 ### T-F217 — Shell declines a compression bomb with no way forward (P2)
 
@@ -4599,6 +4622,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
      stderr only when it is a console.
   10. `h <folder>` prints absolute paths; 7-Zip prints paths relative to the given folder.
 - **Reported by:** T-F202, 2026-09-24.
+- **Root (grouping, architecture review 2026-09-25):** Core reports errors and skips as English text with no code (`ArchiveError`/`SkippedFile` hold only strings), and the frontends localize through four separate mechanisms (App `.resw`, Shell `.resx`, `Localization.cpp`, none in the CLI). Fix T-F209/T-F208/T-F215/T-F221/T-F254 together: a code in the Core model, rendered per frontend.
 
 ### T-F222 — CLI version and docs drift (P2)
 
@@ -4695,6 +4719,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 - **Tests first:** a pre-existing `<dest>_tmp` with user files survives, untouched, both a
   successful and a failed extraction, in every `ExtractMode`.
 - **Reported by:** T-F226 review, 2026-09-24.
+- **Root:** T-F263 (staging/commit owner) — do it with its leaves.
 
 ### T-F228 — A crafted ZIP entry bypasses the conflict policy and overwrites existing files (P0)
 
@@ -4710,6 +4735,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   path.
 - **Tests first:** the repro above for Skip, Ask, and Rename, ZIP and tar.
 - **Reported by:** T-F226 review, 2026-09-24.
+- **Root:** T-F263 (staging/commit owner) — do it with its leaves.
 
 ### T-F229 — "Delete after operation" deletes an archive whose entries were partly skipped (P0)
 
@@ -4723,6 +4749,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   appears only after the deletion. Delete a source only when nothing from it was skipped or
   failed; see also T-F207 (irreversible, no confirmation).
 - **Reported by:** T-F226 review, 2026-09-24.
+- **Root:** T-F260 (`ArchiveResult` outcome contract) — do it with its leaves.
 
 ### T-F230 — One bad entry aborts the whole ZIP extraction with a misleading message (P1)
 
@@ -4812,6 +4839,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   `TarSandboxScopeTests.CreateAsync_StagedArchiveIsHardlinkedSameVolume_StillReadableInsideSandbox`
   only proves the happy path.
 - **Reported by:** T-F226 review, 2026-09-24.
+- **Root:** T-F263 (staging/commit owner) — do it with its leaves.
 
 ### T-F234 — ZIP names without the UTF-8 flag are decoded as UTF-8: garbled names and silent loss of files (P0 candidate)
 
@@ -4835,6 +4863,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   Unicode name in `l`/`x`/browse/scan; two distinct raw names that decode to the same string are
   both preserved or reported, never silently dropped.
 - **Reported by:** T-F226 review, 2026-09-24.
+- **Root (grouping, architecture review 2026-09-25):** text crossing a process or format boundary with no explicit encoding (tar.exe arguments and output, ZIP names without the UTF-8 flag, redirected CLI output). Fix T-F204/T-F234/T-F238 (and T-F244's R14) with one encoding helper per boundary.
 
 ### T-F235 — A large Explorer selection makes every Pakko command silently do nothing (P1)
 
@@ -4866,6 +4895,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 - **Tests first (Error path):** an unreadable subfolder becomes one `SkippedFile`/`ArchiveError`,
   every readable file is archived, on both the sequential and parallel paths.
 - **Reported by:** T-F226 review, 2026-09-24.
+- **Root (grouping, architecture review 2026-09-25):** one of seven separate walks over user-supplied folder trees (`WorkItemEnumerator`, `ZipArchiveService` `AddDirectoryToArchiveAsync`/`ComputeDirectoryTotals`, `TarSandboxedService.CountRecursiveEntriesAndBytes`, `FileHashService`, `FileItem`, `MainViewModel`'s size pre-count), each with its own access-denied, junction and depth behavior. A reparse-safe iterative walker already exists (`TarSandboxedService.EnumerateFilesGuarded`) but is used only for quarantine — fix T-F236/T-F237/T-F251 through one shared walker.
 
 ### T-F237 — Deep folder trees crash Pakko; a deep ZIP entry name costs gigabytes in browse mode (P1)
 
@@ -4891,6 +4921,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 - **Tests first (Security & Boundary):** a 5,000-deep tree archives (or fails with a per-item
   error) in all three walks; a 20,000-segment entry name is listed within a fixed memory budget.
 - **Reported by:** T-F226 review, 2026-09-24.
+- **Root (grouping, architecture review 2026-09-25):** one of seven separate walks over user-supplied folder trees (`WorkItemEnumerator`, `ZipArchiveService` `AddDirectoryToArchiveAsync`/`ComputeDirectoryTotals`, `TarSandboxedService.CountRecursiveEntriesAndBytes`, `FileHashService`, `FileItem`, `MainViewModel`'s size pre-count), each with its own access-denied, junction and depth behavior. A reparse-safe iterative walker already exists (`TarSandboxedService.EnumerateFilesGuarded`) but is used only for quarantine — fix T-F236/T-F237/T-F251 through one shared walker.
 
 ### T-F238 — `pakko` redirected output loses characters outside the console code page (P2)
 
@@ -4903,6 +4934,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 - **Tests first (Subprocess layer):** `l` with redirected stdout and `-sccUTF-8` returns exact
   bytes for a Cyrillic/CJK name.
 - **Reported by:** T-F226 review, 2026-09-24.
+- **Root (grouping, architecture review 2026-09-25):** text crossing a process or format boundary with no explicit encoding (tar.exe arguments and output, ZIP names without the UTF-8 flag, redirected CLI output). Fix T-F204/T-F234/T-F238 (and T-F244's R14) with one encoding helper per boundary.
 
 ### T-F239 — tar-family extraction decompresses the archive three times; a Job-limit kill reports nothing (P2)
 
@@ -4931,6 +4963,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   Explorer only); the App has no "Test archive" (Explorer, Shell and CLI have it). Neither is
   recorded in `docs/DECISIONS.md` or `docs/CLI.md`. Decide: add, or document why not.
 - **Reported by:** T-F226 review, 2026-09-24.
+- **Root:** T-F261 (single routing and Group Policy owner) — do it with its leaves.
 
 ### T-F242 — App: cleanup errors swallowed, dead Core options, logic in code-behind (P2)
 
@@ -4954,6 +4987,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
      `CreatedFiles.Count == 0` prevents opening it (the preview shows "Error: Завершено з
      проблемами." — English title, no reason). Defense in depth.
 - **Reported by:** T-F226 review, 2026-09-24.
+- **Root:** T-F260 (`ArchiveResult` outcome contract) — do it with its leaves.
 
 ### T-F243 — ZIP reader hardening (P2)
 
@@ -4994,6 +5028,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
      including into the AppContainer child, and a reader then waits for EOF until the other child
      exits (hypothesis, not reproduced).
 - **Reported by:** T-F226 review, 2026-09-24.
+- **Root:** T-F263 (staging/commit owner) — do it with its leaves.
 
 ### T-F245 — Cancelling a tar-family extraction reports success, so "Delete after operation" deletes the archive (P0)
 
@@ -5026,6 +5061,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   call throws (or reports cancellation) and no source is deletable; the existing T-F169 tests only
   assert "no unhandled exception" and pass today.
 - **Reported by:** T-F226 batch 2, 2026-09-25.
+- **Root:** T-F260 (`ArchiveResult` outcome contract) — do it with its leaves.
 
 ### T-F246 — ZIP extraction never checks CRC-32: a corrupted entry is written and reported as success (P0)
 
@@ -5096,6 +5132,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 - **Tests first:** Recovery — after a scope over a read-only archive (hardlink and copy paths) the
   quarantine root is gone and the original keeps its attribute and link count.
 - **Reported by:** T-F226 batch 2, 2026-09-25.
+- **Root:** T-F263 (staging/commit owner) — do it with its leaves.
 
 ### T-F249 — RAR encryption checks read the whole archive into memory (P2)
 
@@ -5137,6 +5174,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   started (fake `ITarService` that fails the test if called); `TestAsync` on a blocked `zip`;
   the capability probe is skipped under `DisableTarExtraction=1`.
 - **Reported by:** T-F226 batch 3, 2026-09-25.
+- **Root:** T-F261 (single routing and Group Policy owner) — do it with its leaves. Architecture review: `docs/ARCHITECTURE.md:1485` records listing as deliberately not policy-gated, citing `ITarService.cs:35-41` — which is about the entry-safety pre-scan, not Group Policy — while `docs/POLICIES.md:44` says tar.exe is never spawned. Which one wins is a user decision (T-F261).
 
 ### T-F251 — Hashing a folder crashes on an unreadable subfolder or a junction loop (P1)
 
@@ -5163,6 +5201,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   folder are skipped (NanaZip parity to be checked); a short read fails the file instead of
   returning a CRC.
 - **Reported by:** T-F226 batch 3, 2026-09-25.
+- **Root (grouping, architecture review 2026-09-25):** one of seven separate walks over user-supplied folder trees (`WorkItemEnumerator`, `ZipArchiveService` `AddDirectoryToArchiveAsync`/`ComputeDirectoryTotals`, `TarSandboxedService.CountRecursiveEntriesAndBytes`, `FileHashService`, `FileItem`, `MainViewModel`'s size pre-count), each with its own access-denied, junction and depth behavior. A reparse-safe iterative walker already exists (`TarSandboxedService.EnumerateFilesGuarded`) but is used only for quarantine — fix T-F236/T-F237/T-F251 through one shared walker.
 
 ### T-F252 — Closing any Pakko window deletes every other window's preview and nested-archive files (P2)
 
@@ -5184,6 +5223,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 - **Tests first:** Concurrency/Recovery — two cache owners, one closes, the other's scope
   survives; a scope left by a dead process is removed at the next start.
 - **Reported by:** T-F226 batch 3, 2026-09-25.
+- **Root:** T-F263 (staging/commit owner) — do it with its leaves.
 
 ### T-F253 — Explorer's conflict dialog opens behind other windows and names only the file (P2)
 
@@ -5217,6 +5257,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 - **Tests first:** `GetLocalizedString(id, L"zh-CN")` returns the Chinese row; `pt-BR`/`de-AT`
   fall back to their language, not en-US.
 - **Reported by:** T-F226 batch 3, 2026-09-25.
+- **Root (grouping, architecture review 2026-09-25):** Core reports errors and skips as English text with no code (`ArchiveError`/`SkippedFile` hold only strings), and the frontends localize through four separate mechanisms (App `.resw`, Shell `.resx`, `Localization.cpp`, none in the CLI). Fix T-F209/T-F208/T-F215/T-F221/T-F254 together: a code in the Core model, rendered per frontend.
 
 ### T-F255 — Explorer's password dialog silently cuts passwords at 255 characters (P2)
 
@@ -5268,6 +5309,9 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
      C++ string literals, yet `Localization.cpp` holds ~450 of them — safe only because
      `Archiver.ShellExtension.vcxproj:80-89` compiles with `/utf-8` (T-F115). The rule should name
      that exception (or the flag), or the next reader will "fix" one side.
+  5. (Architecture review 2026-09-25) `docs/ARCHITECTURE.md:73` says `IExtractionRouter` routes
+     `ExtractAsync`/`TestAsync`; it has only `ExtractAsync` (`IExtractionRouter.cs:10-17`) — see
+     T-F261. (`ARCHITECTURE.md:1485`'s listing exemption is a decision, not a doc error — T-F261.)
 - **Reported by:** T-F226 batch 3, 2026-09-25.
 
 ### T-F258 — Diagrams 1, 2, 4 and 7 are stale (P2, docs)
@@ -5296,6 +5340,152 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   `-OutputRoot $HOME\Desktop` wipes the Desktop. Delete only a folder the script owns (e.g. a
   fixed `cli` subfolder, or refuse a non-empty foreign folder).
 - **Reported by:** T-F226 batch 3, 2026-09-25.
+
+### Architecture review findings (T-F260 onward) — 2026-09-25
+
+One level above T-F226's rule-per-component pass: layer boundaries, duplicated decisions, data and
+state flow, extensibility. Done by the main session plus one independent reviewer agent that was
+not given the defect list (it reached 7 of the same 10 roots on its own). **Rule for these
+entries:** a root gets its own task only when the root fix is work no leaf task covers (a public
+Core contract change, or reversing a recorded decision). Each covered leaf carries a
+`**Root:**` line; do the root with its leaves, not after them. Roots that are only a grouping
+(Core message codes, directory walking, text encoding across process boundaries) have no number
+here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-F234/T-F238.
+
+### T-F260 — `ArchiveResult` has no defined outcome: every frontend decides success, partial and cancelled for itself (P1, root, decision)
+
+- [ ] **Status:** open — code-confirmed 2026-09-25. `ArchiveResult` is `Success` plus three string
+  lists (`ArchiveResult.cs`); it cannot say "cancelled" or "partly done", `SkippedFile.Path` does
+  not say whether a source or an entry was skipped, and `CreatedFiles` holds output folders for
+  extraction but archives for creation (the App status line still calls them "file(s)").
+  `Success` is computed separately at ~12 sites (`ZipArchiveService.cs:92,714,950`;
+  `TarSandboxedService.cs:120,1014`; `ExtractionRouter.cs:56` merges without checking for a
+  cancel; Shell invents `Success=false` at `Archiver.Shell/Program.cs:374-376`). Cancellation
+  differs per engine: ZIP rethrows (`ZipArchiveService.cs:238-241`, recorded in DECISIONS T-F12/
+  T-F193), tar turns it into a success (`TarSandboxedService.cs:223-225`, not recorded). Each
+  frontend then classifies on its own: CLI `Program.cs:559-569`, `ShellResultPresenter.cs:26-34`,
+  App `MainViewModel.cs:550,554,653,657` + `DialogService.cs:365`; "the whole source was
+  skipped" is found by comparing path strings (`MainViewModel.cs:1237-1241`). Post-operation
+  actions are split across layers: "Open destination folder" runs in Core at five sites
+  (`ExtractionRouter.cs:62`, `ZipArchiveService.cs:98,720`, `TarSandboxedService.cs:126,1020`),
+  "Delete after operation" only in the App VM, and Core's `DeleteSourceFiles`/
+  `DeleteArchiveAfterExtraction` are never read.
+  DECISIONS T-F68 and T-F87 chose "don't change `ArchiveResult`, patch the consumer"; T-F229 and
+  T-F245 (data loss through "Delete after operation") show the contract cannot express the states
+  that decision needs.
+- **Fix seam:** `ArchiveResult` — an explicit outcome (completed / partial / cancelled / failed),
+  a per-source outcome, and one Core classifier every frontend uses (including "may this source
+  be deleted"). Cascade: `docs/ARCHITECTURE.md`, tests in every frontend project.
+- **Decisions for the user (fix-batch index item 0):** reverse T-F68/T-F87; the cancellation rule
+  for both engines (rethrow, or a `Cancelled` outcome) — written into `IArchiveService`/
+  `ITarService` either way.
+- **Leaves:** T-F229, T-F245, T-F211, T-F242 (dead options, item 2), T-F207 (the delete decision).
+- **Tests first:** one test per outcome per engine through `ExtractionRouter`, including a mixed
+  zip+tar selection cancelled midway; each frontend's mapping of each outcome (exit code, dialog,
+  delete/no delete).
+- **Reported by:** architecture review, 2026-09-25.
+
+### T-F261 — Routing and Group Policy have no single owner: Test/Scan bypass the routers, the policy is optional and fail-open (P1, root, decision)
+
+- [ ] **Status:** open — code-confirmed 2026-09-25. Extract, Create and List have routers; Test
+  has none (`IExtractionRouter.cs:10-17` has only `ExtractAsync`, although
+  `docs/ARCHITECTURE.md:73` says it routes `TestAsync`): Shell sends every path to the ZIP engine
+  (`Archiver.Shell/Program.cs:292-299`, the root of T-F216), the CLI re-runs format detection
+  with its own reason text (`Archiver.CLI/Program.cs:288-298`), the App has no Test (T-F241).
+  Every router and engine takes `GroupPolicyOptions?` defaulting to "allow everything"
+  (`ExtractionRouter.cs:11-13`, `ArchiveCreationRouter.cs:9-12`), so a call site that forgets it
+  fails open — the CLI still does at `Program.cs:324,438-440`. `ArchiveListingRouter` takes no
+  policy and keeps its own copy of `IsSupported`/`BuildUnsupportedReason`
+  (`ArchiveListingRouter.cs:33-56`), justified by "two call sites", which stopped being true when
+  T-F146 added `ArchiveFormatPolicy`. The CLI `i` command has a third, hand-written format table
+  (`Program.cs:327-337`). "Never spawns tar.exe" (`docs/POLICIES.md:44`) is enforced by callers,
+  not where tar.exe is launched. Composition roots are hand-built per command in Shell
+  (`Program.cs:211-216,265,292,576-581`) and CLI (`Program.cs:77-79,301,324,367,438-440`) and
+  each decides again whether to pass the policy — the same drift T-F51's plan hit when it missed
+  the CLI.
+  (Checked and refuted: Scan does not bypass the policy — `AntivirusScanService.cs:80` runs
+  `ArchiveFormatPolicy.Classify` before it opens a `TarSandboxScope` directly.)
+- **Fix seam:** `ArchiveFormatPolicy` as the single, public classifier for every operation;
+  `TestAsync` on the router; `GroupPolicyOptions` required, not optional; the
+  `DisableTarExtraction` gate also at the tar launch point (`TarSandboxedService`/
+  `TarSandboxScope`) and before the capability probe; one plain Core factory function (e.g.
+  `PakkoServices.CreateAsync(GroupPolicyOptions)`, not a DI container) that Shell and CLI use —
+  justified by the two real misses above, not speculative.
+- **Decision for the user (fix-batch index item 0):** `docs/ARCHITECTURE.md:1485` records that
+  listing is *deliberately* not policy-gated, citing `ITarService.ListEntriesAsync`'s doc comment
+  — but that comment (`ITarService.cs:35-41`) is about the entry-safety pre-scan, not Group
+  Policy, while `docs/POLICIES.md:44` promises tar.exe is never spawned. Pick one: gate listing
+  (T-F250 as filed) or narrow POLICIES.md's promise.
+- **Leaves:** T-F250, T-F216, T-F241, T-F262.
+- **Tests first:** a fake `ITarService` that fails the test when called, for each operation
+  (extract, create, list, test, scan) under `BlockedFormats` and `DisableTarExtraction=1`; the
+  factory passes the loaded policy to every service it builds.
+- **Reported by:** architecture review, 2026-09-25.
+
+### T-F262 — The Explorer menu ignores Group Policy (P2)
+
+- [ ] **Status:** open — code-confirmed 2026-09-25. `Archiver.ShellExtension` has no policy
+  reader at all (no match for "Polic"/registry calls in the project); the tar-family menu items
+  are gated only on tar.exe's presence (`ShellExtUtils.cpp:186`, `ExplorerCommands.cpp:115`). With
+  `DisableTarExtraction=1` or `BlockedFormats=sevenzip`, Explorer still offers "Add to X.tar" and
+  extraction of `.7z`; the click reaches Shell's router, which refuses with a message — so not a
+  bypass, but `docs/POLICIES.md:44` says the formats are hidden in the UI, and only the App does
+  that (`MainViewModel.cs:301,376`).
+- **Fix:** read the two policy values in `ShellExtUtils.cpp` (fail-safe like
+  `Win32RegistryReader`) and hide the affected items in `GetState`; or narrow POLICIES.md to "the
+  App's UI". **Root:** T-F261.
+- **Tests first:** `ShellExtUtils` unit tests with an injected registry reader: each policy value
+  hides exactly the documented items; unreadable/missing key = nothing hidden.
+- **Reported by:** architecture review, 2026-09-25 (reviewer agent).
+
+### T-F263 — Staging and temporary folders have no single owner; the two extraction commit paths are synced by hand (P1, root, decision)
+
+- [ ] **Status:** open — code-confirmed 2026-09-25. Seven staging mechanisms, each with its own
+  naming, ACL and cleanup, and none with a startup sweep of leftovers: ZIP extraction's fixed
+  `<dest>_tmp` (`ZipArchiveService.cs:1290` — the only fixed name, the root of T-F227/T-F228),
+  tar's `PakkoTarStage_<guid>` (`TarSandboxedService.cs:1221`), the sandbox quarantine
+  (`TarSandboxScope.cs:53`), the parallel writer's `.pakko-tmp-<guid>`
+  (`ParallelSingleArchiveWriter.cs:162`), CLI stdin/stdout staging (`CliStreamStaging.cs:15,44`),
+  and the App's preview and nested caches (`PreviewCache.cs:11`, `NestedArchiveCache.cs:14`).
+  The two extraction commits use different algorithms — ZIP stages then commits
+  (`ZipArchiveService.cs:1393-1425`), tar moves file by file from quarantine resolving conflicts
+  on the way (`TarSandboxedService.cs:540-580`) — and fixes are copied between them by hand
+  (T-F170 was fixed twice; the comment at `TarSandboxedService.cs:565-571` says so). The shared
+  cache roots (DECISIONS T-F97/T-F98) conflict with the deliberately multi-process App (T-F88) —
+  the root of T-F252.
+- **Fix seam:** one Core staging primitive (unique name, owner-only ACL, `IDisposable`, a sweep
+  of folders left by dead processes, per-process roots for the caches) and one shared committer
+  for both engines (the T-F157/T-F158 pattern).
+- **Decision for the user (fix-batch index item 0):** per-process cache roots (changes T-F97/
+  T-F98's shared design) or keep them shared and only fix T-F252's window-close cleanup.
+- **Leaves:** T-F227, T-F228, T-F197, T-F248, T-F252, T-F244 (CLI staging, A19); T-F233 sits in
+  the same tar-staging layer.
+- **Tests first:** per mechanism — a pre-existing folder with the staging name is never reused or
+  deleted; cleanup on cancel and on failure; two processes never share or delete each other's
+  folders; the sweep removes only folders of dead processes.
+- **Reported by:** architecture review, 2026-09-25.
+
+### T-F264 — Format and naming knowledge is hand-synced across C#, C++, the manifest and the CLI (P2, root)
+
+- [ ] **Status:** open — code-confirmed 2026-09-25. The recognized-extension lists exist in
+  `ArchiveFormatDetector.cs:26-30`, `ShellExtUtils.cpp:33-62` and `Package.appxmanifest:54-96`,
+  kept in sync by "kept in sync with ..." comments (`ShellExtUtils.cpp:49-51,58`,
+  `ArchiveNaming.cs:9`) with no test comparing them. The default archive name has three rules:
+  Core `ArchiveNaming.cs:47-60` (several sources -> "archive"; a dotfile -> "archive"), Shell
+  `Program.cs:244-263` (several sources -> the parent folder; a dotfile -> its full name), and the
+  C++ menu title (`ShellExtUtils.cpp:380-394`), which must match Shell's result — so the App and
+  Explorer name `.gitignore`'s archive differently. The "name (N)" rule has five copies
+  (`ZipArchiveService.cs:2048,2066`, `TarSandboxedService.cs:1248,1501`, Shell `Program.cs:307`).
+  Measured cost of change (from commits): a new extension for an existing format = 3 production
+  files; a read-only tar-family format = 14 files; a creatable one = 18 files + 37 `.resw`.
+- **Fix seam:** `ArchiveNaming` as the only naming source (multi-source rule, unique-name
+  helper), and a test that parses the C++ extension arrays and the manifest and compares them with
+  `ArchiveFormatDetector`'s list (the C++ side stays extension-only by design, T-F86/T-F131).
+- **Leaves:** T-F213, T-F159.
+- **Tests first:** the consistency test fails today only if the lists really differ — confirm it
+  goes red by removing one extension from one list; naming tests for several sources, a dotfile
+  and a drive root, the same result through Core and Shell.
+- **Reported by:** architecture review, 2026-09-25.
 
 ### T-F223 — Diagram gap from T-F193 (P2)
 
