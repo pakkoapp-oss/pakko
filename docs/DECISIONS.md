@@ -9242,6 +9242,12 @@ a folder with one locked file inside, which commits an archive yet must be `Part
   walk `break`s are covered by the commit gate but have no deterministic red test — landing a
   cancel exactly between two token-observing awaits needs a timing race. Mutants: 2/2 killed.
 
+**Device check (2026-09-25, Deploy.ps1 1.4.12.10).** Shell `--extract-here` of a 200 MB
+`.tar.bz2`, Cancel pressed in the `IProgressDialog`: title changed to "Скасування...", the process
+exited with code 0 about 1 s later with no result dialog, no extracted file and no tar.exe left —
+the same path a cancelled ZIP takes. A partly conflict-skipped ZIP ("Якщо файл існує: Пропустити")
+kept its archive with "Delete after operation" on.
+
 ## T-F207 / T-F242 (items 1) — "Delete after operation": Recycle Bin, confirmation, report (2026-09-25)
 
 **Problem.** `MainViewModel.RunCleanupAsync` deleted sources with `Directory.Delete`/`File.Delete`

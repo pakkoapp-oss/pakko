@@ -4516,7 +4516,8 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   the shell's nuke warning never fires for UNC/SUBST (`docs/DECISIONS.md`, T-F207 entry). Device
   check pending (phase end).
 
-- [ ] **Status:** open. App, archive mode: tick "Видалити після операції", click Archive -> the
+- [~] **Status:** fixed in fix phase 1 (2026-09-25), agent-verified on device (Deploy.ps1 build: clean ZIP to the Recycle Bin, `\\localhost\c$` archive -> confirmation, Keep kept it with no second dialog, Delete permanently deleted it, locked archive reported); stays `[~]` until the user's own check. Details: `docs/DECISIONS.md` T-F207 entry.
+- **Original report:** open. App, archive mode: tick "Видалити після операції", click Archive -> the
   source folder is deleted outright; it is not in the Recycle Bin, and no confirmation appears
   before or after. T-F199 already asks for a warning; this task covers the irreversibility itself
   (send to Recycle Bin via `FileSystem.DeleteDirectory(..., RecycleOption.SendToRecycleBin)` or
@@ -4791,7 +4792,8 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 - **Progress (2026-09-25, fix phase 1):** the archive is `Partial` in Core (T-F260) and the App
   deletes only `FullyProcessedSources`, after the summary dialog. Device check pending (phase end).
 
-- [ ] **Status:** open — confirmed on device 2026-09-24. `ArchiveResult.Success` is
+- [~] **Status:** fixed in fix phase 1 (2026-09-25), agent-verified on device (reserved-entry ZIP kept after the summary; partly conflict-skipped ZIP kept); stays `[~]` until the user's own check. Details: `docs/DECISIONS.md` T-F260 entry + follow-up.
+- **Original report:** open — confirmed on device 2026-09-24. `ArchiveResult.Success` is
   `errors.Count == 0` (`ZipArchiveService.cs:714`); an entry rejected for its name (reserved
   device name, ADS `:`, control characters) or a reparse point is recorded as a `SkippedFile` with
   the *entry* name (`:1491`, `:1505`), so `MainViewModel.GetDeletableSources` (`:1237`) does not
@@ -5094,7 +5096,8 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 - **Progress (2026-09-25, fix phase 1):** Core fixed — both engines throw
   `OperationCanceledException` on cancel, including between archives/sources (T-F260 entry in
   `docs/DECISIONS.md`); App consumer + device check still to come in the same phase.
-- [ ] **Status:** open — Core behavior confirmed 2026-09-25 with a scratch probe calling
+- [~] **Status:** fixed in fix phase 1 (2026-09-25), agent-verified on device (App: cancelled 335 MB `.tar.gz` -> archive kept, no partial output, no tar.exe, status "Скасовано"; Shell `--extract-here` of a 200 MB `.tar.bz2` cancelled -> exits 0 in ~1 s, no output, no tar.exe); stays `[~]` until the user's own check. Details: `docs/DECISIONS.md` T-F260 entry.
+- **Original report:** open — Core behavior confirmed 2026-09-25 with a scratch probe calling
   `TarSandboxedService.ExtractAsync` directly on a 600 MB `.tar.bz2` (bomb prompt answered yes):
   no cancel -> `Success=True created=1` after 10.7 s; cancel at 1.5 s / 4 s / 8 s -> returns
   promptly (tar.exe is killed, no process left) with **`Success=True errors=0 skipped=0
@@ -5567,7 +5570,8 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 - **Device repro (2026-09-25, installed CI build 1.4.12.9):** `subset.zip` (`a.txt`, `b.txt`)
   opened in the Archive Browser, "Видалити після операції" on, `a.txt` selected, "Розпакувати
   вибране" -> only `subset\a.txt` on disk, `subset.zip` gone and not in the Recycle Bin.
-- [ ] **Status:** open — code-confirmed 2026-09-25, device-confirmed the same day. Archive Browser's Extract
+- [~] **Status:** fixed in fix phase 1 (2026-09-25), agent-verified on device (Extract Selected of one entry kept the archive; the previous build deleted it); stays `[~]` until the user's own check. Details: `docs/DECISIONS.md` T-F260 entry.
+- **Original report:** open — code-confirmed 2026-09-25, device-confirmed the same day. Archive Browser's Extract
   Selected (`MainViewModel.cs:1093`) and the single-entry T-F109 extraction (`:1180`) both go
   through `RunExtractAsync`, which on `result.Success && DeleteAfterOperation` (`:652`) deletes
   every path in `options.ArchivePaths` not listed in `SkippedFiles` — it never looks at
