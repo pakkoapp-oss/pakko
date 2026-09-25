@@ -16,7 +16,6 @@ public sealed record ExtractOptions
 
     public ConflictBehavior OnConflict { get; init; } = ConflictBehavior.Skip;
     public bool OpenDestinationFolder { get; init; } = false;
-    public bool DeleteArchiveAfterExtraction { get; init; } = false;
 
     /// <summary>
     /// T-F94: invoked when an archive's declared uncompressed size vs. its compressed size looks

@@ -229,7 +229,6 @@ public sealed record ArchiveOptions
     public ArchiveMode Mode { get; init; } = ArchiveMode.SingleArchive;
     public ConflictBehavior OnConflict { get; init; } = ConflictBehavior.Skip;
     public bool OpenDestinationFolder { get; init; } = false;
-    public bool DeleteSourceFiles { get; init; } = false;
     public CompressionLevel CompressionLevel { get; init; } = CompressionLevel.Optimal;
     // T-F105 (v1.4): which container format to CREATE. Default Zip preserves all pre-T-F105
     // callers/tests unchanged. Deliberately separate from the detection-only ArchiveFormat enum
@@ -275,7 +274,6 @@ public sealed record ExtractOptions
 
     public ConflictBehavior OnConflict { get; init; } = ConflictBehavior.Skip;
     public bool OpenDestinationFolder { get; init; } = false;
-    public bool DeleteArchiveAfterExtraction { get; init; } = false;
 
     // T-F94: invoked when an archive looks like a decompression bomb (declared uncompressed
     // size vs. compressed size exceeds the ratio threshold) AND the destination has enough free

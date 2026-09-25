@@ -16,7 +16,6 @@ public sealed class ArchiveOptionsTests
         options.Mode.Should().Be(ArchiveMode.SingleArchive);
         options.OnConflict.Should().Be(ConflictBehavior.Skip);
         options.OpenDestinationFolder.Should().BeFalse();
-        options.DeleteSourceFiles.Should().BeFalse();
     }
 
     [Fact]
@@ -26,6 +25,5 @@ public sealed class ArchiveOptionsTests
 
         options.ArchivePaths.Should().BeEmpty();
         options.Mode.Should().Be(ExtractMode.SeparateFolders);
-        options.DeleteArchiveAfterExtraction.Should().BeFalse();
     }
 }

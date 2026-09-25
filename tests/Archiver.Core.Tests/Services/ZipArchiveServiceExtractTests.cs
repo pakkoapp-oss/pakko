@@ -508,27 +508,6 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
     }
 
     [Fact]
-    public async Task ExtractAsync_DeleteArchiveAfterExtraction_SucceedsWithoutDeletingArchive()
-    {
-        // Deletion is now handled by MainViewModel (RunCleanupAsync), not the service.
-        // The service must accept the option and complete successfully; archive is NOT deleted.
-        var zip = CreateTestZip("removeme.zip", "file.txt");
-        var destDir = Path.Combine(_temp.Path, "output");
-
-        var options = new ExtractOptions
-        {
-            ArchivePaths = [zip],
-            DestinationFolder = destDir,
-            DeleteArchiveAfterExtraction = true
-        };
-
-        var result = await _sut.ExtractAsync(options);
-
-        result.Success.Should().BeTrue();
-        File.Exists(zip).Should().BeTrue(); // service no longer deletes — ViewModel does
-    }
-
-    [Fact]
     public async Task ExtractAsync_ConflictSkip_DoesNotOverwriteExistingFile()
     {
         var zip = CreateTestZip("archive.zip", "file.txt");

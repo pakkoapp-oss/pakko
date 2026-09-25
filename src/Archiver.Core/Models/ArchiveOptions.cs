@@ -11,7 +11,6 @@ public sealed record ArchiveOptions
     public ArchiveMode Mode { get; init; } = ArchiveMode.SingleArchive;
     public ConflictBehavior OnConflict { get; init; } = ConflictBehavior.Skip;
     public bool OpenDestinationFolder { get; init; } = false;
-    public bool DeleteSourceFiles { get; init; } = false;
     public CompressionLevel CompressionLevel { get; init; } = CompressionLevel.Optimal;
     public ArchiveContainerFormat Format { get; init; } = ArchiveContainerFormat.Zip;
 

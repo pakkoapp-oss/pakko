@@ -213,27 +213,6 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
     }
 
     [Fact]
-    public async Task ArchiveAsync_DeleteSourceFiles_SucceedsWithoutDeletingSource()
-    {
-        // Deletion is now handled by MainViewModel (RunCleanupAsync), not the service.
-        // The service must accept the option and complete successfully; source is NOT deleted.
-        var file = _temp.CreateFile("to-delete.txt");
-        var options = new ArchiveOptions
-        {
-            SourcePaths = [file],
-            DestinationFolder = _temp.Path,
-            ArchiveName = "output",
-            DeleteSourceFiles = true
-        };
-
-        var result = await _sut.ArchiveAsync(options);
-
-        result.Success.Should().BeTrue();
-        result.CreatedFiles.Should().HaveCount(1);
-        File.Exists(file).Should().BeTrue(); // service no longer deletes — ViewModel does
-    }
-
-    [Fact]
     public async Task ArchiveAsync_ConflictSkip_DoesNotOverwriteExistingZip()
     {
         var file = _temp.CreateFile("source.txt");

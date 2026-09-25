@@ -5023,7 +5023,8 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 ### T-F242 — App: cleanup errors swallowed, dead Core options, logic in code-behind (P2)
 
 - **Progress (2026-09-25, fix phase 1):** item 1 done with T-F207 (sources still on disk are
-  logged and listed in a dialog).
+  logged and listed in a dialog); item 2 done — both dead fields removed, with the two tests that
+  only pinned "the field exists and does nothing". Items 3-6 stay for phase 9.
 
 - [ ] **Status:** open, from the T-F226 review.
   1. `MainViewModel.RunCleanupAsync` (`:1243-1257`) deletes permanently and swallows every error
