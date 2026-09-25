@@ -9,9 +9,12 @@ internal static class SourceOutcomeRules
     internal static SourceResult Classify(string path, bool produced, bool clean) => new()
     {
         Path = path,
-        Outcome = !produced ? SourceOutcome.NotProcessed
-            : clean ? SourceOutcome.Completed
-            : SourceOutcome.Partial,
+        Outcome = (produced, clean) switch
+        {
+            (false, _) => SourceOutcome.NotProcessed,
+            (true, true) => SourceOutcome.Completed,
+            (true, false) => SourceOutcome.Partial,
+        },
     };
 
     // A creation source that contains one of the archives it produced (destination folder inside

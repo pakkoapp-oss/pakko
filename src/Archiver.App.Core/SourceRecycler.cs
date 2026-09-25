@@ -34,49 +34,58 @@ public sealed class SourceRecycler(ISourceDeleteOperations ops)
     public async Task<IReadOnlyList<string>> DeleteAsync(
         IEnumerable<string> sources, Func<IReadOnlyList<string>, Task<bool>> confirmPermanentDeleteAsync)
     {
+        var (notDeleted, permanent) = await Task.Run(() => RecycleLocalSources(sources));
+
+        // Declined items are the user's own choice, not a failure — they are not reported.
+        if (permanent.Count > 0 && await confirmPermanentDeleteAsync([.. permanent.Select(p => p.Source)]))
+            notDeleted.AddRange(await Task.Run(() => DeletePermanently(permanent)));
+
+        return notDeleted;
+    }
+
+    // Recycles what can be recycled; returns what is still on disk plus what needs a permanent
+    // delete.
+    private (List<string> NotDeleted, List<(string Source, string Final)> Permanent) RecycleLocalSources(
+        IEnumerable<string> sources)
+    {
         var notDeleted = new List<string>();
         var recycle = new List<(string Source, string Final)>();
         var permanent = new List<(string Source, string Final)>();
 
-        await Task.Run(() =>
+        foreach (string source in sources.Distinct(StringComparer.OrdinalIgnoreCase))
         {
-            foreach (string source in sources.Distinct(StringComparer.OrdinalIgnoreCase))
-            {
-                // T-F207 spike: the shell's own "permanently delete?" warning never fires for a
-                // UNC or SUBST path — it deletes silently. So the decision is made here, on the
-                // resolved path, and an unresolvable path is never deleted at all.
-                string? final = ops.ResolveFinalPath(source);
-                if (final is null)
-                    notDeleted.Add(source);
-                else if (ops.IsOnFixedLocalVolume(final))
-                    recycle.Add((source, final));
-                else
-                    permanent.Add((source, final));
-            }
-
-            if (recycle.Count > 0)
-            {
-                try { ops.MoveToRecycleBin([.. recycle.Select(r => r.Final)]); }
-                catch { /* reported below: whatever is still on disk */ }
-                notDeleted.AddRange(recycle.Where(r => ops.Exists(r.Final)).Select(r => r.Source));
-            }
-        });
-
-        // Declined items are the user's own choice, not a failure — they are not reported.
-        if (permanent.Count > 0 && await confirmPermanentDeleteAsync([.. permanent.Select(p => p.Source)]))
-        {
-            await Task.Run(() =>
-            {
-                foreach (var (source, final) in permanent)
-                {
-                    try { ops.DeletePermanently(final); }
-                    catch { /* reported below: still on disk */ }
-                    if (ops.Exists(final))
-                        notDeleted.Add(source);
-                }
-            });
+            // T-F207 spike: the shell's own "permanently delete?" warning never fires for a
+            // UNC or SUBST path — it deletes silently. So the decision is made here, on the
+            // resolved path, and an unresolvable path is never deleted at all.
+            string? final = ops.ResolveFinalPath(source);
+            if (final is null)
+                notDeleted.Add(source);
+            else if (ops.IsOnFixedLocalVolume(final))
+                recycle.Add((source, final));
+            else
+                permanent.Add((source, final));
         }
 
+        if (recycle.Count > 0)
+        {
+            try { ops.MoveToRecycleBin([.. recycle.Select(r => r.Final)]); }
+            catch { /* reported below: whatever is still on disk */ }
+            notDeleted.AddRange(recycle.Where(r => ops.Exists(r.Final)).Select(r => r.Source));
+        }
+
+        return (notDeleted, permanent);
+    }
+
+    private List<string> DeletePermanently(List<(string Source, string Final)> permanent)
+    {
+        var notDeleted = new List<string>();
+        foreach (var (source, final) in permanent)
+        {
+            try { ops.DeletePermanently(final); }
+            catch { /* reported below: still on disk */ }
+            if (ops.Exists(final))
+                notDeleted.Add(source);
+        }
         return notDeleted;
     }
 }
