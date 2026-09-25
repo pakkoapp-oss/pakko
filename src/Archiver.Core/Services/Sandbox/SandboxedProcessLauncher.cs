@@ -30,6 +30,9 @@ internal static class SandboxedProcessLauncher
         ProcessLaunchOptions options,
         CancellationToken cancellationToken)
     {
+        // T-F266: refused before anything is created — tar.exe would receive it altered.
+        TarCommandLineEncoding.EnsureRepresentable([fileName, .. arguments]);
+
         // T-F244 item 1: each pipe end is owned by a SafeHandle from the moment it exists, so a
         // failure anywhere below releases every handle created so far.
         CreateInheritablePipe(out SafeFileHandle stdOutRead, out SafeFileHandle stdOutWrite, "stdout");

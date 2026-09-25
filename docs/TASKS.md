@@ -5672,6 +5672,32 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 - **Reported by:** phase-1 planning advisor review, 2026-09-25.
 - **Root:** T-F260.
 
+### T-F266 — tar.exe command-line option injection through best-fit mapping ("WorstFit") (P0)
+
+- [~] **Status:** fixed in fix phase 4 (2026-09-25), device check at phase end. Found during the
+  phase-4 T-F204 spike: tar.exe (bsdtar) reads its command line through the ANSI code page, and
+  the C runtime converts it with best-fit mapping. A fullwidth quote (U+FF02) becomes `"` and
+  splits a quoted argument: `tar -tf "x＂ --version ＂"` ran `--version` (exit 0, ACP 1251).
+  Archive creation runs tar.exe unsandboxed, so a selected file or folder named this way could
+  add tar options (e.g. `--use-compress-program=...`, command execution as the user) through
+  Explorer "Add to X.tar", the App (Format = TAR) or `pakko a -ttar`; through Pakko's `-C parent
+  name` shape the same file made tar.exe print environment fragments (`PATHEXT`) — out-of-bounds
+  reads. Names outside the code page (U+2713) crashed tar.exe (0xC0000005, T-F204). Extraction
+  runs sandboxed; its argv holds Pakko-owned paths and member names from tar's own listing.
+  tar.exe is the only executable Pakko starts with ANSI argv (explorer.exe and ShellExecute are
+  Unicode — checked 2026-09-25).
+- **Fix:** `TarCommandLineEncoding` — a string may reach tar.exe only if
+  `WideCharToMultiByte(CP_ACP, WC_NO_BEST_FIT_CHARS)` converts it with no default character and
+  `MultiByteToWideChar` gives it back unchanged (the OS tables the CRT uses). Checked for every
+  argument in `SandboxedProcessLauncher` (every tar.exe launch goes through it since T-F244
+  item 5), and for every name under a source before creation starts (tar.exe walks folders
+  itself); a refused source is one `ArchiveError`, the rest are archived. Nothing changes where
+  the ANSI code page is UTF-8.
+- **Tests:** code-page unit tests (1251/1252/65001, best-fit fullwidth characters, unpaired
+  surrogate), launcher refuses before creating a process, creation with an injecting name and
+  with U+2713 deep in a folder (mutant "always representable" fails all three).
+- **Reported by:** fix phase 4 spike, 2026-09-25.
+
 ### T-F223 — Diagram gap from T-F193 (P2)
 
 - [ ] **Status:** open. Carried by T-F202 from `docs/DECISIONS.md`'s T-F193 entry: no diagram in

@@ -125,6 +125,60 @@ public sealed class TarSandboxedServiceCompressTests : IDisposable
         contents.Should().Equal("content from A", "content from B");
     }
 
+    // T-F266: tar.exe reads its command line through the ANSI code page with best-fit mapping —
+    // a selected file named with fullwidth quotes (U+FF02) turned into real quotes and injected
+    // "--version" as a separate tar option (confirmed 2026-09-25). The name is refused before
+    // tar.exe runs. Skipped where the ANSI code page is UTF-8: nothing is lossy there.
+    [Integration]
+    public async Task CompressAsync_SourceNameWithFullwidthQuotes_RefusedBeforeTarRuns()
+    {
+        if (TarCodePage.IsUtf8Ansi)
+            return;
+        string srcFile = Path.Combine(_temp.Path, "r＂ --version ＂.txt");
+        File.WriteAllText(srcFile, "x");
+
+        var result = await _sut.CompressAsync(new ArchiveOptions
+        {
+            SourcePaths = [srcFile],
+            DestinationFolder = _temp.Path,
+            ArchiveName = "injected",
+            Format = ArchiveContainerFormat.Tar,
+        });
+
+        result.Success.Should().BeFalse();
+        result.Errors.Should().ContainSingle().Which.Message.Should().Contain("code page");
+        File.Exists(Path.Combine(_temp.Path, "injected.tar")).Should().BeFalse();
+        File.Exists(Path.Combine(_temp.Path, "injected.tar.tmp")).Should().BeFalse();
+    }
+
+    // T-F266/T-F204: tar.exe walks folders itself, so a name deep inside a selected folder goes
+    // through the same lossy conversion (U+2713 crashed tar.exe with 0xC0000005). Refused up
+    // front with the file named; the other source still gets archived.
+    [Integration]
+    public async Task CompressAsync_UnrepresentableNameInsideFolder_SourceRefusedOthersArchived()
+    {
+        if (TarCodePage.IsUtf8Ansi)
+            return;
+        string badDir = Path.Combine(_temp.Path, "bad");
+        Directory.CreateDirectory(Path.Combine(badDir, "sub"));
+        File.WriteAllText(Path.Combine(badDir, "sub", "tick ✓＂.txt"), "x");
+        string good = Path.Combine(_temp.Path, "good.txt");
+        File.WriteAllText(good, "good");
+
+        var result = await _sut.CompressAsync(new ArchiveOptions
+        {
+            SourcePaths = [badDir, good],
+            DestinationFolder = _temp.Path,
+            ArchiveName = "mixed",
+            Format = ArchiveContainerFormat.Tar,
+        });
+
+        result.Errors.Should().ContainSingle().Which.Message.Should().Contain("tick");
+        string archive = Path.Combine(_temp.Path, "mixed.tar");
+        File.Exists(archive).Should().BeTrue();
+        (await ExtractAndReadAsync(archive, "good.txt")).Should().Be("good");
+    }
+
     [Integration]
     public async Task CompressAsync_PlainTar_RoundTripsFileContent()
     {

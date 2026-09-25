@@ -1217,6 +1217,20 @@ public sealed class TarSandboxedService : ITarService
             string? parent = Path.GetDirectoryName(fullSource);
             string name = Path.GetFileName(fullSource);
 
+            // T-F266/T-F204: tar.exe receives this path and walks the folder itself, so every
+            // name it will touch must survive its ANSI command line / path conversion. Refused
+            // before tar.exe runs (U+2713 crashed it, U+FF02 injected options).
+            (long entries, long bytes, string? unrepresentable) = CountRecursiveEntriesAndBytes(fullSource);
+            if (unrepresentable is not null)
+            {
+                errors.Add(new ArchiveError
+                {
+                    SourcePath = sourcePath,
+                    Message = new TarArgumentEncodingException(unrepresentable, TarCommandLineEncoding.AnsiCodePage).Message,
+                });
+                continue;
+            }
+
             if (string.IsNullOrEmpty(name))
             {
                 // Drive-root source (e.g. "Z:\") — GetFileName returns "" and GetDirectoryName
@@ -1246,7 +1260,6 @@ public sealed class TarSandboxedService : ITarService
             }
 
             entryCount++;
-            (long entries, long bytes) = CountRecursiveEntriesAndBytes(fullSource);
             totalEntriesForProgress += entries;
             totalBytesForProgress += bytes;
         }
@@ -1278,15 +1291,19 @@ public sealed class TarSandboxedService : ITarService
     // TotalBytes is the real sum of file sizes (directories contribute 0) — used only for the
     // dialog's "X GB / Y GB" readout (see OnVerboseLine's own remarks on why BytesTransferred is
     // entry-count-weighted, not a real running byte total).
-    private static (long EntryCount, long TotalBytes) CountRecursiveEntriesAndBytes(string sourcePath)
+    // T-F266: also returns the first path tar.exe would receive altered (null if none) — the
+    // source's own full path, then every name beneath it, in the same single walk.
+    private static (long EntryCount, long TotalBytes, string? Unrepresentable) CountRecursiveEntriesAndBytes(string sourcePath)
     {
+        string? unrepresentable = TarCommandLineEncoding.IsRepresentable(sourcePath) ? null : sourcePath;
+
         if (!Directory.Exists(sourcePath))
         {
             long size = 0;
             try { size = new FileInfo(sourcePath).Length; }
             catch (IOException) { /* best-effort estimate */ }
             catch (UnauthorizedAccessException) { /* same */ }
-            return (1, size); // plain file (or something that no longer exists by the time we get here)
+            return (1, size, unrepresentable); // plain file (or something that no longer exists by the time we get here)
         }
 
         long count = 1; // the directory itself gets its own tar entry
@@ -1296,6 +1313,8 @@ public sealed class TarSandboxedService : ITarService
             foreach (string entry in Directory.EnumerateFileSystemEntries(sourcePath, "*", SearchOption.AllDirectories))
             {
                 count++;
+                if (unrepresentable is null && !TarCommandLineEncoding.IsRepresentable(Path.GetFileName(entry)))
+                    unrepresentable = entry;
                 try
                 {
                     if ((File.GetAttributes(entry) & FileAttributes.Directory) == 0)
@@ -1308,7 +1327,7 @@ public sealed class TarSandboxedService : ITarService
         catch (UnauthorizedAccessException) { /* same */ }
         catch (IOException) { /* same */ }
 
-        return (count, totalBytes);
+        return (count, totalBytes, unrepresentable);
     }
 
     // tar.exe's "-v" creation-mode output is "a <name>" per entry (confirmed empirically —
