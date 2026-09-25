@@ -190,7 +190,7 @@ T-F10 for production-grade cert); async streaming (`CopyToAsync`) with `Cancella
 respected mid-file; temp file/dir pattern — no partial files on cancel or failure; ZIP bomb
 detection via compression ratio (1000:1 threshold); UTF-8 round-trip verified for Cyrillic and
 emoji filenames; button text changes to "Archiving..."/"Extracting..." during operation; post-op
-cleanup (`DeleteSourceFiles`, `DeleteArchiveAfterExtraction`) runs with `IsBusy=true`; SHA-256
+cleanup ("Delete after operation", `SourceRecycler`, T-F207) runs with `IsBusy=true`; SHA-256
 integrity manifest removed (redundant with ZIP built-in CRC-32); ADS blocking (T-F38), reserved
 filename filtering (T-F39), reparse point protection (T-F37); byte-accurate progress reporting
 (T-F16) — `ProgressStream` wraps IO streams, `IsIndeterminate` removed; option controls disabled
