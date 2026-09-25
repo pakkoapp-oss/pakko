@@ -145,10 +145,9 @@ public sealed class ZipArchiveServicePasswordTests : IDisposable
         result.Success.Should().BeFalse();
         result.Errors.Should().ContainSingle(e => e.Message == "This archive is password-protected and cannot be extracted.");
         promptCount.Should().Be(3); // PasswordResolver's maxAttempts for the Decrypt direction
-        // DestinationFolder itself is always created upfront by ExtractAsync regardless of
-        // per-archive outcome — the invariant that matters is that it stays EMPTY, and no "_tmp"
+        // T-F230: a run that produced nothing removes the destination folder it created, and no
         // staging leftover survives a rejected archive.
-        Directory.EnumerateFileSystemEntries(destDir).Should().BeEmpty();
+        Directory.Exists(destDir).Should().BeFalse();
         Directory.EnumerateFileSystemEntries(_temp.Path).Should().NotContain(p => Path.GetFileName(p).StartsWith(".pakko-x-"));
     }
 
@@ -166,7 +165,7 @@ public sealed class ZipArchiveServicePasswordTests : IDisposable
 
         result.Success.Should().BeFalse();
         result.Errors.Should().ContainSingle(e => e.Message == "This archive is password-protected and cannot be extracted.");
-        Directory.EnumerateFileSystemEntries(destDir).Should().BeEmpty();
+        Directory.Exists(destDir).Should().BeFalse("T-F230: nothing was produced, so the folder the run created is removed");
     }
 
     [Fact]

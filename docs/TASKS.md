@@ -4818,6 +4818,12 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 
 ### T-F230 — One bad entry aborts the whole ZIP extraction with a misleading message (P1)
 
+- **Progress (2026-09-25, fix phase 2):** an I/O failure writing one ZIP entry (invalid Windows
+  name, denied, locked) is now an `ArchiveError` naming the entry and the destination (never the
+  staging path); a half-written file is deleted and the rest continues. A full disk stays one
+  archive-level error. A traversal entry says "unsafe path" (T-F228). `ExtractAsync` removes a
+  destination folder it created when the run produced nothing. Device check pending (phase end).
+
 - [ ] **Status:** open — confirmed on device 2026-09-24. Per-entry I/O failures are not caught
   per entry (rule: every IO exception per item becomes an `ArchiveError`): `qmark.zip` =
   `ok1.txt`, `What?.txt` (legal on macOS/Linux), `ok2.txt` -> `pakko x` exit 2 "Cannot extract

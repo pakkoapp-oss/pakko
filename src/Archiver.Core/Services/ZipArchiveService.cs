@@ -690,9 +690,6 @@ public sealed class ZipArchiveService : IArchiveService
         IProgress<ProgressReport>? progress = null,
         CancellationToken cancellationToken = default)
     {
-        var errors = new List<ArchiveError>();
-        var createdFiles = new List<string>();
-        var skippedFiles = new List<SkippedFile>();
         // T-F06: one instance for the whole call, constructed before the loop below, so an
         // "apply to all" decision on one archive's conflict survives across every subsequent
         // archive in this same ArchivePaths batch, not just the current archive's entries.
@@ -701,8 +698,41 @@ public sealed class ZipArchiveService : IArchiveService
         // Encrypt direction, which passes 1; see PasswordResolver's own doc comment).
         var passwordResolver = new PasswordResolver(options.ResolvePasswordAsync, maxAttempts: 3);
 
+        bool destinationExisted = Directory.Exists(options.DestinationFolder);
         Directory.CreateDirectory(options.DestinationFolder);
+        ArchiveResult? result = null;
+        try
+        {
+            result = await ExtractArchivesAsync(options, conflictResolver, passwordResolver, progress, cancellationToken)
+                .ConfigureAwait(false);
+            return result;
+        }
+        finally
+        {
+            // T-F230: a run that produced nothing must not leave behind the (empty) folder it
+            // created — e.g. Shell's fresh "Extract to <name>\" folder. Never one CreatedFiles names.
+            if (!destinationExisted && (result is null || result.CreatedFiles.Count == 0))
+                TryDeleteEmptyDirectory(options.DestinationFolder);
+        }
+    }
 
+    private static void TryDeleteEmptyDirectory(string path)
+    {
+        try
+        {
+            if (Directory.Exists(path) && !Directory.EnumerateFileSystemEntries(path).Any())
+                Directory.Delete(path);
+        }
+        catch { /* best-effort */ }
+    }
+
+    private async Task<ArchiveResult> ExtractArchivesAsync(
+        ExtractOptions options, ConflictResolver conflictResolver, PasswordResolver passwordResolver,
+        IProgress<ProgressReport>? progress, CancellationToken cancellationToken)
+    {
+        var errors = new List<ArchiveError>();
+        var createdFiles = new List<string>();
+        var skippedFiles = new List<SkippedFile>();
         int total = options.ArchivePaths.Count;
         bool singleArchive = total == 1;
         var sources = new List<SourceResult>();
@@ -1428,12 +1458,6 @@ public sealed class ZipArchiveService : IArchiveService
         ZipArchiveEntry entry, string archivePath, long bytesReadSoFar, ExtractionPlan plan,
         ZipExtractionContext context, CancellationToken cancellationToken)
     {
-        string tempDest = plan.TempDest;
-        string fullTempDest = plan.FullTempDest;
-        string actualDest = plan.ActualDest;
-        HashSet<string> claimedFinalPaths = plan.ClaimedFinalPaths;
-        long totalUncompressedBytes = plan.TotalUncompressedBytes;
-
         // T-F228: before the name checks — "C:/x" must read as unsafe, not as an ADS name.
         if (ArchiveEntrySecurity.HasUnsafePath(entry.FullName))
         {
@@ -1463,7 +1487,41 @@ public sealed class ZipArchiveService : IArchiveService
             return (false, entry.Length);
         }
 
-        string destFilePath = Path.GetFullPath(Path.Combine(tempDest, relativePath));
+        try
+        {
+            return await WriteEntryAsync(entry, relativePath, archivePath, bytesReadSoFar, plan, context, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is UnauthorizedAccessException || (ex is IOException io && !IsDiskFull(io)))
+        {
+            // T-F230: an entry Windows cannot write (a name legal elsewhere, e.g. "What?.txt", or a
+            // locked/denied path) fails only itself. The message names the destination, never the
+            // internal staging folder.
+            string message = ex.Message.Replace(
+                Path.TrimEndingDirectorySeparator(plan.FullTempDest),
+                Path.TrimEndingDirectorySeparator(Path.GetFullPath(plan.ActualDest)),
+                StringComparison.OrdinalIgnoreCase);
+            context.Errors.Add(new ArchiveError
+            {
+                SourcePath = archivePath,
+                Message = $"Cannot extract '{entry.FullName}': {message}",
+                Exception = ex,
+            });
+            return (false, entry.Length);
+        }
+    }
+
+    // The write half of one entry: staging path, reparse-point check, conflict resolution, copy.
+    // Every I/O failure in here is per entry (see the caller's catch).
+    private static async Task<(bool Extracted, long BytesConsumed)> WriteEntryAsync(
+        ZipArchiveEntry entry, string relativePath, string archivePath, long bytesReadSoFar, ExtractionPlan plan,
+        ZipExtractionContext context, CancellationToken cancellationToken)
+    {
+        string fullTempDest = plan.FullTempDest;
+        string actualDest = plan.ActualDest;
+        HashSet<string> claimedFinalPaths = plan.ClaimedFinalPaths;
+
+        string destFilePath = Path.GetFullPath(Path.Combine(plan.TempDest, relativePath));
 
         if (!destFilePath.StartsWith(fullTempDest, StringComparison.OrdinalIgnoreCase))
             throw new InvalidDataException($"ZIP entry '{entry.FullName}' would extract outside destination directory.");
@@ -1520,7 +1578,7 @@ public sealed class ZipArchiveService : IArchiveService
             return (false, entry.Length);
         }
 
-        await CopyEntryToDestinationAsync(entry, entryStream!, destFilePath, archivePath, totalUncompressedBytes,
+        await CopyEntryToDestinationAsync(entry, entryStream!, destFilePath, archivePath, plan.TotalUncompressedBytes,
             bytesReadSoFar, context, cancellationToken).ConfigureAwait(false);
 
         return (true, entry.Length);
@@ -1554,6 +1612,11 @@ public sealed class ZipArchiveService : IArchiveService
         return (true, entry.Open(), null);
     }
 
+    // T-F230: a full disk fails every remaining entry the same way — one archive-level error, not
+    // one per entry.
+    internal static bool IsDiskFull(IOException ex) =>
+        ex.HResult is unchecked((int)0x80070070) or unchecked((int)0x80070027); // ERROR_DISK_FULL, ERROR_HANDLE_DISK_FULL
+
     private static string? GetEntryNameRejectionReason(string entryFullName)
     {
         if (ArchiveEntrySecurity.HasAlternateDataStreamMarker(entryFullName))
@@ -1571,6 +1634,26 @@ public sealed class ZipArchiveService : IArchiveService
     // progress with no special-casing (see docs/DECISIONS.md's T-F189 streaming design point).
     private static async Task CopyEntryToDestinationAsync(
         ZipArchiveEntry entry, Stream entryStream, string destFilePath, string archivePath, long totalUncompressedBytes,
+        long bytesReadSoFar, ZipExtractionContext context, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await CopyEntryStreamAsync(entry, entryStream, destFilePath, totalUncompressedBytes, bytesReadSoFar, context, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch
+        {
+            // T-F230: a half-written file must never be committed.
+            TryDeleteBestEffort(destFilePath);
+            throw;
+        }
+
+        // T-F45: Propagate Zone.Identifier ADS from archive to extracted file
+        ArchiveEntrySecurity.TryPropagateMotw(archivePath, destFilePath, context.MotwMode);
+    }
+
+    private static async Task CopyEntryStreamAsync(
+        ZipArchiveEntry entry, Stream entryStream, string destFilePath, long totalUncompressedBytes,
         long bytesReadSoFar, ZipExtractionContext context, CancellationToken cancellationToken)
     {
         if (context.Progress != null && totalUncompressedBytes > 0)
@@ -1599,9 +1682,6 @@ public sealed class ZipArchiveService : IArchiveService
                 await entryStream.CopyToAsync(fileStream, CopyBufferSize, cancellationToken).ConfigureAwait(false);
             }
         }
-
-        // T-F45: Propagate Zone.Identifier ADS from archive to extracted file
-        ArchiveEntrySecurity.TryPropagateMotw(archivePath, destFilePath, context.MotwMode);
     }
 
     // The progress-tracking trio AddEntryFromFileAsync's 3 call sites all pass explicitly —
