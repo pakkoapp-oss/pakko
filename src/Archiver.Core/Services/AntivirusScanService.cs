@@ -498,11 +498,7 @@ public sealed class AntivirusScanService : IAntivirusScanService
 
             PreCreateOutputDirectories(allNames, scope.OutputDirectory!);
 
-            var tarArgs = new List<string> { "-xf", scope.StagedArchivePath, "-C", scope.OutputDirectory! };
-            if (expandedSelection != null)
-                tarArgs.AddRange(expandedSelection);
-
-            (int exitCode, _, string stdErr) = await scope.RunAsync(tarArgs, cancellationToken).ConfigureAwait(false);
+            (int exitCode, _, string stdErr) = await scope.ExtractAsync(expandedSelection, cancellationToken).ConfigureAwait(false);
             if (exitCode != 0)
             {
                 findings.Add(new ThreatFinding

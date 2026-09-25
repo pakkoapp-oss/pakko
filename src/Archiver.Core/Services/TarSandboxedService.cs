@@ -375,9 +375,6 @@ public sealed class TarSandboxedService : ITarService
                 Directory.CreateDirectory(Path.Combine(scope.OutputDirectory!, relativeDir));
         }
 
-        var tarArgs = new List<string> { "-xf", scope.StagedArchivePath, "-C", scope.OutputDirectory! };
-        if (expandedSelection != null)
-            tarArgs.AddRange(expandedSelection);
 
         // T-F142: real byte-level progress for a single-archive extraction (progress is only
         // non-null in that case — see ExtractAsync's singleArchive gate). tar.exe runs sandboxed
@@ -390,7 +387,7 @@ public sealed class TarSandboxedService : ITarService
         // on disk, not an approximation. progressTotalBytes (computed above) is already the right
         // total for whatever is actually being extracted (whole archive or a selected subset), so
         // no second tar.exe listing pass is needed.
-        Task<(int ExitCode, string StdOut, string StdErr)> extractionTask = scope.RunAsync(tarArgs, cancellationToken);
+        Task<(int ExitCode, string StdOut, string StdErr)> extractionTask = scope.ExtractAsync(expandedSelection, cancellationToken);
 
         if (progress != null && progressTotalBytes > 0)
         {
@@ -714,8 +711,7 @@ public sealed class TarSandboxedService : ITarService
     internal static async Task<(long TotalDeclaredSize, string[] Names, Dictionary<string, long> SizeByName)> ScanForUnsafeEntriesAsync(
         TarSandboxScope scope, CancellationToken cancellationToken)
     {
-        var (nameExitCode, nameStdOut, nameStdErr) = await scope.RunAsync(
-            ["-tf", scope.StagedArchivePath], cancellationToken).ConfigureAwait(false);
+        var (nameExitCode, nameStdOut, nameStdErr) = await scope.ListAsync(verbose: false, cancellationToken).ConfigureAwait(false);
         if (nameExitCode != 0)
             throw new IOException($"Cannot read archive: {nameStdErr.Trim()}");
 
@@ -726,8 +722,7 @@ public sealed class TarSandboxedService : ITarService
             throw new TarArchiveRejectedException(
                 $"Archive contains an unsafe entry path ('{unsafeName}') and cannot be safely extracted.");
 
-        var (typeExitCode, typeStdOut, typeStdErr) = await scope.RunAsync(
-            ["-tvf", scope.StagedArchivePath], cancellationToken).ConfigureAwait(false);
+        var (typeExitCode, typeStdOut, typeStdErr) = await scope.ListAsync(verbose: true, cancellationToken).ConfigureAwait(false);
         if (typeExitCode != 0)
             throw new IOException($"Cannot read archive: {typeStdErr.Trim()}");
 
@@ -834,11 +829,11 @@ public sealed class TarSandboxedService : ITarService
             using TarSandboxScope scope = await TarSandboxScope.CreateAsync(archivePath, needsOutputDir: false, cancellationToken)
                 .ConfigureAwait(false);
 
-            var (names, nameError) = await RunListingCommandAsync(scope, "-tf", cancellationToken).ConfigureAwait(false);
+            var (names, nameError) = await RunListingCommandAsync(scope, verbose: false, cancellationToken).ConfigureAwait(false);
             if (nameError is not null)
                 return nameError;
 
-            var (typeLines, typeError) = await RunListingCommandAsync(scope, "-tvf", cancellationToken).ConfigureAwait(false);
+            var (typeLines, typeError) = await RunListingCommandAsync(scope, verbose: true, cancellationToken).ConfigureAwait(false);
             if (typeError is not null)
                 return typeError;
 
@@ -869,10 +864,9 @@ public sealed class TarSandboxedService : ITarService
     // type/size lines) and maps a nonzero exit code to an ArchiveListResult the same way both
     // calls already did identically. Error is non-null exactly when the call failed.
     private static async Task<(string[] Lines, ArchiveListResult? Error)> RunListingCommandAsync(
-        TarSandboxScope scope, string listFlag, CancellationToken cancellationToken)
+        TarSandboxScope scope, bool verbose, CancellationToken cancellationToken)
     {
-        var (exitCode, stdOut, stdErr) = await scope.RunAsync(
-            [listFlag, scope.StagedArchivePath], cancellationToken).ConfigureAwait(false);
+        var (exitCode, stdOut, stdErr) = await scope.ListAsync(verbose, cancellationToken).ConfigureAwait(false);
         if (exitCode != 0)
         {
             return ([], new ArchiveListResult

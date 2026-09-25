@@ -1,12 +1,19 @@
+using System.Runtime.InteropServices;
+using Microsoft.Win32.SafeHandles;
+
 namespace Archiver.Core.Services.Sandbox;
 
 /// <summary>
-/// Disposable orchestration tying the AppContainer profile, quarantine ACLs, archive staging, and
-/// Job Object into one scope per archive operation. <see cref="RunAsync"/> is the single choke
-/// point every sandboxed tar.exe launch goes through — used by both T-F49's whole-archive
-/// pre-scan and, only if that passes, the extraction itself, within the same scope (not two
-/// separate scopes), and by ListEntriesAsync with <c>needsOutputDir: false</c> (no "out\" folder
-/// or ACE at all, since listing never writes).
+/// Disposable orchestration tying the AppContainer profile, quarantine ACLs and a Job Object
+/// into one scope per archive operation. <see cref="ListAsync"/> and <see cref="ExtractAsync"/>
+/// are the only ways a sandboxed tar.exe runs — T-F49's whole-archive pre-scan and, only if that
+/// passes, the extraction itself, within the same scope, and ListEntriesAsync with
+/// <c>needsOutputDir: false</c> (no "out\" folder or ACE at all, since listing never writes).
+/// T-F233: tar.exe reads the archive only as an inherited stdin handle ("-f -") that Pakko
+/// opened itself. The AppContainer gets no path to the user's file and no ACE on it — the
+/// hardlink staging this replaced rewrote the original's DACL — and the archive stays open
+/// read-only, sharing read only, for the whole scope, so the bytes the pre-scan checked are the
+/// bytes extraction reads.
 /// </summary>
 internal sealed class TarSandboxScope : IDisposable
 {
@@ -14,32 +21,35 @@ internal sealed class TarSandboxScope : IDisposable
     private const long RamLimitBytes = 512L * 1024 * 1024;
     private static readonly TimeSpan CpuTimeLimit = TimeSpan.FromMinutes(5);
 
+    // tar.exe runs with the quarantine root as its current directory and extracts into this
+    // relative folder — no user-profile path appears in its command line.
+    private const string OutputFolderName = "out";
+
+    private const int ErrorSharingViolation = unchecked((int)0x80070020);
+    private const uint GenericRead = 0x80000000;
+    private const uint FileShareRead = 0x00000001;
+
     private readonly SafeSidHandle _sid;
     private readonly string _quarantineRoot;
-
-    public string StagedArchivePath { get; }
+    private readonly FileStream _archive;
 
     /// <summary>Null when this scope was created with needsOutputDir: false (listing only).</summary>
     public string? OutputDirectory { get; }
 
-    /// <summary>The operation-scoped quarantine directory (contains "in\" and, if present, "out\") — deleted whole by Dispose().</summary>
+    /// <summary>The operation-scoped quarantine directory (contains "out\" if present) — deleted whole by Dispose().</summary>
     public string QuarantineRoot => _quarantineRoot;
 
-    private TarSandboxScope(
-        SafeSidHandle sid,
-        string quarantineRoot,
-        string stagedArchivePath,
-        string? outputDirectory)
+    private TarSandboxScope(SafeSidHandle sid, string quarantineRoot, FileStream archive, string? outputDirectory)
     {
         _sid = sid;
         _quarantineRoot = quarantineRoot;
-        StagedArchivePath = stagedArchivePath;
+        _archive = archive;
         OutputDirectory = outputDirectory;
     }
 
     // Rooted under %TEMP%, not "same disk as destination" as TASKS.md's original flow described —
     // an AppContainer token has no bypass-traverse-checking privilege, so FILE_TRAVERSE is
-    // enforced on every ancestor directory down to "in\"/"out\". A fresh directory created as a
+    // enforced on every ancestor directory down to "out\". A fresh directory created as a
     // sibling of the user's arbitrary destination folder (e.g. inside Desktop/Documents/a network
     // share) sits under an ancestor chain Pakko doesn't control and can't grant traverse on
     // without touching folders it doesn't own. %TEMP% itself is already AppContainer-traversable
@@ -50,22 +60,18 @@ internal sealed class TarSandboxScope : IDisposable
     private static readonly string SandboxParentDirectory = Path.Combine(Path.GetTempPath(), "PakkoTarSandbox");
 
     /// <summary>
-    /// Sets up a fresh quarantine "in\" (and, if needed, "out\") folder pair under a new
-    /// operation-scoped directory beneath <see cref="SandboxParentDirectory"/>, ACLs every level
-    /// to the (lazily-ensured, reused) production AppContainer profile, and stages archivePath
-    /// into "in\" via hardlink-or-copy. The profile itself is created once, lazily, and reused
-    /// for the lifetime of the install — never per-scope. The final move from "out\" to the
-    /// user's chosen destination happens later, at Pakko's normal process identity, and is
-    /// already cross-volume-safe (a per-file File.Move, not a directory rename) — so rooting the
-    /// quarantine under %TEMP% instead of next to the destination costs at most an extra copy
-    /// instead of a rename when they're on different volumes, never a correctness problem.
+    /// Opens the archive (read-only, sharing read only), then sets up a fresh operation-scoped
+    /// quarantine directory beneath <see cref="SandboxParentDirectory"/> — with an "out\" folder
+    /// if needed — ACL'd to the (lazily-ensured, reused) production AppContainer profile. The
+    /// profile itself is created once and reused for the lifetime of the install. The final move
+    /// from "out\" to the user's destination happens later, at Pakko's normal process identity.
     /// </summary>
     public static Task<TarSandboxScope> CreateAsync(
         string archivePath, bool needsOutputDir, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        // Checked once per scope (covers every RunAsync call made through it — the pre-scan and
+        // Checked once per scope (covers every tar.exe run made through it — the pre-scan and
         // the extraction both use the same scope) rather than once per tar.exe launch. This is
         // the correct choke point: SandboxedProcessLauncher itself is generic (it also launches
         // plain cmd.exe in its own unit tests), so it cannot assume "the target is always
@@ -74,6 +80,9 @@ internal sealed class TarSandboxScope : IDisposable
         // launch means it is not load-bearing against a real attacker (see TASKS.md's T-F52 entry).
         if (!TarSignatureVerifier.Verify(TarExecutablePath))
             throw new TarSignatureVerificationException(TarExecutablePath);
+
+        // Opened first: nothing is created on disk for an archive that cannot be opened.
+        FileStream archive = OpenArchive(archivePath);
 
         // Owned by this method until the scope object exists (the very last statement) — any
         // failure before that must release them itself, since no Dispose() will ever run.
@@ -92,36 +101,20 @@ internal sealed class TarSandboxScope : IDisposable
             Directory.CreateDirectory(quarantineRoot);
             QuarantineAcl.GrantTraverseListReadAttributes(quarantineRoot, sid);
 
-            string inDir = Path.Combine(quarantineRoot, "in");
-            Directory.CreateDirectory(inDir);
-            QuarantineAcl.GrantReadExecute(inDir, sid);
-
             string? outDir = null;
             if (needsOutputDir)
             {
-                outDir = Path.Combine(quarantineRoot, "out");
+                outDir = Path.Combine(quarantineRoot, OutputFolderName);
                 Directory.CreateDirectory(outDir);
                 QuarantineAcl.GrantModify(outDir, sid);
             }
 
-            string stagedArchivePath = Path.Combine(inDir, Path.GetFileName(archivePath));
-            QuarantineStaging.StageArchive(archivePath, stagedArchivePath);
-            // A hardlinked staged file shares its security descriptor with the ORIGINAL archive, not
-            // the containing "in\" folder's — NTFS hard links are just an extra directory entry
-            // pointing at the same file object, and that object's DACL doesn't change, so folder-level
-            // inheritance never applies to it. Without this explicit per-file grant, a hardlinked
-            // staged archive is unreadable to the AppContainer even though "in\" itself is correctly
-            // ACL'd (found empirically — see DECISIONS.md's T-F52 entry). A copied file would already
-            // inherit this from "in\" at creation time, but granting explicitly here is harmless and
-            // correct for both cases.
-            QuarantineAcl.GrantReadExecute(stagedArchivePath, sid);
-
-            return Task.FromResult(new TarSandboxScope(sid, quarantineRoot, stagedArchivePath, outDir));
+            return Task.FromResult(new TarSandboxScope(sid, quarantineRoot, archive, outDir));
         }
         catch (Exception ex)
         {
-            // Found 2026-09-24: a staging failure (e.g. the archive vanished) used to leave an
-            // empty "<guid>\in\" behind on every occurrence.
+            // Found 2026-09-24: a setup failure used to leave a half-built quarantine behind.
+            archive.Dispose();
             sid?.Dispose();
             if (quarantineRoot is not null)
                 try { Directory.Delete(quarantineRoot, recursive: true); } catch { /* best-effort cleanup */ }
@@ -135,13 +128,42 @@ internal sealed class TarSandboxScope : IDisposable
         }
     }
 
-    /// <summary>
-    /// Runs a single tar.exe invocation (pre-scan or extraction) inside this scope's
-    /// AppContainer, under a fresh Job Object (ActiveProcessLimit = 1, RAM/CPU limits) created
-    /// for just this one process launch.
-    /// </summary>
-    public async Task<(int ExitCode, string StdOut, string StdErr)> RunAsync(
-        IReadOnlyList<string> tarArguments, CancellationToken cancellationToken)
+    // Read-only, sharing read only: no writer can change the archive and no one can rename or
+    // delete it while the scope holds it. A file another program is still writing (a download
+    // in progress) cannot be opened this way — refused rather than read while it changes.
+    private static FileStream OpenArchive(string archivePath)
+    {
+        try
+        {
+            return new FileStream(archivePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+        }
+        catch (IOException ex) when (ex.HResult == ErrorSharingViolation)
+        {
+            throw new IOException($"The archive is in use by another program: {archivePath}", ex);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            throw new IOException($"Cannot open the archive: {ex.Message}", ex);
+        }
+    }
+
+    /// <summary>Lists the archive ("-t", or "-tv" when <paramref name="verbose"/>).</summary>
+    public Task<(int ExitCode, string StdOut, string StdErr)> ListAsync(bool verbose, CancellationToken cancellationToken)
+        => RunAsync(verbose ? "-tv" : "-t", [], cancellationToken);
+
+    /// <summary>Extracts the archive, or only <paramref name="members"/>, into <see cref="OutputDirectory"/>.</summary>
+    public Task<(int ExitCode, string StdOut, string StdErr)> ExtractAsync(
+        IReadOnlyList<string>? members, CancellationToken cancellationToken)
+    {
+        if (OutputDirectory is null)
+            throw new InvalidOperationException("This scope was created without an output folder.");
+        return RunAsync("-x", ["-C", OutputFolderName, .. members ?? []], cancellationToken);
+    }
+
+    // One tar.exe run inside this scope's AppContainer, under a fresh Job Object (ActiveProcessLimit
+    // = 1, RAM/CPU limits), reading the archive from its own handle with its own file position.
+    private async Task<(int ExitCode, string StdOut, string StdErr)> RunAsync(
+        string mode, IReadOnlyList<string> arguments, CancellationToken cancellationToken)
     {
         SandboxJobObject job;
         try
@@ -154,19 +176,45 @@ internal sealed class TarSandboxScope : IDisposable
         }
 
         using (job)
+        using (SafeFileHandle stdIn = ReopenArchive())
         {
             return await SandboxedProcessLauncher.RunAsync(
-                TarExecutablePath, tarArguments, new ProcessLaunchOptions(AppContainerSid: _sid, Job: job.Handle), cancellationToken)
+                TarExecutablePath,
+                [mode, "-f", "-", .. arguments],
+                new ProcessLaunchOptions(AppContainerSid: _sid, Job: job.Handle, StdIn: stdIn, WorkingDirectory: _quarantineRoot),
+                cancellationToken)
                 .ConfigureAwait(false);
         }
     }
 
+    // A second handle to the same open file (not a new lookup by path), starting at offset 0 and
+    // synchronous — the C runtime's stdin reads in tar.exe expect a non-overlapped handle.
+    private SafeFileHandle ReopenArchive()
+    {
+        SafeFileHandle handle = NativeMethods.ReOpenFile(_archive.SafeFileHandle, GenericRead, FileShareRead, 0);
+        if (handle.IsInvalid)
+        {
+            int error = Marshal.GetLastWin32Error();
+            handle.Dispose();
+            throw new IOException($"Cannot reopen the archive (Win32 error {error}).");
+        }
+        return handle;
+    }
+
     public void Dispose()
     {
+        _archive.Dispose();
         _sid.Dispose();
         // The AppContainer profile itself is never deleted here — it's created once, lazily,
         // and reused for the lifetime of the install (see DECISIONS.md's T-F52 follow-up entry).
         try { if (Directory.Exists(_quarantineRoot)) Directory.Delete(_quarantineRoot, recursive: true); } catch { /* best-effort cleanup */ }
+    }
+
+    private static class NativeMethods
+    {
+        [DllImport("kernel32.dll", SetLastError = true)]
+        public static extern SafeFileHandle ReOpenFile(
+            SafeFileHandle hOriginalFile, uint dwDesiredAccess, uint dwShareMode, uint dwFlagsAndAttributes);
     }
 }
 
@@ -179,7 +227,7 @@ internal sealed class TarSignatureVerificationException(string tarExecutablePath
     : Exception($"'{tarExecutablePath}' failed Authenticode signature verification.");
 
 /// <summary>
-/// Thrown by <see cref="TarSandboxScope.CreateAsync"/>/<see cref="TarSandboxScope.RunAsync"/> when
+/// Thrown by <see cref="TarSandboxScope.CreateAsync"/>/a scope's tar.exe run when
 /// AppContainer profile/ACL/attribute-list/Job-Object setup fails (e.g. a Win32 security API
 /// blocked by group policy) — fail-closed: treated as an ordinary per-archive error by callers,
 /// never a silent fallback to unsandboxed extraction.

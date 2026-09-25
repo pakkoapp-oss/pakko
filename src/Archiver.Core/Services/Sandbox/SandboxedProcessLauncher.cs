@@ -84,17 +84,29 @@ internal static class SandboxedProcessLauncher
         var commandLineBuffer = new char[commandLine.Length + 1];
         commandLine.CopyTo(0, commandLineBuffer, 0, commandLine.Length);
 
-        bool outRef = false, errRef = false, sidRef = false;
+        bool outRef = false, errRef = false, sidRef = false, inRef = false;
         try
         {
             stdOutWrite.DangerousAddRef(ref outRef);
             stdErrWrite.DangerousAddRef(ref errRef);
             options.AppContainerSid?.DangerousAddRef(ref sidRef);
+            options.StdIn?.DangerousAddRef(ref inRef);
             IntPtr rawStdOut = stdOutWrite.DangerousGetHandle(); // NOSONAR: S3869 — raw value goes into STARTUPINFO and the handle list; pinned by DangerousAddRef above until CreateProcessW returns
             IntPtr rawStdErr = stdErrWrite.DangerousGetHandle(); // NOSONAR: S3869 — same
             IntPtr rawSid = options.AppContainerSid?.DangerousGetHandle() ?? IntPtr.Zero; // NOSONAR: S3869 — PSID struct field, pinned the same way
+            IntPtr rawStdIn = options.StdIn?.DangerousGetHandle() ?? IntPtr.Zero; // NOSONAR: S3869 — same
 
-            using var attributes = LaunchAttributeList.Create(rawSid, [rawStdOut, rawStdErr]);
+            List<IntPtr> inherited = [rawStdOut, rawStdErr];
+            if (rawStdIn != IntPtr.Zero)
+            {
+                // Only a handle named in the handle list below is ever inherited, so marking the
+                // caller's handle inheritable leaks it to no other launch.
+                if (!NativeMethods.SetHandleInformation(options.StdIn!, HANDLE_FLAG_INHERIT, HANDLE_FLAG_INHERIT))
+                    throw new IOException($"SetHandleInformation (stdin) failed (Win32 error {Marshal.GetLastWin32Error()}).");
+                inherited.Add(rawStdIn);
+            }
+
+            using var attributes = LaunchAttributeList.Create(rawSid, inherited);
 
             bool attrRef = false;
             try
@@ -108,7 +120,7 @@ internal static class SandboxedProcessLauncher
                 startupInfoEx.StartupInfo.dwFlags = STARTF_USESTDHANDLES;
                 startupInfoEx.StartupInfo.hStdOutput = rawStdOut;
                 startupInfoEx.StartupInfo.hStdError = rawStdErr;
-                startupInfoEx.StartupInfo.hStdInput = IntPtr.Zero;
+                startupInfoEx.StartupInfo.hStdInput = rawStdIn;
                 startupInfoEx.lpAttributeList = attributes.AttributeList.DangerousGetHandle(); // NOSONAR: S3869 — struct field, pinned by DangerousAddRef above
 
                 bool created = NativeMethods.CreateProcessW(
@@ -119,7 +131,7 @@ internal static class SandboxedProcessLauncher
                     bInheritHandles: true,
                     CREATE_NO_WINDOW | CREATE_SUSPENDED | EXTENDED_STARTUPINFO_PRESENT,
                     lpEnvironment: IntPtr.Zero,
-                    lpCurrentDirectory: null,
+                    options.WorkingDirectory,
                     ref startupInfoEx,
                     out PROCESS_INFORMATION processInfo);
 
@@ -140,6 +152,8 @@ internal static class SandboxedProcessLauncher
         }
         finally
         {
+            if (inRef)
+                options.StdIn!.DangerousRelease();
             if (sidRef)
                 options.AppContainerSid!.DangerousRelease();
             if (errRef)
