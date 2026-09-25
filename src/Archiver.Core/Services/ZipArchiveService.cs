@@ -1492,10 +1492,12 @@ public sealed class ZipArchiveService : IArchiveService
             return await WriteEntryAsync(entry, relativePath, archivePath, bytesReadSoFar, plan, context, cancellationToken)
                 .ConfigureAwait(false);
         }
-        catch (Exception ex) when (ex is UnauthorizedAccessException || (ex is IOException io && !IsDiskFull(io)))
+        catch (Exception ex) when (ex is UnauthorizedAccessException or InvalidDataException
+                                   || (ex is IOException io && !IsDiskFull(io)))
         {
             // T-F230: an entry Windows cannot write (a name legal elsewhere, e.g. "What?.txt", or a
-            // locked/denied path) fails only itself. The message names the destination, never the
+            // locked/denied path) fails only itself — as does corrupt content (T-F246: CRC-32,
+            // T-F231: longer than declared). The message names the destination, never the
             // internal staging folder.
             string message = ex.Message.Replace(
                 Path.TrimEndingDirectorySeparator(plan.FullTempDest),
@@ -1609,7 +1611,9 @@ public sealed class ZipArchiveService : IArchiveService
             };
         }
 
-        return (true, entry.Open(), null);
+        // T-F246: .NET does not check CRC-32 on read (and silently truncates a deflated entry to
+        // its declared size) — without this a corrupted entry is written and reported as success.
+        return (true, new VerifyingReadStream(entry.Open(), entry.Length, entry.Crc32), null);
     }
 
     // T-F230: a full disk fails every remaining entry the same way — one archive-level error, not

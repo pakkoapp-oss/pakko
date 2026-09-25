@@ -4837,6 +4837,12 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 
 ### T-F231 — Decrypted ZIP entries are not capped at their declared size (P1)
 
+- **Progress (2026-09-25, fix phase 2):** `LocatedZipEntry.UncompressedSize` (central directory,
+  Zip64-resolved); `EncryptedZipEntryReader` wraps every decrypted entry in `VerifyingReadStream`
+  (replacing `TrailerCrcCheckStream`), so AE-2 is capped and ZipCrypto/AE-1 get cap + CRC — in
+  extract, Test and Scan alike. Confirmed .NET does not cap the unencrypted stored path either (it
+  returns all stored bytes); T-F246's wrapper covers that. Device check pending (phase end).
+
 - [ ] **Status:** open — code-confirmed by the T-F226 reviewer agent, exploit not yet reproduced.
   The compression-bomb and free-space gate uses declared sizes; the decrypting path wraps the
   plaintext in an unbounded `DeflateStream` (`EncryptedZipEntryReader.cs:~229`), so a
@@ -5146,6 +5152,12 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 - **Root:** T-F260 (`ArchiveResult` outcome contract) — the part this leaf needs goes with it.
 
 ### T-F246 — ZIP extraction never checks CRC-32: a corrupted entry is written and reported as success (P0)
+
+- **Progress (2026-09-25, fix phase 2):** every unencrypted entry is read through the new shared
+  `IO/VerifyingReadStream` (CRC-32 at end of stream + declared-size cap); a mismatch is a per-entry
+  `ArchiveError`, the file is deleted before commit, the archive is `Partial`. Stored entries with
+  an understated size hit the cap; deflated ones hit the CRC (.NET truncates them). Device check
+  pending (phase end).
 
 - [ ] **Status:** open — confirmed 2026-09-25. `pakko a c.zip doc.txt -mx=0`, flip one byte
   inside the stored data: `pakko t bad.zip` -> `Entry 'doc.txt' failed CRC-32 check (expected

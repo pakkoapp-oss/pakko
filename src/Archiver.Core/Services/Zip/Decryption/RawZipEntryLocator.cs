@@ -15,6 +15,11 @@ internal sealed record LocatedZipEntry
 {
     public required long CompressedDataOffset { get; init; }
     public required long CompressedSize { get; init; }
+
+    /// <summary>The declared uncompressed size, from the central directory (Zip64-resolved) — the
+    /// same value <see cref="System.IO.Compression.ZipArchiveEntry.Length"/> reports. T-F231: the
+    /// decrypted output is capped at it.</summary>
+    public required long UncompressedSize { get; init; }
     public required ushort CompressionMethod { get; init; }
     public required bool GeneralPurposeEncryptedBit { get; init; }
     public required uint StoredCrc32 { get; init; }
@@ -52,7 +57,7 @@ internal static class RawZipEntryLocator
 
         var record = ReadCentralDirectory(zipStream).FirstOrDefault(r => r.NameBytes.AsSpan().SequenceEqual(targetBytes))
             ?? throw new FileNotFoundException($"Entry not found in ZIP central directory: {entryFullName}");
-        return BuildFromLocalHeader(zipStream, record.LocalHeaderOffset, record.Crc32, record.CompressedSize);
+        return BuildFromLocalHeader(zipStream, record);
     }
 
     /// <summary>
@@ -78,7 +83,7 @@ internal static class RawZipEntryLocator
         var records = ReadCentralDirectory(zipStream);
         var result = new List<LocatedZipEntry>(records.Count);
         foreach (var record in records)
-            result.Add(BuildFromLocalHeader(zipStream, record.LocalHeaderOffset, record.Crc32, record.CompressedSize));
+            result.Add(BuildFromLocalHeader(zipStream, record));
         return result;
     }
 
@@ -94,7 +99,8 @@ internal static class RawZipEntryLocator
         ReadCentralDirectory(zipStream).Any(record => (record.GeneralPurposeFlag & 0x0001) != 0);
 
     private sealed record CentralDirectoryRecord(
-        byte[] NameBytes, long LocalHeaderOffset, uint Crc32, long CompressedSize, ushort GeneralPurposeFlag);
+        byte[] NameBytes, long LocalHeaderOffset, uint Crc32, long CompressedSize, long UncompressedSize,
+        ushort GeneralPurposeFlag);
 
     private static List<CentralDirectoryRecord> ReadCentralDirectory(Stream zipStream)
     {
@@ -133,9 +139,10 @@ internal static class RawZipEntryLocator
             byte[] extra = ReadBytes(zipStream, extraLength);
             ReadBytes(zipStream, commentLength);
 
-            var (realCompressedSize, realLocalHeaderOffset) =
+            var (realUncompressedSize, realCompressedSize, realLocalHeaderOffset) =
                 ResolveZip64Fields(extra, uncompressedSize, compressedSize, localHeaderOffset);
-            records.Add(new CentralDirectoryRecord(nameBytes, realLocalHeaderOffset, crc32, realCompressedSize, generalPurposeFlag));
+            records.Add(new CentralDirectoryRecord(
+                nameBytes, realLocalHeaderOffset, crc32, realCompressedSize, realUncompressedSize, generalPurposeFlag));
         }
 
         return records;
@@ -144,21 +151,27 @@ internal static class RawZipEntryLocator
     // T-F193 Phase 0: a central record whose 32-bit size/offset field holds the 0xFFFFFFFF sentinel
     // carries the real value in its Zip64 (0x0001) extra field — in spec order (uncompressed,
     // compressed, local-header offset), containing only the fields that were sentinels.
-    private static (long CompressedSize, long LocalHeaderOffset) ResolveZip64Fields(
+    private static (long UncompressedSize, long CompressedSize, long LocalHeaderOffset) ResolveZip64Fields(
         byte[] extra, uint uncompressedSize, uint compressedSize, uint localHeaderOffset)
     {
         bool needUncompressed = uncompressedSize == Zip32Sentinel;
         bool needCompressed = compressedSize == Zip32Sentinel;
         bool needOffset = localHeaderOffset == Zip32Sentinel;
         if (!needUncompressed && !needCompressed && !needOffset)
-            return (compressedSize, localHeaderOffset);
+            return (uncompressedSize, compressedSize, localHeaderOffset);
 
         byte[] record = FindExtraRecord(extra, Zip64ExtraId)
             ?? throw new InvalidDataException("ZIP entry uses Zip64 sentinel values but has no Zip64 extra field.");
 
-        int position = needUncompressed ? 8 : 0;
+        int position = 0;
+        long realUncompressed = uncompressedSize;
         long realCompressed = compressedSize;
         long realOffset = localHeaderOffset;
+        if (needUncompressed)
+        {
+            realUncompressed = ReadZip64Value(record, position);
+            position += 8;
+        }
         if (needCompressed)
         {
             realCompressed = ReadZip64Value(record, position);
@@ -167,7 +180,7 @@ internal static class RawZipEntryLocator
         if (needOffset)
             realOffset = ReadZip64Value(record, position);
 
-        return (realCompressed, realOffset);
+        return (realUncompressed, realCompressed, realOffset);
     }
 
     private static long ReadZip64Value(byte[] record, int position)
@@ -180,10 +193,11 @@ internal static class RawZipEntryLocator
         return (long)value;
     }
 
-    private static LocatedZipEntry BuildFromLocalHeader(
-        Stream zipStream, long localHeaderOffset, uint centralCrc32, long centralCompressedSize)
+    private static LocatedZipEntry BuildFromLocalHeader(Stream zipStream, CentralDirectoryRecord central)
     {
-        zipStream.Seek(localHeaderOffset, SeekOrigin.Begin);
+        uint centralCrc32 = central.Crc32;
+        long centralCompressedSize = central.CompressedSize;
+        zipStream.Seek(central.LocalHeaderOffset, SeekOrigin.Begin);
         uint signature = ReadUInt32(zipStream);
         if (signature != LocalFileHeaderSignature)
             throw new InvalidDataException("Malformed ZIP local file header (bad signature).");
@@ -237,6 +251,7 @@ internal static class RawZipEntryLocator
             // T-F193 Phase 0: 0xFFFFFFFF means the real size is in a Zip64 extra (7-Zip writes this
             // when reading from stdin) — the central directory's already-resolved value is used then.
             CompressedSize = localCompressedSize is not 0 and not Zip32Sentinel ? localCompressedSize : centralCompressedSize,
+            UncompressedSize = central.UncompressedSize,
             CompressionMethod = method,
             GeneralPurposeEncryptedBit = (generalPurposeFlag & 0x0001) != 0,
             StoredCrc32 = localCrc32 != 0 ? localCrc32 : centralCrc32,
