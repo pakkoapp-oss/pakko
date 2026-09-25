@@ -9342,10 +9342,25 @@ entry) and silently truncates a deflated one (so the CRC catches it). Overrides 
 `ReadAsync(Memory)` so the copy loop does not fall back to BeginRead/EndRead.
 
 **T-F205 — keep the root folder (user decision: NanaZip parity).** SingleFolder mode (Explorer
-"Extract here", `pakko x`, App Extract) now keeps an archive's single root folder, like 7-Zip/
+"Extract here", `pakko x`; the App's own Extract uses SeparateFolders and is unchanged, its SingleFolder uses are preview/nested drill-in of a selection) now keeps an archive's single root folder, like 7-Zip/
 NanaZip "Extract here" and `7z x`. Shell's "Extract to name\" sets the new
 `ExtractOptions.EliminateDuplicateRootFolder`, which strips the root only when it is named like the
 archive — NanaZip's default for that command (`ZipRegistry.cpp:583` sets `ElimDup.Val = true`;
 `Extract.cpp:104-230` strips only when every item sits under a folder matching the output folder's
 name). Pakko compares with the archive's base name rather than the output folder, which Pakko may
 have numbered (`name (1)`). SeparateFolders ("Extract here (smart)") is unchanged.
+
+**T-F197 — folder entries.** ZIP folder entries go through the unsafe-path, name (checked without the
+trailing `/`, so `CON/` is caught) and reparse-point checks and are created in staging; the merge
+commit creates folders before moving files. Tar creates folder entries from the pre-scanned names
+after its move phase. Both engines count folder entries as roots, so `a.txt` + `empty/` is
+MultiRoot (it used to hit T-F154's single-file unwrap and would have lost the folder). A ZIP
+folder entry counts as "extracted" only when the folder is new at the destination — the closing
+advisor review caught that counting every folder broke T-F87's "every entry was skipped" report on
+a re-extract with Skip (most real archives carry explicit `dir/` entries); tar never counted
+folders, so the two engines agree.
+
+**Test agrees with Extract.** `TestAsync` reads plain entries through the same
+`VerifyingReadStream`, and reports the stream's own message for encrypted entries (it used to call
+every failure a CRC-32 failure), so a stored entry longer than declared fails `pakko t` as well as
+`pakko x`.

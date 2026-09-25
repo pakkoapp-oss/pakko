@@ -109,6 +109,27 @@ public sealed class ZipArchiveServiceExtractEmptyFolderTests : IDisposable
         Directory.Exists(Path.Combine(dest, "root", "empty")).Should().BeTrue();
     }
 
+    // T-F87 must still hold with folder entries: a folder that already exists is not "extracted".
+    [Fact]
+    public async Task ExtractAsync_SecondRunWithSkip_ReportsNothingExtracted()
+    {
+        string zip = CreateZip("again.zip", "dir/", "dir/a.txt");
+        string dest = Path.Combine(_temp.Path, "dest");
+        ExtractOptions Options() => new()
+        {
+            ArchivePaths = [zip],
+            DestinationFolder = dest,
+            Mode = ExtractMode.SingleFolder,
+            OnConflict = ConflictBehavior.Skip,
+        };
+        (await _sut.ExtractAsync(Options())).CreatedFiles.Should().NotBeEmpty();
+
+        var second = await _sut.ExtractAsync(Options());
+
+        second.CreatedFiles.Should().BeEmpty();
+        second.SkippedFiles.Should().Contain(s => s.Path == zip);
+    }
+
     [Theory]
     [InlineData("../evil/")]
     [InlineData("CON/")]

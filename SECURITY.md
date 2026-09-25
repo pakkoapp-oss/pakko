@@ -109,8 +109,9 @@ built-in `tar.exe` process — not an in-process parser — since libarchive has
 either. TAR-family formats (read and create) use the same `tar.exe` process.
 
 **ZIP extraction: staged, checked per entry, verified (fix phase 2, 2026-09-25)**
-- **Integrity.** Every extracted entry's content CRC-32 is checked against its header, and no entry
-  may produce more than its declared uncompressed size; a failing entry is reported and never
+- **Integrity.** Every extracted entry's content CRC-32 is checked against its header (AE-2
+  encrypted entries carry no CRC — their HMAC authenticates them instead), and no entry may produce
+  more than its declared uncompressed size; a failing entry is reported and never
   reaches the destination (T-F246, T-F231). .NET does not check CRC-32 on read by itself.
 - **Unsafe names.** An entry name with a `..` segment (either separator) or a rooted/drive-relative
   path is rejected per entry and reported as an error, never normalized (T-F228) — the tar path

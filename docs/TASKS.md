@@ -4494,7 +4494,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   name\" — new `ExtractOptions.EliminateDuplicateRootFolder` (Shell `--extract-folder` only) drops
   the root only when it is named like the archive (NanaZip `ZipRegistry.cpp:583`,
   `Extract.cpp:104-230`). "Extract here (smart)" unchanged. User-visible — CHANGELOG at release:
-  Explorer "Extract here", `pakko x`, App Extract now keep the root folder. Device check pending.
+  Explorer "Extract here" (flat) and `pakko x` now keep the root folder (the App's Extract uses SeparateFolders — unchanged). Device check pending.
 
 - [~] **Status:** fixed in fix phase 2, stays `[~]` until the user's own check. Original: open. `ExtractionDestinationPlanner.Resolve` returns `StripRootPrefix = true`
   for `(alreadyIsolated: false, RootShape.SingleFolder)`, so in SingleFolder mode the archive's

@@ -65,6 +65,27 @@ public sealed class TarSandboxedServiceEmptyFolderTests : IDisposable
     }
 
     [Integration]
+    public async Task ExtractAsync_SecondRunWithSkip_ReportsNothingExtracted()
+    {
+        string archivePath = Path.Combine(_temp.Path, "again.tar");
+        TarBuilder.WriteTar(archivePath, [Dir("dir/"), File("dir/a.txt")]);
+        string dest = Path.Combine(_temp.Path, "dest");
+        ExtractOptions Options() => new()
+        {
+            ArchivePaths = [archivePath],
+            DestinationFolder = dest,
+            Mode = ExtractMode.SingleFolder,
+            OnConflict = ConflictBehavior.Skip,
+        };
+        (await _sut.ExtractAsync(Options())).CreatedFiles.Should().NotBeEmpty();
+
+        var second = await _sut.ExtractAsync(Options());
+
+        second.CreatedFiles.Should().BeEmpty();
+        second.SkippedFiles.Should().Contain(s => s.Path == archivePath);
+    }
+
+    [Integration]
     public async Task ExtractAsync_SeparateFolders_RootFilePlusEmptyFolder_IsMultiRoot()
     {
         var (_, dest) = await ExtractAsync("pair.tar", ExtractMode.SeparateFolders, File("a.txt"), Dir("empty/"));

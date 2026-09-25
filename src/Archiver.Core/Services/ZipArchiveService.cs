@@ -1129,25 +1129,28 @@ public sealed class ZipArchiveService : IArchiveService
                 continue;
             }
 
-            uint computed;
-            using (var entryStream = entry.Open())
-                computed = Crc32.Compute(entryStream);
-
-            if (computed != entry.Crc32)
+            // T-F246/T-F231: the same wrapper extraction uses, so Test and Extract agree (a stored
+            // entry longer than declared fails both).
+            try
+            {
+                using var verified = new VerifyingReadStream(entry.Open(), entry.Length, entry.Crc32);
+                verified.CopyTo(Stream.Null);
+            }
+            catch (InvalidDataException ex)
             {
                 errors.Add(new ArchiveError
                 {
                     SourcePath = archivePath,
-                    Message = $"Entry '{entry.FullName}' failed CRC-32 check " +
-                              $"(expected {entry.Crc32:X8}, got {computed:X8})."
+                    Message = $"Entry '{entry.FullName}': {ex.Message}",
+                    Exception = ex
                 });
             }
         }
     }
 
-    // T-F189: reuses the exact same EncryptedZipEntryReader/TrailerCrcCheckStream machinery as
+    // T-F189: reuses the exact same EncryptedZipEntryReader/VerifyingReadStream machinery as
     // extraction — draining the stream to Stream.Null triggers the lazy CRC-32 check for
-    // ZipCrypto/AE-1 (throws InvalidDataException on mismatch, caught here so one bad entry
+    // ZipCrypto/AE-1 and the declared-size cap for all (throws InvalidDataException, caught here so one bad entry
     // doesn't abort testing the rest of the archive). AE-2 has no header CRC to check (zeroed by
     // design) — HMAC, already verified inside TryOpen before this method is even reached, is the
     // whole story there; draining just runs the decompression harmlessly.
@@ -1191,7 +1194,7 @@ public sealed class ZipArchiveService : IArchiveService
             errors.Add(new ArchiveError
             {
                 SourcePath = archivePath,
-                Message = $"Entry '{entry.FullName}' failed CRC-32 check.",
+                Message = $"Entry '{entry.FullName}': {ex.Message}",
                 Exception = ex
             });
         }
@@ -1488,7 +1491,7 @@ public sealed class ZipArchiveService : IArchiveService
             relativePath = relativePath[(sep + 1)..];
             // The stripped root folder itself: actualDest stands in for it.
             if (string.IsNullOrEmpty(relativePath))
-                return (isFolder, entry.Length);
+                return (isFolder && !Directory.Exists(plan.ActualDest), entry.Length);
         }
 
         // T-F38/T-F39: Reject ADS-marked, reserved-name, or control-character entry names
@@ -1529,7 +1532,9 @@ public sealed class ZipArchiveService : IArchiveService
     }
 
     // T-F197: a folder entry gets the same containment and reparse-point checks as a file entry,
-    // then is created in staging; the commit carries it across even when it stays empty.
+    // then is created in staging; the commit carries it across even when it stays empty. Counts
+    // as extracted only when the folder is new at the destination — otherwise re-extracting with
+    // Skip would no longer report "nothing extracted" (T-F87).
     private static bool TryCreateFolderEntry(
         ZipArchiveEntry entry, string relativePath, ExtractionPlan plan, ZipExtractionContext context)
     {
@@ -1549,7 +1554,7 @@ public sealed class ZipArchiveService : IArchiveService
         }
 
         Directory.CreateDirectory(folder);
-        return true;
+        return !Directory.Exists(Path.Combine(plan.ActualDest, relativePath));
     }
 
     // The write half of one entry: staging path, reparse-point check, conflict resolution, copy.

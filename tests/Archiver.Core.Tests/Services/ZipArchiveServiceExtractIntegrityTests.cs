@@ -126,6 +126,31 @@ public sealed class ZipArchiveServiceExtractIntegrityTests : IDisposable
         var (result, dest) = await ExtractAsync(zip);
 
         AssertOnlyDocFailed(result, dest, expected);
+        var tested = await _sut.TestAsync([zip]);
+        tested.Errors.Should().ContainSingle("Test must agree with Extract")
+            .Which.Message.Should().Contain("doc.txt").And.Contain(expected);
+    }
+
+    [Fact]
+    public async Task TestAsync_Ae2EntryLargerThanDeclared_ReportsDeclaredSizeNotCrc()
+    {
+        string src = Path.Combine(_temp.Path, "src");
+        Directory.CreateDirectory(src);
+        File.WriteAllText(Path.Combine(src, "doc.txt"), LongContent);
+        await _sut.ArchiveAsync(new ArchiveOptions
+        {
+            SourcePaths = [Path.Combine(src, "doc.txt")],
+            DestinationFolder = _temp.Path,
+            ArchiveName = "enc",
+            Mode = ArchiveMode.SingleArchive,
+            ResolvePasswordAsync = _ => Task.FromResult(new PasswordDecision { Password = Password }),
+        });
+        string zip = Path.Combine(_temp.Path, "enc.zip");
+        PatchUncompressedSize(zip, "doc.txt", 10);
+
+        var tested = await _sut.TestAsync([zip], resolvePasswordAsync: _ => Task.FromResult(new PasswordDecision { Password = Password }));
+
+        tested.Errors.Should().ContainSingle().Which.Message.Should().Contain("declared size");
     }
 
     // T-F231: AE-2 has no CRC (HMAC covers the ciphertext only), so a declared size smaller than
