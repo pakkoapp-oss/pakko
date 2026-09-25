@@ -526,7 +526,8 @@ files.
 - `Archiver.Core` has **zero** references to `ResourceLoader` or `ILogService`
 - Use only `System.IO.Compression` for ZIP compression — no NuGet compression packages
 - Services injected via constructor — never `new ZipArchiveService()` in ViewModels
-- All IO exceptions caught per-item → `ArchiveError` — methods never throw to callers
+- All IO exceptions caught per-item → `ArchiveError` — methods never throw to callers, except
+  `OperationCanceledException` on cancellation (T-F260), even between two sources
 - MVVM: no business logic in `.xaml.cs` files
 - `PublishTrimmed` must be `false` for `Archiver.App` — WinUI 3 `x:Bind` generated code is not trim-compatible. Trimming silently breaks event handlers and Command bindings in Release builds.
 - **tar.exe:** always use `C:\Windows\System32\tar.exe` (absolute path) — never via PATH
@@ -672,10 +673,6 @@ files.
   `AppxPackageSigningEnabled=true` is the only confirmed working signing method; manual
   `SignTool` calls fail on MSIX because `New-SelfSignedCertificate` generates CNG keys on modern
   Windows and SignTool cannot use CNG keys to sign MSIX directly.
-- **3-attempt rule:** if the same problem persists after 3 different implementation attempts,
-  stop immediately. Report what was tried, what failed, and what is unknown. Do not attempt a
-  4th approach without explicit direction. This applies especially to build tooling, packaging,
-  and signing issues.
 - **Pre-implementation research:** for tasks involving COM interop, shell integration, or Windows
   packaging — always research existing working examples before writing any code. "Check NanaZip"
   means fetch the actual shipped source (github.com/M2Team/NanaZip, e.g.

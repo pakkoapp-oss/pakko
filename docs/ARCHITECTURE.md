@@ -507,8 +507,27 @@ public sealed record ArchiveResult
     public IReadOnlyList<string> CreatedFiles { get; init; } = [];
     public IReadOnlyList<ArchiveError> Errors { get; init; } = [];
     public IReadOnlyList<SkippedFile> SkippedFiles { get; init; } = [];
+    // T-F260: one entry per source the engine finished; no entry = not processed (fail-closed).
+    public IReadOnlyList<SourceResult> Sources { get; init; } = [];
+    // The only input to "Delete after operation": sources whose Outcome is Completed.
+    public IEnumerable<string> FullyProcessedSources { get; }
+}
+
+// Models/SourceResult.cs (T-F260)
+public enum SourceOutcome { Completed, Partial, NotProcessed }
+public sealed record SourceResult
+{
+    public string Path { get; init; } = string.Empty;   // as the engine saw it (trailing separator trimmed)
+    public SourceOutcome Outcome { get; init; }
 }
 ```
+
+Completed = output exists, nothing from the source skipped or failed, the whole source requested
+(a `SelectedEntryPaths` extraction is always Partial, T-F265), and — for creation — the source
+does not contain one of the created archives. SingleArchive mode gives every source the whole
+call's outcome. Rules live in `Services/SourceOutcomeRules.cs`. **Cancellation** throws
+`OperationCanceledException` from `ArchiveAsync`/`ExtractAsync`/`CompressAsync` and both routers
+— the one exception to "never throws" — including a cancel noticed between two sources.
 
 ```csharp
 // Models/ArchiveError.cs

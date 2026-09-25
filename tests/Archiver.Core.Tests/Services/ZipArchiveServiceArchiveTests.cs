@@ -188,8 +188,10 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
     }
 
     [Fact]
-    public async Task ArchiveAsync_CancellationRequested_StopsProcessing()
+    public async Task ArchiveAsync_CancellationRequested_ThrowsAndCreatesNothing()
     {
+        // T-F260: this used to return an empty, successful-looking result, which let "Delete
+        // after operation" delete every source; a cancel now always throws.
         var files = Enumerable.Range(1, 10)
             .Select(i => _temp.CreateFile($"file{i}.txt"))
             .ToList();
@@ -204,10 +206,10 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
             Mode = ArchiveMode.SeparateArchives
         };
 
-        var result = await _sut.ArchiveAsync(options, cancellationToken: cts.Token);
+        var act = () => _sut.ArchiveAsync(options, cancellationToken: cts.Token);
 
-        // Should process 0 or fewer than 10 items
-        result.CreatedFiles.Count.Should().BeLessThan(10);
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        Directory.GetFiles(_temp.Path, "*.zip").Should().BeEmpty();
     }
 
     [Fact]

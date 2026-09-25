@@ -5079,6 +5079,9 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 
 ### T-F245 — Cancelling a tar-family extraction reports success, so "Delete after operation" deletes the archive (P0)
 
+- **Progress (2026-09-25, fix phase 1):** Core fixed — both engines throw
+  `OperationCanceledException` on cancel, including between archives/sources (T-F260 entry in
+  `docs/DECISIONS.md`); App consumer + device check still to come in the same phase.
 - [ ] **Status:** open — Core behavior confirmed 2026-09-25 with a scratch probe calling
   `TarSandboxedService.ExtractAsync` directly on a 600 MB `.tar.bz2` (bomb prompt answered yes):
   no cancel -> `Success=True created=1` after 10.7 s; cancel at 1.5 s / 4 s / 8 s -> returns
@@ -5402,6 +5405,9 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 
 ### T-F260 — `ArchiveResult` has no defined outcome: every frontend decides success, partial and cancelled for itself (P1, root, decision)
 
+- **Progress (2026-09-25, fix phase 1):** slice done in Core — `ArchiveResult.Sources` /
+  `FullyProcessedSources` (fail-closed) and the cancellation rule; the general outcome and the
+  frontend mapping stay for phase 7 (`docs/DECISIONS.md`, T-F260 entry).
 - [ ] **Status:** open — code-confirmed 2026-09-25. `ArchiveResult` is `Success` plus three string
   lists (`ArchiveResult.cs`); it cannot say "cancelled" or "partly done", `SkippedFile.Path` does
   not say whether a source or an entry was skipped, and `CreatedFiles` holds output folders for
@@ -5540,6 +5546,21 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   goes red by removing one extension from one list; naming tests for several sources, a dotfile
   and a drive root, the same result through Core and Shell.
 - **Reported by:** architecture review, 2026-09-25.
+
+### T-F265 — "Extract Selected" with "Delete after operation" deletes the whole archive (P0)
+
+- **Progress (2026-09-25, fix phase 1):** Core reports a subset extraction as `Partial` (both
+  engines); the App still has to read `FullyProcessedSources`.
+- [ ] **Status:** open — code-confirmed 2026-09-25, device repro pending. Archive Browser's Extract
+  Selected (`MainViewModel.cs:1093`) and the single-entry T-F109 extraction (`:1180`) both go
+  through `RunExtractAsync`, which on `result.Success && DeleteAfterOperation` (`:652`) deletes
+  every path in `options.ArchivePaths` not listed in `SkippedFiles` — it never looks at
+  `selectedEntryPaths`. Extracting one entry therefore deletes the whole archive permanently.
+- **Fix:** with T-F260's per-source result, a subset extraction (`SelectedEntryPaths != null`)
+  always reports its archive as `Partial`, never deletable.
+- **Tests first:** Extract Selected through both engines -> archive not in `FullyProcessedSources`.
+- **Reported by:** phase-1 planning advisor review, 2026-09-25.
+- **Root:** T-F260.
 
 ### T-F223 — Diagram gap from T-F193 (P2)
 

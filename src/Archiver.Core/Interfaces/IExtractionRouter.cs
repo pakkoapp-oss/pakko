@@ -9,7 +9,8 @@ namespace Archiver.Core.Interfaces;
 /// </summary>
 public interface IExtractionRouter
 {
-    /// <summary>Extracts one or more archives, routed per-archive by format.</summary>
+    /// <summary>Extracts one or more archives, routed per-archive by format. Cancellation in
+    /// either engine throws OperationCanceledException (T-F260); nothing is merged then.</summary>
     Task<ArchiveResult> ExtractAsync(
         ExtractOptions options,
         IProgress<ProgressReport>? progress = null,

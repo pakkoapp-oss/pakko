@@ -26,6 +26,8 @@ public interface ITarService
     /// (options.ArchivePaths.Count == 1) — matching ZipArchiveService.ExtractAsync's own
     /// singleArchive convention — a multi-archive selection still reports percent-only,
     /// BytesTransferred/TotalBytes = 0.
+    /// The one exception to "never throws" (T-F260): cancellation throws
+    /// OperationCanceledException after cleanup, whether it lands inside one archive or between two.
     /// </summary>
     Task<ArchiveResult> ExtractAsync(
         ExtractOptions options,
@@ -49,7 +51,8 @@ public interface ITarService
     /// AppContainer path — the input is trusted local files the user selected, not an untrusted
     /// archive being parsed, so T-F52's threat model (a hostile archive driving libarchive into
     /// misbehaving) does not apply here. Never throws — errors are captured in
-    /// ArchiveResult.Errors.
+    /// ArchiveResult.Errors. The one exception (T-F260): cancellation throws
+    /// OperationCanceledException after cleanup.
     /// </summary>
     Task<ArchiveResult> CompressAsync(
         ArchiveOptions options,

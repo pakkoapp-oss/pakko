@@ -614,6 +614,9 @@ the `FileItems.CollectionChanged` handler. No change to `CanArchive`/`CanExtract
 
 ## T-F68 — Shell Extract Silently Ignoring SkippedFiles
 
+> **Partly superseded 2026-09-25 by T-F260:** its "don't change `ArchiveResult`" choice was
+> reversed; `ArchiveResult` now carries per-source outcomes (see the T-F260 entry).
+
 **Decision:** Widen only the shell path's dialog trigger to also fire when
 `result.SkippedFiles.Count > 0`. Do **not** change `ArchiveResult.Success` (stays
 `Errors.Count == 0`, unchanged everywhere it's read).
@@ -865,6 +868,9 @@ needs.
 ---
 
 ## T-F87 — Bug: `DeleteAfterOperation` Could Delete a Source That Was Only Skipped, Not Processed
+
+> **Superseded 2026-09-25 by T-F260** (per-source `ArchiveResult.Sources`): the delete decision no
+> longer compares `SkippedFiles` paths — see the T-F260 entry at the end of this file.
 
 **Found while:** advisor-reviewing T-F85, then confirmed as a pre-existing gap on both the
 Archive and Extract sides, not something T-F85 introduced (T-F85 only made the Extract-side
@@ -9164,3 +9170,55 @@ disables the option. Not yet exercised on a real console: the CLI double prompt.
 
 **Found along the way:** T-F197 (ZIP extraction drops empty folders — pre-existing, unrelated to
 encryption); a UI/UX review of the archive and browse windows (see TASKS.md, opened 2026-09-24).
+
+## T-F260 (phase-1 slice) — Per-source outcomes and one cancellation contract (2026-09-25)
+
+**Supersedes** the "patch the consumer, don't change `ArchiveResult`" choice of T-F68 and T-F87
+for the delete decision. T-F229, T-F245 and T-F265 showed that `Success` plus string lists cannot
+say which source is safe to delete: the App compared `SkippedFiles` paths with its own source
+list, so an archive with one rejected entry (`CON.txt`), a cancelled tar extraction, and an
+"Extract Selected" of one entry all left the archive deletable.
+
+**Decision.**
+- `ArchiveResult.Sources` holds one `SourceResult` (`Completed` / `Partial` / `NotProcessed`) per
+  source an engine finished; `FullyProcessedSources` (only `Completed`) is the one classifier for
+  "Delete after operation". It is **fail-closed by construction**: a code path that records no
+  entry (policy block, unsupported format, conflict skip, password failure, early return) leaves
+  its source not deletable, so a forgotten site can never cause data loss.
+- `Completed` = output exists, no error or skip added while that source was processed, the whole
+  source was requested (`SelectedEntryPaths` present -> `Partial`, T-F265), and for creation the
+  source does not contain one of the created archives (destination folder inside the source
+  folder). Sequential loops use a before/after count delta; the parallel ZIP `SeparateArchives`
+  worker counts its own issues (the shared bags are written by all workers at once). SingleArchive
+  mode gives every source the whole call's outcome — one bad file blocks deletion of all sources;
+  per-source attribution inside one archive was not attempted.
+- **Cancellation throws `OperationCanceledException` after cleanup in both engines and both
+  routers** — the one exception to "never throws", now in CLAUDE.md's hard constraints and the
+  interface docs. This also covers a cancel noticed *between* sources: ZIP extraction, ZIP
+  `SeparateArchives` (including an already-cancelled token, which used to return a graceful empty
+  result — `ArchiveAsync_CancellationRequested_StopsProcessing` pinned that and was rewritten),
+  and tar extraction/`SeparateArchives` compression all used to `break` and return a
+  finished-looking result. Tar extraction also swallowed a mid-archive cancel
+  (`ExtractOneArchiveAsync`'s `catch (OperationCanceledException) { return true; }`, T-F245).
+- A general `Outcome` (completed/partial/failed) is **not** added in this slice: nothing consumes
+  it yet (cancellation is an exception, deletion reads `Sources`). It comes with the frontend
+  mapping (phase 7), where `Success` is unified too — adding it now would create a second,
+  disagreeing success signal for half a batch.
+
+**Frontends.** Every caller of the four methods was grepped: the App (`MainViewModel` archive and
+extract) and the Shell's shared wrapper already catch `OperationCanceledException`; the CLI's
+`x` catches it when its quit token fired and otherwise reached the same `ReportUserStopped()`
+through its own token check; preview and nested drill-in pass no token. The Shell now handles a
+cancelled tar extraction the way it handled a cancelled ZIP one (before, it presented the
+cancelled tar result as an ordinary one). No new frontend test: CLI Ctrl+C needs a real console,
+checked on device.
+
+**Tests.** `SourceOutcomeTests` (Core, 26) and `TarSourceOutcomeTests` (integration, 9): outcome
+per engine and mode, the `CON.txt` case, subset extraction, conflict skip, corrupt archive,
+missing and locked sources, a folder with one locked file, trailing separator, destination inside
+source, router merge, and cancellation before/between/inside sources. Red before the fix (22 of
+29; the other 7 are fail-closed guards that pass trivially on an empty list). Mutation check: 5
+mutants (ignore `clean`, drop the containment downgrade, re-swallow tar's mid-archive cancel,
+ignore the worker's own issue count, ignore `SelectedEntryPaths`); two survived the first test
+set and were killed by two added tests (a direct `DowngradeSourcesContainingOutputs` theory, and
+a folder with one locked file inside, which commits an archive yet must be `Partial`).

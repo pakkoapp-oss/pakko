@@ -9,7 +9,8 @@ namespace Archiver.Core.Interfaces;
 /// </summary>
 public interface IArchiveCreationRouter
 {
-    /// <summary>Creates an archive in the format given by <c>options.Format</c>.</summary>
+    /// <summary>Creates an archive in the format given by <c>options.Format</c>. Never throws
+    /// except OperationCanceledException on cancellation (T-F260).</summary>
     Task<ArchiveResult> ArchiveAsync(
         ArchiveOptions options,
         IProgress<ProgressReport>? progress = null,

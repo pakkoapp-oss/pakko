@@ -70,6 +70,7 @@ public sealed class ZipArchiveService : IArchiveService
                 return new ArchiveResult { Success = false, CreatedFiles = [], Errors = [passwordError], SkippedFiles = [] };
         }
         var run = new ArchiveRunContext(conflictResolver, password);
+        IEnumerable<SourceResult> sources;
 
         if (options.Mode == ArchiveMode.SingleArchive)
         {
@@ -80,10 +81,15 @@ public sealed class ZipArchiveService : IArchiveService
             // matching this method's original behavior.
             if (skipResult is not null)
                 return skipResult;
+
+            // T-F260: one archive for every source — each is Completed only when the whole call
+            // was clean (per-source attribution of an issue inside one folder is not attempted).
+            bool clean = errors.Count == 0 && skippedFiles.Count == 0;
+            sources = options.SourcePaths.Select(p => SourceOutcomeRules.Classify(p, createdFiles.Count > 0, clean));
         }
         else // SeparateArchives
         {
-            await ArchiveSeparateArchivesModeAsync(
+            sources = await ArchiveSeparateArchivesModeAsync(
                 options, run, errors, createdFiles, skippedFiles, progress, cancellationToken).ConfigureAwait(false);
         }
 
@@ -93,6 +99,7 @@ public sealed class ZipArchiveService : IArchiveService
             CreatedFiles = createdFiles,
             Errors = errors,
             SkippedFiles = skippedFiles,
+            Sources = SourceOutcomeRules.DowngradeSourcesContainingOutputs(sources, createdFiles),
         };
 
         if (result.Success && options.OpenDestinationFolder)
@@ -376,7 +383,7 @@ public sealed class ZipArchiveService : IArchiveService
         return pathSize;
     }
 
-    private static async Task ArchiveSeparateArchivesModeAsync(
+    private static async Task<IReadOnlyList<SourceResult>> ArchiveSeparateArchivesModeAsync(
         ArchiveOptions options, ArchiveRunContext run,
         List<ArchiveError> errors, List<string> createdFiles, List<SkippedFile> skippedFiles,
         IProgress<ProgressReport>? progress, CancellationToken cancellationToken)
@@ -386,13 +393,9 @@ public sealed class ZipArchiveService : IArchiveService
         long totalSourceBytes = ComputeTotalBytes(options.SourcePaths);
         progress?.Report(new ProgressReport { Percent = 0, BytesTransferred = 0, TotalBytes = totalSourceBytes });
 
-        // A token already cancelled before this call must produce a graceful empty result,
-        // matching the old sequential loop's top-of-iteration IsCancellationRequested check
-        // (which simply broke out before doing any work). Parallel.ForEachAsync instead throws
-        // immediately if handed an already-cancelled token, so that case is guarded here rather
-        // than left to the loop itself.
-        if (cancellationToken.IsCancellationRequested)
-            return;
+        // T-F260: an already-cancelled token throws, like a cancel mid-batch — the old graceful
+        // empty result looked finished, so "Delete after operation" deleted every source.
+        cancellationToken.ThrowIfCancellationRequested();
 
         // T-F31/T-F32: Sort source paths for deterministic archive entry order (ordinal, case-insensitive).
         var sortedSourcePaths = options.SourcePaths
@@ -402,7 +405,7 @@ public sealed class ZipArchiveService : IArchiveService
         var plans = await ResolveSeparateArchivePlansAsync(
             sortedSourcePaths, options.DestinationFolder, run.ConflictResolver, skippedFiles).ConfigureAwait(false);
 
-        var concurrentSink = new ArchiveResultSink([], [], []);
+        var concurrentSink = new ArchiveResultSink([], [], [], []);
         var progressContext = new SeparateArchiveProgressContext(totalSourceBytes, [0], progress);
 
         // T-F193: an encrypted archive runs ParallelSingleArchiveWriter, which already compresses
@@ -429,6 +432,10 @@ public sealed class ZipArchiveService : IArchiveService
         // always observe a deterministic completion value regardless of how the parallel
         // workers' individual reports interleaved.
         progress?.Report(new ProgressReport { Percent = 100, BytesTransferred = totalSourceBytes, TotalBytes = totalSourceBytes });
+
+        // Plans skipped before the parallel pass (reparse point, conflict Skip) record no
+        // SourceResult, so they stay not deletable.
+        return [.. concurrentSink.Sources];
     }
 
     // T-F12: each SourcePath produces a fully independent .zip, so the whole batch can run in
@@ -516,7 +523,8 @@ public sealed class ZipArchiveService : IArchiveService
     private sealed record ArchiveResultSink(
         ConcurrentBag<ArchiveError> Errors,
         ConcurrentBag<string> CreatedFiles,
-        ConcurrentBag<SkippedFile> SkippedFiles);
+        ConcurrentBag<SkippedFile> SkippedFiles,
+        ConcurrentBag<SourceResult> Sources);
 
     // The progress-tracking trio ArchiveSingleSeparatePathAsync's parallel workers all share —
     // bundled to cut S107's parameter count. CompletedBytesBox stays a raw long[] (not e.g. a
@@ -545,13 +553,19 @@ public sealed class ZipArchiveService : IArchiveService
         long baseOffset = Interlocked.Read(ref completedBytesBox[0]);
         string separateTempPath = destPath + ".tmp";
         CompressionLevel compressionLevel = settings.Level;
+        // T-F260: this worker's own issue count — the shared bags are written by every worker at
+        // once, so a before/after delta on them would not attribute issues to this source.
+        int issues = 0;
+        bool committed = false;
+        void AddSkipped(SkippedFile f) { Interlocked.Increment(ref issues); sink.SkippedFiles.Add(f); }
+        void AddError(ArchiveError e) { Interlocked.Increment(ref issues); sink.Errors.Add(e); }
         try
         {
             if (settings.Password is not null && (Directory.Exists(sourcePath) || File.Exists(sourcePath)))
             {
                 // T-F193: the only writer that can encrypt. A one-source "single archive" of its
                 // own; WorkItemEnumerator names the entries exactly as the branches below do.
-                var callbacks = new Zip.ParallelSingleArchiveWriter.ReportCallbacks(sink.SkippedFiles.Add, sink.Errors.Add);
+                var callbacks = new Zip.ParallelSingleArchiveWriter.ReportCallbacks(AddSkipped, AddError);
                 var offsetProgress = progress is null ? null : new OffsetProgress(progress, baseOffset, totalSourceBytes);
                 await Zip.ParallelSingleArchiveWriter.WriteAsync(
                     separateTempPath, [sourcePath], settings, pathSize, callbacks, offsetProgress, cancellationToken)
@@ -561,7 +575,7 @@ public sealed class ZipArchiveService : IArchiveService
             {
                 using var archive = ZipFile.Open(separateTempPath, ZipArchiveMode.Create);
                 var context = new DirectoryArchiveContext(
-                    sourcePath, Path.GetFileName(sourcePath), compressionLevel, sink.SkippedFiles.Add, sink.Errors.Add, totalSourceBytes, progress);
+                    sourcePath, Path.GetFileName(sourcePath), compressionLevel, AddSkipped, AddError, totalSourceBytes, progress);
                 await AddDirectoryToArchiveAsync(archive, sourcePath, context, baseOffset, cancellationToken)
                     .ConfigureAwait(false);
             }
@@ -574,7 +588,7 @@ public sealed class ZipArchiveService : IArchiveService
             }
             else
             {
-                sink.Errors.Add(new ArchiveError
+                AddError(new ArchiveError
                 {
                     SourcePath = sourcePath,
                     Message = $"Source path does not exist: {sourcePath}"
@@ -589,6 +603,7 @@ public sealed class ZipArchiveService : IArchiveService
             {
                 File.Move(separateTempPath, destPath, overwrite: true);
                 sink.CreatedFiles.Add(destPath);
+                committed = true;
             }
             else
             {
@@ -604,7 +619,7 @@ public sealed class ZipArchiveService : IArchiveService
         catch (IOException ex)
         {
             TryDeleteBestEffort(separateTempPath);
-            sink.Errors.Add(new ArchiveError
+            AddError(new ArchiveError
             {
                 SourcePath = sourcePath,
                 Message = $"Cannot access file: {ex.Message}",
@@ -614,7 +629,7 @@ public sealed class ZipArchiveService : IArchiveService
         catch (UnauthorizedAccessException ex)
         {
             TryDeleteBestEffort(separateTempPath);
-            sink.Errors.Add(new ArchiveError
+            AddError(new ArchiveError
             {
                 SourcePath = sourcePath,
                 Message = $"Access denied: {ex.Message}",
@@ -624,7 +639,7 @@ public sealed class ZipArchiveService : IArchiveService
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             TryDeleteBestEffort(separateTempPath);
-            sink.Errors.Add(new ArchiveError
+            AddError(new ArchiveError
             {
                 SourcePath = sourcePath,
                 Message = $"Unexpected error: {ex.Message}",
@@ -633,6 +648,7 @@ public sealed class ZipArchiveService : IArchiveService
         }
 
         Interlocked.Add(ref completedBytesBox[0], pathSize);
+        sink.Sources.Add(SourceOutcomeRules.Classify(sourcePath, committed, issues == 0));
     }
 
     // T-F193: maps one encrypted SeparateArchives worker's own 0..totalBytes progress onto the
@@ -683,13 +699,16 @@ public sealed class ZipArchiveService : IArchiveService
 
         int total = options.ArchivePaths.Count;
         bool singleArchive = total == 1;
+        var sources = new List<SourceResult>();
 
         for (int i = 0; i < total; i++)
         {
-            if (cancellationToken.IsCancellationRequested)
-                break;
+            // T-F260: a cancel between archives throws like a cancel inside one — never a result
+            // that looks finished (T-F245).
+            cancellationToken.ThrowIfCancellationRequested();
 
             string archivePath = options.ArchivePaths[i];
+            int errorsBefore = errors.Count, skippedBefore = skippedFiles.Count, createdBefore = createdFiles.Count;
 
             var (rejected, password) = await TryRejectUnsupportedOrEncryptedZipAsync(
                 archivePath, errors, skippedFiles, passwordResolver).ConfigureAwait(false);
@@ -706,6 +725,11 @@ public sealed class ZipArchiveService : IArchiveService
                     archivePath, destDir, options, conflictResolver, password, sink, archiveProgress, cancellationToken).ConfigureAwait(false);
             }
 
+            // T-F265: a subset extraction never makes the whole archive deletable.
+            sources.Add(SourceOutcomeRules.Classify(archivePath,
+                produced: createdFiles.Count > createdBefore,
+                clean: errors.Count == errorsBefore && skippedFiles.Count == skippedBefore && options.SelectedEntryPaths is null));
+
             if (!singleArchive) progress?.Report(new ProgressReport { Percent = (i + 1) * 100 / total, BytesTransferred = 0, TotalBytes = 0 });
         }
 
@@ -715,6 +739,7 @@ public sealed class ZipArchiveService : IArchiveService
             CreatedFiles = createdFiles,
             Errors = errors,
             SkippedFiles = skippedFiles,
+            Sources = sources,
         };
 
         if (result.Success && options.OpenDestinationFolder)

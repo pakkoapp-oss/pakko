@@ -103,16 +103,23 @@ public sealed class TarSandboxedService : ITarService
 
         int total = options.ArchivePaths.Count;
         var sink = new ArchiveResultSink(errors, createdFiles, skippedFiles);
+        var sources = new List<SourceResult>();
 
         for (int i = 0; i < total; i++)
         {
-            if (cancellationToken.IsCancellationRequested)
-                break;
+            // T-F260/T-F245: a cancel between or inside archives throws — it used to end the loop
+            // and return a result that looked finished, so "Delete after operation" deleted
+            // archives that were never extracted.
+            cancellationToken.ThrowIfCancellationRequested();
 
-            bool wasCancelled = await ExtractArchiveAtIndexAsync(
+            int errorsBefore = errors.Count, skippedBefore = skippedFiles.Count, createdBefore = createdFiles.Count;
+            await ExtractArchiveAtIndexAsync(
                 options, i, total, conflictResolver, sink, progress, cancellationToken).ConfigureAwait(false);
-            if (wasCancelled)
-                break;
+
+            // T-F265: a subset extraction never makes the whole archive deletable.
+            sources.Add(SourceOutcomeRules.Classify(options.ArchivePaths[i],
+                produced: createdFiles.Count > createdBefore,
+                clean: errors.Count == errorsBefore && skippedFiles.Count == skippedBefore && options.SelectedEntryPaths is null));
         }
 
         var result = new ArchiveResult
@@ -121,6 +128,7 @@ public sealed class TarSandboxedService : ITarService
             CreatedFiles = createdFiles,
             Errors = errors,
             SkippedFiles = skippedFiles,
+            Sources = sources,
         };
 
         if (result.Success && options.OpenDestinationFolder)
@@ -136,12 +144,9 @@ public sealed class TarSandboxedService : ITarService
             && ArchiveFormatDetector.IsEncryptedRar(archivePath);
 
     // One iteration of ExtractAsync's per-archive loop — moved out so the loop itself reads as
-    // "check cancellation, extract one, check cancellation" at a glance. Returns true exactly
-    // when extraction observed real cancellation, in which case the caller must break WITHOUT
-    // reporting progress for this iteration (matches the original inline loop's `break` landing
-    // before the progress-report line); every other outcome falls through to the report and
-    // returns false so the caller's loop continues.
-    private async Task<bool> ExtractArchiveAtIndexAsync(
+    // "check cancellation, extract one" at a glance. Cancellation propagates as
+    // OperationCanceledException (T-F260).
+    private async Task ExtractArchiveAtIndexAsync(
         ExtractOptions options, int i, int total, ConflictResolver conflictResolver,
         ArchiveResultSink sink, IProgress<ProgressReport>? progress, CancellationToken cancellationToken)
     {
@@ -173,16 +178,12 @@ public sealed class TarSandboxedService : ITarService
         else
         {
             IProgress<ProgressReport>? archiveProgress = singleArchive ? progress : null;
-            bool wasCancelled = await ExtractOneArchiveAsync(
+            await ExtractOneArchiveAsync(
                 archivePath, destDir, options, conflictResolver, sink, archiveProgress, cancellationToken).ConfigureAwait(false);
-            if (wasCancelled)
-                return true;
         }
 
         if (!singleArchive)
             progress?.Report(new ProgressReport { Percent = (i + 1) * 100 / total, BytesTransferred = 0, TotalBytes = 0 });
-
-        return false;
     }
 
     // The three List sinks ExtractOneArchiveAsync/ProcessSeparateArchivesAsync write into —
@@ -194,12 +195,11 @@ public sealed class TarSandboxedService : ITarService
         List<string> CreatedFiles,
         List<SkippedFile> SkippedFiles);
 
-    // The try/6-catch error-mapping body of ExtractAsync's per-archive loop, pulled out so the
+    // The try/catch error-mapping body of ExtractAsync's per-archive loop, pulled out so the
     // loop itself reads as "known-encrypted-RAR short-circuit, else extract-and-map-errors" at a
-    // glance. Returns true when extraction observed real cancellation (the loop breaks in that
-    // case, matching ExtractAsync's original inline `break`); every other outcome is recorded
-    // into errors/createdFiles and returns false so the loop continues to the next archive.
-    private async Task<bool> ExtractOneArchiveAsync(
+    // glance. Every outcome except cancellation is recorded into errors/createdFiles; a cancel
+    // propagates as OperationCanceledException (T-F260 — it used to be swallowed here, T-F245).
+    private async Task ExtractOneArchiveAsync(
         string archivePath, string destDir, ExtractOptions options, ConflictResolver conflictResolver,
         ArchiveResultSink sink, IProgress<ProgressReport>? archiveProgress, CancellationToken cancellationToken)
     {
@@ -218,26 +218,18 @@ public sealed class TarSandboxedService : ITarService
             // may delete the source archive.
             if (anyExtracted)
                 sink.CreatedFiles.Add(actualDest);
-            return false;
-        }
-        catch (OperationCanceledException)
-        {
-            return true;
         }
         catch (TarArchiveRejectedException ex)
         {
             sink.Errors.Add(new ArchiveError { SourcePath = archivePath, Message = ex.Message });
-            return false;
         }
         catch (TarSignatureVerificationException ex)
         {
             sink.Errors.Add(new ArchiveError { SourcePath = archivePath, Message = ex.Message });
-            return false;
         }
         catch (SandboxSetupException ex)
         {
             sink.Errors.Add(new ArchiveError { SourcePath = archivePath, Message = ex.Message, Exception = ex });
-            return false;
         }
         catch (IOException ex)
         {
@@ -252,7 +244,6 @@ public sealed class TarSandboxedService : ITarService
                     : $"Cannot extract archive: {ex.Message}",
                 Exception = ex
             });
-            return false;
         }
         catch (UnauthorizedAccessException ex)
         {
@@ -262,7 +253,6 @@ public sealed class TarSandboxedService : ITarService
                 Message = $"Access denied extracting archive: {ex.Message}",
                 Exception = ex
             });
-            return false;
         }
     }
 
@@ -968,6 +958,7 @@ public sealed class TarSandboxedService : ITarService
 
         Directory.CreateDirectory(options.DestinationFolder);
         string extension = ArchiveNaming.GetExtension(options.Format);
+        IEnumerable<SourceResult> sources;
 
         if (options.Mode == ArchiveMode.SingleArchive)
         {
@@ -1001,11 +992,15 @@ public sealed class TarSandboxedService : ITarService
 
             await CompressToArchiveAsync(options, resolvedDestPath, createdFiles, errors, skippedFiles, progress, cancellationToken)
                 .ConfigureAwait(false);
+
+            // T-F260: one archive for every source — see ZipArchiveService.ArchiveAsync's same rule.
+            bool clean = errors.Count == 0 && skippedFiles.Count == 0;
+            sources = options.SourcePaths.Select(p => SourceOutcomeRules.Classify(p, createdFiles.Count > 0, clean));
         }
         else // ArchiveMode.SeparateArchives — one archive per top-level source path
         {
             var sink = new ArchiveResultSink(errors, createdFiles, skippedFiles);
-            await ProcessSeparateArchivesAsync(options, extension, conflictResolver, sink, progress, cancellationToken)
+            sources = await ProcessSeparateArchivesAsync(options, extension, conflictResolver, sink, progress, cancellationToken)
                 .ConfigureAwait(false);
         }
 
@@ -1015,6 +1010,7 @@ public sealed class TarSandboxedService : ITarService
             CreatedFiles = createdFiles,
             Errors = errors,
             SkippedFiles = skippedFiles,
+            Sources = SourceOutcomeRules.DowngradeSourcesContainingOutputs(sources, createdFiles),
         };
 
         if (result.Success && options.OpenDestinationFolder)
@@ -1025,16 +1021,19 @@ public sealed class TarSandboxedService : ITarService
         return result;
     }
 
-    private static async Task ProcessSeparateArchivesAsync(
+    // Returns one SourceResult per source that reached CompressToArchiveAsync; a missing or
+    // conflict-skipped source records none, so it stays not deletable (T-F260).
+    private static async Task<List<SourceResult>> ProcessSeparateArchivesAsync(
         ArchiveOptions options, string extension, ConflictResolver conflictResolver,
         ArchiveResultSink sink, IProgress<ProgressReport>? progress, CancellationToken cancellationToken)
     {
         var sortedSourcePaths = options.SourcePaths.OrderBy(p => p, StringComparer.OrdinalIgnoreCase).ToList();
+        var sources = new List<SourceResult>();
 
         foreach (string sourcePath in sortedSourcePaths)
         {
-            if (cancellationToken.IsCancellationRequested)
-                break;
+            // T-F260/T-F245: throw, never end the loop with a result that looks finished.
+            cancellationToken.ThrowIfCancellationRequested();
 
             if (!File.Exists(sourcePath) && !Directory.Exists(sourcePath))
             {
@@ -1061,9 +1060,15 @@ public sealed class TarSandboxedService : ITarService
                 File.Delete(destPath);
 
             var singleOptions = options with { SourcePaths = [sourcePath] };
+            int errorsBefore = sink.Errors.Count, skippedBefore = sink.SkippedFiles.Count, createdBefore = sink.CreatedFiles.Count;
             await CompressToArchiveAsync(singleOptions, resolvedDestPath, sink.CreatedFiles, sink.Errors, sink.SkippedFiles, progress, cancellationToken)
                 .ConfigureAwait(false);
+            sources.Add(SourceOutcomeRules.Classify(sourcePath,
+                produced: sink.CreatedFiles.Count > createdBefore,
+                clean: sink.Errors.Count == errorsBefore && sink.SkippedFiles.Count == skippedBefore));
         }
+
+        return sources;
     }
 
     // Runs one tar.exe -cf invocation writing to a ".tmp" path, then atomically moves it to

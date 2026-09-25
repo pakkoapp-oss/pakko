@@ -11,6 +11,8 @@ public interface IArchiveService
     /// <summary>
     /// Creates one or more ZIP archives from the provided options.
     /// Never throws — errors are captured in ArchiveResult.Errors.
+    /// The one exception (T-F260): cancellation throws OperationCanceledException after cleanup,
+    /// whether it lands inside one source or between two.
     /// </summary>
     Task<ArchiveResult> ArchiveAsync(
         ArchiveOptions options,
@@ -20,6 +22,8 @@ public interface IArchiveService
     /// <summary>
     /// Extracts one or more ZIP archives.
     /// Never throws — errors are captured in ArchiveResult.Errors.
+    /// The one exception (T-F260): cancellation throws OperationCanceledException after cleanup,
+    /// whether it lands inside one archive or between two.
     /// </summary>
     Task<ArchiveResult> ExtractAsync(
         ExtractOptions options,
