@@ -4938,6 +4938,12 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 
 ### T-F234 — ZIP names without the UTF-8 flag are decoded as UTF-8: garbled names and silent loss of files (P0 candidate)
 
+- **Progress (2026-09-25, fix phase 3):** fixed in d78c816 — `ZipEntryNameDecoder` (7-Zip's
+  rule), `ZipNameCodePages` (in-box `CodePagesEncodingProvider`, no NuGet, no global registration),
+  `ZipArchiveReader` (one read path for list/test/extract/scan); a post-decoding collision is a
+  per-entry error. Both repros now extract the real names (`legacy_oem866_7za.zip`, the 0x80/0x81
+  pair). Found on the way: 7za/NanaZip's own default for Cyrillic names is exactly this shape
+  (cp866, flag clear) plus a 0x7075 extra. See `docs/DECISIONS.md`'s fix-phase-3 entry.
 - [ ] **Status:** open — confirmed on device 2026-09-24. Archives written by older Windows
   "Compressed folders", 1C, scanners and other tools in a uk/ru locale store names in the OEM code
   page (866) with general-purpose bit 11 clear. Every ZIP reader call opens archives without an
@@ -5092,6 +5098,13 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 
 ### T-F243 — ZIP reader hardening (P2)
 
+- **Progress (2026-09-25, fix phase 3):** item 1 fixed with T-F234 (d78c816, `\` normalized
+  on decoded names); item 2 fixed (f317397 — check byte from the file time with a data descriptor,
+  as 7-Zip does); item 3 fixed (0cb5c0e — a small ZipCrypto probe entry is fully verified at
+  prompt time, so a colliding wrong password is asked again); item 4 fixed (9ae0a24 — every segment,
+  part before the first dot, full Microsoft list); item 5 **not reproduced** (1110af2 —
+  characterization test: Test and Extract share names and readers); item 6 fixed (1110af2 —
+  over-long names are a per-entry error on both write paths).
 - [ ] **Status:** open, from the T-F226 review (reviewer agent + own reading); items marked
   hypothesis need a repro first.
   1. `ZipArchiveService.cs:1229-1236`: `\` in an entry name is not normalized when classifying
@@ -5110,6 +5123,17 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 
 ### T-F244 — Sandbox launcher, crypto and CLI staging hygiene (P2)
 
+- **Progress (2026-09-25, fix phase 3):** item 3 fixed — bc29e20 (staging root itself checked
+  for a reparse point) and b02f473 (password bytes ANSI/UTF-8 in NanaZip's order; key material
+  zeroed). Item 1 evidence (for fix phase 4): Build 36133755270 failed once on
+  `TarSandboxedServiceExtractTests.ExtractAsync_CancelMidExtraction_NoUnhandledExceptionNoOrphanedQuarantineDir`
+  (a `%TEMP%\PakkoTarSandbox\<guid>` left behind), green on rerun and 10/10 locally; full local
+  runs this phase also failed `CliSubprocessTests.Extract_TarGzHappyPath_ExtractsFilesAndExitsZero`,
+  `Extract_SevenZipFixtureWithSo_StreamsSingleFileToStdout` and
+  `NestedArchiveDrillDownSecurityTests.ExtractAsync_NestedBombArchive_RejectedIndependentlyAtSecondLevel`
+  once each, all passing alone. Likely cause read in the code: on cancel `SandboxedProcessLauncher`
+  calls `TerminateProcess` without waiting for exit and `TarSandboxScope.Dispose` deletes the
+  quarantine best-effort at once; the other failures point at cross-project sandbox contention.
 - [ ] **Status:** open, from the T-F226 review.
   1. `SandboxedProcessLauncher.cs:116-133`: pipe handles leak if setup fails midway;
      `:157-195`: `DangerousAddRef` does not span the wait.

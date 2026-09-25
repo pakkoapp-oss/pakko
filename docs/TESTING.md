@@ -624,6 +624,22 @@ fixtures are built in the test by patching CRC/size fields of a fresh archive, n
 `TarSandboxedServiceEmptyFolderTests` (T-F197). Staging-leftover assertions look for
 `.pakko-x-*`; an assertion on the old `*_tmp` name would now pass vacuously.
 
+## ZIP Names and Reader Hardening (fix phase 3, 2026-09-25)
+
+Written red first (see `docs/DECISIONS.md`'s fix-phase-3 entry). `Zip/ZipEntryNameDecoderTests`
+(explicit code pages only — 866/437/1252/1251/932, never the machine's) and
+`ZipArchiveServiceLegacyNameEncodingTests` (service pinned to 866/1251 through the internal
+`NameCodePages` seam, because the en-US CI runner has 437/1252). Fixtures: `legacy_oem866_7za.zip`
+(committed, vendored `7za -mcp=866`: cp866 names, flag clear, plus 0x7075) and
+`Helpers/LegacyZipBuilder` (raw name bytes, flag, host OS, central extra, local-name override —
+for shapes 7za cannot write). `ZipArchiveServiceZipCryptoCompatTests` with
+`Helpers/ZipCryptoFixture` (ZipCrypto written from APPNOTE, independent of `ZipCryptoStream`;
+data descriptor and raw password bytes; cross-checked with 7za) covers T-F243 items 2-3 and the
+ANSI/UTF-8 password candidates. `ArchiveEntrySecurityReservedNameTests` (T-F243 item 4),
+`ZipArchiveServiceLongEntryNameTests` (T-F243 item 6, end to end; returns early without
+`LongPathsEnabled`), `CliSubprocessTests.Extract_LegacyOemNamedZip_WritesRealNames` (asserts files
+on disk, not console output, so it is code-page independent).
+
 ## Manual Smoke Test Cycle (Full Stack)
 
 Ordered simplest → most complex. Confirms Core, Shell, ShellExtension (COM), and the WinUI app

@@ -116,7 +116,14 @@ src/
 │   │   └── Zip/                        ← T-F35: parallel SingleArchive compression pipeline
 │   │       ├── WorkItemEnumerator.cs / FileWorkItem.cs / WorkResult.cs
 │   │       ├── ParallelSingleArchiveWriter.cs
-│   │       └── ZipEntryWriter.cs / ZipEntryCompressor.cs / DosDateTime.cs
+│   │       ├── ZipEntryWriter.cs / ZipEntryCompressor.cs / DosDateTime.cs
+│   │       ├── ZipArchiveReader.cs      ← T-F234: the one ZIP read path (list/test/extract/scan) —
+│   │       │                                  ZipArchive.Entries paired with decoded names (NamedZipEntry,
+│   │       │                                  incl. the post-decoding collision flag)
+│   │       ├── ZipEntryNameDecoder.cs   ← T-F234: 7-Zip's name rule (bit 11 / 0x7075 / host OS)
+│   │       ├── ZipNameCodePages.cs      ← T-F234: system OEM/ANSI via in-box CodePagesEncodingProvider
+│   │       └── Decryption/              ← T-F188/T-F189: RawZipEntryLocator (central directory +
+│   │                                          local headers), EncryptedZipEntryReader, ZipCrypto, WinZip AES
 │   ├── IO/
 │   │   ├── Crc32.cs                    ← public (T-F110); slice-by-8 (T-F128 follow-up, was
 │   │   │                                  byte-at-a-time — real ~9x perf gap vs. 7-Zip found via

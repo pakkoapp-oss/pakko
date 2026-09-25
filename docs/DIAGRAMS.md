@@ -329,25 +329,28 @@ stateDiagram-v2
 
 ## 3. Activity — Extract validation/foldering chain
 
-Source read for this diagram (redrawn 2026-09-25, fix phase 2): `ExtractWithSmartFolderingCoreAsync`,
+Source read for this diagram (redrawn 2026-09-25, fix phase 2; updated the same day for fix phase 3,
+adding `Zip/ZipArchiveReader` and `ArchiveEntrySecurity.HasReservedName`): `ExtractWithSmartFolderingCoreAsync`,
 `TryExtractSingleEntryAsync`, `TryCreateFolderEntry`, `WriteEntryAsync` and `CopyEntryToDestinationAsync` in
 `src/Archiver.Core/Services/ZipArchiveService.cs`, plus `ExtractionStaging.CommitInto` and
 `IO/VerifyingReadStream`.
 
 ```mermaid
 flowchart TD
-    A0["allEntries = every ZIP entry, files AND folder entries (T-F197)"] --> A1{"T-F05: options.SelectedEntryPaths<br/>set and non-empty?"}
+    A0["ZipArchiveReader.Open: allEntries = every ZIP entry, files AND folder entries (T-F197),<br/>each with its name decoded by 7-Zip's rule, never ZipArchiveEntry.FullName (T-F234)"] --> A1{"T-F05: options.SelectedEntryPaths<br/>set and non-empty?"}
     A1 -- no --> A2["entries = allEntries.<br/>isSingleRootFolder/isSingleRootFile computed over files AND folders<br/>(a.txt + empty/ is MultiRoot), then<br/>ExtractionDestinationPlanner.Classify → RootShape (T-F157)"]
     A1 -- yes --> A3["entries = allEntries filtered to the selected paths<br/>+ anything nested under a selected folder path<br/>→ RootShape.SelectedSubset"]
     A2 --> A3B["ExtractionDestinationPlanner.Resolve(alreadyIsolated, shape, destDir,<br/>unisolatedDestDir, rootDuplicatesArchiveName)<br/>→ (actualDest, stripRootPrefix). T-F205: SingleFolder keeps the root<br/>unless EliminateDuplicateRootFolder is set and the root is named like the archive"]
     A3 --> A3B
     A3B --> A4["Compression-bomb check sums allFileEntries (whole archive),<br/>never the filtered subset — T-F05/T-F94"]
     A4 --> ST["using staging = ExtractionStaging.Create(DestinationFolder)<br/>fresh hidden .pakko-x-pid-guid, never reused, disposed on every exit (T-F227)"]
-    ST --> A["For each entry in entries"] --> U{"HasUnsafePath: a .. segment (either separator)<br/>or a rooted / drive-relative name? (T-F228)"}
+    ST --> A["For each entry in entries"] --> CL{"CollidesAfterDecoding: other raw bytes,<br/>same decoded name as an earlier entry? (T-F234)"}
+    CL -- yes --> E0["Errors += same name once decoded, entry not extracted"]
+    CL -- no --> U{"HasUnsafePath: a .. segment (either separator)<br/>or a rooted / drive-relative name? (T-F228)"}
     U -- yes --> E1["Errors += unsafe path, entry not extracted"]
     U -- no --> C{"stripRootPrefix: strip leading segment"}
     C -- "stripped to empty" --> Z["the root itself: actualDest stands in for it<br/>(counts as extracted only for a folder entry)"]
-    C -- "non-empty, or not applicable" --> D{"ADS marker, reserved device name<br/>or control chars in the name without its trailing slash?<br/>T-F38/T-F39"}
+    C -- "non-empty, or not applicable" --> D{"ADS marker, reserved device name (any segment,<br/>part before the first dot, T-F243) or control chars<br/>in the name without its trailing slash? T-F38/T-F39"}
     D -- yes --> S1["SkippedFiles += reason"]
     D -- no --> T["try (T-F230) — IOException, UnauthorizedAccessException and<br/>InvalidDataException fail only this entry, except a full disk"]
     T --> FD{"folder entry?"}
@@ -368,7 +371,7 @@ flowchart TD
     T -. "ERROR_DISK_FULL" .-> X["rethrown: one archive-level error"]
     K --> L["extractedCount++"]
     FK --> L
-    E1 & S1 & S4 & S6 & E2 & Z --> M{"More entries?"}
+    E0 & E1 & S1 & S4 & S6 & E2 & Z --> M{"More entries?"}
     L --> M
     M -- yes --> A
     M -- no --> N["staging.CommitInto(actualDest): if actualDest is new, clear Hidden<br/>then Directory.Move (T-F161). Otherwise, or on IOException, merge:<br/>folders first (T-F197), then files with File.Move overwrite —<br/>a locked target becomes a per-item ArchiveError (T-F170)"]
@@ -377,6 +380,10 @@ flowchart TD
     N2 -- no --> O
     N3 --> O["T-F260: one SourceResult per archive — Completed only with no error,<br/>skip or conflict-skip and no selection. ExtractAsync removes a<br/>DestinationFolder it created when nothing was produced (T-F230)"]
 ```
+
+**Fix phase 3 (2026-09-25).** Names come from `ZipArchiveReader` (T-F234), so every gate below
+sees the decoded, `/`-normalized name; a post-decoding collision is a per-entry `ArchiveError`,
+checked before anything else; the reserved-name gate checks every segment (T-F243).
 
 **Fix phase 2 (2026-09-25) — what changed in this chain.** Folder entries are extracted (T-F197);
 an unsafe name is a per-entry `ArchiveError`, checked first (T-F228); any I/O, CRC-32 or
@@ -848,7 +855,7 @@ sequenceDiagram
         Service->>Amsi: new AmsiScanner("Pakko")<br/>(one session for the whole operation)
 
         loop each ZIP archive
-            Service->>Service: ZipFile.OpenRead, read entry bytes<br/>(no disk writes, size-cap enforced)
+            Service->>Service: ZipArchiveReader.Open (decoded names, T-F234), read entry bytes<br/>(no disk writes, size-cap enforced)
             Service->>Amsi: ScanBuffer(bytes, entryName)
             Amsi-->>Service: Clean / ThreatDetected
         end

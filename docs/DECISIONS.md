@@ -8404,6 +8404,11 @@ source" work at all. The swap lives in a new `OpenEntryContentStream` helper, ca
 check) is untouched code, still operating on `entry.FullName`/`entry.Length` exactly as before
 encrypted-ZIP support existed at all — ZIP entry *names* are never encrypted by the format itself.
 
+> **Correction (T-F234, 2026-09-25):** the claim below that the zero-NuGet constraint rules out
+> `System.Text.Encoding.CodePages` is wrong — `CodePagesEncodingProvider` ships in the .NET 8
+> shared framework (confirmed with a plain `net8.0` probe, no package reference). Legacy names are
+> now decoded properly; see "Fix phase 3" below. Positional pairing stays, for its own reason.
+
 **Positional pairing (`RawZipEntryLocator.LocateAll`), not name-based lookup, for production
 wiring — an advisor-caught hazard, not a hypothetical:** `RawZipEntryLocator.Locate(stream, name)`
 (T-F188, kept for its own existing name-based tests) compares `Encoding.UTF8.GetBytes(name)`
@@ -9364,3 +9369,85 @@ folders, so the two engines agree.
 `VerifyingReadStream`, and reports the stream's own message for encrypted entries (it used to call
 every failure a CRC-32 failure), so a stored entry longer than declared fails `pakko t` as well as
 `pakko x`.
+
+## Fix phase 3 — ZIP names and reader hardening (2026-09-25)
+
+**T-F234 — legacy entry names.** `System.IO.Compression` decodes every name without the UTF-8
+flag (bit 11) as UTF-8, so cp866 names were listed and written as mojibake and two different
+names (0x80 "А", 0x81 "Б") became one file, exit 0. `ZipEntryNameDecoder` now applies 7-Zip's rule
+(read in NanaZip `ZipItem.cpp` `GetUnicodeString`, `ZipItem.h` `GetCodePage`): bit 11 -> UTF-8;
+else a valid Info-ZIP Unicode Path extra (0x7075: version <= 1, CRC-32 of the raw name matches,
+no NUL, strict UTF-8) -> that name; else the central record's host OS: Unix -> UTF-8, FAT/NTFS ->
+OEM, anything else -> ANSI. A malformed extra block is ignored rather than fatal, as in 7-Zip.
+`\` is normalized to `/` on the decoded characters (never raw bytes: in DBCS code pages 0x5C can
+be a trail byte), for every host — 7-Zip keeps `\` literal for Unix hosts, but one form of the path
+is what every security check needs, and on Windows it would be a separator anyway.
+- **Code pages without NuGet or global state.** `ZipNameCodePages.System` reads `GetOEMCP`/`GetACP`
+  and asks `CodePagesEncodingProvider.Instance` directly — no `Encoding.RegisterProvider`
+  (process-wide state); 65001 maps to UTF-8. The fix-batch index's "register once at a startup
+  point" was not needed.
+- **One read path.** `ZipArchiveReader.Open` pairs `ZipArchive.Entries` with the decoded names
+  positionally (both walk the same central directory). The names come from the central directory
+  only — no local-header seeks, no AES checks — so every archive whose directory .NET reads also
+  gets names. A count mismatch fails closed ("corrupted"), never falls back to .NET's UTF-8 names
+  (that fallback is the bug); every committed fixture agrees (test). List, Test, Extract and Scan
+  all read through it; App, Shell and CLI get the fix through Core.
+- **Collisions.** Two entries with different raw bytes and the same decoded name are an error per
+  entry in Extract and Test ("same name as another entry once decoded"), never a silent
+  overwrite; byte-identical duplicates keep T-F30's conflict rules; folders are exempt.
+- **Test seam.** The en-US CI runner has OEM 437 / ANSI 1252, this machine 866 / 1251, so
+  `ZipArchiveService`/`AntivirusScanService` expose an internal `NameCodePages` (default: system)
+  that service tests pin; decoder tests pass explicit code pages; the CLI subprocess test uses a
+  7za fixture whose 0x7075 extra makes the result machine-independent.
+- **7-Zip's own default is this case.** `7za a -tzip -mcp=866` (and 7za/NanaZip on a uk/ru
+  machine by default) writes cp866 names with the flag clear *plus* 0x7075 — so archives made by
+  NanaZip on such a machine were affected, not only old Windows "Compressed folders" (which have
+  no 0x7075 and rely on the host rule). Pakko's own writers always set bit 11 for non-ASCII names
+  (parallel writer since T-F35, sequential via .NET, encrypted via `ZipEntryWriter`) — round-trip
+  tests for all three.
+- **Cost.** Names are now always read, where List used to parse the central directory a second
+  time only for encrypted archives. Measured on a 65,000-entry archive: `ZipFile.OpenRead`
+  ~250-400 ms, the name pass ~200-290 ms more; a larger stream buffer or reading the directory
+  into memory did not change it (the cost is per-entry work, not I/O). Accepted: negligible for
+  ordinary archives, and correctness of every name is the point.
+
+**T-F243 item 1** (backslash names classified as multi-root) — fixed by the normalization above.
+
+**T-F243 item 2 — ZipCrypto check byte with a data descriptor.** With bit 3 the header's check
+byte is the high byte of the local file *time* (the CRC is unknown when the header is written);
+Pakko compared the CRC's high byte and rejected the right password. `LocatedZipEntry` now carries
+the check byte by 7-Zip's rule (`ZipHandler.cpp`: `HasDescriptor() ? Time >> 8 : Crc >> 24`).
+7za cannot write ZipCrypto from stdin ("Not implemented"), so the fixture is written in the test
+from APPNOTE directly and cross-checked with the vendored 7za.
+
+**T-F243 item 3 — a wrong password that passes the one-byte check.** It was accepted for the
+whole archive and the entry later failed as a CRC mismatch — read as corruption, with no second
+chance to type the password. Password resolution now probes the *smallest* encrypted entry and,
+for ZipCrypto up to 4 MiB, decrypts it in full and checks its CRC-32 while the user can still be
+asked again. AES is unchanged (2-byte verifier, HMAC before any plaintext). Above the limit the
+one-byte check stays; the later CRC failure is a per-entry error and Scan still never reports it
+Clean (T-F194; kept covered by a large-entry test with a colliding password found in the test).
+
+**T-F243 item 4 — reserved names.** Windows reads a device name from the part before the *first*
+dot, trailing spaces dropped, in *any* segment; the check used the last segment without its last
+extension, so `CON.a.b`, `NUL/x`, `NUL .txt` passed. Also added `CONIN$`, `CONOUT$`, `COM0`,
+`LPT0` and the superscript ports from Microsoft's "Naming Files" list. Shared by both extractors.
+
+**T-F243 item 5 — not reproduced.** Test and Extract take names from the central directory and
+data through the same readers, so a local header that disagrees with the central one cannot make
+them disagree; the local name is never used for a path. Pinned by a characterization test.
+
+**T-F243 item 6 — names over 65,535 UTF-8 bytes.** Reachable with long paths and CJK names. The
+parallel writer truncated the 16-bit length (corrupt archive); the sequential path's
+`ZipArchive.CreateEntry` threw and surfaced as "Unexpected error". Both now report that one entry
+and archive the rest; `ZipEntryWriter` itself refuses such a name before writing a byte.
+
+**T-F244 item 3.** (a) Password bytes: ZipCrypto tries ANSI then UTF-8, WinZip AES UTF-8 then
+ANSI — NanaZip's order (its `ZipHandler.cpp` uses CP_ACP for ZipCrypto and tries both for AES).
+The candidate is chosen by the password check alone (check byte / verifier) before anything is
+opened, so a failed candidate never disposes a stream the content will own, and nothing switches
+mid-stream. Pakko's own passwords are printable ASCII (`EncryptionPasswordRule`), so this only
+matters for third-party archives. (b) Derived keys, PBKDF2 output, password byte arrays, the
+buffered AES-CTR keystream and ZipCrypto's key state are zeroed once no longer needed. (c)
+`PathContainsReparsePoint` now checks the staging root itself — a trailing separator on the root
+argument used to leave it out of the walk.
