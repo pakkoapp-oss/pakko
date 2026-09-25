@@ -1,9 +1,11 @@
 using System.IO.Compression;
+using System.Security.Cryptography;
+using System.Text;
 using Archiver.Core.IO;
 
 namespace Archiver.Core.Services.Zip.Decryption;
 
-/// <summary>Outcome of either <see cref="EncryptedZipEntryReader.TryOpen(string, string, string)"/>
+/// <summary>Outcome of either <see cref="EncryptedZipEntryReader.TryOpen(string, string, string, System.Text.Encoding?)"/>
 /// overload.</summary>
 internal enum EncryptedZipReadResult
 {
@@ -16,7 +18,7 @@ internal enum EncryptedZipReadResult
 
     /// <summary>Password-level checks passed, but the content failed a subsequent integrity
     /// check — data corruption/tampering independent of the password itself. Returned directly
-    /// from <see cref="EncryptedZipEntryReader.TryOpen(Stream, LocatedZipEntry, string)"/> for a
+    /// from <see cref="EncryptedZipEntryReader.TryOpen(Stream, LocatedZipEntry, string, System.Text.Encoding?)"/> for a
     /// WinZip AE HMAC failure (checked eagerly, before any plaintext exists); surfaces lazily
     /// instead, thrown as <see cref="InvalidDataException"/> from the returned <see cref="Stream"/>
     /// only once the caller reads all the way to its end, for a ZipCrypto/AE-1 CRC-32 mismatch
@@ -60,7 +62,7 @@ internal static class EncryptedZipEntryReader
     /// that method's own doc comment for why name-based lookup is avoided there. The returned
     /// stream owns the file it opened.</summary>
     public static (EncryptedZipReadResult Result, Stream? Content) TryOpen(
-        string zipPath, string entryFullName, string password)
+        string zipPath, string entryFullName, string password, Encoding? ansi = null)
     {
         var fileStream = File.OpenRead(zipPath);
         try
@@ -71,7 +73,7 @@ internal static class EncryptedZipEntryReader
                     $"'{entryFullName}' is not encrypted — the caller must check the general-purpose " +
                     "encrypted bit before invoking EncryptedZipEntryReader.");
 
-            var opened = Open(fileStream, located, password, ownsStream: true);
+            var opened = Open(fileStream, located, password, ansi, ownsStream: true);
             if (opened.Content is null)
                 fileStream.Dispose();
             return opened;
@@ -92,8 +94,30 @@ internal static class EncryptedZipEntryReader
     /// (FileShare.Read), so no other process can modify the archive between the two passes.
     /// </summary>
     public static (EncryptedZipReadResult Result, Stream? Content) TryOpen(
-        Stream zipStream, LocatedZipEntry located, string password) =>
-        Open(zipStream, located, password, ownsStream: false);
+        Stream zipStream, LocatedZipEntry located, string password, Encoding? ansi = null) =>
+        Open(zipStream, located, password, ansi, ownsStream: false);
+
+    // T-F244 item 3: the bytes a non-ASCII password was encrypted with depend on the tool — Windows
+    // tools use the ANSI code page, others UTF-8. Same order as NanaZip: ZipCrypto ANSI first (7-Zip
+    // >= 17 decodes it with CP_ACP), WinZip AES UTF-8 first (the spec's encoding). The next
+    // candidate is tried only when the password check itself fails — never mid-stream.
+    private static List<byte[]> PasswordCandidates(string password, bool aes, Encoding? ansi)
+    {
+        byte[] utf8 = Encoding.UTF8.GetBytes(password);
+        byte[] ansiBytes = (ansi ?? ZipNameCodePages.System.Ansi).GetBytes(password);
+        if (ansiBytes.AsSpan().SequenceEqual(utf8))
+        {
+            CryptographicOperations.ZeroMemory(ansiBytes);
+            return [utf8];
+        }
+        return aes ? [utf8, ansiBytes] : [ansiBytes, utf8];
+    }
+
+    private static void Zero(List<byte[]> candidates)
+    {
+        foreach (byte[] candidate in candidates)
+            CryptographicOperations.ZeroMemory(candidate);
+    }
 
     /// <summary>
     /// T-F193: cheap password check only — WinZip AE's 2-byte verification value or ZipCrypto's
@@ -101,35 +125,75 @@ internal static class EncryptedZipEntryReader
     /// or <see cref="EncryptedZipReadResult.WrongPassword"/>; a wrong-but-accepted ZipCrypto
     /// password (~1 in 256) is caught later by that entry's CRC-32, and tampered AES data by its HMAC.
     /// </summary>
-    public static EncryptedZipReadResult VerifyPassword(Stream zipStream, LocatedZipEntry located, string password)
+    public static EncryptedZipReadResult VerifyPassword(
+        Stream zipStream, LocatedZipEntry located, string password, Encoding? ansi = null)
     {
         EnsureWithinStream(zipStream, located);
-        using var region = new EntryRegionStream(zipStream, located.CompressedDataOffset, located.CompressedSize, ownsSource: false);
-
-        if (located.CompressionMethod == 99)
+        bool aes = located.CompressionMethod == 99;
+        var candidates = PasswordCandidates(password, aes, ansi);
+        try
         {
-            byte[] salt = ReadExactly(region, WinZipAesReader.SaltLength(located.AesStrengthBits));
-            byte[] storedVerify = ReadExactly(region, WinZipAesReader.PasswordVerificationLength);
-            var (_, _, derivedVerify) = WinZipAesReader.DeriveKeys(password, salt, located.AesStrengthBits);
-            return derivedVerify.AsSpan().SequenceEqual(storedVerify)
-                ? EncryptedZipReadResult.Success
-                : EncryptedZipReadResult.WrongPassword;
-        }
-
-        byte expectedCheckByte = located.ZipCryptoCheckByte;
-        if (!ZipCryptoStream.TryCreate(region, password, expectedCheckByte, out Stream? plaintext))
+            foreach (byte[] candidate in candidates)
+            {
+                using var region = new EntryRegionStream(zipStream, located.CompressedDataOffset, located.CompressedSize, ownsSource: false);
+                bool matches = aes ? AesVerifierMatches(region, located, candidate) : ZipCryptoCheckByteMatches(region, located, candidate);
+                if (matches)
+                    return EncryptedZipReadResult.Success;
+            }
             return EncryptedZipReadResult.WrongPassword;
+        }
+        finally
+        {
+            Zero(candidates);
+        }
+    }
+
+    private static bool AesVerifierMatches(Stream region, LocatedZipEntry located, byte[] passwordBytes)
+    {
+        byte[] salt = ReadExactly(region, WinZipAesReader.SaltLength(located.AesStrengthBits));
+        byte[] storedVerify = ReadExactly(region, WinZipAesReader.PasswordVerificationLength);
+        var (encryptionKey, authenticationKey, derivedVerify) = WinZipAesReader.DeriveKeys(passwordBytes, salt, located.AesStrengthBits);
+        CryptographicOperations.ZeroMemory(encryptionKey);
+        CryptographicOperations.ZeroMemory(authenticationKey);
+        return derivedVerify.AsSpan().SequenceEqual(storedVerify);
+    }
+
+    private static bool ZipCryptoCheckByteMatches(Stream region, LocatedZipEntry located, byte[] passwordBytes)
+    {
+        if (!ZipCryptoStream.TryCreate(region, passwordBytes, located.ZipCryptoCheckByte, out Stream? plaintext))
+            return false;
         plaintext!.Dispose();
-        return EncryptedZipReadResult.Success;
+        return true;
     }
 
     private static (EncryptedZipReadResult Result, Stream? Content) Open(
-        Stream zipStream, LocatedZipEntry located, string password, bool ownsStream)
+        Stream zipStream, LocatedZipEntry located, string password, Encoding? ansi, bool ownsStream)
     {
         EnsureWithinStream(zipStream, located);
-        return located.CompressionMethod == 99
-            ? OpenWinZipAes(zipStream, located, password, ownsStream)
-            : OpenZipCrypto(zipStream, located, password, ownsStream);
+        bool aes = located.CompressionMethod == 99;
+        var candidates = PasswordCandidates(password, aes, ansi);
+        try
+        {
+            // Pick the candidate by the cheap password check on a non-owning view, then open once —
+            // a failed attempt must not dispose a stream the returned content will own.
+            byte[] chosen = candidates[0];
+            foreach (byte[] candidate in candidates)
+            {
+                using var region = new EntryRegionStream(zipStream, located.CompressedDataOffset, located.CompressedSize, ownsSource: false);
+                if (aes ? AesVerifierMatches(region, located, candidate) : ZipCryptoCheckByteMatches(region, located, candidate))
+                {
+                    chosen = candidate;
+                    break;
+                }
+            }
+            return aes
+                ? OpenWinZipAes(zipStream, located, chosen, ownsStream)
+                : OpenZipCrypto(zipStream, located, chosen, ownsStream);
+        }
+        finally
+        {
+            Zero(candidates);
+        }
     }
 
     // T-F194: CompressedSize comes from the local header — attacker-controlled independently of
@@ -144,7 +208,7 @@ internal static class EncryptedZipEntryReader
     }
 
     private static (EncryptedZipReadResult, Stream?) OpenWinZipAes(
-        Stream zipStream, LocatedZipEntry located, string password, bool ownsStream)
+        Stream zipStream, LocatedZipEntry located, byte[] passwordBytes, bool ownsStream)
     {
         int saltLength = WinZipAesReader.SaltLength(located.AesStrengthBits);
         long headerLength = saltLength + WinZipAesReader.PasswordVerificationLength;
@@ -166,38 +230,47 @@ internal static class EncryptedZipEntryReader
         }
 
         var (encryptionKey, authenticationKey, derivedVerify) =
-            WinZipAesReader.DeriveKeys(password, salt, located.AesStrengthBits);
-        if (!derivedVerify.AsSpan().SequenceEqual(storedVerify))
-            return (EncryptedZipReadResult.WrongPassword, null);
-
-        using (var pass1 = new EntryRegionStream(zipStream, offset + headerLength, ciphertextLength, ownsSource: false))
+            WinZipAesReader.DeriveKeys(passwordBytes, salt, located.AesStrengthBits);
+        // T-F244 item 3: key material is wiped as soon as it is no longer needed (AES copies the
+        // encryption key into its own state, which it clears on dispose).
+        try
         {
-            if (!WinZipAesReader.Authenticate(pass1, authenticationKey, storedTag))
-                return (EncryptedZipReadResult.Corrupted, null);
+            if (!derivedVerify.AsSpan().SequenceEqual(storedVerify))
+                return (EncryptedZipReadResult.WrongPassword, null);
+
+            using (var pass1 = new EntryRegionStream(zipStream, offset + headerLength, ciphertextLength, ownsSource: false))
+            {
+                if (!WinZipAesReader.Authenticate(pass1, authenticationKey, storedTag))
+                    return (EncryptedZipReadResult.Corrupted, null);
+            }
+
+            if (!IsSupportedMethod(located.RealCompressionMethod))
+                return (EncryptedZipReadResult.UnsupportedCompressionMethod, null);
+
+            // AE-2 zeroes the header CRC-32 by design — HMAC (already checked above, before any
+            // plaintext exists) is the sole authority there, so no trailer check is wrapped on.
+            // AE-1 keeps the real CRC-32 — same trailer check ZipCrypto gets below.
+            var pass2 = new EntryRegionStream(zipStream, offset + headerLength, ciphertextLength, ownsStream);
+            uint? expectedCrc = located.AeVersion == 1 ? located.StoredCrc32 : null;
+            return (EncryptedZipReadResult.Success,
+                WrapDecompression(new WinZipAesCtrStream(pass2, encryptionKey), located.RealCompressionMethod, expectedCrc,
+                    located.UncompressedSize));
         }
-
-        if (!IsSupportedMethod(located.RealCompressionMethod))
-            return (EncryptedZipReadResult.UnsupportedCompressionMethod, null);
-
-        // AE-2 zeroes the header CRC-32 by design — HMAC (already checked above, before any
-        // plaintext exists) is the sole authority there, so no trailer check is wrapped on.
-        // AE-1 keeps the real CRC-32 — same trailer check ZipCrypto gets below.
-        var pass2 = new EntryRegionStream(zipStream, offset + headerLength, ciphertextLength, ownsStream);
-        uint? expectedCrc = located.AeVersion == 1 ? located.StoredCrc32 : null;
-        return (EncryptedZipReadResult.Success,
-            WrapDecompression(new WinZipAesCtrStream(pass2, encryptionKey), located.RealCompressionMethod, expectedCrc,
-                located.UncompressedSize));
+        finally
+        {
+            CryptographicOperations.ZeroMemory(encryptionKey);
+            CryptographicOperations.ZeroMemory(authenticationKey);
+        }
     }
-
     private static (EncryptedZipReadResult, Stream?) OpenZipCrypto(
-        Stream zipStream, LocatedZipEntry located, string password, bool ownsStream)
+        Stream zipStream, LocatedZipEntry located, byte[] passwordBytes, bool ownsStream)
     {
         if (located.CompressedSize < ZipCryptoStream.EncryptionHeaderLength)
             throw new InvalidDataException("ZipCrypto entry data is shorter than the 12-byte encryption header.");
 
         var region = new EntryRegionStream(zipStream, located.CompressedDataOffset, located.CompressedSize, ownsStream);
         byte expectedCheckByte = located.ZipCryptoCheckByte;
-        if (!ZipCryptoStream.TryCreate(region, password, expectedCheckByte, out Stream? plaintext))
+        if (!ZipCryptoStream.TryCreate(region, passwordBytes, expectedCheckByte, out Stream? plaintext))
         {
             region.Dispose();
             return (EncryptedZipReadResult.WrongPassword, null);

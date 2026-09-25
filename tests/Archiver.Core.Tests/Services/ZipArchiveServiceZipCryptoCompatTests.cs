@@ -1,6 +1,7 @@
 using System.Text;
 using Archiver.Core.Models;
 using Archiver.Core.Services;
+using Archiver.Core.Services.Zip;
 using Archiver.Core.Services.Zip.Decryption;
 using Archiver.Core.Tests.Services.Antivirus;
 using Archiver.Core.Tests.Helpers;
@@ -139,6 +140,35 @@ public sealed class ZipArchiveServiceZipCryptoCompatTests : IDisposable
         result.Success.Should().BeFalse();
         result.Errors.Should().ContainSingle().Which.Message.Should().Contain("big.bin");
         File.Exists(Path.Combine(dest, "big.bin")).Should().BeFalse();
+    }
+
+    // T-F244 item 3: a non-ASCII ZipCrypto password's bytes depend on the tool that made the
+    // archive — Windows tools use the ANSI code page (7-Zip/NanaZip decode with CP_ACP), Linux ones
+    // UTF-8. Pakko tried UTF-8 only, so a Cyrillic password from a Windows tool never matched.
+    [Theory]
+    [InlineData(1251)]
+    [InlineData(65001)]
+    public async Task ExtractAsync_CyrillicZipCryptoPassword_AnsiOrUtf8Bytes_Extracts(int passwordCodePage)
+    {
+        const string cyrillic = "пароль";
+        byte[] passwordBytes = passwordCodePage == 65001
+            ? Encoding.UTF8.GetBytes(cyrillic)
+            : CodePagesEncodingProvider.Instance.GetEncoding(passwordCodePage)!.GetBytes(cyrillic);
+        string zip = ZipCryptoFixture.Write(Path.Combine(_temp.Path, $"cyr{passwordCodePage}.zip"), "a.txt",
+            Encoding.ASCII.GetBytes("secret"), passwordBytes, dataDescriptor: false);
+        var sut = new ZipArchiveService { NameCodePages = ZipNameCodePages.FromCodePages(866, 1251) };
+        string dest = Path.Combine(_temp.Path, $"cyr-out{passwordCodePage}");
+
+        var result = await sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [zip],
+            DestinationFolder = dest,
+            Mode = ExtractMode.SingleFolder,
+            ResolvePasswordAsync = Fixed(cyrillic),
+        });
+
+        result.Success.Should().BeTrue(string.Join("; ", result.Errors.Select(e => e.Message)));
+        File.ReadAllText(Path.Combine(dest, "a.txt")).Should().Be("secret");
     }
 
     [Fact]

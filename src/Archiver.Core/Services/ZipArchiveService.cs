@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO.Compression;
+using System.Text;
 using Archiver.Core.IO;
 using Archiver.Core.Interfaces;
 using Archiver.Core.Models;
@@ -803,7 +804,7 @@ public sealed class ZipArchiveService : IArchiveService
     // was rejected (recorded into errors/skippedFiles already) and extraction should not run at
     // all; otherwise (Rejected: false, Password) — Password is non-null only when the archive
     // contains at least one encrypted entry AND passwordResolver successfully resolved it (T-F189).
-    private static async Task<(bool Rejected, string? Password)> TryRejectUnsupportedOrEncryptedZipAsync(
+    private async Task<(bool Rejected, string? Password)> TryRejectUnsupportedOrEncryptedZipAsync(
         string archivePath, List<ArchiveError> errors, List<SkippedFile> skippedFiles,
         PasswordResolver passwordResolver)
     {
@@ -823,7 +824,7 @@ public sealed class ZipArchiveService : IArchiveService
 
         if (IsEncryptedZip(archivePath))
         {
-            string? password = await ResolveArchivePasswordAsync(archivePath, passwordResolver).ConfigureAwait(false);
+            string? password = await ResolveArchivePasswordAsync(archivePath, passwordResolver, NameCodePages).ConfigureAwait(false);
             if (password is not null)
                 return (false, password);
 
@@ -846,7 +847,8 @@ public sealed class ZipArchiveService : IArchiveService
     // surfaces as a normal per-entry ArchiveError in the extraction loop instead.
     // T-F194: internal (not private) — AntivirusScanService resolves an archive's password through
     // this exact same verify-against-first-encrypted-entry path rather than a second copy.
-    internal static async Task<string?> ResolveArchivePasswordAsync(string archivePath, PasswordResolver passwordResolver)
+    internal static async Task<string?> ResolveArchivePasswordAsync(
+        string archivePath, PasswordResolver passwordResolver, ZipNameCodePages codePages)
     {
         // T-F189 (advisor-caught): wraps the WHOLE method body, not just LocateAll — the verify
         // callback below also calls EncryptedZipEntryReader.TryOpen, which can throw
@@ -868,8 +870,8 @@ public sealed class ZipArchiveService : IArchiveService
                 PasswordPurpose.Decrypt,
                 // T-F193: the cheap check (AES verification value / ZipCrypto check byte) — a full
                 // AES open would stream the whole entry through HMAC on every attempt.
-                candidate => EncryptedZipEntryReader.VerifyPassword(fs, probe, candidate) != EncryptedZipReadResult.WrongPassword
-                    && ZipCryptoDecryptsIntact(fs, probe, candidate)).ConfigureAwait(false);
+                candidate => EncryptedZipEntryReader.VerifyPassword(fs, probe, candidate, codePages.Ansi) != EncryptedZipReadResult.WrongPassword
+                    && ZipCryptoDecryptsIntact(fs, probe, candidate, codePages.Ansi)).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is IOException or InvalidDataException or EndOfStreamException)
         {
@@ -887,12 +889,12 @@ public sealed class ZipArchiveService : IArchiveService
     // the limit keeps the one-byte check, and its later CRC failure stays a per-entry error.
     internal const long ZipCryptoFullCheckLimitBytes = 4L * 1024 * 1024;
 
-    private static bool ZipCryptoDecryptsIntact(Stream zipStream, LocatedZipEntry probe, string candidate)
+    private static bool ZipCryptoDecryptsIntact(Stream zipStream, LocatedZipEntry probe, string candidate, Encoding ansi)
     {
         if (probe.CompressionMethod == 99 || probe.CompressedSize > ZipCryptoFullCheckLimitBytes)
             return true;
 
-        var (result, content) = EncryptedZipEntryReader.TryOpen(zipStream, probe, candidate);
+        var (result, content) = EncryptedZipEntryReader.TryOpen(zipStream, probe, candidate, ansi);
         if (result != EncryptedZipReadResult.Success)
             return result == EncryptedZipReadResult.UnsupportedCompressionMethod;
         try
@@ -1006,7 +1008,7 @@ public sealed class ZipArchiveService : IArchiveService
             string? password = null;
             if (IsEncryptedZip(archivePath))
             {
-                password = await ResolveArchivePasswordAsync(archivePath, passwordResolver).ConfigureAwait(false);
+                password = await ResolveArchivePasswordAsync(archivePath, passwordResolver, NameCodePages).ConfigureAwait(false);
                 if (password is null)
                 {
                     errors.Add(new ArchiveError
@@ -1170,7 +1172,7 @@ public sealed class ZipArchiveService : IArchiveService
 
             if (encryptedEntryMap is { } map && map.TryGetValue(entry, out var located2) && located2.GeneralPurposeEncryptedBit)
             {
-                TestEncryptedEntry(archivePath, named.FullName, located2, rawArchiveStream!, password!, errors);
+                TestEncryptedEntry(archivePath, named.FullName, located2, rawArchiveStream!, password!, codePages.Ansi, errors);
                 continue;
             }
 
@@ -1201,9 +1203,9 @@ public sealed class ZipArchiveService : IArchiveService
     // whole story there; draining just runs the decompression harmlessly.
     private static void TestEncryptedEntry(
         string archivePath, string entryName, LocatedZipEntry located, Stream rawArchiveStream,
-        string password, List<ArchiveError> errors)
+        string password, Encoding ansi, List<ArchiveError> errors)
     {
-        var (result, stream) = EncryptedZipEntryReader.TryOpen(rawArchiveStream, located, password);
+        var (result, stream) = EncryptedZipEntryReader.TryOpen(rawArchiveStream, located, password, ansi);
         switch (result)
         {
             case EncryptedZipReadResult.WrongPassword:
@@ -1697,7 +1699,7 @@ public sealed class ZipArchiveService : IArchiveService
             && map.TryGetValue(named.Entry, out var located)
             && located.GeneralPurposeEncryptedBit)
         {
-            var (result, stream) = EncryptedZipEntryReader.TryOpen(plan.RawArchiveStream!, located, context.Password!);
+            var (result, stream) = EncryptedZipEntryReader.TryOpen(plan.RawArchiveStream!, located, context.Password!, context.NameCodePages.Ansi);
             return result switch
             {
                 EncryptedZipReadResult.Success => (true, stream, null),

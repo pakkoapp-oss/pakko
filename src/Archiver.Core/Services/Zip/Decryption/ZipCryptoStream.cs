@@ -1,5 +1,3 @@
-using System.Text;
-
 namespace Archiver.Core.Services.Zip.Decryption;
 
 /// <summary>
@@ -32,7 +30,7 @@ internal sealed class ZipCryptoStream : Stream
     /// last byte. On success returns a stream decrypting the remaining bytes as they are read; on a
     /// wrong password returns false (the caller still owns <paramref name="cipherWithHeader"/>).
     /// </summary>
-    public static bool TryCreate(Stream cipherWithHeader, string password, byte expectedCheckByte, out Stream? plaintext)
+    public static bool TryCreate(Stream cipherWithHeader, byte[] password, byte expectedCheckByte, out Stream? plaintext)
     {
         Span<byte> header = stackalloc byte[EncryptionHeaderLength];
         cipherWithHeader.ReadExactly(header);
@@ -59,12 +57,12 @@ internal sealed class ZipCryptoStream : Stream
         return read;
     }
 
-    private static void InitializeKeys(string password, out uint key0, out uint key1, out uint key2)
+    private static void InitializeKeys(byte[] password, out uint key0, out uint key1, out uint key2)
     {
         key0 = 0x12345678;
         key1 = 0x23456789;
         key2 = 0x34567890;
-        foreach (byte b in Encoding.UTF8.GetBytes(password))
+        foreach (byte b in password)
             UpdateKeys(b, ref key0, ref key1, ref key2);
     }
 
@@ -117,6 +115,8 @@ internal sealed class ZipCryptoStream : Stream
     {
         if (disposing)
             _ciphertext.Dispose();
+        // T-F244 item 3: the three keys ARE the password-derived state.
+        _key0 = _key1 = _key2 = 0;
         base.Dispose(disposing);
     }
 }

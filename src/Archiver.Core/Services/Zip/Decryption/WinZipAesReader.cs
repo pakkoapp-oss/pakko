@@ -31,6 +31,22 @@ internal static class WinZipAesReader
     public static (byte[] EncryptionKey, byte[] AuthenticationKey, byte[] PasswordVerify) DeriveKeys(
         string password, byte[] salt, int strengthBits)
     {
+        byte[] passwordBytes = Encoding.UTF8.GetBytes(password);
+        try
+        {
+            return DeriveKeys(passwordBytes, salt, strengthBits);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(passwordBytes);
+        }
+    }
+
+    /// <summary>Same as the string overload, from the password's exact bytes (T-F244: a Windows
+    /// tool may have used the ANSI code page rather than UTF-8).</summary>
+    public static (byte[] EncryptionKey, byte[] AuthenticationKey, byte[] PasswordVerify) DeriveKeys(
+        byte[] password, byte[] salt, int strengthBits)
+    {
         int keyLength = strengthBits / 8;
         // CA5379/CA5350 + S5344/S4790 (both here and in Authenticate): the WinZip AE specification
         // hardcodes PBKDF2-HMAC-SHA1 (1000 iterations) and HMAC-SHA1 — real-world ZIP-password
@@ -39,10 +55,17 @@ internal static class WinZipAesReader
         // docs/CONVENTIONS.md's Static-Analysis Won't-Fix Conventions.
 #pragma warning disable CA5379
         using var pbkdf2 = new Rfc2898DeriveBytes(
-            Encoding.UTF8.GetBytes(password), salt, Pbkdf2Iterations, HashAlgorithmName.SHA1); // NOSONAR: S5344 — 1000 iterations are fixed by the WinZip AE spec (see CONVENTIONS.md)
+            password, salt, Pbkdf2Iterations, HashAlgorithmName.SHA1); // NOSONAR: S5344 — 1000 iterations are fixed by the WinZip AE spec (see CONVENTIONS.md)
 #pragma warning restore CA5379
         byte[] derived = pbkdf2.GetBytes(keyLength * 2 + PasswordVerificationLength);
-        return (derived[..keyLength], derived[keyLength..(keyLength * 2)], derived[(keyLength * 2)..]);
+        try
+        {
+            return (derived[..keyLength], derived[keyLength..(keyLength * 2)], derived[(keyLength * 2)..]);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(derived);
+        }
     }
 
     /// <summary>

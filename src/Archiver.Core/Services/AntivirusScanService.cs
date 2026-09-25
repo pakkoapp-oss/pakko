@@ -1,6 +1,7 @@
 using System.Buffers;
 using System.IO.Compression;
 using System.Runtime.Versioning;
+using System.Text;
 using Archiver.Core.Interfaces;
 using Archiver.Core.Models;
 using Archiver.Core.Services.Antivirus;
@@ -252,7 +253,7 @@ public sealed class AntivirusScanService : IAntivirusScanService
             using Stream? rawArchiveStream = TryMapEncryptedEntries(archivePath, archive, out var encryptedEntryMap);
             string? password = encryptedEntryMap is null
                 ? null
-                : await ZipArchiveService.ResolveArchivePasswordAsync(archivePath, passwordResolver).ConfigureAwait(false);
+                : await ZipArchiveService.ResolveArchivePasswordAsync(archivePath, passwordResolver, codePages).ConfigureAwait(false);
 
             var allFileEntries = reader.Entries.Where(e => !e.FullName.EndsWith('/')).ToList();
 
@@ -288,7 +289,7 @@ public sealed class AntivirusScanService : IAntivirusScanService
                                             && map.TryGetValue(entry, out var located)
                                             && located.GeneralPurposeEncryptedBit
                         ? await ScanEncryptedEntryAsync(
-                            archivePath, named.FullName, entry, located, rawArchiveStream!, password, scanner, cancellationToken)
+                            archivePath, named.FullName, entry, located, rawArchiveStream!, password, codePages.Ansi, scanner, cancellationToken)
                             .ConfigureAwait(false)
                         : await ScanOneEntryAsync(
                             archivePath, named.FullName, entry.Length, entry.Open, scanner, cancellationToken)
@@ -418,7 +419,7 @@ public sealed class AntivirusScanService : IAntivirusScanService
 
     private static async Task<ThreatFinding> ScanEncryptedEntryAsync(
         string archivePath, string entryName, ZipArchiveEntry entry, LocatedZipEntry located, Stream rawArchiveStream,
-        string? password, IAmsiScanner scanner, CancellationToken cancellationToken)
+        string? password, Encoding ansi, IAmsiScanner scanner, CancellationToken cancellationToken)
     {
         if (password is null)
             return InconclusiveFinding(archivePath, entryName, "Entry is password-protected and was not scanned.");
@@ -429,7 +430,7 @@ public sealed class AntivirusScanService : IAntivirusScanService
         if (located.CompressedSize > MaxScannableEntryBytes || entry.Length > MaxScannableEntryBytes)
             return OversizedFinding(archivePath, entryName);
 
-        var (result, stream) = EncryptedZipEntryReader.TryOpen(rawArchiveStream, located, password);
+        var (result, stream) = EncryptedZipEntryReader.TryOpen(rawArchiveStream, located, password, ansi);
         return result switch
         {
             EncryptedZipReadResult.Success => await ScanOneEntryAsync(

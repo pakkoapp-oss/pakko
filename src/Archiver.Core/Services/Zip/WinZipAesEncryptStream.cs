@@ -49,6 +49,9 @@ internal sealed class WinZipAesEncryptStream : Stream
 #pragma warning disable CA5350
         _hmac = IncrementalHash.CreateHMAC(HashAlgorithmName.SHA1, authenticationKey); // NOSONAR: S4790 — fixed by the WinZip AE spec (see CONVENTIONS.md)
 #pragma warning restore CA5350
+        // T-F244 item 3: both consumers keep their own copy of the key.
+        CryptographicOperations.ZeroMemory(encryptionKey);
+        CryptographicOperations.ZeroMemory(authenticationKey);
 
         _output.Write(salt);
         _output.Write(passwordVerify);

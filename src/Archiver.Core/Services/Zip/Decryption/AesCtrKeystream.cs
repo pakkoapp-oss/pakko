@@ -69,5 +69,8 @@ internal sealed class AesCtrKeystream : IDisposable
     {
         _encryptor.Dispose();
         _aes.Dispose();
+        // T-F244 item 3: buffered keystream is key-derived material too.
+        CryptographicOperations.ZeroMemory(_keystream);
+        CryptographicOperations.ZeroMemory(_counterBatch);
     }
 }
