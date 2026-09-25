@@ -177,8 +177,9 @@ internal static class SandboxedProcessLauncher
 
         using var stdOutStream = new FileStream(stdOutRead, FileAccess.Read);
         using var stdErrStream = new FileStream(stdErrRead, FileAccess.Read);
-        using var stdOutReader = new StreamReader(stdOutStream);
-        using var stdErrReader = new StreamReader(stdErrStream);
+        Encoding outputEncoding = options.OutputEncoding ?? Encoding.UTF8;
+        using var stdOutReader = new StreamReader(stdOutStream, outputEncoding);
+        using var stdErrReader = new StreamReader(stdErrStream, outputEncoding);
 
         Task<string> stdOutTask = stdOutReader.ReadToEndAsync(cancellationToken);
         Task<string> stdErrTask = options.OnStdErrLine is { } onLine

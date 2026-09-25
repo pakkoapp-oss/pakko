@@ -16,6 +16,21 @@ internal static class TarBuilder
         public byte[] Content { get; init; } = [];
         public char TypeFlag { get; init; } = '0';
         public string LinkName { get; init; } = string.Empty;
+
+        // T-F204: the header's name field as raw bytes (a UTF-8 or OEM-code-page name, the way
+        // GNU tar, 7-Zip or an old Windows tool writes it). Overrides Name when set.
+        public byte[]? NameBytes { get; init; }
+    }
+
+    // A pax extended header ('x') carrying "path=<UTF-8>" for the entry that follows it.
+    public static Entry PaxPath(string path)
+    {
+        byte[] body = Encoding.UTF8.GetBytes(" path=" + path + "\n");
+        int length = body.Length;
+        while (length.ToString(System.Globalization.CultureInfo.InvariantCulture).Length + body.Length != length)
+            length = length.ToString(System.Globalization.CultureInfo.InvariantCulture).Length + body.Length;
+        byte[] record = [.. Encoding.ASCII.GetBytes(length.ToString(System.Globalization.CultureInfo.InvariantCulture)), .. body];
+        return new Entry { Name = "PaxHeader", TypeFlag = 'x', Content = record };
     }
 
     public static void WriteTar(string path, IEnumerable<Entry> entries)
@@ -23,7 +38,7 @@ internal static class TarBuilder
         using var fs = new FileStream(path, FileMode.Create, FileAccess.Write);
         foreach (var entry in entries)
         {
-            byte[] header = BuildHeader(entry.Name, entry.Content.Length, entry.TypeFlag, entry.LinkName);
+            byte[] header = BuildHeader(entry.NameBytes ?? Encoding.ASCII.GetBytes(entry.Name), entry.Content.Length, entry.TypeFlag, entry.LinkName);
             fs.Write(header, 0, header.Length);
             if (entry.Content.Length > 0)
             {
@@ -46,11 +61,11 @@ internal static class TarBuilder
         stream.Write(pad, 0, pad.Length);
     }
 
-    private static byte[] BuildHeader(string name, int size, char typeFlag, string linkName)
+    private static byte[] BuildHeader(byte[] name, int size, char typeFlag, string linkName)
     {
         var header = new byte[512];
 
-        SetField(header, 0, 100, name);
+        Array.Copy(name, 0, header, 0, Math.Min(100, name.Length));
         SetField(header, 100, 8, "0000644\0");
         SetField(header, 108, 8, "0000000\0");
         SetField(header, 116, 8, "0000000\0");

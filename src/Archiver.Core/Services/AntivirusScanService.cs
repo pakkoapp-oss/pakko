@@ -505,7 +505,7 @@ public sealed class AntivirusScanService : IAntivirusScanService
                 {
                     ArchivePath = archivePath,
                     Verdict = ThreatVerdict.Inconclusive,
-                    Reason = $"Could not extract archive for scanning: {stdErr.Trim()}",
+                    Reason = $"Could not extract archive for scanning: {TarSandboxedService.DescribeFailure(stdErr)}",
                 });
                 return;
             }

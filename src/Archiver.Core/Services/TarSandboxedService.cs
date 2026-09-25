@@ -241,10 +241,10 @@ public sealed class TarSandboxedService : ITarService
     // reproduced exploit. Post-hoc validation of quarantine contents therefore cannot be the
     // primary defense; rejecting the whole archive before -xf runs is.
     //
-    // T-F52: the scope (profile + ACLs + staging + Job Object + signature check) is created
-    // FIRST, before the compression-bomb decision — unlike the pre-sandbox design, the pre-scan
-    // itself must now run inside the sandbox too, which needs a staged copy of the archive to
-    // already exist in quarantine\in\. This means a declined/blocked bomb no longer leaves
+    // T-F52: the scope (profile + ACLs + the open archive + Job Object + signature check) is
+    // created FIRST, before the compression-bomb decision — unlike the pre-sandbox design, the
+    // pre-scan itself must now run inside the sandbox too, reading the archive the scope holds
+    // open (T-F233). This means a declined/blocked bomb no longer leaves
     // "nothing to clean up" the way it used to — the `using` on scope below disposes the
     // quarantine directory on every exit path, early or not.
     // Already split via TarExtractionContext/TryMoveSingleEntryAsync (T-F147); the residual
@@ -325,9 +325,8 @@ public sealed class TarSandboxedService : ITarService
         var (actualDest, stripRootPrefix) = ExtractionDestinationPlanner.Resolve(
             alreadyIsolated, rootShape, destDir, unisolatedDestDir, rootDuplicatesArchiveName);
 
-        // T-F94: whole-archive compression-ratio decision. compressedFileSize reads the
-        // ORIGINAL archivePath (not the staged copy — same size either way, hardlink or copy,
-        // but this is the path the caller/UI actually knows about for any error messages).
+        // T-F94: whole-archive compression-ratio decision. compressedFileSize reads archivePath —
+        // the scope holds it open and unwritable, so this is the size tar.exe reads.
         long compressedFileSize = new FileInfo(archivePath).Length;
         var bombOutcome = await ArchiveEntrySecurity.EvaluateCompressionBombAsync(
             archivePath, declaredUncompressedSize, compressedFileSize,
@@ -399,7 +398,7 @@ public sealed class TarSandboxedService : ITarService
         var (exitCode, _, stdErr) = await extractionTask.ConfigureAwait(false);
 
         if (exitCode != 0)
-            throw new IOException($"tar.exe extraction failed: {stdErr.Trim()}");
+            throw new IOException($"tar.exe extraction failed: {DescribeFailure(stdErr)}");
 
         Directory.CreateDirectory(actualDest);
 
@@ -577,10 +576,8 @@ public sealed class TarSandboxedService : ITarService
             return (false, relativePath);
         }
 
-        // T-F45: propagate Zone.Identifier ADS from the ORIGINAL archive (never the staged
-        // quarantine copy) to the extracted file — the staged copy is a Pakko-internal
-        // implementation detail and may not even carry a Zone.Identifier depending on
-        // hardlink-vs-copy staging; MOTW must reflect the real source the user chose.
+        // T-F45: propagate Zone.Identifier ADS from the archive the user chose to the extracted
+        // file — MOTW must reflect the real source.
         ArchiveEntrySecurity.TryPropagateMotw(archivePath, finalFilePath, context.MotwMode);
 
         return (true, relativePath);
@@ -713,7 +710,7 @@ public sealed class TarSandboxedService : ITarService
     {
         var (nameExitCode, nameStdOut, nameStdErr) = await scope.ListAsync(verbose: false, cancellationToken).ConfigureAwait(false);
         if (nameExitCode != 0)
-            throw new IOException($"Cannot read archive: {nameStdErr.Trim()}");
+            throw new IOException($"Cannot read archive: {DescribeFailure(nameStdErr)}");
 
         string[] names = SplitLines(nameStdOut);
 
@@ -724,7 +721,7 @@ public sealed class TarSandboxedService : ITarService
 
         var (typeExitCode, typeStdOut, typeStdErr) = await scope.ListAsync(verbose: true, cancellationToken).ConfigureAwait(false);
         if (typeExitCode != 0)
-            throw new IOException($"Cannot read archive: {typeStdErr.Trim()}");
+            throw new IOException($"Cannot read archive: {DescribeFailure(typeStdErr)}");
 
         string[] typeLines = SplitLines(typeStdOut);
         if (typeLines.Length != names.Length)
@@ -874,7 +871,7 @@ public sealed class TarSandboxedService : ITarService
                 Success = false,
                 ErrorMessage = IsLikelyEncryptionFailure(stdErr)
                     ? "This archive is password-protected and cannot be browsed."
-                    : stdErr.Trim()
+                    : DescribeFailure(stdErr)
             });
         }
 
@@ -1128,7 +1125,7 @@ public sealed class TarSandboxedService : ITarService
                 if (exitCode != 0 || !File.Exists(tempPath))
                 {
                     TryDeleteBestEffort(tempPath);
-                    errors.Add(new ArchiveError { SourcePath = destPath, Message = $"tar.exe failed to create archive: {stdErr.Trim()}" });
+                    errors.Add(new ArchiveError { SourcePath = destPath, Message = $"tar.exe failed to create archive: {DescribeCreationFailure(stdErr)}" });
                     return;
                 }
 
@@ -1383,7 +1380,26 @@ public sealed class TarSandboxedService : ITarService
         Action<string>? onStdErrLine,
         CancellationToken cancellationToken)
         => SandboxedProcessLauncher.RunAsync(
-            TarExecutablePath, arguments, new ProcessLaunchOptions(OnStdErrLine: onStdErrLine), cancellationToken);
+            TarExecutablePath, arguments,
+            new ProcessLaunchOptions(OnStdErrLine: onStdErrLine, OutputEncoding: TarOutputEncoding.Current), cancellationToken);
+
+    // T-F204: tar.exe's own words for a name it cannot show in the locale's code page (or an
+    // empty one) — the archive is not damaged, this system just cannot name the file.
+    private const string UnreadableNameMessage = "empty or unreadable filename";
+
+    internal static string DescribeFailure(string stdErr)
+    {
+        string text = stdErr.Trim();
+        return text.Contains(UnreadableNameMessage, StringComparison.Ordinal)
+            ? $"The archive contains file names tar.exe cannot represent on this system (code page {TarOutputEncoding.Current.CodePage}), " +
+              $"so it cannot be read with tar.exe here. Details: {text}"
+            : text;
+    }
+
+    // T-F215: "-v" writes one "a <name>" progress line per entry to stderr, before any error —
+    // the failure message keeps only the lines that say what went wrong.
+    private static string DescribeCreationFailure(string stdErr) =>
+        string.Join(Environment.NewLine, SplitLines(stdErr).Where(line => !line.StartsWith("a ", StringComparison.Ordinal)));
 
     // Column 4 (0-based) of "tar -tvf" output: mode, link-count, owner, group, size, month, day,
     // time, name. Locale-independent (plain ASCII decimal), unlike the date columns — see
@@ -1404,14 +1420,11 @@ public sealed class TarSandboxedService : ITarService
 
         // T-F49: path-traversal segment check (tar.exe itself also rejects a raw ".." entry,
         // but this is rejected here first regardless — defense-in-depth, not reliance on tar's
-        // own behavior).
-        if (entryName.Split('/').Any(segment => segment == ".."))
-            return true;
-
-        // Rooted paths (leading '/', UNC "\\server\share", or "C:/...") — tar.exe strips the
-        // drive letter and keeps these contained (confirmed empirically), but reject outright
-        // rather than trust that sanitization.
-        if (Path.IsPathRooted(entryName))
+        // own behavior). Rooted paths (leading '/', UNC "\\server\share", or "C:/...") — tar.exe
+        // strips the drive letter and keeps these contained (confirmed empirically), but reject
+        // outright rather than trust that sanitization. T-F204 follow-up: both separators — this
+        // used to split on '/' only, so "..\evil.txt" passed the pre-scan.
+        if (ArchiveEntrySecurity.HasUnsafePath(entryName))
             return true;
 
         if (ArchiveEntrySecurity.HasAlternateDataStreamMarker(entryName))

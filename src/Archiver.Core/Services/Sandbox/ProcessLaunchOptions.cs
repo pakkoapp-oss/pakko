@@ -10,10 +10,12 @@ namespace Archiver.Core.Services.Sandbox;
 /// <param name="OnProcessStarted">Called with the child's process ID once it has been created (tests).</param>
 /// <param name="StdIn">A synchronous handle the child reads as stdin (T-F233: the archive itself, so tar.exe gets no path and no ACE on the user's file).</param>
 /// <param name="WorkingDirectory">The child's current directory; relative arguments resolve against it.</param>
+/// <param name="OutputEncoding">How stdout/stderr are decoded; null reads them as UTF-8.</param>
 internal sealed record ProcessLaunchOptions(
     SafeSidHandle? AppContainerSid = null,
     SafeJobObjectHandle? Job = null,
     Action<string>? OnStdErrLine = null,
     Action<int>? OnProcessStarted = null,
     Microsoft.Win32.SafeHandles.SafeFileHandle? StdIn = null,
-    string? WorkingDirectory = null);
+    string? WorkingDirectory = null,
+    System.Text.Encoding? OutputEncoding = null);

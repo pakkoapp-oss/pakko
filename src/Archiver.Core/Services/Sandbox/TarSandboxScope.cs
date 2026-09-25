@@ -29,9 +29,16 @@ internal sealed class TarSandboxScope : IDisposable
     private const uint GenericRead = 0x80000000;
     private const uint FileShareRead = 0x00000001;
 
+    // "tar:" scopes the option to the tar reader; 7z/rar/zip ignore it (confirmed 2026-09-25).
+    private const string Utf8HeaderOption = "tar:hdrcharset=UTF-8";
+    private const string NotUtf8HeaderMessage = "Pathname can't be converted from UTF-8";
+
     private readonly SafeSidHandle _sid;
     private readonly string _quarantineRoot;
     private readonly FileStream _archive;
+
+    // Null until the first listing decides it (see ListAsync).
+    private bool? _utf8Headers;
 
     /// <summary>Null when this scope was created with needsOutputDir: false (listing only).</summary>
     public string? OutputDirectory { get; }
@@ -148,16 +155,36 @@ internal sealed class TarSandboxScope : IDisposable
     }
 
     /// <summary>Lists the archive ("-t", or "-tv" when <paramref name="verbose"/>).</summary>
-    public Task<(int ExitCode, string StdOut, string StdErr)> ListAsync(bool verbose, CancellationToken cancellationToken)
-        => RunAsync(verbose ? "-tv" : "-t", [], cancellationToken);
+    public async Task<(int ExitCode, string StdOut, string StdErr)> ListAsync(bool verbose, CancellationToken cancellationToken)
+    {
+        string mode = verbose ? "-tv" : "-t";
+        if (_utf8Headers is not null)
+            return await RunAsync(mode, [], cancellationToken).ConfigureAwait(false);
+
+        // T-F204: tar headers carry no charset; libarchive reads them as the OEM code page, so a
+        // GNU tar or 7-Zip archive with UTF-8 names was extracted under mojibake names. 7-Zip's
+        // rule: UTF-8 when every name is valid UTF-8, else the OEM page. libarchive reports
+        // invalid UTF-8 under hdrcharset=UTF-8 with this exact message (a valid UTF-8 name it
+        // merely cannot show gives only "unreadable filename" — confirmed 2026-09-25). Decided
+        // once, on the first listing, and used for every later run of this scope.
+        _utf8Headers = true;
+        var result = await RunAsync(mode, [], cancellationToken).ConfigureAwait(false);
+        if (result.ExitCode == 0 || !result.StdErr.Contains(NotUtf8HeaderMessage, StringComparison.Ordinal))
+            return result;
+
+        _utf8Headers = false;
+        return await RunAsync(mode, [], cancellationToken).ConfigureAwait(false);
+    }
 
     /// <summary>Extracts the archive, or only <paramref name="members"/>, into <see cref="OutputDirectory"/>.</summary>
-    public Task<(int ExitCode, string StdOut, string StdErr)> ExtractAsync(
+    public async Task<(int ExitCode, string StdOut, string StdErr)> ExtractAsync(
         IReadOnlyList<string>? members, CancellationToken cancellationToken)
     {
         if (OutputDirectory is null)
             throw new InvalidOperationException("This scope was created without an output folder.");
-        return RunAsync("-x", ["-C", OutputFolderName, .. members ?? []], cancellationToken);
+        if (_utf8Headers is null)
+            await ListAsync(verbose: false, cancellationToken).ConfigureAwait(false);
+        return await RunAsync("-x", ["-C", OutputFolderName, .. members ?? []], cancellationToken).ConfigureAwait(false);
     }
 
     // One tar.exe run inside this scope's AppContainer, under a fresh Job Object (ActiveProcessLimit
@@ -165,6 +192,7 @@ internal sealed class TarSandboxScope : IDisposable
     private async Task<(int ExitCode, string StdOut, string StdErr)> RunAsync(
         string mode, IReadOnlyList<string> arguments, CancellationToken cancellationToken)
     {
+        string[] headerCharset = _utf8Headers == true ? ["--options", Utf8HeaderOption] : [];
         SandboxJobObject job;
         try
         {
@@ -180,8 +208,9 @@ internal sealed class TarSandboxScope : IDisposable
         {
             return await SandboxedProcessLauncher.RunAsync(
                 TarExecutablePath,
-                [mode, "-f", "-", .. arguments],
-                new ProcessLaunchOptions(AppContainerSid: _sid, Job: job.Handle, StdIn: stdIn, WorkingDirectory: _quarantineRoot),
+                [mode, "-f", "-", .. headerCharset, .. arguments],
+                new ProcessLaunchOptions(AppContainerSid: _sid, Job: job.Handle, StdIn: stdIn, WorkingDirectory: _quarantineRoot,
+                    OutputEncoding: TarOutputEncoding.Current),
                 cancellationToken)
                 .ConfigureAwait(false);
         }
