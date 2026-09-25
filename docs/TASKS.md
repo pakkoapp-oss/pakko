@@ -4247,7 +4247,7 @@ regression from this task, which owns reliability only.
   round trip in every `ExtractMode`; once fixed, restore the on-disk assertion in
   `ZipArchiveServiceEncryptTests.ArchiveAsync_WithPassword_WritesAe2Aes256EntriesThatRoundTrip`.
 - **Reported by:** agent observation, 2026-09-24. **Depends on:** none.
-- **Root:** T-F263 (staging/commit owner) — do it with its leaves.
+- **Root:** T-F263 (staging/commit owner) — the part this leaf needs goes with it.
 
 ### Fix batch (next, after the current batch closes) — index
 
@@ -4273,9 +4273,11 @@ categories, deploy and verify on device before marking done.
 - T-F263 — per-process preview/nested cache roots (changes T-F97/T-F98's shared design) or keep
   them shared and only fix T-F252.
 
-**Roots (architecture review 2026-09-25):** T-F260 (leaves T-F229, T-F245, T-F211, T-F242,
-T-F207), T-F261 (T-F250, T-F216, T-F241, T-F262), T-F263 (T-F227, T-F228, T-F197, T-F248, T-F252,
-T-F244, T-F233), T-F264 (T-F213, T-F159). Do each root in the same phase as its leaves. Grouping
+**Roots (architecture review 2026-09-25):** T-F260 (leaves T-F229, T-F245, T-F242, T-F207),
+T-F261 (T-F250, T-F216, T-F241, T-F262), T-F263 (T-F227, T-F228, T-F197, T-F248, T-F252, T-F244;
+related T-F233), T-F264 (T-F213, T-F159). Only the slice of a root its early leaves need goes
+with them (T-F263: a unique staging name + the shared committer for the P0 trio; T-F260: the
+outcome + the "may this source be deleted" classifier); the rest is placed by the phase plan. Grouping
 roots with no number: Core message codes (T-F209, T-F208, T-F215, T-F221, T-F254), one directory
 walker (T-F236, T-F237, T-F251), boundary encoding (T-F204, T-F234, T-F238).
 
@@ -4475,7 +4477,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   equivalent, or an explicit confirm naming the item count). Check `DeleteArchiveAfterExtraction`
   (extract mode) for the same.
 - **Reported by:** T-F202, 2026-09-24.
-- **Root:** T-F260 (`ArchiveResult` outcome contract) — do it with its leaves.
+- **Root:** T-F260 (`ArchiveResult` outcome contract) — only the "may this source be deleted" decision; the confirmation UI stays this task's own.
 
 ### T-F208 — Archiver.Shell dialog titles and size units are English in a localized UI (P1)
 
@@ -4516,7 +4518,6 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   mention anywhere. T-F70 made the reset deliberate for busy-state reasons; keep the outcome text
   visible (or use the Row 4 outcome subtitle) without breaking T-F70.
 - **Reported by:** T-F202, 2026-09-24.
-- **Root:** T-F260 (`ArchiveResult` outcome contract) — do it with its leaves.
 
 ### T-F212 — "Extract" is enabled when the pending list holds only folders (P1)
 
@@ -4558,7 +4559,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   combined result dialog. Similarly, after the user explicitly chose "Skip, apply to all" in the
   conflict dialog, Shell still warns "No entries were extracted — every entry was skipped".
 - **Reported by:** T-F202, 2026-09-24.
-- **Root:** T-F261 (single routing and Group Policy owner) — do it with its leaves.
+- **Root:** T-F261 (single routing and Group Policy owner) — the part this leaf needs goes with it.
 
 ### T-F217 — Shell declines a compression bomb with no way forward (P2)
 
@@ -4719,7 +4720,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 - **Tests first:** a pre-existing `<dest>_tmp` with user files survives, untouched, both a
   successful and a failed extraction, in every `ExtractMode`.
 - **Reported by:** T-F226 review, 2026-09-24.
-- **Root:** T-F263 (staging/commit owner) — do it with its leaves.
+- **Root:** T-F263 (staging/commit owner) — the part this leaf needs goes with it.
 
 ### T-F228 — A crafted ZIP entry bypasses the conflict policy and overwrites existing files (P0)
 
@@ -4735,7 +4736,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   path.
 - **Tests first:** the repro above for Skip, Ask, and Rename, ZIP and tar.
 - **Reported by:** T-F226 review, 2026-09-24.
-- **Root:** T-F263 (staging/commit owner) — do it with its leaves.
+- **Root:** T-F263 (staging/commit owner) — the part this leaf needs goes with it.
 
 ### T-F229 — "Delete after operation" deletes an archive whose entries were partly skipped (P0)
 
@@ -4749,7 +4750,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   appears only after the deletion. Delete a source only when nothing from it was skipped or
   failed; see also T-F207 (irreversible, no confirmation).
 - **Reported by:** T-F226 review, 2026-09-24.
-- **Root:** T-F260 (`ArchiveResult` outcome contract) — do it with its leaves.
+- **Root:** T-F260 (`ArchiveResult` outcome contract) — the part this leaf needs goes with it.
 
 ### T-F230 — One bad entry aborts the whole ZIP extraction with a misleading message (P1)
 
@@ -4839,7 +4840,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   `TarSandboxScopeTests.CreateAsync_StagedArchiveIsHardlinkedSameVolume_StillReadableInsideSandbox`
   only proves the happy path.
 - **Reported by:** T-F226 review, 2026-09-24.
-- **Root:** T-F263 (staging/commit owner) — do it with its leaves.
+- **Related:** T-F263 (staging/commit owner) — same tar-staging layer, but a unique-name/ACL staging primitive does not by itself stop a hardlink from rewriting the original's DACL; hardlink vs copy stays this task's own decision.
 
 ### T-F234 — ZIP names without the UTF-8 flag are decoded as UTF-8: garbled names and silent loss of files (P0 candidate)
 
@@ -4963,7 +4964,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   Explorer only); the App has no "Test archive" (Explorer, Shell and CLI have it). Neither is
   recorded in `docs/DECISIONS.md` or `docs/CLI.md`. Decide: add, or document why not.
 - **Reported by:** T-F226 review, 2026-09-24.
-- **Root:** T-F261 (single routing and Group Policy owner) — do it with its leaves.
+- **Root:** T-F261 (single routing and Group Policy owner) — the part this leaf needs goes with it.
 
 ### T-F242 — App: cleanup errors swallowed, dead Core options, logic in code-behind (P2)
 
@@ -4987,7 +4988,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
      `CreatedFiles.Count == 0` prevents opening it (the preview shows "Error: Завершено з
      проблемами." — English title, no reason). Defense in depth.
 - **Reported by:** T-F226 review, 2026-09-24.
-- **Root:** T-F260 (`ArchiveResult` outcome contract) — do it with its leaves.
+- **Root:** T-F260 (`ArchiveResult` outcome contract) — item 2 (dead Core options) only; the part this item needs goes with the root.
 
 ### T-F243 — ZIP reader hardening (P2)
 
@@ -5028,7 +5029,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
      including into the AppContainer child, and a reader then waits for EOF until the other child
      exits (hypothesis, not reproduced).
 - **Reported by:** T-F226 review, 2026-09-24.
-- **Root:** T-F263 (staging/commit owner) — do it with its leaves.
+- **Root:** T-F263 (staging/commit owner) — the CLI staging item (A19) only; R14 belongs to the boundary-encoding grouping below.
 
 ### T-F245 — Cancelling a tar-family extraction reports success, so "Delete after operation" deletes the archive (P0)
 
@@ -5061,7 +5062,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   call throws (or reports cancellation) and no source is deletable; the existing T-F169 tests only
   assert "no unhandled exception" and pass today.
 - **Reported by:** T-F226 batch 2, 2026-09-25.
-- **Root:** T-F260 (`ArchiveResult` outcome contract) — do it with its leaves.
+- **Root:** T-F260 (`ArchiveResult` outcome contract) — the part this leaf needs goes with it.
 
 ### T-F246 — ZIP extraction never checks CRC-32: a corrupted entry is written and reported as success (P0)
 
@@ -5132,7 +5133,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 - **Tests first:** Recovery — after a scope over a read-only archive (hardlink and copy paths) the
   quarantine root is gone and the original keeps its attribute and link count.
 - **Reported by:** T-F226 batch 2, 2026-09-25.
-- **Root:** T-F263 (staging/commit owner) — do it with its leaves.
+- **Root:** T-F263 (staging/commit owner) — the part this leaf needs goes with it.
 
 ### T-F249 — RAR encryption checks read the whole archive into memory (P2)
 
@@ -5174,7 +5175,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   started (fake `ITarService` that fails the test if called); `TestAsync` on a blocked `zip`;
   the capability probe is skipped under `DisableTarExtraction=1`.
 - **Reported by:** T-F226 batch 3, 2026-09-25.
-- **Root:** T-F261 (single routing and Group Policy owner) — do it with its leaves. Architecture review: `docs/ARCHITECTURE.md:1485` records listing as deliberately not policy-gated, citing `ITarService.cs:35-41` — which is about the entry-safety pre-scan, not Group Policy — while `docs/POLICIES.md:44` says tar.exe is never spawned. Which one wins is a user decision (T-F261).
+- **Root:** T-F261 (single routing and Group Policy owner) — the part this leaf needs goes with it. Architecture review: `docs/ARCHITECTURE.md:1485` records listing as deliberately not policy-gated, citing `ITarService.cs:35-41` — which is about the entry-safety pre-scan, not Group Policy — while `docs/POLICIES.md:44` says tar.exe is never spawned. Which one wins is a user decision (T-F261).
 
 ### T-F251 — Hashing a folder crashes on an unreadable subfolder or a junction loop (P1)
 
@@ -5223,7 +5224,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 - **Tests first:** Concurrency/Recovery — two cache owners, one closes, the other's scope
   survives; a scope left by a dead process is removed at the next start.
 - **Reported by:** T-F226 batch 3, 2026-09-25.
-- **Root:** T-F263 (staging/commit owner) — do it with its leaves.
+- **Root:** T-F263 (staging/commit owner) — the part this leaf needs goes with it.
 
 ### T-F253 — Explorer's conflict dialog opens behind other windows and names only the file (P2)
 
@@ -5348,7 +5349,8 @@ state flow, extensibility. Done by the main session plus one independent reviewe
 not given the defect list (it reached 7 of the same 10 roots on its own). **Rule for these
 entries:** a root gets its own task only when the root fix is work no leaf task covers (a public
 Core contract change, or reversing a recorded decision). Each covered leaf carries a
-`**Root:**` line; do the root with its leaves, not after them. Roots that are only a grouping
+`**Root:**` line; the slice of the root a leaf needs goes with that leaf, the rest is placed
+by the phase plan. Roots that are only a grouping
 (Core message codes, directory walking, text encoding across process boundaries) have no number
 here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-F234/T-F238.
 
@@ -5361,8 +5363,10 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   `Success` is computed separately at ~12 sites (`ZipArchiveService.cs:92,714,950`;
   `TarSandboxedService.cs:120,1014`; `ExtractionRouter.cs:56` merges without checking for a
   cancel; Shell invents `Success=false` at `Archiver.Shell/Program.cs:374-376`). Cancellation
-  differs per engine: ZIP rethrows (`ZipArchiveService.cs:238-241`, recorded in DECISIONS T-F12/
-  T-F193), tar turns it into a success (`TarSandboxedService.cs:223-225`, not recorded). Each
+  differs per engine: ZIP extraction lets it propagate (`ZipArchiveService.cs:1328-1335` cleans
+  up and rethrows; creation does the same at `:238-241`, recorded for creation in DECISIONS
+  T-F12/T-F193), tar extraction turns it into a success (`TarSandboxedService.cs:223-225`, not
+  recorded). Each
   frontend then classifies on its own: CLI `Program.cs:559-569`, `ShellResultPresenter.cs:26-34`,
   App `MainViewModel.cs:550,554,653,657` + `DialogService.cs:365`; "the whole source was
   skipped" is found by comparing path strings (`MainViewModel.cs:1237-1241`). Post-operation
@@ -5379,7 +5383,8 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 - **Decisions for the user (fix-batch index item 0):** reverse T-F68/T-F87; the cancellation rule
   for both engines (rethrow, or a `Cancelled` outcome) — written into `IArchiveService`/
   `ITarService` either way.
-- **Leaves:** T-F229, T-F245, T-F211, T-F242 (dead options, item 2), T-F207 (the delete decision).
+- **Leaves:** T-F229, T-F245, T-F242 (dead options, item 2), T-F207 (the delete decision).
+  (T-F211 is not a leaf — its status line is reset in `MainViewModel`, not a result-contract gap.)
 - **Tests first:** one test per outcome per engine through `ExtractionRouter`, including a mixed
   zip+tar selection cancelled midway; each frontend's mapping of each outcome (exit code, dialog,
   delete/no delete).
@@ -5458,8 +5463,8 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   for both engines (the T-F157/T-F158 pattern).
 - **Decision for the user (fix-batch index item 0):** per-process cache roots (changes T-F97/
   T-F98's shared design) or keep them shared and only fix T-F252's window-close cleanup.
-- **Leaves:** T-F227, T-F228, T-F197, T-F248, T-F252, T-F244 (CLI staging, A19); T-F233 sits in
-  the same tar-staging layer.
+- **Leaves:** T-F227, T-F228, T-F197, T-F248, T-F252, T-F244 (CLI staging, A19). Related, not a
+  leaf: T-F233 (same tar-staging layer; its hardlink-vs-copy fix is its own decision).
 - **Tests first:** per mechanism — a pre-existing folder with the staging name is never reused or
   deleted; cleanup on cancel and on failure; two processes never share or delete each other's
   folders; the sweep removes only folders of dead processes.
