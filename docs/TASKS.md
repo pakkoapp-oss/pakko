@@ -4419,7 +4419,8 @@ real console) and T-F226's deferred per-arrow diagram ritual — carried as open
   T-F198, T-F199, T-F201). **Still open:** light theme and en-US (need a system setting change),
   keyboard-only pass (focus not reliably visible to automation), tray icon, the CLI in a real
   console (masked `-p`, Y/N/A/S/U/Q, Ctrl+C, PowerShell 5.1). Caveat: the test machine's ANSI code
-  page is 65001, so code-page bugs 1251/1252 users would hit are invisible here. Coverage table,
+  page is 65001, so code-page bugs 1251/1252 users would hit are invisible here. (Correction
+  2026-09-25: `GetACP()`/registry now report ACP 1251, OEMCP 866 — see T-F204.) Coverage table,
   results and the N-number-to-task mapping: batch plan section 5.
 - [ ] **Status:** open — a required gate for closing this batch (user instruction 2026-09-24: the
   app is live on the Microsoft Store and earlier self-testing missed real defects). Agent-driven via
@@ -4457,7 +4458,10 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 ### T-F204 — tar.exe paths: filenames outside the system code page break or silently corrupt (P0)
 
 - [ ] **Status:** open. The machine under test runs ANSI code page 65001 (UTF-8), so Cyrillic and
-  `é` pass; a check mark (U+2713) does not:
+  `é` pass; a check mark (U+2713) does not
+  (**correction 2026-09-25:** `GetACP()` and the registry now report ACP 1251 / OEMCP 866 on this
+  machine — either the setting changed since 2026-09-24 or the earlier reading was the console's
+  65001. Re-run this repro matrix under the current code page first thing in the fix phase):
   - **Create:** `pakko a -ttar out.tar s3` where `s3\` holds `tick <U+2713>.txt` -> exit 2,
     "tar.exe failed to create archive: a s3". Explorer "Add to X.tar" and the App (Format = TAR)
     fail the same way. A direct `C:\Windows\System32\tar.exe -cf x.tar s3` crashes with
