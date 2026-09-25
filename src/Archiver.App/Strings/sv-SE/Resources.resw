@@ -357,6 +357,6 @@
     <value>Vissa objekt togs inte bort</value>
   </data>
   <data name="NotDeletedDialogMessage" xml:space="preserve">
-    <value>De här objekten finns fortfarande på disken. De kan vara i bruk eller skyddade, eller så valde du att behålla dem.</value>
+    <value>De här objekten finns fortfarande på disken. De kan vara i bruk eller skyddade.</value>
   </data>
 </root>

@@ -357,6 +357,6 @@
     <value>Sommige items zijn niet verwijderd</value>
   </data>
   <data name="NotDeletedDialogMessage" xml:space="preserve">
-    <value>Deze items staan nog op de schijf. Ze zijn mogelijk in gebruik of beveiligd, of u hebt ervoor gekozen ze te behouden.</value>
+    <value>Deze items staan nog op de schijf. Ze zijn mogelijk in gebruik of beveiligd.</value>
   </data>
 </root>

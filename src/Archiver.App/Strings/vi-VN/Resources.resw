@@ -357,6 +357,6 @@
     <value>Một số mục chưa được xóa</value>
   </data>
   <data name="NotDeletedDialogMessage" xml:space="preserve">
-    <value>Các mục này vẫn còn trên đĩa. Chúng có thể đang được sử dụng hoặc được bảo vệ, hoặc bạn đã chọn giữ lại.</value>
+    <value>Các mục này vẫn còn trên đĩa. Chúng có thể đang được sử dụng hoặc được bảo vệ.</value>
   </data>
 </root>

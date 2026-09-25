@@ -357,6 +357,6 @@
     <value>部分项目未删除</value>
   </data>
   <data name="NotDeletedDialogMessage" xml:space="preserve">
-    <value>这些项目仍在磁盘上。它们可能正在使用或受保护,或者你选择了保留它们。</value>
+    <value>这些项目仍在磁盘上。它们可能正在使用或受保护。</value>
   </data>
 </root>

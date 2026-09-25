@@ -357,6 +357,6 @@
     <value>Beberapa item tidak dihapus</value>
   </data>
   <data name="NotDeletedDialogMessage" xml:space="preserve">
-    <value>Item ini masih ada di disk. Item mungkin sedang digunakan atau dilindungi, atau Anda memilih untuk menyimpannya.</value>
+    <value>Item ini masih ada di disk. Item mungkin sedang digunakan atau dilindungi.</value>
   </data>
 </root>

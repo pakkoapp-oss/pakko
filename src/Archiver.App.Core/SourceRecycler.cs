@@ -26,10 +26,11 @@ public interface ISourceDeleteOperations
 /// before permanently deleting anything else, and reports what is still on disk.</summary>
 public sealed class SourceRecycler(ISourceDeleteOperations ops)
 {
-    /// <summary>Deletes <paramref name="sources"/>; returns the ones still on disk afterwards (by
-    /// the path given). <paramref name="confirmPermanentDeleteAsync"/> gets the sources that cannot
-    /// go to the Recycle Bin and returns whether to delete them permanently; it is awaited on the
-    /// caller's context, so it may show UI.</summary>
+    /// <summary>Deletes <paramref name="sources"/>; returns the ones that should have been deleted
+    /// but are still on disk (by the path given) — not the ones the user chose to keep.
+    /// <paramref name="confirmPermanentDeleteAsync"/> gets the sources that cannot go to the
+    /// Recycle Bin and returns whether to delete them permanently; it is awaited on the caller's
+    /// context, so it may show UI.</summary>
     public async Task<IReadOnlyList<string>> DeleteAsync(
         IEnumerable<string> sources, Func<IReadOnlyList<string>, Task<bool>> confirmPermanentDeleteAsync)
     {
@@ -61,25 +62,19 @@ public sealed class SourceRecycler(ISourceDeleteOperations ops)
             }
         });
 
-        if (permanent.Count > 0)
+        // Declined items are the user's own choice, not a failure — they are not reported.
+        if (permanent.Count > 0 && await confirmPermanentDeleteAsync([.. permanent.Select(p => p.Source)]))
         {
-            if (!await confirmPermanentDeleteAsync([.. permanent.Select(p => p.Source)]))
+            await Task.Run(() =>
             {
-                notDeleted.AddRange(permanent.Select(p => p.Source));
-            }
-            else
-            {
-                await Task.Run(() =>
+                foreach (var (source, final) in permanent)
                 {
-                    foreach (var (source, final) in permanent)
-                    {
-                        try { ops.DeletePermanently(final); }
-                        catch { /* reported below: still on disk */ }
-                        if (ops.Exists(final))
-                            notDeleted.Add(source);
-                    }
-                });
-            }
+                    try { ops.DeletePermanently(final); }
+                    catch { /* reported below: still on disk */ }
+                    if (ops.Exists(final))
+                        notDeleted.Add(source);
+                }
+            });
         }
 
         return notDeleted;

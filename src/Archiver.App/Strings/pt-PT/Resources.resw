@@ -357,6 +357,6 @@
     <value>Alguns itens não foram eliminados</value>
   </data>
   <data name="NotDeletedDialogMessage" xml:space="preserve">
-    <value>Estes itens ainda estão no disco. Podem estar em utilização ou protegidos, ou optou por mantê-los.</value>
+    <value>Estes itens ainda estão no disco. Podem estar em utilização ou protegidos.</value>
   </data>
 </root>

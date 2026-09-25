@@ -385,6 +385,6 @@
     <value>Some items were not deleted</value>
   </data>
   <data name="NotDeletedDialogMessage" xml:space="preserve">
-    <value>These items are still on disk. They may be in use or protected, or you chose to keep them.</value>
+    <value>These items are still on disk. They may be in use or protected.</value>
   </data>
 </root>

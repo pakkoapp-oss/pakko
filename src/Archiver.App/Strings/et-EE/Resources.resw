@@ -357,6 +357,6 @@
     <value>Mõnda üksust ei kustutatud</value>
   </data>
   <data name="NotDeletedDialogMessage" xml:space="preserve">
-    <value>Need üksused on endiselt kettal. Need võivad olla kasutusel või kaitstud või otsustasite need alles jätta.</value>
+    <value>Need üksused on endiselt kettal. Need võivad olla kasutusel või kaitstud.</value>
   </data>
 </root>

@@ -357,6 +357,6 @@
     <value>Niektóre elementy nie zostały usunięte</value>
   </data>
   <data name="NotDeletedDialogMessage" xml:space="preserve">
-    <value>Te elementy nadal są na dysku. Mogą być używane lub chronione albo zdecydowano się je zachować.</value>
+    <value>Te elementy nadal są na dysku. Mogą być używane lub chronione.</value>
   </data>
 </root>

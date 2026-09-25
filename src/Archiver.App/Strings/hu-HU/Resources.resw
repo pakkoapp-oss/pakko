@@ -357,6 +357,6 @@
     <value>Néhány elem nem lett törölve</value>
   </data>
   <data name="NotDeletedDialogMessage" xml:space="preserve">
-    <value>Ezek az elemek még a lemezen vannak. Lehet, hogy használatban vannak vagy védettek, vagy Ön a megtartásuk mellett döntött.</value>
+    <value>Ezek az elemek még a lemezen vannak. Lehet, hogy használatban vannak vagy védettek.</value>
   </data>
 </root>

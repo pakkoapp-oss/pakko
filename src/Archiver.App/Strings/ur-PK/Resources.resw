@@ -357,6 +357,6 @@
     <value>کچھ آئٹمز حذف نہیں ہوئے</value>
   </data>
   <data name="NotDeletedDialogMessage" xml:space="preserve">
-    <value>یہ آئٹمز ابھی بھی ڈسک پر ہیں۔ ہو سکتا ہے وہ استعمال میں یا محفوظ ہوں، یا آپ نے انہیں رکھنے کا انتخاب کیا۔</value>
+    <value>یہ آئٹمز ابھی بھی ڈسک پر ہیں۔ ہو سکتا ہے وہ استعمال میں یا محفوظ ہوں۔</value>
   </data>
 </root>

@@ -357,6 +357,6 @@
     <value>Některé položky nebyly odstraněny</value>
   </data>
   <data name="NotDeletedDialogMessage" xml:space="preserve">
-    <value>Tyto položky jsou stále na disku. Mohou být používány nebo chráněny, případně jste se rozhodli je ponechat.</value>
+    <value>Tyto položky jsou stále na disku. Mohou být používány nebo chráněny.</value>
   </data>
 </root>

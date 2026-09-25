@@ -357,6 +357,6 @@
     <value>Joitakin kohteita ei poistettu</value>
   </data>
   <data name="NotDeletedDialogMessage" xml:space="preserve">
-    <value>Nämä kohteet ovat yhä levyllä. Ne voivat olla käytössä tai suojattuja, tai valitsit säilyttää ne.</value>
+    <value>Nämä kohteet ovat yhä levyllä. Ne voivat olla käytössä tai suojattuja.</value>
   </data>
 </root>

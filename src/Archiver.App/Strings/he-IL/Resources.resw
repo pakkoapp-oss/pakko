@@ -357,6 +357,6 @@
     <value>חלק מהפריטים לא נמחקו</value>
   </data>
   <data name="NotDeletedDialogMessage" xml:space="preserve">
-    <value>פריטים אלה עדיין בדיסק. ייתכן שהם בשימוש או מוגנים, או שבחרת להשאיר אותם.</value>
+    <value>פריטים אלה עדיין בדיסק. ייתכן שהם בשימוש או מוגנים.</value>
   </data>
 </root>

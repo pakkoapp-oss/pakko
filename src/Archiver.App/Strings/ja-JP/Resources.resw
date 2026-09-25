@@ -357,6 +357,6 @@
     <value>一部の項目は削除されませんでした</value>
   </data>
   <data name="NotDeletedDialogMessage" xml:space="preserve">
-    <value>これらの項目はまだディスク上にあります。使用中または保護されているか、残すことを選択した可能性があります。</value>
+    <value>これらの項目はまだディスク上にあります。使用中または保護されている可能性があります。</value>
   </data>
 </root>

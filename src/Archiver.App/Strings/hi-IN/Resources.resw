@@ -357,6 +357,6 @@
     <value>कुछ आइटम नहीं हटाए गए</value>
   </data>
   <data name="NotDeletedDialogMessage" xml:space="preserve">
-    <value>ये आइटम अभी भी डिस्क पर हैं। वे उपयोग में या सुरक्षित हो सकते हैं, या आपने उन्हें रखने का विकल्प चुना।</value>
+    <value>ये आइटम अभी भी डिस्क पर हैं। वे उपयोग में या सुरक्षित हो सकते हैं।</value>
   </data>
 </root>

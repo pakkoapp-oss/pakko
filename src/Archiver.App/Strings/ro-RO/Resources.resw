@@ -357,6 +357,6 @@
     <value>Unele elemente nu au fost șterse</value>
   </data>
   <data name="NotDeletedDialogMessage" xml:space="preserve">
-    <value>Aceste elemente sunt încă pe disc. Pot fi în uz sau protejate ori ați ales să le păstrați.</value>
+    <value>Aceste elemente sunt încă pe disc. Pot fi în uz sau protejate.</value>
   </data>
 </root>

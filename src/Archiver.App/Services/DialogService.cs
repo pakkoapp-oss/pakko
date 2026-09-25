@@ -40,8 +40,8 @@ public sealed class DialogService : IDialogService
         return await dialog.ShowAsync() == ContentDialogResult.Primary;
     }
 
-    // T-F242: a source "Delete after operation" could not remove (locked, declined, access
-    // denied) used to be dropped silently.
+    // T-F242: a source "Delete after operation" could not remove (locked, access denied) used to
+    // be dropped silently. Items the user chose to keep are not listed.
     public async Task ShowNotDeletedAsync(IReadOnlyList<string> paths)
     {
         var dialog = new ContentDialog

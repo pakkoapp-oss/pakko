@@ -357,6 +357,6 @@
     <value>Bazı öğeler silinmedi</value>
   </data>
   <data name="NotDeletedDialogMessage" xml:space="preserve">
-    <value>Bu öğeler hâlâ diskte. Kullanımda veya korumalı olabilirler ya da bunları saklamayı seçtiniz.</value>
+    <value>Bu öğeler hâlâ diskte. Kullanımda veya korumalı olabilirler.</value>
   </data>
 </root>

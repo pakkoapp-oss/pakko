@@ -357,6 +357,6 @@
     <value>Nekateri elementi niso bili izbrisani</value>
   </data>
   <data name="NotDeletedDialogMessage" xml:space="preserve">
-    <value>Ti elementi so še vedno na disku. Morda so v uporabi ali zaščiteni ali pa ste jih izbrali obdržati.</value>
+    <value>Ti elementi so še vedno na disku. Morda so v uporabi ali zaščiteni.</value>
   </data>
 </root>

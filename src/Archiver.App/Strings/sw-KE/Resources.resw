@@ -357,6 +357,6 @@
     <value>Baadhi ya vipengee havikufutwa</value>
   </data>
   <data name="NotDeletedDialogMessage" xml:space="preserve">
-    <value>Vipengee hivi bado viko kwenye diski. Huenda vinatumika au vimelindwa, au ulichagua kuvihifadhi.</value>
+    <value>Vipengee hivi bado viko kwenye diski. Huenda vinatumika au vimelindwa.</value>
   </data>
 </root>

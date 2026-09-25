@@ -90,14 +90,16 @@ public sealed class SourceRecyclerTests
     }
 
     [Fact]
-    public async Task NonFixedSource_Declined_KeptAndReported_NothingDeleted()
+    public async Task NonFixedSource_Declined_KeptNotReported_NothingDeleted()
     {
+        // Declining is the user's own choice — reporting it right back as "not deleted" was noise.
         _ops.Add(@"Z:\a.zip", @"\\server\share\a.zip", isFixed: false);
 
         var notDeleted = await new SourceRecycler(_ops).DeleteAsync([@"Z:\a.zip"], Confirm(false));
 
         _confirmCalls.Should().ContainSingle().Which.Should().Equal(@"Z:\a.zip");
-        notDeleted.Should().Equal(@"Z:\a.zip");
+        notDeleted.Should().BeEmpty();
+        _ops.OnDisk.Should().Contain(@"\\server\share\a.zip");
         _ops.Deleted.Should().BeEmpty();
         _ops.RecycleCalls.Should().BeEmpty();
     }
@@ -116,7 +118,7 @@ public sealed class SourceRecyclerTests
     }
 
     [Fact]
-    public async Task Mixed_LocalRecycled_RemoteDeclined_OnlyRemoteReported()
+    public async Task Mixed_LocalRecycled_RemoteDeclined_NothingReported()
     {
         _ops.Add(@"C:\a.zip", @"C:\a.zip", isFixed: true);
         _ops.Add(@"Z:\b.zip", @"\\server\share\b.zip", isFixed: false);
@@ -124,7 +126,8 @@ public sealed class SourceRecyclerTests
         var notDeleted = await new SourceRecycler(_ops).DeleteAsync([@"C:\a.zip", @"Z:\b.zip"], Confirm(false));
 
         _ops.RecycleCalls.Should().ContainSingle().Which.Should().Equal(@"C:\a.zip");
-        notDeleted.Should().Equal(@"Z:\b.zip");
+        notDeleted.Should().BeEmpty();
+        _ops.OnDisk.Should().Contain(@"\\server\share\b.zip");
     }
 
     [Fact]

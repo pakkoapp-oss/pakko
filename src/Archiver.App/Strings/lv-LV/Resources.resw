@@ -357,6 +357,6 @@
     <value>Daži vienumi netika izdzēsti</value>
   </data>
   <data name="NotDeletedDialogMessage" xml:space="preserve">
-    <value>Šie vienumi joprojām ir diskā. Tie var būt lietošanā vai aizsargāti, vai arī jūs izvēlējāties tos paturēt.</value>
+    <value>Šie vienumi joprojām ir diskā. Tie var būt lietošanā vai aizsargāti.</value>
   </data>
 </root>

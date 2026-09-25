@@ -357,6 +357,6 @@
     <value>Neke stavke nisu izbrisane</value>
   </data>
   <data name="NotDeletedDialogMessage" xml:space="preserve">
-    <value>Ove stavke i dalje su na disku. Možda se koriste ili su zaštićene, ili ste ih odlučili zadržati.</value>
+    <value>Ove stavke i dalje su na disku. Možda se koriste ili su zaštićene.</value>
   </data>
 </root>

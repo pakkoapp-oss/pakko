@@ -9272,18 +9272,30 @@ a fake `ISourceDeleteOperations`) decides per source on its **resolved** path:
 3. Everything else (UNC, mapped, removable, unknown) -> the App's own confirmation listing the
    items, default button "Keep"; declining keeps them; confirming deletes each with
    `Directory.Delete`/`File.Delete`.
-4. Afterwards every source still on disk is reported (logged + a dialog listing them). The disk
-   is the source of truth, not `fAnyOperationsAborted`.
+4. Afterwards every source that should have been deleted but is still on disk is reported
+   (logged + a dialog listing them). The disk is the source of truth, not
+   `fAnyOperationsAborted`. Items the user chose to keep in step 3 are not reported — on device
+   the "not deleted" dialog right after "Залишити" repeated the user's own choice back as a
+   failure (closing review, same day).
 `FOF_WANTNUKEWARNING` stays on the recycle call as a second line of defence for an item too large
 for the bin on a fixed volume — that case was **not** verified (no practical way to exceed the bin
-quota here); stated as a residual risk.
+quota here); stated as a residual risk. A folder containing a 409-character path (created via
+`\\?\`) went to the Recycle Bin whole (`SHFileOperationW` returned 0), so long paths are not a
+silent-permanent-delete case; had it failed, the disk check would have reported it.
+
+**Device check (2026-09-25, Deploy.ps1 build, uk-UA):** reserved-entry ZIP kept after the summary;
+Extract Selected kept the archive (T-F265, which the previous build deleted); a clean ZIP went to
+the Recycle Bin; a ZIP held open by another process was reported in the "not deleted" dialog; an
+archive opened through `\\localhost\c$` got the permanent-delete confirmation — "Залишити" kept it,
+"Видалити остаточно" deleted it; cancelling a 335 MB `.tar.gz` extraction left the archive,
+no partial output and no tar.exe process, status "Скасовано".
 
 **Order.** Cleanup now runs after the operation summary (T-F229), and only for
 `ArchiveResult.FullyProcessedSources` (T-F260).
 
 **Tests.** `SourceRecyclerTests` (12): recycle by resolved path, still-on-disk reporting,
 recycle throwing, declined/confirmed permanent delete with one failure, mixed local/remote,
-unresolvable, empty input, duplicate input, plus three non-destructive checks of the real Win32
+unresolvable (never deleted), declined (kept, not reported), empty input, duplicate input, plus three non-destructive checks of the real Win32
 resolution (local temp file -> fixed; `\\localhost\X$` -> never recyclable or unresolvable;
 missing path -> null). Mutation check: 4/4 killed (always recycle, skip the disk check, skip the
 confirmation, recycle an unresolvable path).

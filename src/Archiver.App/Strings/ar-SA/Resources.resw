@@ -357,6 +357,6 @@
     <value>لم يتم حذف بعض العناصر</value>
   </data>
   <data name="NotDeletedDialogMessage" xml:space="preserve">
-    <value>لا تزال هذه العناصر على القرص. ربما تكون قيد الاستخدام أو محمية، أو اخترت الاحتفاظ بها.</value>
+    <value>لا تزال هذه العناصر على القرص. ربما تكون قيد الاستخدام أو محمية.</value>
   </data>
 </root>

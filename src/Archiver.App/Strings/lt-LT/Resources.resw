@@ -357,6 +357,6 @@
     <value>Kai kurie elementai nebuvo ištrinti</value>
   </data>
   <data name="NotDeletedDialogMessage" xml:space="preserve">
-    <value>Šie elementai vis dar diske. Jie gali būti naudojami ar apsaugoti arba pasirinkote juos palikti.</value>
+    <value>Šie elementai vis dar diske. Jie gali būti naudojami arba apsaugoti.</value>
   </data>
 </root>

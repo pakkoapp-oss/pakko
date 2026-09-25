@@ -357,6 +357,6 @@
     <value>Noen elementer ble ikke slettet</value>
   </data>
   <data name="NotDeletedDialogMessage" xml:space="preserve">
-    <value>Disse elementene ligger fortsatt på disken. De kan være i bruk eller beskyttet, eller du valgte å beholde dem.</value>
+    <value>Disse elementene ligger fortsatt på disken. De kan være i bruk eller beskyttet.</value>
   </data>
 </root>
