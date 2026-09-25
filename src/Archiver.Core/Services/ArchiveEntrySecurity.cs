@@ -88,8 +88,10 @@ internal static class ArchiveEntrySecurity
     // T-F37: No automated unit test — System.IO.Compression cannot create reparse points in test fixtures.
     public static bool PathContainsReparsePoint(string destFilePath, string rootPath)
     {
+        // T-F244: a trailing separator on rootPath used to leave the root itself out of the walk.
+        int rootLength = Path.TrimEndingDirectorySeparator(rootPath).Length;
         string? current = Path.GetDirectoryName(destFilePath);
-        while (current != null && current.Length >= rootPath.Length)
+        while (current != null && current.Length >= rootLength)
         {
             if (Directory.Exists(current))
             {

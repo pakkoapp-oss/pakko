@@ -47,6 +47,32 @@ public sealed class ArchiveEntrySecurityReparsePointTests : IDisposable
         }
     }
 
+    // T-F244 item 3: extraction passes the staging root WITH a trailing separator; that one extra
+    // character used to drop the root itself from the walk, so a staging folder swapped for a
+    // junction was never noticed.
+    [Fact]
+    public void PathContainsReparsePoint_RootItselfIsJunction_RootWithTrailingSeparator_ReturnsTrue()
+    {
+        string realTargetDir = Path.Combine(_temp.Path, "outside_target");
+        Directory.CreateDirectory(realTargetDir);
+        string junctionRoot = Path.Combine(_temp.Path, "staging");
+
+        if (!ZipArchiveServiceArchiveTests.TryCreateJunction(junctionRoot, realTargetDir))
+            return; // junctions not supported on this system — skip
+
+        try
+        {
+            bool result = ArchiveEntrySecurity.PathContainsReparsePoint(
+                Path.Combine(junctionRoot, "evil.txt"), junctionRoot + Path.DirectorySeparatorChar);
+
+            result.Should().BeTrue();
+        }
+        finally
+        {
+            Directory.Delete(junctionRoot, recursive: false);
+        }
+    }
+
     [Fact]
     public void PathContainsReparsePoint_NoReparsePointInChain_ReturnsFalse()
     {
