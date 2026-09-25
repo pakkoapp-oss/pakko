@@ -206,15 +206,30 @@ internal sealed class TarSandboxScope : IDisposable
         using (job)
         using (SafeFileHandle stdIn = ReopenArchive())
         {
-            return await SandboxedProcessLauncher.RunAsync(
+            var (exitCode, stdOut, stdErr) = await SandboxedProcessLauncher.RunAsync(
                 TarExecutablePath,
                 [mode, "-f", "-", .. headerCharset, .. arguments],
                 new ProcessLaunchOptions(AppContainerSid: _sid, Job: job.Handle, StdIn: stdIn, WorkingDirectory: _quarantineRoot,
                     OutputEncoding: TarOutputEncoding.Current),
                 cancellationToken)
                 .ConfigureAwait(false);
+
+            // T-F239: say which sandbox limit stopped tar.exe — its own words ("Cannot allocate
+            // memory", or nothing at all for a CPU-time kill) blame the machine, not the sandbox.
+            if (exitCode != 0)
+                stdErr = DescribeLimitHit(job.ReadLimitHit()) + stdErr;
+            return (exitCode, stdOut, stdErr);
         }
     }
+
+    internal static string DescribeLimitHit(SandboxJobObject.LimitHit hit) => hit switch
+    {
+        SandboxJobObject.LimitHit.Memory =>
+            $"The archive needs more memory than Pakko's sandbox allows tar.exe ({RamLimitBytes / (1024 * 1024)} MB). ",
+        SandboxJobObject.LimitHit.CpuTime =>
+            $"tar.exe used more processor time than Pakko's sandbox allows ({CpuTimeLimit.TotalMinutes:0} minutes). ",
+        _ => string.Empty,
+    };
 
     // A second handle to the same open file (not a new lookup by path), starting at offset 0 and
     // synchronous — the C runtime's stdin reads in tar.exe expect a non-overlapped handle.

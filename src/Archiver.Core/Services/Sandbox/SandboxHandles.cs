@@ -37,6 +37,17 @@ internal sealed class SafeJobObjectHandle : SafeHandleZeroOrMinusOneIsInvalid
 }
 
 /// <summary>
+/// Wraps an I/O completion port (CreateIoCompletionPort) a Job Object posts its messages to.
+/// Released via CloseHandle.
+/// </summary>
+internal sealed class SafeCompletionPortHandle : SafeHandleZeroOrMinusOneIsInvalid
+{
+    public SafeCompletionPortHandle() : base(ownsHandle: true) { }
+
+    protected override bool ReleaseHandle() => Interop.CloseHandle(handle);
+}
+
+/// <summary>
 /// Wraps a process or thread handle from PROCESS_INFORMATION (CreateProcessW). Released via
 /// CloseHandle. Shared by both hProcess and hThread — both are plain kernel object handles with
 /// identical lifetime rules, so one type covers both rather than two near-duplicates.
