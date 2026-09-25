@@ -25,10 +25,19 @@ internal sealed class TarSandboxScope : IDisposable
     // cancellation stays the way out of a slow run.
     private const long GiB = 1024L * 1024 * 1024;
     private static readonly long RamLimitBytes = MemoryLimitFor(GC.GetGCMemoryInfo().TotalAvailableMemoryBytes);
-    private static readonly TimeSpan CpuTimeLimit = TimeSpan.FromMinutes(60);
 
     /// <summary>Half of <paramref name="physicalMemoryBytes"/>, never below 1 GiB nor above 4 GiB.</summary>
     internal static long MemoryLimitFor(long physicalMemoryBytes) => Math.Clamp(physicalMemoryBytes / 2, GiB, 4 * GiB);
+
+    // Decompression time follows the data, so the CPU-time cap does too: at least an hour, plus a
+    // minute per 10 MB of archive. It only stops a crafted archive that spins; archive creation
+    // runs without this sandbox and has no time limit at all.
+    private const long BytesPerCpuMinute = 10L * 1024 * 1024;
+    private const int MinimumCpuMinutes = 60;
+
+    /// <summary>At least 60 minutes, or one minute per 10 MiB of <paramref name="archiveBytes"/>.</summary>
+    internal static TimeSpan CpuTimeLimitFor(long archiveBytes) =>
+        TimeSpan.FromMinutes(Math.Max(MinimumCpuMinutes, archiveBytes / BytesPerCpuMinute));
 
     // tar.exe runs with the quarantine root as its current directory and extracts into this
     // relative folder — no user-profile path appears in its command line.
@@ -205,7 +214,7 @@ internal sealed class TarSandboxScope : IDisposable
         SandboxJobObject job;
         try
         {
-            job = SandboxJobObject.Create(RamLimitBytes, CpuTimeLimit);
+            job = SandboxJobObject.Create(RamLimitBytes, CpuTimeLimitFor(_archive.Length));
         }
         catch (InvalidOperationException ex)
         {
@@ -226,17 +235,17 @@ internal sealed class TarSandboxScope : IDisposable
             // T-F239: say which sandbox limit stopped tar.exe — its own words ("Cannot allocate
             // memory", or nothing at all for a CPU-time kill) blame the machine, not the sandbox.
             if (exitCode != 0)
-                stdErr = DescribeLimitHit(job.ReadLimitHit()) + stdErr;
+                stdErr = DescribeLimitHit(job.ReadLimitHit(), CpuTimeLimitFor(_archive.Length)) + stdErr;
             return (exitCode, stdOut, stdErr);
         }
     }
 
-    internal static string DescribeLimitHit(SandboxJobObject.LimitHit hit) => hit switch
+    internal static string DescribeLimitHit(SandboxJobObject.LimitHit hit, TimeSpan? cpuTimeLimit = null) => hit switch
     {
         SandboxJobObject.LimitHit.Memory =>
             $"The archive needs more memory than Pakko's sandbox allows tar.exe ({RamLimitBytes / (1024 * 1024)} MB). ",
         SandboxJobObject.LimitHit.CpuTime =>
-            $"tar.exe used more processor time than Pakko's sandbox allows ({CpuTimeLimit.TotalMinutes:0} minutes). ",
+            $"tar.exe used more processor time than Pakko's sandbox allows ({(cpuTimeLimit ?? CpuTimeLimitFor(0)).TotalMinutes:0} minutes). ",
         _ => string.Empty,
     };
 

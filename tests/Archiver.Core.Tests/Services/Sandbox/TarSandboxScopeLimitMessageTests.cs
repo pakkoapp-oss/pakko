@@ -34,4 +34,15 @@ public sealed class TarSandboxScopeLimitMessageTests
     [Fact]
     public void DescribeLimitHit_None_AddsNothing()
         => TarSandboxScope.DescribeLimitHit(SandboxJobObject.LimitHit.None).Should().BeEmpty();
+
+    // User request 2026-09-25: CPU time grows with the archive — at least 60 minutes, plus one
+    // minute per 10 MB read, so a big legitimate archive is never cut off while a small crafted
+    // one that spins still stops.
+    [Theory]
+    [InlineData(0L, 60)]
+    [InlineData(100L * 1024 * 1024, 60)]
+    [InlineData(1024L * 1024 * 1024, 102)]
+    [InlineData(50L * 1024 * 1024 * 1024, 5120)]
+    public void CpuTimeLimitFor_AtLeastAnHourPlusAMinutePerTenMegabytes(long archiveBytes, int expectedMinutes)
+        => TarSandboxScope.CpuTimeLimitFor(archiveBytes).Should().Be(TimeSpan.FromMinutes(expectedMinutes));
 }
