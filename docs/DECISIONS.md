@@ -9210,8 +9210,9 @@ extract) and the Shell's shared wrapper already catch `OperationCanceledExceptio
 `x` catches it when its quit token fired and otherwise reached the same `ReportUserStopped()`
 through its own token check; preview and nested drill-in pass no token. The Shell now handles a
 cancelled tar extraction the way it handled a cancelled ZIP one (before, it presented the
-cancelled tar result as an ordinary one). No new frontend test: CLI Ctrl+C needs a real console,
-checked on device.
+cancelled tar result as an ordinary one). No new frontend test: CLI Ctrl+C needs a real console —
+the CLI's code path is identical before and after (both reach `ReportUserStopped()`); the
+real-console check is pending (user).
 
 **Tests.** `SourceOutcomeTests` (Core, 26) and `TarSourceOutcomeTests` (integration, 9): outcome
 per engine and mode, the `CON.txt` case, subset extraction, conflict skip, corrupt archive,
@@ -9222,6 +9223,24 @@ mutants (ignore `clean`, drop the containment downgrade, re-swallow tar's mid-ar
 ignore the worker's own issue count, ignore `SelectedEntryPaths`); two survived the first test
 set and were killed by two added tests (a direct `DowngradeSourcesContainingOutputs` theory, and
 a folder with one locked file inside, which commits an archive yet must be `Partial`).
+
+**Follow-up (same day, closing advisor review).** Two more holes of the same class:
+- ZIP's per-entry conflict **Skip** records nothing (unlike tar, which adds a `SkippedFile`), so
+  re-extracting an updated archive over an older extraction with "skip existing" left the archive
+  `Completed` — deletable while the newer files it holds were never written. Fixed with a
+  per-archive count of conflict-skipped entries that feeds the `clean` rule; the summary dialog
+  and `SkippedFiles` are unchanged (no ZIP-vs-tar reporting change in this phase).
+- Several loops still ended with `break` on cancel: ZIP's per-entry extraction loop (committed the
+  entries extracted so far), the sequential single-archive writer, the directory walk, and
+  `ParallelSingleArchiveWriter` (whose already-cancelled-token path returns quietly). Fixed at the
+  commit points instead of every loop: the entry loop throws, and both creation modes call
+  `ThrowIfCancellationRequested()` right before committing the temp archive — "never commit after
+  a cancel" is then provable from those two lines. Deterministic tests: the conflict-Skip case
+  (ZIP red, tar green as expected), a cancel between entries (a Skip answer touches no token, so
+  only the loop's own check sees it), and the pre-existing already-cancelled parallel test (it
+  pinned the quiet return and was rewritten to expect the exception). The sequential-writer and
+  walk `break`s are covered by the commit gate but have no deterministic red test — landing a
+  cancel exactly between two token-observing awaits needs a timing race. Mutants: 2/2 killed.
 
 ## T-F207 / T-F242 (items 1) — "Delete after operation": Recycle Bin, confirmation, report (2026-09-25)
 

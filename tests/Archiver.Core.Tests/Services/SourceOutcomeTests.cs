@@ -80,6 +80,100 @@ public sealed class SourceOutcomeTests : IDisposable
     }
 
     [Fact]
+    public async Task ExtractAsync_SomeEntriesConflictSkipped_SourcePartialNotDeletable()
+    {
+        // Re-extracting an updated archive over an older extraction with "skip existing": the
+        // archive holding the newer a.txt must not be deleted.
+        string zip = WriteZip("update.zip", "a.txt", "b.txt");
+        string dest = Dest("out");
+        Directory.CreateDirectory(dest);
+        File.WriteAllText(Path.Combine(dest, "a.txt"), "old");
+
+        var result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [zip],
+            DestinationFolder = dest,
+            Mode = ExtractMode.SingleFolder,
+            OnConflict = ConflictBehavior.Skip,
+        });
+
+        File.ReadAllText(Path.Combine(dest, "a.txt")).Should().Be("old");
+        result.Sources.Should().ContainSingle().Which.Outcome.Should().Be(SourceOutcome.Partial);
+    }
+
+    [Fact]
+    public async Task ExtractAsync_CancelledBetweenEntries_ThrowsAndCommitsNothing()
+    {
+        // 0.txt is extracted, then a.txt's conflict callback cancels and answers Skip — a Skip
+        // returns without touching the token, so the next thing to see the cancel is the entry
+        // loop's own check, which used to `break` and commit 0.txt as a finished result.
+        string zip = WriteZip("entries.zip", "0.txt", "a.txt", "b.txt");
+        string dest = Dest("out");
+        Directory.CreateDirectory(dest);
+        File.WriteAllText(Path.Combine(dest, "a.txt"), "old");
+        using var cts = new CancellationTokenSource();
+
+        var act = () => _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [zip],
+            DestinationFolder = dest,
+            Mode = ExtractMode.SingleFolder,
+            OnConflict = ConflictBehavior.Ask,
+            ResolveConflictAsync = _ =>
+            {
+                cts.Cancel();
+                return Task.FromResult(new ConflictDecision { Resolution = ConflictResolution.Skip });
+            },
+        }, null, cts.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        File.Exists(Path.Combine(dest, "0.txt")).Should().BeFalse();
+        File.ReadAllText(Path.Combine(dest, "a.txt")).Should().Be("old");
+    }
+
+    [Fact]
+    public async Task ArchiveAsync_SingleArchive_CancelledBetweenSources_ThrowsAndCommitsNothing()
+    {
+        // Sequential single-archive writer (few files): cancel after the first source's progress
+        // report; the loop used to `break` and commit a partial archive of all "sources".
+        var files = new[] { _temp.CreateFile("a.txt", new string('a', 4096)), _temp.CreateFile("b.txt"), _temp.CreateFile("c.txt") };
+        using var cts = new CancellationTokenSource();
+        var progress = new SynchronousProgress<ProgressReport>(r => { if (r.BytesTransferred > 0) cts.Cancel(); });
+
+        var act = () => _sut.ArchiveAsync(new ArchiveOptions
+        {
+            SourcePaths = files,
+            DestinationFolder = Dest("out"),
+            ArchiveName = "partial",
+        }, progress, cts.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        File.Exists(Path.Combine(Dest("out"), "partial.zip")).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ArchiveAsync_SingleArchive_ParallelWriter_CancelledMidway_ThrowsAndCommitsNothing()
+    {
+        // Above the parallel threshold (64 files): the producer loop used to `break` on cancel.
+        string dir = Path.Combine(_temp.Path, "many");
+        Directory.CreateDirectory(dir);
+        for (int i = 0; i < 200; i++)
+            File.WriteAllText(Path.Combine(dir, $"f{i:D3}.txt"), new string('x', 2048));
+        using var cts = new CancellationTokenSource();
+        var progress = new SynchronousProgress<ProgressReport>(r => { if (r.BytesTransferred > 0) cts.Cancel(); });
+
+        var act = () => _sut.ArchiveAsync(new ArchiveOptions
+        {
+            SourcePaths = [dir],
+            DestinationFolder = Dest("out"),
+            ArchiveName = "many",
+        }, progress, cts.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        File.Exists(Path.Combine(Dest("out"), "many.zip")).Should().BeFalse();
+    }
+
+    [Fact]
     public async Task ExtractAsync_SelectedEntriesOnly_SourcePartialNotDeletable()
     {
         string zip = WriteZip("subset.zip", "a.txt", "b.txt");

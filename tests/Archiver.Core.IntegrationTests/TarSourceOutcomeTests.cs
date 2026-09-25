@@ -40,6 +40,26 @@ public sealed class TarSourceOutcomeTests : IDisposable
     }
 
     [Integration]
+    public async Task ExtractAsync_SomeEntriesConflictSkipped_SourcePartial()
+    {
+        string tar = WriteTar("update.tar", "a.txt", "b.txt");
+        string dest = Dest("out");
+        Directory.CreateDirectory(dest);
+        File.WriteAllText(Path.Combine(dest, "a.txt"), "old");
+
+        var result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [tar],
+            DestinationFolder = dest,
+            Mode = ExtractMode.SingleFolder,
+            OnConflict = ConflictBehavior.Skip,
+        });
+
+        File.ReadAllText(Path.Combine(dest, "a.txt")).Should().Be("old");
+        result.Sources.Should().ContainSingle().Which.Outcome.Should().Be(SourceOutcome.Partial);
+    }
+
+    [Integration]
     public async Task ExtractAsync_SelectedEntriesOnly_SourcePartial()
     {
         string tar = WriteTar("subset.tar", "a.txt", "b.txt");

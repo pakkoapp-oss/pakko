@@ -232,6 +232,10 @@ public sealed class ZipArchiveService : IArchiveService
             // T-F60: Only commit if at least one entry was written. When every source path
             // failed (missing, locked, etc.) the temp is an empty ZIP — discard it so no
             // zero-entry archive and no leftover .tmp lands on disk.
+            // T-F260: never commit after a cancel — several loops inside the writers end with a
+            // `break` rather than a throw, which would otherwise leave a partial archive that
+            // looks finished.
+            cancellationToken.ThrowIfCancellationRequested();
             if (HasTempEntries(tempPath))
             {
                 File.Move(tempPath, destPath, overwrite: true);
@@ -599,6 +603,8 @@ public sealed class ZipArchiveService : IArchiveService
 
             // T-F60: Only commit if at least one entry was written (e.g. a directory
             // where all contained files failed would otherwise leave an empty archive).
+            // T-F260: never commit after a cancel (see ArchiveSingleArchiveModeAsync's same gate).
+            cancellationToken.ThrowIfCancellationRequested();
             if (HasTempEntries(separateTempPath))
             {
                 File.Move(separateTempPath, destPath, overwrite: true);
@@ -700,6 +706,9 @@ public sealed class ZipArchiveService : IArchiveService
         int total = options.ArchivePaths.Count;
         bool singleArchive = total == 1;
         var sources = new List<SourceResult>();
+        // Entries skipped because they already exist at the destination — not reported in
+        // SkippedFiles (the summary dialog stays as it was), but they make the archive Partial.
+        var conflictSkipped = new List<string>();
 
         for (int i = 0; i < total; i++)
         {
@@ -708,7 +717,8 @@ public sealed class ZipArchiveService : IArchiveService
             cancellationToken.ThrowIfCancellationRequested();
 
             string archivePath = options.ArchivePaths[i];
-            int errorsBefore = errors.Count, skippedBefore = skippedFiles.Count, createdBefore = createdFiles.Count;
+            int errorsBefore = errors.Count, skippedBefore = skippedFiles.Count, createdBefore = createdFiles.Count,
+                conflictSkippedBefore = conflictSkipped.Count;
 
             var (rejected, password) = await TryRejectUnsupportedOrEncryptedZipAsync(
                 archivePath, errors, skippedFiles, passwordResolver).ConfigureAwait(false);
@@ -720,7 +730,7 @@ public sealed class ZipArchiveService : IArchiveService
                     : options.DestinationFolder;
 
                 IProgress<ProgressReport>? archiveProgress = singleArchive ? progress : null;
-                var sink = new ZipExtractResultSink(errors, createdFiles, skippedFiles);
+                var sink = new ZipExtractResultSink(errors, createdFiles, skippedFiles, conflictSkipped);
                 await ExtractOneZipWithErrorMappingAsync(
                     archivePath, destDir, options, conflictResolver, password, sink, archiveProgress, cancellationToken).ConfigureAwait(false);
             }
@@ -728,7 +738,8 @@ public sealed class ZipArchiveService : IArchiveService
             // T-F265: a subset extraction never makes the whole archive deletable.
             sources.Add(SourceOutcomeRules.Classify(archivePath,
                 produced: createdFiles.Count > createdBefore,
-                clean: errors.Count == errorsBefore && skippedFiles.Count == skippedBefore && options.SelectedEntryPaths is null));
+                clean: errors.Count == errorsBefore && skippedFiles.Count == skippedBefore
+                    && conflictSkipped.Count == conflictSkippedBefore && options.SelectedEntryPaths is null));
 
             if (!singleArchive) progress?.Report(new ProgressReport { Percent = (i + 1) * 100 / total, BytesTransferred = 0, TotalBytes = 0 });
         }
@@ -839,7 +850,8 @@ public sealed class ZipArchiveService : IArchiveService
     private sealed record ZipExtractResultSink(
         List<ArchiveError> Errors,
         List<string> CreatedFiles,
-        List<SkippedFile> SkippedFiles);
+        List<SkippedFile> SkippedFiles,
+        List<string> ConflictSkippedEntries);
 
     private async Task ExtractOneZipWithErrorMappingAsync(
         string archivePath, string destDir, ExtractOptions options, ConflictResolver conflictResolver,
@@ -849,7 +861,8 @@ public sealed class ZipArchiveService : IArchiveService
         {
             bool alreadyIsolated = options.Mode == ExtractMode.SeparateFolders;
             var context = new ZipExtractionContext(
-                conflictResolver, sink.SkippedFiles, options.ConfirmCompressionBombExtraction, _policy.MotwMode, archiveProgress, sink.Errors, password);
+                conflictResolver, sink.SkippedFiles, options.ConfirmCompressionBombExtraction, _policy.MotwMode, archiveProgress, sink.Errors,
+                sink.ConflictSkippedEntries, password);
             var (actualDest, anyExtracted) = await Task.Run(async () =>
                 await ExtractWithSmartFolderingAsync(archivePath, destDir, alreadyIsolated,
                     options.DestinationFolder, options.SelectedEntryPaths, context, cancellationToken),
@@ -1338,8 +1351,9 @@ public sealed class ZipArchiveService : IArchiveService
         {
             foreach (var entry in fileEntries)
             {
-                if (cancellationToken.IsCancellationRequested)
-                    break;
+                // T-F260: throw (the catch below removes tempDest) — a `break` here committed the
+                // entries extracted so far as if the archive were finished.
+                cancellationToken.ThrowIfCancellationRequested();
 
                 var (extracted, bytesConsumed) = await TryExtractSingleEntryAsync(
                     entry, archivePath, bytesRead, plan, context, cancellationToken)
@@ -1465,6 +1479,8 @@ public sealed class ZipArchiveService : IArchiveService
         // another process) — distinct from SkippedFiles (a deliberate, non-lossy decision like
         // Skip/ADS/reparse-point) since data the user asked for genuinely failed to arrive.
         List<ArchiveError> Errors,
+        // T-F260: entries skipped because they already exist at the destination (see ExtractAsync).
+        List<string> ConflictSkippedEntries,
         // T-F189: non-null only when this archive contains at least one encrypted entry and a
         // password was already resolved once, upfront, in TryRejectUnsupportedOrEncryptedZipAsync.
         string? Password = null);
@@ -1547,7 +1563,10 @@ public sealed class ZipArchiveService : IArchiveService
         {
             ConflictBehavior resolvedConflict = await context.ConflictResolver.ResolveAsync(finalFilePath).ConfigureAwait(false);
             if (resolvedConflict == ConflictBehavior.Skip)
+            {
+                context.ConflictSkippedEntries.Add(relativePath);
                 return (false, entry.Length);
+            }
             if (resolvedConflict == ConflictBehavior.Rename)
             {
                 string uniqueFinal = GetUniqueFilePath(finalFilePath, claimedFinalPaths);

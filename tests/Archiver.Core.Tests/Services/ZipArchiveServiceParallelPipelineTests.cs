@@ -90,8 +90,10 @@ public sealed class ZipArchiveServiceParallelPipelineTests : IDisposable
     }
 
     [Fact]
-    public async Task ArchiveAsync_ManyFiles_AlreadyCancelledToken_GracefulNoThrow()
+    public async Task ArchiveAsync_ManyFiles_AlreadyCancelledToken_ThrowsNoArchiveNoTemp()
     {
+        // T-F260: the parallel writer still returns quietly on an already-cancelled token; the
+        // commit gate in ArchiveSingleArchiveModeAsync turns that into the one cancellation contract.
         string sourceDir = CreateManyFilesDirectory("source");
         using var cts = new CancellationTokenSource();
         cts.Cancel();
@@ -101,8 +103,9 @@ public sealed class ZipArchiveServiceParallelPipelineTests : IDisposable
             SourcePaths = [sourceDir], DestinationFolder = _temp.Path, ArchiveName = "precancelled",
         }, cancellationToken: cts.Token);
 
-        await act.Should().NotThrowAsync();
+        await act.Should().ThrowAsync<OperationCanceledException>();
         Directory.GetFiles(_temp.Path, "*.tmp").Should().BeEmpty();
+        Directory.GetFiles(_temp.Path, "precancelled.zip").Should().BeEmpty();
     }
 
     [Fact]
