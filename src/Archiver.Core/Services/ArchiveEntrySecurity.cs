@@ -14,12 +14,15 @@ internal static class ArchiveEntrySecurity
     // duplicated separately in ZipArchiveService and TarProcessService. See DECISIONS.md's
     // T-F94 entry.
     public const int MaxCompressionRatio = 1000;
-    // T-F39: Reject reserved Windows device names (with or without extension, case-insensitive)
+    // T-F39: Reject reserved Windows device names (with or without extension, case-insensitive).
+    // T-F243: the full list from Microsoft's "Naming Files" page, incl. COM0/LPT0, the
+    // superscript-digit ports and the console names.
     private static readonly HashSet<string> _reservedNames = new(StringComparer.OrdinalIgnoreCase)
     {
-        "CON", "PRN", "AUX", "NUL",
-        "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
-        "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"
+        "CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$",
+        "COM0", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
+        "LPT0", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
+        "COM\u00B9", "COM\u00B2", "COM\u00B3", "LPT\u00B9", "LPT\u00B2", "LPT\u00B3"
     };
 
     // T-F228: a ".." segment (either separator — Windows honors both) or a rooted/drive-relative
@@ -33,14 +36,16 @@ internal static class ArchiveEntrySecurity
     public static bool HasAlternateDataStreamMarker(string entryPath)
         => entryPath.Contains(':');
 
+    // T-F243: every segment (a folder named NUL is a device too), and the part before the FIRST
+    // dot with trailing spaces dropped — how Windows itself reads "CON.a.b" or "NUL .txt".
     public static bool HasReservedName(string entryPath)
+        => entryPath.Split('/', '\\').Any(IsReservedSegment);
+
+    private static bool IsReservedSegment(string segment)
     {
-        // Use the last path segment from the raw archive entry name (before any GetFullPath call)
-        string lastSegment = entryPath.Contains('/')
-            ? entryPath[(entryPath.LastIndexOf('/') + 1)..]
-            : entryPath;
-        string nameWithoutExt = Path.GetFileNameWithoutExtension(lastSegment);
-        return _reservedNames.Contains(nameWithoutExt);
+        int dot = segment.IndexOf('.');
+        string stem = (dot >= 0 ? segment[..dot] : segment).TrimEnd(' ');
+        return _reservedNames.Contains(stem);
     }
 
     // T-F39: Reject entries with control characters (0x00–0x1F) in name
