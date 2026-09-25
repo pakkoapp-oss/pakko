@@ -119,7 +119,7 @@ public static class ArchiveFormatDetector
     {
         try
         {
-            byte[] data = File.ReadAllBytes(path);
+            byte[] data = ReadHeaderWindow(path);
             if (!TryReadFirstBlockType(data, out int headerType, out _, out _))
                 return false;
 
@@ -152,7 +152,7 @@ public static class ArchiveFormatDetector
     {
         try
         {
-            byte[] data = File.ReadAllBytes(path);
+            byte[] data = ReadHeaderWindow(path);
             if (!TryReadFirstBlockType(data, out int mainHeaderType, out int mainHeaderTypePos, out int mainHeaderSize))
                 return false;
 
@@ -190,6 +190,10 @@ public static class ArchiveFormatDetector
             while (extraPos < fileHeaderEnd)
             {
                 int recordSize = ReadVInt(data, ref extraPos);
+                // T-F249: a size that is not positive would move the position backwards (a
+                // hostile -5 re-read the same record forever).
+                if (recordSize <= 0)
+                    return false;
                 int afterSizePos = extraPos;
                 int recordType = ReadVInt(data, ref extraPos);
                 if (recordType == 1) // Encryption record
@@ -227,18 +231,34 @@ public static class ArchiveFormatDetector
         return true;
     }
 
+    // T-F249: RAR5 keeps the main archive header and the first file header in the first bytes
+    // of the file — both checks used to read the whole file (1.5 GB of memory for a 1.5 GB RAR,
+    // and a silent "false" above 2 GB, where ReadAllBytes throws). A header larger than this
+    // window parses as "not detected", the same as any other malformed input.
+    private const int HeaderWindowBytes = 64 * 1024;
+
+    private static byte[] ReadHeaderWindow(string path)
+    {
+        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        var buffer = new byte[(int)Math.Min(HeaderWindowBytes, stream.Length)];
+        stream.ReadExactly(buffer);
+        return buffer;
+    }
+
+    // Bounds checked on each line: the position stays inside the data, and at most five 7-bit
+    // groups are read (35 bits covers every int); anything else throws and the caller's catch
+    // answers "not detected".
     private static int ReadVInt(byte[] data, ref int pos)
     {
         int result = 0;
-        int shift = 0;
-        while (true)
+        for (int shift = 0; ; shift += 7)
         {
+            if (pos < 0 || pos >= data.Length || shift > 28)
+                throw new InvalidDataException("Malformed RAR5 vint.");
             byte b = data[pos++];
             result |= (b & 0x7F) << shift;
             if ((b & 0x80) == 0)
-                break;
-            shift += 7;
+                return result;
         }
-        return result;
     }
 }

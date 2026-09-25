@@ -271,6 +271,62 @@ public sealed class ArchiveFormatDetectorTests : IDisposable
         ArchiveFormatDetector.IsRarHeaderEncrypted(Path.Combine(_temp.Path, "does_not_exist.rar")).Should().BeFalse();
     }
 
+    // T-F249: both checks read the whole file (File.ReadAllBytes) to parse a header in its first
+    // bytes — a 1.5 GB RAR cost 1.5 GB of memory, and above 2 GB the read threw and the check
+    // silently answered false. The file is extended with SetLength (no data written).
+    [Fact]
+    public void IsEncryptedRar_ArchiveOverTwoGiB_StillDetectedFromItsHeader()
+    {
+        byte[] header =
+        [
+            .. Rar5Sig,
+            0x00, 0x00, 0x00, 0x00, 0x01, 0x01,
+            0x00, 0x00, 0x00, 0x00, 0x06, 0x02, 0x01, 0x03, 0x02, 0x01, 0x00,
+        ];
+        var path = WriteBytes("huge.rar", header);
+        using (var stream = new FileStream(path, FileMode.Open, FileAccess.Write))
+            stream.SetLength(3L * 1024 * 1024 * 1024);
+
+        long before = GC.GetAllocatedBytesForCurrentThread();
+        bool encrypted = ArchiveFormatDetector.IsEncryptedRar(path);
+        bool headerEncrypted = ArchiveFormatDetector.IsRarHeaderEncrypted(path);
+        long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+
+        encrypted.Should().BeTrue();
+        headerEncrypted.Should().BeFalse();
+        allocated.Should().BeLessThan(1024 * 1024);
+    }
+
+    [Fact]
+    public void IsEncryptedRar_VIntRunsPastTheData_ReturnsFalse()
+    {
+        // HeaderSize is a vint whose continuation bit never ends.
+        var path = WriteBytes("vint.rar", [.. Rar5Sig, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF]);
+        ArchiveFormatDetector.IsEncryptedRar(path).Should().BeFalse();
+    }
+
+    // A hostile extra-area record size that overflows to a negative number used to move the
+    // parse position backwards — a loop that never ends. Must answer (false) promptly.
+    [Fact]
+    public async Task IsEncryptedRar_NegativeRecordSize_ReturnsPromptly()
+    {
+        byte[] bytes =
+        [
+            .. Rar5Sig,
+            0x00, 0x00, 0x00, 0x00, 0x01, 0x01,
+            // File Header: HeaderSize=10, type 2, flags 0x01, extra area size 7; the one record's
+            // size is the 5-byte vint FB FF FF FF 0F = 0xFFFFFFFB, -5 as an int — exactly its own
+            // length, so the next record starts where this one did.
+            0x00, 0x00, 0x00, 0x00, 0x0A, 0x02, 0x01, 0x07, 0xFB, 0xFF, 0xFF, 0xFF, 0x0F, 0x03, 0x00,
+        ];
+        var path = WriteBytes("loop.rar", bytes);
+
+        var task = Task.Run(() => ArchiveFormatDetector.IsEncryptedRar(path));
+
+        (await Task.WhenAny(task, Task.Delay(TimeSpan.FromSeconds(5)))).Should().BeSameAs(task, "the parse must not loop");
+        (await task).Should().BeFalse();
+    }
+
     [Fact]
     public void IsEncryptedRar_TruncatedAfterSignature_ReturnsFalse()
     {
