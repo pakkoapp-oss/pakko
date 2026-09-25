@@ -4228,9 +4228,9 @@ regression from this task, which owns reliability only.
   folders across on the merge path too. Tar creates folder entries from the pre-scanned names after
   the move phase. Both engines count folder entries as roots, so `a.txt` + `empty/` is MultiRoot
   (no longer the T-F154 single-file unwrap — intended). The on-disk assertion in
-  `ZipArchiveServiceEncryptTests` is restored. Device check pending (phase end).
+  `ZipArchiveServiceEncryptTests` is restored. Agent-verified on device 2026-09-25 (Deploy 1.4.12.11): `pakko x` and Shell --extract-flat recreate `src\empty` and `src\nested\deeper` from both the ZIP and the tar.
 
-- [ ] **Status:** open — found 2026-09-24 while writing T-F193 phase 2's round-trip tests;
+- [~] **Status:** fixed in fix phase 2, stays `[~]` until the user's own check. Original: open — found 2026-09-24 while writing T-F193 phase 2's round-trip tests;
   pre-existing and unrelated to encryption. Pakko writes an empty folder as a `name/` entry
   (T-F66), but extracting that archive back leaves no folder on disk. Reproduced with a plain,
   unencrypted archive of `src/{empty/, f0.txt, f1.txt}` extracted in `ExtractMode.SingleFolder`,
@@ -4496,7 +4496,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   `Extract.cpp:104-230`). "Extract here (smart)" unchanged. User-visible — CHANGELOG at release:
   Explorer "Extract here", `pakko x`, App Extract now keep the root folder. Device check pending.
 
-- [ ] **Status:** open. `ExtractionDestinationPlanner.Resolve` returns `StripRootPrefix = true`
+- [~] **Status:** fixed in fix phase 2, stays `[~]` until the user's own check. Original: open. `ExtractionDestinationPlanner.Resolve` returns `StripRootPrefix = true`
   for `(alreadyIsolated: false, RootShape.SingleFolder)`, so in SingleFolder mode the archive's
   single root folder name is lost and its contents spill straight into the destination.
   Repro: `singleroot.zip` = `root/in/c.txt`; Explorer "Extract here" (flat, `--extract-flat`)
@@ -4771,9 +4771,9 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 - **Progress (2026-09-25, fix phase 2):** ZIP now stages into a fresh hidden
   `<DestinationFolder>\.pakko-x-<pid>-<guid>` owned by the run (`ExtractionStaging`, the T-F263
   slice), never reused, removed on every exit; Hidden is cleared before the fast-path rename. Tar
-  moves to it in phase 4. Device check pending (phase end).
+  moves to it in phase 4. Agent-verified on device 2026-09-25 (Deploy 1.4.12.11): Shell --extract-folder and --extract-here next to a user `multi_tmp\` folder: note untouched, extracted folders not Hidden, no staging left.
 
-- [ ] **Status:** open — found by the T-F226 review (independent reviewer agent), confirmed on
+- [~] **Status:** fixed in fix phase 2, stays `[~]` until the user's own check. Original: open — found by the T-F226 review (independent reviewer agent), confirmed on
   device 2026-09-24. `ZipArchiveService` stages into `tempDest = destDir + "_tmp"`
   (`ZipArchiveService.cs:1290`), `Directory.CreateDirectory` silently reuses an existing folder of
   that name (`:1292`), the commit phase moves every file in it into the destination (`:1403-1410`)
@@ -4797,9 +4797,9 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   rooted/drive-relative name is rejected per entry as an `ArchiveError` ("unsafe path"), before the
   name checks; the conflict path is built from the path as resolved inside staging. With T-F227's
   unguessable staging name the original out-and-back repro cannot recur either. Tar's whole-archive
-  rejection is unchanged (`TarSandboxedServiceExtractTests`). Device check pending (phase end).
+  rejection is unchanged (`TarSandboxedServiceExtractTests`). Agent-verified on device 2026-09-25 (Deploy 1.4.12.11): `pakko x -aos` of the repro archive: both unsafe entries reported, `t\b.txt` still ORIGINAL, exit 2.
 
-- [ ] **Status:** open — found by the T-F226 reviewer agent, confirmed on device 2026-09-24. The
+- [~] **Status:** fixed in fix phase 2, stays `[~]` until the user's own check. Original: open — found by the T-F226 reviewer agent, confirmed on device 2026-09-24. The
   traversal check runs on the path normalized inside the staging folder, but the conflict check and
   the duplicate-path set are computed from the un-normalized relative path against the final
   destination (`ZipArchiveService.cs:~1477-1533`), and the commit phase moves files with
@@ -4837,9 +4837,9 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   name, denied, locked) is now an `ArchiveError` naming the entry and the destination (never the
   staging path); a half-written file is deleted and the rest continues. A full disk stays one
   archive-level error. A traversal entry says "unsafe path" (T-F228). `ExtractAsync` removes a
-  destination folder it created when the run produced nothing. Device check pending (phase end).
+  destination folder it created when the run produced nothing. Agent-verified on device 2026-09-25 (Deploy 1.4.12.11): Shell --extract-folder of `qmark.zip`: ok1/ok2 extracted, one error naming `What?.txt` and the destination path.
 
-- [ ] **Status:** open — confirmed on device 2026-09-24. Per-entry I/O failures are not caught
+- [~] **Status:** fixed in fix phase 2, stays `[~]` until the user's own check. Original: open — confirmed on device 2026-09-24. Per-entry I/O failures are not caught
   per entry (rule: every IO exception per item becomes an `ArchiveError`): `qmark.zip` =
   `ok1.txt`, `What?.txt` (legal on macOS/Linux), `ok2.txt` -> `pakko x` exit 2 "Cannot extract
   archive: The filename, directory name, or volume label syntax is incorrect. :
@@ -4856,9 +4856,9 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   Zip64-resolved); `EncryptedZipEntryReader` wraps every decrypted entry in `VerifyingReadStream`
   (replacing `TrailerCrcCheckStream`), so AE-2 is capped and ZipCrypto/AE-1 get cap + CRC — in
   extract, Test and Scan alike. Confirmed .NET does not cap the unencrypted stored path either (it
-  returns all stored bytes); T-F246's wrapper covers that. Device check pending (phase end).
+  returns all stored bytes); T-F246's wrapper covers that. Agent-verified on device 2026-09-25 (Deploy 1.4.12.11): covered by unit/service tests (AE-2 larger than declared); no separate device scenario.
 
-- [ ] **Status:** open — code-confirmed by the T-F226 reviewer agent, exploit not yet reproduced.
+- [~] **Status:** fixed in fix phase 2, stays `[~]` until the user's own check. Original: open — code-confirmed by the T-F226 reviewer agent, exploit not yet reproduced.
   The compression-bomb and free-space gate uses declared sizes; the decrypting path wraps the
   plaintext in an unbounded `DeflateStream` (`EncryptedZipEntryReader.cs:~229`), so a
   password-protected archive can declare tiny sizes and expand far beyond them (a password shared
@@ -5174,7 +5174,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   an understated size hit the cap; deflated ones hit the CRC (.NET truncates them). Device check
   pending (phase end).
 
-- [ ] **Status:** open — confirmed 2026-09-25. `pakko a c.zip doc.txt -mx=0`, flip one byte
+- [~] **Status:** fixed in fix phase 2, stays `[~]` until the user's own check. Original: open — confirmed 2026-09-25. `pakko a c.zip doc.txt -mx=0`, flip one byte
   inside the stored data: `pakko t bad.zip` -> `Entry 'doc.txt' failed CRC-32 check (expected
   FFF2F885, got E6BC4A3F)`, exit 2; `pakko x bad.zip` -> exit 0, `doc.txt` written and differs from
   the original; `7za x` -> `ERROR: CRC Failed : doc.txt`. `TestAsync` computes CRC-32 itself
@@ -5557,6 +5557,12 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 - **Reported by:** architecture review, 2026-09-25 (reviewer agent).
 
 ### T-F263 — Staging and temporary folders have no single owner; the two extraction commit paths are synced by hand (P1, root, decision)
+
+- **Progress (2026-09-25, fix phase 2 — the P0 slice only):** `ExtractionStaging` (unique owned
+  `.pakko-x-<pid>-<guid>`, shared commit) is in use for ZIP extraction. Still open: tar on the same
+  committer (phase 4), CLI staging (phase 8), per-process caches + the startup sweep of dead-process
+  folders (phase 9) — a killed process still leaves its hidden staging folder behind until then
+  (seen on device when a run was killed at its conflict dialog), and owner-only ACLs.
 
 - [ ] **Status:** open — code-confirmed 2026-09-25. Seven staging mechanisms, each with its own
   naming, ACL and cleanup, and none with a startup sweep of leftovers: ZIP extraction's fixed
