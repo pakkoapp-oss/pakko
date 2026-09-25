@@ -9467,3 +9467,83 @@ archives. (b) Derived keys, PBKDF2 output, password byte arrays, the
 buffered AES-CTR keystream and ZipCrypto's key state are zeroed once no longer needed. (c)
 `PathContainsReparsePoint` now checks the staging root itself — a trailing separator on the root
 argument used to leave it out of the walk.
+
+
+## Fix phase 4 — tar sandbox: archive handle, launcher, names, limits (2026-09-25)
+
+Plan: `serene-sauteeing-lighthouse.md` 8.2 phase 4, detailed in `parallel-rolling-kurzweil.md`
+(advisor-reviewed, user-approved). Spikes first (bsdtar 3.8.8, ACP 1251 / OEMCP 866).
+
+**T-F233 / T-F248 — the archive reaches tar.exe as a stdin handle, never a staged link.** The
+recorded decision was "stage by copy, never touch the original's security descriptor". A spike
+showed a better way to meet it: bsdtar reads `-f -` from an inherited file handle with identical
+results (listing and SHA-256 of every extracted file) for tar, .gz, .bz2, .xz, .zst, .lzma, 7z
+(solid and non-solid — seeking works, stdin is a real file), rar and zip, and does so inside the
+AppContainer with no grant at all on the archive's folder (`SandboxStdinTests`; the same archive
+by path fails there). `TarSandboxScope` opens the archive read-only, sharing read only, for the
+whole scope, and gives each run its own `ReOpenFile` handle (offset 0, synchronous — the CRT's
+stdin reads expect a non-overlapped handle). Compared with a copy: no multi-GB copy, no free-space
+or cleanup question, and the file cannot change between the pre-scan and extraction (the old
+hardlink was not a snapshot either). Cost: an archive another program still has open for writing
+is refused as "in use". tar.exe runs with the quarantine root as current directory and extracts
+into a relative `out`, so its command line holds no user-profile path. `QuarantineStaging` and the
+`in\` folder are gone. Remediation for files already changed (decision of 2026-09-25: no automatic
+repair): `scripts/Find-PakkoSandboxAce.ps1` (read-only) and `scripts/Repair-PakkoSandboxAce.ps1`
+(backup with `icacls /save`, remove only Pakko's explicit ACEs, drop the inherited ACEs that came
+from the temp folder, re-enable inheritance — not `/reset`). Validated on damage made by the
+installed old build: the repaired SDDL equals the original byte for byte, and with an extra
+explicit ACE it equals an identically built reference (a first comparison against a snapshot
+taken right after creation disagreed; not explained — the reference file settles it).
+
+**T-F266 (new, P0) — WorstFit option injection.** tar.exe's C runtime converts the UTF-16 command
+line to the ANSI code page with best-fit mapping; U+FF02 became `"` and `tar -tf "x＂ --version ＂"`
+ran `--version`. Archive creation runs tar.exe unsandboxed, so a selected file name could add
+options. Every tar.exe argument (and every name under a creation source, which tar.exe reaches
+itself) must survive `WideCharToMultiByte(CP_ACP, WC_NO_BEST_FIT_CHARS)` with no default
+character and convert back unchanged — the OS table the CRT uses, not .NET's CodePages tables.
+tar.exe is the only executable Pakko starts with ANSI argv (explorer.exe and ShellExecute are
+Unicode).
+
+**T-F244 items 1, 5 — launcher.** All tar.exe launches (sandboxed runs, creation, the `--version`
+probe) go through `SandboxedProcessLauncher` with `PROC_THREAD_ATTRIBUTE_HANDLE_LIST`; the list
+attribute is built per launch (`LaunchAttributeList`). A redirected `Process.Start` child
+inherited every inheritable handle in the process — .NET's lock does not cover handles made
+inheritable elsewhere. Any failure or cancel after the child exists terminates it and waits
+(5 s) before returning. **Found on the way:** concurrent `CreateAppContainerProfile` calls on the
+existing profile fail (0x800703FA, 0x8000FFFF; 8 threads x 50 calls) — the real cause of the
+long-standing "TarSandbox" CI flake and a real failure for two simultaneous tar operations.
+`EnsureExists` now checks the profile's `AppContainer\Mappings\<SID>` key first.
+
+**T-F204 / T-F244 item 2 / T-F215 — names.** tar.exe prints in the user locale's ANSI code page
+(libarchive's `get_current_codepage` after `setlocale(LC_ALL, "")`), confirmed on this machine
+where system ACP and user locale are both 1251 — the two cannot be told apart here; argv uses the
+system ACP (hence two helpers). Tar headers carry no charset and libarchive reads them as OEM:
+GNU tar / 7-Zip UTF-8 names were extracted as mojibake with exit 0. Rule (7-Zip's): list first
+with `--options tar:hdrcharset=UTF-8`; `Pathname can't be converted from UTF-8` means the names
+are not UTF-8 → OEM. A valid UTF-8 name the code page cannot show gives only `unreadable
+filename` and now fails with a message saying so. The `tar:` prefix keeps 7z/rar/zip unaffected.
+
+**T-F263 (tar part).** The move phase goes through `ExtractionStaging` + `CommitInto` like ZIP;
+conflicts also check paths claimed in the run (ZIP's T-F30 set), since a renamed conflict could
+otherwise take the name of another entry and overwrite it in staging.
+
+**T-F239 — limits.** The Job reports an enforced limit on a completion port
+(`JOB_OBJECT_MSG_PROCESS_MEMORY_LIMIT` / `END_OF_PROCESS_TIME`); the scope names it in front of
+tar.exe's error. The task's hypothesis (empty stderr) was wrong: over the memory limit the
+allocation fails and tar.exe says "Cannot allocate memory". Pass count unchanged — parsing names
+out of `-tv` is fragile (spaces, localized dates). **Limits raised at the user's request:**
+memory = half the machine's memory within 1–4 GiB (a decoder allocates the whole dictionary:
+7-Zip up to 1.5 GB, zstd `--long=31` 2 GB, RAR5 up to 4 GB); CPU time = at least 60 minutes plus
+one per 10 MB of archive, so a large legitimate archive is never cut off while a small crafted one
+that spins still stops. Archive creation has no sandbox and no time limit.
+
+**T-F249.** RAR checks read a 64 KB window. **Found on the way:** an extra-area record size of
+-5 (vint `FB FF FF FF 0F`) looped forever at 100% CPU — a crafted .rar hung listing/extraction.
+Non-positive record sizes end the parse; `ReadVInt` checks position and shift on every step.
+
+**T-F256.** The symlink test asserts the pre-scan's own message (the AppContainer also fails a
+symlink, which kept it green with the pre-scan disabled). The pre-scan now also splits names on
+`\` (`HasUnsafePath`).
+
+**Deferred:** T-F214 (tar listing dates / packed size) to fix phase 9 — it changes the public
+`ArchiveEntryInfo` model and every frontend renderer. New `DllImport`s join T-F148.

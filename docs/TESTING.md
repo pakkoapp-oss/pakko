@@ -248,24 +248,37 @@ Exercise the real Win32 AppContainer/ACL/Job-Object/Authenticode APIs directly �
 repo's convention), every assertion is against real OS behavior:
 
 - `tests/Archiver.Core.Tests/Services/Sandbox/` — pure/fast unit tests: `SandboxedProcessLauncherTests.cs`
-  (raw `CreateProcessW` launcher, no AppContainer), `SecurityCapabilitiesAttributeListTests.cs`
-  (`tar.exe --version` inside a real AppContainer), `AppContainerProfileTests.cs` (profile
+  (raw `CreateProcessW` launcher, no AppContainer; fix phase 4: an unrelated inheritable pipe is
+  not inherited by the child — `PROC_THREAD_ATTRIBUTE_HANDLE_LIST`; a cancelled child has exited
+  when the call returns), `SandboxedProcessLauncherHandleLeakTests.cs` (a failing launch leaks no
+  handles — its own `DisableParallelization` collection, since it counts the whole process's
+  handles), `AppContainerLaunchTests.cs` (`tar.exe --version` inside a real AppContainer),
+  `TarCommandLineEncodingTests.cs` (T-F266: best-fit/unrepresentable strings per explicit code
+  page, the launcher refuses before creating a process), `TarSandboxScopeLimitMessageTests.cs`
+  (T-F239 messages, the memory/CPU limit rules), `AppContainerProfileTests.cs` (profile
   create/reuse/delete, using its own throwaway test profile name — never the shared production
   `Pakko.TarSandbox` profile — plus a real forced-failure case: a >64-char profile name makes
   `CreateAppContainerProfile` throw `InvalidOperationException`, the exact failure shape
-  `TarSandboxScope` now rewraps as `SandboxSetupException`), `QuarantineStagingTests.cs`
-  (hardlink/copy staging), `TarSignatureVerifierTests.cs` (real tar.exe passes, an unsigned decoy
-  and a catalog-signed system binary both correctly fail).
+  `TarSandboxScope` now rewraps as `SandboxSetupException`), `TarSignatureVerifierTests.cs` (real
+  tar.exe passes, an unsigned decoy and a catalog-signed system binary both correctly fail).
 - `tests/Archiver.Core.IntegrationTests/` — `QuarantineAclTests.cs` (3 tests: a granted quarantine
   lets a real sandboxed extraction succeed; an un-granted sibling folder is denied — the actual
   security proof; and a nonexistent path makes `GetNamedSecurityInfoW` throw
   `InvalidOperationException`, the same forced-failure shape as above), `TarSandboxScopeTests.cs`
-  (4 tests: pre-scan + extraction in one scope,
-  listing-only scope creates no `out\`, Dispose cleans up but never touches the shared profile),
-  `SandboxJobObjectTarExtractionTests.cs` (2 tests: `.tar.xz`/`.tar.zst` extraction survives
-  `ActiveProcessLimit = 1`), and `TarSandboxedServiceSandboxBehaviorTests.cs` (3 tests — the
-  acceptance-criteria proofs: a write outside the quarantine is denied, a spawned child process
-  under the Job Object never completes, and a socket-connect attempt fails inside the
+  (pre-scan + extraction in one scope, listing-only scope creates no `out\`, Dispose cleans up but
+  never touches the shared profile; T-F233/T-F248: the original's SDDL is unchanged, an
+  `OWNER RIGHTS` read-only archive opens, a read-only archive keeps its attribute and link count,
+  the archive cannot be written during the scope, a file open for writing is refused),
+  `SandboxStdinTests.cs` (the archive as stdin works inside the AppContainer with no grant on its
+  folder, for `.tar.gz` and 7z; by path it fails), `TarSandboxConcurrencyTests.cs` (concurrent
+  `EnsureExists` never fails; a `Slow` test runs 8 workers x 15 scopes),
+  `SandboxJobObjectTarExtractionTests.cs` (`.tar.xz`/`.tar.zst` extraction survives
+  `ActiveProcessLimit = 1`; T-F239: the job reports memory, CPU-time or no limit hit),
+  `TarSandboxedServiceNameEncodingTests.cs` (T-F204/T-F215: UTF-8, OEM and pax names, a name
+  outside the code page, a backslash traversal, a creation error without `-v` lines — expectations
+  built from this machine's code pages), and `TarSandboxedServiceSandboxBehaviorTests.cs` (3 tests
+  — the acceptance-criteria proofs: a write outside the quarantine is denied, a spawned child
+  process under the Job Object never completes, and a socket-connect attempt fails inside the
   AppContainer while succeeding unsandboxed against the same listener).
 
 No `[Trait("Category", "Sandbox")]` was added — per-test wall time measured at 44–172ms (profile

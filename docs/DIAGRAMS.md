@@ -527,55 +527,58 @@ installed MSIX package — invisible until on-device testing. This is exactly th
 ## 5. Activity — tar.exe whole-archive pre-scan and extraction (T-F49, sandboxed since T-F52)
 
 Source read for this diagram: `ExtractSingleArchiveAsync`, `ScanForUnsafeEntriesAsync`,
-`IsDangerousEntryName`, `EnumerateFilesGuarded` in
-`src/Archiver.Core/Services/TarSandboxedService.cs`, and `TarSandboxScope.CreateAsync`/`RunAsync`
-in `src/Archiver.Core/Services/Sandbox/TarSandboxScope.cs`.
+`IsDangerousEntryName`, `EnumerateFilesGuarded`, `TryMoveSingleEntryAsync` in
+`src/Archiver.Core/Services/TarSandboxedService.cs`, `TarSandboxScope.CreateAsync`/`ListAsync`/
+`ExtractAsync` in `src/Archiver.Core/Services/Sandbox/TarSandboxScope.cs`, and
+`ExtractionStaging.CommitInto` in `src/Archiver.Core/Services/ExtractionStaging.cs` (re-read for
+fix phase 4, 2026-09-25).
 
 ```mermaid
 flowchart TD
-    A0["ExtractSingleArchiveAsync per archivePath:<br/>scope = TarSandboxScope.CreateAsync(archivePath, needsOutputDir:true)<br/>— verifies tar.exe's Authenticode signature once,<br/>ensures the AppContainer profile, creates %TEMP%\PakkoTarSandbox\&lt;guid&gt;\in+out<br/>with ACEs, stages archivePath into in\ (hardlink-or-copy)"]
-    A0 -- "signature check fails" --> RejSig["throw TarSignatureVerificationException<br/>caught in ExtractAsync as ArchiveError — fail-closed,<br/>never a silent unsandboxed fallback"]
-    A0 -- "signature OK" --> A[ExtractSingleArchiveAsync continues] --> B["scope.RunAsync(['-tf', scope.StagedArchivePath])<br/>— tar.exe runs INSIDE the AppContainer + a fresh Job Object"]
-    B -- "exit != 0" --> RejIO1["throw IOException(stdErr)<br/>→ finally still runs: scope disposed —<br/>caught in ExtractAsync as ArchiveError"]
-    B -- "exit 0" --> D{"for each listed name:<br/>IsDangerousEntryName?<br/>('..' segment, rooted path,<br/>ADS ':', reserved name, control char)"}
+    A0["ExtractSingleArchiveAsync per archivePath:<br/>scope = TarSandboxScope.CreateAsync(archivePath, needsOutputDir:true)<br/>— verifies tar.exe's Authenticode signature once,<br/>opens archivePath read-only, sharing read only, for the whole scope (T-F233),<br/>ensures the AppContainer profile, creates %TEMP%\PakkoTarSandbox\&lt;guid&gt;\out<br/>with ACEs — no ACE, link or copy of the user's archive"]
+    A0 -- "signature check fails, or the archive is open for writing elsewhere ('in use')" --> RejSig["throw TarSignatureVerificationException / IOException<br/>caught in ExtractAsync as ArchiveError — fail-closed,<br/>never a silent unsandboxed fallback"]
+    A0 -- "signature OK" --> A[ExtractSingleArchiveAsync continues] --> B["scope.ListAsync(verbose:false) = tar -t -f - (archive as inherited stdin)<br/>first with --options tar:hdrcharset=UTF-8, again without it if tar.exe<br/>reports non-UTF-8 names (T-F204) — INSIDE the AppContainer + a fresh Job Object"]
+    B -- "exit != 0" --> RejIO1["throw IOException(DescribeFailure(stdErr))<br/>→ finally still runs: scope disposed —<br/>caught in ExtractAsync as ArchiveError"]
+    B -- "exit 0" --> D{"for each listed name:<br/>IsDangerousEntryName?<br/>('..' segment with either separator, rooted path,<br/>ADS ':', reserved name, control char)"}
     D -- yes --> RejTar1["throw TarArchiveRejectedException<br/>WHOLE ARCHIVE rejected — finally still runs: scope disposed"]
-    D -- "no, all names clean" --> E["scope.RunAsync(['-tvf', scope.StagedArchivePath])<br/>— same scope, same AppContainer, a fresh Job Object"]
+    D -- "no, all names clean" --> E["scope.ListAsync(verbose:true) = tar -tv -f -<br/>— same scope and header charset, a fresh Job Object"]
     E -- "exit != 0" --> RejIO1
-    E -- "exit 0" --> F{"-tf line count ==<br/>-tvf line count?"}
+    E -- "exit 0" --> F{"-t line count ==<br/>-tv line count?"}
     F -- no --> RejTar2["throw TarArchiveRejectedException<br/>('listing is inconsistent')"]
-    F -- yes --> G{"for each -tvf line:<br/>char[0] == '-' or 'd'?"}
+    F -- yes --> G{"for each -tv line:<br/>char[0] == '-' or 'd'?"}
     G -- "no (l/h/b/c/p/s)" --> RejTar3["throw TarArchiveRejectedException<br/>('symlink, hardlink, device...')<br/>⚠ THIS is the gate that blocks the confirmed<br/>symlink-escape exploit — see DECISIONS.md's T-F49 entry"]
-    G -- "yes, every entry '-' or 'd'" --> Bomb{"T-F94: ArchiveEntrySecurity.EvaluateCompressionBombAsync<br/>(declaredUncompressedSize from the scan above,<br/>compressedFileSize = original archivePath's FileInfo.Length,<br/>free space at destDir, confirmCompressionBombExtraction callback)"}
-    Bomb -- "InsufficientDiskSpace" --> BombSkip1["SkippedFiles += 'destination has N bytes free,<br/>archive declares M uncompressed'; return (destDir, false)<br/>— scope disposed, no -xf ever runs"]
-    Bomb -- "UserDeclined<br/>(callback null → defaults to declined, e.g. Archiver.Shell/CLI)" --> BombSkip2["SkippedFiles += 'suspicious ratio N:1'; return (destDir, false)<br/>— scope disposed, no -xf ever runs"]
+    G -- "yes, every entry '-' or 'd'" --> Bomb{"T-F94: ArchiveEntrySecurity.EvaluateCompressionBombAsync<br/>(declaredUncompressedSize from the scan above,<br/>compressedFileSize = archivePath's FileInfo.Length,<br/>free space at destDir, confirmCompressionBombExtraction callback)"}
+    Bomb -- "InsufficientDiskSpace" --> BombSkip1["SkippedFiles += 'destination has N bytes free,<br/>archive declares M uncompressed'; return (destDir, false)<br/>— scope disposed, no extraction ever runs"]
+    Bomb -- "UserDeclined<br/>(callback null → defaults to declined, e.g. Archiver.Shell/CLI)" --> BombSkip2["SkippedFiles += 'suspicious ratio N:1'; return (destDir, false)<br/>— scope disposed, no extraction ever runs"]
     Bomb -- "NotABomb, or UserConfirmed" --> PreDir["Pre-create every directory allNames implies,<br/>via Directory.CreateDirectory at Pakko's OWN<br/>(unsandboxed) identity under scope.OutputDirectory —<br/>libarchive's own implicit parent-dir creation was found<br/>to fail under the AppContainer even with a correctly<br/>ACL'd out\; see DECISIONS.md's T-F52 entry"]
     PreDir --> G2{"T-F05: options.SelectedEntryPaths<br/>set and non-empty?<br/>(gates D-G above already ran<br/>UNCONDITIONALLY — the pre-scan<br/>never branches on this)"}
-    G2 -- no --> H["scope.RunAsync(['-xf', scope.StagedArchivePath,<br/>'-C', scope.OutputDirectory])"]
-    G2 -- yes --> G3["ExpandSelection(allNames, SelectedEntryPaths):<br/>each selected path → its exact -tf name<br/>(file or dir form) + every -tf name it's<br/>a '/'-prefix of (descendants) — built from<br/>the SAME name list gate D already validated,<br/>never a second '-tf' call"]
-    G3 --> H2["scope.RunAsync(['-xf', scope.StagedArchivePath,<br/>'-C', scope.OutputDirectory, &lt;expanded members&gt;])"]
+    G2 -- no --> H["scope.ExtractAsync(null)<br/>= tar -x -f - -C out (current directory = quarantine root)"]
+    G2 -- yes --> G3["ExpandSelection(allNames, SelectedEntryPaths):<br/>each selected path → its exact -t name<br/>(file or dir form) + every -t name it's<br/>a '/'-prefix of (descendants) — built from<br/>the SAME name list gate D already validated,<br/>never a second listing"]
+    G3 --> H2["scope.ExtractAsync(&lt;expanded members&gt;)"]
     H2 -- "exit != 0 (e.g. a stale/unmatched<br/>member name — 'Not found in archive')" --> RejIO2
     H2 -- "exit 0" --> I
-    H -- "exit != 0" --> RejIO2["throw IOException(stdErr)<br/>→ finally still runs: scope disposed<br/>→ caught in ExtractAsync as ArchiveError"]
-    H -- "exit 0" --> I["Directory.CreateDirectory(destDir)<br/>walk EnumerateFilesGuarded(scope.OutputDirectory)"]
+    H -- "exit != 0 (T-F239: a Job limit hit is named in front of stderr)" --> RejIO2["throw IOException(stdErr)<br/>→ finally still runs: scope disposed<br/>→ caught in ExtractAsync as ArchiveError"]
+    H -- "exit 0" --> I["T-F263: staging = ExtractionStaging.Create(unisolatedDestDir)<br/>walk EnumerateFilesGuarded(scope.OutputDirectory)"]
     I --> J{"subdirectory hit during walk:<br/>IsReparsePoint?"}
     J -- yes --> K["⚠ silently NOT descended into —<br/>no SkippedFiles entry, no ArchiveError<br/>(see Finding below)"]
     J -- no --> L[yield each file in this directory]
     K --> Mloop{More entries?}
-    L --> N{"File.Exists at<br/>destDir + relativePath?"}
+    L --> N{"File.Exists at actualDest + relativePath,<br/>or already claimed in this run?"}
     N -- no --> O
     N -- yes --> N0["T-F06: resolvedConflict = await conflictResolver.ResolveAsync(finalFilePath)<br/>same resolver/callback shape as diagram 3's node J0 —<br/>independent ConflictResolver instance, own 'apply to all'<br/>memory scoped to this ExtractAsync call only<br/>(does not cross a mixed zip+tar-family selection)"]
     N0 -- "resolvedConflict==Skip" --> P["SkippedFiles += 'already exists at destination'; continue"]
-    N0 -- "resolvedConflict==Rename" --> O2["finalFilePath = GetUniqueFilePath(...)"]
-    N0 -- "resolvedConflict==Overwrite" --> O3["NO explicit branch — falls through to O<br/>with the ORIGINAL finalFilePath;<br/>File.Move(overwrite:true) below does the actual overwrite<br/>(same asymmetry as diagram 3's ZIP OnConflict gate)"]
+    N0 -- "resolvedConflict==Rename" --> O2["finalFilePath = GetUniqueFilePath(finalFilePath, claimed)"]
+    N0 -- "resolvedConflict==Overwrite" --> O3["NO explicit branch — falls through to O<br/>with the ORIGINAL finalFilePath;<br/>the commit's File.Move(overwrite:true) does the actual overwrite<br/>(same asymmetry as diagram 3's ZIP OnConflict gate)"]
     O2 --> O
     O3 --> O
-    O["File.Move(file, finalFilePath, overwrite:true)<br/>ArchiveEntrySecurity.TryPropagateMotw(archivePath, finalFilePath)<br/>— reads the ORIGINAL archivePath's Zone.Identifier, never the<br/>staged in\ copy, which may not even carry one depending on<br/>hardlink-vs-copy staging"] --> Mloop
+    O["claim finalFilePath; File.Move(file, staging\relative path of finalFilePath)<br/>ArchiveEntrySecurity.TryPropagateMotw(archivePath, stagedFile)<br/>— from the archive the user chose; the stream moves with the file"] --> Mloop
     P --> Mloop
     Mloop -- yes --> I
-    Mloop -- no --> CF["T-F197: CreateFolderEntries — every folder entry from the pre-scanned<br/>names (or the expanded selection), same root strip, created under<br/>actualDest, so empty folders arrive too"] --> Q2{"totalFiles &gt; 0 &&<br/>extractedCount == 0?<br/>(T-F87 - every file hit P, nothing moved)"}
+    Mloop -- no --> CF["T-F197: CreateFolderEntries — every folder entry from the pre-scanned<br/>names (or the expanded selection), same root strip, created under<br/>staging, so empty folders arrive too"] --> CM["staging.CommitInto(actualDest) — the same commit as ZIP (diagram 3):<br/>rename when actualDest is new, else a per-file merge;<br/>each locked destination file = one ArchiveError.<br/>A cancel before this point leaves nothing at the destination"]
+    CM --> Q2{"totalFiles &gt; 0 &&<br/>extractedCount == 0?<br/>(T-F87 - every file hit P, nothing moved)"}
     Q2 -- yes --> Q3["SkippedFiles += whole-archive entry<br/>(Path == archivePath); caller does NOT<br/>add this archive to CreatedFiles"]
     Q2 -- no --> Q
-    Q3 --> Q["return destDir<br/>(finally: scope.Dispose() — quarantine root deleted,<br/>AppContainer SID handle released; the AppContainer PROFILE<br/>itself is never deleted, it persists for reuse)"]
+    Q3 --> Q["return destDir<br/>(finally: staging disposed; scope.Dispose() — archive closed,<br/>quarantine root deleted, AppContainer SID handle released;<br/>the AppContainer PROFILE itself is never deleted)"]
     Q --> R{{"ArchiveResult.Success = errors.Count==0 (ExtractAsync). T-F260: the outer loop records one SourceResult per archive (same rule as diagram 3's node O); DeleteAfterOperation reads only FullyProcessedSources"}}
 ```
 

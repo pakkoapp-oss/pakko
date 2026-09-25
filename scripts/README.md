@@ -292,3 +292,22 @@ now.
   work regardless of your current working directory.
 - The self-signed certificate is for **local development only**. Store/release
   builds require a trusted EV certificate (see T-F10).
+
+---
+
+## Permission repair for archives opened by older Pakko versions (T-F233)
+
+Pakko versions before fix phase 4 (2026-09-25) changed the permissions of tar-family archives
+(.tar, .gz, .7z, .rar, ...) they opened: an entry for the sandbox was added, and the entries the
+file inherited from its folder were replaced. Two scripts, for users who ask:
+
+```powershell
+.\scripts\Find-PakkoSandboxAce.ps1                    # read-only: lists affected files
+.\scripts\Find-PakkoSandboxAce.ps1 -Path D:\Shared -AllFiles
+.\scripts\Repair-PakkoSandboxAce.ps1 -Path '<file>' -WhatIf
+.\scripts\Repair-PakkoSandboxAce.ps1 -Path '<file>'   # backs up with icacls /save first
+```
+
+The repair removes only Pakko's own entries and re-inherits from the file's folder; entries set
+for anyone else are kept (it is not `icacls /reset`). See `docs/DECISIONS.md`'s fix-phase-4
+entry.

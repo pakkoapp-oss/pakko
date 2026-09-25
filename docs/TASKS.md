@@ -3931,6 +3931,8 @@ regression from this task, which owns reliability only.
 
 ### T-F148 — Convert Sandbox P/Invoke layer from `DllImport` to `LibraryImportAttribute`
 
+- **Progress (2026-09-25, fix phase 4):** new `DllImport`s in `TarCommandLineEncoding`, `TarOutputEncoding`, `TarSandboxScope` (ReOpenFile), `SandboxJobObject` (completion port) and `AppContainerProfile` (ConvertSidToStringSidW) — convert with the rest.
+
 - [ ] **Status:** not started.
 - **Context:** split out of T-F147, deliberately out of scope there per the user's explicit
   decision — `SYSLIB1054` (~40 findings across `Archiver.Core/Services/Sandbox/`, e.g.
@@ -4467,6 +4469,8 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 
 ### T-F204 — tar.exe paths: filenames outside the system code page break or silently corrupt (P0)
 
+- **Progress (2026-09-25, fix phase 4):** reading fixed in acca0de — output decoded with the user locale's ANSI code page; tar headers read as UTF-8 when valid, else OEM (7-Zip's rule, via `--options tar:hdrcharset=UTF-8` and tar.exe's own invalid-UTF-8 message); a name outside the code page fails with a clear message (U+2713 used to extract as mojibake). Creation: names outside the code page are refused before tar.exe runs (ac379ee, T-F266). Repro matrix re-run under ACP 1251 in the phase-4 spike (DECISIONS). Found on the way: T-F266.
+
 - [ ] **Status:** open. The machine under test runs ANSI code page 65001 (UTF-8), so Cyrillic and
   `é` pass; a check mark (U+2713) does not
   (**correction 2026-09-25:** `GetACP()` and the registry now report ACP 1251 / OEMCP 866 on this
@@ -4607,12 +4611,16 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 
 ### T-F214 — Tar-family listing shows no modified date and "0" packed size (P2)
 
+- **Progress (2026-09-25, fix phase 4):** deferred to fix phase 9 — it changes the public `ArchiveEntryInfo` model and every frontend renderer. Note: dates in `-tv` are the locale's month abbreviations (`Вер 25 19:24`), now decodable since acca0de.
+
 - [ ] **Status:** open. `pakko l sr.tar.gz`/`multi.7z` and the Archive Browser show Modified "-"/"—"
   and Compressed `0`, although `tar.exe -tvf` prints the dates. Parse the verbose listing's
   mtime; show "—" (not 0) where packed size is unknown.
 - **Reported by:** T-F202, 2026-09-24.
 
 ### T-F215 — tar.exe failure messages show its verbose stdout, stderr is mojibake (P2)
+
+- **Progress (2026-09-25, fix phase 4):** fixed in acca0de — creation errors keep only tar.exe's error lines (no `a ...` progress lines), decoded in the locale's code page.
 
 - [ ] **Status:** open. A failed tar creation reports "tar.exe failed to create archive: a s3 / a
   s3/a.txt / ..." — the `-v` progress lines, not the reason; the first run also showed tar.exe's
@@ -4892,6 +4900,8 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 
 ### T-F233 — Opening a tar-family archive permanently rewrites the original file's permissions (P0 or P1 — user decision)
 
+- **Progress (2026-09-25, fix phase 4):** fixed in 8bbfeed — tar.exe reads the archive as an inherited stdin handle (`-f -`) from a file the scope holds open read-only, sharing read only; no staging, no link, no ACE on the user's file; an archive open for writing elsewhere is refused as "in use". The recorded "stage by copy" became the handle (same goal, no copy; see `docs/DECISIONS.md`'s fix-phase-4 entry). Remediation scripts 8a988ca (`scripts/Find-PakkoSandboxAce.ps1`, `Repair-PakkoSandboxAce.ps1`), validated on damage made by the installed old build. The detection script finds one affected file of the user's (`Downloads\DSTU_9041-2020\DSTU_9041-2020.tar`) — not repaired without the user's OK. SECURITY.md advisory: pending the user's permission. Device check at phase end.
+
 - [ ] **Status:** open — confirmed on device 2026-09-24 with both `pakko.exe` and the installed
   Store build (`Archiver.Shell.exe --extract-folder`). When the archive is on the same volume as
   `%TEMP%` (normally C:, i.e. Desktop/Documents/Downloads), `QuarantineStaging.StageArchive`
@@ -5049,6 +5059,8 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 
 ### T-F239 — tar-family extraction decompresses the archive three times; a Job-limit kill reports nothing (P2)
 
+- **Progress (2026-09-25, fix phase 4):** fixed in daa5a61 — reproduced with a 7z whose LZMA2 dictionary is 768 MB: tar.exe said "Cannot allocate memory" (not an empty stderr, as assumed). The Job reports the limit it enforced on a completion port and the scope names it. Pass count unchanged (reason in DECISIONS). Limits raised at the user's request (7884814, ca1d49b): memory = half the machine's memory within 1-4 GiB, CPU time = at least 60 min plus 1 min per 10 MB of archive; that 7z now extracts.
+
 - [ ] **Status:** open — code-confirmed 2026-09-24. Each extraction runs `tar -tf`, `tar -tvf`
   (`TarSandboxedService.cs:720,732`) and then `-xf` (`:421`) — three full decompressions of a
   large `.tar.xz`/`.7z`. The Job Object caps each run at 5 minutes of CPU and 512 MB
@@ -5132,6 +5144,8 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 - **Reported by:** T-F226 review, 2026-09-24.
 
 ### T-F244 — Sandbox launcher, crypto and CLI staging hygiene (P2)
+
+- **Progress (2026-09-25, fix phase 4):** item 1 fixed in a33da37 (pipe ends owned from creation; any failure/cancel terminates and waits for the child; the wait keeps its handle reference) and 8ac316a (NEW: concurrent `CreateAppContainerProfile` on the existing profile failed — the real cause of the CI flake; `EnsureExists` checks the Mappings key first). Item 5 fixed in a33da37 (`PROC_THREAD_ATTRIBUTE_HANDLE_LIST`; creation and the `--version` probe moved onto the same launcher). Item 2 fixed in acca0de. Item 4 stays for fix phase 8.
 
 - **Progress (2026-09-25, fix phase 3):** item 3 fixed — bc29e20 (staging root itself checked
   for a reparse point) and b02f473 (password bytes ANSI/UTF-8 in NanaZip's order; key material
@@ -5261,6 +5275,8 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 
 ### T-F248 — Read-only archives leave a hardlink to the user's archive in %TEMP% after every tar-family operation (P1)
 
+- **Progress (2026-09-25, fix phase 4):** fixed with T-F233 (8bbfeed) — nothing is linked or copied, so nothing is left; test: a read-only archive keeps its attribute and link count and the quarantine folder goes.
+
 - [ ] **Status:** open — confirmed 2026-09-25. `tar -cf r.tar a.txt`, `attrib +R r.tar`, then
   `pakko l r.tar` and `pakko x r.tar`: both succeed, and each leaves
   `%TEMP%\PakkoTarSandbox\<guid>\in\r.tar` behind (`fsutil hardlink list` shows the original plus
@@ -5284,6 +5300,8 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 - **Root:** T-F263 (staging/commit owner) — the part this leaf needs goes with it.
 
 ### T-F249 — RAR encryption checks read the whole archive into memory (P2)
+
+- **Progress (2026-09-25, fix phase 4):** fixed in c5d045b — a 64 KB header window; NEW: a record size of -5 looped forever (a crafted .rar hung listing/extraction) — now ends the parse; `ReadVInt` bounds on each line.
 
 - [ ] **Status:** open — confirmed 2026-09-25. `ArchiveFormatDetector.IsRarHeaderEncrypted` and
   `IsEncryptedRar` call `File.ReadAllBytes(path)` (`ArchiveFormatDetector.cs:122`, `:155`) to
@@ -5422,6 +5440,8 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 - **Reported by:** T-F226 batch 3, 2026-09-25.
 
 ### T-F256 — The T-F49 symlink-escape regression test no longer proves the pre-scan (P2, tests)
+
+- **Progress (2026-09-25, fix phase 4):** fixed in 1c8af01 — the test asserts the pre-scan's message; the `if (false)` mutant now fails it. The pre-scan also splits on `\` (acca0de).
 
 - [ ] **Status:** open — confirmed 2026-09-25 by the T-F226 mutation spot-check (check K).
   Mutant: `TarSandboxedService.cs:758` `if (typeChar != '-' && typeChar != 'd')` -> `if (false)`
@@ -5597,6 +5617,8 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 - **Reported by:** architecture review, 2026-09-25 (reviewer agent).
 
 ### T-F263 — Staging and temporary folders have no single owner; the two extraction commit paths are synced by hand (P1, root, decision)
+
+- **Progress (2026-09-25, fix phase 4):** tar extraction now stages and commits through `ExtractionStaging` like ZIP (03a65e3): a cancel during the move phase leaves no files; renamed conflicts check claimed paths. Still open: CLI staging (phase 8), per-process caches + startup sweep (phase 9).
 
 - **Progress (2026-09-25, fix phase 2 — the P0 slice only):** `ExtractionStaging` (unique owned
   `.pakko-x-<pid>-<guid>`, shared commit) is in use for ZIP extraction. Still open: tar on the same
