@@ -54,6 +54,13 @@ internal sealed class ZipEntryWriter : IAsyncDisposable
     // needs to pick the same ZIP method code before writing the header for a not-yet-in-memory,
     // not-yet-fully-known entry (T-F35 follow-up: compress-to-temp-file path, no size limit).
     internal const ushort StoredMethod = 0;
+
+    // T-F243 item 6: the name-length field is 16-bit; a longer name used to be written with a
+    // truncated length, corrupting the archive.
+    internal static bool NameFitsHeader(string entryName) => Encoding.UTF8.GetByteCount(entryName) <= ushort.MaxValue;
+
+    internal static string NameTooLongMessage(string entryName) =>
+        $"Entry name is too long for a ZIP archive ({Encoding.UTF8.GetByteCount(entryName):N0} bytes as UTF-8; the maximum is {ushort.MaxValue:N0}).";
     internal const ushort DeflateMethod = 8;
 
     internal static ushort SelectMethod(CompressionLevel compressionLevel) =>
@@ -178,6 +185,8 @@ internal sealed class ZipEntryWriter : IAsyncDisposable
         EntryMethod method, bool needsZip64)
     {
         byte[] nameBytes = Encoding.UTF8.GetBytes(entryName);
+        if (nameBytes.Length > ushort.MaxValue)
+            throw new InvalidDataException(NameTooLongMessage(entryName));
         ushort flags = (ushort)((IsAsciiOnly(entryName) ? 0 : 0x0800) | method.Flags); // bit 11 = UTF-8 name/comment
         ushort versionNeeded = method.VersionNeeded(needsZip64);
         uint dosDateTime = DosDateTime.Encode(lastWriteTime);

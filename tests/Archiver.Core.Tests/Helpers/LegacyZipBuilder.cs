@@ -17,7 +17,8 @@ internal static class LegacyZipBuilder
     public const byte HostNtfs = 11;
     public const byte HostMacOs = 19;
 
-    internal sealed record Entry(byte[] RawName, byte[] Content, ushort Flags = 0, byte HostOs = HostFat, byte[]? CentralExtra = null);
+    internal sealed record Entry(byte[] RawName, byte[] Content, ushort Flags = 0, byte HostOs = HostFat, byte[]? CentralExtra = null,
+        byte[]? LocalRawName = null);
 
     public static string Write(string path, params Entry[] entries)
     {
@@ -37,9 +38,10 @@ internal static class LegacyZipBuilder
             WriteUInt32(output, crc);
             WriteUInt32(output, (uint)entry.Content.Length);
             WriteUInt32(output, (uint)entry.Content.Length);
-            WriteUInt16(output, (ushort)entry.RawName.Length);
+            byte[] localName = entry.LocalRawName ?? entry.RawName;
+            WriteUInt16(output, (ushort)localName.Length);
             WriteUInt16(output, 0);
-            output.Write(entry.RawName);
+            output.Write(localName);
             output.Write(entry.Content);
         }
 

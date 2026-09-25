@@ -265,7 +265,11 @@ internal static class ParallelSingleArchiveWriter
                     if (cancellationToken.IsCancellationRequested) break;
 
                     Task<WorkResult> resultTask;
-                    if (item.Kind == FileWorkKind.DirectoryPlaceholder)
+                    if (!ZipEntryWriter.NameFitsHeader(item.EntryName))
+                    {
+                        resultTask = Task.FromResult(WorkResult.ForError(item.SourcePath, ZipEntryWriter.NameTooLongMessage(item.EntryName), null));
+                    }
+                    else if (item.Kind == FileWorkKind.DirectoryPlaceholder)
                     {
                         resultTask = Task.FromResult(WorkResult.ForDirectoryPlaceholder(item.EntryName, item.LastWriteTime));
                     }

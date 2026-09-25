@@ -273,6 +273,24 @@ public sealed class ZipArchiveServiceLegacyNameEncodingTests : IDisposable
         Directory.GetFiles(dest).Select(Path.GetFileName).Should().Equal("Б.txt");
     }
 
+    // T-F243 item 5 (hypothesis "Test and Extract can disagree when local and central records
+    // differ"): both take names from the central directory and data through the same readers, so
+    // they agree; the local-header name is never used for a path, not even a traversal one.
+    [Fact]
+    public async Task LocalHeaderNameDiffersFromCentral_TestAndExtractAgree_CentralNameWins()
+    {
+        string zip = Legacy("mismatch.zip",
+            new LegacyZipBuilder.Entry("a.txt"u8.ToArray(), "A"u8.ToArray(), LocalRawName: "../evil.txt"u8.ToArray()));
+
+        var tested = await _sut.TestAsync([zip]);
+        var (extracted, dest) = await ExtractAsync(zip);
+
+        tested.Success.Should().BeTrue();
+        extracted.Success.Should().BeTrue();
+        File.ReadAllText(Path.Combine(dest, "a.txt")).Should().Be("A");
+        File.Exists(Path.Combine(_temp.Path, "evil.txt")).Should().BeFalse();
+    }
+
     // --- Misuse ---
 
     [Fact]

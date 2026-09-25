@@ -50,6 +50,53 @@ public sealed class ParallelSingleArchiveWriterTests : IDisposable
         archive.Entries.Select(e => e.Name).Should().Equal("a.txt", "b.txt", "c.txt");
     }
 
+    // T-F243 item 6: the ZIP name-length field is 16-bit. A longer UTF-8 name (reachable with
+    // long paths and non-Latin names, e.g. 3-byte CJK) was written with a truncated length —
+    // a corrupt archive. Now that one entry is an error and the rest of the archive is intact.
+    [Fact]
+    public async Task RunPipelineAsync_EntryNameOverSixtyFourKiBOfUtf8_IsOneErrorArchiveStaysValid()
+    {
+        string hugeName = new string('中', 22_000) + ".txt"; // 66,004 UTF-8 bytes
+        var items = new[]
+        {
+            new FileWorkItem("a", "a.txt", FileWorkKind.File, 1, DateTime.Now),
+            new FileWorkItem("huge", hugeName, FileWorkKind.File, 1, DateTime.Now),
+            new FileWorkItem("dir", hugeName + "/", FileWorkKind.DirectoryPlaceholder, 0, DateTime.Now),
+            new FileWorkItem("b", "b.txt", FileWorkKind.File, 1, DateTime.Now),
+        };
+        Func<FileWorkItem, CancellationToken, Task<WorkResult>> compressItem = (item, _) =>
+        {
+            using var ms = new MemoryStream("x"u8.ToArray());
+            return Task.FromResult(WorkResult.ForCompressed(item.EntryName, ZipEntryCompressor.Compress(ms, CompressionLevel.NoCompression), item.LastWriteTime));
+        };
+        var errors = new List<ArchiveError>();
+
+        string archivePath = TempArchivePath;
+        await ParallelSingleArchiveWriter.RunPipelineAsync(
+            archivePath, items, compressItem, NeverCalledTempFileCompressor, windowCapacity: 2,
+            totalBytes: 3, progress: null, reportError: errors.Add, CancellationToken.None);
+
+        errors.Should().HaveCount(2).And.OnlyContain(e => e.Message.Contains("too long"));
+        using var archive = ZipFile.OpenRead(archivePath);
+        archive.Entries.Select(e => e.FullName).Should().Equal("a.txt", "b.txt");
+    }
+
+    [Fact]
+    public async Task ZipEntryWriter_NameOverSixtyFourKiB_ThrowsBeforeWritingAnything()
+    {
+        string archivePath = TempArchivePath;
+        await using (var writer = new ZipEntryWriter(archivePath))
+        {
+            var act = () => writer.WriteDirectoryPlaceholderAsync(new string('中', 22_000) + "/", DateTime.Now, CancellationToken.None);
+
+            await act.Should().ThrowAsync<InvalidDataException>();
+            writer.EntryCount.Should().Be(0);
+        }
+
+        using var archive = ZipFile.OpenRead(archivePath);
+        archive.Entries.Should().BeEmpty();
+    }
+
     [Fact]
     public async Task RunPipelineAsync_NeverStartsMoreThanWindowCapacityItemsConcurrently()
     {

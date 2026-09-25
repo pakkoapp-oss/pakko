@@ -1884,7 +1884,10 @@ public sealed class ZipArchiveService : IArchiveService
             string emptyEntryName = relativeDir == "."
                 ? context.EntryPrefix + "/"
                 : context.EntryPrefix + "/" + relativeDir.Replace('\\', '/') + "/";
-            archive.CreateEntry(emptyEntryName);
+            if (ZipEntryWriter.NameFitsHeader(emptyEntryName))
+                archive.CreateEntry(emptyEntryName);
+            else
+                context.ReportError(new ArchiveError { SourcePath = sourceDir, Message = ZipEntryWriter.NameTooLongMessage(emptyEntryName) });
             return startOffset;
         }
 
@@ -1926,6 +1929,14 @@ public sealed class ZipArchiveService : IArchiveService
 
             string relativePath = Path.GetRelativePath(context.RootDir, filePath).Replace('\\', '/');
             string entryName = context.EntryPrefix + "/" + relativePath;
+
+            // T-F243 item 6: ZipArchive.CreateEntry throws on a name over 65,535 UTF-8 bytes.
+            if (!ZipEntryWriter.NameFitsHeader(entryName))
+            {
+                context.ReportError(new ArchiveError { SourcePath = filePath, Message = ZipEntryWriter.NameTooLongMessage(entryName) });
+                startOffset += fileSize;
+                continue;
+            }
 
             // T-F21: Catch per-file IO failures. A file may be deleted or locked between
             // Directory.EnumerateFiles discovery and the FileStream.Open inside
