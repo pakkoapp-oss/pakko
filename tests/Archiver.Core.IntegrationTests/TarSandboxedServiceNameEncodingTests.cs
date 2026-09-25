@@ -51,25 +51,33 @@ public sealed class TarSandboxedServiceNameEncodingTests : IDisposable
         Directory.GetFiles(dest, "*", SearchOption.AllDirectories).Should().ContainSingle();
     }
 
-    // A name tar.exe cannot represent on this machine fails with a message that says so, and
-    // nothing is written — never a mojibake name (skipped where the locale's page is UTF-8).
+    // A UTF-8 name outside the locale's code page (U+2713) is never written as mojibake: either
+    // tar.exe can name it (a UTF-8 or "C" locale, as on the CI runner) and it arrives under its
+    // real name, or it cannot and the failure says so with nothing written. Before fix phase 4 it
+    // was extracted as "tick тЬУ.txt" with success.
     [Fact]
-    public async Task NameOutsideCodePage_FailsWithClearMessageNothingWritten()
+    public async Task NameOutsideCodePage_RealNameOrClearFailure_NeverMojibake()
     {
-        if (TarCodePage.UserAnsi == 65001)
-            return;
+        const string name = "tick ✓.txt";
         string archivePath = Path.Combine(_temp.Path, "tick.tar");
         TarBuilder.WriteTar(archivePath,
         [
-            new TarBuilder.Entry { Name = "x", NameBytes = Encoding.UTF8.GetBytes("tick ✓.txt"), Content = [1] },
+            new TarBuilder.Entry { Name = "x", NameBytes = Encoding.UTF8.GetBytes(name), Content = [1] },
         ]);
 
         string dest = Path.Combine(_temp.Path, "out");
         var result = await _sut.ExtractAsync(new ExtractOptions { ArchivePaths = [archivePath], DestinationFolder = dest, Mode = ExtractMode.SingleFolder });
 
-        result.Success.Should().BeFalse();
-        result.Errors.Should().ContainSingle().Which.Message.Should().Contain("code page");
-        (Directory.Exists(dest) ? Directory.GetFiles(dest, "*", SearchOption.AllDirectories) : []).Should().BeEmpty();
+        string[] written = Directory.Exists(dest) ? Directory.GetFiles(dest, "*", SearchOption.AllDirectories) : [];
+        if (result.Success)
+        {
+            written.Select(Path.GetFileName).Should().Equal(name);
+        }
+        else
+        {
+            result.Errors.Should().ContainSingle().Which.Message.Should().Contain("code page");
+            written.Should().BeEmpty();
+        }
     }
 
     // The pre-scan split names on '/' only; Windows also treats '\' as a separator.

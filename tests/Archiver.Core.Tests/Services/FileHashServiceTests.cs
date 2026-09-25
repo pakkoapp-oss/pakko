@@ -104,10 +104,9 @@ public sealed class FileHashServiceTests : IDisposable
         const long expectedTotal = 50_000 + 100_000 + 150_000;
 
         var reports = new List<ProgressReport>();
-        var progress = new Progress<ProgressReport>(r => reports.Add(r));
+        var progress = new SynchronousProgress<ProgressReport>(r => { lock (reports) reports.Add(r); });
 
         var result = await FileHashService.ComputeAsync([_temp.Path], HashAlgorithmKind.Crc32, progress, CancellationToken.None);
-        await Task.Delay(50); // let Progress<ProgressReport> callbacks fire
 
         result.Folder!.TotalBytes.Should().Be(expectedTotal);
         reports.Should().NotBeEmpty();
@@ -272,14 +271,20 @@ public sealed class FileHashServiceTests : IDisposable
         File.WriteAllBytes(path, content);
 
         var reports = new List<ProgressReport>();
-        var progress = new Progress<ProgressReport>(r => reports.Add(r));
+        var progress = new SynchronousProgress<ProgressReport>(r => { lock (reports) reports.Add(r); });
 
         await FileHashService.ComputeAsync([path], HashAlgorithmKind.Crc32, progress, CancellationToken.None);
-        await Task.Delay(50); // let Progress<ProgressReport> callbacks fire
 
         reports.Should().NotBeEmpty();
         reports.Should().OnlyContain(r => r.TotalBytes == content.Length);
         reports.Max(r => r.BytesTransferred).Should().Be(content.Length);
+    }
+
+    // T-F162 pattern: System.Progress<T> posts to the thread pool, racing the assertions (a CI-style
+    // flake seen 2026-09-26); reports arrive on the hashing threads here, so the list is locked.
+    private sealed class SynchronousProgress<T>(Action<T> onReport) : IProgress<T>
+    {
+        public void Report(T value) => onReport(value);
     }
 
     private static byte[] RandomBytes(int seed, int sizeBytes)
