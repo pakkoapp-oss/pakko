@@ -4783,6 +4783,9 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 
 ### T-F229 — "Delete after operation" deletes an archive whose entries were partly skipped (P0)
 
+- **Progress (2026-09-25, fix phase 1):** the archive is `Partial` in Core (T-F260) and the App
+  deletes only `FullyProcessedSources`, after the summary dialog. Device check pending (phase end).
+
 - [ ] **Status:** open — confirmed on device 2026-09-24. `ArchiveResult.Success` is
   `errors.Count == 0` (`ZipArchiveService.cs:714`); an entry rejected for its name (reserved
   device name, ADS `:`, control characters) or a reparse point is recorded as a `SkippedFile` with
@@ -5550,8 +5553,12 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 ### T-F265 — "Extract Selected" with "Delete after operation" deletes the whole archive (P0)
 
 - **Progress (2026-09-25, fix phase 1):** Core reports a subset extraction as `Partial` (both
-  engines); the App still has to read `FullyProcessedSources`.
-- [ ] **Status:** open — code-confirmed 2026-09-25, device repro pending. Archive Browser's Extract
+  engines); the App deletes only `FullyProcessedSources`, after the summary dialog. Device check
+  on the fixed build pending (phase end).
+- **Device repro (2026-09-25, installed CI build 1.4.12.9):** `subset.zip` (`a.txt`, `b.txt`)
+  opened in the Archive Browser, "Видалити після операції" on, `a.txt` selected, "Розпакувати
+  вибране" -> only `subset\a.txt` on disk, `subset.zip` gone and not in the Recycle Bin.
+- [ ] **Status:** open — code-confirmed 2026-09-25, device-confirmed the same day. Archive Browser's Extract
   Selected (`MainViewModel.cs:1093`) and the single-entry T-F109 extraction (`:1180`) both go
   through `RunExtractAsync`, which on `result.Success && DeleteAfterOperation` (`:652`) deletes
   every path in `options.ArchivePaths` not listed in `SkippedFiles` — it never looks at

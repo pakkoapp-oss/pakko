@@ -371,8 +371,8 @@ flowchart TD
     N --> N2{"extractedCount == 0?<br/>(T-F87 — every entry hit S1-S6, nothing<br/>actually written to tempDest)"}
     N2 -- yes --> N3["SkippedFiles += whole-archive entry<br/>(Path == archivePath); caller does NOT<br/>add this archive to CreatedFiles"]
     N2 -- no --> O
-    N3 --> O["ArchiveResult.Success = errors.Count == 0<br/>(ZipArchiveService.cs:449) — SkippedFiles is still NOT<br/>read in THIS computation, only in MainViewModel's<br/>DeleteAfterOperation cleanup gate (T-F87)"]
-    O --> P{{"⚠ every per-entry branch (D,E,F,H,I,J-Skip) still feeds<br/>SkippedFiles, never errors — Success stays true for an<br/>all-entries-skipped archive, by design (T-F87 deliberately<br/>did not redefine Success — see DECISIONS.md). What N2/N3<br/>add: a per-archive signal (whole-archive SkippedFiles entry<br/>+ exclusion from CreatedFiles) so DeleteAfterOperation can<br/>no longer delete a source that was never extracted.<br/>T-F68 (fixed earlier): the shell path also shows a dialog<br/>for this case — see Program.cs's ShellResultPresenter."}}
+    N3 --> O["ArchiveResult.Success = errors.Count == 0 (unchanged).<br/>T-F260: ExtractAsync's outer loop also records one<br/>SourceResult per archive — Completed only if no error or<br/>SkippedFiles entry was added, CreatedFiles grew, and<br/>SelectedEntryPaths is null (T-F265). DeleteAfterOperation<br/>reads only FullyProcessedSources"]
+    O --> P{{"⚠ every per-entry branch (D,E,F,H,I,J-Skip) still feeds<br/>SkippedFiles, never errors — Success stays true for an<br/>all-entries-skipped archive, by design (T-F87 deliberately<br/>did not redefine Success — see DECISIONS.md). Since T-F260<br/>any S1-S6 skip makes the archive Partial, so<br/>DeleteAfterOperation keeps it (T-F229).<br/>T-F68 (fixed earlier): the shell path also shows a dialog<br/>for this case — see Program.cs's ShellResultPresenter."}}
 ```
 
 **What this catches — a live finding, not a hypothetical:**
@@ -388,9 +388,13 @@ extracted besides an empty folder.
 `Success` (broad blast radius — every caller depends on its current meaning), the fix adds a
 whole-archive `SkippedFiles` entry (`Path == archivePath`) when `extractedCount == 0`, and the
 caller (`ZipArchiveService.ExtractAsync`) excludes that archive from `CreatedFiles`.
-`MainViewModel.GetDeletableSources` then filters `DeleteAfterOperation`'s cleanup list against
-`SkippedFiles` by full path — per-entry skips (S1-S6, relative entry names) never match a source's
-full path, so only a genuine whole-archive skip blocks deletion. See `DECISIONS.md`'s "T-F87" entry.
+`MainViewModel.GetDeletableSources` then filtered `DeleteAfterOperation`'s cleanup list against
+`SkippedFiles` by full path. See `DECISIONS.md`'s "T-F87" entry.
+
+**Superseded by T-F260 (2026-09-25).** Matching paths let an archive with one per-entry skip
+(S1-S6, e.g. `CON.txt`) be deleted (T-F229), and an Extract Selected run delete the whole archive
+(T-F265). The outer loop now records a `SourceResult` per archive (node O), and the App deletes
+only `ArchiveResult.FullyProcessedSources`; `GetDeletableSources` is gone.
 
 **T-F161 (2026-08-11) / T-F170 (2026-08-12): node N's commit step is resilient to a locked file,
 not a bare `Directory.Move`.** The original diagram (and the original code) described the commit
@@ -554,7 +558,7 @@ flowchart TD
     Q2 -- yes --> Q3["SkippedFiles += whole-archive entry<br/>(Path == archivePath); caller does NOT<br/>add this archive to CreatedFiles"]
     Q2 -- no --> Q
     Q3 --> Q["return destDir<br/>(finally: scope.Dispose() — quarantine root deleted,<br/>AppContainer SID handle released; the AppContainer PROFILE<br/>itself is never deleted, it persists for reuse)"]
-    Q --> R{{"ArchiveResult.Success = errors.Count==0 (ExtractAsync); SkippedFiles still NOT read in this computation, only in MainViewModel's DeleteAfterOperation cleanup gate (T-F87)"}}
+    Q --> R{{"ArchiveResult.Success = errors.Count==0 (ExtractAsync). T-F260: the outer loop records one SourceResult per archive (same rule as diagram 3's node O); DeleteAfterOperation reads only FullyProcessedSources"}}
 ```
 
 **What this catches — the confirmed exploit, and one new finding:**
@@ -620,9 +624,10 @@ flowchart TD
   entry already exists at the destination) still reports `Success=true` — `Success` itself was
   deliberately left as `errors.Count==0` (see `DECISIONS.md`'s "T-F87" entry for why). What Q2/Q3
   add: a whole-archive `SkippedFiles` entry (`Path == archivePath`) when nothing was actually
-  moved, and exclusion of that archive from `CreatedFiles`, giving `MainViewModel`'s
-  `GetDeletableSources` the same per-archive signal it uses for the ZIP path so
-  `DeleteAfterOperation` can't delete a source that was never extracted.
+  moved, and exclusion of that archive from `CreatedFiles`. Since T-F260 the per-archive
+  `SourceResult` (node R) is what `DeleteAfterOperation` reads, for both engines; a cancel
+  anywhere in this chain now throws out of `ExtractAsync` instead of being reported as success
+  (T-F245).
 
 ---
 

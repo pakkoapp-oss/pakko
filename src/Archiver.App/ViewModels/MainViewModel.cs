@@ -547,8 +547,6 @@ public sealed partial class MainViewModel : ObservableObject
             // Cancel, so this ends exactly like the Cancel button (T-F70 delay, no summary dialog).
             if (passwordPromptCancelled)
                 throw new OperationCanceledException();
-            if (result.Success && DeleteAfterOperation)
-                await RunCleanupAsync(GetDeletableSources(options.SourcePaths, result));
             _operationStopwatch?.Stop();
             int totalSec = (int)(_operationStopwatch?.Elapsed.TotalSeconds ?? 0);
             if (result.Errors.Count == 0 && result.SkippedFiles.Count == 0)
@@ -570,6 +568,11 @@ public sealed partial class MainViewModel : ObservableObject
             foreach (var error in result.Errors)
                 _logService.Error($"{error.SourcePath} — {error.Message}");
             await _dialogService.ShowOperationSummaryAsync("Archive", result);
+            // T-F260/T-F229: only sources Core reports as fully processed, and only after the
+            // summary, so the user sees what was skipped before anything is deleted. A cancel
+            // throws and never reaches this line.
+            if (DeleteAfterOperation)
+                await RunCleanupAsync(result.FullyProcessedSources);
         }
         catch (OperationCanceledException)
         {
@@ -650,8 +653,6 @@ public sealed partial class MainViewModel : ObservableObject
             });
 
             var result = await _extractionRouter.ExtractAsync(options, progress, _cts.Token);
-            if (result.Success && DeleteAfterOperation)
-                await RunCleanupAsync(GetDeletableSources(options.ArchivePaths, result));
             _operationStopwatch?.Stop();
             int totalSec = (int)(_operationStopwatch?.Elapsed.TotalSeconds ?? 0);
             if (result.Errors.Count == 0 && result.SkippedFiles.Count == 0)
@@ -673,6 +674,9 @@ public sealed partial class MainViewModel : ObservableObject
             foreach (var error in result.Errors)
                 _logService.Error($"{error.SourcePath} — {error.Message}");
             await _dialogService.ShowOperationSummaryAsync("Extract", result);
+            // T-F260/T-F229/T-F265: see ArchiveAsync — a subset extraction is never deletable.
+            if (DeleteAfterOperation)
+                await RunCleanupAsync(result.FullyProcessedSources);
         }
         catch (OperationCanceledException)
         {
@@ -1227,17 +1231,6 @@ public sealed partial class MainViewModel : ObservableObject
         {
             StatusMessage = _res.GetString("StatusReady");
         }
-    }
-
-    // T-F87: a source whose full path appears in SkippedFiles was never actually archived or
-    // extracted (unsupported format, whole-archive conflict skip, or every entry individually
-    // skipped) — deleting it with DeleteAfterOperation on would be data loss. Per-entry skips
-    // record an entry's relative path, not a source's full path, so they never collide with this
-    // filter — only a whole-source skip (Path == one of `sources`) excludes that source here.
-    private static IEnumerable<string> GetDeletableSources(IReadOnlyList<string> sources, ArchiveResult result)
-    {
-        var skipped = new HashSet<string>(result.SkippedFiles.Select(s => s.Path), StringComparer.OrdinalIgnoreCase);
-        return sources.Where(p => !skipped.Contains(p));
     }
 
     private async Task RunCleanupAsync(IEnumerable<string> paths)
