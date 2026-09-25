@@ -82,10 +82,9 @@ public sealed class ZipArchiveServiceExtractTempDestResilienceTests : IDisposabl
         var result = await _sut.ExtractAsync(options);
 
         result.Success.Should().BeFalse();
-        // ExtractOneZipWithErrorMappingAsync's InvalidDataException handler collapses every
-        // cause (genuine ZIP corruption or this path-traversal rejection alike) into one generic
-        // message — the actual point of this test is the leaked tempDest below, not this text.
-        result.Errors.Should().ContainSingle(e => e.Message == "File has ZIP signature but appears corrupted or incomplete.");
+        // T-F228: rejected per entry, named as an unsafe path (it used to abort the whole archive
+        // as "appears corrupted") — the point of this test is the staging folder below.
+        result.Errors.Should().ContainSingle(e => e.Message.Contains("unsafe path"));
 
         Directory.GetDirectories(_temp.Path, ".pakko-x-*").Should().BeEmpty("a failed extraction must not leave a staging folder behind");
     }

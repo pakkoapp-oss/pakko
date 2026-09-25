@@ -1434,6 +1434,17 @@ public sealed class ZipArchiveService : IArchiveService
         HashSet<string> claimedFinalPaths = plan.ClaimedFinalPaths;
         long totalUncompressedBytes = plan.TotalUncompressedBytes;
 
+        // T-F228: before the name checks — "C:/x" must read as unsafe, not as an ADS name.
+        if (ArchiveEntrySecurity.HasUnsafePath(entry.FullName))
+        {
+            context.Errors.Add(new ArchiveError
+            {
+                SourcePath = archivePath,
+                Message = $"Entry '{entry.FullName}' has an unsafe path and was not extracted."
+            });
+            return (false, entry.Length);
+        }
+
         string relativePath = entry.FullName.Replace('/', Path.DirectorySeparatorChar);
 
         if (plan.StripRootPrefix)
@@ -1477,7 +1488,9 @@ public sealed class ZipArchiveService : IArchiveService
         // every finalFilePath already claimed earlier in this same run, which catches a
         // duplicate entry name inside this archive that File.Exists alone can't see (see
         // claimedFinalPaths' own comment at its declaration).
-        string finalFilePath = Path.GetFullPath(Path.Combine(actualDest, relativePath));
+        // T-F228: from the path as it actually resolved inside staging, so the conflict check
+        // and the commit always talk about the same file.
+        string finalFilePath = Path.GetFullPath(Path.Combine(actualDest, Path.GetRelativePath(fullTempDest, destFilePath)));
         if (File.Exists(finalFilePath) || claimedFinalPaths.Contains(finalFilePath))
         {
             ConflictBehavior resolvedConflict = await context.ConflictResolver.ResolveAsync(finalFilePath).ConfigureAwait(false);

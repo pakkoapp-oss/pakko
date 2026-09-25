@@ -4778,6 +4778,12 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 
 ### T-F228 — A crafted ZIP entry bypasses the conflict policy and overwrites existing files (P0)
 
+- **Progress (2026-09-25, fix phase 2):** a ZIP entry with a `..` segment (either separator) or a
+  rooted/drive-relative name is rejected per entry as an `ArchiveError` ("unsafe path"), before the
+  name checks; the conflict path is built from the path as resolved inside staging. With T-F227's
+  unguessable staging name the original out-and-back repro cannot recur either. Tar's whole-archive
+  rejection is unchanged (`TarSandboxedServiceExtractTests`). Device check pending (phase end).
+
 - [ ] **Status:** open — found by the T-F226 reviewer agent, confirmed on device 2026-09-24. The
   traversal check runs on the path normalized inside the staging folder, but the conflict check and
   the duplicate-path set are computed from the un-normalized relative path against the final

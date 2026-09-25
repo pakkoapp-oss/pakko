@@ -22,6 +22,13 @@ internal static class ArchiveEntrySecurity
         "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"
     };
 
+    // T-F228: a ".." segment (either separator — Windows honors both) or a rooted/drive-relative
+    // name can leave the extraction folder, or leave and re-enter it under a name the conflict
+    // check never sees. Rejected outright, never normalized.
+    public static bool HasUnsafePath(string entryPath)
+        => Path.IsPathRooted(entryPath)
+           || entryPath.Split('/', '\\').Any(segment => segment == "..");
+
     // T-F38: Reject entries with ':' in name (Alternate Data Streams)
     public static bool HasAlternateDataStreamMarker(string entryPath)
         => entryPath.Contains(':');
