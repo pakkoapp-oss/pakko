@@ -4258,20 +4258,41 @@ task entries themselves hold the detail. Rules for every item: tests first (writ
 test, confirm it fails, then fix — `CLAUDE.md`'s revert-and-confirm rule), the four test
 categories, deploy and verify on device before marking done.
 
-**0. User decisions before any code** (each blocks the tasks it names):
-- T-F233 — P0 or P1; remediation or release note for archives whose permissions were already
-  rewritten (one real case found on the dev machine).
-- T-F234 — P0 or P1.
-- T-F201 — keep T-F88's multi-instance design (offset/foreground only) or reverse it.
-- T-F205, T-F206, T-F210 — each reverses or changes a documented behavior.
-- T-F241 — add the missing CLI scan / App test, or document why not.
-- T-F199 — the layout redesign needs a plan and a mockup approved first.
-- T-F260 — reverse DECISIONS T-F68/T-F87 ("don't change `ArchiveResult`, patch the consumer"),
-  and the cancellation rule for both engines (rethrow, or an explicit `Cancelled` outcome).
-- T-F261 — gate listing by Group Policy (T-F250 as filed) or narrow `docs/POLICIES.md:44`'s
-  "never spawns tar.exe"; `docs/ARCHITECTURE.md:1485` records the opposite of POLICIES.md.
-- T-F263 — per-process preview/nested cache roots (changes T-F97/T-F98's shared design) or keep
-  them shared and only fix T-F252.
+**0. Decisions — taken 2026-09-25** (the user delegated them: "your choice, based on our niche
+and best practice for similar apps like NanaZip"). Criteria: the government/defense audience
+(trust, auditability, no silent data loss), then 7-Zip/NanaZip parity where users carry habits.
+- T-F233 — **P0.** Permanent, silent, affects other people's access on shared folders. No
+  automatic remediation (rewriting users' ACLs is itself risky): a release note/security advisory
+  with a read-only detection script (files carrying the Pakko sandbox SID ACE) and the manual
+  `icacls /reset` fix. Fix: never touch the original's security descriptor (stage by copy).
+- T-F234 — **P0.** Silent loss of files inside one archive. Fix direction: 7-Zip's rule — a name
+  without the UTF-8 flag is decoded with the system OEM code page; plus a collision check so two
+  entries never collapse into one without an error.
+- T-F201 — **keep T-F88's multi-instance design** (7-Zip File Manager and NanaZip open one window
+  per archive too); fix only the stacking: offset the new window and bring it to the foreground.
+- T-F205 — **keep the archive's root folder** in SingleFolder mode ("extract with full paths",
+  7-Zip/NanaZip "Extract here" and `7z x`). Update `docs/DECISIONS.md` (T-F156's note) and the
+  tests that encode the strip.
+- T-F206 — **`pakko x` without `-o` extracts into the current directory**, like `7z x` (the CLI
+  is 7z-familiar by design). User-visible change: CHANGELOG + `--help` + `docs/CLI.md`.
+- T-F210 — **keep T-F107's "Up" navigation, add an explicit way back** to create mode (a "Close
+  archive" command, also on Esc), as 7-Zip/NanaZip's file manager lets you leave an archive
+  without closing the window.
+- T-F241 — **add "Test archive" to the App** (7-Zip/NanaZip file managers have it on the
+  toolbar); **no threat scan in the CLI** — `7z` has no such command and scripted scanning belongs
+  to `MpCmdRun`; record the reason in `docs/CLI.md`/`docs/DECISIONS.md`.
+- T-F207 — deletion after an operation goes to the **Recycle Bin**, never permanently, and only
+  after the T-F260 classifier says the source was fully processed.
+- T-F199 — direction: options before the action, primary action last, password inline; the
+  mockup is still shown to the user before any XAML changes (visual design is not delegable blind).
+- T-F260 — **reverse DECISIONS T-F68/T-F87**: `ArchiveResult` gets an explicit outcome and a
+  per-source result. **Cancellation rule: both engines throw `OperationCanceledException`** after
+  cleanup (ZIP already does; tar changes) — the .NET idiom, and every frontend already catches it;
+  documented in `IArchiveService`/`ITarService` as the one exception to "never throws".
+- T-F261 — **gate listing by Group Policy** (T-F250 as filed): an administrator's "never spawns
+  tar.exe" must hold; correct `docs/ARCHITECTURE.md:1485`.
+- T-F263 — **per-process preview/nested cache roots** plus a startup sweep of folders owned by
+  dead processes (the App is multi-process by design, T-F88).
 
 **Roots (architecture review 2026-09-25):** T-F260 (leaves T-F229, T-F245, T-F242, T-F207),
 T-F261 (T-F250, T-F216, T-F241, T-F262), T-F263 (T-F227, T-F228, T-F197, T-F248, T-F252, T-F244;
@@ -4281,8 +4302,8 @@ outcome + the "may this source be deleted" classifier); the rest is placed by th
 roots with no number: Core message codes (T-F209, T-F208, T-F215, T-F221, T-F254), one directory
 walker (T-F236, T-F237, T-F251), boundary encoding (T-F204, T-F234, T-F238).
 
-**1. P0 — data loss or a broken core flow:** T-F227, T-F228, T-F229, T-F204, T-F233 (candidate),
-T-F234 (candidate), T-F245 (with T-F229), T-F246 — both P0 by user decision 2026-09-25. Suggested order: T-F227 + T-F228 + T-F197 together (same staging/commit code), then
+**1. P0 — data loss or a broken core flow:** T-F227, T-F228, T-F229, T-F204, T-F233,
+T-F234 (both P0, decision 2026-09-25), T-F245 (with T-F229), T-F246 — both P0 by user decision 2026-09-25. Suggested order: T-F227 + T-F228 + T-F197 together (same staging/commit code), then
 T-F229 with T-F207, then T-F233, T-F234, T-F204.
 
 **2. P1 — broken or misleading feature:** T-F230, T-F231, T-F232, T-F235, T-F236, T-F237,
@@ -4338,6 +4359,7 @@ real console) and T-F226's deferred per-arrow diagram ritual — carried as open
   Shell's native prompt does — bring the inline redesign to parity. Browse mode also shows no
   encrypted marker for a ZipCrypto/AES archive until a password is asked for.
 - **Reported by:** user-requested UI/UX review, 2026-09-24. **Depends on:** T-F198.
+- **Decision (2026-09-25):** direction as proposed above; the mockup is still shown to the user before XAML changes.
 
 ### T-F200 — Archive Browser asks for the password again for every previewed file
 
@@ -4359,6 +4381,7 @@ real console) and T-F226's deferred per-arrow diagram ritual — carried as open
   App deliberately multi-instance, like 7-Zip (`App.xaml.cs:56-61`). This is therefore a decision
   fork, not a bug: keep multi-instance and only offset/foreground the new window, or reverse T-F88.
 - **Reported by:** UI/UX review, 2026-09-24.
+- **Decision (2026-09-25):** keep T-F88 multi-instance (7-Zip/NanaZip parity); offset the new window and bring it to the foreground.
 
 ### T-F203 — SonarCloud findings from the T-F160/T-F195/T-F193 pushes
 
@@ -4458,6 +4481,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 - **Decision needed:** keep the root folder in SingleFolder mode (7-Zip parity) or document the
   strip. Check which existing tests encode today's behavior before changing it.
 - **Reported by:** T-F202, 2026-09-24.
+- **Decision (2026-09-25):** keep the root folder in SingleFolder mode (7-Zip/NanaZip parity, "full paths").
 
 ### T-F206 — `pakko x` without `-o` extracts next to the archive, not into the current directory (P1, decision)
 
@@ -4467,6 +4491,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   (and, with T-F205, without their root folder). Undocumented in `docs/CLI.md`. Either adopt cwd
   (7z habit) or document the divergence prominently in `--help` and CLI.md.
 - **Reported by:** T-F202, 2026-09-24.
+- **Decision (2026-09-25):** extract into the current directory like `7z x`; CHANGELOG, `--help`, `docs/CLI.md`.
 
 ### T-F207 — "Delete after operation" deletes sources permanently, with no confirmation (P1)
 
@@ -4478,6 +4503,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   (extract mode) for the same.
 - **Reported by:** T-F202, 2026-09-24.
 - **Root:** T-F260 (`ArchiveResult` outcome contract) — only the "may this source be deleted" decision; the confirmation UI stays this task's own.
+- **Decision (2026-09-25):** delete to the Recycle Bin only, never permanently, and only for sources the T-F260 classifier reports as fully processed.
 
 ### T-F208 — Archiver.Shell dialog titles and size units are English in a localized UI (P1)
 
@@ -4506,6 +4532,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   "Open destination"/"Delete after operation" stay visible where they do nothing. T-F107 removed
   the exit on purpose — decide how the user returns to create mode.
 - **Reported by:** T-F202, 2026-09-24.
+- **Decision (2026-09-25):** keep "Up"; add a "Close archive" command (also Esc) that returns to create mode.
 
 ### T-F211 — A successful App operation shows no visible outcome (P1)
 
@@ -4841,6 +4868,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   only proves the happy path.
 - **Reported by:** T-F226 review, 2026-09-24.
 - **Related:** T-F263 (staging/commit owner) — same tar-staging layer, but a unique-name/ACL staging primitive does not by itself stop a hardlink from rewriting the original's DACL; hardlink vs copy stays this task's own decision.
+- **Decision (2026-09-25):** P0; no automatic remediation — release note with a read-only detection script and the manual `icacls /reset` fix; stage by copy, never touch the original's security descriptor.
 
 ### T-F234 — ZIP names without the UTF-8 flag are decoded as UTF-8: garbled names and silent loss of files (P0 candidate)
 
@@ -4865,6 +4893,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   both preserved or reported, never silently dropped.
 - **Reported by:** T-F226 review, 2026-09-24.
 - **Root (grouping, architecture review 2026-09-25):** text crossing a process or format boundary with no explicit encoding (tar.exe arguments and output, ZIP names without the UTF-8 flag, redirected CLI output). Fix T-F204/T-F234/T-F238 (and T-F244's R14) with one encoding helper per boundary.
+- **Decision (2026-09-25):** P0; decode names without the UTF-8 flag with the system OEM code page (7-Zip's rule) and fail loudly on any post-decoding name collision.
 
 ### T-F235 — A large Explorer selection makes every Pakko command silently do nothing (P1)
 
@@ -4965,6 +4994,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   recorded in `docs/DECISIONS.md` or `docs/CLI.md`. Decide: add, or document why not.
 - **Reported by:** T-F226 review, 2026-09-24.
 - **Root:** T-F261 (single routing and Group Policy owner) — the part this leaf needs goes with it.
+- **Decision (2026-09-25):** add Test to the App; no CLI scan (no `7z` equivalent; `MpCmdRun` covers scripted scanning) — record why in `docs/CLI.md`/`docs/DECISIONS.md`.
 
 ### T-F242 — App: cleanup errors swallowed, dead Core options, logic in code-behind (P2)
 
@@ -5389,6 +5419,7 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   zip+tar selection cancelled midway; each frontend's mapping of each outcome (exit code, dialog,
   delete/no delete).
 - **Reported by:** architecture review, 2026-09-25.
+- **Decision (2026-09-25):** reverse T-F68/T-F87; cancellation = `OperationCanceledException` from both engines after cleanup.
 
 ### T-F261 — Routing and Group Policy have no single owner: Test/Scan bypass the routers, the policy is optional and fail-open (P1, root, decision)
 
@@ -5426,6 +5457,7 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   (extract, create, list, test, scan) under `BlockedFormats` and `DisableTarExtraction=1`; the
   factory passes the loaded policy to every service it builds.
 - **Reported by:** architecture review, 2026-09-25.
+- **Decision (2026-09-25):** gate listing by Group Policy; correct `docs/ARCHITECTURE.md:1485`.
 
 ### T-F262 — The Explorer menu ignores Group Policy (P2)
 
@@ -5469,6 +5501,7 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   deleted; cleanup on cancel and on failure; two processes never share or delete each other's
   folders; the sweep removes only folders of dead processes.
 - **Reported by:** architecture review, 2026-09-25.
+- **Decision (2026-09-25):** per-process cache roots plus a startup sweep of dead-process folders.
 
 ### T-F264 — Format and naming knowledge is hand-synced across C#, C++, the manifest and the CLI (P2, root)
 
