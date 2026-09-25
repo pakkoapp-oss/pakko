@@ -341,4 +341,22 @@
   <data name="EncryptPasswordErrorMismatch" xml:space="preserve">
     <value>Paroles nesakrīt.</value>
   </data>
+  <data name="PermanentDeleteDialogTitle" xml:space="preserve">
+    <value>Dzēst neatgriezeniski?</value>
+  </data>
+  <data name="PermanentDeleteDialogMessage" xml:space="preserve">
+    <value>Šie vienumi atrodas diskā bez atkritnes (tīkla, noņemamā vai kartētā diskā). Dzēšanu nevar atsaukt.</value>
+  </data>
+  <data name="PermanentDeleteDialogDeleteButton" xml:space="preserve">
+    <value>Dzēst neatgriezeniski</value>
+  </data>
+  <data name="PermanentDeleteDialogKeepButton" xml:space="preserve">
+    <value>Paturēt</value>
+  </data>
+  <data name="NotDeletedDialogTitle" xml:space="preserve">
+    <value>Daži vienumi netika izdzēsti</value>
+  </data>
+  <data name="NotDeletedDialogMessage" xml:space="preserve">
+    <value>Šie vienumi joprojām ir diskā. Tie var būt lietošanā vai aizsargāti, vai arī jūs izvēlējāties tos paturēt.</value>
+  </data>
 </root>

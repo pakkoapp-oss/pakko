@@ -341,4 +341,22 @@
   <data name="EncryptPasswordErrorMismatch" xml:space="preserve">
     <value>Parolalar eşleşmiyor.</value>
   </data>
+  <data name="PermanentDeleteDialogTitle" xml:space="preserve">
+    <value>Kalıcı olarak silinsin mi?</value>
+  </data>
+  <data name="PermanentDeleteDialogMessage" xml:space="preserve">
+    <value>Bu öğeler Geri Dönüşüm Kutusu olmayan bir sürücüde (ağ, çıkarılabilir veya eşlenmiş sürücü). Silme işlemi geri alınamaz.</value>
+  </data>
+  <data name="PermanentDeleteDialogDeleteButton" xml:space="preserve">
+    <value>Kalıcı olarak sil</value>
+  </data>
+  <data name="PermanentDeleteDialogKeepButton" xml:space="preserve">
+    <value>Sakla</value>
+  </data>
+  <data name="NotDeletedDialogTitle" xml:space="preserve">
+    <value>Bazı öğeler silinmedi</value>
+  </data>
+  <data name="NotDeletedDialogMessage" xml:space="preserve">
+    <value>Bu öğeler hâlâ diskte. Kullanımda veya korumalı olabilirler ya da bunları saklamayı seçtiniz.</value>
+  </data>
 </root>

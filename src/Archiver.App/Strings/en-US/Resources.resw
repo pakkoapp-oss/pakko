@@ -369,4 +369,22 @@
   <data name="EncryptPasswordErrorMismatch" xml:space="preserve">
     <value>The passwords do not match.</value>
   </data>
+  <data name="PermanentDeleteDialogTitle" xml:space="preserve">
+    <value>Delete permanently?</value>
+  </data>
+  <data name="PermanentDeleteDialogMessage" xml:space="preserve">
+    <value>These items are on a drive without a Recycle Bin (network, removable or mapped drive). Deleting them cannot be undone.</value>
+  </data>
+  <data name="PermanentDeleteDialogDeleteButton" xml:space="preserve">
+    <value>Delete permanently</value>
+  </data>
+  <data name="PermanentDeleteDialogKeepButton" xml:space="preserve">
+    <value>Keep</value>
+  </data>
+  <data name="NotDeletedDialogTitle" xml:space="preserve">
+    <value>Some items were not deleted</value>
+  </data>
+  <data name="NotDeletedDialogMessage" xml:space="preserve">
+    <value>These items are still on disk. They may be in use or protected, or you chose to keep them.</value>
+  </data>
 </root>

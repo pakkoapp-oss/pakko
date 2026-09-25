@@ -48,6 +48,7 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly IDialogService _dialogService;
     private readonly ILogService _logService;
     private readonly GroupPolicyOptions _policy;
+    private readonly SourceRecycler _sourceRecycler;
 
     private IReadOnlyDictionary<string, IReadOnlyList<ArchiveEntryViewModel>> _archiveIndex =
         new Dictionary<string, IReadOnlyList<ArchiveEntryViewModel>>();
@@ -359,8 +360,10 @@ public sealed partial class MainViewModel : ObservableObject
         IAntivirusScanService antivirusScanService,
         IDialogService dialogService,
         ILogService logService,
-        GroupPolicyOptions groupPolicyOptions)
+        GroupPolicyOptions groupPolicyOptions,
+        SourceRecycler sourceRecycler)
     {
+        _sourceRecycler = sourceRecycler;
         _archiveCreationRouter = archiveCreationRouter;
         _extractionRouter = extractionRouter;
         _archiveListingRouter = archiveListingRouter;
@@ -1236,18 +1239,14 @@ public sealed partial class MainViewModel : ObservableObject
     private async Task RunCleanupAsync(IEnumerable<string> paths)
     {
         StatusMessage = _res.GetString("StatusCleaningUp");
-        await Task.Run(() =>
-        {
-            foreach (var path in paths)
-            {
-                try
-                {
-                    if (Directory.Exists(path)) Directory.Delete(path, recursive: true);
-                    else if (File.Exists(path)) File.Delete(path);
-                }
-                catch { /* best-effort */ }
-            }
-        }).ConfigureAwait(false);
+        // T-F207/T-F242: Recycle Bin where the volume has one, an explicit confirmation before
+        // anything is deleted permanently, and every source still on disk is reported.
+        IReadOnlyList<string> notDeleted = await _sourceRecycler.DeleteAsync(paths, _dialogService.ShowPermanentDeleteConfirmAsync);
+        if (notDeleted.Count == 0)
+            return;
+        foreach (string path in notDeleted)
+            _logService.Warn($"Not deleted after operation: {path}");
+        await _dialogService.ShowNotDeletedAsync(notDeleted);
     }
 
     private void UpdateOperationStatus(ProgressReport report)

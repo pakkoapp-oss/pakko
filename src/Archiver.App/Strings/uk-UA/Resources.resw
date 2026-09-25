@@ -357,4 +357,22 @@
   <data name="EncryptPasswordErrorMismatch" xml:space="preserve">
     <value>Паролі не збігаються.</value>
   </data>
+  <data name="PermanentDeleteDialogTitle" xml:space="preserve">
+    <value>Видалити остаточно?</value>
+  </data>
+  <data name="PermanentDeleteDialogMessage" xml:space="preserve">
+    <value>Ці елементи на диску без Кошика (мережевий, знімний або підключений диск). Видалення не можна буде скасувати.</value>
+  </data>
+  <data name="PermanentDeleteDialogDeleteButton" xml:space="preserve">
+    <value>Видалити остаточно</value>
+  </data>
+  <data name="PermanentDeleteDialogKeepButton" xml:space="preserve">
+    <value>Залишити</value>
+  </data>
+  <data name="NotDeletedDialogTitle" xml:space="preserve">
+    <value>Деякі елементи не видалено</value>
+  </data>
+  <data name="NotDeletedDialogMessage" xml:space="preserve">
+    <value>Ці елементи досі на диску. Можливо, вони використовуються чи захищені, або ви вирішили їх залишити.</value>
+  </data>
 </root>

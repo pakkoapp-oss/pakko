@@ -341,4 +341,22 @@
   <data name="EncryptPasswordErrorMismatch" xml:space="preserve">
     <value>A jelszavak nem egyeznek.</value>
   </data>
+  <data name="PermanentDeleteDialogTitle" xml:space="preserve">
+    <value>Végleges törlés?</value>
+  </data>
+  <data name="PermanentDeleteDialogMessage" xml:space="preserve">
+    <value>Ezek az elemek Lomtár nélküli meghajtón vannak (hálózati, cserélhető vagy csatlakoztatott meghajtó). A törlés nem vonható vissza.</value>
+  </data>
+  <data name="PermanentDeleteDialogDeleteButton" xml:space="preserve">
+    <value>Végleges törlés</value>
+  </data>
+  <data name="PermanentDeleteDialogKeepButton" xml:space="preserve">
+    <value>Megtartás</value>
+  </data>
+  <data name="NotDeletedDialogTitle" xml:space="preserve">
+    <value>Néhány elem nem lett törölve</value>
+  </data>
+  <data name="NotDeletedDialogMessage" xml:space="preserve">
+    <value>Ezek az elemek még a lemezen vannak. Lehet, hogy használatban vannak vagy védettek, vagy Ön a megtartásuk mellett döntött.</value>
+  </data>
 </root>

@@ -341,4 +341,22 @@
   <data name="EncryptPasswordErrorMismatch" xml:space="preserve">
     <value>รหัสผ่านไม่ตรงกัน</value>
   </data>
+  <data name="PermanentDeleteDialogTitle" xml:space="preserve">
+    <value>ลบอย่างถาวรหรือไม่</value>
+  </data>
+  <data name="PermanentDeleteDialogMessage" xml:space="preserve">
+    <value>รายการเหล่านี้อยู่บนไดรฟ์ที่ไม่มีถังรีไซเคิล (ไดรฟ์เครือข่าย ไดรฟ์แบบถอดได้ หรือไดรฟ์ที่แมปไว้) การลบนี้ไม่สามารถยกเลิกได้</value>
+  </data>
+  <data name="PermanentDeleteDialogDeleteButton" xml:space="preserve">
+    <value>ลบอย่างถาวร</value>
+  </data>
+  <data name="PermanentDeleteDialogKeepButton" xml:space="preserve">
+    <value>เก็บไว้</value>
+  </data>
+  <data name="NotDeletedDialogTitle" xml:space="preserve">
+    <value>มีบางรายการที่ไม่ได้ถูกลบ</value>
+  </data>
+  <data name="NotDeletedDialogMessage" xml:space="preserve">
+    <value>รายการเหล่านี้ยังอยู่บนดิสก์ อาจกำลังถูกใช้งานหรือได้รับการป้องกัน หรือคุณเลือกที่จะเก็บไว้</value>
+  </data>
 </root>

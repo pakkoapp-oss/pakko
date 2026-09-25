@@ -341,4 +341,22 @@
   <data name="EncryptPasswordErrorMismatch" xml:space="preserve">
     <value>Die Kennwörter stimmen nicht überein.</value>
   </data>
+  <data name="PermanentDeleteDialogTitle" xml:space="preserve">
+    <value>Endgültig löschen?</value>
+  </data>
+  <data name="PermanentDeleteDialogMessage" xml:space="preserve">
+    <value>Diese Elemente befinden sich auf einem Laufwerk ohne Papierkorb (Netzwerk-, Wechsel- oder verbundenes Laufwerk). Das Löschen kann nicht rückgängig gemacht werden.</value>
+  </data>
+  <data name="PermanentDeleteDialogDeleteButton" xml:space="preserve">
+    <value>Endgültig löschen</value>
+  </data>
+  <data name="PermanentDeleteDialogKeepButton" xml:space="preserve">
+    <value>Behalten</value>
+  </data>
+  <data name="NotDeletedDialogTitle" xml:space="preserve">
+    <value>Einige Elemente wurden nicht gelöscht</value>
+  </data>
+  <data name="NotDeletedDialogMessage" xml:space="preserve">
+    <value>Diese Elemente befinden sich noch auf dem Datenträger. Sie werden möglicherweise verwendet oder sind geschützt, oder Sie haben sich entschieden, sie zu behalten.</value>
+  </data>
 </root>

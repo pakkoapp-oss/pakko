@@ -341,4 +341,22 @@
   <data name="EncryptPasswordErrorMismatch" xml:space="preserve">
     <value>Parolele nu se potrivesc.</value>
   </data>
+  <data name="PermanentDeleteDialogTitle" xml:space="preserve">
+    <value>Ștergeți definitiv?</value>
+  </data>
+  <data name="PermanentDeleteDialogMessage" xml:space="preserve">
+    <value>Aceste elemente se află pe o unitate fără Coș de reciclare (de rețea, amovibilă sau mapată). Ștergerea nu poate fi anulată.</value>
+  </data>
+  <data name="PermanentDeleteDialogDeleteButton" xml:space="preserve">
+    <value>Ștergere definitivă</value>
+  </data>
+  <data name="PermanentDeleteDialogKeepButton" xml:space="preserve">
+    <value>Păstrare</value>
+  </data>
+  <data name="NotDeletedDialogTitle" xml:space="preserve">
+    <value>Unele elemente nu au fost șterse</value>
+  </data>
+  <data name="NotDeletedDialogMessage" xml:space="preserve">
+    <value>Aceste elemente sunt încă pe disc. Pot fi în uz sau protejate ori ați ales să le păstrați.</value>
+  </data>
 </root>

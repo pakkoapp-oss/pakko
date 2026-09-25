@@ -341,4 +341,22 @@
   <data name="EncryptPasswordErrorMismatch" xml:space="preserve">
     <value>Mật khẩu không khớp.</value>
   </data>
+  <data name="PermanentDeleteDialogTitle" xml:space="preserve">
+    <value>Xóa vĩnh viễn?</value>
+  </data>
+  <data name="PermanentDeleteDialogMessage" xml:space="preserve">
+    <value>Các mục này nằm trên ổ đĩa không có Thùng rác (ổ mạng, ổ di động hoặc ổ được ánh xạ). Không thể hoàn tác việc xóa.</value>
+  </data>
+  <data name="PermanentDeleteDialogDeleteButton" xml:space="preserve">
+    <value>Xóa vĩnh viễn</value>
+  </data>
+  <data name="PermanentDeleteDialogKeepButton" xml:space="preserve">
+    <value>Giữ lại</value>
+  </data>
+  <data name="NotDeletedDialogTitle" xml:space="preserve">
+    <value>Một số mục chưa được xóa</value>
+  </data>
+  <data name="NotDeletedDialogMessage" xml:space="preserve">
+    <value>Các mục này vẫn còn trên đĩa. Chúng có thể đang được sử dụng hoặc được bảo vệ, hoặc bạn đã chọn giữ lại.</value>
+  </data>
 </root>

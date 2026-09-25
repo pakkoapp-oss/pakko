@@ -40,6 +40,10 @@ public partial class App : Application
         services.AddSingleton<IArchiveListingRouter, ArchiveListingRouter>();
         services.AddSingleton<IArchiveCreationRouter, ArchiveCreationRouter>();
         services.AddSingleton<IAntivirusScanService, AntivirusScanService>();
+        // T-F207: "Delete after operation" — the owner window is read at delete time, after
+        // SetWindow has run.
+        services.AddSingleton(sp => new SourceRecycler(new Win32SourceDeleteOperations(
+            () => sp.GetRequiredService<IDialogService>().OwnerWindowHandle)));
         services.AddTransient<MainViewModel>();
 
         var provider = services.BuildServiceProvider();

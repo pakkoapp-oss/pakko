@@ -341,4 +341,22 @@
   <data name="EncryptPasswordErrorMismatch" xml:space="preserve">
     <value>两次输入的密码不一致。</value>
   </data>
+  <data name="PermanentDeleteDialogTitle" xml:space="preserve">
+    <value>永久删除?</value>
+  </data>
+  <data name="PermanentDeleteDialogMessage" xml:space="preserve">
+    <value>这些项目位于没有回收站的驱动器上(网络驱动器、可移动驱动器或映射驱动器)。删除后无法撤消。</value>
+  </data>
+  <data name="PermanentDeleteDialogDeleteButton" xml:space="preserve">
+    <value>永久删除</value>
+  </data>
+  <data name="PermanentDeleteDialogKeepButton" xml:space="preserve">
+    <value>保留</value>
+  </data>
+  <data name="NotDeletedDialogTitle" xml:space="preserve">
+    <value>部分项目未删除</value>
+  </data>
+  <data name="NotDeletedDialogMessage" xml:space="preserve">
+    <value>这些项目仍在磁盘上。它们可能正在使用或受保护,或者你选择了保留它们。</value>
+  </data>
 </root>

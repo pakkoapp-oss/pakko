@@ -341,4 +341,22 @@
   <data name="EncryptPasswordErrorMismatch" xml:space="preserve">
     <value>De wachtwoorden komen niet overeen.</value>
   </data>
+  <data name="PermanentDeleteDialogTitle" xml:space="preserve">
+    <value>Definitief verwijderen?</value>
+  </data>
+  <data name="PermanentDeleteDialogMessage" xml:space="preserve">
+    <value>Deze items staan op een station zonder Prullenbak (netwerk-, verwisselbaar of toegewezen station). Verwijderen kan niet ongedaan worden gemaakt.</value>
+  </data>
+  <data name="PermanentDeleteDialogDeleteButton" xml:space="preserve">
+    <value>Definitief verwijderen</value>
+  </data>
+  <data name="PermanentDeleteDialogKeepButton" xml:space="preserve">
+    <value>Behouden</value>
+  </data>
+  <data name="NotDeletedDialogTitle" xml:space="preserve">
+    <value>Sommige items zijn niet verwijderd</value>
+  </data>
+  <data name="NotDeletedDialogMessage" xml:space="preserve">
+    <value>Deze items staan nog op de schijf. Ze zijn mogelijk in gebruik of beveiligd, of u hebt ervoor gekozen ze te behouden.</value>
+  </data>
 </root>

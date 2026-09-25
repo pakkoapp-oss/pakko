@@ -341,4 +341,22 @@
   <data name="EncryptPasswordErrorMismatch" xml:space="preserve">
     <value>Gesli se ne ujemata.</value>
   </data>
+  <data name="PermanentDeleteDialogTitle" xml:space="preserve">
+    <value>Želite trajno izbrisati?</value>
+  </data>
+  <data name="PermanentDeleteDialogMessage" xml:space="preserve">
+    <value>Ti elementi so na pogonu brez koša (omrežni, izmenljivi ali preslikani pogon). Brisanja ni mogoče razveljaviti.</value>
+  </data>
+  <data name="PermanentDeleteDialogDeleteButton" xml:space="preserve">
+    <value>Trajno izbriši</value>
+  </data>
+  <data name="PermanentDeleteDialogKeepButton" xml:space="preserve">
+    <value>Obdrži</value>
+  </data>
+  <data name="NotDeletedDialogTitle" xml:space="preserve">
+    <value>Nekateri elementi niso bili izbrisani</value>
+  </data>
+  <data name="NotDeletedDialogMessage" xml:space="preserve">
+    <value>Ti elementi so še vedno na disku. Morda so v uporabi ali zaščiteni ali pa ste jih izbrali obdržati.</value>
+  </data>
 </root>

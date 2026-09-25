@@ -341,4 +341,22 @@
   <data name="EncryptPasswordErrorMismatch" xml:space="preserve">
     <value>پاس ورڈز مماثل نہیں ہیں۔</value>
   </data>
+  <data name="PermanentDeleteDialogTitle" xml:space="preserve">
+    <value>مستقل طور پر حذف کریں؟</value>
+  </data>
+  <data name="PermanentDeleteDialogMessage" xml:space="preserve">
+    <value>یہ آئٹمز ایسی ڈرائیو پر ہیں جس میں ری سائیکل بن نہیں ہے (نیٹ ورک، ہٹانے کے قابل یا میپ شدہ ڈرائیو)۔ حذف کرنے کو کالعدم نہیں کیا جا سکتا۔</value>
+  </data>
+  <data name="PermanentDeleteDialogDeleteButton" xml:space="preserve">
+    <value>مستقل طور پر حذف کریں</value>
+  </data>
+  <data name="PermanentDeleteDialogKeepButton" xml:space="preserve">
+    <value>رکھیں</value>
+  </data>
+  <data name="NotDeletedDialogTitle" xml:space="preserve">
+    <value>کچھ آئٹمز حذف نہیں ہوئے</value>
+  </data>
+  <data name="NotDeletedDialogMessage" xml:space="preserve">
+    <value>یہ آئٹمز ابھی بھی ڈسک پر ہیں۔ ہو سکتا ہے وہ استعمال میں یا محفوظ ہوں، یا آپ نے انہیں رکھنے کا انتخاب کیا۔</value>
+  </data>
 </root>

@@ -341,4 +341,22 @@
   <data name="EncryptPasswordErrorMismatch" xml:space="preserve">
     <value>पासवर्ड मेल नहीं खाते।</value>
   </data>
+  <data name="PermanentDeleteDialogTitle" xml:space="preserve">
+    <value>स्थायी रूप से हटाएँ?</value>
+  </data>
+  <data name="PermanentDeleteDialogMessage" xml:space="preserve">
+    <value>ये आइटम ऐसी ड्राइव पर हैं जिसमें रीसायकल बिन नहीं है (नेटवर्क, हटाने योग्य या मैप की गई ड्राइव)। इन्हें हटाने के बाद पूर्ववत नहीं किया जा सकता।</value>
+  </data>
+  <data name="PermanentDeleteDialogDeleteButton" xml:space="preserve">
+    <value>स्थायी रूप से हटाएँ</value>
+  </data>
+  <data name="PermanentDeleteDialogKeepButton" xml:space="preserve">
+    <value>रखें</value>
+  </data>
+  <data name="NotDeletedDialogTitle" xml:space="preserve">
+    <value>कुछ आइटम नहीं हटाए गए</value>
+  </data>
+  <data name="NotDeletedDialogMessage" xml:space="preserve">
+    <value>ये आइटम अभी भी डिस्क पर हैं। वे उपयोग में या सुरक्षित हो सकते हैं, या आपने उन्हें रखने का विकल्प चुना।</value>
+  </data>
 </root>

@@ -341,4 +341,22 @@
   <data name="EncryptPasswordErrorMismatch" xml:space="preserve">
     <value>Hasła nie są zgodne.</value>
   </data>
+  <data name="PermanentDeleteDialogTitle" xml:space="preserve">
+    <value>Usunąć trwale?</value>
+  </data>
+  <data name="PermanentDeleteDialogMessage" xml:space="preserve">
+    <value>Te elementy znajdują się na dysku bez Kosza (sieciowym, wymiennym lub zamapowanym). Usunięcia nie można cofnąć.</value>
+  </data>
+  <data name="PermanentDeleteDialogDeleteButton" xml:space="preserve">
+    <value>Usuń trwale</value>
+  </data>
+  <data name="PermanentDeleteDialogKeepButton" xml:space="preserve">
+    <value>Zachowaj</value>
+  </data>
+  <data name="NotDeletedDialogTitle" xml:space="preserve">
+    <value>Niektóre elementy nie zostały usunięte</value>
+  </data>
+  <data name="NotDeletedDialogMessage" xml:space="preserve">
+    <value>Te elementy nadal są na dysku. Mogą być używane lub chronione albo zdecydowano się je zachować.</value>
+  </data>
 </root>

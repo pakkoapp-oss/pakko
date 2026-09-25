@@ -341,4 +341,22 @@
   <data name="EncryptPasswordErrorMismatch" xml:space="preserve">
     <value>Salasanat eivät täsmää.</value>
   </data>
+  <data name="PermanentDeleteDialogTitle" xml:space="preserve">
+    <value>Poistetaanko pysyvästi?</value>
+  </data>
+  <data name="PermanentDeleteDialogMessage" xml:space="preserve">
+    <value>Nämä kohteet ovat asemalla, jolla ei ole roskakoria (verkko-, siirrettävä tai yhdistetty asema). Poistoa ei voi kumota.</value>
+  </data>
+  <data name="PermanentDeleteDialogDeleteButton" xml:space="preserve">
+    <value>Poista pysyvästi</value>
+  </data>
+  <data name="PermanentDeleteDialogKeepButton" xml:space="preserve">
+    <value>Säilytä</value>
+  </data>
+  <data name="NotDeletedDialogTitle" xml:space="preserve">
+    <value>Joitakin kohteita ei poistettu</value>
+  </data>
+  <data name="NotDeletedDialogMessage" xml:space="preserve">
+    <value>Nämä kohteet ovat yhä levyllä. Ne voivat olla käytössä tai suojattuja, tai valitsit säilyttää ne.</value>
+  </data>
 </root>

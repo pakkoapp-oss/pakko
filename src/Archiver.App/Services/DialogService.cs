@@ -22,6 +22,47 @@ public sealed class DialogService : IDialogService
 
     public void SetWindow(Window window) => _window = window;
 
+    public IntPtr OwnerWindowHandle => _window is null ? IntPtr.Zero : WinRT.Interop.WindowNative.GetWindowHandle(_window);
+
+    // T-F207: network, removable and SUBST drives have no Recycle Bin — nothing there is deleted
+    // until the user confirms, and the default button keeps the items.
+    public async Task<bool> ShowPermanentDeleteConfirmAsync(IReadOnlyList<string> paths)
+    {
+        var dialog = new ContentDialog
+        {
+            Title = _res.GetString("PermanentDeleteDialogTitle"),
+            Content = BuildPathList(_res.GetString("PermanentDeleteDialogMessage"), paths),
+            PrimaryButtonText = _res.GetString("PermanentDeleteDialogDeleteButton"),
+            CloseButtonText = _res.GetString("PermanentDeleteDialogKeepButton"),
+            DefaultButton = ContentDialogButton.Close,
+            XamlRoot = _window!.Content.XamlRoot
+        };
+        return await dialog.ShowAsync() == ContentDialogResult.Primary;
+    }
+
+    // T-F242: a source "Delete after operation" could not remove (locked, declined, access
+    // denied) used to be dropped silently.
+    public async Task ShowNotDeletedAsync(IReadOnlyList<string> paths)
+    {
+        var dialog = new ContentDialog
+        {
+            Title = _res.GetString("NotDeletedDialogTitle"),
+            Content = BuildPathList(_res.GetString("NotDeletedDialogMessage"), paths),
+            CloseButtonText = "OK",
+            XamlRoot = _window!.Content.XamlRoot
+        };
+        await dialog.ShowAsync();
+    }
+
+    private static ScrollViewer BuildPathList(string message, IReadOnlyList<string> paths)
+    {
+        var panel = new StackPanel { Spacing = 8 };
+        panel.Children.Add(new TextBlock { Text = message, TextWrapping = TextWrapping.Wrap });
+        foreach (string path in paths)
+            panel.Children.Add(new TextBlock { Text = path, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(12, 0, 0, 0) });
+        return new ScrollViewer { Content = panel, MaxHeight = 400, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
+    }
+
     public async Task ShowErrorAsync(string title, string message)
     {
         var dialog = new ContentDialog

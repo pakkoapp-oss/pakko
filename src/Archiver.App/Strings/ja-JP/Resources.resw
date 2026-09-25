@@ -341,4 +341,22 @@
   <data name="EncryptPasswordErrorMismatch" xml:space="preserve">
     <value>パスワードが一致しません。</value>
   </data>
+  <data name="PermanentDeleteDialogTitle" xml:space="preserve">
+    <value>完全に削除しますか?</value>
+  </data>
+  <data name="PermanentDeleteDialogMessage" xml:space="preserve">
+    <value>これらの項目はごみ箱のないドライブ (ネットワーク、リムーバブル、または割り当てられたドライブ) にあります。削除は元に戻せません。</value>
+  </data>
+  <data name="PermanentDeleteDialogDeleteButton" xml:space="preserve">
+    <value>完全に削除</value>
+  </data>
+  <data name="PermanentDeleteDialogKeepButton" xml:space="preserve">
+    <value>残す</value>
+  </data>
+  <data name="NotDeletedDialogTitle" xml:space="preserve">
+    <value>一部の項目は削除されませんでした</value>
+  </data>
+  <data name="NotDeletedDialogMessage" xml:space="preserve">
+    <value>これらの項目はまだディスク上にあります。使用中または保護されているか、残すことを選択した可能性があります。</value>
+  </data>
 </root>

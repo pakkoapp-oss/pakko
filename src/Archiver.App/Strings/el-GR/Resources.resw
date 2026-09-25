@@ -341,4 +341,22 @@
   <data name="EncryptPasswordErrorMismatch" xml:space="preserve">
     <value>Οι κωδικοί δεν ταιριάζουν.</value>
   </data>
+  <data name="PermanentDeleteDialogTitle" xml:space="preserve">
+    <value>Οριστική διαγραφή;</value>
+  </data>
+  <data name="PermanentDeleteDialogMessage" xml:space="preserve">
+    <value>Αυτά τα στοιχεία βρίσκονται σε μονάδα χωρίς Κάδο Ανακύκλωσης (δικτύου, αφαιρούμενη ή αντιστοιχισμένη μονάδα). Η διαγραφή δεν μπορεί να αναιρεθεί.</value>
+  </data>
+  <data name="PermanentDeleteDialogDeleteButton" xml:space="preserve">
+    <value>Οριστική διαγραφή</value>
+  </data>
+  <data name="PermanentDeleteDialogKeepButton" xml:space="preserve">
+    <value>Διατήρηση</value>
+  </data>
+  <data name="NotDeletedDialogTitle" xml:space="preserve">
+    <value>Ορισμένα στοιχεία δεν διαγράφηκαν</value>
+  </data>
+  <data name="NotDeletedDialogMessage" xml:space="preserve">
+    <value>Αυτά τα στοιχεία βρίσκονται ακόμη στον δίσκο. Ίσως χρησιμοποιούνται ή προστατεύονται, ή επιλέξατε να τα διατηρήσετε.</value>
+  </data>
 </root>

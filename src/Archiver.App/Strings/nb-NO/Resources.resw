@@ -341,4 +341,22 @@
   <data name="EncryptPasswordErrorMismatch" xml:space="preserve">
     <value>Passordene samsvarer ikke.</value>
   </data>
+  <data name="PermanentDeleteDialogTitle" xml:space="preserve">
+    <value>Slette permanent?</value>
+  </data>
+  <data name="PermanentDeleteDialogMessage" xml:space="preserve">
+    <value>Disse elementene ligger på en stasjon uten papirkurv (nettverksstasjon, flyttbar eller tilordnet stasjon). Slettingen kan ikke angres.</value>
+  </data>
+  <data name="PermanentDeleteDialogDeleteButton" xml:space="preserve">
+    <value>Slett permanent</value>
+  </data>
+  <data name="PermanentDeleteDialogKeepButton" xml:space="preserve">
+    <value>Behold</value>
+  </data>
+  <data name="NotDeletedDialogTitle" xml:space="preserve">
+    <value>Noen elementer ble ikke slettet</value>
+  </data>
+  <data name="NotDeletedDialogMessage" xml:space="preserve">
+    <value>Disse elementene ligger fortsatt på disken. De kan være i bruk eller beskyttet, eller du valgte å beholde dem.</value>
+  </data>
 </root>

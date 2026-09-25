@@ -341,4 +341,22 @@
   <data name="EncryptPasswordErrorMismatch" xml:space="preserve">
     <value>Lösenorden matchar inte.</value>
   </data>
+  <data name="PermanentDeleteDialogTitle" xml:space="preserve">
+    <value>Ta bort permanent?</value>
+  </data>
+  <data name="PermanentDeleteDialogMessage" xml:space="preserve">
+    <value>De här objekten finns på en enhet utan papperskorg (nätverksenhet, flyttbar eller mappad enhet). Borttagningen kan inte ångras.</value>
+  </data>
+  <data name="PermanentDeleteDialogDeleteButton" xml:space="preserve">
+    <value>Ta bort permanent</value>
+  </data>
+  <data name="PermanentDeleteDialogKeepButton" xml:space="preserve">
+    <value>Behåll</value>
+  </data>
+  <data name="NotDeletedDialogTitle" xml:space="preserve">
+    <value>Vissa objekt togs inte bort</value>
+  </data>
+  <data name="NotDeletedDialogMessage" xml:space="preserve">
+    <value>De här objekten finns fortfarande på disken. De kan vara i bruk eller skyddade, eller så valde du att behålla dem.</value>
+  </data>
 </root>

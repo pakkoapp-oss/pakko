@@ -341,4 +341,22 @@
   <data name="EncryptPasswordErrorMismatch" xml:space="preserve">
     <value>Manenosiri hayalingani.</value>
   </data>
+  <data name="PermanentDeleteDialogTitle" xml:space="preserve">
+    <value>Futa kabisa?</value>
+  </data>
+  <data name="PermanentDeleteDialogMessage" xml:space="preserve">
+    <value>Vipengee hivi viko kwenye hifadhi isiyo na Pipa la Taka (hifadhi ya mtandao, inayoondolewa au iliyopangwa). Kufuta hakuwezi kutenduliwa.</value>
+  </data>
+  <data name="PermanentDeleteDialogDeleteButton" xml:space="preserve">
+    <value>Futa kabisa</value>
+  </data>
+  <data name="PermanentDeleteDialogKeepButton" xml:space="preserve">
+    <value>Hifadhi</value>
+  </data>
+  <data name="NotDeletedDialogTitle" xml:space="preserve">
+    <value>Baadhi ya vipengee havikufutwa</value>
+  </data>
+  <data name="NotDeletedDialogMessage" xml:space="preserve">
+    <value>Vipengee hivi bado viko kwenye diski. Huenda vinatumika au vimelindwa, au ulichagua kuvihifadhi.</value>
+  </data>
 </root>

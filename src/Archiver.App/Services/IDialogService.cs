@@ -20,4 +20,9 @@ public interface IDialogService
     // T-F190: canApplyToRemaining is a caller/frontend decision (batch shape), not something
     // Archiver.Core's PasswordPromptInfo carries — see docs/DECISIONS.md's T-F190 entry.
     Task<PasswordDecision> ShowPasswordPromptAsync(PasswordPromptInfo info, bool canApplyToRemaining);
+
+    // T-F207: owner for the shell's own delete UI, and the two "Delete after operation" dialogs.
+    IntPtr OwnerWindowHandle { get; }
+    Task<bool> ShowPermanentDeleteConfirmAsync(IReadOnlyList<string> paths);
+    Task ShowNotDeletedAsync(IReadOnlyList<string> paths);
 }

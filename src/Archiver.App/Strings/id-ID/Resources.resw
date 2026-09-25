@@ -341,4 +341,22 @@
   <data name="EncryptPasswordErrorMismatch" xml:space="preserve">
     <value>Kata sandi tidak cocok.</value>
   </data>
+  <data name="PermanentDeleteDialogTitle" xml:space="preserve">
+    <value>Hapus secara permanen?</value>
+  </data>
+  <data name="PermanentDeleteDialogMessage" xml:space="preserve">
+    <value>Item ini berada di drive tanpa Keranjang Sampah (drive jaringan, lepas-pasang, atau yang dipetakan). Penghapusan tidak dapat dibatalkan.</value>
+  </data>
+  <data name="PermanentDeleteDialogDeleteButton" xml:space="preserve">
+    <value>Hapus permanen</value>
+  </data>
+  <data name="PermanentDeleteDialogKeepButton" xml:space="preserve">
+    <value>Simpan</value>
+  </data>
+  <data name="NotDeletedDialogTitle" xml:space="preserve">
+    <value>Beberapa item tidak dihapus</value>
+  </data>
+  <data name="NotDeletedDialogMessage" xml:space="preserve">
+    <value>Item ini masih ada di disk. Item mungkin sedang digunakan atau dilindungi, atau Anda memilih untuk menyimpannya.</value>
+  </data>
 </root>

@@ -341,4 +341,22 @@
   <data name="EncryptPasswordErrorMismatch" xml:space="preserve">
     <value>Les mots de passe ne correspondent pas.</value>
   </data>
+  <data name="PermanentDeleteDialogTitle" xml:space="preserve">
+    <value>Supprimer définitivement ?</value>
+  </data>
+  <data name="PermanentDeleteDialogMessage" xml:space="preserve">
+    <value>Ces éléments se trouvent sur un lecteur sans Corbeille (réseau, amovible ou mappé). La suppression est irréversible.</value>
+  </data>
+  <data name="PermanentDeleteDialogDeleteButton" xml:space="preserve">
+    <value>Supprimer définitivement</value>
+  </data>
+  <data name="PermanentDeleteDialogKeepButton" xml:space="preserve">
+    <value>Conserver</value>
+  </data>
+  <data name="NotDeletedDialogTitle" xml:space="preserve">
+    <value>Certains éléments n’ont pas été supprimés</value>
+  </data>
+  <data name="NotDeletedDialogMessage" xml:space="preserve">
+    <value>Ces éléments sont toujours sur le disque. Ils sont peut-être utilisés ou protégés, ou vous avez choisi de les conserver.</value>
+  </data>
 </root>

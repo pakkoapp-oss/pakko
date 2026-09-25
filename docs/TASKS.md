@@ -4511,6 +4511,11 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 
 ### T-F207 — "Delete after operation" deletes sources permanently, with no confirmation (P1)
 
+- **Progress (2026-09-25, fix phase 1):** `SourceRecycler` — Recycle Bin on fixed local volumes
+  (resolved path), own confirmation for everything else, remaining items reported; spike showed
+  the shell's nuke warning never fires for UNC/SUBST (`docs/DECISIONS.md`, T-F207 entry). Device
+  check pending (phase end).
+
 - [ ] **Status:** open. App, archive mode: tick "Видалити після операції", click Archive -> the
   source folder is deleted outright; it is not in the Recycle Bin, and no confirmation appears
   before or after. T-F199 already asks for a warning; this task covers the irreversibility itself
@@ -5016,6 +5021,9 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 - **Decision (2026-09-25):** add Test to the App; no CLI scan for now (no `7z` equivalent) — record why, including that `MpCmdRun` cannot scan inside password-protected ZIPs (T-F194), in `docs/CLI.md`/`docs/DECISIONS.md`.
 
 ### T-F242 — App: cleanup errors swallowed, dead Core options, logic in code-behind (P2)
+
+- **Progress (2026-09-25, fix phase 1):** item 1 done with T-F207 (sources still on disk are
+  logged and listed in a dialog).
 
 - [ ] **Status:** open, from the T-F226 review.
   1. `MainViewModel.RunCleanupAsync` (`:1243-1257`) deletes permanently and swallows every error

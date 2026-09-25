@@ -341,4 +341,22 @@
   <data name="EncryptPasswordErrorMismatch" xml:space="preserve">
     <value>كلمتا المرور غير متطابقتين.</value>
   </data>
+  <data name="PermanentDeleteDialogTitle" xml:space="preserve">
+    <value>هل تريد الحذف نهائيًا؟</value>
+  </data>
+  <data name="PermanentDeleteDialogMessage" xml:space="preserve">
+    <value>هذه العناصر موجودة على محرك أقراص بدون سلة محذوفات (محرك شبكة أو قابل للإزالة أو معيَّن). لا يمكن التراجع عن حذفها.</value>
+  </data>
+  <data name="PermanentDeleteDialogDeleteButton" xml:space="preserve">
+    <value>حذف نهائيًا</value>
+  </data>
+  <data name="PermanentDeleteDialogKeepButton" xml:space="preserve">
+    <value>الاحتفاظ</value>
+  </data>
+  <data name="NotDeletedDialogTitle" xml:space="preserve">
+    <value>لم يتم حذف بعض العناصر</value>
+  </data>
+  <data name="NotDeletedDialogMessage" xml:space="preserve">
+    <value>لا تزال هذه العناصر على القرص. ربما تكون قيد الاستخدام أو محمية، أو اخترت الاحتفاظ بها.</value>
+  </data>
 </root>

@@ -162,7 +162,9 @@ src/
 │   ├── ProtocolActivationRouter.cs                      ← T-F03: pakko://browse detection
 │   ├── NestedArchiveCache.cs / NestedArchivePolicy.cs   ← T-F98: nested-archive drill-down
 │   ├── PreviewCache.cs                                  ← T-F97: preview extraction cache
-│   └── DeferredActionGate.cs                            ← T-F106: defers activation past first layout pass
+│   ├── DeferredActionGate.cs                            ← T-F106: defers activation past first layout pass
+│   ├── SourceRecycler.cs                                ← T-F207: "Delete after operation" — Recycle Bin / confirm / report
+│   └── Win32SourceDeleteOperations.cs                   ← T-F207: final-path + volume-type + SHFileOperationW P/Invoke
 │
 ├── Archiver.Shell/             ← shell-triggered operation entry point; net8.0-windows; WinExe; no WinUI
 │   ├── Program.cs
@@ -623,6 +625,13 @@ public interface IDialogService
     // above. canApplyToRemaining is a caller-supplied bool, not a PasswordPromptInfo field —
     // Archiver.Core has no notion of a frontend's batch shape (see DECISIONS.md's T-F190 entry).
     Task<PasswordDecision> ShowPasswordPromptAsync(PasswordPromptInfo info, bool canApplyToRemaining);
+
+    // T-F207: owner window for SHFileOperationW, the confirmation before a permanent delete
+    // (drives without a Recycle Bin; default button keeps the items), and the report of sources
+    // "Delete after operation" could not remove (T-F242).
+    IntPtr OwnerWindowHandle { get; }
+    Task<bool> ShowPermanentDeleteConfirmAsync(IReadOnlyList<string> paths);
+    Task ShowNotDeletedAsync(IReadOnlyList<string> paths);
 }
 ```
 
@@ -870,6 +879,9 @@ services.AddSingleton<IExtractionRouter, ExtractionRouter>();
 services.AddSingleton<IArchiveListingRouter, ArchiveListingRouter>();
 services.AddSingleton<IArchiveCreationRouter, ArchiveCreationRouter>();
 services.AddSingleton<IAntivirusScanService, AntivirusScanService>();
+// T-F207: the owner window is read at delete time, after DialogService.SetWindow has run.
+services.AddSingleton(sp => new SourceRecycler(new Win32SourceDeleteOperations(
+    () => sp.GetRequiredService<IDialogService>().OwnerWindowHandle)));
 services.AddTransient<MainViewModel>();
 // T-F48: TarCapabilities is force-resolved once right after BuildServiceProvider() — a
 // factory-registered singleton only runs on first resolution, and nothing else injects it eagerly.

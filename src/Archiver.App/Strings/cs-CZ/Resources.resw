@@ -341,4 +341,22 @@
   <data name="EncryptPasswordErrorMismatch" xml:space="preserve">
     <value>Hesla se neshodují.</value>
   </data>
+  <data name="PermanentDeleteDialogTitle" xml:space="preserve">
+    <value>Trvale odstranit?</value>
+  </data>
+  <data name="PermanentDeleteDialogMessage" xml:space="preserve">
+    <value>Tyto položky jsou na jednotce bez Koše (síťová, vyměnitelná nebo namapovaná jednotka). Odstranění nelze vrátit zpět.</value>
+  </data>
+  <data name="PermanentDeleteDialogDeleteButton" xml:space="preserve">
+    <value>Trvale odstranit</value>
+  </data>
+  <data name="PermanentDeleteDialogKeepButton" xml:space="preserve">
+    <value>Ponechat</value>
+  </data>
+  <data name="NotDeletedDialogTitle" xml:space="preserve">
+    <value>Některé položky nebyly odstraněny</value>
+  </data>
+  <data name="NotDeletedDialogMessage" xml:space="preserve">
+    <value>Tyto položky jsou stále na disku. Mohou být používány nebo chráněny, případně jste se rozhodli je ponechat.</value>
+  </data>
 </root>

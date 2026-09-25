@@ -341,4 +341,22 @@
   <data name="EncryptPasswordErrorMismatch" xml:space="preserve">
     <value>As palavras-passe não coincidem.</value>
   </data>
+  <data name="PermanentDeleteDialogTitle" xml:space="preserve">
+    <value>Eliminar permanentemente?</value>
+  </data>
+  <data name="PermanentDeleteDialogMessage" xml:space="preserve">
+    <value>Estes itens estão numa unidade sem Reciclagem (unidade de rede, amovível ou mapeada). A eliminação não pode ser anulada.</value>
+  </data>
+  <data name="PermanentDeleteDialogDeleteButton" xml:space="preserve">
+    <value>Eliminar permanentemente</value>
+  </data>
+  <data name="PermanentDeleteDialogKeepButton" xml:space="preserve">
+    <value>Manter</value>
+  </data>
+  <data name="NotDeletedDialogTitle" xml:space="preserve">
+    <value>Alguns itens não foram eliminados</value>
+  </data>
+  <data name="NotDeletedDialogMessage" xml:space="preserve">
+    <value>Estes itens ainda estão no disco. Podem estar em utilização ou protegidos, ou optou por mantê-los.</value>
+  </data>
 </root>

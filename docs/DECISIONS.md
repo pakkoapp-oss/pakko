@@ -9222,3 +9222,49 @@ mutants (ignore `clean`, drop the containment downgrade, re-swallow tar's mid-ar
 ignore the worker's own issue count, ignore `SelectedEntryPaths`); two survived the first test
 set and were killed by two added tests (a direct `DowngradeSourcesContainingOutputs` theory, and
 a folder with one locked file inside, which commits an archive yet must be `Partial`).
+
+## T-F207 / T-F242 (items 1) — "Delete after operation": Recycle Bin, confirmation, report (2026-09-25)
+
+**Problem.** `MainViewModel.RunCleanupAsync` deleted sources with `Directory.Delete`/`File.Delete`
+— permanently, with no confirmation — and swallowed every failure (`catch { best-effort }`), so a
+locked source that stayed on disk was never reported.
+
+**Phase 0 spike (real window on its own STA thread, `SHFileOperationW` called from a thread-pool
+MTA thread as the App does).** Flags `FOF_ALLOWUNDO | FOF_NOCONFIRMATION | FOF_WANTNUKEWARNING |
+FOF_NOERRORUI | FOF_SILENT`:
+- a local file and a local folder -> Recycle Bin, no dialog;
+- `\\localhost\c$\...` -> **deleted permanently with no warning** (also with
+  `FOF_SILENT`/`FOF_NOERRORUI` removed);
+- a SUBST drive (`DriveInfo.DriveType == Fixed`) -> **deleted permanently with no warning**.
+
+So the shell's own "permanently delete?" warning, which the original plan relied on, never fires
+for the cases that matter, and a drive-letter type check is not enough either.
+`GetFinalPathNameByHandleW` does resolve both: SUBST -> `\\?\C:\...`, admin share ->
+`\\?\UNC\localhost\c$\...`.
+
+**Decision (user, 2026-09-25: "own check").** `SourceRecycler` (Archiver.App.Core, testable with
+a fake `ISourceDeleteOperations`) decides per source on its **resolved** path:
+1. `CreateFileW(..., FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT)` +
+   `GetFinalPathNameByHandleW`; unresolvable -> never deleted, reported. `OPEN_REPARSE_POINT`
+   keeps a link source resolving to the link, not its target.
+2. Recycle only when `GetDriveTypeW(GetVolumePathNameW(final)) == DRIVE_FIXED` — the volume, not
+   the letter, so a removable volume mounted into a folder still counts as removable; any API
+   failure answers "not fixed" (= ask). The resolved path is what is recycled.
+3. Everything else (UNC, mapped, removable, unknown) -> the App's own confirmation listing the
+   items, default button "Keep"; declining keeps them; confirming deletes each with
+   `Directory.Delete`/`File.Delete`.
+4. Afterwards every source still on disk is reported (logged + a dialog listing them). The disk
+   is the source of truth, not `fAnyOperationsAborted`.
+`FOF_WANTNUKEWARNING` stays on the recycle call as a second line of defence for an item too large
+for the bin on a fixed volume — that case was **not** verified (no practical way to exceed the bin
+quota here); stated as a residual risk.
+
+**Order.** Cleanup now runs after the operation summary (T-F229), and only for
+`ArchiveResult.FullyProcessedSources` (T-F260).
+
+**Tests.** `SourceRecyclerTests` (12): recycle by resolved path, still-on-disk reporting,
+recycle throwing, declined/confirmed permanent delete with one failure, mixed local/remote,
+unresolvable, empty input, duplicate input, plus three non-destructive checks of the real Win32
+resolution (local temp file -> fixed; `\\localhost\X$` -> never recyclable or unresolvable;
+missing path -> null). Mutation check: 4/4 killed (always recycle, skip the disk check, skip the
+confirmation, recycle an unresolvable path).

@@ -341,4 +341,22 @@
   <data name="EncryptPasswordErrorMismatch" xml:space="preserve">
     <value>Paroolid ei ühti.</value>
   </data>
+  <data name="PermanentDeleteDialogTitle" xml:space="preserve">
+    <value>Kas kustutada jäädavalt?</value>
+  </data>
+  <data name="PermanentDeleteDialogMessage" xml:space="preserve">
+    <value>Need üksused asuvad prügikastita kettal (võrgu-, eemaldatav või vastendatud ketas). Kustutamist ei saa tagasi võtta.</value>
+  </data>
+  <data name="PermanentDeleteDialogDeleteButton" xml:space="preserve">
+    <value>Kustuta jäädavalt</value>
+  </data>
+  <data name="PermanentDeleteDialogKeepButton" xml:space="preserve">
+    <value>Jäta alles</value>
+  </data>
+  <data name="NotDeletedDialogTitle" xml:space="preserve">
+    <value>Mõnda üksust ei kustutatud</value>
+  </data>
+  <data name="NotDeletedDialogMessage" xml:space="preserve">
+    <value>Need üksused on endiselt kettal. Need võivad olla kasutusel või kaitstud või otsustasite need alles jätta.</value>
+  </data>
 </root>

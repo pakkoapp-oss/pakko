@@ -341,4 +341,22 @@
   <data name="EncryptPasswordErrorMismatch" xml:space="preserve">
     <value>Slaptažodžiai nesutampa.</value>
   </data>
+  <data name="PermanentDeleteDialogTitle" xml:space="preserve">
+    <value>Ištrinti visam laikui?</value>
+  </data>
+  <data name="PermanentDeleteDialogMessage" xml:space="preserve">
+    <value>Šie elementai yra diske be šiukšlinės (tinklo, keičiamajame arba susietame diske). Ištrynimo negalima atšaukti.</value>
+  </data>
+  <data name="PermanentDeleteDialogDeleteButton" xml:space="preserve">
+    <value>Ištrinti visam laikui</value>
+  </data>
+  <data name="PermanentDeleteDialogKeepButton" xml:space="preserve">
+    <value>Palikti</value>
+  </data>
+  <data name="NotDeletedDialogTitle" xml:space="preserve">
+    <value>Kai kurie elementai nebuvo ištrinti</value>
+  </data>
+  <data name="NotDeletedDialogMessage" xml:space="preserve">
+    <value>Šie elementai vis dar diske. Jie gali būti naudojami ar apsaugoti arba pasirinkote juos palikti.</value>
+  </data>
 </root>

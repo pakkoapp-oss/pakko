@@ -341,4 +341,22 @@
   <data name="EncryptPasswordErrorMismatch" xml:space="preserve">
     <value>Lozinke se ne podudaraju.</value>
   </data>
+  <data name="PermanentDeleteDialogTitle" xml:space="preserve">
+    <value>Trajno izbrisati?</value>
+  </data>
+  <data name="PermanentDeleteDialogMessage" xml:space="preserve">
+    <value>Ove stavke nalaze se na pogonu bez Koša za smeće (mrežni, prijenosni ili mapirani pogon). Brisanje se ne može poništiti.</value>
+  </data>
+  <data name="PermanentDeleteDialogDeleteButton" xml:space="preserve">
+    <value>Trajno izbriši</value>
+  </data>
+  <data name="PermanentDeleteDialogKeepButton" xml:space="preserve">
+    <value>Zadrži</value>
+  </data>
+  <data name="NotDeletedDialogTitle" xml:space="preserve">
+    <value>Neke stavke nisu izbrisane</value>
+  </data>
+  <data name="NotDeletedDialogMessage" xml:space="preserve">
+    <value>Ove stavke i dalje su na disku. Možda se koriste ili su zaštićene, ili ste ih odlučili zadržati.</value>
+  </data>
 </root>
