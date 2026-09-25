@@ -177,7 +177,7 @@ public sealed class AntivirusScanService : IAntivirusScanService
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 await ScanZipArchiveAsync(
-                    archivePath, options.SelectedEntryPaths, scanner, passwordResolver, NameCodePages, findings,
+                    archivePath, options.SelectedEntryPaths, scanner, new ZipReadSettings(passwordResolver, NameCodePages), findings,
                     (entry, done, total) => ReportProgress(archivePath, entry, done, total), cancellationToken)
                     .ConfigureAwait(false);
                 archivesCompleted++;
@@ -215,18 +215,21 @@ public sealed class AntivirusScanService : IAntivirusScanService
         return new ThreatScanResult { OverallVerdict = overall, Findings = findings };
     }
 
+    // How a ZIP's names and passwords are read — one value for the whole scan call.
+    private sealed record ZipReadSettings(PasswordResolver PasswordResolver, ZipNameCodePages CodePages);
+
     // ZIP: in-process, no disk writes at all — reads straight from the trusted
     // System.IO.Compression reader, the same one ZipArchiveService itself uses for extraction.
     private static async Task ScanZipArchiveAsync(
         string archivePath,
         IReadOnlyList<string>? selectedEntryPaths,
         IAmsiScanner scanner,
-        PasswordResolver passwordResolver,
-        ZipNameCodePages codePages,
+        ZipReadSettings settings,
         List<ThreatFinding> findings,
         Action<string?, int, int> reportProgress,
         CancellationToken cancellationToken)
     {
+        (PasswordResolver passwordResolver, ZipNameCodePages codePages) = settings;
         List<NamedZipEntry> fileEntries;
         ZipArchiveReader reader;
         try
@@ -289,7 +292,7 @@ public sealed class AntivirusScanService : IAntivirusScanService
                                             && map.TryGetValue(entry, out var located)
                                             && located.GeneralPurposeEncryptedBit
                         ? await ScanEncryptedEntryAsync(
-                            archivePath, named.FullName, entry, located, rawArchiveStream!, password, scanner, cancellationToken)
+                            archivePath, named, located, rawArchiveStream!, password, scanner, cancellationToken)
                             .ConfigureAwait(false)
                         : await ScanOneEntryAsync(
                             archivePath, named.FullName, entry.Length, entry.Open, scanner, cancellationToken)
@@ -418,9 +421,11 @@ public sealed class AntivirusScanService : IAntivirusScanService
     }
 
     private static async Task<ThreatFinding> ScanEncryptedEntryAsync(
-        string archivePath, string entryName, ZipArchiveEntry entry, LocatedZipEntry located, Stream rawArchiveStream,
+        string archivePath, NamedZipEntry named, LocatedZipEntry located, Stream rawArchiveStream,
         ZipArchiveService.ResolvedZipPassword? password, IAmsiScanner scanner, CancellationToken cancellationToken)
     {
+        string entryName = named.FullName;
+        ZipArchiveEntry entry = named.Entry;
         if (password is null)
             return InconclusiveFinding(archivePath, entryName, "Entry is password-protected and was not scanned.");
 

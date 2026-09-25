@@ -44,4 +44,15 @@ public sealed class ArchiveEntrySecurityReservedNameTests
     {
         ArchiveEntrySecurity.HasReservedName(entryPath).Should().BeFalse();
     }
+
+    // T-F228: both separators split segments — pins the Split call against binding to its
+    // (char, int count) overload, which would leave '\' unsplit (Sonar S3220).
+    [Theory]
+    [InlineData(@"..\x.txt")]
+    [InlineData(@"a\..\..\x.txt")]
+    [InlineData("a/../x.txt")]
+    public void HasUnsafePath_DotDotSegmentWithEitherSeparator_IsUnsafe(string entryPath)
+    {
+        ArchiveEntrySecurity.HasUnsafePath(entryPath).Should().BeTrue();
+    }
 }

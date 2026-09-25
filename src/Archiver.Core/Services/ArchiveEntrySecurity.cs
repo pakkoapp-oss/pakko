@@ -30,7 +30,9 @@ internal static class ArchiveEntrySecurity
     // check never sees. Rejected outright, never normalized.
     public static bool HasUnsafePath(string entryPath)
         => Path.IsPathRooted(entryPath)
-           || entryPath.Split('/', '\\').Any(segment => segment == "..");
+           || entryPath.Split(PathSeparators).Any(segment => segment == "..");
+
+    private static readonly char[] PathSeparators = ['/', '\\'];
 
     // T-F38: Reject entries with ':' in name (Alternate Data Streams)
     public static bool HasAlternateDataStreamMarker(string entryPath)
@@ -39,7 +41,7 @@ internal static class ArchiveEntrySecurity
     // T-F243: every segment (a folder named NUL is a device too), and the part before the FIRST
     // dot with trailing spaces dropped — how Windows itself reads "CON.a.b" or "NUL .txt".
     public static bool HasReservedName(string entryPath)
-        => entryPath.Split('/', '\\').Any(IsReservedSegment);
+        => entryPath.Split(PathSeparators).Any(IsReservedSegment);
 
     private static bool IsReservedSegment(string segment)
     {

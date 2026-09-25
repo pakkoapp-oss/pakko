@@ -1723,7 +1723,10 @@ public sealed class ZipArchiveService : IArchiveService
             && map.TryGetValue(named.Entry, out var located)
             && located.GeneralPurposeEncryptedBit)
         {
-            var (result, stream) = EncryptedZipEntryReader.TryOpen(plan.RawArchiveStream!, located, context.Password!.Text, context.Password.Encoding);
+            // EncryptedEntryMap is only built after a password resolved (ExtractWithSmartFolderingAsync).
+            ResolvedZipPassword password = context.Password
+                ?? throw new InvalidOperationException("An encrypted entry map exists without a resolved password.");
+            var (result, stream) = EncryptedZipEntryReader.TryOpen(plan.RawArchiveStream!, located, password.Text, password.Encoding);
             return result switch
             {
                 EncryptedZipReadResult.Success => (true, stream, null),

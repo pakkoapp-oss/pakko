@@ -264,6 +264,7 @@ internal static class RawZipEntryLocator
         // fields; the central directory's copy is authoritative in that case. AE-2 also zeroes
         // the local CRC-32 deliberately (by design, not a data descriptor) — its central-directory
         // copy is 0 too, so falling back here is a no-op for AE-2 and correct for data descriptors.
+        uint storedCrc32 = localCrc32 != 0 ? localCrc32 : centralCrc32;
         return new LocatedZipEntry
         {
             CompressedDataOffset = compressedDataOffset,
@@ -273,10 +274,10 @@ internal static class RawZipEntryLocator
             UncompressedSize = central.UncompressedSize,
             CompressionMethod = method,
             GeneralPurposeEncryptedBit = (generalPurposeFlag & 0x0001) != 0,
-            StoredCrc32 = localCrc32 != 0 ? localCrc32 : centralCrc32,
+            StoredCrc32 = storedCrc32,
             ZipCryptoCheckByte = (generalPurposeFlag & DataDescriptorFlag) != 0
                 ? (byte)(lastModTime >> 8)
-                : (byte)((localCrc32 != 0 ? localCrc32 : centralCrc32) >> 24),
+                : (byte)(storedCrc32 >> 24),
             AeVersion = aeVersion,
             AesStrengthBits = aesStrengthBits,
             RealCompressionMethod = realMethod,
