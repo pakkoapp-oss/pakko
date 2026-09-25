@@ -116,7 +116,7 @@ internal static class EncryptedZipEntryReader
                 : EncryptedZipReadResult.WrongPassword;
         }
 
-        byte expectedCheckByte = (byte)(located.StoredCrc32 >> 24);
+        byte expectedCheckByte = located.ZipCryptoCheckByte;
         if (!ZipCryptoStream.TryCreate(region, password, expectedCheckByte, out Stream? plaintext))
             return EncryptedZipReadResult.WrongPassword;
         plaintext!.Dispose();
@@ -196,7 +196,7 @@ internal static class EncryptedZipEntryReader
             throw new InvalidDataException("ZipCrypto entry data is shorter than the 12-byte encryption header.");
 
         var region = new EntryRegionStream(zipStream, located.CompressedDataOffset, located.CompressedSize, ownsStream);
-        byte expectedCheckByte = (byte)(located.StoredCrc32 >> 24);
+        byte expectedCheckByte = located.ZipCryptoCheckByte;
         if (!ZipCryptoStream.TryCreate(region, password, expectedCheckByte, out Stream? plaintext))
         {
             region.Dispose();

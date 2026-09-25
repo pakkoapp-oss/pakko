@@ -24,6 +24,12 @@ internal sealed record LocatedZipEntry
     public required bool GeneralPurposeEncryptedBit { get; init; }
     public required uint StoredCrc32 { get; init; }
 
+    /// <summary>T-F243: the byte the last ZipCrypto header byte must equal for the right password —
+    /// the high byte of the local file time when the entry has a data descriptor (bit 3; the CRC-32
+    /// is not known yet when the header is written), else the high byte of the CRC-32. 7-Zip
+    /// (ZipHandler.cpp) checks the same.</summary>
+    public required byte ZipCryptoCheckByte { get; init; }
+
     /// <summary>Null unless <see cref="CompressionMethod"/> is 99 (WinZip AE). 1 = AE-1 (keeps
     /// the real CRC-32 in the header), 2 = AE-2 (header CRC-32 is always 0; HMAC is authoritative).</summary>
     public int? AeVersion { get; init; }
@@ -50,6 +56,7 @@ internal static class RawZipEntryLocator
     private const ushort WinZipAesCompressionMethod = 99;
     // version(2) + vendor "AE"(2) + strength(1) + real compression method(2)
     private const int WinZipAesExtraMinLength = 7;
+    private const ushort DataDescriptorFlag = 0x0008;
 
     public static LocatedZipEntry Locate(Stream zipStream, string entryFullName)
     {
@@ -214,7 +221,7 @@ internal static class RawZipEntryLocator
         ReadUInt16(zipStream); // version needed
         ushort generalPurposeFlag = ReadUInt16(zipStream);
         ushort method = ReadUInt16(zipStream);
-        ReadUInt16(zipStream); // last mod time
+        ushort lastModTime = ReadUInt16(zipStream);
         ReadUInt16(zipStream); // last mod date
         uint localCrc32 = ReadUInt32(zipStream);
         uint localCompressedSize = ReadUInt32(zipStream);
@@ -264,6 +271,9 @@ internal static class RawZipEntryLocator
             CompressionMethod = method,
             GeneralPurposeEncryptedBit = (generalPurposeFlag & 0x0001) != 0,
             StoredCrc32 = localCrc32 != 0 ? localCrc32 : centralCrc32,
+            ZipCryptoCheckByte = (generalPurposeFlag & DataDescriptorFlag) != 0
+                ? (byte)(lastModTime >> 8)
+                : (byte)((localCrc32 != 0 ? localCrc32 : centralCrc32) >> 24),
             AeVersion = aeVersion,
             AesStrengthBits = aesStrengthBits,
             RealCompressionMethod = realMethod,
