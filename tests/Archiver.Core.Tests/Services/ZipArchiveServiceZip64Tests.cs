@@ -79,7 +79,8 @@ public sealed class ZipArchiveServiceZip64Tests : IDisposable
 
         extractResult.Success.Should().BeTrue();
         extractResult.Errors.Should().BeEmpty();
-        Directory.GetFiles(extractDest).Should().HaveCount(fileCount);
+        // T-F205: SingleFolder keeps the archive's root folder.
+        Directory.GetFiles(Path.Combine(extractDest, "many_files_src")).Should().HaveCount(fileCount);
     }
 
     // T-F05: ListEntriesAsync must return a flat (not hierarchical) list even at Zip64 scale —
