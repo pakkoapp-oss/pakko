@@ -9703,3 +9703,69 @@ source 2026-09-26: `#include <winrt/Windows.UI.Xaml.h>`, `K7ModernCreateXamlWind
 existing Shell process first; WinUI 3 only if that cannot look modern, and then only after
 capturing the real HRESULT behind the old `Archiver.ProgressWindow` crash (see the T-F65 entries
 above).
+
+## T-F268 step 2 — modern-window spike: system XAML Islands vs WinUI 3 (2026-09-26)
+
+**Setup.** Throwaway probes on branch `spike/t-f268-xaml-islands` (worktree, nothing merged;
+`spike/FINDINGS.md` there has the full log). Each probe shows the planned operation window built in
+code (title, ProgressBar, status line, PasswordBox, "apply to remaining" CheckBox, OK/Cancel). The
+packaged case ran with `Invoke-CommandInDesktopPackage -AppId ShellHelper` against the installed
+dev 1.5.0.0, i.e. under Pakko's own package identity. Windows 11 10.0.26200, dark theme.
+
+**How the real HRESULT was captured (reusable).** Fail-fast `0xc000027b` bypasses a debugger:
+attaching `cdb` after start sees only "Exit process c000027b", and launching `cdb` inside the
+package context drops package identity for the debuggee (MRT `80073D54`), so the crash vanishes.
+What works without UAC: subscribe to `CoreApplication.UnhandledErrorDetected` first thing in `Main`
+and call `e.UnhandledError.Propagate()` inside a `try`/`catch` that logs the exception — the stowed
+error surfaces as a normal exception with its HRESULT and message before the process dies.
+
+**A — system XAML Islands (`Windows.UI.Xaml.Hosting.DesktopWindowXamlSource`), rejected.**
+- The .NET 8 Windows SDK projection has no `Windows.UI.Xaml.Hosting` (CS0234 on
+  `net8.0-windows10.0.19041.0`). It needs `net9.0-windows…` + `<UseUwp>true</UseUwp>`. The packaged
+  Shell runs on the App's self-contained net8 runtime in the package root (one `coreclr.dll`;
+  `Archiver.Shell.runtimeconfig.json` includes Microsoft.NETCore.App 8.0.31), so a net9 Shell cannot
+  share that folder.
+- Unpackaged it works: renders, follows the dark theme, keyboard works through
+  `IDesktopWindowXamlSourceNative2::PreTranslateMessage` (vtable taken from the SDK 10.0.26100.0
+  header). But the controls are Windows 10 styles (square corners, thick progress bar). A Windows 11
+  look would need third-party Sun Valley styles (Mile.Xaml-like) — a supply-chain cost.
+- Packaged it crashes in `WindowsXamlManager.InitializeForCurrentThread()`: `0xc000027b` in
+  `System32\Windows.UI.Xaml.dll`; stowed error **`0x802B000A` XamlParseException "Cannot create
+  instance of type 'Windows.UI.Xaml.Controls.XamlControlsResources' [Line: 0 Position: 0]"**.
+  Strong inference (not directly proven): under package identity system XAML loads the package's
+  `Files/App.xbf`, which is Archiver.App's WinUI 3 `App.xaml` (it merges `XamlControlsResources`).
+  Evidence: the package PRI holds only `Files/App.xbf` and `Files/MainWindow.xbf`; line 0 position 0
+  is how a binary xbf parse reports; creating our own `Windows.UI.Xaml.Application` first changes
+  nothing. A C++/WinRT island runs the same system XAML under the same identity, so the language is
+  not the variable; NanaZip works because its package's App.xbf is system-XAML-compatible. Making
+  ours compatible means changing the shipping App's `App.xaml` — rejected for this task.
+
+**B — WinUI 3 in a separate process, feasible.** Code-only `Microsoft.UI.Xaml.Application` (no
+`App.xaml`), `IXamlMetadataProvider` delegating to `XamlControlsXamlMetaDataProvider`,
+`XamlControlsResources` merged in code, **net8** (no TFM change), WinAppSDK 1.8.260209005 = the
+App's version.
+- `WindowsPackageType=None` injects the Bootstrap/DeploymentManager auto-initializers as module
+  initializers; under package identity the process then exits before `Main` with no event at all.
+  Setting `WindowsAppSdkBootstrapInitialize=false` and `WindowsAppSdkDeploymentManagerInitialize=false`
+  fixes it: a packaged process already has `Microsoft.WindowsAppRuntime.1.8` in its package graph.
+- Packaged: starts cleanly, no stowed error. Loads `Microsoft.UI.Xaml.dll` 3.1.8.2503 from the
+  `Microsoft.WindowsAppRuntime.1.8_8000.994.2142.0_x64` framework package (not a copy). First frame
+  527 ms after process start (framework-dependent, non-R2R — not yet comparable with
+  `IProgressDialog`). Keyboard (PasswordBox typing, Tab, Space, Enter) and the UIA tree work.
+- Consistent with the old `Archiver.ProgressWindow` crash (a second WinUI 3 app with its own
+  `App.xaml` in a package whose PRI has one `Files/App.xbf`), but still inference: that HRESULT was
+  never captured.
+- Look not verified by the agent: on this machine every capture method (screen region,
+  `PrintWindow(PW_RENDERFULLCONTENT)`) returned a black client area for WinUI 3 windows, including
+  the real installed Pakko App used as a control.
+
+**Open before a step-3 plan (user decisions and checks).**
+- Look: the user's own look at the B probe.
+- The real launch path: Explorer → ShellExtension `CreateProcessW` → packaged exe (the probe used
+  `Invoke-CommandInDesktopPackage`); foreground after the click (T-F253); two operations at once;
+  with the main window open; running on the package's self-contained net8 runtime.
+- Where the window lives: inside `Archiver.Shell` (Shell becomes a WinUI 3 app, adds the
+  WinAppSDK reference) or a small separate helper exe; either way no `App.xaml`, bootstrap off.
+- .NET support: .NET 8 LTS and .NET 9 STS both end support on 2026-11-10 (Microsoft's support
+  policy page, read 2026-09-26); .NET 10 LTS runs to 2028-11-14. This affects every project, not
+  only T-F268.
