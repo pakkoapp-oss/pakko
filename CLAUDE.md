@@ -606,9 +606,9 @@ files.
   `ZipArchiveService`/`TarProcessService` run their extraction bodies off the UI thread, and
   `ContentDialog.ShowAsync()` requires the calling thread to own the DispatcherQueue. Found via
   design review before shipping (T-F94) — would have crashed on first real use otherwise.
-- **Solution platforms:** x64 and ARM64 only — never add `Any CPU` or `x86` configuration entries
-  to the `.sln` file. When adding a new project, mirror the `Debug|x64` / `Release|x64` entries
-  from `Archiver.Shell` exactly (two lines per config, right-hand side maps to project's `Any CPU`).
+- **Solution platforms:** the `.sln` has `Any CPU`/`x64`/`x86` solution configs, every C# project
+  mapped to `Any CPU` (ARM64 builds go through `dotnet publish -r`, not the `.sln`). Add a project
+  with `dotnet sln add`, then check its entries mirror `Archiver.Shell`'s (T-F268, 2026-09-26).
 - **Pin third-party GitHub Actions (`org/action@vX`) to a full commit SHA, not a mutable version
   tag** — `actions/*` (first-party GitHub actions) are exempt by convention; everything else
   (`microsoft/setup-msbuild`, `nuget/setup-nuget`, etc.) should be SHA-pinned with a `# vX.Y.Z`
