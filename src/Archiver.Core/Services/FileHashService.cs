@@ -357,23 +357,33 @@ public static class FileHashService
         return FormatDigest(algorithm, digest);
     }
 
+    // T-F271 follow-up: pooled — a fresh 256 KiB (large-object heap) array per file dominated
+    // hashing many small files.
     private static async Task<byte[]> ReadAndDigestAsync(Stream source, HashAlgorithmKind algorithm, CancellationToken ct)
     {
-        var buffer = new byte[FileStreamBufferSize];
-        int read;
-
-        if (algorithm == HashAlgorithmKind.Crc32)
+        byte[] rented = ArrayPool<byte>.Shared.Rent(FileStreamBufferSize);
+        try
         {
-            var acc = new Crc32.Accumulator();
-            while ((read = await source.ReadAsync(buffer, ct).ConfigureAwait(false)) > 0)
-                acc.Update(buffer.AsSpan(0, read));
-            return LittleEndianBytes(acc.Finish());
-        }
+            Memory<byte> buffer = rented.AsMemory(0, FileStreamBufferSize);
+            int read;
 
-        using var sha = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
-        while ((read = await source.ReadAsync(buffer, ct).ConfigureAwait(false)) > 0)
-            sha.AppendData(buffer.AsSpan(0, read));
-        return sha.GetHashAndReset();
+            if (algorithm == HashAlgorithmKind.Crc32)
+            {
+                var acc = new Crc32.Accumulator();
+                while ((read = await source.ReadAsync(buffer, ct).ConfigureAwait(false)) > 0)
+                    acc.Update(buffer.Span[..read]);
+                return LittleEndianBytes(acc.Finish());
+            }
+
+            using var sha = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+            while ((read = await source.ReadAsync(buffer, ct).ConfigureAwait(false)) > 0)
+                sha.AppendData(buffer.Span[..read]);
+            return sha.GetHashAndReset();
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(rented);
+        }
     }
 
     private static string FormatDigest(HashAlgorithmKind algorithm, byte[] digest) =>

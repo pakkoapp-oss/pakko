@@ -445,6 +445,11 @@ tests caught before shipping):
   - Allocation guard (T-F271): `CompressSmallFile` on a 4 KiB file allocates under 32 KiB on the
     calling thread (`GC.GetAllocatedBytesForCurrentThread`, isolated from parallel tests) — pins
     the unbuffered read; a 64 KiB `FileStream` buffer per file made it 70 KiB.
+- `SmallFileAllocationTests` (`Archiver.Core.Tests/Services/`, T-F271 follow-up) — its own
+  `DisableParallelization` collection, since it measures `GC.GetTotalAllocatedBytes` for the whole
+  process: hashing (CRC-32, SHA-256) and sequential archiving of 40 x 4 KiB files stay under 64 KiB
+  allocated per file. Hashing failed at ~264 KiB per file before `ReadAndDigestAsync` pooled its
+  buffer; the archive case is a guard (it passed before the change).
 - `ZipEntryWriterCompatibilityTests` (`Archiver.Core.PerformanceTests/` — lives there specifically
   to reuse the vendored, hash-verified `7za.exe` binary rather than duplicating it into a second
   test project; a correctness suite, not a performance one, despite the location) — proves the

@@ -9887,4 +9887,14 @@ run). Fewer workers (`DOTNET_PROCESSOR_COUNT=4`): fewer faults, same wall time.
 (`bufferSize: 0`); 397 -> 84 MB per archive, gen0 ~23 per run. A test pins the per-file allocation
 below 32 KiB (70 KiB before). `ArchiveAsync_ManySmallFiles`' constant 1.0 -> 1.1 (Release
 0.94/1.31/1.09 after the fix). CLAUDE.md's `bufferSize: 262144` note covers `ZipArchiveService`
-streams only and is unchanged; the sequential path and `FileHashService` keep their buffers.
+streams only and is unchanged.
+
+**Follow-up, same day (user: fix the similar places).** Allocation tests (`SmallFileAllocationTests`,
+a `DisableParallelization` collection measuring the whole process) settled the two suspects:
+`FileHashService.ReadAndDigestAsync` allocated a fresh 256 KiB array per file (~264 KiB per 4 KiB
+file) — now rented from `ArrayPool<byte>.Shared`; its `FileStream` buffer is never allocated
+(reads are full 256 KiB, served directly). The sequential archive path was a false suspect:
+`FileStream.CopyToAsync` with an empty buffer delegates to the unbuffered strategy with a pooled
+buffer, so the 256 KiB read buffer is never allocated there; that test passed before any change
+and stays as a guard. The earlier "3,000 x 2 KiB files, 250 gen2" figure came from a different
+read pattern, not from these paths.

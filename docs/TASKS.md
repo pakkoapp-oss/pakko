@@ -5871,8 +5871,8 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 - [x] **Status:** done 2026-09-26 (fix phase 4c) — the in-memory path reads unbuffered
   (`CompressSmallFile`, test-first), constant 1.0 -> 1.1; the zlib-ng half is a runtime property
   (`docs/DECISIONS.md`'s T-F271 entry). A dotnet/runtime issue draft is in preparation (user asked
-  for the text only; posting needs a separate OK). The sequential path and `FileHashService`
-  keep their 256 KiB buffers (not part of this fix).
+  for the text only; posting needs a separate OK). Follow-up: `FileHashService` now pools its
+  256 KiB read array; the sequential archive path never allocated its buffer (see DECISIONS).
 - **Evidence (Release, same machine, perf project alone, net8 worktree at 6a104e1 vs net10):**
   `Archive/ManySmallFiles` (5,000 files 1-10 KiB, parallel writer path) Pakko 0.48-0.51 s on
   .NET 8 vs 0.71-0.79 s on .NET 10 (3 rounds each; 7za 0.54-0.67 s both), ratio ~0.86 -> ~1.3.
