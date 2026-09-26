@@ -198,7 +198,9 @@ internal sealed class OperationWindow
             _root.Background = Brush("SolidBackgroundFillColorBaseBrush");
 
         // Content extends into the title bar, so its caption buttons follow the theme by hand.
+        // ActualTheme is only settled once the content has loaded (the window loads while hidden).
         ApplyCaptionColors();
+        _root.Loaded += (_, _) => ApplyCaptionColors();
         _root.ActualThemeChanged += (_, _) => ApplyCaptionColors();
 
         // The title bar's X is the same as Cancel while the operation runs (T-F269), and Close after.
