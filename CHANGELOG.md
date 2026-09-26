@@ -10,6 +10,108 @@ the technical account of any task named here.
 
 ---
 
+## v1.5.0 — 2026-09-26
+
+Password-protected ZIP support (open, test, scan and create), three security fixes, and a large
+correctness pass over extraction found by a full UI smoke test and an architecture review. Please
+update: two of the security issues below affect every earlier version.
+
+### Security — please read
+
+- **T-F232** — the `pakko://` link scheme is removed. In earlier versions a web page, e-mail or
+  document could use a crafted `pakko://` link to make Pakko open an arbitrary path, including a
+  network (UNC) path on a remote host — which makes Windows send your NTLM credentials to that
+  host. Browsers ask before opening such a link, but offer "always allow". Explorer's commands
+  (Open, Extract files..., Add to archive...) work exactly as before; they now reach the app
+  through a hand-off only a program already on your computer can start. Updating removes the
+  registration; nothing needs cleaning up. A very large Explorer selection sent to the app now
+  shows a message instead of hanging.
+- **T-F233 / T-F248** — opening a tar-family archive (.tar, .gz, .7z, .rar, ...) in earlier
+  versions changed that file's permissions: it added an entry for Pakko's sandbox and replaced the
+  permissions the file inherited from its folder — on a shared folder, other people could lose
+  access to it. tar.exe now reads the archive only through a handle Pakko opens itself; your file
+  is never touched. Nothing is repaired automatically: `scripts/Find-PakkoSandboxAce.ps1` lists
+  affected files and `scripts/Repair-PakkoSandboxAce.ps1` restores them (see `SECURITY.md`,
+  "Advisory: Permissions Changed by Earlier Versions").
+- **T-F266** — a file name with certain look-alike Unicode characters (for example U+FF02, a
+  full-width quote) could be turned into real tar.exe options when creating a `.tar` archive.
+  Such names are now refused with a message pointing to ZIP.
+- **T-F185** — an archive name like `..\..\name` could write the new archive outside the chosen
+  folder. The name is now used as a plain file name; as a side effect, the App's Archive Name box
+  no longer creates a subfolder from `sub\name`.
+- **T-F228 / T-F246 / T-F231** — a crafted ZIP entry could overwrite an existing file despite the
+  chosen conflict option; corrupted ZIP entries (bad CRC-32 or size) were written and reported as
+  success; decrypted entries were not capped at their declared size. All three now fail per entry,
+  and the rest of the archive still extracts.
+
+### New
+
+- **T-F188 – T-F192** — password-protected ZIP archives (ZipCrypto and WinZip AES) now open,
+  extract, test and list in the App, in Explorer and in `pakko` (`-p{password}`, or a masked
+  prompt). **CLI change:** a bare `-p` on `x`/`t` used to be an error (exit code 7); it now asks
+  for the password interactively.
+- **T-F193** — create password-protected ZIP archives, WinZip AES-256 only: an "Encrypt" option in
+  the App, `pakko a -p` / `-mem` on the command line.
+- **T-F194** — "Scan for threats" now looks inside password-protected ZIP entries (it asks for the
+  password); without one the result is "Inconclusive", never "Clean".
+- **T-F160** — `pakko x` on an interactive console asks what to do when a file already exists,
+  with 7-Zip's own prompt (`(Y)es / (N)o / (A)lways / (S)kip all / A(u)to rename all / (Q)uit?`).
+  Scripted and redirected runs keep the silent Skip.
+- **T-F207** — "Delete after operation" now moves sources to the Recycle Bin, and asks before
+  deleting permanently anything the Recycle Bin can't take (network drives and similar).
+
+### Changed behavior
+
+- **T-F205** — Explorer's "Extract here" and `pakko x` keep an archive's single root folder
+  instead of flattening it; "Extract to name\" removes the root folder only when it has the
+  archive's own name (like NanaZip). The App's own Extract is unchanged.
+- **T-F197** — empty folders inside ZIP and tar archives are now extracted.
+- **T-F234** — ZIP archives made by older tools with non-UTF-8 names (for example Cyrillic in
+  code page 866) now show correct names instead of garbled ones, using 7-Zip's rules; before,
+  two such entries could silently overwrite each other.
+- **T-F204 / T-F215** — tar-family names are decoded correctly, and a name the system code page
+  can't represent gives a clear error instead of garbled text.
+- tar.exe's sandbox now allows half of the computer's memory (1 – 4 GB) and at least 60 minutes of
+  CPU time plus one minute per 10 MB of archive, so large modern archives (big 7z/xz/zstd
+  dictionaries) no longer fail; when a limit does stop it, the message says which (**T-F239**).
+- An archive that another program has open for writing is refused as "in use".
+
+### Fixed
+
+- **T-F229 / T-F265 / T-F245** — "Delete after operation" could delete an archive whose entries were
+  partly skipped, the whole archive after "Extract Selected", or an archive whose tar extraction
+  was cancelled. Now only fully processed sources are deleted, after the summary is shown.
+- **T-F227** — ZIP extraction reused and then deleted an existing `<destination>_tmp` folder.
+- **T-F230** — one unwritable ZIP entry no longer aborts the whole extraction with a misleading
+  message.
+- **T-F243** — ZIP reader hardening: a wrong ZipCrypto password that passed the quick check is now
+  asked again; Cyrillic ZipCrypto passwords from other Windows tools work; reserved device names
+  (`CON.a.b`, `NUL`, `CONIN$`) are refused in every part of a path; over-long names fail only
+  their own entry.
+- **T-F263** — tar extraction no longer leaves partial files behind when cancelled or when it
+  fails.
+- **T-F249** — RAR encryption checks read only a small header window, and a crafted archive can no
+  longer make them loop forever.
+- **T-F195 / T-F196** — tar archives made with `tar -C dir .` failed to extract and browse;
+  concurrent tar operations could fail to set up the sandbox.
+- **T-F170** — a destination file locked by another program no longer aborts the whole
+  extraction.
+- **T-F168** — creating a tar archive from two sources with the same file name now stores the
+  second one under a new name, as ZIP creation already did, instead of two entries with one name.
+- **T-F164** — the App's Hash dialog now uses the same hashing code as Explorer and the CLI.
+
+### Under the hood
+
+- **T-F166 – T-F186** — a QA/AppSec test-coverage audit: real junctions, AES-256 fixtures, tar
+  cancellation, COM entry points, sandbox concurrency, Group Policy fuzzing, an end-to-end EICAR
+  test, MAX_PATH, format spoofing, Unicode-trick file names.
+- **T-F172 / T-F173** — a developer/API documentation site
+  (https://pakkoapp-oss.github.io/pakko/dev/) with complete XML documentation.
+- **T-F187** — a daily "canary" CI build that warns about toolchain changes before they break a
+  release.
+
+---
+
 ## v1.4.12 — 2026-08-11
 
 Localization follow-up to v1.4.11's new conflict dialog, plus a CI stability fix.

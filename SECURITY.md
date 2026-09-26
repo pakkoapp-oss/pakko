@@ -143,9 +143,9 @@ either. TAR-family formats (read and create) use the same `tar.exe` process.
 | tar.exe symlink entries escape a naive quarantine (confirmed exploit, T-F49) | High | Mitigated (T-F49, v1.3) — whole-archive pre-scan via `tar -tf`/`-tvf` rejects any archive containing a symlink/hardlink/device entry or a traversal/ADS/reserved name before `-xf` ever runs; see `DECISIONS.md`'s T-F49 entry |
 | Recursive decompression bomb via nested archives (an archive inside an archive inside an archive, multiplying expansion per level) | Medium | Mitigated (T-F98, v1.4) — Archive Browser drill-down into a nested archive is capped at 4 levels deep, and every level independently re-runs the same whole-archive pre-scan (T-F49) and compression-ratio + disk-space check (T-F90/T-F94) a normal extraction would — no shortcut or inherited "already checked" state from an outer level; see `DECISIONS.md`'s T-F98 entry |
 | Native decompression 0-day in the ZIP path (a memory-corruption bug in the native zlib-derived code `System.IO.Compression`'s `DeflateStream` calls across its managed→native boundary, triggered by a maliciously malformed compression stream — e.g. corrupted Huffman tables) | Low (theoretical) | **Accepted risk, not sandboxed.** Unlike tar-family extraction (AppContainer, T-F52), ZIP handling runs unsandboxed in-process by design — see "No format parsers beyond ZIP" above. Successful exploitation would execute with the app's own user-level privileges; no isolation boundary catches it. The only mitigation is indirect: Microsoft's MSRC CVE process on `dotnet/runtime`, the same trust basis this project already extends to `System.IO.Compression` generally. Sandboxing the ZIP path the same way as tar.exe is a real, undone option — not pursued, since it would add real overhead (cross-process marshaling for the common case) against a threat class with no track record against this specific code path so far. Revisit if that changes. |
-| Opening a tar-family archive changed that file's permissions (versions before fix phase 4) | High | Fixed (T-F233, fix phase 4) — tar.exe now reads the archive only as a handle Pakko opens itself; the sandbox gets no permission entry on the user's file. Older versions added an entry for the sandbox and replaced the entries the file inherited from its folder, which could remove other users' access on a shared folder. See "Advisory: Permissions Changed by Earlier Versions" below. |
-| Command-line option injection into tar.exe through a crafted file name ("WorstFit" best-fit mapping, e.g. U+FF02 becoming `"`) | High | Fixed (T-F266, fix phase 4) — every string passed to tar.exe must convert to the ANSI code page exactly (`WC_NO_BEST_FIT_CHARS`, no default character, exact round trip); a name that does not is refused before tar.exe runs, with a message pointing to ZIP. Archive creation is unsandboxed, so before this fix a selected file named this way could add tar options. |
-| A web page, e-mail or document link launching Pakko on an arbitrary (UNC) path through the `pakko://` scheme (versions before fix phase 4a) | High | Fixed (T-F232, fix phase 4a) — the scheme is removed; Explorer's commands reach the app through a Launch activation only a process already on the machine can start. See "Advisory: `pakko://` Links in Earlier Versions" below. |
+| Opening a tar-family archive changed that file's permissions (versions before v1.5.0) | High | Fixed in v1.5.0 (T-F233) — tar.exe now reads the archive only as a handle Pakko opens itself; the sandbox gets no permission entry on the user's file. Older versions added an entry for the sandbox and replaced the entries the file inherited from its folder, which could remove other users' access on a shared folder. See "Advisory: Permissions Changed by Earlier Versions" below. |
+| Command-line option injection into tar.exe through a crafted file name ("WorstFit" best-fit mapping, e.g. U+FF02 becoming `"`) | High | Fixed in v1.5.0 (T-F266) — every string passed to tar.exe must convert to the ANSI code page exactly (`WC_NO_BEST_FIT_CHARS`, no default character, exact round trip); a name that does not is refused before tar.exe runs, with a message pointing to ZIP. Archive creation is unsandboxed, so before this fix a selected file named this way could add tar options. |
+| A web page, e-mail or document link launching Pakko on an arbitrary (UNC) path through the `pakko://` scheme (versions before v1.5.0) | High | Fixed in v1.5.0 (T-F232) — the scheme is removed; Explorer's commands reach the app through a Launch activation only a process already on the machine can start. See "Advisory: `pakko://` Links in Earlier Versions" below. |
 | Microsoft as trust anchor | Low-Medium | Accepted tradeoff for the target audience; .NET is open source and auditable |
 
 ---
@@ -308,7 +308,7 @@ In both cases: extraction goes to a staging directory, all output files are vali
 
 ### Advisory: Permissions Changed by Earlier Versions (T-F233)
 
-Pakko versions before fix phase 4 staged a tar-family archive (.tar, .gz, .7z, .rar, ...) for the
+Pakko versions before v1.5.0 staged a tar-family archive (.tar, .gz, .7z, .rar, ...) for the
 sandbox by hardlinking it into `%TEMP%`, then granted the sandbox access to that link. A hardlink is
 the same file, so each list, browse, extract, test or scan of such an archive:
 - added an entry for Pakko's sandbox (an `S-1-15-2-...` AppContainer SID) to the archive itself, and
@@ -322,7 +322,7 @@ Entries set explicitly for anyone else are kept.
 
 ### Advisory: `pakko://` Links in Earlier Versions (T-F232)
 
-Pakko versions before fix phase 4a registered a `pakko://` URI scheme. A web page, e-mail or
+Pakko versions before v1.5.0 registered a `pakko://` URI scheme. A web page, e-mail or
 document could use a crafted link to make Pakko open an arbitrary path, including a network (UNC)
 path on a remote host, which makes Windows send the user's NTLM credentials to that host. Browsers
 ask before opening such a link but offer "always allow". The scheme is removed; update to the
