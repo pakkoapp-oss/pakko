@@ -23,6 +23,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Archiver.OperationUi.Protocol\Archiver.OperationUi.Protocol.csproj" />
+    <ProjectReference Include="..\..\src\Archiver.OperationUi.Core\Archiver.OperationUi.Core.csproj" />
   </ItemGroup>
 
 </Project>
