@@ -5875,6 +5875,11 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   Still inside T-F114's tolerance, so the test passes. `Archive/Hybrid` is faster on .NET 10
   (0.80-0.89 s vs 0.87-1.02 s); `Hash/ManyFilesAndFolders` equal in isolation (the larger gap in a
   full `Category=Slow` run was contention with the other tests).
+- **Full A/B, 2026-09-26 (Release, one run each, all 8 ratio scenarios; ratio to 7za, net8 -> net10):**
+  Archive ManySmallFiles 0.99 -> 1.52, Hybrid 1.17 -> 1.06, OneLargeFile 1.19 -> 1.08; Extract
+  ManySmallFiles 1.92 -> 1.56, Hybrid 1.57 -> 1.53, OneLargeFile 1.78 -> 1.53; Hash OneLargeFile
+  0.68 -> 0.63, ManyFilesAndFolders 0.86 -> 0.75. Only Archive/ManySmallFiles is worse (Pakko 0.50 s
+  -> 0.65 s); single runs, 7za's own time varied up to 40% between the two runs.
 - **Ruled out (microbenchmarks, `net8.0` vs `net10.0`, Release):** zlib-ng deflate itself —
   3,000 x 2 KiB text, 5,000 x 1-10 KiB random and text all equal or faster on .NET 10, identical
   output bytes for random input; 64 MiB compress ~22% faster, decompress ~12% faster. Single-thread
