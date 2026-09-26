@@ -9898,3 +9898,35 @@ file) — now rented from `ArrayPool<byte>.Shared`; its `FileStream` buffer is n
 buffer, so the 256 KiB read buffer is never allocated there; that test passed before any change
 and stays as a guard. The earlier "3,000 x 2 KiB files, 250 gen2" figure came from a different
 read pattern, not from these paths.
+
+## T-F268 step 3, Gate 0 — WinUI helper inside the installed package (2026-09-26)
+
+**Setup.** Throwaway branch `spike/t-f268-gate0` (commit d15c266, not merged; per-case log in
+`spike/Gate0Probe/gate0-run.log`). A code-only WinUI 3 probe (settings from step 2's approach B,
+net10, WinAppSDK 1.8.260209005, no `App.xaml`) packaged into the dev MSIX 1.5.0.1 next to
+`Archiver.Shell.exe`, started by a hidden `Archiver.Shell --probe-ui` mode over an anonymous pipe
+(`DisposeLocalCopyOfClientHandle()` right after start, `AllowSetForegroundWindow(pid)`).
+
+**Results (all on the installed package, Windows 11 26200).**
+- Identity: the helper started from Shell runs as `PavloRybchenko.Pakko_1.5.0.1_x64__…` with **no
+  `<Application>` entry of its own** — a child of a packaged process stays in the package. No
+  manifest change, so no new Store headless-app exposure.
+- Start: clean on the package's .NET 10.0.12 runtime, no stowed error, in every case below.
+- Time from Shell's `Process.Start` to the helper's `ready` (window built, hidden): 772 ms on the
+  first cold start, 300–400 ms warm, 1.7 s once with a slow disk. Baseline: today's
+  `IProgressDialog` becomes visible 325–366 ms after Shell starts.
+- Hidden start: the window is created invisible, its content loads while hidden, and it shows on
+  demand 1 s later — the "no flash for a fast clean operation" policy works.
+- Foreground (T-F253): from a background launcher Shell has no foreground right
+  (`AllowSetForegroundWindow` = false, helper not foreground). Launched the way a user does (Run
+  dialog, an Explorer process with user input) it is true, and the helper window is foreground —
+  both when shown at once and when shown after the 1 s hidden delay.
+- Two Shell invocations at once: two helpers, both fine. With the main App window open: fine,
+  App unaffected (the helper is a separate exe, outside the App's instance redirection).
+- Handle inheritance (code read): `SandboxedProcessLauncher` always passes
+  `PROC_THREAD_ATTRIBUTE_HANDLE_LIST` (stdout/stderr are always present), so a sandboxed `tar.exe`
+  inherits only the handles it names — the helper's pipe cannot leak into it even without the
+  launch-order rule, which the plan keeps anyway.
+
+**Decision.** Gate 0 passes; step 3 proceeds as planned (`async-seeking-dove.md`). Not yet
+measured: the real Explorer context-menu click (the Run dialog stands in for it) and ARM64.
