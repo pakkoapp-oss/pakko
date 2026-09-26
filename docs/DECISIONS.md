@@ -9848,3 +9848,16 @@ isolation (larger gaps inside a full `Category=Slow` run were contention with ot
 **`Archive/ManySmallFiles` is ~50% slower** (0.71-0.79 s vs 0.48-0.51 s, 7za unchanged), still
 inside T-F114's tolerance; zlib-ng and single-thread `FileStream` reads are ruled out. Investigation
 filed as **T-F271** (fix phase 4c, user decision), not fixed inside this migration.
+
+## T-F272 — the VeryLarge perf ratios are Release-only (2026-09-26)
+
+**Cause.** `ExtractAsync_OneLargeFile` failed its ratio (limit 3.18) because Archiver.Core was a
+Debug build, not because of contention: alone in Debug it still failed (3.86, 4.24); alone in
+Release it passed (1.05-1.61), and the whole perf project's `Category=VeryLarge` passed twice in
+Release. Debug slows Core's managed stream-copy loop; 7za.exe is native and unaffected. The
+`Category=Slow` perf tests pass in Debug (10/10), so only the one-large-file tier changes.
+
+**Decision (user, 2026-09-26).** The VeryLarge tier runs with `-c Release` (`docs/TESTING.md`,
+`CLAUDE.md`). The three one-large-file ratio tests call `ReleaseBuildGuard.RequireOptimizedCore()`
+first: on an unoptimized Core they fail at once with "run with -c Release" instead of a misleading
+"real regression". No recalibration, no new xUnit collection — the evidence ruled contention out.

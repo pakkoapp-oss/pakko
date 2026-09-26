@@ -52,6 +52,7 @@ public sealed class HashPerformanceTests : IDisposable
         //         materially bigger, platform-specific undertaking explicitly out of scope; see
         //         DECISIONS.md's T-F128 entry.
         const double calibratedBaselineRatio = 1.35;
+        ReleaseBuildGuard.RequireOptimizedCore();
         string sourceDir = PerformanceFixtures.CreateOneLargeFileFolder(_temp.Path);
         string filePath = Directory.GetFiles(sourceDir)[0];
 

@@ -5896,7 +5896,9 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 
 ### T-F272 — T-F114 `ExtractAsync_OneLargeFile` (VeryLarge) fails in its own suite run (P2)
 
-- [ ] **Status:** open — found 2026-09-26 during T-F270, pre-existing. Fix phase 4c, with T-F271.
+- [x] **Status:** done 2026-09-26 — cause is the Debug build of Core, not contention; the tier is
+  Release-only and the ratio tests fail fast in Debug (`ReleaseBuildGuard`). See `docs/DECISIONS.md`'s
+  T-F272 entry.
 - **Evidence:** `dotnet test tests/Archiver.Core.PerformanceTests --filter "Category=VeryLarge"`
   (Debug) fails `Extract/OneLargeFile` with ratio 4.1-5.0 vs limit 3.18 on both .NET 8 (4.10,
   4.97) and .NET 10 (4.75, 4.75); Pakko ~1.45 s vs 7za ~0.3 s. Alone in Release it passes on both

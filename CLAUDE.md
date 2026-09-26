@@ -876,8 +876,8 @@ dotnet test --filter "Category!=Slow&Category!=VeryLarge"  # the actual default 
                                             # tests, since they aren't tagged Slow (confirmed
                                             # 2026-07-17; see the hard-constraint note above)
 dotnet test --filter "Category=Slow"    # Zip64 + T-F114 perf tests — real multi-second cost
-dotnet test --filter "Category=VeryLarge"  # >4 GiB Zip64 test + T-F114's one-large-file scenarios
-                                            # — on demand only, never run automatically
+dotnet test -c Release --filter "Category=VeryLarge"  # >4 GiB Zip64 test + T-F114's one-large-file
+                                            # scenarios — on demand only, Release only (T-F272)
 
 # Build core only
 dotnet build src/Archiver.Core

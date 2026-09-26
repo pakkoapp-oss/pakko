@@ -46,6 +46,7 @@ public sealed class CompressionPerformanceTests : IDisposable
         // always stays on the completely untouched original sequential path regardless of anything
         // done inside the parallel pipeline itself, by design.
         const double calibratedBaselineRatio = 1.22;
+        ReleaseBuildGuard.RequireOptimizedCore();
         string sourceDir = PerformanceFixtures.CreateOneLargeFileFolder(_temp.Path);
 
         await ArchiveWithPakkoTimed(sourceDir, Path.Combine(_temp.Path, "warmup_pakko.zip"));
@@ -65,6 +66,7 @@ public sealed class CompressionPerformanceTests : IDisposable
     public async Task ExtractAsync_OneLargeFile_WithinToleranceOfSevenZipReference()
     {
         const double calibratedBaselineRatio = 1.06; // observed 2026-07-17, see DECISIONS.md
+        ReleaseBuildGuard.RequireOptimizedCore();
         string sourceDir = PerformanceFixtures.CreateOneLargeFileFolder(_temp.Path);
         string referenceZip = Path.Combine(_temp.Path, "shared.zip");
         SevenZipRunner.Archive(sourceDir, referenceZip); // untimed setup — shared input for both engines

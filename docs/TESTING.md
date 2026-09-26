@@ -359,8 +359,9 @@ tests, ~300 MB fixture) are tagged `[Trait("Category", "VeryLarge")]` instead �
 # Runs alongside Zip64's Slow tests — same filter, no new mechanism (4 of the 6 perf tests)
 dotnet test --filter "Category=Slow"
 
-# The two one-large-file scenarios only — alongside Zip64's >4 GiB test
-dotnet test --filter "Category=VeryLarge"
+# The two one-large-file scenarios only — alongside Zip64's >4 GiB test. Release only (T-F272):
+# a Debug Core fails their ratio, so the tests fail fast with that message in Debug.
+dotnet test -c Release --filter "Category=VeryLarge"
 ```
 
 **Why this exists:** catches a code change that silently makes Pakko's ZIP compression/extraction
@@ -715,7 +716,7 @@ touching shell-triggered/UI behavior (see `CLAUDE.md`'s Workflow Tips). Last run
 7. **VeryLarge tests** (optional, on demand only — not part of a normal release cycle; run when
    deliberately verifying Zip64's >4 GiB path or T-F114's one-large-file perf scenarios)
    ```
-   dotnet test --filter "Category=VeryLarge"
+   dotnet test -c Release --filter "Category=VeryLarge"
    ```
 
 **Known non-bug finding:** `.zip`'s `UserChoice` file association may still point at Windows'
