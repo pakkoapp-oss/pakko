@@ -9621,7 +9621,10 @@ drive). With the scheme gone, only the user's own selection reaches it; this goe
 (T-F236, the shared walker).
 
 **Device check (1.4.12.14/15, agent via `windows` MCP).** Both were fresh installs (`Deploy.ps1`
-uninstalls first), so the in-place Store-style update is still to be checked before release.
+uninstalls first). **In-place update, checked separately with CI artifacts:** the 07c5df6 bundle
+(1.4.12.14, run 36194280686) registered `HKCR\pakko`. `Add-AppxPackage` of the 22500e6 bundle
+(1.4.12.16, run 36207402071) over it, without uninstalling, removed the key. `pakko://` then
+opened only Windows' picker, and Explorer → Pakko → Open still worked.
 - **Scheme gone.** `HKCR\pakko` is absent. `Start-Process "pakko://browse?files=<UNC>"` opened
   Windows' own "choose an app" picker, and no Pakko process started.
 - **Explorer menu.** Explorer → Pakko → Open on `тест архів.zip` entered the Archive Browser with
