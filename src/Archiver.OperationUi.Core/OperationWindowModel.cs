@@ -83,6 +83,10 @@ public sealed class OperationWindowModel
 
     public ResultText? Result { get; private set; }
 
+    /// <summary>What Ctrl+C copies from a shown result (as MessageBoxW allowed); null while running.</summary>
+    public string? CopyText =>
+        Result is null ? null : Result.Title + Environment.NewLine + Environment.NewLine + Result.Text;
+
     public string CancelLabel => Text(_itemCount > 1 ? WindowStrings.CancelAll : WindowStrings.Cancel);
 
     public string CloseLabel => Text(WindowStrings.Close);

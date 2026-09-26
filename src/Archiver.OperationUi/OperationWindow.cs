@@ -13,7 +13,9 @@ using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Windows.Foundation;
 using Windows.Graphics;
+using Windows.ApplicationModel.DataTransfer;
 using VirtualKey = Windows.System.VirtualKey;
+using VirtualKeyModifiers = Windows.System.VirtualKeyModifiers;
 using Windows.UI;
 
 namespace Archiver.OperationUi;
@@ -177,6 +179,20 @@ internal sealed class OperationWindow
             _execute(_model.UserClosed());
         };
         _root.KeyboardAccelerators.Add(escape);
+
+        // MessageBoxW copied its text on Ctrl+C; users copy hashes that way.
+        var copy = new KeyboardAccelerator { Key = VirtualKey.C, Modifiers = VirtualKeyModifiers.Control };
+        copy.Invoked += (_, e) =>
+        {
+            // A selection inside the result text copies only what the user selected.
+            if (_model.CopyText is not { } text || !string.IsNullOrEmpty(_resultText.SelectedText))
+                return;
+            e.Handled = true;
+            var package = new DataPackage();
+            package.SetText(text);
+            Clipboard.SetContent(package);
+        };
+        _root.KeyboardAccelerators.Add(copy);
 
         _window.ExtendsContentIntoTitleBar = true;
         _window.SetTitleBar(titleBar);

@@ -123,6 +123,21 @@ public sealed class OperationWindowModelTests
         model.UserClosed().Send.Should().Equal(new WindowClosed());
     }
 
+    // MessageBoxW let users copy a hash with Ctrl+C; the result window keeps that.
+    [Fact]
+    public void Result_CanBeCopiedAsTitleAndText()
+    {
+        var model = Running(new Complete(Warning));
+
+        model.CopyText.Should().Be("Extracting" + Environment.NewLine + Environment.NewLine + "old.zip: damaged");
+    }
+
+    [Fact]
+    public void WhileRunning_ThereIsNothingToCopy()
+    {
+        Running(new Progress(40, "a.txt", "40%")).CopyText.Should().BeNull();
+    }
+
     [Fact]
     public void Hello_CarriesCultureAndDirection()
     {
