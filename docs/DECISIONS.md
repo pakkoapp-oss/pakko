@@ -9777,3 +9777,70 @@ App's version.
 - .NET support: .NET 8 LTS and .NET 9 STS both end support on 2026-11-10 (Microsoft's support
   policy page, read 2026-09-26); .NET 10 LTS runs to 2028-11-14. This affects every project, not
   only T-F268.
+
+## T-F270 — .NET 8 -> .NET 10 LTS, C# 12 pinned, Visual Studio 2026 (2026-09-26)
+
+**Decision.** Every project moves to .NET 10 LTS (support to 2028-11-14); .NET 8 and 9 end on
+2026-11-10, and the MSIX and `pakko.exe` ship a self-contained runtime, so staying would ship an
+unpatched runtime after November. User decision, plan `temporal-wondering-feather.md`.
+
+**What changed.** TFM `net8.0*` -> `net10.0*` in all 13 `.csproj` (Windows suffixes unchanged) by
+script; `global.json` `10.0.100` + `latestFeature`; the TFM-bearing paths (`Archiver.App.csproj`
+Content Include, `Deploy.ps1`, both `.pubxml`); CI `setup-dotnet` `10.0.x` (runner stays
+`windows-2022`); MSBuild discovery in `Deploy.ps1`/`CI-Build-Msix.ps1` through `vswhere -latest`.
+C++ builds with Visual Studio 2026 (18.x) and the **v143** toolset (14.44), x64 + ARM64 — the same
+toolset as before, only the IDE changed; VS 2022 was uninstalled after the first green VS 2026 build.
+
+**C# stays 12.** `<LangVersion>12</LangVersion>` is pinned once in `Directory.Build.props` (before,
+only 6 of 13 projects pinned it). On `net10.0` the default is C# 14, whose implicit span conversions
+can rebind existing calls (`Reverse`, `Contains`, …) to different overloads with no source change.
+Moving to C# 14 is a separate decision with its own review.
+
+**New findings under `TreatWarningsAsErrors` (fixed, not suppressed).**
+- NU1510 (NuGet pruning, .NET 10): the six test projects pinned `System.Net.Http` 4.3.4 and
+  `System.Text.RegularExpressions` 4.3.1 to patch the vulnerable 4.3.0 shims pulled in by
+  `Microsoft.NET.Test.Sdk`'s `NETStandard.Library` 1.6.1. On `net10.0` NuGet prunes these framework
+  packages from the graph entirely, so the pins were removed; `dotnet list package --vulnerable
+  --include-transitive` is clean on all 13 projects.
+- SYSLIB0060: `WinZipAesReader.DeriveKeys` now calls the static `Rfc2898DeriveBytes.Pbkdf2` (same
+  PBKDF2-HMAC-SHA1, 1000 iterations, same bytes — the WinZip AES tests and the AES round trip
+  through `7za t` stay green).
+- CA1859 x2 (`ZipArchiveReader.Pair` takes `ReadOnlyCollection`, `ShellArgumentParser` keeps the
+  array) and CA2022 (`AggregateProgressStreamTests` now asserts the read count).
+
+**CET kept on (default since .NET 9).** Hardware shadow stacks harden the process against
+return-oriented exploits, which matters for an app that parses untrusted archives. The risk is
+third-party native code loaded into Pakko's process (other vendors' AMSI providers, shell
+extensions inside file dialogs). Windows runs a `/CETCOMPAT` process in compatibility mode, where
+a shadow-stack mismatch in a module not marked CET-compatible is not fatal, so such modules keep
+working. If a real crash is ever traced to CET, the opt-out is `<CETCompat>false</CETCompat>` in
+the affected exe's project — record it here with the evidence.
+
+**Windows 10.** .NET 10's supported-OS list names Windows 10 only as Enterprise/IoT (1607, 1809,
+21H2); consumer Windows 10 22H2 is absent, as the OS itself left support on 2025-10-14 (.NET 8 was
+formally unsupported there too). Pakko's minimum stays 10.0.17763 (1809); no docs change.
+
+**Verification.** Clean build (all `bin`/`obj` deleted first), zero C# warnings; default suite
+2238/2238 (the net8 baseline 2232 + T-F270's 6 `ZipWriterCharacterizationTests`, written and green
+on net8 first, unchanged); `Category=Slow` 16/16; `Category=VeryLarge` 5/6 — the one failure,
+`ExtractAsync_OneLargeFile` (ratio 4.1-5.0 vs limit 3.18), fails identically on the net8 worktree
+(Debug, same command: net8 4.10/4.97, net10 4.75/4.75); in Release, alone, both runtimes pass
+(net8 1.43/1.58, net10 1.62/1.62). Pre-existing Debug-build/in-project-contention sensitivity of
+that on-demand test, not a .NET 10 regression; C++ both archs Debug/Release,
+`Archiver.ShellExtension.Tests` 103/103 (the `LNK4070`/`D9025` warnings are pre-existing, also in
+the last green CI on VS 2022). Installed `Deploy.ps1 -SkipVersionBump` package (1.5.0.0) runs
+`coreclr.dll`/`System.Private.CoreLib.dll` 10.0.1226 (= 10.0.12); x64 bundle 59.1 MiB vs 57.0 MiB
+for the net8 v1.5.0 release. Device smoke: CLI `a`/`l`/`t`/`x` for ZIP, AES-256 ZIP (plus wrong
+password -> exit 2), tar, tar.gz — byte-identical round trips, empty folders kept, Pakko ZIPs pass
+`7za t`; Shell `--test` (plain and AES with the native password dialog), `--extract-here` on
+tar.gz through the AppContainer sandbox, `--archive`; App opens an archive in the browser. DocFX
+2.78.5 builds on SDK 10.
+
+**Performance (A/B, Release, same machine, net8 worktree at 6a104e1 vs net10).** zlib-ng (.NET 9)
+is faster where deflate itself dominates: 64 MiB compress ~22% faster, decompress ~12% faster;
+small-buffer deflate equal, identical output bytes for incompressible input. T-F114:
+`Archive/Hybrid` faster (0.80-0.89 s vs 0.87-1.02 s), `Hash/ManyFilesAndFolders` equal in
+isolation (larger gaps inside a full `Category=Slow` run were contention with other tests).
+**`Archive/ManySmallFiles` is ~50% slower** (0.71-0.79 s vs 0.48-0.51 s, 7za unchanged), still
+inside T-F114's tolerance; zlib-ng and single-thread `FileStream` reads are ruled out. Investigation
+filed as **T-F271** (fix phase 4c, user decision), not fixed inside this migration.

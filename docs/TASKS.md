@@ -4335,6 +4335,9 @@ windows through one `IOperationUi`, then a modern window — step 1 done, step 2
 T-F269 (Cancel stops the whole multi-archive selection — decide with T-F268 step 3), T-F216
 (first half done via T-F268). Runs before phase 5.
 
+**Phase 4c (added 2026-09-26, user):** T-F271 (many-small-files ZIP archiving ~50% slower on
+.NET 10 — investigate, then fix or record). After T-F270 lands; runs before phase 5.
+
 **1. P0 — data loss or a broken core flow:** T-F227, T-F228, T-F229, T-F204, T-F233,
 T-F234 (both P0, decision 2026-09-25), T-F245 (with T-F229), T-F246 — both P0 by user decision 2026-09-25. Suggested order: T-F227 + T-F228 + T-F197 together (same staging/commit code), then
 T-F229 with T-F207, then T-F233, T-F234, T-F204.
@@ -5835,7 +5838,11 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 
 ### T-F270 — Move every project from .NET 8 to .NET 10 LTS (P0)
 
-- [ ] **Status:** in progress, 2026-09-26. Plan: `temporal-wondering-feather.md` (user-approved).
+- [~] **Status:** implementation complete, 2026-09-26 — net10 build/tests green locally, installed
+  package runs 10.0.12, agent smoke of CLI/Shell/App passed (`docs/DECISIONS.md`, T-F270). Open:
+  CI (incl. the Store path via `workflow_dispatch`), the user's own click-through. Many-small-files
+  archiving is ~50% slower on .NET 10 — tracked as T-F271, not fixed here. Plan:
+  `temporal-wondering-feather.md` (user-approved).
 - **Why:** .NET 8 LTS and .NET 9 STS both leave support on 2026-11-10; .NET 10 LTS runs to
   2028-11-14. The MSIX and `pakko.exe` ship a self-contained runtime, so without this users keep
   an unpatched runtime after November. User decision, with a VS 2026 install (`net10.0` is
@@ -5855,6 +5862,32 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   `System.Private.CoreLib.dll` and `pakko.exe`'s runtime are 10.0.x; device smoke across App,
   Explorer commands and CLI; CI (incl. the Store path via `workflow_dispatch`) green.
 - **Reported by:** user, 2026-09-26 (after T-F268's spike surfaced the end-of-support date).
+
+### T-F271 — Many-small-files ZIP archiving ~50% slower on .NET 10 (P1)
+
+- [ ] **Status:** open — found 2026-09-26 during T-F270's A/B perf check. Fix phase 4c.
+- **Evidence (Release, same machine, perf project alone, net8 worktree at 6a104e1 vs net10):**
+  `Archive/ManySmallFiles` (5,000 files 1-10 KiB, parallel writer path) Pakko 0.48-0.51 s on
+  .NET 8 vs 0.71-0.79 s on .NET 10 (3 rounds each; 7za 0.54-0.67 s both), ratio ~0.86 -> ~1.3.
+  Still inside T-F114's tolerance, so the test passes. `Archive/Hybrid` is faster on .NET 10
+  (0.80-0.89 s vs 0.87-1.02 s); `Hash/ManyFilesAndFolders` equal in isolation (the larger gap in a
+  full `Category=Slow` run was contention with the other tests).
+- **Ruled out (microbenchmarks, `net8.0` vs `net10.0`, Release):** zlib-ng deflate itself —
+  3,000 x 2 KiB text, 5,000 x 1-10 KiB random and text all equal or faster on .NET 10, identical
+  output bytes for random input; 64 MiB compress ~22% faster, decompress ~12% faster. Single-thread
+  `FileStream` open+read of small files — equal on both runtimes.
+- **Next (the unexplored part):** the parallel pipeline itself (`ParallelSingleArchiveWriter`:
+  `Task.Run` per file, `SemaphoreSlim` gate, bounded `Channel`, `ZipEntryWriter`) — take one
+  CPU-sampling trace per runtime (`dotnet-trace`, not installed yet) of the same Release run and
+  compare the top inclusive frames; check ThreadPool injection (CLAUDE.md's `SetMinThreads` note).
+- **Side finding, same measurement:** the sequential path opens every source with
+  `bufferSize: 262144` (CLAUDE.md "Core implemented features") — a large-object-heap buffer per
+  file: 3,000 x 2 KiB files read in ~400 ms with 250 gen2 collections vs ~140 ms and 0 gen2 at
+  4096, on both runtimes. Decide whether small files should use a smaller buffer (changing the
+  documented convention needs the user's OK).
+- **Tests:** T-F114's `ArchiveAsync_ManySmallFiles` ratio is the regression gate; recalibrate its
+  constant only after the cause is known.
+- **Reported by:** T-F270 A/B check, 2026-09-26; user asked for a separate task in phase 4c.
 
 ### T-F223 — Diagram gap from T-F193 (P2)
 
