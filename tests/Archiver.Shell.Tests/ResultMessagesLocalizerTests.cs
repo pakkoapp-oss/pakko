@@ -17,6 +17,8 @@ public sealed class ResultMessagesLocalizerTests
         "ResultAndMoreLine",
         "ResultNoErrorsDetected",
         "ResultOperationFailed",
+        "OpenUiTooManyFiles",
+        "OpenUiNoPackage",
     ];
 
     private static readonly string[] PlaceholderKeys = ["ResultSkippedHeader", "ResultAndMoreLine"];
@@ -46,6 +48,8 @@ public sealed class ResultMessagesLocalizerTests
     [Theory]
     [InlineData("ResultNoErrorsDetected")]
     [InlineData("ResultOperationFailed")]
+    [InlineData("OpenUiTooManyFiles")]
+    [InlineData("OpenUiNoPackage")]
     public void Get_NeutralCulture_PlainKeyReturnsNonEmptyString(string key)
     {
         ResultMessagesLocalizer.Get(key).Should().NotBeNullOrWhiteSpace();
@@ -66,6 +70,34 @@ public sealed class ResultMessagesLocalizerTests
         {
             CultureInfo.CurrentUICulture = original;
         }
+    }
+
+    // T-F232: the two open-UI keys were added to every locale at once — a locale missing one would
+    // fall back to English silently, which the NeverThrows loop below cannot see.
+    [Theory]
+    [MemberData(nameof(OpenUiCultureKeyPairs))]
+    public void Get_OpenUiKey_IsTranslatedInEveryLocale(string culture, string key)
+    {
+        var original = CultureInfo.CurrentUICulture;
+        try
+        {
+            CultureInfo.CurrentUICulture = CultureInfo.InvariantCulture;
+            var neutral = ResultMessagesLocalizer.Get(key);
+            CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(culture);
+
+            ResultMessagesLocalizer.Get(key).Should().NotBe(neutral);
+        }
+        finally
+        {
+            CultureInfo.CurrentUICulture = original;
+        }
+    }
+
+    public static IEnumerable<object[]> OpenUiCultureKeyPairs()
+    {
+        foreach (var culture in NonNeutralCultures)
+            foreach (var key in new[] { "OpenUiTooManyFiles", "OpenUiNoPackage" })
+                yield return [culture, key];
     }
 
     public static IEnumerable<object[]> AllCultureKeyPairs()

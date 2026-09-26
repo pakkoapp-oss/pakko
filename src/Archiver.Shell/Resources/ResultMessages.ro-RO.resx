@@ -24,4 +24,10 @@
   <data name="ResultOperationFailed" xml:space="preserve">
     <value>Operația a eșuat.</value>
   </data>
+  <data name="OpenUiTooManyFiles" xml:space="preserve">
+    <value>Sunt selectate prea multe fișiere pentru a fi deschise în Pakko. Selectați mai puține fișiere și încercați din nou.</value>
+  </data>
+  <data name="OpenUiNoPackage" xml:space="preserve">
+    <value>Pakko nu a putut fi deschis. Reinstalați Pakko și încercați din nou.</value>
+  </data>
 </root>

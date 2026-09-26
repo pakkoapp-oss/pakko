@@ -1,6 +1,6 @@
 using System.Diagnostics;
 using System.IO;
-using Archiver.App.Models;
+using Archiver.App.Core;
 using Archiver.Core.Models;
 using Archiver.Core.Services;
 using Windows.ApplicationModel.Resources;

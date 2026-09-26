@@ -24,4 +24,10 @@
   <data name="ResultOperationFailed" xml:space="preserve">
     <value>Operácia sa nezdarila.</value>
   </data>
+  <data name="OpenUiTooManyFiles" xml:space="preserve">
+    <value>Na otvorenie v Pakko je vybratých príliš veľa súborov. Vyberte menej súborov a skúste to znova.</value>
+  </data>
+  <data name="OpenUiNoPackage" xml:space="preserve">
+    <value>Pakko sa nepodarilo otvoriť. Preinštalujte Pakko a skúste to znova.</value>
+  </data>
 </root>

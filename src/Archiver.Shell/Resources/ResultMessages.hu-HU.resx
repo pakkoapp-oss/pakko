@@ -24,4 +24,10 @@
   <data name="ResultOperationFailed" xml:space="preserve">
     <value>A művelet sikertelen.</value>
   </data>
+  <data name="OpenUiTooManyFiles" xml:space="preserve">
+    <value>Túl sok fájl van kijelölve a Pakkóban való megnyitáshoz. Jelöljön ki kevesebb fájlt, és próbálja újra.</value>
+  </data>
+  <data name="OpenUiNoPackage" xml:space="preserve">
+    <value>A Pakko nem nyitható meg. Telepítse újra a Pakkót, és próbálja újra.</value>
+  </data>
 </root>

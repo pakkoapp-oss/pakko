@@ -24,4 +24,10 @@
   <data name="ResultOperationFailed" xml:space="preserve">
     <value>Η λειτουργία απέτυχε.</value>
   </data>
+  <data name="OpenUiTooManyFiles" xml:space="preserve">
+    <value>Έχουν επιλεγεί πάρα πολλά αρχεία για άνοιγμα στο Pakko. Επιλέξτε λιγότερα αρχεία και δοκιμάστε ξανά.</value>
+  </data>
+  <data name="OpenUiNoPackage" xml:space="preserve">
+    <value>Δεν ήταν δυνατό το άνοιγμα του Pakko. Εγκαταστήστε ξανά το Pakko και δοκιμάστε ξανά.</value>
+  </data>
 </root>

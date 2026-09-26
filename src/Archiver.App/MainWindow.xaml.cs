@@ -1,7 +1,6 @@
 using System.Linq;
 using System.Windows.Input;
 using Archiver.App.Core;
-using Archiver.App.Models;
 using Archiver.App.Services;
 using Archiver.App.ViewModels;
 using Archiver.Core.Services;

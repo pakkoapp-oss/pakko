@@ -1,8 +1,5 @@
-using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
-using System.Text;
-using System.Text.Json;
 using Archiver.Core.Interfaces;
 using Archiver.Core.Models;
 using Archiver.Core.Services;
@@ -25,15 +22,15 @@ if (command.Type == CommandType.Invalid)
 switch (command.Type)
 {
     case CommandType.OpenUiExtract:
-        LaunchOpenUi("extract", command.Files);
+        LaunchOpenUi(LaunchOperation.Extract, command.Files);
         break;
 
     case CommandType.OpenUiArchive:
-        LaunchOpenUi("archive", command.Files);
+        LaunchOpenUi(LaunchOperation.Archive, command.Files);
         break;
 
     case CommandType.OpenUiBrowse:
-        LaunchOpenUi("browse", command.Files);
+        LaunchOpenUi(LaunchOperation.Browse, command.Files);
         break;
 
     case CommandType.ExtractHere:
@@ -63,20 +60,6 @@ switch (command.Type)
     case CommandType.Hash:
         await RunHashAsync(command.Files, command.Algorithm).ConfigureAwait(false);
         break;
-}
-
-// -------------------------------------------------------------------------
-// Open-UI flow: encode files as a base64 JSON array and launch Archiver.App
-// via the pakko:// URI scheme. Archiver.Shell exits immediately; the app
-// takes over the user interaction.
-// -------------------------------------------------------------------------
-static void LaunchOpenUi(string operation, IReadOnlyList<string> files)
-{
-    var base64 = Convert.ToBase64String(
-        Encoding.UTF8.GetBytes(JsonSerializer.Serialize(files)));
-    var uri = $"pakko://{operation}?files={base64}";
-
-    Process.Start(new ProcessStartInfo(uri) { UseShellExecute = true });
 }
 
 // -------------------------------------------------------------------------
@@ -635,6 +618,21 @@ static void ShowErrorSummary(string title, IReadOnlyList<ArchiveError> errors)
 
 static void ShowSkippedSummary(string title, IReadOnlyList<SkippedFile> skipped) =>
     _ = MessageBoxW(IntPtr.Zero, ShellResultPresenter.BuildSkippedMessage(skipped), title, MB_ICONWARNING);
+
+// Open-UI flow (T-F232): hand the selection to Archiver.App as Launch arguments and exit — the App
+// takes over the user interaction. Declared after the MB_* consts it reads (CS0841).
+static void LaunchOpenUi(LaunchOperation operation, IReadOnlyList<string> files)
+{
+    var messageKey = AppLauncher.Launch(operation, files) switch
+    {
+        AppLaunchResult.TooManyFiles => "OpenUiTooManyFiles",
+        AppLaunchResult.NoPackage => "OpenUiNoPackage",
+        AppLaunchResult.Failed => "ResultOperationFailed",
+        _ => null,
+    };
+    if (messageKey is not null)
+        _ = MessageBoxW(IntPtr.Zero, ResultMessagesLocalizer.Get(messageKey), "Pakko", MB_ICONERROR);
+}
 
 [DllImport("user32.dll", CharSet = CharSet.Unicode)]
 static extern int MessageBoxW(IntPtr hWnd, string text, string caption, uint type);

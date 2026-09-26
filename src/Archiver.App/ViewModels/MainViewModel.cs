@@ -9,7 +9,6 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Archiver.App.Core;
-using Archiver.App.Models;
 using Archiver.App.Services;
 using Archiver.Core.Interfaces;
 using Archiver.Core.Models;
@@ -105,11 +104,6 @@ public sealed partial class MainViewModel : ObservableObject
     private bool _isBusy = false;
 
     private string _lastOperation = string.Empty;
-
-    // Set by protocol activation (pakko://extract or pakko://archive) before the
-    // user has pressed either button. Empty when the app was not opened via URI.
-    [ObservableProperty]
-    private string _requestedOperation = string.Empty;
 
     [ObservableProperty]
     private int _progress = 0;
@@ -1298,43 +1292,15 @@ public sealed partial class MainViewModel : ObservableObject
     public void AddPaths(IEnumerable<string> paths)
     {
         foreach (var path in paths)
-            if (!FileItems.Any(x => x.FullPath == path))
-                FileItems.Add(new FileItem(path));
-    }
-
-    public void AddPathsFromProtocolUri(string rawUri)
-    {
-        try
         {
-            var uri = new Uri(rawUri);
-            var query = uri.Query.TrimStart('?');
-            string? base64 = null;
-            foreach (var part in query.Split('&'))
-            {
-                var idx = part.IndexOf('=');
-                if (idx > 0 && part[..idx] == "files")
-                {
-                    base64 = Uri.UnescapeDataString(part[(idx + 1)..]);
-                    break;
-                }
-            }
-            if (string.IsNullOrEmpty(base64)) return;
-            var json = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(base64));
-            var files = System.Text.Json.JsonSerializer.Deserialize<string[]>(json);
-            if (files is not null)
-            {
-                AddPaths(files);
-                RequestedOperation = uri.Host switch
-                {
-                    "extract" => "extract",
-                    "archive" => "archive",
-                    _ => RequestedOperation
-                };
-            }
-        }
-        catch
-        {
-            // Malformed URI — open normally with empty state
+            if (FileItems.Any(x => x.FullPath == path))
+                continue;
+            // T-F232: one unreadable path used to throw out of here, dropping the rest of an
+            // activation's list or escaping into the drag-drop handler.
+            if (FileItem.TryCreate(path) is { } item)
+                FileItems.Add(item);
+            else
+                _logService.Warn($"Skipped unreadable path: {path}");
         }
     }
 

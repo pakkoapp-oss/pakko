@@ -70,4 +70,10 @@
   <data name="ResultOperationFailed" xml:space="preserve">
     <value>The operation failed.</value>
   </data>
+  <data name="OpenUiTooManyFiles" xml:space="preserve">
+    <value>Too many files are selected to open in Pakko. Select fewer files and try again.</value>
+  </data>
+  <data name="OpenUiNoPackage" xml:space="preserve">
+    <value>Pakko could not be opened. Reinstall Pakko and try again.</value>
+  </data>
 </root>

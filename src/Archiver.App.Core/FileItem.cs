@@ -4,8 +4,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 
-namespace Archiver.App.Models;
+namespace Archiver.App.Core;
 
+/// <summary>One top-level path in the pending archive-creation/extraction list, with its size and CRC-32 computed in the background.</summary>
 public sealed partial class FileItem : ObservableObject
 {
     // Caps concurrent CRC-32 reads across every FileItem, not per-instance — reading a file's
@@ -38,7 +39,20 @@ public sealed partial class FileItem : ObservableObject
     [ObservableProperty]
     private uint? _crc32;
 
-    public FileItem(string path)
+    /// <summary>Creates the item, or returns null when <paramref name="path"/> cannot be read.</summary>
+    public static FileItem? TryCreate(string path)
+    {
+        try
+        {
+            return new FileItem(path);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            return null;
+        }
+    }
+
+    private FileItem(string path)
     {
         FullPath = path;
         Name = Path.GetFileName(path);
@@ -109,7 +123,8 @@ public sealed partial class FileItem : ObservableObject
         }
     }
 
-    internal static string FormatSize(long bytes) => bytes switch
+    /// <summary>Formats a byte count as bytes/KB/MB/GB for display.</summary>
+    public static string FormatSize(long bytes) => bytes switch
     {
         < 1024 => $"{bytes} bytes",
         < 1024 * 1024 => $"{bytes / 1024.0:F1} KB",

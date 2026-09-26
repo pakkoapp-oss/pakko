@@ -5,7 +5,6 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:local="using:Archiver.App"
     xmlns:viewmodels="using:Archiver.App.ViewModels"
-    xmlns:models="using:Archiver.App.Models"
     xmlns:appcore="using:Archiver.App.Core"
     xmlns:tb="using:H.NotifyIcon"
     Title="Archiver">
@@ -161,7 +160,7 @@
                         </Style>
                     </ListView.ItemContainerStyle>
                     <ListView.ItemTemplate>
-                        <DataTemplate x:DataType="models:FileItem">
+                        <DataTemplate x:DataType="appcore:FileItem">
                             <Grid ColumnDefinitions="*,80,100,90,140">
                                 <Grid.ContextFlyout>
                                     <MenuFlyout>

@@ -24,4 +24,10 @@
   <data name="ResultOperationFailed" xml:space="preserve">
     <value>การดำเนินการล้มเหลว</value>
   </data>
+  <data name="OpenUiTooManyFiles" xml:space="preserve">
+    <value>เลือกไฟล์ไว้มากเกินไปสำหรับการเปิดใน Pakko โปรดเลือกไฟล์ให้น้อยลงแล้วลองอีกครั้ง</value>
+  </data>
+  <data name="OpenUiNoPackage" xml:space="preserve">
+    <value>ไม่สามารถเปิด Pakko ได้ โปรดติดตั้ง Pakko ใหม่แล้วลองอีกครั้ง</value>
+  </data>
 </root>

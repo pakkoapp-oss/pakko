@@ -24,4 +24,10 @@
   <data name="ResultOperationFailed" xml:space="preserve">
     <value>Operesheni imeshindwa.</value>
   </data>
+  <data name="OpenUiTooManyFiles" xml:space="preserve">
+    <value>Faili nyingi mno zimechaguliwa ili kufunguliwa katika Pakko. Chagua faili chache kisha ujaribu tena.</value>
+  </data>
+  <data name="OpenUiNoPackage" xml:space="preserve">
+    <value>Pakko haikuweza kufunguliwa. Sakinisha upya Pakko kisha ujaribu tena.</value>
+  </data>
 </root>

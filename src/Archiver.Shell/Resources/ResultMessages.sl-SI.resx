@@ -24,4 +24,10 @@
   <data name="ResultOperationFailed" xml:space="preserve">
     <value>Operacija ni uspela.</value>
   </data>
+  <data name="OpenUiTooManyFiles" xml:space="preserve">
+    <value>Za odpiranje v Pakku je izbranih preveč datotek. Izberite manj datotek in poskusite znova.</value>
+  </data>
+  <data name="OpenUiNoPackage" xml:space="preserve">
+    <value>Pakka ni bilo mogoče odpreti. Znova namestite Pakko in poskusite znova.</value>
+  </data>
 </root>

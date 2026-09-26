@@ -2,7 +2,7 @@ namespace Archiver.App.Core;
 
 /// <summary>
 /// One entry in the archive browser's current folder view — a path inside an archive, distinct
-/// from Archiver.App.Models.FileItem (a top-level pending-selection path queued for an
+/// from <see cref="FileItem"/> (a top-level pending-selection path queued for an
 /// Archive/Extract operation). Plain, no WinUI dependency — lives here so ArchiveTreeIndex stays
 /// unit-testable without a WinUI test host.
 /// </summary>

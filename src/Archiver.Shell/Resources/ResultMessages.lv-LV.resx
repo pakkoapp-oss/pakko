@@ -24,4 +24,10 @@
   <data name="ResultOperationFailed" xml:space="preserve">
     <value>Darbība neizdevās.</value>
   </data>
+  <data name="OpenUiTooManyFiles" xml:space="preserve">
+    <value>Atvēršanai programmā Pakko ir atlasīts pārāk daudz failu. Atlasiet mazāk failu un mēģiniet vēlreiz.</value>
+  </data>
+  <data name="OpenUiNoPackage" xml:space="preserve">
+    <value>Pakko nevarēja atvērt. Pārinstalējiet Pakko un mēģiniet vēlreiz.</value>
+  </data>
 </root>

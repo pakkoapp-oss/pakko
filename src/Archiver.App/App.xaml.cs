@@ -90,19 +90,23 @@ public partial class App : Application
                     window.ActivationGate.RunOrDefer(() => window.ViewModel.AddPaths(paths));
                 break;
 
-            case ExtendedActivationKind.Protocol:
-                if (args.Data is not Windows.ApplicationModel.Activation.IProtocolActivatedEventArgs protoArgs) { EnsureWindow(defaultLogMessage); return; }
-                EnsureWindow("Pakko started via protocol activation");
-                var protoWindow = _window!;
+            // T-F232: Archiver.Shell hands its Explorer selection over as Launch arguments
+            // (ActivateApplication), not a pakko:// URI — a registered scheme was launchable by any
+            // web page or document link. A plain Start-menu launch parses to null.
+            case ExtendedActivationKind.Launch:
+                var launchDecision = LaunchActivationRouter.Decide(
+                    (args.Data as Windows.ApplicationModel.Activation.ILaunchActivatedEventArgs)?.Arguments);
+                if (launchDecision is null) { EnsureWindow(defaultLogMessage); return; }
+                EnsureWindow("Pakko started via Explorer");
+                var launchWindow = _window!;
 
-                // T-F03: pakko://browse skips the pending-list/extract-options view and enters the
-                // Archive Browser (T-F05) directly, the same destination FileActivationRouter
-                // already routes a double-clicked single archive to (T-F100). pakko://extract and
-                // pakko://archive are unaffected — unchanged AddPathsFromProtocolUri path below.
-                if (ProtocolActivationRouter.TryGetBrowsePath(protoArgs.Uri.AbsoluteUri, out var browsePath))
-                    protoWindow.ActivationGate.RunOrDefer(() => _ = EnterBrowseSafelyAsync(protoWindow, browsePath!));
+                // T-F03: --browse skips the pending-list/extract-options view and enters the Archive
+                // Browser (T-F05) directly, the same destination FileActivationRouter already routes
+                // a double-clicked single archive to (T-F100).
+                if (launchDecision.Mode == FileActivationMode.Browse)
+                    launchWindow.ActivationGate.RunOrDefer(() => _ = EnterBrowseSafelyAsync(launchWindow, launchDecision.BrowsePath!));
                 else
-                    protoWindow.ActivationGate.RunOrDefer(() => protoWindow.ViewModel.AddPathsFromProtocolUri(protoArgs.Uri.AbsoluteUri));
+                    launchWindow.ActivationGate.RunOrDefer(() => launchWindow.ViewModel.AddPaths(launchDecision.Paths));
                 break;
 
             default:

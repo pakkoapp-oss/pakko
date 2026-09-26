@@ -24,4 +24,10 @@
   <data name="ResultOperationFailed" xml:space="preserve">
     <value>Toiming ebaõnnestus.</value>
   </data>
+  <data name="OpenUiTooManyFiles" xml:space="preserve">
+    <value>Pakkos avamiseks on valitud liiga palju faile. Valige vähem faile ja proovige uuesti.</value>
+  </data>
+  <data name="OpenUiNoPackage" xml:space="preserve">
+    <value>Pakkot ei saanud avada. Installige Pakko uuesti ja proovige uuesti.</value>
+  </data>
 </root>
