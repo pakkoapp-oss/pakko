@@ -5,7 +5,7 @@ namespace Archiver.Shell.Tests;
 
 // T-F128 follow-up: HashResultLocalizer wraps a ResourceManager over the .resx satellite
 // assemblies under Archiver.Shell/Resources/ — this only smoke-tests that the neutral resource
-// resolves for all 5 keys used by ShowHashResults with a working {0} placeholder. Translation
+// resolves for all 5 keys used by OperationMessages.ForHash with a working {0} placeholder. Translation
 // correctness across the other 36 locales isn't unit-testable (matches this project's existing
 // precedent — Archiver.App's own resw translations aren't automated-tested either).
 public sealed class HashResultLocalizerTests

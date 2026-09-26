@@ -108,7 +108,7 @@ public:
 // Leaf command: "Extract here" (T-F115) - genuinely flat: dumps every archive's contents
 // directly into its own containing folder, no new wrapper folder ever, regardless of how many
 // root entries the archive has (ExtractMode.SingleFolder with DestinationFolder = the archive's
-// own folder, no computed subfolder - see Archiver.Shell/Program.cs's RunExtractHereFlatAsync).
+// own folder, no computed subfolder - see Archiver.Shell/ShellCommands.cs's ExtractHereFlatAsync).
 // ---------------------------------------------------------------------------
 class ExtractHereFlatCommand final :
     public RuntimeClass<RuntimeClassFlags<ClassicCom>, IExplorerCommand>

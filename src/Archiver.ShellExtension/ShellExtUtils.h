@@ -56,7 +56,7 @@ HRESULT LaunchShellExe(const std::wstring& args);
 std::wstring BuildExtractHereArgs(const std::vector<std::wstring>& paths);
 // T-F115: the new genuinely-flat "Extract here" command - dumps into the archive's own
 // containing folder, no wrapper folder created. Consumed by ShellArgumentParser's new
-// "--extract-flat" switch (Archiver.Shell/Program.cs's RunExtractHereFlatAsync).
+// "--extract-flat" switch (Archiver.Shell/ShellCommands.cs's ExtractHereFlatAsync).
 std::wstring BuildExtractHereFlatArgs(const std::vector<std::wstring>& paths);
 std::wstring BuildExtractFolderArgs(const std::vector<std::wstring>& paths);
 // T-F105: format is "zip" (default, matches pre-T-F105 behavior — no --format flag emitted) or
@@ -82,7 +82,7 @@ std::wstring BuildOpenUiBrowseArgs(const std::vector<std::wstring>& paths);
 // Builds the "Add to <name><ext>" context-menu title (ext defaults to ".zip"; T-F105's
 // TarArchiveCommand passes ".tar"). For a single selected path, <name> is that path's file name
 // without extension; for multiple paths, <name> is their common containing folder's name instead
-// (mirrors RunArchiveAsync's naming in Archiver.Shell/Program.cs). Returns the localized
+// (mirrors ArchiveAsync's naming in Archiver.Shell/ShellCommands.cs). Returns the localized
 // "Add to archive..." fallback if paths is empty.
 // T-F115: `localeTag` selects the surrounding phrase's translation (see Localization.h);
 // defaults to L"en-US" so every pre-existing English-text test keeps passing unchanged -

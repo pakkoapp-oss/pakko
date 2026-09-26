@@ -4,7 +4,7 @@ using System.Resources;
 
 namespace Archiver.Shell;
 
-// T-F163: ShowErrorSummary/ShowSkippedSummary/RunTestAsync's operation-result text was hardcoded
+// T-F163: the operation-result text (now built by OperationMessages, T-F268) was hardcoded
 // English regardless of CurrentUICulture -- everything else in Archiver.Shell (HashMessages,
 // ScanMessages, ConflictMessages) already went through this exact pattern. Mirrors
 // HashResultLocalizer.

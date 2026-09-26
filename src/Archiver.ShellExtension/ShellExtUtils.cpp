@@ -71,7 +71,7 @@ static bool EndsWithCaseInsensitive(const std::wstring& value, const wchar_t* su
 
 // Deliberately deviates from .NET's Path.GetFileNameWithoutExtension for dotfiles: real .NET
 // strips everything from the only dot in ".gitignore", leaving "". Keeping the full name instead
-// avoids an empty display name; Archiver.Shell/Program.cs's RunArchiveAsync applies the same
+// avoids an empty display name; Archiver.Shell/ShellCommands.cs's ArchiveAsync applies the same
 // "don't strip to empty" fallback so the title shown here matches the archive actually created.
 static std::wstring GetFileNameWithoutExtension(const std::wstring& path)
 {
@@ -88,7 +88,7 @@ static std::wstring GetFileNameWithoutExtension(const std::wstring& path)
 }
 
 // Returns the name of the folder containing `path` (i.e. path's parent directory's own
-// basename) \u2014 mirrors Archiver.Shell/Program.cs's RunArchiveAsync, which names a multi-item
+// basename) \u2014 mirrors Archiver.Shell/ShellCommands.cs's ArchiveAsync, which names a multi-item
 // archive after the common containing folder rather than an arbitrary selected item.
 static std::wstring GetParentFolderName(const std::wstring& path)
 {
@@ -386,7 +386,7 @@ std::wstring BuildAddToArchiveTitle(const std::vector<std::wstring>& paths, cons
         : GetFileNameWithoutExtension(paths.front());
 
     // Empty (no parent, e.g. a drive root) or a bare drive letter like "C:" \u2014 invalid as a
-    // display name (and as the file name RunArchiveAsync would build) \u2014 fall back.
+    // display name (and as the file name ShellCommands.ArchiveAsync would build) \u2014 fall back.
     // T-F99: PathFindFileNameW returns the whole string unchanged for a path ending in a
     // backslash (e.g. "Z:\", a real drive root's SIGDN_FILESYSPATH) rather than an empty tail,
     // so name.back() == L':' alone doesn't catch it \u2014 check for a trailing backslash too.

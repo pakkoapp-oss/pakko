@@ -94,7 +94,7 @@ public static class PasswordDialog
     {
         // Plain SetForegroundWindow is NOT reliable from this call site — the caller
         // runs on a background thread while Archiver.Shell's own IProgressDialog is
-        // already showing (see RunWithProgressWindowAsync), and Windows' foreground-
+        // already showing (see Win32OperationUi's session), and Windows' foreground-
         // lock heuristic silently blocks a background process from stealing focus.
         // Confirmed empirically in a Phase 0 spike (DECISIONS.md): without the
         // SetWindowPos(HWND_TOPMOST) below, the dialog was created successfully

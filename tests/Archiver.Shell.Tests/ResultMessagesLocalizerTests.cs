@@ -3,7 +3,7 @@ using FluentAssertions;
 
 namespace Archiver.Shell.Tests;
 
-// T-F163: ShowErrorSummary/ShowSkippedSummary/RunTestAsync's "no errors"/"operation failed" text
+// T-F163: OperationMessages' (T-F268) "no errors"/"operation failed" text
 // and ShellResultPresenter.BuildSkippedMessage's header were hardcoded English -- found by a real
 // user running the T-F155 conflict dialog under uk-UA and getting an English summary afterward.
 // Mirrors HashResultLocalizerTests' neutral/uk-UA smoke checks, plus ConflictDialogLocalizerTests'

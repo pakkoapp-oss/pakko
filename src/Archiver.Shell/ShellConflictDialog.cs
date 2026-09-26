@@ -43,7 +43,7 @@ public static class ShellConflictDialog
         {
             // Missing/broken comctl32 v6 activation context -- e.g. a packaged build without the
             // manifest dependency wired correctly -- must degrade, not crash the whole extraction,
-            // same reasoning as TryCreateProgressDialog's existing COMException catch in Program.cs.
+            // same reasoning as Win32OperationUi's COMException catch around the progress dialog.
             return Task.FromResult(new ConflictDecision { Resolution = ConflictResolution.Skip });
         }
     }

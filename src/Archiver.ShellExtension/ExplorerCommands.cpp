@@ -446,7 +446,7 @@ STDMETHODIMP TestCommand::GetState(IShellItemArray* psia, BOOL, EXPCMDSTATE* pCm
     // defense-in-depth pattern ExtractAsync already relies on.
     // T-F86: deliberately stays AnyPathIsZip, NOT AnyPathIsSupportedArchive - ITarService has no
     // Test/verify method, so enabling this for RAR/7z/tar would show "Test archive", run
-    // RunTestAsync's ZipArchiveService.TestAsync (which silently skips non-zip paths), and report
+    // ShellCommands.TestAsync's ZipArchiveService.TestAsync (which silently skips non-zip paths), and report
     // a false "No errors detected" for an archive that was never actually tested. See
     // DECISIONS.md's T-F86 entry.
     *pCmdState = AnyPathIsZip(GetPathsFromShellItemArray(psia)) ? ECS_ENABLED : ECS_HIDDEN;
