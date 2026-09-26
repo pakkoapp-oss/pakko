@@ -56,11 +56,9 @@ internal static class TarCommandLineEncoding
     /// <summary>Throws <see cref="TarArgumentEncodingException"/> for the first argument that would not reach tar.exe unchanged.</summary>
     public static void EnsureRepresentable(IEnumerable<string> arguments)
     {
-        foreach (string argument in arguments)
-        {
-            if (!IsRepresentable(argument))
-                throw new TarArgumentEncodingException(argument, AnsiCodePage);
-        }
+        string? unrepresentable = arguments.FirstOrDefault(argument => !IsRepresentable(argument));
+        if (unrepresentable is not null)
+            throw new TarArgumentEncodingException(unrepresentable, AnsiCodePage);
     }
 
     [DllImport("kernel32.dll")]

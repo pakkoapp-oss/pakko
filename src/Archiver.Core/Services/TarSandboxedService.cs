@@ -1312,13 +1312,7 @@ public sealed class TarSandboxedService : ITarService
         string? unrepresentable = TarCommandLineEncoding.IsRepresentable(sourcePath) ? null : sourcePath;
 
         if (!Directory.Exists(sourcePath))
-        {
-            long size = 0;
-            try { size = new FileInfo(sourcePath).Length; }
-            catch (IOException) { /* best-effort estimate */ }
-            catch (UnauthorizedAccessException) { /* same */ }
-            return (1, size, unrepresentable); // plain file (or something that no longer exists by the time we get here)
-        }
+            return (1, FileLengthOrZero(sourcePath), unrepresentable); // plain file (or something that no longer exists by the time we get here)
 
         long count = 1; // the directory itself gets its own tar entry
         long totalBytes = 0;
@@ -1329,19 +1323,24 @@ public sealed class TarSandboxedService : ITarService
                 count++;
                 if (unrepresentable is null && !TarCommandLineEncoding.IsRepresentable(Path.GetFileName(entry)))
                     unrepresentable = entry;
-                try
-                {
-                    if ((File.GetAttributes(entry) & FileAttributes.Directory) == 0)
-                        totalBytes += new FileInfo(entry).Length;
-                }
-                catch (IOException) { /* best-effort estimate — the Math.Min(99, ...) clamp above tolerates undercounting */ }
-                catch (UnauthorizedAccessException) { /* same */ }
+                totalBytes += FileLengthOrZero(entry);
             }
         }
-        catch (UnauthorizedAccessException) { /* same */ }
+        catch (UnauthorizedAccessException) { /* best-effort estimate — the Math.Min(99, ...) clamp above tolerates undercounting */ }
         catch (IOException) { /* same */ }
 
         return (count, totalBytes, unrepresentable);
+    }
+
+    // Directories contribute 0; so does anything unreadable or already gone (best-effort estimate).
+    private static long FileLengthOrZero(string path)
+    {
+        try
+        {
+            return (File.GetAttributes(path) & FileAttributes.Directory) == 0 ? new FileInfo(path).Length : 0;
+        }
+        catch (IOException) { return 0; }
+        catch (UnauthorizedAccessException) { return 0; }
     }
 
     // tar.exe's "-v" creation-mode output is "a <name>" per entry (confirmed empirically —
