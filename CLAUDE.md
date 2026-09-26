@@ -418,11 +418,10 @@ reader, no size limit). See `docs/DECISIONS.md`'s T-F193 entry. **Open from the 
 T-F197 (ZIP extract drops empty folders), T-F198-T-F201 (UI/UX review fixes, layout redesign,
 browse password re-prompt, stacked second window), **T-F202 (full UI + every-menu smoke test —
 required before this batch closes; the Store build is live).**
-**T-F268** (`[~]`, fix phase 4b, 2026-09-26) — every `Archiver.Shell` window goes through one
-`IOperationUi` (`ShellCommands`, `Win32OperationUi`, `OperationMessages`); `Program.cs` only parses
-and dispatches. Step 2 spike done: OS XAML Islands not viable as-is (packaged crash `0x802B000A`,
-Windows 10 look); a code-only WinUI 3 window starts under package identity — step 3 plan next
-(`docs/DECISIONS.md`). **T-F270** (`[x]`, 2026-09-26) — all projects on .NET 10 LTS (Build Commands' toolchain note);
+**T-F268** (`[~]`, fix phase 4b) — Explorer commands show a code-only WinUI 3 operation window
+(`Archiver.OperationUi`, started by Shell over anonymous pipes; logic in `Archiver.OperationUi.Core`)
+with `Win32OperationUi` as fallback and failover. Steps 1-4 done 2026-09-26; next: step 5,
+prompts inside the window (`docs/TASKS.md`, `docs/DECISIONS.md`). **T-F270** (`[x]`, 2026-09-26) — all projects on .NET 10 LTS (Build Commands' toolchain note);
 small-files ZIP slowdown fixed where possible in T-F271 (dotnet/runtime#134700).
 
 ## Roadmap Summary
@@ -832,6 +831,9 @@ windows-archiver-wrapper/
 │   │   └── NativeProgressDialog.cs ← IProgressDialog COM interop (in-process progress UI)
 │   ├── Archiver.CLI/                ← net10.0 Exe (real console), 7z-familiar CLI (T-F09), no
 │   │                                   WinUI, standalone self-contained distribution
+│   ├── Archiver.OperationUi/        ← code-only WinUI 3 exe, Explorer operation window (T-F268)
+│   ├── Archiver.OperationUi.Core/   ← net10.0, OperationWindowModel (window logic, no WinUI)
+│   ├── Archiver.OperationUi.Protocol/ ← net10.0, Shell <-> window pipe messages + framing
 │   └── Archiver.ShellExtension/    ← C++ COM DLL, IExplorerCommand (T-F61), x64+ARM64
 ├── tests/
 │   ├── Archiver.Core.Tests/        ← xunit (see "Current State" for current count)
@@ -840,6 +842,7 @@ windows-archiver-wrapper/
 │   ├── Archiver.Core.PerformanceTests/ ← xunit, T-F114: ZIP perf vs. vendored 7za.exe reference,
 │   │                                     [Trait("Category","Slow")], see docs/TESTING.md
 │   ├── Archiver.Shell.Tests/       ← xunit (see "Current State" for current count)
+│   ├── Archiver.OperationUi.Tests/ ← xunit, protocol framing + OperationWindowModel (T-F268)
 │   ├── Archiver.CLI.Tests/          ← xunit, parser/mapper unit tests + a Subprocess/ layer that
 │   │                                  Process.Starts the real built exe (T-F09), see docs/TESTING.md
 │   ├── Archiver.ShellExtension.Tests/  ← C++ Google Test, run separately (see Build Commands)
@@ -1125,11 +1128,6 @@ MSBuild tests\Archiver.ShellExtension.Tests\Archiver.ShellExtension.Tests.vcxpro
 > real `.msixbundle`. Fixed by widening that search to `-Include '*.msix', '*.msixbundle'` —
 > `Add-AppxPackage` installs either directly. If you ever reduce the shipped locale count back
 > down, expect the output to flip back to a flat `.msix` — both are handled now.
->
-> **Correction (2026-07-15, 37 locales):** the 25-locale threshold above didn't hold — adding 12
-> more locales (37 total) still produced a flat `.msix`, not a bundle. Don't assume a specific
-> locale count triggers the switch; `Deploy.ps1`'s dual `.msix`/`.msixbundle` search already
-> handles either output, so this isn't actionable — just don't be surprised either way.
 >
 > **A stuck `AppPackages\Archiver.App_<version>_Test\`/`obj\...\PackageLayout\` folder can look
 > like a process lock but isn't one.** Hit this the same day: `dotnet publish` failed with
