@@ -5765,6 +5765,44 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 - [ ] **Status:** open — found 2026-09-26 during the fix-phase-4 device check. UIA exposes each Archive Browser row's name as `ArchiveEntryViewModel { FullPath = Док.txt, Name = Док.txt, IsFolder = False, ... Icon = <glyph> }` — what Narrator reads. Set `AutomationProperties.Name` on the row template (name, and folder/file) in `MainWindow.xaml`.
 - **Reported by:** fix phase 4 device check, 2026-09-26.
 
+### T-F268 — Explorer operations: one UI interface, then a WinUI 3 operation window (P2, design + spike)
+
+- [ ] **Status:** open — user request 2026-09-26: Explorer-triggered dialogs look out of place on
+  Windows 10 and 11. User chose a separate lightweight WinUI 3 window (not the main App window)
+  for progress, conflict, password and result, and asked for one UI entry point instead of the
+  current mix. Today `Archiver.Shell` uses five native mechanisms: `MessageBoxW` (results, errors,
+  `Program.cs`), `TaskDialogIndirect` (`ShellConflictDialog`), a custom `DLGTEMPLATEEX` dialog
+  (`PasswordDialog`), `IProgressDialog` (`NativeProgressDialog`), and Core callbacks wired per
+  command through `StickyCallback` (conflict, password; the compression-bomb confirm, T-F217).
+  No public Win32 API gives these a Windows 11 look; dark mode for Win32 dialogs exists only
+  through undocumented `uxtheme` exports — rejected for this audience.
+- **Step 1 — one interface, no visual change:** an `IOperationUi` (progress + cancel, conflict,
+  password, compression-bomb confirm, result/error summary, "too large" message) that every
+  Shell command uses; the current Win32 code becomes its first implementation. Pure refactor,
+  tests first (a fake `IOperationUi` drives each command's prompt/cancel/result paths).
+- **Step 2 — spike before any WinUI code (hard gate):** the deleted `Archiver.ProgressWindow`
+  (a second WinUI 3 exe started with `Process.Start`) crashed in WinUI init (`0xc000027b`, see
+  `docs/DECISIONS.md`, "Progress UI: IProgressDialog replaces Archiver.ProgressWindow"); the
+  suspected cause was starting a WinUI process without activation. T-F232 now gives a real
+  activation path (`ActivateApplication`). Measure, on the installed MSIX: (a) whether a WinUI
+  window can be shown this way — as a second `<Application>` in the package, or as an
+  "operation mode" of `Archiver.App.exe` with its own small window; (b) cold-start time vs the
+  current dialogs; (c) z-order/foreground when started from Explorer (T-F253); (d) behavior with
+  the main App window already open (single-instance redirection, T-F201). Record results in
+  `docs/DECISIONS.md` and choose the host with the user before step 3.
+- **Step 3 — WinUI implementation of `IOperationUi`** in the chosen host; Fluent/Mica, light and
+  dark, 37 locales, keyboard and Narrator (T-F267 lessons). Win32 implementation stays as the
+  fallback if the WinUI host cannot start (fail visible, never silent). Designed together with
+  T-F199's mockup so the look changes once.
+- **Must not break:** Explorer COM DLL -> `Archiver.Shell` command line (T-F235 limit); Shell ->
+  App `LaunchArguments` hand-off (T-F232); Core callbacks run off the UI thread and must marshal
+  (CLAUDE.md UI-thread rule); cancel -> `CancellationToken` -> no partial files (T-F263);
+  "apply to all" across a multi-select (`StickyCallback`); password never logged or passed on a
+  command line; every Shell command still works when the App is not running or is busy.
+- **Related:** T-F199 (redesign), T-F208 (English titles/units), T-F216 (two modals), T-F217
+  (bomb dialog dead end), T-F253 (dialog behind other windows), T-F255 (255-char password cut).
+- **Reported by:** user, 2026-09-26.
+
 ### T-F223 — Diagram gap from T-F193 (P2)
 
 - [ ] **Status:** open. Carried by T-F202 from `docs/DECISIONS.md`'s T-F193 entry: no diagram in
