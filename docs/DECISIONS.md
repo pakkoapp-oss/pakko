@@ -9930,3 +9930,33 @@ net10, WinAppSDK 1.8.260209005, no `App.xaml`) packaged into the dev MSIX 1.5.0.
 
 **Decision.** Gate 0 passes; step 3 proceeds as planned (`async-seeking-dove.md`). Not yet
 measured: the real Explorer context-menu click (the Run dialog stands in for it) and ARM64.
+
+## T-F268 step 4 — the operation window helper, and two changes to the approved plan (2026-09-26)
+
+**Shipped.** `Archiver.OperationUi` (code-only WinUI 3 exe), `Archiver.OperationUi.Core`
+(`OperationWindowModel`, the window's logic, tested without WinUI) and Shell's `HelperOperationUi`
+(pipes, fallback and failover; tested on real in-process anonymous pipes against a fake helper).
+Packaged next to `Archiver.Shell.exe`; the Store bundle's x64 and arm64 packages were both checked
+to contain all six helper files (CI run 36260879055). See `docs/DIAGRAMS.md` diagram 8.
+
+**Change 1 — a prompt hands the operation to the Win32 windows (until step 5).** The plan had
+prompts stay Win32 dialogs beside the helper window during step 4. On device the helper window,
+shown 1 s in, took the foreground from the Win32 password prompt (typing went to the window, and
+Space would have pressed its Cancel) and covered the conflict TaskDialog. Raising the dialog above
+the window from Shell is a foreground fight between two processes; step 5 removes the problem by
+asking inside the window. Until then `AskConflictAsync`/`AskPasswordAsync` end the helper and
+continue the operation in a Win32 fallback session, exactly as before the helper. Consequence the
+user sees: any operation that prompts — every encrypted archive, and a re-extract into the same
+folder that hits a conflict — runs entirely in the Win32 windows until step 5.
+
+**Change 2 — no `FallbackOperationUi` class.** The plan named a separate wrapper class; the
+fallback is instead `HelperOperationUi`'s `fallback` constructor parameter (`Win32OperationUi` in
+`Program.cs`, `FakeOperationUi` in tests). One class owns the helper session and its failover, so
+there is no second place that has to agree on when the helper counts as gone.
+
+**Also found in the closing review:** `MessageBoxW` let users copy a result (a hash) with Ctrl+C;
+the new window did not. Fixed: `OperationWindowModel.CopyText` + a Ctrl+C accelerator.
+
+**Not verified yet:** display scaling above 100 % (the window sizes itself in DIPs), right-to-left
+layout, ARM64 at runtime (built and packaged, never run), Windows 10 (no Mica; custom title bar).
+A crash in any of these falls back to the Win32 windows.
