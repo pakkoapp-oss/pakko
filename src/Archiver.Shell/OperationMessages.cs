@@ -74,7 +74,7 @@ internal static class OperationMessages
                 : Path.GetFileName(f.ArchivePath);
             // AMSI's contract never returns a threat name, so the generic phrase is what ships;
             // ThreatName is used only if a future provider surfaces one. AntivirusScanService always
-            // sets Reason for an Inconclusive finding -- "unknown" is defensive only.
+            // sets Reason for an Inconclusive finding, so the fallback below is defensive only.
             string detail = f.Verdict == ThreatVerdict.ThreatDetected
                 ? f.ThreatName ?? ScanResultLocalizer.Get("ScanThreatDetectedGeneric")
                 : f.Reason ?? "unknown";
