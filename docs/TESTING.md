@@ -675,6 +675,21 @@ folder can be deleted), and `ResultMessagesLocalizerTests.Get_OpenUiKey_IsTransl
 The `ActivateApplication` call itself is device-only (it needs package identity): see
 `docs/DECISIONS.md`'s T-F232 entry for the checks.
 
+## Explorer Operation Window (T-F268 step 3, 2026-09-26)
+
+`ShellCommandsTests` (Shell): the three extract commands open ONE session for a multi-archive
+selection, name each archive through `BeginItem`, and show one combined result; cancelling the
+first archive never starts the second (T-F269) — 8 tests red on the old per-archive code.
+
+`tests/Archiver.OperationUi.Tests` (new project, references only `Archiver.OperationUi.Protocol`):
+`FrameCodecTests` round-trip every Shell<->helper message, the frame format over a real
+`AnonymousPipeServerStream`/`ClientStream` pair, the size boundary (a 32,767-char Cyrillic path in
+a conflict, a result listing ten of them, a message over `MaxFrameBytes`, invalid length fields),
+malformed payloads (unknown type, missing field, `null` for a non-null field, invalid JSON),
+truncated header/payload vs. a clean end of stream, 200 concurrent `MessageWriter` writes, and
+that neither `PasswordAnswer.ToString()` nor a `ProtocolException` quotes a password. All seven
+guards were mutation-checked (each removed in turn, its test turned red).
+
 ## Manual Smoke Test Cycle (Full Stack)
 
 Ordered simplest → most complex. Confirms Core, Shell, ShellExtension (COM), and the WinUI app
