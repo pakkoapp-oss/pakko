@@ -47,7 +47,7 @@ is a teaser only, per `CLAUDE.md`'s Documentation Map).
 | TAR/GZ/BZ2/XZ/ZST/LZMA | ✅ v1.3 (read), ✅ v1.4 (write, T-F105) | `tar.exe` (Windows built-in) |
 | RAR | ✅ v1.3 (read only — no libarchive writer exists) | `tar.exe` (Windows built-in) |
 | 7z | ✅ v1.3 (read only — no libarchive writer exists) | `tar.exe` (Windows built-in) |
-| Password-protected ZIP | ✅ v1.4 (read: ZipCrypto + WinZip AES; create: WinZip AES-256 only, T-F193 — file names stay unencrypted) | `System.IO.Compression` + .NET `System.Security.Cryptography` |
+| Password-protected ZIP | ✅ v1.5 (read: ZipCrypto + WinZip AES; create: WinZip AES-256 only, T-F193 — file names stay unencrypted) | `System.IO.Compression` + .NET `System.Security.Cryptography` |
 | Encrypted 7z/RAR | ❌ Detected and refused with a clear error (T-F113) | — |
 | Multi-volume | ❌ Out of scope | — |
 
@@ -220,7 +220,8 @@ teaser only; don't let it drift from `POLICIES.md` again.
 | v1.2 | Shell extension + MOTW + file associations + hash viewer |
 | v1.3 | tar.exe integration — RAR/7z/tar extraction + capability detection — **complete** |
 | v1.4 | GPO/ADMX + AppContainer sandbox (P/Invoke, T-F52) + strict mode policy + Archive Browser (T-F05) + TAR creation via tar.exe (T-F105, pulled forward from v1.5 2026-07-16) — **complete, including GPO/ADMX (T-F51, done 2026-07-18)** |
-| v1.5 | Additional format fixtures |
+| v1.5 | Password-protected ZIP (read ZipCrypto + WinZip AES, create AES-256; T-F188–T-F194) + `pakko://` scheme removed (T-F232) + extraction/sandbox correctness and security fixes (fix phases 1–4a) — **released as v1.5.0** |
+| v1.6 | Remaining fix-batch phases (5–10, `docs/TASKS.md`'s fix-batch index) + additional format fixtures |
 
 Package version (`Package.appxmanifest`'s `Identity Version`) tracks MSIX packaging, not this
 table 1:1 — see `CLAUDE.md`'s Deployment section.
