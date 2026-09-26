@@ -5820,6 +5820,19 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   `IProgressDialog` takes over). Also checked on 1.5.0.4: Archive (live progress), Hash (multi-line
   result), Scan (result), Extract to folder (fast, no window). The plan's "prompt open at crash -> re-asked via Win32" test moves
   to step 5 with the prompts. Next: step 5 (conflict and password prompts in the window).
+- **Explorer smoke (agent, 2026-09-26, build 1.5.0.5, real context menu clicked via UIA, window
+  captured by screen region - a per-window capture of WinUI comes out black):** Test (1 archive,
+  corrupted -> red error icon), Extract here smart (3 archives), Extract each to its folder (3,
+  cancelled with the title bar X: the running archive left no folder), Extract here on the
+  encrypted ZIP (Win32 password prompt kept the foreground, Win32 progress took over, extracted),
+  Add to "<folder>.zip" (3 folders, live progress), SHA-256 (3 files), Scan (3 archives), Open
+  (Archiver.App browse). Light and dark theme both render per the mockup; Enter, Esc and the title
+  bar X close a result. No crash events. **Polish for step 6:** (a) a SHA-256 value wraps mid-hash
+  in the result - monospace and/or no wrap; (b) Scan's clean text is singular ("this archive") for
+  several archives (`OperationMessages.ForScan`, pre-existing); (c) at the start of the next archive
+  the status still shows the previous archive's speed - reset the speed sampler in `BeginItem`;
+  (d) titles, buttons and Core messages are English (T-F208, step 6 localization); (e) the caption
+  shows a greyed Maximize button - consider hiding it as a dialog does.
 - **Status (original):** open — user request 2026-09-26: Explorer-triggered dialogs look out of place on
   Windows 10 and 11. User chose a separate lightweight WinUI 3 window (not the main App window)
   for progress, conflict, password and result, and asked for one UI entry point instead of the
