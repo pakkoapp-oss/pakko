@@ -57,6 +57,12 @@ $shellProj = Join-Path $repoRoot 'src\Archiver.Shell\Archiver.Shell.csproj'
 & dotnet build $shellProj /p:Configuration=Release /p:Platform=$platform /p:RuntimeIdentifier=$rid --self-contained
 if ($LASTEXITCODE -ne 0) { Write-Error "Archiver.Shell build failed (exit $LASTEXITCODE)."; exit $LASTEXITCODE }
 
+# ── Build Archiver.OperationUi (self-contained WinUI helper Archiver.Shell starts, T-F268) ──
+Write-Host "Building Archiver.OperationUi ($Architecture)..." -ForegroundColor Cyan
+$operationUiProj = Join-Path $repoRoot 'src\Archiver.OperationUi\Archiver.OperationUi.csproj'
+& dotnet build $operationUiProj /p:Configuration=Release /p:Platform=$platform /p:RuntimeIdentifier=$rid --self-contained
+if ($LASTEXITCODE -ne 0) { Write-Error "Archiver.OperationUi build failed (exit $LASTEXITCODE)."; exit $LASTEXITCODE }
+
 # ── Build Archiver.ShellExtension (C++ COM DLL) ────────────────────────────────
 Write-Host ""
 Write-Host "Building Archiver.ShellExtension ($Architecture)..." -ForegroundColor Cyan

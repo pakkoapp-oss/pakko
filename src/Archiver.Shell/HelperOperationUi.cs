@@ -342,8 +342,6 @@ internal sealed class HelperOperationUi(
         // unless it is already ending; either way nothing is decided on the user's behalf.
         private void Fail()
         {
-            IOperationSession? fallback = null;
-            (string Name, int Index, int Count)? item;
             lock (_lock)
             {
                 if (_failed || _windowClosed || _disposed)
@@ -351,22 +349,20 @@ internal sealed class HelperOperationUi(
                 _failed = true;
                 _queue.Clear();
                 _pendingProgress = null;
-                item = _item;
                 if (!_completing)
                 {
-                    fallback = _owner._fallbackUi.Begin(_title, _style);
+                    // Set up completely before it is published: a BeginItem racing this must not
+                    // be overwritten by the replay of the archive it replaced.
+                    IOperationSession fallback = _owner._fallbackUi.Begin(_title, _style);
+                    fallback.Cancellation.Register(CancelOperation);
+                    if (_item is { } item)
+                        fallback.BeginItem(item.Name, item.Index, item.Count);
                     _fallback = fallback;
                 }
             }
 
             _signal.Release();
             _connection.Kill();
-            if (fallback is not null)
-            {
-                fallback.Cancellation.Register(CancelOperation);
-                if (item is { } i)
-                    fallback.BeginItem(i.Name, i.Index, i.Count);
-            }
             _ended.TrySetResult();
         }
 

@@ -16,9 +16,11 @@ if (command.Type == CommandType.Invalid)
     return;
 }
 
-// T-F268: every window these commands show goes through IOperationUi; Win32OperationUi keeps the
-// native dialogs Explorer users already know.
-var commands = new ShellCommands(new Win32OperationUi(), ShellServices.Create(policy));
+// T-F268: every window these commands show goes through IOperationUi. The WinUI operation window
+// helper is used when it starts; Win32OperationUi (the native dialogs) is its fallback.
+var ui = new HelperOperationUi(new HelperProcessLauncher(), new Win32OperationUi(),
+    ShellConflictDialog.ShowAsync, PasswordDialog.ShowAsync);
+var commands = new ShellCommands(ui, ShellServices.Create(policy));
 
 switch (command.Type)
 {

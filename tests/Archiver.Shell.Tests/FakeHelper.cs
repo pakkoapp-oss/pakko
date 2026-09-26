@@ -55,8 +55,9 @@ internal sealed class FakeHelper : IHelperLauncher, IDisposable
 
     public async Task SendAsync(ProtocolMessage message)
     {
+        // No flush: an anonymous pipe has no write buffer, and Shell may end this fake (Kill) the
+        // moment it reads the frame, which would fail a flush after a write that already arrived.
         await _out!.WriteAsync(FrameCodec.Encode(message));
-        await _out.FlushAsync();
     }
 
     public Task SendReadyAsync() => SendAsync(new HelperReady(FrameCodec.ProtocolVersion));

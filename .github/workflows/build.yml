@@ -133,6 +133,9 @@ jobs:
           # and Archiver.CLI/Program.cs IS exercised -- by Archiver.CLI.Tests' Subprocess/ layer,
           # which Process.Starts the real built exe -- but coverlet cannot instrument a spawned
           # child process, so those lines read as 0% despite being under real test coverage.
+          # T-F268: Archiver.OperationUi/** is a WinUI window (no test host can create one; its
+          # logic lives in the tested Archiver.OperationUi.Core) and HelperProcessLauncher.cs
+          # starts that real exe; HelperOperationUi is tested through a fake launcher instead.
           # See docs/CONVENTIONS.md's "SonarCloud Coverage Exclusions" section.
           .\.sonar\scanner\dotnet-sonarscanner begin `
             /k:"$env:SONAR_PROJECT_KEY" `
@@ -140,7 +143,7 @@ jobs:
             /d:sonar.token="$env:SONAR_TOKEN" `
             /d:sonar.host.url="https://sonarcloud.io" `
             /d:sonar.cs.cobertura.reportsPaths="**/coverage.cobertura.xml" `
-            /d:sonar.coverage.exclusions="src/Archiver.Shell/Program.cs,src/Archiver.Shell/NativeProgressDialog.cs,src/Archiver.Core/Services/ExplorerLauncher.cs,src/Archiver.CLI/Program.cs"
+            /d:sonar.coverage.exclusions="src/Archiver.Shell/Program.cs,src/Archiver.Shell/NativeProgressDialog.cs,src/Archiver.Core/Services/ExplorerLauncher.cs,src/Archiver.CLI/Program.cs,src/Archiver.OperationUi/**,src/Archiver.Shell/HelperProcessLauncher.cs"
 
       - name: Run .NET test suite
         # --collect:"XPlat Code Coverage" uses the coverlet.collector package already referenced

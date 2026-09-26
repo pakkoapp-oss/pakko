@@ -457,12 +457,12 @@ next triage.
 
 ## SonarCloud Coverage Exclusions
 
-`.github/workflows/build.yml`'s `sonar.coverage.exclusions` (added T-F149) removes exactly four
-files from the `new_coverage` gate's denominator — they stay fully analyzed for every other rule
+`.github/workflows/build.yml`'s `sonar.coverage.exclusions` (added T-F149) removes the files
+below from the `new_coverage` gate's denominator — they stay fully analyzed for every other rule
 (bugs, vulnerabilities, code smells); this is `sonar.coverage.exclusions`, not `sonar.exclusions`,
 which would drop a file from analysis entirely and lose its findings too. All four are genuinely
 unreachable by `coverlet` (the coverage collector `dotnet test --collect:"XPlat Code Coverage"`
-uses), not merely untested:
+uses), not merely untested (the first four since T-F149, the last two since T-F268):
 
 - **`Archiver.Shell/Program.cs`, `Archiver.Shell/NativeProgressDialog.cs`**: drive a real COM
   `IProgressDialog` — `CLAUDE.md`'s "Known test gaps" section already names
@@ -476,8 +476,13 @@ uses), not merely untested:
   exactly this for a directly-user-invoked frontend). `coverlet` cannot instrument a spawned
   child process, so these lines read as 0% covered despite being under real test coverage — the
   exclusion here is about a collector limitation, not an untestable-by-design admission.
+- **`Archiver.OperationUi/**`**: the WinUI 3 operation window — no test host can create a WinUI
+  window. Its logic lives in `Archiver.OperationUi.Core` (`OperationWindowModel`), which is
+  tested; the exe only renders it.
+- **`Archiver.Shell/HelperProcessLauncher.cs`**: starts that real exe over anonymous pipes.
+  `HelperOperationUi` is tested through `IHelperLauncher` with a fake helper on real pipes.
 
-Adding a 5th exclusion needs the same bar as adding a new won't-fix rule above: a specific,
+Adding another exclusion needs the same bar as adding a new won't-fix rule above: a specific,
 verified reason the collector (or a unit test) genuinely cannot reach the code — not "coverage is
 inconvenient to write."
 
@@ -489,6 +494,8 @@ inconvenient to write."
 |---------|---------|---------|
 | `CommunityToolkit.Mvvm` | `Archiver.App` only | `ObservableObject`, `RelayCommand` |
 | None | `Archiver.Core` | Pure .NET, no NuGet dependencies |
+| `Microsoft.WindowsAppSDK`, `Microsoft.Windows.SDK.BuildTools` | `Archiver.OperationUi` | WinUI 3 operation window (T-F268); same versions as `Archiver.App` |
+| None | `Archiver.OperationUi.Protocol`, `Archiver.OperationUi.Core` | Pure .NET |
 
 **Vendored native binaries (test-only, not a package reference) — `Archiver.Core.PerformanceTests`
 only:** `tests/Archiver.Core.PerformanceTests/Tools/7-Zip/{x64,arm64}/7za.exe` (T-F114) is a

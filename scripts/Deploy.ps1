@@ -4,7 +4,7 @@
     Builds, signs, and installs the Pakko MSIX package for local development.
 .DESCRIPTION
     In default (BuildAndDeploy) mode:
-      1. Builds Archiver.Shell for the target architecture.
+      1. Builds Archiver.Shell and Archiver.OperationUi for the target architecture.
       2. Runs dotnet publish on Archiver.App with GenerateAppxPackageOnBuild=true.
          Content Include items in Archiver.App.csproj declare the satellite EXE as
          package content, so the packaging pipeline includes it automatically.
@@ -99,6 +99,14 @@ if (-not $DeployOnly) {
     # T-F102: remember this build's own path so the post-publish completeness check (below) can
     # tell a freshly-copied satellite EXE from a stale one PreserveNewest silently kept.
     $shellExeSourcePath = Join-Path $repoRoot "src\Archiver.Shell\bin\$platform\Release\net10.0-windows\$rid\Archiver.Shell.exe"
+
+    # T-F268: the operation window helper Archiver.Shell starts; self-contained for the same reason.
+    $operationUiProj = Join-Path $repoRoot 'src\Archiver.OperationUi\Archiver.OperationUi.csproj'
+    & dotnet build $operationUiProj /p:Configuration=Release /p:Platform=$platform /p:RuntimeIdentifier=$rid --self-contained
+    $operationUiBuildExitCode = $LASTEXITCODE
+    if ($operationUiBuildExitCode -ne 0) { Write-Error "Archiver.OperationUi build failed (exit $operationUiBuildExitCode)."; exit $operationUiBuildExitCode }
+    # The managed .dll, not the apphost: the apphost barely changes between builds (T-F128).
+    $operationUiDllSourcePath = Join-Path $repoRoot "src\Archiver.OperationUi\bin\$platform\Release\net10.0-windows10.0.17763.0\$rid\Archiver.OperationUi.dll"
 
     # ── Build Archiver.ShellExtension (C++ DLL) ───────────────────────────────────
     Write-Host ""
@@ -209,7 +217,8 @@ if (-not $DeployOnly) {
             try {
                 foreach ($check in @(
                     @{ Name = 'Archiver.Shell.exe'; SourcePath = $shellExeSourcePath },
-                    @{ Name = 'Archiver.ShellExtension.dll'; SourcePath = $shellExtDllSourcePath }
+                    @{ Name = 'Archiver.ShellExtension.dll'; SourcePath = $shellExtDllSourcePath },
+                    @{ Name = 'Archiver.OperationUi.dll'; SourcePath = $operationUiDllSourcePath }
                 )) {
                     $entry = $zip.Entries | Where-Object { $_.Name -eq $check.Name } | Select-Object -First 1
                     if (-not $entry) {

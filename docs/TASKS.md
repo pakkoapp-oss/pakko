@@ -5800,7 +5800,21 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   **Decision (agent, user-delegated 2026-09-26):** step 5 extends Core's `ConflictInfo` with optional
   incoming-entry size and modified time (additive, null when unknown) so the conflict prompt can
   compare both files as the approved mockup shows; the App's T-F06 dialog keeps working unchanged.
-  Next: step 4 (helper exe, `Archiver.OperationUi.Core`, Shell fallback/failover, packaging).
+  Step 4 (helper progress/cancel/result) done in three commits: `Archiver.OperationUi.Core`
+  (`OperationWindowModel`, 23 tests), Shell `HelperOperationUi` + `HelperProcessLauncher` (fallback
+  on no start / no ready in 5 s / another protocol version, failover on EOF without
+  `WindowClosed`, close = cancel; 17 tests on real in-process pipes; `FallbackOperationUi` from the
+  plan is the `fallback` parameter, not a class), and the code-only WinUI exe
+  `Archiver.OperationUi` + packaging (App.csproj, Deploy.ps1, CI-Build-Msix.ps1) + DIAGRAMS
+  diagram 8. Agent-checked on the installed 1.5.0.2 via UIA: a fast clean extract shows no window;
+  a 5-archive extract shows the window at ~1.8 s with "Archive 2 of 5", progress, status and
+  "Cancel all" and closes itself at the end; Cancel all stops the selection with no partial
+  folder and no Win32 window; killing the helper hands the operation to `IProgressDialog`
+  (4/5 -> 5/5, all extracted); Test shows its result in the window until Close. The window's
+  look (light/dark, Mica, DPI) needs the user's eye (agent captures come out black); UIA reports
+  the title bar's Maximize button enabled despite `IsMaximizable = false` - check on screen.
+  Prompts are still Win32 dialogs; the plan's "prompt open at crash -> re-asked via Win32" test
+  moves to step 5 with them. Next: step 5 (conflict and password prompts in the window).
 - **Status (original):** open — user request 2026-09-26: Explorer-triggered dialogs look out of place on
   Windows 10 and 11. User chose a separate lightweight WinUI 3 window (not the main App window)
   for progress, conflict, password and result, and asked for one UI entry point instead of the

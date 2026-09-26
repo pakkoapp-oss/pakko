@@ -46,6 +46,7 @@ documentation that lies.
 | MSIX manifest `<Application>` entries, `com:ComServer` registration, packaging of a new satellite EXE | **4. Component** | Catches "works in VS, `ERROR_ACCESS_DENIED` when packaged" — an EXE that isn't its own declared `Application` entry. |
 | New branch in `TarSandboxedService`'s pre-scan/extraction/conflict pipeline | **5. Activity (tar.exe)** | Whole-archive-reject means a single scan gap silently lets an entire class of unsafe entries through — there's no per-entry fallback the way ZIP has, so a missed branch here is higher-severity, not lower. |
 | `MainWindow.xaml` row added/removed, or any row's `Visibility` binding changed; new `IsBrowsingArchive`-gated (or should-be-gated) UI element | **6. State (UI mode)** | Exactly the category that missed Row 0 never hiding in browse mode (found 2026-07-13 by manual comparison, not by this table) — a per-row visibility table is the only thing that would have caught it before shipping. |
+| `HelperOperationUi`'s failover/close handling, `OperationWindowModel`'s states, or a new protocol message | **8. Sequence (operation window helper)** | Close, clean end and crash differ only by the last frame on the pipe — a missed case either loses the result or shows it twice. |
 | New branch in `AntivirusScanService`'s ZIP-vs-tar-family dispatch, or either scan path's error handling | **7. Sequence (AMSI scan)** | A scan silently returning `Clean` for a path it never actually examined (unsupported format, no provider, oversized entry, a vanished tar quarantine file) is the exact failure class this feature exists to prevent — a missed branch here is a false negative, the highest-severity outcome this diagram category can catch. |
 
 Update the diagram in the same commit as the code change, alongside `dotnet test` — not as a
@@ -150,7 +151,7 @@ sequenceDiagram
             EH->>ShellExe: LaunchShellExe(BuildExtractHereArgs(paths))<br/>— or BuildExtractHereFlatArgs (T-F115, "--extract-flat") /<br/>BuildExtractFolderArgs / BuildArchiveArgs / BuildTestArgs<br/>CreateProcessW — PROCESS_INFORMATION handles<br/>closed immediately — does NOT wait for the child<br/>note: TC passes the FULL selection unfiltered — Core does the<br/>per-path IsZipFile gating, same as Extract already does
             ShellExe-->>Explorer: (no return channel — ShellExe runs independently)
             EH-->>Explorer: S_OK, or HRESULT_FROM_WIN32(GetLastError())<br/>on CreateProcess failure — returned the instant<br/>CreateProcess returns, NOT when the operation finishes
-            ShellExe->>ShellExe: ShellCommands → ui.Begin(title, Bytes) — T-F268: every window goes through<br/>IOperationUi, ONE session per Explorer command (T-F268 step 3), even for a multi-archive<br/>selection — Win32OperationUi is the implementation drawn here
+            ShellExe->>ShellExe: ShellCommands → ui.Begin(title, Bytes) — T-F268: every window goes through<br/>IOperationUi, ONE session per Explorer command (T-F268 step 3), even for a multi-archive<br/>selection — Win32OperationUi is drawn here. Since T-F268 step 4 the WinUI helper<br/>(diagram 8) comes first, and this is its fallback
             ShellExe->>Dlg: new NativeProgressDialog(title)<br/>= new ProgressDialogCoClass() + StartProgressDialog
             alt COMException thrown during construction
                 ShellExe->>Core: ArchiveAsync/ExtractAsync/TestAsync(options or paths, session.Progress = null, CancellationToken.None)
@@ -500,6 +501,7 @@ flowchart TB
         subgraph AppShell["Application Id=ShellHelper<br/>EntryPoint=Windows.FullTrustApplication<br/>AppListEntry=none"]
             Shell[Archiver.Shell.exe]
         end
+        OpUi["Archiver.OperationUi.exe (T-F268)<br/>no Application entry of its own —<br/>a child of Shell keeps the package identity"]
         subgraph ComReg["com:Extension windows.comServer → com:SurrogateServer"]
             Dll["Archiver.ShellExtension.dll<br/>com:Class Id=1EABC7CE-20A4-48EE-A99F-43D4E0F58D6A<br/>ThreadingModel=STA"]
         end
@@ -509,6 +511,7 @@ flowchart TB
     Dllhost -->|loads| Dll
     Dll -->|"CreateProcess(Archiver.Shell.exe)<br/>⚠ ERROR_ACCESS_DENIED if not declared<br/>as its own Application entry"| Shell
     Shell -.->|"ActivateApplication(PFN!App,<br/>--browse/--extract/--archive base64)<br/>(Launch activation, Open-UI flow only, T-F232 —<br/>no URI protocol is registered)"| App
+    Shell -->|"Process.Start + two anonymous pipes<br/>(operation window, diagram 8)"| OpUi
     Shell --> Core[Archiver.Core / ZipArchiveService]
     App --> Core
 ```
@@ -901,6 +904,70 @@ archive or entry it never actually examined. This was the exact concern `advisor
 implementation started (docs/DECISIONS.md's T-F146 entry) and is what the Phase A test suite
 (`AntivirusScanServiceTests.cs`, `AntivirusScanServiceTarTests.cs`) exercises directly, one branch
 at a time.
+
+---
+
+## 8. Sequence — Explorer operation window helper (T-F268 step 4)
+
+Sources read for this diagram: `src/Archiver.Shell/Program.cs`, `src/Archiver.Shell/HelperOperationUi.cs`,
+`src/Archiver.Shell/HelperProcessLauncher.cs`, `src/Archiver.Shell/OperationWindowText.cs`,
+`src/Archiver.OperationUi/HelperApp.cs`, `src/Archiver.OperationUi/ShellPipe.cs`,
+`src/Archiver.OperationUi/OperationWindow.cs`, `src/Archiver.OperationUi.Core/OperationWindowModel.cs`,
+`src/Archiver.OperationUi.Protocol/Messages.cs`.
+
+`Program.cs` gives `ShellCommands` a `HelperOperationUi` with `Win32OperationUi` (diagram 1's
+windows) as its fallback. Prompts (conflict, password) are still the Win32 dialogs in this step.
+
+```mermaid
+sequenceDiagram
+    participant Cmd as ShellCommands
+    participant HUI as HelperOperationUi (Shell)
+    participant H as Archiver.OperationUi.exe
+    participant W as Win32OperationUi (fallback)
+    actor User
+
+    Cmd->>HUI: Begin(title, style)
+    alt launcher throws — exe missing or CreateProcess failed
+        HUI->>W: Begin(title, style) — the whole operation uses the Win32 windows
+    else helper started
+        HUI->>H: Process.Start(absolute path, --in handle --out handle)<br/>two anonymous pipes, Shell's client copies disposed at once, AllowSetForegroundWindow(pid)
+        HUI->>H: Hello(culture, RTL, labels), Begin(title, kind) — queued, a pump task writes every frame
+        H->>H: OperationWindowModel, window built hidden
+        H-->>HUI: HelperReady(version)
+        opt no ready within 5 s, or another protocol version
+            HUI->>H: Kill
+            HUI->>W: Begin(title, style) — a fallback session takes over
+        end
+        loop while the operation runs
+            Cmd->>HUI: BeginItem(name, i, n) / Progress.Report
+            HUI->>H: Item, Progress — progress coalesced into one pending slot, at most every 50 ms
+        end
+        Note over H: shown 1 s after Begin, or at once for a result —<br/>a clean operation faster than that shows nothing
+        alt user presses Cancel, Esc or the title bar X
+            H-->>HUI: CancelRequested, then WindowClosed — the window closes, the helper exits
+            HUI->>Cmd: session.Cancellation cancelled → OperationCanceledException → Dispose — no failover
+        else pipe ends without WindowClosed — helper crashed or was killed
+            HUI->>W: Begin(title) + BeginItem(current archive)<br/>Win32 carries the rest — progress, Cancel, prompts, result
+        else operation finishes
+            Cmd->>HUI: Complete(message)
+            HUI->>H: Complete(result, or null for a clean Extract/Archive)
+            alt null
+                H-->>HUI: WindowClosed — waited for up to 3 s, then the helper is killed
+            else result
+                User->>H: Close
+                H-->>HUI: WindowClosed — Complete blocks until then, as MessageBoxW did
+                opt pipe ended before WindowClosed
+                    HUI->>W: ShowMessage(message) — no progress window flashes just for the result
+                end
+            end
+        end
+    end
+```
+
+**What this catches:** the three ways the helper can end — the user closing it (a cancel), a
+clean end (`WindowClosed` after `Complete`), and a crash (EOF with no `WindowClosed`) — are told
+apart only by that last frame. A helper that exits without writing it turns every normal close
+into a spurious Win32 failover, so `ShellPipe.Send` writes synchronously before the window closes.
 
 ---
 

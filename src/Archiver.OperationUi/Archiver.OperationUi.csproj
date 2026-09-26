@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    T-F268 step 4: the Explorer commands' operation window, a code-only WinUI 3 exe started by
+    Archiver.Shell inside the package. No App.xaml and no XAML pages: the package's PRI already has
+    Archiver.App's Files/App.xbf, and a second one breaks it (step 2 spike). Bootstrap and
+    DeploymentManager stay off: the process runs with the package's identity and its declared
+    WindowsAppRuntime dependency (Gate 0, docs/DECISIONS.md). TFM and WindowsAppSDK version match
+    Archiver.App so the assemblies both place at the package root are identical.
+  -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.17763.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>..\Archiver.App\Assets\Square44x44Logo.ico</ApplicationIcon>
+    <Platforms>x86;x64;ARM64</Platforms>
+    <RuntimeIdentifiers>win-x86;win-x64;win-arm64</RuntimeIdentifiers>
+    <UseWinUI>true</UseWinUI>
+    <WindowsPackageType>None</WindowsPackageType>
+    <WindowsAppSdkBootstrapInitialize>false</WindowsAppSdkBootstrapInitialize>
+    <WindowsAppSdkDeploymentManagerInitialize>false</WindowsAppSdkDeploymentManagerInitialize>
+    <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.7705" />
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.8.260209005" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Archiver.OperationUi.Core\Archiver.OperationUi.Core.csproj" />
+    <ProjectReference Include="..\Archiver.OperationUi.Protocol\Archiver.OperationUi.Protocol.csproj" />
+  </ItemGroup>
+</Project>

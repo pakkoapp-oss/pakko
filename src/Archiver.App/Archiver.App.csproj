@@ -126,6 +126,32 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <!--
+      T-F268 step 4: the Explorer commands' operation window, started by Archiver.Shell. Same
+      shape as Archiver.Shell above (self-contained apphost + its own managed files); its WinUI and
+      runtime assemblies are the ones Archiver.App's publish already places at the package root
+      (same TFM and WindowsAppSDK version). Note the TFM: net10.0-windows10.0.17763.0, not Shell's.
+    -->
+    <Content Include="..\Archiver.OperationUi\bin\$(Platform)\$(Configuration)\net10.0-windows10.0.17763.0\$(RuntimeIdentifier)\Archiver.OperationUi.exe">
+      <Link>Archiver.OperationUi.exe</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\Archiver.OperationUi\bin\$(Platform)\$(Configuration)\net10.0-windows10.0.17763.0\$(RuntimeIdentifier)\Archiver.OperationUi.dll">
+      <Link>Archiver.OperationUi.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\Archiver.OperationUi\bin\$(Platform)\$(Configuration)\net10.0-windows10.0.17763.0\$(RuntimeIdentifier)\Archiver.OperationUi.deps.json">
+      <Link>Archiver.OperationUi.deps.json</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\Archiver.OperationUi\bin\$(Platform)\$(Configuration)\net10.0-windows10.0.17763.0\$(RuntimeIdentifier)\Archiver.OperationUi.runtimeconfig.json">
+      <Link>Archiver.OperationUi.runtimeconfig.json</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\Archiver.OperationUi\bin\$(Platform)\$(Configuration)\net10.0-windows10.0.17763.0\$(RuntimeIdentifier)\Archiver.OperationUi.Core.dll">
+      <Link>Archiver.OperationUi.Core.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <!--
       T-F128 follow-up: Archiver.Shell.Resources/*.resx satellite assemblies (one per locale,
       e.g. uk-UA\Archiver.Shell.resources.dll) live in per-culture subfolders the four items
       above don't cover. %(RecursiveDir) preserves each culture subfolder in the package —

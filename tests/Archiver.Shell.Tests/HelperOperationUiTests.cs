@@ -52,6 +52,10 @@ public sealed class HelperOperationUiTests : IDisposable
         return session;
     }
 
+    // The fallback session is listed by FakeOperationUi as soon as it is created, but used only once
+    // HelperOperationUi has finished setting it up; ending the helper comes after that.
+    private Task WaitUntilTakenOverAsync() => WaitUntilAsync(() => _fallback.Sessions.Count == 1 && _helper.Killed);
+
     private static async Task WaitUntilAsync(Func<bool> condition)
     {
         var limit = DateTime.UtcNow + WaitLimit;
@@ -224,7 +228,7 @@ public sealed class HelperOperationUiTests : IDisposable
 
         await _helper.SendAsync(new HelperReady(FrameCodec.ProtocolVersion + 1));
 
-        await WaitUntilAsync(() => _fallback.Sessions.Count == 1);
+        await WaitUntilTakenOverAsync();
         _helper.Killed.Should().BeTrue();
     }
 
@@ -246,7 +250,7 @@ public sealed class HelperOperationUiTests : IDisposable
     {
         using var session = CreateUi(readyTimeout: TimeSpan.FromMilliseconds(200)).Begin("t", ProgressStyle.Bytes);
 
-        await WaitUntilAsync(() => _fallback.Sessions.Count == 1);
+        await WaitUntilTakenOverAsync();
 
         _helper.Killed.Should().BeTrue();
         session.Progress!.Report(new ProgressReport { Percent = 5 });
@@ -261,7 +265,7 @@ public sealed class HelperOperationUiTests : IDisposable
         await _helper.ReadUntilAsync<Item>();
 
         _helper.Crash();
-        await WaitUntilAsync(() => _fallback.Sessions.Count == 1);
+        await WaitUntilTakenOverAsync();
 
         var takeover = _fallback.Sessions[0];
         takeover.Title.Should().Be("Extracting 3 archives");
