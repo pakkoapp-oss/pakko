@@ -442,6 +442,9 @@ tests caught before shipping):
     concurrency bug (temp-file cleanup racing against a still-running straggler task) that failed
     intermittently only under full-suite parallel load, never in isolation; fixed by awaiting
     every dispatched compress task before sweeping leftover temp files.
+  - Allocation guard (T-F271): `CompressSmallFile` on a 4 KiB file allocates under 32 KiB on the
+    calling thread (`GC.GetAllocatedBytesForCurrentThread`, isolated from parallel tests) — pins
+    the unbuffered read; a 64 KiB `FileStream` buffer per file made it 70 KiB.
 - `ZipEntryWriterCompatibilityTests` (`Archiver.Core.PerformanceTests/` — lives there specifically
   to reuse the vendored, hash-verified `7za.exe` binary rather than duplicating it into a second
   test project; a correctness suite, not a performance one, despite the location) — proves the
