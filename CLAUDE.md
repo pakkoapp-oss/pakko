@@ -422,8 +422,8 @@ required before this batch closes; the Store build is live).**
 `IOperationUi` (`ShellCommands`, `Win32OperationUi`, `OperationMessages`); `Program.cs` only parses
 and dispatches. Step 2 spike done: OS XAML Islands not viable as-is (packaged crash `0x802B000A`,
 Windows 10 look); a code-only WinUI 3 window starts under package identity — step 3 plan next
-(`docs/DECISIONS.md`). **T-F270** (`[~]`, 2026-09-26) — every project moves to .NET 10 LTS (see
-Build Commands' toolchain note); .NET 8/9 leave support 2026-11-10.
+(`docs/DECISIONS.md`). **T-F270** (`[x]`, 2026-09-26) — all projects on .NET 10 LTS (Build Commands' toolchain note);
+small-files ZIP slowdown fixed where possible in T-F271 (dotnet/runtime#134700).
 
 ## Roadmap Summary
 
