@@ -39,10 +39,12 @@ internal sealed class Win32OperationUi : IOperationUi
         private readonly object _dialogLock = new();
         private readonly CancellationTokenSource _cts = new();
         private readonly Timer? _cancelPoll;
+        private readonly string _title;
         private NativeProgressDialog? _dialog;
 
         public Session(string title, ProgressStyle style)
         {
+            _title = title;
             try
             {
                 _dialog = new NativeProgressDialog(title);
@@ -92,6 +94,15 @@ internal sealed class Win32OperationUi : IOperationUi
         public IProgress<ProgressReport>? Progress { get; }
 
         public CancellationToken Cancellation => _cts.Token;
+
+        // A single archive keeps the title it was opened with; a selection names each archive.
+        public void BeginItem(string name, int index, int count)
+        {
+            if (count <= 1)
+                return;
+            lock (_dialogLock)
+                _dialog?.SetTitle($"{_title} \u2014 {name} ({index}/{count})");
+        }
 
         public Task<ConflictDecision> AskConflictAsync(ConflictInfo info) => ShellConflictDialog.ShowAsync(info);
 

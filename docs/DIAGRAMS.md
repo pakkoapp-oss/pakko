@@ -150,7 +150,7 @@ sequenceDiagram
             EH->>ShellExe: LaunchShellExe(BuildExtractHereArgs(paths))<br/>— or BuildExtractHereFlatArgs (T-F115, "--extract-flat") /<br/>BuildExtractFolderArgs / BuildArchiveArgs / BuildTestArgs<br/>CreateProcessW — PROCESS_INFORMATION handles<br/>closed immediately — does NOT wait for the child<br/>note: TC passes the FULL selection unfiltered — Core does the<br/>per-path IsZipFile gating, same as Extract already does
             ShellExe-->>Explorer: (no return channel — ShellExe runs independently)
             EH-->>Explorer: S_OK, or HRESULT_FROM_WIN32(GetLastError())<br/>on CreateProcess failure — returned the instant<br/>CreateProcess returns, NOT when the operation finishes
-            ShellExe->>ShellExe: ShellCommands → ui.Begin(title, Bytes) — T-F268: every window goes through<br/>IOperationUi, one session per archive — Win32OperationUi is the implementation drawn here
+            ShellExe->>ShellExe: ShellCommands → ui.Begin(title, Bytes) — T-F268: every window goes through<br/>IOperationUi, ONE session per Explorer command (T-F268 step 3), even for a multi-archive<br/>selection — Win32OperationUi is the implementation drawn here
             ShellExe->>Dlg: new NativeProgressDialog(title)<br/>= new ProgressDialogCoClass() + StartProgressDialog
             alt COMException thrown during construction
                 ShellExe->>Core: ArchiveAsync/ExtractAsync/TestAsync(options or paths, session.Progress = null, CancellationToken.None)
@@ -161,14 +161,15 @@ sequenceDiagram
                         ShellExe->>ShellExe: cts.Cancel()
                     end
                 end
+                ShellExe->>Dlg: extract commands only, per archive: session.BeginItem(name, i, n)<br/>— SetTitle(title — name (i/n)) when n is greater than 1, otherwise the title stays
                 ShellExe->>Core: ArchiveAsync/ExtractAsync/TestAsync(options or paths, session.Progress, session.Cancellation)
                 Core-->>ShellExe: IProgress<ProgressReport> callback per file/entry<br/>(TestAsync: TotalBytes=0, one report per archive — no byte-level tracking)
                 ShellExe->>Dlg: SetLine(1, CurrentFile) / SetLine(2, status) / SetProgress64(bytes, total)
             end
             alt OperationCanceledException from Core
-                ShellExe->>Dlg: session.Dispose() → StopProgressDialog — no message at all
+                ShellExe->>Dlg: session.Dispose() → StopProgressDialog — no message at all<br/>T-F269: the one token stops the whole selection, later archives never start
             else Core completes
-                Core-->>ShellExe: ArchiveResult<br/>(TestAsync: CreatedFiles always empty — nothing is written to disk)
+                Core-->>ShellExe: ArchiveResult, one per archive combined into one (extract commands)<br/>(TestAsync: CreatedFiles always empty — nothing is written to disk)
                 Note over ShellExe: OperationMessages via ShellResultPresenter.Classify(result) (T-F68):<br/>Failed (!Success or Errors.Count>0) wins over SkippedOnly wins over Success.<br/>Test adds No errors detected on success, joined with a skipped list<br/>into ONE message (T-F216) — success has no visible disk side effect
                 ShellExe->>Dlg: session.Complete(message) → StopProgressDialog first
                 opt message is not null (Extract/Archive success has none)

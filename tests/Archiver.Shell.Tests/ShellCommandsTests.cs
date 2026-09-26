@@ -50,17 +50,37 @@ public sealed class ShellCommandsTests : IDisposable
         ui.Messages.Should().BeEmpty();
     }
 
-    [Fact]
-    public async Task ExtractHere_TwoArchives_OneSessionPerArchive()
+    // T-F268 step 3: one window per Explorer command, naming each archive as it starts.
+    [Theory]
+    [InlineData("here")]
+    [InlineData("flat")]
+    [InlineData("folder")]
+    public async Task Extract_TwoArchives_OneSessionNamingEachArchive(string command)
     {
         string first = MakeZip("one.zip", ("a.txt", "A"), ("b.txt", "B"));
         string second = MakeZip("two.zip", ("c.txt", "C"), ("d.txt", "D"));
         var ui = new FakeOperationUi();
 
-        await Create(ui).ExtractHereAsync([first, second]);
+        await RunExtract(Create(ui), command, [first, second]);
 
-        ui.Sessions.Select(s => s.Title).Should().Equal("Extracting: one.zip", "Extracting: two.zip");
-        File.Exists(Path.Combine(_root, "two", "d.txt")).Should().BeTrue();
+        var session = ui.Sessions.Should().ContainSingle().Subject;
+        session.Title.Should().Be("Extracting 2 archives");
+        session.Items.Should().Equal(("one.zip", 1, 2), ("two.zip", 2, 2));
+        session.Completed.Should().BeTrue();
+        session.Disposed.Should().BeTrue();
+        ui.Messages.Should().BeEmpty();
+        Directory.GetFiles(_root, "d.txt", SearchOption.AllDirectories).Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task ExtractHere_SingleArchive_NamesItAsTheOnlyItem()
+    {
+        string zip = MakeZip("photos.zip", ("a.txt", "A"), ("b.txt", "B"));
+        var ui = new FakeOperationUi();
+
+        await Create(ui).ExtractHereAsync([zip]);
+
+        ui.Sessions.Should().ContainSingle().Which.Items.Should().Equal(("photos.zip", 1, 1));
     }
 
     [Fact]
@@ -300,6 +320,54 @@ public sealed class ShellCommandsTests : IDisposable
         ui.Sessions.Should().ContainSingle().Which.Disposed.Should().BeTrue();
     }
 
+    // T-F269: Cancel stops the whole Explorer command — before, each archive had its own window
+    // and cancel token, so cancelling the first one just moved on to the next.
+    [Theory]
+    [InlineData("here")]
+    [InlineData("flat")]
+    [InlineData("folder")]
+    public async Task Extract_TwoArchivesCancelledOnTheFirst_SecondIsNeverStarted(string command)
+    {
+        string first = MakeZip("one.zip", ("a.txt", "A"), ("b.txt", "B"));
+        string second = MakeZip("two.zip", ("c.txt", "C"), ("d.txt", "D"));
+        var ui = new FakeOperationUi { CancelFirstSessionOnBegin = true };
+
+        await RunExtract(Create(ui), command, [first, second]);
+
+        Directory.GetFiles(_root, "*.txt", SearchOption.AllDirectories).Should().BeEmpty();
+        ui.Messages.Should().BeEmpty();
+        ui.Sessions.Should().ContainSingle().Which.Disposed.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ExtractHereFlat_TwoCorruptedArchives_OneMessageNamingBoth()
+    {
+        string first = MakeCorruptedZip("broken1.zip");
+        string second = MakeCorruptedZip("broken2.zip");
+        var ui = new FakeOperationUi();
+
+        await Create(ui).ExtractHereFlatAsync([first, second]);
+
+        var message = ui.Messages.Should().ContainSingle().Subject;
+        message.Severity.Should().Be(MessageSeverity.Error);
+        message.Title.Should().Be("Extracting 2 archives");
+        message.Text.Should().Contain("broken1.zip").And.Contain("broken2.zip");
+    }
+
+    [Fact]
+    public async Task ExtractHereFlat_OneGoodOneCorrupted_ExtractsTheGoodOneAndReportsTheOther()
+    {
+        string good = MakeZip("good.zip", ("g.txt", "G"));
+        string bad = MakeCorruptedZip("bad.zip");
+        var ui = new FakeOperationUi();
+
+        await Create(ui).ExtractHereFlatAsync([good, bad]);
+
+        File.ReadAllText(Path.Combine(_root, "g.txt")).Should().Be("G");
+        var message = ui.Messages.Should().ContainSingle().Subject;
+        message.Text.Should().Contain("bad.zip").And.NotContain("good.zip");
+    }
+
     [Fact]
     public async Task Test_CancelledByUser_ShowsNoMessage()
     {
@@ -362,6 +430,14 @@ public sealed class ShellCommandsTests : IDisposable
         };
         return new ShellCommands(ui, services);
     }
+
+    private static Task RunExtract(ShellCommands commands, string command, IReadOnlyList<string> archives) => command switch
+    {
+        "here" => commands.ExtractHereAsync(archives),
+        "flat" => commands.ExtractHereFlatAsync(archives),
+        "folder" => commands.ExtractFolderAsync(archives),
+        _ => throw new ArgumentOutOfRangeException(nameof(command), command, null),
+    };
 
     private string MakeZip(string relativePath, params (string Name, string Content)[] entries)
     {

@@ -56,6 +56,8 @@ internal sealed class NativeProgressDialog : IDisposable
 
     public bool HasUserCancelled() => _dialog.HasUserCancelled();
 
+    public void SetTitle(string title) => _dialog.SetTitle(title);
+
     public void SetLine(uint lineNum, string text) => _dialog.SetLine(lineNum, text, false, IntPtr.Zero);
 
     public void SetProgress(long completed, long total) =>

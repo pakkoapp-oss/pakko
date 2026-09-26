@@ -47,8 +47,14 @@ internal interface IOperationSession : IDisposable
     /// <summary>Null when no progress window could be created; the operation then runs without one.</summary>
     IProgress<ProgressReport>? Progress { get; }
 
-    /// <summary>Cancelled when the user presses Cancel.</summary>
+    /// <summary>Cancelled when the user presses Cancel; stops the whole Explorer command (T-F269).</summary>
     CancellationToken Cancellation { get; }
+
+    /// <summary>
+    /// One window covers a whole Explorer command; this names the archive now being processed,
+    /// <paramref name="index"/> of <paramref name="count"/> (1-based).
+    /// </summary>
+    void BeginItem(string name, int index, int count);
 
     Task<ConflictDecision> AskConflictAsync(ConflictInfo info);
 

@@ -5792,6 +5792,10 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   result; window logic in a plain `Archiver.OperationUi.Core`; HTML mockup approved before XAML.
   Order: Gate 0 (finish the spike in the real installed package) -> mockup -> one-window refactor on
   Win32 -> protocol -> helper progress/cancel/result -> prompts -> polish/37 locales.
+- **Progress (2026-09-26):** Gate 0 passed (`docs/DECISIONS.md`); HTML mockup approved by the user
+  (https://claude.ai/artifact/Kga8s2ntDYMT4dgon12UhX); step 2 done — `IOperationSession.BeginItem`,
+  one session per extract command with one combined result (`ShellCommands.RunExtractSelectionAsync`),
+  Win32 title names each archive of a selection; closes T-F269.
 - **Status (original):** open — user request 2026-09-26: Explorer-triggered dialogs look out of place on
   Windows 10 and 11. User chose a separate lightweight WinUI 3 window (not the main App window)
   for progress, conflict, password and result, and asked for one UI entry point instead of the
@@ -5830,7 +5834,11 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 
 ### T-F269 — Cancel in Explorer stops only the current archive of a multi-archive selection (P1)
 
-- [ ] **Status:** open — found 2026-09-26 in T-F268 step 1's closing review (pre-existing, not a
+- [x] **Status:** done 2026-09-26 with T-F268 step 3's one-window refactor: the three extract
+  commands share one session (one cancel token) for the whole selection, so Cancel ends the
+  command; `Extract_TwoArchivesCancelledOnTheFirst_SecondIsNeverStarted` (all three commands)
+  failed on the old per-archive code first. Original report:
+- **Found:** 2026-09-26 in T-F268 step 1's closing review (pre-existing, not a
   regression: the old `Program.cs` loop did the same). The three extract commands
   (`ShellCommands.ExtractHereAsync`/`ExtractHereFlatAsync`/`ExtractFolderAsync`) run one
   operation session per archive, each with its own cancel token, and `RunArchiveOperationAsync`

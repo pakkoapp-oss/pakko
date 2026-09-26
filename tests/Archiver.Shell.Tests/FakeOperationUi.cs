@@ -24,10 +24,13 @@ internal sealed class FakeOperationUi : IOperationUi
     /// <summary>Simulates the user pressing Cancel before the operation does any work.</summary>
     public bool CancelOnBegin { get; set; }
 
+    /// <summary>Cancels only the first window opened (T-F269: a later archive must not start).</summary>
+    public bool CancelFirstSessionOnBegin { get; set; }
+
     public IOperationSession Begin(string title, ProgressStyle style)
     {
         var session = new FakeOperationSession(this, title, style);
-        if (CancelOnBegin)
+        if (CancelOnBegin || (CancelFirstSessionOnBegin && Sessions.Count == 0))
             session.Cancel();
         Sessions.Add(session);
         return session;
@@ -46,6 +49,9 @@ internal sealed class FakeOperationSession(FakeOperationUi owner, string title, 
     public bool Completed { get; private set; }
     public bool Disposed { get; private set; }
     public int ProgressReports => _progress.Count;
+    public List<(string Name, int Index, int Count)> Items { get; } = [];
+
+    public void BeginItem(string name, int index, int count) => Items.Add((name, index, count));
 
     public IProgress<ProgressReport>? Progress => owner.NoProgressWindow ? null : _progress;
     public CancellationToken Cancellation => _cts.Token;

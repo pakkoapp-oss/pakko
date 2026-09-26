@@ -16,15 +16,8 @@ internal sealed class ShellCommands(IOperationUi ui, ShellServices services)
     // the per-archive subfolder entirely and lands next to the archive, matching how a real archiver
     // (NanaZip/7-Zip) handles a single-file archive.
     // -------------------------------------------------------------------------
-    public async Task ExtractHereAsync(IReadOnlyList<string> archivePaths)
-    {
-        if (archivePaths.Count == 0)
-            return;
-
-        var router = await services.CreateExtractionRouterAsync().ConfigureAwait(false);
-        var prompts = new SelectionPrompts(archivePaths.Count);
-
-        foreach (var archivePath in archivePaths)
+    public Task ExtractHereAsync(IReadOnlyList<string> archivePaths) =>
+        RunExtractSelectionAsync(archivePaths, (archivePath, prompts) =>
         {
             var destFolder = Path.GetDirectoryName(archivePath) ?? ".";
             // T-F67: a plain OnConflict=Rename only renames individual conflicting files inside
@@ -32,7 +25,7 @@ internal sealed class ShellCommands(IOperationUi ui, ShellServices services)
             // command instead wants a brand-new numbered folder so re-extracting never silently
             // merges into — or does nothing to — a folder from a previous run.
             var folderName = GetUniqueFolderName(destFolder, ArchiveNaming.GetBaseName(archivePath));
-            var options = new ExtractOptions
+            return new ExtractOptions
             {
                 ArchivePaths = [archivePath],
                 DestinationFolder = destFolder,
@@ -45,11 +38,7 @@ internal sealed class ShellCommands(IOperationUi ui, ShellServices services)
                 ResolveConflictAsync = prompts.Conflict.ResolveAsync,
                 ResolvePasswordAsync = prompts.Password.ResolveAsync,
             };
-
-            await RunArchiveOperationAsync($"Extracting: {Path.GetFileName(archivePath)}", prompts,
-                session => router.ExtractAsync(options, session.Progress, session.Cancellation)).ConfigureAwait(false);
-        }
-    }
+        });
 
     // -------------------------------------------------------------------------
     // --extract-flat (T-F115): extract every archive with full paths into its own containing folder
@@ -59,51 +48,30 @@ internal sealed class ShellCommands(IOperationUi ui, ShellServices services)
     // with ExtractFolderAsync below, which unconditionally pre-computes a fresh subfolder
     // regardless of the archive's own root shape.
     // -------------------------------------------------------------------------
-    public async Task ExtractHereFlatAsync(IReadOnlyList<string> archivePaths)
-    {
-        if (archivePaths.Count == 0)
-            return;
-
-        var router = await services.CreateExtractionRouterAsync().ConfigureAwait(false);
-        var prompts = new SelectionPrompts(archivePaths.Count);
-
-        foreach (var archivePath in archivePaths)
+    public Task ExtractHereFlatAsync(IReadOnlyList<string> archivePaths) =>
+        RunExtractSelectionAsync(archivePaths, (archivePath, prompts) => new ExtractOptions
         {
-            var options = new ExtractOptions
-            {
-                ArchivePaths = [archivePath],
-                DestinationFolder = Path.GetDirectoryName(archivePath) ?? ".",
-                Mode = ExtractMode.SingleFolder,
-                // T-F155: this is the path that collides on essentially every file when an archive
-                // is re-extracted into its own containing folder a second time.
-                OnConflict = ConflictBehavior.Ask,
-                ResolveConflictAsync = prompts.Conflict.ResolveAsync,
-                ResolvePasswordAsync = prompts.Password.ResolveAsync,
-            };
-
-            await RunArchiveOperationAsync($"Extracting: {Path.GetFileName(archivePath)}", prompts,
-                session => router.ExtractAsync(options, session.Progress, session.Cancellation)).ConfigureAwait(false);
-        }
-    }
+            ArchivePaths = [archivePath],
+            DestinationFolder = Path.GetDirectoryName(archivePath) ?? ".",
+            Mode = ExtractMode.SingleFolder,
+            // T-F155: this is the path that collides on essentially every file when an archive
+            // is re-extracted into its own containing folder a second time.
+            OnConflict = ConflictBehavior.Ask,
+            ResolveConflictAsync = prompts.Conflict.ResolveAsync,
+            ResolvePasswordAsync = prompts.Password.ResolveAsync,
+        });
 
     // -------------------------------------------------------------------------
     // --extract-folder: always extract into an explicit <archive_name>\ subfolder. T-F205: a single
     // root folder named like the archive is dropped (NanaZip's default ElimDup), so name.zip holding
     // name/... does not become name\name\...; any other root folder is kept.
     // -------------------------------------------------------------------------
-    public async Task ExtractFolderAsync(IReadOnlyList<string> archivePaths)
-    {
-        if (archivePaths.Count == 0)
-            return;
-
-        var router = await services.CreateExtractionRouterAsync().ConfigureAwait(false);
-        var prompts = new SelectionPrompts(archivePaths.Count);
-
-        foreach (var archivePath in archivePaths)
+    public Task ExtractFolderAsync(IReadOnlyList<string> archivePaths) =>
+        RunExtractSelectionAsync(archivePaths, (archivePath, prompts) =>
         {
             var archiveDir = Path.GetDirectoryName(archivePath) ?? ".";
             var folderName = GetUniqueFolderName(archiveDir, ArchiveNaming.GetBaseName(archivePath));
-            var options = new ExtractOptions
+            return new ExtractOptions
             {
                 ArchivePaths = [archivePath],
                 DestinationFolder = Path.Combine(archiveDir, folderName),
@@ -116,11 +84,7 @@ internal sealed class ShellCommands(IOperationUi ui, ShellServices services)
                 ResolveConflictAsync = prompts.Conflict.ResolveAsync,
                 ResolvePasswordAsync = prompts.Password.ResolveAsync,
             };
-
-            await RunArchiveOperationAsync($"Extracting: {Path.GetFileName(archivePath)}", prompts,
-                session => router.ExtractAsync(options, session.Progress, session.Cancellation)).ConfigureAwait(false);
-        }
-    }
+        });
 
     // -------------------------------------------------------------------------
     // --archive: pack all source paths into a single archive placed next to the first item. A
@@ -180,7 +144,7 @@ internal sealed class ShellCommands(IOperationUi ui, ShellServices services)
             Format = format,
         };
 
-        await RunArchiveOperationAsync($"Archiving: {archiveName}", prompts: null,
+        await RunArchiveOperationAsync($"Archiving: {archiveName}",
             session => router.ArchiveAsync(options, session.Progress, session.Cancellation)).ConfigureAwait(false);
     }
 
@@ -295,12 +259,57 @@ internal sealed class ShellCommands(IOperationUi ui, ShellServices services)
     }
 
     // One session per archive; cancelling ends the operation with no message, as before.
-    private async Task RunArchiveOperationAsync(
-        string title, SelectionPrompts? prompts, Func<IOperationSession, Task<ArchiveResult>> op)
+    // T-F268 step 3: one window for the whole selection, and one combined result at the end.
+    // T-F269: a cancel ends the whole command — the session's one token is shared by every archive,
+    // and the router throws OperationCanceledException for a cancelled token (T-F260).
+    private async Task RunExtractSelectionAsync(
+        IReadOnlyList<string> archivePaths, Func<string, SelectionPrompts, ExtractOptions> buildOptions)
+    {
+        if (archivePaths.Count == 0)
+            return;
+
+        var router = await services.CreateExtractionRouterAsync().ConfigureAwait(false);
+        var prompts = new SelectionPrompts(archivePaths.Count);
+        string title = archivePaths.Count == 1
+            ? $"Extracting: {Path.GetFileName(archivePaths[0])}"
+            : $"Extracting {archivePaths.Count} archives";
+
+        using var session = ui.Begin(title, ProgressStyle.Bytes);
+        prompts.Current = session;
+
+        var results = new List<ArchiveResult>(archivePaths.Count);
+        try
+        {
+            for (int i = 0; i < archivePaths.Count; i++)
+            {
+                string archivePath = archivePaths[i];
+                session.BeginItem(Path.GetFileName(archivePath), i + 1, archivePaths.Count);
+                var options = buildOptions(archivePath, prompts);
+                results.Add(await router.ExtractAsync(options, session.Progress, session.Cancellation).ConfigureAwait(false));
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+
+        session.Complete(OperationMessages.ForArchiveResult(title, Combine(results)));
+    }
+
+    private static ArchiveResult Combine(List<ArchiveResult> results) => results.Count == 1
+        ? results[0]
+        : new ArchiveResult
+        {
+            Success = results.TrueForAll(r => r.Success),
+            CreatedFiles = [.. results.SelectMany(r => r.CreatedFiles)],
+            Errors = [.. results.SelectMany(r => r.Errors)],
+            SkippedFiles = [.. results.SelectMany(r => r.SkippedFiles)],
+            Sources = [.. results.SelectMany(r => r.Sources)],
+        };
+
+    private async Task RunArchiveOperationAsync(string title, Func<IOperationSession, Task<ArchiveResult>> op)
     {
         using var session = ui.Begin(title, ProgressStyle.Bytes);
-        if (prompts is not null)
-            prompts.Current = session;
 
         ArchiveResult result;
         try
