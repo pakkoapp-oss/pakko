@@ -145,7 +145,8 @@ verified.
 - ✅ UTF-8 filenames — Cyrillic and emoji round-trip verified
 - ✅ Native right-click context menu — Extract here, Extract to folder, Add to archive/`X.tar`,
   Test archive
-- ✅ File type association (every readable format) + `pakko://` protocol activation
+- ✅ File type association (every readable format). No URI protocol is registered (the former
+  `pakko://` scheme was removed), so a web page cannot launch Pakko through a link of its own
 - ✅ MOTW propagation on every extracted file, including Archive Browser previews
 - ✅ Alternate Data Stream / reserved-filename / reparse-point protections during extraction
 - ✅ Archive Browser — navigate, extract selected/all, preview an image or text file without a

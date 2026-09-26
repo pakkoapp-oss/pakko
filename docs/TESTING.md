@@ -653,6 +653,19 @@ ANSI/UTF-8 password candidates. `ArchiveEntrySecurityReservedNameTests` (T-F243 
 `LongPathsEnabled`), `CliSubprocessTests.Extract_LegacyOemNamedZip_WritesRealNames` (asserts files
 on disk, not console output, so it is code-page independent).
 
+## Explorer to App Hand-Off (fix phase 4a, T-F232, 2026-09-26)
+
+`LaunchArgumentsTests` (Core: format/parse round trip incl. Cyrillic and UNC paths, malformed or
+unknown input, blank entries, the 32000-character limit, 80 long Cyrillic paths fitting — red on
+the default `\uXXXX` JSON escaping), `LaunchActivationRouterTests` (App.Core: browse vs. pending
+list, plain Start-menu launch, a leftover `pakko://` string is not recognized), `AppLauncherTests`
+(Shell: the length guard at the base64 boundary — no string formats to exactly 32000, so the test
+finds the longest fitting path and the next one), `FileItemTests` (App.Core: `TryCreate` returns
+null for a missing/invalid path — red before the fix; waits for the background CRC so the temp
+folder can be deleted), and `ResultMessagesLocalizerTests.Get_OpenUiKey_IsTranslatedInEveryLocale`.
+The `ActivateApplication` call itself is device-only (it needs package identity): see
+`docs/DECISIONS.md`'s T-F232 entry for the checks.
+
 ## Manual Smoke Test Cycle (Full Stack)
 
 Ordered simplest → most complex. Confirms Core, Shell, ShellExtension (COM), and the WinUI app

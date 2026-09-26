@@ -80,17 +80,18 @@ This will:
 
 ---
 
-## Step 3 — Test protocol activation
+## Step 3 — Test the Explorer hand-off
 
-After installing, verify the `pakko://` URI scheme works:
+After installing, run the installed `Archiver.Shell.exe` the way Explorer's "Extract files..." does
+(it opens `Archiver.App` through `ActivateApplication`; Pakko registers no URI scheme, T-F232):
 
 ```powershell
-$files = '["C:\\path\\to\\file.zip"]'
-$b64 = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($files))
-Start-Process "pakko://extract?files=$b64"
+$shell = (Get-AppxPackage PavloRybchenko.Pakko).InstallLocation + '\Archiver.Shell.exe'
+Start-Process -FilePath $shell -ArgumentList @('--open-ui', '--extract', '"C:\path\to\file.zip"')
 ```
 
-Pakko should launch and begin extracting the specified archive.
+Pakko should open with the archive in its list. `--browse` instead of `--extract` opens it in the
+Archive Browser.
 
 ---
 

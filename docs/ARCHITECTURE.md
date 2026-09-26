@@ -23,7 +23,7 @@
 │  MainWindow.xaml / .cs              │  │  Program.cs (entry point)            │
 │  ViewModels/MainViewModel.cs        │  │  ShellArgumentParser.cs              │
 │  Services/ (Dialog, Log)            │  │  NativeProgressDialog.cs (COM)       │
-│  Strings/en-US/Resources.resw       │  │  Launches App via pakko:// URI       │
+│  Strings/en-US/Resources.resw       │  │  AppLauncher: ActivateApplication    │
 └──────────────┬──────────────────────┘  └───────────────┬──────────────────────┘
                │  project reference                       │  project reference
                └──────────────┬──────────────────────────┘
@@ -89,6 +89,8 @@ src/
 │   │   ├── EncryptionPasswordRule.cs   ← T-F193: public; which passwords a NEW encrypted ZIP accepts
 │   │   │                                  (printable ASCII, <= 99) — shared by App/CLI prompts and
 │   │   │                                  ZipArchiveService's own last-line check
+│   │   ├── LaunchArguments.cs          ← T-F232: public; the one owner of the Shell -> App Launch-argument
+│   │   │                                  format (--browse|--extract|--archive <base64 JSON>), both sides
 │   │   ├── StickyCallback.cs           ← T-F160: public; widens an "apply to all/remaining" answer
 │   │   │                                  across several Core calls for one user action (Shell's
 │   │   │                                  per-archive loop, CLI's zip/tar router split) — replaced
@@ -159,8 +161,6 @@ src/
 │   ├── Services/
 │   │   ├── IDialogService.cs / DialogService.cs
 │   │   └── ILogService.cs / LogService.cs
-│   ├── Models/
-│   │   └── FileItem.cs         ← ObservableObject, [ObservableProperty]-generated (CommunityToolkit MVVM)
 │   ├── Converters/
 │   │   └── BoolToVisibilityConverter.cs
 │   └── Strings/                ← 37 locales (T-F91), en-US is the fallback
@@ -171,7 +171,8 @@ src/
 │   ├── ArchiveEntryViewModel.cs / ArchiveTreeIndex.cs   ← Archive Browser tree/breadcrumb building
 │   ├── FileSystemBrowser.cs                             ← T-F107: real-filesystem climb past archive root
 │   ├── FileActivationRouter.cs                          ← T-F100: file activation routing
-│   ├── ProtocolActivationRouter.cs                      ← T-F03: pakko://browse detection
+│   ├── LaunchActivationRouter.cs                        ← T-F232: Launch-argument routing (browse vs. pending list)
+│   ├── FileItem.cs                                      ← pending-list row; TryCreate skips unreadable paths (T-F232)
 │   ├── NestedArchiveCache.cs / NestedArchivePolicy.cs   ← T-F98: nested-archive drill-down
 │   ├── PreviewCache.cs                                  ← T-F97: preview extraction cache
 │   ├── DeferredActionGate.cs                            ← T-F106: defers activation past first layout pass
@@ -181,6 +182,8 @@ src/
 ├── Archiver.Shell/             ← shell-triggered operation entry point; net8.0-windows; WinExe; no WinUI
 │   ├── Program.cs
 │   ├── ShellArgumentParser.cs
+│   ├── AppLauncher.cs                  ← T-F232: opens Archiver.App via IApplicationActivationManager::
+│   │                                      ActivateApplication (no URI scheme); refuses > 32000 chars
 │   ├── ShellResultPresenter.cs         ← T-F68: classifies ArchiveResult into Failed/SkippedOnly/Success
 │   ├── NativeProgressDialog.cs         ← IProgressDialog COM interop (in-process progress UI)
 │   ├── HashResultLocalizer.cs          ← T-F128 follow-up: first localized text in Archiver.Shell —
@@ -998,7 +1001,7 @@ showing progress via the in-process `IProgressDialog` COM object (`NativeProgres
   `ArchiveCommand` shown unless all paths are `.zip`
 - `Invoke` launches `Archiver.Shell.exe` via `CreateProcess` with the correct argument set —
   dialog commands (T-F63) use `--open-ui --extract`/`--open-ui --archive` to route through
-  `Archiver.App`'s `pakko://` activation instead of running silently
+  a Launch activation of `Archiver.App` (`AppLauncher`, T-F232) instead of running silently
 - Registered via `com:SurrogateServer` in `Package.appxmanifest` — `com:Path` must be a **child
   element** of the server, not a `Path` attribute on `com:Class` (see `DECISIONS.md`); requires
   `MinVersion="10.0.18362.0"` (Windows 10 1903) or higher in `TargetDeviceFamily`
@@ -1665,7 +1668,7 @@ redirected stdin exits 7 before dispatch (`RejectBarePasswordWithoutConsole`).
 ## FileItem Model (UI layer)
 
 ```csharp
-// Models/FileItem.cs (Archiver.App only)
+// Archiver.App.Core/FileItem.cs (moved from Archiver.App/Models, T-F232)
 // CommunityToolkit.Mvvm ObservableObject, not plain mutable auto-properties — Size/SizeBytes/
 // Crc32Display/Crc32 are all [ObservableProperty] source-generated fields (real property names
 // Size/SizeBytes/Crc32Display/Crc32, backing fields _size/_sizeBytes/_crc32Display/_crc32), so
@@ -1683,8 +1686,13 @@ public sealed partial class FileItem : ObservableObject
     [ObservableProperty] private string _crc32Display = "";  // "..." while computing, "?" on read error, hex once done, empty for folders
     [ObservableProperty] private uint? _crc32;
 
-    // Real constructor also starts LoadFolderSizeAsync (folders) or LoadCrc32Async (files) —
-    // both async, fire-and-forget, throttled via a shared static SemaphoreSlim(4) for CRC reads.
+    // Created only via TryCreate: null for a path that cannot be read (missing, no access,
+    // invalid), so MainViewModel.AddPaths skips and logs it instead of losing the whole list.
+    public static FileItem? TryCreate(string path);
+    public static string FormatSize(long bytes);
+
+    // The private constructor also starts LoadFolderSizeAsync (folders) or LoadCrc32Async
+    // (files) — both async, fire-and-forget, throttled via a shared static SemaphoreSlim(4).
 }
 ```
 

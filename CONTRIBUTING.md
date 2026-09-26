@@ -104,17 +104,12 @@ for full details. The short version:
 
 ---
 
-## Testing protocol activation (pakko://)
+## Testing the Explorer hand-off
 
-After installing the MSIX, verify the `pakko://` URI scheme works:
-
-```powershell
-$files = '["C:\\path\\to\\file.zip"]'
-$b64 = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($files))
-Start-Process "pakko://extract?files=$b64"
-```
-
-Pakko should launch and begin extracting the specified archive.
+After installing the MSIX, run the installed `Archiver.Shell.exe --open-ui --extract <archive>`
+and check that Pakko opens with the archive in its list — the exact command is in
+[`scripts/README.md`](scripts/README.md), Step 3. (Pakko registers no `pakko://` URI scheme since
+T-F232.)
 
 ---
 

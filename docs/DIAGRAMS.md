@@ -60,7 +60,8 @@ Sources read for this diagram: `src/Archiver.ShellExtension/dllmain.cpp`,
 `src/Archiver.ShellExtension/ExplorerCommands.cpp`, `src/Archiver.ShellExtension/ShellExtUtils.cpp`,
 `src/Archiver.Shell/Program.cs`, `src/Archiver.Shell/ShellResultPresenter.cs`,
 `src/Archiver.Shell/NativeProgressDialog.cs`, `src/Archiver.App/App.xaml.cs`,
-`src/Archiver.App.Core/ProtocolActivationRouter.cs` (T-F03).
+`src/Archiver.App.Core/LaunchActivationRouter.cs` (T-F03, T-F232), `src/Archiver.Shell/AppLauncher.cs`,
+`src/Archiver.Core/Services/LaunchArguments.cs` (T-F232).
 
 **T-F99 (2026-07-13):** `Package.appxmanifest` now also registers `PakkoRootCommand`'s verb for
 `desktop10:ItemType Type="Drive"`, alongside the existing `*`/`Directory` entries this diagram
@@ -90,7 +91,7 @@ sequenceDiagram
     participant ShellExe as Archiver.Shell.exe
     participant Core as ZipArchiveService
     participant Dlg as IProgressDialog (shell32)
-    participant App as Archiver.App.exe (pakko:// activation)
+    participant App as Archiver.App.exe (Launch activation, T-F232)
 
     User->>Explorer: right-click selection
     Explorer->>Dllhost: CoCreateInstance(CLSID_PakkoRootCommand)<br/>(com:SurrogateServer registration)
@@ -130,15 +131,15 @@ sequenceDiagram
         Explorer->>BC: Invoke(psia, pbc)
         BC->>ShellExe: LaunchShellExe(BuildOpenUiBrowseArgs(paths))<br/>i.e. "--open-ui --browse <path>" — paths.size() is always 1 here, enforced by GetState
         BC-->>Explorer: S_OK, or HRESULT_FROM_WIN32(GetLastError())
-        ShellExe->>App: Process.Start("pakko://browse?files=<base64>", UseShellExecute:true)<br/>then ShellExe's Main returns/exits immediately — same LaunchOpenUi helper EDC/CDC use
-        App->>App: ProtocolActivationRouter.TryGetBrowsePath(uri, out path) → true<br/>window.ActivationGate.RunOrDefer(...) → MainViewModel.EnterBrowseModeAsync(path)<br/>— skips the pending-list/extract-options view entirely, the same destination<br/>FileActivationRouter already routes a double-clicked single archive to (T-F100)
+        ShellExe->>App: AppLauncher.Launch → IApplicationActivationManager::ActivateApplication(<br/>"<own PFN>!App", "--browse <base64 JSON>") — T-F232, was a pakko:// URI —<br/>then ShellExe's Main returns/exits immediately — same LaunchOpenUi helper EDC/CDC use
+        App->>App: Launch kind: LaunchActivationRouter.Decide(arguments) → Mode=Browse<br/>window.ActivationGate.RunOrDefer(...) → MainViewModel.EnterBrowseModeAsync(path)<br/>— skips the pending-list/extract-options view entirely, the same destination<br/>FileActivationRouter already routes a double-clicked single archive to (T-F100)
     else command is EDC or CDC (dialog form, T-F63)
         Explorer->>EDC: Invoke(psia, pbc) — or CDC, same shape
         EDC->>ShellExe: LaunchShellExe(BuildOpenUiExtractArgs(paths))<br/>— or BuildOpenUiArchiveArgs for CDC —<br/>i.e. "--open-ui --extract/--archive <paths>"
         EDC-->>Explorer: S_OK, or HRESULT_FROM_WIN32(GetLastError())
-        ShellExe->>App: Process.Start("pakko://extract?files=<base64>", UseShellExecute:true)<br/>— or pakko://archive — then ShellExe's Main returns/exits immediately —<br/>NO NativeProgressDialog, NO ZipArchiveService call in this branch at all
-        Note over App: T-F83 (fixed 2026-07-06): cold start reads the activation via<br/>OnLaunched→AppInstance.GetCurrent().GetActivatedEventArgs(), not just<br/>the OnActivated event (which only fires for redirected/warm activation).<br/>Before the fix, a cold pakko:// launch silently opened an EMPTY window.
-        App->>App: window.ActivationGate.RunOrDefer(...) → MainViewModel.AddPathsFromProtocolUri(uri)<br/>— files pre-loaded, user drives Archive/Extract from the full UI.<br/>T-F106: wrapped in ActivationGate/DeferredActionGate so this runs AFTER<br/>the first layout pass, not synchronously inline as drawn in earlier versions<br/>of this diagram — a UI-thread timing detail, not a new process/COM contract
+        ShellExe->>App: ActivateApplication("<own PFN>!App", "--extract <base64 JSON>")<br/>— or --archive — then ShellExe's Main returns/exits immediately —<br/>NO NativeProgressDialog, NO ZipArchiveService call in this branch at all
+        Note over App: T-F83 (fixed 2026-07-06): cold start reads the activation via<br/>OnLaunched→AppInstance.GetCurrent().GetActivatedEventArgs(), not just<br/>the OnActivated event (which only fires for redirected/warm activation).<br/>Before the fix, a cold protocol launch silently opened an EMPTY window.
+        App->>App: LaunchActivationRouter.Decide(arguments) → Mode=AddToList<br/>window.ActivationGate.RunOrDefer(...) → MainViewModel.AddPaths(paths)<br/>— files pre-loaded, user drives Archive/Extract from the full UI.<br/>T-F106: wrapped in ActivationGate/DeferredActionGate so this runs AFTER<br/>the first layout pass, not synchronously inline as drawn in earlier versions<br/>of this diagram — a UI-thread timing detail, not a new process/COM contract
     else command is EHF, EH, EF, AC, or TC (silent form)
         Explorer->>EH: Invoke(psia, pbc) — or EHF / EF / AC / TC, same shape
         alt GetPathsFromShellItemArray(psia) empty
@@ -191,18 +192,22 @@ sequenceDiagram
 ```
 
 **What this catches (verified against the real bugs already fixed here):**
-- **`BC` (T-F03) is a third, distinct `pakko://` destination — not a variant of `EDC`/`CDC`'s
-  flow.** It reuses the identical `LaunchOpenUi`/`Process.Start`/`UseShellExecute` mechanism, but
-  `App.xaml.cs`'s protocol handler branches on `ProtocolActivationRouter.TryGetBrowsePath` *before*
-  reaching `MainViewModel.AddPathsFromProtocolUri` — `pakko://browse` never touches the pending-
-  list/extract-options view at all, unlike `pakko://extract`/`pakko://archive`. A future change to
-  `AddPathsFromProtocolUri` does not automatically apply to this path, and vice versa.
+- **`BC` (T-F03) is a third, distinct Open-UI destination — not a variant of `EDC`/`CDC`'s
+  flow.** It reuses the identical `LaunchOpenUi`/`ActivateApplication` mechanism, but
+  `LaunchActivationRouter.Decide` returns `Browse` for `--browse` with one path, so it never
+  touches the pending-list/extract-options view at all, unlike `--extract`/`--archive`.
+- **T-F232 (2026-09-26): there is no `pakko://` URI scheme any more.** A registered scheme could
+  be launched by any web page, e-mail or document link with an arbitrary (UNC) path, and the App
+  could not tell such a URI from Archiver.Shell's. The hand-off is now a Launch activation that
+  only a process already on the machine can start. `AppLauncher` refuses a selection whose
+  arguments exceed `LaunchArguments.MaxLength` (32000) with a message box, because past the
+  command-line limit `ActivateApplication` blocks forever instead of failing.
 - `EH`/`EF`/`AC`/`EDC`/`CDC`/`TC` `Invoke()` never awaits the operation — Explorer's HRESULT comes
   back the instant `CreateProcess` returns. Anything that assumes Explorer "waits" for Pakko's
   result is wrong.
 - **`EDC`/`CDC` (T-F63) take a structurally different path than the other four:** no
   `NativeProgressDialog`, no `ZipArchiveService` call from `Archiver.Shell.exe` at all — they only
-  construct a `pakko://` URI and hand off to `Archiver.App` via `Process.Start`/`UseShellExecute`.
+  build `LaunchArguments` and hand off to `Archiver.App` via `ActivateApplication` (T-F232).
   A future change to the silent path's progress/result handling does not automatically apply here.
 - **T-F83 (fixed 2026-07-06):** this dialog path is exactly what surfaced a pre-existing cold-start
   bug in `Archiver.App` — `AppInstance.Activated` only fires for *redirected* activation to an
@@ -505,7 +510,7 @@ flowchart TB
     Explorer[explorer.exe] -->|CoCreateInstance| Dllhost[dllhost.exe<br/>isolated COM surrogate process]
     Dllhost -->|loads| Dll
     Dll -->|"CreateProcess(Archiver.Shell.exe)<br/>⚠ ERROR_ACCESS_DENIED if not declared<br/>as its own Application entry"| Shell
-    Shell -.->|"pakko://extract?files=... or<br/>pakko://archive?files=...<br/>(protocol activation, Open-UI flow only,<br/>not used by the context-menu path above)"| App
+    Shell -.->|"ActivateApplication(PFN!App,<br/>--browse/--extract/--archive base64)<br/>(Launch activation, Open-UI flow only, T-F232 —<br/>no URI protocol is registered)"| App
     Shell --> Core[Archiver.Core / ZipArchiveService]
     App --> Core
 ```
@@ -770,7 +775,7 @@ same state.
 ```mermaid
 stateDiagram-v2
     [*] --> PendingListMode
-    PendingListMode --> ArchiveBrowseMode: EnterBrowseModeAsync(path) succeeds<br/>(double-click a recognized archive in the pending list,<br/>or a single-archive File/Protocol activation, T-F100)<br/>IsBrowsingArchive=true, BrowseScope=Archive
+    PendingListMode --> ArchiveBrowseMode: EnterBrowseModeAsync(path) succeeds<br/>(double-click a recognized archive in the pending list,<br/>or a single-archive File/Launch activation, T-F100/T-F232)<br/>IsBrowsingArchive=true, BrowseScope=Archive
     ArchiveBrowseMode --> PendingListMode: EnterBrowseModeAsync's own listing fails<br/>(result.Success==false) — same reset, no error state<br/>IsBrowsingArchive=false
 
     state ArchiveBrowseMode {

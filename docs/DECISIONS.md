@@ -9560,3 +9560,73 @@ added without a failure to fix. (d) `Repair-PakkoSandboxAce.ps1` re-enabled inhe
 that had it off; now only an inheriting file is re-inherited (validated with the old damage code,
 `QuarantineAcl.GrantReadExecute` on a hardlink, for both kinds; the old script fails the
 protected one).
+
+## Fix phase 4a — T-F232: no URI scheme; Shell opens the App via ActivateApplication (2026-09-26)
+
+Plan: `serene-sauteeing-lighthouse.md` 8.2 row 4a ("first see how browsers prompt; then filter
+UNC paths and confirm"), detailed in `humming-frolicking-wilkinson.md` (advisor-reviewed,
+user-approved). The chosen fix departs from that row: the scheme is removed, not filtered.
+
+**Why not filter.** `pakko://browse|archive|extract?files=<base64 JSON>` had one legitimate
+producer, `Archiver.Shell`'s `LaunchOpenUi`; no C++ code and nothing else used it. The App cannot
+tell Shell's URI from one a web page, e-mail, Office/PDF hyperlink or `.url` file produces, so a
+UNC filter either breaks the real case (Explorer → Pakko on a network folder) or needs a Shell-to-
+App one-time token. Browser prompts are a weak gate: Chrome and Edge ask "Open Pakko?" but offer a
+per-origin "always allow" (the Zoom precedent), and other launchers may not ask at all — the same
+class as ms-msdt (Follina) and search-ms. NanaZip registers no protocol (checked in its real
+`NanaZipPackage/Package.appxmanifest`). Rejected fallback — a nonce file written by Shell and
+consumed by the App: more code, the scheme stays reachable for parser attacks, and every path would
+need classifying before any file-system call (`\\host\`, `\\?\UNC\`, `//host/`, WebDAV
+`\\host@SSL\`, `\\.\`, mapped network letters), since `Directory.Exists` on a UNC path already
+authenticates.
+
+**What replaced it.** `AppLauncher` (Shell) calls `IApplicationActivationManager::
+ActivateApplication("<own package family name>!App", arguments)`, declared from
+`ShObjIdl_core.h` 10.0.26100 with `[PreserveSig]`. `LaunchArguments` (Core) owns both sides of
+the argument format, `--browse|--extract|--archive <base64 of a UTF-8 JSON string array>` — base64
+keeps quotes, spaces and trailing backslashes out of command-line quoting (the T-F99 bug class).
+The App handles a Launch-kind activation through `LaunchActivationRouter`; a plain Start-menu
+launch parses to nothing. The manifest's `windows.protocol` extension is gone. An activation
+argument can only come from a process already running on the machine as the user.
+
+**Spike results (2026-09-26, installed 1.4.12.13, then 1.4.12.14/15).**
+- The call works from an unpackaged process, from inside the package via
+  `Invoke-CommandInDesktopPackage -AppId ShellHelper`, from a directly started installed
+  `Archiver.Shell.exe`, and from a real Explorer menu click.
+- The arguments reach the App's command line intact.
+- Two launches give two processes (T-F88 parity).
+- **Past the command-line limit the call blocks forever instead of failing.** 32000 characters
+  worked; 32700 hung, and even `Stop-Job` could not end it.
+- The old `pakko://` failed at the same size too, but with an exception from `Process.Start`,
+  which crashed Shell silently.
+- `AppLauncher` therefore refuses anything over `LaunchArguments.MaxLength` (32000) and shows a
+  localized message (`OpenUiTooManyFiles`, 37 locales). The same applies to a process without
+  package identity (`OpenUiNoPackage`).
+
+**Found on the way:** `JsonSerializer`'s default encoder writes every non-ASCII character as
+`\uXXXX` (6 bytes, 8 base64 characters per Cyrillic letter). The old URI payload had the same
+cost. `LaunchArguments` uses `JavaScriptEncoder.Create(UnicodeRanges.All)`: 80 paths of about 120
+Cyrillic characters now fit (74238 characters before, red test first).
+
+**Also fixed (same task):**
+- `FileItem`'s constructor threw on a missing or invalid path. One such path dropped a whole
+  activation's list, or escaped into the drag-drop handler.
+- It moved to `Archiver.App.Core` with `TryCreate`, which catches `IOException`,
+  `UnauthorizedAccessException`, `ArgumentException` and `NotSupportedException`.
+- `AddPaths` now skips and logs such a path.
+- Removed the dead `MainViewModel.RequestedOperation`.
+
+**Deferred:** a pending-list folder is still walked without cancellation (`"C:\"` walks the whole
+drive). With the scheme gone, only the user's own selection reaches it; this goes to phase 6
+(T-F236, the shared walker).
+
+**Device check (1.4.12.14/15, agent via `windows` MCP):**
+- **Scheme gone.** `HKCR\pakko` is absent. `Start-Process "pakko://browse?files=<UNC>"` opened
+  Windows' own "choose an app" picker, and no Pakko process started.
+- **Explorer menu.** Explorer → Pakko → Open on `тест архів.zip` entered the Archive Browser with
+  the window in the foreground.
+- **Network folder.** Explorer → Pakko → "Extract files..." on `\\127.0.0.1\C$\...` put the
+  archive in the list. Windows showed its own "these files might be harmful" prompt first,
+  because an IP-address UNC path is in the Internet zone.
+- **Size limit.** A 150-path Cyrillic selection showed the Ukrainian message, and Shell exited.
+- **Plain launch.** Two plain launches opened two empty windows.

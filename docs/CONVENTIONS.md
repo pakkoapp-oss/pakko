@@ -177,9 +177,9 @@ Required on:
   bar as Core service classes, not the Models exemption below.
 
 Not required on (CS1591 suppressed per-file via `.editorconfig`, not left as unaddressed
-warnings — see the root `.editorconfig`'s `Models/*.cs`/`ArchiveEntryViewModel.cs` sections):
+warnings — see the root `.editorconfig`'s `Models/*.cs`/`{ArchiveEntryViewModel,FileItem}.cs` sections):
 - `private`/`internal` members
-- ViewModels (UI layer) — e.g. `ArchiveEntryViewModel`, a pure display-property bag
+- ViewModels (UI layer) — e.g. `ArchiveEntryViewModel` and `FileItem`, pure display-property bags
 - Models — property/enum-value names that are genuinely self-documenting (`ArchiveResult.Success`,
   `ArchiveError.Message`). A model member that carries real information a name can't convey
   (a default, null-semantics, a GPO field's meaning, an enum value's non-obvious behavior — see

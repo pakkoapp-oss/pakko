@@ -4884,7 +4884,17 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 
 ### T-F232 — `pakko://` opens arbitrary local/UNC paths with no confirmation (P1)
 
-- [ ] **Status:** open — code-confirmed 2026-09-24. Any web page or link can launch
+- **Progress (2026-09-26, fix phase 4a):** fixed in b11bfdc by removing the scheme instead of
+  filtering it — Archiver.Shell now opens the App through `ActivateApplication` with
+  `LaunchArguments` (Core), a Launch activation only a local process can start; `FileItem.TryCreate`
+  skips an unreadable path instead of dropping the list; dead `RequestedOperation` removed. Why not
+  a filter or a token, the spike and the device check: `docs/DECISIONS.md`'s fix-phase-4a entry.
+  The uncancellable folder walk (`"C:\"`) is no longer reachable remotely and moves to T-F236
+  (phase 6). Stays `[~]` until your own check: Explorer → Pakko → Open / Extract files... /
+  Compress... on a local and a network folder, and a `pakko://` link in a browser doing nothing.
+
+- [~] **Status:** fixed in fix phase 4a (2026-09-26), stays `[~]` until the user's own check.
+  Original: open — code-confirmed 2026-09-24. Any web page or link can launch
   `pakko://browse?files=<base64 JSON>`; `ProtocolActivationRouter` accepts any single path and
   `EnterBrowseModeAsync` reads it immediately (`App.xaml.cs:98`, `MainViewModel.cs:710-736`).
   A UNC path (`\\host\share\x.zip`) makes Windows authenticate to that host over SMB (NTLM
@@ -5009,6 +5019,11 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 - **Reported by:** T-F226 review, 2026-09-24.
 
 ### T-F236 — One unreadable subfolder aborts creating the whole archive (P1)
+
+- **Added 2026-09-26 (from T-F232):** `FileItem.LoadFolderSizeAsync` walks a pending-list folder
+  recursively with no cancellation — adding `C:\` walks the whole drive, and removing the row does
+  not stop it. Before T-F232 a `pakko://` link could trigger this; now only the user's own
+  selection can. Fold it into the shared walker (cancel on remove/clear, bounded depth).
 
 - [ ] **Status:** open — confirmed on device 2026-09-24. Parallel path (above 64 files): the
   enumeration in `Zip/WorkItemEnumerator.cs:73,83,100` throws inside the producer and fails the
