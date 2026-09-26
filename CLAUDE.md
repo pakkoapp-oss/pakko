@@ -421,6 +421,9 @@ reader, no size limit). See `docs/DECISIONS.md`'s T-F193 entry. **Open from the 
 T-F197 (ZIP extract drops empty folders), T-F198-T-F201 (UI/UX review fixes, layout redesign,
 browse password re-prompt, stacked second window), **T-F202 (full UI + every-menu smoke test —
 required before this batch closes; the Store build is live).**
+**T-F268** (`[~]`, fix phase 4b, 2026-09-26) — every `Archiver.Shell` window goes through one
+`IOperationUi` (`ShellCommands`, `Win32OperationUi`, `OperationMessages`); `Program.cs` only parses
+and dispatches. Step 2 = modern-window spike (OS XAML Islands first) — see `docs/DECISIONS.md`.
 
 ## Roadmap Summary
 
@@ -606,13 +609,6 @@ files.
 - **Solution platforms:** x64 and ARM64 only — never add `Any CPU` or `x86` configuration entries
   to the `.sln` file. When adding a new project, mirror the `Debug|x64` / `Release|x64` entries
   from `Archiver.Shell` exactly (two lines per config, right-hand side maps to project's `Any CPU`).
-- **`Archiver.Shell/Program.cs` is top-level statements — local functions there can forward-
-  reference each other, but a local `const` cannot be used before its own textual declaration
-  (`CS0841`), unlike a real class's fields.** `MB_ICONERROR`/`MB_ICONWARNING`/`MaxErrorLinesShown`
-  are declared partway through the file, not at the top. When adding a new `--xxx` command's
-  handler function, insert it **after** any consts it reads (e.g. right after the most similar
-  existing command's own function), not simply appended after the dispatch `switch` — confirmed
-  T-F146, moving `RunScanAsync`/`ShowScanResults` down past those consts fixed it.
 - **Pin third-party GitHub Actions (`org/action@vX`) to a full commit SHA, not a mutable version
   tag** — `actions/*` (first-party GitHub actions) are exempt by convention; everything else
   (`microsoft/setup-msbuild`, `nuget/setup-nuget`, etc.) should be SHA-pinned with a `# vX.Y.Z`

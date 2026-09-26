@@ -4330,6 +4330,11 @@ outcome + the "may this source be deleted" classifier); the rest is placed by th
 roots with no number: Core message codes (T-F209, T-F208, T-F215, T-F221, T-F254), one directory
 walker (T-F236, T-F237, T-F251), boundary encoding (T-F204, T-F234, T-F238).
 
+**Phase 4b (added 2026-09-26, user; in progress, after the v1.5.0 release):** T-F268 (Explorer
+windows through one `IOperationUi`, then a modern window — step 1 done, step 2 spike next),
+T-F269 (Cancel stops the whole multi-archive selection — decide with T-F268 step 3), T-F216
+(first half done via T-F268). Runs before phase 5.
+
 **1. P0 — data loss or a broken core flow:** T-F227, T-F228, T-F229, T-F204, T-F233,
 T-F234 (both P0, decision 2026-09-25), T-F245 (with T-F229), T-F246 — both P0 by user decision 2026-09-25. Suggested order: T-F227 + T-F228 + T-F197 together (same staging/commit code), then
 T-F229 with T-F207, then T-F233, T-F234, T-F204.
