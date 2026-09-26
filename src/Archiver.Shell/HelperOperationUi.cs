@@ -16,8 +16,9 @@ namespace Archiver.Shell;
 /// of the operation's progress, cancel and result;</item>
 /// <item>the user closed it — that is a cancel, never a failover.</item>
 /// </list>
-/// Prompts are still Win32 dialogs (<paramref name="askConflict"/>, <paramref name="askPassword"/>)
-/// until step 5 moves them into the window.
+/// Until step 5 moves prompts into the window, a prompt hands the rest of the operation to the
+/// fallback; <paramref name="askConflict"/> and <paramref name="askPassword"/> are the Win32 dialogs
+/// for a prompt raised after the user closed the window.
 /// </summary>
 internal sealed class HelperOperationUi(
     IHelperLauncher launcher,
@@ -129,10 +130,10 @@ internal sealed class HelperOperationUi(
         }
 
         public Task<ConflictDecision> AskConflictAsync(ConflictInfo info) =>
-            CurrentFallback() is { } fallback ? fallback.AskConflictAsync(info) : _owner._askConflict(info);
+            HandOverForPrompt() is { } fallback ? fallback.AskConflictAsync(info) : _owner._askConflict(info);
 
         public Task<PasswordDecision> AskPasswordAsync(PasswordPromptInfo info, bool canApplyToRemaining) =>
-            CurrentFallback() is { } fallback
+            HandOverForPrompt() is { } fallback
                 ? fallback.AskPasswordAsync(info, canApplyToRemaining)
                 : _owner._askPassword(info, canApplyToRemaining);
 
@@ -209,8 +210,14 @@ internal sealed class HelperOperationUi(
             _cts.Dispose();
         }
 
-        private IOperationSession? CurrentFallback()
+        // Until step 5 shows prompts inside the window, a Win32 prompt beside it lost the foreground
+        // when the window appeared (a password being typed went to the window; the conflict dialog
+        // ended up behind it). So a prompt hands the rest of the operation to the Win32 windows,
+        // exactly as they behaved before the helper. Null once the user has closed the window: the
+        // prompt then stands alone.
+        private IOperationSession? HandOverForPrompt()
         {
+            Fail();
             lock (_lock)
                 return _fallback;
         }
@@ -338,8 +345,8 @@ internal sealed class HelperOperationUi(
                 Fail();
         }
 
-        // The helper is gone without closing its window. A fallback session carries the operation on
-        // unless it is already ending; either way nothing is decided on the user's behalf.
+        // The helper is gone without closing its window, or a prompt needs the Win32 windows. A fallback
+        // session carries the operation on unless it is already ending; nothing is decided for the user.
         private void Fail()
         {
             lock (_lock)

@@ -5813,8 +5813,13 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   (4/5 -> 5/5, all extracted); Test shows its result in the window until Close. The window's
   look (light/dark, Mica, DPI) needs the user's eye (agent captures come out black); UIA reports
   the title bar's Maximize button enabled despite `IsMaximizable = false` - check on screen.
-  Prompts are still Win32 dialogs; the plan's "prompt open at crash -> re-asked via Win32" test
-  moves to step 5 with them. Next: step 5 (conflict and password prompts in the window).
+  Found on device in the closing review: a Win32 password or conflict prompt lost the foreground
+  to the helper window when it showed 1 s in (typing went to the window; the conflict dialog went
+  behind it). Until step 5, a prompt hands the rest of the operation to the Win32 windows (tests
+  first, 2 red before the fix; re-checked on 1.5.0.4: the prompt keeps the foreground and
+  `IProgressDialog` takes over). Also checked on 1.5.0.4: Archive (live progress), Hash (multi-line
+  result), Scan (result), Extract to folder (fast, no window). The plan's "prompt open at crash -> re-asked via Win32" test moves
+  to step 5 with the prompts. Next: step 5 (conflict and password prompts in the window).
 - **Status (original):** open — user request 2026-09-26: Explorer-triggered dialogs look out of place on
   Windows 10 and 11. User chose a separate lightweight WinUI 3 window (not the main App window)
   for progress, conflict, password and result, and asked for one UI entry point instead of the

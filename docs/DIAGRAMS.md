@@ -916,7 +916,8 @@ Sources read for this diagram: `src/Archiver.Shell/Program.cs`, `src/Archiver.Sh
 `src/Archiver.OperationUi.Protocol/Messages.cs`.
 
 `Program.cs` gives `ShellCommands` a `HelperOperationUi` with `Win32OperationUi` (diagram 1's
-windows) as its fallback. Prompts (conflict, password) are still the Win32 dialogs in this step.
+windows) as its fallback. Until step 5 moves prompts into the window, a prompt hands the rest of
+the operation to the fallback: a Win32 prompt beside the helper window lost the foreground to it.
 
 ```mermaid
 sequenceDiagram
@@ -948,6 +949,9 @@ sequenceDiagram
             HUI->>Cmd: session.Cancellation cancelled → OperationCanceledException → Dispose — no failover
         else pipe ends without WindowClosed — helper crashed or was killed
             HUI->>W: Begin(title) + BeginItem(current archive)<br/>Win32 carries the rest — progress, Cancel, prompts, result
+        else Core asks for a password or a conflict decision (until step 5)
+            HUI->>H: Kill
+            HUI->>W: Begin(title) + BeginItem(current archive), then AskPasswordAsync / AskConflictAsync<br/>the operation continues in the Win32 windows, as before the helper
         else operation finishes
             Cmd->>HUI: Complete(message)
             HUI->>H: Complete(result, or null for a clean Extract/Archive)

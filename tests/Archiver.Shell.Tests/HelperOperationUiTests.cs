@@ -151,15 +151,51 @@ public sealed class HelperOperationUiTests : IDisposable
         _fallback.Sessions.Should().BeEmpty();
     }
 
+    // Until step 5 moves prompts into the window, a Win32 prompt next to the helper window lost the
+    // foreground to it when the window showed (found on device): a prompt hands the operation over.
     [Fact]
-    public async Task PromptsBeforeFailover_UseTheWin32Prompts()
+    public async Task AConflictPrompt_HandsTheOperationToTheWin32Windows()
+    {
+        using var session = await BeginReadyAsync("Extracting 2 archives");
+        session.BeginItem("b.zip", 2, 2);
+        await _helper.ReadUntilAsync<Item>();
+
+        var decision = await session.AskConflictAsync(new ConflictInfo { ExistingPath = @"C:\a.txt" });
+
+        decision.Resolution.Should().Be(ConflictResolution.Skip, "the fallback session asked");
+        _win32Conflicts.Should().BeEmpty();
+        _helper.Killed.Should().BeTrue();
+        var takeover = _fallback.Sessions.Should().ContainSingle().Subject;
+        takeover.Items.Should().Equal(("b.zip", 2, 2));
+        session.Progress!.Report(new ProgressReport { Percent = 60 });
+        takeover.ProgressReports.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task APasswordPrompt_HandsTheOperationToTheWin32Windows()
     {
         using var session = await BeginReadyAsync();
+
+        var decision = await session.AskPasswordAsync(new PasswordPromptInfo { ArchiveName = "secret.zip", Purpose = PasswordPurpose.Decrypt }, canApplyToRemaining: false);
+
+        decision.Password.Should().BeNull("the fallback session asked");
+        _fallback.PasswordPrompts.Should().ContainSingle();
+        _helper.Killed.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task APromptAfterTheUserClosedTheWindow_UsesTheWin32DialogWithoutAProgressWindow()
+    {
+        using var session = await BeginReadyAsync();
+        await _helper.SendAsync(new CancelRequested());
+        await _helper.SendAsync(new WindowClosed());
+        await WaitUntilAsync(() => session.Cancellation.IsCancellationRequested);
 
         var decision = await session.AskConflictAsync(new ConflictInfo { ExistingPath = @"C:\a.txt" });
 
         decision.Resolution.Should().Be(ConflictResolution.Rename);
         _win32Conflicts.Should().ContainSingle();
+        _fallback.Sessions.Should().BeEmpty();
     }
 
     // --- Security & boundary ---
