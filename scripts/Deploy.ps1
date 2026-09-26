@@ -98,19 +98,18 @@ if (-not $DeployOnly) {
 
     # T-F102: remember this build's own path so the post-publish completeness check (below) can
     # tell a freshly-copied satellite EXE from a stale one PreserveNewest silently kept.
-    $shellExeSourcePath = Join-Path $repoRoot "src\Archiver.Shell\bin\$platform\Release\net8.0-windows\$rid\Archiver.Shell.exe"
+    $shellExeSourcePath = Join-Path $repoRoot "src\Archiver.Shell\bin\$platform\Release\net10.0-windows\$rid\Archiver.Shell.exe"
 
     # ── Build Archiver.ShellExtension (C++ DLL) ───────────────────────────────────
     Write-Host ""
     Write-Host "Building Archiver.ShellExtension ($Architecture)..." -ForegroundColor Cyan
 
-    $msbuildPath = Get-ChildItem "${env:ProgramFiles}\Microsoft Visual Studio\2022" `
-        -Recurse -Filter MSBuild.exe -ErrorAction SilentlyContinue |
-        Where-Object { $_.FullName -match 'Current\\Bin\\MSBuild\.exe$' } |
-        Select-Object -First 1 -ExpandProperty FullName
+    $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+    $msbuildPath = & $vswhere -latest -requires Microsoft.Component.MSBuild -find 'MSBuild\Current\Bin\MSBuild.exe' |
+        Select-Object -First 1
 
     if (-not $msbuildPath) {
-        Write-Error "MSBuild.exe not found. Install Visual Studio 2022 with the 'Desktop development with C++' workload."
+        Write-Error "MSBuild.exe not found. Install Visual Studio 2026 with the 'Desktop development with C++' workload and the MSVC v143 (14.44) x64/ARM64 build tools."
         exit 1
     }
 

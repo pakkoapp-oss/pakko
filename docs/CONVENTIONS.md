@@ -8,7 +8,7 @@ AI agents must follow these rules in all generated code.
 
 | Rule | Value |
 |------|-------|
-| Language version | C# 12 |
+| Language version | C# 12 (pinned in `Directory.Build.props`; .NET 10 SDK) |
 | Nullable reference types | `enable` (all projects) |
 | Implicit usings | `enable` |
 | File-scoped namespaces | Required |

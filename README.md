@@ -68,7 +68,7 @@ The entire compression stack is part of the .NET Base Class Library — maintain
 | Layer | Technology |
 |-------|-----------|
 | UI | WinUI 3 + Windows App SDK |
-| Language | C# 12 / .NET 8 LTS |
+| Language | C# 12 / .NET 10 LTS |
 | Compression | `System.IO.Compression` (ZIP) |
 | Distribution | MSIX (self-contained) |
 | Min OS | Windows 10 1809 (build 17763) / Windows Server 2019 |
@@ -175,7 +175,7 @@ for the detailed task list.
 
 ## Building and Deploying
 
-Prerequisites: Visual Studio 2022 (Windows App SDK / WinUI 3 + Desktop C++ workloads), .NET 8 SDK.
+Prerequisites: Visual Studio 2026 (.NET desktop + Desktop C++ workloads, MSVC v143 x64/ARM64 build tools), .NET 10 SDK.
 
 See [`scripts/README.md`](scripts/README.md) for the full build/sign/deploy steps and
 [`CONTRIBUTING.md`](CONTRIBUTING.md) for the contributor workflow. Production code signing with a

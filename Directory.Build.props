@@ -16,6 +16,10 @@
          .editorconfig (CA1305/CA1707/CA1805) is unaffected by this flag — a suppressed diagnostic
          is never emitted, so there's nothing for TreatWarningsAsErrors to promote. -->
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <!-- T-F270: the .NET 10 SDK defaults net10.0 projects to C# 14, whose implicit span
+         conversions can silently rebind calls like array.Contains/Reverse to MemoryExtensions.
+         The .NET 8 -> 10 move keeps the language unchanged; moving to C# 14 is its own decision. -->
+    <LangVersion>12</LangVersion>
   </PropertyGroup>
 
 </Project>

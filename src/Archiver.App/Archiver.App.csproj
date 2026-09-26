@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows10.0.17763.0</TargetFramework>
+    <TargetFramework>net10.0-windows10.0.17763.0</TargetFramework>
     <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
     <!-- Lets `dotnet restore` resolve this Windows-targeted TFM on a non-Windows CI runner (e.g.
          GitHub's Automatic Dependency Submission workflow) without NETSDK1100; no effect on an
@@ -104,19 +104,19 @@
       Archiver.Core.dll is likewise not duplicated: Archiver.App's publish already
       places an identical copy (same project, same build config) at the package root.
     -->
-    <Content Include="..\Archiver.Shell\bin\$(Platform)\$(Configuration)\net8.0-windows\$(RuntimeIdentifier)\Archiver.Shell.exe">
+    <Content Include="..\Archiver.Shell\bin\$(Platform)\$(Configuration)\net10.0-windows\$(RuntimeIdentifier)\Archiver.Shell.exe">
       <Link>Archiver.Shell.exe</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="..\Archiver.Shell\bin\$(Platform)\$(Configuration)\net8.0-windows\$(RuntimeIdentifier)\Archiver.Shell.dll">
+    <Content Include="..\Archiver.Shell\bin\$(Platform)\$(Configuration)\net10.0-windows\$(RuntimeIdentifier)\Archiver.Shell.dll">
       <Link>Archiver.Shell.dll</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="..\Archiver.Shell\bin\$(Platform)\$(Configuration)\net8.0-windows\$(RuntimeIdentifier)\Archiver.Shell.deps.json">
+    <Content Include="..\Archiver.Shell\bin\$(Platform)\$(Configuration)\net10.0-windows\$(RuntimeIdentifier)\Archiver.Shell.deps.json">
       <Link>Archiver.Shell.deps.json</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="..\Archiver.Shell\bin\$(Platform)\$(Configuration)\net8.0-windows\$(RuntimeIdentifier)\Archiver.Shell.runtimeconfig.json">
+    <Content Include="..\Archiver.Shell\bin\$(Platform)\$(Configuration)\net10.0-windows\$(RuntimeIdentifier)\Archiver.Shell.runtimeconfig.json">
       <Link>Archiver.Shell.runtimeconfig.json</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
@@ -126,7 +126,7 @@
       above don't cover. %(RecursiveDir) preserves each culture subfolder in the package —
       standard MSBuild pattern for satellite assemblies.
     -->
-    <Content Include="..\Archiver.Shell\bin\$(Platform)\$(Configuration)\net8.0-windows\$(RuntimeIdentifier)\**\Archiver.Shell.resources.dll">
+    <Content Include="..\Archiver.Shell\bin\$(Platform)\$(Configuration)\net10.0-windows\$(RuntimeIdentifier)\**\Archiver.Shell.resources.dll">
       <Link>%(RecursiveDir)Archiver.Shell.resources.dll</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>

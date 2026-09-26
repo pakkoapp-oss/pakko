@@ -2,8 +2,10 @@
 
 ## Prerequisites
 
-- **Visual Studio 2022** with the *Windows App SDK / WinUI 3* workload
-- **.NET 8 SDK**
+- **Visual Studio 2026** with the *.NET desktop* and *Desktop development with C++* workloads,
+  plus the MSVC v143 (14.44) x64 and ARM64 build tools (the shell extension targets v143)
+- **.NET 10 SDK** (`global.json` pins the 10.0.100 feature band or later)
+- Language: **C# 12** (pinned in `Directory.Build.props`)
 - **Windows 10 1809+** or Windows 11
 
 ---
@@ -24,7 +26,7 @@ dotnet test --filter "Category=Slow"
 
 Always run `dotnet test` with no path argument — all projects must stay green after every change.
 
-The WinUI 3 application (`Archiver.App`) must be built and run from **Visual Studio 2022**.
+The WinUI 3 application (`Archiver.App`) is debugged from **Visual Studio 2026**.
 `dotnet build src/Archiver.Core` and `dotnet test` work freely from the terminal — as does
 `dotnet build src/Archiver.App`, which compiles the WinUI project (useful as a quick
 compile-check on ViewModel/XAML changes without opening Visual Studio), though full MSIX

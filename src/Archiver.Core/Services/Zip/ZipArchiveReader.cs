@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.IO.Compression;
 using Archiver.Core.Services.Zip.Decryption;
 
@@ -53,7 +54,7 @@ internal sealed class ZipArchiveReader : IDisposable
     }
 
     private static List<NamedZipEntry> Pair(
-        IReadOnlyList<ZipArchiveEntry> entries, List<(byte[] RawName, string Name)> names)
+        ReadOnlyCollection<ZipArchiveEntry> entries, List<(byte[] RawName, string Name)> names)
     {
         var firstRawByName = new Dictionary<string, byte[]>(StringComparer.Ordinal);
         var result = new List<NamedZipEntry>(entries.Count);

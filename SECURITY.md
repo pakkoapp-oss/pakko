@@ -132,7 +132,7 @@ either. TAR-family formats (read and create) use the same `tar.exe` process.
 
 | Risk | Severity | Mitigation |
 |------|----------|-----------|
-| ZIP path traversal (e.g., `../../etc/passwd` style entries) | High | `System.IO.Compression` with .NET 8 validates entry paths — covered in `ZipArchiveService` tests |
+| ZIP path traversal (e.g., `../../etc/passwd` style entries) | High | `System.IO.Compression` with .NET 10 validates entry paths — covered in `ZipArchiveService` tests |
 | ZIP bomb (highly compressed entries) | Medium | Whole-archive ratio check (T-F94, v1.3; supersedes T-F28's per-entry version) — an archive whose declared uncompressed size exceeds 1000:1 against the archive file's on-disk size is blocked unless the destination has free space for the declared size AND the user explicitly confirms extraction; see `DECISIONS.md`'s T-F94 entry |
 | tar-family decompression bomb (`.tar.gz`/`.bz2`/`.xz`/`.zst`/`.lzma`) | Medium | Mitigated (T-F94, v1.3; supersedes T-F90's auto-reject-only version) — same whole-archive ratio check and confirm-if-it-fits model as ZIP, run before `-xf` ever executes; see `DECISIONS.md`'s T-F94 entry |
 | Symlink/reparse point attacks in ZIP entries | Medium | Mitigated (T-F37, v1.2) — reparse point check after file creation; path traversal via reparse point rejected |

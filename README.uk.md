@@ -77,7 +77,7 @@ Pakko використовує іншу модель довіри — це не 
 | Рівень | Технологія |
 |-------|-----------|
 | UI | WinUI 3 + Windows App SDK |
-| Мова | C# 12 / .NET 8 LTS |
+| Мова | C# 12 / .NET 10 LTS |
 | Стиснення | `System.IO.Compression` (ZIP) |
 | Дистрибуція | MSIX (self-contained) |
 | Мін. ОС | Windows 10 1809 (build 17763) / Windows Server 2019 |
@@ -181,7 +181,7 @@ tar-родини через `tar.exe`, Archive Browser і підтримка г�
 
 ## Збірка та розгортання
 
-Передумови: Visual Studio 2022 (навантаження Windows App SDK / WinUI 3 + Desktop C++), .NET 8 SDK.
+Передумови: Visual Studio 2026 (навантаження .NET desktop + Desktop C++, інструменти MSVC v143 x64/ARM64), .NET 10 SDK.
 
 Повні кроки збірки/підпису/розгортання — у [`scripts/README.md`](scripts/README.md) (англійською),
 а робочий процес контриб'ютора — у [`CONTRIBUTING.md`](CONTRIBUTING.md). Підпис коду production-сертифікатом

@@ -18,7 +18,7 @@
 ```
 ┌─────────────────────────────────────┐  ┌──────────────────────────────────────┐
 │           Archiver.App              │  │         Archiver.Shell               │
-│           (WinUI 3, net8.0-win)     │  │   (net8.0-windows, WinExe, no WinUI) │
+│           (WinUI 3, net10.0-win)    │  │  (net10.0-windows, WinExe, no WinUI) │
 │                                     │  │                                      │
 │  MainWindow.xaml / .cs              │  │  Program.cs (entry point)            │
 │  ViewModels/MainViewModel.cs        │  │  ShellArgumentParser.cs              │
@@ -31,7 +31,7 @@
                                ▼
 ┌─────────────────────────────────────┐
 │           Archiver.Core             │
-│         (net8.0, no UI deps)        │
+│         (net10.0, no UI deps)       │
 │                                     │
 │  Interfaces/IArchiveService.cs      │
 │  Services/ZipArchiveService.cs      │
@@ -74,7 +74,7 @@ Windows.ApplicationModel.Resources, or any UI assembly.
 
 ```
 src/
-├── Archiver.Core/              ← net8.0, zero UI deps, zero NuGet packages
+├── Archiver.Core/              ← net10.0, zero UI deps, zero NuGet packages
 │   ├── Interfaces/
 │   │   ├── IArchiveService.cs
 │   │   ├── IArchiveCreationRouter.cs   ← T-F105: routes ArchiveAsync by ArchiveContainerFormat
@@ -175,7 +175,7 @@ src/
 │   └── Strings/                ← 37 locales (T-F91), en-US is the fallback
 │       └── en-US/Resources.resw
 │
-├── Archiver.App.Core/          ← net8.0, WinUI-free helpers for Archiver.App (T-F05), unit-testable
+├── Archiver.App.Core/          ← net10.0, WinUI-free helpers for Archiver.App (T-F05), unit-testable
 │   │                              without a WinUI test host
 │   ├── ArchiveEntryViewModel.cs / ArchiveTreeIndex.cs   ← Archive Browser tree/breadcrumb building
 │   ├── FileSystemBrowser.cs                             ← T-F107: real-filesystem climb past archive root
@@ -188,7 +188,7 @@ src/
 │   ├── SourceRecycler.cs                                ← T-F207: "Delete after operation" — Recycle Bin / confirm / report
 │   └── Win32SourceDeleteOperations.cs                   ← T-F207: final-path + volume-type + SHFileOperationW P/Invoke
 │
-├── Archiver.Shell/             ← shell-triggered operation entry point; net8.0-windows; WinExe; no WinUI
+├── Archiver.Shell/             ← shell-triggered operation entry point; net10.0-windows; WinExe; no WinUI
 │   ├── Program.cs                      ← T-F268: parse, then dispatch to ShellCommands
 │   ├── ShellArgumentParser.cs
 │   ├── ShellCommands.cs                ← T-F268: every Explorer command; windows only via IOperationUi
@@ -224,7 +224,7 @@ src/
 │       │                                                             Archiver.App/Strings/'s own set
 │       └── PasswordMessages.resx / PasswordMessages.<locale>.resx  ← 36 locales, same reuse pattern
 │
-├── Archiver.CLI/                ← standalone console frontend (T-F09); net8.0; Exe (real console,
+├── Archiver.CLI/                ← standalone console frontend (T-F09); net10.0; Exe (real console,
 │   │                                not WinExe); no WinUI; built as pakko.exe; ships independently
 │   │                                of the MSIX (scripts/Publish-Cli.ps1)
 │   ├── Program.cs
@@ -997,7 +997,7 @@ incomplete layout, leaving rows permanently blank (T-F106).
 
 ### v1.2 — Shell Extension
 
-`Archiver.Shell` (net8.0-windows, WinExe) is implemented and included in the MSIX package,
+`Archiver.Shell` (net10.0-windows, WinExe) is implemented and included in the MSIX package,
 showing progress via the in-process `IProgressDialog` COM object (`NativeProgressDialog.cs`).
 
 **T-F61 — `Archiver.ShellExtension` (in-process COM DLL, C++/WRL):**
@@ -1296,7 +1296,7 @@ DI registration adds:
 services.AddSingleton<IArchiveListingRouter, ArchiveListingRouter>();
 ```
 
-New project `Archiver.App.Core` (plain `net8.0`, no WinUI — referenced by `Archiver.App`, tested
+New project `Archiver.App.Core` (plain `net10.0`, no WinUI — referenced by `Archiver.App`, tested
 by `Archiver.App.Core.Tests`) holds the App-layer model and the flat-to-tree helper:
 
 ```csharp

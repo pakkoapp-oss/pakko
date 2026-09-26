@@ -55,10 +55,7 @@ unverified `x:Uid` patterns that was fixed the same round.
 
 **T-F99/T-F100 (drive-root context menu / file-activation routing)** are `[x]` done — on-device
 testing surfaced and fixed a command-line-corrupting `QuotePath` trailing-backslash bug and two
-independent archive-auto-naming bugs for drive-root sources. **T-F101** (Pakko missing from the
-classic "Show more options" menu) is `[x]` resolved with no code fix — stopped reproducing after
-T-F100 shipped; leading guess is an Explorer verb/icon-cache side effect of T-F100's manifest
-change. **T-F103** (extraction destination misnamed for compound extensions, e.g.
+independent archive-auto-naming bugs for drive-root sources. **T-F103** (extraction destination misnamed for compound extensions, e.g.
 `archive.tar.gz` -> `archive.tar` instead of `archive`) fixed via a shared `ArchiveNaming` helper
 wired into every affected call site plus the native title-display equivalent.
 
@@ -423,7 +420,10 @@ browse password re-prompt, stacked second window), **T-F202 (full UI + every-men
 required before this batch closes; the Store build is live).**
 **T-F268** (`[~]`, fix phase 4b, 2026-09-26) — every `Archiver.Shell` window goes through one
 `IOperationUi` (`ShellCommands`, `Win32OperationUi`, `OperationMessages`); `Program.cs` only parses
-and dispatches. Step 2 = modern-window spike (OS XAML Islands first) — see `docs/DECISIONS.md`.
+and dispatches. Step 2 spike done: OS XAML Islands not viable as-is (packaged crash `0x802B000A`,
+Windows 10 look); a code-only WinUI 3 window starts under package identity — step 3 plan next
+(`docs/DECISIONS.md`). **T-F270** (`[~]`, 2026-09-26) — every project moves to .NET 10 LTS (see
+Build Commands' toolchain note); .NET 8/9 leave support 2026-11-10.
 
 ## Roadmap Summary
 
@@ -587,8 +587,8 @@ files.
   `/* best-effort */`) — an empty catch's WHY is exactly the non-obvious case this file's own
   comment policy already carves out an exception for. Also satisfies SonarCloud's S108/S2486 by
   construction instead of accumulating findings (44 found at once in one first scan, T-F136).
-- **`Microsoft.Win32.Registry` (`RegistryKey`) is usable from `Archiver.Core` (plain `net8.0`,
-  not `net8.0-windows`) with zero new NuGet package reference** — confirmed via a throwaway probe
+- **`Microsoft.Win32.Registry` (`RegistryKey`) is usable from `Archiver.Core` (plain `net10.0`,
+  not `net10.0-windows`) with zero new NuGet package reference** — confirmed via a throwaway probe
   build; it's already part of the Windows runtime pack pulled in transitively, not something this
   project's "zero dependencies" constraint blocks. Mark the call site
   `[SupportedOSPlatform("windows")]` to make the resulting `CA1416` warning meaningful instead of
@@ -597,7 +597,7 @@ files.
   `[SupportedOSPlatform("windows")]` — a raw P/Invoke wrapper class calling its own `DllImport`s
   (e.g. `Services/Sandbox/`, `Services/Antivirus/AmsiScanner.cs`) needs no annotation at all, since
   `DllImport` itself isn't BCL-platform-tagged. Annotating the whole class anyway makes `CA1416`
-  propagate into every caller, including test projects on a plain `net8.0` TFM — confirmed
+  propagate into every caller, including test projects on a plain `net10.0` TFM — confirmed
   T-F146, where a class-level annotation forced two unrelated test classes to also carry the
   attribute before the warnings cleared.
 - **UI-thread marshaling for Core→App callbacks:** any delegate `Archiver.Core` invokes that ends
@@ -822,15 +822,15 @@ files.
 ```
 windows-archiver-wrapper/
 ├── src/
-│   ├── Archiver.Core/              ← net8.0 class library, no UI deps
-│   ├── Archiver.App.Core/          ← net8.0 class library, no WinUI deps (T-F05: ArchiveEntryViewModel,
+│   ├── Archiver.Core/              ← net10.0 class library, no UI deps
+│   ├── Archiver.App.Core/          ← net10.0 class library, no WinUI deps (T-F05: ArchiveEntryViewModel,
 │   │                                  ArchiveTreeIndex — split out so the flat-to-tree helper is
 │   │                                  unit-testable without a WinUI test host)
 │   ├── Archiver.App/               ← WinUI 3 app
 │   │   └── Strings/en-US/          ← ResW localization
-│   ├── Archiver.Shell/             ← net8.0-windows WinExe, shell-triggered ops, no WinUI
+│   ├── Archiver.Shell/             ← net10.0-windows WinExe, shell-triggered ops, no WinUI
 │   │   └── NativeProgressDialog.cs ← IProgressDialog COM interop (in-process progress UI)
-│   ├── Archiver.CLI/                ← net8.0 Exe (real console), 7z-familiar CLI (T-F09), no
+│   ├── Archiver.CLI/                ← net10.0 Exe (real console), 7z-familiar CLI (T-F09), no
 │   │                                   WinUI, standalone self-contained distribution
 │   └── Archiver.ShellExtension/    ← C++ COM DLL, IExplorerCommand (T-F61), x64+ARM64
 ├── tests/
@@ -920,7 +920,12 @@ MSBuild tests\Archiver.ShellExtension.Tests\Archiver.ShellExtension.Tests.vcxpro
 # Then run: tests\Archiver.ShellExtension.Tests\bin\x64\Debug\Archiver.ShellExtension.Tests.exe
 ```
 
-> WinUI app must be built and run from Visual Studio 2022.
+> **Toolchain (T-F270, 2026-09-26):** .NET 10 LTS — `global.json` pins SDK `10.0.100` with
+> `rollForward: latestFeature` (dev machine: 10.0.401); **C# 12** — `LangVersion` pinned once in
+> `Directory.Build.props` (C# 14's implicit span conversions can rebind calls; moving is a separate
+> decision); **Visual Studio 2026** (18.x) with MSVC **v143** (14.44) x64+ARM64 for the C++
+> projects. Every C# build goes through `dotnet`; `msbuild.exe` (found via `vswhere -latest`) builds
+> only the `.vcxproj` files. CI: `windows-2022` runner + `setup-dotnet 10.0.x`.
 > `dotnet test` and `dotnet build src/Archiver.Core` work freely from terminal.
 > `dotnet build src/Archiver.App` also compiles via CLI (confirmed producing ARM64 output) —
 > useful for a quick compile-check on ViewModel/DI changes without opening VS. Full MSIX
@@ -1107,7 +1112,7 @@ MSBuild tests\Archiver.ShellExtension.Tests\Archiver.ShellExtension.Tests.vcxpro
 > `Resources.resw` falls back to `en-US` automatically, so non-translatable keys (URLs) should
 > be omitted from locale files, not duplicated. Verify a new locale is wired without opening VS:
 > `dotnet build src/Archiver.App/Archiver.App.csproj /p:Platform=x64`, then check
-> `bin/x64/Release/net8.0-windows10.0.17763.0/win-x64/AppxManifest.xml` for the `<Resource
+> `bin/x64/Release/net10.0-windows10.0.17763.0/win-x64/AppxManifest.xml` for the `<Resource
 > Language>` entries.
 >
 > **25+ locale resource packages force a `.msixbundle`, not a flat `.msix`** (found 2026-07-07
@@ -1319,7 +1324,7 @@ Two more, not duplicated elsewhere:
   "installed successfully" with a fresh version number and a fresh `.exe` apphost timestamp while
   silently installing a stale managed `.dll`. Caught only by comparing the `.dll`'s file *size*,
   not the `.exe`'s timestamp (the apphost stub barely changes across builds). Grep every
-  `net8.0-windows`-style TFM literal across `.csproj`/`.ps1` files before changing any project's
+  `net10.0-windows`-style TFM literal across `.csproj`/`.ps1` files before changing any project's
   TFM, not just the one project's own file (T-F128).
 - **A COM surrogate (`dllhost.exe`) hosting `Archiver.ShellExtension.dll` can lock the DLL/PDB**
   after testing the context menu, causing `C1041`/file-in-use errors on the next rebuild. Run

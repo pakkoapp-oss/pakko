@@ -87,7 +87,7 @@ jobs:
 
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: "8.0.x"
+          dotnet-version: "10.0.x"
 
       # ── SonarCloud (T-F135) ──────────────────────────────────────────────────────────────────
       # Only runs with a real SONAR_TOKEN available: pushes to main/tags, and PRs from this same
@@ -221,7 +221,7 @@ jobs:
 
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: "8.0.x"
+          dotnet-version: "10.0.x"
 
       - name: Set up MSBuild
         uses: microsoft/setup-msbuild@6fb02220983dee41ce7ae257b6f4d8f9bf5ed4ce # v2.0.0
@@ -281,7 +281,7 @@ jobs:
 
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: "8.0.x"
+          dotnet-version: "10.0.x"
 
       - name: Set up MSBuild
         uses: microsoft/setup-msbuild@6fb02220983dee41ce7ae257b6f4d8f9bf5ed4ce # v2.0.0
@@ -425,7 +425,7 @@ jobs:
 
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: "8.0.x"
+          dotnet-version: "10.0.x"
 
       - name: Publish pakko.exe (both architectures)
         shell: pwsh
@@ -519,7 +519,7 @@ jobs:
 
   # DocFX developer/API docs site (docfx.json at repo root -- see index.md/toc.yml/api/index.md
   # for the book+API structure). runs-on: ubuntu-latest, unlike every other job in this file --
-  # Archiver.Core and Archiver.App.Core are both plain net8.0 with zero WinUI/Windows-only deps
+  # Archiver.Core and Archiver.App.Core are both plain net10.0 with zero WinUI/Windows-only deps
   # (a repo hard constraint already, for unrelated reasons), so docfx's design-time build of them
   # is genuinely portable and doesn't need a Windows runner's licensing cost.
   docs:
@@ -533,7 +533,7 @@ jobs:
 
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: "8.0.x"
+          dotnet-version: "10.0.x"
 
       - uses: actions/configure-pages@v5
 

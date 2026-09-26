@@ -141,8 +141,8 @@ public static class ShellArgumentParser
 
     private static ParsedCommand ParseFileList(CommandType type, string[] args)
     {
-        var files = (IReadOnlyList<string>)args[1..];
-        if (files.Count == 0)
+        var files = args[1..];
+        if (files.Length == 0)
             return Invalid($"{args[0]} requires at least one file.");
 
         return new ParsedCommand { Type = type, Files = files };

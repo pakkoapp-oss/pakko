@@ -50,7 +50,7 @@ that shouldn't run just because someone ran the "Slow" tier.
 
 ```xml
 <!-- tests/Archiver.Core.Tests/Archiver.Core.Tests.csproj -->
-<TargetFramework>net8.0</TargetFramework>  <!-- NOT net8.0-windows — pure .NET -->
+<TargetFramework>net10.0</TargetFramework>  <!-- NOT net10.0-windows — pure .NET -->
 <PackageReference Include="xunit" Version="2.5.3" />
 <PackageReference Include="xunit.runner.visualstudio" Version="2.5.3" />
 <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />

@@ -54,10 +54,9 @@ internal static class WinZipAesReader
         // derive different keys and cannot read a real WinZip-AES archive. See
         // docs/CONVENTIONS.md's Static-Analysis Won't-Fix Conventions.
 #pragma warning disable CA5379
-        using var pbkdf2 = new Rfc2898DeriveBytes(
-            password, salt, Pbkdf2Iterations, HashAlgorithmName.SHA1); // NOSONAR: S5344 — 1000 iterations are fixed by the WinZip AE spec (see CONVENTIONS.md)
+        byte[] derived = Rfc2898DeriveBytes.Pbkdf2(
+            password, salt, Pbkdf2Iterations, HashAlgorithmName.SHA1, keyLength * 2 + PasswordVerificationLength); // NOSONAR: S5344 — 1000 iterations are fixed by the WinZip AE spec (see CONVENTIONS.md)
 #pragma warning restore CA5379
-        byte[] derived = pbkdf2.GetBytes(keyLength * 2 + PasswordVerificationLength);
         try
         {
             return (derived[..keyLength], derived[keyLength..(keyLength * 2)], derived[(keyLength * 2)..]);

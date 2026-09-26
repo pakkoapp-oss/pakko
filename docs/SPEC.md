@@ -33,7 +33,7 @@ is a teaser only, per `CLAUDE.md`'s Documentation Map).
 |-------|-----------|
 | UI Framework | WinUI 3 + Windows App SDK |
 | Language | C# 12 |
-| Runtime | .NET 8 LTS |
+| Runtime | .NET 10 LTS (supported to 2028-11-14) |
 | Compression | `System.IO.Compression` (built-in) |
 | Optional | `tar.exe` (Windows built-in, future) |
 

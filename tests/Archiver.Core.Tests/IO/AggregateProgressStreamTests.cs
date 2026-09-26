@@ -151,11 +151,11 @@ public sealed class AggregateProgressStreamTests
 
         using (var s1 = new AggregateProgressStream(new MemoryStream([1, 2, 3, 4]), tracker, "a.bin"))
         {
-            s1.Read(new byte[4], 0, 4);
+            s1.Read(new byte[4], 0, 4).Should().Be(4);
         }
         using (var s2 = new AggregateProgressStream(new MemoryStream([5, 6, 7, 8]), tracker, "b.bin"))
         {
-            s2.Read(new byte[4], 0, 4);
+            s2.Read(new byte[4], 0, 4).Should().Be(4);
         }
 
         reports.Should().HaveCount(2);

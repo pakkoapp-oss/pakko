@@ -8,8 +8,9 @@ They are not part of the build pipeline — run them manually from a PowerShell 
 ## Prerequisites
 
 - Windows 10/11 with Developer Mode enabled, **or** sideloading allowed via Group Policy
-- .NET 8 SDK
-- Windows App SDK / WinUI 3 build tools (Visual Studio 2022 with the workload installed)
+- .NET 10 SDK
+- Visual Studio 2026 with Desktop C++ and the MSVC v143 x64/ARM64 build tools (the scripts find
+  `MSBuild.exe` via `vswhere -latest`; it builds only the C++ shell extension)
 
 ---
 

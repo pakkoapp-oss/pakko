@@ -16,8 +16,8 @@
 .PARAMETER Thumbprint
     Thumbprint of the code-signing certificate. Required.
 .PARAMETER MsBuildPath
-    Path to msbuild.exe. Defaults to searching Visual Studio 2022's install location the same
-    way Deploy.ps1 does; pass this to use whatever microsoft/setup-msbuild resolved instead.
+    Path to msbuild.exe. Defaults to the newest Visual Studio with MSBuild (vswhere -latest), the
+    same way Deploy.ps1 does; pass this to use whatever microsoft/setup-msbuild resolved instead.
 .EXAMPLE
     .\CI-Build-Msix.ps1 -Architecture x64 -Thumbprint D2EC5F2C451ED0EBE94B8168A68E5B813954CC75
 #>
@@ -62,10 +62,9 @@ Write-Host ""
 Write-Host "Building Archiver.ShellExtension ($Architecture)..." -ForegroundColor Cyan
 
 if (-not $MsBuildPath) {
-    $MsBuildPath = Get-ChildItem "${env:ProgramFiles}\Microsoft Visual Studio\2022" `
-        -Recurse -Filter MSBuild.exe -ErrorAction SilentlyContinue |
-        Where-Object { $_.FullName -match 'Current\\Bin\\MSBuild\.exe$' } |
-        Select-Object -First 1 -ExpandProperty FullName
+    $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+    $MsBuildPath = & $vswhere -latest -requires Microsoft.Component.MSBuild -find 'MSBuild\Current\Bin\MSBuild.exe' |
+        Select-Object -First 1
 }
 if (-not $MsBuildPath) {
     Write-Error "MSBuild.exe not found. Pass -MsBuildPath explicitly (e.g. the path microsoft/setup-msbuild resolved)."
