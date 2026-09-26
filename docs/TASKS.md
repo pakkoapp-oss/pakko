@@ -5833,6 +5833,29 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   is never opened, no message, nothing written for either.
 - **Reported by:** T-F268 closing review, 2026-09-26.
 
+### T-F270 — Move every project from .NET 8 to .NET 10 LTS (P0)
+
+- [ ] **Status:** in progress, 2026-09-26. Plan: `temporal-wondering-feather.md` (user-approved).
+- **Why:** .NET 8 LTS and .NET 9 STS both leave support on 2026-11-10; .NET 10 LTS runs to
+  2028-11-14. The MSIX and `pakko.exe` ship a self-contained runtime, so without this users keep
+  an unpatched runtime after November. User decision, with a VS 2026 install (`net10.0` is
+  officially supported in VS 18.0+ only; all C# builds already go through `dotnet`, `msbuild.exe`
+  builds only the C++ projects).
+- **Scope:** all 13 `.csproj` (TFM `net8.0*` -> `net10.0*`, Windows version suffixes unchanged),
+  `global.json`, the TFM-bearing paths (`Archiver.App.csproj` Content Include, `Deploy.ps1`,
+  `.pubxml`), CI `setup-dotnet`, MSBuild discovery in the scripts (VS 2026 and 2022). Language
+  stays C# 12 (`LangVersion` pinned centrally); moving to C# 14 is a separate decision.
+- **Risks checked by tests written on .NET 8 first:** zlib -> zlib-ng (.NET 9: output bytes,
+  sizes, speed; T-F114 calibration), `ZipArchive` general-purpose bits for `CompressionLevel`
+  (.NET 9), `ZipArchiveEntry` name decoding by the UTF-8 flag (.NET 9; Pakko maps its own names by
+  index), transitive NuGet audit and new analyzers under `TreatWarningsAsErrors` (.NET 10), CET on
+  by default (.NET 9).
+- **Acceptance:** clean build with zero warnings; default + `Slow` + `VeryLarge` suites green;
+  C++ tests green; Pakko-written ZIPs pass `7za t`; the installed package's `coreclr.dll`/
+  `System.Private.CoreLib.dll` and `pakko.exe`'s runtime are 10.0.x; device smoke across App,
+  Explorer commands and CLI; CI (incl. the Store path via `workflow_dispatch`) green.
+- **Reported by:** user, 2026-09-26 (after T-F268's spike surfaced the end-of-support date).
+
 ### T-F223 — Diagram gap from T-F193 (P2)
 
 - [ ] **Status:** open. Carried by T-F202 from `docs/DECISIONS.md`'s T-F193 entry: no diagram in
