@@ -9620,7 +9620,8 @@ Cyrillic characters now fit (74238 characters before, red test first).
 drive). With the scheme gone, only the user's own selection reaches it; this goes to phase 6
 (T-F236, the shared walker).
 
-**Device check (1.4.12.14/15, agent via `windows` MCP):**
+**Device check (1.4.12.14/15, agent via `windows` MCP).** Both were fresh installs (`Deploy.ps1`
+uninstalls first), so the in-place Store-style update is still to be checked before release.
 - **Scheme gone.** `HKCR\pakko` is absent. `Start-Process "pakko://browse?files=<UNC>"` opened
   Windows' own "choose an app" picker, and no Pakko process started.
 - **Explorer menu.** Explorer → Pakko → Open on `тест архів.zip` entered the Archive Browser with
@@ -9630,3 +9631,6 @@ drive). With the scheme gone, only the user's own selection reaches it; this goe
   because an IP-address UNC path is in the Internet zone.
 - **Size limit.** A 150-path Cyrillic selection showed the Ukrainian message, and Shell exited.
 - **Plain launch.** Two plain launches opened two empty windows.
+- **Compress.** Explorer → Pakko → "Compress..." on two files (`--archive`) filled the list.
+- **No package identity.** An unpackaged `bin\...\Archiver.Shell.exe --open-ui` showed the
+  `OpenUiNoPackage` message and exited.
