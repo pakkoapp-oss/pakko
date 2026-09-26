@@ -5785,6 +5785,13 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   progress window. Also fixed: a cancelled `TestAsync` reported success (Core). Tests first,
   6/6 mutants killed, device-checked on 1.5.0.0 — see `docs/DECISIONS.md`, "T-F268 step 1".
   Next: step 2 spike (OS XAML Islands first). User's own Explorer click-through still pending.
+- **Step 3 plan (user-approved 2026-09-26, `async-seeking-dove.md`):** a separate code-only WinUI 3
+  helper exe (`Archiver.OperationUi`) driven by Shell over anonymous pipes, with Win32 fallback when
+  it cannot start and Win32 failover if it crashes (window close = cancel, not failover); one window
+  per Explorer command (closes T-F269); hidden start, shown after ~1 s / a prompt / a non-clean
+  result; window logic in a plain `Archiver.OperationUi.Core`; HTML mockup approved before XAML.
+  Order: Gate 0 (finish the spike in the real installed package) -> mockup -> one-window refactor on
+  Win32 -> protocol -> helper progress/cancel/result -> prompts -> polish/37 locales.
 - **Status (original):** open — user request 2026-09-26: Explorer-triggered dialogs look out of place on
   Windows 10 and 11. User chose a separate lightweight WinUI 3 window (not the main App window)
   for progress, conflict, password and result, and asked for one UI entry point instead of the
