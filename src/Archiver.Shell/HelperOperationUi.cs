@@ -56,16 +56,6 @@ internal sealed class HelperOperationUi(
 
     public void ShowMessage(OperationMessage message) => _fallbackUi.ShowMessage(message);
 
-    private static ResultText ToResult(OperationMessage message) => new(
-        message.Severity switch
-        {
-            MessageSeverity.Error => ResultSeverity.Error,
-            MessageSeverity.Warning => ResultSeverity.Warning,
-            _ => ResultSeverity.Information,
-        },
-        message.Title,
-        message.Text);
-
     private sealed class Session : IOperationSession
     {
         private readonly HelperOperationUi _owner;
@@ -106,8 +96,10 @@ internal sealed class HelperOperationUi(
 
             Enqueue(OperationWindowText.CreateHello());
             Enqueue(new BeginMessage(title, style == ProgressStyle.Percent ? ProgressKind.Percent : ProgressKind.Bytes));
-            _ = Task.Run(PumpAsync);
-            _ = Task.Run(ReadAsync);
+            // The operation's own token is not passed anywhere here: after Cancel the window still
+            // has to be told to close, and its WindowClosed still has to be read.
+            _ = Task.Run(PumpAsync, CancellationToken.None);
+            _ = Task.Run(ReadAsync, CancellationToken.None);
             _readyTimer = new Timer(_ => OnReadyTimeout(), null, owner.ReadyTimeout, Timeout.InfiniteTimeSpan);
         }
 
@@ -164,11 +156,11 @@ internal sealed class HelperOperationUi(
             Enqueue(new CompleteMessage(message is null ? null : ToResult(message)));
             if (message is null)
             {
-                _ended.Task.Wait(_owner.CloseTimeout);
+                _ended.Task.Wait(_owner.CloseTimeout, CancellationToken.None);
                 return;
             }
 
-            _ended.Task.Wait();
+            _ended.Task.Wait(CancellationToken.None);
             bool failed;
             lock (_lock)
                 failed = _failed;
@@ -191,7 +183,7 @@ internal sealed class HelperOperationUi(
             if (closeWindow)
             {
                 Enqueue(new CompleteMessage(null));
-                _ended.Task.Wait(_owner.CloseTimeout);
+                _ended.Task.Wait(_owner.CloseTimeout, CancellationToken.None);
             }
 
             IOperationSession? fallback;
@@ -271,7 +263,7 @@ internal sealed class HelperOperationUi(
             {
                 while (true)
                 {
-                    await _signal.WaitAsync().ConfigureAwait(false);
+                    await _signal.WaitAsync(CancellationToken.None).ConfigureAwait(false);
                     List<ProtocolMessage> batch;
                     lock (_lock)
                     {
@@ -291,7 +283,7 @@ internal sealed class HelperOperationUi(
                     foreach (ProtocolMessage message in batch)
                         await _writer.WriteAsync(message, CancellationToken.None).ConfigureAwait(false);
                     if (batch.Count > 0 && batch[^1] is ProgressMessage)
-                        await Task.Delay(_owner.ProgressInterval).ConfigureAwait(false);
+                        await Task.Delay(_owner.ProgressInterval, CancellationToken.None).ConfigureAwait(false);
                 }
             }
             catch (Exception ex) when (ex is IOException or ObjectDisposedException)
@@ -384,6 +376,16 @@ internal sealed class HelperOperationUi(
                 // The session already ended.
             }
         }
+
+        private static ResultText ToResult(OperationMessage message) => new(
+            message.Severity switch
+            {
+                MessageSeverity.Error => ResultSeverity.Error,
+                MessageSeverity.Warning => ResultSeverity.Warning,
+                _ => ResultSeverity.Information,
+            },
+            message.Title,
+            message.Text);
 
         private sealed class HelperProgress(Session session) : IProgress<ProgressReport>
         {
