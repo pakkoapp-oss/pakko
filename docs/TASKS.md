@@ -4336,7 +4336,8 @@ T-F269 (Cancel stops the whole multi-archive selection — decide with T-F268 st
 (first half done via T-F268). Runs before phase 5.
 
 **Phase 4c (added 2026-09-26, user):** T-F271 (many-small-files ZIP archiving ~50% slower on
-.NET 10 — investigate, then fix or record). After T-F270 lands; runs before phase 5.
+.NET 10 — investigate, then fix or record), T-F272 (VeryLarge `ExtractAsync_OneLargeFile` fails in
+its own suite run, pre-existing on .NET 8 too). After T-F270 lands; runs before phase 5.
 
 **1. P0 — data loss or a broken core flow:** T-F227, T-F228, T-F229, T-F204, T-F233,
 T-F234 (both P0, decision 2026-09-25), T-F245 (with T-F229), T-F246 — both P0 by user decision 2026-09-25. Suggested order: T-F227 + T-F228 + T-F197 together (same staging/commit code), then
@@ -5892,6 +5893,19 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 - **Tests:** T-F114's `ArchiveAsync_ManySmallFiles` ratio is the regression gate; recalibrate its
   constant only after the cause is known.
 - **Reported by:** T-F270 A/B check, 2026-09-26; user asked for a separate task in phase 4c.
+
+### T-F272 — T-F114 `ExtractAsync_OneLargeFile` (VeryLarge) fails in its own suite run (P2)
+
+- [ ] **Status:** open — found 2026-09-26 during T-F270, pre-existing. Fix phase 4c, with T-F271.
+- **Evidence:** `dotnet test tests/Archiver.Core.PerformanceTests --filter "Category=VeryLarge"`
+  (Debug) fails `Extract/OneLargeFile` with ratio 4.1-5.0 vs limit 3.18 on both .NET 8 (4.10,
+  4.97) and .NET 10 (4.75, 4.75); Pakko ~1.45 s vs 7za ~0.3 s. Alone in Release it passes on both
+  (net8 1.43/1.58, net10 1.62/1.62). Suspects: the Debug build of Core, and
+  `ZipSandboxSpikePerformanceTests`' 300 MB scenario running in parallel in the same project.
+- **Fix direction:** confirm which of the two it is (run alone in Debug; run the suite in Release),
+  then put the one-large-file tests in one non-parallel xUnit collection and/or document Release as
+  the tier's configuration; recalibrate only with evidence.
+- **Reported by:** T-F270 verification, 2026-09-26.
 
 ### T-F223 — Diagram gap from T-F193 (P2)
 
