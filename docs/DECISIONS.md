@@ -9719,7 +9719,7 @@ What works without UAC: subscribe to `CoreApplication.UnhandledErrorDetected` fi
 and call `e.UnhandledError.Propagate()` inside a `try`/`catch` that logs the exception — the stowed
 error surfaces as a normal exception with its HRESULT and message before the process dies.
 
-**A — system XAML Islands (`Windows.UI.Xaml.Hosting.DesktopWindowXamlSource`), rejected.**
+**A — system XAML Islands (`Windows.UI.Xaml.Hosting.DesktopWindowXamlSource`), not viable as-is.**
 - The .NET 8 Windows SDK projection has no `Windows.UI.Xaml.Hosting` (CS0234 on
   `net8.0-windows10.0.19041.0`). It needs `net9.0-windows…` + `<UseUwp>true</UseUwp>`. The packaged
   Shell runs on the App's self-contained net8 runtime in the package root (one `coreclr.dll`;
@@ -9737,10 +9737,13 @@ error surfaces as a normal exception with its HRESULT and message before the pro
   Evidence: the package PRI holds only `Files/App.xbf` and `Files/MainWindow.xbf`; line 0 position 0
   is how a binary xbf parse reports; creating our own `Windows.UI.Xaml.Application` first changes
   nothing. A C++/WinRT island runs the same system XAML under the same identity, so the language is
-  not the variable; NanaZip works because its package's App.xbf is system-XAML-compatible. Making
-  ours compatible means changing the shipping App's `App.xaml` — rejected for this task.
+  not the variable; NanaZip works because its package's App.xbf is system-XAML-compatible. Two ways
+  to unblock A, both the user's call: make the shipping App's `App.xaml` system-XAML-compatible
+  (may still fail: a WinUI 3-compiled xbf under system XAML), and add third-party Sun Valley
+  styles for the look.
 
-**B — WinUI 3 in a separate process, feasible.** Code-only `Microsoft.UI.Xaml.Application` (no
+**B — WinUI 3 in a separate process, feasible under package identity (probe outside the install
+folder).** Code-only `Microsoft.UI.Xaml.Application` (no
 `App.xaml`), `IXamlMetadataProvider` delegating to `XamlControlsXamlMetaDataProvider`,
 `XamlControlsResources` merged in code, **net8** (no TFM change), WinAppSDK 1.8.260209005 = the
 App's version.
@@ -9752,6 +9755,9 @@ App's version.
   `Microsoft.WindowsAppRuntime.1.8_8000.994.2142.0_x64` framework package (not a copy). First frame
   527 ms after process start (framework-dependent, non-R2R — not yet comparable with
   `IProgressDialog`). Keyboard (PasswordBox typing, Tab, Space, Enter) and the UIA tree work.
+- Same clean start with the installed package's `resources.pri` (185,800 bytes, holds
+  `Files/App.xbf`) copied next to the probe exe and the probe's own PRI moved away (486 ms). The
+  full proof — the probe inside the real installed package folder — is still open.
 - Consistent with the old `Archiver.ProgressWindow` crash (a second WinUI 3 app with its own
   `App.xaml` in a package whose PRI has one `Files/App.xbf`), but still inference: that HRESULT was
   never captured.
@@ -9760,7 +9766,9 @@ App's version.
   the real installed Pakko App used as a control.
 
 **Open before a step-3 plan (user decisions and checks).**
-- Look: the user's own look at the B probe.
+- Look: the user's own look at the B probe. Known already: in dark theme the default WinUI 3
+  title bar stays light (the probe's and the real App's), so a modern window needs explicit
+  dark title-bar handling.
 - The real launch path: Explorer → ShellExtension `CreateProcessW` → packaged exe (the probe used
   `Invoke-CommandInDesktopPackage`); foreground after the click (T-F253); two operations at once;
   with the main window open; running on the package's self-contained net8 runtime.
