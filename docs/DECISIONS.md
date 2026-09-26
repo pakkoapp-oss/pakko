@@ -9861,3 +9861,30 @@ Release. Debug slows Core's managed stream-copy loop; 7za.exe is native and unaf
 `CLAUDE.md`). The three one-large-file ratio tests call `ReleaseBuildGuard.RequireOptimizedCore()`
 first: on an unoptimized Core they fail at once with "run with -c Release" instead of a misleading
 "real regression". No recalibration, no new xUnit collection — the evidence ruled contention out.
+
+## T-F271 — many-small-files archiving on .NET 10: drop the per-file read buffer (2026-09-26)
+
+**Cause (two halves, measured with a standalone harness, not the test host).** On .NET 10 the
+first archive of 5,000 small files in a process took ~680 ms vs ~480 ms on .NET 8, converging by
+the third run; `Archiver.Shell`/`pakko.exe` do one operation per process, so the cold run is what
+users see. Not JIT (tiering/PGO off leave the gap).
+- **zlib-ng (not fixable here).** .NET 10 vendors zlib-ng 2.2.5; its `alloc_deflate` makes one
+  ~330 KB allocation per deflate state, where .NET 8's zlib-intel made five smaller ones (both from
+  the same private `HeapCreate` heap, `zlib_allocator_win.c`). Run 1 takes ~200k page faults vs
+  ~30k and 400-700 ms more kernel CPU; `Deflater..ctor` + `ReleaseHandle` are 1,002 CPU samples vs
+  133. Inference, not verified: the heap decommits the freed block and the next entry re-faults it.
+  The state cannot be pooled: the native library exports no `DeflateReset`, and `DeflateStream`
+  only does `SyncFlush`, so one stream cannot emit independent entries. A private zlib build via
+  P/Invoke would break the "System.IO.Compression only" constraint.
+- **Our 64 KiB `FileStream` buffer (fixed).** The in-memory path opened every source with
+  `bufferSize: 65536` although `ZipEntryCompressor` reads 8 KiB chunks: 397 MB allocated per
+  archive, ~90-150 gen0 GCs. Forcing an equal gen0 budget closed about half the gap.
+
+**Rejected.** `SegmentHeap` via app manifest: worse on both runtimes (~120k/~240k faults every
+run). Fewer workers (`DOTNET_PROCESSOR_COUNT=4`): fewer faults, same wall time.
+
+**Decision (user, 2026-09-26).** `ParallelSingleArchiveWriter.CompressSmallFile` opens unbuffered
+(`bufferSize: 0`); 397 -> 84 MB per archive, gen0 ~23 per run. A test pins the per-file allocation
+below 32 KiB (70 KiB before). `ArchiveAsync_ManySmallFiles`' constant 1.0 -> 1.1 (Release
+0.94/1.31/1.09 after the fix). CLAUDE.md's `bufferSize: 262144` note covers `ZipArchiveService`
+streams only and is unchanged; the sequential path and `FileHashService` keep their buffers.

@@ -106,7 +106,11 @@ public sealed class CompressionPerformanceTests : IDisposable
         //         (0.92-1.03 observed across 5 runs, essentially parity with 7za — the small
         //         variance/occasional sub-1.0 reading is ordinary run-to-run noise on a sub-second
         //         operation, not a real further improvement to this exact scenario).
-        const double calibratedBaselineRatio = 1.0;
+        //   ~1.5  on .NET 10 (T-F270): zlib-ng allocates each deflate state as one ~330 KB block,
+        //         re-faulted per entry, plus a 64 KiB FileStream buffer per file (gen0 churn).
+        //   ~1.1  after T-F271 dropped that buffer (0.94/1.31/1.09, Release); the zlib-ng part is
+        //         not fixable through DeflateStream — see DECISIONS.md's T-F271 entry.
+        const double calibratedBaselineRatio = 1.1;
         string sourceDir = PerformanceFixtures.CreateManySmallFilesFolder(_temp.Path);
 
         await ArchiveWithPakkoTimed(sourceDir, Path.Combine(_temp.Path, "warmup_pakko.zip"));

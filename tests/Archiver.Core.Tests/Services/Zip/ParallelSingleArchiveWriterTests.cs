@@ -18,6 +18,26 @@ public sealed class ParallelSingleArchiveWriterTests : IDisposable
 
     private string TempArchivePath => Path.Combine(_tempDir, Guid.NewGuid() + ".zip");
 
+    // T-F271: each in-memory entry used to get its own 64 KiB FileStream buffer (5,000 small files
+    // = ~320 MB of gen0 churn per archive) although CopyWithCrc already reads in 8 KiB chunks.
+    [Fact]
+    public void CompressSmallFile_DoesNotAllocateAPerFileReadBuffer()
+    {
+        string path = Path.Combine(_tempDir, "small.dat");
+        var data = new byte[4096];
+        new Random(42).NextBytes(data.AsSpan(0, 2048));
+        File.WriteAllBytes(path, data);
+        var settings = new ParallelSingleArchiveWriter.CompressionSettings(CompressionLevel.Optimal);
+        ParallelSingleArchiveWriter.CompressSmallFile(path, settings); // JIT and pool warm-up
+
+        long before = GC.GetAllocatedBytesForCurrentThread();
+        var result = ParallelSingleArchiveWriter.CompressSmallFile(path, settings);
+        long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+
+        result.UncompressedLength.Should().Be(data.Length);
+        allocated.Should().BeLessThan(32 * 1024);
+    }
+
     [Fact]
     public async Task RunPipelineAsync_WritesEntries_InEnqueueOrderNotCompletionOrder()
     {

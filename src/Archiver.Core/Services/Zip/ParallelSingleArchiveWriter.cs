@@ -409,9 +409,7 @@ internal static class ParallelSingleArchiveWriter
             cancellationToken.ThrowIfCancellationRequested();
             try
             {
-                using var fileStream = new FileStream(item.SourcePath, FileMode.Open, FileAccess.Read,
-                    FileShare.Read, bufferSize: FileReadBufferSize, useAsync: false);
-                var compressed = ZipEntryCompressor.Compress(fileStream, settings.Level, settings.Password);
+                var compressed = CompressSmallFile(item.SourcePath, settings);
                 // In-memory files are small (<= InMemoryCompressByteThreshold) and compressed in one
                 // shot, not chunked — a single report on completion is enough; they never cause the
                 // "frozen mid-file" symptom the temp-file path's per-chunk reporting below fixes.
@@ -427,6 +425,15 @@ internal static class ParallelSingleArchiveWriter
                 return WorkResult.ForError(item.SourcePath, $"Access denied: {ex.Message}", ex);
             }
         }, cancellationToken);
+
+    // T-F271: unbuffered — ZipEntryCompressor reads in its own 8 KiB chunks, so a FileStream buffer
+    // only added a fresh 64 KiB array per file (gen0 churn across thousands of small files).
+    internal static CompressedEntryData CompressSmallFile(string sourcePath, CompressionSettings settings)
+    {
+        using var fileStream = new FileStream(sourcePath, FileMode.Open, FileAccess.Read,
+            FileShare.Read, bufferSize: 0, useAsync: false);
+        return ZipEntryCompressor.Compress(fileStream, settings.Level, settings.Password);
+    }
 
     // internal (not private) so a test can drive the disk-space pre-check directly with a
     // hand-crafted FileWorkItem (a real small source file, but an artificially huge declared
