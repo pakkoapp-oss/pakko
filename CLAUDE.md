@@ -174,7 +174,7 @@ extraction smart-foldering asymmetry — a multi-root archive wrapped in a subfo
 landed flat for tar-family) is `[x]` done — tar-family now matches ZIP's existing T-14
 smart-foldering algorithm exactly. **T-F03** (a new Explorer "Open" command that launches
 straight into the Archive Browser, mirroring NanaZip's real `kOpen`/`kExtract` split) is `[x]`
-done — new `BrowseCommand` and a `--browse` Shell switch. **T-F232** (`[~]`, 2026-09-26) removed
+done — new `BrowseCommand` and a `--browse` Shell switch. **T-F232** (`[x]`, 2026-09-26) removed
 the remotely launchable `pakko://` scheme: Shell opens the App via `ActivateApplication` with
 `LaunchArguments` (see `docs/DECISIONS.md`'s fix-phase-4a entry).
 

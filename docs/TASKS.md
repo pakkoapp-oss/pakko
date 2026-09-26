@@ -4894,11 +4894,22 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   skips an unreadable path instead of dropping the list; dead `RequestedOperation` removed. Why not
   a filter or a token, the spike and the device check: `docs/DECISIONS.md`'s fix-phase-4a entry.
   The uncancellable folder walk (`"C:\"`) is no longer reachable remotely and moves to T-F236
-  (phase 6). Stays `[~]` until your own check: Explorer → Pakko → Open / Extract files... /
-  Compress... on a local and a network folder, and a `pakko://` link in a browser doing nothing.
+  (phase 6).
 
-- [~] **Status:** fixed in fix phase 4a (2026-09-26), stays `[~]` until the user's own check.
-  Original: open — code-confirmed 2026-09-24. Any web page or link can launch
+- **Smoke (2026-09-26, user-directed, agent via `windows` MCP on the CI build of b9c0b80,
+  1.4.12.16, title build 04:47:17):**
+  - Explorer → Pakko → Open showed both entries.
+  - "Extract files..." then the App's Extract wrote `тест архів\привіт.txt`/`b.txt`. The same
+    worked from `\\127.0.0.1\C$\...`, where Windows' own zone prompt came first.
+  - "Compress..." on two files then Archive wrote `archive.zip` with both entries.
+  - A real click on a `pakko://browse` link to a UNC path in Edge did nothing: no prompt, no
+    Pakko, no picker.
+  - Windows itself writes an empty `HKCU\Software\Classes\pakko` (`URL Protocol` only, no
+    handler) whenever the unknown scheme is invoked. This is not Pakko's; it was removed after
+    the test.
+
+- [x] **Status:** done — fixed in fix phase 4a (2026-09-26), graduated on the user-directed agent
+  smoke above. Original: open — code-confirmed 2026-09-24. Any web page or link can launch
   `pakko://browse?files=<base64 JSON>`; `ProtocolActivationRouter` accepts any single path and
   `EnterBrowseModeAsync` reads it immediately (`App.xaml.cs:98`, `MainViewModel.cs:710-736`).
   A UNC path (`\\host\share\x.zip`) makes Windows authenticate to that host over SMB (NTLM
