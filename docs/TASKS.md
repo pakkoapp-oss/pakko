@@ -5884,6 +5884,36 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   3,000 x 2 KiB text, 5,000 x 1-10 KiB random and text all equal or faster on .NET 10, identical
   output bytes for random input; 64 MiB compress ~22% faster, decompress ~12% faster. Single-thread
   `FileStream` open+read of small files — equal on both runtimes.
+- **Trace pass (2026-09-26, standalone harness: fixture + warmup + N timed `ArchiveAsync` runs,
+  same `PerformanceFixtures`, net8 worktree vs main; testhost traces are truncated when vstest
+  kills the host, so the harness exits on its own under `dotnet-trace collect`):**
+  - Reproduces outside the test: run 1 after warmup 445-545 ms (.NET 8) vs 630-730 ms (.NET 10);
+    .NET 10 converges by run 3. `Archiver.Shell`/`pakko.exe` do one operation per process, so the
+    cold run is the user-relevant one.
+  - Not JIT: `DOTNET_TieredCompilation=0` and `DOTNET_TieredPGO=0` leave the gap. Allocation is
+    identical (397 MB per run on both, ~80 KB per file); .NET 10 runs ~145 gen0 GCs per run vs ~90.
+    Forcing the same gen0 budget (`DOTNET_GCgen0size`) closes about half the gap.
+  - CPU samples, run 1: 2,154 busy samples (.NET 10) vs 1,465; `Deflater..ctor` +
+    `ZLibStreamHandle.ReleaseHandle` (deflateInit/deflateEnd per entry) 1,002 vs 133 samples.
+  - Page faults per run 1: ~195-230k (.NET 10) vs ~21-34k (.NET 8), kernel CPU +400-700 ms; falls
+    to ~26-42k by run 3. Microbenchmark (5 KB `DeflateStream` per op): single-threaded .NET 10 is
+    faster (60 vs 70 us/op, ~0 faults); in parallel faults appear erratically (17/op at dop 8).
+  - Both runtimes allocate zlib state from the same private `HeapCreate(0,0,0)` heap
+    (`System.IO.Compression.Native/zlib_allocator_win.c`, release/8.0 and 10.0); the zlib itself
+    changed. Verified from source: .NET 10 vendors zlib-ng 2.2.5, whose `alloc_deflate` makes one
+    `zalloc` of ~330 KB (window 64 KB, prev 64 KB, head 128 KB, pending 64-80 KB); .NET 8 on
+    Windows x64 used zlib-intel, five separate `ZALLOC`s. Still inference: the heap decommits the
+    freed large block, so the next entry re-faults it.
+  - zlib state cannot be reused: `System.IO.Compression.Native` (10.0) exports no `DeflateReset`
+    (only `InflateReset2_`), and `DeflateStream.Flush` is `SyncFlush` only (no `FullFlush`), so one
+    stream cannot emit independent entries.
+  - Pakko-side lever measured (scratch patch: `bufferSize: 0` on the in-memory path's source
+    `FileStream` in `ParallelSingleArchiveWriter.CompressEligibleFileAsync`; `CopyWithCrc` already
+    reads 8 KB chunks): 397 -> 84 MB per run, gen0 ~90-150 -> ~23 per run on both runtimes; .NET 10
+    run 1 ~670-690 -> ~520-580 ms, .NET 8 ~480-550 -> ~440-500 ms. Page faults unchanged.
+  - `DOTNET_PROCESSOR_COUNT=4`: faults ~68k, kernel CPU lower, wall time about the same.
+  - Rejected: `SegmentHeap` via app manifest — worse on both runtimes (~120k faults every run on
+    .NET 8, ~240k on .NET 10, no convergence).
 - **Next (the unexplored part):** the parallel pipeline itself (`ParallelSingleArchiveWriter`:
   `Task.Run` per file, `SemaphoreSlim` gate, bounded `Channel`, `ZipEntryWriter`) — take one
   CPU-sampling trace per runtime (`dotnet-trace`, not installed yet) of the same Release run and
