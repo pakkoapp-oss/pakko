@@ -12,6 +12,20 @@ public sealed class ZipArchiveServiceTestAsyncTests
 {
     private readonly ZipArchiveService _sut = new();
 
+    // T-F268 (found while pinning Archiver.Shell's cancel path): a cancel between archives used to
+    // `break` and return Success = true, so a cancelled Test reported "no errors detected". The
+    // T-F260 contract is OperationCanceledException on cancellation.
+    [Fact]
+    public async Task TestAsync_CancelledBeforeAnyArchive_ThrowsOperationCanceled()
+    {
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        var act = () => _sut.TestAsync([FixtureHelper.Archive("valid_multiple_files.zip")], cancellationToken: cts.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+    }
+
     [Fact]
     public async Task TestAsync_ValidArchive_Passes()
     {

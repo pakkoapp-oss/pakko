@@ -1007,8 +1007,8 @@ public sealed class ZipArchiveService : IArchiveService
         int total = archivePaths.Count;
         for (int i = 0; i < total; i++)
         {
-            if (cancellationToken.IsCancellationRequested)
-                break;
+            // T-F268: was `break`, which returned Success = true for a cancelled Test (T-F260 contract).
+            cancellationToken.ThrowIfCancellationRequested();
 
             string archivePath = archivePaths[i];
 
