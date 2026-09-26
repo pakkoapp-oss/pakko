@@ -5839,13 +5839,16 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 
 ### T-F270 — Move every project from .NET 8 to .NET 10 LTS (P0)
 
-- [~] **Status:** implementation complete, 2026-09-26 — net10 build/tests green locally, installed
-  package runs 10.0.12, agent smoke of CLI/Shell/App passed (`docs/DECISIONS.md`, T-F270). Open:
-  CI (incl. the Store path via `workflow_dispatch`), the user's own click-through. Many-small-files
-  archiving is ~50% slower on .NET 10 — tracked as T-F271, not fixed here. `Category=VeryLarge`
-  is 5/6: `ExtractAsync_OneLargeFile` fails the same way on .NET 8 (Debug, in-project
-  contention; passes alone in Release on both) — see DECISIONS. Plan:
-  `temporal-wondering-feather.md` (user-approved).
+- [x] **Status:** done 2026-09-26. On-device click-through done by the agent via `windows` MCP
+  at the user's request (accepted substitute), against a fresh `Deploy.ps1` install (1.5.0.0,
+  `coreclr.dll`/`System.Private.CoreLib.dll` 10.0.12, title-bar build timestamp = install time):
+  Explorer commands via `Archiver.Shell.exe` (archive ZIP + TAR, test ZIP, CRC-32/SHA-256 hash,
+  extract-to-folder ZIP, extract-here TAR through the AppContainer sandbox, AMSI scan); `pakko.exe`
+  10.0.12 (`-v`, `a`, `l`, `t`, `x` ZIP + TAR, `h`, exit 2 on a missing archive); App browse
+  (drill-in, CRC column, Extract All with per-file Rename on conflict) and App archive mode. Every
+  extraction byte-identical to the source incl. Cyrillic names; Pakko ZIPs pass `7za t`. CI incl.
+  the Store path green. The small-files slowdown was T-F271 (done); `VeryLarge` is Release-only
+  (T-F272). Plan: `temporal-wondering-feather.md` (user-approved).
 - **Why:** .NET 8 LTS and .NET 9 STS both leave support on 2026-11-10; .NET 10 LTS runs to
   2028-11-14. The MSIX and `pakko.exe` ship a self-contained runtime, so without this users keep
   an unpatched runtime after November. User decision, with a VS 2026 install (`net10.0` is
@@ -5870,8 +5873,8 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 
 - [x] **Status:** done 2026-09-26 (fix phase 4c) — the in-memory path reads unbuffered
   (`CompressSmallFile`, test-first), constant 1.0 -> 1.1; the zlib-ng half is a runtime property
-  (`docs/DECISIONS.md`'s T-F271 entry). A dotnet/runtime issue draft is in preparation (user asked
-  for the text only; posting needs a separate OK). Follow-up: `FileHashService` now pools its
+  (`docs/DECISIONS.md`'s T-F271 entry). Reported upstream (user-approved, from `pakkoapp-oss`):
+  https://github.com/dotnet/runtime/issues/134700. Follow-up: `FileHashService` now pools its
   256 KiB read array; the sequential archive path never allocated its buffer (see DECISIONS).
 - **Evidence (Release, same machine, perf project alone, net8 worktree at 6a104e1 vs net10):**
   `Archive/ManySmallFiles` (5,000 files 1-10 KiB, parallel writer path) Pakko 0.48-0.51 s on
