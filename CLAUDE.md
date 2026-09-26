@@ -174,8 +174,9 @@ extraction smart-foldering asymmetry — a multi-root archive wrapped in a subfo
 landed flat for tar-family) is `[x]` done — tar-family now matches ZIP's existing T-14
 smart-foldering algorithm exactly. **T-F03** (a new Explorer "Open" command that launches
 straight into the Archive Browser, mirroring NanaZip's real `kOpen`/`kExtract` split) is `[x]`
-done — new `BrowseCommand`, a third `pakko://browse` protocol route, and a `--browse` Shell
-switch.
+done — new `BrowseCommand` and a `--browse` Shell switch. **T-F232** (`[~]`, 2026-09-26) removed
+the remotely launchable `pakko://` scheme: Shell opens the App via `ActivateApplication` with
+`LaunchArguments` (see `docs/DECISIONS.md`'s fix-phase-4a entry).
 
 **T-F131/T-F133** (`[x]` done) widened ZIP-format recognition to `.jar`/`.war`/`.ear`/`.apk` and
 `.asice`/`.asics`/`.bdoc`. **T-F129's prep work** (`[x]` done) did Microsoft Store submission prep
@@ -726,8 +727,8 @@ files.
 - **WinUI 3 cold-start activation gotcha:** `AppInstance.Activated` (Windows App SDK) only fires
   for activations *redirected* to an already-running instance — never for a process's own initial
   activation. `OnLaunched` must pull it explicitly via
-  `AppInstance.GetCurrent().GetActivatedEventArgs()` and route File/Protocol kinds through the same
-  handler `OnActivated` uses, or a cold `pakko://`/file-association launch silently opens a blank
+  `AppInstance.GetCurrent().GetActivatedEventArgs()` and route File/Launch kinds through the same
+  handler `OnActivated` uses, or a cold Explorer/file-association launch silently opens a blank
   window (see T-F83 in `DECISIONS.md`).
 - **Non-ASCII glyphs (ellipsis, em-dash, Cyrillic) in C++/PowerShell string literals**: never write
   the literal character — full rule + `\uXXXX` escape pattern is in `CONVENTIONS.md`. Shipped
@@ -1030,7 +1031,7 @@ MSBuild tests\Archiver.ShellExtension.Tests\Archiver.ShellExtension.Tests.vcxpro
 > Explorer's right-click menu automation** (already noted above as unconfirmed) — instead launch
 > the installed `Archiver.Shell.exe` directly with the exact args that command's `Invoke()`
 > constructs (e.g. `--open-ui --browse "<path>"`). This exercises the identical
-> `Archiver.Shell`→`pakko://`→`Archiver.App` pipeline the real menu click would trigger, minus
+> `Archiver.Shell`→`ActivateApplication`→`Archiver.App` pipeline the real menu click would trigger, minus
 > only the COM click itself (covered separately by `Archiver.ShellExtension.Tests`). Confirmed
 > T-F03.
 >
