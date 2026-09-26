@@ -5796,6 +5796,11 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   (https://claude.ai/artifact/Kga8s2ntDYMT4dgon12UhX); step 2 done — `IOperationSession.BeginItem`,
   one session per extract command with one combined result (`ShellCommands.RunExtractSelectionAsync`),
   Win32 title names each archive of a selection; closes T-F269.
+  Step 3 (protocol) done — `Archiver.OperationUi.Protocol` + `tests/Archiver.OperationUi.Tests`.
+  **Decision (agent, user-delegated 2026-09-26):** step 5 extends Core's `ConflictInfo` with optional
+  incoming-entry size and modified time (additive, null when unknown) so the conflict prompt can
+  compare both files as the approved mockup shows; the App's T-F06 dialog keeps working unchanged.
+  Next: step 4 (helper exe, `Archiver.OperationUi.Core`, Shell fallback/failover, packaging).
 - **Status (original):** open — user request 2026-09-26: Explorer-triggered dialogs look out of place on
   Windows 10 and 11. User chose a separate lightweight WinUI 3 window (not the main App window)
   for progress, conflict, password and result, and asked for one UI entry point instead of the
