@@ -3931,6 +3931,10 @@ regression from this task, which owns reliability only.
 
 ### T-F148 — Convert Sandbox P/Invoke layer from `DllImport` to `LibraryImportAttribute`
 
+- **Progress (2026-09-26, fix phase 4a):** `Archiver.Shell/AppLauncher.cs` adds a `DllImport`
+  (`GetCurrentPackageFamilyName`) and a `[ComImport]` interface Sonar flags as `SYSLIB1096`
+  (INFO: use `[GeneratedComInterface]`). The COM half needs `ComWrappers` + `CoCreateInstance`
+  instead of `new` on a coclass — convert it with the rest of source-generated interop here.
 - **Progress (2026-09-25, fix phase 4):** new `DllImport`s in `TarCommandLineEncoding`, `TarOutputEncoding`, `TarSandboxScope` (ReOpenFile), `SandboxJobObject` (completion port) and `AppContainerProfile` (ConvertSidToStringSidW) — convert with the rest.
 
 - [ ] **Status:** not started.

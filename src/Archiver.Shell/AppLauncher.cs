@@ -46,7 +46,7 @@ public static class AppLauncher
         if (!TryBuildArguments(operation, files, out var arguments))
             return AppLaunchResult.TooManyFiles;
 
-        var familyName = GetCurrentPackageFamilyName();
+        var familyName = OwnPackageFamilyName();
         if (familyName is null)
             return AppLaunchResult.NoPackage;
 
@@ -62,7 +62,7 @@ public static class AppLauncher
         }
     }
 
-    private static string? GetCurrentPackageFamilyName()
+    private static string? OwnPackageFamilyName()
     {
         uint length = 0;
         var rc = NativeMethods.GetCurrentPackageFamilyName(ref length, null);
@@ -98,7 +98,7 @@ public static class AppLauncher
     }
 
     [ComImport, Guid("45BA127D-10A8-46EA-8AB7-56EA9078943C")]
-    private class ApplicationActivationManager
+    private class ApplicationActivationManager // NOSONAR: S3260 — a [ComImport] coclass stays unsealed: the cast to its interface is a runtime QueryInterface, which C# rejects at compile time for a sealed class (CS0030)
     {
     }
 
