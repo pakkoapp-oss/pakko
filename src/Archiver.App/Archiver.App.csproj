@@ -120,6 +120,11 @@
       <Link>Archiver.Shell.runtimeconfig.json</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <!-- T-F268: Shell's pipe protocol to the operation window helper; not part of Archiver.App's own publish. -->
+    <Content Include="..\Archiver.Shell\bin\$(Platform)\$(Configuration)\net10.0-windows\$(RuntimeIdentifier)\Archiver.OperationUi.Protocol.dll">
+      <Link>Archiver.OperationUi.Protocol.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <!--
       T-F128 follow-up: Archiver.Shell.Resources/*.resx satellite assemblies (one per locale,
       e.g. uk-UA\Archiver.Shell.resources.dll) live in per-culture subfolders the four items
