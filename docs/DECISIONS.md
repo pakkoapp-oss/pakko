@@ -9809,12 +9809,16 @@ Moving to C# 14 is a separate decision with its own review.
   array) and CA2022 (`AggregateProgressStreamTests` now asserts the read count).
 
 **CET kept on (default since .NET 9).** Hardware shadow stacks harden the process against
-return-oriented exploits, which matters for an app that parses untrusted archives. The risk is
-third-party native code loaded into Pakko's process (other vendors' AMSI providers, shell
-extensions inside file dialogs). Windows runs a `/CETCOMPAT` process in compatibility mode, where
-a shadow-stack mismatch in a module not marked CET-compatible is not fatal, so such modules keep
-working. If a real crash is ever traced to CET, the opt-out is `<CETCompat>false</CETCompat>` in
-the affected exe's project — record it here with the evidence.
+return-oriented exploits, which matters for an app that parses untrusted archives. The documented
+cost (Microsoft, "Breaking change: CET supported by default", .NET 9, read 2026-09-26): a shared
+library loaded into the process may no longer set thread context (`SetThreadContext`,
+`RtlRestoreContext`/`NtContinue`, its exception handlers) to an address that is neither on the
+shadow stack nor in the `/EHCONT` continuation table — "the process is terminated". The exposure
+is third-party native code in Pakko's process (other vendors' AMSI providers, shell extensions
+inside file dialogs); ordinary code does not do this, and no such crash was seen in the tests or
+the device smoke. Documented opt-outs if one is ever traced to CET: `<CETCompat>false</CETCompat>`
+in the affected exe's project, or a per-app exploit-protection override (Windows Security / group
+policy) — record it here with the evidence.
 
 **Windows 10.** .NET 10's supported-OS list names Windows 10 only as Enterprise/IoT (1607, 1809,
 21H2); consumer Windows 10 22H2 is absent, as the OS itself left support on 2025-10-14 (.NET 8 was

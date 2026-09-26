@@ -5841,7 +5841,9 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 - [~] **Status:** implementation complete, 2026-09-26 — net10 build/tests green locally, installed
   package runs 10.0.12, agent smoke of CLI/Shell/App passed (`docs/DECISIONS.md`, T-F270). Open:
   CI (incl. the Store path via `workflow_dispatch`), the user's own click-through. Many-small-files
-  archiving is ~50% slower on .NET 10 — tracked as T-F271, not fixed here. Plan:
+  archiving is ~50% slower on .NET 10 — tracked as T-F271, not fixed here. `Category=VeryLarge`
+  is 5/6: `ExtractAsync_OneLargeFile` fails the same way on .NET 8 (Debug, in-project
+  contention; passes alone in Release on both) — see DECISIONS. Plan:
   `temporal-wondering-feather.md` (user-approved).
 - **Why:** .NET 8 LTS and .NET 9 STS both leave support on 2026-11-10; .NET 10 LTS runs to
   2028-11-14. The MSIX and `pakko.exe` ship a self-contained runtime, so without this users keep
@@ -5880,9 +5882,11 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   `Task.Run` per file, `SemaphoreSlim` gate, bounded `Channel`, `ZipEntryWriter`) — take one
   CPU-sampling trace per runtime (`dotnet-trace`, not installed yet) of the same Release run and
   compare the top inclusive frames; check ThreadPool injection (CLAUDE.md's `SetMinThreads` note).
-- **Side finding, same measurement:** the sequential path opens every source with
-  `bufferSize: 262144` (CLAUDE.md "Core implemented features") — a large-object-heap buffer per
-  file: 3,000 x 2 KiB files read in ~400 ms with 250 gen2 collections vs ~140 ms and 0 gen2 at
+- **Side finding, same measurement:** two places open every source with `bufferSize: 262144`
+  (CLAUDE.md "Core implemented features") — the sequential archive path
+  (`ZipArchiveService.cs:1843`, archives of at most 64 files) and per-file hashing
+  (`FileHashService.cs:246`, so hashing many small files too); extraction uses 81,920 (below the
+  large-object heap). A large-object-heap buffer per file: 3,000 x 2 KiB files read in ~400 ms with 250 gen2 collections vs ~140 ms and 0 gen2 at
   4096, on both runtimes. Decide whether small files should use a smaller buffer (changing the
   documented convention needs the user's OK).
 - **Tests:** T-F114's `ArchiveAsync_ManySmallFiles` ratio is the regression gate; recalibrate its
