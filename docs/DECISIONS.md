@@ -9637,3 +9637,69 @@ opened only Windows' picker, and Explorer → Pakko → Open still worked.
 - **Compress.** Explorer → Pakko → "Compress..." on two files (`--archive`) filled the list.
 - **No package identity.** An unpackaged `bin\...\Archiver.Shell.exe --open-ui` showed the
   `OpenUiNoPackage` message and exited.
+
+---
+
+## T-F268 step 1 — one UI interface for Archiver.Shell (2026-09-26)
+
+**Why.** The user wants the Explorer-triggered windows to look like Windows 10/11 (a separate
+light modern window, user's choice) and asked that every message go through one entry point.
+`Archiver.Shell` used five mechanisms from `Program.cs` directly: `MessageBoxW` (9 sites),
+`TaskDialogIndirect`, a custom `DLGTEMPLATEEX` dialog, `IProgressDialog`, and three copies of the
+progress/cancel-poll plumbing. Step 1 puts all of it behind one interface first, with no visual
+change, so the modern window becomes a second implementation instead of a rewrite of the commands.
+
+**Shape.** `IOperationUi.Begin(title, style)` returns an `IOperationSession` per operation:
+`Progress` (null when no progress window exists), `Cancellation`, `AskConflictAsync`,
+`AskPasswordAsync`, `Complete(OperationMessage?)`. `ShowMessage` exists only for the open-in-Pakko
+hand-off, which has no operation. Prompts sit on the session, not on `IOperationUi`, so a modern
+implementation can show them inside the operation's own window. `ShellCommands` holds every
+command; `OperationMessages` builds the result text (pure); `ShellServices` holds the Core
+factories so tests build a ZIP-only router and never start tar.exe (the T-F130/T-F195 contention
+vector). `Win32OperationUi` keeps the same native dialogs. The compression-bomb confirm (T-F217)
+is deliberately not in the interface yet: adding it changes behavior and belongs to T-F217.
+
+**Behavior kept.** Titles and texts unchanged (English titles are T-F208). Extract commands wrap
+the prompts in `StickyCallback` once per Explorer invocation; each prompt is shown by the session
+of the archive being extracted at the time. Test and Scan pass the password prompt unwrapped,
+because Core's resolver already spans the selection. Cancel shows no message.
+
+**Behavior changed (deliberate, both tested).**
+- **T-F216, first half.** Test with a skipped input showed two boxes in a row (the skipped list,
+  then "no errors"). One session has one result message, so it is now one box with both parts,
+  severity Warning. The second half of T-F216 (the "every entry was skipped" warning after the
+  user chose Skip-all) is not changed.
+- **No progress window → results still shown.** When `IProgressDialog` could not be created,
+  Extract/Archive/Test used to skip the result dialog entirely (an early `return` before the
+  classification), so a failure was silent; Hash and Scan already showed theirs. Now every
+  command shows its result either way.
+
+**Found and fixed on the way (Core).** `ZipArchiveService.TestAsync` checked the token between
+archives with `break` and returned `Success = true`, so a Test cancelled before or between
+archives reported "No errors detected". It now throws `OperationCanceledException` (the T-F260
+contract). Only `Archiver.Shell` passes a real token; `Archiver.CLI` passes `CancellationToken.None`.
+Regression test confirmed failing before the fix.
+
+**Tests.** `ShellCommandsTests` (21 methods / 23 cases, real ZIPs, fake UI) cover the four categories; the
+`OperationMessagesTests` (13) pin the texts. Mutation check: dropping either sticky wrapper,
+offering "apply to remaining" for one archive, dropping the 10-line cap, showing a message on
+cancel, or splitting the Test message again each fails a test (6/6 killed).
+
+**Device check (1.5.0.0 via `Deploy.ps1 -SkipVersionBump`, agent-driven, installed
+`Archiver.Shell.exe` launched directly, windows read and clicked through Win32).**
+Extract here → `photos\a.txt,b.txt`, no box. Flat extract of two archives into a folder with
+`same.txt`: one Ukrainian conflict dialog, Overwrite + apply-to-all → no second prompt, file from
+the second archive. Two AES-256 archives: wrong password → re-asked with the hint; correct +
+"apply to remaining" → second archive extracted with no prompt. Single encrypted archive: no
+"apply to remaining" box; Cancel → error box, nothing written. Corrupted entry → error box with
+the CRC-32 line. Test of ZIP + `.tar.gz` → one combined box. Archive zip/tar, Hash CRC-32
+(`352441C2` for `abc`) / SHA-256 / folder summary, Scan → expected boxes. Cancel at 260 ms on a
+600 MB extraction → process exited, no box, nothing left. Open-UI browse/extract/archive → App
+opened (build timestamp current); 250 long paths → the "too many files" box.
+
+**Next (step 2, hard gate).** Spike a modern window before any production code: OS XAML Islands
+(`Windows.UI.Xaml.Hosting.DesktopWindowXamlSource`, the path `NanaZip.Modern` uses, checked in its
+source 2026-09-26: `#include <winrt/Windows.UI.Xaml.h>`, `K7ModernCreateXamlWindow`) inside the
+existing Shell process first; WinUI 3 only if that cannot look modern, and then only after
+capturing the real HRESULT behind the old `Archiver.ProgressWindow` crash (see the T-F65 entries
+above).

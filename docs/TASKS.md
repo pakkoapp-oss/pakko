@@ -4636,7 +4636,10 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 
 ### T-F216 — Shell "Test archive" on a mixed selection shows two modal dialogs (P2)
 
-- [ ] **Status:** open. `--test multi.zip sr.tar.gz` -> first "Пропущено (1): sr.tar.gz: GZip
+- [~] **Progress:** first half fixed by T-F268 step 1 (2026-09-26): Test shows ONE box (skipped list +
+  "no errors", Warning), device-checked. Still open: the "every entry was skipped" warning after
+  an explicit Skip-all.
+- **Status (original):** open. `--test multi.zip sr.tar.gz` -> first "Пропущено (1): sr.tar.gz: GZip
   format is not supported...", then a second box "У архіві (архівах) не виявлено помилок." One
   combined result dialog. Similarly, after the user explicitly chose "Skip, apply to all" in the
   conflict dialog, Shell still warns "No entries were extracted — every entry was skipped".
@@ -5767,7 +5770,13 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 
 ### T-F268 — Explorer operations: one UI interface, then a WinUI 3 operation window (P2, design + spike)
 
-- [ ] **Status:** open — user request 2026-09-26: Explorer-triggered dialogs look out of place on
+- [~] **Progress:** step 1 done 2026-09-26 — `IOperationUi`/`IOperationSession` + `Win32OperationUi`,
+  `ShellCommands`, `OperationMessages`, `ShellServices`; `Program.cs` only parses and dispatches.
+  Same windows as before, except T-F216's double box is now one, and results show even without a
+  progress window. Also fixed: a cancelled `TestAsync` reported success (Core). Tests first,
+  6/6 mutants killed, device-checked on 1.5.0.0 — see `docs/DECISIONS.md`, "T-F268 step 1".
+  Next: step 2 spike (OS XAML Islands first). User's own Explorer click-through still pending.
+- **Status (original):** open — user request 2026-09-26: Explorer-triggered dialogs look out of place on
   Windows 10 and 11. User chose a separate lightweight WinUI 3 window (not the main App window)
   for progress, conflict, password and result, and asked for one UI entry point instead of the
   current mix. Today `Archiver.Shell` uses five native mechanisms: `MessageBoxW` (results, errors,

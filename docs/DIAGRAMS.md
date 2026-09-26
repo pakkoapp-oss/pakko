@@ -58,7 +58,9 @@ do not edit by pattern-matching the diagram's previous shape.
 
 Sources read for this diagram: `src/Archiver.ShellExtension/dllmain.cpp`,
 `src/Archiver.ShellExtension/ExplorerCommands.cpp`, `src/Archiver.ShellExtension/ShellExtUtils.cpp`,
-`src/Archiver.Shell/Program.cs`, `src/Archiver.Shell/ShellResultPresenter.cs`,
+`src/Archiver.Shell/Program.cs`, `src/Archiver.Shell/ShellCommands.cs`,
+`src/Archiver.Shell/Win32OperationUi.cs`, `src/Archiver.Shell/OperationMessages.cs` (T-F268),
+`src/Archiver.Shell/ShellResultPresenter.cs`,
 `src/Archiver.Shell/NativeProgressDialog.cs`, `src/Archiver.App/App.xaml.cs`,
 `src/Archiver.App.Core/LaunchActivationRouter.cs` (T-F03, T-F232), `src/Archiver.Shell/AppLauncher.cs`,
 `src/Archiver.Core/Services/LaunchArguments.cs` (T-F232).
@@ -148,35 +150,30 @@ sequenceDiagram
             EH->>ShellExe: LaunchShellExe(BuildExtractHereArgs(paths))<br/>— or BuildExtractHereFlatArgs (T-F115, "--extract-flat") /<br/>BuildExtractFolderArgs / BuildArchiveArgs / BuildTestArgs<br/>CreateProcessW — PROCESS_INFORMATION handles<br/>closed immediately — does NOT wait for the child<br/>note: TC passes the FULL selection unfiltered — Core does the<br/>per-path IsZipFile gating, same as Extract already does
             ShellExe-->>Explorer: (no return channel — ShellExe runs independently)
             EH-->>Explorer: S_OK, or HRESULT_FROM_WIN32(GetLastError())<br/>on CreateProcess failure — returned the instant<br/>CreateProcess returns, NOT when the operation finishes
+            ShellExe->>ShellExe: ShellCommands → ui.Begin(title, Bytes) — T-F268: every window goes through<br/>IOperationUi, one session per archive — Win32OperationUi is the implementation drawn here
             ShellExe->>Dlg: new NativeProgressDialog(title)<br/>= new ProgressDialogCoClass() + StartProgressDialog
             alt COMException thrown during construction
-                ShellExe->>Core: ArchiveAsync/ExtractAsync/TestAsync(options or paths, progress: null, CancellationToken.None)
+                ShellExe->>Core: ArchiveAsync/ExtractAsync/TestAsync(options or paths, session.Progress = null, CancellationToken.None)
             else dialog constructed
-                loop every 250ms (System.Threading.Timer, lock-guarded on dialogLock)
+                loop every 250ms (System.Threading.Timer, lock-guarded on the session's dialog lock)
                     ShellExe->>Dlg: HasUserCancelled()<br/>[PreserveSig] required — plain BOOL return, not HRESULT
                     alt returns true
                         ShellExe->>ShellExe: cts.Cancel()
                     end
                 end
-                ShellExe->>Core: ArchiveAsync/ExtractAsync/TestAsync(options or paths, progress, cts.Token)
+                ShellExe->>Core: ArchiveAsync/ExtractAsync/TestAsync(options or paths, session.Progress, session.Cancellation)
                 Core-->>ShellExe: IProgress<ProgressReport> callback per file/entry<br/>(TestAsync: TotalBytes=0, one report per archive — no byte-level tracking)
                 ShellExe->>Dlg: SetLine(1, CurrentFile) / SetLine(2, status) / SetProgress64(bytes, total)
-                alt OperationCanceledException from Core
-                    ShellExe-->>ShellExe: return new ArchiveResult { Success = false }
-                else Core completes
-                    Core-->>ShellExe: ArchiveResult<br/>(TestAsync: CreatedFiles always empty — nothing is written to disk)
+            end
+            alt OperationCanceledException from Core
+                ShellExe->>Dlg: session.Dispose() → StopProgressDialog — no message at all
+            else Core completes
+                Core-->>ShellExe: ArchiveResult<br/>(TestAsync: CreatedFiles always empty — nothing is written to disk)
+                Note over ShellExe: OperationMessages via ShellResultPresenter.Classify(result) (T-F68):<br/>Failed (!Success or Errors.Count>0) wins over SkippedOnly wins over Success.<br/>Test adds No errors detected on success, joined with a skipped list<br/>into ONE message (T-F216) — success has no visible disk side effect
+                ShellExe->>Dlg: session.Complete(message) → StopProgressDialog first
+                opt message is not null (Extract/Archive success has none)
+                    ShellExe->>User: MessageBoxW(text, MB_ICONERROR / MB_ICONWARNING / MB_ICONINFORMATION by severity,<br/>max 10 lines + and-N-more line) — T-F68: a skipped-only run is no longer silent.<br/>T-F268: shown even when no progress window could be created (was skipped before)
                 end
-                ShellExe->>Dlg: Dispose() → StopProgressDialog
-            end
-            Note over ShellExe: ShellResultPresenter.Classify(result) (T-F68, fixed 2026-07-06):<br/>Failed (!Success or Errors.Count>0) wins over SkippedOnly wins over Success
-            opt Classify == Failed
-                ShellExe->>User: MessageBoxW(error summary, max 10 lines shown, MB_ICONERROR)
-            end
-            opt Classify == SkippedOnly
-                ShellExe->>User: MessageBoxW("N entries skipped: ...", MB_ICONWARNING)<br/>T-F68: previously this case (Success=true, Errors=0, Skipped>0)<br/>closed with NO dialog at all — silently indistinguishable from a normal run
-            end
-            opt result.Success AND command == Test
-                ShellExe->>User: MessageBoxW("No errors detected in the archive(s).", MB_ICONINFORMATION)<br/>Test-only: unlike Extract/Archive, success has no visible disk<br/>side effect, so silent success would look like nothing happened
             end
         end
     else command is a Hash leaf, HashCrc32Command or HashSha256Command (T-F128, reached via<br/>HC's own EnumSubCommands/GetState, not drawn separately — same shape either way)
@@ -184,16 +181,16 @@ sequenceDiagram
         Explorer->>HC: Invoke(psia, pbc) — really the leaf's own Invoke, same shape for both algorithms
         HC->>ShellExe: LaunchShellExe(BuildHashArgs(paths, "crc32"|"sha256"))<br/>i.e. "--hash --algorithm crc32|sha256 <paths>"
         HC-->>Explorer: S_OK, or HRESULT_FROM_WIN32(GetLastError())
-        ShellExe->>Dlg: new NativeProgressDialog(title) — same cancel-poll/Timer pattern as the silent-form branch above
-        ShellExe->>ShellExe: FileHashService.ComputeAsync(paths, algorithm, progress, ct)<br/>single file / multi-file independently / single-folder recursive<br/>(NanaZip-compatible DataSum+NamesSum via HashDigestAccumulator — DECISIONS.md's T-F128 entry)
-        ShellExe->>Dlg: Dispose() → StopProgressDialog
+        ShellExe->>Dlg: ui.Begin(title, Bytes) → new NativeProgressDialog(title) — the same session, cancel poll<br/>and no-COM fallback as the silent-form branch above (T-F268)
+        ShellExe->>ShellExe: FileHashService.ComputeAsync(paths, algorithm, session.Progress, session.Cancellation)<br/>single file / multi-file independently / single-folder recursive<br/>(NanaZip-compatible DataSum+NamesSum via HashDigestAccumulator — DECISIONS.md's T-F128 entry)
+        ShellExe->>Dlg: session.Complete(OperationMessages.ForHash(...)) → StopProgressDialog
         ShellExe->>User: MessageBoxW(per-file "name: hash" lines, plus DataSum/NamesSum<br/>summary lines if a folder was hashed, MB_ICONINFORMATION or MB_ICONWARNING)
     end
 ```
 
 **What this catches (verified against the real bugs already fixed here):**
 - **`BC` (T-F03) is a third, distinct Open-UI destination — not a variant of `EDC`/`CDC`'s
-  flow.** It reuses the identical `LaunchOpenUi`/`ActivateApplication` mechanism, but
+  flow.** It reuses the identical `ShellCommands.OpenUi`/`ActivateApplication` mechanism, but
   `LaunchActivationRouter.Decide` returns `Browse` for `--browse` with one path, so it never
   touches the pending-list/extract-options view at all, unlike `--extract`/`--archive`.
 - **T-F232 (2026-09-26): there is no `pakko://` URI scheme any more.** A registered scheme could
@@ -446,7 +443,7 @@ behavior, out of scope for T-F62.
 
 The GUI path surfaces this correctly — `ShowOperationSummaryAsync` receives the full
 `ArchiveResult` including `SkippedFiles`. **The shell path was fixed to match (T-F68, 2026-07-06):**
-`Program.cs`'s `RunWithProgressWindowAsync` now calls `ShellResultPresenter.Classify(result)` and
+`Archiver.Shell` (now `OperationMessages.ForArchiveResult`, T-F268) calls `ShellResultPresenter.Classify(result)` and
 shows a dedicated `MB_ICONWARNING` dialog ("N entries skipped: ...") whenever
 `SkippedFiles.Count > 0` and there are no errors, instead of only checking `!result.Success ||
 result.Errors.Count > 0`. `ArchiveResult.Success` itself is unchanged (still `errors.Count == 0`,
@@ -825,7 +822,7 @@ pattern as Rows 1/3; "About" stays in both variants (matches NanaZip's own alway
 ## 7. Sequence — AMSI threat scan (T-F146)
 
 Sources read for this diagram: `src/Archiver.ShellExtension/ExplorerCommands.cpp` (`ScanCommand`),
-`src/Archiver.Shell/Program.cs` (`RunScanAsync`), `src/Archiver.Core/Services/
+`src/Archiver.Shell/ShellCommands.cs` (`ScanAsync`), `src/Archiver.Core/Services/
 AntivirusScanService.cs`, `src/Archiver.Core/Services/Antivirus/AmsiScanner.cs`/
 `AmsiProviderCheck.cs`, `src/Archiver.Core/Services/Sandbox/TarSandboxScope.cs`,
 `src/Archiver.App/ViewModels/MainViewModel.cs` (`ScanArchiveFromBrowserAsync`),
@@ -838,13 +835,13 @@ everything downstream of `ScanAsync` is identical for both.
 sequenceDiagram
     participant Explorer
     participant ScanCommand as ScanCommand (COM)
-    participant Shell as Archiver.Shell (RunScanAsync)
+    participant Shell as Archiver.Shell (ShellCommands.ScanAsync)
     participant Browser as MainViewModel<br/>(ScanArchiveFromBrowserAsync)
     participant Service as AntivirusScanService
     participant Provider as AmsiProviderCheck
     participant Amsi as AmsiScanner (amsi.dll)
     participant Sandbox as TarSandboxScope<br/>(AppContainer)
-    participant Dialog as ShowScanResults /<br/>ShowThreatScanResultAsync
+    participant Dialog as OperationMessages.ForScan /<br/>ShowThreatScanResultAsync
 
     Explorer->>ScanCommand: Invoke (AnyPathIsSupportedArchive-gated)
     ScanCommand->>Shell: CreateProcess("--scan" + paths)

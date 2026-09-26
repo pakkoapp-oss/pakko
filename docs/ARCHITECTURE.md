@@ -22,7 +22,8 @@
 │                                     │  │                                      │
 │  MainWindow.xaml / .cs              │  │  Program.cs (entry point)            │
 │  ViewModels/MainViewModel.cs        │  │  ShellArgumentParser.cs              │
-│  Services/ (Dialog, Log)            │  │  NativeProgressDialog.cs (COM)       │
+│  Services/ (Dialog, Log)            │  │  ShellCommands → IOperationUi        │
+│                                     │  │  Win32OperationUi (native dialogs)   │
 │  Strings/en-US/Resources.resw       │  │  AppLauncher: ActivateApplication    │
 └──────────────┬──────────────────────┘  └───────────────┬──────────────────────┘
                │  project reference                       │  project reference
@@ -45,7 +46,15 @@
 └─────────────────────────────────────┘
 ```
 
-**Progress UI** — `Archiver.Shell` shows progress via the Windows Shell's built-in
+**Shell UI (T-F268)** — every window an Explorer command shows goes through one internal
+interface, `IOperationUi` (`Begin` → an `IOperationSession` per operation: progress + cancel, the
+conflict/password prompts asked while it runs, and one `Complete(OperationMessage?)` result;
+`ShowMessage` only for a failed open-in-Pakko hand-off). `ShellCommands` holds the commands and
+never calls a dialog directly; `OperationMessages` builds the result text; `ShellServices` holds
+the Core factories so tests use a ZIP-only router. The implementation today is
+`Win32OperationUi`.
+
+**Progress UI** — `Win32OperationUi` shows progress via the Windows Shell's built-in
 `IProgressDialog` COM object (`NativeProgressDialog.cs`), in-process — no satellite process,
 no IPC. An earlier design (`Archiver.ProgressWindow`, a second WinUI 3 `.exe` talking to
 `Archiver.Shell` over a named pipe) was removed in T-F65 after its WinUI/WindowsAppRuntime
@@ -180,8 +189,14 @@ src/
 │   └── Win32SourceDeleteOperations.cs                   ← T-F207: final-path + volume-type + SHFileOperationW P/Invoke
 │
 ├── Archiver.Shell/             ← shell-triggered operation entry point; net8.0-windows; WinExe; no WinUI
-│   ├── Program.cs
+│   ├── Program.cs                      ← T-F268: parse, then dispatch to ShellCommands
 │   ├── ShellArgumentParser.cs
+│   ├── ShellCommands.cs                ← T-F268: every Explorer command; windows only via IOperationUi
+│   ├── ShellServices.cs                ← T-F268: Core factories (tests swap in a ZIP-only router)
+│   ├── IOperationUi.cs                 ← T-F268: IOperationUi/IOperationSession/OperationMessage
+│   ├── Win32OperationUi.cs             ← T-F268: IOperationUi on IProgressDialog/TaskDialog/MessageBoxW
+│   ├── OperationMessages.cs            ← T-F268: pure result-text builder (errors, skips, hash, scan)
+│   ├── ProgressText.cs                 ← progress status, byte and speed text
 │   ├── AppLauncher.cs                  ← T-F232: opens Archiver.App via IApplicationActivationManager::
 │   │                                      ActivateApplication (no URI scheme); refuses > 32000 chars
 │   ├── ShellResultPresenter.cs         ← T-F68: classifies ArchiveResult into Failed/SkippedOnly/Success
@@ -839,7 +854,7 @@ disk-space risk that direct streaming never had. Insufficient space is reported 
 ## FileHashService — Current Signature (T-F128)
 
 Static, stateless — mirrors `ArchiveNaming`/`ArchiveFormatRegistryNames`'s "no DI needed" shape,
-not a constructor-injected service. Consumed directly by `Archiver.Shell.Program.RunHashAsync`
+not a constructor-injected service. Consumed directly by `Archiver.Shell.ShellCommands.HashAsync`
 (the Explorer context-menu's "Хеш-суми" submenu — see `ExplorerCommands.cpp`'s `HashCommand`).
 
 ```csharp
@@ -1442,8 +1457,8 @@ registered there, every leaf command is instantiated internally via `Make<T>()`.
 latter only emits `--format <value>` for a non-`"zip"` value, so the pre-existing zip command line
 is unchanged). On the .NET side, `ShellArgumentParser.ParseArchive` consumes an optional
 `--format zip|tar` pair right after `--archive` into a new `ParsedCommand.Format`
-(`ArchiveContainerFormat`, default `Zip`); `Archiver.Shell/Program.cs`'s `RunArchiveAsync` now
-constructs `new ArchiveCreationRouter(new ZipArchiveService(), new TarSandboxedService())` directly
+(`ArchiveContainerFormat`, default `Zip`); `Archiver.Shell`'s archive command (`ShellCommands.ArchiveAsync`
+since T-F268, via `ShellServices`) now constructs `new ArchiveCreationRouter(new ZipArchiveService(), new TarSandboxedService())` directly
 (no DI container in this console entry point) instead of calling `ZipArchiveService.ArchiveAsync`,
 and sets `ArchiveOptions.Format` from the parsed switch.
 
@@ -1808,10 +1823,10 @@ services.AddSingleton<IAntivirusScanService, AntivirusScanService>();
 ```
 
 **Frontends.** `Archiver.Shell/Program.cs` gained a `--scan` CLI switch
-(`ShellArgumentParser.CommandType.Scan`) and `RunScanAsync`/`ShowScanResults`, patterned directly
-after `RunHashAsync`/`ShowHashResults` (T-F128) rather than `RunWithProgressWindowAsync` — a
-`ThreatScanResult` is a genuine three-state result, not a success/failure `ArchiveResult`, so it
-needs its own dialog/cancel-poll/progress plumbing. `Archiver.ShellExtension` gained a `ScanCommand`
+(`ShellArgumentParser.CommandType.Scan`) and a scan command with its own result text — a
+`ThreatScanResult` is a genuine three-state result, not a success/failure `ArchiveResult`. Since
+T-F268 that is `ShellCommands.ScanAsync` + `OperationMessages.ForScan`, sharing the one
+`IOperationUi` session (progress, cancel poll, password prompt) with every other command. `Archiver.ShellExtension` gained a `ScanCommand`
 leaf `IExplorerCommand`, gated on `AnyPathIsSupportedArchive` (not `AnyPathIsZip` like
 `TestCommand` — T-F86's ZIP-only reasoning for Test doesn't apply here, since the scan path
 genuinely supports tar-family via the quarantine flow), registered in `PakkoRootCommand::
