@@ -22,20 +22,26 @@ update: two of the security issues below affect every earlier version.
   document could use a crafted `pakko://` link to make Pakko open an arbitrary path, including a
   network (UNC) path on a remote host — which makes Windows send your NTLM credentials to that
   host. Browsers ask before opening such a link, but offer "always allow". Explorer's commands
-  (Open, Extract files..., Add to archive...) work exactly as before; they now reach the app
-  through a hand-off only a program already on your computer can start. Updating removes the
-  registration; nothing needs cleaning up. A very large Explorer selection sent to the app now
-  shows a message instead of hanging.
+  that open the Pakko window (Open, Extract…, Compress…) work exactly as before; they now reach
+  the app through a hand-off only a program already on your computer can start. Updating removes
+  the registration; nothing needs cleaning up. Known limit, still open (T-F235): a very large
+  Explorer selection (tens of thousands of characters of paths) can still make a Pakko command
+  do nothing.
 - **T-F233 / T-F248** — opening a tar-family archive (.tar, .gz, .7z, .rar, ...) in earlier
   versions changed that file's permissions: it added an entry for Pakko's sandbox and replaced the
   permissions the file inherited from its folder — on a shared folder, other people could lose
   access to it. tar.exe now reads the archive only through a handle Pakko opens itself; your file
-  is never touched. Nothing is repaired automatically: `scripts/Find-PakkoSandboxAce.ps1` lists
-  affected files and `scripts/Repair-PakkoSandboxAce.ps1` restores them (see `SECURITY.md`,
+  is never touched. Nothing is repaired automatically:
+  [Find-PakkoSandboxAce.ps1](https://github.com/pakkoapp-oss/pakko/blob/v1.5.0/scripts/Find-PakkoSandboxAce.ps1)
+  lists affected files and
+  [Repair-PakkoSandboxAce.ps1](https://github.com/pakkoapp-oss/pakko/blob/v1.5.0/scripts/Repair-PakkoSandboxAce.ps1)
+  restores them (see
+  [SECURITY.md](https://github.com/pakkoapp-oss/pakko/blob/v1.5.0/SECURITY.md#advisory-permissions-changed-by-earlier-versions-t-f233),
   "Advisory: Permissions Changed by Earlier Versions").
 - **T-F266** — a file name with certain look-alike Unicode characters (for example U+FF02, a
   full-width quote) could be turned into real tar.exe options when creating a `.tar` archive.
-  Such names are now refused with a message pointing to ZIP.
+  Every name passed to tar.exe must now convert exactly to the system's ANSI code page; any other
+  name is refused before tar.exe runs, with a message pointing to ZIP (see "Changed behavior").
 - **T-F185** — an archive name like `..\..\name` could write the new archive outside the chosen
   folder. The name is now used as a plain file name; as a side effect, the App's Archive Name box
   no longer creates a subfolder from `sub\name`.
@@ -71,10 +77,13 @@ update: two of the security issues below affect every earlier version.
   two such entries could silently overwrite each other.
 - **T-F204 / T-F215** — tar-family names are decoded correctly, and a name the system code page
   can't represent gives a clear error instead of garbled text.
+- **T-F266** — creating a tar-family archive now refuses files whose names the system's ANSI code
+  page can't represent exactly (for example Chinese names or emoji when Windows' language for
+  non-Unicode programs is Ukrainian). Use ZIP for such files; ZIP stores any name.
 - tar.exe's sandbox now allows half of the computer's memory (1 – 4 GB) and at least 60 minutes of
   CPU time plus one minute per 10 MB of archive, so large modern archives (big 7z/xz/zstd
   dictionaries) no longer fail; when a limit does stop it, the message says which (**T-F239**).
-- An archive that another program has open for writing is refused as "in use".
+- A tar-family archive that another program has open for writing is refused as "in use".
 
 ### Fixed
 
@@ -84,8 +93,9 @@ update: two of the security issues below affect every earlier version.
 - **T-F227** — ZIP extraction reused and then deleted an existing `<destination>_tmp` folder.
 - **T-F230** — one unwritable ZIP entry no longer aborts the whole extraction with a misleading
   message.
-- **T-F243** — ZIP reader hardening: a wrong ZipCrypto password that passed the quick check is now
-  asked again; Cyrillic ZipCrypto passwords from other Windows tools work; reserved device names
+- **T-F243 / T-F244** — ZIP reader hardening: a wrong ZipCrypto password that passed the quick
+  check is now asked again; Cyrillic ZipCrypto passwords from other Windows tools work; reserved
+  device names
   (`CON.a.b`, `NUL`, `CONIN$`) are refused in every part of a path; over-long names fail only
   their own entry.
 - **T-F263** — tar extraction no longer leaves partial files behind when cancelled or when it
@@ -102,7 +112,7 @@ update: two of the security issues below affect every earlier version.
 
 ### Under the hood
 
-- **T-F166 – T-F186** — a QA/AppSec test-coverage audit: real junctions, AES-256 fixtures, tar
+- **T-F166 – T-F170, T-F174 – T-F186** — a QA/AppSec test-coverage audit: real junctions, AES-256 fixtures, tar
   cancellation, COM entry points, sandbox concurrency, Group Policy fuzzing, an end-to-end EICAR
   test, MAX_PATH, format spoofing, Unicode-trick file names.
 - **T-F172 / T-F173** — a developer/API documentation site
