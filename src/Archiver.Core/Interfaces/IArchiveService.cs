@@ -33,6 +33,8 @@ public interface IArchiveService
     /// <summary>
     /// Verifies every entry's CRC-32 against its declared value without writing any files
     /// to disk. Never throws — errors are captured in ArchiveResult.Errors.
+    /// The one exception (T-F260, T-F268): cancellation throws OperationCanceledException,
+    /// whether it lands inside one archive or between two.
     /// </summary>
     /// <param name="archivePaths">The ZIP archives to verify.</param>
     /// <param name="progress">Optional overall-progress reporter.</param>

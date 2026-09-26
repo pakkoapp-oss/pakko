@@ -606,7 +606,8 @@ public interface IArchiveService
         CancellationToken cancellationToken = default);
 
     // T-F62: verifies every entry's CRC-32 against its declared header value without
-    // writing anything to disk. Never throws — mismatches surface as ArchiveResult.Errors.
+    // writing anything to disk. Never throws — mismatches surface as ArchiveResult.Errors —
+    // except OperationCanceledException on cancellation, between archives too (T-F260, T-F268).
     // T-F189: resolvePasswordAsync mirrors ExtractOptions.ResolvePasswordAsync — TestAsync takes a
     // flat path list rather than an Options record, so it's a trailing parameter instead of a
     // field. Placed before cancellationToken per CA1068 (CancellationToken must be last), which is

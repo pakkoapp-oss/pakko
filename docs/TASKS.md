@@ -5812,6 +5812,22 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   (bomb dialog dead end), T-F253 (dialog behind other windows), T-F255 (255-char password cut).
 - **Reported by:** user, 2026-09-26.
 
+### T-F269 — Cancel in Explorer stops only the current archive of a multi-archive selection (P1)
+
+- [ ] **Status:** open — found 2026-09-26 in T-F268 step 1's closing review (pre-existing, not a
+  regression: the old `Program.cs` loop did the same). The three extract commands
+  (`ShellCommands.ExtractHereAsync`/`ExtractHereFlatAsync`/`ExtractFolderAsync`) run one
+  operation session per archive, each with its own cancel token, and `RunArchiveOperationAsync`
+  swallows `OperationCanceledException` so the `foreach` moves on. Pressing Cancel on a
+  10-archive selection cancels archive 1, then archive 2's progress window opens. Contradicts the
+  T-F260 rule "cancellation stops the whole operation, even between two sources".
+- **Fix direction:** a cancel ends the whole Explorer invocation (stop the loop on OCE). Decide
+  with T-F268 step 3: one window per Explorer invocation (NanaZip shows one progress window per
+  command) or one per archive.
+- **Tests first:** `ShellCommandsTests` with two archives, cancel during the first -> the second
+  is never opened, no message, nothing written for either.
+- **Reported by:** T-F268 closing review, 2026-09-26.
+
 ### T-F223 — Diagram gap from T-F193 (P2)
 
 - [ ] **Status:** open. Carried by T-F202 from `docs/DECISIONS.md`'s T-F193 entry: no diagram in
