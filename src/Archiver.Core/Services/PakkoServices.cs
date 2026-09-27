@@ -54,7 +54,7 @@ public sealed class PakkoServices
 
     /// <summary>Listing one archive at a time.</summary>
     public async Task<IArchiveListingRouter> CreateListingRouterAsync() =>
-        new ArchiveListingRouter(ArchiveService, TarService, await GetTarCapabilitiesAsync().ConfigureAwait(false));
+        new ArchiveListingRouter(ArchiveService, TarService, await GetTarCapabilitiesAsync().ConfigureAwait(false), Policy);
 
     /// <summary>AMSI scanning, wired to the real AMSI provider.</summary>
     [SupportedOSPlatform("windows")]

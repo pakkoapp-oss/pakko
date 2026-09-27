@@ -39,7 +39,9 @@ public interface ITarService
     /// failure (corrupted archive, tar.exe error) is reported via
     /// ArchiveListResult.Success/ErrorMessage. Does not run the whole-archive safety pre-scan
     /// ScanForUnsafeEntriesAsync performs before extraction — listing must never be gated on a
-    /// policy that only matters once bytes are about to be written to disk.
+    /// safety check that only matters once bytes are about to be written to disk. Group Policy is
+    /// a different matter (T-F250): IArchiveListingRouter refuses blocked formats, and this
+    /// engine refuses to list at all under DisableTarExtraction.
     /// </summary>
     Task<ArchiveListResult> ListEntriesAsync(
         string archivePath,

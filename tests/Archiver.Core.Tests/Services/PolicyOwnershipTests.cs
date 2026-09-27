@@ -112,6 +112,7 @@ public sealed class PolicyOwnershipTests : IDisposable
     [InlineData(typeof(TarSandboxedService))]
     [InlineData(typeof(ExtractionRouter))]
     [InlineData(typeof(ArchiveCreationRouter))]
+    [InlineData(typeof(ArchiveListingRouter))]
     [InlineData(typeof(AntivirusScanService))]
     public void EveryPublicConstructor_RequiresANonNullPolicy(Type type)
     {
@@ -286,6 +287,77 @@ public sealed class PolicyOwnershipTests : IDisposable
         extracted.SkippedFiles.Should().ContainSingle().Which.Reason.Should().Contain("blocked by Group Policy");
         tested.SkippedFiles.Should().ContainSingle().Which.Reason.Should().Contain("blocked by Group Policy");
         created.Success.Should().BeFalse();
+    }
+
+    // --- T-F250: every operation, under both tar-refusing policies, never reaches tar.exe ---
+
+    public static TheoryData<string, string> TarRefusingPolicies => new()
+    {
+        { "BlockedFormats=tar", "extract" }, { "BlockedFormats=tar", "create" },
+        { "BlockedFormats=tar", "list" }, { "BlockedFormats=tar", "test" },
+        { "DisableTarExtraction", "extract" }, { "DisableTarExtraction", "create" },
+        { "DisableTarExtraction", "list" }, { "DisableTarExtraction", "test" },
+    };
+
+    private static GroupPolicyOptions TarRefusing(string policy) => policy == "DisableTarExtraction"
+        ? TarDisabled
+        : new GroupPolicyOptions { BlockedFormats = ["tar"] };
+
+    [Theory]
+    [MemberData(nameof(TarRefusingPolicies))]
+    public async Task Factory_TarRefusedByPolicy_OperationNeverReachesTar(string policy, string operation)
+    {
+        var zip = new RecordingZipService();
+        var tar = new TarMustNotRunService();
+        PakkoServices services = PakkoServices.Create(TarRefusing(policy), zip, tar);
+        string archive = WriteTar("a.tar");
+
+        bool refused = operation switch
+        {
+            "extract" => (await (await services.CreateExtractionRouterAsync())
+                .ExtractAsync(new ExtractOptions { ArchivePaths = [archive], DestinationFolder = _temp.Path })).SkippedFiles.Count == 1,
+            "test" => (await (await services.CreateExtractionRouterAsync()).TestAsync([archive])).SkippedFiles
+                .Single().Reason.Contains("Group Policy"),
+            "list" => (await (await services.CreateListingRouterAsync()).ListEntriesAsync(archive)).ErrorMessage!
+                .Contains("Group Policy"),
+            _ => !(await services.CreationRouter.ArchiveAsync(new ArchiveOptions
+            {
+                SourcePaths = [archive], DestinationFolder = _temp.Path, ArchiveName = "x", Format = ArchiveContainerFormat.Tar,
+            })).Success,
+        };
+
+        refused.Should().BeTrue();
+        tar.TarCalls.Should().Be(0);
+        zip.Calls.Should().Be(0);
+    }
+
+    // Scan opens the sandbox directly, not through ITarService, so the shared classifier is its
+    // only tar gate. With no AV provider registered, a path that got past the classifier would be
+    // reported as "No antivirus is registered" instead — without starting tar.exe.
+    [Theory]
+    [InlineData("BlockedFormats=tar")]
+    [InlineData("DisableTarExtraction")]
+    public async Task Scan_TarRefusedByPolicy_ReportsThePolicyAndOpensNoScanner(string policy)
+    {
+        string archive = WriteTar("a.tar");
+        var scanner = new AntivirusScanService(new TarCapabilities(), TarRefusing(policy),
+            () => throw new InvalidOperationException("no scanner may be opened"), () => false);
+
+        ThreatScanResult result = await scanner.ScanAsync(new AntivirusScanOptions { ArchivePaths = [archive] });
+
+        result.Findings.Should().ContainSingle().Which.Reason.Should().Contain("Group Policy");
+    }
+
+    [Fact]
+    public async Task Factory_ListingRouter_GetsThePolicy()
+    {
+        var tar = new TarMustNotRunService();
+        PakkoServices services = PakkoServices.Create(TarDisabled, new RecordingZipService(), tar);
+
+        ArchiveListResult result = await (await services.CreateListingRouterAsync()).ListEntriesAsync(WriteTar("a.tar"));
+
+        result.ErrorMessage.Should().Be(TarDisabledMessage);
+        tar.TarCalls.Should().Be(0);
     }
 
     // --- The shared classifier ---

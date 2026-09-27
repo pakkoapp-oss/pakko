@@ -36,6 +36,13 @@ public sealed class ZipArchiveService : IArchiveService
         _policy = policy;
     }
 
+    // T-F250: the engine refuses a blocked "zip" itself — Shell once called TestAsync directly, and
+    // a ZIP the magic-byte detector calls Unknown (an empty archive, a self-extractor) reaches this
+    // engine through the routers' Unknown bucket, which no router policy check sees.
+    private bool IsZipBlocked => ArchiveFormatPolicy.IsBlockedByPolicy(ArchiveFormat.Zip, _policy);
+
+    private static readonly string ZipBlockedReason = ArchiveFormatPolicy.BlockedFormatReason(ArchiveFormat.Zip);
+
     // T-F234: the OEM/ANSI pages entry names without the UTF-8 flag are decoded with. Tests pin
     // them so expectations hold on a machine with other pages (the en-US CI runner).
     internal ZipNameCodePages NameCodePages { get; init; } = ZipNameCodePages.System;
@@ -819,6 +826,12 @@ public sealed class ZipArchiveService : IArchiveService
             return (true, null);
         }
 
+        if (IsZipBlocked)
+        {
+            skippedFiles.Add(new SkippedFile { Path = archivePath, Reason = ZipBlockedReason });
+            return (true, null);
+        }
+
         if (IsEncryptedZip(archivePath))
         {
             ResolvedZipPassword? password = await ResolveArchivePasswordAsync(archivePath, passwordResolver, NameCodePages).ConfigureAwait(false);
@@ -1026,6 +1039,13 @@ public sealed class ZipArchiveService : IArchiveService
                 continue;
             }
 
+            if (IsZipBlocked)
+            {
+                skippedFiles.Add(new SkippedFile { Path = archivePath, Reason = ZipBlockedReason });
+                progress?.Report(new ProgressReport { Percent = (i + 1) * 100 / total, BytesTransferred = 0, TotalBytes = 0 });
+                continue;
+            }
+
             ResolvedZipPassword? password = null;
             if (IsEncryptedZip(archivePath))
             {
@@ -1082,6 +1102,9 @@ public sealed class ZipArchiveService : IArchiveService
         string archivePath,
         CancellationToken cancellationToken = default)
     {
+        if (IsZipBlocked)
+            return new ArchiveListResult { Success = false, ErrorMessage = ZipBlockedReason };
+
         try
         {
             List<ArchiveEntryInfo> entries = await Task.Run(() =>

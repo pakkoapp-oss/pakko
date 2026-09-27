@@ -7,15 +7,18 @@ namespace Archiver.Core.Services;
 public sealed class ArchiveListingRouter(
     IArchiveService archiveService,
     ITarService tarService,
-    TarCapabilities tarCapabilities) : IArchiveListingRouter
+    TarCapabilities tarCapabilities,
+    GroupPolicyOptions groupPolicyOptions) : IArchiveListingRouter
 {
+    private readonly GroupPolicyOptions _policy = groupPolicyOptions ?? throw new ArgumentNullException(nameof(groupPolicyOptions));
+
     /// <inheritdoc/>
     public Task<ArchiveListResult> ListEntriesAsync(
         string archivePath,
         CancellationToken cancellationToken = default)
     {
         ArchiveFormatPolicy.Classification classification =
-            ArchiveFormatPolicy.Classify([archivePath], tarCapabilities, new GroupPolicyOptions());
+            ArchiveFormatPolicy.Classify([archivePath], tarCapabilities, _policy);
 
         if (classification.Unsupported.Count > 0)
             return Task.FromResult(new ArchiveListResult

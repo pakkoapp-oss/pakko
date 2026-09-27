@@ -1272,7 +1272,10 @@ Task<ArchiveListResult> ListEntriesAsync(string archivePath, CancellationToken c
 ```
 
 Routed by a new interface, mirroring `IExtractionRouter`'s dispatch exactly (same
-`ArchiveFormatDetector`/`TarCapabilities` logic, copied rather than shared — see `DECISIONS.md`):
+`ArchiveFormatDetector`/`TarCapabilities` logic, copied rather than shared — see `DECISIONS.md`;
+T-F261: now shared through `ArchiveFormatPolicy`, and T-F250: the router takes a required
+`GroupPolicyOptions` — `ArchiveListingRouter(IArchiveService, ITarService, TarCapabilities,
+GroupPolicyOptions)`):
 
 ```csharp
 // Interfaces/IArchiveListingRouter.cs
@@ -1590,10 +1593,18 @@ public sealed class PakkoServices
 }
 ```
 
-`ArchiveListingRouter` and `RunInfoAsync`/`RunListAsync`'s inline service construction are
-**deliberately not threaded with a policy** — listing is read-only (no MOTW propagation, nothing
-written to disk) and out of this task's scope; see `ITarService.ListEntriesAsync`'s own doc
-comment on why listing must never be gated on an extraction-time policy.
+**Correction (T-F250, decided 2026-09-25):** listing *is* gated by Group Policy. The original
+T-F51 text here said `ArchiveListingRouter` and the CLI's `i`/`l` were deliberately left without a
+policy, citing `ITarService.ListEntriesAsync`'s doc comment — but that comment is about the
+entry-safety pre-scan, not Group Policy, while `POLICIES.md` promises `DisableTarExtraction`
+never starts tar.exe and that blocked formats are not opened. Listing parses the archive with the
+same libarchive parser the policy exists to keep away, so `ArchiveListingRouter` now takes a
+required `GroupPolicyOptions` and refuses through `ArchiveFormatPolicy` like every other
+operation (App browse mode, file-association/Explorer "Open", nested drill-in, `pakko l`).
+`ZipArchiveService` also refuses a blocked `zip` on its own in `TestAsync`/`ExtractAsync`/
+`ListEntriesAsync` — a ZIP the magic-byte detector calls `Unknown` (an entry-less archive, a
+self-extractor) reaches the ZIP engine through the routers' Unknown bucket, where no router check
+sees it.
 
 ---
 

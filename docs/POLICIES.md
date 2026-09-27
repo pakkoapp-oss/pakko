@@ -4,6 +4,9 @@
 > confirmed on real hardware — a `gpedit.msc` import and each key's real effect against the
 > installed app — matching this document exactly. See `DECISIONS.md`'s T-F51 entry and
 > [`T-F51`](TASKS.md) in `TASKS.md` for the full trail.
+> **2026-09-27 (T-F250/T-F261):** listing/browsing, testing and scanning now honor
+> `AllowedFormats`/`BlockedFormats`/`DisableTarExtraction` too, and `DisableTarExtraction` also
+> stops the tar.exe version check. Covered by unit tests; the on-device re-check is pending.
 
 ---
 
@@ -39,9 +42,9 @@ an error.** Policies only take effect when explicitly set.
 | Value name | Type | Data | Effect |
 |---|---|---|---|
 | `EnforceMOTW` | `REG_DWORD` | `0` = disabled, `1` = all files, `2` = unsafe extensions only | Controls Mark-of-the-Web (`Zone.Identifier`) propagation to extracted files. Absent = Pakko's shipped default (`1`, all files) is unchanged. |
-| `AllowedFormats` | `REG_MULTI_SZ` | one format name per line — `zip`, `tar`, `gzip`, `bz2`, `xz`, `zstd`, `lzma`, `rar`, `sevenzip` | Whitelist. If set, only listed formats can be extracted or created. Absent = no restriction. |
+| `AllowedFormats` | `REG_MULTI_SZ` | one format name per line — `zip`, `tar`, `gzip`, `bz2`, `xz`, `zstd`, `lzma`, `rar`, `sevenzip` | Whitelist. If set, only listed formats can be extracted, tested, listed/browsed, scanned or created. Absent = no restriction. |
 | `BlockedFormats` | `REG_MULTI_SZ` | same format name vocabulary as `AllowedFormats` | Blocklist. **Takes precedence over `AllowedFormats`** — a format listed in both is blocked. |
-| `DisableTarExtraction` | `REG_DWORD` | `0`/`1` | `1` = Pakko never spawns `tar.exe` at all (blocks RAR/7z/tar/tar.gz/tar.bz2/tar.xz/tar.zst/tar.lzma extraction and creation outright, and hides the corresponding format options in the UI). |
+| `DisableTarExtraction` | `REG_DWORD` | `0`/`1` | `1` = Pakko never spawns `tar.exe` at all — not even its startup version check (blocks RAR/7z/tar/tar.gz/tar.bz2/tar.xz/tar.zst/tar.lzma extraction, listing/browsing, scanning and creation outright, and hides the corresponding format options in the app's own UI; the Explorer menu does not hide them yet, T-F262 — choosing one there reports the policy instead). |
 
 ### `EnforceMOTW` in detail
 

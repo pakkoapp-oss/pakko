@@ -58,9 +58,8 @@ public static class ArchiveFormatPolicy
         if (format == ArchiveFormat.Unknown)
             return null;
 
-        string registryName = ArchiveFormatRegistryNames.ToRegistryName(format);
-        if (!policy.IsFormatAllowed(registryName))
-            return $"This archive format ({registryName}) is blocked by Group Policy.";
+        if (!policy.IsFormatAllowed(ArchiveFormatRegistryNames.ToRegistryName(format)))
+            return BlockedFormatReason(format);
 
         if (IsZipEngineFormat(format))
             return null;
@@ -82,6 +81,9 @@ public static class ArchiveFormatPolicy
             return true;
         return !IsZipEngineFormat(format) && policy.DisableTarExtraction;
     }
+
+    internal static string BlockedFormatReason(ArchiveFormat format) =>
+        $"This archive format ({ArchiveFormatRegistryNames.ToRegistryName(format)}) is blocked by Group Policy.";
 
     private static bool IsZipEngineFormat(ArchiveFormat format) => format is ArchiveFormat.Zip or ArchiveFormat.Unknown;
 
