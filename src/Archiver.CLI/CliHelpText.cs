@@ -25,7 +25,8 @@ public static class CliHelpText
           i   Show supported formats/codecs on this system
 
         SWITCHES:
-          -o<dir>          Output directory                                    (x)
+          -o<dir>          Output directory; default: the current directory,   (x)
+                           as with 7z (not the archive's own folder)
           -p<pwd>          Password. x/t: opens a ZipCrypto/AES-encrypted ZIP.  (x, t, a)
                            a: encrypts the new ZIP with AES-256 (file names
                            stay readable); printable ASCII only, at most 99

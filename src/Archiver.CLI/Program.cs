@@ -61,7 +61,8 @@ static int RejectBarePasswordWithoutConsole()
 // x: extract with full paths. SingleFolder mode (not SeparateFolders — that's
 // Archiver.Shell's --extract-folder behavior) matches real 7z 'x': every named
 // archive's own internal structure goes straight into the destination, no
-// synthetic per-archive wrapper folder.
+// synthetic per-archive wrapper folder. Without -o the destination is the
+// current directory, as with 7z 'x' (T-F206).
 // -------------------------------------------------------------------------
 static async Task<int> RunExtractAsync(ParsedCliCommand command, GroupPolicyOptions policy)
 {
@@ -93,7 +94,7 @@ static async Task<int> RunExtractAsync(ParsedCliCommand command, GroupPolicyOpti
         }
         else
         {
-            destination = ResolveExtractDestination(command, archivePaths);
+            destination = ResolveExtractDestination(command);
         }
 
         var options = BuildExtractOptions(command, archivePaths, destination, quit);
@@ -121,9 +122,9 @@ static async Task<int> RunExtractAsync(ParsedCliCommand command, GroupPolicyOpti
     }
 }
 
-static string ResolveExtractDestination(ParsedCliCommand command, IReadOnlyList<string> archivePaths) =>
-    command.OutputDirectory
-        ?? (command.ReadFromStdin ? "." : Path.GetDirectoryName(Path.GetFullPath(archivePaths[0])) ?? ".");
+// T-F206: like `7z x`, no -o means the current directory, not the archive's own folder.
+static string ResolveExtractDestination(ParsedCliCommand command) =>
+    command.OutputDirectory ?? Directory.GetCurrentDirectory();
 
 static ExtractOptions BuildExtractOptions(
     ParsedCliCommand command, IReadOnlyList<string> archivePaths, string destination, CancellationTokenSource quit)

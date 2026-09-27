@@ -58,6 +58,23 @@ public sealed class CliSubprocessTests
         Directory.Exists(Path.Combine(destDir, "photo")).Should().BeFalse();
     }
 
+    // T-F206: like `7z x`, no -o means the current directory — not the archive's own folder.
+    [Fact]
+    public void Extract_NoOutputSwitch_ExtractsIntoCurrentDirectoryNotBesideArchive()
+    {
+        string archiveDir = CliFixtureFiles.CreateScratchDir();
+        string zipPath = Path.Combine(archiveDir, "valid.zip");
+        File.Copy(CliFixtureFiles.ValidZip, zipPath);
+        string workingDir = CliFixtureFiles.CreateScratchDir();
+
+        (int exitCode, _, string stdErr) = CliProcessRunner.RunIn(workingDir, "x", zipPath);
+
+        exitCode.Should().Be(0, stdErr);
+        File.ReadAllText(Path.Combine(workingDir, "a.txt")).Should().Be("hello world");
+        File.Exists(Path.Combine(workingDir, "b.txt")).Should().BeTrue();
+        Directory.GetFileSystemEntries(archiveDir).Should().ContainSingle("nothing may land beside the archive");
+    }
+
     // T-F179 (test-coverage audit): precursor to T-F160 (interactive conflict dialog for
     // `pakko x`, still an open design question). Locks down today's real, observed behavior —
     // not a guessed one — as a baseline before that design work happens. Confirmed by reading
