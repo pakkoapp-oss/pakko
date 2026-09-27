@@ -156,7 +156,7 @@ src/
 │       ├── ArchiveError.cs / SkippedFile.cs / ProgressReport.cs
 │       ├── ArchiveFormat.cs / ArchiveContainerFormat.cs   ← detection vs. creation enums
 │       ├── ArchiveEntryInfo.cs / ArchiveListResult.cs     ← T-F05: browse-mode listing
-│       ├── ConflictInfo.cs / ConflictDecision.cs          ← T-F06
+│       ├── ConflictInfo.cs / ConflictDecision.cs          ← T-F06; incoming size/time T-F268
 │       ├── CompressionBombWarning.cs                      ← T-F94
 │       ├── HashAlgorithmKind.cs                           ← T-F128: Crc32 | Sha256
 │       ├── ThreatScanResult.cs / AntivirusScanOptions.cs   ← T-F146

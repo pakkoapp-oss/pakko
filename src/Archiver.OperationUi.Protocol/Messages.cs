@@ -59,14 +59,16 @@ public sealed record Item(string Name, int Index, int Count) : ProtocolMessage;
 /// <summary><paramref name="Status"/> is formatted by Shell (bytes, speed, time left).</summary>
 public sealed record Progress(int Percent, string? CurrentFile, string? Status) : ProtocolMessage;
 
-/// <summary>Sizes and dates are null when unknown.</summary>
+/// <summary>
+/// A file conflict. The details lines ("1.2 MB · modified 12.09.2026 14:03") are formatted by Shell
+/// and null when unknown; <paramref name="IncomingIsNewer"/> adds the "newer" mark.
+/// </summary>
 public sealed record AskConflict(
     int RequestId,
     string ExistingPath,
-    long? ExistingSize,
-    DateTimeOffset? ExistingModified,
-    long? IncomingSize,
-    DateTimeOffset? IncomingModified) : ProtocolMessage;
+    string? ExistingDetails,
+    string? IncomingDetails,
+    bool IncomingIsNewer) : ProtocolMessage;
 
 public sealed record AskPassword(
     int RequestId,

@@ -498,6 +498,40 @@ public sealed class TarSandboxedServiceExtractTests : IDisposable
         File.ReadAllText(Path.Combine(destDir, "a (1).txt")).Should().Be("new content");
     }
 
+    // T-F268 step 5: as for ZIP, the prompt gets the incoming file's size and time (from the
+    // quarantined copy tar.exe wrote).
+    [Integration]
+    public async Task ExtractAsync_ConflictAsk_PassesTheIncomingFileSizeAndTime()
+    {
+        string archivePath = Path.Combine(_temp.Path, "valid.tar");
+        TarBuilder.WriteTar(archivePath,
+        [
+            new TarBuilder.Entry { Name = "a.txt", Content = Encoding.ASCII.GetBytes("new content") },
+        ]);
+
+        string destDir = Path.Combine(_temp.Path, "out");
+        Directory.CreateDirectory(destDir);
+        File.WriteAllText(Path.Combine(destDir, "a.txt"), "original content");
+
+        ConflictInfo? asked = null;
+        await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [archivePath],
+            DestinationFolder = destDir,
+            Mode = ExtractMode.SingleFolder,
+            OnConflict = ConflictBehavior.Ask,
+            ResolveConflictAsync = info =>
+            {
+                asked = info;
+                return Task.FromResult(new ConflictDecision { Resolution = ConflictResolution.Skip });
+            }
+        });
+
+        asked.Should().NotBeNull();
+        asked!.IncomingSize.Should().Be("new content".Length);
+        asked.IncomingModified.Should().NotBeNull();
+    }
+
     [Integration]
     public async Task ExtractAsync_ArchiveHasZoneIdentifier_PropagatesMotwToExtractedFile()
     {

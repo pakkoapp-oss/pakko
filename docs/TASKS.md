@@ -5820,6 +5820,10 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   `IProgressDialog` takes over). Also checked on 1.5.0.4: Archive (live progress), Hash (multi-line
   result), Scan (result), Extract to folder (fast, no window). The plan's "prompt open at crash -> re-asked via Win32" test moves
   to step 5 with the prompts. Next: step 5 (conflict and password prompts in the window).
+  Step 5 (2026-09-27): conflict and password prompts inside the window, step 4's prompt
+  hand-over removed; a prompt open at a helper crash is asked again via Win32, one open at a
+  cancel gets Skip / no password without asking. `ConflictInfo` carries the incoming file's size
+  and time. Tests first; Shell prompt paths mutation-checked. See `docs/DECISIONS.md`.
 - **Explorer smoke (agent, 2026-09-26, build 1.5.0.5, real context menu clicked via UIA, window
   captured by screen region - a per-window capture of WinUI comes out black):** Test (1 archive,
   corrupted -> red error icon), Extract here smart (3 archives), Extract each to its folder (3,

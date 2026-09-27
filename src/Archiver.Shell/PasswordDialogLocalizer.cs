@@ -17,4 +17,7 @@ public static class PasswordDialogLocalizer
 
     public static string Get(string key, params object[] args) =>
         string.Format(CultureInfo.CurrentUICulture, Res.GetString(key, CultureInfo.CurrentUICulture)!, args);
+
+    /// <summary>The unformatted string, for a composite format filled in elsewhere (the operation window, T-F268).</summary>
+    public static string Template(string key) => Res.GetString(key, CultureInfo.CurrentUICulture)!;
 }

@@ -25,6 +25,7 @@ namespace Archiver.OperationUi;
 /// <see cref="OperationWindowModel"/>; every decision comes back from the model as a
 /// <see cref="WindowUpdate"/> for <see cref="HelperApp"/> to carry out. Layout follows the
 /// approved step 3 mockup: 520 px wide, title row, heading, archive line, bar, file, status, buttons.
+/// A conflict or password prompt (step 5) replaces the progress part until it is answered.
 /// </summary>
 internal sealed class OperationWindow
 {
@@ -53,6 +54,28 @@ internal sealed class OperationWindow
     private readonly ScrollViewer _resultScroll = new() { MaxHeight = 300 };
     private readonly Button _cancel = new() { MinWidth = 120 };
     private readonly Button _close = new() { MinWidth = 120 };
+
+    private readonly StackPanel _conflictPanel = new() { Spacing = 8 };
+    private readonly TextBlock _conflictPath = new() { FontSize = 14, TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true };
+    private readonly TextBlock _existingLabel = new() { FontSize = 12, FontWeight = FontWeights.SemiBold };
+    private readonly TextBlock _existingDetails = new() { FontSize = 14, TextWrapping = TextWrapping.Wrap };
+    private readonly TextBlock _incomingLabel = new() { FontSize = 12, FontWeight = FontWeights.SemiBold };
+    private readonly TextBlock _incomingDetails = new() { FontSize = 14, TextWrapping = TextWrapping.Wrap };
+    private readonly CheckBox _applyToAll = new();
+    private readonly Button _overwrite = new() { MinWidth = 100 };
+    private readonly Button _rename = new() { MinWidth = 100 };
+    private readonly Button _skip = new() { MinWidth = 100 };
+
+    private readonly StackPanel _passwordPanel = new() { Spacing = 8 };
+    private readonly TextBlock _passwordMessage = new() { FontSize = 14, TextWrapping = TextWrapping.Wrap };
+
+    // No MaxLength: a long password is never cut (T-F255).
+    private readonly PasswordBox _passwordBox = new();
+    private readonly TextBlock _wrongPassword = new() { FontSize = 12, TextWrapping = TextWrapping.Wrap };
+    private readonly CheckBox _applyToRemaining = new();
+    private readonly Button _passwordOk = new() { MinWidth = 120 };
+    private readonly Button _skipArchive = new() { MinWidth = 120 };
+    private ProtocolMessage? _renderedPrompt;
     private DispatcherQueueTimer? _showTimer;
     private bool _closing;
 
@@ -82,11 +105,20 @@ internal sealed class OperationWindow
         _root.FlowDirection = _model.RightToLeft ? FlowDirection.RightToLeft : FlowDirection.LeftToRight;
 
         bool result = _model.Phase == WindowPhase.Result && _model.Result is not null;
+        ProtocolMessage? prompt = result ? null : _model.Prompt;
+        bool progress = !result && prompt is null;
         SetVisible(_itemLine, !result && _model.ItemLine is not null);
-        SetVisible(_bar, !result);
-        SetVisible(_file, !result && !string.IsNullOrEmpty(_model.CurrentFile));
-        SetVisible(_status, !result && !string.IsNullOrEmpty(_model.Status));
-        SetVisible(_cancel, !result);
+        SetVisible(_bar, progress);
+        SetVisible(_file, progress && !string.IsNullOrEmpty(_model.CurrentFile));
+        SetVisible(_status, progress && !string.IsNullOrEmpty(_model.Status));
+        SetVisible(_cancel, progress);
+        SetVisible(_conflictPanel, prompt is AskConflict);
+        SetVisible(_overwrite, prompt is AskConflict);
+        SetVisible(_rename, prompt is AskConflict);
+        SetVisible(_skip, prompt is AskConflict);
+        SetVisible(_passwordPanel, prompt is AskPassword);
+        SetVisible(_passwordOk, prompt is AskPassword);
+        SetVisible(_skipArchive, prompt is AskPassword);
         SetVisible(_resultScroll, result);
         SetVisible(_close, result);
         SetVisible(_severityIcon, result);
@@ -104,6 +136,12 @@ internal sealed class OperationWindow
             };
             _close.Content = _model.CloseLabel;
         }
+        else if (prompt is not null)
+        {
+            _itemLine.Text = _model.ItemLine ?? "";
+            if (!ReferenceEquals(prompt, _renderedPrompt))
+                RenderPrompt(prompt);
+        }
         else
         {
             _heading.Text = _model.Title;
@@ -115,8 +153,21 @@ internal sealed class OperationWindow
             AutomationProperties.SetName(_bar, _model.ItemLine ?? _model.Title);
         }
 
+        bool promptClosed = _renderedPrompt is not null && prompt is null;
+        _renderedPrompt = prompt;
         if (_window.AppWindow.IsVisible)
             FitToContent();
+        // The answered prompt's focused button is gone; keyboard focus returns to Cancel.
+        if (promptClosed && progress)
+            _cancel.Focus(FocusState.Programmatic);
+    }
+
+    /// <summary>A prompt came up while the window shows: bring it forward and focus the prompt.</summary>
+    public void ActivatePrompt()
+    {
+        Render();
+        _window.Activate();
+        FocusDefault();
     }
 
     /// <summary>First show: size to the content, center on the work area, take the foreground.</summary>
@@ -126,7 +177,7 @@ internal sealed class OperationWindow
         FitToContent();
         CenterOnWorkArea();
         _window.Activate();
-        (_close.Visibility == Visibility.Visible ? _close : _cancel).Focus(FocusState.Programmatic);
+        FocusDefault();
     }
 
     public void CloseNow()
@@ -134,6 +185,116 @@ internal sealed class OperationWindow
         _closing = true;
         _showTimer?.Stop();
         _window.Close();
+    }
+
+    // Skip is the conflict's default, as in the Win32 dialog (Enter never overwrites).
+    private void FocusDefault()
+    {
+        Control target = _model.Prompt switch
+        {
+            _ when _close.Visibility == Visibility.Visible => _close,
+            AskConflict => _skip,
+            AskPassword => _passwordBox,
+            _ => _cancel,
+        };
+        target.Focus(FocusState.Programmatic);
+    }
+
+    // Only when a new prompt comes up, so progress refreshes never reset what the user is typing.
+    private void RenderPrompt(ProtocolMessage prompt)
+    {
+        _passwordBox.Password = "";
+        _applyToAll.IsChecked = false;
+        _applyToRemaining.IsChecked = false;
+        switch (prompt)
+        {
+            case AskConflict ask:
+                _heading.Text = _model.Text(WindowStrings.ConflictTitle);
+                _conflictPath.Text = ask.ExistingPath;
+                _existingLabel.Text = _model.Text(WindowStrings.ExistingFile);
+                _existingDetails.Text = ask.ExistingDetails ?? "";
+                _incomingLabel.Text = _model.Text(WindowStrings.IncomingFile);
+                _incomingDetails.Text = _model.IncomingDetails ?? "";
+                SetVisible(_existingDetails, ask.ExistingDetails is not null);
+                SetVisible(_incomingDetails, ask.IncomingDetails is not null);
+                _applyToAll.Content = _model.Text(WindowStrings.ApplyToAll);
+                _overwrite.Content = _model.Text(WindowStrings.Overwrite);
+                _rename.Content = _model.Text(WindowStrings.Rename);
+                _skip.Content = _model.Text(WindowStrings.Skip);
+                break;
+
+            case AskPassword ask:
+                _heading.Text = _model.Text(WindowStrings.PasswordTitle);
+                _passwordMessage.Text = _model.PasswordMessage ?? "";
+                _passwordBox.Header = _model.Text(WindowStrings.PasswordLabel);
+                _wrongPassword.Text = _model.Text(WindowStrings.WrongPassword);
+                SetVisible(_wrongPassword, ask.PreviousAttemptWasWrong);
+                _applyToRemaining.Content = _model.Text(WindowStrings.ApplyToRemaining);
+                SetVisible(_applyToRemaining, ask.CanApplyToRemaining);
+                _passwordOk.Content = _model.Text(WindowStrings.PasswordOk);
+                _skipArchive.Content = _model.Text(WindowStrings.SkipArchive);
+                break;
+        }
+    }
+
+    // The typed password goes straight into the answer; the box is emptied before anything else runs.
+    private void SubmitPassword()
+    {
+        string password = _passwordBox.Password;
+        _passwordBox.Password = "";
+        _execute(_model.SubmitPassword(password, _applyToRemaining.IsChecked == true));
+    }
+
+    private void BuildConflictPanel()
+    {
+        _conflictPanel.Children.Add(_conflictPath);
+        _conflictPanel.Children.Add(Card(_existingLabel, _existingDetails));
+        _conflictPanel.Children.Add(Card(_incomingLabel, _incomingDetails));
+        _conflictPanel.Children.Add(_applyToAll);
+        _overwrite.Click += (_, _) => _execute(_model.AnswerConflict(ConflictChoice.Overwrite, _applyToAll.IsChecked == true));
+        _rename.Click += (_, _) => _execute(_model.AnswerConflict(ConflictChoice.Rename, _applyToAll.IsChecked == true));
+        _skip.Click += (_, _) => _execute(_model.AnswerConflict(ConflictChoice.Skip, _applyToAll.IsChecked == true));
+        _skip.Style = (Style)Application.Current.Resources["AccentButtonStyle"];
+    }
+
+    private void BuildPasswordPanel()
+    {
+        _wrongPassword.Foreground = Brush("SystemFillColorCriticalBrush");
+        _passwordPanel.Children.Add(_passwordMessage);
+        _passwordPanel.Children.Add(_passwordBox);
+        _passwordPanel.Children.Add(_wrongPassword);
+        _passwordPanel.Children.Add(_applyToRemaining);
+        _passwordBox.KeyDown += (_, e) =>
+        {
+            if (e.Key != VirtualKey.Enter)
+                return;
+            e.Handled = true;
+            SubmitPassword();
+        };
+        _passwordOk.Click += (_, _) => SubmitPassword();
+        _skipArchive.Click += (_, _) =>
+        {
+            _passwordBox.Password = "";
+            _execute(_model.DeclinePassword());
+        };
+        _passwordOk.Style = (Style)Application.Current.Resources["AccentButtonStyle"];
+    }
+
+    private static Border Card(TextBlock label, TextBlock details)
+    {
+        label.Foreground = Brush("TextFillColorSecondaryBrush");
+        var content = new StackPanel { Spacing = 2 };
+        content.Children.Add(label);
+        content.Children.Add(details);
+        return new Border
+        {
+            Child = content,
+            Padding = new Thickness(12, 8, 12, 8),
+            CornerRadius = new CornerRadius(4),
+            BorderThickness = new Thickness(1),
+            BorderBrush = Brush("CardStrokeColorDefaultBrush"),
+            Background = Brush("CardBackgroundFillColorDefaultBrush"),
+        };
     }
 
     private void BuildLayout()
@@ -163,11 +324,13 @@ internal sealed class OperationWindow
             Spacing = 8,
             Margin = new Thickness(0, 14, 0, 0),
         };
-        buttons.Children.Add(_cancel);
-        buttons.Children.Add(_close);
+        BuildConflictPanel();
+        BuildPasswordPanel();
+        foreach (Button button in new[] { _overwrite, _rename, _skip, _passwordOk, _skipArchive, _cancel, _close })
+            buttons.Children.Add(button);
 
         var body = new StackPanel { Padding = new Thickness(24, 8, 24, 24), Spacing = 10 };
-        foreach (UIElement element in new UIElement[] { heading, _itemLine, _bar, _file, _status, _resultScroll, buttons })
+        foreach (UIElement element in new UIElement[] { heading, _itemLine, _bar, _file, _status, _conflictPanel, _passwordPanel, _resultScroll, buttons })
             body.Children.Add(element);
         Grid.SetRow(body, 1);
         _root.Children.Add(body);
@@ -176,9 +339,13 @@ internal sealed class OperationWindow
         escape.Invoked += (_, e) =>
         {
             e.Handled = true;
-            _execute(_model.UserClosed());
+            // An open prompt: Esc is its own "cancel" (Skip / no password), as in the Win32 dialogs.
+            _passwordBox.Password = "";
+            _execute(_model.Escape(_applyToAll.IsChecked == true));
         };
         _root.KeyboardAccelerators.Add(escape);
+        // Accelerators on the root would otherwise pop an "Esc" tooltip over the window.
+        _root.KeyboardAcceleratorPlacementMode = KeyboardAcceleratorPlacementMode.Hidden;
 
         // MessageBoxW copied its text on Ctrl+C; users copy hashes that way.
         var copy = new KeyboardAccelerator { Key = VirtualKey.C, Modifiers = VirtualKeyModifiers.Control };

@@ -15,4 +15,37 @@ public static class WindowStrings
 
     /// <summary>Composite format: {0} index, {1} count, {2} archive name.</summary>
     public const string ItemOfCount = "ItemOfCount";
+
+    public const string ConflictTitle = "ConflictTitle";
+
+    public const string ExistingFile = "ExistingFile";
+
+    public const string IncomingFile = "IncomingFile";
+
+    /// <summary>Appended to the incoming file's details when it is the newer one.</summary>
+    public const string Newer = "Newer";
+
+    public const string Overwrite = "Overwrite";
+
+    public const string Rename = "Rename";
+
+    public const string Skip = "Skip";
+
+    public const string ApplyToAll = "ApplyToAll";
+
+    public const string PasswordTitle = "PasswordTitle";
+
+    /// <summary>Composite format: {0} archive name.</summary>
+    public const string PasswordMessage = "PasswordMessage";
+
+    public const string PasswordLabel = "PasswordLabel";
+
+    public const string WrongPassword = "WrongPassword";
+
+    public const string ApplyToRemaining = "ApplyToRemaining";
+
+    public const string PasswordOk = "PasswordOk";
+
+    /// <summary>Declines the password: this archive is not opened, the others go on.</summary>
+    public const string SkipArchive = "SkipArchive";
 }

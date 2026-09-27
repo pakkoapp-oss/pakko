@@ -528,6 +528,20 @@ public sealed class TarSandboxedService : ITarService
     // actually moved (false for both the already-exists+Skip case and the defensive-only
     // isSingleRootFolder edge case, matching the original inline loop's two `continue` sites) and
     // the relative path actually used, for the caller's own progress-report CurrentFile.
+    // Only feeds the conflict prompt's comparison, so an unreadable file just shows no details.
+    private static (long? Size, DateTimeOffset? Modified) DescribeIncoming(string file)
+    {
+        try
+        {
+            var info = new FileInfo(file);
+            return (info.Length, new DateTimeOffset(info.LastWriteTimeUtc));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return (null, null);
+        }
+    }
+
     private static string StripLeadingDotSlash(string name)
     {
         while (name.StartsWith("./", StringComparison.Ordinal))
@@ -565,7 +579,9 @@ public sealed class TarSandboxedService : ITarService
         // run (T-F30, as in ZIP's WriteEntryAsync).
         if (File.Exists(finalFilePath) || plan.ClaimedFinalPaths.Contains(finalFilePath))
         {
-            ConflictBehavior resolvedConflict = await context.ConflictResolver.ResolveAsync(finalFilePath).ConfigureAwait(false);
+            (long? incomingSize, DateTimeOffset? incomingModified) = DescribeIncoming(file);
+            ConflictBehavior resolvedConflict = await context.ConflictResolver
+                .ResolveAsync(finalFilePath, incomingSize, incomingModified).ConfigureAwait(false);
             if (resolvedConflict == ConflictBehavior.Skip)
             {
                 context.SkippedFiles.Add(new SkippedFile { Path = relativePath, Reason = "File already exists at destination." });

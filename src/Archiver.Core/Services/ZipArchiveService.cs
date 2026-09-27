@@ -1678,7 +1678,8 @@ public sealed class ZipArchiveService : IArchiveService
         string finalFilePath = Path.GetFullPath(Path.Combine(actualDest, Path.GetRelativePath(fullTempDest, destFilePath)));
         if (File.Exists(finalFilePath) || claimedFinalPaths.Contains(finalFilePath))
         {
-            ConflictBehavior resolvedConflict = await context.ConflictResolver.ResolveAsync(finalFilePath).ConfigureAwait(false);
+            ConflictBehavior resolvedConflict = await context.ConflictResolver
+                .ResolveAsync(finalFilePath, named.Entry.Length, named.Entry.LastWriteTime).ConfigureAwait(false);
             if (resolvedConflict == ConflictBehavior.Skip)
             {
                 context.ConflictSkippedEntries.Add(relativePath);

@@ -9960,3 +9960,52 @@ the new window did not. Fixed: `OperationWindowModel.CopyText` + a Ctrl+C accele
 **Not verified yet:** display scaling above 100 % (the window sizes itself in DIPs), right-to-left
 layout, ARM64 at runtime (built and packaged, never run), Windows 10 (no Mica; custom title bar).
 A crash in any of these falls back to the Win32 windows.
+
+## T-F268 step 5 — prompts inside the operation window; step 4's hand-over reversed (2026-09-27)
+
+**Shipped.** Conflict and password prompts are asked inside the helper window (`AskConflict` /
+`AskPassword` over the pipe, answered by `ConflictAnswer` / `PasswordAnswer`). This reverses step
+4's Change 1: a prompt no longer ends the helper and moves the operation to the Win32 windows.
+Diagram 8 in `docs/DIAGRAMS.md` is updated.
+
+**Who completes a prompt.** Shell keeps each open prompt in a map by request id, outside the
+outgoing message queue (a failover clears the queue). Exactly one of three paths removes it,
+under the session lock, and completes it: the helper's answer; a helper crash or a helper that
+never became ready, which asks the same prompt again through the Win32 fallback (on a thread-pool
+thread — a Win32 dialog blocks its caller); or a cancel.
+
+**Cancel answers without asking (new behavior).** Step 4 showed a standalone Win32 dialog for a
+prompt raised after the user closed the window. Closing the window during an operation cancels
+it, so such a prompt, and any prompt open at that moment, now gets Skip / no password (never
+"apply to all") without asking; the operation still ends in `OperationCanceledException`
+(T-F260). The same applies if the helper reports its window closed without a cancel, which would
+otherwise leave the operation waiting on a prompt nobody can see.
+
+**Found on device: a cancel Core never sees.** Closing the window during a conflict prompt on an
+archive's last entry answered it Skip; Core had no further point to check the token and
+returned an ordinary "every entry was skipped" result, which Shell then showed through Win32
+after the user had cancelled (a password prompt the same way showed "password required").
+Every Shell command now checks the token again before `Complete` and shows nothing when it is
+cancelled (tests first, both red before the fix). Re-checked on 1.5.0.8: X during the prompt
+ends Shell with no window and nothing written; a killed helper's prompt is asked again as the
+Win32 TaskDialog.
+
+**The helper is not trusted with the decision's meaning.** Only `Overwrite` and `Rename` map to
+themselves; any other value, including a number outside the enum, is Skip. "Apply to remaining"
+is dropped when Shell did not offer it. An answer with an unknown id or of the wrong kind, or a
+second answer to the same prompt, is ignored.
+
+**Parity with the Win32 dialogs.** Skip is the focused default (Enter never overwrites), and Esc
+answers the prompt the way `IDCANCEL` did: Skip with the checkbox as ticked, or no password.
+The title bar's X cancels the whole operation, as it does while progress shows. An empty
+password is sent as typed. The password box has no length limit (T-F255) and is emptied as soon
+as its text is read; the window model never holds the password.
+
+**Core change.** `ConflictInfo` gained optional `IncomingSize` / `IncomingModified` (ZIP: the
+entry's own; tar: the quarantined file's, best effort; a new archive: none), so the prompt shows
+both files as the approved mockup does. Shell formats both lines and marks the incoming file
+"newer" only when it is more than 2 s newer — ZIP stores times in 2-second steps.
+
+**Strings.** The prompts reuse the Win32 dialogs' strings, already translated into 37 locales;
+the few new labels (existing file / from the archive / newer / modified / password / skip
+archive) are English until step 6.

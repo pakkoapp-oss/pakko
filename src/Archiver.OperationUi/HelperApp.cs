@@ -73,6 +73,9 @@ internal sealed partial class HelperApp : Application, IXamlMetadataProvider, ID
             case WindowCommand.Show:
                 _window!.ShowNow();
                 break;
+            case WindowCommand.Activate:
+                _window!.ActivatePrompt();
+                break;
             case WindowCommand.Close:
                 _window!.CloseNow();
                 Dispose();

@@ -340,6 +340,32 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
         }
     }
 
+    // T-F268 step 5: a new archive has no size or time yet, so the prompt shows only the existing one.
+    [Fact]
+    public async Task ArchiveAsync_ConflictAsk_HasNoIncomingSizeOrTime()
+    {
+        var file = _temp.CreateFile("source.txt");
+        _temp.CreateFile("output.zip");
+
+        ConflictInfo? asked = null;
+        await _sut.ArchiveAsync(new ArchiveOptions
+        {
+            SourcePaths = [file],
+            DestinationFolder = _temp.Path,
+            ArchiveName = "output",
+            OnConflict = ConflictBehavior.Ask,
+            ResolveConflictAsync = info =>
+            {
+                asked = info;
+                return Task.FromResult(new ConflictDecision { Resolution = ConflictResolution.Skip });
+            }
+        });
+
+        asked.Should().NotBeNull();
+        asked!.IncomingSize.Should().BeNull();
+        asked.IncomingModified.Should().BeNull();
+    }
+
     // T-F06: SeparateArchives mode's sequential pre-pass loop shares one ConflictResolver
     // instance across all sources in the batch — ApplyToAll on the first conflict must suppress
     // the callback for every subsequent conflicting source, not just apply to the first one.

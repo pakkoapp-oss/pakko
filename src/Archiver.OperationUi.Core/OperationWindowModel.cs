@@ -31,6 +31,9 @@ public enum WindowCommand
 
     /// <summary>Close the window and exit.</summary>
     Close,
+
+    /// <summary>A prompt came up in the shown window: render, bring it forward, focus the prompt.</summary>
+    Activate,
 }
 
 /// <summary>
@@ -49,7 +52,11 @@ public sealed record WindowUpdate(WindowCommand Command, IReadOnlyList<ProtocolM
 /// <para>
 /// Nothing shows for a fast clean operation: the window stays hidden until
 /// <see cref="ShowDelay"/> has passed since <see cref="Begin"/> (the host's timer calls
-/// <see cref="ShowDelayElapsed"/>), or a result arrives.
+/// <see cref="ShowDelayElapsed"/>), or a prompt or a result arrives.
+/// </para>
+/// <para>
+/// Prompts (T-F268 step 5) show one at a time, in the order Shell asked them. A typed password
+/// only passes through <see cref="SubmitPassword"/> into the answer; the model keeps no copy.
 /// </para>
 /// </summary>
 public sealed class OperationWindowModel
@@ -58,6 +65,7 @@ public sealed class OperationWindowModel
     public static readonly TimeSpan ShowDelay = TimeSpan.FromSeconds(1);
 
     private IReadOnlyDictionary<string, string> _strings = new Dictionary<string, string>();
+    private readonly Queue<ProtocolMessage> _prompts = new();
     private int _itemCount;
 
     public WindowPhase Phase { get; private set; } = WindowPhase.Starting;
@@ -90,6 +98,24 @@ public sealed class OperationWindowModel
     public string CancelLabel => Text(_itemCount > 1 ? WindowStrings.CancelAll : WindowStrings.Cancel);
 
     public string CloseLabel => Text(WindowStrings.Close);
+
+    /// <summary>The <see cref="AskConflict"/> or <see cref="AskPassword"/> on screen; null while none is.</summary>
+    public ProtocolMessage? Prompt => _prompts.Count > 0 ? _prompts.Peek() : null;
+
+    /// <summary>The password prompt's sentence, naming the archive.</summary>
+    public string? PasswordMessage => Prompt is AskPassword ask
+        ? string.Format(CultureInfo.CurrentCulture, Text(WindowStrings.PasswordMessage), ask.ArchiveName)
+        : null;
+
+    /// <summary>The incoming file's details, marked when it is the newer file.</summary>
+    public string? IncomingDetails => Prompt is AskConflict ask
+        ? (ask.IncomingIsNewer && ask.IncomingDetails is { } details
+            ? details + " · " + Text(WindowStrings.Newer)
+            : ask.IncomingDetails)
+        : null;
+
+    /// <summary>A label sent by Shell in <see cref="Hello"/>; the key itself when missing.</summary>
+    public string Text(string key) => _strings.TryGetValue(key, out string? value) ? value : key;
 
     /// <summary>A message from Shell.</summary>
     public WindowUpdate Receive(ProtocolMessage message)
@@ -127,10 +153,15 @@ public sealed class OperationWindowModel
                 Status = progress.Status;
                 return Rendered();
 
+            case AskConflict or AskPassword when Phase == WindowPhase.Running:
+                _prompts.Enqueue(message);
+                return _prompts.Count > 1 ? WindowUpdate.Nothing : Prompted();
+
             case Complete { Result: null }:
                 return CloseNow([]);
 
             case Complete complete:
+                _prompts.Clear();
                 Result = complete.Result;
                 Phase = WindowPhase.Result;
                 return ShowOrRefresh();
@@ -139,6 +170,31 @@ public sealed class OperationWindowModel
                 return WindowUpdate.Nothing;
         }
     }
+
+    /// <summary>The conflict prompt's buttons.</summary>
+    public WindowUpdate AnswerConflict(ConflictChoice choice, bool applyToAll) =>
+        Prompt is AskConflict ask ? Answered(new ConflictAnswer(ask.RequestId, choice, applyToAll)) : WindowUpdate.Nothing;
+
+    /// <summary>OK or Enter in the password prompt. <paramref name="password"/> is sent as typed, empty included.</summary>
+    public WindowUpdate SubmitPassword(string password, bool applyToRemaining) =>
+        Prompt is AskPassword ask
+            ? Answered(new PasswordAnswer(ask.RequestId, password, applyToRemaining && ask.CanApplyToRemaining))
+            : WindowUpdate.Nothing;
+
+    /// <summary>Skip archive: this archive stays closed, the operation goes on.</summary>
+    public WindowUpdate DeclinePassword() =>
+        Prompt is AskPassword ask ? Answered(new PasswordAnswer(ask.RequestId, null, false)) : WindowUpdate.Nothing;
+
+    /// <summary>
+    /// Esc answers an open prompt the way the Win32 dialogs' IDCANCEL did (Skip with the checkbox as
+    /// ticked; no password); without a prompt it is <see cref="UserClosed"/>.
+    /// </summary>
+    public WindowUpdate Escape(bool applyToAllChecked) => Prompt switch
+    {
+        AskConflict => AnswerConflict(ConflictChoice.Skip, applyToAllChecked),
+        AskPassword => DeclinePassword(),
+        _ => UserClosed(),
+    };
 
     /// <summary>The host's one-shot timer, started when <see cref="Begin"/> arrived.</summary>
     public WindowUpdate ShowDelayElapsed() =>
@@ -170,6 +226,21 @@ public sealed class OperationWindowModel
     private WindowUpdate Rendered() =>
         IsVisible ? new WindowUpdate(WindowCommand.Refresh, []) : WindowUpdate.Nothing;
 
+    private WindowUpdate Prompted()
+    {
+        if (IsVisible)
+            return new WindowUpdate(WindowCommand.Activate, []);
+        IsVisible = true;
+        return new WindowUpdate(WindowCommand.Show, []);
+    }
+
+    private WindowUpdate Answered(ProtocolMessage answer)
+    {
+        _prompts.Dequeue();
+        WindowCommand next = _prompts.Count > 0 ? WindowCommand.Activate : WindowCommand.Refresh;
+        return new WindowUpdate(next, [answer]);
+    }
+
     private WindowUpdate ShowOrRefresh()
     {
         if (IsVisible)
@@ -183,6 +254,4 @@ public sealed class OperationWindowModel
         Phase = WindowPhase.Closed;
         return new WindowUpdate(WindowCommand.Close, [.. first, new WindowClosed()]);
     }
-
-    private string Text(string key) => _strings.TryGetValue(key, out string? value) ? value : key;
 }

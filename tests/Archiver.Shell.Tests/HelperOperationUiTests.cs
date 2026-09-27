@@ -18,7 +18,7 @@ public sealed class HelperOperationUiTests : IDisposable
 
     private readonly FakeHelper _helper = new();
     private readonly FakeOperationUi _fallback = new();
-    private readonly List<ConflictInfo> _win32Conflicts = [];
+    private readonly DirectoryInfo _temp = Directory.CreateTempSubdirectory("PakkoHelperUiTests");
     private readonly CultureInfo _originalUiCulture = CultureInfo.CurrentUICulture;
 
     public HelperOperationUiTests() => CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("uk-UA");
@@ -27,16 +27,11 @@ public sealed class HelperOperationUiTests : IDisposable
     {
         CultureInfo.CurrentUICulture = _originalUiCulture;
         _helper.Dispose();
+        _temp.Delete(recursive: true);
     }
 
     private HelperOperationUi CreateUi(TimeSpan? readyTimeout = null, TimeSpan? closeTimeout = null) =>
-        new(_helper, _fallback,
-            info =>
-            {
-                _win32Conflicts.Add(info);
-                return Task.FromResult(new ConflictDecision { Resolution = ConflictResolution.Rename });
-            },
-            (_, _) => Task.FromResult(new PasswordDecision { Password = "win32" }))
+        new(_helper, _fallback)
         {
             ReadyTimeout = readyTimeout ?? WaitLimit,
             CloseTimeout = closeTimeout ?? ShortClose,
@@ -153,52 +148,237 @@ public sealed class HelperOperationUiTests : IDisposable
 
     // Until step 5 moves prompts into the window, a Win32 prompt next to the helper window lost the
     // foreground to it when the window showed (found on device): a prompt hands the operation over.
+    // T-F268 step 5: prompts are asked inside the window, not handed to the Win32 dialogs.
     [Fact]
-    public async Task AConflictPrompt_HandsTheOperationToTheWin32Windows()
+    public async Task AConflict_IsAskedInTheWindowWithBothFilesDetails()
     {
-        using var session = await BeginReadyAsync("Extracting 2 archives");
-        session.BeginItem("b.zip", 2, 2);
-        await _helper.ReadUntilAsync<Item>();
+        string existing = Path.Combine(_temp.FullName, "звіт.pdf");
+        File.WriteAllBytes(existing, new byte[2048]);
+        File.SetLastWriteTimeUtc(existing, new DateTime(2026, 9, 12, 11, 3, 0, DateTimeKind.Utc));
+        using var session = await BeginReadyAsync();
 
-        var decision = await session.AskConflictAsync(new ConflictInfo { ExistingPath = @"C:\a.txt" });
+        var asking = session.AskConflictAsync(new ConflictInfo
+        {
+            ExistingPath = existing,
+            IncomingSize = 3 * 1_048_576,
+            IncomingModified = new DateTimeOffset(2026, 9, 20, 6, 41, 0, TimeSpan.Zero),
+        });
+        var ask = await _helper.ReadUntilAsync<AskConflict>();
 
-        decision.Resolution.Should().Be(ConflictResolution.Skip, "the fallback session asked");
-        _win32Conflicts.Should().BeEmpty();
-        _helper.Killed.Should().BeTrue();
-        var takeover = _fallback.Sessions.Should().ContainSingle().Subject;
-        takeover.Items.Should().Equal(("b.zip", 2, 2));
-        session.Progress!.Report(new ProgressReport { Percent = 60 });
-        takeover.ProgressReports.Should().Be(1);
+        ask.ExistingPath.Should().Be(existing);
+        ask.ExistingDetails.Should().StartWith(ProgressText.FormatBytes(2048));
+        ask.IncomingDetails.Should().StartWith(ProgressText.FormatBytes(3 * 1_048_576));
+        ask.IncomingIsNewer.Should().BeTrue();
+        asking.IsCompleted.Should().BeFalse();
+
+        await _helper.SendAsync(new ConflictAnswer(ask.RequestId, ConflictChoice.Overwrite, ApplyToAll: true));
+
+        var decision = await asking.WaitAsync(WaitLimit);
+        decision.Resolution.Should().Be(ConflictResolution.Overwrite);
+        decision.ApplyToAll.Should().BeTrue();
+        _fallback.Sessions.Should().BeEmpty();
+        _fallback.ConflictPrompts.Should().BeEmpty();
+        _helper.Killed.Should().BeFalse();
     }
 
     [Fact]
-    public async Task APasswordPrompt_HandsTheOperationToTheWin32Windows()
+    public async Task APassword_IsAskedInTheWindow()
     {
         using var session = await BeginReadyAsync();
 
-        var decision = await session.AskPasswordAsync(new PasswordPromptInfo { ArchiveName = "secret.zip", Purpose = PasswordPurpose.Decrypt }, canApplyToRemaining: false);
+        var asking = session.AskPasswordAsync(
+            new PasswordPromptInfo { ArchiveName = "secret.zip", Purpose = PasswordPurpose.Decrypt, AttemptNumber = 2, PreviousAttemptWasWrong = true },
+            canApplyToRemaining: true);
+        var ask = await _helper.ReadUntilAsync<AskPassword>();
+        ask.Should().Be(new AskPassword(ask.RequestId, "secret.zip", 2, PreviousAttemptWasWrong: true, CanApplyToRemaining: true));
 
-        decision.Password.Should().BeNull("the fallback session asked");
-        _fallback.PasswordPrompts.Should().ContainSingle();
-        _helper.Killed.Should().BeTrue();
+        await _helper.SendAsync(new PasswordAnswer(ask.RequestId, "пароль", ApplyToRemaining: true));
+
+        var decision = await asking.WaitAsync(WaitLimit);
+        decision.Password.Should().Be("пароль");
+        decision.ApplyToRemaining.Should().BeTrue();
+        _fallback.PasswordPrompts.Should().BeEmpty();
     }
 
     [Fact]
-    public async Task APromptAfterTheUserClosedTheWindow_UsesTheWin32DialogWithoutAProgressWindow()
+    public async Task ExistingFileMissing_HasNoExistingDetails()
+    {
+        using var session = await BeginReadyAsync();
+
+        _ = session.AskConflictAsync(new ConflictInfo { ExistingPath = Path.Combine(_temp.FullName, "not-there.txt") });
+
+        var ask = await _helper.ReadUntilAsync<AskConflict>();
+        ask.ExistingDetails.Should().BeNull();
+        ask.IncomingDetails.Should().BeNull();
+        ask.IncomingIsNewer.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task CancelDuringAPrompt_AnswersItSafelyWithoutAsking()
+    {
+        using var session = await BeginReadyAsync();
+        var conflict = session.AskConflictAsync(new ConflictInfo { ExistingPath = @"C:\a.txt" });
+        var password = session.AskPasswordAsync(new PasswordPromptInfo { ArchiveName = "s.zip", Purpose = PasswordPurpose.Decrypt }, canApplyToRemaining: true);
+        await _helper.ReadUntilAsync<AskPassword>();
+
+        await _helper.SendAsync(new CancelRequested());
+
+        // Answered on the cancel itself, before the window reports it closed.
+        (await conflict.WaitAsync(WaitLimit)).Should().Be(new ConflictDecision { Resolution = ConflictResolution.Skip, ApplyToAll = false });
+        (await password.WaitAsync(WaitLimit)).Should().Be(new PasswordDecision { Password = null, ApplyToRemaining = false });
+        (await session.AskConflictAsync(new ConflictInfo { ExistingPath = @"C:.txt" }).WaitAsync(WaitLimit)).Resolution
+            .Should().Be(ConflictResolution.Skip);
+        await _helper.SendAsync(new WindowClosed());
+        session.Cancellation.IsCancellationRequested.Should().BeTrue();
+        _fallback.Sessions.Should().BeEmpty();
+        _fallback.ConflictPrompts.Should().BeEmpty();
+        _fallback.PasswordPrompts.Should().BeEmpty();
+    }
+
+    // Step 4 asked a Win32 dialog here; the operation is being cancelled, so nobody is asked now.
+    [Fact]
+    public async Task APromptAfterTheUserClosedTheWindow_IsAnsweredSafelyWithoutAsking()
     {
         using var session = await BeginReadyAsync();
         await _helper.SendAsync(new CancelRequested());
         await _helper.SendAsync(new WindowClosed());
         await WaitUntilAsync(() => session.Cancellation.IsCancellationRequested);
 
-        var decision = await session.AskConflictAsync(new ConflictInfo { ExistingPath = @"C:\a.txt" });
+        var decision = await session.AskConflictAsync(new ConflictInfo { ExistingPath = @"C:\a.txt" }).WaitAsync(WaitLimit);
 
-        decision.Resolution.Should().Be(ConflictResolution.Rename);
-        _win32Conflicts.Should().ContainSingle();
+        decision.Resolution.Should().Be(ConflictResolution.Skip);
+        decision.ApplyToAll.Should().BeFalse();
         _fallback.Sessions.Should().BeEmpty();
+        _fallback.ConflictPrompts.Should().BeEmpty();
+    }
+
+    // The plan's "prompt open at crash -> re-asked via Win32": never decided for the user.
+    [Fact]
+    public async Task HelperCrashWhileAPromptIsOpen_ReasksItThroughTheFallback()
+    {
+        _fallback.ConflictAnswer = _ => new ConflictDecision { Resolution = ConflictResolution.Rename };
+        using var session = await BeginReadyAsync();
+        var asking = session.AskConflictAsync(new ConflictInfo { ExistingPath = @"C:\a.txt" });
+        await _helper.ReadUntilAsync<AskConflict>();
+
+        _helper.Crash();
+
+        (await asking.WaitAsync(WaitLimit)).Resolution.Should().Be(ConflictResolution.Rename);
+        _fallback.ConflictPrompts.Should().ContainSingle().Which.ExistingPath.Should().Be(@"C:\a.txt");
+    }
+
+    [Fact]
+    public async Task APromptBeforeTheHelperIsReady_WaitsAndIsAskedInTheWindow()
+    {
+        using var session = CreateUi().Begin("t", ProgressStyle.Bytes);
+        var asking = session.AskPasswordAsync(new PasswordPromptInfo { ArchiveName = "s.zip", Purpose = PasswordPurpose.Decrypt }, canApplyToRemaining: false);
+
+        var ask = await _helper.ReadUntilAsync<AskPassword>();
+        await _helper.SendReadyAsync();
+        await _helper.SendAsync(new PasswordAnswer(ask.RequestId, "p", ApplyToRemaining: false));
+
+        (await asking.WaitAsync(WaitLimit)).Password.Should().Be("p");
+    }
+
+    [Fact]
+    public async Task APromptWhileTheHelperNeverBecomesReady_IsAskedThroughTheFallback()
+    {
+        using var session = CreateUi(readyTimeout: TimeSpan.FromMilliseconds(200)).Begin("t", ProgressStyle.Bytes);
+
+        var decision = await session.AskPasswordAsync(new PasswordPromptInfo { ArchiveName = "s.zip", Purpose = PasswordPurpose.Decrypt }, canApplyToRemaining: false).WaitAsync(WaitLimit);
+
+        decision.Password.Should().BeNull("the fallback's preset answer");
+        _fallback.PasswordPrompts.Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task DisposeWithAPromptOpen_AnswersIt()
+    {
+        var session = await BeginReadyAsync();
+        var asking = session.AskConflictAsync(new ConflictInfo { ExistingPath = @"C:\a.txt" });
+        await _helper.ReadUntilAsync<AskConflict>();
+
+        session.Dispose();
+
+        (await asking.WaitAsync(WaitLimit)).Resolution.Should().Be(ConflictResolution.Skip);
     }
 
     // --- Security & boundary ---
+
+    [Fact]
+    public async Task ApplyToRemaining_IsDroppedWhenItWasNotOffered()
+    {
+        using var session = await BeginReadyAsync();
+        var asking = session.AskPasswordAsync(new PasswordPromptInfo { ArchiveName = "s.zip", Purpose = PasswordPurpose.Decrypt }, canApplyToRemaining: false);
+        var ask = await _helper.ReadUntilAsync<AskPassword>();
+
+        await _helper.SendAsync(new PasswordAnswer(ask.RequestId, "p", ApplyToRemaining: true));
+
+        (await asking.WaitAsync(WaitLimit)).ApplyToRemaining.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task AnswersWithAnUnknownIdOrOfTheWrongKind_AreIgnored()
+    {
+        using var session = await BeginReadyAsync();
+        var asking = session.AskConflictAsync(new ConflictInfo { ExistingPath = @"C:\a.txt" });
+        var ask = await _helper.ReadUntilAsync<AskConflict>();
+
+        await _helper.SendAsync(new ConflictAnswer(ask.RequestId + 100, ConflictChoice.Overwrite, ApplyToAll: true));
+        await _helper.SendAsync(new PasswordAnswer(ask.RequestId, "p", ApplyToRemaining: true));
+        await Task.Delay(200);
+        asking.IsCompleted.Should().BeFalse();
+
+        await _helper.SendAsync(new ConflictAnswer(ask.RequestId, ConflictChoice.Rename, ApplyToAll: false));
+        (await asking.WaitAsync(WaitLimit)).Resolution.Should().Be(ConflictResolution.Rename);
+        _helper.Killed.Should().BeFalse();
+    }
+
+    // A helper that reports its window closed without a cancel (a bug) must not leave the
+    // operation waiting on a prompt nobody can see.
+    [Fact]
+    public async Task WindowClosedWithoutACancel_AnswersOpenAndLaterPromptsSafely()
+    {
+        using var session = await BeginReadyAsync();
+        var asking = session.AskConflictAsync(new ConflictInfo { ExistingPath = @"C:.txt" });
+        await _helper.ReadUntilAsync<AskConflict>();
+
+        await _helper.SendAsync(new WindowClosed());
+
+        (await asking.WaitAsync(WaitLimit)).Resolution.Should().Be(ConflictResolution.Skip);
+        (await session.AskPasswordAsync(new PasswordPromptInfo { ArchiveName = "s.zip", Purpose = PasswordPurpose.Decrypt }, canApplyToRemaining: false)
+            .WaitAsync(WaitLimit)).Password.Should().BeNull();
+        _fallback.PasswordPrompts.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task AnUndefinedConflictChoice_IsSkipNeverOverwrite()
+    {
+        using var session = await BeginReadyAsync();
+        var asking = session.AskConflictAsync(new ConflictInfo { ExistingPath = @"C:\a.txt" });
+        var ask = await _helper.ReadUntilAsync<AskConflict>();
+
+        await _helper.SendAsync(new ConflictAnswer(ask.RequestId, (ConflictChoice)99, ApplyToAll: false));
+
+        (await asking.WaitAsync(WaitLimit)).Resolution.Should().Be(ConflictResolution.Skip);
+    }
+
+    [Fact]
+    public async Task ASecondAnswerToTheSamePrompt_IsIgnored()
+    {
+        using var session = await BeginReadyAsync();
+        var asking = session.AskConflictAsync(new ConflictInfo { ExistingPath = @"C:\a.txt" });
+        var ask = await _helper.ReadUntilAsync<AskConflict>();
+        await _helper.SendAsync(new ConflictAnswer(ask.RequestId, ConflictChoice.Rename, ApplyToAll: false));
+        (await asking.WaitAsync(WaitLimit)).Resolution.Should().Be(ConflictResolution.Rename);
+
+        await _helper.SendAsync(new ConflictAnswer(ask.RequestId, ConflictChoice.Overwrite, ApplyToAll: true));
+        var next = session.AskConflictAsync(new ConflictInfo { ExistingPath = @"C:\b.txt" });
+        var nextAsk = await _helper.ReadUntilAsync<AskConflict>();
+
+        nextAsk.RequestId.Should().NotBe(ask.RequestId);
+        next.IsCompleted.Should().BeFalse();
+    }
 
     [Fact]
     public async Task ProgressFlood_NeverBlocksTheOperationAndTheLatestReportArrives()
@@ -312,7 +492,7 @@ public sealed class HelperOperationUiTests : IDisposable
 
         (await session.AskConflictAsync(new ConflictInfo { ExistingPath = @"C:\a.txt" })).Resolution
             .Should().Be(ConflictResolution.Skip, "the fallback session answers now");
-        _win32Conflicts.Should().BeEmpty();
+        _fallback.ConflictPrompts.Should().ContainSingle();
 
         takeover.Cancel();
         session.Cancellation.IsCancellationRequested.Should().BeTrue();

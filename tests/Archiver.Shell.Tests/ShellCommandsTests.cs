@@ -149,6 +149,46 @@ public sealed class ShellCommandsTests : IDisposable
 
     // --- Security & boundary ---
 
+    // T-F268 step 5: closing the window during a prompt cancels and answers it Skip. With that
+    // prompt on the archive's last entry, Core has nothing left to check the token against and
+    // returns a normal "all skipped" result; the user cancelled, so nothing may be shown.
+    [Fact]
+    public async Task ExtractHere_CancelledWhileAskingAboutTheLastEntry_ShowsNoResult()
+    {
+        File.WriteAllText(Path.Combine(_root, "same.txt"), "old");
+        string zip = MakeZip("one.zip", ("same.txt", "new"));
+        var ui = new FakeOperationUi();
+        ui.ConflictAnswer = _ =>
+        {
+            ui.Sessions[0].Cancel();
+            return new ConflictDecision { Resolution = ConflictResolution.Skip };
+        };
+
+        await Create(ui).ExtractHereFlatAsync([zip]);
+
+        ui.ConflictPrompts.Should().ContainSingle();
+        ui.Messages.Should().BeEmpty();
+        ui.Sessions[0].Completed.Should().BeFalse();
+        File.ReadAllText(Path.Combine(_root, "same.txt")).Should().Be("old");
+    }
+
+    [Fact]
+    public async Task Test_CancelledWhileAskingForThePassword_ShowsNoResult()
+    {
+        string zip = await MakeEncryptedZipAsync("one", "a.txt", "A");
+        var ui = new FakeOperationUi();
+        ui.PasswordAnswer = _ =>
+        {
+            ui.Sessions[0].Cancel();
+            return new PasswordDecision { Password = null };
+        };
+
+        await Create(ui).TestAsync([zip]);
+
+        ui.PasswordPrompts.Should().ContainSingle();
+        ui.Messages.Should().BeEmpty();
+    }
+
     [Fact]
     public async Task ExtractHereFlat_TwoArchivesConflictApplyToAll_AsksOnceForTheWholeSelection()
     {

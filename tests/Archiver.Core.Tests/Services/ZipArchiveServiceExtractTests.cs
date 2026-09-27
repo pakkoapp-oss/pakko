@@ -683,6 +683,44 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
         callCount.Should().Be(1);
     }
 
+    // T-F268 step 5: the conflict prompt compares both files, so it needs the incoming entry's own
+    // size and time, not only the existing path.
+    [Fact]
+    public async Task ExtractAsync_ConflictAsk_PassesTheIncomingEntrySizeAndTime()
+    {
+        var zipPath = Path.Combine(_temp.Path, "archive.zip");
+        var entryTime = new DateTimeOffset(2026, 9, 20, 9, 41, 0, TimeZoneInfo.Local.GetUtcOffset(new DateTime(2026, 9, 20)));
+        using (var archive = ZipFile.Open(zipPath, ZipArchiveMode.Create))
+        {
+            var entry = archive.CreateEntry("file.txt");
+            entry.LastWriteTime = entryTime;
+            using var writer = new StreamWriter(entry.Open());
+            writer.Write("new content");
+        }
+        var destDir = Path.Combine(_temp.Path, "out");
+        Directory.CreateDirectory(destDir);
+        File.WriteAllText(Path.Combine(destDir, "file.txt"), "original content");
+
+        ConflictInfo? asked = null;
+        await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [zipPath],
+            DestinationFolder = destDir,
+            Mode = ExtractMode.SingleFolder,
+            OnConflict = ConflictBehavior.Ask,
+            ResolveConflictAsync = info =>
+            {
+                asked = info;
+                return Task.FromResult(new ConflictDecision { Resolution = ConflictResolution.Skip });
+            }
+        });
+
+        asked.Should().NotBeNull();
+        asked!.ExistingPath.Should().Be(Path.Combine(destDir, "file.txt"));
+        asked.IncomingSize.Should().Be("new content".Length);
+        asked.IncomingModified.Should().Be(entryTime);
+    }
+
     [Fact]
     public async Task ExtractAsync_PasswordProtectedZip_ReturnsArchiveErrorWithClearMessage()
     {

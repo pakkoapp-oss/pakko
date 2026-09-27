@@ -19,7 +19,7 @@ public sealed class FrameCodecTests
         new Item("photos-2026.zip", 2, 5),
         new Progress(34, @"Відпустка\2026-07\IMG_0412.jpg", "34% · 1,2 ГБ з 3,5 ГБ"),
         new Progress(0, null, null),
-        new AskConflict(7, @"D:\Проєкти\звіт.pdf", 1_234_567, new DateTimeOffset(2026, 9, 12, 14, 3, 0, TimeSpan.FromHours(3)), 1_400_000, null),
+        new AskConflict(7, @"D:\Проєкти\звіт.pdf", "1,2 МБ · змінено 12.09.2026 14:03", null, IncomingIsNewer: true),
         new AskPassword(8, "secret.zip", 2, PreviousAttemptWasWrong: true, CanApplyToRemaining: true),
         new Complete(new ResultText(ResultSeverity.Warning, "Розпакування", "old.zip: пошкоджено")),
         new Complete(null),
@@ -87,7 +87,7 @@ public sealed class FrameCodecTests
     [Fact]
     public async Task LongestCyrillicPath_InAConflict_FitsAndRoundTrips()
     {
-        var message = new AskConflict(1, @"D:\" + new string('ї', MaxPathChars - 3), null, null, null, null);
+        var message = new AskConflict(1, @"D:\" + new string('ї', MaxPathChars - 3), null, null, false);
 
         var decoded = await RoundTripAsync(message);
 

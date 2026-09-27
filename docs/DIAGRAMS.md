@@ -907,7 +907,7 @@ at a time.
 
 ---
 
-## 8. Sequence — Explorer operation window helper (T-F268 step 4)
+## 8. Sequence — Explorer operation window helper (T-F268 steps 4-5)
 
 Sources read for this diagram: `src/Archiver.Shell/Program.cs`, `src/Archiver.Shell/HelperOperationUi.cs`,
 `src/Archiver.Shell/HelperProcessLauncher.cs`, `src/Archiver.Shell/OperationWindowText.cs`,
@@ -916,8 +916,8 @@ Sources read for this diagram: `src/Archiver.Shell/Program.cs`, `src/Archiver.Sh
 `src/Archiver.OperationUi.Protocol/Messages.cs`.
 
 `Program.cs` gives `ShellCommands` a `HelperOperationUi` with `Win32OperationUi` (diagram 1's
-windows) as its fallback. Until step 5 moves prompts into the window, a prompt hands the rest of
-the operation to the fallback: a Win32 prompt beside the helper window lost the foreground to it.
+windows) as its fallback. Conflict and password prompts are asked inside the helper window
+(step 5); step 4's hand-over of the whole operation to Win32 at the first prompt is gone.
 
 ```mermaid
 sequenceDiagram
@@ -949,9 +949,17 @@ sequenceDiagram
             HUI->>Cmd: session.Cancellation cancelled → OperationCanceledException → Dispose — no failover
         else pipe ends without WindowClosed — helper crashed or was killed
             HUI->>W: Begin(title) + BeginItem(current archive)<br/>Win32 carries the rest — progress, Cancel, prompts, result
-        else Core asks for a password or a conflict decision (until step 5)
-            HUI->>H: Kill
-            HUI->>W: Begin(title) + BeginItem(current archive), then AskPasswordAsync / AskConflictAsync<br/>the operation continues in the Win32 windows, as before the helper
+        else Core asks for a password or a conflict decision
+            HUI->>H: AskConflict(id, path, both files' details) / AskPassword(id, archive) — kept by id until answered
+            H->>H: the prompt replaces the progress part, the window shows at once
+            alt user answers
+                H-->>HUI: ConflictAnswer / PasswordAnswer(id) — an unknown id or the wrong kind is ignored
+            else user presses Cancel or X during the prompt
+                H-->>HUI: CancelRequested, then WindowClosed
+                HUI->>Cmd: the prompt returns Skip / no password without asking, the operation is cancelled
+            else pipe ends without WindowClosed
+                HUI->>W: Begin(title) + BeginItem, then the same prompt asked again — never decided for the user
+            end
         else operation finishes
             Cmd->>HUI: Complete(message)
             HUI->>H: Complete(result, or null for a clean Extract/Archive)
@@ -972,6 +980,8 @@ sequenceDiagram
 clean end (`WindowClosed` after `Complete`), and a crash (EOF with no `WindowClosed`) — are told
 apart only by that last frame. A helper that exits without writing it turns every normal close
 into a spurious Win32 failover, so `ShellPipe.Send` writes synchronously before the window closes.
+A prompt is completed by exactly one of: the helper's answer, the fallback re-asking it after a
+crash, or the safe answer after a cancel — whoever removes it from the pending map under the lock.
 
 ---
 

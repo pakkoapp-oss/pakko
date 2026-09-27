@@ -18,8 +18,7 @@ if (command.Type == CommandType.Invalid)
 
 // T-F268: every window these commands show goes through IOperationUi. The WinUI operation window
 // helper is used when it starts; Win32OperationUi (the native dialogs) is its fallback.
-var ui = new HelperOperationUi(new HelperProcessLauncher(), new Win32OperationUi(),
-    ShellConflictDialog.ShowAsync, PasswordDialog.ShowAsync);
+var ui = new HelperOperationUi(new HelperProcessLauncher(), new Win32OperationUi());
 var commands = new ShellCommands(ui, ShellServices.Create(policy));
 
 switch (command.Type)

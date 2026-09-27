@@ -173,6 +173,8 @@ internal sealed class ShellCommands(IOperationUi ui, ShellServices services)
         {
             return;
         }
+        if (session.Cancellation.IsCancellationRequested)
+            return;
 
         session.Complete(TestResultMessage(title, result));
     }
@@ -201,6 +203,8 @@ internal sealed class ShellCommands(IOperationUi ui, ShellServices services)
         {
             return;
         }
+        if (session.Cancellation.IsCancellationRequested)
+            return;
 
         session.Complete(OperationMessages.ForHash(title, result));
     }
@@ -233,6 +237,8 @@ internal sealed class ShellCommands(IOperationUi ui, ShellServices services)
         {
             return;
         }
+        if (session.Cancellation.IsCancellationRequested)
+            return;
 
         session.Complete(OperationMessages.ForScan(title, result));
     }
@@ -262,6 +268,8 @@ internal sealed class ShellCommands(IOperationUi ui, ShellServices services)
     // T-F268 step 3: one window for the whole selection, and one combined result at the end.
     // T-F269: a cancel ends the whole command — the session's one token is shared by every archive,
     // and the router throws OperationCanceledException for a cancelled token (T-F260).
+    // A cancel Core no longer checks (a prompt on the last entry answered Skip, T-F268 step 5) still
+    // shows nothing: each command checks the token again before its result.
     private async Task RunExtractSelectionAsync(
         IReadOnlyList<string> archivePaths, Func<string, SelectionPrompts, ExtractOptions> buildOptions)
     {
@@ -292,6 +300,8 @@ internal sealed class ShellCommands(IOperationUi ui, ShellServices services)
         {
             return;
         }
+        if (session.Cancellation.IsCancellationRequested)
+            return;
 
         session.Complete(OperationMessages.ForArchiveResult(title, Combine(results)));
     }
@@ -320,6 +330,8 @@ internal sealed class ShellCommands(IOperationUi ui, ShellServices services)
         {
             return;
         }
+        if (session.Cancellation.IsCancellationRequested)
+            return;
 
         session.Complete(OperationMessages.ForArchiveResult(title, result));
     }

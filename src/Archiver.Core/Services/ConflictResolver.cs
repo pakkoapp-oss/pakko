@@ -15,7 +15,9 @@ internal sealed class ConflictResolver(
 {
     private ConflictResolution? _sticky;
 
-    public async Task<ConflictBehavior> ResolveAsync(string existingPath)
+    // incomingSize/incomingModified describe the file that would replace existingPath, for a
+    // prompt that compares both (T-F268); null when there is no such file yet (a new archive).
+    public async Task<ConflictBehavior> ResolveAsync(string existingPath, long? incomingSize = null, DateTimeOffset? incomingModified = null)
     {
         if (configured != ConflictBehavior.Ask)
             return configured;
@@ -26,7 +28,7 @@ internal sealed class ConflictResolver(
         if (resolveConflictAsync is null)
             return ConflictBehavior.Skip; // Shell / no UI wired — safest non-destructive default
 
-        var decision = await resolveConflictAsync(new ConflictInfo { ExistingPath = existingPath })
+        var decision = await resolveConflictAsync(new ConflictInfo { ExistingPath = existingPath, IncomingSize = incomingSize, IncomingModified = incomingModified })
             .ConfigureAwait(false);
 
         if (decision.ApplyToAll)

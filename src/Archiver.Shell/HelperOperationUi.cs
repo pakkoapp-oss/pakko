@@ -16,19 +16,16 @@ namespace Archiver.Shell;
 /// of the operation's progress, cancel and result;</item>
 /// <item>the user closed it — that is a cancel, never a failover.</item>
 /// </list>
-/// Until step 5 moves prompts into the window, a prompt hands the rest of the operation to the
-/// fallback; <paramref name="askConflict"/> and <paramref name="askPassword"/> are the Win32 dialogs
-/// for a prompt raised after the user closed the window.
+/// Conflict and password prompts are asked inside the window (step 5). A prompt still open when the
+/// helper fails is asked again through the fallback; one open or raised after the user cancelled
+/// gets the answer that writes nothing (Skip, no password) without asking, as the operation is ending.
 /// </summary>
-internal sealed class HelperOperationUi(
-    IHelperLauncher launcher,
-    IOperationUi fallback,
-    Func<ConflictInfo, Task<ConflictDecision>> askConflict,
-    Func<PasswordPromptInfo, bool, Task<PasswordDecision>> askPassword) : IOperationUi
+internal sealed class HelperOperationUi(IHelperLauncher launcher, IOperationUi fallback) : IOperationUi
 {
+    private static readonly ConflictDecision SafeConflict = new() { Resolution = ConflictResolution.Skip };
+    private static readonly PasswordDecision SafePassword = new() { Password = null };
+
     private readonly IOperationUi _fallbackUi = fallback;
-    private readonly Func<ConflictInfo, Task<ConflictDecision>> _askConflict = askConflict;
-    private readonly Func<PasswordPromptInfo, bool, Task<PasswordDecision>> _askPassword = askPassword;
 
     /// <summary>Gate 0 measured 0.3–1.7 s from start to ready.</summary>
     public TimeSpan ReadyTimeout { get; init; } = TimeSpan.FromSeconds(5);
@@ -79,7 +76,11 @@ internal sealed class HelperOperationUi(
         private ProgressMessage? _pendingProgress;
         private (string Name, int Index, int Count)? _item;
         private IOperationSession? _fallback;
+        private readonly Dictionary<int, PendingConflict> _conflicts = [];
+        private readonly Dictionary<int, PendingPassword> _passwords = [];
+        private int _nextRequestId;
         private bool _ready;
+        private bool _cancelRequested;
         private bool _windowClosed;
         private bool _failed;
         private bool _completing;
@@ -121,13 +122,45 @@ internal sealed class HelperOperationUi(
                 Enqueue(new Item(name, index, count));
         }
 
-        public Task<ConflictDecision> AskConflictAsync(ConflictInfo info) =>
-            HandOverForPrompt() is { } fallback ? fallback.AskConflictAsync(info) : _owner._askConflict(info);
+        public Task<ConflictDecision> AskConflictAsync(ConflictInfo info)
+        {
+            // Reads the existing file's size and date, so it stays outside the lock.
+            AskConflict ask = OperationWindowText.CreateAskConflict(0, info);
+            var pending = new PendingConflict(info, new TaskCompletionSource<ConflictDecision>(TaskCreationOptions.RunContinuationsAsynchronously));
+            IOperationSession? fallback;
+            lock (_lock)
+            {
+                fallback = _fallback;
+                if (fallback is null)
+                {
+                    if (!CanAskLocked())
+                        return Task.FromResult(SafeConflict);
+                    int id = ++_nextRequestId;
+                    _conflicts.Add(id, pending);
+                    Enqueue(ask with { RequestId = id });
+                }
+            }
+            return fallback is not null ? fallback.AskConflictAsync(info) : pending.Answer.Task;
+        }
 
-        public Task<PasswordDecision> AskPasswordAsync(PasswordPromptInfo info, bool canApplyToRemaining) =>
-            HandOverForPrompt() is { } fallback
-                ? fallback.AskPasswordAsync(info, canApplyToRemaining)
-                : _owner._askPassword(info, canApplyToRemaining);
+        public Task<PasswordDecision> AskPasswordAsync(PasswordPromptInfo info, bool canApplyToRemaining)
+        {
+            var pending = new PendingPassword(info, canApplyToRemaining, new TaskCompletionSource<PasswordDecision>(TaskCreationOptions.RunContinuationsAsynchronously));
+            IOperationSession? fallback;
+            lock (_lock)
+            {
+                fallback = _fallback;
+                if (fallback is null)
+                {
+                    if (!CanAskLocked())
+                        return Task.FromResult(SafePassword);
+                    int id = ++_nextRequestId;
+                    _passwords.Add(id, pending);
+                    Enqueue(new AskPassword(id, info.ArchiveName, info.AttemptNumber, info.PreviousAttemptWasWrong, canApplyToRemaining));
+                }
+            }
+            return fallback is not null ? fallback.AskPasswordAsync(info, canApplyToRemaining) : pending.Answer.Task;
+        }
 
         public void Complete(OperationMessage? message)
         {
@@ -171,13 +204,16 @@ internal sealed class HelperOperationUi(
         public void Dispose()
         {
             bool closeWindow;
+            (PendingConflict[] conflicts, PendingPassword[] passwords) open;
             lock (_lock)
             {
                 if (_disposed)
                     return;
+                open = TakePromptsLocked();
                 closeWindow = !_completing && !_failed && !_windowClosed;
                 _completing = true;
             }
+            AnswerSafely(open);
 
             // Disposed without Complete: the operation was cancelled or threw; the window goes away.
             if (closeWindow)
@@ -202,16 +238,93 @@ internal sealed class HelperOperationUi(
             _cts.Dispose();
         }
 
-        // Until step 5 shows prompts inside the window, a Win32 prompt beside it lost the foreground
-        // when the window appeared (a password being typed went to the window; the conflict dialog
-        // ended up behind it). So a prompt hands the rest of the operation to the Win32 windows,
-        // exactly as they behaved before the helper. Null once the user has closed the window: the
-        // prompt then stands alone.
-        private IOperationSession? HandOverForPrompt()
+        // Must hold _lock. No helper to ask and no fallback yet: failed while completing, cancelled
+        // by the user, or ending.
+        private bool CanAskLocked() => !_failed && !_cancelRequested && !_windowClosed && !_disposed;
+
+        // Must hold _lock. Whoever takes a prompt out of the maps is the one who completes it.
+        private (PendingConflict[] Conflicts, PendingPassword[] Passwords) TakePromptsLocked()
         {
-            Fail();
+            PendingConflict[] conflicts = [.. _conflicts.Values];
+            PendingPassword[] passwords = [.. _passwords.Values];
+            _conflicts.Clear();
+            _passwords.Clear();
+            return (conflicts, passwords);
+        }
+
+        private static void AnswerSafely((PendingConflict[] Conflicts, PendingPassword[] Passwords) open)
+        {
+            foreach (PendingConflict conflict in open.Conflicts)
+                conflict.Answer.TrySetResult(SafeConflict);
+            foreach (PendingPassword password in open.Passwords)
+                password.Answer.TrySetResult(SafePassword);
+        }
+
+        // Off the calling thread: Fail runs on the pipe reader and the ready timer, and a Win32
+        // dialog blocks its caller until dismissed.
+        private static void AskAgain((PendingConflict[] Conflicts, PendingPassword[] Passwords) open, IOperationSession fallback)
+        {
+            foreach (PendingConflict conflict in open.Conflicts)
+                _ = Task.Run(() => ForwardAsync(() => fallback.AskConflictAsync(conflict.Info), conflict.Answer), CancellationToken.None);
+            foreach (PendingPassword password in open.Passwords)
+                _ = Task.Run(() => ForwardAsync(() => fallback.AskPasswordAsync(password.Info, password.CanApplyToRemaining), password.Answer), CancellationToken.None);
+        }
+
+        private static async Task ForwardAsync<T>(Func<Task<T>> ask, TaskCompletionSource<T> answer)
+        {
+            try
+            {
+                answer.TrySetResult(await ask().ConfigureAwait(false));
+            }
+            catch (Exception ex)
+            {
+                // The operation awaits this prompt; it gets the fallback's own failure.
+                answer.TrySetException(ex);
+            }
+        }
+
+        private void OnConflictAnswer(ConflictAnswer answer)
+        {
+            PendingConflict? pending;
             lock (_lock)
-                return _fallback;
+                _conflicts.Remove(answer.RequestId, out pending);
+            pending?.Answer.TrySetResult(new ConflictDecision
+            {
+                // The helper is a separate process: anything but these two never overwrites.
+                Resolution = answer.Choice switch
+                {
+                    ConflictChoice.Overwrite => ConflictResolution.Overwrite,
+                    ConflictChoice.Rename => ConflictResolution.Rename,
+                    _ => ConflictResolution.Skip,
+                },
+                ApplyToAll = answer.ApplyToAll,
+            });
+        }
+
+        private void OnPasswordAnswer(PasswordAnswer answer)
+        {
+            PendingPassword? pending;
+            lock (_lock)
+                _passwords.Remove(answer.RequestId, out pending);
+            pending?.Answer.TrySetResult(new PasswordDecision
+            {
+                Password = answer.Password,
+                ApplyToRemaining = answer.ApplyToRemaining && pending.CanApplyToRemaining,
+            });
+        }
+
+        // Cancel or X in the window, while it ran: the operation is ending, so an open prompt and
+        // any later one are answered without asking.
+        private void OnCancelRequested()
+        {
+            (PendingConflict[] conflicts, PendingPassword[] passwords) open;
+            lock (_lock)
+            {
+                _cancelRequested = true;
+                open = TakePromptsLocked();
+            }
+            AnswerSafely(open);
+            CancelOperation();
         }
 
         private void Enqueue(ProtocolMessage message)
@@ -310,12 +423,25 @@ internal sealed class HelperOperationUi(
                             return;
 
                         case CancelRequested:
-                            CancelOperation();
+                            OnCancelRequested();
+                            break;
+
+                        case ConflictAnswer answer:
+                            OnConflictAnswer(answer);
+                            break;
+
+                        case PasswordAnswer answer:
+                            OnPasswordAnswer(answer);
                             break;
 
                         case WindowClosed:
+                            (PendingConflict[] conflicts, PendingPassword[] passwords) open;
                             lock (_lock)
+                            {
                                 _windowClosed = true;
+                                open = TakePromptsLocked();
+                            }
+                            AnswerSafely(open);
                             _ended.TrySetResult();
                             return;
                     }
@@ -337,15 +463,18 @@ internal sealed class HelperOperationUi(
                 Fail();
         }
 
-        // The helper is gone without closing its window, or a prompt needs the Win32 windows. A fallback
-        // session carries the operation on unless it is already ending; nothing is decided for the user.
+        // The helper is gone without closing its window. A fallback session carries the operation on
+        // unless it is already ending; an open prompt is asked again there, never decided for the user.
         private void Fail()
         {
+            (PendingConflict[] conflicts, PendingPassword[] passwords) open;
+            IOperationSession? takeover;
             lock (_lock)
             {
                 if (_failed || _windowClosed || _disposed)
                     return;
                 _failed = true;
+                open = TakePromptsLocked();
                 _queue.Clear();
                 _pendingProgress = null;
                 if (!_completing)
@@ -358,8 +487,13 @@ internal sealed class HelperOperationUi(
                         fallback.BeginItem(item.Name, item.Index, item.Count);
                     _fallback = fallback;
                 }
+                takeover = _fallback;
             }
 
+            if (takeover is not null)
+                AskAgain(open, takeover);
+            else
+                AnswerSafely(open);
             _signal.Release();
             _connection.Kill();
             _ended.TrySetResult();
@@ -386,6 +520,10 @@ internal sealed class HelperOperationUi(
             },
             message.Title,
             message.Text);
+
+        private sealed record PendingConflict(ConflictInfo Info, TaskCompletionSource<ConflictDecision> Answer);
+
+        private sealed record PendingPassword(PasswordPromptInfo Info, bool CanApplyToRemaining, TaskCompletionSource<PasswordDecision> Answer);
 
         private sealed class HelperProgress(Session session) : IProgress<ProgressReport>
         {
