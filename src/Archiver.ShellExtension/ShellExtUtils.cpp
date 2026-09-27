@@ -137,8 +137,111 @@ bool AllPathsAreZip(const std::vector<std::wstring>& paths)
     return true;
 }
 
-bool AnyPathIsZip(const std::vector<std::wstring>& paths)
+// ---------------------------------------------------------------------------
+// T-F262: Group Policy for the menu.
+// ---------------------------------------------------------------------------
+
+std::optional<DWORD> Win32PolicyRegistryReader::GetDword(const wchar_t* valueName) const
 {
+    DWORD value = 0;
+    DWORD size = sizeof(value);
+    if (RegGetValueW(HKEY_LOCAL_MACHINE, m_keyPath, valueName, RRF_RT_REG_DWORD, nullptr, &value, &size) != ERROR_SUCCESS)
+        return std::nullopt;
+    return value;
+}
+
+std::optional<std::vector<std::wstring>> Win32PolicyRegistryReader::GetMultiString(const wchar_t* valueName) const
+{
+    DWORD size = 0;
+    if (RegGetValueW(HKEY_LOCAL_MACHINE, m_keyPath, valueName, RRF_RT_REG_MULTI_SZ, nullptr, nullptr, &size) != ERROR_SUCCESS || size == 0)
+        return std::nullopt;
+
+    // RegGetValueW terminates string data itself; one extra pair of NULs keeps the parse below
+    // bounded by the buffer even if the value shrank between the two calls.
+    std::vector<wchar_t> buffer(size / sizeof(wchar_t) + 2, L'\0');
+    if (RegGetValueW(HKEY_LOCAL_MACHINE, m_keyPath, valueName, RRF_RT_REG_MULTI_SZ, nullptr, buffer.data(), &size) != ERROR_SUCCESS)
+        return std::nullopt;
+
+    std::vector<std::wstring> entries;
+    size_t start = 0;
+    while (start < buffer.size() && buffer[start] != L'\0')
+    {
+        const std::wstring entry(buffer.data() + start);
+        start += entry.size() + 1;
+        entries.push_back(entry);
+    }
+    return entries;
+}
+
+bool MenuPolicy::IsFormatBlocked(const std::wstring& registryName) const
+{
+    if (registryName.empty()) return false;
+    for (const auto& blocked : blockedFormats)
+    {
+        if (_wcsicmp(blocked.c_str(), registryName.c_str()) == 0) return true;
+    }
+    return false;
+}
+
+MenuPolicy LoadMenuPolicy(const PolicyRegistryReader& reader)
+{
+    // Same rules as Archiver.Core's GroupPolicyService.Load: only DisableTarExtraction == 1
+    // counts, and a missing or empty BlockedFormats restricts nothing.
+    MenuPolicy policy;
+    policy.disableTar = reader.GetDword(L"DisableTarExtraction") == 1u;
+    if (auto blocked = reader.GetMultiString(L"BlockedFormats"))
+        policy.blockedFormats = std::move(*blocked);
+    return policy;
+}
+
+MenuPolicy GetMenuPolicy()
+{
+    constexpr ULONGLONG kRefreshMs = 5000;
+    static std::mutex s_mutex;
+    static MenuPolicy s_policy;
+    static ULONGLONG s_readAt = 0;
+    static bool s_loaded = false;
+
+    const std::lock_guard<std::mutex> lock(s_mutex);
+    const ULONGLONG now = GetTickCount64();
+    if (!s_loaded || now - s_readAt >= kRefreshMs)
+    {
+        s_policy = LoadMenuPolicy(Win32PolicyRegistryReader());
+        s_readAt = now;
+        s_loaded = true;
+    }
+    return s_policy;
+}
+
+std::wstring GetFormatRegistryName(const std::wstring& path)
+{
+    if (HasZipExtension(path)) return L"zip";
+
+    struct ExtensionName { const wchar_t* extension; const wchar_t* name; };
+    static const ExtensionName kNames[] = {
+        { L".tar", L"tar" }, { L".gz", L"gzip" }, { L".tgz", L"gzip" }, { L".bz2", L"bz2" },
+        { L".tbz2", L"bz2" }, { L".xz", L"xz" }, { L".txz", L"xz" }, { L".zst", L"zstd" },
+        { L".tzst", L"zstd" }, { L".lzma", L"lzma" }, { L".rar", L"rar" }, { L".7z", L"sevenzip" },
+    };
+    const wchar_t* pExt = PathFindExtensionW(path.c_str());
+    if (pExt == nullptr || *pExt == L'\0') return {};
+    for (const auto& entry : kNames)
+    {
+        if (_wcsicmp(pExt, entry.extension) == 0) return entry.name;
+    }
+    return {};
+}
+
+bool IsCreationFormatAllowed(const std::wstring& format, const MenuPolicy& policy)
+{
+    if (policy.IsFormatBlocked(format)) return false;
+    // Creating a tar also runs tar.exe, which DisableTarExtraction turns off entirely.
+    return !(format == L"tar" && policy.disableTar);
+}
+
+bool AnyPathIsZip(const std::vector<std::wstring>& paths, const MenuPolicy& policy)
+{
+    if (policy.IsFormatBlocked(L"zip")) return false;
     for (const auto& p : paths)
     {
         if (HasZipExtension(p)) return true;
@@ -170,26 +273,28 @@ bool HasSupportedNonZipArchiveExtension(const std::wstring& path)
     return false;
 }
 
-static bool IsSupportedArchive(const std::wstring& path)
+static bool IsSupportedArchive(const std::wstring& path, const MenuPolicy& policy)
 {
-    return HasZipExtension(path) || (TarExeExists() && HasSupportedNonZipArchiveExtension(path));
+    if (policy.IsFormatBlocked(GetFormatRegistryName(path))) return false;
+    if (HasZipExtension(path)) return true;
+    return !policy.disableTar && TarExeExists() && HasSupportedNonZipArchiveExtension(path);
 }
 
-bool AllPathsAreSupportedArchive(const std::vector<std::wstring>& paths)
+bool AllPathsAreSupportedArchive(const std::vector<std::wstring>& paths, const MenuPolicy& policy)
 {
     if (paths.empty()) return false;
     for (const auto& p : paths)
     {
-        if (!IsSupportedArchive(p)) return false;
+        if (!IsSupportedArchive(p, policy)) return false;
     }
     return true;
 }
 
-bool AnyPathIsSupportedArchive(const std::vector<std::wstring>& paths)
+bool AnyPathIsSupportedArchive(const std::vector<std::wstring>& paths, const MenuPolicy& policy)
 {
     for (const auto& p : paths)
     {
-        if (IsSupportedArchive(p)) return true;
+        if (IsSupportedArchive(p, policy)) return true;
     }
     return false;
 }

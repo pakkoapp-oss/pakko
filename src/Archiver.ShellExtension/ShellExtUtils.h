@@ -101,12 +101,65 @@ HRESULT LaunchWithPathList(const std::wstring& exePath, const std::wstring& comm
 // "0x8007000E" for a failed launch's message.
 std::wstring FormatHResult(HRESULT hr);
 
+// ---------------------------------------------------------------------------
+// T-F262: Group Policy for the menu - the same HKLM\Software\Policies\Pakko values
+// Archiver.Core's GroupPolicyService reads (docs/POLICIES.md). Only DisableTarExtraction and
+// BlockedFormats are honoured here; a blocked item is hidden instead of refused after the click.
+// ---------------------------------------------------------------------------
+
+// Reads one policy value; std::nullopt for an absent key/value, a wrong type, or any error.
+class PolicyRegistryReader
+{
+public:
+    virtual ~PolicyRegistryReader() = default;
+    virtual std::optional<DWORD> GetDword(const wchar_t* valueName) const = 0;
+    virtual std::optional<std::vector<std::wstring>> GetMultiString(const wchar_t* valueName) const = 0;
+};
+
+// Reads HKLM\<keyPath> (default: Software\Policies\Pakko) through RegGetValueW.
+class Win32PolicyRegistryReader final : public PolicyRegistryReader
+{
+public:
+    explicit Win32PolicyRegistryReader(const wchar_t* keyPath = L"Software\\Policies\\Pakko") noexcept : m_keyPath(keyPath) {}
+    std::optional<DWORD> GetDword(const wchar_t* valueName) const override;
+    std::optional<std::vector<std::wstring>> GetMultiString(const wchar_t* valueName) const override;
+
+private:
+    const wchar_t* m_keyPath;
+};
+
+// A default-constructed MenuPolicy restricts nothing - the same "absent = shipped behavior" rule
+// as GroupPolicyOptions.
+struct MenuPolicy
+{
+    bool disableTar = false;                  // DisableTarExtraction == 1
+    std::vector<std::wstring> blockedFormats; // BlockedFormats, ArchiveFormatRegistryNames vocabulary
+
+    bool IsFormatBlocked(const std::wstring& registryName) const;
+};
+
+// Fail-safe like GroupPolicyService.Load: anything unreadable counts as not configured.
+MenuPolicy LoadMenuPolicy(const PolicyRegistryReader& reader);
+
+// The real machine policy, re-read at most every few seconds - GetState runs for every menu item
+// on every right-click, and the DLL lives in Explorer for hours, so a policy change still applies
+// without restarting Explorer.
+MenuPolicy GetMenuPolicy();
+
+// ArchiveFormatRegistryNames name for a path's extension ("zip", "gzip", "sevenzip", ...), or an
+// empty string for an extension the menu does not treat as an archive. Extension-only (T-F86).
+std::wstring GetFormatRegistryName(const std::wstring& path);
+
+// Whether a one-click "Add to X.<format>" item may be shown: format is "zip" or "tar".
+bool IsCreationFormatAllowed(const std::wstring& format, const MenuPolicy& policy);
+
 // Returns true iff all paths end with .zip (case-insensitive).
 // Returns false for an empty vector.
 bool AllPathsAreZip(const std::vector<std::wstring>& paths);
 
-// Returns true iff at least one path ends with .zip (case-insensitive).
-bool AnyPathIsZip(const std::vector<std::wstring>& paths);
+// Returns true iff at least one path ends with .zip (case-insensitive) and ZIP is not blocked by
+// policy (T-F262) - the gate for the ZIP-only Test command.
+bool AnyPathIsZip(const std::vector<std::wstring>& paths, const MenuPolicy& policy);
 
 // T-F86: true iff C:\Windows\System32\tar.exe exists. Checked once via GetFileAttributesW and
 // cached in a function-local static (mirrors ExplorerCommands.cpp's GetAppIconPath) - GetState()
@@ -121,13 +174,14 @@ bool TarExeExists();
 bool HasSupportedNonZipArchiveExtension(const std::wstring& path);
 
 // Returns true iff all paths are either .zip or a HasSupportedNonZipArchiveExtension format with
-// tar.exe present. Returns false for an empty vector. Used in place of AllPathsAreZip for
-// Extract-here/Extract-to-folder gating (T-F86).
-bool AllPathsAreSupportedArchive(const std::vector<std::wstring>& paths);
+// tar.exe present, and policy allows each one (T-F262: its format not blocked, and no tar-family
+// format under DisableTarExtraction). Returns false for an empty vector. Used in place of
+// AllPathsAreZip for Extract-here/Extract-to-folder gating (T-F86).
+bool AllPathsAreSupportedArchive(const std::vector<std::wstring>& paths, const MenuPolicy& policy);
 
 // Returns true iff at least one path is .zip or a HasSupportedNonZipArchiveExtension format with
-// tar.exe present. Used in place of AnyPathIsZip for Test/Extract-dialog gating (T-F86).
-bool AnyPathIsSupportedArchive(const std::vector<std::wstring>& paths);
+// tar.exe present that policy allows. Used for Scan/Extract-dialog gating (T-F86).
+bool AnyPathIsSupportedArchive(const std::vector<std::wstring>& paths, const MenuPolicy& policy);
 
 // Launches Archiver.Shell.exe (next to this DLL) with commandArgs and `paths` on its stdin (see
 // LaunchWithPathList). Does not wait for the child. A failure HRESULT means nothing ran - Explorer

@@ -6,6 +6,9 @@
 #include "ShellExtUtils.h"
 #include <gtest/gtest.h>
 
+// No Group Policy configured - the shipped default (T-F262).
+static const MenuPolicy kNoPolicy{};
+
 // ---------------------------------------------------------------------------
 // AllPathsAreZip / AnyPathIsZip
 // ---------------------------------------------------------------------------
@@ -32,17 +35,17 @@ TEST(AllPathsAreZip, CaseInsensitive)
 
 TEST(AnyPathIsZip, ReturnsFalseForEmptyVector)
 {
-    EXPECT_FALSE(AnyPathIsZip({}));
+    EXPECT_FALSE(AnyPathIsZip({}, kNoPolicy));
 }
 
 TEST(AnyPathIsZip, ReturnsTrueWhenOneZip)
 {
-    EXPECT_TRUE(AnyPathIsZip({ L"C:\\file.txt", L"C:\\archive.zip" }));
+    EXPECT_TRUE(AnyPathIsZip({ L"C:\\file.txt", L"C:\\archive.zip" }, kNoPolicy));
 }
 
 TEST(AnyPathIsZip, ReturnsFalseWhenNoneAreZip)
 {
-    EXPECT_FALSE(AnyPathIsZip({ L"C:\\file.txt", L"C:\\image.png" }));
+    EXPECT_FALSE(AnyPathIsZip({ L"C:\\file.txt", L"C:\\image.png" }, kNoPolicy));
 }
 
 // T-F131: .jar/.war/.ear/.apk are real ZIP-format containers, treated as ZIP for gating purposes.
@@ -53,7 +56,7 @@ TEST(AllPathsAreZip, TrueForJarWarEarApk)
 
 TEST(AnyPathIsZip, TrueForJarAmongOthers)
 {
-    EXPECT_TRUE(AnyPathIsZip({ L"C:\\file.txt", L"C:\\build.jar" }));
+    EXPECT_TRUE(AnyPathIsZip({ L"C:\\file.txt", L"C:\\build.jar" }, kNoPolicy));
 }
 
 TEST(AllPathsAreZip, JarCaseInsensitive)
@@ -69,7 +72,7 @@ TEST(AllPathsAreZip, TrueForAsiceAsicsBdoc)
 
 TEST(AnyPathIsZip, TrueForAsiceAmongOthers)
 {
-    EXPECT_TRUE(AnyPathIsZip({ L"C:\\file.txt", L"C:\\signed.asice" }));
+    EXPECT_TRUE(AnyPathIsZip({ L"C:\\file.txt", L"C:\\signed.asice" }, kNoPolicy));
 }
 
 // ---------------------------------------------------------------------------
@@ -119,42 +122,246 @@ TEST(HasSupportedNonZipArchiveExtension, ReturnsFalseForUnrelatedExtension)
 // simplest correct answer to "is extraction possible in principle").
 TEST(AllPathsAreSupportedArchive, ReturnsFalseForEmptyVector)
 {
-    EXPECT_FALSE(AllPathsAreSupportedArchive({}));
+    EXPECT_FALSE(AllPathsAreSupportedArchive({}, kNoPolicy));
 }
 
 TEST(AllPathsAreSupportedArchive, TrueForAllZip)
 {
-    EXPECT_TRUE(AllPathsAreSupportedArchive({ L"C:\\a.zip", L"C:\\b.zip" }));
+    EXPECT_TRUE(AllPathsAreSupportedArchive({ L"C:\\a.zip", L"C:\\b.zip" }, kNoPolicy));
 }
 
 TEST(AllPathsAreSupportedArchive, TrueForAllRar)
 {
-    EXPECT_TRUE(AllPathsAreSupportedArchive({ L"C:\\a.rar", L"C:\\b.rar" }));
+    EXPECT_TRUE(AllPathsAreSupportedArchive({ L"C:\\a.rar", L"C:\\b.rar" }, kNoPolicy));
 }
 
 TEST(AllPathsAreSupportedArchive, TrueForMixedZipAndSevenZip)
 {
-    EXPECT_TRUE(AllPathsAreSupportedArchive({ L"C:\\a.zip", L"C:\\b.7z" }));
+    EXPECT_TRUE(AllPathsAreSupportedArchive({ L"C:\\a.zip", L"C:\\b.7z" }, kNoPolicy));
 }
 
 TEST(AllPathsAreSupportedArchive, FalseWhenOnePathIsUnsupported)
 {
-    EXPECT_FALSE(AllPathsAreSupportedArchive({ L"C:\\a.rar", L"C:\\b.docx" }));
+    EXPECT_FALSE(AllPathsAreSupportedArchive({ L"C:\\a.rar", L"C:\\b.docx" }, kNoPolicy));
 }
 
 TEST(AnyPathIsSupportedArchive, ReturnsFalseForEmptyVector)
 {
-    EXPECT_FALSE(AnyPathIsSupportedArchive({}));
+    EXPECT_FALSE(AnyPathIsSupportedArchive({}, kNoPolicy));
 }
 
 TEST(AnyPathIsSupportedArchive, TrueWhenOneTarFamilyFileAmongOthers)
 {
-    EXPECT_TRUE(AnyPathIsSupportedArchive({ L"C:\\notes.txt", L"C:\\archive.gz" }));
+    EXPECT_TRUE(AnyPathIsSupportedArchive({ L"C:\\notes.txt", L"C:\\archive.gz" }, kNoPolicy));
 }
 
 TEST(AnyPathIsSupportedArchive, FalseWhenNoneSupported)
 {
-    EXPECT_FALSE(AnyPathIsSupportedArchive({ L"C:\\file.txt", L"C:\\image.png" }));
+    EXPECT_FALSE(AnyPathIsSupportedArchive({ L"C:\\file.txt", L"C:\\image.png" }, kNoPolicy));
+}
+
+// ---------------------------------------------------------------------------
+// Group Policy for the menu (T-F262)
+// ---------------------------------------------------------------------------
+
+namespace
+{
+    // Hand-rolled fake: a value is present only if the test put it there.
+    class FakePolicyReader final : public PolicyRegistryReader
+    {
+    public:
+        std::optional<DWORD> disableTar;
+        std::optional<std::vector<std::wstring>> blockedFormats;
+        std::optional<std::vector<std::wstring>> allowedFormats;
+
+        std::optional<DWORD> GetDword(const wchar_t* valueName) const override
+        {
+            return std::wstring(valueName) == L"DisableTarExtraction" ? disableTar : std::nullopt;
+        }
+
+        std::optional<std::vector<std::wstring>> GetMultiString(const wchar_t* valueName) const override
+        {
+            if (std::wstring(valueName) == L"BlockedFormats") return blockedFormats;
+            if (std::wstring(valueName) == L"AllowedFormats") return allowedFormats;
+            return std::nullopt;
+        }
+    };
+
+    MenuPolicy PolicyFrom(std::optional<DWORD> disableTar, std::optional<std::vector<std::wstring>> blocked)
+    {
+        FakePolicyReader reader;
+        reader.disableTar = disableTar;
+        reader.blockedFormats = std::move(blocked);
+        return LoadMenuPolicy(reader);
+    }
+
+    const std::vector<std::wstring> kOneOfEachFormat = {
+        L"C:\\a.zip", L"C:\\a.jar", L"C:\\a.tar", L"C:\\a.gz", L"C:\\a.tgz", L"C:\\a.tar.gz", L"C:\\a.bz2",
+        L"C:\\a.tbz2", L"C:\\a.xz", L"C:\\a.txz", L"C:\\a.zst", L"C:\\a.tzst", L"C:\\a.lzma", L"C:\\a.rar", L"C:\\a.7z",
+    };
+}
+
+TEST(GetFormatRegistryName, MapsEachExtensionToTheGroupPolicyVocabulary)
+{
+    // Same names as Archiver.Core's ArchiveFormatRegistryNames, by final extension.
+    EXPECT_EQ(GetFormatRegistryName(L"C:\\a.zip"), L"zip");
+    EXPECT_EQ(GetFormatRegistryName(L"C:\\a.APK"), L"zip");
+    EXPECT_EQ(GetFormatRegistryName(L"C:\\a.bdoc"), L"zip");
+    EXPECT_EQ(GetFormatRegistryName(L"C:\\a.tar"), L"tar");
+    EXPECT_EQ(GetFormatRegistryName(L"C:\\a.tar.gz"), L"gzip");
+    EXPECT_EQ(GetFormatRegistryName(L"C:\\a.tgz"), L"gzip");
+    EXPECT_EQ(GetFormatRegistryName(L"C:\\a.tbz2"), L"bz2");
+    EXPECT_EQ(GetFormatRegistryName(L"C:\\a.txz"), L"xz");
+    EXPECT_EQ(GetFormatRegistryName(L"C:\\a.tzst"), L"zstd");
+    EXPECT_EQ(GetFormatRegistryName(L"C:\\a.lzma"), L"lzma");
+    EXPECT_EQ(GetFormatRegistryName(L"C:\\a.rar"), L"rar");
+    EXPECT_EQ(GetFormatRegistryName(L"C:\\a.7z"), L"sevenzip");
+    EXPECT_EQ(GetFormatRegistryName(L"C:\\a.docx"), L"");
+    EXPECT_EQ(GetFormatRegistryName(L"C:\\noextension"), L"");
+}
+
+// --- Happy: nothing configured hides nothing ---
+
+TEST(MenuPolicy, NothingConfiguredRestrictsNothing)
+{
+    const MenuPolicy policy = PolicyFrom(std::nullopt, std::nullopt);
+
+    EXPECT_FALSE(policy.disableTar);
+    EXPECT_TRUE(policy.blockedFormats.empty());
+    EXPECT_TRUE(AllPathsAreSupportedArchive(kOneOfEachFormat, policy));
+    EXPECT_TRUE(AnyPathIsZip({ L"C:\\a.zip" }, policy));
+    EXPECT_TRUE(IsCreationFormatAllowed(L"zip", policy));
+    EXPECT_TRUE(IsCreationFormatAllowed(L"tar", policy));
+}
+
+// --- DisableTarExtraction=1: every tar.exe-backed item hides, ZIP stays ---
+
+TEST(MenuPolicy, DisableTarHidesEveryTarFamilyExtractionAndTarCreationOnly)
+{
+    const MenuPolicy policy = PolicyFrom(1, std::nullopt);
+
+    for (const auto& path : kOneOfEachFormat)
+    {
+        const bool isZip = GetFormatRegistryName(path) == L"zip";
+        EXPECT_EQ(AllPathsAreSupportedArchive({ path }, policy), isZip) << path;
+        EXPECT_EQ(AnyPathIsSupportedArchive({ path }, policy), isZip) << path;
+    }
+    EXPECT_TRUE(AnyPathIsZip({ L"C:\\a.zip" }, policy));
+    EXPECT_TRUE(IsCreationFormatAllowed(L"zip", policy));
+    EXPECT_FALSE(IsCreationFormatAllowed(L"tar", policy));
+}
+
+TEST(MenuPolicy, DisableTarWithMixedSelectionHidesOneClickExtractButKeepsAnyGates)
+{
+    const MenuPolicy policy = PolicyFrom(1, std::nullopt);
+
+    // "Extract here" needs every item extractable; the dialog/scan gates need just one.
+    EXPECT_FALSE(AllPathsAreSupportedArchive({ L"C:\\a.zip", L"C:\\b.7z" }, policy));
+    EXPECT_TRUE(AnyPathIsSupportedArchive({ L"C:\\a.zip", L"C:\\b.7z" }, policy));
+}
+
+// --- BlockedFormats: exactly the named formats hide ---
+
+TEST(MenuPolicy, BlockedSevenZipHidesOnlySevenZip)
+{
+    const MenuPolicy policy = PolicyFrom(std::nullopt, std::vector<std::wstring>{ L"sevenzip" });
+
+    for (const auto& path : kOneOfEachFormat)
+        EXPECT_EQ(AllPathsAreSupportedArchive({ path }, policy), GetFormatRegistryName(path) != L"sevenzip") << path;
+    EXPECT_TRUE(IsCreationFormatAllowed(L"zip", policy));
+    EXPECT_TRUE(IsCreationFormatAllowed(L"tar", policy));
+}
+
+TEST(MenuPolicy, BlockedZipHidesZipExtractionTestAndZipCreation)
+{
+    const MenuPolicy policy = PolicyFrom(std::nullopt, std::vector<std::wstring>{ L"zip" });
+
+    EXPECT_FALSE(AllPathsAreSupportedArchive({ L"C:\\a.zip" }, policy));
+    EXPECT_FALSE(AllPathsAreSupportedArchive({ L"C:\\a.jar" }, policy));
+    EXPECT_FALSE(AnyPathIsZip({ L"C:\\a.zip", L"C:\\b.txt" }, policy));
+    EXPECT_FALSE(IsCreationFormatAllowed(L"zip", policy));
+    EXPECT_TRUE(IsCreationFormatAllowed(L"tar", policy));
+    EXPECT_TRUE(AllPathsAreSupportedArchive({ L"C:\\a.rar" }, policy));
+}
+
+TEST(MenuPolicy, BlockedTarHidesPlainTarOnlyNotCompressedTar)
+{
+    // Same as Core: a .tar.gz is detected as gzip, so blocking "tar" leaves it extractable.
+    const MenuPolicy policy = PolicyFrom(std::nullopt, std::vector<std::wstring>{ L"tar" });
+
+    EXPECT_FALSE(AllPathsAreSupportedArchive({ L"C:\\a.tar" }, policy));
+    EXPECT_TRUE(AllPathsAreSupportedArchive({ L"C:\\a.tar.gz" }, policy));
+    EXPECT_FALSE(IsCreationFormatAllowed(L"tar", policy));
+}
+
+TEST(MenuPolicy, BlockedFormatNamesMatchCaseInsensitively)
+{
+    const MenuPolicy policy = PolicyFrom(std::nullopt, std::vector<std::wstring>{ L"SevenZip", L"RAR" });
+
+    EXPECT_FALSE(AllPathsAreSupportedArchive({ L"C:\\a.7z" }, policy));
+    EXPECT_FALSE(AllPathsAreSupportedArchive({ L"C:\\a.rar" }, policy));
+}
+
+// --- Misuse: values that are not "configured" in GroupPolicyService's terms ---
+
+TEST(MenuPolicy, DisableTarOtherThanOneIsIgnored)
+{
+    EXPECT_FALSE(PolicyFrom(0, std::nullopt).disableTar);
+    EXPECT_FALSE(PolicyFrom(2, std::nullopt).disableTar);
+    EXPECT_FALSE(PolicyFrom(0xFFFFFFFF, std::nullopt).disableTar);
+}
+
+TEST(MenuPolicy, UnknownOrEmptyBlockedNamesHideNothing)
+{
+    const MenuPolicy policy = PolicyFrom(std::nullopt, std::vector<std::wstring>{ L"exe", L"", L" zip " });
+
+    EXPECT_TRUE(AllPathsAreSupportedArchive(kOneOfEachFormat, policy));
+    EXPECT_TRUE(IsCreationFormatAllowed(L"zip", policy));
+}
+
+TEST(MenuPolicy, EmptyBlockedListRestrictsNothing)
+{
+    EXPECT_TRUE(AllPathsAreSupportedArchive(kOneOfEachFormat, PolicyFrom(std::nullopt, std::vector<std::wstring>{})));
+}
+
+TEST(MenuPolicy, AllowedFormatsIsNotReadByTheMenu)
+{
+    // Only DisableTarExtraction and BlockedFormats are in scope for the menu (T-F262's decision).
+    FakePolicyReader reader;
+    reader.allowedFormats = std::vector<std::wstring>{ L"zip" };
+
+    EXPECT_TRUE(AllPathsAreSupportedArchive({ L"C:\\a.7z" }, LoadMenuPolicy(reader)));
+}
+
+// --- Error: the real registry reader never fails loudly ---
+
+TEST(Win32PolicyRegistryReader, MissingKeyReadsAsNotConfigured)
+{
+    const Win32PolicyRegistryReader reader(L"Software\\Policies\\Pakko_T-F262_NoSuchKey");
+
+    EXPECT_FALSE(reader.GetDword(L"DisableTarExtraction").has_value());
+    EXPECT_FALSE(reader.GetMultiString(L"BlockedFormats").has_value());
+    EXPECT_FALSE(LoadMenuPolicy(reader).disableTar);
+    EXPECT_TRUE(LoadMenuPolicy(reader).blockedFormats.empty());
+}
+
+TEST(Win32PolicyRegistryReader, WrongValueTypeReadsAsNotConfigured)
+{
+    // ProductName is a REG_SZ on every Windows install.
+    const Win32PolicyRegistryReader reader(L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion");
+
+    EXPECT_FALSE(reader.GetDword(L"ProductName").has_value());
+    EXPECT_FALSE(reader.GetMultiString(L"ProductName").has_value());
+}
+
+TEST(Win32PolicyRegistryReader, RealValuesAreRead)
+{
+    // CurrentMajorVersionNumber is a REG_DWORD on Windows 10/11.
+    const Win32PolicyRegistryReader reader(L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion");
+
+    const auto major = reader.GetDword(L"CurrentMajorVersionNumber");
+    ASSERT_TRUE(major.has_value());
+    EXPECT_EQ(*major, 10u);
 }
 
 // ---------------------------------------------------------------------------

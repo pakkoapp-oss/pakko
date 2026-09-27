@@ -139,7 +139,7 @@ STDMETHODIMP ExtractHereCommand::GetState(IShellItemArray* psia, BOOL, EXPCMDSTA
     if (!pCmdState) return E_POINTER;
     // T-F86: AllPathsAreSupportedArchive also recognizes RAR/7z/tar-family when tar.exe is
     // present - see DECISIONS.md's T-F86 entry.
-    *pCmdState = AllPathsAreSupportedArchive(GetPathsFromShellItemArray(psia)) ? ECS_ENABLED : ECS_HIDDEN;
+    *pCmdState = AllPathsAreSupportedArchive(GetPathsFromShellItemArray(psia), GetMenuPolicy()) ? ECS_ENABLED : ECS_HIDDEN;
     return S_OK;
 }
 
@@ -200,7 +200,7 @@ STDMETHODIMP ExtractHereFlatCommand::GetCanonicalName(GUID* pguidCommandName) no
 STDMETHODIMP ExtractHereFlatCommand::GetState(IShellItemArray* psia, BOOL, EXPCMDSTATE* pCmdState) noexcept
 {
     if (!pCmdState) return E_POINTER;
-    *pCmdState = AllPathsAreSupportedArchive(GetPathsFromShellItemArray(psia)) ? ECS_ENABLED : ECS_HIDDEN;
+    *pCmdState = AllPathsAreSupportedArchive(GetPathsFromShellItemArray(psia), GetMenuPolicy()) ? ECS_ENABLED : ECS_HIDDEN;
     return S_OK;
 }
 
@@ -266,7 +266,7 @@ STDMETHODIMP ExtractFolderCommand::GetState(IShellItemArray* psia, BOOL, EXPCMDS
 {
     if (!pCmdState) return E_POINTER;
     // T-F86: see ExtractHereCommand::GetState above.
-    *pCmdState = AllPathsAreSupportedArchive(GetPathsFromShellItemArray(psia)) ? ECS_ENABLED : ECS_HIDDEN;
+    *pCmdState = AllPathsAreSupportedArchive(GetPathsFromShellItemArray(psia), GetMenuPolicy()) ? ECS_ENABLED : ECS_HIDDEN;
     return S_OK;
 }
 
@@ -331,7 +331,8 @@ STDMETHODIMP ArchiveCommand::GetCanonicalName(GUID* pguidCommandName) noexcept
 STDMETHODIMP ArchiveCommand::GetState(IShellItemArray* psia, BOOL, EXPCMDSTATE* pCmdState) noexcept
 {
     if (!pCmdState) return E_POINTER;
-    *pCmdState = AllPathsAreZip(GetPathsFromShellItemArray(psia)) ? ECS_HIDDEN : ECS_ENABLED;
+    // T-F262: hidden, not refused after the click, when policy blocks ZIP creation.
+    *pCmdState = (AllPathsAreZip(GetPathsFromShellItemArray(psia)) || !IsCreationFormatAllowed(L"zip", GetMenuPolicy())) ? ECS_HIDDEN : ECS_ENABLED;
     return S_OK;
 }
 
@@ -396,7 +397,8 @@ STDMETHODIMP TarArchiveCommand::GetCanonicalName(GUID* pguidCommandName) noexcep
 STDMETHODIMP TarArchiveCommand::GetState(IShellItemArray* psia, BOOL, EXPCMDSTATE* pCmdState) noexcept
 {
     if (!pCmdState) return E_POINTER;
-    *pCmdState = AllPathsAreZip(GetPathsFromShellItemArray(psia)) ? ECS_HIDDEN : ECS_ENABLED;
+    // T-F262: hidden under BlockedFormats=tar or DisableTarExtraction=1 (creation runs tar.exe too).
+    *pCmdState = (AllPathsAreZip(GetPathsFromShellItemArray(psia)) || !IsCreationFormatAllowed(L"tar", GetMenuPolicy())) ? ECS_HIDDEN : ECS_ENABLED;
     return S_OK;
 }
 
@@ -466,7 +468,7 @@ STDMETHODIMP TestCommand::GetState(IShellItemArray* psia, BOOL, EXPCMDSTATE* pCm
     // ShellCommands.TestAsync's ZipArchiveService.TestAsync (which silently skips non-zip paths), and report
     // a false "No errors detected" for an archive that was never actually tested. See
     // DECISIONS.md's T-F86 entry.
-    *pCmdState = AnyPathIsZip(GetPathsFromShellItemArray(psia)) ? ECS_ENABLED : ECS_HIDDEN;
+    *pCmdState = AnyPathIsZip(GetPathsFromShellItemArray(psia), GetMenuPolicy()) ? ECS_ENABLED : ECS_HIDDEN;
     return S_OK;
 }
 
@@ -531,7 +533,7 @@ STDMETHODIMP ScanCommand::GetState(IShellItemArray* psia, BOOL, EXPCMDSTATE* pCm
     // no tar Test method exists), the scan path genuinely supports tar-family archives via
     // AntivirusScanService's own quarantine-extraction flow, so gating this to ZIP-only would
     // silently hide the feature for every non-ZIP archive.
-    *pCmdState = AnyPathIsSupportedArchive(GetPathsFromShellItemArray(psia)) ? ECS_ENABLED : ECS_HIDDEN;
+    *pCmdState = AnyPathIsSupportedArchive(GetPathsFromShellItemArray(psia), GetMenuPolicy()) ? ECS_ENABLED : ECS_HIDDEN;
     return S_OK;
 }
 
@@ -599,7 +601,7 @@ STDMETHODIMP ExtractDialogCommand::GetState(IShellItemArray* psia, BOOL, EXPCMDS
     // --open-ui --extract, which opens Archiver.App and routes through IExtractionRouter
     // (MainViewModel/ExtractionRouter), which does support RAR/7z/tar-family (T-F85). No false
     // "tested OK" risk here since a dialog opens rather than a silent pass/fail messagebox.
-    *pCmdState = AnyPathIsSupportedArchive(GetPathsFromShellItemArray(psia)) ? ECS_ENABLED : ECS_HIDDEN;
+    *pCmdState = AnyPathIsSupportedArchive(GetPathsFromShellItemArray(psia), GetMenuPolicy()) ? ECS_ENABLED : ECS_HIDDEN;
     return S_OK;
 }
 
@@ -728,7 +730,7 @@ STDMETHODIMP BrowseCommand::GetState(IShellItemArray* psia, BOOL, EXPCMDSTATE* p
     // exactly one path, AllPathsAreSupportedArchive/AnyPathIsSupportedArchive are equivalent, so
     // no new predicate is needed.
     const auto paths = GetPathsFromShellItemArray(psia);
-    *pCmdState = (paths.size() == 1 && AllPathsAreSupportedArchive(paths)) ? ECS_ENABLED : ECS_HIDDEN;
+    *pCmdState = (paths.size() == 1 && AllPathsAreSupportedArchive(paths, GetMenuPolicy())) ? ECS_ENABLED : ECS_HIDDEN;
     return S_OK;
 }
 
