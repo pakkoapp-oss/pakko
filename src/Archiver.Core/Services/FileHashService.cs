@@ -56,6 +56,7 @@ public static class FileHashService
 {
     private const int FileStreamBufferSize = 262144;
     private const string FolderSkippedMessage = "Skipped: folder (only supported when a single folder is selected alone)";
+    private const string ReparsePointSkippedMessage = "Skipped: symbolic link or junction (not followed)";
 
     // T-F128 follow-up: below this size, sequential slice-by-8 is already fast enough (a handful
     // of milliseconds) that splitting into chunks and coordinating parallel tasks would cost more
@@ -118,14 +119,29 @@ public static class FileHashService
         int fileCount = 0;
         var sync = new object();
 
-        // T-F128 follow-up: DirectoryInfo.EnumerateFiles (not Directory.EnumerateFiles, which only
-        // returns paths) gives every file's Length for free from the same directory-listing
-        // syscall Windows already performs — no extra per-file stat pass needed for the total-size
-        // sum below (mirrors T-F35's "merge redundant directory walks" fix for the same reason).
-        // That sum drives both FolderHashSummary.TotalBytes and the shared AggregateProgressTracker
-        // below, which fixes the progress bug where each file's own completion (resetting to 0%
-        // per file) was reported instead of the whole folder's aggregate progress.
-        var files = new DirectoryInfo(root).EnumerateFiles("*", SearchOption.AllDirectories).ToList();
+        // T-F251: the shared DirectoryWalker — an unreadable folder is one error entry instead of
+        // an exception out of this method, and a junction or symlink is skipped (never followed:
+        // no loop, no foreign files), the same as archive creation (T-F23).
+        // T-F128 follow-up: the walker's FileInfo objects carry each Length from the directory
+        // listing itself — no extra per-file stat pass for the total-size sum below, which drives
+        // both FolderHashSummary.TotalBytes and the shared AggregateProgressTracker.
+        var files = new List<FileInfo>();
+        foreach (WalkEntry entry in DirectoryWalker.Walk(root))
+        {
+            ct.ThrowIfCancellationRequested();
+            switch (entry.Kind)
+            {
+                case WalkEntryKind.File:
+                    files.Add((FileInfo)entry.Info);
+                    break;
+                case WalkEntryKind.ReparsePoint:
+                    entries.Add(new HashEntry(entry.Info.FullName, null, ReparsePointSkippedMessage));
+                    break;
+                case WalkEntryKind.UnreadableDirectory:
+                    entries.Add(new HashEntry(entry.Info.FullName, null, entry.Error!.Message));
+                    break;
+            }
+        }
         long totalBytes = files.Sum(f => f.Length);
         var tracker = progress is null ? null : new AggregateProgressTracker(totalBytes, progress);
 
@@ -266,7 +282,7 @@ public static class FileHashService
     /// commutative — so chunks are combined sequentially by index after every chunk task
     /// completes, never as each one finishes.
     /// </summary>
-    private static Task<byte[]> ComputeFileCrc32ParallelAsync(
+    internal static Task<byte[]> ComputeFileCrc32ParallelAsync(
         string path, long length, AggregateProgressTracker? tracker, string currentFileName, CancellationToken ct)
     {
         // T-F128 follow-up: EnsureThreadPoolWarm before the parallel section — measured directly
@@ -312,7 +328,10 @@ public static class FileHashService
                     {
                         int toRead = (int)Math.Min(buffer.Length, remaining);
                         int read = RandomAccess.Read(handle, buffer.AsSpan(0, toRead), offset);
-                        if (read <= 0) break; // shouldn't happen for a file that isn't shrinking mid-read
+                        // T-F251: the file shrank after its length was read. Crc32.Combine below
+                        // uses the planned chunk length, so a CRC here would be wrong yet look fine.
+                        if (read <= 0)
+                            throw new IOException($"The file changed size while it was being hashed: {path}");
                         acc.Update(buffer.AsSpan(0, read));
                         tracker?.Report(read, currentFileName);
                         offset += read;
