@@ -25,8 +25,15 @@ internal sealed class FakeAmsiScanner : IAmsiScanner
     public Dictionary<string, byte[]> ScannedContent { get; } = new(StringComparer.Ordinal);
     public bool Disposed { get; private set; }
 
+    // T-F247: entries whose scan fails the way a real AmsiScanBuffer failure surfaces.
+    public HashSet<string> FailingContentNames { get; } = new(StringComparer.Ordinal);
+
     public (ThreatVerdict Verdict, string? ThreatName) ScanBuffer(byte[] buffer, int length, string contentName)
     {
+        // T-F247: the real AmsiScanBuffer rejects a zero-length buffer with E_INVALIDARG, which
+        // AmsiScanner turns into this exception — the fake does the same.
+        if (length == 0 || FailingContentNames.Contains(contentName))
+            throw new InvalidOperationException("AmsiScanBuffer failed (HRESULT 0x80070057).");
         Calls.Add((contentName, length));
         ScannedContent[contentName] = buffer.AsSpan(0, length).ToArray();
         return DetectedContentNames.Contains(contentName)
@@ -128,6 +135,39 @@ public sealed class AntivirusScanServiceTests : IDisposable
         result.Findings.Should().ContainSingle();
         result.Findings[0].EntryPath.Should().Be("b.txt");
         scanner.Calls.Should().ContainSingle(c => c.ContentName == "b.txt");
+    }
+
+    [Fact]
+    public async Task ScanAsync_ZipWithZeroByteEntry_ReportsItCleanWithoutScanningAndScansTheRest()
+    {
+        string zip = CreateZip("withempty.zip", ("a.txt", "hello"), ("empty.txt", ""));
+        var scanner = new FakeAmsiScanner();
+        var service = CreateService(scanner);
+
+        var result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [zip] });
+
+        result.OverallVerdict.Should().Be(ThreatVerdict.Clean);
+        result.Findings.Should().ContainSingle(f => f.EntryPath == "empty.txt").Which.Verdict.Should().Be(ThreatVerdict.Clean);
+        scanner.Calls.Should().ContainSingle().Which.ContentName.Should().Be("a.txt");
+    }
+
+    [Fact]
+    public async Task ScanAsync_ScannerFailsOnOneEntry_ThatEntryInconclusiveAndTheRestScanned()
+    {
+        string zip = CreateZip("fails.zip", ("a.txt", "hello"), ("bad.txt", "boom"), ("c.txt", "world"));
+        var scanner = new FakeAmsiScanner();
+        scanner.FailingContentNames.Add("bad.txt");
+        var service = CreateService(scanner);
+
+        var result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [zip] });
+
+        result.OverallVerdict.Should().Be(ThreatVerdict.Inconclusive);
+        ThreatFinding failed = result.Findings.Should().ContainSingle(f => f.EntryPath == "bad.txt").Subject;
+        failed.Verdict.Should().Be(ThreatVerdict.Inconclusive);
+        failed.Reason.Should().Contain("0x80070057");
+        result.Findings.Where(f => f.EntryPath != "bad.txt").Should().HaveCount(2)
+            .And.OnlyContain(f => f.Verdict == ThreatVerdict.Clean);
+        scanner.Calls.Select(c => c.ContentName).Should().BeEquivalentTo(["a.txt", "c.txt"]);
     }
 
     [Fact]
@@ -563,6 +603,27 @@ public sealed class AntivirusScanServiceTests : IDisposable
 [SupportedOSPlatform("windows")]
 public sealed class AntivirusScanServiceEncryptedEicarTests
 {
+    // T-F247: against the real AMSI provider an empty entry used to throw out of ScanAsync
+    // (AmsiScanBuffer E_INVALIDARG on a zero-length buffer).
+    [SkipIfAmsiScanUnavailable]
+    public async Task ScanAsync_RealAmsi_ZipWithZeroByteEntry_ReturnsCleanWithoutThrowing()
+    {
+        using var temp = new TempDirectory();
+        string zip = Path.Combine(temp.Path, "withempty.zip");
+        using (ZipArchive archive = ZipFile.Open(zip, ZipArchiveMode.Create))
+        {
+            using (StreamWriter writer = new(archive.CreateEntry("a.txt").Open()))
+                writer.Write("hello");
+            archive.CreateEntry("empty.txt");
+        }
+        var service = new AntivirusScanService(new TarCapabilities());
+
+        var result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [zip] });
+
+        result.OverallVerdict.Should().Be(ThreatVerdict.Clean);
+        result.Findings.Should().HaveCount(2);
+    }
+
     [SkipIfAmsiScanUnavailable]
     public async Task ScanAsync_RealEicarInEncryptedZip_CorrectPassword_ReturnsThreatDetected()
     {

@@ -343,7 +343,26 @@ public sealed class AntivirusScanService : IAntivirusScanService
                 totalRead += read;
             }
 
-            (ThreatVerdict verdict, string? threatName) = scanner.ScanBuffer(buffer, totalRead, entryPath);
+            // T-F247: an empty entry holds nothing to scan, and AmsiScanBuffer rejects a
+            // zero-length buffer (E_INVALIDARG). A failing AMSI call is this entry's result
+            // (Inconclusive), never an exception out of the whole scan.
+            ThreatVerdict verdict;
+            string? threatName;
+            if (totalRead == 0)
+            {
+                (verdict, threatName) = (ThreatVerdict.Clean, null);
+            }
+            else
+            {
+                try
+                {
+                    (verdict, threatName) = scanner.ScanBuffer(buffer, totalRead, entryPath);
+                }
+                catch (InvalidOperationException ex)
+                {
+                    return InconclusiveFinding(archivePath, entryPath, $"The antivirus scan of this entry failed: {ex.Message}");
+                }
+            }
 
             // T-F194 (advisor-caught): ZipCrypto's one-byte password check accepts ~1 in 256 wrong
             // passwords, decrypting to garbage AMSI would happily call Clean. The trailer CRC-32
