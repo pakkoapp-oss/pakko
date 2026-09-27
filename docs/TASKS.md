@@ -5827,9 +5827,13 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   Step 6, localization (2026-09-27): every label Shell sends the window, every operation title
   and the size units come from a new `OperationText.resx` in 37 locales (translated by the agent,
   plural-safe wording for counts); polish (b) done (`ScanNoThreatsFoundMany`). A review of the
-  existing Shell/App strings fixed 14 translation defects and a Latvian menu typo. Checked on
+  existing Shell `.resx` strings and the Explorer menu table fixed 14 translation defects and a
+  Latvian menu typo; the App's own `.resw` was not reviewed (only its copies of the same strings
+  were fixed). Not checked on screen: RTL (he/ar/ur) and any language but Ukrainian. Checked on
   1.5.0.10 under uk-UA: the conflict window and its result are Ukrainian except Core's own reason
   text (T-F209). T-F208's Shell part is done; its grouped root (Core message codes) stays open.
+  (g) Under uk-UA the caption buttons' UIA names are English (Minimize/Maximize/Close; drawn by
+  WinAppSDK) - check their tooltips on screen; the main App window uses the system title bar.
 - **Explorer smoke (agent, 2026-09-26, build 1.5.0.5, real context menu clicked via UIA, window
   captured by screen region - a per-window capture of WinUI comes out black):** Test (1 archive,
   corrupted -> red error icon), Extract here smart (3 archives), Extract each to its folder (3,

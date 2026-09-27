@@ -28,7 +28,7 @@
     <value>압축 파일에서</value>
   </data>
   <data name="WindowNewer" xml:space="preserve">
-    <value>더 최신</value>
+    <value>더 최근</value>
   </data>
   <data name="WindowModified" xml:space="preserve">
     <value>수정한 날짜 {0}</value>

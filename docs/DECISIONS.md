@@ -10035,7 +10035,8 @@ a local "per second" for ja/zh/ko/tr/uk/bg. The number keeps the regional format
 **Terms follow what the user already sees:** the archive word of each locale's existing Shell
 strings (ja アーカイブ, zh 压缩包, ko 압축 파일, vi tệp lưu trữ), the App's operation verbs.
 
-**Existing strings reviewed at the user's request, 14 fixes:** uk "до всіх решти конфліктів"
+**Existing Shell `.resx` strings and the Explorer menu table reviewed at the user's request (the
+App's own `.resw` was not), 14 fixes:** uk "до всіх решти конфліктів"
 (ungrammatical), es tú/usted mixed in one dialog, "Show password" in a different term from its
 own dialog (de Kennwort, ko 비밀번호, tr Şifre), hi "अभिलेखागार" (archive building) for archives,
 zh "存档" (a saved game) for archive, ar skipped header in the singular, fr missing space before
