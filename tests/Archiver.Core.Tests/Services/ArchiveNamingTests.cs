@@ -106,4 +106,91 @@ public sealed class ArchiveNamingTests
     {
         ArchiveNaming.ResolveSingleArchiveName(explicitName, [@"C:\Docs\file.txt"]).Should().Be("archive");
     }
+
+    // --- T-F264: one default-name rule for the App, Explorer's Shell commands and the C++ menu ---
+    // Each row mirrors a BuildAddToArchiveTitle case in ShellExtUtilsTests.cpp: the menu title
+    // "Add to <name>.zip" must name the archive that is actually created.
+
+    [Theory]
+    [InlineData(new[] { @"C:\Docs\report.docx" }, "report")]
+    [InlineData(new[] { @"C:\Docs\backup.tar.gz" }, "backup")]
+    [InlineData(new[] { @"C:\Projects\MyStuff\first.txt", @"C:\Projects\MyStuff\second.txt" }, "MyStuff")]
+    [InlineData(new[] { @"C:\first.txt", @"C:\second.txt" }, "archive")]
+    [InlineData(new[] { @"Z:\" }, "archive")]
+    [InlineData(new[] { @"C:\Projects\MyFolder" }, "MyFolder")]
+    [InlineData(new[] { @"C:\Projects\.gitignore" }, ".gitignore")]
+    [InlineData(new[] { @"\\server\share\a.txt", @"\\server\share\b.txt" }, "share")]
+    [InlineData(new[] { @"\\server\share" }, "share")]
+    public void GetDefaultArchiveName_MatchesTheExplorerMenuTitle(string[] sources, string expected)
+    {
+        ArchiveNaming.GetDefaultArchiveName(sources).Should().Be(expected);
+    }
+
+    [Fact]
+    public void GetDefaultArchiveName_TrailingSeparator_UsesTheFolderName()
+    {
+        ArchiveNaming.GetDefaultArchiveName([@"C:\Projects\MyFolder\"]).Should().Be("MyFolder");
+    }
+
+    [Fact]
+    public void GetDefaultArchiveName_NoSources_FallsBackToArchive()
+    {
+        ArchiveNaming.GetDefaultArchiveName([]).Should().Be("archive");
+    }
+
+    [Fact]
+    public void GetDefaultArchiveName_FileNamedLikeACompoundExtension_FallsBackToArchive()
+    {
+        ArchiveNaming.GetDefaultArchiveName([@"C:\Docs\.tar.gz"]).Should().Be("archive");
+    }
+
+    [Fact]
+    public void ResolveSingleArchiveName_NoExplicitName_UsesTheSameDefaultRule()
+    {
+        // Behavior change (T-F264): the App's blank name box used to give "archive" for several
+        // sources and for a dotfile; it now names the archive the way Explorer does.
+        ArchiveNaming.ResolveSingleArchiveName(null, [@"C:\Projects\MyStuff\a.txt", @"C:\Projects\MyStuff\b.txt"]).Should().Be("MyStuff");
+        ArchiveNaming.ResolveSingleArchiveName(null, [@"C:\Projects\.gitignore"]).Should().Be(".gitignore");
+        ArchiveNaming.ResolveSingleArchiveName(null, [@"C:\Docs\backup.tar.gz"]).Should().Be("backup");
+    }
+
+    [Fact]
+    public void GetBaseName_ArchiveNamedOnlyByItsExtension_KeepsTheFullName()
+    {
+        // Same dotfile rule as the C++ title ("Extract to \".zip\\\""), instead of an empty folder name.
+        ArchiveNaming.GetBaseName(@"C:\Docs\.zip").Should().Be(".zip");
+    }
+
+    // --- T-F264: the "name (N)" rule in one place ---
+
+    [Fact]
+    public void GetUniqueName_FreeName_IsReturnedUnchanged()
+    {
+        ArchiveNaming.GetUniqueName("report.txt", _ => false).Should().Be("report.txt");
+    }
+
+    [Fact]
+    public void GetUniqueName_TakenNames_NumbersBeforeTheExtension()
+    {
+        var taken = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "report.txt", "report (1).txt" };
+
+        ArchiveNaming.GetUniqueName("report.txt", taken.Contains).Should().Be("report (2).txt");
+    }
+
+    [Fact]
+    public void GetUniqueFolderName_ExistingFolders_NumbersTheWholeName()
+    {
+        string parent = Path.Combine(Path.GetTempPath(), "PakkoNamingTests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(Path.Combine(parent, "my.archive"));
+        Directory.CreateDirectory(Path.Combine(parent, "my.archive (1)"));
+        try
+        {
+            ArchiveNaming.GetUniqueFolderName(parent, "my.archive").Should().Be("my.archive (2)");
+            ArchiveNaming.GetUniqueFolderName(parent, "fresh").Should().Be("fresh");
+        }
+        finally
+        {
+            Directory.Delete(parent, recursive: true);
+        }
+    }
 }

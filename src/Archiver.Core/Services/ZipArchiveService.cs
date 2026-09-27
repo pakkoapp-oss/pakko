@@ -2222,12 +2222,8 @@ public sealed class ZipArchiveService : IArchiveService
         if (usedNames.Add(proposedName))
             return proposedName;
 
-        string name = Path.GetFileNameWithoutExtension(proposedName);
-        string ext = Path.GetExtension(proposedName);
-        int i = 1;
-        string candidate;
-        do { candidate = $"{name} ({i++}){ext}"; }
-        while (!usedNames.Add(candidate));
+        string candidate = ArchiveNaming.GetUniqueName(proposedName, usedNames.Contains);
+        usedNames.Add(candidate);
         return candidate;
     }
 

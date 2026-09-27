@@ -33,6 +33,10 @@ enum class StringId
     // under it ("CRC-32"/"SHA-256") are hardcoded literals, not localized — algorithm names stay
     // untranslated Latin script everywhere, matching T-F105's tar format names.
     HashSubmenu,
+    // T-F235: message-box texts shown from Invoke, which Explorer otherwise lets fail silently.
+    SelectionNotOnDisk,
+    // "{0}" is the failure HRESULT as 0xXXXXXXXX.
+    LaunchFailedTemplate,
 };
 
 // Resolves the calling thread's preferred UI language as a BCP-47 tag (e.g. L"uk-UA"), matching

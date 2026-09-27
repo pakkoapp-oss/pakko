@@ -15,24 +15,88 @@ public static class ArchiveNaming
         ".tar.gz", ".tar.bz2", ".tar.xz", ".tar.zst", ".tar.lzma"
     };
 
+    internal static IReadOnlyList<string> CompoundExtensionList => CompoundExtensions;
+
+    private const string FallbackName = "archive";
+
+    /// <summary>
+    /// T-F264: the one default name for a new archive, used by the App (blank name box), Explorer's
+    /// "Add to" commands and — mirrored in ShellExtUtils.cpp's BuildAddToArchiveTitle — the menu
+    /// title. One source: its name without extension (compound tar extensions stripped as a unit, a
+    /// dotfile keeps its full name). Several sources: the folder that holds the first one. Falls back
+    /// to "archive" where that gives no usable name (a drive root, no sources).
+    /// </summary>
+    public static string GetDefaultArchiveName(IReadOnlyList<string> sourcePaths)
+    {
+        if (sourcePaths.Count == 0)
+            return FallbackName;
+
+        string first = Path.TrimEndingDirectorySeparator(sourcePaths[0]);
+        string name = sourcePaths.Count > 1
+            ? LastSegment(Path.GetDirectoryName(first) ?? "")
+            : GetBaseName(first);
+        return name.Length == 0 || name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0 ? FallbackName : name;
+    }
+
+    // The text after the last separator, like the C++ side's PathFindFileNameW. Unlike
+    // Path.GetFileName it gives "share" for a UNC root "\\server\share" (GetFileName gives ""), and
+    // "C:" for a drive root, which the invalid-character check above then rejects.
+    private static string LastSegment(string path)
+    {
+        string trimmed = path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        return trimmed[(trimmed.LastIndexOfAny([Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar]) + 1)..];
+    }
+
+    /// <summary>
+    /// T-F264: the "name (1)", "name (2)", ... rule every rename-on-conflict path uses — the number
+    /// goes before the extension. <paramref name="isTaken"/> decides what counts as taken (a file
+    /// on disk, a name already claimed in memory).
+    /// </summary>
+    public static string GetUniqueName(string fileName, Func<string, bool> isTaken)
+    {
+        if (!isTaken(fileName))
+            return fileName;
+        return Number(Path.GetFileNameWithoutExtension(fileName), Path.GetExtension(fileName), isTaken);
+    }
+
+    /// <summary>
+    /// T-F264: a folder under <paramref name="parentDir"/> that does not exist yet — "name", else
+    /// "name (1)", ... with the number after the whole name (a folder has no extension).
+    /// </summary>
+    public static string GetUniqueFolderName(string parentDir, string name)
+    {
+        bool Exists(string candidate) => Directory.Exists(Path.Combine(parentDir, candidate));
+        return Exists(name) ? Number(name, "", Exists) : name;
+    }
+
+    private static string Number(string stem, string extension, Func<string, bool> isTaken)
+    {
+        int i = 1;
+        string candidate;
+        do { candidate = $"{stem} ({i++}){extension}"; }
+        while (isTaken(candidate));
+        return candidate;
+    }
+
     /// <summary>Strips an archive's extension, compound tar extensions included (see class remarks).</summary>
     public static string GetBaseName(string archivePath)
     {
-        string fileName = Path.GetFileName(archivePath);
+        string fileName = LastSegment(archivePath);
 
         string? matchedExt = CompoundExtensions.FirstOrDefault(
             ext => fileName.EndsWith(ext, StringComparison.OrdinalIgnoreCase));
         if (matchedExt is not null)
             return fileName[..^matchedExt.Length];
 
-        return Path.GetFileNameWithoutExtension(archivePath);
+        // T-F264: a leading dot is not an extension (".gitignore", an archive named ".zip") — the
+        // same rule as ShellExtUtils.cpp's GetFileNameWithoutExtension, instead of an empty name.
+        int dot = fileName.LastIndexOf('.');
+        return dot > 0 ? fileName[..dot] : fileName;
     }
 
     /// <summary>
     /// T-F99: shared by ZipArchiveService.ArchiveAsync and TarSandboxedService.CompressAsync — an
-    /// explicit user-provided name always wins; otherwise falls back to the sole source path's own
-    /// file name, or "archive" when that's empty (a drive-root selection like "Z:\" via the shell
-    /// extension's Drive ItemType has no file name component to fall back to).
+    /// explicit user-provided name always wins; otherwise <see cref="GetDefaultArchiveName"/> (T-F264).
     /// </summary>
     /// <remarks>
     /// T-F185: an explicit name is a bare file-name component, never a path — both callers combine
@@ -52,11 +116,7 @@ public static class ArchiveNaming
             return sanitized.Length > 0 ? sanitized : "archive";
         }
 
-        if (sourcePaths.Count != 1)
-            return "archive";
-
-        string name = Path.GetFileNameWithoutExtension(sourcePaths[0]);
-        return name.Length > 0 ? name : "archive";
+        return GetDefaultArchiveName(sourcePaths);
     }
 
     /// <summary>Maps a creation-time container format to its on-disk file extension.</summary>
@@ -81,12 +141,14 @@ public static class ArchiveNaming
     internal static string GetUniqueFilePath(string path, HashSet<string>? claimedPaths = null)
     {
         string dir = Path.GetDirectoryName(path)!;
-        string name = Path.GetFileNameWithoutExtension(path);
-        string ext = Path.GetExtension(path);
-        int i = 1;
-        string candidate;
-        do { candidate = Path.Combine(dir, $"{name} ({i++}){ext}"); }
-        while (File.Exists(candidate) || (claimedPaths?.Contains(candidate) ?? false));
-        return candidate;
+        bool IsTaken(string candidate)
+        {
+            string full = Path.Combine(dir, candidate);
+            return File.Exists(full) || (claimedPaths?.Contains(full) ?? false);
+        }
+
+        // Always numbered, even when the name itself is free: callers come here only after a conflict.
+        string fileName = Path.GetFileName(path);
+        return Path.Combine(dir, GetUniqueName(fileName, c => c == fileName || IsTaken(c)));
     }
 }

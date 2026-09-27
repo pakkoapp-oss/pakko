@@ -25,7 +25,7 @@ internal sealed class ShellCommands(IOperationUi ui, ShellServices services)
             // an existing destination folder (that's the GUI app's merge behavior). The shell
             // command instead wants a brand-new numbered folder so re-extracting never silently
             // merges into — or does nothing to — a folder from a previous run.
-            string folderName = GetUniqueFolderName(destFolder, ArchiveNaming.GetBaseName(archivePath));
+            string folderName = ArchiveNaming.GetUniqueFolderName(destFolder, ArchiveNaming.GetBaseName(archivePath));
             return new ExtractOptions
             {
                 ArchivePaths = [archivePath],
@@ -71,7 +71,7 @@ internal sealed class ShellCommands(IOperationUi ui, ShellServices services)
         RunExtractSelectionAsync(archivePaths, (archivePath, prompts) =>
         {
             string archiveDir = Path.GetDirectoryName(archivePath) ?? ".";
-            string folderName = GetUniqueFolderName(archiveDir, ArchiveNaming.GetBaseName(archivePath));
+            string folderName = ArchiveNaming.GetUniqueFolderName(archiveDir, ArchiveNaming.GetBaseName(archivePath));
             return new ExtractOptions
             {
                 ArchivePaths = [archivePath],
@@ -113,26 +113,8 @@ internal sealed class ShellCommands(IOperationUi ui, ShellServices services)
         string destFolder = Path.GetDirectoryName(firstPath)
             ?? Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
 
-        string archiveName;
-        if (sourcePaths.Count > 1)
-        {
-            archiveName = Path.GetFileName(destFolder);
-            // Path.GetFileName("C:\") returns "C:" when the selection sits directly at a drive
-            // root — invalid in a file name (colon), so fall back rather than let ArchiveAsync throw.
-            if (string.IsNullOrEmpty(archiveName) || archiveName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
-                archiveName = "archive";
-        }
-        else
-        {
-            // Path.GetFileNameWithoutExtension returns "" for dotfiles (e.g. ".gitignore" has no
-            // name before its only dot) — fall back to the full name so we don't create a bare ".zip".
-            // Both return "" for a drive root (e.g. "Z:\") — fall back to "archive" in that case too.
-            archiveName = Path.GetFileNameWithoutExtension(firstPath);
-            if (string.IsNullOrEmpty(archiveName))
-                archiveName = Path.GetFileName(firstPath);
-            if (string.IsNullOrEmpty(archiveName))
-                archiveName = "archive";
-        }
+        // T-F264: the same rule the App and the Explorer menu title use.
+        string archiveName = ArchiveNaming.GetDefaultArchiveName(sourcePaths);
 
         IArchiveCreationRouter router = services.CreateArchiveCreationRouter();
         var options = new ArchiveOptions
@@ -336,19 +318,6 @@ internal sealed class ShellCommands(IOperationUi ui, ShellServices services)
             return;
 
         session.Complete(OperationMessages.ForArchiveResult(title, result));
-    }
-
-    // Returns "name", or "name (1)", "name (2)", ... if "name" already exists under parentDir.
-    private static string GetUniqueFolderName(string parentDir, string name)
-    {
-        if (!Directory.Exists(Path.Combine(parentDir, name)))
-            return name;
-
-        int i = 1;
-        string candidate;
-        do { candidate = $"{name} ({i++})"; }
-        while (Directory.Exists(Path.Combine(parentDir, candidate)));
-        return candidate;
     }
 
     // T-F155/T-F192: one pair of sticky wrappers per Explorer invocation (not per archive), so an

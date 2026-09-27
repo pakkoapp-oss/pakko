@@ -77,6 +77,35 @@ static const std::wstring& GetAppIconPath()
 }
 
 // ---------------------------------------------------------------------------
+// T-F235: shared Invoke body. Explorer ignores Invoke's HRESULT, so anything that stops a command
+// is shown to the user here - a selection with items that have no filesystem path is refused
+// whole (a partial archive the user believes is complete is worse than a refusal), and a launch
+// failure shows its error code.
+// ---------------------------------------------------------------------------
+// MB_TOPMOST: Invoke runs in the dllhost.exe surrogate, which is not the foreground process, so
+// MB_SETFOREGROUND alone can leave the box behind Explorer (same fix as T-F192's prompt).
+static void ShowInvokeError(const std::wstring& text) noexcept
+{
+    (void)MessageBoxW(nullptr, text.c_str(), L"Pakko", MB_OK | MB_ICONERROR | MB_SETFOREGROUND | MB_TOPMOST);
+}
+
+static HRESULT RunShellCommand(IShellItemArray* psia, const std::wstring& commandArgs, bool singleItemOnly = false)
+{
+    const SelectionPaths selection = GetSelectionPaths(psia);
+    if (!selection.complete)
+    {
+        ShowInvokeError(GetLocalizedString(StringId::SelectionNotOnDisk));
+        return E_INVALIDARG;
+    }
+    if (selection.paths.empty() || (singleItemOnly && selection.paths.size() != 1)) return E_INVALIDARG;
+
+    const HRESULT hr = LaunchShellExe(commandArgs, selection.paths);
+    if (FAILED(hr))
+        ShowInvokeError(ApplyTemplate(GetLocalizedString(StringId::LaunchFailedTemplate), FormatHResult(hr)));
+    return hr;
+}
+
+// ---------------------------------------------------------------------------
 // ExtractHereCommand
 // ---------------------------------------------------------------------------
 
@@ -112,7 +141,7 @@ STDMETHODIMP ExtractHereCommand::GetState(IShellItemArray* psia, BOOL, EXPCMDSTA
     if (!pCmdState) return E_POINTER;
     // T-F86: AllPathsAreSupportedArchive also recognizes RAR/7z/tar-family when tar.exe is
     // present - see DECISIONS.md's T-F86 entry.
-    *pCmdState = AllPathsAreSupportedArchive(GetPathsFromShellItemArray(psia)) ? ECS_ENABLED : ECS_HIDDEN;
+    *pCmdState = AllPathsAreSupportedArchive(GetPathsFromShellItemArray(psia), GetMenuPolicy()) ? ECS_ENABLED : ECS_HIDDEN;
     return S_OK;
 }
 
@@ -120,9 +149,7 @@ STDMETHODIMP ExtractHereCommand::Invoke(IShellItemArray* psia, IBindCtx*) noexce
 {
     try
     {
-        const auto paths = GetPathsFromShellItemArray(psia);
-        if (paths.empty()) return E_INVALIDARG;
-        return LaunchShellExe(BuildExtractHereArgs(paths));
+        return RunShellCommand(psia, BuildExtractHereArgs());
     }
     catch (...) { return E_FAIL; }
 }
@@ -175,7 +202,7 @@ STDMETHODIMP ExtractHereFlatCommand::GetCanonicalName(GUID* pguidCommandName) no
 STDMETHODIMP ExtractHereFlatCommand::GetState(IShellItemArray* psia, BOOL, EXPCMDSTATE* pCmdState) noexcept
 {
     if (!pCmdState) return E_POINTER;
-    *pCmdState = AllPathsAreSupportedArchive(GetPathsFromShellItemArray(psia)) ? ECS_ENABLED : ECS_HIDDEN;
+    *pCmdState = AllPathsAreSupportedArchive(GetPathsFromShellItemArray(psia), GetMenuPolicy()) ? ECS_ENABLED : ECS_HIDDEN;
     return S_OK;
 }
 
@@ -183,9 +210,7 @@ STDMETHODIMP ExtractHereFlatCommand::Invoke(IShellItemArray* psia, IBindCtx*) no
 {
     try
     {
-        const auto paths = GetPathsFromShellItemArray(psia);
-        if (paths.empty()) return E_INVALIDARG;
-        return LaunchShellExe(BuildExtractHereFlatArgs(paths));
+        return RunShellCommand(psia, BuildExtractHereFlatArgs());
     }
     catch (...) { return E_FAIL; }
 }
@@ -243,7 +268,7 @@ STDMETHODIMP ExtractFolderCommand::GetState(IShellItemArray* psia, BOOL, EXPCMDS
 {
     if (!pCmdState) return E_POINTER;
     // T-F86: see ExtractHereCommand::GetState above.
-    *pCmdState = AllPathsAreSupportedArchive(GetPathsFromShellItemArray(psia)) ? ECS_ENABLED : ECS_HIDDEN;
+    *pCmdState = AllPathsAreSupportedArchive(GetPathsFromShellItemArray(psia), GetMenuPolicy()) ? ECS_ENABLED : ECS_HIDDEN;
     return S_OK;
 }
 
@@ -251,9 +276,7 @@ STDMETHODIMP ExtractFolderCommand::Invoke(IShellItemArray* psia, IBindCtx*) noex
 {
     try
     {
-        const auto paths = GetPathsFromShellItemArray(psia);
-        if (paths.empty()) return E_INVALIDARG;
-        return LaunchShellExe(BuildExtractFolderArgs(paths));
+        return RunShellCommand(psia, BuildExtractFolderArgs());
     }
     catch (...) { return E_FAIL; }
 }
@@ -310,7 +333,8 @@ STDMETHODIMP ArchiveCommand::GetCanonicalName(GUID* pguidCommandName) noexcept
 STDMETHODIMP ArchiveCommand::GetState(IShellItemArray* psia, BOOL, EXPCMDSTATE* pCmdState) noexcept
 {
     if (!pCmdState) return E_POINTER;
-    *pCmdState = AllPathsAreZip(GetPathsFromShellItemArray(psia)) ? ECS_HIDDEN : ECS_ENABLED;
+    // T-F262: hidden, not refused after the click, when policy blocks ZIP creation.
+    *pCmdState = (AllPathsAreZip(GetPathsFromShellItemArray(psia)) || !IsCreationFormatAllowed(L"zip", GetMenuPolicy())) ? ECS_HIDDEN : ECS_ENABLED;
     return S_OK;
 }
 
@@ -318,9 +342,7 @@ STDMETHODIMP ArchiveCommand::Invoke(IShellItemArray* psia, IBindCtx*) noexcept
 {
     try
     {
-        const auto paths = GetPathsFromShellItemArray(psia);
-        if (paths.empty()) return E_INVALIDARG;
-        return LaunchShellExe(BuildArchiveArgs(paths));
+        return RunShellCommand(psia, BuildArchiveArgs());
     }
     catch (...) { return E_FAIL; }
 }
@@ -377,7 +399,8 @@ STDMETHODIMP TarArchiveCommand::GetCanonicalName(GUID* pguidCommandName) noexcep
 STDMETHODIMP TarArchiveCommand::GetState(IShellItemArray* psia, BOOL, EXPCMDSTATE* pCmdState) noexcept
 {
     if (!pCmdState) return E_POINTER;
-    *pCmdState = AllPathsAreZip(GetPathsFromShellItemArray(psia)) ? ECS_HIDDEN : ECS_ENABLED;
+    // T-F262: hidden under BlockedFormats=tar or DisableTarExtraction=1 (creation runs tar.exe too).
+    *pCmdState = (AllPathsAreZip(GetPathsFromShellItemArray(psia)) || !IsCreationFormatAllowed(L"tar", GetMenuPolicy())) ? ECS_HIDDEN : ECS_ENABLED;
     return S_OK;
 }
 
@@ -385,9 +408,7 @@ STDMETHODIMP TarArchiveCommand::Invoke(IShellItemArray* psia, IBindCtx*) noexcep
 {
     try
     {
-        const auto paths = GetPathsFromShellItemArray(psia);
-        if (paths.empty()) return E_INVALIDARG;
-        return LaunchShellExe(BuildArchiveArgs(paths, L"tar"));
+        return RunShellCommand(psia, BuildArchiveArgs(L"tar"));
     }
     catch (...) { return E_FAIL; }
 }
@@ -449,7 +470,7 @@ STDMETHODIMP TestCommand::GetState(IShellItemArray* psia, BOOL, EXPCMDSTATE* pCm
     // ShellCommands.TestAsync's ZipArchiveService.TestAsync (which silently skips non-zip paths), and report
     // a false "No errors detected" for an archive that was never actually tested. See
     // DECISIONS.md's T-F86 entry.
-    *pCmdState = AnyPathIsZip(GetPathsFromShellItemArray(psia)) ? ECS_ENABLED : ECS_HIDDEN;
+    *pCmdState = AnyPathIsZip(GetPathsFromShellItemArray(psia), GetMenuPolicy()) ? ECS_ENABLED : ECS_HIDDEN;
     return S_OK;
 }
 
@@ -457,9 +478,7 @@ STDMETHODIMP TestCommand::Invoke(IShellItemArray* psia, IBindCtx*) noexcept
 {
     try
     {
-        const auto paths = GetPathsFromShellItemArray(psia);
-        if (paths.empty()) return E_INVALIDARG;
-        return LaunchShellExe(BuildTestArgs(paths));
+        return RunShellCommand(psia, BuildTestArgs());
     }
     catch (...) { return E_FAIL; }
 }
@@ -516,7 +535,7 @@ STDMETHODIMP ScanCommand::GetState(IShellItemArray* psia, BOOL, EXPCMDSTATE* pCm
     // no tar Test method exists), the scan path genuinely supports tar-family archives via
     // AntivirusScanService's own quarantine-extraction flow, so gating this to ZIP-only would
     // silently hide the feature for every non-ZIP archive.
-    *pCmdState = AnyPathIsSupportedArchive(GetPathsFromShellItemArray(psia)) ? ECS_ENABLED : ECS_HIDDEN;
+    *pCmdState = AnyPathIsSupportedArchive(GetPathsFromShellItemArray(psia), GetMenuPolicy()) ? ECS_ENABLED : ECS_HIDDEN;
     return S_OK;
 }
 
@@ -524,9 +543,7 @@ STDMETHODIMP ScanCommand::Invoke(IShellItemArray* psia, IBindCtx*) noexcept
 {
     try
     {
-        const auto paths = GetPathsFromShellItemArray(psia);
-        if (paths.empty()) return E_INVALIDARG;
-        return LaunchShellExe(BuildScanArgs(paths));
+        return RunShellCommand(psia, BuildScanArgs());
     }
     catch (...) { return E_FAIL; }
 }
@@ -586,7 +603,7 @@ STDMETHODIMP ExtractDialogCommand::GetState(IShellItemArray* psia, BOOL, EXPCMDS
     // --open-ui --extract, which opens Archiver.App and routes through IExtractionRouter
     // (MainViewModel/ExtractionRouter), which does support RAR/7z/tar-family (T-F85). No false
     // "tested OK" risk here since a dialog opens rather than a silent pass/fail messagebox.
-    *pCmdState = AnyPathIsSupportedArchive(GetPathsFromShellItemArray(psia)) ? ECS_ENABLED : ECS_HIDDEN;
+    *pCmdState = AnyPathIsSupportedArchive(GetPathsFromShellItemArray(psia), GetMenuPolicy()) ? ECS_ENABLED : ECS_HIDDEN;
     return S_OK;
 }
 
@@ -594,9 +611,7 @@ STDMETHODIMP ExtractDialogCommand::Invoke(IShellItemArray* psia, IBindCtx*) noex
 {
     try
     {
-        const auto paths = GetPathsFromShellItemArray(psia);
-        if (paths.empty()) return E_INVALIDARG;
-        return LaunchShellExe(BuildOpenUiExtractArgs(paths));
+        return RunShellCommand(psia, BuildOpenUiExtractArgs());
     }
     catch (...) { return E_FAIL; }
 }
@@ -659,9 +674,7 @@ STDMETHODIMP CompressDialogCommand::Invoke(IShellItemArray* psia, IBindCtx*) noe
 {
     try
     {
-        const auto paths = GetPathsFromShellItemArray(psia);
-        if (paths.empty()) return E_INVALIDARG;
-        return LaunchShellExe(BuildOpenUiArchiveArgs(paths));
+        return RunShellCommand(psia, BuildOpenUiArchiveArgs());
     }
     catch (...) { return E_FAIL; }
 }
@@ -719,7 +732,7 @@ STDMETHODIMP BrowseCommand::GetState(IShellItemArray* psia, BOOL, EXPCMDSTATE* p
     // exactly one path, AllPathsAreSupportedArchive/AnyPathIsSupportedArchive are equivalent, so
     // no new predicate is needed.
     const auto paths = GetPathsFromShellItemArray(psia);
-    *pCmdState = (paths.size() == 1 && AllPathsAreSupportedArchive(paths)) ? ECS_ENABLED : ECS_HIDDEN;
+    *pCmdState = (paths.size() == 1 && AllPathsAreSupportedArchive(paths, GetMenuPolicy())) ? ECS_ENABLED : ECS_HIDDEN;
     return S_OK;
 }
 
@@ -727,9 +740,7 @@ STDMETHODIMP BrowseCommand::Invoke(IShellItemArray* psia, IBindCtx*) noexcept
 {
     try
     {
-        const auto paths = GetPathsFromShellItemArray(psia);
-        if (paths.size() != 1) return E_INVALIDARG;
-        return LaunchShellExe(BuildOpenUiBrowseArgs(paths));
+        return RunShellCommand(psia, BuildOpenUiBrowseArgs(), true);
     }
     catch (...) { return E_FAIL; }
 }
@@ -791,9 +802,7 @@ STDMETHODIMP HashCrc32Command::Invoke(IShellItemArray* psia, IBindCtx*) noexcept
 {
     try
     {
-        const auto paths = GetPathsFromShellItemArray(psia);
-        if (paths.empty()) return E_INVALIDARG;
-        return LaunchShellExe(BuildHashArgs(paths, L"crc32"));
+        return RunShellCommand(psia, BuildHashArgs(L"crc32"));
     }
     catch (...) { return E_FAIL; }
 }
@@ -851,9 +860,7 @@ STDMETHODIMP HashSha256Command::Invoke(IShellItemArray* psia, IBindCtx*) noexcep
 {
     try
     {
-        const auto paths = GetPathsFromShellItemArray(psia);
-        if (paths.empty()) return E_INVALIDARG;
-        return LaunchShellExe(BuildHashArgs(paths, L"sha256"));
+        return RunShellCommand(psia, BuildHashArgs(L"sha256"));
     }
     catch (...) { return E_FAIL; }
 }

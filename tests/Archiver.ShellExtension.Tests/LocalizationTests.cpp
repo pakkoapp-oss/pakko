@@ -85,6 +85,35 @@ TEST(LocalizationDataIntegrity, EveryLocaleArchiveNamedTemplateContainsPlacehold
     }
 }
 
+// T-F235
+TEST(LocalizationDataIntegrity, EveryLocaleLaunchFailedTemplateContainsPlaceholderExactlyOnce)
+{
+    for (const wchar_t* tag : kAllLocaleTags)
+    {
+        const auto s = GetLocalizedString(StringId::LaunchFailedTemplate, tag);
+        const auto first = s.find(L"{0}");
+        EXPECT_NE(first, std::wstring::npos) << "locale: " << tag;
+        EXPECT_EQ(s.find(L"{0}", first + 1), std::wstring::npos) << "locale: " << tag;
+    }
+}
+
+TEST(LocalizationDataIntegrity, EveryLocaleSelectionNotOnDiskIsTranslated)
+{
+    for (const wchar_t* tag : kAllLocaleTags)
+    {
+        const auto s = GetLocalizedString(StringId::SelectionNotOnDisk, tag);
+        EXPECT_FALSE(s.empty()) << "locale: " << tag;
+        if (std::wstring(tag) != L"en-US")
+            EXPECT_NE(s, GetLocalizedString(StringId::SelectionNotOnDisk, L"en-US")) << "locale: " << tag;
+    }
+}
+
+TEST(GetLocalizedString, LaunchFailedTemplateEnUS)
+{
+    EXPECT_EQ(ApplyTemplate(GetLocalizedString(StringId::LaunchFailedTemplate, L"en-US"), L"0x80070002"),
+        L"Pakko could not start this command (error 0x80070002).");
+}
+
 TEST(LocalizationDataIntegrity, EveryLocaleResolvesToItselfNotTheEnUSFallback)
 {
     // A typo'd/missing map key would silently resolve to en-US instead - catch that directly by

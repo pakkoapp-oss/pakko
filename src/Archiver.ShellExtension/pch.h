@@ -16,5 +16,6 @@
 
 #include <string>
 #include <vector>
+#include <optional>
 #include <mutex>
 #include <algorithm>

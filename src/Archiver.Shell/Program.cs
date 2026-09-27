@@ -16,6 +16,20 @@ if (command.Type == CommandType.Invalid)
     return;
 }
 
+// T-F235: Explorer's selection comes on stdin. A list that is missing or cut short is rejected
+// whole, and said so - never a silent exit.
+if (command.FilesFromStdin)
+{
+    StdinPathListResult list = StdinPathList.Read(Console.OpenStandardInput());
+    if (list.Error is not null)
+    {
+        new Win32OperationUi().ShowMessage(OperationMessages.ForSelectionNotReceived());
+        Environment.Exit(1);
+        return;
+    }
+    command = command with { Files = list.Paths };
+}
+
 // T-F268: every window these commands show goes through IOperationUi. The WinUI operation window
 // helper is used when it starts; Win32OperationUi (the native dialogs) is its fallback.
 var ui = new HelperOperationUi(new HelperProcessLauncher(), new Win32OperationUi());

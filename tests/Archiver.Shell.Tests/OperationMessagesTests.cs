@@ -214,4 +214,15 @@ public sealed class OperationMessagesTests : IDisposable
     {
         OperationMessages.ForLaunch(AppLaunchResult.Launched).Should().BeNull();
     }
+
+    // T-F235: a rejected stdin path list must not end the command silently.
+    [Fact]
+    public void ForSelectionNotReceived_IsAnErrorSayingTheOperationFailed()
+    {
+        OperationMessage message = OperationMessages.ForSelectionNotReceived();
+
+        message.Title.Should().Be("Pakko");
+        message.Severity.Should().Be(MessageSeverity.Error);
+        message.Text.Should().Be(ResultMessagesLocalizer.Get("ResultOperationFailed"));
+    }
 }

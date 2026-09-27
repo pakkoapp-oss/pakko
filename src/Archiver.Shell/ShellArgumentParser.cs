@@ -33,6 +33,10 @@ public sealed record ParsedCommand
     // T-F128: only Hash uses this — set from the required "--algorithm crc32|sha256" pair right
     // after "--hash" (unlike Format above, there's no default: BuildHashArgs always emits it).
     public HashAlgorithmKind Algorithm { get; init; } = HashAlgorithmKind.Sha256;
+
+    // T-F235: the file list follows on stdin (StdinPathList) instead of the command line; Files
+    // stays empty until Program.cs has read it.
+    public bool FilesFromStdin { get; init; }
 }
 
 /// <summary>
@@ -82,11 +86,7 @@ public static class ShellArgumentParser
         if ((int)algorithm == -1)
             return Invalid($"Unknown --algorithm value: {rest[1]}");
 
-        rest = rest[2..];
-        if (rest.Length == 0)
-            return Invalid("--hash requires at least one file.");
-
-        return new ParsedCommand { Type = CommandType.Hash, Files = rest, Algorithm = algorithm };
+        return WithFiles(new ParsedCommand { Type = CommandType.Hash, Algorithm = algorithm }, rest[2..], "--hash");
     }
 
     // T-F105: "--archive" alone means ZIP (unchanged pre-existing behavior); an optional
@@ -117,10 +117,7 @@ public static class ShellArgumentParser
             rest = rest[2..];
         }
 
-        if (rest.Length == 0)
-            return Invalid("--archive requires at least one file.");
-
-        return new ParsedCommand { Type = CommandType.Archive, Files = rest, Format = format };
+        return WithFiles(new ParsedCommand { Type = CommandType.Archive, Format = format }, rest, "--archive");
     }
 
     private static ParsedCommand ParseOpenUi(string[] args)
@@ -128,24 +125,33 @@ public static class ShellArgumentParser
         if (args.Length < 3)
             return Invalid("--open-ui requires a sub-command and at least one file.");
 
-        var files = (IReadOnlyList<string>)args[2..];
-
-        return args[1] switch
+        CommandType? type = args[1] switch
         {
-            "--extract" => new ParsedCommand { Type = CommandType.OpenUiExtract, Files = files },
-            "--archive" => new ParsedCommand { Type = CommandType.OpenUiArchive, Files = files },
-            "--browse"  => new ParsedCommand { Type = CommandType.OpenUiBrowse, Files = files },
-            var other   => Invalid($"Unknown --open-ui sub-command: {other}"),
+            "--extract" => CommandType.OpenUiExtract,
+            "--archive" => CommandType.OpenUiArchive,
+            "--browse"  => CommandType.OpenUiBrowse,
+            _           => null,
         };
+        return type is { } known
+            ? WithFiles(new ParsedCommand { Type = known }, args[2..], "--open-ui")
+            : Invalid($"Unknown --open-ui sub-command: {args[1]}");
     }
 
-    private static ParsedCommand ParseFileList(CommandType type, string[] args)
-    {
-        string[] files = args[1..];
-        if (files.Length == 0)
-            return Invalid($"{args[0]} requires at least one file.");
+    private static ParsedCommand ParseFileList(CommandType type, string[] args) =>
+        WithFiles(new ParsedCommand { Type = type }, args[1..], args[0]);
 
-        return new ParsedCommand { Type = type, Files = files };
+    // T-F235: "--paths-stdin" alone in place of the file list means the list follows on stdin
+    // (Archiver.ShellExtension.dll always sends it that way); plain path arguments keep working.
+    private static ParsedCommand WithFiles(ParsedCommand command, string[] files, string commandName)
+    {
+        if (files is [StdinPathList.Flag])
+            return command with { FilesFromStdin = true };
+        if (Array.IndexOf(files, StdinPathList.Flag) >= 0)
+            return Invalid($"{StdinPathList.Flag} cannot be combined with file arguments.");
+        if (files.Length == 0)
+            return Invalid($"{commandName} requires at least one file.");
+
+        return command with { Files = files };
     }
 
     private static ParsedCommand Invalid(string message) =>
