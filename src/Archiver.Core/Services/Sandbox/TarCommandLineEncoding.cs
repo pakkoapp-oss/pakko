@@ -36,7 +36,7 @@ internal static class TarCommandLineEncoding
         if (byteCount <= 0)
             return false;
 
-        var bytes = new byte[byteCount];
+        byte[] bytes = new byte[byteCount];
         int usedDefault = 0;
         int written = utf8
             ? WideCharToMultiByte(codePage, flags, value, value.Length, bytes, bytes.Length, IntPtr.Zero, IntPtr.Zero)
@@ -48,7 +48,7 @@ internal static class TarCommandLineEncoding
         if (charCount != value.Length)
             return false;
 
-        var roundTrip = new char[charCount];
+        char[] roundTrip = new char[charCount];
         return MultiByteToWideChar(codePage, MbErrInvalidChars, bytes, bytes.Length, roundTrip, roundTrip.Length) == charCount
             && value.AsSpan().SequenceEqual(roundTrip);
     }

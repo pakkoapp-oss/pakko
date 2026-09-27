@@ -19,7 +19,7 @@ public sealed class StickyCallbackTests
     public async Task ResolveAsync_FirstCall_AlwaysInvokesInner()
     {
         int calls = 0;
-        var sticky = Conflicts(_ => { calls++; return Task.FromResult(new ConflictDecision { Resolution = ConflictResolution.Skip }); });
+        StickyCallback<ConflictInfo, ConflictDecision> sticky = Conflicts(_ => { calls++; return Task.FromResult(new ConflictDecision { Resolution = ConflictResolution.Skip }); });
 
         await sticky.ResolveAsync(Conflict());
 
@@ -30,7 +30,7 @@ public sealed class StickyCallbackTests
     public async Task ResolveAsync_NonStickyDecision_InvokesInnerAgainOnNextCall()
     {
         int calls = 0;
-        var sticky = Conflicts(_ => { calls++; return Task.FromResult(new ConflictDecision { Resolution = ConflictResolution.Overwrite }); });
+        StickyCallback<ConflictInfo, ConflictDecision> sticky = Conflicts(_ => { calls++; return Task.FromResult(new ConflictDecision { Resolution = ConflictResolution.Overwrite }); });
 
         await sticky.ResolveAsync(Conflict("a.txt"));
         await sticky.ResolveAsync(Conflict("b.txt"));
@@ -42,15 +42,15 @@ public sealed class StickyCallbackTests
     public async Task ResolveAsync_StickyDecision_ShortCircuitsEverySubsequentCallWithTheSameDecision()
     {
         int calls = 0;
-        var sticky = Conflicts(_ =>
+        StickyCallback<ConflictInfo, ConflictDecision> sticky = Conflicts(_ =>
         {
             calls++;
             return Task.FromResult(new ConflictDecision { Resolution = ConflictResolution.Rename, ApplyToAll = true });
         });
 
-        var first = await sticky.ResolveAsync(Conflict("a.txt"));
-        var second = await sticky.ResolveAsync(Conflict("b.txt"));
-        var third = await sticky.ResolveAsync(Conflict("c.txt"));
+        ConflictDecision first = await sticky.ResolveAsync(Conflict("a.txt"));
+        ConflictDecision second = await sticky.ResolveAsync(Conflict("b.txt"));
+        ConflictDecision third = await sticky.ResolveAsync(Conflict("c.txt"));
 
         calls.Should().Be(1);
         second.Should().BeSameAs(first);

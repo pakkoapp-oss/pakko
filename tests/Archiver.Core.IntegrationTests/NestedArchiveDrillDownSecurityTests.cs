@@ -39,7 +39,7 @@ public sealed class NestedArchiveDrillDownSecurityTests : IDisposable
         // exactly as NavigateIntoNestedArchiveAsync does. The outer archive itself isn't bomb-shaped,
         // so this must succeed normally.
         string scopeDir = Path.Combine(_temp.Path, "scope1");
-        var level1Result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult level1Result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [outerArchivePath],
             DestinationFolder = scopeDir,
@@ -55,7 +55,7 @@ public sealed class NestedArchiveDrillDownSecurityTests : IDisposable
         // compression-ratio check (T-F90/T-F94) must fire again here, independently of the outer
         // level having been clean, with no confirm callback wired (auto-decline default).
         string destDir = Path.Combine(_temp.Path, "out");
-        var level2Result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult level2Result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [extractedNestedPath],
             DestinationFolder = destDir,

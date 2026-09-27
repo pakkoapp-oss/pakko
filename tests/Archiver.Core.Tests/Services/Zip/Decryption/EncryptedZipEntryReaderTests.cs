@@ -15,7 +15,7 @@ public sealed class EncryptedZipEntryReaderTests
     [Fact]
     public void TryOpen_ZipCryptoCorrectPassword_ReturnsByteExactContent()
     {
-        var (result, content) = EncryptedZipEntryReader.TryOpen(
+        (EncryptedZipReadResult result, Stream? content) = EncryptedZipEntryReader.TryOpen(
             FixtureHelper.Archive("encrypted_zipcrypto_real.zip"), "compressible.txt", RealPassword);
 
         result.Should().Be(EncryptedZipReadResult.Success);
@@ -25,7 +25,7 @@ public sealed class EncryptedZipEntryReaderTests
     [Fact]
     public void TryOpen_Bzip2UnderAesCorrectPassword_ReturnsUnsupportedCompressionMethod()
     {
-        var (result, content) = EncryptedZipEntryReader.TryOpen(
+        (EncryptedZipReadResult result, Stream? content) = EncryptedZipEntryReader.TryOpen(
             FixtureHelper.Archive("encrypted_aes256_bzip2.zip"), "compressible.txt", RealPassword);
 
         result.Should().Be(EncryptedZipReadResult.UnsupportedCompressionMethod);
@@ -59,7 +59,7 @@ public sealed class EncryptedZipEntryReaderTests
     [Fact]
     public void TryOpen_Bzip2UnderAesWrongPassword_StillReportsWrongPasswordFirst()
     {
-        var (result, _) = EncryptedZipEntryReader.TryOpen(
+        (EncryptedZipReadResult result, _) = EncryptedZipEntryReader.TryOpen(
             FixtureHelper.Archive("encrypted_aes256_bzip2.zip"), "compressible.txt", "definitely-wrong");
 
         result.Should().Be(EncryptedZipReadResult.WrongPassword);
@@ -68,7 +68,7 @@ public sealed class EncryptedZipEntryReaderTests
     [Fact]
     public void TryOpen_Aes256CorrectPassword_ReturnsByteExactContent()
     {
-        var (result, content) = EncryptedZipEntryReader.TryOpen(
+        (EncryptedZipReadResult result, Stream? content) = EncryptedZipEntryReader.TryOpen(
             FixtureHelper.Archive("encrypted_aes256.zip"), "compressible.txt", RealPassword);
 
         result.Should().Be(EncryptedZipReadResult.Success);
@@ -78,7 +78,7 @@ public sealed class EncryptedZipEntryReaderTests
     [Fact]
     public void TryOpen_Aes128CorrectPassword_ReturnsByteExactContent()
     {
-        var (result, content) = EncryptedZipEntryReader.TryOpen(
+        (EncryptedZipReadResult result, Stream? content) = EncryptedZipEntryReader.TryOpen(
             FixtureHelper.Archive("encrypted_aes128.zip"), "compressible.txt", RealPassword);
 
         result.Should().Be(EncryptedZipReadResult.Success);
@@ -88,7 +88,7 @@ public sealed class EncryptedZipEntryReaderTests
     [Fact]
     public void TryOpen_SyntheticAe1CorrectPassword_VerifiesStoredCrcAndReturnsContent()
     {
-        var (result, content) = EncryptedZipEntryReader.TryOpen(
+        (EncryptedZipReadResult result, Stream? content) = EncryptedZipEntryReader.TryOpen(
             FixtureHelper.Archive("encrypted_aes256_ae1.zip"), "compressible.txt", RealPassword);
 
         result.Should().Be(EncryptedZipReadResult.Success);
@@ -98,7 +98,7 @@ public sealed class EncryptedZipEntryReaderTests
     [Fact]
     public void TryOpen_MixedArchiveEncryptedEntry_DecryptsIndependentlyOfPlainEntry()
     {
-        var (result, content) = EncryptedZipEntryReader.TryOpen(
+        (EncryptedZipReadResult result, Stream? content) = EncryptedZipEntryReader.TryOpen(
             FixtureHelper.Archive("mixed_encrypted_and_plain.zip"), "compressible.txt", RealPassword);
 
         result.Should().Be(EncryptedZipReadResult.Success);
@@ -113,7 +113,7 @@ public sealed class EncryptedZipEntryReaderTests
     [InlineData("encrypted_aes128.zip")]
     public void TryOpen_WrongPassword_ReturnsWrongPasswordWithNoContent(string fixture)
     {
-        var (result, content) = EncryptedZipEntryReader.TryOpen(
+        (EncryptedZipReadResult result, Stream? content) = EncryptedZipEntryReader.TryOpen(
             FixtureHelper.Archive(fixture), "compressible.txt", "not-the-real-password");
 
         result.Should().Be(EncryptedZipReadResult.WrongPassword);
@@ -123,7 +123,7 @@ public sealed class EncryptedZipEntryReaderTests
     [Fact]
     public void TryOpen_TamperedAesCiphertext_HmacRejectsEvenWithCorrectPassword()
     {
-        var (result, content) = EncryptedZipEntryReader.TryOpen(
+        (EncryptedZipReadResult result, Stream? content) = EncryptedZipEntryReader.TryOpen(
             FixtureHelper.Archive("encrypted_aes256_tampered.zip"), "compressible.txt", RealPassword);
 
         result.Should().Be(EncryptedZipReadResult.Corrupted);
@@ -133,11 +133,11 @@ public sealed class EncryptedZipEntryReaderTests
     [Fact]
     public void TryOpen_EmptyPassword_TreatedAsWrongPasswordNotAnException()
     {
-        var act = () => EncryptedZipEntryReader.TryOpen(
+        Func<(EncryptedZipReadResult Result, Stream? Content)> act = () => EncryptedZipEntryReader.TryOpen(
             FixtureHelper.Archive("encrypted_aes256.zip"), "compressible.txt", string.Empty);
 
         act.Should().NotThrow();
-        var (result, _) = EncryptedZipEntryReader.TryOpen(
+        (EncryptedZipReadResult result, _) = EncryptedZipEntryReader.TryOpen(
             FixtureHelper.Archive("encrypted_aes256.zip"), "compressible.txt", string.Empty);
         result.Should().Be(EncryptedZipReadResult.WrongPassword);
     }
@@ -150,7 +150,7 @@ public sealed class EncryptedZipEntryReaderTests
         // EncryptedZipEntryReader is only ever meant to be invoked after IsEncryptedZip/the
         // per-entry general-purpose bit already gated the call — calling it on an unencrypted
         // entry is a programmer error, not a runtime condition to swallow silently.
-        var act = () => EncryptedZipEntryReader.TryOpen(
+        Func<(EncryptedZipReadResult Result, Stream? Content)> act = () => EncryptedZipEntryReader.TryOpen(
             FixtureHelper.Archive("mixed_encrypted_and_plain.zip"), "readme.txt", RealPassword);
 
         act.Should().Throw<InvalidOperationException>();
@@ -159,7 +159,7 @@ public sealed class EncryptedZipEntryReaderTests
     [Fact]
     public void TryOpen_EntryNameNotInArchive_PropagatesFileNotFound()
     {
-        var act = () => EncryptedZipEntryReader.TryOpen(
+        Func<(EncryptedZipReadResult Result, Stream? Content)> act = () => EncryptedZipEntryReader.TryOpen(
             FixtureHelper.Archive("encrypted_aes256.zip"), "nope.txt", RealPassword);
 
         act.Should().Throw<FileNotFoundException>();

@@ -35,7 +35,7 @@ internal sealed class ExtractionStaging : IDisposable
                 $"{NamePrefix}{Environment.ProcessId}-{Guid.NewGuid():N}");
         } while (Directory.Exists(path) || File.Exists(path));
 
-        var info = Directory.CreateDirectory(path);
+        DirectoryInfo info = Directory.CreateDirectory(path);
         info.Attributes |= FileAttributes.Hidden;
         return new ExtractionStaging(path);
     }

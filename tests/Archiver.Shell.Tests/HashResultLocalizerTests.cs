@@ -27,7 +27,7 @@ public sealed class HashResultLocalizerTests
     [Fact]
     public void Get_UkrainianCulture_ReturnsTranslatedText()
     {
-        var original = CultureInfo.CurrentUICulture;
+        CultureInfo original = CultureInfo.CurrentUICulture;
         try
         {
             CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("uk-UA");

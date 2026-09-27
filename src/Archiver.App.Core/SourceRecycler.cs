@@ -34,7 +34,7 @@ public sealed class SourceRecycler(ISourceDeleteOperations ops)
     public async Task<IReadOnlyList<string>> DeleteAsync(
         IEnumerable<string> sources, Func<IReadOnlyList<string>, Task<bool>> confirmPermanentDeleteAsync)
     {
-        var (notDeleted, permanent) = await Task.Run(() => RecycleLocalSources(sources));
+        (List<string>? notDeleted, List<(string Source, string Final)>? permanent) = await Task.Run(() => RecycleLocalSources(sources));
 
         // Declined items are the user's own choice, not a failure — they are not reported.
         if (permanent.Count > 0 && await confirmPermanentDeleteAsync([.. permanent.Select(p => p.Source)]))
@@ -79,7 +79,7 @@ public sealed class SourceRecycler(ISourceDeleteOperations ops)
     private List<string> DeletePermanently(List<(string Source, string Final)> permanent)
     {
         var notDeleted = new List<string>();
-        foreach (var (source, final) in permanent)
+        foreach ((string? source, string? final) in permanent)
         {
             try { ops.DeletePermanently(final); }
             catch { /* reported below: still on disk */ }

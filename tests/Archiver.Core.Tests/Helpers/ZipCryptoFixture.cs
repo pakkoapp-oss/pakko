@@ -19,7 +19,7 @@ internal static class ZipCryptoFixture
         uint crc = Crc32.Compute(new MemoryStream(content));
         byte checkByte = dataDescriptor ? (byte)(DosTime >> 8) : (byte)(crc >> 24);
 
-        var header = new byte[12];
+        byte[] header = new byte[12];
         new Random(headerSeed).NextBytes(header);
         header[11] = checkByte;
         byte[] plain = [.. header, .. content];

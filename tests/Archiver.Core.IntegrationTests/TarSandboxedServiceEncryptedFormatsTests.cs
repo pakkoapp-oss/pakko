@@ -29,7 +29,7 @@ public sealed class TarSandboxedServiceEncryptedFormatsTests : IDisposable
     [SkipIfFormatUnsupported("7z")]
     public async Task ExtractAsync_Encrypted7z_DataOnly_FailsWithCleanMessage()
     {
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [FixturePath("encrypted.7z")],
             DestinationFolder = Path.Combine(_temp.Path, "out"),
@@ -43,7 +43,7 @@ public sealed class TarSandboxedServiceEncryptedFormatsTests : IDisposable
     [SkipIfFormatUnsupported("7z")]
     public async Task ExtractAsync_Encrypted7z_HeaderEncrypted_FailsWithCleanMessage()
     {
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [FixturePath("encrypted_headers.7z")],
             DestinationFolder = Path.Combine(_temp.Path, "out"),
@@ -59,7 +59,7 @@ public sealed class TarSandboxedServiceEncryptedFormatsTests : IDisposable
     {
         // Data-only encryption doesn't encrypt filenames — listing should still succeed,
         // matching ZipArchiveService.ListEntriesAsync's parity for an encrypted ZIP.
-        var result = await _sut.ListEntriesAsync(FixturePath("encrypted.7z"));
+        ArchiveListResult result = await _sut.ListEntriesAsync(FixturePath("encrypted.7z"));
 
         result.Success.Should().BeTrue();
         result.Entries.Should().ContainSingle(e => e.Path == "entry.txt");
@@ -68,7 +68,7 @@ public sealed class TarSandboxedServiceEncryptedFormatsTests : IDisposable
     [SkipIfFormatUnsupported("7z")]
     public async Task ListEntriesAsync_Encrypted7z_HeaderEncrypted_FailsWithCleanMessage()
     {
-        var result = await _sut.ListEntriesAsync(FixturePath("encrypted_headers.7z"));
+        ArchiveListResult result = await _sut.ListEntriesAsync(FixturePath("encrypted_headers.7z"));
 
         result.Success.Should().BeFalse();
         result.ErrorMessage.Should().Be(ExpectedBrowseMessage);
@@ -77,7 +77,7 @@ public sealed class TarSandboxedServiceEncryptedFormatsTests : IDisposable
     [SkipIfFormatUnsupported("rar")]
     public async Task ExtractAsync_EncryptedRar_DataOnly_FailsWithCleanMessage()
     {
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [FixturePath("encrypted.rar")],
             DestinationFolder = Path.Combine(_temp.Path, "out"),
@@ -91,7 +91,7 @@ public sealed class TarSandboxedServiceEncryptedFormatsTests : IDisposable
     [SkipIfFormatUnsupported("rar")]
     public async Task ExtractAsync_EncryptedRar_HeaderEncrypted_FailsWithCleanMessage()
     {
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [FixturePath("encrypted_headers.rar")],
             DestinationFolder = Path.Combine(_temp.Path, "out"),
@@ -107,7 +107,7 @@ public sealed class TarSandboxedServiceEncryptedFormatsTests : IDisposable
     {
         // Same parity as the 7z case above — RAR's proactive check (IsRarHeaderEncrypted) is
         // deliberately narrower than the one ExtractAsync uses, so browsing still works here.
-        var result = await _sut.ListEntriesAsync(FixturePath("encrypted.rar"));
+        ArchiveListResult result = await _sut.ListEntriesAsync(FixturePath("encrypted.rar"));
 
         result.Success.Should().BeTrue();
         result.Entries.Should().ContainSingle(e => e.Path == "entry.txt");
@@ -116,7 +116,7 @@ public sealed class TarSandboxedServiceEncryptedFormatsTests : IDisposable
     [SkipIfFormatUnsupported("rar")]
     public async Task ListEntriesAsync_EncryptedRar_HeaderEncrypted_FailsWithCleanMessage()
     {
-        var result = await _sut.ListEntriesAsync(FixturePath("encrypted_headers.rar"));
+        ArchiveListResult result = await _sut.ListEntriesAsync(FixturePath("encrypted_headers.rar"));
 
         result.Success.Should().BeFalse();
         result.ErrorMessage.Should().Be(ExpectedBrowseMessage);

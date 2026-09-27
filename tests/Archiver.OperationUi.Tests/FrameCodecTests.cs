@@ -38,7 +38,7 @@ public sealed class FrameCodecTests
     [MemberData(nameof(EveryMessage))]
     public async Task EveryMessage_RoundTrips(ProtocolMessage message)
     {
-        var decoded = await RoundTripAsync(message);
+        ProtocolMessage decoded = await RoundTripAsync(message);
 
         decoded.Should().BeOfType(message.GetType());
         // Records compare by value, but a dictionary member compares by reference.
@@ -96,7 +96,7 @@ public sealed class FrameCodecTests
         using var client = new AnonymousPipeClientStream(PipeDirection.In, server.ClientSafePipeHandle);
         using var writer = new MessageWriter(server);
 
-        var read = Task.Run(() => FrameCodec.ReadAsync(client, CancellationToken.None));
+        Task<ProtocolMessage?> read = Task.Run(() => FrameCodec.ReadAsync(client, CancellationToken.None));
         await writer.WriteAsync(new AskPassword(1, "секрет.zip", 1, false, false), CancellationToken.None);
 
         (await read).Should().Be(new AskPassword(1, "секрет.zip", 1, false, false));
@@ -109,7 +109,7 @@ public sealed class FrameCodecTests
     {
         var message = new AskConflict(1, @"D:\" + new string('ї', MaxPathChars - 3), null, null, false);
 
-        var decoded = await RoundTripAsync(message);
+        ProtocolMessage decoded = await RoundTripAsync(message);
 
         decoded.Should().Be(message);
     }
@@ -120,7 +120,7 @@ public sealed class FrameCodecTests
         string line = new string('є', MaxPathChars) + ": доступ заборонено";
         var message = new Complete(new ResultText(ResultSeverity.Error, "Розпакування", string.Join('\n', Enumerable.Repeat(line, 10))));
 
-        var decoded = await RoundTripAsync(message);
+        ProtocolMessage decoded = await RoundTripAsync(message);
 
         decoded.Should().Be(message);
     }
@@ -140,7 +140,7 @@ public sealed class FrameCodecTests
     [InlineData(int.MaxValue)]
     public async Task InvalidLengthField_IsRejected(int length)
     {
-        var header = new byte[4];
+        byte[] header = new byte[4];
         BinaryPrimitives.WriteInt32LittleEndian(header, length);
 
         await FluentActions.Awaiting(() => FrameCodec.ReadAsync(new MemoryStream(header), CancellationToken.None))
@@ -160,7 +160,7 @@ public sealed class FrameCodecTests
     {
         byte[] payload = Encoding.UTF8.GetBytes("{\"type\":\"passwordAnswer\",\"requestId\":1,\"password\":\"correct horse\",\"applyToRemaining\":\"oops\"}");
 
-        var error = FluentActions.Invoking(() => FrameCodec.Decode(payload)).Should().Throw<ProtocolException>().Which;
+        ProtocolException error = FluentActions.Invoking(() => FrameCodec.Decode(payload)).Should().Throw<ProtocolException>().Which;
 
         error.ToString().Should().NotContain("correct horse");
         error.InnerException.Should().BeNull();

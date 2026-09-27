@@ -36,7 +36,7 @@ public sealed class TarSandboxedServiceCompressTests : IDisposable
     private async Task<string> ExtractAndReadAsync(string archivePath, string relativeEntryPath)
     {
         string destDir = Path.Combine(_temp.Path, "extract-" + Path.GetRandomFileName());
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [archivePath],
             DestinationFolder = destDir,
@@ -98,7 +98,7 @@ public sealed class TarSandboxedServiceCompressTests : IDisposable
         File.WriteAllText(fileA, "content from A");
         File.WriteAllText(fileB, "content from B");
 
-        var result = await _sut.CompressAsync(new ArchiveOptions
+        ArchiveResult result = await _sut.CompressAsync(new ArchiveOptions
         {
             SourcePaths = [fileA, fileB],
             DestinationFolder = _temp.Path,
@@ -108,7 +108,7 @@ public sealed class TarSandboxedServiceCompressTests : IDisposable
 
         result.Success.Should().BeTrue(because: string.Join("; ", result.Errors.Select(e => e.Message)));
         string destDir = Path.Combine(_temp.Path, "extract-" + Path.GetRandomFileName());
-        var extractResult = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult extractResult = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [Path.Combine(_temp.Path, "dup_files.tar")],
             DestinationFolder = destDir,
@@ -137,7 +137,7 @@ public sealed class TarSandboxedServiceCompressTests : IDisposable
         string srcFile = Path.Combine(_temp.Path, "r＂ --version ＂.txt");
         File.WriteAllText(srcFile, "x");
 
-        var result = await _sut.CompressAsync(new ArchiveOptions
+        ArchiveResult result = await _sut.CompressAsync(new ArchiveOptions
         {
             SourcePaths = [srcFile],
             DestinationFolder = _temp.Path,
@@ -165,7 +165,7 @@ public sealed class TarSandboxedServiceCompressTests : IDisposable
         string good = Path.Combine(_temp.Path, "good.txt");
         File.WriteAllText(good, "good");
 
-        var result = await _sut.CompressAsync(new ArchiveOptions
+        ArchiveResult result = await _sut.CompressAsync(new ArchiveOptions
         {
             SourcePaths = [badDir, good],
             DestinationFolder = _temp.Path,
@@ -185,7 +185,7 @@ public sealed class TarSandboxedServiceCompressTests : IDisposable
         string srcFile = Path.Combine(_temp.Path, "a.txt");
         File.WriteAllText(srcFile, "hello tar");
 
-        var result = await _sut.CompressAsync(new ArchiveOptions
+        ArchiveResult result = await _sut.CompressAsync(new ArchiveOptions
         {
             SourcePaths = [srcFile],
             DestinationFolder = _temp.Path,
@@ -205,7 +205,7 @@ public sealed class TarSandboxedServiceCompressTests : IDisposable
         string srcFile = Path.Combine(_temp.Path, "a.txt");
         File.WriteAllText(srcFile, "hello tar.gz");
 
-        var result = await _sut.CompressAsync(new ArchiveOptions
+        ArchiveResult result = await _sut.CompressAsync(new ArchiveOptions
         {
             SourcePaths = [srcFile],
             DestinationFolder = _temp.Path,
@@ -225,7 +225,7 @@ public sealed class TarSandboxedServiceCompressTests : IDisposable
         string srcFile = Path.Combine(_temp.Path, "a.txt");
         File.WriteAllText(srcFile, "hello tar.bz2");
 
-        var result = await _sut.CompressAsync(new ArchiveOptions
+        ArchiveResult result = await _sut.CompressAsync(new ArchiveOptions
         {
             SourcePaths = [srcFile],
             DestinationFolder = _temp.Path,
@@ -243,7 +243,7 @@ public sealed class TarSandboxedServiceCompressTests : IDisposable
         string srcFile = Path.Combine(_temp.Path, "a.txt");
         File.WriteAllText(srcFile, "hello tar.xz");
 
-        var result = await _sut.CompressAsync(new ArchiveOptions
+        ArchiveResult result = await _sut.CompressAsync(new ArchiveOptions
         {
             SourcePaths = [srcFile],
             DestinationFolder = _temp.Path,
@@ -261,7 +261,7 @@ public sealed class TarSandboxedServiceCompressTests : IDisposable
         string srcFile = Path.Combine(_temp.Path, "a.txt");
         File.WriteAllText(srcFile, "hello tar.zst");
 
-        var result = await _sut.CompressAsync(new ArchiveOptions
+        ArchiveResult result = await _sut.CompressAsync(new ArchiveOptions
         {
             SourcePaths = [srcFile],
             DestinationFolder = _temp.Path,
@@ -279,7 +279,7 @@ public sealed class TarSandboxedServiceCompressTests : IDisposable
         string srcFile = Path.Combine(_temp.Path, "a.txt");
         File.WriteAllText(srcFile, "hello tar.lzma");
 
-        var result = await _sut.CompressAsync(new ArchiveOptions
+        ArchiveResult result = await _sut.CompressAsync(new ArchiveOptions
         {
             SourcePaths = [srcFile],
             DestinationFolder = _temp.Path,
@@ -305,7 +305,7 @@ public sealed class TarSandboxedServiceCompressTests : IDisposable
 
         string srcTwo = Path.Combine(Path.GetDirectoryName(parent2)!, "two.txt");
 
-        var result = await _sut.CompressAsync(new ArchiveOptions
+        ArchiveResult result = await _sut.CompressAsync(new ArchiveOptions
         {
             SourcePaths = [Path.Combine(parent1, "one.txt"), Path.Combine(parent1, "folder"), srcTwo],
             DestinationFolder = _temp.Path,
@@ -316,7 +316,7 @@ public sealed class TarSandboxedServiceCompressTests : IDisposable
 
         result.Success.Should().BeTrue(because: string.Join("; ", result.Errors.Select(e => e.Message)));
         string destDir = Path.Combine(_temp.Path, "extracted-multi");
-        var extractResult = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult extractResult = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [Path.Combine(_temp.Path, "multi.tar")],
             DestinationFolder = destDir,
@@ -347,7 +347,7 @@ public sealed class TarSandboxedServiceCompressTests : IDisposable
         Directory.CreateDirectory(dir);
         File.WriteAllText(Path.Combine(dir, "inner.txt"), "content");
 
-        var result = await _sut.CompressAsync(new ArchiveOptions
+        ArchiveResult result = await _sut.CompressAsync(new ArchiveOptions
         {
             SourcePaths = [dir + Path.DirectorySeparatorChar],
             DestinationFolder = _temp.Path,
@@ -371,7 +371,7 @@ public sealed class TarSandboxedServiceCompressTests : IDisposable
         File.WriteAllText(src1, "first content");
         File.WriteAllText(src2, "second content");
 
-        var result = await _sut.CompressAsync(new ArchiveOptions
+        ArchiveResult result = await _sut.CompressAsync(new ArchiveOptions
         {
             SourcePaths = [src1, src2],
             DestinationFolder = _temp.Path,
@@ -393,7 +393,7 @@ public sealed class TarSandboxedServiceCompressTests : IDisposable
         string existingDest = Path.Combine(_temp.Path, "out.tar");
         File.WriteAllText(existingDest, "not a real tar, just occupying the name");
 
-        var result = await _sut.CompressAsync(new ArchiveOptions
+        ArchiveResult result = await _sut.CompressAsync(new ArchiveOptions
         {
             SourcePaths = [srcFile],
             DestinationFolder = _temp.Path,
@@ -419,7 +419,7 @@ public sealed class TarSandboxedServiceCompressTests : IDisposable
         string existingDest = Path.Combine(_temp.Path, "out.tar");
         File.WriteAllText(existingDest, "not a real tar, just occupying the name");
 
-        var result = await _sut.CompressAsync(new ArchiveOptions
+        ArchiveResult result = await _sut.CompressAsync(new ArchiveOptions
         {
             SourcePaths = [srcFile],
             DestinationFolder = _temp.Path,
@@ -441,7 +441,7 @@ public sealed class TarSandboxedServiceCompressTests : IDisposable
         string existingDest = Path.Combine(_temp.Path, "out.tar");
         File.WriteAllText(existingDest, "not a real tar, just occupying the name");
 
-        var result = await _sut.CompressAsync(new ArchiveOptions
+        ArchiveResult result = await _sut.CompressAsync(new ArchiveOptions
         {
             SourcePaths = [srcFile],
             DestinationFolder = _temp.Path,
@@ -470,7 +470,7 @@ public sealed class TarSandboxedServiceCompressTests : IDisposable
         Directory.CreateDirectory(destRoot);
         string escapeTarget = Path.Combine(_temp.Path, "..\\..\\evil");
 
-        var result = await _sut.CompressAsync(new ArchiveOptions
+        ArchiveResult result = await _sut.CompressAsync(new ArchiveOptions
         {
             SourcePaths = [srcFile],
             DestinationFolder = destRoot,
@@ -494,7 +494,7 @@ public sealed class TarSandboxedServiceCompressTests : IDisposable
     {
         string missing = Path.Combine(_temp.Path, "does-not-exist.txt");
 
-        var result = await _sut.CompressAsync(new ArchiveOptions
+        ArchiveResult result = await _sut.CompressAsync(new ArchiveOptions
         {
             SourcePaths = [missing],
             DestinationFolder = _temp.Path,
@@ -518,7 +518,7 @@ public sealed class TarSandboxedServiceCompressTests : IDisposable
         string srcFile = Path.Combine(_temp.Path, "big.txt");
         File.WriteAllText(srcFile, string.Concat(Enumerable.Repeat("AAAAAAAAAA", 100_000)));
 
-        var noCompression = await _sut.CompressAsync(new ArchiveOptions
+        ArchiveResult noCompression = await _sut.CompressAsync(new ArchiveOptions
         {
             SourcePaths = [srcFile],
             DestinationFolder = _temp.Path,
@@ -526,7 +526,7 @@ public sealed class TarSandboxedServiceCompressTests : IDisposable
             Format = ArchiveContainerFormat.TarGz,
             CompressionLevel = CompressionLevel.NoCompression,
         });
-        var smallest = await _sut.CompressAsync(new ArchiveOptions
+        ArchiveResult smallest = await _sut.CompressAsync(new ArchiveOptions
         {
             SourcePaths = [srcFile],
             DestinationFolder = _temp.Path,
@@ -563,7 +563,7 @@ public sealed class TarSandboxedServiceCompressTests : IDisposable
         var reports = new List<ProgressReport>();
         var progress = new SynchronousProgress<ProgressReport>(reports.Add);
 
-        var result = await _sut.CompressAsync(new ArchiveOptions
+        ArchiveResult result = await _sut.CompressAsync(new ArchiveOptions
         {
             SourcePaths = [sourceDir],
             DestinationFolder = _temp.Path,
@@ -600,7 +600,7 @@ public sealed class TarSandboxedServiceCompressTests : IDisposable
         var reports = new List<ProgressReport>();
         var progress = new SynchronousProgress<ProgressReport>(reports.Add);
 
-        var result = await _sut.CompressAsync(new ArchiveOptions
+        ArchiveResult result = await _sut.CompressAsync(new ArchiveOptions
         {
             SourcePaths = [sourceDir],
             DestinationFolder = _temp.Path,
@@ -633,7 +633,7 @@ public sealed class TarSandboxedServiceCompressTests : IDisposable
         string outDir = Path.Combine(_temp.Path, "out");
         int prompts = 0;
 
-        var result = await _sut.CompressAsync(new ArchiveOptions
+        ArchiveResult result = await _sut.CompressAsync(new ArchiveOptions
         {
             SourcePaths = [srcFile],
             DestinationFolder = outDir,

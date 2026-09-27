@@ -19,7 +19,7 @@ public static class LaunchActivationRouter
     /// <summary>The decision for <paramref name="arguments"/>, or null for a plain launch or anything unrecognized.</summary>
     public static LaunchActivationDecision? Decide(string? arguments)
     {
-        if (!LaunchArguments.TryParse(arguments, out var operation, out var files))
+        if (!LaunchArguments.TryParse(arguments, out LaunchOperation operation, out IReadOnlyList<string>? files))
             return null;
 
         return operation == LaunchOperation.Browse && files.Count == 1

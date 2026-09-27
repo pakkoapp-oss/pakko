@@ -55,7 +55,7 @@ public sealed class GroupPolicyServiceTests
     [InlineData(99, MotwMode.AllFiles)] // malformed/unknown value falls back to today's default
     public void Load_EnforceMotwPresent_MapsToExpectedMode(int dwordValue, MotwMode expected)
     {
-        var reader = new FakeRegistryReader().WithDword(PolicyKeyPath, "EnforceMOTW", dwordValue);
+        FakeRegistryReader reader = new FakeRegistryReader().WithDword(PolicyKeyPath, "EnforceMOTW", dwordValue);
 
         GroupPolicyService.Load(reader).MotwMode.Should().Be(expected);
     }
@@ -76,7 +76,7 @@ public sealed class GroupPolicyServiceTests
     [Fact]
     public void Load_AllowedAndBlockedFormatsPresent_ReadBothLists()
     {
-        var reader = new FakeRegistryReader()
+        FakeRegistryReader reader = new FakeRegistryReader()
             .WithMultiString(PolicyKeyPath, "AllowedFormats", "zip", "tar")
             .WithMultiString(PolicyKeyPath, "BlockedFormats", "rar");
 
@@ -89,7 +89,7 @@ public sealed class GroupPolicyServiceTests
     [Fact]
     public void Load_EmptyMultiStringValue_TreatedAsAbsent()
     {
-        var reader = new FakeRegistryReader()
+        FakeRegistryReader reader = new FakeRegistryReader()
             .WithMultiString(PolicyKeyPath, "AllowedFormats");
 
         GroupPolicyService.Load(reader).AllowedFormats.Should().BeNull();
@@ -100,7 +100,7 @@ public sealed class GroupPolicyServiceTests
     [InlineData(0, false)]
     public void Load_DisableTarExtractionPresent_MapsToExpectedBool(int dwordValue, bool expected)
     {
-        var reader = new FakeRegistryReader().WithDword(PolicyKeyPath, "DisableTarExtraction", dwordValue);
+        FakeRegistryReader reader = new FakeRegistryReader().WithDword(PolicyKeyPath, "DisableTarExtraction", dwordValue);
 
         GroupPolicyService.Load(reader).DisableTarExtraction.Should().Be(expected);
     }
@@ -124,7 +124,7 @@ public sealed class GroupPolicyServiceTests
     public void Load_PathologicallyLargeStringValue_DoesNotThrow()
     {
         string oversized = new('a', 5_000_000);
-        var reader = new FakeRegistryReader()
+        FakeRegistryReader reader = new FakeRegistryReader()
             .WithMultiString(PolicyKeyPath, "AllowedFormats", oversized);
 
         Action act = () => GroupPolicyService.Load(reader);
@@ -136,7 +136,7 @@ public sealed class GroupPolicyServiceTests
     [Fact]
     public void Load_MalformedMultiStringWithEmbeddedNulls_DoesNotThrow()
     {
-        var reader = new FakeRegistryReader()
+        FakeRegistryReader reader = new FakeRegistryReader()
             .WithMultiString(PolicyKeyPath, "BlockedFormats", "zip\0tar", "\0\0\0", string.Empty);
 
         Action act = () => GroupPolicyService.Load(reader);

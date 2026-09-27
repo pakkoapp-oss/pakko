@@ -27,7 +27,7 @@ public sealed class QuarantineAclTests : IDisposable
     public async Task GrantReadExecuteAndModify_RealSandboxedTarExtraction_Succeeds()
     {
         _profile.EnsureExists();
-        using var sid = _profile.GetSid();
+        using SafeSidHandle sid = _profile.GetSid();
 
         string inDir = Path.Combine(_temp.Path, "in");
         string outDir = Path.Combine(_temp.Path, "out");
@@ -43,7 +43,7 @@ public sealed class QuarantineAclTests : IDisposable
         QuarantineAcl.GrantReadExecute(inDir, sid);
         QuarantineAcl.GrantModify(outDir, sid);
 
-        var (exitCode, _, stdErr) = await SandboxedProcessLauncher.RunAsync(
+        (int exitCode, _, string? stdErr) = await SandboxedProcessLauncher.RunAsync(
             TarExecutablePath,
             ["-xf", archivePath, "-C", outDir],
             new ProcessLaunchOptions(AppContainerSid: sid),
@@ -61,7 +61,7 @@ public sealed class QuarantineAclTests : IDisposable
         // AppContainer SID must be unreachable, even though Pakko's own (unsandboxed) process
         // created it and can read/write it freely itself.
         _profile.EnsureExists();
-        using var sid = _profile.GetSid();
+        using SafeSidHandle sid = _profile.GetSid();
 
         string inDir = Path.Combine(_temp.Path, "in_negative");
         string neverAcldOutDir = Path.Combine(_temp.Path, "out_never_acld");
@@ -75,7 +75,7 @@ public sealed class QuarantineAclTests : IDisposable
         QuarantineAcl.GrantTraverseOnly(_temp.Path, sid);
         QuarantineAcl.GrantReadExecute(inDir, sid);
 
-        var (exitCode, _, stdErr) = await SandboxedProcessLauncher.RunAsync(
+        (int exitCode, _, string? stdErr) = await SandboxedProcessLauncher.RunAsync(
             TarExecutablePath,
             ["-xf", archivePath, "-C", neverAcldOutDir],
             new ProcessLaunchOptions(AppContainerSid: sid),
@@ -100,7 +100,7 @@ public sealed class QuarantineAclTests : IDisposable
     public async Task EnsureSharedParentTraverse_FirstWriteOnFreshParent_KeepsOwnerAccessInheritanceAndSandboxWorking()
     {
         _profile.EnsureExists();
-        using var sid = _profile.GetSid();
+        using SafeSidHandle sid = _profile.GetSid();
 
         string sharedParent = Path.Combine(_temp.Path, "PakkoTarSandbox");
         Directory.CreateDirectory(sharedParent);
@@ -123,7 +123,7 @@ public sealed class QuarantineAclTests : IDisposable
         QuarantineAcl.GrantReadExecute(inDir, sid);
         QuarantineAcl.GrantModify(outDir, sid);
 
-        var (exitCode, _, stdErr) = await SandboxedProcessLauncher.RunAsync(
+        (int exitCode, _, string? stdErr) = await SandboxedProcessLauncher.RunAsync(
             TarExecutablePath,
             ["-xf", archivePath, "-C", outDir],
             new ProcessLaunchOptions(AppContainerSid: sid),
@@ -141,7 +141,7 @@ public sealed class QuarantineAclTests : IDisposable
     public void GrantReadExecute_NonexistentPath_ThrowsInvalidOperationException()
     {
         _profile.EnsureExists();
-        using var sid = _profile.GetSid();
+        using SafeSidHandle sid = _profile.GetSid();
 
         string nonexistentPath = Path.Combine(_temp.Path, "does_not_exist_" + Guid.NewGuid());
 

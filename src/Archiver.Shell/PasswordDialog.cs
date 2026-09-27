@@ -130,7 +130,7 @@ public static class PasswordDialog
 
         if (controlId == IdOk)
         {
-            var buffer = new char[256];
+            char[] buffer = new char[256];
             int length = NativeMethods.GetDlgItemText(hwndDlg, PasswordDialogTemplateBuilder.IdEdit, buffer, buffer.Length);
             state.EditText = new string(buffer, 0, length);
             if (canApplyToRemaining)

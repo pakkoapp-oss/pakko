@@ -19,7 +19,7 @@ public sealed class ZipArchiveServiceExtractRootFolderTests : IDisposable
     private string CreateZip(string name, params string[] entries)
     {
         string zipPath = Path.Combine(_temp.Path, name);
-        using var archive = ZipFile.Open(zipPath, ZipArchiveMode.Create);
+        using ZipArchive archive = ZipFile.Open(zipPath, ZipArchiveMode.Create);
         foreach (string entry in entries)
         {
             using var w = new StreamWriter(archive.CreateEntry(entry).Open());
@@ -32,7 +32,7 @@ public sealed class ZipArchiveServiceExtractRootFolderTests : IDisposable
     {
         string dest = Path.Combine(_temp.Path, "dest");
         Directory.CreateDirectory(dest);
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [zip],
             DestinationFolder = dest,

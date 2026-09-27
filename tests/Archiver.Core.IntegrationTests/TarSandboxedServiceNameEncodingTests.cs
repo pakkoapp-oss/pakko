@@ -40,12 +40,12 @@ public sealed class TarSandboxedServiceNameEncodingTests : IDisposable
         };
         TarBuilder.WriteTar(archivePath, entries);
 
-        var list = await _sut.ListEntriesAsync(archivePath);
+        ArchiveListResult list = await _sut.ListEntriesAsync(archivePath);
         list.Success.Should().BeTrue(list.ErrorMessage + " " + TarCodePage.Describe());
         list.Entries.Select(e => e.Path).Should().Equal([name], TarCodePage.Describe());
 
         string dest = Path.Combine(_temp.Path, "out-" + layout);
-        var result = await _sut.ExtractAsync(new ExtractOptions { ArchivePaths = [archivePath], DestinationFolder = dest, Mode = ExtractMode.SingleFolder });
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions { ArchivePaths = [archivePath], DestinationFolder = dest, Mode = ExtractMode.SingleFolder });
         result.Success.Should().BeTrue(string.Join("; ", result.Errors.Select(e => e.Message)) + " " + TarCodePage.Describe());
         File.ReadAllText(Path.Combine(dest, name)).Should().Be("payload");
         Directory.GetFiles(dest, "*", SearchOption.AllDirectories).Should().ContainSingle();
@@ -66,7 +66,7 @@ public sealed class TarSandboxedServiceNameEncodingTests : IDisposable
         ]);
 
         string dest = Path.Combine(_temp.Path, "out");
-        var result = await _sut.ExtractAsync(new ExtractOptions { ArchivePaths = [archivePath], DestinationFolder = dest, Mode = ExtractMode.SingleFolder });
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions { ArchivePaths = [archivePath], DestinationFolder = dest, Mode = ExtractMode.SingleFolder });
 
         string[] written = Directory.Exists(dest) ? Directory.GetFiles(dest, "*", SearchOption.AllDirectories) : [];
         if (result.Success)
@@ -91,7 +91,7 @@ public sealed class TarSandboxedServiceNameEncodingTests : IDisposable
             new TarBuilder.Entry { Name = "..\\evil.txt", Content = [2] },
         ]);
 
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [archivePath], DestinationFolder = Path.Combine(_temp.Path, "out"), Mode = ExtractMode.SingleFolder,
         });
@@ -112,7 +112,7 @@ public sealed class TarSandboxedServiceNameEncodingTests : IDisposable
         File.WriteAllText(locked, "b");
         using var hold = new FileStream(locked, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
 
-        var result = await _sut.CompressAsync(new ArchiveOptions
+        ArchiveResult result = await _sut.CompressAsync(new ArchiveOptions
         {
             SourcePaths = [source], DestinationFolder = _temp.Path, ArchiveName = "out", Format = ArchiveContainerFormat.Tar,
         });

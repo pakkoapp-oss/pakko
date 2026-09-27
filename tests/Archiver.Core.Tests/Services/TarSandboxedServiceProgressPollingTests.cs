@@ -26,7 +26,7 @@ public sealed class TarSandboxedServiceProgressPollingTests
     {
         using var temp = new TempDirectory();
 
-        var (totalBytes, mostRecentFile) = TarSandboxedService.ComputeDirectoryStateSnapshot(temp.Path);
+        (long totalBytes, string? mostRecentFile) = TarSandboxedService.ComputeDirectoryStateSnapshot(temp.Path);
 
         totalBytes.Should().Be(0);
         mostRecentFile.Should().BeNull();
@@ -40,7 +40,7 @@ public sealed class TarSandboxedServiceProgressPollingTests
         Directory.CreateDirectory(Path.Combine(temp.Path, "sub"));
         File.WriteAllText(Path.Combine(temp.Path, "sub", "b.txt"), "1234567890");
 
-        var (totalBytes, _) = TarSandboxedService.ComputeDirectoryStateSnapshot(temp.Path);
+        (long totalBytes, _) = TarSandboxedService.ComputeDirectoryStateSnapshot(temp.Path);
 
         totalBytes.Should().Be(5 + 10);
     }
@@ -54,7 +54,7 @@ public sealed class TarSandboxedServiceProgressPollingTests
         File.SetLastWriteTimeUtc(older, DateTime.UtcNow.AddMinutes(-5));
         File.SetLastWriteTimeUtc(newer, DateTime.UtcNow);
 
-        var (_, mostRecentFile) = TarSandboxedService.ComputeDirectoryStateSnapshot(temp.Path);
+        (_, string? mostRecentFile) = TarSandboxedService.ComputeDirectoryStateSnapshot(temp.Path);
 
         mostRecentFile.Should().Be("newer.txt");
     }

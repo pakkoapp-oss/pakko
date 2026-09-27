@@ -20,7 +20,7 @@ public sealed class ZipArchiveServiceExtractUnsafePathTests : IDisposable
     private string CreateZip(string name, params string[] entries)
     {
         string zipPath = Path.Combine(_temp.Path, name);
-        using var archive = ZipFile.Open(zipPath, ZipArchiveMode.Create);
+        using ZipArchive archive = ZipFile.Open(zipPath, ZipArchiveMode.Create);
         foreach (string entry in entries)
         {
             using var w = new StreamWriter(archive.CreateEntry(entry).Open());
@@ -52,7 +52,7 @@ public sealed class ZipArchiveServiceExtractUnsafePathTests : IDisposable
         File.WriteAllText(userFile, "ORIGINAL");
         string zip = CreateZip("evil.zip", "a.txt", "../t_tmp/b.txt", "sub/../b.txt");
 
-        var result = await ExtractIntoAsync(zip, dest, onConflict,
+        ArchiveResult result = await ExtractIntoAsync(zip, dest, onConflict,
             _ => Task.FromResult(new ConflictDecision { Resolution = ConflictResolution.Skip }));
 
         File.ReadAllText(userFile).Should().Be("ORIGINAL");
@@ -74,7 +74,7 @@ public sealed class ZipArchiveServiceExtractUnsafePathTests : IDisposable
         Directory.CreateDirectory(dest);
         string zip = CreateZip("evil.zip", "good.txt", unsafeName);
 
-        var result = await ExtractIntoAsync(zip, dest, ConflictBehavior.Overwrite);
+        ArchiveResult result = await ExtractIntoAsync(zip, dest, ConflictBehavior.Overwrite);
 
         result.Success.Should().BeFalse();
         // T-F234: names are reported '/'-separated, the same form the listing shows.
@@ -92,7 +92,7 @@ public sealed class ZipArchiveServiceExtractUnsafePathTests : IDisposable
         Directory.CreateDirectory(dest);
         string zip = CreateZip("fine.zip", "a..b.txt", "..hidden.txt", "x/..y/c.txt");
 
-        var result = await ExtractIntoAsync(zip, dest, ConflictBehavior.Overwrite);
+        ArchiveResult result = await ExtractIntoAsync(zip, dest, ConflictBehavior.Overwrite);
 
         result.Success.Should().BeTrue();
         File.Exists(Path.Combine(dest, "a..b.txt")).Should().BeTrue();

@@ -42,7 +42,7 @@ public sealed class AppContainerProfileTests : IDisposable
     {
         _sut.EnsureExists();
 
-        using var sid = _sut.GetSid();
+        using SafeSidHandle sid = _sut.GetSid();
 
         sid.IsInvalid.Should().BeFalse();
     }
@@ -52,8 +52,8 @@ public sealed class AppContainerProfileTests : IDisposable
     {
         _sut.EnsureExists();
 
-        using var sidA = _sut.GetSid();
-        using var sidB = _sut.GetSid();
+        using SafeSidHandle sidA = _sut.GetSid();
+        using SafeSidHandle sidB = _sut.GetSid();
 
         NativeSidToString(sidA).Should().Be(NativeSidToString(sidB));
     }

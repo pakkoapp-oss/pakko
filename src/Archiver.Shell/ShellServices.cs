@@ -23,7 +23,7 @@ internal sealed class ShellServices
         CreateExtractionRouterAsync = async () =>
         {
             var tarService = new TarSandboxedService(policy);
-            var capabilities = await tarService.DetectCapabilitiesAsync().ConfigureAwait(false);
+            TarCapabilities capabilities = await tarService.DetectCapabilitiesAsync().ConfigureAwait(false);
             return new ExtractionRouter(new ZipArchiveService(policy), tarService, capabilities, policy);
         },
         CreateArchiveCreationRouter = () =>
@@ -32,7 +32,7 @@ internal sealed class ShellServices
         CreateScanServiceAsync = async () =>
         {
             var tarService = new TarSandboxedService(policy);
-            var capabilities = await tarService.DetectCapabilitiesAsync().ConfigureAwait(false);
+            TarCapabilities capabilities = await tarService.DetectCapabilitiesAsync().ConfigureAwait(false);
             return new AntivirusScanService(capabilities, policy);
         },
         LaunchApp = AppLauncher.Launch,

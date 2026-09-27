@@ -47,7 +47,7 @@ public sealed class TarSandboxedServiceExtractTests : IDisposable
         ]);
 
         string destDir = Path.Combine(_temp.Path, "out");
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [archivePath],
             DestinationFolder = destDir,
@@ -91,13 +91,13 @@ public sealed class TarSandboxedServiceExtractTests : IDisposable
         ExternalTarFixtureBuilder.CreateCompressedTarOfDotRoot(archivePath, "-czf",
             [("a.txt", "hello"), ("sub/b.txt", "world")]);
 
-        var listing = await _sut.ListEntriesAsync(archivePath);
+        ArchiveListResult listing = await _sut.ListEntriesAsync(archivePath);
         listing.Success.Should().BeTrue();
         listing.Entries.Select(e => e.Path).Should().BeEquivalentTo(["a.txt", "sub", "sub/b.txt"]);
         string listedB = "sub/b.txt";
 
         string destDir = Path.Combine(_temp.Path, "out_subset");
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [archivePath],
             DestinationFolder = destDir,
@@ -120,7 +120,7 @@ public sealed class TarSandboxedServiceExtractTests : IDisposable
 
         async Task<string[]> ExtractTreeAsync(string archive, string dest)
         {
-            var result = await _sut.ExtractAsync(new ExtractOptions
+            ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
             {
                 ArchivePaths = [archive],
                 DestinationFolder = dest,
@@ -154,12 +154,12 @@ public sealed class TarSandboxedServiceExtractTests : IDisposable
     public async Task ExtractAsync_CancelMidExtraction_NoUnhandledExceptionNoOrphanedQuarantineDir()
     {
         string sandboxParent = Path.Combine(Path.GetTempPath(), "PakkoTarSandbox");
-        var quarantineDirsBefore = Directory.Exists(sandboxParent)
+        HashSet<string> quarantineDirsBefore = Directory.Exists(sandboxParent)
             ? Directory.GetDirectories(sandboxParent).ToHashSet()
             : [];
 
         string archivePath = Path.Combine(_temp.Path, "cancel_test.tar");
-        var entries = Enumerable.Range(1, 20)
+        TarBuilder.Entry[] entries = Enumerable.Range(1, 20)
             .Select(i => new TarBuilder.Entry
             {
                 Name = $"file{i}.txt",
@@ -189,7 +189,7 @@ public sealed class TarSandboxedServiceExtractTests : IDisposable
 
         result?.Errors.Should().BeEmpty();
 
-        var quarantineDirsAfter = Directory.Exists(sandboxParent)
+        HashSet<string> quarantineDirsAfter = Directory.Exists(sandboxParent)
             ? Directory.GetDirectories(sandboxParent).ToHashSet()
             : [];
         quarantineDirsAfter.Except(quarantineDirsBefore).Should().BeEmpty(
@@ -217,9 +217,9 @@ public sealed class TarSandboxedServiceExtractTests : IDisposable
             new TarBuilder.Entry { Name = "safe.txt", Content = Encoding.ASCII.GetBytes("unrelated entry") },
         ]);
 
-        using var handle = File.Open(lockedDestFile, FileMode.Open, FileAccess.Read, FileShare.Read);
+        using FileStream handle = File.Open(lockedDestFile, FileMode.Open, FileAccess.Read, FileShare.Read);
 
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [archivePath],
             DestinationFolder = destDir,
@@ -282,7 +282,7 @@ public sealed class TarSandboxedServiceExtractTests : IDisposable
             new TarBuilder.Entry { Name = "a (1).txt", Content = Encoding.ASCII.GetBytes("archive a (1)") },
         ]);
 
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [archivePath], DestinationFolder = destDir, Mode = ExtractMode.SingleFolder,
             OnConflict = ConflictBehavior.Rename,
@@ -313,7 +313,7 @@ public sealed class TarSandboxedServiceExtractTests : IDisposable
         ]);
 
         string destDir = Path.Combine(_temp.Path, "out");
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [archivePath],
             DestinationFolder = destDir,
@@ -322,7 +322,7 @@ public sealed class TarSandboxedServiceExtractTests : IDisposable
 
         result.Success.Should().BeTrue();
         result.Errors.Should().BeEmpty();
-        var extractedFiles = Directory.GetFiles(destDir, "*.txt", SearchOption.AllDirectories);
+        string[] extractedFiles = Directory.GetFiles(destDir, "*.txt", SearchOption.AllDirectories);
         extractedFiles.Should().ContainSingle();
         File.ReadAllText(extractedFiles[0]).Should().Be("second");
     }
@@ -340,7 +340,7 @@ public sealed class TarSandboxedServiceExtractTests : IDisposable
         ]);
 
         string destDir = Path.Combine(_temp.Path, "out");
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [archivePath],
             DestinationFolder = destDir,
@@ -368,7 +368,7 @@ public sealed class TarSandboxedServiceExtractTests : IDisposable
         ]);
 
         string destDir = Path.Combine(_temp.Path, "out");
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [archivePath],
             DestinationFolder = destDir,
@@ -394,7 +394,7 @@ public sealed class TarSandboxedServiceExtractTests : IDisposable
         ]);
 
         string destDir = Path.Combine(_temp.Path, "out");
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [archivePath],
             DestinationFolder = destDir,
@@ -420,7 +420,7 @@ public sealed class TarSandboxedServiceExtractTests : IDisposable
         Directory.CreateDirectory(destDir);
         File.WriteAllText(Path.Combine(destDir, "a.txt"), "original content");
 
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [archivePath],
             DestinationFolder = destDir,
@@ -450,7 +450,7 @@ public sealed class TarSandboxedServiceExtractTests : IDisposable
         Directory.CreateDirectory(destDir);
         File.WriteAllText(Path.Combine(destDir, "a.txt"), "original content");
 
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [archivePath],
             DestinationFolder = destDir,
@@ -479,7 +479,7 @@ public sealed class TarSandboxedServiceExtractTests : IDisposable
         File.WriteAllText(Path.Combine(destDir, "a.txt"), "original content");
 
         int callCount = 0;
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [archivePath],
             DestinationFolder = destDir,
@@ -543,7 +543,7 @@ public sealed class TarSandboxedServiceExtractTests : IDisposable
         File.WriteAllText(archivePath + ":Zone.Identifier", "[ZoneTransfer]\r\nZoneId=3\r\n");
 
         string destDir = Path.Combine(_temp.Path, "out");
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [archivePath],
             DestinationFolder = destDir,
@@ -566,7 +566,7 @@ public sealed class TarSandboxedServiceExtractTests : IDisposable
 
         string destDir = Path.Combine(_temp.Path, "out");
         var sut = new TarSandboxedService(new GroupPolicyOptions { MotwMode = MotwMode.Disabled });
-        var result = await sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [archivePath],
             DestinationFolder = destDir,
@@ -589,7 +589,7 @@ public sealed class TarSandboxedServiceExtractTests : IDisposable
 
         string destDir = Path.Combine(_temp.Path, "out");
         var sut = new TarSandboxedService(new GroupPolicyOptions { MotwMode = MotwMode.UnsafeExtensionsOnly });
-        var result = await sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [archivePath],
             DestinationFolder = destDir,
@@ -611,7 +611,7 @@ public sealed class TarSandboxedServiceExtractTests : IDisposable
         ]);
 
         string destDir = Path.Combine(_temp.Path, "out");
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [archivePath],
             DestinationFolder = destDir,
@@ -633,7 +633,7 @@ public sealed class TarSandboxedServiceExtractTests : IDisposable
         ]);
 
         string destDir = Path.Combine(_temp.Path, "out");
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [archivePath],
             DestinationFolder = destDir,
@@ -654,7 +654,7 @@ public sealed class TarSandboxedServiceExtractTests : IDisposable
         ]);
 
         string destDir = Path.Combine(_temp.Path, "out");
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [archivePath],
             DestinationFolder = destDir,
@@ -681,7 +681,7 @@ public sealed class TarSandboxedServiceExtractTests : IDisposable
         File.WriteAllBytes(archivePath, truncated);
 
         string destDir = Path.Combine(_temp.Path, "out");
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [archivePath],
             DestinationFolder = destDir,
@@ -706,7 +706,7 @@ public sealed class TarSandboxedServiceExtractTests : IDisposable
         ExternalTarFixtureBuilder.CreateCompressedTar(archivePath, "-czf", [("bomb.txt", bombContent)]);
 
         string destDir = Path.Combine(_temp.Path, "out");
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [archivePath],
             DestinationFolder = destDir,
@@ -730,7 +730,7 @@ public sealed class TarSandboxedServiceExtractTests : IDisposable
         ExternalTarFixtureBuilder.CreateCompressedTar(archivePath, "-czf", [("bomb.txt", bombContent)]);
 
         string destDir = Path.Combine(_temp.Path, "out");
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [archivePath],
             DestinationFolder = destDir,
@@ -761,7 +761,7 @@ public sealed class TarSandboxedServiceExtractTests : IDisposable
         ]);
 
         string destDir = Path.Combine(_temp.Path, "out");
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [archivePath],
             DestinationFolder = destDir,
@@ -801,7 +801,7 @@ public sealed class TarSandboxedServiceExtractTests : IDisposable
         var progress = new SynchronousProgress<ProgressReport>(reports.Add);
 
         string destDir = Path.Combine(_temp.Path, "out");
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [archivePath],
             DestinationFolder = destDir,
@@ -834,7 +834,7 @@ public sealed class TarSandboxedServiceExtractTests : IDisposable
         ]);
 
         string destDir = Path.Combine(_temp.Path, "out");
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [archivePath],
             DestinationFolder = destDir,
@@ -865,7 +865,7 @@ public sealed class TarSandboxedServiceExtractTests : IDisposable
         ]);
 
         string destDir = Path.Combine(_temp.Path, "out");
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [archivePath],
             DestinationFolder = destDir,
@@ -903,7 +903,7 @@ public sealed class TarSandboxedServiceExtractTests : IDisposable
         var progress = new SynchronousProgress<ProgressReport>(reports.Add);
 
         string destDir = Path.Combine(_temp.Path, "out");
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [archivePath],
             DestinationFolder = destDir,

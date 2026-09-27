@@ -55,7 +55,7 @@ internal sealed class AmsiScanner : IAmsiScanner
         // GCHandle pinning (not `fixed`/unsafe) — this project doesn't otherwise enable
         // AllowUnsafeBlocks, and a single pin per scanned entry is not a hot path worth the extra
         // surface. Mirrors how other P/Invoke call sites in this codebase avoid unsafe blocks.
-        GCHandle handle = GCHandle.Alloc(buffer, GCHandleType.Pinned);
+        var handle = GCHandle.Alloc(buffer, GCHandleType.Pinned);
         try
         {
             int hr = NativeMethods.AmsiScanBuffer(

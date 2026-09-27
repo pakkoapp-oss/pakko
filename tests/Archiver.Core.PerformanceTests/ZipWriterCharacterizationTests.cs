@@ -34,7 +34,7 @@ public sealed class ZipWriterCharacterizationTests : IDisposable
     {
         string archivePath = await ArchiveSampleFolderAsync(fileCount);
 
-        var act = () => SevenZipRunner.Test(archivePath);
+        Action act = () => SevenZipRunner.Test(archivePath);
         act.Should().NotThrow("both writer paths must produce archives a strict third-party reader accepts");
     }
 
@@ -45,7 +45,7 @@ public sealed class ZipWriterCharacterizationTests : IDisposable
     {
         string archivePath = await ArchiveSampleFolderAsync(fileCount);
 
-        var empty = ReadCentralDirectory(archivePath).Single(e => e.Name.EndsWith("empty.bin", StringComparison.Ordinal));
+        CentralEntry empty = ReadCentralDirectory(archivePath).Single(e => e.Name.EndsWith("empty.bin", StringComparison.Ordinal));
         empty.Method.Should().Be(StoredMethod, "a zero-byte deflate stream is not valid deflate for 7-Zip (T-F35 follow-up)");
         empty.UncompressedSize.Should().Be(0);
     }
@@ -57,7 +57,7 @@ public sealed class ZipWriterCharacterizationTests : IDisposable
     {
         string archivePath = await ArchiveSampleFolderAsync(fileCount);
 
-        var entries = ReadCentralDirectory(archivePath);
+        List<CentralEntry> entries = ReadCentralDirectory(archivePath);
         (entries.Single(e => e.Name.EndsWith(CyrillicName, StringComparison.Ordinal)).Flags & Utf8NameFlag)
             .Should().Be(Utf8NameFlag, "a non-ASCII name must be marked UTF-8 (bit 11)");
         entries.Should().OnlyContain(e => (e.Flags & EncryptedFlag) == 0, "nothing was encrypted");
@@ -74,7 +74,7 @@ public sealed class ZipWriterCharacterizationTests : IDisposable
 
         string destinationDir = Path.Combine(_temp.Path, "dest");
         Directory.CreateDirectory(destinationDir);
-        var result = await new ZipArchiveService().ArchiveAsync(new ArchiveOptions
+        ArchiveResult result = await new ZipArchiveService().ArchiveAsync(new ArchiveOptions
         {
             SourcePaths = [sourceDir],
             DestinationFolder = destinationDir,

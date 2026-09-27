@@ -27,7 +27,7 @@ public sealed class TarSandboxedServiceCompressedFormatsTests : IDisposable
         ExternalTarFixtureBuilder.CreateCompressedTar(archivePath, "-czf", [("a.txt", "hello gz")]);
 
         string destDir = Path.Combine(_temp.Path, "out");
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [archivePath],
             DestinationFolder = destDir,
@@ -52,7 +52,7 @@ public sealed class TarSandboxedServiceCompressedFormatsTests : IDisposable
         ExternalTarFixtureBuilder.CreateCompressedTar(archivePath, "-czf", [("a.txt", "hello gz"), ("b.txt", "world gz")]);
 
         string destDir = Path.Combine(_temp.Path, "out");
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [archivePath],
             DestinationFolder = destDir,
@@ -75,7 +75,7 @@ public sealed class TarSandboxedServiceCompressedFormatsTests : IDisposable
         ExternalTarFixtureBuilder.CreateCompressedTar(archivePath, "-czf", [("photo.png", "binary-ish content")]);
 
         string destDir = Path.Combine(_temp.Path, "out");
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [archivePath],
             DestinationFolder = destDir,
@@ -94,7 +94,7 @@ public sealed class TarSandboxedServiceCompressedFormatsTests : IDisposable
         ExternalTarFixtureBuilder.CreateCompressedTar(archivePath, "-cjf", [("a.txt", "hello bz2")]);
 
         string destDir = Path.Combine(_temp.Path, "out");
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [archivePath],
             DestinationFolder = destDir,
@@ -112,7 +112,7 @@ public sealed class TarSandboxedServiceCompressedFormatsTests : IDisposable
         ExternalTarFixtureBuilder.CreateCompressedTar(archivePath, "-cJf", [("a.txt", "hello xz")]);
 
         string destDir = Path.Combine(_temp.Path, "out");
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [archivePath],
             DestinationFolder = destDir,
@@ -130,7 +130,7 @@ public sealed class TarSandboxedServiceCompressedFormatsTests : IDisposable
         ExternalTarFixtureBuilder.CreateCompressedTar(archivePath, "--zstd -cf", [("a.txt", "hello zst")]);
 
         string destDir = Path.Combine(_temp.Path, "out");
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [archivePath],
             DestinationFolder = destDir,
@@ -148,7 +148,7 @@ public sealed class TarSandboxedServiceCompressedFormatsTests : IDisposable
         ExternalTarFixtureBuilder.CreateCompressedTar(archivePath, "--lzma -cf", [("a.txt", "hello lzma")]);
 
         string destDir = Path.Combine(_temp.Path, "out");
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [archivePath],
             DestinationFolder = destDir,
@@ -167,7 +167,7 @@ public sealed class TarSandboxedServiceCompressedFormatsTests : IDisposable
             [("привіт.txt", "Вміст файлу з юнікодом. Hello, 世界!")]);
 
         string destDir = Path.Combine(_temp.Path, "out");
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [archivePath],
             DestinationFolder = destDir,

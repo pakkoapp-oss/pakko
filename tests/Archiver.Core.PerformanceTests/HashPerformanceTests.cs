@@ -59,8 +59,8 @@ public sealed class HashPerformanceTests : IDisposable
         await HashWithPakkoTimed(filePath); // warmup
         SevenZipRunner.Hash(filePath, "CRC32"); // warmup
 
-        var pakkoElapsed = await HashWithPakkoTimed(filePath);
-        var referenceElapsed = SevenZipRunner.Hash(filePath, "CRC32");
+        TimeSpan pakkoElapsed = await HashWithPakkoTimed(filePath);
+        TimeSpan referenceElapsed = SevenZipRunner.Hash(filePath, "CRC32");
 
         AssertRatio("Hash/OneLargeFile", pakkoElapsed, referenceElapsed, calibratedBaselineRatio);
     }
@@ -79,8 +79,8 @@ public sealed class HashPerformanceTests : IDisposable
         await HashWithPakkoTimed(sourceDir); // warmup
         SevenZipRunner.Hash(sourceDir, "CRC32", recursive: true); // warmup
 
-        var pakkoElapsed = await HashWithPakkoTimed(sourceDir);
-        var referenceElapsed = SevenZipRunner.Hash(sourceDir, "CRC32", recursive: true);
+        TimeSpan pakkoElapsed = await HashWithPakkoTimed(sourceDir);
+        TimeSpan referenceElapsed = SevenZipRunner.Hash(sourceDir, "CRC32", recursive: true);
 
         AssertRatio("Hash/ManyFilesAndFolders", pakkoElapsed, referenceElapsed, calibratedBaselineRatio);
     }
@@ -89,7 +89,7 @@ public sealed class HashPerformanceTests : IDisposable
     {
         return await TimeAsync(async () =>
         {
-            var result = await FileHashService.ComputeAsync([path], HashAlgorithmKind.Crc32, null, CancellationToken.None);
+            HashResult result = await FileHashService.ComputeAsync([path], HashAlgorithmKind.Crc32, null, CancellationToken.None);
             result.Entries.Should().OnlyContain(e => e.Error == null);
         });
     }

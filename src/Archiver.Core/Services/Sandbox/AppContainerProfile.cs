@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using Microsoft.Win32;
 
 namespace Archiver.Core.Services.Sandbox;
 
@@ -75,7 +76,7 @@ internal sealed class AppContainerProfile
             string sidText;
             try { sidText = Marshal.PtrToStringUni(text) ?? string.Empty; }
             finally { NativeMethods.LocalFree(text); }
-            using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(MappingsKey + sidText);
+            using RegistryKey? key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(MappingsKey + sidText);
             return key is not null;
         }
         catch (Exception ex) when (ex is InvalidOperationException or System.Security.SecurityException or UnauthorizedAccessException or IOException)

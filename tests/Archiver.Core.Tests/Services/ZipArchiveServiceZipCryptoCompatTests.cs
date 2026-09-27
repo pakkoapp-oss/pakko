@@ -26,7 +26,7 @@ public sealed class ZipArchiveServiceZipCryptoCompatTests : IDisposable
     private async Task<(ArchiveResult Result, string Dest)> ExtractAsync(string zip, string password)
     {
         string dest = Path.Combine(_temp.Path, "out-" + Guid.NewGuid().ToString("N"));
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [zip],
             DestinationFolder = dest,
@@ -44,7 +44,7 @@ public sealed class ZipArchiveServiceZipCryptoCompatTests : IDisposable
         string zip = ZipCryptoFixture.Write(Path.Combine(_temp.Path, $"zc{dataDescriptor}.zip"), "a.txt",
             Encoding.ASCII.GetBytes("hello zipcrypto"), Encoding.ASCII.GetBytes(Password), dataDescriptor);
 
-        var (result, dest) = await ExtractAsync(zip, Password);
+        (ArchiveResult? result, string? dest) = await ExtractAsync(zip, Password);
 
         result.Success.Should().BeTrue(string.Join("; ", result.Errors.Select(e => e.Message)));
         File.ReadAllText(Path.Combine(dest, "a.txt")).Should().Be("hello zipcrypto");
@@ -58,7 +58,7 @@ public sealed class ZipArchiveServiceZipCryptoCompatTests : IDisposable
         string zip = ZipCryptoFixture.Write(Path.Combine(_temp.Path, $"zct{dataDescriptor}.zip"), "a.txt",
             Encoding.ASCII.GetBytes("hello zipcrypto"), Encoding.ASCII.GetBytes(Password), dataDescriptor);
 
-        var result = await _sut.TestAsync([zip], resolvePasswordAsync: Fixed(Password));
+        ArchiveResult result = await _sut.TestAsync([zip], resolvePasswordAsync: Fixed(Password));
 
         result.Success.Should().BeTrue(string.Join("; ", result.Errors.Select(e => e.Message)));
     }
@@ -73,7 +73,7 @@ public sealed class ZipArchiveServiceZipCryptoCompatTests : IDisposable
         int prompts = 0;
         string dest = Path.Combine(_temp.Path, "collide");
 
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [FixtureHelper.Archive("encrypted_zipcrypto_store.zip")],
             DestinationFolder = dest,
@@ -94,7 +94,7 @@ public sealed class ZipArchiveServiceZipCryptoCompatTests : IDisposable
     [Fact]
     public async Task TestAsync_CheckByteCollidingWrongPasswordOnly_ReportsPasswordNotCorruption()
     {
-        var result = await _sut.TestAsync([FixtureHelper.Archive("encrypted_zipcrypto_store.zip")],
+        ArchiveResult result = await _sut.TestAsync([FixtureHelper.Archive("encrypted_zipcrypto_store.zip")],
             resolvePasswordAsync: Fixed("wrong103"));
 
         result.Success.Should().BeFalse();
@@ -111,8 +111,8 @@ public sealed class ZipArchiveServiceZipCryptoCompatTests : IDisposable
         string zip = ZipCryptoFixture.Write(Path.Combine(_temp.Path, "large.zip"), "big.bin", content,
             Encoding.ASCII.GetBytes(Password), dataDescriptor: false);
 
-        using var fs = File.OpenRead(zip);
-        var located = RawZipEntryLocator.LocateAll(fs).Single();
+        using FileStream fs = File.OpenRead(zip);
+        LocatedZipEntry located = RawZipEntryLocator.LocateAll(fs).Single();
         string colliding = Enumerable.Range(0, 100_000).Select(i => "wrong" + i)
             .First(p => EncryptedZipEntryReader.VerifyPassword(fs, located, p) == EncryptedZipReadResult.Success);
         return (zip, colliding);
@@ -121,11 +121,11 @@ public sealed class ZipArchiveServiceZipCryptoCompatTests : IDisposable
     [Fact]
     public async Task ScanAsync_LargeEntry_CheckByteCollidingWrongPassword_IsNeverReportedClean()
     {
-        var (zip, colliding) = LargeZipCryptoWithCollidingPassword();
+        (string? zip, string? colliding) = LargeZipCryptoWithCollidingPassword();
         var scanner = new FakeAmsiScanner();
         var service = new AntivirusScanService(new TarCapabilities(), null, () => scanner, () => true);
 
-        var result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [zip], ResolvePasswordAsync = Fixed(colliding) });
+        ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [zip], ResolvePasswordAsync = Fixed(colliding) });
 
         result.Findings.Should().ContainSingle(f => f.EntryPath == "big.bin" && f.Verdict == ThreatVerdict.Inconclusive);
     }
@@ -133,9 +133,9 @@ public sealed class ZipArchiveServiceZipCryptoCompatTests : IDisposable
     [Fact]
     public async Task ExtractAsync_LargeEntry_CheckByteCollidingWrongPassword_FailsTheEntry()
     {
-        var (zip, colliding) = LargeZipCryptoWithCollidingPassword();
+        (string? zip, string? colliding) = LargeZipCryptoWithCollidingPassword();
 
-        var (result, dest) = await ExtractAsync(zip, colliding);
+        (ArchiveResult? result, string? dest) = await ExtractAsync(zip, colliding);
 
         result.Success.Should().BeFalse();
         result.Errors.Should().ContainSingle().Which.Message.Should().Contain("big.bin");
@@ -159,7 +159,7 @@ public sealed class ZipArchiveServiceZipCryptoCompatTests : IDisposable
         var sut = new ZipArchiveService { NameCodePages = ZipNameCodePages.FromCodePages(866, 1251) };
         string dest = Path.Combine(_temp.Path, $"cyr-out{passwordCodePage}");
 
-        var result = await sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [zip],
             DestinationFolder = dest,
@@ -179,14 +179,14 @@ public sealed class ZipArchiveServiceZipCryptoCompatTests : IDisposable
     public async Task ExtractAsync_Utf8Password_WhoseAnsiBytesAlsoPassTheCheckByte_Extracts()
     {
         const string cyrillic = "пароль";
-        var ansi = CodePagesEncodingProvider.Instance.GetEncoding(1251)!;
+        Encoding ansi = CodePagesEncodingProvider.Instance.GetEncoding(1251)!;
         string zip = Path.Combine(_temp.Path, "ambiguous.zip");
         int seed = Enumerable.Range(0, 100_000).First(candidateSeed =>
         {
             ZipCryptoFixture.Write(zip, "a.txt", Encoding.ASCII.GetBytes("secret"), Encoding.UTF8.GetBytes(cyrillic),
                 dataDescriptor: false, headerSeed: candidateSeed);
-            using var fs = File.OpenRead(zip);
-            var located = RawZipEntryLocator.LocateAll(fs).Single();
+            using FileStream fs = File.OpenRead(zip);
+            LocatedZipEntry located = RawZipEntryLocator.LocateAll(fs).Single();
             using var region = new EntryRegionStream(fs, located.CompressedDataOffset, located.CompressedSize, ownsSource: false);
             bool passes = ZipCryptoStream.TryCreate(region, ansi.GetBytes(cyrillic), located.ZipCryptoCheckByte, out Stream? plaintext);
             plaintext?.Dispose();
@@ -197,7 +197,7 @@ public sealed class ZipArchiveServiceZipCryptoCompatTests : IDisposable
         var sut = new ZipArchiveService { NameCodePages = ZipNameCodePages.FromCodePages(866, 1251) };
         string dest = Path.Combine(_temp.Path, "ambiguous-out");
 
-        var result = await sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [zip],
             DestinationFolder = dest,
@@ -215,7 +215,7 @@ public sealed class ZipArchiveServiceZipCryptoCompatTests : IDisposable
         string zip = ZipCryptoFixture.Write(Path.Combine(_temp.Path, "zcw.zip"), "a.txt",
             Encoding.ASCII.GetBytes("hello zipcrypto"), Encoding.ASCII.GetBytes(Password), dataDescriptor: true);
 
-        var (result, dest) = await ExtractAsync(zip, "not-the-password");
+        (ArchiveResult? result, string? dest) = await ExtractAsync(zip, "not-the-password");
 
         result.Success.Should().BeFalse();
         File.Exists(Path.Combine(dest, "a.txt")).Should().BeFalse();

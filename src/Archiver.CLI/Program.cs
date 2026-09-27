@@ -13,7 +13,7 @@ using Archiver.Core.Services;
 GroupPolicyOptions policy = GroupPolicyService.Load();
 #pragma warning restore CA1416
 
-var command = CliArgumentParser.Parse(args);
+ParsedCliCommand command = CliArgumentParser.Parse(args);
 if (command.ConsoleCodePage is { } consoleCodePage)
     CliConsoleCharset.Apply(consoleCodePage);
 // T-F263: -si/-so staging left by a pakko that was killed (e.g. `x -so` plaintext) goes now.
@@ -75,18 +75,18 @@ static async Task<int> RunExtractAsync(ParsedCliCommand command, GroupPolicyOpti
 {
     // T-F160: cancelled by the conflict prompt's (Q)uit / end of input, or by Ctrl+C — either way a
     // clean Core cancellation (temp output removed) and exit code 255, 7-Zip's "user stopped".
-    using CliCancellation cancellation = CliCancellation.ListenToConsole();
+    using var cancellation = CliCancellation.ListenToConsole();
     try
     {
         var tarService = new TarSandboxedService(policy);
-        var capabilities = await tarService.DetectCapabilitiesAsync().ConfigureAwait(false);
+        TarCapabilities capabilities = await tarService.DetectCapabilitiesAsync().ConfigureAwait(false);
         var router = new ExtractionRouter(new ZipArchiveService(policy), tarService, capabilities, policy);
 
         using CliStagingFolder? stdinFolder = await StageStdinIfRequestedAsync(command, cancellation.Token).ConfigureAwait(false);
         using CliStagingFolder? stdoutFolder = command.WriteToStdout ? CliStagingFolder.Create(CliStreamStaging.StdoutRoot) : null;
         string destination = stdoutFolder?.Path ?? ResolveExtractDestination(command);
 
-        var options = BuildExtractOptions(command, ArchivePathsFor(command, stdinFolder), destination, cancellation.Source);
+        ExtractOptions options = BuildExtractOptions(command, ArchivePathsFor(command, stdinFolder), destination, cancellation.Source);
 
         ArchiveResult result = await router.ExtractAsync(options, progress: null, cancellation.Token).ConfigureAwait(false);
         if (cancellation.Token.IsCancellationRequested)
@@ -274,7 +274,7 @@ static async Task<int> ReportAndStreamAsync(ArchiveResult result, CliStagingFold
 // -------------------------------------------------------------------------
 static async Task<int> RunTestAsync(ParsedCliCommand command, GroupPolicyOptions policy)
 {
-    using CliCancellation cancellation = CliCancellation.ListenToConsole();
+    using var cancellation = CliCancellation.ListenToConsole();
     try
     {
         using CliStagingFolder? stdinFolder = await StageStdinIfRequestedAsync(command, cancellation.Token).ConfigureAwait(false);
@@ -347,7 +347,7 @@ static async Task<int> RunArchiveAsync(ParsedCliCommand command, GroupPolicyOpti
     if (RejectUnusableEncryptionPassword(command) is { } commandLineError)
         return commandLineError;
 
-    using CliCancellation cancellation = CliCancellation.ListenToConsole();
+    using var cancellation = CliCancellation.ListenToConsole();
     try
     {
         var router = new ArchiveCreationRouter(new ZipArchiveService(policy), new TarSandboxedService(policy), policy);
@@ -432,7 +432,7 @@ static int? ReportNewPasswordPromptOutcome(CliPasswordPrompt.NewPasswordResult? 
 // -------------------------------------------------------------------------
 static async Task<int> RunListAsync(ParsedCliCommand command)
 {
-    using CliCancellation cancellation = CliCancellation.ListenToConsole();
+    using var cancellation = CliCancellation.ListenToConsole();
     try
     {
         var tarService = new TarSandboxedService();

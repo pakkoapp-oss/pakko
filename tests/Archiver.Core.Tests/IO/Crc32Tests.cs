@@ -60,7 +60,7 @@ public sealed class Crc32Tests
     public void Combine_LargeRandomBuffer_ChunkedMatchesSequential()
     {
         var rng = new Random(20260720);
-        var data = new byte[1_000_003]; // deliberately not a multiple of any "nice" chunk size
+        byte[] data = new byte[1_000_003]; // deliberately not a multiple of any "nice" chunk size
         rng.NextBytes(data);
 
         var seqAcc = new Crc32.Accumulator();

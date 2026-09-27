@@ -41,7 +41,7 @@ public static class ArchiveFormatDetector
     {
         try
         {
-            using var fs = File.OpenRead(path);
+            using FileStream fs = File.OpenRead(path);
             Span<byte> header = stackalloc byte[262];
             int read = fs.Read(header);
             return DetectFormatFromHeader(header, read);
@@ -240,7 +240,7 @@ public static class ArchiveFormatDetector
     private static byte[] ReadHeaderWindow(string path)
     {
         using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-        var buffer = new byte[(int)Math.Min(HeaderWindowBytes, stream.Length)];
+        byte[] buffer = new byte[(int)Math.Min(HeaderWindowBytes, stream.Length)];
         stream.ReadExactly(buffer);
         return buffer;
     }

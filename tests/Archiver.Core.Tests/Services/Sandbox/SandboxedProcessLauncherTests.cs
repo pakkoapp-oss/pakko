@@ -11,7 +11,7 @@ public sealed class SandboxedProcessLauncherTests
     [Fact]
     public async Task RunAsync_EchoCommand_CapturesStdOutAndExitCode()
     {
-        var (exitCode, stdOut, stdErr) = await SandboxedProcessLauncher.RunAsync(
+        (int exitCode, string? stdOut, string? stdErr) = await SandboxedProcessLauncher.RunAsync(
             @"C:\Windows\System32\cmd.exe",
             ["/c", "echo hello sandbox"],
             new ProcessLaunchOptions(),
@@ -25,7 +25,7 @@ public sealed class SandboxedProcessLauncherTests
     [Fact]
     public async Task RunAsync_NonZeroExitCommand_ReturnsExitCode()
     {
-        var (exitCode, _, _) = await SandboxedProcessLauncher.RunAsync(
+        (int exitCode, _, _) = await SandboxedProcessLauncher.RunAsync(
             @"C:\Windows\System32\cmd.exe",
             ["/c", "exit 7"],
             new ProcessLaunchOptions(),
@@ -46,7 +46,7 @@ public sealed class SandboxedProcessLauncherTests
         File.WriteAllText(tempFile, "ABC123");
         try
         {
-            var (exitCode, stdOut, _) = await SandboxedProcessLauncher.RunAsync(
+            (int exitCode, string? stdOut, _) = await SandboxedProcessLauncher.RunAsync(
                 @"C:\Windows\System32\cmd.exe",
                 ["/c", "type", tempFile],
                 new ProcessLaunchOptions(),
@@ -67,7 +67,7 @@ public sealed class SandboxedProcessLauncherTests
         // Regression guard for the classic pipe-deadlock bug: a child writing enough output to
         // fill the pipe buffer before the parent starts reading would hang forever without
         // async draining of both streams.
-        var (exitCode, stdOut, _) = await SandboxedProcessLauncher.RunAsync(
+        (int exitCode, string? stdOut, _) = await SandboxedProcessLauncher.RunAsync(
             @"C:\Windows\System32\cmd.exe",
             ["/c", "for /L %i in (1,1,2000) do @echo line %i"],
             new ProcessLaunchOptions(),
@@ -98,7 +98,7 @@ public sealed class SandboxedProcessLauncherTests
         await Task.Delay(500);
         server.DisposeLocalCopyOfClientHandle();
 
-        var buffer = new byte[1];
+        byte[] buffer = new byte[1];
         Task<int> read = server.ReadAsync(buffer, 0, 1);
         Task finished = await Task.WhenAny(read, Task.Delay(TimeSpan.FromSeconds(2)));
 

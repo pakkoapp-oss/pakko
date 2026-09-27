@@ -13,7 +13,7 @@ public sealed class LogService : ILogService
 
     public LogService()
     {
-        var dir = Path.Combine(
+        string dir = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "Pakko", "logs");
         Directory.CreateDirectory(dir);
@@ -25,13 +25,13 @@ public sealed class LogService : ILogService
 
     public void Error(string message, Exception? ex = null)
     {
-        var text = ex is null ? message : $"{message} — {ex.GetType().Name}: {ex.Message}";
+        string text = ex is null ? message : $"{message} — {ex.GetType().Name}: {ex.Message}";
         Write("ERROR", text);
     }
 
     private void Write(string level, string message)
     {
-        var line = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} [{level}] {message}{Environment.NewLine}";
+        string line = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} [{level}] {message}{Environment.NewLine}";
         lock (_lock)
         {
             RotateIfNeeded();
@@ -51,8 +51,8 @@ public sealed class LogService : ILogService
         // Shift existing rotated files: .log.3 deleted, .log.2 → .log.3, etc.
         for (int i = MaxRotatedFiles; i >= 1; i--)
         {
-            var older = $"{_logPath}.{i}";
-            var newer = $"{_logPath}.{i - 1}";
+            string older = $"{_logPath}.{i}";
+            string newer = $"{_logPath}.{i - 1}";
             if (i == 1) newer = _logPath;
 
             if (File.Exists(older))

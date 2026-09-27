@@ -21,7 +21,7 @@ public sealed class ExtractionRouter(
         // T-F146: classification (zip/tar/unsupported split + Group Policy gating) is now shared
         // with AntivirusScanService via ArchiveFormatPolicy, so a scan can never silently drift
         // from what real extraction would allow/refuse. Behavior here is unchanged.
-        var classification = ArchiveFormatPolicy.Classify(options.ArchivePaths, tarCapabilities, _policy);
+        ArchiveFormatPolicy.Classification classification = ArchiveFormatPolicy.Classify(options.ArchivePaths, tarCapabilities, _policy);
         IReadOnlyList<string> zipPaths = classification.ZipPaths;
         IReadOnlyList<string> tarPaths = classification.TarPaths;
         IReadOnlyList<SkippedFile> unsupported = classification.Unsupported;

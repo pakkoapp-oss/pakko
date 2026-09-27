@@ -54,9 +54,9 @@ public sealed class ZipSandboxSpikePerformanceTests : IDisposable
         await RunInProcessArchiveTimed(sourceDir, Path.Combine(_temp.Path, "warmup_inprocess.zip")); // warmup
         await RunWorkerAsync("archive", sourceDir, Path.Combine(_temp.Path, "warmup_sandboxed.zip")); // warmup
 
-        var inProcess = await RunInProcessArchiveTimed(sourceDir, Path.Combine(_temp.Path, "inprocess.zip"));
+        TimeSpan inProcess = await RunInProcessArchiveTimed(sourceDir, Path.Combine(_temp.Path, "inprocess.zip"));
         string workerDest = Path.Combine(_temp.Path, "sandboxed.zip");
-        var worker = await RunWorkerAsync("archive", sourceDir, workerDest);
+        WorkerRunResult worker = await RunWorkerAsync("archive", sourceDir, workerDest);
 
         worker.ExitCode.Should().Be(0, because: worker.StdErr);
         File.Exists(workerDest).Should().BeTrue();
@@ -75,9 +75,9 @@ public sealed class ZipSandboxSpikePerformanceTests : IDisposable
         await RunInProcessExtractTimed(referenceZip, Path.Combine(_temp.Path, "warmup_extract_inprocess")); // warmup
         await RunWorkerAsync("extract", referenceZip, Path.Combine(_temp.Path, "warmup_extract_sandboxed")); // warmup
 
-        var inProcess = await RunInProcessExtractTimed(referenceZip, Path.Combine(_temp.Path, "extract_inprocess"));
+        TimeSpan inProcess = await RunInProcessExtractTimed(referenceZip, Path.Combine(_temp.Path, "extract_inprocess"));
         string workerDest = Path.Combine(_temp.Path, "extract_sandboxed");
-        var worker = await RunWorkerAsync("extract", referenceZip, workerDest);
+        WorkerRunResult worker = await RunWorkerAsync("extract", referenceZip, workerDest);
 
         worker.ExitCode.Should().Be(0, because: worker.StdErr);
         Directory.GetFiles(workerDest, "*", SearchOption.AllDirectories)
@@ -95,9 +95,9 @@ public sealed class ZipSandboxSpikePerformanceTests : IDisposable
         await RunInProcessArchiveTimed(sourceDir, Path.Combine(_temp.Path, "warmup_inprocess.zip"));
         await RunWorkerAsync("archive", sourceDir, Path.Combine(_temp.Path, "warmup_sandboxed.zip"));
 
-        var inProcess = await RunInProcessArchiveTimed(sourceDir, Path.Combine(_temp.Path, "inprocess.zip"));
+        TimeSpan inProcess = await RunInProcessArchiveTimed(sourceDir, Path.Combine(_temp.Path, "inprocess.zip"));
         string workerDest = Path.Combine(_temp.Path, "sandboxed.zip");
-        var worker = await RunWorkerAsync("archive", sourceDir, workerDest);
+        WorkerRunResult worker = await RunWorkerAsync("archive", sourceDir, workerDest);
 
         worker.ExitCode.Should().Be(0, because: worker.StdErr);
         File.Exists(workerDest).Should().BeTrue();
@@ -116,9 +116,9 @@ public sealed class ZipSandboxSpikePerformanceTests : IDisposable
         await RunInProcessExtractTimed(referenceZip, Path.Combine(_temp.Path, "warmup_extract_inprocess"));
         await RunWorkerAsync("extract", referenceZip, Path.Combine(_temp.Path, "warmup_extract_sandboxed"));
 
-        var inProcess = await RunInProcessExtractTimed(referenceZip, Path.Combine(_temp.Path, "extract_inprocess"));
+        TimeSpan inProcess = await RunInProcessExtractTimed(referenceZip, Path.Combine(_temp.Path, "extract_inprocess"));
         string workerDest = Path.Combine(_temp.Path, "extract_sandboxed");
-        var worker = await RunWorkerAsync("extract", referenceZip, workerDest);
+        WorkerRunResult worker = await RunWorkerAsync("extract", referenceZip, workerDest);
 
         worker.ExitCode.Should().Be(0, because: worker.StdErr);
         Directory.GetFiles(workerDest, "*", SearchOption.AllDirectories).Should().HaveCount(1);
@@ -148,7 +148,7 @@ public sealed class ZipSandboxSpikePerformanceTests : IDisposable
         Profile.EnsureExists();
         using SafeSidHandle sid = Profile.GetSid();
 
-        var (exitCode, _, _) = await SandboxedProcessLauncher.RunAsync(
+        (int exitCode, _, _) = await SandboxedProcessLauncher.RunAsync(
             toolExePath, ["archive", sourceDir, destZip], new ProcessLaunchOptions(AppContainerSid: sid), CancellationToken.None);
 
         exitCode.Should().NotBe(0);
@@ -176,7 +176,7 @@ public sealed class ZipSandboxSpikePerformanceTests : IDisposable
     private async Task<TimeSpan> RunInProcessArchiveTimed(string sourceDir, string destinationZipPath)
     {
         var stopwatch = Stopwatch.StartNew();
-        var result = await _sut.ArchiveAsync(new ArchiveOptions
+        ArchiveResult result = await _sut.ArchiveAsync(new ArchiveOptions
         {
             SourcePaths = [sourceDir],
             DestinationFolder = Path.GetDirectoryName(destinationZipPath)!,
@@ -191,7 +191,7 @@ public sealed class ZipSandboxSpikePerformanceTests : IDisposable
     private async Task<TimeSpan> RunInProcessExtractTimed(string archivePath, string destinationDir)
     {
         var stopwatch = Stopwatch.StartNew();
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [archivePath],
             DestinationFolder = destinationDir,
@@ -209,10 +209,10 @@ public sealed class ZipSandboxSpikePerformanceTests : IDisposable
 
         Profile.EnsureExists();
         using SafeSidHandle sid = Profile.GetSid();
-        using SandboxJobObject job = SandboxJobObject.Create(RamLimitBytes, CpuTimeLimit);
+        using var job = SandboxJobObject.Create(RamLimitBytes, CpuTimeLimit);
 
         var stopwatch = Stopwatch.StartNew();
-        var (exitCode, _, stdErr) = await SandboxedProcessLauncher.RunAsync(
+        (int exitCode, _, string? stdErr) = await SandboxedProcessLauncher.RunAsync(
             toolExePath, [operation, sourcePath, destPath], new ProcessLaunchOptions(AppContainerSid: sid, Job: job.Handle), CancellationToken.None);
         stopwatch.Stop();
 

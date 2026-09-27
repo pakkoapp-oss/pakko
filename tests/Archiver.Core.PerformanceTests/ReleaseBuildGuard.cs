@@ -14,7 +14,7 @@ public static class ReleaseBuildGuard
 {
     public static void RequireOptimizedCore()
     {
-        var debuggable = typeof(ZipArchiveService).Assembly.GetCustomAttribute<DebuggableAttribute>();
+        DebuggableAttribute? debuggable = typeof(ZipArchiveService).Assembly.GetCustomAttribute<DebuggableAttribute>();
         bool optimized = debuggable is null || !debuggable.IsJITOptimizerDisabled;
         optimized.Should().BeTrue(
             because: "the VeryLarge ratio tests are calibrated in Release — run " +

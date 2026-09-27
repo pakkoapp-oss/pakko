@@ -10,6 +10,8 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Windows.Storage.Pickers;
+using Windows.Storage;
+using Windows.ApplicationModel;
 
 namespace Archiver.App.Services;
 
@@ -85,7 +87,7 @@ public sealed class DialogService : IDialogService
             CloseButtonText = "No",
             XamlRoot = _window!.Content.XamlRoot
         };
-        var result = await dialog.ShowAsync();
+        ContentDialogResult result = await dialog.ShowAsync();
         return result == ContentDialogResult.Primary;
     }
 
@@ -112,7 +114,7 @@ public sealed class DialogService : IDialogService
                     CloseButtonText = "No",
                     XamlRoot = _window!.Content.XamlRoot
                 };
-                var result = await dialog.ShowAsync();
+                ContentDialogResult result = await dialog.ShowAsync();
                 tcs.SetResult(result == ContentDialogResult.Primary);
             }
             catch (Exception ex)
@@ -162,9 +164,9 @@ public sealed class DialogService : IDialogService
                     DefaultButton = ContentDialogButton.Close, // Enter resolves to Skip, not Overwrite
                     XamlRoot = _window!.Content.XamlRoot
                 };
-                var result = await dialog.ShowAsync();
+                ContentDialogResult result = await dialog.ShowAsync();
 
-                var resolution = result switch
+                ConflictResolution resolution = result switch
                 {
                     ContentDialogResult.Primary => ConflictResolution.Overwrite,
                     ContentDialogResult.Secondary => ConflictResolution.Rename,
@@ -250,7 +252,7 @@ public sealed class DialogService : IDialogService
                 // password field.
                 dialog.Opened += (_, _) => passwordBox.Focus(FocusState.Programmatic);
 
-                var result = await dialog.ShowAsync();
+                ContentDialogResult result = await dialog.ShowAsync();
 
                 tcs.SetResult(result == ContentDialogResult.Primary
                     ? new PasswordDecision
@@ -324,7 +326,7 @@ public sealed class DialogService : IDialogService
                     errorText.Visibility = Visibility.Visible;
                 };
 
-                var result = await dialog.ShowAsync();
+                ContentDialogResult result = await dialog.ShowAsync();
 
                 tcs.SetResult(new PasswordDecision
                 {
@@ -379,7 +381,7 @@ public sealed class DialogService : IDialogService
         var picker = new FolderPicker();
         picker.SuggestedStartLocation = PickerLocationId.Desktop;
         WinRT.Interop.InitializeWithWindow.Initialize(picker, WinRT.Interop.WindowNative.GetWindowHandle(_window));
-        var folder = await picker.PickSingleFolderAsync();
+        StorageFolder folder = await picker.PickSingleFolderAsync();
         return folder?.Path;
     }
 
@@ -388,7 +390,7 @@ public sealed class DialogService : IDialogService
         var picker = new FileOpenPicker();
         picker.FileTypeFilter.Add("*");
         WinRT.Interop.InitializeWithWindow.Initialize(picker, WinRT.Interop.WindowNative.GetWindowHandle(_window));
-        var files = await picker.PickMultipleFilesAsync();
+        IReadOnlyList<StorageFile> files = await picker.PickMultipleFilesAsync();
         return files?.Select(f => f.Path).ToList() ?? [];
     }
 
@@ -397,7 +399,7 @@ public sealed class DialogService : IDialogService
         var picker = new FolderPicker();
         picker.SuggestedStartLocation = PickerLocationId.Desktop;
         WinRT.Interop.InitializeWithWindow.Initialize(picker, WinRT.Interop.WindowNative.GetWindowHandle(_window));
-        var folder = await picker.PickSingleFolderAsync();
+        StorageFolder? folder = await picker.PickSingleFolderAsync();
         return folder is null ? [] : [folder.Path];
     }
 
@@ -416,7 +418,7 @@ public sealed class DialogService : IDialogService
                 FontWeight = FontWeights.SemiBold
             });
 
-            foreach (var error in result.Errors)
+            foreach (ArchiveError error in result.Errors)
             {
                 var itemPanel = new StackPanel { Margin = new Thickness(12, 0, 0, 4) };
                 itemPanel.Children.Add(new TextBlock
@@ -442,7 +444,7 @@ public sealed class DialogService : IDialogService
                 FontWeight = FontWeights.SemiBold
             });
 
-            foreach (var skipped in result.SkippedFiles)
+            foreach (SkippedFile skipped in result.SkippedFiles)
             {
                 var itemPanel = new StackPanel { Margin = new Thickness(12, 0, 0, 4) };
                 itemPanel.Children.Add(new TextBlock
@@ -511,7 +513,7 @@ public sealed class DialogService : IDialogService
                 FontWeight = FontWeights.SemiBold
             });
 
-            foreach (var finding in findings)
+            foreach (ThreatFinding finding in findings)
             {
                 var itemPanel = new StackPanel { Margin = new Thickness(12, 0, 0, 4) };
                 itemPanel.Children.Add(new TextBlock
@@ -567,15 +569,15 @@ public sealed class DialogService : IDialogService
     // docs/DECISIONS.md's T-F164 entry.
     public async Task ShowFileHashAsync()
     {
-        var files = await PickFilesAsync();
+        IReadOnlyList<string> files = await PickFilesAsync();
         if (files.Count == 0)
             return;
 
-        var result = await FileHashService.ComputeAsync(files, HashAlgorithmKind.Sha256, progress: null, CancellationToken.None);
+        HashResult result = await FileHashService.ComputeAsync(files, HashAlgorithmKind.Sha256, progress: null, CancellationToken.None);
 
         var panel = new StackPanel { Spacing = 12 };
 
-        foreach (var entry in result.Entries)
+        foreach (HashEntry entry in result.Entries)
         {
             var itemPanel = new StackPanel { Spacing = 2 };
             itemPanel.Children.Add(new TextBlock
@@ -615,7 +617,7 @@ public sealed class DialogService : IDialogService
         string version;
         try
         {
-            var v = Windows.ApplicationModel.Package.Current.Id.Version;
+            PackageVersion v = Windows.ApplicationModel.Package.Current.Id.Version;
             version = $"{v.Major}.{v.Minor}.{v.Build}.{v.Revision}";
         }
         catch
@@ -623,9 +625,9 @@ public sealed class DialogService : IDialogService
             version = "dev";
         }
 
-        var githubUrl = _res.GetString("AboutGitHubUrl");
-        var privacyUrl = _res.GetString("AboutPrivacyUrl");
-        var kofiUrl = _res.GetString("AboutKofiUrl");
+        string githubUrl = _res.GetString("AboutGitHubUrl");
+        string privacyUrl = _res.GetString("AboutPrivacyUrl");
+        string kofiUrl = _res.GetString("AboutKofiUrl");
 
         var panel = new StackPanel { Spacing = 12 };
         panel.Children.Add(new TextBlock

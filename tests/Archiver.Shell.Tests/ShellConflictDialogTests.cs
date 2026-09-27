@@ -18,7 +18,7 @@ public sealed class ShellConflictDialogTests
     [InlineData(true)]
     public void MapResult_OverwriteButton_ReturnsOverwriteWithApplyToAllPassedThrough(bool applyToAll)
     {
-        var decision = ShellConflictDialog.MapResult(IdOverwrite, applyToAll);
+        ConflictDecision decision = ShellConflictDialog.MapResult(IdOverwrite, applyToAll);
 
         decision.Resolution.Should().Be(ConflictResolution.Overwrite);
         decision.ApplyToAll.Should().Be(applyToAll);
@@ -29,7 +29,7 @@ public sealed class ShellConflictDialogTests
     [InlineData(true)]
     public void MapResult_RenameButton_ReturnsRenameWithApplyToAllPassedThrough(bool applyToAll)
     {
-        var decision = ShellConflictDialog.MapResult(IdRename, applyToAll);
+        ConflictDecision decision = ShellConflictDialog.MapResult(IdRename, applyToAll);
 
         decision.Resolution.Should().Be(ConflictResolution.Rename);
         decision.ApplyToAll.Should().Be(applyToAll);
@@ -40,7 +40,7 @@ public sealed class ShellConflictDialogTests
     [InlineData(true)]
     public void MapResult_SkipButton_ReturnsSkipWithApplyToAllPassedThrough(bool applyToAll)
     {
-        var decision = ShellConflictDialog.MapResult(IdSkip, applyToAll);
+        ConflictDecision decision = ShellConflictDialog.MapResult(IdSkip, applyToAll);
 
         decision.Resolution.Should().Be(ConflictResolution.Skip);
         decision.ApplyToAll.Should().Be(applyToAll);
@@ -50,7 +50,7 @@ public sealed class ShellConflictDialogTests
     public void MapResult_IdCancel_ReturnsSkip()
     {
         // Esc/Alt-F4 with TDF_ALLOW_DIALOG_CANCELLATION set -- must not be treated as Overwrite.
-        var decision = ShellConflictDialog.MapResult(IdCancel, applyToAllChecked: false);
+        ConflictDecision decision = ShellConflictDialog.MapResult(IdCancel, applyToAllChecked: false);
 
         decision.Resolution.Should().Be(ConflictResolution.Skip);
     }
@@ -58,7 +58,7 @@ public sealed class ShellConflictDialogTests
     [Fact]
     public void MapResult_UnrecognizedButtonId_ReturnsSkip()
     {
-        var decision = ShellConflictDialog.MapResult(buttonId: 99999, applyToAllChecked: false);
+        ConflictDecision decision = ShellConflictDialog.MapResult(buttonId: 99999, applyToAllChecked: false);
 
         decision.Resolution.Should().Be(ConflictResolution.Skip);
     }

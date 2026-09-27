@@ -1,3 +1,4 @@
+using System.IO.Compression;
 using Archiver.Core.Models;
 using Archiver.Core.Services;
 using Archiver.Core.Tests.Helpers;
@@ -15,7 +16,7 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
     [Fact]
     public async Task ArchiveAsync_SingleFile_CreatesZip()
     {
-        var file = _temp.CreateFile("document.txt");
+        string file = _temp.CreateFile("document.txt");
         var options = new ArchiveOptions
         {
             SourcePaths = [file],
@@ -23,7 +24,7 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
             ArchiveName = "output"
         };
 
-        var result = await _sut.ArchiveAsync(options);
+        ArchiveResult result = await _sut.ArchiveAsync(options);
 
         result.Success.Should().BeTrue();
         result.CreatedFiles.Should().HaveCount(1);
@@ -56,7 +57,7 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
             ArchiveName = "long-path-output",
         };
 
-        var result = await _sut.ArchiveAsync(options);
+        ArchiveResult result = await _sut.ArchiveAsync(options);
 
         result.Should().NotBeNull();
         (result.Success || result.Errors.Count > 0).Should().BeTrue(
@@ -67,7 +68,7 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
     [Fact]
     public async Task ArchiveAsync_NullArchiveName_SingleSource_AutoNamesFromSource()
     {
-        var dir = Path.Combine(_temp.Path, "my_folder");
+        string dir = Path.Combine(_temp.Path, "my_folder");
         Directory.CreateDirectory(dir);
         var options = new ArchiveOptions
         {
@@ -76,7 +77,7 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
             ArchiveName = null
         };
 
-        var result = await _sut.ArchiveAsync(options);
+        ArchiveResult result = await _sut.ArchiveAsync(options);
 
         result.Success.Should().BeTrue();
         result.CreatedFiles.Should().ContainSingle(f => Path.GetFileName(f) == "my_folder.zip");
@@ -92,7 +93,7 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
     [Fact]
     public async Task ArchiveAsync_NullArchiveName_SingleSourceEndingInSeparator_UsesFolderNameNotArchive()
     {
-        var dir = Path.Combine(_temp.Path, "my_folder");
+        string dir = Path.Combine(_temp.Path, "my_folder");
         Directory.CreateDirectory(dir);
         var options = new ArchiveOptions
         {
@@ -101,7 +102,7 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
             ArchiveName = null
         };
 
-        var result = await _sut.ArchiveAsync(options);
+        ArchiveResult result = await _sut.ArchiveAsync(options);
 
         result.Success.Should().BeTrue();
         result.CreatedFiles.Should().ContainSingle(f => Path.GetFileName(f) == "my_folder.zip");
@@ -116,7 +117,7 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
     [Fact]
     public async Task ArchiveAsync_SourceEndingInSeparator_EntriesAreRootedUnderFolderName()
     {
-        var dir = Path.Combine(_temp.Path, "my_folder");
+        string dir = Path.Combine(_temp.Path, "my_folder");
         Directory.CreateDirectory(dir);
         File.WriteAllText(Path.Combine(dir, "inner.txt"), "content");
         var options = new ArchiveOptions
@@ -126,18 +127,18 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
             ArchiveName = "output"
         };
 
-        var result = await _sut.ArchiveAsync(options);
+        ArchiveResult result = await _sut.ArchiveAsync(options);
 
         result.Success.Should().BeTrue();
-        using var archive = System.IO.Compression.ZipFile.OpenRead(result.CreatedFiles[0]);
+        using ZipArchive archive = System.IO.Compression.ZipFile.OpenRead(result.CreatedFiles[0]);
         archive.Entries.Should().ContainSingle(e => e.FullName == "my_folder/inner.txt");
     }
 
     [Fact]
     public async Task ArchiveAsync_MultipleFiles_SingleArchiveMode_CreatesOneZip()
     {
-        var file1 = _temp.CreateFile("a.txt");
-        var file2 = _temp.CreateFile("b.txt");
+        string file1 = _temp.CreateFile("a.txt");
+        string file2 = _temp.CreateFile("b.txt");
         var options = new ArchiveOptions
         {
             SourcePaths = [file1, file2],
@@ -146,7 +147,7 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
             Mode = ArchiveMode.SingleArchive
         };
 
-        var result = await _sut.ArchiveAsync(options);
+        ArchiveResult result = await _sut.ArchiveAsync(options);
 
         result.Success.Should().BeTrue();
         result.CreatedFiles.Should().HaveCount(1);
@@ -155,8 +156,8 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
     [Fact]
     public async Task ArchiveAsync_MultipleFiles_SeparateArchivesMode_CreatesMultipleZips()
     {
-        var file1 = _temp.CreateFile("a.txt");
-        var file2 = _temp.CreateFile("b.txt");
+        string file1 = _temp.CreateFile("a.txt");
+        string file2 = _temp.CreateFile("b.txt");
         var options = new ArchiveOptions
         {
             SourcePaths = [file1, file2],
@@ -164,7 +165,7 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
             Mode = ArchiveMode.SeparateArchives
         };
 
-        var result = await _sut.ArchiveAsync(options);
+        ArchiveResult result = await _sut.ArchiveAsync(options);
 
         result.Success.Should().BeTrue();
         result.CreatedFiles.Should().HaveCount(2);
@@ -179,7 +180,7 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
             DestinationFolder = _temp.Path
         };
 
-        var result = await _sut.ArchiveAsync(options);
+        ArchiveResult result = await _sut.ArchiveAsync(options);
 
         result.Success.Should().BeFalse();
         result.Errors.Should().HaveCount(1);
@@ -206,7 +207,7 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
             Mode = ArchiveMode.SeparateArchives
         };
 
-        var act = () => _sut.ArchiveAsync(options, cancellationToken: cts.Token);
+        Func<Task<ArchiveResult>> act = () => _sut.ArchiveAsync(options, cancellationToken: cts.Token);
 
         await act.Should().ThrowAsync<OperationCanceledException>();
         Directory.GetFiles(_temp.Path, "*.zip").Should().BeEmpty();
@@ -215,9 +216,9 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
     [Fact]
     public async Task ArchiveAsync_ConflictSkip_DoesNotOverwriteExistingZip()
     {
-        var file = _temp.CreateFile("source.txt");
-        var existingZip = _temp.CreateFile("output.zip");
-        var originalWriteTime = File.GetLastWriteTimeUtc(existingZip);
+        string file = _temp.CreateFile("source.txt");
+        string existingZip = _temp.CreateFile("output.zip");
+        DateTime originalWriteTime = File.GetLastWriteTimeUtc(existingZip);
 
         var options = new ArchiveOptions
         {
@@ -227,7 +228,7 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
             OnConflict = ConflictBehavior.Skip
         };
 
-        var result = await _sut.ArchiveAsync(options);
+        ArchiveResult result = await _sut.ArchiveAsync(options);
 
         result.Success.Should().BeTrue();
         result.CreatedFiles.Should().BeEmpty();
@@ -243,7 +244,7 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
     [Fact]
     public async Task ArchiveAsync_SeparateArchivesConflictSkip_RecordsSkippedSource()
     {
-        var file = _temp.CreateFile("source.txt");
+        string file = _temp.CreateFile("source.txt");
         _temp.CreateFile("source.zip"); // pre-existing destination for SeparateArchives naming
 
         var options = new ArchiveOptions
@@ -254,7 +255,7 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
             OnConflict = ConflictBehavior.Skip
         };
 
-        var result = await _sut.ArchiveAsync(options);
+        ArchiveResult result = await _sut.ArchiveAsync(options);
 
         result.CreatedFiles.Should().BeEmpty();
         result.SkippedFiles.Should().Contain(s => s.Path == file);
@@ -263,7 +264,7 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
     [Fact]
     public async Task ArchiveAsync_ConflictRename_CreatesNumberedZipWhenOutputExists()
     {
-        var file = _temp.CreateFile("source.txt");
+        string file = _temp.CreateFile("source.txt");
         _temp.CreateFile("output.zip");
 
         var options = new ArchiveOptions
@@ -274,7 +275,7 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
             OnConflict = ConflictBehavior.Rename
         };
 
-        var result = await _sut.ArchiveAsync(options);
+        ArchiveResult result = await _sut.ArchiveAsync(options);
 
         result.Success.Should().BeTrue();
         result.CreatedFiles.Should().HaveCount(1);
@@ -285,8 +286,8 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
     [Fact]
     public async Task ArchiveAsync_ConflictOverwrite_ReplacesExistingZip()
     {
-        var file = _temp.CreateFile("source.txt");
-        var existingZip = _temp.CreateFile("output.zip");
+        string file = _temp.CreateFile("source.txt");
+        string existingZip = _temp.CreateFile("output.zip");
 
         var options = new ArchiveOptions
         {
@@ -296,7 +297,7 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
             OnConflict = ConflictBehavior.Overwrite
         };
 
-        var result = await _sut.ArchiveAsync(options);
+        ArchiveResult result = await _sut.ArchiveAsync(options);
 
         result.Success.Should().BeTrue();
         result.CreatedFiles.Should().HaveCount(1);
@@ -311,8 +312,8 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
     [InlineData(ConflictResolution.Skip)]
     public async Task ArchiveAsync_ConflictAsk_SingleArchive_AppliesCallbackResolution(ConflictResolution resolution)
     {
-        var file = _temp.CreateFile("source.txt");
-        var existingZip = _temp.CreateFile("output.zip");
+        string file = _temp.CreateFile("source.txt");
+        string existingZip = _temp.CreateFile("output.zip");
 
         var options = new ArchiveOptions
         {
@@ -323,7 +324,7 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
             ResolveConflictAsync = _ => Task.FromResult(new ConflictDecision { Resolution = resolution })
         };
 
-        var result = await _sut.ArchiveAsync(options);
+        ArchiveResult result = await _sut.ArchiveAsync(options);
 
         switch (resolution)
         {
@@ -344,7 +345,7 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
     [Fact]
     public async Task ArchiveAsync_ConflictAsk_HasNoIncomingSizeOrTime()
     {
-        var file = _temp.CreateFile("source.txt");
+        string file = _temp.CreateFile("source.txt");
         _temp.CreateFile("output.zip");
 
         ConflictInfo? asked = null;
@@ -372,8 +373,8 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
     [Fact]
     public async Task ArchiveAsync_ConflictAsk_SeparateArchives_ApplyToAll_InvokesCallbackOnce()
     {
-        var file1 = _temp.CreateFile("first.txt");
-        var file2 = _temp.CreateFile("second.txt");
+        string file1 = _temp.CreateFile("first.txt");
+        string file2 = _temp.CreateFile("second.txt");
         _temp.CreateFile("first.zip");
         _temp.CreateFile("second.zip");
 
@@ -391,7 +392,7 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
             }
         };
 
-        var result = await _sut.ArchiveAsync(options);
+        ArchiveResult result = await _sut.ArchiveAsync(options);
 
         result.CreatedFiles.Should().HaveCount(2);
         result.CreatedFiles.Should().Contain(f => f.EndsWith("first (1).zip"));
@@ -463,9 +464,9 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
     [Fact]
     public async Task ArchiveAsync_Cancelled_LeavesNoTempFile()
     {
-        var file1 = _temp.CreateFile("a.txt", "content a");
-        var file2 = _temp.CreateFile("b.txt", "content b");
-        var file3 = _temp.CreateFile("c.txt", "content c");
+        string file1 = _temp.CreateFile("a.txt", "content a");
+        string file2 = _temp.CreateFile("b.txt", "content b");
+        string file3 = _temp.CreateFile("c.txt", "content c");
 
         using var cts = new CancellationTokenSource();
         cts.Cancel();
@@ -491,7 +492,7 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
     public async Task ArchiveAsync_SingleFile_ReportsMonotonicByteProgress()
     {
         string content = new string('x', 8 * 1024); // 8 KB — enough for multiple progress ticks
-        var file = _temp.CreateFile("data.txt", content);
+        string file = _temp.CreateFile("data.txt", content);
 
         var reports = new List<ProgressReport>();
         var progress = new Progress<ProgressReport>(r => reports.Add(r));
@@ -519,7 +520,7 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
     public async Task ArchiveAsync_CyrillicFilename_PreservedAfterRoundTrip()
     {
         string cyrillicName = "документ.txt";
-        var file = _temp.CreateFile(cyrillicName);
+        string file = _temp.CreateFile(cyrillicName);
 
         await _sut.ArchiveAsync(new ArchiveOptions
         {
@@ -529,7 +530,7 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
         });
 
         using var destDir = new TempDirectory();
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [Path.Combine(_temp.Path, "cyrillic_test.zip")],
             DestinationFolder = destDir.Path,
@@ -547,7 +548,7 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
     public async Task ArchiveAsync_EmojiFilename_PreservedAfterRoundTrip()
     {
         string emojiName = "photo_🇺🇦.txt";
-        var file = _temp.CreateFile(emojiName);
+        string file = _temp.CreateFile(emojiName);
 
         await _sut.ArchiveAsync(new ArchiveOptions
         {
@@ -557,7 +558,7 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
         });
 
         using var destDir = new TempDirectory();
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [Path.Combine(_temp.Path, "emoji_test.zip")],
             DestinationFolder = destDir.Path,
@@ -581,9 +582,9 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
     public async Task ArchiveAsync_RtlOverrideFilename_RoundTripsWithoutCorruptionOrCrash()
     {
         string rtlName = "invoice_\u202Etxt.exe";
-        var file = _temp.CreateFile(rtlName);
+        string file = _temp.CreateFile(rtlName);
 
-        var archiveResult = await _sut.ArchiveAsync(new ArchiveOptions
+        ArchiveResult archiveResult = await _sut.ArchiveAsync(new ArchiveOptions
         {
             SourcePaths = [file],
             DestinationFolder = _temp.Path,
@@ -592,7 +593,7 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
         archiveResult.Success.Should().BeTrue();
 
         using var destDir = new TempDirectory();
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [Path.Combine(_temp.Path, "rtl_test.zip")],
             DestinationFolder = destDir.Path,
@@ -612,11 +613,11 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
     [Fact]
     public async Task ArchiveAsync_ZalgoStyleCombiningCharacterFilename_RoundTripsOrFailsSafely()
     {
-        var combining = Enumerable.Range(0, 40).Select(i => (char)(0x0300 + (i % 0x20)));
+        IEnumerable<char> combining = Enumerable.Range(0, 40).Select(i => (char)(0x0300 + (i % 0x20)));
         string zalgoName = "z" + new string(combining.ToArray()) + ".txt";
-        var file = _temp.CreateFile(zalgoName);
+        string file = _temp.CreateFile(zalgoName);
 
-        var archiveResult = await _sut.ArchiveAsync(new ArchiveOptions
+        ArchiveResult archiveResult = await _sut.ArchiveAsync(new ArchiveOptions
         {
             SourcePaths = [file],
             DestinationFolder = _temp.Path,
@@ -632,7 +633,7 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
         }
 
         using var destDir = new TempDirectory();
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [Path.Combine(_temp.Path, "zalgo_test.zip")],
             DestinationFolder = destDir.Path,
@@ -684,7 +685,7 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
             ArchiveName = "longpath_archive"
         };
 
-        var archiveResult = await _sut.ArchiveAsync(archiveOptions);
+        ArchiveResult archiveResult = await _sut.ArchiveAsync(archiveOptions);
 
         archiveResult.Success.Should().BeTrue();
         archiveResult.Errors.Should().BeEmpty();
@@ -702,7 +703,7 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
             Mode = ExtractMode.SingleFolder
         };
 
-        var extractResult = await _sut.ExtractAsync(extractOptions);
+        ArchiveResult extractResult = await _sut.ExtractAsync(extractOptions);
 
         extractResult.Success.Should().BeTrue();
         extractResult.Errors.Should().BeEmpty();
@@ -745,7 +746,7 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
             ArchiveName = "symlink_test"
         };
 
-        var result = await _sut.ArchiveAsync(options);
+        ArchiveResult result = await _sut.ArchiveAsync(options);
 
         result.Success.Should().BeTrue();
         result.Errors.Should().BeEmpty();
@@ -753,7 +754,7 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
         result.SkippedFiles.Should().ContainSingle(s => s.Path == linkFile);
 
         // The archive must contain the real file but NOT the symlink
-        using var zip = System.IO.Compression.ZipFile.OpenRead(result.CreatedFiles[0]);
+        using ZipArchive zip = System.IO.Compression.ZipFile.OpenRead(result.CreatedFiles[0]);
         zip.Entries.Select(e => e.Name).Should().Contain("real.txt");
         zip.Entries.Select(e => e.Name).Should().NotContain("link.txt");
     }
@@ -790,14 +791,14 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
         };
 
         // Must complete without hanging (no infinite recursion on the circular symlink)
-        var result = await _sut.ArchiveAsync(options);
+        ArchiveResult result = await _sut.ArchiveAsync(options);
 
         result.Success.Should().BeTrue();
         result.Errors.Should().BeEmpty();
         result.SkippedFiles.Should().ContainSingle(s => s.Path == linkDir);
 
         // real_sub/file.txt must be in the archive
-        using var zip = System.IO.Compression.ZipFile.OpenRead(result.CreatedFiles[0]);
+        using ZipArchive zip = System.IO.Compression.ZipFile.OpenRead(result.CreatedFiles[0]);
         zip.Entries.Should().Contain(e => e.FullName.Contains("file.txt"));
     }
 
@@ -832,13 +833,13 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
                 ArchiveName = "junction_test"
             };
 
-            var result = await _sut.ArchiveAsync(options);
+            ArchiveResult result = await _sut.ArchiveAsync(options);
 
             result.Success.Should().BeTrue();
             result.Errors.Should().BeEmpty();
             result.SkippedFiles.Should().ContainSingle(s => s.Path == junctionDir);
 
-            using var zip = System.IO.Compression.ZipFile.OpenRead(result.CreatedFiles[0]);
+            using ZipArchive zip = System.IO.Compression.ZipFile.OpenRead(result.CreatedFiles[0]);
             zip.Entries.Select(e => e.Name).Should().Contain("real.txt");
             zip.Entries.Should().NotContain(e => e.FullName.Contains("target_file.txt"));
         }
@@ -908,7 +909,7 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
 
         // The archive was committed and contains keep.txt
         result.CreatedFiles.Should().HaveCount(1);
-        using var zip = System.IO.Compression.ZipFile.OpenRead(result.CreatedFiles[0]);
+        using ZipArchive zip = System.IO.Compression.ZipFile.OpenRead(result.CreatedFiles[0]);
         zip.Entries.Should().Contain(e => e.Name == "keep.txt");
         zip.Entries.Should().NotContain(e => e.Name == "locked.txt");
     }
@@ -921,7 +922,7 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
         // catch inside AddDirectoryToArchiveAsync that
         // ArchiveAsync_FileLockedDuringDirectoryTraversal_PerFileErrorRemainingFilesArchived above
         // already covers.
-        var file = _temp.CreateFile("document.txt");
+        string file = _temp.CreateFile("document.txt");
         string destPath = Path.Combine(_temp.Path, "locked_archive.zip");
         string tempPath = destPath + ".tmp";
 
@@ -996,7 +997,7 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
             ArchiveName = "toplevel_symlink_test"
         };
 
-        var result = await _sut.ArchiveAsync(options);
+        ArchiveResult result = await _sut.ArchiveAsync(options);
 
         // Symlink skipped → no files archived, no errors, SkippedFiles has the link
         result.Errors.Should().BeEmpty();
@@ -1024,14 +1025,14 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
         using var dest1 = new TempDirectory();
         using var dest2 = new TempDirectory();
 
-        var result1 = await _sut.ArchiveAsync(new ArchiveOptions
+        ArchiveResult result1 = await _sut.ArchiveAsync(new ArchiveOptions
         {
             SourcePaths = [sourceDir],
             DestinationFolder = dest1.Path,
             ArchiveName = "run1",
             CompressionLevel = System.IO.Compression.CompressionLevel.NoCompression
         });
-        var result2 = await _sut.ArchiveAsync(new ArchiveOptions
+        ArchiveResult result2 = await _sut.ArchiveAsync(new ArchiveOptions
         {
             SourcePaths = [sourceDir],
             DestinationFolder = dest2.Path,
@@ -1042,8 +1043,8 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
         result1.Success.Should().BeTrue();
         result2.Success.Should().BeTrue();
 
-        using var zip1 = System.IO.Compression.ZipFile.OpenRead(result1.CreatedFiles[0]);
-        using var zip2 = System.IO.Compression.ZipFile.OpenRead(result2.CreatedFiles[0]);
+        using ZipArchive zip1 = System.IO.Compression.ZipFile.OpenRead(result1.CreatedFiles[0]);
+        using ZipArchive zip2 = System.IO.Compression.ZipFile.OpenRead(result2.CreatedFiles[0]);
 
         var entries1 = zip1.Entries.Select(e => e.FullName).ToList();
         var entries2 = zip2.Entries.Select(e => e.FullName).ToList();
@@ -1070,14 +1071,14 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
         using var dest1 = new TempDirectory();
         using var dest2 = new TempDirectory();
 
-        var result1 = await _sut.ArchiveAsync(new ArchiveOptions
+        ArchiveResult result1 = await _sut.ArchiveAsync(new ArchiveOptions
         {
             SourcePaths = [sourceDir],
             DestinationFolder = dest1.Path,
             ArchiveName = "run1",
             CompressionLevel = System.IO.Compression.CompressionLevel.NoCompression
         });
-        var result2 = await _sut.ArchiveAsync(new ArchiveOptions
+        ArchiveResult result2 = await _sut.ArchiveAsync(new ArchiveOptions
         {
             SourcePaths = [sourceDir],
             DestinationFolder = dest2.Path,
@@ -1109,7 +1110,7 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
             ArchiveName = "output"
         };
 
-        var result = await _sut.ArchiveAsync(options);
+        ArchiveResult result = await _sut.ArchiveAsync(options);
 
         result.Success.Should().BeFalse();
         result.Errors.Should().HaveCount(2);
@@ -1122,7 +1123,7 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
     [Fact]
     public async Task ArchiveAsync_OneValidOneInvalidSource_CreatesPartialArchive()
     {
-        var validFile = _temp.CreateFile("real.txt", "hello");
+        string validFile = _temp.CreateFile("real.txt", "hello");
         string missing = Path.Combine(_temp.Path, "ghost.txt");
         var options = new ArchiveOptions
         {
@@ -1131,7 +1132,7 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
             ArchiveName = "partial"
         };
 
-        var result = await _sut.ArchiveAsync(options);
+        ArchiveResult result = await _sut.ArchiveAsync(options);
 
         result.Success.Should().BeFalse();
         result.Errors.Should().HaveCount(1);
@@ -1156,14 +1157,14 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
             ArchiveName = "output"
         };
 
-        var result = await _sut.ArchiveAsync(options);
+        ArchiveResult result = await _sut.ArchiveAsync(options);
 
         result.Success.Should().BeTrue();
         result.Errors.Should().BeEmpty();
         result.CreatedFiles.Should().HaveCount(1);
         File.Exists(result.CreatedFiles[0]).Should().BeTrue();
 
-        using var zip = System.IO.Compression.ZipFile.OpenRead(result.CreatedFiles[0]);
+        using ZipArchive zip = System.IO.Compression.ZipFile.OpenRead(result.CreatedFiles[0]);
         zip.Entries.Should().ContainSingle(e => e.FullName == "EmptyFolder/");
     }
 
@@ -1182,12 +1183,12 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
             ArchiveName = "output"
         };
 
-        var result = await _sut.ArchiveAsync(options);
+        ArchiveResult result = await _sut.ArchiveAsync(options);
 
         result.Success.Should().BeTrue();
         result.CreatedFiles.Should().HaveCount(1);
 
-        using var zip = System.IO.Compression.ZipFile.OpenRead(result.CreatedFiles[0]);
+        using ZipArchive zip = System.IO.Compression.ZipFile.OpenRead(result.CreatedFiles[0]);
         // T-F75: entry names are relative to the archived root ("Parent/"), not to the
         // subfolder's own immediate parent — a nested empty folder keeps its full path.
         zip.Entries.Should().Contain(e => e.FullName == "Parent/EmptyChild/");
@@ -1207,7 +1208,7 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
         File.WriteAllText(Path.Combine(level1, "mid.txt"), "mid");
         File.WriteAllText(Path.Combine(level2, "deep.txt"), "deep");
 
-        var result = await _sut.ArchiveAsync(new ArchiveOptions
+        ArchiveResult result = await _sut.ArchiveAsync(new ArchiveOptions
         {
             SourcePaths = [root],
             DestinationFolder = _temp.Path,
@@ -1215,7 +1216,7 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
         });
 
         result.Success.Should().BeTrue();
-        using var zip = System.IO.Compression.ZipFile.OpenRead(result.CreatedFiles[0]);
+        using ZipArchive zip = System.IO.Compression.ZipFile.OpenRead(result.CreatedFiles[0]);
         var names = zip.Entries.Select(e => e.FullName).ToList();
 
         names.Should().Contain("notes/top.txt");
@@ -1239,7 +1240,7 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
         File.WriteAllText(Path.Combine(branchA, "file.txt"), "from a");
         File.WriteAllText(Path.Combine(branchB, "file.txt"), "from b/a");
 
-        var result = await _sut.ArchiveAsync(new ArchiveOptions
+        ArchiveResult result = await _sut.ArchiveAsync(new ArchiveOptions
         {
             SourcePaths = [root],
             DestinationFolder = _temp.Path,
@@ -1247,7 +1248,7 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
         });
 
         result.Success.Should().BeTrue();
-        using var zip = System.IO.Compression.ZipFile.OpenRead(result.CreatedFiles[0]);
+        using ZipArchive zip = System.IO.Compression.ZipFile.OpenRead(result.CreatedFiles[0]);
         var names = zip.Entries.Select(e => e.FullName).ToList();
 
         names.Should().Contain("notes/a/file.txt");
@@ -1255,7 +1256,7 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
         names.Should().OnlyHaveUniqueItems();
 
         using var extractDest = new TempDirectory();
-        var extractResult = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult extractResult = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [result.CreatedFiles[0]],
             DestinationFolder = extractDest.Path,
@@ -1282,7 +1283,7 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
         File.WriteAllText(fileA, "content from A");
         File.WriteAllText(fileB, "content from B");
 
-        var result = await _sut.ArchiveAsync(new ArchiveOptions
+        ArchiveResult result = await _sut.ArchiveAsync(new ArchiveOptions
         {
             SourcePaths = [fileA, fileB],
             DestinationFolder = _temp.Path,
@@ -1290,7 +1291,7 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
         });
 
         result.Success.Should().BeTrue();
-        using var zip = System.IO.Compression.ZipFile.OpenRead(result.CreatedFiles[0]);
+        using ZipArchive zip = System.IO.Compression.ZipFile.OpenRead(result.CreatedFiles[0]);
         var names = zip.Entries.Select(e => e.FullName).ToList();
 
         // Sorted ordinal-case-insensitive input order (T-F31/T-F32) means fileA is processed
@@ -1312,7 +1313,7 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
         File.WriteAllText(Path.Combine(dirA, "file.txt"), "from A");
         File.WriteAllText(Path.Combine(dirB, "file.txt"), "from B");
 
-        var result = await _sut.ArchiveAsync(new ArchiveOptions
+        ArchiveResult result = await _sut.ArchiveAsync(new ArchiveOptions
         {
             SourcePaths = [dirA, dirB],
             DestinationFolder = _temp.Path,
@@ -1320,7 +1321,7 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
         });
 
         result.Success.Should().BeTrue();
-        using var zip = System.IO.Compression.ZipFile.OpenRead(result.CreatedFiles[0]);
+        using ZipArchive zip = System.IO.Compression.ZipFile.OpenRead(result.CreatedFiles[0]);
         var names = zip.Entries.Select(e => e.FullName).ToList();
 
         names.Should().Contain("notes/file.txt");
@@ -1328,7 +1329,7 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
         names.Should().OnlyHaveUniqueItems();
 
         using var extractDest = new TempDirectory();
-        var extractResult = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult extractResult = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [result.CreatedFiles[0]],
             DestinationFolder = extractDest.Path,
@@ -1363,7 +1364,7 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
             Mode = ArchiveMode.SeparateArchives
         };
 
-        var result = await _sut.ArchiveAsync(options);
+        ArchiveResult result = await _sut.ArchiveAsync(options);
 
         result.Success.Should().BeTrue();
         result.CreatedFiles.Should().HaveCount(fileCount);
@@ -1372,7 +1373,7 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
         {
             string expectedZip = Path.Combine(_temp.Path, $"item{i}.zip");
             result.CreatedFiles.Should().Contain(expectedZip);
-            using var zip = System.IO.Compression.ZipFile.OpenRead(expectedZip);
+            using ZipArchive zip = System.IO.Compression.ZipFile.OpenRead(expectedZip);
             zip.Entries.Should().ContainSingle();
             using var reader = new StreamReader(zip.Entries[0].Open());
             reader.ReadToEnd().Should().Be($"content-{i}");
@@ -1401,15 +1402,15 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
             OnConflict = ConflictBehavior.Rename
         };
 
-        var result = await _sut.ArchiveAsync(options);
+        ArchiveResult result = await _sut.ArchiveAsync(options);
 
         result.Success.Should().BeTrue();
         result.CreatedFiles.Should().HaveCount(2);
 
         var contents = result.CreatedFiles.Select(zipPath =>
         {
-            using var zip = System.IO.Compression.ZipFile.OpenRead(zipPath);
-            var entry = zip.Entries.Single(e => e.FullName.EndsWith("pic.txt", StringComparison.Ordinal));
+            using ZipArchive zip = System.IO.Compression.ZipFile.OpenRead(zipPath);
+            ZipArchiveEntry entry = zip.Entries.Single(e => e.FullName.EndsWith("pic.txt", StringComparison.Ordinal));
             using var reader = new StreamReader(entry.Open());
             return reader.ReadToEnd();
         }).ToList();
@@ -1441,15 +1442,15 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
             OnConflict = ConflictBehavior.Overwrite
         };
 
-        var result = await _sut.ArchiveAsync(options);
+        ArchiveResult result = await _sut.ArchiveAsync(options);
 
         result.Success.Should().BeTrue();
         result.CreatedFiles.Should().HaveCount(2);
 
         var contents = result.CreatedFiles.Select(zipPath =>
         {
-            using var zip = System.IO.Compression.ZipFile.OpenRead(zipPath);
-            var entry = zip.Entries.Single(e => e.FullName.EndsWith("pic.txt", StringComparison.Ordinal));
+            using ZipArchive zip = System.IO.Compression.ZipFile.OpenRead(zipPath);
+            ZipArchiveEntry entry = zip.Entries.Single(e => e.FullName.EndsWith("pic.txt", StringComparison.Ordinal));
             using var reader = new StreamReader(entry.Open());
             return reader.ReadToEnd();
         }).ToList();
@@ -1474,7 +1475,7 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
             Mode = ArchiveMode.SeparateArchives
         };
 
-        var result = await _sut.ArchiveAsync(options);
+        ArchiveResult result = await _sut.ArchiveAsync(options);
 
         result.Success.Should().BeTrue();
         result.Errors.Should().BeEmpty();

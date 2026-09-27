@@ -25,7 +25,7 @@ public sealed class EncryptedZipStreamingReaderTests : IDisposable
         string source = Path.Combine(_temp.Path, "payload.bin");
         byte[] chunk = new byte[1024 * 1024];
         using (var sha = IncrementalHash.CreateHash(HashAlgorithmName.SHA256))
-        using (var file = File.Create(source))
+        using (FileStream file = File.Create(source))
         {
             for (int i = 0; i < megabytes; i++)
             {
@@ -43,13 +43,13 @@ public sealed class EncryptedZipStreamingReaderTests : IDisposable
     [Fact]
     public void TryOpen_LargeAesEntry_StreamsWithoutBufferingTheEntry()
     {
-        var (zipPath, expectedSha256, size) = BuildRandomAesEntry(megabytes: 64);
+        (string? zipPath, byte[]? expectedSha256, long size) = BuildRandomAesEntry(megabytes: 64);
 
-        using var fs = File.OpenRead(zipPath);
-        var located = RawZipEntryLocator.LocateAll(fs).Single();
+        using FileStream fs = File.OpenRead(zipPath);
+        LocatedZipEntry located = RawZipEntryLocator.LocateAll(fs).Single();
 
         long allocatedBefore = GC.GetAllocatedBytesForCurrentThread();
-        var (result, content) = EncryptedZipEntryReader.TryOpen(fs, located, Password);
+        (EncryptedZipReadResult result, Stream? content) = EncryptedZipEntryReader.TryOpen(fs, located, Password);
         result.Should().Be(EncryptedZipReadResult.Success);
 
         byte[] buffer = new byte[81920];
@@ -78,13 +78,13 @@ public sealed class EncryptedZipStreamingReaderTests : IDisposable
     [Trait("Category", "VeryLarge")]
     public void TryOpen_AesEntryLargerThanIntMaxValue_ReadsBackByteExact()
     {
-        var (zipPath, expectedSha256, size) = BuildRandomAesEntry(megabytes: 2100);
+        (string? zipPath, byte[]? expectedSha256, long size) = BuildRandomAesEntry(megabytes: 2100);
 
-        using var fs = File.OpenRead(zipPath);
-        var located = RawZipEntryLocator.LocateAll(fs).Single();
+        using FileStream fs = File.OpenRead(zipPath);
+        LocatedZipEntry located = RawZipEntryLocator.LocateAll(fs).Single();
         located.CompressedSize.Should().BeGreaterThan(int.MaxValue);
 
-        var (result, content) = EncryptedZipEntryReader.TryOpen(fs, located, Password);
+        (EncryptedZipReadResult result, Stream? content) = EncryptedZipEntryReader.TryOpen(fs, located, Password);
         result.Should().Be(EncryptedZipReadResult.Success);
 
         byte[] buffer = new byte[1024 * 1024];

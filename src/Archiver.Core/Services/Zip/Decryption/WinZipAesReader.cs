@@ -103,7 +103,7 @@ internal sealed class WinZipAesCtrStream : Stream
     public override int Read(byte[] buffer, int offset, int count)
     {
         int read = _ciphertext.Read(buffer, offset, count);
-        var chunk = buffer.AsSpan(offset, read);
+        Span<byte> chunk = buffer.AsSpan(offset, read);
         _keystream.Apply(chunk, chunk);
         return read;
     }

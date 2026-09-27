@@ -29,7 +29,7 @@ public sealed class SandboxStdinTests : IDisposable
     public async Task ArchiveAsStdin_NoGrantOnArchive_ListsAndExtractsInsideAppContainer(string kind)
     {
         _profile.EnsureExists();
-        using var sid = _profile.GetSid();
+        using SafeSidHandle sid = _profile.GetSid();
 
         string privateDir = Path.Combine(_temp.Path, "private");
         Directory.CreateDirectory(privateDir);
@@ -48,7 +48,7 @@ public sealed class SandboxStdinTests : IDisposable
 
         using (var list = new FileStream(archivePath, FileMode.Open, FileAccess.Read, FileShare.Read))
         {
-            var (exitCode, stdOut, stdErr) = await SandboxedProcessLauncher.RunAsync(
+            (int exitCode, string? stdOut, string? stdErr) = await SandboxedProcessLauncher.RunAsync(
                 TarExecutablePath, ["-tf", "-"],
                 new ProcessLaunchOptions(AppContainerSid: sid, StdIn: list.SafeFileHandle, WorkingDirectory: root),
                 CancellationToken.None);
@@ -58,7 +58,7 @@ public sealed class SandboxStdinTests : IDisposable
 
         using (var extract = new FileStream(archivePath, FileMode.Open, FileAccess.Read, FileShare.Read))
         {
-            var (exitCode, _, stdErr) = await SandboxedProcessLauncher.RunAsync(
+            (int exitCode, _, string? stdErr) = await SandboxedProcessLauncher.RunAsync(
                 TarExecutablePath, ["-xf", "-", "-C", "out"],
                 new ProcessLaunchOptions(AppContainerSid: sid, StdIn: extract.SafeFileHandle, WorkingDirectory: root),
                 CancellationToken.None);
@@ -74,7 +74,7 @@ public sealed class SandboxStdinTests : IDisposable
     public async Task ArchiveByPath_NoGrantOnArchive_Fails()
     {
         _profile.EnsureExists();
-        using var sid = _profile.GetSid();
+        using SafeSidHandle sid = _profile.GetSid();
 
         string privateDir = Path.Combine(_temp.Path, "private");
         Directory.CreateDirectory(privateDir);
@@ -82,7 +82,7 @@ public sealed class SandboxStdinTests : IDisposable
         ExternalTarFixtureBuilder.CreateCompressedTar(archivePath, "-czf", [("a.txt", "x")]);
         QuarantineAcl.GrantTraverseOnly(_temp.Path, sid);
 
-        var (exitCode, _, _) = await SandboxedProcessLauncher.RunAsync(
+        (int exitCode, _, _) = await SandboxedProcessLauncher.RunAsync(
             TarExecutablePath, ["-tf", archivePath],
             new ProcessLaunchOptions(AppContainerSid: sid), CancellationToken.None);
 

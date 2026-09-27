@@ -24,14 +24,14 @@ public sealed class ZipEntryWriterCompatibilityTests : IDisposable
     [Fact]
     public async Task WrittenArchive_OpensViaSystemIOCompression_ContentMatchesSource()
     {
-        (string archivePath, var expected) = await BuildMixedArchiveAsync();
+        (string archivePath, Dictionary<string, byte[]?>? expected) = await BuildMixedArchiveAsync();
 
-        using var archive = ZipFile.OpenRead(archivePath);
+        using ZipArchive archive = ZipFile.OpenRead(archivePath);
 
         archive.Entries.Should().HaveCount(expected.Count);
-        foreach (var (entryName, expectedBytes) in expected)
+        foreach ((string? entryName, byte[]? expectedBytes) in expected)
         {
-            var entry = archive.GetEntry(entryName);
+            ZipArchiveEntry? entry = archive.GetEntry(entryName);
             entry.Should().NotBeNull($"entry '{entryName}' should be present");
             if (expectedBytes is null)
             {
@@ -39,7 +39,7 @@ public sealed class ZipEntryWriterCompatibilityTests : IDisposable
                 continue;
             }
 
-            using var stream = entry!.Open();
+            using Stream stream = entry!.Open();
             using var ms = new MemoryStream();
             stream.CopyTo(ms);
             ms.ToArray().Should().Equal(expectedBytes);
@@ -53,20 +53,20 @@ public sealed class ZipEntryWriterCompatibilityTests : IDisposable
 
         (string archivePath, _) = await BuildMixedArchiveAsync();
 
-        var act = () => SevenZipRunner.Test(archivePath);
+        Action act = () => SevenZipRunner.Test(archivePath);
         act.Should().NotThrow("an independent third-party ZIP reader must accept the hand-rolled container bytes");
     }
 
     [Fact]
     public async Task WrittenArchive_RawStructuralParse_SignaturesAndOffsetsAreValid()
     {
-        (string archivePath, var expected) = await BuildMixedArchiveAsync();
+        (string archivePath, Dictionary<string, byte[]?>? expected) = await BuildMixedArchiveAsync();
         byte[] bytes = await File.ReadAllBytesAsync(archivePath);
 
-        RawZipStructure structure = RawZipStructure.Parse(bytes);
+        var structure = RawZipStructure.Parse(bytes);
 
         structure.CentralDirectoryRecords.Should().HaveCount(expected.Count);
-        foreach (var record in structure.CentralDirectoryRecords)
+        foreach (RawCentralDirectoryRecord record in structure.CentralDirectoryRecords)
         {
             BinaryPrimitives.ReadUInt32LittleEndian(bytes.AsSpan((int)record.LocalHeaderOffset, 4))
                 .Should().Be(0x04034b50u, $"central directory record for '{record.Name}' must point at a real local file header");
@@ -99,7 +99,7 @@ public sealed class ZipEntryWriterCompatibilityTests : IDisposable
         }
 
         byte[] bytes = await File.ReadAllBytesAsync(archivePath);
-        RawZipStructure structure = RawZipStructure.Parse(bytes);
+        var structure = RawZipStructure.Parse(bytes);
         structure.CentralDirectoryRecords.Should().ContainSingle();
 
         // Parse the local file header's Zip64 extra field directly and confirm it carries the
@@ -149,7 +149,7 @@ public sealed class ZipEntryWriterCompatibilityTests : IDisposable
         Directory.CreateDirectory(destinationDir);
 
         var service = new Archiver.Core.Services.ZipArchiveService();
-        var result = await service.ArchiveAsync(new Archiver.Core.Models.ArchiveOptions
+        ArchiveResult result = await service.ArchiveAsync(new Archiver.Core.Models.ArchiveOptions
         {
             SourcePaths = [sourceDir],
             DestinationFolder = destinationDir,
@@ -161,7 +161,7 @@ public sealed class ZipEntryWriterCompatibilityTests : IDisposable
         string archivePath = Path.Combine(destinationDir, "repro.zip");
         File.Exists(archivePath).Should().BeTrue();
 
-        var act = () => SevenZipRunner.Test(archivePath);
+        Action act = () => SevenZipRunner.Test(archivePath);
         act.Should().NotThrow("a real folder with genuinely empty files/folders must produce a spec-compliant archive, not just one .NET's own lenient reader accepts");
     }
 
@@ -176,7 +176,7 @@ public sealed class ZipEntryWriterCompatibilityTests : IDisposable
             byte[] smallContent = System.Text.Encoding.UTF8.GetBytes("hello small file, compressed in memory");
             using (var ms = new MemoryStream(smallContent))
             {
-                var compressed = ZipEntryCompressor.Compress(ms, CompressionLevel.Optimal);
+                CompressedEntryData compressed = ZipEntryCompressor.Compress(ms, CompressionLevel.Optimal);
                 await writer.WriteCompressedEntryAsync("small.txt", compressed, DateTime.UtcNow, CancellationToken.None);
             }
             expected["small.txt"] = smallContent;
@@ -185,7 +185,7 @@ public sealed class ZipEntryWriterCompatibilityTests : IDisposable
             byte[] storedContent = System.Text.Encoding.UTF8.GetBytes("stored, no compression");
             using (var ms = new MemoryStream(storedContent))
             {
-                var compressed = ZipEntryCompressor.Compress(ms, CompressionLevel.NoCompression);
+                CompressedEntryData compressed = ZipEntryCompressor.Compress(ms, CompressionLevel.NoCompression);
                 await writer.WriteCompressedEntryAsync("stored.txt", compressed, DateTime.UtcNow, CancellationToken.None);
             }
             expected["stored.txt"] = storedContent;
@@ -194,7 +194,7 @@ public sealed class ZipEntryWriterCompatibilityTests : IDisposable
             byte[] cyrillicContent = System.Text.Encoding.UTF8.GetBytes("кирилиця та emoji 📦");
             using (var ms = new MemoryStream(cyrillicContent))
             {
-                var compressed = ZipEntryCompressor.Compress(ms, CompressionLevel.Optimal);
+                CompressedEntryData compressed = ZipEntryCompressor.Compress(ms, CompressionLevel.Optimal);
                 await writer.WriteCompressedEntryAsync("приклад_📦.txt", compressed, DateTime.UtcNow, CancellationToken.None);
             }
             expected["приклад_📦.txt"] = cyrillicContent;
@@ -211,7 +211,7 @@ public sealed class ZipEntryWriterCompatibilityTests : IDisposable
             // Stored regardless of the requested level; see ZipEntryCompressor.Compress.
             using (var ms = new MemoryStream())
             {
-                var compressed = ZipEntryCompressor.Compress(ms, CompressionLevel.Optimal);
+                CompressedEntryData compressed = ZipEntryCompressor.Compress(ms, CompressionLevel.Optimal);
                 await writer.WriteCompressedEntryAsync("empty.txt", compressed, DateTime.UtcNow, CancellationToken.None);
             }
             expected["empty.txt"] = Array.Empty<byte>();
@@ -221,7 +221,7 @@ public sealed class ZipEntryWriterCompatibilityTests : IDisposable
             byte[] largeContent = BuildSemiCompressibleContent(512 * 1024);
             using (var sourceMs = new MemoryStream(largeContent))
             {
-                var compressed = ZipEntryCompressor.Compress(sourceMs, CompressionLevel.Optimal);
+                CompressedEntryData compressed = ZipEntryCompressor.Compress(sourceMs, CompressionLevel.Optimal);
                 using var compressedMs = new MemoryStream(compressed.CompressedBytes);
                 await writer.WriteCompressedEntryFromStreamAsync(
                     "streamed.bin", compressedMs, compressed.CompressedBytes.Length, compressed.UncompressedLength,
@@ -236,9 +236,9 @@ public sealed class ZipEntryWriterCompatibilityTests : IDisposable
     private static byte[] BuildSemiCompressibleContent(int length)
     {
         var rng = new Random(20260718);
-        var block = new byte[64 * 1024];
+        byte[] block = new byte[64 * 1024];
         rng.NextBytes(block);
-        var result = new byte[length];
+        byte[] result = new byte[length];
         for (int offset = 0; offset < length; offset += block.Length)
         {
             int count = Math.Min(block.Length, length - offset);

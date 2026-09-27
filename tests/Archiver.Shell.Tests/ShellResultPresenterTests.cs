@@ -71,13 +71,13 @@ public sealed class ShellResultPresenterTests
     [Fact]
     public void BuildSkippedMessage_SingleEntry_UsesLocalizedHeader()
     {
-        var original = CultureInfo.CurrentUICulture;
+        CultureInfo original = CultureInfo.CurrentUICulture;
         try
         {
             CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("en-US");
-            var skipped = new[] { new SkippedFile { Path = @"C:\dir\bad.txt", Reason = "ADS entry" } };
+            SkippedFile[] skipped = new[] { new SkippedFile { Path = @"C:\dir\bad.txt", Reason = "ADS entry" } };
 
-            var message = ShellResultPresenter.BuildSkippedMessage(skipped);
+            string message = ShellResultPresenter.BuildSkippedMessage(skipped);
 
             message.Should().StartWith("Skipped (1):");
             message.Should().Contain("bad.txt: ADS entry");
@@ -91,17 +91,17 @@ public sealed class ShellResultPresenterTests
     [Fact]
     public void BuildSkippedMessage_MultipleEntries_UsesLocalizedHeaderAndListsAll()
     {
-        var original = CultureInfo.CurrentUICulture;
+        CultureInfo original = CultureInfo.CurrentUICulture;
         try
         {
             CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("en-US");
-            var skipped = new[]
+            SkippedFile[] skipped = new[]
             {
                 new SkippedFile { Path = "a.txt", Reason = "reserved name" },
                 new SkippedFile { Path = "b.txt", Reason = "ADS entry" },
             };
 
-            var message = ShellResultPresenter.BuildSkippedMessage(skipped);
+            string message = ShellResultPresenter.BuildSkippedMessage(skipped);
 
             message.Should().StartWith("Skipped (2):");
             message.Should().Contain("a.txt: reserved name");
@@ -116,7 +116,7 @@ public sealed class ShellResultPresenterTests
     [Fact]
     public void BuildSkippedMessage_MoreThanMaxLines_TruncatesWithCount()
     {
-        var original = CultureInfo.CurrentUICulture;
+        CultureInfo original = CultureInfo.CurrentUICulture;
         try
         {
             CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("en-US");
@@ -124,7 +124,7 @@ public sealed class ShellResultPresenterTests
                 .Select(i => new SkippedFile { Path = $"file{i}.txt", Reason = "reserved name" })
                 .ToList();
 
-            var message = ShellResultPresenter.BuildSkippedMessage(skipped, maxLinesShown: 10);
+            string message = ShellResultPresenter.BuildSkippedMessage(skipped, maxLinesShown: 10);
 
             message.Should().Contain("…and 2 more");
             message.Should().NotContain("file10.txt");

@@ -34,11 +34,11 @@ internal sealed class ZipArchiveReader : IDisposable
 
     public static ZipArchiveReader Open(string path, ZipNameCodePages codePages)
     {
-        var archive = ZipFile.OpenRead(path);
+        ZipArchive archive = ZipFile.OpenRead(path);
         try
         {
             List<(byte[] RawName, string Name)> names;
-            using (var raw = File.OpenRead(path))
+            using (FileStream raw = File.OpenRead(path))
                 names = RawZipEntryLocator.ReadEntryNames(raw, codePages);
 
             if (names.Count != archive.Entries.Count)
@@ -60,7 +60,7 @@ internal sealed class ZipArchiveReader : IDisposable
         var result = new List<NamedZipEntry>(entries.Count);
         for (int i = 0; i < entries.Count; i++)
         {
-            var (rawName, name) = names[i];
+            (byte[]? rawName, string? name) = names[i];
             bool collides = false;
             if (!name.EndsWith('/'))
             {

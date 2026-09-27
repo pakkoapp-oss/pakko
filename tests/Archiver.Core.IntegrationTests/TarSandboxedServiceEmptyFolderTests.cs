@@ -24,7 +24,7 @@ public sealed class TarSandboxedServiceEmptyFolderTests : IDisposable
         TarBuilder.WriteTar(archivePath, entries);
         string dest = Path.Combine(_temp.Path, "dest");
         Directory.CreateDirectory(dest);
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [archivePath],
             DestinationFolder = dest,
@@ -37,7 +37,7 @@ public sealed class TarSandboxedServiceEmptyFolderTests : IDisposable
     [Integration]
     public async Task ExtractAsync_SingleFolder_EmptyFoldersTopLevelAndNested_AreCreated()
     {
-        var (_, dest) = await ExtractAsync("tree.tar", ExtractMode.SingleFolder,
+        (_, string? dest) = await ExtractAsync("tree.tar", ExtractMode.SingleFolder,
             Dir("root/"), File("root/a.txt"), Dir("root/empty/"), Dir("root/nested/"), Dir("root/nested/deeper/"));
 
         System.IO.File.Exists(Path.Combine(dest, "root", "a.txt")).Should().BeTrue();
@@ -48,7 +48,7 @@ public sealed class TarSandboxedServiceEmptyFolderTests : IDisposable
     [Integration]
     public async Task ExtractAsync_SeparateFolders_EmptyFolderUnderStrippedRoot_IsCreated()
     {
-        var (_, dest) = await ExtractAsync("tree.tar", ExtractMode.SeparateFolders,
+        (_, string? dest) = await ExtractAsync("tree.tar", ExtractMode.SeparateFolders,
             File("./root/a.txt"), Dir("./root/empty/"));
 
         System.IO.File.Exists(Path.Combine(dest, "tree", "a.txt")).Should().BeTrue();
@@ -58,7 +58,7 @@ public sealed class TarSandboxedServiceEmptyFolderTests : IDisposable
     [Integration]
     public async Task ExtractAsync_ArchiveOfOnlyEmptyFolders_CreatesThem()
     {
-        var (_, dest) = await ExtractAsync("dirs.tar", ExtractMode.SingleFolder, Dir("e1/"), Dir("e2/sub/"));
+        (_, string? dest) = await ExtractAsync("dirs.tar", ExtractMode.SingleFolder, Dir("e1/"), Dir("e2/sub/"));
 
         Directory.Exists(Path.Combine(dest, "e1")).Should().BeTrue();
         Directory.Exists(Path.Combine(dest, "e2", "sub")).Should().BeTrue();
@@ -79,7 +79,7 @@ public sealed class TarSandboxedServiceEmptyFolderTests : IDisposable
         };
         (await _sut.ExtractAsync(Options())).CreatedFiles.Should().NotBeEmpty();
 
-        var second = await _sut.ExtractAsync(Options());
+        ArchiveResult second = await _sut.ExtractAsync(Options());
 
         second.CreatedFiles.Should().BeEmpty();
         second.SkippedFiles.Should().Contain(s => s.Path == archivePath);
@@ -88,7 +88,7 @@ public sealed class TarSandboxedServiceEmptyFolderTests : IDisposable
     [Integration]
     public async Task ExtractAsync_SeparateFolders_RootFilePlusEmptyFolder_IsMultiRoot()
     {
-        var (_, dest) = await ExtractAsync("pair.tar", ExtractMode.SeparateFolders, File("a.txt"), Dir("empty/"));
+        (_, string? dest) = await ExtractAsync("pair.tar", ExtractMode.SeparateFolders, File("a.txt"), Dir("empty/"));
 
         System.IO.File.Exists(Path.Combine(dest, "pair", "a.txt")).Should().BeTrue();
         Directory.Exists(Path.Combine(dest, "pair", "empty")).Should().BeTrue();

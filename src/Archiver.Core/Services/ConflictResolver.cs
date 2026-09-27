@@ -28,7 +28,7 @@ internal sealed class ConflictResolver(
         if (resolveConflictAsync is null)
             return ConflictBehavior.Skip; // Shell / no UI wired — safest non-destructive default
 
-        var decision = await resolveConflictAsync(new ConflictInfo { ExistingPath = existingPath, IncomingSize = incomingSize, IncomingModified = incomingModified })
+        ConflictDecision decision = await resolveConflictAsync(new ConflictInfo { ExistingPath = existingPath, IncomingSize = incomingSize, IncomingModified = incomingModified })
             .ConfigureAwait(false);
 
         if (decision.ApplyToAll)

@@ -22,7 +22,7 @@ public sealed class OperationWindowModelPromptTests
             [WindowStrings.Newer] = "новіший",
         }));
         model.Receive(new Begin("Розпакування", ProgressKind.Bytes));
-        foreach (var m in then)
+        foreach (ProtocolMessage m in then)
             model.Receive(m);
         return model;
     }
@@ -32,7 +32,7 @@ public sealed class OperationWindowModelPromptTests
     [Fact]
     public void ConflictBeforeTheShowDelay_ShowsTheWindowAtOnce()
     {
-        var model = Running();
+        OperationWindowModel model = Running();
 
         model.Receive(Conflict).Command.Should().Be(WindowCommand.Show);
 
@@ -43,7 +43,7 @@ public sealed class OperationWindowModelPromptTests
     [Fact]
     public void PromptWhileTheWindowShows_BringsItForward()
     {
-        var model = Running();
+        OperationWindowModel model = Running();
         model.ShowDelayElapsed();
 
         model.Receive(Password).Command.Should().Be(WindowCommand.Activate);
@@ -52,9 +52,9 @@ public sealed class OperationWindowModelPromptTests
     [Fact]
     public void AnswerConflict_SendsTheChoiceAndReturnsToProgress()
     {
-        var model = Running(Conflict);
+        OperationWindowModel model = Running(Conflict);
 
-        var update = model.AnswerConflict(ConflictChoice.Rename, applyToAll: true);
+        WindowUpdate update = model.AnswerConflict(ConflictChoice.Rename, applyToAll: true);
 
         update.Send.Should().Equal(new ConflictAnswer(1, ConflictChoice.Rename, ApplyToAll: true));
         update.Command.Should().Be(WindowCommand.Refresh);
@@ -65,9 +65,9 @@ public sealed class OperationWindowModelPromptTests
     [Fact]
     public void SubmitPassword_SendsItWithApplyToRemaining()
     {
-        var model = Running(Password);
+        OperationWindowModel model = Running(Password);
 
-        var update = model.SubmitPassword(Secret, applyToRemaining: true);
+        WindowUpdate update = model.SubmitPassword(Secret, applyToRemaining: true);
 
         update.Send.Should().Equal(new PasswordAnswer(2, Secret, ApplyToRemaining: true));
         model.Prompt.Should().BeNull();
@@ -76,7 +76,7 @@ public sealed class OperationWindowModelPromptTests
     [Fact]
     public void DeclinePassword_SendsNoPassword()
     {
-        var model = Running(Password);
+        OperationWindowModel model = Running(Password);
 
         model.DeclinePassword().Send.Should().Equal(new PasswordAnswer(2, null, ApplyToRemaining: false));
     }
@@ -92,7 +92,7 @@ public sealed class OperationWindowModelPromptTests
     [Fact]
     public void TwoPrompts_TheSecondShowsOnceTheFirstIsAnswered()
     {
-        var model = Running(Conflict, Password);
+        OperationWindowModel model = Running(Conflict, Password);
         model.Prompt.Should().Be(Conflict);
 
         model.AnswerConflict(ConflictChoice.Skip, applyToAll: false).Command.Should().Be(WindowCommand.Activate);
@@ -103,7 +103,7 @@ public sealed class OperationWindowModelPromptTests
     [Fact]
     public void Texts_AreBuiltFromTheLabels()
     {
-        var model = Running(Password);
+        OperationWindowModel model = Running(Password);
         model.PasswordMessage.Should().Be("Архів «secret.zip» захищено паролем.");
 
         model.DeclinePassword();
@@ -114,7 +114,7 @@ public sealed class OperationWindowModelPromptTests
     [Fact]
     public void IncomingNotNewer_HasNoMark()
     {
-        var model = Running(Conflict with { IncomingIsNewer = false });
+        OperationWindowModel model = Running(Conflict with { IncomingIsNewer = false });
 
         model.IncomingDetails.Should().Be("1,4 МБ · змінено 20.09.2026 09:41");
     }
@@ -124,9 +124,9 @@ public sealed class OperationWindowModelPromptTests
     [Fact]
     public void ThePassword_IsKeptNowhereInTheModelOrTheUpdate()
     {
-        var model = Running(Password);
+        OperationWindowModel model = Running(Password);
 
-        var update = model.SubmitPassword(Secret, applyToRemaining: false);
+        WindowUpdate update = model.SubmitPassword(Secret, applyToRemaining: false);
 
         update.ToString().Should().NotContain(Secret);
         update.Send.Single().ToString().Should().NotContain(Secret);
@@ -139,7 +139,7 @@ public sealed class OperationWindowModelPromptTests
     [Fact]
     public void ApplyToRemaining_IsNeverSentWhenItWasNotOffered()
     {
-        var model = Running(Password with { CanApplyToRemaining = false });
+        OperationWindowModel model = Running(Password with { CanApplyToRemaining = false });
 
         model.SubmitPassword(Secret, applyToRemaining: true).Send
             .Should().Equal(new PasswordAnswer(2, Secret, ApplyToRemaining: false));
@@ -171,9 +171,9 @@ public sealed class OperationWindowModelPromptTests
     [Fact]
     public void CloseDuringAPrompt_CancelsTheOperationWithoutAnswering()
     {
-        var model = Running(Conflict);
+        OperationWindowModel model = Running(Conflict);
 
-        var update = model.UserClosed();
+        WindowUpdate update = model.UserClosed();
 
         update.Command.Should().Be(WindowCommand.Close);
         update.Send.Should().Equal(new CancelRequested(), new WindowClosed());
@@ -182,7 +182,7 @@ public sealed class OperationWindowModelPromptTests
     [Fact]
     public void AnAnswerOfTheWrongKind_IsIgnored()
     {
-        var model = Running(Password);
+        OperationWindowModel model = Running(Password);
 
         model.AnswerConflict(ConflictChoice.Overwrite, applyToAll: true).Should().Be(WindowUpdate.Nothing);
         model.Prompt.Should().Be(Password);
@@ -197,7 +197,7 @@ public sealed class OperationWindowModelPromptTests
         model.Receive(Conflict).Should().Be(WindowUpdate.Nothing);
         model.Prompt.Should().BeNull();
 
-        var done = Running(new Complete(new ResultText(ResultSeverity.Warning, "t", "x")));
+        OperationWindowModel done = Running(new Complete(new ResultText(ResultSeverity.Warning, "t", "x")));
         done.Receive(Password).Should().Be(WindowUpdate.Nothing);
         done.Prompt.Should().BeNull();
     }
@@ -207,7 +207,7 @@ public sealed class OperationWindowModelPromptTests
     [Fact]
     public void ResultWhileAPromptIsOpen_DropsThePrompt()
     {
-        var model = Running(Conflict);
+        OperationWindowModel model = Running(Conflict);
 
         model.Receive(new Complete(new ResultText(ResultSeverity.Error, "t", "x")));
 

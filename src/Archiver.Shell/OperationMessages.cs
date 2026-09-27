@@ -46,7 +46,7 @@ internal static class OperationMessages
         }
         else
         {
-            var entryLines = result.Entries.Take(MaxLinesShown)
+            IEnumerable<string> entryLines = result.Entries.Take(MaxLinesShown)
                 .Select(e => e.Error is null
                     ? $"{Path.GetFileName(e.SourcePath)}: {e.Hash}"
                     : $"{Path.GetFileName(e.SourcePath)}: {e.Error}");
@@ -118,7 +118,7 @@ internal static class OperationMessages
         if (errors.Count == 0)
             return new OperationMessage(title, MessageSeverity.Error, ResultMessagesLocalizer.Get("ResultOperationFailed"));
 
-        var text = string.Join(Environment.NewLine,
+        string text = string.Join(Environment.NewLine,
             errors.Take(MaxLinesShown).Select(e => $"{Path.GetFileName(e.SourcePath)}: {e.Message}"));
         if (errors.Count > MaxLinesShown)
             text += $"{Environment.NewLine}{ResultMessagesLocalizer.Get("ResultAndMoreLine", errors.Count - MaxLinesShown)}";

@@ -18,10 +18,10 @@ public sealed class ZipArchiveServiceExtractEmptyFolderTests : IDisposable
     private string CreateZip(string name, params string[] entries)
     {
         string zipPath = Path.Combine(_temp.Path, name);
-        using var archive = ZipFile.Open(zipPath, ZipArchiveMode.Create);
+        using ZipArchive archive = ZipFile.Open(zipPath, ZipArchiveMode.Create);
         foreach (string entry in entries)
         {
-            var e = archive.CreateEntry(entry);
+            ZipArchiveEntry e = archive.CreateEntry(entry);
             if (!entry.EndsWith('/'))
             {
                 using var w = new StreamWriter(e.Open());
@@ -35,7 +35,7 @@ public sealed class ZipArchiveServiceExtractEmptyFolderTests : IDisposable
     {
         string dest = Path.Combine(_temp.Path, "dest");
         Directory.CreateDirectory(dest);
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [zip],
             DestinationFolder = dest,
@@ -53,7 +53,7 @@ public sealed class ZipArchiveServiceExtractEmptyFolderTests : IDisposable
         Directory.CreateDirectory(Path.Combine(src, "empty"));
         Directory.CreateDirectory(Path.Combine(src, "nested", "deeper"));
         File.WriteAllText(Path.Combine(src, "f.txt"), "file");
-        var archived = await _sut.ArchiveAsync(new ArchiveOptions
+        ArchiveResult archived = await _sut.ArchiveAsync(new ArchiveOptions
         {
             SourcePaths = [src],
             DestinationFolder = _temp.Path,
@@ -61,7 +61,7 @@ public sealed class ZipArchiveServiceExtractEmptyFolderTests : IDisposable
         });
         archived.Success.Should().BeTrue();
 
-        var (result, dest) = await ExtractAsync(archived.CreatedFiles[0], mode);
+        (ArchiveResult? result, string? dest) = await ExtractAsync(archived.CreatedFiles[0], mode);
 
         result.Success.Should().BeTrue();
         string root = Path.Combine(dest, rootOnDisk);
@@ -75,7 +75,7 @@ public sealed class ZipArchiveServiceExtractEmptyFolderTests : IDisposable
     {
         string zip = CreateZip("dirs.zip", "e1/", "e2/sub/");
 
-        var (result, dest) = await ExtractAsync(zip, ExtractMode.SingleFolder);
+        (ArchiveResult? result, string? dest) = await ExtractAsync(zip, ExtractMode.SingleFolder);
 
         result.Success.Should().BeTrue();
         Directory.Exists(Path.Combine(dest, "e1")).Should().BeTrue();
@@ -90,7 +90,7 @@ public sealed class ZipArchiveServiceExtractEmptyFolderTests : IDisposable
     {
         string zip = CreateZip("pair.zip", "a.txt", "empty/");
 
-        var (result, dest) = await ExtractAsync(zip, ExtractMode.SeparateFolders);
+        (ArchiveResult? result, string? dest) = await ExtractAsync(zip, ExtractMode.SeparateFolders);
 
         result.Success.Should().BeTrue();
         File.Exists(Path.Combine(dest, "pair", "a.txt")).Should().BeTrue();
@@ -102,7 +102,7 @@ public sealed class ZipArchiveServiceExtractEmptyFolderTests : IDisposable
     {
         string zip = CreateZip("root.zip", "root/a.txt", "root/empty/");
 
-        var (result, dest) = await ExtractAsync(zip, ExtractMode.SeparateFolders);
+        (ArchiveResult? result, string? dest) = await ExtractAsync(zip, ExtractMode.SeparateFolders);
 
         result.Success.Should().BeTrue();
         File.Exists(Path.Combine(dest, "root", "a.txt")).Should().BeTrue();
@@ -124,7 +124,7 @@ public sealed class ZipArchiveServiceExtractEmptyFolderTests : IDisposable
         };
         (await _sut.ExtractAsync(Options())).CreatedFiles.Should().NotBeEmpty();
 
-        var second = await _sut.ExtractAsync(Options());
+        ArchiveResult second = await _sut.ExtractAsync(Options());
 
         second.CreatedFiles.Should().BeEmpty();
         second.SkippedFiles.Should().Contain(s => s.Path == zip);
@@ -137,7 +137,7 @@ public sealed class ZipArchiveServiceExtractEmptyFolderTests : IDisposable
     {
         string zip = CreateZip("bad.zip", "ok.txt", unsafeFolder);
 
-        var (result, dest) = await ExtractAsync(zip, ExtractMode.SingleFolder);
+        (ArchiveResult? result, string? dest) = await ExtractAsync(zip, ExtractMode.SingleFolder);
 
         File.Exists(Path.Combine(dest, "ok.txt")).Should().BeTrue();
         Directory.Exists(Path.Combine(_temp.Path, "evil")).Should().BeFalse();

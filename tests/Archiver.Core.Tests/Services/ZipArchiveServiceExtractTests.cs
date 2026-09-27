@@ -15,22 +15,22 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
 
     private string CreateTestZip(string zipName, params string[] fileNames)
     {
-        var zipPath = Path.Combine(_temp.Path, zipName);
-        using var archive = ZipFile.Open(zipPath, ZipArchiveMode.Create);
-        foreach (var name in fileNames)
+        string zipPath = Path.Combine(_temp.Path, zipName);
+        using ZipArchive archive = ZipFile.Open(zipPath, ZipArchiveMode.Create);
+        foreach (string name in fileNames)
             archive.CreateEntryFromFile(_temp.CreateFile(name), name);
         return zipPath;
     }
 
     private string CreateTestZipWithFolder(string zipName, string folderName, params string[] fileNames)
     {
-        var zipPath = Path.Combine(_temp.Path, zipName);
-        using var archive = ZipFile.Open(zipPath, ZipArchiveMode.Create);
-        foreach (var name in fileNames)
+        string zipPath = Path.Combine(_temp.Path, zipName);
+        using ZipArchive archive = ZipFile.Open(zipPath, ZipArchiveMode.Create);
+        foreach (string name in fileNames)
         {
-            var entry = archive.CreateEntry($"{folderName}/{name}");
-            using var entryStream = entry.Open();
-            using var srcStream = File.OpenRead(_temp.CreateFile(name));
+            ZipArchiveEntry entry = archive.CreateEntry($"{folderName}/{name}");
+            using Stream entryStream = entry.Open();
+            using FileStream srcStream = File.OpenRead(_temp.CreateFile(name));
             srcStream.CopyTo(entryStream);
         }
         return zipPath;
@@ -44,7 +44,7 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
     [Fact]
     public async Task ExtractAsync_DestinationPathBeyond260Chars_SucceedsOrRecordsPerItemErrorNeverThrows()
     {
-        var zip = CreateTestZip("archive.zip", "file1.txt");
+        string zip = CreateTestZip("archive.zip", "file1.txt");
         string deepDest = _temp.Path;
         while (deepDest.Length < 300)
             deepDest = Path.Combine(deepDest, new string('b', 40));
@@ -56,7 +56,7 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
             DestinationFolder = deepDest,
         };
 
-        var result = await _sut.ExtractAsync(options);
+        ArchiveResult result = await _sut.ExtractAsync(options);
 
         result.Should().NotBeNull();
         (result.Success || result.Errors.Count > 0).Should().BeTrue(
@@ -67,8 +67,8 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
     [Fact]
     public async Task ExtractAsync_ValidZip_ExtractsFiles()
     {
-        var zip = CreateTestZip("archive.zip", "file1.txt", "file2.txt");
-        var destDir = Path.Combine(_temp.Path, "output");
+        string zip = CreateTestZip("archive.zip", "file1.txt", "file2.txt");
+        string destDir = Path.Combine(_temp.Path, "output");
 
         var options = new ExtractOptions
         {
@@ -76,7 +76,7 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
             DestinationFolder = destDir
         };
 
-        var result = await _sut.ExtractAsync(options);
+        ArchiveResult result = await _sut.ExtractAsync(options);
 
         result.Success.Should().BeTrue();
         Directory.Exists(destDir).Should().BeTrue();
@@ -88,9 +88,9 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
         // T-F154: multi-file, not single-file — a single-root-file archive bypasses the
         // per-archive subfolder entirely (see ExtractAsync_SeparateFoldersMode_SingleRootFile_
         // ExtractsDirectlyWithoutWrapper below), which would defeat this test's actual point.
-        var zip1 = CreateTestZip("first.zip", "a.txt", "a2.txt");
-        var zip2 = CreateTestZip("second.zip", "b.txt", "b2.txt");
-        var destDir = Path.Combine(_temp.Path, "extracted");
+        string zip1 = CreateTestZip("first.zip", "a.txt", "a2.txt");
+        string zip2 = CreateTestZip("second.zip", "b.txt", "b2.txt");
+        string destDir = Path.Combine(_temp.Path, "extracted");
 
         var options = new ExtractOptions
         {
@@ -99,7 +99,7 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
             Mode = ExtractMode.SeparateFolders
         };
 
-        var result = await _sut.ExtractAsync(options);
+        ArchiveResult result = await _sut.ExtractAsync(options);
 
         result.Success.Should().BeTrue();
         Directory.Exists(Path.Combine(destDir, "first")).Should().BeTrue();
@@ -114,8 +114,8 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
     {
         // T-F154: multi-file, so the wrapper folder this test verifies actually gets created —
         // a single-root-file archive would bypass it entirely.
-        var zip = CreateTestZip("browse_test.tar.gz", "a.txt", "b.txt");
-        var destDir = Path.Combine(_temp.Path, "extracted");
+        string zip = CreateTestZip("browse_test.tar.gz", "a.txt", "b.txt");
+        string destDir = Path.Combine(_temp.Path, "extracted");
 
         var options = new ExtractOptions
         {
@@ -124,7 +124,7 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
             Mode = ExtractMode.SeparateFolders
         };
 
-        var result = await _sut.ExtractAsync(options);
+        ArchiveResult result = await _sut.ExtractAsync(options);
 
         result.Success.Should().BeTrue();
         Directory.Exists(Path.Combine(destDir, "browse_test")).Should().BeTrue();
@@ -140,8 +140,8 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
         // T-F154: multi-file — a single-root-file archive bypasses SeparateFolderName entirely
         // (see ExtractAsync_SeparateFoldersMode_SingleRootFile_ExtractsDirectlyWithoutWrapper),
         // which would defeat this test's actual point (verifying the override mechanism itself).
-        var zip = CreateTestZip("first.zip", "a.txt", "a2.txt");
-        var destDir = Path.Combine(_temp.Path, "extracted");
+        string zip = CreateTestZip("first.zip", "a.txt", "a2.txt");
+        string destDir = Path.Combine(_temp.Path, "extracted");
 
         var options = new ExtractOptions
         {
@@ -151,7 +151,7 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
             SeparateFolderName = "first (1)"
         };
 
-        var result = await _sut.ExtractAsync(options);
+        ArchiveResult result = await _sut.ExtractAsync(options);
 
         result.Success.Should().BeTrue();
         Directory.Exists(Path.Combine(destDir, "first (1)")).Should().BeTrue();
@@ -165,8 +165,8 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
     [Fact]
     public async Task ExtractAsync_SeparateFolderName_SingleRootFile_BypassesOverride()
     {
-        var zip = CreateTestZip("photo.zip", "photo.png");
-        var destDir = Path.Combine(_temp.Path, "extracted");
+        string zip = CreateTestZip("photo.zip", "photo.png");
+        string destDir = Path.Combine(_temp.Path, "extracted");
 
         var options = new ExtractOptions
         {
@@ -176,7 +176,7 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
             SeparateFolderName = "photo (1)"
         };
 
-        var result = await _sut.ExtractAsync(options);
+        ArchiveResult result = await _sut.ExtractAsync(options);
 
         result.Success.Should().BeTrue();
         File.Exists(Path.Combine(destDir, "photo.png")).Should().BeTrue();
@@ -194,8 +194,8 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
     [Fact]
     public async Task ExtractAsync_SeparateFoldersMode_SingleRootFile_ExtractsDirectlyWithoutWrapper()
     {
-        var zip = CreateTestZip("photo.zip", "photo.png");
-        var destDir = Path.Combine(_temp.Path, "output");
+        string zip = CreateTestZip("photo.zip", "photo.png");
+        string destDir = Path.Combine(_temp.Path, "output");
 
         var options = new ExtractOptions
         {
@@ -204,7 +204,7 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
             Mode = ExtractMode.SeparateFolders
         };
 
-        var result = await _sut.ExtractAsync(options);
+        ArchiveResult result = await _sut.ExtractAsync(options);
 
         result.Success.Should().BeTrue();
         File.Exists(Path.Combine(destDir, "photo.png")).Should().BeTrue("a single-file archive should not get a wrapper subfolder");
@@ -217,8 +217,8 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
     [Fact]
     public async Task ExtractAsync_SingleFolderModeWithPresetSubfolder_SingleRootFile_StillWraps()
     {
-        var zip = CreateTestZip("photo.zip", "photo.png");
-        var presetSubfolder = Path.Combine(_temp.Path, "output", "photo");
+        string zip = CreateTestZip("photo.zip", "photo.png");
+        string presetSubfolder = Path.Combine(_temp.Path, "output", "photo");
 
         var options = new ExtractOptions
         {
@@ -227,7 +227,7 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
             Mode = ExtractMode.SingleFolder
         };
 
-        var result = await _sut.ExtractAsync(options);
+        ArchiveResult result = await _sut.ExtractAsync(options);
 
         result.Success.Should().BeTrue();
         File.Exists(Path.Combine(presetSubfolder, "photo.png")).Should().BeTrue();
@@ -241,12 +241,12 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
     [Fact]
     public async Task ExtractAsync_SeparateFoldersMode_TwoSingleRootFileArchivesWithSameEntryName_RenamesSecond()
     {
-        var zip1 = CreateTestZip("first.zip", "shared.txt");
-        var zip2SourceFile = _temp.CreateFile("shared.txt", "second content");
-        var zip2 = Path.Combine(_temp.Path, "second.zip");
-        using (var archive = ZipFile.Open(zip2, ZipArchiveMode.Create))
+        string zip1 = CreateTestZip("first.zip", "shared.txt");
+        string zip2SourceFile = _temp.CreateFile("shared.txt", "second content");
+        string zip2 = Path.Combine(_temp.Path, "second.zip");
+        using (ZipArchive archive = ZipFile.Open(zip2, ZipArchiveMode.Create))
             archive.CreateEntryFromFile(zip2SourceFile, "shared.txt");
-        var destDir = Path.Combine(_temp.Path, "output");
+        string destDir = Path.Combine(_temp.Path, "output");
 
         var options = new ExtractOptions
         {
@@ -256,7 +256,7 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
             OnConflict = ConflictBehavior.Rename,
         };
 
-        var result = await _sut.ExtractAsync(options);
+        ArchiveResult result = await _sut.ExtractAsync(options);
 
         result.Success.Should().BeTrue();
         Directory.Exists(Path.Combine(destDir, "first")).Should().BeFalse();
@@ -276,8 +276,8 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
     [Fact]
     public async Task ExtractAsync_SingleFolderMode_MultiRootArchive_ExtractsFlatWithoutWrapper()
     {
-        var zip = CreateTestZip("many.zip", "file1.txt", "file2.txt", "file3.txt");
-        var destDir = Path.Combine(_temp.Path, "output");
+        string zip = CreateTestZip("many.zip", "file1.txt", "file2.txt", "file3.txt");
+        string destDir = Path.Combine(_temp.Path, "output");
 
         var options = new ExtractOptions
         {
@@ -286,7 +286,7 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
             Mode = ExtractMode.SingleFolder
         };
 
-        var result = await _sut.ExtractAsync(options);
+        ArchiveResult result = await _sut.ExtractAsync(options);
 
         result.Success.Should().BeTrue();
         File.Exists(Path.Combine(destDir, "file1.txt")).Should().BeTrue();
@@ -304,7 +304,7 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
             DestinationFolder = _temp.Path
         };
 
-        var result = await _sut.ExtractAsync(options);
+        ArchiveResult result = await _sut.ExtractAsync(options);
 
         // T-F117: non-existent file fails the magic-byte check the same way unrecognized bytes
         // do — now a real error rather than a silent skip.
@@ -315,11 +315,11 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
     [Fact]
     public async Task ExtractAsync_JarWithValidZipContent_ExtractsSuccessfully()
     {
-        var jarPath = Path.Combine(_temp.Path, "library.jar");
-        using (var archive = ZipFile.Open(jarPath, ZipArchiveMode.Create))
+        string jarPath = Path.Combine(_temp.Path, "library.jar");
+        using (ZipArchive archive = ZipFile.Open(jarPath, ZipArchiveMode.Create))
             archive.CreateEntryFromFile(_temp.CreateFile("Manifest.txt"), "Manifest.txt");
 
-        var destDir = Path.Combine(_temp.Path, "jar_output");
+        string destDir = Path.Combine(_temp.Path, "jar_output");
         var options = new ExtractOptions
         {
             ArchivePaths = [jarPath],
@@ -327,7 +327,7 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
             Mode = ExtractMode.SingleFolder
         };
 
-        var result = await _sut.ExtractAsync(options);
+        ArchiveResult result = await _sut.ExtractAsync(options);
 
         result.Success.Should().BeTrue();
         File.Exists(Path.Combine(destDir, "Manifest.txt")).Should().BeTrue();
@@ -336,7 +336,7 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
     [Fact]
     public async Task ExtractAsync_ZipExtensionButWrongMagicBytes_ReportsErrorAsUnrecognizedFormat()
     {
-        var fakePath = Path.Combine(_temp.Path, "not_really.zip");
+        string fakePath = Path.Combine(_temp.Path, "not_really.zip");
         File.WriteAllBytes(fakePath, [0x00, 0x01, 0x02, 0x03]);
 
         var options = new ExtractOptions
@@ -345,7 +345,7 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
             DestinationFolder = _temp.Path
         };
 
-        var result = await _sut.ExtractAsync(options);
+        ArchiveResult result = await _sut.ExtractAsync(options);
 
         // T-F117: a ".zip" extension is not itself evidence of format — wrong magic bytes with
         // no other recognized signature now reports a real error rather than a silent skip.
@@ -357,8 +357,8 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
     [Fact]
     public async Task ExtractAsync_SingleRootFolder_KeepsRootFolder()
     {
-        var zip = CreateTestZipWithFolder("wrapped.zip", "myFolder", "a.txt", "b.txt");
-        var destDir = Path.Combine(_temp.Path, "output");
+        string zip = CreateTestZipWithFolder("wrapped.zip", "myFolder", "a.txt", "b.txt");
+        string destDir = Path.Combine(_temp.Path, "output");
 
         var options = new ExtractOptions
         {
@@ -367,7 +367,7 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
             Mode = ExtractMode.SingleFolder
         };
 
-        var result = await _sut.ExtractAsync(options);
+        ArchiveResult result = await _sut.ExtractAsync(options);
 
         result.Success.Should().BeTrue();
         // T-F205: extract with full paths — the single root folder is kept (7-Zip/NanaZip).
@@ -383,8 +383,8 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
     [Fact]
     public async Task ExtractAsync_MultipleRootItems_ExtractsFlatWithoutSubfolder()
     {
-        var zip = CreateTestZip("bundle.zip", "file1.txt", "file2.txt");
-        var destDir = Path.Combine(_temp.Path, "output");
+        string zip = CreateTestZip("bundle.zip", "file1.txt", "file2.txt");
+        string destDir = Path.Combine(_temp.Path, "output");
 
         var options = new ExtractOptions
         {
@@ -393,7 +393,7 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
             Mode = ExtractMode.SingleFolder
         };
 
-        var result = await _sut.ExtractAsync(options);
+        ArchiveResult result = await _sut.ExtractAsync(options);
 
         result.Success.Should().BeTrue();
         File.Exists(Path.Combine(destDir, "file1.txt")).Should().BeTrue();
@@ -404,8 +404,8 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
     [Fact]
     public async Task ExtractAsync_SingleRootFile_ExtractsDirectly()
     {
-        var zip = CreateTestZip("solo.zip", "readme.txt");
-        var destDir = Path.Combine(_temp.Path, "output");
+        string zip = CreateTestZip("solo.zip", "readme.txt");
+        string destDir = Path.Combine(_temp.Path, "output");
 
         var options = new ExtractOptions
         {
@@ -414,7 +414,7 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
             Mode = ExtractMode.SingleFolder
         };
 
-        var result = await _sut.ExtractAsync(options);
+        ArchiveResult result = await _sut.ExtractAsync(options);
 
         result.Success.Should().BeTrue();
         File.Exists(Path.Combine(destDir, "readme.txt")).Should().BeTrue();
@@ -423,7 +423,7 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
     [Fact]
     public async Task ExtractAsync_RarFile_AppearsInSkippedFilesWithFriendlyReason()
     {
-        var rarPath = Path.Combine(_temp.Path, "backup.rar");
+        string rarPath = Path.Combine(_temp.Path, "backup.rar");
         // RAR magic bytes: 52 61 72 21
         File.WriteAllBytes(rarPath, [0x52, 0x61, 0x72, 0x21, 0x1A, 0x07, 0x00]);
 
@@ -433,7 +433,7 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
             DestinationFolder = _temp.Path
         };
 
-        var result = await _sut.ExtractAsync(options);
+        ArchiveResult result = await _sut.ExtractAsync(options);
 
         result.Success.Should().BeTrue();
         result.Errors.Should().BeEmpty();
@@ -447,7 +447,7 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
     {
         // T-F117: bytes matching no known archive signature at all must surface as a real
         // error, not the silent no-op this project shipped with previously.
-        var binaryPath = Path.Combine(_temp.Path, "data.bin");
+        string binaryPath = Path.Combine(_temp.Path, "data.bin");
         File.WriteAllBytes(binaryPath, [0xDE, 0xAD, 0xBE, 0xEF, 0x00, 0x11]);
 
         var options = new ExtractOptions
@@ -456,7 +456,7 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
             DestinationFolder = _temp.Path
         };
 
-        var result = await _sut.ExtractAsync(options);
+        ArchiveResult result = await _sut.ExtractAsync(options);
 
         result.Success.Should().BeFalse();
         result.Errors.Should().ContainSingle(e => e.SourcePath == binaryPath
@@ -467,7 +467,7 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
     [Fact]
     public async Task ExtractAsync_EmptyFile_ReportsErrorAsUnrecognizedFormat()
     {
-        var emptyPath = Path.Combine(_temp.Path, "empty.zip");
+        string emptyPath = Path.Combine(_temp.Path, "empty.zip");
         File.WriteAllBytes(emptyPath, []);
 
         var options = new ExtractOptions
@@ -476,7 +476,7 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
             DestinationFolder = _temp.Path
         };
 
-        var result = await _sut.ExtractAsync(options);
+        ArchiveResult result = await _sut.ExtractAsync(options);
 
         result.Success.Should().BeFalse();
         result.Errors.Should().ContainSingle(e => e.SourcePath == emptyPath
@@ -490,7 +490,7 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
         // Fewer than 4 bytes — even the leading ZIP magic-number check can't complete, unlike
         // "valid magic bytes followed by garbage" cases elsewhere in this file which DO read as
         // a ZIP signature and instead fail later with a corruption-specific message.
-        var truncatedPath = Path.Combine(_temp.Path, "truncated.zip");
+        string truncatedPath = Path.Combine(_temp.Path, "truncated.zip");
         File.WriteAllBytes(truncatedPath, [0x50, 0x4B]);
 
         var options = new ExtractOptions
@@ -499,7 +499,7 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
             DestinationFolder = _temp.Path
         };
 
-        var result = await _sut.ExtractAsync(options);
+        ArchiveResult result = await _sut.ExtractAsync(options);
 
         result.Success.Should().BeFalse();
         result.Errors.Should().ContainSingle(e => e.SourcePath == truncatedPath
@@ -510,14 +510,14 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
     [Fact]
     public async Task ExtractAsync_ConflictSkip_DoesNotOverwriteExistingFile()
     {
-        var zip = CreateTestZip("archive.zip", "file.txt");
-        var destDir = Path.Combine(_temp.Path, "out");
+        string zip = CreateTestZip("archive.zip", "file.txt");
+        string destDir = Path.Combine(_temp.Path, "out");
         Directory.CreateDirectory(destDir);
 
         // Pre-create the file that would be extracted
-        var existingFile = Path.Combine(destDir, "file.txt");
+        string existingFile = Path.Combine(destDir, "file.txt");
         File.WriteAllText(existingFile, "original content");
-        var originalContent = File.ReadAllText(existingFile);
+        string originalContent = File.ReadAllText(existingFile);
 
         var options = new ExtractOptions
         {
@@ -539,8 +539,8 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
     [Fact]
     public async Task ExtractAsync_AllEntriesConflictSkipped_ExcludesArchiveFromCreatedFilesAndRecordsWholeArchiveSkip()
     {
-        var zip = CreateTestZip("archive.zip", "file.txt");
-        var destDir = Path.Combine(_temp.Path, "out");
+        string zip = CreateTestZip("archive.zip", "file.txt");
+        string destDir = Path.Combine(_temp.Path, "out");
         Directory.CreateDirectory(destDir);
         File.WriteAllText(Path.Combine(destDir, "file.txt"), "original content");
 
@@ -552,7 +552,7 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
             OnConflict = ConflictBehavior.Skip
         };
 
-        var result = await _sut.ExtractAsync(options);
+        ArchiveResult result = await _sut.ExtractAsync(options);
 
         result.CreatedFiles.Should().BeEmpty();
         result.SkippedFiles.Should().Contain(s => s.Path == zip);
@@ -561,8 +561,8 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
     [Fact]
     public async Task ExtractAsync_ConflictRename_CreatesNumberedFileWhenDestinationExists()
     {
-        var zip = CreateTestZip("archive.zip", "file.txt");
-        var destDir = Path.Combine(_temp.Path, "out");
+        string zip = CreateTestZip("archive.zip", "file.txt");
+        string destDir = Path.Combine(_temp.Path, "out");
         Directory.CreateDirectory(destDir);
 
         // Pre-create the file that would be extracted
@@ -590,8 +590,8 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
     [InlineData(ConflictResolution.Skip)]
     public async Task ExtractAsync_ConflictAsk_PerEntry_AppliesCallbackResolution(ConflictResolution resolution)
     {
-        var zip = CreateTestZip("archive.zip", "file.txt");
-        var destDir = Path.Combine(_temp.Path, "out");
+        string zip = CreateTestZip("archive.zip", "file.txt");
+        string destDir = Path.Combine(_temp.Path, "out");
         Directory.CreateDirectory(destDir);
         File.WriteAllText(Path.Combine(destDir, "file.txt"), "original content");
 
@@ -626,8 +626,8 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
     [Fact]
     public async Task ExtractAsync_ConflictAsk_NoConflicts_CallbackNeverInvoked()
     {
-        var zip = CreateTestZip("archive.zip", "file.txt");
-        var destDir = Path.Combine(_temp.Path, "out");
+        string zip = CreateTestZip("archive.zip", "file.txt");
+        string destDir = Path.Combine(_temp.Path, "out");
 
         int callCount = 0;
         var options = new ExtractOptions
@@ -643,7 +643,7 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
             }
         };
 
-        var result = await _sut.ExtractAsync(options);
+        ArchiveResult result = await _sut.ExtractAsync(options);
 
         result.Success.Should().BeTrue();
         callCount.Should().Be(0);
@@ -655,9 +655,9 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
     [Fact]
     public async Task ExtractAsync_ConflictAsk_ApplyToAll_AcrossMultipleArchives_InvokesCallbackOnce()
     {
-        var zip1 = CreateTestZip("first.zip", "file.txt");
-        var zip2 = CreateTestZip("second.zip", "file.txt");
-        var destDir = Path.Combine(_temp.Path, "out");
+        string zip1 = CreateTestZip("first.zip", "file.txt");
+        string zip2 = CreateTestZip("second.zip", "file.txt");
+        string destDir = Path.Combine(_temp.Path, "out");
         Directory.CreateDirectory(destDir);
         File.WriteAllText(Path.Combine(destDir, "file.txt"), "original content");
 
@@ -675,7 +675,7 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
             }
         };
 
-        var result = await _sut.ExtractAsync(options);
+        ArchiveResult result = await _sut.ExtractAsync(options);
 
         result.Success.Should().BeTrue();
         File.Exists(Path.Combine(destDir, "file (1).txt")).Should().BeTrue();
@@ -688,16 +688,16 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
     [Fact]
     public async Task ExtractAsync_ConflictAsk_PassesTheIncomingEntrySizeAndTime()
     {
-        var zipPath = Path.Combine(_temp.Path, "archive.zip");
+        string zipPath = Path.Combine(_temp.Path, "archive.zip");
         var entryTime = new DateTimeOffset(2026, 9, 20, 9, 41, 0, TimeZoneInfo.Local.GetUtcOffset(new DateTime(2026, 9, 20)));
-        using (var archive = ZipFile.Open(zipPath, ZipArchiveMode.Create))
+        using (ZipArchive archive = ZipFile.Open(zipPath, ZipArchiveMode.Create))
         {
-            var entry = archive.CreateEntry("file.txt");
+            ZipArchiveEntry entry = archive.CreateEntry("file.txt");
             entry.LastWriteTime = entryTime;
             using var writer = new StreamWriter(entry.Open());
             writer.Write("new content");
         }
-        var destDir = Path.Combine(_temp.Path, "out");
+        string destDir = Path.Combine(_temp.Path, "out");
         Directory.CreateDirectory(destDir);
         File.WriteAllText(Path.Combine(destDir, "file.txt"), "original content");
 
@@ -724,7 +724,7 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
     [Fact]
     public async Task ExtractAsync_PasswordProtectedZip_ReturnsArchiveErrorWithClearMessage()
     {
-        var encryptedPath = Path.Combine(_temp.Path, "encrypted.zip");
+        string encryptedPath = Path.Combine(_temp.Path, "encrypted.zip");
         // Local file header with encryption bit (bit 0) set in general purpose bit flag (offset 6)
         // 50 4B 03 04 = signature, 14 00 = version 2.0, 01 00 = flags (bit 0 = encrypted)
         File.WriteAllBytes(encryptedPath, [0x50, 0x4B, 0x03, 0x04, 0x14, 0x00, 0x01, 0x00,
@@ -736,7 +736,7 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
             DestinationFolder = _temp.Path
         };
 
-        var result = await _sut.ExtractAsync(options);
+        ArchiveResult result = await _sut.ExtractAsync(options);
 
         result.Success.Should().BeFalse();
         result.Errors.Should().HaveCount(1);
@@ -746,7 +746,7 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
     [Fact]
     public async Task ExtractAsync_ZipMagicBytesButCorruptedContent_ReturnsArchiveError()
     {
-        var corruptPath = Path.Combine(_temp.Path, "corrupt.zip");
+        string corruptPath = Path.Combine(_temp.Path, "corrupt.zip");
         // Valid ZIP magic bytes followed by garbage
         File.WriteAllBytes(corruptPath, [0x50, 0x4B, 0x03, 0x04, 0xFF, 0xFE, 0xAA, 0xBB]);
 
@@ -756,7 +756,7 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
             DestinationFolder = _temp.Path
         };
 
-        var result = await _sut.ExtractAsync(options);
+        ArchiveResult result = await _sut.ExtractAsync(options);
 
         result.Success.Should().BeFalse();
         result.Errors.Should().HaveCount(1);
@@ -766,7 +766,7 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
     [Fact]
     public async Task ExtractAsync_Cancelled_LeavesNoTempDirectory()
     {
-        var file = _temp.CreateFile("source.txt", new string('x', 64 * 1024));
+        string file = _temp.CreateFile("source.txt", new string('x', 64 * 1024));
         var archiveOptions = new ArchiveOptions
         {
             SourcePaths = [file],
@@ -827,7 +827,7 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
             Mode = ExtractMode.SeparateFolders
         };
 
-        var act = async () => await _sut.ExtractAsync(options, progress, cts.Token);
+        Func<Task<ArchiveResult>> act = async () => await _sut.ExtractAsync(options, progress, cts.Token);
 
         await act.Should().ThrowAsync<OperationCanceledException>();
         Directory.GetDirectories(destDir.Path, ".pakko-x-*").Should().BeEmpty();
@@ -840,10 +840,10 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
         string archivePath = Path.Combine(tempDir.Path, "ads_test.zip");
 
         // Create a ZIP with an entry whose name contains ':'
-        using (var archive = ZipFile.Open(archivePath, ZipArchiveMode.Create))
+        using (ZipArchive archive = ZipFile.Open(archivePath, ZipArchiveMode.Create))
         {
-            var entry = archive.CreateEntry("file.txt:payload.exe");
-            using var stream = entry.Open();
+            ZipArchiveEntry entry = archive.CreateEntry("file.txt:payload.exe");
+            using Stream stream = entry.Open();
             await stream.WriteAsync("malicious"u8.ToArray());
         }
 
@@ -856,7 +856,7 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
             OnConflict = ConflictBehavior.Overwrite
         };
 
-        var result = await svc.ExtractAsync(options);
+        ArchiveResult result = await svc.ExtractAsync(options);
 
         // T-F87: since every entry in this archive was skipped, a second whole-archive
         // SkippedFile (Path == archivePath) is also recorded so DeleteAfterOperation cleanup
@@ -880,10 +880,10 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
         using var tempDir = new TempDirectory();
         string archivePath = Path.Combine(tempDir.Path, "reserved_test.zip");
 
-        using (var archive = ZipFile.Open(archivePath, ZipArchiveMode.Create))
+        using (ZipArchive archive = ZipFile.Open(archivePath, ZipArchiveMode.Create))
         {
-            var entry = archive.CreateEntry(reservedName);
-            using var stream = entry.Open();
+            ZipArchiveEntry entry = archive.CreateEntry(reservedName);
+            using Stream stream = entry.Open();
             await stream.WriteAsync("data"u8.ToArray());
         }
 
@@ -896,7 +896,7 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
             OnConflict = ConflictBehavior.Overwrite
         };
 
-        var result = await svc.ExtractAsync(options);
+        ArchiveResult result = await svc.ExtractAsync(options);
 
         // T-F87: whole-archive skip also recorded — see the ADS test's comment above.
         result.SkippedFiles.Should().HaveCount(2);
@@ -910,11 +910,11 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
         using var tempDir = new TempDirectory();
         string archivePath = Path.Combine(tempDir.Path, "ctrl_char_test.zip");
 
-        using (var archive = ZipFile.Open(archivePath, ZipArchiveMode.Create))
+        using (ZipArchive archive = ZipFile.Open(archivePath, ZipArchiveMode.Create))
         {
             // Entry name with a null byte (0x00)
-            var entry = archive.CreateEntry("file\x01name.txt");
-            using var stream = entry.Open();
+            ZipArchiveEntry entry = archive.CreateEntry("file\x01name.txt");
+            using Stream stream = entry.Open();
             await stream.WriteAsync("data"u8.ToArray());
         }
 
@@ -927,7 +927,7 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
             OnConflict = ConflictBehavior.Overwrite
         };
 
-        var result = await svc.ExtractAsync(options);
+        ArchiveResult result = await svc.ExtractAsync(options);
 
         // T-F87: whole-archive skip also recorded — see the ADS test's comment above.
         result.SkippedFiles.Should().HaveCount(2);
@@ -944,15 +944,15 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
         // If the progress total were computed from CompressedLength, bytesRead would
         // vastly exceed it and Percent would shoot past 100 — regression for T-F59.
         string content = new string('A', 10 * 1024);
-        var file = _temp.CreateFile("compressible.txt", content);
-        var zipPath = Path.Combine(_temp.Path, "overshoot_test.zip");
-        using (var archive = ZipFile.Open(zipPath, ZipArchiveMode.Create))
+        string file = _temp.CreateFile("compressible.txt", content);
+        string zipPath = Path.Combine(_temp.Path, "overshoot_test.zip");
+        using (ZipArchive archive = ZipFile.Open(zipPath, ZipArchiveMode.Create))
             archive.CreateEntryFromFile(file, "compressible.txt", CompressionLevel.SmallestSize);
 
         // Confirm the scenario is meaningful: compressed must be < 1/10 of uncompressed
-        using (var zip = ZipFile.OpenRead(zipPath))
+        using (ZipArchive zip = ZipFile.OpenRead(zipPath))
         {
-            var entry = zip.GetEntry("compressible.txt")!;
+            ZipArchiveEntry entry = zip.GetEntry("compressible.txt")!;
             entry.CompressedLength.Should().BeLessThan(entry.Length / 10,
                 "the entry must be at least 10x compressed for this test to distinguish Length from CompressedLength");
         }
@@ -960,7 +960,7 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
         var reports = new List<ProgressReport>();
         var progress = new Progress<ProgressReport>(r => reports.Add(r));
 
-        var destDir = Path.Combine(_temp.Path, "overshoot_output");
+        string destDir = Path.Combine(_temp.Path, "overshoot_output");
         var options = new ExtractOptions
         {
             ArchivePaths = [zipPath],
@@ -982,15 +982,15 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
     {
         // Use NoCompression so CompressedLength == uncompressed length for predictable progress
         string content = new string('x', 8 * 1024); // 8 KB
-        var file = _temp.CreateFile("data.txt", content);
-        var zipPath = Path.Combine(_temp.Path, "progress_test.zip");
-        using (var archive = ZipFile.Open(zipPath, ZipArchiveMode.Create))
+        string file = _temp.CreateFile("data.txt", content);
+        string zipPath = Path.Combine(_temp.Path, "progress_test.zip");
+        using (ZipArchive archive = ZipFile.Open(zipPath, ZipArchiveMode.Create))
             archive.CreateEntryFromFile(file, "data.txt", System.IO.Compression.CompressionLevel.NoCompression);
 
         var reports = new List<ProgressReport>();
         var progress = new Progress<ProgressReport>(r => reports.Add(r));
 
-        var destDir = Path.Combine(_temp.Path, "extract_output");
+        string destDir = Path.Combine(_temp.Path, "extract_output");
         var options = new ExtractOptions
         {
             ArchivePaths = [zipPath],
@@ -1015,7 +1015,7 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
     public async Task ExtractAsync_SuspiciousCompressionRatio_NoCallback_SkipsWholeArchive()
     {
         string content = new string('A', 50 * 1024 * 1024);
-        var file = _temp.CreateFile("compressible.txt", content);
+        string file = _temp.CreateFile("compressible.txt", content);
 
         await _sut.ArchiveAsync(new ArchiveOptions
         {
@@ -1026,7 +1026,7 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
         });
         string archivePath = Path.Combine(_temp.Path, "test_bomb.zip");
 
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [archivePath],
             DestinationFolder = _temp.Path,
@@ -1045,7 +1045,7 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
     public async Task ExtractAsync_SuspiciousCompressionRatio_CallbackConfirms_ExtractsNormally()
     {
         string content = new string('A', 50 * 1024 * 1024);
-        var file = _temp.CreateFile("compressible.txt", content);
+        string file = _temp.CreateFile("compressible.txt", content);
 
         await _sut.ArchiveAsync(new ArchiveOptions
         {
@@ -1057,7 +1057,7 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
         string archivePath = Path.Combine(_temp.Path, "test_bomb.zip");
         string destDir = Path.Combine(_temp.Path, "extracted");
 
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [archivePath],
             DestinationFolder = destDir,
@@ -1076,10 +1076,10 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
     public async Task ExtractAsync_ZipWithMotw_PropagatesZoneIdentifierToExtractedFiles()
     {
         // Arrange: create a ZIP with two files
-        var file1 = _temp.CreateFile("doc.txt", "hello");
-        var file2 = _temp.CreateFile("data.txt", "world");
-        var zipPath = Path.Combine(_temp.Path, "motw_test.zip");
-        using (var archive = ZipFile.Open(zipPath, ZipArchiveMode.Create))
+        string file1 = _temp.CreateFile("doc.txt", "hello");
+        string file2 = _temp.CreateFile("data.txt", "world");
+        string zipPath = Path.Combine(_temp.Path, "motw_test.zip");
+        using (ZipArchive archive = ZipFile.Open(zipPath, ZipArchiveMode.Create))
         {
             archive.CreateEntryFromFile(file1, "doc.txt");
             archive.CreateEntryFromFile(file2, "data.txt");
@@ -1101,7 +1101,7 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
             return;
         }
 
-        var destDir = Path.Combine(_temp.Path, "motw_output");
+        string destDir = Path.Combine(_temp.Path, "motw_output");
         var options = new ExtractOptions
         {
             ArchivePaths = [zipPath],
@@ -1110,11 +1110,11 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
         };
 
         // Act
-        var result = await _sut.ExtractAsync(options);
+        ArchiveResult result = await _sut.ExtractAsync(options);
 
         // Assert
         result.Errors.Should().BeEmpty();
-        var extractedFiles = Directory.GetFiles(destDir, "*", SearchOption.AllDirectories);
+        string[] extractedFiles = Directory.GetFiles(destDir, "*", SearchOption.AllDirectories);
         extractedFiles.Should().HaveCount(2);
 
         foreach (string extractedFile in extractedFiles)
@@ -1137,9 +1137,9 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
     [Fact]
     public async Task ExtractAsync_MotwModeDisabled_DoesNotPropagateZoneIdentifier()
     {
-        var file1 = _temp.CreateFile("doc.txt", "hello");
-        var zipPath = Path.Combine(_temp.Path, "motw_disabled.zip");
-        using (var archive = ZipFile.Open(zipPath, ZipArchiveMode.Create))
+        string file1 = _temp.CreateFile("doc.txt", "hello");
+        string zipPath = Path.Combine(_temp.Path, "motw_disabled.zip");
+        using (ZipArchive archive = ZipFile.Open(zipPath, ZipArchiveMode.Create))
             archive.CreateEntryFromFile(file1, "doc.txt");
 
         byte[] zoneBytes = System.Text.Encoding.ASCII.GetBytes("[ZoneTransfer]\r\nZoneId=3\r\n");
@@ -1154,10 +1154,10 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
             return; // ADS not supported on this volume — skip gracefully
         }
 
-        var destDir = Path.Combine(_temp.Path, "motw_disabled_output");
+        string destDir = Path.Combine(_temp.Path, "motw_disabled_output");
         var sut = new ZipArchiveService(new GroupPolicyOptions { MotwMode = MotwMode.Disabled });
 
-        var result = await sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [zipPath],
             DestinationFolder = destDir,
@@ -1173,10 +1173,10 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
     [Fact]
     public async Task ExtractAsync_MotwModeUnsafeExtensionsOnly_PropagatesOnlyToUnsafeExtensions()
     {
-        var safeFile = _temp.CreateFile("readme.txt", "hello");
-        var unsafeFile = _temp.CreateFile("payload.exe", "world");
-        var zipPath = Path.Combine(_temp.Path, "motw_unsafe_only.zip");
-        using (var archive = ZipFile.Open(zipPath, ZipArchiveMode.Create))
+        string safeFile = _temp.CreateFile("readme.txt", "hello");
+        string unsafeFile = _temp.CreateFile("payload.exe", "world");
+        string zipPath = Path.Combine(_temp.Path, "motw_unsafe_only.zip");
+        using (ZipArchive archive = ZipFile.Open(zipPath, ZipArchiveMode.Create))
         {
             archive.CreateEntryFromFile(safeFile, "readme.txt");
             archive.CreateEntryFromFile(unsafeFile, "payload.exe");
@@ -1194,10 +1194,10 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
             return; // ADS not supported on this volume — skip gracefully
         }
 
-        var destDir = Path.Combine(_temp.Path, "motw_unsafe_only_output");
+        string destDir = Path.Combine(_temp.Path, "motw_unsafe_only_output");
         var sut = new ZipArchiveService(new GroupPolicyOptions { MotwMode = MotwMode.UnsafeExtensionsOnly });
 
-        var result = await sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [zipPath],
             DestinationFolder = destDir,
@@ -1225,11 +1225,11 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
 
     private static string CreateZipWithDuplicateEntryNames(string zipPath, string entryName, string contentA, string contentB)
     {
-        using var archive = ZipFile.Open(zipPath, ZipArchiveMode.Create);
-        using (var s = archive.CreateEntry(entryName).Open())
+        using ZipArchive archive = ZipFile.Open(zipPath, ZipArchiveMode.Create);
+        using (Stream s = archive.CreateEntry(entryName).Open())
         using (var w = new StreamWriter(s))
             w.Write(contentA);
-        using (var s = archive.CreateEntry(entryName).Open())
+        using (Stream s = archive.CreateEntry(entryName).Open())
         using (var w = new StreamWriter(s))
             w.Write(contentB);
         return zipPath;
@@ -1249,7 +1249,7 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
             OnConflict = ConflictBehavior.Rename,
         };
 
-        var result = await _sut.ExtractAsync(options);
+        ArchiveResult result = await _sut.ExtractAsync(options);
 
         result.Success.Should().BeTrue();
         var extractedFiles = Directory.GetFiles(_temp.Path, "*.txt", SearchOption.AllDirectories)
@@ -1263,8 +1263,8 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
 
     private static void WriteEntry(ZipArchive archive, string entryName, string content)
     {
-        var entry = archive.CreateEntry(entryName);
-        using var stream = entry.Open();
+        ZipArchiveEntry entry = archive.CreateEntry(entryName);
+        using Stream stream = entry.Open();
         using var writer = new StreamWriter(stream);
         writer.Write(content);
     }
@@ -1274,17 +1274,17 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
     [Fact]
     public async Task ExtractAsync_SelectedEntryPaths_FilesOnly_ExtractsOnlySelectedFiles()
     {
-        var zipPath = Path.Combine(_temp.Path, "nested.zip");
-        using (var archive = ZipFile.Open(zipPath, ZipArchiveMode.Create))
+        string zipPath = Path.Combine(_temp.Path, "nested.zip");
+        using (ZipArchive archive = ZipFile.Open(zipPath, ZipArchiveMode.Create))
         {
             WriteEntry(archive, "root.txt", "root");
             WriteEntry(archive, "docs/readme.txt", "readme");
             WriteEntry(archive, "docs/manual.txt", "manual");
             WriteEntry(archive, "src/main.cs", "code");
         }
-        var destDir = Path.Combine(_temp.Path, "output");
+        string destDir = Path.Combine(_temp.Path, "output");
 
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [zipPath],
             DestinationFolder = destDir,
@@ -1304,17 +1304,17 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
     [Fact]
     public async Task ExtractAsync_SelectedEntryPaths_FolderPath_ExtractsAllDescendants()
     {
-        var zipPath = Path.Combine(_temp.Path, "nested.zip");
-        using (var archive = ZipFile.Open(zipPath, ZipArchiveMode.Create))
+        string zipPath = Path.Combine(_temp.Path, "nested.zip");
+        using (ZipArchive archive = ZipFile.Open(zipPath, ZipArchiveMode.Create))
         {
             WriteEntry(archive, "root.txt", "root");
             WriteEntry(archive, "docs/readme.txt", "readme");
             WriteEntry(archive, "docs/sub/appendix.txt", "appendix");
             WriteEntry(archive, "src/main.cs", "code");
         }
-        var destDir = Path.Combine(_temp.Path, "output");
+        string destDir = Path.Combine(_temp.Path, "output");
 
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [zipPath],
             DestinationFolder = destDir,
@@ -1343,10 +1343,10 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
             OnConflict = ConflictBehavior.Skip,
         };
 
-        var result = await _sut.ExtractAsync(options);
+        ArchiveResult result = await _sut.ExtractAsync(options);
 
         result.Success.Should().BeTrue();
-        var extractedFiles = Directory.GetFiles(_temp.Path, "*.txt", SearchOption.AllDirectories);
+        string[] extractedFiles = Directory.GetFiles(_temp.Path, "*.txt", SearchOption.AllDirectories);
         extractedFiles.Should().ContainSingle();
         File.ReadAllText(extractedFiles[0]).Should().Be("first");
     }

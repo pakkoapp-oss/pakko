@@ -32,8 +32,8 @@ public sealed class QuarantineAclParentRaceTests : IDisposable
     public async Task ConcurrentParentGrant_NeverLosesAChildScopesModifyGrant()
     {
         _profile.EnsureExists();
-        using var sid = _profile.GetSid();
-        var sidIdentifier = ToSecurityIdentifier(sid);
+        using SafeSidHandle sid = _profile.GetSid();
+        SecurityIdentifier sidIdentifier = ToSecurityIdentifier(sid);
         string parent = _temp.Path;
         QuarantineAcl.EnsureSharedParentTraverse(parent, sid);
 
@@ -46,7 +46,7 @@ public sealed class QuarantineAclParentRaceTests : IDisposable
         var hammerFailures = new List<Exception>();
 
         // Stands in for every OTHER scope (in this or another process) creating its quarantine.
-        Task hammer = Task.WhenAll(Enumerable.Range(0, HammerThreads).Select(_ => Task.Run(() =>
+        var hammer = Task.WhenAll(Enumerable.Range(0, HammerThreads).Select(_ => Task.Run(() =>
         {
             while (!done.IsCancellationRequested)
             {
@@ -81,7 +81,7 @@ public sealed class QuarantineAclParentRaceTests : IDisposable
     public void EnsureSharedParentTraverse_GrantsTraverseAndIsIdempotent()
     {
         _profile.EnsureExists();
-        using var sid = _profile.GetSid();
+        using SafeSidHandle sid = _profile.GetSid();
         string parent = _temp.Path;
 
         QuarantineAcl.EnsureSharedParentTraverse(parent, sid);
@@ -111,7 +111,7 @@ public sealed class QuarantineAclParentRaceTests : IDisposable
 
     private static bool HasExplicitModifyGrant(string path, SecurityIdentifier sid)
     {
-        var rules = new DirectoryInfo(path).GetAccessControl()
+        AuthorizationRuleCollection rules = new DirectoryInfo(path).GetAccessControl()
             .GetAccessRules(includeExplicit: true, includeInherited: false, typeof(SecurityIdentifier));
         return rules.Cast<FileSystemAccessRule>().Any(r =>
             r.IdentityReference.Equals(sid)

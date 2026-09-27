@@ -12,10 +12,10 @@ public sealed class AppLauncherTests
     {
         string[] files = [@"C:\a b\x.zip", @"\\сервер\спільна\y.tar"];
 
-        var ok = AppLauncher.TryBuildArguments(LaunchOperation.Extract, files, out var arguments);
+        bool ok = AppLauncher.TryBuildArguments(LaunchOperation.Extract, files, out string? arguments);
 
         ok.Should().BeTrue();
-        LaunchArguments.TryParse(arguments, out var operation, out var parsed).Should().BeTrue();
+        LaunchArguments.TryParse(arguments, out LaunchOperation operation, out IReadOnlyList<string>? parsed).Should().BeTrue();
         operation.Should().Be(LaunchOperation.Extract);
         parsed.Should().Equal(files);
     }
@@ -25,21 +25,21 @@ public sealed class AppLauncherTests
     {
         // base64 grows in 4-character steps, so no path formats to exactly MaxLength; find the path
         // length n where the formatted string still fits and n + 1 no longer does.
-        var n = LaunchArguments.MaxLength * 3 / 4 - 100;
+        int n = LaunchArguments.MaxLength * 3 / 4 - 100;
         Length(n).Should().BeLessThanOrEqualTo(LaunchArguments.MaxLength);
         while (Length(n + 1) <= LaunchArguments.MaxLength)
             n++;
 
-        AppLauncher.TryBuildArguments(LaunchOperation.Archive, Path(n), out var fitting).Should().BeTrue();
+        AppLauncher.TryBuildArguments(LaunchOperation.Archive, Path(n), out string? fitting).Should().BeTrue();
         fitting.Length.Should().BeGreaterThan(LaunchArguments.MaxLength - 4);
-        AppLauncher.TryBuildArguments(LaunchOperation.Archive, Path(n + 1), out var over).Should().BeFalse();
+        AppLauncher.TryBuildArguments(LaunchOperation.Archive, Path(n + 1), out string? over).Should().BeFalse();
         over.Length.Should().BeGreaterThan(LaunchArguments.MaxLength);
     }
 
     [Fact]
     public void TryBuildArguments_ThreeHundredLongCyrillicPaths_IsRefused()
     {
-        var files = Enumerable.Range(0, 300).Select(i => $@"\\сервер\спільна\{new string('Ж', 100)}_{i}.zip").ToArray();
+        string[] files = Enumerable.Range(0, 300).Select(i => $@"\\сервер\спільна\{new string('Ж', 100)}_{i}.zip").ToArray();
 
         AppLauncher.TryBuildArguments(LaunchOperation.Extract, files, out _).Should().BeFalse();
     }

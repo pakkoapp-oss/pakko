@@ -54,7 +54,7 @@ public sealed class Win32SourceDeleteOperations(Func<IntPtr> ownerWindow) : ISou
         if (handle.IsInvalid)
             return null;
 
-        var buffer = new char[32768];
+        char[] buffer = new char[32768];
         uint length = GetFinalPathNameByHandleW(handle, buffer, (uint)buffer.Length, 0);
         if (length == 0 || length >= buffer.Length)
             return null;
@@ -73,7 +73,7 @@ public sealed class Win32SourceDeleteOperations(Func<IntPtr> ownerWindow) : ISou
 
         // The volume, not the drive letter: a removable volume mounted into a folder of C: is
         // still removable. Any failure answers "not fixed", which means asking before deleting.
-        var volume = new char[32768];
+        char[] volume = new char[32768];
         if (!GetVolumePathNameW(finalPath, volume, (uint)volume.Length))
             return false;
         int end = Array.IndexOf(volume, '\0');

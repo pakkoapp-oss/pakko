@@ -69,11 +69,11 @@ public static class ShellArgumentParser
     // BuildHashArgs never leaves it flag-less), then ≥1 file/folder path.
     private static ParsedCommand ParseHash(string[] args)
     {
-        var rest = args[1..];
+        string[] rest = args[1..];
         if (rest.Length < 2 || rest[0] != "--algorithm")
             return Invalid("--hash requires --algorithm crc32|sha256.");
 
-        var algorithm = rest[1] switch
+        HashAlgorithmKind algorithm = rest[1] switch
         {
             "crc32"  => HashAlgorithmKind.Crc32,
             "sha256" => HashAlgorithmKind.Sha256,
@@ -97,8 +97,8 @@ public static class ShellArgumentParser
     // MainViewModel's IArchiveCreationRouter call directly, not this CLI path.
     private static ParsedCommand ParseArchive(string[] args)
     {
-        var rest = args[1..];
-        var format = ArchiveContainerFormat.Zip;
+        string[] rest = args[1..];
+        ArchiveContainerFormat format = ArchiveContainerFormat.Zip;
 
         if (rest.Length > 0 && rest[0] == "--format")
         {
@@ -141,7 +141,7 @@ public static class ShellArgumentParser
 
     private static ParsedCommand ParseFileList(CommandType type, string[] args)
     {
-        var files = args[1..];
+        string[] files = args[1..];
         if (files.Length == 0)
             return Invalid($"{args[0]} requires at least one file.");
 

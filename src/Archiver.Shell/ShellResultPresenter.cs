@@ -35,10 +35,10 @@ public static class ShellResultPresenter
 
     public static string BuildSkippedMessage(IReadOnlyList<SkippedFile> skipped, int maxLinesShown = 10)
     {
-        var lines = skipped.Take(maxLinesShown)
+        IEnumerable<string> lines = skipped.Take(maxLinesShown)
             .Select(s => $"{Path.GetFileName(s.Path)}: {s.Reason}");
-        var header = ResultMessagesLocalizer.Get("ResultSkippedHeader", skipped.Count);
-        var message = $"{header}{Environment.NewLine}{string.Join(Environment.NewLine, lines)}";
+        string header = ResultMessagesLocalizer.Get("ResultSkippedHeader", skipped.Count);
+        string message = $"{header}{Environment.NewLine}{string.Join(Environment.NewLine, lines)}";
 
         if (skipped.Count > maxLinesShown)
             message += $"{Environment.NewLine}{ResultMessagesLocalizer.Get("ResultAndMoreLine", skipped.Count - maxLinesShown)}";

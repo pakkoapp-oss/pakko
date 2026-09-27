@@ -187,7 +187,7 @@ internal sealed class TarSandboxScope : IDisposable
         // merely cannot show gives only "unreadable filename" — confirmed 2026-09-25). Decided
         // once, on the first listing, and used for every later run of this scope.
         _utf8Headers = true;
-        var result = await RunAsync(mode, [], cancellationToken).ConfigureAwait(false);
+        (int ExitCode, string StdOut, string StdErr) result = await RunAsync(mode, [], cancellationToken).ConfigureAwait(false);
         if (result.ExitCode == 0)
             return result;
 
@@ -233,7 +233,7 @@ internal sealed class TarSandboxScope : IDisposable
         using (job)
         using (SafeFileHandle stdIn = ReopenArchive())
         {
-            var (exitCode, stdOut, stdErr) = await SandboxedProcessLauncher.RunAsync(
+            (int exitCode, string? stdOut, string? stdErr) = await SandboxedProcessLauncher.RunAsync(
                 TarExecutablePath,
                 [mode, "-f", "-", .. headerCharset, .. arguments],
                 new ProcessLaunchOptions(AppContainerSid: _sid, Job: job.Handle, StdIn: stdIn, WorkingDirectory: _quarantineRoot,

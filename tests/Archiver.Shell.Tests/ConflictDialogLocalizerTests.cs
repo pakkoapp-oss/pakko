@@ -52,7 +52,7 @@ public sealed class ConflictDialogLocalizerTests
     [Fact]
     public void Get_UkrainianCulture_ReturnsTranslatedText()
     {
-        var original = CultureInfo.CurrentUICulture;
+        CultureInfo original = CultureInfo.CurrentUICulture;
         try
         {
             CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("uk-UA");
@@ -71,8 +71,8 @@ public sealed class ConflictDialogLocalizerTests
     // FormatException here even though it was harmless under the App's own .Replace("{0}", ...).
     public static IEnumerable<object[]> AllCultureKeyPairs()
     {
-        foreach (var culture in NonNeutralCultures)
-            foreach (var key in AllKeys)
+        foreach (string culture in NonNeutralCultures)
+            foreach (string key in AllKeys)
                 yield return [culture, key];
     }
 
@@ -80,7 +80,7 @@ public sealed class ConflictDialogLocalizerTests
     [MemberData(nameof(AllCultureKeyPairs))]
     public void Get_EveryLocaleAndKey_NeverThrowsFormatException(string culture, string key)
     {
-        var original = CultureInfo.CurrentUICulture;
+        CultureInfo original = CultureInfo.CurrentUICulture;
         try
         {
             CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(culture);

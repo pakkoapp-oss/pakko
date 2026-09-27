@@ -62,7 +62,7 @@ internal static class RawZipEntryLocator
     {
         // T-F234: matched by decoded name, the name every caller sees — a raw UTF-8 byte compare
         // missed every legacy (OEM/ANSI) name.
-        var record = ReadCentralDirectory(zipStream).FirstOrDefault(r =>
+        CentralDirectoryRecord record = ReadCentralDirectory(zipStream).FirstOrDefault(r =>
                 ZipEntryNameDecoder.Decode(r.NameBytes, r.GeneralPurposeFlag, r.HostOs, r.Extra, ZipNameCodePages.System) == entryFullName)
             ?? throw new FileNotFoundException($"Entry not found in ZIP central directory: {entryFullName}");
         return BuildFromLocalHeader(zipStream, record);
@@ -84,9 +84,9 @@ internal static class RawZipEntryLocator
     /// </summary>
     public static List<LocatedZipEntry> LocateAll(Stream zipStream)
     {
-        var records = ReadCentralDirectory(zipStream);
+        List<CentralDirectoryRecord> records = ReadCentralDirectory(zipStream);
         var result = new List<LocatedZipEntry>(records.Count);
-        foreach (var record in records)
+        foreach (CentralDirectoryRecord record in records)
             result.Add(BuildFromLocalHeader(zipStream, record));
         return result;
     }
@@ -126,7 +126,7 @@ internal static class RawZipEntryLocator
         // T-F193 Phase 0: bounded by the directory's own declared extent, not "up to the classic
         // EOCD" — in a Zip64 archive the Zip64 EOCD record and locator sit between the two, and
         // used to be misread as a malformed directory entry.
-        var (centralDirOffset, centralDirSize) = FindCentralDirectory(zipStream);
+        (long centralDirOffset, long centralDirSize) = FindCentralDirectory(zipStream);
         long centralDirEnd = centralDirOffset + centralDirSize;
 
         zipStream.Seek(centralDirOffset, SeekOrigin.Begin);
@@ -156,7 +156,7 @@ internal static class RawZipEntryLocator
             byte[] extra = ReadBytes(zipStream, extraLength);
             ReadBytes(zipStream, commentLength);
 
-            var (realUncompressedSize, realCompressedSize, realLocalHeaderOffset) = resolveZip64
+            (long realUncompressedSize, long realCompressedSize, long realLocalHeaderOffset) = resolveZip64
                 ? ResolveZip64Fields(extra, uncompressedSize, compressedSize, localHeaderOffset)
                 : (uncompressedSize, compressedSize, localHeaderOffset);
             records.Add(new CentralDirectoryRecord(

@@ -40,9 +40,9 @@ public sealed class FileHashServiceTests : IDisposable
     [Fact]
     public async Task ComputeAsync_SingleFile_Crc32_MatchesRealValue()
     {
-        var file = _temp.CreateFile("a.txt", "hello world");
+        string file = _temp.CreateFile("a.txt", "hello world");
 
-        var result = await FileHashService.ComputeAsync([file], HashAlgorithmKind.Crc32, null, CancellationToken.None);
+        HashResult result = await FileHashService.ComputeAsync([file], HashAlgorithmKind.Crc32, null, CancellationToken.None);
 
         result.Folder.Should().BeNull();
         result.Entries.Should().ContainSingle();
@@ -53,9 +53,9 @@ public sealed class FileHashServiceTests : IDisposable
     [Fact]
     public async Task ComputeAsync_SingleFile_Sha256_MatchesRealValue()
     {
-        var file = _temp.CreateFile("a.txt", "hello world");
+        string file = _temp.CreateFile("a.txt", "hello world");
 
-        var result = await FileHashService.ComputeAsync([file], HashAlgorithmKind.Sha256, null, CancellationToken.None);
+        HashResult result = await FileHashService.ComputeAsync([file], HashAlgorithmKind.Sha256, null, CancellationToken.None);
 
         result.Entries[0].Hash.Should().Be("b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9");
     }
@@ -63,10 +63,10 @@ public sealed class FileHashServiceTests : IDisposable
     [Fact]
     public async Task ComputeAsync_MultipleFiles_HashesEachIndependently_NoFolderSummary()
     {
-        var fileA = _temp.CreateFile("a.txt", "hello world");
-        var fileB = _temp.CreateFile("b.txt", "second file content here");
+        string fileA = _temp.CreateFile("a.txt", "hello world");
+        string fileB = _temp.CreateFile("b.txt", "second file content here");
 
-        var result = await FileHashService.ComputeAsync([fileA, fileB], HashAlgorithmKind.Crc32, null, CancellationToken.None);
+        HashResult result = await FileHashService.ComputeAsync([fileA, fileB], HashAlgorithmKind.Crc32, null, CancellationToken.None);
 
         result.Folder.Should().BeNull();
         result.Entries.Should().HaveCount(2);
@@ -81,7 +81,7 @@ public sealed class FileHashServiceTests : IDisposable
         _temp.CreateFile(Path.Combine("flat", "a.txt"), "hello world");
         _temp.CreateFile(Path.Combine("flat", "b.txt"), "second file content here");
 
-        var result = await FileHashService.ComputeAsync([folder], HashAlgorithmKind.Crc32, null, CancellationToken.None);
+        HashResult result = await FileHashService.ComputeAsync([folder], HashAlgorithmKind.Crc32, null, CancellationToken.None);
 
         result.Folder.Should().NotBeNull();
         result.Folder!.FileCount.Should().Be(2);
@@ -107,7 +107,7 @@ public sealed class FileHashServiceTests : IDisposable
         var reports = new List<ProgressReport>();
         var progress = new SynchronousProgress<ProgressReport>(r => { lock (reports) reports.Add(r); });
 
-        var result = await FileHashService.ComputeAsync([_temp.Path], HashAlgorithmKind.Crc32, progress, CancellationToken.None);
+        HashResult result = await FileHashService.ComputeAsync([_temp.Path], HashAlgorithmKind.Crc32, progress, CancellationToken.None);
 
         result.Folder!.TotalBytes.Should().Be(expectedTotal);
         reports.Should().NotBeEmpty();
@@ -122,7 +122,7 @@ public sealed class FileHashServiceTests : IDisposable
         _temp.CreateFile(Path.Combine("flat", "a.txt"), "hello world");
         _temp.CreateFile(Path.Combine("flat", "b.txt"), "second file content here");
 
-        var result = await FileHashService.ComputeAsync([folder], HashAlgorithmKind.Sha256, null, CancellationToken.None);
+        HashResult result = await FileHashService.ComputeAsync([folder], HashAlgorithmKind.Sha256, null, CancellationToken.None);
 
         result.Folder!.DataSum.Should().Be("0a35b54db7b00ca46cb11a48e4f9501b70314d256b2e5eb38c44095b6d80709e-00000001");
         result.Folder.NamesSum.Should().Be("ced1ff46b29634dce01fdfe2c50afd1dd59c04278dc477e4e1ac59e8c8e56c22-00000001");
@@ -137,7 +137,7 @@ public sealed class FileHashServiceTests : IDisposable
         Directory.CreateDirectory(Path.Combine(folder, "sub"));
         _temp.CreateFile(Path.Combine("nested", "sub", "c.txt"), "nested file");
 
-        var result = await FileHashService.ComputeAsync([folder], HashAlgorithmKind.Crc32, null, CancellationToken.None);
+        HashResult result = await FileHashService.ComputeAsync([folder], HashAlgorithmKind.Crc32, null, CancellationToken.None);
 
         result.Folder!.FileCount.Should().Be(3);
         result.Folder.DataSum.Should().Be("33F43426-00000001");
@@ -161,8 +161,8 @@ public sealed class FileHashServiceTests : IDisposable
         for (int i = 0; i < fileCount; i++)
             _temp.CreateFile($"file{i:D3}.txt", $"content number {i}");
 
-        var first = await FileHashService.ComputeAsync([_temp.Path], HashAlgorithmKind.Sha256, null, CancellationToken.None);
-        var second = await FileHashService.ComputeAsync([_temp.Path], HashAlgorithmKind.Sha256, null, CancellationToken.None);
+        HashResult first = await FileHashService.ComputeAsync([_temp.Path], HashAlgorithmKind.Sha256, null, CancellationToken.None);
+        HashResult second = await FileHashService.ComputeAsync([_temp.Path], HashAlgorithmKind.Sha256, null, CancellationToken.None);
 
         first.Folder!.FileCount.Should().Be(fileCount);
         first.Entries.Should().HaveCount(fileCount);
@@ -174,11 +174,11 @@ public sealed class FileHashServiceTests : IDisposable
     [Fact]
     public async Task ComputeAsync_MultiSelectionIncludingFolder_SkipsFolderGracefully()
     {
-        var file = _temp.CreateFile("a.txt", "hello world");
-        var folder = Path.Combine(_temp.Path, "sub");
+        string file = _temp.CreateFile("a.txt", "hello world");
+        string folder = Path.Combine(_temp.Path, "sub");
         Directory.CreateDirectory(folder);
 
-        var result = await FileHashService.ComputeAsync([file, folder], HashAlgorithmKind.Crc32, null, CancellationToken.None);
+        HashResult result = await FileHashService.ComputeAsync([file, folder], HashAlgorithmKind.Crc32, null, CancellationToken.None);
 
         result.Folder.Should().BeNull();
         result.Entries.Should().HaveCount(2);
@@ -189,9 +189,9 @@ public sealed class FileHashServiceTests : IDisposable
     [Fact]
     public async Task ComputeAsync_MissingFile_RecordsError()
     {
-        var missing = Path.Combine(_temp.Path, "does-not-exist.txt");
+        string missing = Path.Combine(_temp.Path, "does-not-exist.txt");
 
-        var result = await FileHashService.ComputeAsync([missing], HashAlgorithmKind.Crc32, null, CancellationToken.None);
+        HashResult result = await FileHashService.ComputeAsync([missing], HashAlgorithmKind.Crc32, null, CancellationToken.None);
 
         result.Entries.Should().ContainSingle();
         result.Entries[0].Hash.Should().BeNull();
@@ -201,11 +201,11 @@ public sealed class FileHashServiceTests : IDisposable
     [Fact]
     public async Task ComputeAsync_Cancelled_ThrowsOperationCanceledException()
     {
-        var file = _temp.CreateFile("a.txt", "hello world");
+        string file = _temp.CreateFile("a.txt", "hello world");
         using var cts = new CancellationTokenSource();
         cts.Cancel();
 
-        var act = () => FileHashService.ComputeAsync([file], HashAlgorithmKind.Crc32, null, cts.Token);
+        Func<Task<HashResult>> act = () => FileHashService.ComputeAsync([file], HashAlgorithmKind.Crc32, null, cts.Token);
 
         await act.Should().ThrowAsync<OperationCanceledException>();
     }
@@ -221,7 +221,7 @@ public sealed class FileHashServiceTests : IDisposable
         File.WriteAllBytes(path, content);
         uint expected = SequentialCrc32(content);
 
-        var result = await FileHashService.ComputeAsync([path], HashAlgorithmKind.Crc32, null, CancellationToken.None);
+        HashResult result = await FileHashService.ComputeAsync([path], HashAlgorithmKind.Crc32, null, CancellationToken.None);
 
         result.Entries.Should().ContainSingle();
         result.Entries[0].Error.Should().BeNull();
@@ -240,7 +240,7 @@ public sealed class FileHashServiceTests : IDisposable
         File.WriteAllBytes(path, content);
         uint expected = SequentialCrc32(content);
 
-        var result = await FileHashService.ComputeAsync([path], HashAlgorithmKind.Crc32, null, CancellationToken.None);
+        HashResult result = await FileHashService.ComputeAsync([path], HashAlgorithmKind.Crc32, null, CancellationToken.None);
 
         result.Entries[0].Hash.Should().Be(expected.ToString("X8"));
     }
@@ -259,7 +259,7 @@ public sealed class FileHashServiceTests : IDisposable
         acc.Add(BitConverter.GetBytes(expectedLargeCrc));
         acc.Add(BitConverter.GetBytes(expectedSmallCrc));
 
-        var result = await FileHashService.ComputeAsync([_temp.Path], HashAlgorithmKind.Crc32, null, CancellationToken.None);
+        HashResult result = await FileHashService.ComputeAsync([_temp.Path], HashAlgorithmKind.Crc32, null, CancellationToken.None);
 
         result.Folder!.FileCount.Should().Be(2);
         result.Folder.DataSum.Should().Be(acc.ToDisplayString());
@@ -292,7 +292,7 @@ public sealed class FileHashServiceTests : IDisposable
 
     private static byte[] RandomBytes(int seed, int sizeBytes)
     {
-        var bytes = new byte[sizeBytes];
+        byte[] bytes = new byte[sizeBytes];
         new Random(seed).NextBytes(bytes);
         return bytes;
     }

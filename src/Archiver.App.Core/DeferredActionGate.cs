@@ -24,9 +24,9 @@ public sealed class DeferredActionGate
     {
         if (_open) return;
         _open = true;
-        var toRun = _pending.ToArray();
+        Action[] toRun = _pending.ToArray();
         _pending.Clear();
-        foreach (var action in toRun) action();
+        foreach (Action action in toRun) action();
     }
 
     /// <summary>Discards any queued actions without running them. Never re-opens a closed gate.</summary>

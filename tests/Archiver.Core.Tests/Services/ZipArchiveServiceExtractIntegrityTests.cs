@@ -23,7 +23,7 @@ public sealed class ZipArchiveServiceExtractIntegrityTests : IDisposable
     private string CreateZip(string name, CompressionLevel level)
     {
         string zipPath = Path.Combine(_temp.Path, name);
-        using var archive = ZipFile.Open(zipPath, ZipArchiveMode.Create);
+        using ZipArchive archive = ZipFile.Open(zipPath, ZipArchiveMode.Create);
         foreach (string entry in new[] { "ok.txt", "doc.txt" })
         {
             using var w = new StreamWriter(archive.CreateEntry(entry, level).Open());
@@ -53,7 +53,7 @@ public sealed class ZipArchiveServiceExtractIntegrityTests : IDisposable
     private static void PatchUInt32(string zipPath, string entryName, int localField, int centralField, uint value)
     {
         byte[] bytes = File.ReadAllBytes(zipPath);
-        var (local, central) = FindHeaders(bytes, entryName);
+        (int local, int central) = FindHeaders(bytes, entryName);
         BitConverter.GetBytes(value).CopyTo(bytes, local + localField);
         BitConverter.GetBytes(value).CopyTo(bytes, central + centralField);
         File.WriteAllBytes(zipPath, bytes);
@@ -67,7 +67,7 @@ public sealed class ZipArchiveServiceExtractIntegrityTests : IDisposable
     {
         string dest = Path.Combine(_temp.Path, "out");
         Directory.CreateDirectory(dest);
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [zip],
             DestinationFolder = dest,
@@ -97,7 +97,7 @@ public sealed class ZipArchiveServiceExtractIntegrityTests : IDisposable
         bytes[dataAt + 5] ^= 0x01;
         File.WriteAllBytes(zip, bytes);
 
-        var (result, dest) = await ExtractAsync(zip);
+        (ArchiveResult? result, string? dest) = await ExtractAsync(zip);
 
         AssertOnlyDocFailed(result, dest, "CRC-32");
     }
@@ -108,7 +108,7 @@ public sealed class ZipArchiveServiceExtractIntegrityTests : IDisposable
         string zip = CreateZip("deflated.zip", CompressionLevel.Optimal);
         PatchCrc(zip, "doc.txt", 0xDEADBEEF);
 
-        var (result, dest) = await ExtractAsync(zip);
+        (ArchiveResult? result, string? dest) = await ExtractAsync(zip);
 
         AssertOnlyDocFailed(result, dest, "CRC-32");
     }
@@ -123,10 +123,10 @@ public sealed class ZipArchiveServiceExtractIntegrityTests : IDisposable
         string zip = CreateZip("under.zip", level);
         PatchUncompressedSize(zip, "doc.txt", 10);
 
-        var (result, dest) = await ExtractAsync(zip);
+        (ArchiveResult? result, string? dest) = await ExtractAsync(zip);
 
         AssertOnlyDocFailed(result, dest, expected);
-        var tested = await _sut.TestAsync([zip]);
+        ArchiveResult tested = await _sut.TestAsync([zip]);
         tested.Errors.Should().ContainSingle("Test must agree with Extract")
             .Which.Message.Should().Contain("doc.txt").And.Contain(expected);
     }
@@ -148,7 +148,7 @@ public sealed class ZipArchiveServiceExtractIntegrityTests : IDisposable
         string zip = Path.Combine(_temp.Path, "enc.zip");
         PatchUncompressedSize(zip, "doc.txt", 10);
 
-        var tested = await _sut.TestAsync([zip], resolvePasswordAsync: _ => Task.FromResult(new PasswordDecision { Password = Password }));
+        ArchiveResult tested = await _sut.TestAsync([zip], resolvePasswordAsync: _ => Task.FromResult(new PasswordDecision { Password = Password }));
 
         tested.Errors.Should().ContainSingle().Which.Message.Should().Contain("declared size");
     }
@@ -162,7 +162,7 @@ public sealed class ZipArchiveServiceExtractIntegrityTests : IDisposable
         Directory.CreateDirectory(src);
         File.WriteAllText(Path.Combine(src, "ok.txt"), "fine");
         File.WriteAllText(Path.Combine(src, "doc.txt"), LongContent);
-        var created = await _sut.ArchiveAsync(new ArchiveOptions
+        ArchiveResult created = await _sut.ArchiveAsync(new ArchiveOptions
         {
             SourcePaths = [Path.Combine(src, "ok.txt"), Path.Combine(src, "doc.txt")],
             DestinationFolder = _temp.Path,
@@ -174,7 +174,7 @@ public sealed class ZipArchiveServiceExtractIntegrityTests : IDisposable
         string zip = Path.Combine(_temp.Path, "enc.zip");
         PatchUncompressedSize(zip, "doc.txt", 10);
 
-        var (result, dest) = await ExtractAsync(zip, Password);
+        (ArchiveResult? result, string? dest) = await ExtractAsync(zip, Password);
 
         AssertOnlyDocFailed(result, dest, "declared size");
     }

@@ -43,17 +43,17 @@ public static class AppLauncher
     /// <summary>Activates the App of this process's own package with <paramref name="files"/>.</summary>
     public static AppLaunchResult Launch(LaunchOperation operation, IReadOnlyList<string> files)
     {
-        if (!TryBuildArguments(operation, files, out var arguments))
+        if (!TryBuildArguments(operation, files, out string? arguments))
             return AppLaunchResult.TooManyFiles;
 
-        var familyName = OwnPackageFamilyName();
+        string? familyName = OwnPackageFamilyName();
         if (familyName is null)
             return AppLaunchResult.NoPackage;
 
         var manager = (IApplicationActivationManager)new ApplicationActivationManager();
         try
         {
-            var hr = manager.ActivateApplication(familyName + "!App", arguments, ActivateOptions.None, out _);
+            int hr = manager.ActivateApplication(familyName + "!App", arguments, ActivateOptions.None, out _);
             return hr >= 0 ? AppLaunchResult.Launched : AppLaunchResult.Failed;
         }
         finally
@@ -65,11 +65,11 @@ public static class AppLauncher
     private static string? OwnPackageFamilyName()
     {
         uint length = 0;
-        var rc = NativeMethods.GetCurrentPackageFamilyName(ref length, null);
+        int rc = NativeMethods.GetCurrentPackageFamilyName(ref length, null);
         if (rc == AppModelErrorNoPackage || rc != ErrorInsufficientBuffer)
             return null;
 
-        var buffer = new char[length];
+        char[] buffer = new char[length];
         rc = NativeMethods.GetCurrentPackageFamilyName(ref length, buffer);
         return rc == 0 ? new string(buffer, 0, (int)length - 1) : null;
     }

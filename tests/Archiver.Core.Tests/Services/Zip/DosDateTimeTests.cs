@@ -80,9 +80,9 @@ public sealed class DosDateTimeTests
         using var ms = new MemoryStream();
         using (var archive = new ZipArchive(ms, ZipArchiveMode.Create, leaveOpen: true))
         {
-            var entry = archive.CreateEntry("a.txt");
+            ZipArchiveEntry entry = archive.CreateEntry("a.txt");
             entry.LastWriteTime = lastWriteTime;
-            using var entryStream = entry.Open();
+            using Stream entryStream = entry.Open();
             entryStream.WriteByte(1);
         }
 

@@ -20,7 +20,7 @@ public sealed class OperationWindowModelTests
             [WindowStrings.ItemOfCount] = "Архів {0} з {1} · {2}",
         }));
         model.Receive(new Begin("Розпакування", ProgressKind.Bytes));
-        foreach (var m in then)
+        foreach (ProtocolMessage m in then)
             model.Receive(m);
         return model;
     }
@@ -30,7 +30,7 @@ public sealed class OperationWindowModelTests
     [Fact]
     public void Begin_StaysHiddenUntilTheShowDelay()
     {
-        var model = Running(new Progress(40, "a.txt", "40%"));
+        OperationWindowModel model = Running(new Progress(40, "a.txt", "40%"));
 
         model.IsVisible.Should().BeFalse();
         model.ShowDelayElapsed().Command.Should().Be(WindowCommand.Show);
@@ -43,9 +43,9 @@ public sealed class OperationWindowModelTests
     [Fact]
     public void CleanCompleteBeforeTheDelay_ClosesWithoutEverShowing()
     {
-        var model = Running();
+        OperationWindowModel model = Running();
 
-        var update = model.Receive(new Complete(null));
+        WindowUpdate update = model.Receive(new Complete(null));
 
         update.Command.Should().Be(WindowCommand.Close);
         update.Send.Should().Equal(new WindowClosed());
@@ -56,7 +56,7 @@ public sealed class OperationWindowModelTests
     [Fact]
     public void ResultBeforeTheDelay_ShowsTheResultAtOnce()
     {
-        var model = Running();
+        OperationWindowModel model = Running();
 
         model.Receive(new Complete(Warning)).Command.Should().Be(WindowCommand.Show);
 
@@ -67,7 +67,7 @@ public sealed class OperationWindowModelTests
     [Fact]
     public void ResultAfterTheWindowShowed_Refreshes()
     {
-        var model = Running();
+        OperationWindowModel model = Running();
         model.ShowDelayElapsed();
 
         model.Receive(new Complete(Warning)).Command.Should().Be(WindowCommand.Refresh);
@@ -76,7 +76,7 @@ public sealed class OperationWindowModelTests
     [Fact]
     public void ProgressWhileVisible_Refreshes_WhileHidden_DoesNothing()
     {
-        var model = Running();
+        OperationWindowModel model = Running();
         model.Receive(new Progress(10, null, null)).Should().Be(WindowUpdate.Nothing);
 
         model.ShowDelayElapsed();
@@ -87,7 +87,7 @@ public sealed class OperationWindowModelTests
     [Fact]
     public void SeveralArchives_NameTheCurrentOneAndCancelAll()
     {
-        var model = Running(new Item("photos.zip", 2, 5));
+        OperationWindowModel model = Running(new Item("photos.zip", 2, 5));
 
         model.ItemLine.Should().Be("Архів 2 з 5 · photos.zip");
         model.CancelLabel.Should().Be("Скасувати все");
@@ -97,7 +97,7 @@ public sealed class OperationWindowModelTests
     [Fact]
     public void OneArchive_HasNoItemLineAndPlainCancel()
     {
-        var model = Running(new Item("photos.zip", 1, 1));
+        OperationWindowModel model = Running(new Item("photos.zip", 1, 1));
 
         model.ItemLine.Should().BeNull();
         model.CancelLabel.Should().Be("Скасувати");
@@ -106,9 +106,9 @@ public sealed class OperationWindowModelTests
     [Fact]
     public void CloseWhileRunning_CancelsTheOperationThenCloses()
     {
-        var model = Running();
+        OperationWindowModel model = Running();
 
-        var update = model.UserClosed();
+        WindowUpdate update = model.UserClosed();
 
         update.Command.Should().Be(WindowCommand.Close);
         update.Send.Should().Equal(new CancelRequested(), new WindowClosed());
@@ -118,7 +118,7 @@ public sealed class OperationWindowModelTests
     [Fact]
     public void CloseOnTheResult_OnlyCloses()
     {
-        var model = Running(new Complete(Warning));
+        OperationWindowModel model = Running(new Complete(Warning));
 
         model.UserClosed().Send.Should().Equal(new WindowClosed());
     }
@@ -127,7 +127,7 @@ public sealed class OperationWindowModelTests
     [Fact]
     public void Result_CanBeCopiedAsTitleAndText()
     {
-        var model = Running(new Complete(Warning));
+        OperationWindowModel model = Running(new Complete(Warning));
 
         model.CopyText.Should().Be("Extracting" + Environment.NewLine + Environment.NewLine + "old.zip: damaged");
     }
@@ -173,7 +173,7 @@ public sealed class OperationWindowModelTests
     [Fact]
     public void NextItem_ResetsTheFileLine()
     {
-        var model = Running(new Item("a.zip", 1, 2), new Progress(100, "last.txt", "100%"), new Item("b.zip", 2, 2));
+        OperationWindowModel model = Running(new Item("a.zip", 1, 2), new Progress(100, "last.txt", "100%"), new Item("b.zip", 2, 2));
 
         model.Percent.Should().Be(0);
         model.CurrentFile.Should().BeNull();
@@ -196,7 +196,7 @@ public sealed class OperationWindowModelTests
     [Fact]
     public void SecondBegin_IsIgnored()
     {
-        var model = Running(new Begin("other", ProgressKind.Percent));
+        OperationWindowModel model = Running(new Begin("other", ProgressKind.Percent));
 
         model.Title.Should().Be("Розпакування");
         model.Kind.Should().Be(ProgressKind.Bytes);
@@ -205,7 +205,7 @@ public sealed class OperationWindowModelTests
     [Fact]
     public void AfterClose_EverythingIsIgnored()
     {
-        var model = Running(new Complete(null));
+        OperationWindowModel model = Running(new Complete(null));
 
         model.Receive(new Complete(Warning)).Should().Be(WindowUpdate.Nothing);
         model.UserClosed().Should().Be(WindowUpdate.Nothing);
@@ -216,7 +216,7 @@ public sealed class OperationWindowModelTests
     [Fact]
     public void ShowDelay_ShowsOnlyOnce()
     {
-        var model = Running();
+        OperationWindowModel model = Running();
         model.ShowDelayElapsed();
 
         model.ShowDelayElapsed().Should().Be(WindowUpdate.Nothing);
@@ -225,7 +225,7 @@ public sealed class OperationWindowModelTests
     [Fact]
     public void AHelperSideMessageFromShell_IsIgnored()
     {
-        var model = Running();
+        OperationWindowModel model = Running();
 
         model.Receive(new CancelRequested()).Should().Be(WindowUpdate.Nothing);
         model.Phase.Should().Be(WindowPhase.Running);
@@ -236,9 +236,9 @@ public sealed class OperationWindowModelTests
     [Fact]
     public void ShellGoneWhileRunning_ClosesWithNothingToSend()
     {
-        var model = Running();
+        OperationWindowModel model = Running();
 
-        var update = model.ShellDisconnected();
+        WindowUpdate update = model.ShellDisconnected();
 
         update.Command.Should().Be(WindowCommand.Close);
         update.Send.Should().BeEmpty();
@@ -247,7 +247,7 @@ public sealed class OperationWindowModelTests
     [Fact]
     public void ShellGoneWhileAResultShows_KeepsTheResult()
     {
-        var model = Running(new Complete(Warning));
+        OperationWindowModel model = Running(new Complete(Warning));
 
         model.ShellDisconnected().Should().Be(WindowUpdate.Nothing);
         model.Phase.Should().Be(WindowPhase.Result);

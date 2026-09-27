@@ -30,7 +30,7 @@ public sealed class TarSandboxedServiceSandboxBehaviorTests
         try
         {
             profile.EnsureExists();
-            using var sid = profile.GetSid();
+            using SafeSidHandle sid = profile.GetSid();
 
             string neverAcldDir = Path.Combine(Path.GetTempPath(), "PakkoSandboxBehaviorTest_" + Guid.NewGuid());
             Directory.CreateDirectory(neverAcldDir);
@@ -38,7 +38,7 @@ public sealed class TarSandboxedServiceSandboxBehaviorTests
             {
                 string targetFile = Path.Combine(neverAcldDir, "should_not_exist.txt");
 
-                var (exitCode, _, stdErr) = await SandboxedProcessLauncher.RunAsync(
+                (int exitCode, _, string? stdErr) = await SandboxedProcessLauncher.RunAsync(
                     CmdExecutablePath,
                     ["/c", "echo blocked > " + targetFile],
                     new ProcessLaunchOptions(AppContainerSid: sid),
@@ -64,10 +64,10 @@ public sealed class TarSandboxedServiceSandboxBehaviorTests
         // Job Object ActiveProcessLimit = 1 is the launcher/Job-Object mechanism's own defense
         // against a post-exploit second stage (spawning cmd.exe/powershell.exe/etc.) — proven
         // here generically (plain cmd.exe under the same job), not against tar.exe itself.
-        using SandboxJobObject job = SandboxJobObject.Create(
+        using var job = SandboxJobObject.Create(
             ramLimitBytes: 512L * 1024 * 1024, cpuTimeLimit: TimeSpan.FromSeconds(30));
 
-        var (_, stdOut, _) = await SandboxedProcessLauncher.RunAsync(
+        (_, string? stdOut, _) = await SandboxedProcessLauncher.RunAsync(
             CmdExecutablePath,
             ["/c", "cmd /c \"exit 0\" && echo CHILD_COMPLETED"],
             new ProcessLaunchOptions(Job: job.Handle),
@@ -129,9 +129,9 @@ public sealed class TarSandboxedServiceSandboxBehaviorTests
         try
         {
             profile.EnsureExists();
-            using var sid = profile.GetSid();
+            using SafeSidHandle sid = profile.GetSid();
 
-            var (sandboxedExitCode, _, _) = await SandboxedProcessLauncher.RunAsync(
+            (int sandboxedExitCode, _, _) = await SandboxedProcessLauncher.RunAsync(
                 CurlExecutablePath,
                 ["-s", "-m", "3", $"http://127.0.0.1:{port}/"],
                 new ProcessLaunchOptions(AppContainerSid: sid),
@@ -142,7 +142,7 @@ public sealed class TarSandboxedServiceSandboxBehaviorTests
 
             // Same listener, unsandboxed launch of the same command — attributes the failure
             // above to the missing capability specifically, not environment/listener flakiness.
-            var (unsandboxedExitCode, _, _) = await SandboxedProcessLauncher.RunAsync(
+            (int unsandboxedExitCode, _, _) = await SandboxedProcessLauncher.RunAsync(
                 CurlExecutablePath,
                 ["-s", "-m", "3", $"http://127.0.0.1:{port}/"],
                 new ProcessLaunchOptions(),

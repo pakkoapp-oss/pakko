@@ -9,6 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
+using Windows.Storage;
 
 namespace Archiver.App;
 
@@ -89,7 +90,7 @@ public sealed partial class MainWindow : Window
         // stale-MSIX gotcha). Reading the running assembly's own file timestamp and showing it in
         // the title bar makes every screenshot self-certifying: if the timestamp isn't "just now,"
         // the deploy didn't actually pick up the latest change.
-        var buildTime = System.IO.File.GetLastWriteTime(
+        DateTime buildTime = System.IO.File.GetLastWriteTime(
             System.Reflection.Assembly.GetExecutingAssembly().Location);
         this.AppWindow.Title = $"Pakko — build {buildTime:yyyy-MM-dd HH:mm:ss}";
 
@@ -135,11 +136,11 @@ public sealed partial class MainWindow : Window
     {
         if (e.DataView.Contains(Windows.ApplicationModel.DataTransfer.StandardDataFormats.StorageItems))
         {
-            var items = await e.DataView.GetStorageItemsAsync();
+            IReadOnlyList<IStorageItem> items = await e.DataView.GetStorageItemsAsync();
             var paths = new List<string>();
-            foreach (var item in items)
+            foreach (IStorageItem? item in items)
             {
-                var path = item switch
+                string path = item switch
                 {
                     Windows.Storage.StorageFile file => file.Path,
                     Windows.Storage.StorageFolder folder => folder.Path,

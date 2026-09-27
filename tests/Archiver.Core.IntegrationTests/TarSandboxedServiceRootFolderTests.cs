@@ -27,7 +27,7 @@ public sealed class TarSandboxedServiceRootFolderTests : IDisposable
     {
         string dest = Path.Combine(_temp.Path, "dest");
         Directory.CreateDirectory(dest);
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [archive],
             DestinationFolder = dest,

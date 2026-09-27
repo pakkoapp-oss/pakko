@@ -24,7 +24,7 @@ public sealed class TarSandboxedServiceExternalFormatsTests : IDisposable
     public async Task ExtractAsync_Valid7z_ExtractsFileWithContent()
     {
         string destDir = Path.Combine(_temp.Path, "out");
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [FixturePath("valid.7z")],
             DestinationFolder = destDir,
@@ -39,7 +39,7 @@ public sealed class TarSandboxedServiceExternalFormatsTests : IDisposable
     public async Task ExtractAsync_ValidRar_ExtractsFileWithContent()
     {
         string destDir = Path.Combine(_temp.Path, "out");
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [FixturePath("valid.rar")],
             DestinationFolder = destDir,

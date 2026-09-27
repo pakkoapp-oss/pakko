@@ -8,9 +8,9 @@ public sealed class LaunchActivationRouterTests
     [Fact]
     public void Decide_BrowseWithOneFile_ReturnsBrowse()
     {
-        var args = LaunchArguments.Format(LaunchOperation.Browse, [@"\\сервер\спільна\архів.zip"]);
+        string args = LaunchArguments.Format(LaunchOperation.Browse, [@"\\сервер\спільна\архів.zip"]);
 
-        var decision = LaunchActivationRouter.Decide(args);
+        LaunchActivationDecision? decision = LaunchActivationRouter.Decide(args);
 
         decision.Should().NotBeNull();
         decision!.Mode.Should().Be(FileActivationMode.Browse);
@@ -20,9 +20,9 @@ public sealed class LaunchActivationRouterTests
     [Fact]
     public void Decide_BrowseWithTwoFiles_AddsBothToList()
     {
-        var args = LaunchArguments.Format(LaunchOperation.Browse, [@"C:\a.zip", @"C:\b.zip"]);
+        string args = LaunchArguments.Format(LaunchOperation.Browse, [@"C:\a.zip", @"C:\b.zip"]);
 
-        var decision = LaunchActivationRouter.Decide(args);
+        LaunchActivationDecision? decision = LaunchActivationRouter.Decide(args);
 
         decision!.Mode.Should().Be(FileActivationMode.AddToList);
         decision.BrowsePath.Should().BeNull();
@@ -34,9 +34,9 @@ public sealed class LaunchActivationRouterTests
     [InlineData(LaunchOperation.Archive)]
     public void Decide_ExtractOrArchive_AddsToList(LaunchOperation operation)
     {
-        var args = LaunchArguments.Format(operation, [@"C:\a.zip"]);
+        string args = LaunchArguments.Format(operation, [@"C:\a.zip"]);
 
-        var decision = LaunchActivationRouter.Decide(args);
+        LaunchActivationDecision? decision = LaunchActivationRouter.Decide(args);
 
         decision!.Mode.Should().Be(FileActivationMode.AddToList);
         decision.Paths.Should().Equal(@"C:\a.zip");

@@ -42,25 +42,25 @@ public sealed class ZipArchiveServiceExtractTempDestResilienceTests : IDisposabl
         string dest = Path.Combine(_temp.Path, "dst");
         string sourceRoot = Path.Combine(_temp.Path, "src");
 
-        using var handle = File.Open(lockedFile, FileMode.Open, FileAccess.Read, FileShare.None);
+        using FileStream handle = File.Open(lockedFile, FileMode.Open, FileAccess.Read, FileShare.None);
 
-        var act = () => Directory.Move(sourceRoot, dest);
+        Action act = () => Directory.Move(sourceRoot, dest);
 
-        var ex = act.Should().Throw<IOException>().Which;
+        IOException ex = act.Should().Throw<IOException>().Which;
         ex.Should().NotBeOfType<UnauthorizedAccessException>();
         ex.Message.Should().Be($"Access to the path '{sourceRoot}' is denied.");
     }
 
     private static string CreateZipWithTraversalEntry(string zipPath)
     {
-        using var archive = ZipFile.Open(zipPath, ZipArchiveMode.Create);
-        using (var s = archive.CreateEntry("good.txt").Open())
+        using ZipArchive archive = ZipFile.Open(zipPath, ZipArchiveMode.Create);
+        using (Stream s = archive.CreateEntry("good.txt").Open())
         using (var w = new StreamWriter(s))
             w.Write("legit content");
         // Escapes the temp staging directory once combined+resolved — rejected at the
         // path-traversal check inside TryExtractSingleEntryAsync (ZipArchiveService.cs:1111),
         // which throws InvalidDataException and (before this fix) left tempDest on disk.
-        using (var s = archive.CreateEntry("../escape.txt").Open())
+        using (Stream s = archive.CreateEntry("../escape.txt").Open())
         using (var w = new StreamWriter(s))
             w.Write("malicious");
         return zipPath;
@@ -79,7 +79,7 @@ public sealed class ZipArchiveServiceExtractTempDestResilienceTests : IDisposabl
             SeparateFolderName = "out",
         };
 
-        var result = await _sut.ExtractAsync(options);
+        ArchiveResult result = await _sut.ExtractAsync(options);
 
         result.Success.Should().BeFalse();
         // T-F228: rejected per entry, named as an unsafe path (it used to abort the whole archive
@@ -110,7 +110,7 @@ public sealed class ZipArchiveServiceExtractTempDestResilienceTests : IDisposabl
             throw new IOException($"Access to the path '{src}' is denied.");
         }
 
-        var lockedRelativePaths = staging.CommitInto(actualDest, FailingMove);
+        IReadOnlyList<string> lockedRelativePaths = staging.CommitInto(actualDest, FailingMove);
 
         moveAttempts.Should().Be(1);
         lockedRelativePaths.Should().BeEmpty("the fast path failed, but the per-file merge fallback moved every real file successfully");
@@ -135,19 +135,19 @@ public sealed class ZipArchiveServiceExtractTempDestResilienceTests : IDisposabl
         File.WriteAllText(lockedDestFile, "pre-existing locked content");
 
         string zipPath = Path.Combine(_temp.Path, "archive.zip");
-        using (var archive = ZipFile.Open(zipPath, ZipArchiveMode.Create))
+        using (ZipArchive archive = ZipFile.Open(zipPath, ZipArchiveMode.Create))
         {
-            using (var s = archive.CreateEntry("conflict.txt").Open())
+            using (Stream s = archive.CreateEntry("conflict.txt").Open())
             using (var w = new StreamWriter(s))
                 w.Write("new content that should overwrite");
-            using (var s = archive.CreateEntry("safe.txt").Open())
+            using (Stream s = archive.CreateEntry("safe.txt").Open())
             using (var w = new StreamWriter(s))
                 w.Write("unrelated entry");
         }
 
-        using var handle = File.Open(lockedDestFile, FileMode.Open, FileAccess.Read, FileShare.Read);
+        using FileStream handle = File.Open(lockedDestFile, FileMode.Open, FileAccess.Read, FileShare.Read);
 
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [zipPath],
             DestinationFolder = destDir,

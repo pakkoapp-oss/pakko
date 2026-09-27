@@ -36,7 +36,7 @@ public sealed class OperationMessagesTests : IDisposable
     [Fact]
     public void ForArchiveResult_FailedWithoutErrors_SaysTheOperationFailed()
     {
-        var message = OperationMessages.ForArchiveResult("T", new ArchiveResult { Success = false });
+        OperationMessage? message = OperationMessages.ForArchiveResult("T", new ArchiveResult { Success = false });
 
         message.Should().Be(new OperationMessage("T", MessageSeverity.Error, "The operation failed."));
     }
@@ -50,7 +50,7 @@ public sealed class OperationMessagesTests : IDisposable
             Errors = [new ArchiveError { SourcePath = @"C:\dir\a.zip", Message = "bad CRC" }],
         };
 
-        var message = OperationMessages.ForArchiveResult("T", result)!;
+        OperationMessage message = OperationMessages.ForArchiveResult("T", result)!;
 
         message.Severity.Should().Be(MessageSeverity.Error);
         message.Text.Should().Be("a.zip: bad CRC");
@@ -65,7 +65,7 @@ public sealed class OperationMessagesTests : IDisposable
             Errors = [.. Enumerable.Range(1, 12).Select(i => new ArchiveError { SourcePath = $"f{i}.zip", Message = "x" })],
         };
 
-        var lines = OperationMessages.ForArchiveResult("T", result)!.Text.Split(Environment.NewLine);
+        string[] lines = OperationMessages.ForArchiveResult("T", result)!.Text.Split(Environment.NewLine);
 
         lines.Should().HaveCount(11);
         lines[9].Should().Be("f10.zip: x");
@@ -81,7 +81,7 @@ public sealed class OperationMessagesTests : IDisposable
             SkippedFiles = [new SkippedFile { Path = "bad.txt", Reason = "ADS entry" }],
         };
 
-        var message = OperationMessages.ForArchiveResult("T", result)!;
+        OperationMessage message = OperationMessages.ForArchiveResult("T", result)!;
 
         message.Severity.Should().Be(MessageSeverity.Warning);
         message.Text.Should().StartWith("Skipped (1):").And.Contain("bad.txt: ADS entry");
@@ -101,7 +101,7 @@ public sealed class OperationMessagesTests : IDisposable
     {
         var result = new HashResult { Folder = new FolderHashSummary("AAAA", "BBBB", 3, 2048) };
 
-        var message = OperationMessages.ForHash("T", result);
+        OperationMessage message = OperationMessages.ForHash("T", result);
 
         message.Severity.Should().Be(MessageSeverity.Information);
         message.Text.Split(Environment.NewLine).Should().Equal(
@@ -122,7 +122,7 @@ public sealed class OperationMessagesTests : IDisposable
     {
         var result = new HashResult { Entries = [new HashEntry(@"C:\a.txt", null, "Access denied")] };
 
-        var message = OperationMessages.ForHash("T", result);
+        OperationMessage message = OperationMessages.ForHash("T", result);
 
         message.Severity.Should().Be(MessageSeverity.Warning);
         message.Text.Should().Be("a.txt: Access denied");
@@ -133,7 +133,7 @@ public sealed class OperationMessagesTests : IDisposable
     {
         var result = new HashResult { Entries = [.. Enumerable.Range(1, 12).Select(i => new HashEntry($"f{i}", "00", null))] };
 
-        var lines = OperationMessages.ForHash("T", result).Text.Split(Environment.NewLine);
+        string[] lines = OperationMessages.ForHash("T", result).Text.Split(Environment.NewLine);
 
         lines.Should().HaveCount(11);
         lines[10].Should().Be("…and 2 more");
@@ -168,7 +168,7 @@ public sealed class OperationMessagesTests : IDisposable
     [Fact]
     public void ForScan_SeveralCleanArchives_SaysSelectedArchives()
     {
-        var message = OperationMessages.ForScan("T", new ThreatScanResult { OverallVerdict = ThreatVerdict.Clean }, archiveCount: 3);
+        OperationMessage message = OperationMessages.ForScan("T", new ThreatScanResult { OverallVerdict = ThreatVerdict.Clean }, archiveCount: 3);
 
         message.Text.Should().Be("No threats found in the selected archives.");
     }

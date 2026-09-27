@@ -31,7 +31,7 @@ public sealed class SkipIfAmsiScanUnavailableAttribute : FactAttribute
             using AmsiScanner scanner = new("PakkoTests");
             byte[] eicar = System.Text.Encoding.ASCII.GetBytes(
                 "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*");
-            var (verdict, _) = scanner.ScanBuffer(eicar, eicar.Length, "probe-eicar.txt");
+            (ThreatVerdict verdict, _) = scanner.ScanBuffer(eicar, eicar.Length, "probe-eicar.txt");
             if (verdict != ThreatVerdict.ThreatDetected)
                 Skip = $"AMSI is live but not currently detecting EICAR on this machine (probe verdict: {verdict})";
         }

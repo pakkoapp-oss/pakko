@@ -64,7 +64,7 @@ internal static class EncryptedZipEntryReader
     public static (EncryptedZipReadResult Result, Stream? Content) TryOpen(
         string zipPath, string entryFullName, string password, Encoding? passwordEncoding = null)
     {
-        var fileStream = File.OpenRead(zipPath);
+        FileStream fileStream = File.OpenRead(zipPath);
         try
         {
             LocatedZipEntry located = RawZipEntryLocator.Locate(fileStream, entryFullName);
@@ -73,7 +73,7 @@ internal static class EncryptedZipEntryReader
                     $"'{entryFullName}' is not encrypted — the caller must check the general-purpose " +
                     "encrypted bit before invoking EncryptedZipEntryReader.");
 
-            var opened = Open(fileStream, located, password, passwordEncoding, ownsStream: true);
+            (EncryptedZipReadResult Result, Stream? Content) opened = Open(fileStream, located, password, passwordEncoding, ownsStream: true);
             if (opened.Content is null)
                 fileStream.Dispose();
             return opened;
@@ -141,7 +141,7 @@ internal static class EncryptedZipEntryReader
     {
         byte[] salt = ReadExactly(region, WinZipAesReader.SaltLength(located.AesStrengthBits));
         byte[] storedVerify = ReadExactly(region, WinZipAesReader.PasswordVerificationLength);
-        var (encryptionKey, authenticationKey, derivedVerify) = WinZipAesReader.DeriveKeys(passwordBytes, salt, located.AesStrengthBits);
+        (byte[]? encryptionKey, byte[]? authenticationKey, byte[]? derivedVerify) = WinZipAesReader.DeriveKeys(passwordBytes, salt, located.AesStrengthBits);
         CryptographicOperations.ZeroMemory(encryptionKey);
         CryptographicOperations.ZeroMemory(authenticationKey);
         return derivedVerify.AsSpan().SequenceEqual(storedVerify);
@@ -205,7 +205,7 @@ internal static class EncryptedZipEntryReader
             storedTag = ReadExactly(tag, WinZipAesReader.AuthenticationCodeLength);
         }
 
-        var (encryptionKey, authenticationKey, derivedVerify) =
+        (byte[]? encryptionKey, byte[]? authenticationKey, byte[]? derivedVerify) =
             WinZipAesReader.DeriveKeys(passwordBytes, salt, located.AesStrengthBits);
         // T-F244 item 3: key material is wiped as soon as it is no longer needed (AES copies the
         // encryption key into its own state, which it clears on dispose).

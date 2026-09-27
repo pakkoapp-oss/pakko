@@ -19,7 +19,7 @@ public sealed class ZipArchiveServiceExtractPerEntryFailureTests : IDisposable
     private string CreateZip(string name, params string[] entries)
     {
         string zipPath = Path.Combine(_temp.Path, name);
-        using var archive = ZipFile.Open(zipPath, ZipArchiveMode.Create);
+        using ZipArchive archive = ZipFile.Open(zipPath, ZipArchiveMode.Create);
         foreach (string entry in entries)
         {
             using var w = new StreamWriter(archive.CreateEntry(entry).Open());
@@ -37,7 +37,7 @@ public sealed class ZipArchiveServiceExtractPerEntryFailureTests : IDisposable
         string dest = Path.Combine(_temp.Path, "q");
         Directory.CreateDirectory(dest);
 
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [zip],
             DestinationFolder = dest,
@@ -46,7 +46,7 @@ public sealed class ZipArchiveServiceExtractPerEntryFailureTests : IDisposable
 
         File.Exists(Path.Combine(dest, "ok1.txt")).Should().BeTrue();
         File.Exists(Path.Combine(dest, "ok2.txt")).Should().BeTrue();
-        var error = result.Errors.Should().ContainSingle().Subject;
+        ArchiveError error = result.Errors.Should().ContainSingle().Subject;
         error.Message.Should().Contain(badName).And.NotContain(".pakko-x");
         result.Sources.Should().ContainSingle().Which.Outcome.Should().Be(SourceOutcome.Partial);
         Directory.GetDirectories(dest, ".pakko-x-*").Should().BeEmpty();
@@ -59,7 +59,7 @@ public sealed class ZipArchiveServiceExtractPerEntryFailureTests : IDisposable
         string zip = CreateZip("evil.zip", "../escape.txt");
         string fresh = Path.Combine(_temp.Path, "evil (1)");
 
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [zip],
             DestinationFolder = fresh,
@@ -93,7 +93,7 @@ public sealed class ZipArchiveServiceExtractPerEntryFailureTests : IDisposable
         string zip = CreateZip("mixed.zip", "ok.txt", "../escape.txt");
         string fresh = Path.Combine(_temp.Path, "mixed (1)");
 
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [zip],
             DestinationFolder = fresh,

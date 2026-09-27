@@ -10,9 +10,9 @@ public sealed class RawZipEntryLocatorTests
     [Fact]
     public void Locate_ZipCryptoEntry_ReportsCorrectMethodAndEncryptedBit()
     {
-        using var fs = File.OpenRead(FixtureHelper.Archive("encrypted_zipcrypto_real.zip"));
+        using FileStream fs = File.OpenRead(FixtureHelper.Archive("encrypted_zipcrypto_real.zip"));
 
-        var located = RawZipEntryLocator.Locate(fs, "compressible.txt");
+        LocatedZipEntry located = RawZipEntryLocator.Locate(fs, "compressible.txt");
 
         located.GeneralPurposeEncryptedBit.Should().BeTrue();
         located.CompressionMethod.Should().Be(8); // Deflate
@@ -23,9 +23,9 @@ public sealed class RawZipEntryLocatorTests
     [Fact]
     public void Locate_Aes256Entry_ReportsAe2AndStrength256()
     {
-        using var fs = File.OpenRead(FixtureHelper.Archive("encrypted_aes256.zip"));
+        using FileStream fs = File.OpenRead(FixtureHelper.Archive("encrypted_aes256.zip"));
 
-        var located = RawZipEntryLocator.Locate(fs, "compressible.txt");
+        LocatedZipEntry located = RawZipEntryLocator.Locate(fs, "compressible.txt");
 
         located.GeneralPurposeEncryptedBit.Should().BeTrue();
         located.CompressionMethod.Should().Be(99); // WinZip AES
@@ -38,9 +38,9 @@ public sealed class RawZipEntryLocatorTests
     [Fact]
     public void Locate_Aes128Entry_ReportsAe2AndStrength128()
     {
-        using var fs = File.OpenRead(FixtureHelper.Archive("encrypted_aes128.zip"));
+        using FileStream fs = File.OpenRead(FixtureHelper.Archive("encrypted_aes128.zip"));
 
-        var located = RawZipEntryLocator.Locate(fs, "compressible.txt");
+        LocatedZipEntry located = RawZipEntryLocator.Locate(fs, "compressible.txt");
 
         located.AeVersion.Should().Be(2);
         located.AesStrengthBits.Should().Be(128);
@@ -49,9 +49,9 @@ public sealed class RawZipEntryLocatorTests
     [Fact]
     public void Locate_SyntheticAe1Fixture_ReportsAe1AndRealCrc()
     {
-        using var fs = File.OpenRead(FixtureHelper.Archive("encrypted_aes256_ae1.zip"));
+        using FileStream fs = File.OpenRead(FixtureHelper.Archive("encrypted_aes256_ae1.zip"));
 
-        var located = RawZipEntryLocator.Locate(fs, "compressible.txt");
+        LocatedZipEntry located = RawZipEntryLocator.Locate(fs, "compressible.txt");
 
         located.AeVersion.Should().Be(1);
         located.StoredCrc32.Should().NotBe(0); // AE-1 keeps the real CRC-32, unlike AE-2
@@ -60,10 +60,10 @@ public sealed class RawZipEntryLocatorTests
     [Fact]
     public void Locate_MixedArchive_FindsBothEncryptedAndPlainEntriesIndependently()
     {
-        using var fs = File.OpenRead(FixtureHelper.Archive("mixed_encrypted_and_plain.zip"));
+        using FileStream fs = File.OpenRead(FixtureHelper.Archive("mixed_encrypted_and_plain.zip"));
 
-        var encrypted = RawZipEntryLocator.Locate(fs, "compressible.txt");
-        var plain = RawZipEntryLocator.Locate(fs, "readme.txt");
+        LocatedZipEntry encrypted = RawZipEntryLocator.Locate(fs, "compressible.txt");
+        LocatedZipEntry plain = RawZipEntryLocator.Locate(fs, "readme.txt");
 
         encrypted.GeneralPurposeEncryptedBit.Should().BeTrue();
         plain.GeneralPurposeEncryptedBit.Should().BeFalse();
@@ -72,9 +72,9 @@ public sealed class RawZipEntryLocatorTests
     [Fact]
     public void Locate_EntryNotInArchive_Throws()
     {
-        using var fs = File.OpenRead(FixtureHelper.Archive("encrypted_aes256.zip"));
+        using FileStream fs = File.OpenRead(FixtureHelper.Archive("encrypted_aes256.zip"));
 
-        var act = () => RawZipEntryLocator.Locate(fs, "does_not_exist.txt");
+        Func<LocatedZipEntry> act = () => RawZipEntryLocator.Locate(fs, "does_not_exist.txt");
 
         act.Should().Throw<FileNotFoundException>();
     }
@@ -85,10 +85,10 @@ public sealed class RawZipEntryLocatorTests
     public void LocateAll_MixedArchive_CountAndOrderMatchZipArchiveEntries()
     {
         string path = FixtureHelper.Archive("mixed_encrypted_and_plain.zip");
-        using var archive = ZipFile.OpenRead(path);
-        using var fs = File.OpenRead(path);
+        using ZipArchive archive = ZipFile.OpenRead(path);
+        using FileStream fs = File.OpenRead(path);
 
-        var located = RawZipEntryLocator.LocateAll(fs);
+        List<LocatedZipEntry> located = RawZipEntryLocator.LocateAll(fs);
 
         located.Should().HaveCount(archive.Entries.Count);
         for (int i = 0; i < located.Count; i++)
@@ -104,9 +104,9 @@ public sealed class RawZipEntryLocatorTests
     [Fact]
     public void LocateAll_PlainArchive_NoEntryReportsEncryptedBit()
     {
-        using var fs = File.OpenRead(FixtureHelper.Archive("valid_multiple_files.zip"));
+        using FileStream fs = File.OpenRead(FixtureHelper.Archive("valid_multiple_files.zip"));
 
-        var located = RawZipEntryLocator.LocateAll(fs);
+        List<LocatedZipEntry> located = RawZipEntryLocator.LocateAll(fs);
 
         located.Should().NotBeEmpty();
         located.Should().OnlyContain(e => !e.GeneralPurposeEncryptedBit);
@@ -116,10 +116,10 @@ public sealed class RawZipEntryLocatorTests
     public void LocateAll_CyrillicEntryName_PairsPositionallyWithoutNeedingToDecodeTheName()
     {
         string path = FixtureHelper.Archive("encrypted_aes256_cyrillic_name.zip");
-        using var archive = ZipFile.OpenRead(path);
-        using var fs = File.OpenRead(path);
+        using ZipArchive archive = ZipFile.OpenRead(path);
+        using FileStream fs = File.OpenRead(path);
 
-        var located = RawZipEntryLocator.LocateAll(fs);
+        List<LocatedZipEntry> located = RawZipEntryLocator.LocateAll(fs);
 
         located.Should().HaveCount(1);
         archive.Entries.Should().HaveCount(1);
@@ -137,9 +137,9 @@ public sealed class RawZipEntryLocatorTests
         // class's. Confirms LocateAll doesn't itself choke on the hard-invariant fixture (two
         // entries — see this fixture's MANIFEST.sha256 comment for why it's sourced from the
         // mixed archive rather than a single-entry one).
-        using var fs = File.OpenRead(FixtureHelper.Archive("encrypted_with_traversal_entry.zip"));
+        using FileStream fs = File.OpenRead(FixtureHelper.Archive("encrypted_with_traversal_entry.zip"));
 
-        var located = RawZipEntryLocator.LocateAll(fs);
+        List<LocatedZipEntry> located = RawZipEntryLocator.LocateAll(fs);
 
         located.Should().HaveCount(2);
         located.Should().ContainSingle(e => e.GeneralPurposeEncryptedBit);
@@ -156,7 +156,7 @@ public sealed class RawZipEntryLocatorTests
     {
         using var temp = new TempDirectory();
         string path = MalformedAesExtraFixture.Create(temp.Path, declaredSize);
-        using var fs = File.OpenRead(path);
+        using FileStream fs = File.OpenRead(path);
 
         Action act = () => RawZipEntryLocator.LocateAll(fs);
 
@@ -177,9 +177,9 @@ public sealed class RawZipEntryLocatorTests
         Zip64DirectoryRewriter.Rewrite(FixtureHelper.Archive(fixture), rewritten);
 
         List<LocatedZipEntry> expected, actual;
-        using (var fs = File.OpenRead(FixtureHelper.Archive(fixture)))
+        using (FileStream fs = File.OpenRead(FixtureHelper.Archive(fixture)))
             expected = RawZipEntryLocator.LocateAll(fs);
-        using (var fs = File.OpenRead(rewritten))
+        using (FileStream fs = File.OpenRead(rewritten))
             actual = RawZipEntryLocator.LocateAll(fs);
 
         actual.Should().BeEquivalentTo(expected);
@@ -190,9 +190,9 @@ public sealed class RawZipEntryLocatorTests
     {
         // 7za from stdin writes 0xFFFFFFFF sizes + a Zip64 extra in the local header, real sizes
         // in the central directory.
-        using var fs = File.OpenRead(FixtureHelper.Archive("encrypted_aes256_stdin_zip64local.zip"));
+        using FileStream fs = File.OpenRead(FixtureHelper.Archive("encrypted_aes256_stdin_zip64local.zip"));
 
-        var located = RawZipEntryLocator.LocateAll(fs).Single();
+        LocatedZipEntry located = RawZipEntryLocator.LocateAll(fs).Single();
 
         located.CompressedSize.Should().BeLessThan(0xFFFFFFFFL);
         located.CompressedSize.Should().BeGreaterThan(0);
@@ -204,13 +204,13 @@ public sealed class RawZipEntryLocatorTests
     {
         using var temp = new TempDirectory();
         string path = Path.Combine(temp.Path, "many.zip");
-        using (var zip = System.IO.Compression.ZipFile.Open(path, System.IO.Compression.ZipArchiveMode.Create))
+        using (ZipArchive zip = System.IO.Compression.ZipFile.Open(path, System.IO.Compression.ZipArchiveMode.Create))
         {
             for (int i = 0; i < 65_536; i++)
                 zip.CreateEntry($"e{i}.txt");
         }
 
-        using var fs = File.OpenRead(path);
+        using FileStream fs = File.OpenRead(path);
         RawZipEntryLocator.HasAnyEncryptedEntry(fs).Should().BeFalse();
         RawZipEntryLocator.LocateAll(fs).Should().HaveCount(65_536);
     }

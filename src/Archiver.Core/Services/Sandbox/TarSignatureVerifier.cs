@@ -120,7 +120,7 @@ internal static class TarSignatureVerifier
                     IntPtr oidPtr = Marshal.StringToHGlobalAnsi("2.5.4.10"); // szOID_ORGANIZATION_NAME
                     try
                     {
-                        var nameBuffer = new char[512];
+                        char[] nameBuffer = new char[512];
                         uint written = NativeMethods.CertGetNameStringW(
                             certContext, CERT_NAME_ATTR_TYPE, 0, oidPtr, nameBuffer, (uint)nameBuffer.Length);
 

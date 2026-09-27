@@ -42,7 +42,7 @@ public sealed class NestedArchiveCacheTests : IDisposable
     [Fact]
     public void DeleteScope_ScopeDoesNotExist_DoesNotThrow()
     {
-        var act = () => NestedArchiveCache.DeleteScope(Path.Combine(NestedArchiveCache.RootDirectory, "nonexistent"));
+        Action act = () => NestedArchiveCache.DeleteScope(Path.Combine(NestedArchiveCache.RootDirectory, "nonexistent"));
 
         act.Should().NotThrow();
     }
@@ -63,7 +63,7 @@ public sealed class NestedArchiveCacheTests : IDisposable
     {
         NestedArchiveCache.DeleteAll();
 
-        var act = () => NestedArchiveCache.DeleteAll();
+        Action act = () => NestedArchiveCache.DeleteAll();
 
         act.Should().NotThrow();
     }

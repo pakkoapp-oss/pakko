@@ -26,7 +26,7 @@ public sealed class FileSystemBrowserTests : IDisposable
         File.WriteAllText(Path.Combine(_root, "zebra.txt"), "z");
         File.WriteAllText(Path.Combine(_root, "apple.txt"), "a");
 
-        var entries = FileSystemBrowser.ListFolder(_root);
+        IReadOnlyList<ArchiveEntryViewModel> entries = FileSystemBrowser.ListFolder(_root);
 
         entries.Select(e => e.Name).Should().ContainInOrder("aaa_folder", "zzz_folder", "apple.txt", "zebra.txt");
     }
@@ -37,9 +37,9 @@ public sealed class FileSystemBrowserTests : IDisposable
         string filePath = Path.Combine(_root, "data.bin");
         File.WriteAllBytes(filePath, new byte[1234]);
 
-        var entries = FileSystemBrowser.ListFolder(_root);
+        IReadOnlyList<ArchiveEntryViewModel> entries = FileSystemBrowser.ListFolder(_root);
 
-        var file = entries.Single(e => e.Name == "data.bin");
+        ArchiveEntryViewModel file = entries.Single(e => e.Name == "data.bin");
         file.IsFolder.Should().BeFalse();
         file.Size.Should().Be(1234);
         file.CompressedSize.Should().Be(0);
@@ -53,9 +53,9 @@ public sealed class FileSystemBrowserTests : IDisposable
     {
         Directory.CreateDirectory(Path.Combine(_root, "subfolder"));
 
-        var entries = FileSystemBrowser.ListFolder(_root);
+        IReadOnlyList<ArchiveEntryViewModel> entries = FileSystemBrowser.ListFolder(_root);
 
-        var folder = entries.Single(e => e.Name == "subfolder");
+        ArchiveEntryViewModel folder = entries.Single(e => e.Name == "subfolder");
         folder.IsFolder.Should().BeTrue();
         folder.SizeDisplay.Should().BeEmpty();
     }
@@ -65,7 +65,7 @@ public sealed class FileSystemBrowserTests : IDisposable
     {
         string missing = Path.Combine(_root, "does_not_exist");
 
-        var entries = FileSystemBrowser.ListFolder(missing);
+        IReadOnlyList<ArchiveEntryViewModel> entries = FileSystemBrowser.ListFolder(missing);
 
         entries.Should().BeEmpty();
     }
@@ -73,7 +73,7 @@ public sealed class FileSystemBrowserTests : IDisposable
     [Fact]
     public void ListDrives_ReturnsAtLeastOneReadyDriveAsAFolder()
     {
-        var drives = FileSystemBrowser.ListDrives();
+        IReadOnlyList<ArchiveEntryViewModel> drives = FileSystemBrowser.ListDrives();
 
         drives.Should().NotBeEmpty();
         drives.Should().OnlyContain(d => d.IsFolder);

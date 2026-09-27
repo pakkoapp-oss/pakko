@@ -36,7 +36,7 @@ public static class FrameCodec
         if (payload.Length > MaxFrameBytes)
             throw new ProtocolException($"Message is {payload.Length} bytes; the limit is {MaxFrameBytes}.");
 
-        var frame = new byte[HeaderBytes + payload.Length];
+        byte[] frame = new byte[HeaderBytes + payload.Length];
         BinaryPrimitives.WriteInt32LittleEndian(frame, payload.Length);
         payload.CopyTo(frame.AsSpan(HeaderBytes));
         return frame;
@@ -49,7 +49,7 @@ public static class FrameCodec
     /// </summary>
     public static async Task<ProtocolMessage?> ReadAsync(Stream stream, CancellationToken cancellationToken)
     {
-        var header = new byte[HeaderBytes];
+        byte[] header = new byte[HeaderBytes];
         int headerRead = await ReadFullyAsync(stream, header, cancellationToken).ConfigureAwait(false);
         if (headerRead == 0)
             return null;
@@ -60,7 +60,7 @@ public static class FrameCodec
         if (length <= 0 || length > MaxFrameBytes)
             throw new ProtocolException($"Invalid frame length {length}.");
 
-        var payload = new byte[length];
+        byte[] payload = new byte[length];
         if (await ReadFullyAsync(stream, payload, cancellationToken).ConfigureAwait(false) < length)
             throw new ProtocolException("The stream ended inside a frame.");
 

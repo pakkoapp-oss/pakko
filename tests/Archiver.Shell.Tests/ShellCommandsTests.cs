@@ -63,7 +63,7 @@ public sealed class ShellCommandsTests : IDisposable
 
         await RunExtract(Create(ui), command, [first, second]);
 
-        var session = ui.Sessions.Should().ContainSingle().Subject;
+        FakeOperationSession session = ui.Sessions.Should().ContainSingle().Subject;
         session.Title.Should().Be("Extracting 2 archives");
         session.Items.Should().Equal(("one.zip", 1, 2), ("two.zip", 2, 2));
         session.Completed.Should().BeTrue();
@@ -107,7 +107,7 @@ public sealed class ShellCommandsTests : IDisposable
         await Create(ui).TestAsync([zip]);
 
         ui.Sessions.Should().ContainSingle().Which.Title.Should().Be("Testing: ok.zip");
-        var message = ui.Messages.Should().ContainSingle().Subject;
+        OperationMessage message = ui.Messages.Should().ContainSingle().Subject;
         message.Severity.Should().Be(MessageSeverity.Information);
         message.Title.Should().Be("Testing: ok.zip");
         message.Text.Should().Be("No errors detected in the archive(s).");
@@ -140,7 +140,7 @@ public sealed class ShellCommandsTests : IDisposable
 
         await Create(ui).TestAsync([zip, notZip]);
 
-        var message = ui.Messages.Should().ContainSingle().Subject;
+        OperationMessage message = ui.Messages.Should().ContainSingle().Subject;
         message.Severity.Should().Be(MessageSeverity.Warning);
         message.Title.Should().Be("Testing 2 archives");
         message.Text.Should().StartWith("Skipped (1):").And.Contain("notes.tar.gz")
@@ -157,7 +157,7 @@ public sealed class ShellCommandsTests : IDisposable
         await Create(ui).HashAsync([file], HashAlgorithmKind.Sha256);
 
         ui.Sessions.Should().ContainSingle().Which.Title.Should().Be("SHA-256: a.txt");
-        var message = ui.Messages.Should().ContainSingle().Subject;
+        OperationMessage message = ui.Messages.Should().ContainSingle().Subject;
         message.Severity.Should().Be(MessageSeverity.Information);
         message.Text.ToLowerInvariant().Should().Be("a.txt: ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
     }
@@ -278,7 +278,7 @@ public sealed class ShellCommandsTests : IDisposable
 
         File.Exists(Path.Combine(_root, "escaped.txt")).Should().BeFalse();
         File.ReadAllText(Path.Combine(inner, "ok.txt")).Should().Be("OK");
-        var message = ui.Messages.Should().ContainSingle().Subject;
+        OperationMessage message = ui.Messages.Should().ContainSingle().Subject;
         message.Severity.Should().NotBe(MessageSeverity.Information);
         message.Text.Should().Contain("escaped.txt");
     }
@@ -343,7 +343,7 @@ public sealed class ShellCommandsTests : IDisposable
 
         await Create(ui).ExtractHereFlatAsync([zip]);
 
-        var message = ui.Messages.Should().ContainSingle().Subject;
+        OperationMessage message = ui.Messages.Should().ContainSingle().Subject;
         message.Severity.Should().Be(MessageSeverity.Error);
         message.Title.Should().Be("Extracting: broken.zip");
         message.Text.Should().NotBeNullOrWhiteSpace();
@@ -403,7 +403,7 @@ public sealed class ShellCommandsTests : IDisposable
 
         await Create(ui).ExtractHereFlatAsync([first, second]);
 
-        var message = ui.Messages.Should().ContainSingle().Subject;
+        OperationMessage message = ui.Messages.Should().ContainSingle().Subject;
         message.Severity.Should().Be(MessageSeverity.Error);
         message.Title.Should().Be("Extracting 2 archives");
         message.Text.Should().Contain("broken1.zip").And.Contain("broken2.zip");
@@ -419,7 +419,7 @@ public sealed class ShellCommandsTests : IDisposable
         await Create(ui).ExtractHereFlatAsync([good, bad]);
 
         File.ReadAllText(Path.Combine(_root, "g.txt")).Should().Be("G");
-        var message = ui.Messages.Should().ContainSingle().Subject;
+        OperationMessage message = ui.Messages.Should().ContainSingle().Subject;
         message.Text.Should().Contain("bad.zip").And.NotContain("good.zip");
     }
 
@@ -445,7 +445,7 @@ public sealed class ShellCommandsTests : IDisposable
         Create(ui, launch: (_, _) => launchResult).OpenUi(LaunchOperation.Browse, [Path.Combine(_root, "a.zip")]);
 
         ui.Sessions.Should().BeEmpty();
-        var message = ui.Messages.Should().ContainSingle().Subject;
+        OperationMessage message = ui.Messages.Should().ContainSingle().Subject;
         message.Title.Should().Be("Pakko");
         message.Severity.Should().Be(MessageSeverity.Error);
         message.Text.Should().Be(expectedText);
@@ -497,10 +497,10 @@ public sealed class ShellCommandsTests : IDisposable
     private string MakeZip(string relativePath, params (string Name, string Content)[] entries)
     {
         string path = Path.Combine(_root, relativePath);
-        using var archive = ZipFile.Open(path, ZipArchiveMode.Create);
-        foreach (var (name, content) in entries)
+        using ZipArchive archive = ZipFile.Open(path, ZipArchiveMode.Create);
+        foreach ((string? name, string? content) in entries)
         {
-            var entry = archive.CreateEntry(name, CompressionLevel.NoCompression);
+            ZipArchiveEntry entry = archive.CreateEntry(name, CompressionLevel.NoCompression);
             using var writer = new StreamWriter(entry.Open(), new UTF8Encoding(false));
             writer.Write(content);
         }
@@ -528,7 +528,7 @@ public sealed class ShellCommandsTests : IDisposable
         string file = Path.Combine(source, entryName);
         File.WriteAllText(file, content);
 
-        var result = await new ZipArchiveService().ArchiveAsync(new ArchiveOptions
+        ArchiveResult result = await new ZipArchiveService().ArchiveAsync(new ArchiveOptions
         {
             SourcePaths = [file],
             DestinationFolder = _root,

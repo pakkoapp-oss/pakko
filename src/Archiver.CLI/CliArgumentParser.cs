@@ -55,7 +55,7 @@ public static class CliArgumentParser
         if (args[0] is "-v" or "--version")
             return new ParsedCliCommand { Type = CliCommandType.Version };
 
-        var rest = args[1..];
+        string[] rest = args[1..];
         if (!TryTakeConsoleCharset(ref rest, out int? consoleCodePage, out string? charsetError))
             return Invalid(charsetError!);
 
@@ -510,7 +510,7 @@ public static class CliArgumentParser
     private static ParsedCliCommand ParseHash(string[] rest)
     {
         var paths = new List<string>();
-        var algorithm = HashAlgorithmKind.Crc32; // matches real 7z's own default hash method
+        HashAlgorithmKind algorithm = HashAlgorithmKind.Crc32; // matches real 7z's own default hash method
         bool readFromStdin = false;
 
         foreach (string token in rest)

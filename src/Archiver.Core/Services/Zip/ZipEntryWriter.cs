@@ -217,7 +217,7 @@ internal sealed class ZipEntryWriter : IAsyncDisposable
 
     private static byte[] BuildZip64LocalExtraField(ulong uncompressedSize, ulong compressedSize)
     {
-        var buffer = new byte[4 + 8 + 8];
+        byte[] buffer = new byte[4 + 8 + 8];
         WriteUInt16To(buffer, 0, Zip64ExtraFieldTag);
         WriteUInt16To(buffer, 2, 16); // sub-field data size: two 8-byte values
         WriteUInt64To(buffer, 4, uncompressedSize);
@@ -240,7 +240,7 @@ internal sealed class ZipEntryWriter : IAsyncDisposable
         _disposed = true;
 
         long centralDirectoryOffset = _output.Position;
-        foreach (var record in _records)
+        foreach (CentralDirectoryRecord record in _records)
             WriteCentralDirectoryRecord(record);
         long centralDirectorySize = _output.Position - centralDirectoryOffset;
 
@@ -290,7 +290,7 @@ internal sealed class ZipEntryWriter : IAsyncDisposable
         // Spec order: original size, compressed size, relative header offset, disk start
         // number — include only the sub-fields whose fixed-width field used the marker value.
         using var ms = new MemoryStream();
-        var sizeBuf = new byte[8];
+        byte[] sizeBuf = new byte[8];
 
         if (record.UncompressedSize >= Zip64Threshold)
         {
@@ -309,7 +309,7 @@ internal sealed class ZipEntryWriter : IAsyncDisposable
         }
 
         byte[] payload = ms.ToArray();
-        var result = new byte[4 + payload.Length];
+        byte[] result = new byte[4 + payload.Length];
         WriteUInt16To(result, 0, Zip64ExtraFieldTag);
         WriteUInt16To(result, 2, (ushort)payload.Length);
         payload.CopyTo(result, 4);
@@ -408,7 +408,7 @@ internal sealed class ZipEntryWriter : IAsyncDisposable
             if (!IsAesEncrypted)
                 return [];
             const ushort dataSize = 7;
-            var field = new byte[4 + dataSize];
+            byte[] field = new byte[4 + dataSize];
             WriteUInt16To(field, 0, WinZipAesExtraFieldTag);
             WriteUInt16To(field, 2, dataSize);
             WriteUInt16To(field, 4, WinZipAesVendorVersion);

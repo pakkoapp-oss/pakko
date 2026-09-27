@@ -435,7 +435,7 @@ public sealed partial class MainViewModel : ObservableObject
     [RelayCommand]
     private async Task BrowseDestinationAsync()
     {
-        var folder = await _dialogService.PickDestinationFolderAsync();
+        string? folder = await _dialogService.PickDestinationFolderAsync();
         if (folder is not null)
             DestinationPath = folder;
     }
@@ -450,7 +450,7 @@ public sealed partial class MainViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(CanNavigateDestinationUp))]
     private void NavigateDestinationUp()
     {
-        var parent = Path.GetDirectoryName(DestinationPath);
+        string? parent = Path.GetDirectoryName(DestinationPath);
         if (parent is not null)
             DestinationPath = parent;
     }
@@ -472,7 +472,7 @@ public sealed partial class MainViewModel : ObservableObject
                 ResolvePasswordAsync = EncryptWithPassword && SelectedContainerFormat == ArchiveContainerFormat.Zip
                     ? async info =>
                     {
-                        var decision = await _dialogService.ShowPasswordPromptAsync(info, canApplyToRemaining: false);
+                        global::Archiver.Core.Models.PasswordDecision decision = await _dialogService.ShowPasswordPromptAsync(info, canApplyToRemaining: false);
                         passwordPromptCancelled = decision.Password is null;
                         return decision;
                     }
@@ -490,7 +490,7 @@ public sealed partial class MainViewModel : ObservableObject
 
             long totalBytes = 0;
             int fileCount = 0;
-            foreach (var p in options.SourcePaths)
+            foreach (string p in options.SourcePaths)
             {
                 try
                 {
@@ -501,7 +501,7 @@ public sealed partial class MainViewModel : ObservableObject
                     }
                     else if (Directory.Exists(p))
                     {
-                        foreach (var f in Directory.EnumerateFiles(p, "*", SearchOption.AllDirectories))
+                        foreach (string f in Directory.EnumerateFiles(p, "*", SearchOption.AllDirectories))
                         {
                             try { totalBytes += new FileInfo(f).Length; fileCount++; } catch { /* best-effort */ }
                         }
@@ -538,7 +538,7 @@ public sealed partial class MainViewModel : ObservableObject
                 }
             });
 
-            var result = await _archiveCreationRouter.ArchiveAsync(options, progress, _cts.Token);
+            ArchiveResult result = await _archiveCreationRouter.ArchiveAsync(options, progress, _cts.Token);
             // T-F193: Core created nothing and reports a generic error; the user only pressed
             // Cancel, so this ends exactly like the Cancel button (T-F70 delay, no summary dialog).
             if (passwordPromptCancelled)
@@ -559,9 +559,9 @@ public sealed partial class MainViewModel : ObservableObject
                 StatusMessage = _res.GetString("StatusIssues");
             }
             _logService.Info($"Archive completed — {result.CreatedFiles.Count} file(s) → {DestinationPath}");
-            foreach (var skipped in result.SkippedFiles)
+            foreach (SkippedFile skipped in result.SkippedFiles)
                 _logService.Warn($"Skipped {skipped.Path} — {skipped.Reason}");
-            foreach (var error in result.Errors)
+            foreach (ArchiveError error in result.Errors)
                 _logService.Error($"{error.SourcePath} — {error.Message}");
             await _dialogService.ShowOperationSummaryAsync("Archive", result);
             // T-F260/T-F229: only sources Core reports as fully processed, and only after the
@@ -647,7 +647,7 @@ public sealed partial class MainViewModel : ObservableObject
                 UpdateOperationStatus(r);
             });
 
-            var result = await _extractionRouter.ExtractAsync(options, progress, _cts.Token);
+            ArchiveResult result = await _extractionRouter.ExtractAsync(options, progress, _cts.Token);
             _operationStopwatch?.Stop();
             int totalSec = (int)(_operationStopwatch?.Elapsed.TotalSeconds ?? 0);
             if (result.Errors.Count == 0 && result.SkippedFiles.Count == 0)
@@ -664,9 +664,9 @@ public sealed partial class MainViewModel : ObservableObject
                 StatusMessage = _res.GetString("StatusIssues");
             }
             _logService.Info($"Extract completed — {result.CreatedFiles.Count} file(s) → {DestinationPath}");
-            foreach (var skipped in result.SkippedFiles)
+            foreach (SkippedFile skipped in result.SkippedFiles)
                 _logService.Warn($"Skipped {skipped.Path} — {skipped.Reason}");
-            foreach (var error in result.Errors)
+            foreach (ArchiveError error in result.Errors)
                 _logService.Error($"{error.SourcePath} — {error.Message}");
             await _dialogService.ShowOperationSummaryAsync("Extract", result);
             // T-F260/T-F229/T-F265: see ArchiveAsync — a subset extraction is never deletable.
@@ -794,7 +794,7 @@ public sealed partial class MainViewModel : ObservableObject
             NestedArchiveCache.DeleteScope(_currentNestedScopeDir);
         while (_browseStack.Count > 0)
         {
-            var level = _browseStack.Pop();
+            NestedBrowseLevel level = _browseStack.Pop();
             if (level.ScopeDir is not null)
                 NestedArchiveCache.DeleteScope(level.ScopeDir);
         }
@@ -898,7 +898,7 @@ public sealed partial class MainViewModel : ObservableObject
         {
             ArchiveBrowseScope.RealFileSystem => FileSystemBrowser.ListFolder(CurrentFolderPath),
             ArchiveBrowseScope.ThisPc => FileSystemBrowser.ListDrives(),
-            _ => _archiveIndex.TryGetValue(CurrentFolderPath, out var list) ? list : [],
+            _ => _archiveIndex.TryGetValue(CurrentFolderPath, out IReadOnlyList<ArchiveEntryViewModel>? list) ? list : [],
         };
 
         // T-F98/T-F110: only a nested-archive row inside the currently browsed archive can ever
@@ -971,7 +971,7 @@ public sealed partial class MainViewModel : ObservableObject
                 }
                 else
                 {
-                    var segments = CurrentFolderPath.Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries);
+                    string[] segments = CurrentFolderPath.Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries);
                     // index 1 = the drive segment alone, which needs a trailing separator to mean
                     // the drive's root ("C:" means "current directory on C:" in .NET, not "C:\").
                     CurrentFolderPath = index == 1
@@ -996,7 +996,7 @@ public sealed partial class MainViewModel : ObservableObject
                 }
                 else
                 {
-                    var segments = CurrentFolderPath.Split('/');
+                    string[] segments = CurrentFolderPath.Split('/');
                     CurrentFolderPath = string.Join('/', segments.Take(localIndex));
                 }
                 break;
@@ -1031,7 +1031,7 @@ public sealed partial class MainViewModel : ObservableObject
                     if (_browseStack.Count > 0)
                     {
                         string? childScopeDir = _currentNestedScopeDir;
-                        var parentLevel = _browseStack.Pop();
+                        NestedBrowseLevel parentLevel = _browseStack.Pop();
                         BrowsedArchivePath = parentLevel.ArchivePath;
                         CurrentFolderPath = parentLevel.CurrentFolderPath;
                         _currentLevelDisplayName = parentLevel.DisplayName;
@@ -1134,7 +1134,7 @@ public sealed partial class MainViewModel : ObservableObject
                 StatusMessage = r.CurrentFile is null ? scanningLabel : $"{scanningLabel} — {r.CurrentFile}";
             });
 
-            var result = await _antivirusScanService.ScanAsync(options, progress, _cts.Token);
+            ThreatScanResult result = await _antivirusScanService.ScanAsync(options, progress, _cts.Token);
             _logService.Info($"Scan completed — {BrowsedArchivePath} — {result.OverallVerdict}");
             await _dialogService.ShowThreatScanResultAsync(result);
         }
@@ -1202,7 +1202,7 @@ public sealed partial class MainViewModel : ObservableObject
                 ResolvePasswordAsync = info => _dialogService.ShowPasswordPromptAsync(info, canApplyToRemaining: false),
             };
 
-            var result = await _extractionRouter.ExtractAsync(options);
+            ArchiveResult result = await _extractionRouter.ExtractAsync(options);
             if (!result.Success || result.CreatedFiles.Count == 0)
             {
                 await _dialogService.ShowErrorAsync("Error",
@@ -1245,8 +1245,8 @@ public sealed partial class MainViewModel : ObservableObject
     {
         if (_operationStopwatch is null) return;
 
-        var now = DateTime.UtcNow;
-        var elapsed = _operationStopwatch.Elapsed;
+        DateTime now = DateTime.UtcNow;
+        TimeSpan elapsed = _operationStopwatch.Elapsed;
 
         string speedPart = string.Empty;
         string etaPart = string.Empty;
@@ -1291,7 +1291,7 @@ public sealed partial class MainViewModel : ObservableObject
 
     public void AddPaths(IEnumerable<string> paths)
     {
-        foreach (var path in paths)
+        foreach (string path in paths)
         {
             if (FileItems.Any(x => x.FullPath == path))
                 continue;
@@ -1309,7 +1309,7 @@ public sealed partial class MainViewModel : ObservableObject
 
     public void RemovePath(string path)
     {
-        var item = FileItems.FirstOrDefault(x => x.FullPath == path);
+        FileItem? item = FileItems.FirstOrDefault(x => x.FullPath == path);
         if (item is not null)
             FileItems.Remove(item);
     }
@@ -1317,14 +1317,14 @@ public sealed partial class MainViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(CanOperate))]
     private async Task BrowseFilesAsync()
     {
-        var paths = await _dialogService.PickFilesAsync();
+        IReadOnlyList<string> paths = await _dialogService.PickFilesAsync();
         AddPaths(paths);
     }
 
     [RelayCommand(CanExecute = nameof(CanOperate))]
     private async Task BrowseFolderAsync()
     {
-        var paths = await _dialogService.PickFoldersAsync();
+        IReadOnlyList<string> paths = await _dialogService.PickFoldersAsync();
         AddPaths(paths);
     }
 }

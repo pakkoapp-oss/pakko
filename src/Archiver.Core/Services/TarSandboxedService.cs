@@ -51,7 +51,7 @@ public sealed class TarSandboxedService : ITarService
                 return new TarCapabilities();
 
             using var timeoutCts = new CancellationTokenSource(DetectionTimeout);
-            var (_, output, _) = await SandboxedProcessLauncher.RunAsync(
+            (_, string? output, _) = await SandboxedProcessLauncher.RunAsync(
                 tarExecutablePath, ["--version"], new ProcessLaunchOptions(), timeoutCts.Token).ConfigureAwait(false);
             return TarVersionParser.Parse(output);
         }
@@ -186,7 +186,7 @@ public sealed class TarSandboxedService : ITarService
             var context = new TarExtractionContext(
                 conflictResolver, sink.SkippedFiles, options.ConfirmCompressionBombExtraction, _policy.MotwMode, archiveProgress, sink.Errors,
                 options.EliminateDuplicateRootFolder);
-            var (actualDest, anyExtracted) = await ExtractSingleArchiveAsync(
+            (string? actualDest, bool anyExtracted) = await ExtractSingleArchiveAsync(
                 archivePath, destDir, alreadyIsolated, options.DestinationFolder, options.SelectedEntryPaths, context, cancellationToken)
                 .ConfigureAwait(false);
 
@@ -274,7 +274,7 @@ public sealed class TarSandboxedService : ITarService
         // subset will be extracted (see T-F49's exploit finding in DECISIONS.md: a symlink entry
         // can escape quarantine before any per-entry check runs, so the whole archive must be
         // validated regardless of what subset the caller eventually asks tar.exe to extract).
-        var (declaredUncompressedSize, allNames, sizeByName) = await ScanForUnsafeEntriesAsync(scope, cancellationToken)
+        (long declaredUncompressedSize, string[]? allNames, Dictionary<string, long>? sizeByName) = await ScanForUnsafeEntriesAsync(scope, cancellationToken)
             .ConfigureAwait(false);
 
         // T-F118: mirrors ZipArchiveService.ExtractWithSmartFolderingAsync's identical algorithm
@@ -320,16 +320,16 @@ public sealed class TarSandboxedService : ITarService
         // shared ExtractionDestinationPlanner instead of two hand-kept-in-sync copies (T-F118's own
         // comment called that sync a documentation-enforced promise) — see DECISIONS.md's T-F157
         // entry.
-        var rootShape = ExtractionDestinationPlanner.Classify(isSelectedSubset, isSingleRootFolder, isSingleRootFile);
+        RootShape rootShape = ExtractionDestinationPlanner.Classify(isSelectedSubset, isSingleRootFolder, isSingleRootFile);
         bool rootDuplicatesArchiveName = context.EliminateDuplicateRootFolder && isSingleRootFolder
             && ExtractionDestinationPlanner.RootDuplicatesArchiveName(rootNames[0][..rootNames[0].IndexOf('/')], archivePath);
-        var (actualDest, stripRootPrefix) = ExtractionDestinationPlanner.Resolve(
+        (string? actualDest, bool stripRootPrefix) = ExtractionDestinationPlanner.Resolve(
             alreadyIsolated, rootShape, destDir, unisolatedDestDir, rootDuplicatesArchiveName);
 
         // T-F94: whole-archive compression-ratio decision. compressedFileSize reads archivePath —
         // the scope holds it open and unwritable, so this is the size tar.exe reads.
         long compressedFileSize = new FileInfo(archivePath).Length;
-        var bombOutcome = await ArchiveEntrySecurity.EvaluateCompressionBombAsync(
+        CompressionBombOutcome bombOutcome = await ArchiveEntrySecurity.EvaluateCompressionBombAsync(
             archivePath, declaredUncompressedSize, compressedFileSize,
             ArchiveEntrySecurity.GetAvailableFreeSpace(destDir),
             confirmCompressionBombExtraction).ConfigureAwait(false);
@@ -396,7 +396,7 @@ public sealed class TarSandboxedService : ITarService
                 .ConfigureAwait(false);
         }
 
-        var (exitCode, _, stdErr) = await extractionTask.ConfigureAwait(false);
+        (int exitCode, _, string? stdErr) = await extractionTask.ConfigureAwait(false);
 
         if (exitCode != 0)
             throw new IOException($"tar.exe extraction failed: {DescribeFailure(stdErr)}");
@@ -426,7 +426,7 @@ public sealed class TarSandboxedService : ITarService
             cancellationToken.ThrowIfCancellationRequested();
             totalFiles++;
 
-            var (extracted, relativePath) = await TryMoveSingleEntryAsync(
+            (bool extracted, string? relativePath) = await TryMoveSingleEntryAsync(
                 file, scope.OutputDirectory!, plan, archivePath, context).ConfigureAwait(false);
             if (!extracted)
                 continue;
@@ -748,7 +748,7 @@ public sealed class TarSandboxedService : ITarService
     internal static async Task<(long TotalDeclaredSize, string[] Names, Dictionary<string, long> SizeByName)> ScanForUnsafeEntriesAsync(
         TarSandboxScope scope, CancellationToken cancellationToken)
     {
-        var (nameExitCode, nameStdOut, nameStdErr) = await scope.ListAsync(verbose: false, cancellationToken).ConfigureAwait(false);
+        (int nameExitCode, string? nameStdOut, string? nameStdErr) = await scope.ListAsync(verbose: false, cancellationToken).ConfigureAwait(false);
         if (nameExitCode != 0)
             throw new IOException($"Cannot read archive: {DescribeFailure(nameStdErr)}");
 
@@ -759,7 +759,7 @@ public sealed class TarSandboxedService : ITarService
             throw new TarArchiveRejectedException(
                 $"Archive contains an unsafe entry path ('{unsafeName}') and cannot be safely extracted.");
 
-        var (typeExitCode, typeStdOut, typeStdErr) = await scope.ListAsync(verbose: true, cancellationToken).ConfigureAwait(false);
+        (int typeExitCode, string? typeStdOut, string? typeStdErr) = await scope.ListAsync(verbose: true, cancellationToken).ConfigureAwait(false);
         if (typeExitCode != 0)
             throw new IOException($"Cannot read archive: {DescribeFailure(typeStdErr)}");
 
@@ -866,11 +866,11 @@ public sealed class TarSandboxedService : ITarService
             using TarSandboxScope scope = await TarSandboxScope.CreateAsync(archivePath, needsOutputDir: false, cancellationToken)
                 .ConfigureAwait(false);
 
-            var (names, nameError) = await RunListingCommandAsync(scope, verbose: false, cancellationToken).ConfigureAwait(false);
+            (string[]? names, ArchiveListResult? nameError) = await RunListingCommandAsync(scope, verbose: false, cancellationToken).ConfigureAwait(false);
             if (nameError is not null)
                 return nameError;
 
-            var (typeLines, typeError) = await RunListingCommandAsync(scope, verbose: true, cancellationToken).ConfigureAwait(false);
+            (string[]? typeLines, ArchiveListResult? typeError) = await RunListingCommandAsync(scope, verbose: true, cancellationToken).ConfigureAwait(false);
             if (typeError is not null)
                 return typeError;
 
@@ -903,7 +903,7 @@ public sealed class TarSandboxedService : ITarService
     private static async Task<(string[] Lines, ArchiveListResult? Error)> RunListingCommandAsync(
         TarSandboxScope scope, bool verbose, CancellationToken cancellationToken)
     {
-        var (exitCode, stdOut, stdErr) = await scope.ListAsync(verbose, cancellationToken).ConfigureAwait(false);
+        (int exitCode, string? stdOut, string? stdErr) = await scope.ListAsync(verbose, cancellationToken).ConfigureAwait(false);
         if (exitCode != 0)
         {
             return ([], new ArchiveListResult
@@ -1008,7 +1008,7 @@ public sealed class TarSandboxedService : ITarService
 
             // T-F158: shared with ZipArchiveService's equivalent conflict decision — see
             // DestinationConflictResolver and DECISIONS.md's T-F158 entry.
-            var (outcome, resolvedDestPath) = await DestinationConflictResolver.ResolveAsync(
+            (DestinationConflictOutcome outcome, string? resolvedDestPath) = await DestinationConflictResolver.ResolveAsync(
                 destPath, onDiskConflict: File.Exists(destPath), sameRunConflict: false,
                 conflictResolver, renameCandidate: p => ArchiveNaming.GetUniqueFilePath(p)).ConfigureAwait(false);
             if (outcome == DestinationConflictOutcome.Skip)
@@ -1082,7 +1082,7 @@ public sealed class TarSandboxedService : ITarService
             string baseName = Path.GetFileNameWithoutExtension(sourcePath);
             string destPath = Path.Combine(options.DestinationFolder, baseName + extension);
 
-            var (outcome, resolvedDestPath) = await DestinationConflictResolver.ResolveAsync(
+            (DestinationConflictOutcome outcome, string? resolvedDestPath) = await DestinationConflictResolver.ResolveAsync(
                 destPath, onDiskConflict: File.Exists(destPath), sameRunConflict: false,
                 conflictResolver, renameCandidate: p => ArchiveNaming.GetUniqueFilePath(p)).ConfigureAwait(false);
             if (outcome == DestinationConflictOutcome.Skip)
@@ -1097,7 +1097,7 @@ public sealed class TarSandboxedService : ITarService
             if (outcome == DestinationConflictOutcome.ProceedAfterDeletingExisting)
                 File.Delete(destPath);
 
-            var singleOptions = options with { SourcePaths = [sourcePath] };
+            ArchiveOptions singleOptions = options with { SourcePaths = [sourcePath] };
             int errorsBefore = sink.Errors.Count, skippedBefore = sink.SkippedFiles.Count, createdBefore = sink.CreatedFiles.Count;
             await CompressToArchiveAsync(singleOptions, resolvedDestPath, sink.CreatedFiles, sink.Errors, sink.SkippedFiles, progress, cancellationToken)
                 .ConfigureAwait(false);
@@ -1160,7 +1160,7 @@ public sealed class TarSandboxedService : ITarService
 
             try
             {
-                var (exitCode, _, stdErr) = await RunUnsandboxedTarAsync(tarArgs, OnVerboseLine, cancellationToken).ConfigureAwait(false);
+                (int exitCode, _, string? stdErr) = await RunUnsandboxedTarAsync(tarArgs, OnVerboseLine, cancellationToken).ConfigureAwait(false);
 
                 if (exitCode != 0 || !File.Exists(tempPath))
                 {

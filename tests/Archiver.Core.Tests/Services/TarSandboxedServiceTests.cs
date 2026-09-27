@@ -1,3 +1,4 @@
+using Archiver.Core.Models;
 using Archiver.Core.Services;
 using FluentAssertions;
 
@@ -15,7 +16,7 @@ public sealed class TarSandboxedServiceTests
     [Fact]
     public async Task DetectCapabilitiesAsync_RealTarExe_ReturnsParsedVersionWithoutThrowing()
     {
-        var result = await _sut.DetectCapabilitiesAsync();
+        TarCapabilities result = await _sut.DetectCapabilitiesAsync();
 
         result.Version.Should().NotBeNullOrEmpty();
     }
@@ -32,7 +33,7 @@ public sealed class TarSandboxedServiceTests
         string missingPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N") + "-tar.exe");
         File.Exists(missingPath).Should().BeFalse();
 
-        var result = await TarSandboxedService.DetectCapabilitiesAsync(missingPath);
+        TarCapabilities result = await TarSandboxedService.DetectCapabilitiesAsync(missingPath);
 
         result.Should().Be(new Archiver.Core.Models.TarCapabilities());
     }

@@ -38,7 +38,7 @@ public sealed class ZipArchiveServiceLegacyNameEncodingTests : IDisposable
     {
         string dest = Path.Combine(_temp.Path, "out-" + Path.GetFileNameWithoutExtension(zip));
         Directory.CreateDirectory(dest);
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [zip],
             DestinationFolder = dest,
@@ -55,7 +55,7 @@ public sealed class ZipArchiveServiceLegacyNameEncodingTests : IDisposable
     {
         string zip = Legacy("cp866.zip", Oem("Тека/Документ_квартал.txt", "D"), Oem("А.txt", "A"));
 
-        var result = await _sut.ListEntriesAsync(zip);
+        ArchiveListResult result = await _sut.ListEntriesAsync(zip);
 
         result.Success.Should().BeTrue();
         result.Entries.Select(e => e.Path).Should().Equal("Тека/Документ_квартал.txt", "А.txt");
@@ -66,7 +66,7 @@ public sealed class ZipArchiveServiceLegacyNameEncodingTests : IDisposable
     {
         string zip = Legacy("cp866.zip", Oem("Тека/Документ_квартал.txt", "D"), Oem("А.txt", "A"));
 
-        var (result, dest) = await ExtractAsync(zip);
+        (ArchiveResult? result, string? dest) = await ExtractAsync(zip);
 
         result.Success.Should().BeTrue();
         File.ReadAllText(Path.Combine(dest, "Тека", "Документ_квартал.txt")).Should().Be("D");
@@ -79,7 +79,7 @@ public sealed class ZipArchiveServiceLegacyNameEncodingTests : IDisposable
         // The T-F234 repro: 0x80 and 0x81 both became U+FFFD under UTF-8.
         string zip = Legacy("pair.zip", Oem("А.txt", "A"), Oem("Б.txt", "B"));
 
-        var (result, dest) = await ExtractAsync(zip);
+        (ArchiveResult? result, string? dest) = await ExtractAsync(zip);
 
         result.Success.Should().BeTrue();
         File.ReadAllText(Path.Combine(dest, "А.txt")).Should().Be("A");
@@ -94,7 +94,7 @@ public sealed class ZipArchiveServiceLegacyNameEncodingTests : IDisposable
         var sut = new ZipArchiveService { NameCodePages = Us };
         string zip = FixtureHelper.Archive("legacy_oem866_7za.zip");
 
-        var result = await sut.ListEntriesAsync(zip);
+        ArchiveListResult result = await sut.ListEntriesAsync(zip);
 
         result.Entries.Select(e => e.Path).Should().BeEquivalentTo(
             ["А.txt", "Б.txt", "Тека", "Тека/Документ_квартал.txt"]);
@@ -105,7 +105,7 @@ public sealed class ZipArchiveServiceLegacyNameEncodingTests : IDisposable
     {
         string zip = Legacy("cp866.zip", Oem("А.txt", "A"), Oem("Б.txt", "B"));
 
-        var result = await _sut.TestAsync([zip]);
+        ArchiveResult result = await _sut.TestAsync([zip]);
 
         result.Success.Should().BeTrue();
         result.Errors.Should().BeEmpty();
@@ -130,7 +130,7 @@ public sealed class ZipArchiveServiceLegacyNameEncodingTests : IDisposable
             Mode = ArchiveMode.SingleArchive,
         });
 
-        var result = await new ZipArchiveService { NameCodePages = Us }.ListEntriesAsync(Path.Combine(_temp.Path, "own.zip"));
+        ArchiveListResult result = await new ZipArchiveService { NameCodePages = Us }.ListEntriesAsync(Path.Combine(_temp.Path, "own.zip"));
 
         result.Entries.Where(e => !e.IsDirectory).Select(e => e.Path).Should().BeEquivalentTo(
             Enumerable.Range(0, fileCount).Select(i => $"src/файл_{i}_\U0001F600.txt"));
@@ -151,7 +151,7 @@ public sealed class ZipArchiveServiceLegacyNameEncodingTests : IDisposable
             ResolvePasswordAsync = _ => Task.FromResult(new PasswordDecision { Password = "s3cret-pass" }),
         });
 
-        var result = await new ZipArchiveService { NameCodePages = Us }.ListEntriesAsync(Path.Combine(_temp.Path, "enc.zip"));
+        ArchiveListResult result = await new ZipArchiveService { NameCodePages = Us }.ListEntriesAsync(Path.Combine(_temp.Path, "enc.zip"));
 
         result.Entries.Select(e => e.Path).Should().Equal("звіт.txt");
     }
@@ -163,7 +163,7 @@ public sealed class ZipArchiveServiceLegacyNameEncodingTests : IDisposable
         var scanner = new FakeAmsiScanner();
         var service = new AntivirusScanService(new TarCapabilities(), null, () => scanner, () => true) { NameCodePages = Ru };
 
-        var result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [zip], SelectedEntryPaths = ["Б.txt"] });
+        ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [zip], SelectedEntryPaths = ["Б.txt"] });
 
         result.Findings.Should().ContainSingle(f => f.EntryPath == "Б.txt" && f.Verdict == ThreatVerdict.Clean);
         scanner.ScannedContent["Б.txt"].Should().Equal("B"u8.ToArray());
@@ -176,7 +176,7 @@ public sealed class ZipArchiveServiceLegacyNameEncodingTests : IDisposable
     {
         string zip = Legacy("trav.zip", Oem("ok.txt", "ok"), Oem(@"..\evil.txt", "evil"));
 
-        var (result, dest) = await ExtractAsync(zip);
+        (ArchiveResult? result, string? dest) = await ExtractAsync(zip);
 
         result.Errors.Should().ContainSingle(e => e.Message.Contains("../evil.txt") && e.Message.Contains("unsafe"));
         File.Exists(Path.Combine(_temp.Path, "evil.txt")).Should().BeFalse();
@@ -196,7 +196,7 @@ public sealed class ZipArchiveServiceLegacyNameEncodingTests : IDisposable
         {
             string dest = Path.Combine(_temp.Path, "tree-" + Path.GetFileNameWithoutExtension(zip) + mode);
             Directory.CreateDirectory(dest);
-            var result = await _sut.ExtractAsync(new ExtractOptions
+            ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
             {
                 ArchivePaths = [zip],
                 DestinationFolder = dest,
@@ -222,7 +222,7 @@ public sealed class ZipArchiveServiceLegacyNameEncodingTests : IDisposable
             new LegacyZipBuilder.Entry([0x81, 0x2E, 0x74, 0x78, 0x74], "B"u8.ToArray(), Utf8Flag),
             Oem("ok.txt", "ok"));
 
-        var (result, dest) = await ExtractAsync(zip, ConflictBehavior.Overwrite);
+        (ArchiveResult? result, string? dest) = await ExtractAsync(zip, ConflictBehavior.Overwrite);
 
         result.Success.Should().BeFalse();
         result.Errors.Should().ContainSingle(e => e.Message.Contains("same name as another entry"));
@@ -237,7 +237,7 @@ public sealed class ZipArchiveServiceLegacyNameEncodingTests : IDisposable
             new LegacyZipBuilder.Entry([0x80, 0x2E, 0x74, 0x78, 0x74], "A"u8.ToArray(), Utf8Flag),
             new LegacyZipBuilder.Entry([0x81, 0x2E, 0x74, 0x78, 0x74], "B"u8.ToArray(), Utf8Flag));
 
-        var result = await _sut.TestAsync([zip]);
+        ArchiveResult result = await _sut.TestAsync([zip]);
 
         result.Success.Should().BeFalse();
         result.Errors.Should().ContainSingle(e => e.Message.Contains("same name as another entry"));
@@ -249,7 +249,7 @@ public sealed class ZipArchiveServiceLegacyNameEncodingTests : IDisposable
         // T-F30: byte-identical duplicate names are an ordinary conflict, not a decoding collision.
         string zip = Legacy("dup.zip", Oem("А.txt", "first"), Oem("А.txt", "second"));
 
-        var (result, dest) = await ExtractAsync(zip, ConflictBehavior.Skip);
+        (ArchiveResult? result, string? dest) = await ExtractAsync(zip, ConflictBehavior.Skip);
 
         result.Errors.Should().BeEmpty();
         File.ReadAllText(Path.Combine(dest, "А.txt")).Should().Be("first");
@@ -282,8 +282,8 @@ public sealed class ZipArchiveServiceLegacyNameEncodingTests : IDisposable
         string zip = Legacy("mismatch.zip",
             new LegacyZipBuilder.Entry("a.txt"u8.ToArray(), "A"u8.ToArray(), LocalRawName: "../evil.txt"u8.ToArray()));
 
-        var tested = await _sut.TestAsync([zip]);
-        var (extracted, dest) = await ExtractAsync(zip);
+        ArchiveResult tested = await _sut.TestAsync([zip]);
+        (ArchiveResult? extracted, string? dest) = await ExtractAsync(zip);
 
         tested.Success.Should().BeTrue();
         extracted.Success.Should().BeTrue();
@@ -299,7 +299,7 @@ public sealed class ZipArchiveServiceLegacyNameEncodingTests : IDisposable
         string zip = Legacy("unix.zip",
             new LegacyZipBuilder.Entry(Encoding.UTF8.GetBytes("звіт.txt"), "x"u8.ToArray(), 0, LegacyZipBuilder.HostUnix));
 
-        var result = await _sut.ListEntriesAsync(zip);
+        ArchiveListResult result = await _sut.ListEntriesAsync(zip);
 
         result.Entries.Select(e => e.Path).Should().Equal("звіт.txt");
     }
@@ -313,7 +313,7 @@ public sealed class ZipArchiveServiceLegacyNameEncodingTests : IDisposable
             new LegacyZipBuilder.Entry(Cp866("А.txt"), "A"u8.ToArray(), 0, LegacyZipBuilder.HostFat,
                 [0x75, 0x70, 0xC8, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00]));
 
-        var result = await _sut.ListEntriesAsync(zip);
+        ArchiveListResult result = await _sut.ListEntriesAsync(zip);
 
         result.Success.Should().BeTrue();
         result.Entries.Select(e => e.Path).Should().Equal("А.txt");
@@ -332,7 +332,7 @@ public sealed class ZipArchiveServiceLegacyNameEncodingTests : IDisposable
         int dotnetCount;
         try
         {
-            using var archive = ZipFile.OpenRead(zip);
+            using ZipArchive archive = ZipFile.OpenRead(zip);
             dotnetCount = archive.Entries.Count;
         }
         catch (InvalidDataException)
@@ -340,7 +340,7 @@ public sealed class ZipArchiveServiceLegacyNameEncodingTests : IDisposable
             return; // .NET itself rejects it — nothing to stay compatible with
         }
 
-        var result = await _sut.ListEntriesAsync(zip);
+        ArchiveListResult result = await _sut.ListEntriesAsync(zip);
 
         result.Success.Should().BeTrue(result.ErrorMessage);
         result.Entries.Should().HaveCount(dotnetCount);
@@ -356,7 +356,7 @@ public sealed class ZipArchiveServiceLegacyNameEncodingTests : IDisposable
             int expected;
             try
             {
-                using var archive = ZipFile.OpenRead(path);
+                using ZipArchive archive = ZipFile.OpenRead(path);
                 expected = archive.Entries.Count;
             }
             catch (InvalidDataException)

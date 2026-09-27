@@ -46,7 +46,7 @@ public sealed class ZipArchiveServiceLongEntryNameTests : IDisposable
             return;
         string src = CreateSource(extraFiles);
 
-        var result = await _sut.ArchiveAsync(new ArchiveOptions
+        ArchiveResult result = await _sut.ArchiveAsync(new ArchiveOptions
         {
             SourcePaths = [src],
             DestinationFolder = _temp.Path,
@@ -55,7 +55,7 @@ public sealed class ZipArchiveServiceLongEntryNameTests : IDisposable
         });
 
         result.Errors.Should().ContainSingle().Which.Message.Should().Contain("too long");
-        using var archive = ZipFile.OpenRead(Path.Combine(_temp.Path, "out.zip"));
+        using ZipArchive archive = ZipFile.OpenRead(Path.Combine(_temp.Path, "out.zip"));
         archive.Entries.Count(e => e.Name.StartsWith('f')).Should().Be(extraFiles);
         archive.Entries.Should().NotContain(e => e.Name == "deep.txt");
     }

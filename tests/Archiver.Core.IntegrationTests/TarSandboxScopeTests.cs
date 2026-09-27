@@ -1,5 +1,7 @@
+using System.Security.AccessControl;
 using Archiver.Core.Services.Sandbox;
 using FluentAssertions;
+using Microsoft.Win32.SafeHandles;
 
 namespace Archiver.Core.IntegrationTests;
 
@@ -25,13 +27,13 @@ public sealed class TarSandboxScopeTests : IDisposable
         string archivePath = Path.Combine(_temp.Path, "fixture.tar");
         ExternalTarFixtureBuilder.CreateCompressedTar(archivePath, "-cf", [("a.txt", "scope test content")]);
 
-        using var scope = await TarSandboxScope.CreateAsync(archivePath, needsOutputDir: true, CancellationToken.None);
+        using TarSandboxScope scope = await TarSandboxScope.CreateAsync(archivePath, needsOutputDir: true, CancellationToken.None);
 
-        var (preScanExit, preScanStdOut, preScanStdErr) = await scope.ListAsync(verbose: false, CancellationToken.None);
+        (int preScanExit, string? preScanStdOut, string? preScanStdErr) = await scope.ListAsync(verbose: false, CancellationToken.None);
         preScanExit.Should().Be(0, because: preScanStdErr);
         preScanStdOut.Should().Contain("a.txt");
 
-        var (extractExit, _, extractStdErr) = await scope.ExtractAsync(null, CancellationToken.None);
+        (int extractExit, _, string? extractStdErr) = await scope.ExtractAsync(null, CancellationToken.None);
         extractExit.Should().Be(0, because: extractStdErr);
 
         File.ReadAllText(Path.Combine(scope.OutputDirectory!, "a.txt")).Should().Be("scope test content");
@@ -46,7 +48,7 @@ public sealed class TarSandboxScopeTests : IDisposable
     {
         string parent = Path.Combine(Path.GetTempPath(), "PakkoTarSandbox");
         Directory.CreateDirectory(parent);
-        var before = Directory.GetDirectories(parent).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        HashSet<string> before = Directory.GetDirectories(parent).ToHashSet(StringComparer.OrdinalIgnoreCase);
         string missingArchive = Path.Combine(_temp.Path, "does-not-exist.tar");
 
         Func<Task> act = () => TarSandboxScope.CreateAsync(missingArchive, needsOutputDir: true, CancellationToken.None);
@@ -61,12 +63,12 @@ public sealed class TarSandboxScopeTests : IDisposable
         string archivePath = Path.Combine(_temp.Path, "fixture.tar");
         ExternalTarFixtureBuilder.CreateCompressedTar(archivePath, "-cf", [("a.txt", "listing only")]);
 
-        using var scope = await TarSandboxScope.CreateAsync(archivePath, needsOutputDir: false, CancellationToken.None);
+        using TarSandboxScope scope = await TarSandboxScope.CreateAsync(archivePath, needsOutputDir: false, CancellationToken.None);
 
         scope.OutputDirectory.Should().BeNull();
         Directory.Exists(Path.Combine(scope.QuarantineRoot, "out")).Should().BeFalse();
 
-        var (exitCode, stdOut, stdErr) = await scope.ListAsync(verbose: false, CancellationToken.None);
+        (int exitCode, string? stdOut, string? stdErr) = await scope.ListAsync(verbose: false, CancellationToken.None);
         exitCode.Should().Be(0, because: stdErr);
         stdOut.Should().Contain("a.txt");
     }
@@ -77,7 +79,7 @@ public sealed class TarSandboxScopeTests : IDisposable
         string archivePath = Path.Combine(_temp.Path, "fixture.tar");
         ExternalTarFixtureBuilder.CreateCompressedTar(archivePath, "-cf", [("a.txt", "dispose test")]);
 
-        var scope = await TarSandboxScope.CreateAsync(archivePath, needsOutputDir: true, CancellationToken.None);
+        TarSandboxScope scope = await TarSandboxScope.CreateAsync(archivePath, needsOutputDir: true, CancellationToken.None);
         string quarantineRoot = scope.QuarantineRoot;
         Directory.Exists(quarantineRoot).Should().BeTrue();
 
@@ -101,7 +103,7 @@ public sealed class TarSandboxScopeTests : IDisposable
     {
         string folder = Path.Combine(_temp.Path, "shared");
         Directory.CreateDirectory(folder);
-        var folderSecurity = new DirectoryInfo(folder).GetAccessControl();
+        DirectorySecurity folderSecurity = new DirectoryInfo(folder).GetAccessControl();
         folderSecurity.AddAccessRule(new System.Security.AccessControl.FileSystemAccessRule(
             new System.Security.Principal.SecurityIdentifier("S-1-5-32-545"),
             System.Security.AccessControl.FileSystemRights.Read,
@@ -114,11 +116,11 @@ public sealed class TarSandboxScopeTests : IDisposable
         ExternalTarFixtureBuilder.CreateCompressedTar(archivePath, "-cf", [("a.txt", "acl")]);
         string before = Sddl(archivePath);
 
-        using (var scope = await TarSandboxScope.CreateAsync(archivePath, needsOutputDir: true, CancellationToken.None))
+        using (TarSandboxScope scope = await TarSandboxScope.CreateAsync(archivePath, needsOutputDir: true, CancellationToken.None))
         {
-            var (listExit, _, listErr) = await scope.ListAsync(verbose: false, CancellationToken.None);
+            (int listExit, _, string? listErr) = await scope.ListAsync(verbose: false, CancellationToken.None);
             listExit.Should().Be(0, because: listErr);
-            var (extractExit, _, extractErr) = await scope.ExtractAsync(null, CancellationToken.None);
+            (int extractExit, _, string? extractErr) = await scope.ExtractAsync(null, CancellationToken.None);
             extractExit.Should().Be(0, because: extractErr);
             Sddl(archivePath).Should().Be(before, "the scope must never touch the user's file");
         }
@@ -141,8 +143,8 @@ public sealed class TarSandboxScopeTests : IDisposable
             System.Security.AccessControl.AccessControlType.Allow));
         new FileInfo(archivePath).SetAccessControl(security);
 
-        using var scope = await TarSandboxScope.CreateAsync(archivePath, needsOutputDir: false, CancellationToken.None);
-        var (exitCode, stdOut, stdErr) = await scope.ListAsync(verbose: false, CancellationToken.None);
+        using TarSandboxScope scope = await TarSandboxScope.CreateAsync(archivePath, needsOutputDir: false, CancellationToken.None);
+        (int exitCode, string? stdOut, string? stdErr) = await scope.ListAsync(verbose: false, CancellationToken.None);
 
         exitCode.Should().Be(0, because: stdErr);
         stdOut.Should().Contain("a.txt");
@@ -159,10 +161,10 @@ public sealed class TarSandboxScopeTests : IDisposable
         try
         {
             string quarantineRoot;
-            using (var scope = await TarSandboxScope.CreateAsync(archivePath, needsOutputDir: true, CancellationToken.None))
+            using (TarSandboxScope scope = await TarSandboxScope.CreateAsync(archivePath, needsOutputDir: true, CancellationToken.None))
             {
                 quarantineRoot = scope.QuarantineRoot;
-                var (exitCode, _, stdErr) = await scope.ListAsync(verbose: false, CancellationToken.None);
+                (int exitCode, _, string? stdErr) = await scope.ListAsync(verbose: false, CancellationToken.None);
                 exitCode.Should().Be(0, because: stdErr);
             }
 
@@ -184,7 +186,7 @@ public sealed class TarSandboxScopeTests : IDisposable
         string archivePath = Path.Combine(_temp.Path, "w.tar");
         ExternalTarFixtureBuilder.CreateCompressedTar(archivePath, "-cf", [("a.txt", "locked")]);
 
-        using var scope = await TarSandboxScope.CreateAsync(archivePath, needsOutputDir: false, CancellationToken.None);
+        using TarSandboxScope scope = await TarSandboxScope.CreateAsync(archivePath, needsOutputDir: false, CancellationToken.None);
 
         Action write = () => new FileStream(archivePath, FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite).Dispose();
         write.Should().Throw<IOException>();
@@ -210,8 +212,8 @@ public sealed class TarSandboxScopeTests : IDisposable
 
     private static uint LinkCount(string path)
     {
-        using var handle = File.OpenHandle(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
-        return GetFileInformationByHandle(handle, out var info) ? info.NumberOfLinks : 0;
+        using SafeFileHandle handle = File.OpenHandle(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+        return GetFileInformationByHandle(handle, out ByHandleFileInformation info) ? info.NumberOfLinks : 0;
     }
 
     [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
@@ -248,19 +250,19 @@ public sealed class TarSandboxScopeTests : IDisposable
         ExternalTarFixtureBuilder.CreateCompressedTar(archivePathA, "-cf", [("a.txt", "scope A content")]);
         ExternalTarFixtureBuilder.CreateCompressedTar(archivePathB, "-cf", [("b.txt", "scope B content")]);
 
-        var scopeATask = TarSandboxScope.CreateAsync(archivePathA, needsOutputDir: true, CancellationToken.None);
-        var scopeBTask = TarSandboxScope.CreateAsync(archivePathB, needsOutputDir: true, CancellationToken.None);
+        Task<TarSandboxScope> scopeATask = TarSandboxScope.CreateAsync(archivePathA, needsOutputDir: true, CancellationToken.None);
+        Task<TarSandboxScope> scopeBTask = TarSandboxScope.CreateAsync(archivePathB, needsOutputDir: true, CancellationToken.None);
         await Task.WhenAll(scopeATask, scopeBTask);
-        using var scopeA = await scopeATask;
-        using var scopeB = await scopeBTask;
+        using TarSandboxScope scopeA = await scopeATask;
+        using TarSandboxScope scopeB = await scopeBTask;
 
         scopeA.QuarantineRoot.Should().NotBe(scopeB.QuarantineRoot);
 
-        var extractATask = scopeA.ExtractAsync(null, CancellationToken.None);
-        var extractBTask = scopeB.ExtractAsync(null, CancellationToken.None);
+        Task<(int ExitCode, string StdOut, string StdErr)> extractATask = scopeA.ExtractAsync(null, CancellationToken.None);
+        Task<(int ExitCode, string StdOut, string StdErr)> extractBTask = scopeB.ExtractAsync(null, CancellationToken.None);
         await Task.WhenAll(extractATask, extractBTask);
-        var (exitA, _, stdErrA) = await extractATask;
-        var (exitB, _, stdErrB) = await extractBTask;
+        (int exitA, _, string? stdErrA) = await extractATask;
+        (int exitB, _, string? stdErrB) = await extractBTask;
 
         exitA.Should().Be(0, because: stdErrA);
         exitB.Should().Be(0, because: stdErrB);

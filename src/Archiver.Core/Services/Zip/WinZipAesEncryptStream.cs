@@ -42,7 +42,7 @@ internal sealed class WinZipAesEncryptStream : Stream
 
         byte[] salt = new byte[WinZipAesReader.SaltLength(StrengthBits)];
         RandomNumberGenerator.Fill(salt);
-        var (encryptionKey, authenticationKey, passwordVerify) = WinZipAesReader.DeriveKeys(password, salt, StrengthBits);
+        (byte[]? encryptionKey, byte[]? authenticationKey, byte[]? passwordVerify) = WinZipAesReader.DeriveKeys(password, salt, StrengthBits);
 
         _keystream = new AesCtrKeystream(encryptionKey);
         // CA5350 + S4790: HMAC-SHA1 is fixed by the WinZip AE spec — see WinZipAesReader.Authenticate.
@@ -64,7 +64,7 @@ internal sealed class WinZipAesEncryptStream : Stream
         while (!buffer.IsEmpty)
         {
             int count = Math.Min(buffer.Length, _scratch.Length);
-            var ciphertext = _scratch.AsSpan(0, count);
+            Span<byte> ciphertext = _scratch.AsSpan(0, count);
             _keystream.Apply(buffer[..count], ciphertext);
             _hmac.AppendData(ciphertext);
             _output.Write(ciphertext);

@@ -32,9 +32,9 @@ public sealed class ZipArchiveServicePasswordTests : IDisposable
     public async Task ExtractAsync_EncryptedFixtureWithResolver_ExtractsByteExactContent(string fixtureName)
     {
         string expected = File.ReadAllText(Path.Combine(FixtureHelper.FilesDir, "compressible.txt"));
-        var destDir = Path.Combine(_temp.Path, "out");
+        string destDir = Path.Combine(_temp.Path, "out");
 
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [FixtureHelper.Archive(fixtureName)],
             DestinationFolder = destDir,
@@ -51,9 +51,9 @@ public sealed class ZipArchiveServicePasswordTests : IDisposable
     [Fact]
     public async Task ExtractAsync_CyrillicEntryNameFixture_ExtractsUnderRealDecodedName()
     {
-        var destDir = Path.Combine(_temp.Path, "out");
+        string destDir = Path.Combine(_temp.Path, "out");
 
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [FixtureHelper.Archive("encrypted_aes256_cyrillic_name.zip")],
             DestinationFolder = destDir,
@@ -71,9 +71,9 @@ public sealed class ZipArchiveServicePasswordTests : IDisposable
     public async Task ExtractAsync_MixedArchive_ExtractsBothEntriesAndPromptsExactlyOnce()
     {
         int promptCount = 0;
-        var destDir = Path.Combine(_temp.Path, "out");
+        string destDir = Path.Combine(_temp.Path, "out");
 
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [FixtureHelper.Archive("mixed_encrypted_and_plain.zip")],
             DestinationFolder = destDir,
@@ -103,9 +103,9 @@ public sealed class ZipArchiveServicePasswordTests : IDisposable
         string archiveB = Path.Combine(_temp.Path, "b.zip");
         File.Copy(FixtureHelper.Archive("encrypted_aes256.zip"), archiveA);
         File.Copy(FixtureHelper.Archive("encrypted_aes256.zip"), archiveB);
-        var destDir = Path.Combine(_temp.Path, "out");
+        string destDir = Path.Combine(_temp.Path, "out");
 
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [archiveA, archiveB],
             DestinationFolder = destDir,
@@ -129,9 +129,9 @@ public sealed class ZipArchiveServicePasswordTests : IDisposable
     public async Task ExtractAsync_WrongPasswordAllAttempts_RejectsWithUnchangedMessageAndLeavesNoPartialFiles()
     {
         int promptCount = 0;
-        var destDir = Path.Combine(_temp.Path, "out");
+        string destDir = Path.Combine(_temp.Path, "out");
 
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [FixtureHelper.Archive("encrypted_aes256.zip")],
             DestinationFolder = destDir,
@@ -154,9 +154,9 @@ public sealed class ZipArchiveServicePasswordTests : IDisposable
     [Fact]
     public async Task ExtractAsync_UserCancelsPasswordPrompt_RejectsWithUnchangedMessage()
     {
-        var destDir = Path.Combine(_temp.Path, "out");
+        string destDir = Path.Combine(_temp.Path, "out");
 
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [FixtureHelper.Archive("encrypted_aes256.zip")],
             DestinationFolder = destDir,
@@ -171,9 +171,9 @@ public sealed class ZipArchiveServicePasswordTests : IDisposable
     [Fact]
     public async Task ExtractAsync_TamperedAesFixtureCorrectPassword_HmacRejectsAndWritesNothing()
     {
-        var destDir = Path.Combine(_temp.Path, "out");
+        string destDir = Path.Combine(_temp.Path, "out");
 
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [FixtureHelper.Archive("encrypted_aes256_tampered.zip")],
             DestinationFolder = destDir,
@@ -194,9 +194,9 @@ public sealed class ZipArchiveServicePasswordTests : IDisposable
         // every other extraction safety check (here, the path-traversal guard) is provably
         // unmodified. Fixture is a REAL decryptable AES-256 entry (byte-patched name only), so a
         // rejection here can only come from the traversal check, not from failed password verification.
-        var destDir = Path.Combine(_temp.Path, "out");
+        string destDir = Path.Combine(_temp.Path, "out");
 
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [FixtureHelper.Archive("encrypted_with_traversal_entry.zip")],
             DestinationFolder = destDir,
@@ -229,8 +229,8 @@ public sealed class ZipArchiveServicePasswordTests : IDisposable
             return; // ADS not supported on this volume (non-NTFS, network, etc.) — skip gracefully
         }
 
-        var destDir = Path.Combine(_temp.Path, "out");
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        string destDir = Path.Combine(_temp.Path, "out");
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [zipPath],
             DestinationFolder = destDir,
@@ -253,9 +253,9 @@ public sealed class ZipArchiveServicePasswordTests : IDisposable
         // buffer can legitimately produce just one report).
         var reports = new List<ProgressReport>();
         var progress = new Progress<ProgressReport>(reports.Add);
-        var destDir = Path.Combine(_temp.Path, "out");
+        string destDir = Path.Combine(_temp.Path, "out");
 
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [FixtureHelper.Archive("encrypted_aes256.zip")],
             DestinationFolder = destDir,
@@ -279,7 +279,7 @@ public sealed class ZipArchiveServicePasswordTests : IDisposable
     [InlineData("encrypted_zipcrypto_real.zip")] // ZipCrypto — TrailerCrcCheckStream drain
     public async Task TestAsync_EncryptedFixtureWithResolver_PassesCleanly(string fixtureName)
     {
-        var result = await _sut.TestAsync(
+        ArchiveResult result = await _sut.TestAsync(
             [FixtureHelper.Archive(fixtureName)],
             resolvePasswordAsync: FixedPassword(RealPassword));
 
@@ -290,7 +290,7 @@ public sealed class ZipArchiveServicePasswordTests : IDisposable
     [Fact]
     public async Task TestAsync_TamperedAesFixtureCorrectPassword_FailsOnHmac()
     {
-        var result = await _sut.TestAsync(
+        ArchiveResult result = await _sut.TestAsync(
             [FixtureHelper.Archive("encrypted_aes256_tampered.zip")],
             resolvePasswordAsync: FixedPassword(RealPassword));
 
@@ -301,7 +301,7 @@ public sealed class ZipArchiveServicePasswordTests : IDisposable
     [Fact]
     public async Task TestAsync_WrongPassword_ReportsUnchangedRejectionMessage()
     {
-        var result = await _sut.TestAsync(
+        ArchiveResult result = await _sut.TestAsync(
             [FixtureHelper.Archive("encrypted_aes256.zip")],
             resolvePasswordAsync: FixedPassword("definitely-wrong"));
 
@@ -312,7 +312,7 @@ public sealed class ZipArchiveServicePasswordTests : IDisposable
     [Fact]
     public async Task TestAsync_NoResolverWired_MatchesPreT189Message()
     {
-        var result = await _sut.TestAsync([FixtureHelper.Archive("encrypted_aes256.zip")]);
+        ArchiveResult result = await _sut.TestAsync([FixtureHelper.Archive("encrypted_aes256.zip")]);
 
         result.Success.Should().BeFalse();
         result.Errors.Should().ContainSingle(e => e.Message == "This archive is password-protected and cannot be tested.");
@@ -327,7 +327,7 @@ public sealed class ZipArchiveServicePasswordTests : IDisposable
     [Fact]
     public async Task ExtractAsync_Bzip2UnderAesCorrectPassword_ReportsUnsupportedMethodWithoutThrowing()
     {
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [FixtureHelper.Archive("encrypted_aes256_bzip2.zip")],
             DestinationFolder = Path.Combine(_temp.Path, "out"),
@@ -342,7 +342,7 @@ public sealed class ZipArchiveServicePasswordTests : IDisposable
     [Fact]
     public async Task TestAsync_Bzip2UnderAesCorrectPassword_ReportsUnsupportedMethodWithoutThrowing()
     {
-        var result = await _sut.TestAsync(
+        ArchiveResult result = await _sut.TestAsync(
             [FixtureHelper.Archive("encrypted_aes256_bzip2.zip")],
             resolvePasswordAsync: FixedPassword(RealPassword));
 
@@ -357,7 +357,7 @@ public sealed class ZipArchiveServicePasswordTests : IDisposable
     {
         string path = MalformedAesExtraFixture.Create(_temp.Path, declaredSize);
 
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [path],
             DestinationFolder = Path.Combine(_temp.Path, "out"),
@@ -386,7 +386,7 @@ public sealed class ZipArchiveServicePasswordTests : IDisposable
     [Fact]
     public async Task ExtractAsync_NoResolverWired_FullyEncryptedArchiveMessageIsByteIdenticalToPreT189()
     {
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [FixtureHelper.Archive("encrypted_aes256.zip")],
             DestinationFolder = Path.Combine(_temp.Path, "out"),
@@ -404,7 +404,7 @@ public sealed class ZipArchiveServicePasswordTests : IDisposable
         // second) fell through to "File has ZIP signature but appears corrupted or incomplete."
         // That was the bug being fixed, not a byte-identical baseline to preserve — see
         // docs/DECISIONS.md's T-F189 entry.
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [FixtureHelper.Archive("mixed_encrypted_and_plain.zip")],
             DestinationFolder = Path.Combine(_temp.Path, "out"),
@@ -419,7 +419,7 @@ public sealed class ZipArchiveServicePasswordTests : IDisposable
     [Fact]
     public async Task ListEntriesAsync_Ae2Entry_ReportsNullCrc32NotZero()
     {
-        var result = await _sut.ListEntriesAsync(FixtureHelper.Archive("encrypted_aes256.zip"));
+        ArchiveListResult result = await _sut.ListEntriesAsync(FixtureHelper.Archive("encrypted_aes256.zip"));
 
         result.Success.Should().BeTrue();
         result.Entries.Should().ContainSingle().Which.Crc32.Should().BeNull();
@@ -428,7 +428,7 @@ public sealed class ZipArchiveServicePasswordTests : IDisposable
     [Fact]
     public async Task ListEntriesAsync_ZipCryptoEntry_ReportsRealNonNullCrc32()
     {
-        var result = await _sut.ListEntriesAsync(FixtureHelper.Archive("encrypted_zipcrypto_real.zip"));
+        ArchiveListResult result = await _sut.ListEntriesAsync(FixtureHelper.Archive("encrypted_zipcrypto_real.zip"));
 
         result.Success.Should().BeTrue();
         result.Entries.Should().ContainSingle().Which.Crc32.Should().NotBeNull().And.NotBe(0u);
@@ -437,7 +437,7 @@ public sealed class ZipArchiveServicePasswordTests : IDisposable
     [Fact]
     public async Task ListEntriesAsync_Ae1Entry_ReportsRealNonNullCrc32()
     {
-        var result = await _sut.ListEntriesAsync(FixtureHelper.Archive("encrypted_aes256_ae1.zip"));
+        ArchiveListResult result = await _sut.ListEntriesAsync(FixtureHelper.Archive("encrypted_aes256_ae1.zip"));
 
         result.Success.Should().BeTrue();
         result.Entries.Should().ContainSingle().Which.Crc32.Should().NotBeNull().And.NotBe(0u);
@@ -450,9 +450,9 @@ public sealed class ZipArchiveServicePasswordTests : IDisposable
     {
         string zip64 = Path.Combine(_temp.Path, "zip64.zip");
         Zip64DirectoryRewriter.Rewrite(FixtureHelper.Archive("encrypted_aes256.zip"), zip64);
-        var destDir = Path.Combine(_temp.Path, "out");
+        string destDir = Path.Combine(_temp.Path, "out");
 
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [zip64],
             DestinationFolder = destDir,
@@ -468,9 +468,9 @@ public sealed class ZipArchiveServicePasswordTests : IDisposable
     [Fact]
     public async Task ExtractAsync_StdinArchiveWithZip64LocalHeader_ExtractsByteExactContent()
     {
-        var destDir = Path.Combine(_temp.Path, "out");
+        string destDir = Path.Combine(_temp.Path, "out");
 
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [FixtureHelper.Archive("encrypted_aes256_stdin_zip64local.zip")],
             DestinationFolder = destDir,

@@ -25,7 +25,7 @@ public sealed class DeferredActionGateTests
     {
         var gate = new DeferredActionGate();
         gate.Open();
-        var ran = false;
+        bool ran = false;
 
         gate.RunOrDefer(() => ran = true);
 
@@ -36,7 +36,7 @@ public sealed class DeferredActionGateTests
     public void Open_CalledTwice_DoesNotRerunAlreadyFlushedActions()
     {
         var gate = new DeferredActionGate();
-        var runCount = 0;
+        int runCount = 0;
         gate.RunOrDefer(() => runCount++);
 
         gate.Open();
@@ -65,7 +65,7 @@ public sealed class DeferredActionGateTests
     public void Cancel_BeforeOpen_DiscardsQueuedActionsWithoutRunningThem()
     {
         var gate = new DeferredActionGate();
-        var ran = false;
+        bool ran = false;
         gate.RunOrDefer(() => ran = true);
 
         gate.Cancel();

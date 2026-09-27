@@ -48,7 +48,7 @@ public static class LaunchArguments
         if (files.Count == 0)
             throw new ArgumentException("At least one file is required.", nameof(files));
 
-        var payload = Convert.ToBase64String(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(files, PayloadOptions)));
+        string payload = Convert.ToBase64String(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(files, PayloadOptions)));
         return $"{SwitchFor(operation)} {payload}";
     }
 
@@ -65,8 +65,8 @@ public static class LaunchArguments
         if (string.IsNullOrWhiteSpace(arguments) || arguments.Length > MaxLength)
             return false;
 
-        var parts = arguments.Trim().Split(' ');
-        if (parts.Length != 2 || !TryGetOperation(parts[0], out var parsedOperation))
+        string[] parts = arguments.Trim().Split(' ');
+        if (parts.Length != 2 || !TryGetOperation(parts[0], out LaunchOperation parsedOperation))
             return false;
 
         string?[]? decoded;
@@ -79,7 +79,7 @@ public static class LaunchArguments
             return false;
         }
 
-        var nonBlank = decoded?.Where(f => !string.IsNullOrWhiteSpace(f)).Select(f => f!).ToArray() ?? [];
+        string[] nonBlank = decoded?.Where(f => !string.IsNullOrWhiteSpace(f)).Select(f => f!).ToArray() ?? [];
         if (nonBlank.Length == 0)
             return false;
 

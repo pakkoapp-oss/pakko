@@ -1,3 +1,4 @@
+using Archiver.Core.Interfaces;
 using Archiver.Core.Models;
 using Archiver.Core.Services;
 
@@ -19,12 +20,12 @@ internal sealed class ShellCommands(IOperationUi ui, ShellServices services)
     public Task ExtractHereAsync(IReadOnlyList<string> archivePaths) =>
         RunExtractSelectionAsync(archivePaths, (archivePath, prompts) =>
         {
-            var destFolder = Path.GetDirectoryName(archivePath) ?? ".";
+            string destFolder = Path.GetDirectoryName(archivePath) ?? ".";
             // T-F67: a plain OnConflict=Rename only renames individual conflicting files inside
             // an existing destination folder (that's the GUI app's merge behavior). The shell
             // command instead wants a brand-new numbered folder so re-extracting never silently
             // merges into — or does nothing to — a folder from a previous run.
-            var folderName = GetUniqueFolderName(destFolder, ArchiveNaming.GetBaseName(archivePath));
+            string folderName = GetUniqueFolderName(destFolder, ArchiveNaming.GetBaseName(archivePath));
             return new ExtractOptions
             {
                 ArchivePaths = [archivePath],
@@ -69,8 +70,8 @@ internal sealed class ShellCommands(IOperationUi ui, ShellServices services)
     public Task ExtractFolderAsync(IReadOnlyList<string> archivePaths) =>
         RunExtractSelectionAsync(archivePaths, (archivePath, prompts) =>
         {
-            var archiveDir = Path.GetDirectoryName(archivePath) ?? ".";
-            var folderName = GetUniqueFolderName(archiveDir, ArchiveNaming.GetBaseName(archivePath));
+            string archiveDir = Path.GetDirectoryName(archivePath) ?? ".";
+            string folderName = GetUniqueFolderName(archiveDir, ArchiveNaming.GetBaseName(archivePath));
             return new ExtractOptions
             {
                 ArchivePaths = [archivePath],
@@ -104,12 +105,12 @@ internal sealed class ShellCommands(IOperationUi ui, ShellServices services)
         // folder name. The routers normalize this internally too, but this destFolder/archiveName
         // computation happens here, before any of that code runs.
         sourcePaths = [.. sourcePaths.Select(Path.TrimEndingDirectorySeparator)];
-        var firstPath = sourcePaths[0];
+        string firstPath = sourcePaths[0];
         // T-F99: Path.GetDirectoryName returns null when firstPath is itself a root (e.g. "Z:\") —
         // a root has no parent to place the archive next to. Falls back to Desktop, the same default
         // destination MainViewModel.cs already uses, rather than "." (the process's own working
         // directory, which is unpredictable for a COM-surrogate-launched process).
-        var destFolder = Path.GetDirectoryName(firstPath)
+        string destFolder = Path.GetDirectoryName(firstPath)
             ?? Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
 
         string archiveName;
@@ -133,7 +134,7 @@ internal sealed class ShellCommands(IOperationUi ui, ShellServices services)
                 archiveName = "archive";
         }
 
-        var router = services.CreateArchiveCreationRouter();
+        IArchiveCreationRouter router = services.CreateArchiveCreationRouter();
         var options = new ArchiveOptions
         {
             SourcePaths = sourcePaths,
@@ -156,12 +157,12 @@ internal sealed class ShellCommands(IOperationUi ui, ShellServices services)
     // -------------------------------------------------------------------------
     public async Task TestAsync(IReadOnlyList<string> archivePaths)
     {
-        var service = services.CreateArchiveService();
+        IArchiveService service = services.CreateArchiveService();
         string title = archivePaths.Count == 1
             ? OperationTextLocalizer.Get("TitleTesting", Path.GetFileName(archivePaths[0]))
             : OperationTextLocalizer.Get("TitleTestingMany", archivePaths.Count);
 
-        using var session = ui.Begin(title, ProgressStyle.Bytes);
+        using IOperationSession session = ui.Begin(title, ProgressStyle.Bytes);
         ArchiveResult result;
         try
         {
@@ -192,7 +193,7 @@ internal sealed class ShellCommands(IOperationUi ui, ShellServices services)
             ? $"{label}: {Path.GetFileName(Path.TrimEndingDirectorySeparator(paths[0]))}"
             : OperationTextLocalizer.Get("TitleHashMany", label, paths.Count);
 
-        using var session = ui.Begin(title, ProgressStyle.Bytes);
+        using IOperationSession session = ui.Begin(title, ProgressStyle.Bytes);
         HashResult result;
         try
         {
@@ -220,8 +221,8 @@ internal sealed class ShellCommands(IOperationUi ui, ShellServices services)
             ? OperationTextLocalizer.Get("TitleScanning", Path.GetFileName(archivePaths[0]))
             : OperationTextLocalizer.Get("TitleScanningMany", archivePaths.Count);
 
-        var service = await services.CreateScanServiceAsync().ConfigureAwait(false);
-        using var session = ui.Begin(title, ProgressStyle.Percent);
+        AntivirusScanService service = await services.CreateScanServiceAsync().ConfigureAwait(false);
+        using IOperationSession session = ui.Begin(title, ProgressStyle.Percent);
         var options = new AntivirusScanOptions
         {
             ArchivePaths = archivePaths,
@@ -258,7 +259,7 @@ internal sealed class ShellCommands(IOperationUi ui, ShellServices services)
         if (!result.Success)
             return OperationMessages.ForArchiveResult(title, result);
 
-        var passed = OperationMessages.TestPassed(title);
+        OperationMessage passed = OperationMessages.TestPassed(title);
         return OperationMessages.ForArchiveResult(title, result) is { } skipped
             ? skipped with { Text = skipped.Text + Environment.NewLine + Environment.NewLine + passed.Text }
             : passed;
@@ -276,13 +277,13 @@ internal sealed class ShellCommands(IOperationUi ui, ShellServices services)
         if (archivePaths.Count == 0)
             return;
 
-        var router = await services.CreateExtractionRouterAsync().ConfigureAwait(false);
+        IExtractionRouter router = await services.CreateExtractionRouterAsync().ConfigureAwait(false);
         var prompts = new SelectionPrompts(archivePaths.Count);
         string title = archivePaths.Count == 1
             ? OperationTextLocalizer.Get("TitleExtracting", Path.GetFileName(archivePaths[0]))
             : OperationTextLocalizer.Get("TitleExtractingMany", archivePaths.Count);
 
-        using var session = ui.Begin(title, ProgressStyle.Bytes);
+        using IOperationSession session = ui.Begin(title, ProgressStyle.Bytes);
         prompts.Current = session;
 
         var results = new List<ArchiveResult>(archivePaths.Count);
@@ -292,7 +293,7 @@ internal sealed class ShellCommands(IOperationUi ui, ShellServices services)
             {
                 string archivePath = archivePaths[i];
                 session.BeginItem(Path.GetFileName(archivePath), i + 1, archivePaths.Count);
-                var options = buildOptions(archivePath, prompts);
+                ExtractOptions options = buildOptions(archivePath, prompts);
                 results.Add(await router.ExtractAsync(options, session.Progress, session.Cancellation).ConfigureAwait(false));
             }
         }
@@ -319,7 +320,7 @@ internal sealed class ShellCommands(IOperationUi ui, ShellServices services)
 
     private async Task RunArchiveOperationAsync(string title, Func<IOperationSession, Task<ArchiveResult>> op)
     {
-        using var session = ui.Begin(title, ProgressStyle.Bytes);
+        using IOperationSession session = ui.Begin(title, ProgressStyle.Bytes);
 
         ArchiveResult result;
         try

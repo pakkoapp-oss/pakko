@@ -20,7 +20,7 @@ public sealed class TarSandboxConcurrencyTests : IDisposable
     public async Task EnsureExists_ManyConcurrentCallers_NeverFails()
     {
         var failures = new System.Collections.Concurrent.ConcurrentBag<string>();
-        var tasks = Enumerable.Range(0, 8).Select(_ => Task.Run(() =>
+        Task[] tasks = Enumerable.Range(0, 8).Select(_ => Task.Run(() =>
         {
             for (int i = 0; i < 50; i++)
             {
@@ -42,7 +42,7 @@ public sealed class TarSandboxConcurrencyTests : IDisposable
     {
         string rar = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "Fixtures", "valid.rar");
         var failures = new System.Collections.Concurrent.ConcurrentBag<string>();
-        var tasks = Enumerable.Range(0, 8).Select(worker => Task.Run(async () =>
+        Task[] tasks = Enumerable.Range(0, 8).Select(worker => Task.Run(async () =>
         {
             string gz = Path.Combine(_temp.Path, $"w{worker}.tar.gz");
             ExternalTarFixtureBuilder.CreateCompressedTar(gz, "-czf", [("a.txt", "x" + worker)]);
@@ -52,11 +52,11 @@ public sealed class TarSandboxConcurrencyTests : IDisposable
                 {
                     try
                     {
-                        using var scope = await TarSandboxScope.CreateAsync(archive, needsOutputDir: true, CancellationToken.None);
-                        var list = await scope.ListAsync(verbose: false, CancellationToken.None);
+                        using TarSandboxScope scope = await TarSandboxScope.CreateAsync(archive, needsOutputDir: true, CancellationToken.None);
+                        (int ExitCode, string StdOut, string StdErr) list = await scope.ListAsync(verbose: false, CancellationToken.None);
                         if (list.ExitCode != 0)
                             failures.Add($"list {Path.GetFileName(archive)}: {list.StdErr}");
-                        var extract = await scope.ExtractAsync(null, CancellationToken.None);
+                        (int ExitCode, string StdOut, string StdErr) extract = await scope.ExtractAsync(null, CancellationToken.None);
                         if (extract.ExitCode != 0)
                             failures.Add($"extract {Path.GetFileName(archive)}: {extract.StdErr}");
                     }

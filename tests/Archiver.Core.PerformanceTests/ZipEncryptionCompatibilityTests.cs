@@ -57,7 +57,7 @@ public sealed class ZipEncryptionCompatibilityTests : IDisposable
 
     private async Task<string> ArchiveWithPakkoAsync(string source, string password, CompressionLevel level)
     {
-        var result = await new ZipArchiveService().ArchiveAsync(new ArchiveOptions
+        ArchiveResult result = await new ZipArchiveService().ArchiveAsync(new ArchiveOptions
         {
             SourcePaths = [source],
             DestinationFolder = Path.Combine(_temp.Path, "pakko-out"),
@@ -82,7 +82,7 @@ public sealed class ZipEncryptionCompatibilityTests : IDisposable
         string source = BuildSourceTree();
         string archive = await ArchiveWithPakkoAsync(source, password, level);
 
-        var test = () => SevenZipRunner.TestEncrypted(archive, password);
+        Action test = () => SevenZipRunner.TestEncrypted(archive, password);
         test.Should().NotThrow("7-Zip must accept Pakko's AES headers and authentication codes");
 
         string sevenZipOut = Path.Combine(_temp.Path, "7z-out");
@@ -98,7 +98,7 @@ public sealed class ZipEncryptionCompatibilityTests : IDisposable
 
         string archive = await ArchiveWithPakkoAsync(BuildSourceTree(), Password, CompressionLevel.Optimal);
 
-        var test = () => SevenZipRunner.TestEncrypted(archive, "wrong-password");
+        Action test = () => SevenZipRunner.TestEncrypted(archive, "wrong-password");
         test.Should().Throw<InvalidOperationException>();
     }
 
@@ -112,7 +112,7 @@ public sealed class ZipEncryptionCompatibilityTests : IDisposable
         SevenZipRunner.ArchiveEncrypted(archive, SymbolPassword, store: false, source);
         string destDir = Path.Combine(_temp.Path, "pakko-extract");
 
-        var result = await new ZipArchiveService().ExtractAsync(new ExtractOptions
+        ArchiveResult result = await new ZipArchiveService().ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [archive],
             DestinationFolder = destDir,

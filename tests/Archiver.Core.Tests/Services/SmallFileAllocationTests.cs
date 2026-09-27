@@ -34,7 +34,7 @@ public sealed class SmallFileAllocationTests : IDisposable
         await FileHashService.ComputeAsync(files, algorithm, null, CancellationToken.None); // JIT and pool warm-up
 
         long before = GC.GetTotalAllocatedBytes(precise: true);
-        var result = await FileHashService.ComputeAsync(files, algorithm, null, CancellationToken.None);
+        HashResult result = await FileHashService.ComputeAsync(files, algorithm, null, CancellationToken.None);
         long allocated = GC.GetTotalAllocatedBytes(precise: true) - before;
 
         result.Entries.Should().HaveCount(FileCount).And.OnlyContain(e => e.Error == null);
@@ -49,7 +49,7 @@ public sealed class SmallFileAllocationTests : IDisposable
         await ArchiveAsync(service, files, "warmup"); // JIT and pool warm-up
 
         long before = GC.GetTotalAllocatedBytes(precise: true);
-        var result = await ArchiveAsync(service, files, "measured");
+        ArchiveResult result = await ArchiveAsync(service, files, "measured");
         long allocated = GC.GetTotalAllocatedBytes(precise: true) - before;
 
         result.Success.Should().BeTrue();
@@ -69,10 +69,10 @@ public sealed class SmallFileAllocationTests : IDisposable
         string dir = Path.Combine(_temp.Path, subfolder);
         Directory.CreateDirectory(dir);
         var rng = new Random(42);
-        var files = new string[FileCount];
+        string[] files = new string[FileCount];
         for (int i = 0; i < FileCount; i++)
         {
-            var data = new byte[4096];
+            byte[] data = new byte[4096];
             rng.NextBytes(data.AsSpan(0, 2048));
             files[i] = Path.Combine(dir, $"f{i}.dat");
             File.WriteAllBytes(files[i], data);

@@ -1,4 +1,5 @@
 using Archiver.Core.Models;
+using Archiver.OperationUi.Protocol;
 using Archiver.Shell;
 using FluentAssertions;
 
@@ -54,7 +55,7 @@ public sealed class OperationWindowTextTests : IDisposable
     [Fact]
     public void UnknownIncomingTime_IsNeverNewer()
     {
-        var ask = OperationWindowText.CreateAskConflict(1, new ConflictInfo { ExistingPath = _existing, IncomingSize = 10 });
+        AskConflict ask = OperationWindowText.CreateAskConflict(1, new ConflictInfo { ExistingPath = _existing, IncomingSize = 10 });
 
         ask.IncomingIsNewer.Should().BeFalse();
         ask.IncomingDetails.Should().Be(ProgressText.FormatBytes(10));

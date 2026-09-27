@@ -106,7 +106,7 @@ public sealed class ExtractionDestinationPlannerTests
     private static void AssertResolve(bool alreadyIsolated, RootShape shape, string expectedDest, bool expectedStrip,
         bool rootDuplicatesArchiveName = false)
     {
-        var (actualDest, stripRootPrefix) = ExtractionDestinationPlanner.Resolve(
+        (string? actualDest, bool stripRootPrefix) = ExtractionDestinationPlanner.Resolve(
             alreadyIsolated, shape, DestDir, UnisolatedDestDir, rootDuplicatesArchiveName);
 
         actualDest.Should().Be(expectedDest);

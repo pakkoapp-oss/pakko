@@ -44,14 +44,14 @@ public sealed class ZipArchiveServiceParallelPipelineTests : IDisposable
     {
         string sourceDir = CreateManyFilesDirectory("source");
 
-        var result1 = await _sut.ArchiveAsync(new ArchiveOptions
+        ArchiveResult result1 = await _sut.ArchiveAsync(new ArchiveOptions
         {
             SourcePaths = [sourceDir],
             DestinationFolder = _temp.Path,
             ArchiveName = "run1",
             CompressionLevel = CompressionLevel.NoCompression, // removes compression-variance, matches existing T-F31 test convention
         });
-        var result2 = await _sut.ArchiveAsync(new ArchiveOptions
+        ArchiveResult result2 = await _sut.ArchiveAsync(new ArchiveOptions
         {
             SourcePaths = [sourceDir],
             DestinationFolder = _temp.Path,
@@ -69,17 +69,17 @@ public sealed class ZipArchiveServiceParallelPipelineTests : IDisposable
     {
         string sourceDir = CreateManyFilesDirectory("source");
 
-        var result1 = await _sut.ArchiveAsync(new ArchiveOptions
+        ArchiveResult result1 = await _sut.ArchiveAsync(new ArchiveOptions
         {
             SourcePaths = [sourceDir], DestinationFolder = _temp.Path, ArchiveName = "order1",
         });
-        var result2 = await _sut.ArchiveAsync(new ArchiveOptions
+        ArchiveResult result2 = await _sut.ArchiveAsync(new ArchiveOptions
         {
             SourcePaths = [sourceDir], DestinationFolder = _temp.Path, ArchiveName = "order2",
         });
 
-        using var zip1 = ZipFile.OpenRead(result1.CreatedFiles[0]);
-        using var zip2 = ZipFile.OpenRead(result2.CreatedFiles[0]);
+        using ZipArchive zip1 = ZipFile.OpenRead(result1.CreatedFiles[0]);
+        using ZipArchive zip2 = ZipFile.OpenRead(result2.CreatedFiles[0]);
 
         var names1 = zip1.Entries.Select(e => e.FullName).ToList();
         var names2 = zip2.Entries.Select(e => e.FullName).ToList();
@@ -98,7 +98,7 @@ public sealed class ZipArchiveServiceParallelPipelineTests : IDisposable
         using var cts = new CancellationTokenSource();
         cts.Cancel();
 
-        var act = async () => await _sut.ArchiveAsync(new ArchiveOptions
+        Func<Task<ArchiveResult>> act = async () => await _sut.ArchiveAsync(new ArchiveOptions
         {
             SourcePaths = [sourceDir], DestinationFolder = _temp.Path, ArchiveName = "precancelled",
         }, cancellationToken: cts.Token);
@@ -138,7 +138,7 @@ public sealed class ZipArchiveServiceParallelPipelineTests : IDisposable
         string? archivePath = Directory.GetFiles(_temp.Path, "cancel_mid*.zip").FirstOrDefault();
         if (archivePath != null)
         {
-            var act = () => ZipFile.OpenRead(archivePath).Dispose();
+            Action act = () => ZipFile.OpenRead(archivePath).Dispose();
             act.Should().NotThrow("a partially-committed archive from a graceful cancellation must still be structurally valid");
         }
     }
@@ -161,7 +161,7 @@ public sealed class ZipArchiveServiceParallelPipelineTests : IDisposable
         result.Errors.Should().ContainSingle(e => e.SourcePath == lockedFile);
         result.CreatedFiles.Should().HaveCount(1);
 
-        using var zip = ZipFile.OpenRead(result.CreatedFiles[0]);
+        using ZipArchive zip = ZipFile.OpenRead(result.CreatedFiles[0]);
         zip.Entries.Should().HaveCount(ManyFilesCount - 1);
         zip.Entries.Should().NotContain(e => e.Name == "file0060.bin");
     }
@@ -180,7 +180,7 @@ public sealed class ZipArchiveServiceParallelPipelineTests : IDisposable
         File.WriteAllBytes(Path.Combine(sourceDir, "file0030-large.bin"), largeContent1);
         File.WriteAllBytes(Path.Combine(sourceDir, "file0050-large.bin"), largeContent2);
 
-        var result = await _sut.ArchiveAsync(new ArchiveOptions
+        ArchiveResult result = await _sut.ArchiveAsync(new ArchiveOptions
         {
             SourcePaths = [sourceDir], DestinationFolder = _temp.Path, ArchiveName = "hybrid",
         });
@@ -188,7 +188,7 @@ public sealed class ZipArchiveServiceParallelPipelineTests : IDisposable
         result.Success.Should().BeTrue();
         result.Errors.Should().BeEmpty();
 
-        using var zip = ZipFile.OpenRead(result.CreatedFiles[0]);
+        using ZipArchive zip = ZipFile.OpenRead(result.CreatedFiles[0]);
         zip.Entries.Should().HaveCount(72);
 
         VerifyEntryContent(zip, "file0030-large.bin", largeContent1);
@@ -197,8 +197,8 @@ public sealed class ZipArchiveServiceParallelPipelineTests : IDisposable
 
     private static void VerifyEntryContent(ZipArchive zip, string entryName, byte[] expected)
     {
-        var entry = zip.Entries.Should().ContainSingle(e => e.Name == entryName).Subject;
-        using var stream = entry.Open();
+        ZipArchiveEntry entry = zip.Entries.Should().ContainSingle(e => e.Name == entryName).Subject;
+        using Stream stream = entry.Open();
         using var ms = new MemoryStream();
         stream.CopyTo(ms);
         ms.ToArray().Should().Equal(expected);

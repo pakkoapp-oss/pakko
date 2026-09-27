@@ -16,7 +16,7 @@ public sealed class ArchiveEntrySecurityCompressionBombTests
     [Fact]
     public async Task EvaluateCompressionBombAsync_RatioUnderThreshold_ReturnsNotABomb()
     {
-        var outcome = await ArchiveEntrySecurity.EvaluateCompressionBombAsync(
+        CompressionBombOutcome outcome = await ArchiveEntrySecurity.EvaluateCompressionBombAsync(
             "archive.zip", declaredUncompressedSize: 500, compressedSize: 100,
             availableFreeSpaceBytes: AmpleSpace, confirmCallback: null);
 
@@ -26,7 +26,7 @@ public sealed class ArchiveEntrySecurityCompressionBombTests
     [Fact]
     public async Task EvaluateCompressionBombAsync_ZeroCompressedSize_ReturnsNotABomb()
     {
-        var outcome = await ArchiveEntrySecurity.EvaluateCompressionBombAsync(
+        CompressionBombOutcome outcome = await ArchiveEntrySecurity.EvaluateCompressionBombAsync(
             "archive.zip", declaredUncompressedSize: 500, compressedSize: 0,
             availableFreeSpaceBytes: AmpleSpace, confirmCallback: null);
 
@@ -36,7 +36,7 @@ public sealed class ArchiveEntrySecurityCompressionBombTests
     [Fact]
     public async Task EvaluateCompressionBombAsync_RatioOverThreshold_InsufficientSpace_ReturnsInsufficientDiskSpace()
     {
-        var outcome = await ArchiveEntrySecurity.EvaluateCompressionBombAsync(
+        CompressionBombOutcome outcome = await ArchiveEntrySecurity.EvaluateCompressionBombAsync(
             "archive.zip", declaredUncompressedSize: 2_000_000, compressedSize: 100,
             availableFreeSpaceBytes: 1_000_000, confirmCallback: _ => Task.FromResult(true));
 
@@ -46,7 +46,7 @@ public sealed class ArchiveEntrySecurityCompressionBombTests
     [Fact]
     public async Task EvaluateCompressionBombAsync_RatioOverThreshold_NullCallback_ReturnsUserDeclined()
     {
-        var outcome = await ArchiveEntrySecurity.EvaluateCompressionBombAsync(
+        CompressionBombOutcome outcome = await ArchiveEntrySecurity.EvaluateCompressionBombAsync(
             "archive.zip", declaredUncompressedSize: 2_000_000, compressedSize: 100,
             availableFreeSpaceBytes: AmpleSpace, confirmCallback: null);
 
@@ -56,7 +56,7 @@ public sealed class ArchiveEntrySecurityCompressionBombTests
     [Fact]
     public async Task EvaluateCompressionBombAsync_RatioOverThreshold_CallbackReturnsFalse_ReturnsUserDeclined()
     {
-        var outcome = await ArchiveEntrySecurity.EvaluateCompressionBombAsync(
+        CompressionBombOutcome outcome = await ArchiveEntrySecurity.EvaluateCompressionBombAsync(
             "archive.zip", declaredUncompressedSize: 2_000_000, compressedSize: 100,
             availableFreeSpaceBytes: AmpleSpace, confirmCallback: _ => Task.FromResult(false));
 
@@ -66,7 +66,7 @@ public sealed class ArchiveEntrySecurityCompressionBombTests
     [Fact]
     public async Task EvaluateCompressionBombAsync_RatioOverThreshold_CallbackReturnsTrue_ReturnsUserConfirmed()
     {
-        var outcome = await ArchiveEntrySecurity.EvaluateCompressionBombAsync(
+        CompressionBombOutcome outcome = await ArchiveEntrySecurity.EvaluateCompressionBombAsync(
             "archive.zip", declaredUncompressedSize: 2_000_000, compressedSize: 100,
             availableFreeSpaceBytes: AmpleSpace, confirmCallback: _ => Task.FromResult(true));
 

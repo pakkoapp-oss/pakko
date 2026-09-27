@@ -81,7 +81,7 @@ internal static class SandboxedProcessLauncher
         // copy CA1838 flags; CreateProcessW's real lpCommandLine is a writable LPWSTR buffer, so
         // this still needs to be a genuinely mutable array, not a string.
         string commandLine = BuildCommandLine(fileName, arguments);
-        var commandLineBuffer = new char[commandLine.Length + 1];
+        char[] commandLineBuffer = new char[commandLine.Length + 1];
         commandLine.CopyTo(0, commandLineBuffer, 0, commandLine.Length);
 
         bool outRef = false, errRef = false, sidRef = false, inRef = false;

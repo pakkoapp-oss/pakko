@@ -73,7 +73,7 @@ public sealed class ProgressStreamTests
     {
         using var stream = new ProgressStream(new MemoryStream(new byte[4]), totalBytes: 4, new SynchronousProgress<ProgressReport>(_ => { }));
 
-        var act = () => stream.Position = 1;
+        Func<long> act = () => stream.Position = 1;
 
         act.Should().Throw<NotSupportedException>();
     }
@@ -83,7 +83,7 @@ public sealed class ProgressStreamTests
     {
         using var stream = new ProgressStream(new MemoryStream(new byte[4]), totalBytes: 4, new SynchronousProgress<ProgressReport>(_ => { }));
 
-        var act = () => stream.Seek(0, SeekOrigin.Begin);
+        Func<long> act = () => stream.Seek(0, SeekOrigin.Begin);
 
         act.Should().Throw<NotSupportedException>();
     }
@@ -93,7 +93,7 @@ public sealed class ProgressStreamTests
     {
         using var stream = new ProgressStream(new MemoryStream(new byte[4]), totalBytes: 4, new SynchronousProgress<ProgressReport>(_ => { }));
 
-        var act = () => stream.SetLength(10);
+        Action act = () => stream.SetLength(10);
 
         act.Should().Throw<NotSupportedException>();
     }
@@ -104,7 +104,7 @@ public sealed class ProgressStreamTests
         var inner = new MemoryStream(new byte[4]);
         using var stream = new ProgressStream(inner, totalBytes: 4, new SynchronousProgress<ProgressReport>(_ => { }));
 
-        var act = () => stream.Flush();
+        Action act = () => stream.Flush();
 
         act.Should().NotThrow();
     }
@@ -116,7 +116,7 @@ public sealed class ProgressStreamTests
         var reports = new List<ProgressReport>();
         using var stream = new ProgressStream(inner, totalBytes: 10, new SynchronousProgress<ProgressReport>(r => reports.Add(r)));
 
-        var buffer = new byte[10];
+        byte[] buffer = new byte[10];
         int read = stream.Read(buffer, 0, 10);
 
         read.Should().Be(10);
@@ -130,7 +130,7 @@ public sealed class ProgressStreamTests
         var reports = new List<ProgressReport>();
         using var stream = new ProgressStream(inner, totalBytes: 10, new SynchronousProgress<ProgressReport>(r => reports.Add(r)));
 
-        var buffer = new byte[10];
+        byte[] buffer = new byte[10];
 #pragma warning disable CA1835 // deliberately exercises the legacy byte[] overload under test, not a perf-sensitive call site
         int read = await stream.ReadAsync(buffer, 0, 10, CancellationToken.None);
 #pragma warning restore CA1835
@@ -146,7 +146,7 @@ public sealed class ProgressStreamTests
         var reports = new List<ProgressReport>();
         using var stream = new ProgressStream(inner, totalBytes: 10, new SynchronousProgress<ProgressReport>(r => reports.Add(r)));
 
-        var buffer = new byte[10];
+        byte[] buffer = new byte[10];
         int read = await stream.ReadAsync(buffer.AsMemory());
 
         read.Should().Be(10);
@@ -227,7 +227,7 @@ public sealed class ProgressStreamTests
 
         stream.Dispose();
 
-        var act = () => inner.WriteByte(1);
+        Action act = () => inner.WriteByte(1);
         act.Should().Throw<ObjectDisposedException>();
     }
 }

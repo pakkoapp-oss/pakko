@@ -170,7 +170,7 @@ public sealed class ZipArchiveService : IArchiveService
 
         // T-F158: shared with TarSandboxedService's equivalent conflict decision — see
         // DestinationConflictResolver and DECISIONS.md's T-F158 entry.
-        var (outcome, resolvedDestPath) = await DestinationConflictResolver.ResolveAsync(
+        (DestinationConflictOutcome outcome, string? resolvedDestPath) = await DestinationConflictResolver.ResolveAsync(
             destPath, onDiskConflict: File.Exists(destPath), sameRunConflict: false,
             run.ConflictResolver, renameCandidate: p => ArchiveNaming.GetUniqueFilePath(p)).ConfigureAwait(false);
 
@@ -301,7 +301,7 @@ public sealed class ZipArchiveService : IArchiveService
     {
         await Task.Run(async () =>
         {
-            using var archive = ZipFile.Open(tempPath, ZipArchiveMode.Create);
+            using ZipArchive archive = ZipFile.Open(tempPath, ZipArchiveMode.Create);
             int total = sortedSourcePaths.Count;
             long byteOffset = 0;
             // T-F30: multiple top-level SourcePaths can share a basename (e.g. two selected
@@ -412,7 +412,7 @@ public sealed class ZipArchiveService : IArchiveService
             .OrderBy(p => p, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        var plans = await ResolveSeparateArchivePlansAsync(
+        List<(string SourcePath, string? DestPath)> plans = await ResolveSeparateArchivePlansAsync(
             sortedSourcePaths, options.DestinationFolder, run.ConflictResolver, skippedFiles).ConfigureAwait(false);
 
         var concurrentSink = new ArchiveResultSink([], [], [], []);
@@ -433,9 +433,9 @@ public sealed class ZipArchiveService : IArchiveService
                 concurrentSink, progressContext, token).ConfigureAwait(false)
         ).ConfigureAwait(false);
 
-        foreach (var e in concurrentSink.Errors) errors.Add(e);
-        foreach (var c in concurrentSink.CreatedFiles) createdFiles.Add(c);
-        foreach (var s in concurrentSink.SkippedFiles) skippedFiles.Add(s);
+        foreach (ArchiveError e in concurrentSink.Errors) errors.Add(e);
+        foreach (string c in concurrentSink.CreatedFiles) createdFiles.Add(c);
+        foreach (SkippedFile s in concurrentSink.SkippedFiles) skippedFiles.Add(s);
 
         // Concurrent workers report progress off a shared-but-approximate byte baseline (see
         // ArchiveSingleSeparatePathAsync) — force one final, exact 100% report here so callers
@@ -487,7 +487,7 @@ public sealed class ZipArchiveService : IArchiveService
             // and DECISIONS.md's T-F158 entry. Overwrite's same-run-collision-renames-instead
             // behavior (two SourcePaths in this batch sharing a basename would otherwise race
             // under parallel execution) now lives in the shared resolver.
-            var (outcome, resolvedDestPath) = await DestinationConflictResolver.ResolveAsync(
+            (DestinationConflictOutcome outcome, string? resolvedDestPath) = await DestinationConflictResolver.ResolveAsync(
                 destPath, onDiskConflict, sameRunConflict,
                 conflictResolver, renameCandidate: p => ArchiveNaming.GetUniqueFilePath(p, claimedDestPaths)).ConfigureAwait(false);
 
@@ -576,14 +576,14 @@ public sealed class ZipArchiveService : IArchiveService
                 // T-F193: the only writer that can encrypt. A one-source "single archive" of its
                 // own; WorkItemEnumerator names the entries exactly as the branches below do.
                 var callbacks = new Zip.ParallelSingleArchiveWriter.ReportCallbacks(AddSkipped, AddError);
-                var offsetProgress = progress is null ? null : new OffsetProgress(progress, baseOffset, totalSourceBytes);
+                OffsetProgress? offsetProgress = progress is null ? null : new OffsetProgress(progress, baseOffset, totalSourceBytes);
                 await Zip.ParallelSingleArchiveWriter.WriteAsync(
                     separateTempPath, [sourcePath], settings, pathSize, callbacks, offsetProgress, cancellationToken)
                     .ConfigureAwait(false);
             }
             else if (Directory.Exists(sourcePath))
             {
-                using var archive = ZipFile.Open(separateTempPath, ZipArchiveMode.Create);
+                using ZipArchive archive = ZipFile.Open(separateTempPath, ZipArchiveMode.Create);
                 var context = new DirectoryArchiveContext(
                     sourcePath, Path.GetFileName(sourcePath), compressionLevel, AddSkipped, AddError, totalSourceBytes, progress);
                 await AddDirectoryToArchiveAsync(archive, sourcePath, context, baseOffset, cancellationToken)
@@ -591,7 +591,7 @@ public sealed class ZipArchiveService : IArchiveService
             }
             else if (File.Exists(sourcePath))
             {
-                using var archive = ZipFile.Open(separateTempPath, ZipArchiveMode.Create);
+                using ZipArchive archive = ZipFile.Open(separateTempPath, ZipArchiveMode.Create);
                 await AddEntryFromFileAsync(archive, sourcePath, Path.GetFileName(sourcePath),
                     compressionLevel, new EntryWriteProgress(totalSourceBytes, baseOffset, progress), cancellationToken)
                     .ConfigureAwait(false);
@@ -756,7 +756,7 @@ public sealed class ZipArchiveService : IArchiveService
             int errorsBefore = errors.Count, skippedBefore = skippedFiles.Count, createdBefore = createdFiles.Count,
                 conflictSkippedBefore = conflictSkipped.Count;
 
-            var (rejected, password) = await TryRejectUnsupportedOrEncryptedZipAsync(
+            (bool rejected, ResolvedZipPassword? password) = await TryRejectUnsupportedOrEncryptedZipAsync(
                 archivePath, errors, skippedFiles, passwordResolver).ConfigureAwait(false);
             if (!rejected)
             {
@@ -858,10 +858,10 @@ public sealed class ZipArchiveService : IArchiveService
         // Falls back to today's unchanged "password-protected" rejection at the call site either way.
         try
         {
-            using var fs = File.OpenRead(archivePath);
-            var located = RawZipEntryLocator.LocateAll(fs);
+            using FileStream fs = File.OpenRead(archivePath);
+            List<LocatedZipEntry> located = RawZipEntryLocator.LocateAll(fs);
             // T-F243: the smallest encrypted entry, so the full check below stays cheap.
-            var probe = located.Where(e => e.GeneralPurposeEncryptedBit).MinBy(e => e.CompressedSize);
+            LocatedZipEntry? probe = located.Where(e => e.GeneralPurposeEncryptedBit).MinBy(e => e.CompressedSize);
             if (probe is null)
                 return null; // IsEncryptedZip said yes but nothing actually has the bit set — defensive, shouldn't happen
 
@@ -918,7 +918,7 @@ public sealed class ZipArchiveService : IArchiveService
             || probe.CompressedSize > PasswordProbeFullCheckLimitBytes || probe.UncompressedSize > PasswordProbeFullCheckLimitBytes)
             return true;
 
-        var (result, content) = EncryptedZipEntryReader.TryOpen(zipStream, probe, password, encoding);
+        (EncryptedZipReadResult result, Stream? content) = EncryptedZipEntryReader.TryOpen(zipStream, probe, password, encoding);
         if (result != EncryptedZipReadResult.Success)
             return result == EncryptedZipReadResult.UnsupportedCompressionMethod;
         try
@@ -952,7 +952,7 @@ public sealed class ZipArchiveService : IArchiveService
             var context = new ZipExtractionContext(
                 conflictResolver, sink.SkippedFiles, options.ConfirmCompressionBombExtraction, _policy.MotwMode, archiveProgress, sink.Errors,
                 sink.ConflictSkippedEntries, NameCodePages, password, options.EliminateDuplicateRootFolder);
-            var (actualDest, anyExtracted) = await Task.Run(async () =>
+            (string? actualDest, bool anyExtracted) = await Task.Run(async () =>
                 await ExtractWithSmartFolderingAsync(archivePath, destDir, alreadyIsolated,
                     options.DestinationFolder, options.SelectedEntryPaths, context, cancellationToken),
                 cancellationToken).ConfigureAwait(false);
@@ -1087,10 +1087,10 @@ public sealed class ZipArchiveService : IArchiveService
     {
         try
         {
-            var entries = await Task.Run(() =>
+            List<ArchiveEntryInfo> entries = await Task.Run(() =>
             {
                 using var reader = ZipArchiveReader.Open(archivePath, NameCodePages);
-                var archive = reader.Archive;
+                ZipArchive archive = reader.Archive;
 
                 // T-F189: only paid for an archive that actually has an encrypted entry (the
                 // Archive Browser calls ListEntriesAsync on every navigation — see docs/DECISIONS.md's
@@ -1101,8 +1101,8 @@ public sealed class ZipArchiveService : IArchiveService
                 {
                     try
                     {
-                        using var rawArchiveStream = File.OpenRead(archivePath);
-                        var located = RawZipEntryLocator.LocateAll(rawArchiveStream);
+                        using FileStream rawArchiveStream = File.OpenRead(archivePath);
+                        List<LocatedZipEntry> located = RawZipEntryLocator.LocateAll(rawArchiveStream);
                         if (located.Count == archive.Entries.Count)
                         {
                             encryptedEntryMap = new Dictionary<ZipArchiveEntry, LocatedZipEntry>(archive.Entries.Count);
@@ -1123,12 +1123,12 @@ public sealed class ZipArchiveService : IArchiveService
 
                 return reader.Entries.Select(named =>
                 {
-                    var e = named.Entry;
+                    ZipArchiveEntry e = named.Entry;
                     // AE-2 zeroes the header CRC-32 by design (HMAC is the sole authority) — report
                     // null rather than a misleading 0, consistent with ArchiveEntryInfo.Crc32's
                     // existing nullable convention (0 is itself a legitimate CRC-32 for other entries).
                     bool isAe2WithZeroedCrc = encryptedEntryMap is { } map
-                        && map.TryGetValue(e, out var located)
+                        && map.TryGetValue(e, out LocatedZipEntry? located)
                         && located.CompressionMethod == 99
                         && located.AeVersion == 2;
 
@@ -1164,13 +1164,13 @@ public sealed class ZipArchiveService : IArchiveService
         CancellationToken cancellationToken)
     {
         using var reader = ZipArchiveReader.Open(archivePath, codePages);
-        var archive = reader.Archive;
+        ZipArchive archive = reader.Archive;
 
         Dictionary<ZipArchiveEntry, LocatedZipEntry>? encryptedEntryMap = null;
-        using var rawArchiveStream = password is not null ? File.OpenRead(archivePath) : null;
+        using FileStream? rawArchiveStream = password is not null ? File.OpenRead(archivePath) : null;
         if (password is not null)
         {
-            var located = RawZipEntryLocator.LocateAll(rawArchiveStream!);
+            List<LocatedZipEntry> located = RawZipEntryLocator.LocateAll(rawArchiveStream!);
             if (located.Count == archive.Entries.Count)
             {
                 encryptedEntryMap = new Dictionary<ZipArchiveEntry, LocatedZipEntry>(archive.Entries.Count);
@@ -1179,12 +1179,12 @@ public sealed class ZipArchiveService : IArchiveService
             }
         }
 
-        foreach (var named in reader.Entries)
+        foreach (NamedZipEntry named in reader.Entries)
         {
             if (cancellationToken.IsCancellationRequested)
                 break;
 
-            var entry = named.Entry;
+            ZipArchiveEntry entry = named.Entry;
             if (named.FullName.EndsWith('/'))
                 continue; // directory entry — no data to verify
 
@@ -1194,7 +1194,7 @@ public sealed class ZipArchiveService : IArchiveService
                 continue;
             }
 
-            if (encryptedEntryMap is { } map && map.TryGetValue(entry, out var located2) && located2.GeneralPurposeEncryptedBit)
+            if (encryptedEntryMap is { } map && map.TryGetValue(entry, out LocatedZipEntry? located2) && located2.GeneralPurposeEncryptedBit)
             {
                 TestEncryptedEntry(archivePath, named.FullName, located2, rawArchiveStream!, password!, errors);
                 continue;
@@ -1229,7 +1229,7 @@ public sealed class ZipArchiveService : IArchiveService
         string archivePath, string entryName, LocatedZipEntry located, Stream rawArchiveStream,
         ResolvedZipPassword password, List<ArchiveError> errors)
     {
-        var (result, stream) = EncryptedZipEntryReader.TryOpen(rawArchiveStream, located, password.Text, password.Encoding);
+        (EncryptedZipReadResult result, Stream? stream) = EncryptedZipEntryReader.TryOpen(rawArchiveStream, located, password.Text, password.Encoding);
         switch (result)
         {
             case EncryptedZipReadResult.WrongPassword:
@@ -1284,7 +1284,7 @@ public sealed class ZipArchiveService : IArchiveService
         CancellationToken cancellationToken)
     {
         using var reader = ZipArchiveReader.Open(archivePath, context.NameCodePages);
-        var archive = reader.Archive;
+        ZipArchive archive = reader.Archive;
 
         // T-F189: only paid for an archive that actually has a resolved password (i.e. contains
         // at least one encrypted entry) — a plain archive incurs zero extra parsing here. Built
@@ -1295,7 +1295,7 @@ public sealed class ZipArchiveService : IArchiveService
         if (context.Password is not null)
         {
             rawArchiveStream = File.OpenRead(archivePath);
-            var located = RawZipEntryLocator.LocateAll(rawArchiveStream);
+            List<LocatedZipEntry> located = RawZipEntryLocator.LocateAll(rawArchiveStream);
             if (located.Count != archive.Entries.Count)
                 throw new InvalidDataException(
                     "ZIP central directory entry count mismatch while resolving encrypted entries.");
@@ -1352,7 +1352,7 @@ public sealed class ZipArchiveService : IArchiveService
         // below deliberately still evaluates allFileEntries (the whole archive), not this subset —
         // see DECISIONS.md's T-F05 entry for why (conservative: may over-warn, never under-warns).
         bool isSelectedSubset = selectedEntryPaths is { Count: > 0 };
-        var entries = allEntries;
+        List<NamedZipEntry> entries = allEntries;
         if (isSelectedSubset)
         {
             var selectedSet = new HashSet<string>(selectedEntryPaths!, StringComparer.Ordinal);
@@ -1387,11 +1387,11 @@ public sealed class ZipArchiveService : IArchiveService
         // lives in ExtractionDestinationPlanner, shared with TarSandboxedService.
         // ExtractSingleArchiveAsync instead of hand-kept-in-sync per T-F118's own comment — see
         // DECISIONS.md's T-F157 entry.
-        var rootShape = ExtractionDestinationPlanner.Classify(isSelectedSubset, isSingleRootFolder, isSingleRootFile);
+        RootShape rootShape = ExtractionDestinationPlanner.Classify(isSelectedSubset, isSingleRootFolder, isSingleRootFile);
         bool rootDuplicatesArchiveName = context.EliminateDuplicateRootFolder && isSingleRootFolder
             && ExtractionDestinationPlanner.RootDuplicatesArchiveName(
                 entries[0].FullName[..entries[0].FullName.IndexOf('/')], archivePath);
-        var (actualDest, stripRootPrefix) = ExtractionDestinationPlanner.Resolve(
+        (string? actualDest, bool stripRootPrefix) = ExtractionDestinationPlanner.Resolve(
             alreadyIsolated, rootShape, destDir, unisolatedDestDir, rootDuplicatesArchiveName);
 
         // T-F94: whole-archive compression-ratio check, run BEFORE tempDest is created so a
@@ -1402,7 +1402,7 @@ public sealed class ZipArchiveService : IArchiveService
         // DECISIONS.md's T-F05 entry for why this stays conservative rather than narrowed.
         long declaredUncompressedSize = allFileEntries.Where(e => e.Entry.Length > 0).Sum(e => e.Entry.Length);
         long compressedFileSize = new FileInfo(archivePath).Length;
-        var bombOutcome = await ArchiveEntrySecurity.EvaluateCompressionBombAsync(
+        CompressionBombOutcome bombOutcome = await ArchiveEntrySecurity.EvaluateCompressionBombAsync(
             archivePath, declaredUncompressedSize, compressedFileSize,
             ArchiveEntrySecurity.GetAvailableFreeSpace(destDir),
             confirmCompressionBombExtraction).ConfigureAwait(false);
@@ -1456,13 +1456,13 @@ public sealed class ZipArchiveService : IArchiveService
 
         // T-F161: `staging` is disposed on ANY exit, including a failure or cancellation partway
         // through — a leftover staging folder never stays on a real destination.
-        foreach (var entry in entries)
+        foreach (NamedZipEntry? entry in entries)
         {
             // T-F260: throw — a `break` here committed the entries extracted so far as if the
             // archive were finished.
             cancellationToken.ThrowIfCancellationRequested();
 
-            var (extracted, bytesConsumed) = await TryExtractSingleEntryAsync(
+            (bool extracted, long bytesConsumed) = await TryExtractSingleEntryAsync(
                 entry, archivePath, bytesRead, plan, context, cancellationToken)
                 .ConfigureAwait(false);
 
@@ -1568,7 +1568,7 @@ public sealed class ZipArchiveService : IArchiveService
 
         if (plan.StripRootPrefix)
         {
-            var sep = relativePath.IndexOf(Path.DirectorySeparatorChar);
+            int sep = relativePath.IndexOf(Path.DirectorySeparatorChar);
             relativePath = relativePath[(sep + 1)..];
             // The stripped root folder itself: actualDest stands in for it.
             if (string.IsNullOrEmpty(relativePath))
@@ -1699,7 +1699,7 @@ public sealed class ZipArchiveService : IArchiveService
         // this point — decryption plugs in only here, exactly where entry.Open() used to be
         // called directly. See the ZIP Password Support design's "no second extraction path"
         // invariant in docs/TASKS.md's T-F189 entry.
-        var (opened, entryStream, decryptErrorMessage) = OpenEntryContentStream(named, plan, context);
+        (bool opened, Stream? entryStream, string? decryptErrorMessage) = OpenEntryContentStream(named, plan, context);
         if (!opened)
         {
             context.Errors.Add(new ArchiveError { SourcePath = archivePath, Message = decryptErrorMessage! });
@@ -1721,13 +1721,13 @@ public sealed class ZipArchiveService : IArchiveService
         NamedZipEntry named, ExtractionPlan plan, ZipExtractionContext context)
     {
         if (plan.EncryptedEntryMap is { } map
-            && map.TryGetValue(named.Entry, out var located)
+            && map.TryGetValue(named.Entry, out LocatedZipEntry? located)
             && located.GeneralPurposeEncryptedBit)
         {
             // EncryptedEntryMap is only built after a password resolved (ExtractWithSmartFolderingAsync).
             ResolvedZipPassword password = context.Password
                 ?? throw new InvalidOperationException("An encrypted entry map exists without a resolved password.");
-            var (result, stream) = EncryptedZipEntryReader.TryOpen(plan.RawArchiveStream!, located, password.Text, password.Encoding);
+            (EncryptedZipReadResult result, Stream? stream) = EncryptedZipEntryReader.TryOpen(plan.RawArchiveStream!, located, password.Text, password.Encoding);
             return result switch
             {
                 EncryptedZipReadResult.Success => (true, stream, null),
@@ -1843,7 +1843,7 @@ public sealed class ZipArchiveService : IArchiveService
             FileShare.Read,
             bufferSize: FileStreamBufferSize,
             useAsync: false);
-        var entry = archive.CreateEntry(entryName, compressionLevel);
+        ZipArchiveEntry entry = archive.CreateEntry(entryName, compressionLevel);
         // T-F31: Pin LastWriteTime to the source file's actual timestamp so that two
         // archive runs over identical inputs produce byte-identical ZIPs.
         // Without this, ZipArchiveEntry defaults to DateTimeOffset.UtcNow (creation time),
@@ -1852,13 +1852,13 @@ public sealed class ZipArchiveService : IArchiveService
 
         if (progressInfo.Progress != null && progressInfo.TotalBytes > 0)
         {
-            var entryStream = entry.Open();
+            Stream entryStream = entry.Open();
             await using var ps = new ProgressStream(entryStream, progressInfo.TotalBytes, progressInfo.StartOffset, progressInfo.Progress, entryName);
             await fileStream.CopyToAsync(ps, CopyBufferSize, cancellationToken).ConfigureAwait(false);
         }
         else
         {
-            using var entryStream = entry.Open();
+            using Stream entryStream = entry.Open();
             await fileStream.CopyToAsync(entryStream, CopyBufferSize, cancellationToken).ConfigureAwait(false);
         }
     }
@@ -1999,7 +1999,7 @@ public sealed class ZipArchiveService : IArchiveService
     private static long ComputeTotalBytes(IReadOnlyList<string> paths)
     {
         long total = 0;
-        foreach (var p in paths)
+        foreach (string p in paths)
         {
             try
             {
@@ -2025,7 +2025,7 @@ public sealed class ZipArchiveService : IArchiveService
     {
         long totalBytes = 0;
         int fileCount = 0;
-        foreach (var p in paths)
+        foreach (string p in paths)
         {
             try
             {
@@ -2037,7 +2037,7 @@ public sealed class ZipArchiveService : IArchiveService
                 }
                 else if (Directory.Exists(p))
                 {
-                    var (bytes, count) = ComputeDirectoryTotals(p);
+                    (long bytes, int count) = ComputeDirectoryTotals(p);
                     totalBytes += bytes;
                     fileCount += count;
                 }
@@ -2070,7 +2070,7 @@ public sealed class ZipArchiveService : IArchiveService
         try
         {
             Span<byte> header = stackalloc byte[4];
-            using var fs = File.OpenRead(path);
+            using FileStream fs = File.OpenRead(path);
             fs.ReadExactly(header);
             return header[0] == 0x50 && header[1] == 0x4B
                 && header[2] == 0x03 && header[3] == 0x04;
@@ -2097,7 +2097,7 @@ public sealed class ZipArchiveService : IArchiveService
         try
         {
             Span<byte> header = stackalloc byte[8];
-            using var fs = File.OpenRead(path);
+            using FileStream fs = File.OpenRead(path);
             int read = fs.Read(header);
             if (read < 8) return false;
             // flags are at offset 6 (little-endian); bit 0 = encryption flag
@@ -2113,7 +2113,7 @@ public sealed class ZipArchiveService : IArchiveService
     {
         try
         {
-            using var fs = File.OpenRead(path);
+            using FileStream fs = File.OpenRead(path);
             return RawZipEntryLocator.HasAnyEncryptedEntry(fs);
         }
         catch
@@ -2127,7 +2127,7 @@ public sealed class ZipArchiveService : IArchiveService
         try
         {
             Span<byte> header = stackalloc byte[6];
-            using var fs = File.OpenRead(path);
+            using FileStream fs = File.OpenRead(path);
             int read = fs.Read(header);
 
             // GZIP: 1F 8B
@@ -2173,7 +2173,7 @@ public sealed class ZipArchiveService : IArchiveService
     {
         try
         {
-            using var zip = ZipFile.OpenRead(path);
+            using ZipArchive zip = ZipFile.OpenRead(path);
             return zip.Entries.Count > 0;
         }
         catch

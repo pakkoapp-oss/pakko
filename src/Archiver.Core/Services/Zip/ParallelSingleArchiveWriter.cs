@@ -151,7 +151,7 @@ internal static class ParallelSingleArchiveWriter
             return;
         }
 
-        var items = WorkItemEnumerator.Enumerate(sortedSourcePaths, callbacks.ReportSkipped, callbacks.ReportError);
+        IEnumerable<FileWorkItem> items = WorkItemEnumerator.Enumerate(sortedSourcePaths, callbacks.ReportSkipped, callbacks.ReportError);
 
         // A per-operation hidden subfolder next to the destination archive — not loose files
         // scattered in that folder (confusing, per on-device verification), and not the system
@@ -260,7 +260,7 @@ internal static class ParallelSingleArchiveWriter
         {
             try
             {
-                foreach (var item in items)
+                foreach (FileWorkItem item in items)
                 {
                     if (cancellationToken.IsCancellationRequested) break;
 
@@ -277,7 +277,7 @@ internal static class ParallelSingleArchiveWriter
                     {
                         await computeGate.WaitAsync(cancellationToken).ConfigureAwait(false);
                         bool inMemory = item.FileSize <= InMemoryCompressByteThreshold;
-                        var compressor = inMemory ? compressInMemory : compressToTempFile;
+                        Func<FileWorkItem, CancellationToken, Task<WorkResult>> compressor = inMemory ? compressInMemory : compressToTempFile;
                         resultTask = RunGatedAsync(item, compressor, computeGate, pendingTempFiles, cancellationToken);
                         dispatchedTasks.Add(resultTask);
                     }
@@ -296,7 +296,7 @@ internal static class ParallelSingleArchiveWriter
         {
             await using var writer = new ZipEntryWriter(tempPath);
 
-            await foreach (var task in pipeline.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
+            await foreach (Task<WorkResult>? task in pipeline.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
             {
                 WorkResult result = await task.ConfigureAwait(false);
 
@@ -347,7 +347,7 @@ internal static class ParallelSingleArchiveWriter
             // everything the producer had already dispatched) could add to pendingTempFiles AFTER
             // the sweep below already ran, leaving a real orphaned temp file on disk.
             try { await producer.ConfigureAwait(false); } catch { /* best-effort */ }
-            foreach (var dispatched in dispatchedTasks)
+            foreach (Task<WorkResult> dispatched in dispatchedTasks)
             {
                 try { await dispatched.ConfigureAwait(false); } catch { /* best-effort */ }
             }
@@ -355,7 +355,7 @@ internal static class ParallelSingleArchiveWriter
             // Best-effort sweep: anything still tracked here was produced by a worker but never
             // reached (or was fully processed by) the consumer loop above — e.g. cancellation or
             // an unhandled exception cut the operation short after some temp files were written.
-            foreach (var leftoverPath in pendingTempFiles.Keys)
+            foreach (string leftoverPath in pendingTempFiles.Keys)
             {
                 try { File.Delete(leftoverPath); } catch { /* best-effort */ }
             }
@@ -391,7 +391,7 @@ internal static class ParallelSingleArchiveWriter
     {
         try
         {
-            var result = await compressor(item, cancellationToken).ConfigureAwait(false);
+            WorkResult result = await compressor(item, cancellationToken).ConfigureAwait(false);
             if (result.Kind == WorkResultKind.TempFileCompressed)
                 pendingTempFiles.TryAdd(result.TempFilePath, 0);
             return result;
@@ -409,7 +409,7 @@ internal static class ParallelSingleArchiveWriter
             cancellationToken.ThrowIfCancellationRequested();
             try
             {
-                var compressed = CompressSmallFile(item.SourcePath, settings);
+                CompressedEntryData compressed = CompressSmallFile(item.SourcePath, settings);
                 // In-memory files are small (<= InMemoryCompressByteThreshold) and compressed in one
                 // shot, not chunked — a single report on completion is enough; they never cause the
                 // "frozen mid-file" symptom the temp-file path's per-chunk reporting below fixes.
@@ -472,7 +472,7 @@ internal static class ParallelSingleArchiveWriter
                     FileShare.None, bufferSize: CopyBufferSize, useAsync: false);
 
                 ushort method = ZipEntryWriter.SelectMethod(settings.Level);
-                var buffer = new byte[CopyBufferSize];
+                byte[] buffer = new byte[CopyBufferSize];
                 long uncompressedTotal;
                 uint crc;
 
@@ -485,7 +485,7 @@ internal static class ParallelSingleArchiveWriter
                 // T-F193: dispose order matters — the compressor flushes its tail into the AES
                 // stream, whose own dispose then appends the authentication code, and only after
                 // both is tempOut.Length the entry's real compressed size.
-                var aes = settings.Password is null ? null : new WinZipAesEncryptStream(tempOut, settings.Password);
+                WinZipAesEncryptStream? aes = settings.Password is null ? null : new WinZipAesEncryptStream(tempOut, settings.Password);
                 using (aes)
                 {
                     Stream target = (Stream?)aes ?? tempOut;

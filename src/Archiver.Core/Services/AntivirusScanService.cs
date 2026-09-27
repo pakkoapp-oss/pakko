@@ -82,7 +82,7 @@ public sealed class AntivirusScanService : IAntivirusScanService
         CancellationToken cancellationToken = default)
     {
         var findings = new List<ThreatFinding>();
-        var classification = ArchiveFormatPolicy.Classify(options.ArchivePaths, _tarCapabilities, _policy);
+        ArchiveFormatPolicy.Classification classification = ArchiveFormatPolicy.Classify(options.ArchivePaths, _tarCapabilities, _policy);
 
         foreach (SkippedFile skipped in classification.Unsupported)
         {
@@ -249,11 +249,11 @@ public sealed class AntivirusScanService : IAntivirusScanService
 
         using (reader)
         {
-            var archive = reader.Archive;
+            ZipArchive archive = reader.Archive;
             // T-F194: an encrypted entry used to reach entry.Open() and fail as "Could not read
             // entry" — never scanned at all, which is exactly how password-protected malware
             // delivery evades AV. Now its decrypted plaintext is scanned when a password resolves.
-            using Stream? rawArchiveStream = TryMapEncryptedEntries(archivePath, archive, out var encryptedEntryMap);
+            using Stream? rawArchiveStream = TryMapEncryptedEntries(archivePath, archive, out Dictionary<ZipArchiveEntry, LocatedZipEntry>? encryptedEntryMap);
             ZipArchiveService.ResolvedZipPassword? password = encryptedEntryMap is null
                 ? null
                 : await ZipArchiveService.ResolveArchivePasswordAsync(archivePath, passwordResolver, codePages).ConfigureAwait(false);
@@ -289,7 +289,7 @@ public sealed class AntivirusScanService : IAntivirusScanService
                 try
                 {
                     ThreatFinding finding = encryptedEntryMap is { } map
-                                            && map.TryGetValue(entry, out var located)
+                                            && map.TryGetValue(entry, out LocatedZipEntry? located)
                                             && located.GeneralPurposeEncryptedBit
                         ? await ScanEncryptedEntryAsync(
                             archivePath, named, located, rawArchiveStream!, password, scanner, cancellationToken)
@@ -419,7 +419,7 @@ public sealed class AntivirusScanService : IAntivirusScanService
         try
         {
             raw = File.OpenRead(archivePath);
-            var located = RawZipEntryLocator.LocateAll(raw);
+            List<LocatedZipEntry> located = RawZipEntryLocator.LocateAll(raw);
             if (located.Count != archive.Entries.Count)
             {
                 raw.Dispose();
@@ -454,7 +454,7 @@ public sealed class AntivirusScanService : IAntivirusScanService
         if (located.CompressedSize > MaxScannableEntryBytes || entry.Length > MaxScannableEntryBytes)
             return OversizedFinding(archivePath, entryName);
 
-        var (result, stream) = EncryptedZipEntryReader.TryOpen(rawArchiveStream, located, password.Text, password.Encoding);
+        (EncryptedZipReadResult result, Stream? stream) = EncryptedZipEntryReader.TryOpen(rawArchiveStream, located, password.Text, password.Encoding);
         return result switch
         {
             EncryptedZipReadResult.Success => await ScanOneEntryAsync(

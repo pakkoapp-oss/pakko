@@ -46,7 +46,7 @@ public sealed class CliSubprocessTests
         string zipPath = Path.Combine(scratchDir, "photo.zip");
         string sourceFile = Path.Combine(scratchDir, "photo.png");
         File.WriteAllText(sourceFile, "not a real png, just single-file content");
-        using (var archive = ZipFile.Open(zipPath, ZipArchiveMode.Create))
+        using (ZipArchive archive = ZipFile.Open(zipPath, ZipArchiveMode.Create))
             archive.CreateEntryFromFile(sourceFile, "photo.png");
 
         string destDir = CliFixtureFiles.CreateScratchDir();

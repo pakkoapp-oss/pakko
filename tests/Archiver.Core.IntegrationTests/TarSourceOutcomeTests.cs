@@ -34,7 +34,7 @@ public sealed class TarSourceOutcomeTests : IDisposable
     {
         string tar = WriteTar("clean.tar", "a.txt", "b.txt");
 
-        var result = await _sut.ExtractAsync(new ExtractOptions { ArchivePaths = [tar], DestinationFolder = Dest("out") });
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions { ArchivePaths = [tar], DestinationFolder = Dest("out") });
 
         result.Sources.Should().ContainSingle().Which.Should().Be(new SourceResult { Path = tar, Outcome = SourceOutcome.Completed });
     }
@@ -47,7 +47,7 @@ public sealed class TarSourceOutcomeTests : IDisposable
         Directory.CreateDirectory(dest);
         File.WriteAllText(Path.Combine(dest, "a.txt"), "old");
 
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [tar],
             DestinationFolder = dest,
@@ -64,7 +64,7 @@ public sealed class TarSourceOutcomeTests : IDisposable
     {
         string tar = WriteTar("subset.tar", "a.txt", "b.txt");
 
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [tar],
             DestinationFolder = Dest("out"),
@@ -83,7 +83,7 @@ public sealed class TarSourceOutcomeTests : IDisposable
         using var cts = new CancellationTokenSource();
         var progress = new SynchronousProgress<ProgressReport>(r => { if (r.Percent >= 50) cts.Cancel(); });
 
-        var act = () => _sut.ExtractAsync(
+        Func<Task<ArchiveResult>> act = () => _sut.ExtractAsync(
             new ExtractOptions { ArchivePaths = [first, second], DestinationFolder = Dest("out") }, progress, cts.Token);
 
         await act.Should().ThrowAsync<OperationCanceledException>();
@@ -100,7 +100,7 @@ public sealed class TarSourceOutcomeTests : IDisposable
         File.WriteAllText(Path.Combine(dest, "mid", "a.txt"), "existing");
         using var cts = new CancellationTokenSource();
 
-        var act = () => _sut.ExtractAsync(new ExtractOptions
+        Func<Task<ArchiveResult>> act = () => _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [tar],
             DestinationFolder = dest,
@@ -122,7 +122,7 @@ public sealed class TarSourceOutcomeTests : IDisposable
         using var cts = new CancellationTokenSource();
         cts.Cancel();
 
-        var act = () => _sut.ExtractAsync(new ExtractOptions { ArchivePaths = [tar], DestinationFolder = Dest("out") }, null, cts.Token);
+        Func<Task<ArchiveResult>> act = () => _sut.ExtractAsync(new ExtractOptions { ArchivePaths = [tar], DestinationFolder = Dest("out") }, null, cts.Token);
 
         await act.Should().ThrowAsync<OperationCanceledException>();
     }
@@ -135,7 +135,7 @@ public sealed class TarSourceOutcomeTests : IDisposable
         File.WriteAllText(a, "a");
         File.WriteAllText(b, "b");
 
-        var result = await _sut.CompressAsync(new ArchiveOptions
+        ArchiveResult result = await _sut.CompressAsync(new ArchiveOptions
         {
             SourcePaths = [a, b],
             DestinationFolder = Dest("out"),
@@ -152,7 +152,7 @@ public sealed class TarSourceOutcomeTests : IDisposable
         string a = Path.Combine(_temp.Path, "a.txt");
         File.WriteAllText(a, "a");
 
-        var result = await _sut.CompressAsync(new ArchiveOptions
+        ArchiveResult result = await _sut.CompressAsync(new ArchiveOptions
         {
             SourcePaths = [a],
             DestinationFolder = Dest("out"),
@@ -169,7 +169,7 @@ public sealed class TarSourceOutcomeTests : IDisposable
         string a = Path.Combine(_temp.Path, "a.txt");
         File.WriteAllText(a, "a");
 
-        var result = await _sut.CompressAsync(new ArchiveOptions
+        ArchiveResult result = await _sut.CompressAsync(new ArchiveOptions
         {
             SourcePaths = [a, Path.Combine(_temp.Path, "missing.txt")],
             DestinationFolder = Dest("out"),
@@ -188,7 +188,7 @@ public sealed class TarSourceOutcomeTests : IDisposable
         using var cts = new CancellationTokenSource();
         cts.Cancel();
 
-        var act = () => _sut.CompressAsync(new ArchiveOptions
+        Func<Task<ArchiveResult>> act = () => _sut.CompressAsync(new ArchiveOptions
         {
             SourcePaths = [a],
             DestinationFolder = Dest("out"),

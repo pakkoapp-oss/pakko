@@ -8,7 +8,7 @@ public sealed class ProgressSpeedSamplerTests
     [Fact]
     public void Sample_ZeroElapsedTime_ProducesNoSpikeAndNoDivisionByZero()
     {
-        var now = DateTime.UtcNow;
+        DateTime now = DateTime.UtcNow;
         var sut = new ProgressSpeedSampler(now);
 
         double speed = sut.Sample(bytesTransferred: 1_000_000, now); // same instant as construction
@@ -19,7 +19,7 @@ public sealed class ProgressSpeedSamplerTests
     [Fact]
     public void Sample_ElapsedTimeBelowMinInterval_IsIgnored()
     {
-        var start = DateTime.UtcNow;
+        DateTime start = DateTime.UtcNow;
         var sut = new ProgressSpeedSampler(start);
 
         double speed = sut.Sample(1_000_000, start.AddMilliseconds(100)); // < 250ms floor
@@ -30,7 +30,7 @@ public sealed class ProgressSpeedSamplerTests
     [Fact]
     public void Sample_FirstValidSample_ReturnsRawInstantSpeedNotSmoothed()
     {
-        var start = DateTime.UtcNow;
+        DateTime start = DateTime.UtcNow;
         var sut = new ProgressSpeedSampler(start);
 
         double speed = sut.Sample(1_000_000, start.AddSeconds(1));
@@ -41,7 +41,7 @@ public sealed class ProgressSpeedSamplerTests
     [Fact]
     public void Sample_SecondValidSample_BlendsWithPreviousViaEma()
     {
-        var start = DateTime.UtcNow;
+        DateTime start = DateTime.UtcNow;
         var sut = new ProgressSpeedSampler(start);
 
         sut.Sample(1_000_000, start.AddSeconds(1)); // instant speed 1,000,000 B/s
@@ -54,7 +54,7 @@ public sealed class ProgressSpeedSamplerTests
     [Fact]
     public void Sample_NonIncreasingBytesTransferred_IsToleratedAndReturnsLastKnownValueUnchanged()
     {
-        var start = DateTime.UtcNow;
+        DateTime start = DateTime.UtcNow;
         var sut = new ProgressSpeedSampler(start);
 
         double firstSpeed = sut.Sample(1_000_000, start.AddSeconds(1));
@@ -71,7 +71,7 @@ public sealed class ProgressSpeedSamplerTests
     [Fact]
     public void Sample_RepeatedCallsAcrossManyIntervals_NeverProducesNegativeSpeed()
     {
-        var start = DateTime.UtcNow;
+        DateTime start = DateTime.UtcNow;
         var sut = new ProgressSpeedSampler(start);
         long bytes = 0;
 

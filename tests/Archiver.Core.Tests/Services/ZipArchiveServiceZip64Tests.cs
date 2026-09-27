@@ -1,3 +1,4 @@
+using System.IO.Compression;
 using System.Runtime.InteropServices;
 using Archiver.Core.Models;
 using Archiver.Core.Services;
@@ -37,7 +38,7 @@ public sealed class ZipArchiveServiceZip64Tests : IDisposable
         for (int i = 0; i < fileCount; i++)
             File.Create(Path.Combine(sourceDir, $"f{i}.txt")).Dispose(); // 0-byte — fast to create
 
-        var result = await _sut.ArchiveAsync(new ArchiveOptions
+        ArchiveResult result = await _sut.ArchiveAsync(new ArchiveOptions
         {
             SourcePaths = [sourceDir],
             DestinationFolder = _temp.Path,
@@ -47,7 +48,7 @@ public sealed class ZipArchiveServiceZip64Tests : IDisposable
         result.Success.Should().BeTrue();
         result.Errors.Should().BeEmpty();
 
-        using var zip = System.IO.Compression.ZipFile.OpenRead(result.CreatedFiles[0]);
+        using ZipArchive zip = System.IO.Compression.ZipFile.OpenRead(result.CreatedFiles[0]);
         zip.Entries.Should().HaveCount(fileCount);
     }
 
@@ -61,7 +62,7 @@ public sealed class ZipArchiveServiceZip64Tests : IDisposable
         for (int i = 0; i < fileCount; i++)
             File.Create(Path.Combine(sourceDir, $"f{i}.txt")).Dispose();
 
-        var archiveResult = await _sut.ArchiveAsync(new ArchiveOptions
+        ArchiveResult archiveResult = await _sut.ArchiveAsync(new ArchiveOptions
         {
             SourcePaths = [sourceDir],
             DestinationFolder = _temp.Path,
@@ -70,7 +71,7 @@ public sealed class ZipArchiveServiceZip64Tests : IDisposable
         archiveResult.Success.Should().BeTrue();
 
         string extractDest = Path.Combine(_temp.Path, "many_files_out");
-        var extractResult = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult extractResult = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [archiveResult.CreatedFiles[0]],
             DestinationFolder = extractDest,
@@ -96,7 +97,7 @@ public sealed class ZipArchiveServiceZip64Tests : IDisposable
         for (int i = 0; i < fileCount; i++)
             File.Create(Path.Combine(sourceDir, $"f{i}.txt")).Dispose();
 
-        var archiveResult = await _sut.ArchiveAsync(new ArchiveOptions
+        ArchiveResult archiveResult = await _sut.ArchiveAsync(new ArchiveOptions
         {
             SourcePaths = [sourceDir],
             DestinationFolder = _temp.Path,
@@ -104,7 +105,7 @@ public sealed class ZipArchiveServiceZip64Tests : IDisposable
         });
         archiveResult.Success.Should().BeTrue();
 
-        var listResult = await _sut.ListEntriesAsync(archiveResult.CreatedFiles[0]);
+        ArchiveListResult listResult = await _sut.ListEntriesAsync(archiveResult.CreatedFiles[0]);
 
         listResult.Success.Should().BeTrue();
         listResult.Entries.Should().HaveCount(fileCount);
@@ -151,7 +152,7 @@ public sealed class ZipArchiveServiceZip64Tests : IDisposable
         if (CreateSparseFileOver4Gb(bigFile) is null)
             return; // sparse files not supported on this volume — skip gracefully
 
-        var archiveResult = await _sut.ArchiveAsync(new ArchiveOptions
+        ArchiveResult archiveResult = await _sut.ArchiveAsync(new ArchiveOptions
         {
             SourcePaths = [bigFile],
             DestinationFolder = _temp.Path,
@@ -166,7 +167,7 @@ public sealed class ZipArchiveServiceZip64Tests : IDisposable
         archiveResult.Errors.Should().BeEmpty();
 
         string extractDest = Path.Combine(_temp.Path, "big_out");
-        var extractResult = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult extractResult = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [archiveResult.CreatedFiles[0]],
             DestinationFolder = extractDest,

@@ -53,8 +53,8 @@ public sealed class CompressionPerformanceTests : IDisposable
         SevenZipRunner.Archive(sourceDir, Path.Combine(_temp.Path, "warmup_7za.zip"));
 
         string pakkoZip = Path.Combine(_temp.Path, "pakko.zip");
-        var pakkoElapsed = await ArchiveWithPakkoTimed(sourceDir, pakkoZip);
-        var referenceElapsed = SevenZipRunner.Archive(sourceDir, Path.Combine(_temp.Path, "reference.zip"));
+        TimeSpan pakkoElapsed = await ArchiveWithPakkoTimed(sourceDir, pakkoZip);
+        TimeSpan referenceElapsed = SevenZipRunner.Archive(sourceDir, Path.Combine(_temp.Path, "reference.zip"));
 
         File.Exists(pakkoZip).Should().BeTrue();
         new FileInfo(pakkoZip).Length.Should().BeGreaterThan(0);
@@ -75,8 +75,8 @@ public sealed class CompressionPerformanceTests : IDisposable
         SevenZipRunner.Extract(referenceZip, Path.Combine(_temp.Path, "warmup_extract_7za"));
 
         string pakkoDest = Path.Combine(_temp.Path, "extract_pakko");
-        var pakkoElapsed = await ExtractWithPakkoTimed(referenceZip, pakkoDest);
-        var referenceElapsed = SevenZipRunner.Extract(referenceZip, Path.Combine(_temp.Path, "extract_7za"));
+        TimeSpan pakkoElapsed = await ExtractWithPakkoTimed(referenceZip, pakkoDest);
+        TimeSpan referenceElapsed = SevenZipRunner.Extract(referenceZip, Path.Combine(_temp.Path, "extract_7za"));
 
         Directory.GetFiles(pakkoDest, "*", SearchOption.AllDirectories).Should().HaveCount(1);
         AssertRatio("Extract/OneLargeFile", pakkoElapsed, referenceElapsed, calibratedBaselineRatio);
@@ -117,8 +117,8 @@ public sealed class CompressionPerformanceTests : IDisposable
         SevenZipRunner.Archive(sourceDir, Path.Combine(_temp.Path, "warmup_7za.zip"));
 
         string pakkoZip = Path.Combine(_temp.Path, "pakko.zip");
-        var pakkoElapsed = await ArchiveWithPakkoTimed(sourceDir, pakkoZip);
-        var referenceElapsed = SevenZipRunner.Archive(sourceDir, Path.Combine(_temp.Path, "reference.zip"));
+        TimeSpan pakkoElapsed = await ArchiveWithPakkoTimed(sourceDir, pakkoZip);
+        TimeSpan referenceElapsed = SevenZipRunner.Archive(sourceDir, Path.Combine(_temp.Path, "reference.zip"));
 
         File.Exists(pakkoZip).Should().BeTrue();
         new FileInfo(pakkoZip).Length.Should().BeGreaterThan(0);
@@ -138,8 +138,8 @@ public sealed class CompressionPerformanceTests : IDisposable
         SevenZipRunner.Extract(referenceZip, Path.Combine(_temp.Path, "warmup_extract_7za"));
 
         string pakkoDest = Path.Combine(_temp.Path, "extract_pakko");
-        var pakkoElapsed = await ExtractWithPakkoTimed(referenceZip, pakkoDest);
-        var referenceElapsed = SevenZipRunner.Extract(referenceZip, Path.Combine(_temp.Path, "extract_7za"));
+        TimeSpan pakkoElapsed = await ExtractWithPakkoTimed(referenceZip, pakkoDest);
+        TimeSpan referenceElapsed = SevenZipRunner.Extract(referenceZip, Path.Combine(_temp.Path, "extract_7za"));
 
         Directory.GetFiles(pakkoDest, "*", SearchOption.AllDirectories)
             .Should().HaveCount(PerformanceFixtures.ManySmallFilesCount);
@@ -170,8 +170,8 @@ public sealed class CompressionPerformanceTests : IDisposable
         SevenZipRunner.Archive(sourceDir, Path.Combine(_temp.Path, "warmup_7za.zip"));
 
         string pakkoZip = Path.Combine(_temp.Path, "pakko.zip");
-        var pakkoElapsed = await ArchiveWithPakkoTimed(sourceDir, pakkoZip);
-        var referenceElapsed = SevenZipRunner.Archive(sourceDir, Path.Combine(_temp.Path, "reference.zip"));
+        TimeSpan pakkoElapsed = await ArchiveWithPakkoTimed(sourceDir, pakkoZip);
+        TimeSpan referenceElapsed = SevenZipRunner.Archive(sourceDir, Path.Combine(_temp.Path, "reference.zip"));
 
         File.Exists(pakkoZip).Should().BeTrue();
         new FileInfo(pakkoZip).Length.Should().BeGreaterThan(0);
@@ -191,8 +191,8 @@ public sealed class CompressionPerformanceTests : IDisposable
         SevenZipRunner.Extract(referenceZip, Path.Combine(_temp.Path, "warmup_extract_7za"));
 
         string pakkoDest = Path.Combine(_temp.Path, "extract_pakko");
-        var pakkoElapsed = await ExtractWithPakkoTimed(referenceZip, pakkoDest);
-        var referenceElapsed = SevenZipRunner.Extract(referenceZip, Path.Combine(_temp.Path, "extract_7za"));
+        TimeSpan pakkoElapsed = await ExtractWithPakkoTimed(referenceZip, pakkoDest);
+        TimeSpan referenceElapsed = SevenZipRunner.Extract(referenceZip, Path.Combine(_temp.Path, "extract_7za"));
 
         Directory.GetFiles(pakkoDest, "*", SearchOption.AllDirectories)
             .Should().HaveCount(PerformanceFixtures.HybridSmallFilesCount + PerformanceFixtures.HybridMediumFilesCount);
@@ -203,7 +203,7 @@ public sealed class CompressionPerformanceTests : IDisposable
     {
         return await TimeAsync(async () =>
         {
-            var result = await _sut.ArchiveAsync(new ArchiveOptions
+            ArchiveResult result = await _sut.ArchiveAsync(new ArchiveOptions
             {
                 SourcePaths = [sourceDir],
                 DestinationFolder = Path.GetDirectoryName(destinationZipPath)!,
@@ -218,7 +218,7 @@ public sealed class CompressionPerformanceTests : IDisposable
     {
         return await TimeAsync(async () =>
         {
-            var result = await _sut.ExtractAsync(new ExtractOptions
+            ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
             {
                 ArchivePaths = [archivePath],
                 DestinationFolder = destinationDir,

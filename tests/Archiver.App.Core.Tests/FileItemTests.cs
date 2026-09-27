@@ -15,7 +15,7 @@ public sealed class FileItemTests : IDisposable
     [Fact]
     public async Task TryCreate_ExistingFile_ReturnsItemWithSizeAndCrc()
     {
-        var path = Path.Combine(_dir, "файл.txt");
+        string path = Path.Combine(_dir, "файл.txt");
         File.WriteAllText(path, "12345");
 
         var item = FileItem.TryCreate(path);
@@ -26,7 +26,7 @@ public sealed class FileItemTests : IDisposable
         item.Type.Should().Be("TXT");
 
         // The CRC read runs in the background with the file open; wait for it so Dispose can delete.
-        var deadline = DateTime.UtcNow.AddSeconds(10);
+        DateTime deadline = DateTime.UtcNow.AddSeconds(10);
         while (item.Crc32 is null && DateTime.UtcNow < deadline)
             await Task.Delay(10);
         item.Crc32Display.Should().Be("CBF53A1C");

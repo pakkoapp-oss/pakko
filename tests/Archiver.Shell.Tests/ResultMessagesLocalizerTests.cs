@@ -58,7 +58,7 @@ public sealed class ResultMessagesLocalizerTests
     [Fact]
     public void Get_UkrainianCulture_ReturnsTranslatedText()
     {
-        var original = CultureInfo.CurrentUICulture;
+        CultureInfo original = CultureInfo.CurrentUICulture;
         try
         {
             CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("uk-UA");
@@ -78,11 +78,11 @@ public sealed class ResultMessagesLocalizerTests
     [MemberData(nameof(OpenUiCultureKeyPairs))]
     public void Get_OpenUiKey_IsTranslatedInEveryLocale(string culture, string key)
     {
-        var original = CultureInfo.CurrentUICulture;
+        CultureInfo original = CultureInfo.CurrentUICulture;
         try
         {
             CultureInfo.CurrentUICulture = CultureInfo.InvariantCulture;
-            var neutral = ResultMessagesLocalizer.Get(key);
+            string neutral = ResultMessagesLocalizer.Get(key);
             CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(culture);
 
             ResultMessagesLocalizer.Get(key).Should().NotBe(neutral);
@@ -95,15 +95,15 @@ public sealed class ResultMessagesLocalizerTests
 
     public static IEnumerable<object[]> OpenUiCultureKeyPairs()
     {
-        foreach (var culture in NonNeutralCultures)
-            foreach (var key in new[] { "OpenUiTooManyFiles", "OpenUiNoPackage" })
+        foreach (string culture in NonNeutralCultures)
+            foreach (string? key in new[] { "OpenUiTooManyFiles", "OpenUiNoPackage" })
                 yield return [culture, key];
     }
 
     public static IEnumerable<object[]> AllCultureKeyPairs()
     {
-        foreach (var culture in NonNeutralCultures)
-            foreach (var key in AllKeys)
+        foreach (string culture in NonNeutralCultures)
+            foreach (string key in AllKeys)
                 yield return [culture, key];
     }
 
@@ -111,7 +111,7 @@ public sealed class ResultMessagesLocalizerTests
     [MemberData(nameof(AllCultureKeyPairs))]
     public void Get_EveryLocaleAndKey_NeverThrowsFormatException(string culture, string key)
     {
-        var original = CultureInfo.CurrentUICulture;
+        CultureInfo original = CultureInfo.CurrentUICulture;
         try
         {
             CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(culture);

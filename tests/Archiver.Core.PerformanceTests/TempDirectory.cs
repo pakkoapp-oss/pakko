@@ -10,7 +10,7 @@ public sealed class TempDirectory : IDisposable
 
     public string CreateFile(string name, string content = "test content")
     {
-        var path = System.IO.Path.Combine(Path, name);
+        string path = System.IO.Path.Combine(Path, name);
         File.WriteAllText(path, content);
         return path;
     }

@@ -68,7 +68,7 @@ public sealed class ZipArchiveServicePropertyTests : IDisposable
         GenerateLevel(sourceRoot, "", rng, shape.MaxDepth, shape, relativeFilePaths);
         relativeFilePaths.Should().NotBeEmpty("the generator must produce at least one file to make this test meaningful");
 
-        var archiveResult = await _sut.ArchiveAsync(new ArchiveOptions
+        ArchiveResult archiveResult = await _sut.ArchiveAsync(new ArchiveOptions
         {
             SourcePaths = [sourceRoot],
             DestinationFolder = _temp.Path,
@@ -79,7 +79,7 @@ public sealed class ZipArchiveServicePropertyTests : IDisposable
         archiveResult.Errors.Should().BeEmpty($"seed {seed}");
 
         string extractDest = Path.Combine(_temp.Path, $"extracted_{seed}");
-        var extractResult = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult extractResult = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [archiveResult.CreatedFiles[0]],
             DestinationFolder = extractDest,
@@ -92,7 +92,7 @@ public sealed class ZipArchiveServicePropertyTests : IDisposable
         // A single directory archived alone is a single-root-folder archive; SingleFolder mode keeps
         // that root (T-F205), so files land under extractDest\<sourceRoot's name>.
         string extractedRoot = Path.Combine(extractDest, Path.GetFileName(sourceRoot));
-        foreach (var relativePath in relativeFilePaths)
+        foreach (string relativePath in relativeFilePaths)
         {
             string originalPath = Path.Combine(sourceRoot, relativePath);
             string extractedPath = Path.Combine(extractedRoot, relativePath);
@@ -103,7 +103,7 @@ public sealed class ZipArchiveServicePropertyTests : IDisposable
                 $"seed {seed}: '{relativePath}' content must be byte-identical after round-trip");
         }
 
-        var extractedFileCount = Directory.GetFiles(extractDest, "*", SearchOption.AllDirectories).Length;
+        int extractedFileCount = Directory.GetFiles(extractDest, "*", SearchOption.AllDirectories).Length;
         extractedFileCount.Should().Be(relativeFilePaths.Count,
             $"seed {seed}: no extra or missing files after round-trip");
     }
@@ -130,7 +130,7 @@ public sealed class ZipArchiveServicePropertyTests : IDisposable
             string fullPath = Path.Combine(currentDir, fileName);
 
             int size = rng.Next(shape.MinFileSize, shape.MaxFileSize + 1);
-            var bytes = new byte[size];
+            byte[] bytes = new byte[size];
             rng.NextBytes(bytes);
             File.WriteAllBytes(fullPath, bytes);
             relativeFilePaths.Add(relativePath);
@@ -155,7 +155,7 @@ public sealed class ZipArchiveServicePropertyTests : IDisposable
     private static string ComputeSha256(string path)
     {
         using var sha = SHA256.Create();
-        using var fs = File.OpenRead(path);
+        using FileStream fs = File.OpenRead(path);
         return Convert.ToHexString(sha.ComputeHash(fs));
     }
 }

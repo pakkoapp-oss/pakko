@@ -27,7 +27,7 @@ public static class Crc32
 
     private static uint[] BuildTables()
     {
-        var t0 = new uint[256];
+        uint[] t0 = new uint[256];
         for (uint i = 0; i < 256; i++)
         {
             uint c = i;
@@ -36,7 +36,7 @@ public static class Crc32
             t0[i] = c;
         }
 
-        var tables = new uint[8 * 256];
+        uint[] tables = new uint[8 * 256];
         t0.CopyTo(tables, 0);
         for (int slice = 1; slice < 8; slice++)
         {
@@ -152,7 +152,7 @@ public static class Crc32
         public void Update(ReadOnlySpan<byte> data)
         {
             uint crc = _crc;
-            var t = Tables;
+            uint[] t = Tables;
             int i = 0;
             int n = data.Length;
 

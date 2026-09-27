@@ -7,7 +7,7 @@ using Archiver.Shell;
 // equivalent for this frontend.
 GroupPolicyOptions policy = GroupPolicyService.Load();
 
-var command = ShellArgumentParser.Parse(args);
+ParsedCommand command = ShellArgumentParser.Parse(args);
 
 if (command.Type == CommandType.Invalid)
 {

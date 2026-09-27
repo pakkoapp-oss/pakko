@@ -53,7 +53,7 @@ public sealed class HelperOperationUiTests : IDisposable
 
     private static async Task WaitUntilAsync(Func<bool> condition)
     {
-        var limit = DateTime.UtcNow + WaitLimit;
+        DateTime limit = DateTime.UtcNow + WaitLimit;
         while (!condition())
         {
             if (DateTime.UtcNow > limit)
@@ -67,7 +67,7 @@ public sealed class HelperOperationUiTests : IDisposable
     [Fact]
     public async Task Begin_SendsHelloThenBegin()
     {
-        using var session = CreateUi().Begin("Розпакування: звіт.zip", ProgressStyle.Percent);
+        using IOperationSession session = CreateUi().Begin("Розпакування: звіт.zip", ProgressStyle.Percent);
 
         var hello = (Hello)(await _helper.ReadAsync())!;
         var begin = (Begin)(await _helper.ReadAsync())!;
@@ -83,7 +83,7 @@ public sealed class HelperOperationUiTests : IDisposable
     [Fact]
     public async Task Progress_ReachesTheHelperWithItsStatusLine()
     {
-        using var session = await BeginReadyAsync(style: ProgressStyle.Percent);
+        using IOperationSession session = await BeginReadyAsync(style: ProgressStyle.Percent);
 
         session.Progress!.Report(new ProgressReport { Percent = 40, CurrentFile = @"папка\a.txt" });
 
@@ -93,7 +93,7 @@ public sealed class HelperOperationUiTests : IDisposable
     [Fact]
     public async Task BeginItem_NamesTheArchive()
     {
-        using var session = await BeginReadyAsync();
+        using IOperationSession session = await BeginReadyAsync();
 
         session.BeginItem("b.zip", 2, 3);
 
@@ -103,7 +103,7 @@ public sealed class HelperOperationUiTests : IDisposable
     [Fact]
     public async Task BeginItem_DropsThePreviousArchivesSpeed()
     {
-        using var session = await BeginReadyAsync();
+        using IOperationSession session = await BeginReadyAsync();
         session.Progress!.Report(new ProgressReport { Percent = 0, BytesTransferred = 0, TotalBytes = 100_000_000 });
         await Task.Delay(TimeSpan.FromMilliseconds(400));
         var first = new ProgressReport { Percent = 90, BytesTransferred = 90_000_000, TotalBytes = 100_000_000 };
@@ -130,7 +130,7 @@ public sealed class HelperOperationUiTests : IDisposable
     [Fact]
     public async Task CleanComplete_ReturnsOnceTheWindowClosed()
     {
-        using var session = await BeginReadyAsync(closeTimeout: WaitLimit);
+        using IOperationSession session = await BeginReadyAsync(closeTimeout: WaitLimit);
 
         var complete = Task.Run(() => session.Complete(null));
         (await _helper.ReadUntilAsync<Complete>()).Result.Should().BeNull();
@@ -146,7 +146,7 @@ public sealed class HelperOperationUiTests : IDisposable
     [Fact]
     public async Task PreformattedResult_ReachesTheWindowPreformatted()
     {
-        using var session = await BeginReadyAsync();
+        using IOperationSession session = await BeginReadyAsync();
 
         _ = Task.Run(() => session.Complete(new OperationMessage("SHA-256", MessageSeverity.Information, "a.txt: 00", Preformatted: true)));
 
@@ -157,7 +157,7 @@ public sealed class HelperOperationUiTests : IDisposable
     [Fact]
     public async Task Result_WaitsUntilTheUserClosesIt()
     {
-        using var session = await BeginReadyAsync();
+        using IOperationSession session = await BeginReadyAsync();
 
         var complete = Task.Run(() => session.Complete(Warning));
         (await _helper.ReadUntilAsync<Complete>()).Result.Should().Be(new ResultText(ResultSeverity.Warning, "Extracting", "old.zip: damaged"));
@@ -173,7 +173,7 @@ public sealed class HelperOperationUiTests : IDisposable
     [Fact]
     public async Task CancelInTheWindow_CancelsTheOperationWithoutFailover()
     {
-        using var session = await BeginReadyAsync();
+        using IOperationSession session = await BeginReadyAsync();
 
         await _helper.SendAsync(new CancelRequested());
         await _helper.SendAsync(new WindowClosed());
@@ -193,15 +193,15 @@ public sealed class HelperOperationUiTests : IDisposable
         string existing = Path.Combine(_temp.FullName, "звіт.pdf");
         File.WriteAllBytes(existing, new byte[2048]);
         File.SetLastWriteTimeUtc(existing, new DateTime(2026, 9, 12, 11, 3, 0, DateTimeKind.Utc));
-        using var session = await BeginReadyAsync();
+        using IOperationSession session = await BeginReadyAsync();
 
-        var asking = session.AskConflictAsync(new ConflictInfo
+        Task<ConflictDecision> asking = session.AskConflictAsync(new ConflictInfo
         {
             ExistingPath = existing,
             IncomingSize = 3 * 1_048_576,
             IncomingModified = new DateTimeOffset(2026, 9, 20, 6, 41, 0, TimeSpan.Zero),
         });
-        var ask = await _helper.ReadUntilAsync<AskConflict>();
+        AskConflict ask = await _helper.ReadUntilAsync<AskConflict>();
 
         ask.ExistingPath.Should().Be(existing);
         ask.ExistingDetails.Should().StartWith(ProgressText.FormatBytes(2048));
@@ -211,7 +211,7 @@ public sealed class HelperOperationUiTests : IDisposable
 
         await _helper.SendAsync(new ConflictAnswer(ask.RequestId, ConflictChoice.Overwrite, ApplyToAll: true));
 
-        var decision = await asking.WaitAsync(WaitLimit);
+        ConflictDecision decision = await asking.WaitAsync(WaitLimit);
         decision.Resolution.Should().Be(ConflictResolution.Overwrite);
         decision.ApplyToAll.Should().BeTrue();
         _fallback.Sessions.Should().BeEmpty();
@@ -222,17 +222,17 @@ public sealed class HelperOperationUiTests : IDisposable
     [Fact]
     public async Task APassword_IsAskedInTheWindow()
     {
-        using var session = await BeginReadyAsync();
+        using IOperationSession session = await BeginReadyAsync();
 
-        var asking = session.AskPasswordAsync(
+        Task<PasswordDecision> asking = session.AskPasswordAsync(
             new PasswordPromptInfo { ArchiveName = "secret.zip", Purpose = PasswordPurpose.Decrypt, AttemptNumber = 2, PreviousAttemptWasWrong = true },
             canApplyToRemaining: true);
-        var ask = await _helper.ReadUntilAsync<AskPassword>();
+        AskPassword ask = await _helper.ReadUntilAsync<AskPassword>();
         ask.Should().Be(new AskPassword(ask.RequestId, "secret.zip", 2, PreviousAttemptWasWrong: true, CanApplyToRemaining: true));
 
         await _helper.SendAsync(new PasswordAnswer(ask.RequestId, "пароль", ApplyToRemaining: true));
 
-        var decision = await asking.WaitAsync(WaitLimit);
+        PasswordDecision decision = await asking.WaitAsync(WaitLimit);
         decision.Password.Should().Be("пароль");
         decision.ApplyToRemaining.Should().BeTrue();
         _fallback.PasswordPrompts.Should().BeEmpty();
@@ -241,11 +241,11 @@ public sealed class HelperOperationUiTests : IDisposable
     [Fact]
     public async Task ExistingFileMissing_HasNoExistingDetails()
     {
-        using var session = await BeginReadyAsync();
+        using IOperationSession session = await BeginReadyAsync();
 
         _ = session.AskConflictAsync(new ConflictInfo { ExistingPath = Path.Combine(_temp.FullName, "not-there.txt") });
 
-        var ask = await _helper.ReadUntilAsync<AskConflict>();
+        AskConflict ask = await _helper.ReadUntilAsync<AskConflict>();
         ask.ExistingDetails.Should().BeNull();
         ask.IncomingDetails.Should().BeNull();
         ask.IncomingIsNewer.Should().BeFalse();
@@ -254,9 +254,9 @@ public sealed class HelperOperationUiTests : IDisposable
     [Fact]
     public async Task CancelDuringAPrompt_AnswersItSafelyWithoutAsking()
     {
-        using var session = await BeginReadyAsync();
-        var conflict = session.AskConflictAsync(new ConflictInfo { ExistingPath = @"C:\a.txt" });
-        var password = session.AskPasswordAsync(new PasswordPromptInfo { ArchiveName = "s.zip", Purpose = PasswordPurpose.Decrypt }, canApplyToRemaining: true);
+        using IOperationSession session = await BeginReadyAsync();
+        Task<ConflictDecision> conflict = session.AskConflictAsync(new ConflictInfo { ExistingPath = @"C:\a.txt" });
+        Task<PasswordDecision> password = session.AskPasswordAsync(new PasswordPromptInfo { ArchiveName = "s.zip", Purpose = PasswordPurpose.Decrypt }, canApplyToRemaining: true);
         await _helper.ReadUntilAsync<AskPassword>();
 
         await _helper.SendAsync(new CancelRequested());
@@ -277,12 +277,12 @@ public sealed class HelperOperationUiTests : IDisposable
     [Fact]
     public async Task APromptAfterTheUserClosedTheWindow_IsAnsweredSafelyWithoutAsking()
     {
-        using var session = await BeginReadyAsync();
+        using IOperationSession session = await BeginReadyAsync();
         await _helper.SendAsync(new CancelRequested());
         await _helper.SendAsync(new WindowClosed());
         await WaitUntilAsync(() => session.Cancellation.IsCancellationRequested);
 
-        var decision = await session.AskConflictAsync(new ConflictInfo { ExistingPath = @"C:\a.txt" }).WaitAsync(WaitLimit);
+        ConflictDecision decision = await session.AskConflictAsync(new ConflictInfo { ExistingPath = @"C:\a.txt" }).WaitAsync(WaitLimit);
 
         decision.Resolution.Should().Be(ConflictResolution.Skip);
         decision.ApplyToAll.Should().BeFalse();
@@ -295,8 +295,8 @@ public sealed class HelperOperationUiTests : IDisposable
     public async Task HelperCrashWhileAPromptIsOpen_ReasksItThroughTheFallback()
     {
         _fallback.ConflictAnswer = _ => new ConflictDecision { Resolution = ConflictResolution.Rename };
-        using var session = await BeginReadyAsync();
-        var asking = session.AskConflictAsync(new ConflictInfo { ExistingPath = @"C:\a.txt" });
+        using IOperationSession session = await BeginReadyAsync();
+        Task<ConflictDecision> asking = session.AskConflictAsync(new ConflictInfo { ExistingPath = @"C:\a.txt" });
         await _helper.ReadUntilAsync<AskConflict>();
 
         _helper.Crash();
@@ -308,10 +308,10 @@ public sealed class HelperOperationUiTests : IDisposable
     [Fact]
     public async Task APromptBeforeTheHelperIsReady_WaitsAndIsAskedInTheWindow()
     {
-        using var session = CreateUi().Begin("t", ProgressStyle.Bytes);
-        var asking = session.AskPasswordAsync(new PasswordPromptInfo { ArchiveName = "s.zip", Purpose = PasswordPurpose.Decrypt }, canApplyToRemaining: false);
+        using IOperationSession session = CreateUi().Begin("t", ProgressStyle.Bytes);
+        Task<PasswordDecision> asking = session.AskPasswordAsync(new PasswordPromptInfo { ArchiveName = "s.zip", Purpose = PasswordPurpose.Decrypt }, canApplyToRemaining: false);
 
-        var ask = await _helper.ReadUntilAsync<AskPassword>();
+        AskPassword ask = await _helper.ReadUntilAsync<AskPassword>();
         await _helper.SendReadyAsync();
         await _helper.SendAsync(new PasswordAnswer(ask.RequestId, "p", ApplyToRemaining: false));
 
@@ -321,9 +321,9 @@ public sealed class HelperOperationUiTests : IDisposable
     [Fact]
     public async Task APromptWhileTheHelperNeverBecomesReady_IsAskedThroughTheFallback()
     {
-        using var session = CreateUi(readyTimeout: TimeSpan.FromMilliseconds(200)).Begin("t", ProgressStyle.Bytes);
+        using IOperationSession session = CreateUi(readyTimeout: TimeSpan.FromMilliseconds(200)).Begin("t", ProgressStyle.Bytes);
 
-        var decision = await session.AskPasswordAsync(new PasswordPromptInfo { ArchiveName = "s.zip", Purpose = PasswordPurpose.Decrypt }, canApplyToRemaining: false).WaitAsync(WaitLimit);
+        PasswordDecision decision = await session.AskPasswordAsync(new PasswordPromptInfo { ArchiveName = "s.zip", Purpose = PasswordPurpose.Decrypt }, canApplyToRemaining: false).WaitAsync(WaitLimit);
 
         decision.Password.Should().BeNull("the fallback's preset answer");
         _fallback.PasswordPrompts.Should().ContainSingle();
@@ -332,8 +332,8 @@ public sealed class HelperOperationUiTests : IDisposable
     [Fact]
     public async Task DisposeWithAPromptOpen_AnswersIt()
     {
-        var session = await BeginReadyAsync();
-        var asking = session.AskConflictAsync(new ConflictInfo { ExistingPath = @"C:\a.txt" });
+        IOperationSession session = await BeginReadyAsync();
+        Task<ConflictDecision> asking = session.AskConflictAsync(new ConflictInfo { ExistingPath = @"C:\a.txt" });
         await _helper.ReadUntilAsync<AskConflict>();
 
         session.Dispose();
@@ -346,9 +346,9 @@ public sealed class HelperOperationUiTests : IDisposable
     [Fact]
     public async Task ApplyToRemaining_IsDroppedWhenItWasNotOffered()
     {
-        using var session = await BeginReadyAsync();
-        var asking = session.AskPasswordAsync(new PasswordPromptInfo { ArchiveName = "s.zip", Purpose = PasswordPurpose.Decrypt }, canApplyToRemaining: false);
-        var ask = await _helper.ReadUntilAsync<AskPassword>();
+        using IOperationSession session = await BeginReadyAsync();
+        Task<PasswordDecision> asking = session.AskPasswordAsync(new PasswordPromptInfo { ArchiveName = "s.zip", Purpose = PasswordPurpose.Decrypt }, canApplyToRemaining: false);
+        AskPassword ask = await _helper.ReadUntilAsync<AskPassword>();
 
         await _helper.SendAsync(new PasswordAnswer(ask.RequestId, "p", ApplyToRemaining: true));
 
@@ -358,9 +358,9 @@ public sealed class HelperOperationUiTests : IDisposable
     [Fact]
     public async Task AnswersWithAnUnknownIdOrOfTheWrongKind_AreIgnored()
     {
-        using var session = await BeginReadyAsync();
-        var asking = session.AskConflictAsync(new ConflictInfo { ExistingPath = @"C:\a.txt" });
-        var ask = await _helper.ReadUntilAsync<AskConflict>();
+        using IOperationSession session = await BeginReadyAsync();
+        Task<ConflictDecision> asking = session.AskConflictAsync(new ConflictInfo { ExistingPath = @"C:\a.txt" });
+        AskConflict ask = await _helper.ReadUntilAsync<AskConflict>();
 
         await _helper.SendAsync(new ConflictAnswer(ask.RequestId + 100, ConflictChoice.Overwrite, ApplyToAll: true));
         await _helper.SendAsync(new PasswordAnswer(ask.RequestId, "p", ApplyToRemaining: true));
@@ -377,8 +377,8 @@ public sealed class HelperOperationUiTests : IDisposable
     [Fact]
     public async Task WindowClosedWithoutACancel_AnswersOpenAndLaterPromptsSafely()
     {
-        using var session = await BeginReadyAsync();
-        var asking = session.AskConflictAsync(new ConflictInfo { ExistingPath = @"C:.txt" });
+        using IOperationSession session = await BeginReadyAsync();
+        Task<ConflictDecision> asking = session.AskConflictAsync(new ConflictInfo { ExistingPath = @"C:.txt" });
         await _helper.ReadUntilAsync<AskConflict>();
 
         await _helper.SendAsync(new WindowClosed());
@@ -392,9 +392,9 @@ public sealed class HelperOperationUiTests : IDisposable
     [Fact]
     public async Task AnUndefinedConflictChoice_IsSkipNeverOverwrite()
     {
-        using var session = await BeginReadyAsync();
-        var asking = session.AskConflictAsync(new ConflictInfo { ExistingPath = @"C:\a.txt" });
-        var ask = await _helper.ReadUntilAsync<AskConflict>();
+        using IOperationSession session = await BeginReadyAsync();
+        Task<ConflictDecision> asking = session.AskConflictAsync(new ConflictInfo { ExistingPath = @"C:\a.txt" });
+        AskConflict ask = await _helper.ReadUntilAsync<AskConflict>();
 
         await _helper.SendAsync(new ConflictAnswer(ask.RequestId, (ConflictChoice)99, ApplyToAll: false));
 
@@ -404,15 +404,15 @@ public sealed class HelperOperationUiTests : IDisposable
     [Fact]
     public async Task ASecondAnswerToTheSamePrompt_IsIgnored()
     {
-        using var session = await BeginReadyAsync();
-        var asking = session.AskConflictAsync(new ConflictInfo { ExistingPath = @"C:\a.txt" });
-        var ask = await _helper.ReadUntilAsync<AskConflict>();
+        using IOperationSession session = await BeginReadyAsync();
+        Task<ConflictDecision> asking = session.AskConflictAsync(new ConflictInfo { ExistingPath = @"C:\a.txt" });
+        AskConflict ask = await _helper.ReadUntilAsync<AskConflict>();
         await _helper.SendAsync(new ConflictAnswer(ask.RequestId, ConflictChoice.Rename, ApplyToAll: false));
         (await asking.WaitAsync(WaitLimit)).Resolution.Should().Be(ConflictResolution.Rename);
 
         await _helper.SendAsync(new ConflictAnswer(ask.RequestId, ConflictChoice.Overwrite, ApplyToAll: true));
-        var next = session.AskConflictAsync(new ConflictInfo { ExistingPath = @"C:\b.txt" });
-        var nextAsk = await _helper.ReadUntilAsync<AskConflict>();
+        Task<ConflictDecision> next = session.AskConflictAsync(new ConflictInfo { ExistingPath = @"C:\b.txt" });
+        AskConflict nextAsk = await _helper.ReadUntilAsync<AskConflict>();
 
         nextAsk.RequestId.Should().NotBe(ask.RequestId);
         next.IsCompleted.Should().BeFalse();
@@ -421,7 +421,7 @@ public sealed class HelperOperationUiTests : IDisposable
     [Fact]
     public async Task ProgressFlood_NeverBlocksTheOperationAndTheLatestReportArrives()
     {
-        using var session = CreateUi().Begin("t", ProgressStyle.Percent);
+        using IOperationSession session = CreateUi().Begin("t", ProgressStyle.Percent);
 
         // The helper reads nothing yet: a synchronous write would fill the pipe and block here.
         var reporting = Task.Run(() =>
@@ -445,13 +445,13 @@ public sealed class HelperOperationUiTests : IDisposable
     [Fact]
     public async Task ProgressAfterComplete_IsNotSent()
     {
-        using var session = await BeginReadyAsync();
+        using IOperationSession session = await BeginReadyAsync();
 
         var complete = Task.Run(() => session.Complete(null));
         await _helper.ReadUntilAsync<Complete>();
         session.Progress!.Report(new ProgressReport { Percent = 99 });
 
-        var next = _helper.ReadAsync();
+        Task<ProtocolMessage?> next = _helper.ReadAsync();
         (await Task.WhenAny(next, Task.Delay(300))).Should().NotBe(next);
         await _helper.SendAsync(new WindowClosed());
         await complete.WaitAsync(WaitLimit);
@@ -462,7 +462,7 @@ public sealed class HelperOperationUiTests : IDisposable
     [Fact]
     public async Task UserClosedAsTheOperationFinished_ResultGoesToTheFallback()
     {
-        using var session = await BeginReadyAsync();
+        using IOperationSession session = await BeginReadyAsync();
         await _helper.SendAsync(new CancelRequested());
         await _helper.SendAsync(new WindowClosed());
         await WaitUntilAsync(() => session.Cancellation.IsCancellationRequested);
@@ -477,7 +477,7 @@ public sealed class HelperOperationUiTests : IDisposable
     public async Task HelperOfAnotherProtocolVersion_FailsOver()
     {
         // Far longer than the wait below: only the version check can fail over in time.
-        using var session = CreateUi(readyTimeout: TimeSpan.FromMinutes(5)).Begin("t", ProgressStyle.Bytes);
+        using IOperationSession session = CreateUi(readyTimeout: TimeSpan.FromMinutes(5)).Begin("t", ProgressStyle.Bytes);
         await _helper.ReadUntilAsync<Begin>();
 
         await _helper.SendAsync(new HelperReady(FrameCodec.ProtocolVersion + 1));
@@ -493,7 +493,7 @@ public sealed class HelperOperationUiTests : IDisposable
     {
         _helper.FailToLaunch = true;
 
-        using var session = CreateUi().Begin("Extracting: a.zip", ProgressStyle.Bytes);
+        using IOperationSession session = CreateUi().Begin("Extracting: a.zip", ProgressStyle.Bytes);
 
         session.Should().BeOfType<FakeOperationSession>();
         _fallback.Sessions.Should().ContainSingle().Which.Title.Should().Be("Extracting: a.zip");
@@ -502,7 +502,7 @@ public sealed class HelperOperationUiTests : IDisposable
     [Fact]
     public async Task HelperNotReadyInTime_FailsOverAndIsEnded()
     {
-        using var session = CreateUi(readyTimeout: TimeSpan.FromMilliseconds(200)).Begin("t", ProgressStyle.Bytes);
+        using IOperationSession session = CreateUi(readyTimeout: TimeSpan.FromMilliseconds(200)).Begin("t", ProgressStyle.Bytes);
 
         await WaitUntilTakenOverAsync();
 
@@ -514,14 +514,14 @@ public sealed class HelperOperationUiTests : IDisposable
     [Fact]
     public async Task HelperCrashMidOperation_TheFallbackTakesOverTheRest()
     {
-        using var session = await BeginReadyAsync("Extracting 3 archives");
+        using IOperationSession session = await BeginReadyAsync("Extracting 3 archives");
         session.BeginItem("b.zip", 2, 3);
         await _helper.ReadUntilAsync<Item>();
 
         _helper.Crash();
         await WaitUntilTakenOverAsync();
 
-        var takeover = _fallback.Sessions[0];
+        FakeOperationSession takeover = _fallback.Sessions[0];
         takeover.Title.Should().Be("Extracting 3 archives");
         takeover.Items.Should().Equal(("b.zip", 2, 3));
 
@@ -543,7 +543,7 @@ public sealed class HelperOperationUiTests : IDisposable
     [Fact]
     public async Task HelperCrashWhileShowingTheResult_ShowsItThroughTheFallback()
     {
-        using var session = await BeginReadyAsync();
+        using IOperationSession session = await BeginReadyAsync();
 
         var complete = Task.Run(() => session.Complete(Warning));
         await _helper.ReadUntilAsync<Complete>();
@@ -557,7 +557,7 @@ public sealed class HelperOperationUiTests : IDisposable
     [Fact]
     public async Task DisposeWithoutComplete_ClosesTheWindow()
     {
-        var session = await BeginReadyAsync(closeTimeout: WaitLimit);
+        IOperationSession session = await BeginReadyAsync(closeTimeout: WaitLimit);
 
         var dispose = Task.Run(session.Dispose);
         (await _helper.ReadUntilAsync<Complete>()).Result.Should().BeNull();
@@ -570,7 +570,7 @@ public sealed class HelperOperationUiTests : IDisposable
     [Fact]
     public async Task DisposeWithAnUnresponsiveHelper_EndsItAfterTheTimeout()
     {
-        var session = CreateUi(closeTimeout: TimeSpan.FromMilliseconds(200)).Begin("t", ProgressStyle.Bytes);
+        IOperationSession session = CreateUi(closeTimeout: TimeSpan.FromMilliseconds(200)).Begin("t", ProgressStyle.Bytes);
         await _helper.ReadUntilAsync<Begin>();
         await _helper.SendReadyAsync();
 

@@ -19,7 +19,7 @@ public sealed class ZipArchiveServiceExtractStagingTests : IDisposable
     private string CreateZip(string name, params string[] entries)
     {
         string zipPath = Path.Combine(_temp.Path, name);
-        using var archive = ZipFile.Open(zipPath, ZipArchiveMode.Create);
+        using ZipArchive archive = ZipFile.Open(zipPath, ZipArchiveMode.Create);
         foreach (string entry in entries)
         {
             using var w = new StreamWriter(archive.CreateEntry(entry).Open());
@@ -45,7 +45,7 @@ public sealed class ZipArchiveServiceExtractStagingTests : IDisposable
         string zip = CreateZip("multi.zip", "a.txt", "b.txt");
         string note = CreateUserFile(Path.Combine("multi_tmp", "my-important-notes.txt"), "mine");
 
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [zip],
             DestinationFolder = _temp.Path,
@@ -67,7 +67,7 @@ public sealed class ZipArchiveServiceExtractStagingTests : IDisposable
         Directory.CreateDirectory(projects);
         string backup = CreateUserFile(Path.Combine("Projects_tmp", "backup.txt"), "mine");
 
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [zip],
             DestinationFolder = projects,
@@ -106,7 +106,7 @@ public sealed class ZipArchiveServiceExtractStagingTests : IDisposable
         using var cts = new CancellationTokenSource();
         var progress = new SyncProgress(_ => cts.Cancel());
 
-        var act = () => _sut.ExtractAsync(new ExtractOptions
+        Func<Task<ArchiveResult>> act = () => _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [zip],
             DestinationFolder = _temp.Path,
@@ -151,7 +151,7 @@ public sealed class ZipArchiveServiceExtractStagingTests : IDisposable
             Mode = ExtractMode.SingleFolder,
         };
 
-        var results = await Task.WhenAll(_sut.ExtractAsync(Options(zip1)), _sut.ExtractAsync(Options(zip2)));
+        ArchiveResult[] results = await Task.WhenAll(_sut.ExtractAsync(Options(zip1)), _sut.ExtractAsync(Options(zip2)));
 
         results.Should().OnlyContain(r => r.Success);
         foreach (string name in new[] { "one-a.txt", "one-b.txt", "two-a.txt", "two-b.txt" })

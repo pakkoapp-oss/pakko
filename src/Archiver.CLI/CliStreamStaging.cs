@@ -23,7 +23,7 @@ public static class CliStreamStaging
     /// as <see cref="StdinFileName"/>. The caller owns (and disposes) the returned folder.</summary>
     public static async Task<CliStagingFolder> StageStdinAsync(string root, Stream source, CancellationToken cancellationToken)
     {
-        CliStagingFolder folder = CliStagingFolder.Create(root);
+        var folder = CliStagingFolder.Create(root);
         try
         {
             string filePath = Path.Combine(folder.Path, StdinFileName);
@@ -100,7 +100,7 @@ public static class CliStreamStaging
     {
         try
         {
-            using System.Diagnostics.Process process = System.Diagnostics.Process.GetProcessById(processId);
+            using var process = System.Diagnostics.Process.GetProcessById(processId);
             return process.StartTime.ToUniversalTime() <= folderCreatedUtc;
         }
         catch (ArgumentException)

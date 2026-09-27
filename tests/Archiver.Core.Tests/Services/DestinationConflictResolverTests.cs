@@ -22,7 +22,7 @@ public sealed class DestinationConflictResolverTests
         var resolver = new ConflictResolver(ConflictBehavior.Ask,
             _ => throw new InvalidOperationException("must not be invoked when there is no conflict"));
 
-        var (outcome, resolvedDestPath) = await DestinationConflictResolver.ResolveAsync(
+        (DestinationConflictOutcome outcome, string? resolvedDestPath) = await DestinationConflictResolver.ResolveAsync(
             DestPath, onDiskConflict: false, sameRunConflict: false, resolver, ThrowingRenameCandidate);
 
         outcome.Should().Be(DestinationConflictOutcome.Proceed);
@@ -98,7 +98,7 @@ public sealed class DestinationConflictResolverTests
     {
         var resolver = new ConflictResolver(configured, resolveConflictAsync: null);
 
-        var (outcome, resolvedDestPath) = await DestinationConflictResolver.ResolveAsync(
+        (DestinationConflictOutcome outcome, string? resolvedDestPath) = await DestinationConflictResolver.ResolveAsync(
             DestPath, onDiskConflict, sameRunConflict, resolver, RenameCandidate);
 
         outcome.Should().Be(expectedOutcome);

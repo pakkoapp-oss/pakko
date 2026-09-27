@@ -38,7 +38,7 @@ internal sealed class PasswordResolver(
         bool previousAttemptWasWrong = false;
         for (int attempt = 1; attempt <= maxAttempts; attempt++)
         {
-            var decision = await resolvePasswordAsync(new PasswordPromptInfo
+            PasswordDecision decision = await resolvePasswordAsync(new PasswordPromptInfo
             {
                 ArchiveName = archiveName,
                 Purpose = purpose,

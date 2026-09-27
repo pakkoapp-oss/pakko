@@ -35,7 +35,7 @@ internal static class ExternalTarFixtureBuilder
     {
         using var sourceDir = new TempDirectory();
         var names = new List<string>();
-        foreach (var (name, content) in entries)
+        foreach ((string? name, string? content) in entries)
         {
             string fullPath = Path.Combine(sourceDir.Path, name);
             Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
@@ -59,10 +59,10 @@ internal static class ExternalTarFixtureBuilder
             CreateNoWindow = true,
             RedirectStandardError = true,
         };
-        foreach (var arg in args)
+        foreach (string arg in args)
             startInfo.ArgumentList.Add(arg);
 
-        using var process = Process.Start(startInfo)
+        using Process process = Process.Start(startInfo)
             ?? throw new InvalidOperationException("Failed to start tar.exe");
         string stderr = process.StandardError.ReadToEnd();
         process.WaitForExit();

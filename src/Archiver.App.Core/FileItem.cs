@@ -67,7 +67,7 @@ public sealed partial class FileItem : ObservableObject
         }
         else
         {
-            var ext = Path.GetExtension(path).TrimStart('.');
+            string ext = Path.GetExtension(path).TrimStart('.');
             Type = string.IsNullOrEmpty(ext) ? "File" : ext.ToUpperInvariant();
             var fi = new FileInfo(path);
             Modified = fi.LastWriteTime;
@@ -80,12 +80,12 @@ public sealed partial class FileItem : ObservableObject
 
     private async Task LoadFolderSizeAsync(string path)
     {
-        var bytes = await Task.Run(() =>
+        long bytes = await Task.Run(() =>
         {
             try
             {
                 long total = 0;
-                foreach (var f in Directory.EnumerateFiles(path, "*", SearchOption.AllDirectories))
+                foreach (string f in Directory.EnumerateFiles(path, "*", SearchOption.AllDirectories))
                     try { total += new FileInfo(f).Length; } catch { /* best-effort */ }
                 return total;
             }
@@ -105,11 +105,11 @@ public sealed partial class FileItem : ObservableObject
         await _crc32Throttle.WaitAsync();
         try
         {
-            var crc = await Task.Run(() =>
+            uint? crc = await Task.Run(() =>
             {
                 try
                 {
-                    using var stream = File.OpenRead(path);
+                    using FileStream stream = File.OpenRead(path);
                     return (uint?)Archiver.Core.IO.Crc32.Compute(stream);
                 }
                 catch { return null; }

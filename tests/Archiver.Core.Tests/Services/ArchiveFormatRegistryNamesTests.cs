@@ -24,7 +24,7 @@ public sealed class ArchiveFormatRegistryNamesTests
     [Fact]
     public void ToRegistryName_UnknownArchiveFormat_Throws()
     {
-        var act = () => ArchiveFormatRegistryNames.ToRegistryName(ArchiveFormat.Unknown);
+        Func<string> act = () => ArchiveFormatRegistryNames.ToRegistryName(ArchiveFormat.Unknown);
         act.Should().Throw<ArgumentOutOfRangeException>();
     }
 

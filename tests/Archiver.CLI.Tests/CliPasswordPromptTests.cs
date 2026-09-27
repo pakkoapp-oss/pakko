@@ -1,4 +1,5 @@
 using Archiver.CLI;
+using Archiver.Core.Services;
 using FluentAssertions;
 
 namespace Archiver.CLI.Tests;
@@ -15,7 +16,7 @@ public sealed class CliPasswordPromptTests
     private static ConsoleKeyInfo Special(ConsoleKey key) => new('\0', key, false, false, false);
 
     private static ConsoleKey CharToConsoleKey(char c) =>
-        Enum.TryParse<ConsoleKey>(char.ToUpperInvariant(c).ToString(), out var parsed) ? parsed : ConsoleKey.NoName;
+        Enum.TryParse<ConsoleKey>(char.ToUpperInvariant(c).ToString(), out ConsoleKey parsed) ? parsed : ConsoleKey.NoName;
 
     private static Func<ConsoleKeyInfo> QueueOf(params ConsoleKeyInfo[] keys)
     {
@@ -28,7 +29,7 @@ public sealed class CliPasswordPromptTests
     [Fact]
     public void Read_TypedCharactersThenEnter_ReturnsTypedString()
     {
-        var keys = QueueOf(Key('h'), Key('i'), Special(ConsoleKey.Enter));
+        Func<ConsoleKeyInfo> keys = QueueOf(Key('h'), Key('i'), Special(ConsoleKey.Enter));
 
         string? result = CliPasswordPrompt.Read(keys);
 
@@ -38,7 +39,7 @@ public sealed class CliPasswordPromptTests
     [Fact]
     public void Read_EchoesAsteriskPerAcceptedCharacter()
     {
-        var keys = QueueOf(Key('a'), Key('b'), Special(ConsoleKey.Enter));
+        Func<ConsoleKeyInfo> keys = QueueOf(Key('a'), Key('b'), Special(ConsoleKey.Enter));
         var echoed = new List<char>();
 
         CliPasswordPrompt.Read(keys, echoed.Add);
@@ -51,7 +52,7 @@ public sealed class CliPasswordPromptTests
     [Fact]
     public void Read_EmptyPasswordThenEnter_ReturnsEmptyString()
     {
-        var keys = QueueOf(Special(ConsoleKey.Enter));
+        Func<ConsoleKeyInfo> keys = QueueOf(Special(ConsoleKey.Enter));
 
         string? result = CliPasswordPrompt.Read(keys);
 
@@ -61,7 +62,7 @@ public sealed class CliPasswordPromptTests
     [Fact]
     public void Read_BackspaceOnEmptyBuffer_DoesNotUnderflowOrEcho()
     {
-        var keys = QueueOf(Special(ConsoleKey.Backspace), Key('x'), Special(ConsoleKey.Enter));
+        Func<ConsoleKeyInfo> keys = QueueOf(Special(ConsoleKey.Backspace), Key('x'), Special(ConsoleKey.Enter));
         var echoed = new List<char>();
 
         string? result = CliPasswordPrompt.Read(keys, echoed.Add);
@@ -73,7 +74,7 @@ public sealed class CliPasswordPromptTests
     [Fact]
     public void Read_Backspace_DeletesLastCharacterAndEchoesBackspace()
     {
-        var keys = QueueOf(Key('a'), Key('b'), Special(ConsoleKey.Backspace), Special(ConsoleKey.Enter));
+        Func<ConsoleKeyInfo> keys = QueueOf(Key('a'), Key('b'), Special(ConsoleKey.Backspace), Special(ConsoleKey.Enter));
         var echoed = new List<char>();
 
         string? result = CliPasswordPrompt.Read(keys, echoed.Add);
@@ -85,7 +86,7 @@ public sealed class CliPasswordPromptTests
     [Fact]
     public void Read_Escape_ReturnsNullCancelled()
     {
-        var keys = QueueOf(Key('a'), Special(ConsoleKey.Escape));
+        Func<ConsoleKeyInfo> keys = QueueOf(Key('a'), Special(ConsoleKey.Escape));
 
         string? result = CliPasswordPrompt.Read(keys);
 
@@ -99,7 +100,7 @@ public sealed class CliPasswordPromptTests
     public void Read_CtrlC_ReturnsNullCancelledNotAppended()
     {
         var ctrlC = new ConsoleKeyInfo('\x03', ConsoleKey.C, shift: false, alt: false, control: true);
-        var keys = QueueOf(Key('a'), ctrlC, Special(ConsoleKey.Enter));
+        Func<ConsoleKeyInfo> keys = QueueOf(Key('a'), ctrlC, Special(ConsoleKey.Enter));
 
         string? result = CliPasswordPrompt.Read(keys);
 
@@ -111,7 +112,7 @@ public sealed class CliPasswordPromptTests
     [Fact]
     public void Read_NonPrintableKeyLikeArrow_IsIgnoredNotAppended()
     {
-        var keys = QueueOf(Key('a'), Special(ConsoleKey.LeftArrow), Special(ConsoleKey.F5), Key('b'), Special(ConsoleKey.Enter));
+        Func<ConsoleKeyInfo> keys = QueueOf(Key('a'), Special(ConsoleKey.LeftArrow), Special(ConsoleKey.F5), Key('b'), Special(ConsoleKey.Enter));
 
         string? result = CliPasswordPrompt.Read(keys);
 
@@ -128,7 +129,7 @@ public sealed class CliPasswordPromptTests
     {
         var written = new List<string>();
 
-        var result = CliPasswordPrompt.ReadNewPassword(QueueOf([.. Typed("Secret1"), .. Typed("Secret1")]), written.Add);
+        CliPasswordPrompt.NewPasswordResult result = CliPasswordPrompt.ReadNewPassword(QueueOf([.. Typed("Secret1"), .. Typed("Secret1")]), written.Add);
 
         result.Password.Should().Be("Secret1");
         result.Error.Should().BeNull();
@@ -140,7 +141,7 @@ public sealed class CliPasswordPromptTests
     [Fact]
     public void ReadNewPassword_Mismatch_ReturnsErrorAndNoPassword()
     {
-        var result = CliPasswordPrompt.ReadNewPassword(QueueOf([.. Typed("Secret1"), .. Typed("Secret2")]), _ => { });
+        CliPasswordPrompt.NewPasswordResult result = CliPasswordPrompt.ReadNewPassword(QueueOf([.. Typed("Secret1"), .. Typed("Secret2")]), _ => { });
 
         result.Password.Should().BeNull();
         result.Error.Should().Contain("do not match");
@@ -152,7 +153,7 @@ public sealed class CliPasswordPromptTests
     {
         var written = new List<string>();
 
-        var result = CliPasswordPrompt.ReadNewPassword(QueueOf(Key('a'), Special(ConsoleKey.Escape)), written.Add);
+        CliPasswordPrompt.NewPasswordResult result = CliPasswordPrompt.ReadNewPassword(QueueOf(Key('a'), Special(ConsoleKey.Escape)), written.Add);
 
         result.Cancelled.Should().BeTrue();
         result.Password.Should().BeNull();
@@ -164,7 +165,7 @@ public sealed class CliPasswordPromptTests
     {
         var ctrlC = new ConsoleKeyInfo('\x03', ConsoleKey.C, shift: false, alt: false, control: true);
 
-        var result = CliPasswordPrompt.ReadNewPassword(QueueOf([.. Typed("Secret1"), Key('S'), ctrlC]), _ => { });
+        CliPasswordPrompt.NewPasswordResult result = CliPasswordPrompt.ReadNewPassword(QueueOf([.. Typed("Secret1"), Key('S'), ctrlC]), _ => { });
 
         result.Cancelled.Should().BeTrue();
     }
@@ -174,7 +175,7 @@ public sealed class CliPasswordPromptTests
     {
         var written = new List<string>();
 
-        var result = CliPasswordPrompt.ReadNewPassword(QueueOf(Typed("пароль")), written.Add);
+        CliPasswordPrompt.NewPasswordResult result = CliPasswordPrompt.ReadNewPassword(QueueOf(Typed("пароль")), written.Add);
 
         result.Password.Should().BeNull();
         result.Error.Should().Contain("English letters");
@@ -184,7 +185,7 @@ public sealed class CliPasswordPromptTests
     [Fact]
     public void ReadNewPassword_EmptyEntry_IsRefused()
     {
-        var result = CliPasswordPrompt.ReadNewPassword(QueueOf(Special(ConsoleKey.Enter)), _ => { });
+        CliPasswordPrompt.NewPasswordResult result = CliPasswordPrompt.ReadNewPassword(QueueOf(Special(ConsoleKey.Enter)), _ => { });
 
         result.Error.Should().Contain("empty");
         result.Cancelled.Should().BeFalse();
@@ -193,7 +194,7 @@ public sealed class CliPasswordPromptTests
     [Fact]
     public void ReadNewPassword_EntryOneOverMaxLength_IsRefused()
     {
-        var result = CliPasswordPrompt.ReadNewPassword(QueueOf(Typed(new string('a', 100))), _ => { });
+        CliPasswordPrompt.NewPasswordResult result = CliPasswordPrompt.ReadNewPassword(QueueOf(Typed(new string('a', 100))), _ => { });
 
         result.Error.Should().Contain("99");
     }
@@ -201,7 +202,7 @@ public sealed class CliPasswordPromptTests
     [Fact]
     public void DescribeEncryptProblem_CoversEveryProblemAndNoneIsNull()
     {
-        foreach (var problem in Enum.GetValues<Archiver.Core.Services.EncryptionPasswordProblem>())
+        foreach (EncryptionPasswordProblem problem in Enum.GetValues<Archiver.Core.Services.EncryptionPasswordProblem>())
         {
             string? text = CliPasswordPrompt.DescribeEncryptProblem(problem);
             if (problem == Archiver.Core.Services.EncryptionPasswordProblem.None)

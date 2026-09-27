@@ -15,7 +15,7 @@ public static class FixtureHelper
     /// </summary>
     public static string Archive(string name)
     {
-        var path = Path.Combine(ArchivesDir, name);
+        string path = Path.Combine(ArchivesDir, name);
         if (!File.Exists(path))
             throw new FileNotFoundException(
                 $"Fixture not found: {name} — run: dotnet run --project tests/Archiver.Core.Tests.GenerateFixtures", name);
@@ -28,7 +28,7 @@ public static class FixtureHelper
     /// </summary>
     public static string? ArchiveOptional(string name)
     {
-        var path = Path.Combine(ArchivesDir, name);
+        string path = Path.Combine(ArchivesDir, name);
         return File.Exists(path) ? path : null;
     }
 
@@ -37,7 +37,7 @@ public static class FixtureHelper
     /// </summary>
     public static string PlainFile(string name)
     {
-        var path = Path.Combine(FilesDir, name);
+        string path = Path.Combine(FilesDir, name);
         if (!File.Exists(path))
             throw new FileNotFoundException(
                 $"Fixture not found: {name} — run: dotnet run --project tests/Archiver.Core.Tests.GenerateFixtures", name);

@@ -49,7 +49,7 @@ internal static class WorkItemEnumerator
             if (Directory.Exists(sourcePath))
             {
                 string entryName = ZipArchiveService.GetUniqueEntryName(usedEntryNames, Path.GetFileName(sourcePath));
-                foreach (var item in EnumerateDirectory(sourcePath, entryName, reportSkipped, reportError))
+                foreach (FileWorkItem item in EnumerateDirectory(sourcePath, entryName, reportSkipped, reportError))
                     yield return item;
             }
             else if (File.Exists(sourcePath))

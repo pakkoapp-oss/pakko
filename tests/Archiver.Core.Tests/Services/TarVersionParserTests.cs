@@ -1,3 +1,4 @@
+using Archiver.Core.Models;
 using Archiver.Core.Services;
 using FluentAssertions;
 
@@ -15,7 +16,7 @@ public sealed class TarVersionParserTests
         // zstd (like RAR/7z) as requiring Win 11 23H2+ tar.exe — version-gated, not token-gated.
         const string output = "bsdtar 3.5.2 - libarchive 3.5.2 zlib/1.2.11.zlib-ng liblzma/5.2.5 bz2lib/1.0.6 libzstd/1.4.5";
 
-        var result = TarVersionParser.Parse(output);
+        TarCapabilities result = TarVersionParser.Parse(output);
 
         result.Version.Should().Be("3.5.2");
         result.SupportsXz.Should().BeTrue();
@@ -31,7 +32,7 @@ public sealed class TarVersionParserTests
     {
         const string output = "bsdtar 3.7.2 - libarchive 3.7.2 zlib/1.2.11.zlib-ng liblzma/5.2.5 bz2lib/1.0.6 libzstd/1.5.2";
 
-        var result = TarVersionParser.Parse(output);
+        TarCapabilities result = TarVersionParser.Parse(output);
 
         result.Version.Should().Be("3.7.2");
         result.SupportsZstd.Should().BeTrue();
@@ -44,7 +45,7 @@ public sealed class TarVersionParserTests
     {
         const string output = "bsdtar 3.7.0 - libarchive 3.7.0";
 
-        var result = TarVersionParser.Parse(output);
+        TarCapabilities result = TarVersionParser.Parse(output);
 
         result.Supports7z.Should().BeTrue();
         result.SupportsRar.Should().BeTrue();
@@ -58,7 +59,7 @@ public sealed class TarVersionParserTests
     [InlineData("bsdtar - no version info")]
     public void Parse_UnrecognizedOrEmptyOutput_ReturnsAllUnsupportedDefaults(string output)
     {
-        var result = TarVersionParser.Parse(output);
+        TarCapabilities result = TarVersionParser.Parse(output);
 
         result.Should().Be(new Archiver.Core.Models.TarCapabilities());
     }

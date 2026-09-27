@@ -1,3 +1,4 @@
+using Archiver.Core.Models;
 using FluentAssertions;
 
 namespace Archiver.Shell.Tests;
@@ -15,7 +16,7 @@ public sealed class PasswordDialogTests
     [InlineData(true)]
     public void MapResult_OkButton_ReturnsPasswordWithApplyToRemainingPassedThrough(bool applyChecked)
     {
-        var decision = PasswordDialog.MapResult(IdOk, "hunter2", applyChecked);
+        PasswordDecision decision = PasswordDialog.MapResult(IdOk, "hunter2", applyChecked);
 
         decision.Password.Should().Be("hunter2");
         decision.ApplyToRemaining.Should().Be(applyChecked);
@@ -26,7 +27,7 @@ public sealed class PasswordDialogTests
     {
         // An empty password is a real (if unusual) user choice, distinct from Cancel -- must not
         // collapse to the same "no resolver" null the caller uses for a declined/missing prompt.
-        var decision = PasswordDialog.MapResult(IdOk, string.Empty, applyToRemainingChecked: false);
+        PasswordDecision decision = PasswordDialog.MapResult(IdOk, string.Empty, applyToRemainingChecked: false);
 
         decision.Password.Should().Be(string.Empty);
     }
@@ -34,7 +35,7 @@ public sealed class PasswordDialogTests
     [Fact]
     public void MapResult_CancelButton_ReturnsNullPassword()
     {
-        var decision = PasswordDialog.MapResult(IdCancel, "typed-before-cancel", applyToRemainingChecked: true);
+        PasswordDecision decision = PasswordDialog.MapResult(IdCancel, "typed-before-cancel", applyToRemainingChecked: true);
 
         decision.Password.Should().BeNull();
     }
@@ -45,7 +46,7 @@ public sealed class PasswordDialogTests
         // Esc/Alt-F4 with a modal dialog can surface as an unexpected id depending on how the
         // message loop unwinds -- must fail safe (null) exactly like an explicit Cancel, mirroring
         // ShellConflictDialog.MapResult's identical "unrecognized -> safe default" convention.
-        var decision = PasswordDialog.MapResult(99999, "irrelevant", applyToRemainingChecked: false);
+        PasswordDecision decision = PasswordDialog.MapResult(99999, "irrelevant", applyToRemainingChecked: false);
 
         decision.Password.Should().BeNull();
     }

@@ -24,14 +24,14 @@ public sealed class ParallelSingleArchiveWriterTests : IDisposable
     public void CompressSmallFile_DoesNotAllocateAPerFileReadBuffer()
     {
         string path = Path.Combine(_tempDir, "small.dat");
-        var data = new byte[4096];
+        byte[] data = new byte[4096];
         new Random(42).NextBytes(data.AsSpan(0, 2048));
         File.WriteAllBytes(path, data);
         var settings = new ParallelSingleArchiveWriter.CompressionSettings(CompressionLevel.Optimal);
         ParallelSingleArchiveWriter.CompressSmallFile(path, settings); // JIT and pool warm-up
 
         long before = GC.GetAllocatedBytesForCurrentThread();
-        var result = ParallelSingleArchiveWriter.CompressSmallFile(path, settings);
+        CompressedEntryData result = ParallelSingleArchiveWriter.CompressSmallFile(path, settings);
         long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
 
         result.UncompressedLength.Should().Be(data.Length);
@@ -41,7 +41,7 @@ public sealed class ParallelSingleArchiveWriterTests : IDisposable
     [Fact]
     public async Task RunPipelineAsync_WritesEntries_InEnqueueOrderNotCompletionOrder()
     {
-        var items = new[]
+        FileWorkItem[] items = new[]
         {
             new FileWorkItem("a", "a.txt", FileWorkKind.File, 10, DateTime.Now),
             new FileWorkItem("b", "b.txt", FileWorkKind.File, 10, DateTime.Now),
@@ -57,7 +57,7 @@ public sealed class ParallelSingleArchiveWriterTests : IDisposable
             await Task.Delay(delayMs, ct);
             byte[] bytes = System.Text.Encoding.UTF8.GetBytes(item.EntryName);
             using var ms = new MemoryStream(bytes);
-            var compressed = ZipEntryCompressor.Compress(ms, CompressionLevel.NoCompression);
+            CompressedEntryData compressed = ZipEntryCompressor.Compress(ms, CompressionLevel.NoCompression);
             return WorkResult.ForCompressed(item.EntryName, compressed, item.LastWriteTime);
         };
 
@@ -66,7 +66,7 @@ public sealed class ParallelSingleArchiveWriterTests : IDisposable
             archivePath, items, compressItem, NeverCalledTempFileCompressor, windowCapacity: 3,
             totalBytes: 30, progress: null, reportError: _ => { }, CancellationToken.None);
 
-        using var archive = ZipFile.OpenRead(archivePath);
+        using ZipArchive archive = ZipFile.OpenRead(archivePath);
         archive.Entries.Select(e => e.Name).Should().Equal("a.txt", "b.txt", "c.txt");
     }
 
@@ -77,7 +77,7 @@ public sealed class ParallelSingleArchiveWriterTests : IDisposable
     public async Task RunPipelineAsync_EntryNameOverSixtyFourKiBOfUtf8_IsOneErrorArchiveStaysValid()
     {
         string hugeName = new string('中', 22_000) + ".txt"; // 66,004 UTF-8 bytes
-        var items = new[]
+        FileWorkItem[] items = new[]
         {
             new FileWorkItem("a", "a.txt", FileWorkKind.File, 1, DateTime.Now),
             new FileWorkItem("huge", hugeName, FileWorkKind.File, 1, DateTime.Now),
@@ -97,7 +97,7 @@ public sealed class ParallelSingleArchiveWriterTests : IDisposable
             totalBytes: 3, progress: null, reportError: errors.Add, CancellationToken.None);
 
         errors.Should().HaveCount(2).And.OnlyContain(e => e.Message.Contains("too long"));
-        using var archive = ZipFile.OpenRead(archivePath);
+        using ZipArchive archive = ZipFile.OpenRead(archivePath);
         archive.Entries.Select(e => e.FullName).Should().Equal("a.txt", "b.txt");
     }
 
@@ -107,13 +107,13 @@ public sealed class ParallelSingleArchiveWriterTests : IDisposable
         string archivePath = TempArchivePath;
         await using (var writer = new ZipEntryWriter(archivePath))
         {
-            var act = () => writer.WriteDirectoryPlaceholderAsync(new string('中', 22_000) + "/", DateTime.Now, CancellationToken.None);
+            Func<Task> act = () => writer.WriteDirectoryPlaceholderAsync(new string('中', 22_000) + "/", DateTime.Now, CancellationToken.None);
 
             await act.Should().ThrowAsync<InvalidDataException>();
             writer.EntryCount.Should().Be(0);
         }
 
-        using var archive = ZipFile.OpenRead(archivePath);
+        using ZipArchive archive = ZipFile.OpenRead(archivePath);
         archive.Entries.Should().BeEmpty();
     }
 
@@ -121,14 +121,14 @@ public sealed class ParallelSingleArchiveWriterTests : IDisposable
     public async Task RunPipelineAsync_NeverStartsMoreThanWindowCapacityItemsConcurrently()
     {
         const int windowCapacity = 2;
-        var items = Enumerable.Range(0, 5)
+        FileWorkItem[] items = Enumerable.Range(0, 5)
             .Select(i => new FileWorkItem($"f{i}", $"f{i}.txt", FileWorkKind.File, 10, DateTime.Now))
             .ToArray();
 
         int concurrentlyRunning = 0;
         int maxObservedConcurrency = 0;
         var releaseGate = new SemaphoreSlim(0);
-        var lockObj = new object();
+        object lockObj = new object();
 
         Func<FileWorkItem, CancellationToken, Task<WorkResult>> compressItem = async (item, ct) =>
         {
@@ -144,12 +144,12 @@ public sealed class ParallelSingleArchiveWriterTests : IDisposable
 
             byte[] bytes = System.Text.Encoding.UTF8.GetBytes(item.EntryName);
             using var ms = new MemoryStream(bytes);
-            var compressed = ZipEntryCompressor.Compress(ms, CompressionLevel.NoCompression);
+            CompressedEntryData compressed = ZipEntryCompressor.Compress(ms, CompressionLevel.NoCompression);
             return WorkResult.ForCompressed(item.EntryName, compressed, item.LastWriteTime);
         };
 
         string archivePath = TempArchivePath;
-        var pipelineTask = ParallelSingleArchiveWriter.RunPipelineAsync(
+        Task pipelineTask = ParallelSingleArchiveWriter.RunPipelineAsync(
             archivePath, items, compressItem, NeverCalledTempFileCompressor, windowCapacity,
             totalBytes: 50, progress: null, reportError: _ => { }, CancellationToken.None);
 
@@ -164,7 +164,7 @@ public sealed class ParallelSingleArchiveWriterTests : IDisposable
         releaseGate.Release(items.Length); // let everything finish
         await pipelineTask;
 
-        using var archive = ZipFile.OpenRead(archivePath);
+        using ZipArchive archive = ZipFile.OpenRead(archivePath);
         archive.Entries.Should().HaveCount(items.Length);
     }
 
@@ -175,20 +175,20 @@ public sealed class ParallelSingleArchiveWriterTests : IDisposable
         cts.Cancel();
 
         string archivePath = TempArchivePath;
-        var act = async () => await ParallelSingleArchiveWriter.WriteAsync(
+        Func<Task> act = async () => await ParallelSingleArchiveWriter.WriteAsync(
             archivePath, sortedSourcePaths: ["C:\\does-not-matter.txt"], CompressionLevel.Optimal,
             totalBytes: 0, new ParallelSingleArchiveWriter.ReportCallbacks(_ => { }, _ => { }), progress: null, cts.Token);
 
         await act.Should().NotThrowAsync();
 
-        using var archive = ZipFile.OpenRead(archivePath);
+        using ZipArchive archive = ZipFile.OpenRead(archivePath);
         archive.Entries.Should().BeEmpty();
     }
 
     [Fact]
     public async Task RunPipelineAsync_OneItemErrors_RestStillWrittenAndErrorReported()
     {
-        var items = new[]
+        FileWorkItem[] items = new[]
         {
             new FileWorkItem("a", "a.txt", FileWorkKind.File, 10, DateTime.Now),
             new FileWorkItem("bad", "bad.txt", FileWorkKind.File, 10, DateTime.Now),
@@ -202,7 +202,7 @@ public sealed class ParallelSingleArchiveWriterTests : IDisposable
 
             byte[] bytes = System.Text.Encoding.UTF8.GetBytes(item.EntryName);
             using var ms = new MemoryStream(bytes);
-            var compressed = ZipEntryCompressor.Compress(ms, CompressionLevel.NoCompression);
+            CompressedEntryData compressed = ZipEntryCompressor.Compress(ms, CompressionLevel.NoCompression);
             return Task.FromResult(WorkResult.ForCompressed(item.EntryName, compressed, item.LastWriteTime));
         };
 
@@ -214,14 +214,14 @@ public sealed class ParallelSingleArchiveWriterTests : IDisposable
 
         reportedErrors.Should().ContainSingle(e => e.SourcePath == "bad" && e.Message == "simulated locked file");
 
-        using var archive = ZipFile.OpenRead(archivePath);
+        using ZipArchive archive = ZipFile.OpenRead(archivePath);
         archive.Entries.Select(e => e.Name).Should().Equal("a.txt", "c.txt");
     }
 
     [Fact]
     public async Task RunPipelineAsync_CancelledMidFlight_NoTasksLeftRunningAfterwards()
     {
-        var items = Enumerable.Range(0, 10)
+        FileWorkItem[] items = Enumerable.Range(0, 10)
             .Select(i => new FileWorkItem($"f{i}", $"f{i}.txt", FileWorkKind.File, 10, DateTime.Now))
             .ToArray();
 
@@ -238,7 +238,7 @@ public sealed class ParallelSingleArchiveWriterTests : IDisposable
                 await Task.Delay(50, ct);
                 byte[] bytes = System.Text.Encoding.UTF8.GetBytes(item.EntryName);
                 using var ms = new MemoryStream(bytes);
-                var compressed = ZipEntryCompressor.Compress(ms, CompressionLevel.NoCompression);
+                CompressedEntryData compressed = ZipEntryCompressor.Compress(ms, CompressionLevel.NoCompression);
                 return WorkResult.ForCompressed(item.EntryName, compressed, item.LastWriteTime);
             }
             finally
@@ -248,14 +248,14 @@ public sealed class ParallelSingleArchiveWriterTests : IDisposable
         };
 
         string archivePath = TempArchivePath;
-        var pipelineTask = ParallelSingleArchiveWriter.RunPipelineAsync(
+        Task pipelineTask = ParallelSingleArchiveWriter.RunPipelineAsync(
             archivePath, items, compressItem, NeverCalledTempFileCompressor, windowCapacity: 3,
             totalBytes: 100, progress: null, reportError: _ => { }, cts.Token);
 
         await Task.Delay(20); // let a few tasks start
         cts.Cancel();
 
-        var act = async () => await pipelineTask;
+        Func<Task> act = async () => await pipelineTask;
         await act.Should().ThrowAsync<OperationCanceledException>();
 
         await WaitUntilAsync(() => Volatile.Read(ref activeCount) == 0, TimeSpan.FromSeconds(2));
@@ -325,7 +325,7 @@ public sealed class ParallelSingleArchiveWriterTests : IDisposable
             archivePath, [sourceDir], CompressionLevel.Optimal, totalBytes,
             new ParallelSingleArchiveWriter.ReportCallbacks(_ => { }, _ => { }), progress: null, CancellationToken.None);
 
-        using (var archive = ZipFile.OpenRead(archivePath))
+        using (ZipArchive archive = ZipFile.OpenRead(archivePath))
         {
             VerifyEntryContent(archive, "tiny.bin", tinyContent);
             VerifyEntryContent(archive, "just-above.bin", justAboveThresholdContent);
@@ -358,7 +358,7 @@ public sealed class ParallelSingleArchiveWriterTests : IDisposable
 
         reportedErrors.Should().ContainSingle(e => e.SourcePath == lockedPath);
 
-        using (var archive = ZipFile.OpenRead(archivePath))
+        using (ZipArchive archive = ZipFile.OpenRead(archivePath))
             VerifyEntryContent(archive, "ok.bin", okContent);
 
         FindChunkDirectories().Should()
@@ -376,7 +376,7 @@ public sealed class ParallelSingleArchiveWriterTests : IDisposable
         using var cts = new CancellationTokenSource();
         string archivePath = TempArchivePath;
 
-        var task = ParallelSingleArchiveWriter.WriteAsync(
+        Task task = ParallelSingleArchiveWriter.WriteAsync(
             archivePath, [sourceDir], CompressionLevel.Optimal, totalBytes: 24 * 1024 * 1024,
             new ParallelSingleArchiveWriter.ReportCallbacks(_ => { }, _ => { }), progress: null, cts.Token);
 
@@ -399,7 +399,7 @@ public sealed class ParallelSingleArchiveWriterTests : IDisposable
             File.WriteAllBytes(Path.Combine(sourceDir, $"f{i}.bin"), BuildContent(8 * 1024 * 1024));
 
         string archivePath = TempArchivePath;
-        var task = ParallelSingleArchiveWriter.WriteAsync(
+        Task task = ParallelSingleArchiveWriter.WriteAsync(
             archivePath, [sourceDir], CompressionLevel.Optimal, totalBytes: 64 * 1024 * 1024,
             new ParallelSingleArchiveWriter.ReportCallbacks(_ => { }, _ => { }), progress: null, CancellationToken.None);
 
@@ -555,26 +555,26 @@ public sealed class ParallelSingleArchiveWriterTests : IDisposable
             // Declared FileSize must exceed InMemoryCompressByteThreshold so RunPipelineAsync's own
             // producer routes this item to compressToTempFile (the seam this test targets) instead
             // of compressInMemory -- independent of the fake's real (small) on-disk content above.
-            var items = new[]
+            FileWorkItem[] items = new[]
             {
                 new FileWorkItem("a", "a.bin", FileWorkKind.File,
                     ParallelSingleArchiveWriter.InMemoryCompressByteThreshold + 1, DateTime.Now),
             };
             string archivePath = TempArchivePath;
 
-            var act = async () => await ParallelSingleArchiveWriter.RunPipelineAsync(
+            Func<Task> act = async () => await ParallelSingleArchiveWriter.RunPipelineAsync(
                 archivePath, items, NeverCalledInMemoryCompressor, compressToTempFile, windowCapacity: 2,
                 totalBytes: content.Length, progress: null, reportError: _ => { }, CancellationToken.None);
 
             await act.Should().NotThrowAsync(
                 "the writer's read-back must tolerate a concurrent external reader holding a shared read handle");
 
-            using var archive = ZipFile.OpenRead(archivePath);
+            using ZipArchive archive = ZipFile.OpenRead(archivePath);
             VerifyEntryContent(archive, "a.bin", content);
         }
         finally
         {
-            foreach (var handle in externalHandles) handle.Dispose();
+            foreach (FileStream handle in externalHandles) handle.Dispose();
         }
     }
 
@@ -587,15 +587,15 @@ public sealed class ParallelSingleArchiveWriterTests : IDisposable
     private static byte[] BuildContent(int length)
     {
         var rng = new Random(20260719);
-        var bytes = new byte[length];
+        byte[] bytes = new byte[length];
         rng.NextBytes(bytes);
         return bytes;
     }
 
     private static void VerifyEntryContent(ZipArchive archive, string entryName, byte[] expected)
     {
-        var entry = archive.Entries.Should().ContainSingle(e => e.Name == entryName).Subject;
-        using var stream = entry.Open();
+        ZipArchiveEntry entry = archive.Entries.Should().ContainSingle(e => e.Name == entryName).Subject;
+        using Stream stream = entry.Open();
         using var ms = new MemoryStream();
         stream.CopyTo(ms);
         ms.ToArray().Should().Equal(expected);
@@ -612,7 +612,7 @@ public sealed class ParallelSingleArchiveWriterTests : IDisposable
 
     private static async Task WaitUntilAsync(Func<bool> condition, TimeSpan timeout)
     {
-        var deadline = DateTime.UtcNow + timeout;
+        DateTime deadline = DateTime.UtcNow + timeout;
         while (!condition() && DateTime.UtcNow < deadline)
             await Task.Delay(10);
     }

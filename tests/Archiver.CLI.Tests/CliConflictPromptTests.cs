@@ -85,7 +85,7 @@ public sealed class CliConflictPromptTests : IDisposable
     public async Task CreateResolver_Quit_CancelsTheOperationAndDeclinesTheCurrentFile()
     {
         using var quit = new CancellationTokenSource();
-        var resolver = CliConflictPrompt.CreateResolver(Lines("q"), _ => { }, quit);
+        StickyCallback<ConflictInfo, ConflictDecision> resolver = CliConflictPrompt.CreateResolver(Lines("q"), _ => { }, quit);
 
         ConflictDecision decision = await resolver.ResolveAsync(Conflict());
 
@@ -100,7 +100,7 @@ public sealed class CliConflictPromptTests : IDisposable
     public async Task CreateResolver_AlwaysAcrossZipAndTar_PromptsOnceAndOverwritesBoth()
     {
         string zipPath = Path.Combine(_temp, "one.zip");
-        using (var zip = ZipFile.Open(zipPath, ZipArchiveMode.Create))
+        using (ZipArchive zip = ZipFile.Open(zipPath, ZipArchiveMode.Create))
         using (var writer = new StreamWriter(zip.CreateEntry("from-zip.txt").Open()))
             writer.Write("zip content");
 
@@ -108,7 +108,7 @@ public sealed class CliConflictPromptTests : IDisposable
         Directory.CreateDirectory(tarSource);
         File.WriteAllText(Path.Combine(tarSource, "from-tar.txt"), "tar content");
         string tarPath = Path.Combine(_temp, "two.tar");
-        using (var tar = Process.Start(new ProcessStartInfo(@"C:\Windows\System32\tar.exe")
+        using (Process tar = Process.Start(new ProcessStartInfo(@"C:\Windows\System32\tar.exe")
         {
             ArgumentList = { "-cf", tarPath, "-C", tarSource, "from-tar.txt" },
             UseShellExecute = false,
@@ -126,11 +126,11 @@ public sealed class CliConflictPromptTests : IDisposable
 
         int prompts = 0;
         using var quit = new CancellationTokenSource();
-        var resolver = CliConflictPrompt.CreateResolver(() => { prompts++; return "a"; }, _ => { }, quit);
+        StickyCallback<ConflictInfo, ConflictDecision> resolver = CliConflictPrompt.CreateResolver(() => { prompts++; return "a"; }, _ => { }, quit);
 
         var tarService = new TarSandboxedService();
         var router = new ExtractionRouter(new ZipArchiveService(), tarService, await tarService.DetectCapabilitiesAsync());
-        var result = await router.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await router.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [zipPath, tarPath],
             DestinationFolder = dest,
@@ -148,8 +148,8 @@ public sealed class CliConflictPromptTests : IDisposable
     private string MakeZip(string name, params (string Name, string Content)[] entries)
     {
         string path = Path.Combine(_temp, name);
-        using var zip = ZipFile.Open(path, ZipArchiveMode.Create);
-        foreach (var (entryName, content) in entries)
+        using ZipArchive zip = ZipFile.Open(path, ZipArchiveMode.Create);
+        foreach ((string? entryName, string? content) in entries)
         {
             using var writer = new StreamWriter(zip.CreateEntry(entryName).Open());
             writer.Write(content);
@@ -167,12 +167,12 @@ public sealed class CliConflictPromptTests : IDisposable
         startInfo.ArgumentList.Add(path);
         startInfo.ArgumentList.Add("-C");
         startInfo.ArgumentList.Add(source);
-        foreach (var (entryName, content) in entries)
+        foreach ((string? entryName, string? content) in entries)
         {
             File.WriteAllText(Path.Combine(source, entryName), content);
             startInfo.ArgumentList.Add(entryName);
         }
-        using var tar = Process.Start(startInfo)!;
+        using Process tar = Process.Start(startInfo)!;
         await tar.WaitForExitAsync();
         tar.ExitCode.Should().Be(0);
         return path;
@@ -182,7 +182,7 @@ public sealed class CliConflictPromptTests : IDisposable
     private static async Task ExtractWithQuitAnswerAsync(string dest, params string[] archives)
     {
         using var quit = new CancellationTokenSource();
-        var resolver = CliConflictPrompt.CreateResolver(Lines("q"), _ => { }, quit);
+        StickyCallback<ConflictInfo, ConflictDecision> resolver = CliConflictPrompt.CreateResolver(Lines("q"), _ => { }, quit);
         var tarService = new TarSandboxedService();
         var router = new ExtractionRouter(new ZipArchiveService(), tarService, await tarService.DetectCapabilitiesAsync());
         try

@@ -25,7 +25,7 @@ internal static class LegacyZipBuilder
         using var output = new MemoryStream();
         var localOffsets = new List<long>();
 
-        foreach (var entry in entries)
+        foreach (Entry entry in entries)
         {
             localOffsets.Add(output.Position);
             uint crc = Crc32.Compute(new MemoryStream(entry.Content));
@@ -48,7 +48,7 @@ internal static class LegacyZipBuilder
         long centralStart = output.Position;
         for (int i = 0; i < entries.Length; i++)
         {
-            var entry = entries[i];
+            Entry entry = entries[i];
             byte[] extra = entry.CentralExtra ?? [];
             uint crc = Crc32.Compute(new MemoryStream(entry.Content));
             WriteUInt32(output, 0x02014b50);
@@ -91,7 +91,7 @@ internal static class LegacyZipBuilder
     public static byte[] UnicodePathExtra(byte[] rawHeaderName, byte[] utf8Name, byte version = 1, uint? crcOverride = null)
     {
         uint crc = crcOverride ?? Crc32.Compute(new MemoryStream(rawHeaderName));
-        var record = new byte[4 + 5 + utf8Name.Length];
+        byte[] record = new byte[4 + 5 + utf8Name.Length];
         BinaryPrimitives.WriteUInt16LittleEndian(record, 0x7075);
         BinaryPrimitives.WriteUInt16LittleEndian(record.AsSpan(2), (ushort)(5 + utf8Name.Length));
         record[4] = version;

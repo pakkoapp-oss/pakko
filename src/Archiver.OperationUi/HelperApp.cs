@@ -1,5 +1,6 @@
 using Archiver.OperationUi.Core;
 using Archiver.OperationUi.Protocol;
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Markup;
@@ -43,7 +44,7 @@ internal sealed partial class HelperApp : Application, IXamlMetadataProvider, ID
         _window = new OperationWindow(_model, Execute);
         _pipe.Send(new HelperReady(FrameCodec.ProtocolVersion));
 
-        var dispatcher = _window.DispatcherQueue;
+        DispatcherQueue dispatcher = _window.DispatcherQueue;
         _ = Task.Run(() => _pipe.ReadAllAsync(message => dispatcher.TryEnqueue(() => OnMessage(message))));
     }
 

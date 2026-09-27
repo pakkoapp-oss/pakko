@@ -38,7 +38,7 @@ public sealed class ZipArchiveServiceFixtureTests : IDisposable
     [Fact]
     public async Task Extract_ValidSingleFile_Succeeds()
     {
-        var result = await _sut.ExtractAsync(SeparateFolders(FixtureHelper.Archive("valid_single_file.zip")));
+        ArchiveResult result = await _sut.ExtractAsync(SeparateFolders(FixtureHelper.Archive("valid_single_file.zip")));
 
         result.Success.Should().BeTrue();
         result.Errors.Should().BeEmpty();
@@ -48,7 +48,7 @@ public sealed class ZipArchiveServiceFixtureTests : IDisposable
     [Fact]
     public async Task Extract_ValidMultipleFiles_Succeeds()
     {
-        var result = await _sut.ExtractAsync(SeparateFolders(FixtureHelper.Archive("valid_multiple_files.zip")));
+        ArchiveResult result = await _sut.ExtractAsync(SeparateFolders(FixtureHelper.Archive("valid_multiple_files.zip")));
 
         result.Success.Should().BeTrue();
         Directory.GetFiles(_temp.Path, "*", SearchOption.AllDirectories).Should().HaveCountGreaterThanOrEqualTo(4);
@@ -57,7 +57,7 @@ public sealed class ZipArchiveServiceFixtureTests : IDisposable
     [Fact]
     public async Task Extract_ValidNestedFolders_Succeeds()
     {
-        var result = await _sut.ExtractAsync(SeparateFolders(FixtureHelper.Archive("valid_nested_folders.zip")));
+        ArchiveResult result = await _sut.ExtractAsync(SeparateFolders(FixtureHelper.Archive("valid_nested_folders.zip")));
 
         result.Success.Should().BeTrue();
         result.Errors.Should().BeEmpty();
@@ -66,7 +66,7 @@ public sealed class ZipArchiveServiceFixtureTests : IDisposable
     [Fact]
     public async Task Extract_ValidUnicodeFilenames_Succeeds()
     {
-        var result = await _sut.ExtractAsync(SeparateFolders(FixtureHelper.Archive("valid_unicode_filenames.zip")));
+        ArchiveResult result = await _sut.ExtractAsync(SeparateFolders(FixtureHelper.Archive("valid_unicode_filenames.zip")));
 
         result.Success.Should().BeTrue();
         result.Errors.Should().BeEmpty();
@@ -75,7 +75,7 @@ public sealed class ZipArchiveServiceFixtureTests : IDisposable
     [Fact]
     public async Task Extract_IncompressibleContent_Succeeds()
     {
-        var result = await _sut.ExtractAsync(SeparateFolders(FixtureHelper.Archive("valid_incompressible_content.zip")));
+        ArchiveResult result = await _sut.ExtractAsync(SeparateFolders(FixtureHelper.Archive("valid_incompressible_content.zip")));
 
         result.Success.Should().BeTrue();
     }
@@ -87,7 +87,7 @@ public sealed class ZipArchiveServiceFixtureTests : IDisposable
     {
         // ZIP contains: project/readme.txt, project/src/main.cs, project/src/utils.cs
         // T-F205: SingleFolder mode extracts with full paths — the "project/" root is kept.
-        var result = await _sut.ExtractAsync(SingleFolder(FixtureHelper.Archive("extract_single_root_folder.zip")));
+        ArchiveResult result = await _sut.ExtractAsync(SingleFolder(FixtureHelper.Archive("extract_single_root_folder.zip")));
 
         result.Success.Should().BeTrue();
         File.Exists(Path.Combine(_temp.Path, "project", "readme.txt")).Should().BeTrue("the root folder is kept");
@@ -99,7 +99,7 @@ public sealed class ZipArchiveServiceFixtureTests : IDisposable
     {
         // ZIP contains: readme.txt, main.cs, assets/icon.txt — multiple roots
         // Smart foldering creates a subfolder named after the archive
-        var result = await _sut.ExtractAsync(SingleFolder(FixtureHelper.Archive("extract_multiple_root_items.zip")));
+        ArchiveResult result = await _sut.ExtractAsync(SingleFolder(FixtureHelper.Archive("extract_multiple_root_items.zip")));
 
         result.Success.Should().BeTrue();
         Directory.GetDirectories(_temp.Path).Should().HaveCountGreaterThanOrEqualTo(1,
@@ -111,7 +111,7 @@ public sealed class ZipArchiveServiceFixtureTests : IDisposable
     {
         // ZIP contains: report.txt — single file at root
         // Smart foldering extracts it directly to destDir
-        var result = await _sut.ExtractAsync(SingleFolder(FixtureHelper.Archive("extract_single_root_file.zip")));
+        ArchiveResult result = await _sut.ExtractAsync(SingleFolder(FixtureHelper.Archive("extract_single_root_file.zip")));
 
         result.Success.Should().BeTrue();
         File.Exists(Path.Combine(_temp.Path, "report.txt")).Should().BeTrue("single root file lands directly in destDir");
@@ -122,7 +122,7 @@ public sealed class ZipArchiveServiceFixtureTests : IDisposable
     [Fact]
     public async Task Extract_CorruptedEntryData_ReturnsError()
     {
-        var result = await _sut.ExtractAsync(SeparateFolders(FixtureHelper.Archive("corrupted_entry_data.zip")));
+        ArchiveResult result = await _sut.ExtractAsync(SeparateFolders(FixtureHelper.Archive("corrupted_entry_data.zip")));
 
         (result.Success == false || result.Errors.Count > 0).Should().BeTrue(
             "corrupted entry data should produce an error");
@@ -131,7 +131,7 @@ public sealed class ZipArchiveServiceFixtureTests : IDisposable
     [Fact]
     public async Task Extract_CorruptedCentralDirectory_ReturnsError()
     {
-        var result = await _sut.ExtractAsync(SeparateFolders(FixtureHelper.Archive("corrupted_central_directory.zip")));
+        ArchiveResult result = await _sut.ExtractAsync(SeparateFolders(FixtureHelper.Archive("corrupted_central_directory.zip")));
 
         (result.Success == false || result.Errors.Count > 0).Should().BeTrue(
             "unreadable ZIP should produce an error");
@@ -142,7 +142,7 @@ public sealed class ZipArchiveServiceFixtureTests : IDisposable
     [Fact]
     public async Task Extract_EncryptedZipCrypto_ReturnsError()
     {
-        var result = await _sut.ExtractAsync(SeparateFolders(FixtureHelper.Archive("encrypted_zipcrypto.zip")));
+        ArchiveResult result = await _sut.ExtractAsync(SeparateFolders(FixtureHelper.Archive("encrypted_zipcrypto.zip")));
 
         result.Success.Should().BeFalse();
         result.Errors.Should().ContainSingle(e => e.Message.Contains("password-protected"));
@@ -155,7 +155,7 @@ public sealed class ZipArchiveServiceFixtureTests : IDisposable
     [Fact]
     public async Task Extract_EncryptedAes256_ReturnsError()
     {
-        var result = await _sut.ExtractAsync(SeparateFolders(FixtureHelper.Archive("encrypted_aes256.zip")));
+        ArchiveResult result = await _sut.ExtractAsync(SeparateFolders(FixtureHelper.Archive("encrypted_aes256.zip")));
 
         result.Success.Should().BeFalse();
         result.Errors.Should().ContainSingle(e => e.Message.Contains("password-protected"));
@@ -166,7 +166,7 @@ public sealed class ZipArchiveServiceFixtureTests : IDisposable
     [Fact]
     public async Task Extract_ZipSlipTraversal_Blocked()
     {
-        var result = await _sut.ExtractAsync(SeparateFolders(FixtureHelper.Archive("zipslip_traversal.zip")));
+        ArchiveResult result = await _sut.ExtractAsync(SeparateFolders(FixtureHelper.Archive("zipslip_traversal.zip")));
 
         (result.Success == false || result.Errors.Count > 0).Should().BeTrue(
             "path traversal entries should be blocked");
@@ -206,22 +206,22 @@ public sealed class ZipArchiveServiceFixtureTests : IDisposable
         const string rooted = @"\evil_root_escape.txt";
         // Same-byte-length placeholder — ASCII-only, so char count == UTF-8 byte count for both.
         string placeholder = new string('X', rooted.Length);
-        var archivePath = Path.Combine(_temp.Path, "rooted_entry.zip");
+        string archivePath = Path.Combine(_temp.Path, "rooted_entry.zip");
 
         byte[] raw;
         using (var ms = new MemoryStream())
         {
             using (var zip = new ZipArchive(ms, ZipArchiveMode.Create, leaveOpen: true))
             {
-                var entry = zip.CreateEntry(placeholder, CompressionLevel.Optimal);
-                using var stream = entry.Open();
+                ZipArchiveEntry entry = zip.CreateEntry(placeholder, CompressionLevel.Optimal);
+                using Stream stream = entry.Open();
                 stream.Write(System.Text.Encoding.UTF8.GetBytes("should never land here\n"));
             }
             raw = ms.ToArray();
         }
 
-        var oldBytes = System.Text.Encoding.UTF8.GetBytes(placeholder);
-        var newBytes = System.Text.Encoding.UTF8.GetBytes(rooted);
+        byte[] oldBytes = System.Text.Encoding.UTF8.GetBytes(placeholder);
+        byte[] newBytes = System.Text.Encoding.UTF8.GetBytes(rooted);
         newBytes.Should().HaveCount(oldBytes.Length, "patched name must keep the ZIP's declared name length");
         int idx = IndexOfSequence(raw, oldBytes);
         idx.Should().BeGreaterThanOrEqualTo(0, "placeholder entry name must be found in the raw ZIP bytes");
@@ -252,10 +252,10 @@ public sealed class ZipArchiveServiceFixtureTests : IDisposable
     [Fact]
     public async Task Extract_CreatedBy7Zip_Succeeds()
     {
-        var archivePath = FixtureHelper.ArchiveOptional("created_by_7zip.zip");
+        string? archivePath = FixtureHelper.ArchiveOptional("created_by_7zip.zip");
         if (archivePath is null) return; // manual fixture absent — skip gracefully
 
-        var result = await _sut.ExtractAsync(SeparateFolders(archivePath));
+        ArchiveResult result = await _sut.ExtractAsync(SeparateFolders(archivePath));
 
         result.Success.Should().BeTrue();
         result.Errors.Should().BeEmpty();
@@ -264,10 +264,10 @@ public sealed class ZipArchiveServiceFixtureTests : IDisposable
     [Fact]
     public async Task Extract_CreatedByWinRAR_Succeeds()
     {
-        var archivePath = FixtureHelper.ArchiveOptional("created_by_winrar.zip");
+        string? archivePath = FixtureHelper.ArchiveOptional("created_by_winrar.zip");
         if (archivePath is null) return;
 
-        var result = await _sut.ExtractAsync(SeparateFolders(archivePath));
+        ArchiveResult result = await _sut.ExtractAsync(SeparateFolders(archivePath));
 
         result.Success.Should().BeTrue();
         result.Errors.Should().BeEmpty();
@@ -276,10 +276,10 @@ public sealed class ZipArchiveServiceFixtureTests : IDisposable
     [Fact]
     public async Task Extract_CreatedByMacOS_Succeeds()
     {
-        var archivePath = FixtureHelper.ArchiveOptional("created_by_macos.zip");
+        string? archivePath = FixtureHelper.ArchiveOptional("created_by_macos.zip");
         if (archivePath is null) return;
 
-        var result = await _sut.ExtractAsync(SeparateFolders(archivePath));
+        ArchiveResult result = await _sut.ExtractAsync(SeparateFolders(archivePath));
 
         result.Success.Should().BeTrue();
         result.Errors.Should().BeEmpty();

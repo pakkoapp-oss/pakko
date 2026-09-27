@@ -13,7 +13,7 @@ public sealed class ArchiveFormatDetectorTests : IDisposable
 
     private string WriteBytes(string name, byte[] bytes)
     {
-        var path = Path.Combine(_temp.Path, name);
+        string path = Path.Combine(_temp.Path, name);
         File.WriteAllBytes(path, bytes);
         return path;
     }
@@ -21,66 +21,66 @@ public sealed class ArchiveFormatDetectorTests : IDisposable
     [Fact]
     public void Detect_ZipMagic_ReturnsZip()
     {
-        var path = WriteBytes("a.zip", [0x50, 0x4B, 0x03, 0x04, 0, 0, 0, 0]);
+        string path = WriteBytes("a.zip", [0x50, 0x4B, 0x03, 0x04, 0, 0, 0, 0]);
         ArchiveFormatDetector.Detect(path).Should().Be(ArchiveFormat.Zip);
     }
 
     [Fact]
     public void Detect_GZipMagic_ReturnsGZip()
     {
-        var path = WriteBytes("a.gz", [0x1F, 0x8B, 0x08, 0]);
+        string path = WriteBytes("a.gz", [0x1F, 0x8B, 0x08, 0]);
         ArchiveFormatDetector.Detect(path).Should().Be(ArchiveFormat.GZip);
     }
 
     [Fact]
     public void Detect_Bz2Magic_ReturnsBz2()
     {
-        var path = WriteBytes("a.bz2", [0x42, 0x5A, 0x68, 0x39]);
+        string path = WriteBytes("a.bz2", [0x42, 0x5A, 0x68, 0x39]);
         ArchiveFormatDetector.Detect(path).Should().Be(ArchiveFormat.Bz2);
     }
 
     [Fact]
     public void Detect_RarMagic_ReturnsRar()
     {
-        var path = WriteBytes("a.rar", [0x52, 0x61, 0x72, 0x21, 0x1A, 0x07, 0x01, 0x00]);
+        string path = WriteBytes("a.rar", [0x52, 0x61, 0x72, 0x21, 0x1A, 0x07, 0x01, 0x00]);
         ArchiveFormatDetector.Detect(path).Should().Be(ArchiveFormat.Rar);
     }
 
     [Fact]
     public void Detect_SevenZipMagic_ReturnsSevenZip()
     {
-        var path = WriteBytes("a.7z", [0x37, 0x7A, 0xBC, 0xAF, 0x27, 0x1C, 0, 0]);
+        string path = WriteBytes("a.7z", [0x37, 0x7A, 0xBC, 0xAF, 0x27, 0x1C, 0, 0]);
         ArchiveFormatDetector.Detect(path).Should().Be(ArchiveFormat.SevenZip);
     }
 
     [Fact]
     public void Detect_XzMagic_ReturnsXz()
     {
-        var path = WriteBytes("a.xz", [0xFD, 0x37, 0x7A, 0x58, 0x5A, 0x00, 0, 0]);
+        string path = WriteBytes("a.xz", [0xFD, 0x37, 0x7A, 0x58, 0x5A, 0x00, 0, 0]);
         ArchiveFormatDetector.Detect(path).Should().Be(ArchiveFormat.Xz);
     }
 
     [Fact]
     public void Detect_ZstdMagic_ReturnsZstd()
     {
-        var path = WriteBytes("a.zst", [0x28, 0xB5, 0x2F, 0xFD, 0, 0, 0, 0]);
+        string path = WriteBytes("a.zst", [0x28, 0xB5, 0x2F, 0xFD, 0, 0, 0, 0]);
         ArchiveFormatDetector.Detect(path).Should().Be(ArchiveFormat.Zstd);
     }
 
     [Fact]
     public void Detect_UstarMagicAtOffset257_ReturnsTar()
     {
-        var header = new byte[512];
-        var ustar = System.Text.Encoding.ASCII.GetBytes("ustar");
+        byte[] header = new byte[512];
+        byte[] ustar = System.Text.Encoding.ASCII.GetBytes("ustar");
         Array.Copy(ustar, 0, header, 257, ustar.Length);
-        var path = WriteBytes("a.tar", header);
+        string path = WriteBytes("a.tar", header);
         ArchiveFormatDetector.Detect(path).Should().Be(ArchiveFormat.Tar);
     }
 
     [Fact]
     public void Detect_UnrecognizedBytes_ReturnsUnknown()
     {
-        var path = WriteBytes("a.bin", [1, 2, 3, 4, 5, 6, 7, 8]);
+        string path = WriteBytes("a.bin", [1, 2, 3, 4, 5, 6, 7, 8]);
         ArchiveFormatDetector.Detect(path).Should().Be(ArchiveFormat.Unknown);
     }
 
@@ -105,7 +105,7 @@ public sealed class ArchiveFormatDetectorTests : IDisposable
     {
         byte[] sevenZipBody = [0x37, 0x7A, 0xBC, 0xAF, 0x27, 0x1C, 0, 0, 1, 2, 3, 4];
         byte[] forged = [0x50, 0x4B, 0x03, 0x04, .. sevenZipBody];
-        var path = WriteBytes("forged.zip", forged);
+        string path = WriteBytes("forged.zip", forged);
 
         ArchiveFormatDetector.Detect(path).Should().Be(ArchiveFormat.Zip,
             "detection reads only the leading signature by design — routing safety for mismatched " +
@@ -120,7 +120,7 @@ public sealed class ArchiveFormatDetectorTests : IDisposable
     [Fact]
     public void Detect_TooShortForAnySignatureCheck_ReturnsUnknown()
     {
-        var path = WriteBytes("tiny.bin", [0x50, 0x4B]); // first 2 bytes of ZIP's 4-byte signature
+        string path = WriteBytes("tiny.bin", [0x50, 0x4B]); // first 2 bytes of ZIP's 4-byte signature
         ArchiveFormatDetector.Detect(path).Should().Be(ArchiveFormat.Unknown);
     }
 
@@ -191,7 +191,7 @@ public sealed class ArchiveFormatDetectorTests : IDisposable
             // type=3 (arbitrary non-encryption type), data=0x00.
             0x00, 0x00, 0x00, 0x00, 0x06, 0x02, 0x01, 0x03, 0x02, 0x03, 0x00,
         ];
-        var path = WriteBytes("plain.rar", bytes);
+        string path = WriteBytes("plain.rar", bytes);
         ArchiveFormatDetector.IsEncryptedRar(path).Should().BeFalse();
     }
 
@@ -205,7 +205,7 @@ public sealed class ArchiveFormatDetectorTests : IDisposable
             // File Header (type 2), extra area's one record has type=1 (Encryption).
             0x00, 0x00, 0x00, 0x00, 0x06, 0x02, 0x01, 0x03, 0x02, 0x01, 0x00,
         ];
-        var path = WriteBytes("encrypted.rar", bytes);
+        string path = WriteBytes("encrypted.rar", bytes);
         ArchiveFormatDetector.IsEncryptedRar(path).Should().BeTrue();
     }
 
@@ -220,7 +220,7 @@ public sealed class ArchiveFormatDetectorTests : IDisposable
             // without reading anything past the HeaderType field.
             0x00, 0x00, 0x00, 0x00, 0x01, 0x04,
         ];
-        var path = WriteBytes("encrypted_headers.rar", bytes);
+        string path = WriteBytes("encrypted_headers.rar", bytes);
         ArchiveFormatDetector.IsEncryptedRar(path).Should().BeTrue();
     }
 
@@ -236,7 +236,7 @@ public sealed class ArchiveFormatDetectorTests : IDisposable
             0x00, 0x00, 0x00, 0x00, 0x01, 0x01, // Main Archive Header (type 1)
             0x00, 0x00, 0x00, 0x00, 0x06, 0x02, 0x01, 0x03, 0x02, 0x01, 0x00,
         ];
-        var path = WriteBytes("data_only_encrypted.rar", bytes);
+        string path = WriteBytes("data_only_encrypted.rar", bytes);
         ArchiveFormatDetector.IsRarHeaderEncrypted(path).Should().BeFalse();
     }
 
@@ -248,7 +248,7 @@ public sealed class ArchiveFormatDetectorTests : IDisposable
             .. Rar5Sig,
             0x00, 0x00, 0x00, 0x00, 0x01, 0x04, // First block is type 4
         ];
-        var path = WriteBytes("encrypted_headers2.rar", bytes);
+        string path = WriteBytes("encrypted_headers2.rar", bytes);
         ArchiveFormatDetector.IsRarHeaderEncrypted(path).Should().BeTrue();
     }
 
@@ -261,7 +261,7 @@ public sealed class ArchiveFormatDetectorTests : IDisposable
             0x00, 0x00, 0x00, 0x00, 0x01, 0x01,
             0x00, 0x00, 0x00, 0x00, 0x06, 0x02, 0x01, 0x03, 0x02, 0x03, 0x00,
         ];
-        var path = WriteBytes("plain2.rar", bytes);
+        string path = WriteBytes("plain2.rar", bytes);
         ArchiveFormatDetector.IsRarHeaderEncrypted(path).Should().BeFalse();
     }
 
@@ -283,7 +283,7 @@ public sealed class ArchiveFormatDetectorTests : IDisposable
             0x00, 0x00, 0x00, 0x00, 0x01, 0x01,
             0x00, 0x00, 0x00, 0x00, 0x06, 0x02, 0x01, 0x03, 0x02, 0x01, 0x00,
         ];
-        var path = WriteBytes("huge.rar", header);
+        string path = WriteBytes("huge.rar", header);
         using (var stream = new FileStream(path, FileMode.Open, FileAccess.Write))
             stream.SetLength(3L * 1024 * 1024 * 1024);
 
@@ -301,7 +301,7 @@ public sealed class ArchiveFormatDetectorTests : IDisposable
     public void IsEncryptedRar_VIntRunsPastTheData_ReturnsFalse()
     {
         // HeaderSize is a vint whose continuation bit never ends.
-        var path = WriteBytes("vint.rar", [.. Rar5Sig, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF]);
+        string path = WriteBytes("vint.rar", [.. Rar5Sig, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF]);
         ArchiveFormatDetector.IsEncryptedRar(path).Should().BeFalse();
     }
 
@@ -319,9 +319,9 @@ public sealed class ArchiveFormatDetectorTests : IDisposable
             // length, so the next record starts where this one did.
             0x00, 0x00, 0x00, 0x00, 0x0A, 0x02, 0x01, 0x07, 0xFB, 0xFF, 0xFF, 0xFF, 0x0F, 0x03, 0x00,
         ];
-        var path = WriteBytes("loop.rar", bytes);
+        string path = WriteBytes("loop.rar", bytes);
 
-        var task = Task.Run(() => ArchiveFormatDetector.IsEncryptedRar(path));
+        Task<bool> task = Task.Run(() => ArchiveFormatDetector.IsEncryptedRar(path));
 
         (await Task.WhenAny(task, Task.Delay(TimeSpan.FromSeconds(5)))).Should().BeSameAs(task, "the parse must not loop");
         (await task).Should().BeFalse();
@@ -330,7 +330,7 @@ public sealed class ArchiveFormatDetectorTests : IDisposable
     [Fact]
     public void IsEncryptedRar_TruncatedAfterSignature_ReturnsFalse()
     {
-        var path = WriteBytes("truncated.rar", Rar5Sig);
+        string path = WriteBytes("truncated.rar", Rar5Sig);
         ArchiveFormatDetector.IsEncryptedRar(path).Should().BeFalse();
     }
 
@@ -338,14 +338,14 @@ public sealed class ArchiveFormatDetectorTests : IDisposable
     public void IsEncryptedRar_Rar4Signature_ReturnsFalse()
     {
         // Legacy RAR4 (7-byte signature, no version byte) is an accepted scope cut — not parsed.
-        var path = WriteBytes("rar4.rar", [0x52, 0x61, 0x72, 0x21, 0x1A, 0x07, 0x00, 0x00]);
+        string path = WriteBytes("rar4.rar", [0x52, 0x61, 0x72, 0x21, 0x1A, 0x07, 0x00, 0x00]);
         ArchiveFormatDetector.IsEncryptedRar(path).Should().BeFalse();
     }
 
     [Fact]
     public void IsEncryptedRar_NotARarFile_ReturnsFalse()
     {
-        var path = WriteBytes("a.zip", [0x50, 0x4B, 0x03, 0x04, 0, 0, 0, 0]);
+        string path = WriteBytes("a.zip", [0x50, 0x4B, 0x03, 0x04, 0, 0, 0, 0]);
         ArchiveFormatDetector.IsEncryptedRar(path).Should().BeFalse();
     }
 

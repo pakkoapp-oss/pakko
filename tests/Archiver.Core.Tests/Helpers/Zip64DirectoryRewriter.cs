@@ -58,7 +58,7 @@ internal static class Zip64DirectoryRewriter
         long newCdSize = output.Position - newCdOffset;
 
         long zip64EocdOffset = output.Position;
-        var tail = new byte[56 + 20 + 22];
+        byte[] tail = new byte[56 + 20 + 22];
         Span<byte> t = tail;
         BinaryPrimitives.WriteUInt32LittleEndian(t, 0x06064b50);
         BinaryPrimitives.WriteUInt64LittleEndian(t[4..], 44);

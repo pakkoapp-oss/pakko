@@ -30,7 +30,7 @@ public static class ArchiveTreeIndex
     {
         var nodesByPath = new Dictionary<string, ArchiveEntryViewModel>(StringComparer.Ordinal);
 
-        foreach (var entry in flatEntries)
+        foreach (ArchiveEntryInfo entry in flatEntries)
         {
             string path = entry.Path;
             if (!nodesByPath.ContainsKey(path))
@@ -78,11 +78,11 @@ public static class ArchiveTreeIndex
         IEnumerable<ArchiveEntryViewModel> nodes)
     {
         var childrenByParent = new Dictionary<string, List<ArchiveEntryViewModel>>(StringComparer.Ordinal);
-        foreach (var node in nodes)
+        foreach (ArchiveEntryViewModel node in nodes)
         {
             int slash = node.FullPath.LastIndexOf('/');
             string parentPath = slash >= 0 ? node.FullPath[..slash] : string.Empty;
-            if (!childrenByParent.TryGetValue(parentPath, out var siblings))
+            if (!childrenByParent.TryGetValue(parentPath, out List<ArchiveEntryViewModel>? siblings))
                 childrenByParent[parentPath] = siblings = [];
             siblings.Add(node);
         }
@@ -94,7 +94,7 @@ public static class ArchiveTreeIndex
         Dictionary<string, List<ArchiveEntryViewModel>> childrenByParent)
     {
         var result = new Dictionary<string, IReadOnlyList<ArchiveEntryViewModel>>(StringComparer.Ordinal);
-        foreach (var (parentPath, children) in childrenByParent)
+        foreach ((string? parentPath, List<ArchiveEntryViewModel>? children) in childrenByParent)
         {
             children.Sort((a, b) =>
             {

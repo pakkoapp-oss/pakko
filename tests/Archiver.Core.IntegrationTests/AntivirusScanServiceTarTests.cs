@@ -58,9 +58,9 @@ public sealed class AntivirusScanServiceTarTests : IDisposable
         ]);
 
         var scanner = new FakeAmsiScanner();
-        var service = CreateService(scanner);
+        AntivirusScanService service = CreateService(scanner);
 
-        var result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [archivePath] });
+        ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [archivePath] });
 
         result.OverallVerdict.Should().Be(ThreatVerdict.Clean);
         result.Findings.Should().HaveCount(2);
@@ -80,9 +80,9 @@ public sealed class AntivirusScanServiceTarTests : IDisposable
         ]);
 
         var scanner = new FakeAmsiScanner();
-        var service = CreateService(scanner);
+        AntivirusScanService service = CreateService(scanner);
 
-        var result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [archivePath] });
+        ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [archivePath] });
 
         result.OverallVerdict.Should().Be(ThreatVerdict.Clean);
         result.Findings.Should().HaveCount(2).And.OnlyContain(f => f.Verdict == ThreatVerdict.Clean);
@@ -100,9 +100,9 @@ public sealed class AntivirusScanServiceTarTests : IDisposable
             [("a.txt", "hello"), ("sub/b.txt", "world")]);
 
         var scanner = new FakeAmsiScanner();
-        var service = CreateService(scanner);
+        AntivirusScanService service = CreateService(scanner);
 
-        var result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [archivePath] });
+        ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [archivePath] });
 
         result.OverallVerdict.Should().Be(ThreatVerdict.Clean);
         scanner.ScannedContentNames.Should().BeEquivalentTo(["a.txt", "sub/b.txt"]);
@@ -120,9 +120,9 @@ public sealed class AntivirusScanServiceTarTests : IDisposable
 
         var scanner = new FakeAmsiScanner();
         scanner.DetectedContentNames.Add("bad.txt");
-        var service = CreateService(scanner);
+        AntivirusScanService service = CreateService(scanner);
 
-        var result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [archivePath] });
+        ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [archivePath] });
 
         result.OverallVerdict.Should().Be(ThreatVerdict.ThreatDetected);
         result.Findings.Should().ContainSingle(f => f.EntryPath == "bad.txt" && f.Verdict == ThreatVerdict.ThreatDetected);
@@ -141,9 +141,9 @@ public sealed class AntivirusScanServiceTarTests : IDisposable
         ]);
 
         var scanner = new FakeAmsiScanner();
-        var service = CreateService(scanner);
+        AntivirusScanService service = CreateService(scanner);
 
-        var result = await service.ScanAsync(new AntivirusScanOptions
+        ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions
         {
             ArchivePaths = [archivePath],
             SelectedEntryPaths = ["b.txt"],
@@ -167,9 +167,9 @@ public sealed class AntivirusScanServiceTarTests : IDisposable
         ]);
 
         var scanner = new FakeAmsiScanner();
-        var service = CreateService(scanner);
+        AntivirusScanService service = CreateService(scanner);
 
-        var result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [archivePath] });
+        ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [archivePath] });
 
         result.OverallVerdict.Should().Be(ThreatVerdict.Inconclusive);
         result.Findings.Should().ContainSingle(f => f.ArchivePath == archivePath && f.EntryPath == null);

@@ -117,7 +117,7 @@ public static class SevenZipRunner
                 $"Vendored 7za.exe not found at '{ExePath}' — see Tools/7-Zip/NOTICE.md. This " +
                 "should only happen if the file was deleted or excluded from the build output.");
 
-        using SandboxJobObject job = SandboxJobObject.Create(RamLimitBytes, CpuTimeLimit);
+        using var job = SandboxJobObject.Create(RamLimitBytes, CpuTimeLimit);
 
         (int exitCode, string stdOut, string stdErr) = SandboxedProcessLauncher.RunAsync(
                 ExePath, arguments, new ProcessLaunchOptions(Job: job.Handle), CancellationToken.None)

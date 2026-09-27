@@ -46,7 +46,7 @@ public partial class App : Application
             () => sp.GetRequiredService<IDialogService>().OwnerWindowHandle)));
         services.AddTransient<MainViewModel>();
 
-        var provider = services.BuildServiceProvider();
+        ServiceProvider provider = services.BuildServiceProvider();
 
         // T-F48: force tar.exe capability detection now — a factory-registered singleton only
         // runs on first resolution, and nothing else currently injects TarCapabilities.
@@ -82,8 +82,8 @@ public partial class App : Application
                 // T-F106: deferred via ActivationGate — EnsureWindow's Activate() returns before
                 // RootGrid's first Loaded/layout pass, and mutating ViewModel state before that
                 // point left ListView rows permanently blank (see DeferredActionGate's doc comment).
-                var decision = FileActivationRouter.Decide(paths);
-                var window = _window!;
+                FileActivationDecision decision = FileActivationRouter.Decide(paths);
+                MainWindow window = _window!;
                 if (decision.Mode == FileActivationMode.Browse)
                     window.ActivationGate.RunOrDefer(() => _ = EnterBrowseSafelyAsync(window, decision.BrowsePath!));
                 else
@@ -94,11 +94,11 @@ public partial class App : Application
             // (ActivateApplication), not a pakko:// URI — a registered scheme was launchable by any
             // web page or document link. A plain Start-menu launch parses to null.
             case ExtendedActivationKind.Launch:
-                var launchDecision = LaunchActivationRouter.Decide(
+                LaunchActivationDecision? launchDecision = LaunchActivationRouter.Decide(
                     (args.Data as Windows.ApplicationModel.Activation.ILaunchActivatedEventArgs)?.Arguments);
                 if (launchDecision is null) { EnsureWindow(defaultLogMessage); return; }
                 EnsureWindow("Pakko started via Explorer");
-                var launchWindow = _window!;
+                MainWindow launchWindow = _window!;
 
                 // T-F03: --browse skips the pending-list/extract-options view and enters the Archive
                 // Browser (T-F05) directly, the same destination FileActivationRouter already routes

@@ -1,3 +1,4 @@
+using Archiver.Core.Models;
 using Archiver.Core.Services;
 using Archiver.Core.Tests.Helpers;
 using FluentAssertions;
@@ -17,7 +18,7 @@ public sealed class ZipArchiveServiceListEntriesTests
         // the generator: every entry is CreateEntryFromContent, never CreateEntry("dir/")).
         string archivePath = FixtureHelper.Archive("valid_nested_folders.zip");
 
-        var result = await _sut.ListEntriesAsync(archivePath);
+        ArchiveListResult result = await _sut.ListEntriesAsync(archivePath);
 
         result.Success.Should().BeTrue();
         result.Entries.Should().HaveCount(6);
@@ -36,7 +37,7 @@ public sealed class ZipArchiveServiceListEntriesTests
     {
         string archivePath = FixtureHelper.Archive("corrupted_central_directory.zip");
 
-        var result = await _sut.ListEntriesAsync(archivePath);
+        ArchiveListResult result = await _sut.ListEntriesAsync(archivePath);
 
         result.Success.Should().BeFalse();
         result.ErrorMessage.Should().NotBeNullOrEmpty();
@@ -45,7 +46,7 @@ public sealed class ZipArchiveServiceListEntriesTests
     [Fact]
     public async Task ListEntriesAsync_NonExistentPath_ReturnsFailureNotException()
     {
-        var result = await _sut.ListEntriesAsync(@"C:\definitely\does\not\exist.zip");
+        ArchiveListResult result = await _sut.ListEntriesAsync(@"C:\definitely\does\not\exist.zip");
 
         result.Success.Should().BeFalse();
     }

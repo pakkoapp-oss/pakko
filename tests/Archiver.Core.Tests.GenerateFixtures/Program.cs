@@ -157,10 +157,10 @@ using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text;
 
-var solutionRoot = FindSolutionRoot();
-var fixturesRoot = Path.Combine(solutionRoot, "tests", "Archiver.Core.Tests", "Fixtures");
-var archivesDir  = Path.Combine(fixturesRoot, "archives");
-var filesDir     = Path.Combine(fixturesRoot, "files");
+string solutionRoot = FindSolutionRoot();
+string fixturesRoot = Path.Combine(solutionRoot, "tests", "Archiver.Core.Tests", "Fixtures");
+string archivesDir  = Path.Combine(fixturesRoot, "archives");
+string filesDir     = Path.Combine(fixturesRoot, "files");
 
 Directory.CreateDirectory(archivesDir);
 Directory.CreateDirectory(filesDir);
@@ -176,7 +176,7 @@ Console.WriteLine();
 
 Section("Plain files");
 
-var compressible = Path.Combine(filesDir, "compressible.txt");
+string compressible = Path.Combine(filesDir, "compressible.txt");
 var sb = new StringBuilder();
 for (int i = 0; i < 200; i++)
 {
@@ -187,18 +187,18 @@ for (int i = 0; i < 200; i++)
 WriteText(compressible, sb.ToString());
 Record(compressible, "repeating text — compresses well");
 
-var incompressible = Path.Combine(filesDir, "incompressible.bin");
+string incompressible = Path.Combine(filesDir, "incompressible.bin");
 var rng = new Random(42); // fixed seed — reproducible
-var randomBytes = new byte[32 * 1024];
+byte[] randomBytes = new byte[32 * 1024];
 rng.NextBytes(randomBytes);
 File.WriteAllBytes(incompressible, randomBytes);
 Record(incompressible, "random bytes (seed=42) — does not compress");
 
-var unicodeFile = Path.Combine(filesDir, "unicode_filename_привіт.txt");
+string unicodeFile = Path.Combine(filesDir, "unicode_filename_привіт.txt");
 WriteText(unicodeFile, "Файл з юнікодною назвою для тестування.\nHello, 世界!\n");
 Record(unicodeFile, "unicode filename and content");
 
-var readme = Path.Combine(filesDir, "readme.txt");
+string readme = Path.Combine(filesDir, "readme.txt");
 WriteText(readme, "Pakko test fixture — readme\nLine 2\nLine 3\n");
 Record(readme);
 
@@ -206,15 +206,15 @@ Record(readme);
 
 Section("Valid archives");
 
-var singleFile = Path.Combine(archivesDir, "valid_single_file.zip");
-using (var zip = ZipFile.Open(singleFile, ZipArchiveMode.Create))
+string singleFile = Path.Combine(archivesDir, "valid_single_file.zip");
+using (ZipArchive zip = ZipFile.Open(singleFile, ZipArchiveMode.Create))
 {
     zip.CreateEntryFromContent("document.txt", Repeat("Single file content.\n", 50));
 }
 Record(singleFile, "one entry");
 
-var multipleFiles = Path.Combine(archivesDir, "valid_multiple_files.zip");
-using (var zip = ZipFile.Open(multipleFiles, ZipArchiveMode.Create))
+string multipleFiles = Path.Combine(archivesDir, "valid_multiple_files.zip");
+using (ZipArchive zip = ZipFile.Open(multipleFiles, ZipArchiveMode.Create))
 {
     zip.CreateEntryFromContent("file1.txt",   Repeat("Content of file 1\n", 30));
     zip.CreateEntryFromContent("file2.txt",   Repeat("Content of file 2\n", 30));
@@ -223,8 +223,8 @@ using (var zip = ZipFile.Open(multipleFiles, ZipArchiveMode.Create))
 }
 Record(multipleFiles, "4 entries, flat");
 
-var nestedFolders = Path.Combine(archivesDir, "valid_nested_folders.zip");
-using (var zip = ZipFile.Open(nestedFolders, ZipArchiveMode.Create))
+string nestedFolders = Path.Combine(archivesDir, "valid_nested_folders.zip");
+using (ZipArchive zip = ZipFile.Open(nestedFolders, ZipArchiveMode.Create))
 {
     zip.CreateEntryFromContent("root.txt",             "Root level file\n");
     zip.CreateEntryFromContent("docs/readme.txt",      Repeat("Docs readme\n", 20));
@@ -235,8 +235,8 @@ using (var zip = ZipFile.Open(nestedFolders, ZipArchiveMode.Create))
 }
 Record(nestedFolders, "6 entries, 3-level nesting");
 
-var unicodeNames = Path.Combine(archivesDir, "valid_unicode_filenames.zip");
-using (var zip = ZipFile.Open(unicodeNames, ZipArchiveMode.Create))
+string unicodeNames = Path.Combine(archivesDir, "valid_unicode_filenames.zip");
+using (ZipArchive zip = ZipFile.Open(unicodeNames, ZipArchiveMode.Create))
 {
     zip.CreateEntryFromContent("привіт.txt",          Repeat("Вміст файлу\n", 20));
     zip.CreateEntryFromContent("документи/звіт.txt",  Repeat("Звіт\n", 20));
@@ -244,13 +244,13 @@ using (var zip = ZipFile.Open(unicodeNames, ZipArchiveMode.Create))
 }
 Record(unicodeNames, "unicode entry names");
 
-var incompressibleZip = Path.Combine(archivesDir, "valid_incompressible_content.zip");
-using (var zip = ZipFile.Open(incompressibleZip, ZipArchiveMode.Create))
+string incompressibleZip = Path.Combine(archivesDir, "valid_incompressible_content.zip");
+using (ZipArchive zip = ZipFile.Open(incompressibleZip, ZipArchiveMode.Create))
 {
-    var entry = zip.CreateEntry("binary.bin", CompressionLevel.NoCompression);
-    using var stream = entry.Open();
+    ZipArchiveEntry entry = zip.CreateEntry("binary.bin", CompressionLevel.NoCompression);
+    using Stream stream = entry.Open();
     var rng2 = new Random(99);
-    var buf = new byte[8 * 1024];
+    byte[] buf = new byte[8 * 1024];
     rng2.NextBytes(buf);
     stream.Write(buf);
 }
@@ -263,7 +263,7 @@ Section("Tar-family fixtures (T-F05)");
 // Mirrors valid_nested_folders.zip's exact structure so ZIP/tar listing tests can assert the
 // same shape. Built via System.Formats.Tar (no tar.exe shell-out) so fixture generation stays
 // deterministic and platform-independent, per this file's own convention for every other fixture.
-var tarSourceDir = Path.Combine(Path.GetTempPath(), "pakko_tar_fixture_src_" + Guid.NewGuid());
+string tarSourceDir = Path.Combine(Path.GetTempPath(), "pakko_tar_fixture_src_" + Guid.NewGuid());
 Directory.CreateDirectory(Path.Combine(tarSourceDir, "docs", "sub"));
 Directory.CreateDirectory(Path.Combine(tarSourceDir, "src"));
 WriteText(Path.Combine(tarSourceDir, "root.txt"), "Root level file\n");
@@ -273,7 +273,7 @@ WriteText(Path.Combine(tarSourceDir, "docs", "sub", "appendix.txt"), Repeat("App
 WriteText(Path.Combine(tarSourceDir, "src", "main.cs"), Repeat("// C# source\nclass Program {}\n", 15));
 WriteText(Path.Combine(tarSourceDir, "src", "utils.cs"), Repeat("// Utils\nstatic class Utils {}\n", 15));
 
-var nestedFoldersTar = Path.Combine(archivesDir, "valid_nested_folders.tar");
+string nestedFoldersTar = Path.Combine(archivesDir, "valid_nested_folders.tar");
 if (File.Exists(nestedFoldersTar)) File.Delete(nestedFoldersTar);
 TarFile.CreateFromDirectory(tarSourceDir, nestedFoldersTar, includeBaseDirectory: false);
 Directory.Delete(tarSourceDir, recursive: true);
@@ -283,8 +283,8 @@ Record(nestedFoldersTar, "6 entries, 3-level nesting — mirrors valid_nested_fo
 
 Section("Smart extract scenarios (T-14)");
 
-var singleRootFolder = Path.Combine(archivesDir, "extract_single_root_folder.zip");
-using (var zip = ZipFile.Open(singleRootFolder, ZipArchiveMode.Create))
+string singleRootFolder = Path.Combine(archivesDir, "extract_single_root_folder.zip");
+using (ZipArchive zip = ZipFile.Open(singleRootFolder, ZipArchiveMode.Create))
 {
     zip.CreateEntryFromContent("project/readme.txt",   Repeat("Project readme\n", 10));
     zip.CreateEntryFromContent("project/src/main.cs",  Repeat("// main\n", 10));
@@ -292,8 +292,8 @@ using (var zip = ZipFile.Open(singleRootFolder, ZipArchiveMode.Create))
 }
 Record(singleRootFolder, "T-14: single root folder 'project/' — no double-nesting expected");
 
-var multipleRootItems = Path.Combine(archivesDir, "extract_multiple_root_items.zip");
-using (var zip = ZipFile.Open(multipleRootItems, ZipArchiveMode.Create))
+string multipleRootItems = Path.Combine(archivesDir, "extract_multiple_root_items.zip");
+using (ZipArchive zip = ZipFile.Open(multipleRootItems, ZipArchiveMode.Create))
 {
     zip.CreateEntryFromContent("readme.txt",      Repeat("Readme\n", 10));
     zip.CreateEntryFromContent("main.cs",         Repeat("// main\n", 10));
@@ -301,8 +301,8 @@ using (var zip = ZipFile.Open(multipleRootItems, ZipArchiveMode.Create))
 }
 Record(multipleRootItems, "T-14: multiple root items — subfolder expected on extract");
 
-var singleRootFile = Path.Combine(archivesDir, "extract_single_root_file.zip");
-using (var zip = ZipFile.Open(singleRootFile, ZipArchiveMode.Create))
+string singleRootFile = Path.Combine(archivesDir, "extract_single_root_file.zip");
+using (ZipArchive zip = ZipFile.Open(singleRootFile, ZipArchiveMode.Create))
     zip.CreateEntryFromContent("report.txt", Repeat("Report content\n", 30));
 Record(singleRootFile, "T-14: single root file — extract directly");
 
@@ -311,17 +311,17 @@ Record(singleRootFile, "T-14: single root file — extract directly");
 Section("Corrupted archives");
 
 // Build a valid zip in memory, then flip bytes in compressed data
-var corruptedEntryData = Path.Combine(archivesDir, "corrupted_entry_data.zip");
+string corruptedEntryData = Path.Combine(archivesDir, "corrupted_entry_data.zip");
 {
     using var ms = new MemoryStream();
     using (var zip = new ZipArchive(ms, ZipArchiveMode.Create, leaveOpen: true))
     {
-        var entry = zip.CreateEntry("file.txt", CompressionLevel.Fastest);
-        using var s = entry.Open();
-        var data = Encoding.UTF8.GetBytes(Repeat("This content will be corrupted.\n", 40));
+        ZipArchiveEntry entry = zip.CreateEntry("file.txt", CompressionLevel.Fastest);
+        using Stream s = entry.Open();
+        byte[] data = Encoding.UTF8.GetBytes(Repeat("This content will be corrupted.\n", 40));
         s.Write(data);
     }
-    var raw = ms.ToArray();
+    byte[] raw = ms.ToArray();
     // Flip bytes after local file header (signature 4 + fixed fields 26 + filename 8 = 38)
     const int offset = 38;
     for (int i = offset + 10; i < Math.Min(offset + 50, raw.Length); i++)
@@ -331,16 +331,16 @@ var corruptedEntryData = Path.Combine(archivesDir, "corrupted_entry_data.zip");
 Record(corruptedEntryData, "local file data corrupted — CRC mismatch expected on extract");
 
 // Build valid zip, then corrupt end-of-central-directory signature
-var corruptedCentralDir = Path.Combine(archivesDir, "corrupted_central_directory.zip");
+string corruptedCentralDir = Path.Combine(archivesDir, "corrupted_central_directory.zip");
 {
     using var ms = new MemoryStream();
     using (var zip = new ZipArchive(ms, ZipArchiveMode.Create, leaveOpen: true))
     {
-        var entry = zip.CreateEntry("file.txt", CompressionLevel.Fastest);
-        using var s = entry.Open();
+        ZipArchiveEntry entry = zip.CreateEntry("file.txt", CompressionLevel.Fastest);
+        using Stream s = entry.Open();
         s.Write(Encoding.UTF8.GetBytes(Repeat("Central directory will be corrupted.\n", 40)));
     }
-    var raw = ms.ToArray();
+    byte[] raw = ms.ToArray();
     // EOCD signature: 50 4B 05 06 — find last occurrence and corrupt
     byte[] eocdSig = [0x50, 0x4B, 0x05, 0x06];
     int idx = FindLastSequence(raw, eocdSig);
@@ -358,17 +358,17 @@ Record(corruptedCentralDir, "EOCD signature corrupted — archive unreadable");
 // corruptedEntryData above, which is Deflate-compressed and usually throws on read instead).
 // This isolates the "CRC-32 in the header doesn't match the actual bytes" case that
 // ZipArchiveService.TestAsync exists to catch — .NET never validates this itself on read.
-var corruptedCrcStored = Path.Combine(archivesDir, "corrupted_crc_stored.zip");
+string corruptedCrcStored = Path.Combine(archivesDir, "corrupted_crc_stored.zip");
 {
     using var ms = new MemoryStream();
     using (var zip = new ZipArchive(ms, ZipArchiveMode.Create, leaveOpen: true))
     {
-        var entry = zip.CreateEntry("file.txt", CompressionLevel.NoCompression);
-        using var s = entry.Open();
-        var data = Encoding.UTF8.GetBytes(Repeat("Stored content for CRC testing.\n", 20));
+        ZipArchiveEntry entry = zip.CreateEntry("file.txt", CompressionLevel.NoCompression);
+        using Stream s = entry.Open();
+        byte[] data = Encoding.UTF8.GetBytes(Repeat("Stored content for CRC testing.\n", 20));
         s.Write(data);
     }
-    var raw = ms.ToArray();
+    byte[] raw = ms.ToArray();
     // Local file header: signature(4) + fixed fields(26) + filename "file.txt"(8) = 38.
     const int offset = 38;
     raw[offset + 10] ^= 0xFF;
@@ -382,10 +382,10 @@ Section("Encrypted archives");
 
 // Minimal valid ZIP structure with encryption bit (bit 0) set in general purpose flag
 // Same detection target as production code in T-25
-var encryptedZipCrypto = Path.Combine(archivesDir, "encrypted_zipcrypto.zip");
+string encryptedZipCrypto = Path.Combine(archivesDir, "encrypted_zipcrypto.zip");
 {
     const string filename = "file.txt";
-    var fnBytes = Encoding.ASCII.GetBytes(filename);
+    byte[] fnBytes = Encoding.ASCII.GetBytes(filename);
 
     // Local file header
     using var ms = new MemoryStream();
@@ -477,7 +477,7 @@ Console.WriteLine("  --  created_by_7zip.zip, created_by_winrar.zip, created_by_
 Section("Security fixtures");
 
 // ZIP slip — entries with path traversal in name
-var zipSlip = Path.Combine(archivesDir, "zipslip_traversal.zip");
+string zipSlip = Path.Combine(archivesDir, "zipslip_traversal.zip");
 {
     using var ms = new MemoryStream();
     // We must write raw bytes — ZipArchive sanitizes entry names
@@ -494,7 +494,7 @@ var zipSlip = Path.Combine(archivesDir, "zipslip_traversal.zip");
         zip.CreateEntryFromContent("subdir/XXXXXXXXXXXXXXXXXXXX.txt","Deep traversal attempt — should be blocked\n");
     }
 
-    var raw = ms.ToArray();
+    byte[] raw = ms.ToArray();
 
     // Patch placeholder names to traversal paths (lengths verified above)
     PatchEntryName(raw, "XXXXXXXXXXXXXXXXXXXX.txt",       "../traversal_attempt.txt");
@@ -533,14 +533,14 @@ manifest.AppendLine("# Pakko Test Fixtures — SHA-256 Manifest");
 manifest.AppendLine("# Generated by Archiver.Core.Tests.GenerateFixtures");
 manifest.AppendLine("# DO NOT edit manually — re-run generator if fixtures change");
 manifest.AppendLine();
-foreach (var (name, _, hash, note) in generated)
+foreach ((string? name, long _, string? hash, string? note) in generated)
     manifest.AppendLine(note.Length > 0 ? $"{hash}  {name}  # {note}" : $"{hash}  {name}");
 manifest.AppendLine();
 manifest.AppendLine("# Manual fixtures — not generated:");
-foreach (var (name, reason) in manual)
+foreach ((string? name, string? reason) in manual)
     manifest.AppendLine($"# MISSING: {name}  — {reason}");
 
-var manifestPath = Path.Combine(archivesDir, "MANIFEST.sha256");
+string manifestPath = Path.Combine(archivesDir, "MANIFEST.sha256");
 File.WriteAllText(manifestPath, manifest.ToString(), Encoding.UTF8);
 Console.WriteLine($"  OK  MANIFEST.sha256  ({generated.Count} entries)");
 
@@ -552,7 +552,7 @@ Console.WriteLine($"Generated : {generated.Count} fixtures");
 Console.WriteLine($"Manual    : {manual.Count} fixtures remaining");
 Console.WriteLine();
 Console.WriteLine("Manual fixtures needed:");
-foreach (var (name, reason) in manual)
+foreach ((string? name, string? reason) in manual)
     Console.WriteLine($"  - {name}: {reason}");
 Console.WriteLine();
 Console.WriteLine($"Output    : {fixturesRoot}");
@@ -591,7 +591,7 @@ static string Repeat(string s, int times)
 void Record(string path, string note = "")
 {
     var info = new FileInfo(path);
-    var hash = ComputeSha256(path);
+    string hash = ComputeSha256(path);
     generated.Add((info.Name, info.Length, hash, note));
     Console.WriteLine($"  OK  {info.Name,-50}  {info.Length,8:N0} bytes  {note}");
 }
@@ -599,7 +599,7 @@ void Record(string path, string note = "")
 static string ComputeSha256(string path)
 {
     using var sha = SHA256.Create();
-    using var fs  = File.OpenRead(path);
+    using FileStream fs  = File.OpenRead(path);
     return Convert.ToHexString(sha.ComputeHash(fs)).ToLowerInvariant();
 }
 
@@ -617,8 +617,8 @@ static int FindLastSequence(byte[] haystack, byte[] needle)
 
 static void PatchEntryName(byte[] raw, string oldName, string newName)
 {
-    var oldBytes = Encoding.UTF8.GetBytes(oldName);
-    var newBytes = Encoding.UTF8.GetBytes(newName);
+    byte[] oldBytes = Encoding.UTF8.GetBytes(oldName);
+    byte[] newBytes = Encoding.UTF8.GetBytes(newName);
     if (oldBytes.Length != newBytes.Length)
         throw new InvalidOperationException("Patch names must be same byte length");
 
@@ -646,7 +646,7 @@ static int FindSequence(byte[] haystack, byte[] needle, int startAt = 0)
 
 static void WriteManual(string dir, string zipName, string instructions)
 {
-    var notePath = Path.Combine(dir, zipName + "_MANUAL.txt");
+    string notePath = Path.Combine(dir, zipName + "_MANUAL.txt");
     File.WriteAllText(notePath,
         $"MANUAL FIXTURE REQUIRED\n" +
         $"=======================\n" +
@@ -658,7 +658,7 @@ static void WriteManual(string dir, string zipName, string instructions)
 
 static void WriteAfterTask(string dir, string zipName, string task, string instructions)
 {
-    var notePath = Path.Combine(dir, zipName + $"_AFTER_{task}.txt");
+    string notePath = Path.Combine(dir, zipName + $"_AFTER_{task}.txt");
     File.WriteAllText(notePath,
         $"GENERATE AFTER {task} IS IMPLEMENTED\n" +
         $"{new string('=', 40)}\n" +
@@ -674,8 +674,8 @@ static class ZipArchiveExtensions
     public static void CreateEntryFromContent(this ZipArchive zip, string entryName, string content,
         CompressionLevel level = CompressionLevel.Optimal)
     {
-        var entry = zip.CreateEntry(entryName, level);
-        using var stream = entry.Open();
+        ZipArchiveEntry entry = zip.CreateEntry(entryName, level);
+        using Stream stream = entry.Open();
         stream.Write(Encoding.UTF8.GetBytes(content));
     }
 }

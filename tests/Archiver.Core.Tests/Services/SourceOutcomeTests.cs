@@ -25,10 +25,10 @@ public sealed class SourceOutcomeTests : IDisposable
     private string WriteZip(string name, params string[] entryNames)
     {
         string path = Path.Combine(_temp.Path, name);
-        using var archive = ZipFile.Open(path, ZipArchiveMode.Create);
+        using ZipArchive archive = ZipFile.Open(path, ZipArchiveMode.Create);
         foreach (string entryName in entryNames)
         {
-            using var stream = archive.CreateEntry(entryName).Open();
+            using Stream stream = archive.CreateEntry(entryName).Open();
             stream.Write("data"u8);
         }
         return path;
@@ -43,7 +43,7 @@ public sealed class SourceOutcomeTests : IDisposable
     {
         string zip = WriteZip("clean.zip", "a.txt", "b.txt");
 
-        var result = await _sut.ExtractAsync(new ExtractOptions { ArchivePaths = [zip], DestinationFolder = Dest("out") });
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions { ArchivePaths = [zip], DestinationFolder = Dest("out") });
 
         result.Sources.Should().ContainSingle().Which.Should().Be(new SourceResult { Path = zip, Outcome = SourceOutcome.Completed });
         result.FullyProcessedSources.Should().Equal(zip);
@@ -54,7 +54,7 @@ public sealed class SourceOutcomeTests : IDisposable
     {
         string zip = WriteZip("reserved.zip", "ok.txt", "CON.txt");
 
-        var result = await _sut.ExtractAsync(new ExtractOptions { ArchivePaths = [zip], DestinationFolder = Dest("out") });
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions { ArchivePaths = [zip], DestinationFolder = Dest("out") });
 
         result.Sources.Should().ContainSingle().Which.Outcome.Should().Be(SourceOutcome.Partial);
         result.FullyProcessedSources.Should().BeEmpty();
@@ -73,7 +73,7 @@ public sealed class SourceOutcomeTests : IDisposable
         };
         await _sut.ExtractAsync(options);
 
-        var result = await _sut.ExtractAsync(options);
+        ArchiveResult result = await _sut.ExtractAsync(options);
 
         result.Sources.Should().ContainSingle().Which.Outcome.Should().Be(SourceOutcome.NotProcessed);
         result.FullyProcessedSources.Should().BeEmpty();
@@ -89,7 +89,7 @@ public sealed class SourceOutcomeTests : IDisposable
         Directory.CreateDirectory(dest);
         File.WriteAllText(Path.Combine(dest, "a.txt"), "old");
 
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [zip],
             DestinationFolder = dest,
@@ -113,7 +113,7 @@ public sealed class SourceOutcomeTests : IDisposable
         File.WriteAllText(Path.Combine(dest, "a.txt"), "old");
         using var cts = new CancellationTokenSource();
 
-        var act = () => _sut.ExtractAsync(new ExtractOptions
+        Func<Task<ArchiveResult>> act = () => _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [zip],
             DestinationFolder = dest,
@@ -136,11 +136,11 @@ public sealed class SourceOutcomeTests : IDisposable
     {
         // Sequential single-archive writer (few files): cancel after the first source's progress
         // report; the loop used to `break` and commit a partial archive of all "sources".
-        var files = new[] { _temp.CreateFile("a.txt", new string('a', 4096)), _temp.CreateFile("b.txt"), _temp.CreateFile("c.txt") };
+        string[] files = new[] { _temp.CreateFile("a.txt", new string('a', 4096)), _temp.CreateFile("b.txt"), _temp.CreateFile("c.txt") };
         using var cts = new CancellationTokenSource();
         var progress = new SynchronousProgress<ProgressReport>(r => { if (r.BytesTransferred > 0) cts.Cancel(); });
 
-        var act = () => _sut.ArchiveAsync(new ArchiveOptions
+        Func<Task<ArchiveResult>> act = () => _sut.ArchiveAsync(new ArchiveOptions
         {
             SourcePaths = files,
             DestinationFolder = Dest("out"),
@@ -162,7 +162,7 @@ public sealed class SourceOutcomeTests : IDisposable
         using var cts = new CancellationTokenSource();
         var progress = new SynchronousProgress<ProgressReport>(r => { if (r.BytesTransferred > 0) cts.Cancel(); });
 
-        var act = () => _sut.ArchiveAsync(new ArchiveOptions
+        Func<Task<ArchiveResult>> act = () => _sut.ArchiveAsync(new ArchiveOptions
         {
             SourcePaths = [dir],
             DestinationFolder = Dest("out"),
@@ -178,7 +178,7 @@ public sealed class SourceOutcomeTests : IDisposable
     {
         string zip = WriteZip("subset.zip", "a.txt", "b.txt");
 
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [zip],
             DestinationFolder = Dest("out"),
@@ -196,7 +196,7 @@ public sealed class SourceOutcomeTests : IDisposable
         string zip = Path.Combine(_temp.Path, "corrupt.zip");
         File.WriteAllBytes(zip, [0x50, 0x4B, 0x03, 0x04, 1, 2, 3, 4, 5, 6, 7, 8]);
 
-        var result = await _sut.ExtractAsync(new ExtractOptions { ArchivePaths = [zip], DestinationFolder = Dest("out") });
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions { ArchivePaths = [zip], DestinationFolder = Dest("out") });
 
         result.FullyProcessedSources.Should().BeEmpty();
     }
@@ -208,7 +208,7 @@ public sealed class SourceOutcomeTests : IDisposable
         string corrupt = Path.Combine(_temp.Path, "corrupt.zip");
         File.WriteAllBytes(corrupt, [0x50, 0x4B, 0x03, 0x04, 1, 2, 3, 4]);
 
-        var result = await _sut.ExtractAsync(new ExtractOptions { ArchivePaths = [good, corrupt], DestinationFolder = Dest("out") });
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions { ArchivePaths = [good, corrupt], DestinationFolder = Dest("out") });
 
         result.FullyProcessedSources.Should().Equal(good);
     }
@@ -221,7 +221,7 @@ public sealed class SourceOutcomeTests : IDisposable
         using var cts = new CancellationTokenSource();
         var progress = new SynchronousProgress<ProgressReport>(r => { if (r.Percent >= 50) cts.Cancel(); });
 
-        var act = () => _sut.ExtractAsync(
+        Func<Task<ArchiveResult>> act = () => _sut.ExtractAsync(
             new ExtractOptions { ArchivePaths = [first, second], DestinationFolder = Dest("out") }, progress, cts.Token);
 
         await act.Should().ThrowAsync<OperationCanceledException>();
@@ -234,7 +234,7 @@ public sealed class SourceOutcomeTests : IDisposable
         using var cts = new CancellationTokenSource();
         cts.Cancel();
 
-        var act = () => _sut.ExtractAsync(new ExtractOptions { ArchivePaths = [zip], DestinationFolder = Dest("out") }, null, cts.Token);
+        Func<Task<ArchiveResult>> act = () => _sut.ExtractAsync(new ExtractOptions { ArchivePaths = [zip], DestinationFolder = Dest("out") }, null, cts.Token);
 
         await act.Should().ThrowAsync<OperationCanceledException>();
     }
@@ -244,9 +244,9 @@ public sealed class SourceOutcomeTests : IDisposable
     [Fact]
     public async Task ArchiveAsync_SeparateArchives_EverySourceCompleted()
     {
-        var files = new[] { _temp.CreateFile("a.txt"), _temp.CreateFile("b.txt"), _temp.CreateFile("c.txt") };
+        string[] files = new[] { _temp.CreateFile("a.txt"), _temp.CreateFile("b.txt"), _temp.CreateFile("c.txt") };
 
-        var result = await _sut.ArchiveAsync(new ArchiveOptions
+        ArchiveResult result = await _sut.ArchiveAsync(new ArchiveOptions
         {
             SourcePaths = files,
             DestinationFolder = Dest("out"),
@@ -262,7 +262,7 @@ public sealed class SourceOutcomeTests : IDisposable
         string a = _temp.CreateFile("a.txt");
         string missing = Path.Combine(_temp.Path, "missing.txt");
 
-        var result = await _sut.ArchiveAsync(new ArchiveOptions
+        ArchiveResult result = await _sut.ArchiveAsync(new ArchiveOptions
         {
             SourcePaths = [a, missing],
             DestinationFolder = Dest("out"),
@@ -278,7 +278,7 @@ public sealed class SourceOutcomeTests : IDisposable
         var files = Enumerable.Range(1, 20).Select(i => _temp.CreateFile($"f{i:D2}.txt")).ToList();
         using var locked = new FileStream(files[7], FileMode.Open, FileAccess.Read, FileShare.None);
 
-        var result = await _sut.ArchiveAsync(new ArchiveOptions
+        ArchiveResult result = await _sut.ArchiveAsync(new ArchiveOptions
         {
             SourcePaths = files,
             DestinationFolder = Dest("out"),
@@ -303,7 +303,7 @@ public sealed class SourceOutcomeTests : IDisposable
         }).ToList();
         using var locked = new FileStream(Path.Combine(dirs[2], "b.txt"), FileMode.Open, FileAccess.Read, FileShare.None);
 
-        var result = await _sut.ArchiveAsync(new ArchiveOptions
+        ArchiveResult result = await _sut.ArchiveAsync(new ArchiveOptions
         {
             SourcePaths = dirs,
             DestinationFolder = Dest("out"),
@@ -323,9 +323,9 @@ public sealed class SourceOutcomeTests : IDisposable
     [InlineData(@"C:\", @"C:\archive.zip", true)]
     public void DowngradeSourcesContainingOutputs_OnlySourcesContainingAnOutput(string source, string created, bool downgraded)
     {
-        var sources = new[] { new SourceResult { Path = source, Outcome = SourceOutcome.Completed } };
+        SourceResult[] sources = new[] { new SourceResult { Path = source, Outcome = SourceOutcome.Completed } };
 
-        var result = SourceOutcomeRules.DowngradeSourcesContainingOutputs(sources, [created]);
+        IReadOnlyList<SourceResult> result = SourceOutcomeRules.DowngradeSourcesContainingOutputs(sources, [created]);
 
         result.Single().Outcome.Should().Be(downgraded ? SourceOutcome.Partial : SourceOutcome.Completed);
     }
@@ -338,7 +338,7 @@ public sealed class SourceOutcomeTests : IDisposable
         Directory.CreateDirectory(dir);
         File.WriteAllText(Path.Combine(dir, "inner.txt"), "x");
 
-        var result = await _sut.ArchiveAsync(new ArchiveOptions
+        ArchiveResult result = await _sut.ArchiveAsync(new ArchiveOptions
         {
             SourcePaths = [a, dir],
             DestinationFolder = Dest("out"),
@@ -353,7 +353,7 @@ public sealed class SourceOutcomeTests : IDisposable
     {
         string a = _temp.CreateFile("a.txt");
 
-        var result = await _sut.ArchiveAsync(new ArchiveOptions
+        ArchiveResult result = await _sut.ArchiveAsync(new ArchiveOptions
         {
             SourcePaths = [a, Path.Combine(_temp.Path, "missing.txt")],
             DestinationFolder = Dest("out"),
@@ -371,7 +371,7 @@ public sealed class SourceOutcomeTests : IDisposable
         Directory.CreateDirectory(dir);
         File.WriteAllText(Path.Combine(dir, "inner.txt"), "x");
 
-        var result = await _sut.ArchiveAsync(new ArchiveOptions
+        ArchiveResult result = await _sut.ArchiveAsync(new ArchiveOptions
         {
             SourcePaths = [dir + Path.DirectorySeparatorChar],
             DestinationFolder = Dest("out"),
@@ -388,7 +388,7 @@ public sealed class SourceOutcomeTests : IDisposable
         Directory.CreateDirectory(dir);
         File.WriteAllText(Path.Combine(dir, "inner.txt"), "x");
 
-        var result = await _sut.ArchiveAsync(new ArchiveOptions
+        ArchiveResult result = await _sut.ArchiveAsync(new ArchiveOptions
         {
             SourcePaths = [dir],
             DestinationFolder = Path.Combine(dir, "archives"),
@@ -412,7 +412,7 @@ public sealed class SourceOutcomeTests : IDisposable
         };
         await _sut.ArchiveAsync(options);
 
-        var result = await _sut.ArchiveAsync(options);
+        ArchiveResult result = await _sut.ArchiveAsync(options);
 
         result.FullyProcessedSources.Should().BeEmpty();
     }
@@ -426,7 +426,7 @@ public sealed class SourceOutcomeTests : IDisposable
         using var cts = new CancellationTokenSource();
         cts.Cancel();
 
-        var act = () => _sut.ArchiveAsync(new ArchiveOptions
+        Func<Task<ArchiveResult>> act = () => _sut.ArchiveAsync(new ArchiveOptions
         {
             SourcePaths = [a],
             DestinationFolder = Dest("out"),
@@ -444,7 +444,7 @@ public sealed class SourceOutcomeTests : IDisposable
     {
         string zip = WriteZip("a.zip", "x.txt");
         string tar = Path.Combine(_temp.Path, "b.tar");
-        var header = new byte[512];
+        byte[] header = new byte[512];
         "ustar"u8.CopyTo(header.AsSpan(257));
         File.WriteAllBytes(tar, header);
         string rar = Path.Combine(_temp.Path, "c.rar");
@@ -457,7 +457,7 @@ public sealed class SourceOutcomeTests : IDisposable
         });
         var router = new ExtractionRouter(_sut, tarService, new TarCapabilities());
 
-        var result = await router.ExtractAsync(new ExtractOptions { ArchivePaths = [zip, tar, rar], DestinationFolder = Dest("out") });
+        ArchiveResult result = await router.ExtractAsync(new ExtractOptions { ArchivePaths = [zip, tar, rar], DestinationFolder = Dest("out") });
 
         result.FullyProcessedSources.Should().BeEquivalentTo([zip, tar]);
     }
@@ -467,12 +467,12 @@ public sealed class SourceOutcomeTests : IDisposable
     {
         string zip = WriteZip("a.zip", "x.txt");
         string tar = Path.Combine(_temp.Path, "b.tar");
-        var header = new byte[512];
+        byte[] header = new byte[512];
         "ustar"u8.CopyTo(header.AsSpan(257));
         File.WriteAllBytes(tar, header);
         var router = new ExtractionRouter(_sut, new SourcesTarService(null), new TarCapabilities());
 
-        var act = () => router.ExtractAsync(new ExtractOptions { ArchivePaths = [zip, tar], DestinationFolder = Dest("out") });
+        Func<Task<ArchiveResult>> act = () => router.ExtractAsync(new ExtractOptions { ArchivePaths = [zip, tar], DestinationFolder = Dest("out") });
 
         await act.Should().ThrowAsync<OperationCanceledException>();
     }

@@ -98,7 +98,7 @@ public static class FileHashService
         var options = new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount, CancellationToken = ct };
         await Parallel.ForEachAsync(fileIndices, options, async (i, token) =>
         {
-            var (digest, error) = await ComputeFileDigestAsync(paths[i], algorithm, progress, token).ConfigureAwait(false);
+            (byte[]? digest, string? error) = await ComputeFileDigestAsync(paths[i], algorithm, progress, token).ConfigureAwait(false);
             ordered[i] = digest is null
                 ? new HashEntry(paths[i], null, error)
                 : new HashEntry(paths[i], FormatDigest(algorithm, digest), null);
@@ -118,7 +118,7 @@ public static class FileHashService
         var namesSum = new HashDigestAccumulator(digestSize);
         var entries = new List<HashEntry>();
         int fileCount = 0;
-        var sync = new object();
+        object sync = new object();
 
         // T-F251: the shared DirectoryWalker — an unreadable folder is one error entry instead of
         // an exception out of this method, and a junction or symlink is skipped (never followed:
@@ -132,7 +132,7 @@ public static class FileHashService
         string? rootName = RootLogName(root);
         List<FileInfo> files = CollectFolderItems(root, rootName, algorithm, namesSum, entries, ct);
         long totalBytes = files.Sum(f => f.Length);
-        var tracker = progress is null ? null : new AggregateProgressTracker(totalBytes, progress);
+        AggregateProgressTracker? tracker = progress is null ? null : new AggregateProgressTracker(totalBytes, progress);
 
         // DataSum/NamesSum contributions are computed outside the lock (pure CPU work on
         // already-read bytes, no shared state) — only the final Accumulator.Add calls and list
@@ -146,7 +146,7 @@ public static class FileHashService
                 Func<FileStream, Stream>? wrap = tracker is null
                     ? null
                     : fs => new AggregateProgressStream(fs, tracker, file.Name);
-                var (digest, error) = await ComputeFileDigestAsync(
+                (byte[]? digest, string? error) = await ComputeFileDigestAsync(
                     file.FullName, file.Length, algorithm, wrap, tracker, file.Name, token).ConfigureAwait(false);
                 if (digest is null)
                 {
@@ -154,7 +154,7 @@ public static class FileHashService
                     return;
                 }
 
-                var namesSumItem = ComputeNamesSumItemDigest(algorithm, isDirectory: false, digest, LogPath(root, rootName, file)!);
+                byte[] namesSumItem = ComputeNamesSumItemDigest(algorithm, isDirectory: false, digest, LogPath(root, rootName, file)!);
 
                 lock (sync)
                 {
@@ -241,7 +241,7 @@ public static class FileHashService
     {
         Span<byte> pre = stackalloc byte[16];
         pre[0] = isDirectory ? (byte)1 : (byte)0;
-        var pathBytes = new byte[logPath.Length * 2];
+        byte[] pathBytes = new byte[logPath.Length * 2];
         for (int i = 0; i < logPath.Length; i++)
         {
             char c = logPath[i];
@@ -276,7 +276,7 @@ public static class FileHashService
         try
         {
             var file = new FileInfo(path);
-            var tracker = progress is null ? null : new AggregateProgressTracker(file.Length, progress);
+            AggregateProgressTracker? tracker = progress is null ? null : new AggregateProgressTracker(file.Length, progress);
             Func<FileStream, Stream>? wrap = tracker is null
                 ? null
                 : fs => new AggregateProgressStream(fs, tracker, file.Name);
@@ -355,10 +355,10 @@ public static class FileHashService
                 (length + ParallelCrc32ChunkBytes - 1) / ParallelCrc32ChunkBytes);
             long baseChunkSize = length / chunkCount;
 
-            var chunkCrcs = new uint[chunkCount];
-            var chunkLengths = new long[chunkCount];
+            uint[] chunkCrcs = new uint[chunkCount];
+            long[] chunkLengths = new long[chunkCount];
 
-            using var handle = File.OpenHandle(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+            using SafeFileHandle handle = File.OpenHandle(path, FileMode.Open, FileAccess.Read, FileShare.Read);
 
             var options = new ParallelOptions { MaxDegreeOfParallelism = chunkCount, CancellationToken = ct };
             Parallel.For(0, chunkCount, options, i =>

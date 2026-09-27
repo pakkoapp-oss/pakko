@@ -1,3 +1,4 @@
+using Archiver.Core.Models;
 using Archiver.Core.Services;
 using Archiver.Core.Tests.Helpers;
 using FluentAssertions;
@@ -21,7 +22,7 @@ public sealed class TarSandboxedServiceListEntriesTests
         // entries — unlike the ZIP counterpart) — see Archiver.Core.Tests.GenerateFixtures.
         string archivePath = FixtureHelper.Archive("valid_nested_folders.tar");
 
-        var result = await _sut.ListEntriesAsync(archivePath);
+        ArchiveListResult result = await _sut.ListEntriesAsync(archivePath);
 
         result.Success.Should().BeTrue();
         var filePaths = result.Entries.Where(e => !e.IsDirectory).Select(e => e.Path).ToList();
@@ -41,7 +42,7 @@ public sealed class TarSandboxedServiceListEntriesTests
     [Fact]
     public async Task ListEntriesAsync_NonExistentPath_ReturnsFailureNotException()
     {
-        var result = await _sut.ListEntriesAsync(@"C:\definitely\does\not\exist.tar");
+        ArchiveListResult result = await _sut.ListEntriesAsync(@"C:\definitely\does\not\exist.tar");
 
         result.Success.Should().BeFalse();
         result.ErrorMessage.Should().NotBeNullOrEmpty();

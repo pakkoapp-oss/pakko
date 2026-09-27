@@ -24,7 +24,7 @@ public sealed class AmsiScannerTests
         using AmsiScanner scanner = new("PakkoTests");
         byte[] eicar = Encoding.ASCII.GetBytes(BuildEicarString());
 
-        var (verdict, _) = scanner.ScanBuffer(eicar, eicar.Length, "eicar-test.txt");
+        (ThreatVerdict verdict, _) = scanner.ScanBuffer(eicar, eicar.Length, "eicar-test.txt");
 
         verdict.Should().Be(ThreatVerdict.ThreatDetected);
     }
@@ -35,7 +35,7 @@ public sealed class AmsiScannerTests
         using AmsiScanner scanner = new("PakkoTests");
         byte[] clean = Encoding.ASCII.GetBytes("Just an ordinary text file with nothing suspicious in it.");
 
-        var (verdict, _) = scanner.ScanBuffer(clean, clean.Length, "clean.txt");
+        (ThreatVerdict verdict, _) = scanner.ScanBuffer(clean, clean.Length, "clean.txt");
 
         verdict.Should().Be(ThreatVerdict.Clean);
     }

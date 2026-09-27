@@ -63,8 +63,8 @@ public sealed class AntivirusScanServiceTests : IDisposable
     private string CreateZip(string name, params (string EntryName, string Content)[] entries)
     {
         string path = Path.Combine(_temp.Path, name);
-        using var archive = ZipFile.Open(path, ZipArchiveMode.Create);
-        foreach (var (entryName, content) in entries)
+        using ZipArchive archive = ZipFile.Open(path, ZipArchiveMode.Create);
+        foreach ((string? entryName, string? content) in entries)
         {
             ZipArchiveEntry entry = archive.CreateEntry(entryName);
             using Stream stream = entry.Open();
@@ -93,9 +93,9 @@ public sealed class AntivirusScanServiceTests : IDisposable
     {
         string zip = CreateZip("clean.zip", ("a.txt", "hello"), ("b.txt", "world"));
         var scanner = new FakeAmsiScanner();
-        var service = CreateService(scanner);
+        AntivirusScanService service = CreateService(scanner);
 
-        var result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [zip] });
+        ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [zip] });
 
         result.OverallVerdict.Should().Be(ThreatVerdict.Clean);
         result.Findings.Should().HaveCount(2);
@@ -110,9 +110,9 @@ public sealed class AntivirusScanServiceTests : IDisposable
         string zip = CreateZip("infected.zip", ("clean.txt", "fine"), ("bad.txt", "eicar-like"));
         var scanner = new FakeAmsiScanner();
         scanner.DetectedContentNames.Add("bad.txt");
-        var service = CreateService(scanner);
+        AntivirusScanService service = CreateService(scanner);
 
-        var result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [zip] });
+        ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [zip] });
 
         result.OverallVerdict.Should().Be(ThreatVerdict.ThreatDetected);
         result.Findings.Should().ContainSingle(f => f.EntryPath == "bad.txt" && f.Verdict == ThreatVerdict.ThreatDetected);
@@ -124,9 +124,9 @@ public sealed class AntivirusScanServiceTests : IDisposable
     {
         string zip = CreateZip("multi.zip", ("a.txt", "1"), ("b.txt", "2"), ("c.txt", "3"));
         var scanner = new FakeAmsiScanner();
-        var service = CreateService(scanner);
+        AntivirusScanService service = CreateService(scanner);
 
-        var result = await service.ScanAsync(new AntivirusScanOptions
+        ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions
         {
             ArchivePaths = [zip],
             SelectedEntryPaths = ["b.txt"],
@@ -142,9 +142,9 @@ public sealed class AntivirusScanServiceTests : IDisposable
     {
         string zip = CreateZip("withempty.zip", ("a.txt", "hello"), ("empty.txt", ""));
         var scanner = new FakeAmsiScanner();
-        var service = CreateService(scanner);
+        AntivirusScanService service = CreateService(scanner);
 
-        var result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [zip] });
+        ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [zip] });
 
         result.OverallVerdict.Should().Be(ThreatVerdict.Clean);
         result.Findings.Should().ContainSingle(f => f.EntryPath == "empty.txt").Which.Verdict.Should().Be(ThreatVerdict.Clean);
@@ -157,9 +157,9 @@ public sealed class AntivirusScanServiceTests : IDisposable
         string zip = CreateZip("fails.zip", ("a.txt", "hello"), ("bad.txt", "boom"), ("c.txt", "world"));
         var scanner = new FakeAmsiScanner();
         scanner.FailingContentNames.Add("bad.txt");
-        var service = CreateService(scanner);
+        AntivirusScanService service = CreateService(scanner);
 
-        var result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [zip] });
+        ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [zip] });
 
         result.OverallVerdict.Should().Be(ThreatVerdict.Inconclusive);
         ThreatFinding failed = result.Findings.Should().ContainSingle(f => f.EntryPath == "bad.txt").Subject;
@@ -179,7 +179,7 @@ public sealed class AntivirusScanServiceTests : IDisposable
         // actually writing that many bytes (kept small enough not to slow the suite down: a 1-byte
         // over-cap write would work too, but a clearly-oversized value makes intent obvious).
         string oversizedZip = Path.Combine(_temp.Path, "oversized.zip");
-        using (var archive = ZipFile.Open(oversizedZip, ZipArchiveMode.Create))
+        using (ZipArchive archive = ZipFile.Open(oversizedZip, ZipArchiveMode.Create))
         {
             ZipArchiveEntry entry = archive.CreateEntry("huge.bin", CompressionLevel.NoCompression);
             using Stream stream = entry.Open();
@@ -194,9 +194,9 @@ public sealed class AntivirusScanServiceTests : IDisposable
         }
 
         var scanner = new FakeAmsiScanner();
-        var service = CreateService(scanner);
+        AntivirusScanService service = CreateService(scanner);
 
-        var result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [oversizedZip] });
+        ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [oversizedZip] });
 
         result.OverallVerdict.Should().Be(ThreatVerdict.Inconclusive);
         result.Findings.Should().ContainSingle(f => f.EntryPath == "huge.bin"
@@ -215,7 +215,7 @@ public sealed class AntivirusScanServiceTests : IDisposable
     public async Task ScanAsync_EntryExactlyAtCap_IsScannedNotSkipped()
     {
         string atCapZip = Path.Combine(_temp.Path, "at-cap.zip");
-        using (var archive = ZipFile.Open(atCapZip, ZipArchiveMode.Create))
+        using (ZipArchive archive = ZipFile.Open(atCapZip, ZipArchiveMode.Create))
         {
             ZipArchiveEntry entry = archive.CreateEntry("at-cap.bin", CompressionLevel.NoCompression);
             using Stream stream = entry.Open();
@@ -230,9 +230,9 @@ public sealed class AntivirusScanServiceTests : IDisposable
         }
 
         var scanner = new FakeAmsiScanner();
-        var service = CreateService(scanner);
+        AntivirusScanService service = CreateService(scanner);
 
-        var result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [atCapZip] });
+        ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [atCapZip] });
 
         result.Findings.Should().ContainSingle(f => f.EntryPath == "at-cap.bin" && f.Verdict == ThreatVerdict.Clean);
         scanner.Calls.Should().ContainSingle(c => c.ContentName == "at-cap.bin"
@@ -245,9 +245,9 @@ public sealed class AntivirusScanServiceTests : IDisposable
     {
         string zip = CreateZip("clean.zip", ("a.txt", "hello"));
         var scanner = new FakeAmsiScanner();
-        var service = CreateService(scanner, providerRegistered: false);
+        AntivirusScanService service = CreateService(scanner, providerRegistered: false);
 
-        var result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [zip] });
+        ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [zip] });
 
         result.OverallVerdict.Should().Be(ThreatVerdict.Inconclusive);
         result.Findings.Should().ContainSingle(f => f.ArchivePath == zip
@@ -262,9 +262,9 @@ public sealed class AntivirusScanServiceTests : IDisposable
         string zip = CreateZip("blocked.zip", ("a.txt", "hello"));
         var scanner = new FakeAmsiScanner();
         var policy = new GroupPolicyOptions { BlockedFormats = ["zip"] };
-        var service = CreateService(scanner, policy: policy);
+        AntivirusScanService service = CreateService(scanner, policy: policy);
 
-        var result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [zip] });
+        ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [zip] });
 
         result.OverallVerdict.Should().Be(ThreatVerdict.Inconclusive);
         result.Findings.Should().ContainSingle(f => f.ArchivePath == zip && f.Reason!.Contains("Group Policy"));
@@ -276,9 +276,9 @@ public sealed class AntivirusScanServiceTests : IDisposable
     {
         string rar = WriteRar("only.rar");
         var scanner = new FakeAmsiScanner();
-        var service = CreateService(scanner, tarCapabilities: NoTarSupport);
+        AntivirusScanService service = CreateService(scanner, tarCapabilities: NoTarSupport);
 
-        var result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [rar] });
+        ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [rar] });
 
         result.OverallVerdict.Should().Be(ThreatVerdict.Inconclusive);
         result.Findings.Should().ContainSingle(f => f.ArchivePath == rar && f.Reason!.Contains("RAR"));
@@ -291,9 +291,9 @@ public sealed class AntivirusScanServiceTests : IDisposable
         string garbage = Path.Combine(_temp.Path, "not-an-archive.zip");
         File.WriteAllBytes(garbage, [1, 2, 3, 4, 5]);
         var scanner = new FakeAmsiScanner();
-        var service = CreateService(scanner);
+        AntivirusScanService service = CreateService(scanner);
 
-        var result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [garbage] });
+        ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [garbage] });
 
         result.OverallVerdict.Should().Be(ThreatVerdict.Inconclusive);
         result.Findings.Should().ContainSingle(f => f.ArchivePath == garbage && f.EntryPath == null);
@@ -303,9 +303,9 @@ public sealed class AntivirusScanServiceTests : IDisposable
     public async Task ScanAsync_EmptyArchivePathsList_ReturnsCleanWithNoFindings()
     {
         var scanner = new FakeAmsiScanner();
-        var service = CreateService(scanner);
+        AntivirusScanService service = CreateService(scanner);
 
-        var result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [] });
+        ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [] });
 
         result.OverallVerdict.Should().Be(ThreatVerdict.Clean);
         result.Findings.Should().BeEmpty();
@@ -317,7 +317,7 @@ public sealed class AntivirusScanServiceTests : IDisposable
         string zip1 = CreateZip("a.zip", ("x.txt", "1"));
         string zip2 = CreateZip("b.zip", ("y.txt", "2"));
         var scanner = new FakeAmsiScanner();
-        var service = CreateService(scanner);
+        AntivirusScanService service = CreateService(scanner);
         var reports = new List<ProgressReport>();
         var progress = new SynchronousProgress<ProgressReport>(reports.Add);
 
@@ -339,7 +339,7 @@ public sealed class AntivirusScanServiceTests : IDisposable
     {
         string zip = CreateZip("multi.zip", ("a.txt", "1"), ("b.txt", "2"), ("c.txt", "3"), ("d.txt", "4"));
         var scanner = new FakeAmsiScanner();
-        var service = CreateService(scanner);
+        AntivirusScanService service = CreateService(scanner);
         var reports = new List<ProgressReport>();
         var progress = new SynchronousProgress<ProgressReport>(reports.Add);
 
@@ -367,9 +367,9 @@ public sealed class AntivirusScanServiceTests : IDisposable
     public async Task ScanAsync_EncryptedZipNoResolver_ReportsPasswordProtectedInconclusiveWithoutScanning()
     {
         var scanner = new FakeAmsiScanner();
-        var service = CreateService(scanner);
+        AntivirusScanService service = CreateService(scanner);
 
-        var result = await service.ScanAsync(new AntivirusScanOptions
+        ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions
         {
             ArchivePaths = [FixtureHelper.Archive("encrypted_aes256.zip")],
         });
@@ -390,9 +390,9 @@ public sealed class AntivirusScanServiceTests : IDisposable
     public async Task ScanAsync_EncryptedZipCorrectPassword_ScansByteExactDecryptedPlaintext(string fixtureName)
     {
         var scanner = new FakeAmsiScanner();
-        var service = CreateService(scanner);
+        AntivirusScanService service = CreateService(scanner);
 
-        var result = await service.ScanAsync(new AntivirusScanOptions
+        ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions
         {
             ArchivePaths = [FixtureHelper.Archive(fixtureName)],
             ResolvePasswordAsync = FixedPassword(RealPassword),
@@ -407,9 +407,9 @@ public sealed class AntivirusScanServiceTests : IDisposable
     {
         var scanner = new FakeAmsiScanner();
         scanner.DetectedContentNames.Add("compressible.txt");
-        var service = CreateService(scanner);
+        AntivirusScanService service = CreateService(scanner);
 
-        var result = await service.ScanAsync(new AntivirusScanOptions
+        ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions
         {
             ArchivePaths = [FixtureHelper.Archive("encrypted_aes256.zip")],
             ResolvePasswordAsync = FixedPassword(RealPassword),
@@ -424,9 +424,9 @@ public sealed class AntivirusScanServiceTests : IDisposable
     {
         int prompts = 0;
         var scanner = new FakeAmsiScanner();
-        var service = CreateService(scanner);
+        AntivirusScanService service = CreateService(scanner);
 
-        var result = await service.ScanAsync(new AntivirusScanOptions
+        ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions
         {
             ArchivePaths = [FixtureHelper.Archive("mixed_encrypted_and_plain.zip")],
             ResolvePasswordAsync = _ =>
@@ -447,9 +447,9 @@ public sealed class AntivirusScanServiceTests : IDisposable
     {
         int prompts = 0;
         var scanner = new FakeAmsiScanner();
-        var service = CreateService(scanner);
+        AntivirusScanService service = CreateService(scanner);
 
-        var result = await service.ScanAsync(new AntivirusScanOptions
+        ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions
         {
             ArchivePaths = [FixtureHelper.Archive("encrypted_aes256.zip")],
             ResolvePasswordAsync = _ =>
@@ -469,9 +469,9 @@ public sealed class AntivirusScanServiceTests : IDisposable
     public async Task ScanAsync_UserCancelsPasswordPrompt_ReportsInconclusiveWithoutScanning()
     {
         var scanner = new FakeAmsiScanner();
-        var service = CreateService(scanner);
+        AntivirusScanService service = CreateService(scanner);
 
-        var result = await service.ScanAsync(new AntivirusScanOptions
+        ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions
         {
             ArchivePaths = [FixtureHelper.Archive("encrypted_aes256.zip")],
             ResolvePasswordAsync = _ => Task.FromResult(new PasswordDecision { Password = null }),
@@ -490,9 +490,9 @@ public sealed class AntivirusScanServiceTests : IDisposable
         File.Copy(FixtureHelper.Archive("encrypted_aes256.zip"), b);
         int prompts = 0;
         var scanner = new FakeAmsiScanner();
-        var service = CreateService(scanner);
+        AntivirusScanService service = CreateService(scanner);
 
-        var result = await service.ScanAsync(new AntivirusScanOptions
+        ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions
         {
             ArchivePaths = [a, b],
             ResolvePasswordAsync = _ =>
@@ -519,9 +519,9 @@ public sealed class AntivirusScanServiceTests : IDisposable
     public async Task ScanAsync_ZipCryptoCheckByteCollidingWrongPassword_IsNeverReportedClean()
     {
         var scanner = new FakeAmsiScanner();
-        var service = CreateService(scanner);
+        AntivirusScanService service = CreateService(scanner);
 
-        var result = await service.ScanAsync(new AntivirusScanOptions
+        ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions
         {
             ArchivePaths = [FixtureHelper.Archive("encrypted_zipcrypto_store.zip")],
             ResolvePasswordAsync = FixedPassword("wrong103"),
@@ -536,9 +536,9 @@ public sealed class AntivirusScanServiceTests : IDisposable
     public async Task ScanAsync_Bzip2UnderAesCorrectPassword_ReportsInconclusiveWithoutThrowing()
     {
         var scanner = new FakeAmsiScanner();
-        var service = CreateService(scanner);
+        AntivirusScanService service = CreateService(scanner);
 
-        var result = await service.ScanAsync(new AntivirusScanOptions
+        ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions
         {
             ArchivePaths = [FixtureHelper.Archive("encrypted_aes256_bzip2.zip")],
             ResolvePasswordAsync = FixedPassword(RealPassword),
@@ -556,9 +556,9 @@ public sealed class AntivirusScanServiceTests : IDisposable
     {
         string path = MalformedAesExtraFixture.Create(_temp.Path, declaredSize);
         var scanner = new FakeAmsiScanner();
-        var service = CreateService(scanner);
+        AntivirusScanService service = CreateService(scanner);
 
-        var result = await service.ScanAsync(new AntivirusScanOptions
+        ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions
         {
             ArchivePaths = [path],
             ResolvePasswordAsync = FixedPassword(RealPassword),
@@ -580,9 +580,9 @@ public sealed class AntivirusScanServiceTests : IDisposable
         BitConverter.GetBytes(300u * 1024 * 1024).CopyTo(bytes, 18);
         File.WriteAllBytes(patched, bytes);
         var scanner = new FakeAmsiScanner();
-        var service = CreateService(scanner);
+        AntivirusScanService service = CreateService(scanner);
 
-        var result = await service.ScanAsync(new AntivirusScanOptions
+        ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions
         {
             ArchivePaths = [patched],
             ResolvePasswordAsync = FixedPassword(RealPassword),
@@ -618,7 +618,7 @@ public sealed class AntivirusScanServiceEncryptedEicarTests
         }
         var service = new AntivirusScanService(new TarCapabilities());
 
-        var result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [zip] });
+        ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [zip] });
 
         result.OverallVerdict.Should().Be(ThreatVerdict.Clean);
         result.Findings.Should().HaveCount(2);
@@ -629,7 +629,7 @@ public sealed class AntivirusScanServiceEncryptedEicarTests
     {
         var service = new AntivirusScanService(new TarCapabilities());
 
-        var result = await service.ScanAsync(new AntivirusScanOptions
+        ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions
         {
             ArchivePaths = [FixtureHelper.Archive("encrypted_aes256_eicar.zip")],
             ResolvePasswordAsync = _ => Task.FromResult(new PasswordDecision { Password = "testpassword" }),
@@ -644,7 +644,7 @@ public sealed class AntivirusScanServiceEncryptedEicarTests
     {
         var service = new AntivirusScanService(new TarCapabilities());
 
-        var result = await service.ScanAsync(new AntivirusScanOptions
+        ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions
         {
             ArchivePaths = [FixtureHelper.Archive("encrypted_aes256_eicar.zip")],
         });

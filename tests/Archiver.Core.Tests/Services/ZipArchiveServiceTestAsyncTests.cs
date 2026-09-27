@@ -1,3 +1,4 @@
+using Archiver.Core.Models;
 using Archiver.Core.Services;
 using Archiver.Core.Tests.Helpers;
 using FluentAssertions;
@@ -21,7 +22,7 @@ public sealed class ZipArchiveServiceTestAsyncTests
         using var cts = new CancellationTokenSource();
         cts.Cancel();
 
-        var act = () => _sut.TestAsync([FixtureHelper.Archive("valid_multiple_files.zip")], cancellationToken: cts.Token);
+        Func<Task<ArchiveResult>> act = () => _sut.TestAsync([FixtureHelper.Archive("valid_multiple_files.zip")], cancellationToken: cts.Token);
 
         await act.Should().ThrowAsync<OperationCanceledException>();
     }
@@ -29,7 +30,7 @@ public sealed class ZipArchiveServiceTestAsyncTests
     [Fact]
     public async Task TestAsync_ValidArchive_Passes()
     {
-        var result = await _sut.TestAsync([FixtureHelper.Archive("valid_multiple_files.zip")]);
+        ArchiveResult result = await _sut.TestAsync([FixtureHelper.Archive("valid_multiple_files.zip")]);
 
         result.Success.Should().BeTrue();
         result.Errors.Should().BeEmpty();
@@ -40,7 +41,7 @@ public sealed class ZipArchiveServiceTestAsyncTests
     {
         // Stored (uncompressed) entry, data byte flipped after write — reads back cleanly,
         // but no longer matches the CRC-32 declared in the entry header.
-        var result = await _sut.TestAsync([FixtureHelper.Archive("corrupted_crc_stored.zip")]);
+        ArchiveResult result = await _sut.TestAsync([FixtureHelper.Archive("corrupted_crc_stored.zip")]);
 
         result.Success.Should().BeFalse();
         result.Errors.Should().ContainSingle(e => e.Message.Contains("CRC-32"));
@@ -49,7 +50,7 @@ public sealed class ZipArchiveServiceTestAsyncTests
     [Fact]
     public async Task TestAsync_EncryptedArchive_ReturnsError()
     {
-        var result = await _sut.TestAsync([FixtureHelper.Archive("encrypted_zipcrypto.zip")]);
+        ArchiveResult result = await _sut.TestAsync([FixtureHelper.Archive("encrypted_zipcrypto.zip")]);
 
         result.Success.Should().BeFalse();
         result.Errors.Should().ContainSingle(e => e.Message.Contains("password-protected"));
@@ -60,7 +61,7 @@ public sealed class ZipArchiveServiceTestAsyncTests
     [Fact]
     public async Task TestAsync_EncryptedAes256Archive_ReturnsError()
     {
-        var result = await _sut.TestAsync([FixtureHelper.Archive("encrypted_aes256.zip")]);
+        ArchiveResult result = await _sut.TestAsync([FixtureHelper.Archive("encrypted_aes256.zip")]);
 
         result.Success.Should().BeFalse();
         result.Errors.Should().ContainSingle(e => e.Message.Contains("password-protected"));
@@ -72,10 +73,10 @@ public sealed class ZipArchiveServiceTestAsyncTests
         // T-F117: TestAsync shares ExtractAsync's IsZipFile/GetKnownArchiveReason gate — bytes
         // matching no known archive signature must surface as a real error, not a silent no-op.
         using var temp = new TempDirectory();
-        var binaryPath = Path.Combine(temp.Path, "data.bin");
+        string binaryPath = Path.Combine(temp.Path, "data.bin");
         File.WriteAllBytes(binaryPath, [0xDE, 0xAD, 0xBE, 0xEF, 0x00, 0x11]);
 
-        var result = await _sut.TestAsync([binaryPath]);
+        ArchiveResult result = await _sut.TestAsync([binaryPath]);
 
         result.Success.Should().BeFalse();
         result.Errors.Should().ContainSingle(e => e.SourcePath == binaryPath
@@ -86,7 +87,7 @@ public sealed class ZipArchiveServiceTestAsyncTests
     [Fact]
     public async Task TestAsync_MultipleArchives_OneCorruptedOneValid_ReportsOnlyTheCorruptedOne()
     {
-        var result = await _sut.TestAsync([
+        ArchiveResult result = await _sut.TestAsync([
             FixtureHelper.Archive("valid_single_file.zip"),
             FixtureHelper.Archive("corrupted_crc_stored.zip"),
         ]);

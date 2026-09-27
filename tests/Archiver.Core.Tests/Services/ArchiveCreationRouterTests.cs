@@ -63,7 +63,7 @@ public sealed class ArchiveCreationRouterTests
         var router = new ArchiveCreationRouter(zipService, tarService);
         var options = new ArchiveOptions { SourcePaths = ["a.txt"], Format = ArchiveContainerFormat.Zip };
 
-        var result = await router.ArchiveAsync(options);
+        ArchiveResult result = await router.ArchiveAsync(options);
 
         result.Should().Be(zipService.ArchiveResult);
         zipService.ArchiveCallCount.Should().Be(1);
@@ -85,7 +85,7 @@ public sealed class ArchiveCreationRouterTests
         var router = new ArchiveCreationRouter(zipService, tarService);
         var options = new ArchiveOptions { SourcePaths = ["a.txt"], Format = format };
 
-        var result = await router.ArchiveAsync(options);
+        ArchiveResult result = await router.ArchiveAsync(options);
 
         result.Should().Be(tarService.CompressResult);
         tarService.CompressCallCount.Should().Be(1);
@@ -102,7 +102,7 @@ public sealed class ArchiveCreationRouterTests
         var router = new ArchiveCreationRouter(zipService, tarService, policy);
         var options = new ArchiveOptions { SourcePaths = ["a.txt"], Format = ArchiveContainerFormat.Zip };
 
-        var result = await router.ArchiveAsync(options);
+        ArchiveResult result = await router.ArchiveAsync(options);
 
         result.Success.Should().BeFalse();
         result.Errors.Should().ContainSingle(e => e.Message.Contains("Group Policy"));
@@ -119,7 +119,7 @@ public sealed class ArchiveCreationRouterTests
         var router = new ArchiveCreationRouter(zipService, tarService, policy);
         var options = new ArchiveOptions { SourcePaths = ["a.txt"], Format = ArchiveContainerFormat.Zip };
 
-        var result = await router.ArchiveAsync(options);
+        ArchiveResult result = await router.ArchiveAsync(options);
 
         result.Success.Should().BeFalse();
         zipService.ArchiveCallCount.Should().Be(0);
@@ -133,12 +133,12 @@ public sealed class ArchiveCreationRouterTests
         var policy = new GroupPolicyOptions { DisableTarExtraction = true };
         var router = new ArchiveCreationRouter(zipService, tarService, policy);
 
-        var tarResult = await router.ArchiveAsync(new ArchiveOptions { SourcePaths = ["a.txt"], Format = ArchiveContainerFormat.TarGz });
+        ArchiveResult tarResult = await router.ArchiveAsync(new ArchiveOptions { SourcePaths = ["a.txt"], Format = ArchiveContainerFormat.TarGz });
         tarResult.Success.Should().BeFalse();
         tarResult.Errors.Should().ContainSingle(e => e.Message.Contains("Group Policy"));
         tarService.CompressCallCount.Should().Be(0);
 
-        var zipResult = await router.ArchiveAsync(new ArchiveOptions { SourcePaths = ["a.txt"], Format = ArchiveContainerFormat.Zip });
+        ArchiveResult zipResult = await router.ArchiveAsync(new ArchiveOptions { SourcePaths = ["a.txt"], Format = ArchiveContainerFormat.Zip });
         zipResult.Success.Should().BeTrue();
         zipService.ArchiveCallCount.Should().Be(1);
     }
@@ -154,7 +154,7 @@ public sealed class ArchiveCreationRouterTests
         var router = new ArchiveCreationRouter(zipService, tarService, policy);
         var options = new ArchiveOptions { SourcePaths = ["a.txt"], Format = ArchiveContainerFormat.TarGz };
 
-        var result = await router.ArchiveAsync(options);
+        ArchiveResult result = await router.ArchiveAsync(options);
 
         result.Success.Should().BeFalse();
         tarService.CompressCallCount.Should().Be(0);

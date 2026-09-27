@@ -55,8 +55,8 @@ public sealed class PasswordResolverTests
             return Task.FromResult(new PasswordDecision { Password = "correct", ApplyToRemaining = true });
         }, maxAttempts: 3);
 
-        var first = await sut.ResolveAsync("a.zip", PasswordPurpose.Decrypt, pwd => pwd == "correct");
-        var second = await sut.ResolveAsync("b.zip", PasswordPurpose.Decrypt, pwd => pwd == "correct");
+        string? first = await sut.ResolveAsync("a.zip", PasswordPurpose.Decrypt, pwd => pwd == "correct");
+        string? second = await sut.ResolveAsync("b.zip", PasswordPurpose.Decrypt, pwd => pwd == "correct");
 
         first.Should().Be("correct");
         second.Should().Be("correct");

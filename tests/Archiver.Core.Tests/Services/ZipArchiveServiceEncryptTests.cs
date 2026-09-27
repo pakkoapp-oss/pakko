@@ -65,7 +65,7 @@ public sealed class ZipArchiveServiceEncryptTests : IDisposable
     private async Task<string> ExtractAsync(string archivePath, string password)
     {
         string destDir = Path.Combine(_temp.Path, "x-" + Path.GetRandomFileName());
-        var result = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [archivePath],
             DestinationFolder = destDir,
@@ -78,15 +78,15 @@ public sealed class ZipArchiveServiceEncryptTests : IDisposable
 
     private static List<(string Name, LocatedZipEntry Located)> ReadRawEntries(string archivePath)
     {
-        using var zip = ZipFile.OpenRead(archivePath);
-        using var fs = File.OpenRead(archivePath);
-        var located = RawZipEntryLocator.LocateAll(fs);
+        using ZipArchive zip = ZipFile.OpenRead(archivePath);
+        using FileStream fs = File.OpenRead(archivePath);
+        List<LocatedZipEntry> located = RawZipEntryLocator.LocateAll(fs);
         return zip.Entries.Select((e, i) => (e.FullName, located[i])).ToList();
     }
 
     private static void AssertFileEntriesAreAe2Aes256(string archivePath)
     {
-        foreach (var (name, located) in ReadRawEntries(archivePath))
+        foreach ((string? name, LocatedZipEntry? located) in ReadRawEntries(archivePath))
         {
             if (name.EndsWith('/'))
             {
@@ -104,7 +104,7 @@ public sealed class ZipArchiveServiceEncryptTests : IDisposable
 
     private static List<string> EntryNames(string archivePath)
     {
-        using var zip = ZipFile.OpenRead(archivePath);
+        using ZipArchive zip = ZipFile.OpenRead(archivePath);
         return zip.Entries.Select(e => e.FullName).ToList();
     }
 
@@ -116,7 +116,7 @@ public sealed class ZipArchiveServiceEncryptTests : IDisposable
         string src = CreateSourceTree();
         string outDir = Path.Combine(_temp.Path, "out");
 
-        var result = await ArchiveEncryptedAsync([src], outDir);
+        ArchiveResult result = await ArchiveEncryptedAsync([src], outDir);
 
         result.Success.Should().BeTrue(because: string.Join("; ", result.Errors.Select(e => e.Message)));
         string archive = result.CreatedFiles.Should().ContainSingle().Subject;
@@ -138,14 +138,14 @@ public sealed class ZipArchiveServiceEncryptTests : IDisposable
         string single = Path.Combine(_temp.Path, "file.txt");
         File.WriteAllText(single, "one file");
 
-        var plain = await _sut.ArchiveAsync(new ArchiveOptions
+        ArchiveResult plain = await _sut.ArchiveAsync(new ArchiveOptions
         {
             SourcePaths = [src, single],
             DestinationFolder = Path.Combine(_temp.Path, "plain"),
             ArchiveName = mode == ArchiveMode.SingleArchive ? "out" : null,
             Mode = mode,
         });
-        var encrypted = await ArchiveEncryptedAsync([src, single], Path.Combine(_temp.Path, "enc"), mode: mode);
+        ArchiveResult encrypted = await ArchiveEncryptedAsync([src, single], Path.Combine(_temp.Path, "enc"), mode: mode);
 
         plain.Success.Should().BeTrue();
         encrypted.Success.Should().BeTrue(because: string.Join("; ", encrypted.Errors.Select(e => e.Message)));
@@ -164,7 +164,7 @@ public sealed class ZipArchiveServiceEncryptTests : IDisposable
         for (int i = 0; i < 80; i++)
             File.WriteAllText(Path.Combine(src, $"f{i:D3}.txt"), $"content {i}");
 
-        var result = await ArchiveEncryptedAsync([src], Path.Combine(_temp.Path, "out"));
+        ArchiveResult result = await ArchiveEncryptedAsync([src], Path.Combine(_temp.Path, "out"));
 
         result.Success.Should().BeTrue();
         string archive = result.CreatedFiles.Single();
@@ -182,7 +182,7 @@ public sealed class ZipArchiveServiceEncryptTests : IDisposable
         string file = Path.Combine(_temp.Path, "big.bin");
         File.WriteAllBytes(file, payload);
 
-        var result = await ArchiveEncryptedAsync([file], Path.Combine(_temp.Path, "out"));
+        ArchiveResult result = await ArchiveEncryptedAsync([file], Path.Combine(_temp.Path, "out"));
 
         result.Success.Should().BeTrue();
         string archive = result.CreatedFiles.Single();
@@ -197,11 +197,11 @@ public sealed class ZipArchiveServiceEncryptTests : IDisposable
         string file = Path.Combine(_temp.Path, "empty.txt");
         File.WriteAllBytes(file, []);
 
-        var result = await ArchiveEncryptedAsync([file], Path.Combine(_temp.Path, "out"));
+        ArchiveResult result = await ArchiveEncryptedAsync([file], Path.Combine(_temp.Path, "out"));
 
         result.Success.Should().BeTrue();
         string archive = result.CreatedFiles.Single();
-        var (_, located) = ReadRawEntries(archive).Single();
+        (_, LocatedZipEntry? located) = ReadRawEntries(archive).Single();
         located.CompressionMethod.Should().Be(WinZipAesMethod);
         located.RealCompressionMethod.Should().Be(0, "an empty input is Stored, never an empty Deflate stream");
         located.CompressedSize.Should().Be(16 + 2 + 10, "salt + password verifier + authentication code");
@@ -214,7 +214,7 @@ public sealed class ZipArchiveServiceEncryptTests : IDisposable
     {
         string src = CreateSourceTree();
 
-        var result = await ArchiveEncryptedAsync([src], Path.Combine(_temp.Path, "out"), level: CompressionLevel.NoCompression);
+        ArchiveResult result = await ArchiveEncryptedAsync([src], Path.Combine(_temp.Path, "out"), level: CompressionLevel.NoCompression);
 
         result.Success.Should().BeTrue();
         string archive = result.CreatedFiles.Single();
@@ -230,7 +230,7 @@ public sealed class ZipArchiveServiceEncryptTests : IDisposable
         string printable = new(Enumerable.Range(0x20, 0x80 - 0x20).Select(c => (char)c).ToArray());
         string src = CreateSourceTree();
 
-        var result = await ArchiveEncryptedAsync([src], Path.Combine(_temp.Path, "out"), password: printable);
+        ArchiveResult result = await ArchiveEncryptedAsync([src], Path.Combine(_temp.Path, "out"), password: printable);
 
         result.Success.Should().BeTrue(because: string.Join("; ", result.Errors.Select(e => e.Message)));
         string extracted = Path.Combine(await ExtractAsync(result.CreatedFiles.Single(), printable), Path.GetFileName(src));
@@ -242,7 +242,7 @@ public sealed class ZipArchiveServiceEncryptTests : IDisposable
     {
         string src = CreateSourceTree();
 
-        var result = await ArchiveEncryptedAsync([src], Path.Combine(_temp.Path, "out"), password: new string('p', 99));
+        ArchiveResult result = await ArchiveEncryptedAsync([src], Path.Combine(_temp.Path, "out"), password: new string('p', 99));
 
         result.Success.Should().BeTrue(because: string.Join("; ", result.Errors.Select(e => e.Message)));
     }
@@ -254,7 +254,7 @@ public sealed class ZipArchiveServiceEncryptTests : IDisposable
         string single = Path.Combine(_temp.Path, "file.txt");
         File.WriteAllText(single, "one file");
 
-        var result = await ArchiveEncryptedAsync([src, single], Path.Combine(_temp.Path, "out"), mode: ArchiveMode.SeparateArchives);
+        ArchiveResult result = await ArchiveEncryptedAsync([src, single], Path.Combine(_temp.Path, "out"), mode: ArchiveMode.SeparateArchives);
 
         result.Success.Should().BeTrue(because: string.Join("; ", result.Errors.Select(e => e.Message)));
         result.CreatedFiles.Should().HaveCount(2);
@@ -272,7 +272,7 @@ public sealed class ZipArchiveServiceEncryptTests : IDisposable
         string a = _temp.CreateFile("a.txt", "a");
         string b = _temp.CreateFile("b.txt", "b");
 
-        var result = await _sut.ArchiveAsync(new ArchiveOptions
+        ArchiveResult result = await _sut.ArchiveAsync(new ArchiveOptions
         {
             SourcePaths = [a, b],
             DestinationFolder = Path.Combine(_temp.Path, "out"),
@@ -294,7 +294,7 @@ public sealed class ZipArchiveServiceEncryptTests : IDisposable
         var reports = new List<ProgressReport>();
         var files = Enumerable.Range(0, 4).Select(i => _temp.CreateFile($"f{i}.txt", new string('x', 4096))).ToList();
 
-        var result = await ArchiveEncryptedAsync(files, Path.Combine(_temp.Path, "out"),
+        ArchiveResult result = await ArchiveEncryptedAsync(files, Path.Combine(_temp.Path, "out"),
             mode: ArchiveMode.SeparateArchives,
             progress: new SynchronousProgress<ProgressReport>(r => { lock (reports) reports.Add(r); }));
 
@@ -315,7 +315,7 @@ public sealed class ZipArchiveServiceEncryptTests : IDisposable
         File.WriteAllText(Path.Combine(src, "one.txt"), "identical payload");
         File.WriteAllText(Path.Combine(src, "two.txt"), "identical payload");
 
-        var result = await ArchiveEncryptedAsync([src], Path.Combine(_temp.Path, "out"));
+        ArchiveResult result = await ArchiveEncryptedAsync([src], Path.Combine(_temp.Path, "out"));
 
         string archive = result.CreatedFiles.Single();
         var located = ReadRawEntries(archive).Select(e => e.Located).ToList();
@@ -330,10 +330,10 @@ public sealed class ZipArchiveServiceEncryptTests : IDisposable
     public async Task ArchiveAsync_WithPassword_WrongPasswordCannotExtract()
     {
         string src = CreateSourceTree();
-        var result = await ArchiveEncryptedAsync([src], Path.Combine(_temp.Path, "out"));
+        ArchiveResult result = await ArchiveEncryptedAsync([src], Path.Combine(_temp.Path, "out"));
         string destDir = Path.Combine(_temp.Path, "x");
 
-        var extract = await _sut.ExtractAsync(new ExtractOptions
+        ArchiveResult extract = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [result.CreatedFiles.Single()],
             DestinationFolder = destDir,
@@ -356,7 +356,7 @@ public sealed class ZipArchiveServiceEncryptTests : IDisposable
         string src = CreateSourceTree();
         string outDir = Path.Combine(_temp.Path, "out");
 
-        var result = await ArchiveEncryptedAsync([src], outDir, password: null, mode: mode);
+        ArchiveResult result = await ArchiveEncryptedAsync([src], outDir, password: null, mode: mode);
 
         result.Success.Should().BeFalse();
         result.Errors.Should().NotBeEmpty();
@@ -380,7 +380,7 @@ public sealed class ZipArchiveServiceEncryptTests : IDisposable
         string src = CreateSourceTree();
         string outDir = Path.Combine(_temp.Path, "out");
 
-        var result = await ArchiveEncryptedAsync([src], outDir, password: password);
+        ArchiveResult result = await ArchiveEncryptedAsync([src], outDir, password: password);
 
         result.Success.Should().BeFalse();
         result.Errors.Should().ContainSingle().Which.Message.Should().Contain(expectedReason);
@@ -398,7 +398,7 @@ public sealed class ZipArchiveServiceEncryptTests : IDisposable
         File.WriteAllText(existing, "the user's previous archive");
         int conflictPrompts = 0;
 
-        var result = await _sut.ArchiveAsync(new ArchiveOptions
+        ArchiveResult result = await _sut.ArchiveAsync(new ArchiveOptions
         {
             SourcePaths = [src],
             DestinationFolder = outDir,

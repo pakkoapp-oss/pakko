@@ -9,7 +9,7 @@ public sealed class CliCancellationTests
     [Fact]
     public void FirstInterrupt_CancelsTokenAndKeepsProcessAlive()
     {
-        using CliCancellation cancellation = CliCancellation.Detached();
+        using var cancellation = CliCancellation.Detached();
 
         bool keepRunning = cancellation.HandleInterrupt();
 
@@ -20,7 +20,7 @@ public sealed class CliCancellationTests
     [Fact]
     public void SecondInterrupt_LetsTheProcessEnd()
     {
-        using CliCancellation cancellation = CliCancellation.Detached();
+        using var cancellation = CliCancellation.Detached();
         cancellation.HandleInterrupt();
 
         cancellation.HandleInterrupt().Should().BeFalse();
@@ -29,7 +29,7 @@ public sealed class CliCancellationTests
     [Fact]
     public void InterruptAfterQuitAtPrompt_LetsTheProcessEnd()
     {
-        using CliCancellation cancellation = CliCancellation.Detached();
+        using var cancellation = CliCancellation.Detached();
         cancellation.Source.Cancel();
 
         cancellation.HandleInterrupt().Should().BeFalse();

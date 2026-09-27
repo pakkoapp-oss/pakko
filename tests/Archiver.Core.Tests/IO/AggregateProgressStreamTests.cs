@@ -49,7 +49,7 @@ public sealed class AggregateProgressStreamTests
         var reports = new List<ProgressReport>();
         using var stream = new AggregateProgressStream(new MemoryStream(new byte[4]), MakeTracker(4, reports), currentFile: null);
 
-        var act = () => stream.Position = 1;
+        Func<long> act = () => stream.Position = 1;
 
         act.Should().Throw<NotSupportedException>();
     }
@@ -60,7 +60,7 @@ public sealed class AggregateProgressStreamTests
         var reports = new List<ProgressReport>();
         using var stream = new AggregateProgressStream(new MemoryStream(new byte[4]), MakeTracker(4, reports), currentFile: null);
 
-        var act = () => stream.Seek(0, SeekOrigin.Begin);
+        Func<long> act = () => stream.Seek(0, SeekOrigin.Begin);
 
         act.Should().Throw<NotSupportedException>();
     }
@@ -71,7 +71,7 @@ public sealed class AggregateProgressStreamTests
         var reports = new List<ProgressReport>();
         using var stream = new AggregateProgressStream(new MemoryStream(new byte[4]), MakeTracker(4, reports), currentFile: null);
 
-        var act = () => stream.SetLength(10);
+        Action act = () => stream.SetLength(10);
 
         act.Should().Throw<NotSupportedException>();
     }
@@ -82,7 +82,7 @@ public sealed class AggregateProgressStreamTests
         var reports = new List<ProgressReport>();
         using var stream = new AggregateProgressStream(new MemoryStream(new byte[4]), MakeTracker(4, reports), currentFile: null);
 
-        var act = () => stream.Write([1, 2, 3], 0, 3);
+        Action act = () => stream.Write([1, 2, 3], 0, 3);
 
         act.Should().Throw<NotSupportedException>();
     }
@@ -94,7 +94,7 @@ public sealed class AggregateProgressStreamTests
         var reports = new List<ProgressReport>();
         using var stream = new AggregateProgressStream(inner, MakeTracker(4, reports), currentFile: null);
 
-        var act = () => stream.Flush();
+        Action act = () => stream.Flush();
 
         act.Should().NotThrow();
     }
@@ -106,7 +106,7 @@ public sealed class AggregateProgressStreamTests
         var reports = new List<ProgressReport>();
         using var stream = new AggregateProgressStream(inner, MakeTracker(4, reports), currentFile: "file.bin");
 
-        var buffer = new byte[4];
+        byte[] buffer = new byte[4];
         int read = stream.Read(buffer, 0, 4);
 
         read.Should().Be(4);
@@ -120,7 +120,7 @@ public sealed class AggregateProgressStreamTests
         var reports = new List<ProgressReport>();
         using var stream = new AggregateProgressStream(inner, MakeTracker(4, reports), currentFile: "file.bin");
 
-        var buffer = new byte[4];
+        byte[] buffer = new byte[4];
 #pragma warning disable CA1835 // deliberately exercises the legacy byte[] overload under test, not a perf-sensitive call site
         int read = await stream.ReadAsync(buffer, 0, 4, CancellationToken.None);
 #pragma warning restore CA1835
@@ -136,7 +136,7 @@ public sealed class AggregateProgressStreamTests
         var reports = new List<ProgressReport>();
         using var stream = new AggregateProgressStream(inner, MakeTracker(4, reports), currentFile: "file.bin");
 
-        var buffer = new byte[4];
+        byte[] buffer = new byte[4];
         int read = await stream.ReadAsync(buffer.AsMemory());
 
         read.Should().Be(4);
@@ -147,7 +147,7 @@ public sealed class AggregateProgressStreamTests
     public void MultipleStreams_ShareOneTrackerAcrossFiles()
     {
         var reports = new List<ProgressReport>();
-        var tracker = MakeTracker(8, reports);
+        AggregateProgressTracker tracker = MakeTracker(8, reports);
 
         using (var s1 = new AggregateProgressStream(new MemoryStream([1, 2, 3, 4]), tracker, "a.bin"))
         {
@@ -172,7 +172,7 @@ public sealed class AggregateProgressStreamTests
 
         stream.Dispose();
 
-        var act = () => inner.ReadByte();
+        Func<int> act = () => inner.ReadByte();
         act.Should().Throw<ObjectDisposedException>();
     }
 }

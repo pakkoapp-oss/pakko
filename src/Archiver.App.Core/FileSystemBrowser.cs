@@ -16,7 +16,7 @@ public static class FileSystemBrowser
         {
             var result = new List<ArchiveEntryViewModel>();
 
-            foreach (var dir in Directory.EnumerateDirectories(path))
+            foreach (string dir in Directory.EnumerateDirectories(path))
             {
                 var info = new DirectoryInfo(dir);
                 result.Add(new ArchiveEntryViewModel
@@ -28,7 +28,7 @@ public static class FileSystemBrowser
                 });
             }
 
-            foreach (var file in Directory.EnumerateFiles(path))
+            foreach (string file in Directory.EnumerateFiles(path))
             {
                 var info = new FileInfo(file);
                 result.Add(new ArchiveEntryViewModel

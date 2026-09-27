@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
 
@@ -27,7 +28,7 @@ internal static class TarCodePage
                 RedirectStandardOutput = true,
                 UseShellExecute = false,
             };
-            using var process = System.Diagnostics.Process.Start(start)!;
+            using Process process = System.Diagnostics.Process.Start(start)!;
             version = process.StandardOutput.ReadToEnd().Trim();
             process.WaitForExit();
         }

@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Archiver.Core.Services.Sandbox;
 using FluentAssertions;
 
@@ -39,7 +40,7 @@ public sealed class SandboxJobObjectTarExtractionTests : IDisposable
         string archivePath = CreateXzPreset9();
         using var job = SandboxJobObject.Create(ramLimitBytes: 32 * 1024 * 1024, cpuTimeLimit: TimeSpan.FromMinutes(2));
 
-        var (exitCode, _, _) = await RunTarInJob(job, archivePath);
+        (int exitCode, _, _) = await RunTarInJob(job, archivePath);
 
         exitCode.Should().NotBe(0);
         job.ReadLimitHit().Should().Be(SandboxJobObject.LimitHit.Memory);
@@ -51,7 +52,7 @@ public sealed class SandboxJobObjectTarExtractionTests : IDisposable
     {
         using var job = SandboxJobObject.Create(ramLimitBytes: 512 * 1024 * 1024, cpuTimeLimit: TimeSpan.FromMilliseconds(50));
 
-        var (exitCode, _, _) = await SandboxedProcessLauncher.RunAsync(
+        (int exitCode, _, _) = await SandboxedProcessLauncher.RunAsync(
             @"C:\Windows\System32\cmd.exe", ["/c", "for /L %i in (1,1,50000000) do @rem"],
             new ProcessLaunchOptions(Job: job.Handle), CancellationToken.None);
 
@@ -65,7 +66,7 @@ public sealed class SandboxJobObjectTarExtractionTests : IDisposable
         string archivePath = CreateXzPreset9();
         using var job = SandboxJobObject.Create(ramLimitBytes: 512 * 1024 * 1024, cpuTimeLimit: TimeSpan.FromMinutes(2));
 
-        var (exitCode, _, stdErr) = await RunTarInJob(job, archivePath);
+        (int exitCode, _, string? stdErr) = await RunTarInJob(job, archivePath);
 
         exitCode.Should().Be(0, because: stdErr);
         job.ReadLimitHit().Should().Be(SandboxJobObject.LimitHit.None);
@@ -80,7 +81,7 @@ public sealed class SandboxJobObjectTarExtractionTests : IDisposable
         var start = new System.Diagnostics.ProcessStartInfo(TarExecutablePath) { WorkingDirectory = source, UseShellExecute = false };
         foreach (string arg in new[] { "-cJf", archivePath, "--options", "xz:compression-level=9", "a.txt" })
             start.ArgumentList.Add(arg);
-        using var process = System.Diagnostics.Process.Start(start)!;
+        using Process process = System.Diagnostics.Process.Start(start)!;
         process.WaitForExit();
         process.ExitCode.Should().Be(0);
         return archivePath;
@@ -104,7 +105,7 @@ public sealed class SandboxJobObjectTarExtractionTests : IDisposable
 
         using var job = SandboxJobObject.Create(ramLimitBytes: 512 * 1024 * 1024, cpuTimeLimit: TimeSpan.FromMinutes(2));
 
-        var (exitCode, _, stdErr) = await SandboxedProcessLauncher.RunAsync(
+        (int exitCode, _, string? stdErr) = await SandboxedProcessLauncher.RunAsync(
             TarExecutablePath,
             ["-xf", archivePath, "-C", destDir],
             new ProcessLaunchOptions(Job: job.Handle),

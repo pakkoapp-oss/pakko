@@ -32,7 +32,7 @@ internal static class ZipEntryCompressor
 
     public static CompressedEntryData Compress(Stream sourceStream, CompressionLevel compressionLevel, string? password = null)
     {
-        var plain = CompressPlain(sourceStream, compressionLevel);
+        CompressedEntryData plain = CompressPlain(sourceStream, compressionLevel);
         if (password is null)
             return plain;
 

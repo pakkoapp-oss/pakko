@@ -52,7 +52,7 @@ public sealed class HashDigestAccumulatorTests
     public void ToDisplayString_LargeDigest_LowerCaseNoByteReversal()
     {
         var acc = new HashDigestAccumulator(32);
-        var digest = Enumerable.Range(0, 32).Select(i => (byte)i).ToArray();
+        byte[] digest = Enumerable.Range(0, 32).Select(i => (byte)i).ToArray();
         acc.Add(digest);
 
         acc.ToDisplayString().Should().Be("000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f");

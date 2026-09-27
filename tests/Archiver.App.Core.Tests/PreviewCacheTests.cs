@@ -42,7 +42,7 @@ public sealed class PreviewCacheTests : IDisposable
     {
         PreviewCache.DeleteAll();
 
-        var act = () => PreviewCache.DeleteAll();
+        Action act = () => PreviewCache.DeleteAll();
 
         act.Should().NotThrow();
     }

@@ -19,7 +19,7 @@ public sealed class ConflictResolverTests
             return Task.FromResult(new ConflictDecision { Resolution = ConflictResolution.Skip });
         });
 
-        var result = await sut.ResolveAsync(@"C:\file.txt");
+        ConflictBehavior result = await sut.ResolveAsync(@"C:\file.txt");
 
         result.Should().Be(configured);
         callCount.Should().Be(0);
@@ -30,7 +30,7 @@ public sealed class ConflictResolverTests
     {
         var sut = new ConflictResolver(ConflictBehavior.Ask, resolveConflictAsync: null);
 
-        var result = await sut.ResolveAsync(@"C:\file.txt");
+        ConflictBehavior result = await sut.ResolveAsync(@"C:\file.txt");
 
         result.Should().Be(ConflictBehavior.Skip);
     }
@@ -45,7 +45,7 @@ public sealed class ConflictResolverTests
         var sut = new ConflictResolver(ConflictBehavior.Ask,
             _ => Task.FromResult(new ConflictDecision { Resolution = resolution }));
 
-        var result = await sut.ResolveAsync(@"C:\file.txt");
+        ConflictBehavior result = await sut.ResolveAsync(@"C:\file.txt");
 
         result.Should().Be(expected);
     }
@@ -60,9 +60,9 @@ public sealed class ConflictResolverTests
             return Task.FromResult(new ConflictDecision { Resolution = ConflictResolution.Rename, ApplyToAll = true });
         });
 
-        var first = await sut.ResolveAsync(@"C:\a.txt");
-        var second = await sut.ResolveAsync(@"C:\b.txt");
-        var third = await sut.ResolveAsync(@"C:\c.txt");
+        ConflictBehavior first = await sut.ResolveAsync(@"C:\a.txt");
+        ConflictBehavior second = await sut.ResolveAsync(@"C:\b.txt");
+        ConflictBehavior third = await sut.ResolveAsync(@"C:\c.txt");
 
         first.Should().Be(ConflictBehavior.Rename);
         second.Should().Be(ConflictBehavior.Rename);

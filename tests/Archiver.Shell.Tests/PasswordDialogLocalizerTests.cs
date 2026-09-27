@@ -52,7 +52,7 @@ public sealed class PasswordDialogLocalizerTests
     [Fact]
     public void Get_UkrainianCulture_ReturnsTranslatedText()
     {
-        var original = CultureInfo.CurrentUICulture;
+        CultureInfo original = CultureInfo.CurrentUICulture;
         try
         {
             CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("uk-UA");
@@ -68,8 +68,8 @@ public sealed class PasswordDialogLocalizerTests
 
     public static IEnumerable<object[]> AllCultureKeyPairs()
     {
-        foreach (var culture in NonNeutralCultures)
-            foreach (var key in NoArgKeys)
+        foreach (string culture in NonNeutralCultures)
+            foreach (string key in NoArgKeys)
                 yield return [culture, key];
     }
 
@@ -77,7 +77,7 @@ public sealed class PasswordDialogLocalizerTests
     [MemberData(nameof(AllCultureKeyPairs))]
     public void Get_EveryLocaleAndKey_NeverThrowsFormatException(string culture, string key)
     {
-        var original = CultureInfo.CurrentUICulture;
+        CultureInfo original = CultureInfo.CurrentUICulture;
         try
         {
             CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(culture);
@@ -94,7 +94,7 @@ public sealed class PasswordDialogLocalizerTests
     [MemberData(nameof(NonNeutralCulturesMemberData))]
     public void Get_EveryLocale_MessageKeyNeverThrowsFormatExceptionAndContainsArchiveName(string culture)
     {
-        var original = CultureInfo.CurrentUICulture;
+        CultureInfo original = CultureInfo.CurrentUICulture;
         try
         {
             CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(culture);
@@ -109,7 +109,7 @@ public sealed class PasswordDialogLocalizerTests
 
     public static IEnumerable<object[]> NonNeutralCulturesMemberData()
     {
-        foreach (var culture in NonNeutralCultures)
+        foreach (string culture in NonNeutralCultures)
             yield return [culture];
     }
 }

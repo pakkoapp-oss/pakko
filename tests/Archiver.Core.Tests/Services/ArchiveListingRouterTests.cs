@@ -61,7 +61,7 @@ public sealed class ArchiveListingRouterTests : IDisposable
 
     private string WriteBytes(string name, byte[] bytes)
     {
-        var path = Path.Combine(_temp.Path, name);
+        string path = Path.Combine(_temp.Path, name);
         File.WriteAllBytes(path, bytes);
         return path;
     }
@@ -70,8 +70,8 @@ public sealed class ArchiveListingRouterTests : IDisposable
 
     private string WriteTar(string name)
     {
-        var header = new byte[512];
-        var ustar = System.Text.Encoding.ASCII.GetBytes("ustar");
+        byte[] header = new byte[512];
+        byte[] ustar = System.Text.Encoding.ASCII.GetBytes("ustar");
         Array.Copy(ustar, 0, header, 257, ustar.Length);
         return WriteBytes(name, header);
     }
@@ -92,12 +92,12 @@ public sealed class ArchiveListingRouterTests : IDisposable
     [Fact]
     public async Task ListEntriesAsync_ZipFile_RoutesToZipService()
     {
-        var zip = WriteZip("archive.zip");
+        string zip = WriteZip("archive.zip");
         var zipService = new FakeArchiveService();
         var tarService = new FakeTarService();
         var router = new ArchiveListingRouter(zipService, tarService, AllSupported);
 
-        var result = await router.ListEntriesAsync(zip);
+        ArchiveListResult result = await router.ListEntriesAsync(zip);
 
         zipService.ListCallCount.Should().Be(1);
         tarService.ListCallCount.Should().Be(0);
@@ -108,12 +108,12 @@ public sealed class ArchiveListingRouterTests : IDisposable
     [Fact]
     public async Task ListEntriesAsync_TarFile_RoutesToTarService()
     {
-        var tar = WriteTar("archive.tar");
+        string tar = WriteTar("archive.tar");
         var zipService = new FakeArchiveService();
         var tarService = new FakeTarService();
         var router = new ArchiveListingRouter(zipService, tarService, AllSupported);
 
-        var result = await router.ListEntriesAsync(tar);
+        ArchiveListResult result = await router.ListEntriesAsync(tar);
 
         tarService.ListCallCount.Should().Be(1);
         zipService.ListCallCount.Should().Be(0);
@@ -124,13 +124,13 @@ public sealed class ArchiveListingRouterTests : IDisposable
     [Fact]
     public async Task ListEntriesAsync_RarUnsupportedByCapabilities_ReturnsFailureWithoutCallingEitherService()
     {
-        var rar = WriteRar("archive.rar");
+        string rar = WriteRar("archive.rar");
         var zipService = new FakeArchiveService();
         var tarService = new FakeTarService();
-        var noRar = AllSupported with { SupportsRar = false };
+        TarCapabilities noRar = AllSupported with { SupportsRar = false };
         var router = new ArchiveListingRouter(zipService, tarService, noRar);
 
-        var result = await router.ListEntriesAsync(rar);
+        ArchiveListResult result = await router.ListEntriesAsync(rar);
 
         zipService.ListCallCount.Should().Be(0);
         tarService.ListCallCount.Should().Be(0);
@@ -143,7 +143,7 @@ public sealed class ArchiveListingRouterTests : IDisposable
     {
         // Matches ExtractionRouter's own dispatch: an unrecognized format falls into the ZIP
         // bucket so ZipArchiveService's own defensive "not a real ZIP" path handles messaging.
-        var unknown = WriteBytes("mystery.bin", [0x00, 0x01, 0x02, 0x03]);
+        string unknown = WriteBytes("mystery.bin", [0x00, 0x01, 0x02, 0x03]);
         var zipService = new FakeArchiveService();
         var tarService = new FakeTarService();
         var router = new ArchiveListingRouter(zipService, tarService, AllSupported);

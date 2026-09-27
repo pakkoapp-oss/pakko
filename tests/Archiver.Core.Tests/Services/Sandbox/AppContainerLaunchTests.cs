@@ -21,9 +21,9 @@ public sealed class AppContainerLaunchTests : IDisposable
     public async Task RunAsync_TarExeVersionInsideAppContainer_ExitsZeroWithVersionOutput()
     {
         _profile.EnsureExists();
-        using var sid = _profile.GetSid();
+        using SafeSidHandle sid = _profile.GetSid();
 
-        var (exitCode, stdOut, stdErr) = await SandboxedProcessLauncher.RunAsync(
+        (int exitCode, string? stdOut, string? stdErr) = await SandboxedProcessLauncher.RunAsync(
             @"C:\Windows\System32\tar.exe",
             ["--version"],
             new ProcessLaunchOptions(AppContainerSid: sid),

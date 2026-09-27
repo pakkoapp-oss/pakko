@@ -36,7 +36,7 @@ internal static class TarBuilder
     public static void WriteTar(string path, IEnumerable<Entry> entries)
     {
         using var fs = new FileStream(path, FileMode.Create, FileAccess.Write);
-        foreach (var entry in entries)
+        foreach (Entry entry in entries)
         {
             byte[] header = BuildHeader(entry.NameBytes ?? Encoding.ASCII.GetBytes(entry.Name), entry.Content.Length, entry.TypeFlag, entry.LinkName);
             fs.Write(header, 0, header.Length);
@@ -48,7 +48,7 @@ internal static class TarBuilder
         }
 
         // Two 512-byte zero blocks terminate the archive.
-        var end = new byte[1024];
+        byte[] end = new byte[1024];
         fs.Write(end, 0, end.Length);
     }
 
@@ -57,13 +57,13 @@ internal static class TarBuilder
         int remainder = contentLength % 512;
         if (remainder == 0)
             return;
-        var pad = new byte[512 - remainder];
+        byte[] pad = new byte[512 - remainder];
         stream.Write(pad, 0, pad.Length);
     }
 
     private static byte[] BuildHeader(byte[] name, int size, char typeFlag, string linkName)
     {
-        var header = new byte[512];
+        byte[] header = new byte[512];
 
         Array.Copy(name, 0, header, 0, Math.Min(100, name.Length));
         SetField(header, 100, 8, "0000644\0");
