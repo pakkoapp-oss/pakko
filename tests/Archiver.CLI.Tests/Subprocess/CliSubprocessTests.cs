@@ -58,6 +58,23 @@ public sealed class CliSubprocessTests
         Directory.Exists(Path.Combine(destDir, "photo")).Should().BeFalse();
     }
 
+    // T-F206: like `7z x`, no -o means the current directory — not the archive's own folder.
+    [Fact]
+    public void Extract_NoOutputSwitch_ExtractsIntoCurrentDirectoryNotBesideArchive()
+    {
+        string archiveDir = CliFixtureFiles.CreateScratchDir();
+        string zipPath = Path.Combine(archiveDir, "valid.zip");
+        File.Copy(CliFixtureFiles.ValidZip, zipPath);
+        string workingDir = CliFixtureFiles.CreateScratchDir();
+
+        (int exitCode, _, string stdErr) = CliProcessRunner.RunIn(workingDir, "x", zipPath);
+
+        exitCode.Should().Be(0, stdErr);
+        File.ReadAllText(Path.Combine(workingDir, "a.txt")).Should().Be("hello world");
+        File.Exists(Path.Combine(workingDir, "b.txt")).Should().BeTrue();
+        Directory.GetFileSystemEntries(archiveDir).Should().ContainSingle("nothing may land beside the archive");
+    }
+
     // T-F179 (test-coverage audit): precursor to T-F160 (interactive conflict dialog for
     // `pakko x`, still an open design question). Locks down today's real, observed behavior —
     // not a guessed one — as a baseline before that design work happens. Confirmed by reading
@@ -329,6 +346,10 @@ public sealed class CliSubprocessTests
 
     // --- --version / -v ---
 
+    // T-F222: tests build without Publish-Cli.ps1's /p:Version, so this is always a dev build — it
+    // printed a stale "pakko 1.4.2", indistinguishable from the real v1.4.2 release.
+    private const string DevBuildVersionPattern = @"^pakko \d+\.\d+\.\d+-dev(\+[0-9a-f]{7})?$";
+
     [Fact]
     public void DashDashVersion_ExitsZeroAndPrintsPakkoPrefixedVersion()
     {
@@ -336,7 +357,7 @@ public sealed class CliSubprocessTests
 
         exitCode.Should().Be(0);
         stdErr.Should().BeEmpty();
-        stdOut.Trim().Should().MatchRegex(@"^pakko \d+\.\d+\.\d+$");
+        stdOut.Trim().Should().MatchRegex(DevBuildVersionPattern);
     }
 
     [Fact]
@@ -346,7 +367,7 @@ public sealed class CliSubprocessTests
 
         exitCode.Should().Be(0);
         stdErr.Should().BeEmpty();
-        stdOut.Trim().Should().MatchRegex(@"^pakko \d+\.\d+\.\d+$");
+        stdOut.Trim().Should().MatchRegex(DevBuildVersionPattern);
     }
 
     // --- a: happy path ---
@@ -397,6 +418,44 @@ public sealed class CliSubprocessTests
         stdOut.Should().Contain("Size\tCompressed\tCrc32\tModified\tType\tPath");
         stdOut.Should().Contain("a.txt");
         stdOut.Should().Contain("b.txt");
+    }
+
+    // T-F238: redirected output used the console code page, so on a cp866 console `l > list.txt`
+    // wrote '?' for letters cp866 lacks (і, ї, є). -sccUTF-8 (7-Zip's switch) writes exact UTF-8
+    // with no BOM. Stdout is compared as raw bytes on purpose: a decoded capture could hide the loss.
+    [Fact]
+    public void List_SccUtf8_RedirectedStdoutCarriesExactUtf8NamesWithoutBom()
+    {
+        string scratchDir = CliFixtureFiles.CreateScratchDir();
+        string zipPath = Path.Combine(scratchDir, "names.zip");
+        using (ZipArchive archive = ZipFile.Open(zipPath, ZipArchiveMode.Create))
+        {
+            archive.CreateEntry("Звіт.txt");
+            archive.CreateEntry("报告.txt");
+        }
+
+        (int exitCode, byte[] stdOut, string stdErr) = CliProcessRunner.RunWithBinaryStdio([], "l", "-sccUTF-8", zipPath);
+
+        exitCode.Should().Be(0, stdErr);
+        stdOut.Take(3).Should().NotEqual(new byte[] { 0xEF, 0xBB, 0xBF }, "a BOM would corrupt `> list.txt`");
+        string text = new System.Text.UTF8Encoding(false, throwOnInvalidBytes: true).GetString(stdOut);
+        text.Should().Contain("Звіт.txt").And.Contain("报告.txt");
+    }
+
+    // T-F263 / T-F244 item 4: a killed `x -so` leaves its output (possibly decrypted) in %TEMP%;
+    // the next x/t/l/a run removes staging folders whose process is gone. PID int.MaxValue never
+    // exists, so this folder is always a dead run's.
+    [Fact]
+    public void List_SweepsStagingFolderLeftByADeadProcess()
+    {
+        string abandoned = Path.Combine(Path.GetTempPath(), "Archiver.CLI.Stdout", $"{int.MaxValue}-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(abandoned);
+        File.WriteAllText(Path.Combine(abandoned, "secret.txt"), "decrypted plaintext");
+
+        (int exitCode, _, string stdErr) = CliProcessRunner.Run("l", CliFixtureFiles.ValidZip);
+
+        exitCode.Should().Be(0, stdErr);
+        Directory.Exists(abandoned).Should().BeFalse();
     }
 
     // --- h: happy path (T-F128/T-F09 follow-up) ---

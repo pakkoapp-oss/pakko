@@ -17,7 +17,11 @@ internal static class CliProcessRunner
 {
     public static string ExePath { get; } = Resolve();
 
-    public static (int ExitCode, string StdOut, string StdErr) Run(params string[] args)
+    public static (int ExitCode, string StdOut, string StdErr) Run(params string[] args) =>
+        RunIn(workingDirectory: null, args);
+
+    // T-F206: `x` without -o extracts into the current directory, so a test needs to pick it.
+    public static (int ExitCode, string StdOut, string StdErr) RunIn(string? workingDirectory, params string[] args)
     {
         var startInfo = new ProcessStartInfo(ExePath)
         {
@@ -27,6 +31,8 @@ internal static class CliProcessRunner
             UseShellExecute = false,
             CreateNoWindow = true,
         };
+        if (workingDirectory is not null)
+            startInfo.WorkingDirectory = workingDirectory;
         foreach (string arg in args)
             startInfo.ArgumentList.Add(arg);
 

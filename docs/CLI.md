@@ -88,11 +88,11 @@ Rejected 2026-07-18; see `DECISIONS.md`'s T-F09 "Distribution" entry.
 | `d` | Delete (remove entries from an archive) | Not supported, deliberately — no in-place archive mutation, matches T-F05's "not an archive manager" positioning |
 | `t` | Test (verify integrity) | Partial — ZIP via existing `TestAsync` (T-F62); tar-family has no test capability (`ITarService` has no Test method, per T-F86's finding) |
 | `e` | Extract, flattened (no directory structure) | Not supported — Pakko's extraction always preserves the archive's folder structure; no flatten mode exists |
-| `x` | Extract with full paths | Supported — `ExtractMode.SingleFolder`; since T-F205 an archive's single root folder is kept, as `7z x` does |
+| `x` | Extract with full paths | Supported — `ExtractMode.SingleFolder`; since T-F205 an archive's single root folder is kept, as `7z x` does. Without `-o`, extracts into the **current directory**, as `7z x` does (T-F206; before it, next to the archive) |
 | `l` | List contents | Supported — consumes `IArchiveListingRouter` (T-F05, shipped), looped once per archive path given |
 | `b` | Benchmark | Not supported, deliberately out of scope (same reasoning as T-F05's NanaZip-toolbar scope cuts) |
-| `i` | Info (list supported archive formats/codecs) | Not implemented, but trivial — would report ZIP (always) + live `TarCapabilities` (detected formats) |
-| `h` | Hash | **Supported (added 2026-07-20, T-F128/T-F09 follow-up).** Real 7z `h` hashes files on disk, not archive entries — the original row here predated T-F128 and described the wrong thing. Maps onto `FileHashService.ComputeAsync` (same engine the Explorer context-menu "Хеш-суми" submenu uses): one or more files hashed independently, or exactly one folder recursed with a combined DataSum/NamesSum printed (NanaZip-compatible, verified against the vendored `7za.exe`) |
+| `i` | Info (list supported archive formats/codecs) | Supported — prints ZIP and tar/tar.gz (always) plus each tar.exe-backed format (tar.bz2/xz/zst/lzma, 7z, rar) with its live `TarCapabilities` result, and the tar.exe version. Takes no arguments (only `-scc`) |
+| `h` | Hash | **Supported (added 2026-07-20, T-F128/T-F09 follow-up).** Real 7z `h` hashes files on disk, not archive entries — the original row here predated T-F128 and described the wrong thing. Maps onto `FileHashService.ComputeAsync` (same engine as the Explorer context menu's CRC-32/SHA-256 commands, flattened out of the old "Хеш-суми" submenu by T-F128): one or more files hashed independently, or exactly one folder recursed with a combined DataSum/NamesSum printed (NanaZip-compatible, verified against the vendored `7za.exe`) |
 | `rn` | Rename entries in an archive | Not supported, deliberately — in-place mutation, same reasoning as `d` |
 
 ## Version reporting — deliberately not a 7z pattern
@@ -106,12 +106,16 @@ and exiting 0 — closer to `git --version`/`rg --version` convention than 7z's 
 comes from `Archiver.CLI.csproj`'s `<Version>` MSBuild property, which `scripts/Publish-Cli.ps1`
 overrides via `/p:Version` at release-build time (CI passes the pushed git tag, stripped of its
 leading `v`) so a released `pakko.exe` always reports the exact tag it shipped under.
+**Every other build** (a non-tag CI build, a local build) keeps the checked-in default
+`0.0.0-dev` and prints it with the 7-character commit the SDK appends to the informational
+version, e.g. `pakko 0.0.0-dev+0e379cc` (T-F222 — the old checked-in default `1.4.2` made such
+builds indistinguishable from the real v1.4.2). The default is deliberately never bumped.
 
 ## Switch fidelity — per-switch, not full coverage
 
 | 7z switch | Meaning | Pakko mapping |
 |-----------|---------|----------------|
-| `-o{dir}` | Output directory | Maps directly to `ExtractOptions.Destination` |
+| `-o{dir}` | Output directory | Maps directly to `ExtractOptions.DestinationFolder`; omitted, it is the current directory (T-F206, 7z behavior), including with `-si` |
 | `-p{pwd}` | Password / encryption | Supported on `x`/`t` (T-F191, ZIP only — ZipCrypto and WinZip AE-1/AE-2) and on `a` (T-F193: encrypts every file entry with WinZip AES-256 AE-2; folder entries and all file names stay unencrypted). Not applicable to `l` (listing needs no password). **Bare `-p`** (T-F193, 7z semantics) asks on the console — once on `x`/`t`, twice (enter + re-enter) on `a`; before T-F193 a bare `-p` was a command-line error. A bare `-p` with a redirected stdin or with `-si` exits **7** (nothing to type into). **On `a` only:** the password must be printable ASCII (0x20–0x7F) and at most 99 characters — 7-Zip's own creation rule (it decodes ZIP passwords through the ANSI code page and refuses longer AES passwords), so any other password would give an archive 7-Zip cannot open; `x`/`t` accept any password. A `-p<pwd>` that breaks the rule exits **7** (command-line error, nothing created); at the interactive prompt a mismatch or a refused password exits **2** with its reason and is never re-asked (7z behavior), and Esc/Ctrl+C exits **255**. `-p` with any `-t tar*` format exits **7** (tar has no encryption). Without `-p` on an encrypted archive (`x`/`t`): a real interactive console (not redirected/piped) and no `-y` prompts with a masked `Console.ReadKey`-based input, retried on a wrong password up to 3 times; a redirected/piped stdin (including `-si`, which already consumes stdin for the archive itself) or `-y` fails immediately with the same message as an unresolved password always has — deliberate: `-y` means "pick the safe default" for conflicts/compression-bomb warnings, where a safe default exists; there is no safe default for a missing password, so `-y` cannot make the operation proceed, only fail predictably instead of hanging on a prompt that can't be answered non-interactively. **`-p<pwd>` is visible in the process's own command line** (`Get-Process`/Process Explorer, or any other process on the machine enumerating command lines) for as long as `pakko.exe` runs — same exposure as any CLI tool's `-p`/`--password`-shaped flag; prefer the interactive prompt over `-p` when that matters. See `ARCHITECTURE.md`'s "`-p{pwd}` password support (T-F191)" section and `DECISIONS.md`'s T-F191/T-F193 entries |
 | `-r[-\|0]` | Recurse subdirectories | Archiving already recurses folders by default; the 7z on/off nuance needs its own check against current `ArchiveOptions` behavior |
 | `-i{pattern}` / `-x{pattern}` | Include/exclude filename patterns | Not supported — no wildcard include/exclude filtering exists in `ArchiveOptions`/`ExtractOptions` today |
@@ -121,7 +125,11 @@ leading `v`) so a released `pakko.exe` always reports the exact tag it shipped u
 | `-mem={method}` | ZIP encryption method | T-F193, `a` only: `-mem=AES256` (case-insensitive) is accepted as a no-op — AES-256 is the only method Pakko writes. `-mem=ZipCrypto`/`AES128`/`AES192` are refused (exit 7) rather than silently upgraded; any other value is an unknown-value error. Every other `-m{param}` except `-mx` is refused on `a` as not implemented |
 | `-m{params}` (e.g. `-mx=9`) | Compression method/level | Partial — 7z's 0–9 scale doesn't map 1:1 onto `System.IO.Compression.CompressionLevel`'s four discrete values (`NoCompression`/`Fastest`/`Optimal`/`SmallestSize`); needs an explicit, documented bucketing, not a naive `/9*4` — resolved: `0`->`NoCompression`, `1-2`->`Fastest`, `3-6`->`Optimal` (7z's own default `-mx5` lands here), `7-9`->`SmallestSize` |
 | `-ao{a\|s\|u\|t}` | Overwrite mode | Mostly supported — maps to `ExtractOptions.OnConflict` (Overwrite/Skip/Rename); 7z's 4th variant (`t`, rename existing instead of new) has no Pakko equivalent |
-| `-scc`/`-ssc` | Console charset / case-sensitivity | `-scc` not applicable (.NET is Unicode-native); case-sensitive matching is an open question worth a decision, not an assumption |
+| `-scc{charset}` | Console charset | **Supported on every command (T-F238).** `-sccUTF-8`, `-sccWIN` (system ANSI code page) or `-sccDOS` (system OEM code page), case-insensitive, last one wins — the three names 7-Zip's own help lists (confirmed in NanaZip's vendored `ArchiveCommandLine.cpp`/`Main.cpp`); 7-Zip's undocumented numeric form (`-scc1251`) is refused with a named error. Sets the encoding of everything pakko prints, stdout **and** stderr, with no BOM. Without it, output uses the console code page, so a name the page cannot hold is written as `?` (7-Zip writes it lossily too): under `chcp 866`, `pakko l x.zip > list.txt` turns `Звіт.txt` into `Зв?т.txt`. Use `-sccUTF-8` whenever a script needs exact names. The switch is meant for redirected output: on
+an interactive console whose code page is not UTF-8, the console decodes pakko's UTF-8 bytes in
+its own code page, so non-ASCII text (including a conflict prompt on stderr) shows as mojibake —
+expected, and the same with 7-Zip. The console's own code page is never changed (pakko does not call `SetConsoleOutputCP`). Input is unaffected: prompts read keys as Unicode |
+| `-ssc` | Case-sensitivity | Not supported; case-sensitive matching is an open question worth a decision, not an assumption |
 | `-si` | Read the archive from stdin | Supported on `x`/`t`/`l` (T-F116, buffered — stages stdin to a temp file first, see below) and on `h` (T-F128/T-F09 follow-up, **genuinely zero-copy** — CRC-32/SHA-256 need no seeking, so `ComputeStreamDigestAsync` hashes stdin directly, no temp file at all; the only `-si` on any command that's a real single-pass stream) |
 | `-so` | Write output to stdout | Supported on `x` (only when extraction resolves to exactly one file) and `a` (T-F116). Not applicable to `h` — its report already prints to stdout by default, there's no separate result file to stream |
 | `-scrc{method}` | Hash method | Only meaningful for `h` (added T-F128/T-F09 follow-up). Two real spellings map onto `HashAlgorithmKind`: `-scrcCRC32` (default when `-scrc` is omitted, matching real 7z's own default) and `-scrcSHA256`, case-insensitive. Every other real 7z method (`CRC64`, `SHA1`, `SHA3-256`, `XXH64`, `BLAKE2SP`, etc.) is recognized but rejected — Pakko only implements the two `Archiver.Core.IO`/`System.Security.Cryptography` already provided elsewhere in the app |
@@ -139,6 +147,18 @@ T-F116 entry for why true zero-copy streaming was rejected for these commands: `
 seekable file to read its central directory, and `TarSandboxedService`'s whole-archive pre-scan
 (T-F49) needs a real file to scan before extraction runs — neither can operate on a raw pipe
 mid-stream.
+
+**Staging folders (T-F244 item 4 / T-F263).** Each `-si`/`-so` run stages into its own folder,
+`%TEMP%\Archiver.CLI.Stdin\<pid>-<guid>` or `%TEMP%\Archiver.CLI.Stdout\<pid>-<guid>`, owned from
+the moment it exists: a failed or cancelled copy (disk full, broken pipe, Ctrl+C) removes it, as
+does the end of the command. Ctrl+C in `x`/`t`/`l`/`a` cancels cleanly with exit code **255**; a
+read blocked on a stalled stdin pipe does not see that cancellation, so a **second** Ctrl+C ends
+pakko at once — with Windows' own `0xC000013A` exit status (`STATUS_CONTROL_C_EXIT`), not 255,
+and without the cleanup (the next run's sweep does it). A process killed outright (`taskkill`, power loss) cannot clean up — `x -so` may
+then leave an extracted (possibly decrypted) file in its `Stdout` folder; the next `x`/`t`/`l`/`a`
+run deletes every staging folder whose process is gone (PID not running, or reused by a process
+started after the folder was made). `%TEMP%` is already private to the user, so the folders get
+no ACL of their own.
 
 **`h -si` is the one genuine exception (T-F128/T-F09 follow-up).** CRC-32/SHA-256 are single-pass,
 no-seek algorithms, so nothing forces staging to disk first — `FileHashService.

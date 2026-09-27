@@ -1,4 +1,6 @@
 using System.IO.Compression;
+using System.Reflection;
+using System.Runtime.CompilerServices;
 using Archiver.CLI;
 using Archiver.Core.Models;
 using Archiver.Core.Services;
@@ -12,6 +14,11 @@ GroupPolicyOptions policy = GroupPolicyService.Load();
 #pragma warning restore CA1416
 
 var command = CliArgumentParser.Parse(args);
+if (command.ConsoleCodePage is { } consoleCodePage)
+    CliConsoleCharset.Apply(consoleCodePage);
+// T-F263: -si/-so staging left by a pakko that was killed (e.g. `x -so` plaintext) goes now.
+if (command.Type is CliCommandType.Extract or CliCommandType.Test or CliCommandType.List or CliCommandType.Archive)
+    CliStreamStaging.SweepAbandoned();
 
 return command.Type switch
 {
@@ -36,11 +43,11 @@ static int RunHelp()
 
 static int RunVersion()
 {
-    // MSBuild's <Version> (Archiver.CLI.csproj) is padded to a 4-segment AssemblyVersion at
-    // compile time; ToString(3) drops the always-zero 4th (revision) segment, matching how
-    // release git tags (vX.Y.Z) are written elsewhere in this repo.
-    var version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
-    Console.Out.WriteLine($"pakko {version?.ToString(3) ?? "0.0.0"}");
+    // T-F222: the informational version keeps the -dev suffix and the SDK-appended commit that
+    // the 4-segment AssemblyVersion drops.
+    string? informationalVersion = Assembly.GetExecutingAssembly()
+        .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+    Console.Out.WriteLine(CliVersionText.Format(informationalVersion));
     return 0;
 }
 
@@ -61,69 +68,53 @@ static int RejectBarePasswordWithoutConsole()
 // x: extract with full paths. SingleFolder mode (not SeparateFolders — that's
 // Archiver.Shell's --extract-folder behavior) matches real 7z 'x': every named
 // archive's own internal structure goes straight into the destination, no
-// synthetic per-archive wrapper folder.
+// synthetic per-archive wrapper folder. Without -o the destination is the
+// current directory, as with 7z 'x' (T-F206).
 // -------------------------------------------------------------------------
 static async Task<int> RunExtractAsync(ParsedCliCommand command, GroupPolicyOptions policy)
 {
-    string? stagedStdinPath = null;
-    string? stdoutStagingDir = null;
     // T-F160: cancelled by the conflict prompt's (Q)uit / end of input, or by Ctrl+C — either way a
     // clean Core cancellation (temp output removed) and exit code 255, 7-Zip's "user stopped".
-    using var quit = new CancellationTokenSource();
-    ConsoleCancelEventHandler onCtrlC = (_, e) => { e.Cancel = true; quit.Cancel(); };
-    Console.CancelKeyPress += onCtrlC;
+    using CliCancellation cancellation = CliCancellation.ListenToConsole();
     try
     {
         var tarService = new TarSandboxedService(policy);
         var capabilities = await tarService.DetectCapabilitiesAsync().ConfigureAwait(false);
         var router = new ExtractionRouter(new ZipArchiveService(policy), tarService, capabilities, policy);
 
-        IReadOnlyList<string> archivePaths = command.ArchivePaths;
-        if (command.ReadFromStdin)
-        {
-            stagedStdinPath = await CliStreamStaging.StageStdinAsync(CancellationToken.None).ConfigureAwait(false);
-            archivePaths = [stagedStdinPath];
-        }
+        using CliStagingFolder? stdinFolder = await StageStdinIfRequestedAsync(command, cancellation.Token).ConfigureAwait(false);
+        using CliStagingFolder? stdoutFolder = command.WriteToStdout ? CliStagingFolder.Create(CliStreamStaging.StdoutRoot) : null;
+        string destination = stdoutFolder?.Path ?? ResolveExtractDestination(command);
 
-        string destination;
-        if (command.WriteToStdout)
-        {
-            stdoutStagingDir = CliStreamStaging.CreateOutputStagingDirectory();
-            destination = stdoutStagingDir;
-        }
-        else
-        {
-            destination = ResolveExtractDestination(command, archivePaths);
-        }
+        var options = BuildExtractOptions(command, ArchivePathsFor(command, stdinFolder), destination, cancellation.Source);
 
-        var options = BuildExtractOptions(command, archivePaths, destination, quit);
-
-        ArchiveResult result = await router.ExtractAsync(options, progress: null, quit.Token).ConfigureAwait(false);
-        if (quit.IsCancellationRequested)
+        ArchiveResult result = await router.ExtractAsync(options, progress: null, cancellation.Token).ConfigureAwait(false);
+        if (cancellation.Token.IsCancellationRequested)
             return ReportUserStopped();
-        int code = ReportResult(result);
-        if (!command.WriteToStdout || code == 2)
-            return code;
-
-        return await StreamResultToStdoutIfSuccessfulAsync(stdoutStagingDir!, code).ConfigureAwait(false);
+        return await ReportAndStreamAsync(result, stdoutFolder, cancellation.Token).ConfigureAwait(false);
     }
-    catch (OperationCanceledException) when (quit.IsCancellationRequested)
+    catch (OperationCanceledException) when (cancellation.Token.IsCancellationRequested)
     {
         return ReportUserStopped();
     }
-    finally
-    {
-        Console.CancelKeyPress -= onCtrlC;
-        if (stagedStdinPath is not null)
-            CliStreamStaging.CleanupStagedStdin(stagedStdinPath);
-        if (stdoutStagingDir is not null)
-            CliStreamStaging.CleanupOutputStagingDirectory(stdoutStagingDir);
-    }
 }
 
-static string ResolveExtractDestination(ParsedCliCommand command, IReadOnlyList<string> archivePaths) =>
-    command.OutputDirectory
-        ?? (command.ReadFromStdin ? "." : Path.GetDirectoryName(Path.GetFullPath(archivePaths[0])) ?? ".");
+// T-F244 item 4: -si stages into a folder this run owns from the moment it exists, so a failed
+// or cancelled copy leaves nothing in %TEMP%. Null when the archive is a path argument.
+static async Task<CliStagingFolder?> StageStdinIfRequestedAsync(ParsedCliCommand command, CancellationToken cancellationToken)
+{
+    if (!command.ReadFromStdin)
+        return null;
+    await using Stream stdin = Console.OpenStandardInput();
+    return await CliStreamStaging.StageStdinAsync(CliStreamStaging.StdinRoot, stdin, cancellationToken).ConfigureAwait(false);
+}
+
+static IReadOnlyList<string> ArchivePathsFor(ParsedCliCommand command, CliStagingFolder? stdinFolder) =>
+    stdinFolder is null ? command.ArchivePaths : [Path.Combine(stdinFolder.Path, CliStreamStaging.StdinFileName)];
+
+// T-F206: like `7z x`, no -o means the current directory, not the archive's own folder.
+static string ResolveExtractDestination(ParsedCliCommand command) =>
+    command.OutputDirectory ?? Directory.GetCurrentDirectory();
 
 static ExtractOptions BuildExtractOptions(
     ParsedCliCommand command, IReadOnlyList<string> archivePaths, string destination, CancellationTokenSource quit)
@@ -139,17 +130,23 @@ static ExtractOptions BuildExtractOptions(
         ArchivePaths = archivePaths,
         DestinationFolder = destination,
         Mode = ExtractMode.SingleFolder,
-        // -ao wins over -y when both are given; -y only needs to override the safe defaults,
-        // never set them.
-        OnConflict = command.OverwriteMode
-            ?? (command.AssumeYes ? ConflictBehavior.Overwrite
-                : askInteractively ? ConflictBehavior.Ask : ConflictBehavior.Skip),
+        OnConflict = ChooseExtractConflictBehavior(command, askInteractively),
         ResolveConflictAsync = askInteractively
             ? CliConflictPrompt.CreateResolver(ReadConflictAnswer, Console.Error.Write, quit).ResolveAsync
             : null,
         ConfirmCompressionBombExtraction = command.AssumeYes ? (_ => Task.FromResult(true)) : null,
         ResolvePasswordAsync = BuildPasswordResolver(command, command.AssumeYes),
     };
+}
+
+// -ao wins over -y when both are given; -y only needs to override the safe defaults, never set them.
+static ConflictBehavior ChooseExtractConflictBehavior(ParsedCliCommand command, bool askInteractively)
+{
+    if (command.OverwriteMode is { } overwriteMode)
+        return overwriteMode;
+    if (command.AssumeYes)
+        return ConflictBehavior.Overwrite;
+    return askInteractively ? ConflictBehavior.Ask : ConflictBehavior.Skip;
 }
 
 // T-F160: key by key with TreatControlCAsInput, exactly like the password prompt below — a plain
@@ -255,17 +252,19 @@ static CliPasswordPrompt.NewPasswordResult PromptForNewPasswordInteractively()
 
 static void EchoMaskChar(char c) => Console.Error.Write(c == '\b' ? "\b \b" : "*");
 
-// Shared by RunExtractAsync and RunArchiveAsync -- both stream the single staged output file to
-// stdout the same way once the underlying operation already reported success.
-static async Task<int> StreamResultToStdoutIfSuccessfulAsync(string stdoutStagingDir, int code)
+// Shared by RunExtractAsync and RunArchiveAsync: report the result, then, for -so, stream the
+// single staged output file to stdout once the operation has succeeded.
+static async Task<int> ReportAndStreamAsync(ArchiveResult result, CliStagingFolder? stdoutFolder, CancellationToken cancellationToken)
 {
-    string? streamError = await CliStreamStaging.StreamSingleFileToStdoutAsync(stdoutStagingDir, CancellationToken.None).ConfigureAwait(false);
-    if (streamError is not null)
-    {
-        await Console.Error.WriteLineAsync($"pakko: error: {streamError}").ConfigureAwait(false);
-        return 2;
-    }
-    return code;
+    int code = ReportResult(result);
+    if (stdoutFolder is null || code == 2)
+        return code;
+
+    string? streamError = await CliStreamStaging.StreamSingleFileToStdoutAsync(stdoutFolder.Path, cancellationToken).ConfigureAwait(false);
+    if (streamError is null)
+        return code;
+    await Console.Error.WriteLineAsync($"pakko: error: {streamError}").ConfigureAwait(false);
+    return 2;
 }
 
 // -------------------------------------------------------------------------
@@ -275,15 +274,11 @@ static async Task<int> StreamResultToStdoutIfSuccessfulAsync(string stdoutStagin
 // -------------------------------------------------------------------------
 static async Task<int> RunTestAsync(ParsedCliCommand command, GroupPolicyOptions policy)
 {
-    string? stagedStdinPath = null;
+    using CliCancellation cancellation = CliCancellation.ListenToConsole();
     try
     {
-        IReadOnlyList<string> archivePaths = command.ArchivePaths;
-        if (command.ReadFromStdin)
-        {
-            stagedStdinPath = await CliStreamStaging.StageStdinAsync(CancellationToken.None).ConfigureAwait(false);
-            archivePaths = [stagedStdinPath];
-        }
+        using CliStagingFolder? stdinFolder = await StageStdinIfRequestedAsync(command, cancellation.Token).ConfigureAwait(false);
+        IReadOnlyList<string> archivePaths = ArchivePathsFor(command, stdinFolder);
 
         var zipPaths = new List<string>();
         var skippedNonZip = new List<SkippedFile>();
@@ -302,16 +297,15 @@ static async Task<int> RunTestAsync(ParsedCliCommand command, GroupPolicyOptions
                 zipPaths,
                 progress: null,
                 resolvePasswordAsync: BuildPasswordResolver(command, assumeYes: false),
-                cancellationToken: CancellationToken.None).ConfigureAwait(false)
+                cancellationToken: cancellation.Token).ConfigureAwait(false)
             : new ArchiveResult { Success = true };
 
         result = result with { SkippedFiles = [.. result.SkippedFiles, .. skippedNonZip] };
         return ReportResult(result);
     }
-    finally
+    catch (OperationCanceledException) when (cancellation.Token.IsCancellationRequested)
     {
-        if (stagedStdinPath is not null)
-            CliStreamStaging.CleanupStagedStdin(stagedStdinPath);
+        return ReportUserStopped();
     }
 }
 
@@ -350,80 +344,86 @@ static async Task<int> RunInfoAsync()
 // -------------------------------------------------------------------------
 static async Task<int> RunArchiveAsync(ParsedCliCommand command, GroupPolicyOptions policy)
 {
-    // T-F193: a -p<pwd> Pakko cannot encrypt with is a command-line error, found before any work.
-    if (command.Password is { } fixedPassword
-        && CliPasswordPrompt.DescribeEncryptProblem(EncryptionPasswordRule.Check(fixedPassword)) is { } fixedProblem)
-    {
-        Console.Error.WriteLine($"pakko: -p: {fixedProblem}");
-        return 7;
-    }
+    if (RejectUnusableEncryptionPassword(command) is { } commandLineError)
+        return commandLineError;
 
-    // The prompt's own outcome decides the report, never Core's English message: Core only sees a
-    // null password in both cases.
-    CliPasswordPrompt.NewPasswordResult? promptResult = null;
-    string? stdoutStagingDir = null;
+    using CliCancellation cancellation = CliCancellation.ListenToConsole();
     try
     {
         var router = new ArchiveCreationRouter(new ZipArchiveService(policy), new TarSandboxedService(policy), policy);
 
-        string archivePathArg = command.ArchivePathArg!;
-        string destFolder;
-        if (command.WriteToStdout)
-        {
-            stdoutStagingDir = CliStreamStaging.CreateOutputStagingDirectory();
-            destFolder = stdoutStagingDir;
-        }
-        else
-        {
-            string? dir = Path.GetDirectoryName(archivePathArg);
-            destFolder = string.IsNullOrEmpty(dir) ? "." : dir;
-        }
+        using CliStagingFolder? stdoutFolder = command.WriteToStdout ? CliStagingFolder.Create(CliStreamStaging.StdoutRoot) : null;
+        StrongBox<CliPasswordPrompt.NewPasswordResult?> prompt = new();
+        ArchiveOptions options = BuildArchiveOptions(command, ResolveArchiveDestination(command, stdoutFolder), prompt);
 
-        var options = new ArchiveOptions
-        {
-            SourcePaths = command.SourcePaths,
-            DestinationFolder = destFolder,
-            ArchiveName = ArchiveNaming.GetBaseName(archivePathArg),
-            Mode = ArchiveMode.SingleArchive,
-            OnConflict = command.AssumeYes ? ConflictBehavior.Overwrite : ConflictBehavior.Skip,
-            CompressionLevel = command.CompressionLevel ?? CompressionLevel.Optimal,
-            Format = command.ArchiveFormat,
-        };
-        if (command.Password is { } password)
-        {
-            options = options with { ResolvePasswordAsync = _ => Task.FromResult(new PasswordDecision { Password = password }) };
-        }
-        else if (command.PromptForPassword)
-        {
-            options = options with
-            {
-                ResolvePasswordAsync = _ =>
-                {
-                    promptResult = PromptForNewPasswordInteractively();
-                    return Task.FromResult(new PasswordDecision { Password = promptResult.Password });
-                },
-            };
-        }
-
-        ArchiveResult result = await router.ArchiveAsync(options, progress: null, CancellationToken.None).ConfigureAwait(false);
-        if (promptResult is { Cancelled: true })
-            return ReportUserStopped();
-        if (promptResult?.Error is { } promptError)
-        {
-            Console.Error.WriteLine($"pakko: error: {promptError}");
-            return 2;
-        }
-        int code = ReportResult(result);
-        if (!command.WriteToStdout || code == 2)
-            return code;
-
-        return await StreamResultToStdoutIfSuccessfulAsync(stdoutStagingDir!, code).ConfigureAwait(false);
+        ArchiveResult result = await router.ArchiveAsync(options, progress: null, cancellation.Token).ConfigureAwait(false);
+        if (ReportNewPasswordPromptOutcome(prompt.Value) is { } promptExitCode)
+            return promptExitCode;
+        return await ReportAndStreamAsync(result, stdoutFolder, cancellation.Token).ConfigureAwait(false);
     }
-    finally
+    catch (OperationCanceledException) when (cancellation.Token.IsCancellationRequested)
     {
-        if (stdoutStagingDir is not null)
-            CliStreamStaging.CleanupOutputStagingDirectory(stdoutStagingDir);
+        return ReportUserStopped();
     }
+}
+
+// T-F193: a -p<pwd> Pakko cannot encrypt with is a command-line error, found before any work.
+static int? RejectUnusableEncryptionPassword(ParsedCliCommand command)
+{
+    if (command.Password is not { } fixedPassword
+        || CliPasswordPrompt.DescribeEncryptProblem(EncryptionPasswordRule.Check(fixedPassword)) is not { } problem)
+        return null;
+    Console.Error.WriteLine($"pakko: -p: {problem}");
+    return 7;
+}
+
+static string ResolveArchiveDestination(ParsedCliCommand command, CliStagingFolder? stdoutFolder)
+{
+    if (stdoutFolder is not null)
+        return stdoutFolder.Path;
+    string? dir = Path.GetDirectoryName(command.ArchivePathArg!);
+    return string.IsNullOrEmpty(dir) ? "." : dir;
+}
+
+static ArchiveOptions BuildArchiveOptions(
+    ParsedCliCommand command, string destFolder, StrongBox<CliPasswordPrompt.NewPasswordResult?> prompt) =>
+    new()
+    {
+        SourcePaths = command.SourcePaths,
+        DestinationFolder = destFolder,
+        ArchiveName = ArchiveNaming.GetBaseName(command.ArchivePathArg!),
+        Mode = ArchiveMode.SingleArchive,
+        OnConflict = command.AssumeYes ? ConflictBehavior.Overwrite : ConflictBehavior.Skip,
+        CompressionLevel = command.CompressionLevel ?? CompressionLevel.Optimal,
+        Format = command.ArchiveFormat,
+        ResolvePasswordAsync = BuildNewPasswordResolver(command, prompt),
+    };
+
+// The interactive prompt records its own outcome in `prompt`: that, never Core's English message,
+// decides the report, since Core only sees a null password either way.
+static Func<PasswordPromptInfo, Task<PasswordDecision>>? BuildNewPasswordResolver(
+    ParsedCliCommand command, StrongBox<CliPasswordPrompt.NewPasswordResult?> prompt)
+{
+    if (command.Password is { } password)
+        return _ => Task.FromResult(new PasswordDecision { Password = password });
+    if (!command.PromptForPassword)
+        return null;
+    return _ =>
+    {
+        CliPasswordPrompt.NewPasswordResult result = PromptForNewPasswordInteractively();
+        prompt.Value = result;
+        return Task.FromResult(new PasswordDecision { Password = result.Password });
+    };
+}
+
+static int? ReportNewPasswordPromptOutcome(CliPasswordPrompt.NewPasswordResult? promptResult)
+{
+    if (promptResult is { Cancelled: true })
+        return ReportUserStopped();
+    if (promptResult?.Error is not { } promptError)
+        return null;
+    Console.Error.WriteLine($"pakko: error: {promptError}");
+    return 2;
 }
 
 // -------------------------------------------------------------------------
@@ -432,45 +432,40 @@ static async Task<int> RunArchiveAsync(ParsedCliCommand command, GroupPolicyOpti
 // -------------------------------------------------------------------------
 static async Task<int> RunListAsync(ParsedCliCommand command)
 {
-    string? stagedStdinPath = null;
+    using CliCancellation cancellation = CliCancellation.ListenToConsole();
     try
     {
         var tarService = new TarSandboxedService();
         TarCapabilities capabilities = await tarService.DetectCapabilitiesAsync().ConfigureAwait(false);
         var router = new ArchiveListingRouter(new ZipArchiveService(), tarService, capabilities);
 
-        IReadOnlyList<string> archivePaths = command.ArchivePaths;
-        if (command.ReadFromStdin)
-        {
-            stagedStdinPath = await CliStreamStaging.StageStdinAsync(CancellationToken.None).ConfigureAwait(false);
-            archivePaths = [stagedStdinPath];
-        }
+        using CliStagingFolder? stdinFolder = await StageStdinIfRequestedAsync(command, cancellation.Token).ConfigureAwait(false);
+        IReadOnlyList<string> archivePaths = ArchivePathsFor(command, stdinFolder);
 
         bool multiple = archivePaths.Count > 1;
         bool anyFailed = false;
 
         foreach (string archivePath in archivePaths)
         {
-            if (!await PrintArchiveListingAsync(archivePath, router, multiple).ConfigureAwait(false))
+            if (!await PrintArchiveListingAsync(archivePath, router, multiple, cancellation.Token).ConfigureAwait(false))
                 anyFailed = true;
         }
 
         return anyFailed ? 2 : 0;
     }
-    finally
+    catch (OperationCanceledException) when (cancellation.Token.IsCancellationRequested)
     {
-        if (stagedStdinPath is not null)
-            CliStreamStaging.CleanupStagedStdin(stagedStdinPath);
+        return ReportUserStopped();
     }
 }
 
 // Prints one archive's listing (or its error) to stdout/stderr. Returns false on failure.
-static async Task<bool> PrintArchiveListingAsync(string archivePath, ArchiveListingRouter router, bool multiple)
+static async Task<bool> PrintArchiveListingAsync(string archivePath, ArchiveListingRouter router, bool multiple, CancellationToken cancellationToken)
 {
     if (multiple)
         await Console.Out.WriteLineAsync($"# archive: {archivePath}").ConfigureAwait(false);
 
-    ArchiveListResult listResult = await router.ListEntriesAsync(archivePath, CancellationToken.None).ConfigureAwait(false);
+    ArchiveListResult listResult = await router.ListEntriesAsync(archivePath, cancellationToken).ConfigureAwait(false);
     if (!listResult.Success)
     {
         await Console.Error.WriteLineAsync($"pakko: error: {archivePath}: {listResult.ErrorMessage}").ConfigureAwait(false);

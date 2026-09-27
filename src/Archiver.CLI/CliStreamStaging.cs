@@ -10,52 +10,110 @@ namespace Archiver.CLI;
 /// </summary>
 public static class CliStreamStaging
 {
-    public static async Task<string> StageStdinAsync(CancellationToken cancellationToken)
+    /// <summary>The staged archive's file name inside its <see cref="CliStagingFolder"/>.</summary>
+    public const string StdinFileName = "stdin.bin";
+
+    /// <summary>Root of the -si staging folders.</summary>
+    public static string StdinRoot { get; } = Path.Combine(Path.GetTempPath(), "Archiver.CLI.Stdin");
+
+    /// <summary>Root of the -so staging folders.</summary>
+    public static string StdoutRoot { get; } = Path.Combine(Path.GetTempPath(), "Archiver.CLI.Stdout");
+
+    /// <summary>Copies <paramref name="source"/> into a new folder under <paramref name="root"/>
+    /// as <see cref="StdinFileName"/>. The caller owns (and disposes) the returned folder.</summary>
+    public static async Task<CliStagingFolder> StageStdinAsync(string root, Stream source, CancellationToken cancellationToken)
     {
-        string dir = Path.Combine(Path.GetTempPath(), "Archiver.CLI.Stdin", Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(dir);
-        string filePath = Path.Combine(dir, "stdin.bin");
-
-        await using (FileStream fileStream = new(filePath, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 81920, useAsync: true))
-        await using (Stream stdin = Console.OpenStandardInput())
-        {
-            await stdin.CopyToAsync(fileStream, cancellationToken).ConfigureAwait(false);
-        }
-
-        return filePath;
-    }
-
-    public static void CleanupStagedStdin(string stagedFilePath)
-    {
+        CliStagingFolder folder = CliStagingFolder.Create(root);
         try
         {
-            string? dir = Path.GetDirectoryName(stagedFilePath);
-            if (dir is not null && Directory.Exists(dir))
-                Directory.Delete(dir, recursive: true);
+            string filePath = Path.Combine(folder.Path, StdinFileName);
+            await using (FileStream fileStream = new(filePath, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 81920, useAsync: true))
+            {
+                await source.CopyToAsync(fileStream, cancellationToken).ConfigureAwait(false);
+            }
+            return folder;
         }
         catch
         {
-            // Best-effort cleanup — a leaked %TEMP% file is not worth failing the command over.
+            folder.Dispose();
+            throw;
         }
     }
 
-    public static string CreateOutputStagingDirectory()
+    /// <summary>Sweeps both staging roots, checking owners against the running processes.</summary>
+    public static void SweepAbandoned()
     {
-        string dir = Path.Combine(Path.GetTempPath(), "Archiver.CLI.Stdout", Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(dir);
-        return dir;
+        SweepAbandoned(StdinRoot, IsOwnerAlive);
+        SweepAbandoned(StdoutRoot, IsOwnerAlive);
     }
 
-    public static void CleanupOutputStagingDirectory(string stagingDir)
+    /// <summary>Deletes the staging folders under <paramref name="root"/> whose owning process
+    /// is gone (<paramref name="isOwnerAlive"/> gets the PID from the folder name and the
+    /// folder's creation time). Only <c>&lt;pid&gt;-&lt;32 hex&gt;</c> names are touched.</summary>
+    public static void SweepAbandoned(string root, Func<int, DateTime, bool> isOwnerAlive)
+    {
+        DirectoryInfo[] folders;
+        try
+        {
+            DirectoryInfo rootInfo = new(root);
+            if (!rootInfo.Exists)
+                return;
+            folders = rootInfo.GetDirectories();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return; // Best-effort: a sweep that cannot run is retried by the next pakko.
+        }
+
+        foreach (DirectoryInfo folder in folders)
+        {
+            if (TryGetOwnerProcessId(folder.Name) is not { } processId
+                || isOwnerAlive(processId, folder.CreationTimeUtc))
+                continue;
+            try
+            {
+                folder.Delete(recursive: true);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                // Best-effort: still in use or locked; the next run tries again.
+            }
+        }
+    }
+
+    // "<pid>-<guid:N>", exactly what CliStagingFolder.Create makes; anything else is not ours.
+    private static int? TryGetOwnerProcessId(string name)
+    {
+        int dash = name.IndexOf('-');
+        if (dash <= 0 || !Guid.TryParseExact(name.AsSpan(dash + 1), "N", out _))
+            return null;
+        return int.TryParse(name.AsSpan(0, dash), System.Globalization.NumberStyles.None, null, out int processId)
+            ? processId
+            : null;
+    }
+
+    /// <summary>Whether the process that created a staging folder at
+    /// <paramref name="folderCreatedUtc"/> is still running. A process that started after the
+    /// folder was made reuses the PID and is not its owner. When it cannot be told (e.g. another
+    /// user's process), the folder is kept.</summary>
+    public static bool IsOwnerAlive(int processId, DateTime folderCreatedUtc)
     {
         try
         {
-            if (Directory.Exists(stagingDir))
-                Directory.Delete(stagingDir, recursive: true);
+            using System.Diagnostics.Process process = System.Diagnostics.Process.GetProcessById(processId);
+            return process.StartTime.ToUniversalTime() <= folderCreatedUtc;
         }
-        catch
+        catch (ArgumentException)
         {
-            // Best-effort cleanup.
+            return false; // no process with that id
+        }
+        catch (InvalidOperationException)
+        {
+            return false; // exited while being looked at
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or NotSupportedException)
+        {
+            return true;
         }
     }
 

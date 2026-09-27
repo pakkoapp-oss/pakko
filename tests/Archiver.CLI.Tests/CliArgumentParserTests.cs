@@ -679,6 +679,19 @@ public sealed class CliArgumentParserTests
         result.ErrorMessage.Should().Contain("no equivalent");
     }
 
+    // T-F222: --help lists -ao{a|s|u}; the errors offered -aot as valid too, which is then refused.
+    [Theory]
+    [InlineData("-ao")]
+    [InlineData("-aox")]
+    [InlineData("-aoaa")]
+    public void Extract_BadOverwriteMode_ListsOnlyTheModesPakkoAccepts(string token)
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse(["x", token, "archive.zip"]);
+
+        result.Type.Should().Be(CliCommandType.Invalid);
+        result.ErrorMessage.Should().Contain("a, s, or u").And.NotContain("or t");
+    }
+
     // --- T-F116: -si / -so ---
 
     [Fact]
@@ -785,5 +798,82 @@ public sealed class CliArgumentParserTests
         ParsedCliCommand result = CliArgumentParser.Parse(["i", "-so"]);
 
         result.Type.Should().Be(CliCommandType.Invalid);
+    }
+
+    // --- -scc{charset} (T-F238): 7-Zip's console charset switch, accepted on every command ---
+
+    [Theory]
+    [InlineData("-sccUTF-8", CliConsoleCharset.Utf8)]
+    [InlineData("-sccutf-8", CliConsoleCharset.Utf8)]
+    [InlineData("-sccWIN", CliConsoleCharset.Ansi)]
+    [InlineData("-sccDOS", CliConsoleCharset.Oem)]
+    public void List_SccCharset_SetsConsoleCodePage(string token, int expected)
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse(["l", token, "archive.zip"]);
+
+        result.Type.Should().Be(CliCommandType.List);
+        result.ConsoleCodePage.Should().Be(expected);
+        result.ArchivePaths.Should().Equal("archive.zip");
+    }
+
+    [Theory]
+    [InlineData("x")]
+    [InlineData("t")]
+    [InlineData("l")]
+    [InlineData("h")]
+    public void EveryPathCommand_AcceptsScc(string command)
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse([command, "somefile", "-sccUTF-8"]);
+
+        result.Type.Should().NotBe(CliCommandType.Invalid, result.ErrorMessage);
+        result.ConsoleCodePage.Should().Be(CliConsoleCharset.Utf8);
+    }
+
+    [Fact]
+    public void Archive_AcceptsScc()
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse(["a", "-sccUTF-8", "out.zip", "file.txt"]);
+
+        result.Type.Should().Be(CliCommandType.Archive);
+        result.ConsoleCodePage.Should().Be(CliConsoleCharset.Utf8);
+        result.ArchivePathArg.Should().Be("out.zip");
+    }
+
+    [Fact]
+    public void Info_AcceptsScc()
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse(["i", "-sccUTF-8"]);
+
+        result.Type.Should().Be(CliCommandType.Info);
+        result.ConsoleCodePage.Should().Be(CliConsoleCharset.Utf8);
+    }
+
+    [Fact]
+    public void Scc_LastOccurrenceWins()
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse(["l", "-sccDOS", "-sccUTF-8", "archive.zip"]);
+
+        result.ConsoleCodePage.Should().Be(CliConsoleCharset.Utf8);
+    }
+
+    [Fact]
+    public void NoScc_LeavesConsoleCodePageUnset()
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse(["l", "archive.zip"]);
+
+        result.ConsoleCodePage.Should().BeNull();
+    }
+
+    [Theory]
+    [InlineData("-scc")]
+    [InlineData("-sccKOI8")]
+    [InlineData("-scc1251")]
+    [InlineData("-sccUTF-16LE")]
+    public void Scc_UnsupportedCharset_IsInvalidNamingSupportedOnes(string token)
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse(["l", token, "archive.zip"]);
+
+        result.Type.Should().Be(CliCommandType.Invalid);
+        result.ErrorMessage.Should().Contain("UTF-8").And.Contain("WIN").And.Contain("DOS");
     }
 }

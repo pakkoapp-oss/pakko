@@ -25,7 +25,8 @@ public static class CliHelpText
           i   Show supported formats/codecs on this system
 
         SWITCHES:
-          -o<dir>          Output directory                                    (x)
+          -o<dir>          Output directory; default: the current directory,   (x)
+                           as with 7z (not the archive's own folder)
           -p<pwd>          Password. x/t: opens a ZipCrypto/AES-encrypted ZIP.  (x, t, a)
                            a: encrypts the new ZIP with AES-256 (file names
                            stay readable); printable ASCII only, at most 99
@@ -49,6 +50,10 @@ public static class CliHelpText
           -scrc<method>    Hash method: CRC32 (default) or SHA256              (h)
           -si              Read the archive from stdin instead of a path       (x, t, l, h)
           -so              Write output to stdout instead of disk              (x, a)
+          -scc{UTF-8|WIN|DOS}  Charset of printed text (stdout, stderr)   (all)
+                           Default: the console code page, where a name it
+                           cannot hold prints as '?'. Use -sccUTF-8 when
+                           redirecting to a file, e.g. pakko l a.zip -sccUTF-8 > list.txt
 
         COMPRESSION LEVEL (-mx, command 'a' only):
           0    -> Store (no compression)   3-6 -> Optimal (default)
@@ -81,7 +86,8 @@ public static class CliHelpText
           u (update)   d (delete)   rn (rename)   b (benchmark)   e (extract, flat)
 
         EXIT CODES:  0 ok   1 ok with warnings   2 operation failed   7 command-line error
-                     255 stopped by user (Q at a prompt, or Ctrl+C)
+                     255 stopped by user (Q at a prompt, or Ctrl+C in x/t/l/a;
+                         a second Ctrl+C ends pakko at once)
 
         Full specification: CLI.md in the Pakko repository.
         """;
