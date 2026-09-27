@@ -15,7 +15,7 @@ namespace Archiver.Core.Tests.Services;
 public sealed class ZipArchiveServiceZipCryptoCompatTests : IDisposable
 {
     private const string Password = "testpassword";
-    private readonly ZipArchiveService _sut = new();
+    private readonly ZipArchiveService _sut = new(new GroupPolicyOptions());
     private readonly TempDirectory _temp = new();
 
     public void Dispose() => _temp.Dispose();
@@ -123,7 +123,7 @@ public sealed class ZipArchiveServiceZipCryptoCompatTests : IDisposable
     {
         (string? zip, string? colliding) = LargeZipCryptoWithCollidingPassword();
         var scanner = new FakeAmsiScanner();
-        var service = new AntivirusScanService(new TarCapabilities(), null, () => scanner, () => true);
+        var service = new AntivirusScanService(new TarCapabilities(), new GroupPolicyOptions(), () => scanner, () => true);
 
         ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [zip], ResolvePasswordAsync = Fixed(colliding) });
 
@@ -156,7 +156,7 @@ public sealed class ZipArchiveServiceZipCryptoCompatTests : IDisposable
             : CodePagesEncodingProvider.Instance.GetEncoding(passwordCodePage)!.GetBytes(cyrillic);
         string zip = ZipCryptoFixture.Write(Path.Combine(_temp.Path, $"cyr{passwordCodePage}.zip"), "a.txt",
             Encoding.ASCII.GetBytes("secret"), passwordBytes, dataDescriptor: false);
-        var sut = new ZipArchiveService { NameCodePages = ZipNameCodePages.FromCodePages(866, 1251) };
+        var sut = new ZipArchiveService(new GroupPolicyOptions()) { NameCodePages = ZipNameCodePages.FromCodePages(866, 1251) };
         string dest = Path.Combine(_temp.Path, $"cyr-out{passwordCodePage}");
 
         ArchiveResult result = await sut.ExtractAsync(new ExtractOptions
@@ -194,7 +194,7 @@ public sealed class ZipArchiveServiceZipCryptoCompatTests : IDisposable
         });
         ZipCryptoFixture.Write(zip, "a.txt", Encoding.ASCII.GetBytes("secret"), Encoding.UTF8.GetBytes(cyrillic),
             dataDescriptor: false, headerSeed: seed);
-        var sut = new ZipArchiveService { NameCodePages = ZipNameCodePages.FromCodePages(866, 1251) };
+        var sut = new ZipArchiveService(new GroupPolicyOptions()) { NameCodePages = ZipNameCodePages.FromCodePages(866, 1251) };
         string dest = Path.Combine(_temp.Path, "ambiguous-out");
 
         ArchiveResult result = await sut.ExtractAsync(new ExtractOptions

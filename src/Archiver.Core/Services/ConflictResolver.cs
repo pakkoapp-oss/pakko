@@ -15,6 +15,11 @@ internal sealed class ConflictResolver(
 {
     private ConflictResolution? _sticky;
 
+    // T-F216: how many conflicts the user answered Skip (directly or through "apply to all") —
+    // their own decision, which the engines neither list nor warn about, yet still count against
+    // a source being fully processed. The no-callback default Skip is not counted.
+    public int UserSkipCount { get; private set; }
+
     // incomingSize/incomingModified describe the file that would replace existingPath, for a
     // prompt that compares both (T-F268); null when there is no such file yet (a new archive).
     public async Task<ConflictBehavior> ResolveAsync(string existingPath, long? incomingSize = null, DateTimeOffset? incomingModified = null)
@@ -23,7 +28,7 @@ internal sealed class ConflictResolver(
             return configured;
 
         if (_sticky is { } sticky)
-            return Map(sticky);
+            return CountUserSkip(Map(sticky));
 
         if (resolveConflictAsync is null)
             return ConflictBehavior.Skip; // Shell / no UI wired — safest non-destructive default
@@ -34,7 +39,14 @@ internal sealed class ConflictResolver(
         if (decision.ApplyToAll)
             _sticky = decision.Resolution;
 
-        return Map(decision.Resolution);
+        return CountUserSkip(Map(decision.Resolution));
+    }
+
+    private ConflictBehavior CountUserSkip(ConflictBehavior behavior)
+    {
+        if (behavior == ConflictBehavior.Skip)
+            UserSkipCount++;
+        return behavior;
     }
 
     private static ConflictBehavior Map(ConflictResolution resolution) => resolution switch

@@ -15,7 +15,7 @@ public sealed class TarSourceOutcomeTests : IDisposable
         public void Report(T value) => onReport(value);
     }
 
-    private readonly TarSandboxedService _sut = new();
+    private readonly TarSandboxedService _sut = new(new GroupPolicyOptions());
     private readonly TempDirectory _temp = new();
 
     public void Dispose() => _temp.Dispose();

@@ -29,15 +29,19 @@ public sealed class ZipArchiveService : IArchiveService
 
     private readonly GroupPolicyOptions _policy;
 
-    /// <summary>
-    /// Creates the service. T-F51: policy is optional so every existing
-    /// <c>new ZipArchiveService()</c> call site keeps compiling — a null policy means "everything
-    /// allowed", matching today's shipped behavior exactly.
-    /// </summary>
-    public ZipArchiveService(GroupPolicyOptions? policy = null)
+    /// <summary>Creates the service under the given Group Policy (T-F261: required, never defaulted).</summary>
+    public ZipArchiveService(GroupPolicyOptions policy)
     {
-        _policy = policy ?? new GroupPolicyOptions();
+        ArgumentNullException.ThrowIfNull(policy);
+        _policy = policy;
     }
+
+    // T-F250: the engine refuses a blocked "zip" itself — Shell once called TestAsync directly, and
+    // a ZIP the magic-byte detector calls Unknown (an empty archive, a self-extractor) reaches this
+    // engine through the routers' Unknown bucket, which no router policy check sees.
+    private bool IsZipBlocked => ArchiveFormatPolicy.IsBlockedByPolicy(ArchiveFormat.Zip, _policy);
+
+    private static readonly string ZipBlockedReason = ArchiveFormatPolicy.BlockedFormatReason(ArchiveFormat.Zip);
 
     // T-F234: the OEM/ANSI pages entry names without the UTF-8 flag are decoded with. Tests pin
     // them so expectations hold on a machine with other pages (the en-US CI runner).
@@ -822,6 +826,12 @@ public sealed class ZipArchiveService : IArchiveService
             return (true, null);
         }
 
+        if (IsZipBlocked)
+        {
+            skippedFiles.Add(new SkippedFile { Path = archivePath, Reason = ZipBlockedReason });
+            return (true, null);
+        }
+
         if (IsEncryptedZip(archivePath))
         {
             ResolvedZipPassword? password = await ResolveArchivePasswordAsync(archivePath, passwordResolver, NameCodePages).ConfigureAwait(false);
@@ -1029,6 +1039,13 @@ public sealed class ZipArchiveService : IArchiveService
                 continue;
             }
 
+            if (IsZipBlocked)
+            {
+                skippedFiles.Add(new SkippedFile { Path = archivePath, Reason = ZipBlockedReason });
+                progress?.Report(new ProgressReport { Percent = (i + 1) * 100 / total, BytesTransferred = 0, TotalBytes = 0 });
+                continue;
+            }
+
             ResolvedZipPassword? password = null;
             if (IsEncryptedZip(archivePath))
             {
@@ -1085,6 +1102,9 @@ public sealed class ZipArchiveService : IArchiveService
         string archivePath,
         CancellationToken cancellationToken = default)
     {
+        if (IsZipBlocked)
+            return new ArchiveListResult { Success = false, ErrorMessage = ZipBlockedReason };
+
         try
         {
             List<ArchiveEntryInfo> entries = await Task.Run(() =>
@@ -1454,6 +1474,10 @@ public sealed class ZipArchiveService : IArchiveService
         var plan = new ExtractionPlan(tempDest, fullTempDest, actualDest, stripRootPrefix, totalUncompressedBytes, claimedFinalPaths,
             encryptedEntryMap, rawArchiveStream);
 
+        // T-F216: what this archive's loop adds, to tell "the user skipped everything" apart.
+        int userSkipsBefore = context.ConflictResolver.UserSkipCount;
+        int skippedBefore = skippedFiles.Count, errorsBefore = context.Errors.Count;
+
         // T-F161: `staging` is disposed on ANY exit, including a failure or cancellation partway
         // through — a leftover staging folder never stays on a real destination.
         foreach (NamedZipEntry? entry in entries)
@@ -1483,6 +1507,11 @@ public sealed class ZipArchiveService : IArchiveService
         // T-F87: every entry was individually skipped (conflict/ADS/reserved name/reparse point/
         // zip bomb) — nothing was actually extracted, so the caller must not count this archive
         // as CreatedFiles (that list gates whether DeleteAfterOperation may delete the source).
+        // T-F216: no warning when every skip was the user's own conflict answer.
+        bool onlyUserSkips = context.ConflictResolver.UserSkipCount > userSkipsBefore
+            && skippedFiles.Count == skippedBefore && context.Errors.Count == errorsBefore;
+        if (extractedCount == 0 && onlyUserSkips)
+            return (actualDest, false);
         if (extractedCount == 0)
         {
             skippedFiles.Add(new SkippedFile

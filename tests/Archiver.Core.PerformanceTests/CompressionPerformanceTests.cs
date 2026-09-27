@@ -23,7 +23,7 @@ public sealed class CompressionPerformanceTests : IDisposable
 {
     private const double ToleranceMultiplier = 3.0;
 
-    private readonly ZipArchiveService _sut = new();
+    private readonly ZipArchiveService _sut = new(new GroupPolicyOptions());
     private readonly TempDirectory _temp = new();
     private readonly ITestOutputHelper _output;
 

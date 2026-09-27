@@ -10,7 +10,7 @@ namespace Archiver.Core.Tests.Services;
 // directory entries out, so the folder never came back.
 public sealed class ZipArchiveServiceExtractEmptyFolderTests : IDisposable
 {
-    private readonly ZipArchiveService _sut = new();
+    private readonly ZipArchiveService _sut = new(new GroupPolicyOptions());
     private readonly TempDirectory _temp = new();
 
     public void Dispose() => _temp.Dispose();

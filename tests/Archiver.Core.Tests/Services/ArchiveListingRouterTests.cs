@@ -95,7 +95,7 @@ public sealed class ArchiveListingRouterTests : IDisposable
         string zip = WriteZip("archive.zip");
         var zipService = new FakeArchiveService();
         var tarService = new FakeTarService();
-        var router = new ArchiveListingRouter(zipService, tarService, AllSupported);
+        var router = new ArchiveListingRouter(zipService, tarService, AllSupported, new GroupPolicyOptions());
 
         ArchiveListResult result = await router.ListEntriesAsync(zip);
 
@@ -111,7 +111,7 @@ public sealed class ArchiveListingRouterTests : IDisposable
         string tar = WriteTar("archive.tar");
         var zipService = new FakeArchiveService();
         var tarService = new FakeTarService();
-        var router = new ArchiveListingRouter(zipService, tarService, AllSupported);
+        var router = new ArchiveListingRouter(zipService, tarService, AllSupported, new GroupPolicyOptions());
 
         ArchiveListResult result = await router.ListEntriesAsync(tar);
 
@@ -128,7 +128,7 @@ public sealed class ArchiveListingRouterTests : IDisposable
         var zipService = new FakeArchiveService();
         var tarService = new FakeTarService();
         TarCapabilities noRar = AllSupported with { SupportsRar = false };
-        var router = new ArchiveListingRouter(zipService, tarService, noRar);
+        var router = new ArchiveListingRouter(zipService, tarService, noRar, new GroupPolicyOptions());
 
         ArchiveListResult result = await router.ListEntriesAsync(rar);
 
@@ -136,6 +136,63 @@ public sealed class ArchiveListingRouterTests : IDisposable
         tarService.ListCallCount.Should().Be(0);
         result.Success.Should().BeFalse();
         result.ErrorMessage.Should().Contain("RAR");
+    }
+
+    // --- T-F250: listing is gated by Group Policy like every other operation ---
+
+    [Fact]
+    public async Task ListEntriesAsync_FormatBlockedByPolicy_ReturnsPolicyErrorWithoutCallingEitherService()
+    {
+        string rar = WriteRar("archive.rar");
+        var zipService = new FakeArchiveService();
+        var tarService = new FakeTarService();
+        var router = new ArchiveListingRouter(zipService, tarService, AllSupported, new GroupPolicyOptions { BlockedFormats = ["rar"] });
+
+        ArchiveListResult result = await router.ListEntriesAsync(rar);
+
+        tarService.ListCallCount.Should().Be(0);
+        zipService.ListCallCount.Should().Be(0);
+        result.Success.Should().BeFalse();
+        result.ErrorMessage.Should().Be("This archive format (rar) is blocked by Group Policy.");
+    }
+
+    [Fact]
+    public async Task ListEntriesAsync_TarDisabledByPolicy_ReturnsPolicyErrorWithoutCallingTar()
+    {
+        string tar = WriteTar("archive.tar");
+        var tarService = new FakeTarService();
+        var router = new ArchiveListingRouter(new FakeArchiveService(), tarService, AllSupported, new GroupPolicyOptions { DisableTarExtraction = true });
+
+        ArchiveListResult result = await router.ListEntriesAsync(tar);
+
+        tarService.ListCallCount.Should().Be(0);
+        result.ErrorMessage.Should().Be("tar.exe-based extraction is disabled by Group Policy.");
+    }
+
+    [Fact]
+    public async Task ListEntriesAsync_AllowedFormatsExcludesZip_ZipEngineNotCalled()
+    {
+        string zip = WriteZip("archive.zip");
+        var zipService = new FakeArchiveService();
+        var router = new ArchiveListingRouter(zipService, new FakeTarService(), AllSupported, new GroupPolicyOptions { AllowedFormats = ["tar"] });
+
+        ArchiveListResult result = await router.ListEntriesAsync(zip);
+
+        zipService.ListCallCount.Should().Be(0);
+        result.ErrorMessage.Should().Contain("blocked by Group Policy");
+    }
+
+    [Fact]
+    public async Task ListEntriesAsync_OtherFormatBlocked_StillListsTar()
+    {
+        string tar = WriteTar("archive.tar");
+        var tarService = new FakeTarService();
+        var router = new ArchiveListingRouter(new FakeArchiveService(), tarService, AllSupported, new GroupPolicyOptions { BlockedFormats = ["rar"] });
+
+        ArchiveListResult result = await router.ListEntriesAsync(tar);
+
+        tarService.ListCallCount.Should().Be(1);
+        result.Success.Should().BeTrue();
     }
 
     [Fact]
@@ -146,7 +203,7 @@ public sealed class ArchiveListingRouterTests : IDisposable
         string unknown = WriteBytes("mystery.bin", [0x00, 0x01, 0x02, 0x03]);
         var zipService = new FakeArchiveService();
         var tarService = new FakeTarService();
-        var router = new ArchiveListingRouter(zipService, tarService, AllSupported);
+        var router = new ArchiveListingRouter(zipService, tarService, AllSupported, new GroupPolicyOptions());
 
         await router.ListEntriesAsync(unknown);
 

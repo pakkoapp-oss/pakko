@@ -8,7 +8,7 @@ namespace Archiver.Core.Tests.Services;
 
 public sealed class ZipArchiveServiceArchiveTests : IDisposable
 {
-    private readonly ZipArchiveService _sut = new();
+    private readonly ZipArchiveService _sut = new(new GroupPolicyOptions());
     private readonly TempDirectory _temp = new();
 
     public void Dispose() => _temp.Dispose();

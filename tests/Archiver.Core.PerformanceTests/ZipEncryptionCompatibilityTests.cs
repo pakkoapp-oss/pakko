@@ -57,7 +57,7 @@ public sealed class ZipEncryptionCompatibilityTests : IDisposable
 
     private async Task<string> ArchiveWithPakkoAsync(string source, string password, CompressionLevel level)
     {
-        ArchiveResult result = await new ZipArchiveService().ArchiveAsync(new ArchiveOptions
+        ArchiveResult result = await new ZipArchiveService(new GroupPolicyOptions()).ArchiveAsync(new ArchiveOptions
         {
             SourcePaths = [source],
             DestinationFolder = Path.Combine(_temp.Path, "pakko-out"),
@@ -112,7 +112,7 @@ public sealed class ZipEncryptionCompatibilityTests : IDisposable
         SevenZipRunner.ArchiveEncrypted(archive, SymbolPassword, store: false, source);
         string destDir = Path.Combine(_temp.Path, "pakko-extract");
 
-        ArchiveResult result = await new ZipArchiveService().ExtractAsync(new ExtractOptions
+        ArchiveResult result = await new ZipArchiveService(new GroupPolicyOptions()).ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [archive],
             DestinationFolder = destDir,

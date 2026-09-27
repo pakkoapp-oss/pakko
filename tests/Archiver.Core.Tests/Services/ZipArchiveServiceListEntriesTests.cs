@@ -7,7 +7,7 @@ namespace Archiver.Core.Tests.Services;
 
 public sealed class ZipArchiveServiceListEntriesTests
 {
-    private readonly ZipArchiveService _sut = new();
+    private readonly ZipArchiveService _sut = new(new GroupPolicyOptions());
 
     [Fact]
     public async Task ListEntriesAsync_NestedFoldersFixture_ReturnsFlatEntriesMatchingKnownShape()

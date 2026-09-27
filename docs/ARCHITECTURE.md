@@ -89,8 +89,9 @@ src/
 │   │   ├── ArchiveCreationRouter.cs / ArchiveListingRouter.cs / ExtractionRouter.cs
 │   │   ├── AntivirusScanService.cs     ← T-F146: dispatches per-archive to a ZIP in-memory scan or
 │   │   │                                  a tar-family quarantine scan (see below)
-│   │   ├── ArchiveFormatPolicy.cs      ← T-F146: zip/tar/unsupported classify + Group Policy gate,
-│   │   │                                  extracted from ExtractionRouter, shared by both routers
+│   │   ├── ArchiveFormatPolicy.cs      ← T-F146/T-F261: the one public classifier (zip/tar/refused +
+│   │   │                                  Group Policy gate) for extract, test, list and scan
+│   │   ├── PakkoServices.cs            ← T-F261: Core factory for Shell/CLI, one policy for everything
 │   │   ├── ArchiveEntrySecurity.cs     ← ADS/reserved-name/reparse-point/bomb checks, shared
 │   │   ├── ArchiveFormatDetector.cs    ← magic-byte sniffing, not extension-based
 │   │   ├── ArchiveNaming.cs            ← compound-extension-aware naming (T-F103)
@@ -192,7 +193,8 @@ src/
 │   ├── Program.cs                      ← T-F268: parse, then dispatch to ShellCommands
 │   ├── ShellArgumentParser.cs
 │   ├── ShellCommands.cs                ← T-F268: every Explorer command; windows only via IOperationUi
-│   ├── ShellServices.cs                ← T-F268: Core factories (tests swap in a ZIP-only router)
+│   ├── ShellServices.cs                ← T-F268: Core factories (tests swap in a ZIP-only router);
+│   │                                      T-F261: built from Core's PakkoServices
 │   ├── IOperationUi.cs                 ← T-F268: IOperationUi/IOperationSession/OperationMessage
 │   ├── Win32OperationUi.cs             ← T-F268: IOperationUi on IProgressDialog/TaskDialog/MessageBoxW
 │   ├── OperationMessages.cs            ← T-F268: pure result-text builder (errors, skips, hash, scan)
@@ -928,8 +930,8 @@ services.AddTransient<MainViewModel>();
 // T-F48: TarCapabilities is force-resolved once right after BuildServiceProvider() — a
 // factory-registered singleton only runs on first resolution, and nothing else injects it eagerly.
 // T-F51: GroupPolicyOptions is registered first so ActivatorUtilities can inject it into every
-// consumer below via their optional `GroupPolicyOptions? policy = null` ctor param — a registered
-// concrete instance is used over the null default automatically.
+// consumer below. T-F261: the policy is a required ctor param on every engine/router — there is
+// no "allow everything" default to fall back to if a registration is missing.
 ```
 
 | Type | Lifetime | Reason |
@@ -1130,6 +1132,15 @@ public interface IExtractionRouter
         ExtractOptions options,
         IProgress<ProgressReport>? progress = null,
         CancellationToken cancellationToken = default);
+
+    // T-F261: same classifier as ExtractAsync. ZIP paths go to IArchiveService.TestAsync;
+    // tar-family paths are skipped ("tar-family archives have no test capability") — tar.exe is
+    // never started; policy/capability refusals are skipped with their own reason.
+    Task<ArchiveResult> TestAsync(
+        IReadOnlyList<string> archivePaths,
+        IProgress<ProgressReport>? progress = null,
+        Func<PasswordPromptInfo, Task<PasswordDecision>>? resolvePasswordAsync = null,
+        CancellationToken cancellationToken = default);
 }
 ```
 
@@ -1261,7 +1272,10 @@ Task<ArchiveListResult> ListEntriesAsync(string archivePath, CancellationToken c
 ```
 
 Routed by a new interface, mirroring `IExtractionRouter`'s dispatch exactly (same
-`ArchiveFormatDetector`/`TarCapabilities` logic, copied rather than shared — see `DECISIONS.md`):
+`ArchiveFormatDetector`/`TarCapabilities` logic, copied rather than shared — see `DECISIONS.md`;
+T-F261: now shared through `ArchiveFormatPolicy`, and T-F250: the router takes a required
+`GroupPolicyOptions` — `ArchiveListingRouter(IArchiveService, ITarService, TarCapabilities,
+GroupPolicyOptions)`):
 
 ```csharp
 // Interfaces/IArchiveListingRouter.cs
@@ -1465,7 +1479,8 @@ is unchanged). On the .NET side, `ShellArgumentParser.ParseArchive` consumes an 
 (`ArchiveContainerFormat`, default `Zip`); `Archiver.Shell`'s archive command (`ShellCommands.ArchiveAsync`
 since T-F268, via `ShellServices`) now constructs `new ArchiveCreationRouter(new ZipArchiveService(), new TarSandboxedService())` directly
 (no DI container in this console entry point) instead of calling `ZipArchiveService.ArchiveAsync`,
-and sets `ArchiveOptions.Format` from the parsed switch.
+and sets `ArchiveOptions.Format` from the parsed switch. (Superseded by T-F261: the router now
+comes from Core's `PakkoServices`, built with the loaded policy.)
 
 ---
 
@@ -1524,7 +1539,13 @@ public static class ArchiveFormatRegistryNames
 
 **Consumer wiring** — `GroupPolicyOptions? policy = null` was added as an optional constructor
 parameter (default = "everything allowed", so every pre-T-F51 `new XService()` call site keeps
-compiling) to:
+compiling) to the list below. **T-F261 correction:** the parameter is now required and non-null on
+every engine and router (`ZipArchiveService`, `TarSandboxedService`, `ExtractionRouter`,
+`ArchiveCreationRouter`, `AntivirusScanService`) — a forgotten policy is a compile error, not a
+fail-open default. `TarSandboxedService` also refuses on its own under `DisableTarExtraction`
+(Extract/List/Compress return a policy error; `DetectCapabilitiesAsync` returns all-false
+defaults without running the unsandboxed `tar.exe --version` probe), so the App's DI path — which
+does not use the factory below — is covered too. The original T-F51 consumers:
 
 - `ZipArchiveService` / `TarSandboxedService` — `_policy.MotwMode` threaded down into
   `ArchiveEntrySecurity.TryPropagateMotw(archivePath, destFilePath, motwMode)`'s new third
@@ -1550,17 +1571,40 @@ compiling) to:
 
 **DI (`Archiver.App`)** — `services.AddSingleton(GroupPolicyService.Load());`, registered before
 every consumer above so `ActivatorUtilities` injects the real instance instead of falling back to
-each optional parameter's `null` default. **No DI (`Archiver.Shell`, `Archiver.CLI`)** —
-`GroupPolicyOptions policy = GroupPolicyService.Load();` once near the top of `Program.cs`,
-threaded explicitly into every inline `new ZipArchiveService(policy)` /
-`new TarSandboxedService(policy)` / `new ExtractionRouter(..., policy)` /
-`new ArchiveCreationRouter(..., policy)` call site (this supersedes the parameterless
-constructor calls shown in the T-F105/T-F09 sections above, which predate T-F51).
+each optional parameter's `null` default. **No DI (`Archiver.Shell`, `Archiver.CLI`)** — T-F261: both call
+`PakkoServices.Create(GroupPolicyService.Load())` once near the top of `Program.cs` and take every
+service from it (this supersedes the hand-built per-command construction shown in the
+T-F105/T-F09 sections above):
 
-`ArchiveListingRouter` and `RunInfoAsync`/`RunListAsync`'s inline service construction are
-**deliberately not threaded with a policy** — listing is read-only (no MOTW propagation, nothing
-written to disk) and out of this task's scope; see `ITarService.ListEntriesAsync`'s own doc
-comment on why listing must never be gated on an extraction-time policy.
+```csharp
+// Services/PakkoServices.cs
+public sealed class PakkoServices
+{
+    public static PakkoServices Create(GroupPolicyOptions policy); // real engines, one policy
+    public GroupPolicyOptions Policy { get; }
+    public IArchiveService ArchiveService { get; }
+    public ITarService TarService { get; }
+    public IArchiveCreationRouter CreationRouter { get; }          // needs no tar.exe probe
+    public Task<TarCapabilities> GetTarCapabilitiesAsync();        // probed once, cached (T-F85)
+    public Task<IExtractionRouter> CreateExtractionRouterAsync();  // extract + test
+    public Task<IArchiveListingRouter> CreateListingRouterAsync();
+    [SupportedOSPlatform("windows")]
+    public Task<IAntivirusScanService> CreateScanServiceAsync();
+}
+```
+
+**Correction (T-F250, decided 2026-09-25):** listing *is* gated by Group Policy. The original
+T-F51 text here said `ArchiveListingRouter` and the CLI's `i`/`l` were deliberately left without a
+policy, citing `ITarService.ListEntriesAsync`'s doc comment — but that comment is about the
+entry-safety pre-scan, not Group Policy, while `POLICIES.md` promises `DisableTarExtraction`
+never starts tar.exe and that blocked formats are not opened. Listing parses the archive with the
+same libarchive parser the policy exists to keep away, so `ArchiveListingRouter` now takes a
+required `GroupPolicyOptions` and refuses through `ArchiveFormatPolicy` like every other
+operation (App browse mode, file-association/Explorer "Open", nested drill-in, `pakko l`).
+`ZipArchiveService` also refuses a blocked `zip` on its own in `TestAsync`/`ExtractAsync`/
+`ListEntriesAsync` — a ZIP the magic-byte detector calls `Unknown` (an entry-less archive, a
+self-extractor) reaches the ZIP engine through the routers' Unknown bucket, where no router check
+sees it.
 
 ---
 
@@ -1572,10 +1616,9 @@ standalone, self-contained downloadable artifact (see `CLI.md`'s "Distribution" 
 `scripts/README.md`) — it does not require the MSIX/GUI to be installed and is never packaged
 into it.
 
-**No DI container** — mirrors `Archiver.Shell/Program.cs`'s pattern exactly (manual `new
-ZipArchiveService(policy)`/`new TarSandboxedService(policy)` construction, `await
-tarService.DetectCapabilitiesAsync()` once, then `new` the relevant router directly per command),
-not `Archiver.App`'s `ServiceCollection`. `GroupPolicyService.Load()` is called once near the top
+**No DI container** — mirrors `Archiver.Shell/Program.cs`'s pattern exactly (T-F261: every
+command takes its services from Core's `PakkoServices`, built once with the loaded policy), not
+`Archiver.App`'s `ServiceCollection`. `GroupPolicyService.Load()` is called once near the top
 of `Program.cs` and threaded through explicitly (T-F51) — see that section below for why this
 project no longer has "nothing to inject" for these two services.
 
@@ -1610,8 +1653,8 @@ real, supported command with an unsupported switch). Never a silent no-op.
 | Command | Core API | Notes |
 |---|---|---|
 | `x` | `IExtractionRouter.ExtractAsync` | `ExtractMode.SingleFolder`; `OnConflict = -ao ?? (-y ? Overwrite : Skip)`; `ConfirmCompressionBombExtraction` set only when `-y` |
-| `t` | `IArchiveService.TestAsync` (ZIP-only, called directly — `ITarService` has no Test method) | tar-family paths become `SkippedFile`s with a named reason, not silently dropped |
-| `i` | `ITarService.DetectCapabilitiesAsync` | no other Core call; ZIP/Tar/GZip always listed, the rest gated on the live `TarCapabilities` |
+| `t` | `IExtractionRouter.TestAsync` (T-F261; ZIP-only testing — `ITarService` has no Test method) | tar-family paths become `SkippedFile`s with a named reason, not silently dropped; Group Policy applies |
+| `i` | `PakkoServices.GetTarCapabilitiesAsync` + `ArchiveFormatPolicy` | each line's status (supported / not supported / blocked by Group Policy) comes from the shared classifier; no probe under `DisableTarExtraction` |
 | `a` | `IArchiveCreationRouter.ArchiveAsync` | always `ArchiveMode.SingleArchive`; `ArchiveNaming.GetBaseName` derives the name |
 | `l` | `IArchiveListingRouter.ListEntriesAsync` | looped once per archive path (the router itself takes one path at a time) |
 
@@ -1821,7 +1864,13 @@ depending on the test machine's actual registered AV.
 `ExtractionRouter` and `AntivirusScanService` now, so a scan can never silently drift from what
 real extraction would allow or refuse (a tar-family scan spawns tar.exe in the same AppContainer a
 real extraction does, so it must be gated identically). Behavior-preserving refactor —
-`ExtractionRouterTests` stayed green unmodified.
+`ExtractionRouterTests` stayed green unmodified. **T-F261:** now public and the single classifier
+for every operation — `ExtractionRouter` (extract and test), `ArchiveListingRouter`,
+`AntivirusScanService` and the CLI's `i` all use `Classify`/`GetRefusalReason`/`IsBlockedByPolicy`;
+the listing router's private copy of the capability table is gone. Policy is checked before tar.exe
+capability, so a refusal under `DisableTarExtraction` always names the policy. Scan opens
+`TarSandboxScope` directly (not through `ITarService`), so for scan this classifier is the only
+tar gate.
 
 DI registration adds:
 

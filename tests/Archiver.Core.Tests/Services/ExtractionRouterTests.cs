@@ -30,8 +30,19 @@ file sealed class FakeArchiveService : IArchiveService
         return Task.FromResult(ExtractResult);
     }
 
+    // T-F261: what the router's TestAsync handed the ZIP engine.
+    public IReadOnlyList<string>? LastTestedPaths;
+    public int TestCallCount;
+    public Func<PasswordPromptInfo, Task<PasswordDecision>>? LastTestResolver;
+    public ArchiveResult TestResult = new() { Success = true };
+
     public Task<ArchiveResult> TestAsync(IReadOnlyList<string> archivePaths, IProgress<ProgressReport>? progress = null, Func<PasswordPromptInfo, Task<PasswordDecision>>? resolvePasswordAsync = null, CancellationToken cancellationToken = default)
-        => throw new NotImplementedException();
+    {
+        TestCallCount++;
+        LastTestedPaths = archivePaths;
+        LastTestResolver = resolvePasswordAsync;
+        return Task.FromResult(TestResult);
+    }
 
     public Task<ArchiveListResult> ListEntriesAsync(string archivePath, CancellationToken cancellationToken = default)
         => throw new NotImplementedException();
@@ -103,7 +114,7 @@ public sealed class ExtractionRouterTests : IDisposable
         string zip = WriteBytes("only.zip", [0x50, 0x4B, 0x03, 0x04, 0, 0, 0, 0]);
         var zipService = new FakeArchiveService();
         var tarService = new FakeTarService();
-        var router = new ExtractionRouter(zipService, tarService, AllSupported);
+        var router = new ExtractionRouter(zipService, tarService, AllSupported, new GroupPolicyOptions());
 
         ArchiveResult result = await router.ExtractAsync(new ExtractOptions { ArchivePaths = [zip], DestinationFolder = _temp.Path });
 
@@ -119,7 +130,7 @@ public sealed class ExtractionRouterTests : IDisposable
         string tar = WriteTar("only.tar");
         var zipService = new FakeArchiveService();
         var tarService = new FakeTarService();
-        var router = new ExtractionRouter(zipService, tarService, AllSupported);
+        var router = new ExtractionRouter(zipService, tarService, AllSupported, new GroupPolicyOptions());
 
         ArchiveResult result = await router.ExtractAsync(new ExtractOptions { ArchivePaths = [tar], DestinationFolder = _temp.Path });
 
@@ -153,7 +164,7 @@ public sealed class ExtractionRouterTests : IDisposable
                 SkippedFiles = [new SkippedFile { Path = tar, Reason = "tar skip" }],
             }
         };
-        var router = new ExtractionRouter(zipService, tarService, AllSupported);
+        var router = new ExtractionRouter(zipService, tarService, AllSupported, new GroupPolicyOptions());
 
         ArchiveResult result = await router.ExtractAsync(new ExtractOptions { ArchivePaths = [zip, tar], DestinationFolder = _temp.Path });
 
@@ -184,7 +195,7 @@ public sealed class ExtractionRouterTests : IDisposable
 
         var zipService = new FakeArchiveService();
         var tarService = new FakeTarService();
-        var router = new ExtractionRouter(zipService, tarService, AllSupported);
+        var router = new ExtractionRouter(zipService, tarService, AllSupported, new GroupPolicyOptions());
 
         var progress = new Progress<ProgressReport>(_ => { });
         await router.ExtractAsync(
@@ -206,7 +217,7 @@ public sealed class ExtractionRouterTests : IDisposable
         string tar = WriteTar("b.tar");
         var zipService = new FakeArchiveService();
         var tarService = new FakeTarService();
-        var router = new ExtractionRouter(zipService, tarService, AllSupported);
+        var router = new ExtractionRouter(zipService, tarService, AllSupported, new GroupPolicyOptions());
 
         var progress = new Progress<ProgressReport>(_ => { });
         await router.ExtractAsync(
@@ -222,7 +233,7 @@ public sealed class ExtractionRouterTests : IDisposable
         var zipService = new FakeArchiveService();
         var tarService = new FakeTarService();
         TarCapabilities noRar = AllSupported with { SupportsRar = false };
-        var router = new ExtractionRouter(zipService, tarService, noRar);
+        var router = new ExtractionRouter(zipService, tarService, noRar, new GroupPolicyOptions());
 
         ArchiveResult result = await router.ExtractAsync(new ExtractOptions { ArchivePaths = [rar], DestinationFolder = _temp.Path });
 
@@ -244,7 +255,7 @@ public sealed class ExtractionRouterTests : IDisposable
         string tar = WriteTar("b.tar");
         var zipService = new FakeArchiveService();
         var tarService = new FakeTarService();
-        var router = new ExtractionRouter(zipService, tarService, AllSupported);
+        var router = new ExtractionRouter(zipService, tarService, AllSupported, new GroupPolicyOptions());
 
         await router.ExtractAsync(new ExtractOptions
         {
@@ -322,13 +333,101 @@ public sealed class ExtractionRouterTests : IDisposable
         result.SkippedFiles.Should().ContainSingle(s => s.Path == rar && s.Reason.Contains("Group Policy"));
     }
 
+    // --- T-F261: TestAsync goes through the router ---
+
     [Fact]
-    public async Task ExtractAsync_NoPolicySupplied_BehavesAsUnrestricted()
+    public async Task TestAsync_ZipAndTar_TestsOnlyTheZipAndSkipsTheTarWithoutTouchingTar()
+    {
+        string zip = WriteZip("a.zip");
+        string tar = WriteTar("b.tar");
+        var zipService = new FakeArchiveService();
+        var tarService = new FakeTarService();
+        var router = new ExtractionRouter(zipService, tarService, AllSupported, new GroupPolicyOptions());
+
+        ArchiveResult result = await router.TestAsync([zip, tar]);
+
+        zipService.LastTestedPaths.Should().Equal(zip);
+        tarService.ExtractCallCount.Should().Be(0);
+        result.SkippedFiles.Should().ContainSingle()
+            .Which.Should().Be(new SkippedFile { Path = tar, Reason = ArchiveFormatPolicy.NoTestCapabilityReason });
+        result.Success.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task TestAsync_ZipBlockedByPolicy_SkippedWithPolicyReasonAndEngineNotCalled()
+    {
+        string zip = WriteZip("a.zip");
+        var zipService = new FakeArchiveService();
+        var router = new ExtractionRouter(zipService, new FakeTarService(), AllSupported, new GroupPolicyOptions { BlockedFormats = ["zip"] });
+
+        ArchiveResult result = await router.TestAsync([zip]);
+
+        zipService.TestCallCount.Should().Be(0);
+        result.SkippedFiles.Should().ContainSingle(s => s.Path == zip && s.Reason.Contains("blocked by Group Policy"));
+    }
+
+    [Fact]
+    public async Task TestAsync_TarDisabledByPolicy_NamesThePolicyNotTheMissingTestMode()
+    {
+        string rar = WriteRar("a.rar");
+        var zipService = new FakeArchiveService();
+        var router = new ExtractionRouter(zipService, new FakeTarService(), new TarCapabilities(), new GroupPolicyOptions { DisableTarExtraction = true });
+
+        ArchiveResult result = await router.TestAsync([rar]);
+
+        zipService.TestCallCount.Should().Be(0);
+        result.SkippedFiles.Should().ContainSingle(s => s.Path == rar && s.Reason == "tar.exe-based extraction is disabled by Group Policy.");
+    }
+
+    [Fact]
+    public async Task TestAsync_UnrecognizedFile_StillGoesToTheZipEngine()
+    {
+        string unknown = WriteBytes("notes.txt", "plain text"u8.ToArray());
+        var zipService = new FakeArchiveService();
+        var router = new ExtractionRouter(zipService, new FakeTarService(), AllSupported, new GroupPolicyOptions());
+
+        await router.TestAsync([unknown]);
+
+        zipService.LastTestedPaths.Should().Equal(unknown);
+    }
+
+    [Fact]
+    public async Task TestAsync_PasswordCallback_ReachesTheZipEngineAndZipSkipsAreKept()
+    {
+        string zip = WriteZip("a.zip");
+        string tar = WriteTar("b.tar");
+        var zipSkip = new SkippedFile { Path = zip, Reason = "zip engine skip" };
+        var zipService = new FakeArchiveService { TestResult = new ArchiveResult { Success = false, SkippedFiles = [zipSkip] } };
+        var router = new ExtractionRouter(zipService, new FakeTarService(), AllSupported, new GroupPolicyOptions());
+        Func<PasswordPromptInfo, Task<PasswordDecision>> resolver = _ => Task.FromResult(new PasswordDecision());
+
+        ArchiveResult result = await router.TestAsync([zip, tar], resolvePasswordAsync: resolver);
+
+        zipService.LastTestResolver.Should().BeSameAs(resolver);
+        result.Success.Should().BeFalse();
+        result.SkippedFiles.Select(s => s.Path).Should().Equal(zip, tar);
+    }
+
+    [Fact]
+    public async Task TestAsync_OnlyTarFamily_NeverCallsTheZipEngine()
+    {
+        string tar = WriteTar("b.tar");
+        var zipService = new FakeArchiveService();
+        var router = new ExtractionRouter(zipService, new FakeTarService(), AllSupported, new GroupPolicyOptions());
+
+        ArchiveResult result = await router.TestAsync([tar]);
+
+        zipService.TestCallCount.Should().Be(0);
+        result.Success.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ExtractAsync_EmptyPolicy_BehavesAsUnrestricted()
     {
         string zip = WriteZip("a.zip");
         var zipService = new FakeArchiveService();
         var tarService = new FakeTarService();
-        var router = new ExtractionRouter(zipService, tarService, AllSupported);
+        var router = new ExtractionRouter(zipService, tarService, AllSupported, new GroupPolicyOptions());
 
         ArchiveResult result = await router.ExtractAsync(new ExtractOptions { ArchivePaths = [zip], DestinationFolder = _temp.Path });
 

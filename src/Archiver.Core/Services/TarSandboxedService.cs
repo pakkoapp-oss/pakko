@@ -22,17 +22,38 @@ public sealed class TarSandboxedService : ITarService
     private static readonly TimeSpan DetectionTimeout = TimeSpan.FromSeconds(5);
 
     private readonly GroupPolicyOptions _policy;
+    private readonly Func<Task<TarCapabilities>> _probe;
 
-    // T-F51: optional so every existing `new TarSandboxedService()` call site keeps compiling —
-    // a null policy means "everything allowed", matching today's shipped behavior exactly.
-    /// <summary>Creates the service. A null policy means everything allowed (today's shipped default).</summary>
-    public TarSandboxedService(GroupPolicyOptions? policy = null)
+    /// <summary>Creates the service under the given Group Policy (T-F261: required, never defaulted).</summary>
+    public TarSandboxedService(GroupPolicyOptions policy)
+        : this(policy, () => DetectCapabilitiesAsync(TarExecutablePath))
     {
-        _policy = policy ?? new GroupPolicyOptions();
     }
 
+    // T-F261: test seam for the unsandboxed tar.exe --version probe, so a unit test can prove it
+    // never runs under DisableTarExtraction without starting tar.exe.
+    internal TarSandboxedService(GroupPolicyOptions policy, Func<Task<TarCapabilities>> probe)
+    {
+        ArgumentNullException.ThrowIfNull(policy);
+        _policy = policy;
+        _probe = probe;
+    }
+
+    // T-F261: POLICIES.md promises DisableTarExtraction means tar.exe is never started — enforced
+    // here, where tar.exe is launched, not only by the callers that route to this engine.
+    private const string TarDisabledMessage = "tar.exe-based extraction is disabled by Group Policy.";
+
     /// <inheritdoc/>
-    public Task<TarCapabilities> DetectCapabilitiesAsync() => DetectCapabilitiesAsync(TarExecutablePath);
+    /// <remarks>Under DisableTarExtraction the probe never runs and all-false defaults are returned.</remarks>
+    public Task<TarCapabilities> DetectCapabilitiesAsync() =>
+        _policy.DisableTarExtraction ? Task.FromResult(new TarCapabilities()) : _probe();
+
+    private static ArchiveResult RefuseAll(IReadOnlyList<string> paths, string message) => new()
+    {
+        Success = false,
+        Errors = [.. paths.Select(path => new ArchiveError { SourcePath = path, Message = message })],
+        Sources = [.. paths.Select(path => SourceOutcomeRules.Classify(path, produced: false, clean: false))],
+    };
 
     // T-F182 (test-coverage audit): internal test-only overload — the const TarExecutablePath
     // stays hardcoded for every real caller (CLAUDE.md's PATH-hijack hard constraint), but this
@@ -67,6 +88,9 @@ public sealed class TarSandboxedService : ITarService
         IProgress<ProgressReport>? progress = null,
         CancellationToken cancellationToken = default)
     {
+        if (_policy.DisableTarExtraction)
+            return RefuseAll(options.ArchivePaths, TarDisabledMessage);
+
         var errors = new List<ArchiveError>();
         var createdFiles = new List<string>();
         var skippedFiles = new List<SkippedFile>();
@@ -89,14 +113,17 @@ public sealed class TarSandboxedService : ITarService
             // archives that were never extracted.
             cancellationToken.ThrowIfCancellationRequested();
 
-            int errorsBefore = errors.Count, skippedBefore = skippedFiles.Count, createdBefore = createdFiles.Count;
+            int errorsBefore = errors.Count, skippedBefore = skippedFiles.Count, createdBefore = createdFiles.Count,
+                userSkipsBefore = conflictResolver.UserSkipCount;
             await ExtractArchiveAtIndexAsync(
                 options, i, total, conflictResolver, sink, progress, cancellationToken).ConfigureAwait(false);
 
             // T-F265: a subset extraction never makes the whole archive deletable.
+            // T-F216: nor does an entry the user chose to skip, though it is not listed.
             sources.Add(SourceOutcomeRules.Classify(options.ArchivePaths[i],
                 produced: createdFiles.Count > createdBefore,
-                clean: errors.Count == errorsBefore && skippedFiles.Count == skippedBefore && options.SelectedEntryPaths is null));
+                clean: errors.Count == errorsBefore && skippedFiles.Count == skippedBefore
+                    && conflictResolver.UserSkipCount == userSkipsBefore && options.SelectedEntryPaths is null));
         }
 
         var result = new ArchiveResult
@@ -410,6 +437,9 @@ public sealed class TarSandboxedService : ITarService
 
         int totalFiles = 0;
         int extractedCount = 0;
+        // T-F216: see ZipArchiveService — to tell "the user skipped everything" apart.
+        int userSkipsBefore = context.ConflictResolver.UserSkipCount;
+        int skippedBefore = skippedFiles.Count, errorsBefore = context.Errors.Count;
         // The move phase (quarantine "out\" -> the real destination) is not free — a cross-volume
         // move is a real copy, not a rename — so it gets its own slice of the percentage (95-99)
         // rather than leaving the dialog sitting at whatever the extraction-phase poll last saw.
@@ -465,13 +495,18 @@ public sealed class TarSandboxedService : ITarService
         // destination) — nothing was actually written, so the caller must not count this
         // archive as CreatedFiles (that list gates whether DeleteAfterOperation may delete
         // the source archive).
+        bool onlyUserSkips = context.ConflictResolver.UserSkipCount > userSkipsBefore
+            && skippedFiles.Count == skippedBefore && context.Errors.Count == errorsBefore;
         if (totalFiles > 0 && extractedCount == 0)
         {
-            skippedFiles.Add(new SkippedFile
+            if (!onlyUserSkips)
             {
-                Path = archivePath,
-                Reason = "No entries were extracted from this archive — every entry was skipped."
-            });
+                skippedFiles.Add(new SkippedFile
+                {
+                    Path = archivePath,
+                    Reason = "No entries were extracted from this archive — every entry was skipped."
+                });
+            }
             progress?.Report(new ProgressReport { Percent = 100, BytesTransferred = progressTotalBytes, TotalBytes = progressTotalBytes });
             return (actualDest, false);
         }
@@ -581,11 +616,14 @@ public sealed class TarSandboxedService : ITarService
         if (File.Exists(finalFilePath) || plan.ClaimedFinalPaths.Contains(finalFilePath))
         {
             (long? incomingSize, DateTimeOffset? incomingModified) = DescribeIncoming(file);
+            int userSkipsSoFar = context.ConflictResolver.UserSkipCount;
             ConflictBehavior resolvedConflict = await context.ConflictResolver
                 .ResolveAsync(finalFilePath, incomingSize, incomingModified).ConfigureAwait(false);
             if (resolvedConflict == ConflictBehavior.Skip)
             {
-                context.SkippedFiles.Add(new SkippedFile { Path = relativePath, Reason = "File already exists at destination." });
+                // T-F216: the user's own Skip answer is not listed (as in ZIP); only an automatic one.
+                if (context.ConflictResolver.UserSkipCount == userSkipsSoFar)
+                    context.SkippedFiles.Add(new SkippedFile { Path = relativePath, Reason = "File already exists at destination." });
                 return (false, relativePath);
             }
             if (resolvedConflict == ConflictBehavior.Rename)
@@ -848,6 +886,9 @@ public sealed class TarSandboxedService : ITarService
         string archivePath,
         CancellationToken cancellationToken = default)
     {
+        if (_policy.DisableTarExtraction)
+            return new ArchiveListResult { Success = false, ErrorMessage = TarDisabledMessage };
+
         // T-F113: cheap proactive check for the header-encrypted case only (unlike ExtractAsync's
         // IsEncryptedRar check) — a data-only-encrypted RAR's filenames are still readable, so
         // listing should still succeed there, matching ZipArchiveService.ListEntriesAsync's and
@@ -959,6 +1000,17 @@ public sealed class TarSandboxedService : ITarService
         IProgress<ProgressReport>? progress = null,
         CancellationToken cancellationToken = default)
     {
+        if (_policy.DisableTarExtraction)
+            return new ArchiveResult
+            {
+                Success = false,
+                Errors = [new ArchiveError
+                {
+                    SourcePath = options.DestinationFolder,
+                    Message = "tar.exe-based archive creation is disabled by Group Policy.",
+                }],
+            };
+
         // T-F153: see ZipArchiveService.ArchiveAsync's identical normalization for the full
         // rationale — a trailing separator on a source path made Path.GetFileName(sourcePath)
         // return "" in AppendSourcesToTarArgs, which this class's own comment there already

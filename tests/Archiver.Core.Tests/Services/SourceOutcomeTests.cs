@@ -17,7 +17,7 @@ public sealed class SourceOutcomeTests : IDisposable
         public void Report(T value) => onReport(value);
     }
 
-    private readonly ZipArchiveService _sut = new();
+    private readonly ZipArchiveService _sut = new(new GroupPolicyOptions());
     private readonly TempDirectory _temp = new();
 
     public void Dispose() => _temp.Dispose();
@@ -455,7 +455,7 @@ public sealed class SourceOutcomeTests : IDisposable
             Success = true,
             Sources = [new SourceResult { Path = tar, Outcome = SourceOutcome.Completed }],
         });
-        var router = new ExtractionRouter(_sut, tarService, new TarCapabilities());
+        var router = new ExtractionRouter(_sut, tarService, new TarCapabilities(), new GroupPolicyOptions());
 
         ArchiveResult result = await router.ExtractAsync(new ExtractOptions { ArchivePaths = [zip, tar, rar], DestinationFolder = Dest("out") });
 
@@ -470,7 +470,7 @@ public sealed class SourceOutcomeTests : IDisposable
         byte[] header = new byte[512];
         "ustar"u8.CopyTo(header.AsSpan(257));
         File.WriteAllBytes(tar, header);
-        var router = new ExtractionRouter(_sut, new SourcesTarService(null), new TarCapabilities());
+        var router = new ExtractionRouter(_sut, new SourcesTarService(null), new TarCapabilities(), new GroupPolicyOptions());
 
         Func<Task<ArchiveResult>> act = () => router.ExtractAsync(new ExtractOptions { ArchivePaths = [zip, tar], DestinationFolder = Dest("out") });
 

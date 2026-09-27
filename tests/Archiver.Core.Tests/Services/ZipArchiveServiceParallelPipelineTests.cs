@@ -20,7 +20,7 @@ public sealed class ZipArchiveServiceParallelPipelineTests : IDisposable
     // exercises the parallel pipeline, not the sequential fallback.
     private const int ManyFilesCount = 120;
 
-    private readonly ZipArchiveService _sut = new();
+    private readonly ZipArchiveService _sut = new(new GroupPolicyOptions());
     private readonly TempDirectory _temp = new();
 
     public void Dispose() => _temp.Dispose();

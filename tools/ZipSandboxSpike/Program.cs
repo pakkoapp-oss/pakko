@@ -20,7 +20,7 @@ string operation = args[0];
 string sourcePath = args[1];
 string destPath = args[2];
 
-var svc = new ZipArchiveService(policy: null);
+var svc = new ZipArchiveService(new GroupPolicyOptions());
 var stopwatch = Stopwatch.StartNew();
 
 ArchiveResult result;

@@ -11,7 +11,7 @@ namespace Archiver.Core.Tests.Services;
 /// </summary>
 public sealed class ZipArchiveServiceTestAsyncTests
 {
-    private readonly ZipArchiveService _sut = new();
+    private readonly ZipArchiveService _sut = new(new GroupPolicyOptions());
 
     // T-F268 (found while pinning Archiver.Shell's cancel path): a cancel between archives used to
     // `break` and return Success = true, so a cancelled Test reported "no errors detected". The

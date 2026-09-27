@@ -2,15 +2,16 @@ using System.IO.Compression;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using Archiver.CLI;
+using Archiver.Core.Interfaces;
 using Archiver.Core.Models;
 using Archiver.Core.Services;
 
-// T-F51: loaded once per invocation and threaded into every inline service-construction call
-// site below — Archiver.CLI has no DI container, same pattern as Archiver.Shell/Program.cs.
+// T-F51/T-F261: loaded once per invocation; every command gets its services from Core's one
+// factory built with it — Archiver.CLI has no DI container, same as Archiver.Shell.
 // pakko.exe only ships for Windows (tar.exe/AppContainer are already Windows-only throughout
-// this file) despite this project's plain net8.0 (not net8.0-windows) TargetFramework.
+// this file) despite this project's plain net10.0 (not net10.0-windows) TargetFramework.
 #pragma warning disable CA1416
-GroupPolicyOptions policy = GroupPolicyService.Load();
+PakkoServices services = PakkoServices.Create(GroupPolicyService.Load());
 #pragma warning restore CA1416
 
 ParsedCliCommand command = CliArgumentParser.Parse(args);
@@ -26,11 +27,11 @@ return command.Type switch
     CliCommandType.Version => RunVersion(),
     CliCommandType.Invalid => RunInvalid(command),
     _ when command.PromptForPassword && Console.IsInputRedirected => RejectBarePasswordWithoutConsole(),
-    CliCommandType.Extract => await RunExtractAsync(command, policy).ConfigureAwait(false),
-    CliCommandType.Test => await RunTestAsync(command, policy).ConfigureAwait(false),
-    CliCommandType.Info => await RunInfoAsync().ConfigureAwait(false),
-    CliCommandType.Archive => await RunArchiveAsync(command, policy).ConfigureAwait(false),
-    CliCommandType.List => await RunListAsync(command).ConfigureAwait(false),
+    CliCommandType.Extract => await RunExtractAsync(command, services).ConfigureAwait(false),
+    CliCommandType.Test => await RunTestAsync(command, services).ConfigureAwait(false),
+    CliCommandType.Info => await RunInfoAsync(services).ConfigureAwait(false),
+    CliCommandType.Archive => await RunArchiveAsync(command, services).ConfigureAwait(false),
+    CliCommandType.List => await RunListAsync(command, services).ConfigureAwait(false),
     CliCommandType.Hash => await RunHashAsync(command).ConfigureAwait(false),
     _ => 2,
 };
@@ -71,16 +72,14 @@ static int RejectBarePasswordWithoutConsole()
 // synthetic per-archive wrapper folder. Without -o the destination is the
 // current directory, as with 7z 'x' (T-F206).
 // -------------------------------------------------------------------------
-static async Task<int> RunExtractAsync(ParsedCliCommand command, GroupPolicyOptions policy)
+static async Task<int> RunExtractAsync(ParsedCliCommand command, PakkoServices services)
 {
     // T-F160: cancelled by the conflict prompt's (Q)uit / end of input, or by Ctrl+C — either way a
     // clean Core cancellation (temp output removed) and exit code 255, 7-Zip's "user stopped".
     using var cancellation = CliCancellation.ListenToConsole();
     try
     {
-        var tarService = new TarSandboxedService(policy);
-        TarCapabilities capabilities = await tarService.DetectCapabilitiesAsync().ConfigureAwait(false);
-        var router = new ExtractionRouter(new ZipArchiveService(policy), tarService, capabilities, policy);
+        IExtractionRouter router = await services.CreateExtractionRouterAsync().ConfigureAwait(false);
 
         using CliStagingFolder? stdinFolder = await StageStdinIfRequestedAsync(command, cancellation.Token).ConfigureAwait(false);
         using CliStagingFolder? stdoutFolder = command.WriteToStdout ? CliStagingFolder.Create(CliStreamStaging.StdoutRoot) : null;
@@ -268,11 +267,11 @@ static async Task<int> ReportAndStreamAsync(ArchiveResult result, CliStagingFold
 }
 
 // -------------------------------------------------------------------------
-// t: test integrity — ZIP only (ITarService has no Test method at all). tar-family
-// archive paths are reported as skipped with the specific reason, never silently
-// dropped, matching CLI.md's three-way rule even though 't' itself is a supported command.
+// t: test integrity — ZIP only (ITarService has no Test method at all). T-F261: the router
+// classifies (Group Policy included) and reports tar-family paths as skipped with the specific
+// reason, never silently dropped, matching CLI.md's three-way rule.
 // -------------------------------------------------------------------------
-static async Task<int> RunTestAsync(ParsedCliCommand command, GroupPolicyOptions policy)
+static async Task<int> RunTestAsync(ParsedCliCommand command, PakkoServices services)
 {
     using var cancellation = CliCancellation.ListenToConsole();
     try
@@ -280,27 +279,12 @@ static async Task<int> RunTestAsync(ParsedCliCommand command, GroupPolicyOptions
         using CliStagingFolder? stdinFolder = await StageStdinIfRequestedAsync(command, cancellation.Token).ConfigureAwait(false);
         IReadOnlyList<string> archivePaths = ArchivePathsFor(command, stdinFolder);
 
-        var zipPaths = new List<string>();
-        var skippedNonZip = new List<SkippedFile>();
-
-        foreach (string path in archivePaths)
-        {
-            ArchiveFormat format = ArchiveFormatDetector.Detect(path);
-            if (format is ArchiveFormat.Zip or ArchiveFormat.Unknown)
-                zipPaths.Add(path);
-            else
-                skippedNonZip.Add(new SkippedFile { Path = path, Reason = "tar-family archives have no test capability" });
-        }
-
-        ArchiveResult result = zipPaths.Count > 0
-            ? await new ZipArchiveService(policy).TestAsync(
-                zipPaths,
-                progress: null,
-                resolvePasswordAsync: BuildPasswordResolver(command, assumeYes: false),
-                cancellationToken: cancellation.Token).ConfigureAwait(false)
-            : new ArchiveResult { Success = true };
-
-        result = result with { SkippedFiles = [.. result.SkippedFiles, .. skippedNonZip] };
+        IExtractionRouter router = await services.CreateExtractionRouterAsync().ConfigureAwait(false);
+        ArchiveResult result = await router.TestAsync(
+            archivePaths,
+            progress: null,
+            resolvePasswordAsync: BuildPasswordResolver(command, assumeYes: false),
+            cancellationToken: cancellation.Token).ConfigureAwait(false);
         return ReportResult(result);
     }
     catch (OperationCanceledException) when (cancellation.Token.IsCancellationRequested)
@@ -310,39 +294,46 @@ static async Task<int> RunTestAsync(ParsedCliCommand command, GroupPolicyOptions
 }
 
 // -------------------------------------------------------------------------
-// i: report supported formats/codecs on this system. Tar/GZip are unconditionally supported
-// (matches ExtractionRouter.IsSupported); the rest depend on the live TarCapabilities probe.
+// i: report supported formats/codecs on this system. T-F261: each line's status comes from
+// Core's shared classifier (Group Policy, then the live TarCapabilities probe), not a table
+// kept here. Under DisableTarExtraction the probe never runs.
 // -------------------------------------------------------------------------
-static async Task<int> RunInfoAsync()
+static async Task<int> RunInfoAsync(PakkoServices services)
 {
-    var tarService = new TarSandboxedService();
-    TarCapabilities capabilities = await tarService.DetectCapabilitiesAsync().ConfigureAwait(false);
+    TarCapabilities capabilities = await services.GetTarCapabilitiesAsync().ConfigureAwait(false);
+    GroupPolicyOptions policy = services.Policy;
 
     await Console.Out.WriteLineAsync("Pakko CLI — supported formats on this system:").ConfigureAwait(false);
-    await Console.Out.WriteLineAsync("  zip       create, extract, test, list   (always)").ConfigureAwait(false);
-    await Console.Out.WriteLineAsync("  tar       create, extract, list         (always)").ConfigureAwait(false);
-    await Console.Out.WriteLineAsync("  tar.gz    create, extract, list         (always)").ConfigureAwait(false);
     const string CreateExtractList = "create, extract, list";
-    await PrintFormatLineAsync("tar.bz2", CreateExtractList, capabilities.SupportsBz2).ConfigureAwait(false);
-    await PrintFormatLineAsync("tar.xz", CreateExtractList, capabilities.SupportsXz).ConfigureAwait(false);
-    await PrintFormatLineAsync("tar.zst", CreateExtractList, capabilities.SupportsZstd).ConfigureAwait(false);
-    await PrintFormatLineAsync("tar.lzma", CreateExtractList, capabilities.SupportsLzma).ConfigureAwait(false);
-    await PrintFormatLineAsync("7z", "extract, list", capabilities.Supports7z).ConfigureAwait(false);
-    await PrintFormatLineAsync("rar", "extract, list", capabilities.SupportsRar).ConfigureAwait(false);
+    await PrintFormatLineAsync("zip", "create, extract, test, list", ArchiveFormat.Zip).ConfigureAwait(false);
+    await PrintFormatLineAsync("tar", CreateExtractList, ArchiveFormat.Tar).ConfigureAwait(false);
+    await PrintFormatLineAsync("tar.gz", CreateExtractList, ArchiveFormat.GZip).ConfigureAwait(false);
+    await PrintFormatLineAsync("tar.bz2", CreateExtractList, ArchiveFormat.Bz2).ConfigureAwait(false);
+    await PrintFormatLineAsync("tar.xz", CreateExtractList, ArchiveFormat.Xz).ConfigureAwait(false);
+    await PrintFormatLineAsync("tar.zst", CreateExtractList, ArchiveFormat.Zstd).ConfigureAwait(false);
+    await PrintFormatLineAsync("tar.lzma", CreateExtractList, ArchiveFormat.Lzma).ConfigureAwait(false);
+    await PrintFormatLineAsync("7z", "extract, list", ArchiveFormat.SevenZip).ConfigureAwait(false);
+    await PrintFormatLineAsync("rar", "extract, list", ArchiveFormat.Rar).ConfigureAwait(false);
     await Console.Out.WriteLineAsync().ConfigureAwait(false);
-    await Console.Out.WriteLineAsync($"tar.exe: C:\\Windows\\System32\\tar.exe (version {capabilities.Version})").ConfigureAwait(false);
+    string tarVersion = policy.DisableTarExtraction ? "disabled by Group Policy" : $"version {capabilities.Version}";
+    await Console.Out.WriteLineAsync($"tar.exe: C:\\Windows\\System32\\tar.exe ({tarVersion})").ConfigureAwait(false);
 
     return 0;
 
-    static Task PrintFormatLineAsync(string format, string capabilitiesText, bool supported) =>
-        Console.Out.WriteLineAsync($"  {format,-9} {capabilitiesText,-22}  ({(supported ? "supported" : "not supported")})");
+    Task PrintFormatLineAsync(string format, string capabilitiesText, ArchiveFormat archiveFormat)
+    {
+        string status = ArchiveFormatPolicy.IsBlockedByPolicy(archiveFormat, policy) ? "blocked by Group Policy"
+            : ArchiveFormatPolicy.GetRefusalReason(archiveFormat, capabilities, policy) is null ? "supported"
+            : "not supported";
+        return Console.Out.WriteLineAsync($"  {format,-9} {capabilitiesText,-27}  ({status})");
+    }
 }
 
 // -------------------------------------------------------------------------
 // a: create a new archive. Always SingleArchive (7z 'a' packs every named source into one
 // archive) — SeparateArchives has no 7z-'a'-shaped equivalent and stays out of scope.
 // -------------------------------------------------------------------------
-static async Task<int> RunArchiveAsync(ParsedCliCommand command, GroupPolicyOptions policy)
+static async Task<int> RunArchiveAsync(ParsedCliCommand command, PakkoServices services)
 {
     if (RejectUnusableEncryptionPassword(command) is { } commandLineError)
         return commandLineError;
@@ -350,7 +341,7 @@ static async Task<int> RunArchiveAsync(ParsedCliCommand command, GroupPolicyOpti
     using var cancellation = CliCancellation.ListenToConsole();
     try
     {
-        var router = new ArchiveCreationRouter(new ZipArchiveService(policy), new TarSandboxedService(policy), policy);
+        IArchiveCreationRouter router = services.CreationRouter;
 
         using CliStagingFolder? stdoutFolder = command.WriteToStdout ? CliStagingFolder.Create(CliStreamStaging.StdoutRoot) : null;
         StrongBox<CliPasswordPrompt.NewPasswordResult?> prompt = new();
@@ -430,14 +421,12 @@ static int? ReportNewPasswordPromptOutcome(CliPasswordPrompt.NewPasswordResult? 
 // l: list contents. IArchiveListingRouter takes one archive at a time; looped here for
 // multiple archive paths, matching real 7z's own multi-archive 'l' behavior.
 // -------------------------------------------------------------------------
-static async Task<int> RunListAsync(ParsedCliCommand command)
+static async Task<int> RunListAsync(ParsedCliCommand command, PakkoServices services)
 {
     using var cancellation = CliCancellation.ListenToConsole();
     try
     {
-        var tarService = new TarSandboxedService();
-        TarCapabilities capabilities = await tarService.DetectCapabilitiesAsync().ConfigureAwait(false);
-        var router = new ArchiveListingRouter(new ZipArchiveService(), tarService, capabilities);
+        IArchiveListingRouter router = await services.CreateListingRouterAsync().ConfigureAwait(false);
 
         using CliStagingFolder? stdinFolder = await StageStdinIfRequestedAsync(command, cancellation.Token).ConfigureAwait(false);
         IReadOnlyList<string> archivePaths = ArchivePathsFor(command, stdinFolder);
@@ -460,7 +449,7 @@ static async Task<int> RunListAsync(ParsedCliCommand command)
 }
 
 // Prints one archive's listing (or its error) to stdout/stderr. Returns false on failure.
-static async Task<bool> PrintArchiveListingAsync(string archivePath, ArchiveListingRouter router, bool multiple, CancellationToken cancellationToken)
+static async Task<bool> PrintArchiveListingAsync(string archivePath, IArchiveListingRouter router, bool multiple, CancellationToken cancellationToken)
 {
     if (multiple)
         await Console.Out.WriteLineAsync($"# archive: {archivePath}").ConfigureAwait(false);

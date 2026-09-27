@@ -148,6 +148,34 @@ public sealed class ShellCommandsTests : IDisposable
     }
 
     [Fact]
+    public async Task Test_TarFamilyArchive_IsSkippedByTheRouterNotSentToTheZipEngine()
+    {
+        // T-F261: Shell used to hand every path to the ZIP engine, which answered "GZip format is
+        // not supported" for a format Pakko does support.
+        string tarGz = Path.Combine(_root, "notes.tar.gz");
+        using (var gzip = new GZipStream(File.Create(tarGz), CompressionLevel.Fastest))
+            gzip.Write("gzip"u8);
+        var ui = new FakeOperationUi();
+
+        await Create(ui).TestAsync([tarGz]);
+
+        ui.Messages.Should().ContainSingle().Which.Text.Should().Contain(ArchiveFormatPolicy.NoTestCapabilityReason)
+            .And.NotContain("not supported");
+    }
+
+    [Fact]
+    public async Task Test_ZipBlockedByGroupPolicy_IsNotTested()
+    {
+        string zip = MakeCorruptedZip("bad.zip");
+        var ui = new FakeOperationUi();
+
+        await Create(ui, policy: new GroupPolicyOptions { BlockedFormats = ["zip"] }).TestAsync([zip]);
+
+        OperationMessage message = ui.Messages.Should().ContainSingle().Subject;
+        message.Text.Should().Contain("blocked by Group Policy").And.NotContain("CRC");
+    }
+
+    [Fact]
     public async Task Hash_SingleFile_ShowsItsSha256()
     {
         string file = Path.Combine(_root, "a.txt");
@@ -295,6 +323,26 @@ public sealed class ShellCommandsTests : IDisposable
 
         File.Exists(Path.Combine(_root, "secret.txt")).Should().BeFalse();
         ui.Messages.Should().ContainSingle().Which.Severity.Should().Be(MessageSeverity.Error);
+    }
+
+    [Fact]
+    public async Task ExtractHereFlat_UserChoseSkipAll_ShowsNoEverySkippedWarning()
+    {
+        // T-F216: "Skip, apply to all" used to end with "No entries were extracted — every entry
+        // was skipped", as if something had gone wrong.
+        File.WriteAllText(Path.Combine(_root, "a.txt"), "old");
+        File.WriteAllText(Path.Combine(_root, "b.txt"), "old");
+        string zip = MakeZip("two.zip", ("a.txt", "new"), ("b.txt", "new"));
+        var ui = new FakeOperationUi
+        {
+            ConflictAnswer = _ => new ConflictDecision { Resolution = ConflictResolution.Skip, ApplyToAll = true },
+        };
+
+        await Create(ui).ExtractHereFlatAsync([zip]);
+
+        ui.ConflictPrompts.Should().ContainSingle();
+        ui.Messages.Should().BeEmpty();
+        File.ReadAllText(Path.Combine(_root, "a.txt")).Should().Be("old");
     }
 
     [Fact]
@@ -470,16 +518,16 @@ public sealed class ShellCommandsTests : IDisposable
 
     private static ShellCommands Create(
         FakeOperationUi ui,
-        Func<LaunchOperation, IReadOnlyList<string>, AppLaunchResult>? launch = null)
+        Func<LaunchOperation, IReadOnlyList<string>, AppLaunchResult>? launch = null,
+        GroupPolicyOptions? policy = null)
     {
-        var policy = new GroupPolicyOptions();
+        policy ??= new GroupPolicyOptions();
         var services = new ShellServices
         {
             CreateExtractionRouterAsync = () => Task.FromResult<IExtractionRouter>(
                 new ExtractionRouter(new ZipArchiveService(policy), new TarSandboxedService(policy), new TarCapabilities(), policy)),
             CreateArchiveCreationRouter = () =>
                 new ArchiveCreationRouter(new ZipArchiveService(policy), new TarSandboxedService(policy), policy),
-            CreateArchiveService = () => new ZipArchiveService(policy),
             CreateScanServiceAsync = () => throw new NotSupportedException("Scan needs AMSI; covered by OperationMessagesTests."),
             LaunchApp = launch ?? ((_, _) => AppLaunchResult.Launched),
         };
@@ -528,7 +576,7 @@ public sealed class ShellCommandsTests : IDisposable
         string file = Path.Combine(source, entryName);
         File.WriteAllText(file, content);
 
-        ArchiveResult result = await new ZipArchiveService().ArchiveAsync(new ArchiveOptions
+        ArchiveResult result = await new ZipArchiveService(new GroupPolicyOptions()).ArchiveAsync(new ArchiveOptions
         {
             SourcePaths = [file],
             DestinationFolder = _root,

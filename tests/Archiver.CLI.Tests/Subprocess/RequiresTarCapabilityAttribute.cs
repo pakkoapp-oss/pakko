@@ -20,7 +20,7 @@ public sealed class RequiresTarCapabilityAttribute : FactAttribute
             return;
         }
 
-        TarCapabilities capabilities = new TarSandboxedService().DetectCapabilitiesAsync().GetAwaiter().GetResult();
+        TarCapabilities capabilities = new TarSandboxedService(new GroupPolicyOptions()).DetectCapabilitiesAsync().GetAwaiter().GetResult();
 
         bool supported = format.ToLowerInvariant() switch
         {

@@ -7,7 +7,9 @@ namespace Archiver.Core.Interfaces;
 /// (tar-family), based on ArchiveFormatDetector — same dispatch IExtractionRouter uses for
 /// extraction. A separate interface from IExtractionRouter because listing and extracting return
 /// different result shapes; one archive path in, one ArchiveListResult out (not a batch, unlike
-/// ExtractAsync — the archive browser always lists exactly one archive at a time).
+/// ExtractAsync — the archive browser always lists exactly one archive at a time). T-F250: Group
+/// Policy applies exactly as for extraction (ArchiveFormatPolicy) — a blocked format, or a
+/// tar-family format under DisableTarExtraction, is a failed result and no engine is called.
 /// </summary>
 public interface IArchiveListingRouter
 {

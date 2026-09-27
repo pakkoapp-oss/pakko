@@ -86,7 +86,7 @@ public sealed class AntivirusScanServiceTests : IDisposable
         TarCapabilities? tarCapabilities = null,
         GroupPolicyOptions? policy = null,
         bool providerRegistered = true)
-        => new(tarCapabilities ?? NoTarSupport, policy, () => scanner, () => providerRegistered);
+        => new(tarCapabilities ?? NoTarSupport, policy ?? new GroupPolicyOptions(), () => scanner, () => providerRegistered);
 
     [Fact]
     public async Task ScanAsync_CleanZipArchive_ReturnsClean()
@@ -616,7 +616,7 @@ public sealed class AntivirusScanServiceEncryptedEicarTests
                 writer.Write("hello");
             archive.CreateEntry("empty.txt");
         }
-        var service = new AntivirusScanService(new TarCapabilities());
+        var service = new AntivirusScanService(new TarCapabilities(), new GroupPolicyOptions());
 
         ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [zip] });
 
@@ -627,7 +627,7 @@ public sealed class AntivirusScanServiceEncryptedEicarTests
     [SkipIfAmsiScanUnavailable]
     public async Task ScanAsync_RealEicarInEncryptedZip_CorrectPassword_ReturnsThreatDetected()
     {
-        var service = new AntivirusScanService(new TarCapabilities());
+        var service = new AntivirusScanService(new TarCapabilities(), new GroupPolicyOptions());
 
         ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions
         {
@@ -642,7 +642,7 @@ public sealed class AntivirusScanServiceEncryptedEicarTests
     [SkipIfAmsiScanUnavailable]
     public async Task ScanAsync_RealEicarInEncryptedZip_NoPassword_ReturnsInconclusiveNeverClean()
     {
-        var service = new AntivirusScanService(new TarCapabilities());
+        var service = new AntivirusScanService(new TarCapabilities(), new GroupPolicyOptions());
 
         ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions
         {

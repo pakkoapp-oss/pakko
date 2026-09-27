@@ -148,7 +148,7 @@ public sealed class ZipEntryWriterCompatibilityTests : IDisposable
         string destinationDir = Path.Combine(_temp.Path, "dest");
         Directory.CreateDirectory(destinationDir);
 
-        var service = new Archiver.Core.Services.ZipArchiveService();
+        var service = new Archiver.Core.Services.ZipArchiveService(new Archiver.Core.Models.GroupPolicyOptions());
         ArchiveResult result = await service.ArchiveAsync(new Archiver.Core.Models.ArchiveOptions
         {
             SourcePaths = [sourceDir],

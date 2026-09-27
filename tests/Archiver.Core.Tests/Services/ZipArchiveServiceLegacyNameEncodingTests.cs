@@ -20,7 +20,7 @@ public sealed class ZipArchiveServiceLegacyNameEncodingTests : IDisposable
     private static readonly ZipNameCodePages Us = ZipNameCodePages.FromCodePages(437, 1252);
     private const ushort Utf8Flag = 0x0800;
 
-    private readonly ZipArchiveService _sut = new() { NameCodePages = Ru };
+    private readonly ZipArchiveService _sut = new(new GroupPolicyOptions()) { NameCodePages = Ru };
     private readonly TempDirectory _temp = new();
 
     public void Dispose() => _temp.Dispose();
@@ -91,7 +91,7 @@ public sealed class ZipArchiveServiceLegacyNameEncodingTests : IDisposable
     {
         // 7za's default: cp866 bytes, flag clear, plus 0x7075. Decoding cp866 as cp437 would give
         // "Ç.txt"; the extra must win.
-        var sut = new ZipArchiveService { NameCodePages = Us };
+        var sut = new ZipArchiveService(new GroupPolicyOptions()) { NameCodePages = Us };
         string zip = FixtureHelper.Archive("legacy_oem866_7za.zip");
 
         ArchiveListResult result = await sut.ListEntriesAsync(zip);
@@ -121,7 +121,7 @@ public sealed class ZipArchiveServiceLegacyNameEncodingTests : IDisposable
         Directory.CreateDirectory(src);
         for (int i = 0; i < fileCount; i++)
             File.WriteAllText(Path.Combine(src, $"файл_{i}_\U0001F600.txt"), i.ToString());
-        var writer = new ZipArchiveService();
+        var writer = new ZipArchiveService(new GroupPolicyOptions());
         await writer.ArchiveAsync(new ArchiveOptions
         {
             SourcePaths = [src],
@@ -130,7 +130,7 @@ public sealed class ZipArchiveServiceLegacyNameEncodingTests : IDisposable
             Mode = ArchiveMode.SingleArchive,
         });
 
-        ArchiveListResult result = await new ZipArchiveService { NameCodePages = Us }.ListEntriesAsync(Path.Combine(_temp.Path, "own.zip"));
+        ArchiveListResult result = await new ZipArchiveService(new GroupPolicyOptions()) { NameCodePages = Us }.ListEntriesAsync(Path.Combine(_temp.Path, "own.zip"));
 
         result.Entries.Where(e => !e.IsDirectory).Select(e => e.Path).Should().BeEquivalentTo(
             Enumerable.Range(0, fileCount).Select(i => $"src/файл_{i}_\U0001F600.txt"));
@@ -141,7 +141,7 @@ public sealed class ZipArchiveServiceLegacyNameEncodingTests : IDisposable
     {
         string src = Path.Combine(_temp.Path, "звіт.txt");
         File.WriteAllText(src, "secret");
-        var writer = new ZipArchiveService();
+        var writer = new ZipArchiveService(new GroupPolicyOptions());
         await writer.ArchiveAsync(new ArchiveOptions
         {
             SourcePaths = [src],
@@ -151,7 +151,7 @@ public sealed class ZipArchiveServiceLegacyNameEncodingTests : IDisposable
             ResolvePasswordAsync = _ => Task.FromResult(new PasswordDecision { Password = "s3cret-pass" }),
         });
 
-        ArchiveListResult result = await new ZipArchiveService { NameCodePages = Us }.ListEntriesAsync(Path.Combine(_temp.Path, "enc.zip"));
+        ArchiveListResult result = await new ZipArchiveService(new GroupPolicyOptions()) { NameCodePages = Us }.ListEntriesAsync(Path.Combine(_temp.Path, "enc.zip"));
 
         result.Entries.Select(e => e.Path).Should().Equal("звіт.txt");
     }
@@ -161,7 +161,7 @@ public sealed class ZipArchiveServiceLegacyNameEncodingTests : IDisposable
     {
         string zip = Legacy("scan.zip", Oem("А.txt", "A"), Oem("Б.txt", "B"));
         var scanner = new FakeAmsiScanner();
-        var service = new AntivirusScanService(new TarCapabilities(), null, () => scanner, () => true) { NameCodePages = Ru };
+        var service = new AntivirusScanService(new TarCapabilities(), new GroupPolicyOptions(), () => scanner, () => true) { NameCodePages = Ru };
 
         ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [zip], SelectedEntryPaths = ["Б.txt"] });
 
