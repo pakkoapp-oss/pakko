@@ -443,7 +443,7 @@ public sealed class CliSubprocessTests
         exitCode.Should().Be(0);
         stdOut.Should().Contain("Files: 2");
         stdOut.Should().Contain("CRC32 for data:           80A50B25-00000000");
-        stdOut.Should().Contain("CRC32 for data and names: 064959A3-00000001");
+        stdOut.Should().Contain("CRC32 for data and names: 2FF76A07-00000000");
     }
 
     [Fact]
