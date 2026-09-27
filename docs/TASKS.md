@@ -4672,6 +4672,13 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 
 ### T-F216 — Shell "Test archive" on a mixed selection shows two modal dialogs (P2)
 
+- [~] **Progress (2026-09-28, fix phase 5, wave 2 track A):** second half fixed (b60e4e7).
+  `ConflictResolver.UserSkipCount` counts the user's own Skip answers; when every entry was skipped
+  by the user, ZIP and tar add no "every entry was skipped" warning and tar no longer lists
+  user-skipped files. The source still never counts as fully processed. Visible changes: the App
+  takes its success path after Skip all; `pakko x` with an interactive Skip all exits 0 (was 1, now
+  as 7-Zip). Device check (Explorer "Skip, apply to all") pending.
+
 - [~] **Progress:** first half fixed by T-F268 step 1 (2026-09-26): Test shows ONE box (skipped list +
   "no errors", Warning), device-checked. Still open: the "every entry was skipped" warning after
   an explicit Skip-all.
@@ -5070,6 +5077,18 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 
 ### T-F235 — A large Explorer selection makes every Pakko command silently do nothing (P1)
 
+- [~] **Progress (2026-09-28, fix phase 5, wave 2 track B):** fixed (fc1229d, fd08232). The DLL
+  always runs `Archiver.Shell.exe <command> --paths-stdin` and writes the paths to the child's stdin
+  (anonymous pipe, only the read end inherited via `PROC_THREAD_ATTRIBUTE_HANDLE_LIST`, UTF-16LE
+  NUL-separated list with an end marker); nothing on disk, no size-dependent path. A launch/write
+  failure and a selection with a non-filesystem item show a message. **Device-checked 2026-09-28
+  (Deploy 1.5.0.15, real Explorer menu):** 300 files with ~95-char names (73,199-char quoted list)
+  -> "Add to many.zip" creates it (7za: 300 files, OK), Hash CRC-32 lists 300, "Compress..." shows
+  the too-many-files message. "Add to many.tar" now fails visibly on tar.exe's own command line
+  (T-F273). Still open: Extract.../Compress.../Open hand the list to the App through
+  `LaunchArguments` (32,000-char cap, too-many message shown); the non-filesystem refusal not yet
+  device-checked.
+
 - [ ] **Status:** open — symptom confirmed on device 2026-09-24, cause likely (not isolated). The
   extension passes the whole selection as one `CreateProcessW` command line
   (`ShellExtUtils.cpp:228-253`, `Build*Args`), whose documented limit is 32,767 characters. When it
@@ -5438,6 +5457,13 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 
 ### T-F250 — Group Policy is not applied to archive listing: browse and `pakko l` read blocked formats with tar.exe (P1)
 
+- [~] **Progress (2026-09-28, fix phase 5, wave 2 track A):** code complete (3ce44bb, 7412527).
+  Listing is policy-gated (App browse, file association/Explorer Open, nested drill-in, `pakko l`);
+  `docs/ARCHITECTURE.md`'s "listing not policy-gated" note corrected. The ZIP engine and scan refuse
+  a blocked zip themselves, since an entry-less or self-extracting ZIP is detected as `Unknown` and
+  bypasses the routers. A failing-tar-fake matrix covers extract/create/list/test under both
+  policies. Device check pending.
+
 - [ ] **Status:** open — code-confirmed 2026-09-25 (T-F226 batch 3). `ArchiveListingRouter`'s
   constructor takes no `GroupPolicyOptions` at all (`ArchiveListingRouter.cs:7-10`); it dispatches
   on format and tar capabilities only (`:17-30`). `ExtractionRouter`, `AntivirusScanService` and
@@ -5689,6 +5715,15 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 
 ### T-F261 — Routing and Group Policy have no single owner: Test/Scan bypass the routers, the policy is optional and fail-open (P1, root, decision)
 
+- [~] **Progress (2026-09-28, fix phase 5, wave 2 track A):** code complete (6d5ee6a).
+  `ArchiveFormatPolicy` is the one public classifier (policy checked before tar capability);
+  `IExtractionRouter.TestAsync` (Shell `--test` and CLI `t` use it, tar.exe never starts for Test);
+  `GroupPolicyOptions` is required on every engine and router (reflection test);
+  `TarSandboxedService` refuses Extract/List/Compress and skips the version probe under
+  `DisableTarExtraction`; `PakkoServices.Create(policy)` builds Shell and CLI services (CLI `i`/`l`
+  had no policy at all before). The App keeps DI; the engine gates cover it. Device check with real
+  policy values pending.
+
 - [ ] **Status:** open — code-confirmed 2026-09-25. Extract, Create and List have routers; Test
   has none (`IExtractionRouter.cs:10-17` has only `ExtractAsync`, although
   `docs/ARCHITECTURE.md:73` says it routes `TestAsync`): Shell sends every path to the ZIP engine
@@ -5726,6 +5761,11 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 - **Decision (2026-09-25):** gate listing by Group Policy; correct `docs/ARCHITECTURE.md:1485`.
 
 ### T-F262 — The Explorer menu ignores Group Policy (P2)
+
+- [~] **Progress (2026-09-28, fix phase 5, wave 2 track B):** fixed (e56fbf7). `ShellExtUtils` reads
+  `DisableTarExtraction` and `BlockedFormats` (fail-safe, re-read at most every 5 s) and `GetState`
+  hides the matching items; `AllowedFormats` is not read by the menu (enforced on click). Device
+  check pending.
 
 - [ ] **Status:** open — code-confirmed 2026-09-25. `Archiver.ShellExtension` has no policy
   reader at all (no match for "Polic"/registry calls in the project); the tar-family menu items
@@ -5783,6 +5823,15 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 - **Decision (2026-09-25):** per-process cache roots plus a startup sweep of dead-process folders.
 
 ### T-F264 — Format and naming knowledge is hand-synced across C#, C++, the manifest and the CLI (P2, root)
+
+- [~] **Progress (2026-09-28, fix phase 5, wave 2 track B):** fixed (0b44e4c).
+  `ArchiveNaming.GetDefaultArchiveName` is the one default-name rule (Explorer's: one source -> its
+  name, compound tar extension stripped, dotfile kept; several -> the first one's folder; UNC share
+  root -> share name; else `archive`); "name (N)" lives only in
+  `ArchiveNaming.GetUniqueName`/`GetUniqueFolderName`. `FormatListConsistencyTests` compares the C++
+  arrays and the manifest with the C# lists. Visible: Explorer "Add to backup.zip" on
+  `backup.tar.gz` now creates `backup.zip`; the App with a blank name names several sources after
+  the first one's folder and keeps a dotfile's name. Device check pending.
 
 - [ ] **Status:** open — code-confirmed 2026-09-25. The recognized-extension lists exist in
   `ArchiveFormatDetector.cs:26-30`, `ShellExtUtils.cpp:33-62` and `Package.appxmanifest:54-96`,
@@ -6132,6 +6181,22 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   then put the one-large-file tests in one non-parallel xUnit collection and/or document Release as
   the tier's configuration; recalibrate only with evidence.
 - **Reported by:** T-F270 verification, 2026-09-26.
+
+### T-F273 — "Add to X.tar" fails for a large selection: every path goes on tar.exe's command line (P1)
+
+- [ ] **Status:** open — device-confirmed 2026-09-28 (Deploy 1.5.0.15), found checking T-F235.
+  Explorer "Add to many.tar" on 300 files with ~95-character names reaches Shell (T-F235), then
+  `TarSandboxedService.CompressAsync` passes every source path to `C:\Windows\System32\tar.exe` as
+  arguments: the window shows "Cannot create archive: CreateProcessW failed for
+  'C:\Windows\System32\tar.exe' (Win32 error 206)". Visible, not silent, but the command cannot
+  run. The App's TAR format and `pakko a -t tar` share the same path.
+- **Fix direction:** hand tar.exe the list another way, e.g. `-T -` (`--files-from` on stdin, with
+  `--null`) — check first how libarchive's bsdtar decodes names read that way on Windows (code
+  page vs UTF-8; the T-F266 best-fit rules must still hold), and keep the single-file case
+  unchanged. A temp list file is the fallback only with the same staging rules as T-F263.
+- **Tests first:** a source list longer than 32,767 characters creates a complete tar; names with
+  Cyrillic and U+2713 round-trip; the T-F266 refusal still triggers.
+- **Reported by:** fix phase 5 device check, 2026-09-28.
 
 ### T-F223 — Diagram gap from T-F193 (P2)
 

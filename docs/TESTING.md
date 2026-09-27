@@ -466,6 +466,23 @@ tests caught before shipping):
   stays `Partial`. The tar equivalents are two `[Integration]` tests in
   `TarSandboxedServiceExtractTests.cs` (`ExtractAsync_UserChoseSkipAll_...`,
   `ExtractAsync_UserSkippedOneEntry_SourcePartial`).
+- `FormatListConsistencyTests` (`Archiver.Core.Tests/Services/`, T-F264) — parses
+  `ShellExtUtils.cpp` (ZIP-container and non-ZIP extension arrays, compound extensions, the T-F262
+  extension-to-policy-name table) and `Package.appxmanifest`'s file types and compares them with
+  the C# lists; seen red by removing `.bdoc` from the manifest and `.txz` from the C++ list.
+- `StdinPathListTests` (`Archiver.Shell.Tests/`, T-F235) — the Explorer selection read from stdin
+  (`--paths-stdin`): the exact bytes the C++ builder writes, 10,000 paths, quotes/Unicode/an
+  unpaired surrogate, the size cap; no stdin, end marker only, empty entry, UTF-8 text; a stream
+  that ends after a complete entry without the end marker (mutation-checked), inside a path, on an
+  odd byte count, or with a throwing read.
+- C++ suites added to `Archiver.ShellExtension.Tests` (T-F235/T-F262): `PathListTransport` and
+  `LaunchWithPathList` (payload format, 300 x 95-character repro, only the read end inheritable,
+  10,000 paths through a real pipe, a real child process receiving the payload, a write with no
+  reader failing), `GetSelectionPaths` (an array with a non-filesystem item is incomplete),
+  `MenuPolicy` (each `DisableTarExtraction`/`BlockedFormats` value hides exactly the documented
+  items; missing or unreadable values hide nothing) and `Win32PolicyRegistryReader` (missing key,
+  wrong type, a real DWORD). Build from a short path: a worktree path can exceed MAX_PATH for the
+  gtest lib (`LNK1104`).
 - `FolderHashParityTests` (`Archiver.Core.PerformanceTests/`, T-F225; untagged, so it runs in the
   default filter) — folder DataSum/NamesSum against the vendored `7za.exe h` run live on the same
   folder, CRC-32 and SHA-256: one file, flat, nested with an empty subfolder and Cyrillic names,

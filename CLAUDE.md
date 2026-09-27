@@ -259,16 +259,6 @@ ignored `CoInitializeEx` return); PowerShell `PSScriptAnalyzer` as a new CI job 
 missing-BOM files, same corruption class as T-F84). See `docs/CONVENTIONS.md`'s "Static-Analysis
 Won't-Fix Conventions" section.
 
-**T-F151** (`[x]` done) — the AMSI scan's per-entry size cap was raised from 64 MiB to 256 MiB
-after a Phase 0 spike found AMSI's `IAmsiStream` COM-streaming mechanism fails above ~16-20 MiB
-in practice against the real Defender provider, while the existing simpler `AmsiScanBuffer` call
-scans up to 256 MiB with no error — kept the existing mechanism, raised its limit instead of
-building new streaming code.
-
-**T-F152** (deferred, user-directed) — a VirusTotal hash-lookup link for the Archive Browser was
-proposed then explicitly declined once it was found to conflict with the published Privacy
-Policy/`SECURITY.md`/`README.md`'s unqualified "zero network requests" claim.
-
 **T-F153** (`[x]` done) — a source path ending in a trailing directory separator (realistic via
 CLI tab-completion) silently corrupted archive creation two ways (wrong entry root in both
 engines; `Archiver.Shell`'s `RunArchiveAsync` placing the new archive inside its own source
@@ -423,6 +413,11 @@ required before this batch closes; the Store build is live).**
 with `Win32OperationUi` as fallback and failover. Steps 1-5 done (step 5, 2026-09-27: conflict
 and password prompts inside the window); next: step 6, polish (`docs/TASKS.md`, `docs/DECISIONS.md`). **T-F270** (`[x]`, 2026-09-26) — all projects on .NET 10 LTS (Build Commands' toolchain note);
 small-files ZIP slowdown fixed where possible in T-F271 (dotnet/runtime#134700).
+**Fix phase 5** (`[~]`, 2026-09-28): one Group Policy owner (T-F261/T-F250 — `GroupPolicyOptions`
+required everywhere, `PakkoServices.Create`, listing gated), Explorer selection over stdin (T-F235,
+`--paths-stdin`), menu hides policy-blocked items (T-F262), one naming rule (T-F264); the
+policy device checks wait for a UAC-approved run. Found T-F273 (tar creation hits tar.exe's
+command-line limit on a large selection).
 
 ## Roadmap Summary
 
@@ -529,6 +524,8 @@ files.
 - `Archiver.Core` has **zero** references to `ResourceLoader` or `ILogService`
 - Use only `System.IO.Compression` for ZIP compression — no NuGet compression packages
 - Services injected via constructor — never `new ZipArchiveService()` in ViewModels
+- Every engine/router takes a required `GroupPolicyOptions`; Shell and CLI build services only via
+  `PakkoServices.Create(policy)` (T-F261)
 - All IO exceptions caught per-item → `ArchiveError` — methods never throw to callers, except
   `OperationCanceledException` on cancellation (T-F260), even between two sources
 - MVVM: no business logic in `.xaml.cs` files
@@ -1031,13 +1028,12 @@ MSBuild tests\Archiver.ShellExtension.Tests\Archiver.ShellExtension.Tests.vcxpro
 > `0x800704c7` ("canceled by the user") — the UAC prompt has nothing to click it. Retry once
 > and ask the user to approve the UAC prompt that appears; the retry succeeds.
 >
-> **To verify a new/changed `IExplorerCommand`'s behavior via `windows` MCP, don't fight
-> Explorer's right-click menu automation** (already noted above as unconfirmed) — instead launch
-> the installed `Archiver.Shell.exe` directly with the exact args that command's `Invoke()`
-> constructs (e.g. `--open-ui --browse "<path>"`). This exercises the identical
-> `Archiver.Shell`→`ActivateApplication`→`Archiver.App` pipeline the real menu click would trigger, minus
-> only the COM click itself (covered separately by `Archiver.ShellExtension.Tests`). Confirmed
-> T-F03.
+> **Explorer's context menu is automatable via `windows` MCP (confirmed 2026-09-28, T-F235):**
+> `mouse_control` `right_click` on a selected item with `target: "primary_screen"`, then `ui_click`
+> the `MenuItem` "Pakko" and the leaf by `nameContains` in the Explorer window's handle (one call
+> per step — a batched sequence lost the menu). Explorer always sends `--paths-stdin`; the
+> installed `Archiver.Shell.exe` still accepts plain path args as a shortcut (e.g. `--open-ui
+> --browse "<path>"`, T-F03), which skips the COM click and the stdin transport.
 >
 > **`Archiver.Shell.exe`'s CLI commands (`--archive`, `--extract-here`, `--extract-folder`,
 > `--test`, `--hash`) take only source/archive paths — never an explicit destination.** The

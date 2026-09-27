@@ -7,6 +7,9 @@
 > **2026-09-27 (T-F250/T-F261):** listing/browsing, testing and scanning now honor
 > `AllowedFormats`/`BlockedFormats`/`DisableTarExtraction` too, and `DisableTarExtraction` also
 > stops the tar.exe version check. Covered by unit tests; the on-device re-check is pending.
+> **2026-09-28 (T-F262):** the Explorer menu reads `DisableTarExtraction` and `BlockedFormats` and
+> hides the matching items (changes apply within about 5 s). `AllowedFormats` is enforced when the
+> command runs, not by hiding menu items. On-device re-check pending.
 
 ---
 
@@ -43,8 +46,8 @@ an error.** Policies only take effect when explicitly set.
 |---|---|---|---|
 | `EnforceMOTW` | `REG_DWORD` | `0` = disabled, `1` = all files, `2` = unsafe extensions only | Controls Mark-of-the-Web (`Zone.Identifier`) propagation to extracted files. Absent = Pakko's shipped default (`1`, all files) is unchanged. |
 | `AllowedFormats` | `REG_MULTI_SZ` | one format name per line — `zip`, `tar`, `gzip`, `bz2`, `xz`, `zstd`, `lzma`, `rar`, `sevenzip` | Whitelist. If set, only listed formats can be extracted, tested, listed/browsed, scanned or created. Absent = no restriction. |
-| `BlockedFormats` | `REG_MULTI_SZ` | same format name vocabulary as `AllowedFormats` | Blocklist. **Takes precedence over `AllowedFormats`** — a format listed in both is blocked. |
-| `DisableTarExtraction` | `REG_DWORD` | `0`/`1` | `1` = Pakko never spawns `tar.exe` at all — not even its startup version check (blocks RAR/7z/tar/tar.gz/tar.bz2/tar.xz/tar.zst/tar.lzma extraction, listing/browsing, scanning and creation outright, and hides the corresponding format options in the app's own UI; the Explorer menu does not hide them yet, T-F262 — choosing one there reports the policy instead). |
+| `BlockedFormats` | `REG_MULTI_SZ` | same format name vocabulary as `AllowedFormats` | Blocklist. **Takes precedence over `AllowedFormats`** — a format listed in both is blocked. The Explorer menu hides the Extract/Open/Scan items of a blocked format (plus Test and "Add to X.zip" for `zip`, "Add to X.tar" for `tar`), T-F262. |
+| `DisableTarExtraction` | `REG_DWORD` | `0`/`1` | `1` = Pakko never spawns `tar.exe` at all — not even its startup version check (blocks RAR/7z/tar/tar.gz/tar.bz2/tar.xz/tar.zst/tar.lzma extraction, listing/browsing, scanning and creation outright, and hides the corresponding format options in the app's own UI; the Explorer menu hides the tar-family items and "Add to X.tar" too, T-F262). |
 
 ### `EnforceMOTW` in detail
 

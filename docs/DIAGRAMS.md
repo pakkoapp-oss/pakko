@@ -119,6 +119,7 @@ sequenceDiagram
         Enum-->>Explorer: fetched items,<br/>S_OK if fetched==celt, else S_FALSE<br/>S_FALSE is a SUCCESS code here, not failure
     end
     Note over Explorer,TC: Visibility is decided per-command by GetState(),<br/>separately from enumeration
+    Note over Explorer,TC: T-F262: every GetState below also returns ECS_HIDDEN for an item that<br/>DisableTarExtraction or BlockedFormats blocks (HKLM policy, fail-safe, re-read at most every 5 s)
     Explorer->>BC: GetState(psia) → ECS_ENABLED iff paths.size()==1 AND AllPathsAreSupportedArchive(paths), else ECS_HIDDEN<br/>(T-F03: single-item only — browsing more than one archive at once has no meaning,<br/>same one-archive-only rule FileActivationRouter already enforces for double-click, T-F100)
     Explorer->>EDC: GetState(psia) → ECS_ENABLED iff AnyPathIsSupportedArchive(paths), else ECS_HIDDEN<br/>(T-F86: also true for RAR/7z/tar-family when tar.exe exists — EDC routes<br/>to Archiver.App/IExtractionRouter, which supports those formats since T-F85)
     Explorer->>EHF: GetState(psia) → ECS_ENABLED iff AllPathsAreSupportedArchive(paths), else ECS_HIDDEN<br/>(same condition as EH/EF — T-F115)
@@ -132,25 +133,27 @@ sequenceDiagram
     User->>Explorer: click one visible leaf command
     alt command is BC (Open, T-F03)
         Explorer->>BC: Invoke(psia, pbc)
-        BC->>ShellExe: LaunchShellExe(BuildOpenUiBrowseArgs(paths))<br/>i.e. "--open-ui --browse <path>" — paths.size() is always 1 here, enforced by GetState
+        BC->>ShellExe: LaunchShellExe(BuildOpenUiBrowseArgs(), paths)<br/>i.e. "--open-ui --browse --paths-stdin", the path on stdin (T-F235) — paths.size() is always 1 here, enforced by GetState
         BC-->>Explorer: S_OK, or HRESULT_FROM_WIN32(GetLastError())
         ShellExe->>App: AppLauncher.Launch → IApplicationActivationManager::ActivateApplication(<br/>"<own PFN>!App", "--browse <base64 JSON>") — T-F232, was a pakko:// URI —<br/>then ShellExe's Main returns/exits immediately — same LaunchOpenUi helper EDC/CDC use
         App->>App: Launch kind: LaunchActivationRouter.Decide(arguments) → Mode=Browse<br/>window.ActivationGate.RunOrDefer(...) → MainViewModel.EnterBrowseModeAsync(path)<br/>— skips the pending-list/extract-options view entirely, the same destination<br/>FileActivationRouter already routes a double-clicked single archive to (T-F100)
     else command is EDC or CDC (dialog form, T-F63)
         Explorer->>EDC: Invoke(psia, pbc) — or CDC, same shape
-        EDC->>ShellExe: LaunchShellExe(BuildOpenUiExtractArgs(paths))<br/>— or BuildOpenUiArchiveArgs for CDC —<br/>i.e. "--open-ui --extract/--archive <paths>"
+        EDC->>ShellExe: LaunchShellExe(BuildOpenUiExtractArgs(), paths)<br/>— or BuildOpenUiArchiveArgs for CDC —<br/>i.e. "--open-ui --extract/--archive --paths-stdin", paths on stdin (T-F235)<br/>Shell refuses a list over LaunchArguments' 32,000-char cap with a message
         EDC-->>Explorer: S_OK, or HRESULT_FROM_WIN32(GetLastError())
         ShellExe->>App: ActivateApplication("<own PFN>!App", "--extract <base64 JSON>")<br/>— or --archive — then ShellExe's Main returns/exits immediately —<br/>NO NativeProgressDialog, NO ZipArchiveService call in this branch at all
         Note over App: T-F83 (fixed 2026-07-06): cold start reads the activation via<br/>OnLaunched→AppInstance.GetCurrent().GetActivatedEventArgs(), not just<br/>the OnActivated event (which only fires for redirected/warm activation).<br/>Before the fix, a cold protocol launch silently opened an EMPTY window.
         App->>App: LaunchActivationRouter.Decide(arguments) → Mode=AddToList<br/>window.ActivationGate.RunOrDefer(...) → MainViewModel.AddPaths(paths)<br/>— files pre-loaded, user drives Archive/Extract from the full UI.<br/>T-F106: wrapped in ActivationGate/DeferredActionGate so this runs AFTER<br/>the first layout pass, not synchronously inline as drawn in earlier versions<br/>of this diagram — a UI-thread timing detail, not a new process/COM contract
     else command is EHF, EH, EF, AC, or TC (silent form)
         Explorer->>EH: Invoke(psia, pbc) — or EHF / EF / AC / TC, same shape
-        alt GetPathsFromShellItemArray(psia) empty
+        alt GetSelectionPaths(psia) empty, or an item has no filesystem path
+            EH->>User: MessageBoxW(MB_TOPMOST) — T-F235: a selection is refused whole, never archived partly
             EH-->>Explorer: E_INVALIDARG
         else paths present
-            EH->>ShellExe: LaunchShellExe(BuildExtractHereArgs(paths))<br/>— or BuildExtractHereFlatArgs (T-F115, "--extract-flat") /<br/>BuildExtractFolderArgs / BuildArchiveArgs / BuildTestArgs<br/>CreateProcessW — PROCESS_INFORMATION handles<br/>closed immediately — does NOT wait for the child<br/>note: TC passes the FULL selection unfiltered — Core does the<br/>per-path IsZipFile gating, same as Extract already does
+            EH->>ShellExe: RunShellCommand — LaunchShellExe(BuildExtractHereArgs(), paths)<br/>— or BuildExtractHereFlatArgs (T-F115, "--extract-flat") /<br/>BuildExtractFolderArgs / BuildArchiveArgs / BuildTestArgs<br/>CreateProcessW("exe" command --paths-stdin) — T-F235: only the stdin read end<br/>is inherited, then the paths go to the child's stdin (UTF-16LE, NUL-separated,<br/>end marker) — does NOT wait for the child<br/>note: TC passes the FULL selection unfiltered — ExtractionRouter.TestAsync<br/>classifies each path (Group Policy + format), tar-family is skipped (T-F261)
+            ShellExe->>ShellExe: StdinPathList.Read — a list cut short is refused whole
             ShellExe-->>Explorer: (no return channel — ShellExe runs independently)
-            EH-->>Explorer: S_OK, or HRESULT_FROM_WIN32(GetLastError())<br/>on CreateProcess failure — returned the instant<br/>CreateProcess returns, NOT when the operation finishes
+            EH-->>Explorer: S_OK, or a MessageBoxW with the HRESULT on a launch or<br/>write failure — returned once the list is written,<br/>NOT when the operation finishes
             ShellExe->>ShellExe: ShellCommands → ui.Begin(title, Bytes) — T-F268: every window goes through<br/>IOperationUi, ONE session per Explorer command (T-F268 step 3), even for a multi-archive<br/>selection — Win32OperationUi is drawn here. Since T-F268 step 4 the WinUI helper<br/>(diagram 8) comes first, and this is its fallback
             ShellExe->>Dlg: new NativeProgressDialog(title)<br/>= new ProgressDialogCoClass() + StartProgressDialog
             alt COMException thrown during construction
@@ -181,7 +184,7 @@ sequenceDiagram
     else command is a Hash leaf, HashCrc32Command or HashSha256Command (T-F128, reached via<br/>HC's own EnumSubCommands/GetState, not drawn separately — same shape either way)
         Note over HC: structurally distinct from every branch above — never touches<br/>Core (ZipArchiveService)/ArchiveResult/ShellResultPresenter at all
         Explorer->>HC: Invoke(psia, pbc) — really the leaf's own Invoke, same shape for both algorithms
-        HC->>ShellExe: LaunchShellExe(BuildHashArgs(paths, "crc32"|"sha256"))<br/>i.e. "--hash --algorithm crc32|sha256 <paths>"
+        HC->>ShellExe: LaunchShellExe(BuildHashArgs("crc32"|"sha256"), paths)<br/>i.e. "--hash --algorithm crc32|sha256 --paths-stdin", paths on stdin (T-F235)
         HC-->>Explorer: S_OK, or HRESULT_FROM_WIN32(GetLastError())
         ShellExe->>Dlg: ui.Begin(title, Bytes) → new NativeProgressDialog(title) — the same session, cancel poll<br/>and no-COM fallback as the silent-form branch above (T-F268)
         ShellExe->>ShellExe: FileHashService.ComputeAsync(paths, algorithm, session.Progress, session.Cancellation)<br/>single file / multi-file independently / single-folder recursive<br/>(NanaZip-compatible DataSum+NamesSum via HashDigestAccumulator — DECISIONS.md's T-F128 entry)

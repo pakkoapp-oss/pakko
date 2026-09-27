@@ -10120,3 +10120,48 @@ emptied between stat and read) must reach AMSI and come back `Inconclusive`, nev
 **T-F159.** One `ArchiveNaming.GetUniqueFilePath(path, claimedPaths)` (Zip's superset signature)
 for all six call sites; pure refactor.
 
+
+## Fix phase 5 — one owner for routing and Group Policy; Explorer selection over stdin; one naming rule (2026-09-28)
+
+**T-F261/T-F250 — required policy, one classifier.** T-F51 added `GroupPolicyOptions?` defaulting
+to "allow everything"; it failed open twice (CLI `i` and `l` built services with no policy). Every
+engine and router now takes a required `GroupPolicyOptions`. `ArchiveFormatPolicy` is the only
+classifier and checks policy before tar capability, so the reason always names the policy.
+`TestAsync` moved onto `IExtractionRouter`; tar-family paths are skipped without starting tar.exe.
+Shell and CLI get their services from a plain factory, `PakkoServices.Create(policy)` (not a DI
+container); the App keeps DI. Gates exist on two layers on purpose: routers refuse by detected
+format, and the engines refuse too — `TarSandboxedService` under `DisableTarExtraction` (including
+the unsandboxed version probe, which covers the App's DI path), `ZipArchiveService` and scan for a
+blocked `zip`, because an entry-less or self-extracting ZIP is detected as `Unknown` and would
+otherwise reach the ZIP reader past every router check. Scan opens the sandbox directly, so the
+classifier is its only tar gate. Listing is gated (user decision 2026-09-25); this reverses
+`docs/ARCHITECTURE.md`'s T-F51 note, which cited the pre-scan comment on
+`ITarService.ListEntriesAsync`, not Group Policy.
+
+**T-F216 — explicit user Skip.** `ConflictResolver` counts the user's own Skip answers. They are
+not reported as skips or warnings but still keep the source from counting as fully processed.
+Rejected: filtering the message in Shell (App and CLI would disagree, and it would match on English
+text).
+
+**T-F235 — Explorer selection over stdin.** The recorded fix direction (`pakko://`-style JSON) was
+stale after T-F232; a temp response file was rejected as a new on-disk input other processes could
+swap or race. The DLL always runs `Archiver.Shell.exe <command> --paths-stdin` and writes a
+UTF-16LE, NUL-separated list with an end marker to the child's stdin. Always, not above a threshold:
+one code path, so a fault shows on every click. Handle rules: the write end is never inheritable (an
+inherited copy would keep Shell from seeing end-of-file); only the read end is in
+`PROC_THREAD_ATTRIBUTE_HANDLE_LIST`; the DLL closes its read end before writing, so a child that
+never got the handle turns into a failed write and a message. A list cut short is rejected whole. A
+selection with any non-filesystem item is refused with a message rather than archived partly.
+Plain path arguments stay supported for manual and agent use. Device-checked with 300 files
+(73,199-character list) from the real Explorer menu. That check found T-F273: tar creation still
+puts every path on tar.exe's own command line.
+
+**T-F262 — menu gating.** The DLL reads `DisableTarExtraction` and `BlockedFormats` with the same
+fail-safe rules as `GroupPolicyService`, cached for 5 s because the DLL lives in Explorer for hours.
+`AllowedFormats` is enforced after the click, not by hiding items.
+
+**T-F264 — one naming rule.** Explorer's rule became the only default-name rule
+(`ArchiveNaming.GetDefaultArchiveName`), since the menu title already promised it: several sources
+-> the first one's folder, a dotfile keeps its name, compound tar extensions stripped, UNC share
+root -> share name. "name (N)" lives only in `ArchiveNaming`. `FormatListConsistencyTests` parses
+`ShellExtUtils.cpp` and `Package.appxmanifest` so the hand-kept lists can no longer drift silently.
