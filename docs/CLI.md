@@ -145,6 +145,17 @@ seekable file to read its central directory, and `TarSandboxedService`'s whole-a
 (T-F49) needs a real file to scan before extraction runs — neither can operate on a raw pipe
 mid-stream.
 
+**Staging folders (T-F244 item 4 / T-F263).** Each `-si`/`-so` run stages into its own folder,
+`%TEMP%\Archiver.CLI.Stdin\<pid>-<guid>` or `%TEMP%\Archiver.CLI.Stdout\<pid>-<guid>`, owned from
+the moment it exists: a failed or cancelled copy (disk full, broken pipe, Ctrl+C) removes it, as
+does the end of the command. Ctrl+C in `x`/`t`/`l`/`a` cancels cleanly with exit code **255**; a
+read blocked on a stalled stdin pipe does not see that cancellation, so a **second** Ctrl+C ends
+pakko at once. A process killed outright (`taskkill`, power loss) cannot clean up — `x -so` may
+then leave an extracted (possibly decrypted) file in its `Stdout` folder; the next `x`/`t`/`l`/`a`
+run deletes every staging folder whose process is gone (PID not running, or reused by a process
+started after the folder was made). `%TEMP%` is already private to the user, so the folders get
+no ACL of their own.
+
 **`h -si` is the one genuine exception (T-F128/T-F09 follow-up).** CRC-32/SHA-256 are single-pass,
 no-seek algorithms, so nothing forces staging to disk first — `FileHashService.
 ComputeStreamDigestAsync` reads directly from `Console.OpenStandardInput()` and hashes as it goes,

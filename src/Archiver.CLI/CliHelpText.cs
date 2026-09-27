@@ -86,7 +86,8 @@ public static class CliHelpText
           u (update)   d (delete)   rn (rename)   b (benchmark)   e (extract, flat)
 
         EXIT CODES:  0 ok   1 ok with warnings   2 operation failed   7 command-line error
-                     255 stopped by user (Q at a prompt, or Ctrl+C)
+                     255 stopped by user (Q at a prompt, or Ctrl+C in x/t/l/a;
+                         a second Ctrl+C ends pakko at once)
 
         Full specification: CLI.md in the Pakko repository.
         """;

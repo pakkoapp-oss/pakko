@@ -15,6 +15,9 @@ GroupPolicyOptions policy = GroupPolicyService.Load();
 var command = CliArgumentParser.Parse(args);
 if (command.ConsoleCodePage is { } consoleCodePage)
     CliConsoleCharset.Apply(consoleCodePage);
+// T-F263: -si/-so staging left by a pakko that was killed (e.g. `x -so` plaintext) goes now.
+if (command.Type is CliCommandType.Extract or CliCommandType.Test or CliCommandType.List or CliCommandType.Archive)
+    CliStreamStaging.SweepAbandoned();
 
 return command.Type switch
 {
@@ -69,61 +72,48 @@ static int RejectBarePasswordWithoutConsole()
 // -------------------------------------------------------------------------
 static async Task<int> RunExtractAsync(ParsedCliCommand command, GroupPolicyOptions policy)
 {
-    string? stagedStdinPath = null;
-    string? stdoutStagingDir = null;
     // T-F160: cancelled by the conflict prompt's (Q)uit / end of input, or by Ctrl+C — either way a
     // clean Core cancellation (temp output removed) and exit code 255, 7-Zip's "user stopped".
-    using var quit = new CancellationTokenSource();
-    ConsoleCancelEventHandler onCtrlC = (_, e) => { e.Cancel = true; quit.Cancel(); };
-    Console.CancelKeyPress += onCtrlC;
+    using CliCancellation cancellation = CliCancellation.ListenToConsole();
     try
     {
         var tarService = new TarSandboxedService(policy);
         var capabilities = await tarService.DetectCapabilitiesAsync().ConfigureAwait(false);
         var router = new ExtractionRouter(new ZipArchiveService(policy), tarService, capabilities, policy);
 
-        IReadOnlyList<string> archivePaths = command.ArchivePaths;
-        if (command.ReadFromStdin)
-        {
-            stagedStdinPath = await CliStreamStaging.StageStdinAsync(CancellationToken.None).ConfigureAwait(false);
-            archivePaths = [stagedStdinPath];
-        }
+        using CliStagingFolder? stdinFolder = await StageStdinIfRequestedAsync(command, cancellation.Token).ConfigureAwait(false);
+        using CliStagingFolder? stdoutFolder = command.WriteToStdout ? CliStagingFolder.Create(CliStreamStaging.StdoutRoot) : null;
+        string destination = stdoutFolder?.Path ?? ResolveExtractDestination(command);
 
-        string destination;
-        if (command.WriteToStdout)
-        {
-            stdoutStagingDir = CliStreamStaging.CreateOutputStagingDirectory();
-            destination = stdoutStagingDir;
-        }
-        else
-        {
-            destination = ResolveExtractDestination(command);
-        }
+        var options = BuildExtractOptions(command, ArchivePathsFor(command, stdinFolder), destination, cancellation.Source);
 
-        var options = BuildExtractOptions(command, archivePaths, destination, quit);
-
-        ArchiveResult result = await router.ExtractAsync(options, progress: null, quit.Token).ConfigureAwait(false);
-        if (quit.IsCancellationRequested)
+        ArchiveResult result = await router.ExtractAsync(options, progress: null, cancellation.Token).ConfigureAwait(false);
+        if (cancellation.Token.IsCancellationRequested)
             return ReportUserStopped();
         int code = ReportResult(result);
-        if (!command.WriteToStdout || code == 2)
+        if (stdoutFolder is null || code == 2)
             return code;
 
-        return await StreamResultToStdoutIfSuccessfulAsync(stdoutStagingDir!, code).ConfigureAwait(false);
+        return await StreamResultToStdoutIfSuccessfulAsync(stdoutFolder.Path, code, cancellation.Token).ConfigureAwait(false);
     }
-    catch (OperationCanceledException) when (quit.IsCancellationRequested)
+    catch (OperationCanceledException) when (cancellation.Token.IsCancellationRequested)
     {
         return ReportUserStopped();
     }
-    finally
-    {
-        Console.CancelKeyPress -= onCtrlC;
-        if (stagedStdinPath is not null)
-            CliStreamStaging.CleanupStagedStdin(stagedStdinPath);
-        if (stdoutStagingDir is not null)
-            CliStreamStaging.CleanupOutputStagingDirectory(stdoutStagingDir);
-    }
 }
+
+// T-F244 item 4: -si stages into a folder this run owns from the moment it exists, so a failed
+// or cancelled copy leaves nothing in %TEMP%. Null when the archive is a path argument.
+static async Task<CliStagingFolder?> StageStdinIfRequestedAsync(ParsedCliCommand command, CancellationToken cancellationToken)
+{
+    if (!command.ReadFromStdin)
+        return null;
+    await using Stream stdin = Console.OpenStandardInput();
+    return await CliStreamStaging.StageStdinAsync(CliStreamStaging.StdinRoot, stdin, cancellationToken).ConfigureAwait(false);
+}
+
+static IReadOnlyList<string> ArchivePathsFor(ParsedCliCommand command, CliStagingFolder? stdinFolder) =>
+    stdinFolder is null ? command.ArchivePaths : [Path.Combine(stdinFolder.Path, CliStreamStaging.StdinFileName)];
 
 // T-F206: like `7z x`, no -o means the current directory, not the archive's own folder.
 static string ResolveExtractDestination(ParsedCliCommand command) =>
@@ -261,9 +251,9 @@ static void EchoMaskChar(char c) => Console.Error.Write(c == '\b' ? "\b \b" : "*
 
 // Shared by RunExtractAsync and RunArchiveAsync -- both stream the single staged output file to
 // stdout the same way once the underlying operation already reported success.
-static async Task<int> StreamResultToStdoutIfSuccessfulAsync(string stdoutStagingDir, int code)
+static async Task<int> StreamResultToStdoutIfSuccessfulAsync(string stdoutStagingDir, int code, CancellationToken cancellationToken)
 {
-    string? streamError = await CliStreamStaging.StreamSingleFileToStdoutAsync(stdoutStagingDir, CancellationToken.None).ConfigureAwait(false);
+    string? streamError = await CliStreamStaging.StreamSingleFileToStdoutAsync(stdoutStagingDir, cancellationToken).ConfigureAwait(false);
     if (streamError is not null)
     {
         await Console.Error.WriteLineAsync($"pakko: error: {streamError}").ConfigureAwait(false);
@@ -279,15 +269,11 @@ static async Task<int> StreamResultToStdoutIfSuccessfulAsync(string stdoutStagin
 // -------------------------------------------------------------------------
 static async Task<int> RunTestAsync(ParsedCliCommand command, GroupPolicyOptions policy)
 {
-    string? stagedStdinPath = null;
+    using CliCancellation cancellation = CliCancellation.ListenToConsole();
     try
     {
-        IReadOnlyList<string> archivePaths = command.ArchivePaths;
-        if (command.ReadFromStdin)
-        {
-            stagedStdinPath = await CliStreamStaging.StageStdinAsync(CancellationToken.None).ConfigureAwait(false);
-            archivePaths = [stagedStdinPath];
-        }
+        using CliStagingFolder? stdinFolder = await StageStdinIfRequestedAsync(command, cancellation.Token).ConfigureAwait(false);
+        IReadOnlyList<string> archivePaths = ArchivePathsFor(command, stdinFolder);
 
         var zipPaths = new List<string>();
         var skippedNonZip = new List<SkippedFile>();
@@ -306,16 +292,15 @@ static async Task<int> RunTestAsync(ParsedCliCommand command, GroupPolicyOptions
                 zipPaths,
                 progress: null,
                 resolvePasswordAsync: BuildPasswordResolver(command, assumeYes: false),
-                cancellationToken: CancellationToken.None).ConfigureAwait(false)
+                cancellationToken: cancellation.Token).ConfigureAwait(false)
             : new ArchiveResult { Success = true };
 
         result = result with { SkippedFiles = [.. result.SkippedFiles, .. skippedNonZip] };
         return ReportResult(result);
     }
-    finally
+    catch (OperationCanceledException) when (cancellation.Token.IsCancellationRequested)
     {
-        if (stagedStdinPath is not null)
-            CliStreamStaging.CleanupStagedStdin(stagedStdinPath);
+        return ReportUserStopped();
     }
 }
 
@@ -365,17 +350,17 @@ static async Task<int> RunArchiveAsync(ParsedCliCommand command, GroupPolicyOpti
     // The prompt's own outcome decides the report, never Core's English message: Core only sees a
     // null password in both cases.
     CliPasswordPrompt.NewPasswordResult? promptResult = null;
-    string? stdoutStagingDir = null;
+    using CliCancellation cancellation = CliCancellation.ListenToConsole();
     try
     {
         var router = new ArchiveCreationRouter(new ZipArchiveService(policy), new TarSandboxedService(policy), policy);
 
         string archivePathArg = command.ArchivePathArg!;
+        using CliStagingFolder? stdoutFolder = command.WriteToStdout ? CliStagingFolder.Create(CliStreamStaging.StdoutRoot) : null;
         string destFolder;
-        if (command.WriteToStdout)
+        if (stdoutFolder is not null)
         {
-            stdoutStagingDir = CliStreamStaging.CreateOutputStagingDirectory();
-            destFolder = stdoutStagingDir;
+            destFolder = stdoutFolder.Path;
         }
         else
         {
@@ -409,7 +394,7 @@ static async Task<int> RunArchiveAsync(ParsedCliCommand command, GroupPolicyOpti
             };
         }
 
-        ArchiveResult result = await router.ArchiveAsync(options, progress: null, CancellationToken.None).ConfigureAwait(false);
+        ArchiveResult result = await router.ArchiveAsync(options, progress: null, cancellation.Token).ConfigureAwait(false);
         if (promptResult is { Cancelled: true })
             return ReportUserStopped();
         if (promptResult?.Error is { } promptError)
@@ -418,15 +403,14 @@ static async Task<int> RunArchiveAsync(ParsedCliCommand command, GroupPolicyOpti
             return 2;
         }
         int code = ReportResult(result);
-        if (!command.WriteToStdout || code == 2)
+        if (stdoutFolder is null || code == 2)
             return code;
 
-        return await StreamResultToStdoutIfSuccessfulAsync(stdoutStagingDir!, code).ConfigureAwait(false);
+        return await StreamResultToStdoutIfSuccessfulAsync(stdoutFolder.Path, code, cancellation.Token).ConfigureAwait(false);
     }
-    finally
+    catch (OperationCanceledException) when (cancellation.Token.IsCancellationRequested)
     {
-        if (stdoutStagingDir is not null)
-            CliStreamStaging.CleanupOutputStagingDirectory(stdoutStagingDir);
+        return ReportUserStopped();
     }
 }
 
@@ -436,45 +420,40 @@ static async Task<int> RunArchiveAsync(ParsedCliCommand command, GroupPolicyOpti
 // -------------------------------------------------------------------------
 static async Task<int> RunListAsync(ParsedCliCommand command)
 {
-    string? stagedStdinPath = null;
+    using CliCancellation cancellation = CliCancellation.ListenToConsole();
     try
     {
         var tarService = new TarSandboxedService();
         TarCapabilities capabilities = await tarService.DetectCapabilitiesAsync().ConfigureAwait(false);
         var router = new ArchiveListingRouter(new ZipArchiveService(), tarService, capabilities);
 
-        IReadOnlyList<string> archivePaths = command.ArchivePaths;
-        if (command.ReadFromStdin)
-        {
-            stagedStdinPath = await CliStreamStaging.StageStdinAsync(CancellationToken.None).ConfigureAwait(false);
-            archivePaths = [stagedStdinPath];
-        }
+        using CliStagingFolder? stdinFolder = await StageStdinIfRequestedAsync(command, cancellation.Token).ConfigureAwait(false);
+        IReadOnlyList<string> archivePaths = ArchivePathsFor(command, stdinFolder);
 
         bool multiple = archivePaths.Count > 1;
         bool anyFailed = false;
 
         foreach (string archivePath in archivePaths)
         {
-            if (!await PrintArchiveListingAsync(archivePath, router, multiple).ConfigureAwait(false))
+            if (!await PrintArchiveListingAsync(archivePath, router, multiple, cancellation.Token).ConfigureAwait(false))
                 anyFailed = true;
         }
 
         return anyFailed ? 2 : 0;
     }
-    finally
+    catch (OperationCanceledException) when (cancellation.Token.IsCancellationRequested)
     {
-        if (stagedStdinPath is not null)
-            CliStreamStaging.CleanupStagedStdin(stagedStdinPath);
+        return ReportUserStopped();
     }
 }
 
 // Prints one archive's listing (or its error) to stdout/stderr. Returns false on failure.
-static async Task<bool> PrintArchiveListingAsync(string archivePath, ArchiveListingRouter router, bool multiple)
+static async Task<bool> PrintArchiveListingAsync(string archivePath, ArchiveListingRouter router, bool multiple, CancellationToken cancellationToken)
 {
     if (multiple)
         await Console.Out.WriteLineAsync($"# archive: {archivePath}").ConfigureAwait(false);
 
-    ArchiveListResult listResult = await router.ListEntriesAsync(archivePath, CancellationToken.None).ConfigureAwait(false);
+    ArchiveListResult listResult = await router.ListEntriesAsync(archivePath, cancellationToken).ConfigureAwait(false);
     if (!listResult.Success)
     {
         await Console.Error.WriteLineAsync($"pakko: error: {archivePath}: {listResult.ErrorMessage}").ConfigureAwait(false);
