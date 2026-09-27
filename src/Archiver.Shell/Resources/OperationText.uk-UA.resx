@@ -43,10 +43,10 @@
     <value>Архівування: {0}</value>
   </data>
   <data name="TitleExtracting" xml:space="preserve">
-    <value>Розпакування: {0}</value>
+    <value>Видобування: {0}</value>
   </data>
   <data name="TitleExtractingMany" xml:space="preserve">
-    <value>Розпакування архівів: {0}</value>
+    <value>Видобування архівів: {0}</value>
   </data>
   <data name="TitleTesting" xml:space="preserve">
     <value>Тестування: {0}</value>

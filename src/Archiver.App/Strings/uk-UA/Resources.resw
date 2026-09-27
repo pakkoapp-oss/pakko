@@ -18,7 +18,7 @@
     <value>Архів</value>
   </data>
   <data name="ExtractButtonLabel" xml:space="preserve">
-    <value>Розпакувати</value>
+    <value>Видобути</value>
   </data>
   <data name="ClearButton.Content" xml:space="preserve">
     <value>Очистити</value>
@@ -36,10 +36,10 @@
     <value>Про програму</value>
   </data>
   <data name="ExtractSelectedButton.Content" xml:space="preserve">
-    <value>Розпакувати вибране</value>
+    <value>Видобути вибране</value>
   </data>
   <data name="ExtractAllButton.Content" xml:space="preserve">
-    <value>Розпакувати все</value>
+    <value>Видобути все</value>
   </data>
 
   <!-- Table headers. Each element gets its own Uid — see the en-US Resources.resw comment for
@@ -162,7 +162,7 @@
     <value>Для кількох папок — перетягніть їх з Провідника</value>
   </data>
   <data name="DropZoneModeHint.Text" xml:space="preserve">
-    <value>Архіви пропонують розпакування; все інше буде заархівовано</value>
+    <value>Архіви пропонують видобування; все інше буде заархівовано</value>
   </data>
 
   <!-- Labels -->
@@ -195,7 +195,7 @@
     <value>Архівування...</value>
   </data>
   <data name="StatusExtracting" xml:space="preserve">
-    <value>Розпакування...</value>
+    <value>Видобування...</value>
   </data>
   <data name="StatusDone" xml:space="preserve">
     <value>Готово — оброблено файлів: {0}.</value>
@@ -225,16 +225,16 @@
     <value>Перегляд недоступний</value>
   </data>
   <data name="UnsafePreviewConfirmMessage" xml:space="preserve">
-    <value>Файл "{0}" не можна безпечно відкрити напряму. Розпакувати його в теку поруч з архівом?</value>
+    <value>Файл "{0}" не можна безпечно відкрити напряму. Видобути його в папку поруч з архівом?</value>
   </data>
   <data name="StatusArchivedIn" xml:space="preserve">
     <value>Заархівовано за {0} с — файлів: {1}</value>
   </data>
   <data name="StatusExtractedIn" xml:space="preserve">
-    <value>Розпаковано за {0} с — файлів: {1}</value>
+    <value>Видобуто за {0} с — файлів: {1}</value>
   </data>
   <data name="OutcomeWillExtract" xml:space="preserve">
-    <value>Буде розпаковано архівів: {0} — у вказану вище папку</value>
+    <value>Буде видобуто архівів: {0} — у вказану вище папку</value>
   </data>
   <data name="OutcomeWillArchive" xml:space="preserve">
     <value>Буде заархівовано елементів: {0} — у вказану вище папку</value>
@@ -254,7 +254,7 @@
     <value>Підозрілий архів</value>
   </data>
   <data name="CompressionBombDialogMessage" xml:space="preserve">
-    <value>Цей архів заявляє про {0} даних, коефіцієнт стиснення {1}:1. Це незвично високо і може вказувати на "бомбу" розпакування. Розпакувати попри це?</value>
+    <value>Цей архів заявляє про {0} даних, коефіцієнт стиснення {1}:1. Це незвично високо і може вказувати на "архівну бомбу". Видобути попри це?</value>
   </data>
   <data name="ConflictDialogTitle" xml:space="preserve">
     <value>Файл вже існує</value>

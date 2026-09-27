@@ -10042,3 +10042,8 @@ own dialog (de Kennwort, ko 비밀번호, tr Şifre), hi "अभिलेखा�
 zh "存档" (a saved game) for archive, ar skipped header in the singular, fr missing space before
 ":" and "et {0} de plus", da/nl/hi "and N more" wording, and a typo in the Latvian menu
 ("pašreinējo"). The same defect in the App's `.resw` was fixed where the string was identical.
+
+**Terms unified (user decision, 2026-09-27).** Ukrainian "extract" is "видобути/видобування"
+everywhere, as the Explorer menu already said (the App and the window said "розпакування"); the
+same App strings also got "папку" for "теку" and "архівну бомбу". German App strings use
+"Passwort" throughout (the encrypt dialog said "Kennwort", the decrypt dialog "Passwort").
