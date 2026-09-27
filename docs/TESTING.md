@@ -543,6 +543,14 @@ adds an `a -p` → `x -p` round trip (a wrong password must fail, proving real e
 for a non-ASCII `-p`, `-p` with `-ttar`, `-mem=ZipCrypto`, and a bare `-p` with redirected stdin on
 `a` and `x`. Not covered by any automated test: the real-console double prompt itself.
 
+**Fix phase 8 additions (2026-09-27):** `CliArgumentParserTests` covers `-scc` on every command,
+last-wins and unsupported names (T-F238); `CliConsoleCharsetTests`, `CliVersionTextTests` (T-F222),
+`CliCancellationTests` and new `CliStreamStagingTests` cases (staging removed on a failed or
+cancelled copy, dead-process sweep, PID-reuse ownership, T-F244). `CliSubprocessTests` adds `x`
+without `-o` into the working directory (`CliProcessRunner.RunIn`, T-F206), `l -sccUTF-8` checked
+as raw BOM-free UTF-8 bytes, the dev-version `-v` pattern, and a sweep of a dead run's folder.
+Not automated: real-console Ctrl+C and the cp866 loss itself.
+
 ---
 
 ## AMSI Antivirus Scan Tests (T-F146, v1.4+)

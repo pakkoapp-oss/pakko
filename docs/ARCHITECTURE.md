@@ -230,6 +230,10 @@ src/
 │   ├── Program.cs
 │   ├── CliArgumentParser.cs
 │   ├── CliStreamStaging.cs             ← T-F116: -si/-so buffer-then-proceed staging, zero Core changes
+│   ├── CliStagingFolder.cs             ← T-F244: per-run <pid>-<guid> staging folder + dead-run sweep
+│   ├── CliCancellation.cs              ← T-F244: Ctrl+C -> cancel (exit 255), second press ends the process
+│   ├── CliConsoleCharset.cs            ← T-F238: -scc{UTF-8|WIN|DOS} stdout/stderr writers
+│   ├── CliVersionText.cs               ← T-F222: `pakko -v` text (release vs 0.0.0-dev+sha)
 │   ├── CliConflictPrompt.cs            ← T-F160: 7-Zip-style (Y/N/A/S/U/Q) overwrite prompt on stderr,
 │   │                                      injected line source; Q/EOF/Ctrl+C -> exit 255
 │   ├── CliCompressionLevelMapper.cs / CliEntryFormatter.cs / CliHelpText.cs
@@ -1644,13 +1648,15 @@ documented in `scripts/README.md`.
 **`-si`/`-so` stdin/stdout streaming (T-F116):** `ParsedCliCommand` gained `ReadFromStdin`/
 `WriteToStdout` bools. `-si` (valid on `x`/`t`/`l`) and `-so` (valid on `x`/`a`) are implemented
 entirely inside `Archiver.CLI/CliStreamStaging.cs` — **zero `Archiver.Core` changes**. `-si` copies
-`Console.OpenStandardInput()` into a private `%TEMP%\Archiver.CLI.Stdin\<guid>\stdin.bin` file
+`Console.OpenStandardInput()` into a private `%TEMP%\Archiver.CLI.Stdin\<pid>-<guid>\stdin.bin` file
 before the command runs, then proceeds exactly as if that path had been typed; `-so` runs the
-operation into a private `%TEMP%\Archiver.CLI.Stdout\<guid>\` folder instead of the real
+operation into a private `%TEMP%\Archiver.CLI.Stdout\<pid>-<guid>\` folder instead of the real
 destination, then streams the single resulting file to `Console.OpenStandardOutput()`
 (`CliStreamStaging.StreamSingleFileAsync` takes the destination `Stream` as a parameter
 specifically so the broken-pipe path is unit-testable without a real OS pipe). Both staging
-locations are deleted in a `finally` block in every `Program.cs` command handler that uses them.
+locations are owned from creation by a disposable `CliStagingFolder` (T-F244: a failed or cancelled
+copy removes its folder), and every `x`/`t`/`l`/`a` run first sweeps folders left by a dead
+process (PID gone, or reused by a later process).
 Rejected out of scope: true zero-copy streaming through Core — `ZipArchive` needs a seekable
 stream to read its central directory, `TarSandboxedService`'s T-F49 pre-scan needs a real file to
 scan before extraction runs, and `SandboxedProcessLauncher` has no stdin-redirection plumbing —

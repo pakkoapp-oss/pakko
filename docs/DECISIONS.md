@@ -10057,3 +10057,31 @@ resets all three for every other result. Widening the window was rejected: it re
 progress, conflict and password view for one result type. `ProtocolVersion` stays 1: the field is
 optional, and a frame without it reads as not preformatted (tested); both ends ship in one package
 anyway. The Win32 fallback (`MessageBoxW`) has no such mode and ignores it.
+
+## Fix phase 8 — CLI: current directory, `-scc`, dev version, staging owner (2026-09-27)
+
+**T-F206: `x` without `-o` extracts into the current directory**, as `7z x` does (the CLI is
+7z-familiar by design, `docs/CLI.md`'s Goal). User-visible change; `-si` follows the same default.
+
+**T-F238: `-scc{UTF-8|WIN|DOS}` follows 7-Zip** (checked in NanaZip's vendored
+`ArchiveCommandLine.cpp`/`Main.cpp`): case-insensitive, last one wins, every command accepts it.
+The default stays the lossy console code page, like 7-Zip. Only the three names 7-Zip's help
+lists; numeric code pages and UTF-16 are refused with a named error. Pakko replaces its own
+stdout/stderr writers (BOM-free, auto-flush) instead of setting `Console.OutputEncoding`, which
+would leave the user's console switched to another code page after pakko exits.
+
+**T-F222: non-release builds say so.** `Archiver.CLI.csproj` keeps a fixed `0.0.0-dev` version that
+is never bumped; the release job passes `/p:Version` from the tag. `pakko -v` prints `pakko X.Y.Z`
+for a release and `pakko 0.0.0-dev+<sha>` otherwise. Rejected: deriving the base from
+`git describe`, which needs a full-history checkout in `build-cli` and a `Publish-Cli.ps1` change.
+
+**T-F244 item 4 / T-F263 CLI slice: each run owns its staging folder.** `-si`/`-so` staging folders
+are named `<pid>-<guid>` and owned from creation; a failed or cancelled copy removes its folder.
+Ctrl+C cancels `x`/`t`/`l`/`a` (exit 255); a second Ctrl+C ends the process, because a read
+blocked on a stalled stdin pipe never observes cancellation. Each run first sweeps folders whose
+owning process is gone (PID not running, or running but started after the folder was created —
+PID reuse); unknown ownership keeps the folder, and only exact `<pid>-<guid>` names are touched,
+so folders from builds before this change are never removed. No owner-only ACL: `%TEMP%` is
+already private to the user.
+
+**T-F241 (CLI half): no threat scan in `pakko`** — reasons in `docs/CLI.md`'s command table.

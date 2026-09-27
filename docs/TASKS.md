@@ -4428,6 +4428,10 @@ real console) and T-F226's deferred per-arrow diagram ritual — carried as open
 
 ### T-F203 — SonarCloud findings from the T-F160/T-F195/T-F193 pushes
 
+- **Progress (2026-09-27, fix phase 8):** `Program.cs` findings fixed in a1cc991 (S3776 split,
+  S6966, S3358), behavior unchanged. `CliLineInput.Read` and the `ZipArchiveService` finding
+  remain; re-check Sonar after the push.
+
 - [ ] **Status:** open — for the fix batch (user decision 2026-09-24: this batch is discovery only).
   Open on `main` after the 2026-09-24 push (commit 8952c12), from the SonarCloud API:
   - S3776 cognitive complexity: `Archiver.CLI/Program.cs` `RunArchiveAsync` (23, line ~351) and
@@ -4458,7 +4462,7 @@ real console) and T-F226's deferred per-arrow diagram ritual — carried as open
   `windows` MCP against the freshly deployed MSIX, with a written checklist and a pass/fail per item:
   every button and option of the main window in both modes; every Explorer context-menu command
   and submenu (Pakko root, Extract Here/to folder/Open, Add to X.zip/.tar, Test, Scan for threats,
-  Hash submenu) on files, folders, multi-selection and a drive root; every dialog (conflict,
+  Hash) on files, folders, multi-selection and a drive root; every dialog (conflict,
   password decrypt/encrypt, summary, bomb warning, About); the CLI commands including the real-
   console prompts; ZIP and tar-family formats; Ukrainian and English UI. **Discovery only (user
   decision 2026-09-24):** every defect found, however small, becomes its own task with repro steps
@@ -4544,6 +4548,10 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 - **Decision (2026-09-25):** keep the root folder in SingleFolder mode (7-Zip/NanaZip parity, "full paths").
 
 ### T-F206 — `pakko x` without `-o` extracts next to the archive, not into the current directory (P1, decision)
+
+- **Progress (2026-09-27, fix phase 8):** fixed in fabe976 — `x` (and `-si`) without `-o` extracts
+  into the current directory; `--help` and `docs/CLI.md` updated. Subprocess test red before the
+  fix. Stays `[~]` until a real-console check.
 
 - [ ] **Status:** open. `Archiver.CLI/Program.cs` defaults the destination to
   `Path.GetDirectoryName(archive)`; 7-Zip extracts into the current directory. Repro: from an empty
@@ -4726,6 +4734,11 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 - **Root (grouping, architecture review 2026-09-25):** Core reports errors and skips as English text with no code (`ArchiveError`/`SkippedFile` hold only strings), and the frontends localize through four separate mechanisms (App `.resw`, Shell `.resx`, `Localization.cpp`, none in the CLI). Fix T-F209/T-F208/T-F215/T-F221/T-F254 together: a code in the Core model, rendered per frontend.
 
 ### T-F222 — CLI version and docs drift (P2)
+
+- **Progress (2026-09-27, fix phase 8):** items 1-2 fixed in facb31d — `<Version>0.0.0-dev</Version>`
+  (never bumped; the release tag passes `/p:Version`), `pakko -v` prints `pakko 0.0.0-dev+<sha>` on
+  non-release builds; `-ao` errors list only a/s/u; CLI.md `i`/`h`/version rows. Item 3 fixed in
+  this file. Stays `[~]` until a CI artifact is checked.
 
 - [ ] **Status:** open.
   1. A non-tag CI build reports `pakko 1.4.2` (the stale `<Version>` default in
@@ -5098,6 +5111,11 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 
 ### T-F238 — `pakko` redirected output loses characters outside the console code page (P2)
 
+- **Progress (2026-09-27, fix phase 8):** fixed in 0e379cc — new `-scc{UTF-8|WIN|DOS}` on every
+  command (7-Zip semantics, last wins, BOM-free writers, the console code page is never changed);
+  default stays the lossy console code page like 7-Zip. Subprocess test checks raw UTF-8 bytes;
+  revert probe went red. Stays `[~]` until a real `chcp 866` console check.
+
 - [ ] **Status:** open — confirmed on device 2026-09-24. `Archiver.CLI` never sets
   `Console.OutputEncoding`, so redirected stdout uses the console code page. For uk-UA it is 866,
   which has no `і/ї/є`: under `chcp 866`, `pakko l x.zip > list.txt` writes `Зв?т.txt` (byte 0x3F)
@@ -5133,6 +5151,9 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 - **Reported by:** T-F226 review, 2026-09-24.
 
 ### T-F241 — Frontend feature gaps with no recorded decision (P2, decision)
+
+- **Progress (2026-09-27, fix phase 8):** CLI half recorded — no `pakko` scan, reasons in
+  `docs/CLI.md`'s command table and DECISIONS "Fix phase 8". App "Test archive" stays for phase 9.
 
 - [ ] **Status:** open. `pakko` has no threat scan (T-F146 added it to the App, Shell and
   Explorer only); the App has no "Test archive" (Explorer, Shell and CLI have it). Neither is
@@ -5196,6 +5217,11 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 - **Reported by:** T-F226 review, 2026-09-24.
 
 ### T-F244 — Sandbox launcher, crypto and CLI staging hygiene (P2)
+
+- **Progress (2026-09-27, fix phase 8):** item 4 fixed in 7a6f236 + cd593d5 — `CliStagingFolder`
+  (`<pid>-<guid>`, owned from creation), Ctrl+C for `x`/`t`/`l`/`a` (exit 255, second press ends
+  the process), startup sweep of dead runs' folders with PID-reuse detection. Real-console Ctrl+C
+  and kill checks pending.
 
 - **Progress (2026-09-25, fix phase 4):** item 1 fixed in a33da37 (pipe ends owned from creation; any failure/cancel terminates and waits for the child; the wait keeps its handle reference) and 8ac316a (NEW: concurrent `CreateAppContainerProfile` on the existing profile failed — the real cause of the CI flake; `EnsureExists` checks the Mappings key first). Item 5 fixed in a33da37 (`PROC_THREAD_ATTRIBUTE_HANDLE_LIST`; creation and the `--version` probe moved onto the same launcher). Item 2 fixed in acca0de. Item 4 stays for fix phase 8.
 
@@ -5671,6 +5697,9 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 - **Reported by:** architecture review, 2026-09-25 (reviewer agent).
 
 ### T-F263 — Staging and temporary folders have no single owner; the two extraction commit paths are synced by hand (P1, root, decision)
+
+- **Progress (2026-09-27, fix phase 8):** CLI slice done with T-F244 item 4 (per-run staging
+  folders named by PID, sweep of dead runs). App preview/nested cache roots remain (phase 9).
 
 - **Device check (2026-09-26, Deploy 1.4.12.13, title build 2026-09-25 23:58:24, agent via Shell/`windows` MCP):** a 150 MB `.tar.bz2` cancelled from the Shell dialog: the process exits at once, no files in the destination, no tar.exe, no staging folder. (Two earlier attempts did not really press Cancel: a UIA invoke on the `IProgressDialog` button does not set its cancel flag, and a mouse click hit the always-on-top terminal.)
 

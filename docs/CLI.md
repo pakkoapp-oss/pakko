@@ -94,6 +94,7 @@ Rejected 2026-07-18; see `DECISIONS.md`'s T-F09 "Distribution" entry.
 | `i` | Info (list supported archive formats/codecs) | Supported — prints ZIP and tar/tar.gz (always) plus each tar.exe-backed format (tar.bz2/xz/zst/lzma, 7z, rar) with its live `TarCapabilities` result, and the tar.exe version. Takes no arguments (only `-scc`) |
 | `h` | Hash | **Supported (added 2026-07-20, T-F128/T-F09 follow-up).** Real 7z `h` hashes files on disk, not archive entries — the original row here predated T-F128 and described the wrong thing. Maps onto `FileHashService.ComputeAsync` (same engine as the Explorer context menu's CRC-32/SHA-256 commands, flattened out of the old "Хеш-суми" submenu by T-F128): one or more files hashed independently, or exactly one folder recursed with a combined DataSum/NamesSum printed (NanaZip-compatible, verified against the vendored `7za.exe`) |
 | `rn` | Rename entries in an archive | Not supported, deliberately — in-place mutation, same reasoning as `d` |
+| — | Scan for threats (Pakko's own App/Explorer command, T-F146) | Not supported, by decision (T-F241, 2026-09-25): 7z has no such command to mirror, and Windows' `MpCmdRun -Scan` cannot see inside password-protected ZIPs (T-F194), so a CLI scan would be weaker than the App's in-memory decrypt-and-scan. Scripts can `pakko x` and run their antivirus on the extracted files (e.g. `MpCmdRun -Scan -ScanType 3 -File <dir>`). The App, the Explorer menu and `Archiver.Shell` keep the command. Revisit on request |
 
 ## Version reporting — deliberately not a 7z pattern
 

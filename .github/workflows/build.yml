@@ -435,7 +435,7 @@ jobs:
         run: |
           # On a version-tag push, stamp the exact tag (minus the leading "v") into the built
           # exe so `pakko --version` always matches the GitHub Release it shipped under, even if
-          # Archiver.CLI.csproj's own checked-in <Version> default was never bumped for this tag.
+          # Archiver.CLI.csproj keeps a fixed 0.0.0-dev version (T-F222); other builds print it plus the commit.
           if ("${{ github.ref }}".StartsWith("refs/tags/v")) {
             .\scripts\Publish-Cli.ps1 -Version "${{ github.ref_name }}".TrimStart('v')
           } else {
