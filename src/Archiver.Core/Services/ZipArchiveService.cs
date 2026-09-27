@@ -1474,6 +1474,10 @@ public sealed class ZipArchiveService : IArchiveService
         var plan = new ExtractionPlan(tempDest, fullTempDest, actualDest, stripRootPrefix, totalUncompressedBytes, claimedFinalPaths,
             encryptedEntryMap, rawArchiveStream);
 
+        // T-F216: what this archive's loop adds, to tell "the user skipped everything" apart.
+        int userSkipsBefore = context.ConflictResolver.UserSkipCount;
+        int skippedBefore = skippedFiles.Count, errorsBefore = context.Errors.Count;
+
         // T-F161: `staging` is disposed on ANY exit, including a failure or cancellation partway
         // through — a leftover staging folder never stays on a real destination.
         foreach (NamedZipEntry? entry in entries)
@@ -1503,6 +1507,11 @@ public sealed class ZipArchiveService : IArchiveService
         // T-F87: every entry was individually skipped (conflict/ADS/reserved name/reparse point/
         // zip bomb) — nothing was actually extracted, so the caller must not count this archive
         // as CreatedFiles (that list gates whether DeleteAfterOperation may delete the source).
+        // T-F216: no warning when every skip was the user's own conflict answer.
+        bool onlyUserSkips = context.ConflictResolver.UserSkipCount > userSkipsBefore
+            && skippedFiles.Count == skippedBefore && context.Errors.Count == errorsBefore;
+        if (extractedCount == 0 && onlyUserSkips)
+            return (actualDest, false);
         if (extractedCount == 0)
         {
             skippedFiles.Add(new SkippedFile

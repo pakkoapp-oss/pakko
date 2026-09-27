@@ -326,6 +326,26 @@ public sealed class ShellCommandsTests : IDisposable
     }
 
     [Fact]
+    public async Task ExtractHereFlat_UserChoseSkipAll_ShowsNoEverySkippedWarning()
+    {
+        // T-F216: "Skip, apply to all" used to end with "No entries were extracted — every entry
+        // was skipped", as if something had gone wrong.
+        File.WriteAllText(Path.Combine(_root, "a.txt"), "old");
+        File.WriteAllText(Path.Combine(_root, "b.txt"), "old");
+        string zip = MakeZip("two.zip", ("a.txt", "new"), ("b.txt", "new"));
+        var ui = new FakeOperationUi
+        {
+            ConflictAnswer = _ => new ConflictDecision { Resolution = ConflictResolution.Skip, ApplyToAll = true },
+        };
+
+        await Create(ui).ExtractHereFlatAsync([zip]);
+
+        ui.ConflictPrompts.Should().ContainSingle();
+        ui.Messages.Should().BeEmpty();
+        File.ReadAllText(Path.Combine(_root, "a.txt")).Should().Be("old");
+    }
+
+    [Fact]
     public async Task ExtractHereFlat_ConflictSkip_KeepsTheExistingFile()
     {
         File.WriteAllText(Path.Combine(_root, "same.txt"), "old");

@@ -113,14 +113,17 @@ public sealed class TarSandboxedService : ITarService
             // archives that were never extracted.
             cancellationToken.ThrowIfCancellationRequested();
 
-            int errorsBefore = errors.Count, skippedBefore = skippedFiles.Count, createdBefore = createdFiles.Count;
+            int errorsBefore = errors.Count, skippedBefore = skippedFiles.Count, createdBefore = createdFiles.Count,
+                userSkipsBefore = conflictResolver.UserSkipCount;
             await ExtractArchiveAtIndexAsync(
                 options, i, total, conflictResolver, sink, progress, cancellationToken).ConfigureAwait(false);
 
             // T-F265: a subset extraction never makes the whole archive deletable.
+            // T-F216: nor does an entry the user chose to skip, though it is not listed.
             sources.Add(SourceOutcomeRules.Classify(options.ArchivePaths[i],
                 produced: createdFiles.Count > createdBefore,
-                clean: errors.Count == errorsBefore && skippedFiles.Count == skippedBefore && options.SelectedEntryPaths is null));
+                clean: errors.Count == errorsBefore && skippedFiles.Count == skippedBefore
+                    && conflictResolver.UserSkipCount == userSkipsBefore && options.SelectedEntryPaths is null));
         }
 
         var result = new ArchiveResult
@@ -434,6 +437,9 @@ public sealed class TarSandboxedService : ITarService
 
         int totalFiles = 0;
         int extractedCount = 0;
+        // T-F216: see ZipArchiveService — to tell "the user skipped everything" apart.
+        int userSkipsBefore = context.ConflictResolver.UserSkipCount;
+        int skippedBefore = skippedFiles.Count, errorsBefore = context.Errors.Count;
         // The move phase (quarantine "out\" -> the real destination) is not free — a cross-volume
         // move is a real copy, not a rename — so it gets its own slice of the percentage (95-99)
         // rather than leaving the dialog sitting at whatever the extraction-phase poll last saw.
@@ -489,13 +495,18 @@ public sealed class TarSandboxedService : ITarService
         // destination) — nothing was actually written, so the caller must not count this
         // archive as CreatedFiles (that list gates whether DeleteAfterOperation may delete
         // the source archive).
+        bool onlyUserSkips = context.ConflictResolver.UserSkipCount > userSkipsBefore
+            && skippedFiles.Count == skippedBefore && context.Errors.Count == errorsBefore;
         if (totalFiles > 0 && extractedCount == 0)
         {
-            skippedFiles.Add(new SkippedFile
+            if (!onlyUserSkips)
             {
-                Path = archivePath,
-                Reason = "No entries were extracted from this archive — every entry was skipped."
-            });
+                skippedFiles.Add(new SkippedFile
+                {
+                    Path = archivePath,
+                    Reason = "No entries were extracted from this archive — every entry was skipped."
+                });
+            }
             progress?.Report(new ProgressReport { Percent = 100, BytesTransferred = progressTotalBytes, TotalBytes = progressTotalBytes });
             return (actualDest, false);
         }
@@ -605,11 +616,14 @@ public sealed class TarSandboxedService : ITarService
         if (File.Exists(finalFilePath) || plan.ClaimedFinalPaths.Contains(finalFilePath))
         {
             (long? incomingSize, DateTimeOffset? incomingModified) = DescribeIncoming(file);
+            int userSkipsSoFar = context.ConflictResolver.UserSkipCount;
             ConflictBehavior resolvedConflict = await context.ConflictResolver
                 .ResolveAsync(finalFilePath, incomingSize, incomingModified).ConfigureAwait(false);
             if (resolvedConflict == ConflictBehavior.Skip)
             {
-                context.SkippedFiles.Add(new SkippedFile { Path = relativePath, Reason = "File already exists at destination." });
+                // T-F216: the user's own Skip answer is not listed (as in ZIP); only an automatic one.
+                if (context.ConflictResolver.UserSkipCount == userSkipsSoFar)
+                    context.SkippedFiles.Add(new SkippedFile { Path = relativePath, Reason = "File already exists at destination." });
                 return (false, relativePath);
             }
             if (resolvedConflict == ConflictBehavior.Rename)

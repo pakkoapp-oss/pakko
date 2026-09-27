@@ -463,6 +463,67 @@ public sealed class TarSandboxedServiceExtractTests : IDisposable
         File.ReadAllText(Path.Combine(destDir, "a.txt")).Should().Be("original content");
     }
 
+    // T-F216: an explicit "Skip, apply to all" is the user's decision — no per-entry "already
+    // exists" lines and no "every entry was skipped" warning, as for ZIP
+    // (ZipArchiveServiceUserSkipTests). Nothing was extracted, so the source stays NotProcessed.
+    [Integration]
+    public async Task ExtractAsync_UserChoseSkipAll_NoSkipWarningsAndSourceNotProcessed()
+    {
+        string archivePath = Path.Combine(_temp.Path, "valid.tar");
+        TarBuilder.WriteTar(archivePath,
+        [
+            new TarBuilder.Entry { Name = "a.txt", Content = Encoding.ASCII.GetBytes("new a") },
+            new TarBuilder.Entry { Name = "b.txt", Content = Encoding.ASCII.GetBytes("new b") },
+        ]);
+        string destDir = Path.Combine(_temp.Path, "out");
+        Directory.CreateDirectory(destDir);
+        File.WriteAllText(Path.Combine(destDir, "a.txt"), "old");
+        File.WriteAllText(Path.Combine(destDir, "b.txt"), "old");
+
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [archivePath],
+            DestinationFolder = destDir,
+            Mode = ExtractMode.SingleFolder,
+            OnConflict = ConflictBehavior.Ask,
+            ResolveConflictAsync = _ => Task.FromResult(new ConflictDecision { Resolution = ConflictResolution.Skip, ApplyToAll = true }),
+        });
+
+        result.SkippedFiles.Should().BeEmpty();
+        result.CreatedFiles.Should().BeEmpty();
+        result.Sources.Should().ContainSingle().Which.Outcome.Should().Be(SourceOutcome.NotProcessed);
+        File.ReadAllText(Path.Combine(destDir, "a.txt")).Should().Be("old");
+    }
+
+    // T-F216: an unlisted user skip must still keep a partly extracted archive from counting as
+    // fully processed ("Delete after operation" must not delete it).
+    [Integration]
+    public async Task ExtractAsync_UserSkippedOneEntry_SourcePartial()
+    {
+        string archivePath = Path.Combine(_temp.Path, "valid.tar");
+        TarBuilder.WriteTar(archivePath,
+        [
+            new TarBuilder.Entry { Name = "a.txt", Content = Encoding.ASCII.GetBytes("new a") },
+            new TarBuilder.Entry { Name = "b.txt", Content = Encoding.ASCII.GetBytes("new b") },
+        ]);
+        string destDir = Path.Combine(_temp.Path, "out");
+        Directory.CreateDirectory(destDir);
+        File.WriteAllText(Path.Combine(destDir, "a.txt"), "old");
+
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [archivePath],
+            DestinationFolder = destDir,
+            Mode = ExtractMode.SingleFolder,
+            OnConflict = ConflictBehavior.Ask,
+            ResolveConflictAsync = _ => Task.FromResult(new ConflictDecision { Resolution = ConflictResolution.Skip }),
+        });
+
+        result.SkippedFiles.Should().BeEmpty();
+        result.Sources.Should().ContainSingle().Which.Outcome.Should().Be(SourceOutcome.Partial);
+        File.ReadAllText(Path.Combine(destDir, "b.txt")).Should().Be("new b");
+    }
+
     // T-F06: per-entry Ask conflict resolution against a real tar.exe extraction — mirrors
     // ZipArchiveServiceExtractTests' equivalent case.
     [Integration]

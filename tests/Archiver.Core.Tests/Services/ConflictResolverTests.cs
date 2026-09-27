@@ -85,4 +85,42 @@ public sealed class ConflictResolverTests
 
         callCount.Should().Be(2);
     }
+
+    // --- T-F216: the user's own Skip answers are counted, nothing else is ---
+
+    [Fact]
+    public async Task UserSkipCount_SkipApplyToAll_CountsEveryConflictItCovers()
+    {
+        var sut = new ConflictResolver(ConflictBehavior.Ask,
+            _ => Task.FromResult(new ConflictDecision { Resolution = ConflictResolution.Skip, ApplyToAll = true }));
+
+        await sut.ResolveAsync(@"C:\a.txt");
+        await sut.ResolveAsync(@"C:\b.txt");
+
+        sut.UserSkipCount.Should().Be(2);
+    }
+
+    [Theory]
+    [InlineData(ConflictBehavior.Skip)]
+    [InlineData(ConflictBehavior.Ask)]
+    public async Task UserSkipCount_SkipNobodyChose_IsNotCounted(ConflictBehavior configured)
+    {
+        var sut = new ConflictResolver(configured, resolveConflictAsync: null);
+
+        ConflictBehavior result = await sut.ResolveAsync(@"C:\a.txt");
+
+        result.Should().Be(ConflictBehavior.Skip);
+        sut.UserSkipCount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task UserSkipCount_UserChoseOverwrite_IsNotCounted()
+    {
+        var sut = new ConflictResolver(ConflictBehavior.Ask,
+            _ => Task.FromResult(new ConflictDecision { Resolution = ConflictResolution.Overwrite }));
+
+        await sut.ResolveAsync(@"C:\a.txt");
+
+        sut.UserSkipCount.Should().Be(0);
+    }
 }
