@@ -71,4 +71,22 @@ public static class ArchiveNaming
         ArchiveContainerFormat.TarLzma => ".tar.lzma",
         _ => throw new ArgumentOutOfRangeException(nameof(format), format, null),
     };
+
+    /// <summary>
+    /// T-F159: the "name (1)", "name (2)", ... rename-on-conflict path for a file that
+    /// already exists at <paramref name="path"/> — shared by ZIP and tar-family archive creation
+    /// and extraction. <paramref name="claimedPaths"/> (T-F30) also excludes candidates reserved
+    /// in memory this run but not yet written, which File.Exists cannot see.
+    /// </summary>
+    internal static string GetUniqueFilePath(string path, HashSet<string>? claimedPaths = null)
+    {
+        string dir = Path.GetDirectoryName(path)!;
+        string name = Path.GetFileNameWithoutExtension(path);
+        string ext = Path.GetExtension(path);
+        int i = 1;
+        string candidate;
+        do { candidate = Path.Combine(dir, $"{name} ({i++}){ext}"); }
+        while (File.Exists(candidate) || (claimedPaths?.Contains(candidate) ?? false));
+        return candidate;
+    }
 }

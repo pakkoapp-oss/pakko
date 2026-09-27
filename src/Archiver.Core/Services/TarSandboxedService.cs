@@ -590,7 +590,7 @@ public sealed class TarSandboxedService : ITarService
             }
             if (resolvedConflict == ConflictBehavior.Rename)
             {
-                finalFilePath = GetUniqueFilePath(finalFilePath, plan.ClaimedFinalPaths);
+                finalFilePath = ArchiveNaming.GetUniqueFilePath(finalFilePath, plan.ClaimedFinalPaths);
             }
         }
         plan.ClaimedFinalPaths.Add(finalFilePath);
@@ -1010,7 +1010,7 @@ public sealed class TarSandboxedService : ITarService
             // DestinationConflictResolver and DECISIONS.md's T-F158 entry.
             var (outcome, resolvedDestPath) = await DestinationConflictResolver.ResolveAsync(
                 destPath, onDiskConflict: File.Exists(destPath), sameRunConflict: false,
-                conflictResolver, renameCandidate: p => GetUniqueFilePath(p)).ConfigureAwait(false);
+                conflictResolver, renameCandidate: p => ArchiveNaming.GetUniqueFilePath(p)).ConfigureAwait(false);
             if (outcome == DestinationConflictOutcome.Skip)
             {
                 return new ArchiveResult
@@ -1084,7 +1084,7 @@ public sealed class TarSandboxedService : ITarService
 
             var (outcome, resolvedDestPath) = await DestinationConflictResolver.ResolveAsync(
                 destPath, onDiskConflict: File.Exists(destPath), sameRunConflict: false,
-                conflictResolver, renameCandidate: p => GetUniqueFilePath(p)).ConfigureAwait(false);
+                conflictResolver, renameCandidate: p => ArchiveNaming.GetUniqueFilePath(p)).ConfigureAwait(false);
             if (outcome == DestinationConflictOutcome.Skip)
             {
                 sink.SkippedFiles.Add(new SkippedFile
@@ -1298,7 +1298,7 @@ public sealed class TarSandboxedService : ITarService
         return (entryCount, totalEntriesForProgress, totalBytesForProgress, collisionStagingDir);
     }
 
-    // Same "name (1)", "name (2)", ... convention as GetUniqueFilePath below, but checked against
+    // Same "name (1)", "name (2)", ... convention as ArchiveNaming.GetUniqueFilePath, but checked against
     // an in-memory set of already-claimed entry names rather than disk existence — the candidate
     // doesn't exist on disk yet (it's about to be staged into a fresh temp directory).
     private static string GetUniqueEntryName(string name, HashSet<string> claimedNames)
@@ -1533,23 +1533,6 @@ public sealed class TarSandboxedService : ITarService
             foreach (string subDir in subDirs.Where(d => !ArchiveEntrySecurity.IsReparsePoint(d)))
                 pending.Push(subDir);
         }
-    }
-
-    // Same "name (1)", "name (2)", ... convention as ZipArchiveService.GetUniqueFilePath. Not
-    // shared via ArchiveEntrySecurity — this is a naming convenience, not a security check, and
-    // each file here is moved (not written) one at a time, so File.Exists sees every prior move
-    // in this same run without needing an in-memory claimed-paths set the way ZIP's single-pass
-    // write-then-commit flow does.
-    private static string GetUniqueFilePath(string path, HashSet<string>? claimedPaths = null)
-    {
-        string dir = Path.GetDirectoryName(path)!;
-        string name = Path.GetFileNameWithoutExtension(path);
-        string ext = Path.GetExtension(path);
-        int i = 1;
-        string candidate;
-        do { candidate = Path.Combine(dir, $"{name} ({i++}){ext}"); }
-        while (File.Exists(candidate) || (claimedPaths?.Contains(candidate) ?? false));
-        return candidate;
     }
 
     // T-F146: internal (was private) — AntivirusScanService catches this the same way

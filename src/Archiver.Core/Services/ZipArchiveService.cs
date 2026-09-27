@@ -172,7 +172,7 @@ public sealed class ZipArchiveService : IArchiveService
         // DestinationConflictResolver and DECISIONS.md's T-F158 entry.
         var (outcome, resolvedDestPath) = await DestinationConflictResolver.ResolveAsync(
             destPath, onDiskConflict: File.Exists(destPath), sameRunConflict: false,
-            run.ConflictResolver, renameCandidate: p => GetUniqueFilePath(p)).ConfigureAwait(false);
+            run.ConflictResolver, renameCandidate: p => ArchiveNaming.GetUniqueFilePath(p)).ConfigureAwait(false);
 
         if (outcome == DestinationConflictOutcome.Skip)
         {
@@ -489,7 +489,7 @@ public sealed class ZipArchiveService : IArchiveService
             // under parallel execution) now lives in the shared resolver.
             var (outcome, resolvedDestPath) = await DestinationConflictResolver.ResolveAsync(
                 destPath, onDiskConflict, sameRunConflict,
-                conflictResolver, renameCandidate: p => GetUniqueFilePath(p, claimedDestPaths)).ConfigureAwait(false);
+                conflictResolver, renameCandidate: p => ArchiveNaming.GetUniqueFilePath(p, claimedDestPaths)).ConfigureAwait(false);
 
             if (outcome == DestinationConflictOutcome.Skip)
             {
@@ -1687,7 +1687,7 @@ public sealed class ZipArchiveService : IArchiveService
             }
             if (resolvedConflict == ConflictBehavior.Rename)
             {
-                string uniqueFinal = GetUniqueFilePath(finalFilePath, claimedFinalPaths);
+                string uniqueFinal = ArchiveNaming.GetUniqueFilePath(finalFilePath, claimedFinalPaths);
                 destFilePath = Path.Combine(Path.GetDirectoryName(destFilePath)!, Path.GetFileName(uniqueFinal));
                 finalFilePath = uniqueFinal;
             }
@@ -2182,22 +2182,7 @@ public sealed class ZipArchiveService : IArchiveService
         }
     }
 
-    // T-F30: claimedPaths lets a caller also exclude candidates already reserved in-memory this
-    // run (e.g. a rename target chosen for an earlier duplicate entry that hasn't been written
-    // to the real destination yet) — File.Exists alone can't see those.
-    private static string GetUniqueFilePath(string path, HashSet<string>? claimedPaths = null)
-    {
-        string dir = Path.GetDirectoryName(path)!;
-        string name = Path.GetFileNameWithoutExtension(path);
-        string ext = Path.GetExtension(path);
-        int i = 1;
-        string candidate;
-        do { candidate = Path.Combine(dir, $"{name} ({i++}){ext}"); }
-        while (File.Exists(candidate) || (claimedPaths?.Contains(candidate) ?? false));
-        return candidate;
-    }
-
-    // T-F30: same "name (1)", "name (2)", ... renaming convention as GetUniqueFilePath, but
+    // T-F30: same "name (1)", "name (2)", ... renaming convention as ArchiveNaming.GetUniqueFilePath, but
     // against an in-memory set of ZIP entry names already claimed at the archive root rather
     // than the filesystem — two top-level SourcePaths sharing a basename would otherwise become
     // two ZIP entries with the identical name (CreateEntry does not reject duplicates).
