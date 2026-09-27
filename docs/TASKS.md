@@ -4397,6 +4397,11 @@ real console) and T-F226's deferred per-arrow diagram ritual — carried as open
   encrypted marker for a ZipCrypto/AES archive until a password is asked for.
 - **Reported by:** user-requested UI/UX review, 2026-09-24. **Depends on:** T-F198.
 - **Decision (2026-09-25):** direction as proposed above; the mockup is still shown to the user before XAML changes.
+- **Mockup (2026-09-27, awaiting approval):** https://claude.ai/artifact/Fc4wKazaZqfUqeQUuxMyWN —
+  7 boards (create: ZIP + inline password at 1280x720, TAR/folders only, empty; browse: encrypted
+  ZIP, outside the archive; footer states; open forks: action buttons, create verb). Also covers
+  T-F210, T-F211, T-F212, T-F213, T-F220 items 1 and 3, T-F224, T-F241 (App Test). No XAML before
+  the user approves it.
 
 ### T-F200 — Archive Browser asks for the password again for every previewed file
 
