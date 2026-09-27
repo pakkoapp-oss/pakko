@@ -450,6 +450,11 @@ tests caught before shipping):
   process: hashing (CRC-32, SHA-256) and sequential archiving of 40 x 4 KiB files stay under 64 KiB
   allocated per file. Hashing failed at ~264 KiB per file before `ReadAndDigestAsync` pooled its
   buffer; the archive case is a guard (it passed before the change).
+- `FolderHashParityTests` (`Archiver.Core.PerformanceTests/`, T-F225; untagged, so it runs in the
+  default filter) — folder DataSum/NamesSum against the vendored `7za.exe h` run live on the same
+  folder, CRC-32 and SHA-256: one file, flat, nested with an empty subfolder and Cyrillic names,
+  empty folder, a folder typed in another case (7-Zip uses the on-disk name), and `folder\.`
+  (contents only, no folder item).
 - `ZipEntryWriterCompatibilityTests` (`Archiver.Core.PerformanceTests/` — lives there specifically
   to reuse the vendored, hash-verified `7za.exe` binary rather than duplicating it into a second
   test project; a correctness suite, not a performance one, despite the location) — proves the

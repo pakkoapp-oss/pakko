@@ -88,7 +88,29 @@ public static class SevenZipRunner
         return Run(args);
     }
 
+    /// <summary>
+    /// T-F225: 7-Zip's own folder hash — returns the "for data" and "for data and names" values
+    /// from <c>7za h</c>'s summary, the oracle Pakko's DataSum/NamesSum are checked against.
+    /// </summary>
+    public static (string DataSum, string NamesSum) HashSums(string path, string algorithm)
+    {
+        string stdOut = RunForOutput(["h", $"-scrc{algorithm}", "-bd", path]);
+        string Value(string label) => stdOut.Split('\n')
+            .Select(line => line.Trim())
+            .Single(line => line.StartsWith($"{algorithm}", StringComparison.Ordinal) && line.Contains(label, StringComparison.Ordinal))
+            .Split(':')[1].Trim();
+        return (Value("for data:"), Value("for data and names:"));
+    }
+
     private static TimeSpan Run(IReadOnlyList<string> arguments)
+    {
+        var stopwatch = Stopwatch.StartNew();
+        RunForOutput(arguments);
+        stopwatch.Stop();
+        return stopwatch.Elapsed;
+    }
+
+    private static string RunForOutput(IReadOnlyList<string> arguments)
     {
         if (!IsAvailable)
             throw new InvalidOperationException(
@@ -97,16 +119,14 @@ public static class SevenZipRunner
 
         using SandboxJobObject job = SandboxJobObject.Create(RamLimitBytes, CpuTimeLimit);
 
-        var stopwatch = Stopwatch.StartNew();
-        (int exitCode, string _, string stdErr) = SandboxedProcessLauncher.RunAsync(
+        (int exitCode, string stdOut, string stdErr) = SandboxedProcessLauncher.RunAsync(
                 ExePath, arguments, new ProcessLaunchOptions(Job: job.Handle), CancellationToken.None)
             .GetAwaiter().GetResult();
-        stopwatch.Stop();
 
         if (exitCode != 0)
             throw new InvalidOperationException($"7za.exe exited with code {exitCode}: {stdErr}");
 
-        return stopwatch.Elapsed;
+        return stdOut;
     }
 
     private static string ResolveExePath()

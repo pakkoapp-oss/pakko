@@ -28,11 +28,12 @@ public sealed class HashResult
 /// <summary>
 /// T-F128: computes CRC-32/SHA-256 for the Explorer context menu's "Хеш-суми" submenu. A single
 /// folder gets NanaZip-compatible combined DataSum (all file contents) and NamesSum (all file
-/// names+paths+contents) values, via <see cref="HashDigestAccumulator"/> — verified bit-for-bit
-/// against NanaZip's own <c>HashCalc.cpp</c>. One documented divergence: NanaZip's NamesSum also
-/// folds in each *subfolder object's* own contribution using an order-dependent "stale digest"
-/// left over from their specific traversal order; this service only sums real files (at any
-/// nesting depth), which is fully order-independent and always exactly reproducible.
+/// names+paths+contents) values, via <see cref="HashDigestAccumulator"/> — the algorithm of
+/// 7-Zip's <c>HashCalc.cpp</c>, checked live against the vendored <c>7za h</c> by
+/// <c>FolderHashParityTests</c> (T-F225). NamesSum includes one item per directory, the selected
+/// folder itself included, hashed with an all-zero digest (7-Zip resets it before every item), so
+/// the result does not depend on enumeration order. Remaining difference: symbolic links and
+/// junctions are skipped here (T-F251), where 7-Zip follows them.
 /// <para>
 /// Files are hashed in parallel (<see cref="Parallel.ForEachAsync{TSource}(IEnumerable{TSource},
 /// ParallelOptions, Func{TSource, CancellationToken, ValueTask})"/>, up to
@@ -56,6 +57,7 @@ public static class FileHashService
 {
     private const int FileStreamBufferSize = 262144;
     private const string FolderSkippedMessage = "Skipped: folder (only supported when a single folder is selected alone)";
+    private const string ReparsePointSkippedMessage = "Skipped: symbolic link or junction (not followed)";
 
     // T-F128 follow-up: below this size, sequential slice-by-8 is already fast enough (a handful
     // of milliseconds) that splitting into chunks and coordinating parallel tasks would cost more
@@ -118,14 +120,46 @@ public static class FileHashService
         int fileCount = 0;
         var sync = new object();
 
-        // T-F128 follow-up: DirectoryInfo.EnumerateFiles (not Directory.EnumerateFiles, which only
-        // returns paths) gives every file's Length for free from the same directory-listing
-        // syscall Windows already performs — no extra per-file stat pass needed for the total-size
-        // sum below (mirrors T-F35's "merge redundant directory walks" fix for the same reason).
-        // That sum drives both FolderHashSummary.TotalBytes and the shared AggregateProgressTracker
-        // below, which fixes the progress bug where each file's own completion (resetting to 0%
-        // per file) was reported instead of the whole folder's aggregate progress.
-        var files = new DirectoryInfo(root).EnumerateFiles("*", SearchOption.AllDirectories).ToList();
+        // T-F251: the shared DirectoryWalker — an unreadable folder is one error entry instead of
+        // an exception out of this method, and a junction or symlink is skipped (never followed:
+        // no loop, no foreign files), the same as archive creation (T-F23).
+        // T-F128 follow-up: the walker's FileInfo objects carry each Length from the directory
+        // listing itself — no extra per-file stat pass for the total-size sum below, which drives
+        // both FolderHashSummary.TotalBytes and the shared AggregateProgressTracker.
+        // T-F225: 7-Zip hashes every item under its log path. For "h C:\x\one" that is "one",
+        // "one/a.txt", ... (the folder itself is an item); for "h ." or a drive root it is only the
+        // contents, "a.txt", ... (checked against 7za 26.02).
+        string? rootName = RootLogName(root);
+        string? LogPath(FileSystemInfo info)
+        {
+            string relative = Path.GetRelativePath(root, info.FullName).Replace('\\', '/');
+            if (relative != ".")
+                return rootName is null ? relative : rootName + "/" + relative;
+            return rootName;
+        }
+
+        var files = new List<FileInfo>();
+        foreach (WalkEntry entry in DirectoryWalker.Walk(root))
+        {
+            ct.ThrowIfCancellationRequested();
+            switch (entry.Kind)
+            {
+                case WalkEntryKind.File:
+                    files.Add((FileInfo)entry.Info);
+                    break;
+                case WalkEntryKind.Directory:
+                    // A directory's item digest is all zeros: 7-Zip resets it before every item.
+                    if (LogPath(entry.Info) is { } directoryLogPath)
+                        namesSum.Add(ComputeNamesSumItemDigest(algorithm, isDirectory: true, new byte[digestSize], directoryLogPath));
+                    break;
+                case WalkEntryKind.ReparsePoint:
+                    entries.Add(new HashEntry(entry.Info.FullName, null, ReparsePointSkippedMessage));
+                    break;
+                case WalkEntryKind.UnreadableDirectory:
+                    entries.Add(new HashEntry(entry.Info.FullName, null, entry.Error!.Message));
+                    break;
+            }
+        }
         long totalBytes = files.Sum(f => f.Length);
         var tracker = progress is null ? null : new AggregateProgressTracker(totalBytes, progress);
 
@@ -149,8 +183,7 @@ public static class FileHashService
                     return;
                 }
 
-                var relativePath = Path.GetRelativePath(root, file.FullName).Replace('\\', '/');
-                var namesSumItem = ComputeNamesSumItemDigest(algorithm, digest, relativePath);
+                var namesSumItem = ComputeNamesSumItemDigest(algorithm, isDirectory: false, digest, LogPath(file)!);
 
                 lock (sync)
                 {
@@ -168,17 +201,36 @@ public static class FileHashService
         };
     }
 
-    // Mirrors NanaZip's CHashBundle::Final: Hash(pre[16 zero bytes] ++ fileDigest ++ UTF16LE-bytes-of-relativePath). // NOSONAR: prose, not commented-out code (S125 false positive)
-    // "pre" stays all-zero here since this is only ever called for real files (isDir=false in
-    // their code never sets pre[0]) — see this class's doc comment for the documented
-    // subfolder-object omission.
-    private static byte[] ComputeNamesSumItemDigest(HashAlgorithmKind algorithm, byte[] fileDigest, string relativePath)
+    // T-F225: the folder's own name as 7-Zip spells it — the name on disk, not the argument's
+    // casing ("h ONE" lists "one\"). Null when the argument names only contents: ".", "..", or a
+    // drive root, which 7-Zip hashes without the folder item and without a name prefix.
+    private static string? RootLogName(string root)
+    {
+        string lastSegment = Path.GetFileName(Path.TrimEndingDirectorySeparator(root));
+        if (lastSegment is "" or "." or "..")
+            return null;
+
+        var directory = new DirectoryInfo(root);
+        try
+        {
+            return directory.Parent?.EnumerateDirectories(directory.Name).FirstOrDefault()?.Name ?? directory.Name;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return directory.Name; // parent not listable: keep the argument's spelling
+        }
+    }
+
+    // Mirrors 7-Zip's CHashBundle::Final: Hash(pre[16] ++ itemDigest ++ UTF16LE-bytes-of-logPath), // NOSONAR: prose, not commented-out code (S125 false positive)
+    // where pre[0] = 1 for a directory and every other byte is zero.
+    private static byte[] ComputeNamesSumItemDigest(HashAlgorithmKind algorithm, bool isDirectory, byte[] itemDigest, string logPath)
     {
         Span<byte> pre = stackalloc byte[16];
-        var pathBytes = new byte[relativePath.Length * 2];
-        for (int i = 0; i < relativePath.Length; i++)
+        pre[0] = isDirectory ? (byte)1 : (byte)0;
+        var pathBytes = new byte[logPath.Length * 2];
+        for (int i = 0; i < logPath.Length; i++)
         {
-            char c = relativePath[i];
+            char c = logPath[i];
             pathBytes[i * 2] = (byte)(c & 0xFF);
             pathBytes[i * 2 + 1] = (byte)((c >> 8) & 0xFF);
         }
@@ -187,14 +239,14 @@ public static class FileHashService
         {
             var acc = new Crc32.Accumulator();
             acc.Update(pre);
-            acc.Update(fileDigest);
+            acc.Update(itemDigest);
             acc.Update(pathBytes);
             return LittleEndianBytes(acc.Finish());
         }
 
         using var sha = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
         sha.AppendData(pre);
-        sha.AppendData(fileDigest);
+        sha.AppendData(itemDigest);
         sha.AppendData(pathBytes);
         return sha.GetHashAndReset();
     }
@@ -266,7 +318,7 @@ public static class FileHashService
     /// commutative — so chunks are combined sequentially by index after every chunk task
     /// completes, never as each one finishes.
     /// </summary>
-    private static Task<byte[]> ComputeFileCrc32ParallelAsync(
+    internal static Task<byte[]> ComputeFileCrc32ParallelAsync(
         string path, long length, AggregateProgressTracker? tracker, string currentFileName, CancellationToken ct)
     {
         // T-F128 follow-up: EnsureThreadPoolWarm before the parallel section — measured directly
@@ -312,7 +364,10 @@ public static class FileHashService
                     {
                         int toRead = (int)Math.Min(buffer.Length, remaining);
                         int read = RandomAccess.Read(handle, buffer.AsSpan(0, toRead), offset);
-                        if (read <= 0) break; // shouldn't happen for a file that isn't shrinking mid-read
+                        // T-F251: the file shrank after its length was read. Crc32.Combine below
+                        // uses the planned chunk length, so a CRC here would be wrong yet look fine.
+                        if (read <= 0)
+                            throw new IOException($"The file changed size while it was being hashed: {path}");
                         acc.Update(buffer.AsSpan(0, read));
                         tracker?.Report(read, currentFileName);
                         offset += read;

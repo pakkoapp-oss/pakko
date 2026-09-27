@@ -12,8 +12,8 @@ internal enum DestinationConflictOutcome { Proceed, ProceedAfterDeletingExisting
 internal static class DestinationConflictResolver
 {
     // Pure aside from awaiting conflictResolver (which may prompt the user — a genuine query, not
-    // an action taken on its own) and calling renameCandidate (the caller's own GetUniqueFilePath,
-    // unchanged either engine's side). Deliberately does no File.Exists/File.Delete itself —
+    // an action taken on its own) and calling renameCandidate (ArchiveNaming.GetUniqueFilePath,
+    // shared by both engines since T-F159). Deliberately does no File.Exists/File.Delete itself —
     // callers already know how to compute onDiskConflict/sameRunConflict in their own context, and
     // act on ProceedAfterDeletingExisting themselves. Keeping I/O out of this function is what
     // makes it unit-testable the way ExtractionDestinationPlanner.Resolve is (T-F157) — Tar's

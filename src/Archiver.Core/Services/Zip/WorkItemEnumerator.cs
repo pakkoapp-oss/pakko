@@ -1,3 +1,4 @@
+using Archiver.Core.IO;
 using Archiver.Core.Models;
 
 namespace Archiver.Core.Services.Zip;
@@ -11,8 +12,8 @@ namespace Archiver.Core.Services.Zip;
 /// <see cref="ParallelSingleArchiveWriter"/> so entry ORDER is fixed by enumeration order alone,
 /// independent of which worker finishes compressing which file first.
 ///
-/// Recursive traversal deliberately enumerates via <see cref="DirectoryInfo.EnumerateFiles()"/>/
-/// <see cref="DirectoryInfo.EnumerateDirectories()"/> (returning <see cref="FileSystemInfo"/>
+/// Traversal goes through <see cref="Archiver.Core.IO.DirectoryWalker"/>, which enumerates via
+/// <see cref="DirectoryInfo.EnumerateFileSystemInfos()"/> (returning <see cref="FileSystemInfo"/>
 /// objects) rather than the plain string-path <c>Directory.EnumerateFiles</c>/
 /// <c>EnumerateDirectories</c> — on Windows both are backed by the same underlying
 /// <c>FindNextFile</c> walk, which already returns a <c>WIN32_FIND_DATA</c> per entry containing
@@ -48,7 +49,7 @@ internal static class WorkItemEnumerator
             if (Directory.Exists(sourcePath))
             {
                 string entryName = ZipArchiveService.GetUniqueEntryName(usedEntryNames, Path.GetFileName(sourcePath));
-                foreach (var item in EnumerateDirectory(sourcePath, sourcePath, entryName, reportSkipped))
+                foreach (var item in EnumerateDirectory(sourcePath, entryName, reportSkipped, reportError))
                     yield return item;
             }
             else if (File.Exists(sourcePath))
@@ -67,51 +68,31 @@ internal static class WorkItemEnumerator
         }
     }
 
+    // T-F236/T-F237: the shared iterative walker — an unreadable subfolder is one error, not an
+    // exception out of the producer, and depth no longer costs thread stack.
     private static IEnumerable<FileWorkItem> EnumerateDirectory(
-        string sourceDir, string rootDir, string entryPrefix, Action<SkippedFile> reportSkipped)
+        string rootDir, string entryPrefix, Action<SkippedFile> reportSkipped, Action<ArchiveError> reportError)
     {
-        if (!Directory.EnumerateFileSystemEntries(sourceDir).Any())
+        foreach (WalkEntry entry in DirectoryWalker.Walk(rootDir))
         {
-            string relativeDir = Path.GetRelativePath(rootDir, sourceDir);
-            string emptyEntryName = relativeDir == "."
-                ? entryPrefix + "/"
-                : entryPrefix + "/" + relativeDir.Replace('\\', '/') + "/";
-            yield return new FileWorkItem(string.Empty, emptyEntryName, FileWorkKind.DirectoryPlaceholder, 0, DateTime.Now);
-            yield break;
-        }
-
-        foreach (var fileInfo in new DirectoryInfo(sourceDir).EnumerateFiles("*", SearchOption.TopDirectoryOnly)
-            .OrderBy(f => f.FullName, StringComparer.OrdinalIgnoreCase))
-        {
-            if (fileInfo.Attributes.HasFlag(FileAttributes.ReparsePoint))
+            switch (entry.Kind)
             {
-                reportSkipped(new SkippedFile
-                {
-                    Path = fileInfo.FullName,
-                    Reason = "Symbolic links and reparse points are not archived.",
-                });
-                continue;
+                case WalkEntryKind.Directory when entry.IsEmptyDirectory:
+                    yield return new FileWorkItem(
+                        string.Empty, ZipArchiveService.EmptyDirectoryEntryName(rootDir, entry.Info.FullName, entryPrefix),
+                        FileWorkKind.DirectoryPlaceholder, 0, DateTime.Now);
+                    break;
+                case WalkEntryKind.File:
+                    string relativePath = Path.GetRelativePath(rootDir, entry.Info.FullName).Replace('\\', '/');
+                    yield return BuildFileItem((FileInfo)entry.Info, entryPrefix + "/" + relativePath);
+                    break;
+                case WalkEntryKind.ReparsePoint:
+                    reportSkipped(ZipArchiveService.ReparsePointSkipped(entry.Info));
+                    break;
+                case WalkEntryKind.UnreadableDirectory:
+                    reportError(ZipArchiveService.UnreadableDirectoryError(entry.Info.FullName, entry.Error!));
+                    break;
             }
-
-            string relativePath = Path.GetRelativePath(rootDir, fileInfo.FullName).Replace('\\', '/');
-            yield return BuildFileItem(fileInfo, entryPrefix + "/" + relativePath);
-        }
-
-        foreach (var dirInfo in new DirectoryInfo(sourceDir).EnumerateDirectories("*", SearchOption.TopDirectoryOnly)
-            .OrderBy(d => d.FullName, StringComparer.OrdinalIgnoreCase))
-        {
-            if (dirInfo.Attributes.HasFlag(FileAttributes.ReparsePoint))
-            {
-                reportSkipped(new SkippedFile
-                {
-                    Path = dirInfo.FullName,
-                    Reason = "NTFS junctions and directory symbolic links are not followed during archiving.",
-                });
-                continue;
-            }
-
-            foreach (var item in EnumerateDirectory(dirInfo.FullName, rootDir, entryPrefix, reportSkipped))
-                yield return item;
         }
     }
 

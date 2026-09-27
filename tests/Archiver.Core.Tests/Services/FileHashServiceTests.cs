@@ -77,15 +77,16 @@ public sealed class FileHashServiceTests : IDisposable
     [Fact]
     public async Task ComputeAsync_FlatFolder_Crc32_DataSumAndNamesSumMatchSevenZip()
     {
-        _temp.CreateFile("a.txt", "hello world");
-        _temp.CreateFile("b.txt", "second file content here");
+        string folder = FixedNameFolder("flat");
+        _temp.CreateFile(Path.Combine("flat", "a.txt"), "hello world");
+        _temp.CreateFile(Path.Combine("flat", "b.txt"), "second file content here");
 
-        var result = await FileHashService.ComputeAsync([_temp.Path], HashAlgorithmKind.Crc32, null, CancellationToken.None);
+        var result = await FileHashService.ComputeAsync([folder], HashAlgorithmKind.Crc32, null, CancellationToken.None);
 
         result.Folder.Should().NotBeNull();
         result.Folder!.FileCount.Should().Be(2);
         result.Folder.DataSum.Should().Be("9AC5E88C-00000000");
-        result.Folder.NamesSum.Should().Be("ECA9B8E5-00000000");
+        result.Folder.NamesSum.Should().Be("3D93BD2A-00000001");
         result.Folder.TotalBytes.Should().Be("hello world".Length + "second file content here".Length);
         result.Entries.Should().HaveCount(2);
     }
@@ -117,35 +118,37 @@ public sealed class FileHashServiceTests : IDisposable
     [Fact]
     public async Task ComputeAsync_FlatFolder_Sha256_DataSumAndNamesSumMatchSevenZip()
     {
-        _temp.CreateFile("a.txt", "hello world");
-        _temp.CreateFile("b.txt", "second file content here");
+        string folder = FixedNameFolder("flat");
+        _temp.CreateFile(Path.Combine("flat", "a.txt"), "hello world");
+        _temp.CreateFile(Path.Combine("flat", "b.txt"), "second file content here");
 
-        var result = await FileHashService.ComputeAsync([_temp.Path], HashAlgorithmKind.Sha256, null, CancellationToken.None);
+        var result = await FileHashService.ComputeAsync([folder], HashAlgorithmKind.Sha256, null, CancellationToken.None);
 
         result.Folder!.DataSum.Should().Be("0a35b54db7b00ca46cb11a48e4f9501b70314d256b2e5eb38c44095b6d80709e-00000001");
-        result.Folder.NamesSum.Should().Be("d9ec25dedb9f854f71253ad7c2a60888c9ee0c37b1134943980b0a276ecacef1-00000000");
+        result.Folder.NamesSum.Should().Be("ced1ff46b29634dce01fdfe2c50afd1dd59c04278dc477e4e1ac59e8c8e56c22-00000001");
     }
 
     [Fact]
-    public async Task ComputeAsync_NestedFolder_DataSumMatchesSevenZip_NamesSumOmitsSubfolderObject()
+    public async Task ComputeAsync_NestedFolder_DataSumAndNamesSumMatchSevenZip()
     {
-        _temp.CreateFile("a.txt", "hello world");
-        _temp.CreateFile("b.txt", "second file content here");
-        Directory.CreateDirectory(Path.Combine(_temp.Path, "sub"));
-        _temp.CreateFile(Path.Combine("sub", "c.txt"), "nested file");
+        string folder = FixedNameFolder("nested");
+        _temp.CreateFile(Path.Combine("nested", "a.txt"), "hello world");
+        _temp.CreateFile(Path.Combine("nested", "b.txt"), "second file content here");
+        Directory.CreateDirectory(Path.Combine(folder, "sub"));
+        _temp.CreateFile(Path.Combine("nested", "sub", "c.txt"), "nested file");
 
-        var result = await FileHashService.ComputeAsync([_temp.Path], HashAlgorithmKind.Crc32, null, CancellationToken.None);
+        var result = await FileHashService.ComputeAsync([folder], HashAlgorithmKind.Crc32, null, CancellationToken.None);
 
         result.Folder!.FileCount.Should().Be(3);
-        // DataSum never involves directory entries in NanaZip's own algorithm either, so this
-        // matches `7za h -scrcCRC32 -r` exactly regardless of nesting.
         result.Folder.DataSum.Should().Be("33F43426-00000001");
-        // NamesSum deliberately omits the "sub" folder object's own contribution (the one
-        // documented, approved divergence from NanaZip - see FileHashService's doc comment), so
-        // it does NOT equal 7za's real value for this folder (which does include it). Just prove
-        // it's still well-formed and stable, not a specific external value.
-        result.Folder.NamesSum.Should().MatchRegex("^[0-9A-F]{8}-[0-9A-F]{8}$");
+        // T-F225: includes the "nested" and "nested/sub" directory items, as 7-Zip does.
+        result.Folder.NamesSum.Should().Be("04C42D7B-00000003");
     }
+
+    // T-F225: NamesSum hashes the folder's own name, so a parity value needs a fixed name, not
+    // the random temp-directory name.
+    private string FixedNameFolder(string name) =>
+        Directory.CreateDirectory(Path.Combine(_temp.Path, name)).FullName;
 
     [Fact]
     public async Task ComputeAsync_ManyFilesInFolder_ParallelHashingIsDeterministicAndRaceFree()

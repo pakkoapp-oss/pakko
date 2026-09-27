@@ -18,6 +18,9 @@ internal sealed class FakeAmsiScanner : IAmsiScanner
 
     public (ThreatVerdict Verdict, string? ThreatName) ScanBuffer(byte[] buffer, int length, string contentName)
     {
+        // T-F247: the real AmsiScanBuffer rejects a zero-length buffer (E_INVALIDARG).
+        if (length == 0)
+            throw new InvalidOperationException("AmsiScanBuffer failed (HRESULT 0x80070057).");
         ScannedContentNames.Add(contentName);
         return DetectedContentNames.Contains(contentName)
             ? (ThreatVerdict.ThreatDetected, "Fake-Test-Threat")
@@ -64,6 +67,26 @@ public sealed class AntivirusScanServiceTarTests : IDisposable
         result.Findings.Should().OnlyContain(f => f.Verdict == ThreatVerdict.Clean);
         scanner.ScannedContentNames.Should().Contain(["a.txt", "sub/b.txt"]);
         scanner.Disposed.Should().BeTrue();
+    }
+
+    [Integration]
+    public async Task ScanAsync_TarWithZeroByteEntry_ReportsItCleanAndScansTheRest()
+    {
+        string archivePath = Path.Combine(_temp.Path, "withempty.tar");
+        TarBuilder.WriteTar(archivePath,
+        [
+            new TarBuilder.Entry { Name = "a.txt", Content = Encoding.ASCII.GetBytes("hello") },
+            new TarBuilder.Entry { Name = "empty.txt", Content = [] },
+        ]);
+
+        var scanner = new FakeAmsiScanner();
+        var service = CreateService(scanner);
+
+        var result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [archivePath] });
+
+        result.OverallVerdict.Should().Be(ThreatVerdict.Clean);
+        result.Findings.Should().HaveCount(2).And.OnlyContain(f => f.Verdict == ThreatVerdict.Clean);
+        scanner.ScannedContentNames.Should().Equal("a.txt");
     }
 
     // T-F196: a `tar -C dir .` archive used to come back Inconclusive for every entry — the same
