@@ -1863,20 +1863,8 @@ public sealed class ZipArchiveService : IArchiveService
         }
     }
 
-    // T-F23: Manual recursive traversal so we can inspect FileAttributes before entering each
-    // directory. Returns the updated startOffset for progress tracking.
-    // T-F21: errors list receives per-file ArchiveErrors so that a single inaccessible file
-    // does not abort the rest of the directory — operation continues for all remaining files.
-    // T-F75: rootDir is the original top-level directory being archived and stays FIXED across
-    // every recursion level — relative paths (and therefore ZIP entry names) are always computed
-    // against it. Before this fix, relative paths were computed against each recursion level's
-    // own immediate parent, so every level below the first lost its accumulated prefix (e.g.
-    // "notes/sub/file.txt" became just "sub/file.txt" — silently wrong, and deep enough nesting
-    // could collide two distinct source files into the same entry name). See DECISIONS.md.
-    // T-F75's fixed rootDir/entryPrefix plus the report-sink/progress plumbing every recursive
-    // call passes down unchanged — bundled so the recursive self-call (and both top-level call
-    // sites) don't repeat an 11-parameter list. sourceDir/startOffset are the only things that
-    // vary per recursion level, so they stay separate params on AddDirectoryToArchiveAsync itself.
+    // T-F75's fixed rootDir/entryPrefix plus the report-sink/progress plumbing — bundled so both
+    // top-level call sites of AddDirectoryToArchiveAsync don't repeat an 11-parameter list.
     private sealed record DirectoryArchiveContext(
         string RootDir,
         string EntryPrefix,
@@ -1886,16 +1874,13 @@ public sealed class ZipArchiveService : IArchiveService
         long TotalBytes,
         IProgress<ProgressReport>? Progress);
 
-    // T-F23: Manual recursive traversal so we can inspect FileAttributes before entering each
-    // directory. Returns the updated startOffset for progress tracking.
     // T-F21: errors list receives per-file ArchiveErrors so that a single inaccessible file
     // does not abort the rest of the directory — operation continues for all remaining files.
-    // T-F75: rootDir is the original top-level directory being archived and stays FIXED across
-    // every recursion level — relative paths (and therefore ZIP entry names) are always computed
-    // against it. Before this fix, relative paths were computed against each recursion level's
-    // own immediate parent, so every level below the first lost its accumulated prefix (e.g.
-    // "notes/sub/file.txt" became just "sub/file.txt" — silently wrong, and deep enough nesting
-    // could collide two distinct source files into the same entry name). See DECISIONS.md.
+    // T-F75: rootDir is the original top-level directory being archived and stays FIXED — relative
+    // paths (and therefore ZIP entry names) are always computed against it. See DECISIONS.md.
+    // T-F236/T-F237: walks through the shared iterative DirectoryWalker (same order as the
+    // parallel path's WorkItemEnumerator) — an unreadable subfolder is one error and the walk goes
+    // on; depth no longer costs thread stack. Returns the updated startOffset for progress tracking.
     private static async Task<long> AddDirectoryToArchiveAsync(
         ZipArchive archive,
         string sourceDir,
@@ -1903,131 +1888,113 @@ public sealed class ZipArchiveService : IArchiveService
         long startOffset = 0,
         CancellationToken cancellationToken = default)
     {
-        // T-F66: A directory with no files and no subdirectories writes no entry at all
-        // otherwise — for a top-level empty folder, that leaves HasTempEntries() false and
-        // the whole archive gets silently discarded (ArchiveAsync's "no entries" cleanup),
-        // so archiving an empty folder produced no output file. Writing an explicit
-        // directory entry preserves the folder and keeps the archive from being discarded.
-        if (!Directory.EnumerateFileSystemEntries(sourceDir).Any())
-        {
-            string relativeDir = Path.GetRelativePath(context.RootDir, sourceDir);
-            string emptyEntryName = relativeDir == "."
-                ? context.EntryPrefix + "/"
-                : context.EntryPrefix + "/" + relativeDir.Replace('\\', '/') + "/";
-            if (ZipEntryWriter.NameFitsHeader(emptyEntryName))
-                archive.CreateEntry(emptyEntryName);
-            else
-                context.ReportError(new ArchiveError { SourcePath = sourceDir, Message = ZipEntryWriter.NameTooLongMessage(emptyEntryName) });
-            return startOffset;
-        }
-
-        // T-F32: Sort files and subdirectories for deterministic traversal order.
-        // Directory.EnumerateFiles/EnumerateDirectories return items in filesystem order,
-        // which is non-deterministic across runs and filesystems.
-        startOffset = await AddFilesInDirectoryAsync(archive, sourceDir, context, startOffset, cancellationToken)
-            .ConfigureAwait(false);
-
-        // Recurse into subdirectories, skipping junctions and directory symlinks
-        startOffset = await AddSubdirectoriesAsync(archive, sourceDir, context, startOffset, cancellationToken)
-            .ConfigureAwait(false);
-
-        return startOffset;
-    }
-
-    private static async Task<long> AddFilesInDirectoryAsync(
-        ZipArchive archive, string sourceDir, DirectoryArchiveContext context, long startOffset, CancellationToken cancellationToken)
-    {
-        foreach (string filePath in Directory.EnumerateFiles(sourceDir, "*", SearchOption.TopDirectoryOnly)
-            .OrderBy(p => p, StringComparer.OrdinalIgnoreCase))
+        foreach (WalkEntry entry in DirectoryWalker.Walk(sourceDir))
         {
             if (cancellationToken.IsCancellationRequested)
                 break;
 
-            // T-F23: Skip file-level symlinks (reparse points)
-            if (ArchiveEntrySecurity.IsReparsePoint(filePath))
+            switch (entry.Kind)
             {
-                context.ReportSkipped(new SkippedFile
-                {
-                    Path = filePath,
-                    Reason = "Symbolic links and reparse points are not archived."
-                });
-                continue;
+                // T-F66: A directory with no files and no subdirectories writes no entry at all
+                // otherwise — for a top-level empty folder, that leaves HasTempEntries() false and
+                // the whole archive gets silently discarded, so archiving an empty folder produced
+                // no output file. An explicit directory entry preserves the folder.
+                case WalkEntryKind.Directory when entry.IsEmptyDirectory:
+                    string emptyEntryName = EmptyDirectoryEntryName(context.RootDir, entry.Info.FullName, context.EntryPrefix);
+                    if (ZipEntryWriter.NameFitsHeader(emptyEntryName))
+                        archive.CreateEntry(emptyEntryName);
+                    else
+                        context.ReportError(new ArchiveError { SourcePath = entry.Info.FullName, Message = ZipEntryWriter.NameTooLongMessage(emptyEntryName) });
+                    break;
+                case WalkEntryKind.File:
+                    startOffset = await AddFileFromWalkAsync(archive, (FileInfo)entry.Info, context, startOffset, cancellationToken)
+                        .ConfigureAwait(false);
+                    break;
+                case WalkEntryKind.ReparsePoint:
+                    context.ReportSkipped(ReparsePointSkipped(entry.Info));
+                    break;
+                case WalkEntryKind.UnreadableDirectory:
+                    context.ReportError(UnreadableDirectoryError(entry.Info.FullName, entry.Error!));
+                    break;
             }
-
-            long fileSize = 0;
-            try { fileSize = new FileInfo(filePath).Length; } catch { /* best-effort */ }
-
-            string relativePath = Path.GetRelativePath(context.RootDir, filePath).Replace('\\', '/');
-            string entryName = context.EntryPrefix + "/" + relativePath;
-
-            // T-F243 item 6: ZipArchive.CreateEntry throws on a name over 65,535 UTF-8 bytes.
-            if (!ZipEntryWriter.NameFitsHeader(entryName))
-            {
-                context.ReportError(new ArchiveError { SourcePath = filePath, Message = ZipEntryWriter.NameTooLongMessage(entryName) });
-                startOffset += fileSize;
-                continue;
-            }
-
-            // T-F21: Catch per-file IO failures. A file may be deleted or locked between
-            // Directory.EnumerateFiles discovery and the FileStream.Open inside
-            // AddEntryFromFileAsync — both FileNotFoundException and sharing-violation
-            // IOException are subclasses of IOException and handled here.
-            try
-            {
-                await AddEntryFromFileAsync(archive, filePath, entryName, context.CompressionLevel,
-                    new EntryWriteProgress(context.TotalBytes, startOffset, context.Progress), cancellationToken);
-            }
-            catch (IOException ex)
-            {
-                context.ReportError(new ArchiveError
-                {
-                    SourcePath = filePath,
-                    Message = $"Cannot access file: {ex.Message}",
-                    Exception = ex
-                });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                context.ReportError(new ArchiveError
-                {
-                    SourcePath = filePath,
-                    Message = $"Access denied: {ex.Message}",
-                    Exception = ex
-                });
-            }
-
-            startOffset += fileSize;
         }
 
         return startOffset;
     }
 
-    private static async Task<long> AddSubdirectoriesAsync(
-        ZipArchive archive, string sourceDir, DirectoryArchiveContext context, long startOffset, CancellationToken cancellationToken)
+    private static async Task<long> AddFileFromWalkAsync(
+        ZipArchive archive, FileInfo file, DirectoryArchiveContext context, long startOffset, CancellationToken cancellationToken)
     {
-        foreach (string subDir in Directory.EnumerateDirectories(sourceDir, "*", SearchOption.TopDirectoryOnly)
-            .OrderBy(p => p, StringComparer.OrdinalIgnoreCase))
+        string filePath = file.FullName;
+        long fileSize = 0;
+        try { fileSize = file.Length; } catch { /* best-effort */ }
+
+        string relativePath = Path.GetRelativePath(context.RootDir, filePath).Replace('\\', '/');
+        string entryName = context.EntryPrefix + "/" + relativePath;
+
+        // T-F243 item 6: ZipArchive.CreateEntry throws on a name over 65,535 UTF-8 bytes.
+        if (!ZipEntryWriter.NameFitsHeader(entryName))
         {
-            if (cancellationToken.IsCancellationRequested)
-                break;
-
-            // T-F23: Skip NTFS junctions and directory symlinks — prevents infinite loops
-            if (ArchiveEntrySecurity.IsReparsePoint(subDir))
-            {
-                context.ReportSkipped(new SkippedFile
-                {
-                    Path = subDir,
-                    Reason = "NTFS junctions and directory symbolic links are not followed during archiving."
-                });
-                continue;
-            }
-
-            startOffset = await AddDirectoryToArchiveAsync(archive, subDir, context, startOffset, cancellationToken)
-                .ConfigureAwait(false);
+            context.ReportError(new ArchiveError { SourcePath = filePath, Message = ZipEntryWriter.NameTooLongMessage(entryName) });
+            return startOffset + fileSize;
         }
 
-        return startOffset;
+        // T-F21: Catch per-file IO failures. A file may be deleted or locked between
+        // discovery and the FileStream.Open inside AddEntryFromFileAsync — both
+        // FileNotFoundException and sharing-violation IOException are subclasses of IOException.
+        try
+        {
+            await AddEntryFromFileAsync(archive, filePath, entryName, context.CompressionLevel,
+                new EntryWriteProgress(context.TotalBytes, startOffset, context.Progress), cancellationToken);
+        }
+        catch (IOException ex)
+        {
+            context.ReportError(new ArchiveError
+            {
+                SourcePath = filePath,
+                Message = $"Cannot access file: {ex.Message}",
+                Exception = ex
+            });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            context.ReportError(new ArchiveError
+            {
+                SourcePath = filePath,
+                Message = $"Access denied: {ex.Message}",
+                Exception = ex
+            });
+        }
+
+        return startOffset + fileSize;
     }
+
+    // T-F66: the directory entry written for an empty folder — shared by the sequential writer
+    // above and the parallel path's WorkItemEnumerator so both name it identically.
+    internal static string EmptyDirectoryEntryName(string rootDir, string directory, string entryPrefix)
+    {
+        string relativeDir = Path.GetRelativePath(rootDir, directory);
+        return relativeDir == "."
+            ? entryPrefix + "/"
+            : entryPrefix + "/" + relativeDir.Replace('\\', '/') + "/";
+    }
+
+    // T-F23: a reparse point met inside a source folder is reported and never followed.
+    internal static SkippedFile ReparsePointSkipped(FileSystemInfo info) => new()
+    {
+        Path = info.FullName,
+        Reason = info is DirectoryInfo
+            ? "NTFS junctions and directory symbolic links are not followed during archiving."
+            : "Symbolic links and reparse points are not archived.",
+    };
+
+    // T-F236: a subfolder that cannot be listed — one error; the rest of the tree is archived.
+    internal static ArchiveError UnreadableDirectoryError(string directory, Exception ex) => new()
+    {
+        SourcePath = directory,
+        Message = ex is UnauthorizedAccessException ? $"Access denied: {ex.Message}" : $"Cannot access file: {ex.Message}",
+        Exception = ex,
+    };
 
     private static long ComputeTotalBytes(IReadOnlyList<string> paths)
     {
