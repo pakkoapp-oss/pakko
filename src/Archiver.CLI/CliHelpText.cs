@@ -50,6 +50,10 @@ public static class CliHelpText
           -scrc<method>    Hash method: CRC32 (default) or SHA256              (h)
           -si              Read the archive from stdin instead of a path       (x, t, l, h)
           -so              Write output to stdout instead of disk              (x, a)
+          -scc{UTF-8|WIN|DOS}  Charset of printed text (stdout, stderr)   (all)
+                           Default: the console code page, where a name it
+                           cannot hold prints as '?'. Use -sccUTF-8 when
+                           redirecting to a file, e.g. pakko l a.zip -sccUTF-8 > list.txt
 
         COMPRESSION LEVEL (-mx, command 'a' only):
           0    -> Store (no compression)   3-6 -> Optimal (default)

@@ -34,6 +34,7 @@ public sealed record ParsedCliCommand
     public bool WriteToStdout { get; init; }                          // -so, x/a only (T-F116)
     public string? Password { get; init; }                            // -p{pwd}, x/t (T-F191), a (T-F193)
     public bool PromptForPassword { get; init; }                      // bare -p: ask interactively, x/t/a (T-F193)
+    public int? ConsoleCodePage { get; init; }                        // -scc{charset}, every command (T-F238); a CliConsoleCharset value
     public string? ErrorMessage { get; init; }
 }
 
@@ -55,7 +56,15 @@ public static class CliArgumentParser
             return new ParsedCliCommand { Type = CliCommandType.Version };
 
         var rest = args[1..];
-        return args[0] switch
+        if (!TryTakeConsoleCharset(ref rest, out int? consoleCodePage, out string? charsetError))
+            return Invalid(charsetError!);
+
+        ParsedCliCommand command = ParseCommand(args[0], rest);
+        return command.Type == CliCommandType.Invalid ? command : command with { ConsoleCodePage = consoleCodePage };
+    }
+
+    private static ParsedCliCommand ParseCommand(string commandName, string[] rest) =>
+        commandName switch
         {
             "x" => ParseExtract(rest),
             "t" => ParseTest(rest),
@@ -63,9 +72,39 @@ public static class CliArgumentParser
             "a" => ParseArchive(rest),
             "l" => ParseList(rest),
             "h" => ParseHash(rest),
-            "u" or "d" or "rn" or "b" or "e" => Invalid(NotSupportedCommandReason(args[0])),
+            "u" or "d" or "rn" or "b" or "e" => Invalid(NotSupportedCommandReason(commandName)),
             var other => Invalid($"Incorrect command line: unknown command '{other}'"),
         };
+
+    // T-F238: -scc{charset} applies to every command, so it is taken out before the per-command
+    // parsers see the tokens. As in 7-Zip, the last occurrence wins. 7-Zip also takes a numeric
+    // code page; Pakko supports only the three names its help documents.
+    private static bool TryTakeConsoleCharset(ref string[] rest, out int? consoleCodePage, out string? error)
+    {
+        consoleCodePage = null;
+        error = null;
+        var remaining = new List<string>(rest.Length);
+        foreach (string token in rest)
+        {
+            if (!token.StartsWith("-scc", StringComparison.Ordinal))
+            {
+                remaining.Add(token);
+                continue;
+            }
+
+            string name = token[4..];
+            consoleCodePage = CliConsoleCharset.TryParse(name);
+            if (consoleCodePage is null)
+            {
+                error = name.Length == 0
+                    ? "-scc requires a charset: UTF-8, WIN or DOS (e.g. -sccUTF-8)"
+                    : $"not supported by Pakko: -scc{name} — the console charset must be UTF-8, WIN or DOS";
+                return false;
+            }
+        }
+
+        rest = [.. remaining];
+        return true;
     }
 
     // --- x (Extract) ---
@@ -573,7 +612,6 @@ public static class CliArgumentParser
         ("-i", "not supported: no wildcard include-pattern filtering exists in Pakko"),
         ("-x", "not supported: no wildcard exclude-pattern filtering exists in Pakko"),
         ("-v", "not supported: no multi-part/split-archive logic exists in Pakko"),
-        ("-scc", "not supported: .NET is Unicode-native, console charset switching has no effect"),
         ("-ssc", "not supported: case-sensitive matching is not implemented"),
     ];
 

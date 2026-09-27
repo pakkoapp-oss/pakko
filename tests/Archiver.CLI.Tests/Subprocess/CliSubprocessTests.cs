@@ -416,6 +416,28 @@ public sealed class CliSubprocessTests
         stdOut.Should().Contain("b.txt");
     }
 
+    // T-F238: redirected output used the console code page, so on a cp866 console `l > list.txt`
+    // wrote '?' for letters cp866 lacks (і, ї, є). -sccUTF-8 (7-Zip's switch) writes exact UTF-8
+    // with no BOM. Stdout is compared as raw bytes on purpose: a decoded capture could hide the loss.
+    [Fact]
+    public void List_SccUtf8_RedirectedStdoutCarriesExactUtf8NamesWithoutBom()
+    {
+        string scratchDir = CliFixtureFiles.CreateScratchDir();
+        string zipPath = Path.Combine(scratchDir, "names.zip");
+        using (ZipArchive archive = ZipFile.Open(zipPath, ZipArchiveMode.Create))
+        {
+            archive.CreateEntry("Звіт.txt");
+            archive.CreateEntry("报告.txt");
+        }
+
+        (int exitCode, byte[] stdOut, string stdErr) = CliProcessRunner.RunWithBinaryStdio([], "l", "-sccUTF-8", zipPath);
+
+        exitCode.Should().Be(0, stdErr);
+        stdOut.Take(3).Should().NotEqual(new byte[] { 0xEF, 0xBB, 0xBF }, "a BOM would corrupt `> list.txt`");
+        string text = new System.Text.UTF8Encoding(false, throwOnInvalidBytes: true).GetString(stdOut);
+        text.Should().Contain("Звіт.txt").And.Contain("报告.txt");
+    }
+
     // --- h: happy path (T-F128/T-F09 follow-up) ---
 
     [Fact]

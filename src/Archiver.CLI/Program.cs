@@ -12,6 +12,8 @@ GroupPolicyOptions policy = GroupPolicyService.Load();
 #pragma warning restore CA1416
 
 var command = CliArgumentParser.Parse(args);
+if (command.ConsoleCodePage is { } consoleCodePage)
+    CliConsoleCharset.Apply(consoleCodePage);
 
 return command.Type switch
 {
