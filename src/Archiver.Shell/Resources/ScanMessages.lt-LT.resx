@@ -21,4 +21,7 @@
   <data name="ScanAndMoreLine" xml:space="preserve">
     <value>…ir dar {0}</value>
   </data>
+  <data name="ScanNoThreatsFoundMany" xml:space="preserve">
+    <value>Pasirinktuose archyvuose grėsmių nerasta.</value>
+  </data>
 </root>

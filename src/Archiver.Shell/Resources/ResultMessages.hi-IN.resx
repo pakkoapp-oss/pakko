@@ -16,7 +16,7 @@
     <value>छोड़े गए ({0}):</value>
   </data>
   <data name="ResultAndMoreLine" xml:space="preserve">
-    <value>…और {0} अधिक</value>
+    <value>…और {0} अन्य</value>
   </data>
   <data name="ResultNoErrorsDetected" xml:space="preserve">
     <value>संग्रह(ों) में कोई त्रुटि नहीं मिली।</value>

@@ -1,3 +1,4 @@
+using System.Globalization;
 using Archiver.Core.Models;
 using Archiver.Core.Services;
 
@@ -20,19 +21,17 @@ internal static class ProgressText
         return $"{r.Percent}%  ·  {bytesPart}{speedPart}";
     }
 
-    public static string FormatBytes(long bytes) => bytes switch
-    {
-        >= 1_073_741_824 => $"{bytes / 1_073_741_824.0:F1} GB",
-        >= 1_048_576 => $"{bytes / 1_048_576.0:F1} MB",
-        >= 1_024 => $"{bytes / 1_024.0:F0} KB",
-        _ => $"{bytes} B"
-    };
+    // T-F208: the unit follows the display language (resx), the number the regional format.
+    public static string FormatBytes(long bytes) => FormatSize(bytes);
 
-    public static string FormatSpeed(double bytesPerSecond) => bytesPerSecond switch
+    public static string FormatSpeed(double bytesPerSecond) =>
+        OperationTextLocalizer.Get("UnitPerSecond", FormatSize(bytesPerSecond));
+
+    private static string FormatSize(double bytes) => bytes switch
     {
-        >= 1_073_741_824 => $"{bytesPerSecond / 1_073_741_824:F1} GB/s",
-        >= 1_048_576 => $"{bytesPerSecond / 1_048_576:F1} MB/s",
-        >= 1_024 => $"{bytesPerSecond / 1_024:F0} KB/s",
-        _ => $"{bytesPerSecond:F0} B/s"
+        >= 1_073_741_824 => OperationTextLocalizer.Get("UnitGB", (bytes / 1_073_741_824).ToString("F1", CultureInfo.CurrentCulture)),
+        >= 1_048_576 => OperationTextLocalizer.Get("UnitMB", (bytes / 1_048_576).ToString("F1", CultureInfo.CurrentCulture)),
+        >= 1_024 => OperationTextLocalizer.Get("UnitKB", (bytes / 1_024).ToString("F0", CultureInfo.CurrentCulture)),
+        _ => OperationTextLocalizer.Get("UnitB", bytes.ToString("F0", CultureInfo.CurrentCulture))
     };
 }

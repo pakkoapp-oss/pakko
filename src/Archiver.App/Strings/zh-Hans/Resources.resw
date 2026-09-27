@@ -300,7 +300,7 @@
     <value>扫描威胁</value>
   </data>
   <data name="ScanNoThreatsFound" xml:space="preserve">
-    <value>此存档中未发现威胁。</value>
+    <value>此压缩包中未发现威胁。</value>
   </data>
   <data name="ScanThreatDetectedGeneric" xml:space="preserve">
     <value>检测到威胁</value>

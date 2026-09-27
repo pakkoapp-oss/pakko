@@ -105,7 +105,16 @@ public sealed class OperationMessagesTests : IDisposable
 
         message.Severity.Should().Be(MessageSeverity.Information);
         message.Text.Split(Environment.NewLine).Should().Equal(
-            "Files: 3", "Size: 2 KB (2,048 bytes)", "DataSum: AAAA", "NamesSum: BBBB");
+            "Files: 3", "Size: 2 KB (2,048 B)", "DataSum: AAAA", "NamesSum: BBBB");
+    }
+
+    // T-F208: "(2,048 bytes)" had no plural form for other languages; the byte unit has none.
+    [Fact]
+    public void ForHash_FolderUnderOneKilobyte_ShowsTheSizeOnce()
+    {
+        var result = new HashResult { Folder = new FolderHashSummary("AAAA", "BBBB", 1, 6) };
+
+        OperationMessages.ForHash("T", result).Text.Split(Environment.NewLine)[1].Should().Be("Size: 6 B");
     }
 
     [Fact]
@@ -135,9 +144,18 @@ public sealed class OperationMessagesTests : IDisposable
     [Fact]
     public void ForScan_Clean_IsInformation()
     {
-        var message = OperationMessages.ForScan("T", new ThreatScanResult { OverallVerdict = ThreatVerdict.Clean });
+        var message = OperationMessages.ForScan("T", new ThreatScanResult { OverallVerdict = ThreatVerdict.Clean }, archiveCount: 1);
 
         message.Should().Be(new OperationMessage("T", MessageSeverity.Information, "No threats found in this archive."));
+    }
+
+    // T-F268 step 6 polish (b): several clean archives are not "this archive".
+    [Fact]
+    public void ForScan_SeveralCleanArchives_SaysSelectedArchives()
+    {
+        var message = OperationMessages.ForScan("T", new ThreatScanResult { OverallVerdict = ThreatVerdict.Clean }, archiveCount: 3);
+
+        message.Text.Should().Be("No threats found in the selected archives.");
     }
 
     [Fact]
@@ -153,7 +171,7 @@ public sealed class OperationMessagesTests : IDisposable
             ],
         };
 
-        var message = OperationMessages.ForScan("T", result);
+        var message = OperationMessages.ForScan("T", result, archiveCount: 1);
 
         message.Severity.Should().Be(MessageSeverity.Error);
         message.Text.Should().Be("a.zip/x.exe: threat detected");
@@ -168,7 +186,7 @@ public sealed class OperationMessagesTests : IDisposable
             Findings = [new ThreatFinding { ArchivePath = "b.zip", Verdict = ThreatVerdict.Inconclusive, Reason = "no AV provider" }],
         };
 
-        var message = OperationMessages.ForScan("T", result);
+        var message = OperationMessages.ForScan("T", result, archiveCount: 1);
 
         message.Severity.Should().Be(MessageSeverity.Warning);
         message.Text.Should().Be("b.zip: no AV provider");

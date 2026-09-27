@@ -19,6 +19,9 @@
     <value>menace détectée</value>
   </data>
   <data name="ScanAndMoreLine" xml:space="preserve">
-    <value>…et {0} de plus</value>
+    <value>…et {0} autres</value>
+  </data>
+  <data name="ScanNoThreatsFoundMany" xml:space="preserve">
+    <value>Aucune menace détectée dans les archives sélectionnées.</value>
   </data>
 </root>

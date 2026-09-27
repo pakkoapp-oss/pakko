@@ -144,7 +144,7 @@ internal sealed class ShellCommands(IOperationUi ui, ShellServices services)
             Format = format,
         };
 
-        await RunArchiveOperationAsync($"Archiving: {archiveName}",
+        await RunArchiveOperationAsync(OperationTextLocalizer.Get("TitleArchiving", archiveName),
             session => router.ArchiveAsync(options, session.Progress, session.Cancellation)).ConfigureAwait(false);
     }
 
@@ -158,8 +158,8 @@ internal sealed class ShellCommands(IOperationUi ui, ShellServices services)
     {
         var service = services.CreateArchiveService();
         string title = archivePaths.Count == 1
-            ? $"Testing: {Path.GetFileName(archivePaths[0])}"
-            : $"Testing {archivePaths.Count} archives";
+            ? OperationTextLocalizer.Get("TitleTesting", Path.GetFileName(archivePaths[0]))
+            : OperationTextLocalizer.Get("TitleTestingMany", archivePaths.Count);
 
         using var session = ui.Begin(title, ProgressStyle.Bytes);
         ArchiveResult result;
@@ -190,7 +190,7 @@ internal sealed class ShellCommands(IOperationUi ui, ShellServices services)
         // with ArchiveAsync's functional fix.
         string title = paths.Count == 1
             ? $"{label}: {Path.GetFileName(Path.TrimEndingDirectorySeparator(paths[0]))}"
-            : $"{label}: {paths.Count} files";
+            : OperationTextLocalizer.Get("TitleHashMany", label, paths.Count);
 
         using var session = ui.Begin(title, ProgressStyle.Bytes);
         HashResult result;
@@ -217,8 +217,8 @@ internal sealed class ShellCommands(IOperationUi ui, ShellServices services)
     public async Task ScanAsync(IReadOnlyList<string> archivePaths)
     {
         string title = archivePaths.Count == 1
-            ? $"Scanning: {Path.GetFileName(archivePaths[0])}"
-            : $"Scanning {archivePaths.Count} archives";
+            ? OperationTextLocalizer.Get("TitleScanning", Path.GetFileName(archivePaths[0]))
+            : OperationTextLocalizer.Get("TitleScanningMany", archivePaths.Count);
 
         var service = await services.CreateScanServiceAsync().ConfigureAwait(false);
         using var session = ui.Begin(title, ProgressStyle.Percent);
@@ -240,7 +240,7 @@ internal sealed class ShellCommands(IOperationUi ui, ShellServices services)
         if (session.Cancellation.IsCancellationRequested)
             return;
 
-        session.Complete(OperationMessages.ForScan(title, result));
+        session.Complete(OperationMessages.ForScan(title, result, archivePaths.Count));
     }
 
     // Open-UI flow (T-F232): hand the selection to Archiver.App as Launch arguments and exit — the
@@ -279,8 +279,8 @@ internal sealed class ShellCommands(IOperationUi ui, ShellServices services)
         var router = await services.CreateExtractionRouterAsync().ConfigureAwait(false);
         var prompts = new SelectionPrompts(archivePaths.Count);
         string title = archivePaths.Count == 1
-            ? $"Extracting: {Path.GetFileName(archivePaths[0])}"
-            : $"Extracting {archivePaths.Count} archives";
+            ? OperationTextLocalizer.Get("TitleExtracting", Path.GetFileName(archivePaths[0]))
+            : OperationTextLocalizer.Get("TitleExtractingMany", archivePaths.Count);
 
         using var session = ui.Begin(title, ProgressStyle.Bytes);
         prompts.Current = session;

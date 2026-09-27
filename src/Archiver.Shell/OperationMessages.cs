@@ -1,3 +1,4 @@
+using System.Globalization;
 using Archiver.Core.Models;
 using Archiver.Core.Services;
 
@@ -38,7 +39,7 @@ internal static class OperationMessages
             lines =
             [
                 HashResultLocalizer.Get("HashResultFilesLine", folder.FileCount),
-                HashResultLocalizer.Get("HashResultSizeLine", $"{ProgressText.FormatBytes(folder.TotalBytes)} ({folder.TotalBytes:N0} bytes)"),
+                HashResultLocalizer.Get("HashResultSizeLine", ExactSize(folder.TotalBytes)),
                 HashResultLocalizer.Get("HashResultDataSumLine", folder.DataSum),
                 HashResultLocalizer.Get("HashResultNamesSumLine", folder.NamesSum)
             ];
@@ -61,10 +62,11 @@ internal static class OperationMessages
 
     // Clean copy is deliberately "No threats found in this archive" -- never "safe" -- Pakko doesn't
     // recurse into nested archives and can't make that broader claim (docs/DECISIONS.md, T-F146).
-    public static OperationMessage ForScan(string title, ThreatScanResult result)
+    public static OperationMessage ForScan(string title, ThreatScanResult result, int archiveCount)
     {
         if (result.OverallVerdict == ThreatVerdict.Clean)
-            return new OperationMessage(title, MessageSeverity.Information, ScanResultLocalizer.Get("ScanNoThreatsFound"));
+            return new OperationMessage(title, MessageSeverity.Information,
+                ScanResultLocalizer.Get(archiveCount > 1 ? "ScanNoThreatsFoundMany" : "ScanNoThreatsFound"));
 
         var problems = result.Findings.Where(f => f.Verdict != ThreatVerdict.Clean).ToList();
         var lines = problems.Take(MaxLinesShown).Select(f =>
@@ -87,6 +89,15 @@ internal static class OperationMessages
         bool anyThreat = problems.Any(f => f.Verdict == ThreatVerdict.ThreatDetected);
         return new OperationMessage(title, anyThreat ? MessageSeverity.Error : MessageSeverity.Warning,
             string.Join(Environment.NewLine, lines));
+    }
+
+    // "2 KB (2,048 B)": the rounded size plus the exact count in the same unit, which needs no plural.
+    private static string ExactSize(long bytes)
+    {
+        string rounded = ProgressText.FormatBytes(bytes);
+        return bytes < 1_024
+            ? rounded
+            : $"{rounded} ({OperationTextLocalizer.Get("UnitB", bytes.ToString("N0", CultureInfo.CurrentCulture))})";
     }
 
     /// <summary>Null when Archiver.App was opened; the App takes over from there.</summary>

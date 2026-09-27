@@ -21,4 +21,7 @@
   <data name="ScanAndMoreLine" xml:space="preserve">
     <value>…외 {0}개 더</value>
   </data>
+  <data name="ScanNoThreatsFoundMany" xml:space="preserve">
+    <value>선택한 압축 파일에서 위협이 발견되지 않았습니다.</value>
+  </data>
 </root>

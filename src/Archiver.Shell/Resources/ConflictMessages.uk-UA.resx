@@ -28,6 +28,6 @@
     <value>Пропустити</value>
   </data>
   <data name="ConflictDialogApplyToAllCheck" xml:space="preserve">
-    <value>Застосувати до всіх решти конфліктів</value>
+    <value>Застосувати до всіх наступних конфліктів</value>
   </data>
 </root>

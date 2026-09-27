@@ -19,6 +19,9 @@
     <value>bedreiging gedetecteerd</value>
   </data>
   <data name="ScanAndMoreLine" xml:space="preserve">
-    <value>…en {0} meer</value>
+    <value>…en nog {0}</value>
+  </data>
+  <data name="ScanNoThreatsFoundMany" xml:space="preserve">
+    <value>Geen bedreigingen gevonden in de geselecteerde archieven.</value>
   </data>
 </root>

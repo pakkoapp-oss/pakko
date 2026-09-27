@@ -16,7 +16,7 @@
     <value>Sprunget over ({0}):</value>
   </data>
   <data name="ResultAndMoreLine" xml:space="preserve">
-    <value>…og {0} mere</value>
+    <value>…og {0} til</value>
   </data>
   <data name="ResultNoErrorsDetected" xml:space="preserve">
     <value>Der blev ikke fundet fejl i arkivet/arkiverne.</value>

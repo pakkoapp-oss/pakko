@@ -21,4 +21,7 @@
   <data name="ScanAndMoreLine" xml:space="preserve">
     <value>…og {0} til</value>
   </data>
+  <data name="ScanNoThreatsFoundMany" xml:space="preserve">
+    <value>Ingen trusler ble funnet i de valgte arkivene.</value>
+  </data>
 </root>

@@ -21,4 +21,7 @@
   <data name="ScanAndMoreLine" xml:space="preserve">
     <value>…és még {0}</value>
   </data>
+  <data name="ScanNoThreatsFoundMany" xml:space="preserve">
+    <value>A kijelölt archívumokban nem található fenyegetés.</value>
+  </data>
 </root>

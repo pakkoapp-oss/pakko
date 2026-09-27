@@ -268,7 +268,7 @@
     <value>गलत पासवर्ड। कृपया पुनः प्रयास करें।</value>
   </data>
   <data name="PasswordDialogApplyToRemainingCheck" xml:space="preserve">
-    <value>शेष अभिलेखागार पर लागू करें</value>
+    <value>शेष संग्रहों पर लागू करें</value>
   </data>
   <data name="PasswordDialogOkButton" xml:space="preserve">
     <value>ठीक है</value>

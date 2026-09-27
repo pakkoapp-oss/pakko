@@ -21,4 +21,7 @@
   <data name="ScanAndMoreLine" xml:space="preserve">
     <value>…و{0} أخرى</value>
   </data>
+  <data name="ScanNoThreatsFoundMany" xml:space="preserve">
+    <value>لم يتم العثور على تهديدات في الأرشيفات المحددة.</value>
+  </data>
 </root>

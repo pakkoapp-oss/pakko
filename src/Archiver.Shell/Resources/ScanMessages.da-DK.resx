@@ -19,6 +19,9 @@
     <value>trussel fundet</value>
   </data>
   <data name="ScanAndMoreLine" xml:space="preserve">
-    <value>…og {0} mere</value>
+    <value>…og {0} til</value>
+  </data>
+  <data name="ScanNoThreatsFoundMany" xml:space="preserve">
+    <value>Der blev ikke fundet trusler i de valgte arkiver.</value>
   </data>
 </root>

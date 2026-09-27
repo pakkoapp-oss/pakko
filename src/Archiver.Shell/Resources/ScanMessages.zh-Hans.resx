@@ -13,12 +13,15 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <data name="ScanNoThreatsFound" xml:space="preserve">
-    <value>此存档中未发现威胁。</value>
+    <value>此压缩包中未发现威胁。</value>
   </data>
   <data name="ScanThreatDetectedGeneric" xml:space="preserve">
     <value>检测到威胁</value>
   </data>
   <data name="ScanAndMoreLine" xml:space="preserve">
     <value>…还有 {0} 个</value>
+  </data>
+  <data name="ScanNoThreatsFoundMany" xml:space="preserve">
+    <value>所选压缩包中未发现威胁。</value>
   </data>
 </root>

@@ -67,4 +67,7 @@
   <data name="ScanAndMoreLine" xml:space="preserve">
     <value>…and {0} more</value>
   </data>
+  <data name="ScanNoThreatsFoundMany" xml:space="preserve">
+    <value>No threats found in the selected archives.</value>
+  </data>
 </root>

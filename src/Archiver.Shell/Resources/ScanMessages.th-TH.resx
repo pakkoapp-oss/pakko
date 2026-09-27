@@ -21,4 +21,7 @@
   <data name="ScanAndMoreLine" xml:space="preserve">
     <value>…และอีก {0} รายการ</value>
   </data>
+  <data name="ScanNoThreatsFoundMany" xml:space="preserve">
+    <value>ไม่พบภัยคุกคามในไฟล์บีบอัดที่เลือก</value>
+  </data>
 </root>

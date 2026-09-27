@@ -19,6 +19,9 @@
     <value>खतरा मिला</value>
   </data>
   <data name="ScanAndMoreLine" xml:space="preserve">
-    <value>…और {0} अधिक</value>
+    <value>…और {0} अन्य</value>
+  </data>
+  <data name="ScanNoThreatsFoundMany" xml:space="preserve">
+    <value>चयनित संग्रहों में कोई खतरा नहीं मिला।</value>
   </data>
 </root>

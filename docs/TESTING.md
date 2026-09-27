@@ -748,6 +748,18 @@ association, but Windows requires explicit user opt-in via Settings → Default 
 double-click routes to a non-built-in handler — this is a Windows security mechanism (UserChoice
 hash), not a Pakko defect.
 
+## Explorer Operation Window Strings (T-F268 step 6, 2026-09-27)
+
+`ShellResourceParityTests` (Shell): for all six Shell `.resx` families and all 36 non-English
+locales, every English key exists in the locale's own resource set (read with `tryParents:
+false`, so a silent fallback to English fails) with the same `{n}` placeholders; and under uk-UA
+`OperationWindowText.CreateHello()` carries every `WindowStrings` key, none left English. Both
+mutation-checked (a renamed key in uk-UA, a `{1}` for `{0}` in ja-JP). `ProgressTextTests`: size
+units per language (`2 КБ`, `3,0 Go`, `2,0 МБ/с`). `ShellCommandsTests.Test_UnderUkrainian_
+TitlesAreTranslated`, `OperationMessagesTests` (hash size without "bytes", several clean scanned
+archives). Tests that assert English pin `CurrentUICulture` to en-US: this dev machine runs a
+Ukrainian UI, CI an English one.
+
 ---
 
 ## Rules

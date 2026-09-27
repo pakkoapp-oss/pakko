@@ -108,11 +108,17 @@ public sealed class OperationWindowModel
         : null;
 
     /// <summary>The incoming file's details, marked when it is the newer file.</summary>
-    public string? IncomingDetails => Prompt is AskConflict ask
-        ? (ask.IncomingIsNewer && ask.IncomingDetails is { } details
-            ? details + " · " + Text(WindowStrings.Newer)
-            : ask.IncomingDetails)
-        : null;
+    public string? IncomingDetails
+    {
+        get
+        {
+            if (Prompt is not AskConflict ask)
+                return null;
+            if (ask.IncomingIsNewer && ask.IncomingDetails is { } details)
+                return details + " · " + Text(WindowStrings.Newer);
+            return ask.IncomingDetails;
+        }
+    }
 
     /// <summary>A label sent by Shell in <see cref="Hello"/>; the key itself when missing.</summary>
     public string Text(string key) => _strings.TryGetValue(key, out string? value) ? value : key;

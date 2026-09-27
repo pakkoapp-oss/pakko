@@ -21,4 +21,7 @@
   <data name="ScanAndMoreLine" xml:space="preserve">
     <value>…και {0} ακόμη</value>
   </data>
+  <data name="ScanNoThreatsFoundMany" xml:space="preserve">
+    <value>Δεν εντοπίστηκαν απειλές στα επιλεγμένα αρχεία συμπίεσης.</value>
+  </data>
 </root>

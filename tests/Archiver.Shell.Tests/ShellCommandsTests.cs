@@ -113,6 +113,21 @@ public sealed class ShellCommandsTests : IDisposable
         message.Text.Should().Be("No errors detected in the archive(s).");
     }
 
+    // T-F208: titles follow the Windows display language like the rest of the window.
+    [Fact]
+    public async Task Test_UnderUkrainian_TitlesAreTranslated()
+    {
+        string first = MakeZip("ok.zip", ("a.txt", "A"));
+        string second = MakeZip("ok2.zip", ("b.txt", "B"));
+        CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("uk-UA");
+        var ui = new FakeOperationUi();
+
+        await Create(ui).TestAsync([first]);
+        await Create(ui).TestAsync([first, second]);
+
+        ui.Sessions.Select(s => s.Title).Should().Equal("Тестування: ok.zip", "Тестування архівів: 2");
+    }
+
     [Fact]
     public async Task Test_ArchivePlusSkippedInput_ShowsOneCombinedMessage()
     {

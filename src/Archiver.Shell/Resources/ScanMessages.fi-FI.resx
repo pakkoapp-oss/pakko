@@ -21,4 +21,7 @@
   <data name="ScanAndMoreLine" xml:space="preserve">
     <value>…ja {0} muuta</value>
   </data>
+  <data name="ScanNoThreatsFoundMany" xml:space="preserve">
+    <value>Valituista arkistoista ei löytynyt uhkia.</value>
+  </data>
 </root>

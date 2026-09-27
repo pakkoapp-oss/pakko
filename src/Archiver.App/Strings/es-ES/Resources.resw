@@ -244,7 +244,7 @@
     <value>El archivo ya existe</value>
   </data>
   <data name="ConflictDialogMessage" xml:space="preserve">
-    <value>"{0}" ya existe en el destino. ¿Qué deseas hacer?</value>
+    <value>"{0}" ya existe en el destino. ¿Qué desea hacer?</value>
   </data>
   <data name="ConflictDialogOverwriteButton" xml:space="preserve">
     <value>Sobrescribir</value>

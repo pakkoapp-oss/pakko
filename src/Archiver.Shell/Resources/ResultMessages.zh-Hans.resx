@@ -19,7 +19,7 @@
     <value>…还有 {0} 个</value>
   </data>
   <data name="ResultNoErrorsDetected" xml:space="preserve">
-    <value>在存档中未检测到错误。</value>
+    <value>压缩包中未检测到错误。</value>
   </data>
   <data name="ResultOperationFailed" xml:space="preserve">
     <value>操作失败。</value>

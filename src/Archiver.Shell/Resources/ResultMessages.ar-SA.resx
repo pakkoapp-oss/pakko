@@ -13,7 +13,7 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <data name="ResultSkippedHeader" xml:space="preserve">
-    <value>تم تخطيه ({0}):</value>
+    <value>العناصر التي تم تخطيها ({0}):</value>
   </data>
   <data name="ResultAndMoreLine" xml:space="preserve">
     <value>…و{0} أخرى</value>

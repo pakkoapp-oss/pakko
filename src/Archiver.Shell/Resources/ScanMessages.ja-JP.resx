@@ -21,4 +21,7 @@
   <data name="ScanAndMoreLine" xml:space="preserve">
     <value>…他{0}件</value>
   </data>
+  <data name="ScanNoThreatsFoundMany" xml:space="preserve">
+    <value>選択したアーカイブに脅威は見つかりませんでした。</value>
+  </data>
 </root>

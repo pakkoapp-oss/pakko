@@ -10015,3 +10015,29 @@ both files as the approved mockup does. Shell formats both lines and marks the i
 **Strings.** The prompts reuse the Win32 dialogs' strings, already translated into 37 locales;
 the few new labels (existing file / from the archive / newer / modified / password / skip
 archive) are English until step 6.
+
+## T-F268 step 6 — operation window strings, titles and units in 37 locales (2026-09-27)
+
+**Shipped.** A new Shell resource family `OperationText` holds the window's own labels, every
+Explorer operation title (Archiving/Extracting/Testing/Scanning, hash of several files) and the
+size units; `Cancel` reuses the password dialog's translated button. This closes the Shell half
+of T-F208. Core's error and skip reasons stay English: they have no codes yet (T-F209).
+
+**Counts without plurals.** A title with a count ("Extracting 3 archives") needs plural forms in
+Ukrainian, Polish, Czech and others; `.resx` has none. Every non-English title puts the count
+after a colon ("Розпакування архівів: 3") or uses a counter word (ja/ko/zh), and the hash result's
+"(2,048 bytes)" became "(2,048 B)", shown only when the rounded size differs. English keeps its
+wording; the "many" titles are used only for two or more.
+
+**Units.** Latin B/KB/MB/GB by default; Б/КБ/МБ/ГБ (uk, bg), o/Ko/Mo/Go (fr), t/kt/Mt/Gt (fi),
+a local "per second" for ja/zh/ko/tr/uk/bg. The number keeps the regional format.
+
+**Terms follow what the user already sees:** the archive word of each locale's existing Shell
+strings (ja アーカイブ, zh 压缩包, ko 압축 파일, vi tệp lưu trữ), the App's operation verbs.
+
+**Existing strings reviewed at the user's request, 14 fixes:** uk "до всіх решти конфліктів"
+(ungrammatical), es tú/usted mixed in one dialog, "Show password" in a different term from its
+own dialog (de Kennwort, ko 비밀번호, tr Şifre), hi "अभिलेखागार" (archive building) for archives,
+zh "存档" (a saved game) for archive, ar skipped header in the singular, fr missing space before
+":" and "et {0} de plus", da/nl/hi "and N more" wording, and a typo in the Latvian menu
+("pašreinējo"). The same defect in the App's `.resw` was fixed where the string was identical.

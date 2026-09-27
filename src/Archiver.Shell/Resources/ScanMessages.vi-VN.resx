@@ -21,4 +21,7 @@
   <data name="ScanAndMoreLine" xml:space="preserve">
     <value>…và {0} mục nữa</value>
   </data>
+  <data name="ScanNoThreatsFoundMany" xml:space="preserve">
+    <value>Không tìm thấy mối đe dọa nào trong các tệp lưu trữ đã chọn.</value>
+  </data>
 </root>

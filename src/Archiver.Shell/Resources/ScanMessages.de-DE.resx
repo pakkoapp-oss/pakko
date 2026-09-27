@@ -21,4 +21,7 @@
   <data name="ScanAndMoreLine" xml:space="preserve">
     <value>…und {0} weitere</value>
   </data>
+  <data name="ScanNoThreatsFoundMany" xml:space="preserve">
+    <value>In den ausgewählten Archiven wurden keine Bedrohungen gefunden.</value>
+  </data>
 </root>

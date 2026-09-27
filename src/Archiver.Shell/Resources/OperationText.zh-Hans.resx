@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="WindowCancelAll" xml:space="preserve">
+    <value>全部取消</value>
+  </data>
+  <data name="WindowClose" xml:space="preserve">
+    <value>关闭</value>
+  </data>
+  <data name="WindowItemOfCount" xml:space="preserve">
+    <value>压缩包 {0}/{1}  ·  {2}</value>
+  </data>
+  <data name="WindowExistingFile" xml:space="preserve">
+    <value>现有文件</value>
+  </data>
+  <data name="WindowIncomingFile" xml:space="preserve">
+    <value>来自压缩包</value>
+  </data>
+  <data name="WindowNewer" xml:space="preserve">
+    <value>较新</value>
+  </data>
+  <data name="WindowModified" xml:space="preserve">
+    <value>修改于 {0}</value>
+  </data>
+  <data name="WindowPasswordLabel" xml:space="preserve">
+    <value>密码</value>
+  </data>
+  <data name="WindowSkipArchive" xml:space="preserve">
+    <value>跳过此压缩包</value>
+  </data>
+  <data name="TitleArchiving" xml:space="preserve">
+    <value>正在压缩：{0}</value>
+  </data>
+  <data name="TitleExtracting" xml:space="preserve">
+    <value>正在解压：{0}</value>
+  </data>
+  <data name="TitleExtractingMany" xml:space="preserve">
+    <value>正在解压 {0} 个压缩包</value>
+  </data>
+  <data name="TitleTesting" xml:space="preserve">
+    <value>正在测试：{0}</value>
+  </data>
+  <data name="TitleTestingMany" xml:space="preserve">
+    <value>正在测试 {0} 个压缩包</value>
+  </data>
+  <data name="TitleScanning" xml:space="preserve">
+    <value>正在扫描威胁：{0}</value>
+  </data>
+  <data name="TitleScanningMany" xml:space="preserve">
+    <value>正在扫描 {0} 个压缩包</value>
+  </data>
+  <data name="TitleHashMany" xml:space="preserve">
+    <value>{0}（{1} 个文件）</value>
+  </data>
+  <data name="UnitB" xml:space="preserve">
+    <value>{0} B</value>
+  </data>
+  <data name="UnitKB" xml:space="preserve">
+    <value>{0} KB</value>
+  </data>
+  <data name="UnitMB" xml:space="preserve">
+    <value>{0} MB</value>
+  </data>
+  <data name="UnitGB" xml:space="preserve">
+    <value>{0} GB</value>
+  </data>
+  <data name="UnitPerSecond" xml:space="preserve">
+    <value>{0}/秒</value>
+  </data>
+</root>

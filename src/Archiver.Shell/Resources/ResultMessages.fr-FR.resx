@@ -13,10 +13,10 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <data name="ResultSkippedHeader" xml:space="preserve">
-    <value>Ignorés ({0}):</value>
+    <value>Ignorés ({0}) :</value>
   </data>
   <data name="ResultAndMoreLine" xml:space="preserve">
-    <value>…et {0} de plus</value>
+    <value>…et {0} autres</value>
   </data>
   <data name="ResultNoErrorsDetected" xml:space="preserve">
     <value>Aucune erreur détectée dans l'archive (les archives).</value>

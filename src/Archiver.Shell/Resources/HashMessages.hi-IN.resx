@@ -25,6 +25,6 @@
     <value>डेटा और नाम योग: {0}</value>
   </data>
   <data name="HashResultAndMoreLine" xml:space="preserve">
-    <value>…और {0} अधिक</value>
+    <value>…और {0} अन्य</value>
   </data>
 </root>

@@ -25,6 +25,6 @@
     <value>Namen- en gegevenssom: {0}</value>
   </data>
   <data name="HashResultAndMoreLine" xml:space="preserve">
-    <value>…en {0} meer</value>
+    <value>…en nog {0}</value>
   </data>
 </root>
