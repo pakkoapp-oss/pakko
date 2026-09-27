@@ -82,9 +82,11 @@ static const std::wstring& GetAppIconPath()
 // whole (a partial archive the user believes is complete is worse than a refusal), and a launch
 // failure shows its error code.
 // ---------------------------------------------------------------------------
+// MB_TOPMOST: Invoke runs in the dllhost.exe surrogate, which is not the foreground process, so
+// MB_SETFOREGROUND alone can leave the box behind Explorer (same fix as T-F192's prompt).
 static void ShowInvokeError(const std::wstring& text) noexcept
 {
-    (void)MessageBoxW(nullptr, text.c_str(), L"Pakko", MB_OK | MB_ICONERROR | MB_SETFOREGROUND);
+    (void)MessageBoxW(nullptr, text.c_str(), L"Pakko", MB_OK | MB_ICONERROR | MB_SETFOREGROUND | MB_TOPMOST);
 }
 
 static HRESULT RunShellCommand(IShellItemArray* psia, const std::wstring& commandArgs, bool singleItemOnly = false)

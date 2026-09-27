@@ -113,6 +113,13 @@ internal static class OperationMessages
         return key is null ? null : new OperationMessage("Pakko", MessageSeverity.Error, ResultMessagesLocalizer.Get(key));
     }
 
+    /// <summary>
+    /// T-F235: the Explorer selection did not arrive on stdin. The DLL's own write usually fails
+    /// first and says so, but not when the child got a handle that never became its stdin.
+    /// </summary>
+    public static OperationMessage ForSelectionNotReceived() =>
+        new("Pakko", MessageSeverity.Error, ResultMessagesLocalizer.Get("ResultOperationFailed"));
+
     private static OperationMessage ForErrors(string title, IReadOnlyList<ArchiveError> errors)
     {
         if (errors.Count == 0)

@@ -33,9 +33,18 @@ public static class ArchiveNaming
 
         string first = Path.TrimEndingDirectorySeparator(sourcePaths[0]);
         string name = sourcePaths.Count > 1
-            ? Path.GetFileName(Path.GetDirectoryName(first) ?? "")
+            ? LastSegment(Path.GetDirectoryName(first) ?? "")
             : GetBaseName(first);
         return name.Length == 0 || name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0 ? FallbackName : name;
+    }
+
+    // The text after the last separator, like the C++ side's PathFindFileNameW. Unlike
+    // Path.GetFileName it gives "share" for a UNC root "\\server\share" (GetFileName gives ""), and
+    // "C:" for a drive root, which the invalid-character check above then rejects.
+    private static string LastSegment(string path)
+    {
+        string trimmed = path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        return trimmed[(trimmed.LastIndexOfAny([Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar]) + 1)..];
     }
 
     /// <summary>
@@ -72,7 +81,7 @@ public static class ArchiveNaming
     /// <summary>Strips an archive's extension, compound tar extensions included (see class remarks).</summary>
     public static string GetBaseName(string archivePath)
     {
-        string fileName = Path.GetFileName(archivePath);
+        string fileName = LastSegment(archivePath);
 
         string? matchedExt = CompoundExtensions.FirstOrDefault(
             ext => fileName.EndsWith(ext, StringComparison.OrdinalIgnoreCase));

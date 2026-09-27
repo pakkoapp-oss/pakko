@@ -665,6 +665,14 @@ TEST(BuildAddToArchiveTitle, SingleDriveRootFallsBackToArchive)
     EXPECT_EQ(title, L"Add to \"archive.zip\"");
 }
 
+// T-F264: a UNC share root; ArchiveNamingTests.GetDefaultArchiveName_MatchesTheExplorerMenuTitle
+// checks the C# side names the created archive the same way.
+TEST(BuildAddToArchiveTitle, FilesAtAUncShareRootUseTheShareName)
+{
+    EXPECT_EQ(BuildAddToArchiveTitle({ L"\\\\server\\share\\a.txt", L"\\\\server\\share\\b.txt" }), L"Add to \"share.zip\"");
+    EXPECT_EQ(BuildAddToArchiveTitle({ L"\\\\server\\share" }), L"Add to \"share.zip\"");
+}
+
 TEST(BuildAddToArchiveTitle, FolderWithNoExtensionKeepsFullName)
 {
     EXPECT_EQ(BuildAddToArchiveTitle({ L"C:\\Projects\\MyFolder" }), L"Add to \"MyFolder.zip\"");

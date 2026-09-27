@@ -162,13 +162,17 @@ std::optional<std::vector<std::wstring>> Win32PolicyRegistryReader::GetMultiStri
     if (RegGetValueW(HKEY_LOCAL_MACHINE, m_keyPath, valueName, RRF_RT_REG_MULTI_SZ, nullptr, buffer.data(), &size) != ERROR_SUCCESS)
         return std::nullopt;
 
+    // Every entry up to the returned length; empty ones are skipped rather than ending the list,
+    // the same as .NET's RegistryKey.GetValue for a REG_MULTI_SZ.
+    const size_t chars = std::min<size_t>(size / sizeof(wchar_t), buffer.size());
     std::vector<std::wstring> entries;
     size_t start = 0;
-    while (start < buffer.size() && buffer[start] != L'\0')
+    while (start < chars)
     {
         const std::wstring entry(buffer.data() + start);
         start += entry.size() + 1;
-        entries.push_back(entry);
+        if (!entry.empty())
+            entries.push_back(entry);
     }
     return entries;
 }

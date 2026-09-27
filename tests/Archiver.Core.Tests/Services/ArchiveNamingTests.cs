@@ -119,6 +119,8 @@ public sealed class ArchiveNamingTests
     [InlineData(new[] { @"Z:\" }, "archive")]
     [InlineData(new[] { @"C:\Projects\MyFolder" }, "MyFolder")]
     [InlineData(new[] { @"C:\Projects\.gitignore" }, ".gitignore")]
+    [InlineData(new[] { @"\\server\share\a.txt", @"\\server\share\b.txt" }, "share")]
+    [InlineData(new[] { @"\\server\share" }, "share")]
     public void GetDefaultArchiveName_MatchesTheExplorerMenuTitle(string[] sources, string expected)
     {
         ArchiveNaming.GetDefaultArchiveName(sources).Should().Be(expected);

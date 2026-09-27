@@ -16,13 +16,14 @@ if (command.Type == CommandType.Invalid)
     return;
 }
 
-// T-F235: Explorer's selection comes on stdin. A list the DLL could not finish writing is rejected
-// whole; the DLL reports its own failed write, so there is nothing to show here either.
+// T-F235: Explorer's selection comes on stdin. A list that is missing or cut short is rejected
+// whole, and said so - never a silent exit.
 if (command.FilesFromStdin)
 {
     StdinPathListResult list = StdinPathList.Read(Console.OpenStandardInput());
     if (list.Error is not null)
     {
+        new Win32OperationUi().ShowMessage(OperationMessages.ForSelectionNotReceived());
         Environment.Exit(1);
         return;
     }
