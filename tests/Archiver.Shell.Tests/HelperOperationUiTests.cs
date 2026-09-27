@@ -101,6 +101,33 @@ public sealed class HelperOperationUiTests : IDisposable
     }
 
     [Fact]
+    public async Task BeginItem_DropsThePreviousArchivesSpeed()
+    {
+        using var session = await BeginReadyAsync();
+        session.Progress!.Report(new ProgressReport { Percent = 0, BytesTransferred = 0, TotalBytes = 100_000_000 });
+        await Task.Delay(TimeSpan.FromMilliseconds(400));
+        var first = new ProgressReport { Percent = 90, BytesTransferred = 90_000_000, TotalBytes = 100_000_000 };
+        session.Progress.Report(first);
+        string? firstStatus = (await ReadProgressAsync(90)).Status;
+        firstStatus.Should().StartWith(ProgressText.FormatStatus(first, null)).And.NotBe(ProgressText.FormatStatus(first, null));
+
+        session.BeginItem("b.zip", 2, 2);
+        var next = new ProgressReport { Percent = 1, BytesTransferred = 1_000, TotalBytes = 100_000_000 };
+        session.Progress.Report(next);
+
+        (await ReadProgressAsync(1)).Status.Should().Be(ProgressText.FormatStatus(next, null));
+    }
+
+    private async Task<Progress> ReadProgressAsync(int percent)
+    {
+        Progress progress;
+        do
+            progress = await _helper.ReadUntilAsync<Progress>();
+        while (progress.Percent != percent);
+        return progress;
+    }
+
+    [Fact]
     public async Task CleanComplete_ReturnsOnceTheWindowClosed()
     {
         using var session = await BeginReadyAsync(closeTimeout: WaitLimit);

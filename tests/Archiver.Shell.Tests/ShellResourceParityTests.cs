@@ -65,7 +65,7 @@ public sealed partial class ShellResourceParityTests
 
     private static Dictionary<string, string> HelloStrings(string culture)
     {
-        var original = CultureInfo.CurrentUICulture;
+        CultureInfo original = CultureInfo.CurrentUICulture;
         try
         {
             CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(culture);

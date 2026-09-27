@@ -41,6 +41,7 @@ internal sealed class Win32OperationUi : IOperationUi
         private readonly Timer? _cancelPoll;
         private readonly string _title;
         private NativeProgressDialog? _dialog;
+        private ProgressSpeedSampler _speed = new();
 
         public Session(string title, ProgressStyle style)
         {
@@ -68,7 +69,6 @@ internal sealed class Win32OperationUi : IOperationUi
                 }
             }, null, TimeSpan.Zero, TimeSpan.FromMilliseconds(250));
 
-            var speedSampler = new ProgressSpeedSampler();
             Progress = new Progress<ProgressReport>(r =>
             {
                 lock (_dialogLock)
@@ -84,7 +84,7 @@ internal sealed class Win32OperationUi : IOperationUi
                     }
                     else
                     {
-                        _dialog.SetLine(2, ProgressText.FormatStatus(r, speedSampler));
+                        _dialog.SetLine(2, ProgressText.FormatStatus(r, _speed));
                         _dialog.SetProgress(r.BytesTransferred, r.TotalBytes);
                     }
                 }
@@ -98,10 +98,13 @@ internal sealed class Win32OperationUi : IOperationUi
         // A single archive keeps the title it was opened with; a selection names each archive.
         public void BeginItem(string name, int index, int count)
         {
-            if (count <= 1)
-                return;
             lock (_dialogLock)
-                _dialog?.SetTitle($"{_title} \u2014 {name} ({index}/{count})");
+            {
+                // Each archive's bytes start again from zero, which the old sampler ignores.
+                _speed = new ProgressSpeedSampler();
+                if (count > 1)
+                    _dialog?.SetTitle($"{_title} \u2014 {name} ({index}/{count})");
+            }
         }
 
         public Task<ConflictDecision> AskConflictAsync(ConflictInfo info) => ShellConflictDialog.ShowAsync(info);

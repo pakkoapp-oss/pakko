@@ -144,7 +144,7 @@ public sealed class OperationMessagesTests : IDisposable
     [Fact]
     public void ForScan_Clean_IsInformation()
     {
-        var message = OperationMessages.ForScan("T", new ThreatScanResult { OverallVerdict = ThreatVerdict.Clean }, archiveCount: 1);
+        OperationMessage message = OperationMessages.ForScan("T", new ThreatScanResult { OverallVerdict = ThreatVerdict.Clean }, archiveCount: 1);
 
         message.Should().Be(new OperationMessage("T", MessageSeverity.Information, "No threats found in this archive."));
     }
@@ -171,7 +171,7 @@ public sealed class OperationMessagesTests : IDisposable
             ],
         };
 
-        var message = OperationMessages.ForScan("T", result, archiveCount: 1);
+        OperationMessage message = OperationMessages.ForScan("T", result, archiveCount: 1);
 
         message.Severity.Should().Be(MessageSeverity.Error);
         message.Text.Should().Be("a.zip/x.exe: threat detected");
@@ -186,7 +186,7 @@ public sealed class OperationMessagesTests : IDisposable
             Findings = [new ThreatFinding { ArchivePath = "b.zip", Verdict = ThreatVerdict.Inconclusive, Reason = "no AV provider" }],
         };
 
-        var message = OperationMessages.ForScan("T", result, archiveCount: 1);
+        OperationMessage message = OperationMessages.ForScan("T", result, archiveCount: 1);
 
         message.Severity.Should().Be(MessageSeverity.Warning);
         message.Text.Should().Be("b.zip: no AV provider");

@@ -61,7 +61,7 @@ internal sealed class HelperOperationUi(IHelperLauncher launcher, IOperationUi f
         private readonly string _title;
         private readonly ProgressStyle _style;
         private readonly CancellationTokenSource _cts = new();
-        private readonly ProgressSpeedSampler _speed = new();
+        private ProgressSpeedSampler _speed = new();
         private readonly Timer _readyTimer;
 
         // Signalled when the helper can no longer show anything: it confirmed its window closed,
@@ -114,6 +114,8 @@ internal sealed class HelperOperationUi(IHelperLauncher launcher, IOperationUi f
             lock (_lock)
             {
                 _item = (name, index, count);
+                // Each archive's bytes start again from zero, which the old sampler ignores.
+                _speed = new ProgressSpeedSampler();
                 fallback = _fallback;
             }
             if (fallback is not null)
