@@ -10085,3 +10085,38 @@ so folders from builds before this change are never removed. No owner-only ACL: 
 already private to the user.
 
 **T-F241 (CLI half): no threat scan in `pakko`** — reasons in `docs/CLI.md`'s command table.
+
+## Fix phase 6 — shared folder walker; folder hash matches 7-Zip (T-F225 corrects T-F128) (2026-09-27)
+
+**Shared walker (T-F236/T-F237/T-F251).** Seven separate walks over user folder trees each had
+their own access-denied, junction and depth behavior; two recursed without bound (stack overflow at
+depth ~2,000, uncatchable). New internal `Archiver.Core/IO/DirectoryWalker`: iterative, explicit
+stack, each folder listed once, an unlistable folder is one `UnreadableDirectory` item and the walk
+continues, reparse points are reported and never entered. Used by both ZIP creation walks, the
+totals/bytes pre-counts, tar's `CountRecursiveEntriesAndBytes`, and `FileHashService`. The App's own
+walks (`FileItem`, `MainViewModel` pre-count) move onto it in phase 9.
+
+**T-F225 — correction to T-F128.** T-F128 said a directory's NamesSum contribution used a stale
+digest left from the previous file, so it depended on traversal order, and Pakko left directory
+items out. Wrong for the current source: in ip7z/7zip `CPP/7zip/UI/Common/HashCalc.cpp`,
+`HashCalc()` calls `hb.InitForNewFile()` before every item, which calls
+`h.InitDigestGroup(k_HashCalc_Index_Current)` and zeroes `Digests[0]` (`HashCalc.h`);
+`CHashBundle::Final` then hashes `pre[16]` (`pre[0]=1` for a directory) ++ `Digests[0]` ++ the
+UTF-16LE log path. A directory therefore contributes a deterministic value. Checked against the
+vendored 7za 26.02: `h one` (one\a.txt = "hello world") -> NamesSum `429CB574-00000001`; the log
+path is `<folder name>/<relative path>`, no trailing slash on directories; `h C:\x\one` and
+`h one\` agree; `h ONE` uses the on-disk name; `h .`, `h folder\.` and a drive root hash contents
+only (no folder item, no prefix); the console hides the names line for exactly 1 file and 0 folders
+(`HashCon.cpp`). Pakko reproduces all of this; `FolderHashParityTests` runs 7za live. Earlier
+unit-test NamesSum literals were never real 7za values (they hashed a random temp-folder name).
+Deliberate remaining differences: links/junctions skipped (T-F251), unreadable subfolders not
+counted as items, the CLI prints no `Folders:` line.
+
+**T-F247.** `AmsiScanBuffer` rejects a zero-length buffer (`E_INVALIDARG`). Skip is decided by the
+entry's *declared* length, not bytes read — a non-empty entry that yields no bytes (truncated,
+emptied between stat and read) must reach AMSI and come back `Inconclusive`, never `Clean`
+(advisor, closing review). A failed AMSI call on one entry is `Inconclusive` for that entry only.
+
+**T-F159.** One `ArchiveNaming.GetUniqueFilePath(path, claimedPaths)` (Zip's superset signature)
+for all six call sites; pure refactor.
+

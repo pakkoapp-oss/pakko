@@ -3708,8 +3708,8 @@ regression from this task, which owns reliability only.
 
 ### T-F146 — AMSI-based "Scan for threats" for archives (Explorer context menu + Archive Browser)
 
-- **Blocked from graduating by T-F247** (2026-09-25): any archive containing an empty file makes
-  the scan throw; the Explorer command crashes silently.
+- ~~Blocked from graduating by T-F247~~ — T-F247 fixed 2026-09-27 (1b0f824/c4fe0d4); pending
+  its device check.
 - [~] **Status:** implementation complete 2026-08-07 (Core service + tests, `Archiver.Shell`
       CLI/dialog, `Archiver.ShellExtension` context-menu entry, `Archiver.App` Archive Browser
       entry, full 37-locale localization across all three frontends) — on-device verification
@@ -4031,7 +4031,11 @@ regression from this task, which owns reliability only.
 
 ### T-F159 — Unify `GetUniqueFilePath` between `ZipArchiveService` and `TarSandboxedService`
 
-- [ ] **Status:** not started — scoped out of T-F158 deliberately (advisor: bundling it would mix
+- [x] **Status:** done 2026-09-27 (0475bbd, wave 1 track B) — `ArchiveNaming.GetUniqueFilePath`
+  used by all six call sites (the four counted below plus Zip's SeparateArchives delegate and the
+  commit-phase rename); zero test assertions changed; unit suite and the rename/conflict
+  integration tests green. Light on-device recheck of one archive and one extract rename pending.
+  Original: not started — scoped out of T-F158 deliberately (advisor: bundling it would mix
   a regression risk on two already-verified extraction call sites — `TryExtractSingleEntryAsync`/
   `TryMoveSingleEntryAsync`, just refactored under T-F157 — into an archiving-side task).
 - **Context:** `GetUniqueFilePath` (the `"name (1)"`, `"name (2)"`, ... renaming convention) is
@@ -4772,6 +4776,15 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 
 ### T-F225 — Folder hash "data and names" never matches 7-Zip/NanaZip (P1)
 
+- **Progress (2026-09-27, fix phase 6, wave 1 track B):** fixed in b8c1557 — 7-Zip resets the
+  item digest to zero before every item, so a directory item is deterministic (T-F128 misread
+  this); NamesSum now has one item per directory including the selected folder, paths use the
+  on-disk folder name as prefix, and `.`/`..`/drive roots hash contents only. `FolderHashParityTests`
+  compares live against the vendored 7za (12 cases, CRC32 and SHA256); `docs/CLI.md`'s
+  "verified against 7za" claim is now true. Remaining differences: links/junctions skipped
+  (7-Zip follows them), unreadable subfolders not counted as items, 7-Zip hides the names line for
+  a contents-only single file. Stays `[~]` until the device check.
+
 - [ ] **Status:** open. DataSum matches the vendored `7za.exe h` exactly, but NamesSum differs for
   every folder tried — including a folder holding a single ASCII file with no subfolders:
   `one\a.txt` -> Pakko `CRC32 for data and names: 680B36C2`, 7za `FBAAC368-00000000`; two files
@@ -5075,6 +5088,12 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 
 ### T-F236 — One unreadable subfolder aborts creating the whole archive (P1)
 
+- **Progress (2026-09-27, fix phase 6, wave 1 track B):** Core part fixed in 6fdac82 — new
+  iterative `DirectoryWalker` (`Archiver.Core/IO`) used by both ZIP creation walks; an unreadable
+  subfolder is one `ArchiveError`, every readable file is archived, the source is not `Completed`
+  (Delete after operation keeps it). **Remaining (phase 9, App):** `FileItem.LoadFolderSizeAsync`
+  and `MainViewModel`'s size pre-count still walk on their own (no cancel on remove/clear).
+
 - **Added 2026-09-26 (from T-F232):** `FileItem.LoadFolderSizeAsync` walks a pending-list folder
   recursively with no cancellation — adding `C:\` walks the whole drive, and removing the row does
   not stop it. Before T-F232 a `pakko://` link could trigger this; now only the user's own
@@ -5093,6 +5112,12 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 - **Root (grouping, architecture review 2026-09-25):** one of seven separate walks over user-supplied folder trees (`WorkItemEnumerator`, `ZipArchiveService` `AddDirectoryToArchiveAsync`/`ComputeDirectoryTotals`, `TarSandboxedService.CountRecursiveEntriesAndBytes`, `FileHashService`, `FileItem`, `MainViewModel`'s size pre-count), each with its own access-denied, junction and depth behavior. A reparse-safe iterative walker already exists (`TarSandboxedService.EnumerateFilesGuarded`) but is used only for quarantine — fix T-F236/T-F237/T-F251 through one shared walker.
 
 ### T-F237 — Deep folder trees crash Pakko; a deep ZIP entry name costs gigabytes in browse mode (P1)
+
+- **Progress (2026-09-27, fix phase 6, wave 1 track B):** item 1 fixed in b05bd74 — every Core
+  walk (`ComputeDirectoryTotals`, `ComputeDirectoryBytes`, tar `CountRecursiveEntriesAndBytes`)
+  is on the iterative `DirectoryWalker`; a 5,000-deep tree archives (`DeepFolderTreeTests`,
+  `Category=Slow`). **Remaining:** item 2 (`ArchiveTreeIndex` O(depth^2) ancestor strings,
+  entry-depth/length limit in the pre-extraction checks) — phase 9 with the App.
 
 - [ ] **Status:** open — confirmed on device 2026-09-24.
   1. **Stack overflow:** directory walks recurse without a depth bound —
@@ -5341,6 +5366,12 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 
 ### T-F247 — "Scan for threats" crashes on any archive that contains an empty file (P1)
 
+- **Progress (2026-09-27, fix phase 6, wave 1 track B):** fixed in 1b0f824/c4fe0d4 — an entry
+  with declared length 0 is Clean without an AMSI call; a failing AMSI call is `Inconclusive` for
+  that entry and the rest are still scanned. Tests: zero-byte ZIP entry (fake and real AMSI),
+  zero-byte tar entry, one failing entry. Known gap (older): a short read is still scanned. Stays
+  `[~]` until the device check.
+
 - [ ] **Status:** open — confirmed 2026-09-25. A plain ZIP made by `pakko a` from `a.txt` +
   a zero-byte `empty.txt`, and a plain `tar -cf` of the same two files: `AntivirusScanService.
   ScanAsync` throws `System.InvalidOperationException: AmsiScanBuffer failed (HRESULT 0x80070057)`
@@ -5433,6 +5464,11 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 - **Root:** T-F261 (single routing and Group Policy owner) — the part this leaf needs goes with it. Architecture review: `docs/ARCHITECTURE.md:1485` records listing as deliberately not policy-gated, citing `ITarService.cs:35-41` — which is about the entry-safety pre-scan, not Group Policy — while `docs/POLICIES.md:44` says tar.exe is never spawned. Which one wins is a user decision (T-F261).
 
 ### T-F251 — Hashing a folder crashes on an unreadable subfolder or a junction loop (P1)
+
+- **Progress (2026-09-27, fix phase 6, wave 1 track B):** fixed in f95c566 — `ComputeFolderAsync`
+  lists files through `DirectoryWalker`: an unreadable folder is one error entry, junctions/symlinks
+  are skipped with their own entry (no loops, no foreign files); the parallel CRC-32 path fails a
+  file that shrank while hashed. Stays `[~]` until the device check.
 
 - [ ] **Status:** open — confirmed 2026-09-25. `FileHashService.ComputeFolderAsync` enumerates
   with `new DirectoryInfo(root).EnumerateFiles("*", SearchOption.AllDirectories).ToList()`
