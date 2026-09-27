@@ -158,230 +158,261 @@ TEST(AnyPathIsSupportedArchive, FalseWhenNoneSupported)
 }
 
 // ---------------------------------------------------------------------------
-// BuildExtractHereArgs
+// Command builders (T-F235: the switch part only - the paths go on stdin)
 // ---------------------------------------------------------------------------
 
-TEST(BuildExtractHereArgs, SingleFile)
+TEST(CommandBuilders, EachEmitsTheSwitchShellArgumentParserExpects)
 {
-    const auto args = BuildExtractHereArgs({ L"C:\\archive.zip" });
-    EXPECT_EQ(args, L"--extract-here \"C:\\archive.zip\"");
+    EXPECT_EQ(BuildExtractHereArgs(), L"--extract-here");
+    EXPECT_EQ(BuildExtractHereFlatArgs(), L"--extract-flat");
+    EXPECT_EQ(BuildExtractFolderArgs(), L"--extract-folder");
+    EXPECT_EQ(BuildTestArgs(), L"--test");
+    EXPECT_EQ(BuildScanArgs(), L"--scan");
+    EXPECT_EQ(BuildOpenUiExtractArgs(), L"--open-ui --extract");
+    EXPECT_EQ(BuildOpenUiArchiveArgs(), L"--open-ui --archive");
+    EXPECT_EQ(BuildOpenUiBrowseArgs(), L"--open-ui --browse");
 }
 
-TEST(BuildExtractHereArgs, MultipleFiles)
-{
-    const auto args = BuildExtractHereArgs({ L"C:\\a.zip", L"C:\\b.zip" });
-    EXPECT_EQ(args, L"--extract-here \"C:\\a.zip\" \"C:\\b.zip\"");
-}
-
-TEST(BuildExtractHereArgs, PathWithSpaces)
-{
-    const auto args = BuildExtractHereArgs({ L"C:\\My Files\\test.zip" });
-    EXPECT_EQ(args, L"--extract-here \"C:\\My Files\\test.zip\"");
-}
-
-TEST(BuildExtractHereArgs, CyrillicPath)
-{
-    const auto args = BuildExtractHereArgs({ L"C:\\\u0414\u0430\u043D\u0456.zip" });
-    EXPECT_EQ(args, L"--extract-here \"C:\\\u0414\u0430\u043D\u0456.zip\"");
-}
-
-// ---------------------------------------------------------------------------
-// BuildExtractHereFlatArgs (T-F115)
-// ---------------------------------------------------------------------------
-
-TEST(BuildExtractHereFlatArgs, SingleFile)
-{
-    const auto args = BuildExtractHereFlatArgs({ L"C:\\archive.zip" });
-    EXPECT_EQ(args, L"--extract-flat \"C:\\archive.zip\"");
-}
-
-TEST(BuildExtractHereFlatArgs, MultipleFiles)
-{
-    const auto args = BuildExtractHereFlatArgs({ L"C:\\a.zip", L"C:\\b.zip" });
-    EXPECT_EQ(args, L"--extract-flat \"C:\\a.zip\" \"C:\\b.zip\"");
-}
-
-// ---------------------------------------------------------------------------
-// BuildExtractFolderArgs
-// ---------------------------------------------------------------------------
-
-TEST(BuildExtractFolderArgs, SingleFile)
-{
-    const auto args = BuildExtractFolderArgs({ L"C:\\archive.zip" });
-    EXPECT_EQ(args, L"--extract-folder \"C:\\archive.zip\"");
-}
-
-TEST(BuildExtractFolderArgs, MultipleFiles)
-{
-    const auto args = BuildExtractFolderArgs({ L"C:\\a.zip", L"C:\\b.zip" });
-    EXPECT_EQ(args, L"--extract-folder \"C:\\a.zip\" \"C:\\b.zip\"");
-}
-
-// ---------------------------------------------------------------------------
-// BuildArchiveArgs
-// ---------------------------------------------------------------------------
-
-TEST(BuildArchiveArgs, SingleFile)
-{
-    const auto args = BuildArchiveArgs({ L"C:\\document.docx" });
-    EXPECT_EQ(args, L"--archive \"C:\\document.docx\"");
-}
-
-TEST(BuildArchiveArgs, MultipleFiles)
-{
-    const auto args = BuildArchiveArgs({ L"C:\\file1.txt", L"C:\\file2.txt" });
-    EXPECT_EQ(args, L"--archive \"C:\\file1.txt\" \"C:\\file2.txt\"");
-}
-
-TEST(BuildArchiveArgs, PathWithSpacesIsQuoted)
-{
-    const auto args = BuildArchiveArgs({ L"C:\\Program Files\\app.exe" });
-    EXPECT_NE(args.find(L"\"C:\\Program Files\\app.exe\""), std::wstring::npos);
-}
-
-// T-F99: a drive root (e.g. "Z:\") ends in a backslash. Quoting it naively as "Z:\" leaves an
-// odd number of backslashes before the closing quote, which CommandLineToArgvW/CRT parsing
-// reads as an escaped literal quote rather than the end of the argument - corrupting every
-// argument after it. Found via a live on-device test: Compress on a drive root silently produced
-// an empty pending list because the rest of the command line was swallowed into one argument.
-TEST(BuildArchiveArgs, DriveRootTrailingBackslashIsEscaped)
-{
-    const auto args = BuildArchiveArgs({ L"Z:\\" });
-    EXPECT_EQ(args, L"--archive \"Z:\\\\\"");
-}
-
-// T-F105: default format ("zip", or the arg omitted entirely) stays flag-less on the command
-// line — this is what keeps every BuildArchiveArgs test above unchanged after adding the param.
+// T-F105: default format ("zip", or the arg omitted entirely) stays flag-less on the command line.
 TEST(BuildArchiveArgs, DefaultFormatOmitsFormatFlag)
 {
-    const auto args = BuildArchiveArgs({ L"C:\\document.docx" });
-    EXPECT_EQ(args, L"--archive \"C:\\document.docx\"");
-}
-
-TEST(BuildArchiveArgs, ExplicitZipFormatOmitsFormatFlag)
-{
-    const auto args = BuildArchiveArgs({ L"C:\\document.docx" }, L"zip");
-    EXPECT_EQ(args, L"--archive \"C:\\document.docx\"");
+    EXPECT_EQ(BuildArchiveArgs(), L"--archive");
+    EXPECT_EQ(BuildArchiveArgs(L"zip"), L"--archive");
 }
 
 TEST(BuildArchiveArgs, TarFormatEmitsFormatFlag)
 {
-    const auto args = BuildArchiveArgs({ L"C:\\document.docx" }, L"tar");
-    EXPECT_EQ(args, L"--archive --format tar \"C:\\document.docx\"");
+    EXPECT_EQ(BuildArchiveArgs(L"tar"), L"--archive --format tar");
 }
 
-TEST(BuildArchiveArgs, TarFormatMultipleFiles)
+// T-F128
+TEST(BuildHashArgs, AlgorithmIsAlwaysExplicit)
 {
-    const auto args = BuildArchiveArgs({ L"C:\\file1.txt", L"C:\\file2.txt" }, L"tar");
-    EXPECT_EQ(args, L"--archive --format tar \"C:\\file1.txt\" \"C:\\file2.txt\"");
-}
-
-// ---------------------------------------------------------------------------
-// BuildTestArgs
-// ---------------------------------------------------------------------------
-
-TEST(BuildTestArgs, SingleFile)
-{
-    const auto args = BuildTestArgs({ L"C:\\archive.zip" });
-    EXPECT_EQ(args, L"--test \"C:\\archive.zip\"");
-}
-
-TEST(BuildTestArgs, MultipleFiles)
-{
-    const auto args = BuildTestArgs({ L"C:\\a.zip", L"C:\\b.zip" });
-    EXPECT_EQ(args, L"--test \"C:\\a.zip\" \"C:\\b.zip\"");
+    EXPECT_EQ(BuildHashArgs(L"crc32"), L"--hash --algorithm crc32");
+    EXPECT_EQ(BuildHashArgs(L"sha256"), L"--hash --algorithm sha256");
 }
 
 // ---------------------------------------------------------------------------
-// BuildScanArgs (T-F146)
+// Selection transport (T-F235)
 // ---------------------------------------------------------------------------
 
-TEST(BuildScanArgs, SingleFile)
+namespace
 {
-    const auto args = BuildScanArgs({ L"C:\\archive.zip" });
-    EXPECT_EQ(args, L"--scan \"C:\\archive.zip\"");
+    // The reading side's rule (Archiver.Shell/StdinPathList.cs): entries up to the final end marker.
+    std::vector<std::wstring> SplitPayload(const std::wstring& payload)
+    {
+        std::vector<std::wstring> paths;
+        if (payload.size() < 2 || payload[payload.size() - 1] != L'\0' || payload[payload.size() - 2] != L'\0')
+            return paths;
+        size_t start = 0;
+        const size_t bodyEnd = payload.size() - 1;
+        while (start < bodyEnd)
+        {
+            const size_t nul = payload.find(L'\0', start);
+            paths.push_back(payload.substr(start, nul - start));
+            start = nul + 1;
+        }
+        return paths;
+    }
+
+    std::vector<std::wstring> ManyLongPaths(size_t count)
+    {
+        std::vector<std::wstring> paths;
+        paths.reserve(count);
+        for (size_t i = 0; i < count; ++i)
+            paths.push_back(L"C:\\scratch\\many\\" + std::to_wstring(i) + L"_" + std::wstring(90, L'x') + L".txt");
+        return paths;
+    }
+
+    std::wstring ReadAll(HANDLE readEnd)
+    {
+        std::string bytes;
+        std::vector<char> buffer(65536);
+        DWORD read = 0;
+        while (ReadFile(readEnd, buffer.data(), static_cast<DWORD>(buffer.size()), &read, nullptr) && read > 0)
+            bytes.append(buffer.data(), read);
+        return std::wstring(reinterpret_cast<const wchar_t*>(bytes.data()), bytes.size() / sizeof(wchar_t));
+    }
 }
 
-TEST(BuildScanArgs, MultipleFiles)
+TEST(BuildShellCommandLine, QuotesTheExeAndEndsWithTheStdinFlag)
 {
-    const auto args = BuildScanArgs({ L"C:\\a.zip", L"C:\\b.tar.gz" });
-    EXPECT_EQ(args, L"--scan \"C:\\a.zip\" \"C:\\b.tar.gz\"");
+    EXPECT_EQ(BuildShellCommandLine(L"C:\\Program Files\\Pakko\\Archiver.Shell.exe", BuildArchiveArgs(L"tar")),
+        L"\"C:\\Program Files\\Pakko\\Archiver.Shell.exe\" --archive --format tar --paths-stdin");
+}
+
+TEST(BuildPathListPayload, FormatIsNulTerminatedEntriesPlusEndMarker)
+{
+    // Same bytes Archiver.Shell.Tests' StdinPathListTests.Read_SameBytesAsTheNativeBuilder_ParsesIdentically reads.
+    const std::wstring expected(L"C:\\a\0Z:\\\0\0", 10);
+    EXPECT_EQ(BuildPathListPayload({ L"C:\\a", L"Z:\\" }), expected);
+}
+
+TEST(BuildPathListPayload, KeepsSpacesTrailingBackslashAndUnicodeVerbatim)
+{
+    const std::wstring cyrillic = std::wstring(L"C:\\") + static_cast<wchar_t>(0x0414) + static_cast<wchar_t>(0x0430) + L".zip";
+    const std::vector<std::wstring> paths = { L"C:\\My Files\\a b.zip", L"Z:\\", cyrillic };
+    EXPECT_EQ(SplitPayload(BuildPathListPayload(paths)), paths);
+}
+
+// The T-F235 repro: 300 files with ~95-character names made a ~71,400-character command line,
+// past CreateProcess's 32,767 limit, and every command silently did nothing.
+TEST(PathListTransport, ALargeSelectionGoesToThePayloadNotTheCommandLine)
+{
+    const auto paths = ManyLongPaths(300);
+    const std::wstring commandLine = BuildShellCommandLine(L"C:\\Program Files\\Pakko\\Archiver.Shell.exe", BuildArchiveArgs());
+    const std::wstring payload = BuildPathListPayload(paths);
+
+    EXPECT_LT(commandLine.size(), 32767u);
+    EXPECT_EQ(commandLine.find(L"many"), std::wstring::npos);
+    EXPECT_GT(payload.size(), 32767u);
+    EXPECT_EQ(SplitPayload(payload), paths);
+}
+
+TEST(PathListFitsLimit, BoundaryAndOverflow)
+{
+    EXPECT_TRUE(PathListFitsLimit(kMaxPathListBytes / sizeof(wchar_t)));
+    EXPECT_FALSE(PathListFitsLimit(kMaxPathListBytes / sizeof(wchar_t) + 1));
+    EXPECT_FALSE(PathListFitsLimit(SIZE_MAX));
+}
+
+TEST(PathListTransport, OnlyTheReadEndIsInheritable)
+{
+    UniqueHandle readEnd, writeEnd;
+    ASSERT_HRESULT_SUCCEEDED(CreatePathListPipe(64, readEnd, writeEnd));
+
+    DWORD readFlags = 0, writeFlags = 0;
+    ASSERT_TRUE(GetHandleInformation(readEnd.get(), &readFlags));
+    ASSERT_TRUE(GetHandleInformation(writeEnd.get(), &writeFlags));
+    EXPECT_NE(readFlags & HANDLE_FLAG_INHERIT, 0u);
+    EXPECT_EQ(writeFlags & HANDLE_FLAG_INHERIT, 0u);
+}
+
+TEST(PathListTransport, PipeCarriesTenThousandPaths)
+{
+    const auto paths = ManyLongPaths(10000);
+    const std::wstring payload = BuildPathListPayload(paths);
+    UniqueHandle readEnd, writeEnd;
+    ASSERT_HRESULT_SUCCEEDED(CreatePathListPipe(payload.size() * sizeof(wchar_t), readEnd, writeEnd));
+
+    // Nobody reads yet: the buffer is sized to the payload, so this must complete, not block.
+    ASSERT_HRESULT_SUCCEEDED(WritePathList(writeEnd.get(), payload));
+    writeEnd.reset();
+
+    EXPECT_EQ(SplitPayload(ReadAll(readEnd.get())), paths);
+}
+
+TEST(PathListTransport, WriteFailsWhenNoReaderIsLeft)
+{
+    UniqueHandle readEnd, writeEnd;
+    ASSERT_HRESULT_SUCCEEDED(CreatePathListPipe(64, readEnd, writeEnd));
+    readEnd.reset();
+
+    EXPECT_HRESULT_FAILED(WritePathList(writeEnd.get(), BuildPathListPayload({ L"C:\\a.zip" })));
+}
+
+// A real child process (powershell.exe copying its stdin to a file) receives exactly the payload
+// through the inherited handle - the same launch path LaunchShellExe uses for Archiver.Shell.exe.
+TEST(LaunchWithPathList, ChildReceivesTheExactPayloadOnStdin)
+{
+    wchar_t tempDir[MAX_PATH] = {};
+    ASSERT_NE(GetTempPathW(MAX_PATH, tempDir), 0u);
+    const std::wstring outFile = std::wstring(tempDir) + L"pakko_tf235_" + std::to_wstring(GetCurrentProcessId()) + L".bin";
+    DeleteFileW(outFile.c_str());
+
+    const std::wstring exe = L"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe";
+    const std::wstring commandLine = L"\"" + exe + L"\" -NoProfile -NonInteractive -Command \"$i=[Console]::OpenStandardInput(); $o=[IO.File]::Create('"
+        + outFile + L"'); $i.CopyTo($o); $o.Close()\"";
+    const std::wstring payload = BuildPathListPayload(ManyLongPaths(2000));
+
+    UniqueHandle process;
+    ASSERT_HRESULT_SUCCEEDED(LaunchWithPathList(exe, commandLine, payload, &process));
+    ASSERT_EQ(WaitForSingleObject(process.get(), 60000), WAIT_OBJECT_0);
+    DWORD exitCode = 1;
+    ASSERT_TRUE(GetExitCodeProcess(process.get(), &exitCode));
+    EXPECT_EQ(exitCode, 0u);
+
+    UniqueHandle file(CreateFileW(outFile.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0, nullptr));
+    ASSERT_NE(file.get(), INVALID_HANDLE_VALUE);
+    const std::wstring received = ReadAll(file.get());
+    file.reset();
+    DeleteFileW(outFile.c_str());
+    EXPECT_EQ(received, payload);
+}
+
+TEST(LaunchWithPathList, MissingExeFails)
+{
+    EXPECT_HRESULT_FAILED(LaunchWithPathList(L"C:\\no\\such\\Archiver.Shell.exe",
+        L"\"C:\\no\\such\\Archiver.Shell.exe\" --test --paths-stdin", BuildPathListPayload({ L"C:\\a.zip" })));
+}
+
+TEST(LaunchWithPathList, EmptyPayloadIsRejected)
+{
+    EXPECT_EQ(LaunchWithPathList(L"C:\\Windows\\System32\\cmd.exe", L"cmd.exe /c exit", L""), E_INVALIDARG);
+}
+
+TEST(FormatHResult, IsEightHexDigits)
+{
+    EXPECT_EQ(FormatHResult(E_OUTOFMEMORY), L"0x8007000E");
+    EXPECT_EQ(FormatHResult(S_OK), L"0x00000000");
 }
 
 // ---------------------------------------------------------------------------
-// BuildHashArgs (T-F128)
+// GetSelectionPaths (T-F235) - needs COM, initialized by TestMain's ComEnvironment
 // ---------------------------------------------------------------------------
 
-TEST(BuildHashArgs, Crc32SingleFile)
+namespace
 {
-    const auto args = BuildHashArgs({ L"C:\\document.txt" }, L"crc32");
-    EXPECT_EQ(args, L"--hash --algorithm crc32 \"C:\\document.txt\"");
+    Microsoft::WRL::ComPtr<IShellItemArray> MakeArray(const std::vector<std::wstring>& parsingNames)
+    {
+        std::vector<PIDLIST_ABSOLUTE> pidls;
+        for (const auto& name : parsingNames)
+        {
+            PIDLIST_ABSOLUTE pidl = nullptr;
+            if (SUCCEEDED(SHParseDisplayName(name.c_str(), nullptr, &pidl, 0, nullptr)))
+                pidls.push_back(pidl);
+        }
+        Microsoft::WRL::ComPtr<IShellItemArray> array;
+        if (pidls.size() == parsingNames.size())
+            (void)SHCreateShellItemArrayFromIDLists(static_cast<UINT>(pidls.size()),
+                const_cast<PCIDLIST_ABSOLUTE_ARRAY>(pidls.data()), &array);
+        for (PIDLIST_ABSOLUTE pidl : pidls)
+            CoTaskMemFree(pidl);
+        return array;
+    }
+
+    // Control Panel: a real shell item with no filesystem path.
+    constexpr wchar_t kControlPanel[] = L"::{26EE0668-A00A-44D7-9371-BEB064C98683}";
 }
 
-TEST(BuildHashArgs, Sha256SingleFile)
+TEST(GetSelectionPaths, FileSystemItemsAreCompleteAndInOrder)
 {
-    const auto args = BuildHashArgs({ L"C:\\document.txt" }, L"sha256");
-    EXPECT_EQ(args, L"--hash --algorithm sha256 \"C:\\document.txt\"");
+    const auto array = MakeArray({ L"C:\\Windows", L"C:\\Windows\\System32" });
+    ASSERT_NE(array.Get(), nullptr);
+
+    const SelectionPaths selection = GetSelectionPaths(array.Get());
+
+    EXPECT_TRUE(selection.complete);
+    EXPECT_EQ(selection.paths, (std::vector<std::wstring>{ L"C:\\Windows", L"C:\\Windows\\System32" }));
 }
 
-TEST(BuildHashArgs, MultipleFiles)
+TEST(GetSelectionPaths, AnItemWithoutAFileSystemPathMarksTheSelectionIncomplete)
 {
-    const auto args = BuildHashArgs({ L"C:\\a.txt", L"C:\\b.txt" }, L"crc32");
-    EXPECT_EQ(args, L"--hash --algorithm crc32 \"C:\\a.txt\" \"C:\\b.txt\"");
+    const auto array = MakeArray({ L"C:\\Windows", kControlPanel });
+    ASSERT_NE(array.Get(), nullptr);
+
+    const SelectionPaths selection = GetSelectionPaths(array.Get());
+
+    EXPECT_FALSE(selection.complete);
+    EXPECT_EQ(selection.paths, (std::vector<std::wstring>{ L"C:\\Windows" }));
 }
 
-TEST(BuildHashArgs, FolderPath)
+TEST(GetSelectionPaths, NullArrayIsIncomplete)
 {
-    const auto args = BuildHashArgs({ L"C:\\MyFolder" }, L"sha256");
-    EXPECT_EQ(args, L"--hash --algorithm sha256 \"C:\\MyFolder\"");
-}
+    const SelectionPaths selection = GetSelectionPaths(nullptr);
 
-// ---------------------------------------------------------------------------
-// BuildOpenUiExtractArgs (T-F63)
-// ---------------------------------------------------------------------------
-
-TEST(BuildOpenUiExtractArgs, SingleFile)
-{
-    const auto args = BuildOpenUiExtractArgs({ L"C:\\archive.zip" });
-    EXPECT_EQ(args, L"--open-ui --extract \"C:\\archive.zip\"");
-}
-
-TEST(BuildOpenUiExtractArgs, MultipleFiles)
-{
-    const auto args = BuildOpenUiExtractArgs({ L"C:\\a.zip", L"C:\\b.zip" });
-    EXPECT_EQ(args, L"--open-ui --extract \"C:\\a.zip\" \"C:\\b.zip\"");
-}
-
-// ---------------------------------------------------------------------------
-// BuildOpenUiArchiveArgs (T-F63)
-// ---------------------------------------------------------------------------
-
-TEST(BuildOpenUiArchiveArgs, SingleFile)
-{
-    const auto args = BuildOpenUiArchiveArgs({ L"C:\\document.docx" });
-    EXPECT_EQ(args, L"--open-ui --archive \"C:\\document.docx\"");
-}
-
-TEST(BuildOpenUiArchiveArgs, MultipleFiles)
-{
-    const auto args = BuildOpenUiArchiveArgs({ L"C:\\file1.txt", L"C:\\file2.txt" });
-    EXPECT_EQ(args, L"--open-ui --archive \"C:\\file1.txt\" \"C:\\file2.txt\"");
-}
-
-// ---------------------------------------------------------------------------
-// BuildOpenUiBrowseArgs (T-F03)
-// ---------------------------------------------------------------------------
-
-TEST(BuildOpenUiBrowseArgs, SingleFile)
-{
-    const auto args = BuildOpenUiBrowseArgs({ L"C:\\archive.zip" });
-    EXPECT_EQ(args, L"--open-ui --browse \"C:\\archive.zip\"");
-}
-
-TEST(BuildOpenUiBrowseArgs, MultipleFiles)
-{
-    const auto args = BuildOpenUiBrowseArgs({ L"C:\\a.zip", L"C:\\b.zip" });
-    EXPECT_EQ(args, L"--open-ui --browse \"C:\\a.zip\" \"C:\\b.zip\"");
+    EXPECT_FALSE(selection.complete);
+    EXPECT_TRUE(selection.paths.empty());
 }
 
 // ---------------------------------------------------------------------------

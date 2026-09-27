@@ -508,4 +508,56 @@ public sealed class ShellArgumentParserTests
         result.Type.Should().Be(CommandType.Invalid);
         result.ErrorMessage.Should().NotBeNullOrEmpty();
     }
+
+    // --- T-F235: the selection arrives on stdin ---
+
+    [Theory]
+    [InlineData(new[] { "--extract-here", "--paths-stdin" }, CommandType.ExtractHere)]
+    [InlineData(new[] { "--extract-flat", "--paths-stdin" }, CommandType.ExtractHereFlat)]
+    [InlineData(new[] { "--extract-folder", "--paths-stdin" }, CommandType.ExtractFolder)]
+    [InlineData(new[] { "--archive", "--paths-stdin" }, CommandType.Archive)]
+    [InlineData(new[] { "--test", "--paths-stdin" }, CommandType.Test)]
+    [InlineData(new[] { "--scan", "--paths-stdin" }, CommandType.Scan)]
+    [InlineData(new[] { "--hash", "--algorithm", "crc32", "--paths-stdin" }, CommandType.Hash)]
+    [InlineData(new[] { "--open-ui", "--extract", "--paths-stdin" }, CommandType.OpenUiExtract)]
+    [InlineData(new[] { "--open-ui", "--archive", "--paths-stdin" }, CommandType.OpenUiArchive)]
+    [InlineData(new[] { "--open-ui", "--browse", "--paths-stdin" }, CommandType.OpenUiBrowse)]
+    public void PathsStdin_EveryCommand_ReadsFilesFromStdin(string[] args, CommandType expected)
+    {
+        ParsedCommand result = ShellArgumentParser.Parse(args);
+
+        result.Type.Should().Be(expected);
+        result.FilesFromStdin.Should().BeTrue();
+        result.Files.Should().BeEmpty();
+        result.ErrorMessage.Should().BeNull();
+    }
+
+    [Fact]
+    public void PathsStdin_TarArchive_KeepsFormat()
+    {
+        ParsedCommand result = ShellArgumentParser.Parse(["--archive", "--format", "tar", "--paths-stdin"]);
+
+        result.Type.Should().Be(CommandType.Archive);
+        result.Format.Should().Be(ArchiveContainerFormat.Tar);
+        result.FilesFromStdin.Should().BeTrue();
+    }
+
+    [Fact]
+    public void PathArguments_DoNotReadStdin()
+    {
+        ShellArgumentParser.Parse(["--archive", "C:\\a.txt"]).FilesFromStdin.Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData("--archive --paths-stdin C:\\a.txt")]
+    [InlineData("--extract-here C:\\a.zip --paths-stdin")]
+    [InlineData("--open-ui --archive C:\\a.txt --paths-stdin")]
+    [InlineData("--hash --algorithm sha256 --paths-stdin --paths-stdin")]
+    public void PathsStdin_MixedWithPathArguments_ReturnsInvalid(string commandLine)
+    {
+        ParsedCommand result = ShellArgumentParser.Parse(commandLine.Split(' '));
+
+        result.Type.Should().Be(CommandType.Invalid);
+        result.ErrorMessage.Should().NotBeNullOrEmpty();
+    }
 }

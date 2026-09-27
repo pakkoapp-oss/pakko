@@ -308,8 +308,8 @@ downstream service calls. Do not add path content checks to `ShellArgumentParser
 - Keep COM-free logic (path/arg building, `.zip` classification) as free functions in
   `ShellExtUtils.cpp`/`.h`, testable without loading the DLL or touching COM — this split already
   exists and must be preserved so `ShellExtUtilsTests.cpp` keeps running without a COM apartment.
-- Comment WHY, not WHAT (same rule as C#) — e.g. the existing comment on `BuildExtractHereArgs`
-  explaining why no path escaping is needed (`"` is invalid in NTFS filenames).
+- Comment WHY, not WHAT (same rule as C#) — e.g. the comment in `LaunchWithPathList` explaining
+  why the pipe's read end is closed before the path list is written (T-F235).
 - **Never write a literal non-ASCII character (`…`, `—`, Cyrillic, etc.) directly in a string
   literal.** Always use the `\uXXXX` escape (e.g. `L"…"` for the ellipsis). Reason: a `.cpp`
   file saved as UTF-8 **without a BOM** gets decoded by MSVC using the *active system code page*

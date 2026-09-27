@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "ShellExtUtils.h"
 #include "Localization.h"
+#include <memory>
 
 using Microsoft::WRL::ComPtr;
 
@@ -10,20 +11,6 @@ extern HMODULE g_hModule;
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
-
-static std::wstring QuotePath(const std::wstring& path)
-{
-    // T-F99: a trailing backslash immediately before the closing quote escapes the quote itself
-    // under Win32/CRT command-line parsing (CommandLineToArgvW) instead of closing the quoted
-    // argument, corrupting every argument after it. Only a bare drive root (e.g. "Z:\") ends in
-    // a backslash - a real file/folder path from Explorer never does - but T-F99 makes drive
-    // roots a reachable selection, so this must be handled. Doubling the trailing backslash
-    // makes the parser see a literal backslash followed by a real closing quote.
-    std::wstring escaped = path;
-    if (!escaped.empty() && escaped.back() == L'\\')
-        escaped += L'\\';
-    return L'"' + escaped + L'"';
-}
 
 // T-F131: .jar/.war/.ear (Java) and .apk (Android) are real ZIP-format containers — deliberately
 // narrower than "every possible ZIP container" (no Office/OpenDocument/.epub), per the user's
@@ -137,25 +124,7 @@ std::wstring GetShellExePath()
 
 std::vector<std::wstring> GetPathsFromShellItemArray(IShellItemArray* psia)
 {
-    std::vector<std::wstring> result;
-    if (!psia) return result;
-
-    DWORD count = 0;
-    if (FAILED(psia->GetCount(&count))) return result;
-
-    result.reserve(count);
-    for (DWORD i = 0; i < count; ++i)
-    {
-        ComPtr<IShellItem> pItem;
-        if (FAILED(psia->GetItemAt(i, &pItem))) continue;
-
-        LPWSTR pszPath = nullptr;
-        if (FAILED(pItem->GetDisplayName(SIGDN_FILESYSPATH, &pszPath))) continue;
-
-        result.emplace_back(pszPath);
-        CoTaskMemFree(pszPath);
-    }
-    return result;
+    return GetSelectionPaths(psia).paths;
 }
 
 bool AllPathsAreZip(const std::vector<std::wstring>& paths)
@@ -225,157 +194,225 @@ bool AnyPathIsSupportedArchive(const std::vector<std::wstring>& paths)
     return false;
 }
 
-HRESULT LaunchShellExe(const std::wstring& args)
+// ---------------------------------------------------------------------------
+// T-F235: selection transport - the paths go to Archiver.Shell.exe on its stdin.
+// ---------------------------------------------------------------------------
+
+const wchar_t kPathsStdinFlag[] = L"--paths-stdin";
+
+// Pipe buffer cap. A payload up to this size is written without waiting for Archiver.Shell to
+// start; a larger one waits for it to read (it reads the list before anything else).
+constexpr size_t kMaxPipeBufferBytes = 16u * 1024u * 1024u;
+
+namespace
 {
-    const std::wstring exePath = GetShellExePath();
-    if (exePath.empty()) return E_FAIL;
+    HRESULT LastErrorHResult()
+    {
+        const DWORD error = GetLastError();
+        return error == ERROR_SUCCESS ? E_FAIL : HRESULT_FROM_WIN32(error);
+    }
 
-    // CreateProcess requires a mutable command line buffer.
-    std::wstring cmdLine = L'"' + exePath + L'"' + L' ' + args;
+    // A one-entry PROC_THREAD_ATTRIBUTE_HANDLE_LIST, so the child inherits the pipe's read end and
+    // nothing else Explorer happens to hold as inheritable.
+    class InheritedHandleList
+    {
+    public:
+        InheritedHandleList() = default;
+        InheritedHandleList(const InheritedHandleList&) = delete;
+        InheritedHandleList& operator=(const InheritedHandleList&) = delete;
+        ~InheritedHandleList()
+        {
+            if (m_initialized)
+                DeleteProcThreadAttributeList(get());
+        }
 
-    STARTUPINFOW si = {};
-    si.cb = sizeof(si);
-    PROCESS_INFORMATION pi = {};
+        // `handle` must stay alive until CreateProcessW returns - the list stores its address.
+        HRESULT Initialize(HANDLE* handle)
+        {
+            SIZE_T size = 0;
+            // Size query: fails with ERROR_INSUFFICIENT_BUFFER by design and reports the size.
+            (void)InitializeProcThreadAttributeList(nullptr, 1, 0, &size);
+            if (size == 0) return LastErrorHResult();
+            m_buffer.resize(size);
+            if (!InitializeProcThreadAttributeList(get(), 1, 0, &size)) return LastErrorHResult();
+            m_initialized = true;
+            if (!UpdateProcThreadAttribute(get(), 0, PROC_THREAD_ATTRIBUTE_HANDLE_LIST, handle, sizeof(HANDLE), nullptr, nullptr))
+                return LastErrorHResult();
+            return S_OK;
+        }
 
-    const BOOL ok = CreateProcessW(
-        exePath.c_str(),
-        cmdLine.data(),
-        nullptr,   // lpProcessAttributes
-        nullptr,   // lpThreadAttributes
-        FALSE,     // bInheritHandles
-        CREATE_NO_WINDOW | CREATE_UNICODE_ENVIRONMENT,
-        nullptr,   // lpEnvironment (inherit parent)
-        nullptr,   // lpCurrentDirectory (inherit parent)
-        &si,
-        &pi
-    );
+        LPPROC_THREAD_ATTRIBUTE_LIST get() noexcept
+        {
+            return reinterpret_cast<LPPROC_THREAD_ATTRIBUTE_LIST>(m_buffer.data());
+        }
 
-    if (!ok) return HRESULT_FROM_WIN32(GetLastError());
+    private:
+        std::vector<unsigned char> m_buffer;
+        bool m_initialized = false;
+    };
+}
 
-    // Close handles immediately; we do not wait for the child.
-    CloseHandle(pi.hProcess);
-    CloseHandle(pi.hThread);
+SelectionPaths GetSelectionPaths(IShellItemArray* psia)
+{
+    SelectionPaths result;
+    DWORD count = 0;
+    if (!psia || FAILED(psia->GetCount(&count)))
+    {
+        result.complete = false;
+        return result;
+    }
+
+    result.paths.reserve(count);
+    for (DWORD i = 0; i < count; ++i)
+    {
+        ComPtr<IShellItem> pItem;
+        LPWSTR pszPath = nullptr;
+        if (FAILED(psia->GetItemAt(i, &pItem)) || FAILED(pItem->GetDisplayName(SIGDN_FILESYSPATH, &pszPath)))
+        {
+            result.complete = false;
+            continue;
+        }
+        const std::unique_ptr<wchar_t, decltype(&CoTaskMemFree)> owned(pszPath, &CoTaskMemFree);
+        result.paths.emplace_back(owned.get());
+    }
+    return result;
+}
+
+std::wstring BuildShellCommandLine(const std::wstring& exePath, const std::wstring& commandArgs)
+{
+    return L'"' + exePath + L"\" " + commandArgs + L' ' + kPathsStdinFlag;
+}
+
+std::wstring BuildPathListPayload(const std::vector<std::wstring>& paths)
+{
+    std::wstring payload;
+    for (const auto& p : paths)
+    {
+        payload += p;
+        payload += L'\0';
+    }
+    payload += L'\0';
+    return payload;
+}
+
+bool PathListFitsLimit(size_t payloadChars)
+{
+    return payloadChars <= kMaxPathListBytes / sizeof(wchar_t);
+}
+
+HRESULT CreatePathListPipe(size_t payloadBytes, UniqueHandle& readEnd, UniqueHandle& writeEnd)
+{
+    HANDLE read = nullptr;
+    HANDLE write = nullptr;
+    const DWORD bufferBytes = static_cast<DWORD>(std::min(payloadBytes, kMaxPipeBufferBytes));
+    // No SECURITY_ATTRIBUTES: both ends start non-inheritable, then only the read end is marked.
+    if (!CreatePipe(&read, &write, nullptr, bufferBytes)) return LastErrorHResult();
+    readEnd = UniqueHandle(read);
+    writeEnd = UniqueHandle(write);
+    if (!SetHandleInformation(readEnd.get(), HANDLE_FLAG_INHERIT, HANDLE_FLAG_INHERIT)) return LastErrorHResult();
     return S_OK;
 }
 
-std::wstring BuildExtractHereArgs(const std::vector<std::wstring>& paths)
+HRESULT WritePathList(HANDLE writeEnd, const std::wstring& payload)
 {
-    std::wstring args = L"--extract-here";
-    for (const auto& p : paths)
+    const char* data = reinterpret_cast<const char*>(payload.data());
+    size_t remaining = payload.size() * sizeof(wchar_t);
+    while (remaining > 0)
     {
-        args += L' ';
-        args += QuotePath(p);
+        const DWORD chunk = static_cast<DWORD>(std::min<size_t>(remaining, 1u << 20));
+        DWORD written = 0;
+        if (!WriteFile(writeEnd, data, chunk, &written, nullptr)) return LastErrorHResult();
+        if (written == 0 || written > chunk) return E_FAIL;
+        data += written;
+        remaining -= written;
     }
-    return args;
+    return S_OK;
 }
 
-std::wstring BuildExtractHereFlatArgs(const std::vector<std::wstring>& paths)
+HRESULT LaunchWithPathList(const std::wstring& exePath, const std::wstring& commandLine,
+    const std::wstring& payload, UniqueHandle* process)
 {
-    std::wstring args = L"--extract-flat";
-    for (const auto& p : paths)
-    {
-        args += L' ';
-        args += QuotePath(p);
-    }
-    return args;
+    if (payload.empty()) return E_INVALIDARG;
+    if (!PathListFitsLimit(payload.size())) return HRESULT_FROM_WIN32(ERROR_BUFFER_OVERFLOW);
+
+    UniqueHandle readEnd;
+    UniqueHandle writeEnd;
+    HRESULT hr = CreatePathListPipe(payload.size() * sizeof(wchar_t), readEnd, writeEnd);
+    if (FAILED(hr)) return hr;
+
+    HANDLE inherited = readEnd.get();
+    InheritedHandleList handleList;
+    hr = handleList.Initialize(&inherited);
+    if (FAILED(hr)) return hr;
+
+    STARTUPINFOEXW si = {};
+    si.StartupInfo.cb = sizeof(si);
+    si.StartupInfo.dwFlags = STARTF_USESTDHANDLES;
+    si.StartupInfo.hStdInput = inherited;
+    si.lpAttributeList = handleList.get();
+
+    // CreateProcessW may write to its command-line buffer.
+    std::wstring mutableCommandLine = commandLine;
+    PROCESS_INFORMATION pi = {};
+    const BOOL ok = CreateProcessW(
+        exePath.c_str(),
+        mutableCommandLine.data(),
+        nullptr,   // lpProcessAttributes
+        nullptr,   // lpThreadAttributes
+        TRUE,      // bInheritHandles - limited to the handle list above
+        CREATE_NO_WINDOW | CREATE_UNICODE_ENVIRONMENT | EXTENDED_STARTUPINFO_PRESENT,
+        nullptr,   // lpEnvironment (inherit parent)
+        nullptr,   // lpCurrentDirectory (inherit parent)
+        &si.StartupInfo,
+        &pi);
+    if (!ok) return LastErrorHResult();
+    UniqueHandle childProcess(pi.hProcess);
+    const UniqueHandle childThread(pi.hThread);
+
+    // Closed before writing: if the child did not get the read end, no reader is left and the
+    // write fails - reported to the user - instead of the command silently doing nothing.
+    readEnd.reset();
+    hr = WritePathList(writeEnd.get(), payload);
+    writeEnd.reset();
+
+    if (process != nullptr)
+        *process = std::move(childProcess);
+    return hr;
 }
 
-std::wstring BuildExtractFolderArgs(const std::vector<std::wstring>& paths)
+std::wstring FormatHResult(HRESULT hr)
 {
-    std::wstring args = L"--extract-folder";
-    for (const auto& p : paths)
-    {
-        args += L' ';
-        args += QuotePath(p);
-    }
-    return args;
+    wchar_t buffer[11] = {};
+    swprintf_s(buffer, L"0x%08X", static_cast<unsigned int>(hr));
+    return buffer;
 }
 
-std::wstring BuildArchiveArgs(const std::vector<std::wstring>& paths, const std::wstring& format)
+HRESULT LaunchShellExe(const std::wstring& commandArgs, const std::vector<std::wstring>& paths)
 {
-    std::wstring args = L"--archive";
+    if (paths.empty()) return E_INVALIDARG;
+    const std::wstring exePath = GetShellExePath();
+    if (exePath.empty()) return E_FAIL;
+    return LaunchWithPathList(exePath, BuildShellCommandLine(exePath, commandArgs), BuildPathListPayload(paths));
+}
+
+std::wstring BuildExtractHereArgs() { return L"--extract-here"; }
+std::wstring BuildExtractHereFlatArgs() { return L"--extract-flat"; }
+std::wstring BuildExtractFolderArgs() { return L"--extract-folder"; }
+
+std::wstring BuildArchiveArgs(const std::wstring& format)
+{
     // T-F105: "zip" is the pre-existing default and stays flag-less on the command line, so
     // ShellArgumentParser.ParseArchive's existing zip-when-absent default keeps working
     // unchanged; only a non-zip format needs to be spelled out explicitly.
-    if (format != L"zip")
-    {
-        args += L" --format ";
-        args += format;
-    }
-    for (const auto& p : paths)
-    {
-        args += L' ';
-        args += QuotePath(p);
-    }
-    return args;
+    return format == L"zip" ? L"--archive" : L"--archive --format " + format;
 }
 
-std::wstring BuildTestArgs(const std::vector<std::wstring>& paths)
-{
-    std::wstring args = L"--test";
-    for (const auto& p : paths)
-    {
-        args += L' ';
-        args += QuotePath(p);
-    }
-    return args;
-}
-
-std::wstring BuildScanArgs(const std::vector<std::wstring>& paths)
-{
-    std::wstring args = L"--scan";
-    for (const auto& p : paths)
-    {
-        args += L' ';
-        args += QuotePath(p);
-    }
-    return args;
-}
-
-std::wstring BuildHashArgs(const std::vector<std::wstring>& paths, const std::wstring& algorithm)
-{
-    std::wstring args = L"--hash --algorithm ";
-    args += algorithm;
-    for (const auto& p : paths)
-    {
-        args += L' ';
-        args += QuotePath(p);
-    }
-    return args;
-}
-
-std::wstring BuildOpenUiExtractArgs(const std::vector<std::wstring>& paths)
-{
-    std::wstring args = L"--open-ui --extract";
-    for (const auto& p : paths)
-    {
-        args += L' ';
-        args += QuotePath(p);
-    }
-    return args;
-}
-
-std::wstring BuildOpenUiArchiveArgs(const std::vector<std::wstring>& paths)
-{
-    std::wstring args = L"--open-ui --archive";
-    for (const auto& p : paths)
-    {
-        args += L' ';
-        args += QuotePath(p);
-    }
-    return args;
-}
-
-std::wstring BuildOpenUiBrowseArgs(const std::vector<std::wstring>& paths)
-{
-    std::wstring args = L"--open-ui --browse";
-    for (const auto& p : paths)
-    {
-        args += L' ';
-        args += QuotePath(p);
-    }
-    return args;
-}
+std::wstring BuildTestArgs() { return L"--test"; }
+std::wstring BuildScanArgs() { return L"--scan"; }
+std::wstring BuildHashArgs(const std::wstring& algorithm) { return L"--hash --algorithm " + algorithm; }
+std::wstring BuildOpenUiExtractArgs() { return L"--open-ui --extract"; }
+std::wstring BuildOpenUiArchiveArgs() { return L"--open-ui --archive"; }
+std::wstring BuildOpenUiBrowseArgs() { return L"--open-ui --browse"; }
 
 std::wstring BuildAddToArchiveTitle(const std::vector<std::wstring>& paths, const std::wstring& ext, const std::wstring& localeTag)
 {

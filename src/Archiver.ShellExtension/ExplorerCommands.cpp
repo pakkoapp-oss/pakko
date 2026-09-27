@@ -77,6 +77,33 @@ static const std::wstring& GetAppIconPath()
 }
 
 // ---------------------------------------------------------------------------
+// T-F235: shared Invoke body. Explorer ignores Invoke's HRESULT, so anything that stops a command
+// is shown to the user here - a selection with items that have no filesystem path is refused
+// whole (a partial archive the user believes is complete is worse than a refusal), and a launch
+// failure shows its error code.
+// ---------------------------------------------------------------------------
+static void ShowInvokeError(const std::wstring& text) noexcept
+{
+    (void)MessageBoxW(nullptr, text.c_str(), L"Pakko", MB_OK | MB_ICONERROR | MB_SETFOREGROUND);
+}
+
+static HRESULT RunShellCommand(IShellItemArray* psia, const std::wstring& commandArgs, bool singleItemOnly = false)
+{
+    const SelectionPaths selection = GetSelectionPaths(psia);
+    if (!selection.complete)
+    {
+        ShowInvokeError(GetLocalizedString(StringId::SelectionNotOnDisk));
+        return E_INVALIDARG;
+    }
+    if (selection.paths.empty() || (singleItemOnly && selection.paths.size() != 1)) return E_INVALIDARG;
+
+    const HRESULT hr = LaunchShellExe(commandArgs, selection.paths);
+    if (FAILED(hr))
+        ShowInvokeError(ApplyTemplate(GetLocalizedString(StringId::LaunchFailedTemplate), FormatHResult(hr)));
+    return hr;
+}
+
+// ---------------------------------------------------------------------------
 // ExtractHereCommand
 // ---------------------------------------------------------------------------
 
@@ -120,9 +147,7 @@ STDMETHODIMP ExtractHereCommand::Invoke(IShellItemArray* psia, IBindCtx*) noexce
 {
     try
     {
-        const auto paths = GetPathsFromShellItemArray(psia);
-        if (paths.empty()) return E_INVALIDARG;
-        return LaunchShellExe(BuildExtractHereArgs(paths));
+        return RunShellCommand(psia, BuildExtractHereArgs());
     }
     catch (...) { return E_FAIL; }
 }
@@ -183,9 +208,7 @@ STDMETHODIMP ExtractHereFlatCommand::Invoke(IShellItemArray* psia, IBindCtx*) no
 {
     try
     {
-        const auto paths = GetPathsFromShellItemArray(psia);
-        if (paths.empty()) return E_INVALIDARG;
-        return LaunchShellExe(BuildExtractHereFlatArgs(paths));
+        return RunShellCommand(psia, BuildExtractHereFlatArgs());
     }
     catch (...) { return E_FAIL; }
 }
@@ -251,9 +274,7 @@ STDMETHODIMP ExtractFolderCommand::Invoke(IShellItemArray* psia, IBindCtx*) noex
 {
     try
     {
-        const auto paths = GetPathsFromShellItemArray(psia);
-        if (paths.empty()) return E_INVALIDARG;
-        return LaunchShellExe(BuildExtractFolderArgs(paths));
+        return RunShellCommand(psia, BuildExtractFolderArgs());
     }
     catch (...) { return E_FAIL; }
 }
@@ -318,9 +339,7 @@ STDMETHODIMP ArchiveCommand::Invoke(IShellItemArray* psia, IBindCtx*) noexcept
 {
     try
     {
-        const auto paths = GetPathsFromShellItemArray(psia);
-        if (paths.empty()) return E_INVALIDARG;
-        return LaunchShellExe(BuildArchiveArgs(paths));
+        return RunShellCommand(psia, BuildArchiveArgs());
     }
     catch (...) { return E_FAIL; }
 }
@@ -385,9 +404,7 @@ STDMETHODIMP TarArchiveCommand::Invoke(IShellItemArray* psia, IBindCtx*) noexcep
 {
     try
     {
-        const auto paths = GetPathsFromShellItemArray(psia);
-        if (paths.empty()) return E_INVALIDARG;
-        return LaunchShellExe(BuildArchiveArgs(paths, L"tar"));
+        return RunShellCommand(psia, BuildArchiveArgs(L"tar"));
     }
     catch (...) { return E_FAIL; }
 }
@@ -457,9 +474,7 @@ STDMETHODIMP TestCommand::Invoke(IShellItemArray* psia, IBindCtx*) noexcept
 {
     try
     {
-        const auto paths = GetPathsFromShellItemArray(psia);
-        if (paths.empty()) return E_INVALIDARG;
-        return LaunchShellExe(BuildTestArgs(paths));
+        return RunShellCommand(psia, BuildTestArgs());
     }
     catch (...) { return E_FAIL; }
 }
@@ -524,9 +539,7 @@ STDMETHODIMP ScanCommand::Invoke(IShellItemArray* psia, IBindCtx*) noexcept
 {
     try
     {
-        const auto paths = GetPathsFromShellItemArray(psia);
-        if (paths.empty()) return E_INVALIDARG;
-        return LaunchShellExe(BuildScanArgs(paths));
+        return RunShellCommand(psia, BuildScanArgs());
     }
     catch (...) { return E_FAIL; }
 }
@@ -594,9 +607,7 @@ STDMETHODIMP ExtractDialogCommand::Invoke(IShellItemArray* psia, IBindCtx*) noex
 {
     try
     {
-        const auto paths = GetPathsFromShellItemArray(psia);
-        if (paths.empty()) return E_INVALIDARG;
-        return LaunchShellExe(BuildOpenUiExtractArgs(paths));
+        return RunShellCommand(psia, BuildOpenUiExtractArgs());
     }
     catch (...) { return E_FAIL; }
 }
@@ -659,9 +670,7 @@ STDMETHODIMP CompressDialogCommand::Invoke(IShellItemArray* psia, IBindCtx*) noe
 {
     try
     {
-        const auto paths = GetPathsFromShellItemArray(psia);
-        if (paths.empty()) return E_INVALIDARG;
-        return LaunchShellExe(BuildOpenUiArchiveArgs(paths));
+        return RunShellCommand(psia, BuildOpenUiArchiveArgs());
     }
     catch (...) { return E_FAIL; }
 }
@@ -727,9 +736,7 @@ STDMETHODIMP BrowseCommand::Invoke(IShellItemArray* psia, IBindCtx*) noexcept
 {
     try
     {
-        const auto paths = GetPathsFromShellItemArray(psia);
-        if (paths.size() != 1) return E_INVALIDARG;
-        return LaunchShellExe(BuildOpenUiBrowseArgs(paths));
+        return RunShellCommand(psia, BuildOpenUiBrowseArgs(), true);
     }
     catch (...) { return E_FAIL; }
 }
@@ -791,9 +798,7 @@ STDMETHODIMP HashCrc32Command::Invoke(IShellItemArray* psia, IBindCtx*) noexcept
 {
     try
     {
-        const auto paths = GetPathsFromShellItemArray(psia);
-        if (paths.empty()) return E_INVALIDARG;
-        return LaunchShellExe(BuildHashArgs(paths, L"crc32"));
+        return RunShellCommand(psia, BuildHashArgs(L"crc32"));
     }
     catch (...) { return E_FAIL; }
 }
@@ -851,9 +856,7 @@ STDMETHODIMP HashSha256Command::Invoke(IShellItemArray* psia, IBindCtx*) noexcep
 {
     try
     {
-        const auto paths = GetPathsFromShellItemArray(psia);
-        if (paths.empty()) return E_INVALIDARG;
-        return LaunchShellExe(BuildHashArgs(paths, L"sha256"));
+        return RunShellCommand(psia, BuildHashArgs(L"sha256"));
     }
     catch (...) { return E_FAIL; }
 }
