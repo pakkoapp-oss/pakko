@@ -15,4 +15,16 @@ public interface IExtractionRouter
         ExtractOptions options,
         IProgress<ProgressReport>? progress = null,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Verifies archives without writing anything (T-F261): ZIP archives through
+    /// IArchiveService.TestAsync; tar-family archives are skipped, since tar.exe has no test
+    /// mode; archives refused by Group Policy or tar.exe's capabilities are skipped with that
+    /// reason. Never starts tar.exe. Cancellation throws OperationCanceledException.
+    /// </summary>
+    Task<ArchiveResult> TestAsync(
+        IReadOnlyList<string> archivePaths,
+        IProgress<ProgressReport>? progress = null,
+        Func<PasswordPromptInfo, Task<PasswordDecision>>? resolvePasswordAsync = null,
+        CancellationToken cancellationToken = default);
 }

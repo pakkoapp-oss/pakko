@@ -74,7 +74,7 @@ public sealed class ZipWriterCharacterizationTests : IDisposable
 
         string destinationDir = Path.Combine(_temp.Path, "dest");
         Directory.CreateDirectory(destinationDir);
-        ArchiveResult result = await new ZipArchiveService().ArchiveAsync(new ArchiveOptions
+        ArchiveResult result = await new ZipArchiveService(new GroupPolicyOptions()).ArchiveAsync(new ArchiveOptions
         {
             SourcePaths = [sourceDir],
             DestinationFolder = destinationDir,

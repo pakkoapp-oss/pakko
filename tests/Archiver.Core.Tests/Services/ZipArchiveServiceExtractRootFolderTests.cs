@@ -11,7 +11,7 @@ namespace Archiver.Core.Tests.Services;
 // root only when it is named like the archive (NanaZip's default ElimDup).
 public sealed class ZipArchiveServiceExtractRootFolderTests : IDisposable
 {
-    private readonly ZipArchiveService _sut = new();
+    private readonly ZipArchiveService _sut = new(new GroupPolicyOptions());
     private readonly TempDirectory _temp = new();
 
     public void Dispose() => _temp.Dispose();

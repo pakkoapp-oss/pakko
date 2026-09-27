@@ -50,7 +50,7 @@ public sealed class AntivirusScanService : IAntivirusScanService
     // Archiver.Core.Tests' plain net8.0 TFM without needing its own annotation.
     /// <summary>Creates a scanner wired to the real AMSI provider.</summary>
     [SupportedOSPlatform("windows")]
-    public AntivirusScanService(TarCapabilities tarCapabilities, GroupPolicyOptions? groupPolicyOptions = null)
+    public AntivirusScanService(TarCapabilities tarCapabilities, GroupPolicyOptions groupPolicyOptions)
         : this(tarCapabilities, groupPolicyOptions, () => new AmsiScanner("Pakko"), AmsiProviderCheck.IsAnyProviderRegistered)
     {
     }
@@ -62,12 +62,13 @@ public sealed class AntivirusScanService : IAntivirusScanService
     // (CLAUDE.md) — this mirrors that convention.
     internal AntivirusScanService(
         TarCapabilities tarCapabilities,
-        GroupPolicyOptions? groupPolicyOptions,
+        GroupPolicyOptions groupPolicyOptions,
         Func<IAmsiScanner> scannerFactory,
         Func<bool> isProviderRegistered)
     {
+        ArgumentNullException.ThrowIfNull(groupPolicyOptions);
         _tarCapabilities = tarCapabilities;
-        _policy = groupPolicyOptions ?? new GroupPolicyOptions();
+        _policy = groupPolicyOptions;
         _scannerFactory = scannerFactory;
         _isProviderRegistered = isProviderRegistered;
     }

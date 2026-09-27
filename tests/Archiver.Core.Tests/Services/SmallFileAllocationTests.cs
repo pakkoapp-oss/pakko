@@ -45,7 +45,7 @@ public sealed class SmallFileAllocationTests : IDisposable
     public async Task ArchiveAsync_SequentialPathSmallFiles_DoesNotAllocateLargeBuffersPerFile()
     {
         string[] files = CreateSmallFiles("zip");
-        var service = new ZipArchiveService();
+        var service = new ZipArchiveService(new GroupPolicyOptions());
         await ArchiveAsync(service, files, "warmup"); // JIT and pool warm-up
 
         long before = GC.GetTotalAllocatedBytes(precise: true);

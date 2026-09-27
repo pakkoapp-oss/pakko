@@ -11,7 +11,7 @@ namespace Archiver.Core.Tests.Services;
 /// </summary>
 public sealed class TarSandboxedServiceTests
 {
-    private readonly TarSandboxedService _sut = new();
+    private readonly TarSandboxedService _sut = new(new GroupPolicyOptions());
 
     [Fact]
     public async Task DetectCapabilitiesAsync_RealTarExe_ReturnsParsedVersionWithoutThrowing()

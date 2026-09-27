@@ -15,7 +15,7 @@ public sealed class ZipArchiveServiceExtractIntegrityTests : IDisposable
     private const string Password = "s3cret-pass";
     private static readonly string LongContent = string.Concat(Enumerable.Repeat("integrity-check ", 64));
 
-    private readonly ZipArchiveService _sut = new();
+    private readonly ZipArchiveService _sut = new(new GroupPolicyOptions());
     private readonly TempDirectory _temp = new();
 
     public void Dispose() => _temp.Dispose();

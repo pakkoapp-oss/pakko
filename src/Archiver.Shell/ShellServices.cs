@@ -12,29 +12,20 @@ internal sealed class ShellServices
 {
     public required Func<Task<IExtractionRouter>> CreateExtractionRouterAsync { get; init; }
     public required Func<IArchiveCreationRouter> CreateArchiveCreationRouter { get; init; }
-    public required Func<IArchiveService> CreateArchiveService { get; init; }
-    public required Func<Task<AntivirusScanService>> CreateScanServiceAsync { get; init; }
+    public required Func<Task<IAntivirusScanService>> CreateScanServiceAsync { get; init; }
     public required Func<LaunchOperation, IReadOnlyList<string>, AppLaunchResult> LaunchApp { get; init; }
 
-    public static ShellServices Create(GroupPolicyOptions policy) => new()
+    // T-F261: every service comes from Core's one factory, built with the one loaded policy.
+    // T-F85: the factory probes tar.exe at most once per Explorer invocation.
+    public static ShellServices Create(GroupPolicyOptions policy)
     {
-        // T-F85: DetectCapabilitiesAsync spawns tar.exe, so it runs once per Explorer invocation
-        // and the result is shared across every archive in the selection.
-        CreateExtractionRouterAsync = async () =>
+        PakkoServices core = PakkoServices.Create(policy);
+        return new()
         {
-            var tarService = new TarSandboxedService(policy);
-            TarCapabilities capabilities = await tarService.DetectCapabilitiesAsync().ConfigureAwait(false);
-            return new ExtractionRouter(new ZipArchiveService(policy), tarService, capabilities, policy);
-        },
-        CreateArchiveCreationRouter = () =>
-            new ArchiveCreationRouter(new ZipArchiveService(policy), new TarSandboxedService(policy), policy),
-        CreateArchiveService = () => new ZipArchiveService(policy),
-        CreateScanServiceAsync = async () =>
-        {
-            var tarService = new TarSandboxedService(policy);
-            TarCapabilities capabilities = await tarService.DetectCapabilitiesAsync().ConfigureAwait(false);
-            return new AntivirusScanService(capabilities, policy);
-        },
-        LaunchApp = AppLauncher.Launch,
-    };
+            CreateExtractionRouterAsync = core.CreateExtractionRouterAsync,
+            CreateArchiveCreationRouter = () => core.CreationRouter,
+            CreateScanServiceAsync = core.CreateScanServiceAsync,
+            LaunchApp = AppLauncher.Launch,
+        };
+    }
 }

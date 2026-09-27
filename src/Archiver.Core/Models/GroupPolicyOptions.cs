@@ -2,10 +2,10 @@ namespace Archiver.Core.Models;
 
 /// <summary>
 /// Effective Group Policy settings for Pakko (T-F51), read from
-/// HKLM\Software\Policies\Pakko\ via GroupPolicyService.Load(). A parameterless instance
-/// reproduces today's shipped behavior exactly (MOTW propagated to all files, no format
-/// restriction, tar extraction enabled) — this is the default every service falls back to when
-/// no GroupPolicyOptions is supplied.
+/// HKLM\Software\Policies\Pakko\ via GroupPolicyService.Load(). A parameterless instance means
+/// no policy is set (MOTW propagated to all files, no format restriction, tar extraction
+/// enabled). T-F261: every engine and router requires an instance — none falls back to this
+/// default on its own.
 /// </summary>
 public sealed record GroupPolicyOptions
 {

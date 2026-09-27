@@ -12,7 +12,7 @@ namespace Archiver.Core.Tests.Services;
 // entry, as tar's pre-scan already does for the whole archive.
 public sealed class ZipArchiveServiceExtractUnsafePathTests : IDisposable
 {
-    private readonly ZipArchiveService _sut = new();
+    private readonly ZipArchiveService _sut = new(new GroupPolicyOptions());
     private readonly TempDirectory _temp = new();
 
     public void Dispose() => _temp.Dispose();

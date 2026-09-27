@@ -128,8 +128,8 @@ public sealed class CliConflictPromptTests : IDisposable
         using var quit = new CancellationTokenSource();
         StickyCallback<ConflictInfo, ConflictDecision> resolver = CliConflictPrompt.CreateResolver(() => { prompts++; return "a"; }, _ => { }, quit);
 
-        var tarService = new TarSandboxedService();
-        var router = new ExtractionRouter(new ZipArchiveService(), tarService, await tarService.DetectCapabilitiesAsync());
+        var tarService = new TarSandboxedService(new GroupPolicyOptions());
+        var router = new ExtractionRouter(new ZipArchiveService(new GroupPolicyOptions()), tarService, await tarService.DetectCapabilitiesAsync(), new GroupPolicyOptions());
         ArchiveResult result = await router.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [zipPath, tarPath],
@@ -183,8 +183,8 @@ public sealed class CliConflictPromptTests : IDisposable
     {
         using var quit = new CancellationTokenSource();
         StickyCallback<ConflictInfo, ConflictDecision> resolver = CliConflictPrompt.CreateResolver(Lines("q"), _ => { }, quit);
-        var tarService = new TarSandboxedService();
-        var router = new ExtractionRouter(new ZipArchiveService(), tarService, await tarService.DetectCapabilitiesAsync());
+        var tarService = new TarSandboxedService(new GroupPolicyOptions());
+        var router = new ExtractionRouter(new ZipArchiveService(new GroupPolicyOptions()), tarService, await tarService.DetectCapabilitiesAsync(), new GroupPolicyOptions());
         try
         {
             await router.ExtractAsync(new ExtractOptions

@@ -60,7 +60,7 @@ public sealed class ArchiveCreationRouterTests
     {
         var zipService = new FakeArchiveService();
         var tarService = new FakeTarService();
-        var router = new ArchiveCreationRouter(zipService, tarService);
+        var router = new ArchiveCreationRouter(zipService, tarService, new GroupPolicyOptions());
         var options = new ArchiveOptions { SourcePaths = ["a.txt"], Format = ArchiveContainerFormat.Zip };
 
         ArchiveResult result = await router.ArchiveAsync(options);
@@ -82,7 +82,7 @@ public sealed class ArchiveCreationRouterTests
     {
         var zipService = new FakeArchiveService();
         var tarService = new FakeTarService();
-        var router = new ArchiveCreationRouter(zipService, tarService);
+        var router = new ArchiveCreationRouter(zipService, tarService, new GroupPolicyOptions());
         var options = new ArchiveOptions { SourcePaths = ["a.txt"], Format = format };
 
         ArchiveResult result = await router.ArchiveAsync(options);

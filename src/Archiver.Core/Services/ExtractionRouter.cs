@@ -8,9 +8,9 @@ public sealed class ExtractionRouter(
     IArchiveService archiveService,
     ITarService tarService,
     TarCapabilities tarCapabilities,
-    GroupPolicyOptions? groupPolicyOptions = null) : IExtractionRouter
+    GroupPolicyOptions groupPolicyOptions) : IExtractionRouter
 {
-    private readonly GroupPolicyOptions _policy = groupPolicyOptions ?? new GroupPolicyOptions();
+    private readonly GroupPolicyOptions _policy = groupPolicyOptions ?? throw new ArgumentNullException(nameof(groupPolicyOptions));
 
     /// <inheritdoc/>
     public async Task<ArchiveResult> ExtractAsync(
@@ -68,6 +68,26 @@ public sealed class ExtractionRouter(
         }
 
         return merged;
+    }
+
+    /// <inheritdoc/>
+    public async Task<ArchiveResult> TestAsync(
+        IReadOnlyList<string> archivePaths,
+        IProgress<ProgressReport>? progress = null,
+        Func<PasswordPromptInfo, Task<PasswordDecision>>? resolvePasswordAsync = null,
+        CancellationToken cancellationToken = default)
+    {
+        // T-F261: same classifier as extraction. tar.exe has no test mode, so a tar-family path
+        // that policy and capabilities would allow is still only reported, never opened.
+        ArchiveFormatPolicy.Classification classification = ArchiveFormatPolicy.Classify(archivePaths, tarCapabilities, _policy);
+
+        ArchiveResult zipResult = classification.ZipPaths.Count > 0
+            ? await archiveService.TestAsync(classification.ZipPaths, progress, resolvePasswordAsync, cancellationToken).ConfigureAwait(false)
+            : EmptyResult();
+
+        IEnumerable<SkippedFile> untestable = classification.TarPaths
+            .Select(path => new SkippedFile { Path = path, Reason = ArchiveFormatPolicy.NoTestCapabilityReason });
+        return zipResult with { SkippedFiles = [.. zipResult.SkippedFiles, .. untestable, .. classification.Unsupported] };
     }
 
     private static ArchiveResult EmptyResult() => new() { Success = true };

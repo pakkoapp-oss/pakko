@@ -45,7 +45,7 @@ public sealed class AntivirusScanServiceTarTests : IDisposable
     public void Dispose() => _temp.Dispose();
 
     private static AntivirusScanService CreateService(FakeAmsiScanner scanner) =>
-        new(new TarCapabilities(), groupPolicyOptions: null, () => scanner, isProviderRegistered: () => true);
+        new(new TarCapabilities(), groupPolicyOptions: new GroupPolicyOptions(), () => scanner, isProviderRegistered: () => true);
 
     [Integration]
     public async Task ScanAsync_CleanTarArchive_ReturnsCleanAndScansEveryEntry()

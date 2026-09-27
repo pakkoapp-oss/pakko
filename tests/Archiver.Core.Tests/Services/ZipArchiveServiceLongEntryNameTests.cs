@@ -11,7 +11,7 @@ namespace Archiver.Core.Tests.Services;
 // (90 nested 250-character CJK folders). Needs Windows long paths (LongPathsEnabled).
 public sealed class ZipArchiveServiceLongEntryNameTests : IDisposable
 {
-    private readonly ZipArchiveService _sut = new();
+    private readonly ZipArchiveService _sut = new(new GroupPolicyOptions());
     private readonly TempDirectory _temp = new();
 
     public void Dispose()

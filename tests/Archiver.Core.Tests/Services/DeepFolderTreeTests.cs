@@ -44,7 +44,7 @@ public sealed class DeepFolderTreeFixture : IDisposable
 [Trait("Category", "Slow")]
 public sealed class DeepFolderTreeTests(DeepFolderTreeFixture tree) : IClassFixture<DeepFolderTreeFixture>
 {
-    private readonly ZipArchiveService _sut = new();
+    private readonly ZipArchiveService _sut = new(new GroupPolicyOptions());
 
     private static readonly string ExpectedDeepEntry =
         "deep/" + string.Concat(Enumerable.Repeat("d/", DeepFolderTreeFixture.Depth)) + "f.txt";

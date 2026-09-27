@@ -29,14 +29,11 @@ public sealed class ZipArchiveService : IArchiveService
 
     private readonly GroupPolicyOptions _policy;
 
-    /// <summary>
-    /// Creates the service. T-F51: policy is optional so every existing
-    /// <c>new ZipArchiveService()</c> call site keeps compiling — a null policy means "everything
-    /// allowed", matching today's shipped behavior exactly.
-    /// </summary>
-    public ZipArchiveService(GroupPolicyOptions? policy = null)
+    /// <summary>Creates the service under the given Group Policy (T-F261: required, never defaulted).</summary>
+    public ZipArchiveService(GroupPolicyOptions policy)
     {
-        _policy = policy ?? new GroupPolicyOptions();
+        ArgumentNullException.ThrowIfNull(policy);
+        _policy = policy;
     }
 
     // T-F234: the OEM/ANSI pages entry names without the UTF-8 flag are decoded with. Tests pin

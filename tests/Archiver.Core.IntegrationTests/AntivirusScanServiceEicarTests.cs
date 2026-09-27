@@ -80,7 +80,7 @@ public sealed class AntivirusScanServiceEicarTests : IDisposable
     // tests use — that overload exists specifically to substitute a FakeAmsiScanner, which is the
     // one thing these two tests deliberately do NOT want.
     private static AntivirusScanService CreateRealService(TarCapabilities? tarCapabilities = null) =>
-        new(tarCapabilities ?? new TarCapabilities());
+        new(tarCapabilities ?? new TarCapabilities(), new GroupPolicyOptions());
 
     [SkipIfTarOrAmsiUnavailable]
     public async Task ScanAsync_RealEicarInZipArchive_ReturnsThreatDetected()

@@ -16,7 +16,7 @@ namespace Archiver.Core.IntegrationTests;
 [Collection("TarSandbox")]
 public sealed class TarSandboxedServiceNameEncodingTests : IDisposable
 {
-    private readonly TarSandboxedService _sut = new();
+    private readonly TarSandboxedService _sut = new(new GroupPolicyOptions());
     private readonly TempDirectory _temp = new();
 
     public void Dispose() => _temp.Dispose();

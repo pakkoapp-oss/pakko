@@ -36,7 +36,7 @@ public sealed class ZipSandboxSpikePerformanceTests : IDisposable
     private static readonly AppContainerProfile Profile = new(ProfileName);
     private static readonly Lazy<string> ToolExePath = new(EnsureToolDirectory);
 
-    private readonly ZipArchiveService _sut = new();
+    private readonly ZipArchiveService _sut = new(new GroupPolicyOptions());
     private readonly TempDirectory _temp = new();
     private readonly ITestOutputHelper _output;
 

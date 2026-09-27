@@ -153,11 +153,12 @@ internal sealed class ShellCommands(IOperationUi ui, ShellServices services)
     // --test: verify every entry's CRC-32 across all selected archives without writing anything.
     // One TestAsync call spans the whole selection, so Core's own PasswordResolver already keeps
     // "apply to remaining" across archives — no StickyCallback here (unlike the extract commands,
-    // which call ExtractAsync once per archive).
+    // which call ExtractAsync once per archive). T-F261: through the router, so Group Policy and
+    // format detection are Core's, not a ZIP-engine-for-everything shortcut.
     // -------------------------------------------------------------------------
     public async Task TestAsync(IReadOnlyList<string> archivePaths)
     {
-        IArchiveService service = services.CreateArchiveService();
+        IExtractionRouter service = await services.CreateExtractionRouterAsync().ConfigureAwait(false);
         string title = archivePaths.Count == 1
             ? OperationTextLocalizer.Get("TitleTesting", Path.GetFileName(archivePaths[0]))
             : OperationTextLocalizer.Get("TitleTestingMany", archivePaths.Count);
@@ -221,7 +222,7 @@ internal sealed class ShellCommands(IOperationUi ui, ShellServices services)
             ? OperationTextLocalizer.Get("TitleScanning", Path.GetFileName(archivePaths[0]))
             : OperationTextLocalizer.Get("TitleScanningMany", archivePaths.Count);
 
-        AntivirusScanService service = await services.CreateScanServiceAsync().ConfigureAwait(false);
+        IAntivirusScanService service = await services.CreateScanServiceAsync().ConfigureAwait(false);
         using IOperationSession session = ui.Begin(title, ProgressStyle.Percent);
         var options = new AntivirusScanOptions
         {

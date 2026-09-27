@@ -8,7 +8,7 @@ namespace Archiver.Core.Tests.Services;
 
 public sealed class ZipArchiveServiceExtractTests : IDisposable
 {
-    private readonly ZipArchiveService _sut = new();
+    private readonly ZipArchiveService _sut = new(new GroupPolicyOptions());
     private readonly TempDirectory _temp = new();
 
     public void Dispose() => _temp.Dispose();
@@ -847,7 +847,7 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
             await stream.WriteAsync("malicious"u8.ToArray());
         }
 
-        var svc = new ZipArchiveService();
+        var svc = new ZipArchiveService(new GroupPolicyOptions());
         var options = new ExtractOptions
         {
             ArchivePaths = [archivePath],
@@ -887,7 +887,7 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
             await stream.WriteAsync("data"u8.ToArray());
         }
 
-        var svc = new ZipArchiveService();
+        var svc = new ZipArchiveService(new GroupPolicyOptions());
         var options = new ExtractOptions
         {
             ArchivePaths = [archivePath],
@@ -918,7 +918,7 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
             await stream.WriteAsync("data"u8.ToArray());
         }
 
-        var svc = new ZipArchiveService();
+        var svc = new ZipArchiveService(new GroupPolicyOptions());
         var options = new ExtractOptions
         {
             ArchivePaths = [archivePath],

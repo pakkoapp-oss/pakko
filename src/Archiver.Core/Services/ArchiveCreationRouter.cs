@@ -7,9 +7,9 @@ namespace Archiver.Core.Services;
 public sealed class ArchiveCreationRouter(
     IArchiveService archiveService,
     ITarService tarService,
-    GroupPolicyOptions? groupPolicyOptions = null) : IArchiveCreationRouter
+    GroupPolicyOptions groupPolicyOptions) : IArchiveCreationRouter
 {
-    private readonly GroupPolicyOptions _policy = groupPolicyOptions ?? new GroupPolicyOptions();
+    private readonly GroupPolicyOptions _policy = groupPolicyOptions ?? throw new ArgumentNullException(nameof(groupPolicyOptions));
 
     /// <inheritdoc/>
     public Task<ArchiveResult> ArchiveAsync(

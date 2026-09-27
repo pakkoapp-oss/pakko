@@ -12,7 +12,7 @@ namespace Archiver.Core.Tests.Services;
 /// </summary>
 public sealed class TarSandboxedServiceListEntriesTests
 {
-    private readonly TarSandboxedService _sut = new();
+    private readonly TarSandboxedService _sut = new(new GroupPolicyOptions());
 
     [Fact]
     public async Task ListEntriesAsync_NestedFoldersFixture_ReturnsFlatEntriesMatchingZipCounterpart()

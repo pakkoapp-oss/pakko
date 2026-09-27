@@ -18,7 +18,7 @@ public sealed class TarSandboxedServiceEncryptedFormatsTests : IDisposable
     private const string ExpectedExtractMessage = "This archive is password-protected and cannot be extracted.";
     private const string ExpectedBrowseMessage = "This archive is password-protected and cannot be browsed.";
 
-    private readonly TarSandboxedService _sut = new();
+    private readonly TarSandboxedService _sut = new(new GroupPolicyOptions());
     private readonly TempDirectory _temp = new();
 
     public void Dispose() => _temp.Dispose();
