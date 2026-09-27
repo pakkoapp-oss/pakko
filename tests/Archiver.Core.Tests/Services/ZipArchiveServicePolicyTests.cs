@@ -100,6 +100,20 @@ public sealed class ZipArchiveServicePolicyTests : IDisposable
         result.ErrorMessage.Should().Be(ZipBlockedReason);
     }
 
+    // Scan reads ZIPs itself, not through ZipArchiveService, so it needs its own zip gate.
+    [Fact]
+    public async Task Scan_ZipBlocked_ZipTheDetectorCallsUnknownIsNotOpened()
+    {
+        string empty = WriteEmptyZip("empty.zip");
+        var scanner = new AntivirusScanService(new TarCapabilities(), ZipBlocked,
+            () => throw new InvalidOperationException("no scanner may be opened"), () => true);
+
+        ThreatScanResult result = await scanner.ScanAsync(new AntivirusScanOptions { ArchivePaths = [empty] });
+
+        result.OverallVerdict.Should().Be(ThreatVerdict.Inconclusive);
+        result.Findings.Should().ContainSingle().Which.Reason.Should().Be(ZipBlockedReason);
+    }
+
     [Fact]
     public async Task ListEntriesAsync_ZipAllowed_EmptyArchiveListsAsBefore()
     {

@@ -450,6 +450,22 @@ tests caught before shipping):
   process: hashing (CRC-32, SHA-256) and sequential archiving of 40 x 4 KiB files stay under 64 KiB
   allocated per file. Hashing failed at ~264 KiB per file before `ReadAndDigestAsync` pooled its
   buffer; the archive case is a guard (it passed before the change).
+- `PolicyOwnershipTests` (`Archiver.Core.Tests/Services/`, T-F261/T-F250) — Group Policy has one
+  owner: every engine/router constructor requires a non-null `GroupPolicyOptions` (reflection);
+  `TarSandboxedService` refuses Extract/List/Compress under `DisableTarExtraction` and never runs
+  its version probe (injected probe seam — no tar.exe started); `PakkoServices` probes once and
+  hands the policy to every service; extract/create/list/test under `BlockedFormats=tar` and
+  `DisableTarExtraction` never reach a tar fake that fails when called; scan reports the policy
+  (checked with no AV provider, so a gate regression shows as a different reason, not a tar run).
+- `ZipArchiveServicePolicyTests` (`Archiver.Core.Tests/Services/`, T-F250) — the ZIP engine and
+  scan refuse a blocked `zip` themselves, including an entry-less ZIP the magic-byte detector
+  calls `Unknown` (the case no router check sees).
+- `ZipArchiveServiceUserSkipTests` (`Archiver.Core.Tests/Services/`, T-F216) — the user's own
+  conflict Skip (one by one or "apply to all") gives no "every entry was skipped" warning, while
+  the no-prompt default Skip or an added safety skip still does, and a partly skipped archive
+  stays `Partial`. The tar equivalents are two `[Integration]` tests in
+  `TarSandboxedServiceExtractTests.cs` (`ExtractAsync_UserChoseSkipAll_...`,
+  `ExtractAsync_UserSkippedOneEntry_SourcePartial`).
 - `FolderHashParityTests` (`Archiver.Core.PerformanceTests/`, T-F225; untagged, so it runs in the
   default filter) — folder DataSum/NamesSum against the vendored `7za.exe h` run live on the same
   folder, CRC-32 and SHA-256: one file, flat, nested with an empty subfolder and Cyrillic names,

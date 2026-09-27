@@ -85,6 +85,19 @@ public sealed class AntivirusScanService : IAntivirusScanService
         var findings = new List<ThreatFinding>();
         ArchiveFormatPolicy.Classification classification = ArchiveFormatPolicy.Classify(options.ArchivePaths, _tarCapabilities, _policy);
 
+        // T-F250: scan reads ZIPs itself, not through ZipArchiveService, so a blocked "zip" is
+        // refused here too — the ZIP bucket also holds Unknown paths, which include ZIPs the
+        // magic-byte detector does not recognize (an entry-less archive, a self-extractor).
+        if (ArchiveFormatPolicy.IsBlockedByPolicy(ArchiveFormat.Zip, _policy))
+        {
+            string reason = ArchiveFormatPolicy.BlockedFormatReason(ArchiveFormat.Zip);
+            classification = classification with
+            {
+                ZipPaths = [],
+                Unsupported = [.. classification.Unsupported, .. classification.ZipPaths.Select(path => new SkippedFile { Path = path, Reason = reason })],
+            };
+        }
+
         foreach (SkippedFile skipped in classification.Unsupported)
         {
             findings.Add(new ThreatFinding
