@@ -385,7 +385,9 @@ internal sealed class OperationWindow
         if (appWindow.Presenter is OverlappedPresenter presenter)
         {
             presenter.IsResizable = false;
+            // With both off the caption shows only X, as a dialog's does (user decision).
             presenter.IsMaximizable = false;
+            presenter.IsMinimizable = false;
         }
 
         // Mica where Windows supports it (11); the theme's solid background elsewhere.

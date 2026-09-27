@@ -5829,7 +5829,10 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   plural-safe wording for counts); polish (b) done (`ScanNoThreatsFoundMany`); polish (c)
   done (`BeginItem` starts a fresh speed sampler in both UIs; test first); polish (a) done (hash
   results `Preformatted`: monospace, no wrap, horizontal scroll - see `docs/DECISIONS.md`).
-  (a) and (c) still need an on-device look. A review of the
+  Polish (e) done (user decision: Minimize and Maximize both off, the caption shows only X).
+  Agent-checked on 1.5.0.12 under uk-UA: two SHA-256 values one line each with a horizontal
+  scroll bar, caption buttons Minimize/Maximize hidden, 3-archive Extract here clean. (g)'s
+  tooltip could not be raised by a synthetic hover - check on screen. A review of the
   existing Shell `.resx` strings and the Explorer menu table fixed 14 translation defects and a
   Latvian menu typo; the App's own `.resw` was not reviewed (only its copies of the same strings
   were fixed). Not checked on screen: RTL (he/ar/ur) and any language but Ukrainian. Checked on
