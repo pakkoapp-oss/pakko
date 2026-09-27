@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using Archiver.Core.Interfaces;
+using Archiver.Core.IO;
 using Archiver.Core.Models;
 using Archiver.Core.Services.Sandbox;
 
@@ -1323,32 +1324,33 @@ public sealed class TarSandboxedService : ITarService
     // entry-count-weighted, not a real running byte total).
     // T-F266: also returns the first path tar.exe would receive altered (null if none) — the
     // source's own full path, then every name beneath it, in the same single walk.
-    private static (long EntryCount, long TotalBytes, string? Unrepresentable) CountRecursiveEntriesAndBytes(string sourcePath)
+    internal static (long EntryCount, long TotalBytes, string? Unrepresentable) CountRecursiveEntriesAndBytes(string sourcePath)
     {
         string? unrepresentable = TarCommandLineEncoding.IsRepresentable(sourcePath) ? null : sourcePath;
 
         if (!Directory.Exists(sourcePath))
             return (1, FileLengthOrZero(sourcePath), unrepresentable); // plain file (or something that no longer exists by the time we get here)
 
-        long count = 1; // the directory itself gets its own tar entry
+        // T-F237: the shared iterative walker (the root's own Directory entry is its tar entry).
+        // Every name tar.exe will meet is checked, reparse points and unreadable folders included:
+        // tar.exe receives those names even though the walk does not enter them. Unreadable
+        // folders only make the progress estimate low — the Math.Min(99, ...) clamp tolerates it.
+        long count = 0;
         long totalBytes = 0;
-        try
+        foreach (WalkEntry entry in DirectoryWalker.Walk(sourcePath))
         {
-            foreach (string entry in Directory.EnumerateFileSystemEntries(sourcePath, "*", SearchOption.AllDirectories))
-            {
-                count++;
-                if (unrepresentable is null && !TarCommandLineEncoding.IsRepresentable(Path.GetFileName(entry)))
-                    unrepresentable = entry;
-                totalBytes += FileLengthOrZero(entry);
-            }
+            bool isRoot = count == 0; // the walk always starts with the root itself
+            count++;
+            if (unrepresentable is null && !isRoot && !TarCommandLineEncoding.IsRepresentable(entry.Info.Name))
+                unrepresentable = entry.Info.FullName;
+            if (entry.Kind == WalkEntryKind.File)
+                totalBytes += FileLengthOrZero((FileInfo)entry.Info);
         }
-        catch (UnauthorizedAccessException) { /* best-effort estimate — the Math.Min(99, ...) clamp above tolerates undercounting */ }
-        catch (IOException) { /* same */ }
 
         return (count, totalBytes, unrepresentable);
     }
 
-    // Directories contribute 0; so does anything unreadable or already gone (best-effort estimate).
+    // Anything unreadable or already gone counts 0 (best-effort estimate).
     private static long FileLengthOrZero(string path)
     {
         try
@@ -1357,6 +1359,12 @@ public sealed class TarSandboxedService : ITarService
         }
         catch (IOException) { return 0; }
         catch (UnauthorizedAccessException) { return 0; }
+    }
+
+    private static long FileLengthOrZero(FileInfo file)
+    {
+        try { return file.Length; }
+        catch (IOException) { return 0; }
     }
 
     // tar.exe's "-v" creation-mode output is "a <name>" per entry (confirmed empirically —

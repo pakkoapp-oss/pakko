@@ -2012,35 +2012,15 @@ public sealed class ZipArchiveService : IArchiveService
         return total;
     }
 
-    // T-F23: Safe recursive byte count that skips reparse points — prevents infinite loops
-    // on circular directory symlinks and NTFS junctions.
-    private static long ComputeDirectoryBytes(string dir)
-    {
-        long total = 0;
-        try
-        {
-            foreach (string filePath in Directory.EnumerateFiles(dir, "*", SearchOption.TopDirectoryOnly)
-                .Where(f => !ArchiveEntrySecurity.IsReparsePoint(f)))
-            {
-                try { total += new FileInfo(filePath).Length; } catch { /* best-effort */ }
-            }
-            foreach (string subDir in Directory.EnumerateDirectories(dir, "*", SearchOption.TopDirectoryOnly)
-                .Where(d => !ArchiveEntrySecurity.IsReparsePoint(d)))
-            {
-                total += ComputeDirectoryBytes(subDir);
-            }
-        }
-        catch { /* best-effort */ }
-        return total;
-    }
+    // T-F23: skips reparse points (no loops through junctions). T-F237: iterative, via the shared
+    // DirectoryWalker — the recursive version overflowed the stack on a 2,000-deep folder.
+    private static long ComputeDirectoryBytes(string dir) => ComputeDirectoryTotals(dir).TotalBytes;
 
     // T-F35: combined byte-total + file-count walk for ArchiveAsync's SingleArchive branch —
     // used for both the progress-report total and the parallel-pipeline gate decision in one
     // pass (profiling found the previous two-separate-walks approach cost ~193ms combined
-    // against a 5,000-file fixture). Also applies the same stat-call reduction as
-    // WorkItemEnumerator: DirectoryInfo.EnumerateFiles()/EnumerateDirectories() populate
-    // Length/Attributes from the same FindNextFile data the enumeration itself already read,
-    // instead of separate File.GetAttributes/FileInfo.Length calls per entry.
+    // against a 5,000-file fixture). Size and attributes come from the directory listing itself
+    // (DirectoryWalker's FileInfo objects), not separate per-file stat calls.
     private static (long TotalBytes, int FileCount) ComputeSingleArchiveTotals(IReadOnlyList<string> paths)
     {
         long totalBytes = 0;
@@ -2067,31 +2047,21 @@ public sealed class ZipArchiveService : IArchiveService
         return (totalBytes, fileCount);
     }
 
+    // Best-effort: an unreadable folder or file adds nothing here; the writers report it.
     private static (long TotalBytes, int FileCount) ComputeDirectoryTotals(string dir)
     {
         long totalBytes = 0;
         int fileCount = 0;
-        try
+        foreach (WalkEntry entry in DirectoryWalker.Walk(dir))
         {
-            foreach (var fileInfo in new DirectoryInfo(dir).EnumerateFiles("*", SearchOption.TopDirectoryOnly))
+            if (entry.Kind != WalkEntryKind.File) continue;
+            try
             {
-                if (fileInfo.Attributes.HasFlag(FileAttributes.ReparsePoint)) continue;
-                try
-                {
-                    totalBytes += fileInfo.Length;
-                    fileCount++;
-                }
-                catch { /* best-effort */ }
+                totalBytes += ((FileInfo)entry.Info).Length;
+                fileCount++;
             }
-            foreach (var dirInfo in new DirectoryInfo(dir).EnumerateDirectories("*", SearchOption.TopDirectoryOnly))
-            {
-                if (dirInfo.Attributes.HasFlag(FileAttributes.ReparsePoint)) continue;
-                var (bytes, count) = ComputeDirectoryTotals(dirInfo.FullName);
-                totalBytes += bytes;
-                fileCount += count;
-            }
+            catch { /* best-effort */ }
         }
-        catch { /* best-effort */ }
         return (totalBytes, fileCount);
     }
 
