@@ -4405,7 +4405,13 @@ real console) and T-F226's deferred per-arrow diagram ritual — carried as open
   **Forks resolved (user, 2026-09-27):** action buttons - option A (two buttons, the accent on
   the one that fits the list: archives -> Extract, anything else -> Compress); create verb -
   "Compress" everywhere (uk "Стиснути в ZIP", status "Стиснення...", result "Стиснуто за ..."), as
-  the Explorer menu already says. Next: implementation plan, then XAML.
+  the Explorer menu already says.
+  **Implementation plan approved (user, 2026-09-27):** 10 steps (Core encryption flag from the
+  existing central-directory reader; App.Core policies tests-first; window frame with the build
+  stamp inside the custom title bar; create mode; inline password replacing the Encrypt modal;
+  browse mode with Close archive/Esc, Test, encryption badge; footer outcome; locales from the
+  Explorer strings; docs incl. DIAGRAMS). T-F214 stays separate. Scheduled for wave 4, after
+  fix phase 7.
 
 ### T-F200 — Archive Browser asks for the password again for every previewed file
 
