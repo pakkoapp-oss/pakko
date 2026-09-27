@@ -401,6 +401,17 @@ one-click and unencrypted.
   `pakko x|t|a -p{pwd}` puts the password on the command line, visible in shell history and the
   process list exactly as with 7-Zip's own `-p` — use a bare `-p` (or, for `x`/`t`, omit it) to get
   the masked interactive prompt instead.
+- **The Explorer prompt crosses a process boundary (T-F268).** Explorer commands ask for the
+  password in a separate window process (`Archiver.OperationUi.exe`, same package, same user),
+  which sends it back to `Archiver.Shell` over one of two unnamed anonymous pipes created for that
+  one operation — never on a command line, in a file, or through a named object another process
+  could open. Shell closes its copies of the helper's pipe ends as soon as the helper starts, and
+  every sandboxed `tar.exe` is started with an explicit inheritable-handle list
+  (`PROC_THREAD_ATTRIBUTE_HANDLE_LIST`), so the untrusted-archive sandbox never holds a pipe end.
+  The window empties its password box as soon as the text is read, and the message type prints
+  the password as `***`. Shell does not trust the window with the answer's meaning: an unknown or
+  malformed conflict answer is Skip, never Overwrite. If the window dies mid-prompt, the prompt is
+  asked again in Shell's own native dialog.
 
 ### Absolute Path Requirement
 

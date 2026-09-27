@@ -420,8 +420,8 @@ browse password re-prompt, stacked second window), **T-F202 (full UI + every-men
 required before this batch closes; the Store build is live).**
 **T-F268** (`[~]`, fix phase 4b) — Explorer commands show a code-only WinUI 3 operation window
 (`Archiver.OperationUi`, started by Shell over anonymous pipes; logic in `Archiver.OperationUi.Core`)
-with `Win32OperationUi` as fallback and failover. Steps 1-4 done 2026-09-26; next: step 5,
-prompts inside the window (`docs/TASKS.md`, `docs/DECISIONS.md`). **T-F270** (`[x]`, 2026-09-26) — all projects on .NET 10 LTS (Build Commands' toolchain note);
+with `Win32OperationUi` as fallback and failover. Steps 1-5 done (step 5, 2026-09-27: conflict
+and password prompts inside the window); next: step 6, polish (`docs/TASKS.md`, `docs/DECISIONS.md`). **T-F270** (`[x]`, 2026-09-26) — all projects on .NET 10 LTS (Build Commands' toolchain note);
 small-files ZIP slowdown fixed where possible in T-F271 (dotnet/runtime#134700).
 
 ## Roadmap Summary

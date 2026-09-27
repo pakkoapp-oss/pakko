@@ -5836,7 +5836,13 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   several archives (`OperationMessages.ForScan`, pre-existing); (c) at the start of the next archive
   the status still shows the previous archive's speed - reset the speed sampler in `BeginItem`;
   (d) titles, buttons and Core messages are English (T-F208, step 6 localization); (e) the caption
-  shows a greyed Maximize button - consider hiding it as a dialog does.
+  shows a greyed Maximize button - consider hiding it as a dialog does. (f) **Open, found
+  2026-09-27 on 1.5.0.9, seen by the user too:** the window sometimes shows all black (caption
+  buttons only) until clicked; the UIA tree is complete, so only rendering is missing. Seen on
+  about ten launches in a row (from Shell started outside Explorer), then never again in six
+  launches after one click on a black window, including after a package reinstall and with
+  the window left inactive. Trigger not identified - reproduce before fixing; step 4's Explorer
+  smoke never looked at pixels after the first frame.
 - **Status (original):** open — user request 2026-09-26: Explorer-triggered dialogs look out of place on
   Windows 10 and 11. User chose a separate lightweight WinUI 3 window (not the main App window)
   for progress, conflict, password and result, and asked for one UI entry point instead of the
