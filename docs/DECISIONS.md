@@ -9990,6 +9990,12 @@ cancelled (tests first, both red before the fix). Re-checked on 1.5.0.8: X durin
 ends Shell with no window and nothing written; a killed helper's prompt is asked again as the
 Win32 TaskDialog.
 
+**Keyboard, checked from a real Explorer menu click (1.5.0.9, real keystrokes only):** the
+window takes the foreground; a wrong password + Enter shows the red hint with the box emptied;
+Esc inside the password box declines; Enter on a conflict is Skip. Found and fixed: after a
+prompt, a result arriving in the already-shown window left focus on the collapsed Cancel, so
+Enter did nothing — focus now moves to the new view's default (Close) whenever the view changes.
+
 **The helper is not trusted with the decision's meaning.** Only `Overwrite` and `Rename` map to
 themselves; any other value, including a number outside the enum, is Skip. "Apply to remaining"
 is dropped when Shell did not offer it. An answer with an unknown id or of the wrong kind, or a

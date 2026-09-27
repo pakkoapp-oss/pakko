@@ -76,6 +76,7 @@ internal sealed class OperationWindow
     private readonly Button _passwordOk = new() { MinWidth = 120 };
     private readonly Button _skipArchive = new() { MinWidth = 120 };
     private ProtocolMessage? _renderedPrompt;
+    private bool _renderedResult;
     private DispatcherQueueTimer? _showTimer;
     private bool _closing;
 
@@ -153,13 +154,17 @@ internal sealed class OperationWindow
             AutomationProperties.SetName(_bar, _model.ItemLine ?? _model.Title);
         }
 
-        bool promptClosed = _renderedPrompt is not null && prompt is null;
+        // The view changed under the focused control (an answered prompt's button, or Cancel when
+        // the result arrives): move focus to the new view's default so Enter and Esc keep working.
+        bool viewChanged = (_renderedPrompt is not null && prompt is null) || (result && !_renderedResult);
         _renderedPrompt = prompt;
+        _renderedResult = result;
         if (_window.AppWindow.IsVisible)
+        {
             FitToContent();
-        // The answered prompt's focused button is gone; keyboard focus returns to Cancel.
-        if (promptClosed && progress)
-            _cancel.Focus(FocusState.Programmatic);
+            if (viewChanged)
+                FocusDefault();
+        }
     }
 
     /// <summary>A prompt came up while the window shows: bring it forward and focus the prompt.</summary>
