@@ -521,7 +521,8 @@ internal sealed class HelperOperationUi(IHelperLauncher launcher, IOperationUi f
                 _ => ResultSeverity.Information,
             },
             message.Title,
-            message.Text);
+            message.Text,
+            message.Preformatted);
 
         private sealed record PendingConflict(ConflictInfo Info, TaskCompletionSource<ConflictDecision> Answer);
 

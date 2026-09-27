@@ -20,8 +20,11 @@ internal enum MessageSeverity
     Error,
 }
 
-/// <summary>A result or error shown to the user after an operation.</summary>
-internal sealed record OperationMessage(string Title, MessageSeverity Severity, string Text);
+/// <summary>
+/// A result or error shown to the user after an operation. Preformatted text (hash values) must
+/// not be wrapped; the Win32 message box has no such mode and ignores it.
+/// </summary>
+internal sealed record OperationMessage(string Title, MessageSeverity Severity, string Text, bool Preformatted = false);
 
 /// <summary>
 /// The only way an Explorer command talks to the user (T-F268). Today's implementation is

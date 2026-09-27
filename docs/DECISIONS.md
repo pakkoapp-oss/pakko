@@ -10047,3 +10047,13 @@ zh "存档" (a saved game) for archive, ar skipped header in the singular, fr mi
 everywhere, as the Explorer menu already said (the App and the window said "розпакування"); the
 same App strings also got "папку" for "теку" and "архівну бомбу". German App strings use
 "Passwort" throughout (the encrypt dialog said "Kennwort", the decrypt dialog "Passwort").
+
+**Polish (a): hash results are preformatted.** A SHA-256 value is 64 characters and a folder's
+DataSum up to 73 ("...-00000001"); the 472-DIP content area cannot hold 73 characters in any
+monospace font at a readable size (Consolas 13 px needs about 520), so wrapping broke the value
+mid-hash. `OperationMessage`/`ResultText` gained `Preformatted` (set only by `ForHash`); the
+window then shows the text in Cascadia Mono/Consolas, unwrapped, with a horizontal scroll bar, and
+resets all three for every other result. Widening the window was rejected: it re-lays out every
+progress, conflict and password view for one result type. `ProtocolVersion` stays 1: the field is
+optional, and a frame without it reads as not preformatted (tested); both ends ship in one package
+anyway. The Win32 fallback (`MessageBoxW`) has no such mode and ignores it.

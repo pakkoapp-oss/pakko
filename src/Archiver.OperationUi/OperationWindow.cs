@@ -52,6 +52,8 @@ internal sealed class OperationWindow
     private readonly TextBlock _status = new() { FontSize = 12 };
     private readonly TextBlock _resultText = new() { FontSize = 14, TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true };
     private readonly ScrollViewer _resultScroll = new() { MaxHeight = 300 };
+    private readonly FontFamily _monospaceFont = new("Cascadia Mono, Consolas");
+    private readonly FontFamily _proportionalFont;
     private readonly Button _cancel = new() { MinWidth = 120 };
     private readonly Button _close = new() { MinWidth = 120 };
 
@@ -84,6 +86,7 @@ internal sealed class OperationWindow
     {
         _model = model;
         _execute = execute;
+        _proportionalFont = _resultText.FontFamily;
         _window = new Window { Content = _root };
         BuildLayout();
         ConfigureWindow();
@@ -129,6 +132,12 @@ internal sealed class OperationWindow
             ResultText r = _model.Result!;
             _heading.Text = r.Title;
             _resultText.Text = r.Text;
+            // A hash is 64-73 characters: no font fits it in the window's width, and a break
+            // inside it makes it unreadable. The same controls show every other result wrapped.
+            _resultText.FontFamily = r.Preformatted ? _monospaceFont : _proportionalFont;
+            _resultText.TextWrapping = r.Preformatted ? TextWrapping.NoWrap : TextWrapping.Wrap;
+            _resultScroll.HorizontalScrollMode = r.Preformatted ? ScrollMode.Enabled : ScrollMode.Disabled;
+            _resultScroll.HorizontalScrollBarVisibility = r.Preformatted ? ScrollBarVisibility.Auto : ScrollBarVisibility.Disabled;
             (_severityIcon.Glyph, _severityIcon.Foreground) = r.Severity switch
             {
                 ResultSeverity.Error => (ErrorGlyph, Brush("SystemFillColorCriticalBrush")),

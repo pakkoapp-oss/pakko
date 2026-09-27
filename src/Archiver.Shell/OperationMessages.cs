@@ -57,7 +57,7 @@ internal static class OperationMessages
 
         bool anyErrors = result.Entries.Any(e => e.Error is not null);
         return new OperationMessage(title, anyErrors ? MessageSeverity.Warning : MessageSeverity.Information,
-            string.Join(Environment.NewLine, lines));
+            string.Join(Environment.NewLine, lines), Preformatted: true);
     }
 
     // Clean copy is deliberately "No threats found in this archive" -- never "safe" -- Pakko doesn't

@@ -144,6 +144,17 @@ public sealed class HelperOperationUiTests : IDisposable
     }
 
     [Fact]
+    public async Task PreformattedResult_ReachesTheWindowPreformatted()
+    {
+        using var session = await BeginReadyAsync();
+
+        _ = Task.Run(() => session.Complete(new OperationMessage("SHA-256", MessageSeverity.Information, "a.txt: 00", Preformatted: true)));
+
+        (await _helper.ReadUntilAsync<Complete>()).Result.Should().Be(
+            new ResultText(ResultSeverity.Information, "SHA-256", "a.txt: 00", Preformatted: true));
+    }
+
+    [Fact]
     public async Task Result_WaitsUntilTheUserClosesIt()
     {
         using var session = await BeginReadyAsync();

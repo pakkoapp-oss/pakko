@@ -139,6 +139,21 @@ public sealed class OperationMessagesTests : IDisposable
         lines[10].Should().Be("…and 2 more");
     }
 
+    // T-F268 polish (a): a 64-73 character hash does not fit the window's width in any font.
+    [Fact]
+    public void ForHash_IsPreformattedForBothFilesAndFolders()
+    {
+        OperationMessages.ForHash("T", new HashResult { Entries = [new HashEntry(@"C:.txt", "00", null)] }).Preformatted.Should().BeTrue();
+        OperationMessages.ForHash("T", new HashResult { Folder = new FolderHashSummary("AAAA", "BBBB", 1, 6) }).Preformatted.Should().BeTrue();
+    }
+
+    [Fact]
+    public void OtherResults_AreNotPreformatted()
+    {
+        OperationMessages.ForArchiveResult("T", new ArchiveResult { Success = false })!.Preformatted.Should().BeFalse();
+        OperationMessages.ForScan("T", new ThreatScanResult { OverallVerdict = ThreatVerdict.Clean }, archiveCount: 1).Preformatted.Should().BeFalse();
+    }
+
     // --- ThreatScanResult ---
 
     [Fact]

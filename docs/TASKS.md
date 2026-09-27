@@ -5827,7 +5827,9 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   Step 6, localization (2026-09-27): every label Shell sends the window, every operation title
   and the size units come from a new `OperationText.resx` in 37 locales (translated by the agent,
   plural-safe wording for counts); polish (b) done (`ScanNoThreatsFoundMany`); polish (c)
-  done (`BeginItem` starts a fresh speed sampler in both UIs; test first). A review of the
+  done (`BeginItem` starts a fresh speed sampler in both UIs; test first); polish (a) done (hash
+  results `Preformatted`: monospace, no wrap, horizontal scroll - see `docs/DECISIONS.md`).
+  (a) and (c) still need an on-device look. A review of the
   existing Shell `.resx` strings and the Explorer menu table fixed 14 translation defects and a
   Latvian menu typo; the App's own `.resw` was not reviewed (only its copies of the same strings
   were fixed). Not checked on screen: RTL (he/ar/ur) and any language but Ukrainian. Checked on

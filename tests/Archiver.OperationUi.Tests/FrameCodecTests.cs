@@ -22,6 +22,7 @@ public sealed class FrameCodecTests
         new AskConflict(7, @"D:\Проєкти\звіт.pdf", "1,2 МБ · змінено 12.09.2026 14:03", null, IncomingIsNewer: true),
         new AskPassword(8, "secret.zip", 2, PreviousAttemptWasWrong: true, CanApplyToRemaining: true),
         new Complete(new ResultText(ResultSeverity.Warning, "Розпакування", "old.zip: пошкоджено")),
+        new Complete(new ResultText(ResultSeverity.Information, "SHA-256", "звіт.pdf: 00FF", Preformatted: true)),
         new Complete(null),
         new HelperReady(FrameCodec.ProtocolVersion),
         new CancelRequested(),
@@ -45,6 +46,25 @@ public sealed class FrameCodecTests
             ((Hello)decoded).Strings.Should().Equal(hello.Strings);
         else
             decoded.Should().Be(message);
+    }
+
+    // Preformatted was added without a version bump: a result without it reads as plain text.
+    [Fact]
+    public async Task ResultWithoutPreformatted_ReadsAsNotPreformatted()
+    {
+        byte[] frame = FrameCodec.Encode(new Complete(new ResultText(ResultSeverity.Information, "T", "x", Preformatted: true)));
+        string json = System.Text.Encoding.UTF8.GetString(frame, 4, frame.Length - 4);
+        string withoutField = json.Replace(",\"preformatted\":true", string.Empty, StringComparison.Ordinal);
+        withoutField.Should().NotBe(json);
+        byte[] payload = System.Text.Encoding.UTF8.GetBytes(withoutField);
+        using var stream = new MemoryStream();
+        stream.Write(BitConverter.GetBytes(payload.Length));
+        stream.Write(payload);
+        stream.Position = 0;
+
+        var decoded = (Complete)(await FrameCodec.ReadAsync(stream, CancellationToken.None))!;
+
+        decoded.Result.Should().Be(new ResultText(ResultSeverity.Information, "T", "x"));
     }
 
     [Fact]

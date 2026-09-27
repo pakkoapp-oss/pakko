@@ -77,8 +77,11 @@ public sealed record AskPassword(
     bool PreviousAttemptWasWrong,
     bool CanApplyToRemaining) : ProtocolMessage;
 
-/// <summary>A result to show, or null to close the window without one (a clean Extract/Archive).</summary>
-public sealed record ResultText(ResultSeverity Severity, string Title, string Text);
+/// <summary>
+/// A result to show, or null to close the window without one (a clean Extract/Archive).
+/// Preformatted text (hash values) is shown in a monospace font, unwrapped, scrolling sideways.
+/// </summary>
+public sealed record ResultText(ResultSeverity Severity, string Title, string Text, bool Preformatted = false);
 
 public sealed record Complete(ResultText? Result) : ProtocolMessage;
 
