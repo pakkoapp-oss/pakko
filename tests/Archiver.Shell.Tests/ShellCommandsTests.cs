@@ -98,6 +98,33 @@ public sealed class ShellCommandsTests : IDisposable
         ui.Messages.Should().BeEmpty();
     }
 
+    // T-F264: the Explorer menu title for backup.tar.gz reads "Add to "backup.zip"" (the C++ side
+    // strips compound extensions); the created archive must be that name, not backup.tar.zip.
+    [Fact]
+    public async Task Archive_CompoundTarFile_IsNamedLikeTheMenuTitle()
+    {
+        string source = Path.Combine(_root, "backup.tar.gz");
+        File.WriteAllText(source, "not really gzip");
+
+        await Create(new FakeOperationUi()).ArchiveAsync([source], ArchiveContainerFormat.Zip);
+
+        File.Exists(Path.Combine(_root, "backup.zip")).Should().BeTrue();
+        File.Exists(Path.Combine(_root, "backup.tar.zip")).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Archive_SeveralFiles_IsNamedAfterTheirFolder()
+    {
+        string folder = Path.Combine(_root, "MyStuff");
+        Directory.CreateDirectory(folder);
+        File.WriteAllText(Path.Combine(folder, "a.txt"), "A");
+        File.WriteAllText(Path.Combine(folder, "b.txt"), "B");
+
+        await Create(new FakeOperationUi()).ArchiveAsync([Path.Combine(folder, "a.txt"), Path.Combine(folder, "b.txt")], ArchiveContainerFormat.Zip);
+
+        File.Exists(Path.Combine(folder, "MyStuff.zip")).Should().BeTrue();
+    }
+
     [Fact]
     public async Task Test_ValidArchive_ShowsNoErrorsInformation()
     {

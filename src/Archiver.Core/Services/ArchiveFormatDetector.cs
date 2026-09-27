@@ -23,11 +23,18 @@ public static class ArchiveFormatDetector
     // T-F133: .asice/.asics (ASiC-E/ASiC-S, ETSI TS 102 918 signed containers) and .bdoc (Estonia's
     // national ASiC-E profile) — also real ZIP-format containers, same reasoning as T-F131. See
     // DECISIONS.md's T-F133 entry.
-    private static readonly HashSet<string> _recognizedExtensions = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ".zip", ".jar", ".war", ".ear", ".apk", ".asice", ".asics", ".bdoc",
-        ".rar", ".7z", ".tar", ".gz", ".tgz", ".bz2", ".tbz2", ".xz", ".txz", ".zst", ".tzst", ".lzma"
-    };
+    // T-F264: FormatListConsistencyTests compares these with ShellExtUtils.cpp and
+    // Package.appxmanifest, so the three copies can no longer drift silently.
+    private static readonly string[] _zipExtensions =
+        [".zip", ".jar", ".war", ".ear", ".apk", ".asice", ".asics", ".bdoc"];
+
+    private static readonly HashSet<string> _recognizedExtensions = new(
+        [.. _zipExtensions, ".rar", ".7z", ".tar", ".gz", ".tgz", ".bz2", ".tbz2", ".xz", ".txz", ".zst", ".tzst", ".lzma"],
+        StringComparer.OrdinalIgnoreCase);
+
+    internal static IReadOnlyCollection<string> RecognizedExtensions => _recognizedExtensions;
+
+    internal static IReadOnlyCollection<string> RecognizedZipExtensions => _zipExtensions;
 
     /// <summary>
     /// Fast, no-disk-I/O extension check — used only where <see cref="Detect"/>'s magic-byte

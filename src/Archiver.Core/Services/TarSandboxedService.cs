@@ -1301,16 +1301,8 @@ public sealed class TarSandboxedService : ITarService
     // Same "name (1)", "name (2)", ... convention as ArchiveNaming.GetUniqueFilePath, but checked against
     // an in-memory set of already-claimed entry names rather than disk existence — the candidate
     // doesn't exist on disk yet (it's about to be staged into a fresh temp directory).
-    private static string GetUniqueEntryName(string name, HashSet<string> claimedNames)
-    {
-        string baseName = Path.GetFileNameWithoutExtension(name);
-        string ext = Path.GetExtension(name);
-        int i = 1;
-        string candidate;
-        do { candidate = $"{baseName} ({i++}){ext}"; }
-        while (claimedNames.Contains(candidate));
-        return candidate;
-    }
+    private static string GetUniqueEntryName(string name, HashSet<string> claimedNames) =>
+        ArchiveNaming.GetUniqueName(name, candidate => candidate == name || claimedNames.Contains(candidate));
 
     // T-F140: real count of entries tar.exe will emit a "-v" line for when archiving this one
     // source path — a plain file is exactly 1; a directory is itself plus every file/subdirectory
