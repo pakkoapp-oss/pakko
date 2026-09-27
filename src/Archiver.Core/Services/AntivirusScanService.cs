@@ -348,7 +348,7 @@ public sealed class AntivirusScanService : IAntivirusScanService
             // (Inconclusive), never an exception out of the whole scan.
             ThreatVerdict verdict;
             string? threatName;
-            if (totalRead == 0)
+            if (intLength == 0)
             {
                 (verdict, threatName) = (ThreatVerdict.Clean, null);
             }
