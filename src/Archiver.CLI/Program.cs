@@ -1,5 +1,6 @@
 using System.IO.Compression;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using Archiver.CLI;
 using Archiver.Core.Models;
 using Archiver.Core.Services;
@@ -90,11 +91,7 @@ static async Task<int> RunExtractAsync(ParsedCliCommand command, GroupPolicyOpti
         ArchiveResult result = await router.ExtractAsync(options, progress: null, cancellation.Token).ConfigureAwait(false);
         if (cancellation.Token.IsCancellationRequested)
             return ReportUserStopped();
-        int code = ReportResult(result);
-        if (stdoutFolder is null || code == 2)
-            return code;
-
-        return await StreamResultToStdoutIfSuccessfulAsync(stdoutFolder.Path, code, cancellation.Token).ConfigureAwait(false);
+        return await ReportAndStreamAsync(result, stdoutFolder, cancellation.Token).ConfigureAwait(false);
     }
     catch (OperationCanceledException) when (cancellation.Token.IsCancellationRequested)
     {
@@ -133,17 +130,23 @@ static ExtractOptions BuildExtractOptions(
         ArchivePaths = archivePaths,
         DestinationFolder = destination,
         Mode = ExtractMode.SingleFolder,
-        // -ao wins over -y when both are given; -y only needs to override the safe defaults,
-        // never set them.
-        OnConflict = command.OverwriteMode
-            ?? (command.AssumeYes ? ConflictBehavior.Overwrite
-                : askInteractively ? ConflictBehavior.Ask : ConflictBehavior.Skip),
+        OnConflict = ChooseExtractConflictBehavior(command, askInteractively),
         ResolveConflictAsync = askInteractively
             ? CliConflictPrompt.CreateResolver(ReadConflictAnswer, Console.Error.Write, quit).ResolveAsync
             : null,
         ConfirmCompressionBombExtraction = command.AssumeYes ? (_ => Task.FromResult(true)) : null,
         ResolvePasswordAsync = BuildPasswordResolver(command, command.AssumeYes),
     };
+}
+
+// -ao wins over -y when both are given; -y only needs to override the safe defaults, never set them.
+static ConflictBehavior ChooseExtractConflictBehavior(ParsedCliCommand command, bool askInteractively)
+{
+    if (command.OverwriteMode is { } overwriteMode)
+        return overwriteMode;
+    if (command.AssumeYes)
+        return ConflictBehavior.Overwrite;
+    return askInteractively ? ConflictBehavior.Ask : ConflictBehavior.Skip;
 }
 
 // T-F160: key by key with TreatControlCAsInput, exactly like the password prompt below — a plain
@@ -249,17 +252,19 @@ static CliPasswordPrompt.NewPasswordResult PromptForNewPasswordInteractively()
 
 static void EchoMaskChar(char c) => Console.Error.Write(c == '\b' ? "\b \b" : "*");
 
-// Shared by RunExtractAsync and RunArchiveAsync -- both stream the single staged output file to
-// stdout the same way once the underlying operation already reported success.
-static async Task<int> StreamResultToStdoutIfSuccessfulAsync(string stdoutStagingDir, int code, CancellationToken cancellationToken)
+// Shared by RunExtractAsync and RunArchiveAsync: report the result, then, for -so, stream the
+// single staged output file to stdout once the operation has succeeded.
+static async Task<int> ReportAndStreamAsync(ArchiveResult result, CliStagingFolder? stdoutFolder, CancellationToken cancellationToken)
 {
-    string? streamError = await CliStreamStaging.StreamSingleFileToStdoutAsync(stdoutStagingDir, cancellationToken).ConfigureAwait(false);
-    if (streamError is not null)
-    {
-        await Console.Error.WriteLineAsync($"pakko: error: {streamError}").ConfigureAwait(false);
-        return 2;
-    }
-    return code;
+    int code = ReportResult(result);
+    if (stdoutFolder is null || code == 2)
+        return code;
+
+    string? streamError = await CliStreamStaging.StreamSingleFileToStdoutAsync(stdoutFolder.Path, cancellationToken).ConfigureAwait(false);
+    if (streamError is null)
+        return code;
+    await Console.Error.WriteLineAsync($"pakko: error: {streamError}").ConfigureAwait(false);
+    return 2;
 }
 
 // -------------------------------------------------------------------------
@@ -339,79 +344,86 @@ static async Task<int> RunInfoAsync()
 // -------------------------------------------------------------------------
 static async Task<int> RunArchiveAsync(ParsedCliCommand command, GroupPolicyOptions policy)
 {
-    // T-F193: a -p<pwd> Pakko cannot encrypt with is a command-line error, found before any work.
-    if (command.Password is { } fixedPassword
-        && CliPasswordPrompt.DescribeEncryptProblem(EncryptionPasswordRule.Check(fixedPassword)) is { } fixedProblem)
-    {
-        Console.Error.WriteLine($"pakko: -p: {fixedProblem}");
-        return 7;
-    }
+    if (RejectUnusableEncryptionPassword(command) is { } commandLineError)
+        return commandLineError;
 
-    // The prompt's own outcome decides the report, never Core's English message: Core only sees a
-    // null password in both cases.
-    CliPasswordPrompt.NewPasswordResult? promptResult = null;
     using CliCancellation cancellation = CliCancellation.ListenToConsole();
     try
     {
         var router = new ArchiveCreationRouter(new ZipArchiveService(policy), new TarSandboxedService(policy), policy);
 
-        string archivePathArg = command.ArchivePathArg!;
         using CliStagingFolder? stdoutFolder = command.WriteToStdout ? CliStagingFolder.Create(CliStreamStaging.StdoutRoot) : null;
-        string destFolder;
-        if (stdoutFolder is not null)
-        {
-            destFolder = stdoutFolder.Path;
-        }
-        else
-        {
-            string? dir = Path.GetDirectoryName(archivePathArg);
-            destFolder = string.IsNullOrEmpty(dir) ? "." : dir;
-        }
-
-        var options = new ArchiveOptions
-        {
-            SourcePaths = command.SourcePaths,
-            DestinationFolder = destFolder,
-            ArchiveName = ArchiveNaming.GetBaseName(archivePathArg),
-            Mode = ArchiveMode.SingleArchive,
-            OnConflict = command.AssumeYes ? ConflictBehavior.Overwrite : ConflictBehavior.Skip,
-            CompressionLevel = command.CompressionLevel ?? CompressionLevel.Optimal,
-            Format = command.ArchiveFormat,
-        };
-        if (command.Password is { } password)
-        {
-            options = options with { ResolvePasswordAsync = _ => Task.FromResult(new PasswordDecision { Password = password }) };
-        }
-        else if (command.PromptForPassword)
-        {
-            options = options with
-            {
-                ResolvePasswordAsync = _ =>
-                {
-                    promptResult = PromptForNewPasswordInteractively();
-                    return Task.FromResult(new PasswordDecision { Password = promptResult.Password });
-                },
-            };
-        }
+        StrongBox<CliPasswordPrompt.NewPasswordResult?> prompt = new();
+        ArchiveOptions options = BuildArchiveOptions(command, ResolveArchiveDestination(command, stdoutFolder), prompt);
 
         ArchiveResult result = await router.ArchiveAsync(options, progress: null, cancellation.Token).ConfigureAwait(false);
-        if (promptResult is { Cancelled: true })
-            return ReportUserStopped();
-        if (promptResult?.Error is { } promptError)
-        {
-            Console.Error.WriteLine($"pakko: error: {promptError}");
-            return 2;
-        }
-        int code = ReportResult(result);
-        if (stdoutFolder is null || code == 2)
-            return code;
-
-        return await StreamResultToStdoutIfSuccessfulAsync(stdoutFolder.Path, code, cancellation.Token).ConfigureAwait(false);
+        if (ReportNewPasswordPromptOutcome(prompt.Value) is { } promptExitCode)
+            return promptExitCode;
+        return await ReportAndStreamAsync(result, stdoutFolder, cancellation.Token).ConfigureAwait(false);
     }
     catch (OperationCanceledException) when (cancellation.Token.IsCancellationRequested)
     {
         return ReportUserStopped();
     }
+}
+
+// T-F193: a -p<pwd> Pakko cannot encrypt with is a command-line error, found before any work.
+static int? RejectUnusableEncryptionPassword(ParsedCliCommand command)
+{
+    if (command.Password is not { } fixedPassword
+        || CliPasswordPrompt.DescribeEncryptProblem(EncryptionPasswordRule.Check(fixedPassword)) is not { } problem)
+        return null;
+    Console.Error.WriteLine($"pakko: -p: {problem}");
+    return 7;
+}
+
+static string ResolveArchiveDestination(ParsedCliCommand command, CliStagingFolder? stdoutFolder)
+{
+    if (stdoutFolder is not null)
+        return stdoutFolder.Path;
+    string? dir = Path.GetDirectoryName(command.ArchivePathArg!);
+    return string.IsNullOrEmpty(dir) ? "." : dir;
+}
+
+static ArchiveOptions BuildArchiveOptions(
+    ParsedCliCommand command, string destFolder, StrongBox<CliPasswordPrompt.NewPasswordResult?> prompt) =>
+    new()
+    {
+        SourcePaths = command.SourcePaths,
+        DestinationFolder = destFolder,
+        ArchiveName = ArchiveNaming.GetBaseName(command.ArchivePathArg!),
+        Mode = ArchiveMode.SingleArchive,
+        OnConflict = command.AssumeYes ? ConflictBehavior.Overwrite : ConflictBehavior.Skip,
+        CompressionLevel = command.CompressionLevel ?? CompressionLevel.Optimal,
+        Format = command.ArchiveFormat,
+        ResolvePasswordAsync = BuildNewPasswordResolver(command, prompt),
+    };
+
+// The interactive prompt records its own outcome in `prompt`: that, never Core's English message,
+// decides the report, since Core only sees a null password either way.
+static Func<PasswordPromptInfo, Task<PasswordDecision>>? BuildNewPasswordResolver(
+    ParsedCliCommand command, StrongBox<CliPasswordPrompt.NewPasswordResult?> prompt)
+{
+    if (command.Password is { } password)
+        return _ => Task.FromResult(new PasswordDecision { Password = password });
+    if (!command.PromptForPassword)
+        return null;
+    return _ =>
+    {
+        CliPasswordPrompt.NewPasswordResult result = PromptForNewPasswordInteractively();
+        prompt.Value = result;
+        return Task.FromResult(new PasswordDecision { Password = result.Password });
+    };
+}
+
+static int? ReportNewPasswordPromptOutcome(CliPasswordPrompt.NewPasswordResult? promptResult)
+{
+    if (promptResult is { Cancelled: true })
+        return ReportUserStopped();
+    if (promptResult?.Error is not { } promptError)
+        return null;
+    Console.Error.WriteLine($"pakko: error: {promptError}");
+    return 2;
 }
 
 // -------------------------------------------------------------------------
