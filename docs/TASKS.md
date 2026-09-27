@@ -5860,6 +5860,29 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   launches after one click on a black window, including after a package reinstall and with
   the window left inactive. Trigger not identified - reproduce before fixing; step 4's Explorer
   smoke never looked at pixels after the first frame.
+  **Reproduced 2026-09-27 on 1.5.0.12/1.5.0.13, 16 of 16 launches:** `Archiver.Shell.exe --test
+  <corrupt.zip>` started by `Start-Process` from a background shell (probe: pixel sampling of the
+  window over time). The window never gets the foreground (Shell has no foreground right to pass
+  on). It fades in already black. One real activation fixes it for good: after it the window
+  renders even when inactive again. Temporary diagnostics (reverted) showed XAML itself works: the
+  `Activated` (CodeActivated) and `VisibilityChanged` events fire, `CompositionTarget.Rendering`
+  ticks at ~30 fps, and `XamlRoot` has the right size. The child HWNDs (`DesktopChildSiteBridge`
+  520x230, visible) are identical before and after the click. Tried without effect (three
+  attempts, stopped by the three-attempts rule): no Mica; `ShowWindow(SW_SHOWNOACTIVATE)`,
+  `AppWindow.Show(false)` or a fake `WM_ACTIVATE` before or after `Activate()`; showing without
+  `Activate()` (`AppWindow.Show(false)` alone, `SW_SHOWNA` alone); an external `RedrawWindow`,
+  `SWP_FRAMECHANGED` and a 1 px resize. No matching WinAppSDK 1.8.x fix in its release notes.
+  **Not verified:** the real Explorer flow. There Shell holds the click's foreground right and
+  passes it to the helper (`AllowSetForegroundWindow`), so the black window is expected only when
+  that right is gone by the time the window shows. Example: the user switches to another app
+  during an operation longer than the ~1 s show delay. Next ideas, not yet tried:
+  - create the window only when it is first shown, instead of hidden at start;
+  - a minimal WinUI repro to report upstream;
+  - a WinAppSDK update.
+  (g) closed as an upstream limitation: the caption X is drawn and named by WinAppSDK
+  (`ReunionWindowingCaptionControls`). A synthetic hover shows its hover state but raises no
+  tooltip even after 3.5 s, so its tooltip cannot be checked by automation. Pakko code sets
+  neither the name nor the tooltip.
 - **Status (original):** open — user request 2026-09-26: Explorer-triggered dialogs look out of place on
   Windows 10 and 11. User chose a separate lightweight WinUI 3 window (not the main App window)
   for progress, conflict, password and result, and asked for one UI entry point instead of the
