@@ -130,36 +130,7 @@ public static class FileHashService
         // "one/a.txt", ... (the folder itself is an item); for "h ." or a drive root it is only the
         // contents, "a.txt", ... (checked against 7za 26.02).
         string? rootName = RootLogName(root);
-        string? LogPath(FileSystemInfo info)
-        {
-            string relative = Path.GetRelativePath(root, info.FullName).Replace('\\', '/');
-            if (relative != ".")
-                return rootName is null ? relative : rootName + "/" + relative;
-            return rootName;
-        }
-
-        var files = new List<FileInfo>();
-        foreach (WalkEntry entry in DirectoryWalker.Walk(root))
-        {
-            ct.ThrowIfCancellationRequested();
-            switch (entry.Kind)
-            {
-                case WalkEntryKind.File:
-                    files.Add((FileInfo)entry.Info);
-                    break;
-                case WalkEntryKind.Directory:
-                    // A directory's item digest is all zeros: 7-Zip resets it before every item.
-                    if (LogPath(entry.Info) is { } directoryLogPath)
-                        namesSum.Add(ComputeNamesSumItemDigest(algorithm, isDirectory: true, new byte[digestSize], directoryLogPath));
-                    break;
-                case WalkEntryKind.ReparsePoint:
-                    entries.Add(new HashEntry(entry.Info.FullName, null, ReparsePointSkippedMessage));
-                    break;
-                case WalkEntryKind.UnreadableDirectory:
-                    entries.Add(new HashEntry(entry.Info.FullName, null, entry.Error!.Message));
-                    break;
-            }
-        }
+        List<FileInfo> files = CollectFolderItems(root, rootName, algorithm, namesSum, entries, ct);
         long totalBytes = files.Sum(f => f.Length);
         var tracker = progress is null ? null : new AggregateProgressTracker(totalBytes, progress);
 
@@ -183,7 +154,7 @@ public static class FileHashService
                     return;
                 }
 
-                var namesSumItem = ComputeNamesSumItemDigest(algorithm, isDirectory: false, digest, LogPath(file)!);
+                var namesSumItem = ComputeNamesSumItemDigest(algorithm, isDirectory: false, digest, LogPath(root, rootName, file)!);
 
                 lock (sync)
                 {
@@ -199,6 +170,49 @@ public static class FileHashService
             Entries = entries,
             Folder = new FolderHashSummary(dataSum.ToDisplayString(), namesSum.ToDisplayString(), fileCount, totalBytes)
         };
+    }
+
+    // Lists the files to hash; directories go straight into NamesSum, skipped items into entries.
+    private static List<FileInfo> CollectFolderItems(
+        string root,
+        string? rootName,
+        HashAlgorithmKind algorithm,
+        HashDigestAccumulator namesSum,
+        List<HashEntry> entries,
+        CancellationToken ct)
+    {
+        int digestSize = DigestSize(algorithm);
+        var files = new List<FileInfo>();
+        foreach (WalkEntry entry in DirectoryWalker.Walk(root))
+        {
+            ct.ThrowIfCancellationRequested();
+            switch (entry.Kind)
+            {
+                case WalkEntryKind.File:
+                    files.Add((FileInfo)entry.Info);
+                    break;
+                case WalkEntryKind.Directory:
+                    // A directory's item digest is all zeros: 7-Zip resets it before every item.
+                    if (LogPath(root, rootName, entry.Info) is { } directoryLogPath)
+                        namesSum.Add(ComputeNamesSumItemDigest(algorithm, isDirectory: true, new byte[digestSize], directoryLogPath));
+                    break;
+                case WalkEntryKind.ReparsePoint:
+                    entries.Add(new HashEntry(entry.Info.FullName, null, ReparsePointSkippedMessage));
+                    break;
+                case WalkEntryKind.UnreadableDirectory:
+                    entries.Add(new HashEntry(entry.Info.FullName, null, entry.Error!.Message));
+                    break;
+            }
+        }
+        return files;
+    }
+
+    private static string? LogPath(string root, string? rootName, FileSystemInfo info)
+    {
+        string relative = Path.GetRelativePath(root, info.FullName).Replace('\\', '/');
+        if (relative != ".")
+            return rootName is null ? relative : rootName + "/" + relative;
+        return rootName;
     }
 
     // T-F225: the folder's own name as 7-Zip spells it — the name on disk, not the argument's
