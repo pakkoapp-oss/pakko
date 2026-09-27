@@ -346,6 +346,10 @@ public sealed class CliSubprocessTests
 
     // --- --version / -v ---
 
+    // T-F222: tests build without Publish-Cli.ps1's /p:Version, so this is always a dev build — it
+    // printed a stale "pakko 1.4.2", indistinguishable from the real v1.4.2 release.
+    private const string DevBuildVersionPattern = @"^pakko \d+\.\d+\.\d+-dev(\+[0-9a-f]{7})?$";
+
     [Fact]
     public void DashDashVersion_ExitsZeroAndPrintsPakkoPrefixedVersion()
     {
@@ -353,7 +357,7 @@ public sealed class CliSubprocessTests
 
         exitCode.Should().Be(0);
         stdErr.Should().BeEmpty();
-        stdOut.Trim().Should().MatchRegex(@"^pakko \d+\.\d+\.\d+$");
+        stdOut.Trim().Should().MatchRegex(DevBuildVersionPattern);
     }
 
     [Fact]
@@ -363,7 +367,7 @@ public sealed class CliSubprocessTests
 
         exitCode.Should().Be(0);
         stdErr.Should().BeEmpty();
-        stdOut.Trim().Should().MatchRegex(@"^pakko \d+\.\d+\.\d+$");
+        stdOut.Trim().Should().MatchRegex(DevBuildVersionPattern);
     }
 
     // --- a: happy path ---

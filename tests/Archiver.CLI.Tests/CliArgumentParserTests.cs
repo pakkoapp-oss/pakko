@@ -679,6 +679,19 @@ public sealed class CliArgumentParserTests
         result.ErrorMessage.Should().Contain("no equivalent");
     }
 
+    // T-F222: --help lists -ao{a|s|u}; the errors offered -aot as valid too, which is then refused.
+    [Theory]
+    [InlineData("-ao")]
+    [InlineData("-aox")]
+    [InlineData("-aoaa")]
+    public void Extract_BadOverwriteMode_ListsOnlyTheModesPakkoAccepts(string token)
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse(["x", token, "archive.zip"]);
+
+        result.Type.Should().Be(CliCommandType.Invalid);
+        result.ErrorMessage.Should().Contain("a, s, or u").And.NotContain("or t");
+    }
+
     // --- T-F116: -si / -so ---
 
     [Fact]

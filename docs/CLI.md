@@ -91,8 +91,8 @@ Rejected 2026-07-18; see `DECISIONS.md`'s T-F09 "Distribution" entry.
 | `x` | Extract with full paths | Supported — `ExtractMode.SingleFolder`; since T-F205 an archive's single root folder is kept, as `7z x` does. Without `-o`, extracts into the **current directory**, as `7z x` does (T-F206; before it, next to the archive) |
 | `l` | List contents | Supported — consumes `IArchiveListingRouter` (T-F05, shipped), looped once per archive path given |
 | `b` | Benchmark | Not supported, deliberately out of scope (same reasoning as T-F05's NanaZip-toolbar scope cuts) |
-| `i` | Info (list supported archive formats/codecs) | Not implemented, but trivial — would report ZIP (always) + live `TarCapabilities` (detected formats) |
-| `h` | Hash | **Supported (added 2026-07-20, T-F128/T-F09 follow-up).** Real 7z `h` hashes files on disk, not archive entries — the original row here predated T-F128 and described the wrong thing. Maps onto `FileHashService.ComputeAsync` (same engine the Explorer context-menu "Хеш-суми" submenu uses): one or more files hashed independently, or exactly one folder recursed with a combined DataSum/NamesSum printed (NanaZip-compatible, verified against the vendored `7za.exe`) |
+| `i` | Info (list supported archive formats/codecs) | Supported — prints ZIP and tar/tar.gz (always) plus each tar.exe-backed format (tar.bz2/xz/zst/lzma, 7z, rar) with its live `TarCapabilities` result, and the tar.exe version. Takes no arguments (only `-scc`) |
+| `h` | Hash | **Supported (added 2026-07-20, T-F128/T-F09 follow-up).** Real 7z `h` hashes files on disk, not archive entries — the original row here predated T-F128 and described the wrong thing. Maps onto `FileHashService.ComputeAsync` (same engine as the Explorer context menu's CRC-32/SHA-256 commands, flattened out of the old "Хеш-суми" submenu by T-F128): one or more files hashed independently, or exactly one folder recursed with a combined DataSum/NamesSum printed (NanaZip-compatible, verified against the vendored `7za.exe`) |
 | `rn` | Rename entries in an archive | Not supported, deliberately — in-place mutation, same reasoning as `d` |
 
 ## Version reporting — deliberately not a 7z pattern
@@ -106,6 +106,10 @@ and exiting 0 — closer to `git --version`/`rg --version` convention than 7z's 
 comes from `Archiver.CLI.csproj`'s `<Version>` MSBuild property, which `scripts/Publish-Cli.ps1`
 overrides via `/p:Version` at release-build time (CI passes the pushed git tag, stripped of its
 leading `v`) so a released `pakko.exe` always reports the exact tag it shipped under.
+**Every other build** (a non-tag CI build, a local build) keeps the checked-in default
+`0.0.0-dev` and prints it with the 7-character commit the SDK appends to the informational
+version, e.g. `pakko 0.0.0-dev+0e379cc` (T-F222 — the old checked-in default `1.4.2` made such
+builds indistinguishable from the real v1.4.2). The default is deliberately never bumped.
 
 ## Switch fidelity — per-switch, not full coverage
 

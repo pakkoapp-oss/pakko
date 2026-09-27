@@ -1,4 +1,5 @@
 using System.IO.Compression;
+using System.Reflection;
 using Archiver.CLI;
 using Archiver.Core.Models;
 using Archiver.Core.Services;
@@ -38,11 +39,11 @@ static int RunHelp()
 
 static int RunVersion()
 {
-    // MSBuild's <Version> (Archiver.CLI.csproj) is padded to a 4-segment AssemblyVersion at
-    // compile time; ToString(3) drops the always-zero 4th (revision) segment, matching how
-    // release git tags (vX.Y.Z) are written elsewhere in this repo.
-    var version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
-    Console.Out.WriteLine($"pakko {version?.ToString(3) ?? "0.0.0"}");
+    // T-F222: the informational version keeps the -dev suffix and the SDK-appended commit that
+    // the 4-segment AssemblyVersion drops.
+    string? informationalVersion = Assembly.GetExecutingAssembly()
+        .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+    Console.Out.WriteLine(CliVersionText.Format(informationalVersion));
     return 0;
 }
 

@@ -224,7 +224,7 @@ public static class CliArgumentParser
         overwriteMode = null;
         if (token.Length != 4)
         {
-            error = "-ao requires exactly one mode letter: a, s, u, or t (e.g. -aoa)";
+            error = "-ao requires exactly one mode letter: a, s, or u (e.g. -aoa)";
             return false;
         }
 
@@ -244,7 +244,7 @@ public static class CliArgumentParser
         };
         if (overwriteMode is null)
         {
-            error = $"unknown -ao mode: '{mode}' (expected a, s, u, or t)";
+            error = $"unknown -ao mode: '{mode}' (expected a, s, or u)";
             return false;
         }
 
