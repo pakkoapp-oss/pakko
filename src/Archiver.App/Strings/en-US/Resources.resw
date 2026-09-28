@@ -477,4 +477,40 @@
   <data name="DeleteAfterEitherLabel" xml:space="preserve">
     <value>After a successful operation, move what it used to the Recycle Bin: the source files after Compress, the archives after Extract</value>
   </data>
+  <data name="TestArchiveButton.Content" xml:space="preserve">
+    <value>Test archive</value>
+  </data>
+  <data name="CloseArchiveButton.Content" xml:space="preserve">
+    <value>Close archive</value>
+  </data>
+  <data name="StatusTesting" xml:space="preserve">
+    <value>Testing...</value>
+  </data>
+  <data name="TestResultTitle" xml:space="preserve">
+    <value>Test archive</value>
+  </data>
+  <data name="TestNoErrorsFound" xml:space="preserve">
+    <value>No errors found.</value>
+  </data>
+  <data name="BrowseEncryptedBadgeUnknown" xml:space="preserve">
+    <value>Encrypted</value>
+  </data>
+  <data name="BrowseEncryptedUnknownMethod" xml:space="preserve">
+    <value>unknown method</value>
+  </data>
+  <data name="BrowseEncryptedCount" xml:space="preserve">
+    <value>Encrypted files ({0}): {1} of {2}.</value>
+  </data>
+  <data name="BrowseEncryptedPasswordNote" xml:space="preserve">
+    <value>Pakko asks for the password when you extract or open a file. File names are not encrypted, and encryption adds a few bytes to every file.</value>
+  </data>
+  <data name="BrowseEncryptedAe2Note" xml:space="preserve">
+    <value>CRC-32 is empty for AES (AE-2) files: authentication, not a checksum, verifies them.</value>
+  </data>
+  <data name="BrowseZipCryptoWeakNote" xml:space="preserve">
+    <value>ZipCrypto is weak encryption: the files can be recovered without the password. Use AES-256 for anything sensitive.</value>
+  </data>
+  <data name="BrowseOutsideInfo" xml:space="preserve">
+    <value>This is a folder on disk, not an archive. Double-click an archive to open it, or press Close archive (Esc) to go back to creating archives.</value>
+  </data>
 </root>

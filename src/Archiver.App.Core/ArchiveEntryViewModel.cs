@@ -1,3 +1,5 @@
+using Archiver.Core.Models;
+
 namespace Archiver.App.Core;
 
 /// <summary>
@@ -15,6 +17,11 @@ public sealed record ArchiveEntryViewModel
     public long CompressedSize { get; init; }
     public uint? Crc32 { get; init; }
     public DateTime? Modified { get; init; }
+
+    // T-F199 step 6: null for folders and tar-family listings (the format cannot say).
+    public EntryEncryption? Encryption { get; init; }
+
+    public bool IsEncrypted => Encryption is { } kind && kind != EntryEncryption.None;
 
     public string ModifiedDisplay => Modified?.ToString("yyyy-MM-dd HH:mm") ?? "—";
     public string SizeDisplay => IsFolder ? string.Empty : FormatSize(Size);

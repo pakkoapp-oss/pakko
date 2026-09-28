@@ -465,4 +465,40 @@
   <data name="DeleteAfterEitherLabel" xml:space="preserve">
     <value>Після успішної операції перемістити в Кошик те, з чим вона працювала: вихідні файли після стиснення, архіви після видобування</value>
   </data>
+  <data name="TestArchiveButton.Content" xml:space="preserve">
+    <value>Тестувати архів</value>
+  </data>
+  <data name="CloseArchiveButton.Content" xml:space="preserve">
+    <value>Закрити архів</value>
+  </data>
+  <data name="StatusTesting" xml:space="preserve">
+    <value>Тестування...</value>
+  </data>
+  <data name="TestResultTitle" xml:space="preserve">
+    <value>Тестування архіву</value>
+  </data>
+  <data name="TestNoErrorsFound" xml:space="preserve">
+    <value>Помилок не виявлено.</value>
+  </data>
+  <data name="BrowseEncryptedBadgeUnknown" xml:space="preserve">
+    <value>Зашифровано</value>
+  </data>
+  <data name="BrowseEncryptedUnknownMethod" xml:space="preserve">
+    <value>невідомий метод</value>
+  </data>
+  <data name="BrowseEncryptedCount" xml:space="preserve">
+    <value>Зашифровані файли ({0}): {1} з {2}.</value>
+  </data>
+  <data name="BrowseEncryptedPasswordNote" xml:space="preserve">
+    <value>Пароль Pakko запитає під час видобування чи перегляду. Назви файлів не зашифровані, а шифрування додає кілька байтів до кожного файлу.</value>
+  </data>
+  <data name="BrowseEncryptedAe2Note" xml:space="preserve">
+    <value>CRC-32 порожній для файлів AES (AE-2): їхню цілісність перевіряє автентифікація, а не контрольна сума.</value>
+  </data>
+  <data name="BrowseZipCryptoWeakNote" xml:space="preserve">
+    <value>ZipCrypto — слабке шифрування: файли можна відновити без пароля. Для важливих даних використовуйте AES-256.</value>
+  </data>
+  <data name="BrowseOutsideInfo" xml:space="preserve">
+    <value>Це папка на диску, не архів. Двічі клацніть архів, щоб відкрити його, або натисніть «Закрити архів» (Esc), щоб повернутися до створення архіву.</value>
+  </data>
 </root>

@@ -77,6 +77,9 @@ public sealed class DialogService : IDialogService
         await dialog.ShowAsync();
     }
 
+    // T-F241: a plain message with OK (the App's Test result).
+    public Task ShowInfoAsync(string title, string message) => ShowErrorAsync(title, message);
+
     public async Task<bool> ShowConfirmAsync(string title, string message)
     {
         var dialog = new ContentDialog

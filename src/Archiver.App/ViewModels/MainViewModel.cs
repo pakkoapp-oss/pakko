@@ -71,12 +71,20 @@ public sealed partial class MainViewModel : ObservableObject
         string? DisplayName,
         IReadOnlyDictionary<string, IReadOnlyList<ArchiveEntryViewModel>> ArchiveIndex,
         List<string> BreadcrumbAncestry,
-        string? ScopeDir);
+        string? ScopeDir,
+        EncryptionSummary? Encryption,
+        bool IsZip);
 
     private readonly Stack<NestedBrowseLevel> _browseStack = new();
     private string? _currentNestedScopeDir;
     private string? _currentLevelDisplayName;
     private List<string> _nestedBreadcrumbAncestry = [];
+
+    // T-F199 step 6: the open archive level's encryption badge/notes and whether Test applies —
+    // set on every transition (open, drill-in, back out, climb out, close).
+    private EncryptionSummary? _browseEncryption;
+    private bool _browsedIsZip;
+    private readonly BrowseWork _browseWork = new();
 
     private CancellationTokenSource? _cts;
 
@@ -97,6 +105,8 @@ public sealed partial class MainViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(ExtractAllFromBrowserCommand))]
     [NotifyCanExecuteChangedFor(nameof(ExtractSelectedFromBrowserCommand))]
     [NotifyCanExecuteChangedFor(nameof(ScanArchiveFromBrowserCommand))]
+    [NotifyCanExecuteChangedFor(nameof(TestBrowsedArchiveCommand))]
+    [NotifyCanExecuteChangedFor(nameof(CloseArchiveCommand))]
     [NotifyPropertyChangedFor(nameof(IsOperationRunning))]
     [NotifyPropertyChangedFor(nameof(IsOperationRunningVisibility))]
     [NotifyPropertyChangedFor(nameof(ArchiveButtonText))]
@@ -433,7 +443,77 @@ public sealed partial class MainViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(ExtractAllFromBrowserCommand))]
     [NotifyCanExecuteChangedFor(nameof(ExtractSelectedFromBrowserCommand))]
     [NotifyCanExecuteChangedFor(nameof(ScanArchiveFromBrowserCommand))]
+    [NotifyCanExecuteChangedFor(nameof(CloseArchiveCommand))]
     private bool _isBrowsingArchive = false;
+
+    partial void OnIsBrowsingArchiveChanged(bool value) => RaiseBrowseLocationChanged();
+
+    partial void OnBrowseScopeChanged(ArchiveBrowseScope value) => RaiseBrowseLocationChanged();
+
+    private BrowseLocationState Location => BrowseLocationState.For(
+        IsBrowsingArchive && BrowseScope == ArchiveBrowseScope.Archive, _browseStack.Count > 0, _browsedIsZip);
+
+    public Visibility BrowseExtractActionsVisibility =>
+        IsBrowsingArchive && Location.ShowsExtractActions ? Visibility.Visible : Visibility.Collapsed;
+
+    public Visibility OptionsVisibility =>
+        !IsBrowsingArchive || Location.ShowsOptions ? Visibility.Visible : Visibility.Collapsed;
+
+    public Visibility DeleteAfterVisibility =>
+        !IsBrowsingArchive || Location.OffersDeleteAfter ? Visibility.Visible : Visibility.Collapsed;
+
+    public Visibility TestArchiveVisibility =>
+        IsBrowsingArchive && Location.ShowsTest ? Visibility.Visible : Visibility.Collapsed;
+
+    private bool ShowsEncryption => IsBrowsingArchive && BrowseScope == ArchiveBrowseScope.Archive
+        && _browseEncryption is { IsEncrypted: true };
+
+    public Visibility EncryptionBadgeVisibility => ShowsEncryption ? Visibility.Visible : Visibility.Collapsed;
+
+    public string EncryptionBadgeText =>
+        _browseEncryption?.BadgeName ?? _res.GetString("BrowseEncryptedBadgeUnknown");
+
+    // T-F199 board 5/6: one line under the breadcrumb — the encryption notes inside an encrypted
+    // archive, where the user is outside one.
+    public bool IsBrowseInfoOpen => IsBrowsingArchive && (Location.ShowsOutsideInfo || ShowsEncryption);
+
+    public Microsoft.UI.Xaml.Controls.InfoBarSeverity BrowseInfoSeverity =>
+        ShowsEncryption && _browseEncryption!.HasZipCrypto ? Microsoft.UI.Xaml.Controls.InfoBarSeverity.Warning : Microsoft.UI.Xaml.Controls.InfoBarSeverity.Informational;
+
+    public string BrowseInfoText
+    {
+        get
+        {
+            if (!IsBrowsingArchive) return string.Empty;
+            if (Location.ShowsOutsideInfo) return _res.GetString("BrowseOutsideInfo");
+            if (!ShowsEncryption) return string.Empty;
+            EncryptionSummary summary = _browseEncryption!;
+            string count = string.Format(System.Globalization.CultureInfo.CurrentCulture, _res.GetString("BrowseEncryptedCount"),
+                summary.BadgeName ?? _res.GetString("BrowseEncryptedUnknownMethod"), summary.EncryptedFiles, summary.TotalFiles);
+            return string.Join(" ", new[] { count }.Concat(summary.NoteKeys.Select(_res.GetString)));
+        }
+    }
+
+    private void SetBrowseLevel(EncryptionSummary? encryption, bool isZip)
+    {
+        _browseEncryption = encryption;
+        _browsedIsZip = isZip;
+        RaiseBrowseLocationChanged();
+    }
+
+    private void RaiseBrowseLocationChanged()
+    {
+        OnPropertyChanged(nameof(BrowseExtractActionsVisibility));
+        OnPropertyChanged(nameof(OptionsVisibility));
+        OnPropertyChanged(nameof(DeleteAfterVisibility));
+        OnPropertyChanged(nameof(TestArchiveVisibility));
+        OnPropertyChanged(nameof(EncryptionBadgeVisibility));
+        OnPropertyChanged(nameof(EncryptionBadgeText));
+        OnPropertyChanged(nameof(IsBrowseInfoOpen));
+        OnPropertyChanged(nameof(BrowseInfoSeverity));
+        OnPropertyChanged(nameof(BrowseInfoText));
+        TestBrowsedArchiveCommand.NotifyCanExecuteChanged();
+    }
 
     public Visibility IsPendingListVisibility =>
         IsBrowsingArchive ? Visibility.Collapsed : Visibility.Visible;
@@ -445,6 +525,7 @@ public sealed partial class MainViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(ExtractAllFromBrowserCommand))]
     [NotifyCanExecuteChangedFor(nameof(ExtractSelectedFromBrowserCommand))]
     [NotifyCanExecuteChangedFor(nameof(ScanArchiveFromBrowserCommand))]
+    [NotifyCanExecuteChangedFor(nameof(TestBrowsedArchiveCommand))]
     private string? _browsedArchivePath;
 
     [ObservableProperty]
@@ -487,6 +568,7 @@ public sealed partial class MainViewModel : ObservableObject
         _dialogService = dialogService;
         _logService = logService;
         _policy = groupPolicyOptions;
+        _browseWork.Changed += CloseArchiveCommand.NotifyCanExecuteChanged;
 
         // T-F51: defensive only — nothing in this ViewModel currently sets
         // SelectedContainerFormat away from its Zip default except user interaction with the
@@ -734,9 +816,11 @@ public sealed partial class MainViewModel : ObservableObject
     // Selected/Extract All/double-click-a-file commands below — the entire IsBusy/progress/
     // stopwatch/bomb-confirm-callback/summary-dialog/cleanup sequence stays identical for both;
     // only which archive(s) and which entry subset (if any) get passed to ExtractOptions differ.
-    private async Task RunExtractAsync(IReadOnlyList<string> archivePaths, IReadOnlyList<string>? selectedEntryPaths, string? destinationOverride = null, bool fromBrowser = false)
+    // allowDeleteAfter: false for a nested archive in the browser — a temp copy (T-F199 step 6).
+    private async Task RunExtractAsync(IReadOnlyList<string> archivePaths, IReadOnlyList<string>? selectedEntryPaths, string? destinationOverride = null, bool fromBrowser = false, bool allowDeleteAfter = true)
     {
         _cts = new CancellationTokenSource();
+        bool closeBrowser = false;
         _lastOperation = "extract";
         IsBusy = true;
         CancelCommand.NotifyCanExecuteChanged();
@@ -798,8 +882,12 @@ public sealed partial class MainViewModel : ObservableObject
                 _logService.Error($"{error.SourcePath} — {error.Message}");
             await _dialogService.ShowOperationSummaryAsync("Extract", result);
             // T-F260/T-F229/T-F265: see ArchiveAsync — a subset extraction is never deletable.
-            if (DeleteAfterOperation)
+            if (DeleteAfterOperation && allowDeleteAfter)
+            {
                 await RunCleanupAsync(result.FullyProcessedSources);
+                // The browsed archive went to the Recycle Bin: nothing left to browse.
+                closeBrowser = fromBrowser && !File.Exists(archivePaths[0]);
+            }
         }
         catch (OperationCanceledException)
         {
@@ -827,6 +915,8 @@ public sealed partial class MainViewModel : ObservableObject
         }
         IsBusy = false;
         StatusMessage = _res.GetString("StatusReady");
+        if (closeBrowser)
+            CloseArchiveCore();
     }
 
     [RelayCommand(CanExecute = nameof(IsOperationRunning))]
@@ -836,6 +926,8 @@ public sealed partial class MainViewModel : ObservableObject
 
     public async Task EnterBrowseModeAsync(string archivePath)
     {
+        using IDisposable work = _browseWork.Begin();
+        SetBrowseLevel(null, isZip: false);
         IsBrowsingArchive = true;
         BrowseScope = ArchiveBrowseScope.Archive;
         BrowsedArchivePath = archivePath;
@@ -878,8 +970,11 @@ public sealed partial class MainViewModel : ObservableObject
         }
 
         _archiveIndex = ArchiveTreeIndex.Build(result.Entries);
+        SetBrowseLevel(EncryptionSummary.Of(result.Entries), IsZipOnDisk(archivePath));
         RefreshCurrentFolder();
     }
+
+    private static bool IsZipOnDisk(string archivePath) => ArchiveFormatDetector.Detect(archivePath) == ArchiveFormat.Zip;
 
     // T-F98: shared by EnterBrowseModeAsync (a real, on-disk archive) and
     // NavigateIntoNestedArchiveAsync (a temp-extracted nested one) — tar-family listing shells
@@ -941,6 +1036,7 @@ public sealed partial class MainViewModel : ObservableObject
     public async Task NavigateIntoNestedArchiveAsync(ArchiveEntryViewModel entry)
     {
         if (BrowsedArchivePath is null) return;
+        using IDisposable work = _browseWork.Begin();
 
         if (NestedArchivePolicy.ExceedsMaxDepth(_browseStack.Count))
         {
@@ -1004,7 +1100,9 @@ public sealed partial class MainViewModel : ObservableObject
             _currentLevelDisplayName,
             _archiveIndex,
             new List<string>(_nestedBreadcrumbAncestry),
-            _currentNestedScopeDir));
+            _currentNestedScopeDir,
+            _browseEncryption,
+            _browsedIsZip));
 
         _nestedBreadcrumbAncestry.Add(_currentLevelDisplayName ?? Path.GetFileName(BrowsedArchivePath ?? string.Empty));
         if (CurrentFolderPath.Length > 0)
@@ -1015,6 +1113,7 @@ public sealed partial class MainViewModel : ObservableObject
         BrowsedArchivePath = extractedPath;
         CurrentFolderPath = string.Empty;
         _archiveIndex = ArchiveTreeIndex.Build(listResult.Entries);
+        SetBrowseLevel(EncryptionSummary.Of(listResult.Entries), IsZipOnDisk(extractedPath));
         RefreshCurrentFolder();
     }
 
@@ -1089,6 +1188,7 @@ public sealed partial class MainViewModel : ObservableObject
     // code-behind into BrowserEntryRouting.
     public async Task OpenBrowserRowAsync(ArchiveEntryViewModel entry)
     {
+        using IDisposable work = _browseWork.Begin();
         bool insideArchive = BrowseScope == ArchiveBrowseScope.Archive;
         bool isArchive = !IsBusy && !entry.IsFolder && !insideArchive
             && await Task.Run(() => IsArchiveOnDisk(entry.FullPath));
@@ -1209,6 +1309,7 @@ public sealed partial class MainViewModel : ObservableObject
                         _archiveIndex = parentLevel.ArchiveIndex;
                         _nestedBreadcrumbAncestry = parentLevel.BreadcrumbAncestry;
                         _currentNestedScopeDir = parentLevel.ScopeDir;
+                        SetBrowseLevel(parentLevel.Encryption, parentLevel.IsZip);
                         RefreshCurrentFolder();
                         if (childScopeDir is not null)
                             NestedArchiveCache.DeleteScope(childScopeDir);
@@ -1217,6 +1318,7 @@ public sealed partial class MainViewModel : ObservableObject
                     {
                         string? containingFolder = Path.GetDirectoryName(BrowsedArchivePath);
                         BrowsedArchivePath = null;
+                        SetBrowseLevel(null, isZip: false);
                         if (containingFolder is not null)
                         {
                             BrowseScope = ArchiveBrowseScope.RealFileSystem;
@@ -1260,13 +1362,86 @@ public sealed partial class MainViewModel : ObservableObject
 
     [RelayCommand(CanExecute = nameof(CanExtractSelectedFromBrowser))]
     private Task ExtractSelectedFromBrowserAsync() =>
-        RunExtractAsync([BrowsedArchivePath!], [.. SelectedBrowserEntries.Select(e => e.FullPath)], fromBrowser: true);
+        RunExtractAsync([BrowsedArchivePath!], [.. SelectedBrowserEntries.Select(e => e.FullPath)], fromBrowser: true,
+            allowDeleteAfter: Location.OffersDeleteAfter);
 
     private bool CanExtractAllFromBrowser() => !IsBusy && BrowsedArchivePath is not null;
 
     [RelayCommand(CanExecute = nameof(CanExtractAllFromBrowser))]
     private Task ExtractAllFromBrowserAsync() =>
-        RunExtractAsync([BrowsedArchivePath!], selectedEntryPaths: null, fromBrowser: true);
+        RunExtractAsync([BrowsedArchivePath!], selectedEntryPaths: null, fromBrowser: true,
+            allowDeleteAfter: Location.OffersDeleteAfter);
+
+    // T-F210: back to create mode (the button and Esc). Off while a listing, drill-in or preview
+    // is still running, so that work never lands in a closed browser.
+    private bool CanCloseArchive() => IsBrowsingArchive && !IsBusy && !_browseWork.InFlight;
+
+    [RelayCommand(CanExecute = nameof(CanCloseArchive))]
+    private void CloseArchive() => CloseArchiveCore();
+
+    private void CloseArchiveCore()
+    {
+        ResetNestedBrowseStack();
+        _browsePasswords.Clear();
+        _archiveIndex = new Dictionary<string, IReadOnlyList<ArchiveEntryViewModel>>();
+        BrowsedArchivePath = null;
+        BrowseScope = ArchiveBrowseScope.Archive;
+        CurrentFolderPath = string.Empty;
+        CurrentFolderEntries = [];
+        SelectedBrowserEntries = [];
+        BreadcrumbSegments = [];
+        SetBrowseLevel(null, isZip: false);
+        IsBrowsingArchive = false;
+    }
+
+    // T-F241: the App's Test, through the same router call Explorer, Shell and the CLI use. ZIP
+    // only (TestArchiveVisibility); "no errors" only when the archive was really tested (T-F274).
+    private bool CanTestBrowsedArchive() => !IsBusy && BrowsedArchivePath is not null && _browsedIsZip;
+
+    [RelayCommand(CanExecute = nameof(CanTestBrowsedArchive))]
+    private async Task TestBrowsedArchiveAsync()
+    {
+        string archivePath = BrowsedArchivePath!;
+        _cts = new CancellationTokenSource();
+        IsBusy = true;
+        CancelCommand.NotifyCanExecuteChanged();
+        Progress = 0;
+        bool wasCancelled = false;
+        try
+        {
+            StatusMessage = _res.GetString("StatusTesting");
+            var progress = new Progress<ProgressReport>(r => Progress = r.Percent);
+            ArchiveResult result = await _extractionRouter.TestAsync([archivePath], progress, BrowsePasswordResolver(archivePath), _cts.Token);
+            _browsePasswords.Complete(archivePath, result);
+            _logService.Info($"Test completed — {archivePath} — {result.Outcome}");
+            foreach (ArchiveError error in result.Errors)
+                _logService.Error($"{error.SourcePath} — {error.Message}");
+            if (result.Outcome == OperationOutcome.Completed)
+                await _dialogService.ShowInfoAsync(_res.GetString("TestResultTitle"), _res.GetString("TestNoErrorsFound"));
+            else
+                await _dialogService.ShowOperationSummaryAsync("Test", result);
+        }
+        catch (OperationCanceledException)
+        {
+            wasCancelled = true;
+            StatusMessage = _res.GetString("StatusCancelled");
+        }
+        catch (Exception ex)
+        {
+            _logService.Error("Unexpected error during test", ex);
+            await _dialogService.ShowErrorAsync(_res.GetString("DialogErrorTitle"), ex.Message);
+        }
+        finally
+        {
+            _cts?.Dispose();
+            _cts = null;
+        }
+        // T-F70: busy until the cancelled line has been seen.
+        if (wasCancelled)
+            await Task.Delay(2000);
+        IsBusy = false;
+        StatusMessage = _res.GetString("StatusReady");
+    }
 
     // T-F146: scans the current selection if any entries are checked, otherwise the whole open
     // archive — one combined button rather than separate Selected/All variants (keeps the browse
@@ -1347,7 +1522,8 @@ public sealed partial class MainViewModel : ObservableObject
 
         string archiveDir = Path.GetDirectoryName(BrowsedArchivePath) ?? DestinationPath;
         string destDir = Path.Combine(archiveDir, ArchiveNaming.GetBaseName(BrowsedArchivePath));
-        await RunExtractAsync([BrowsedArchivePath], [entry.FullPath], destDir, fromBrowser: true);
+        await RunExtractAsync([BrowsedArchivePath], [entry.FullPath], destDir, fromBrowser: true,
+            allowDeleteAfter: Location.OffersDeleteAfter);
     }
 
     // T-F97: previewable file types (PreviewPolicy) skip the full Extract ceremony (progress,
@@ -1358,6 +1534,7 @@ public sealed partial class MainViewModel : ObservableObject
     public async Task PreviewBrowserEntryAsync(ArchiveEntryViewModel entry)
     {
         if (BrowsedArchivePath is null) return;
+        using IDisposable work = _browseWork.Begin();
 
         StatusMessage = _res.GetString("StatusOpening");
         try

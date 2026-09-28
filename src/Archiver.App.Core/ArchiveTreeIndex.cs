@@ -44,6 +44,7 @@ public static class ArchiveTreeIndex
                     CompressedSize = entry.CompressedSize,
                     Crc32 = entry.Crc32,
                     Modified = entry.Modified,
+                    Encryption = entry.Encryption,
                 };
             }
 

@@ -4457,6 +4457,25 @@ real console) and T-F226's deferred per-arrow diagram ritual — carried as open
   twice creates the archive (`7za t -pSecret1` Ok); `pakko t`'s decrypt prompt takes Cyrillic
   (6 `*`). SECURITY.md's "never logs or persists" bullet now names T-F200's browse-session
   memory (user permission, 2026-09-28).
+  Step 6 (browse mode) done: toolbar Test archive (ZIP only, like Explorer's menu — tar.exe has
+  no test mode; T-F241), Scan, Close archive with Esc (T-F210); badge with the weakest method
+  present and an InfoBar (count, password/file-name note, AE-2 empty-CRC note, ZipCrypto weak
+  warning as a Warning bar); a lock before each encrypted entry's name. Outside the archive (after
+  Up) the extract buttons, Test and the options are hidden and the bar says where the user is. A
+  nested archive offers no "delete after" (a temp copy; guarded in `RunExtractAsync`, not only
+  hidden); Extract all with delete-after closes the browser when the archive is gone. The badge
+  follows the level (saved in the nested stack, cleared on climbing out and on close). "Close
+  archive" is off while a listing, drill-in or preview runs (App.Core `BrowseWork`), so that work
+  never lands in a closed browser. New App.Core `BrowseLocationState`, `BrowseWork`,
+  `EncryptionSummary.BadgeName`/`NoteKeys`, `ArchiveEntryViewModel.Encryption`/`IsEncrypted`
+  (tests-first, mutation-checked). New keys en-US/uk-UA only (step 8). Device (1.5.0.28/29, uk-UA):
+  AES-256 ZIP badge + AE-2 note; Test: Esc on the password prompt closes only the prompt (summary
+  shows the error), Secret1 -> "Помилок не виявлено", a second Test reuses the session password;
+  Up -> folder view, info bar, no extract/options; mixed AES+ZipCrypto -> ZipCrypto badge and
+  warning; Esc -> empty create mode; nested plain -> AES inner: badge on drill-in, gone after Up,
+  no delete-after at the nested level; .7z: no Test, no badge; del.zip Extract all + delete-after ->
+  archive in the Recycle Bin, readme.txt extracted, back to create mode. The selection line in the
+  footer (board 5, "2 of 12 selected") is left for step 7.
 
 - **Carried into wave 4 (2026-09-28): device checks left open by fix phase 7** — T-F254 on a
   regional Windows language (e.g. de-AT, zh-CN: menu, Shell windows and App agree on the language);
@@ -4715,6 +4734,9 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   the exit on purpose — decide how the user returns to create mode.
 - **Reported by:** T-F202, 2026-09-24.
 - **Decision (2026-09-25):** keep "Up"; add a "Close archive" command (also Esc) that returns to create mode.
+- **Progress (2026-09-28, T-F199 step 6):** done — "Close archive" button with Esc returns to an
+  empty create mode; outside the archive the extract buttons and options are hidden and an info
+  bar explains the view. Device-checked on 1.5.0.28.
 
 ### T-F211 — A successful App operation shows no visible outcome (P1)
 
@@ -5327,6 +5349,9 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   recorded in `docs/DECISIONS.md` or `docs/CLI.md`. Decide: add, or document why not.
 - **Reported by:** T-F226 review, 2026-09-24.
 - **Root:** T-F261 (single routing and Group Policy owner) — the part this leaf needs goes with it.
+- **Progress (2026-09-28, T-F199 step 6):** App half done — "Test archive" in the browser toolbar,
+  ZIP only (same as Explorer's menu), through `IExtractionRouter.TestAsync`; "No errors found" only
+  for `Outcome == Completed` (T-F274), otherwise the summary. Device-checked on 1.5.0.28.
 - **Decision (2026-09-25):** add Test to the App; no CLI scan for now (no `7z` equivalent) — record why, including that `MpCmdRun` cannot scan inside password-protected ZIPs (T-F194), in `docs/CLI.md`/`docs/DECISIONS.md`.
 
 ### T-F242 — App: cleanup errors swallowed, dead Core options, logic in code-behind (P2)
