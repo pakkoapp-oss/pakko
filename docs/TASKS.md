@@ -4388,6 +4388,17 @@ real console) and T-F226's deferred per-arrow diagram ritual — carried as open
 
 ### T-F199 — Archive/browse window layout redesign (+ inline encryption password)
 
+- **Progress (2026-09-28, wave 4):** steps 0-3 done. Step 1 aa9cf8f/13bd543 (per-entry encryption,
+  `pakko l` Encrypted column); step 0 0698d88 (resw key-usage witness tests, dead
+  `MultipleFoldersHint` removed); step 2 dc937b8 (App.Core `PrimaryActionPolicy`,
+  `InlinePasswordState`, `OutcomeLine`, `EncryptionSummary`; Core `CanOpenByExtension`); step 3 —
+  own 32 px title bar with the build stamp, toolbar / table (Star, MinHeight 160 on the row) /
+  scrolling options / footer with the action buttons on the right; default 1100x720, floor 900x520
+  (T-F224). No Mica in the main window. At 14:0x the step-3 build showed a pure black client area
+  on three deploys (no crash, UIA intact); at 17:40 the same code rendered on every path (Start,
+  Shell `--browse`, after interaction, after restart) — cause not found, watch for recurrence.
+  Renamed-file list in the outcome line (mockup board 7) needs Core to report renames — deferred.
+
 - **Carried into wave 4 (2026-09-28): device checks left open by fix phase 7** — T-F254 on a
   regional Windows language (e.g. de-AT, zh-CN: menu, Shell windows and App agree on the language);
   T-F221 in a real terminal (progress percentage on stderr, `a -so` to the console refused with

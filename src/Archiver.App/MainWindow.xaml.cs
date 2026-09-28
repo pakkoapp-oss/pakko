@@ -69,7 +69,8 @@ public sealed partial class MainWindow : Window
         // follow-up (2026-07-17) re-tuned this down to 780 (paired with the table's MinHeight
         // dropping 200->140 below) after re-running the same on-device zero-bounds check this
         // value's history required; see DECISIONS.md's T-F106 entry for the confirmed numbers.
-        this.AppWindow.Resize(new Windows.Graphics.SizeInt32(1100, 780));
+        // T-F199/T-F224: 720 fits a 1366x768 screen's work area; the options now scroll.
+        this.AppWindow.Resize(new Windows.Graphics.SizeInt32(1100, 720));
         PlaceAwayFromOtherPakkoWindows();
 
         // T-F106: without an explicit floor, the window could be shrunk by the user to a height
@@ -80,11 +81,23 @@ public sealed partial class MainWindow : Window
         // by testing at increasing heights until every row — table, options, checkboxes, status
         // bar — reported non-zero bounds simultaneously. Re-tuned down to 780 in the same
         // follow-up noted above, re-verified with the identical on-device method.
+        // T-F199/T-F224: the options scroll now (FitOptionsScroll), so the floor only has to hold
+        // the title bar, toolbar, the table's 160 px, a slice of options and the footer.
         if (this.AppWindow.Presenter is Microsoft.UI.Windowing.OverlappedPresenter presenter)
         {
             presenter.PreferredMinimumWidth = 900;
-            presenter.PreferredMinimumHeight = 780;
+            presenter.PreferredMinimumHeight = 520;
         }
+        ContentGrid.SizeChanged += (_, _) => FitOptionsScroll();
+
+        // T-F199: content extends into the title bar; TitleText shows AppWindow.Title (the build stamp).
+        ExtendsContentIntoTitleBar = true;
+        SetTitleBar(AppTitleBar);
+        // No Mica: with a system backdrop, screen capture of this window came back black
+        // (2026-09-28), and screenshots are how every on-device check is verified.
+        RootGrid.Background = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["SolidBackgroundFillColorBaseBrush"];
+        RootGrid.Loaded += (_, _) => ApplyCaptionColors();
+        RootGrid.ActualThemeChanged += (_, _) => ApplyCaptionColors();
         // On-device verification relies on a fresh Deploy.ps1 having actually replaced the
         // installed binary — a bare "Build succeeded" log does not prove that (see CLAUDE.md's
         // stale-MSIX gotcha). Showing the running assembly's compile time in the title bar makes
@@ -93,6 +106,7 @@ public sealed partial class MainWindow : Window
         // for an installed MSIX is the install time; T-F198 item 4: no stamp in a Store build.
         this.AppWindow.Title = BuildStamp.Title(
             BuildStamp.Read(System.Reflection.Assembly.GetExecutingAssembly()), IsStoreBuild());
+        TitleText.Text = this.AppWindow.Title;
 
         this.AppWindow.SetIcon("Assets/Square44x44Logo.ico");
 
@@ -106,6 +120,36 @@ public sealed partial class MainWindow : Window
             NestedArchiveCache.DeleteOwn();
             ViewModel.ForgetBrowsePasswords();
         };
+    }
+
+    // T-F199/T-F224: an Auto row never scrolls, so the options get what the table's minimum
+    // leaves. Pure layout, no view-model state.
+    private const double TableMinHeight = 160;
+
+    private void FitOptionsScroll()
+    {
+        double spacing = ContentGrid.RowSpacing * 3;
+        double available = ContentGrid.ActualHeight - ContentGrid.Padding.Top - ContentGrid.Padding.Bottom
+            - ToolbarHeight() - FooterGrid.ActualHeight - spacing - TableMinHeight;
+        OptionsScroll.MaxHeight = System.Math.Max(0, available);
+    }
+
+    private double ToolbarHeight() =>
+        ContentGrid.Children.OfType<FrameworkElement>()
+            .Where(e => Grid.GetRow(e) == 0 && e.Visibility == Visibility.Visible)
+            .Select(e => e.ActualHeight).DefaultIfEmpty(0).Max();
+
+    // Content extends into the title bar, so its caption buttons follow the theme by hand (as
+    // Archiver.OperationUi's window does).
+    private void ApplyCaptionColors()
+    {
+        Microsoft.UI.Windowing.AppWindowTitleBar titleBar = this.AppWindow.TitleBar;
+        Windows.UI.Color foreground = RootGrid.ActualTheme == ElementTheme.Dark ? Microsoft.UI.Colors.White : Microsoft.UI.Colors.Black;
+        titleBar.ButtonForegroundColor = foreground;
+        titleBar.ButtonHoverForegroundColor = foreground;
+        titleBar.ButtonPressedForegroundColor = foreground;
+        titleBar.ButtonBackgroundColor = Microsoft.UI.Colors.Transparent;
+        titleBar.ButtonInactiveBackgroundColor = Microsoft.UI.Colors.Transparent;
     }
 
     private static bool IsStoreBuild()
