@@ -4524,6 +4524,13 @@ real console) and T-F226's deferred per-arrow diagram ritual — carried as open
   "archiving" while the App now says "compress" — align in a later pass. Step 9: grep README,
   `docs/XAML.md` and both `index.html` for the old "Archive"/"Архів" button wording; CHANGELOG
   line at release.
+  Step 9 (docs) done: `docs/XAML.md` tree rewritten from the real XAML (title bar, toolbar, table,
+  option cards, footer; layout helpers; empty-state overlay is hit-testable now; floor numbers),
+  ARCHITECTURE's App.Core tree (wave 4 classes), TESTING (wave 4 tests), DECISIONS (wave 4 entry),
+  DIAGRAMS diagram 2 (outcome line, summary only on problems; rendered with mermaid-cli). README
+  and both `index.html` had no button wording to change. CHANGELOG at release: "Compress to
+  {format}" rename, inline password, `pakko l` Encrypted column (Path moves to column 7), bare
+  `-p` prompt.
 
 - **Carried into wave 4 (2026-09-28): device checks left open by fix phase 7** — T-F254 on a
   regional Windows language (e.g. de-AT, zh-CN: menu, Shell windows and App agree on the language);

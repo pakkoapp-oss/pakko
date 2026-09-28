@@ -284,14 +284,21 @@ inline under the "Encrypt with password" checkbox and checked while typing; `Arc
 CanExecute stays false until it is valid, so no prompt opens during `Busy`. `ArchiveAsync` reads
 the password once before the Core call and clears it in `finally`, on every exit path.
 
+**T-F199 step 7 / T-F211 (2026-09-28):** the status line during `Busy` shows the rendered
+`OutcomeLine` (it replaced `StatusDone`/`StatusArchivedIn`); `ShowOperationSummaryAsync` is always
+awaited but `DialogService` returns at once for `OperationOutcome.Completed`, so the summary opens
+only on problems; "delete after" runs after it (T-F229). After `IsBusy=false` the status resets to
+`StatusReady` and `SetOutcome` puts the result line in the footer, where it stays until the next
+action (`FooterLine.Pick`).
+
 ```mermaid
 stateDiagram-v2
     [*] --> Idle
     Idle --> Busy: ArchiveCommand/ExtractCommand invoked<br/>(CanExecute: FileItems.Count>0 && !IsBusy,<br/>Archive also: inline password valid when it applies)<br/>IsBusy=true
     Busy --> Busy: CancelCommand invoked<br/>(CanExecute: IsOperationRunning == IsBusy)<br/>→ cts.Cancel() only — IsBusy is NOT changed here —<br/>there is no dedicated Cancelling state in code
-    Busy --> AwaitingSummaryDialog: _archiveService call returns without throwing<br/>StatusMessage set to StatusDone/StatusArchivedIn<br/>(Errors==0 && Skipped==0) or StatusIssues (otherwise)
-    AwaitingSummaryDialog --> AwaitingSummaryDialog: await ShowOperationSummaryAsync(...)<br/>IsBusy is STILL TRUE while this modal is open —<br/>finally has not run yet
-    AwaitingSummaryDialog --> Idle: finally{no IsBusy change} — wasCancelled==false so the delay<br/>branch below is skipped — THEN IsBusy=false — THEN StatusMessage=StatusReady<br/>(T-F70: IsBusy=false moved out of finally to here)
+    Busy --> AwaitingSummaryDialog: _archiveService call returns without throwing<br/>StatusMessage = rendered OutcomeLine
+    AwaitingSummaryDialog --> AwaitingSummaryDialog: await ShowOperationSummaryAsync(...)<br/>(no dialog when Outcome==Completed) then delete-after cleanup<br/>IsBusy is STILL TRUE — finally has not run yet
+    AwaitingSummaryDialog --> Idle: finally{no IsBusy change} — wasCancelled==false so the delay<br/>branch below is skipped — THEN IsBusy=false — THEN StatusMessage=StatusReady — THEN SetOutcome (footer result line)<br/>(T-F70: IsBusy=false moved out of finally to here)
     Busy --> AwaitingErrorDialog: unexpected Exception caught (not OperationCanceledException)<br/>StatusMessage=Error
     AwaitingErrorDialog --> AwaitingErrorDialog: await ShowErrorAsync(...)<br/>IsBusy is STILL TRUE while this modal is open
     AwaitingErrorDialog --> Idle: finally{no IsBusy change} — delay branch skipped —<br/>THEN IsBusy=false — THEN StatusMessage=StatusReady (same T-F70 point as above)

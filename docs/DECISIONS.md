@@ -10210,3 +10210,44 @@ stderr is a console, and names `h <folder>` files relative to the folder's paren
 **T-F198 items 1 and 7.** App.Core cannot load resources, so `DisplayText` holds the list words
 and size units and the App sets them at startup; the preview's folder check uses
 `FileItem.IsFolder`, not the translated type text.
+
+## Wave 4 — T-F199: main window redesign, inline encryption password (2026-09-28)
+
+**Layout.** Options first, primary action last: own 32 px title bar (the build stamp moved into
+it), toolbar, table, two option cards ("New archive" as an `Expander`, "Where, and what after"),
+footer with status on the left and the action buttons on the right. The options scroll instead of
+forcing a tall window (`FitOptionsScroll`, measured from `RootGrid` — an overfull `ContentGrid`
+reports its desired height); default 1100x720, floor 900x520 (T-F224). No Mica: with a system
+backdrop, screen capture of the window came back black, and screenshots are how device checks are
+verified. Structure: `docs/XAML.md`.
+
+**Forks (user, 2026-09-27).** Two action buttons, the accent on the one that fits the list
+(archives -> Extract, anything else -> Compress; App.Core `PrimaryActionPolicy`).
+Create verb "Compress" everywhere ("Compress to {format}", uk "Стиснути в ZIP"), as
+Explorer's menu already says. Extract runs only the listed archives and is off, with a reason,
+when there are none (T-F212).
+
+**Inline password instead of the Encrypt modal.** The modal validated only after OK, a trap for a
+Ukrainian keyboard layout. Now two stacked `PasswordBox`es checked while typing
+(`InlinePasswordState`); Compress stays off until the ZIP password is valid. New-password fields
+take only `EncryptionPasswordRule.IsAllowed` characters, like a Windows PIN box (App and `pakko
+a`); a refused key blocks the field until it is emptied, so "Parol1" typed in a Cyrillic layout
+cannot leave a matching "1" in both. User kept ASCII-only after the trade-off (a Cyrillic password
+opens only in 7-Zip on a Cyrillic-ANSI Windows). Decrypt prompts accept anything (third-party
+archives). The password is read once at start and cleared in `finally`, on untick, format change
+and window close; `DialogService` returns no password for `PasswordPurpose.Encrypt`.
+
+**Browse mode.** Test archive for ZIP only (tar.exe has no test mode, Explorer offers ZIP only),
+Close archive with Esc (T-F210), a badge with the weakest method present and lock icons, read from
+the central directory without a password (Core `ArchiveEntryInfo.Encryption`; `pakko l` gains an
+Encrypted column, so `Path` moves from column 6 to 7 — a CLI output contract change for the
+CHANGELOG). A nested archive offers no "delete after" (it is a temp copy), guarded in the command,
+not only hidden. "Close archive" waits for in-flight listing/drill-in/preview (`BrowseWork`).
+
+**Footer result (T-F211).** The result line stays until the next action (operation start, list
+change, real selection, open/close archive) with "Show in folder" and "Details...";
+`FooterLine.Pick` orders result > browse selection > create preview, nothing while busy.
+
+**Locales.** `AppResourceKeysTests` requires every en-US key in all 37 locales (About URLs
+exempt) instead of a hand-kept list, so a key added in English only fails the build's tests.
+Open: Explorer's operation window and Core messages still say "archiving".

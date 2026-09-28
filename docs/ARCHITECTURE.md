@@ -193,7 +193,19 @@ src/
 │   ├── PreviewCache.cs                                  ← T-F97: preview extraction cache
 │   ├── DeferredActionGate.cs                            ← T-F106: defers activation past first layout pass
 │   ├── SourceRecycler.cs                                ← T-F207: "Delete after operation" — Recycle Bin / confirm / report
-│   └── Win32SourceDeleteOperations.cs                   ← T-F207: final-path + volume-type + SHFileOperationW P/Invoke
+│   ├── Win32SourceDeleteOperations.cs                   ← T-F207: final-path + volume-type + SHFileOperationW P/Invoke
+│   ├── PrimaryActionPolicy.cs                           ← T-F199: Compress/Extract availability + which one is primary
+│   ├── CreateModeText.cs                                ← T-F199: create-mode resource keys (card summary, delete-after words)
+│   ├── InlinePasswordState.cs                           ← T-F199: inline encryption password checks (message key, AllowsCompress)
+│   ├── EncryptionSummary.cs                             ← T-F199: browse badge + info-bar notes, read without a password
+│   ├── BrowseLocationState.cs / BrowseWork.cs           ← T-F199: what browse mode offers where; in-flight browse work
+│   ├── OutcomeLine.cs                                   ← T-F211: footer result line; FooterLine.Pick chooses the footer text
+│   ├── SessionPasswordMemory.cs                         ← T-F200: browse-session password, memory only
+│   ├── BrowserEntryRouting.cs                           ← T-F242: what a row double-click does
+│   ├── DisplayText.cs                                   ← T-F198: list words/size units, set by the App at startup
+│   ├── BuildStamp.cs                                    ← T-F218: title-bar build stamp from assembly metadata
+│   ├── WindowCascade.cs / Win32PakkoWindows.cs          ← T-F201: cascade a new window off other Pakko windows
+│   └── ProcessTempRoot.cs                               ← T-F252: per-process %TEMP% subfolder, stale sweep
 │
 ├── Archiver.Shell/             ← shell-triggered operation entry point; net10.0-windows; WinExe; no WinUI
 │   ├── Program.cs                      ← T-F268: parse, then dispatch to ShellCommands

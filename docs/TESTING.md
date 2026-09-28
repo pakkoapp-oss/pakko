@@ -833,6 +833,17 @@ Ukrainian UI, CI an English one.
   missing input, -p hint and one wrong-password line, -aoa hint, empty and garbage stdin shown as
   "(stdin)", explicit names written the 7-Zip way, `h <folder>` relative names; `CliProgressTests`
   for the console-only percentage.
+- Wave 4 / T-F199 (App.Core, tests first, mutation-checked): `PrimaryActionPolicyTests`,
+  `CreateModeTextTests`, `InlinePasswordStateTests`, `OutcomeAndEncryptionSummaryTests`
+  (`OutcomeLine`, `FooterLine.Pick`, `EncryptionSummary`), `BrowseModeTests`
+  (`BrowseLocationState`, `BrowseWork`, badge and notes, the tree carrying encryption to the row), row UIA names
+  via `ToString()` in `FileItemTests`/`ArchiveEntryViewModelTests`, `SessionPasswordMemoryTests`
+  (T-F200), `WindowCascadeTests` (T-F201), `ProcessTempRootTests` (T-F252), `BuildStampTests`
+  (T-F218), `BrowserEntryRoutingTests` (T-F242). `AppResourceKeysTests` now requires every en-US
+  key in all 37 `.resw` files with English's placeholders (only the About URLs are exempt), every
+  key to be used and every `x:Uid` to have a key. Core/CLI: the per-entry `Encryption` marker and
+  `pakko l`'s Encrypted column. The window layout itself (cards, scroll fit, 900x520 floor) is
+  checked on device, not by tests.
 
 ---
 

@@ -3,94 +3,103 @@
 > **Historical note:** This file originally contained the bootstrap skeleton for MainWindow.
 > The UI is now fully implemented. This file describes the current actual structure.
 
-> **Last verified against `src/Archiver.App/MainWindow.xaml` directly, 2026-07-18** (full
-> documentation audit) — the tree below reflects the real 8-row `Grid`, not an earlier 7-row
-> draft. If you touch `MainWindow.xaml`'s row structure, re-verify this section the same way
-> (read the file, don't pattern-match the old tree) per `DIAGRAMS.md`'s Ground Truth Rule, which
-> applies just as much to this file.
+> **Last verified against `src/Archiver.App/MainWindow.xaml` directly, 2026-09-28** (T-F199's
+> redesign: own title bar, toolbar / table / option cards / footer). If you touch
+> `MainWindow.xaml`'s row structure, re-verify this section the same way (read the file, don't
+> pattern-match the old tree) per `DIAGRAMS.md`'s Ground Truth Rule, which applies just as much to
+> this file.
 
 ---
 
 ## Current MainWindow.xaml Structure
 
 ```
-Window
-└── Grid (RowDefinitions="Auto,* MinHeight=140,Auto,Auto,Auto,Auto,Auto,Auto" Padding="16" RowSpacing="12")
-    │   — 8 rows. Row 1's MinHeight lives on the RowDefinition itself, not a child control
-    │     (T-F106 — a child's own MinHeight does not force a Star row to grow).
-    │
+Window (ExtendsContentIntoTitleBar, SetTitleBar(AppTitleBar); no Mica — a system backdrop made
+│       screen capture of the window come back black)
+└── RootGrid (RowDefinitions="32,*")
     ├── [tb:TaskbarIcon] — system tray (not in grid flow)
     │
-    ├── Row 0 (pending mode): Grid (Auto,Auto,*,Auto,Auto) — Add Files / Add Folder / (spacer) /
-    │       Hash / About buttons. Visibility=IsPendingListVisibility.
-    ├── Row 0 (browse mode): Grid (*,Auto) — only an About button, right-aligned.
-    │       Visibility=IsBrowsingArchiveVisibility. Info/Close were both removed from here
-    │       (design review 2026-07-13; see notes below) — do not assume they still exist.
+    ├── Row 0: AppTitleBar — Grid (Auto,Auto,*): 16 px app icon + TitleText (AppWindow.Title, the
+    │       build stamp; none in a Store build, T-F218/T-F198 item 4). Caption button colors follow
+    │       the theme by hand (ApplyCaptionColors).
     │
-    ├── Row 1 (pending mode): Grid (RowDefinitions="Auto,*") — File table.
-    │       Visibility=IsPendingListVisibility.
-    │   ├── Header: Border → Grid (*,80,100,90,140) — Name/Type/Size/Crc/Modified,
-    │   │       each a sortable Button (SortByCommand), Background=SubtleFillColorSecondaryBrush
-    │   └── Body: Grid — ListView (AllowDrop/DragOver/Drop/DoubleTapped→PendingList_DoubleTapped)
-    │       │       ItemTemplate: Grid (*,80,100,90,140) — Name/Type/Size/Crc32Display/
-    │       │       ModifiedDisplay TextBlocks + ContextFlyout "Remove"
-    │       └── StackPanel overlay (IsHitTestVisible=False) — empty-state hint,
-    │               Visibility=IsFileListEmptyVisibility
-    │
-    ├── Row 1 (browse mode): Grid (RowDefinitions="Auto,Auto,*") — Archive Browser.
-    │       Visibility=IsBrowsingArchiveVisibility.
-    │   ├── Grid (Auto,*) — Up button (NavigateUpCommand, T-F107 — climbs past the archive root
-    │   │       into the real filesystem, never exits the browser) + BreadcrumbBar
-    │   ├── Header: Border → Grid (Auto,*,100,100,90,140) — icon column (T-F110) has no header
-    │   │       text, then Name/Size/Packed/Crc/Modified TextBlocks (not sortable buttons here,
-    │   │       unlike the pending-mode header)
-    │   └── ListView (SelectionMode=Multiple, VirtualizingStackPanel, SelectionChanged +
-    │           DoubleTapped→ArchiveBrowserList_DoubleTapped)
-    │       ItemTemplate: Grid (Auto,*,100,100,90,140) — FontIcon(Icon)/Name/SizeDisplay/
-    │       CompressedSizeDisplay/CrcDisplay/ModifiedDisplay
-    │
-    ├── Row 2 (shared, both modes): Grid (Auto,Auto,*,Auto) — Destination path.
-    │       DestinationLabel, an Up button (NavigateDestinationUpCommand — real-filesystem
-    │       parent-folder navigation, disabled at a drive root; a DIFFERENT command from Row 1
-    │       browse mode's Up button despite the identical glyph — don't assume they're the same
-    │       control), read-only TextBox bound to DestinationPath, "..." browse Button.
-    │
-    ├── Row 3 (pending mode): Grid (*,*,Auto) — Archive/Extract/Clear buttons.
-    │       Visibility=IsPendingListVisibility.
-    ├── Row 3 (browse mode): Grid (*,*) — Extract Selected / Extract All buttons, deliberately
-    │       anchored here (not moved to Row 0) since they consume Row 2/6's destination/conflict
-    │       options below them. Visibility=IsBrowsingArchiveVisibility.
-    │
-    ├── Row 4: TextBlock — Operation Outcome subtitle. Text=OperationOutcomeText,
-    │       Visibility=OperationOutcomeVisibility (= !IsBrowsingArchive && FileItems.Count>0).
-    │
-    ├── Row 5: one Grid (not per-row StackPanels, so column 0's Auto width aligns across every
-    │       row regardless of locale string length — see "No IsSharedSizeScope" below), 4 rows —
-    │       Mode (RadioButtons: One archive / Separate archives), Name (TextBox, disabled in
-    │       SeparateArchives mode), Format (a horizontal StackPanel since T-F193: ComboBox — Zip +
-    │       6 tar variants, T-F105 — plus the "Encrypt with password (AES-256)" CheckBox, enabled
-    │       only for ZIP via IsEncryptionAvailable, kept in this row so no Grid row is added — see
-    │       T-F106's Star-row sizing), Compression (ComboBox; IsCompressionLevelEnabled greys it
-    │       out only when plain Tar is selected).
-    │
-    ├── Row 6 (shared, both modes): StackPanel — "If file exists" ComboBox with 4 items
-    │       (Overwrite/Skip/Rename/**Ask**, T-F06 — not 3), OpenDestinationCheck, and a single
-    │       **DeleteAfterOperationCheck** (the old separate DeleteSourceCheck/DeleteArchiveCheck
-    │       were consolidated into one checkbox — do not document them as two).
-    │
-    └── Row 7: Grid (RowDefinitions="Auto,Auto") — Status bar.
-        ├── Grid (*,Auto) — ProgressBar (Value/IsIndeterminate/Visibility=IsOperationRunning) +
-        │       a Cancel Button (same row, same Visibility condition — easy to miss since it
-        │       wasn't in earlier drafts of this doc)
-        └── TextBlock (StatusMessage, Opacity=0.7, FontSize=12, TextTrimming=CharacterEllipsis)
+    └── Row 1: ContentGrid (RowDefinitions="Auto,* MinHeight=160,Auto,Auto", Padding="16,4,16,12",
+        │       RowSpacing="12"). The Star row's MinHeight lives on the RowDefinition (T-F106).
+        │
+        ├── Row 0 (create mode): toolbar Grid (Auto,Auto,*,Auto,Auto) — Add Files / Add Folder /
+        │       (spacer) / Hash / About. Visibility=IsPendingListVisibility.
+        ├── Row 0 (browse mode): toolbar Grid (*,Auto,Auto,Auto,Auto) — (spacer) / Test archive
+        │       (ZIP only, TestArchiveVisibility, T-F241) / Scan / Close archive (Esc accelerator,
+        │       T-F210) / About. Visibility=IsBrowsingArchiveVisibility.
+        │
+        ├── Row 1 (create mode): Grid (RowDefinitions="Auto,*") — File table.
+        │   ├── Header: Border -> Grid (*,80,100,90,140) — Name/Type/Size/Crc/Modified, each a
+        │   │       sortable Button (SortByCommand)
+        │   └── Body: Grid
+        │       ├── ListView FileListView (SelectionMode=None, AllowDrop, DoubleTapped ->
+        │       │       PendingList_DoubleTapped); row ContextFlyout "Remove from list"
+        │       └── StackPanel empty state (T-F199 board 3) — drop zone WITH its own drop handlers
+        │               and its own Add Files / Add Folder buttons; hit-testable, so it takes the
+        │               drop itself (see "Empty-state overlay" below). IsFileListEmptyVisibility.
+        │
+        ├── Row 1 (browse mode): Grid (RowDefinitions="Auto,Auto,Auto,*") — Archive Browser.
+        │   ├── BrowseBreadcrumbRow (Auto,*,Auto) — Up button (NavigateUpCommand, T-F107),
+        │   │       BreadcrumbBar, encryption badge (weakest method present, EncryptionBadgeVisibility)
+        │   ├── BrowseInfoBar — InfoBar (IsOpen/Severity/Message bound; encrypted count, AE-2 empty
+        │   │       CRC note, ZipCrypto warning as Warning severity, "outside the archive" note)
+        │   ├── BrowseHeader — Border -> Grid (Auto,*,100,100,90,140), non-sortable TextBlocks
+        │   └── ListView ArchiveBrowserListView (SelectionMode=Multiple, explicit
+        │           VirtualizingStackPanel, SelectionChanged + DoubleTapped). ItemTemplate: icon /
+        │           Grid(lock FontIcon when IsEncrypted, named for UIA; Name) / Size / Packed / Crc /
+        │           Modified
+        │
+        ├── Row 2: ScrollViewer OptionsScroll (OptionsVisibility/OptionsOpacity; hidden outside an
+        │   │       archive in browse mode). MaxHeight set in code-behind (FitOptionsScroll).
+        │   └── OptionsGrid (*,* columns; Auto,Auto rows) — two cards, placed by ArrangeCards:
+        │       ├── NewArchiveCard — Expander (collapsed with a summary for an archives-only list,
+        │       │       T-F199 board 8; NewArchiveCardVisibility). One Grid (Auto,*) with 5 rows:
+        │       │       Mode (One archive / Separate archives), Name (placeholder = Core's auto
+        │       │       name, T-F264), Format + Compression ComboBoxes (LabeledBy their captions),
+        │       │       "Encrypt with password" CheckBox or, for a tar format, the "ZIP only" note
+        │       │       in the same cell, then the inline password panel (T-F199 step 5): note,
+        │       │       EncryptPasswordBox, EncryptConfirmBox, the red message line, "Show
+        │       │       password", the rule hint.
+        │       └── DestinationCard — Border (card), Grid (Auto,*) with 6 rows: title, destination
+        │               (Up button NavigateDestinationUpCommand, read-only TextBox, "..."), "If file
+        │               exists" ComboBox (Overwrite/Skip/Rename/Ask), Open destination, delete-after
+        │               CheckBox (words from DeleteAfterLabel, T-F207) + Recycle Bin note.
+        │
+        └── Row 3: FooterGrid (*,Auto,Auto,Auto,Auto, MinHeight=40)
+            ├── Col 0: StackPanel — ProgressBar (while running); footer line (FooterText from
+            │       App.Core FooterLine.Pick: result, browse selection, or create preview) with
+            │       "Show in folder" / "Details..." HyperlinkButtons (T-F211); StatusMessage line.
+            ├── Col 1: Cancel (while running)
+            ├── Col 2: Clear (create mode)
+            ├── Create mode: Extract (inside a Border that carries the "why disabled" tooltip,
+            │       T-F212) and Compress to {format} — columns and accent style come from
+            │       ExtractButtonColumn/ArchiveButtonColumn/*ButtonStyle, so the primary one is
+            │       always column 4 (PrimaryActionPolicy).
+            └── Browse mode: Extract Selected (col 3), Extract All (col 4, accent).
+                    BrowseExtractActionsVisibility (hidden outside the archive).
 ```
 
-**Two distinct "Up" buttons, easy to conflate:** Row 1 browse mode's Up button
-(`NavigateUpCommand`) climbs *inside* the archive/real-filesystem browse stack (T-F98/T-F107).
-Row 2's Up button (`NavigateDestinationUpCommand`) walks the chosen **destination** folder up one
-level via `Path.GetDirectoryName`. Both use the identical Segoe MDL2 `&#xE74A;` glyph and near-
-identical markup, but they bind to different commands with different `CanExecute` gates — a future
-edit to one must not assume it covers the other.
+**Code-behind layout helpers (`MainWindow.xaml.cs`, layout only, no view-model state):**
+- `FitOptionsScroll` — an `Auto` row never scrolls, so `OptionsScroll.MaxHeight` is what the window
+  (measured from `RootGrid`, not the overfull `ContentGrid`) leaves after the title bar, toolbar,
+  footer, the table's 160 px and, in browse mode, the breadcrumb/info bar/header. Rerun on
+  `RootGrid`, `FooterGrid`, breadcrumb, info bar and header `SizeChanged`.
+- `ArrangeCards` — the cards sit side by side only from 960 px and when "New archive" is shown and
+  expanded; otherwise they stack.
+- Window: default 1100x720, floor 900x520 (`OverlappedPresenter.PreferredMinimum*`, T-F224).
+- A `PasswordBox` has no bindable `Password`: `PasswordChanged` hands the text to the view model,
+  which returns it without refused characters (PIN-box behavior).
+
+**Two distinct "Up" buttons, easy to conflate:** browse mode's Up button (`NavigateUpCommand`)
+climbs *inside* the archive/real-filesystem browse stack (T-F98/T-F107). The destination card's Up
+button (`NavigateDestinationUpCommand`) walks the chosen **destination** folder up one level via
+`Path.GetDirectoryName`. Both use the identical Segoe MDL2 `&#xE74A;` glyph, but they bind to
+different commands with different `CanExecute` gates and different UIA names — a future edit to one
+must not assume it covers the other.
 
 ---
 
@@ -100,17 +109,20 @@ edit to one must not assume it covers the other.
 - Do NOT use `x:Load` on direct children of `Window` — causes `FindName` CS1061
 - Use `Visibility` binding instead of `x:Load`
 
-**Empty-state overlay pattern:**
+**Empty-state overlay pattern (T-F199):**
 ```xml
 <Grid>
-    <ListView AllowDrop="True" DragOver="..." Drop="..."/>
-    <StackPanel IsHitTestVisible="False"
+    <ListView AllowDrop="True" DragOver="FileList_DragOver" Drop="FileList_Drop"/>
+    <StackPanel Background="Transparent" AllowDrop="True"
+                DragOver="FileList_DragOver" Drop="FileList_Drop"
                 Visibility="{x:Bind ViewModel.IsFileListEmptyVisibility, Mode=OneWay}">
-        <!-- hint text -->
+        <!-- hint text + its own Add Files / Add Folder buttons -->
     </StackPanel>
 </Grid>
 ```
-`IsHitTestVisible="False"` — overlay is visible but transparent to drag/drop events.
+The overlay has buttons, so it must be hit-testable (the old `IsHitTestVisible="False"` would make
+them dead); it takes drops itself with the same handlers. `Background="Transparent"` (not null)
+is what makes the empty space between its children accept the drop.
 
 **No `IsSharedSizeScope`/`SharedSizeGroup` (WPF-only):** unlike WPF, `Microsoft.UI.Xaml.Controls.Grid`
 has no `IsSharedSizeScope` property and `ColumnDefinition` has no `SharedSizeGroup` — both are
@@ -132,15 +144,14 @@ inconsistent left edges — see `DECISIONS.md`.
 file-table `ListView` its own `MinHeight` does nothing for the *row* it sits in — enough sibling
 `Auto` rows can still clamp the Star row to 0, silently rendering every list item within zero
 available height. Put `MinHeight` on the `RowDefinition` itself instead
-(`MainWindow.xaml`'s Row 1: `<RowDefinition Height="*" MinHeight="140"/>` — tuned down from an
-initial `200` in a same-day follow-up, see `DECISIONS.md`'s two T-F106 entries for the full
-history). Pair this with an explicit window-size floor — `MainWindow.xaml.cs` sets
-`OverlappedPresenter.PreferredMinimumWidth="900"`/`PreferredMinimumHeight="780"` (tuned down from
-an initial `850`) and an initial `AppWindow.Resize(1100, 780)` — or a user can still shrink the
-window enough to starve the Star row (or clip content *below* the table) even with the
-`RowDefinition` fix in place. Both numbers were arrived at empirically (`ui_find` bounds-checking
-every row at the enforced floor in both pending-list and Archive Browser modes), not by
-arithmetic — a rough sibling-row height estimate undershot the real tuned value once already.
+(`ContentGrid`'s Row 1: `<RowDefinition Height="*" MinHeight="160"/>`; see `DECISIONS.md`'s
+T-F106 entries for the history). Since T-F199/T-F224 the rows below the table no longer need a tall
+window: the options sit in a `ScrollViewer` whose `MaxHeight` code-behind computes from the space
+the table's minimum leaves (`FitOptionsScroll` — an `Auto` row never scrolls on its own), so the
+window floor is `900x520` and the default `1100x720`. Measure that space from `RootGrid`, not from
+`ContentGrid`: an overfull `ContentGrid` reports its *desired* height and keeps a too-tall options
+panel tall (it hid the footer at 900x520 once). Verify the floor empirically (`ui_find` bounds of
+the rows, the footer and the progress bar at 900x520 in both modes), not by arithmetic.
 
 **H.NotifyIcon.WinUI 2.1.0 API:**
 ```xml
@@ -170,8 +181,8 @@ All UI strings in `Strings/en-US/Resources.resw`.
 
 XAML usage:
 ```xml
-<Button x:Uid="ArchiveButton"/>
-<!-- Resources.resw key: ArchiveButton.Content = "Archive" -->
+<Button x:Uid="ClearButton"/>
+<!-- Resources.resw key: ClearButton.Content = "Clear" -->
 ```
 
 C# usage:
