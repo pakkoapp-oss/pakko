@@ -4517,7 +4517,13 @@ real console) and T-F226's deferred per-arrow diagram ritual — carried as open
   Device (1.5.0.32, uk-UA): "Стиснути в ZIP" -> "Стиснути в TAR.GZ"; UIA: "Формат:",
   "Стиснення:", "Якщо файл існує:", "Батьківська папка", "На рівень вище", row "readme.txt" with
   "Зашифровано" inside it, "Пароль", "Скасувати". Not device-checked: the drag caption (needs a
-  real drag) and long locales (de/fi/hu/el "Compress to TAR.LZMA") at the 900 px floor.
+  real drag) and long locales at the 900 px floor — by the XAML, `FooterGrid` is
+  `*,Auto,Auto,Auto,Auto`, so a longer button label (et "Tihenda vormingusse TAR.LZMA") narrows
+  the trimmed status column, not the buttons. Open follow-up: Explorer's operation window
+  (`OperationText.resx` `TitleArchiving`, "Архівування: {0}") and Core messages still say
+  "archiving" while the App now says "compress" — align in a later pass. Step 9: grep README,
+  `docs/XAML.md` and both `index.html` for the old "Archive"/"Архів" button wording; CHANGELOG
+  line at release.
 
 - **Carried into wave 4 (2026-09-28): device checks left open by fix phase 7** — T-F254 on a
   regional Windows language (e.g. de-AT, zh-CN: menu, Shell windows and App agree on the language);
