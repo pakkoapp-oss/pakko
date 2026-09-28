@@ -472,6 +472,36 @@ public sealed class ZipArchiveServicePasswordTests : IDisposable
         result.Entries.Single(e => e.Path == "compressible.txt").Encryption.Should().Be(EntryEncryption.Aes256);
     }
 
+    [Fact]
+    public async Task ListEntriesAsync_StrongEncryptionFlag_ReportsUnknownNotZipCrypto()
+    {
+        byte[] bytes = File.ReadAllBytes(FixtureHelper.Archive("encrypted_zipcrypto_real.zip"));
+        bytes[6] |= 0x40; // first local header's general-purpose flag, bit 6 (PKWARE strong encryption)
+        string path = Path.Combine(_temp.Path, "strong.zip");
+        File.WriteAllBytes(path, bytes);
+
+        ArchiveListResult result = await _sut.ListEntriesAsync(path);
+
+        result.Entries.Should().ContainSingle().Which.Encryption.Should().Be(EntryEncryption.Unknown);
+    }
+
+    [Fact]
+    public async Task ListEntriesAsync_Aes192StrengthCode_ReportsAes192()
+    {
+        byte[] bytes = File.ReadAllBytes(FixtureHelper.Archive("encrypted_aes256.zip"));
+        int extraStart = 30 + BitConverter.ToUInt16(bytes, 26);
+        int position = extraStart;
+        while (BitConverter.ToUInt16(bytes, position) != 0x9901)
+            position += 4 + BitConverter.ToUInt16(bytes, position + 2);
+        bytes[position + 4 + 4] = 2; // version(2) + "AE"(2), then the strength code: 2 = AES-192
+        string path = Path.Combine(_temp.Path, "aes192.zip");
+        File.WriteAllBytes(path, bytes);
+
+        ArchiveListResult result = await _sut.ListEntriesAsync(path);
+
+        result.Entries.Should().ContainSingle().Which.Encryption.Should().Be(EntryEncryption.Aes192);
+    }
+
     [Theory]
     [InlineData((ushort)200)]
     [InlineData((ushort)2)]
