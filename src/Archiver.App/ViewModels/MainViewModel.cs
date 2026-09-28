@@ -1558,6 +1558,9 @@ public sealed partial class MainViewModel : ObservableObject
             await Task.Delay(2000);
         IsBusy = false;
         StatusMessage = _res.GetString("StatusReady");
+        // T-F277: kept as the footer result, as a cancelled Compress/Extract is (T-F211).
+        if (wasCancelled)
+            SetOutcome(_res.GetString("StatusCancelled"), null, null, "Test");
     }
 
     // T-F146: scans the current selection if any entries are checked, otherwise the whole open
@@ -1575,6 +1578,7 @@ public sealed partial class MainViewModel : ObservableObject
         IsBusy = true;
         CancelCommand.NotifyCanExecuteChanged();
         Progress = 0;
+        bool wasCancelled = false;
         try
         {
             var options = new AntivirusScanOptions
@@ -1603,6 +1607,7 @@ public sealed partial class MainViewModel : ObservableObject
         }
         catch (OperationCanceledException)
         {
+            wasCancelled = true;
             StatusMessage = _res.GetString("StatusCancelled");
         }
         catch (Exception ex)
@@ -1615,8 +1620,13 @@ public sealed partial class MainViewModel : ObservableObject
             _cts?.Dispose();
             _cts = null;
         }
+        // T-F277: the same cancel path as Test.
+        if (wasCancelled)
+            await Task.Delay(2000);
         IsBusy = false;
         StatusMessage = _res.GetString("StatusReady");
+        if (wasCancelled)
+            SetOutcome(_res.GetString("StatusCancelled"), null, null, "Scan");
     }
 
     // T-F109: double-clicking a file type outside PreviewPolicy's allowlist is a real security

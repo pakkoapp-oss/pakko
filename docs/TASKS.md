@@ -6537,7 +6537,11 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 
 ### T-F277 — Browse-mode Test: Cancel resets the status to "Ready" (P3)
 
-- [ ] **Status:** open. In the Archive Browser, cancelling "Test archive" puts "Готово" in the
+- [~] **Progress (2026-09-29, G1):** a cancelled browse Test now keeps "Cancelled" as the footer
+  result (`SetOutcome`, T-F211); browse "Scan for threats" had the same gap plus no T-F70 2-second
+  hold — both fixed the same way. `MainViewModel` only (no App.Core seam, no unit test); device
+  check in G1's App pass.
+- **Was:** open. In the Archive Browser, cancelling "Test archive" puts "Готово" in the
   status line right away, while a cancelled Compress/Extract shows "Скасовано" first (T-F70) and
   keeps it as the footer result (T-F211). Make Test's cancel path match.
 - **Reported by:** T-F199 step 6/7 device checks, 2026-09-28.
