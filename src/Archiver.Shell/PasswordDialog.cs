@@ -61,7 +61,7 @@ public static class PasswordDialog
 
         NativeMethods.DialogProcDelegate proc = (hwndDlg, msg, wParam, lParam) => msg switch
         {
-            NativeMethods.WM_INITDIALOG => OnInitDialog(hwndDlg),
+            NativeMethods.WM_INITDIALOG => OnInitDialog(hwndDlg, state),
             NativeMethods.WM_COMMAND => OnCommand(hwndDlg, wParam, canApplyToRemaining, state),
             _ => IntPtr.Zero,
         };
@@ -88,10 +88,17 @@ public static class PasswordDialog
         public string EditText { get; set; } = string.Empty;
         public bool ApplyChecked { get; set; }
         public int ButtonResult { get; set; } = IdCancel;
+
+        // T-F255: the edit control's own mask character (the system bullet), restored when
+        // "Show password" is unticked instead of a hard-coded '*'.
+        public IntPtr PasswordChar { get; set; } = (IntPtr)'*';
     }
 
-    private static IntPtr OnInitDialog(IntPtr hwndDlg)
+    private static IntPtr OnInitDialog(IntPtr hwndDlg, DialogState state)
     {
+        state.PasswordChar = NativeMethods.SendMessage(
+            NativeMethods.GetDlgItem(hwndDlg, PasswordDialogTemplateBuilder.IdEdit), NativeMethods.EM_GETPASSWORDCHAR, IntPtr.Zero, IntPtr.Zero);
+
         // Plain SetForegroundWindow is NOT reliable from this call site — the caller
         // runs on a background thread while Archiver.Shell's own IProgressDialog is
         // already showing (see Win32OperationUi's session), and Windows' foreground-
@@ -120,7 +127,7 @@ public static class PasswordDialog
         {
             IntPtr editHwnd = NativeMethods.GetDlgItem(hwndDlg, PasswordDialogTemplateBuilder.IdEdit);
             bool nowChecked = NativeMethods.IsDlgButtonChecked(hwndDlg, PasswordDialogTemplateBuilder.IdShowPassword) != 0;
-            NativeMethods.SendMessage(editHwnd, NativeMethods.EM_SETPASSWORDCHAR, nowChecked ? IntPtr.Zero : (IntPtr)'*', IntPtr.Zero);
+            NativeMethods.SendMessage(editHwnd, NativeMethods.EM_SETPASSWORDCHAR, nowChecked ? IntPtr.Zero : state.PasswordChar, IntPtr.Zero);
             NativeMethods.InvalidateRect(editHwnd, IntPtr.Zero, true);
             return (IntPtr)1;
         }
@@ -130,9 +137,7 @@ public static class PasswordDialog
 
         if (controlId == IdOk)
         {
-            char[] buffer = new char[256];
-            int length = NativeMethods.GetDlgItemText(hwndDlg, PasswordDialogTemplateBuilder.IdEdit, buffer, buffer.Length);
-            state.EditText = new string(buffer, 0, length);
+            state.EditText = ReadEditText(NativeMethods.GetDlgItem(hwndDlg, PasswordDialogTemplateBuilder.IdEdit));
             if (canApplyToRemaining)
                 state.ApplyChecked = NativeMethods.IsDlgButtonChecked(hwndDlg, PasswordDialogTemplateBuilder.IdApplyToRemaining) != 0;
         }
@@ -141,12 +146,33 @@ public static class PasswordDialog
         return (IntPtr)1;
     }
 
+    // T-F255: sized from the control, so any password length reads back whole (decryption accepts
+    // any length; a fixed 256-char buffer cut longer ones and reported them as wrong).
+    internal static string ReadEditText(IntPtr edit)
+    {
+        int length = NativeMethods.GetWindowTextLength(edit);
+        if (length <= 0)
+            return string.Empty;
+
+        char[] buffer = new char[length + 1];
+        try
+        {
+            int read = NativeMethods.GetWindowText(edit, buffer, buffer.Length);
+            return new string(buffer, 0, Math.Clamp(read, 0, length));
+        }
+        finally
+        {
+            Array.Clear(buffer);
+        }
+    }
+
     private static class NativeMethods
     {
         public const int WM_INITDIALOG = 0x0110;
         public const int WM_COMMAND = 0x0111;
         public const int BN_CLICKED = 0;
         public const int EM_SETPASSWORDCHAR = 0x00CC;
+        public const int EM_GETPASSWORDCHAR = 0x00D2;
         public static readonly IntPtr HWND_TOPMOST = new(-1);
         public const uint SWP_NOMOVE = 0x0002;
         public const uint SWP_NOSIZE = 0x0001;
@@ -161,7 +187,8 @@ public static class PasswordDialog
         public static extern IntPtr GetModuleHandle(string? lpModuleName);
 
         [DllImport("user32.dll")] public static extern IntPtr GetDlgItem(IntPtr hDlg, int nIDDlgItem);
-        [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int GetDlgItemText(IntPtr hDlg, int nIDDlgItem, char[] lpString, int nMaxCount);
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int GetWindowTextLength(IntPtr hWnd);
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int GetWindowText(IntPtr hWnd, char[] lpString, int nMaxCount);
         [DllImport("user32.dll")] public static extern int IsDlgButtonChecked(IntPtr hDlg, int nIDButton);
         [DllImport("user32.dll")] public static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
         [DllImport("user32.dll")] public static extern bool EndDialog(IntPtr hDlg, int nResult);

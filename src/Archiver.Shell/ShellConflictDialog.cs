@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using Archiver.Core.Models;
+using Archiver.OperationUi.Protocol;
 
 namespace Archiver.Shell;
 
@@ -32,6 +33,24 @@ public static class ShellConflictDialog
         IdRename => new ConflictDecision { Resolution = ConflictResolution.Rename, ApplyToAll = applyToAllChecked },
         _ => new ConflictDecision { Resolution = ConflictResolution.Skip, ApplyToAll = applyToAllChecked },
     };
+
+    /// <summary>
+    /// T-F253: the full path (same-named files in several folders are otherwise indistinguishable)
+    /// and both files' size and date — the same details the operation window shows.
+    /// </summary>
+    public static string BuildContent(ConflictInfo conflict)
+    {
+        AskConflict details = OperationWindowText.CreateAskConflict(0, conflict);
+        var lines = new List<string> { conflict.ExistingPath, string.Empty };
+        if (details.ExistingDetails is { } existing)
+            lines.Add($"{OperationTextLocalizer.Get("WindowExistingFile")}: {existing}");
+        if (details.IncomingDetails is { } incoming)
+        {
+            string newer = details.IncomingIsNewer ? $" ({OperationTextLocalizer.Get("WindowNewer")})" : string.Empty;
+            lines.Add($"{OperationTextLocalizer.Get("WindowIncomingFile")}: {incoming}{newer}");
+        }
+        return string.Join(Environment.NewLine, lines).TrimEnd();
+    }
 
     public static Task<ConflictDecision> ShowAsync(ConflictInfo conflict)
     {
@@ -71,12 +90,13 @@ public static class ShellConflictDialog
                 WindowTitle = ConflictDialogLocalizer.Get("ConflictDialogTitle"),
                 MainIcon = TaskDialogIcon.Warning,
                 MainInstruction = ConflictDialogLocalizer.Get("ConflictDialogMessage", Path.GetFileName(conflict.ExistingPath)),
-                Content = string.Empty,
+                Content = BuildContent(conflict),
                 ButtonCount = (uint)buttons.Length,
                 Buttons = buttonsPtr,
                 DefaultButtonId = IdSkip, // Enter resolves to Skip, not Overwrite -- mirrors T-F06's
                                           // DialogService.ShowConflictDialogAsync's identical choice.
                 VerificationText = ConflictDialogLocalizer.Get("ConflictDialogApplyToAllCheck"),
+                Callback = Marshal.GetFunctionPointerForDelegate(BringToFrontCallback),
             };
 
             int hr = NativeMethods.TaskDialogIndirect(ref config, out int selectedButtonId, out _, out bool verificationChecked);
@@ -92,6 +112,20 @@ public static class ShellConflictDialog
             Marshal.FreeHGlobal(buttonsPtr);
         }
     }
+
+    // T-F253: started from a background process (Explorer's verb), the dialog opened behind the
+    // foreground window and the extraction waited on it invisibly. Same fix as PasswordDialog
+    // (T-F192): topmost Z-order, which a window's own process may always set.
+    private static readonly NativeMethods.TaskDialogCallback BringToFrontCallback = (hwnd, notification, _, _, _) =>
+    {
+        if (notification == NativeMethods.TDN_CREATED)
+        {
+            NativeMethods.SetWindowPos(hwnd, NativeMethods.HWND_TOPMOST, 0, 0, 0, 0,
+                NativeMethods.SWP_NOMOVE | NativeMethods.SWP_NOSIZE | NativeMethods.SWP_SHOWWINDOW);
+            NativeMethods.SetForegroundWindow(hwnd);
+        }
+        return 0;
+    };
 
     [Flags]
     private enum TaskDialogOptions : uint
@@ -150,5 +184,16 @@ public static class ShellConflictDialog
         public static extern int TaskDialogIndirect(
             ref TaskDialogConfig config, out int selectedButtonId, out int selectedRadioButtonId,
             [MarshalAs(UnmanagedType.Bool)] out bool verificationFlagChecked);
+
+        public const uint TDN_CREATED = 0;
+        public static readonly IntPtr HWND_TOPMOST = new(-1);
+        public const uint SWP_NOMOVE = 0x0002;
+        public const uint SWP_NOSIZE = 0x0001;
+        public const uint SWP_SHOWWINDOW = 0x0040;
+
+        public delegate int TaskDialogCallback(IntPtr hwnd, uint notification, IntPtr wParam, IntPtr lParam, IntPtr refData);
+
+        [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int x, int y, int cx, int cy, uint flags);
+        [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd);
     }
 }

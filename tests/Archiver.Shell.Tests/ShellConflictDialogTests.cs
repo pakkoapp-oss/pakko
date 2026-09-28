@@ -62,4 +62,38 @@ public sealed class ShellConflictDialogTests
 
         decision.Resolution.Should().Be(ConflictResolution.Skip);
     }
+
+    // T-F253: the message named only the file, so same-named files in several folders could not
+    // be told apart, and it gave no size or date to decide with.
+    [Fact]
+    public void BuildContent_NamesTheFullPathAndBothFilesDetails()
+    {
+        string dir = Path.Combine(Path.GetTempPath(), "pakko-tf253-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(Path.Combine(dir, "sub"));
+        string existing = Path.Combine(dir, "sub", "a.txt");
+        File.WriteAllText(existing, "12345");
+        File.SetLastWriteTimeUtc(existing, new DateTime(2020, 1, 2, 3, 4, 0, DateTimeKind.Utc));
+        System.Globalization.CultureInfo original = System.Globalization.CultureInfo.CurrentUICulture;
+        try
+        {
+            System.Globalization.CultureInfo.CurrentUICulture = System.Globalization.CultureInfo.GetCultureInfo("en-US");
+            var info = new ConflictInfo
+            {
+                ExistingPath = existing,
+                IncomingSize = 2048,
+                IncomingModified = new DateTimeOffset(2024, 5, 6, 7, 8, 0, TimeSpan.Zero),
+            };
+
+            string content = ShellConflictDialog.BuildContent(info);
+
+            string[] lines = content.Split(Environment.NewLine);
+            lines[0].Should().Be(existing);
+            content.Should().Contain("Existing file: 5 B").And.Contain("From the archive: 2 KB").And.Contain("newer");
+        }
+        finally
+        {
+            System.Globalization.CultureInfo.CurrentUICulture = original;
+            Directory.Delete(dir, recursive: true);
+        }
+    }
 }
