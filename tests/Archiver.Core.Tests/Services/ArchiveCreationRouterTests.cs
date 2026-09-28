@@ -12,7 +12,7 @@ file sealed class FakeArchiveService : IArchiveService
 {
     public ArchiveOptions? LastArchiveOptions;
     public int ArchiveCallCount;
-    public ArchiveResult ArchiveResult = new() { Success = true };
+    public ArchiveResult ArchiveResult = new();
 
     public Task<ArchiveResult> ArchiveAsync(ArchiveOptions options, IProgress<ProgressReport>? progress = null, CancellationToken cancellationToken = default)
     {
@@ -35,7 +35,7 @@ file sealed class FakeTarService : ITarService
 {
     public ArchiveOptions? LastCompressOptions;
     public int CompressCallCount;
-    public ArchiveResult CompressResult = new() { Success = true };
+    public ArchiveResult CompressResult = new();
 
     public Task<TarCapabilities> DetectCapabilitiesAsync() => Task.FromResult(new TarCapabilities());
 

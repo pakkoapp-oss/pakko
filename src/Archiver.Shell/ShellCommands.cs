@@ -160,7 +160,7 @@ internal sealed class ShellCommands(IOperationUi ui, ShellServices services)
         if (session.Cancellation.IsCancellationRequested)
             return;
 
-        session.Complete(TestResultMessage(title, result));
+        session.Complete(OperationMessages.ForTestResult(title, result));
     }
 
     // -------------------------------------------------------------------------
@@ -235,19 +235,6 @@ internal sealed class ShellCommands(IOperationUi ui, ShellServices services)
             ui.ShowMessage(message);
     }
 
-    // T-F216: a Test that skipped some input (e.g. a non-ZIP in the selection) used to show the
-    // skipped list and then a second "no errors" box; now it is one message with both.
-    private static OperationMessage? TestResultMessage(string title, ArchiveResult result)
-    {
-        if (!result.Success)
-            return OperationMessages.ForArchiveResult(title, result);
-
-        OperationMessage passed = OperationMessages.TestPassed(title);
-        return OperationMessages.ForArchiveResult(title, result) is { } skipped
-            ? skipped with { Text = skipped.Text + Environment.NewLine + Environment.NewLine + passed.Text }
-            : passed;
-    }
-
     // One session per archive; cancelling ends the operation with no message, as before.
     // T-F268 step 3: one window for the whole selection, and one combined result at the end.
     // T-F269: a cancel ends the whole command — the session's one token is shared by every archive,
@@ -294,7 +281,6 @@ internal sealed class ShellCommands(IOperationUi ui, ShellServices services)
         ? results[0]
         : new ArchiveResult
         {
-            Success = results.TrueForAll(r => r.Success),
             CreatedFiles = [.. results.SelectMany(r => r.CreatedFiles)],
             Errors = [.. results.SelectMany(r => r.Errors)],
             SkippedFiles = [.. results.SelectMany(r => r.SkippedFiles)],

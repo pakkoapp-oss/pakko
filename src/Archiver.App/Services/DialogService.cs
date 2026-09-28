@@ -405,7 +405,7 @@ public sealed class DialogService : IDialogService
 
     public async Task ShowOperationSummaryAsync(string operationName, ArchiveResult result)
     {
-        if (result.Errors.Count == 0 && result.SkippedFiles.Count == 0)
+        if (result.Outcome == OperationOutcome.Completed)
             return;
 
         var panel = new StackPanel { Spacing = 8 };

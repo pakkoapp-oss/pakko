@@ -15,10 +15,10 @@ internal static class OperationMessages
 
     /// <summary>Null for a clean success: Extract/Archive leave their result on disk.</summary>
     public static OperationMessage? ForArchiveResult(string title, ArchiveResult result) =>
-        ShellResultPresenter.Classify(result) switch
+        result.Outcome switch
         {
-            ShellResultOutcome.Failed => ForErrors(title, result.Errors),
-            ShellResultOutcome.SkippedOnly => new OperationMessage(
+            OperationOutcome.Failed => ForErrors(title, result.Errors),
+            OperationOutcome.CompletedWithSkips or OperationOutcome.NothingDone => new OperationMessage(
                 title, MessageSeverity.Warning, ShellResultPresenter.BuildSkippedMessage(result.SkippedFiles, MaxLinesShown)),
             _ => null,
         };
@@ -27,6 +27,21 @@ internal static class OperationMessages
     // confirmation, or a silent success would look like nothing happened.
     public static OperationMessage TestPassed(string title) =>
         new(title, MessageSeverity.Information, ResultMessagesLocalizer.Get("ResultNoErrorsDetected"));
+
+    /// <summary>
+    /// T-F216: one message for a Test — the skipped list and "no errors" together. T-F274: "no
+    /// errors" only when at least one archive was really tested.
+    /// </summary>
+    public static OperationMessage? ForTestResult(string title, ArchiveResult result)
+    {
+        if (result.Outcome == OperationOutcome.Completed)
+            return TestPassed(title);
+
+        OperationMessage? message = ForArchiveResult(title, result);
+        return result.Outcome == OperationOutcome.CompletedWithSkips
+            ? message! with { Text = message.Text + Environment.NewLine + Environment.NewLine + TestPassed(title).Text }
+            : message;
+    }
 
     public static OperationMessage ForHash(string title, HashResult result)
     {

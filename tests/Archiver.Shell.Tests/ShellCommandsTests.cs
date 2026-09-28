@@ -191,6 +191,23 @@ public sealed class ShellCommandsTests : IDisposable
     }
 
     [Fact]
+    public async Task Test_NothingTested_DoesNotClaimNoErrors()
+    {
+        // T-F274: every archive skipped (no test capability) used to end with "No errors detected",
+        // claiming a test that never ran.
+        string tarGz = Path.Combine(_root, "notes.tar.gz");
+        using (var gzip = new GZipStream(File.Create(tarGz), CompressionLevel.Fastest))
+            gzip.Write("gzip"u8);
+        var ui = new FakeOperationUi();
+
+        await Create(ui).TestAsync([tarGz]);
+
+        OperationMessage message = ui.Messages.Should().ContainSingle().Subject;
+        message.Severity.Should().Be(MessageSeverity.Warning);
+        message.Text.Should().StartWith("Skipped (1):").And.NotContain("No errors detected");
+    }
+
+    [Fact]
     public async Task Test_ZipBlockedByGroupPolicy_IsNotTested()
     {
         string zip = MakeCorruptedZip("bad.zip");

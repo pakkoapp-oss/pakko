@@ -6,61 +6,6 @@ namespace Archiver.Shell.Tests;
 
 public sealed class ShellResultPresenterTests
 {
-    // --- Classify ---
-
-    [Fact]
-    public void Classify_SuccessNoErrorsNoSkips_ReturnsSuccess()
-    {
-        var result = new ArchiveResult { Success = true };
-
-        ShellResultPresenter.Classify(result).Should().Be(ShellResultOutcome.Success);
-    }
-
-    [Fact]
-    public void Classify_SuccessFalse_ReturnsFailed()
-    {
-        var result = new ArchiveResult { Success = false };
-
-        ShellResultPresenter.Classify(result).Should().Be(ShellResultOutcome.Failed);
-    }
-
-    [Fact]
-    public void Classify_HasErrors_ReturnsFailed()
-    {
-        var result = new ArchiveResult
-        {
-            Success = true,
-            Errors = [new ArchiveError { SourcePath = "a.txt", Message = "boom" }],
-        };
-
-        ShellResultPresenter.Classify(result).Should().Be(ShellResultOutcome.Failed);
-    }
-
-    [Fact]
-    public void Classify_SuccessWithSkippedFilesOnly_ReturnsSkippedOnly()
-    {
-        var result = new ArchiveResult
-        {
-            Success = true,
-            SkippedFiles = [new SkippedFile { Path = "bad.txt", Reason = "ADS entry" }],
-        };
-
-        ShellResultPresenter.Classify(result).Should().Be(ShellResultOutcome.SkippedOnly);
-    }
-
-    [Fact]
-    public void Classify_ErrorsAndSkippedFilesBothPresent_ReturnsFailed()
-    {
-        var result = new ArchiveResult
-        {
-            Success = true,
-            Errors = [new ArchiveError { SourcePath = "a.txt", Message = "boom" }],
-            SkippedFiles = [new SkippedFile { Path = "bad.txt", Reason = "ADS entry" }],
-        };
-
-        ShellResultPresenter.Classify(result).Should().Be(ShellResultOutcome.Failed);
-    }
-
     // --- BuildSkippedMessage ---
     // T-F163: the header used to hand-roll English noun pluralization ("1 entry skipped:" / "2
     // entries skipped:"), hardcoded regardless of CurrentUICulture -- a real user on uk-UA got

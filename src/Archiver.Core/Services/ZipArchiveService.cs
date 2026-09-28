@@ -78,7 +78,7 @@ public sealed class ZipArchiveService : IArchiveService
             ArchiveError? passwordError;
             (password, passwordError) = await ResolveEncryptionPasswordAsync(options).ConfigureAwait(false);
             if (passwordError is not null)
-                return new ArchiveResult { Success = false, CreatedFiles = [], Errors = [passwordError], SkippedFiles = [] };
+                return new ArchiveResult { CreatedFiles = [], Errors = [passwordError], SkippedFiles = [] };
         }
         var run = new ArchiveRunContext(conflictResolver, password);
         IEnumerable<SourceResult> sources;
@@ -106,7 +106,6 @@ public sealed class ZipArchiveService : IArchiveService
 
         var result = new ArchiveResult
         {
-            Success = errors.Count == 0,
             CreatedFiles = createdFiles,
             Errors = errors,
             SkippedFiles = skippedFiles,
@@ -183,7 +182,6 @@ public sealed class ZipArchiveService : IArchiveService
             // never archived and must not be deleted.
             return new ArchiveResult
             {
-                Success = true,
                 CreatedFiles = [],
                 Errors = [],
                 SkippedFiles = [.. options.SourcePaths.Select(p => CoreMessages.Skip(p, CoreMessages.Text(MessageCode.ArchiveAlreadyExists, Path.GetFileName(destPath))))],
@@ -720,7 +718,6 @@ public sealed class ZipArchiveService : IArchiveService
 
         var result = new ArchiveResult
         {
-            Success = errors.Count == 0,
             CreatedFiles = createdFiles,
             Errors = errors,
             SkippedFiles = skippedFiles,
@@ -923,6 +920,7 @@ public sealed class ZipArchiveService : IArchiveService
     {
         var errors = new List<ArchiveError>();
         var skippedFiles = new List<SkippedFile>();
+        var sources = new List<SourceResult>();
         var passwordResolver = new PasswordResolver(resolvePasswordAsync, maxAttempts: 3);
 
         int total = archivePaths.Count;
@@ -965,6 +963,9 @@ public sealed class ZipArchiveService : IArchiveService
                 }
             }
 
+            // T-F274: a source is recorded only once its entries were actually read — a skipped or
+            // refused archive leaves none, so a Test that read nothing reports NothingDone.
+            int errorsBefore = errors.Count;
             try
             {
                 await Task.Run(() => TestArchiveEntries(archivePath, password, NameCodePages, errors, cancellationToken), cancellationToken)
@@ -978,15 +979,16 @@ public sealed class ZipArchiveService : IArchiveService
             {
                 errors.Add(CoreMessages.Error(archivePath, CoreMessages.Text(MessageCode.ZipCorrupted), ex));
             }
+            sources.Add(SourceOutcomeRules.Classify(archivePath, produced: true, clean: errors.Count == errorsBefore));
 
             progress?.Report(new ProgressReport { Percent = (i + 1) * 100 / total, BytesTransferred = 0, TotalBytes = 0 });
         }
 
         return new ArchiveResult
         {
-            Success = errors.Count == 0,
             Errors = errors,
             SkippedFiles = skippedFiles,
+            Sources = sources,
         };
     }
 

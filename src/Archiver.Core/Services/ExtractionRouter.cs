@@ -53,7 +53,6 @@ public sealed class ExtractionRouter(
 
         var merged = new ArchiveResult
         {
-            Success = zipResult.Success && tarResult.Success,
             CreatedFiles = [.. zipResult.CreatedFiles, .. tarResult.CreatedFiles],
             Errors = [.. zipResult.Errors, .. tarResult.Errors],
             SkippedFiles = [.. zipResult.SkippedFiles, .. tarResult.SkippedFiles, .. unsupported],
@@ -90,5 +89,5 @@ public sealed class ExtractionRouter(
         return zipResult with { SkippedFiles = [.. zipResult.SkippedFiles, .. untestable, .. classification.Unsupported] };
     }
 
-    private static ArchiveResult EmptyResult() => new() { Success = true };
+    private static ArchiveResult EmptyResult() => new();
 }

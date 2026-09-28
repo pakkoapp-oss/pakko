@@ -30,15 +30,7 @@ public sealed class OperationMessagesTests : IDisposable
     [Fact]
     public void ForArchiveResult_Success_ReturnsNull()
     {
-        OperationMessages.ForArchiveResult("T", new ArchiveResult { Success = true }).Should().BeNull();
-    }
-
-    [Fact]
-    public void ForArchiveResult_FailedWithoutErrors_SaysTheOperationFailed()
-    {
-        OperationMessage? message = OperationMessages.ForArchiveResult("T", new ArchiveResult { Success = false });
-
-        message.Should().Be(new OperationMessage("T", MessageSeverity.Error, "The operation failed."));
+        OperationMessages.ForArchiveResult("T", new ArchiveResult()).Should().BeNull();
     }
 
     [Fact]
@@ -46,7 +38,6 @@ public sealed class OperationMessagesTests : IDisposable
     {
         var result = new ArchiveResult
         {
-            Success = false,
             Errors = [new ArchiveError { SourcePath = @"C:\dir\a.zip", Message = "bad CRC" }],
         };
 
@@ -61,7 +52,6 @@ public sealed class OperationMessagesTests : IDisposable
     {
         var result = new ArchiveResult
         {
-            Success = false,
             Errors = [.. Enumerable.Range(1, 12).Select(i => new ArchiveError { SourcePath = $"f{i}.zip", Message = "x" })],
         };
 
@@ -77,7 +67,6 @@ public sealed class OperationMessagesTests : IDisposable
     {
         var result = new ArchiveResult
         {
-            Success = true,
             SkippedFiles = [new SkippedFile { Path = "bad.txt", Reason = "ADS entry" }],
         };
 
@@ -85,6 +74,47 @@ public sealed class OperationMessagesTests : IDisposable
 
         message.Severity.Should().Be(MessageSeverity.Warning);
         message.Text.Should().StartWith("Skipped (1):").And.Contain("bad.txt: ADS entry");
+    }
+
+    // --- Test (T-F216, T-F274) ---
+
+    private static readonly SkippedFile TarSkip = new() { Path = "b.tar", Reason = "no test" };
+    private static readonly SourceResult TestedZip = new() { Path = "a.zip", Outcome = SourceOutcome.Completed };
+
+    [Fact]
+    public void ForTestResult_EverythingTested_SaysNoErrors() =>
+        OperationMessages.ForTestResult("T", new ArchiveResult { Sources = [TestedZip] })
+            .Should().Be(OperationMessages.TestPassed("T"));
+
+    [Fact]
+    public void ForTestResult_SomeTestedSomeSkipped_ListsSkipsThenNoErrors()
+    {
+        OperationMessage message = OperationMessages.ForTestResult("T",
+            new ArchiveResult { Sources = [TestedZip], SkippedFiles = [TarSkip] })!;
+
+        message.Severity.Should().Be(MessageSeverity.Warning);
+        message.Text.Should().StartWith("Skipped (1):").And.EndWith("No errors detected in the archive(s).");
+    }
+
+    [Fact]
+    public void ForTestResult_NothingTested_ListsSkipsWithoutNoErrors()
+    {
+        OperationMessage message = OperationMessages.ForTestResult("T", new ArchiveResult { SkippedFiles = [TarSkip] })!;
+
+        message.Severity.Should().Be(MessageSeverity.Warning);
+        message.Text.Should().StartWith("Skipped (1):").And.NotContain("No errors detected");
+    }
+
+    [Fact]
+    public void ForTestResult_Errors_ListsErrorsOnly()
+    {
+        var result = new ArchiveResult
+        {
+            Sources = [TestedZip],
+            Errors = [new ArchiveError { SourcePath = "a.zip", Message = "bad CRC" }],
+        };
+
+        OperationMessages.ForTestResult("T", result).Should().Be(new OperationMessage("T", MessageSeverity.Error, "a.zip: bad CRC"));
     }
 
     [Fact]
@@ -150,7 +180,8 @@ public sealed class OperationMessagesTests : IDisposable
     [Fact]
     public void OtherResults_AreNotPreformatted()
     {
-        OperationMessages.ForArchiveResult("T", new ArchiveResult { Success = false })!.Preformatted.Should().BeFalse();
+        var failed = new ArchiveResult { Errors = [new ArchiveError { SourcePath = "a.zip", Message = "x" }] };
+        OperationMessages.ForArchiveResult("T", failed)!.Preformatted.Should().BeFalse();
         OperationMessages.ForScan("T", new ThreatScanResult { OverallVerdict = ThreatVerdict.Clean }, archiveCount: 1).Preformatted.Should().BeFalse();
     }
 

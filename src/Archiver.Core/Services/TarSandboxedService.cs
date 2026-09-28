@@ -51,7 +51,6 @@ public sealed class TarSandboxedService : ITarService
 
     private static ArchiveResult RefuseAll(IReadOnlyList<string> paths, CoreText text) => new()
     {
-        Success = false,
         Errors = [.. paths.Select(path => CoreMessages.Error(path, text))],
         Sources = [.. paths.Select(path => SourceOutcomeRules.Classify(path, produced: false, clean: false))],
     };
@@ -129,7 +128,6 @@ public sealed class TarSandboxedService : ITarService
 
         var result = new ArchiveResult
         {
-            Success = errors.Count == 0,
             CreatedFiles = createdFiles,
             Errors = errors,
             SkippedFiles = skippedFiles,
@@ -960,7 +958,6 @@ public sealed class TarSandboxedService : ITarService
         if (_policy.DisableTarExtraction)
             return new ArchiveResult
             {
-                Success = false,
                 Errors = [CoreMessages.Error(options.DestinationFolder, MessageCode.TarCreationDisabled)],
             };
 
@@ -982,13 +979,13 @@ public sealed class TarSandboxedService : ITarService
         if (options.ResolvePasswordAsync is not null)
         {
             errors.Add(CoreMessages.Error(options.DestinationFolder, MessageCode.PasswordOnlyForZip));
-            return new ArchiveResult { Success = false, CreatedFiles = createdFiles, Errors = errors, SkippedFiles = skippedFiles };
+            return new ArchiveResult { CreatedFiles = createdFiles, Errors = errors, SkippedFiles = skippedFiles };
         }
 
         if (!TarSignatureVerifier.Verify(TarExecutablePath))
         {
             errors.Add(CoreMessages.Error(options.DestinationFolder, MessageCode.TarSignatureInvalid));
-            return new ArchiveResult { Success = false, CreatedFiles = createdFiles, Errors = errors, SkippedFiles = skippedFiles };
+            return new ArchiveResult { CreatedFiles = createdFiles, Errors = errors, SkippedFiles = skippedFiles };
         }
 
         Directory.CreateDirectory(options.DestinationFolder);
@@ -1012,7 +1009,6 @@ public sealed class TarSandboxedService : ITarService
             {
                 return new ArchiveResult
                 {
-                    Success = true,
                     CreatedFiles = [],
                     Errors = [],
                     SkippedFiles = [.. options.SourcePaths.Select(p => CoreMessages.Skip(p, MessageCode.ArchiveAlreadyExists, Path.GetFileName(destPath)))],
@@ -1037,7 +1033,6 @@ public sealed class TarSandboxedService : ITarService
 
         var result = new ArchiveResult
         {
-            Success = errors.Count == 0,
             CreatedFiles = createdFiles,
             Errors = errors,
             SkippedFiles = skippedFiles,

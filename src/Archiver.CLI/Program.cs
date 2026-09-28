@@ -547,7 +547,10 @@ static int ReportResult(ArchiveResult result)
     foreach (SkippedFile skipped in result.SkippedFiles)
         Console.Error.WriteLine($"pakko: skipped: {skipped.Path}: {skipped.Reason}");
 
-    if (!result.Success)
-        return 2;
-    return result.SkippedFiles.Count > 0 ? 1 : 0;
+    return result.Outcome switch
+    {
+        OperationOutcome.Completed => 0,
+        OperationOutcome.Failed => 2,
+        _ => 1,
+    };
 }

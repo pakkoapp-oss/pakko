@@ -13,7 +13,7 @@ file sealed class FakeArchiveService : IArchiveService
 {
     public ExtractOptions? LastExtractOptions;
     public int ExtractCallCount;
-    public ArchiveResult ExtractResult = new() { Success = true };
+    public ArchiveResult ExtractResult = new();
     // T-F142: records whether ExtractionRouter passed a real progress sink through, so tests can
     // assert the mixed-selection real-byte-progress suppression without needing an actual
     // IProgress<T> implementation.
@@ -34,7 +34,7 @@ file sealed class FakeArchiveService : IArchiveService
     public IReadOnlyList<string>? LastTestedPaths;
     public int TestCallCount;
     public Func<PasswordPromptInfo, Task<PasswordDecision>>? LastTestResolver;
-    public ArchiveResult TestResult = new() { Success = true };
+    public ArchiveResult TestResult = new();
 
     public Task<ArchiveResult> TestAsync(IReadOnlyList<string> archivePaths, IProgress<ProgressReport>? progress = null, Func<PasswordPromptInfo, Task<PasswordDecision>>? resolvePasswordAsync = null, CancellationToken cancellationToken = default)
     {
@@ -52,7 +52,7 @@ file sealed class FakeTarService : ITarService
 {
     public ExtractOptions? LastExtractOptions;
     public int ExtractCallCount;
-    public ArchiveResult ExtractResult = new() { Success = true };
+    public ArchiveResult ExtractResult = new();
     public bool LastExtractReceivedNonNullProgress;
 
     public Task<TarCapabilities> DetectCapabilitiesAsync() => Task.FromResult(new TarCapabilities());
@@ -150,7 +150,6 @@ public sealed class ExtractionRouterTests : IDisposable
         {
             ExtractResult = new ArchiveResult
             {
-                Success = true,
                 CreatedFiles = ["zip-out"],
                 Errors = [new ArchiveError { SourcePath = zip, Message = "zip error" }],
             }
@@ -159,7 +158,6 @@ public sealed class ExtractionRouterTests : IDisposable
         {
             ExtractResult = new ArchiveResult
             {
-                Success = true,
                 CreatedFiles = ["tar-out"],
                 SkippedFiles = [new SkippedFile { Path = tar, Reason = "tar skip" }],
             }
@@ -175,7 +173,7 @@ public sealed class ExtractionRouterTests : IDisposable
         result.CreatedFiles.Should().BeEquivalentTo(["zip-out", "tar-out"]);
         result.Errors.Should().HaveCount(1);
         result.SkippedFiles.Should().HaveCount(1);
-        result.Success.Should().BeTrue();
+        result.Outcome.Should().Be(OperationOutcome.Failed, "an error from either engine fails the merged result");
     }
 
     // T-F142 regression: found via advisor review before this shipped. TarSandboxedService now
@@ -398,7 +396,8 @@ public sealed class ExtractionRouterTests : IDisposable
         string zip = WriteZip("a.zip");
         string tar = WriteTar("b.tar");
         var zipSkip = new SkippedFile { Path = zip, Reason = "zip engine skip" };
-        var zipService = new FakeArchiveService { TestResult = new ArchiveResult { Success = false, SkippedFiles = [zipSkip] } };
+        var zipError = new ArchiveError { SourcePath = zip, Message = "zip engine error" };
+        var zipService = new FakeArchiveService { TestResult = new ArchiveResult { Errors = [zipError], SkippedFiles = [zipSkip] } };
         var router = new ExtractionRouter(zipService, new FakeTarService(), AllSupported, new GroupPolicyOptions());
         Func<PasswordPromptInfo, Task<PasswordDecision>> resolver = _ => Task.FromResult(new PasswordDecision());
 

@@ -545,7 +545,7 @@ public sealed partial class MainViewModel : ObservableObject
                 throw new OperationCanceledException();
             _operationStopwatch?.Stop();
             int totalSec = (int)(_operationStopwatch?.Elapsed.TotalSeconds ?? 0);
-            if (result.Errors.Count == 0 && result.SkippedFiles.Count == 0)
+            if (result.Outcome == OperationOutcome.Completed)
             {
                 StatusMessage = totalSec > 0
                     ? _res.GetString("StatusArchivedIn")
@@ -650,7 +650,7 @@ public sealed partial class MainViewModel : ObservableObject
             ArchiveResult result = await _extractionRouter.ExtractAsync(options, progress, _cts.Token);
             _operationStopwatch?.Stop();
             int totalSec = (int)(_operationStopwatch?.Elapsed.TotalSeconds ?? 0);
-            if (result.Errors.Count == 0 && result.SkippedFiles.Count == 0)
+            if (result.Outcome == OperationOutcome.Completed)
             {
                 StatusMessage = totalSec > 0
                     ? _res.GetString("StatusExtractedIn")

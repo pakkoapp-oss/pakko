@@ -15,19 +15,19 @@ file sealed class RecordingZipService : IArchiveService
     public Task<ArchiveResult> ArchiveAsync(ArchiveOptions options, IProgress<ProgressReport>? progress = null, CancellationToken cancellationToken = default)
     {
         Calls++;
-        return Task.FromResult(new ArchiveResult { Success = true });
+        return Task.FromResult(new ArchiveResult());
     }
 
     public Task<ArchiveResult> ExtractAsync(ExtractOptions options, IProgress<ProgressReport>? progress = null, CancellationToken cancellationToken = default)
     {
         Calls++;
-        return Task.FromResult(new ArchiveResult { Success = true });
+        return Task.FromResult(new ArchiveResult());
     }
 
     public Task<ArchiveResult> TestAsync(IReadOnlyList<string> archivePaths, IProgress<ProgressReport>? progress = null, Func<PasswordPromptInfo, Task<PasswordDecision>>? resolvePasswordAsync = null, CancellationToken cancellationToken = default)
     {
         Calls++;
-        return Task.FromResult(new ArchiveResult { Success = true });
+        return Task.FromResult(new ArchiveResult());
     }
 
     public Task<ArchiveListResult> ListEntriesAsync(string archivePath, CancellationToken cancellationToken = default)

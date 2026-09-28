@@ -452,7 +452,6 @@ public sealed class SourceOutcomeTests : IDisposable
 
         var tarService = new SourcesTarService(new ArchiveResult
         {
-            Success = true,
             Sources = [new SourceResult { Path = tar, Outcome = SourceOutcome.Completed }],
         });
         var router = new ExtractionRouter(_sut, tarService, new TarCapabilities(), new GroupPolicyOptions());
