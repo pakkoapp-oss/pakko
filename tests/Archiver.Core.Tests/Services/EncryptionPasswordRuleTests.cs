@@ -59,4 +59,18 @@ public sealed class EncryptionPasswordRuleTests
     public void Check_TooLongAndNonAscii_ReportsCharactersFirst() =>
         EncryptionPasswordRule.Check(new string('ж', EncryptionPasswordRule.MaxLength + 1))
             .Should().Be(EncryptionPasswordProblem.UnsupportedCharacters);
+
+    // T-F199: the App filters a new password key by key with the same rule.
+    [Theory]
+    [InlineData(' ', true)]
+    [InlineData('~', true)]
+    [InlineData('', true)]
+    [InlineData('', false)]
+    [InlineData('ж', false)]
+    [InlineData('é', false)]
+    public void IsAllowed_MatchesCheck(char c, bool allowed)
+    {
+        EncryptionPasswordRule.IsAllowed(c).Should().Be(allowed);
+        (EncryptionPasswordRule.Check(c.ToString()) != EncryptionPasswordProblem.UnsupportedCharacters).Should().Be(allowed);
+    }
 }

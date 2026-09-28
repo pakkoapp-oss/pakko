@@ -4441,6 +4441,18 @@ real console) and T-F226's deferred per-arrow diagram ritual — carried as open
   into view when it appears (the options scroll; at 1100x720 it was below the fold). Device
   (1.5.0.26): the 3-line layout hint fully visible at 1100x720, the mismatch line at 900x520;
   closing the window with a typed password exits cleanly (no Application Error event).
+  Follow-up (user request, 2026-09-28): new-password fields take only allowed characters, like a
+  Windows PIN box (App inline fields and `pakko a`'s masked prompt; the decrypt prompts accept
+  anything, since a third-party archive may have a Cyrillic password). Core
+  `EncryptionPasswordRule.IsAllowed(char)` is the one rule. A refused key blocks until that field
+  is emptied: in a Ukrainian layout "Parol1" typed as Cyrillic leaves "1" in both fields, which
+  would match (the CLI refuses the entry). User kept ASCII-only after the 7-Zip trade-off was laid
+  out (Cyrillic would open only in 7-Zip on a Cyrillic-ANSI Windows). New keys
+  `EncryptPasswordRefusedCharacter` (en-US/uk-UA), `EncryptPasswordErrorCharacters` removed.
+  Device (1.5.0.27, UIA while the display was off): Cyrillic "...1" in both fields -> layout hint,
+  Compress off; clearing only the first field keeps it off; clearing both and typing Secret1 ->
+  on; `7za t -pSecret1` Ok, `-p1` wrong password. CLI prompt: unit-tested only, real-terminal
+  check carried.
 
 - **Carried into wave 4 (2026-09-28): device checks left open by fix phase 7** — T-F254 on a
   regional Windows language (e.g. de-AT, zh-CN: menu, Shell windows and App agree on the language);

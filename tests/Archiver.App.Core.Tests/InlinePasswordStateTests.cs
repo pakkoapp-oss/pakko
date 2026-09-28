@@ -92,7 +92,7 @@ public sealed class InlinePasswordStateTests
     // the layout hint is the one that tells the user what to do.
     [Theory]
     [InlineData("Ыускуе1", "Ыускуе1", "EncryptPasswordLayoutHint")]
-    [InlineData("pass—word", "pass—word", "EncryptPasswordErrorCharacters")]
+    [InlineData("pass—word", "pass—word", "EncryptPasswordRefusedCharacter")]
     [InlineData("Secret1", "Secret2", "EncryptPasswordErrorMismatch")]
     public void MessageKey_OneLinePerShownIssue(string password, string confirmation, string key)
     {
@@ -142,6 +142,67 @@ public sealed class InlinePasswordStateTests
     public void AllowsCompress_TarWithTheHiddenBoxTicked()
     {
         new InlinePasswordState().AllowsCompress(encryptChecked: true, ArchiveContainerFormat.Tar).Should().BeTrue();
+    }
+
+    // Only characters a new ZIP password may hold get into the field (like a Windows PIN box).
+    [Fact]
+    public void SetPassword_KeepsOnlyAllowedCharacters()
+    {
+        var state = new InlinePasswordState();
+
+        state.SetPassword("Sы1 !").Should().Be("S1 !");
+        state.Password.Should().Be("S1 !");
+        state.SetConfirmation("Sы1 !").Should().Be("S1 !");
+    }
+
+    // The trap: in a Ukrainian layout "Пароль1" keeps only "1" in both fields, which would match.
+    // A refused character blocks until the user empties that field and types again.
+    [Fact]
+    public void RefusedCharacter_BlocksEvenWhenWhatIsLeftMatches()
+    {
+        InlinePasswordState state = With("Пароль1", "Пароль1");
+
+        state.Password.Should().Be("1");
+        state.CanProceed.Should().BeFalse();
+        state.MessageKey.Should().Be("EncryptPasswordLayoutHint");
+    }
+
+    [Fact]
+    public void RefusedCharacter_StaysUntilTheFieldIsEmptied()
+    {
+        var state = new InlinePasswordState();
+        state.SetPassword("И").Should().BeEmpty();
+        state.SetPassword("").Should().BeEmpty(); // the view writing the kept text back is no edit
+        state.SetPassword("1");
+        state.SetConfirmation("1");
+
+        state.Issue.Should().Be(InlinePasswordIssue.UnsupportedCharacters);
+
+        state.SetPassword("");
+        state.SetPassword("1");
+
+        state.CanProceed.Should().BeTrue();
+    }
+
+    [Fact]
+    public void RefusedCharacterInTheConfirmation_Blocks()
+    {
+        InlinePasswordState state = With("Secret1", "Secret1—");
+
+        state.Issue.Should().Be(InlinePasswordIssue.UnsupportedCharacters);
+        state.MessageKey.Should().Be("EncryptPasswordRefusedCharacter");
+    }
+
+    [Fact]
+    public void Clear_ForgetsARefusedCharacter()
+    {
+        InlinePasswordState state = With("И", "");
+
+        state.Clear();
+        state.SetPassword("Secret1");
+        state.SetConfirmation("Secret1");
+
+        state.CanProceed.Should().BeTrue();
     }
 
     [Fact]

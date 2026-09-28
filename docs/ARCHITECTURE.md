@@ -397,6 +397,7 @@ public static class EncryptionPasswordRule
 {
     public const int MaxLength = 99;
     public static EncryptionPasswordProblem Check(string password);  // chars checked before length
+    public static bool IsAllowed(char c);  // printable ASCII; the App filters input with it (T-F199)
 }
 ```
 

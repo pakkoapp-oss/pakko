@@ -314,9 +314,6 @@
   <data name="EncryptPasswordRuleHint" xml:space="preserve">
     <value>Bruk bare engelske bokstaver, sifre, mellomrom og tegnsetting, maks. {0} tegn, slik at 7-Zip og andre ZIP-verktøy kan åpne arkivet.</value>
   </data>
-  <data name="EncryptPasswordErrorCharacters" xml:space="preserve">
-    <value>Passordet inneholder tegn som andre ZIP-verktøy som 7-Zip ikke kan håndtere. Bruk bare engelske bokstaver, sifre, mellomrom og tegnsetting.</value>
-  </data>
   <data name="EncryptPasswordErrorTooLong" xml:space="preserve">
     <value>Passordet er lengre enn {0} tegn.</value>
   </data>

@@ -314,9 +314,6 @@
   <data name="EncryptPasswordRuleHint" xml:space="preserve">
     <value>Chỉ dùng chữ cái tiếng Anh, chữ số, dấu cách và dấu câu, tối đa {0} ký tự, để 7-Zip và các công cụ ZIP khác có thể mở kho lưu trữ.</value>
   </data>
-  <data name="EncryptPasswordErrorCharacters" xml:space="preserve">
-    <value>Mật khẩu chứa ký tự mà các công cụ ZIP khác như 7-Zip không xử lý được. Chỉ dùng chữ cái tiếng Anh, chữ số, dấu cách và dấu câu.</value>
-  </data>
   <data name="EncryptPasswordErrorTooLong" xml:space="preserve">
     <value>Mật khẩu dài hơn {0} ký tự.</value>
   </data>

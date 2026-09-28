@@ -314,9 +314,6 @@
   <data name="EncryptPasswordRuleHint" xml:space="preserve">
     <value>7-Zip ve diğer ZIP araçlarının arşivi açabilmesi için yalnızca İngilizce harfler, rakamlar, boşluk ve noktalama işaretleri kullanın; en fazla {0} karakter.</value>
   </data>
-  <data name="EncryptPasswordErrorCharacters" xml:space="preserve">
-    <value>Parola, 7-Zip gibi diğer ZIP araçlarının işleyemediği karakterler içeriyor. Yalnızca İngilizce harfler, rakamlar, boşluk ve noktalama işaretleri kullanın.</value>
-  </data>
   <data name="EncryptPasswordErrorTooLong" xml:space="preserve">
     <value>Parola {0} karakterden uzun.</value>
   </data>

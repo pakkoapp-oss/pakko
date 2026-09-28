@@ -314,9 +314,6 @@
   <data name="EncryptPasswordRuleHint" xml:space="preserve">
     <value>请仅使用英文字母、数字、空格和标点符号，最多 {0} 个字符，以便 7-Zip 和其他 ZIP 工具能够打开该压缩包。</value>
   </data>
-  <data name="EncryptPasswordErrorCharacters" xml:space="preserve">
-    <value>密码包含 7-Zip 等其他 ZIP 工具无法处理的字符。请仅使用英文字母、数字、空格和标点符号。</value>
-  </data>
   <data name="EncryptPasswordErrorTooLong" xml:space="preserve">
     <value>密码超过 {0} 个字符。</value>
   </data>

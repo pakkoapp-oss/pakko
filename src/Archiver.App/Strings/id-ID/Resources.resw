@@ -314,9 +314,6 @@
   <data name="EncryptPasswordRuleHint" xml:space="preserve">
     <value>Gunakan hanya huruf Inggris, angka, spasi, dan tanda baca, maksimal {0} karakter, agar 7-Zip dan alat ZIP lainnya dapat membuka arsip.</value>
   </data>
-  <data name="EncryptPasswordErrorCharacters" xml:space="preserve">
-    <value>Kata sandi berisi karakter yang tidak dapat ditangani alat ZIP lain seperti 7-Zip. Gunakan hanya huruf Inggris, angka, spasi, dan tanda baca.</value>
-  </data>
   <data name="EncryptPasswordErrorTooLong" xml:space="preserve">
     <value>Kata sandi lebih dari {0} karakter.</value>
   </data>

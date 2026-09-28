@@ -146,12 +146,21 @@ public sealed partial class MainWindow : Window
         };
     }
 
-    // T-F199 step 5: a PasswordBox has no bindable Password; the view model checks every edit.
-    private void EncryptPasswordBox_PasswordChanged(object sender, RoutedEventArgs e) =>
-        ViewModel.SetEncryptionPassword(EncryptPasswordBox.Password);
+    // T-F199 step 5: a PasswordBox has no bindable Password; the view model checks every edit and
+    // hands back the text without refused characters, like a Windows PIN box.
+    private void EncryptPasswordBox_PasswordChanged(object sender, RoutedEventArgs e)
+    {
+        string kept = ViewModel.SetEncryptionPassword(EncryptPasswordBox.Password);
+        if (kept != EncryptPasswordBox.Password)
+            EncryptPasswordBox.Password = kept;
+    }
 
-    private void EncryptConfirmBox_PasswordChanged(object sender, RoutedEventArgs e) =>
-        ViewModel.SetEncryptionConfirmation(EncryptConfirmBox.Password);
+    private void EncryptConfirmBox_PasswordChanged(object sender, RoutedEventArgs e)
+    {
+        string kept = ViewModel.SetEncryptionConfirmation(EncryptConfirmBox.Password);
+        if (kept != EncryptConfirmBox.Password)
+            EncryptConfirmBox.Password = kept;
+    }
 
     // T-F199/T-F224: an Auto row never scrolls, so the options get what the table's minimum
     // leaves. Pure layout, no view-model state.

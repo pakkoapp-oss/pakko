@@ -314,9 +314,6 @@
   <data name="EncryptPasswordRuleHint" xml:space="preserve">
     <value>Naudokite tik anglų kalbos raides, skaitmenis, tarpus ir skyrybos ženklus, ne daugiau kaip {0} simbolių, kad 7-Zip ir kiti ZIP įrankiai galėtų atidaryti archyvą.</value>
   </data>
-  <data name="EncryptPasswordErrorCharacters" xml:space="preserve">
-    <value>Slaptažodyje yra simbolių, kurių kiti ZIP įrankiai, pvz., 7-Zip, negali apdoroti. Naudokite tik anglų kalbos raides, skaitmenis, tarpus ir skyrybos ženklus.</value>
-  </data>
   <data name="EncryptPasswordErrorTooLong" xml:space="preserve">
     <value>Slaptažodis ilgesnis nei {0} simbolių.</value>
   </data>

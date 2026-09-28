@@ -314,9 +314,6 @@
   <data name="EncryptPasswordRuleHint" xml:space="preserve">
     <value>Χρησιμοποιήστε μόνο αγγλικά γράμματα, ψηφία, κενά και σημεία στίξης, έως {0} χαρακτήρες, ώστε το 7-Zip και άλλα εργαλεία ZIP να μπορούν να ανοίξουν το αρχείο.</value>
   </data>
-  <data name="EncryptPasswordErrorCharacters" xml:space="preserve">
-    <value>Ο κωδικός περιέχει χαρακτήρες που άλλα εργαλεία ZIP, όπως το 7-Zip, δεν μπορούν να χειριστούν. Χρησιμοποιήστε μόνο αγγλικά γράμματα, ψηφία, κενά και σημεία στίξης.</value>
-  </data>
   <data name="EncryptPasswordErrorTooLong" xml:space="preserve">
     <value>Ο κωδικός είναι μεγαλύτερος από {0} χαρακτήρες.</value>
   </data>

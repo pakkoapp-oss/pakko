@@ -368,16 +368,19 @@ public sealed partial class MainViewModel : ObservableObject
     public Visibility EncryptionPasswordMessageVisibility =>
         _encryptionPassword.MessageKey is null ? Visibility.Collapsed : Visibility.Visible;
 
-    public void SetEncryptionPassword(string value)
+    // Returns what the box should show: a refused character never gets in.
+    public string SetEncryptionPassword(string value)
     {
-        _encryptionPassword.SetPassword(value);
+        string kept = _encryptionPassword.SetPassword(value);
         OnEncryptionPasswordEdited();
+        return kept;
     }
 
-    public void SetEncryptionConfirmation(string value)
+    public string SetEncryptionConfirmation(string value)
     {
-        _encryptionPassword.SetConfirmation(value);
+        string kept = _encryptionPassword.SetConfirmation(value);
         OnEncryptionPasswordEdited();
+        return kept;
     }
 
     public void ClearEncryptionPassword()

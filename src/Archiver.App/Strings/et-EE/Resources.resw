@@ -314,9 +314,6 @@
   <data name="EncryptPasswordRuleHint" xml:space="preserve">
     <value>Kasutage ainult ingliskeelseid tähti, numbreid, tühikuid ja kirjavahemärke, kuni {0} märki, et 7-Zip ja teised ZIP-tööriistad saaksid arhiivi avada.</value>
   </data>
-  <data name="EncryptPasswordErrorCharacters" xml:space="preserve">
-    <value>Parool sisaldab märke, mida teised ZIP-tööriistad, näiteks 7-Zip, ei suuda töödelda. Kasutage ainult ingliskeelseid tähti, numbreid, tühikuid ja kirjavahemärke.</value>
-  </data>
   <data name="EncryptPasswordErrorTooLong" xml:space="preserve">
     <value>Parool on pikem kui {0} märki.</value>
   </data>

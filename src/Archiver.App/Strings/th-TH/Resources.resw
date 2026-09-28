@@ -314,9 +314,6 @@
   <data name="EncryptPasswordRuleHint" xml:space="preserve">
     <value>ใช้เฉพาะตัวอักษรภาษาอังกฤษ ตัวเลข ช่องว่าง และเครื่องหมายวรรคตอน ไม่เกิน {0} อักขระ เพื่อให้ 7-Zip และเครื่องมือ ZIP อื่นๆ เปิดไฟล์เก็บถาวรได้</value>
   </data>
-  <data name="EncryptPasswordErrorCharacters" xml:space="preserve">
-    <value>รหัสผ่านมีอักขระที่เครื่องมือ ZIP อื่นๆ เช่น 7-Zip ไม่สามารถจัดการได้ ใช้เฉพาะตัวอักษรภาษาอังกฤษ ตัวเลข ช่องว่าง และเครื่องหมายวรรคตอน</value>
-  </data>
   <data name="EncryptPasswordErrorTooLong" xml:space="preserve">
     <value>รหัสผ่านยาวเกิน {0} อักขระ</value>
   </data>

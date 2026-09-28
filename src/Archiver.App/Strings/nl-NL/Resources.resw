@@ -314,9 +314,6 @@
   <data name="EncryptPasswordRuleHint" xml:space="preserve">
     <value>Gebruik alleen Engelse letters, cijfers, spaties en leestekens, maximaal {0} tekens, zodat 7-Zip en andere ZIP-programma's het archief kunnen openen.</value>
   </data>
-  <data name="EncryptPasswordErrorCharacters" xml:space="preserve">
-    <value>Het wachtwoord bevat tekens die andere ZIP-programma's zoals 7-Zip niet kunnen verwerken. Gebruik alleen Engelse letters, cijfers, spaties en leestekens.</value>
-  </data>
   <data name="EncryptPasswordErrorTooLong" xml:space="preserve">
     <value>Het wachtwoord is langer dan {0} tekens.</value>
   </data>

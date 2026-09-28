@@ -396,7 +396,9 @@ one-click and unencrypted.
   at most 99 characters. 7-Zip decodes ZIP passwords through the ANSI code page and rejects
   longer AES passwords, so anything else would produce an archive 7-Zip cannot open. A cancelled
   or refused password creates nothing, never an unencrypted archive; a tar-family format with a
-  password is refused, since tar has no encryption.
+  password is refused, since tar has no encryption. The App and `pakko a`'s masked prompt do not
+  take a disallowed key at all; one typed key blocks until the field is emptied, so a password
+  typed in a Cyrillic layout cannot shrink to its ASCII leftovers (T-F199).
 - **Pakko never logs or persists a password.** A password lives only for the one operation that
   asked for it ("apply to remaining" spans one multi-archive selection, not the session). Caveat:
   `pakko x|t|a -p{pwd}` puts the password on the command line, visible in shell history and the

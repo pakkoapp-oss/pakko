@@ -314,9 +314,6 @@
   <data name="EncryptPasswordRuleHint" xml:space="preserve">
     <value>Izmantojiet tikai angļu burtus, ciparus, atstarpes un pieturzīmes, ne vairāk kā {0} rakstzīmes, lai 7-Zip un citi ZIP rīki varētu atvērt arhīvu.</value>
   </data>
-  <data name="EncryptPasswordErrorCharacters" xml:space="preserve">
-    <value>Parolē ir rakstzīmes, ko citi ZIP rīki, piemēram, 7-Zip, nespēj apstrādāt. Izmantojiet tikai angļu burtus, ciparus, atstarpes un pieturzīmes.</value>
-  </data>
   <data name="EncryptPasswordErrorTooLong" xml:space="preserve">
     <value>Parole ir garāka par {0} rakstzīmēm.</value>
   </data>

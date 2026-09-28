@@ -314,9 +314,6 @@
   <data name="EncryptPasswordRuleHint" xml:space="preserve">
     <value>Používajte iba anglické písmená, číslice, medzery a interpunkciu, najviac {0} znakov, aby archív mohli otvoriť 7-Zip a ďalšie nástroje ZIP.</value>
   </data>
-  <data name="EncryptPasswordErrorCharacters" xml:space="preserve">
-    <value>Heslo obsahuje znaky, ktoré iné nástroje ZIP, napríklad 7-Zip, nedokážu spracovať. Používajte iba anglické písmená, číslice, medzery a interpunkciu.</value>
-  </data>
   <data name="EncryptPasswordErrorTooLong" xml:space="preserve">
     <value>Heslo je dlhšie ako {0} znakov.</value>
   </data>

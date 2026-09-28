@@ -314,9 +314,6 @@
   <data name="EncryptPasswordRuleHint" xml:space="preserve">
     <value>Uporabljajte samo angleške črke, števke, presledke in ločila, največ {0} znakov, da lahko arhiv odprejo 7-Zip in druga orodja ZIP.</value>
   </data>
-  <data name="EncryptPasswordErrorCharacters" xml:space="preserve">
-    <value>Geslo vsebuje znake, ki jih druga orodja ZIP, kot je 7-Zip, ne morejo obdelati. Uporabljajte samo angleške črke, števke, presledke in ločila.</value>
-  </data>
   <data name="EncryptPasswordErrorTooLong" xml:space="preserve">
     <value>Geslo je daljše od {0} znakov.</value>
   </data>

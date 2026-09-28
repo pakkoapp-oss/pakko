@@ -314,9 +314,6 @@
   <data name="EncryptPasswordRuleHint" xml:space="preserve">
     <value>השתמשו רק באותיות אנגליות, ספרות, רווחים וסימני פיסוק, עד {0} תווים, כדי ש-7-Zip וכלי ZIP אחרים יוכלו לפתוח את הארכיון.</value>
   </data>
-  <data name="EncryptPasswordErrorCharacters" xml:space="preserve">
-    <value>הסיסמה מכילה תווים שכלי ZIP אחרים כמו 7-Zip אינם יכולים לטפל בהם. השתמשו רק באותיות אנגליות, ספרות, רווחים וסימני פיסוק.</value>
-  </data>
   <data name="EncryptPasswordErrorTooLong" xml:space="preserve">
     <value>הסיסמה ארוכה מ-{0} תווים.</value>
   </data>

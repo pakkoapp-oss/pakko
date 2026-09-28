@@ -314,9 +314,6 @@
   <data name="EncryptPasswordRuleHint" xml:space="preserve">
     <value>Brug kun engelske bogstaver, tal, mellemrum og tegnsætning, højst {0} tegn, så 7-Zip og andre ZIP-værktøjer kan åbne arkivet.</value>
   </data>
-  <data name="EncryptPasswordErrorCharacters" xml:space="preserve">
-    <value>Adgangskoden indeholder tegn, som andre ZIP-værktøjer som 7-Zip ikke kan håndtere. Brug kun engelske bogstaver, tal, mellemrum og tegnsætning.</value>
-  </data>
   <data name="EncryptPasswordErrorTooLong" xml:space="preserve">
     <value>Adgangskoden er længere end {0} tegn.</value>
   </data>

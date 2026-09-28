@@ -330,9 +330,6 @@
   <data name="EncryptPasswordRuleHint" xml:space="preserve">
     <value>Використовуйте лише англійські літери, цифри, пробіли й розділові знаки, не більше {0} символів, щоб архів могли відкрити 7-Zip та інші ZIP-програми.</value>
   </data>
-  <data name="EncryptPasswordErrorCharacters" xml:space="preserve">
-    <value>Пароль містить символи, з якими інші ZIP-програми, як-от 7-Zip, не працюють. Використовуйте лише англійські літери, цифри, пробіли й розділові знаки.</value>
-  </data>
   <data name="EncryptPasswordErrorTooLong" xml:space="preserve">
     <value>Пароль довший за {0} символів.</value>
   </data>
@@ -346,7 +343,10 @@
     <value>Показати пароль</value>
   </data>
   <data name="EncryptPasswordLayoutHint" xml:space="preserve">
-    <value>Схоже, увімкнено не англійську розкладку. Перемкніть її: пароль може містити лише англійські літери, цифри, пробіли й розділові знаки.</value>
+    <value>Літери не з англійської розкладки в паролі не підтримуються, їх не додано. Перемкніть розкладку на англійську, очистіть поле й введіть пароль знову.</value>
+  </data>
+  <data name="EncryptPasswordRefusedCharacter" xml:space="preserve">
+    <value>Цей символ не підтримується, його не додано. Очистіть поле й введіть пароль знову: лише англійські літери, цифри, пробіли й розділові знаки.</value>
   </data>
   <data name="PermanentDeleteDialogTitle" xml:space="preserve">
     <value>Видалити остаточно?</value>

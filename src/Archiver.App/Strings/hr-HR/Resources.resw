@@ -314,9 +314,6 @@
   <data name="EncryptPasswordRuleHint" xml:space="preserve">
     <value>Koristite samo engleska slova, znamenke, razmake i interpunkciju, najviše {0} znakova, kako bi 7-Zip i drugi ZIP alati mogli otvoriti arhivu.</value>
   </data>
-  <data name="EncryptPasswordErrorCharacters" xml:space="preserve">
-    <value>Lozinka sadrži znakove koje drugi ZIP alati poput 7-Zipa ne mogu obraditi. Koristite samo engleska slova, znamenke, razmake i interpunkciju.</value>
-  </data>
   <data name="EncryptPasswordErrorTooLong" xml:space="preserve">
     <value>Lozinka je dulja od {0} znakova.</value>
   </data>

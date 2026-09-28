@@ -30,6 +30,9 @@ public static class EncryptionPasswordRule
     /// </summary>
     public const int MaxLength = 99;
 
+    /// <summary>True for a character a new password may hold: printable ASCII, 0x20-0x7F.</summary>
+    public static bool IsAllowed(char c) => c >= 0x20 && c <= 0x7F;
+
     /// <summary>
     /// Mirrors 7-Zip's creation rule (ZipHandlerOut.cpp, IsSimpleAsciiString): 7-Zip decodes a ZIP
     /// password through the ANSI code page, not UTF-8, so any other character produces an archive
@@ -39,7 +42,7 @@ public static class EncryptionPasswordRule
     {
         if (password.Length == 0)
             return EncryptionPasswordProblem.Empty;
-        if (password.Any(c => c < 0x20 || c > 0x7F))
+        if (!password.All(IsAllowed))
             return EncryptionPasswordProblem.UnsupportedCharacters;
         if (password.Length > MaxLength)
             return EncryptionPasswordProblem.TooLong;

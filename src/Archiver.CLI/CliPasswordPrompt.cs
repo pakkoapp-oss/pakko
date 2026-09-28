@@ -37,32 +37,46 @@ public static class CliPasswordPrompt
     /// <summary>
     /// T-F193: asks for a new encryption password twice, like 7z's bare <c>-p</c> on 'a'. The first
     /// entry is checked against <see cref="EncryptionPasswordRule"/> before the second is asked for.
-    /// Never re-asks after a refusal — the caller reports the error and stops, as 7z does.
+    /// Never re-asks after a refusal — the caller reports the error and stops, as 7z does. T-F199: a
+    /// key outside the rule is not taken (no mask character appears), and an entry that had one is
+    /// refused, since the ASCII left over could still match at the second prompt.
     /// <paramref name="write"/> receives the prompt text and line breaks.
     /// </summary>
     public static NewPasswordResult ReadNewPassword(
         Func<ConsoleKeyInfo> readKey, Action<string> write, Action<char>? echo = null)
     {
+        bool refusedKey = false;
+        string? ReadFiltered() =>
+            CliLineInput.Read(readKey, echo, mask: true, EncryptionPasswordRule.IsAllowed, () => refusedKey = true);
+
         write("Enter password (will not be echoed): ");
-        string? first = Read(readKey, echo);
+        string? first = ReadFiltered();
         write(Environment.NewLine);
         if (first is null)
             return new NewPasswordResult(null, null);
+        if (refusedKey)
+            return new NewPasswordResult(null, RefusedKeyError);
 
         string? problem = DescribeEncryptProblem(EncryptionPasswordRule.Check(first));
         if (problem is not null)
             return new NewPasswordResult(null, problem);
 
         write("Reenter password: ");
-        string? second = Read(readKey, echo);
+        string? second = ReadFiltered();
         write(Environment.NewLine);
         if (second is null)
             return new NewPasswordResult(null, null);
+        if (refusedKey)
+            return new NewPasswordResult(null, RefusedKeyError);
 
         return second == first
             ? new NewPasswordResult(first, null)
             : new NewPasswordResult(null, "the passwords do not match");
     }
+
+    private const string RefusedKeyError =
+        "a character outside English letters, digits, spaces and ASCII punctuation was typed and not taken — "
+        + "switch the keyboard layout to English and try again";
 
     /// <summary>English text for an <see cref="EncryptionPasswordRule.Check"/> refusal; null for <see cref="EncryptionPasswordProblem.None"/>.</summary>
     public static string? DescribeEncryptProblem(EncryptionPasswordProblem problem) => problem switch

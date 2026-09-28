@@ -314,9 +314,6 @@
   <data name="EncryptPasswordRuleHint" xml:space="preserve">
     <value>صرف انگریزی حروف، ہندسے، خالی جگہیں اور رموزِ اوقاف استعمال کریں، زیادہ سے زیادہ {0} حروف، تاکہ 7-Zip اور دیگر ZIP ٹولز آرکائیو کھول سکیں۔</value>
   </data>
-  <data name="EncryptPasswordErrorCharacters" xml:space="preserve">
-    <value>پاس ورڈ میں ایسے حروف ہیں جنہیں 7-Zip جیسے دیگر ZIP ٹولز نہیں سنبھال سکتے۔ صرف انگریزی حروف، ہندسے، خالی جگہیں اور رموزِ اوقاف استعمال کریں۔</value>
-  </data>
   <data name="EncryptPasswordErrorTooLong" xml:space="preserve">
     <value>پاس ورڈ {0} حروف سے لمبا ہے۔</value>
   </data>

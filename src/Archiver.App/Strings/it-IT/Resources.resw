@@ -314,9 +314,6 @@
   <data name="EncryptPasswordRuleHint" xml:space="preserve">
     <value>Usa solo lettere inglesi, cifre, spazi e punteggiatura, fino a {0} caratteri, affinché 7-Zip e altri strumenti ZIP possano aprire l'archivio.</value>
   </data>
-  <data name="EncryptPasswordErrorCharacters" xml:space="preserve">
-    <value>La password contiene caratteri che altri strumenti ZIP come 7-Zip non sono in grado di gestire. Usa solo lettere inglesi, cifre, spazi e punteggiatura.</value>
-  </data>
   <data name="EncryptPasswordErrorTooLong" xml:space="preserve">
     <value>La password supera i {0} caratteri.</value>
   </data>

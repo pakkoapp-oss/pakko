@@ -15,9 +15,11 @@ public static class CliLineInput
     /// Enter submits; Escape or Ctrl+C cancels (returns null); Backspace deletes one character (a
     /// no-op on an empty buffer); a key with no printable character is ignored. <paramref name="echo"/>
     /// receives each accepted keystroke — the character itself, or '*' when <paramref name="mask"/>
-    /// is set — and '\b' for a deletion.
+    /// is set — and '\b' for a deletion. A printable key that <paramref name="accept"/> refuses is
+    /// neither added nor echoed; <paramref name="refused"/> is told about it.
     /// </summary>
-    public static string? Read(Func<ConsoleKeyInfo> readKey, Action<char>? echo, bool mask)
+    public static string? Read(Func<ConsoleKeyInfo> readKey, Action<char>? echo, bool mask,
+        Func<char, bool>? accept = null, Action? refused = null)
     {
         var buffer = new StringBuilder();
 
@@ -43,6 +45,12 @@ public static class CliLineInput
 
             if (key.KeyChar == '\0' || char.IsControl(key.KeyChar))
                 continue;
+
+            if (accept is not null && !accept(key.KeyChar))
+            {
+                refused?.Invoke();
+                continue;
+            }
 
             buffer.Append(key.KeyChar);
             echo?.Invoke(mask ? '*' : key.KeyChar);

@@ -314,9 +314,6 @@
   <data name="EncryptPasswordRuleHint" xml:space="preserve">
     <value>Csak angol betűket, számjegyeket, szóközt és írásjeleket használjon, legfeljebb {0} karaktert, hogy a 7-Zip és más ZIP-eszközök is megnyithassák az archívumot.</value>
   </data>
-  <data name="EncryptPasswordErrorCharacters" xml:space="preserve">
-    <value>A jelszó olyan karaktereket tartalmaz, amelyeket más ZIP-eszközök, például a 7-Zip, nem tudnak kezelni. Csak angol betűket, számjegyeket, szóközt és írásjeleket használjon.</value>
-  </data>
   <data name="EncryptPasswordErrorTooLong" xml:space="preserve">
     <value>A jelszó hosszabb {0} karakternél.</value>
   </data>

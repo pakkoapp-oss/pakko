@@ -15,7 +15,7 @@ public sealed partial class AppResourceKeysTests
         "SizeBytes", "SizeKB", "SizeMB", "SizeGB", "StatusArchivingCount", "StatusExtractingCount",
         // T-F199 step 5: the inline encryption panel and the decrypt prompt's reveal toggle.
         "EncryptPasswordDialogMessage", "EncryptPasswordPlaceholder", "EncryptPasswordConfirmPlaceholder",
-        "EncryptPasswordRuleHint", "EncryptPasswordErrorCharacters", "EncryptPasswordErrorTooLong",
+        "EncryptPasswordRuleHint", "EncryptPasswordErrorTooLong",
         "EncryptPasswordErrorMismatch", "EncryptShowPasswordCheck.Content", "PasswordDialogShowPasswordCheck",
     ];
 

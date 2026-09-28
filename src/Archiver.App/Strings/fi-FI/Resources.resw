@@ -314,9 +314,6 @@
   <data name="EncryptPasswordRuleHint" xml:space="preserve">
     <value>Käytä vain englannin kirjaimia, numeroita, välilyöntejä ja välimerkkejä, enintään {0} merkkiä, jotta 7-Zip ja muut ZIP-työkalut voivat avata arkiston.</value>
   </data>
-  <data name="EncryptPasswordErrorCharacters" xml:space="preserve">
-    <value>Salasanassa on merkkejä, joita muut ZIP-työkalut, kuten 7-Zip, eivät pysty käsittelemään. Käytä vain englannin kirjaimia, numeroita, välilyöntejä ja välimerkkejä.</value>
-  </data>
   <data name="EncryptPasswordErrorTooLong" xml:space="preserve">
     <value>Salasana on pidempi kuin {0} merkkiä.</value>
   </data>

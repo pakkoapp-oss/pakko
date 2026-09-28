@@ -342,9 +342,6 @@
   <data name="EncryptPasswordRuleHint" xml:space="preserve">
     <value>Use only English letters, digits, spaces and punctuation, up to {0} characters, so 7-Zip and other ZIP tools can open the archive.</value>
   </data>
-  <data name="EncryptPasswordErrorCharacters" xml:space="preserve">
-    <value>The password contains characters that other ZIP tools such as 7-Zip cannot handle. Use only English letters, digits, spaces and punctuation.</value>
-  </data>
   <data name="EncryptPasswordErrorTooLong" xml:space="preserve">
     <value>The password is longer than {0} characters.</value>
   </data>
@@ -358,7 +355,10 @@
     <value>Show password</value>
   </data>
   <data name="EncryptPasswordLayoutHint" xml:space="preserve">
-    <value>It looks like the keyboard layout is not English. Switch it: the password can contain only English letters, digits, spaces and punctuation.</value>
+    <value>Letters outside the English keyboard layout can't be used and were not added. Switch the layout to English, clear the field and type the password again.</value>
+  </data>
+  <data name="EncryptPasswordRefusedCharacter" xml:space="preserve">
+    <value>That character can't be used and was not added. Clear the field and type the password again using only English letters, digits, spaces and punctuation.</value>
   </data>
   <data name="PermanentDeleteDialogTitle" xml:space="preserve">
     <value>Delete permanently?</value>

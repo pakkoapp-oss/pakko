@@ -178,8 +178,23 @@ public sealed class CliPasswordPromptTests
         CliPasswordPrompt.NewPasswordResult result = CliPasswordPrompt.ReadNewPassword(QueueOf(Typed("пароль")), written.Add);
 
         result.Password.Should().BeNull();
-        result.Error.Should().Contain("English letters");
+        result.Error.Should().Contain("keyboard layout");
         written.Should().NotContain(w => w.Contains("Reenter"));
+    }
+
+    // T-F199: a refused key never reaches the buffer or the mask (like a Windows PIN box), and the
+    // entry is still refused: "пароль1" in a Ukrainian layout would otherwise become "1" twice and match.
+    [Fact]
+    public void ReadNewPassword_NonAsciiKeys_AreNotEchoedAndTheEntryIsRefused()
+    {
+        var echoed = new List<char>();
+
+        CliPasswordPrompt.NewPasswordResult result = CliPasswordPrompt.ReadNewPassword(
+            QueueOf([.. Typed("жж1"), .. Typed("жж1")]), _ => { }, echoed.Add);
+
+        echoed.Should().Equal('*');
+        result.Password.Should().BeNull();
+        result.Error.Should().Contain("keyboard layout");
     }
 
     [Fact]
