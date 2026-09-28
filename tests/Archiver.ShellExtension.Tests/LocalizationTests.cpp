@@ -36,6 +36,40 @@ TEST(GetLocalizedString, UnknownTagFallsBackToEnUS)
     EXPECT_EQ(GetLocalizedString(StringId::ExtractHereFlat, L"xx-XX"), L"Extract here");
 }
 
+// T-F254: Windows reports Simplified Chinese as zh-CN and regional variants with their own tags;
+// an exact-key lookup sent all of them to English.
+TEST(GetLocalizedString, WindowsChineseTagsReachTheSimplifiedChineseRow)
+{
+    const auto hans = GetLocalizedString(StringId::TestArchive, L"zh-Hans");
+    EXPECT_NE(hans, GetLocalizedString(StringId::TestArchive, L"en-US"));
+    EXPECT_EQ(GetLocalizedString(StringId::TestArchive, L"zh-CN"), hans);
+    EXPECT_EQ(GetLocalizedString(StringId::TestArchive, L"zh-SG"), hans);
+    EXPECT_EQ(GetLocalizedString(StringId::TestArchive, L"zh-Hans-CN"), hans);
+}
+
+TEST(GetLocalizedString, TraditionalChineseStaysEnglish)
+{
+    const auto english = GetLocalizedString(StringId::TestArchive, L"en-US");
+    EXPECT_EQ(GetLocalizedString(StringId::TestArchive, L"zh-TW"), english);
+    EXPECT_EQ(GetLocalizedString(StringId::TestArchive, L"zh-HK"), english);
+    EXPECT_EQ(GetLocalizedString(StringId::TestArchive, L"zh-Hant-TW"), english);
+}
+
+TEST(GetLocalizedString, RegionalVariantFallsBackToItsLanguage)
+{
+    EXPECT_EQ(GetLocalizedString(StringId::TestArchive, L"pt-BR"), GetLocalizedString(StringId::TestArchive, L"pt-PT"));
+    EXPECT_EQ(GetLocalizedString(StringId::TestArchive, L"de-AT"), GetLocalizedString(StringId::TestArchive, L"de-DE"));
+    EXPECT_EQ(GetLocalizedString(StringId::TestArchive, L"fr-CA"), GetLocalizedString(StringId::TestArchive, L"fr-FR"));
+    EXPECT_EQ(GetLocalizedString(StringId::TestArchive, L"es-MX"), GetLocalizedString(StringId::TestArchive, L"es-ES"));
+    EXPECT_EQ(GetLocalizedString(StringId::TestArchive, L"sr-Cyrl-RS"), GetLocalizedString(StringId::TestArchive, L"sr-Latn-RS"));
+    EXPECT_EQ(GetLocalizedString(StringId::TestArchive, L"no"), GetLocalizedString(StringId::TestArchive, L"nb-NO"));
+}
+
+TEST(GetLocalizedString, TagMatchIgnoresCase)
+{
+    EXPECT_EQ(GetLocalizedString(StringId::TestArchive, L"UK-ua"), GetLocalizedString(StringId::TestArchive, L"uk-UA"));
+}
+
 TEST(GetLocalizedString, EveryFieldIsNonEmptyForEnUS)
 {
     for (auto id : { StringId::ExtractDialog, StringId::ExtractHereFlat, StringId::ExtractHereIntelligent,

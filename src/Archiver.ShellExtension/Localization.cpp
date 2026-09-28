@@ -113,15 +113,58 @@ std::wstring GetCurrentUILanguageTag()
     return L"en-US";
 }
 
+namespace
+{
+    bool EqualsIgnoreCase(const std::wstring& a, const std::wstring& b)
+    {
+        return CompareStringOrdinal(a.c_str(), static_cast<int>(a.size()), b.c_str(), static_cast<int>(b.size()), TRUE) == CSTR_EQUAL;
+    }
+
+    // The part of a BCP-47 tag before its first '-', lower-cased ("zh" for "zh-Hant-TW").
+    std::wstring LanguageOf(const std::wstring& tag)
+    {
+        std::wstring language = tag.substr(0, tag.find(L'-'));
+        for (wchar_t& c : language)
+            c = static_cast<wchar_t>(towlower(c));
+        return language;
+    }
+
+    // T-F254: same rule as Archiver.Messages' UiCulture — exact tag, then Simplified Chinese for
+    // zh-CN/zh-SG/zh-Hans-*, then the table's row for the same language (de-AT -> de-DE), else
+    // en-US. Traditional Chinese has no row and must not get the Simplified one.
+    const LocalizedStrings& ResolveRow(const std::wstring& localeTag)
+    {
+        const auto& table = GetTable();
+        for (const auto& [key, row] : table)
+        {
+            if (EqualsIgnoreCase(key, localeTag))
+                return row;
+        }
+
+        std::wstring language = LanguageOf(localeTag);
+        if (language == L"zh")
+        {
+            const std::wstring rest = localeTag.size() > 3 ? localeTag.substr(3) : std::wstring();
+            const std::wstring script = rest.substr(0, rest.find(L'-'));
+            const bool simplified = rest.empty() || EqualsIgnoreCase(script, L"Hans")
+                || EqualsIgnoreCase(script, L"CN") || EqualsIgnoreCase(script, L"SG");
+            return table.at(simplified ? L"zh-Hans" : L"en-US");
+        }
+        if (language == L"no")
+            language = L"nb";
+
+        for (const auto& [key, row] : table)
+        {
+            if (LanguageOf(key) == language)
+                return row;
+        }
+        return table.at(L"en-US");
+    }
+}
+
 std::wstring GetLocalizedString(StringId id, const std::wstring& localeTag)
 {
-    const auto& table = GetTable();
-
-    auto it = table.find(localeTag);
-    if (it == table.end())
-        it = table.find(L"en-US");
-
-    return std::wstring(GetField(it->second, id));
+    return std::wstring(GetField(ResolveRow(localeTag), id));
 }
 
 std::wstring GetLocalizedString(StringId id)
