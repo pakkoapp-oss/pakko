@@ -4346,14 +4346,13 @@ its own suite run, pre-existing on .NET 8 too). After T-F270 lands; runs before 
 **Plan update (2026-09-28, user request):** waves 1-3 (phases 5-8) done; wave 4 (phase 9, T-F199)
 closes with a full App pass and the carried phase-7 device checks (T-F221 terminal, T-F260
 mapping). **Wave 4b** takes the tasks with no slot: T-F273 (P1), T-F214, T-F219, T-F276, T-F277,
-T-F198 item 5, T-F268 step 6 (f) (re-check the black window with the display confirmed on first),
+T-F198 item 5, T-F278, T-F268 step 6 (f) (re-check the black window with the display confirmed on first),
 T-F148 (full sandbox integration tests + packaged-identity device check), T-F171 (short design
 approved by the user first); T-F273 first. **Wave 5:** phase 10 (T-F240, T-F203, T-F257, T-F258,
 T-F223, T-F165, T-F259), then T-F202's full smoke on CI artifacts (coverage table rebuilt from
 current source) together with every `[~]` task's device check (delegated to the agent), then
-release v1.6.0 (proposed: P0/P1 findings fixed before it, P2/P3 to the next batch). Needs the
-user: one real drag from Explorer (T-F242 item 5), permission to switch theme and Windows language
-(light, en-US, a regional language for T-F254). After the release, separate
+release v1.6.0 (proposed: P0/P1 findings fixed before it, P2/P3 to the next batch). User (2026-09-28): the real drag is done (T-F242
+closed, T-F278 filed) and permission to switch theme and Windows language is given (restore after). After the release, separate
 batches: T-F275, T-F132, T-F121, T-F111, T-F112, distribution tasks (T-F119, T-F10, T-F127,
 T-F144, T-F152).
 
@@ -5458,9 +5457,11 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   preview ran and back on after. Item 5 — a synthetic drag from Explorer (`windows` MCP) is not an
   OLE drag, nothing dropped, so the caption itself is not seen on device; its text is a resource
   key covered by `AppResourceKeysTests` (37 locales).
-- [~] **Status:** items 1-4 and 6 done and device-checked; item 5's caption needs one real drag
-  by the user (with T-F199 step 4's open drag checks: a drop onto the empty-state overlay and onto
-  a populated list). Original: open, from the T-F226 review.
+- **User check (2026-09-28, 1.5.0.32):** a real drag from Explorer shows the caption "Додати до
+  списку" and adds the file; files not yet in the list are added; dropping a file already in the
+  list does nothing (the silent de-duplication is filed as T-F278).
+- [x] **Status:** done 2026-09-28 — all six items; item 5 confirmed by the user's own drag.
+  Original: open, from the T-F226 review.
   1. `MainViewModel.RunCleanupAsync` (`:1243-1257`) deletes permanently and swallows every error
      (`catch { best-effort }`): a locked source that was not deleted is never reported. See T-F207,
      T-F229.
@@ -6528,6 +6529,16 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   status line right away, while a cancelled Compress/Extract shows "Скасовано" first (T-F70) and
   keeps it as the footer result (T-F211). Make Test's cancel path match.
 - **Reported by:** T-F199 step 6/7 device checks, 2026-09-28.
+
+### T-F278 — Dropping a file already in the list gives no feedback; the check is case-sensitive (P3)
+
+- [ ] **Status:** open. `MainViewModel.AddPaths` skips a path already in `FileItems` without a
+  word, so a repeated drop (or Add Files) looks like it failed (user check, 2026-09-28). The check
+  is `x.FullPath == path` — case-sensitive, while Windows paths are not, so the same file reached
+  as `C:\a\File.txt` and `c:\a\file.txt` is listed twice. Fix: compare with
+  `StringComparison.OrdinalIgnoreCase` and show a short footer note ("already in the list: N").
+  Tests first (App.Core if the rule moves there).
+- **Reported by:** user drag check for T-F242, 2026-09-28.
 
 ### T-F223 — Diagram gap from T-F193 (P2)
 
