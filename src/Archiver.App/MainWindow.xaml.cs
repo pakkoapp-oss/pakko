@@ -93,6 +93,8 @@ public sealed partial class MainWindow : Window
             FitOptionsScroll();
             ArrangeCards();
         };
+        // The footer grows without a resize (outcome line, progress bar).
+        FooterGrid.SizeChanged += (_, _) => FitOptionsScroll();
         NewArchiveCard.Expanding += (_, _) => ArrangeCards();
         NewArchiveCard.Collapsed += (_, _) => ArrangeCards();
         NewArchiveCard.RegisterPropertyChangedCallback(UIElement.VisibilityProperty, (_, _) => ArrangeCards());

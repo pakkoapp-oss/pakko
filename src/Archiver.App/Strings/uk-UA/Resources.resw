@@ -459,4 +459,7 @@
   <data name="ExtractUnavailableHint" xml:space="preserve">
     <value>У списку немає архівів — видобувати нічого</value>
   </data>
+  <data name="DeleteAfterEitherLabel" xml:space="preserve">
+    <value>Після успішної операції перемістити в Кошик те, з чим вона працювала: вихідні файли після стиснення, архіви після видобування</value>
+  </data>
 </root>

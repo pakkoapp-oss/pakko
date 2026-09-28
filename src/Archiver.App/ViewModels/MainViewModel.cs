@@ -206,7 +206,7 @@ public sealed partial class MainViewModel : ObservableObject
         _res.GetString(CreateModeText.DestinationLabelKey(IsExtractAccent ? PrimaryAction.Extract : PrimaryAction.Compress));
 
     public string DeleteAfterLabel =>
-        _res.GetString(CreateModeText.DeleteAfterKey(IsExtractAccent ? PrimaryAction.Extract : PrimaryAction.Compress));
+        _res.GetString(CreateModeText.DeleteAfterKey(_listActions.CanCompress, _listActions.CanExtract, IsBrowsingArchive));
 
     // The empty list dims the options: nothing they apply to yet (board 3).
     public double OptionsOpacity => FileItems.Count == 0 && !IsBrowsingArchive ? 0.55 : 1.0;

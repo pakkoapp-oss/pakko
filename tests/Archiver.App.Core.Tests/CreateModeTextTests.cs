@@ -14,12 +14,16 @@ public sealed class CreateModeTextTests
         CreateModeText.DestinationLabelKey(PrimaryAction.Extract).Should().Be("DestinationExtractLabel");
     }
 
-    [Fact]
-    public void DeleteAfter_SaysWhatGoesToTheRecycleBin()
-    {
-        CreateModeText.DeleteAfterKey(PrimaryAction.Compress).Should().Be("DeleteAfterCompressLabel");
-        CreateModeText.DeleteAfterKey(PrimaryAction.Extract).Should().Be("DeleteAfterExtractLabel");
-    }
+    // The checkbox applies to whichever button is pressed, so the words follow what is possible,
+    // not the accent: a mixed or archives-only list can do both.
+    [Theory]
+    [InlineData(true, false, false, "DeleteAfterCompressLabel")]
+    [InlineData(false, true, false, "DeleteAfterExtractLabel")]
+    [InlineData(true, true, false, "DeleteAfterEitherLabel")]
+    [InlineData(false, false, false, "DeleteAfterCompressLabel")]
+    [InlineData(true, true, true, "DeleteAfterExtractLabel")]
+    public void DeleteAfter_SaysWhatGoesToTheRecycleBin(bool canCompress, bool canExtract, bool browsing, string expected) =>
+        CreateModeText.DeleteAfterKey(canCompress, canExtract, browsing).Should().Be(expected);
 
     [Theory]
     [InlineData(ArchiveContainerFormat.Zip, "ZIP")]

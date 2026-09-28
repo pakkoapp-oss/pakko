@@ -471,4 +471,7 @@
   <data name="ExtractUnavailableHint" xml:space="preserve">
     <value>The list holds no archives, nothing to extract</value>
   </data>
+  <data name="DeleteAfterEitherLabel" xml:space="preserve">
+    <value>After a successful operation, move what it used to the Recycle Bin: the source files after Compress, the archives after Extract</value>
+  </data>
 </root>

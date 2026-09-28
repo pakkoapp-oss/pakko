@@ -4413,6 +4413,15 @@ real console) and T-F226's deferred per-arrow diagram ritual — carried as open
   (T-F220 item 3) in en-US/uk-UA only — the other 35 locales show English for these until step 8.
   Device (1.5.0.21, uk-UA): folders only, TAR.GZ, archives only (collapse/expand), mixed list
   Extract (only a.zip extracted), empty at 900x520.
+  Follow-up (advisor): the delete-after words follow what the list allows, not the accent — a
+  mixed or archives-only list can Compress and Extract, so it names both (new key
+  `DeleteAfterEitherLabel`, en-US/uk-UA); the options also refit when the footer grows. Device
+  (1.5.0.22): mixed list shows the neutral words; a 300 MB extract at 900x520 keeps the progress
+  bar, Cancel and status visible. Carried to later steps: the pre-operation footer line still says
+  "will archive" during an Extract of a mixed list (step 7); the empty-state hint still mentions
+  double-click (step 8 wording); browse mode's delete-after with "Extract all" (step 6); a drop
+  onto the empty-state overlay is not device-tested yet. `FileItemTests.
+  TryCreate_ExistingFile_ReturnsItemWithSizeAndCrc` failed once, passed 3/3 on rerun — watch.
 
 - **Carried into wave 4 (2026-09-28): device checks left open by fix phase 7** — T-F254 on a
   regional Windows language (e.g. de-AT, zh-CN: menu, Shell windows and App agree on the language);

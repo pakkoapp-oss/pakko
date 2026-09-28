@@ -14,9 +14,17 @@ public static class CreateModeText
     public static string DestinationLabelKey(PrimaryAction accent) =>
         accent == PrimaryAction.Extract ? "DestinationExtractLabel" : "DestinationSaveLabel";
 
-    /// <summary>Which items "delete after" sends to the Recycle Bin: the sources, or the archives.</summary>
-    public static string DeleteAfterKey(PrimaryAction accent) =>
-        accent == PrimaryAction.Extract ? "DeleteAfterExtractLabel" : "DeleteAfterCompressLabel";
+    /// <summary>
+    /// Which items "delete after" sends to the Recycle Bin. The checkbox applies to whichever
+    /// button is pressed, so the words follow what is possible, not the accent: the sources after
+    /// Compress, the archives after Extract, both named when the list allows both.
+    /// </summary>
+    public static string DeleteAfterKey(bool canCompress, bool canExtract, bool browsing)
+    {
+        if (browsing || (canExtract && !canCompress))
+            return "DeleteAfterExtractLabel";
+        return canExtract ? "DeleteAfterEitherLabel" : "DeleteAfterCompressLabel";
+    }
 
     /// <summary>"ZIP", "TAR.GZ", ... — the extension, as the Compress button and the summary show it.</summary>
     public static string FormatName(ArchiveContainerFormat format) =>
