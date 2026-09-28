@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO.Compression;
 using System.Text;
 using Archiver.Core.IO;
@@ -41,7 +42,7 @@ public sealed class ZipArchiveService : IArchiveService
     // engine through the routers' Unknown bucket, which no router policy check sees.
     private bool IsZipBlocked => ArchiveFormatPolicy.IsBlockedByPolicy(ArchiveFormat.Zip, _policy);
 
-    private static readonly string ZipBlockedReason = ArchiveFormatPolicy.BlockedFormatReason(ArchiveFormat.Zip);
+    private static readonly CoreText ZipBlockedReason = ArchiveFormatPolicy.BlockedFormatReason(ArchiveFormat.Zip);
 
     // T-F234: the OEM/ANSI pages entry names without the UTF-8 flag are decoded with. Tests pin
     // them so expectations hold on a machine with other pages (the en-US CI runner).
@@ -135,23 +136,20 @@ public sealed class ZipArchiveService : IArchiveService
         string? password = await resolver.ResolveAsync(archiveName, PasswordPurpose.Encrypt, verify: _ => true).ConfigureAwait(false);
 
         // User decision 2026-09-24 — see EncryptionPasswordRule for the 7-Zip sources.
-        string? failure = password is null
-            ? "Archive was not created: no password was entered."
+        CoreText? failure = password is null
+            ? CoreMessages.Text(MessageCode.PasswordNotEntered)
             : EncryptionPasswordRule.Check(password) switch
             {
                 EncryptionPasswordProblem.None => null,
-                EncryptionPasswordProblem.Empty => "Archive was not created: the password is empty.",
-                EncryptionPasswordProblem.UnsupportedCharacters =>
-                    "Archive was not created: the password may contain only English letters, digits, spaces and " +
-                    "ASCII punctuation; other ZIP tools such as 7-Zip cannot open an archive protected by any other characters.",
+                EncryptionPasswordProblem.Empty => CoreMessages.Text(MessageCode.PasswordEmpty),
+                EncryptionPasswordProblem.UnsupportedCharacters => CoreMessages.Text(MessageCode.PasswordUnsupportedCharacters),
                 EncryptionPasswordProblem.TooLong =>
-                    $"Archive was not created: the password is longer than {EncryptionPasswordRule.MaxLength} characters, " +
-                    "the most 7-Zip accepts for an AES-encrypted ZIP.",
+                    CoreMessages.Text(MessageCode.PasswordTooLong, EncryptionPasswordRule.MaxLength.ToString(CultureInfo.InvariantCulture)),
                 var other => throw new System.Diagnostics.UnreachableException($"Unhandled {other}"),
             };
         return failure is null
             ? (password, null)
-            : (null, new ArchiveError { SourcePath = options.DestinationFolder, Message = failure });
+            : (null, CoreMessages.Error(options.DestinationFolder, failure));
     }
 
     // Returns non-null only for the already-exists+Skip conflict case, which the caller must
@@ -188,11 +186,7 @@ public sealed class ZipArchiveService : IArchiveService
                 Success = true,
                 CreatedFiles = [],
                 Errors = [],
-                SkippedFiles = [.. options.SourcePaths.Select(p => new SkippedFile
-                {
-                    Path = p,
-                    Reason = $"Archive '{Path.GetFileName(destPath)}' already exists at the destination and was skipped."
-                })],
+                SkippedFiles = [.. options.SourcePaths.Select(p => CoreMessages.Skip(p, CoreMessages.Text(MessageCode.ArchiveAlreadyExists, Path.GetFileName(destPath))))],
             };
         }
         if (outcome == DestinationConflictOutcome.ProceedAfterDeletingExisting)
@@ -264,32 +258,17 @@ public sealed class ZipArchiveService : IArchiveService
         catch (IOException ex)
         {
             TryDeleteBestEffort(tempPath);
-            errors.Add(new ArchiveError
-            {
-                SourcePath = destPath,
-                Message = $"Cannot create archive: {ex.Message}",
-                Exception = ex
-            });
+            errors.Add(CoreMessages.Error(destPath, CoreMessages.Wrap(MessageCode.CannotCreateArchive, ex), ex));
         }
         catch (UnauthorizedAccessException ex)
         {
             TryDeleteBestEffort(tempPath);
-            errors.Add(new ArchiveError
-            {
-                SourcePath = destPath,
-                Message = $"Access denied creating archive: {ex.Message}",
-                Exception = ex
-            });
+            errors.Add(CoreMessages.Error(destPath, CoreMessages.Text(MessageCode.AccessDeniedCreatingArchive, ex.Message), ex));
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             TryDeleteBestEffort(tempPath);
-            errors.Add(new ArchiveError
-            {
-                SourcePath = destPath,
-                Message = $"Unexpected error: {ex.Message}",
-                Exception = ex
-            });
+            errors.Add(CoreMessages.Error(destPath, CoreMessages.Text(MessageCode.UnexpectedError, ex.Message), ex));
         }
 
         return null;
@@ -343,11 +322,7 @@ public sealed class ZipArchiveService : IArchiveService
         // T-F23: Skip top-level symlinks and NTFS junctions
         if (ArchiveEntrySecurity.IsReparsePoint(sourcePath))
         {
-            sink.SkippedFiles.Add(new SkippedFile
-            {
-                Path = sourcePath,
-                Reason = "Symbolic links and NTFS junctions are not archived."
-            });
+            sink.SkippedFiles.Add(CoreMessages.Skip(sourcePath, CoreMessages.Text(MessageCode.LinkNotArchived)));
             return pathSize;
         }
 
@@ -368,30 +343,16 @@ public sealed class ZipArchiveService : IArchiveService
             }
             else
             {
-                sink.Errors.Add(new ArchiveError
-                {
-                    SourcePath = sourcePath,
-                    Message = $"Source path does not exist: {sourcePath}"
-                });
+                sink.Errors.Add(CoreMessages.Error(sourcePath, CoreMessages.Text(MessageCode.SourceNotFound, sourcePath)));
             }
         }
         catch (IOException ex)
         {
-            sink.Errors.Add(new ArchiveError
-            {
-                SourcePath = sourcePath,
-                Message = $"Cannot access file: {ex.Message}",
-                Exception = ex
-            });
+            sink.Errors.Add(CoreMessages.Error(sourcePath, CoreMessages.Text(MessageCode.CannotAccessFile, ex.Message), ex));
         }
         catch (UnauthorizedAccessException ex)
         {
-            sink.Errors.Add(new ArchiveError
-            {
-                SourcePath = sourcePath,
-                Message = $"Access denied: {ex.Message}",
-                Exception = ex
-            });
+            sink.Errors.Add(CoreMessages.Error(sourcePath, CoreMessages.Text(MessageCode.AccessDenied, ex.Message), ex));
         }
 
         return pathSize;
@@ -472,11 +433,7 @@ public sealed class ZipArchiveService : IArchiveService
             // T-F23: Skip top-level symlinks and NTFS junctions
             if (ArchiveEntrySecurity.IsReparsePoint(sourcePath))
             {
-                skippedFiles.Add(new SkippedFile
-                {
-                    Path = sourcePath,
-                    Reason = "Symbolic links and NTFS junctions are not archived."
-                });
+                skippedFiles.Add(CoreMessages.Skip(sourcePath, CoreMessages.Text(MessageCode.LinkNotArchived)));
                 plans.Add((sourcePath, null));
                 continue;
             }
@@ -499,11 +456,7 @@ public sealed class ZipArchiveService : IArchiveService
             {
                 // T-F87: record the skip so DeleteAfterOperation cleanup (keyed off
                 // SkippedFiles) doesn't delete a source that was never archived.
-                skippedFiles.Add(new SkippedFile
-                {
-                    Path = sourcePath,
-                    Reason = $"Archive '{Path.GetFileName(destPath)}' already exists at the destination and was skipped."
-                });
+                skippedFiles.Add(CoreMessages.Skip(sourcePath, CoreMessages.Text(MessageCode.ArchiveAlreadyExists, Path.GetFileName(destPath))));
                 plans.Add((sourcePath, null));
                 continue;
             }
@@ -602,11 +555,7 @@ public sealed class ZipArchiveService : IArchiveService
             }
             else
             {
-                AddError(new ArchiveError
-                {
-                    SourcePath = sourcePath,
-                    Message = $"Source path does not exist: {sourcePath}"
-                });
+                AddError(CoreMessages.Error(sourcePath, CoreMessages.Text(MessageCode.SourceNotFound, sourcePath)));
                 Interlocked.Add(ref completedBytesBox[0], pathSize);
                 return;
             }
@@ -635,32 +584,17 @@ public sealed class ZipArchiveService : IArchiveService
         catch (IOException ex)
         {
             TryDeleteBestEffort(separateTempPath);
-            AddError(new ArchiveError
-            {
-                SourcePath = sourcePath,
-                Message = $"Cannot access file: {ex.Message}",
-                Exception = ex
-            });
+            AddError(CoreMessages.Error(sourcePath, CoreMessages.Text(MessageCode.CannotAccessFile, ex.Message), ex));
         }
         catch (UnauthorizedAccessException ex)
         {
             TryDeleteBestEffort(separateTempPath);
-            AddError(new ArchiveError
-            {
-                SourcePath = sourcePath,
-                Message = $"Access denied: {ex.Message}",
-                Exception = ex
-            });
+            AddError(CoreMessages.Error(sourcePath, CoreMessages.Text(MessageCode.AccessDenied, ex.Message), ex));
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             TryDeleteBestEffort(separateTempPath);
-            AddError(new ArchiveError
-            {
-                SourcePath = sourcePath,
-                Message = $"Unexpected error: {ex.Message}",
-                Exception = ex
-            });
+            AddError(CoreMessages.Error(sourcePath, CoreMessages.Text(MessageCode.UnexpectedError, ex.Message), ex));
         }
 
         Interlocked.Add(ref completedBytesBox[0], pathSize);
@@ -814,21 +748,17 @@ public sealed class ZipArchiveService : IArchiveService
     {
         if (!IsZipFile(archivePath))
         {
-            string? reason = GetKnownArchiveReason(archivePath);
+            CoreText? reason = GetKnownArchiveReason(archivePath);
             if (reason is not null)
-                skippedFiles.Add(new SkippedFile { Path = archivePath, Reason = reason });
+                skippedFiles.Add(CoreMessages.Skip(archivePath, reason));
             else
-                errors.Add(new ArchiveError
-                {
-                    SourcePath = archivePath,
-                    Message = "File is not a recognized archive format and cannot be extracted."
-                });
+                errors.Add(CoreMessages.Error(archivePath, CoreMessages.Text(MessageCode.NotAnArchiveExtract)));
             return (true, null);
         }
 
         if (IsZipBlocked)
         {
-            skippedFiles.Add(new SkippedFile { Path = archivePath, Reason = ZipBlockedReason });
+            skippedFiles.Add(CoreMessages.Skip(archivePath, ZipBlockedReason));
             return (true, null);
         }
 
@@ -838,11 +768,7 @@ public sealed class ZipArchiveService : IArchiveService
             if (password is not null)
                 return (false, password);
 
-            errors.Add(new ArchiveError
-            {
-                SourcePath = archivePath,
-                Message = "This archive is password-protected and cannot be extracted."
-            });
+            errors.Add(CoreMessages.Error(archivePath, CoreMessages.Text(MessageCode.PasswordProtectedExtract)));
             return (true, null);
         }
 
@@ -976,30 +902,15 @@ public sealed class ZipArchiveService : IArchiveService
         }
         catch (IOException ex)
         {
-            sink.Errors.Add(new ArchiveError
-            {
-                SourcePath = archivePath,
-                Message = $"Cannot extract archive: {ex.Message}",
-                Exception = ex
-            });
+            sink.Errors.Add(CoreMessages.Error(archivePath, CoreMessages.Wrap(MessageCode.CannotExtractArchive, ex), ex));
         }
         catch (UnauthorizedAccessException ex)
         {
-            sink.Errors.Add(new ArchiveError
-            {
-                SourcePath = archivePath,
-                Message = $"Access denied extracting archive: {ex.Message}",
-                Exception = ex
-            });
+            sink.Errors.Add(CoreMessages.Error(archivePath, CoreMessages.Text(MessageCode.AccessDeniedExtractingArchive, ex.Message), ex));
         }
         catch (InvalidDataException ex)
         {
-            sink.Errors.Add(new ArchiveError
-            {
-                SourcePath = archivePath,
-                Message = "File has ZIP signature but appears corrupted or incomplete.",
-                Exception = ex
-            });
+            sink.Errors.Add(CoreMessages.Error(archivePath, CoreMessages.Text(MessageCode.ZipCorrupted), ex));
         }
     }
 
@@ -1026,22 +937,18 @@ public sealed class ZipArchiveService : IArchiveService
             {
                 // T-F117: see ExtractAsync's identical branch — unrecognized bytes are a real
                 // error, not a silent no-op, distinct from a known-but-unsupported format skip.
-                string? reason = GetKnownArchiveReason(archivePath);
+                CoreText? reason = GetKnownArchiveReason(archivePath);
                 if (reason is not null)
-                    skippedFiles.Add(new SkippedFile { Path = archivePath, Reason = reason });
+                    skippedFiles.Add(CoreMessages.Skip(archivePath, reason));
                 else
-                    errors.Add(new ArchiveError
-                    {
-                        SourcePath = archivePath,
-                        Message = "File is not a recognized archive format and cannot be tested."
-                    });
+                    errors.Add(CoreMessages.Error(archivePath, CoreMessages.Text(MessageCode.NotAnArchiveTest)));
                 progress?.Report(new ProgressReport { Percent = (i + 1) * 100 / total, BytesTransferred = 0, TotalBytes = 0 });
                 continue;
             }
 
             if (IsZipBlocked)
             {
-                skippedFiles.Add(new SkippedFile { Path = archivePath, Reason = ZipBlockedReason });
+                skippedFiles.Add(CoreMessages.Skip(archivePath, ZipBlockedReason));
                 progress?.Report(new ProgressReport { Percent = (i + 1) * 100 / total, BytesTransferred = 0, TotalBytes = 0 });
                 continue;
             }
@@ -1052,11 +959,7 @@ public sealed class ZipArchiveService : IArchiveService
                 password = await ResolveArchivePasswordAsync(archivePath, passwordResolver, NameCodePages).ConfigureAwait(false);
                 if (password is null)
                 {
-                    errors.Add(new ArchiveError
-                    {
-                        SourcePath = archivePath,
-                        Message = "This archive is password-protected and cannot be tested."
-                    });
+                    errors.Add(CoreMessages.Error(archivePath, CoreMessages.Text(MessageCode.PasswordProtectedTest)));
                     progress?.Report(new ProgressReport { Percent = (i + 1) * 100 / total, BytesTransferred = 0, TotalBytes = 0 });
                     continue;
                 }
@@ -1069,21 +972,11 @@ public sealed class ZipArchiveService : IArchiveService
             }
             catch (IOException ex)
             {
-                errors.Add(new ArchiveError
-                {
-                    SourcePath = archivePath,
-                    Message = $"Cannot read archive: {ex.Message}",
-                    Exception = ex
-                });
+                errors.Add(CoreMessages.Error(archivePath, CoreMessages.Wrap(MessageCode.CannotReadArchive, ex), ex));
             }
             catch (InvalidDataException ex)
             {
-                errors.Add(new ArchiveError
-                {
-                    SourcePath = archivePath,
-                    Message = "File has ZIP signature but appears corrupted or incomplete.",
-                    Exception = ex
-                });
+                errors.Add(CoreMessages.Error(archivePath, CoreMessages.Text(MessageCode.ZipCorrupted), ex));
             }
 
             progress?.Report(new ProgressReport { Percent = (i + 1) * 100 / total, BytesTransferred = 0, TotalBytes = 0 });
@@ -1103,7 +996,7 @@ public sealed class ZipArchiveService : IArchiveService
         CancellationToken cancellationToken = default)
     {
         if (IsZipBlocked)
-            return new ArchiveListResult { Success = false, ErrorMessage = ZipBlockedReason };
+            return CoreMessages.ListFailure(ZipBlockedReason);
 
         try
         {
@@ -1169,7 +1062,7 @@ public sealed class ZipArchiveService : IArchiveService
         }
         catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException)
         {
-            return new ArchiveListResult { Success = false, ErrorMessage = ex.Message };
+            return CoreMessages.ListFailure(CoreMessages.FromException(ex));
         }
     }
 
@@ -1210,7 +1103,7 @@ public sealed class ZipArchiveService : IArchiveService
 
             if (named.CollidesAfterDecoding)
             {
-                errors.Add(new ArchiveError { SourcePath = archivePath, Message = CollisionMessage(named.FullName) });
+                errors.Add(CoreMessages.Error(archivePath, CollisionMessage(named.FullName)));
                 continue;
             }
 
@@ -1229,12 +1122,7 @@ public sealed class ZipArchiveService : IArchiveService
             }
             catch (InvalidDataException ex)
             {
-                errors.Add(new ArchiveError
-                {
-                    SourcePath = archivePath,
-                    Message = $"Entry '{named.FullName}': {ex.Message}",
-                    Exception = ex
-                });
+                errors.Add(CoreMessages.Error(archivePath, CoreMessages.Text(MessageCode.EntryFailed, named.FullName, CoreMessages.FromException(ex)), ex));
             }
         }
     }
@@ -1253,25 +1141,13 @@ public sealed class ZipArchiveService : IArchiveService
         switch (result)
         {
             case EncryptedZipReadResult.WrongPassword:
-                errors.Add(new ArchiveError
-                {
-                    SourcePath = archivePath,
-                    Message = $"Entry '{entryName}' could not be decrypted: wrong password."
-                });
+                errors.Add(CoreMessages.Error(archivePath, CoreMessages.Text(MessageCode.EntryWrongPassword, entryName)));
                 return;
             case EncryptedZipReadResult.Corrupted:
-                errors.Add(new ArchiveError
-                {
-                    SourcePath = archivePath,
-                    Message = $"Entry '{entryName}' could not be decrypted: authentication failed (corrupted or tampered)."
-                });
+                errors.Add(CoreMessages.Error(archivePath, CoreMessages.Text(MessageCode.EntryAuthenticationFailed, entryName)));
                 return;
             case EncryptedZipReadResult.UnsupportedCompressionMethod:
-                errors.Add(new ArchiveError
-                {
-                    SourcePath = archivePath,
-                    Message = $"Entry '{entryName}' uses an unsupported compression method under encryption."
-                });
+                errors.Add(CoreMessages.Error(archivePath, CoreMessages.Text(MessageCode.EntryUnsupportedEncryptedMethod, entryName)));
                 return;
         }
 
@@ -1282,12 +1158,7 @@ public sealed class ZipArchiveService : IArchiveService
         }
         catch (InvalidDataException ex)
         {
-            errors.Add(new ArchiveError
-            {
-                SourcePath = archivePath,
-                Message = $"Entry '{entryName}': {ex.Message}",
-                Exception = ex
-            });
+            errors.Add(CoreMessages.Error(archivePath, CoreMessages.Text(MessageCode.EntryFailed, entryName, CoreMessages.FromException(ex)), ex));
         }
     }
 
@@ -1429,25 +1300,17 @@ public sealed class ZipArchiveService : IArchiveService
 
         if (bombOutcome == CompressionBombOutcome.InsufficientDiskSpace)
         {
-            skippedFiles.Add(new SkippedFile
-            {
-                Path = archivePath,
-                Reason = $"Archive declares {declaredUncompressedSize:N0} bytes uncompressed, " +
-                         $"but the destination only has {ArchiveEntrySecurity.GetAvailableFreeSpace(destDir):N0} bytes free. " +
-                         "Extraction was blocked."
-            });
+            skippedFiles.Add(CoreMessages.Skip(archivePath, MessageCode.InsufficientDiskSpace,
+                declaredUncompressedSize.ToString("N0", CultureInfo.CurrentCulture),
+                ArchiveEntrySecurity.GetAvailableFreeSpace(destDir).ToString("N0", CultureInfo.CurrentCulture)));
             return (destDir, false);
         }
 
         if (bombOutcome == CompressionBombOutcome.UserDeclined)
         {
             long ratio = compressedFileSize > 0 ? declaredUncompressedSize / compressedFileSize : 0;
-            skippedFiles.Add(new SkippedFile
-            {
-                Path = archivePath,
-                Reason = $"Suspicious compression ratio ({ratio}:1, {declaredUncompressedSize:N0} bytes declared). " +
-                         "Extraction was declined as a precaution against ZIP bombs."
-            });
+            skippedFiles.Add(CoreMessages.Skip(archivePath, MessageCode.ZipBombDeclined,
+                ratio.ToString(CultureInfo.CurrentCulture), declaredUncompressedSize.ToString("N0", CultureInfo.CurrentCulture)));
             return (destDir, false);
         }
 
@@ -1497,11 +1360,7 @@ public sealed class ZipArchiveService : IArchiveService
 
         foreach (string relativePath in staging.CommitInto(actualDest))
         {
-            context.Errors.Add(new ArchiveError
-            {
-                SourcePath = archivePath,
-                Message = $"Cannot write '{relativePath}': destination file is locked by another process."
-            });
+            context.Errors.Add(CoreMessages.Error(archivePath, CoreMessages.Text(MessageCode.DestinationFileLocked, relativePath)));
         }
 
         // T-F87: every entry was individually skipped (conflict/ADS/reserved name/reparse point/
@@ -1514,11 +1373,7 @@ public sealed class ZipArchiveService : IArchiveService
             return (actualDest, false);
         if (extractedCount == 0)
         {
-            skippedFiles.Add(new SkippedFile
-            {
-                Path = archivePath,
-                Reason = "No entries were extracted from this archive — every entry was skipped."
-            });
+            skippedFiles.Add(CoreMessages.Skip(archivePath, CoreMessages.Text(MessageCode.AllEntriesSkipped)));
             return (actualDest, false);
         }
 
@@ -1576,18 +1431,14 @@ public sealed class ZipArchiveService : IArchiveService
         // T-F234: two different raw names that decode to one name would overwrite each other.
         if (named.CollidesAfterDecoding)
         {
-            context.Errors.Add(new ArchiveError { SourcePath = archivePath, Message = CollisionMessage(named.FullName) });
+            context.Errors.Add(CoreMessages.Error(archivePath, CollisionMessage(named.FullName)));
             return (false, named.Entry.Length);
         }
 
         // T-F228: before the name checks — "C:/x" must read as unsafe, not as an ADS name.
         if (ArchiveEntrySecurity.HasUnsafePath(named.FullName))
         {
-            context.Errors.Add(new ArchiveError
-            {
-                SourcePath = archivePath,
-                Message = $"Entry '{named.FullName}' has an unsafe path and was not extracted."
-            });
+            context.Errors.Add(CoreMessages.Error(archivePath, CoreMessages.Text(MessageCode.UnsafeEntryPath, named.FullName)));
             return (false, named.Entry.Length);
         }
 
@@ -1606,10 +1457,10 @@ public sealed class ZipArchiveService : IArchiveService
 
         // T-F38/T-F39: Reject ADS-marked, reserved-name, or control-character entry names
         // (a folder entry's trailing '/' would hide its last segment from the reserved-name check)
-        string? nameRejectionReason = GetEntryNameRejectionReason(named.FullName.TrimEnd('/'));
+        CoreText? nameRejectionReason = GetEntryNameRejectionReason(named.FullName.TrimEnd('/'));
         if (nameRejectionReason != null)
         {
-            context.SkippedFiles.Add(new SkippedFile { Path = named.FullName, Reason = nameRejectionReason });
+            context.SkippedFiles.Add(CoreMessages.Skip(named.FullName, nameRejectionReason));
             return (false, named.Entry.Length);
         }
 
@@ -1631,12 +1482,7 @@ public sealed class ZipArchiveService : IArchiveService
                 Path.TrimEndingDirectorySeparator(plan.FullTempDest),
                 Path.TrimEndingDirectorySeparator(Path.GetFullPath(plan.ActualDest)),
                 StringComparison.OrdinalIgnoreCase);
-            context.Errors.Add(new ArchiveError
-            {
-                SourcePath = archivePath,
-                Message = $"Cannot extract '{named.FullName}': {message}",
-                Exception = ex,
-            });
+            context.Errors.Add(CoreMessages.Error(archivePath, CoreMessages.Text(MessageCode.CannotExtractEntry, named.FullName, message), ex));
             return (false, named.Entry.Length);
         }
     }
@@ -1655,11 +1501,7 @@ public sealed class ZipArchiveService : IArchiveService
 
         if (ArchiveEntrySecurity.PathContainsReparsePoint(folder, plan.FullTempDest))
         {
-            context.SkippedFiles.Add(new SkippedFile
-            {
-                Path = named.FullName,
-                Reason = "Entry path traverses a reparse point (symlink or junction) and was skipped."
-            });
+            context.SkippedFiles.Add(CoreMessages.Skip(named.FullName, CoreMessages.Text(MessageCode.EntryThroughReparsePoint)));
             return false;
         }
 
@@ -1687,11 +1529,7 @@ public sealed class ZipArchiveService : IArchiveService
         // T-F37: Reject entries whose path traverses a reparse point (symlink/junction)
         if (ArchiveEntrySecurity.PathContainsReparsePoint(destFilePath, fullTempDest))
         {
-            context.SkippedFiles.Add(new SkippedFile
-            {
-                Path = named.FullName,
-                Reason = "Entry path traverses a reparse point (symlink or junction) and was skipped."
-            });
+            context.SkippedFiles.Add(CoreMessages.Skip(named.FullName, CoreMessages.Text(MessageCode.EntryThroughReparsePoint)));
             return (false, named.Entry.Length);
         }
 
@@ -1728,10 +1566,10 @@ public sealed class ZipArchiveService : IArchiveService
         // this point — decryption plugs in only here, exactly where entry.Open() used to be
         // called directly. See the ZIP Password Support design's "no second extraction path"
         // invariant in docs/TASKS.md's T-F189 entry.
-        (bool opened, Stream? entryStream, string? decryptErrorMessage) = OpenEntryContentStream(named, plan, context);
+        (bool opened, Stream? entryStream, CoreText? decryptError) = OpenEntryContentStream(named, plan, context);
         if (!opened)
         {
-            context.Errors.Add(new ArchiveError { SourcePath = archivePath, Message = decryptErrorMessage! });
+            context.Errors.Add(CoreMessages.Error(archivePath, decryptError!));
             return (false, named.Entry.Length);
         }
 
@@ -1746,7 +1584,7 @@ public sealed class ZipArchiveService : IArchiveService
     // was, unaware this entry was ever encrypted. Returns entry.Open() itself unchanged for the
     // overwhelming majority of entries (plan.EncryptedEntryMap is null whenever the archive has no
     // encrypted entries at all).
-    private static (bool Success, Stream? Stream, string? ErrorMessage) OpenEntryContentStream(
+    private static (bool Success, Stream? Stream, CoreText? Error) OpenEntryContentStream(
         NamedZipEntry named, ExtractionPlan plan, ZipExtractionContext context)
     {
         if (plan.EncryptedEntryMap is { } map
@@ -1761,11 +1599,10 @@ public sealed class ZipArchiveService : IArchiveService
             {
                 EncryptedZipReadResult.Success => (true, stream, null),
                 EncryptedZipReadResult.WrongPassword =>
-                    (false, null, $"Entry '{named.FullName}' could not be decrypted: wrong password."),
+                    (false, null, CoreMessages.Text(MessageCode.EntryWrongPassword, named.FullName)),
                 EncryptedZipReadResult.UnsupportedCompressionMethod =>
-                    (false, null, $"Entry '{named.FullName}' uses an unsupported compression method under encryption."),
-                _ => (false, null,
-                    $"Entry '{named.FullName}' could not be decrypted: authentication failed (corrupted or tampered)."),
+                    (false, null, CoreMessages.Text(MessageCode.EntryUnsupportedEncryptedMethod, named.FullName)),
+                _ => (false, null, CoreMessages.Text(MessageCode.EntryAuthenticationFailed, named.FullName)),
             };
         }
 
@@ -1774,22 +1611,21 @@ public sealed class ZipArchiveService : IArchiveService
         return (true, new VerifyingReadStream(named.Entry.Open(), named.Entry.Length, named.Entry.Crc32), null);
     }
 
-    private static string CollisionMessage(string entryName) =>
-        $"Entry '{entryName}' has the same name as another entry once decoded; it is not extracted, since one would overwrite the other.";
+    private static CoreText CollisionMessage(string entryName) => CoreMessages.Text(MessageCode.EntryNameCollision, entryName);
 
     // T-F230: a full disk fails every remaining entry the same way — one archive-level error, not
     // one per entry.
     internal static bool IsDiskFull(IOException ex) =>
         ex.HResult is unchecked((int)0x80070070) or unchecked((int)0x80070027); // ERROR_DISK_FULL, ERROR_HANDLE_DISK_FULL
 
-    private static string? GetEntryNameRejectionReason(string entryFullName)
+    private static CoreText? GetEntryNameRejectionReason(string entryFullName)
     {
         if (ArchiveEntrySecurity.HasAlternateDataStreamMarker(entryFullName))
-            return "Alternate Data Stream entry rejected for security.";
+            return CoreMessages.Text(MessageCode.EntryAlternateDataStream);
         if (ArchiveEntrySecurity.HasReservedName(entryFullName))
-            return "Entry name matches a reserved Windows device name and was skipped.";
+            return CoreMessages.Text(MessageCode.EntryReservedName);
         if (ArchiveEntrySecurity.HasControlCharacters(entryFullName))
-            return "Entry name contains control characters and was skipped.";
+            return CoreMessages.Text(MessageCode.EntryControlCharacters);
         return null;
     }
 
@@ -1933,7 +1769,7 @@ public sealed class ZipArchiveService : IArchiveService
                     if (ZipEntryWriter.NameFitsHeader(emptyEntryName))
                         archive.CreateEntry(emptyEntryName);
                     else
-                        context.ReportError(new ArchiveError { SourcePath = entry.Info.FullName, Message = ZipEntryWriter.NameTooLongMessage(emptyEntryName) });
+                        context.ReportError(CoreMessages.Error(entry.Info.FullName, ZipEntryWriter.NameTooLong(emptyEntryName)));
                     break;
                 case WalkEntryKind.File:
                     startOffset = await AddFileFromWalkAsync(archive, (FileInfo)entry.Info, context, startOffset, cancellationToken)
@@ -1964,7 +1800,7 @@ public sealed class ZipArchiveService : IArchiveService
         // T-F243 item 6: ZipArchive.CreateEntry throws on a name over 65,535 UTF-8 bytes.
         if (!ZipEntryWriter.NameFitsHeader(entryName))
         {
-            context.ReportError(new ArchiveError { SourcePath = filePath, Message = ZipEntryWriter.NameTooLongMessage(entryName) });
+            context.ReportError(CoreMessages.Error(filePath, ZipEntryWriter.NameTooLong(entryName)));
             return startOffset + fileSize;
         }
 
@@ -1978,21 +1814,11 @@ public sealed class ZipArchiveService : IArchiveService
         }
         catch (IOException ex)
         {
-            context.ReportError(new ArchiveError
-            {
-                SourcePath = filePath,
-                Message = $"Cannot access file: {ex.Message}",
-                Exception = ex
-            });
+            context.ReportError(CoreMessages.Error(filePath, CoreMessages.Text(MessageCode.CannotAccessFile, ex.Message), ex));
         }
         catch (UnauthorizedAccessException ex)
         {
-            context.ReportError(new ArchiveError
-            {
-                SourcePath = filePath,
-                Message = $"Access denied: {ex.Message}",
-                Exception = ex
-            });
+            context.ReportError(CoreMessages.Error(filePath, CoreMessages.Text(MessageCode.AccessDenied, ex.Message), ex));
         }
 
         return startOffset + fileSize;
@@ -2009,21 +1835,13 @@ public sealed class ZipArchiveService : IArchiveService
     }
 
     // T-F23: a reparse point met inside a source folder is reported and never followed.
-    internal static SkippedFile ReparsePointSkipped(FileSystemInfo info) => new()
-    {
-        Path = info.FullName,
-        Reason = info is DirectoryInfo
-            ? "NTFS junctions and directory symbolic links are not followed during archiving."
-            : "Symbolic links and reparse points are not archived.",
-    };
+    internal static SkippedFile ReparsePointSkipped(FileSystemInfo info) =>
+        CoreMessages.Skip(info.FullName, info is DirectoryInfo ? MessageCode.FolderLinkNotFollowed : MessageCode.ReparsePointNotArchived);
 
     // T-F236: a subfolder that cannot be listed — one error; the rest of the tree is archived.
-    internal static ArchiveError UnreadableDirectoryError(string directory, Exception ex) => new()
-    {
-        SourcePath = directory,
-        Message = ex is UnauthorizedAccessException ? $"Access denied: {ex.Message}" : $"Cannot access file: {ex.Message}",
-        Exception = ex,
-    };
+    internal static ArchiveError UnreadableDirectoryError(string directory, Exception ex) =>
+        CoreMessages.Error(directory,
+            CoreMessages.Text(ex is UnauthorizedAccessException ? MessageCode.AccessDenied : MessageCode.CannotAccessFile, ex.Message), ex);
 
     private static long ComputeTotalBytes(IReadOnlyList<string> paths)
     {
@@ -2151,7 +1969,7 @@ public sealed class ZipArchiveService : IArchiveService
         }
     }
 
-    private static string? GetKnownArchiveReason(string path)
+    private static CoreText? GetKnownArchiveReason(string path)
     {
         try
         {
@@ -2161,29 +1979,29 @@ public sealed class ZipArchiveService : IArchiveService
 
             // GZIP: 1F 8B
             if (read >= 2 && header[0] == 0x1F && header[1] == 0x8B)
-                return "GZip format is not supported. Only ZIP-based formats are supported.";
+                return CoreMessages.Text(MessageCode.UnsupportedByZipEngine, "GZip");
 
             // BZip2: 42 5A 68
             if (read >= 3 && header[0] == 0x42 && header[1] == 0x5A && header[2] == 0x68)
-                return "BZip2 format is not supported. Only ZIP-based formats are supported.";
+                return CoreMessages.Text(MessageCode.UnsupportedByZipEngine, "BZip2");
 
             // RAR: 52 61 72 21
             if (read >= 4 && header[0] == 0x52 && header[1] == 0x61 && header[2] == 0x72 && header[3] == 0x21)
-                return "RAR format is not supported. Only ZIP-based formats are supported.";
+                return CoreMessages.Text(MessageCode.UnsupportedByZipEngine, "RAR");
 
             // LZ4: 04 22 4D 18
             if (read >= 4 && header[0] == 0x04 && header[1] == 0x22 && header[2] == 0x4D && header[3] == 0x18)
-                return "LZ4 format is not supported. Only ZIP-based formats are supported.";
+                return CoreMessages.Text(MessageCode.UnsupportedByZipEngine, "LZ4");
 
             // 7-Zip: 37 7A BC AF 27 1C
             if (read >= 6 && header[0] == 0x37 && header[1] == 0x7A && header[2] == 0xBC
                 && header[3] == 0xAF && header[4] == 0x27 && header[5] == 0x1C)
-                return "7-Zip format is not supported. Only ZIP-based formats are supported.";
+                return CoreMessages.Text(MessageCode.UnsupportedByZipEngine, "7-Zip");
 
             // XZ: FD 37 7A 58 5A 00
             if (read >= 6 && header[0] == 0xFD && header[1] == 0x37 && header[2] == 0x7A
                 && header[3] == 0x58 && header[4] == 0x5A && header[5] == 0x00)
-                return "XZ format is not supported. Only ZIP-based formats are supported.";
+                return CoreMessages.Text(MessageCode.UnsupportedByZipEngine, "XZ");
 
             return null;
         }

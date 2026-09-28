@@ -37,7 +37,8 @@ public sealed class ZipArchiveServicePolicyTests : IDisposable
         ArchiveResult result = await new ZipArchiveService(ZipBlocked).TestAsync([corrupted]);
 
         result.Errors.Should().BeEmpty("a blocked archive is never opened, so its bad CRC is never seen");
-        result.SkippedFiles.Should().ContainSingle().Which.Should().Be(new SkippedFile { Path = corrupted, Reason = ZipBlockedReason });
+        SkippedFile skipped = result.SkippedFiles.Should().ContainSingle().Subject;
+        (skipped.Path, skipped.Reason, skipped.Text!.Code).Should().Be((corrupted, ZipBlockedReason, MessageCode.FormatBlocked));
     }
 
     [Fact]

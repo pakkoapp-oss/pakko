@@ -21,11 +21,7 @@ public sealed class ArchiveListingRouter(
             ArchiveFormatPolicy.Classify([archivePath], tarCapabilities, _policy);
 
         if (classification.Unsupported.Count > 0)
-            return Task.FromResult(new ArchiveListResult
-            {
-                Success = false,
-                ErrorMessage = classification.Unsupported[0].Reason,
-            });
+            return Task.FromResult(CoreMessages.ListFailure(classification.Unsupported[0].Text!));
 
         return classification.ZipPaths.Count > 0
             ? archiveService.ListEntriesAsync(archivePath, cancellationToken)

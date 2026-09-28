@@ -1,4 +1,6 @@
+using System.Globalization;
 using System.Runtime.InteropServices;
+using Archiver.Core.Models;
 
 namespace Archiver.Core.Services.Sandbox;
 
@@ -85,6 +87,10 @@ internal static class TarCommandLineEncoding
 /// <see cref="IOException"/>, so every tar call site reports it as an ordinary per-archive error.
 /// </summary>
 internal sealed class TarArgumentEncodingException(string argument, uint codePage) // NOSONAR: S3871 — deliberately internal, always caught and turned into an ArchiveError (same as SandboxSetupException)
-    : IOException(
-        $"The name '{argument}' contains characters that tar.exe cannot handle safely on this system " +
-        $"(ANSI code page {codePage}). Use ZIP for this content.");
+    : IOException(Describe(argument, codePage).English), ICoreTextSource
+{
+    public CoreText Text { get; } = Describe(argument, codePage);
+
+    internal static CoreText Describe(string argument, uint codePage) =>
+        CoreMessages.Text(MessageCode.TarNameNotRepresentable, argument, codePage.ToString(CultureInfo.InvariantCulture));
+}

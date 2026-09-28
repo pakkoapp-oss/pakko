@@ -38,11 +38,7 @@ internal static class WorkItemEnumerator
         {
             if (ArchiveEntrySecurity.IsReparsePoint(sourcePath))
             {
-                reportSkipped(new SkippedFile
-                {
-                    Path = sourcePath,
-                    Reason = "Symbolic links and NTFS junctions are not archived.",
-                });
+                reportSkipped(CoreMessages.Skip(sourcePath, MessageCode.LinkNotArchived));
                 continue;
             }
 
@@ -59,11 +55,7 @@ internal static class WorkItemEnumerator
             }
             else
             {
-                reportError(new ArchiveError
-                {
-                    SourcePath = sourcePath,
-                    Message = $"Source path does not exist: {sourcePath}",
-                });
+                reportError(CoreMessages.Error(sourcePath, MessageCode.SourceNotFound, sourcePath));
             }
         }
     }

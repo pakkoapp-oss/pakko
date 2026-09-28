@@ -59,8 +59,8 @@ internal sealed class ZipEntryWriter : IAsyncDisposable
     // truncated length, corrupting the archive.
     internal static bool NameFitsHeader(string entryName) => Encoding.UTF8.GetByteCount(entryName) <= ushort.MaxValue;
 
-    internal static string NameTooLongMessage(string entryName) =>
-        $"Entry name is too long for a ZIP archive ({Encoding.UTF8.GetByteCount(entryName):N0} bytes as UTF-8; the maximum is {ushort.MaxValue:N0}).";
+    internal static CoreText NameTooLong(string entryName) =>
+        CoreMessages.Text(MessageCode.EntryNameTooLong, Encoding.UTF8.GetByteCount(entryName).ToString("N0"), ushort.MaxValue.ToString("N0"));
     internal const ushort DeflateMethod = 8;
 
     internal static ushort SelectMethod(CompressionLevel compressionLevel) =>
@@ -186,7 +186,7 @@ internal sealed class ZipEntryWriter : IAsyncDisposable
     {
         byte[] nameBytes = Encoding.UTF8.GetBytes(entryName);
         if (nameBytes.Length > ushort.MaxValue)
-            throw new InvalidDataException(NameTooLongMessage(entryName));
+            throw new InvalidDataException(NameTooLong(entryName).English);
         ushort flags = (ushort)((IsAsciiOnly(entryName) ? 0 : 0x0800) | method.Flags); // bit 11 = UTF-8 name/comment
         ushort versionNeeded = method.VersionNeeded(needsZip64);
         uint dosDateTime = DosDateTime.Encode(lastWriteTime);

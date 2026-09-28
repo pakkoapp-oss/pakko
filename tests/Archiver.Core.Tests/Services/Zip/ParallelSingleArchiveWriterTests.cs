@@ -1,5 +1,6 @@
 using System.IO.Compression;
 using Archiver.Core.Models;
+using Archiver.Core.Services;
 using Archiver.Core.Services.Zip;
 using FluentAssertions;
 
@@ -198,7 +199,7 @@ public sealed class ParallelSingleArchiveWriterTests : IDisposable
         Func<FileWorkItem, CancellationToken, Task<WorkResult>> compressItem = (item, ct) =>
         {
             if (item.EntryName == "bad.txt")
-                return Task.FromResult(WorkResult.ForError(item.SourcePath, "simulated locked file", null));
+                return Task.FromResult(WorkResult.ForError(item.SourcePath, CoreMessages.Text(MessageCode.None, "simulated locked file"), null));
 
             byte[] bytes = System.Text.Encoding.UTF8.GetBytes(item.EntryName);
             using var ms = new MemoryStream(bytes);
@@ -279,7 +280,8 @@ public sealed class ParallelSingleArchiveWriterTests : IDisposable
             item, chunkDir, CompressionLevel.Optimal, null, CancellationToken.None);
 
         result.Kind.Should().Be(WorkResultKind.Error);
-        result.ErrorMessage.Should().Contain("Not enough free disk space");
+        result.ErrorText!.Code.Should().Be(MessageCode.NotEnoughSpaceToCompress);
+        result.ErrorText.English.Should().Contain("Not enough free disk space");
         Directory.GetFiles(chunkDir).Should().BeEmpty("no temp file should ever be created once the pre-check already fails");
     }
 

@@ -348,8 +348,9 @@ public sealed class ExtractionRouterTests : IDisposable
 
         zipService.LastTestedPaths.Should().Equal(zip);
         tarService.ExtractCallCount.Should().Be(0);
-        result.SkippedFiles.Should().ContainSingle()
-            .Which.Should().Be(new SkippedFile { Path = tar, Reason = ArchiveFormatPolicy.NoTestCapabilityReason });
+        SkippedFile skipped = result.SkippedFiles.Should().ContainSingle().Subject;
+        (skipped.Path, skipped.Reason, skipped.Text!.Code)
+            .Should().Be((tar, ArchiveFormatPolicy.NoTestCapabilityReason, MessageCode.NoTestCapability));
         result.Success.Should().BeTrue();
     }
 

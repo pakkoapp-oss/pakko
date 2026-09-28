@@ -1,4 +1,5 @@
 using System.Buffers;
+using System.Globalization;
 using System.IO.Compression;
 using System.Runtime.Versioning;
 using System.Text;
@@ -90,22 +91,17 @@ public sealed class AntivirusScanService : IAntivirusScanService
         // magic-byte detector does not recognize (an entry-less archive, a self-extractor).
         if (ArchiveFormatPolicy.IsBlockedByPolicy(ArchiveFormat.Zip, _policy))
         {
-            string reason = ArchiveFormatPolicy.BlockedFormatReason(ArchiveFormat.Zip);
+            CoreText reason = ArchiveFormatPolicy.BlockedFormatReason(ArchiveFormat.Zip);
             classification = classification with
             {
                 ZipPaths = [],
-                Unsupported = [.. classification.Unsupported, .. classification.ZipPaths.Select(path => new SkippedFile { Path = path, Reason = reason })],
+                Unsupported = [.. classification.Unsupported, .. classification.ZipPaths.Select(path => CoreMessages.Skip(path, reason))],
             };
         }
 
         foreach (SkippedFile skipped in classification.Unsupported)
         {
-            findings.Add(new ThreatFinding
-            {
-                ArchivePath = skipped.Path,
-                Verdict = ThreatVerdict.Inconclusive,
-                Reason = skipped.Reason,
-            });
+            findings.Add(CoreMessages.Inconclusive(skipped.Path, null, skipped.Text ?? CoreText.Raw(skipped.Reason)));
         }
 
         // T-F146 / docs/DECISIONS.md: AmsiScanBuffer alone can't tell "no AV is listening" apart
@@ -120,12 +116,7 @@ public sealed class AntivirusScanService : IAntivirusScanService
         {
             foreach (string path in classification.ZipPaths.Concat(classification.TarPaths))
             {
-                findings.Add(new ThreatFinding
-                {
-                    ArchivePath = path,
-                    Verdict = ThreatVerdict.Inconclusive,
-                    Reason = "No antivirus is registered to scan with.",
-                });
+                findings.Add(CoreMessages.Inconclusive(path, null, CoreMessages.Text(MessageCode.NoAntivirusRegistered)));
             }
             return BuildResult(findings);
         }
@@ -146,12 +137,7 @@ public sealed class AntivirusScanService : IAntivirusScanService
         {
             foreach (string path in classification.ZipPaths.Concat(classification.TarPaths))
             {
-                findings.Add(new ThreatFinding
-                {
-                    ArchivePath = path,
-                    Verdict = ThreatVerdict.Inconclusive,
-                    Reason = $"Could not start an antivirus scan session: {ex.Message}",
-                });
+                findings.Add(CoreMessages.Inconclusive(path, null, CoreMessages.Text(MessageCode.ScanSessionFailed, ex.Message)));
             }
             return BuildResult(findings);
         }
@@ -252,12 +238,7 @@ public sealed class AntivirusScanService : IAntivirusScanService
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
         {
-            findings.Add(new ThreatFinding
-            {
-                ArchivePath = archivePath,
-                Verdict = ThreatVerdict.Inconclusive,
-                Reason = $"Could not read archive: {ex.Message}",
-            });
+            findings.Add(CoreMessages.Inconclusive(archivePath, null, CoreMessages.Wrap(MessageCode.ScanCannotReadArchive, ex)));
             return;
         }
 
@@ -315,13 +296,7 @@ public sealed class AntivirusScanService : IAntivirusScanService
                 }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
                 {
-                    findings.Add(new ThreatFinding
-                    {
-                        ArchivePath = archivePath,
-                        EntryPath = named.FullName,
-                        Verdict = ThreatVerdict.Inconclusive,
-                        Reason = $"Could not read entry: {ex.Message}",
-                    });
+                    findings.Add(CoreMessages.Inconclusive(archivePath, named.FullName, CoreMessages.Wrap(MessageCode.ScanCannotReadEntry, ex)));
                 }
                 finally
                 {
@@ -374,7 +349,7 @@ public sealed class AntivirusScanService : IAntivirusScanService
                 }
                 catch (InvalidOperationException ex)
                 {
-                    return InconclusiveFinding(archivePath, entryPath, $"The antivirus scan of this entry failed: {ex.Message}");
+                    return CoreMessages.Inconclusive(archivePath, entryPath, CoreMessages.Text(MessageCode.ScanEntryFailed, ex.Message));
                 }
             }
 
@@ -387,8 +362,7 @@ public sealed class AntivirusScanService : IAntivirusScanService
             if (verifyIntegrityAfterScan && verdict == ThreatVerdict.Clean
                 && !await ReachesVerifiedEndAsync(stream, cancellationToken).ConfigureAwait(false))
             {
-                return InconclusiveFinding(archivePath, entryPath,
-                    "Decrypted content failed its integrity check (wrong password or corrupted entry) and was not reported clean.");
+                return CoreMessages.Inconclusive(archivePath, entryPath, CoreMessages.Text(MessageCode.ScanEntryIntegrityFailed));
             }
 
             return new ThreatFinding
@@ -460,7 +434,7 @@ public sealed class AntivirusScanService : IAntivirusScanService
         string entryName = named.FullName;
         ZipArchiveEntry entry = named.Entry;
         if (password is null)
-            return InconclusiveFinding(archivePath, entryName, "Entry is password-protected and was not scanned.");
+            return CoreMessages.Inconclusive(archivePath, entryName, CoreMessages.Text(MessageCode.ScanEntryPasswordProtected));
 
         // The size cap below (inside ScanOneEntryAsync) checks entry.Length from the central
         // directory, but TryOpen buffers the whole ciphertext sized by the LOCAL header — an
@@ -474,26 +448,17 @@ public sealed class AntivirusScanService : IAntivirusScanService
             EncryptedZipReadResult.Success => await ScanOneEntryAsync(
                 archivePath, entryName, entry.Length, () => stream!, scanner, cancellationToken,
                 verifyIntegrityAfterScan: true).ConfigureAwait(false),
-            EncryptedZipReadResult.WrongPassword => InconclusiveFinding(archivePath, entryName,
-                "Entry is password-protected with a different password and was not scanned."),
-            EncryptedZipReadResult.UnsupportedCompressionMethod => InconclusiveFinding(archivePath, entryName,
-                "Entry uses an unsupported compression method under encryption and was not scanned."),
-            _ => InconclusiveFinding(archivePath, entryName,
-                "Entry failed decryption authentication (corrupted or tampered) and was not scanned."),
+            EncryptedZipReadResult.WrongPassword =>
+                CoreMessages.Inconclusive(archivePath, entryName, CoreMessages.Text(MessageCode.ScanEntryWrongPassword)),
+            EncryptedZipReadResult.UnsupportedCompressionMethod =>
+                CoreMessages.Inconclusive(archivePath, entryName, CoreMessages.Text(MessageCode.ScanEntryUnsupportedMethod)),
+            _ => CoreMessages.Inconclusive(archivePath, entryName, CoreMessages.Text(MessageCode.ScanEntryAuthenticationFailed)),
         };
     }
 
     private static ThreatFinding OversizedFinding(string archivePath, string entryPath) =>
-        InconclusiveFinding(archivePath, entryPath,
-            $"Entry is larger than {MaxScannableEntryBytes / (1024 * 1024)} MiB and was not scanned.");
-
-    private static ThreatFinding InconclusiveFinding(string archivePath, string entryPath, string reason) => new()
-    {
-        ArchivePath = archivePath,
-        EntryPath = entryPath,
-        Verdict = ThreatVerdict.Inconclusive,
-        Reason = reason,
-    };
+        CoreMessages.Inconclusive(archivePath, entryPath,
+            CoreMessages.Text(MessageCode.ScanEntryTooLarge, (MaxScannableEntryBytes / (1024 * 1024)).ToString(CultureInfo.InvariantCulture)));
 
     // Tar-family: reuses T-F49/T-F52's exact quarantine machinery. Extracts into
     // scope.OutputDirectory exactly as a real Extract would, then stops — no move-to-destination
@@ -534,12 +499,8 @@ public sealed class AntivirusScanService : IAntivirusScanService
             (int exitCode, _, string stdErr) = await scope.ExtractAsync(expandedSelection, cancellationToken).ConfigureAwait(false);
             if (exitCode != 0)
             {
-                findings.Add(new ThreatFinding
-                {
-                    ArchivePath = archivePath,
-                    Verdict = ThreatVerdict.Inconclusive,
-                    Reason = $"Could not extract archive for scanning: {TarSandboxedService.DescribeFailure(stdErr)}",
-                });
+                findings.Add(CoreMessages.Inconclusive(archivePath, null,
+                    CoreMessages.Text(MessageCode.ScanCannotExtract, TarSandboxedService.DescribeFailure(stdErr))));
                 return;
             }
 
@@ -553,12 +514,7 @@ public sealed class AntivirusScanService : IAntivirusScanService
                                         or SandboxSetupException
                                         or IOException)
         {
-            findings.Add(new ThreatFinding
-            {
-                ArchivePath = archivePath,
-                Verdict = ThreatVerdict.Inconclusive,
-                Reason = ex.Message,
-            });
+            findings.Add(CoreMessages.Inconclusive(archivePath, null, CoreMessages.FromException(ex)));
         }
         finally
         {
@@ -611,13 +567,7 @@ public sealed class AntivirusScanService : IAntivirusScanService
             // silently drop the entry.
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or FileNotFoundException)
             {
-                findings.Add(new ThreatFinding
-                {
-                    ArchivePath = archivePath,
-                    EntryPath = relativePath,
-                    Verdict = ThreatVerdict.Inconclusive,
-                    Reason = "Removed or blocked before Pakko could scan it directly.",
-                });
+                findings.Add(CoreMessages.Inconclusive(archivePath, relativePath, CoreMessages.Text(MessageCode.ScanRemovedOrBlocked)));
             }
             finally
             {

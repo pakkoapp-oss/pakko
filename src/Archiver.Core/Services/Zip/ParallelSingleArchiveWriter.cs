@@ -267,7 +267,7 @@ internal static class ParallelSingleArchiveWriter
                     Task<WorkResult> resultTask;
                     if (!ZipEntryWriter.NameFitsHeader(item.EntryName))
                     {
-                        resultTask = Task.FromResult(WorkResult.ForError(item.SourcePath, ZipEntryWriter.NameTooLongMessage(item.EntryName), null));
+                        resultTask = Task.FromResult(WorkResult.ForError(item.SourcePath, ZipEntryWriter.NameTooLong(item.EntryName), null));
                     }
                     else if (item.Kind == FileWorkKind.DirectoryPlaceholder)
                     {
@@ -317,12 +317,8 @@ internal static class ParallelSingleArchiveWriter
                         break;
 
                     case WorkResultKind.Error:
-                        reportError(new ArchiveError
-                        {
-                            SourcePath = result.SourcePath,
-                            Message = result.ErrorMessage ?? "Unknown error while archiving.",
-                            Exception = result.ErrorException,
-                        });
+                        reportError(CoreMessages.Error(result.SourcePath,
+                            result.ErrorText ?? CoreMessages.Text(MessageCode.UnknownArchivingError), result.ErrorException));
                         break;
                 }
             }
@@ -418,11 +414,11 @@ internal static class ParallelSingleArchiveWriter
             }
             catch (IOException ex)
             {
-                return WorkResult.ForError(item.SourcePath, $"Cannot access file: {ex.Message}", ex);
+                return WorkResult.ForError(item.SourcePath, CoreMessages.Text(MessageCode.CannotAccessFile, ex.Message), ex);
             }
             catch (UnauthorizedAccessException ex)
             {
-                return WorkResult.ForError(item.SourcePath, $"Access denied: {ex.Message}", ex);
+                return WorkResult.ForError(item.SourcePath, CoreMessages.Text(MessageCode.AccessDenied, ex.Message), ex);
             }
         }, cancellationToken);
 
@@ -458,8 +454,7 @@ internal static class ParallelSingleArchiveWriter
             if (availableFreeSpace < item.FileSize)
             {
                 return WorkResult.ForError(item.SourcePath,
-                    $"Not enough free disk space to compress this file: it is {item.FileSize:N0} bytes, " +
-                    $"but only {availableFreeSpace:N0} bytes are free.", null);
+                    CoreMessages.Text(MessageCode.NotEnoughSpaceToCompress, item.FileSize.ToString("N0"), availableFreeSpace.ToString("N0")), null);
             }
 
             string tempFilePath = Path.Combine(chunkDirectory, $"chunk-{Guid.NewGuid():N}.tmp");
@@ -515,12 +510,12 @@ internal static class ParallelSingleArchiveWriter
             catch (IOException ex)
             {
                 TryDeleteTempFile(tempFilePath, pendingTempFiles: null);
-                return WorkResult.ForError(item.SourcePath, $"Cannot access file: {ex.Message}", ex);
+                return WorkResult.ForError(item.SourcePath, CoreMessages.Text(MessageCode.CannotAccessFile, ex.Message), ex);
             }
             catch (UnauthorizedAccessException ex)
             {
                 TryDeleteTempFile(tempFilePath, pendingTempFiles: null);
-                return WorkResult.ForError(item.SourcePath, $"Access denied: {ex.Message}", ex);
+                return WorkResult.ForError(item.SourcePath, CoreMessages.Text(MessageCode.AccessDenied, ex.Message), ex);
             }
             catch
             {

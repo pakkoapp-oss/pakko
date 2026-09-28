@@ -1,4 +1,6 @@
+using System.Globalization;
 using System.Runtime.InteropServices;
+using Archiver.Core.Models;
 using Microsoft.Win32.SafeHandles;
 
 namespace Archiver.Core.Services.Sandbox;
@@ -149,7 +151,7 @@ internal sealed class TarSandboxScope : IDisposable
             // blocking profile creation) — fail closed as an ordinary per-archive error, never
             // an unhandled crash. Callers catch this the same way as TarSignatureVerificationException.
             if (ex is InvalidOperationException)
-                throw new SandboxSetupException($"Sandbox setup failed: {ex.Message}", ex);
+                throw new SandboxSetupException(CoreMessages.Text(MessageCode.SandboxSetupFailed, ex.Message), ex);
             throw;
         }
     }
@@ -165,11 +167,11 @@ internal sealed class TarSandboxScope : IDisposable
         }
         catch (IOException ex) when (ex.HResult == ErrorSharingViolation)
         {
-            throw new IOException($"The archive is in use by another program: {archivePath}", ex);
+            throw new CoreTextIOException(CoreMessages.Text(MessageCode.ArchiveInUse, archivePath), ex);
         }
         catch (UnauthorizedAccessException ex)
         {
-            throw new IOException($"Cannot open the archive: {ex.Message}", ex);
+            throw new CoreTextIOException(CoreMessages.Text(MessageCode.CannotOpenArchive, ex.Message), ex);
         }
     }
 
@@ -227,7 +229,7 @@ internal sealed class TarSandboxScope : IDisposable
         }
         catch (InvalidOperationException ex)
         {
-            throw new SandboxSetupException($"Sandbox setup failed: {ex.Message}", ex);
+            throw new SandboxSetupException(CoreMessages.Text(MessageCode.SandboxSetupFailed, ex.Message), ex);
         }
 
         using (job)
@@ -267,7 +269,7 @@ internal sealed class TarSandboxScope : IDisposable
         {
             int error = Marshal.GetLastWin32Error();
             handle.Dispose();
-            throw new IOException($"Cannot reopen the archive (Win32 error {error}).");
+            throw new CoreTextIOException(CoreMessages.Text(MessageCode.CannotReopenArchive, error.ToString(CultureInfo.InvariantCulture)));
         }
         return handle;
     }
@@ -295,7 +297,10 @@ internal sealed class TarSandboxScope : IDisposable
 /// a silent fallback to running tar.exe unsandboxed or unverified.
 /// </summary>
 internal sealed class TarSignatureVerificationException(string tarExecutablePath) // NOSONAR: S3871 — deliberately internal, never escapes Archiver.Core's public surface (always caught and converted to ArchiveError, per this project's "services never throw to callers" rule); public would be pure API-surface bloat
-    : Exception($"'{tarExecutablePath}' failed Authenticode signature verification.");
+    : Exception(CoreMessages.Text(MessageCode.TarSignatureVerificationFailed, tarExecutablePath).English), ICoreTextSource
+{
+    public CoreText Text { get; } = CoreMessages.Text(MessageCode.TarSignatureVerificationFailed, tarExecutablePath);
+}
 
 /// <summary>
 /// Thrown by <see cref="TarSandboxScope.CreateAsync"/>/a scope's tar.exe run when
@@ -303,5 +308,8 @@ internal sealed class TarSignatureVerificationException(string tarExecutablePath
 /// blocked by group policy) — fail-closed: treated as an ordinary per-archive error by callers,
 /// never a silent fallback to unsandboxed extraction.
 /// </summary>
-internal sealed class SandboxSetupException(string message, Exception innerException) // NOSONAR: S3871 — deliberately internal, never escapes Archiver.Core's public surface (see comment above)
-    : Exception(message, innerException);
+internal sealed class SandboxSetupException(CoreText text, Exception innerException) // NOSONAR: S3871 — deliberately internal, never escapes Archiver.Core's public surface (see comment above)
+    : Exception(text.English, innerException), ICoreTextSource
+{
+    public CoreText Text { get; } = text;
+}

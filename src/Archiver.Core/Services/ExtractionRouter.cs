@@ -86,7 +86,7 @@ public sealed class ExtractionRouter(
             : EmptyResult();
 
         IEnumerable<SkippedFile> untestable = classification.TarPaths
-            .Select(path => new SkippedFile { Path = path, Reason = ArchiveFormatPolicy.NoTestCapabilityReason });
+            .Select(path => CoreMessages.Skip(path, MessageCode.NoTestCapability));
         return zipResult with { SkippedFiles = [.. zipResult.SkippedFiles, .. untestable, .. classification.Unsupported] };
     }
 

@@ -42,6 +42,9 @@ public sealed record ThreatFinding
     /// <summary>Set for Inconclusive (why Pakko couldn't determine an answer) and for
     /// ThreatDetected when no specific ThreatName was available. Never set for Clean.</summary>
     public string? Reason { get; init; }
+
+    /// <summary>The reason as a code a frontend renders in the user's language (T-F209).</summary>
+    public CoreText? ReasonText { get; init; }
 }
 
 /// <summary>

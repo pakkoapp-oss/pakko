@@ -25,11 +25,7 @@ public sealed class ArchiveCreationRouter(
             return Task.FromResult(new ArchiveResult
             {
                 Success = false,
-                Errors = [new ArchiveError
-                {
-                    SourcePath = options.DestinationFolder,
-                    Message = $"Creating a {registryName} archive is blocked by Group Policy.",
-                }],
+                Errors = [CoreMessages.Error(options.DestinationFolder, MessageCode.CreationFormatBlocked, registryName)],
             });
         }
 
@@ -40,11 +36,7 @@ public sealed class ArchiveCreationRouter(
             return Task.FromResult(new ArchiveResult
             {
                 Success = false,
-                Errors = [new ArchiveError
-                {
-                    SourcePath = options.DestinationFolder,
-                    Message = "tar.exe-based archive creation is disabled by Group Policy.",
-                }],
+                Errors = [CoreMessages.Error(options.DestinationFolder, MessageCode.TarCreationDisabled)],
             });
         }
 

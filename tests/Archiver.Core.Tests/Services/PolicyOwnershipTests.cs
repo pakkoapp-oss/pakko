@@ -365,9 +365,10 @@ public sealed class PolicyOwnershipTests : IDisposable
     [Fact]
     public void GetRefusalReason_TarDisabledAndNeverProbed_NamesThePolicyNotTheCapability()
     {
-        string? reason = ArchiveFormatPolicy.GetRefusalReason(ArchiveFormat.SevenZip, new TarCapabilities(), TarDisabled);
+        CoreText? reason = ArchiveFormatPolicy.GetRefusalReason(ArchiveFormat.SevenZip, new TarCapabilities(), TarDisabled);
 
-        reason.Should().Be(TarDisabledMessage);
+        reason!.Code.Should().Be(MessageCode.TarExtractionDisabled);
+        reason.English.Should().Be(TarDisabledMessage);
     }
 
     [Fact]

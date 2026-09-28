@@ -11,7 +11,7 @@ namespace Archiver.Core.Services;
 public static class ArchiveFormatPolicy
 {
     /// <summary>The reason a tar-family archive is skipped by Test: only the ZIP engine can test.</summary>
-    public const string NoTestCapabilityReason = "tar-family archives have no test capability";
+    public static string NoTestCapabilityReason => MessageTemplates.English(MessageCode.NoTestCapability);
 
     /// <summary>
     /// A selection split by engine. <see cref="ZipPaths"/> also holds unrecognized paths, so the
@@ -37,7 +37,7 @@ public static class ArchiveFormatPolicy
         {
             ArchiveFormat format = ArchiveFormatDetector.Detect(path);
             if (GetRefusalReason(format, tarCapabilities, policy) is { } reason)
-                unsupported.Add(new SkippedFile { Path = path, Reason = reason });
+                unsupported.Add(CoreMessages.Skip(path, reason));
             else if (IsZipEngineFormat(format))
                 zipPaths.Add(path);
             else
@@ -53,7 +53,7 @@ public static class ArchiveFormatPolicy
     /// policy — also when tar.exe was never probed because the policy disables it.
     /// <see cref="ArchiveFormat.Unknown"/> is never refused here: the ZIP engine reports it.
     /// </summary>
-    public static string? GetRefusalReason(ArchiveFormat format, TarCapabilities tarCapabilities, GroupPolicyOptions policy)
+    public static CoreText? GetRefusalReason(ArchiveFormat format, TarCapabilities tarCapabilities, GroupPolicyOptions policy)
     {
         if (format == ArchiveFormat.Unknown)
             return null;
@@ -67,7 +67,7 @@ public static class ArchiveFormatPolicy
         // DisableTarExtraction is a separate kill switch from BlockedFormats: tar.exe is never
         // started at all, not just refused per format.
         if (policy.DisableTarExtraction)
-            return "tar.exe-based extraction is disabled by Group Policy.";
+            return CoreMessages.Text(MessageCode.TarExtractionDisabled);
 
         return IsSupportedByTar(format, tarCapabilities) ? null : BuildUnsupportedReason(format, tarCapabilities);
     }
@@ -82,8 +82,8 @@ public static class ArchiveFormatPolicy
         return !IsZipEngineFormat(format) && policy.DisableTarExtraction;
     }
 
-    internal static string BlockedFormatReason(ArchiveFormat format) =>
-        $"This archive format ({ArchiveFormatRegistryNames.ToRegistryName(format)}) is blocked by Group Policy.";
+    internal static CoreText BlockedFormatReason(ArchiveFormat format) =>
+        CoreMessages.Text(MessageCode.FormatBlocked, ArchiveFormatRegistryNames.ToRegistryName(format));
 
     private static bool IsZipEngineFormat(ArchiveFormat format) => format is ArchiveFormat.Zip or ArchiveFormat.Unknown;
 
@@ -99,13 +99,13 @@ public static class ArchiveFormatPolicy
         _ => false,
     };
 
-    private static string BuildUnsupportedReason(ArchiveFormat format, TarCapabilities caps) => format switch
+    private static CoreText BuildUnsupportedReason(ArchiveFormat format, TarCapabilities caps) => format switch
     {
-        ArchiveFormat.Rar => $"RAR requires tar.exe with libarchive >= 3.7.0 (Windows 11 23H2+); this system's tar.exe (version {caps.Version}) does not support it.",
-        ArchiveFormat.SevenZip => $"7-Zip requires tar.exe with libarchive >= 3.7.0 (Windows 11 23H2+); this system's tar.exe (version {caps.Version}) does not support it.",
-        ArchiveFormat.Zstd => $"Zstandard requires tar.exe with libarchive >= 3.7.0 (Windows 11 23H2+); this system's tar.exe (version {caps.Version}) does not support it.",
-        ArchiveFormat.Xz => $"XZ is not supported by this system's tar.exe (version {caps.Version}).",
-        ArchiveFormat.Lzma => $"LZMA is not supported by this system's tar.exe (version {caps.Version}).",
-        _ => $"This archive format is not supported by this system's tar.exe (version {caps.Version}).",
+        ArchiveFormat.Rar => CoreMessages.Text(MessageCode.FormatNeedsNewerTar, "RAR", caps.Version),
+        ArchiveFormat.SevenZip => CoreMessages.Text(MessageCode.FormatNeedsNewerTar, "7-Zip", caps.Version),
+        ArchiveFormat.Zstd => CoreMessages.Text(MessageCode.FormatNeedsNewerTar, "Zstandard", caps.Version),
+        ArchiveFormat.Xz => CoreMessages.Text(MessageCode.FormatNotSupportedByTar, "XZ", caps.Version),
+        ArchiveFormat.Lzma => CoreMessages.Text(MessageCode.FormatNotSupportedByTar, "LZMA", caps.Version),
+        _ => CoreMessages.Text(MessageCode.ArchiveFormatNotSupportedByTar, caps.Version),
     };
 }

@@ -10,4 +10,7 @@ public sealed record ArchiveListResult
     public bool Success { get; init; }
     public IReadOnlyList<ArchiveEntryInfo> Entries { get; init; } = [];
     public string? ErrorMessage { get; init; }
+
+    /// <summary>The error as a code a frontend renders in the user's language (T-F209).</summary>
+    public CoreText? ErrorText { get; init; }
 }

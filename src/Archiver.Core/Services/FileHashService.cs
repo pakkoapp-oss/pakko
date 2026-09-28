@@ -8,7 +8,11 @@ namespace Archiver.Core.Services;
 
 /// <summary>Per-file hash result. <see cref="Error"/> is set instead of <see cref="Hash"/> when
 /// the file couldn't be read, or when it was skipped (e.g. a folder in a multi-item selection).</summary>
-public sealed record HashEntry(string SourcePath, string? Hash, string? Error);
+public sealed record HashEntry(string SourcePath, string? Hash, string? Error)
+{
+    /// <summary>The error as a code a frontend renders in the user's language (T-F209).</summary>
+    public CoreText? ErrorText { get; init; }
+}
 
 /// <summary>Combined DataSum/NamesSum for a single recursively-hashed folder — see
 /// <see cref="FileHashService"/>'s doc comment for what these mean and their NanaZip parity.</summary>
@@ -56,8 +60,6 @@ public sealed class HashResult
 public static class FileHashService
 {
     private const int FileStreamBufferSize = 262144;
-    private const string FolderSkippedMessage = "Skipped: folder (only supported when a single folder is selected alone)";
-    private const string ReparsePointSkippedMessage = "Skipped: symbolic link or junction (not followed)";
 
     // T-F128 follow-up: below this size, sequential slice-by-8 is already fast enough (a handful
     // of milliseconds) that splitting into chunks and coordinating parallel tasks would cost more
@@ -90,7 +92,7 @@ public static class FileHashService
         for (int i = 0; i < paths.Count; i++)
         {
             if (Directory.Exists(paths[i]))
-                ordered[i] = new HashEntry(paths[i], null, FolderSkippedMessage);
+                ordered[i] = CoreMessages.HashError(paths[i], CoreMessages.Text(MessageCode.HashFolderSkipped));
             else
                 fileIndices.Add(i);
         }
@@ -98,9 +100,9 @@ public static class FileHashService
         var options = new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount, CancellationToken = ct };
         await Parallel.ForEachAsync(fileIndices, options, async (i, token) =>
         {
-            (byte[]? digest, string? error) = await ComputeFileDigestAsync(paths[i], algorithm, progress, token).ConfigureAwait(false);
+            (byte[]? digest, CoreText? error) = await ComputeFileDigestAsync(paths[i], algorithm, progress, token).ConfigureAwait(false);
             ordered[i] = digest is null
-                ? new HashEntry(paths[i], null, error)
+                ? CoreMessages.HashError(paths[i], error!)
                 : new HashEntry(paths[i], FormatDigest(algorithm, digest), null);
         }).ConfigureAwait(false);
 
@@ -146,11 +148,11 @@ public static class FileHashService
                 Func<FileStream, Stream>? wrap = tracker is null
                     ? null
                     : fs => new AggregateProgressStream(fs, tracker, file.Name);
-                (byte[]? digest, string? error) = await ComputeFileDigestAsync(
+                (byte[]? digest, CoreText? error) = await ComputeFileDigestAsync(
                     file.FullName, file.Length, algorithm, wrap, tracker, file.Name, token).ConfigureAwait(false);
                 if (digest is null)
                 {
-                    lock (sync) { entries.Add(new HashEntry(file.FullName, null, error)); }
+                    lock (sync) { entries.Add(CoreMessages.HashError(file.FullName, error!)); }
                     return;
                 }
 
@@ -197,10 +199,10 @@ public static class FileHashService
                         namesSum.Add(ComputeNamesSumItemDigest(algorithm, isDirectory: true, new byte[digestSize], directoryLogPath));
                     break;
                 case WalkEntryKind.ReparsePoint:
-                    entries.Add(new HashEntry(entry.Info.FullName, null, ReparsePointSkippedMessage));
+                    entries.Add(CoreMessages.HashError(entry.Info.FullName, CoreMessages.Text(MessageCode.HashLinkSkipped)));
                     break;
                 case WalkEntryKind.UnreadableDirectory:
-                    entries.Add(new HashEntry(entry.Info.FullName, null, entry.Error!.Message));
+                    entries.Add(CoreMessages.HashError(entry.Info.FullName, CoreMessages.FromException(entry.Error!)));
                     break;
             }
         }
@@ -270,7 +272,7 @@ public static class FileHashService
     // selection) — this overload stats the file once, builds a per-file progress tracker sized to
     // that file's own length (matching the old per-file ProgressStream's semantics exactly), and
     // delegates to the FileInfo-based overload below.
-    private static async Task<(byte[]? Digest, string? Error)> ComputeFileDigestAsync(
+    private static async Task<(byte[]? Digest, CoreText? Error)> ComputeFileDigestAsync(
         string path, HashAlgorithmKind algorithm, IProgress<ProgressReport>? progress, CancellationToken ct)
     {
         try
@@ -285,7 +287,7 @@ public static class FileHashService
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            return (null, ex.Message);
+            return (null, CoreMessages.FromException(ex));
         }
     }
 
@@ -294,7 +296,7 @@ public static class FileHashService
     // directly (used only by the parallel CRC-32 path, which reads via RandomAccess rather than
     // through a Stream at all, so it reports progress straight into the tracker). Callers already
     // have both on hand, so there is no extra cost to passing both through.
-    private static async Task<(byte[]? Digest, string? Error)> ComputeFileDigestAsync(
+    private static async Task<(byte[]? Digest, CoreText? Error)> ComputeFileDigestAsync(
         string path, long length, HashAlgorithmKind algorithm,
         Func<FileStream, Stream>? wrapForProgress, AggregateProgressTracker? tracker, string currentFileName,
         CancellationToken ct)
@@ -318,7 +320,7 @@ public static class FileHashService
         catch (OperationCanceledException) { throw; }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            return (null, ex.Message);
+            return (null, CoreMessages.FromException(ex));
         }
     }
 
@@ -381,7 +383,7 @@ public static class FileHashService
                         // T-F251: the file shrank after its length was read. Crc32.Combine below
                         // uses the planned chunk length, so a CRC here would be wrong yet look fine.
                         if (read <= 0)
-                            throw new IOException($"The file changed size while it was being hashed: {path}");
+                            throw new CoreTextIOException(CoreMessages.Text(MessageCode.HashFileChanged, path));
                         acc.Update(buffer.AsSpan(0, read));
                         tracker?.Report(read, currentFileName);
                         offset += read;

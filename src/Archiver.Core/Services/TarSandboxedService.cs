@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using Archiver.Core.Interfaces;
 using Archiver.Core.IO;
 using Archiver.Core.Models;
@@ -41,17 +42,17 @@ public sealed class TarSandboxedService : ITarService
 
     // T-F261: POLICIES.md promises DisableTarExtraction means tar.exe is never started — enforced
     // here, where tar.exe is launched, not only by the callers that route to this engine.
-    private const string TarDisabledMessage = "tar.exe-based extraction is disabled by Group Policy.";
+    private static CoreText TarDisabled => CoreMessages.Text(MessageCode.TarExtractionDisabled);
 
     /// <inheritdoc/>
     /// <remarks>Under DisableTarExtraction the probe never runs and all-false defaults are returned.</remarks>
     public Task<TarCapabilities> DetectCapabilitiesAsync() =>
         _policy.DisableTarExtraction ? Task.FromResult(new TarCapabilities()) : _probe();
 
-    private static ArchiveResult RefuseAll(IReadOnlyList<string> paths, string message) => new()
+    private static ArchiveResult RefuseAll(IReadOnlyList<string> paths, CoreText text) => new()
     {
         Success = false,
-        Errors = [.. paths.Select(path => new ArchiveError { SourcePath = path, Message = message })],
+        Errors = [.. paths.Select(path => CoreMessages.Error(path, text))],
         Sources = [.. paths.Select(path => SourceOutcomeRules.Classify(path, produced: false, clean: false))],
     };
 
@@ -89,7 +90,7 @@ public sealed class TarSandboxedService : ITarService
         CancellationToken cancellationToken = default)
     {
         if (_policy.DisableTarExtraction)
-            return RefuseAll(options.ArchivePaths, TarDisabledMessage);
+            return RefuseAll(options.ArchivePaths, TarDisabled);
 
         var errors = new List<ArchiveError>();
         var createdFiles = new List<string>();
@@ -173,11 +174,7 @@ public sealed class TarSandboxedService : ITarService
         // IsLikelyEncryptionFailure once tar.exe actually fails.
         if (IsKnownEncryptedRar(archivePath))
         {
-            sink.Errors.Add(new ArchiveError
-            {
-                SourcePath = archivePath,
-                Message = "This archive is password-protected and cannot be extracted."
-            });
+            sink.Errors.Add(CoreMessages.Error(archivePath, MessageCode.PasswordProtectedExtract));
         }
         else
         {
@@ -226,38 +223,30 @@ public sealed class TarSandboxedService : ITarService
         }
         catch (TarArchiveRejectedException ex)
         {
-            sink.Errors.Add(new ArchiveError { SourcePath = archivePath, Message = ex.Message });
+            sink.Errors.Add(CoreMessages.Error(archivePath, ex.Text));
         }
         catch (TarSignatureVerificationException ex)
         {
-            sink.Errors.Add(new ArchiveError { SourcePath = archivePath, Message = ex.Message });
+            sink.Errors.Add(CoreMessages.Error(archivePath, ex.Text));
         }
         catch (SandboxSetupException ex)
         {
-            sink.Errors.Add(new ArchiveError { SourcePath = archivePath, Message = ex.Message, Exception = ex });
+            sink.Errors.Add(CoreMessages.Error(archivePath, ex.Text, ex));
         }
         catch (IOException ex)
         {
             // T-F113: covers 7z (both encryption modes) and RAR's header-encrypted case — the
             // proactive check above only catches RAR's more common data-only case before staging
             // even begins.
-            sink.Errors.Add(new ArchiveError
-            {
-                SourcePath = archivePath,
-                Message = IsLikelyEncryptionFailure(ex.Message)
-                    ? "This archive is password-protected and cannot be extracted."
-                    : $"Cannot extract archive: {ex.Message}",
-                Exception = ex
-            });
+            sink.Errors.Add(CoreMessages.Error(archivePath,
+                IsLikelyEncryptionFailure(ex.Message)
+                    ? CoreMessages.Text(MessageCode.PasswordProtectedExtract)
+                    : CoreMessages.Wrap(MessageCode.CannotExtractArchive, ex),
+                ex));
         }
         catch (UnauthorizedAccessException ex)
         {
-            sink.Errors.Add(new ArchiveError
-            {
-                SourcePath = archivePath,
-                Message = $"Access denied extracting archive: {ex.Message}",
-                Exception = ex
-            });
+            sink.Errors.Add(CoreMessages.Error(archivePath, CoreMessages.Text(MessageCode.AccessDeniedExtractingArchive, ex.Message), ex));
         }
     }
 
@@ -363,25 +352,17 @@ public sealed class TarSandboxedService : ITarService
 
         if (bombOutcome == CompressionBombOutcome.InsufficientDiskSpace)
         {
-            skippedFiles.Add(new SkippedFile
-            {
-                Path = archivePath,
-                Reason = $"Archive declares {declaredUncompressedSize:N0} bytes uncompressed, " +
-                         $"but the destination only has {ArchiveEntrySecurity.GetAvailableFreeSpace(destDir):N0} bytes free. " +
-                         "Extraction was blocked."
-            });
+            skippedFiles.Add(CoreMessages.Skip(archivePath, MessageCode.InsufficientDiskSpace,
+                declaredUncompressedSize.ToString("N0", CultureInfo.CurrentCulture),
+                ArchiveEntrySecurity.GetAvailableFreeSpace(destDir).ToString("N0", CultureInfo.CurrentCulture)));
             return (destDir, false);
         }
 
         if (bombOutcome == CompressionBombOutcome.UserDeclined)
         {
             long ratio = compressedFileSize > 0 ? declaredUncompressedSize / compressedFileSize : 0;
-            skippedFiles.Add(new SkippedFile
-            {
-                Path = archivePath,
-                Reason = $"Suspicious compression ratio ({ratio}:1, {declaredUncompressedSize:N0} bytes declared) " +
-                         "across the whole archive. Extraction was declined as a precaution against decompression bombs."
-            });
+            skippedFiles.Add(CoreMessages.Skip(archivePath, MessageCode.TarBombDeclined,
+                ratio.ToString(CultureInfo.CurrentCulture), declaredUncompressedSize.ToString("N0", CultureInfo.CurrentCulture)));
             return (destDir, false);
         }
 
@@ -426,7 +407,7 @@ public sealed class TarSandboxedService : ITarService
         (int exitCode, _, string? stdErr) = await extractionTask.ConfigureAwait(false);
 
         if (exitCode != 0)
-            throw new IOException($"tar.exe extraction failed: {DescribeFailure(stdErr)}");
+            throw new CoreTextIOException(CoreMessages.Text(MessageCode.TarExtractionFailed, DescribeFailure(stdErr)));
 
         // T-F263: the same staging + commit as ZIP extraction (ExtractionStaging) — files move from
         // the quarantine into a staging folder on the destination's volume, and only a finished
@@ -484,11 +465,7 @@ public sealed class TarSandboxedService : ITarService
         cancellationToken.ThrowIfCancellationRequested();
         foreach (string relativePath in staging.CommitInto(actualDest))
         {
-            context.Errors.Add(new ArchiveError
-            {
-                SourcePath = archivePath,
-                Message = $"Cannot write '{relativePath}': destination file is locked by another process."
-            });
+            context.Errors.Add(CoreMessages.Error(archivePath, MessageCode.DestinationFileLocked, relativePath));
         }
 
         // T-F87: every extracted file was individually skipped (already existed at the
@@ -501,11 +478,7 @@ public sealed class TarSandboxedService : ITarService
         {
             if (!onlyUserSkips)
             {
-                skippedFiles.Add(new SkippedFile
-                {
-                    Path = archivePath,
-                    Reason = "No entries were extracted from this archive — every entry was skipped."
-                });
+                skippedFiles.Add(CoreMessages.Skip(archivePath, MessageCode.AllEntriesSkipped));
             }
             progress?.Report(new ProgressReport { Percent = 100, BytesTransferred = progressTotalBytes, TotalBytes = progressTotalBytes });
             return (actualDest, false);
@@ -623,7 +596,7 @@ public sealed class TarSandboxedService : ITarService
             {
                 // T-F216: the user's own Skip answer is not listed (as in ZIP); only an automatic one.
                 if (context.ConflictResolver.UserSkipCount == userSkipsSoFar)
-                    context.SkippedFiles.Add(new SkippedFile { Path = relativePath, Reason = "File already exists at destination." });
+                    context.SkippedFiles.Add(CoreMessages.Skip(relativePath, MessageCode.FileExistsAtDestination));
                 return (false, relativePath);
             }
             if (resolvedConflict == ConflictBehavior.Rename)
@@ -645,12 +618,7 @@ public sealed class TarSandboxedService : ITarService
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            context.Errors.Add(new ArchiveError
-            {
-                SourcePath = archivePath,
-                Message = $"Cannot extract '{relativePath}': {ex.Message}",
-                Exception = ex,
-            });
+            context.Errors.Add(CoreMessages.Error(archivePath, CoreMessages.Text(MessageCode.CannotExtractEntry, relativePath, ex.Message), ex));
             return (false, relativePath);
         }
 
@@ -788,23 +756,21 @@ public sealed class TarSandboxedService : ITarService
     {
         (int nameExitCode, string? nameStdOut, string? nameStdErr) = await scope.ListAsync(verbose: false, cancellationToken).ConfigureAwait(false);
         if (nameExitCode != 0)
-            throw new IOException($"Cannot read archive: {DescribeFailure(nameStdErr)}");
+            throw new CoreTextIOException(CoreMessages.Text(MessageCode.CannotReadArchive, DescribeFailure(nameStdErr)));
 
         string[] names = SplitLines(nameStdOut);
 
         string? unsafeName = names.FirstOrDefault(IsDangerousEntryName);
         if (unsafeName != null)
-            throw new TarArchiveRejectedException(
-                $"Archive contains an unsafe entry path ('{unsafeName}') and cannot be safely extracted.");
+            throw new TarArchiveRejectedException(CoreMessages.Text(MessageCode.TarUnsafeEntryPath, unsafeName));
 
         (int typeExitCode, string? typeStdOut, string? typeStdErr) = await scope.ListAsync(verbose: true, cancellationToken).ConfigureAwait(false);
         if (typeExitCode != 0)
-            throw new IOException($"Cannot read archive: {DescribeFailure(typeStdErr)}");
+            throw new CoreTextIOException(CoreMessages.Text(MessageCode.CannotReadArchive, DescribeFailure(typeStdErr)));
 
         string[] typeLines = SplitLines(typeStdOut);
         if (typeLines.Length != names.Length)
-            throw new TarArchiveRejectedException(
-                "Archive listing is inconsistent and cannot be safely extracted.");
+            throw new TarArchiveRejectedException(CoreMessages.Text(MessageCode.TarListingInconsistent));
 
         // T-F90: column 4 (size) is accumulated alongside the existing column-0 (type) check in
         // the same pass — see DECISIONS.md's T-F90 entry for why the size column, unlike the
@@ -823,8 +789,7 @@ public sealed class TarSandboxedService : ITarService
             string line = typeLines[i];
             char typeChar = line.Length > 0 ? line[0] : '?';
             if (typeChar != '-' && typeChar != 'd')
-                throw new TarArchiveRejectedException(
-                    "Archive contains a symlink, hardlink, device, or other special entry and cannot be safely extracted.");
+                throw new TarArchiveRejectedException(CoreMessages.Text(MessageCode.TarSpecialEntry));
 
             if (typeChar == '-')
             {
@@ -887,7 +852,7 @@ public sealed class TarSandboxedService : ITarService
         CancellationToken cancellationToken = default)
     {
         if (_policy.DisableTarExtraction)
-            return new ArchiveListResult { Success = false, ErrorMessage = TarDisabledMessage };
+            return CoreMessages.ListFailure(TarDisabled);
 
         // T-F113: cheap proactive check for the header-encrypted case only (unlike ExtractAsync's
         // IsEncryptedRar check) — a data-only-encrypted RAR's filenames are still readable, so
@@ -895,11 +860,7 @@ public sealed class TarSandboxedService : ITarService
         // 7z's own parity (only extraction refuses for data-only encryption, not browsing).
         if (IsHeaderEncryptedRar(archivePath))
         {
-            return new ArchiveListResult
-            {
-                Success = false,
-                ErrorMessage = "This archive is password-protected and cannot be browsed."
-            };
+            return CoreMessages.ListFailure(CoreMessages.Text(MessageCode.PasswordProtectedBrowse));
         }
 
         try
@@ -916,21 +877,21 @@ public sealed class TarSandboxedService : ITarService
                 return typeError;
 
             if (typeLines.Length != names.Length)
-                return new ArchiveListResult { Success = false, ErrorMessage = "Archive listing is inconsistent." };
+                return CoreMessages.ListFailure(CoreMessages.Text(MessageCode.ListingInconsistent));
 
             return new ArchiveListResult { Success = true, Entries = BuildEntryList(names, typeLines) };
         }
         catch (TarSignatureVerificationException ex)
         {
-            return new ArchiveListResult { Success = false, ErrorMessage = ex.Message };
+            return CoreMessages.ListFailure(ex.Text);
         }
         catch (SandboxSetupException ex)
         {
-            return new ArchiveListResult { Success = false, ErrorMessage = ex.Message };
+            return CoreMessages.ListFailure(ex.Text);
         }
         catch (IOException ex)
         {
-            return new ArchiveListResult { Success = false, ErrorMessage = ex.Message };
+            return CoreMessages.ListFailure(CoreMessages.FromException(ex));
         }
     }
 
@@ -947,13 +908,9 @@ public sealed class TarSandboxedService : ITarService
         (int exitCode, string? stdOut, string? stdErr) = await scope.ListAsync(verbose, cancellationToken).ConfigureAwait(false);
         if (exitCode != 0)
         {
-            return ([], new ArchiveListResult
-            {
-                Success = false,
-                ErrorMessage = IsLikelyEncryptionFailure(stdErr)
-                    ? "This archive is password-protected and cannot be browsed."
-                    : DescribeFailure(stdErr)
-            });
+            return ([], CoreMessages.ListFailure(IsLikelyEncryptionFailure(stdErr)
+                ? CoreMessages.Text(MessageCode.PasswordProtectedBrowse)
+                : DescribeFailure(stdErr)));
         }
 
         return (SplitLines(stdOut), null);
@@ -1004,11 +961,7 @@ public sealed class TarSandboxedService : ITarService
             return new ArchiveResult
             {
                 Success = false,
-                Errors = [new ArchiveError
-                {
-                    SourcePath = options.DestinationFolder,
-                    Message = "tar.exe-based archive creation is disabled by Group Policy.",
-                }],
+                Errors = [CoreMessages.Error(options.DestinationFolder, MessageCode.TarCreationDisabled)],
             };
 
         // T-F153: see ZipArchiveService.ArchiveAsync's identical normalization for the full
@@ -1028,21 +981,13 @@ public sealed class TarSandboxedService : ITarService
         // prompt — rather than silently writing an unencrypted archive the user asked to protect.
         if (options.ResolvePasswordAsync is not null)
         {
-            errors.Add(new ArchiveError
-            {
-                SourcePath = options.DestinationFolder,
-                Message = "Password protection is only available for ZIP archives."
-            });
+            errors.Add(CoreMessages.Error(options.DestinationFolder, MessageCode.PasswordOnlyForZip));
             return new ArchiveResult { Success = false, CreatedFiles = createdFiles, Errors = errors, SkippedFiles = skippedFiles };
         }
 
         if (!TarSignatureVerifier.Verify(TarExecutablePath))
         {
-            errors.Add(new ArchiveError
-            {
-                SourcePath = options.DestinationFolder,
-                Message = "tar.exe failed Authenticode signature verification; refusing to run it."
-            });
+            errors.Add(CoreMessages.Error(options.DestinationFolder, MessageCode.TarSignatureInvalid));
             return new ArchiveResult { Success = false, CreatedFiles = createdFiles, Errors = errors, SkippedFiles = skippedFiles };
         }
 
@@ -1070,11 +1015,7 @@ public sealed class TarSandboxedService : ITarService
                     Success = true,
                     CreatedFiles = [],
                     Errors = [],
-                    SkippedFiles = [.. options.SourcePaths.Select(p => new SkippedFile
-                    {
-                        Path = p,
-                        Reason = $"Archive '{Path.GetFileName(destPath)}' already exists at the destination and was skipped."
-                    })],
+                    SkippedFiles = [.. options.SourcePaths.Select(p => CoreMessages.Skip(p, MessageCode.ArchiveAlreadyExists, Path.GetFileName(destPath)))],
                 };
             }
             if (outcome == DestinationConflictOutcome.ProceedAfterDeletingExisting)
@@ -1127,7 +1068,7 @@ public sealed class TarSandboxedService : ITarService
 
             if (!File.Exists(sourcePath) && !Directory.Exists(sourcePath))
             {
-                sink.Errors.Add(new ArchiveError { SourcePath = sourcePath, Message = $"Source path does not exist: {sourcePath}" });
+                sink.Errors.Add(CoreMessages.Error(sourcePath, MessageCode.SourceNotFound, sourcePath));
                 continue;
             }
 
@@ -1139,11 +1080,7 @@ public sealed class TarSandboxedService : ITarService
                 conflictResolver, renameCandidate: p => ArchiveNaming.GetUniqueFilePath(p)).ConfigureAwait(false);
             if (outcome == DestinationConflictOutcome.Skip)
             {
-                sink.SkippedFiles.Add(new SkippedFile
-                {
-                    Path = sourcePath,
-                    Reason = $"Archive '{Path.GetFileName(destPath)}' already exists at the destination and was skipped."
-                });
+                sink.SkippedFiles.Add(CoreMessages.Skip(sourcePath, MessageCode.ArchiveAlreadyExists, Path.GetFileName(destPath)));
                 continue;
             }
             if (outcome == DestinationConflictOutcome.ProceedAfterDeletingExisting)
@@ -1217,7 +1154,7 @@ public sealed class TarSandboxedService : ITarService
                 if (exitCode != 0 || !File.Exists(tempPath))
                 {
                     TryDeleteBestEffort(tempPath);
-                    errors.Add(new ArchiveError { SourcePath = destPath, Message = $"tar.exe failed to create archive: {DescribeCreationFailure(stdErr)}" });
+                    errors.Add(CoreMessages.Error(destPath, MessageCode.TarCreationFailed, DescribeCreationFailure(stdErr)));
                     return;
                 }
 
@@ -1233,12 +1170,12 @@ public sealed class TarSandboxedService : ITarService
             catch (IOException ex)
             {
                 TryDeleteBestEffort(tempPath);
-                errors.Add(new ArchiveError { SourcePath = destPath, Message = $"Cannot create archive: {ex.Message}", Exception = ex });
+                errors.Add(CoreMessages.Error(destPath, CoreMessages.Wrap(MessageCode.CannotCreateArchive, ex), ex));
             }
             catch (UnauthorizedAccessException ex)
             {
                 TryDeleteBestEffort(tempPath);
-                errors.Add(new ArchiveError { SourcePath = destPath, Message = $"Access denied creating archive: {ex.Message}", Exception = ex });
+                errors.Add(CoreMessages.Error(destPath, CoreMessages.Text(MessageCode.AccessDeniedCreatingArchive, ex.Message), ex));
             }
         }
         finally
@@ -1282,17 +1219,13 @@ public sealed class TarSandboxedService : ITarService
         {
             if (ArchiveEntrySecurity.IsReparsePoint(sourcePath))
             {
-                skippedFiles.Add(new SkippedFile
-                {
-                    Path = sourcePath,
-                    Reason = "Symbolic links and NTFS junctions are not archived."
-                });
+                skippedFiles.Add(CoreMessages.Skip(sourcePath, MessageCode.LinkNotArchived));
                 continue;
             }
 
             if (!File.Exists(sourcePath) && !Directory.Exists(sourcePath))
             {
-                errors.Add(new ArchiveError { SourcePath = sourcePath, Message = $"Source path does not exist: {sourcePath}" });
+                errors.Add(CoreMessages.Error(sourcePath, MessageCode.SourceNotFound, sourcePath));
                 continue;
             }
 
@@ -1306,11 +1239,7 @@ public sealed class TarSandboxedService : ITarService
             (long entries, long bytes, string? unrepresentable) = CountRecursiveEntriesAndBytes(fullSource);
             if (unrepresentable is not null)
             {
-                errors.Add(new ArchiveError
-                {
-                    SourcePath = sourcePath,
-                    Message = new TarArgumentEncodingException(unrepresentable, TarCommandLineEncoding.AnsiCodePage).Message,
-                });
+                errors.Add(CoreMessages.Error(sourcePath, TarArgumentEncodingException.Describe(unrepresentable, TarCommandLineEncoding.AnsiCodePage)));
                 continue;
             }
 
@@ -1477,19 +1406,18 @@ public sealed class TarSandboxedService : ITarService
     // empty one) — the archive is not damaged, this system just cannot name the file.
     private const string UnreadableNameMessage = "empty or unreadable filename";
 
-    internal static string DescribeFailure(string stdErr)
+    internal static CoreText DescribeFailure(string stdErr)
     {
         string text = stdErr.Trim();
         return text.Contains(UnreadableNameMessage, StringComparison.Ordinal)
-            ? $"The archive contains file names tar.exe cannot represent on this system (code page {TarOutputEncoding.Current.CodePage}), " +
-              $"so it cannot be read with tar.exe here. Details: {text}"
-            : text;
+            ? CoreMessages.Text(MessageCode.TarUnreadableNames, TarOutputEncoding.Current.CodePage.ToString(CultureInfo.InvariantCulture), text)
+            : CoreText.Raw(text);
     }
 
     // T-F215: "-v" writes one "a <name>" progress line per entry to stderr, before any error —
     // the failure message keeps only the lines that say what went wrong.
-    private static string DescribeCreationFailure(string stdErr) =>
-        string.Join(Environment.NewLine, SplitLines(stdErr).Where(line => !line.StartsWith("a ", StringComparison.Ordinal)));
+    private static CoreText DescribeCreationFailure(string stdErr) =>
+        CoreText.Raw(string.Join(Environment.NewLine, SplitLines(stdErr).Where(line => !line.StartsWith("a ", StringComparison.Ordinal))));
 
     // Column 4 (0-based) of "tar -tvf" output: mode, link-count, owner, group, size, month, day,
     // time, name. Locale-independent (plain ASCII decimal), unlike the date columns — see
@@ -1582,5 +1510,8 @@ public sealed class TarSandboxedService : ITarService
     // T-F146: internal (was private) — AntivirusScanService catches this the same way
     // ExtractSingleArchiveAsync's own callers do, to map a rejected archive to an Inconclusive
     // finding rather than an unhandled throw.
-    internal sealed class TarArchiveRejectedException(string message) : Exception(message); // NOSONAR: S3871 — deliberately internal, never escapes Archiver.Core's public surface (always caught and converted to ArchiveError/Inconclusive, per this project's "services never throw to callers" rule); public would be pure API-surface bloat
+    internal sealed class TarArchiveRejectedException(CoreText text) : Exception(text.English), ICoreTextSource // NOSONAR: S3871 — deliberately internal, never escapes Archiver.Core's public surface (always caught and converted to ArchiveError/Inconclusive, per this project's "services never throw to callers" rule); public would be pure API-surface bloat
+    {
+        public CoreText Text { get; } = text;
+    }
 }

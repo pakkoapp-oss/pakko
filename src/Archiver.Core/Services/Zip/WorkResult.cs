@@ -1,3 +1,5 @@
+using Archiver.Core.Models;
+
 namespace Archiver.Core.Services.Zip;
 
 internal enum WorkResultKind { Compressed, TempFileCompressed, DirectoryPlaceholder, Error }
@@ -29,7 +31,7 @@ internal sealed record WorkResult
 
     /// <summary>T-F193: the temp file holds a WinZip AES payload around <see cref="Method"/>'s output.</summary>
     public bool IsAesEncrypted { get; init; }
-    public string? ErrorMessage { get; init; }
+    public CoreText? ErrorText { get; init; }
     public Exception? ErrorException { get; init; }
 
     public static WorkResult ForCompressed(string entryName, CompressedEntryData data, DateTime lastWriteTime) => new()
@@ -51,8 +53,8 @@ internal sealed record WorkResult
         Kind = WorkResultKind.DirectoryPlaceholder, EntryName = entryName, LastWriteTime = lastWriteTime,
     };
 
-    public static WorkResult ForError(string sourcePath, string message, Exception? exception) => new()
+    public static WorkResult ForError(string sourcePath, CoreText text, Exception? exception) => new()
     {
-        Kind = WorkResultKind.Error, SourcePath = sourcePath, ErrorMessage = message, ErrorException = exception,
+        Kind = WorkResultKind.Error, SourcePath = sourcePath, ErrorText = text, ErrorException = exception,
     };
 }
