@@ -135,6 +135,15 @@ public sealed partial class MainWindow : Window
             EncryptPasswordBox.Password = string.Empty;
             EncryptConfirmBox.Password = string.Empty;
         };
+        // The options scroll: without this a new message can sit below the fold while Compress is
+        // off. After the line's SizeChanged, and one dispatcher turn later: the ScrollViewer's
+        // extent grows only after the line has been laid out, and an earlier request is clamped.
+        EncryptPasswordMessageText.SizeChanged += (_, e) =>
+        {
+            if (e.NewSize.Height > 0)
+                DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low,
+                    () => EncryptPasswordMessageText.StartBringIntoView());
+        };
     }
 
     // T-F199 step 5: a PasswordBox has no bindable Password; the view model checks every edit.

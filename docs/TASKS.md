@@ -4364,6 +4364,7 @@ real console) and T-F226's deferred per-arrow diagram ritual — carried as open
 ### T-F198 — UI quick fixes from the 2026-09-24 UI/UX review
 
 - **Progress (2026-09-28, fix phase 7):** items 1 and 7 fixed in 4b6ce03 — list words ("Folder"/"File"/size units), the busy status lines, every dialog's Yes/No/OK and the "Error" titles come from the App's resources in 37 locales (App.Core's `DisplayText`, set by the App at startup; the preview path reads `FileItem.IsFolder`). Device (Deploy 1.5.0.16, uk-UA): browse error dialog "Помилка ... Гаразд". Items 2-6 stay for wave 4 (T-F199).
+- **Progress (2026-09-28, T-F199 step 5):** item 3 closed — the Encrypt dialog is gone (password inline), so no prompt is open while the status says "Стиснення...". Device 1.5.0.26.
 
 - [ ] **Status:** open. Point fixes, no layout change (the layout is T-F199):
   1. English strings in a localized UI: "Archiving... (N files, size)"/"Extracting... (N
@@ -4436,6 +4437,10 @@ real console) and T-F226's deferred per-arrow diagram ritual — carried as open
   AES-256 Deflate per `7za l -slt`, `7za t` passes with the password and fails without it; fields
   empty and Compress off after the run; TAR.GZ with the hidden box ticked compresses; decrypt
   prompt reveal, extraction correct.
+  Follow-up (advisor): the message line sits right under the confirmation box and is scrolled
+  into view when it appears (the options scroll; at 1100x720 it was below the fold). Device
+  (1.5.0.26): the 3-line layout hint fully visible at 1100x720, the mismatch line at 900x520;
+  closing the window with a typed password exits cleanly (no Application Error event).
 
 - **Carried into wave 4 (2026-09-28): device checks left open by fix phase 7** — T-F254 on a
   regional Windows language (e.g. de-AT, zh-CN: menu, Shell windows and App agree on the language);

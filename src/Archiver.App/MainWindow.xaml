@@ -451,15 +451,16 @@
                                 PasswordRevealMode="{x:Bind ViewModel.EncryptionPasswordRevealMode, Mode=OneWay}"
                                 IsEnabled="{x:Bind ViewModel.IsNotBusy, Mode=OneWay}"
                                 PasswordChanged="EncryptConfirmBox_PasswordChanged"/>
-                            <CheckBox
-                                x:Uid="EncryptShowPasswordCheck"
-                                IsChecked="{x:Bind ViewModel.ShowEncryptionPassword, Mode=TwoWay}"
-                                IsEnabled="{x:Bind ViewModel.IsNotBusy, Mode=OneWay}"/>
                             <TextBlock
+                                x:Name="EncryptPasswordMessageText"
                                 Text="{x:Bind ViewModel.EncryptionPasswordMessage, Mode=OneWay}"
                                 Visibility="{x:Bind ViewModel.EncryptionPasswordMessageVisibility, Mode=OneWay}"
                                 Foreground="{ThemeResource SystemFillColorCriticalBrush}"
                                 TextWrapping="Wrap"/>
+                            <CheckBox
+                                x:Uid="EncryptShowPasswordCheck"
+                                IsChecked="{x:Bind ViewModel.ShowEncryptionPassword, Mode=TwoWay}"
+                                IsEnabled="{x:Bind ViewModel.IsNotBusy, Mode=OneWay}"/>
                             <TextBlock
                                 Text="{x:Bind viewmodels:MainViewModel.EncryptPasswordRuleHint}"
                                 TextWrapping="Wrap"
