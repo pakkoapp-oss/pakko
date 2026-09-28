@@ -98,9 +98,6 @@
   <data name="SeparateArchivesRadio.Content" xml:space="preserve">
     <value>Atskiri archyvai</value>
   </data>
-  <data name="ArchiveNameTextBox.PlaceholderText" xml:space="preserve">
-    <value>Automatiškai (pagal pirmojo failo / aplanko pavadinimą)</value>
-  </data>
   <data name="FormatLabel.Text" xml:space="preserve">
     <value>Formatas:</value>
   </data>
@@ -162,9 +159,6 @@
   </data>
 
   <!-- Labels -->
-  <data name="DestinationLabel.Text" xml:space="preserve">
-    <value>Paskirties vieta:</value>
-  </data>
   <data name="ArchiveNameLabel.Text" xml:space="preserve">
     <value>Pavadinimas:</value>
   </data>
@@ -178,9 +172,6 @@
   <!-- Checkboxes -->
   <data name="OpenDestinationCheck.Content" xml:space="preserve">
     <value>Atidaryti paskirties aplanką baigus</value>
-  </data>
-  <data name="DeleteAfterOperationCheck.Content" xml:space="preserve">
-    <value>Ištrinti po operacijos</value>
   </data>
 
   <!-- Status messages -->

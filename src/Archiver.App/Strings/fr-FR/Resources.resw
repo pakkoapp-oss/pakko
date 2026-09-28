@@ -98,9 +98,6 @@
   <data name="SeparateArchivesRadio.Content" xml:space="preserve">
     <value>Archives séparées</value>
   </data>
-  <data name="ArchiveNameTextBox.PlaceholderText" xml:space="preserve">
-    <value>Automatique (basé sur le nom du premier fichier/dossier)</value>
-  </data>
   <data name="FormatLabel.Text" xml:space="preserve">
     <value>Format :</value>
   </data>
@@ -162,9 +159,6 @@
   </data>
 
   <!-- Labels -->
-  <data name="DestinationLabel.Text" xml:space="preserve">
-    <value>Destination :</value>
-  </data>
   <data name="ArchiveNameLabel.Text" xml:space="preserve">
     <value>Nom :</value>
   </data>
@@ -178,9 +172,6 @@
   <!-- Checkboxes -->
   <data name="OpenDestinationCheck.Content" xml:space="preserve">
     <value>Ouvrir le dossier de destination une fois terminé</value>
-  </data>
-  <data name="DeleteAfterOperationCheck.Content" xml:space="preserve">
-    <value>Supprimer après l'opération</value>
   </data>
 
   <!-- Status messages -->

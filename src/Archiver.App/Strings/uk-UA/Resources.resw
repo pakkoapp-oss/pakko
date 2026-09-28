@@ -86,7 +86,7 @@
     <value>Вихід</value>
   </data>
   <data name="RemoveMenuItem.Text" xml:space="preserve">
-    <value>Видалити</value>
+    <value>Прибрати зі списку</value>
   </data>
 
   <!-- Archive options -->
@@ -98,9 +98,6 @@
   </data>
   <data name="SeparateArchivesRadio.Content" xml:space="preserve">
     <value>Окремі архіви</value>
-  </data>
-  <data name="ArchiveNameTextBox.PlaceholderText" xml:space="preserve">
-    <value>Авто (за назвою першого файлу/папки)</value>
   </data>
   <data name="FormatLabel.Text" xml:space="preserve">
     <value>Формат:</value>
@@ -163,9 +160,6 @@
   </data>
 
   <!-- Labels -->
-  <data name="DestinationLabel.Text" xml:space="preserve">
-    <value>Призначення:</value>
-  </data>
   <data name="ArchiveNameLabel.Text" xml:space="preserve">
     <value>Назва:</value>
   </data>
@@ -179,9 +173,6 @@
   <!-- Checkboxes -->
   <data name="OpenDestinationCheck.Content" xml:space="preserve">
     <value>Відкрити папку призначення після завершення</value>
-  </data>
-  <data name="DeleteAfterOperationCheck.Content" xml:space="preserve">
-    <value>Видалити після операції</value>
   </data>
 
   <!-- Status messages -->
@@ -407,5 +398,65 @@
   </data>
   <data name="StatusExtractingCount" xml:space="preserve">
     <value>Видобування... (архівів: {0})</value>
+  </data>
+  <data name="NewArchiveCardTitle.Text" xml:space="preserve">
+    <value>Новий архів</value>
+  </data>
+  <data name="DestinationCardTitle.Text" xml:space="preserve">
+    <value>Куди і що після</value>
+  </data>
+  <data name="EncryptZipOnlyNote.Text" xml:space="preserve">
+    <value>Шифрування паролем доступне лише для ZIP</value>
+  </data>
+  <data name="RecycleBinNote.Text" xml:space="preserve">
+    <value>Для мережевих і знімних дисків, де Кошика немає, Pakko спершу окремо запитає.</value>
+  </data>
+  <data name="EmptyAddFilesButton.Content" xml:space="preserve">
+    <value>Додати файли</value>
+  </data>
+  <data name="EmptyAddFolderButton.Content" xml:space="preserve">
+    <value>Додати папку</value>
+  </data>
+  <data name="DestinationSaveLabel" xml:space="preserve">
+    <value>Зберегти в:</value>
+  </data>
+  <data name="DestinationExtractLabel" xml:space="preserve">
+    <value>Видобути в:</value>
+  </data>
+  <data name="DeleteAfterCompressLabel" xml:space="preserve">
+    <value>Після успішного стиснення перемістити вихідні файли в Кошик</value>
+  </data>
+  <data name="DeleteAfterExtractLabel" xml:space="preserve">
+    <value>Після успішного видобування перемістити архіви в Кошик</value>
+  </data>
+  <data name="ArchiveNameAutoPlaceholder" xml:space="preserve">
+    <value>{0} (авто)</value>
+  </data>
+  <data name="ArchiveNamePerItemPlaceholder" xml:space="preserve">
+    <value>{0}, ... (окремий архів для кожного елемента)</value>
+  </data>
+  <data name="SummaryCompressionFast" xml:space="preserve">
+    <value>Швидке</value>
+  </data>
+  <data name="SummaryCompressionNormal" xml:space="preserve">
+    <value>Звичайне</value>
+  </data>
+  <data name="SummaryCompressionBest" xml:space="preserve">
+    <value>Найкраще</value>
+  </data>
+  <data name="SummaryCompressionNone" xml:space="preserve">
+    <value>Без стиснення</value>
+  </data>
+  <data name="SummaryWithPassword" xml:space="preserve">
+    <value>з паролем</value>
+  </data>
+  <data name="SummaryNoPassword" xml:space="preserve">
+    <value>без пароля</value>
+  </data>
+  <data name="NewArchiveCollapsedReason" xml:space="preserve">
+    <value>згорнуто, бо в списку лише архіви</value>
+  </data>
+  <data name="ExtractUnavailableHint" xml:space="preserve">
+    <value>У списку немає архівів — видобувати нічого</value>
   </data>
 </root>

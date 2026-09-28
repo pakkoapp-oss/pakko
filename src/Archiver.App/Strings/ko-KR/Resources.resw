@@ -98,9 +98,6 @@
   <data name="SeparateArchivesRadio.Content" xml:space="preserve">
     <value>개별 압축 파일</value>
   </data>
-  <data name="ArchiveNameTextBox.PlaceholderText" xml:space="preserve">
-    <value>자동 (첫 번째 파일/폴더 이름 기준)</value>
-  </data>
   <data name="FormatLabel.Text" xml:space="preserve">
     <value>형식:</value>
   </data>
@@ -162,9 +159,6 @@
   </data>
 
   <!-- Labels -->
-  <data name="DestinationLabel.Text" xml:space="preserve">
-    <value>대상:</value>
-  </data>
   <data name="ArchiveNameLabel.Text" xml:space="preserve">
     <value>이름:</value>
   </data>
@@ -178,9 +172,6 @@
   <!-- Checkboxes -->
   <data name="OpenDestinationCheck.Content" xml:space="preserve">
     <value>완료 후 대상 폴더 열기</value>
-  </data>
-  <data name="DeleteAfterOperationCheck.Content" xml:space="preserve">
-    <value>작업 후 삭제</value>
   </data>
 
   <!-- Status messages -->

@@ -98,9 +98,6 @@
   <data name="SeparateArchivesRadio.Content" xml:space="preserve">
     <value>Ξεχωριστά αρχεία</value>
   </data>
-  <data name="ArchiveNameTextBox.PlaceholderText" xml:space="preserve">
-    <value>Αυτόματο (βάσει του ονόματος του πρώτου αρχείου/φακέλου)</value>
-  </data>
   <data name="FormatLabel.Text" xml:space="preserve">
     <value>Μορφή:</value>
   </data>
@@ -162,9 +159,6 @@
   </data>
 
   <!-- Labels -->
-  <data name="DestinationLabel.Text" xml:space="preserve">
-    <value>Προορισμός:</value>
-  </data>
   <data name="ArchiveNameLabel.Text" xml:space="preserve">
     <value>Όνομα:</value>
   </data>
@@ -178,9 +172,6 @@
   <!-- Checkboxes -->
   <data name="OpenDestinationCheck.Content" xml:space="preserve">
     <value>Άνοιγμα φακέλου προορισμού μετά την ολοκλήρωση</value>
-  </data>
-  <data name="DeleteAfterOperationCheck.Content" xml:space="preserve">
-    <value>Διαγραφή μετά τη λειτουργία</value>
   </data>
 
   <!-- Status messages -->

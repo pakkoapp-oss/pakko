@@ -98,9 +98,6 @@
   <data name="SeparateArchivesRadio.Content" xml:space="preserve">
     <value>ארכיונים נפרדים</value>
   </data>
-  <data name="ArchiveNameTextBox.PlaceholderText" xml:space="preserve">
-    <value>אוטומטי (מבוסס על שם הקובץ/התיקייה הראשונים)</value>
-  </data>
   <data name="FormatLabel.Text" xml:space="preserve">
     <value>פורמט:</value>
   </data>
@@ -162,9 +159,6 @@
   </data>
 
   <!-- Labels -->
-  <data name="DestinationLabel.Text" xml:space="preserve">
-    <value>יעד:</value>
-  </data>
   <data name="ArchiveNameLabel.Text" xml:space="preserve">
     <value>שם:</value>
   </data>
@@ -178,9 +172,6 @@
   <!-- Checkboxes -->
   <data name="OpenDestinationCheck.Content" xml:space="preserve">
     <value>פתח את תיקיית היעד לאחר הסיום</value>
-  </data>
-  <data name="DeleteAfterOperationCheck.Content" xml:space="preserve">
-    <value>מחק לאחר הפעולה</value>
   </data>
 
   <!-- Status messages -->

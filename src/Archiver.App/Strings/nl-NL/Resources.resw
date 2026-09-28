@@ -98,9 +98,6 @@
   <data name="SeparateArchivesRadio.Content" xml:space="preserve">
     <value>Aparte archieven</value>
   </data>
-  <data name="ArchiveNameTextBox.PlaceholderText" xml:space="preserve">
-    <value>Automatisch (gebaseerd op de naam van het eerste bestand/map)</value>
-  </data>
   <data name="FormatLabel.Text" xml:space="preserve">
     <value>Formaat:</value>
   </data>
@@ -162,9 +159,6 @@
   </data>
 
   <!-- Labels -->
-  <data name="DestinationLabel.Text" xml:space="preserve">
-    <value>Bestemming:</value>
-  </data>
   <data name="ArchiveNameLabel.Text" xml:space="preserve">
     <value>Naam:</value>
   </data>
@@ -178,9 +172,6 @@
   <!-- Checkboxes -->
   <data name="OpenDestinationCheck.Content" xml:space="preserve">
     <value>Bestemmingsmap openen na voltooiing</value>
-  </data>
-  <data name="DeleteAfterOperationCheck.Content" xml:space="preserve">
-    <value>Verwijderen na de bewerking</value>
   </data>
 
   <!-- Status messages -->

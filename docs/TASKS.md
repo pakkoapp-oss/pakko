@@ -4398,6 +4398,21 @@ real console) and T-F226's deferred per-arrow diagram ritual — carried as open
   on three deploys (no crash, UIA intact); at 17:40 the same code rendered on every path (Start,
   Shell `--browse`, after interaction, after restart) — cause not found, watch for recurrence.
   Renamed-file list in the outcome line (mockup board 7) needs Core to report renames — deferred.
+  **Black window explained (2026-09-28):** the user's monitor switches off when idle, and DWM
+  stops presenting new content while the machine stays unlocked — a WinUI window created then
+  shows black (the taskbar clock froze too) until the display wakes (remote desktop, input, another
+  app starting). Not a Pakko bug; before an on-device check, confirm the taskbar clock is current.
+  Step 4 (create mode) done: `PrimaryActionPolicy` wired into `MainViewModel` (T-F212 fixed —
+  Extract runs only the listed archives, off with a tooltip when there are none); "New archive"
+  (Expander, collapsed with a summary for an archives-only list) and "Where, and what after" cards,
+  side by side from 960 px; primary button always rightmost; TAR shows "ZIP only" instead of the
+  checkbox (T-F198 item 5); name placeholder = Core's auto name (T-F264); delete-after words by
+  action; empty state with its own buttons and drop target; options scroll height now measured from
+  the window (an overfull `ContentGrid` reported its desired height and hid the footer at 900x520).
+  New App.Core `CreateModeText` (tested). New keys in en-US/uk-UA only, and "Remove from list"
+  (T-F220 item 3) in en-US/uk-UA only — the other 35 locales show English for these until step 8.
+  Device (1.5.0.21, uk-UA): folders only, TAR.GZ, archives only (collapse/expand), mixed list
+  Extract (only a.zip extracted), empty at 900x520.
 
 - **Carried into wave 4 (2026-09-28): device checks left open by fix phase 7** — T-F254 on a
   regional Windows language (e.g. de-AT, zh-CN: menu, Shell windows and App agree on the language);

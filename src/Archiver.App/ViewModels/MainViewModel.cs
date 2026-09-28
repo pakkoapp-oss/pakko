@@ -48,6 +48,7 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly ILogService _logService;
     private readonly GroupPolicyOptions _policy;
     private readonly SourceRecycler _sourceRecycler;
+    private readonly TarCapabilities _tarCapabilities;
 
     // T-F200: a password that worked is remembered for the browse session only.
     private readonly SessionPasswordMemory _browsePasswords = new();
@@ -102,7 +103,6 @@ public sealed partial class MainViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(IsNotBusy))]
     [NotifyPropertyChangedFor(nameof(IsArchiveNameAndNotBusy))]
     [NotifyPropertyChangedFor(nameof(IsCompressionLevelEnabled))]
-    [NotifyPropertyChangedFor(nameof(IsEncryptionAvailable))]
     [NotifyCanExecuteChangedFor(nameof(NavigateDestinationUpCommand))]
     private bool _isBusy = false;
 
@@ -145,6 +145,7 @@ public sealed partial class MainViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(IsSeparateArchives))]
     [NotifyPropertyChangedFor(nameof(IsArchiveNameEnabled))]
     [NotifyPropertyChangedFor(nameof(IsArchiveNameAndNotBusy))]
+    [NotifyPropertyChangedFor(nameof(ArchiveNamePlaceholder))]
     private ArchiveMode _selectedArchiveMode = ArchiveMode.SingleArchive;
 
     public bool IsSingleArchive
@@ -167,36 +168,71 @@ public sealed partial class MainViewModel : ObservableObject
     public Visibility IsFileListEmptyVisibility =>
         FileItems.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
 
-    // T-F77: only a selection that is entirely recognized archives counts as extract-only — a
-    // single non-archive item means "archive everything together" is still the coherent action,
-    // so the archive-only fields (Mode/Name/Compression) must stay visible for any mixed selection.
-    // T-F98: uses ArchiveFormatDetector.IsRecognizedArchiveExtension (extension-based, not the
-    // magic-byte Detect() sniff — this is read on every FileItems change and must not do
-    // per-file disk I/O) instead of a second, separately-maintained extension list.
-    public bool IsExtractOnlySelection =>
-        FileItems.Count > 0 && FileItems.All(x => ArchiveFormatDetector.IsRecognizedArchiveExtension(x.FullPath));
+    // T-F199/T-F212: what the list allows and which action is the primary one — recomputed on every
+    // list change (extension-based, no disk I/O), the same policy/tar.exe check the routers apply.
+    private ListActions _listActions = PrimaryActionPolicy.Evaluate([], _ => false);
 
-    // T-F05: both force-collapse while the archive browser is open — neither the batch
-    // Archive/Extract outcome subtitle nor the Archive Mode/Name options have meaning once the
-    // window has swapped into browsing a single archive's contents.
-    public Visibility ArchiveOptionsVisibility =>
-        !IsBrowsingArchive && !IsExtractOnlySelection ? Visibility.Visible : Visibility.Collapsed;
+    private bool IsExtractAccent => IsBrowsingArchive || _listActions.Accent == PrimaryAction.Extract;
+
+    // T-F05: collapses while the archive browser is open.
+    public Visibility NewArchiveCardVisibility =>
+        IsBrowsingArchive ? Visibility.Collapsed : Visibility.Visible;
+
+    // T-F199 board 8: an archives-only list collapses the card; the user can open it again.
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(NewArchiveSummaryVisibility))]
+    private bool _isNewArchiveCardExpanded = true;
+
+    public Visibility NewArchiveSummaryVisibility =>
+        IsNewArchiveCardExpanded ? Visibility.Collapsed : Visibility.Visible;
+
+    // The options the collapsed card still applies if the user presses Compress.
+    public string NewArchiveSummary
+    {
+        get
+        {
+            string summary = string.Join(" · ",
+                new[] { CreateModeText.FormatName(SelectedContainerFormat) }
+                    .Concat(CreateModeText.SummaryKeys(SelectedContainerFormat, SelectedCompressionLevel, EncryptWithPassword).Select(_res.GetString)));
+            return _listActions.ArchivesOnly ? summary + " — " + _res.GetString("NewArchiveCollapsedReason") : summary;
+        }
+    }
+
+    public string ArchiveNamePlaceholder => string.Format(System.Globalization.CultureInfo.CurrentCulture,
+        _res.GetString(SelectedArchiveMode == ArchiveMode.SeparateArchives ? "ArchiveNamePerItemPlaceholder" : "ArchiveNameAutoPlaceholder"),
+        CreateModeText.AutoName([.. FileItems.Select(x => x.FullPath)], SelectedArchiveMode, SelectedContainerFormat));
+
+    public string DestinationLabel =>
+        _res.GetString(CreateModeText.DestinationLabelKey(IsExtractAccent ? PrimaryAction.Extract : PrimaryAction.Compress));
+
+    public string DeleteAfterLabel =>
+        _res.GetString(CreateModeText.DeleteAfterKey(IsExtractAccent ? PrimaryAction.Extract : PrimaryAction.Compress));
+
+    // The empty list dims the options: nothing they apply to yet (board 3).
+    public double OptionsOpacity => FileItems.Count == 0 && !IsBrowsingArchive ? 0.55 : 1.0;
 
     public Visibility OperationOutcomeVisibility =>
         !IsBrowsingArchive && FileItems.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
 
-    public string OperationOutcomeText => IsExtractOnlySelection
-        ? _res.GetString("OutcomeWillExtract").Replace("{0}", FileItems.Count.ToString())
+    public string OperationOutcomeText => _listActions.Accent == PrimaryAction.Extract
+        ? _res.GetString("OutcomeWillExtract").Replace("{0}", _listActions.ExtractablePaths.Count.ToString())
         : _res.GetString("OutcomeWillArchive").Replace("{0}", FileItems.Count.ToString());
 
-    // T-F82: accent styling must track the resolved action (matching OperationOutcomeText),
-    // not always sit on Archive — otherwise the visually-primary button can contradict what the
-    // outcome subtitle says is about to happen for an extract-only selection.
+    // T-F82/T-F199: the accent sits on the action that fits the list, and the primary button is
+    // always the rightmost one (footer columns 3 and 4).
     public Style? ArchiveButtonStyle =>
-        IsExtractOnlySelection ? null : (Style)Application.Current.Resources["AccentButtonStyle"];
+        _listActions.Accent == PrimaryAction.Extract ? null : (Style)Application.Current.Resources["AccentButtonStyle"];
 
     public Style? ExtractButtonStyle =>
-        IsExtractOnlySelection ? (Style)Application.Current.Resources["AccentButtonStyle"] : null;
+        _listActions.Accent == PrimaryAction.Extract ? (Style)Application.Current.Resources["AccentButtonStyle"] : null;
+
+    public int ArchiveButtonColumn => _listActions.Accent == PrimaryAction.Extract ? 3 : 4;
+
+    public int ExtractButtonColumn => _listActions.Accent == PrimaryAction.Extract ? 4 : 3;
+
+    // T-F212: why Extract is off; null (no tooltip) when it is on or the list is empty.
+    public string? ExtractUnavailableHint =>
+        _listActions.ExtractUnavailable ? _res.GetString("ExtractUnavailableHint") : null;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(OnConflictIndex))]
@@ -222,6 +258,7 @@ public sealed partial class MainViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CompressionLevelIndex))]
+    [NotifyPropertyChangedFor(nameof(NewArchiveSummary))]
     private CompressionLevel _selectedCompressionLevel = CompressionLevel.Fastest;
 
     public int CompressionLevelIndex
@@ -252,7 +289,10 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(FormatIndex))]
     [NotifyPropertyChangedFor(nameof(IsCompressionLevelEnabled))]
-    [NotifyPropertyChangedFor(nameof(IsEncryptionAvailable))]
+    [NotifyPropertyChangedFor(nameof(NewArchiveSummary))]
+    [NotifyPropertyChangedFor(nameof(ArchiveNamePlaceholder))]
+    [NotifyPropertyChangedFor(nameof(EncryptCheckVisibility))]
+    [NotifyPropertyChangedFor(nameof(EncryptZipOnlyVisibility))]
     private ArchiveContainerFormat _selectedContainerFormat = ArchiveContainerFormat.Zip;
 
     public int FormatIndex
@@ -286,11 +326,18 @@ public sealed partial class MainViewModel : ObservableObject
     public bool IsCompressionLevelEnabled => IsNotBusy && !IsPlainTarFormatSelected;
 
     // T-F193: only the ZIP writer can encrypt. The checkbox keeps its checked state when a tar
-    // format is picked (it's merely disabled), so ArchiveAsync checks the format again at use.
+    // format is picked (it's merely hidden), so ArchiveAsync checks the format again at use.
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(NewArchiveSummary))]
     private bool _encryptWithPassword = false;
 
-    public bool IsEncryptionAvailable => IsNotBusy && SelectedContainerFormat == ArchiveContainerFormat.Zip;
+    // T-F198 item 5: a tar format shows why there is no password instead of a disabled, still
+    // ticked checkbox.
+    public Visibility EncryptCheckVisibility =>
+        SelectedContainerFormat == ArchiveContainerFormat.Zip ? Visibility.Visible : Visibility.Collapsed;
+
+    public Visibility EncryptZipOnlyVisibility =>
+        SelectedContainerFormat == ArchiveContainerFormat.Zip ? Visibility.Collapsed : Visibility.Visible;
 
     // T-F51: DisableTarExtraction also hides the 6 tar-family Format ComboBoxItems — GroupPolicy
     // is loaded once at process startup and never changes mid-session, so this is a fixed value
@@ -311,8 +358,11 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsPendingListVisibility))]
     [NotifyPropertyChangedFor(nameof(IsBrowsingArchiveVisibility))]
-    [NotifyPropertyChangedFor(nameof(ArchiveOptionsVisibility))]
+    [NotifyPropertyChangedFor(nameof(NewArchiveCardVisibility))]
     [NotifyPropertyChangedFor(nameof(OperationOutcomeVisibility))]
+    [NotifyPropertyChangedFor(nameof(DestinationLabel))]
+    [NotifyPropertyChangedFor(nameof(DeleteAfterLabel))]
+    [NotifyPropertyChangedFor(nameof(OptionsOpacity))]
     [NotifyCanExecuteChangedFor(nameof(ExtractAllFromBrowserCommand))]
     [NotifyCanExecuteChangedFor(nameof(ExtractSelectedFromBrowserCommand))]
     [NotifyCanExecuteChangedFor(nameof(ScanArchiveFromBrowserCommand))]
@@ -358,8 +408,10 @@ public sealed partial class MainViewModel : ObservableObject
         IDialogService dialogService,
         ILogService logService,
         GroupPolicyOptions groupPolicyOptions,
-        SourceRecycler sourceRecycler)
+        SourceRecycler sourceRecycler,
+        TarCapabilities tarCapabilities)
     {
+        _tarCapabilities = tarCapabilities;
         _sourceRecycler = sourceRecycler;
         _archiveCreationRouter = archiveCreationRouter;
         _extractionRouter = extractionRouter;
@@ -379,16 +431,28 @@ public sealed partial class MainViewModel : ObservableObject
         _fileItems.CollectionChanged += (_, _) =>
         {
             ArchiveCommand.NotifyCanExecuteChanged();
-            ExtractCommand.NotifyCanExecuteChanged();
             UpdateDefaultDestination();
             OnPropertyChanged(nameof(IsFileListEmpty));
             OnPropertyChanged(nameof(IsFileListEmptyVisibility));
-            OnPropertyChanged(nameof(IsExtractOnlySelection));
-            OnPropertyChanged(nameof(ArchiveOptionsVisibility));
+            bool wasArchivesOnly = _listActions.ArchivesOnly;
+            _listActions = PrimaryActionPolicy.Evaluate(
+                [.. FileItems.Select(x => (x.FullPath, x.IsFolder))],
+                path => ArchiveFormatPolicy.CanOpenByExtension(path, _tarCapabilities, _policy));
+            if (_listActions.ArchivesOnly != wasArchivesOnly)
+                IsNewArchiveCardExpanded = !_listActions.ArchivesOnly;
+            ExtractCommand.NotifyCanExecuteChanged();
             OnPropertyChanged(nameof(OperationOutcomeVisibility));
             OnPropertyChanged(nameof(OperationOutcomeText));
             OnPropertyChanged(nameof(ArchiveButtonStyle));
             OnPropertyChanged(nameof(ExtractButtonStyle));
+            OnPropertyChanged(nameof(ArchiveButtonColumn));
+            OnPropertyChanged(nameof(ExtractButtonColumn));
+            OnPropertyChanged(nameof(ExtractUnavailableHint));
+            OnPropertyChanged(nameof(ArchiveNamePlaceholder));
+            OnPropertyChanged(nameof(DestinationLabel));
+            OnPropertyChanged(nameof(DeleteAfterLabel));
+            OnPropertyChanged(nameof(OptionsOpacity));
+            OnPropertyChanged(nameof(NewArchiveSummary));
         };
     }
 
@@ -601,7 +665,7 @@ public sealed partial class MainViewModel : ObservableObject
 
     [RelayCommand(CanExecute = nameof(CanExtract))]
     private Task ExtractAsync() =>
-        RunExtractAsync([.. FileItems.Select(x => x.FullPath)], selectedEntryPaths: null);
+        RunExtractAsync(_listActions.ExtractablePaths, selectedEntryPaths: null);
 
     // T-F05: shared by the whole-archive Extract button and the archive browser's Extract
     // Selected/Extract All/double-click-a-file commands below — the entire IsBusy/progress/
@@ -1339,7 +1403,7 @@ public sealed partial class MainViewModel : ObservableObject
     }
 
     private bool CanArchive() => !IsBusy && FileItems.Count > 0;
-    private bool CanExtract() => !IsBusy && FileItems.Count > 0;
+    private bool CanExtract() => !IsBusy && _listActions.CanExtract;
     private bool CanOperate() => !IsBusy;
 
     public void AddPaths(IEnumerable<string> paths)

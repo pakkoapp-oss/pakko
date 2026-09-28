@@ -89,7 +89,7 @@
     <value>Exit</value>
   </data>
   <data name="RemoveMenuItem.Text" xml:space="preserve">
-    <value>Remove</value>
+    <value>Remove from list</value>
   </data>
 
   <!-- Archive options -->
@@ -101,9 +101,6 @@
   </data>
   <data name="SeparateArchivesRadio.Content" xml:space="preserve">
     <value>Separate archives</value>
-  </data>
-  <data name="ArchiveNameTextBox.PlaceholderText" xml:space="preserve">
-    <value>Auto (based on first file/folder name)</value>
   </data>
   <data name="FormatLabel.Text" xml:space="preserve">
     <value>Format:</value>
@@ -166,9 +163,6 @@
   </data>
 
   <!-- Labels -->
-  <data name="DestinationLabel.Text" xml:space="preserve">
-    <value>Destination:</value>
-  </data>
   <data name="ArchiveNameLabel.Text" xml:space="preserve">
     <value>Name:</value>
   </data>
@@ -182,9 +176,6 @@
   <!-- Checkboxes -->
   <data name="OpenDestinationCheck.Content" xml:space="preserve">
     <value>Open destination folder after completion</value>
-  </data>
-  <data name="DeleteAfterOperationCheck.Content" xml:space="preserve">
-    <value>Delete after operation</value>
   </data>
 
   <!-- Status messages -->
@@ -419,5 +410,65 @@
   </data>
   <data name="StatusExtractingCount" xml:space="preserve">
     <value>Extracting... (archives: {0})</value>
+  </data>
+  <data name="NewArchiveCardTitle.Text" xml:space="preserve">
+    <value>New archive</value>
+  </data>
+  <data name="DestinationCardTitle.Text" xml:space="preserve">
+    <value>Where, and what after</value>
+  </data>
+  <data name="EncryptZipOnlyNote.Text" xml:space="preserve">
+    <value>Password encryption is available for ZIP only</value>
+  </data>
+  <data name="RecycleBinNote.Text" xml:space="preserve">
+    <value>On network and removable drives, which have no Recycle Bin, Pakko asks first.</value>
+  </data>
+  <data name="EmptyAddFilesButton.Content" xml:space="preserve">
+    <value>Add files</value>
+  </data>
+  <data name="EmptyAddFolderButton.Content" xml:space="preserve">
+    <value>Add folder</value>
+  </data>
+  <data name="DestinationSaveLabel" xml:space="preserve">
+    <value>Save to:</value>
+  </data>
+  <data name="DestinationExtractLabel" xml:space="preserve">
+    <value>Extract to:</value>
+  </data>
+  <data name="DeleteAfterCompressLabel" xml:space="preserve">
+    <value>After a successful compression, move the source files to the Recycle Bin</value>
+  </data>
+  <data name="DeleteAfterExtractLabel" xml:space="preserve">
+    <value>After a successful extraction, move the archives to the Recycle Bin</value>
+  </data>
+  <data name="ArchiveNameAutoPlaceholder" xml:space="preserve">
+    <value>{0} (auto)</value>
+  </data>
+  <data name="ArchiveNamePerItemPlaceholder" xml:space="preserve">
+    <value>{0}, ... (one archive per item)</value>
+  </data>
+  <data name="SummaryCompressionFast" xml:space="preserve">
+    <value>Fast</value>
+  </data>
+  <data name="SummaryCompressionNormal" xml:space="preserve">
+    <value>Normal</value>
+  </data>
+  <data name="SummaryCompressionBest" xml:space="preserve">
+    <value>Best</value>
+  </data>
+  <data name="SummaryCompressionNone" xml:space="preserve">
+    <value>No compression</value>
+  </data>
+  <data name="SummaryWithPassword" xml:space="preserve">
+    <value>with password</value>
+  </data>
+  <data name="SummaryNoPassword" xml:space="preserve">
+    <value>no password</value>
+  </data>
+  <data name="NewArchiveCollapsedReason" xml:space="preserve">
+    <value>collapsed, the list holds only archives</value>
+  </data>
+  <data name="ExtractUnavailableHint" xml:space="preserve">
+    <value>The list holds no archives, nothing to extract</value>
   </data>
 </root>

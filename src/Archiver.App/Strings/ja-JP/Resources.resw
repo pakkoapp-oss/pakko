@@ -98,9 +98,6 @@
   <data name="SeparateArchivesRadio.Content" xml:space="preserve">
     <value>個別のアーカイブ</value>
   </data>
-  <data name="ArchiveNameTextBox.PlaceholderText" xml:space="preserve">
-    <value>自動 (最初のファイル/フォルダー名に基づく)</value>
-  </data>
   <data name="FormatLabel.Text" xml:space="preserve">
     <value>形式:</value>
   </data>
@@ -162,9 +159,6 @@
   </data>
 
   <!-- Labels -->
-  <data name="DestinationLabel.Text" xml:space="preserve">
-    <value>保存先:</value>
-  </data>
   <data name="ArchiveNameLabel.Text" xml:space="preserve">
     <value>名前:</value>
   </data>
@@ -178,9 +172,6 @@
   <!-- Checkboxes -->
   <data name="OpenDestinationCheck.Content" xml:space="preserve">
     <value>完了後に保存先フォルダーを開く</value>
-  </data>
-  <data name="DeleteAfterOperationCheck.Content" xml:space="preserve">
-    <value>処理後に削除する</value>
   </data>
 
   <!-- Status messages -->

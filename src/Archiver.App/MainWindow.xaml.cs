@@ -88,7 +88,14 @@ public sealed partial class MainWindow : Window
             presenter.PreferredMinimumWidth = 900;
             presenter.PreferredMinimumHeight = 520;
         }
-        ContentGrid.SizeChanged += (_, _) => FitOptionsScroll();
+        RootGrid.SizeChanged += (_, _) =>
+        {
+            FitOptionsScroll();
+            ArrangeCards();
+        };
+        NewArchiveCard.Expanding += (_, _) => ArrangeCards();
+        NewArchiveCard.Collapsed += (_, _) => ArrangeCards();
+        NewArchiveCard.RegisterPropertyChangedCallback(UIElement.VisibilityProperty, (_, _) => ArrangeCards());
 
         // T-F199: content extends into the title bar; TitleText shows AppWindow.Title (the build stamp).
         ExtendsContentIntoTitleBar = true;
@@ -128,10 +135,27 @@ public sealed partial class MainWindow : Window
 
     private void FitOptionsScroll()
     {
+        // From the window (RootGrid), not ContentGrid: an overfull ContentGrid reports its desired
+        // height, so measuring it would keep a too-tall options panel tall.
         double spacing = ContentGrid.RowSpacing * 3;
-        double available = ContentGrid.ActualHeight - ContentGrid.Padding.Top - ContentGrid.Padding.Bottom
-            - ToolbarHeight() - FooterGrid.ActualHeight - spacing - TableMinHeight;
+        double available = RootGrid.ActualHeight - RootGrid.RowDefinitions[0].ActualHeight
+            - ContentGrid.Padding.Top - ContentGrid.Padding.Bottom
+            - ToolbarHeight() - FooterGrid.DesiredSize.Height - spacing - TableMinHeight;
         OptionsScroll.MaxHeight = System.Math.Max(0, available);
+    }
+
+    // T-F199: the two option cards sit side by side only when both are open and each gets enough
+    // width; otherwise they stack (a collapsed or hidden "New archive" card leaves the other full width).
+    private const double SideBySideMinWidth = 960;
+
+    private void ArrangeCards()
+    {
+        bool newArchiveShown = NewArchiveCard.Visibility == Visibility.Visible;
+        bool sideBySide = ContentGrid.ActualWidth >= SideBySideMinWidth && NewArchiveCard.IsExpanded && newArchiveShown;
+        Grid.SetColumnSpan(NewArchiveCard, sideBySide ? 1 : 2);
+        Grid.SetRow(DestinationCard, sideBySide || !newArchiveShown ? 0 : 1);
+        Grid.SetColumn(DestinationCard, sideBySide ? 1 : 0);
+        Grid.SetColumnSpan(DestinationCard, sideBySide ? 1 : 2);
     }
 
     private double ToolbarHeight() =>

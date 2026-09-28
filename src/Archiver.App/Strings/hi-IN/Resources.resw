@@ -98,9 +98,6 @@
   <data name="SeparateArchivesRadio.Content" xml:space="preserve">
     <value>अलग-अलग संग्रह</value>
   </data>
-  <data name="ArchiveNameTextBox.PlaceholderText" xml:space="preserve">
-    <value>स्वचालित (पहली फ़ाइल/फ़ोल्डर के नाम के आधार पर)</value>
-  </data>
   <data name="FormatLabel.Text" xml:space="preserve">
     <value>प्रारूप:</value>
   </data>
@@ -162,9 +159,6 @@
   </data>
 
   <!-- Labels -->
-  <data name="DestinationLabel.Text" xml:space="preserve">
-    <value>गंतव्य:</value>
-  </data>
   <data name="ArchiveNameLabel.Text" xml:space="preserve">
     <value>नाम:</value>
   </data>
@@ -178,9 +172,6 @@
   <!-- Checkboxes -->
   <data name="OpenDestinationCheck.Content" xml:space="preserve">
     <value>पूर्ण होने पर गंतव्य फ़ोल्डर खोलें</value>
-  </data>
-  <data name="DeleteAfterOperationCheck.Content" xml:space="preserve">
-    <value>कार्य के बाद हटाएं</value>
   </data>
 
   <!-- Status messages -->

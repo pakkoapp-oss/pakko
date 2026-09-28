@@ -188,23 +188,32 @@
                         </ListView.ItemTemplate>
                     </ListView>
 
-                    <!-- Empty-state hint overlay -->
+                    <!-- Empty state (T-F199 board 3): drop zone with its own buttons. It sits over the
+                         ListView as a sibling, so it takes drops itself. -->
                     <StackPanel
                         HorizontalAlignment="Center"
                         VerticalAlignment="Center"
-                        Spacing="2"
-                        IsHitTestVisible="False"
+                        Spacing="4"
+                        Padding="8"
+                        Background="Transparent"
+                        AllowDrop="True"
+                        DragOver="FileList_DragOver"
+                        Drop="FileList_Drop"
                         Visibility="{x:Bind ViewModel.IsFileListEmptyVisibility, Mode=OneWay}">
-                        <FontIcon Glyph="&#xE8B7;" FontSize="20" Opacity="0.6"/>
+                        <FontIcon Glyph="&#xE8B7;" FontSize="24" Opacity="0.6"/>
                         <TextBlock
                             x:Uid="DropZoneHint"
                             HorizontalAlignment="Center"
-                            Opacity="0.6"/>
+                            Opacity="0.8"/>
                         <TextBlock
                             x:Uid="DropZoneModeHint"
                             HorizontalAlignment="Center"
                             Opacity="0.6"
                             Style="{StaticResource CaptionTextBlockStyle}"/>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="8" Margin="0,4,0,0">
+                            <Button x:Uid="EmptyAddFilesButton" Command="{x:Bind ViewModel.BrowseFilesCommand, Mode=OneWay}"/>
+                            <Button x:Uid="EmptyAddFolderButton" Command="{x:Bind ViewModel.BrowseFolderCommand, Mode=OneWay}"/>
+                        </StackPanel>
                     </StackPanel>
                 </Grid>
 
@@ -308,133 +317,196 @@
                 </ListView>
             </Grid>
 
-            <ScrollViewer x:Name="OptionsScroll" Grid.Row="2" VerticalScrollBarVisibility="Auto" Padding="0,0,12,0">
-                <StackPanel Spacing="12">
-                <Grid
-                    RowSpacing="8"
-                    Visibility="{x:Bind ViewModel.ArchiveOptionsVisibility, Mode=OneWay}">
+            <!-- T-F199 step 4: two cards, side by side on a wide window and stacked on a narrow one or
+                 when "New archive" is collapsed (MainWindow.xaml.cs ArrangeCards, layout only). -->
+            <ScrollViewer x:Name="OptionsScroll" Grid.Row="2" VerticalScrollBarVisibility="Auto" Padding="0,0,12,0"
+                          Opacity="{x:Bind ViewModel.OptionsOpacity, Mode=OneWay}">
+                <Grid x:Name="OptionsGrid" ColumnSpacing="12" RowSpacing="12">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" MinHeight="40"/>
                         <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto" MinHeight="40"/>
-                        <RowDefinition Height="Auto" MinHeight="40"/>
+                        <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
-                    <TextBlock x:Uid="ModeLabel" Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Style="{StaticResource CaptionTextBlockStyle}"/>
-                    <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" Spacing="16" Margin="8,0,0,0">
-                        <RadioButton
-                            x:Uid="OneArchiveRadio"
-                            GroupName="ArchiveMode"
-                            IsChecked="{x:Bind ViewModel.IsSingleArchive, Mode=TwoWay}"
-                            IsEnabled="{x:Bind ViewModel.IsNotBusy, Mode=OneWay}"/>
-                        <RadioButton
-                            x:Uid="SeparateArchivesRadio"
-                            GroupName="ArchiveMode"
-                            IsChecked="{x:Bind ViewModel.IsSeparateArchives, Mode=TwoWay}"
-                            IsEnabled="{x:Bind ViewModel.IsNotBusy, Mode=OneWay}"/>
-                    </StackPanel>
+                <!-- T-F199 board 8: an archives-only list collapses this card; Compress still uses it. -->
+                <Expander
+                    x:Name="NewArchiveCard"
+                    Grid.Row="0" Grid.Column="0"
+                    HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Stretch"
+                    VerticalAlignment="Top"
+                    IsExpanded="{x:Bind ViewModel.IsNewArchiveCardExpanded, Mode=TwoWay}"
+                    Visibility="{x:Bind ViewModel.NewArchiveCardVisibility, Mode=OneWay}">
+                    <Expander.Header>
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                            <TextBlock x:Uid="NewArchiveCardTitle" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                            <TextBlock
+                                Text="{x:Bind ViewModel.NewArchiveSummary, Mode=OneWay}"
+                                Visibility="{x:Bind ViewModel.NewArchiveSummaryVisibility, Mode=OneWay}"
+                                VerticalAlignment="Center"
+                                TextTrimming="CharacterEllipsis"
+                                Opacity="0.7"
+                                Style="{StaticResource CaptionTextBlockStyle}"/>
+                        </StackPanel>
+                    </Expander.Header>
+                    <Grid ColumnSpacing="12" RowSpacing="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" MinHeight="32"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto" MinHeight="32"/>
+                        </Grid.RowDefinitions>
 
-                    <TextBlock
-                        x:Uid="ArchiveNameLabel"
-                        Grid.Row="1"
-                        Grid.Column="0"
-                        VerticalAlignment="Center"
-                        Style="{StaticResource CaptionTextBlockStyle}"/>
-                    <TextBox
-                        x:Uid="ArchiveNameTextBox"
-                        Grid.Row="1"
-                        Grid.Column="1"
-                        Margin="8,0,0,0"
-                        Text="{x:Bind ViewModel.ArchiveName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                        IsEnabled="{x:Bind ViewModel.IsArchiveNameAndNotBusy, Mode=OneWay}"/>
+                        <TextBlock x:Uid="ModeLabel" Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Style="{StaticResource CaptionTextBlockStyle}"/>
+                        <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" Spacing="16">
+                            <RadioButton
+                                x:Uid="OneArchiveRadio"
+                                GroupName="ArchiveMode"
+                                IsChecked="{x:Bind ViewModel.IsSingleArchive, Mode=TwoWay}"
+                                IsEnabled="{x:Bind ViewModel.IsNotBusy, Mode=OneWay}"/>
+                            <RadioButton
+                                x:Uid="SeparateArchivesRadio"
+                                GroupName="ArchiveMode"
+                                IsChecked="{x:Bind ViewModel.IsSeparateArchives, Mode=TwoWay}"
+                                IsEnabled="{x:Bind ViewModel.IsNotBusy, Mode=OneWay}"/>
+                        </StackPanel>
 
-                    <TextBlock x:Uid="FormatLabel" Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" Style="{StaticResource CaptionTextBlockStyle}"/>
-                    <!-- T-F193: the encrypt checkbox sits beside the format it depends on (ZIP only)
-                         instead of adding a row, so the T-F106 Star-row height budget is untouched. -->
-                    <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Spacing="16" Margin="8,0,0,0">
-                        <ComboBox MinHeight="32" SelectedIndex="{x:Bind ViewModel.FormatIndex, Mode=TwoWay}"
-                                  IsEnabled="{x:Bind ViewModel.IsNotBusy, Mode=OneWay}">
-                            <ComboBoxItem x:Uid="FormatZipItem"/>
-                            <ComboBoxItem x:Uid="FormatTarItem" Visibility="{x:Bind ViewModel.TarFormatVisibility}"/>
-                            <ComboBoxItem x:Uid="FormatTarGzItem" Visibility="{x:Bind ViewModel.TarFormatVisibility}"/>
-                            <ComboBoxItem x:Uid="FormatTarBz2Item" Visibility="{x:Bind ViewModel.TarFormatVisibility}"/>
-                            <ComboBoxItem x:Uid="FormatTarXzItem" Visibility="{x:Bind ViewModel.TarFormatVisibility}"/>
-                            <ComboBoxItem x:Uid="FormatTarZstItem" Visibility="{x:Bind ViewModel.TarFormatVisibility}"/>
-                            <ComboBoxItem x:Uid="FormatTarLzmaItem" Visibility="{x:Bind ViewModel.TarFormatVisibility}"/>
-                        </ComboBox>
+                        <TextBlock x:Uid="ArchiveNameLabel" Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" Style="{StaticResource CaptionTextBlockStyle}"/>
+                        <!-- T-F264: the placeholder is the name Core writes when the box is blank. -->
+                        <TextBox
+                            Grid.Row="1"
+                            Grid.Column="1"
+                            PlaceholderText="{x:Bind ViewModel.ArchiveNamePlaceholder, Mode=OneWay}"
+                            Text="{x:Bind ViewModel.ArchiveName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                            IsEnabled="{x:Bind ViewModel.IsArchiveNameAndNotBusy, Mode=OneWay}"/>
+
+                        <TextBlock x:Uid="FormatLabel" Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" Style="{StaticResource CaptionTextBlockStyle}"/>
+                        <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Spacing="12">
+                            <ComboBox MinHeight="32" MinWidth="120" SelectedIndex="{x:Bind ViewModel.FormatIndex, Mode=TwoWay}"
+                                      IsEnabled="{x:Bind ViewModel.IsNotBusy, Mode=OneWay}">
+                                <ComboBoxItem x:Uid="FormatZipItem"/>
+                                <ComboBoxItem x:Uid="FormatTarItem" Visibility="{x:Bind ViewModel.TarFormatVisibility}"/>
+                                <ComboBoxItem x:Uid="FormatTarGzItem" Visibility="{x:Bind ViewModel.TarFormatVisibility}"/>
+                                <ComboBoxItem x:Uid="FormatTarBz2Item" Visibility="{x:Bind ViewModel.TarFormatVisibility}"/>
+                                <ComboBoxItem x:Uid="FormatTarXzItem" Visibility="{x:Bind ViewModel.TarFormatVisibility}"/>
+                                <ComboBoxItem x:Uid="FormatTarZstItem" Visibility="{x:Bind ViewModel.TarFormatVisibility}"/>
+                                <ComboBoxItem x:Uid="FormatTarLzmaItem" Visibility="{x:Bind ViewModel.TarFormatVisibility}"/>
+                            </ComboBox>
+                            <TextBlock x:Uid="CompressionLabel" VerticalAlignment="Center" Style="{StaticResource CaptionTextBlockStyle}"/>
+                            <ComboBox MinHeight="32" MinWidth="140" SelectedIndex="{x:Bind ViewModel.CompressionLevelIndex, Mode=TwoWay}"
+                                      IsEnabled="{x:Bind ViewModel.IsCompressionLevelEnabled, Mode=OneWay}">
+                                <ComboBoxItem x:Uid="CompressionFastItem"/>
+                                <ComboBoxItem x:Uid="CompressionNormalItem"/>
+                                <ComboBoxItem x:Uid="CompressionBestItem"/>
+                                <ComboBoxItem x:Uid="CompressionNoneItem"/>
+                            </ComboBox>
+                        </StackPanel>
+
+                        <!-- T-F198 item 5: a tar format says why there is no password. -->
                         <CheckBox
                             x:Uid="EncryptWithPasswordCheck"
+                            Grid.Row="3" Grid.Column="1"
                             IsChecked="{x:Bind ViewModel.EncryptWithPassword, Mode=TwoWay}"
-                            IsEnabled="{x:Bind ViewModel.IsEncryptionAvailable, Mode=OneWay}"/>
-                    </StackPanel>
+                            IsEnabled="{x:Bind ViewModel.IsNotBusy, Mode=OneWay}"
+                            Visibility="{x:Bind ViewModel.EncryptCheckVisibility, Mode=OneWay}"/>
+                        <TextBlock
+                            x:Uid="EncryptZipOnlyNote"
+                            Grid.Row="3" Grid.Column="1"
+                            VerticalAlignment="Center"
+                            Opacity="0.7"
+                            Style="{StaticResource CaptionTextBlockStyle}"
+                            Visibility="{x:Bind ViewModel.EncryptZipOnlyVisibility, Mode=OneWay}"/>
+                    </Grid>
+                </Expander>
 
-                    <TextBlock x:Uid="CompressionLabel" Grid.Row="3" Grid.Column="0" VerticalAlignment="Center" Style="{StaticResource CaptionTextBlockStyle}"/>
-                    <ComboBox Grid.Row="3" Grid.Column="1" Margin="8,0,0,0" HorizontalAlignment="Left" MinHeight="32" SelectedIndex="{x:Bind ViewModel.CompressionLevelIndex, Mode=TwoWay}"
-                              IsEnabled="{x:Bind ViewModel.IsCompressionLevelEnabled, Mode=OneWay}">
-                        <ComboBoxItem x:Uid="CompressionFastItem"/>
-                        <ComboBoxItem x:Uid="CompressionNormalItem"/>
-                        <ComboBoxItem x:Uid="CompressionBestItem"/>
-                        <ComboBoxItem x:Uid="CompressionNoneItem"/>
-                    </ComboBox>
-                </Grid>
+                <Border
+                    x:Name="DestinationCard"
+                    Grid.Row="0" Grid.Column="1"
+                    VerticalAlignment="Top"
+                    Padding="16,12,16,12"
+                    CornerRadius="{StaticResource OverlayCornerRadius}"
+                    BorderThickness="1"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
+                    <Grid ColumnSpacing="12" RowSpacing="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto" MinHeight="32"/>
+                            <RowDefinition Height="Auto" MinHeight="32"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
 
-                <Grid ColumnDefinitions="Auto,Auto,*,Auto" MinHeight="40">
-                    <TextBlock
-                        x:Uid="DestinationLabel"
-                        Grid.Column="0"
-                        VerticalAlignment="Center"
-                        Margin="0,0,8,0"
-                        Style="{StaticResource CaptionTextBlockStyle}"/>
-                    <!-- Up to parent folder; disabled at a drive root (Path.GetDirectoryName returns
-                         null there — see MainViewModel.CanNavigateDestinationUp). Added per user request
-                         alongside the archive browser's own up/exit button. -->
-                    <Button
-                        Grid.Column="1"
-                        Margin="0,0,8,0"
-                        Padding="8,4,8,4"
-                        Command="{x:Bind ViewModel.NavigateDestinationUpCommand, Mode=OneWay}"
-                        ToolTipService.ToolTip="Up">
-                        <FontIcon Glyph="&#xE74A;" FontFamily="Segoe MDL2 Assets" FontSize="14"/>
-                    </Button>
-                    <TextBox
-                        Grid.Column="2"
-                        Text="{x:Bind ViewModel.DestinationPath, Mode=OneWay}"
-                        IsReadOnly="True"
-                        VerticalAlignment="Center"/>
-                    <Button
-                        Grid.Column="3"
-                        Content="..."
-                        Margin="8,0,0,0"
-                        Command="{x:Bind ViewModel.BrowseDestinationCommand, Mode=OneWay}"
-                        IsEnabled="{x:Bind ViewModel.IsNotBusy, Mode=OneWay}"/>
-                </Grid>
+                        <TextBlock x:Uid="DestinationCardTitle" Grid.Row="0" Grid.ColumnSpan="2" FontWeight="SemiBold"/>
 
-                <StackPanel Spacing="8">
-                    <StackPanel Orientation="Horizontal" Spacing="8" MinHeight="40">
-                        <TextBlock x:Uid="ConflictLabel" VerticalAlignment="Center" Style="{StaticResource CaptionTextBlockStyle}"/>
-                        <ComboBox MinHeight="32" SelectedIndex="{x:Bind ViewModel.OnConflictIndex, Mode=TwoWay}"
+                        <TextBlock
+                            Grid.Row="1" Grid.Column="0"
+                            Text="{x:Bind ViewModel.DestinationLabel, Mode=OneWay}"
+                            VerticalAlignment="Center"
+                            Style="{StaticResource CaptionTextBlockStyle}"/>
+                        <Grid Grid.Row="1" Grid.Column="1" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                            <!-- Up to parent folder; disabled at a drive root (see
+                                 MainViewModel.CanNavigateDestinationUp). -->
+                            <Button
+                                Grid.Column="0"
+                                Padding="8,4,8,4"
+                                Command="{x:Bind ViewModel.NavigateDestinationUpCommand, Mode=OneWay}"
+                                ToolTipService.ToolTip="Up">
+                                <FontIcon Glyph="&#xE74A;" FontFamily="Segoe MDL2 Assets" FontSize="14"/>
+                            </Button>
+                            <TextBox
+                                Grid.Column="1"
+                                Text="{x:Bind ViewModel.DestinationPath, Mode=OneWay}"
+                                IsReadOnly="True"
+                                VerticalAlignment="Center"/>
+                            <Button
+                                Grid.Column="2"
+                                Content="..."
+                                Command="{x:Bind ViewModel.BrowseDestinationCommand, Mode=OneWay}"
+                                IsEnabled="{x:Bind ViewModel.IsNotBusy, Mode=OneWay}"/>
+                        </Grid>
+
+                        <TextBlock x:Uid="ConflictLabel" Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" Style="{StaticResource CaptionTextBlockStyle}"/>
+                        <ComboBox Grid.Row="2" Grid.Column="1" MinHeight="32" MinWidth="200" SelectedIndex="{x:Bind ViewModel.OnConflictIndex, Mode=TwoWay}"
                                   IsEnabled="{x:Bind ViewModel.IsNotBusy, Mode=OneWay}">
                             <ComboBoxItem x:Uid="ConflictOverwriteItem"/>
                             <ComboBoxItem x:Uid="ConflictSkipItem"/>
                             <ComboBoxItem x:Uid="ConflictRenameItem"/>
                             <ComboBoxItem x:Uid="ConflictAskItem"/>
                         </ComboBox>
-                    </StackPanel>
-                    <CheckBox
-                    x:Uid="OpenDestinationCheck"
-                    IsChecked="{x:Bind ViewModel.OpenDestinationFolder, Mode=TwoWay}"
-                    IsEnabled="{x:Bind ViewModel.IsNotBusy, Mode=OneWay}"/>
-                    <CheckBox
-                    x:Uid="DeleteAfterOperationCheck"
-                    IsChecked="{x:Bind ViewModel.DeleteAfterOperation, Mode=TwoWay}"
-                    IsEnabled="{x:Bind ViewModel.IsNotBusy, Mode=OneWay}"/>
-                </StackPanel>
 
-                </StackPanel>
+                        <CheckBox
+                            x:Uid="OpenDestinationCheck"
+                            Grid.Row="3" Grid.Column="1"
+                            IsChecked="{x:Bind ViewModel.OpenDestinationFolder, Mode=TwoWay}"
+                            IsEnabled="{x:Bind ViewModel.IsNotBusy, Mode=OneWay}"/>
+                        <!-- T-F207: the words say what goes to the Recycle Bin (sources or archives). -->
+                        <CheckBox
+                            Grid.Row="4" Grid.Column="1"
+                            Content="{x:Bind ViewModel.DeleteAfterLabel, Mode=OneWay}"
+                            IsChecked="{x:Bind ViewModel.DeleteAfterOperation, Mode=TwoWay}"
+                            IsEnabled="{x:Bind ViewModel.IsNotBusy, Mode=OneWay}"/>
+                        <TextBlock
+                            x:Uid="RecycleBinNote"
+                            Grid.Row="5" Grid.Column="1"
+                            TextWrapping="Wrap"
+                            Opacity="0.7"
+                            Style="{StaticResource CaptionTextBlockStyle}"/>
+                    </Grid>
+                </Border>
+                </Grid>
             </ScrollViewer>
 
             <!-- Footer: status or progress on the left, the action buttons on the right, primary last. -->
@@ -469,16 +541,24 @@
                     VerticalAlignment="Center"
                     Command="{x:Bind ViewModel.ClearCommand, Mode=OneWay}"
                     Visibility="{x:Bind ViewModel.IsPendingListVisibility, Mode=OneWay}"/>
-                <Button
-                    Grid.Column="3"
-                    MinWidth="120"
+                <!-- T-F199: the primary button is always the rightmost (column 4), the accent on the
+                     action that fits the list. T-F212: a disabled Button shows no tooltip, so the
+                     reason Extract is off sits on a hit-testable wrapper. -->
+                <Border
+                    Grid.Column="{x:Bind ViewModel.ExtractButtonColumn, Mode=OneWay}"
+                    Background="Transparent"
                     VerticalAlignment="Center"
-                    Content="{x:Bind ViewModel.ExtractButtonText, Mode=OneWay}"
-                    Command="{x:Bind ViewModel.ExtractCommand, Mode=OneWay}"
-                    Style="{x:Bind ViewModel.ExtractButtonStyle, Mode=OneWay}"
-                    Visibility="{x:Bind ViewModel.IsPendingListVisibility, Mode=OneWay}"/>
+                    ToolTipService.ToolTip="{x:Bind ViewModel.ExtractUnavailableHint, Mode=OneWay}"
+                    Visibility="{x:Bind ViewModel.IsPendingListVisibility, Mode=OneWay}">
+                    <Button
+                        MinWidth="120"
+                        AutomationProperties.HelpText="{x:Bind ViewModel.ExtractUnavailableHint, Mode=OneWay}"
+                        Content="{x:Bind ViewModel.ExtractButtonText, Mode=OneWay}"
+                        Command="{x:Bind ViewModel.ExtractCommand, Mode=OneWay}"
+                        Style="{x:Bind ViewModel.ExtractButtonStyle, Mode=OneWay}"/>
+                </Border>
                 <Button
-                    Grid.Column="4"
+                    Grid.Column="{x:Bind ViewModel.ArchiveButtonColumn, Mode=OneWay}"
                     MinWidth="120"
                     VerticalAlignment="Center"
                     Content="{x:Bind ViewModel.ArchiveButtonText, Mode=OneWay}"
