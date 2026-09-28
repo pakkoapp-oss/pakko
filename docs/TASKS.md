@@ -4441,6 +4441,12 @@ real console) and T-F226's deferred per-arrow diagram ritual — carried as open
 
 ### T-F201 — Opening an archive while Pakko is running starts a second, exactly stacked window
 
+- **Progress (2026-09-28, wave 4):** fixed — a new window cascades 32 px off every visible window
+  of another `Archiver.App` process (App.Core `WindowCascade`, pure and tested incl. wrap to the
+  work area's corner on any monitor; `Win32PakkoWindows` enumerates the other windows). Foreground
+  stays `Activate()`. Device check (two windows via Explorer "Open" and file association) at the
+  end of the wave.
+
 - [ ] **Status:** open. Confirmed on device: a `pakko://browse` activation with a Pakko window
   already open started a second `Archiver.App` process at identical bounds, hiding the first.
   Check the intended single-instance redirection (T-F83's `AppInstance` handling) before choosing

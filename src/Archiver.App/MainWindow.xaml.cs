@@ -71,6 +71,7 @@ public sealed partial class MainWindow : Window
         // dropping 200->140 below) after re-running the same on-device zero-bounds check this
         // value's history required; see DECISIONS.md's T-F106 entry for the confirmed numbers.
         this.AppWindow.Resize(new Windows.Graphics.SizeInt32(1100, 780));
+        PlaceAwayFromOtherPakkoWindows();
 
         // T-F106: without an explicit floor, the window could be shrunk by the user to a height
         // where content below the file table (Shared Options' two checkboxes, the status bar)
@@ -106,6 +107,22 @@ public sealed partial class MainWindow : Window
             NestedArchiveCache.DeleteOwn();
             ViewModel.ForgetBrowsePasswords();
         };
+    }
+
+    // T-F201: a second Pakko window used to open exactly over the first one.
+    private void PlaceAwayFromOtherPakkoWindows()
+    {
+        IReadOnlyList<(int Left, int Top)> others = Win32PakkoWindows.OtherWindowCorners();
+        if (others.Count == 0)
+            return;
+        Windows.Graphics.PointInt32 position = this.AppWindow.Position;
+        Windows.Graphics.SizeInt32 size = this.AppWindow.Size;
+        Windows.Graphics.RectInt32 work = Microsoft.UI.Windowing.DisplayArea
+            .GetFromWindowId(this.AppWindow.Id, Microsoft.UI.Windowing.DisplayAreaFallback.Nearest).WorkArea;
+        (int left, int top) = WindowCascade.Place(position.X, position.Y, size.Width, size.Height, others,
+            (work.X, work.Y, work.X + work.Width, work.Y + work.Height));
+        if (left != position.X || top != position.Y)
+            this.AppWindow.Move(new Windows.Graphics.PointInt32(left, top));
     }
 
     private void OnFirstActivated(object sender, WindowActivatedEventArgs args)
