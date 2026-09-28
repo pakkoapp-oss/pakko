@@ -4434,7 +4434,7 @@ real console) and T-F226's deferred per-arrow diagram ritual — carried as open
   Cleared on opening another archive and on window close; memory only, never written.
   `SessionPasswordMemoryTests` (mutation-checked). Device check at the end of the wave.
 
-- [ ] **Status:** open. Confirmed on device: preview a.txt (enter password), then b.txt -> prompted
+- [x] **Status:** Device (Deploy 1.5.0.17): browse an AES-256 ZIP, preview a.txt (password asked once), then b.txt opened with no prompt. Closed. Original: open. Confirmed on device: preview a.txt (enter password), then b.txt -> prompted
   again. The browse session should remember a password that verified (T-F97 preview, T-F98 nested
   drill-in, Extract Selected/All), cleared when the browsed archive changes. Tests first.
 - **Reported by:** UI/UX review, 2026-09-24.
@@ -4447,7 +4447,7 @@ real console) and T-F226's deferred per-arrow diagram ritual — carried as open
   stays `Activate()`. Device check (two windows via Explorer "Open" and file association) at the
   end of the wave.
 
-- [ ] **Status:** open. Confirmed on device: a `pakko://browse` activation with a Pakko window
+- [x] **Status:** Device (Deploy 1.5.0.17): a second window opened at a different spot and in the foreground; with the first window moved onto the spot Windows had just used, the next one still opened clear of it. Closed. Original: open. Confirmed on device: a `pakko://browse` activation with a Pakko window
   already open started a second `Archiver.App` process at identical bounds, hiding the first.
   Check the intended single-instance redirection (T-F83's `AppInstance` handling) before choosing
   a fix: redirect into the running instance, or at least offset/foreground the new window.
@@ -4736,7 +4736,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   "not Store" so CI-signed sideload builds keep the proof). CLAUDE.md's freshness text updated.
   Device check at the end of the wave (the stamp must match the Deploy time, not the install time).
 
-- [ ] **Status:** open. The CI package (run finished 18:43 local) showed "build 2026-09-24
+- [x] **Status:** Device (Deploy 1.5.0.17): title "Pakko — build 2026-09-28 13:44:07", the compile time (install finished 13:45). The Store-build branch is covered by `BuildStampTests` only. Closed. Original: open. The CI package (run finished 18:43 local) showed "build 2026-09-24
   18:47:17", which is the install/staging time of `Archiver.App.dll` under `WindowsApps`. The
   freshness check `CLAUDE.md` prescribes before on-device verification therefore proves "freshly
   installed", not "freshly built". Embed the real build time (or commit SHA) at build time.
@@ -5580,7 +5580,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   guards a reused PID; an unreadable process counts as alive; old Guid folders count as gone).
   `ProcessTempRootTests` (mutation-checked). Device check at the end of the wave.
 
-- [ ] **Status:** open — confirmed on device 2026-09-25. `PreviewCache`/`NestedArchiveCache` use one
+- [x] **Status:** Device (Deploy 1.5.0.17, agent via `windows` MCP): previews landed in `PakkoPreview\<pid>-<ticks>\`; closing a second window kept the first window's two preview files; after killing every Pakko process, the next App start removed the dead process's folder. Closed. Original: open — confirmed on device 2026-09-25. `PreviewCache`/`NestedArchiveCache` use one
   shared root each (`%TEMP%\PakkoPreview`, `%TEMP%\PakkoNestedArchive`), and every window's
   `Closed` handler deletes both roots whole (`MainWindow.xaml.cs:101-107`). Pakko is deliberately
   multi-process (T-F88), so closing window B deletes window A's live scopes. Repro: window A (CI
