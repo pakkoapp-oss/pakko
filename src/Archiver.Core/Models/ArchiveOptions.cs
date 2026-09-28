@@ -8,6 +8,13 @@ public sealed record ArchiveOptions
     public string DestinationFolder { get; init; } = string.Empty;
     /// <summary>Null auto-names the archive from <see cref="SourcePaths"/> (see ArchiveNaming.ResolveSingleArchiveName).</summary>
     public string? ArchiveName { get; init; }
+
+    /// <summary>
+    /// T-F221: a single archive's whole file name, used as given with no extension added (7-Zip's
+    /// rule for a name the user typed); overrides <see cref="ArchiveName"/>. Null names it from
+    /// ArchiveName plus the format's extension. Ignored by <see cref="ArchiveMode.SeparateArchives"/>.
+    /// </summary>
+    public string? ExactFileName { get; init; }
     public ArchiveMode Mode { get; init; } = ArchiveMode.SingleArchive;
     public ConflictBehavior OnConflict { get; init; } = ConflictBehavior.Skip;
     public bool OpenDestinationFolder { get; init; } = false;

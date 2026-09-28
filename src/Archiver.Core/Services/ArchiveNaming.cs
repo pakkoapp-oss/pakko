@@ -78,6 +78,13 @@ public static class ArchiveNaming
         return candidate;
     }
 
+    /// <summary>
+    /// The file name of a single archive: <see cref="ArchiveOptions.ExactFileName"/> as given, else
+    /// the resolved base name plus the format's extension.
+    /// </summary>
+    public static string SingleArchiveFileName(ArchiveOptions options) =>
+        options.ExactFileName ?? ResolveSingleArchiveName(options.ArchiveName, options.SourcePaths) + GetExtension(options.Format);
+
     /// <summary>Strips an archive's extension, compound tar extensions included (see class remarks).</summary>
     public static string GetBaseName(string archivePath)
     {

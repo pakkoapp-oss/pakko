@@ -90,6 +90,9 @@
   <data name="NotAnArchiveTest" xml:space="preserve">
     <value>Het bestand heeft geen herkende archiefindeling en kan niet worden getest.</value>
   </data>
+  <data name="NotAnArchiveList" xml:space="preserve">
+    <value>Het bestand heeft geen herkende archiefindeling en de inhoud kan niet worden weergegeven.</value>
+  </data>
   <data name="UnsupportedByZipEngine" xml:space="preserve">
     <value>De indeling {0} wordt niet ondersteund. Alleen op ZIP gebaseerde indelingen worden ondersteund.</value>
   </data>

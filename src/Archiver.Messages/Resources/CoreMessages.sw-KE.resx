@@ -90,6 +90,9 @@
   <data name="NotAnArchiveTest" xml:space="preserve">
     <value>Faili si muundo wa kumbukumbu unaotambulika na haiwezi kujaribiwa.</value>
   </data>
+  <data name="NotAnArchiveList" xml:space="preserve">
+    <value>Faili si muundo wa kumbukumbu unaotambulika na maudhui yake hayawezi kuonyeshwa.</value>
+  </data>
   <data name="UnsupportedByZipEngine" xml:space="preserve">
     <value>Muundo wa {0} hautumiki. Miundo inayotegemea ZIP pekee ndiyo inayotumika.</value>
   </data>

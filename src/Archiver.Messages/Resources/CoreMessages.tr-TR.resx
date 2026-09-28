@@ -90,6 +90,9 @@
   <data name="NotAnArchiveTest" xml:space="preserve">
     <value>Dosya tanınan bir arşiv biçiminde değil ve test edilemiyor.</value>
   </data>
+  <data name="NotAnArchiveList" xml:space="preserve">
+    <value>Dosya tanınan bir arşiv biçiminde değil ve içeriği listelenemiyor.</value>
+  </data>
   <data name="UnsupportedByZipEngine" xml:space="preserve">
     <value>{0} biçimi desteklenmiyor. Yalnızca ZIP tabanlı biçimler desteklenir.</value>
   </data>

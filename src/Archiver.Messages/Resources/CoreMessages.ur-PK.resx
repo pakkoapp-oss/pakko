@@ -90,6 +90,9 @@
   <data name="NotAnArchiveTest" xml:space="preserve">
     <value>فائل کسی پہچانے گئے آرکائیو فارمیٹ میں نہیں ہے اور جانچی نہیں جا سکتی۔</value>
   </data>
+  <data name="NotAnArchiveList" xml:space="preserve">
+    <value>فائل کسی پہچانے گئے آرکائیو فارمیٹ میں نہیں ہے اور اس کا مواد نہیں دکھایا جا سکتا۔</value>
+  </data>
   <data name="UnsupportedByZipEngine" xml:space="preserve">
     <value>{0} فارمیٹ تعاون یافتہ نہیں ہے۔ صرف ZIP پر مبنی فارمیٹس تعاون یافتہ ہیں۔</value>
   </data>

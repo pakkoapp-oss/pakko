@@ -90,6 +90,9 @@
   <data name="NotAnArchiveTest" xml:space="preserve">
     <value>Filen har ikke et genkendt arkivformat og kan ikke testes.</value>
   </data>
+  <data name="NotAnArchiveList" xml:space="preserve">
+    <value>Filen har ikke et genkendt arkivformat, og indholdet kan ikke vises.</value>
+  </data>
   <data name="UnsupportedByZipEngine" xml:space="preserve">
     <value>Formatet {0} understøttes ikke. Kun ZIP-baserede formater understøttes.</value>
   </data>

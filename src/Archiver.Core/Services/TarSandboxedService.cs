@@ -997,8 +997,7 @@ public sealed class TarSandboxedService : ITarService
             // T-F99: same drive-root/empty-name fallback ZipArchiveService.ArchiveAsync already
             // uses for a single-source drive-root selection (e.g. "Z:\" via the shell extension's
             // Drive ItemType) instead of silently naming the archive after the bare extension.
-            string archiveName = ArchiveNaming.ResolveSingleArchiveName(options.ArchiveName, options.SourcePaths);
-            string destPath = Path.Combine(options.DestinationFolder, archiveName + extension);
+            string destPath = Path.Combine(options.DestinationFolder, ArchiveNaming.SingleArchiveFileName(options));
 
             // T-F158: shared with ZipArchiveService's equivalent conflict decision — see
             // DestinationConflictResolver and DECISIONS.md's T-F158 entry.

@@ -90,6 +90,9 @@
   <data name="NotAnArchiveTest" xml:space="preserve">
     <value>Fails nav atpazītā arhīva formātā, un to nevar pārbaudīt.</value>
   </data>
+  <data name="NotAnArchiveList" xml:space="preserve">
+    <value>Fails nav atpazītā arhīva formātā, un tā saturu nevar parādīt.</value>
+  </data>
   <data name="UnsupportedByZipEngine" xml:space="preserve">
     <value>Formāts {0} netiek atbalstīts. Tiek atbalstīti tikai ZIP formāti.</value>
   </data>

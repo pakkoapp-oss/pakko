@@ -90,6 +90,9 @@
   <data name="NotAnArchiveTest" xml:space="preserve">
     <value>फ़ाइल किसी पहचाने गए संग्रह प्रारूप में नहीं है और जाँची नहीं जा सकती।</value>
   </data>
+  <data name="NotAnArchiveList" xml:space="preserve">
+    <value>फ़ाइल किसी पहचाने गए संग्रह प्रारूप में नहीं है और इसकी सामग्री नहीं दिखाई जा सकती।</value>
+  </data>
   <data name="UnsupportedByZipEngine" xml:space="preserve">
     <value>{0} प्रारूप समर्थित नहीं है। केवल ZIP-आधारित प्रारूप समर्थित हैं।</value>
   </data>

@@ -90,6 +90,9 @@
   <data name="NotAnArchiveTest" xml:space="preserve">
     <value>Fișierul nu are un format de arhivă recunoscut și nu poate fi testat.</value>
   </data>
+  <data name="NotAnArchiveList" xml:space="preserve">
+    <value>Fișierul nu are un format de arhivă recunoscut, iar conținutul său nu poate fi afișat.</value>
+  </data>
   <data name="UnsupportedByZipEngine" xml:space="preserve">
     <value>Formatul {0} nu este acceptat. Sunt acceptate doar formatele bazate pe ZIP.</value>
   </data>

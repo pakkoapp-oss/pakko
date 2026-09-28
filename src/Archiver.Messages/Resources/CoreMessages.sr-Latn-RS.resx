@@ -90,6 +90,9 @@
   <data name="NotAnArchiveTest" xml:space="preserve">
     <value>Datoteka nije u prepoznatom formatu arhive i ne može se testirati.</value>
   </data>
+  <data name="NotAnArchiveList" xml:space="preserve">
+    <value>Datoteka nije u prepoznatom formatu arhive i njen sadržaj se ne može prikazati.</value>
+  </data>
   <data name="UnsupportedByZipEngine" xml:space="preserve">
     <value>Format {0} nije podržan. Podržani su samo formati zasnovani na ZIP-u.</value>
   </data>

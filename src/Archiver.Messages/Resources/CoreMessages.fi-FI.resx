@@ -90,6 +90,9 @@
   <data name="NotAnArchiveTest" xml:space="preserve">
     <value>Tiedosto ei ole tunnistetussa arkistomuodossa, eikä sitä voi testata.</value>
   </data>
+  <data name="NotAnArchiveList" xml:space="preserve">
+    <value>Tiedosto ei ole tunnistetussa arkistomuodossa, eikä sen sisältöä voi näyttää.</value>
+  </data>
   <data name="UnsupportedByZipEngine" xml:space="preserve">
     <value>Muotoa {0} ei tueta. Vain ZIP-pohjaisia muotoja tuetaan.</value>
   </data>

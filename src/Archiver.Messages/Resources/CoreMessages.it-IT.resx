@@ -90,6 +90,9 @@
   <data name="NotAnArchiveTest" xml:space="preserve">
     <value>Il file non è in un formato di archivio riconosciuto e non può essere testato.</value>
   </data>
+  <data name="NotAnArchiveList" xml:space="preserve">
+    <value>Il file non è in un formato di archivio riconosciuto e il suo contenuto non può essere mostrato.</value>
+  </data>
   <data name="UnsupportedByZipEngine" xml:space="preserve">
     <value>Il formato {0} non è supportato. Sono supportati solo i formati basati su ZIP.</value>
   </data>

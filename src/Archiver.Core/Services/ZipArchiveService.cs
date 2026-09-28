@@ -129,8 +129,7 @@ public sealed class ZipArchiveService : IArchiveService
     // for a confirmation themselves; Core only refuses a cancelled or empty answer.
     private static async Task<(string? Password, ArchiveError? Error)> ResolveEncryptionPasswordAsync(ArchiveOptions options)
     {
-        string archiveName = ArchiveNaming.ResolveSingleArchiveName(options.ArchiveName, options.SourcePaths)
-            + ArchiveNaming.GetExtension(ArchiveContainerFormat.Zip);
+        string archiveName = ArchiveNaming.SingleArchiveFileName(options with { Format = ArchiveContainerFormat.Zip });
         var resolver = new PasswordResolver(options.ResolvePasswordAsync, maxAttempts: 1);
         string? password = await resolver.ResolveAsync(archiveName, PasswordPurpose.Encrypt, verify: _ => true).ConfigureAwait(false);
 
@@ -164,8 +163,7 @@ public sealed class ZipArchiveService : IArchiveService
         // reachable single-source selection via the shell extension's Drive ItemType — falls back
         // to "archive" the same way BuildAddToArchiveTitle already does for the context-menu
         // title text, instead of silently naming the archive ".zip".
-        string archiveName = ArchiveNaming.ResolveSingleArchiveName(options.ArchiveName, options.SourcePaths);
-        string destPath = Path.Combine(options.DestinationFolder, archiveName + ArchiveNaming.GetExtension(ArchiveContainerFormat.Zip));
+        string destPath = Path.Combine(options.DestinationFolder, ArchiveNaming.SingleArchiveFileName(options with { Format = ArchiveContainerFormat.Zip }));
 
         Directory.CreateDirectory(options.DestinationFolder);
 
@@ -743,6 +741,13 @@ public sealed class ZipArchiveService : IArchiveService
         string archivePath, List<ArchiveError> errors, List<SkippedFile> skippedFiles,
         PasswordResolver passwordResolver)
     {
+        // T-F221: a path that is not there is "not found", not "not a recognized archive".
+        if (!File.Exists(archivePath))
+        {
+            errors.Add(CoreMessages.Error(archivePath, MessageCode.SourceNotFound, archivePath));
+            return (true, null);
+        }
+
         if (!IsZipFile(archivePath))
         {
             CoreText? reason = GetKnownArchiveReason(archivePath);
@@ -931,6 +936,13 @@ public sealed class ZipArchiveService : IArchiveService
 
             string archivePath = archivePaths[i];
 
+            if (!File.Exists(archivePath))
+            {
+                errors.Add(CoreMessages.Error(archivePath, MessageCode.SourceNotFound, archivePath));
+                progress?.Report(new ProgressReport { Percent = (i + 1) * 100 / total, BytesTransferred = 0, TotalBytes = 0 });
+                continue;
+            }
+
             if (!IsZipFile(archivePath))
             {
                 // T-F117: see ExtractAsync's identical branch — unrecognized bytes are a real
@@ -999,6 +1011,8 @@ public sealed class ZipArchiveService : IArchiveService
     {
         if (IsZipBlocked)
             return CoreMessages.ListFailure(ZipBlockedReason);
+        if (!File.Exists(archivePath))
+            return CoreMessages.ListFailure(CoreMessages.Text(MessageCode.SourceNotFound, archivePath));
 
         try
         {
@@ -1061,6 +1075,12 @@ public sealed class ZipArchiveService : IArchiveService
             }, cancellationToken).ConfigureAwait(false);
 
             return new ArchiveListResult { Success = true, Entries = entries };
+        }
+        catch (InvalidDataException) when (!IsZipFile(archivePath))
+        {
+            // T-F221: .NET's own "Central Directory corrupt" for a file that was never a ZIP (an
+            // empty or garbage stdin, a text file) said nothing useful.
+            return CoreMessages.ListFailure(CoreMessages.Text(MessageCode.NotAnArchiveList));
         }
         catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException)
         {

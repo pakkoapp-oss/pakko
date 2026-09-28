@@ -90,6 +90,9 @@
   <data name="NotAnArchiveTest" xml:space="preserve">
     <value>Tệp không có định dạng kho lưu trữ được nhận dạng và không thể kiểm tra.</value>
   </data>
+  <data name="NotAnArchiveList" xml:space="preserve">
+    <value>Tệp không có định dạng kho lưu trữ được nhận dạng và không thể hiển thị nội dung.</value>
+  </data>
   <data name="UnsupportedByZipEngine" xml:space="preserve">
     <value>Định dạng {0} không được hỗ trợ. Chỉ hỗ trợ các định dạng dựa trên ZIP.</value>
   </data>

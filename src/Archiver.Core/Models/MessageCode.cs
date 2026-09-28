@@ -38,6 +38,7 @@ public enum MessageCode
     // Archives being extracted, tested or listed
     NotAnArchiveExtract,
     NotAnArchiveTest,
+    NotAnArchiveList,
     UnsupportedByZipEngine,
     FormatBlocked,
     TarExtractionDisabled,

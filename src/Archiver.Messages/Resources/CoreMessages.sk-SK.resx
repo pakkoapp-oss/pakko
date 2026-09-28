@@ -90,6 +90,9 @@
   <data name="NotAnArchiveTest" xml:space="preserve">
     <value>Súbor nemá rozpoznaný formát archívu a nie je možné ho otestovať.</value>
   </data>
+  <data name="NotAnArchiveList" xml:space="preserve">
+    <value>Súbor nemá rozpoznaný formát archívu a jeho obsah nie je možné zobraziť.</value>
+  </data>
   <data name="UnsupportedByZipEngine" xml:space="preserve">
     <value>Formát {0} nie je podporovaný. Podporované sú len formáty založené na ZIP.</value>
   </data>

@@ -656,15 +656,16 @@ public sealed class CliSubprocessTests
     // ArchiveError is recorded), so these tests assert the new loud-error behavior instead. See
     // DECISIONS.md's T-F116/T-F117 entries.
     [Fact]
-    public void Extract_SiWithEmptyStdin_ErrorsAsUnrecognizedArchive()
+    public void Extract_SiWithEmptyStdin_SaysStdinWasEmpty()
     {
         string destDir = CliFixtureFiles.CreateScratchDir();
 
         (int exitCode, byte[] stdOut, string stdErr) = CliProcessRunner.RunWithBinaryStdio(
             stdinBytes: [], "x", "-si", $"-o{destDir}");
 
+        // T-F221 item 4: said as what it is, not as an unrecognized archive under a temp name.
         exitCode.Should().Be(2);
-        stdErr.Should().Contain("File is not a recognized archive format");
+        stdErr.Should().Contain("stdin was empty");
         Directory.GetFiles(destDir, "*", SearchOption.AllDirectories).Should().BeEmpty();
     }
 

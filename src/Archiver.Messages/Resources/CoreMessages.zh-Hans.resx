@@ -90,6 +90,9 @@
   <data name="NotAnArchiveTest" xml:space="preserve">
     <value>文件不是可识别的压缩包格式，无法测试。</value>
   </data>
+  <data name="NotAnArchiveList" xml:space="preserve">
+    <value>文件不是可识别的压缩包格式，无法列出其内容。</value>
+  </data>
   <data name="UnsupportedByZipEngine" xml:space="preserve">
     <value>不支持 {0} 格式。仅支持基于 ZIP 的格式。</value>
   </data>

@@ -46,6 +46,7 @@ public static class MessageTemplates
 
         [MessageCode.NotAnArchiveExtract] = "File is not a recognized archive format and cannot be extracted.",
         [MessageCode.NotAnArchiveTest] = "File is not a recognized archive format and cannot be tested.",
+        [MessageCode.NotAnArchiveList] = "File is not a recognized archive format and cannot be listed.",
         [MessageCode.UnsupportedByZipEngine] = "{0} format is not supported. Only ZIP-based formats are supported.",
         [MessageCode.FormatBlocked] = "This archive format ({0}) is blocked by Group Policy.",
         [MessageCode.TarExtractionDisabled] = "tar.exe-based extraction is disabled by Group Policy.",

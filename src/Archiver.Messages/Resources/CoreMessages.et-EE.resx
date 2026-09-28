@@ -90,6 +90,9 @@
   <data name="NotAnArchiveTest" xml:space="preserve">
     <value>Fail pole tuvastatud arhiivivormingus ja seda ei saa testida.</value>
   </data>
+  <data name="NotAnArchiveList" xml:space="preserve">
+    <value>Fail pole tuvastatud arhiivivormingus ja selle sisu ei saa kuvada.</value>
+  </data>
   <data name="UnsupportedByZipEngine" xml:space="preserve">
     <value>Vormingut {0} ei toetata. Toetatakse ainult ZIP-põhiseid vorminguid.</value>
   </data>

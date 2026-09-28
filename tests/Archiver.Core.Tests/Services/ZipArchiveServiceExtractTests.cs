@@ -296,7 +296,7 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
     }
 
     [Fact]
-    public async Task ExtractAsync_NonExistentPath_ReportsErrorAsUnrecognizedFormat()
+    public async Task ExtractAsync_NonExistentPath_ReportsNotFound()
     {
         var options = new ExtractOptions
         {
@@ -306,10 +306,10 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
 
         ArchiveResult result = await _sut.ExtractAsync(options);
 
-        // T-F117: non-existent file fails the magic-byte check the same way unrecognized bytes
-        // do — now a real error rather than a silent skip.
+        // T-F117 made a missing file a real error; T-F221 says what it is ("not found", not "not a
+        // recognized archive format").
         result.Success.Should().BeFalse();
-        result.Errors.Should().ContainSingle(e => e.Message == "File is not a recognized archive format and cannot be extracted.");
+        result.Errors.Should().ContainSingle(e => e.Message == @"Source path does not exist: C:\fake\archive.zip");
     }
 
     [Fact]

@@ -90,6 +90,9 @@
   <data name="NotAnArchiveTest" xml:space="preserve">
     <value>הקובץ אינו בתבנית ארכיון מוכרת ולא ניתן לבדוק אותו.</value>
   </data>
+  <data name="NotAnArchiveList" xml:space="preserve">
+    <value>הקובץ אינו בתבנית ארכיון מוכרת ולא ניתן להציג את תוכנו.</value>
+  </data>
   <data name="UnsupportedByZipEngine" xml:space="preserve">
     <value>התבנית {0} אינה נתמכת. רק תבניות המבוססות על ZIP נתמכות.</value>
   </data>

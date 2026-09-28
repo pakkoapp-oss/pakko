@@ -93,6 +93,8 @@ public static class FileHashService
         {
             if (Directory.Exists(paths[i]))
                 ordered[i] = CoreMessages.HashError(paths[i], CoreMessages.Text(MessageCode.HashFolderSkipped));
+            else if (!File.Exists(paths[i]))
+                ordered[i] = CoreMessages.HashError(paths[i], CoreMessages.Text(MessageCode.SourceNotFound, paths[i]));
             else
                 fileIndices.Add(i);
         }

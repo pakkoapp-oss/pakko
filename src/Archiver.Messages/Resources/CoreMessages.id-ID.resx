@@ -90,6 +90,9 @@
   <data name="NotAnArchiveTest" xml:space="preserve">
     <value>File bukan format arsip yang dikenali dan tidak dapat diuji.</value>
   </data>
+  <data name="NotAnArchiveList" xml:space="preserve">
+    <value>File bukan format arsip yang dikenali dan isinya tidak dapat ditampilkan.</value>
+  </data>
   <data name="UnsupportedByZipEngine" xml:space="preserve">
     <value>Format {0} tidak didukung. Hanya format berbasis ZIP yang didukung.</value>
   </data>

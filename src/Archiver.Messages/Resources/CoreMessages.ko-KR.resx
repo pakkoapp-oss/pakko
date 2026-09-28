@@ -90,6 +90,9 @@
   <data name="NotAnArchiveTest" xml:space="preserve">
     <value>파일이 인식되는 보관 파일 형식이 아니어서 테스트할 수 없습니다.</value>
   </data>
+  <data name="NotAnArchiveList" xml:space="preserve">
+    <value>파일이 인식되는 보관 파일 형식이 아니어서 내용을 표시할 수 없습니다.</value>
+  </data>
   <data name="UnsupportedByZipEngine" xml:space="preserve">
     <value>{0} 형식은 지원되지 않습니다. ZIP 기반 형식만 지원됩니다.</value>
   </data>

@@ -90,6 +90,9 @@
   <data name="NotAnArchiveTest" xml:space="preserve">
     <value>Το αρχείο δεν έχει αναγνωρισμένη μορφή αρχειοθήκης και δεν μπορεί να ελεγχθεί.</value>
   </data>
+  <data name="NotAnArchiveList" xml:space="preserve">
+    <value>Το αρχείο δεν έχει αναγνωρισμένη μορφή αρχειοθήκης και τα περιεχόμενά του δεν μπορούν να εμφανιστούν.</value>
+  </data>
   <data name="UnsupportedByZipEngine" xml:space="preserve">
     <value>Η μορφή {0} δεν υποστηρίζεται. Υποστηρίζονται μόνο μορφές που βασίζονται σε ZIP.</value>
   </data>

@@ -90,6 +90,9 @@
   <data name="NotAnArchiveTest" xml:space="preserve">
     <value>الملف ليس بتنسيق أرشيف معروف ولا يمكن اختباره.</value>
   </data>
+  <data name="NotAnArchiveList" xml:space="preserve">
+    <value>الملف ليس بتنسيق أرشيف معروف ولا يمكن عرض محتوياته.</value>
+  </data>
   <data name="UnsupportedByZipEngine" xml:space="preserve">
     <value>التنسيق {0} غير مدعوم. التنسيقات المستندة إلى ZIP فقط مدعومة.</value>
   </data>

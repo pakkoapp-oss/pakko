@@ -90,6 +90,9 @@
   <data name="NotAnArchiveTest" xml:space="preserve">
     <value>Failas nėra atpažinto archyvo formato ir jo negalima patikrinti.</value>
   </data>
+  <data name="NotAnArchiveList" xml:space="preserve">
+    <value>Failas nėra atpažinto archyvo formato, todėl jo turinio negalima parodyti.</value>
+  </data>
   <data name="UnsupportedByZipEngine" xml:space="preserve">
     <value>Formatas {0} nepalaikomas. Palaikomi tik ZIP pagrindu sukurti formatai.</value>
   </data>

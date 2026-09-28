@@ -90,6 +90,9 @@
   <data name="NotAnArchiveTest" xml:space="preserve">
     <value>Datoteka nima prepoznane oblike arhiva in je ni mogoče preskusiti.</value>
   </data>
+  <data name="NotAnArchiveList" xml:space="preserve">
+    <value>Datoteka nima prepoznane oblike arhiva, zato njene vsebine ni mogoče prikazati.</value>
+  </data>
   <data name="UnsupportedByZipEngine" xml:space="preserve">
     <value>Oblika {0} ni podprta. Podprte so le oblike, ki temeljijo na ZIP.</value>
   </data>

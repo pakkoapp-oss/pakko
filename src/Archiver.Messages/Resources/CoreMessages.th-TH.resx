@@ -90,6 +90,9 @@
   <data name="NotAnArchiveTest" xml:space="preserve">
     <value>ไฟล์ไม่ใช่รูปแบบไฟล์บีบอัดที่รู้จักและไม่สามารถทดสอบได้</value>
   </data>
+  <data name="NotAnArchiveList" xml:space="preserve">
+    <value>ไฟล์ไม่ใช่รูปแบบไฟล์บีบอัดที่รู้จักและไม่สามารถแสดงเนื้อหาได้</value>
+  </data>
   <data name="UnsupportedByZipEngine" xml:space="preserve">
     <value>ไม่รองรับรูปแบบ {0} รองรับเฉพาะรูปแบบที่ใช้ ZIP เท่านั้น</value>
   </data>

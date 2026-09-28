@@ -90,6 +90,9 @@
   <data name="NotAnArchiveTest" xml:space="preserve">
     <value>A fájl nem felismert archívumformátumú, ezért nem tesztelhető.</value>
   </data>
+  <data name="NotAnArchiveList" xml:space="preserve">
+    <value>A fájl nem felismert archívumformátumú, ezért a tartalma nem jeleníthető meg.</value>
+  </data>
   <data name="UnsupportedByZipEngine" xml:space="preserve">
     <value>A(z) {0} formátum nem támogatott. Csak a ZIP-alapú formátumok támogatottak.</value>
   </data>
