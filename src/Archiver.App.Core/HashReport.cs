@@ -29,8 +29,9 @@ public static class HashReport
     }
 
     /// <summary>
-    /// The copied text: one "hash  name" line per hashed file, the format <c>sha256sum -c</c>
-    /// reads back. Files that failed are left out.
+    /// The copied text: one "hash  name" line per hashed file, <c>sha256sum</c>'s layout (a
+    /// Windows name with backslashes is not guaranteed to verify back with <c>sha256sum -c</c>).
+    /// Files that failed are left out.
     /// </summary>
     public static string CopyText(HashResult result, IReadOnlyList<string> requested) =>
         string.Join(Environment.NewLine, result.Entries

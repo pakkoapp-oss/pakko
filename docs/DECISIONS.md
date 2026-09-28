@@ -10263,5 +10263,7 @@ with items in the pending list, "Hash..." hashes those (one listed folder gets `
 folder mode, several items hash files and report folders as skipped, as Shell's `--hash` does);
 an empty list still opens the file picker. A file found inside a listed folder is named relative
 to that folder's parent. A "Copy" button (dialog stays open) copies one `hash  name` line per
-hashed file, the format `sha256sum -c` reads back; failed files are left out. Logic in App.Core
+hashed file, `sha256sum`'s layout (names keep Windows backslashes, so `sha256sum -c` is not
+promised to read it back); failed files are left out. A listed folder was checked through the real
+`FileHashService` (`ListedFolder_ThroughFileHashService_IsNamedUnderTheFolder`). Logic in App.Core
 `HashReport` (`HashReportTests`); the dialog glue has no unit test (WinUI `ContentDialog`).

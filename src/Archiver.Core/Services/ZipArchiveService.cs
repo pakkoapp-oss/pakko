@@ -1171,9 +1171,17 @@ public sealed class ZipArchiveService : IArchiveService
     // finishing a multi-gigabyte entry first.
     private static void DrainForTest(Stream stream, CancellationToken cancellationToken)
     {
-        byte[] buffer = new byte[1024 * 1024];
-        while (stream.Read(buffer, 0, buffer.Length) > 0)
-            cancellationToken.ThrowIfCancellationRequested();
+        // Pooled, as CopyTo's own buffer: called once per entry of an archive with many small files.
+        byte[] buffer = System.Buffers.ArrayPool<byte>.Shared.Rent(81920);
+        try
+        {
+            while (stream.Read(buffer, 0, buffer.Length) > 0)
+                cancellationToken.ThrowIfCancellationRequested();
+        }
+        finally
+        {
+            System.Buffers.ArrayPool<byte>.Shared.Return(buffer);
+        }
     }
 
     // T-F189: reuses the exact same EncryptedZipEntryReader/VerifyingReadStream machinery as

@@ -4382,7 +4382,7 @@ real console) and T-F226's deferred per-arrow diagram ritual — carried as open
 
 ### T-F198 — UI quick fixes from the 2026-09-24 UI/UX review
 
-- [x] **Status:** done 2026-09-29 — item 5 not reproduced on 1.5.0.33: cold launch, first render of the create-mode window, all unchecked CheckBoxes empty (zoomed region capture). Earlier sightings came after automation had toggled boxes (see the UIA-toggle note in the project memory); reopen if a real click shows it.
+- [x] **Status:** done 2026-09-29 — item 5 not reproduced: first render of the create-mode window on 1.5.0.33 (cold AppsFolder launch, empty list; zoomed region capture) and on 1.5.0.34 (Shell `--open-ui --archive` with a file and a folder listed) shows every unchecked CheckBox empty. The cause of the 1.5.0.32 first-render dash (UIA `Off`, before any toggle) stays unknown; reopen if it is seen again.
 - **Progress (2026-09-28, fix phase 7):** items 1 and 7 fixed in 4b6ce03 — list words ("Folder"/"File"/size units), the busy status lines, every dialog's Yes/No/OK and the "Error" titles come from the App's resources in 37 locales (App.Core's `DisplayText`, set by the App at startup; the preview path reads `FileItem.IsFolder`). Device (Deploy 1.5.0.16, uk-UA): browse error dialog "Помилка ... Гаразд". Items 2-6 stay for wave 4 (T-F199).
 - **Progress (2026-09-28, T-F199 step 8):** items 2 and 6 fixed (row names, lock, Up buttons, ComboBox labels, Cancel name, decrypt PasswordBox name); device 1.5.0.32.
 - **Progress (2026-09-28, T-F199 step 5):** item 3 closed — the Encrypt dialog is gone (password inline), so no prompt is open while the status says "Стиснення...". Device 1.5.0.26.
@@ -4852,7 +4852,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 
 ### T-F213 — Auto archive name for several sources is "archive", not the first item's name (P1)
 
-- [x] **Status:** done 2026-09-29 — device 1.5.0.33/1.5.0.34, G1 App pass via `windows` MCP: folders dir + alpha, Name empty -> placeholder "g1.zip (авто)" and the archive is g1.zip (parent folder, as Explorer; T-F264). Drive-letter naming for a drive root stays P2 wish, not filed.
+- [x] **Status:** done 2026-09-29 — device 1.5.0.33/1.5.0.34, G1 App pass via `windows` MCP: folders dir + alpha, Name empty -> placeholder "g1.zip (авто)" and the archive is g1.zip (parent folder, as Explorer; T-F264). Drive-root naming is filed as T-F281.
 - **Status (was):** open. App create mode, One archive, Name left empty (placeholder "Авто (за назвою
   першого файлу/папки)"), two folders `s2` + `s4` -> `archive.zip` (TAR: `archive.tar`). The
   placeholder promises `s2.zip`. Either follow the placeholder or change it. Explorer multi-select
@@ -4933,7 +4933,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 - [x] **Status:** done 2026-09-29 — device 1.5.0.33/1.5.0.34, G1 App pass via `windows` MCP: "Хеш..." with 2 listed files opened the SHA-256 dialog directly; values match `Get-FileHash`; Copy kept the dialog open and put `hash  name` lines on the clipboard.
 - **Progress (2026-09-29, G1):** "Hash..." hashes the pending list (picker only when it is
   empty), names files under a listed folder relative to it, and has a Copy button (`hash  name`
-  lines, `sha256sum -c` format). **SHA-256 only kept — user decision again** (T-F164 stands; see
+  lines, `sha256sum`'s layout). **SHA-256 only kept — user decision again** (T-F164 stands; see
   `docs/DECISIONS.md`'s T-F219 entry). App.Core `HashReport` + `HashReportTests`; `HashCopyButton`
   in 37 locales. Device check in G1's App pass.
 - **Was:** open. With items already in the list, "Хеш..." opens a separate file picker; the
@@ -5002,7 +5002,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 
 ### T-F224 — Minimum window height 780 exceeds small screens (P1)
 
-- [x] **Status:** done 2026-09-29 — device 1.5.0.33/1.5.0.34, G1 App pass via `windows` MCP: `PreferredMinimumHeight` is 520 now; at 1352x721 (1366x768 work area) and 1266x665 (1920x1080 at 150%) every control is reachable. Residual (P3, not filed): below ~600 px the option cards clip without scrolling; the footer and primary actions stay visible.
+- [x] **Status:** done 2026-09-29 — device 1.5.0.33/1.5.0.34, G1 App pass via `windows` MCP: `PreferredMinimumHeight` is 520 now; at 1352x721 (1366x768 work area) and 1266x665 (1920x1080 at 150%) every control is reachable. Residual filed as T-F282: below ~600 px the option cards clip without scrolling.
 - **Status (was):** open. `MainWindow.xaml.cs` sets `PreferredMinimumWidth = 900`,
   `PreferredMinimumHeight = 780` (T-F106's blank-row fix). On a 1366x768 display at 100% (work
   area ~728 px after the taskbar) the window probably cannot fit, leaving the bottom rows
@@ -6289,7 +6289,7 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   `AppWindow.Show(false)` or a fake `WM_ACTIVATE` before or after `Activate()`; showing without
   `Activate()` (`AppWindow.Show(false)` alone, `SW_SHOWNA` alone); an external `RedrawWindow`,
   `SWP_FRAMECHANGED` and a 1 px resize. No matching WinAppSDK 1.8.x fix in its release notes.
-  **Not reproduced 2026-09-29 on 1.5.0.34:** the same `Start-Process` `--test <corrupt.zip>` launch from a background shell; the window opened inactive, behind the App, and rendered fully once moved into view (no activation). G3 is dropped per plan 8.8 unless it recurs.
+  **Not reproduced 2026-09-29 on 1.5.0.34, 4 of 4 launches:** the same `Start-Process` `--test <corrupt.zip>` from a background shell. Once behind the App (rendered when moved into view, no activation), then three times with every App window minimized: the window stayed inactive and pixel sampling in place showed the full content each time. G3 is dropped per plan 8.8 unless it recurs.
   **Not verified:** the real Explorer flow. There Shell holds the click's foreground right and
   passes it to the helper (`AllowSetForegroundWindow`), so the black window is expected only when
   that right is gone by the time the window shows. Example: the user switches to another app
@@ -6536,7 +6536,7 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 
 ### T-F276 — Explorer and Core still say "archiving" where the App says "compress" (P3)
 
-- [x] **Status:** done 2026-09-29 — device 1.5.0.33/1.5.0.34, G1 App pass via `windows` MCP: Explorer compress window title "Стиснення: rand".
+- [x] **Status:** done 2026-09-29 — device 1.5.0.33/1.5.0.34, G1 App pass via `windows` MCP: Explorer compress window title "Стиснення: rand"; `pakko a` on a folder with a junction prints "...are not followed during compression." on stderr.
 - **Progress (2026-09-29, G1):** fixed in 37 locales — `TitleArchiving` ("Compressing: {0}",
   uk "Стиснення: {0}"), `FolderLinkNotFollowed` and `UnknownArchivingError` (English in
   `MessageTemplates`: "...during compression.", "Unknown error while compressing."); keys and codes
@@ -6552,7 +6552,7 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 
 ### T-F277 — Browse-mode Test: Cancel resets the status to "Ready" (P3)
 
-- [x] **Status:** done 2026-09-29 — device 1.5.0.33/1.5.0.34, G1 App pass via `windows` MCP: browse Test + Cancel keeps "Скасовано" in the footer after the 2 s hold.
+- [x] **Status:** done 2026-09-29 — device 1.5.0.33/1.5.0.34, G1 App pass via `windows` MCP: browse Test + Cancel and browse Scan + Cancel (30 x 32 MiB random entries) both keep "Скасовано" in the footer after the 2 s hold.
 - **Progress (2026-09-29, G1):** a cancelled browse Test now keeps "Cancelled" as the footer
   result (`SetOutcome`, T-F211); browse "Scan for threats" had the same gap plus no T-F70 2-second
   hold — both fixed the same way. `MainViewModel` only (no App.Core seam, no unit test); device
@@ -6584,10 +6584,10 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   cancel (the T-F268 fix covered only the loop between archives) and read each entry with
   `CopyTo(Stream.Null)`, which never looks at the token — so a cancel during one archive finished
   it and reported it clean; the App showed "Помилок не виявлено" (6 GiB single-entry ZIP, browse
-  Test + Cancel, 1.5.0.33). Now `ThrowIfCancellationRequested` and a 1 MiB-chunk drain
-  (`DrainForTest`) that checks the token, also for encrypted entries. Test:
+  Test + Cancel, 1.5.0.33). Now `ThrowIfCancellationRequested` and a chunked drain
+  (`DrainForTest`, 80 KiB pooled buffer) that checks the token, also for encrypted entries. Test:
   `TestAsync_CancelledInsideOneLargeEntry_StopsAndThrows` (red before the fix). Affects App, Shell
-  and CLI Test alike. Device re-check (App browse Test cancel) in G1's pass.
+  and CLI Test alike. **CHANGELOG v1.6.0:** a cancelled `pakko t` (Ctrl+C) now reports cancellation instead of success. Device re-check (App browse Test cancel) in G1's pass.
 - **Reported by:** G1 device pass for T-F277, 2026-09-29.
 
 ### T-F280 — ZIP Test ignores local-header mismatches that 7-Zip reports (P2)
@@ -6601,6 +6601,24 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   (and maybe extraction) when the local header's name, sizes or CRC disagree with the central
   directory. Tests first; check the cost on large archives (one extra header read per entry).
 - **Reported by:** G1 device pass (T-F268 (f) re-check fixture), 2026-09-29.
+
+### T-F281 — Archive auto-name for a drive-root source is "archive" (P2)
+
+- [ ] **Status:** open. Split out of T-F213 (closed 2026-09-29). Compressing a drive root (App or
+  Explorer) names the archive `archive.zip` by design (T-F99/T-F100); a name from the drive letter
+  or volume label (`C.zip`, `Data (D).zip`) would be friendlier. Naming lives in the shared
+  `ArchiveNaming` rule (T-F264) — change it once for all frontends. Tests first.
+- **Reported by:** T-F202, 2026-09-24 (as part of T-F213).
+
+### T-F282 — Main window: option cards clip below ~600 px height (P3)
+
+- [ ] **Status:** open. Split out of T-F224 (closed 2026-09-29). `PreferredMinimumHeight` is 520,
+  and below about 600 px the create-mode cards ("Новий архів", "Куди і що після") are cut off with
+  no scrolling — Name, Format and the destination become unreachable (886x513 on 1.5.0.34); the
+  footer and primary actions stay visible. Either scroll the options area or raise the minimum to
+  the height where everything fits (it fits at 665). Realistic screens (1366x768, 1920x1080 at
+  150%) are fine.
+- **Reported by:** G1 device pass, 2026-09-29.
 
 ### T-F223 — Diagram gap from T-F193 (P2)
 
