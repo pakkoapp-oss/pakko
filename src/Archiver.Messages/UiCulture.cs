@@ -46,11 +46,9 @@ public static class UiCulture
         if (string.IsNullOrEmpty(tag))
             return null;
 
-        foreach (string supported in Supported)
-        {
-            if (supported.Equals(tag, StringComparison.OrdinalIgnoreCase))
-                return supported;
-        }
+        string? exact = Supported.FirstOrDefault(supported => supported.Equals(tag, StringComparison.OrdinalIgnoreCase));
+        if (exact is not null)
+            return exact;
 
         string[] parts = tag.Split('-');
         string language = parts[0].ToLowerInvariant();
@@ -64,12 +62,7 @@ public static class UiCulture
         if (language == "no")
             language = "nb";
 
-        foreach (string supported in Supported)
-        {
-            if (supported.StartsWith(language + "-", StringComparison.OrdinalIgnoreCase))
-                return supported;
-        }
-        return null;
+        return Supported.FirstOrDefault(supported => supported.StartsWith(language + "-", StringComparison.OrdinalIgnoreCase));
     }
 
     private static bool IsSimplifiedChinese(string[] parts) =>

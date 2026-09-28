@@ -47,6 +47,21 @@ public sealed partial class MessageTextTests
         }
     }
 
+    // A stray brace in one of the hand-written strings would throw FormatException only when that
+    // message is shown; format every one of them here instead.
+    [Theory]
+    [MemberData(nameof(Cultures))]
+    public void EveryTranslation_Formats(string culture)
+    {
+        foreach ((string code, string template) in Read(CultureInfo.GetCultureInfo(culture)))
+        {
+            int count = Placeholders(template).Select(p => int.Parse(p[1..^1], CultureInfo.InvariantCulture)).DefaultIfEmpty(-1).Max() + 1;
+            object[] arguments = [.. Enumerable.Range(0, count).Select(i => (object)("arg" + i))];
+            Func<string> format = () => string.Format(CultureInfo.InvariantCulture, template, arguments);
+            format.Should().NotThrow($"{culture} {code}: {template}").Which.Should().NotBeEmpty();
+        }
+    }
+
     [Fact]
     public void Render_Ukrainian_TranslatesEveryLevelOfANestedMessage()
     {

@@ -11,8 +11,8 @@ namespace Archiver.Core.Models;
 /// </summary>
 public sealed class CoreText
 {
-    // Core nests at most three levels (outer error -> tar.exe failure -> unreadable-name detail);
-    // the limit only guards the recursive Render against a construction bug.
+    // Core nests at most three levels: an outer error, the tar.exe failure inside it, and the
+    // unreadable-name detail inside that. The limit only guards the recursive Render against a bug.
     private const int MaxDepth = 8;
 
     internal CoreText(MessageCode code, params object[] arguments)

@@ -4596,7 +4596,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 
 ### T-F208 — Archiver.Shell dialog titles and size units are English in a localized UI (P1)
 
-- [x] **Progress (2026-09-28, fix phase 7):** already done by T-F268's `OperationText.resx`; device (Deploy 1.5.0.16, uk-UA): title "Тестування: sr.tar.gz", sizes in local units. Closed.
+- [x] **Progress (2026-09-28, fix phase 7):** already done by T-F268's `OperationText.resx`; device (Deploy 1.5.0.16, uk-UA): title "Тестування: sr.tar.gz", hash titles "CRC-32 (файлів: 2)"/"SHA-256: bomb.zip", folder hash "Розмір: 50 КБ (51 093 Б)". Closed.
 
 - [ ] **Status:** open. Under uk-UA: progress/result titles "Testing: X", "Testing 2 archives",
   "Scanning: X", "Extracting: X", "Archiving: X", "CRC-32: 2 files"; hash result "Розмір: 6 B
@@ -4700,7 +4700,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 
 ### T-F217 — Shell declines a compression bomb with no way forward (P2)
 
-- [x] **Progress (2026-09-28, fix phase 7):** fixed in c17d5bc — Explorer asks (operation window `AskConfirm`/`ConfirmAnswer`, protocol 2; Win32 `ShellConfirmDialog` fallback), declining is the default and Esc/close/failure is no. SECURITY.md updated (user-approved). Device (Deploy 1.5.0.16): Esc -> skipped with the Ukrainian reason, nothing written; Видобути -> 50 MB extracted. Closed.
+- [x] **Progress (2026-09-28, fix phase 7):** fixed in c17d5bc — Explorer asks (operation window `AskConfirm`/`ConfirmAnswer`, protocol 2; Win32 `ShellConfirmDialog` fallback), declining is the default and Esc/close/failure is no. SECURITY.md updated (user-approved). Device (Deploy 1.5.0.16): Esc -> skipped with the Ukrainian reason, nothing written; Видобути -> 50 MB extracted. Win32 fallback (helper killed during the question): TaskDialog topmost, Ukrainian, Esc -> skipped, nothing written. Closed.
 
 - [ ] **Status:** open. Explorer "Extract here" on a 1029:1 ZIP -> "Пропущено (1): Suspicious
   compression ratio ... declined as a precaution" — no confirm (the App asks via
@@ -5563,7 +5563,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 
 ### T-F253 — Explorer's conflict dialog opens behind other windows and names only the file (P2)
 
-- [~] **Progress (2026-09-28, fix phase 7):** fixed in 18a16d1 — the Win32 fallback conflict dialog goes topmost on TDN_CREATED and names the full path plus both files' size/date. The operation window (normal path) already did both. Fallback-path device check pending.
+- [x] **Progress (2026-09-28, fix phase 7):** fixed in 18a16d1 — the Win32 fallback conflict dialog goes topmost on TDN_CREATED and names the full path plus both files' size/date. The operation window (normal path) already did both. Device (Deploy 1.5.0.16, helper killed during the prompt so Shell fails over): the TaskDialog is WS_EX_TOPMOST and shows the full path and both files' size/date. Closed.
 
 - [ ] **Status:** open — confirmed on device 2026-09-25. `ShellConflictDialog` calls
   `TaskDialogIndirect` with no owner and none of the Z-order handling `PasswordDialog` needed
@@ -5601,7 +5601,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 
 ### T-F255 — Explorer's password dialog silently cuts passwords at 255 characters (P2)
 
-- [~] **Progress (2026-09-28, fix phase 7):** fixed in 18a16d1 — the read-back is sized from `GetWindowTextLength` (test with a real edit control, 0-4096 chars; a 256-cap mutant fails), "Show password" restores the control's own mask. Fallback-path device check pending.
+- [x] **Progress (2026-09-28, fix phase 7):** fixed in 18a16d1 — the read-back is sized from `GetWindowTextLength` (test with a real edit control, 0-4096 chars; a 256-cap mutant fails), "Show password" restores the control's own mask. Device (Deploy 1.5.0.16, fallback via a killed helper): a ZipCrypto archive with a 300-character password (made with 7za) extracts after pasting it. Closed.
 
 - [ ] **Status:** open — code-confirmed 2026-09-25. `PasswordDialog.OnCommand` reads the edit
   control into a fixed `char[256]` (`PasswordDialog.cs:133-135`) and the template sets no

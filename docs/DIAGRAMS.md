@@ -174,7 +174,7 @@ sequenceDiagram
                 ShellExe->>Dlg: session.Dispose() → StopProgressDialog — no message at all<br/>T-F269: the one token stops the whole selection, later archives never start
             else Core completes
                 Core-->>ShellExe: ArchiveResult, one per archive combined into one (extract commands)<br/>(TestAsync: CreatedFiles always empty — nothing is written to disk)
-                Note over ShellExe: OperationMessages via ShellResultPresenter.Classify(result) (T-F68):<br/>Failed (!Success or Errors.Count>0) wins over SkippedOnly wins over Success.<br/>Test adds No errors detected on success, joined with a skipped list<br/>into ONE message (T-F216) — success has no visible disk side effect
+                Note over ShellExe: OperationMessages by result.Outcome (T-F260, fix phase 7):<br/>Failed lists errors, CompletedWithSkips and NothingDone list skips, Completed shows nothing.<br/>Test adds No errors detected only when an archive was really read — never for NothingDone (T-F274)<br/>— into ONE message (T-F216). Reasons are rendered in the UI language (T-F209)
                 ShellExe->>Dlg: session.Complete(message) → StopProgressDialog first
                 opt message is not null (Extract/Archive success has none)
                     ShellExe->>User: MessageBoxW(text, MB_ICONERROR / MB_ICONWARNING / MB_ICONINFORMATION by severity,<br/>max 10 lines + and-N-more line) — T-F68: a skipped-only run is no longer silent.<br/>T-F268: shown even when no progress window could be created (was skipped before)
@@ -335,7 +335,8 @@ adding `Zip/ZipArchiveReader` and `ArchiveEntrySecurity.HasReservedName`): `Extr
 
 ```mermaid
 flowchart TD
-    P0{"ExtractAsync outer loop, per archive: zip blocked by<br/>Group Policy? (T-F250 — also catches an Unknown-detected ZIP)"} -- yes --> P1["SkippedFiles += policy reason,<br/>archive not opened"]
+    PM{"ExtractAsync outer loop, per archive:<br/>file missing? (T-F221)"} -- yes --> PM1["Errors += SourceNotFound<br/>(not 'not a recognized archive')"]
+    PM -- no --> P0{"zip blocked by Group Policy?<br/>(T-F250 — also catches an Unknown-detected ZIP)"} -- yes --> P1["SkippedFiles += policy reason,<br/>archive not opened"]
     P0 -- no --> A0["ZipArchiveReader.Open: allEntries = every ZIP entry, files AND folder entries (T-F197),<br/>each with its name decoded by 7-Zip's rule, never ZipArchiveEntry.FullName (T-F234)"] --> A1{"T-F05: options.SelectedEntryPaths<br/>set and non-empty?"}
     A1 -- no --> A2["entries = allEntries.<br/>isSingleRootFolder/isSingleRootFile computed over files AND folders<br/>(a.txt + empty/ is MultiRoot), then<br/>ExtractionDestinationPlanner.Classify → RootShape (T-F157)"]
     A1 -- yes --> A3["entries = allEntries filtered to the selected paths<br/>+ anything nested under a selected folder path<br/>→ RootShape.SelectedSubset"]
@@ -384,7 +385,7 @@ flowchart TD
 ```
 
 **Fix phase 5 (2026-09-28).** A blocked `zip` is refused per archive before the reader opens it
-(P0/P1, T-F250; `TestAsync` and `ListEntriesAsync` refuse the same way). When nothing was extracted
+(P0/P1, T-F250; `TestAsync` and `ListEntriesAsync` refuse the same way; T-F221: all three report a missing file as `SourceNotFound` first, and listing a file that is not a ZIP gives `NotAnArchiveList`). When nothing was extracted
 only because the user answered Skip, no whole-archive warning is added (NU/N4, T-F216); the source
 still never counts as fully processed.
 
@@ -454,6 +455,8 @@ shows a dedicated `MB_ICONWARNING` dialog ("N entries skipped: ...") whenever
 result.Errors.Count > 0`. `ArchiveResult.Success` itself is unchanged (still `errors.Count == 0`,
 per node O above) — only the shell's dialog *trigger* was widened; see `DECISIONS.md`'s "T-F68"
 entry for the two options considered and why widening the trigger (not `Success`) was chosen.
+**Update (fix phase 7, T-F260):** Shell now chooses the message by `ArchiveResult.Outcome`;
+`ShellResultPresenter.Classify` is gone and `Success` is derived from `Errors`.
 
 **Corrected in this redraw:** the `OnConflict` gate is not three parallel branches for three enum
 values. The code is two sequential `if`s with no `else` — `Skip` and `Rename` are handled
@@ -588,7 +591,7 @@ flowchart TD
     Q2 -- yes --> Q3["SkippedFiles += whole-archive entry<br/>(Path == archivePath); caller does NOT<br/>add this archive to CreatedFiles"]
     Q2 -- no --> Q
     Q3 --> Q["return destDir<br/>(finally: staging disposed; scope.Dispose() — archive closed,<br/>quarantine root deleted, AppContainer SID handle released;<br/>the AppContainer PROFILE itself is never deleted)"]
-    Q --> R{{"ArchiveResult.Success = errors.Count==0 (ExtractAsync). T-F260: the outer loop records one SourceResult per archive (same rule as diagram 3's node O); DeleteAfterOperation reads only FullyProcessedSources"}}
+    Q --> R{{"ArchiveResult.Success is derived (no errors) and Outcome classifies the call (fix phase 7). T-F260: the outer loop records one SourceResult per archive (same rule as diagram 3's node O); DeleteAfterOperation reads only FullyProcessedSources"}}
 ```
 
 **What this catches — the confirmed exploit, and one new finding:**

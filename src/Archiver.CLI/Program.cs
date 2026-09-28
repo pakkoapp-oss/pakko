@@ -97,7 +97,7 @@ static async Task<int> RunExtractAsync(ParsedCliCommand command, PakkoServices s
     // T-F160: cancelled by the conflict prompt's (Q)uit / end of input, or by Ctrl+C — either way a
     // clean Core cancellation (temp output removed) and exit code 255, 7-Zip's "user stopped".
     using var cancellation = CliCancellation.ListenToConsole();
-    CliProgress? progress = CliProgress.ForConsole();
+    var progress = CliProgress.ForConsole();
     try
     {
         IExtractionRouter router = await services.CreateExtractionRouterAsync().ConfigureAwait(false);
@@ -328,7 +328,7 @@ static async Task<int> RunTestAsync(ParsedCliCommand command, PakkoServices serv
             return emptyStdin;
         IReadOnlyList<string> archivePaths = ArchivePathsFor(command, stdinFolder);
 
-        CliProgress? progress = CliProgress.ForConsole();
+        var progress = CliProgress.ForConsole();
         var report = new CliReportContext
         {
             StdinPath = StdinPathFor(stdinFolder),
@@ -404,7 +404,7 @@ static async Task<int> RunArchiveAsync(ParsedCliCommand command, PakkoServices s
         ArchiveOptions options = BuildArchiveOptions(command, ResolveArchiveDestination(command, stdoutFolder), prompt);
 
         // The encryption password is asked before any work starts, so no progress is on screen yet.
-        CliProgress? progress = CliProgress.ForConsole();
+        var progress = CliProgress.ForConsole();
         ArchiveResult result = await router.ArchiveAsync(options, progress, cancellation.Token).ConfigureAwait(false);
         progress?.Clear();
         if (ReportNewPasswordPromptOutcome(prompt.Value) is { } promptExitCode)
@@ -615,6 +615,17 @@ static async Task PrintHashFolderSummaryAsync(FolderHashSummary folder, string l
 // Shared: prints errors/skipped files to stderr, maps ArchiveResult onto the exit-code table
 // (0 clean success, 1 success with warnings, 2 operation failed).
 // -------------------------------------------------------------------------
+// T-F221 items 2-3: the way forward, not only what went wrong.
+static void PrintHints(ArchiveResult result, CliReportContext report)
+{
+    if (!report.PasswordGiven
+        && result.Errors.Any(e => e.Text?.Code is MessageCode.PasswordProtectedExtract or MessageCode.PasswordProtectedTest))
+        Console.Error.WriteLine("pakko: hint: give the password with -p<password>");
+    if (report.KeptExistingByDefault
+        && result.SkippedFiles.Any(s => s.Text?.Code is MessageCode.AllEntriesSkipped or MessageCode.FileExistsAtDestination))
+        Console.Error.WriteLine("pakko: hint: existing files were kept; -aoa overwrites them, -aou renames the extracted ones");
+}
+
 static int ReportResult(ArchiveResult result, CliReportContext report)
 {
     foreach (ArchiveError error in result.Errors.Where(e => !report.IsAlreadyReported(e)))
@@ -625,13 +636,7 @@ static int ReportResult(ArchiveResult result, CliReportContext report)
         Console.Error.WriteLine($"pakko: skipped: {name}: {skipped.Reason}");
     }
 
-    // T-F221 items 2-3: the way forward, not only what went wrong.
-    if (!report.PasswordGiven
-        && result.Errors.Any(e => e.Text?.Code is MessageCode.PasswordProtectedExtract or MessageCode.PasswordProtectedTest))
-        Console.Error.WriteLine("pakko: hint: give the password with -p<password>");
-    if (report.KeptExistingByDefault
-        && result.SkippedFiles.Any(s => s.Text?.Code is MessageCode.AllEntriesSkipped or MessageCode.FileExistsAtDestination))
-        Console.Error.WriteLine("pakko: hint: existing files were kept; -aoa overwrites them, -aou renames the extracted ones");
+    PrintHints(result, report);
 
     return result.Outcome switch
     {
