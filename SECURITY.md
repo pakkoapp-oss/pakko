@@ -400,7 +400,10 @@ one-click and unencrypted.
   take a disallowed key at all; one typed key blocks until the field is emptied, so a password
   typed in a Cyrillic layout cannot shrink to its ASCII leftovers (T-F199).
 - **Pakko never logs or persists a password.** A password lives only for the one operation that
-  asked for it ("apply to remaining" spans one multi-archive selection, not the session). Caveat:
+  asked for it ("apply to remaining" spans one multi-archive selection), with one exception: the
+  App's Archive Browser keeps a password that worked for the archive being browsed, in memory
+  only, so previews and extracts from it do not ask again (T-F200). It is forgotten when a
+  password is rejected, when another archive is opened and when the window closes. Caveat:
   `pakko x|t|a -p{pwd}` puts the password on the command line, visible in shell history and the
   process list exactly as with 7-Zip's own `-p` — use a bare `-p` (or, for `x`/`t`, omit it) to get
   the masked interactive prompt instead. The App's new-archive password is typed inline in the

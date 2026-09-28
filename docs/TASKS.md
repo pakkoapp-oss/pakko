@@ -4451,8 +4451,12 @@ real console) and T-F226's deferred per-arrow diagram ritual — carried as open
   `EncryptPasswordRefusedCharacter` (en-US/uk-UA), `EncryptPasswordErrorCharacters` removed.
   Device (1.5.0.27, UIA while the display was off): Cyrillic "...1" in both fields -> layout hint,
   Compress off; clearing only the first field keeps it off; clearing both and typing Secret1 ->
-  on; `7za t -pSecret1` Ok, `-p1` wrong password. CLI prompt: unit-tested only, real-terminal
-  check carried.
+  on; `7za t -pSecret1` Ok, `-p1` wrong password. Visual check after the display woke: "1" kept,
+  hint shown, Compress off. CLI, real terminal (Windows Terminal, 2026-09-28): `pakko a -p` with
+  Cyrillic "...1" shows one `*` and refuses with the layout message, exit 2, no archive; Secret1
+  twice creates the archive (`7za t -pSecret1` Ok); `pakko t`'s decrypt prompt takes Cyrillic
+  (6 `*`). SECURITY.md's "never logs or persists" bullet now names T-F200's browse-session
+  memory (user permission, 2026-09-28).
 
 - **Carried into wave 4 (2026-09-28): device checks left open by fix phase 7** — T-F254 on a
   regional Windows language (e.g. de-AT, zh-CN: menu, Shell windows and App agree on the language);
