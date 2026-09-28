@@ -239,18 +239,9 @@ sequenceDiagram
   archive…" for an all-RAR selection was never correct to begin with. A future change that makes
   these four commands' gates "consistent" by copy-pasting one predicate onto all of them would
   reintroduce either the false-Test-pass bug or hide a legitimate archive action.
-- **T-F99 (2026-07-13): `LaunchShellExe(Build*Args(paths))` can silently corrupt the command line
-  for a drive-root path.** `QuotePath` (called by every `Build*Args` helper feeding into the
-  `ShellExe->>Dlg`/`Core` steps above) wrapped every path in `"..."` unconditionally; for a
-  drive-root path (e.g. `"Z:\"`, reachable via T-F99's new `Type="Drive"` registration above), the
-  trailing backslash immediately before the closing quote escapes the quote itself under
-  Win32/CRT command-line parsing instead of closing the argument — every argument after it in the
-  command line gets swallowed into one corrupted string. `Explorer->>EH: Invoke` and friends still
-  return `S_OK` in this case (`CreateProcess` itself succeeds), so nothing in this diagram's HRESULT
-  flow signals the failure — it only shows up as `Archiver.Shell.exe`/`Archiver.App` silently
-  receiving the wrong arguments, exactly the class of process-boundary contract mismatch this
-  diagram category exists to catch. Fixed by doubling a trailing backslash before quoting; see
-  `DECISIONS.md`'s T-F99 entry.
+- **T-F99 (2026-07-13), obsolete since T-F235 (2026-09-28):** paths no longer go on the command
+  line, so `QuotePath`'s drive-root trailing-backslash corruption cannot recur there; see
+  `DECISIONS.md`'s T-F99 and fix phase 5 entries.
 
 ---
 
@@ -344,7 +335,8 @@ adding `Zip/ZipArchiveReader` and `ArchiveEntrySecurity.HasReservedName`): `Extr
 
 ```mermaid
 flowchart TD
-    A0["ZipArchiveReader.Open: allEntries = every ZIP entry, files AND folder entries (T-F197),<br/>each with its name decoded by 7-Zip's rule, never ZipArchiveEntry.FullName (T-F234)"] --> A1{"T-F05: options.SelectedEntryPaths<br/>set and non-empty?"}
+    P0{"ExtractAsync outer loop, per archive: zip blocked by<br/>Group Policy? (T-F250 — also catches an Unknown-detected ZIP)"} -- yes --> P1["SkippedFiles += policy reason,<br/>archive not opened"]
+    P0 -- no --> A0["ZipArchiveReader.Open: allEntries = every ZIP entry, files AND folder entries (T-F197),<br/>each with its name decoded by 7-Zip's rule, never ZipArchiveEntry.FullName (T-F234)"] --> A1{"T-F05: options.SelectedEntryPaths<br/>set and non-empty?"}
     A1 -- no --> A2["entries = allEntries.<br/>isSingleRootFolder/isSingleRootFile computed over files AND folders<br/>(a.txt + empty/ is MultiRoot), then<br/>ExtractionDestinationPlanner.Classify → RootShape (T-F157)"]
     A1 -- yes --> A3["entries = allEntries filtered to the selected paths<br/>+ anything nested under a selected folder path<br/>→ RootShape.SelectedSubset"]
     A2 --> A3B["ExtractionDestinationPlanner.Resolve(alreadyIsolated, shape, destDir,<br/>unisolatedDestDir, rootDuplicatesArchiveName)<br/>→ (actualDest, stripRootPrefix). T-F205: SingleFolder keeps the root<br/>unless EliminateDuplicateRootFolder is set and the root is named like the archive"]
@@ -383,10 +375,18 @@ flowchart TD
     M -- yes --> A
     M -- no --> N["staging.CommitInto(actualDest): if actualDest is new, clear Hidden<br/>then Directory.Move (T-F161). Otherwise, or on IOException, merge:<br/>folders first (T-F197), then files with File.Move overwrite —<br/>a locked target becomes a per-item ArchiveError (T-F170)"]
     N --> N2{"extractedCount == 0?"}
-    N2 -- yes --> N3["SkippedFiles += whole-archive entry (T-F87)<br/>archive not added to CreatedFiles"]
+    N2 -- yes --> NU{"every skip in this archive was the user's own<br/>conflict answer, no other skip or error? (T-F216)"}
+    NU -- yes --> N4["no warning — archive still not in CreatedFiles"]
+    NU -- no --> N3["SkippedFiles += whole-archive entry (T-F87)<br/>archive not added to CreatedFiles"]
     N2 -- no --> O
-    N3 --> O["T-F260: one SourceResult per archive — Completed only with no error,<br/>skip or conflict-skip and no selection. ExtractAsync removes a<br/>DestinationFolder it created when nothing was produced (T-F230)"]
+    N3 --> O
+    N4 --> O["T-F260: one SourceResult per archive — Completed only with no error,<br/>skip or conflict-skip and no selection. ExtractAsync removes a<br/>DestinationFolder it created when nothing was produced (T-F230)"]
 ```
+
+**Fix phase 5 (2026-09-28).** A blocked `zip` is refused per archive before the reader opens it
+(P0/P1, T-F250; `TestAsync` and `ListEntriesAsync` refuse the same way). When nothing was extracted
+only because the user answered Skip, no whole-archive warning is added (NU/N4, T-F216); the source
+still never counts as fully processed.
 
 **Fix phase 3 (2026-09-25).** Names come from `ZipArchiveReader` (T-F234), so every gate below
 sees the decoded, `/`-normalized name; a post-decoding collision is a per-entry `ArchiveError`,

@@ -191,7 +191,8 @@ src/
 │
 ├── Archiver.Shell/             ← shell-triggered operation entry point; net10.0-windows; WinExe; no WinUI
 │   ├── Program.cs                      ← T-F268: parse, then dispatch to ShellCommands
-│   ├── ShellArgumentParser.cs
+│   ├── ShellArgumentParser.cs          ← T-F235: `--paths-stdin` in place of the path list
+│   ├── StdinPathList.cs                ← T-F235: reads Explorer's UTF-16LE NUL-separated list from stdin
 │   ├── ShellCommands.cs                ← T-F268: every Explorer command; windows only via IOperationUi
 │   ├── ShellServices.cs                ← T-F268: Core factories (tests swap in a ZIP-only router);
 │   │                                      T-F261: built from Core's PakkoServices
@@ -1441,6 +1442,22 @@ tar-family listing path being coarser than ZIP's.
 `GetBaseName` — `GetExtension(ArchiveContainerFormat)` maps the enum to `.zip`/`.tar`/`.tar.gz`/
 etc.; `ZipArchiveService.ArchiveAsync`'s two previously-hardcoded `".zip"` literals now call it
 too, so both creation paths share one source of truth for extensions.
+
+**T-F264 (2026-09-28):** `ArchiveNaming` is the only naming source. New public members:
+
+```csharp
+// Archiver.Core/Services/ArchiveNaming.cs — public static
+string GetDefaultArchiveName(IReadOnlyList<string> sourcePaths); // one source: its name (compound tar
+                                  // extension stripped, dotfile kept); several: the first one's folder;
+                                  // UNC share root: the share name; else "archive"
+string GetUniqueName(string fileName, Func<string, bool> isTaken);  // "name (N).ext"
+string GetUniqueFolderName(string parentDir, string name);          // "name (N)" for a folder
+```
+
+`ResolveSingleArchiveName(null, ...)`, Shell's "Add to" and the C++ menu title
+(`BuildAddToArchiveTitle`) all follow `GetDefaultArchiveName`; `GetUniqueFilePath` and both
+engines' unique-entry-name helpers call `GetUniqueName`. `FormatListConsistencyTests` keeps the C++
+extension arrays and the manifest in line with the C# lists.
 
 DI registration adds:
 
