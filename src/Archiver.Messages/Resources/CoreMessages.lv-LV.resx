@@ -1,0 +1,264 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="SourceNotFound" xml:space="preserve">
+    <value>Avota ceļš nepastāv: {0}</value>
+  </data>
+  <data name="CannotAccessFile" xml:space="preserve">
+    <value>Nevar piekļūt failam: {0}</value>
+  </data>
+  <data name="AccessDenied" xml:space="preserve">
+    <value>Piekļuve liegta: {0}</value>
+  </data>
+  <data name="LinkNotArchived" xml:space="preserve">
+    <value>Simboliskās saites un NTFS savienojumi netiek arhivēti.</value>
+  </data>
+  <data name="FolderLinkNotFollowed" xml:space="preserve">
+    <value>Arhivēšanas laikā NTFS savienojumiem un mapju simboliskajām saitēm neseko.</value>
+  </data>
+  <data name="ReparsePointNotArchived" xml:space="preserve">
+    <value>Simboliskās saites un atkārtotas parsēšanas punkti netiek arhivēti.</value>
+  </data>
+  <data name="ArchiveAlreadyExists" xml:space="preserve">
+    <value>Arhīvs “{0}” jau pastāv mērķī un tika izlaists.</value>
+  </data>
+  <data name="CannotCreateArchive" xml:space="preserve">
+    <value>Nevar izveidot arhīvu: {0}</value>
+  </data>
+  <data name="AccessDeniedCreatingArchive" xml:space="preserve">
+    <value>Piekļuve liegta, veidojot arhīvu: {0}</value>
+  </data>
+  <data name="UnexpectedError" xml:space="preserve">
+    <value>Neparedzēta kļūda: {0}</value>
+  </data>
+  <data name="UnknownArchivingError" xml:space="preserve">
+    <value>Nezināma kļūda arhivēšanas laikā.</value>
+  </data>
+  <data name="EntryNameTooLong" xml:space="preserve">
+    <value>Vienuma nosaukums ir pārāk garš ZIP arhīvam ({0} baiti UTF-8; maksimums ir {1}).</value>
+  </data>
+  <data name="NotEnoughSpaceToCompress" xml:space="preserve">
+    <value>Nepietiek brīvas vietas diskā, lai saspiestu šo failu: tā izmērs ir {0} baiti, bet brīvi ir tikai {1} baiti.</value>
+  </data>
+  <data name="PasswordNotEntered" xml:space="preserve">
+    <value>Arhīvs netika izveidots: parole netika ievadīta.</value>
+  </data>
+  <data name="PasswordEmpty" xml:space="preserve">
+    <value>Arhīvs netika izveidots: parole ir tukša.</value>
+  </data>
+  <data name="PasswordUnsupportedCharacters" xml:space="preserve">
+    <value>Arhīvs netika izveidots: parolē drīkst būt tikai angļu burti, cipari, atstarpes un ASCII pieturzīmes; citi ZIP rīki, piemēram, 7-Zip, nevar atvērt arhīvu, kas aizsargāts ar citām rakstzīmēm.</value>
+  </data>
+  <data name="PasswordTooLong" xml:space="preserve">
+    <value>Arhīvs netika izveidots: parole ir garāka par {0} rakstzīmēm — tas ir maksimums, ko 7-Zip pieņem AES šifrētam ZIP.</value>
+  </data>
+  <data name="PasswordOnlyForZip" xml:space="preserve">
+    <value>Aizsardzība ar paroli ir pieejama tikai ZIP arhīviem.</value>
+  </data>
+  <data name="CreationFormatBlocked" xml:space="preserve">
+    <value>{0} arhīva izveide ir bloķēta ar grupas politiku.</value>
+  </data>
+  <data name="TarCreationDisabled" xml:space="preserve">
+    <value>Arhīvu izveide ar tar.exe ir atspējota ar grupas politiku.</value>
+  </data>
+  <data name="TarCreationFailed" xml:space="preserve">
+    <value>tar.exe nevarēja izveidot arhīvu: {0}</value>
+  </data>
+  <data name="TarNameNotRepresentable" xml:space="preserve">
+    <value>Nosaukumā “{0}” ir rakstzīmes, kuras tar.exe šajā sistēmā nevar droši apstrādāt (ANSI koda lappuse {1}). Šim saturam izmantojiet ZIP.</value>
+  </data>
+  <data name="TarSignatureInvalid" xml:space="preserve">
+    <value>tar.exe neizturēja Authenticode paraksta pārbaudi un netiks palaists.</value>
+  </data>
+  <data name="TarSignatureVerificationFailed" xml:space="preserve">
+    <value>“{0}” neizturēja Authenticode paraksta pārbaudi.</value>
+  </data>
+  <data name="NotAnArchiveExtract" xml:space="preserve">
+    <value>Fails nav atpazītā arhīva formātā, un to nevar izvilkt.</value>
+  </data>
+  <data name="NotAnArchiveTest" xml:space="preserve">
+    <value>Fails nav atpazītā arhīva formātā, un to nevar pārbaudīt.</value>
+  </data>
+  <data name="UnsupportedByZipEngine" xml:space="preserve">
+    <value>Formāts {0} netiek atbalstīts. Tiek atbalstīti tikai ZIP formāti.</value>
+  </data>
+  <data name="FormatBlocked" xml:space="preserve">
+    <value>Šis arhīva formāts ({0}) ir bloķēts ar grupas politiku.</value>
+  </data>
+  <data name="TarExtractionDisabled" xml:space="preserve">
+    <value>Izvilkšana ar tar.exe ir atspējota ar grupas politiku.</value>
+  </data>
+  <data name="FormatNeedsNewerTar" xml:space="preserve">
+    <value>{0} nepieciešams tar.exe ar libarchive &gt;= 3.7.0 (Windows 11 23H2+); šīs sistēmas tar.exe (versija {1}) to neatbalsta.</value>
+  </data>
+  <data name="FormatNotSupportedByTar" xml:space="preserve">
+    <value>Šīs sistēmas tar.exe (versija {1}) neatbalsta {0}.</value>
+  </data>
+  <data name="ArchiveFormatNotSupportedByTar" xml:space="preserve">
+    <value>Šīs sistēmas tar.exe (versija {0}) neatbalsta šo arhīva formātu.</value>
+  </data>
+  <data name="NoTestCapability" xml:space="preserve">
+    <value>tar saimes arhīvus nevar pārbaudīt</value>
+  </data>
+  <data name="PasswordProtectedExtract" xml:space="preserve">
+    <value>Šis arhīvs ir aizsargāts ar paroli, un to nevar izvilkt.</value>
+  </data>
+  <data name="PasswordProtectedTest" xml:space="preserve">
+    <value>Šis arhīvs ir aizsargāts ar paroli, un to nevar pārbaudīt.</value>
+  </data>
+  <data name="PasswordProtectedBrowse" xml:space="preserve">
+    <value>Šis arhīvs ir aizsargāts ar paroli, un to nevar pārlūkot.</value>
+  </data>
+  <data name="ZipCorrupted" xml:space="preserve">
+    <value>Failam ir ZIP paraksts, taču tas šķiet bojāts vai nepilnīgs.</value>
+  </data>
+  <data name="CannotExtractArchive" xml:space="preserve">
+    <value>Nevar izvilkt arhīvu: {0}</value>
+  </data>
+  <data name="AccessDeniedExtractingArchive" xml:space="preserve">
+    <value>Piekļuve liegta, izvelkot arhīvu: {0}</value>
+  </data>
+  <data name="CannotReadArchive" xml:space="preserve">
+    <value>Nevar nolasīt arhīvu: {0}</value>
+  </data>
+  <data name="EntryNameCollision" xml:space="preserve">
+    <value>Pēc dekodēšanas vienumam “{0}” ir tāds pats nosaukums kā citam vienumam; tas netiek izvilkts, jo viens pārrakstītu otru.</value>
+  </data>
+  <data name="EntryFailed" xml:space="preserve">
+    <value>Vienums “{0}”: {1}</value>
+  </data>
+  <data name="EntryWrongPassword" xml:space="preserve">
+    <value>Vienumu “{0}” nevarēja atšifrēt: nepareiza parole.</value>
+  </data>
+  <data name="EntryAuthenticationFailed" xml:space="preserve">
+    <value>Vienumu “{0}” nevarēja atšifrēt: autentifikācija neizdevās (bojāts vai mainīts).</value>
+  </data>
+  <data name="EntryUnsupportedEncryptedMethod" xml:space="preserve">
+    <value>Vienums “{0}” izmanto neatbalstītu saspiešanas metodi ar šifrēšanu.</value>
+  </data>
+  <data name="InsufficientDiskSpace" xml:space="preserve">
+    <value>Arhīvs deklarē {0} baitus nesaspiestā veidā, bet mērķī ir brīvi tikai {1} baiti. Izvilkšana tika bloķēta.</value>
+  </data>
+  <data name="ZipBombDeclined" xml:space="preserve">
+    <value>Aizdomīga saspiešanas attiecība ({0}:1, deklarēti {1} baiti). Izvilkšana tika noraidīta piesardzības nolūkos pret ZIP bumbām.</value>
+  </data>
+  <data name="TarBombDeclined" xml:space="preserve">
+    <value>Aizdomīga saspiešanas attiecība ({0}:1, deklarēti {1} baiti) visam arhīvam. Izvilkšana tika noraidīta piesardzības nolūkos pret atspiešanas bumbām.</value>
+  </data>
+  <data name="DestinationFileLocked" xml:space="preserve">
+    <value>Nevar ierakstīt “{0}”: mērķa failu ir bloķējis cits process.</value>
+  </data>
+  <data name="AllEntriesSkipped" xml:space="preserve">
+    <value>No šī arhīva nekas netika izvilkts — visi vienumi tika izlaisti.</value>
+  </data>
+  <data name="UnsafeEntryPath" xml:space="preserve">
+    <value>Vienumam “{0}” ir nedrošs ceļš, un tas netika izvilkts.</value>
+  </data>
+  <data name="EntryAlternateDataStream" xml:space="preserve">
+    <value>Vienums ar alternatīvu datu straumi tika noraidīts drošības apsvērumu dēļ.</value>
+  </data>
+  <data name="EntryReservedName" xml:space="preserve">
+    <value>Vienuma nosaukums atbilst rezervētam Windows ierīces nosaukumam un tika izlaists.</value>
+  </data>
+  <data name="EntryControlCharacters" xml:space="preserve">
+    <value>Vienuma nosaukumā ir vadības rakstzīmes, un tas tika izlaists.</value>
+  </data>
+  <data name="CannotExtractEntry" xml:space="preserve">
+    <value>Nevar izvilkt “{0}”: {1}</value>
+  </data>
+  <data name="EntryThroughReparsePoint" xml:space="preserve">
+    <value>Vienuma ceļš iet caur atkārtotas parsēšanas punktu (simbolisko saiti vai savienojumu) un tika izlaists.</value>
+  </data>
+  <data name="FileExistsAtDestination" xml:space="preserve">
+    <value>Fails jau pastāv mērķī.</value>
+  </data>
+  <data name="TarExtractionFailed" xml:space="preserve">
+    <value>Izvilkšana ar tar.exe neizdevās: {0}</value>
+  </data>
+  <data name="TarUnsafeEntryPath" xml:space="preserve">
+    <value>Arhīvā ir nedrošs vienuma ceļš (“{0}”), un to nevar droši izvilkt.</value>
+  </data>
+  <data name="TarListingInconsistent" xml:space="preserve">
+    <value>Arhīva satura saraksts ir pretrunīgs, un arhīvu nevar droši izvilkt.</value>
+  </data>
+  <data name="TarSpecialEntry" xml:space="preserve">
+    <value>Arhīvā ir simboliskā saite, cietā saite, ierīce vai cits īpašs vienums, un to nevar droši izvilkt.</value>
+  </data>
+  <data name="ListingInconsistent" xml:space="preserve">
+    <value>Arhīva satura saraksts ir pretrunīgs.</value>
+  </data>
+  <data name="TarUnreadableNames" xml:space="preserve">
+    <value>Arhīvā ir failu nosaukumi, kurus tar.exe šajā sistēmā nevar attēlot (koda lappuse {0}), tāpēc šeit to nevar nolasīt ar tar.exe. Detalizēta informācija: {1}</value>
+  </data>
+  <data name="SandboxSetupFailed" xml:space="preserve">
+    <value>Smilškastes iestatīšana neizdevās: {0}</value>
+  </data>
+  <data name="ArchiveInUse" xml:space="preserve">
+    <value>Arhīvu izmanto cita programma: {0}</value>
+  </data>
+  <data name="CannotOpenArchive" xml:space="preserve">
+    <value>Nevar atvērt arhīvu: {0}</value>
+  </data>
+  <data name="CannotReopenArchive" xml:space="preserve">
+    <value>Nevar atkārtoti atvērt arhīvu (Win32 kļūda {0}).</value>
+  </data>
+  <data name="HashFolderSkipped" xml:space="preserve">
+    <value>Izlaists: mape (atbalstīta tikai tad, ja atlasīta viena mape)</value>
+  </data>
+  <data name="HashLinkSkipped" xml:space="preserve">
+    <value>Izlaists: simboliskā saite vai savienojums (neseko)</value>
+  </data>
+  <data name="HashFileChanged" xml:space="preserve">
+    <value>Faila izmērs mainījās jaucējkoda aprēķināšanas laikā: {0}</value>
+  </data>
+  <data name="NoAntivirusRegistered" xml:space="preserve">
+    <value>Skenēšanai nav reģistrēta neviena pretvīrusu programma.</value>
+  </data>
+  <data name="ScanSessionFailed" xml:space="preserve">
+    <value>Nevarēja sākt pretvīrusu skenēšanas sesiju: {0}</value>
+  </data>
+  <data name="ScanCannotReadArchive" xml:space="preserve">
+    <value>Nevarēja nolasīt arhīvu: {0}</value>
+  </data>
+  <data name="ScanCannotReadEntry" xml:space="preserve">
+    <value>Nevarēja nolasīt vienumu: {0}</value>
+  </data>
+  <data name="ScanCannotExtract" xml:space="preserve">
+    <value>Nevarēja izvilkt arhīvu skenēšanai: {0}</value>
+  </data>
+  <data name="ScanRemovedOrBlocked" xml:space="preserve">
+    <value>Noņemts vai bloķēts, pirms Pakko to varēja tieši skenēt.</value>
+  </data>
+  <data name="ScanEntryFailed" xml:space="preserve">
+    <value>Šī vienuma pretvīrusu skenēšana neizdevās: {0}</value>
+  </data>
+  <data name="ScanEntryIntegrityFailed" xml:space="preserve">
+    <value>Atšifrētais saturs neizturēja integritātes pārbaudi (nepareiza parole vai bojāts vienums) un netika atzīts par tīru.</value>
+  </data>
+  <data name="ScanEntryPasswordProtected" xml:space="preserve">
+    <value>Vienums ir aizsargāts ar paroli un netika skenēts.</value>
+  </data>
+  <data name="ScanEntryWrongPassword" xml:space="preserve">
+    <value>Vienums ir aizsargāts ar citu paroli un netika skenēts.</value>
+  </data>
+  <data name="ScanEntryUnsupportedMethod" xml:space="preserve">
+    <value>Vienums izmanto neatbalstītu saspiešanas metodi ar šifrēšanu un netika skenēts.</value>
+  </data>
+  <data name="ScanEntryAuthenticationFailed" xml:space="preserve">
+    <value>Vienums neizturēja atšifrēšanas autentifikāciju (bojāts vai mainīts) un netika skenēts.</value>
+  </data>
+  <data name="ScanEntryTooLarge" xml:space="preserve">
+    <value>Vienums ir lielāks par {0} MiB un netika skenēts.</value>
+  </data>
+</root>

@@ -1,0 +1,264 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="SourceNotFound" xml:space="preserve">
+    <value>Le chemin source n’existe pas : {0}</value>
+  </data>
+  <data name="CannotAccessFile" xml:space="preserve">
+    <value>Impossible d’accéder au fichier : {0}</value>
+  </data>
+  <data name="AccessDenied" xml:space="preserve">
+    <value>Accès refusé : {0}</value>
+  </data>
+  <data name="LinkNotArchived" xml:space="preserve">
+    <value>Les liens symboliques et les jonctions NTFS ne sont pas archivés.</value>
+  </data>
+  <data name="FolderLinkNotFollowed" xml:space="preserve">
+    <value>Les jonctions NTFS et les liens symboliques de dossier ne sont pas suivis lors de l’archivage.</value>
+  </data>
+  <data name="ReparsePointNotArchived" xml:space="preserve">
+    <value>Les liens symboliques et les points d’analyse ne sont pas archivés.</value>
+  </data>
+  <data name="ArchiveAlreadyExists" xml:space="preserve">
+    <value>L’archive « {0} » existe déjà à la destination et a été ignorée.</value>
+  </data>
+  <data name="CannotCreateArchive" xml:space="preserve">
+    <value>Impossible de créer l’archive : {0}</value>
+  </data>
+  <data name="AccessDeniedCreatingArchive" xml:space="preserve">
+    <value>Accès refusé lors de la création de l’archive : {0}</value>
+  </data>
+  <data name="UnexpectedError" xml:space="preserve">
+    <value>Erreur inattendue : {0}</value>
+  </data>
+  <data name="UnknownArchivingError" xml:space="preserve">
+    <value>Erreur inconnue lors de l’archivage.</value>
+  </data>
+  <data name="EntryNameTooLong" xml:space="preserve">
+    <value>Le nom de l’entrée est trop long pour une archive ZIP ({0} octets en UTF-8 ; le maximum est {1}).</value>
+  </data>
+  <data name="NotEnoughSpaceToCompress" xml:space="preserve">
+    <value>Espace disque insuffisant pour compresser ce fichier : il fait {0} octets, mais seuls {1} octets sont libres.</value>
+  </data>
+  <data name="PasswordNotEntered" xml:space="preserve">
+    <value>L’archive n’a pas été créée : aucun mot de passe n’a été saisi.</value>
+  </data>
+  <data name="PasswordEmpty" xml:space="preserve">
+    <value>L’archive n’a pas été créée : le mot de passe est vide.</value>
+  </data>
+  <data name="PasswordUnsupportedCharacters" xml:space="preserve">
+    <value>L’archive n’a pas été créée : le mot de passe ne peut contenir que des lettres anglaises, des chiffres, des espaces et la ponctuation ASCII ; d’autres outils ZIP comme 7-Zip ne peuvent pas ouvrir une archive protégée par d’autres caractères.</value>
+  </data>
+  <data name="PasswordTooLong" xml:space="preserve">
+    <value>L’archive n’a pas été créée : le mot de passe dépasse {0} caractères, le maximum accepté par 7-Zip pour un ZIP chiffré en AES.</value>
+  </data>
+  <data name="PasswordOnlyForZip" xml:space="preserve">
+    <value>La protection par mot de passe n’est disponible que pour les archives ZIP.</value>
+  </data>
+  <data name="CreationFormatBlocked" xml:space="preserve">
+    <value>La création d’une archive {0} est bloquée par une stratégie de groupe.</value>
+  </data>
+  <data name="TarCreationDisabled" xml:space="preserve">
+    <value>La création d’archives avec tar.exe est désactivée par une stratégie de groupe.</value>
+  </data>
+  <data name="TarCreationFailed" xml:space="preserve">
+    <value>tar.exe n’a pas pu créer l’archive : {0}</value>
+  </data>
+  <data name="TarNameNotRepresentable" xml:space="preserve">
+    <value>Le nom « {0} » contient des caractères que tar.exe ne peut pas traiter en toute sécurité sur ce système (page de codes ANSI {1}). Utilisez ZIP pour ce contenu.</value>
+  </data>
+  <data name="TarSignatureInvalid" xml:space="preserve">
+    <value>tar.exe a échoué à la vérification de signature Authenticode ; il ne sera pas exécuté.</value>
+  </data>
+  <data name="TarSignatureVerificationFailed" xml:space="preserve">
+    <value>« {0} » a échoué à la vérification de signature Authenticode.</value>
+  </data>
+  <data name="NotAnArchiveExtract" xml:space="preserve">
+    <value>Le fichier n’est pas dans un format d’archive reconnu et ne peut pas être extrait.</value>
+  </data>
+  <data name="NotAnArchiveTest" xml:space="preserve">
+    <value>Le fichier n’est pas dans un format d’archive reconnu et ne peut pas être testé.</value>
+  </data>
+  <data name="UnsupportedByZipEngine" xml:space="preserve">
+    <value>Le format {0} n’est pas pris en charge. Seuls les formats basés sur ZIP sont pris en charge.</value>
+  </data>
+  <data name="FormatBlocked" xml:space="preserve">
+    <value>Ce format d’archive ({0}) est bloqué par une stratégie de groupe.</value>
+  </data>
+  <data name="TarExtractionDisabled" xml:space="preserve">
+    <value>L’extraction avec tar.exe est désactivée par une stratégie de groupe.</value>
+  </data>
+  <data name="FormatNeedsNewerTar" xml:space="preserve">
+    <value>{0} nécessite tar.exe avec libarchive &gt;= 3.7.0 (Windows 11 23H2+) ; le tar.exe de ce système (version {1}) ne le prend pas en charge.</value>
+  </data>
+  <data name="FormatNotSupportedByTar" xml:space="preserve">
+    <value>{0} n’est pas pris en charge par le tar.exe de ce système (version {1}).</value>
+  </data>
+  <data name="ArchiveFormatNotSupportedByTar" xml:space="preserve">
+    <value>Ce format d’archive n’est pas pris en charge par le tar.exe de ce système (version {0}).</value>
+  </data>
+  <data name="NoTestCapability" xml:space="preserve">
+    <value>les archives de la famille tar ne peuvent pas être testées</value>
+  </data>
+  <data name="PasswordProtectedExtract" xml:space="preserve">
+    <value>Cette archive est protégée par mot de passe et ne peut pas être extraite.</value>
+  </data>
+  <data name="PasswordProtectedTest" xml:space="preserve">
+    <value>Cette archive est protégée par mot de passe et ne peut pas être testée.</value>
+  </data>
+  <data name="PasswordProtectedBrowse" xml:space="preserve">
+    <value>Cette archive est protégée par mot de passe et ne peut pas être parcourue.</value>
+  </data>
+  <data name="ZipCorrupted" xml:space="preserve">
+    <value>Le fichier a une signature ZIP mais semble endommagé ou incomplet.</value>
+  </data>
+  <data name="CannotExtractArchive" xml:space="preserve">
+    <value>Impossible d’extraire l’archive : {0}</value>
+  </data>
+  <data name="AccessDeniedExtractingArchive" xml:space="preserve">
+    <value>Accès refusé lors de l’extraction de l’archive : {0}</value>
+  </data>
+  <data name="CannotReadArchive" xml:space="preserve">
+    <value>Impossible de lire l’archive : {0}</value>
+  </data>
+  <data name="EntryNameCollision" xml:space="preserve">
+    <value>Une fois décodée, l’entrée « {0} » porte le même nom qu’une autre entrée ; elle n’est pas extraite, car l’une écraserait l’autre.</value>
+  </data>
+  <data name="EntryFailed" xml:space="preserve">
+    <value>Entrée « {0} » : {1}</value>
+  </data>
+  <data name="EntryWrongPassword" xml:space="preserve">
+    <value>Impossible de déchiffrer l’entrée « {0} » : mot de passe incorrect.</value>
+  </data>
+  <data name="EntryAuthenticationFailed" xml:space="preserve">
+    <value>Impossible de déchiffrer l’entrée « {0} » : échec de l’authentification (endommagée ou altérée).</value>
+  </data>
+  <data name="EntryUnsupportedEncryptedMethod" xml:space="preserve">
+    <value>L’entrée « {0} » utilise une méthode de compression non prise en charge avec chiffrement.</value>
+  </data>
+  <data name="InsufficientDiskSpace" xml:space="preserve">
+    <value>L’archive déclare {0} octets décompressés, mais la destination n’a que {1} octets libres. L’extraction a été bloquée.</value>
+  </data>
+  <data name="ZipBombDeclined" xml:space="preserve">
+    <value>Taux de compression suspect ({0}:1, {1} octets déclarés). L’extraction a été refusée par précaution contre les bombes ZIP.</value>
+  </data>
+  <data name="TarBombDeclined" xml:space="preserve">
+    <value>Taux de compression suspect ({0}:1, {1} octets déclarés) pour l’ensemble de l’archive. L’extraction a été refusée par précaution contre les bombes de décompression.</value>
+  </data>
+  <data name="DestinationFileLocked" xml:space="preserve">
+    <value>Impossible d’écrire « {0} » : le fichier de destination est verrouillé par un autre processus.</value>
+  </data>
+  <data name="AllEntriesSkipped" xml:space="preserve">
+    <value>Rien n’a été extrait de cette archive : toutes les entrées ont été ignorées.</value>
+  </data>
+  <data name="UnsafeEntryPath" xml:space="preserve">
+    <value>L’entrée « {0} » a un chemin dangereux et n’a pas été extraite.</value>
+  </data>
+  <data name="EntryAlternateDataStream" xml:space="preserve">
+    <value>Entrée de flux de données alternatif rejetée pour des raisons de sécurité.</value>
+  </data>
+  <data name="EntryReservedName" xml:space="preserve">
+    <value>Le nom de l’entrée correspond à un nom de périphérique Windows réservé et a été ignoré.</value>
+  </data>
+  <data name="EntryControlCharacters" xml:space="preserve">
+    <value>Le nom de l’entrée contient des caractères de contrôle et a été ignoré.</value>
+  </data>
+  <data name="CannotExtractEntry" xml:space="preserve">
+    <value>Impossible d’extraire « {0} » : {1}</value>
+  </data>
+  <data name="EntryThroughReparsePoint" xml:space="preserve">
+    <value>Le chemin de l’entrée traverse un point d’analyse (lien symbolique ou jonction) et a été ignoré.</value>
+  </data>
+  <data name="FileExistsAtDestination" xml:space="preserve">
+    <value>Le fichier existe déjà à la destination.</value>
+  </data>
+  <data name="TarExtractionFailed" xml:space="preserve">
+    <value>Échec de l’extraction avec tar.exe : {0}</value>
+  </data>
+  <data name="TarUnsafeEntryPath" xml:space="preserve">
+    <value>L’archive contient un chemin d’entrée dangereux (« {0} ») et ne peut pas être extraite en toute sécurité.</value>
+  </data>
+  <data name="TarListingInconsistent" xml:space="preserve">
+    <value>La liste du contenu de l’archive est incohérente ; elle ne peut pas être extraite en toute sécurité.</value>
+  </data>
+  <data name="TarSpecialEntry" xml:space="preserve">
+    <value>L’archive contient un lien symbolique, un lien physique, un périphérique ou une autre entrée spéciale et ne peut pas être extraite en toute sécurité.</value>
+  </data>
+  <data name="ListingInconsistent" xml:space="preserve">
+    <value>La liste du contenu de l’archive est incohérente.</value>
+  </data>
+  <data name="TarUnreadableNames" xml:space="preserve">
+    <value>L’archive contient des noms de fichiers que tar.exe ne peut pas représenter sur ce système (page de codes {0}) ; elle ne peut donc pas être lue ici avec tar.exe. Détails : {1}</value>
+  </data>
+  <data name="SandboxSetupFailed" xml:space="preserve">
+    <value>Échec de la configuration du bac à sable : {0}</value>
+  </data>
+  <data name="ArchiveInUse" xml:space="preserve">
+    <value>L’archive est utilisée par un autre programme : {0}</value>
+  </data>
+  <data name="CannotOpenArchive" xml:space="preserve">
+    <value>Impossible d’ouvrir l’archive : {0}</value>
+  </data>
+  <data name="CannotReopenArchive" xml:space="preserve">
+    <value>Impossible de rouvrir l’archive (erreur Win32 {0}).</value>
+  </data>
+  <data name="HashFolderSkipped" xml:space="preserve">
+    <value>Ignoré : dossier (pris en charge uniquement lorsqu’un seul dossier est sélectionné)</value>
+  </data>
+  <data name="HashLinkSkipped" xml:space="preserve">
+    <value>Ignoré : lien symbolique ou jonction (non suivi)</value>
+  </data>
+  <data name="HashFileChanged" xml:space="preserve">
+    <value>La taille du fichier a changé pendant le calcul du hachage : {0}</value>
+  </data>
+  <data name="NoAntivirusRegistered" xml:space="preserve">
+    <value>Aucun antivirus n’est inscrit pour l’analyse.</value>
+  </data>
+  <data name="ScanSessionFailed" xml:space="preserve">
+    <value>Impossible de démarrer une session d’analyse antivirus : {0}</value>
+  </data>
+  <data name="ScanCannotReadArchive" xml:space="preserve">
+    <value>Impossible de lire l’archive : {0}</value>
+  </data>
+  <data name="ScanCannotReadEntry" xml:space="preserve">
+    <value>Impossible de lire l’entrée : {0}</value>
+  </data>
+  <data name="ScanCannotExtract" xml:space="preserve">
+    <value>Impossible d’extraire l’archive pour l’analyse : {0}</value>
+  </data>
+  <data name="ScanRemovedOrBlocked" xml:space="preserve">
+    <value>Supprimé ou bloqué avant que Pakko puisse l’analyser directement.</value>
+  </data>
+  <data name="ScanEntryFailed" xml:space="preserve">
+    <value>L’analyse antivirus de cette entrée a échoué : {0}</value>
+  </data>
+  <data name="ScanEntryIntegrityFailed" xml:space="preserve">
+    <value>Le contenu déchiffré a échoué au contrôle d’intégrité (mot de passe incorrect ou entrée endommagée) et n’a pas été signalé comme sain.</value>
+  </data>
+  <data name="ScanEntryPasswordProtected" xml:space="preserve">
+    <value>L’entrée est protégée par mot de passe et n’a pas été analysée.</value>
+  </data>
+  <data name="ScanEntryWrongPassword" xml:space="preserve">
+    <value>L’entrée est protégée par un autre mot de passe et n’a pas été analysée.</value>
+  </data>
+  <data name="ScanEntryUnsupportedMethod" xml:space="preserve">
+    <value>L’entrée utilise une méthode de compression non prise en charge avec chiffrement et n’a pas été analysée.</value>
+  </data>
+  <data name="ScanEntryAuthenticationFailed" xml:space="preserve">
+    <value>L’entrée a échoué à l’authentification du déchiffrement (endommagée ou altérée) et n’a pas été analysée.</value>
+  </data>
+  <data name="ScanEntryTooLarge" xml:space="preserve">
+    <value>L’entrée dépasse {0} Mio et n’a pas été analysée.</value>
+  </data>
+</root>

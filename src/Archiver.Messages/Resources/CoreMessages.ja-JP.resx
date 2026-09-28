@@ -1,0 +1,264 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="SourceNotFound" xml:space="preserve">
+    <value>ソースのパスが存在しません: {0}</value>
+  </data>
+  <data name="CannotAccessFile" xml:space="preserve">
+    <value>ファイルにアクセスできません: {0}</value>
+  </data>
+  <data name="AccessDenied" xml:space="preserve">
+    <value>アクセスが拒否されました: {0}</value>
+  </data>
+  <data name="LinkNotArchived" xml:space="preserve">
+    <value>シンボリック リンクと NTFS ジャンクションはアーカイブされません。</value>
+  </data>
+  <data name="FolderLinkNotFollowed" xml:space="preserve">
+    <value>アーカイブ時に NTFS ジャンクションとフォルダーのシンボリック リンクはたどりません。</value>
+  </data>
+  <data name="ReparsePointNotArchived" xml:space="preserve">
+    <value>シンボリック リンクと再解析ポイントはアーカイブされません。</value>
+  </data>
+  <data name="ArchiveAlreadyExists" xml:space="preserve">
+    <value>アーカイブ「{0}」は出力先に既に存在するため、スキップしました。</value>
+  </data>
+  <data name="CannotCreateArchive" xml:space="preserve">
+    <value>アーカイブを作成できません: {0}</value>
+  </data>
+  <data name="AccessDeniedCreatingArchive" xml:space="preserve">
+    <value>アーカイブの作成中にアクセスが拒否されました: {0}</value>
+  </data>
+  <data name="UnexpectedError" xml:space="preserve">
+    <value>予期しないエラー: {0}</value>
+  </data>
+  <data name="UnknownArchivingError" xml:space="preserve">
+    <value>アーカイブ中に不明なエラーが発生しました。</value>
+  </data>
+  <data name="EntryNameTooLong" xml:space="preserve">
+    <value>エントリ名が ZIP アーカイブには長すぎます (UTF-8 で {0} バイト、最大 {1})。</value>
+  </data>
+  <data name="NotEnoughSpaceToCompress" xml:space="preserve">
+    <value>このファイルを圧縮するための空きディスク領域が足りません: ファイルは {0} バイトですが、空きは {1} バイトしかありません。</value>
+  </data>
+  <data name="PasswordNotEntered" xml:space="preserve">
+    <value>アーカイブは作成されませんでした: パスワードが入力されていません。</value>
+  </data>
+  <data name="PasswordEmpty" xml:space="preserve">
+    <value>アーカイブは作成されませんでした: パスワードが空です。</value>
+  </data>
+  <data name="PasswordUnsupportedCharacters" xml:space="preserve">
+    <value>アーカイブは作成されませんでした: パスワードに使用できるのは英字、数字、スペース、ASCII の句読点のみです。7-Zip などの他の ZIP ツールでは、それ以外の文字で保護されたアーカイブを開けません。</value>
+  </data>
+  <data name="PasswordTooLong" xml:space="preserve">
+    <value>アーカイブは作成されませんでした: パスワードが {0} 文字を超えています。これは 7-Zip が AES 暗号化 ZIP で受け付ける最大長です。</value>
+  </data>
+  <data name="PasswordOnlyForZip" xml:space="preserve">
+    <value>パスワード保護は ZIP アーカイブでのみ使用できます。</value>
+  </data>
+  <data name="CreationFormatBlocked" xml:space="preserve">
+    <value>{0} アーカイブの作成はグループ ポリシーによってブロックされています。</value>
+  </data>
+  <data name="TarCreationDisabled" xml:space="preserve">
+    <value>tar.exe によるアーカイブの作成はグループ ポリシーによって無効になっています。</value>
+  </data>
+  <data name="TarCreationFailed" xml:space="preserve">
+    <value>tar.exe でアーカイブを作成できませんでした: {0}</value>
+  </data>
+  <data name="TarNameNotRepresentable" xml:space="preserve">
+    <value>名前「{0}」には、このシステムで tar.exe が安全に処理できない文字が含まれています (ANSI コード ページ {1})。この内容には ZIP を使用してください。</value>
+  </data>
+  <data name="TarSignatureInvalid" xml:space="preserve">
+    <value>tar.exe が Authenticode 署名の検証に失敗したため、実行しません。</value>
+  </data>
+  <data name="TarSignatureVerificationFailed" xml:space="preserve">
+    <value>「{0}」は Authenticode 署名の検証に失敗しました。</value>
+  </data>
+  <data name="NotAnArchiveExtract" xml:space="preserve">
+    <value>ファイルは認識できるアーカイブ形式ではないため、展開できません。</value>
+  </data>
+  <data name="NotAnArchiveTest" xml:space="preserve">
+    <value>ファイルは認識できるアーカイブ形式ではないため、テストできません。</value>
+  </data>
+  <data name="UnsupportedByZipEngine" xml:space="preserve">
+    <value>{0} 形式はサポートされていません。サポートされるのは ZIP ベースの形式のみです。</value>
+  </data>
+  <data name="FormatBlocked" xml:space="preserve">
+    <value>このアーカイブ形式 ({0}) はグループ ポリシーによってブロックされています。</value>
+  </data>
+  <data name="TarExtractionDisabled" xml:space="preserve">
+    <value>tar.exe による展開はグループ ポリシーによって無効になっています。</value>
+  </data>
+  <data name="FormatNeedsNewerTar" xml:space="preserve">
+    <value>{0} には libarchive &gt;= 3.7.0 を含む tar.exe (Windows 11 23H2 以降) が必要です。このシステムの tar.exe (バージョン {1}) は対応していません。</value>
+  </data>
+  <data name="FormatNotSupportedByTar" xml:space="preserve">
+    <value>{0} はこのシステムの tar.exe (バージョン {1}) ではサポートされていません。</value>
+  </data>
+  <data name="ArchiveFormatNotSupportedByTar" xml:space="preserve">
+    <value>このアーカイブ形式はこのシステムの tar.exe (バージョン {0}) ではサポートされていません。</value>
+  </data>
+  <data name="NoTestCapability" xml:space="preserve">
+    <value>tar 系アーカイブはテストできません</value>
+  </data>
+  <data name="PasswordProtectedExtract" xml:space="preserve">
+    <value>このアーカイブはパスワードで保護されているため、展開できません。</value>
+  </data>
+  <data name="PasswordProtectedTest" xml:space="preserve">
+    <value>このアーカイブはパスワードで保護されているため、テストできません。</value>
+  </data>
+  <data name="PasswordProtectedBrowse" xml:space="preserve">
+    <value>このアーカイブはパスワードで保護されているため、参照できません。</value>
+  </data>
+  <data name="ZipCorrupted" xml:space="preserve">
+    <value>ファイルには ZIP 署名がありますが、破損しているか不完全なようです。</value>
+  </data>
+  <data name="CannotExtractArchive" xml:space="preserve">
+    <value>アーカイブを展開できません: {0}</value>
+  </data>
+  <data name="AccessDeniedExtractingArchive" xml:space="preserve">
+    <value>アーカイブの展開中にアクセスが拒否されました: {0}</value>
+  </data>
+  <data name="CannotReadArchive" xml:space="preserve">
+    <value>アーカイブを読み取れません: {0}</value>
+  </data>
+  <data name="EntryNameCollision" xml:space="preserve">
+    <value>デコード後のエントリ「{0}」は別のエントリと同じ名前になるため、一方がもう一方を上書きしないよう展開しません。</value>
+  </data>
+  <data name="EntryFailed" xml:space="preserve">
+    <value>エントリ「{0}」: {1}</value>
+  </data>
+  <data name="EntryWrongPassword" xml:space="preserve">
+    <value>エントリ「{0}」を復号できませんでした: パスワードが正しくありません。</value>
+  </data>
+  <data name="EntryAuthenticationFailed" xml:space="preserve">
+    <value>エントリ「{0}」を復号できませんでした: 認証に失敗しました (破損または改ざん)。</value>
+  </data>
+  <data name="EntryUnsupportedEncryptedMethod" xml:space="preserve">
+    <value>エントリ「{0}」は、暗号化と組み合わせたサポートされていない圧縮方式を使用しています。</value>
+  </data>
+  <data name="InsufficientDiskSpace" xml:space="preserve">
+    <value>アーカイブの展開後サイズは {0} バイトですが、出力先の空きは {1} バイトしかありません。展開はブロックされました。</value>
+  </data>
+  <data name="ZipBombDeclined" xml:space="preserve">
+    <value>圧縮率が不審です ({0}:1、宣言サイズ {1} バイト)。ZIP 爆弾対策として展開を拒否しました。</value>
+  </data>
+  <data name="TarBombDeclined" xml:space="preserve">
+    <value>アーカイブ全体の圧縮率が不審です ({0}:1、宣言サイズ {1} バイト)。解凍爆弾対策として展開を拒否しました。</value>
+  </data>
+  <data name="DestinationFileLocked" xml:space="preserve">
+    <value>「{0}」を書き込めません: 出力先ファイルが別のプロセスによってロックされています。</value>
+  </data>
+  <data name="AllEntriesSkipped" xml:space="preserve">
+    <value>このアーカイブからは何も展開されませんでした — すべてのエントリがスキップされました。</value>
+  </data>
+  <data name="UnsafeEntryPath" xml:space="preserve">
+    <value>エントリ「{0}」のパスは安全でないため、展開しませんでした。</value>
+  </data>
+  <data name="EntryAlternateDataStream" xml:space="preserve">
+    <value>代替データ ストリームのエントリをセキュリティ上の理由で拒否しました。</value>
+  </data>
+  <data name="EntryReservedName" xml:space="preserve">
+    <value>エントリ名が Windows の予約済みデバイス名と一致するため、スキップしました。</value>
+  </data>
+  <data name="EntryControlCharacters" xml:space="preserve">
+    <value>エントリ名に制御文字が含まれているため、スキップしました。</value>
+  </data>
+  <data name="CannotExtractEntry" xml:space="preserve">
+    <value>「{0}」を展開できません: {1}</value>
+  </data>
+  <data name="EntryThroughReparsePoint" xml:space="preserve">
+    <value>エントリのパスが再解析ポイント (シンボリック リンクまたはジャンクション) を通過するため、スキップしました。</value>
+  </data>
+  <data name="FileExistsAtDestination" xml:space="preserve">
+    <value>ファイルは出力先に既に存在します。</value>
+  </data>
+  <data name="TarExtractionFailed" xml:space="preserve">
+    <value>tar.exe による展開に失敗しました: {0}</value>
+  </data>
+  <data name="TarUnsafeEntryPath" xml:space="preserve">
+    <value>アーカイブに安全でないエントリ パス (「{0}」) が含まれているため、安全に展開できません。</value>
+  </data>
+  <data name="TarListingInconsistent" xml:space="preserve">
+    <value>アーカイブの内容一覧に矛盾があるため、安全に展開できません。</value>
+  </data>
+  <data name="TarSpecialEntry" xml:space="preserve">
+    <value>アーカイブにシンボリック リンク、ハード リンク、デバイス、またはその他の特殊なエントリが含まれているため、安全に展開できません。</value>
+  </data>
+  <data name="ListingInconsistent" xml:space="preserve">
+    <value>アーカイブの内容一覧に矛盾があります。</value>
+  </data>
+  <data name="TarUnreadableNames" xml:space="preserve">
+    <value>アーカイブには、このシステムの tar.exe では表現できないファイル名 (コード ページ {0}) が含まれているため、ここでは tar.exe で読み取れません。詳細: {1}</value>
+  </data>
+  <data name="SandboxSetupFailed" xml:space="preserve">
+    <value>サンドボックスの設定に失敗しました: {0}</value>
+  </data>
+  <data name="ArchiveInUse" xml:space="preserve">
+    <value>アーカイブは別のプログラムで使用中です: {0}</value>
+  </data>
+  <data name="CannotOpenArchive" xml:space="preserve">
+    <value>アーカイブを開けません: {0}</value>
+  </data>
+  <data name="CannotReopenArchive" xml:space="preserve">
+    <value>アーカイブを開き直せません (Win32 エラー {0})。</value>
+  </data>
+  <data name="HashFolderSkipped" xml:space="preserve">
+    <value>スキップ: フォルダー (1 つのフォルダーだけを選択した場合のみサポート)</value>
+  </data>
+  <data name="HashLinkSkipped" xml:space="preserve">
+    <value>スキップ: シンボリック リンクまたはジャンクション (たどりません)</value>
+  </data>
+  <data name="HashFileChanged" xml:space="preserve">
+    <value>ハッシュの計算中にファイルのサイズが変わりました: {0}</value>
+  </data>
+  <data name="NoAntivirusRegistered" xml:space="preserve">
+    <value>スキャンに使用するウイルス対策ソフトが登録されていません。</value>
+  </data>
+  <data name="ScanSessionFailed" xml:space="preserve">
+    <value>ウイルス スキャンのセッションを開始できませんでした: {0}</value>
+  </data>
+  <data name="ScanCannotReadArchive" xml:space="preserve">
+    <value>アーカイブを読み取れませんでした: {0}</value>
+  </data>
+  <data name="ScanCannotReadEntry" xml:space="preserve">
+    <value>エントリを読み取れませんでした: {0}</value>
+  </data>
+  <data name="ScanCannotExtract" xml:space="preserve">
+    <value>スキャンのためにアーカイブを展開できませんでした: {0}</value>
+  </data>
+  <data name="ScanRemovedOrBlocked" xml:space="preserve">
+    <value>Pakko が直接スキャンする前に削除またはブロックされました。</value>
+  </data>
+  <data name="ScanEntryFailed" xml:space="preserve">
+    <value>このエントリのウイルス スキャンに失敗しました: {0}</value>
+  </data>
+  <data name="ScanEntryIntegrityFailed" xml:space="preserve">
+    <value>復号した内容が整合性チェックに失敗したため (パスワードの誤りまたはエントリの破損)、クリーンとは報告しませんでした。</value>
+  </data>
+  <data name="ScanEntryPasswordProtected" xml:space="preserve">
+    <value>エントリはパスワードで保護されているため、スキャンしませんでした。</value>
+  </data>
+  <data name="ScanEntryWrongPassword" xml:space="preserve">
+    <value>エントリは別のパスワードで保護されているため、スキャンしませんでした。</value>
+  </data>
+  <data name="ScanEntryUnsupportedMethod" xml:space="preserve">
+    <value>エントリは暗号化と組み合わせたサポートされていない圧縮方式を使用しているため、スキャンしませんでした。</value>
+  </data>
+  <data name="ScanEntryAuthenticationFailed" xml:space="preserve">
+    <value>エントリが復号の認証に失敗したため (破損または改ざん)、スキャンしませんでした。</value>
+  </data>
+  <data name="ScanEntryTooLarge" xml:space="preserve">
+    <value>エントリが {0} MiB を超えているため、スキャンしませんでした。</value>
+  </data>
+</root>

@@ -21,6 +21,7 @@
     <InternalsVisibleTo Include="Archiver.Core.Tests" />
     <InternalsVisibleTo Include="Archiver.Core.IntegrationTests" />
     <InternalsVisibleTo Include="Archiver.Core.PerformanceTests" />
+    <InternalsVisibleTo Include="Archiver.Messages.Tests" />
   </ItemGroup>
 
 </Project>

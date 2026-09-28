@@ -1,0 +1,264 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="SourceNotFound" xml:space="preserve">
+    <value>Njia ya chanzo haipo: {0}</value>
+  </data>
+  <data name="CannotAccessFile" xml:space="preserve">
+    <value>Haiwezi kufikia faili: {0}</value>
+  </data>
+  <data name="AccessDenied" xml:space="preserve">
+    <value>Ufikiaji umekataliwa: {0}</value>
+  </data>
+  <data name="LinkNotArchived" xml:space="preserve">
+    <value>Viungo vya ishara na makutano ya NTFS havihifadhiwi kwenye kumbukumbu.</value>
+  </data>
+  <data name="FolderLinkNotFollowed" xml:space="preserve">
+    <value>Makutano ya NTFS na viungo vya ishara vya folda havifuatwi wakati wa kuhifadhi.</value>
+  </data>
+  <data name="ReparsePointNotArchived" xml:space="preserve">
+    <value>Viungo vya ishara na sehemu za kuchanganua upya havihifadhiwi kwenye kumbukumbu.</value>
+  </data>
+  <data name="ArchiveAlreadyExists" xml:space="preserve">
+    <value>Kumbukumbu "{0}" tayari ipo mahali lengwa na imerukwa.</value>
+  </data>
+  <data name="CannotCreateArchive" xml:space="preserve">
+    <value>Haiwezi kuunda kumbukumbu: {0}</value>
+  </data>
+  <data name="AccessDeniedCreatingArchive" xml:space="preserve">
+    <value>Ufikiaji umekataliwa wakati wa kuunda kumbukumbu: {0}</value>
+  </data>
+  <data name="UnexpectedError" xml:space="preserve">
+    <value>Hitilafu isiyotarajiwa: {0}</value>
+  </data>
+  <data name="UnknownArchivingError" xml:space="preserve">
+    <value>Hitilafu isiyojulikana wakati wa kuhifadhi.</value>
+  </data>
+  <data name="EntryNameTooLong" xml:space="preserve">
+    <value>Jina la kipengee ni refu mno kwa kumbukumbu ya ZIP (baiti {0} katika UTF-8; upeo ni {1}).</value>
+  </data>
+  <data name="NotEnoughSpaceToCompress" xml:space="preserve">
+    <value>Hakuna nafasi ya kutosha kwenye diski kubana faili hii: ina baiti {0}, lakini baiti {1} tu ndizo zilizo wazi.</value>
+  </data>
+  <data name="PasswordNotEntered" xml:space="preserve">
+    <value>Kumbukumbu haikuundwa: hakuna nenosiri lililoingizwa.</value>
+  </data>
+  <data name="PasswordEmpty" xml:space="preserve">
+    <value>Kumbukumbu haikuundwa: nenosiri ni tupu.</value>
+  </data>
+  <data name="PasswordUnsupportedCharacters" xml:space="preserve">
+    <value>Kumbukumbu haikuundwa: nenosiri linaweza kuwa na herufi za Kiingereza, tarakimu, nafasi na alama za uakifishaji za ASCII tu; zana nyingine za ZIP kama 7-Zip haziwezi kufungua kumbukumbu iliyolindwa kwa herufi nyingine.</value>
+  </data>
+  <data name="PasswordTooLong" xml:space="preserve">
+    <value>Kumbukumbu haikuundwa: nenosiri ni refu kuliko herufi {0}, kiwango cha juu ambacho 7-Zip inakubali kwa ZIP iliyosimbwa kwa AES.</value>
+  </data>
+  <data name="PasswordOnlyForZip" xml:space="preserve">
+    <value>Ulinzi wa nenosiri unapatikana kwa kumbukumbu za ZIP tu.</value>
+  </data>
+  <data name="CreationFormatBlocked" xml:space="preserve">
+    <value>Kuunda kumbukumbu ya {0} kumezuiwa na Sera ya Kikundi.</value>
+  </data>
+  <data name="TarCreationDisabled" xml:space="preserve">
+    <value>Kuunda kumbukumbu kwa tar.exe kumezimwa na Sera ya Kikundi.</value>
+  </data>
+  <data name="TarCreationFailed" xml:space="preserve">
+    <value>tar.exe imeshindwa kuunda kumbukumbu: {0}</value>
+  </data>
+  <data name="TarNameNotRepresentable" xml:space="preserve">
+    <value>Jina "{0}" lina herufi ambazo tar.exe haiwezi kushughulikia kwa usalama kwenye mfumo huu (ukurasa wa msimbo wa ANSI {1}). Tumia ZIP kwa maudhui haya.</value>
+  </data>
+  <data name="TarSignatureInvalid" xml:space="preserve">
+    <value>tar.exe imeshindwa uthibitishaji wa sahihi ya Authenticode na haitaendeshwa.</value>
+  </data>
+  <data name="TarSignatureVerificationFailed" xml:space="preserve">
+    <value>"{0}" imeshindwa uthibitishaji wa sahihi ya Authenticode.</value>
+  </data>
+  <data name="NotAnArchiveExtract" xml:space="preserve">
+    <value>Faili si muundo wa kumbukumbu unaotambulika na haiwezi kutolewa.</value>
+  </data>
+  <data name="NotAnArchiveTest" xml:space="preserve">
+    <value>Faili si muundo wa kumbukumbu unaotambulika na haiwezi kujaribiwa.</value>
+  </data>
+  <data name="UnsupportedByZipEngine" xml:space="preserve">
+    <value>Muundo wa {0} hautumiki. Miundo inayotegemea ZIP pekee ndiyo inayotumika.</value>
+  </data>
+  <data name="FormatBlocked" xml:space="preserve">
+    <value>Muundo huu wa kumbukumbu ({0}) umezuiwa na Sera ya Kikundi.</value>
+  </data>
+  <data name="TarExtractionDisabled" xml:space="preserve">
+    <value>Kutoa kwa tar.exe kumezimwa na Sera ya Kikundi.</value>
+  </data>
+  <data name="FormatNeedsNewerTar" xml:space="preserve">
+    <value>{0} inahitaji tar.exe yenye libarchive &gt;= 3.7.0 (Windows 11 23H2+); tar.exe ya mfumo huu (toleo {1}) haiitumii.</value>
+  </data>
+  <data name="FormatNotSupportedByTar" xml:space="preserve">
+    <value>{0} haitumiki na tar.exe ya mfumo huu (toleo {1}).</value>
+  </data>
+  <data name="ArchiveFormatNotSupportedByTar" xml:space="preserve">
+    <value>Muundo huu wa kumbukumbu hautumiki na tar.exe ya mfumo huu (toleo {0}).</value>
+  </data>
+  <data name="NoTestCapability" xml:space="preserve">
+    <value>kumbukumbu za familia ya tar haziwezi kujaribiwa</value>
+  </data>
+  <data name="PasswordProtectedExtract" xml:space="preserve">
+    <value>Kumbukumbu hii imelindwa kwa nenosiri na haiwezi kutolewa.</value>
+  </data>
+  <data name="PasswordProtectedTest" xml:space="preserve">
+    <value>Kumbukumbu hii imelindwa kwa nenosiri na haiwezi kujaribiwa.</value>
+  </data>
+  <data name="PasswordProtectedBrowse" xml:space="preserve">
+    <value>Kumbukumbu hii imelindwa kwa nenosiri na haiwezi kuvinjariwa.</value>
+  </data>
+  <data name="ZipCorrupted" xml:space="preserve">
+    <value>Faili ina sahihi ya ZIP lakini inaonekana kuharibika au haijakamilika.</value>
+  </data>
+  <data name="CannotExtractArchive" xml:space="preserve">
+    <value>Haiwezi kutoa kumbukumbu: {0}</value>
+  </data>
+  <data name="AccessDeniedExtractingArchive" xml:space="preserve">
+    <value>Ufikiaji umekataliwa wakati wa kutoa kumbukumbu: {0}</value>
+  </data>
+  <data name="CannotReadArchive" xml:space="preserve">
+    <value>Haiwezi kusoma kumbukumbu: {0}</value>
+  </data>
+  <data name="EntryNameCollision" xml:space="preserve">
+    <value>Baada ya kusimbuliwa, kipengee "{0}" kina jina sawa na kipengee kingine; hakitolewi, kwa sababu kimoja kingeandika juu ya kingine.</value>
+  </data>
+  <data name="EntryFailed" xml:space="preserve">
+    <value>Kipengee "{0}": {1}</value>
+  </data>
+  <data name="EntryWrongPassword" xml:space="preserve">
+    <value>Kipengee "{0}" hakikuweza kusimbuliwa: nenosiri si sahihi.</value>
+  </data>
+  <data name="EntryAuthenticationFailed" xml:space="preserve">
+    <value>Kipengee "{0}" hakikuweza kusimbuliwa: uthibitishaji umeshindwa (kimeharibika au kimebadilishwa).</value>
+  </data>
+  <data name="EntryUnsupportedEncryptedMethod" xml:space="preserve">
+    <value>Kipengee "{0}" kinatumia mbinu ya kubana yenye usimbaji fiche isiyotumika.</value>
+  </data>
+  <data name="InsufficientDiskSpace" xml:space="preserve">
+    <value>Kumbukumbu inatangaza baiti {0} bila kubanwa, lakini mahali lengwa kuna baiti {1} tu zilizo wazi. Utoaji umezuiwa.</value>
+  </data>
+  <data name="ZipBombDeclined" xml:space="preserve">
+    <value>Uwiano wa kubana unaotiliwa shaka ({0}:1, baiti {1} zimetangazwa). Utoaji umekataliwa kama tahadhari dhidi ya mabomu ya ZIP.</value>
+  </data>
+  <data name="TarBombDeclined" xml:space="preserve">
+    <value>Uwiano wa kubana unaotiliwa shaka ({0}:1, baiti {1} zimetangazwa) kwa kumbukumbu nzima. Utoaji umekataliwa kama tahadhari dhidi ya mabomu ya kufungua.</value>
+  </data>
+  <data name="DestinationFileLocked" xml:space="preserve">
+    <value>Haiwezi kuandika "{0}": faili lengwa imefungwa na mchakato mwingine.</value>
+  </data>
+  <data name="AllEntriesSkipped" xml:space="preserve">
+    <value>Hakuna kilichotolewa kutoka kwenye kumbukumbu hii — vipengee vyote vimerukwa.</value>
+  </data>
+  <data name="UnsafeEntryPath" xml:space="preserve">
+    <value>Kipengee "{0}" kina njia isiyo salama na hakikutolewa.</value>
+  </data>
+  <data name="EntryAlternateDataStream" xml:space="preserve">
+    <value>Kipengee cha mtiririko mbadala wa data kimekataliwa kwa sababu za usalama.</value>
+  </data>
+  <data name="EntryReservedName" xml:space="preserve">
+    <value>Jina la kipengee linalingana na jina la kifaa la Windows lililohifadhiwa na kimerukwa.</value>
+  </data>
+  <data name="EntryControlCharacters" xml:space="preserve">
+    <value>Jina la kipengee lina herufi za udhibiti na kimerukwa.</value>
+  </data>
+  <data name="CannotExtractEntry" xml:space="preserve">
+    <value>Haiwezi kutoa "{0}": {1}</value>
+  </data>
+  <data name="EntryThroughReparsePoint" xml:space="preserve">
+    <value>Njia ya kipengee inapita kwenye sehemu ya kuchanganua upya (kiungo cha ishara au makutano) na kimerukwa.</value>
+  </data>
+  <data name="FileExistsAtDestination" xml:space="preserve">
+    <value>Faili tayari ipo mahali lengwa.</value>
+  </data>
+  <data name="TarExtractionFailed" xml:space="preserve">
+    <value>Utoaji kwa tar.exe umeshindwa: {0}</value>
+  </data>
+  <data name="TarUnsafeEntryPath" xml:space="preserve">
+    <value>Kumbukumbu ina njia ya kipengee isiyo salama ("{0}") na haiwezi kutolewa kwa usalama.</value>
+  </data>
+  <data name="TarListingInconsistent" xml:space="preserve">
+    <value>Orodha ya maudhui ya kumbukumbu haiendani na kumbukumbu haiwezi kutolewa kwa usalama.</value>
+  </data>
+  <data name="TarSpecialEntry" xml:space="preserve">
+    <value>Kumbukumbu ina kiungo cha ishara, kiungo kigumu, kifaa au kipengee kingine maalum na haiwezi kutolewa kwa usalama.</value>
+  </data>
+  <data name="ListingInconsistent" xml:space="preserve">
+    <value>Orodha ya maudhui ya kumbukumbu haiendani.</value>
+  </data>
+  <data name="TarUnreadableNames" xml:space="preserve">
+    <value>Kumbukumbu ina majina ya faili ambayo tar.exe haiwezi kuonyesha kwenye mfumo huu (ukurasa wa msimbo {0}), kwa hivyo haiwezi kusomwa hapa kwa tar.exe. Maelezo: {1}</value>
+  </data>
+  <data name="SandboxSetupFailed" xml:space="preserve">
+    <value>Kuweka mazingira yaliyotengwa kumeshindwa: {0}</value>
+  </data>
+  <data name="ArchiveInUse" xml:space="preserve">
+    <value>Kumbukumbu inatumiwa na programu nyingine: {0}</value>
+  </data>
+  <data name="CannotOpenArchive" xml:space="preserve">
+    <value>Haiwezi kufungua kumbukumbu: {0}</value>
+  </data>
+  <data name="CannotReopenArchive" xml:space="preserve">
+    <value>Haiwezi kufungua kumbukumbu tena (hitilafu ya Win32 {0}).</value>
+  </data>
+  <data name="HashFolderSkipped" xml:space="preserve">
+    <value>Imerukwa: folda (inatumika tu folda moja inapochaguliwa peke yake)</value>
+  </data>
+  <data name="HashLinkSkipped" xml:space="preserve">
+    <value>Imerukwa: kiungo cha ishara au makutano (hakifuatwi)</value>
+  </data>
+  <data name="HashFileChanged" xml:space="preserve">
+    <value>Ukubwa wa faili ulibadilika wakati heshi ilipokuwa ikikokotolewa: {0}</value>
+  </data>
+  <data name="NoAntivirusRegistered" xml:space="preserve">
+    <value>Hakuna kinga-virusi iliyosajiliwa kwa ajili ya kuchunguza.</value>
+  </data>
+  <data name="ScanSessionFailed" xml:space="preserve">
+    <value>Haikuweza kuanzisha kipindi cha uchunguzi wa kinga-virusi: {0}</value>
+  </data>
+  <data name="ScanCannotReadArchive" xml:space="preserve">
+    <value>Haikuweza kusoma kumbukumbu: {0}</value>
+  </data>
+  <data name="ScanCannotReadEntry" xml:space="preserve">
+    <value>Haikuweza kusoma kipengee: {0}</value>
+  </data>
+  <data name="ScanCannotExtract" xml:space="preserve">
+    <value>Haikuweza kutoa kumbukumbu kwa ajili ya uchunguzi: {0}</value>
+  </data>
+  <data name="ScanRemovedOrBlocked" xml:space="preserve">
+    <value>Kimeondolewa au kuzuiwa kabla Pakko haijakichunguza moja kwa moja.</value>
+  </data>
+  <data name="ScanEntryFailed" xml:space="preserve">
+    <value>Uchunguzi wa kinga-virusi wa kipengee hiki umeshindwa: {0}</value>
+  </data>
+  <data name="ScanEntryIntegrityFailed" xml:space="preserve">
+    <value>Maudhui yaliyosimbuliwa yameshindwa ukaguzi wa uadilifu (nenosiri si sahihi au kipengee kimeharibika) na hayakuripotiwa kuwa safi.</value>
+  </data>
+  <data name="ScanEntryPasswordProtected" xml:space="preserve">
+    <value>Kipengee kimelindwa kwa nenosiri na hakikuchunguzwa.</value>
+  </data>
+  <data name="ScanEntryWrongPassword" xml:space="preserve">
+    <value>Kipengee kimelindwa kwa nenosiri tofauti na hakikuchunguzwa.</value>
+  </data>
+  <data name="ScanEntryUnsupportedMethod" xml:space="preserve">
+    <value>Kipengee kinatumia mbinu ya kubana yenye usimbaji fiche isiyotumika na hakikuchunguzwa.</value>
+  </data>
+  <data name="ScanEntryAuthenticationFailed" xml:space="preserve">
+    <value>Kipengee kimeshindwa uthibitishaji wa usimbuaji (kimeharibika au kimebadilishwa) na hakikuchunguzwa.</value>
+  </data>
+  <data name="ScanEntryTooLarge" xml:space="preserve">
+    <value>Kipengee ni kikubwa kuliko MiB {0} na hakikuchunguzwa.</value>
+  </data>
+</root>

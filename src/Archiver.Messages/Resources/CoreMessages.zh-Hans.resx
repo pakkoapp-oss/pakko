@@ -1,0 +1,264 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="SourceNotFound" xml:space="preserve">
+    <value>源路径不存在: {0}</value>
+  </data>
+  <data name="CannotAccessFile" xml:space="preserve">
+    <value>无法访问文件: {0}</value>
+  </data>
+  <data name="AccessDenied" xml:space="preserve">
+    <value>访问被拒绝: {0}</value>
+  </data>
+  <data name="LinkNotArchived" xml:space="preserve">
+    <value>不会压缩符号链接和 NTFS 联接点。</value>
+  </data>
+  <data name="FolderLinkNotFollowed" xml:space="preserve">
+    <value>压缩时不跟随 NTFS 联接点和文件夹的符号链接。</value>
+  </data>
+  <data name="ReparsePointNotArchived" xml:space="preserve">
+    <value>不会压缩符号链接和重分析点。</value>
+  </data>
+  <data name="ArchiveAlreadyExists" xml:space="preserve">
+    <value>压缩包“{0}”已存在于目标位置，已跳过。</value>
+  </data>
+  <data name="CannotCreateArchive" xml:space="preserve">
+    <value>无法创建压缩包: {0}</value>
+  </data>
+  <data name="AccessDeniedCreatingArchive" xml:space="preserve">
+    <value>创建压缩包时访问被拒绝: {0}</value>
+  </data>
+  <data name="UnexpectedError" xml:space="preserve">
+    <value>意外错误: {0}</value>
+  </data>
+  <data name="UnknownArchivingError" xml:space="preserve">
+    <value>压缩时发生未知错误。</value>
+  </data>
+  <data name="EntryNameTooLong" xml:space="preserve">
+    <value>条目名称对于 ZIP 压缩包过长(UTF-8 下为 {0} 字节；最大 {1})。</value>
+  </data>
+  <data name="NotEnoughSpaceToCompress" xml:space="preserve">
+    <value>磁盘可用空间不足，无法压缩此文件: 文件大小为 {0} 字节，但可用空间只有 {1} 字节。</value>
+  </data>
+  <data name="PasswordNotEntered" xml:space="preserve">
+    <value>未创建压缩包: 未输入密码。</value>
+  </data>
+  <data name="PasswordEmpty" xml:space="preserve">
+    <value>未创建压缩包: 密码为空。</value>
+  </data>
+  <data name="PasswordUnsupportedCharacters" xml:space="preserve">
+    <value>未创建压缩包: 密码只能包含英文字母、数字、空格和 ASCII 标点；7-Zip 等其他 ZIP 工具无法打开使用其他字符保护的压缩包。</value>
+  </data>
+  <data name="PasswordTooLong" xml:space="preserve">
+    <value>未创建压缩包: 密码超过 {0} 个字符，这是 7-Zip 对 AES 加密 ZIP 接受的最大长度。</value>
+  </data>
+  <data name="PasswordOnlyForZip" xml:space="preserve">
+    <value>密码保护仅适用于 ZIP 压缩包。</value>
+  </data>
+  <data name="CreationFormatBlocked" xml:space="preserve">
+    <value>组策略已阻止创建 {0} 压缩包。</value>
+  </data>
+  <data name="TarCreationDisabled" xml:space="preserve">
+    <value>组策略已禁用使用 tar.exe 创建压缩包。</value>
+  </data>
+  <data name="TarCreationFailed" xml:space="preserve">
+    <value>tar.exe 无法创建压缩包: {0}</value>
+  </data>
+  <data name="TarNameNotRepresentable" xml:space="preserve">
+    <value>名称“{0}”包含 tar.exe 在此系统上无法安全处理的字符(ANSI 代码页 {1})。请对此内容使用 ZIP。</value>
+  </data>
+  <data name="TarSignatureInvalid" xml:space="preserve">
+    <value>tar.exe 未通过 Authenticode 签名验证，将不会运行。</value>
+  </data>
+  <data name="TarSignatureVerificationFailed" xml:space="preserve">
+    <value>“{0}”未通过 Authenticode 签名验证。</value>
+  </data>
+  <data name="NotAnArchiveExtract" xml:space="preserve">
+    <value>文件不是可识别的压缩包格式，无法解压。</value>
+  </data>
+  <data name="NotAnArchiveTest" xml:space="preserve">
+    <value>文件不是可识别的压缩包格式，无法测试。</value>
+  </data>
+  <data name="UnsupportedByZipEngine" xml:space="preserve">
+    <value>不支持 {0} 格式。仅支持基于 ZIP 的格式。</value>
+  </data>
+  <data name="FormatBlocked" xml:space="preserve">
+    <value>组策略已阻止此压缩包格式({0})。</value>
+  </data>
+  <data name="TarExtractionDisabled" xml:space="preserve">
+    <value>组策略已禁用使用 tar.exe 解压。</value>
+  </data>
+  <data name="FormatNeedsNewerTar" xml:space="preserve">
+    <value>{0} 需要带有 libarchive &gt;= 3.7.0 的 tar.exe(Windows 11 23H2+)；此系统的 tar.exe(版本 {1})不支持。</value>
+  </data>
+  <data name="FormatNotSupportedByTar" xml:space="preserve">
+    <value>此系统的 tar.exe(版本 {1})不支持 {0}。</value>
+  </data>
+  <data name="ArchiveFormatNotSupportedByTar" xml:space="preserve">
+    <value>此系统的 tar.exe(版本 {0})不支持此压缩包格式。</value>
+  </data>
+  <data name="NoTestCapability" xml:space="preserve">
+    <value>无法测试 tar 系列压缩包</value>
+  </data>
+  <data name="PasswordProtectedExtract" xml:space="preserve">
+    <value>此压缩包受密码保护，无法解压。</value>
+  </data>
+  <data name="PasswordProtectedTest" xml:space="preserve">
+    <value>此压缩包受密码保护，无法测试。</value>
+  </data>
+  <data name="PasswordProtectedBrowse" xml:space="preserve">
+    <value>此压缩包受密码保护，无法浏览。</value>
+  </data>
+  <data name="ZipCorrupted" xml:space="preserve">
+    <value>文件具有 ZIP 签名，但似乎已损坏或不完整。</value>
+  </data>
+  <data name="CannotExtractArchive" xml:space="preserve">
+    <value>无法解压压缩包: {0}</value>
+  </data>
+  <data name="AccessDeniedExtractingArchive" xml:space="preserve">
+    <value>解压压缩包时访问被拒绝: {0}</value>
+  </data>
+  <data name="CannotReadArchive" xml:space="preserve">
+    <value>无法读取压缩包: {0}</value>
+  </data>
+  <data name="EntryNameCollision" xml:space="preserve">
+    <value>解码后条目“{0}”与另一条目同名；为避免相互覆盖，未解压此条目。</value>
+  </data>
+  <data name="EntryFailed" xml:space="preserve">
+    <value>条目“{0}”: {1}</value>
+  </data>
+  <data name="EntryWrongPassword" xml:space="preserve">
+    <value>无法解密条目“{0}”: 密码错误。</value>
+  </data>
+  <data name="EntryAuthenticationFailed" xml:space="preserve">
+    <value>无法解密条目“{0}”: 身份验证失败(已损坏或被篡改)。</value>
+  </data>
+  <data name="EntryUnsupportedEncryptedMethod" xml:space="preserve">
+    <value>条目“{0}”使用了不支持的加密压缩方法。</value>
+  </data>
+  <data name="InsufficientDiskSpace" xml:space="preserve">
+    <value>压缩包声明解压后为 {0} 字节，但目标位置只有 {1} 字节可用空间。已阻止解压。</value>
+  </data>
+  <data name="ZipBombDeclined" xml:space="preserve">
+    <value>压缩比可疑({0}:1，声明 {1} 字节)。为防范 ZIP 炸弹，已拒绝解压。</value>
+  </data>
+  <data name="TarBombDeclined" xml:space="preserve">
+    <value>整个压缩包的压缩比可疑({0}:1，声明 {1} 字节)。为防范解压炸弹，已拒绝解压。</value>
+  </data>
+  <data name="DestinationFileLocked" xml:space="preserve">
+    <value>无法写入“{0}”: 目标文件被另一个进程锁定。</value>
+  </data>
+  <data name="AllEntriesSkipped" xml:space="preserve">
+    <value>未从此压缩包解压任何内容 — 所有条目均已跳过。</value>
+  </data>
+  <data name="UnsafeEntryPath" xml:space="preserve">
+    <value>条目“{0}”的路径不安全，未解压。</value>
+  </data>
+  <data name="EntryAlternateDataStream" xml:space="preserve">
+    <value>出于安全原因，已拒绝备用数据流条目。</value>
+  </data>
+  <data name="EntryReservedName" xml:space="preserve">
+    <value>条目名称与 Windows 保留设备名称相同，已跳过。</value>
+  </data>
+  <data name="EntryControlCharacters" xml:space="preserve">
+    <value>条目名称包含控制字符，已跳过。</value>
+  </data>
+  <data name="CannotExtractEntry" xml:space="preserve">
+    <value>无法解压“{0}”: {1}</value>
+  </data>
+  <data name="EntryThroughReparsePoint" xml:space="preserve">
+    <value>条目路径经过重分析点(符号链接或联接点)，已跳过。</value>
+  </data>
+  <data name="FileExistsAtDestination" xml:space="preserve">
+    <value>文件已存在于目标位置。</value>
+  </data>
+  <data name="TarExtractionFailed" xml:space="preserve">
+    <value>tar.exe 解压失败: {0}</value>
+  </data>
+  <data name="TarUnsafeEntryPath" xml:space="preserve">
+    <value>压缩包包含不安全的条目路径(“{0}”)，无法安全解压。</value>
+  </data>
+  <data name="TarListingInconsistent" xml:space="preserve">
+    <value>压缩包内容列表不一致，无法安全解压。</value>
+  </data>
+  <data name="TarSpecialEntry" xml:space="preserve">
+    <value>压缩包包含符号链接、硬链接、设备或其他特殊条目，无法安全解压。</value>
+  </data>
+  <data name="ListingInconsistent" xml:space="preserve">
+    <value>压缩包内容列表不一致。</value>
+  </data>
+  <data name="TarUnreadableNames" xml:space="preserve">
+    <value>压缩包包含 tar.exe 在此系统上无法表示的文件名(代码页 {0})，因此无法在此使用 tar.exe 读取。详细信息: {1}</value>
+  </data>
+  <data name="SandboxSetupFailed" xml:space="preserve">
+    <value>沙盒设置失败: {0}</value>
+  </data>
+  <data name="ArchiveInUse" xml:space="preserve">
+    <value>压缩包正被另一个程序使用: {0}</value>
+  </data>
+  <data name="CannotOpenArchive" xml:space="preserve">
+    <value>无法打开压缩包: {0}</value>
+  </data>
+  <data name="CannotReopenArchive" xml:space="preserve">
+    <value>无法重新打开压缩包(Win32 错误 {0})。</value>
+  </data>
+  <data name="HashFolderSkipped" xml:space="preserve">
+    <value>已跳过: 文件夹(仅在单独选择一个文件夹时支持)</value>
+  </data>
+  <data name="HashLinkSkipped" xml:space="preserve">
+    <value>已跳过: 符号链接或联接点(不跟随)</value>
+  </data>
+  <data name="HashFileChanged" xml:space="preserve">
+    <value>计算哈希时文件大小发生了变化: {0}</value>
+  </data>
+  <data name="NoAntivirusRegistered" xml:space="preserve">
+    <value>未注册用于扫描的防病毒软件。</value>
+  </data>
+  <data name="ScanSessionFailed" xml:space="preserve">
+    <value>无法启动防病毒扫描会话: {0}</value>
+  </data>
+  <data name="ScanCannotReadArchive" xml:space="preserve">
+    <value>无法读取压缩包: {0}</value>
+  </data>
+  <data name="ScanCannotReadEntry" xml:space="preserve">
+    <value>无法读取条目: {0}</value>
+  </data>
+  <data name="ScanCannotExtract" xml:space="preserve">
+    <value>无法解压压缩包以进行扫描: {0}</value>
+  </data>
+  <data name="ScanRemovedOrBlocked" xml:space="preserve">
+    <value>在 Pakko 能直接扫描之前已被删除或阻止。</value>
+  </data>
+  <data name="ScanEntryFailed" xml:space="preserve">
+    <value>此条目的防病毒扫描失败: {0}</value>
+  </data>
+  <data name="ScanEntryIntegrityFailed" xml:space="preserve">
+    <value>解密后的内容未通过完整性检查(密码错误或条目已损坏)，未报告为干净。</value>
+  </data>
+  <data name="ScanEntryPasswordProtected" xml:space="preserve">
+    <value>条目受密码保护，未扫描。</value>
+  </data>
+  <data name="ScanEntryWrongPassword" xml:space="preserve">
+    <value>条目受其他密码保护，未扫描。</value>
+  </data>
+  <data name="ScanEntryUnsupportedMethod" xml:space="preserve">
+    <value>条目使用了不支持的加密压缩方法，未扫描。</value>
+  </data>
+  <data name="ScanEntryAuthenticationFailed" xml:space="preserve">
+    <value>条目未通过解密身份验证(已损坏或被篡改)，未扫描。</value>
+  </data>
+  <data name="ScanEntryTooLarge" xml:space="preserve">
+    <value>条目大于 {0} MiB，未扫描。</value>
+  </data>
+</root>

@@ -1,0 +1,264 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="SourceNotFound" xml:space="preserve">
+    <value>Đường dẫn nguồn không tồn tại: {0}</value>
+  </data>
+  <data name="CannotAccessFile" xml:space="preserve">
+    <value>Không thể truy cập tệp: {0}</value>
+  </data>
+  <data name="AccessDenied" xml:space="preserve">
+    <value>Truy cập bị từ chối: {0}</value>
+  </data>
+  <data name="LinkNotArchived" xml:space="preserve">
+    <value>Liên kết tượng trưng và điểm nối NTFS không được lưu trữ.</value>
+  </data>
+  <data name="FolderLinkNotFollowed" xml:space="preserve">
+    <value>Khi lưu trữ, điểm nối NTFS và liên kết tượng trưng đến thư mục không được đi theo.</value>
+  </data>
+  <data name="ReparsePointNotArchived" xml:space="preserve">
+    <value>Liên kết tượng trưng và điểm phân tích lại không được lưu trữ.</value>
+  </data>
+  <data name="ArchiveAlreadyExists" xml:space="preserve">
+    <value>Kho lưu trữ "{0}" đã tồn tại ở đích và đã được bỏ qua.</value>
+  </data>
+  <data name="CannotCreateArchive" xml:space="preserve">
+    <value>Không thể tạo kho lưu trữ: {0}</value>
+  </data>
+  <data name="AccessDeniedCreatingArchive" xml:space="preserve">
+    <value>Truy cập bị từ chối khi tạo kho lưu trữ: {0}</value>
+  </data>
+  <data name="UnexpectedError" xml:space="preserve">
+    <value>Lỗi không mong muốn: {0}</value>
+  </data>
+  <data name="UnknownArchivingError" xml:space="preserve">
+    <value>Lỗi không xác định khi lưu trữ.</value>
+  </data>
+  <data name="EntryNameTooLong" xml:space="preserve">
+    <value>Tên mục quá dài cho kho lưu trữ ZIP ({0} byte theo UTF-8; tối đa {1}).</value>
+  </data>
+  <data name="NotEnoughSpaceToCompress" xml:space="preserve">
+    <value>Không đủ dung lượng đĩa trống để nén tệp này: tệp có {0} byte nhưng chỉ còn trống {1} byte.</value>
+  </data>
+  <data name="PasswordNotEntered" xml:space="preserve">
+    <value>Không tạo kho lưu trữ: chưa nhập mật khẩu.</value>
+  </data>
+  <data name="PasswordEmpty" xml:space="preserve">
+    <value>Không tạo kho lưu trữ: mật khẩu trống.</value>
+  </data>
+  <data name="PasswordUnsupportedCharacters" xml:space="preserve">
+    <value>Không tạo kho lưu trữ: mật khẩu chỉ được chứa chữ cái tiếng Anh, chữ số, dấu cách và dấu câu ASCII; các công cụ ZIP khác như 7-Zip không thể mở kho lưu trữ được bảo vệ bằng ký tự khác.</value>
+  </data>
+  <data name="PasswordTooLong" xml:space="preserve">
+    <value>Không tạo kho lưu trữ: mật khẩu dài hơn {0} ký tự, mức tối đa mà 7-Zip chấp nhận cho ZIP mã hóa AES.</value>
+  </data>
+  <data name="PasswordOnlyForZip" xml:space="preserve">
+    <value>Bảo vệ bằng mật khẩu chỉ khả dụng cho kho lưu trữ ZIP.</value>
+  </data>
+  <data name="CreationFormatBlocked" xml:space="preserve">
+    <value>Việc tạo kho lưu trữ {0} bị Chính sách Nhóm chặn.</value>
+  </data>
+  <data name="TarCreationDisabled" xml:space="preserve">
+    <value>Việc tạo kho lưu trữ bằng tar.exe bị Chính sách Nhóm tắt.</value>
+  </data>
+  <data name="TarCreationFailed" xml:space="preserve">
+    <value>tar.exe không thể tạo kho lưu trữ: {0}</value>
+  </data>
+  <data name="TarNameNotRepresentable" xml:space="preserve">
+    <value>Tên "{0}" chứa ký tự mà tar.exe không thể xử lý an toàn trên hệ thống này (trang mã ANSI {1}). Hãy dùng ZIP cho nội dung này.</value>
+  </data>
+  <data name="TarSignatureInvalid" xml:space="preserve">
+    <value>tar.exe không vượt qua kiểm tra chữ ký Authenticode và sẽ không được chạy.</value>
+  </data>
+  <data name="TarSignatureVerificationFailed" xml:space="preserve">
+    <value>"{0}" không vượt qua kiểm tra chữ ký Authenticode.</value>
+  </data>
+  <data name="NotAnArchiveExtract" xml:space="preserve">
+    <value>Tệp không có định dạng kho lưu trữ được nhận dạng và không thể giải nén.</value>
+  </data>
+  <data name="NotAnArchiveTest" xml:space="preserve">
+    <value>Tệp không có định dạng kho lưu trữ được nhận dạng và không thể kiểm tra.</value>
+  </data>
+  <data name="UnsupportedByZipEngine" xml:space="preserve">
+    <value>Định dạng {0} không được hỗ trợ. Chỉ hỗ trợ các định dạng dựa trên ZIP.</value>
+  </data>
+  <data name="FormatBlocked" xml:space="preserve">
+    <value>Định dạng kho lưu trữ này ({0}) bị Chính sách Nhóm chặn.</value>
+  </data>
+  <data name="TarExtractionDisabled" xml:space="preserve">
+    <value>Việc giải nén bằng tar.exe bị Chính sách Nhóm tắt.</value>
+  </data>
+  <data name="FormatNeedsNewerTar" xml:space="preserve">
+    <value>{0} cần tar.exe có libarchive &gt;= 3.7.0 (Windows 11 23H2+); tar.exe của hệ thống này (phiên bản {1}) không hỗ trợ.</value>
+  </data>
+  <data name="FormatNotSupportedByTar" xml:space="preserve">
+    <value>{0} không được tar.exe của hệ thống này (phiên bản {1}) hỗ trợ.</value>
+  </data>
+  <data name="ArchiveFormatNotSupportedByTar" xml:space="preserve">
+    <value>Định dạng kho lưu trữ này không được tar.exe của hệ thống này (phiên bản {0}) hỗ trợ.</value>
+  </data>
+  <data name="NoTestCapability" xml:space="preserve">
+    <value>không thể kiểm tra kho lưu trữ họ tar</value>
+  </data>
+  <data name="PasswordProtectedExtract" xml:space="preserve">
+    <value>Kho lưu trữ này được bảo vệ bằng mật khẩu và không thể giải nén.</value>
+  </data>
+  <data name="PasswordProtectedTest" xml:space="preserve">
+    <value>Kho lưu trữ này được bảo vệ bằng mật khẩu và không thể kiểm tra.</value>
+  </data>
+  <data name="PasswordProtectedBrowse" xml:space="preserve">
+    <value>Kho lưu trữ này được bảo vệ bằng mật khẩu và không thể duyệt.</value>
+  </data>
+  <data name="ZipCorrupted" xml:space="preserve">
+    <value>Tệp có chữ ký ZIP nhưng có vẻ bị hỏng hoặc không đầy đủ.</value>
+  </data>
+  <data name="CannotExtractArchive" xml:space="preserve">
+    <value>Không thể giải nén kho lưu trữ: {0}</value>
+  </data>
+  <data name="AccessDeniedExtractingArchive" xml:space="preserve">
+    <value>Truy cập bị từ chối khi giải nén kho lưu trữ: {0}</value>
+  </data>
+  <data name="CannotReadArchive" xml:space="preserve">
+    <value>Không thể đọc kho lưu trữ: {0}</value>
+  </data>
+  <data name="EntryNameCollision" xml:space="preserve">
+    <value>Sau khi giải mã, mục "{0}" có cùng tên với một mục khác; mục này không được giải nén vì mục này sẽ ghi đè mục kia.</value>
+  </data>
+  <data name="EntryFailed" xml:space="preserve">
+    <value>Mục "{0}": {1}</value>
+  </data>
+  <data name="EntryWrongPassword" xml:space="preserve">
+    <value>Không thể giải mã mục "{0}": sai mật khẩu.</value>
+  </data>
+  <data name="EntryAuthenticationFailed" xml:space="preserve">
+    <value>Không thể giải mã mục "{0}": xác thực không thành công (bị hỏng hoặc bị can thiệp).</value>
+  </data>
+  <data name="EntryUnsupportedEncryptedMethod" xml:space="preserve">
+    <value>Mục "{0}" dùng phương pháp nén kèm mã hóa không được hỗ trợ.</value>
+  </data>
+  <data name="InsufficientDiskSpace" xml:space="preserve">
+    <value>Kho lưu trữ khai báo {0} byte khi chưa nén, nhưng đích chỉ còn trống {1} byte. Đã chặn giải nén.</value>
+  </data>
+  <data name="ZipBombDeclined" xml:space="preserve">
+    <value>Tỷ lệ nén đáng ngờ ({0}:1, khai báo {1} byte). Đã từ chối giải nén để đề phòng bom ZIP.</value>
+  </data>
+  <data name="TarBombDeclined" xml:space="preserve">
+    <value>Tỷ lệ nén đáng ngờ ({0}:1, khai báo {1} byte) trên toàn bộ kho lưu trữ. Đã từ chối giải nén để đề phòng bom giải nén.</value>
+  </data>
+  <data name="DestinationFileLocked" xml:space="preserve">
+    <value>Không thể ghi "{0}": tệp đích đang bị một tiến trình khác khóa.</value>
+  </data>
+  <data name="AllEntriesSkipped" xml:space="preserve">
+    <value>Không có gì được giải nén từ kho lưu trữ này — tất cả các mục đều bị bỏ qua.</value>
+  </data>
+  <data name="UnsafeEntryPath" xml:space="preserve">
+    <value>Mục "{0}" có đường dẫn không an toàn và không được giải nén.</value>
+  </data>
+  <data name="EntryAlternateDataStream" xml:space="preserve">
+    <value>Mục luồng dữ liệu thay thế bị từ chối vì lý do bảo mật.</value>
+  </data>
+  <data name="EntryReservedName" xml:space="preserve">
+    <value>Tên mục trùng với tên thiết bị dành riêng của Windows và đã bị bỏ qua.</value>
+  </data>
+  <data name="EntryControlCharacters" xml:space="preserve">
+    <value>Tên mục chứa ký tự điều khiển và đã bị bỏ qua.</value>
+  </data>
+  <data name="CannotExtractEntry" xml:space="preserve">
+    <value>Không thể giải nén "{0}": {1}</value>
+  </data>
+  <data name="EntryThroughReparsePoint" xml:space="preserve">
+    <value>Đường dẫn của mục đi qua một điểm phân tích lại (liên kết tượng trưng hoặc điểm nối) và đã bị bỏ qua.</value>
+  </data>
+  <data name="FileExistsAtDestination" xml:space="preserve">
+    <value>Tệp đã tồn tại ở đích.</value>
+  </data>
+  <data name="TarExtractionFailed" xml:space="preserve">
+    <value>Giải nén bằng tar.exe không thành công: {0}</value>
+  </data>
+  <data name="TarUnsafeEntryPath" xml:space="preserve">
+    <value>Kho lưu trữ chứa đường dẫn mục không an toàn ("{0}") và không thể giải nén an toàn.</value>
+  </data>
+  <data name="TarListingInconsistent" xml:space="preserve">
+    <value>Danh sách nội dung kho lưu trữ không nhất quán nên không thể giải nén an toàn.</value>
+  </data>
+  <data name="TarSpecialEntry" xml:space="preserve">
+    <value>Kho lưu trữ chứa liên kết tượng trưng, liên kết cứng, thiết bị hoặc mục đặc biệt khác và không thể giải nén an toàn.</value>
+  </data>
+  <data name="ListingInconsistent" xml:space="preserve">
+    <value>Danh sách nội dung kho lưu trữ không nhất quán.</value>
+  </data>
+  <data name="TarUnreadableNames" xml:space="preserve">
+    <value>Kho lưu trữ chứa tên tệp mà tar.exe không thể biểu diễn trên hệ thống này (trang mã {0}), vì vậy không thể đọc tại đây bằng tar.exe. Chi tiết: {1}</value>
+  </data>
+  <data name="SandboxSetupFailed" xml:space="preserve">
+    <value>Thiết lập hộp cát không thành công: {0}</value>
+  </data>
+  <data name="ArchiveInUse" xml:space="preserve">
+    <value>Kho lưu trữ đang được chương trình khác sử dụng: {0}</value>
+  </data>
+  <data name="CannotOpenArchive" xml:space="preserve">
+    <value>Không thể mở kho lưu trữ: {0}</value>
+  </data>
+  <data name="CannotReopenArchive" xml:space="preserve">
+    <value>Không thể mở lại kho lưu trữ (lỗi Win32 {0}).</value>
+  </data>
+  <data name="HashFolderSkipped" xml:space="preserve">
+    <value>Đã bỏ qua: thư mục (chỉ hỗ trợ khi chọn riêng một thư mục)</value>
+  </data>
+  <data name="HashLinkSkipped" xml:space="preserve">
+    <value>Đã bỏ qua: liên kết tượng trưng hoặc điểm nối (không đi theo)</value>
+  </data>
+  <data name="HashFileChanged" xml:space="preserve">
+    <value>Kích thước tệp đã thay đổi trong khi tính mã băm: {0}</value>
+  </data>
+  <data name="NoAntivirusRegistered" xml:space="preserve">
+    <value>Không có phần mềm diệt vi-rút nào được đăng ký để quét.</value>
+  </data>
+  <data name="ScanSessionFailed" xml:space="preserve">
+    <value>Không thể bắt đầu phiên quét vi-rút: {0}</value>
+  </data>
+  <data name="ScanCannotReadArchive" xml:space="preserve">
+    <value>Không thể đọc kho lưu trữ: {0}</value>
+  </data>
+  <data name="ScanCannotReadEntry" xml:space="preserve">
+    <value>Không thể đọc mục: {0}</value>
+  </data>
+  <data name="ScanCannotExtract" xml:space="preserve">
+    <value>Không thể giải nén kho lưu trữ để quét: {0}</value>
+  </data>
+  <data name="ScanRemovedOrBlocked" xml:space="preserve">
+    <value>Đã bị xóa hoặc chặn trước khi Pakko có thể quét trực tiếp.</value>
+  </data>
+  <data name="ScanEntryFailed" xml:space="preserve">
+    <value>Quét vi-rút mục này không thành công: {0}</value>
+  </data>
+  <data name="ScanEntryIntegrityFailed" xml:space="preserve">
+    <value>Nội dung đã giải mã không vượt qua kiểm tra toàn vẹn (sai mật khẩu hoặc mục bị hỏng) và không được báo cáo là sạch.</value>
+  </data>
+  <data name="ScanEntryPasswordProtected" xml:space="preserve">
+    <value>Mục được bảo vệ bằng mật khẩu và chưa được quét.</value>
+  </data>
+  <data name="ScanEntryWrongPassword" xml:space="preserve">
+    <value>Mục được bảo vệ bằng mật khẩu khác và chưa được quét.</value>
+  </data>
+  <data name="ScanEntryUnsupportedMethod" xml:space="preserve">
+    <value>Mục dùng phương pháp nén kèm mã hóa không được hỗ trợ và chưa được quét.</value>
+  </data>
+  <data name="ScanEntryAuthenticationFailed" xml:space="preserve">
+    <value>Mục không vượt qua xác thực giải mã (bị hỏng hoặc bị can thiệp) và chưa được quét.</value>
+  </data>
+  <data name="ScanEntryTooLarge" xml:space="preserve">
+    <value>Mục lớn hơn {0} MiB và chưa được quét.</value>
+  </data>
+</root>

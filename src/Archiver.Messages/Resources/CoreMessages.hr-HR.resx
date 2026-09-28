@@ -1,0 +1,264 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="SourceNotFound" xml:space="preserve">
+    <value>Izvorni put ne postoji: {0}</value>
+  </data>
+  <data name="CannotAccessFile" xml:space="preserve">
+    <value>Nije moguće pristupiti datoteci: {0}</value>
+  </data>
+  <data name="AccessDenied" xml:space="preserve">
+    <value>Pristup odbijen: {0}</value>
+  </data>
+  <data name="LinkNotArchived" xml:space="preserve">
+    <value>Simboličke veze i NTFS spojišta ne arhiviraju se.</value>
+  </data>
+  <data name="FolderLinkNotFollowed" xml:space="preserve">
+    <value>Tijekom arhiviranja ne slijede se NTFS spojišta ni simboličke veze na mape.</value>
+  </data>
+  <data name="ReparsePointNotArchived" xml:space="preserve">
+    <value>Simboličke veze i točke ponovne analize ne arhiviraju se.</value>
+  </data>
+  <data name="ArchiveAlreadyExists" xml:space="preserve">
+    <value>Arhiva „{0}” već postoji na odredištu i preskočena je.</value>
+  </data>
+  <data name="CannotCreateArchive" xml:space="preserve">
+    <value>Nije moguće stvoriti arhivu: {0}</value>
+  </data>
+  <data name="AccessDeniedCreatingArchive" xml:space="preserve">
+    <value>Pristup odbijen pri stvaranju arhive: {0}</value>
+  </data>
+  <data name="UnexpectedError" xml:space="preserve">
+    <value>Neočekivana pogreška: {0}</value>
+  </data>
+  <data name="UnknownArchivingError" xml:space="preserve">
+    <value>Nepoznata pogreška pri arhiviranju.</value>
+  </data>
+  <data name="EntryNameTooLong" xml:space="preserve">
+    <value>Naziv stavke predug je za ZIP arhivu ({0} bajtova u UTF-8; najviše {1}).</value>
+  </data>
+  <data name="NotEnoughSpaceToCompress" xml:space="preserve">
+    <value>Nema dovoljno slobodnog prostora na disku za sažimanje ove datoteke: ima {0} bajtova, a slobodno je samo {1} bajtova.</value>
+  </data>
+  <data name="PasswordNotEntered" xml:space="preserve">
+    <value>Arhiva nije stvorena: lozinka nije unesena.</value>
+  </data>
+  <data name="PasswordEmpty" xml:space="preserve">
+    <value>Arhiva nije stvorena: lozinka je prazna.</value>
+  </data>
+  <data name="PasswordUnsupportedCharacters" xml:space="preserve">
+    <value>Arhiva nije stvorena: lozinka smije sadržavati samo engleska slova, znamenke, razmake i ASCII interpunkciju; drugi ZIP alati, poput 7-Zipa, ne mogu otvoriti arhivu zaštićenu drugim znakovima.</value>
+  </data>
+  <data name="PasswordTooLong" xml:space="preserve">
+    <value>Arhiva nije stvorena: lozinka je dulja od {0} znakova, što je najviše što 7-Zip prihvaća za ZIP šifriran AES-om.</value>
+  </data>
+  <data name="PasswordOnlyForZip" xml:space="preserve">
+    <value>Zaštita lozinkom dostupna je samo za ZIP arhive.</value>
+  </data>
+  <data name="CreationFormatBlocked" xml:space="preserve">
+    <value>Stvaranje arhive {0} blokirano je pravilima grupe.</value>
+  </data>
+  <data name="TarCreationDisabled" xml:space="preserve">
+    <value>Stvaranje arhiva pomoću tar.exe onemogućeno je pravilima grupe.</value>
+  </data>
+  <data name="TarCreationFailed" xml:space="preserve">
+    <value>tar.exe nije mogao stvoriti arhivu: {0}</value>
+  </data>
+  <data name="TarNameNotRepresentable" xml:space="preserve">
+    <value>Naziv „{0}” sadrži znakove koje tar.exe na ovom sustavu ne može sigurno obraditi (ANSI kodna stranica {1}). Za ovaj sadržaj upotrijebite ZIP.</value>
+  </data>
+  <data name="TarSignatureInvalid" xml:space="preserve">
+    <value>tar.exe nije prošao provjeru potpisa Authenticode i neće se pokrenuti.</value>
+  </data>
+  <data name="TarSignatureVerificationFailed" xml:space="preserve">
+    <value>„{0}” nije prošao provjeru potpisa Authenticode.</value>
+  </data>
+  <data name="NotAnArchiveExtract" xml:space="preserve">
+    <value>Datoteka nije u prepoznatom obliku arhive i ne može se raspakirati.</value>
+  </data>
+  <data name="NotAnArchiveTest" xml:space="preserve">
+    <value>Datoteka nije u prepoznatom obliku arhive i ne može se testirati.</value>
+  </data>
+  <data name="UnsupportedByZipEngine" xml:space="preserve">
+    <value>Oblik {0} nije podržan. Podržani su samo oblici temeljeni na ZIP-u.</value>
+  </data>
+  <data name="FormatBlocked" xml:space="preserve">
+    <value>Ovaj oblik arhive ({0}) blokiran je pravilima grupe.</value>
+  </data>
+  <data name="TarExtractionDisabled" xml:space="preserve">
+    <value>Raspakiravanje pomoću tar.exe onemogućeno je pravilima grupe.</value>
+  </data>
+  <data name="FormatNeedsNewerTar" xml:space="preserve">
+    <value>{0} zahtijeva tar.exe s libarchive &gt;= 3.7.0 (Windows 11 23H2+); tar.exe ovog sustava (verzija {1}) to ne podržava.</value>
+  </data>
+  <data name="FormatNotSupportedByTar" xml:space="preserve">
+    <value>{0} nije podržan u tar.exe ovog sustava (verzija {1}).</value>
+  </data>
+  <data name="ArchiveFormatNotSupportedByTar" xml:space="preserve">
+    <value>Ovaj oblik arhive nije podržan u tar.exe ovog sustava (verzija {0}).</value>
+  </data>
+  <data name="NoTestCapability" xml:space="preserve">
+    <value>arhive obitelji tar ne mogu se testirati</value>
+  </data>
+  <data name="PasswordProtectedExtract" xml:space="preserve">
+    <value>Ova je arhiva zaštićena lozinkom i ne može se raspakirati.</value>
+  </data>
+  <data name="PasswordProtectedTest" xml:space="preserve">
+    <value>Ova je arhiva zaštićena lozinkom i ne može se testirati.</value>
+  </data>
+  <data name="PasswordProtectedBrowse" xml:space="preserve">
+    <value>Ova je arhiva zaštićena lozinkom i ne može se pregledavati.</value>
+  </data>
+  <data name="ZipCorrupted" xml:space="preserve">
+    <value>Datoteka ima ZIP potpis, ali čini se oštećenom ili nepotpunom.</value>
+  </data>
+  <data name="CannotExtractArchive" xml:space="preserve">
+    <value>Nije moguće raspakirati arhivu: {0}</value>
+  </data>
+  <data name="AccessDeniedExtractingArchive" xml:space="preserve">
+    <value>Pristup odbijen pri raspakiravanju arhive: {0}</value>
+  </data>
+  <data name="CannotReadArchive" xml:space="preserve">
+    <value>Nije moguće pročitati arhivu: {0}</value>
+  </data>
+  <data name="EntryNameCollision" xml:space="preserve">
+    <value>Nakon dekodiranja stavka „{0}” ima isti naziv kao druga stavka; ne raspakirava se jer bi jedna prebrisala drugu.</value>
+  </data>
+  <data name="EntryFailed" xml:space="preserve">
+    <value>Stavka „{0}”: {1}</value>
+  </data>
+  <data name="EntryWrongPassword" xml:space="preserve">
+    <value>Stavku „{0}” nije moguće dešifrirati: pogrešna lozinka.</value>
+  </data>
+  <data name="EntryAuthenticationFailed" xml:space="preserve">
+    <value>Stavku „{0}” nije moguće dešifrirati: provjera autentičnosti nije uspjela (oštećena ili izmijenjena).</value>
+  </data>
+  <data name="EntryUnsupportedEncryptedMethod" xml:space="preserve">
+    <value>Stavka „{0}” koristi nepodržanu metodu sažimanja sa šifriranjem.</value>
+  </data>
+  <data name="InsufficientDiskSpace" xml:space="preserve">
+    <value>Arhiva navodi {0} bajtova nesažeto, ali na odredištu je slobodno samo {1} bajtova. Raspakiravanje je blokirano.</value>
+  </data>
+  <data name="ZipBombDeclined" xml:space="preserve">
+    <value>Sumnjiv omjer sažimanja ({0}:1, navedeno {1} bajtova). Raspakiravanje je odbijeno kao mjera opreza protiv ZIP bombi.</value>
+  </data>
+  <data name="TarBombDeclined" xml:space="preserve">
+    <value>Sumnjiv omjer sažimanja ({0}:1, navedeno {1} bajtova) za cijelu arhivu. Raspakiravanje je odbijeno kao mjera opreza protiv bombi za raspakiravanje.</value>
+  </data>
+  <data name="DestinationFileLocked" xml:space="preserve">
+    <value>Nije moguće zapisati „{0}”: odredišnu datoteku zaključao je drugi proces.</value>
+  </data>
+  <data name="AllEntriesSkipped" xml:space="preserve">
+    <value>Iz ove arhive ništa nije raspakirano — sve su stavke preskočene.</value>
+  </data>
+  <data name="UnsafeEntryPath" xml:space="preserve">
+    <value>Stavka „{0}” ima nesiguran put i nije raspakirana.</value>
+  </data>
+  <data name="EntryAlternateDataStream" xml:space="preserve">
+    <value>Stavka s alternativnim tokom podataka odbijena je iz sigurnosnih razloga.</value>
+  </data>
+  <data name="EntryReservedName" xml:space="preserve">
+    <value>Naziv stavke odgovara rezerviranom nazivu uređaja sustava Windows i preskočena je.</value>
+  </data>
+  <data name="EntryControlCharacters" xml:space="preserve">
+    <value>Naziv stavke sadrži kontrolne znakove i preskočena je.</value>
+  </data>
+  <data name="CannotExtractEntry" xml:space="preserve">
+    <value>Nije moguće raspakirati „{0}”: {1}</value>
+  </data>
+  <data name="EntryThroughReparsePoint" xml:space="preserve">
+    <value>Put stavke prolazi kroz točku ponovne analize (simboličku vezu ili spojište) i preskočena je.</value>
+  </data>
+  <data name="FileExistsAtDestination" xml:space="preserve">
+    <value>Datoteka već postoji na odredištu.</value>
+  </data>
+  <data name="TarExtractionFailed" xml:space="preserve">
+    <value>Raspakiravanje pomoću tar.exe nije uspjelo: {0}</value>
+  </data>
+  <data name="TarUnsafeEntryPath" xml:space="preserve">
+    <value>Arhiva sadrži nesiguran put stavke („{0}”) i ne može se sigurno raspakirati.</value>
+  </data>
+  <data name="TarListingInconsistent" xml:space="preserve">
+    <value>Popis sadržaja arhive nije dosljedan i arhiva se ne može sigurno raspakirati.</value>
+  </data>
+  <data name="TarSpecialEntry" xml:space="preserve">
+    <value>Arhiva sadrži simboličku vezu, čvrstu vezu, uređaj ili drugu posebnu stavku i ne može se sigurno raspakirati.</value>
+  </data>
+  <data name="ListingInconsistent" xml:space="preserve">
+    <value>Popis sadržaja arhive nije dosljedan.</value>
+  </data>
+  <data name="TarUnreadableNames" xml:space="preserve">
+    <value>Arhiva sadrži nazive datoteka koje tar.exe na ovom sustavu ne može prikazati (kodna stranica {0}), pa se ovdje ne može pročitati pomoću tar.exe. Pojedinosti: {1}</value>
+  </data>
+  <data name="SandboxSetupFailed" xml:space="preserve">
+    <value>Postavljanje izoliranog okruženja nije uspjelo: {0}</value>
+  </data>
+  <data name="ArchiveInUse" xml:space="preserve">
+    <value>Arhivu koristi drugi program: {0}</value>
+  </data>
+  <data name="CannotOpenArchive" xml:space="preserve">
+    <value>Nije moguće otvoriti arhivu: {0}</value>
+  </data>
+  <data name="CannotReopenArchive" xml:space="preserve">
+    <value>Nije moguće ponovno otvoriti arhivu (Win32 pogreška {0}).</value>
+  </data>
+  <data name="HashFolderSkipped" xml:space="preserve">
+    <value>Preskočeno: mapa (podržano samo kada je odabrana jedna mapa)</value>
+  </data>
+  <data name="HashLinkSkipped" xml:space="preserve">
+    <value>Preskočeno: simbolička veza ili spojište (ne slijedi se)</value>
+  </data>
+  <data name="HashFileChanged" xml:space="preserve">
+    <value>Veličina datoteke promijenila se tijekom izračuna sažetka: {0}</value>
+  </data>
+  <data name="NoAntivirusRegistered" xml:space="preserve">
+    <value>Za skeniranje nije registriran nijedan antivirusni program.</value>
+  </data>
+  <data name="ScanSessionFailed" xml:space="preserve">
+    <value>Nije moguće pokrenuti sesiju antivirusnog skeniranja: {0}</value>
+  </data>
+  <data name="ScanCannotReadArchive" xml:space="preserve">
+    <value>Nije moguće pročitati arhivu: {0}</value>
+  </data>
+  <data name="ScanCannotReadEntry" xml:space="preserve">
+    <value>Nije moguće pročitati stavku: {0}</value>
+  </data>
+  <data name="ScanCannotExtract" xml:space="preserve">
+    <value>Nije moguće raspakirati arhivu za skeniranje: {0}</value>
+  </data>
+  <data name="ScanRemovedOrBlocked" xml:space="preserve">
+    <value>Uklonjeno ili blokirano prije nego što ga je Pakko mogao izravno skenirati.</value>
+  </data>
+  <data name="ScanEntryFailed" xml:space="preserve">
+    <value>Antivirusno skeniranje ove stavke nije uspjelo: {0}</value>
+  </data>
+  <data name="ScanEntryIntegrityFailed" xml:space="preserve">
+    <value>Dešifrirani sadržaj nije prošao provjeru cjelovitosti (pogrešna lozinka ili oštećena stavka) i nije prijavljen kao čist.</value>
+  </data>
+  <data name="ScanEntryPasswordProtected" xml:space="preserve">
+    <value>Stavka je zaštićena lozinkom i nije skenirana.</value>
+  </data>
+  <data name="ScanEntryWrongPassword" xml:space="preserve">
+    <value>Stavka je zaštićena drugom lozinkom i nije skenirana.</value>
+  </data>
+  <data name="ScanEntryUnsupportedMethod" xml:space="preserve">
+    <value>Stavka koristi nepodržanu metodu sažimanja sa šifriranjem i nije skenirana.</value>
+  </data>
+  <data name="ScanEntryAuthenticationFailed" xml:space="preserve">
+    <value>Stavka nije prošla provjeru autentičnosti pri dešifriranju (oštećena ili izmijenjena) i nije skenirana.</value>
+  </data>
+  <data name="ScanEntryTooLarge" xml:space="preserve">
+    <value>Stavka je veća od {0} MiB i nije skenirana.</value>
+  </data>
+</root>

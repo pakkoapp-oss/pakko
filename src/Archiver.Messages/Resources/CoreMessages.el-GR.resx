@@ -1,0 +1,264 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="SourceNotFound" xml:space="preserve">
+    <value>Η διαδρομή προέλευσης δεν υπάρχει: {0}</value>
+  </data>
+  <data name="CannotAccessFile" xml:space="preserve">
+    <value>Δεν είναι δυνατή η πρόσβαση στο αρχείο: {0}</value>
+  </data>
+  <data name="AccessDenied" xml:space="preserve">
+    <value>Άρνηση πρόσβασης: {0}</value>
+  </data>
+  <data name="LinkNotArchived" xml:space="preserve">
+    <value>Οι συμβολικές συνδέσεις και οι συνδέσεις NTFS δεν αρχειοθετούνται.</value>
+  </data>
+  <data name="FolderLinkNotFollowed" xml:space="preserve">
+    <value>Κατά την αρχειοθέτηση δεν ακολουθούνται οι συνδέσεις NTFS και οι συμβολικές συνδέσεις φακέλων.</value>
+  </data>
+  <data name="ReparsePointNotArchived" xml:space="preserve">
+    <value>Οι συμβολικές συνδέσεις και τα σημεία επανανάλυσης δεν αρχειοθετούνται.</value>
+  </data>
+  <data name="ArchiveAlreadyExists" xml:space="preserve">
+    <value>Το αρχείο «{0}» υπάρχει ήδη στον προορισμό και παραλείφθηκε.</value>
+  </data>
+  <data name="CannotCreateArchive" xml:space="preserve">
+    <value>Δεν είναι δυνατή η δημιουργία του αρχείου: {0}</value>
+  </data>
+  <data name="AccessDeniedCreatingArchive" xml:space="preserve">
+    <value>Άρνηση πρόσβασης κατά τη δημιουργία του αρχείου: {0}</value>
+  </data>
+  <data name="UnexpectedError" xml:space="preserve">
+    <value>Μη αναμενόμενο σφάλμα: {0}</value>
+  </data>
+  <data name="UnknownArchivingError" xml:space="preserve">
+    <value>Άγνωστο σφάλμα κατά την αρχειοθέτηση.</value>
+  </data>
+  <data name="EntryNameTooLong" xml:space="preserve">
+    <value>Το όνομα της καταχώρησης είναι πολύ μεγάλο για αρχείο ZIP ({0} byte σε UTF-8· μέγιστο {1}).</value>
+  </data>
+  <data name="NotEnoughSpaceToCompress" xml:space="preserve">
+    <value>Δεν υπάρχει αρκετός ελεύθερος χώρος στον δίσκο για τη συμπίεση αυτού του αρχείου: είναι {0} byte, αλλά ελεύθερα είναι μόνο {1} byte.</value>
+  </data>
+  <data name="PasswordNotEntered" xml:space="preserve">
+    <value>Το αρχείο δεν δημιουργήθηκε: δεν εισήχθη κωδικός πρόσβασης.</value>
+  </data>
+  <data name="PasswordEmpty" xml:space="preserve">
+    <value>Το αρχείο δεν δημιουργήθηκε: ο κωδικός πρόσβασης είναι κενός.</value>
+  </data>
+  <data name="PasswordUnsupportedCharacters" xml:space="preserve">
+    <value>Το αρχείο δεν δημιουργήθηκε: ο κωδικός πρόσβασης μπορεί να περιέχει μόνο αγγλικά γράμματα, ψηφία, κενά και σημεία στίξης ASCII· άλλα εργαλεία ZIP, όπως το 7-Zip, δεν μπορούν να ανοίξουν αρχείο που προστατεύεται με άλλους χαρακτήρες.</value>
+  </data>
+  <data name="PasswordTooLong" xml:space="preserve">
+    <value>Το αρχείο δεν δημιουργήθηκε: ο κωδικός πρόσβασης υπερβαίνει τους {0} χαρακτήρες, το μέγιστο που δέχεται το 7-Zip για ZIP κρυπτογραφημένο με AES.</value>
+  </data>
+  <data name="PasswordOnlyForZip" xml:space="preserve">
+    <value>Η προστασία με κωδικό πρόσβασης είναι διαθέσιμη μόνο για αρχεία ZIP.</value>
+  </data>
+  <data name="CreationFormatBlocked" xml:space="preserve">
+    <value>Η δημιουργία αρχείου {0} αποκλείεται από πολιτική ομάδας.</value>
+  </data>
+  <data name="TarCreationDisabled" xml:space="preserve">
+    <value>Η δημιουργία αρχείων με το tar.exe έχει απενεργοποιηθεί από πολιτική ομάδας.</value>
+  </data>
+  <data name="TarCreationFailed" xml:space="preserve">
+    <value>Το tar.exe δεν μπόρεσε να δημιουργήσει το αρχείο: {0}</value>
+  </data>
+  <data name="TarNameNotRepresentable" xml:space="preserve">
+    <value>Το όνομα «{0}» περιέχει χαρακτήρες που το tar.exe δεν μπορεί να χειριστεί με ασφάλεια σε αυτό το σύστημα (κωδικοσελίδα ANSI {1}). Χρησιμοποιήστε ZIP για αυτό το περιεχόμενο.</value>
+  </data>
+  <data name="TarSignatureInvalid" xml:space="preserve">
+    <value>Το tar.exe απέτυχε στον έλεγχο της υπογραφής Authenticode και δεν θα εκτελεστεί.</value>
+  </data>
+  <data name="TarSignatureVerificationFailed" xml:space="preserve">
+    <value>Το «{0}» απέτυχε στον έλεγχο της υπογραφής Authenticode.</value>
+  </data>
+  <data name="NotAnArchiveExtract" xml:space="preserve">
+    <value>Το αρχείο δεν έχει αναγνωρισμένη μορφή αρχειοθήκης και δεν μπορεί να εξαχθεί.</value>
+  </data>
+  <data name="NotAnArchiveTest" xml:space="preserve">
+    <value>Το αρχείο δεν έχει αναγνωρισμένη μορφή αρχειοθήκης και δεν μπορεί να ελεγχθεί.</value>
+  </data>
+  <data name="UnsupportedByZipEngine" xml:space="preserve">
+    <value>Η μορφή {0} δεν υποστηρίζεται. Υποστηρίζονται μόνο μορφές που βασίζονται σε ZIP.</value>
+  </data>
+  <data name="FormatBlocked" xml:space="preserve">
+    <value>Αυτή η μορφή αρχείου ({0}) αποκλείεται από πολιτική ομάδας.</value>
+  </data>
+  <data name="TarExtractionDisabled" xml:space="preserve">
+    <value>Η εξαγωγή με το tar.exe έχει απενεργοποιηθεί από πολιτική ομάδας.</value>
+  </data>
+  <data name="FormatNeedsNewerTar" xml:space="preserve">
+    <value>Το {0} απαιτεί tar.exe με libarchive &gt;= 3.7.0 (Windows 11 23H2+)· το tar.exe αυτού του συστήματος (έκδοση {1}) δεν το υποστηρίζει.</value>
+  </data>
+  <data name="FormatNotSupportedByTar" xml:space="preserve">
+    <value>Το {0} δεν υποστηρίζεται από το tar.exe αυτού του συστήματος (έκδοση {1}).</value>
+  </data>
+  <data name="ArchiveFormatNotSupportedByTar" xml:space="preserve">
+    <value>Αυτή η μορφή αρχείου δεν υποστηρίζεται από το tar.exe αυτού του συστήματος (έκδοση {0}).</value>
+  </data>
+  <data name="NoTestCapability" xml:space="preserve">
+    <value>τα αρχεία της οικογένειας tar δεν μπορούν να ελεγχθούν</value>
+  </data>
+  <data name="PasswordProtectedExtract" xml:space="preserve">
+    <value>Αυτό το αρχείο προστατεύεται με κωδικό πρόσβασης και δεν μπορεί να εξαχθεί.</value>
+  </data>
+  <data name="PasswordProtectedTest" xml:space="preserve">
+    <value>Αυτό το αρχείο προστατεύεται με κωδικό πρόσβασης και δεν μπορεί να ελεγχθεί.</value>
+  </data>
+  <data name="PasswordProtectedBrowse" xml:space="preserve">
+    <value>Αυτό το αρχείο προστατεύεται με κωδικό πρόσβασης και δεν μπορεί να προβληθεί.</value>
+  </data>
+  <data name="ZipCorrupted" xml:space="preserve">
+    <value>Το αρχείο έχει υπογραφή ZIP, αλλά φαίνεται κατεστραμμένο ή ελλιπές.</value>
+  </data>
+  <data name="CannotExtractArchive" xml:space="preserve">
+    <value>Δεν είναι δυνατή η εξαγωγή του αρχείου: {0}</value>
+  </data>
+  <data name="AccessDeniedExtractingArchive" xml:space="preserve">
+    <value>Άρνηση πρόσβασης κατά την εξαγωγή του αρχείου: {0}</value>
+  </data>
+  <data name="CannotReadArchive" xml:space="preserve">
+    <value>Δεν είναι δυνατή η ανάγνωση του αρχείου: {0}</value>
+  </data>
+  <data name="EntryNameCollision" xml:space="preserve">
+    <value>Μετά την αποκωδικοποίηση, η καταχώρηση «{0}» έχει το ίδιο όνομα με άλλη καταχώρηση· δεν εξάγεται, επειδή η μία θα αντικαθιστούσε την άλλη.</value>
+  </data>
+  <data name="EntryFailed" xml:space="preserve">
+    <value>Καταχώρηση «{0}»: {1}</value>
+  </data>
+  <data name="EntryWrongPassword" xml:space="preserve">
+    <value>Δεν ήταν δυνατή η αποκρυπτογράφηση της καταχώρησης «{0}»: λάθος κωδικός πρόσβασης.</value>
+  </data>
+  <data name="EntryAuthenticationFailed" xml:space="preserve">
+    <value>Δεν ήταν δυνατή η αποκρυπτογράφηση της καταχώρησης «{0}»: ο έλεγχος ταυτότητας απέτυχε (κατεστραμμένη ή αλλοιωμένη).</value>
+  </data>
+  <data name="EntryUnsupportedEncryptedMethod" xml:space="preserve">
+    <value>Η καταχώρηση «{0}» χρησιμοποιεί μη υποστηριζόμενη μέθοδο συμπίεσης με κρυπτογράφηση.</value>
+  </data>
+  <data name="InsufficientDiskSpace" xml:space="preserve">
+    <value>Το αρχείο δηλώνει {0} byte χωρίς συμπίεση, αλλά ο προορισμός έχει μόνο {1} byte ελεύθερα. Η εξαγωγή αποκλείστηκε.</value>
+  </data>
+  <data name="ZipBombDeclined" xml:space="preserve">
+    <value>Ύποπτος λόγος συμπίεσης ({0}:1, δηλωμένα {1} byte). Η εξαγωγή απορρίφθηκε προληπτικά για προστασία από βόμβες ZIP.</value>
+  </data>
+  <data name="TarBombDeclined" xml:space="preserve">
+    <value>Ύποπτος λόγος συμπίεσης ({0}:1, δηλωμένα {1} byte) για ολόκληρο το αρχείο. Η εξαγωγή απορρίφθηκε προληπτικά για προστασία από βόμβες αποσυμπίεσης.</value>
+  </data>
+  <data name="DestinationFileLocked" xml:space="preserve">
+    <value>Δεν είναι δυνατή η εγγραφή του «{0}»: το αρχείο προορισμού είναι κλειδωμένο από άλλη διεργασία.</value>
+  </data>
+  <data name="AllEntriesSkipped" xml:space="preserve">
+    <value>Δεν εξήχθη τίποτα από αυτό το αρχείο — όλες οι καταχωρήσεις παραλείφθηκαν.</value>
+  </data>
+  <data name="UnsafeEntryPath" xml:space="preserve">
+    <value>Η καταχώρηση «{0}» έχει μη ασφαλή διαδρομή και δεν εξήχθη.</value>
+  </data>
+  <data name="EntryAlternateDataStream" xml:space="preserve">
+    <value>Η καταχώρηση εναλλακτικής ροής δεδομένων απορρίφθηκε για λόγους ασφαλείας.</value>
+  </data>
+  <data name="EntryReservedName" xml:space="preserve">
+    <value>Το όνομα της καταχώρησης αντιστοιχεί σε δεσμευμένο όνομα συσκευής των Windows και παραλείφθηκε.</value>
+  </data>
+  <data name="EntryControlCharacters" xml:space="preserve">
+    <value>Το όνομα της καταχώρησης περιέχει χαρακτήρες ελέγχου και παραλείφθηκε.</value>
+  </data>
+  <data name="CannotExtractEntry" xml:space="preserve">
+    <value>Δεν είναι δυνατή η εξαγωγή του «{0}»: {1}</value>
+  </data>
+  <data name="EntryThroughReparsePoint" xml:space="preserve">
+    <value>Η διαδρομή της καταχώρησης διέρχεται από σημείο επανανάλυσης (συμβολική σύνδεση ή σύνδεση) και παραλείφθηκε.</value>
+  </data>
+  <data name="FileExistsAtDestination" xml:space="preserve">
+    <value>Το αρχείο υπάρχει ήδη στον προορισμό.</value>
+  </data>
+  <data name="TarExtractionFailed" xml:space="preserve">
+    <value>Η εξαγωγή με το tar.exe απέτυχε: {0}</value>
+  </data>
+  <data name="TarUnsafeEntryPath" xml:space="preserve">
+    <value>Το αρχείο περιέχει μη ασφαλή διαδρομή καταχώρησης («{0}») και δεν μπορεί να εξαχθεί με ασφάλεια.</value>
+  </data>
+  <data name="TarListingInconsistent" xml:space="preserve">
+    <value>Η λίστα περιεχομένων του αρχείου είναι ασυνεπής και το αρχείο δεν μπορεί να εξαχθεί με ασφάλεια.</value>
+  </data>
+  <data name="TarSpecialEntry" xml:space="preserve">
+    <value>Το αρχείο περιέχει συμβολική σύνδεση, σταθερή σύνδεση, συσκευή ή άλλη ειδική καταχώρηση και δεν μπορεί να εξαχθεί με ασφάλεια.</value>
+  </data>
+  <data name="ListingInconsistent" xml:space="preserve">
+    <value>Η λίστα περιεχομένων του αρχείου είναι ασυνεπής.</value>
+  </data>
+  <data name="TarUnreadableNames" xml:space="preserve">
+    <value>Το αρχείο περιέχει ονόματα αρχείων που το tar.exe δεν μπορεί να αναπαραστήσει σε αυτό το σύστημα (κωδικοσελίδα {0}), επομένως δεν μπορεί να διαβαστεί εδώ με το tar.exe. Λεπτομέρειες: {1}</value>
+  </data>
+  <data name="SandboxSetupFailed" xml:space="preserve">
+    <value>Η ρύθμιση του απομονωμένου περιβάλλοντος απέτυχε: {0}</value>
+  </data>
+  <data name="ArchiveInUse" xml:space="preserve">
+    <value>Το αρχείο χρησιμοποιείται από άλλο πρόγραμμα: {0}</value>
+  </data>
+  <data name="CannotOpenArchive" xml:space="preserve">
+    <value>Δεν είναι δυνατό το άνοιγμα του αρχείου: {0}</value>
+  </data>
+  <data name="CannotReopenArchive" xml:space="preserve">
+    <value>Δεν είναι δυνατό το εκ νέου άνοιγμα του αρχείου (σφάλμα Win32 {0}).</value>
+  </data>
+  <data name="HashFolderSkipped" xml:space="preserve">
+    <value>Παραλείφθηκε: φάκελος (υποστηρίζεται μόνο όταν είναι επιλεγμένος ένας μόνο φάκελος)</value>
+  </data>
+  <data name="HashLinkSkipped" xml:space="preserve">
+    <value>Παραλείφθηκε: συμβολική σύνδεση ή σύνδεση (δεν ακολουθείται)</value>
+  </data>
+  <data name="HashFileChanged" xml:space="preserve">
+    <value>Το μέγεθος του αρχείου άλλαξε κατά τον υπολογισμό του κατακερματισμού: {0}</value>
+  </data>
+  <data name="NoAntivirusRegistered" xml:space="preserve">
+    <value>Δεν έχει καταχωρηθεί κανένα πρόγραμμα προστασίας από ιούς για σάρωση.</value>
+  </data>
+  <data name="ScanSessionFailed" xml:space="preserve">
+    <value>Δεν ήταν δυνατή η έναρξη περιόδου σάρωσης για ιούς: {0}</value>
+  </data>
+  <data name="ScanCannotReadArchive" xml:space="preserve">
+    <value>Δεν ήταν δυνατή η ανάγνωση του αρχείου: {0}</value>
+  </data>
+  <data name="ScanCannotReadEntry" xml:space="preserve">
+    <value>Δεν ήταν δυνατή η ανάγνωση της καταχώρησης: {0}</value>
+  </data>
+  <data name="ScanCannotExtract" xml:space="preserve">
+    <value>Δεν ήταν δυνατή η εξαγωγή του αρχείου για σάρωση: {0}</value>
+  </data>
+  <data name="ScanRemovedOrBlocked" xml:space="preserve">
+    <value>Καταργήθηκε ή αποκλείστηκε πριν το Pakko μπορέσει να το σαρώσει απευθείας.</value>
+  </data>
+  <data name="ScanEntryFailed" xml:space="preserve">
+    <value>Η σάρωση για ιούς αυτής της καταχώρησης απέτυχε: {0}</value>
+  </data>
+  <data name="ScanEntryIntegrityFailed" xml:space="preserve">
+    <value>Το αποκρυπτογραφημένο περιεχόμενο απέτυχε στον έλεγχο ακεραιότητας (λάθος κωδικός πρόσβασης ή κατεστραμμένη καταχώρηση) και δεν αναφέρθηκε ως καθαρό.</value>
+  </data>
+  <data name="ScanEntryPasswordProtected" xml:space="preserve">
+    <value>Η καταχώρηση προστατεύεται με κωδικό πρόσβασης και δεν σαρώθηκε.</value>
+  </data>
+  <data name="ScanEntryWrongPassword" xml:space="preserve">
+    <value>Η καταχώρηση προστατεύεται με διαφορετικό κωδικό πρόσβασης και δεν σαρώθηκε.</value>
+  </data>
+  <data name="ScanEntryUnsupportedMethod" xml:space="preserve">
+    <value>Η καταχώρηση χρησιμοποιεί μη υποστηριζόμενη μέθοδο συμπίεσης με κρυπτογράφηση και δεν σαρώθηκε.</value>
+  </data>
+  <data name="ScanEntryAuthenticationFailed" xml:space="preserve">
+    <value>Η καταχώρηση απέτυχε στον έλεγχο ταυτότητας αποκρυπτογράφησης (κατεστραμμένη ή αλλοιωμένη) και δεν σαρώθηκε.</value>
+  </data>
+  <data name="ScanEntryTooLarge" xml:space="preserve">
+    <value>Η καταχώρηση είναι μεγαλύτερη από {0} MiB και δεν σαρώθηκε.</value>
+  </data>
+</root>

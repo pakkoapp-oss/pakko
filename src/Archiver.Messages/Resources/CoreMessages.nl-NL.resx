@@ -1,0 +1,264 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="SourceNotFound" xml:space="preserve">
+    <value>Bronpad bestaat niet: {0}</value>
+  </data>
+  <data name="CannotAccessFile" xml:space="preserve">
+    <value>Geen toegang tot bestand: {0}</value>
+  </data>
+  <data name="AccessDenied" xml:space="preserve">
+    <value>Toegang geweigerd: {0}</value>
+  </data>
+  <data name="LinkNotArchived" xml:space="preserve">
+    <value>Symbolische koppelingen en NTFS-koppelpunten worden niet gearchiveerd.</value>
+  </data>
+  <data name="FolderLinkNotFollowed" xml:space="preserve">
+    <value>NTFS-koppelpunten en symbolische mapkoppelingen worden bij het archiveren niet gevolgd.</value>
+  </data>
+  <data name="ReparsePointNotArchived" xml:space="preserve">
+    <value>Symbolische koppelingen en reparsepunten worden niet gearchiveerd.</value>
+  </data>
+  <data name="ArchiveAlreadyExists" xml:space="preserve">
+    <value>Archief ‘{0}’ bestaat al op de bestemming en is overgeslagen.</value>
+  </data>
+  <data name="CannotCreateArchive" xml:space="preserve">
+    <value>Kan archief niet maken: {0}</value>
+  </data>
+  <data name="AccessDeniedCreatingArchive" xml:space="preserve">
+    <value>Toegang geweigerd bij het maken van het archief: {0}</value>
+  </data>
+  <data name="UnexpectedError" xml:space="preserve">
+    <value>Onverwachte fout: {0}</value>
+  </data>
+  <data name="UnknownArchivingError" xml:space="preserve">
+    <value>Onbekende fout tijdens het archiveren.</value>
+  </data>
+  <data name="EntryNameTooLong" xml:space="preserve">
+    <value>De itemnaam is te lang voor een ZIP-archief ({0} bytes in UTF-8; maximaal {1}).</value>
+  </data>
+  <data name="NotEnoughSpaceToCompress" xml:space="preserve">
+    <value>Onvoldoende vrije schijfruimte om dit bestand te comprimeren: het is {0} bytes, maar er is slechts {1} bytes vrij.</value>
+  </data>
+  <data name="PasswordNotEntered" xml:space="preserve">
+    <value>Archief niet gemaakt: er is geen wachtwoord ingevoerd.</value>
+  </data>
+  <data name="PasswordEmpty" xml:space="preserve">
+    <value>Archief niet gemaakt: het wachtwoord is leeg.</value>
+  </data>
+  <data name="PasswordUnsupportedCharacters" xml:space="preserve">
+    <value>Archief niet gemaakt: het wachtwoord mag alleen Engelse letters, cijfers, spaties en ASCII-leestekens bevatten; andere ZIP-programma’s zoals 7-Zip kunnen een archief dat met andere tekens is beveiligd niet openen.</value>
+  </data>
+  <data name="PasswordTooLong" xml:space="preserve">
+    <value>Archief niet gemaakt: het wachtwoord is langer dan {0} tekens, het maximum dat 7-Zip accepteert voor een met AES versleutelde ZIP.</value>
+  </data>
+  <data name="PasswordOnlyForZip" xml:space="preserve">
+    <value>Wachtwoordbeveiliging is alleen beschikbaar voor ZIP-archieven.</value>
+  </data>
+  <data name="CreationFormatBlocked" xml:space="preserve">
+    <value>Het maken van een {0}-archief is geblokkeerd door groepsbeleid.</value>
+  </data>
+  <data name="TarCreationDisabled" xml:space="preserve">
+    <value>Het maken van archieven met tar.exe is uitgeschakeld door groepsbeleid.</value>
+  </data>
+  <data name="TarCreationFailed" xml:space="preserve">
+    <value>tar.exe kon het archief niet maken: {0}</value>
+  </data>
+  <data name="TarNameNotRepresentable" xml:space="preserve">
+    <value>De naam ‘{0}’ bevat tekens die tar.exe op dit systeem niet veilig kan verwerken (ANSI-codetabel {1}). Gebruik ZIP voor deze inhoud.</value>
+  </data>
+  <data name="TarSignatureInvalid" xml:space="preserve">
+    <value>tar.exe heeft de Authenticode-handtekeningcontrole niet doorstaan en wordt niet uitgevoerd.</value>
+  </data>
+  <data name="TarSignatureVerificationFailed" xml:space="preserve">
+    <value>‘{0}’ heeft de Authenticode-handtekeningcontrole niet doorstaan.</value>
+  </data>
+  <data name="NotAnArchiveExtract" xml:space="preserve">
+    <value>Het bestand heeft geen herkende archiefindeling en kan niet worden uitgepakt.</value>
+  </data>
+  <data name="NotAnArchiveTest" xml:space="preserve">
+    <value>Het bestand heeft geen herkende archiefindeling en kan niet worden getest.</value>
+  </data>
+  <data name="UnsupportedByZipEngine" xml:space="preserve">
+    <value>De indeling {0} wordt niet ondersteund. Alleen op ZIP gebaseerde indelingen worden ondersteund.</value>
+  </data>
+  <data name="FormatBlocked" xml:space="preserve">
+    <value>Deze archiefindeling ({0}) is geblokkeerd door groepsbeleid.</value>
+  </data>
+  <data name="TarExtractionDisabled" xml:space="preserve">
+    <value>Uitpakken met tar.exe is uitgeschakeld door groepsbeleid.</value>
+  </data>
+  <data name="FormatNeedsNewerTar" xml:space="preserve">
+    <value>{0} vereist tar.exe met libarchive &gt;= 3.7.0 (Windows 11 23H2+); tar.exe van dit systeem (versie {1}) ondersteunt het niet.</value>
+  </data>
+  <data name="FormatNotSupportedByTar" xml:space="preserve">
+    <value>{0} wordt niet ondersteund door tar.exe van dit systeem (versie {1}).</value>
+  </data>
+  <data name="ArchiveFormatNotSupportedByTar" xml:space="preserve">
+    <value>Deze archiefindeling wordt niet ondersteund door tar.exe van dit systeem (versie {0}).</value>
+  </data>
+  <data name="NoTestCapability" xml:space="preserve">
+    <value>archieven uit de tar-familie kunnen niet worden getest</value>
+  </data>
+  <data name="PasswordProtectedExtract" xml:space="preserve">
+    <value>Dit archief is met een wachtwoord beveiligd en kan niet worden uitgepakt.</value>
+  </data>
+  <data name="PasswordProtectedTest" xml:space="preserve">
+    <value>Dit archief is met een wachtwoord beveiligd en kan niet worden getest.</value>
+  </data>
+  <data name="PasswordProtectedBrowse" xml:space="preserve">
+    <value>Dit archief is met een wachtwoord beveiligd en kan niet worden bekeken.</value>
+  </data>
+  <data name="ZipCorrupted" xml:space="preserve">
+    <value>Het bestand heeft een ZIP-handtekening, maar lijkt beschadigd of onvolledig.</value>
+  </data>
+  <data name="CannotExtractArchive" xml:space="preserve">
+    <value>Kan archief niet uitpakken: {0}</value>
+  </data>
+  <data name="AccessDeniedExtractingArchive" xml:space="preserve">
+    <value>Toegang geweigerd bij het uitpakken van het archief: {0}</value>
+  </data>
+  <data name="CannotReadArchive" xml:space="preserve">
+    <value>Kan archief niet lezen: {0}</value>
+  </data>
+  <data name="EntryNameCollision" xml:space="preserve">
+    <value>Na het decoderen heeft item ‘{0}’ dezelfde naam als een ander item; het wordt niet uitgepakt, omdat het ene het andere zou overschrijven.</value>
+  </data>
+  <data name="EntryFailed" xml:space="preserve">
+    <value>Item ‘{0}’: {1}</value>
+  </data>
+  <data name="EntryWrongPassword" xml:space="preserve">
+    <value>Item ‘{0}’ kan niet worden ontsleuteld: onjuist wachtwoord.</value>
+  </data>
+  <data name="EntryAuthenticationFailed" xml:space="preserve">
+    <value>Item ‘{0}’ kan niet worden ontsleuteld: verificatie mislukt (beschadigd of gemanipuleerd).</value>
+  </data>
+  <data name="EntryUnsupportedEncryptedMethod" xml:space="preserve">
+    <value>Item ‘{0}’ gebruikt een niet-ondersteunde compressiemethode met versleuteling.</value>
+  </data>
+  <data name="InsufficientDiskSpace" xml:space="preserve">
+    <value>Het archief geeft {0} bytes ongecomprimeerd op, maar de bestemming heeft slechts {1} bytes vrij. Uitpakken is geblokkeerd.</value>
+  </data>
+  <data name="ZipBombDeclined" xml:space="preserve">
+    <value>Verdachte compressieverhouding ({0}:1, {1} bytes opgegeven). Uitpakken is geweigerd als voorzorg tegen ZIP-bommen.</value>
+  </data>
+  <data name="TarBombDeclined" xml:space="preserve">
+    <value>Verdachte compressieverhouding ({0}:1, {1} bytes opgegeven) voor het hele archief. Uitpakken is geweigerd als voorzorg tegen decompressiebommen.</value>
+  </data>
+  <data name="DestinationFileLocked" xml:space="preserve">
+    <value>Kan ‘{0}’ niet schrijven: het doelbestand is vergrendeld door een ander proces.</value>
+  </data>
+  <data name="AllEntriesSkipped" xml:space="preserve">
+    <value>Er is niets uit dit archief uitgepakt — alle items zijn overgeslagen.</value>
+  </data>
+  <data name="UnsafeEntryPath" xml:space="preserve">
+    <value>Item ‘{0}’ heeft een onveilig pad en is niet uitgepakt.</value>
+  </data>
+  <data name="EntryAlternateDataStream" xml:space="preserve">
+    <value>Item met alternatieve gegevensstroom om veiligheidsredenen geweigerd.</value>
+  </data>
+  <data name="EntryReservedName" xml:space="preserve">
+    <value>De itemnaam komt overeen met een gereserveerde Windows-apparaatnaam en is overgeslagen.</value>
+  </data>
+  <data name="EntryControlCharacters" xml:space="preserve">
+    <value>De itemnaam bevat stuurtekens en is overgeslagen.</value>
+  </data>
+  <data name="CannotExtractEntry" xml:space="preserve">
+    <value>Kan ‘{0}’ niet uitpakken: {1}</value>
+  </data>
+  <data name="EntryThroughReparsePoint" xml:space="preserve">
+    <value>Het itempad loopt via een reparsepunt (symbolische koppeling of koppelpunt) en is overgeslagen.</value>
+  </data>
+  <data name="FileExistsAtDestination" xml:space="preserve">
+    <value>Het bestand bestaat al op de bestemming.</value>
+  </data>
+  <data name="TarExtractionFailed" xml:space="preserve">
+    <value>Uitpakken met tar.exe mislukt: {0}</value>
+  </data>
+  <data name="TarUnsafeEntryPath" xml:space="preserve">
+    <value>Het archief bevat een onveilig itempad (‘{0}’) en kan niet veilig worden uitgepakt.</value>
+  </data>
+  <data name="TarListingInconsistent" xml:space="preserve">
+    <value>De inhoudslijst van het archief is inconsistent; het kan niet veilig worden uitgepakt.</value>
+  </data>
+  <data name="TarSpecialEntry" xml:space="preserve">
+    <value>Het archief bevat een symbolische koppeling, harde koppeling, apparaat of ander speciaal item en kan niet veilig worden uitgepakt.</value>
+  </data>
+  <data name="ListingInconsistent" xml:space="preserve">
+    <value>De inhoudslijst van het archief is inconsistent.</value>
+  </data>
+  <data name="TarUnreadableNames" xml:space="preserve">
+    <value>Het archief bevat bestandsnamen die tar.exe op dit systeem niet kan weergeven (codetabel {0}), dus het kan hier niet met tar.exe worden gelezen. Details: {1}</value>
+  </data>
+  <data name="SandboxSetupFailed" xml:space="preserve">
+    <value>Instellen van de sandbox mislukt: {0}</value>
+  </data>
+  <data name="ArchiveInUse" xml:space="preserve">
+    <value>Het archief wordt gebruikt door een ander programma: {0}</value>
+  </data>
+  <data name="CannotOpenArchive" xml:space="preserve">
+    <value>Kan het archief niet openen: {0}</value>
+  </data>
+  <data name="CannotReopenArchive" xml:space="preserve">
+    <value>Kan het archief niet opnieuw openen (Win32-fout {0}).</value>
+  </data>
+  <data name="HashFolderSkipped" xml:space="preserve">
+    <value>Overgeslagen: map (alleen ondersteund als één map afzonderlijk is geselecteerd)</value>
+  </data>
+  <data name="HashLinkSkipped" xml:space="preserve">
+    <value>Overgeslagen: symbolische koppeling of koppelpunt (niet gevolgd)</value>
+  </data>
+  <data name="HashFileChanged" xml:space="preserve">
+    <value>De bestandsgrootte is gewijzigd tijdens het berekenen van de hash: {0}</value>
+  </data>
+  <data name="NoAntivirusRegistered" xml:space="preserve">
+    <value>Er is geen antivirusprogramma geregistreerd om mee te scannen.</value>
+  </data>
+  <data name="ScanSessionFailed" xml:space="preserve">
+    <value>Kan geen antivirusscansessie starten: {0}</value>
+  </data>
+  <data name="ScanCannotReadArchive" xml:space="preserve">
+    <value>Kan archief niet lezen: {0}</value>
+  </data>
+  <data name="ScanCannotReadEntry" xml:space="preserve">
+    <value>Kan item niet lezen: {0}</value>
+  </data>
+  <data name="ScanCannotExtract" xml:space="preserve">
+    <value>Kan archief niet uitpakken om te scannen: {0}</value>
+  </data>
+  <data name="ScanRemovedOrBlocked" xml:space="preserve">
+    <value>Verwijderd of geblokkeerd voordat Pakko het rechtstreeks kon scannen.</value>
+  </data>
+  <data name="ScanEntryFailed" xml:space="preserve">
+    <value>De antivirusscan van dit item is mislukt: {0}</value>
+  </data>
+  <data name="ScanEntryIntegrityFailed" xml:space="preserve">
+    <value>De ontsleutelde inhoud heeft de integriteitscontrole niet doorstaan (onjuist wachtwoord of beschadigd item) en is niet als schoon gemeld.</value>
+  </data>
+  <data name="ScanEntryPasswordProtected" xml:space="preserve">
+    <value>Het item is met een wachtwoord beveiligd en is niet gescand.</value>
+  </data>
+  <data name="ScanEntryWrongPassword" xml:space="preserve">
+    <value>Het item is met een ander wachtwoord beveiligd en is niet gescand.</value>
+  </data>
+  <data name="ScanEntryUnsupportedMethod" xml:space="preserve">
+    <value>Het item gebruikt een niet-ondersteunde compressiemethode met versleuteling en is niet gescand.</value>
+  </data>
+  <data name="ScanEntryAuthenticationFailed" xml:space="preserve">
+    <value>Het item heeft de ontsleutelingsverificatie niet doorstaan (beschadigd of gemanipuleerd) en is niet gescand.</value>
+  </data>
+  <data name="ScanEntryTooLarge" xml:space="preserve">
+    <value>Het item is groter dan {0} MiB en is niet gescand.</value>
+  </data>
+</root>

@@ -1,0 +1,264 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="SourceNotFound" xml:space="preserve">
+    <value>Källsökvägen finns inte: {0}</value>
+  </data>
+  <data name="CannotAccessFile" xml:space="preserve">
+    <value>Det går inte att komma åt filen: {0}</value>
+  </data>
+  <data name="AccessDenied" xml:space="preserve">
+    <value>Åtkomst nekad: {0}</value>
+  </data>
+  <data name="LinkNotArchived" xml:space="preserve">
+    <value>Symboliska länkar och NTFS-knutpunkter arkiveras inte.</value>
+  </data>
+  <data name="FolderLinkNotFollowed" xml:space="preserve">
+    <value>NTFS-knutpunkter och symboliska länkar till mappar följs inte vid arkivering.</value>
+  </data>
+  <data name="ReparsePointNotArchived" xml:space="preserve">
+    <value>Symboliska länkar och referenspunkter arkiveras inte.</value>
+  </data>
+  <data name="ArchiveAlreadyExists" xml:space="preserve">
+    <value>Arkivet ”{0}” finns redan på målet och hoppades över.</value>
+  </data>
+  <data name="CannotCreateArchive" xml:space="preserve">
+    <value>Det går inte att skapa arkivet: {0}</value>
+  </data>
+  <data name="AccessDeniedCreatingArchive" xml:space="preserve">
+    <value>Åtkomst nekad när arkivet skapades: {0}</value>
+  </data>
+  <data name="UnexpectedError" xml:space="preserve">
+    <value>Oväntat fel: {0}</value>
+  </data>
+  <data name="UnknownArchivingError" xml:space="preserve">
+    <value>Okänt fel vid arkivering.</value>
+  </data>
+  <data name="EntryNameTooLong" xml:space="preserve">
+    <value>Postens namn är för långt för ett ZIP-arkiv ({0} byte i UTF-8; högst {1}).</value>
+  </data>
+  <data name="NotEnoughSpaceToCompress" xml:space="preserve">
+    <value>Det finns inte tillräckligt med ledigt diskutrymme för att komprimera den här filen: den är {0} byte, men bara {1} byte är lediga.</value>
+  </data>
+  <data name="PasswordNotEntered" xml:space="preserve">
+    <value>Arkivet skapades inte: inget lösenord angavs.</value>
+  </data>
+  <data name="PasswordEmpty" xml:space="preserve">
+    <value>Arkivet skapades inte: lösenordet är tomt.</value>
+  </data>
+  <data name="PasswordUnsupportedCharacters" xml:space="preserve">
+    <value>Arkivet skapades inte: lösenordet får bara innehålla engelska bokstäver, siffror, blanksteg och ASCII-skiljetecken; andra ZIP-verktyg som 7-Zip kan inte öppna ett arkiv som skyddas med andra tecken.</value>
+  </data>
+  <data name="PasswordTooLong" xml:space="preserve">
+    <value>Arkivet skapades inte: lösenordet är längre än {0} tecken, vilket är det mesta 7-Zip accepterar för en AES-krypterad ZIP.</value>
+  </data>
+  <data name="PasswordOnlyForZip" xml:space="preserve">
+    <value>Lösenordsskydd är bara tillgängligt för ZIP-arkiv.</value>
+  </data>
+  <data name="CreationFormatBlocked" xml:space="preserve">
+    <value>Att skapa ett {0}-arkiv blockeras av en grupprincip.</value>
+  </data>
+  <data name="TarCreationDisabled" xml:space="preserve">
+    <value>Att skapa arkiv med tar.exe är inaktiverat av en grupprincip.</value>
+  </data>
+  <data name="TarCreationFailed" xml:space="preserve">
+    <value>tar.exe kunde inte skapa arkivet: {0}</value>
+  </data>
+  <data name="TarNameNotRepresentable" xml:space="preserve">
+    <value>Namnet ”{0}” innehåller tecken som tar.exe inte kan hantera säkert på det här systemet (ANSI-teckentabell {1}). Använd ZIP för det här innehållet.</value>
+  </data>
+  <data name="TarSignatureInvalid" xml:space="preserve">
+    <value>tar.exe klarade inte kontrollen av Authenticode-signaturen och körs inte.</value>
+  </data>
+  <data name="TarSignatureVerificationFailed" xml:space="preserve">
+    <value>”{0}” klarade inte kontrollen av Authenticode-signaturen.</value>
+  </data>
+  <data name="NotAnArchiveExtract" xml:space="preserve">
+    <value>Filen har inte ett känt arkivformat och kan inte extraheras.</value>
+  </data>
+  <data name="NotAnArchiveTest" xml:space="preserve">
+    <value>Filen har inte ett känt arkivformat och kan inte testas.</value>
+  </data>
+  <data name="UnsupportedByZipEngine" xml:space="preserve">
+    <value>Formatet {0} stöds inte. Endast ZIP-baserade format stöds.</value>
+  </data>
+  <data name="FormatBlocked" xml:space="preserve">
+    <value>Det här arkivformatet ({0}) blockeras av en grupprincip.</value>
+  </data>
+  <data name="TarExtractionDisabled" xml:space="preserve">
+    <value>Extrahering med tar.exe är inaktiverat av en grupprincip.</value>
+  </data>
+  <data name="FormatNeedsNewerTar" xml:space="preserve">
+    <value>{0} kräver tar.exe med libarchive &gt;= 3.7.0 (Windows 11 23H2+); systemets tar.exe (version {1}) stöder det inte.</value>
+  </data>
+  <data name="FormatNotSupportedByTar" xml:space="preserve">
+    <value>{0} stöds inte av systemets tar.exe (version {1}).</value>
+  </data>
+  <data name="ArchiveFormatNotSupportedByTar" xml:space="preserve">
+    <value>Det här arkivformatet stöds inte av systemets tar.exe (version {0}).</value>
+  </data>
+  <data name="NoTestCapability" xml:space="preserve">
+    <value>arkiv i tar-familjen kan inte testas</value>
+  </data>
+  <data name="PasswordProtectedExtract" xml:space="preserve">
+    <value>Det här arkivet är lösenordsskyddat och kan inte extraheras.</value>
+  </data>
+  <data name="PasswordProtectedTest" xml:space="preserve">
+    <value>Det här arkivet är lösenordsskyddat och kan inte testas.</value>
+  </data>
+  <data name="PasswordProtectedBrowse" xml:space="preserve">
+    <value>Det här arkivet är lösenordsskyddat och kan inte bläddras.</value>
+  </data>
+  <data name="ZipCorrupted" xml:space="preserve">
+    <value>Filen har en ZIP-signatur men verkar vara skadad eller ofullständig.</value>
+  </data>
+  <data name="CannotExtractArchive" xml:space="preserve">
+    <value>Det går inte att extrahera arkivet: {0}</value>
+  </data>
+  <data name="AccessDeniedExtractingArchive" xml:space="preserve">
+    <value>Åtkomst nekad när arkivet extraherades: {0}</value>
+  </data>
+  <data name="CannotReadArchive" xml:space="preserve">
+    <value>Det går inte att läsa arkivet: {0}</value>
+  </data>
+  <data name="EntryNameCollision" xml:space="preserve">
+    <value>Efter avkodning har posten ”{0}” samma namn som en annan post; den extraheras inte, eftersom den ena skulle skriva över den andra.</value>
+  </data>
+  <data name="EntryFailed" xml:space="preserve">
+    <value>Post ”{0}”: {1}</value>
+  </data>
+  <data name="EntryWrongPassword" xml:space="preserve">
+    <value>Posten ”{0}” kunde inte dekrypteras: fel lösenord.</value>
+  </data>
+  <data name="EntryAuthenticationFailed" xml:space="preserve">
+    <value>Posten ”{0}” kunde inte dekrypteras: autentiseringen misslyckades (skadad eller manipulerad).</value>
+  </data>
+  <data name="EntryUnsupportedEncryptedMethod" xml:space="preserve">
+    <value>Posten ”{0}” använder en komprimeringsmetod med kryptering som inte stöds.</value>
+  </data>
+  <data name="InsufficientDiskSpace" xml:space="preserve">
+    <value>Arkivet anger {0} byte okomprimerat, men målet har bara {1} byte ledigt. Extraheringen blockerades.</value>
+  </data>
+  <data name="ZipBombDeclined" xml:space="preserve">
+    <value>Misstänkt komprimeringsförhållande ({0}:1, {1} byte angivna). Extraheringen avböjdes som skydd mot ZIP-bomber.</value>
+  </data>
+  <data name="TarBombDeclined" xml:space="preserve">
+    <value>Misstänkt komprimeringsförhållande ({0}:1, {1} byte angivna) för hela arkivet. Extraheringen avböjdes som skydd mot dekomprimeringsbomber.</value>
+  </data>
+  <data name="DestinationFileLocked" xml:space="preserve">
+    <value>Det går inte att skriva ”{0}”: målfilen är låst av en annan process.</value>
+  </data>
+  <data name="AllEntriesSkipped" xml:space="preserve">
+    <value>Inget extraherades från det här arkivet – alla poster hoppades över.</value>
+  </data>
+  <data name="UnsafeEntryPath" xml:space="preserve">
+    <value>Posten ”{0}” har en osäker sökväg och extraherades inte.</value>
+  </data>
+  <data name="EntryAlternateDataStream" xml:space="preserve">
+    <value>Post med alternativ dataström avvisades av säkerhetsskäl.</value>
+  </data>
+  <data name="EntryReservedName" xml:space="preserve">
+    <value>Postens namn motsvarar ett reserverat Windows-enhetsnamn och hoppades över.</value>
+  </data>
+  <data name="EntryControlCharacters" xml:space="preserve">
+    <value>Postens namn innehåller kontrolltecken och hoppades över.</value>
+  </data>
+  <data name="CannotExtractEntry" xml:space="preserve">
+    <value>Det går inte att extrahera ”{0}”: {1}</value>
+  </data>
+  <data name="EntryThroughReparsePoint" xml:space="preserve">
+    <value>Postens sökväg går genom en referenspunkt (symbolisk länk eller knutpunkt) och hoppades över.</value>
+  </data>
+  <data name="FileExistsAtDestination" xml:space="preserve">
+    <value>Filen finns redan på målet.</value>
+  </data>
+  <data name="TarExtractionFailed" xml:space="preserve">
+    <value>Extraheringen med tar.exe misslyckades: {0}</value>
+  </data>
+  <data name="TarUnsafeEntryPath" xml:space="preserve">
+    <value>Arkivet innehåller en osäker postsökväg (”{0}”) och kan inte extraheras säkert.</value>
+  </data>
+  <data name="TarListingInconsistent" xml:space="preserve">
+    <value>Arkivets innehållslista är inkonsekvent och arkivet kan inte extraheras säkert.</value>
+  </data>
+  <data name="TarSpecialEntry" xml:space="preserve">
+    <value>Arkivet innehåller en symbolisk länk, hård länk, enhet eller annan specialpost och kan inte extraheras säkert.</value>
+  </data>
+  <data name="ListingInconsistent" xml:space="preserve">
+    <value>Arkivets innehållslista är inkonsekvent.</value>
+  </data>
+  <data name="TarUnreadableNames" xml:space="preserve">
+    <value>Arkivet innehåller filnamn som tar.exe inte kan visa på det här systemet (teckentabell {0}), så det kan inte läsas här med tar.exe. Information: {1}</value>
+  </data>
+  <data name="SandboxSetupFailed" xml:space="preserve">
+    <value>Det gick inte att konfigurera sandlådan: {0}</value>
+  </data>
+  <data name="ArchiveInUse" xml:space="preserve">
+    <value>Arkivet används av ett annat program: {0}</value>
+  </data>
+  <data name="CannotOpenArchive" xml:space="preserve">
+    <value>Det går inte att öppna arkivet: {0}</value>
+  </data>
+  <data name="CannotReopenArchive" xml:space="preserve">
+    <value>Det går inte att öppna arkivet igen (Win32-fel {0}).</value>
+  </data>
+  <data name="HashFolderSkipped" xml:space="preserve">
+    <value>Hoppades över: mapp (stöds bara när en enda mapp är markerad)</value>
+  </data>
+  <data name="HashLinkSkipped" xml:space="preserve">
+    <value>Hoppades över: symbolisk länk eller knutpunkt (följs inte)</value>
+  </data>
+  <data name="HashFileChanged" xml:space="preserve">
+    <value>Filens storlek ändrades medan hashvärdet beräknades: {0}</value>
+  </data>
+  <data name="NoAntivirusRegistered" xml:space="preserve">
+    <value>Inget antivirusprogram är registrerat för genomsökning.</value>
+  </data>
+  <data name="ScanSessionFailed" xml:space="preserve">
+    <value>Det gick inte att starta en antivirusgenomsökning: {0}</value>
+  </data>
+  <data name="ScanCannotReadArchive" xml:space="preserve">
+    <value>Det gick inte att läsa arkivet: {0}</value>
+  </data>
+  <data name="ScanCannotReadEntry" xml:space="preserve">
+    <value>Det gick inte att läsa posten: {0}</value>
+  </data>
+  <data name="ScanCannotExtract" xml:space="preserve">
+    <value>Det gick inte att extrahera arkivet för genomsökning: {0}</value>
+  </data>
+  <data name="ScanRemovedOrBlocked" xml:space="preserve">
+    <value>Borttagen eller blockerad innan Pakko kunde genomsöka den direkt.</value>
+  </data>
+  <data name="ScanEntryFailed" xml:space="preserve">
+    <value>Antivirusgenomsökningen av den här posten misslyckades: {0}</value>
+  </data>
+  <data name="ScanEntryIntegrityFailed" xml:space="preserve">
+    <value>Det dekrypterade innehållet klarade inte integritetskontrollen (fel lösenord eller skadad post) och rapporterades inte som rent.</value>
+  </data>
+  <data name="ScanEntryPasswordProtected" xml:space="preserve">
+    <value>Posten är lösenordsskyddad och genomsöktes inte.</value>
+  </data>
+  <data name="ScanEntryWrongPassword" xml:space="preserve">
+    <value>Posten är skyddad med ett annat lösenord och genomsöktes inte.</value>
+  </data>
+  <data name="ScanEntryUnsupportedMethod" xml:space="preserve">
+    <value>Posten använder en komprimeringsmetod med kryptering som inte stöds och genomsöktes inte.</value>
+  </data>
+  <data name="ScanEntryAuthenticationFailed" xml:space="preserve">
+    <value>Posten klarade inte autentiseringen vid dekryptering (skadad eller manipulerad) och genomsöktes inte.</value>
+  </data>
+  <data name="ScanEntryTooLarge" xml:space="preserve">
+    <value>Posten är större än {0} MiB och genomsöktes inte.</value>
+  </data>
+</root>

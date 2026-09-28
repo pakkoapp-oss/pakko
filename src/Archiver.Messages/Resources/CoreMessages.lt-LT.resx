@@ -1,0 +1,264 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="SourceNotFound" xml:space="preserve">
+    <value>Šaltinio kelias neegzistuoja: {0}</value>
+  </data>
+  <data name="CannotAccessFile" xml:space="preserve">
+    <value>Nepavyksta pasiekti failo: {0}</value>
+  </data>
+  <data name="AccessDenied" xml:space="preserve">
+    <value>Prieiga uždrausta: {0}</value>
+  </data>
+  <data name="LinkNotArchived" xml:space="preserve">
+    <value>Simbolinės nuorodos ir NTFS jungtys neįtraukiamos į archyvą.</value>
+  </data>
+  <data name="FolderLinkNotFollowed" xml:space="preserve">
+    <value>Archyvuojant nesekama NTFS jungtimis ir aplankų simbolinėmis nuorodomis.</value>
+  </data>
+  <data name="ReparsePointNotArchived" xml:space="preserve">
+    <value>Simbolinės nuorodos ir pakartotinio analizavimo taškai neįtraukiami į archyvą.</value>
+  </data>
+  <data name="ArchiveAlreadyExists" xml:space="preserve">
+    <value>Archyvas „{0}“ jau yra paskirties vietoje ir buvo praleistas.</value>
+  </data>
+  <data name="CannotCreateArchive" xml:space="preserve">
+    <value>Nepavyksta sukurti archyvo: {0}</value>
+  </data>
+  <data name="AccessDeniedCreatingArchive" xml:space="preserve">
+    <value>Prieiga uždrausta kuriant archyvą: {0}</value>
+  </data>
+  <data name="UnexpectedError" xml:space="preserve">
+    <value>Netikėta klaida: {0}</value>
+  </data>
+  <data name="UnknownArchivingError" xml:space="preserve">
+    <value>Nežinoma klaida archyvuojant.</value>
+  </data>
+  <data name="EntryNameTooLong" xml:space="preserve">
+    <value>Elemento pavadinimas per ilgas ZIP archyvui ({0} baitų UTF-8; daugiausia {1}).</value>
+  </data>
+  <data name="NotEnoughSpaceToCompress" xml:space="preserve">
+    <value>Diske nepakanka laisvos vietos šiam failui suglaudinti: jis užima {0} baitų, bet laisva tik {1} baitų.</value>
+  </data>
+  <data name="PasswordNotEntered" xml:space="preserve">
+    <value>Archyvas nesukurtas: slaptažodis neįvestas.</value>
+  </data>
+  <data name="PasswordEmpty" xml:space="preserve">
+    <value>Archyvas nesukurtas: slaptažodis tuščias.</value>
+  </data>
+  <data name="PasswordUnsupportedCharacters" xml:space="preserve">
+    <value>Archyvas nesukurtas: slaptažodyje gali būti tik anglų kalbos raidės, skaitmenys, tarpai ir ASCII skyrybos ženklai; kiti ZIP įrankiai, pvz., 7-Zip, negali atidaryti archyvo, apsaugoto kitais simboliais.</value>
+  </data>
+  <data name="PasswordTooLong" xml:space="preserve">
+    <value>Archyvas nesukurtas: slaptažodis ilgesnis nei {0} simbolių — tai daugiausia, ką 7-Zip priima AES šifruotam ZIP.</value>
+  </data>
+  <data name="PasswordOnlyForZip" xml:space="preserve">
+    <value>Apsauga slaptažodžiu galima tik ZIP archyvams.</value>
+  </data>
+  <data name="CreationFormatBlocked" xml:space="preserve">
+    <value>{0} archyvo kūrimą blokuoja grupės strategija.</value>
+  </data>
+  <data name="TarCreationDisabled" xml:space="preserve">
+    <value>Archyvų kūrimą naudojant tar.exe išjungė grupės strategija.</value>
+  </data>
+  <data name="TarCreationFailed" xml:space="preserve">
+    <value>tar.exe nepavyko sukurti archyvo: {0}</value>
+  </data>
+  <data name="TarNameNotRepresentable" xml:space="preserve">
+    <value>Pavadinime „{0}“ yra simbolių, kurių tar.exe šioje sistemoje negali saugiai apdoroti (ANSI kodų puslapis {1}). Šiam turiniui naudokite ZIP.</value>
+  </data>
+  <data name="TarSignatureInvalid" xml:space="preserve">
+    <value>tar.exe nepraėjo Authenticode parašo patikros ir nebus paleistas.</value>
+  </data>
+  <data name="TarSignatureVerificationFailed" xml:space="preserve">
+    <value>„{0}“ nepraėjo Authenticode parašo patikros.</value>
+  </data>
+  <data name="NotAnArchiveExtract" xml:space="preserve">
+    <value>Failas nėra atpažinto archyvo formato ir jo negalima išskleisti.</value>
+  </data>
+  <data name="NotAnArchiveTest" xml:space="preserve">
+    <value>Failas nėra atpažinto archyvo formato ir jo negalima patikrinti.</value>
+  </data>
+  <data name="UnsupportedByZipEngine" xml:space="preserve">
+    <value>Formatas {0} nepalaikomas. Palaikomi tik ZIP pagrindu sukurti formatai.</value>
+  </data>
+  <data name="FormatBlocked" xml:space="preserve">
+    <value>Šį archyvo formatą ({0}) blokuoja grupės strategija.</value>
+  </data>
+  <data name="TarExtractionDisabled" xml:space="preserve">
+    <value>Išskleidimą naudojant tar.exe išjungė grupės strategija.</value>
+  </data>
+  <data name="FormatNeedsNewerTar" xml:space="preserve">
+    <value>{0} reikalauja tar.exe su libarchive &gt;= 3.7.0 (Windows 11 23H2+); šios sistemos tar.exe (versija {1}) jo nepalaiko.</value>
+  </data>
+  <data name="FormatNotSupportedByTar" xml:space="preserve">
+    <value>Šios sistemos tar.exe (versija {1}) nepalaiko {0}.</value>
+  </data>
+  <data name="ArchiveFormatNotSupportedByTar" xml:space="preserve">
+    <value>Šios sistemos tar.exe (versija {0}) nepalaiko šio archyvo formato.</value>
+  </data>
+  <data name="NoTestCapability" xml:space="preserve">
+    <value>tar šeimos archyvų negalima patikrinti</value>
+  </data>
+  <data name="PasswordProtectedExtract" xml:space="preserve">
+    <value>Šis archyvas apsaugotas slaptažodžiu ir jo negalima išskleisti.</value>
+  </data>
+  <data name="PasswordProtectedTest" xml:space="preserve">
+    <value>Šis archyvas apsaugotas slaptažodžiu ir jo negalima patikrinti.</value>
+  </data>
+  <data name="PasswordProtectedBrowse" xml:space="preserve">
+    <value>Šis archyvas apsaugotas slaptažodžiu ir jo negalima naršyti.</value>
+  </data>
+  <data name="ZipCorrupted" xml:space="preserve">
+    <value>Failas turi ZIP parašą, bet atrodo sugadintas arba nepilnas.</value>
+  </data>
+  <data name="CannotExtractArchive" xml:space="preserve">
+    <value>Nepavyksta išskleisti archyvo: {0}</value>
+  </data>
+  <data name="AccessDeniedExtractingArchive" xml:space="preserve">
+    <value>Prieiga uždrausta išskleidžiant archyvą: {0}</value>
+  </data>
+  <data name="CannotReadArchive" xml:space="preserve">
+    <value>Nepavyksta perskaityti archyvo: {0}</value>
+  </data>
+  <data name="EntryNameCollision" xml:space="preserve">
+    <value>Iškodavus elemento „{0}“ pavadinimas sutampa su kito elemento pavadinimu; jis neišskleidžiamas, nes vienas perrašytų kitą.</value>
+  </data>
+  <data name="EntryFailed" xml:space="preserve">
+    <value>Elementas „{0}“: {1}</value>
+  </data>
+  <data name="EntryWrongPassword" xml:space="preserve">
+    <value>Nepavyko iššifruoti elemento „{0}“: neteisingas slaptažodis.</value>
+  </data>
+  <data name="EntryAuthenticationFailed" xml:space="preserve">
+    <value>Nepavyko iššifruoti elemento „{0}“: autentifikavimas nepavyko (sugadintas arba pakeistas).</value>
+  </data>
+  <data name="EntryUnsupportedEncryptedMethod" xml:space="preserve">
+    <value>Elementas „{0}“ naudoja nepalaikomą glaudinimo su šifravimu metodą.</value>
+  </data>
+  <data name="InsufficientDiskSpace" xml:space="preserve">
+    <value>Archyvas nurodo {0} baitų neglaudinta forma, bet paskirties vietoje laisva tik {1} baitų. Išskleidimas užblokuotas.</value>
+  </data>
+  <data name="ZipBombDeclined" xml:space="preserve">
+    <value>Įtartinas glaudinimo santykis ({0}:1, nurodyta {1} baitų). Išskleidimo atsisakyta atsargumo sumetimais dėl ZIP bombų.</value>
+  </data>
+  <data name="TarBombDeclined" xml:space="preserve">
+    <value>Įtartinas glaudinimo santykis ({0}:1, nurodyta {1} baitų) visam archyvui. Išskleidimo atsisakyta atsargumo sumetimais dėl išskleidimo bombų.</value>
+  </data>
+  <data name="DestinationFileLocked" xml:space="preserve">
+    <value>Nepavyksta įrašyti „{0}“: paskirties failą užrakino kitas procesas.</value>
+  </data>
+  <data name="AllEntriesSkipped" xml:space="preserve">
+    <value>Iš šio archyvo nieko neišskleista — visi elementai praleisti.</value>
+  </data>
+  <data name="UnsafeEntryPath" xml:space="preserve">
+    <value>Elemento „{0}“ kelias nesaugus, todėl jis neišskleistas.</value>
+  </data>
+  <data name="EntryAlternateDataStream" xml:space="preserve">
+    <value>Elementas su alternatyviuoju duomenų srautu atmestas saugumo sumetimais.</value>
+  </data>
+  <data name="EntryReservedName" xml:space="preserve">
+    <value>Elemento pavadinimas sutampa su rezervuotu Windows įrenginio pavadinimu ir buvo praleistas.</value>
+  </data>
+  <data name="EntryControlCharacters" xml:space="preserve">
+    <value>Elemento pavadinime yra valdymo simbolių, todėl jis praleistas.</value>
+  </data>
+  <data name="CannotExtractEntry" xml:space="preserve">
+    <value>Nepavyksta išskleisti „{0}“: {1}</value>
+  </data>
+  <data name="EntryThroughReparsePoint" xml:space="preserve">
+    <value>Elemento kelias eina per pakartotinio analizavimo tašką (simbolinę nuorodą arba jungtį) ir buvo praleistas.</value>
+  </data>
+  <data name="FileExistsAtDestination" xml:space="preserve">
+    <value>Failas jau yra paskirties vietoje.</value>
+  </data>
+  <data name="TarExtractionFailed" xml:space="preserve">
+    <value>Išskleisti naudojant tar.exe nepavyko: {0}</value>
+  </data>
+  <data name="TarUnsafeEntryPath" xml:space="preserve">
+    <value>Archyve yra nesaugus elemento kelias („{0}“), todėl jo negalima saugiai išskleisti.</value>
+  </data>
+  <data name="TarListingInconsistent" xml:space="preserve">
+    <value>Archyvo turinio sąrašas prieštaringas, todėl archyvo negalima saugiai išskleisti.</value>
+  </data>
+  <data name="TarSpecialEntry" xml:space="preserve">
+    <value>Archyve yra simbolinė nuoroda, griežtoji nuoroda, įrenginys ar kitas specialus elementas, todėl jo negalima saugiai išskleisti.</value>
+  </data>
+  <data name="ListingInconsistent" xml:space="preserve">
+    <value>Archyvo turinio sąrašas prieštaringas.</value>
+  </data>
+  <data name="TarUnreadableNames" xml:space="preserve">
+    <value>Archyve yra failų pavadinimų, kurių tar.exe šioje sistemoje negali parodyti (kodų puslapis {0}), todėl čia jo negalima perskaityti naudojant tar.exe. Išsami informacija: {1}</value>
+  </data>
+  <data name="SandboxSetupFailed" xml:space="preserve">
+    <value>Nepavyko nustatyti izoliuotos aplinkos: {0}</value>
+  </data>
+  <data name="ArchiveInUse" xml:space="preserve">
+    <value>Archyvą naudoja kita programa: {0}</value>
+  </data>
+  <data name="CannotOpenArchive" xml:space="preserve">
+    <value>Nepavyksta atidaryti archyvo: {0}</value>
+  </data>
+  <data name="CannotReopenArchive" xml:space="preserve">
+    <value>Nepavyksta iš naujo atidaryti archyvo (Win32 klaida {0}).</value>
+  </data>
+  <data name="HashFolderSkipped" xml:space="preserve">
+    <value>Praleista: aplankas (palaikoma tik pasirinkus vieną aplanką)</value>
+  </data>
+  <data name="HashLinkSkipped" xml:space="preserve">
+    <value>Praleista: simbolinė nuoroda arba jungtis (nesekama)</value>
+  </data>
+  <data name="HashFileChanged" xml:space="preserve">
+    <value>Failo dydis pasikeitė skaičiuojant maišos reikšmę: {0}</value>
+  </data>
+  <data name="NoAntivirusRegistered" xml:space="preserve">
+    <value>Nuskaitymui neužregistruota jokia antivirusinė programa.</value>
+  </data>
+  <data name="ScanSessionFailed" xml:space="preserve">
+    <value>Nepavyko pradėti antivirusinio nuskaitymo seanso: {0}</value>
+  </data>
+  <data name="ScanCannotReadArchive" xml:space="preserve">
+    <value>Nepavyko perskaityti archyvo: {0}</value>
+  </data>
+  <data name="ScanCannotReadEntry" xml:space="preserve">
+    <value>Nepavyko perskaityti elemento: {0}</value>
+  </data>
+  <data name="ScanCannotExtract" xml:space="preserve">
+    <value>Nepavyko išskleisti archyvo nuskaitymui: {0}</value>
+  </data>
+  <data name="ScanRemovedOrBlocked" xml:space="preserve">
+    <value>Pašalinta arba užblokuota, kol Pakko dar negalėjo to tiesiogiai nuskaityti.</value>
+  </data>
+  <data name="ScanEntryFailed" xml:space="preserve">
+    <value>Šio elemento antivirusinis nuskaitymas nepavyko: {0}</value>
+  </data>
+  <data name="ScanEntryIntegrityFailed" xml:space="preserve">
+    <value>Iššifruotas turinys nepraėjo vientisumo patikros (neteisingas slaptažodis arba sugadintas elementas) ir nebuvo pažymėtas kaip švarus.</value>
+  </data>
+  <data name="ScanEntryPasswordProtected" xml:space="preserve">
+    <value>Elementas apsaugotas slaptažodžiu ir nebuvo nuskaitytas.</value>
+  </data>
+  <data name="ScanEntryWrongPassword" xml:space="preserve">
+    <value>Elementas apsaugotas kitu slaptažodžiu ir nebuvo nuskaitytas.</value>
+  </data>
+  <data name="ScanEntryUnsupportedMethod" xml:space="preserve">
+    <value>Elementas naudoja nepalaikomą glaudinimo su šifravimu metodą ir nebuvo nuskaitytas.</value>
+  </data>
+  <data name="ScanEntryAuthenticationFailed" xml:space="preserve">
+    <value>Elementas nepraėjo iššifravimo autentifikavimo (sugadintas arba pakeistas) ir nebuvo nuskaitytas.</value>
+  </data>
+  <data name="ScanEntryTooLarge" xml:space="preserve">
+    <value>Elementas didesnis nei {0} MiB ir nebuvo nuskaitytas.</value>
+  </data>
+</root>

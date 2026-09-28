@@ -1,0 +1,264 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="SourceNotFound" xml:space="preserve">
+    <value>ไม่มีเส้นทางต้นทาง: {0}</value>
+  </data>
+  <data name="CannotAccessFile" xml:space="preserve">
+    <value>ไม่สามารถเข้าถึงไฟล์: {0}</value>
+  </data>
+  <data name="AccessDenied" xml:space="preserve">
+    <value>การเข้าถึงถูกปฏิเสธ: {0}</value>
+  </data>
+  <data name="LinkNotArchived" xml:space="preserve">
+    <value>ลิงก์สัญลักษณ์และจุดเชื่อม NTFS จะไม่ถูกบีบอัดลงในไฟล์บีบอัด</value>
+  </data>
+  <data name="FolderLinkNotFollowed" xml:space="preserve">
+    <value>จุดเชื่อม NTFS และลิงก์สัญลักษณ์ของโฟลเดอร์จะไม่ถูกติดตามระหว่างการบีบอัด</value>
+  </data>
+  <data name="ReparsePointNotArchived" xml:space="preserve">
+    <value>ลิงก์สัญลักษณ์และจุดแยกวิเคราะห์ซ้ำจะไม่ถูกบีบอัดลงในไฟล์บีบอัด</value>
+  </data>
+  <data name="ArchiveAlreadyExists" xml:space="preserve">
+    <value>ไฟล์บีบอัด "{0}" มีอยู่แล้วที่ปลายทางและถูกข้ามไป</value>
+  </data>
+  <data name="CannotCreateArchive" xml:space="preserve">
+    <value>ไม่สามารถสร้างไฟล์บีบอัด: {0}</value>
+  </data>
+  <data name="AccessDeniedCreatingArchive" xml:space="preserve">
+    <value>การเข้าถึงถูกปฏิเสธขณะสร้างไฟล์บีบอัด: {0}</value>
+  </data>
+  <data name="UnexpectedError" xml:space="preserve">
+    <value>ข้อผิดพลาดที่ไม่คาดคิด: {0}</value>
+  </data>
+  <data name="UnknownArchivingError" xml:space="preserve">
+    <value>ข้อผิดพลาดที่ไม่รู้จักระหว่างการบีบอัด</value>
+  </data>
+  <data name="EntryNameTooLong" xml:space="preserve">
+    <value>ชื่อรายการยาวเกินไปสำหรับไฟล์ ZIP ({0} ไบต์ใน UTF-8 สูงสุด {1})</value>
+  </data>
+  <data name="NotEnoughSpaceToCompress" xml:space="preserve">
+    <value>พื้นที่ดิสก์ว่างไม่พอสำหรับบีบอัดไฟล์นี้: ไฟล์มีขนาด {0} ไบต์ แต่มีพื้นที่ว่างเพียง {1} ไบต์</value>
+  </data>
+  <data name="PasswordNotEntered" xml:space="preserve">
+    <value>ไม่ได้สร้างไฟล์บีบอัด: ไม่ได้ป้อนรหัสผ่าน</value>
+  </data>
+  <data name="PasswordEmpty" xml:space="preserve">
+    <value>ไม่ได้สร้างไฟล์บีบอัด: รหัสผ่านว่างเปล่า</value>
+  </data>
+  <data name="PasswordUnsupportedCharacters" xml:space="preserve">
+    <value>ไม่ได้สร้างไฟล์บีบอัด: รหัสผ่านต้องประกอบด้วยตัวอักษรภาษาอังกฤษ ตัวเลข ช่องว่าง และเครื่องหมายวรรคตอน ASCII เท่านั้น เครื่องมือ ZIP อื่นๆ เช่น 7-Zip ไม่สามารถเปิดไฟล์ที่ป้องกันด้วยอักขระอื่นได้</value>
+  </data>
+  <data name="PasswordTooLong" xml:space="preserve">
+    <value>ไม่ได้สร้างไฟล์บีบอัด: รหัสผ่านยาวเกิน {0} อักขระ ซึ่งเป็นค่าสูงสุดที่ 7-Zip รับได้สำหรับ ZIP ที่เข้ารหัส AES</value>
+  </data>
+  <data name="PasswordOnlyForZip" xml:space="preserve">
+    <value>การป้องกันด้วยรหัสผ่านใช้ได้กับไฟล์ ZIP เท่านั้น</value>
+  </data>
+  <data name="CreationFormatBlocked" xml:space="preserve">
+    <value>การสร้างไฟล์บีบอัด {0} ถูกบล็อกโดยนโยบายกลุ่ม</value>
+  </data>
+  <data name="TarCreationDisabled" xml:space="preserve">
+    <value>การสร้างไฟล์บีบอัดด้วย tar.exe ถูกปิดใช้งานโดยนโยบายกลุ่ม</value>
+  </data>
+  <data name="TarCreationFailed" xml:space="preserve">
+    <value>tar.exe ไม่สามารถสร้างไฟล์บีบอัด: {0}</value>
+  </data>
+  <data name="TarNameNotRepresentable" xml:space="preserve">
+    <value>ชื่อ "{0}" มีอักขระที่ tar.exe ไม่สามารถจัดการได้อย่างปลอดภัยบนระบบนี้ (โค้ดเพจ ANSI {1}) โปรดใช้ ZIP สำหรับเนื้อหานี้</value>
+  </data>
+  <data name="TarSignatureInvalid" xml:space="preserve">
+    <value>tar.exe ไม่ผ่านการตรวจสอบลายเซ็น Authenticode และจะไม่ถูกเรียกใช้</value>
+  </data>
+  <data name="TarSignatureVerificationFailed" xml:space="preserve">
+    <value>"{0}" ไม่ผ่านการตรวจสอบลายเซ็น Authenticode</value>
+  </data>
+  <data name="NotAnArchiveExtract" xml:space="preserve">
+    <value>ไฟล์ไม่ใช่รูปแบบไฟล์บีบอัดที่รู้จักและไม่สามารถแตกไฟล์ได้</value>
+  </data>
+  <data name="NotAnArchiveTest" xml:space="preserve">
+    <value>ไฟล์ไม่ใช่รูปแบบไฟล์บีบอัดที่รู้จักและไม่สามารถทดสอบได้</value>
+  </data>
+  <data name="UnsupportedByZipEngine" xml:space="preserve">
+    <value>ไม่รองรับรูปแบบ {0} รองรับเฉพาะรูปแบบที่ใช้ ZIP เท่านั้น</value>
+  </data>
+  <data name="FormatBlocked" xml:space="preserve">
+    <value>รูปแบบไฟล์บีบอัดนี้ ({0}) ถูกบล็อกโดยนโยบายกลุ่ม</value>
+  </data>
+  <data name="TarExtractionDisabled" xml:space="preserve">
+    <value>การแตกไฟล์ด้วย tar.exe ถูกปิดใช้งานโดยนโยบายกลุ่ม</value>
+  </data>
+  <data name="FormatNeedsNewerTar" xml:space="preserve">
+    <value>{0} ต้องใช้ tar.exe ที่มี libarchive &gt;= 3.7.0 (Windows 11 23H2+) แต่ tar.exe ของระบบนี้ (เวอร์ชัน {1}) ไม่รองรับ</value>
+  </data>
+  <data name="FormatNotSupportedByTar" xml:space="preserve">
+    <value>tar.exe ของระบบนี้ (เวอร์ชัน {1}) ไม่รองรับ {0}</value>
+  </data>
+  <data name="ArchiveFormatNotSupportedByTar" xml:space="preserve">
+    <value>tar.exe ของระบบนี้ (เวอร์ชัน {0}) ไม่รองรับรูปแบบไฟล์บีบอัดนี้</value>
+  </data>
+  <data name="NoTestCapability" xml:space="preserve">
+    <value>ไม่สามารถทดสอบไฟล์บีบอัดตระกูล tar ได้</value>
+  </data>
+  <data name="PasswordProtectedExtract" xml:space="preserve">
+    <value>ไฟล์บีบอัดนี้ป้องกันด้วยรหัสผ่านและไม่สามารถแตกไฟล์ได้</value>
+  </data>
+  <data name="PasswordProtectedTest" xml:space="preserve">
+    <value>ไฟล์บีบอัดนี้ป้องกันด้วยรหัสผ่านและไม่สามารถทดสอบได้</value>
+  </data>
+  <data name="PasswordProtectedBrowse" xml:space="preserve">
+    <value>ไฟล์บีบอัดนี้ป้องกันด้วยรหัสผ่านและไม่สามารถเรียกดูได้</value>
+  </data>
+  <data name="ZipCorrupted" xml:space="preserve">
+    <value>ไฟล์มีลายเซ็น ZIP แต่ดูเหมือนจะเสียหายหรือไม่สมบูรณ์</value>
+  </data>
+  <data name="CannotExtractArchive" xml:space="preserve">
+    <value>ไม่สามารถแตกไฟล์บีบอัด: {0}</value>
+  </data>
+  <data name="AccessDeniedExtractingArchive" xml:space="preserve">
+    <value>การเข้าถึงถูกปฏิเสธขณะแตกไฟล์บีบอัด: {0}</value>
+  </data>
+  <data name="CannotReadArchive" xml:space="preserve">
+    <value>ไม่สามารถอ่านไฟล์บีบอัด: {0}</value>
+  </data>
+  <data name="EntryNameCollision" xml:space="preserve">
+    <value>หลังถอดรหัส รายการ "{0}" มีชื่อเดียวกับรายการอื่น จึงไม่ถูกแตกไฟล์ เพราะรายการหนึ่งจะเขียนทับอีกรายการ</value>
+  </data>
+  <data name="EntryFailed" xml:space="preserve">
+    <value>รายการ "{0}": {1}</value>
+  </data>
+  <data name="EntryWrongPassword" xml:space="preserve">
+    <value>ไม่สามารถถอดรหัสรายการ "{0}": รหัสผ่านไม่ถูกต้อง</value>
+  </data>
+  <data name="EntryAuthenticationFailed" xml:space="preserve">
+    <value>ไม่สามารถถอดรหัสรายการ "{0}": การรับรองความถูกต้องล้มเหลว (เสียหายหรือถูกแก้ไข)</value>
+  </data>
+  <data name="EntryUnsupportedEncryptedMethod" xml:space="preserve">
+    <value>รายการ "{0}" ใช้วิธีบีบอัดร่วมกับการเข้ารหัสที่ไม่รองรับ</value>
+  </data>
+  <data name="InsufficientDiskSpace" xml:space="preserve">
+    <value>ไฟล์บีบอัดระบุขนาด {0} ไบต์เมื่อไม่บีบอัด แต่ปลายทางมีพื้นที่ว่างเพียง {1} ไบต์ การแตกไฟล์ถูกบล็อก</value>
+  </data>
+  <data name="ZipBombDeclined" xml:space="preserve">
+    <value>อัตราส่วนการบีบอัดน่าสงสัย ({0}:1, ระบุ {1} ไบต์) การแตกไฟล์ถูกปฏิเสธเพื่อป้องกันระเบิด ZIP</value>
+  </data>
+  <data name="TarBombDeclined" xml:space="preserve">
+    <value>อัตราส่วนการบีบอัดน่าสงสัย ({0}:1, ระบุ {1} ไบต์) ของไฟล์บีบอัดทั้งหมด การแตกไฟล์ถูกปฏิเสธเพื่อป้องกันระเบิดการคลายการบีบอัด</value>
+  </data>
+  <data name="DestinationFileLocked" xml:space="preserve">
+    <value>ไม่สามารถเขียน "{0}": ไฟล์ปลายทางถูกล็อกโดยกระบวนการอื่น</value>
+  </data>
+  <data name="AllEntriesSkipped" xml:space="preserve">
+    <value>ไม่มีสิ่งใดถูกแตกจากไฟล์บีบอัดนี้ — ทุกรายการถูกข้าม</value>
+  </data>
+  <data name="UnsafeEntryPath" xml:space="preserve">
+    <value>รายการ "{0}" มีเส้นทางที่ไม่ปลอดภัยและไม่ถูกแตกไฟล์</value>
+  </data>
+  <data name="EntryAlternateDataStream" xml:space="preserve">
+    <value>รายการสตรีมข้อมูลสำรองถูกปฏิเสธเพื่อความปลอดภัย</value>
+  </data>
+  <data name="EntryReservedName" xml:space="preserve">
+    <value>ชื่อรายการตรงกับชื่ออุปกรณ์ที่สงวนไว้ของ Windows และถูกข้าม</value>
+  </data>
+  <data name="EntryControlCharacters" xml:space="preserve">
+    <value>ชื่อรายการมีอักขระควบคุมและถูกข้าม</value>
+  </data>
+  <data name="CannotExtractEntry" xml:space="preserve">
+    <value>ไม่สามารถแตกไฟล์ "{0}": {1}</value>
+  </data>
+  <data name="EntryThroughReparsePoint" xml:space="preserve">
+    <value>เส้นทางของรายการผ่านจุดแยกวิเคราะห์ซ้ำ (ลิงก์สัญลักษณ์หรือจุดเชื่อม) และถูกข้าม</value>
+  </data>
+  <data name="FileExistsAtDestination" xml:space="preserve">
+    <value>ไฟล์มีอยู่แล้วที่ปลายทาง</value>
+  </data>
+  <data name="TarExtractionFailed" xml:space="preserve">
+    <value>การแตกไฟล์ด้วย tar.exe ล้มเหลว: {0}</value>
+  </data>
+  <data name="TarUnsafeEntryPath" xml:space="preserve">
+    <value>ไฟล์บีบอัดมีเส้นทางรายการที่ไม่ปลอดภัย ("{0}") และไม่สามารถแตกไฟล์ได้อย่างปลอดภัย</value>
+  </data>
+  <data name="TarListingInconsistent" xml:space="preserve">
+    <value>รายการเนื้อหาของไฟล์บีบอัดไม่สอดคล้องกัน จึงไม่สามารถแตกไฟล์ได้อย่างปลอดภัย</value>
+  </data>
+  <data name="TarSpecialEntry" xml:space="preserve">
+    <value>ไฟล์บีบอัดมีลิงก์สัญลักษณ์ ฮาร์ดลิงก์ อุปกรณ์ หรือรายการพิเศษอื่นๆ และไม่สามารถแตกไฟล์ได้อย่างปลอดภัย</value>
+  </data>
+  <data name="ListingInconsistent" xml:space="preserve">
+    <value>รายการเนื้อหาของไฟล์บีบอัดไม่สอดคล้องกัน</value>
+  </data>
+  <data name="TarUnreadableNames" xml:space="preserve">
+    <value>ไฟล์บีบอัดมีชื่อไฟล์ที่ tar.exe ไม่สามารถแสดงบนระบบนี้ได้ (โค้ดเพจ {0}) จึงไม่สามารถอ่านด้วย tar.exe ที่นี่ได้ รายละเอียด: {1}</value>
+  </data>
+  <data name="SandboxSetupFailed" xml:space="preserve">
+    <value>การตั้งค่าแซนด์บ็อกซ์ล้มเหลว: {0}</value>
+  </data>
+  <data name="ArchiveInUse" xml:space="preserve">
+    <value>ไฟล์บีบอัดกำลังถูกใช้โดยโปรแกรมอื่น: {0}</value>
+  </data>
+  <data name="CannotOpenArchive" xml:space="preserve">
+    <value>ไม่สามารถเปิดไฟล์บีบอัด: {0}</value>
+  </data>
+  <data name="CannotReopenArchive" xml:space="preserve">
+    <value>ไม่สามารถเปิดไฟล์บีบอัดอีกครั้ง (ข้อผิดพลาด Win32 {0})</value>
+  </data>
+  <data name="HashFolderSkipped" xml:space="preserve">
+    <value>ข้าม: โฟลเดอร์ (รองรับเฉพาะเมื่อเลือกโฟลเดอร์เดียวเท่านั้น)</value>
+  </data>
+  <data name="HashLinkSkipped" xml:space="preserve">
+    <value>ข้าม: ลิงก์สัญลักษณ์หรือจุดเชื่อม (ไม่ติดตาม)</value>
+  </data>
+  <data name="HashFileChanged" xml:space="preserve">
+    <value>ขนาดไฟล์เปลี่ยนไประหว่างคำนวณแฮช: {0}</value>
+  </data>
+  <data name="NoAntivirusRegistered" xml:space="preserve">
+    <value>ไม่มีโปรแกรมป้องกันไวรัสที่ลงทะเบียนไว้สำหรับการสแกน</value>
+  </data>
+  <data name="ScanSessionFailed" xml:space="preserve">
+    <value>ไม่สามารถเริ่มเซสชันการสแกนไวรัส: {0}</value>
+  </data>
+  <data name="ScanCannotReadArchive" xml:space="preserve">
+    <value>ไม่สามารถอ่านไฟล์บีบอัด: {0}</value>
+  </data>
+  <data name="ScanCannotReadEntry" xml:space="preserve">
+    <value>ไม่สามารถอ่านรายการ: {0}</value>
+  </data>
+  <data name="ScanCannotExtract" xml:space="preserve">
+    <value>ไม่สามารถแตกไฟล์บีบอัดเพื่อสแกน: {0}</value>
+  </data>
+  <data name="ScanRemovedOrBlocked" xml:space="preserve">
+    <value>ถูกลบหรือบล็อกก่อนที่ Pakko จะสแกนได้โดยตรง</value>
+  </data>
+  <data name="ScanEntryFailed" xml:space="preserve">
+    <value>การสแกนไวรัสของรายการนี้ล้มเหลว: {0}</value>
+  </data>
+  <data name="ScanEntryIntegrityFailed" xml:space="preserve">
+    <value>เนื้อหาที่ถอดรหัสแล้วไม่ผ่านการตรวจสอบความสมบูรณ์ (รหัสผ่านไม่ถูกต้องหรือรายการเสียหาย) และไม่ได้รายงานว่าสะอาด</value>
+  </data>
+  <data name="ScanEntryPasswordProtected" xml:space="preserve">
+    <value>รายการป้องกันด้วยรหัสผ่านและไม่ได้ถูกสแกน</value>
+  </data>
+  <data name="ScanEntryWrongPassword" xml:space="preserve">
+    <value>รายการป้องกันด้วยรหัสผ่านอื่นและไม่ได้ถูกสแกน</value>
+  </data>
+  <data name="ScanEntryUnsupportedMethod" xml:space="preserve">
+    <value>รายการใช้วิธีบีบอัดร่วมกับการเข้ารหัสที่ไม่รองรับและไม่ได้ถูกสแกน</value>
+  </data>
+  <data name="ScanEntryAuthenticationFailed" xml:space="preserve">
+    <value>รายการไม่ผ่านการรับรองความถูกต้องในการถอดรหัส (เสียหายหรือถูกแก้ไข) และไม่ได้ถูกสแกน</value>
+  </data>
+  <data name="ScanEntryTooLarge" xml:space="preserve">
+    <value>รายการมีขนาดใหญ่กว่า {0} MiB และไม่ได้ถูกสแกน</value>
+  </data>
+</root>

@@ -1,0 +1,264 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="SourceNotFound" xml:space="preserve">
+    <value>स्रोत पथ मौजूद नहीं है: {0}</value>
+  </data>
+  <data name="CannotAccessFile" xml:space="preserve">
+    <value>फ़ाइल तक नहीं पहुँचा जा सकता: {0}</value>
+  </data>
+  <data name="AccessDenied" xml:space="preserve">
+    <value>पहुँच अस्वीकृत: {0}</value>
+  </data>
+  <data name="LinkNotArchived" xml:space="preserve">
+    <value>प्रतीकात्मक लिंक और NTFS जंक्शन संग्रहीत नहीं किए जाते।</value>
+  </data>
+  <data name="FolderLinkNotFollowed" xml:space="preserve">
+    <value>संग्रह करते समय NTFS जंक्शन और फ़ोल्डर के प्रतीकात्मक लिंक का अनुसरण नहीं किया जाता।</value>
+  </data>
+  <data name="ReparsePointNotArchived" xml:space="preserve">
+    <value>प्रतीकात्मक लिंक और पुनर्विश्लेषण बिंदु संग्रहीत नहीं किए जाते।</value>
+  </data>
+  <data name="ArchiveAlreadyExists" xml:space="preserve">
+    <value>संग्रह "{0}" गंतव्य पर पहले से मौजूद है और छोड़ दिया गया।</value>
+  </data>
+  <data name="CannotCreateArchive" xml:space="preserve">
+    <value>संग्रह नहीं बनाया जा सकता: {0}</value>
+  </data>
+  <data name="AccessDeniedCreatingArchive" xml:space="preserve">
+    <value>संग्रह बनाते समय पहुँच अस्वीकृत: {0}</value>
+  </data>
+  <data name="UnexpectedError" xml:space="preserve">
+    <value>अप्रत्याशित त्रुटि: {0}</value>
+  </data>
+  <data name="UnknownArchivingError" xml:space="preserve">
+    <value>संग्रह करते समय अज्ञात त्रुटि।</value>
+  </data>
+  <data name="EntryNameTooLong" xml:space="preserve">
+    <value>प्रविष्टि का नाम ZIP संग्रह के लिए बहुत लंबा है (UTF-8 में {0} बाइट; अधिकतम {1})।</value>
+  </data>
+  <data name="NotEnoughSpaceToCompress" xml:space="preserve">
+    <value>इस फ़ाइल को संपीड़ित करने के लिए पर्याप्त खाली डिस्क स्थान नहीं है: यह {0} बाइट है, लेकिन केवल {1} बाइट खाली हैं।</value>
+  </data>
+  <data name="PasswordNotEntered" xml:space="preserve">
+    <value>संग्रह नहीं बनाया गया: कोई पासवर्ड दर्ज नहीं किया गया।</value>
+  </data>
+  <data name="PasswordEmpty" xml:space="preserve">
+    <value>संग्रह नहीं बनाया गया: पासवर्ड खाली है।</value>
+  </data>
+  <data name="PasswordUnsupportedCharacters" xml:space="preserve">
+    <value>संग्रह नहीं बनाया गया: पासवर्ड में केवल अंग्रेज़ी अक्षर, अंक, रिक्त स्थान और ASCII विराम चिह्न हो सकते हैं; 7-Zip जैसे अन्य ZIP टूल किसी अन्य वर्ण से सुरक्षित संग्रह नहीं खोल सकते।</value>
+  </data>
+  <data name="PasswordTooLong" xml:space="preserve">
+    <value>संग्रह नहीं बनाया गया: पासवर्ड {0} वर्णों से लंबा है, जो AES-एन्क्रिप्टेड ZIP के लिए 7-Zip द्वारा स्वीकार्य अधिकतम है।</value>
+  </data>
+  <data name="PasswordOnlyForZip" xml:space="preserve">
+    <value>पासवर्ड सुरक्षा केवल ZIP संग्रहों के लिए उपलब्ध है।</value>
+  </data>
+  <data name="CreationFormatBlocked" xml:space="preserve">
+    <value>{0} संग्रह बनाना समूह नीति द्वारा अवरुद्ध है।</value>
+  </data>
+  <data name="TarCreationDisabled" xml:space="preserve">
+    <value>tar.exe से संग्रह बनाना समूह नीति द्वारा अक्षम है।</value>
+  </data>
+  <data name="TarCreationFailed" xml:space="preserve">
+    <value>tar.exe संग्रह नहीं बना सका: {0}</value>
+  </data>
+  <data name="TarNameNotRepresentable" xml:space="preserve">
+    <value>नाम "{0}" में ऐसे वर्ण हैं जिन्हें tar.exe इस सिस्टम पर सुरक्षित रूप से संभाल नहीं सकता (ANSI कोड पेज {1})। इस सामग्री के लिए ZIP का उपयोग करें।</value>
+  </data>
+  <data name="TarSignatureInvalid" xml:space="preserve">
+    <value>tar.exe Authenticode हस्ताक्षर सत्यापन में विफल रहा और नहीं चलाया जाएगा।</value>
+  </data>
+  <data name="TarSignatureVerificationFailed" xml:space="preserve">
+    <value>"{0}" Authenticode हस्ताक्षर सत्यापन में विफल रहा।</value>
+  </data>
+  <data name="NotAnArchiveExtract" xml:space="preserve">
+    <value>फ़ाइल किसी पहचाने गए संग्रह प्रारूप में नहीं है और निकाली नहीं जा सकती।</value>
+  </data>
+  <data name="NotAnArchiveTest" xml:space="preserve">
+    <value>फ़ाइल किसी पहचाने गए संग्रह प्रारूप में नहीं है और जाँची नहीं जा सकती।</value>
+  </data>
+  <data name="UnsupportedByZipEngine" xml:space="preserve">
+    <value>{0} प्रारूप समर्थित नहीं है। केवल ZIP-आधारित प्रारूप समर्थित हैं।</value>
+  </data>
+  <data name="FormatBlocked" xml:space="preserve">
+    <value>यह संग्रह प्रारूप ({0}) समूह नीति द्वारा अवरुद्ध है।</value>
+  </data>
+  <data name="TarExtractionDisabled" xml:space="preserve">
+    <value>tar.exe से निकालना समूह नीति द्वारा अक्षम है।</value>
+  </data>
+  <data name="FormatNeedsNewerTar" xml:space="preserve">
+    <value>{0} के लिए libarchive &gt;= 3.7.0 वाला tar.exe (Windows 11 23H2+) चाहिए; इस सिस्टम का tar.exe (संस्करण {1}) इसका समर्थन नहीं करता।</value>
+  </data>
+  <data name="FormatNotSupportedByTar" xml:space="preserve">
+    <value>{0} इस सिस्टम के tar.exe (संस्करण {1}) द्वारा समर्थित नहीं है।</value>
+  </data>
+  <data name="ArchiveFormatNotSupportedByTar" xml:space="preserve">
+    <value>यह संग्रह प्रारूप इस सिस्टम के tar.exe (संस्करण {0}) द्वारा समर्थित नहीं है।</value>
+  </data>
+  <data name="NoTestCapability" xml:space="preserve">
+    <value>tar परिवार के संग्रह जाँचे नहीं जा सकते</value>
+  </data>
+  <data name="PasswordProtectedExtract" xml:space="preserve">
+    <value>यह संग्रह पासवर्ड से सुरक्षित है और निकाला नहीं जा सकता।</value>
+  </data>
+  <data name="PasswordProtectedTest" xml:space="preserve">
+    <value>यह संग्रह पासवर्ड से सुरक्षित है और जाँचा नहीं जा सकता।</value>
+  </data>
+  <data name="PasswordProtectedBrowse" xml:space="preserve">
+    <value>यह संग्रह पासवर्ड से सुरक्षित है और ब्राउज़ नहीं किया जा सकता।</value>
+  </data>
+  <data name="ZipCorrupted" xml:space="preserve">
+    <value>फ़ाइल में ZIP हस्ताक्षर है लेकिन यह क्षतिग्रस्त या अपूर्ण लगती है।</value>
+  </data>
+  <data name="CannotExtractArchive" xml:space="preserve">
+    <value>संग्रह नहीं निकाला जा सकता: {0}</value>
+  </data>
+  <data name="AccessDeniedExtractingArchive" xml:space="preserve">
+    <value>संग्रह निकालते समय पहुँच अस्वीकृत: {0}</value>
+  </data>
+  <data name="CannotReadArchive" xml:space="preserve">
+    <value>संग्रह नहीं पढ़ा जा सकता: {0}</value>
+  </data>
+  <data name="EntryNameCollision" xml:space="preserve">
+    <value>डिकोड करने के बाद प्रविष्टि "{0}" का नाम किसी अन्य प्रविष्टि के समान है; इसे नहीं निकाला गया, क्योंकि एक दूसरी को अधिलेखित कर देती।</value>
+  </data>
+  <data name="EntryFailed" xml:space="preserve">
+    <value>प्रविष्टि "{0}": {1}</value>
+  </data>
+  <data name="EntryWrongPassword" xml:space="preserve">
+    <value>प्रविष्टि "{0}" डिक्रिप्ट नहीं की जा सकी: गलत पासवर्ड।</value>
+  </data>
+  <data name="EntryAuthenticationFailed" xml:space="preserve">
+    <value>प्रविष्टि "{0}" डिक्रिप्ट नहीं की जा सकी: प्रमाणीकरण विफल (क्षतिग्रस्त या छेड़छाड़ की गई)।</value>
+  </data>
+  <data name="EntryUnsupportedEncryptedMethod" xml:space="preserve">
+    <value>प्रविष्टि "{0}" एन्क्रिप्शन के साथ असमर्थित संपीड़न विधि का उपयोग करती है।</value>
+  </data>
+  <data name="InsufficientDiskSpace" xml:space="preserve">
+    <value>संग्रह असंपीड़ित रूप में {0} बाइट घोषित करता है, लेकिन गंतव्य पर केवल {1} बाइट खाली हैं। निकालना अवरुद्ध कर दिया गया।</value>
+  </data>
+  <data name="ZipBombDeclined" xml:space="preserve">
+    <value>संदिग्ध संपीड़न अनुपात ({0}:1, {1} बाइट घोषित)। ZIP बम से बचाव के लिए निकालना अस्वीकार कर दिया गया।</value>
+  </data>
+  <data name="TarBombDeclined" xml:space="preserve">
+    <value>पूरे संग्रह में संदिग्ध संपीड़न अनुपात ({0}:1, {1} बाइट घोषित)। विसंपीड़न बम से बचाव के लिए निकालना अस्वीकार कर दिया गया।</value>
+  </data>
+  <data name="DestinationFileLocked" xml:space="preserve">
+    <value>"{0}" नहीं लिखा जा सकता: गंतव्य फ़ाइल किसी अन्य प्रक्रिया द्वारा लॉक है।</value>
+  </data>
+  <data name="AllEntriesSkipped" xml:space="preserve">
+    <value>इस संग्रह से कुछ भी नहीं निकाला गया — सभी प्रविष्टियाँ छोड़ दी गईं।</value>
+  </data>
+  <data name="UnsafeEntryPath" xml:space="preserve">
+    <value>प्रविष्टि "{0}" का पथ असुरक्षित है और इसे नहीं निकाला गया।</value>
+  </data>
+  <data name="EntryAlternateDataStream" xml:space="preserve">
+    <value>वैकल्पिक डेटा स्ट्रीम प्रविष्टि सुरक्षा कारणों से अस्वीकृत की गई।</value>
+  </data>
+  <data name="EntryReservedName" xml:space="preserve">
+    <value>प्रविष्टि का नाम Windows के आरक्षित डिवाइस नाम से मेल खाता है और छोड़ दिया गया।</value>
+  </data>
+  <data name="EntryControlCharacters" xml:space="preserve">
+    <value>प्रविष्टि के नाम में नियंत्रण वर्ण हैं और छोड़ दिया गया।</value>
+  </data>
+  <data name="CannotExtractEntry" xml:space="preserve">
+    <value>"{0}" नहीं निकाला जा सकता: {1}</value>
+  </data>
+  <data name="EntryThroughReparsePoint" xml:space="preserve">
+    <value>प्रविष्टि का पथ पुनर्विश्लेषण बिंदु (प्रतीकात्मक लिंक या जंक्शन) से होकर जाता है और छोड़ दिया गया।</value>
+  </data>
+  <data name="FileExistsAtDestination" xml:space="preserve">
+    <value>फ़ाइल गंतव्य पर पहले से मौजूद है।</value>
+  </data>
+  <data name="TarExtractionFailed" xml:space="preserve">
+    <value>tar.exe से निकालना विफल रहा: {0}</value>
+  </data>
+  <data name="TarUnsafeEntryPath" xml:space="preserve">
+    <value>संग्रह में असुरक्षित प्रविष्टि पथ ("{0}") है और इसे सुरक्षित रूप से नहीं निकाला जा सकता।</value>
+  </data>
+  <data name="TarListingInconsistent" xml:space="preserve">
+    <value>संग्रह की सामग्री सूची असंगत है और इसे सुरक्षित रूप से नहीं निकाला जा सकता।</value>
+  </data>
+  <data name="TarSpecialEntry" xml:space="preserve">
+    <value>संग्रह में प्रतीकात्मक लिंक, हार्ड लिंक, डिवाइस या अन्य विशेष प्रविष्टि है और इसे सुरक्षित रूप से नहीं निकाला जा सकता।</value>
+  </data>
+  <data name="ListingInconsistent" xml:space="preserve">
+    <value>संग्रह की सामग्री सूची असंगत है।</value>
+  </data>
+  <data name="TarUnreadableNames" xml:space="preserve">
+    <value>संग्रह में ऐसे फ़ाइल नाम हैं जिन्हें tar.exe इस सिस्टम पर प्रदर्शित नहीं कर सकता (कोड पेज {0}), इसलिए इसे यहाँ tar.exe से नहीं पढ़ा जा सकता। विवरण: {1}</value>
+  </data>
+  <data name="SandboxSetupFailed" xml:space="preserve">
+    <value>सैंडबॉक्स सेटअप विफल रहा: {0}</value>
+  </data>
+  <data name="ArchiveInUse" xml:space="preserve">
+    <value>संग्रह किसी अन्य प्रोग्राम द्वारा उपयोग में है: {0}</value>
+  </data>
+  <data name="CannotOpenArchive" xml:space="preserve">
+    <value>संग्रह नहीं खोला जा सकता: {0}</value>
+  </data>
+  <data name="CannotReopenArchive" xml:space="preserve">
+    <value>संग्रह फिर से नहीं खोला जा सकता (Win32 त्रुटि {0})।</value>
+  </data>
+  <data name="HashFolderSkipped" xml:space="preserve">
+    <value>छोड़ा गया: फ़ोल्डर (केवल तभी समर्थित जब एक ही फ़ोल्डर अकेले चुना गया हो)</value>
+  </data>
+  <data name="HashLinkSkipped" xml:space="preserve">
+    <value>छोड़ा गया: प्रतीकात्मक लिंक या जंक्शन (अनुसरण नहीं किया गया)</value>
+  </data>
+  <data name="HashFileChanged" xml:space="preserve">
+    <value>हैश की गणना के दौरान फ़ाइल का आकार बदल गया: {0}</value>
+  </data>
+  <data name="NoAntivirusRegistered" xml:space="preserve">
+    <value>स्कैन करने के लिए कोई एंटीवायरस पंजीकृत नहीं है।</value>
+  </data>
+  <data name="ScanSessionFailed" xml:space="preserve">
+    <value>एंटीवायरस स्कैन सत्र प्रारंभ नहीं किया जा सका: {0}</value>
+  </data>
+  <data name="ScanCannotReadArchive" xml:space="preserve">
+    <value>संग्रह नहीं पढ़ा जा सका: {0}</value>
+  </data>
+  <data name="ScanCannotReadEntry" xml:space="preserve">
+    <value>प्रविष्टि नहीं पढ़ी जा सकी: {0}</value>
+  </data>
+  <data name="ScanCannotExtract" xml:space="preserve">
+    <value>स्कैन के लिए संग्रह नहीं निकाला जा सका: {0}</value>
+  </data>
+  <data name="ScanRemovedOrBlocked" xml:space="preserve">
+    <value>Pakko द्वारा सीधे स्कैन किए जाने से पहले हटाया या अवरुद्ध किया गया।</value>
+  </data>
+  <data name="ScanEntryFailed" xml:space="preserve">
+    <value>इस प्रविष्टि का एंटीवायरस स्कैन विफल रहा: {0}</value>
+  </data>
+  <data name="ScanEntryIntegrityFailed" xml:space="preserve">
+    <value>डिक्रिप्ट की गई सामग्री अखंडता जाँच में विफल रही (गलत पासवर्ड या क्षतिग्रस्त प्रविष्टि) और इसे साफ़ नहीं बताया गया।</value>
+  </data>
+  <data name="ScanEntryPasswordProtected" xml:space="preserve">
+    <value>प्रविष्टि पासवर्ड से सुरक्षित है और स्कैन नहीं की गई।</value>
+  </data>
+  <data name="ScanEntryWrongPassword" xml:space="preserve">
+    <value>प्रविष्टि किसी अन्य पासवर्ड से सुरक्षित है और स्कैन नहीं की गई।</value>
+  </data>
+  <data name="ScanEntryUnsupportedMethod" xml:space="preserve">
+    <value>प्रविष्टि एन्क्रिप्शन के साथ असमर्थित संपीड़न विधि का उपयोग करती है और स्कैन नहीं की गई।</value>
+  </data>
+  <data name="ScanEntryAuthenticationFailed" xml:space="preserve">
+    <value>प्रविष्टि डिक्रिप्शन प्रमाणीकरण में विफल रही (क्षतिग्रस्त या छेड़छाड़ की गई) और स्कैन नहीं की गई।</value>
+  </data>
+  <data name="ScanEntryTooLarge" xml:space="preserve">
+    <value>प्रविष्टि {0} MiB से बड़ी है और स्कैन नहीं की गई।</value>
+  </data>
+</root>

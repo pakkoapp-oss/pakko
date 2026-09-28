@@ -1,0 +1,264 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="SourceNotFound" xml:space="preserve">
+    <value>ماخذ کا راستہ موجود نہیں ہے: {0}</value>
+  </data>
+  <data name="CannotAccessFile" xml:space="preserve">
+    <value>فائل تک رسائی نہیں ہو سکتی: {0}</value>
+  </data>
+  <data name="AccessDenied" xml:space="preserve">
+    <value>رسائی مسترد: {0}</value>
+  </data>
+  <data name="LinkNotArchived" xml:space="preserve">
+    <value>علامتی لنکس اور NTFS جنکشنز آرکائیو نہیں کیے جاتے۔</value>
+  </data>
+  <data name="FolderLinkNotFollowed" xml:space="preserve">
+    <value>آرکائیو کرتے وقت NTFS جنکشنز اور فولڈرز کے علامتی لنکس کی پیروی نہیں کی جاتی۔</value>
+  </data>
+  <data name="ReparsePointNotArchived" xml:space="preserve">
+    <value>علامتی لنکس اور ری پارس پوائنٹس آرکائیو نہیں کیے جاتے۔</value>
+  </data>
+  <data name="ArchiveAlreadyExists" xml:space="preserve">
+    <value>آرکائیو "{0}" منزل پر پہلے سے موجود ہے اور چھوڑ دیا گیا۔</value>
+  </data>
+  <data name="CannotCreateArchive" xml:space="preserve">
+    <value>آرکائیو نہیں بنایا جا سکتا: {0}</value>
+  </data>
+  <data name="AccessDeniedCreatingArchive" xml:space="preserve">
+    <value>آرکائیو بناتے وقت رسائی مسترد: {0}</value>
+  </data>
+  <data name="UnexpectedError" xml:space="preserve">
+    <value>غیر متوقع خرابی: {0}</value>
+  </data>
+  <data name="UnknownArchivingError" xml:space="preserve">
+    <value>آرکائیو کرتے وقت نامعلوم خرابی۔</value>
+  </data>
+  <data name="EntryNameTooLong" xml:space="preserve">
+    <value>اندراج کا نام ZIP آرکائیو کے لیے بہت لمبا ہے (UTF-8 میں {0} بائٹس؛ زیادہ سے زیادہ {1})۔</value>
+  </data>
+  <data name="NotEnoughSpaceToCompress" xml:space="preserve">
+    <value>اس فائل کو کمپریس کرنے کے لیے ڈسک پر کافی خالی جگہ نہیں ہے: یہ {0} بائٹس ہے، لیکن صرف {1} بائٹس خالی ہیں۔</value>
+  </data>
+  <data name="PasswordNotEntered" xml:space="preserve">
+    <value>آرکائیو نہیں بنایا گیا: کوئی پاس ورڈ درج نہیں کیا گیا۔</value>
+  </data>
+  <data name="PasswordEmpty" xml:space="preserve">
+    <value>آرکائیو نہیں بنایا گیا: پاس ورڈ خالی ہے۔</value>
+  </data>
+  <data name="PasswordUnsupportedCharacters" xml:space="preserve">
+    <value>آرکائیو نہیں بنایا گیا: پاس ورڈ میں صرف انگریزی حروف، ہندسے، خالی جگہیں اور ASCII رموزِ اوقاف ہو سکتے ہیں؛ 7-Zip جیسے دوسرے ZIP ٹولز کسی اور حرف سے محفوظ آرکائیو نہیں کھول سکتے۔</value>
+  </data>
+  <data name="PasswordTooLong" xml:space="preserve">
+    <value>آرکائیو نہیں بنایا گیا: پاس ورڈ {0} حروف سے لمبا ہے، جو AES سے خفیہ کردہ ZIP کے لیے 7-Zip کی قبول کردہ زیادہ سے زیادہ حد ہے۔</value>
+  </data>
+  <data name="PasswordOnlyForZip" xml:space="preserve">
+    <value>پاس ورڈ کا تحفظ صرف ZIP آرکائیوز کے لیے دستیاب ہے۔</value>
+  </data>
+  <data name="CreationFormatBlocked" xml:space="preserve">
+    <value>{0} آرکائیو بنانا گروپ پالیسی کے ذریعے مسدود ہے۔</value>
+  </data>
+  <data name="TarCreationDisabled" xml:space="preserve">
+    <value>tar.exe سے آرکائیوز بنانا گروپ پالیسی کے ذریعے غیر فعال ہے۔</value>
+  </data>
+  <data name="TarCreationFailed" xml:space="preserve">
+    <value>tar.exe آرکائیو نہیں بنا سکا: {0}</value>
+  </data>
+  <data name="TarNameNotRepresentable" xml:space="preserve">
+    <value>نام "{0}" میں ایسے حروف ہیں جنہیں tar.exe اس سسٹم پر محفوظ طریقے سے نہیں سنبھال سکتا (ANSI کوڈ پیج {1})۔ اس مواد کے لیے ZIP استعمال کریں۔</value>
+  </data>
+  <data name="TarSignatureInvalid" xml:space="preserve">
+    <value>tar.exe Authenticode دستخط کی تصدیق میں ناکام رہا اور نہیں چلایا جائے گا۔</value>
+  </data>
+  <data name="TarSignatureVerificationFailed" xml:space="preserve">
+    <value>"{0}" Authenticode دستخط کی تصدیق میں ناکام رہا۔</value>
+  </data>
+  <data name="NotAnArchiveExtract" xml:space="preserve">
+    <value>فائل کسی پہچانے گئے آرکائیو فارمیٹ میں نہیں ہے اور نکالی نہیں جا سکتی۔</value>
+  </data>
+  <data name="NotAnArchiveTest" xml:space="preserve">
+    <value>فائل کسی پہچانے گئے آرکائیو فارمیٹ میں نہیں ہے اور جانچی نہیں جا سکتی۔</value>
+  </data>
+  <data name="UnsupportedByZipEngine" xml:space="preserve">
+    <value>{0} فارمیٹ تعاون یافتہ نہیں ہے۔ صرف ZIP پر مبنی فارمیٹس تعاون یافتہ ہیں۔</value>
+  </data>
+  <data name="FormatBlocked" xml:space="preserve">
+    <value>یہ آرکائیو فارمیٹ ({0}) گروپ پالیسی کے ذریعے مسدود ہے۔</value>
+  </data>
+  <data name="TarExtractionDisabled" xml:space="preserve">
+    <value>tar.exe سے نکالنا گروپ پالیسی کے ذریعے غیر فعال ہے۔</value>
+  </data>
+  <data name="FormatNeedsNewerTar" xml:space="preserve">
+    <value>{0} کے لیے libarchive &gt;= 3.7.0 والا tar.exe (Windows 11 23H2+) درکار ہے؛ اس سسٹم کا tar.exe (ورژن {1}) اس کا تعاون نہیں کرتا۔</value>
+  </data>
+  <data name="FormatNotSupportedByTar" xml:space="preserve">
+    <value>{0} اس سسٹم کے tar.exe (ورژن {1}) میں تعاون یافتہ نہیں ہے۔</value>
+  </data>
+  <data name="ArchiveFormatNotSupportedByTar" xml:space="preserve">
+    <value>یہ آرکائیو فارمیٹ اس سسٹم کے tar.exe (ورژن {0}) میں تعاون یافتہ نہیں ہے۔</value>
+  </data>
+  <data name="NoTestCapability" xml:space="preserve">
+    <value>tar خاندان کے آرکائیوز جانچے نہیں جا سکتے</value>
+  </data>
+  <data name="PasswordProtectedExtract" xml:space="preserve">
+    <value>یہ آرکائیو پاس ورڈ سے محفوظ ہے اور نکالا نہیں جا سکتا۔</value>
+  </data>
+  <data name="PasswordProtectedTest" xml:space="preserve">
+    <value>یہ آرکائیو پاس ورڈ سے محفوظ ہے اور جانچا نہیں جا سکتا۔</value>
+  </data>
+  <data name="PasswordProtectedBrowse" xml:space="preserve">
+    <value>یہ آرکائیو پاس ورڈ سے محفوظ ہے اور براؤز نہیں کیا جا سکتا۔</value>
+  </data>
+  <data name="ZipCorrupted" xml:space="preserve">
+    <value>فائل میں ZIP دستخط ہے لیکن یہ خراب یا نامکمل لگتی ہے۔</value>
+  </data>
+  <data name="CannotExtractArchive" xml:space="preserve">
+    <value>آرکائیو نہیں نکالا جا سکتا: {0}</value>
+  </data>
+  <data name="AccessDeniedExtractingArchive" xml:space="preserve">
+    <value>آرکائیو نکالتے وقت رسائی مسترد: {0}</value>
+  </data>
+  <data name="CannotReadArchive" xml:space="preserve">
+    <value>آرکائیو نہیں پڑھا جا سکتا: {0}</value>
+  </data>
+  <data name="EntryNameCollision" xml:space="preserve">
+    <value>ڈی کوڈ کرنے کے بعد اندراج "{0}" کا نام کسی دوسرے اندراج جیسا ہے؛ اسے نہیں نکالا گیا، کیونکہ ایک دوسرے کو اوور رائٹ کر دیتا۔</value>
+  </data>
+  <data name="EntryFailed" xml:space="preserve">
+    <value>اندراج "{0}": {1}</value>
+  </data>
+  <data name="EntryWrongPassword" xml:space="preserve">
+    <value>اندراج "{0}" ڈیکرپٹ نہیں ہو سکا: غلط پاس ورڈ۔</value>
+  </data>
+  <data name="EntryAuthenticationFailed" xml:space="preserve">
+    <value>اندراج "{0}" ڈیکرپٹ نہیں ہو سکا: توثیق ناکام (خراب یا چھیڑ چھاڑ شدہ)۔</value>
+  </data>
+  <data name="EntryUnsupportedEncryptedMethod" xml:space="preserve">
+    <value>اندراج "{0}" خفیہ کاری کے ساتھ غیر تعاون یافتہ کمپریشن طریقہ استعمال کرتا ہے۔</value>
+  </data>
+  <data name="InsufficientDiskSpace" xml:space="preserve">
+    <value>آرکائیو غیر کمپریس شدہ {0} بائٹس ظاہر کرتا ہے، لیکن منزل پر صرف {1} بائٹس خالی ہیں۔ نکالنا مسدود کر دیا گیا۔</value>
+  </data>
+  <data name="ZipBombDeclined" xml:space="preserve">
+    <value>مشکوک کمپریشن تناسب ({0}:1، {1} بائٹس ظاہر کردہ)۔ ZIP بم سے بچاؤ کے لیے نکالنا مسترد کر دیا گیا۔</value>
+  </data>
+  <data name="TarBombDeclined" xml:space="preserve">
+    <value>پورے آرکائیو میں مشکوک کمپریشن تناسب ({0}:1، {1} بائٹس ظاہر کردہ)۔ ڈی کمپریشن بم سے بچاؤ کے لیے نکالنا مسترد کر دیا گیا۔</value>
+  </data>
+  <data name="DestinationFileLocked" xml:space="preserve">
+    <value>"{0}" نہیں لکھا جا سکتا: منزل کی فائل کسی دوسرے عمل نے مقفل کر رکھی ہے۔</value>
+  </data>
+  <data name="AllEntriesSkipped" xml:space="preserve">
+    <value>اس آرکائیو سے کچھ بھی نہیں نکالا گیا — تمام اندراجات چھوڑ دیے گئے۔</value>
+  </data>
+  <data name="UnsafeEntryPath" xml:space="preserve">
+    <value>اندراج "{0}" کا راستہ غیر محفوظ ہے اور اسے نہیں نکالا گیا۔</value>
+  </data>
+  <data name="EntryAlternateDataStream" xml:space="preserve">
+    <value>متبادل ڈیٹا اسٹریم والا اندراج سیکیورٹی کی وجہ سے مسترد کر دیا گیا۔</value>
+  </data>
+  <data name="EntryReservedName" xml:space="preserve">
+    <value>اندراج کا نام Windows کے محفوظ آلے کے نام سے ملتا ہے اور چھوڑ دیا گیا۔</value>
+  </data>
+  <data name="EntryControlCharacters" xml:space="preserve">
+    <value>اندراج کے نام میں کنٹرول حروف ہیں اور چھوڑ دیا گیا۔</value>
+  </data>
+  <data name="CannotExtractEntry" xml:space="preserve">
+    <value>"{0}" نہیں نکالا جا سکتا: {1}</value>
+  </data>
+  <data name="EntryThroughReparsePoint" xml:space="preserve">
+    <value>اندراج کا راستہ ری پارس پوائنٹ (علامتی لنک یا جنکشن) سے گزرتا ہے اور چھوڑ دیا گیا۔</value>
+  </data>
+  <data name="FileExistsAtDestination" xml:space="preserve">
+    <value>فائل منزل پر پہلے سے موجود ہے۔</value>
+  </data>
+  <data name="TarExtractionFailed" xml:space="preserve">
+    <value>tar.exe سے نکالنا ناکام رہا: {0}</value>
+  </data>
+  <data name="TarUnsafeEntryPath" xml:space="preserve">
+    <value>آرکائیو میں غیر محفوظ اندراج کا راستہ ("{0}") ہے اور اسے محفوظ طریقے سے نہیں نکالا جا سکتا۔</value>
+  </data>
+  <data name="TarListingInconsistent" xml:space="preserve">
+    <value>آرکائیو کے مواد کی فہرست غیر مستقل ہے اور اسے محفوظ طریقے سے نہیں نکالا جا سکتا۔</value>
+  </data>
+  <data name="TarSpecialEntry" xml:space="preserve">
+    <value>آرکائیو میں علامتی لنک، ہارڈ لنک، آلہ یا کوئی اور خاص اندراج ہے اور اسے محفوظ طریقے سے نہیں نکالا جا سکتا۔</value>
+  </data>
+  <data name="ListingInconsistent" xml:space="preserve">
+    <value>آرکائیو کے مواد کی فہرست غیر مستقل ہے۔</value>
+  </data>
+  <data name="TarUnreadableNames" xml:space="preserve">
+    <value>آرکائیو میں ایسے فائل نام ہیں جنہیں tar.exe اس سسٹم پر ظاہر نہیں کر سکتا (کوڈ پیج {0})، اس لیے اسے یہاں tar.exe سے نہیں پڑھا جا سکتا۔ تفصیلات: {1}</value>
+  </data>
+  <data name="SandboxSetupFailed" xml:space="preserve">
+    <value>سینڈ باکس کا سیٹ اپ ناکام رہا: {0}</value>
+  </data>
+  <data name="ArchiveInUse" xml:space="preserve">
+    <value>آرکائیو کسی دوسرے پروگرام کے زیرِ استعمال ہے: {0}</value>
+  </data>
+  <data name="CannotOpenArchive" xml:space="preserve">
+    <value>آرکائیو نہیں کھولا جا سکتا: {0}</value>
+  </data>
+  <data name="CannotReopenArchive" xml:space="preserve">
+    <value>آرکائیو دوبارہ نہیں کھولا جا سکتا (Win32 خرابی {0})۔</value>
+  </data>
+  <data name="HashFolderSkipped" xml:space="preserve">
+    <value>چھوڑ دیا گیا: فولڈر (صرف اس وقت تعاون یافتہ جب ایک ہی فولڈر اکیلا منتخب ہو)</value>
+  </data>
+  <data name="HashLinkSkipped" xml:space="preserve">
+    <value>چھوڑ دیا گیا: علامتی لنک یا جنکشن (پیروی نہیں کی جاتی)</value>
+  </data>
+  <data name="HashFileChanged" xml:space="preserve">
+    <value>ہیش کا حساب لگاتے وقت فائل کا سائز بدل گیا: {0}</value>
+  </data>
+  <data name="NoAntivirusRegistered" xml:space="preserve">
+    <value>اسکین کرنے کے لیے کوئی اینٹی وائرس رجسٹرڈ نہیں ہے۔</value>
+  </data>
+  <data name="ScanSessionFailed" xml:space="preserve">
+    <value>اینٹی وائرس اسکین سیشن شروع نہیں ہو سکا: {0}</value>
+  </data>
+  <data name="ScanCannotReadArchive" xml:space="preserve">
+    <value>آرکائیو نہیں پڑھا جا سکا: {0}</value>
+  </data>
+  <data name="ScanCannotReadEntry" xml:space="preserve">
+    <value>اندراج نہیں پڑھا جا سکا: {0}</value>
+  </data>
+  <data name="ScanCannotExtract" xml:space="preserve">
+    <value>اسکین کے لیے آرکائیو نہیں نکالا جا سکا: {0}</value>
+  </data>
+  <data name="ScanRemovedOrBlocked" xml:space="preserve">
+    <value>Pakko کے براہ راست اسکین کرنے سے پہلے ہٹا دیا گیا یا مسدود کر دیا گیا۔</value>
+  </data>
+  <data name="ScanEntryFailed" xml:space="preserve">
+    <value>اس اندراج کا اینٹی وائرس اسکین ناکام رہا: {0}</value>
+  </data>
+  <data name="ScanEntryIntegrityFailed" xml:space="preserve">
+    <value>ڈیکرپٹ شدہ مواد سالمیت کی جانچ میں ناکام رہا (غلط پاس ورڈ یا خراب اندراج) اور اسے صاف رپورٹ نہیں کیا گیا۔</value>
+  </data>
+  <data name="ScanEntryPasswordProtected" xml:space="preserve">
+    <value>اندراج پاس ورڈ سے محفوظ ہے اور اسکین نہیں کیا گیا۔</value>
+  </data>
+  <data name="ScanEntryWrongPassword" xml:space="preserve">
+    <value>اندراج کسی دوسرے پاس ورڈ سے محفوظ ہے اور اسکین نہیں کیا گیا۔</value>
+  </data>
+  <data name="ScanEntryUnsupportedMethod" xml:space="preserve">
+    <value>اندراج خفیہ کاری کے ساتھ غیر تعاون یافتہ کمپریشن طریقہ استعمال کرتا ہے اور اسکین نہیں کیا گیا۔</value>
+  </data>
+  <data name="ScanEntryAuthenticationFailed" xml:space="preserve">
+    <value>اندراج ڈیکرپشن کی توثیق میں ناکام رہا (خراب یا چھیڑ چھاڑ شدہ) اور اسکین نہیں کیا گیا۔</value>
+  </data>
+  <data name="ScanEntryTooLarge" xml:space="preserve">
+    <value>اندراج {0} MiB سے بڑا ہے اور اسکین نہیں کیا گیا۔</value>
+  </data>
+</root>

@@ -1,0 +1,264 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="SourceNotFound" xml:space="preserve">
+    <value>A forrás elérési útja nem létezik: {0}</value>
+  </data>
+  <data name="CannotAccessFile" xml:space="preserve">
+    <value>A fájl nem érhető el: {0}</value>
+  </data>
+  <data name="AccessDenied" xml:space="preserve">
+    <value>Hozzáférés megtagadva: {0}</value>
+  </data>
+  <data name="LinkNotArchived" xml:space="preserve">
+    <value>A szimbolikus hivatkozások és az NTFS-csomópontok nem kerülnek archiválásra.</value>
+  </data>
+  <data name="FolderLinkNotFollowed" xml:space="preserve">
+    <value>Archiváláskor az NTFS-csomópontokat és a mappákra mutató szimbolikus hivatkozásokat a program nem követi.</value>
+  </data>
+  <data name="ReparsePointNotArchived" xml:space="preserve">
+    <value>A szimbolikus hivatkozások és az újraelemzési pontok nem kerülnek archiválásra.</value>
+  </data>
+  <data name="ArchiveAlreadyExists" xml:space="preserve">
+    <value>A(z) „{0}” archívum már létezik a célhelyen, ezért kimaradt.</value>
+  </data>
+  <data name="CannotCreateArchive" xml:space="preserve">
+    <value>Az archívum nem hozható létre: {0}</value>
+  </data>
+  <data name="AccessDeniedCreatingArchive" xml:space="preserve">
+    <value>Hozzáférés megtagadva az archívum létrehozásakor: {0}</value>
+  </data>
+  <data name="UnexpectedError" xml:space="preserve">
+    <value>Váratlan hiba: {0}</value>
+  </data>
+  <data name="UnknownArchivingError" xml:space="preserve">
+    <value>Ismeretlen hiba az archiválás közben.</value>
+  </data>
+  <data name="EntryNameTooLong" xml:space="preserve">
+    <value>Az elem neve túl hosszú egy ZIP-archívumhoz ({0} bájt UTF-8-ban; a maximum {1}).</value>
+  </data>
+  <data name="NotEnoughSpaceToCompress" xml:space="preserve">
+    <value>Nincs elég szabad lemezterület a fájl tömörítéséhez: a mérete {0} bájt, de csak {1} bájt szabad.</value>
+  </data>
+  <data name="PasswordNotEntered" xml:space="preserve">
+    <value>Az archívum nem jött létre: nem adott meg jelszót.</value>
+  </data>
+  <data name="PasswordEmpty" xml:space="preserve">
+    <value>Az archívum nem jött létre: a jelszó üres.</value>
+  </data>
+  <data name="PasswordUnsupportedCharacters" xml:space="preserve">
+    <value>Az archívum nem jött létre: a jelszó csak angol betűket, számjegyeket, szóközöket és ASCII írásjeleket tartalmazhat; más ZIP-eszközök, például a 7-Zip, nem tudják megnyitni a más karakterekkel védett archívumot.</value>
+  </data>
+  <data name="PasswordTooLong" xml:space="preserve">
+    <value>Az archívum nem jött létre: a jelszó hosszabb {0} karakternél, ami a 7-Zip által AES-titkosítású ZIP esetén elfogadott maximum.</value>
+  </data>
+  <data name="PasswordOnlyForZip" xml:space="preserve">
+    <value>A jelszavas védelem csak ZIP-archívumokhoz érhető el.</value>
+  </data>
+  <data name="CreationFormatBlocked" xml:space="preserve">
+    <value>{0}-archívum létrehozását csoportházirend tiltja.</value>
+  </data>
+  <data name="TarCreationDisabled" xml:space="preserve">
+    <value>Az archívumok tar.exe-vel való létrehozását csoportházirend letiltotta.</value>
+  </data>
+  <data name="TarCreationFailed" xml:space="preserve">
+    <value>A tar.exe nem tudta létrehozni az archívumot: {0}</value>
+  </data>
+  <data name="TarNameNotRepresentable" xml:space="preserve">
+    <value>A(z) „{0}” név olyan karaktereket tartalmaz, amelyeket a tar.exe ezen a rendszeren nem tud biztonságosan kezelni (ANSI kódlap: {1}). Ehhez a tartalomhoz használjon ZIP-et.</value>
+  </data>
+  <data name="TarSignatureInvalid" xml:space="preserve">
+    <value>A tar.exe nem felelt meg az Authenticode-aláírás ellenőrzésén, ezért nem fut le.</value>
+  </data>
+  <data name="TarSignatureVerificationFailed" xml:space="preserve">
+    <value>A(z) „{0}” nem felelt meg az Authenticode-aláírás ellenőrzésén.</value>
+  </data>
+  <data name="NotAnArchiveExtract" xml:space="preserve">
+    <value>A fájl nem felismert archívumformátumú, ezért nem bontható ki.</value>
+  </data>
+  <data name="NotAnArchiveTest" xml:space="preserve">
+    <value>A fájl nem felismert archívumformátumú, ezért nem tesztelhető.</value>
+  </data>
+  <data name="UnsupportedByZipEngine" xml:space="preserve">
+    <value>A(z) {0} formátum nem támogatott. Csak a ZIP-alapú formátumok támogatottak.</value>
+  </data>
+  <data name="FormatBlocked" xml:space="preserve">
+    <value>Ezt az archívumformátumot ({0}) csoportházirend tiltja.</value>
+  </data>
+  <data name="TarExtractionDisabled" xml:space="preserve">
+    <value>A tar.exe-vel történő kibontást csoportházirend letiltotta.</value>
+  </data>
+  <data name="FormatNeedsNewerTar" xml:space="preserve">
+    <value>A(z) {0} formátumhoz libarchive &gt;= 3.7.0 verziójú tar.exe szükséges (Windows 11 23H2+); a rendszer tar.exe-je ({1} verzió) nem támogatja.</value>
+  </data>
+  <data name="FormatNotSupportedByTar" xml:space="preserve">
+    <value>A rendszer tar.exe-je ({1} verzió) nem támogatja a következőt: {0}.</value>
+  </data>
+  <data name="ArchiveFormatNotSupportedByTar" xml:space="preserve">
+    <value>A rendszer tar.exe-je ({0} verzió) nem támogatja ezt az archívumformátumot.</value>
+  </data>
+  <data name="NoTestCapability" xml:space="preserve">
+    <value>a tar-családba tartozó archívumok nem tesztelhetők</value>
+  </data>
+  <data name="PasswordProtectedExtract" xml:space="preserve">
+    <value>Ez az archívum jelszóval védett, ezért nem bontható ki.</value>
+  </data>
+  <data name="PasswordProtectedTest" xml:space="preserve">
+    <value>Ez az archívum jelszóval védett, ezért nem tesztelhető.</value>
+  </data>
+  <data name="PasswordProtectedBrowse" xml:space="preserve">
+    <value>Ez az archívum jelszóval védett, ezért nem tallózható.</value>
+  </data>
+  <data name="ZipCorrupted" xml:space="preserve">
+    <value>A fájl ZIP-aláírással rendelkezik, de sérültnek vagy hiányosnak tűnik.</value>
+  </data>
+  <data name="CannotExtractArchive" xml:space="preserve">
+    <value>Az archívum nem bontható ki: {0}</value>
+  </data>
+  <data name="AccessDeniedExtractingArchive" xml:space="preserve">
+    <value>Hozzáférés megtagadva az archívum kibontásakor: {0}</value>
+  </data>
+  <data name="CannotReadArchive" xml:space="preserve">
+    <value>Az archívum nem olvasható: {0}</value>
+  </data>
+  <data name="EntryNameCollision" xml:space="preserve">
+    <value>Dekódolás után a(z) „{0}” elem neve megegyezik egy másik eleméval; nem kerül kibontásra, mert az egyik felülírná a másikat.</value>
+  </data>
+  <data name="EntryFailed" xml:space="preserve">
+    <value>„{0}” elem: {1}</value>
+  </data>
+  <data name="EntryWrongPassword" xml:space="preserve">
+    <value>A(z) „{0}” elem nem fejthető vissza: helytelen jelszó.</value>
+  </data>
+  <data name="EntryAuthenticationFailed" xml:space="preserve">
+    <value>A(z) „{0}” elem nem fejthető vissza: a hitelesítés sikertelen (sérült vagy módosított).</value>
+  </data>
+  <data name="EntryUnsupportedEncryptedMethod" xml:space="preserve">
+    <value>A(z) „{0}” elem nem támogatott tömörítési módszert használ titkosítással.</value>
+  </data>
+  <data name="InsufficientDiskSpace" xml:space="preserve">
+    <value>Az archívum kibontott mérete {0} bájt, de a célhelyen csak {1} bájt szabad. A kibontás le lett tiltva.</value>
+  </data>
+  <data name="ZipBombDeclined" xml:space="preserve">
+    <value>Gyanús tömörítési arány ({0}:1, {1} bájt deklarálva). A kibontás óvintézkedésként el lett utasítva a ZIP-bombák elleni védelem miatt.</value>
+  </data>
+  <data name="TarBombDeclined" xml:space="preserve">
+    <value>Gyanús tömörítési arány ({0}:1, {1} bájt deklarálva) a teljes archívumra. A kibontás óvintézkedésként el lett utasítva a kicsomagolási bombák elleni védelem miatt.</value>
+  </data>
+  <data name="DestinationFileLocked" xml:space="preserve">
+    <value>A(z) „{0}” nem írható: a célfájlt egy másik folyamat zárolja.</value>
+  </data>
+  <data name="AllEntriesSkipped" xml:space="preserve">
+    <value>Ebből az archívumból semmi sem lett kibontva – minden elem kimaradt.</value>
+  </data>
+  <data name="UnsafeEntryPath" xml:space="preserve">
+    <value>A(z) „{0}” elem elérési útja nem biztonságos, ezért nem lett kibontva.</value>
+  </data>
+  <data name="EntryAlternateDataStream" xml:space="preserve">
+    <value>Az alternatív adatfolyamot tartalmazó elem biztonsági okból el lett utasítva.</value>
+  </data>
+  <data name="EntryReservedName" xml:space="preserve">
+    <value>Az elem neve egy fenntartott Windows-eszköznévvel egyezik, ezért kimaradt.</value>
+  </data>
+  <data name="EntryControlCharacters" xml:space="preserve">
+    <value>Az elem neve vezérlőkaraktereket tartalmaz, ezért kimaradt.</value>
+  </data>
+  <data name="CannotExtractEntry" xml:space="preserve">
+    <value>A(z) „{0}” nem bontható ki: {1}</value>
+  </data>
+  <data name="EntryThroughReparsePoint" xml:space="preserve">
+    <value>Az elem elérési útja újraelemzési ponton (szimbolikus hivatkozáson vagy csomóponton) halad át, ezért kimaradt.</value>
+  </data>
+  <data name="FileExistsAtDestination" xml:space="preserve">
+    <value>A fájl már létezik a célhelyen.</value>
+  </data>
+  <data name="TarExtractionFailed" xml:space="preserve">
+    <value>A tar.exe-vel történő kibontás sikertelen: {0}</value>
+  </data>
+  <data name="TarUnsafeEntryPath" xml:space="preserve">
+    <value>Az archívum nem biztonságos elemútvonalat tartalmaz („{0}”), ezért nem bontható ki biztonságosan.</value>
+  </data>
+  <data name="TarListingInconsistent" xml:space="preserve">
+    <value>Az archívum tartalomlistája ellentmondásos, ezért nem bontható ki biztonságosan.</value>
+  </data>
+  <data name="TarSpecialEntry" xml:space="preserve">
+    <value>Az archívum szimbolikus hivatkozást, rögzített hivatkozást, eszközt vagy más különleges elemet tartalmaz, ezért nem bontható ki biztonságosan.</value>
+  </data>
+  <data name="ListingInconsistent" xml:space="preserve">
+    <value>Az archívum tartalomlistája ellentmondásos.</value>
+  </data>
+  <data name="TarUnreadableNames" xml:space="preserve">
+    <value>Az archívum olyan fájlneveket tartalmaz, amelyeket a tar.exe ezen a rendszeren nem tud megjeleníteni ({0} kódlap), ezért itt nem olvasható tar.exe-vel. Részletek: {1}</value>
+  </data>
+  <data name="SandboxSetupFailed" xml:space="preserve">
+    <value>A védőfal (sandbox) beállítása sikertelen: {0}</value>
+  </data>
+  <data name="ArchiveInUse" xml:space="preserve">
+    <value>Az archívumot egy másik program használja: {0}</value>
+  </data>
+  <data name="CannotOpenArchive" xml:space="preserve">
+    <value>Az archívum nem nyitható meg: {0}</value>
+  </data>
+  <data name="CannotReopenArchive" xml:space="preserve">
+    <value>Az archívum nem nyitható meg újra (Win32-hiba: {0}).</value>
+  </data>
+  <data name="HashFolderSkipped" xml:space="preserve">
+    <value>Kihagyva: mappa (csak akkor támogatott, ha egyetlen mappa van kijelölve)</value>
+  </data>
+  <data name="HashLinkSkipped" xml:space="preserve">
+    <value>Kihagyva: szimbolikus hivatkozás vagy csomópont (nincs követve)</value>
+  </data>
+  <data name="HashFileChanged" xml:space="preserve">
+    <value>A fájl mérete megváltozott a kivonat számítása közben: {0}</value>
+  </data>
+  <data name="NoAntivirusRegistered" xml:space="preserve">
+    <value>Nincs regisztrált víruskereső a vizsgálathoz.</value>
+  </data>
+  <data name="ScanSessionFailed" xml:space="preserve">
+    <value>Nem sikerült víruskeresési munkamenetet indítani: {0}</value>
+  </data>
+  <data name="ScanCannotReadArchive" xml:space="preserve">
+    <value>Az archívum nem olvasható: {0}</value>
+  </data>
+  <data name="ScanCannotReadEntry" xml:space="preserve">
+    <value>Az elem nem olvasható: {0}</value>
+  </data>
+  <data name="ScanCannotExtract" xml:space="preserve">
+    <value>Az archívum nem bontható ki a vizsgálathoz: {0}</value>
+  </data>
+  <data name="ScanRemovedOrBlocked" xml:space="preserve">
+    <value>Eltávolítva vagy letiltva, mielőtt a Pakko közvetlenül megvizsgálhatta volna.</value>
+  </data>
+  <data name="ScanEntryFailed" xml:space="preserve">
+    <value>Az elem víruskeresése sikertelen: {0}</value>
+  </data>
+  <data name="ScanEntryIntegrityFailed" xml:space="preserve">
+    <value>A visszafejtett tartalom nem felelt meg az integritás-ellenőrzésen (helytelen jelszó vagy sérült elem), ezért nem lett tisztaként jelentve.</value>
+  </data>
+  <data name="ScanEntryPasswordProtected" xml:space="preserve">
+    <value>Az elem jelszóval védett, ezért nem lett megvizsgálva.</value>
+  </data>
+  <data name="ScanEntryWrongPassword" xml:space="preserve">
+    <value>Az elem másik jelszóval védett, ezért nem lett megvizsgálva.</value>
+  </data>
+  <data name="ScanEntryUnsupportedMethod" xml:space="preserve">
+    <value>Az elem nem támogatott tömörítési módszert használ titkosítással, ezért nem lett megvizsgálva.</value>
+  </data>
+  <data name="ScanEntryAuthenticationFailed" xml:space="preserve">
+    <value>Az elem nem felelt meg a visszafejtés hitelesítésén (sérült vagy módosított), ezért nem lett megvizsgálva.</value>
+  </data>
+  <data name="ScanEntryTooLarge" xml:space="preserve">
+    <value>Az elem nagyobb {0} MiB-nál, ezért nem lett megvizsgálva.</value>
+  </data>
+</root>

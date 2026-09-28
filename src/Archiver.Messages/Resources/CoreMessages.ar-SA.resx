@@ -1,0 +1,264 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="SourceNotFound" xml:space="preserve">
+    <value>مسار المصدر غير موجود: {0}</value>
+  </data>
+  <data name="CannotAccessFile" xml:space="preserve">
+    <value>تعذر الوصول إلى الملف: {0}</value>
+  </data>
+  <data name="AccessDenied" xml:space="preserve">
+    <value>تم رفض الوصول: {0}</value>
+  </data>
+  <data name="LinkNotArchived" xml:space="preserve">
+    <value>لا تتم أرشفة الارتباطات الرمزية ونقاط الوصل في NTFS.</value>
+  </data>
+  <data name="FolderLinkNotFollowed" xml:space="preserve">
+    <value>لا يتم تتبع نقاط الوصل في NTFS والارتباطات الرمزية للمجلدات أثناء الأرشفة.</value>
+  </data>
+  <data name="ReparsePointNotArchived" xml:space="preserve">
+    <value>لا تتم أرشفة الارتباطات الرمزية ونقاط إعادة التحليل.</value>
+  </data>
+  <data name="ArchiveAlreadyExists" xml:space="preserve">
+    <value>الأرشيف "{0}" موجود بالفعل في الوجهة وتم تخطيه.</value>
+  </data>
+  <data name="CannotCreateArchive" xml:space="preserve">
+    <value>تعذر إنشاء الأرشيف: {0}</value>
+  </data>
+  <data name="AccessDeniedCreatingArchive" xml:space="preserve">
+    <value>تم رفض الوصول أثناء إنشاء الأرشيف: {0}</value>
+  </data>
+  <data name="UnexpectedError" xml:space="preserve">
+    <value>خطأ غير متوقع: {0}</value>
+  </data>
+  <data name="UnknownArchivingError" xml:space="preserve">
+    <value>خطأ غير معروف أثناء الأرشفة.</value>
+  </data>
+  <data name="EntryNameTooLong" xml:space="preserve">
+    <value>اسم العنصر طويل جدًا لأرشيف ZIP ({0} بايت بترميز UTF-8؛ الحد الأقصى {1}).</value>
+  </data>
+  <data name="NotEnoughSpaceToCompress" xml:space="preserve">
+    <value>لا توجد مساحة خالية كافية على القرص لضغط هذا الملف: حجمه {0} بايت، لكن المساحة الخالية {1} بايت فقط.</value>
+  </data>
+  <data name="PasswordNotEntered" xml:space="preserve">
+    <value>لم يتم إنشاء الأرشيف: لم يتم إدخال كلمة مرور.</value>
+  </data>
+  <data name="PasswordEmpty" xml:space="preserve">
+    <value>لم يتم إنشاء الأرشيف: كلمة المرور فارغة.</value>
+  </data>
+  <data name="PasswordUnsupportedCharacters" xml:space="preserve">
+    <value>لم يتم إنشاء الأرشيف: يمكن أن تحتوي كلمة المرور على أحرف إنجليزية وأرقام ومسافات وعلامات ترقيم ASCII فقط؛ لا يمكن لأدوات ZIP الأخرى مثل 7-Zip فتح أرشيف محمي بأحرف أخرى.</value>
+  </data>
+  <data name="PasswordTooLong" xml:space="preserve">
+    <value>لم يتم إنشاء الأرشيف: كلمة المرور أطول من {0} حرفًا، وهو الحد الأقصى الذي يقبله 7-Zip لملف ZIP مشفر بـ AES.</value>
+  </data>
+  <data name="PasswordOnlyForZip" xml:space="preserve">
+    <value>الحماية بكلمة مرور متاحة لأرشيفات ZIP فقط.</value>
+  </data>
+  <data name="CreationFormatBlocked" xml:space="preserve">
+    <value>إنشاء أرشيف {0} محظور بواسطة نهج المجموعة.</value>
+  </data>
+  <data name="TarCreationDisabled" xml:space="preserve">
+    <value>إنشاء الأرشيفات باستخدام tar.exe معطل بواسطة نهج المجموعة.</value>
+  </data>
+  <data name="TarCreationFailed" xml:space="preserve">
+    <value>تعذر على tar.exe إنشاء الأرشيف: {0}</value>
+  </data>
+  <data name="TarNameNotRepresentable" xml:space="preserve">
+    <value>يحتوي الاسم "{0}" على أحرف لا يستطيع tar.exe معالجتها بأمان على هذا النظام (صفحة ترميز ANSI {1}). استخدم ZIP لهذا المحتوى.</value>
+  </data>
+  <data name="TarSignatureInvalid" xml:space="preserve">
+    <value>فشل tar.exe في التحقق من توقيع Authenticode ولن يتم تشغيله.</value>
+  </data>
+  <data name="TarSignatureVerificationFailed" xml:space="preserve">
+    <value>فشل "{0}" في التحقق من توقيع Authenticode.</value>
+  </data>
+  <data name="NotAnArchiveExtract" xml:space="preserve">
+    <value>الملف ليس بتنسيق أرشيف معروف ولا يمكن استخراجه.</value>
+  </data>
+  <data name="NotAnArchiveTest" xml:space="preserve">
+    <value>الملف ليس بتنسيق أرشيف معروف ولا يمكن اختباره.</value>
+  </data>
+  <data name="UnsupportedByZipEngine" xml:space="preserve">
+    <value>التنسيق {0} غير مدعوم. التنسيقات المستندة إلى ZIP فقط مدعومة.</value>
+  </data>
+  <data name="FormatBlocked" xml:space="preserve">
+    <value>تنسيق الأرشيف هذا ({0}) محظور بواسطة نهج المجموعة.</value>
+  </data>
+  <data name="TarExtractionDisabled" xml:space="preserve">
+    <value>الاستخراج باستخدام tar.exe معطل بواسطة نهج المجموعة.</value>
+  </data>
+  <data name="FormatNeedsNewerTar" xml:space="preserve">
+    <value>يتطلب {0} برنامج tar.exe مع libarchive &gt;= 3.7.0 (Windows 11 23H2+)؛ لا يدعمه tar.exe في هذا النظام (الإصدار {1}).</value>
+  </data>
+  <data name="FormatNotSupportedByTar" xml:space="preserve">
+    <value>{0} غير مدعوم في tar.exe على هذا النظام (الإصدار {1}).</value>
+  </data>
+  <data name="ArchiveFormatNotSupportedByTar" xml:space="preserve">
+    <value>تنسيق الأرشيف هذا غير مدعوم في tar.exe على هذا النظام (الإصدار {0}).</value>
+  </data>
+  <data name="NoTestCapability" xml:space="preserve">
+    <value>لا يمكن اختبار أرشيفات عائلة tar</value>
+  </data>
+  <data name="PasswordProtectedExtract" xml:space="preserve">
+    <value>هذا الأرشيف محمي بكلمة مرور ولا يمكن استخراجه.</value>
+  </data>
+  <data name="PasswordProtectedTest" xml:space="preserve">
+    <value>هذا الأرشيف محمي بكلمة مرور ولا يمكن اختباره.</value>
+  </data>
+  <data name="PasswordProtectedBrowse" xml:space="preserve">
+    <value>هذا الأرشيف محمي بكلمة مرور ولا يمكن استعراضه.</value>
+  </data>
+  <data name="ZipCorrupted" xml:space="preserve">
+    <value>يحتوي الملف على توقيع ZIP لكنه يبدو تالفًا أو غير مكتمل.</value>
+  </data>
+  <data name="CannotExtractArchive" xml:space="preserve">
+    <value>تعذر استخراج الأرشيف: {0}</value>
+  </data>
+  <data name="AccessDeniedExtractingArchive" xml:space="preserve">
+    <value>تم رفض الوصول أثناء استخراج الأرشيف: {0}</value>
+  </data>
+  <data name="CannotReadArchive" xml:space="preserve">
+    <value>تعذرت قراءة الأرشيف: {0}</value>
+  </data>
+  <data name="EntryNameCollision" xml:space="preserve">
+    <value>بعد فك الترميز، أصبح للعنصر "{0}" نفس اسم عنصر آخر؛ لم يتم استخراجه لأن أحدهما سيستبدل الآخر.</value>
+  </data>
+  <data name="EntryFailed" xml:space="preserve">
+    <value>العنصر "{0}": {1}</value>
+  </data>
+  <data name="EntryWrongPassword" xml:space="preserve">
+    <value>تعذر فك تشفير العنصر "{0}": كلمة المرور غير صحيحة.</value>
+  </data>
+  <data name="EntryAuthenticationFailed" xml:space="preserve">
+    <value>تعذر فك تشفير العنصر "{0}": فشلت المصادقة (تالف أو تم العبث به).</value>
+  </data>
+  <data name="EntryUnsupportedEncryptedMethod" xml:space="preserve">
+    <value>يستخدم العنصر "{0}" طريقة ضغط مع تشفير غير مدعومة.</value>
+  </data>
+  <data name="InsufficientDiskSpace" xml:space="preserve">
+    <value>يعلن الأرشيف عن {0} بايت غير مضغوطة، لكن الوجهة تحتوي على {1} بايت خالية فقط. تم حظر الاستخراج.</value>
+  </data>
+  <data name="ZipBombDeclined" xml:space="preserve">
+    <value>نسبة ضغط مريبة ({0}:1، {1} بايت معلنة). تم رفض الاستخراج احتياطًا من قنابل ZIP.</value>
+  </data>
+  <data name="TarBombDeclined" xml:space="preserve">
+    <value>نسبة ضغط مريبة ({0}:1، {1} بايت معلنة) للأرشيف بالكامل. تم رفض الاستخراج احتياطًا من قنابل فك الضغط.</value>
+  </data>
+  <data name="DestinationFileLocked" xml:space="preserve">
+    <value>تعذرت كتابة "{0}": ملف الوجهة مقفل بواسطة عملية أخرى.</value>
+  </data>
+  <data name="AllEntriesSkipped" xml:space="preserve">
+    <value>لم يتم استخراج أي شيء من هذا الأرشيف — تم تخطي كل العناصر.</value>
+  </data>
+  <data name="UnsafeEntryPath" xml:space="preserve">
+    <value>مسار العنصر "{0}" غير آمن ولم يتم استخراجه.</value>
+  </data>
+  <data name="EntryAlternateDataStream" xml:space="preserve">
+    <value>تم رفض عنصر تدفق البيانات البديل لأسباب أمنية.</value>
+  </data>
+  <data name="EntryReservedName" xml:space="preserve">
+    <value>يطابق اسم العنصر اسم جهاز محجوزًا في Windows وتم تخطيه.</value>
+  </data>
+  <data name="EntryControlCharacters" xml:space="preserve">
+    <value>يحتوي اسم العنصر على أحرف تحكم وتم تخطيه.</value>
+  </data>
+  <data name="CannotExtractEntry" xml:space="preserve">
+    <value>تعذر استخراج "{0}": {1}</value>
+  </data>
+  <data name="EntryThroughReparsePoint" xml:space="preserve">
+    <value>يمر مسار العنصر عبر نقطة إعادة تحليل (ارتباط رمزي أو نقطة وصل) وتم تخطيه.</value>
+  </data>
+  <data name="FileExistsAtDestination" xml:space="preserve">
+    <value>الملف موجود بالفعل في الوجهة.</value>
+  </data>
+  <data name="TarExtractionFailed" xml:space="preserve">
+    <value>فشل الاستخراج باستخدام tar.exe: {0}</value>
+  </data>
+  <data name="TarUnsafeEntryPath" xml:space="preserve">
+    <value>يحتوي الأرشيف على مسار عنصر غير آمن ("{0}") ولا يمكن استخراجه بأمان.</value>
+  </data>
+  <data name="TarListingInconsistent" xml:space="preserve">
+    <value>قائمة محتويات الأرشيف غير متسقة ولا يمكن استخراجه بأمان.</value>
+  </data>
+  <data name="TarSpecialEntry" xml:space="preserve">
+    <value>يحتوي الأرشيف على ارتباط رمزي أو ارتباط ثابت أو جهاز أو عنصر خاص آخر ولا يمكن استخراجه بأمان.</value>
+  </data>
+  <data name="ListingInconsistent" xml:space="preserve">
+    <value>قائمة محتويات الأرشيف غير متسقة.</value>
+  </data>
+  <data name="TarUnreadableNames" xml:space="preserve">
+    <value>يحتوي الأرشيف على أسماء ملفات لا يستطيع tar.exe تمثيلها على هذا النظام (صفحة الترميز {0})، لذا لا يمكن قراءته هنا باستخدام tar.exe. التفاصيل: {1}</value>
+  </data>
+  <data name="SandboxSetupFailed" xml:space="preserve">
+    <value>فشل إعداد وضع الحماية: {0}</value>
+  </data>
+  <data name="ArchiveInUse" xml:space="preserve">
+    <value>الأرشيف قيد الاستخدام بواسطة برنامج آخر: {0}</value>
+  </data>
+  <data name="CannotOpenArchive" xml:space="preserve">
+    <value>تعذر فتح الأرشيف: {0}</value>
+  </data>
+  <data name="CannotReopenArchive" xml:space="preserve">
+    <value>تعذرت إعادة فتح الأرشيف (خطأ Win32 {0}).</value>
+  </data>
+  <data name="HashFolderSkipped" xml:space="preserve">
+    <value>تم التخطي: مجلد (مدعوم فقط عند تحديد مجلد واحد بمفرده)</value>
+  </data>
+  <data name="HashLinkSkipped" xml:space="preserve">
+    <value>تم التخطي: ارتباط رمزي أو نقطة وصل (لا يتم تتبعه)</value>
+  </data>
+  <data name="HashFileChanged" xml:space="preserve">
+    <value>تغير حجم الملف أثناء حساب التجزئة: {0}</value>
+  </data>
+  <data name="NoAntivirusRegistered" xml:space="preserve">
+    <value>لا يوجد برنامج مكافحة فيروسات مسجل للفحص.</value>
+  </data>
+  <data name="ScanSessionFailed" xml:space="preserve">
+    <value>تعذر بدء جلسة فحص مكافحة الفيروسات: {0}</value>
+  </data>
+  <data name="ScanCannotReadArchive" xml:space="preserve">
+    <value>تعذرت قراءة الأرشيف: {0}</value>
+  </data>
+  <data name="ScanCannotReadEntry" xml:space="preserve">
+    <value>تعذرت قراءة العنصر: {0}</value>
+  </data>
+  <data name="ScanCannotExtract" xml:space="preserve">
+    <value>تعذر استخراج الأرشيف للفحص: {0}</value>
+  </data>
+  <data name="ScanRemovedOrBlocked" xml:space="preserve">
+    <value>تمت إزالته أو حظره قبل أن يتمكن Pakko من فحصه مباشرة.</value>
+  </data>
+  <data name="ScanEntryFailed" xml:space="preserve">
+    <value>فشل فحص هذا العنصر بحثًا عن الفيروسات: {0}</value>
+  </data>
+  <data name="ScanEntryIntegrityFailed" xml:space="preserve">
+    <value>فشل المحتوى الذي تم فك تشفيره في فحص السلامة (كلمة مرور غير صحيحة أو عنصر تالف) ولم يتم الإبلاغ عنه على أنه نظيف.</value>
+  </data>
+  <data name="ScanEntryPasswordProtected" xml:space="preserve">
+    <value>العنصر محمي بكلمة مرور ولم يتم فحصه.</value>
+  </data>
+  <data name="ScanEntryWrongPassword" xml:space="preserve">
+    <value>العنصر محمي بكلمة مرور مختلفة ولم يتم فحصه.</value>
+  </data>
+  <data name="ScanEntryUnsupportedMethod" xml:space="preserve">
+    <value>يستخدم العنصر طريقة ضغط مع تشفير غير مدعومة ولم يتم فحصه.</value>
+  </data>
+  <data name="ScanEntryAuthenticationFailed" xml:space="preserve">
+    <value>فشل العنصر في مصادقة فك التشفير (تالف أو تم العبث به) ولم يتم فحصه.</value>
+  </data>
+  <data name="ScanEntryTooLarge" xml:space="preserve">
+    <value>العنصر أكبر من {0} ميبيبايت ولم يتم فحصه.</value>
+  </data>
+</root>

@@ -1,0 +1,264 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="SourceNotFound" xml:space="preserve">
+    <value>Zdrojová cesta neexistuje: {0}</value>
+  </data>
+  <data name="CannotAccessFile" xml:space="preserve">
+    <value>K súboru nie je možné získať prístup: {0}</value>
+  </data>
+  <data name="AccessDenied" xml:space="preserve">
+    <value>Prístup odmietnutý: {0}</value>
+  </data>
+  <data name="LinkNotArchived" xml:space="preserve">
+    <value>Symbolické prepojenia a spojenia NTFS sa nearchivujú.</value>
+  </data>
+  <data name="FolderLinkNotFollowed" xml:space="preserve">
+    <value>Pri archivácii sa nesledujú spojenia NTFS ani symbolické prepojenia na priečinky.</value>
+  </data>
+  <data name="ReparsePointNotArchived" xml:space="preserve">
+    <value>Symbolické prepojenia a body opätovnej analýzy sa nearchivujú.</value>
+  </data>
+  <data name="ArchiveAlreadyExists" xml:space="preserve">
+    <value>Archív „{0}“ už v cieli existuje a bol preskočený.</value>
+  </data>
+  <data name="CannotCreateArchive" xml:space="preserve">
+    <value>Archív nie je možné vytvoriť: {0}</value>
+  </data>
+  <data name="AccessDeniedCreatingArchive" xml:space="preserve">
+    <value>Prístup odmietnutý pri vytváraní archívu: {0}</value>
+  </data>
+  <data name="UnexpectedError" xml:space="preserve">
+    <value>Neočakávaná chyba: {0}</value>
+  </data>
+  <data name="UnknownArchivingError" xml:space="preserve">
+    <value>Neznáma chyba pri archivácii.</value>
+  </data>
+  <data name="EntryNameTooLong" xml:space="preserve">
+    <value>Názov položky je pre archív ZIP príliš dlhý ({0} bajtov v UTF-8; maximum je {1}).</value>
+  </data>
+  <data name="NotEnoughSpaceToCompress" xml:space="preserve">
+    <value>Nedostatok voľného miesta na disku na kompresiu tohto súboru: má {0} bajtov, ale voľných je len {1} bajtov.</value>
+  </data>
+  <data name="PasswordNotEntered" xml:space="preserve">
+    <value>Archív sa nevytvoril: nebolo zadané heslo.</value>
+  </data>
+  <data name="PasswordEmpty" xml:space="preserve">
+    <value>Archív sa nevytvoril: heslo je prázdne.</value>
+  </data>
+  <data name="PasswordUnsupportedCharacters" xml:space="preserve">
+    <value>Archív sa nevytvoril: heslo môže obsahovať len anglické písmená, číslice, medzery a interpunkciu ASCII; iné nástroje ZIP, napríklad 7-Zip, neotvoria archív chránený inými znakmi.</value>
+  </data>
+  <data name="PasswordTooLong" xml:space="preserve">
+    <value>Archív sa nevytvoril: heslo je dlhšie ako {0} znakov, čo je maximum, ktoré 7-Zip prijíma pre ZIP šifrovaný AES.</value>
+  </data>
+  <data name="PasswordOnlyForZip" xml:space="preserve">
+    <value>Ochrana heslom je k dispozícii len pre archívy ZIP.</value>
+  </data>
+  <data name="CreationFormatBlocked" xml:space="preserve">
+    <value>Vytvorenie archívu {0} je blokované skupinovou politikou.</value>
+  </data>
+  <data name="TarCreationDisabled" xml:space="preserve">
+    <value>Vytváranie archívov pomocou tar.exe je vypnuté skupinovou politikou.</value>
+  </data>
+  <data name="TarCreationFailed" xml:space="preserve">
+    <value>tar.exe nemohol vytvoriť archív: {0}</value>
+  </data>
+  <data name="TarNameNotRepresentable" xml:space="preserve">
+    <value>Názov „{0}“ obsahuje znaky, ktoré tar.exe v tomto systéme nemôže bezpečne spracovať (kódová stránka ANSI {1}). Pre tento obsah použite ZIP.</value>
+  </data>
+  <data name="TarSignatureInvalid" xml:space="preserve">
+    <value>tar.exe neprešiel overením podpisu Authenticode a nebude spustený.</value>
+  </data>
+  <data name="TarSignatureVerificationFailed" xml:space="preserve">
+    <value>„{0}“ neprešiel overením podpisu Authenticode.</value>
+  </data>
+  <data name="NotAnArchiveExtract" xml:space="preserve">
+    <value>Súbor nemá rozpoznaný formát archívu a nie je možné ho extrahovať.</value>
+  </data>
+  <data name="NotAnArchiveTest" xml:space="preserve">
+    <value>Súbor nemá rozpoznaný formát archívu a nie je možné ho otestovať.</value>
+  </data>
+  <data name="UnsupportedByZipEngine" xml:space="preserve">
+    <value>Formát {0} nie je podporovaný. Podporované sú len formáty založené na ZIP.</value>
+  </data>
+  <data name="FormatBlocked" xml:space="preserve">
+    <value>Tento formát archívu ({0}) je blokovaný skupinovou politikou.</value>
+  </data>
+  <data name="TarExtractionDisabled" xml:space="preserve">
+    <value>Extrakcia pomocou tar.exe je vypnutá skupinovou politikou.</value>
+  </data>
+  <data name="FormatNeedsNewerTar" xml:space="preserve">
+    <value>{0} vyžaduje tar.exe s libarchive &gt;= 3.7.0 (Windows 11 23H2+); tar.exe tohto systému (verzia {1}) ho nepodporuje.</value>
+  </data>
+  <data name="FormatNotSupportedByTar" xml:space="preserve">
+    <value>{0} nepodporuje tar.exe tohto systému (verzia {1}).</value>
+  </data>
+  <data name="ArchiveFormatNotSupportedByTar" xml:space="preserve">
+    <value>Tento formát archívu nepodporuje tar.exe tohto systému (verzia {0}).</value>
+  </data>
+  <data name="NoTestCapability" xml:space="preserve">
+    <value>archívy rodiny tar nie je možné testovať</value>
+  </data>
+  <data name="PasswordProtectedExtract" xml:space="preserve">
+    <value>Tento archív je chránený heslom a nie je možné ho extrahovať.</value>
+  </data>
+  <data name="PasswordProtectedTest" xml:space="preserve">
+    <value>Tento archív je chránený heslom a nie je možné ho otestovať.</value>
+  </data>
+  <data name="PasswordProtectedBrowse" xml:space="preserve">
+    <value>Tento archív je chránený heslom a nie je možné ho prehľadávať.</value>
+  </data>
+  <data name="ZipCorrupted" xml:space="preserve">
+    <value>Súbor má podpis ZIP, ale zdá sa, že je poškodený alebo neúplný.</value>
+  </data>
+  <data name="CannotExtractArchive" xml:space="preserve">
+    <value>Archív nie je možné extrahovať: {0}</value>
+  </data>
+  <data name="AccessDeniedExtractingArchive" xml:space="preserve">
+    <value>Prístup odmietnutý pri extrakcii archívu: {0}</value>
+  </data>
+  <data name="CannotReadArchive" xml:space="preserve">
+    <value>Archív nie je možné prečítať: {0}</value>
+  </data>
+  <data name="EntryNameCollision" xml:space="preserve">
+    <value>Po dekódovaní má položka „{0}“ rovnaký názov ako iná položka; neextrahuje sa, pretože jedna by prepísala druhú.</value>
+  </data>
+  <data name="EntryFailed" xml:space="preserve">
+    <value>Položka „{0}“: {1}</value>
+  </data>
+  <data name="EntryWrongPassword" xml:space="preserve">
+    <value>Položku „{0}“ nie je možné dešifrovať: nesprávne heslo.</value>
+  </data>
+  <data name="EntryAuthenticationFailed" xml:space="preserve">
+    <value>Položku „{0}“ nie je možné dešifrovať: overenie zlyhalo (poškodená alebo pozmenená).</value>
+  </data>
+  <data name="EntryUnsupportedEncryptedMethod" xml:space="preserve">
+    <value>Položka „{0}“ používa nepodporovanú metódu kompresie so šifrovaním.</value>
+  </data>
+  <data name="InsufficientDiskSpace" xml:space="preserve">
+    <value>Archív uvádza {0} bajtov po rozbalení, ale v cieli je voľných len {1} bajtov. Extrakcia bola zablokovaná.</value>
+  </data>
+  <data name="ZipBombDeclined" xml:space="preserve">
+    <value>Podozrivý kompresný pomer ({0}:1, uvedených {1} bajtov). Extrakcia bola preventívne odmietnutá kvôli ochrane pred bombami ZIP.</value>
+  </data>
+  <data name="TarBombDeclined" xml:space="preserve">
+    <value>Podozrivý kompresný pomer ({0}:1, uvedených {1} bajtov) pre celý archív. Extrakcia bola preventívne odmietnutá kvôli ochrane pred dekompresnými bombami.</value>
+  </data>
+  <data name="DestinationFileLocked" xml:space="preserve">
+    <value>„{0}“ nie je možné zapísať: cieľový súbor je zamknutý iným procesom.</value>
+  </data>
+  <data name="AllEntriesSkipped" xml:space="preserve">
+    <value>Z tohto archívu sa nič neextrahovalo — všetky položky boli preskočené.</value>
+  </data>
+  <data name="UnsafeEntryPath" xml:space="preserve">
+    <value>Položka „{0}“ má nebezpečnú cestu a nebola extrahovaná.</value>
+  </data>
+  <data name="EntryAlternateDataStream" xml:space="preserve">
+    <value>Položka s alternatívnym dátovým prúdom bola z bezpečnostných dôvodov odmietnutá.</value>
+  </data>
+  <data name="EntryReservedName" xml:space="preserve">
+    <value>Názov položky zodpovedá rezervovanému názvu zariadenia Windows a bola preskočená.</value>
+  </data>
+  <data name="EntryControlCharacters" xml:space="preserve">
+    <value>Názov položky obsahuje riadiace znaky a bola preskočená.</value>
+  </data>
+  <data name="CannotExtractEntry" xml:space="preserve">
+    <value>„{0}“ nie je možné extrahovať: {1}</value>
+  </data>
+  <data name="EntryThroughReparsePoint" xml:space="preserve">
+    <value>Cesta položky prechádza bodom opätovnej analýzy (symbolické prepojenie alebo spojenie) a bola preskočená.</value>
+  </data>
+  <data name="FileExistsAtDestination" xml:space="preserve">
+    <value>Súbor už v cieli existuje.</value>
+  </data>
+  <data name="TarExtractionFailed" xml:space="preserve">
+    <value>Extrakcia pomocou tar.exe zlyhala: {0}</value>
+  </data>
+  <data name="TarUnsafeEntryPath" xml:space="preserve">
+    <value>Archív obsahuje nebezpečnú cestu položky („{0}“) a nie je možné ho bezpečne extrahovať.</value>
+  </data>
+  <data name="TarListingInconsistent" xml:space="preserve">
+    <value>Zoznam obsahu archívu je nekonzistentný a archív nie je možné bezpečne extrahovať.</value>
+  </data>
+  <data name="TarSpecialEntry" xml:space="preserve">
+    <value>Archív obsahuje symbolické prepojenie, pevné prepojenie, zariadenie alebo inú špeciálnu položku a nie je možné ho bezpečne extrahovať.</value>
+  </data>
+  <data name="ListingInconsistent" xml:space="preserve">
+    <value>Zoznam obsahu archívu je nekonzistentný.</value>
+  </data>
+  <data name="TarUnreadableNames" xml:space="preserve">
+    <value>Archív obsahuje názvy súborov, ktoré tar.exe v tomto systéme nemôže zobraziť (kódová stránka {0}), preto ho tu nie je možné prečítať pomocou tar.exe. Podrobnosti: {1}</value>
+  </data>
+  <data name="SandboxSetupFailed" xml:space="preserve">
+    <value>Nastavenie izolovaného prostredia zlyhalo: {0}</value>
+  </data>
+  <data name="ArchiveInUse" xml:space="preserve">
+    <value>Archív používa iný program: {0}</value>
+  </data>
+  <data name="CannotOpenArchive" xml:space="preserve">
+    <value>Archív nie je možné otvoriť: {0}</value>
+  </data>
+  <data name="CannotReopenArchive" xml:space="preserve">
+    <value>Archív nie je možné znova otvoriť (chyba Win32 {0}).</value>
+  </data>
+  <data name="HashFolderSkipped" xml:space="preserve">
+    <value>Preskočené: priečinok (podporované len pri výbere jedného priečinka)</value>
+  </data>
+  <data name="HashLinkSkipped" xml:space="preserve">
+    <value>Preskočené: symbolické prepojenie alebo spojenie (nesleduje sa)</value>
+  </data>
+  <data name="HashFileChanged" xml:space="preserve">
+    <value>Veľkosť súboru sa počas výpočtu hodnoty hash zmenila: {0}</value>
+  </data>
+  <data name="NoAntivirusRegistered" xml:space="preserve">
+    <value>Na kontrolu nie je zaregistrovaný žiadny antivírus.</value>
+  </data>
+  <data name="ScanSessionFailed" xml:space="preserve">
+    <value>Nie je možné spustiť reláciu antivírusovej kontroly: {0}</value>
+  </data>
+  <data name="ScanCannotReadArchive" xml:space="preserve">
+    <value>Archív nie je možné prečítať: {0}</value>
+  </data>
+  <data name="ScanCannotReadEntry" xml:space="preserve">
+    <value>Položku nie je možné prečítať: {0}</value>
+  </data>
+  <data name="ScanCannotExtract" xml:space="preserve">
+    <value>Archív nie je možné extrahovať na kontrolu: {0}</value>
+  </data>
+  <data name="ScanRemovedOrBlocked" xml:space="preserve">
+    <value>Odstránené alebo zablokované skôr, než to Pakko mohol priamo skontrolovať.</value>
+  </data>
+  <data name="ScanEntryFailed" xml:space="preserve">
+    <value>Antivírusová kontrola tejto položky zlyhala: {0}</value>
+  </data>
+  <data name="ScanEntryIntegrityFailed" xml:space="preserve">
+    <value>Dešifrovaný obsah neprešiel kontrolou integrity (nesprávne heslo alebo poškodená položka) a nebol označený ako čistý.</value>
+  </data>
+  <data name="ScanEntryPasswordProtected" xml:space="preserve">
+    <value>Položka je chránená heslom a nebola skontrolovaná.</value>
+  </data>
+  <data name="ScanEntryWrongPassword" xml:space="preserve">
+    <value>Položka je chránená iným heslom a nebola skontrolovaná.</value>
+  </data>
+  <data name="ScanEntryUnsupportedMethod" xml:space="preserve">
+    <value>Položka používa nepodporovanú metódu kompresie so šifrovaním a nebola skontrolovaná.</value>
+  </data>
+  <data name="ScanEntryAuthenticationFailed" xml:space="preserve">
+    <value>Položka neprešla overením pri dešifrovaní (poškodená alebo pozmenená) a nebola skontrolovaná.</value>
+  </data>
+  <data name="ScanEntryTooLarge" xml:space="preserve">
+    <value>Položka je väčšia ako {0} MiB a nebola skontrolovaná.</value>
+  </data>
+</root>

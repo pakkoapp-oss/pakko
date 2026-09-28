@@ -1,0 +1,264 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="SourceNotFound" xml:space="preserve">
+    <value>Calea sursă nu există: {0}</value>
+  </data>
+  <data name="CannotAccessFile" xml:space="preserve">
+    <value>Fișierul nu poate fi accesat: {0}</value>
+  </data>
+  <data name="AccessDenied" xml:space="preserve">
+    <value>Acces refuzat: {0}</value>
+  </data>
+  <data name="LinkNotArchived" xml:space="preserve">
+    <value>Legăturile simbolice și joncțiunile NTFS nu sunt arhivate.</value>
+  </data>
+  <data name="FolderLinkNotFollowed" xml:space="preserve">
+    <value>Joncțiunile NTFS și legăturile simbolice către foldere nu sunt urmate la arhivare.</value>
+  </data>
+  <data name="ReparsePointNotArchived" xml:space="preserve">
+    <value>Legăturile simbolice și punctele de reanalizare nu sunt arhivate.</value>
+  </data>
+  <data name="ArchiveAlreadyExists" xml:space="preserve">
+    <value>Arhiva „{0}” există deja la destinație și a fost omisă.</value>
+  </data>
+  <data name="CannotCreateArchive" xml:space="preserve">
+    <value>Arhiva nu poate fi creată: {0}</value>
+  </data>
+  <data name="AccessDeniedCreatingArchive" xml:space="preserve">
+    <value>Acces refuzat la crearea arhivei: {0}</value>
+  </data>
+  <data name="UnexpectedError" xml:space="preserve">
+    <value>Eroare neașteptată: {0}</value>
+  </data>
+  <data name="UnknownArchivingError" xml:space="preserve">
+    <value>Eroare necunoscută la arhivare.</value>
+  </data>
+  <data name="EntryNameTooLong" xml:space="preserve">
+    <value>Numele elementului este prea lung pentru o arhivă ZIP ({0} octeți în UTF-8; maximul este {1}).</value>
+  </data>
+  <data name="NotEnoughSpaceToCompress" xml:space="preserve">
+    <value>Spațiu liber insuficient pe disc pentru comprimarea acestui fișier: are {0} octeți, dar sunt liberi doar {1} octeți.</value>
+  </data>
+  <data name="PasswordNotEntered" xml:space="preserve">
+    <value>Arhiva nu a fost creată: nu s-a introdus nicio parolă.</value>
+  </data>
+  <data name="PasswordEmpty" xml:space="preserve">
+    <value>Arhiva nu a fost creată: parola este goală.</value>
+  </data>
+  <data name="PasswordUnsupportedCharacters" xml:space="preserve">
+    <value>Arhiva nu a fost creată: parola poate conține doar litere englezești, cifre, spații și semne de punctuație ASCII; alte programe ZIP, precum 7-Zip, nu pot deschide o arhivă protejată cu alte caractere.</value>
+  </data>
+  <data name="PasswordTooLong" xml:space="preserve">
+    <value>Arhiva nu a fost creată: parola are peste {0} de caractere, maximul acceptat de 7-Zip pentru un ZIP criptat AES.</value>
+  </data>
+  <data name="PasswordOnlyForZip" xml:space="preserve">
+    <value>Protecția prin parolă este disponibilă doar pentru arhivele ZIP.</value>
+  </data>
+  <data name="CreationFormatBlocked" xml:space="preserve">
+    <value>Crearea unei arhive {0} este blocată de o politică de grup.</value>
+  </data>
+  <data name="TarCreationDisabled" xml:space="preserve">
+    <value>Crearea arhivelor cu tar.exe este dezactivată de o politică de grup.</value>
+  </data>
+  <data name="TarCreationFailed" xml:space="preserve">
+    <value>tar.exe nu a putut crea arhiva: {0}</value>
+  </data>
+  <data name="TarNameNotRepresentable" xml:space="preserve">
+    <value>Numele „{0}” conține caractere pe care tar.exe nu le poate gestiona în siguranță pe acest sistem (pagina de coduri ANSI {1}). Utilizați ZIP pentru acest conținut.</value>
+  </data>
+  <data name="TarSignatureInvalid" xml:space="preserve">
+    <value>tar.exe nu a trecut verificarea semnăturii Authenticode și nu va fi rulat.</value>
+  </data>
+  <data name="TarSignatureVerificationFailed" xml:space="preserve">
+    <value>„{0}” nu a trecut verificarea semnăturii Authenticode.</value>
+  </data>
+  <data name="NotAnArchiveExtract" xml:space="preserve">
+    <value>Fișierul nu are un format de arhivă recunoscut și nu poate fi extras.</value>
+  </data>
+  <data name="NotAnArchiveTest" xml:space="preserve">
+    <value>Fișierul nu are un format de arhivă recunoscut și nu poate fi testat.</value>
+  </data>
+  <data name="UnsupportedByZipEngine" xml:space="preserve">
+    <value>Formatul {0} nu este acceptat. Sunt acceptate doar formatele bazate pe ZIP.</value>
+  </data>
+  <data name="FormatBlocked" xml:space="preserve">
+    <value>Acest format de arhivă ({0}) este blocat de o politică de grup.</value>
+  </data>
+  <data name="TarExtractionDisabled" xml:space="preserve">
+    <value>Extragerea cu tar.exe este dezactivată de o politică de grup.</value>
+  </data>
+  <data name="FormatNeedsNewerTar" xml:space="preserve">
+    <value>{0} necesită tar.exe cu libarchive &gt;= 3.7.0 (Windows 11 23H2+); tar.exe de pe acest sistem (versiunea {1}) nu îl acceptă.</value>
+  </data>
+  <data name="FormatNotSupportedByTar" xml:space="preserve">
+    <value>{0} nu este acceptat de tar.exe de pe acest sistem (versiunea {1}).</value>
+  </data>
+  <data name="ArchiveFormatNotSupportedByTar" xml:space="preserve">
+    <value>Acest format de arhivă nu este acceptat de tar.exe de pe acest sistem (versiunea {0}).</value>
+  </data>
+  <data name="NoTestCapability" xml:space="preserve">
+    <value>arhivele din familia tar nu pot fi testate</value>
+  </data>
+  <data name="PasswordProtectedExtract" xml:space="preserve">
+    <value>Această arhivă este protejată prin parolă și nu poate fi extrasă.</value>
+  </data>
+  <data name="PasswordProtectedTest" xml:space="preserve">
+    <value>Această arhivă este protejată prin parolă și nu poate fi testată.</value>
+  </data>
+  <data name="PasswordProtectedBrowse" xml:space="preserve">
+    <value>Această arhivă este protejată prin parolă și nu poate fi răsfoită.</value>
+  </data>
+  <data name="ZipCorrupted" xml:space="preserve">
+    <value>Fișierul are semnătură ZIP, dar pare deteriorat sau incomplet.</value>
+  </data>
+  <data name="CannotExtractArchive" xml:space="preserve">
+    <value>Arhiva nu poate fi extrasă: {0}</value>
+  </data>
+  <data name="AccessDeniedExtractingArchive" xml:space="preserve">
+    <value>Acces refuzat la extragerea arhivei: {0}</value>
+  </data>
+  <data name="CannotReadArchive" xml:space="preserve">
+    <value>Arhiva nu poate fi citită: {0}</value>
+  </data>
+  <data name="EntryNameCollision" xml:space="preserve">
+    <value>După decodare, elementul „{0}” are același nume ca alt element; nu este extras, deoarece unul l-ar suprascrie pe celălalt.</value>
+  </data>
+  <data name="EntryFailed" xml:space="preserve">
+    <value>Elementul „{0}”: {1}</value>
+  </data>
+  <data name="EntryWrongPassword" xml:space="preserve">
+    <value>Elementul „{0}” nu a putut fi decriptat: parolă greșită.</value>
+  </data>
+  <data name="EntryAuthenticationFailed" xml:space="preserve">
+    <value>Elementul „{0}” nu a putut fi decriptat: autentificarea a eșuat (deteriorat sau modificat).</value>
+  </data>
+  <data name="EntryUnsupportedEncryptedMethod" xml:space="preserve">
+    <value>Elementul „{0}” folosește o metodă de comprimare cu criptare neacceptată.</value>
+  </data>
+  <data name="InsufficientDiskSpace" xml:space="preserve">
+    <value>Arhiva declară {0} octeți necomprimați, dar destinația are doar {1} octeți liberi. Extragerea a fost blocată.</value>
+  </data>
+  <data name="ZipBombDeclined" xml:space="preserve">
+    <value>Raport de comprimare suspect ({0}:1, {1} octeți declarați). Extragerea a fost refuzată ca măsură de precauție împotriva bombelor ZIP.</value>
+  </data>
+  <data name="TarBombDeclined" xml:space="preserve">
+    <value>Raport de comprimare suspect ({0}:1, {1} octeți declarați) pentru întreaga arhivă. Extragerea a fost refuzată ca măsură de precauție împotriva bombelor de decomprimare.</value>
+  </data>
+  <data name="DestinationFileLocked" xml:space="preserve">
+    <value>„{0}” nu poate fi scris: fișierul de destinație este blocat de alt proces.</value>
+  </data>
+  <data name="AllEntriesSkipped" xml:space="preserve">
+    <value>Nu s-a extras nimic din această arhivă — toate elementele au fost omise.</value>
+  </data>
+  <data name="UnsafeEntryPath" xml:space="preserve">
+    <value>Elementul „{0}” are o cale nesigură și nu a fost extras.</value>
+  </data>
+  <data name="EntryAlternateDataStream" xml:space="preserve">
+    <value>Element cu flux de date alternativ respins din motive de securitate.</value>
+  </data>
+  <data name="EntryReservedName" xml:space="preserve">
+    <value>Numele elementului corespunde unui nume de dispozitiv Windows rezervat și a fost omis.</value>
+  </data>
+  <data name="EntryControlCharacters" xml:space="preserve">
+    <value>Numele elementului conține caractere de control și a fost omis.</value>
+  </data>
+  <data name="CannotExtractEntry" xml:space="preserve">
+    <value>„{0}” nu poate fi extras: {1}</value>
+  </data>
+  <data name="EntryThroughReparsePoint" xml:space="preserve">
+    <value>Calea elementului trece printr-un punct de reanalizare (legătură simbolică sau joncțiune) și a fost omisă.</value>
+  </data>
+  <data name="FileExistsAtDestination" xml:space="preserve">
+    <value>Fișierul există deja la destinație.</value>
+  </data>
+  <data name="TarExtractionFailed" xml:space="preserve">
+    <value>Extragerea cu tar.exe a eșuat: {0}</value>
+  </data>
+  <data name="TarUnsafeEntryPath" xml:space="preserve">
+    <value>Arhiva conține o cale de element nesigură („{0}”) și nu poate fi extrasă în siguranță.</value>
+  </data>
+  <data name="TarListingInconsistent" xml:space="preserve">
+    <value>Lista conținutului arhivei este inconsecventă, iar arhiva nu poate fi extrasă în siguranță.</value>
+  </data>
+  <data name="TarSpecialEntry" xml:space="preserve">
+    <value>Arhiva conține o legătură simbolică, o legătură fizică, un dispozitiv sau alt element special și nu poate fi extrasă în siguranță.</value>
+  </data>
+  <data name="ListingInconsistent" xml:space="preserve">
+    <value>Lista conținutului arhivei este inconsecventă.</value>
+  </data>
+  <data name="TarUnreadableNames" xml:space="preserve">
+    <value>Arhiva conține nume de fișiere pe care tar.exe nu le poate reprezenta pe acest sistem (pagina de coduri {0}), deci nu poate fi citită aici cu tar.exe. Detalii: {1}</value>
+  </data>
+  <data name="SandboxSetupFailed" xml:space="preserve">
+    <value>Configurarea mediului izolat a eșuat: {0}</value>
+  </data>
+  <data name="ArchiveInUse" xml:space="preserve">
+    <value>Arhiva este folosită de alt program: {0}</value>
+  </data>
+  <data name="CannotOpenArchive" xml:space="preserve">
+    <value>Arhiva nu poate fi deschisă: {0}</value>
+  </data>
+  <data name="CannotReopenArchive" xml:space="preserve">
+    <value>Arhiva nu poate fi redeschisă (eroare Win32 {0}).</value>
+  </data>
+  <data name="HashFolderSkipped" xml:space="preserve">
+    <value>Omis: folder (acceptat doar când este selectat un singur folder)</value>
+  </data>
+  <data name="HashLinkSkipped" xml:space="preserve">
+    <value>Omis: legătură simbolică sau joncțiune (nu este urmată)</value>
+  </data>
+  <data name="HashFileChanged" xml:space="preserve">
+    <value>Dimensiunea fișierului s-a modificat în timpul calculării hash-ului: {0}</value>
+  </data>
+  <data name="NoAntivirusRegistered" xml:space="preserve">
+    <value>Nu este înregistrat niciun antivirus pentru scanare.</value>
+  </data>
+  <data name="ScanSessionFailed" xml:space="preserve">
+    <value>Nu s-a putut porni o sesiune de scanare antivirus: {0}</value>
+  </data>
+  <data name="ScanCannotReadArchive" xml:space="preserve">
+    <value>Arhiva nu a putut fi citită: {0}</value>
+  </data>
+  <data name="ScanCannotReadEntry" xml:space="preserve">
+    <value>Elementul nu a putut fi citit: {0}</value>
+  </data>
+  <data name="ScanCannotExtract" xml:space="preserve">
+    <value>Arhiva nu a putut fi extrasă pentru scanare: {0}</value>
+  </data>
+  <data name="ScanRemovedOrBlocked" xml:space="preserve">
+    <value>Eliminat sau blocat înainte ca Pakko să-l poată scana direct.</value>
+  </data>
+  <data name="ScanEntryFailed" xml:space="preserve">
+    <value>Scanarea antivirus a acestui element a eșuat: {0}</value>
+  </data>
+  <data name="ScanEntryIntegrityFailed" xml:space="preserve">
+    <value>Conținutul decriptat nu a trecut verificarea integrității (parolă greșită sau element deteriorat) și nu a fost raportat ca fiind curat.</value>
+  </data>
+  <data name="ScanEntryPasswordProtected" xml:space="preserve">
+    <value>Elementul este protejat prin parolă și nu a fost scanat.</value>
+  </data>
+  <data name="ScanEntryWrongPassword" xml:space="preserve">
+    <value>Elementul este protejat cu altă parolă și nu a fost scanat.</value>
+  </data>
+  <data name="ScanEntryUnsupportedMethod" xml:space="preserve">
+    <value>Elementul folosește o metodă de comprimare cu criptare neacceptată și nu a fost scanat.</value>
+  </data>
+  <data name="ScanEntryAuthenticationFailed" xml:space="preserve">
+    <value>Elementul nu a trecut autentificarea la decriptare (deteriorat sau modificat) și nu a fost scanat.</value>
+  </data>
+  <data name="ScanEntryTooLarge" xml:space="preserve">
+    <value>Elementul depășește {0} MiB și nu a fost scanat.</value>
+  </data>
+</root>

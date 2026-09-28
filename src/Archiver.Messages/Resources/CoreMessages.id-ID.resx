@@ -1,0 +1,264 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="SourceNotFound" xml:space="preserve">
+    <value>Jalur sumber tidak ada: {0}</value>
+  </data>
+  <data name="CannotAccessFile" xml:space="preserve">
+    <value>Tidak dapat mengakses file: {0}</value>
+  </data>
+  <data name="AccessDenied" xml:space="preserve">
+    <value>Akses ditolak: {0}</value>
+  </data>
+  <data name="LinkNotArchived" xml:space="preserve">
+    <value>Tautan simbolis dan junction NTFS tidak diarsipkan.</value>
+  </data>
+  <data name="FolderLinkNotFollowed" xml:space="preserve">
+    <value>Junction NTFS dan tautan simbolis folder tidak diikuti saat pengarsipan.</value>
+  </data>
+  <data name="ReparsePointNotArchived" xml:space="preserve">
+    <value>Tautan simbolis dan titik reparse tidak diarsipkan.</value>
+  </data>
+  <data name="ArchiveAlreadyExists" xml:space="preserve">
+    <value>Arsip "{0}" sudah ada di tujuan dan dilewati.</value>
+  </data>
+  <data name="CannotCreateArchive" xml:space="preserve">
+    <value>Tidak dapat membuat arsip: {0}</value>
+  </data>
+  <data name="AccessDeniedCreatingArchive" xml:space="preserve">
+    <value>Akses ditolak saat membuat arsip: {0}</value>
+  </data>
+  <data name="UnexpectedError" xml:space="preserve">
+    <value>Kesalahan tak terduga: {0}</value>
+  </data>
+  <data name="UnknownArchivingError" xml:space="preserve">
+    <value>Kesalahan tidak dikenal saat mengarsipkan.</value>
+  </data>
+  <data name="EntryNameTooLong" xml:space="preserve">
+    <value>Nama entri terlalu panjang untuk arsip ZIP ({0} byte dalam UTF-8; maksimum {1}).</value>
+  </data>
+  <data name="NotEnoughSpaceToCompress" xml:space="preserve">
+    <value>Ruang disk kosong tidak cukup untuk mengompresi file ini: ukurannya {0} byte, tetapi hanya {1} byte yang kosong.</value>
+  </data>
+  <data name="PasswordNotEntered" xml:space="preserve">
+    <value>Arsip tidak dibuat: kata sandi tidak dimasukkan.</value>
+  </data>
+  <data name="PasswordEmpty" xml:space="preserve">
+    <value>Arsip tidak dibuat: kata sandi kosong.</value>
+  </data>
+  <data name="PasswordUnsupportedCharacters" xml:space="preserve">
+    <value>Arsip tidak dibuat: kata sandi hanya boleh berisi huruf Inggris, angka, spasi, dan tanda baca ASCII; alat ZIP lain seperti 7-Zip tidak dapat membuka arsip yang dilindungi dengan karakter lain.</value>
+  </data>
+  <data name="PasswordTooLong" xml:space="preserve">
+    <value>Arsip tidak dibuat: kata sandi lebih dari {0} karakter, batas maksimum yang diterima 7-Zip untuk ZIP terenkripsi AES.</value>
+  </data>
+  <data name="PasswordOnlyForZip" xml:space="preserve">
+    <value>Perlindungan kata sandi hanya tersedia untuk arsip ZIP.</value>
+  </data>
+  <data name="CreationFormatBlocked" xml:space="preserve">
+    <value>Pembuatan arsip {0} diblokir oleh Kebijakan Grup.</value>
+  </data>
+  <data name="TarCreationDisabled" xml:space="preserve">
+    <value>Pembuatan arsip dengan tar.exe dinonaktifkan oleh Kebijakan Grup.</value>
+  </data>
+  <data name="TarCreationFailed" xml:space="preserve">
+    <value>tar.exe gagal membuat arsip: {0}</value>
+  </data>
+  <data name="TarNameNotRepresentable" xml:space="preserve">
+    <value>Nama "{0}" berisi karakter yang tidak dapat ditangani tar.exe dengan aman di sistem ini (halaman kode ANSI {1}). Gunakan ZIP untuk konten ini.</value>
+  </data>
+  <data name="TarSignatureInvalid" xml:space="preserve">
+    <value>tar.exe gagal dalam verifikasi tanda tangan Authenticode dan tidak akan dijalankan.</value>
+  </data>
+  <data name="TarSignatureVerificationFailed" xml:space="preserve">
+    <value>"{0}" gagal dalam verifikasi tanda tangan Authenticode.</value>
+  </data>
+  <data name="NotAnArchiveExtract" xml:space="preserve">
+    <value>File bukan format arsip yang dikenali dan tidak dapat diekstrak.</value>
+  </data>
+  <data name="NotAnArchiveTest" xml:space="preserve">
+    <value>File bukan format arsip yang dikenali dan tidak dapat diuji.</value>
+  </data>
+  <data name="UnsupportedByZipEngine" xml:space="preserve">
+    <value>Format {0} tidak didukung. Hanya format berbasis ZIP yang didukung.</value>
+  </data>
+  <data name="FormatBlocked" xml:space="preserve">
+    <value>Format arsip ini ({0}) diblokir oleh Kebijakan Grup.</value>
+  </data>
+  <data name="TarExtractionDisabled" xml:space="preserve">
+    <value>Ekstraksi dengan tar.exe dinonaktifkan oleh Kebijakan Grup.</value>
+  </data>
+  <data name="FormatNeedsNewerTar" xml:space="preserve">
+    <value>{0} memerlukan tar.exe dengan libarchive &gt;= 3.7.0 (Windows 11 23H2+); tar.exe di sistem ini (versi {1}) tidak mendukungnya.</value>
+  </data>
+  <data name="FormatNotSupportedByTar" xml:space="preserve">
+    <value>{0} tidak didukung oleh tar.exe di sistem ini (versi {1}).</value>
+  </data>
+  <data name="ArchiveFormatNotSupportedByTar" xml:space="preserve">
+    <value>Format arsip ini tidak didukung oleh tar.exe di sistem ini (versi {0}).</value>
+  </data>
+  <data name="NoTestCapability" xml:space="preserve">
+    <value>arsip keluarga tar tidak dapat diuji</value>
+  </data>
+  <data name="PasswordProtectedExtract" xml:space="preserve">
+    <value>Arsip ini dilindungi kata sandi dan tidak dapat diekstrak.</value>
+  </data>
+  <data name="PasswordProtectedTest" xml:space="preserve">
+    <value>Arsip ini dilindungi kata sandi dan tidak dapat diuji.</value>
+  </data>
+  <data name="PasswordProtectedBrowse" xml:space="preserve">
+    <value>Arsip ini dilindungi kata sandi dan tidak dapat ditelusuri.</value>
+  </data>
+  <data name="ZipCorrupted" xml:space="preserve">
+    <value>File memiliki tanda tangan ZIP tetapi tampaknya rusak atau tidak lengkap.</value>
+  </data>
+  <data name="CannotExtractArchive" xml:space="preserve">
+    <value>Tidak dapat mengekstrak arsip: {0}</value>
+  </data>
+  <data name="AccessDeniedExtractingArchive" xml:space="preserve">
+    <value>Akses ditolak saat mengekstrak arsip: {0}</value>
+  </data>
+  <data name="CannotReadArchive" xml:space="preserve">
+    <value>Tidak dapat membaca arsip: {0}</value>
+  </data>
+  <data name="EntryNameCollision" xml:space="preserve">
+    <value>Setelah didekode, entri "{0}" memiliki nama yang sama dengan entri lain; entri ini tidak diekstrak karena yang satu akan menimpa yang lain.</value>
+  </data>
+  <data name="EntryFailed" xml:space="preserve">
+    <value>Entri "{0}": {1}</value>
+  </data>
+  <data name="EntryWrongPassword" xml:space="preserve">
+    <value>Entri "{0}" tidak dapat didekripsi: kata sandi salah.</value>
+  </data>
+  <data name="EntryAuthenticationFailed" xml:space="preserve">
+    <value>Entri "{0}" tidak dapat didekripsi: autentikasi gagal (rusak atau dirusak).</value>
+  </data>
+  <data name="EntryUnsupportedEncryptedMethod" xml:space="preserve">
+    <value>Entri "{0}" menggunakan metode kompresi dengan enkripsi yang tidak didukung.</value>
+  </data>
+  <data name="InsufficientDiskSpace" xml:space="preserve">
+    <value>Arsip menyatakan {0} byte tidak terkompresi, tetapi tujuan hanya memiliki {1} byte kosong. Ekstraksi diblokir.</value>
+  </data>
+  <data name="ZipBombDeclined" xml:space="preserve">
+    <value>Rasio kompresi mencurigakan ({0}:1, {1} byte dinyatakan). Ekstraksi ditolak sebagai tindakan pencegahan terhadap bom ZIP.</value>
+  </data>
+  <data name="TarBombDeclined" xml:space="preserve">
+    <value>Rasio kompresi mencurigakan ({0}:1, {1} byte dinyatakan) untuk seluruh arsip. Ekstraksi ditolak sebagai tindakan pencegahan terhadap bom dekompresi.</value>
+  </data>
+  <data name="DestinationFileLocked" xml:space="preserve">
+    <value>Tidak dapat menulis "{0}": file tujuan dikunci oleh proses lain.</value>
+  </data>
+  <data name="AllEntriesSkipped" xml:space="preserve">
+    <value>Tidak ada yang diekstrak dari arsip ini — semua entri dilewati.</value>
+  </data>
+  <data name="UnsafeEntryPath" xml:space="preserve">
+    <value>Entri "{0}" memiliki jalur yang tidak aman dan tidak diekstrak.</value>
+  </data>
+  <data name="EntryAlternateDataStream" xml:space="preserve">
+    <value>Entri Alternate Data Stream ditolak demi keamanan.</value>
+  </data>
+  <data name="EntryReservedName" xml:space="preserve">
+    <value>Nama entri cocok dengan nama perangkat Windows yang dicadangkan dan dilewati.</value>
+  </data>
+  <data name="EntryControlCharacters" xml:space="preserve">
+    <value>Nama entri berisi karakter kontrol dan dilewati.</value>
+  </data>
+  <data name="CannotExtractEntry" xml:space="preserve">
+    <value>Tidak dapat mengekstrak "{0}": {1}</value>
+  </data>
+  <data name="EntryThroughReparsePoint" xml:space="preserve">
+    <value>Jalur entri melewati titik reparse (tautan simbolis atau junction) dan dilewati.</value>
+  </data>
+  <data name="FileExistsAtDestination" xml:space="preserve">
+    <value>File sudah ada di tujuan.</value>
+  </data>
+  <data name="TarExtractionFailed" xml:space="preserve">
+    <value>Ekstraksi tar.exe gagal: {0}</value>
+  </data>
+  <data name="TarUnsafeEntryPath" xml:space="preserve">
+    <value>Arsip berisi jalur entri yang tidak aman ("{0}") dan tidak dapat diekstrak dengan aman.</value>
+  </data>
+  <data name="TarListingInconsistent" xml:space="preserve">
+    <value>Daftar isi arsip tidak konsisten dan arsip tidak dapat diekstrak dengan aman.</value>
+  </data>
+  <data name="TarSpecialEntry" xml:space="preserve">
+    <value>Arsip berisi tautan simbolis, tautan keras, perangkat, atau entri khusus lainnya dan tidak dapat diekstrak dengan aman.</value>
+  </data>
+  <data name="ListingInconsistent" xml:space="preserve">
+    <value>Daftar isi arsip tidak konsisten.</value>
+  </data>
+  <data name="TarUnreadableNames" xml:space="preserve">
+    <value>Arsip berisi nama file yang tidak dapat ditampilkan tar.exe di sistem ini (halaman kode {0}), sehingga tidak dapat dibaca di sini dengan tar.exe. Detail: {1}</value>
+  </data>
+  <data name="SandboxSetupFailed" xml:space="preserve">
+    <value>Penyiapan sandbox gagal: {0}</value>
+  </data>
+  <data name="ArchiveInUse" xml:space="preserve">
+    <value>Arsip sedang digunakan oleh program lain: {0}</value>
+  </data>
+  <data name="CannotOpenArchive" xml:space="preserve">
+    <value>Tidak dapat membuka arsip: {0}</value>
+  </data>
+  <data name="CannotReopenArchive" xml:space="preserve">
+    <value>Tidak dapat membuka ulang arsip (kesalahan Win32 {0}).</value>
+  </data>
+  <data name="HashFolderSkipped" xml:space="preserve">
+    <value>Dilewati: folder (hanya didukung jika satu folder dipilih sendiri)</value>
+  </data>
+  <data name="HashLinkSkipped" xml:space="preserve">
+    <value>Dilewati: tautan simbolis atau junction (tidak diikuti)</value>
+  </data>
+  <data name="HashFileChanged" xml:space="preserve">
+    <value>Ukuran file berubah saat hash sedang dihitung: {0}</value>
+  </data>
+  <data name="NoAntivirusRegistered" xml:space="preserve">
+    <value>Tidak ada antivirus yang terdaftar untuk memindai.</value>
+  </data>
+  <data name="ScanSessionFailed" xml:space="preserve">
+    <value>Tidak dapat memulai sesi pemindaian antivirus: {0}</value>
+  </data>
+  <data name="ScanCannotReadArchive" xml:space="preserve">
+    <value>Tidak dapat membaca arsip: {0}</value>
+  </data>
+  <data name="ScanCannotReadEntry" xml:space="preserve">
+    <value>Tidak dapat membaca entri: {0}</value>
+  </data>
+  <data name="ScanCannotExtract" xml:space="preserve">
+    <value>Tidak dapat mengekstrak arsip untuk dipindai: {0}</value>
+  </data>
+  <data name="ScanRemovedOrBlocked" xml:space="preserve">
+    <value>Dihapus atau diblokir sebelum Pakko dapat memindainya secara langsung.</value>
+  </data>
+  <data name="ScanEntryFailed" xml:space="preserve">
+    <value>Pemindaian antivirus untuk entri ini gagal: {0}</value>
+  </data>
+  <data name="ScanEntryIntegrityFailed" xml:space="preserve">
+    <value>Konten yang didekripsi gagal dalam pemeriksaan integritas (kata sandi salah atau entri rusak) dan tidak dilaporkan bersih.</value>
+  </data>
+  <data name="ScanEntryPasswordProtected" xml:space="preserve">
+    <value>Entri dilindungi kata sandi dan tidak dipindai.</value>
+  </data>
+  <data name="ScanEntryWrongPassword" xml:space="preserve">
+    <value>Entri dilindungi dengan kata sandi lain dan tidak dipindai.</value>
+  </data>
+  <data name="ScanEntryUnsupportedMethod" xml:space="preserve">
+    <value>Entri menggunakan metode kompresi dengan enkripsi yang tidak didukung dan tidak dipindai.</value>
+  </data>
+  <data name="ScanEntryAuthenticationFailed" xml:space="preserve">
+    <value>Entri gagal dalam autentikasi dekripsi (rusak atau dirusak) dan tidak dipindai.</value>
+  </data>
+  <data name="ScanEntryTooLarge" xml:space="preserve">
+    <value>Entri lebih besar dari {0} MiB dan tidak dipindai.</value>
+  </data>
+</root>

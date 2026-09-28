@@ -1,0 +1,264 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="SourceNotFound" xml:space="preserve">
+    <value>Ścieżka źródłowa nie istnieje: {0}</value>
+  </data>
+  <data name="CannotAccessFile" xml:space="preserve">
+    <value>Brak dostępu do pliku: {0}</value>
+  </data>
+  <data name="AccessDenied" xml:space="preserve">
+    <value>Odmowa dostępu: {0}</value>
+  </data>
+  <data name="LinkNotArchived" xml:space="preserve">
+    <value>Łącza symboliczne i punkty połączenia NTFS nie są archiwizowane.</value>
+  </data>
+  <data name="FolderLinkNotFollowed" xml:space="preserve">
+    <value>Podczas archiwizacji punkty połączenia NTFS i łącza symboliczne do folderów nie są śledzone.</value>
+  </data>
+  <data name="ReparsePointNotArchived" xml:space="preserve">
+    <value>Łącza symboliczne i punkty ponownej analizy nie są archiwizowane.</value>
+  </data>
+  <data name="ArchiveAlreadyExists" xml:space="preserve">
+    <value>Archiwum „{0}” już istnieje w miejscu docelowym i zostało pominięte.</value>
+  </data>
+  <data name="CannotCreateArchive" xml:space="preserve">
+    <value>Nie można utworzyć archiwum: {0}</value>
+  </data>
+  <data name="AccessDeniedCreatingArchive" xml:space="preserve">
+    <value>Odmowa dostępu podczas tworzenia archiwum: {0}</value>
+  </data>
+  <data name="UnexpectedError" xml:space="preserve">
+    <value>Nieoczekiwany błąd: {0}</value>
+  </data>
+  <data name="UnknownArchivingError" xml:space="preserve">
+    <value>Nieznany błąd podczas archiwizacji.</value>
+  </data>
+  <data name="EntryNameTooLong" xml:space="preserve">
+    <value>Nazwa elementu jest za długa dla archiwum ZIP ({0} bajtów w UTF-8; maksimum to {1}).</value>
+  </data>
+  <data name="NotEnoughSpaceToCompress" xml:space="preserve">
+    <value>Za mało wolnego miejsca na dysku, aby skompresować ten plik: ma {0} bajtów, a wolnych jest tylko {1} bajtów.</value>
+  </data>
+  <data name="PasswordNotEntered" xml:space="preserve">
+    <value>Nie utworzono archiwum: nie wprowadzono hasła.</value>
+  </data>
+  <data name="PasswordEmpty" xml:space="preserve">
+    <value>Nie utworzono archiwum: hasło jest puste.</value>
+  </data>
+  <data name="PasswordUnsupportedCharacters" xml:space="preserve">
+    <value>Nie utworzono archiwum: hasło może zawierać tylko litery angielskie, cyfry, spacje i znaki interpunkcyjne ASCII; inne programy ZIP, takie jak 7-Zip, nie otworzą archiwum chronionego innymi znakami.</value>
+  </data>
+  <data name="PasswordTooLong" xml:space="preserve">
+    <value>Nie utworzono archiwum: hasło jest dłuższe niż {0} znaków — to maksimum, jakie 7-Zip akceptuje dla ZIP szyfrowanego AES.</value>
+  </data>
+  <data name="PasswordOnlyForZip" xml:space="preserve">
+    <value>Ochrona hasłem jest dostępna tylko dla archiwów ZIP.</value>
+  </data>
+  <data name="CreationFormatBlocked" xml:space="preserve">
+    <value>Tworzenie archiwum {0} jest zablokowane przez zasady grupy.</value>
+  </data>
+  <data name="TarCreationDisabled" xml:space="preserve">
+    <value>Tworzenie archiwów za pomocą tar.exe jest wyłączone przez zasady grupy.</value>
+  </data>
+  <data name="TarCreationFailed" xml:space="preserve">
+    <value>tar.exe nie mógł utworzyć archiwum: {0}</value>
+  </data>
+  <data name="TarNameNotRepresentable" xml:space="preserve">
+    <value>Nazwa „{0}” zawiera znaki, których tar.exe nie może bezpiecznie obsłużyć w tym systemie (strona kodowa ANSI {1}). Użyj formatu ZIP dla tej zawartości.</value>
+  </data>
+  <data name="TarSignatureInvalid" xml:space="preserve">
+    <value>tar.exe nie przeszedł weryfikacji podpisu Authenticode i nie zostanie uruchomiony.</value>
+  </data>
+  <data name="TarSignatureVerificationFailed" xml:space="preserve">
+    <value>„{0}” nie przeszedł weryfikacji podpisu Authenticode.</value>
+  </data>
+  <data name="NotAnArchiveExtract" xml:space="preserve">
+    <value>Plik nie ma rozpoznawanego formatu archiwum i nie można go wyodrębnić.</value>
+  </data>
+  <data name="NotAnArchiveTest" xml:space="preserve">
+    <value>Plik nie ma rozpoznawanego formatu archiwum i nie można go przetestować.</value>
+  </data>
+  <data name="UnsupportedByZipEngine" xml:space="preserve">
+    <value>Format {0} nie jest obsługiwany. Obsługiwane są tylko formaty oparte na ZIP.</value>
+  </data>
+  <data name="FormatBlocked" xml:space="preserve">
+    <value>Ten format archiwum ({0}) jest zablokowany przez zasady grupy.</value>
+  </data>
+  <data name="TarExtractionDisabled" xml:space="preserve">
+    <value>Wyodrębnianie za pomocą tar.exe jest wyłączone przez zasady grupy.</value>
+  </data>
+  <data name="FormatNeedsNewerTar" xml:space="preserve">
+    <value>{0} wymaga tar.exe z libarchive &gt;= 3.7.0 (Windows 11 23H2+); tar.exe w tym systemie (wersja {1}) go nie obsługuje.</value>
+  </data>
+  <data name="FormatNotSupportedByTar" xml:space="preserve">
+    <value>{0} nie jest obsługiwany przez tar.exe w tym systemie (wersja {1}).</value>
+  </data>
+  <data name="ArchiveFormatNotSupportedByTar" xml:space="preserve">
+    <value>Ten format archiwum nie jest obsługiwany przez tar.exe w tym systemie (wersja {0}).</value>
+  </data>
+  <data name="NoTestCapability" xml:space="preserve">
+    <value>archiwów z rodziny tar nie można testować</value>
+  </data>
+  <data name="PasswordProtectedExtract" xml:space="preserve">
+    <value>To archiwum jest chronione hasłem i nie można go wyodrębnić.</value>
+  </data>
+  <data name="PasswordProtectedTest" xml:space="preserve">
+    <value>To archiwum jest chronione hasłem i nie można go przetestować.</value>
+  </data>
+  <data name="PasswordProtectedBrowse" xml:space="preserve">
+    <value>To archiwum jest chronione hasłem i nie można go przeglądać.</value>
+  </data>
+  <data name="ZipCorrupted" xml:space="preserve">
+    <value>Plik ma sygnaturę ZIP, ale wygląda na uszkodzony lub niekompletny.</value>
+  </data>
+  <data name="CannotExtractArchive" xml:space="preserve">
+    <value>Nie można wyodrębnić archiwum: {0}</value>
+  </data>
+  <data name="AccessDeniedExtractingArchive" xml:space="preserve">
+    <value>Odmowa dostępu podczas wyodrębniania archiwum: {0}</value>
+  </data>
+  <data name="CannotReadArchive" xml:space="preserve">
+    <value>Nie można odczytać archiwum: {0}</value>
+  </data>
+  <data name="EntryNameCollision" xml:space="preserve">
+    <value>Po zdekodowaniu element „{0}” ma taką samą nazwę jak inny element; nie jest wyodrębniany, ponieważ jeden zastąpiłby drugi.</value>
+  </data>
+  <data name="EntryFailed" xml:space="preserve">
+    <value>Element „{0}”: {1}</value>
+  </data>
+  <data name="EntryWrongPassword" xml:space="preserve">
+    <value>Nie można odszyfrować elementu „{0}”: nieprawidłowe hasło.</value>
+  </data>
+  <data name="EntryAuthenticationFailed" xml:space="preserve">
+    <value>Nie można odszyfrować elementu „{0}”: uwierzytelnienie nie powiodło się (uszkodzony lub zmodyfikowany).</value>
+  </data>
+  <data name="EntryUnsupportedEncryptedMethod" xml:space="preserve">
+    <value>Element „{0}” używa nieobsługiwanej metody kompresji z szyfrowaniem.</value>
+  </data>
+  <data name="InsufficientDiskSpace" xml:space="preserve">
+    <value>Archiwum deklaruje {0} bajtów po rozpakowaniu, ale w miejscu docelowym jest wolnych tylko {1} bajtów. Wyodrębnianie zostało zablokowane.</value>
+  </data>
+  <data name="ZipBombDeclined" xml:space="preserve">
+    <value>Podejrzany współczynnik kompresji ({0}:1, zadeklarowano {1} bajtów). Wyodrębnianie odrzucono jako zabezpieczenie przed bombami ZIP.</value>
+  </data>
+  <data name="TarBombDeclined" xml:space="preserve">
+    <value>Podejrzany współczynnik kompresji ({0}:1, zadeklarowano {1} bajtów) dla całego archiwum. Wyodrębnianie odrzucono jako zabezpieczenie przed bombami dekompresyjnymi.</value>
+  </data>
+  <data name="DestinationFileLocked" xml:space="preserve">
+    <value>Nie można zapisać „{0}”: plik docelowy jest zablokowany przez inny proces.</value>
+  </data>
+  <data name="AllEntriesSkipped" xml:space="preserve">
+    <value>Z tego archiwum nic nie wyodrębniono — wszystkie elementy zostały pominięte.</value>
+  </data>
+  <data name="UnsafeEntryPath" xml:space="preserve">
+    <value>Element „{0}” ma niebezpieczną ścieżkę i nie został wyodrębniony.</value>
+  </data>
+  <data name="EntryAlternateDataStream" xml:space="preserve">
+    <value>Element z alternatywnym strumieniem danych odrzucono ze względów bezpieczeństwa.</value>
+  </data>
+  <data name="EntryReservedName" xml:space="preserve">
+    <value>Nazwa elementu odpowiada zastrzeżonej nazwie urządzenia Windows i została pominięta.</value>
+  </data>
+  <data name="EntryControlCharacters" xml:space="preserve">
+    <value>Nazwa elementu zawiera znaki sterujące i została pominięta.</value>
+  </data>
+  <data name="CannotExtractEntry" xml:space="preserve">
+    <value>Nie można wyodrębnić „{0}”: {1}</value>
+  </data>
+  <data name="EntryThroughReparsePoint" xml:space="preserve">
+    <value>Ścieżka elementu prowadzi przez punkt ponownej analizy (łącze symboliczne lub punkt połączenia) i została pominięta.</value>
+  </data>
+  <data name="FileExistsAtDestination" xml:space="preserve">
+    <value>Plik już istnieje w miejscu docelowym.</value>
+  </data>
+  <data name="TarExtractionFailed" xml:space="preserve">
+    <value>Wyodrębnianie za pomocą tar.exe nie powiodło się: {0}</value>
+  </data>
+  <data name="TarUnsafeEntryPath" xml:space="preserve">
+    <value>Archiwum zawiera niebezpieczną ścieżkę elementu („{0}”) i nie można go bezpiecznie wyodrębnić.</value>
+  </data>
+  <data name="TarListingInconsistent" xml:space="preserve">
+    <value>Lista zawartości archiwum jest niespójna; nie można go bezpiecznie wyodrębnić.</value>
+  </data>
+  <data name="TarSpecialEntry" xml:space="preserve">
+    <value>Archiwum zawiera łącze symboliczne, łącze twarde, urządzenie lub inny specjalny element i nie można go bezpiecznie wyodrębnić.</value>
+  </data>
+  <data name="ListingInconsistent" xml:space="preserve">
+    <value>Lista zawartości archiwum jest niespójna.</value>
+  </data>
+  <data name="TarUnreadableNames" xml:space="preserve">
+    <value>Archiwum zawiera nazwy plików, których tar.exe nie może przedstawić w tym systemie (strona kodowa {0}), dlatego nie można go tu odczytać za pomocą tar.exe. Szczegóły: {1}</value>
+  </data>
+  <data name="SandboxSetupFailed" xml:space="preserve">
+    <value>Nie udało się skonfigurować piaskownicy: {0}</value>
+  </data>
+  <data name="ArchiveInUse" xml:space="preserve">
+    <value>Archiwum jest używane przez inny program: {0}</value>
+  </data>
+  <data name="CannotOpenArchive" xml:space="preserve">
+    <value>Nie można otworzyć archiwum: {0}</value>
+  </data>
+  <data name="CannotReopenArchive" xml:space="preserve">
+    <value>Nie można ponownie otworzyć archiwum (błąd Win32 {0}).</value>
+  </data>
+  <data name="HashFolderSkipped" xml:space="preserve">
+    <value>Pominięto: folder (obsługiwany tylko wtedy, gdy wybrano pojedynczy folder)</value>
+  </data>
+  <data name="HashLinkSkipped" xml:space="preserve">
+    <value>Pominięto: łącze symboliczne lub punkt połączenia (nieśledzone)</value>
+  </data>
+  <data name="HashFileChanged" xml:space="preserve">
+    <value>Rozmiar pliku zmienił się podczas obliczania skrótu: {0}</value>
+  </data>
+  <data name="NoAntivirusRegistered" xml:space="preserve">
+    <value>Nie zarejestrowano żadnego programu antywirusowego do skanowania.</value>
+  </data>
+  <data name="ScanSessionFailed" xml:space="preserve">
+    <value>Nie można rozpocząć sesji skanowania antywirusowego: {0}</value>
+  </data>
+  <data name="ScanCannotReadArchive" xml:space="preserve">
+    <value>Nie można odczytać archiwum: {0}</value>
+  </data>
+  <data name="ScanCannotReadEntry" xml:space="preserve">
+    <value>Nie można odczytać elementu: {0}</value>
+  </data>
+  <data name="ScanCannotExtract" xml:space="preserve">
+    <value>Nie można wyodrębnić archiwum do skanowania: {0}</value>
+  </data>
+  <data name="ScanRemovedOrBlocked" xml:space="preserve">
+    <value>Usunięto lub zablokowano, zanim Pakko mógł to bezpośrednio przeskanować.</value>
+  </data>
+  <data name="ScanEntryFailed" xml:space="preserve">
+    <value>Skanowanie antywirusowe tego elementu nie powiodło się: {0}</value>
+  </data>
+  <data name="ScanEntryIntegrityFailed" xml:space="preserve">
+    <value>Odszyfrowana zawartość nie przeszła kontroli integralności (nieprawidłowe hasło lub uszkodzony element) i nie została zgłoszona jako czysta.</value>
+  </data>
+  <data name="ScanEntryPasswordProtected" xml:space="preserve">
+    <value>Element jest chroniony hasłem i nie został przeskanowany.</value>
+  </data>
+  <data name="ScanEntryWrongPassword" xml:space="preserve">
+    <value>Element jest chroniony innym hasłem i nie został przeskanowany.</value>
+  </data>
+  <data name="ScanEntryUnsupportedMethod" xml:space="preserve">
+    <value>Element używa nieobsługiwanej metody kompresji z szyfrowaniem i nie został przeskanowany.</value>
+  </data>
+  <data name="ScanEntryAuthenticationFailed" xml:space="preserve">
+    <value>Element nie przeszedł uwierzytelnienia podczas odszyfrowywania (uszkodzony lub zmodyfikowany) i nie został przeskanowany.</value>
+  </data>
+  <data name="ScanEntryTooLarge" xml:space="preserve">
+    <value>Element jest większy niż {0} MiB i nie został przeskanowany.</value>
+  </data>
+</root>

@@ -1,0 +1,264 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="SourceNotFound" xml:space="preserve">
+    <value>Kildestien findes ikke: {0}</value>
+  </data>
+  <data name="CannotAccessFile" xml:space="preserve">
+    <value>Der er ikke adgang til filen: {0}</value>
+  </data>
+  <data name="AccessDenied" xml:space="preserve">
+    <value>Adgang nægtet: {0}</value>
+  </data>
+  <data name="LinkNotArchived" xml:space="preserve">
+    <value>Symbolske links og NTFS-forbindelsespunkter arkiveres ikke.</value>
+  </data>
+  <data name="FolderLinkNotFollowed" xml:space="preserve">
+    <value>NTFS-forbindelsespunkter og symbolske links til mapper følges ikke under arkivering.</value>
+  </data>
+  <data name="ReparsePointNotArchived" xml:space="preserve">
+    <value>Symbolske links og genfortolkningspunkter arkiveres ikke.</value>
+  </data>
+  <data name="ArchiveAlreadyExists" xml:space="preserve">
+    <value>Arkivet „{0}“ findes allerede på destinationen og blev sprunget over.</value>
+  </data>
+  <data name="CannotCreateArchive" xml:space="preserve">
+    <value>Arkivet kan ikke oprettes: {0}</value>
+  </data>
+  <data name="AccessDeniedCreatingArchive" xml:space="preserve">
+    <value>Adgang nægtet ved oprettelse af arkivet: {0}</value>
+  </data>
+  <data name="UnexpectedError" xml:space="preserve">
+    <value>Uventet fejl: {0}</value>
+  </data>
+  <data name="UnknownArchivingError" xml:space="preserve">
+    <value>Ukendt fejl under arkivering.</value>
+  </data>
+  <data name="EntryNameTooLong" xml:space="preserve">
+    <value>Elementnavnet er for langt til et ZIP-arkiv ({0} byte i UTF-8; maksimum er {1}).</value>
+  </data>
+  <data name="NotEnoughSpaceToCompress" xml:space="preserve">
+    <value>Der er ikke nok ledig diskplads til at komprimere denne fil: den er {0} byte, men kun {1} byte er ledige.</value>
+  </data>
+  <data name="PasswordNotEntered" xml:space="preserve">
+    <value>Arkivet blev ikke oprettet: der blev ikke angivet en adgangskode.</value>
+  </data>
+  <data name="PasswordEmpty" xml:space="preserve">
+    <value>Arkivet blev ikke oprettet: adgangskoden er tom.</value>
+  </data>
+  <data name="PasswordUnsupportedCharacters" xml:space="preserve">
+    <value>Arkivet blev ikke oprettet: adgangskoden må kun indeholde engelske bogstaver, cifre, mellemrum og ASCII-tegnsætning; andre ZIP-værktøjer som 7-Zip kan ikke åbne et arkiv, der er beskyttet med andre tegn.</value>
+  </data>
+  <data name="PasswordTooLong" xml:space="preserve">
+    <value>Arkivet blev ikke oprettet: adgangskoden er længere end {0} tegn, som er det maksimale, 7-Zip accepterer for en AES-krypteret ZIP.</value>
+  </data>
+  <data name="PasswordOnlyForZip" xml:space="preserve">
+    <value>Adgangskodebeskyttelse er kun tilgængelig for ZIP-arkiver.</value>
+  </data>
+  <data name="CreationFormatBlocked" xml:space="preserve">
+    <value>Oprettelse af et {0}-arkiv er blokeret af gruppepolitik.</value>
+  </data>
+  <data name="TarCreationDisabled" xml:space="preserve">
+    <value>Oprettelse af arkiver med tar.exe er deaktiveret af gruppepolitik.</value>
+  </data>
+  <data name="TarCreationFailed" xml:space="preserve">
+    <value>tar.exe kunne ikke oprette arkivet: {0}</value>
+  </data>
+  <data name="TarNameNotRepresentable" xml:space="preserve">
+    <value>Navnet „{0}“ indeholder tegn, som tar.exe ikke kan håndtere sikkert på dette system (ANSI-tegntabel {1}). Brug ZIP til dette indhold.</value>
+  </data>
+  <data name="TarSignatureInvalid" xml:space="preserve">
+    <value>tar.exe bestod ikke kontrollen af Authenticode-signaturen og køres ikke.</value>
+  </data>
+  <data name="TarSignatureVerificationFailed" xml:space="preserve">
+    <value>„{0}“ bestod ikke kontrollen af Authenticode-signaturen.</value>
+  </data>
+  <data name="NotAnArchiveExtract" xml:space="preserve">
+    <value>Filen har ikke et genkendt arkivformat og kan ikke udpakkes.</value>
+  </data>
+  <data name="NotAnArchiveTest" xml:space="preserve">
+    <value>Filen har ikke et genkendt arkivformat og kan ikke testes.</value>
+  </data>
+  <data name="UnsupportedByZipEngine" xml:space="preserve">
+    <value>Formatet {0} understøttes ikke. Kun ZIP-baserede formater understøttes.</value>
+  </data>
+  <data name="FormatBlocked" xml:space="preserve">
+    <value>Dette arkivformat ({0}) er blokeret af gruppepolitik.</value>
+  </data>
+  <data name="TarExtractionDisabled" xml:space="preserve">
+    <value>Udpakning med tar.exe er deaktiveret af gruppepolitik.</value>
+  </data>
+  <data name="FormatNeedsNewerTar" xml:space="preserve">
+    <value>{0} kræver tar.exe med libarchive &gt;= 3.7.0 (Windows 11 23H2+); dette systems tar.exe (version {1}) understøtter det ikke.</value>
+  </data>
+  <data name="FormatNotSupportedByTar" xml:space="preserve">
+    <value>{0} understøttes ikke af dette systems tar.exe (version {1}).</value>
+  </data>
+  <data name="ArchiveFormatNotSupportedByTar" xml:space="preserve">
+    <value>Dette arkivformat understøttes ikke af dette systems tar.exe (version {0}).</value>
+  </data>
+  <data name="NoTestCapability" xml:space="preserve">
+    <value>arkiver i tar-familien kan ikke testes</value>
+  </data>
+  <data name="PasswordProtectedExtract" xml:space="preserve">
+    <value>Dette arkiv er beskyttet med adgangskode og kan ikke udpakkes.</value>
+  </data>
+  <data name="PasswordProtectedTest" xml:space="preserve">
+    <value>Dette arkiv er beskyttet med adgangskode og kan ikke testes.</value>
+  </data>
+  <data name="PasswordProtectedBrowse" xml:space="preserve">
+    <value>Dette arkiv er beskyttet med adgangskode og kan ikke gennemses.</value>
+  </data>
+  <data name="ZipCorrupted" xml:space="preserve">
+    <value>Filen har en ZIP-signatur, men ser ud til at være beskadiget eller ufuldstændig.</value>
+  </data>
+  <data name="CannotExtractArchive" xml:space="preserve">
+    <value>Arkivet kan ikke udpakkes: {0}</value>
+  </data>
+  <data name="AccessDeniedExtractingArchive" xml:space="preserve">
+    <value>Adgang nægtet ved udpakning af arkivet: {0}</value>
+  </data>
+  <data name="CannotReadArchive" xml:space="preserve">
+    <value>Arkivet kan ikke læses: {0}</value>
+  </data>
+  <data name="EntryNameCollision" xml:space="preserve">
+    <value>Efter afkodning har elementet „{0}“ samme navn som et andet element; det udpakkes ikke, da det ene ville overskrive det andet.</value>
+  </data>
+  <data name="EntryFailed" xml:space="preserve">
+    <value>Element „{0}“: {1}</value>
+  </data>
+  <data name="EntryWrongPassword" xml:space="preserve">
+    <value>Elementet „{0}“ kunne ikke dekrypteres: forkert adgangskode.</value>
+  </data>
+  <data name="EntryAuthenticationFailed" xml:space="preserve">
+    <value>Elementet „{0}“ kunne ikke dekrypteres: godkendelsen mislykkedes (beskadiget eller manipuleret).</value>
+  </data>
+  <data name="EntryUnsupportedEncryptedMethod" xml:space="preserve">
+    <value>Elementet „{0}“ bruger en komprimeringsmetode med kryptering, der ikke understøttes.</value>
+  </data>
+  <data name="InsufficientDiskSpace" xml:space="preserve">
+    <value>Arkivet angiver {0} byte ukomprimeret, men destinationen har kun {1} byte ledige. Udpakningen blev blokeret.</value>
+  </data>
+  <data name="ZipBombDeclined" xml:space="preserve">
+    <value>Mistænkeligt komprimeringsforhold ({0}:1, {1} byte angivet). Udpakningen blev afvist som forholdsregel mod ZIP-bomber.</value>
+  </data>
+  <data name="TarBombDeclined" xml:space="preserve">
+    <value>Mistænkeligt komprimeringsforhold ({0}:1, {1} byte angivet) for hele arkivet. Udpakningen blev afvist som forholdsregel mod dekomprimeringsbomber.</value>
+  </data>
+  <data name="DestinationFileLocked" xml:space="preserve">
+    <value>„{0}“ kan ikke skrives: destinationsfilen er låst af en anden proces.</value>
+  </data>
+  <data name="AllEntriesSkipped" xml:space="preserve">
+    <value>Der blev ikke udpakket noget fra dette arkiv – alle elementer blev sprunget over.</value>
+  </data>
+  <data name="UnsafeEntryPath" xml:space="preserve">
+    <value>Elementet „{0}“ har en usikker sti og blev ikke udpakket.</value>
+  </data>
+  <data name="EntryAlternateDataStream" xml:space="preserve">
+    <value>Element med alternativ datastrøm afvist af sikkerhedshensyn.</value>
+  </data>
+  <data name="EntryReservedName" xml:space="preserve">
+    <value>Elementnavnet svarer til et reserveret Windows-enhedsnavn og blev sprunget over.</value>
+  </data>
+  <data name="EntryControlCharacters" xml:space="preserve">
+    <value>Elementnavnet indeholder kontroltegn og blev sprunget over.</value>
+  </data>
+  <data name="CannotExtractEntry" xml:space="preserve">
+    <value>„{0}“ kan ikke udpakkes: {1}</value>
+  </data>
+  <data name="EntryThroughReparsePoint" xml:space="preserve">
+    <value>Elementets sti går gennem et genfortolkningspunkt (symbolsk link eller forbindelsespunkt) og blev sprunget over.</value>
+  </data>
+  <data name="FileExistsAtDestination" xml:space="preserve">
+    <value>Filen findes allerede på destinationen.</value>
+  </data>
+  <data name="TarExtractionFailed" xml:space="preserve">
+    <value>Udpakning med tar.exe mislykkedes: {0}</value>
+  </data>
+  <data name="TarUnsafeEntryPath" xml:space="preserve">
+    <value>Arkivet indeholder en usikker elementsti („{0}“) og kan ikke udpakkes sikkert.</value>
+  </data>
+  <data name="TarListingInconsistent" xml:space="preserve">
+    <value>Arkivets indholdsliste er inkonsistent, og arkivet kan ikke udpakkes sikkert.</value>
+  </data>
+  <data name="TarSpecialEntry" xml:space="preserve">
+    <value>Arkivet indeholder et symbolsk link, et hårdt link, en enhed eller et andet specielt element og kan ikke udpakkes sikkert.</value>
+  </data>
+  <data name="ListingInconsistent" xml:space="preserve">
+    <value>Arkivets indholdsliste er inkonsistent.</value>
+  </data>
+  <data name="TarUnreadableNames" xml:space="preserve">
+    <value>Arkivet indeholder filnavne, som tar.exe ikke kan vise på dette system (tegntabel {0}), så det kan ikke læses her med tar.exe. Detaljer: {1}</value>
+  </data>
+  <data name="SandboxSetupFailed" xml:space="preserve">
+    <value>Opsætning af sandkassen mislykkedes: {0}</value>
+  </data>
+  <data name="ArchiveInUse" xml:space="preserve">
+    <value>Arkivet bruges af et andet program: {0}</value>
+  </data>
+  <data name="CannotOpenArchive" xml:space="preserve">
+    <value>Arkivet kan ikke åbnes: {0}</value>
+  </data>
+  <data name="CannotReopenArchive" xml:space="preserve">
+    <value>Arkivet kan ikke genåbnes (Win32-fejl {0}).</value>
+  </data>
+  <data name="HashFolderSkipped" xml:space="preserve">
+    <value>Sprunget over: mappe (understøttes kun, når en enkelt mappe er valgt alene)</value>
+  </data>
+  <data name="HashLinkSkipped" xml:space="preserve">
+    <value>Sprunget over: symbolsk link eller forbindelsespunkt (følges ikke)</value>
+  </data>
+  <data name="HashFileChanged" xml:space="preserve">
+    <value>Filens størrelse ændrede sig under beregningen af hashværdien: {0}</value>
+  </data>
+  <data name="NoAntivirusRegistered" xml:space="preserve">
+    <value>Der er ikke registreret noget antivirusprogram til scanning.</value>
+  </data>
+  <data name="ScanSessionFailed" xml:space="preserve">
+    <value>Der kunne ikke startes en antivirusscanningssession: {0}</value>
+  </data>
+  <data name="ScanCannotReadArchive" xml:space="preserve">
+    <value>Arkivet kunne ikke læses: {0}</value>
+  </data>
+  <data name="ScanCannotReadEntry" xml:space="preserve">
+    <value>Elementet kunne ikke læses: {0}</value>
+  </data>
+  <data name="ScanCannotExtract" xml:space="preserve">
+    <value>Arkivet kunne ikke udpakkes til scanning: {0}</value>
+  </data>
+  <data name="ScanRemovedOrBlocked" xml:space="preserve">
+    <value>Fjernet eller blokeret, før Pakko kunne scanne det direkte.</value>
+  </data>
+  <data name="ScanEntryFailed" xml:space="preserve">
+    <value>Antivirusscanningen af dette element mislykkedes: {0}</value>
+  </data>
+  <data name="ScanEntryIntegrityFailed" xml:space="preserve">
+    <value>Det dekrypterede indhold bestod ikke integritetskontrollen (forkert adgangskode eller beskadiget element) og blev ikke rapporteret som rent.</value>
+  </data>
+  <data name="ScanEntryPasswordProtected" xml:space="preserve">
+    <value>Elementet er beskyttet med adgangskode og blev ikke scannet.</value>
+  </data>
+  <data name="ScanEntryWrongPassword" xml:space="preserve">
+    <value>Elementet er beskyttet med en anden adgangskode og blev ikke scannet.</value>
+  </data>
+  <data name="ScanEntryUnsupportedMethod" xml:space="preserve">
+    <value>Elementet bruger en komprimeringsmetode med kryptering, der ikke understøttes, og blev ikke scannet.</value>
+  </data>
+  <data name="ScanEntryAuthenticationFailed" xml:space="preserve">
+    <value>Elementet bestod ikke godkendelsen ved dekryptering (beskadiget eller manipuleret) og blev ikke scannet.</value>
+  </data>
+  <data name="ScanEntryTooLarge" xml:space="preserve">
+    <value>Elementet er større end {0} MiB og blev ikke scannet.</value>
+  </data>
+</root>

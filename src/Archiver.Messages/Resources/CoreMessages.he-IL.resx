@@ -1,0 +1,264 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="SourceNotFound" xml:space="preserve">
+    <value>נתיב המקור אינו קיים: {0}</value>
+  </data>
+  <data name="CannotAccessFile" xml:space="preserve">
+    <value>אין גישה לקובץ: {0}</value>
+  </data>
+  <data name="AccessDenied" xml:space="preserve">
+    <value>הגישה נדחתה: {0}</value>
+  </data>
+  <data name="LinkNotArchived" xml:space="preserve">
+    <value>קישורים סמליים ונקודות צומת של NTFS אינם נכללים בארכיון.</value>
+  </data>
+  <data name="FolderLinkNotFollowed" xml:space="preserve">
+    <value>במהלך יצירת ארכיון לא עוקבים אחר נקודות צומת של NTFS וקישורים סמליים לתיקיות.</value>
+  </data>
+  <data name="ReparsePointNotArchived" xml:space="preserve">
+    <value>קישורים סמליים ונקודות ניתוח מחדש אינם נכללים בארכיון.</value>
+  </data>
+  <data name="ArchiveAlreadyExists" xml:space="preserve">
+    <value>הארכיון "{0}" כבר קיים ביעד ודולג.</value>
+  </data>
+  <data name="CannotCreateArchive" xml:space="preserve">
+    <value>לא ניתן ליצור את הארכיון: {0}</value>
+  </data>
+  <data name="AccessDeniedCreatingArchive" xml:space="preserve">
+    <value>הגישה נדחתה בעת יצירת הארכיון: {0}</value>
+  </data>
+  <data name="UnexpectedError" xml:space="preserve">
+    <value>שגיאה בלתי צפויה: {0}</value>
+  </data>
+  <data name="UnknownArchivingError" xml:space="preserve">
+    <value>שגיאה לא ידועה במהלך יצירת הארכיון.</value>
+  </data>
+  <data name="EntryNameTooLong" xml:space="preserve">
+    <value>שם הפריט ארוך מדי לארכיון ZIP ({0} בתים ב-UTF-8; המקסימום הוא {1}).</value>
+  </data>
+  <data name="NotEnoughSpaceToCompress" xml:space="preserve">
+    <value>אין מספיק שטח פנוי בדיסק כדי לדחוס קובץ זה: גודלו {0} בתים, אך פנויים רק {1} בתים.</value>
+  </data>
+  <data name="PasswordNotEntered" xml:space="preserve">
+    <value>הארכיון לא נוצר: לא הוזנה סיסמה.</value>
+  </data>
+  <data name="PasswordEmpty" xml:space="preserve">
+    <value>הארכיון לא נוצר: הסיסמה ריקה.</value>
+  </data>
+  <data name="PasswordUnsupportedCharacters" xml:space="preserve">
+    <value>הארכיון לא נוצר: הסיסמה יכולה לכלול רק אותיות באנגלית, ספרות, רווחים וסימני פיסוק ASCII; כלי ZIP אחרים, כמו 7-Zip, לא יוכלו לפתוח ארכיון המוגן בתווים אחרים.</value>
+  </data>
+  <data name="PasswordTooLong" xml:space="preserve">
+    <value>הארכיון לא נוצר: הסיסמה ארוכה מ-{0} תווים, המקסימום ש-7-Zip מקבל עבור ZIP מוצפן ב-AES.</value>
+  </data>
+  <data name="PasswordOnlyForZip" xml:space="preserve">
+    <value>הגנה בסיסמה זמינה לארכיוני ZIP בלבד.</value>
+  </data>
+  <data name="CreationFormatBlocked" xml:space="preserve">
+    <value>יצירת ארכיון {0} חסומה על-ידי מדיניות קבוצתית.</value>
+  </data>
+  <data name="TarCreationDisabled" xml:space="preserve">
+    <value>יצירת ארכיונים באמצעות tar.exe מושבתת על-ידי מדיניות קבוצתית.</value>
+  </data>
+  <data name="TarCreationFailed" xml:space="preserve">
+    <value>tar.exe לא הצליח ליצור את הארכיון: {0}</value>
+  </data>
+  <data name="TarNameNotRepresentable" xml:space="preserve">
+    <value>השם "{0}" מכיל תווים ש-tar.exe אינו יכול לטפל בהם בבטחה במערכת זו (דף קוד ANSI {1}). השתמש ב-ZIP עבור תוכן זה.</value>
+  </data>
+  <data name="TarSignatureInvalid" xml:space="preserve">
+    <value>tar.exe נכשל באימות חתימת Authenticode ולא יופעל.</value>
+  </data>
+  <data name="TarSignatureVerificationFailed" xml:space="preserve">
+    <value>"{0}" נכשל באימות חתימת Authenticode.</value>
+  </data>
+  <data name="NotAnArchiveExtract" xml:space="preserve">
+    <value>הקובץ אינו בתבנית ארכיון מוכרת ולא ניתן לחלץ אותו.</value>
+  </data>
+  <data name="NotAnArchiveTest" xml:space="preserve">
+    <value>הקובץ אינו בתבנית ארכיון מוכרת ולא ניתן לבדוק אותו.</value>
+  </data>
+  <data name="UnsupportedByZipEngine" xml:space="preserve">
+    <value>התבנית {0} אינה נתמכת. רק תבניות המבוססות על ZIP נתמכות.</value>
+  </data>
+  <data name="FormatBlocked" xml:space="preserve">
+    <value>תבנית ארכיון זו ({0}) חסומה על-ידי מדיניות קבוצתית.</value>
+  </data>
+  <data name="TarExtractionDisabled" xml:space="preserve">
+    <value>חילוץ באמצעות tar.exe מושבת על-ידי מדיניות קבוצתית.</value>
+  </data>
+  <data name="FormatNeedsNewerTar" xml:space="preserve">
+    <value>{0} דורש tar.exe עם libarchive &gt;= 3.7.0 (Windows 11 23H2+); tar.exe של מערכת זו (גרסה {1}) אינו תומך בכך.</value>
+  </data>
+  <data name="FormatNotSupportedByTar" xml:space="preserve">
+    <value>{0} אינו נתמך על-ידי tar.exe של מערכת זו (גרסה {1}).</value>
+  </data>
+  <data name="ArchiveFormatNotSupportedByTar" xml:space="preserve">
+    <value>תבנית ארכיון זו אינה נתמכת על-ידי tar.exe של מערכת זו (גרסה {0}).</value>
+  </data>
+  <data name="NoTestCapability" xml:space="preserve">
+    <value>לא ניתן לבדוק ארכיונים ממשפחת tar</value>
+  </data>
+  <data name="PasswordProtectedExtract" xml:space="preserve">
+    <value>ארכיון זה מוגן בסיסמה ולא ניתן לחלץ אותו.</value>
+  </data>
+  <data name="PasswordProtectedTest" xml:space="preserve">
+    <value>ארכיון זה מוגן בסיסמה ולא ניתן לבדוק אותו.</value>
+  </data>
+  <data name="PasswordProtectedBrowse" xml:space="preserve">
+    <value>ארכיון זה מוגן בסיסמה ולא ניתן לעיין בו.</value>
+  </data>
+  <data name="ZipCorrupted" xml:space="preserve">
+    <value>לקובץ יש חתימת ZIP, אך נראה שהוא פגום או חלקי.</value>
+  </data>
+  <data name="CannotExtractArchive" xml:space="preserve">
+    <value>לא ניתן לחלץ את הארכיון: {0}</value>
+  </data>
+  <data name="AccessDeniedExtractingArchive" xml:space="preserve">
+    <value>הגישה נדחתה בעת חילוץ הארכיון: {0}</value>
+  </data>
+  <data name="CannotReadArchive" xml:space="preserve">
+    <value>לא ניתן לקרוא את הארכיון: {0}</value>
+  </data>
+  <data name="EntryNameCollision" xml:space="preserve">
+    <value>לאחר פענוח, לפריט "{0}" יש אותו שם כמו לפריט אחר; הוא לא חולץ, כי אחד היה דורס את השני.</value>
+  </data>
+  <data name="EntryFailed" xml:space="preserve">
+    <value>פריט "{0}": {1}</value>
+  </data>
+  <data name="EntryWrongPassword" xml:space="preserve">
+    <value>לא ניתן לפענח את הפריט "{0}": סיסמה שגויה.</value>
+  </data>
+  <data name="EntryAuthenticationFailed" xml:space="preserve">
+    <value>לא ניתן לפענח את הפריט "{0}": האימות נכשל (פגום או שונה).</value>
+  </data>
+  <data name="EntryUnsupportedEncryptedMethod" xml:space="preserve">
+    <value>הפריט "{0}" משתמש בשיטת דחיסה עם הצפנה שאינה נתמכת.</value>
+  </data>
+  <data name="InsufficientDiskSpace" xml:space="preserve">
+    <value>הארכיון מצהיר על {0} בתים לא דחוסים, אך ביעד פנויים רק {1} בתים. החילוץ נחסם.</value>
+  </data>
+  <data name="ZipBombDeclined" xml:space="preserve">
+    <value>יחס דחיסה חשוד ({0}:1, {1} בתים מוצהרים). החילוץ נדחה כאמצעי זהירות מפני פצצות ZIP.</value>
+  </data>
+  <data name="TarBombDeclined" xml:space="preserve">
+    <value>יחס דחיסה חשוד ({0}:1, {1} בתים מוצהרים) בכל הארכיון. החילוץ נדחה כאמצעי זהירות מפני פצצות פריסה.</value>
+  </data>
+  <data name="DestinationFileLocked" xml:space="preserve">
+    <value>לא ניתן לכתוב את "{0}": קובץ היעד נעול על-ידי תהליך אחר.</value>
+  </data>
+  <data name="AllEntriesSkipped" xml:space="preserve">
+    <value>לא חולץ דבר מארכיון זה — כל הפריטים דולגו.</value>
+  </data>
+  <data name="UnsafeEntryPath" xml:space="preserve">
+    <value>לפריט "{0}" יש נתיב לא בטוח והוא לא חולץ.</value>
+  </data>
+  <data name="EntryAlternateDataStream" xml:space="preserve">
+    <value>פריט של זרם נתונים חלופי נדחה מטעמי אבטחה.</value>
+  </data>
+  <data name="EntryReservedName" xml:space="preserve">
+    <value>שם הפריט תואם לשם התקן שמור של Windows ודולג.</value>
+  </data>
+  <data name="EntryControlCharacters" xml:space="preserve">
+    <value>שם הפריט מכיל תווי בקרה ודולג.</value>
+  </data>
+  <data name="CannotExtractEntry" xml:space="preserve">
+    <value>לא ניתן לחלץ את "{0}": {1}</value>
+  </data>
+  <data name="EntryThroughReparsePoint" xml:space="preserve">
+    <value>נתיב הפריט עובר דרך נקודת ניתוח מחדש (קישור סמלי או נקודת צומת) ודולג.</value>
+  </data>
+  <data name="FileExistsAtDestination" xml:space="preserve">
+    <value>הקובץ כבר קיים ביעד.</value>
+  </data>
+  <data name="TarExtractionFailed" xml:space="preserve">
+    <value>החילוץ באמצעות tar.exe נכשל: {0}</value>
+  </data>
+  <data name="TarUnsafeEntryPath" xml:space="preserve">
+    <value>הארכיון מכיל נתיב פריט לא בטוח ("{0}") ולא ניתן לחלץ אותו בבטחה.</value>
+  </data>
+  <data name="TarListingInconsistent" xml:space="preserve">
+    <value>רשימת התוכן של הארכיון אינה עקבית ולא ניתן לחלץ אותו בבטחה.</value>
+  </data>
+  <data name="TarSpecialEntry" xml:space="preserve">
+    <value>הארכיון מכיל קישור סמלי, קישור קשיח, התקן או פריט מיוחד אחר ולא ניתן לחלץ אותו בבטחה.</value>
+  </data>
+  <data name="ListingInconsistent" xml:space="preserve">
+    <value>רשימת התוכן של הארכיון אינה עקבית.</value>
+  </data>
+  <data name="TarUnreadableNames" xml:space="preserve">
+    <value>הארכיון מכיל שמות קבצים ש-tar.exe אינו יכול להציג במערכת זו (דף קוד {0}), ולכן לא ניתן לקרוא אותו כאן באמצעות tar.exe. פרטים: {1}</value>
+  </data>
+  <data name="SandboxSetupFailed" xml:space="preserve">
+    <value>הגדרת ארגז החול נכשלה: {0}</value>
+  </data>
+  <data name="ArchiveInUse" xml:space="preserve">
+    <value>הארכיון נמצא בשימוש על-ידי תוכנית אחרת: {0}</value>
+  </data>
+  <data name="CannotOpenArchive" xml:space="preserve">
+    <value>לא ניתן לפתוח את הארכיון: {0}</value>
+  </data>
+  <data name="CannotReopenArchive" xml:space="preserve">
+    <value>לא ניתן לפתוח מחדש את הארכיון (שגיאת Win32 {0}).</value>
+  </data>
+  <data name="HashFolderSkipped" xml:space="preserve">
+    <value>דולג: תיקייה (נתמך רק כאשר נבחרה תיקייה אחת בלבד)</value>
+  </data>
+  <data name="HashLinkSkipped" xml:space="preserve">
+    <value>דולג: קישור סמלי או נקודת צומת (אין מעקב)</value>
+  </data>
+  <data name="HashFileChanged" xml:space="preserve">
+    <value>גודל הקובץ השתנה במהלך חישוב הגיבוב: {0}</value>
+  </data>
+  <data name="NoAntivirusRegistered" xml:space="preserve">
+    <value>לא רשומה תוכנת אנטי-וירוס לסריקה.</value>
+  </data>
+  <data name="ScanSessionFailed" xml:space="preserve">
+    <value>לא ניתן להתחיל הפעלת סריקת אנטי-וירוס: {0}</value>
+  </data>
+  <data name="ScanCannotReadArchive" xml:space="preserve">
+    <value>לא ניתן לקרוא את הארכיון: {0}</value>
+  </data>
+  <data name="ScanCannotReadEntry" xml:space="preserve">
+    <value>לא ניתן לקרוא את הפריט: {0}</value>
+  </data>
+  <data name="ScanCannotExtract" xml:space="preserve">
+    <value>לא ניתן לחלץ את הארכיון לסריקה: {0}</value>
+  </data>
+  <data name="ScanRemovedOrBlocked" xml:space="preserve">
+    <value>הוסר או נחסם לפני ש-Pakko הצליח לסרוק אותו ישירות.</value>
+  </data>
+  <data name="ScanEntryFailed" xml:space="preserve">
+    <value>סריקת האנטי-וירוס של פריט זה נכשלה: {0}</value>
+  </data>
+  <data name="ScanEntryIntegrityFailed" xml:space="preserve">
+    <value>התוכן המפוענח נכשל בבדיקת השלמות (סיסמה שגויה או פריט פגום) ולא דווח כנקי.</value>
+  </data>
+  <data name="ScanEntryPasswordProtected" xml:space="preserve">
+    <value>הפריט מוגן בסיסמה ולא נסרק.</value>
+  </data>
+  <data name="ScanEntryWrongPassword" xml:space="preserve">
+    <value>הפריט מוגן בסיסמה אחרת ולא נסרק.</value>
+  </data>
+  <data name="ScanEntryUnsupportedMethod" xml:space="preserve">
+    <value>הפריט משתמש בשיטת דחיסה עם הצפנה שאינה נתמכת ולא נסרק.</value>
+  </data>
+  <data name="ScanEntryAuthenticationFailed" xml:space="preserve">
+    <value>הפריט נכשל באימות הפענוח (פגום או שונה) ולא נסרק.</value>
+  </data>
+  <data name="ScanEntryTooLarge" xml:space="preserve">
+    <value>הפריט גדול מ-{0} MiB ולא נסרק.</value>
+  </data>
+</root>

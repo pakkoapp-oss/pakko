@@ -1,0 +1,264 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="SourceNotFound" xml:space="preserve">
+    <value>Изходният път не съществува: {0}</value>
+  </data>
+  <data name="CannotAccessFile" xml:space="preserve">
+    <value>Няма достъп до файла: {0}</value>
+  </data>
+  <data name="AccessDenied" xml:space="preserve">
+    <value>Достъпът е отказан: {0}</value>
+  </data>
+  <data name="LinkNotArchived" xml:space="preserve">
+    <value>Символните връзки и съединенията NTFS не се архивират.</value>
+  </data>
+  <data name="FolderLinkNotFollowed" xml:space="preserve">
+    <value>При архивиране съединенията NTFS и символните връзки към папки не се следват.</value>
+  </data>
+  <data name="ReparsePointNotArchived" xml:space="preserve">
+    <value>Символните връзки и точките на повторен анализ не се архивират.</value>
+  </data>
+  <data name="ArchiveAlreadyExists" xml:space="preserve">
+    <value>Архивът „{0}“ вече съществува в местоназначението и е пропуснат.</value>
+  </data>
+  <data name="CannotCreateArchive" xml:space="preserve">
+    <value>Архивът не може да бъде създаден: {0}</value>
+  </data>
+  <data name="AccessDeniedCreatingArchive" xml:space="preserve">
+    <value>Достъпът е отказан при създаване на архива: {0}</value>
+  </data>
+  <data name="UnexpectedError" xml:space="preserve">
+    <value>Неочаквана грешка: {0}</value>
+  </data>
+  <data name="UnknownArchivingError" xml:space="preserve">
+    <value>Неизвестна грешка при архивиране.</value>
+  </data>
+  <data name="EntryNameTooLong" xml:space="preserve">
+    <value>Името на елемента е твърде дълго за ZIP архив ({0} байта в UTF-8; максимумът е {1}).</value>
+  </data>
+  <data name="NotEnoughSpaceToCompress" xml:space="preserve">
+    <value>Няма достатъчно свободно място на диска за компресиране на този файл: той е {0} байта, а свободни са само {1} байта.</value>
+  </data>
+  <data name="PasswordNotEntered" xml:space="preserve">
+    <value>Архивът не е създаден: не е въведена парола.</value>
+  </data>
+  <data name="PasswordEmpty" xml:space="preserve">
+    <value>Архивът не е създаден: паролата е празна.</value>
+  </data>
+  <data name="PasswordUnsupportedCharacters" xml:space="preserve">
+    <value>Архивът не е създаден: паролата може да съдържа само английски букви, цифри, интервали и ASCII препинателни знаци; други ZIP програми като 7-Zip не могат да отворят архив, защитен с други знаци.</value>
+  </data>
+  <data name="PasswordTooLong" xml:space="preserve">
+    <value>Архивът не е създаден: паролата е по-дълга от {0} знака — максимумът, който 7-Zip приема за ZIP, шифрован с AES.</value>
+  </data>
+  <data name="PasswordOnlyForZip" xml:space="preserve">
+    <value>Защитата с парола е налична само за ZIP архиви.</value>
+  </data>
+  <data name="CreationFormatBlocked" xml:space="preserve">
+    <value>Създаването на архив {0} е блокирано от групова политика.</value>
+  </data>
+  <data name="TarCreationDisabled" xml:space="preserve">
+    <value>Създаването на архиви с tar.exe е изключено от групова политика.</value>
+  </data>
+  <data name="TarCreationFailed" xml:space="preserve">
+    <value>tar.exe не успя да създаде архива: {0}</value>
+  </data>
+  <data name="TarNameNotRepresentable" xml:space="preserve">
+    <value>Името „{0}“ съдържа знаци, които tar.exe не може да обработи безопасно в тази система (ANSI кодова страница {1}). Използвайте ZIP за това съдържание.</value>
+  </data>
+  <data name="TarSignatureInvalid" xml:space="preserve">
+    <value>tar.exe не премина проверката на подписа Authenticode и няма да бъде стартиран.</value>
+  </data>
+  <data name="TarSignatureVerificationFailed" xml:space="preserve">
+    <value>„{0}“ не премина проверката на подписа Authenticode.</value>
+  </data>
+  <data name="NotAnArchiveExtract" xml:space="preserve">
+    <value>Файлът не е в разпознат формат на архив и не може да бъде извлечен.</value>
+  </data>
+  <data name="NotAnArchiveTest" xml:space="preserve">
+    <value>Файлът не е в разпознат формат на архив и не може да бъде тестван.</value>
+  </data>
+  <data name="UnsupportedByZipEngine" xml:space="preserve">
+    <value>Форматът {0} не се поддържа. Поддържат се само формати на основата на ZIP.</value>
+  </data>
+  <data name="FormatBlocked" xml:space="preserve">
+    <value>Този формат на архив ({0}) е блокиран от групова политика.</value>
+  </data>
+  <data name="TarExtractionDisabled" xml:space="preserve">
+    <value>Извличането с tar.exe е изключено от групова политика.</value>
+  </data>
+  <data name="FormatNeedsNewerTar" xml:space="preserve">
+    <value>{0} изисква tar.exe с libarchive &gt;= 3.7.0 (Windows 11 23H2+); tar.exe на тази система (версия {1}) не го поддържа.</value>
+  </data>
+  <data name="FormatNotSupportedByTar" xml:space="preserve">
+    <value>{0} не се поддържа от tar.exe на тази система (версия {1}).</value>
+  </data>
+  <data name="ArchiveFormatNotSupportedByTar" xml:space="preserve">
+    <value>Този формат на архив не се поддържа от tar.exe на тази система (версия {0}).</value>
+  </data>
+  <data name="NoTestCapability" xml:space="preserve">
+    <value>архивите от семейството tar не могат да се тестват</value>
+  </data>
+  <data name="PasswordProtectedExtract" xml:space="preserve">
+    <value>Този архив е защитен с парола и не може да бъде извлечен.</value>
+  </data>
+  <data name="PasswordProtectedTest" xml:space="preserve">
+    <value>Този архив е защитен с парола и не може да бъде тестван.</value>
+  </data>
+  <data name="PasswordProtectedBrowse" xml:space="preserve">
+    <value>Този архив е защитен с парола и не може да бъде разгледан.</value>
+  </data>
+  <data name="ZipCorrupted" xml:space="preserve">
+    <value>Файлът има ZIP подпис, но изглежда повреден или непълен.</value>
+  </data>
+  <data name="CannotExtractArchive" xml:space="preserve">
+    <value>Архивът не може да бъде извлечен: {0}</value>
+  </data>
+  <data name="AccessDeniedExtractingArchive" xml:space="preserve">
+    <value>Достъпът е отказан при извличане на архива: {0}</value>
+  </data>
+  <data name="CannotReadArchive" xml:space="preserve">
+    <value>Архивът не може да бъде прочетен: {0}</value>
+  </data>
+  <data name="EntryNameCollision" xml:space="preserve">
+    <value>След декодиране елементът „{0}“ има същото име като друг елемент; не се извлича, защото единият би презаписал другия.</value>
+  </data>
+  <data name="EntryFailed" xml:space="preserve">
+    <value>Елемент „{0}“: {1}</value>
+  </data>
+  <data name="EntryWrongPassword" xml:space="preserve">
+    <value>Елементът „{0}“ не може да бъде дешифриран: грешна парола.</value>
+  </data>
+  <data name="EntryAuthenticationFailed" xml:space="preserve">
+    <value>Елементът „{0}“ не може да бъде дешифриран: удостоверяването е неуспешно (повреден или променен).</value>
+  </data>
+  <data name="EntryUnsupportedEncryptedMethod" xml:space="preserve">
+    <value>Елементът „{0}“ използва неподдържан метод на компресиране с шифроване.</value>
+  </data>
+  <data name="InsufficientDiskSpace" xml:space="preserve">
+    <value>Архивът декларира {0} байта в некомпресиран вид, но в местоназначението са свободни само {1} байта. Извличането е блокирано.</value>
+  </data>
+  <data name="ZipBombDeclined" xml:space="preserve">
+    <value>Подозрително съотношение на компресиране ({0}:1, декларирани {1} байта). Извличането е отказано като предпазна мярка срещу ZIP бомби.</value>
+  </data>
+  <data name="TarBombDeclined" xml:space="preserve">
+    <value>Подозрително съотношение на компресиране ({0}:1, декларирани {1} байта) за целия архив. Извличането е отказано като предпазна мярка срещу бомби за декомпресиране.</value>
+  </data>
+  <data name="DestinationFileLocked" xml:space="preserve">
+    <value>„{0}“ не може да бъде записан: целевият файл е заключен от друг процес.</value>
+  </data>
+  <data name="AllEntriesSkipped" xml:space="preserve">
+    <value>От този архив не е извлечено нищо — всички елементи са пропуснати.</value>
+  </data>
+  <data name="UnsafeEntryPath" xml:space="preserve">
+    <value>Елементът „{0}“ има опасен път и не е извлечен.</value>
+  </data>
+  <data name="EntryAlternateDataStream" xml:space="preserve">
+    <value>Елемент с алтернативен поток от данни е отхвърлен от съображения за сигурност.</value>
+  </data>
+  <data name="EntryReservedName" xml:space="preserve">
+    <value>Името на елемента съвпада със запазено име на устройство в Windows и е пропуснато.</value>
+  </data>
+  <data name="EntryControlCharacters" xml:space="preserve">
+    <value>Името на елемента съдържа управляващи знаци и е пропуснато.</value>
+  </data>
+  <data name="CannotExtractEntry" xml:space="preserve">
+    <value>„{0}“ не може да бъде извлечен: {1}</value>
+  </data>
+  <data name="EntryThroughReparsePoint" xml:space="preserve">
+    <value>Пътят на елемента минава през точка на повторен анализ (символна връзка или съединение) и е пропуснат.</value>
+  </data>
+  <data name="FileExistsAtDestination" xml:space="preserve">
+    <value>Файлът вече съществува в местоназначението.</value>
+  </data>
+  <data name="TarExtractionFailed" xml:space="preserve">
+    <value>Извличането с tar.exe е неуспешно: {0}</value>
+  </data>
+  <data name="TarUnsafeEntryPath" xml:space="preserve">
+    <value>Архивът съдържа опасен път на елемент („{0}“) и не може да бъде извлечен безопасно.</value>
+  </data>
+  <data name="TarListingInconsistent" xml:space="preserve">
+    <value>Списъкът със съдържанието на архива е противоречив и архивът не може да бъде извлечен безопасно.</value>
+  </data>
+  <data name="TarSpecialEntry" xml:space="preserve">
+    <value>Архивът съдържа символна връзка, твърда връзка, устройство или друг специален елемент и не може да бъде извлечен безопасно.</value>
+  </data>
+  <data name="ListingInconsistent" xml:space="preserve">
+    <value>Списъкът със съдържанието на архива е противоречив.</value>
+  </data>
+  <data name="TarUnreadableNames" xml:space="preserve">
+    <value>Архивът съдържа имена на файлове, които tar.exe не може да покаже в тази система (кодова страница {0}), затова тук не може да бъде прочетен с tar.exe. Подробности: {1}</value>
+  </data>
+  <data name="SandboxSetupFailed" xml:space="preserve">
+    <value>Настройването на изолираната среда е неуспешно: {0}</value>
+  </data>
+  <data name="ArchiveInUse" xml:space="preserve">
+    <value>Архивът се използва от друга програма: {0}</value>
+  </data>
+  <data name="CannotOpenArchive" xml:space="preserve">
+    <value>Архивът не може да бъде отворен: {0}</value>
+  </data>
+  <data name="CannotReopenArchive" xml:space="preserve">
+    <value>Архивът не може да бъде отворен отново (грешка Win32 {0}).</value>
+  </data>
+  <data name="HashFolderSkipped" xml:space="preserve">
+    <value>Пропуснато: папка (поддържа се само когато е избрана една папка)</value>
+  </data>
+  <data name="HashLinkSkipped" xml:space="preserve">
+    <value>Пропуснато: символна връзка или съединение (не се следва)</value>
+  </data>
+  <data name="HashFileChanged" xml:space="preserve">
+    <value>Размерът на файла се промени по време на изчисляването на хеша: {0}</value>
+  </data>
+  <data name="NoAntivirusRegistered" xml:space="preserve">
+    <value>Няма регистрирана антивирусна програма за сканиране.</value>
+  </data>
+  <data name="ScanSessionFailed" xml:space="preserve">
+    <value>Не може да се стартира сесия за антивирусно сканиране: {0}</value>
+  </data>
+  <data name="ScanCannotReadArchive" xml:space="preserve">
+    <value>Архивът не можа да бъде прочетен: {0}</value>
+  </data>
+  <data name="ScanCannotReadEntry" xml:space="preserve">
+    <value>Елементът не можа да бъде прочетен: {0}</value>
+  </data>
+  <data name="ScanCannotExtract" xml:space="preserve">
+    <value>Архивът не можа да бъде извлечен за сканиране: {0}</value>
+  </data>
+  <data name="ScanRemovedOrBlocked" xml:space="preserve">
+    <value>Премахнато или блокирано, преди Pakko да може да го сканира директно.</value>
+  </data>
+  <data name="ScanEntryFailed" xml:space="preserve">
+    <value>Антивирусното сканиране на този елемент е неуспешно: {0}</value>
+  </data>
+  <data name="ScanEntryIntegrityFailed" xml:space="preserve">
+    <value>Дешифрираното съдържание не премина проверката за цялост (грешна парола или повреден елемент) и не е отчетено като чисто.</value>
+  </data>
+  <data name="ScanEntryPasswordProtected" xml:space="preserve">
+    <value>Елементът е защитен с парола и не е сканиран.</value>
+  </data>
+  <data name="ScanEntryWrongPassword" xml:space="preserve">
+    <value>Елементът е защитен с друга парола и не е сканиран.</value>
+  </data>
+  <data name="ScanEntryUnsupportedMethod" xml:space="preserve">
+    <value>Елементът използва неподдържан метод на компресиране с шифроване и не е сканиран.</value>
+  </data>
+  <data name="ScanEntryAuthenticationFailed" xml:space="preserve">
+    <value>Елементът не премина удостоверяването при дешифриране (повреден или променен) и не е сканиран.</value>
+  </data>
+  <data name="ScanEntryTooLarge" xml:space="preserve">
+    <value>Елементът е по-голям от {0} MiB и не е сканиран.</value>
+  </data>
+</root>

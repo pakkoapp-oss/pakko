@@ -1,0 +1,264 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="SourceNotFound" xml:space="preserve">
+    <value>Kaynak yol yok: {0}</value>
+  </data>
+  <data name="CannotAccessFile" xml:space="preserve">
+    <value>Dosyaya erişilemiyor: {0}</value>
+  </data>
+  <data name="AccessDenied" xml:space="preserve">
+    <value>Erişim reddedildi: {0}</value>
+  </data>
+  <data name="LinkNotArchived" xml:space="preserve">
+    <value>Sembolik bağlantılar ve NTFS birleşim noktaları arşivlenmez.</value>
+  </data>
+  <data name="FolderLinkNotFollowed" xml:space="preserve">
+    <value>Arşivleme sırasında NTFS birleşim noktaları ve klasör sembolik bağlantıları izlenmez.</value>
+  </data>
+  <data name="ReparsePointNotArchived" xml:space="preserve">
+    <value>Sembolik bağlantılar ve yeniden ayrıştırma noktaları arşivlenmez.</value>
+  </data>
+  <data name="ArchiveAlreadyExists" xml:space="preserve">
+    <value>“{0}” arşivi hedefte zaten var ve atlandı.</value>
+  </data>
+  <data name="CannotCreateArchive" xml:space="preserve">
+    <value>Arşiv oluşturulamıyor: {0}</value>
+  </data>
+  <data name="AccessDeniedCreatingArchive" xml:space="preserve">
+    <value>Arşiv oluşturulurken erişim reddedildi: {0}</value>
+  </data>
+  <data name="UnexpectedError" xml:space="preserve">
+    <value>Beklenmeyen hata: {0}</value>
+  </data>
+  <data name="UnknownArchivingError" xml:space="preserve">
+    <value>Arşivleme sırasında bilinmeyen hata.</value>
+  </data>
+  <data name="EntryNameTooLong" xml:space="preserve">
+    <value>Öğe adı bir ZIP arşivi için çok uzun (UTF-8 olarak {0} bayt; en fazla {1}).</value>
+  </data>
+  <data name="NotEnoughSpaceToCompress" xml:space="preserve">
+    <value>Bu dosyayı sıkıştırmak için yeterli boş disk alanı yok: dosya {0} bayt, ancak yalnızca {1} bayt boş.</value>
+  </data>
+  <data name="PasswordNotEntered" xml:space="preserve">
+    <value>Arşiv oluşturulmadı: parola girilmedi.</value>
+  </data>
+  <data name="PasswordEmpty" xml:space="preserve">
+    <value>Arşiv oluşturulmadı: parola boş.</value>
+  </data>
+  <data name="PasswordUnsupportedCharacters" xml:space="preserve">
+    <value>Arşiv oluşturulmadı: parola yalnızca İngilizce harfler, rakamlar, boşluklar ve ASCII noktalama işaretleri içerebilir; 7-Zip gibi diğer ZIP araçları başka karakterlerle korunan bir arşivi açamaz.</value>
+  </data>
+  <data name="PasswordTooLong" xml:space="preserve">
+    <value>Arşiv oluşturulmadı: parola {0} karakterden uzun; bu, 7-Zip'in AES ile şifrelenmiş bir ZIP için kabul ettiği en fazla uzunluktur.</value>
+  </data>
+  <data name="PasswordOnlyForZip" xml:space="preserve">
+    <value>Parola koruması yalnızca ZIP arşivleri için kullanılabilir.</value>
+  </data>
+  <data name="CreationFormatBlocked" xml:space="preserve">
+    <value>{0} arşivi oluşturma Grup İlkesi tarafından engellendi.</value>
+  </data>
+  <data name="TarCreationDisabled" xml:space="preserve">
+    <value>tar.exe ile arşiv oluşturma Grup İlkesi tarafından devre dışı bırakıldı.</value>
+  </data>
+  <data name="TarCreationFailed" xml:space="preserve">
+    <value>tar.exe arşivi oluşturamadı: {0}</value>
+  </data>
+  <data name="TarNameNotRepresentable" xml:space="preserve">
+    <value>“{0}” adı, tar.exe'nin bu sistemde güvenle işleyemeyeceği karakterler içeriyor (ANSI kod sayfası {1}). Bu içerik için ZIP kullanın.</value>
+  </data>
+  <data name="TarSignatureInvalid" xml:space="preserve">
+    <value>tar.exe, Authenticode imza doğrulamasını geçemedi ve çalıştırılmayacak.</value>
+  </data>
+  <data name="TarSignatureVerificationFailed" xml:space="preserve">
+    <value>“{0}”, Authenticode imza doğrulamasını geçemedi.</value>
+  </data>
+  <data name="NotAnArchiveExtract" xml:space="preserve">
+    <value>Dosya tanınan bir arşiv biçiminde değil ve ayıklanamıyor.</value>
+  </data>
+  <data name="NotAnArchiveTest" xml:space="preserve">
+    <value>Dosya tanınan bir arşiv biçiminde değil ve test edilemiyor.</value>
+  </data>
+  <data name="UnsupportedByZipEngine" xml:space="preserve">
+    <value>{0} biçimi desteklenmiyor. Yalnızca ZIP tabanlı biçimler desteklenir.</value>
+  </data>
+  <data name="FormatBlocked" xml:space="preserve">
+    <value>Bu arşiv biçimi ({0}) Grup İlkesi tarafından engellendi.</value>
+  </data>
+  <data name="TarExtractionDisabled" xml:space="preserve">
+    <value>tar.exe ile ayıklama Grup İlkesi tarafından devre dışı bırakıldı.</value>
+  </data>
+  <data name="FormatNeedsNewerTar" xml:space="preserve">
+    <value>{0} için libarchive &gt;= 3.7.0 içeren tar.exe gerekir (Windows 11 23H2+); bu sistemin tar.exe'si (sürüm {1}) bunu desteklemiyor.</value>
+  </data>
+  <data name="FormatNotSupportedByTar" xml:space="preserve">
+    <value>{0}, bu sistemin tar.exe'si (sürüm {1}) tarafından desteklenmiyor.</value>
+  </data>
+  <data name="ArchiveFormatNotSupportedByTar" xml:space="preserve">
+    <value>Bu arşiv biçimi, bu sistemin tar.exe'si (sürüm {0}) tarafından desteklenmiyor.</value>
+  </data>
+  <data name="NoTestCapability" xml:space="preserve">
+    <value>tar ailesi arşivleri test edilemez</value>
+  </data>
+  <data name="PasswordProtectedExtract" xml:space="preserve">
+    <value>Bu arşiv parola korumalı ve ayıklanamıyor.</value>
+  </data>
+  <data name="PasswordProtectedTest" xml:space="preserve">
+    <value>Bu arşiv parola korumalı ve test edilemiyor.</value>
+  </data>
+  <data name="PasswordProtectedBrowse" xml:space="preserve">
+    <value>Bu arşiv parola korumalı ve göz atılamıyor.</value>
+  </data>
+  <data name="ZipCorrupted" xml:space="preserve">
+    <value>Dosyanın ZIP imzası var, ancak bozuk veya eksik görünüyor.</value>
+  </data>
+  <data name="CannotExtractArchive" xml:space="preserve">
+    <value>Arşiv ayıklanamıyor: {0}</value>
+  </data>
+  <data name="AccessDeniedExtractingArchive" xml:space="preserve">
+    <value>Arşiv ayıklanırken erişim reddedildi: {0}</value>
+  </data>
+  <data name="CannotReadArchive" xml:space="preserve">
+    <value>Arşiv okunamıyor: {0}</value>
+  </data>
+  <data name="EntryNameCollision" xml:space="preserve">
+    <value>Kod çözüldükten sonra “{0}” öğesi başka bir öğeyle aynı ada sahip; biri diğerinin üzerine yazacağı için ayıklanmadı.</value>
+  </data>
+  <data name="EntryFailed" xml:space="preserve">
+    <value>“{0}” öğesi: {1}</value>
+  </data>
+  <data name="EntryWrongPassword" xml:space="preserve">
+    <value>“{0}” öğesinin şifresi çözülemedi: yanlış parola.</value>
+  </data>
+  <data name="EntryAuthenticationFailed" xml:space="preserve">
+    <value>“{0}” öğesinin şifresi çözülemedi: kimlik doğrulama başarısız (bozuk veya değiştirilmiş).</value>
+  </data>
+  <data name="EntryUnsupportedEncryptedMethod" xml:space="preserve">
+    <value>“{0}” öğesi şifrelemeyle desteklenmeyen bir sıkıştırma yöntemi kullanıyor.</value>
+  </data>
+  <data name="InsufficientDiskSpace" xml:space="preserve">
+    <value>Arşiv sıkıştırılmamış olarak {0} bayt bildiriyor, ancak hedefte yalnızca {1} bayt boş. Ayıklama engellendi.</value>
+  </data>
+  <data name="ZipBombDeclined" xml:space="preserve">
+    <value>Şüpheli sıkıştırma oranı ({0}:1, {1} bayt bildirildi). Ayıklama, ZIP bombalarına karşı önlem olarak reddedildi.</value>
+  </data>
+  <data name="TarBombDeclined" xml:space="preserve">
+    <value>Tüm arşiv için şüpheli sıkıştırma oranı ({0}:1, {1} bayt bildirildi). Ayıklama, açma bombalarına karşı önlem olarak reddedildi.</value>
+  </data>
+  <data name="DestinationFileLocked" xml:space="preserve">
+    <value>“{0}” yazılamıyor: hedef dosya başka bir işlem tarafından kilitli.</value>
+  </data>
+  <data name="AllEntriesSkipped" xml:space="preserve">
+    <value>Bu arşivden hiçbir şey ayıklanmadı — tüm öğeler atlandı.</value>
+  </data>
+  <data name="UnsafeEntryPath" xml:space="preserve">
+    <value>“{0}” öğesinin yolu güvenli değil ve ayıklanmadı.</value>
+  </data>
+  <data name="EntryAlternateDataStream" xml:space="preserve">
+    <value>Alternatif veri akışı öğesi güvenlik nedeniyle reddedildi.</value>
+  </data>
+  <data name="EntryReservedName" xml:space="preserve">
+    <value>Öğe adı ayrılmış bir Windows cihaz adıyla eşleşiyor ve atlandı.</value>
+  </data>
+  <data name="EntryControlCharacters" xml:space="preserve">
+    <value>Öğe adı denetim karakterleri içeriyor ve atlandı.</value>
+  </data>
+  <data name="CannotExtractEntry" xml:space="preserve">
+    <value>“{0}” ayıklanamıyor: {1}</value>
+  </data>
+  <data name="EntryThroughReparsePoint" xml:space="preserve">
+    <value>Öğe yolu bir yeniden ayrıştırma noktasından (sembolik bağlantı veya birleşim noktası) geçiyor ve atlandı.</value>
+  </data>
+  <data name="FileExistsAtDestination" xml:space="preserve">
+    <value>Dosya hedefte zaten var.</value>
+  </data>
+  <data name="TarExtractionFailed" xml:space="preserve">
+    <value>tar.exe ile ayıklama başarısız oldu: {0}</value>
+  </data>
+  <data name="TarUnsafeEntryPath" xml:space="preserve">
+    <value>Arşiv güvenli olmayan bir öğe yolu (“{0}”) içeriyor ve güvenle ayıklanamıyor.</value>
+  </data>
+  <data name="TarListingInconsistent" xml:space="preserve">
+    <value>Arşivin içerik listesi tutarsız ve arşiv güvenle ayıklanamıyor.</value>
+  </data>
+  <data name="TarSpecialEntry" xml:space="preserve">
+    <value>Arşiv bir sembolik bağlantı, sabit bağlantı, cihaz veya başka bir özel öğe içeriyor ve güvenle ayıklanamıyor.</value>
+  </data>
+  <data name="ListingInconsistent" xml:space="preserve">
+    <value>Arşivin içerik listesi tutarsız.</value>
+  </data>
+  <data name="TarUnreadableNames" xml:space="preserve">
+    <value>Arşiv, tar.exe'nin bu sistemde gösteremeyeceği dosya adları içeriyor (kod sayfası {0}); bu nedenle burada tar.exe ile okunamıyor. Ayrıntılar: {1}</value>
+  </data>
+  <data name="SandboxSetupFailed" xml:space="preserve">
+    <value>Korumalı alan kurulumu başarısız oldu: {0}</value>
+  </data>
+  <data name="ArchiveInUse" xml:space="preserve">
+    <value>Arşiv başka bir program tarafından kullanılıyor: {0}</value>
+  </data>
+  <data name="CannotOpenArchive" xml:space="preserve">
+    <value>Arşiv açılamıyor: {0}</value>
+  </data>
+  <data name="CannotReopenArchive" xml:space="preserve">
+    <value>Arşiv yeniden açılamıyor (Win32 hatası {0}).</value>
+  </data>
+  <data name="HashFolderSkipped" xml:space="preserve">
+    <value>Atlandı: klasör (yalnızca tek bir klasör seçiliyken desteklenir)</value>
+  </data>
+  <data name="HashLinkSkipped" xml:space="preserve">
+    <value>Atlandı: sembolik bağlantı veya birleşim noktası (izlenmez)</value>
+  </data>
+  <data name="HashFileChanged" xml:space="preserve">
+    <value>Karma hesaplanırken dosyanın boyutu değişti: {0}</value>
+  </data>
+  <data name="NoAntivirusRegistered" xml:space="preserve">
+    <value>Tarama için kayıtlı bir virüsten koruma programı yok.</value>
+  </data>
+  <data name="ScanSessionFailed" xml:space="preserve">
+    <value>Virüs tarama oturumu başlatılamadı: {0}</value>
+  </data>
+  <data name="ScanCannotReadArchive" xml:space="preserve">
+    <value>Arşiv okunamadı: {0}</value>
+  </data>
+  <data name="ScanCannotReadEntry" xml:space="preserve">
+    <value>Öğe okunamadı: {0}</value>
+  </data>
+  <data name="ScanCannotExtract" xml:space="preserve">
+    <value>Arşiv tarama için ayıklanamadı: {0}</value>
+  </data>
+  <data name="ScanRemovedOrBlocked" xml:space="preserve">
+    <value>Pakko doğrudan tarayamadan önce kaldırıldı veya engellendi.</value>
+  </data>
+  <data name="ScanEntryFailed" xml:space="preserve">
+    <value>Bu öğenin virüs taraması başarısız oldu: {0}</value>
+  </data>
+  <data name="ScanEntryIntegrityFailed" xml:space="preserve">
+    <value>Şifresi çözülen içerik bütünlük denetimini geçemedi (yanlış parola veya bozuk öğe) ve temiz olarak bildirilmedi.</value>
+  </data>
+  <data name="ScanEntryPasswordProtected" xml:space="preserve">
+    <value>Öğe parola korumalı ve taranmadı.</value>
+  </data>
+  <data name="ScanEntryWrongPassword" xml:space="preserve">
+    <value>Öğe farklı bir parolayla korunuyor ve taranmadı.</value>
+  </data>
+  <data name="ScanEntryUnsupportedMethod" xml:space="preserve">
+    <value>Öğe şifrelemeyle desteklenmeyen bir sıkıştırma yöntemi kullanıyor ve taranmadı.</value>
+  </data>
+  <data name="ScanEntryAuthenticationFailed" xml:space="preserve">
+    <value>Öğe şifre çözme kimlik doğrulamasını geçemedi (bozuk veya değiştirilmiş) ve taranmadı.</value>
+  </data>
+  <data name="ScanEntryTooLarge" xml:space="preserve">
+    <value>Öğe {0} MiB'tan büyük ve taranmadı.</value>
+  </data>
+</root>

@@ -1,0 +1,264 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="SourceNotFound" xml:space="preserve">
+    <value>Lähdepolkua ei ole: {0}</value>
+  </data>
+  <data name="CannotAccessFile" xml:space="preserve">
+    <value>Tiedostoon ei päästä käsiksi: {0}</value>
+  </data>
+  <data name="AccessDenied" xml:space="preserve">
+    <value>Käyttö estetty: {0}</value>
+  </data>
+  <data name="LinkNotArchived" xml:space="preserve">
+    <value>Symbolisia linkkejä ja NTFS-liitoskohtia ei arkistoida.</value>
+  </data>
+  <data name="FolderLinkNotFollowed" xml:space="preserve">
+    <value>NTFS-liitoskohtia ja kansioiden symbolisia linkkejä ei seurata arkistoitaessa.</value>
+  </data>
+  <data name="ReparsePointNotArchived" xml:space="preserve">
+    <value>Symbolisia linkkejä ja uudelleenjäsennyskohtia ei arkistoida.</value>
+  </data>
+  <data name="ArchiveAlreadyExists" xml:space="preserve">
+    <value>Arkisto ”{0}” on jo kohteessa, joten se ohitettiin.</value>
+  </data>
+  <data name="CannotCreateArchive" xml:space="preserve">
+    <value>Arkistoa ei voi luoda: {0}</value>
+  </data>
+  <data name="AccessDeniedCreatingArchive" xml:space="preserve">
+    <value>Käyttö estetty arkistoa luotaessa: {0}</value>
+  </data>
+  <data name="UnexpectedError" xml:space="preserve">
+    <value>Odottamaton virhe: {0}</value>
+  </data>
+  <data name="UnknownArchivingError" xml:space="preserve">
+    <value>Tuntematon virhe arkistoinnissa.</value>
+  </data>
+  <data name="EntryNameTooLong" xml:space="preserve">
+    <value>Kohteen nimi on liian pitkä ZIP-arkistoon ({0} tavua UTF-8-muodossa; enintään {1}).</value>
+  </data>
+  <data name="NotEnoughSpaceToCompress" xml:space="preserve">
+    <value>Levytilaa ei ole tarpeeksi tämän tiedoston pakkaamiseen: sen koko on {0} tavua, mutta vapaana on vain {1} tavua.</value>
+  </data>
+  <data name="PasswordNotEntered" xml:space="preserve">
+    <value>Arkistoa ei luotu: salasanaa ei annettu.</value>
+  </data>
+  <data name="PasswordEmpty" xml:space="preserve">
+    <value>Arkistoa ei luotu: salasana on tyhjä.</value>
+  </data>
+  <data name="PasswordUnsupportedCharacters" xml:space="preserve">
+    <value>Arkistoa ei luotu: salasanassa saa olla vain englannin kirjaimia, numeroita, välilyöntejä ja ASCII-välimerkkejä; muut ZIP-työkalut, kuten 7-Zip, eivät voi avata muilla merkeillä suojattua arkistoa.</value>
+  </data>
+  <data name="PasswordTooLong" xml:space="preserve">
+    <value>Arkistoa ei luotu: salasana on pidempi kuin {0} merkkiä, mikä on enimmäismäärä, jonka 7-Zip hyväksyy AES-salatulle ZIP-arkistolle.</value>
+  </data>
+  <data name="PasswordOnlyForZip" xml:space="preserve">
+    <value>Salasanasuojaus on käytettävissä vain ZIP-arkistoille.</value>
+  </data>
+  <data name="CreationFormatBlocked" xml:space="preserve">
+    <value>{0}-arkiston luominen on estetty ryhmäkäytännöllä.</value>
+  </data>
+  <data name="TarCreationDisabled" xml:space="preserve">
+    <value>Arkistojen luominen tar.exe-ohjelmalla on poistettu käytöstä ryhmäkäytännöllä.</value>
+  </data>
+  <data name="TarCreationFailed" xml:space="preserve">
+    <value>tar.exe ei pystynyt luomaan arkistoa: {0}</value>
+  </data>
+  <data name="TarNameNotRepresentable" xml:space="preserve">
+    <value>Nimi ”{0}” sisältää merkkejä, joita tar.exe ei voi käsitellä turvallisesti tässä järjestelmässä (ANSI-koodisivu {1}). Käytä ZIP-muotoa tälle sisällölle.</value>
+  </data>
+  <data name="TarSignatureInvalid" xml:space="preserve">
+    <value>tar.exe ei läpäissyt Authenticode-allekirjoituksen tarkistusta, eikä sitä suoriteta.</value>
+  </data>
+  <data name="TarSignatureVerificationFailed" xml:space="preserve">
+    <value>”{0}” ei läpäissyt Authenticode-allekirjoituksen tarkistusta.</value>
+  </data>
+  <data name="NotAnArchiveExtract" xml:space="preserve">
+    <value>Tiedosto ei ole tunnistetussa arkistomuodossa, eikä sitä voi purkaa.</value>
+  </data>
+  <data name="NotAnArchiveTest" xml:space="preserve">
+    <value>Tiedosto ei ole tunnistetussa arkistomuodossa, eikä sitä voi testata.</value>
+  </data>
+  <data name="UnsupportedByZipEngine" xml:space="preserve">
+    <value>Muotoa {0} ei tueta. Vain ZIP-pohjaisia muotoja tuetaan.</value>
+  </data>
+  <data name="FormatBlocked" xml:space="preserve">
+    <value>Tämä arkistomuoto ({0}) on estetty ryhmäkäytännöllä.</value>
+  </data>
+  <data name="TarExtractionDisabled" xml:space="preserve">
+    <value>Purkaminen tar.exe-ohjelmalla on poistettu käytöstä ryhmäkäytännöllä.</value>
+  </data>
+  <data name="FormatNeedsNewerTar" xml:space="preserve">
+    <value>{0} edellyttää tar.exe-ohjelmaa, jossa on libarchive &gt;= 3.7.0 (Windows 11 23H2+); tämän järjestelmän tar.exe (versio {1}) ei tue sitä.</value>
+  </data>
+  <data name="FormatNotSupportedByTar" xml:space="preserve">
+    <value>Tämän järjestelmän tar.exe (versio {1}) ei tue muotoa {0}.</value>
+  </data>
+  <data name="ArchiveFormatNotSupportedByTar" xml:space="preserve">
+    <value>Tämän järjestelmän tar.exe (versio {0}) ei tue tätä arkistomuotoa.</value>
+  </data>
+  <data name="NoTestCapability" xml:space="preserve">
+    <value>tar-perheen arkistoja ei voi testata</value>
+  </data>
+  <data name="PasswordProtectedExtract" xml:space="preserve">
+    <value>Tämä arkisto on suojattu salasanalla, eikä sitä voi purkaa.</value>
+  </data>
+  <data name="PasswordProtectedTest" xml:space="preserve">
+    <value>Tämä arkisto on suojattu salasanalla, eikä sitä voi testata.</value>
+  </data>
+  <data name="PasswordProtectedBrowse" xml:space="preserve">
+    <value>Tämä arkisto on suojattu salasanalla, eikä sitä voi selata.</value>
+  </data>
+  <data name="ZipCorrupted" xml:space="preserve">
+    <value>Tiedostossa on ZIP-allekirjoitus, mutta se näyttää vioittuneelta tai vajaalta.</value>
+  </data>
+  <data name="CannotExtractArchive" xml:space="preserve">
+    <value>Arkistoa ei voi purkaa: {0}</value>
+  </data>
+  <data name="AccessDeniedExtractingArchive" xml:space="preserve">
+    <value>Käyttö estetty arkistoa purettaessa: {0}</value>
+  </data>
+  <data name="CannotReadArchive" xml:space="preserve">
+    <value>Arkistoa ei voi lukea: {0}</value>
+  </data>
+  <data name="EntryNameCollision" xml:space="preserve">
+    <value>Kohteella ”{0}” on dekoodauksen jälkeen sama nimi kuin toisella kohteella; sitä ei pureta, koska toinen korvaisi toisen.</value>
+  </data>
+  <data name="EntryFailed" xml:space="preserve">
+    <value>Kohde ”{0}”: {1}</value>
+  </data>
+  <data name="EntryWrongPassword" xml:space="preserve">
+    <value>Kohteen ”{0}” salausta ei voitu purkaa: väärä salasana.</value>
+  </data>
+  <data name="EntryAuthenticationFailed" xml:space="preserve">
+    <value>Kohteen ”{0}” salausta ei voitu purkaa: todennus epäonnistui (vioittunut tai muokattu).</value>
+  </data>
+  <data name="EntryUnsupportedEncryptedMethod" xml:space="preserve">
+    <value>Kohde ”{0}” käyttää salauksen kanssa pakkausmenetelmää, jota ei tueta.</value>
+  </data>
+  <data name="InsufficientDiskSpace" xml:space="preserve">
+    <value>Arkisto ilmoittaa purettuna kooksi {0} tavua, mutta kohteessa on vapaana vain {1} tavua. Purkaminen estettiin.</value>
+  </data>
+  <data name="ZipBombDeclined" xml:space="preserve">
+    <value>Epäilyttävä pakkaussuhde ({0}:1, ilmoitettu {1} tavua). Purkaminen hylättiin varotoimena ZIP-pommeja vastaan.</value>
+  </data>
+  <data name="TarBombDeclined" xml:space="preserve">
+    <value>Epäilyttävä pakkaussuhde ({0}:1, ilmoitettu {1} tavua) koko arkistolle. Purkaminen hylättiin varotoimena purkupommeja vastaan.</value>
+  </data>
+  <data name="DestinationFileLocked" xml:space="preserve">
+    <value>Kohdetta ”{0}” ei voi kirjoittaa: toinen prosessi on lukinnut kohdetiedoston.</value>
+  </data>
+  <data name="AllEntriesSkipped" xml:space="preserve">
+    <value>Tästä arkistosta ei purettu mitään – kaikki kohteet ohitettiin.</value>
+  </data>
+  <data name="UnsafeEntryPath" xml:space="preserve">
+    <value>Kohteella ”{0}” on vaarallinen polku, joten sitä ei purettu.</value>
+  </data>
+  <data name="EntryAlternateDataStream" xml:space="preserve">
+    <value>Vaihtoehtoisen tietovirran kohde hylättiin turvallisuussyistä.</value>
+  </data>
+  <data name="EntryReservedName" xml:space="preserve">
+    <value>Kohteen nimi vastaa Windowsin varattua laitenimeä, joten se ohitettiin.</value>
+  </data>
+  <data name="EntryControlCharacters" xml:space="preserve">
+    <value>Kohteen nimessä on ohjausmerkkejä, joten se ohitettiin.</value>
+  </data>
+  <data name="CannotExtractEntry" xml:space="preserve">
+    <value>Kohdetta ”{0}” ei voi purkaa: {1}</value>
+  </data>
+  <data name="EntryThroughReparsePoint" xml:space="preserve">
+    <value>Kohteen polku kulkee uudelleenjäsennyskohdan (symbolinen linkki tai liitoskohta) kautta, joten se ohitettiin.</value>
+  </data>
+  <data name="FileExistsAtDestination" xml:space="preserve">
+    <value>Tiedosto on jo kohteessa.</value>
+  </data>
+  <data name="TarExtractionFailed" xml:space="preserve">
+    <value>Purkaminen tar.exe-ohjelmalla epäonnistui: {0}</value>
+  </data>
+  <data name="TarUnsafeEntryPath" xml:space="preserve">
+    <value>Arkisto sisältää vaarallisen kohdepolun (”{0}”), eikä sitä voi purkaa turvallisesti.</value>
+  </data>
+  <data name="TarListingInconsistent" xml:space="preserve">
+    <value>Arkiston sisältöluettelo on ristiriitainen, eikä arkistoa voi purkaa turvallisesti.</value>
+  </data>
+  <data name="TarSpecialEntry" xml:space="preserve">
+    <value>Arkisto sisältää symbolisen linkin, kovan linkin, laitteen tai muun erikoiskohteen, eikä sitä voi purkaa turvallisesti.</value>
+  </data>
+  <data name="ListingInconsistent" xml:space="preserve">
+    <value>Arkiston sisältöluettelo on ristiriitainen.</value>
+  </data>
+  <data name="TarUnreadableNames" xml:space="preserve">
+    <value>Arkisto sisältää tiedostonimiä, joita tar.exe ei voi esittää tässä järjestelmässä (koodisivu {0}), joten sitä ei voi lukea täällä tar.exe-ohjelmalla. Tiedot: {1}</value>
+  </data>
+  <data name="SandboxSetupFailed" xml:space="preserve">
+    <value>Eristetyn ympäristön määrittäminen epäonnistui: {0}</value>
+  </data>
+  <data name="ArchiveInUse" xml:space="preserve">
+    <value>Toinen ohjelma käyttää arkistoa: {0}</value>
+  </data>
+  <data name="CannotOpenArchive" xml:space="preserve">
+    <value>Arkistoa ei voi avata: {0}</value>
+  </data>
+  <data name="CannotReopenArchive" xml:space="preserve">
+    <value>Arkistoa ei voi avata uudelleen (Win32-virhe {0}).</value>
+  </data>
+  <data name="HashFolderSkipped" xml:space="preserve">
+    <value>Ohitettu: kansio (tuetaan vain, kun valittuna on yksi kansio)</value>
+  </data>
+  <data name="HashLinkSkipped" xml:space="preserve">
+    <value>Ohitettu: symbolinen linkki tai liitoskohta (ei seurata)</value>
+  </data>
+  <data name="HashFileChanged" xml:space="preserve">
+    <value>Tiedoston koko muuttui tiivisteen laskemisen aikana: {0}</value>
+  </data>
+  <data name="NoAntivirusRegistered" xml:space="preserve">
+    <value>Tarkistukseen ei ole rekisteröity virustorjuntaohjelmaa.</value>
+  </data>
+  <data name="ScanSessionFailed" xml:space="preserve">
+    <value>Virustarkistusistuntoa ei voitu aloittaa: {0}</value>
+  </data>
+  <data name="ScanCannotReadArchive" xml:space="preserve">
+    <value>Arkistoa ei voitu lukea: {0}</value>
+  </data>
+  <data name="ScanCannotReadEntry" xml:space="preserve">
+    <value>Kohdetta ei voitu lukea: {0}</value>
+  </data>
+  <data name="ScanCannotExtract" xml:space="preserve">
+    <value>Arkistoa ei voitu purkaa tarkistusta varten: {0}</value>
+  </data>
+  <data name="ScanRemovedOrBlocked" xml:space="preserve">
+    <value>Poistettu tai estetty ennen kuin Pakko ehti tarkistaa sen suoraan.</value>
+  </data>
+  <data name="ScanEntryFailed" xml:space="preserve">
+    <value>Tämän kohteen virustarkistus epäonnistui: {0}</value>
+  </data>
+  <data name="ScanEntryIntegrityFailed" xml:space="preserve">
+    <value>Puretun salauksen sisältö ei läpäissyt eheystarkistusta (väärä salasana tai vioittunut kohde), eikä sitä ilmoitettu puhtaaksi.</value>
+  </data>
+  <data name="ScanEntryPasswordProtected" xml:space="preserve">
+    <value>Kohde on suojattu salasanalla, eikä sitä tarkistettu.</value>
+  </data>
+  <data name="ScanEntryWrongPassword" xml:space="preserve">
+    <value>Kohde on suojattu eri salasanalla, eikä sitä tarkistettu.</value>
+  </data>
+  <data name="ScanEntryUnsupportedMethod" xml:space="preserve">
+    <value>Kohde käyttää salauksen kanssa pakkausmenetelmää, jota ei tueta, eikä sitä tarkistettu.</value>
+  </data>
+  <data name="ScanEntryAuthenticationFailed" xml:space="preserve">
+    <value>Kohde ei läpäissyt salauksen purun todennusta (vioittunut tai muokattu), eikä sitä tarkistettu.</value>
+  </data>
+  <data name="ScanEntryTooLarge" xml:space="preserve">
+    <value>Kohde on suurempi kuin {0} Mt, eikä sitä tarkistettu.</value>
+  </data>
+</root>

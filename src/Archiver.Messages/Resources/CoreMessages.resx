@@ -1,0 +1,264 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="SourceNotFound" xml:space="preserve">
+    <value>Source path does not exist: {0}</value>
+  </data>
+  <data name="CannotAccessFile" xml:space="preserve">
+    <value>Cannot access file: {0}</value>
+  </data>
+  <data name="AccessDenied" xml:space="preserve">
+    <value>Access denied: {0}</value>
+  </data>
+  <data name="LinkNotArchived" xml:space="preserve">
+    <value>Symbolic links and NTFS junctions are not archived.</value>
+  </data>
+  <data name="FolderLinkNotFollowed" xml:space="preserve">
+    <value>NTFS junctions and directory symbolic links are not followed during archiving.</value>
+  </data>
+  <data name="ReparsePointNotArchived" xml:space="preserve">
+    <value>Symbolic links and reparse points are not archived.</value>
+  </data>
+  <data name="ArchiveAlreadyExists" xml:space="preserve">
+    <value>Archive '{0}' already exists at the destination and was skipped.</value>
+  </data>
+  <data name="CannotCreateArchive" xml:space="preserve">
+    <value>Cannot create archive: {0}</value>
+  </data>
+  <data name="AccessDeniedCreatingArchive" xml:space="preserve">
+    <value>Access denied creating archive: {0}</value>
+  </data>
+  <data name="UnexpectedError" xml:space="preserve">
+    <value>Unexpected error: {0}</value>
+  </data>
+  <data name="UnknownArchivingError" xml:space="preserve">
+    <value>Unknown error while archiving.</value>
+  </data>
+  <data name="EntryNameTooLong" xml:space="preserve">
+    <value>Entry name is too long for a ZIP archive ({0} bytes as UTF-8; the maximum is {1}).</value>
+  </data>
+  <data name="NotEnoughSpaceToCompress" xml:space="preserve">
+    <value>Not enough free disk space to compress this file: it is {0} bytes, but only {1} bytes are free.</value>
+  </data>
+  <data name="PasswordNotEntered" xml:space="preserve">
+    <value>Archive was not created: no password was entered.</value>
+  </data>
+  <data name="PasswordEmpty" xml:space="preserve">
+    <value>Archive was not created: the password is empty.</value>
+  </data>
+  <data name="PasswordUnsupportedCharacters" xml:space="preserve">
+    <value>Archive was not created: the password may contain only English letters, digits, spaces and ASCII punctuation; other ZIP tools such as 7-Zip cannot open an archive protected by any other characters.</value>
+  </data>
+  <data name="PasswordTooLong" xml:space="preserve">
+    <value>Archive was not created: the password is longer than {0} characters, the most 7-Zip accepts for an AES-encrypted ZIP.</value>
+  </data>
+  <data name="PasswordOnlyForZip" xml:space="preserve">
+    <value>Password protection is only available for ZIP archives.</value>
+  </data>
+  <data name="CreationFormatBlocked" xml:space="preserve">
+    <value>Creating a {0} archive is blocked by Group Policy.</value>
+  </data>
+  <data name="TarCreationDisabled" xml:space="preserve">
+    <value>tar.exe-based archive creation is disabled by Group Policy.</value>
+  </data>
+  <data name="TarCreationFailed" xml:space="preserve">
+    <value>tar.exe failed to create archive: {0}</value>
+  </data>
+  <data name="TarNameNotRepresentable" xml:space="preserve">
+    <value>The name '{0}' contains characters that tar.exe cannot handle safely on this system (ANSI code page {1}). Use ZIP for this content.</value>
+  </data>
+  <data name="TarSignatureInvalid" xml:space="preserve">
+    <value>tar.exe failed Authenticode signature verification; refusing to run it.</value>
+  </data>
+  <data name="TarSignatureVerificationFailed" xml:space="preserve">
+    <value>'{0}' failed Authenticode signature verification.</value>
+  </data>
+  <data name="NotAnArchiveExtract" xml:space="preserve">
+    <value>File is not a recognized archive format and cannot be extracted.</value>
+  </data>
+  <data name="NotAnArchiveTest" xml:space="preserve">
+    <value>File is not a recognized archive format and cannot be tested.</value>
+  </data>
+  <data name="UnsupportedByZipEngine" xml:space="preserve">
+    <value>{0} format is not supported. Only ZIP-based formats are supported.</value>
+  </data>
+  <data name="FormatBlocked" xml:space="preserve">
+    <value>This archive format ({0}) is blocked by Group Policy.</value>
+  </data>
+  <data name="TarExtractionDisabled" xml:space="preserve">
+    <value>tar.exe-based extraction is disabled by Group Policy.</value>
+  </data>
+  <data name="FormatNeedsNewerTar" xml:space="preserve">
+    <value>{0} requires tar.exe with libarchive &gt;= 3.7.0 (Windows 11 23H2+); this system's tar.exe (version {1}) does not support it.</value>
+  </data>
+  <data name="FormatNotSupportedByTar" xml:space="preserve">
+    <value>{0} is not supported by this system's tar.exe (version {1}).</value>
+  </data>
+  <data name="ArchiveFormatNotSupportedByTar" xml:space="preserve">
+    <value>This archive format is not supported by this system's tar.exe (version {0}).</value>
+  </data>
+  <data name="NoTestCapability" xml:space="preserve">
+    <value>tar-family archives have no test capability</value>
+  </data>
+  <data name="PasswordProtectedExtract" xml:space="preserve">
+    <value>This archive is password-protected and cannot be extracted.</value>
+  </data>
+  <data name="PasswordProtectedTest" xml:space="preserve">
+    <value>This archive is password-protected and cannot be tested.</value>
+  </data>
+  <data name="PasswordProtectedBrowse" xml:space="preserve">
+    <value>This archive is password-protected and cannot be browsed.</value>
+  </data>
+  <data name="ZipCorrupted" xml:space="preserve">
+    <value>File has ZIP signature but appears corrupted or incomplete.</value>
+  </data>
+  <data name="CannotExtractArchive" xml:space="preserve">
+    <value>Cannot extract archive: {0}</value>
+  </data>
+  <data name="AccessDeniedExtractingArchive" xml:space="preserve">
+    <value>Access denied extracting archive: {0}</value>
+  </data>
+  <data name="CannotReadArchive" xml:space="preserve">
+    <value>Cannot read archive: {0}</value>
+  </data>
+  <data name="EntryNameCollision" xml:space="preserve">
+    <value>Entry '{0}' has the same name as another entry once decoded; it is not extracted, since one would overwrite the other.</value>
+  </data>
+  <data name="EntryFailed" xml:space="preserve">
+    <value>Entry '{0}': {1}</value>
+  </data>
+  <data name="EntryWrongPassword" xml:space="preserve">
+    <value>Entry '{0}' could not be decrypted: wrong password.</value>
+  </data>
+  <data name="EntryAuthenticationFailed" xml:space="preserve">
+    <value>Entry '{0}' could not be decrypted: authentication failed (corrupted or tampered).</value>
+  </data>
+  <data name="EntryUnsupportedEncryptedMethod" xml:space="preserve">
+    <value>Entry '{0}' uses an unsupported compression method under encryption.</value>
+  </data>
+  <data name="InsufficientDiskSpace" xml:space="preserve">
+    <value>Archive declares {0} bytes uncompressed, but the destination only has {1} bytes free. Extraction was blocked.</value>
+  </data>
+  <data name="ZipBombDeclined" xml:space="preserve">
+    <value>Suspicious compression ratio ({0}:1, {1} bytes declared). Extraction was declined as a precaution against ZIP bombs.</value>
+  </data>
+  <data name="TarBombDeclined" xml:space="preserve">
+    <value>Suspicious compression ratio ({0}:1, {1} bytes declared) across the whole archive. Extraction was declined as a precaution against decompression bombs.</value>
+  </data>
+  <data name="DestinationFileLocked" xml:space="preserve">
+    <value>Cannot write '{0}': destination file is locked by another process.</value>
+  </data>
+  <data name="AllEntriesSkipped" xml:space="preserve">
+    <value>No entries were extracted from this archive — every entry was skipped.</value>
+  </data>
+  <data name="UnsafeEntryPath" xml:space="preserve">
+    <value>Entry '{0}' has an unsafe path and was not extracted.</value>
+  </data>
+  <data name="EntryAlternateDataStream" xml:space="preserve">
+    <value>Alternate Data Stream entry rejected for security.</value>
+  </data>
+  <data name="EntryReservedName" xml:space="preserve">
+    <value>Entry name matches a reserved Windows device name and was skipped.</value>
+  </data>
+  <data name="EntryControlCharacters" xml:space="preserve">
+    <value>Entry name contains control characters and was skipped.</value>
+  </data>
+  <data name="CannotExtractEntry" xml:space="preserve">
+    <value>Cannot extract '{0}': {1}</value>
+  </data>
+  <data name="EntryThroughReparsePoint" xml:space="preserve">
+    <value>Entry path traverses a reparse point (symlink or junction) and was skipped.</value>
+  </data>
+  <data name="FileExistsAtDestination" xml:space="preserve">
+    <value>File already exists at destination.</value>
+  </data>
+  <data name="TarExtractionFailed" xml:space="preserve">
+    <value>tar.exe extraction failed: {0}</value>
+  </data>
+  <data name="TarUnsafeEntryPath" xml:space="preserve">
+    <value>Archive contains an unsafe entry path ('{0}') and cannot be safely extracted.</value>
+  </data>
+  <data name="TarListingInconsistent" xml:space="preserve">
+    <value>Archive listing is inconsistent and cannot be safely extracted.</value>
+  </data>
+  <data name="TarSpecialEntry" xml:space="preserve">
+    <value>Archive contains a symlink, hardlink, device, or other special entry and cannot be safely extracted.</value>
+  </data>
+  <data name="ListingInconsistent" xml:space="preserve">
+    <value>Archive listing is inconsistent.</value>
+  </data>
+  <data name="TarUnreadableNames" xml:space="preserve">
+    <value>The archive contains file names tar.exe cannot represent on this system (code page {0}), so it cannot be read with tar.exe here. Details: {1}</value>
+  </data>
+  <data name="SandboxSetupFailed" xml:space="preserve">
+    <value>Sandbox setup failed: {0}</value>
+  </data>
+  <data name="ArchiveInUse" xml:space="preserve">
+    <value>The archive is in use by another program: {0}</value>
+  </data>
+  <data name="CannotOpenArchive" xml:space="preserve">
+    <value>Cannot open the archive: {0}</value>
+  </data>
+  <data name="CannotReopenArchive" xml:space="preserve">
+    <value>Cannot reopen the archive (Win32 error {0}).</value>
+  </data>
+  <data name="HashFolderSkipped" xml:space="preserve">
+    <value>Skipped: folder (only supported when a single folder is selected alone)</value>
+  </data>
+  <data name="HashLinkSkipped" xml:space="preserve">
+    <value>Skipped: symbolic link or junction (not followed)</value>
+  </data>
+  <data name="HashFileChanged" xml:space="preserve">
+    <value>The file changed size while it was being hashed: {0}</value>
+  </data>
+  <data name="NoAntivirusRegistered" xml:space="preserve">
+    <value>No antivirus is registered to scan with.</value>
+  </data>
+  <data name="ScanSessionFailed" xml:space="preserve">
+    <value>Could not start an antivirus scan session: {0}</value>
+  </data>
+  <data name="ScanCannotReadArchive" xml:space="preserve">
+    <value>Could not read archive: {0}</value>
+  </data>
+  <data name="ScanCannotReadEntry" xml:space="preserve">
+    <value>Could not read entry: {0}</value>
+  </data>
+  <data name="ScanCannotExtract" xml:space="preserve">
+    <value>Could not extract archive for scanning: {0}</value>
+  </data>
+  <data name="ScanRemovedOrBlocked" xml:space="preserve">
+    <value>Removed or blocked before Pakko could scan it directly.</value>
+  </data>
+  <data name="ScanEntryFailed" xml:space="preserve">
+    <value>The antivirus scan of this entry failed: {0}</value>
+  </data>
+  <data name="ScanEntryIntegrityFailed" xml:space="preserve">
+    <value>Decrypted content failed its integrity check (wrong password or corrupted entry) and was not reported clean.</value>
+  </data>
+  <data name="ScanEntryPasswordProtected" xml:space="preserve">
+    <value>Entry is password-protected and was not scanned.</value>
+  </data>
+  <data name="ScanEntryWrongPassword" xml:space="preserve">
+    <value>Entry is password-protected with a different password and was not scanned.</value>
+  </data>
+  <data name="ScanEntryUnsupportedMethod" xml:space="preserve">
+    <value>Entry uses an unsupported compression method under encryption and was not scanned.</value>
+  </data>
+  <data name="ScanEntryAuthenticationFailed" xml:space="preserve">
+    <value>Entry failed decryption authentication (corrupted or tampered) and was not scanned.</value>
+  </data>
+  <data name="ScanEntryTooLarge" xml:space="preserve">
+    <value>Entry is larger than {0} MiB and was not scanned.</value>
+  </data>
+</root>
