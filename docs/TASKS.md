@@ -4538,7 +4538,8 @@ real console) and T-F226's deferred per-arrow diagram ritual — carried as open
   DIAGRAMS diagram 2 (outcome line, summary only on problems; rendered with mermaid-cli). README
   and both `index.html` had no button wording to change. CHANGELOG at release: "Compress to
   {format}" rename, inline password, `pakko l` Encrypted column (Path moves to column 7), bare
-  `-p` prompt.
+  `-p` prompt. Follow-ups filed as their own tasks: T-F276 ("archiving" in Explorer's window and
+  Core) and T-F277 (browse Test cancel resets to "Ready").
 
 - **Carried into wave 4 (2026-09-28): device checks left open by fix phase 7** — T-F254 on a
   regional Windows language (e.g. de-AT, zh-CN: menu, Shell windows and App agree on the language);
@@ -5443,8 +5444,9 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   preview ran and back on after. Item 5 — a synthetic drag from Explorer (`windows` MCP) is not an
   OLE drag, nothing dropped, so the caption itself is not seen on device; its text is a resource
   key covered by `AppResourceKeysTests` (37 locales).
-- [x] **Status:** done 2026-09-28 (all six items; item 5's caption not seen on device, see above).
-  Original: open, from the T-F226 review.
+- [~] **Status:** items 1-4 and 6 done and device-checked; item 5's caption needs one real drag
+  by the user (with T-F199 step 4's open drag checks: a drop onto the empty-state overlay and onto
+  a populated list). Original: open, from the T-F226 review.
   1. `MainViewModel.RunCleanupAsync` (`:1243-1257`) deletes permanently and swallows every error
      (`catch { best-effort }`): a locked source that was not deleted is never reported. See T-F207,
      T-F229.
@@ -6496,6 +6498,22 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 - **Open questions:** where verify/repair lives (App, `pakko`, an Explorer verb on a `.par2` or
   the archive); Group Policy control.
 - **Reported by:** user question, 2026-09-28.
+
+### T-F276 — Explorer and Core still say "archiving" where the App says "compress" (P3)
+
+- [ ] **Status:** open. T-F199 renamed the App's create verb to "Compress" ("Стиснути в ZIP",
+  "Стиснення...", "Стиснуто за ..."), as Explorer's menu already did. Explorer's operation window
+  (`OperationText.resx` `TitleArchiving`, uk "Архівування: {0}") and Core's message texts still say
+  "archiving", so one operation is called two things depending on where it started. Align in all
+  37 locales (menu words as the source, as T-F199 step 8 did).
+- **Reported by:** T-F199 step 8, 2026-09-28.
+
+### T-F277 — Browse-mode Test: Cancel resets the status to "Ready" (P3)
+
+- [ ] **Status:** open. In the Archive Browser, cancelling "Test archive" puts "Готово" in the
+  status line right away, while a cancelled Compress/Extract shows "Скасовано" first (T-F70) and
+  keeps it as the footer result (T-F211). Make Test's cancel path match.
+- **Reported by:** T-F199 step 6/7 device checks, 2026-09-28.
 
 ### T-F223 — Diagram gap from T-F193 (P2)
 

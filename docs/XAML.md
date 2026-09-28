@@ -14,8 +14,7 @@
 ## Current MainWindow.xaml Structure
 
 ```
-Window (ExtendsContentIntoTitleBar, SetTitleBar(AppTitleBar); no Mica — a system backdrop made
-│       screen capture of the window come back black)
+Window (ExtendsContentIntoTitleBar, SetTitleBar(AppTitleBar); no Mica, see DECISIONS.md wave 4)
 └── RootGrid (RowDefinitions="32,*")
     ├── [tb:TaskbarIcon] — system tray (not in grid flow)
     │
@@ -49,7 +48,8 @@ Window (ExtendsContentIntoTitleBar, SetTitleBar(AppTitleBar); no Mica — a syst
         │   │       CRC note, ZipCrypto warning as Warning severity, "outside the archive" note)
         │   ├── BrowseHeader — Border -> Grid (Auto,*,100,100,90,140), non-sortable TextBlocks
         │   └── ListView ArchiveBrowserListView (SelectionMode=Multiple, explicit
-        │           VirtualizingStackPanel, SelectionChanged + DoubleTapped). ItemTemplate: icon /
+        │           VirtualizingStackPanel — a known deviation from CLAUDE.md's ListView rule,
+        │           see T-F05; SelectionChanged + DoubleTapped). ItemTemplate: icon /
         │           Grid(lock FontIcon when IsEncrypted, named for UIA; Name) / Size / Packed / Crc /
         │           Modified
         │

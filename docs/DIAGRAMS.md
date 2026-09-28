@@ -289,7 +289,8 @@ the password once before the Core call and clears it in `finally`, on every exit
 awaited but `DialogService` returns at once for `OperationOutcome.Completed`, so the summary opens
 only on problems; "delete after" runs after it (T-F229). After `IsBusy=false` the status resets to
 `StatusReady` and `SetOutcome` puts the result line in the footer, where it stays until the next
-action (`FooterLine.Pick`).
+action (`FooterLine.Pick`). All three exit paths end in `SetOutcome` (result, error title or
+"Cancelled"), and `ArchiveAsync` and `RunExtractAsync` end the same way.
 
 ```mermaid
 stateDiagram-v2
@@ -299,11 +300,11 @@ stateDiagram-v2
     Busy --> AwaitingSummaryDialog: _archiveService call returns without throwing<br/>StatusMessage = rendered OutcomeLine
     AwaitingSummaryDialog --> AwaitingSummaryDialog: await ShowOperationSummaryAsync(...)<br/>(no dialog when Outcome==Completed) then delete-after cleanup<br/>IsBusy is STILL TRUE — finally has not run yet
     AwaitingSummaryDialog --> Idle: finally{no IsBusy change} — wasCancelled==false so the delay<br/>branch below is skipped — THEN IsBusy=false — THEN StatusMessage=StatusReady — THEN SetOutcome (footer result line)<br/>(T-F70: IsBusy=false moved out of finally to here)
-    Busy --> AwaitingErrorDialog: unexpected Exception caught (not OperationCanceledException)<br/>StatusMessage=Error
+    Busy --> AwaitingErrorDialog: unexpected Exception caught (not OperationCanceledException)<br/>StatusMessage=DialogErrorTitle
     AwaitingErrorDialog --> AwaitingErrorDialog: await ShowErrorAsync(...)<br/>IsBusy is STILL TRUE while this modal is open
-    AwaitingErrorDialog --> Idle: finally{no IsBusy change} — delay branch skipped —<br/>THEN IsBusy=false — THEN StatusMessage=StatusReady (same T-F70 point as above)
+    AwaitingErrorDialog --> Idle: finally{no IsBusy change} — delay branch skipped —<br/>THEN IsBusy=false — THEN StatusMessage=StatusReady — THEN SetOutcome (same T-F70 point as above)
     Busy --> CancelledNoDialog: OperationCanceledException caught<br/>StatusMessage=StatusCancelled — NO dialog is shown
-    CancelledNoDialog --> Idle: finally{no IsBusy change} — THEN await Task.Delay(2000)<br/>(IsBusy still TRUE throughout the delay — T-F70 fix) —<br/>THEN IsBusy=false — THEN StatusMessage=StatusReady
+    CancelledNoDialog --> Idle: finally{no IsBusy change} — THEN await Task.Delay(2000)<br/>(IsBusy still TRUE throughout the delay — T-F70 fix) —<br/>THEN IsBusy=false — THEN StatusMessage=StatusReady — THEN SetOutcome
 ```
 
 **What this catches:**

@@ -10217,9 +10217,10 @@ and size units and the App sets them at startup; the preview's folder check uses
 it), toolbar, table, two option cards ("New archive" as an `Expander`, "Where, and what after"),
 footer with status on the left and the action buttons on the right. The options scroll instead of
 forcing a tall window (`FitOptionsScroll`, measured from `RootGrid` — an overfull `ContentGrid`
-reports its desired height); default 1100x720, floor 900x520 (T-F224). No Mica: with a system
-backdrop, screen capture of the window came back black, and screenshots are how device checks are
-verified. Structure: `docs/XAML.md`.
+reports its desired height); default 1100x720, floor 900x520 (T-F224). No Mica: it was dropped
+when captures of the window came back black during step 3; that black window was later traced to
+the monitor being off (DWM stops presenting), not to the backdrop. Mica was not re-tested since —
+a plain `SolidBackgroundFillColorBaseBrush` stays until someone does. Structure: `docs/XAML.md`.
 
 **Forks (user, 2026-09-27).** Two action buttons, the accent on the one that fits the list
 (archives -> Extract, anything else -> Compress; App.Core `PrimaryActionPolicy`).

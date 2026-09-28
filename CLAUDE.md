@@ -45,13 +45,8 @@ every recurrence since 2026-07-07; see `docs/TASKS.md`'s T-F96 entry if this nee
 wiring), AI-driven on-device verification passed 2026-07-13; stays partial until the user's own
 on-device click-through. A same-day UI design-review pass (comparing a real screenshot against
 NanaZip) found and fixed a genuine bug (Row 0's Add Files/Add Folder/Hash never hid during browse
-mode) and resized the window `800x700` -> `1100x650`. Three same-day follow-ups: the Info dialog
-was deleted (fields folded into the browse-mode table as columns, plus a ZIP-only CRC-32 column);
-the standalone Close button was replaced by a single up-arrow; and CRC-32 was extended to the
-pending list too, which both surfaced and fixed a real blank-row regression (an unneeded explicit
-`VirtualizingStackPanel` racing an async CRC completion) — see `docs/DECISIONS.md`'s three T-F05
-follow-up entries for the full account, including a native-crash root-cause from two invented,
-unverified `x:Uid` patterns that was fixed the same round.
+mode). Follow-ups (Info dialog folded into columns, CRC-32 column, a blank-row race) are in
+`docs/DECISIONS.md`'s three T-F05 follow-up entries.
 
 **T-F99/T-F100 (drive-root context menu / file-activation routing)** are `[x]` done — on-device
 testing surfaced and fixed a command-line-corrupting `QuotePath` trailing-backslash bug and two
@@ -418,6 +413,10 @@ command-line limit on a large selection).
 Shell and App, the CLI stays English (T-F209); one `ArchiveResult.Outcome`, `Success` derived
 (T-F260, T-F274); Explorer asks before a suspected bomb (T-F217); T-F253/254/255, T-F221 (CLI
 messages, 7-Zip naming), T-F198 items 1 and 7. See `docs/DECISIONS.md`'s fix phase 7 entry.
+**Wave 4 / T-F199** (`[~]`, 2026-09-28): main window redesigned — own title bar, option cards,
+footer with the primary action rightmost ("Compress to {format}"), inline encryption password,
+browse badge/Test/Close archive, footer result line (T-F211); every App key in 37 locales
+(`AppResourceKeysTests`). Structure: `docs/XAML.md`; decisions: `docs/DECISIONS.md`'s wave 4 entry.
 
 ## Roadmap Summary
 
