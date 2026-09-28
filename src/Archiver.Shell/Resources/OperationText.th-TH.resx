@@ -78,4 +78,13 @@
   <data name="UnitPerSecond" xml:space="preserve">
     <value>{0}/s</value>
   </data>
+  <data name="BombTitle" xml:space="preserve">
+    <value>ไฟล์บีบอัดที่น่าสงสัย</value>
+  </data>
+  <data name="BombMessage" xml:space="preserve">
+    <value>ไฟล์บีบอัดนี้อ้างว่ามีข้อมูล {0} โดยมีอัตราส่วนการบีบอัด {1}:1 ซึ่งสูงผิดปกติและอาจบ่งชี้ถึงระเบิดการคลายบีบอัด ยังคงต้องการแตกไฟล์หรือไม่?</value>
+  </data>
+  <data name="BombExtract" xml:space="preserve">
+    <value>แตกไฟล์</value>
+  </data>
 </root>

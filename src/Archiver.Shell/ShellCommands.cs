@@ -38,6 +38,7 @@ internal sealed class ShellCommands(IOperationUi ui, ShellServices services)
                 OnConflict = ConflictBehavior.Ask,
                 ResolveConflictAsync = prompts.Conflict.ResolveAsync,
                 ResolvePasswordAsync = prompts.Password.ResolveAsync,
+                ConfirmCompressionBombExtraction = prompts.ConfirmCompressionBombAsync,
             };
         });
 
@@ -60,6 +61,7 @@ internal sealed class ShellCommands(IOperationUi ui, ShellServices services)
             OnConflict = ConflictBehavior.Ask,
             ResolveConflictAsync = prompts.Conflict.ResolveAsync,
             ResolvePasswordAsync = prompts.Password.ResolveAsync,
+            ConfirmCompressionBombExtraction = prompts.ConfirmCompressionBombAsync,
         });
 
     // -------------------------------------------------------------------------
@@ -84,6 +86,7 @@ internal sealed class ShellCommands(IOperationUi ui, ShellServices services)
                 OnConflict = ConflictBehavior.Ask,
                 ResolveConflictAsync = prompts.Conflict.ResolveAsync,
                 ResolvePasswordAsync = prompts.Password.ResolveAsync,
+                ConfirmCompressionBombExtraction = prompts.ConfirmCompressionBombAsync,
             };
         });
 
@@ -324,6 +327,10 @@ internal sealed class ShellCommands(IOperationUi ui, ShellServices services)
         public StickyCallback<ConflictInfo, ConflictDecision> Conflict { get; }
 
         public StickyCallback<PasswordPromptInfo, PasswordDecision> Password { get; }
+
+        // T-F217: asked per archive, never "for all" — each suspected bomb gets its own answer.
+        public Task<bool> ConfirmCompressionBombAsync(CompressionBombWarning warning) =>
+            CurrentSession.ConfirmAsync(OperationMessages.ForCompressionBomb(warning));
 
         private IOperationSession CurrentSession =>
             Current ?? throw new InvalidOperationException("A prompt was raised outside an operation session.");

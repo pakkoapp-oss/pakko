@@ -25,7 +25,7 @@ namespace Archiver.OperationUi;
 /// <see cref="OperationWindowModel"/>; every decision comes back from the model as a
 /// <see cref="WindowUpdate"/> for <see cref="HelperApp"/> to carry out. Layout follows the
 /// approved step 3 mockup: 520 px wide, title row, heading, archive line, bar, file, status, buttons.
-/// A conflict or password prompt (step 5) replaces the progress part until it is answered.
+/// A conflict, password (step 5) or yes/no (T-F217) prompt replaces the progress part until answered.
 /// </summary>
 internal sealed class OperationWindow
 {
@@ -77,6 +77,11 @@ internal sealed class OperationWindow
     private readonly CheckBox _applyToRemaining = new();
     private readonly Button _passwordOk = new() { MinWidth = 120 };
     private readonly Button _skipArchive = new() { MinWidth = 120 };
+
+    // T-F217: a yes/no question; every text comes with it from Shell.
+    private readonly TextBlock _confirmMessage = new() { FontSize = 14, TextWrapping = TextWrapping.Wrap };
+    private readonly Button _confirm = new() { MinWidth = 120 };
+    private readonly Button _decline = new() { MinWidth = 120 };
     private ProtocolMessage? _renderedPrompt;
     private bool _renderedResult;
     private DispatcherQueueTimer? _showTimer;
@@ -123,6 +128,9 @@ internal sealed class OperationWindow
         SetVisible(_passwordPanel, prompt is AskPassword);
         SetVisible(_passwordOk, prompt is AskPassword);
         SetVisible(_skipArchive, prompt is AskPassword);
+        SetVisible(_confirmMessage, prompt is AskConfirm);
+        SetVisible(_confirm, prompt is AskConfirm);
+        SetVisible(_decline, prompt is AskConfirm);
         SetVisible(_resultScroll, result);
         SetVisible(_close, result);
         SetVisible(_severityIcon, result);
@@ -209,6 +217,7 @@ internal sealed class OperationWindow
             _ when _close.Visibility == Visibility.Visible => _close,
             AskConflict => _skip,
             AskPassword => _passwordBox,
+            AskConfirm => _decline,
             _ => _cancel,
         };
         target.Focus(FocusState.Programmatic);
@@ -247,6 +256,13 @@ internal sealed class OperationWindow
                 SetVisible(_applyToRemaining, ask.CanApplyToRemaining);
                 _passwordOk.Content = _model.Text(WindowStrings.PasswordOk);
                 _skipArchive.Content = _model.Text(WindowStrings.SkipArchive);
+                break;
+
+            case AskConfirm ask:
+                _heading.Text = ask.Title;
+                _confirmMessage.Text = ask.Message;
+                _confirm.Content = ask.ConfirmLabel;
+                _decline.Content = ask.DeclineLabel;
                 break;
         }
     }
@@ -340,11 +356,15 @@ internal sealed class OperationWindow
         };
         BuildConflictPanel();
         BuildPasswordPanel();
-        foreach (Button button in new[] { _overwrite, _rename, _skip, _passwordOk, _skipArchive, _cancel, _close })
+        // Declining is the accent and the default: Enter never extracts a suspected bomb.
+        _confirm.Click += (_, _) => _execute(_model.AnswerConfirm(true));
+        _decline.Click += (_, _) => _execute(_model.AnswerConfirm(false));
+        _decline.Style = (Style)Application.Current.Resources["AccentButtonStyle"];
+        foreach (Button button in new[] { _overwrite, _rename, _skip, _passwordOk, _skipArchive, _confirm, _decline, _cancel, _close })
             buttons.Children.Add(button);
 
         var body = new StackPanel { Padding = new Thickness(24, 8, 24, 24), Spacing = 10 };
-        foreach (UIElement element in new UIElement[] { heading, _itemLine, _bar, _file, _status, _conflictPanel, _passwordPanel, _resultScroll, buttons })
+        foreach (UIElement element in new UIElement[] { heading, _itemLine, _bar, _file, _status, _conflictPanel, _passwordPanel, _confirmMessage, _resultScroll, buttons })
             body.Children.Add(element);
         Grid.SetRow(body, 1);
         _root.Children.Add(body);

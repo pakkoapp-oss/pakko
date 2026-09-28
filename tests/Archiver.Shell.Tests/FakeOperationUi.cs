@@ -11,6 +11,9 @@ internal sealed class FakeOperationUi : IOperationUi
     public List<OperationMessage> Messages { get; } = [];
     public List<ConflictInfo> ConflictPrompts { get; } = [];
     public List<(PasswordPromptInfo Info, bool CanApplyToRemaining)> PasswordPrompts { get; } = [];
+    public List<ConfirmPrompt> ConfirmPrompts { get; } = [];
+
+    public bool ConfirmAnswer { get; set; }
 
     public Func<ConflictInfo, ConflictDecision> ConflictAnswer { get; set; } =
         _ => new ConflictDecision { Resolution = ConflictResolution.Skip };
@@ -68,6 +71,12 @@ internal sealed class FakeOperationSession(FakeOperationUi owner, string title, 
     {
         owner.PasswordPrompts.Add((info, canApplyToRemaining));
         return Task.FromResult(owner.PasswordAnswer(info));
+    }
+
+    public Task<bool> ConfirmAsync(ConfirmPrompt prompt)
+    {
+        owner.ConfirmPrompts.Add(prompt);
+        return Task.FromResult(owner.ConfirmAnswer);
     }
 
     public void Complete(OperationMessage? message)

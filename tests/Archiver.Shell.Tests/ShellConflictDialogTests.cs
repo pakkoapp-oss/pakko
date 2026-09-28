@@ -96,4 +96,13 @@ public sealed class ShellConflictDialogTests
             Directory.Delete(dir, recursive: true);
         }
     }
+
+    // T-F217: only an explicit click on the confirm button (1101) with the dialog shown is a yes.
+    [Theory]
+    [InlineData(0, 1101, true)]
+    [InlineData(0, 1102, false)]
+    [InlineData(0, IdCancel, false)]
+    [InlineData(unchecked((int)0x80070057), 1101, false)]
+    public void ConfirmMapResult_OnlyTheConfirmButtonIsAYes(int hr, int buttonId, bool expected) =>
+        ShellConfirmDialog.MapResult(hr, buttonId).Should().Be(expected);
 }

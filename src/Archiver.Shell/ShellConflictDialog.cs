@@ -69,13 +69,32 @@ public static class ShellConflictDialog
 
     private static ConflictDecision ShowCore(ConflictInfo conflict)
     {
-        var buttons = new TaskDialogButton[]
-        {
-            new() { ButtonId = IdOverwrite, ButtonText = ConflictDialogLocalizer.Get("ConflictDialogOverwriteButton") },
-            new() { ButtonId = IdRename, ButtonText = ConflictDialogLocalizer.Get("ConflictDialogRenameButton") },
-            new() { ButtonId = IdSkip, ButtonText = ConflictDialogLocalizer.Get("ConflictDialogSkipButton") },
-        };
+        (int ButtonId, string Text)[] buttons =
+        [
+            (IdOverwrite, ConflictDialogLocalizer.Get("ConflictDialogOverwriteButton")),
+            (IdRename, ConflictDialogLocalizer.Get("ConflictDialogRenameButton")),
+            (IdSkip, ConflictDialogLocalizer.Get("ConflictDialogSkipButton")),
+        ];
+        // Enter resolves to Skip, not Overwrite -- mirrors T-F06's DialogService.ShowConflictDialogAsync.
+        (int hr, int selectedButtonId, bool verificationChecked) = ShowTaskDialog(
+            ConflictDialogLocalizer.Get("ConflictDialogTitle"),
+            ConflictDialogLocalizer.Get("ConflictDialogMessage", Path.GetFileName(conflict.ExistingPath)),
+            BuildContent(conflict), buttons, IdSkip, ConflictDialogLocalizer.Get("ConflictDialogApplyToAllCheck"));
+        if (hr != 0) // S_OK -- a nonzero HRESULT (e.g. E_INVALIDARG) means no real user choice was made
+            return new ConflictDecision { Resolution = ConflictResolution.Skip };
 
+        return MapResult(selectedButtonId, verificationChecked);
+    }
+
+    /// <summary>
+    /// One warning TaskDialog with custom buttons, brought in front of other windows. Shared by
+    /// the conflict prompt and <see cref="ShellConfirmDialog"/>.
+    /// </summary>
+    internal static (int Hr, int SelectedButtonId, bool VerificationChecked) ShowTaskDialog(
+        string title, string instruction, string content, (int ButtonId, string Text)[] buttonSpecs, int defaultButtonId,
+        string? verificationText)
+    {
+        TaskDialogButton[] buttons = [.. buttonSpecs.Select(b => new TaskDialogButton { ButtonId = b.ButtonId, ButtonText = b.Text })];
         int buttonStructSize = Marshal.SizeOf<TaskDialogButton>();
         IntPtr buttonsPtr = Marshal.AllocHGlobal(buttonStructSize * buttons.Length);
         try
@@ -87,23 +106,19 @@ public static class ShellConflictDialog
             {
                 Size = (uint)Marshal.SizeOf<TaskDialogConfig>(),
                 Flags = TaskDialogOptions.AllowDialogCancellation | TaskDialogOptions.SizeToContent,
-                WindowTitle = ConflictDialogLocalizer.Get("ConflictDialogTitle"),
+                WindowTitle = title,
                 MainIcon = TaskDialogIcon.Warning,
-                MainInstruction = ConflictDialogLocalizer.Get("ConflictDialogMessage", Path.GetFileName(conflict.ExistingPath)),
-                Content = BuildContent(conflict),
+                MainInstruction = instruction,
+                Content = content,
                 ButtonCount = (uint)buttons.Length,
                 Buttons = buttonsPtr,
-                DefaultButtonId = IdSkip, // Enter resolves to Skip, not Overwrite -- mirrors T-F06's
-                                          // DialogService.ShowConflictDialogAsync's identical choice.
-                VerificationText = ConflictDialogLocalizer.Get("ConflictDialogApplyToAllCheck"),
+                DefaultButtonId = defaultButtonId,
+                VerificationText = verificationText,
                 Callback = Marshal.GetFunctionPointerForDelegate(BringToFrontCallback),
             };
 
             int hr = NativeMethods.TaskDialogIndirect(ref config, out int selectedButtonId, out _, out bool verificationChecked);
-            if (hr != 0) // S_OK -- a nonzero HRESULT (e.g. E_INVALIDARG) means no real user choice was made
-                return new ConflictDecision { Resolution = ConflictResolution.Skip };
-
-            return MapResult(selectedButtonId, verificationChecked);
+            return (hr, selectedButtonId, verificationChecked);
         }
         finally
         {

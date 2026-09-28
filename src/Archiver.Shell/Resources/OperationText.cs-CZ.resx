@@ -78,4 +78,13 @@
   <data name="UnitPerSecond" xml:space="preserve">
     <value>{0}/s</value>
   </data>
+  <data name="BombTitle" xml:space="preserve">
+    <value>Podezřelý archiv</value>
+  </data>
+  <data name="BombMessage" xml:space="preserve">
+    <value>Tento archiv deklaruje {0} dat, kompresní poměr {1}:1. To je neobvykle vysoké a může jít o dekompresní bombu. Přesto rozbalit?</value>
+  </data>
+  <data name="BombExtract" xml:space="preserve">
+    <value>Rozbalit</value>
+  </data>
 </root>

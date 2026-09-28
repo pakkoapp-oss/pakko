@@ -78,4 +78,13 @@
   <data name="UnitPerSecond" xml:space="preserve">
     <value>{0}/s</value>
   </data>
+  <data name="BombTitle" xml:space="preserve">
+    <value>Mistænkeligt arkiv</value>
+  </data>
+  <data name="BombMessage" xml:space="preserve">
+    <value>Dette arkiv hævder at indeholde {0} data, et komprimeringsforhold på {1}:1. Dette er usædvanligt højt og kan indikere en dekomprimeringsbombe. Udpak alligevel?</value>
+  </data>
+  <data name="BombExtract" xml:space="preserve">
+    <value>Udpak</value>
+  </data>
 </root>

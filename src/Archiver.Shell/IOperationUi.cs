@@ -26,6 +26,9 @@ internal enum MessageSeverity
 /// </summary>
 internal sealed record OperationMessage(string Title, MessageSeverity Severity, string Text, bool Preformatted = false);
 
+/// <summary>A yes/no question (T-F217); declining is the default answer.</summary>
+internal sealed record ConfirmPrompt(string Title, string Message, string ConfirmLabel, string DeclineLabel);
+
 /// <summary>
 /// The only way an Explorer command talks to the user (T-F268). Today's implementation is
 /// <see cref="Win32OperationUi"/>; a modern window will be a second implementation of this same
@@ -62,6 +65,9 @@ internal interface IOperationSession : IDisposable
     Task<ConflictDecision> AskConflictAsync(ConflictInfo info);
 
     Task<PasswordDecision> AskPasswordAsync(PasswordPromptInfo info, bool canApplyToRemaining);
+
+    /// <summary>True only when the user explicitly confirmed; a closed or failed window is a no.</summary>
+    Task<bool> ConfirmAsync(ConfirmPrompt prompt);
 
     /// <summary>Ends the operation's window and shows <paramref name="message"/>, if any.</summary>
     void Complete(OperationMessage? message);

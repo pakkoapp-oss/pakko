@@ -112,6 +112,8 @@ internal sealed class Win32OperationUi : IOperationUi
         public Task<PasswordDecision> AskPasswordAsync(PasswordPromptInfo info, bool canApplyToRemaining) =>
             PasswordDialog.ShowAsync(info, canApplyToRemaining);
 
+        public Task<bool> ConfirmAsync(ConfirmPrompt prompt) => ShellConfirmDialog.ShowAsync(prompt);
+
         // The progress window closes before the result shows, as it always did.
         public void Complete(OperationMessage? message)
         {

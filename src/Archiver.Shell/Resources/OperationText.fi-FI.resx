@@ -78,4 +78,13 @@
   <data name="UnitPerSecond" xml:space="preserve">
     <value>{0}/s</value>
   </data>
+  <data name="BombTitle" xml:space="preserve">
+    <value>Epäilyttävä arkisto</value>
+  </data>
+  <data name="BombMessage" xml:space="preserve">
+    <value>Tämä arkisto väittää sisältävänsä {0} dataa, pakkaussuhde {1}:1. Tämä on epätavallisen korkea ja voi viitata purkupommiin. Puretaanko silti?</value>
+  </data>
+  <data name="BombExtract" xml:space="preserve">
+    <value>Pura</value>
+  </data>
 </root>

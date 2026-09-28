@@ -17,7 +17,8 @@ public static class FrameCodec
     /// </summary>
     public const int MaxFrameBytes = 4 * 1024 * 1024;
 
-    public const int ProtocolVersion = 1;
+    // 2: AskConfirm/ConfirmAnswer (T-F217).
+    public const int ProtocolVersion = 2;
 
     private const int HeaderBytes = 4;
 

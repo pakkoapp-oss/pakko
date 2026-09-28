@@ -78,4 +78,13 @@
   <data name="UnitPerSecond" xml:space="preserve">
     <value>{0}/s</value>
   </data>
+  <data name="BombTitle" xml:space="preserve">
+    <value>संदिग्ध संग्रह</value>
+  </data>
+  <data name="BombMessage" xml:space="preserve">
+    <value>यह संग्रह {0} डेटा होने का दावा करता है, जिसका संपीड़न अनुपात {1}:1 है। यह असामान्य रूप से अधिक है और डीकंप्रेशन बम का संकेत हो सकता है। फिर भी निकालें?</value>
+  </data>
+  <data name="BombExtract" xml:space="preserve">
+    <value>निकालें</value>
+  </data>
 </root>

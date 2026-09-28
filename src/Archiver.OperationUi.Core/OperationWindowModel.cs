@@ -99,7 +99,7 @@ public sealed class OperationWindowModel
 
     public string CloseLabel => Text(WindowStrings.Close);
 
-    /// <summary>The <see cref="AskConflict"/> or <see cref="AskPassword"/> on screen; null while none is.</summary>
+    /// <summary>The <see cref="AskConflict"/>, <see cref="AskPassword"/> or <see cref="AskConfirm"/> on screen; null while none is.</summary>
     public ProtocolMessage? Prompt => _prompts.Count > 0 ? _prompts.Peek() : null;
 
     /// <summary>The password prompt's sentence, naming the archive.</summary>
@@ -159,7 +159,7 @@ public sealed class OperationWindowModel
                 Status = progress.Status;
                 return Rendered();
 
-            case AskConflict or AskPassword when Phase == WindowPhase.Running:
+            case AskConflict or AskPassword or AskConfirm when Phase == WindowPhase.Running:
                 _prompts.Enqueue(message);
                 return _prompts.Count > 1 ? WindowUpdate.Nothing : Prompted();
 
@@ -187,18 +187,23 @@ public sealed class OperationWindowModel
             ? Answered(new PasswordAnswer(ask.RequestId, password, applyToRemaining && ask.CanApplyToRemaining))
             : WindowUpdate.Nothing;
 
+    /// <summary>The yes/no question's buttons (T-F217).</summary>
+    public WindowUpdate AnswerConfirm(bool confirmed) =>
+        Prompt is AskConfirm ask ? Answered(new ConfirmAnswer(ask.RequestId, confirmed)) : WindowUpdate.Nothing;
+
     /// <summary>Skip archive: this archive stays closed, the operation goes on.</summary>
     public WindowUpdate DeclinePassword() =>
         Prompt is AskPassword ask ? Answered(new PasswordAnswer(ask.RequestId, null, false)) : WindowUpdate.Nothing;
 
     /// <summary>
     /// Esc answers an open prompt the way the Win32 dialogs' IDCANCEL did (Skip with the checkbox as
-    /// ticked; no password); without a prompt it is <see cref="UserClosed"/>.
+    /// ticked; no password; no to a question); without a prompt it is <see cref="UserClosed"/>.
     /// </summary>
     public WindowUpdate Escape(bool applyToAllChecked) => Prompt switch
     {
         AskConflict => AnswerConflict(ConflictChoice.Skip, applyToAllChecked),
         AskPassword => DeclinePassword(),
+        AskConfirm => AnswerConfirm(false),
         _ => UserClosed(),
     };
 

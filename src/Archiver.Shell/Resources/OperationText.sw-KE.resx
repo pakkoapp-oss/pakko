@@ -78,4 +78,13 @@
   <data name="UnitPerSecond" xml:space="preserve">
     <value>{0}/s</value>
   </data>
+  <data name="BombTitle" xml:space="preserve">
+    <value>Hifadhi ya kutiliwa shaka</value>
+  </data>
+  <data name="BombMessage" xml:space="preserve">
+    <value>Hifadhi hii inadai kuwa na data {0}, na uwiano wa ubanaji wa {1}:1. Hii ni juu isivyo kawaida na inaweza kuashiria bomu la kufungua ubanaji. Endelea kutoa?</value>
+  </data>
+  <data name="BombExtract" xml:space="preserve">
+    <value>Toa</value>
+  </data>
 </root>

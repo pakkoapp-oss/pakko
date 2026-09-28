@@ -78,4 +78,13 @@
   <data name="UnitPerSecond" xml:space="preserve">
     <value>{0}/秒</value>
   </data>
+  <data name="BombTitle" xml:space="preserve">
+    <value>不審なアーカイブ</value>
+  </data>
+  <data name="BombMessage" xml:space="preserve">
+    <value>このアーカイブは {0} のデータを含むとされており、圧縮率は {1}:1 です。これは異常に高く、展開爆弾 (デコンプレッションボム) の可能性があります。それでも展開しますか?</value>
+  </data>
+  <data name="BombExtract" xml:space="preserve">
+    <value>展開</value>
+  </data>
 </root>

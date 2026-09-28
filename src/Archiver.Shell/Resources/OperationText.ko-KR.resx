@@ -78,4 +78,13 @@
   <data name="UnitPerSecond" xml:space="preserve">
     <value>{0}/초</value>
   </data>
+  <data name="BombTitle" xml:space="preserve">
+    <value>의심스러운 압축 파일</value>
+  </data>
+  <data name="BombMessage" xml:space="preserve">
+    <value>이 압축 파일은 {0}의 데이터를 포함한다고 하며, 압축률은 {1}:1입니다. 이는 비정상적으로 높은 수치이며 압축 폭탄일 수 있습니다. 그래도 압축을 푸시겠습니까?</value>
+  </data>
+  <data name="BombExtract" xml:space="preserve">
+    <value>압축 풀기</value>
+  </data>
 </root>

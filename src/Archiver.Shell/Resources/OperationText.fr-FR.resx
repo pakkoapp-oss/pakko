@@ -78,4 +78,13 @@
   <data name="UnitPerSecond" xml:space="preserve">
     <value>{0}/s</value>
   </data>
+  <data name="BombTitle" xml:space="preserve">
+    <value>Archive suspecte</value>
+  </data>
+  <data name="BombMessage" xml:space="preserve">
+    <value>Cette archive prétend contenir {0} de données, un taux de compression de {1}:1. C'est anormalement élevé et peut indiquer une bombe de décompression. Extraire quand même ?</value>
+  </data>
+  <data name="BombExtract" xml:space="preserve">
+    <value>Extraire</value>
+  </data>
 </root>

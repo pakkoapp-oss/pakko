@@ -14,11 +14,13 @@ namespace Archiver.OperationUi.Protocol;
 [JsonDerivedType(typeof(Progress), "progress")]
 [JsonDerivedType(typeof(AskConflict), "askConflict")]
 [JsonDerivedType(typeof(AskPassword), "askPassword")]
+[JsonDerivedType(typeof(AskConfirm), "askConfirm")]
 [JsonDerivedType(typeof(Complete), "complete")]
 [JsonDerivedType(typeof(HelperReady), "ready")]
 [JsonDerivedType(typeof(CancelRequested), "cancel")]
 [JsonDerivedType(typeof(ConflictAnswer), "conflictAnswer")]
 [JsonDerivedType(typeof(PasswordAnswer), "passwordAnswer")]
+[JsonDerivedType(typeof(ConfirmAnswer), "confirmAnswer")]
 [JsonDerivedType(typeof(WindowClosed), "closed")]
 public abstract record ProtocolMessage;
 
@@ -78,6 +80,17 @@ public sealed record AskPassword(
     bool CanApplyToRemaining) : ProtocolMessage;
 
 /// <summary>
+/// A yes/no question (T-F217: extract an archive whose compression ratio looks like a bomb).
+/// Every text is Shell's, already localized; declining is the default (Enter, Esc, close).
+/// </summary>
+public sealed record AskConfirm(
+    int RequestId,
+    string Title,
+    string Message,
+    string ConfirmLabel,
+    string DeclineLabel) : ProtocolMessage;
+
+/// <summary>
 /// A result to show, or null to close the window without one (a clean Extract/Archive).
 /// Preformatted text (hash values) is shown in a monospace font, unwrapped, scrolling sideways.
 /// </summary>
@@ -94,6 +107,8 @@ public sealed record HelperReady(int ProtocolVersion) : ProtocolMessage;
 public sealed record CancelRequested : ProtocolMessage;
 
 public sealed record ConflictAnswer(int RequestId, ConflictChoice Choice, bool ApplyToAll) : ProtocolMessage;
+
+public sealed record ConfirmAnswer(int RequestId, bool Confirmed) : ProtocolMessage;
 
 /// <summary>A null <paramref name="Password"/> means the user declined.</summary>
 public sealed record PasswordAnswer(int RequestId, string? Password, bool ApplyToRemaining) : ProtocolMessage

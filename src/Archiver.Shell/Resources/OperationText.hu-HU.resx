@@ -78,4 +78,13 @@
   <data name="UnitPerSecond" xml:space="preserve">
     <value>{0}/s</value>
   </data>
+  <data name="BombTitle" xml:space="preserve">
+    <value>Gyanús archívum</value>
+  </data>
+  <data name="BombMessage" xml:space="preserve">
+    <value>Ez az archívum állítása szerint {0} adatot tartalmaz, {1}:1 tömörítési aránnyal. Ez szokatlanul magas, és kicsomagolási bombára utalhat. Mindenképp kibontja?</value>
+  </data>
+  <data name="BombExtract" xml:space="preserve">
+    <value>Kibontás</value>
+  </data>
 </root>

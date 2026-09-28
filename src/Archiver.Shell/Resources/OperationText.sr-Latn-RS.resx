@@ -78,4 +78,13 @@
   <data name="UnitPerSecond" xml:space="preserve">
     <value>{0}/s</value>
   </data>
+  <data name="BombTitle" xml:space="preserve">
+    <value>Sumnjiva arhiva</value>
+  </data>
+  <data name="BombMessage" xml:space="preserve">
+    <value>Ova arhiva tvrdi da sadrži {0} podataka, odnos kompresije {1}:1. To je neuobičajeno visoko i može ukazivati na dekompresionu bombu. Ipak raspakovati?</value>
+  </data>
+  <data name="BombExtract" xml:space="preserve">
+    <value>Raspakuj</value>
+  </data>
 </root>

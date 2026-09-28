@@ -78,4 +78,13 @@
   <data name="UnitPerSecond" xml:space="preserve">
     <value>{0}/秒</value>
   </data>
+  <data name="BombTitle" xml:space="preserve">
+    <value>可疑的压缩包</value>
+  </data>
+  <data name="BombMessage" xml:space="preserve">
+    <value>此压缩包声称包含 {0} 数据，压缩比为 {1}:1。这异常地高，可能是解压炸弹。仍要解压吗？</value>
+  </data>
+  <data name="BombExtract" xml:space="preserve">
+    <value>解压</value>
+  </data>
 </root>

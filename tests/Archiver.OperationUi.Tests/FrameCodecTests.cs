@@ -21,6 +21,7 @@ public sealed class FrameCodecTests
         new Progress(0, null, null),
         new AskConflict(7, @"D:\Проєкти\звіт.pdf", "1,2 МБ · змінено 12.09.2026 14:03", null, IncomingIsNewer: true),
         new AskPassword(8, "secret.zip", 2, PreviousAttemptWasWrong: true, CanApplyToRemaining: true),
+        new AskConfirm(9, "Підозрілий архів", "Цей архів заявляє про 5 ГБ даних", "Видобути", "Пропустити"),
         new Complete(new ResultText(ResultSeverity.Warning, "Розпакування", "old.zip: пошкоджено")),
         new Complete(new ResultText(ResultSeverity.Information, "SHA-256", "звіт.pdf: 00FF", Preformatted: true)),
         new Complete(null),
@@ -29,6 +30,7 @@ public sealed class FrameCodecTests
         new ConflictAnswer(7, ConflictChoice.Rename, ApplyToAll: true),
         new PasswordAnswer(8, "пароль 🔑", ApplyToRemaining: false),
         new PasswordAnswer(8, null, ApplyToRemaining: false),
+        new ConfirmAnswer(9, Confirmed: true),
         new WindowClosed(),
     };
 

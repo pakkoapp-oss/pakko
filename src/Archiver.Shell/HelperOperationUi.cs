@@ -78,6 +78,7 @@ internal sealed class HelperOperationUi(IHelperLauncher launcher, IOperationUi f
         private IOperationSession? _fallback;
         private readonly Dictionary<int, PendingConflict> _conflicts = [];
         private readonly Dictionary<int, PendingPassword> _passwords = [];
+        private readonly Dictionary<int, PendingConfirm> _confirms = [];
         private int _nextRequestId;
         private bool _ready;
         private bool _cancelRequested;
@@ -164,6 +165,25 @@ internal sealed class HelperOperationUi(IHelperLauncher launcher, IOperationUi f
             return fallback is not null ? fallback.AskPasswordAsync(info, canApplyToRemaining) : pending.Answer.Task;
         }
 
+        public Task<bool> ConfirmAsync(ConfirmPrompt prompt)
+        {
+            var pending = new PendingConfirm(prompt, new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously));
+            IOperationSession? fallback;
+            lock (_lock)
+            {
+                fallback = _fallback;
+                if (fallback is null)
+                {
+                    if (!CanAskLocked())
+                        return Task.FromResult(false);
+                    int id = ++_nextRequestId;
+                    _confirms.Add(id, pending);
+                    Enqueue(new AskConfirm(id, prompt.Title, prompt.Message, prompt.ConfirmLabel, prompt.DeclineLabel));
+                }
+            }
+            return fallback is not null ? fallback.ConfirmAsync(prompt) : pending.Answer.Task;
+        }
+
         public void Complete(OperationMessage? message)
         {
             IOperationSession? fallback;
@@ -206,7 +226,7 @@ internal sealed class HelperOperationUi(IHelperLauncher launcher, IOperationUi f
         public void Dispose()
         {
             bool closeWindow;
-            (PendingConflict[] conflicts, PendingPassword[] passwords) open;
+            OpenPrompts open;
             lock (_lock)
             {
                 if (_disposed)
@@ -245,27 +265,32 @@ internal sealed class HelperOperationUi(IHelperLauncher launcher, IOperationUi f
         private bool CanAskLocked() => !_failed && !_cancelRequested && !_windowClosed && !_disposed;
 
         // Must hold _lock. Whoever takes a prompt out of the maps is the one who completes it.
-        private (PendingConflict[] Conflicts, PendingPassword[] Passwords) TakePromptsLocked()
+        private OpenPrompts TakePromptsLocked()
         {
-            PendingConflict[] conflicts = [.. _conflicts.Values];
-            PendingPassword[] passwords = [.. _passwords.Values];
+            var open = new OpenPrompts([.. _conflicts.Values], [.. _passwords.Values], [.. _confirms.Values]);
             _conflicts.Clear();
             _passwords.Clear();
-            return (conflicts, passwords);
+            _confirms.Clear();
+            return open;
         }
 
-        private static void AnswerSafely((PendingConflict[] Conflicts, PendingPassword[] Passwords) open)
+        private static void AnswerSafely(OpenPrompts open)
         {
             foreach (PendingConflict conflict in open.Conflicts)
                 conflict.Answer.TrySetResult(SafeConflict);
             foreach (PendingPassword password in open.Passwords)
                 password.Answer.TrySetResult(SafePassword);
+            // T-F217: nobody left to ask means no — a suspected bomb is never extracted by default.
+            foreach (PendingConfirm confirm in open.Confirms)
+                confirm.Answer.TrySetResult(false);
         }
 
         // Off the calling thread: Fail runs on the pipe reader and the ready timer, and a Win32
         // dialog blocks its caller until dismissed.
-        private static void AskAgain((PendingConflict[] Conflicts, PendingPassword[] Passwords) open, IOperationSession fallback)
+        private static void AskAgain(OpenPrompts open, IOperationSession fallback)
         {
+            foreach (PendingConfirm confirm in open.Confirms)
+                _ = Task.Run(() => ForwardAsync(() => fallback.ConfirmAsync(confirm.Prompt), confirm.Answer), CancellationToken.None);
             foreach (PendingConflict conflict in open.Conflicts)
                 _ = Task.Run(() => ForwardAsync(() => fallback.AskConflictAsync(conflict.Info), conflict.Answer), CancellationToken.None);
             foreach (PendingPassword password in open.Passwords)
@@ -303,6 +328,14 @@ internal sealed class HelperOperationUi(IHelperLauncher launcher, IOperationUi f
             });
         }
 
+        private void OnConfirmAnswer(ConfirmAnswer answer)
+        {
+            PendingConfirm? pending;
+            lock (_lock)
+                _confirms.Remove(answer.RequestId, out pending);
+            pending?.Answer.TrySetResult(answer.Confirmed);
+        }
+
         private void OnPasswordAnswer(PasswordAnswer answer)
         {
             PendingPassword? pending;
@@ -319,7 +352,7 @@ internal sealed class HelperOperationUi(IHelperLauncher launcher, IOperationUi f
         // any later one are answered without asking.
         private void OnCancelRequested()
         {
-            (PendingConflict[] conflicts, PendingPassword[] passwords) open;
+            OpenPrompts open;
             lock (_lock)
             {
                 _cancelRequested = true;
@@ -436,8 +469,12 @@ internal sealed class HelperOperationUi(IHelperLauncher launcher, IOperationUi f
                             OnPasswordAnswer(answer);
                             break;
 
+                        case ConfirmAnswer answer:
+                            OnConfirmAnswer(answer);
+                            break;
+
                         case WindowClosed:
-                            (PendingConflict[] conflicts, PendingPassword[] passwords) open;
+                            OpenPrompts open;
                             lock (_lock)
                             {
                                 _windowClosed = true;
@@ -469,7 +506,7 @@ internal sealed class HelperOperationUi(IHelperLauncher launcher, IOperationUi f
         // unless it is already ending; an open prompt is asked again there, never decided for the user.
         private void Fail()
         {
-            (PendingConflict[] conflicts, PendingPassword[] passwords) open;
+            OpenPrompts open;
             IOperationSession? takeover;
             lock (_lock)
             {
@@ -527,6 +564,10 @@ internal sealed class HelperOperationUi(IHelperLauncher launcher, IOperationUi f
         private sealed record PendingConflict(ConflictInfo Info, TaskCompletionSource<ConflictDecision> Answer);
 
         private sealed record PendingPassword(PasswordPromptInfo Info, bool CanApplyToRemaining, TaskCompletionSource<PasswordDecision> Answer);
+
+        private sealed record PendingConfirm(ConfirmPrompt Prompt, TaskCompletionSource<bool> Answer);
+
+        private sealed record OpenPrompts(PendingConflict[] Conflicts, PendingPassword[] Passwords, PendingConfirm[] Confirms);
 
         private sealed class HelperProgress(Session session) : IProgress<ProgressReport>
         {

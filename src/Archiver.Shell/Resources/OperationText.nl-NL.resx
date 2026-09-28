@@ -78,4 +78,13 @@
   <data name="UnitPerSecond" xml:space="preserve">
     <value>{0}/s</value>
   </data>
+  <data name="BombTitle" xml:space="preserve">
+    <value>Verdacht archief</value>
+  </data>
+  <data name="BombMessage" xml:space="preserve">
+    <value>Dit archief geeft aan {0} aan gegevens te bevatten, een compressieverhouding van {1}:1. Dit is ongewoon hoog en kan duiden op een decompressiebom. Toch uitpakken?</value>
+  </data>
+  <data name="BombExtract" xml:space="preserve">
+    <value>Uitpakken</value>
+  </data>
 </root>

@@ -187,6 +187,36 @@ public sealed class HelperOperationUiTests : IDisposable
     // Until step 5 moves prompts into the window, a Win32 prompt next to the helper window lost the
     // foreground to it when the window showed (found on device): a prompt hands the operation over.
     // T-F268 step 5: prompts are asked inside the window, not handed to the Win32 dialogs.
+    // T-F217
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task AQuestion_IsAskedInTheWindowAndAnswered(bool confirmed)
+    {
+        using IOperationSession session = await BeginReadyAsync();
+
+        Task<bool> asking = session.ConfirmAsync(new ConfirmPrompt("Підозрілий архів", "bomb.zip", "Видобути", "Пропустити"));
+        AskConfirm ask = await _helper.ReadUntilAsync<AskConfirm>();
+        ask.Message.Should().Be("bomb.zip");
+        asking.IsCompleted.Should().BeFalse();
+
+        await _helper.SendAsync(new ConfirmAnswer(ask.RequestId, confirmed));
+
+        (await asking.WaitAsync(WaitLimit)).Should().Be(confirmed);
+    }
+
+    [Fact]
+    public async Task AQuestion_WhenTheWindowCloses_IsANo()
+    {
+        using IOperationSession session = await BeginReadyAsync();
+        Task<bool> asking = session.ConfirmAsync(new ConfirmPrompt("T", "M", "Yes", "No"));
+        await _helper.ReadUntilAsync<AskConfirm>();
+
+        await _helper.SendAsync(new WindowClosed());
+
+        (await asking.WaitAsync(WaitLimit)).Should().BeFalse();
+    }
+
     [Fact]
     public async Task AConflict_IsAskedInTheWindowWithBothFilesDetails()
     {

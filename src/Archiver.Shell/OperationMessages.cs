@@ -24,6 +24,18 @@ internal static class OperationMessages
             _ => null,
         };
 
+    /// <summary>
+    /// T-F217: the question before extracting an archive whose declared size is suspiciously large
+    /// for its compressed size — the App asks the same (T-F94); declining skips the archive.
+    /// </summary>
+    public static ConfirmPrompt ForCompressionBomb(CompressionBombWarning warning) => new(
+        OperationTextLocalizer.Get("BombTitle"),
+        Path.GetFileName(warning.ArchivePath) + Environment.NewLine + Environment.NewLine +
+            OperationTextLocalizer.Get("BombMessage",
+                ProgressText.FormatBytes(warning.DeclaredUncompressedSize), warning.Ratio.ToString("N0", CultureInfo.CurrentCulture)),
+        OperationTextLocalizer.Get("BombExtract"),
+        ConflictDialogLocalizer.Get("ConflictDialogSkipButton"));
+
     // A successful Test leaves nothing on disk, so unlike Extract/Archive it needs its own
     // confirmation, or a silent success would look like nothing happened.
     public static OperationMessage TestPassed(string title) =>

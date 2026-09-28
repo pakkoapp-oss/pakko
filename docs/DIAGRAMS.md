@@ -952,14 +952,14 @@ sequenceDiagram
             HUI->>Cmd: session.Cancellation cancelled → OperationCanceledException → Dispose — no failover
         else pipe ends without WindowClosed — helper crashed or was killed
             HUI->>W: Begin(title) + BeginItem(current archive)<br/>Win32 carries the rest — progress, Cancel, prompts, result
-        else Core asks for a password or a conflict decision
-            HUI->>H: AskConflict(id, path, both files' details) / AskPassword(id, archive) — kept by id until answered
+        else Core asks for a password, a conflict decision or a bomb confirmation
+            HUI->>H: AskConflict(id, path, both files' details) / AskPassword(id, archive) / AskConfirm(id, texts) — kept by id until answered
             H->>H: the prompt replaces the progress part, the window shows at once
             alt user answers
-                H-->>HUI: ConflictAnswer / PasswordAnswer(id) — an unknown id or the wrong kind is ignored
+                H-->>HUI: ConflictAnswer / PasswordAnswer / ConfirmAnswer(id) — an unknown id or the wrong kind is ignored
             else user presses Cancel or X during the prompt
                 H-->>HUI: CancelRequested, then WindowClosed
-                HUI->>Cmd: the prompt returns Skip / no password without asking, the operation is cancelled
+                HUI->>Cmd: the prompt returns Skip / no password / no without asking, the operation is cancelled
             else pipe ends without WindowClosed
                 HUI->>W: Begin(title) + BeginItem, then the same prompt asked again — never decided for the user
             end

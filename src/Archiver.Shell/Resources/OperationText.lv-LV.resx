@@ -78,4 +78,13 @@
   <data name="UnitPerSecond" xml:space="preserve">
     <value>{0}/s</value>
   </data>
+  <data name="BombTitle" xml:space="preserve">
+    <value>Aizdomīgs arhīvs</value>
+  </data>
+  <data name="BombMessage" xml:space="preserve">
+    <value>Šis arhīvs apgalvo, ka satur {0} datu, saspiešanas attiecība {1}:1. Tas ir neparasti augsts un var liecināt par atarhivēšanas bumbu. Vai tomēr atarhivēt?</value>
+  </data>
+  <data name="BombExtract" xml:space="preserve">
+    <value>Atarhivēt</value>
+  </data>
 </root>

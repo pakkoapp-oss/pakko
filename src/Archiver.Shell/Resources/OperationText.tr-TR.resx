@@ -78,4 +78,13 @@
   <data name="UnitPerSecond" xml:space="preserve">
     <value>{0}/sn</value>
   </data>
+  <data name="BombTitle" xml:space="preserve">
+    <value>Şüpheli arşiv</value>
+  </data>
+  <data name="BombMessage" xml:space="preserve">
+    <value>Bu arşivin {0} veri içerdiği belirtiliyor, sıkıştırma oranı {1}:1. Bu alışılmadık derecede yüksek ve bir sıkıştırma bombasına işaret edebilir. Yine de çıkartılsın mı?</value>
+  </data>
+  <data name="BombExtract" xml:space="preserve">
+    <value>Çıkart</value>
+  </data>
 </root>

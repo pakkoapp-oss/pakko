@@ -556,6 +556,36 @@ public sealed class ShellCommandsTests : IDisposable
         ui.Messages.Should().BeEmpty();
     }
 
+    // T-F217: Explorer declined a suspected compression bomb with no way forward; it now asks, as
+    // the App does, and a no (or a closed window) still skips the archive.
+    [Theory]
+    [InlineData("here")]
+    [InlineData("flat")]
+    [InlineData("folder")]
+    public async Task Extract_SuspectedBomb_AsksAndDeclineSkipsTheArchive(string command)
+    {
+        string zip = MakeBombZip("bomb.zip");
+        var ui = new FakeOperationUi { ConfirmAnswer = false };
+
+        await RunExtract(Create(ui), command, [zip]);
+
+        ui.ConfirmPrompts.Should().ContainSingle().Which.Message.Should().StartWith("bomb.zip");
+        Directory.EnumerateFiles(_root, "zeros.bin", SearchOption.AllDirectories).Should().BeEmpty();
+        ui.Messages.Should().ContainSingle().Which.Text.Should().Contain("Suspicious compression ratio");
+    }
+
+    [Fact]
+    public async Task Extract_SuspectedBombConfirmed_Extracts()
+    {
+        string zip = MakeBombZip("bomb.zip");
+        var ui = new FakeOperationUi { ConfirmAnswer = true };
+
+        await Create(ui).ExtractHereFlatAsync([zip]);
+
+        ui.ConfirmPrompts.Should().ContainSingle();
+        File.Exists(Path.Combine(_root, "zeros.bin")).Should().BeTrue();
+    }
+
     // --- Helpers ---
 
     private const string Password = "correct horse";
@@ -596,6 +626,18 @@ public sealed class ShellCommandsTests : IDisposable
             using var writer = new StreamWriter(entry.Open(), new UTF8Encoding(false));
             writer.Write(content);
         }
+        return path;
+    }
+
+    // 50 MB of zeros deflates past the 1000:1 ratio that triggers the compression-bomb check (T-F94).
+    private string MakeBombZip(string name)
+    {
+        string path = Path.Combine(_root, name);
+        using ZipArchive archive = ZipFile.Open(path, ZipArchiveMode.Create);
+        using Stream stream = archive.CreateEntry("zeros.bin", CompressionLevel.SmallestSize).Open();
+        byte[] block = new byte[1024 * 1024];
+        for (int i = 0; i < 50; i++)
+            stream.Write(block);
         return path;
     }
 

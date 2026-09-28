@@ -78,4 +78,13 @@
   <data name="UnitPerSecond" xml:space="preserve">
     <value>{0}/s</value>
   </data>
+  <data name="BombTitle" xml:space="preserve">
+    <value>مشکوک آرکائیو</value>
+  </data>
+  <data name="BombMessage" xml:space="preserve">
+    <value>یہ آرکائیو {0} ڈیٹا پر مشتمل ہونے کا دعویٰ کرتا ہے، جس کا کمپریشن تناسب {1}:1 ہے۔ یہ غیر معمولی طور پر زیادہ ہے اور ڈی کمپریشن بم کی نشاندہی کر سکتا ہے۔ کیا پھر بھی نکالیں؟</value>
+  </data>
+  <data name="BombExtract" xml:space="preserve">
+    <value>نکالیں</value>
+  </data>
 </root>

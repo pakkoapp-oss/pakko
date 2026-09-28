@@ -78,4 +78,13 @@
   <data name="UnitPerSecond" xml:space="preserve">
     <value>{0}/s</value>
   </data>
+  <data name="BombTitle" xml:space="preserve">
+    <value>Įtartinas archyvas</value>
+  </data>
+  <data name="BombMessage" xml:space="preserve">
+    <value>Šis archyvas teigia, kad jame yra {0} duomenų, suspaudimo santykis {1}:1. Tai neįprastai aukšta ir gali reikšti išpakavimo bombą. Vis tiek išskleisti?</value>
+  </data>
+  <data name="BombExtract" xml:space="preserve">
+    <value>Išskleisti</value>
+  </data>
 </root>
