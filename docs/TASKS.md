@@ -4427,6 +4427,13 @@ real console) and T-F226's deferred per-arrow diagram ritual — carried as open
 
 ### T-F200 — Archive Browser asks for the password again for every previewed file
 
+- **Progress (2026-09-28, wave 4):** fixed — new App.Core `SessionPasswordMemory`: the browse
+  session's preview, nested drill-in, Extract Selected/All, the warned single-entry extract and
+  Scan reuse a password that an earlier operation did not reject (`WasPasswordRejected` reads the
+  result's message codes). A remembered password Core rejects is forgotten and the user is asked.
+  Cleared on opening another archive and on window close; memory only, never written.
+  `SessionPasswordMemoryTests` (mutation-checked). Device check at the end of the wave.
+
 - [ ] **Status:** open. Confirmed on device: preview a.txt (enter password), then b.txt -> prompted
   again. The browse session should remember a password that verified (T-F97 preview, T-F98 nested
   drill-in, Extract Selected/All), cleared when the browsed archive changes. Tests first.

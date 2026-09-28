@@ -104,6 +104,7 @@ public sealed partial class MainWindow : Window
             ActivationGate.Cancel();
             PreviewCache.DeleteOwn();
             NestedArchiveCache.DeleteOwn();
+            ViewModel.ForgetBrowsePasswords();
         };
     }
 

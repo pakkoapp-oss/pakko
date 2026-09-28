@@ -49,6 +49,9 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly GroupPolicyOptions _policy;
     private readonly SourceRecycler _sourceRecycler;
 
+    // T-F200: a password that worked is remembered for the browse session only.
+    private readonly SessionPasswordMemory _browsePasswords = new();
+
     private IReadOnlyDictionary<string, IReadOnlyList<ArchiveEntryViewModel>> _archiveIndex =
         new Dictionary<string, IReadOnlyList<ArchiveEntryViewModel>>();
 
@@ -604,7 +607,7 @@ public sealed partial class MainViewModel : ObservableObject
     // Selected/Extract All/double-click-a-file commands below — the entire IsBusy/progress/
     // stopwatch/bomb-confirm-callback/summary-dialog/cleanup sequence stays identical for both;
     // only which archive(s) and which entry subset (if any) get passed to ExtractOptions differ.
-    private async Task RunExtractAsync(IReadOnlyList<string> archivePaths, IReadOnlyList<string>? selectedEntryPaths, string? destinationOverride = null)
+    private async Task RunExtractAsync(IReadOnlyList<string> archivePaths, IReadOnlyList<string>? selectedEntryPaths, string? destinationOverride = null, bool fromBrowser = false)
     {
         _cts = new CancellationTokenSource();
         _lastOperation = "extract";
@@ -626,7 +629,9 @@ public sealed partial class MainViewModel : ObservableObject
                 OpenDestinationFolder = OpenDestinationFolder,
                 ConfirmCompressionBombExtraction = _dialogService.ShowCompressionBombConfirmAsync,
                 ResolveConflictAsync = _dialogService.ShowConflictDialogAsync,
-                ResolvePasswordAsync = info => _dialogService.ShowPasswordPromptAsync(info, archivePaths.Count > 1),
+                ResolvePasswordAsync = fromBrowser
+                    ? BrowsePasswordResolver(archivePaths[0])
+                    : info => _dialogService.ShowPasswordPromptAsync(info, archivePaths.Count > 1),
                 SelectedEntryPaths = selectedEntryPaths,
             };
 
@@ -642,6 +647,8 @@ public sealed partial class MainViewModel : ObservableObject
             });
 
             ArchiveResult result = await _extractionRouter.ExtractAsync(options, progress, _cts.Token);
+            if (fromBrowser)
+                _browsePasswords.Complete(archivePaths[0], result);
             _operationStopwatch?.Stop();
             int totalSec = (int)(_operationStopwatch?.Elapsed.TotalSeconds ?? 0);
             if (result.Outcome == OperationOutcome.Completed)
@@ -708,6 +715,7 @@ public sealed partial class MainViewModel : ObservableObject
         CurrentFolderPath = string.Empty;
         SelectedBrowserEntries = [];
         ResetNestedBrowseStack();
+        _browsePasswords.Clear();
 
         // Bug found 2026-07-17: entering browse mode via file activation (T-F100) or by
         // double-clicking a real archive found while browsing real folders (T-F107) never goes
@@ -821,7 +829,7 @@ public sealed partial class MainViewModel : ObservableObject
             Mode = ExtractMode.SingleFolder,
             SelectedEntryPaths = [entry.FullPath],
             ConfirmCompressionBombExtraction = _dialogService.ShowCompressionBombConfirmAsync,
-            ResolvePasswordAsync = info => _dialogService.ShowPasswordPromptAsync(info, canApplyToRemaining: false),
+            ResolvePasswordAsync = BrowsePasswordResolver(BrowsedArchivePath),
         };
 
         StatusMessage = _res.GetString("StatusOpening");
@@ -829,6 +837,7 @@ public sealed partial class MainViewModel : ObservableObject
         try
         {
             result = await _extractionRouter.ExtractAsync(options);
+            _browsePasswords.Complete(options.ArchivePaths[0], result);
         }
         finally
         {
@@ -1083,13 +1092,13 @@ public sealed partial class MainViewModel : ObservableObject
 
     [RelayCommand(CanExecute = nameof(CanExtractSelectedFromBrowser))]
     private Task ExtractSelectedFromBrowserAsync() =>
-        RunExtractAsync([BrowsedArchivePath!], [.. SelectedBrowserEntries.Select(e => e.FullPath)]);
+        RunExtractAsync([BrowsedArchivePath!], [.. SelectedBrowserEntries.Select(e => e.FullPath)], fromBrowser: true);
 
     private bool CanExtractAllFromBrowser() => !IsBusy && BrowsedArchivePath is not null;
 
     [RelayCommand(CanExecute = nameof(CanExtractAllFromBrowser))]
     private Task ExtractAllFromBrowserAsync() =>
-        RunExtractAsync([BrowsedArchivePath!], selectedEntryPaths: null);
+        RunExtractAsync([BrowsedArchivePath!], selectedEntryPaths: null, fromBrowser: true);
 
     // T-F146: scans the current selection if any entries are checked, otherwise the whole open
     // archive — one combined button rather than separate Selected/All variants (keeps the browse
@@ -1114,7 +1123,7 @@ public sealed partial class MainViewModel : ObservableObject
                 SelectedEntryPaths = SelectedBrowserEntries.Count > 0
                     ? [.. SelectedBrowserEntries.Select(e => e.FullPath)]
                     : null,
-                ResolvePasswordAsync = info => _dialogService.ShowPasswordPromptAsync(info, canApplyToRemaining: false),
+                ResolvePasswordAsync = BrowsePasswordResolver(BrowsedArchivePath!),
             };
 
             string scanningLabel = _res.GetString("ScanResultDialogTitle");
@@ -1170,7 +1179,7 @@ public sealed partial class MainViewModel : ObservableObject
 
         string archiveDir = Path.GetDirectoryName(BrowsedArchivePath) ?? DestinationPath;
         string destDir = Path.Combine(archiveDir, ArchiveNaming.GetBaseName(BrowsedArchivePath));
-        await RunExtractAsync([BrowsedArchivePath], [entry.FullPath], destDir);
+        await RunExtractAsync([BrowsedArchivePath], [entry.FullPath], destDir, fromBrowser: true);
     }
 
     // T-F97: previewable file types (PreviewPolicy) skip the full Extract ceremony (progress,
@@ -1193,10 +1202,11 @@ public sealed partial class MainViewModel : ObservableObject
                 Mode = ExtractMode.SingleFolder,
                 SelectedEntryPaths = [entry.FullPath],
                 ConfirmCompressionBombExtraction = _dialogService.ShowCompressionBombConfirmAsync,
-                ResolvePasswordAsync = info => _dialogService.ShowPasswordPromptAsync(info, canApplyToRemaining: false),
+                ResolvePasswordAsync = BrowsePasswordResolver(BrowsedArchivePath),
             };
 
             ArchiveResult result = await _extractionRouter.ExtractAsync(options);
+            _browsePasswords.Complete(BrowsedArchivePath, result);
             if (!result.Success || result.CreatedFiles.Count == 0)
             {
                 await _dialogService.ShowErrorAsync(_res.GetString("DialogErrorTitle"),
@@ -1221,6 +1231,12 @@ public sealed partial class MainViewModel : ObservableObject
             StatusMessage = _res.GetString("StatusReady");
         }
     }
+
+    private Func<PasswordPromptInfo, Task<PasswordDecision>> BrowsePasswordResolver(string archivePath) =>
+        _browsePasswords.Wrap(archivePath, info => _dialogService.ShowPasswordPromptAsync(info, canApplyToRemaining: false));
+
+    /// <summary>T-F200: forgets the browse session's passwords (the window is closing).</summary>
+    public void ForgetBrowsePasswords() => _browsePasswords.Clear();
 
     private async Task RunCleanupAsync(IEnumerable<string> paths)
     {
