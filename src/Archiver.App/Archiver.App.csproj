@@ -198,4 +198,9 @@
     <PublishReadyToRun Condition="'$(Configuration)' == 'Debug'">False</PublishReadyToRun>
     <PublishReadyToRun Condition="'$(Configuration)' != 'Debug'">True</PublishReadyToRun>
   </PropertyGroup>
+  <!-- T-F218: the title's "build" stamp is the compile time, not the MSIX install time that the
+       packaged DLL's LastWriteTime reports. -->
+  <ItemGroup>
+    <AssemblyMetadata Include="PakkoBuildTimeUtc" Value="$([System.DateTime]::UtcNow.ToString('o'))" />
+  </ItemGroup>
 </Project>

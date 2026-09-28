@@ -4730,6 +4730,12 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 
 ### T-F218 — Title "build <timestamp>" is the MSIX install time, not the build time (P2)
 
+- **Progress (2026-09-28, wave 4):** fixed — `Archiver.App.csproj` writes the compile time as
+  `AssemblyMetadata("PakkoBuildTimeUtc")`; App.Core `BuildStamp` renders it in local time and shows
+  no stamp in a Store build (`Package.Current.SignatureKind == Store`; T-F198 item 4, gated on
+  "not Store" so CI-signed sideload builds keep the proof). CLAUDE.md's freshness text updated.
+  Device check at the end of the wave (the stamp must match the Deploy time, not the install time).
+
 - [ ] **Status:** open. The CI package (run finished 18:43 local) showed "build 2026-09-24
   18:47:17", which is the install/staging time of `Archiver.App.dll` under `WindowsApps`. The
   freshness check `CLAUDE.md` prescribes before on-device verification therefore proves "freshly

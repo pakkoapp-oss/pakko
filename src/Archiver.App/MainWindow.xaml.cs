@@ -88,12 +88,12 @@ public sealed partial class MainWindow : Window
         }
         // On-device verification relies on a fresh Deploy.ps1 having actually replaced the
         // installed binary — a bare "Build succeeded" log does not prove that (see CLAUDE.md's
-        // stale-MSIX gotcha). Reading the running assembly's own file timestamp and showing it in
-        // the title bar makes every screenshot self-certifying: if the timestamp isn't "just now,"
-        // the deploy didn't actually pick up the latest change.
-        DateTime buildTime = System.IO.File.GetLastWriteTime(
-            System.Reflection.Assembly.GetExecutingAssembly().Location);
-        this.AppWindow.Title = $"Pakko — build {buildTime:yyyy-MM-dd HH:mm:ss}";
+        // stale-MSIX gotcha). Showing the running assembly's compile time in the title bar makes
+        // every screenshot self-certifying: if it isn't "just now," the deploy didn't pick up the
+        // latest change. T-F218: the compile time (assembly metadata), not the file time, which
+        // for an installed MSIX is the install time; T-F198 item 4: no stamp in a Store build.
+        this.AppWindow.Title = BuildStamp.Title(
+            BuildStamp.Read(System.Reflection.Assembly.GetExecutingAssembly()), IsStoreBuild());
 
         this.AppWindow.SetIcon("Assets/Square44x44Logo.ico");
 
@@ -107,6 +107,18 @@ public sealed partial class MainWindow : Window
             NestedArchiveCache.DeleteOwn();
             ViewModel.ForgetBrowsePasswords();
         };
+    }
+
+    private static bool IsStoreBuild()
+    {
+        try
+        {
+            return Windows.ApplicationModel.Package.Current.SignatureKind == Windows.ApplicationModel.PackageSignatureKind.Store;
+        }
+        catch (System.InvalidOperationException)
+        {
+            return false; // not running packaged
+        }
     }
 
     // T-F201: a second Pakko window used to open exactly over the first one.

@@ -89,8 +89,8 @@ resolved — root cause was never a WinUI rendering bug: `RootGrid`'s file-table
 row to grow), so at a fixed window height the other rows' `Auto` sizing clamped the table's Star
 row to 0. Fixed via a larger default window (`1100x900`), an explicit `MinHeight="200"` on the
 row, and `PreferredMinimumWidth`/`Height` via `OverlappedPresenter`. Same session: the title bar
-now shows `Pakko - build <timestamp>`, read from the running assembly's own file `LastWriteTime`
-(see this file's Build Commands section for why this matters).
+now shows `Pakko - build <timestamp>` (the compile time since T-F218; see this file's Build
+Commands section for why this matters).
 
 **T-F107** (Archive Browser's "Up" button now climbs past the archive root into the real
 containing folder, up to a drive root, and up to a synthetic "This PC" node) is `[x]` done — new
@@ -962,9 +962,10 @@ MSBuild tests\Archiver.ShellExtension.Tests\Archiver.ShellExtension.Tests.vcxpro
 >
 > **Never trust build logs alone to prove an on-device check ran against fresh code — always
 > have the running window itself prove it.** `Archiver.App`'s title bar shows
-> `Pakko — build <yyyy-MM-dd HH:mm:ss>`, read from the running assembly's own file timestamp
-> (`MainWindow.xaml.cs` constructor) — not a manually-bumped version, not a build-log claim, but
-> the actual installed binary's own on-disk timestamp, visible in every screenshot. Before
+> `Pakko — build <yyyy-MM-dd HH:mm:ss>`: the running assembly's compile time, from its
+> `PakkoBuildTimeUtc` metadata (T-F218; the file time was the MSIX install time), hidden in a
+> Store build (T-F198 item 4) — not a manually-bumped version, not a build-log claim, but what the
+> installed binary itself reports, visible in every screenshot. Before
 > treating any on-device verification result as valid (especially a repeated "still broken"
 > result across several fix attempts), confirm this timestamp is within the last few minutes of
 > the current time. If it's stale, the deploy didn't actually pick up the latest change and the
