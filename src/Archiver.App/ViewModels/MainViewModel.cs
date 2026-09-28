@@ -510,15 +510,9 @@ public sealed partial class MainViewModel : ObservableObject
                 catch { /* best-effort */ }
             }
 
-            string sizeStr = totalBytes switch
-            {
-                >= 1_073_741_824 => $"{totalBytes / 1_073_741_824.0:F1} GB",
-                >= 1_048_576     => $"{totalBytes / 1_048_576.0:F1} MB",
-                >= 1_024         => $"{totalBytes / 1_024.0:F0} KB",
-                _                => $"{totalBytes} B"
-            };
+            string sizeStr = DisplayText.FormatSize(totalBytes);
 
-            _operationStatusPrefix = $"Archiving... ({fileCount} files, {sizeStr})";
+            _operationStatusPrefix = string.Format(System.Globalization.CultureInfo.CurrentCulture, _res.GetString("StatusArchivingCount"), fileCount, sizeStr);
             StatusMessage = _operationStatusPrefix;
             _operationStopwatch = System.Diagnostics.Stopwatch.StartNew();
             _speedSampler = new ProgressSpeedSampler();
@@ -579,9 +573,9 @@ public sealed partial class MainViewModel : ObservableObject
         catch (Exception ex)
         {
             _operationStopwatch?.Stop();
-            StatusMessage = "Error";
+            StatusMessage = _res.GetString("DialogErrorTitle");
             _logService.Error("Unexpected error during operation", ex);
-            await _dialogService.ShowErrorAsync("Error", ex.Message);
+            await _dialogService.ShowErrorAsync(_res.GetString("DialogErrorTitle"), ex.Message);
         }
         finally
         {
@@ -636,7 +630,7 @@ public sealed partial class MainViewModel : ObservableObject
                 SelectedEntryPaths = selectedEntryPaths,
             };
 
-            _operationStatusPrefix = $"Extracting... ({options.ArchivePaths.Count} archive(s))";
+            _operationStatusPrefix = string.Format(System.Globalization.CultureInfo.CurrentCulture, _res.GetString("StatusExtractingCount"), options.ArchivePaths.Count);
             StatusMessage = _operationStatusPrefix;
             _operationStopwatch = System.Diagnostics.Stopwatch.StartNew();
             _speedSampler = new ProgressSpeedSampler();
@@ -682,9 +676,9 @@ public sealed partial class MainViewModel : ObservableObject
         catch (Exception ex)
         {
             _operationStopwatch?.Stop();
-            StatusMessage = "Error";
+            StatusMessage = _res.GetString("DialogErrorTitle");
             _logService.Error("Unexpected error during operation", ex);
-            await _dialogService.ShowErrorAsync("Error", ex.Message);
+            await _dialogService.ShowErrorAsync(_res.GetString("DialogErrorTitle"), ex.Message);
         }
         finally
         {
@@ -744,7 +738,7 @@ public sealed partial class MainViewModel : ObservableObject
         {
             IsBrowsingArchive = false;
             BrowsedArchivePath = null;
-            await _dialogService.ShowErrorAsync("Error", CoreMessageText.Of(result.ErrorText, result.ErrorMessage ?? "Failed to read archive."));
+            await _dialogService.ShowErrorAsync(_res.GetString("DialogErrorTitle"), CoreMessageText.Of(result.ErrorText, result.ErrorMessage ?? "Failed to read archive."));
             return;
         }
 
@@ -774,7 +768,7 @@ public sealed partial class MainViewModel : ObservableObject
         catch (Exception ex)
         {
             _logService.Error("Archive listing failed", ex);
-            await _dialogService.ShowErrorAsync("Error", ex.Message);
+            await _dialogService.ShowErrorAsync(_res.GetString("DialogErrorTitle"), ex.Message);
             return null;
         }
         finally
@@ -815,7 +809,7 @@ public sealed partial class MainViewModel : ObservableObject
 
         if (NestedArchivePolicy.ExceedsMaxDepth(_browseStack.Count))
         {
-            await _dialogService.ShowErrorAsync("Error", _res.GetString("NestedArchiveDepthLimitReached"));
+            await _dialogService.ShowErrorAsync(_res.GetString("DialogErrorTitle"), _res.GetString("NestedArchiveDepthLimitReached"));
             return;
         }
 
@@ -844,7 +838,7 @@ public sealed partial class MainViewModel : ObservableObject
         if (!result.Success || result.CreatedFiles.Count == 0)
         {
             NestedArchiveCache.DeleteScope(scopeDir);
-            await _dialogService.ShowErrorAsync("Error", _res.GetString("StatusIssues"));
+            await _dialogService.ShowErrorAsync(_res.GetString("DialogErrorTitle"), _res.GetString("StatusIssues"));
             return;
         }
 
@@ -855,7 +849,7 @@ public sealed partial class MainViewModel : ObservableObject
         if (ArchiveFormatDetector.Detect(extractedPath) == ArchiveFormat.Unknown)
         {
             NestedArchiveCache.DeleteScope(scopeDir);
-            await _dialogService.ShowErrorAsync("Error", _res.GetString("StatusIssues"));
+            await _dialogService.ShowErrorAsync(_res.GetString("DialogErrorTitle"), _res.GetString("StatusIssues"));
             return;
         }
 
@@ -864,7 +858,7 @@ public sealed partial class MainViewModel : ObservableObject
         {
             NestedArchiveCache.DeleteScope(scopeDir);
             if (listResult is not null)
-                await _dialogService.ShowErrorAsync("Error", CoreMessageText.Of(listResult.ErrorText, listResult.ErrorMessage ?? "Failed to read archive."));
+                await _dialogService.ShowErrorAsync(_res.GetString("DialogErrorTitle"), CoreMessageText.Of(listResult.ErrorText, listResult.ErrorMessage ?? "Failed to read archive."));
             return;
         }
 
@@ -1145,7 +1139,7 @@ public sealed partial class MainViewModel : ObservableObject
         catch (Exception ex)
         {
             _logService.Error("Unexpected error during scan", ex);
-            await _dialogService.ShowErrorAsync("Error", ex.Message);
+            await _dialogService.ShowErrorAsync(_res.GetString("DialogErrorTitle"), ex.Message);
         }
         finally
         {
@@ -1205,7 +1199,7 @@ public sealed partial class MainViewModel : ObservableObject
             ArchiveResult result = await _extractionRouter.ExtractAsync(options);
             if (!result.Success || result.CreatedFiles.Count == 0)
             {
-                await _dialogService.ShowErrorAsync("Error",
+                await _dialogService.ShowErrorAsync(_res.GetString("DialogErrorTitle"),
                     (result.Errors.Count > 0 ? CoreMessageText.Of(result.Errors[0]) : null) ?? _res.GetString("StatusIssues"));
                 return;
             }
@@ -1215,12 +1209,12 @@ public sealed partial class MainViewModel : ObservableObject
             // entry's actual on-disk path has to be computed from the scope dir + entry path.
             string previewFilePath = Path.Combine(scopeDir, entry.FullPath.Replace('/', Path.DirectorySeparatorChar));
             if (!await _dialogService.OpenFileWithDefaultAppAsync(previewFilePath))
-                await _dialogService.ShowErrorAsync("Error", _res.GetString("StatusIssues"));
+                await _dialogService.ShowErrorAsync(_res.GetString("DialogErrorTitle"), _res.GetString("StatusIssues"));
         }
         catch (Exception ex)
         {
             _logService.Error("Preview failed", ex);
-            await _dialogService.ShowErrorAsync("Error", ex.Message);
+            await _dialogService.ShowErrorAsync(_res.GetString("DialogErrorTitle"), ex.Message);
         }
         finally
         {

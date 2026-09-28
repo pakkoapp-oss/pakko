@@ -50,7 +50,7 @@ public sealed class DialogService : IDialogService
         {
             Title = _res.GetString("NotDeletedDialogTitle"),
             Content = BuildPathList(_res.GetString("NotDeletedDialogMessage"), paths),
-            CloseButtonText = "OK",
+            CloseButtonText = _res.GetString("DialogOkButton"),
             XamlRoot = _window!.Content.XamlRoot
         };
         await dialog.ShowAsync();
@@ -71,7 +71,7 @@ public sealed class DialogService : IDialogService
         {
             Title = title,
             Content = message,
-            CloseButtonText = "OK",
+            CloseButtonText = _res.GetString("DialogOkButton"),
             XamlRoot = _window!.Content.XamlRoot
         };
         await dialog.ShowAsync();
@@ -83,8 +83,8 @@ public sealed class DialogService : IDialogService
         {
             Title = title,
             Content = message,
-            PrimaryButtonText = "Yes",
-            CloseButtonText = "No",
+            PrimaryButtonText = _res.GetString("DialogYesButton"),
+            CloseButtonText = _res.GetString("DialogNoButton"),
             XamlRoot = _window!.Content.XamlRoot
         };
         ContentDialogResult result = await dialog.ShowAsync();
@@ -110,8 +110,8 @@ public sealed class DialogService : IDialogService
                     Content = _res.GetString("CompressionBombDialogMessage")
                         .Replace("{0}", FileItem.FormatSize(warning.DeclaredUncompressedSize))
                         .Replace("{1}", warning.Ratio.ToString()),
-                    PrimaryButtonText = "Yes",
-                    CloseButtonText = "No",
+                    PrimaryButtonText = _res.GetString("DialogYesButton"),
+                    CloseButtonText = _res.GetString("DialogNoButton"),
                     XamlRoot = _window!.Content.XamlRoot
                 };
                 ContentDialogResult result = await dialog.ShowAsync();
@@ -471,7 +471,7 @@ public sealed class DialogService : IDialogService
                 MaxHeight = 400,
                 VerticalScrollBarVisibility = ScrollBarVisibility.Auto
             },
-            CloseButtonText = "OK",
+            CloseButtonText = _res.GetString("DialogOkButton"),
             XamlRoot = _window!.Content.XamlRoot
         };
 
@@ -492,7 +492,7 @@ public sealed class DialogService : IDialogService
             {
                 Title = _res.GetString("ScanResultDialogTitle"),
                 Content = _res.GetString("ScanNoThreatsFound"),
-                CloseButtonText = "OK",
+                CloseButtonText = _res.GetString("DialogOkButton"),
                 XamlRoot = _window!.Content.XamlRoot
             };
             await cleanDialog.ShowAsync();
@@ -554,7 +554,7 @@ public sealed class DialogService : IDialogService
                 MaxHeight = 400,
                 VerticalScrollBarVisibility = ScrollBarVisibility.Auto
             },
-            CloseButtonText = "OK",
+            CloseButtonText = _res.GetString("DialogOkButton"),
             XamlRoot = _window!.Content.XamlRoot
         };
 
@@ -588,7 +588,7 @@ public sealed class DialogService : IDialogService
 
             itemPanel.Children.Add(new TextBlock
             {
-                Text = entry.Hash ?? $"Error: {CoreMessageText.Of(entry.ErrorText, entry.Error ?? string.Empty)}",
+                Text = entry.Hash ?? $"{_res.GetString("DialogErrorTitle")}: {CoreMessageText.Of(entry.ErrorText, entry.Error ?? string.Empty)}",
                 FontFamily = new FontFamily("Consolas"),
                 IsTextSelectionEnabled = true,
                 TextWrapping = TextWrapping.Wrap,
@@ -606,7 +606,7 @@ public sealed class DialogService : IDialogService
                 MaxHeight = 400,
                 VerticalScrollBarVisibility = ScrollBarVisibility.Auto
             },
-            CloseButtonText = "OK",
+            CloseButtonText = _res.GetString("DialogOkButton"),
             XamlRoot = _window!.Content.XamlRoot
         };
         await dialog.ShowAsync();

@@ -169,7 +169,7 @@ public sealed partial class MainWindow : Window
     {
         if (e.OriginalSource is not FrameworkElement { DataContext: FileItem item })
             return;
-        if (item.Type == "Folder" || !System.IO.File.Exists(item.FullPath))
+        if (item.IsFolder || !System.IO.File.Exists(item.FullPath))
             return;
         if (ArchiveFormatDetector.Detect(item.FullPath) == Archiver.Core.Models.ArchiveFormat.Unknown)
             return;

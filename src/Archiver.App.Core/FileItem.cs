@@ -20,6 +20,8 @@ public sealed partial class FileItem : ObservableObject
     public string FullPath { get; }
     public string Name { get; }
     public string Type { get; }
+
+    public bool IsFolder { get; }
     public DateTime Modified { get; }
     public string ModifiedDisplay => Modified.ToString("yyyy-MM-dd HH:mm");
 
@@ -61,14 +63,15 @@ public sealed partial class FileItem : ObservableObject
 
         if (Directory.Exists(path))
         {
-            Type = "Folder";
+            IsFolder = true;
+            Type = DisplayText.Folder;
             Modified = Directory.GetLastWriteTime(path);
             _ = LoadFolderSizeAsync(path);
         }
         else
         {
             string ext = Path.GetExtension(path).TrimStart('.');
-            Type = string.IsNullOrEmpty(ext) ? "File" : ext.ToUpperInvariant();
+            Type = string.IsNullOrEmpty(ext) ? DisplayText.File : ext.ToUpperInvariant();
             var fi = new FileInfo(path);
             Modified = fi.LastWriteTime;
             SizeBytes = fi.Length;
@@ -123,12 +126,6 @@ public sealed partial class FileItem : ObservableObject
         }
     }
 
-    /// <summary>Formats a byte count as bytes/KB/MB/GB for display.</summary>
-    public static string FormatSize(long bytes) => bytes switch
-    {
-        < 1024 => $"{bytes} bytes",
-        < 1024 * 1024 => $"{bytes / 1024.0:F1} KB",
-        < 1024L * 1024 * 1024 => $"{bytes / (1024.0 * 1024):F1} MB",
-        _ => $"{bytes / (1024.0 * 1024 * 1024):F1} GB"
-    };
+    /// <summary>Formats a byte count as B/KB/MB/GB for display, in the App's language.</summary>
+    public static string FormatSize(long bytes) => DisplayText.FormatSize(bytes);
 }

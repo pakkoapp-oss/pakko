@@ -359,4 +359,40 @@
   <data name="NotDeletedDialogMessage" xml:space="preserve">
     <value>Diese Elemente befinden sich noch auf dem Datenträger. Sie werden möglicherweise verwendet oder sind geschützt.</value>
   </data>
+  <data name="DialogYesButton" xml:space="preserve">
+    <value>Ja</value>
+  </data>
+  <data name="DialogNoButton" xml:space="preserve">
+    <value>Nein</value>
+  </data>
+  <data name="DialogOkButton" xml:space="preserve">
+    <value>OK</value>
+  </data>
+  <data name="DialogErrorTitle" xml:space="preserve">
+    <value>Fehler</value>
+  </data>
+  <data name="TypeFolder" xml:space="preserve">
+    <value>Ordner</value>
+  </data>
+  <data name="TypeFile" xml:space="preserve">
+    <value>Datei</value>
+  </data>
+  <data name="SizeBytes" xml:space="preserve">
+    <value>{0} B</value>
+  </data>
+  <data name="SizeKB" xml:space="preserve">
+    <value>{0} KB</value>
+  </data>
+  <data name="SizeMB" xml:space="preserve">
+    <value>{0} MB</value>
+  </data>
+  <data name="SizeGB" xml:space="preserve">
+    <value>{0} GB</value>
+  </data>
+  <data name="StatusArchivingCount" xml:space="preserve">
+    <value>Archivieren... (Dateien: {0}, {1})</value>
+  </data>
+  <data name="StatusExtractingCount" xml:space="preserve">
+    <value>Extrahieren... (Archive: {0})</value>
+  </data>
 </root>

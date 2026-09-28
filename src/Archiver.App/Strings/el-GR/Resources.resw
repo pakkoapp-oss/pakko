@@ -359,4 +359,40 @@
   <data name="NotDeletedDialogMessage" xml:space="preserve">
     <value>Αυτά τα στοιχεία βρίσκονται ακόμη στον δίσκο. Ίσως χρησιμοποιούνται ή προστατεύονται.</value>
   </data>
+  <data name="DialogYesButton" xml:space="preserve">
+    <value>Ναι</value>
+  </data>
+  <data name="DialogNoButton" xml:space="preserve">
+    <value>Όχι</value>
+  </data>
+  <data name="DialogOkButton" xml:space="preserve">
+    <value>OK</value>
+  </data>
+  <data name="DialogErrorTitle" xml:space="preserve">
+    <value>Σφάλμα</value>
+  </data>
+  <data name="TypeFolder" xml:space="preserve">
+    <value>Φάκελος</value>
+  </data>
+  <data name="TypeFile" xml:space="preserve">
+    <value>Αρχείο</value>
+  </data>
+  <data name="SizeBytes" xml:space="preserve">
+    <value>{0} B</value>
+  </data>
+  <data name="SizeKB" xml:space="preserve">
+    <value>{0} KB</value>
+  </data>
+  <data name="SizeMB" xml:space="preserve">
+    <value>{0} MB</value>
+  </data>
+  <data name="SizeGB" xml:space="preserve">
+    <value>{0} GB</value>
+  </data>
+  <data name="StatusArchivingCount" xml:space="preserve">
+    <value>Συμπίεση σε εξέλιξη... (αρχεία: {0}, {1})</value>
+  </data>
+  <data name="StatusExtractingCount" xml:space="preserve">
+    <value>Εξαγωγή σε εξέλιξη... (αρχειοθήκες: {0})</value>
+  </data>
 </root>

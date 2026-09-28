@@ -359,4 +359,40 @@
   <data name="NotDeletedDialogMessage" xml:space="preserve">
     <value>Ove stavke i dalje su na disku. Možda se koriste ili su zaštićene.</value>
   </data>
+  <data name="DialogYesButton" xml:space="preserve">
+    <value>Da</value>
+  </data>
+  <data name="DialogNoButton" xml:space="preserve">
+    <value>Ne</value>
+  </data>
+  <data name="DialogOkButton" xml:space="preserve">
+    <value>U redu</value>
+  </data>
+  <data name="DialogErrorTitle" xml:space="preserve">
+    <value>Pogreška</value>
+  </data>
+  <data name="TypeFolder" xml:space="preserve">
+    <value>Mapa</value>
+  </data>
+  <data name="TypeFile" xml:space="preserve">
+    <value>Datoteka</value>
+  </data>
+  <data name="SizeBytes" xml:space="preserve">
+    <value>{0} B</value>
+  </data>
+  <data name="SizeKB" xml:space="preserve">
+    <value>{0} KB</value>
+  </data>
+  <data name="SizeMB" xml:space="preserve">
+    <value>{0} MB</value>
+  </data>
+  <data name="SizeGB" xml:space="preserve">
+    <value>{0} GB</value>
+  </data>
+  <data name="StatusArchivingCount" xml:space="preserve">
+    <value>Arhiviranje... (datoteke: {0}, {1})</value>
+  </data>
+  <data name="StatusExtractingCount" xml:space="preserve">
+    <value>Raspakiravanje... (arhive: {0})</value>
+  </data>
 </root>

@@ -50,7 +50,7 @@ public class ArchiveEntryViewModelTests
             CompressedSize = 512,
         };
 
-        entry.CompressedSizeDisplay.Should().Be("512 bytes");
+        entry.CompressedSizeDisplay.Should().Be("512 B");
     }
 
     [Fact]
