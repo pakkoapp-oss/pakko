@@ -117,6 +117,16 @@ public sealed class OutcomeAndEncryptionSummaryTests
             .ExplorerArguments.Should().Be($@"""{created}""");
     }
 
+    // A drive root keeps its backslash; explorer.exe "D:\" opens the root (checked on device).
+    [Fact]
+    public void ShowInFolder_ExtractedIntoADriveRoot_OpensIt()
+    {
+        var result = new ArchiveResult { CreatedFiles = [@"D:\"] };
+
+        OutcomeLine.From(result, TimeSpan.FromSeconds(1), extract: true, @"D:\")
+            .ExplorerArguments.Should().Be(@"""D:\""");
+    }
+
     [Theory]
     [InlineData(true, true, true, 3, true, FooterLineKind.None)]
     [InlineData(false, true, true, 3, true, FooterLineKind.Outcome)]

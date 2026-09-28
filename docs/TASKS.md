@@ -4768,7 +4768,9 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 
 - **Progress (2026-09-28, T-F199 step 7):** fixed — the result line stays in the footer until the
   next action, with "Show in folder" and "Details..." (see T-F199's step 7 entry). Renamed files
-  are still not listed (Core does not report renames; mockup board 7 deferred). Device 1.5.0.31.
+  are still not listed (Core does not report renames; mockup board 7 deferred), so this task's own
+  repro (a second Extract all with Rename) still reads as a clean "Видобуто" — that part stays open.
+  Device 1.5.0.31.
 - [~] **Status:** fixed, see progress. Original: On success with no errors/skips, `MainViewModel` sets "Розпаковано за N с
   — файлів: M" and then, a few lines later, unconditionally resets `StatusMessage` to
   "Готово" (`MainViewModel.cs` ~line 702, and the matching reset in `ArchiveAsync` ~line 603);
