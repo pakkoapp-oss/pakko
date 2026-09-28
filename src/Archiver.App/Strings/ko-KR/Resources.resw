@@ -521,4 +521,7 @@
   <data name="DragAddCaption" xml:space="preserve">
     <value>목록에 추가</value>
   </data>
+  <data name="AlreadyInListLine" xml:space="preserve">
+    <value>이미 목록에 있음: {0}</value>
+  </data>
 </root>

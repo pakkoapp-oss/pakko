@@ -521,4 +521,7 @@
   <data name="DragAddCaption" xml:space="preserve">
     <value>सूची में जोड़ें</value>
   </data>
+  <data name="AlreadyInListLine" xml:space="preserve">
+    <value>पहले से सूची में: {0}</value>
+  </data>
 </root>

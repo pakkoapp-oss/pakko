@@ -521,4 +521,7 @@
   <data name="DragAddCaption" xml:space="preserve">
     <value>Føj til listen</value>
   </data>
+  <data name="AlreadyInListLine" xml:space="preserve">
+    <value>Allerede på listen: {0}</value>
+  </data>
 </root>

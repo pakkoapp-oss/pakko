@@ -1766,10 +1766,9 @@ public sealed partial class MainViewModel : ObservableObject
 
     public void AddPaths(IEnumerable<string> paths)
     {
-        foreach (string path in paths)
+        (IReadOnlyList<string> added, int alreadyListed) = PendingPaths.Split(FileItems.Select(x => x.FullPath), paths);
+        foreach (string path in added)
         {
-            if (FileItems.Any(x => x.FullPath == path))
-                continue;
             // T-F232: one unreadable path used to throw out of here, dropping the rest of an
             // activation's list or escaping into the drag-drop handler.
             if (FileItem.TryCreate(path) is { } item)
@@ -1777,6 +1776,10 @@ public sealed partial class MainViewModel : ObservableObject
             else
                 _logService.Warn($"Skipped unreadable path: {path}");
         }
+        // T-F278: a drop of only listed items used to change nothing on screen.
+        if (alreadyListed > 0)
+            SetOutcome(string.Format(System.Globalization.CultureInfo.CurrentCulture, _res.GetString("AlreadyInListLine"), alreadyListed),
+                null, null, string.Empty);
     }
 
     [RelayCommand(CanExecute = nameof(CanOperate))]

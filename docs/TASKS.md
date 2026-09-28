@@ -6544,7 +6544,11 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 
 ### T-F278 — Dropping a file already in the list gives no feedback; the check is case-sensitive (P3)
 
-- [ ] **Status:** open. `MainViewModel.AddPaths` skips a path already in `FileItems` without a
+- [~] **Progress (2026-09-29, G1):** new App.Core `PendingPaths.Split` (OrdinalIgnoreCase, also
+  de-duplicates within one drop; `PendingPathsTests`, mutation-checked with `Ordinal`);
+  `AddPaths` shows the footer line `AlreadyInListLine` ("Already in the list: N", uk "Вже у
+  списку: N", 37 locales). Device check in G1's App pass.
+- **Was:** open. `MainViewModel.AddPaths` skips a path already in `FileItems` without a
   word, so a repeated drop (or Add Files) looks like it failed (user check, 2026-09-28). The check
   is `x.FullPath == path` — case-sensitive, while Windows paths are not, so the same file reached
   as `C:\a\File.txt` and `c:\a\file.txt` is listed twice. Fix: compare with

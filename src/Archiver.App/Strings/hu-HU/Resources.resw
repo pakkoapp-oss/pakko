@@ -521,4 +521,7 @@
   <data name="DragAddCaption" xml:space="preserve">
     <value>Hozzáadás a listához</value>
   </data>
+  <data name="AlreadyInListLine" xml:space="preserve">
+    <value>Már a listában: {0}</value>
+  </data>
 </root>

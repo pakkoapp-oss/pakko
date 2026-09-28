@@ -521,4 +521,7 @@
   <data name="DragAddCaption" xml:space="preserve">
     <value>فہرست میں شامل کریں</value>
   </data>
+  <data name="AlreadyInListLine" xml:space="preserve">
+    <value>پہلے سے فہرست میں: {0}</value>
+  </data>
 </root>

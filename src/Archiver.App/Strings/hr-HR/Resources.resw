@@ -521,4 +521,7 @@
   <data name="DragAddCaption" xml:space="preserve">
     <value>Dodaj na popis</value>
   </data>
+  <data name="AlreadyInListLine" xml:space="preserve">
+    <value>Već na popisu: {0}</value>
+  </data>
 </root>

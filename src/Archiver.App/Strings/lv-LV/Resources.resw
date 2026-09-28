@@ -521,4 +521,7 @@
   <data name="DragAddCaption" xml:space="preserve">
     <value>Pievienot sarakstam</value>
   </data>
+  <data name="AlreadyInListLine" xml:space="preserve">
+    <value>Jau sarakstā: {0}</value>
+  </data>
 </root>

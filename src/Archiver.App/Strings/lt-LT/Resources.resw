@@ -521,4 +521,7 @@
   <data name="DragAddCaption" xml:space="preserve">
     <value>Įtraukti į sąrašą</value>
   </data>
+  <data name="AlreadyInListLine" xml:space="preserve">
+    <value>Jau sąraše: {0}</value>
+  </data>
 </root>

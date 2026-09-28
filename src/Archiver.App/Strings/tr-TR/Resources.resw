@@ -521,4 +521,7 @@
   <data name="DragAddCaption" xml:space="preserve">
     <value>Listeye ekle</value>
   </data>
+  <data name="AlreadyInListLine" xml:space="preserve">
+    <value>Zaten listede: {0}</value>
+  </data>
 </root>
