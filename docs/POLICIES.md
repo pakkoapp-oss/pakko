@@ -6,10 +6,11 @@
 > [`T-F51`](TASKS.md) in `TASKS.md` for the full trail.
 > **2026-09-27 (T-F250/T-F261):** listing/browsing, testing and scanning now honor
 > `AllowedFormats`/`BlockedFormats`/`DisableTarExtraction` too, and `DisableTarExtraction` also
-> stops the tar.exe version check. Covered by unit tests; the on-device re-check is pending.
+> stops the tar.exe version check. Re-checked on device 2026-09-28 for `DisableTarExtraction` and
+> `BlockedFormats` (App, Explorer, CLI; no tar.exe started); `AllowedFormats` is covered by unit tests only.
 > **2026-09-28 (T-F262):** the Explorer menu reads `DisableTarExtraction` and `BlockedFormats` and
 > hides the matching items (changes apply within about 5 s). `AllowedFormats` is enforced when the
-> command runs, not by hiding menu items. On-device re-check pending.
+> command runs, not by hiding menu items. Checked on device 2026-09-28.
 
 ---
 

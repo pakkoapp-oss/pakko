@@ -5723,6 +5723,16 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   `DisableTarExtraction`; `PakkoServices.Create(policy)` builds Shell and CLI services (CLI `i`/`l`
   had no policy at all before). The App keeps DI; the engine gates cover it. Device check with real
   policy values pending.
+- **Device check (2026-09-28, Deploy 1.5.0.15, policy set through an elevated helper, tar.exe
+  processes polled every 100 ms):** `DisableTarExtraction=1`: `pakko i` shows every tar format
+  "blocked by Group Policy" and "tar.exe ... (disabled by Group Policy)"; `pakko l`/`t`/`x` on
+  `.tar.gz` and `l` on `.7z` refuse with the policy reason (zip still lists); App start + browse
+  `.7z` shows the policy error; Shell extract/test/scan on `.tar.gz` refuse; no tar.exe seen in any
+  of ~10 operations (control run with the policy removed: the poll caught 2 of 5 version probes plus
+  a listing). `BlockedFormats=sevenzip`: `pakko l x.7z` refuses, `.tar.gz` still lists.
+  `BlockedFormats=zip`: Shell test/extract/scan on a zip refuse. The Explorer menu part is under
+  T-F262. Found: T-F274 (Test says "no errors" when nothing was tested); the App's error box is
+  English ("Error" + Core reason) in the uk-UA UI, T-F209.
 
 - [ ] **Status:** open — code-confirmed 2026-09-25. Extract, Create and List have routers; Test
   has none (`IExtractionRouter.cs:10-17` has only `ExtractAsync`, although
@@ -5766,6 +5776,11 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   `DisableTarExtraction` and `BlockedFormats` (fail-safe, re-read at most every 5 s) and `GetState`
   hides the matching items; `AllowedFormats` is not read by the menu (enforced on click). Device
   check pending.
+- **Device check (2026-09-28, Deploy 1.5.0.15, real Explorer menu):** `DisableTarExtraction=1` ->
+  `sample.tar.gz` shows only Compress/Add to X.zip/Hash; `BlockedFormats=sevenzip` -> `valid.7z`
+  loses Extract/Open/Scan but keeps Add to X.tar, while `.tar.gz` keeps every item;
+  `BlockedFormats=zip` -> `hf.zip` shows only Compress/Hash. Each change applied without restarting
+  Explorer. `AllowedFormats` not checked (not read by design).
 
 - [ ] **Status:** open — code-confirmed 2026-09-25. `Archiver.ShellExtension` has no policy
   reader at all (no match for "Polic"/registry calls in the project); the tar-family menu items
@@ -6197,6 +6212,19 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 - **Tests first:** a source list longer than 32,767 characters creates a complete tar; names with
   Cyrillic and U+2713 round-trip; the T-F266 refusal still triggers.
 - **Reported by:** fix phase 5 device check, 2026-09-28.
+
+### T-F274 — Shell "Test archive" reports "no errors detected" when nothing was tested (P2)
+
+- [ ] **Status:** open — device-confirmed 2026-09-28 (Deploy 1.5.0.15). Explorer/Shell `--test` on
+  a selection whose every archive is skipped (a tar-family archive — no test capability — or any
+  archive under a blocking Group Policy) shows "Skipped (1): ... blocked by Group Policy" followed
+  by "No errors were found in the archive(s)." The second line claims a test that never ran. T-F216
+  (first half) combined the two into one box; the "no errors" line should appear only when at least
+  one archive was really tested.
+- **Tests first:** `OperationMessages`/`ShellResultPresenter` for all-skipped, some-tested and
+  all-tested Test results; the same rule for `pakko t` output if it prints an "Everything is Ok"
+  equivalent.
+- **Reported by:** fix phase 5 Group Policy device check, 2026-09-28.
 
 ### T-F223 — Diagram gap from T-F193 (P2)
 
