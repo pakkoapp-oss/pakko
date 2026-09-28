@@ -302,9 +302,6 @@
   <data name="EncryptWithPasswordCheck.Content" xml:space="preserve">
     <value>پاس ورڈ کے ساتھ انکرپٹ کریں (AES-256)</value>
   </data>
-  <data name="EncryptPasswordDialogTitle" xml:space="preserve">
-    <value>پاس ورڈ سے محفوظ کریں</value>
-  </data>
   <data name="EncryptPasswordDialogMessage" xml:space="preserve">
     <value>فائلوں کا مواد AES-256 سے انکرپٹ کیا جائے گا۔ آرکائیو کے اندر فائلوں اور فولڈرز کے نام پاس ورڈ کے بغیر بھی نظر آتے رہیں گے۔</value>
   </data>
@@ -317,9 +314,6 @@
   <data name="EncryptPasswordRuleHint" xml:space="preserve">
     <value>صرف انگریزی حروف، ہندسے، خالی جگہیں اور رموزِ اوقاف استعمال کریں، زیادہ سے زیادہ {0} حروف، تاکہ 7-Zip اور دیگر ZIP ٹولز آرکائیو کھول سکیں۔</value>
   </data>
-  <data name="EncryptPasswordErrorEmpty" xml:space="preserve">
-    <value>پاس ورڈ درج کریں۔</value>
-  </data>
   <data name="EncryptPasswordErrorCharacters" xml:space="preserve">
     <value>پاس ورڈ میں ایسے حروف ہیں جنہیں 7-Zip جیسے دیگر ZIP ٹولز نہیں سنبھال سکتے۔ صرف انگریزی حروف، ہندسے، خالی جگہیں اور رموزِ اوقاف استعمال کریں۔</value>
   </data>
@@ -328,6 +322,12 @@
   </data>
   <data name="EncryptPasswordErrorMismatch" xml:space="preserve">
     <value>پاس ورڈز مماثل نہیں ہیں۔</value>
+  </data>
+  <data name="EncryptShowPasswordCheck.Content" xml:space="preserve">
+    <value>پاس ورڈ دکھائیں</value>
+  </data>
+  <data name="PasswordDialogShowPasswordCheck" xml:space="preserve">
+    <value>پاس ورڈ دکھائیں</value>
   </data>
   <data name="PermanentDeleteDialogTitle" xml:space="preserve">
     <value>مستقل طور پر حذف کریں؟</value>

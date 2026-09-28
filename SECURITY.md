@@ -386,7 +386,8 @@ one-click and unencrypted.
   exception. Zip64 fields (entry sizes, offsets, the Zip64 end-of-central-directory) are
   range-checked against the file the same way.
 - **What encryption does not hide.** The ZIP format encrypts file *contents* only: file and folder
-  names, sizes and timestamps stay readable without the password (the app's dialog says so).
+  names, sizes and timestamps stay readable without the password (the app's inline password panel
+  says so).
   Folder entries are never encrypted. AE-2 zeroes the CRC-32 in the headers, so it does not leak
   a checksum of the plaintext.
 - **Fresh key material per entry.** Every encrypted entry gets its own random salt and PBKDF2
@@ -400,7 +401,10 @@ one-click and unencrypted.
   asked for it ("apply to remaining" spans one multi-archive selection, not the session). Caveat:
   `pakko x|t|a -p{pwd}` puts the password on the command line, visible in shell history and the
   process list exactly as with 7-Zip's own `-p` — use a bare `-p` (or, for `x`/`t`, omit it) to get
-  the masked interactive prompt instead.
+  the masked interactive prompt instead. The App's new-archive password is typed inline in the
+  window (T-F199): it is not stored or logged, and the window drops its references after every
+  operation, on unticking encryption, on a format change and on window close. A managed string
+  cannot be wiped, so this means the text is no longer kept, not that its memory is erased.
 - **The Explorer prompt crosses a process boundary (T-F268).** Explorer commands ask for the
   password in a separate window process (`Archiver.OperationUi.exe`, same package, same user),
   which sends it back to `Archiver.Shell` over one of two unnamed anonymous pipes created for that

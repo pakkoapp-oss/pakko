@@ -302,9 +302,6 @@
   <data name="EncryptWithPasswordCheck.Content" xml:space="preserve">
     <value>Šifrovat heslem (AES-256)</value>
   </data>
-  <data name="EncryptPasswordDialogTitle" xml:space="preserve">
-    <value>Ochrana heslem</value>
-  </data>
   <data name="EncryptPasswordDialogMessage" xml:space="preserve">
     <value>Obsah souborů bude zašifrován pomocí AES-256. Názvy souborů a složek v archivu zůstanou viditelné i bez hesla.</value>
   </data>
@@ -317,9 +314,6 @@
   <data name="EncryptPasswordRuleHint" xml:space="preserve">
     <value>Používejte pouze anglická písmena, číslice, mezery a interpunkci, nejvýše {0} znaků, aby archiv mohly otevřít 7-Zip a další nástroje ZIP.</value>
   </data>
-  <data name="EncryptPasswordErrorEmpty" xml:space="preserve">
-    <value>Zadejte heslo.</value>
-  </data>
   <data name="EncryptPasswordErrorCharacters" xml:space="preserve">
     <value>Heslo obsahuje znaky, se kterými si jiné nástroje ZIP, například 7-Zip, neporadí. Používejte pouze anglická písmena, číslice, mezery a interpunkci.</value>
   </data>
@@ -328,6 +322,12 @@
   </data>
   <data name="EncryptPasswordErrorMismatch" xml:space="preserve">
     <value>Hesla se neshodují.</value>
+  </data>
+  <data name="EncryptShowPasswordCheck.Content" xml:space="preserve">
+    <value>Zobrazit heslo</value>
+  </data>
+  <data name="PasswordDialogShowPasswordCheck" xml:space="preserve">
+    <value>Zobrazit heslo</value>
   </data>
   <data name="PermanentDeleteDialogTitle" xml:space="preserve">
     <value>Trvale odstranit?</value>

@@ -302,9 +302,6 @@
   <data name="EncryptWithPasswordCheck.Content" xml:space="preserve">
     <value>Enkripsi dengan kata sandi (AES-256)</value>
   </data>
-  <data name="EncryptPasswordDialogTitle" xml:space="preserve">
-    <value>Lindungi dengan kata sandi</value>
-  </data>
   <data name="EncryptPasswordDialogMessage" xml:space="preserve">
     <value>Isi file akan dienkripsi dengan AES-256. Nama file dan folder di dalam arsip tetap terlihat tanpa kata sandi.</value>
   </data>
@@ -317,9 +314,6 @@
   <data name="EncryptPasswordRuleHint" xml:space="preserve">
     <value>Gunakan hanya huruf Inggris, angka, spasi, dan tanda baca, maksimal {0} karakter, agar 7-Zip dan alat ZIP lainnya dapat membuka arsip.</value>
   </data>
-  <data name="EncryptPasswordErrorEmpty" xml:space="preserve">
-    <value>Masukkan kata sandi.</value>
-  </data>
   <data name="EncryptPasswordErrorCharacters" xml:space="preserve">
     <value>Kata sandi berisi karakter yang tidak dapat ditangani alat ZIP lain seperti 7-Zip. Gunakan hanya huruf Inggris, angka, spasi, dan tanda baca.</value>
   </data>
@@ -328,6 +322,12 @@
   </data>
   <data name="EncryptPasswordErrorMismatch" xml:space="preserve">
     <value>Kata sandi tidak cocok.</value>
+  </data>
+  <data name="EncryptShowPasswordCheck.Content" xml:space="preserve">
+    <value>Tampilkan kata sandi</value>
+  </data>
+  <data name="PasswordDialogShowPasswordCheck" xml:space="preserve">
+    <value>Tampilkan kata sandi</value>
   </data>
   <data name="PermanentDeleteDialogTitle" xml:space="preserve">
     <value>Hapus secara permanen?</value>

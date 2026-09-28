@@ -330,9 +330,6 @@
   <data name="EncryptWithPasswordCheck.Content" xml:space="preserve">
     <value>Encrypt with password (AES-256)</value>
   </data>
-  <data name="EncryptPasswordDialogTitle" xml:space="preserve">
-    <value>Protect with a password</value>
-  </data>
   <data name="EncryptPasswordDialogMessage" xml:space="preserve">
     <value>File contents will be encrypted with AES-256. File and folder names inside the archive stay visible without the password.</value>
   </data>
@@ -345,9 +342,6 @@
   <data name="EncryptPasswordRuleHint" xml:space="preserve">
     <value>Use only English letters, digits, spaces and punctuation, up to {0} characters, so 7-Zip and other ZIP tools can open the archive.</value>
   </data>
-  <data name="EncryptPasswordErrorEmpty" xml:space="preserve">
-    <value>Enter a password.</value>
-  </data>
   <data name="EncryptPasswordErrorCharacters" xml:space="preserve">
     <value>The password contains characters that other ZIP tools such as 7-Zip cannot handle. Use only English letters, digits, spaces and punctuation.</value>
   </data>
@@ -356,6 +350,15 @@
   </data>
   <data name="EncryptPasswordErrorMismatch" xml:space="preserve">
     <value>The passwords do not match.</value>
+  </data>
+  <data name="EncryptShowPasswordCheck.Content" xml:space="preserve">
+    <value>Show password</value>
+  </data>
+  <data name="PasswordDialogShowPasswordCheck" xml:space="preserve">
+    <value>Show password</value>
+  </data>
+  <data name="EncryptPasswordLayoutHint" xml:space="preserve">
+    <value>It looks like the keyboard layout is not English. Switch it: the password can contain only English letters, digits, spaces and punctuation.</value>
   </data>
   <data name="PermanentDeleteDialogTitle" xml:space="preserve">
     <value>Delete permanently?</value>

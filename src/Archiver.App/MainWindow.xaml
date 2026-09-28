@@ -362,6 +362,7 @@
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto" MinHeight="32"/>
+                            <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
 
                         <TextBlock x:Uid="ModeLabel" Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Style="{StaticResource CaptionTextBlockStyle}"/>
@@ -423,6 +424,48 @@
                             Opacity="0.7"
                             Style="{StaticResource CaptionTextBlockStyle}"
                             Visibility="{x:Bind ViewModel.EncryptZipOnlyVisibility, Mode=OneWay}"/>
+
+                        <!-- T-F199 step 5: the password inline, stacked (a half-width card has no room
+                             for two boxes side by side), checked while typing. -->
+                        <StackPanel
+                            Grid.Row="4" Grid.Column="1"
+                            Spacing="6"
+                            MaxWidth="420"
+                            HorizontalAlignment="Left"
+                            Visibility="{x:Bind ViewModel.EncryptionPanelVisibility, Mode=OneWay}">
+                            <TextBlock
+                                Text="{x:Bind viewmodels:MainViewModel.EncryptPasswordNote}"
+                                TextWrapping="Wrap"
+                                Style="{StaticResource CaptionTextBlockStyle}"/>
+                            <PasswordBox
+                                x:Name="EncryptPasswordBox"
+                                PlaceholderText="{x:Bind viewmodels:MainViewModel.EncryptPasswordPlaceholder}"
+                                AutomationProperties.Name="{x:Bind viewmodels:MainViewModel.EncryptPasswordPlaceholder}"
+                                PasswordRevealMode="{x:Bind ViewModel.EncryptionPasswordRevealMode, Mode=OneWay}"
+                                IsEnabled="{x:Bind ViewModel.IsNotBusy, Mode=OneWay}"
+                                PasswordChanged="EncryptPasswordBox_PasswordChanged"/>
+                            <PasswordBox
+                                x:Name="EncryptConfirmBox"
+                                PlaceholderText="{x:Bind viewmodels:MainViewModel.EncryptPasswordConfirmPlaceholder}"
+                                AutomationProperties.Name="{x:Bind viewmodels:MainViewModel.EncryptPasswordConfirmPlaceholder}"
+                                PasswordRevealMode="{x:Bind ViewModel.EncryptionPasswordRevealMode, Mode=OneWay}"
+                                IsEnabled="{x:Bind ViewModel.IsNotBusy, Mode=OneWay}"
+                                PasswordChanged="EncryptConfirmBox_PasswordChanged"/>
+                            <CheckBox
+                                x:Uid="EncryptShowPasswordCheck"
+                                IsChecked="{x:Bind ViewModel.ShowEncryptionPassword, Mode=TwoWay}"
+                                IsEnabled="{x:Bind ViewModel.IsNotBusy, Mode=OneWay}"/>
+                            <TextBlock
+                                Text="{x:Bind ViewModel.EncryptionPasswordMessage, Mode=OneWay}"
+                                Visibility="{x:Bind ViewModel.EncryptionPasswordMessageVisibility, Mode=OneWay}"
+                                Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                                TextWrapping="Wrap"/>
+                            <TextBlock
+                                Text="{x:Bind viewmodels:MainViewModel.EncryptPasswordRuleHint}"
+                                TextWrapping="Wrap"
+                                Opacity="0.7"
+                                Style="{StaticResource CaptionTextBlockStyle}"/>
+                        </StackPanel>
                     </Grid>
                 </Expander>
 

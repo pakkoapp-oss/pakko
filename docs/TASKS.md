@@ -4422,6 +4422,20 @@ real console) and T-F226's deferred per-arrow diagram ritual — carried as open
   double-click (step 8 wording); browse mode's delete-after with "Extract all" (step 6); a drop
   onto the empty-state overlay is not device-tested yet. `FileItemTests.
   TryCreate_ExistingFile_ReturnsItemWithSizeAndCrc` failed once, passed 3/3 on rerun — watch.
+  Step 5 (inline password) done: the Encrypt modal is gone — two stacked `PasswordBox`es + "Show
+  password" under the checkbox, checked while typing (`InlinePasswordState.MessageKey`: one line,
+  the keyboard-layout hint replaces the characters error; `AllowsCompress`: Compress stays off
+  until a ZIP password is valid, a tar format with the hidden box ticked is not blocked). The
+  password is read once at start and cleared in `finally`, on untick, on a format change and on
+  window close. `DialogService` returns no password for `PasswordPurpose.Encrypt` (its one-field
+  prompt has no confirmation). The decrypt prompt got "Show password" (T-F202 parity); both
+  toggles use Explorer's 37-locale text; `EncryptPasswordDialogTitle`/`ErrorEmpty` removed; new
+  `EncryptPasswordLayoutHint` en-US/uk-UA only (step 8). T-F198 item 3 closes itself (no prompt
+  before "Стиснення..."). SECURITY.md and DIAGRAMS diagram 2 updated. Device (1.5.0.23, uk-UA):
+  Cyrillic -> layout hint, mismatch -> error, Compress off until valid; reveal; the archive is
+  AES-256 Deflate per `7za l -slt`, `7za t` passes with the password and fails without it; fields
+  empty and Compress off after the run; TAR.GZ with the hidden box ticked compresses; decrypt
+  prompt reveal, extraction correct.
 
 - **Carried into wave 4 (2026-09-28): device checks left open by fix phase 7** — T-F254 on a
   regional Windows language (e.g. de-AT, zh-CN: menu, Shell windows and App agree on the language);

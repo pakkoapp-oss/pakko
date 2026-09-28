@@ -1,3 +1,4 @@
+using Archiver.Core.Models;
 using FluentAssertions;
 
 namespace Archiver.App.Core.Tests;
@@ -85,6 +86,62 @@ public sealed class InlinePasswordStateTests
         string longPassword = new('a', 100);
 
         With(longPassword, longPassword).Issue.Should().Be(InlinePasswordIssue.TooLong);
+    }
+
+    // One line under the fields: a Cyrillic password is both unsupported and a layout slip, and
+    // the layout hint is the one that tells the user what to do.
+    [Theory]
+    [InlineData("Ыускуе1", "Ыускуе1", "EncryptPasswordLayoutHint")]
+    [InlineData("pass—word", "pass—word", "EncryptPasswordErrorCharacters")]
+    [InlineData("Secret1", "Secret2", "EncryptPasswordErrorMismatch")]
+    public void MessageKey_OneLinePerShownIssue(string password, string confirmation, string key)
+    {
+        With(password, confirmation).MessageKey.Should().Be(key);
+    }
+
+    [Fact]
+    public void MessageKey_TooLong()
+    {
+        string longPassword = new('a', 100);
+
+        With(longPassword, longPassword).MessageKey.Should().Be("EncryptPasswordErrorTooLong");
+    }
+
+    [Theory]
+    [InlineData("", "")]
+    [InlineData("Secret1", "")]
+    [InlineData("Secret1", "Secret1")]
+    public void MessageKey_NoneWhileTypingOrValid(string password, string confirmation)
+    {
+        With(password, confirmation).MessageKey.Should().BeNull();
+    }
+
+    [Fact]
+    public void Applies_OnlyToZipWithTheBoxTicked()
+    {
+        InlinePasswordState.Applies(encryptChecked: true, ArchiveContainerFormat.Zip).Should().BeTrue();
+        InlinePasswordState.Applies(encryptChecked: false, ArchiveContainerFormat.Zip).Should().BeFalse();
+        InlinePasswordState.Applies(encryptChecked: true, ArchiveContainerFormat.TarGz).Should().BeFalse();
+    }
+
+    [Fact]
+    public void AllowsCompress_BlocksZipUntilThePasswordIsValid()
+    {
+        var state = new InlinePasswordState();
+
+        state.AllowsCompress(encryptChecked: true, ArchiveContainerFormat.Zip).Should().BeFalse();
+        state.AllowsCompress(encryptChecked: false, ArchiveContainerFormat.Zip).Should().BeTrue();
+
+        state.SetPassword("Secret1");
+        state.SetConfirmation("Secret1");
+        state.AllowsCompress(encryptChecked: true, ArchiveContainerFormat.Zip).Should().BeTrue();
+    }
+
+    // The checkbox stays ticked, only hidden, when a tar format is picked; tar has no password.
+    [Fact]
+    public void AllowsCompress_TarWithTheHiddenBoxTicked()
+    {
+        new InlinePasswordState().AllowsCompress(encryptChecked: true, ArchiveContainerFormat.Tar).Should().BeTrue();
     }
 
     [Fact]

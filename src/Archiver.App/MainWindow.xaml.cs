@@ -128,8 +128,21 @@ public sealed partial class MainWindow : Window
             PreviewCache.DeleteOwn();
             NestedArchiveCache.DeleteOwn();
             ViewModel.ForgetBrowsePasswords();
+            ViewModel.ClearEncryptionPassword();
+        };
+        ViewModel.EncryptionPasswordCleared += (_, _) =>
+        {
+            EncryptPasswordBox.Password = string.Empty;
+            EncryptConfirmBox.Password = string.Empty;
         };
     }
+
+    // T-F199 step 5: a PasswordBox has no bindable Password; the view model checks every edit.
+    private void EncryptPasswordBox_PasswordChanged(object sender, RoutedEventArgs e) =>
+        ViewModel.SetEncryptionPassword(EncryptPasswordBox.Password);
+
+    private void EncryptConfirmBox_PasswordChanged(object sender, RoutedEventArgs e) =>
+        ViewModel.SetEncryptionConfirmation(EncryptConfirmBox.Password);
 
     // T-F199/T-F224: an Auto row never scrolls, so the options get what the table's minimum
     // leaves. Pure layout, no view-model state.

@@ -1,3 +1,4 @@
+using Archiver.Core.Models;
 using Archiver.Core.Services;
 
 namespace Archiver.App.Core;
@@ -63,6 +64,30 @@ public sealed class InlinePasswordState
 
     /// <summary>A non-ASCII letter suggests a non-English keyboard layout (the Ukrainian-layout trap).</summary>
     public bool LooksLikeWrongKeyboardLayout => Password.Any(c => c > 0x7F && char.IsLetter(c));
+
+    /// <summary>
+    /// The resource key of the one line shown under the fields, or null while the user is still
+    /// typing or the password is fine. The layout hint replaces the characters error it explains.
+    /// </summary>
+    public string? MessageKey => Issue switch
+    {
+        InlinePasswordIssue.UnsupportedCharacters when LooksLikeWrongKeyboardLayout => "EncryptPasswordLayoutHint",
+        InlinePasswordIssue.UnsupportedCharacters => "EncryptPasswordErrorCharacters",
+        InlinePasswordIssue.TooLong => "EncryptPasswordErrorTooLong",
+        InlinePasswordIssue.Mismatch => "EncryptPasswordErrorMismatch",
+        _ => null,
+    };
+
+    /// <summary>
+    /// True when the password is asked for: the box is ticked and the format is ZIP. A tar format
+    /// hides the box without unticking it, and tar has no password.
+    /// </summary>
+    public static bool Applies(bool encryptChecked, ArchiveContainerFormat format) =>
+        encryptChecked && format == ArchiveContainerFormat.Zip;
+
+    /// <summary>False while an applicable password is not yet usable.</summary>
+    public bool AllowsCompress(bool encryptChecked, ArchiveContainerFormat format) =>
+        !Applies(encryptChecked, format) || CanProceed;
 
     /// <summary>Forgets both fields.</summary>
     public void Clear()

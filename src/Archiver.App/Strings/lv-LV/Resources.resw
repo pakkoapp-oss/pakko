@@ -302,9 +302,6 @@
   <data name="EncryptWithPasswordCheck.Content" xml:space="preserve">
     <value>Šifrēt ar paroli (AES-256)</value>
   </data>
-  <data name="EncryptPasswordDialogTitle" xml:space="preserve">
-    <value>Aizsargāt ar paroli</value>
-  </data>
   <data name="EncryptPasswordDialogMessage" xml:space="preserve">
     <value>Failu saturs tiks šifrēts ar AES-256. Failu un mapju nosaukumi arhīvā paliks redzami arī bez paroles.</value>
   </data>
@@ -317,9 +314,6 @@
   <data name="EncryptPasswordRuleHint" xml:space="preserve">
     <value>Izmantojiet tikai angļu burtus, ciparus, atstarpes un pieturzīmes, ne vairāk kā {0} rakstzīmes, lai 7-Zip un citi ZIP rīki varētu atvērt arhīvu.</value>
   </data>
-  <data name="EncryptPasswordErrorEmpty" xml:space="preserve">
-    <value>Ievadiet paroli.</value>
-  </data>
   <data name="EncryptPasswordErrorCharacters" xml:space="preserve">
     <value>Parolē ir rakstzīmes, ko citi ZIP rīki, piemēram, 7-Zip, nespēj apstrādāt. Izmantojiet tikai angļu burtus, ciparus, atstarpes un pieturzīmes.</value>
   </data>
@@ -328,6 +322,12 @@
   </data>
   <data name="EncryptPasswordErrorMismatch" xml:space="preserve">
     <value>Paroles nesakrīt.</value>
+  </data>
+  <data name="EncryptShowPasswordCheck.Content" xml:space="preserve">
+    <value>Rādīt paroli</value>
+  </data>
+  <data name="PasswordDialogShowPasswordCheck" xml:space="preserve">
+    <value>Rādīt paroli</value>
   </data>
   <data name="PermanentDeleteDialogTitle" xml:space="preserve">
     <value>Dzēst neatgriezeniski?</value>

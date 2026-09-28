@@ -13,6 +13,10 @@ public sealed partial class AppResourceKeysTests
     [
         "DialogYesButton", "DialogNoButton", "DialogOkButton", "DialogErrorTitle", "TypeFolder", "TypeFile",
         "SizeBytes", "SizeKB", "SizeMB", "SizeGB", "StatusArchivingCount", "StatusExtractingCount",
+        // T-F199 step 5: the inline encryption panel and the decrypt prompt's reveal toggle.
+        "EncryptPasswordDialogMessage", "EncryptPasswordPlaceholder", "EncryptPasswordConfirmPlaceholder",
+        "EncryptPasswordRuleHint", "EncryptPasswordErrorCharacters", "EncryptPasswordErrorTooLong",
+        "EncryptPasswordErrorMismatch", "EncryptShowPasswordCheck.Content", "PasswordDialogShowPasswordCheck",
     ];
 
     private static readonly string StringsRoot = Path.Combine(FindRepoRoot(), "src", "Archiver.App", "Strings");

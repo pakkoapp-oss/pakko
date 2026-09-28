@@ -52,6 +52,7 @@ public sealed partial class MainViewModel : ObservableObject
 
     // T-F200: a password that worked is remembered for the browse session only.
     private readonly SessionPasswordMemory _browsePasswords = new();
+    private readonly InlinePasswordState _encryptionPassword = new();
 
     private IReadOnlyDictionary<string, IReadOnlyList<ArchiveEntryViewModel>> _archiveIndex =
         new Dictionary<string, IReadOnlyList<ArchiveEntryViewModel>>();
@@ -293,7 +294,10 @@ public sealed partial class MainViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(ArchiveNamePlaceholder))]
     [NotifyPropertyChangedFor(nameof(EncryptCheckVisibility))]
     [NotifyPropertyChangedFor(nameof(EncryptZipOnlyVisibility))]
+    [NotifyPropertyChangedFor(nameof(EncryptionPanelVisibility))]
     private ArchiveContainerFormat _selectedContainerFormat = ArchiveContainerFormat.Zip;
+
+    partial void OnSelectedContainerFormatChanged(ArchiveContainerFormat value) => ClearEncryptionPassword();
 
     public int FormatIndex
     {
@@ -329,7 +333,67 @@ public sealed partial class MainViewModel : ObservableObject
     // format is picked (it's merely hidden), so ArchiveAsync checks the format again at use.
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(NewArchiveSummary))]
+    [NotifyPropertyChangedFor(nameof(EncryptionPanelVisibility))]
     private bool _encryptWithPassword = false;
+
+    partial void OnEncryptWithPasswordChanged(bool value) => ClearEncryptionPassword();
+
+    // T-F199 step 5: the password is typed inline under the checkbox (it replaced a modal that
+    // validated only after OK). The PasswordBoxes live in the view; it forwards every change here
+    // and empties the boxes on EncryptionPasswordCleared. Nothing is stored or logged, and the
+    // text is dropped after every operation, on untick, on a format change and on window close.
+    public event EventHandler? EncryptionPasswordCleared;
+
+    public Visibility EncryptionPanelVisibility =>
+        InlinePasswordState.Applies(EncryptWithPassword, SelectedContainerFormat) ? Visibility.Visible : Visibility.Collapsed;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(EncryptionPasswordRevealMode))]
+    private bool _showEncryptionPassword;
+
+    public Microsoft.UI.Xaml.Controls.PasswordRevealMode EncryptionPasswordRevealMode => ShowEncryptionPassword
+        ? Microsoft.UI.Xaml.Controls.PasswordRevealMode.Visible
+        : Microsoft.UI.Xaml.Controls.PasswordRevealMode.Hidden;
+
+    public static string EncryptPasswordNote => _res.GetString("EncryptPasswordDialogMessage");
+    public static string EncryptPasswordPlaceholder => _res.GetString("EncryptPasswordPlaceholder");
+    public static string EncryptPasswordConfirmPlaceholder => _res.GetString("EncryptPasswordConfirmPlaceholder");
+    public static string EncryptPasswordRuleHint =>
+        _res.GetString("EncryptPasswordRuleHint").Replace("{0}", EncryptionPasswordRule.MaxLength.ToString());
+
+    public string EncryptionPasswordMessage => _encryptionPassword.MessageKey is { } key
+        ? _res.GetString(key).Replace("{0}", EncryptionPasswordRule.MaxLength.ToString())
+        : string.Empty;
+
+    public Visibility EncryptionPasswordMessageVisibility =>
+        _encryptionPassword.MessageKey is null ? Visibility.Collapsed : Visibility.Visible;
+
+    public void SetEncryptionPassword(string value)
+    {
+        _encryptionPassword.SetPassword(value);
+        OnEncryptionPasswordEdited();
+    }
+
+    public void SetEncryptionConfirmation(string value)
+    {
+        _encryptionPassword.SetConfirmation(value);
+        OnEncryptionPasswordEdited();
+    }
+
+    public void ClearEncryptionPassword()
+    {
+        _encryptionPassword.Clear();
+        ShowEncryptionPassword = false;
+        EncryptionPasswordCleared?.Invoke(this, EventArgs.Empty);
+        OnEncryptionPasswordEdited();
+    }
+
+    private void OnEncryptionPasswordEdited()
+    {
+        OnPropertyChanged(nameof(EncryptionPasswordMessage));
+        OnPropertyChanged(nameof(EncryptionPasswordMessageVisibility));
+        ArchiveCommand.NotifyCanExecuteChanged();
+    }
 
     // T-F198 item 5: a tar format shows why there is no password instead of a disabled, still
     // ticked checkbox.
@@ -531,19 +595,18 @@ public sealed partial class MainViewModel : ObservableObject
         CancelCommand.NotifyCanExecuteChanged();
         Progress = 0;
         bool wasCancelled = false;
-        bool passwordPromptCancelled = false;
+        // T-F199 step 5: read once on the UI thread; Core asks from a worker thread, once per
+        // archive in SeparateArchives mode. CanArchive already refused an unusable password.
+        string? encryptionPassword = InlinePasswordState.Applies(EncryptWithPassword, SelectedContainerFormat)
+            ? _encryptionPassword.Password
+            : null;
         try
         {
             var options = new ArchiveOptions
             {
-                ResolvePasswordAsync = EncryptWithPassword && SelectedContainerFormat == ArchiveContainerFormat.Zip
-                    ? async info =>
-                    {
-                        global::Archiver.Core.Models.PasswordDecision decision = await _dialogService.ShowPasswordPromptAsync(info, canApplyToRemaining: false);
-                        passwordPromptCancelled = decision.Password is null;
-                        return decision;
-                    }
-                    : null,
+                ResolvePasswordAsync = encryptionPassword is null
+                    ? null
+                    : _ => Task.FromResult(new global::Archiver.Core.Models.PasswordDecision { Password = encryptionPassword }),
                 SourcePaths = [.. FileItems.Select(x => x.FullPath)],
                 DestinationFolder = DestinationPath,
                 ArchiveName = string.IsNullOrWhiteSpace(ArchiveName) ? null : ArchiveName.Trim(),
@@ -600,10 +663,6 @@ public sealed partial class MainViewModel : ObservableObject
             });
 
             ArchiveResult result = await _archiveCreationRouter.ArchiveAsync(options, progress, _cts.Token);
-            // T-F193: Core created nothing and reports a generic error; the user only pressed
-            // Cancel, so this ends exactly like the Cancel button (T-F70 delay, no summary dialog).
-            if (passwordPromptCancelled)
-                throw new OperationCanceledException();
             _operationStopwatch?.Stop();
             int totalSec = (int)(_operationStopwatch?.Elapsed.TotalSeconds ?? 0);
             if (result.Outcome == OperationOutcome.Completed)
@@ -649,6 +708,7 @@ public sealed partial class MainViewModel : ObservableObject
             _cts?.Dispose();
             _cts = null;
             IsProgressIndeterminate = false;
+            ClearEncryptionPassword();
         }
         // T-F70: IsBusy stays true for as long as something transient is still on screen — a
         // modal dialog for success/issues/error (awaited above, inside the try), or this delay
@@ -1402,7 +1462,8 @@ public sealed partial class MainViewModel : ObservableObject
         StatusMessage = sb.ToString();
     }
 
-    private bool CanArchive() => !IsBusy && FileItems.Count > 0;
+    private bool CanArchive() => !IsBusy && FileItems.Count > 0
+        && _encryptionPassword.AllowsCompress(EncryptWithPassword, SelectedContainerFormat);
     private bool CanExtract() => !IsBusy && _listActions.CanExtract;
     private bool CanOperate() => !IsBusy;
 

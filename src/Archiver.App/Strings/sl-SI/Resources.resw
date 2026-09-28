@@ -302,9 +302,6 @@
   <data name="EncryptWithPasswordCheck.Content" xml:space="preserve">
     <value>Šifriraj z geslom (AES-256)</value>
   </data>
-  <data name="EncryptPasswordDialogTitle" xml:space="preserve">
-    <value>Zaščita z geslom</value>
-  </data>
   <data name="EncryptPasswordDialogMessage" xml:space="preserve">
     <value>Vsebina datotek bo šifrirana z AES-256. Imena datotek in map v arhivu ostanejo vidna tudi brez gesla.</value>
   </data>
@@ -317,9 +314,6 @@
   <data name="EncryptPasswordRuleHint" xml:space="preserve">
     <value>Uporabljajte samo angleške črke, števke, presledke in ločila, največ {0} znakov, da lahko arhiv odprejo 7-Zip in druga orodja ZIP.</value>
   </data>
-  <data name="EncryptPasswordErrorEmpty" xml:space="preserve">
-    <value>Vnesite geslo.</value>
-  </data>
   <data name="EncryptPasswordErrorCharacters" xml:space="preserve">
     <value>Geslo vsebuje znake, ki jih druga orodja ZIP, kot je 7-Zip, ne morejo obdelati. Uporabljajte samo angleške črke, števke, presledke in ločila.</value>
   </data>
@@ -328,6 +322,12 @@
   </data>
   <data name="EncryptPasswordErrorMismatch" xml:space="preserve">
     <value>Gesli se ne ujemata.</value>
+  </data>
+  <data name="EncryptShowPasswordCheck.Content" xml:space="preserve">
+    <value>Pokaži geslo</value>
+  </data>
+  <data name="PasswordDialogShowPasswordCheck" xml:space="preserve">
+    <value>Pokaži geslo</value>
   </data>
   <data name="PermanentDeleteDialogTitle" xml:space="preserve">
     <value>Želite trajno izbrisati?</value>

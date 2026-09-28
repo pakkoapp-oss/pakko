@@ -302,9 +302,6 @@
   <data name="EncryptWithPasswordCheck.Content" xml:space="preserve">
     <value>Szyfruj hasłem (AES-256)</value>
   </data>
-  <data name="EncryptPasswordDialogTitle" xml:space="preserve">
-    <value>Ochrona hasłem</value>
-  </data>
   <data name="EncryptPasswordDialogMessage" xml:space="preserve">
     <value>Zawartość plików zostanie zaszyfrowana algorytmem AES-256. Nazwy plików i folderów w archiwum pozostaną widoczne bez hasła.</value>
   </data>
@@ -317,9 +314,6 @@
   <data name="EncryptPasswordRuleHint" xml:space="preserve">
     <value>Używaj tylko liter angielskich, cyfr, spacji i znaków interpunkcyjnych, maksymalnie {0} znaków, aby 7-Zip i inne narzędzia ZIP mogły otworzyć archiwum.</value>
   </data>
-  <data name="EncryptPasswordErrorEmpty" xml:space="preserve">
-    <value>Wprowadź hasło.</value>
-  </data>
   <data name="EncryptPasswordErrorCharacters" xml:space="preserve">
     <value>Hasło zawiera znaki, których inne narzędzia ZIP, takie jak 7-Zip, nie obsługują. Używaj tylko liter angielskich, cyfr, spacji i znaków interpunkcyjnych.</value>
   </data>
@@ -328,6 +322,12 @@
   </data>
   <data name="EncryptPasswordErrorMismatch" xml:space="preserve">
     <value>Hasła nie są zgodne.</value>
+  </data>
+  <data name="EncryptShowPasswordCheck.Content" xml:space="preserve">
+    <value>Pokaż hasło</value>
+  </data>
+  <data name="PasswordDialogShowPasswordCheck" xml:space="preserve">
+    <value>Pokaż hasło</value>
   </data>
   <data name="PermanentDeleteDialogTitle" xml:space="preserve">
     <value>Usunąć trwale?</value>

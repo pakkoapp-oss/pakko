@@ -279,17 +279,15 @@ the same pattern every other action-triggering control in this window already us
 a transition for these two methods, but now because the input that reaches them is gated shut
 during `Busy`, not because the gap is unaddressed.
 
-**T-F193 (2026-09-24):** with "Encrypt with password" checked (ZIP only), `ArchiveAsync` wires a
-`ResolvePasswordAsync` wrapper that records whether the user pressed Cancel in the Encrypt dialog.
-Core then returns a failed result with nothing created; `ArchiveAsync` throws
-`OperationCanceledException` itself so the outcome is exactly the Cancel button's — the
-`CancelledNoDialog` path, T-F70 delay included, and no summary dialog for a generic Core error.
-While the dialog is open the ViewModel is already `Busy` (the prompt runs inside the Core call).
+**T-F199 step 5 (2026-09-28, replaces the T-F193 prompt path):** the new-archive password is typed
+inline under the "Encrypt with password" checkbox and checked while typing; `ArchiveCommand`'s
+CanExecute stays false until it is valid, so no prompt opens during `Busy`. `ArchiveAsync` reads
+the password once before the Core call and clears it in `finally`, on every exit path.
 
 ```mermaid
 stateDiagram-v2
     [*] --> Idle
-    Idle --> Busy: ArchiveCommand/ExtractCommand invoked<br/>(CanExecute: FileItems.Count>0 && !IsBusy)<br/>IsBusy=true
+    Idle --> Busy: ArchiveCommand/ExtractCommand invoked<br/>(CanExecute: FileItems.Count>0 && !IsBusy,<br/>Archive also: inline password valid when it applies)<br/>IsBusy=true
     Busy --> Busy: CancelCommand invoked<br/>(CanExecute: IsOperationRunning == IsBusy)<br/>→ cts.Cancel() only — IsBusy is NOT changed here —<br/>there is no dedicated Cancelling state in code
     Busy --> AwaitingSummaryDialog: _archiveService call returns without throwing<br/>StatusMessage set to StatusDone/StatusArchivedIn<br/>(Errors==0 && Skipped==0) or StatusIssues (otherwise)
     AwaitingSummaryDialog --> AwaitingSummaryDialog: await ShowOperationSummaryAsync(...)<br/>IsBusy is STILL TRUE while this modal is open —<br/>finally has not run yet
@@ -297,7 +295,7 @@ stateDiagram-v2
     Busy --> AwaitingErrorDialog: unexpected Exception caught (not OperationCanceledException)<br/>StatusMessage=Error
     AwaitingErrorDialog --> AwaitingErrorDialog: await ShowErrorAsync(...)<br/>IsBusy is STILL TRUE while this modal is open
     AwaitingErrorDialog --> Idle: finally{no IsBusy change} — delay branch skipped —<br/>THEN IsBusy=false — THEN StatusMessage=StatusReady (same T-F70 point as above)
-    Busy --> CancelledNoDialog: OperationCanceledException caught<br/>StatusMessage=StatusCancelled — NO dialog is shown<br/>(T-F193: also a cancelled Encrypt password prompt,<br/>rethrown as OperationCanceledException after ArchiveAsync returns)
+    Busy --> CancelledNoDialog: OperationCanceledException caught<br/>StatusMessage=StatusCancelled — NO dialog is shown
     CancelledNoDialog --> Idle: finally{no IsBusy change} — THEN await Task.Delay(2000)<br/>(IsBusy still TRUE throughout the delay — T-F70 fix) —<br/>THEN IsBusy=false — THEN StatusMessage=StatusReady
 ```
 
