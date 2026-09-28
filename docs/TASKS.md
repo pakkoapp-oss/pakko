@@ -4367,7 +4367,15 @@ real console) and T-F226's deferred per-arrow diagram ritual — carried as open
 - **Progress (2026-09-28, T-F199 step 8):** items 2 and 6 fixed (row names, lock, Up buttons, ComboBox labels, Cancel name, decrypt PasswordBox name); device 1.5.0.32.
 - **Progress (2026-09-28, T-F199 step 5):** item 3 closed — the Encrypt dialog is gone (password inline), so no prompt is open while the status says "Стиснення...". Device 1.5.0.26.
 
-- [ ] **Status:** open. Point fixes, no layout change (the layout is T-F199):
+- **Item 5 on device (2026-09-28, 1.5.0.32):** the TAR half is gone (step 4: a tar format shows
+  "ZIP only" instead of the checkbox). The dash is not about disabled boxes: on the create-mode
+  window's first render every unchecked CheckBox (Encrypt, Open destination, delete-after) shows
+  it while enabled, and UIA reports `ToggleState=Off`. After one real check/uncheck the box is
+  empty, and the same two destination boxes render empty after switching to browse mode. So the
+  first template/visual-state pass shows the indeterminate glyph; cause in code not found yet
+  (plain `x:Bind` TwoWay to a `bool`, no custom CheckBox style). Items 1-4, 6, 7 done; the task
+  stays open for item 5 only.
+- [ ] **Status:** open (item 5 only). Point fixes, no layout change (the layout is T-F199):
   1. English strings in a localized UI: "Archiving... (N files, size)"/"Extracting... (N
      archive(s))" (`MainViewModel.cs`), "Folder"/"N bytes" (`FileItem.cs`,
      `ArchiveEntryViewModel.cs`) — move to `.resw`, all 37 locales.
@@ -5427,7 +5435,16 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   logged and listed in a dialog); item 2 done — both dead fields removed, with the two tests that
   only pinned "the field exists and does nothing". Items 3-6 stay for phase 9.
 
-- [ ] **Status:** open, from the T-F226 review.
+- **Device (2026-09-28, 1.5.0.32, uk-UA):** item 4 — double-clicking evil.zip in the list while
+  a 600 MB Compress ran (Cancel visible) did nothing; after the run the same double-click opened
+  the browser. Item 6 — an archive with entries `C:/Windows/win.ini`, `../up.txt`, `ok.txt`:
+  double-clicking `C: > Windows > win.ini` shows "Помилка: Елемент «C:/Windows/win.ini» має
+  небезпечний шлях, тому його не видобуто.", no Notepad opened; "Close archive" was off while the
+  preview ran and back on after. Item 5 — a synthetic drag from Explorer (`windows` MCP) is not an
+  OLE drag, nothing dropped, so the caption itself is not seen on device; its text is a resource
+  key covered by `AppResourceKeysTests` (37 locales).
+- [x] **Status:** done 2026-09-28 (all six items; item 5's caption not seen on device, see above).
+  Original: open, from the T-F226 review.
   1. `MainViewModel.RunCleanupAsync` (`:1243-1257`) deletes permanently and swallows every error
      (`catch { best-effort }`): a locked source that was not deleted is never reported. See T-F207,
      T-F229.
