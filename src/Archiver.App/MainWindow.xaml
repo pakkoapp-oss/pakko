@@ -233,7 +233,7 @@
             <Grid Grid.Row="1" RowDefinitions="Auto,Auto,Auto,*"
                   Visibility="{x:Bind ViewModel.IsBrowsingArchiveVisibility, Mode=OneWay}">
 
-                <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,8">
+                <Grid x:Name="BrowseBreadcrumbRow" Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,8">
                     <!-- T-F107: up one archive folder level; at the archive root, keeps climbing into
                          real Windows folders (containing folder, drive root, "This PC" drives list) —
                          never exits the browser back to the pending list anymore. Disabled only at
@@ -270,6 +270,7 @@
                 </Grid>
 
                 <InfoBar
+                    x:Name="BrowseInfoBar"
                     Grid.Row="1"
                     Margin="0,0,0,8"
                     IsClosable="False"
@@ -278,6 +279,7 @@
                     Message="{x:Bind ViewModel.BrowseInfoText, Mode=OneWay}"/>
 
                 <Border
+                    x:Name="BrowseHeader"
                     Grid.Row="2"
                     Background="{ThemeResource SubtleFillColorSecondaryBrush}"
                     BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"

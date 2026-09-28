@@ -928,6 +928,9 @@ public sealed partial class MainViewModel : ObservableObject
     {
         using IDisposable work = _browseWork.Begin();
         SetBrowseLevel(null, isZip: false);
+        // "Delete after" means sources in create mode and the archive here: a tick never carries
+        // across the switch (T-F199 step 6).
+        DeleteAfterOperation = false;
         IsBrowsingArchive = true;
         BrowseScope = ArchiveBrowseScope.Archive;
         BrowsedArchivePath = archivePath;
@@ -1391,6 +1394,7 @@ public sealed partial class MainViewModel : ObservableObject
         SelectedBrowserEntries = [];
         BreadcrumbSegments = [];
         SetBrowseLevel(null, isZip: false);
+        DeleteAfterOperation = false;
         IsBrowsingArchive = false;
     }
 

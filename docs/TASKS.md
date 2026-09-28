@@ -4476,6 +4476,13 @@ real console) and T-F226's deferred per-arrow diagram ritual — carried as open
   no delete-after at the nested level; .7z: no Test, no badge; del.zip Extract all + delete-after ->
   archive in the Recycle Bin, readme.txt extracted, back to create mode. The selection line in the
   footer (board 5, "2 of 12 selected") is left for step 7.
+  Follow-up (advisor): at 900x520 the 4-line ZipCrypto bar left the list 0 px tall (T-F106 class)
+  — `FitOptionsScroll` now also reserves the breadcrumb, info bar and header heights in browse mode
+  and refits when any of them resizes, so the 160 px go to rows; at that size the options scroll to
+  nothing. "Delete after" is cleared on opening and closing an archive (sources vs archive — a tick
+  never carries across). Device (1.5.0.30): mixed.zip at 900x520 shows both rows, 1280x672 rows +
+  options; Esc with the About dialog open and with the conflict dropdown open closes only those,
+  the archive stays. Step 8: the lock icon needs an `AutomationProperties.Name`.
 
 - **Carried into wave 4 (2026-09-28): device checks left open by fix phase 7** — T-F254 on a
   regional Windows language (e.g. de-AT, zh-CN: menu, Shell windows and App agree on the language);

@@ -95,6 +95,11 @@ public sealed partial class MainWindow : Window
         };
         // The footer grows without a resize (outcome line, progress bar).
         FooterGrid.SizeChanged += (_, _) => FitOptionsScroll();
+        // T-F199 step 6: browse mode's breadcrumb, info bar and header share the table's row; the
+        // bar opens, closes and rewraps on every level change and resize.
+        BrowseBreadcrumbRow.SizeChanged += (_, _) => FitOptionsScroll();
+        BrowseInfoBar.SizeChanged += (_, _) => FitOptionsScroll();
+        BrowseHeader.SizeChanged += (_, _) => FitOptionsScroll();
         NewArchiveCard.Expanding += (_, _) => ArrangeCards();
         NewArchiveCard.Collapsed += (_, _) => ArrangeCards();
         NewArchiveCard.RegisterPropertyChangedCallback(UIElement.VisibilityProperty, (_, _) => ArrangeCards());
@@ -173,9 +178,17 @@ public sealed partial class MainWindow : Window
         double spacing = ContentGrid.RowSpacing * 3;
         double available = RootGrid.ActualHeight - RootGrid.RowDefinitions[0].ActualHeight
             - ContentGrid.Padding.Top - ContentGrid.Padding.Bottom
-            - ToolbarHeight() - FooterGrid.DesiredSize.Height - spacing - TableMinHeight;
+            - ToolbarHeight() - FooterGrid.DesiredSize.Height - spacing - TableMinHeight - BrowseChromeHeight();
         OptionsScroll.MaxHeight = System.Math.Max(0, available);
     }
+
+    // The 160 px go to the list's rows, not to what sits above them in browse mode.
+    private double BrowseChromeHeight() => ViewModel.IsBrowsingArchive
+        ? OuterHeight(BrowseBreadcrumbRow) + OuterHeight(BrowseInfoBar) + OuterHeight(BrowseHeader)
+        : 0;
+
+    private static double OuterHeight(FrameworkElement element) =>
+        element.ActualHeight > 0 ? element.ActualHeight + element.Margin.Top + element.Margin.Bottom : 0;
 
     // T-F199: the two option cards sit side by side only when both are open and each gets enough
     // width; otherwise they stack (a collapsed or hidden "New archive" card leaves the other full width).
