@@ -90,7 +90,7 @@ public sealed class ProcessTempRootTests : IDisposable
     [Fact]
     public void IsOwnerAlive_CurrentPidWithOtherStartTime_FalseAsAReusedPid()
     {
-        using Process current = Process.GetCurrentProcess();
+        using var current = Process.GetCurrentProcess();
         long otherTicks = current.StartTime.ToUniversalTime().Ticks - TimeSpan.TicksPerHour;
 
         ProcessTempRoot.IsOwnerAlive(ProcessTempRoot.OwnerName(Environment.ProcessId, otherTicks)).Should().BeFalse();

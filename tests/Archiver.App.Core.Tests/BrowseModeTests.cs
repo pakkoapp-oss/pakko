@@ -10,7 +10,7 @@ public sealed class BrowseModeTests
     [Fact]
     public void Location_InsideTopLevelZip_OffersEverything()
     {
-        BrowseLocationState state = BrowseLocationState.For(insideArchive: true, nested: false, isZip: true);
+        var state = BrowseLocationState.For(insideArchive: true, nested: false, isZip: true);
 
         state.Should().Be(new BrowseLocationState(
             ShowsExtractActions: true, ShowsOptions: true, ShowsTest: true, OffersDeleteAfter: true, ShowsOutsideInfo: false));
@@ -27,7 +27,7 @@ public sealed class BrowseModeTests
     public void Location_NestedArchive_NoDeleteAfter()
     {
         // The nested archive is a temp copy: sending it to the Recycle Bin means nothing.
-        BrowseLocationState state = BrowseLocationState.For(insideArchive: true, nested: true, isZip: true);
+        var state = BrowseLocationState.For(insideArchive: true, nested: true, isZip: true);
 
         state.OffersDeleteAfter.Should().BeFalse();
         state.ShowsExtractActions.Should().BeTrue();
@@ -36,7 +36,7 @@ public sealed class BrowseModeTests
     [Fact]
     public void Location_OutsideArchive_HidesArchiveActionsAndExplains()
     {
-        BrowseLocationState state = BrowseLocationState.For(insideArchive: false, nested: false, isZip: false);
+        var state = BrowseLocationState.For(insideArchive: false, nested: false, isZip: false);
 
         state.Should().Be(new BrowseLocationState(
             ShowsExtractActions: false, ShowsOptions: false, ShowsTest: false, OffersDeleteAfter: false, ShowsOutsideInfo: true));
@@ -79,7 +79,7 @@ public sealed class BrowseModeTests
     public void Notes_ZipCryptoAnywhere_WarnsItIsWeak()
     {
         // The unnamed method ranks the badge lower, but the ZipCrypto entry still gets its warning.
-        EncryptionSummary summary = EncryptionSummary.Of(
+        var summary = EncryptionSummary.Of(
             [Entry("a", EntryEncryption.ZipCrypto), Entry("b", EntryEncryption.Unknown), Entry("c", EntryEncryption.Aes256, 2)]);
 
         summary.NoteKeys.Should().Equal("BrowseEncryptedPasswordNote", "BrowseEncryptedAe2Note", "BrowseZipCryptoWeakNote");

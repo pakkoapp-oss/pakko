@@ -12,7 +12,7 @@ public static class Win32PakkoWindows
     /// <summary>Corners of every visible top-level window owned by another process with this process's name.</summary>
     public static IReadOnlyList<(int Left, int Top)> OtherWindowCorners()
     {
-        using Process current = Process.GetCurrentProcess();
+        using var current = Process.GetCurrentProcess();
         var otherPids = new HashSet<uint>();
         foreach (Process process in Process.GetProcessesByName(current.ProcessName))
         {

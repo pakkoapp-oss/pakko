@@ -47,7 +47,7 @@ public sealed class ProcessTempRoot
             return false;
         try
         {
-            using Process process = Process.GetProcessById(pid);
+            using var process = Process.GetProcessById(pid);
             return process.StartTime.ToUniversalTime().Ticks == ticks;
         }
         catch (ArgumentException)
@@ -115,7 +115,7 @@ public sealed class ProcessTempRoot
 
     private static long CurrentStartTicks()
     {
-        using Process current = Process.GetCurrentProcess();
+        using var current = Process.GetCurrentProcess();
         return current.StartTime.ToUniversalTime().Ticks;
     }
 }

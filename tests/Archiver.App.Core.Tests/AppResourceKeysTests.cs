@@ -75,7 +75,7 @@ public sealed partial class AppResourceKeysTests
     public void EveryXUid_HasAnEnglishKey()
     {
         string appDir = Path.Combine(FindRepoRoot(), "src", "Archiver.App");
-        HashSet<string> uidsWithKeys = Read("en-US").Keys.Where(k => k.Contains('.')).Select(k => k[..k.IndexOf('.')]).ToHashSet();
+        var uidsWithKeys = Read("en-US").Keys.Where(k => k.Contains('.')).Select(k => k[..k.IndexOf('.')]).ToHashSet();
 
         string[] orphans = Directory.EnumerateFiles(appDir, "*.xaml", SearchOption.AllDirectories).Where(IsSource)
             .SelectMany(f => XUidPattern().Matches(File.ReadAllText(f)).Select(m => m.Groups[1].Value))
@@ -88,7 +88,7 @@ public sealed partial class AppResourceKeysTests
     [MemberData(nameof(Locales))]
     public void NoLocale_HasAKeyEnglishLacks(string locale)
     {
-        HashSet<string> english = Read("en-US").Keys.ToHashSet();
+        var english = Read("en-US").Keys.ToHashSet();
 
         Read(locale).Keys.Where(k => !english.Contains(k)).Should().BeEmpty(locale);
     }

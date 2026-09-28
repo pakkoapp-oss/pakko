@@ -12,7 +12,7 @@ public sealed class OutcomeAndEncryptionSummaryTests
     {
         var result = new ArchiveResult { CreatedFiles = [@"C:\out\a.zip", @"C:\out\b.zip"] };
 
-        OutcomeLine line = OutcomeLine.From(result, TimeSpan.FromSeconds(2.6));
+        var line = OutcomeLine.From(result, TimeSpan.FromSeconds(2.6));
 
         line.Outcome.Should().Be(OperationOutcome.Completed);
         line.CreatedCount.Should().Be(2);
@@ -37,7 +37,7 @@ public sealed class OutcomeAndEncryptionSummaryTests
             SkippedFiles = [CoreMessages.Skip("y", MessageCode.SourceNotFound, "y")],
         };
 
-        OutcomeLine line = OutcomeLine.From(result, TimeSpan.FromSeconds(1));
+        var line = OutcomeLine.From(result, TimeSpan.FromSeconds(1));
 
         line.Outcome.Should().Be(OperationOutcome.Failed);
         line.ProblemCount.Should().Be(2);
@@ -56,7 +56,7 @@ public sealed class OutcomeAndEncryptionSummaryTests
     [Fact]
     public void Encryption_PlainArchive_NoBadge()
     {
-        EncryptionSummary summary = EncryptionSummary.Of([Entry("a", EntryEncryption.None), Entry("d", null, dir: true)]);
+        var summary = EncryptionSummary.Of([Entry("a", EntryEncryption.None), Entry("d", null, dir: true)]);
 
         summary.IsEncrypted.Should().BeFalse();
         summary.Badge.Should().BeNull();
@@ -72,7 +72,7 @@ public sealed class OutcomeAndEncryptionSummaryTests
     [Fact]
     public void Encryption_AllAes256Ae2_CountsFilesOnly()
     {
-        EncryptionSummary summary = EncryptionSummary.Of(
+        var summary = EncryptionSummary.Of(
             [Entry("a", EntryEncryption.Aes256, 2), Entry("b", EntryEncryption.Aes256, 2), Entry("d", null, dir: true)]);
 
         summary.Should().Be(new EncryptionSummary(2, 2, EntryEncryption.Aes256, HasAe2: true));
@@ -81,7 +81,7 @@ public sealed class OutcomeAndEncryptionSummaryTests
     [Fact]
     public void Encryption_MixedMethods_BadgeIsTheWeakest()
     {
-        EncryptionSummary summary = EncryptionSummary.Of(
+        var summary = EncryptionSummary.Of(
             [Entry("a", EntryEncryption.Aes256, 1), Entry("b", EntryEncryption.ZipCrypto), Entry("c", EntryEncryption.None)]);
 
         summary.Badge.Should().Be(EntryEncryption.ZipCrypto);
