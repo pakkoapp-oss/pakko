@@ -854,8 +854,8 @@ public sealed partial class MainViewModel : ObservableObject
         // The entry may itself not really be an archive despite its extension (ArchiveFormatDetector
         // couldn't check this before extraction — its magic-byte sniff needs a real file on disk).
         // Confirm now, mirroring EnterBrowseModeAsync's own "detect what you actually got" posture.
-        string extractedPath = Path.Combine(scopeDir, entry.FullPath.Replace('/', Path.DirectorySeparatorChar));
-        if (ArchiveFormatDetector.Detect(extractedPath) == ArchiveFormat.Unknown)
+        string? extractedPath = BrowserEntryRouting.ResolveInScope(scopeDir, entry.FullPath);
+        if (extractedPath is null || ArchiveFormatDetector.Detect(extractedPath) == ArchiveFormat.Unknown)
         {
             NestedArchiveCache.DeleteScope(scopeDir);
             await _dialogService.ShowErrorAsync(_res.GetString("DialogErrorTitle"), _res.GetString("StatusIssues"));
@@ -946,6 +946,47 @@ public sealed partial class MainViewModel : ObservableObject
         }
         BreadcrumbSegments = new ObservableCollection<string>(segments);
     }
+
+    // T-F05/T-F242: double-clicking a pending-list row opens a real archive in the browser. The
+    // magic-byte probe runs off the UI thread.
+    public async Task OpenPendingRowAsync(FileItem item)
+    {
+        bool isArchive = !IsBusy && !item.IsFolder && await Task.Run(() => IsArchiveOnDisk(item.FullPath));
+        RowOpenAction action = BrowserEntryRouting.DecidePendingRow(IsBusy, item.IsFolder, () => isArchive);
+        if (action == RowOpenAction.OpenArchive)
+            await EnterBrowseModeAsync(item.FullPath);
+    }
+
+    // T-F242: the Archive Browser's double-click routing (T-F05 folders, T-F107 outside an
+    // archive, T-F98 nested archives, T-F97 preview, T-F109 warned extract), moved out of
+    // code-behind into BrowserEntryRouting.
+    public async Task OpenBrowserRowAsync(ArchiveEntryViewModel entry)
+    {
+        bool insideArchive = BrowseScope == ArchiveBrowseScope.Archive;
+        bool isArchive = !IsBusy && !entry.IsFolder && !insideArchive
+            && await Task.Run(() => IsArchiveOnDisk(entry.FullPath));
+        switch (BrowserEntryRouting.DecideBrowserRow(IsBusy, insideArchive, entry.IsFolder, entry.Name, () => isArchive))
+        {
+            case RowOpenAction.OpenFolder:
+                NavigateIntoFolder(entry);
+                break;
+            case RowOpenAction.OpenArchive:
+                await EnterBrowseModeAsync(entry.FullPath);
+                break;
+            case RowOpenAction.DrillIntoNestedArchive:
+                await NavigateIntoNestedArchiveAsync(entry);
+                break;
+            case RowOpenAction.Preview:
+                await PreviewBrowserEntryAsync(entry);
+                break;
+            case RowOpenAction.ExtractWithWarning:
+                await ExtractSingleBrowserEntryWithWarningAsync(entry);
+                break;
+        }
+    }
+
+    private static bool IsArchiveOnDisk(string path) =>
+        File.Exists(path) && ArchiveFormatDetector.Detect(path) != ArchiveFormat.Unknown;
 
     public void NavigateIntoFolder(ArchiveEntryViewModel folder)
     {
@@ -1217,8 +1258,10 @@ public sealed partial class MainViewModel : ObservableObject
             // ArchiveResult.CreatedFiles lists per-archive destination folders, not individual
             // extracted file paths (see ZipArchiveService/TarSandboxedService) — the previewed
             // entry's actual on-disk path has to be computed from the scope dir + entry path.
-            string previewFilePath = Path.Combine(scopeDir, entry.FullPath.Replace('/', Path.DirectorySeparatorChar));
-            if (!await _dialogService.OpenFileWithDefaultAppAsync(previewFilePath))
+            // T-F242 item 6: never hand ShellExecute a path outside the scope (an absolute or ".."
+            // entry name).
+            string? previewFilePath = BrowserEntryRouting.ResolveInScope(scopeDir, entry.FullPath);
+            if (previewFilePath is null || !await _dialogService.OpenFileWithDefaultAppAsync(previewFilePath))
                 await _dialogService.ShowErrorAsync(_res.GetString("DialogErrorTitle"), _res.GetString("StatusIssues"));
         }
         catch (Exception ex)

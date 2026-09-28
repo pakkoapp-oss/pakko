@@ -3,7 +3,6 @@ using System.Windows.Input;
 using Archiver.App.Core;
 using Archiver.App.Services;
 using Archiver.App.ViewModels;
-using Archiver.Core.Services;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
@@ -190,21 +189,10 @@ public sealed partial class MainWindow : Window
             ViewModel.RemovePath(fileItem.FullPath);
     }
 
-    // T-F05: Archive Browser — double-clicking a recognized archive in the pending-selection
-    // list enters the browser view instead of doing nothing. Gate uses ArchiveFormatDetector
-    // (magic-byte, same ground truth ExtractionRouter itself uses) rather than FileItem.Type's
-    // extension-derived string, which exists only for the batch Archive/Extract UI text and would
-    // misclassify a renamed/extensionless archive.
     private async void PendingList_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
     {
-        if (e.OriginalSource is not FrameworkElement { DataContext: FileItem item })
-            return;
-        if (item.IsFolder || !System.IO.File.Exists(item.FullPath))
-            return;
-        if (ArchiveFormatDetector.Detect(item.FullPath) == Archiver.Core.Models.ArchiveFormat.Unknown)
-            return;
-
-        await ViewModel.EnterBrowseModeAsync(item.FullPath);
+        if (e.OriginalSource is FrameworkElement { DataContext: FileItem item })
+            await ViewModel.OpenPendingRowAsync(item);
     }
 
     private void ArchiveBreadcrumb_ItemClicked(BreadcrumbBar sender, BreadcrumbBarItemClickedEventArgs args) =>
@@ -216,55 +204,9 @@ public sealed partial class MainWindow : Window
         ViewModel.SetSelectedBrowserEntries([.. listView.SelectedItems.OfType<ArchiveEntryViewModel>()]);
     }
 
-    // Double-click a folder row descends into it (breadcrumb appends a segment, selection
-    // clears); double-click a file row extracts just that entry, reusing the same
-    // RunExtractAsync sequence as every other extraction path.
     private async void ArchiveBrowserList_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
     {
-        // T-F123: belt-and-suspenders alongside ArchiveBrowserListView's IsEnabled binding (which
-        // already stops this event from firing at all while Busy) — cheap insurance against any
-        // future change that fires DoubleTapped through a path IsEnabled doesn't cover.
-        if (ViewModel.IsBusy)
-            return;
-
-        if (e.OriginalSource is not FrameworkElement { DataContext: ArchiveEntryViewModel entry })
-            return;
-
-        if (entry.IsFolder)
-        {
-            ViewModel.NavigateIntoFolder(entry);
-            return;
-        }
-
-        // T-F107: a "file" double-tapped while browsing real folders/drives (not inside an
-        // archive) isn't extractable — there's no BrowsedArchivePath to extract from. If it's
-        // itself a recognized archive, open it fresh (same trust level as the pending-list
-        // double-click gate below — not T-F98's deferred nested-archive-drill-down, which is
-        // about archives found *inside* the currently open archive). A plain file is a no-op.
-        if (ViewModel.BrowseScope != ArchiveBrowseScope.Archive)
-        {
-            if (ArchiveFormatDetector.Detect(entry.FullPath) != Archiver.Core.Models.ArchiveFormat.Unknown)
-                await ViewModel.EnterBrowseModeAsync(entry.FullPath);
-            return;
-        }
-
-        // T-F98: an archive found inside the currently open archive drills in, extracting just
-        // that entry to a temp scope and browsing it — checked before PreviewPolicy since a real
-        // archive extension is never also a previewable one, but ordering here is for clarity,
-        // not correctness (the two extension sets are already disjoint).
-        if (ArchiveFormatDetector.IsRecognizedArchiveExtension(entry.Name))
-        {
-            await ViewModel.NavigateIntoNestedArchiveAsync(entry);
-        }
-        // T-F97: a previewable file type opens silently via the OS default handler instead of
-        // running the full Extract flow.
-        else if (PreviewPolicy.IsPreviewable(entry.Name))
-        {
-            await ViewModel.PreviewBrowserEntryAsync(entry);
-        }
-        else
-        {
-            await ViewModel.ExtractSingleBrowserEntryWithWarningAsync(entry);
-        }
+        if (e.OriginalSource is FrameworkElement { DataContext: ArchiveEntryViewModel entry })
+            await ViewModel.OpenBrowserRowAsync(entry);
     }
 }

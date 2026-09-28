@@ -5261,6 +5261,13 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 
 ### T-F242 — App: cleanup errors swallowed, dead Core options, logic in code-behind (P2)
 
+- **Progress (2026-09-28, wave 4):** items 3, 4, 6 fixed — double-click routing moved to App.Core
+  `BrowserEntryRouting` (tested) and `MainViewModel.OpenPendingRowAsync`/`OpenBrowserRowAsync`;
+  the magic-byte probe runs off the UI thread; both lists do nothing while busy; preview and
+  nested drill-in resolve the extracted file with `ResolveInScope`, which refuses absolute and
+  `..` entry names before anything reaches ShellExecute (mutation-checked). Item 5 (drag caption)
+  goes with T-F199 step 8's localization.
+
 - **Progress (2026-09-25, fix phase 1):** item 1 done with T-F207 (sources still on disk are
   logged and listed in a dialog); item 2 done — both dead fields removed, with the two tests that
   only pinned "the field exists and does nothing". Items 3-6 stay for phase 9.
