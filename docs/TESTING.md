@@ -808,6 +808,34 @@ Ukrainian UI, CI an English one.
 
 ---
 
+## Core Messages, Outcome and CLI Messages (fix phase 7, 2026-09-28)
+
+- `CoreMessageSourceGuardTests` (Core) reads `src/Archiver.Core` and fails on any `Message =`/
+  `Reason =`/`ErrorMessage =` outside `CoreMessages` (red on the unconverted code: 113 sites);
+  `CoreMessageCodeTests` pins the codes users meet (corrupted ZIP, GZip, not an archive, missing
+  source, all skipped, bomb declined, blocked listing) with byte-identical English.
+- `Archiver.Messages.Tests` (new project): the neutral `CoreMessages.resx` equals Core's templates;
+  every one of 36 locales translates every code with the same placeholders; nested rendering;
+  `UiCulture` table (zh-CN/SG -> zh-Hans, zh-TW -> English, de-AT -> de-DE, English listed first
+  wins).
+- `OperationOutcomeTests` (Core): each `OperationOutcome` from real ZIP/router runs, including a Test
+  that read nothing (T-F274). Shell `OperationMessagesTests.ForTestResult_*` and
+  `ShellCommandsTests.Test_NothingTested_DoesNotClaimNoErrors` (red before the fix).
+- T-F217: `OperationWindowModelConfirmTests`, `HelperOperationUiTests.AQuestion_*`,
+  `ShellCommandsTests.Extract_SuspectedBomb_*` (50 MB of zeros, all three extract commands),
+  `ShellConflictDialogTests.ConfirmMapResult_*`. T-F255: `PasswordDialogReadTextTests` with a real
+  EDIT control (0-4096 characters; a 256-cap mutant fails three). T-F253: `BuildContent_*`.
+- T-F254 (C++): `LocalizationTests` — zh-CN/zh-SG/zh-Hans-CN, Traditional stays English, regional
+  variants, tag case (three red before the fix).
+- T-F198: `AppResourceKeysTests` (App.Core) — the twelve new App keys in all 37 `.resw` files with
+  English's placeholders.
+- T-F221: `CliFacingMessagesTests` (Core) and `CliMessagesSubprocessTests` (real `pakko.exe`):
+  missing input, -p hint and one wrong-password line, -aoa hint, empty and garbage stdin shown as
+  "(stdin)", explicit names written the 7-Zip way, `h <folder>` relative names; `CliProgressTests`
+  for the console-only percentage.
+
+---
+
 ## Rules
 
 - No `Thread.Sleep` — use `await Task.Delay` if needed

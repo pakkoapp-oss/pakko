@@ -4363,6 +4363,8 @@ real console) and T-F226's deferred per-arrow diagram ritual — carried as open
 
 ### T-F198 — UI quick fixes from the 2026-09-24 UI/UX review
 
+- **Progress (2026-09-28, fix phase 7):** items 1 and 7 fixed in 4b6ce03 — list words ("Folder"/"File"/size units), the busy status lines, every dialog's Yes/No/OK and the "Error" titles come from the App's resources in 37 locales (App.Core's `DisplayText`, set by the App at startup; the preview path reads `FileItem.IsFolder`). Device (Deploy 1.5.0.16, uk-UA): browse error dialog "Помилка ... Гаразд". Items 2-6 stay for wave 4 (T-F199).
+
 - [ ] **Status:** open. Point fixes, no layout change (the layout is T-F199):
   1. English strings in a localized UI: "Archiving... (N files, size)"/"Extracting... (N
      archive(s))" (`MainViewModel.cs`), "Folder"/"N bytes" (`FileItem.cs`,
@@ -4594,6 +4596,8 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 
 ### T-F208 — Archiver.Shell dialog titles and size units are English in a localized UI (P1)
 
+- [x] **Progress (2026-09-28, fix phase 7):** already done by T-F268's `OperationText.resx`; device (Deploy 1.5.0.16, uk-UA): title "Тестування: sr.tar.gz", sizes in local units. Closed.
+
 - [ ] **Status:** open. Under uk-UA: progress/result titles "Testing: X", "Testing 2 archives",
   "Scanning: X", "Extracting: X", "Archiving: X", "CRC-32: 2 files"; hash result "Розмір: 6 B
   (6 bytes)". T-F163 localized the result bodies but not the titles. Move to `.resx`, 37 locales.
@@ -4601,6 +4605,8 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 - **Root (grouping, architecture review 2026-09-25):** Core reports errors and skips as English text with no code (`ArchiveError`/`SkippedFile` hold only strings), and the frontends localize through four separate mechanisms (App `.resw`, Shell `.resx`, `Localization.cpp`, none in the CLI). Fix T-F209/T-F208/T-F215/T-F221/T-F254 together: a code in the Core model, rendered per frontend.
 
 ### T-F209 — Archiver.Core error/skip messages are always English (P2, architecture)
+
+- [x] **Progress (2026-09-28, fix phase 7):** fixed (a85cd7a, edac740, eb5876e). Every Core message carries a `CoreText` (code + arguments, nested) next to the unchanged English text; `MessageTemplates` is the one English table, `CoreMessages` the only place a message field is set (`CoreMessageSourceGuardTests` reads Core's source). New `Archiver.Messages` renders a code in 37 locales (`CoreMessages.resx`); Shell and App render through it, the CLI stays English (user decision). Device (Deploy 1.5.0.16, uk-UA): Explorer Test and bomb skip reasons, App browse error — all Ukrainian. Closed.
 
 - [ ] **Status:** open. Under uk-UA every Core-originated reason is English: "File has ZIP
   signature but appears corrupted or incomplete.", "GZip format is not supported. Only ZIP-based
@@ -4694,6 +4700,8 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 
 ### T-F217 — Shell declines a compression bomb with no way forward (P2)
 
+- [x] **Progress (2026-09-28, fix phase 7):** fixed in c17d5bc — Explorer asks (operation window `AskConfirm`/`ConfirmAnswer`, protocol 2; Win32 `ShellConfirmDialog` fallback), declining is the default and Esc/close/failure is no. SECURITY.md updated (user-approved). Device (Deploy 1.5.0.16): Esc -> skipped with the Ukrainian reason, nothing written; Видобути -> 50 MB extracted. Closed.
+
 - [ ] **Status:** open. Explorer "Extract here" on a 1029:1 ZIP -> "Пропущено (1): Suspicious
   compression ratio ... declined as a precaution" — no confirm (the App asks via
   `ShowCompressionBombConfirmAsync`), no hint how to proceed. Safe, but a dead end for a
@@ -4733,6 +4741,8 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 - **Reported by:** T-F202, 2026-09-24.
 
 ### T-F221 — CLI error and help messages (P2)
+
+- [~] **Progress (2026-09-28, fix phase 7):** fixed in d7bf2e8 — items 1-6, 9, 10 (not found, -p hint and one wrong-password line, -aoa/-aou hint, empty stdin and "(stdin)", `a -so` to a terminal refused, explicit name written as typed — 7-Zip's rule, user decision; progress percentage only on a console stderr; `h <folder>` relative names). Item 8 was already fixed by T-F261. Item 7 moves to wave 4 with T-F199's encryption flag. Console-only branches (progress, -so refusal) need a real terminal check.
 
 - [ ] **Status:** open.
   1. Missing input: `t missing.tar.gz`/`x nosuch.zip` -> "File is not a recognized archive
@@ -5553,6 +5563,8 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 
 ### T-F253 — Explorer's conflict dialog opens behind other windows and names only the file (P2)
 
+- [~] **Progress (2026-09-28, fix phase 7):** fixed in 18a16d1 — the Win32 fallback conflict dialog goes topmost on TDN_CREATED and names the full path plus both files' size/date. The operation window (normal path) already did both. Fallback-path device check pending.
+
 - [ ] **Status:** open — confirmed on device 2026-09-25. `ShellConflictDialog` calls
   `TaskDialogIndirect` with no owner and none of the Z-order handling `PasswordDialog` needed
   (`PasswordDialog.cs:95-110`, T-F192: `SetForegroundWindow` alone is unreliable from this call
@@ -5566,6 +5578,8 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 - **Reported by:** T-F226 batch 3, 2026-09-25.
 
 ### T-F254 — Explorer menu stays English for Chinese and regional-variant Windows languages (P2)
+
+- [~] **Progress (2026-09-28, fix phase 7):** fixed in 4795bfb (C++ menu) and eb5876e (Shell `.resx`): exact tag (case-insensitive), zh-CN/zh-SG/zh-Hans-* -> zh-Hans, Traditional stays English, else the same language's row. Same rule in `Archiver.Messages.UiCulture`; the App picks the first of `ApplicationLanguages` Pakko translates. Needs a device with a regional language (e.g. de-AT) to confirm.
 
 - [ ] **Status:** open — code-confirmed 2026-09-25. `Localization.cpp` looks the UI language up by
   exact tag (`GetLocalizedString`, `:112-121`) from `GetThreadPreferredUILanguages` (`:94-110`).
@@ -5586,6 +5600,8 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 - **Root (grouping, architecture review 2026-09-25):** Core reports errors and skips as English text with no code (`ArchiveError`/`SkippedFile` hold only strings), and the frontends localize through four separate mechanisms (App `.resw`, Shell `.resx`, `Localization.cpp`, none in the CLI). Fix T-F209/T-F208/T-F215/T-F221/T-F254 together: a code in the Core model, rendered per frontend.
 
 ### T-F255 — Explorer's password dialog silently cuts passwords at 255 characters (P2)
+
+- [~] **Progress (2026-09-28, fix phase 7):** fixed in 18a16d1 — the read-back is sized from `GetWindowTextLength` (test with a real edit control, 0-4096 chars; a 256-cap mutant fails), "Show password" restores the control's own mask. Fallback-path device check pending.
 
 - [ ] **Status:** open — code-confirmed 2026-09-25. `PasswordDialog.OnCommand` reads the edit
   control into a fixed `char[256]` (`PasswordDialog.cs:133-135`) and the template sets no
@@ -5682,6 +5698,8 @@ by the phase plan. Roots that are only a grouping
 here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-F234/T-F238.
 
 ### T-F260 — `ArchiveResult` has no defined outcome: every frontend decides success, partial and cancelled for itself (P1, root, decision)
+
+- [~] **Progress (2026-09-28, fix phase 7):** remainder done in 6e0575d — `ArchiveResult.Outcome` (Completed / CompletedWithSkips / NothingDone / Failed) is the one classification; `Success` is derived (no errors) instead of set at ~15 sites; Shell, CLI exit codes and the App map `Outcome` only. CLI exit codes unchanged.
 
 - **Progress (2026-09-25, fix phase 1):** slice done in Core — `ArchiveResult.Sources` /
   `FullyProcessedSources` (fail-closed) and the cancellation rule; the general outcome and the
@@ -6222,6 +6240,8 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 - **Reported by:** fix phase 5 device check, 2026-09-28.
 
 ### T-F274 — Shell "Test archive" reports "no errors detected" when nothing was tested (P2)
+
+- [x] **Progress (2026-09-28, fix phase 7):** fixed in 6e0575d — `TestAsync` records a source per archive it read, so a Test that read nothing is `NothingDone` and Shell leaves out "no errors". Device (Deploy 1.5.0.16, uk-UA): Test on sr.tar.gz shows only the skipped line. Closed.
 
 - [ ] **Status:** open — device-confirmed 2026-09-28 (Deploy 1.5.0.15). Explorer/Shell `--test` on
   a selection whose every archive is skipped (a tar-family archive — no test capability — or any

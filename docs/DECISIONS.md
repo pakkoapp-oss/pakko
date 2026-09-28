@@ -10165,3 +10165,48 @@ fail-safe rules as `GroupPolicyService`, cached for 5 s because the DLL lives in
 -> the first one's folder, a dotfile keeps its name, compound tar extensions stripped, UNC share
 root -> share name. "name (N)" lives only in `ArchiveNaming`. `FormatListConsistencyTests` parses
 `ShellExtUtils.cpp` and `Package.appxmanifest` so the hand-kept lists can no longer drift silently.
+
+## Fix phase 7 — Core messages as codes, one outcome, Explorer prompts, CLI messages (2026-09-28)
+
+**T-F209 — a code in the model, text in the frontend.** Core stays free of any resource loader
+(hard constraint); every user-visible message is built by `CoreMessages` from a `MessageCode` and
+its arguments into a `CoreText`, next to the unchanged English field (`Message`/`Reason`/
+`ErrorMessage`/`Error`). Arguments may nest another `CoreText` ("Cannot extract archive: {tar.exe
+extraction failed: …}"), so a nested message is translated too; exceptions Core throws with a
+user-visible message carry their code (`ICoreTextSource`). English lives only in
+`MessageTemplates`. Rejected: per-frontend tables (App `.resw` + Shell `.resx` would drift), and
+resources inside Core. Chosen: one shared `Archiver.Messages` library (`CoreMessages.resx`, 37
+locales) that Shell and the App reference; the CLI prints the English field (7-Zip parity, scripts —
+user decision). Guard: `CoreMessageSourceGuardTests` reads Core's source and fails on any message
+field set outside `CoreMessages`; `MessageTextTests` checks the neutral table equals the templates
+and every locale's placeholders. Culture: `UiCulture.Resolve` (exact, zh-CN/SG -> zh-Hans, same
+language -> its shipped region, else English) — the rule T-F254 also applies in the C++ menu and
+Shell's startup. The App renders in the first of `ApplicationLanguages` Pakko translates, the same
+list Windows resource matching uses for its own strings, so window text and Core text agree.
+
+**T-F260 remainder + T-F274 — one outcome.** `ArchiveResult.Outcome` (Completed /
+CompletedWithSkips / NothingDone / Failed); `Success` is derived (no errors) — the ~15 places that
+set it are gone, and with them contradictory states such as Success with an error. `TestAsync`
+records a source per archive it actually read, so a Test that read nothing is NothingDone and
+Explorer no longer claims "no errors". CLI exit codes unchanged (0 / 1 / 1 / 2).
+
+**T-F217 — Explorer asks before a suspected bomb.** Same question as the App (T-F94), per archive,
+no "apply to all". The operation window gets a generic `AskConfirm`/`ConfirmAnswer` (protocol 2;
+all texts from Shell, so no new window strings); Win32 fallback is a TaskDialog sharing the conflict
+dialog's helper. Declining is the default; Esc, closing or a failed window all answer no — a
+suspected bomb is never extracted by default (SECURITY.md, user-approved).
+
+**T-F253/T-F255.** The fallback conflict dialog goes topmost on TDN_CREATED (the same Z-order fix
+T-F192 needed) and names the full path with both files' details; the password dialog sizes its
+read-back from the control, so passwords over 255 characters are no longer cut silently.
+
+**T-F221 — CLI.** A missing input is "does not exist" (Core fix, all frontends); listing a
+non-ZIP says so (new code) instead of .NET's "Central Directory corrupt". The CLI adds hints (-p,
+-aoa/-aou), one line for a wrong -p, "(stdin)" instead of the staging path, refuses `a -so` to a
+terminal, writes an explicit archive name with an extension exactly as typed
+(`ArchiveOptions.ExactFileName`, 7-Zip's rule — user decision), shows a percentage only when
+stderr is a console, and names `h <folder>` files relative to the folder's parent.
+
+**T-F198 items 1 and 7.** App.Core cannot load resources, so `DisplayText` holds the list words
+and size units and the App sets them at startup; the preview's folder check uses
+`FileItem.IsFolder`, not the translated type text.

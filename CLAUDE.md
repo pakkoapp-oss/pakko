@@ -306,11 +306,6 @@ another process, even after Pakko itself had finished writing every file. Fixed 
 `CommitTempDestToActualDest`, falling back to the existing per-file merge on `IOException`; also
 fixed an independent `_tmp`-folder leak on any mid-loop failure.
 
-**T-F163** (`[x]` done) — `Archiver.Shell`'s operation-result dialogs (skip/error header lines,
-"operation failed", "no errors detected") were hardcoded English, predating and surviving three
-earlier localization passes on Shell's *other* native dialogs. Fixed via a new
-`ResultMessages.resx` across all 37 locales.
-
 **v1.4.12 pre-release verification pass** (2026-08-12, user-directed, agent-driven via `windows`
 MCP against the real installed release MSIX + release `pakko.exe`) — a full action inventory
 across all 4 frontends cross-referenced against the test suite's 20 toxic/adversarial-input
@@ -418,6 +413,11 @@ required everywhere, `PakkoServices.Create`, listing gated), Explorer selection 
 `--paths-stdin`), menu hides policy-blocked items (T-F262), one naming rule (T-F264); the
 policy device checks wait for a UAC-approved run. Found T-F273 (tar creation hits tar.exe's
 command-line limit on a large selection).
+**Fix phase 7** (2026-09-28): Core messages are codes (`CoreMessages`/`MessageCode`, never a bare
+`Message =` — a test reads Core's source) rendered by the new `Archiver.Messages` in 37 locales for
+Shell and App, the CLI stays English (T-F209); one `ArchiveResult.Outcome`, `Success` derived
+(T-F260, T-F274); Explorer asks before a suspected bomb (T-F217); T-F253/254/255, T-F221 (CLI
+messages, 7-Zip naming), T-F198 items 1 and 7. See `docs/DECISIONS.md`'s fix phase 7 entry.
 
 ## Roadmap Summary
 
@@ -831,6 +831,7 @@ windows-archiver-wrapper/
 │   ├── Archiver.OperationUi/        ← code-only WinUI 3 exe, Explorer operation window (T-F268)
 │   ├── Archiver.OperationUi.Core/   ← net10.0, OperationWindowModel (window logic, no WinUI)
 │   ├── Archiver.OperationUi.Protocol/ ← net10.0, Shell <-> window pipe messages + framing
+│   ├── Archiver.Messages/           ← net10.0, Core's message codes in 37 locales (T-F209)
 │   └── Archiver.ShellExtension/    ← C++ COM DLL, IExplorerCommand (T-F61), x64+ARM64
 ├── tests/
 │   ├── Archiver.Core.Tests/        ← xunit (see "Current State" for current count)
@@ -840,6 +841,7 @@ windows-archiver-wrapper/
 │   │                                     [Trait("Category","Slow")], see docs/TESTING.md
 │   ├── Archiver.Shell.Tests/       ← xunit (see "Current State" for current count)
 │   ├── Archiver.OperationUi.Tests/ ← xunit, protocol framing + OperationWindowModel (T-F268)
+│   ├── Archiver.Messages.Tests/    ← xunit, translation parity + culture resolver (T-F209)
 │   ├── Archiver.CLI.Tests/          ← xunit, parser/mapper unit tests + a Subprocess/ layer that
 │   │                                  Process.Starts the real built exe (T-F09), see docs/TESTING.md
 │   ├── Archiver.ShellExtension.Tests/  ← C++ Google Test, run separately (see Build Commands)

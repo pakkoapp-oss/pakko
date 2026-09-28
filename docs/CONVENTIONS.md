@@ -92,6 +92,12 @@ File.WriteAllBytes(path, data);
 - Catch `Exception` only at service boundaries, not inside helpers
 - All exceptions → `ArchiveError` with `SourcePath`, `Message`, `Exception`
 - Log-friendly: `ArchiveError.Message` must be human-readable (not exception type name)
+- **T-F209: every user-visible Core message goes through `CoreMessages` with a `MessageCode`** — never
+  `new ArchiveError { Message = ... }` or `Reason = ...` directly (`CoreMessageSourceGuardTests`
+  fails the build's tests on it). A new message = a new `MessageCode` + its English template in
+  `MessageTemplates` + all 36 translations in `Archiver.Messages/Resources/CoreMessages.*.resx`
+  (`MessageTextTests` checks the placeholders). Text Core did not write (an OS or tar.exe message)
+  goes in as an argument or `MessageCode.None`, never translated.
 
 ```csharp
 // Correct pattern in ZipArchiveService
@@ -101,12 +107,7 @@ try
 }
 catch (IOException ex)
 {
-    errors.Add(new ArchiveError
-    {
-        SourcePath = sourcePath,
-        Message = $"Cannot access file: {ex.Message}",
-        Exception = ex
-    });
+    errors.Add(CoreMessages.Error(sourcePath, CoreMessages.Text(MessageCode.CannotAccessFile, ex.Message), ex));
 }
 ```
 

@@ -155,6 +155,8 @@ src/
 │   └── Models/
 │       ├── ArchiveOptions.cs / ExtractOptions.cs / ArchiveResult.cs
 │       ├── ArchiveError.cs / SkippedFile.cs / ProgressReport.cs
+│       ├── MessageCode.cs / CoreText.cs   ← T-F209: every user-visible Core message as a code + arguments
+│       ├── OperationOutcome.cs             ← T-F260: what a whole operation achieved
 │       ├── ArchiveFormat.cs / ArchiveContainerFormat.cs   ← detection vs. creation enums
 │       ├── ArchiveEntryInfo.cs / ArchiveListResult.cs     ← T-F05: browse-mode listing
 │       ├── ConflictInfo.cs / ConflictDecision.cs          ← T-F06; incoming size/time T-F268
@@ -175,6 +177,9 @@ src/
 │   │   └── BoolToVisibilityConverter.cs
 │   └── Strings/                ← 37 locales (T-F91), en-US is the fallback
 │       └── en-US/Resources.resw
+│
+├── Archiver.Messages/          ← net10.0 -> Core (T-F209): renders Core's MessageCode texts in 37
+│                                  locales (MessageText, UiCulture, Resources/CoreMessages*.resx)
 │
 ├── Archiver.App.Core/          ← net10.0, WinUI-free helpers for Archiver.App (T-F05), unit-testable
 │   │                              without a WinUI test host
@@ -202,7 +207,8 @@ src/
 │   ├── ProgressText.cs                 ← progress status, byte and speed text
 │   ├── AppLauncher.cs                  ← T-F232: opens Archiver.App via IApplicationActivationManager::
 │   │                                      ActivateApplication (no URI scheme); refuses > 32000 chars
-│   ├── ShellResultPresenter.cs         ← T-F68: classifies ArchiveResult into Failed/SkippedOnly/Success
+│   ├── ShellResultPresenter.cs         ← T-F68: skipped-list text (classification is ArchiveResult.Outcome, T-F260)
+│   ├── ShellConfirmDialog.cs           ← T-F217: Win32 yes/no fallback (suspected compression bomb)
 │   ├── NativeProgressDialog.cs         ← IProgressDialog COM interop (in-process progress UI)
 │   ├── HashResultLocalizer.cs          ← T-F128 follow-up: first localized text in Archiver.Shell —
 │   │                                      plain .resx/ResourceManager (not App's WinRT/.resw — needs
@@ -549,7 +555,8 @@ public sealed record CompressionBombWarning
 // Models/ArchiveResult.cs
 public sealed record ArchiveResult
 {
-    public bool Success { get; init; }
+    public bool Success { get; }                      // T-F260: derived — no errors
+    public OperationOutcome Outcome { get; }          // Completed / CompletedWithSkips / NothingDone / Failed
     public IReadOnlyList<string> CreatedFiles { get; init; } = [];
     public IReadOnlyList<ArchiveError> Errors { get; init; } = [];
     public IReadOnlyList<SkippedFile> SkippedFiles { get; init; } = [];
@@ -580,7 +587,8 @@ call's outcome. Rules live in `Services/SourceOutcomeRules.cs`. **Cancellation**
 public sealed record ArchiveError
 {
     public string SourcePath { get; init; } = string.Empty;
-    public string Message { get; init; } = string.Empty;
+    public string Message { get; init; } = string.Empty;   // English, for logs and the CLI
+    public CoreText? Text { get; init; }                     // T-F209: code + arguments, rendered per UI language
     public Exception? Exception { get; init; }
 }
 ```
@@ -590,9 +598,18 @@ public sealed record ArchiveError
 public sealed record SkippedFile
 {
     public string Path { get; init; } = string.Empty;
-    public string Reason { get; init; } = string.Empty;
+    public string Reason { get; init; } = string.Empty;   // English
+    public CoreText? Text { get; init; }                    // T-F209
 }
 ```
+
+**T-F209 — messages.** Core builds every user-visible message through the internal
+`Services/CoreMessages` from a `MessageCode` (`Models/MessageCode.cs`); `Services/MessageTemplates`
+is the one English table; `ArchiveListResult.ErrorText`, `ThreatFinding.ReasonText` and
+`HashEntry.ErrorText` carry the same `CoreText`. `Archiver.Messages` (net10.0 -> Core) renders a
+`CoreText` in a UI language (`MessageText.Render`, `UiCulture.Resolve`/`ResolveFirst`) from
+`Resources/CoreMessages.resx` (37 locales); Shell and the App use it, the CLI prints English.
+`ArchiveOptions.ExactFileName` (T-F221) names a single archive exactly, no extension added.
 
 ---
 

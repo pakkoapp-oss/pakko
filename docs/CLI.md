@@ -201,6 +201,26 @@ receiving shell.
 
 Never silently ignore an unrecognized token or switch and proceed as if it wasn't there.
 
+## Messages and naming (T-F221, fix phase 7)
+
+- Messages stay English (user decision — 7-Zip parity, scripts); the GUI frontends translate the
+  same Core messages. A missing input says "Source path does not exist"; a file that is not an
+  archive says so for `x`/`t`/`l`.
+- Hints on stderr: `pakko: hint: give the password with -p<password>` after an encrypted archive
+  was refused with no password given; `pakko: hint: existing files were kept; -aoa overwrites
+  them, -aou renames the extracted ones` when `x` kept existing files because nothing else was
+  chosen. A wrong `-p` is one line (`incorrect password (-p)`), not followed by Core's generic one.
+- `-si`: an empty stdin is `stdin was empty, so there is no archive to read` (exit 2); the staged
+  archive is always shown as `(stdin)`, never its temporary path.
+- `a -so` with stdout on a terminal is refused (exit 7), like 7-Zip, gzip and zstd.
+- `a`: a name with an extension is written exactly as typed (`-ttar x.gz` creates a tar named
+  `x.gz`); a name without one gets the format's extension (7-Zip's rule, user decision
+  2026-09-28). The automatic name (T-F264) is unchanged.
+- A percentage (`\r 42%`) is written to stderr during `x`/`t`/`a` only when stderr is a console,
+  and cleared before any prompt or result line.
+- `h <folder>` names each file relative to the folder's parent (`docs\sub\a.txt`) — the same names
+  its "data and names" sum covers.
+
 ---
 
 See `TASKS.md`'s T-F09 entry for acceptance criteria, test-layer requirements, and current status.
