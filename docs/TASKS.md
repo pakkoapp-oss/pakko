@@ -4388,6 +4388,12 @@ real console) and T-F226's deferred per-arrow diagram ritual — carried as open
 
 ### T-F199 — Archive/browse window layout redesign (+ inline encryption password)
 
+- **Carried into wave 4 (2026-09-28): device checks left open by fix phase 7** — T-F254 on a
+  regional Windows language (e.g. de-AT, zh-CN: menu, Shell windows and App agree on the language);
+  T-F221 in a real terminal (progress percentage on stderr, `a -so` to the console refused with
+  exit 7); T-F260 outcome mapping across App/Shell/CLI (clean, skips-only, nothing-done, failed).
+  T-F221 item 7 (encrypted marker in `l`) is built with this task's encryption flag.
+
 - [ ] **Status:** open — needs a plan and a mockup approved by the user before any XAML changes.
   From the 2026-09-24 review: action buttons sit above the options they apply to; "Архів" is a
   noun, Archive/Extract have equal weight; shared options float outside the options grid; "Delete
