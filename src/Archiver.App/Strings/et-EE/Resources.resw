@@ -184,9 +184,6 @@
   <data name="StatusExtracting" xml:space="preserve">
     <value>Lahtipakkimine...</value>
   </data>
-  <data name="StatusDone" xml:space="preserve">
-    <value>Valmis — töödeldud faile: {0}.</value>
-  </data>
   <data name="StatusIssues" xml:space="preserve">
     <value>Lõpetatud probleemidega.</value>
   </data>
@@ -198,12 +195,6 @@
   </data>
   <data name="StatusFinalizing" xml:space="preserve">
     <value>Lõpetamine...</value>
-  </data>
-  <data name="StatusArchivedIn" xml:space="preserve">
-    <value>Arhiveeritud {0} s — faile: {1}</value>
-  </data>
-  <data name="StatusExtractedIn" xml:space="preserve">
-    <value>Lahti pakitud {0} s — faile: {1}</value>
   </data>
   <data name="OutcomeWillExtract" xml:space="preserve">
     <value>Lahti pakitakse {0} arhiivi ülal olevasse kausta</value>

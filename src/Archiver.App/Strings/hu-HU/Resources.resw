@@ -184,9 +184,6 @@
   <data name="StatusExtracting" xml:space="preserve">
     <value>Kibontás...</value>
   </data>
-  <data name="StatusDone" xml:space="preserve">
-    <value>Kész — {0} fájl feldolgozva.</value>
-  </data>
   <data name="StatusIssues" xml:space="preserve">
     <value>Befejezve, hibákkal.</value>
   </data>
@@ -198,12 +195,6 @@
   </data>
   <data name="StatusFinalizing" xml:space="preserve">
     <value>Véglegesítés...</value>
-  </data>
-  <data name="StatusArchivedIn" xml:space="preserve">
-    <value>Tömörítve {0} mp alatt — {1} fájl</value>
-  </data>
-  <data name="StatusExtractedIn" xml:space="preserve">
-    <value>Kibontva {0} mp alatt — {1} fájl</value>
   </data>
   <data name="OutcomeWillExtract" xml:space="preserve">
     <value>{0} archívum kerül kibontásra a fenti mappába</value>

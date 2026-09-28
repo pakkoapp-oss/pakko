@@ -184,9 +184,6 @@
   <data name="StatusExtracting" xml:space="preserve">
     <value>מחלץ...</value>
   </data>
-  <data name="StatusDone" xml:space="preserve">
-    <value>הושלם — {0} קבצים עובדו.</value>
-  </data>
   <data name="StatusIssues" xml:space="preserve">
     <value>הושלם עם בעיות.</value>
   </data>
@@ -198,12 +195,6 @@
   </data>
   <data name="StatusFinalizing" xml:space="preserve">
     <value>משלים...</value>
-  </data>
-  <data name="StatusArchivedIn" xml:space="preserve">
-    <value>אוכרך תוך {0} שניות — {1} קבצים</value>
-  </data>
-  <data name="StatusExtractedIn" xml:space="preserve">
-    <value>חולץ תוך {0} שניות — {1} קבצים</value>
   </data>
   <data name="OutcomeWillExtract" xml:space="preserve">
     <value>יחולצו {0} ארכיונים לתיקייה שלמעלה</value>

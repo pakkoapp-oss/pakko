@@ -184,9 +184,6 @@
   <data name="StatusExtracting" xml:space="preserve">
     <value>Išskleidžiama...</value>
   </data>
-  <data name="StatusDone" xml:space="preserve">
-    <value>Baigta — apdorota failų: {0}.</value>
-  </data>
   <data name="StatusIssues" xml:space="preserve">
     <value>Baigta su problemomis.</value>
   </data>
@@ -198,12 +195,6 @@
   </data>
   <data name="StatusFinalizing" xml:space="preserve">
     <value>Baigiama...</value>
-  </data>
-  <data name="StatusArchivedIn" xml:space="preserve">
-    <value>Archyvuota per {0} s — failų: {1}</value>
-  </data>
-  <data name="StatusExtractedIn" xml:space="preserve">
-    <value>Išskleista per {0} s — failų: {1}</value>
   </data>
   <data name="OutcomeWillExtract" xml:space="preserve">
     <value>Bus išskleista archyvų: {0} — į aukščiau nurodytą aplanką</value>

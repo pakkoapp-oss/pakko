@@ -188,9 +188,6 @@
   <data name="StatusExtracting" xml:space="preserve">
     <value>Extracting...</value>
   </data>
-  <data name="StatusDone" xml:space="preserve">
-    <value>Done — {0} file(s) processed.</value>
-  </data>
   <data name="StatusIssues" xml:space="preserve">
     <value>Completed with issues.</value>
   </data>
@@ -218,17 +215,32 @@
   <data name="UnsafePreviewConfirmMessage" xml:space="preserve">
     <value>"{0}" cannot be safely opened directly. Extract it to a folder next to the archive instead?</value>
   </data>
-  <data name="StatusArchivedIn" xml:space="preserve">
-    <value>Archived in {0} sec — {1} file(s)</value>
-  </data>
-  <data name="StatusExtractedIn" xml:space="preserve">
-    <value>Extracted in {0} sec — {1} file(s)</value>
-  </data>
   <data name="OutcomeWillExtract" xml:space="preserve">
     <value>Will extract {0} archive(s) to the folder above</value>
   </data>
   <data name="OutcomeWillArchive" xml:space="preserve">
     <value>Will archive {0} item(s) to the folder above</value>
+  </data>
+  <data name="OutcomeCompressed" xml:space="preserve">
+    <value>Compressed in {0} s — archives: {1}</value>
+  </data>
+  <data name="OutcomeExtracted" xml:space="preserve">
+    <value>Extracted in {0} s — archives: {1}</value>
+  </data>
+  <data name="OutcomeProblems" xml:space="preserve">
+    <value>Finished with problems: {0}</value>
+  </data>
+  <data name="OutcomeNothingDone" xml:space="preserve">
+    <value>Nothing was done — skipped: {0}</value>
+  </data>
+  <data name="BrowseSelectionLine" xml:space="preserve">
+    <value>{0} of {1} selected</value>
+  </data>
+  <data name="OutcomeShowInFolderButton.Content" xml:space="preserve">
+    <value>Show in folder</value>
+  </data>
+  <data name="OutcomeDetailsButton.Content" xml:space="preserve">
+    <value>Details...</value>
   </data>
 
   <!-- About dialog -->

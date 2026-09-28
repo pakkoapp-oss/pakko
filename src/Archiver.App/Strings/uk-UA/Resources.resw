@@ -185,9 +185,6 @@
   <data name="StatusExtracting" xml:space="preserve">
     <value>Видобування...</value>
   </data>
-  <data name="StatusDone" xml:space="preserve">
-    <value>Готово — оброблено файлів: {0}.</value>
-  </data>
   <data name="StatusIssues" xml:space="preserve">
     <value>Завершено з проблемами.</value>
   </data>
@@ -215,17 +212,32 @@
   <data name="UnsafePreviewConfirmMessage" xml:space="preserve">
     <value>Файл "{0}" не можна безпечно відкрити напряму. Видобути його в папку поруч з архівом?</value>
   </data>
-  <data name="StatusArchivedIn" xml:space="preserve">
-    <value>Заархівовано за {0} с — файлів: {1}</value>
-  </data>
-  <data name="StatusExtractedIn" xml:space="preserve">
-    <value>Видобуто за {0} с — файлів: {1}</value>
-  </data>
   <data name="OutcomeWillExtract" xml:space="preserve">
     <value>Буде видобуто архівів: {0} — у вказану вище папку</value>
   </data>
   <data name="OutcomeWillArchive" xml:space="preserve">
     <value>Буде заархівовано елементів: {0} — у вказану вище папку</value>
+  </data>
+  <data name="OutcomeCompressed" xml:space="preserve">
+    <value>Стиснуто за {0} с — архівів: {1}</value>
+  </data>
+  <data name="OutcomeExtracted" xml:space="preserve">
+    <value>Видобуто за {0} с — архівів: {1}</value>
+  </data>
+  <data name="OutcomeProblems" xml:space="preserve">
+    <value>Завершено з проблемами: {0}</value>
+  </data>
+  <data name="OutcomeNothingDone" xml:space="preserve">
+    <value>Нічого не зроблено — пропущено: {0}</value>
+  </data>
+  <data name="BrowseSelectionLine" xml:space="preserve">
+    <value>Вибрано {0} з {1}</value>
+  </data>
+  <data name="OutcomeShowInFolderButton.Content" xml:space="preserve">
+    <value>Показати в папці</value>
+  </data>
+  <data name="OutcomeDetailsButton.Content" xml:space="preserve">
+    <value>Деталі...</value>
   </data>
 
   <!-- Dialog strings -->

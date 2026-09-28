@@ -184,9 +184,6 @@
   <data name="StatusExtracting" xml:space="preserve">
     <value>جارٍ الاستخراج...</value>
   </data>
-  <data name="StatusDone" xml:space="preserve">
-    <value>تم — تمت معالجة {0} ملف(ات).</value>
-  </data>
   <data name="StatusIssues" xml:space="preserve">
     <value>اكتمل مع وجود مشكلات.</value>
   </data>
@@ -198,12 +195,6 @@
   </data>
   <data name="StatusFinalizing" xml:space="preserve">
     <value>جارٍ الإنهاء...</value>
-  </data>
-  <data name="StatusArchivedIn" xml:space="preserve">
-    <value>تمت الأرشفة خلال {0} ثانية — {1} ملف(ات)</value>
-  </data>
-  <data name="StatusExtractedIn" xml:space="preserve">
-    <value>تم الاستخراج خلال {0} ثانية — {1} ملف(ات)</value>
   </data>
   <data name="OutcomeWillExtract" xml:space="preserve">
     <value>سيتم استخراج {0} أرشيف(ات) إلى المجلد أعلاه</value>

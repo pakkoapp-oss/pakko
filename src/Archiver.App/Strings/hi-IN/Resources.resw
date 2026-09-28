@@ -184,9 +184,6 @@
   <data name="StatusExtracting" xml:space="preserve">
     <value>निकाला जा रहा है...</value>
   </data>
-  <data name="StatusDone" xml:space="preserve">
-    <value>पूर्ण — {0} फ़ाइल(ओं) को संसाधित किया गया।</value>
-  </data>
   <data name="StatusIssues" xml:space="preserve">
     <value>समस्याओं के साथ पूर्ण हुआ।</value>
   </data>
@@ -198,12 +195,6 @@
   </data>
   <data name="StatusFinalizing" xml:space="preserve">
     <value>अंतिम रूप दिया जा रहा है...</value>
-  </data>
-  <data name="StatusArchivedIn" xml:space="preserve">
-    <value>{0} सेकंड में संग्रहित — {1} फ़ाइल(ओं)</value>
-  </data>
-  <data name="StatusExtractedIn" xml:space="preserve">
-    <value>{0} सेकंड में निकाला गया — {1} फ़ाइल(ओं)</value>
   </data>
   <data name="OutcomeWillExtract" xml:space="preserve">
     <value>ऊपर दिए गए फ़ोल्डर में {0} संग्रह निकाले जाएंगे</value>

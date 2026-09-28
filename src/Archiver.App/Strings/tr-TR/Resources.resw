@@ -184,9 +184,6 @@
   <data name="StatusExtracting" xml:space="preserve">
     <value>Çıkartılıyor...</value>
   </data>
-  <data name="StatusDone" xml:space="preserve">
-    <value>Tamamlandı — {0} dosya işlendi.</value>
-  </data>
   <data name="StatusIssues" xml:space="preserve">
     <value>Sorunlarla tamamlandı.</value>
   </data>
@@ -198,12 +195,6 @@
   </data>
   <data name="StatusFinalizing" xml:space="preserve">
     <value>Sonlandırılıyor...</value>
-  </data>
-  <data name="StatusArchivedIn" xml:space="preserve">
-    <value>{0} saniyede arşivlendi — {1} dosya</value>
-  </data>
-  <data name="StatusExtractedIn" xml:space="preserve">
-    <value>{0} saniyede çıkartıldı — {1} dosya</value>
   </data>
   <data name="OutcomeWillExtract" xml:space="preserve">
     <value>Yukarıdaki klasöre {0} arşiv çıkartılacak</value>

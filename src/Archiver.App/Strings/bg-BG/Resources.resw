@@ -184,9 +184,6 @@
   <data name="StatusExtracting" xml:space="preserve">
     <value>Разархивиране...</value>
   </data>
-  <data name="StatusDone" xml:space="preserve">
-    <value>Готово — обработени файлове: {0}.</value>
-  </data>
   <data name="StatusIssues" xml:space="preserve">
     <value>Завършено с проблеми.</value>
   </data>
@@ -198,12 +195,6 @@
   </data>
   <data name="StatusFinalizing" xml:space="preserve">
     <value>Финализиране...</value>
-  </data>
-  <data name="StatusArchivedIn" xml:space="preserve">
-    <value>Архивирано за {0} сек — файлове: {1}</value>
-  </data>
-  <data name="StatusExtractedIn" xml:space="preserve">
-    <value>Разархивирано за {0} сек — файлове: {1}</value>
   </data>
   <data name="OutcomeWillExtract" xml:space="preserve">
     <value>Ще бъдат разархивирани {0} архив(а) в папката по-горе</value>

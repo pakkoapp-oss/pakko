@@ -184,9 +184,6 @@
   <data name="StatusExtracting" xml:space="preserve">
     <value>Se extrage...</value>
   </data>
-  <data name="StatusDone" xml:space="preserve">
-    <value>Gata — {0} fișier(e) procesat(e).</value>
-  </data>
   <data name="StatusIssues" xml:space="preserve">
     <value>Finalizat cu probleme.</value>
   </data>
@@ -198,12 +195,6 @@
   </data>
   <data name="StatusFinalizing" xml:space="preserve">
     <value>Se finalizează...</value>
-  </data>
-  <data name="StatusArchivedIn" xml:space="preserve">
-    <value>Arhivat în {0} sec — {1} fișier(e)</value>
-  </data>
-  <data name="StatusExtractedIn" xml:space="preserve">
-    <value>Extras în {0} sec — {1} fișier(e)</value>
   </data>
   <data name="OutcomeWillExtract" xml:space="preserve">
     <value>Vor fi extrase {0} arhivă/arhive în folderul de mai sus</value>

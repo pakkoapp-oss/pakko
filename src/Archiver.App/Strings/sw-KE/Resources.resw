@@ -184,9 +184,6 @@
   <data name="StatusExtracting" xml:space="preserve">
     <value>Inatoa...</value>
   </data>
-  <data name="StatusDone" xml:space="preserve">
-    <value>Imekamilika — faili {0} zimechakatwa.</value>
-  </data>
   <data name="StatusIssues" xml:space="preserve">
     <value>Imekamilika na matatizo.</value>
   </data>
@@ -198,12 +195,6 @@
   </data>
   <data name="StatusFinalizing" xml:space="preserve">
     <value>Inakamilisha...</value>
-  </data>
-  <data name="StatusArchivedIn" xml:space="preserve">
-    <value>Imehifadhiwa kwa sekunde {0} — faili {1}</value>
-  </data>
-  <data name="StatusExtractedIn" xml:space="preserve">
-    <value>Imetolewa kwa sekunde {0} — faili {1}</value>
   </data>
   <data name="OutcomeWillExtract" xml:space="preserve">
     <value>Itatoa hifadhi {0} kwenye folda iliyo hapo juu</value>

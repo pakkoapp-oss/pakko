@@ -184,9 +184,6 @@
   <data name="StatusExtracting" xml:space="preserve">
     <value>展開中...</value>
   </data>
-  <data name="StatusDone" xml:space="preserve">
-    <value>完了 — {0} 個のファイルを処理しました。</value>
-  </data>
   <data name="StatusIssues" xml:space="preserve">
     <value>問題ありで完了しました。</value>
   </data>
@@ -198,12 +195,6 @@
   </data>
   <data name="StatusFinalizing" xml:space="preserve">
     <value>終了処理中...</value>
-  </data>
-  <data name="StatusArchivedIn" xml:space="preserve">
-    <value>{0} 秒で圧縮完了 — {1} 個のファイル</value>
-  </data>
-  <data name="StatusExtractedIn" xml:space="preserve">
-    <value>{0} 秒で展開完了 — {1} 個のファイル</value>
   </data>
   <data name="OutcomeWillExtract" xml:space="preserve">
     <value>上記のフォルダーに {0} 個のアーカイブを展開します</value>

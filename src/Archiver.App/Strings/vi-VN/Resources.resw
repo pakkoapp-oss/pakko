@@ -184,9 +184,6 @@
   <data name="StatusExtracting" xml:space="preserve">
     <value>Đang giải nén...</value>
   </data>
-  <data name="StatusDone" xml:space="preserve">
-    <value>Hoàn tất — đã xử lý {0} tệp.</value>
-  </data>
   <data name="StatusIssues" xml:space="preserve">
     <value>Hoàn tất với một số vấn đề.</value>
   </data>
@@ -198,12 +195,6 @@
   </data>
   <data name="StatusFinalizing" xml:space="preserve">
     <value>Đang hoàn thiện...</value>
-  </data>
-  <data name="StatusArchivedIn" xml:space="preserve">
-    <value>Đã nén trong {0} giây — {1} tệp</value>
-  </data>
-  <data name="StatusExtractedIn" xml:space="preserve">
-    <value>Đã giải nén trong {0} giây — {1} tệp</value>
   </data>
   <data name="OutcomeWillExtract" xml:space="preserve">
     <value>Sẽ giải nén {0} tệp nén vào thư mục ở trên</value>

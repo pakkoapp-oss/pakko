@@ -119,6 +119,14 @@ public sealed partial class MainViewModel : ObservableObject
 
     private string _lastOperation = string.Empty;
 
+    // T-F211: an operation starting is the next action — the previous result line goes.
+    partial void OnIsBusyChanged(bool value)
+    {
+        if (value)
+            ClearOutcome();
+        RaiseFooter();
+    }
+
     [ObservableProperty]
     private int _progress = 0;
 
@@ -222,12 +230,95 @@ public sealed partial class MainViewModel : ObservableObject
     // The empty list dims the options: nothing they apply to yet (board 3).
     public double OptionsOpacity => FileItems.Count == 0 && !IsBrowsingArchive ? 0.55 : 1.0;
 
-    public Visibility OperationOutcomeVisibility =>
-        !IsBrowsingArchive && FileItems.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+    // T-F211/T-F199 step 7: the last operation's result, kept until the next action (an operation
+    // starting, the list changing, a selection, opening or closing an archive). Null: no line.
+    private string? _outcomeText;
+    private OutcomeLine? _outcomeLine;
+    private ArchiveResult? _outcomeResult;
+    private string _outcomeOperation = string.Empty;
 
-    public string OperationOutcomeText => _listActions.Accent == PrimaryAction.Extract
-        ? _res.GetString("OutcomeWillExtract").Replace("{0}", _listActions.ExtractablePaths.Count.ToString())
-        : _res.GetString("OutcomeWillArchive").Replace("{0}", FileItems.Count.ToString());
+    private FooterLineKind FooterKind =>
+        FooterLine.Pick(IsBusy, _outcomeText is not null, IsBrowsingArchive, SelectedBrowserEntries.Count, FileItems.Count > 0);
+
+    public string FooterText => FooterKind switch
+    {
+        FooterLineKind.Outcome => _outcomeText!,
+        FooterLineKind.Selection => string.Format(System.Globalization.CultureInfo.CurrentCulture,
+            _res.GetString("BrowseSelectionLine"), SelectedBrowserEntries.Count, CurrentFolderEntries.Count),
+        FooterLineKind.Preview => _listActions.Accent == PrimaryAction.Extract
+            ? _res.GetString("OutcomeWillExtract").Replace("{0}", _listActions.ExtractablePaths.Count.ToString())
+            : _res.GetString("OutcomeWillArchive").Replace("{0}", FileItems.Count.ToString()),
+        _ => string.Empty,
+    };
+
+    public Visibility FooterTextVisibility =>
+        FooterKind == FooterLineKind.None ? Visibility.Collapsed : Visibility.Visible;
+
+    public Visibility ShowOutcomeInFolderVisibility =>
+        FooterKind == FooterLineKind.Outcome && _outcomeLine?.ExplorerArguments is not null ? Visibility.Visible : Visibility.Collapsed;
+
+    public Visibility OutcomeDetailsVisibility =>
+        FooterKind == FooterLineKind.Outcome && _outcomeLine?.HasDetails == true ? Visibility.Visible : Visibility.Collapsed;
+
+    // "Ready" under a result line adds nothing.
+    public Visibility StatusLineVisibility =>
+        FooterKind == FooterLineKind.Outcome ? Visibility.Collapsed : Visibility.Visible;
+
+    private void RaiseFooter()
+    {
+        OnPropertyChanged(nameof(FooterText));
+        OnPropertyChanged(nameof(FooterTextVisibility));
+        OnPropertyChanged(nameof(ShowOutcomeInFolderVisibility));
+        OnPropertyChanged(nameof(OutcomeDetailsVisibility));
+        OnPropertyChanged(nameof(StatusLineVisibility));
+    }
+
+    private void SetOutcome(string text, OutcomeLine? line, ArchiveResult? result, string operation)
+    {
+        _outcomeText = text;
+        _outcomeLine = line;
+        _outcomeResult = result;
+        _outcomeOperation = operation;
+        RaiseFooter();
+    }
+
+    private void ClearOutcome()
+    {
+        if (_outcomeText is null)
+            return;
+        _outcomeText = null;
+        _outcomeLine = null;
+        _outcomeResult = null;
+        RaiseFooter();
+    }
+
+    private static string RenderOutcome(OutcomeLine line) => string.Format(System.Globalization.CultureInfo.CurrentCulture,
+        _res.GetString(line.TextKey), [.. line.TextArgs.Cast<object>()]);
+
+    // Absolute path, never a bare "explorer.exe" (S4036, T-F136).
+    private static readonly string ExplorerPath = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.Windows), "explorer.exe");
+
+    [RelayCommand]
+    private void ShowOutcomeInFolder()
+    {
+        string? arguments = _outcomeLine?.ExplorerArguments;
+        if (arguments is null)
+            return;
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(ExplorerPath, arguments));
+        }
+        catch (Exception ex)
+        {
+            _logService.Warn($"Show in folder failed: {ex.Message}");
+        }
+    }
+
+    [RelayCommand]
+    private Task ShowOutcomeDetailsAsync() => _outcomeResult is null
+        ? Task.CompletedTask
+        : _dialogService.ShowOperationSummaryAsync(_outcomeOperation, _outcomeResult);
 
     // T-F82/T-F199: the accent sits on the action that fits the list, and the primary button is
     // always the rightmost one (footer columns 3 and 4).
@@ -436,7 +527,6 @@ public sealed partial class MainViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(IsPendingListVisibility))]
     [NotifyPropertyChangedFor(nameof(IsBrowsingArchiveVisibility))]
     [NotifyPropertyChangedFor(nameof(NewArchiveCardVisibility))]
-    [NotifyPropertyChangedFor(nameof(OperationOutcomeVisibility))]
     [NotifyPropertyChangedFor(nameof(DestinationLabel))]
     [NotifyPropertyChangedFor(nameof(DeleteAfterLabel))]
     [NotifyPropertyChangedFor(nameof(OptionsOpacity))]
@@ -446,7 +536,11 @@ public sealed partial class MainViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(CloseArchiveCommand))]
     private bool _isBrowsingArchive = false;
 
-    partial void OnIsBrowsingArchiveChanged(bool value) => RaiseBrowseLocationChanged();
+    partial void OnIsBrowsingArchiveChanged(bool value)
+    {
+        RaiseBrowseLocationChanged();
+        RaiseFooter();
+    }
 
     partial void OnBrowseScopeChanged(ArchiveBrowseScope value) => RaiseBrowseLocationChanged();
 
@@ -590,8 +684,8 @@ public sealed partial class MainViewModel : ObservableObject
             if (_listActions.ArchivesOnly != wasArchivesOnly)
                 IsNewArchiveCardExpanded = !_listActions.ArchivesOnly;
             ExtractCommand.NotifyCanExecuteChanged();
-            OnPropertyChanged(nameof(OperationOutcomeVisibility));
-            OnPropertyChanged(nameof(OperationOutcomeText));
+            ClearOutcome();
+            RaiseFooter();
             OnPropertyChanged(nameof(ArchiveButtonStyle));
             OnPropertyChanged(nameof(ExtractButtonStyle));
             OnPropertyChanged(nameof(ArchiveButtonColumn));
@@ -680,6 +774,9 @@ public sealed partial class MainViewModel : ObservableObject
         CancelCommand.NotifyCanExecuteChanged();
         Progress = 0;
         bool wasCancelled = false;
+        string? outcomeText = null;
+        OutcomeLine? outcomeLine = null;
+        ArchiveResult? outcomeResult = null;
         // T-F199 step 5: read once on the UI thread; Core asks from a worker thread, once per
         // archive in SeparateArchives mode. CanArchive already refused an unusable password.
         string? encryptionPassword = InlinePasswordState.Applies(EncryptWithPassword, SelectedContainerFormat)
@@ -749,20 +846,10 @@ public sealed partial class MainViewModel : ObservableObject
 
             ArchiveResult result = await _archiveCreationRouter.ArchiveAsync(options, progress, _cts.Token);
             _operationStopwatch?.Stop();
-            int totalSec = (int)(_operationStopwatch?.Elapsed.TotalSeconds ?? 0);
-            if (result.Outcome == OperationOutcome.Completed)
-            {
-                StatusMessage = totalSec > 0
-                    ? _res.GetString("StatusArchivedIn")
-                        .Replace("{0}", totalSec.ToString())
-                        .Replace("{1}", result.CreatedFiles.Count.ToString())
-                    : _res.GetString("StatusDone")
-                        .Replace("{0}", result.CreatedFiles.Count.ToString());
-            }
-            else
-            {
-                StatusMessage = _res.GetString("StatusIssues");
-            }
+            outcomeLine = OutcomeLine.From(result, _operationStopwatch?.Elapsed ?? TimeSpan.Zero, extract: false, DestinationPath);
+            outcomeResult = result;
+            outcomeText = RenderOutcome(outcomeLine);
+            StatusMessage = outcomeText;
             _logService.Info($"Archive completed — {result.CreatedFiles.Count} file(s) → {DestinationPath}");
             foreach (SkippedFile skipped in result.SkippedFiles)
                 _logService.Warn($"Skipped {skipped.Path} — {skipped.Reason}");
@@ -779,12 +866,14 @@ public sealed partial class MainViewModel : ObservableObject
         {
             wasCancelled = true;
             _operationStopwatch?.Stop();
-            StatusMessage = _res.GetString("StatusCancelled");
+            outcomeText = _res.GetString("StatusCancelled");
+            StatusMessage = outcomeText;
         }
         catch (Exception ex)
         {
             _operationStopwatch?.Stop();
-            StatusMessage = _res.GetString("DialogErrorTitle");
+            outcomeText = _res.GetString("DialogErrorTitle");
+            StatusMessage = outcomeText;
             _logService.Error("Unexpected error during operation", ex);
             await _dialogService.ShowErrorAsync(_res.GetString("DialogErrorTitle"), ex.Message);
         }
@@ -806,6 +895,8 @@ public sealed partial class MainViewModel : ObservableObject
         }
         IsBusy = false;
         StatusMessage = _res.GetString("StatusReady");
+        if (outcomeText is not null)
+            SetOutcome(outcomeText, outcomeLine, outcomeResult, "Archive");
     }
 
     [RelayCommand(CanExecute = nameof(CanExtract))]
@@ -826,6 +917,9 @@ public sealed partial class MainViewModel : ObservableObject
         CancelCommand.NotifyCanExecuteChanged();
         Progress = 0;
         bool wasCancelled = false;
+        string? outcomeText = null;
+        OutcomeLine? outcomeLine = null;
+        ArchiveResult? outcomeResult = null;
         try
         {
             var options = new ExtractOptions
@@ -861,20 +955,10 @@ public sealed partial class MainViewModel : ObservableObject
             if (fromBrowser)
                 _browsePasswords.Complete(archivePaths[0], result);
             _operationStopwatch?.Stop();
-            int totalSec = (int)(_operationStopwatch?.Elapsed.TotalSeconds ?? 0);
-            if (result.Outcome == OperationOutcome.Completed)
-            {
-                StatusMessage = totalSec > 0
-                    ? _res.GetString("StatusExtractedIn")
-                        .Replace("{0}", totalSec.ToString())
-                        .Replace("{1}", result.CreatedFiles.Count.ToString())
-                    : _res.GetString("StatusDone")
-                        .Replace("{0}", result.CreatedFiles.Count.ToString());
-            }
-            else
-            {
-                StatusMessage = _res.GetString("StatusIssues");
-            }
+            outcomeLine = OutcomeLine.From(result, _operationStopwatch?.Elapsed ?? TimeSpan.Zero, extract: true, options.DestinationFolder);
+            outcomeResult = result;
+            outcomeText = RenderOutcome(outcomeLine);
+            StatusMessage = outcomeText;
             _logService.Info($"Extract completed — {result.CreatedFiles.Count} file(s) → {DestinationPath}");
             foreach (SkippedFile skipped in result.SkippedFiles)
                 _logService.Warn($"Skipped {skipped.Path} — {skipped.Reason}");
@@ -893,12 +977,14 @@ public sealed partial class MainViewModel : ObservableObject
         {
             wasCancelled = true;
             _operationStopwatch?.Stop();
-            StatusMessage = _res.GetString("StatusCancelled");
+            outcomeText = _res.GetString("StatusCancelled");
+            StatusMessage = outcomeText;
         }
         catch (Exception ex)
         {
             _operationStopwatch?.Stop();
-            StatusMessage = _res.GetString("DialogErrorTitle");
+            outcomeText = _res.GetString("DialogErrorTitle");
+            StatusMessage = outcomeText;
             _logService.Error("Unexpected error during operation", ex);
             await _dialogService.ShowErrorAsync(_res.GetString("DialogErrorTitle"), ex.Message);
         }
@@ -917,6 +1003,9 @@ public sealed partial class MainViewModel : ObservableObject
         StatusMessage = _res.GetString("StatusReady");
         if (closeBrowser)
             CloseArchiveCore();
+        // Last: closing the browser above must not take the result line with it.
+        if (outcomeText is not null)
+            SetOutcome(outcomeText, outcomeLine, outcomeResult, "Extract");
     }
 
     [RelayCommand(CanExecute = nameof(IsOperationRunning))]
@@ -927,6 +1016,7 @@ public sealed partial class MainViewModel : ObservableObject
     public async Task EnterBrowseModeAsync(string archivePath)
     {
         using IDisposable work = _browseWork.Begin();
+        ClearOutcome();
         SetBrowseLevel(null, isZip: false);
         // "Delete after" means sources in create mode and the archive here: a tick never carries
         // across the switch (T-F199 step 6).
@@ -1278,8 +1368,18 @@ public sealed partial class MainViewModel : ObservableObject
         RefreshCurrentFolder();
     }
 
-    public void SetSelectedBrowserEntries(IReadOnlyList<ArchiveEntryViewModel> entries) =>
+    // Only a real selection is the user's next action: the list also reports an empty selection
+    // when its rows are replaced, e.g. as the browser closes after "Extract all" + delete-after.
+    public void SetSelectedBrowserEntries(IReadOnlyList<ArchiveEntryViewModel> entries)
+    {
+        if (entries.Count > 0)
+            ClearOutcome();
         SelectedBrowserEntries = entries;
+    }
+
+    partial void OnSelectedBrowserEntriesChanged(IReadOnlyList<ArchiveEntryViewModel> value) => RaiseFooter();
+
+    partial void OnCurrentFolderEntriesChanged(ObservableCollection<ArchiveEntryViewModel> value) => RaiseFooter();
 
     // T-F107: single "up" affordance for the whole Archive Browser. Inside the archive, steps up
     // one folder level. At the archive's own root, keeps climbing into real Windows folders — the
@@ -1380,7 +1480,11 @@ public sealed partial class MainViewModel : ObservableObject
     private bool CanCloseArchive() => IsBrowsingArchive && !IsBusy && !_browseWork.InFlight;
 
     [RelayCommand(CanExecute = nameof(CanCloseArchive))]
-    private void CloseArchive() => CloseArchiveCore();
+    private void CloseArchive()
+    {
+        ClearOutcome();
+        CloseArchiveCore();
+    }
 
     private void CloseArchiveCore()
     {

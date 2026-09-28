@@ -4483,6 +4483,25 @@ real console) and T-F226's deferred per-arrow diagram ritual — carried as open
   never carries across). Device (1.5.0.30): mixed.zip at 900x520 shows both rows, 1280x672 rows +
   options; Esc with the About dialog open and with the conflict dropdown open closes only those,
   the archive stays. Step 8: the lock icon needs an `AutomationProperties.Name`.
+  Step 7 (footer outcome, T-F211) done: the footer's first line is App.Core `FooterLine.Pick` —
+  nothing while busy (fixes the "will archive" preview shown during a mixed-list Extract), then
+  the last result, then browse mode's "Вибрано 1 з 2", then create mode's preview. The result
+  (`OutcomeLine.TextKey`: compressed/extracted in N s with the archive count, "finished with
+  problems: N", "nothing was done — skipped: N"; cancelled and error lines too) stays until the
+  next action: an operation starting, a list change, a real selection, opening or closing an
+  archive — set after `CloseArchiveCore`, so "Extract all" + delete-after keeps it. "Show in
+  folder" runs `%SystemRoot%\explorer.exe /select,"<first created>"` (opens the destination
+  itself when a flat extraction reports it); "Details..." reopens the summary, which still
+  opens by itself on problems (T-F229: skips seen before anything is deleted). The old status
+  keys `StatusArchivedIn`/`StatusExtractedIn`/`StatusDone` (which counted result folders as
+  "files") removed from all 37 locales; seven new keys en-US/uk-UA only (step 8). Device
+  (1.5.0.31, uk-UA): aes.zip selection line; Extract all -> "Видобуто за 11 с — архівів: 1" + Show
+  in folder selects "aes" in "s7 тест" (space + Cyrillic path); again with Skip -> summary, then
+  "Нічого не зроблено — пропущено: 1" + Details (reopens, line survives the dialog); Esc clears
+  it; Compress readme.txt -> "Стиснуто за 1 с — архівів: 1", Show in folder selects readme.zip;
+  Clear clears it; 900x520 keeps the footer and the row. Notes for step 8: the seconds include the
+  time spent in the password prompt (as before); list rows' UIA names are the record's
+  `ToString()` (`ArchiveEntryViewModel { ... }`, `Archiver.App.Core.FileItem`) — give them names.
 
 - **Carried into wave 4 (2026-09-28): device checks left open by fix phase 7** — T-F254 on a
   regional Windows language (e.g. de-AT, zh-CN: menu, Shell windows and App agree on the language);
@@ -4747,7 +4766,10 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 
 ### T-F211 — A successful App operation shows no visible outcome (P1)
 
-- [ ] **Status:** open. On success with no errors/skips, `MainViewModel` sets "Розпаковано за N с
+- **Progress (2026-09-28, T-F199 step 7):** fixed — the result line stays in the footer until the
+  next action, with "Show in folder" and "Details..." (see T-F199's step 7 entry). Renamed files
+  are still not listed (Core does not report renames; mockup board 7 deferred). Device 1.5.0.31.
+- [~] **Status:** fixed, see progress. Original: On success with no errors/skips, `MainViewModel` sets "Розпаковано за N с
   — файлів: M" and then, a few lines later, unconditionally resets `StatusMessage` to
   "Готово" (`MainViewModel.cs` ~line 702, and the matching reset in `ArchiveAsync` ~line 603);
   `ShowOperationSummaryAsync` returns early when there is nothing to report. Net effect: the user

@@ -184,9 +184,6 @@
   <data name="StatusExtracting" xml:space="preserve">
     <value>Puretaan...</value>
   </data>
-  <data name="StatusDone" xml:space="preserve">
-    <value>Valmis — {0} tiedosto(a) käsitelty.</value>
-  </data>
   <data name="StatusIssues" xml:space="preserve">
     <value>Valmis, mutta ongelmia ilmeni.</value>
   </data>
@@ -198,12 +195,6 @@
   </data>
   <data name="StatusFinalizing" xml:space="preserve">
     <value>Viimeistellään...</value>
-  </data>
-  <data name="StatusArchivedIn" xml:space="preserve">
-    <value>Arkistoitu {0} s — {1} tiedosto(a)</value>
-  </data>
-  <data name="StatusExtractedIn" xml:space="preserve">
-    <value>Purettu {0} s — {1} tiedosto(a)</value>
   </data>
   <data name="OutcomeWillExtract" xml:space="preserve">
     <value>Puretaan {0} arkisto(a) yllä olevaan kansioon</value>

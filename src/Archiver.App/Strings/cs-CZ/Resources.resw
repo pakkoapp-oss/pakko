@@ -184,9 +184,6 @@
   <data name="StatusExtracting" xml:space="preserve">
     <value>Rozbalování...</value>
   </data>
-  <data name="StatusDone" xml:space="preserve">
-    <value>Hotovo — zpracováno souborů: {0}.</value>
-  </data>
   <data name="StatusIssues" xml:space="preserve">
     <value>Dokončeno s problémy.</value>
   </data>
@@ -198,12 +195,6 @@
   </data>
   <data name="StatusFinalizing" xml:space="preserve">
     <value>Dokončování...</value>
-  </data>
-  <data name="StatusArchivedIn" xml:space="preserve">
-    <value>Archivováno za {0} s — souborů: {1}</value>
-  </data>
-  <data name="StatusExtractedIn" xml:space="preserve">
-    <value>Rozbaleno za {0} s — souborů: {1}</value>
   </data>
   <data name="OutcomeWillExtract" xml:space="preserve">
     <value>Bude rozbaleno archivů: {0} — do složky výše</value>

@@ -184,9 +184,6 @@
   <data name="StatusExtracting" xml:space="preserve">
     <value>Udpakker...</value>
   </data>
-  <data name="StatusDone" xml:space="preserve">
-    <value>Færdig — {0} fil(er) behandlet.</value>
-  </data>
   <data name="StatusIssues" xml:space="preserve">
     <value>Fuldført med problemer.</value>
   </data>
@@ -198,12 +195,6 @@
   </data>
   <data name="StatusFinalizing" xml:space="preserve">
     <value>Færdiggør...</value>
-  </data>
-  <data name="StatusArchivedIn" xml:space="preserve">
-    <value>Arkiveret på {0} sek. — {1} fil(er)</value>
-  </data>
-  <data name="StatusExtractedIn" xml:space="preserve">
-    <value>Udpakket på {0} sek. — {1} fil(er)</value>
   </data>
   <data name="OutcomeWillExtract" xml:space="preserve">
     <value>{0} arkiv(er) udpakkes til mappen ovenfor</value>

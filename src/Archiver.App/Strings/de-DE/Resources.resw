@@ -184,9 +184,6 @@
   <data name="StatusExtracting" xml:space="preserve">
     <value>Extrahieren...</value>
   </data>
-  <data name="StatusDone" xml:space="preserve">
-    <value>Fertig — {0} Datei(en) verarbeitet.</value>
-  </data>
   <data name="StatusIssues" xml:space="preserve">
     <value>Mit Problemen abgeschlossen.</value>
   </data>
@@ -198,12 +195,6 @@
   </data>
   <data name="StatusFinalizing" xml:space="preserve">
     <value>Abschließen...</value>
-  </data>
-  <data name="StatusArchivedIn" xml:space="preserve">
-    <value>Archiviert in {0} Sek. — {1} Datei(en)</value>
-  </data>
-  <data name="StatusExtractedIn" xml:space="preserve">
-    <value>Extrahiert in {0} Sek. — {1} Datei(en)</value>
   </data>
   <data name="OutcomeWillExtract" xml:space="preserve">
     <value>Es werden {0} Archiv(e) in den obigen Ordner extrahiert</value>

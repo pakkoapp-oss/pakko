@@ -184,9 +184,6 @@
   <data name="StatusExtracting" xml:space="preserve">
     <value>กำลังแตกไฟล์...</value>
   </data>
-  <data name="StatusDone" xml:space="preserve">
-    <value>เสร็จสิ้น — ประมวลผลแล้ว {0} ไฟล์</value>
-  </data>
   <data name="StatusIssues" xml:space="preserve">
     <value>เสร็จสิ้นโดยมีปัญหา</value>
   </data>
@@ -198,12 +195,6 @@
   </data>
   <data name="StatusFinalizing" xml:space="preserve">
     <value>กำลังสรุปผล...</value>
-  </data>
-  <data name="StatusArchivedIn" xml:space="preserve">
-    <value>บีบอัดเสร็จใน {0} วินาที — {1} ไฟล์</value>
-  </data>
-  <data name="StatusExtractedIn" xml:space="preserve">
-    <value>แตกไฟล์เสร็จใน {0} วินาที — {1} ไฟล์</value>
   </data>
   <data name="OutcomeWillExtract" xml:space="preserve">
     <value>จะแตกไฟล์บีบอัด {0} รายการไปยังโฟลเดอร์ด้านบน</value>

@@ -184,9 +184,6 @@
   <data name="StatusExtracting" xml:space="preserve">
     <value>Mengekstrak...</value>
   </data>
-  <data name="StatusDone" xml:space="preserve">
-    <value>Selesai — {0} file diproses.</value>
-  </data>
   <data name="StatusIssues" xml:space="preserve">
     <value>Selesai dengan masalah.</value>
   </data>
@@ -198,12 +195,6 @@
   </data>
   <data name="StatusFinalizing" xml:space="preserve">
     <value>Menyelesaikan...</value>
-  </data>
-  <data name="StatusArchivedIn" xml:space="preserve">
-    <value>Diarsipkan dalam {0} detik — {1} file</value>
-  </data>
-  <data name="StatusExtractedIn" xml:space="preserve">
-    <value>Diekstrak dalam {0} detik — {1} file</value>
   </data>
   <data name="OutcomeWillExtract" xml:space="preserve">
     <value>Akan mengekstrak {0} arsip ke folder di atas</value>

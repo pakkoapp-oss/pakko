@@ -184,9 +184,6 @@
   <data name="StatusExtracting" xml:space="preserve">
     <value>Εξαγωγή σε εξέλιξη...</value>
   </data>
-  <data name="StatusDone" xml:space="preserve">
-    <value>Ολοκληρώθηκε — επεξεργασία {0} αρχείου/ων.</value>
-  </data>
   <data name="StatusIssues" xml:space="preserve">
     <value>Ολοκληρώθηκε με προβλήματα.</value>
   </data>
@@ -198,12 +195,6 @@
   </data>
   <data name="StatusFinalizing" xml:space="preserve">
     <value>Οριστικοποίηση...</value>
-  </data>
-  <data name="StatusArchivedIn" xml:space="preserve">
-    <value>Συμπιέστηκε σε {0} δευτ. — {1} αρχείο/α</value>
-  </data>
-  <data name="StatusExtractedIn" xml:space="preserve">
-    <value>Εξήχθη σε {0} δευτ. — {1} αρχείο/α</value>
   </data>
   <data name="OutcomeWillExtract" xml:space="preserve">
     <value>Θα εξαχθούν {0} αρχείο/α στον παραπάνω φάκελο</value>

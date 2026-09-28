@@ -184,9 +184,6 @@
   <data name="StatusExtracting" xml:space="preserve">
     <value>압축 푸는 중...</value>
   </data>
-  <data name="StatusDone" xml:space="preserve">
-    <value>완료됨 — 파일 {0}개 처리됨.</value>
-  </data>
   <data name="StatusIssues" xml:space="preserve">
     <value>문제와 함께 완료됨.</value>
   </data>
@@ -198,12 +195,6 @@
   </data>
   <data name="StatusFinalizing" xml:space="preserve">
     <value>마무리하는 중...</value>
-  </data>
-  <data name="StatusArchivedIn" xml:space="preserve">
-    <value>{0}초 만에 압축됨 — 파일 {1}개</value>
-  </data>
-  <data name="StatusExtractedIn" xml:space="preserve">
-    <value>{0}초 만에 압축 풀림 — 파일 {1}개</value>
   </data>
   <data name="OutcomeWillExtract" xml:space="preserve">
     <value>위 폴더에 압축 파일 {0}개를 풉니다</value>

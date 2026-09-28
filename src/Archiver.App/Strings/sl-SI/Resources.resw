@@ -184,9 +184,6 @@
   <data name="StatusExtracting" xml:space="preserve">
     <value>Razširjanje...</value>
   </data>
-  <data name="StatusDone" xml:space="preserve">
-    <value>Končano — obdelanih datotek: {0}.</value>
-  </data>
   <data name="StatusIssues" xml:space="preserve">
     <value>Zaključeno s težavami.</value>
   </data>
@@ -198,12 +195,6 @@
   </data>
   <data name="StatusFinalizing" xml:space="preserve">
     <value>Zaključevanje...</value>
-  </data>
-  <data name="StatusArchivedIn" xml:space="preserve">
-    <value>Arhivirano v {0} s — datotek: {1}</value>
-  </data>
-  <data name="StatusExtractedIn" xml:space="preserve">
-    <value>Razširjeno v {0} s — datotek: {1}</value>
   </data>
   <data name="OutcomeWillExtract" xml:space="preserve">
     <value>Razširjenih bo {0} arhiv(ov) v zgornjo mapo</value>

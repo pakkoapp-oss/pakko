@@ -184,9 +184,6 @@
   <data name="StatusExtracting" xml:space="preserve">
     <value>Extraherar...</value>
   </data>
-  <data name="StatusDone" xml:space="preserve">
-    <value>Klar — {0} fil(er) bearbetade.</value>
-  </data>
   <data name="StatusIssues" xml:space="preserve">
     <value>Slutförd med problem.</value>
   </data>
@@ -198,12 +195,6 @@
   </data>
   <data name="StatusFinalizing" xml:space="preserve">
     <value>Slutför...</value>
-  </data>
-  <data name="StatusArchivedIn" xml:space="preserve">
-    <value>Arkiverad på {0} sek — {1} fil(er)</value>
-  </data>
-  <data name="StatusExtractedIn" xml:space="preserve">
-    <value>Extraherad på {0} sek — {1} fil(er)</value>
   </data>
   <data name="OutcomeWillExtract" xml:space="preserve">
     <value>{0} arkiv kommer att extraheras till mappen ovan</value>

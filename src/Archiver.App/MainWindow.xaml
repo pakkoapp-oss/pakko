@@ -611,13 +611,33 @@
                         Maximum="100"
                         IsIndeterminate="{x:Bind ViewModel.IsProgressIndeterminate, Mode=OneWay}"
                         Visibility="{x:Bind ViewModel.IsOperationRunningVisibility, Mode=OneWay}"/>
-                    <TextBlock
-                        Text="{x:Bind ViewModel.OperationOutcomeText, Mode=OneWay}"
-                        Visibility="{x:Bind ViewModel.OperationOutcomeVisibility, Mode=OneWay}"
-                        TextTrimming="CharacterEllipsis"
-                        Style="{StaticResource CaptionTextBlockStyle}"/>
+                    <!-- T-F211/T-F199 step 7: result, browse selection or preview (App.Core FooterLine);
+                         the result stays until the next action. -->
+                    <Grid ColumnDefinitions="Auto,Auto,Auto" ColumnSpacing="4"
+                          Visibility="{x:Bind ViewModel.FooterTextVisibility, Mode=OneWay}">
+                        <TextBlock
+                            VerticalAlignment="Center"
+                            Text="{x:Bind ViewModel.FooterText, Mode=OneWay}"
+                            TextTrimming="CharacterEllipsis"
+                            Style="{StaticResource CaptionTextBlockStyle}"/>
+                        <HyperlinkButton
+                            x:Uid="OutcomeShowInFolderButton"
+                            Grid.Column="1"
+                            Padding="4,0"
+                            FontSize="12"
+                            Command="{x:Bind ViewModel.ShowOutcomeInFolderCommand}"
+                            Visibility="{x:Bind ViewModel.ShowOutcomeInFolderVisibility, Mode=OneWay}"/>
+                        <HyperlinkButton
+                            x:Uid="OutcomeDetailsButton"
+                            Grid.Column="2"
+                            Padding="4,0"
+                            FontSize="12"
+                            Command="{x:Bind ViewModel.ShowOutcomeDetailsCommand}"
+                            Visibility="{x:Bind ViewModel.OutcomeDetailsVisibility, Mode=OneWay}"/>
+                    </Grid>
                     <TextBlock
                         Text="{x:Bind ViewModel.StatusMessage, Mode=OneWay}"
+                        Visibility="{x:Bind ViewModel.StatusLineVisibility, Mode=OneWay}"
                         Opacity="0.7"
                         FontSize="12"
                         TextTrimming="CharacterEllipsis"/>

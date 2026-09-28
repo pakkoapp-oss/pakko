@@ -184,9 +184,6 @@
   <data name="StatusExtracting" xml:space="preserve">
     <value>Rozbaľovanie...</value>
   </data>
-  <data name="StatusDone" xml:space="preserve">
-    <value>Hotovo — spracovaných súborov: {0}.</value>
-  </data>
   <data name="StatusIssues" xml:space="preserve">
     <value>Dokončené s problémami.</value>
   </data>
@@ -198,12 +195,6 @@
   </data>
   <data name="StatusFinalizing" xml:space="preserve">
     <value>Dokončovanie...</value>
-  </data>
-  <data name="StatusArchivedIn" xml:space="preserve">
-    <value>Archivované za {0} s — súborov: {1}</value>
-  </data>
-  <data name="StatusExtractedIn" xml:space="preserve">
-    <value>Rozbalené za {0} s — súborov: {1}</value>
   </data>
   <data name="OutcomeWillExtract" xml:space="preserve">
     <value>Rozbalí sa archívov: {0} — do priečinka vyššie</value>
