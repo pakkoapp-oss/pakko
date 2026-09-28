@@ -6395,6 +6395,33 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   equivalent.
 - **Reported by:** fix phase 5 Group Policy device check, 2026-09-28.
 
+### T-F275 — Recovery data for archives: PAR2 files next to the archive (P3, future)
+
+- [ ] **Status:** open, future — not scheduled; needs a `docs/SPEC.md` scope decision before work.
+  Option to write PAR2 (Reed-Solomon) recovery files next to a created archive, with a chosen
+  redundancy (e.g. 5%), and to verify/repair an archive from them. Use: archives kept on flash
+  drives or optical media or carried offline, where bad sectors or a truncated copy are the
+  realistic damage.
+- **Decision (user, 2026-09-28):** PAR2 files next to the archive, not a recovery entry inside the
+  ZIP. Reasons: third-party tools (par2cmdline, MultiPar) can check and repair them, which fits the
+  auditability goal; no Pakko-only format to maintain; a recovery entry inside the ZIP would be
+  lost with a truncated tail (the central directory is at the end) unless written first, and
+  other archivers would extract it as an unexplained file.
+- **Constraints:**
+  - Recovery is computed over the finished archive's bytes — for an encrypted ZIP that is
+    ciphertext, so the PAR2 files reveal nothing beyond it and are not encrypted themselves
+    (repair must not need the password). Never compute it over plaintext.
+  - Output must be standard PAR2 that par2cmdline accepts for verify and repair (tested against
+    it, like the 7za cross-checks). Reed-Solomon is Pakko's own code: no NuGet packages in Core.
+  - Reading PAR2 files is new untrusted input: bounded memory and sizes, every field validated,
+    repair writes only to a new file next to the archive, never over the original.
+  - Tests: flip bytes, zero whole blocks, truncate the tail, damage the PAR2 files themselves;
+    the repaired archive must match byte for byte, and damage beyond the redundancy must fail
+    cleanly.
+- **Open questions:** which frontends (App option, `pakko a` switch, Explorer verb for repair);
+  tar-family archives too (the same byte-level scheme would work); Group Policy control.
+- **Reported by:** user question, 2026-09-28.
+
 ### T-F223 — Diagram gap from T-F193 (P2)
 
 - [ ] **Status:** open. Carried by T-F202 from `docs/DECISIONS.md`'s T-F193 entry: no diagram in
