@@ -6418,8 +6418,13 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   - Tests: flip bytes, zero whole blocks, truncate the tail, damage the PAR2 files themselves;
     the repaired archive must match byte for byte, and damage beyond the redundancy must fail
     cleanly.
-- **Open questions:** which frontends (App option, `pakko a` switch, Explorer verb for repair);
-  tar-family archives too (the same byte-level scheme would work); Group Policy control.
+- **Scope (user, 2026-09-28):** every archive format Pakko creates (ZIP and the tar family — the
+  scheme works on the archive's bytes, so the format does not matter). Offered wherever the user
+  sets archive options: the App's "New archive" card, `pakko a`, and Explorer's "Compress..."
+  options dialog; not on Explorer's one-click verbs ("Add to X.zip"/"Add to X.tar"), which have no
+  options.
+- **Open questions:** where verify/repair lives (App, `pakko`, an Explorer verb on a `.par2` or
+  the archive); Group Policy control.
 - **Reported by:** user question, 2026-09-28.
 
 ### T-F223 — Diagram gap from T-F193 (P2)
