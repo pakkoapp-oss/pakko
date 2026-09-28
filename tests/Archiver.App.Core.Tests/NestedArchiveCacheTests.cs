@@ -4,7 +4,7 @@ namespace Archiver.App.Core.Tests;
 
 public sealed class NestedArchiveCacheTests : IDisposable
 {
-    public void Dispose() => NestedArchiveCache.DeleteAll();
+    public void Dispose() => NestedArchiveCache.DeleteOwn();
 
     [Fact]
     public void CreateScope_ReturnsNewExistingDirectoryUnderRoot()
@@ -12,7 +12,7 @@ public sealed class NestedArchiveCacheTests : IDisposable
         string scope = NestedArchiveCache.CreateScope();
 
         Directory.Exists(scope).Should().BeTrue();
-        Path.GetDirectoryName(scope).Should().Be(NestedArchiveCache.RootDirectory.TrimEnd(Path.DirectorySeparatorChar));
+        Path.GetDirectoryName(scope).Should().Be(NestedArchiveCache.OwnDirectory);
     }
 
     [Fact]
@@ -48,22 +48,22 @@ public sealed class NestedArchiveCacheTests : IDisposable
     }
 
     [Fact]
-    public void DeleteAll_RemovesRootDirectory()
+    public void DeleteOwn_RemovesOwnDirectory()
     {
         string scope = NestedArchiveCache.CreateScope();
         File.WriteAllText(Path.Combine(scope, "inner.rar"), "content");
 
-        NestedArchiveCache.DeleteAll();
+        NestedArchiveCache.DeleteOwn();
 
-        Directory.Exists(NestedArchiveCache.RootDirectory).Should().BeFalse();
+        Directory.Exists(NestedArchiveCache.OwnDirectory).Should().BeFalse();
     }
 
     [Fact]
-    public void DeleteAll_RootDoesNotExist_DoesNotThrow()
+    public void DeleteOwn_DirectoryDoesNotExist_DoesNotThrow()
     {
-        NestedArchiveCache.DeleteAll();
+        NestedArchiveCache.DeleteOwn();
 
-        Action act = () => NestedArchiveCache.DeleteAll();
+        Action act = () => NestedArchiveCache.DeleteOwn();
 
         act.Should().NotThrow();
     }

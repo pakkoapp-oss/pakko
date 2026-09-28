@@ -102,8 +102,8 @@ public sealed partial class MainWindow : Window
         {
             TrayIcon.Dispose();
             ActivationGate.Cancel();
-            PreviewCache.DeleteAll();
-            NestedArchiveCache.DeleteAll();
+            PreviewCache.DeleteOwn();
+            NestedArchiveCache.DeleteOwn();
         };
     }
 

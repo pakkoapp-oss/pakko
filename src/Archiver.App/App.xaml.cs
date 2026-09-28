@@ -62,6 +62,13 @@ public partial class App : Application
         DisplayText.Configure(res.GetString("TypeFolder"), res.GetString("TypeFile"), res.GetString("SizeBytes"),
             res.GetString("SizeKB"), res.GetString("SizeMB"), res.GetString("SizeGB"));
 
+        // T-F252: previews and nested archives a crashed or killed Pakko left in %TEMP%.
+        _ = Task.Run(() =>
+        {
+            PreviewCache.SweepStale();
+            NestedArchiveCache.SweepStale();
+        });
+
         // T-F83: this activation is never delivered as an event on cold start (there is no
         // AppInstance.Activated subscriber — see DECISIONS.md's T-F88 entry: Pakko is
         // deliberately multi-instance, one process per launch, matching 7-Zip/WinRAR/NanaZip) —

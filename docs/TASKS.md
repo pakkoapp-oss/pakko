@@ -4749,6 +4749,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 ### T-F221 — CLI error and help messages (P2)
 
 - [~] **Progress (2026-09-28, fix phase 7):** fixed in d7bf2e8 — items 1-6, 9, 10 (not found, -p hint and one wrong-password line, -aoa/-aou hint, empty stdin and "(stdin)", `a -so` to a terminal refused, explicit name written as typed — 7-Zip's rule, user decision; progress percentage only on a console stderr; `h <folder>` relative names). Item 8 was already fixed by T-F261. Item 7 moves to wave 4 with T-F199's encryption flag. Console-only branches (progress, -so refusal) need a real terminal check.
+- [~] **Progress (2026-09-28, wave 4, T-F199 step 1):** item 7 fixed in aa9cf8f/13bd543 — `l` has a new `Encrypted` column (`-`, `ZipCrypto`, `AES-128/192/256`, `+` unnamed method, `?` format cannot say) inserted before `Path`. **Output contract change:** `Path` moves from column 6 to column 7 (still last) — for CHANGELOG v1.6.0 and DECISIONS. Include `l` on an encrypted ZIP in the carried real-terminal check.
 
 - [ ] **Status:** open.
   1. Missing input: `t missing.tar.gz`/`x nosuch.zip` -> "File is not a recognized archive
@@ -5546,6 +5547,12 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 - **Root (grouping, architecture review 2026-09-25):** one of seven separate walks over user-supplied folder trees (`WorkItemEnumerator`, `ZipArchiveService` `AddDirectoryToArchiveAsync`/`ComputeDirectoryTotals`, `TarSandboxedService.CountRecursiveEntriesAndBytes`, `FileHashService`, `FileItem`, `MainViewModel`'s size pre-count), each with its own access-denied, junction and depth behavior. A reparse-safe iterative walker already exists (`TarSandboxedService.EnumerateFilesGuarded`) but is used only for quarantine — fix T-F236/T-F237/T-F251 through one shared walker.
 
 ### T-F252 — Closing any Pakko window deletes every other window's preview and nested-archive files (P2)
+
+- **Progress (2026-09-28, wave 4):** fixed — new App.Core `ProcessTempRoot`: `%TEMP%\PakkoPreview`
+  and `%TEMP%\PakkoNestedArchive` hold one `<pid>-<start ticks>` subfolder per process; window close
+  deletes only its own (`DeleteOwn`), App start sweeps subfolders whose process is gone (start time
+  guards a reused PID; an unreadable process counts as alive; old Guid folders count as gone).
+  `ProcessTempRootTests` (mutation-checked). Device check at the end of the wave.
 
 - [ ] **Status:** open — confirmed on device 2026-09-25. `PreviewCache`/`NestedArchiveCache` use one
   shared root each (`%TEMP%\PakkoPreview`, `%TEMP%\PakkoNestedArchive`), and every window's

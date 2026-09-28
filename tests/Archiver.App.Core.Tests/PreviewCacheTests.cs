@@ -4,7 +4,7 @@ namespace Archiver.App.Core.Tests;
 
 public sealed class PreviewCacheTests : IDisposable
 {
-    public void Dispose() => PreviewCache.DeleteAll();
+    public void Dispose() => PreviewCache.DeleteOwn();
 
     [Fact]
     public void CreateScope_ReturnsNewExistingDirectoryUnderRoot()
@@ -12,7 +12,7 @@ public sealed class PreviewCacheTests : IDisposable
         string scope = PreviewCache.CreateScope();
 
         Directory.Exists(scope).Should().BeTrue();
-        Path.GetDirectoryName(scope).Should().Be(PreviewCache.RootDirectory.TrimEnd(Path.DirectorySeparatorChar));
+        Path.GetDirectoryName(scope).Should().Be(PreviewCache.OwnDirectory);
     }
 
     [Fact]
@@ -27,22 +27,22 @@ public sealed class PreviewCacheTests : IDisposable
     }
 
     [Fact]
-    public void DeleteAll_RemovesRootDirectory()
+    public void DeleteOwn_RemovesOwnDirectory()
     {
         string scope = PreviewCache.CreateScope();
         File.WriteAllText(Path.Combine(scope, "preview.txt"), "content");
 
-        PreviewCache.DeleteAll();
+        PreviewCache.DeleteOwn();
 
-        Directory.Exists(PreviewCache.RootDirectory).Should().BeFalse();
+        Directory.Exists(PreviewCache.OwnDirectory).Should().BeFalse();
     }
 
     [Fact]
-    public void DeleteAll_RootDoesNotExist_DoesNotThrow()
+    public void DeleteOwn_DirectoryDoesNotExist_DoesNotThrow()
     {
-        PreviewCache.DeleteAll();
+        PreviewCache.DeleteOwn();
 
-        Action act = () => PreviewCache.DeleteAll();
+        Action act = () => PreviewCache.DeleteOwn();
 
         act.Should().NotThrow();
     }

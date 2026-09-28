@@ -1,38 +1,31 @@
 namespace Archiver.App.Core;
 
 /// <summary>
-/// T-F97: one shared temp cache root for every Archive Browser file preview, mirroring
-/// TarSandboxScope's "%TEMP%\Pakko&lt;Purpose&gt;" convention (Archiver.Core/Services/Sandbox) but
-/// kept in the App.Core layer since preview staging is a pure App-layer concern.
+/// T-F97: temp cache for Archive Browser file previews, mirroring TarSandboxScope's
+/// "%TEMP%\Pakko&lt;Purpose&gt;" convention (Archiver.Core/Services/Sandbox) but kept in the
+/// App.Core layer since preview staging is a pure App-layer concern. T-F252: one subfolder per
+/// process (<see cref="ProcessTempRoot"/>).
 /// </summary>
 public static class PreviewCache
 {
-    /// <summary>Root temp directory every preview scope lives under.</summary>
-    public static readonly string RootDirectory = Path.Combine(Path.GetTempPath(), "PakkoPreview");
+    private static readonly ProcessTempRoot _root = new(
+        Path.Combine(Path.GetTempPath(), "PakkoPreview"), ProcessTempRoot.CurrentOwnerName, ProcessTempRoot.IsOwnerAlive);
+
+    /// <summary>Root temp directory every process's preview scopes live under.</summary>
+    public static string RootDirectory => _root.SharedRoot;
+
+    /// <summary>This process's preview folder.</summary>
+    public static string OwnDirectory => _root.OwnRoot;
 
     /// <summary>Creates a fresh scope directory for one previewed file and returns its path.</summary>
-    public static string CreateScope()
-    {
-        string dir = Path.Combine(RootDirectory, Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(dir);
-        return dir;
-    }
+    public static string CreateScope() => _root.CreateScope();
 
     /// <summary>
-    /// Deletes every preview scope. Best-effort — a file still open in the OS handler that
-    /// previewed it blocks deletion; left for the next app start or OS temp cleanup. Never
-    /// surfaces to the caller.
+    /// Deletes this process's preview scopes. Best-effort — a file still open in the OS handler
+    /// that previewed it blocks deletion; <see cref="SweepStale"/> at the next start removes it.
     /// </summary>
-    public static void DeleteAll()
-    {
-        try
-        {
-            if (Directory.Exists(RootDirectory))
-                Directory.Delete(RootDirectory, recursive: true);
-        }
-        catch
-        {
-            // best-effort cleanup — never surfaces to the caller
-        }
-    }
+    public static void DeleteOwn() => _root.DeleteOwn();
+
+    /// <summary>Deletes preview folders left by Pakko processes that no longer run.</summary>
+    public static void SweepStale() => _root.SweepStale();
 }
