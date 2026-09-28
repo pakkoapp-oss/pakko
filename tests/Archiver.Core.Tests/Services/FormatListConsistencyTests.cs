@@ -9,7 +9,7 @@ namespace Archiver.Core.Tests.Services;
 // C++ (ShellExtUtils.cpp - extension-only by design, T-F86/T-F131) and Package.appxmanifest. These
 // tests read the C++ source and the manifest from the repo and compare them with the C# lists, so a
 // new extension added to one list and forgotten in another fails here.
-public sealed class FormatListConsistencyTests
+public sealed partial class FormatListConsistencyTests
 {
     private static readonly string RepoRoot = FindRepoRoot();
 
@@ -45,8 +45,8 @@ public sealed class FormatListConsistencyTests
     {
         // T-F262's GetFormatRegistryName table: { L".tar", L"tar" }, ...
         string source = ShellExtUtilsSource;
-        string table = Regex.Match(source, @"kNames\[\]\s*=\s*\{(?<body>.*?)\};", RegexOptions.Singleline).Groups["body"].Value;
-        IEnumerable<string> mapped = Regex.Matches(table, @"\{\s*L""(?<ext>\.[^""]+)""").Select(m => m.Groups["ext"].Value);
+        string table = NamesTable().Match(source).Groups["body"].Value;
+        IEnumerable<string> mapped = NamesTableEntry().Matches(table).Select(m => m.Groups["ext"].Value);
 
         mapped.Should().BeEquivalentTo(CppArray(source, "kSupportedNonZipArchiveExtensions"));
     }
@@ -54,7 +54,7 @@ public sealed class FormatListConsistencyTests
     [Fact]
     public void ManifestFileTypeAssociations_MatchTheDetectorsList()
     {
-        XDocument manifest = XDocument.Load(Path.Combine(RepoRoot, "src", "Archiver.App", "Package.appxmanifest"));
+        var manifest = XDocument.Load(Path.Combine(RepoRoot, "src", "Archiver.App", "Package.appxmanifest"));
         IEnumerable<string> fileTypes = manifest.Descendants()
             .Where(e => e.Name.LocalName == "FileType")
             .Select(e => e.Value.Trim());
@@ -73,8 +73,17 @@ public sealed class FormatListConsistencyTests
     {
         Match array = Regex.Match(source, Regex.Escape(name) + @"\[\]\s*=\s*\{(?<body>[^}]*)\}");
         array.Success.Should().BeTrue($"ShellExtUtils.cpp should still define {name}");
-        return [.. Regex.Matches(array.Groups["body"].Value, @"L""(?<ext>[^""]+)""").Select(m => m.Groups["ext"].Value)];
+        return [.. WideStringLiteral().Matches(array.Groups["body"].Value).Select(m => m.Groups["ext"].Value)];
     }
+
+    [GeneratedRegex(@"kNames\[\]\s*=\s*\{(?<body>.*?)\};", RegexOptions.Singleline)]
+    private static partial Regex NamesTable();
+
+    [GeneratedRegex(@"\{\s*L""(?<ext>\.[^""]+)""")]
+    private static partial Regex NamesTableEntry();
+
+    [GeneratedRegex(@"L""(?<ext>[^""]+)""")]
+    private static partial Regex WideStringLiteral();
 
     private static string FindRepoRoot()
     {

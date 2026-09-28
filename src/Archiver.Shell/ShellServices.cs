@@ -19,7 +19,7 @@ internal sealed class ShellServices
     // T-F85: the factory probes tar.exe at most once per Explorer invocation.
     public static ShellServices Create(GroupPolicyOptions policy)
     {
-        PakkoServices core = PakkoServices.Create(policy);
+        var core = PakkoServices.Create(policy);
         return new()
         {
             CreateExtractionRouterAsync = core.CreateExtractionRouterAsync,

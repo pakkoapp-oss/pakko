@@ -211,7 +211,7 @@ public sealed class PolicyOwnershipTests : IDisposable
     [Fact]
     public async Task Factory_RealEnginesUnderTarDisabled_NeitherProbesNorListsWithTar()
     {
-        PakkoServices services = PakkoServices.Create(TarDisabled);
+        var services = PakkoServices.Create(TarDisabled);
 
         TarCapabilities capabilities = await services.GetTarCapabilitiesAsync();
         ArchiveListResult list = await services.TarService.ListEntriesAsync(Missing("a.tar"));
@@ -225,7 +225,7 @@ public sealed class PolicyOwnershipTests : IDisposable
     public async Task Factory_ProbesTarAtMostOnceAcrossRouters()
     {
         var tar = new TarMustNotRunService();
-        PakkoServices services = PakkoServices.Create(new GroupPolicyOptions(), new RecordingZipService(), tar);
+        var services = PakkoServices.Create(new GroupPolicyOptions(), new RecordingZipService(), tar);
 
         await services.CreateExtractionRouterAsync();
         await services.CreateListingRouterAsync();
@@ -238,7 +238,7 @@ public sealed class PolicyOwnershipTests : IDisposable
     public void Factory_CreationDoesNotProbe()
     {
         var tar = new TarMustNotRunService();
-        PakkoServices services = PakkoServices.Create(new GroupPolicyOptions(), new RecordingZipService(), tar);
+        var services = PakkoServices.Create(new GroupPolicyOptions(), new RecordingZipService(), tar);
 
         _ = services.CreationRouter;
 
@@ -250,7 +250,7 @@ public sealed class PolicyOwnershipTests : IDisposable
     {
         var zip = new RecordingZipService();
         var tar = new TarMustNotRunService();
-        PakkoServices services = PakkoServices.Create(TarDisabled, zip, tar);
+        var services = PakkoServices.Create(TarDisabled, zip, tar);
         string archive = WriteTar("a.tar");
         IExtractionRouter router = await services.CreateExtractionRouterAsync();
 
@@ -272,7 +272,7 @@ public sealed class PolicyOwnershipTests : IDisposable
     public async Task Factory_ZipBlocked_ExtractTestAndCreateNeverReachTheZipEngine()
     {
         var zip = new RecordingZipService();
-        PakkoServices services = PakkoServices.Create(new GroupPolicyOptions { BlockedFormats = ["zip"] }, zip, new TarMustNotRunService());
+        var services = PakkoServices.Create(new GroupPolicyOptions { BlockedFormats = ["zip"] }, zip, new TarMustNotRunService());
         string archive = WriteZip("a.zip");
         IExtractionRouter router = await services.CreateExtractionRouterAsync();
 
@@ -309,7 +309,7 @@ public sealed class PolicyOwnershipTests : IDisposable
     {
         var zip = new RecordingZipService();
         var tar = new TarMustNotRunService();
-        PakkoServices services = PakkoServices.Create(TarRefusing(policy), zip, tar);
+        var services = PakkoServices.Create(TarRefusing(policy), zip, tar);
         string archive = WriteTar("a.tar");
 
         bool refused = operation switch
@@ -352,7 +352,7 @@ public sealed class PolicyOwnershipTests : IDisposable
     public async Task Factory_ListingRouter_GetsThePolicy()
     {
         var tar = new TarMustNotRunService();
-        PakkoServices services = PakkoServices.Create(TarDisabled, new RecordingZipService(), tar);
+        var services = PakkoServices.Create(TarDisabled, new RecordingZipService(), tar);
 
         ArchiveListResult result = await (await services.CreateListingRouterAsync()).ListEntriesAsync(WriteTar("a.tar"));
 

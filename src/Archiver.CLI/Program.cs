@@ -11,7 +11,7 @@ using Archiver.Core.Services;
 // pakko.exe only ships for Windows (tar.exe/AppContainer are already Windows-only throughout
 // this file) despite this project's plain net10.0 (not net10.0-windows) TargetFramework.
 #pragma warning disable CA1416
-PakkoServices services = PakkoServices.Create(GroupPolicyService.Load());
+var services = PakkoServices.Create(GroupPolicyService.Load());
 #pragma warning restore CA1416
 
 ParsedCliCommand command = CliArgumentParser.Parse(args);
