@@ -4343,6 +4343,20 @@ T-F269 (Cancel stops the whole multi-archive selection — decide with T-F268 st
 .NET 10 — investigate, then fix or record), T-F272 (VeryLarge `ExtractAsync_OneLargeFile` fails in
 its own suite run, pre-existing on .NET 8 too). After T-F270 lands; runs before phase 5.
 
+**Plan update (2026-09-28, user request):** waves 1-3 (phases 5-8) done; wave 4 (phase 9, T-F199)
+closes with a full App pass and the carried phase-7 device checks (T-F221 terminal, T-F260
+mapping). **Wave 4b** takes the tasks with no slot: T-F273 (P1), T-F214, T-F219, T-F276, T-F277,
+T-F198 item 5, T-F268 step 6 (f) (re-check the black window with the display confirmed on first),
+T-F148 (full sandbox integration tests + packaged-identity device check), T-F171 (short design
+approved by the user first); T-F273 first. **Wave 5:** phase 10 (T-F240, T-F203, T-F257, T-F258,
+T-F223, T-F165, T-F259), then T-F202's full smoke on CI artifacts (coverage table rebuilt from
+current source) together with every `[~]` task's device check (delegated to the agent), then
+release v1.6.0 (proposed: P0/P1 findings fixed before it, P2/P3 to the next batch). Needs the
+user: one real drag from Explorer (T-F242 item 5), permission to switch theme and Windows language
+(light, en-US, a regional language for T-F254). After the release, separate
+batches: T-F275, T-F132, T-F121, T-F111, T-F112, distribution tasks (T-F119, T-F10, T-F127,
+T-F144, T-F152).
+
 **1. P0 — data loss or a broken core flow:** T-F227, T-F228, T-F229, T-F204, T-F233,
 T-F234 (both P0, decision 2026-09-25), T-F245 (with T-F229), T-F246 — both P0 by user decision 2026-09-25. Suggested order: T-F227 + T-F228 + T-F197 together (same staging/commit code), then
 T-F229 with T-F207, then T-F233, T-F234, T-F204.
