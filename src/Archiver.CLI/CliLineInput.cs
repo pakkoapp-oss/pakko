@@ -34,27 +34,30 @@ public static class CliLineInput
                 return null;
 
             if (key.Key == ConsoleKey.Backspace)
-            {
-                if (buffer.Length > 0)
-                {
-                    buffer.Length--;
-                    echo?.Invoke('\b');
-                }
-                continue;
-            }
-
-            if (key.KeyChar == '\0' || char.IsControl(key.KeyChar))
-                continue;
-
-            if (accept is not null && !accept(key.KeyChar))
-            {
-                refused?.Invoke();
-                continue;
-            }
-
-            buffer.Append(key.KeyChar);
-            echo?.Invoke(mask ? '*' : key.KeyChar);
+                DeleteLast(buffer, echo);
+            else if (key.KeyChar != '\0' && !char.IsControl(key.KeyChar))
+                Append(buffer, key.KeyChar, echo, mask, accept, refused);
         }
+    }
+
+    private static void DeleteLast(StringBuilder buffer, Action<char>? echo)
+    {
+        if (buffer.Length == 0)
+            return;
+        buffer.Length--;
+        echo?.Invoke('\b');
+    }
+
+    private static void Append(StringBuilder buffer, char c, Action<char>? echo, bool mask,
+        Func<char, bool>? accept, Action? refused)
+    {
+        if (accept is not null && !accept(c))
+        {
+            refused?.Invoke();
+            return;
+        }
+        buffer.Append(c);
+        echo?.Invoke(mask ? '*' : c);
     }
 
     private static bool IsCtrlC(ConsoleKeyInfo key) =>
