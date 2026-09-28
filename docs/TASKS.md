@@ -4678,6 +4678,9 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   user-skipped files. The source still never counts as fully processed. Visible changes: the App
   takes its success path after Skip all; `pakko x` with an interactive Skip all exits 0 (was 1, now
   as 7-Zip). Device check (Explorer "Skip, apply to all") pending.
+- **Device check (2026-09-28, Deploy 1.5.0.15):** Shell `--extract-flat` on a 3-file zip already
+  extracted: the operation window's conflict prompt, "Apply to all" + Skip -> the window closes with
+  no "every entry was skipped" warning, existing files untouched.
 
 - [~] **Progress:** first half fixed by T-F268 step 1 (2026-09-26): Test shows ONE box (skipped list +
   "no errors", Warning), device-checked. Still open: the "every entry was skipped" warning after
@@ -5088,6 +5091,11 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   (T-F273). Still open: Extract.../Compress.../Open hand the list to the App through
   `LaunchArguments` (32,000-char cap, too-many message shown); the non-filesystem refusal not yet
   device-checked.
+- **Non-filesystem refusal, device note (2026-09-28):** not reachable from Explorer's built-in ZIP
+  view — an item inside a compressed folder gets only Explorer's own classic menu
+  (Open/Cut/Copy/Delete/Properties), no third-party verbs, so Pakko is never offered there.
+  Remaining real triggers (MTP phone, other shell namespaces) need that hardware/namespace; covered
+  by the C++ `GetSelectionPaths` test with a Control Panel item.
 
 - [ ] **Status:** open — symptom confirmed on device 2026-09-24, cause likely (not isolated). The
   extension passes the whole selection as one `CreateProcessW` command line
