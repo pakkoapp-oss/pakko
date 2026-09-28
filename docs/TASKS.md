@@ -6565,6 +6565,18 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   Tests first (App.Core if the rule moves there).
 - **Reported by:** user drag check for T-F242, 2026-09-28.
 
+### T-F279 — A cancelled ZIP Test reported "no errors found" (P1)
+
+- [~] **Progress (2026-09-29, G1):** fixed. `ZipArchiveService.TestArchiveEntries` did `break` on
+  cancel (the T-F268 fix covered only the loop between archives) and read each entry with
+  `CopyTo(Stream.Null)`, which never looks at the token — so a cancel during one archive finished
+  it and reported it clean; the App showed "Помилок не виявлено" (6 GiB single-entry ZIP, browse
+  Test + Cancel, 1.5.0.33). Now `ThrowIfCancellationRequested` and a 1 MiB-chunk drain
+  (`DrainForTest`) that checks the token, also for encrypted entries. Test:
+  `TestAsync_CancelledInsideOneLargeEntry_StopsAndThrows` (red before the fix). Affects App, Shell
+  and CLI Test alike. Device re-check (App browse Test cancel) in G1's pass.
+- **Reported by:** G1 device pass for T-F277, 2026-09-29.
+
 ### T-F223 — Diagram gap from T-F193 (P2)
 
 - [ ] **Status:** open. Carried by T-F202 from `docs/DECISIONS.md`'s T-F193 entry: no diagram in

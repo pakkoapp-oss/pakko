@@ -27,6 +27,37 @@ public sealed class ZipArchiveServiceTestAsyncTests
         await act.Should().ThrowAsync<OperationCanceledException>();
     }
 
+    // T-F279: a cancel inside one archive used to `break` out of the entry loop, and one large
+    // entry was read to the end before the token was looked at again — the archive was reported
+    // as tested with no errors, and the App showed "no errors found" for a cancelled Test.
+    [Fact]
+    public async Task TestAsync_CancelledInsideOneLargeEntry_StopsAndThrows()
+    {
+        string dir = Directory.CreateTempSubdirectory("PakkoTestCancel").FullName;
+        try
+        {
+            string archive = Path.Combine(dir, "zeros.zip");
+            using (var zip = new System.IO.Compression.ZipArchive(File.Create(archive), System.IO.Compression.ZipArchiveMode.Create))
+            using (Stream entry = zip.CreateEntry("zeros.bin", System.IO.Compression.CompressionLevel.Fastest).Open())
+            {
+                byte[] block = new byte[4 * 1024 * 1024];
+                for (int i = 0; i < 256; i++)
+                    entry.Write(block);
+            }
+            using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(100));
+            var clock = System.Diagnostics.Stopwatch.StartNew();
+
+            Func<Task<ArchiveResult>> act = () => _sut.TestAsync([archive], cancellationToken: cts.Token);
+
+            await act.Should().ThrowAsync<OperationCanceledException>();
+            clock.Elapsed.Should().BeLessThan(TimeSpan.FromSeconds(30));
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
     [Fact]
     public async Task TestAsync_ValidArchive_Passes()
     {

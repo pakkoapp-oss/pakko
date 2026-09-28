@@ -1134,8 +1134,8 @@ public sealed class ZipArchiveService : IArchiveService
 
         foreach (NamedZipEntry named in reader.Entries)
         {
-            if (cancellationToken.IsCancellationRequested)
-                break;
+            // T-F279: was `break`, which reported a cancelled archive as tested with no errors.
+            cancellationToken.ThrowIfCancellationRequested();
 
             ZipArchiveEntry entry = named.Entry;
             if (named.FullName.EndsWith('/'))
@@ -1149,7 +1149,7 @@ public sealed class ZipArchiveService : IArchiveService
 
             if (encryptedEntryMap is { } map && map.TryGetValue(entry, out LocatedZipEntry? located2) && located2.GeneralPurposeEncryptedBit)
             {
-                TestEncryptedEntry(archivePath, named.FullName, located2, rawArchiveStream!, password!, errors);
+                TestEncryptedEntry(archivePath, named.FullName, located2, rawArchiveStream!, password!, errors, cancellationToken);
                 continue;
             }
 
@@ -1158,13 +1158,22 @@ public sealed class ZipArchiveService : IArchiveService
             try
             {
                 using var verified = new VerifyingReadStream(entry.Open(), entry.Length, entry.Crc32);
-                verified.CopyTo(Stream.Null);
+                DrainForTest(verified, cancellationToken);
             }
             catch (InvalidDataException ex)
             {
                 errors.Add(CoreMessages.Error(archivePath, CoreMessages.Text(MessageCode.EntryFailed, named.FullName, CoreMessages.FromException(ex)), ex));
             }
         }
+    }
+
+    // T-F279: reads an entry to the end, as CopyTo(Stream.Null) did, but stops on cancel instead of
+    // finishing a multi-gigabyte entry first.
+    private static void DrainForTest(Stream stream, CancellationToken cancellationToken)
+    {
+        byte[] buffer = new byte[1024 * 1024];
+        while (stream.Read(buffer, 0, buffer.Length) > 0)
+            cancellationToken.ThrowIfCancellationRequested();
     }
 
     // T-F189: reuses the exact same EncryptedZipEntryReader/VerifyingReadStream machinery as
@@ -1175,7 +1184,7 @@ public sealed class ZipArchiveService : IArchiveService
     // whole story there; draining just runs the decompression harmlessly.
     private static void TestEncryptedEntry(
         string archivePath, string entryName, LocatedZipEntry located, Stream rawArchiveStream,
-        ResolvedZipPassword password, List<ArchiveError> errors)
+        ResolvedZipPassword password, List<ArchiveError> errors, CancellationToken cancellationToken)
     {
         (EncryptedZipReadResult result, Stream? stream) = EncryptedZipEntryReader.TryOpen(rawArchiveStream, located, password.Text, password.Encoding);
         switch (result)
@@ -1194,7 +1203,7 @@ public sealed class ZipArchiveService : IArchiveService
         try
         {
             using (stream)
-                stream!.CopyTo(Stream.Null);
+                DrainForTest(stream!, cancellationToken);
         }
         catch (InvalidDataException ex)
         {
