@@ -151,8 +151,7 @@ Same session: the built exe was renamed `Archiver.CLI.exe` -> **`pakko.exe`** (n
 automatically, matching ripgrep/fd/bat convention). Stays `[~]` until the user's own on-device
 confirmation of a real piped round trip.
 
-**T-F120** was closed 2026-07-18 and merged into **T-F122** (its acceptance criteria folded in,
-not separately implemented). **T-F122** (GitHub Actions CI, `.github/workflows/build.yml`) is
+**T-F122** (GitHub Actions CI, `.github/workflows/build.yml`) is
 `[x]` done — builds the MSIX + `pakko.exe` on every push/tag and publishes CLI zips + `SHA256SUMS`
 to a GitHub Release on a version tag. Uncovered a real external environment change mid-
 implementation: `windows-latest` silently relabeled to `windows-2025`, which lacks the ARM64
@@ -413,10 +412,12 @@ command-line limit on a large selection).
 Shell and App, the CLI stays English (T-F209); one `ArchiveResult.Outcome`, `Success` derived
 (T-F260, T-F274); Explorer asks before a suspected bomb (T-F217); T-F253/254/255, T-F221 (CLI
 messages, 7-Zip naming), T-F198 items 1 and 7. See `docs/DECISIONS.md`'s fix phase 7 entry.
-**Wave 4 / T-F199** (`[~]`, 2026-09-28): main window redesigned — own title bar, option cards,
+**Wave 4 / T-F199** (`[x]`, closed 2026-09-29 by G1's App pass): main window redesigned — own title bar, option cards,
 footer with the primary action rightmost ("Compress to {format}"), inline encryption password,
 browse badge/Test/Close archive, footer result line (T-F211); every App key in 37 locales
 (`AppResourceKeysTests`). Structure: `docs/XAML.md`; decisions: `docs/DECISIONS.md`'s wave 4 entry.
+**G1** (2026-09-29, plan groups G0-G7 in `docs/TASKS.md`): T-F276/277/278/219 and new T-F279 (a
+cancelled ZIP Test reported clean, P1) fixed and device-checked; T-F280 filed. Next: G2 (tar/sandbox).
 
 ## Roadmap Summary
 

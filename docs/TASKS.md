@@ -4382,6 +4382,7 @@ real console) and T-F226's deferred per-arrow diagram ritual — carried as open
 
 ### T-F198 — UI quick fixes from the 2026-09-24 UI/UX review
 
+- [x] **Status:** done 2026-09-29 — item 5 not reproduced on 1.5.0.33: cold launch, first render of the create-mode window, all unchecked CheckBoxes empty (zoomed region capture). Earlier sightings came after automation had toggled boxes (see the UIA-toggle note in the project memory); reopen if a real click shows it.
 - **Progress (2026-09-28, fix phase 7):** items 1 and 7 fixed in 4b6ce03 — list words ("Folder"/"File"/size units), the busy status lines, every dialog's Yes/No/OK and the "Error" titles come from the App's resources in 37 locales (App.Core's `DisplayText`, set by the App at startup; the preview path reads `FileItem.IsFolder`). Device (Deploy 1.5.0.16, uk-UA): browse error dialog "Помилка ... Гаразд". Items 2-6 stay for wave 4 (T-F199).
 - **Progress (2026-09-28, T-F199 step 8):** items 2 and 6 fixed (row names, lock, Up buttons, ComboBox labels, Cancel name, decrypt PasswordBox name); device 1.5.0.32.
 - **Progress (2026-09-28, T-F199 step 5):** item 3 closed — the Encrypt dialog is gone (password inline), so no prompt is open while the status says "Стиснення...". Device 1.5.0.26.
@@ -4394,7 +4395,7 @@ real console) and T-F226's deferred per-arrow diagram ritual — carried as open
   first template/visual-state pass shows the indeterminate glyph; cause in code not found yet
   (plain `x:Bind` TwoWay to a `bool`, no custom CheckBox style). Items 1-4, 6, 7 done; the task
   stays open for item 5 only.
-- [ ] **Status:** open (item 5 only). Point fixes, no layout change (the layout is T-F199):
+- **Status (was):** open (item 5 only). Point fixes, no layout change (the layout is T-F199):
   1. English strings in a localized UI: "Archiving... (N files, size)"/"Extracting... (N
      archive(s))" (`MainViewModel.cs`), "Folder"/"N bytes" (`FileItem.cs`,
      `ArchiveEntryViewModel.cs`) — move to `.resw`, all 37 locales.
@@ -4417,6 +4418,7 @@ real console) and T-F226's deferred per-arrow diagram ritual — carried as open
 
 ### T-F199 — Archive/browse window layout redesign (+ inline encryption password)
 
+- [x] **Status:** done 2026-09-29 — steps 0-9 device-checked per step; G1 App pass on 1.5.0.33/1.5.0.34 (first render, add files/folders, duplicates, Hash, compress with auto name, browse, Test cancel, Close archive, small window sizes). Light theme, en-US, keyboard-only and the carried T-F254/T-F221/T-F260 checks move to G6 (plan 8.8).
 - **Progress (2026-09-28, wave 4):** steps 0-3 done. Step 1 aa9cf8f/13bd543 (per-entry encryption,
   `pakko l` Encrypted column); step 0 0698d88 (resw key-usage witness tests, dead
   `MultipleFoldersHint` removed); step 2 dc937b8 (App.Core `PrimaryActionPolicy`,
@@ -4566,7 +4568,7 @@ real console) and T-F226's deferred per-arrow diagram ritual — carried as open
   exit 7); T-F260 outcome mapping across App/Shell/CLI (clean, skips-only, nothing-done, failed).
   T-F221 item 7 (encrypted marker in `l`) is built with this task's encryption flag.
 
-- [ ] **Status:** open — needs a plan and a mockup approved by the user before any XAML changes.
+- **Status (was):** open — needs a plan and a mockup approved by the user before any XAML changes.
   From the 2026-09-24 review: action buttons sit above the options they apply to; "Архів" is a
   noun, Archive/Extract have equal weight; shared options float outside the options grid; "Delete
   after operation" is a dangerous action with no warning and an ambiguous meaning in browse mode;
@@ -4810,7 +4812,8 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 
 ### T-F210 — Browse mode is a dead end once "Up" leaves the archive (P1, decision)
 
-- [ ] **Status:** open. After "Up" climbs past the archive root into real folders (T-F107,
+- [x] **Status:** done 2026-09-29 — device 1.5.0.33/1.5.0.34, G1 App pass via `windows` MCP: "Закрити архів" returns from browse to create mode (Add files/folder, Hash, Compress back).
+- **Status (was):** open. After "Up" climbs past the archive root into real folders (T-F107,
   deliberate), there is no way back to the create/pending-list mode (Add files, Archive): no
   button, no menu; only closing the window. Both Extract buttons are disabled with no hint, and
   "Open destination"/"Delete after operation" stay visible where they do nothing. T-F107 removed
@@ -4840,7 +4843,8 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 
 ### T-F212 — "Extract" is enabled when the pending list holds only folders (P1)
 
-- [ ] **Status:** open. App create mode with two folders in the list: the Extract button is
+- [x] **Status:** done 2026-09-29 — device 1.5.0.33/1.5.0.34, G1 App pass via `windows` MCP: two folders in the list -> Extract disabled, Compress enabled (fixed by T-F199 step 2 `PrimaryActionPolicy`).
+- **Status (was):** open. App create mode with two folders in the list: the Extract button is
   enabled; clicking it runs and reports "Помилки (2): s1 — File is not a recognized archive format
   and cannot be extracted." (a folder called a "File"). Disable Extract unless at least one listed
   item is a supported archive (the Explorer menu already applies that rule), or explain why.
@@ -4848,7 +4852,8 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 
 ### T-F213 — Auto archive name for several sources is "archive", not the first item's name (P1)
 
-- [ ] **Status:** open. App create mode, One archive, Name left empty (placeholder "Авто (за назвою
+- [x] **Status:** done 2026-09-29 — device 1.5.0.33/1.5.0.34, G1 App pass via `windows` MCP: folders dir + alpha, Name empty -> placeholder "g1.zip (авто)" and the archive is g1.zip (parent folder, as Explorer; T-F264). Drive-letter naming for a drive root stays P2 wish, not filed.
+- **Status (was):** open. App create mode, One archive, Name left empty (placeholder "Авто (за назвою
   першого файлу/папки)"), two folders `s2` + `s4` -> `archive.zip` (TAR: `archive.tar`). The
   placeholder promises `s2.zip`. Either follow the placeholder or change it. Explorer multi-select
   names the archive after the parent folder (`M.zip`), which is fine; for a drive root it is
@@ -4925,7 +4930,8 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 
 ### T-F219 — "Hash..." ignores the pending list and is SHA-256 only (P2)
 
-- [~] **Progress (2026-09-29, G1):** "Hash..." hashes the pending list (picker only when it is
+- [x] **Status:** done 2026-09-29 — device 1.5.0.33/1.5.0.34, G1 App pass via `windows` MCP: "Хеш..." with 2 listed files opened the SHA-256 dialog directly; values match `Get-FileHash`; Copy kept the dialog open and put `hash  name` lines on the clipboard.
+- **Progress (2026-09-29, G1):** "Hash..." hashes the pending list (picker only when it is
   empty), names files under a listed folder relative to it, and has a Copy button (`hash  name`
   lines, `sha256sum -c` format). **SHA-256 only kept — user decision again** (T-F164 stands; see
   `docs/DECISIONS.md`'s T-F219 entry). App.Core `HashReport` + `HashReportTests`; `HashCopyButton`
@@ -4996,7 +5002,8 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 
 ### T-F224 — Minimum window height 780 exceeds small screens (P1)
 
-- [ ] **Status:** open. `MainWindow.xaml.cs` sets `PreferredMinimumWidth = 900`,
+- [x] **Status:** done 2026-09-29 — device 1.5.0.33/1.5.0.34, G1 App pass via `windows` MCP: `PreferredMinimumHeight` is 520 now; at 1352x721 (1366x768 work area) and 1266x665 (1920x1080 at 150%) every control is reachable. Residual (P3, not filed): below ~600 px the option cards clip without scrolling; the footer and primary actions stay visible.
+- **Status (was):** open. `MainWindow.xaml.cs` sets `PreferredMinimumWidth = 900`,
   `PreferredMinimumHeight = 780` (T-F106's blank-row fix). On a 1366x768 display at 100% (work
   area ~728 px after the taskbar) the window probably cannot fit, leaving the bottom rows
   (status, Cancel) unreachable — **hypothesis, not yet reproduced** on such a display; check
@@ -6183,7 +6190,8 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 
 ### T-F267 — Archive Browser rows are announced as their view-model's ToString() (P2, accessibility)
 
-- [ ] **Status:** open — found 2026-09-26 during the fix-phase-4 device check. UIA exposes each Archive Browser row's name as `ArchiveEntryViewModel { FullPath = Док.txt, Name = Док.txt, IsFolder = False, ... Icon = <glyph> }` — what Narrator reads. Set `AutomationProperties.Name` on the row template (name, and folder/file) in `MainWindow.xaml`.
+- [x] **Status:** done 2026-09-29 — device 1.5.0.33/1.5.0.34, G1 App pass via `windows` MCP: browse row UIA name is "zeros.bin" (fixed in T-F199 step 8).
+- **Status (was):** open — found 2026-09-26 during the fix-phase-4 device check. UIA exposes each Archive Browser row's name as `ArchiveEntryViewModel { FullPath = Док.txt, Name = Док.txt, IsFolder = False, ... Icon = <glyph> }` — what Narrator reads. Set `AutomationProperties.Name` on the row template (name, and folder/file) in `MainWindow.xaml`.
 - **Reported by:** fix phase 4 device check, 2026-09-26.
 
 ### T-F268 — Explorer operations: one UI interface, then a WinUI 3 operation window (P2, design + spike)
@@ -6281,6 +6289,7 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   `AppWindow.Show(false)` or a fake `WM_ACTIVATE` before or after `Activate()`; showing without
   `Activate()` (`AppWindow.Show(false)` alone, `SW_SHOWNA` alone); an external `RedrawWindow`,
   `SWP_FRAMECHANGED` and a 1 px resize. No matching WinAppSDK 1.8.x fix in its release notes.
+  **Not reproduced 2026-09-29 on 1.5.0.34:** the same `Start-Process` `--test <corrupt.zip>` launch from a background shell; the window opened inactive, behind the App, and rendered fully once moved into view (no activation). G3 is dropped per plan 8.8 unless it recurs.
   **Not verified:** the real Explorer flow. There Shell holds the click's foreground right and
   passes it to the helper (`AllowSetForegroundWindow`), so the black window is expected only when
   that right is gone by the time the window shows. Example: the user switches to another app
@@ -6527,7 +6536,8 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 
 ### T-F276 — Explorer and Core still say "archiving" where the App says "compress" (P3)
 
-- [~] **Progress (2026-09-29, G1):** fixed in 37 locales — `TitleArchiving` ("Compressing: {0}",
+- [x] **Status:** done 2026-09-29 — device 1.5.0.33/1.5.0.34, G1 App pass via `windows` MCP: Explorer compress window title "Стиснення: rand".
+- **Progress (2026-09-29, G1):** fixed in 37 locales — `TitleArchiving` ("Compressing: {0}",
   uk "Стиснення: {0}"), `FolderLinkNotFollowed` and `UnknownArchivingError` (English in
   `MessageTemplates`: "...during compression.", "Unknown error while compressing."); keys and codes
   unchanged. Guard tests: `OperationText_CallsCreatingAnArchiveCompress`,
@@ -6542,7 +6552,8 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 
 ### T-F277 — Browse-mode Test: Cancel resets the status to "Ready" (P3)
 
-- [~] **Progress (2026-09-29, G1):** a cancelled browse Test now keeps "Cancelled" as the footer
+- [x] **Status:** done 2026-09-29 — device 1.5.0.33/1.5.0.34, G1 App pass via `windows` MCP: browse Test + Cancel keeps "Скасовано" in the footer after the 2 s hold.
+- **Progress (2026-09-29, G1):** a cancelled browse Test now keeps "Cancelled" as the footer
   result (`SetOutcome`, T-F211); browse "Scan for threats" had the same gap plus no T-F70 2-second
   hold — both fixed the same way. `MainViewModel` only (no App.Core seam, no unit test); device
   check in G1's App pass.
@@ -6553,7 +6564,8 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 
 ### T-F278 — Dropping a file already in the list gives no feedback; the check is case-sensitive (P3)
 
-- [~] **Progress (2026-09-29, G1):** new App.Core `PendingPaths.Split` (OrdinalIgnoreCase, also
+- [x] **Status:** done 2026-09-29 — device 1.5.0.33/1.5.0.34, G1 App pass via `windows` MCP: re-adding File.txt (typed FILE.TXT) and s1.png left 2 rows and showed "Вже у списку: 2".
+- **Progress (2026-09-29, G1):** new App.Core `PendingPaths.Split` (OrdinalIgnoreCase, also
   de-duplicates within one drop; `PendingPathsTests`, mutation-checked with `Ordinal`);
   `AddPaths` shows the footer line `AlreadyInListLine` ("Already in the list: N", uk "Вже у
   списку: N", 37 locales). Device check in G1's App pass.
@@ -6567,7 +6579,8 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 
 ### T-F279 — A cancelled ZIP Test reported "no errors found" (P1)
 
-- [~] **Progress (2026-09-29, G1):** fixed. `ZipArchiveService.TestArchiveEntries` did `break` on
+- [x] **Status:** done 2026-09-29 — device 1.5.0.33/1.5.0.34, G1 App pass via `windows` MCP: 6 GiB single-entry ZIP, browse Test + Cancel -> "Скасовано", no "no errors" dialog.
+- **Progress (2026-09-29, G1):** fixed. `ZipArchiveService.TestArchiveEntries` did `break` on
   cancel (the T-F268 fix covered only the loop between archives) and read each entry with
   `CopyTo(Stream.Null)`, which never looks at the token — so a cancel during one archive finished
   it and reported it clean; the App showed "Помилок не виявлено" (6 GiB single-entry ZIP, browse
@@ -6576,6 +6589,18 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   `TestAsync_CancelledInsideOneLargeEntry_StopsAndThrows` (red before the fix). Affects App, Shell
   and CLI Test alike. Device re-check (App browse Test cancel) in G1's pass.
 - **Reported by:** G1 device pass for T-F277, 2026-09-29.
+
+### T-F280 — ZIP Test ignores local-header mismatches that 7-Zip reports (P2)
+
+- [ ] **Status:** open. A ZIP whose local file headers disagree with the central directory
+  (an entry's local CRC field and another entry's local name byte flipped; data and central
+  directory intact) passes Pakko's Test ("не виявлено помилок", Explorer Test, 1.5.0.34), while
+  `7za t` reports "Headers Error" and "CRC Failed : dir\a.txt". Pakko reads everything through
+  the central directory, so its own extraction is consistent, but local/central name mismatch is
+  the classic ZIP-ambiguity vector (different tools extract different names). Decide: warn in Test
+  (and maybe extraction) when the local header's name, sizes or CRC disagree with the central
+  directory. Tests first; check the cost on large archives (one extra header read per entry).
+- **Reported by:** G1 device pass (T-F268 (f) re-check fixture), 2026-09-29.
 
 ### T-F223 — Diagram gap from T-F193 (P2)
 
