@@ -72,6 +72,16 @@ public static class ArchiveFormatPolicy
         return IsSupportedByTar(format, tarCapabilities) ? null : BuildUnsupportedReason(format, tarCapabilities);
     }
 
+    /// <summary>
+    /// True when <paramref name="path"/>'s extension names an archive that policy and tar.exe let
+    /// Pakko open — <see cref="GetRefusalReason"/> without reading the file (T-F212).
+    /// </summary>
+    public static bool CanOpenByExtension(string path, TarCapabilities tarCapabilities, GroupPolicyOptions policy)
+    {
+        ArchiveFormat format = ArchiveFormatDetector.FormatFromExtension(path);
+        return format != ArchiveFormat.Unknown && GetRefusalReason(format, tarCapabilities, policy) is null;
+    }
+
     /// <summary>True when Group Policy refuses <paramref name="format"/> (BlockedFormats/AllowedFormats, or DisableTarExtraction for a tar-family format).</summary>
     public static bool IsBlockedByPolicy(ArchiveFormat format, GroupPolicyOptions policy)
     {

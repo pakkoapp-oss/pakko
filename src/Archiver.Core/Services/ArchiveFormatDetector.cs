@@ -28,9 +28,26 @@ public static class ArchiveFormatDetector
     private static readonly string[] _zipExtensions =
         [".zip", ".jar", ".war", ".ear", ".apk", ".asice", ".asics", ".bdoc"];
 
-    private static readonly HashSet<string> _recognizedExtensions = new(
-        [.. _zipExtensions, ".rar", ".7z", ".tar", ".gz", ".tgz", ".bz2", ".tbz2", ".xz", ".txz", ".zst", ".tzst", ".lzma"],
+    // T-F212: each recognized extension with the format it names — the one list; the set below is its keys.
+    private static readonly Dictionary<string, ArchiveFormat> _formatByExtension = new(
+        [
+            .. _zipExtensions.Select(e => KeyValuePair.Create(e, ArchiveFormat.Zip)),
+            KeyValuePair.Create(".rar", ArchiveFormat.Rar),
+            KeyValuePair.Create(".7z", ArchiveFormat.SevenZip),
+            KeyValuePair.Create(".tar", ArchiveFormat.Tar),
+            KeyValuePair.Create(".gz", ArchiveFormat.GZip),
+            KeyValuePair.Create(".tgz", ArchiveFormat.GZip),
+            KeyValuePair.Create(".bz2", ArchiveFormat.Bz2),
+            KeyValuePair.Create(".tbz2", ArchiveFormat.Bz2),
+            KeyValuePair.Create(".xz", ArchiveFormat.Xz),
+            KeyValuePair.Create(".txz", ArchiveFormat.Xz),
+            KeyValuePair.Create(".zst", ArchiveFormat.Zstd),
+            KeyValuePair.Create(".tzst", ArchiveFormat.Zstd),
+            KeyValuePair.Create(".lzma", ArchiveFormat.Lzma),
+        ],
         StringComparer.OrdinalIgnoreCase);
+
+    private static readonly HashSet<string> _recognizedExtensions = new(_formatByExtension.Keys, StringComparer.OrdinalIgnoreCase);
 
     internal static IReadOnlyCollection<string> RecognizedExtensions => _recognizedExtensions;
 
@@ -42,6 +59,13 @@ public static class ArchiveFormatDetector
     /// </summary>
     public static bool IsRecognizedArchiveExtension(string fileName) =>
         _recognizedExtensions.Contains(Path.GetExtension(fileName));
+
+    /// <summary>
+    /// The format an archive's extension names, or <see cref="ArchiveFormat.Unknown"/> — no disk
+    /// I/O (T-F212). Not the security boundary: <see cref="Detect"/> still decides at run time.
+    /// </summary>
+    public static ArchiveFormat FormatFromExtension(string fileName) =>
+        _formatByExtension.GetValueOrDefault(Path.GetExtension(fileName), ArchiveFormat.Unknown);
 
     /// <summary>Detects an archive's real format from its magic bytes. Returns Unknown on any read failure.</summary>
     public static ArchiveFormat Detect(string path)

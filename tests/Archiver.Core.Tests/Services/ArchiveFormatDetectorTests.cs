@@ -162,6 +162,33 @@ public sealed class ArchiveFormatDetectorTests : IDisposable
         ArchiveFormatDetector.IsRecognizedArchiveExtension(fileName).Should().BeFalse();
     }
 
+    // T-F212: the App decides whether Extract may run without reading the files.
+    [Theory]
+    [InlineData("a.zip", ArchiveFormat.Zip)]
+    [InlineData("a.APK", ArchiveFormat.Zip)]
+    [InlineData("a.tar", ArchiveFormat.Tar)]
+    [InlineData("a.tar.gz", ArchiveFormat.GZip)]
+    [InlineData("a.tgz", ArchiveFormat.GZip)]
+    [InlineData("a.tbz2", ArchiveFormat.Bz2)]
+    [InlineData("a.txz", ArchiveFormat.Xz)]
+    [InlineData("a.tzst", ArchiveFormat.Zstd)]
+    [InlineData("a.lzma", ArchiveFormat.Lzma)]
+    [InlineData("a.rar", ArchiveFormat.Rar)]
+    [InlineData("a.7z", ArchiveFormat.SevenZip)]
+    [InlineData("a.txt", ArchiveFormat.Unknown)]
+    [InlineData("folder", ArchiveFormat.Unknown)]
+    public void FormatFromExtension_MapsEveryRecognizedExtension(string fileName, ArchiveFormat expected)
+    {
+        ArchiveFormatDetector.FormatFromExtension(fileName).Should().Be(expected);
+    }
+
+    [Fact]
+    public void FormatFromExtension_KnowsEveryRecognizedExtension()
+    {
+        ArchiveFormatDetector.RecognizedExtensions
+            .Should().OnlyContain(ext => ArchiveFormatDetector.FormatFromExtension("x" + ext) != ArchiveFormat.Unknown);
+    }
+
     [Fact]
     public void IsRecognizedArchiveExtension_DoesNotTouchDisk()
     {
