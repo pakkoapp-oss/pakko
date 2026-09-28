@@ -15,7 +15,7 @@
 
   <!-- Buttons -->
   <data name="ArchiveButtonLabel" xml:space="preserve">
-    <value>Archiveren</value>
+    <value>Comprimeren naar {0}</value>
   </data>
   <data name="ExtractButtonLabel" xml:space="preserve">
     <value>Uitpakken</value>
@@ -85,7 +85,7 @@
     <value>Afsluiten</value>
   </data>
   <data name="RemoveMenuItem.Text" xml:space="preserve">
-    <value>Verwijderen</value>
+    <value>Uit lijst verwijderen</value>
   </data>
 
   <!-- Archive options -->
@@ -152,10 +152,10 @@
 
   <!-- Drop zone -->
   <data name="DropZoneHint.Text" xml:space="preserve">
-    <value>Sleep bestanden of mappen hierheen, of dubbelklik om bestanden te bladeren</value>
+    <value>Sleep bestanden of mappen hierheen</value>
   </data>
   <data name="DropZoneModeHint.Text" xml:space="preserve">
-    <value>Archieven bieden uitpakken aan; al het andere wordt gearchiveerd</value>
+    <value>Archieven kunnen worden uitgepakt; al het andere wordt gecomprimeerd</value>
   </data>
 
   <!-- Labels -->
@@ -179,7 +179,7 @@
     <value>Gereed</value>
   </data>
   <data name="StatusArchiving" xml:space="preserve">
-    <value>Archiveren...</value>
+    <value>Comprimeren...</value>
   </data>
   <data name="StatusExtracting" xml:space="preserve">
     <value>Uitpakken...</value>
@@ -200,7 +200,7 @@
     <value>Er worden {0} archief(en) uitgepakt naar de map hierboven</value>
   </data>
   <data name="OutcomeWillArchive" xml:space="preserve">
-    <value>Er worden {0} item(s) gearchiveerd naar de map hierboven</value>
+    <value>Er worden {0} item(s) gecomprimeerd naar de map hierboven</value>
   </data>
 
   <!-- Dialog strings -->
@@ -366,9 +366,159 @@
     <value>{0} GB</value>
   </data>
   <data name="StatusArchivingCount" xml:space="preserve">
-    <value>Archiveren... (bestanden: {0}, {1})</value>
+    <value>Comprimeren... (bestanden: {0}, {1})</value>
   </data>
   <data name="StatusExtractingCount" xml:space="preserve">
     <value>Uitpakken... (archieven: {0})</value>
+  </data>
+  <data name="StatusOpening" xml:space="preserve">
+    <value>Openen...</value>
+  </data>
+  <data name="ThisPcBreadcrumbRoot" xml:space="preserve">
+    <value>Deze pc</value>
+  </data>
+  <data name="NestedArchiveDepthLimitReached" xml:space="preserve">
+    <value>Kan niet openen — dit archief is te diep genest.</value>
+  </data>
+  <data name="UnsafePreviewConfirmTitle" xml:space="preserve">
+    <value>Geen voorbeeld mogelijk</value>
+  </data>
+  <data name="UnsafePreviewConfirmMessage" xml:space="preserve">
+    <value>"{0}" kan niet veilig direct worden geopend. In plaats daarvan uitpakken naar een map naast het archief?</value>
+  </data>
+  <data name="OutcomeCompressed" xml:space="preserve">
+    <value>Gecomprimeerd in {0} s — archieven: {1}</value>
+  </data>
+  <data name="OutcomeExtracted" xml:space="preserve">
+    <value>Uitgepakt in {0} s — archieven: {1}</value>
+  </data>
+  <data name="OutcomeProblems" xml:space="preserve">
+    <value>Voltooid met problemen: {0}</value>
+  </data>
+  <data name="OutcomeNothingDone" xml:space="preserve">
+    <value>Er is niets gedaan — overgeslagen: {0}</value>
+  </data>
+  <data name="BrowseSelectionLine" xml:space="preserve">
+    <value>{0} van {1} geselecteerd</value>
+  </data>
+  <data name="OutcomeShowInFolderButton.Content" xml:space="preserve">
+    <value>Weergeven in map</value>
+  </data>
+  <data name="OutcomeDetailsButton.Content" xml:space="preserve">
+    <value>Details...</value>
+  </data>
+  <data name="EncryptPasswordLayoutHint" xml:space="preserve">
+    <value>Letters buiten de Engelse toetsenbordindeling kunnen niet worden gebruikt en zijn niet toegevoegd. Schakel de indeling over naar Engels, maak het veld leeg en typ het wachtwoord opnieuw.</value>
+  </data>
+  <data name="EncryptPasswordRefusedCharacter" xml:space="preserve">
+    <value>Dat teken kan niet worden gebruikt en is niet toegevoegd. Maak het veld leeg en typ het wachtwoord opnieuw met alleen Engelse letters, cijfers, spaties en leestekens.</value>
+  </data>
+  <data name="NewArchiveCardTitle.Text" xml:space="preserve">
+    <value>Nieuw archief</value>
+  </data>
+  <data name="DestinationCardTitle.Text" xml:space="preserve">
+    <value>Waarheen, en wat daarna</value>
+  </data>
+  <data name="EncryptZipOnlyNote.Text" xml:space="preserve">
+    <value>Versleuteling met wachtwoord is alleen beschikbaar voor ZIP</value>
+  </data>
+  <data name="RecycleBinNote.Text" xml:space="preserve">
+    <value>Op netwerk- en verwisselbare stations, die geen Prullenbak hebben, vraagt Pakko het eerst.</value>
+  </data>
+  <data name="EmptyAddFilesButton.Content" xml:space="preserve">
+    <value>Bestanden toevoegen</value>
+  </data>
+  <data name="EmptyAddFolderButton.Content" xml:space="preserve">
+    <value>Map toevoegen</value>
+  </data>
+  <data name="DestinationSaveLabel" xml:space="preserve">
+    <value>Opslaan in:</value>
+  </data>
+  <data name="DestinationExtractLabel" xml:space="preserve">
+    <value>Uitpakken naar:</value>
+  </data>
+  <data name="DeleteAfterCompressLabel" xml:space="preserve">
+    <value>Na geslaagde compressie de bronbestanden naar de Prullenbak verplaatsen</value>
+  </data>
+  <data name="DeleteAfterExtractLabel" xml:space="preserve">
+    <value>Na geslaagd uitpakken de archieven naar de Prullenbak verplaatsen</value>
+  </data>
+  <data name="ArchiveNameAutoPlaceholder" xml:space="preserve">
+    <value>{0} (automatisch)</value>
+  </data>
+  <data name="ArchiveNamePerItemPlaceholder" xml:space="preserve">
+    <value>{0}, ... (één archief per item)</value>
+  </data>
+  <data name="SummaryCompressionFast" xml:space="preserve">
+    <value>Snel</value>
+  </data>
+  <data name="SummaryCompressionNormal" xml:space="preserve">
+    <value>Normaal</value>
+  </data>
+  <data name="SummaryCompressionBest" xml:space="preserve">
+    <value>Beste</value>
+  </data>
+  <data name="SummaryCompressionNone" xml:space="preserve">
+    <value>Geen compressie</value>
+  </data>
+  <data name="SummaryWithPassword" xml:space="preserve">
+    <value>met wachtwoord</value>
+  </data>
+  <data name="SummaryNoPassword" xml:space="preserve">
+    <value>zonder wachtwoord</value>
+  </data>
+  <data name="NewArchiveCollapsedReason" xml:space="preserve">
+    <value>samengevouwen, de lijst bevat alleen archieven</value>
+  </data>
+  <data name="ExtractUnavailableHint" xml:space="preserve">
+    <value>De lijst bevat geen archieven, er is niets uit te pakken</value>
+  </data>
+  <data name="DeleteAfterEitherLabel" xml:space="preserve">
+    <value>Na een geslaagde bewerking wat die gebruikte naar de Prullenbak verplaatsen: de bronbestanden na comprimeren, de archieven na uitpakken</value>
+  </data>
+  <data name="TestArchiveButton.Content" xml:space="preserve">
+    <value>Archief testen</value>
+  </data>
+  <data name="CloseArchiveButton.Content" xml:space="preserve">
+    <value>Archief sluiten</value>
+  </data>
+  <data name="StatusTesting" xml:space="preserve">
+    <value>Testen...</value>
+  </data>
+  <data name="TestResultTitle" xml:space="preserve">
+    <value>Archief testen</value>
+  </data>
+  <data name="TestNoErrorsFound" xml:space="preserve">
+    <value>Geen fouten gevonden.</value>
+  </data>
+  <data name="BrowseEncryptedBadgeUnknown" xml:space="preserve">
+    <value>Versleuteld</value>
+  </data>
+  <data name="BrowseEncryptedUnknownMethod" xml:space="preserve">
+    <value>onbekende methode</value>
+  </data>
+  <data name="BrowseEncryptedCount" xml:space="preserve">
+    <value>Versleutelde bestanden ({0}): {1} van {2}.</value>
+  </data>
+  <data name="BrowseEncryptedPasswordNote" xml:space="preserve">
+    <value>Pakko vraagt om het wachtwoord wanneer u een bestand uitpakt of opent. Bestandsnamen zijn niet versleuteld en de versleuteling voegt aan elk bestand een paar bytes toe.</value>
+  </data>
+  <data name="BrowseEncryptedAe2Note" xml:space="preserve">
+    <value>CRC-32 is leeg voor AES-bestanden (AE-2): ze worden gecontroleerd door verificatie, niet door een controlesom.</value>
+  </data>
+  <data name="BrowseZipCryptoWeakNote" xml:space="preserve">
+    <value>ZipCrypto is zwakke versleuteling: de bestanden kunnen zonder wachtwoord worden hersteld. Gebruik AES-256 voor alles wat gevoelig is.</value>
+  </data>
+  <data name="BrowseOutsideInfo" xml:space="preserve">
+    <value>Dit is een map op de schijf, geen archief. Dubbelklik op een archief om het te openen, of druk op "Archief sluiten" (Esc) om terug te gaan naar het maken van archieven.</value>
+  </data>
+  <data name="BrowseUpButtonName" xml:space="preserve">
+    <value>Eén niveau omhoog</value>
+  </data>
+  <data name="DestinationUpButtonName" xml:space="preserve">
+    <value>Bovenliggende map</value>
+  </data>
+  <data name="DragAddCaption" xml:space="preserve">
+    <value>Aan lijst toevoegen</value>
   </data>
 </root>

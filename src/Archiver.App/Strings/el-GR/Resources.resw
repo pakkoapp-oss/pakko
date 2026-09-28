@@ -15,7 +15,7 @@
 
   <!-- Buttons -->
   <data name="ArchiveButtonLabel" xml:space="preserve">
-    <value>Αρχειοθέτηση</value>
+    <value>Συμπίεση σε {0}</value>
   </data>
   <data name="ExtractButtonLabel" xml:space="preserve">
     <value>Εξαγωγή</value>
@@ -85,7 +85,7 @@
     <value>Έξοδος</value>
   </data>
   <data name="RemoveMenuItem.Text" xml:space="preserve">
-    <value>Αφαίρεση</value>
+    <value>Αφαίρεση από τη λίστα</value>
   </data>
 
   <!-- Archive options -->
@@ -152,10 +152,10 @@
 
   <!-- Drop zone -->
   <data name="DropZoneHint.Text" xml:space="preserve">
-    <value>Σύρετε αρχεία ή φακέλους εδώ, ή κάντε διπλό κλικ για περιήγηση στα αρχεία</value>
+    <value>Σύρετε αρχεία ή φακέλους εδώ</value>
   </data>
   <data name="DropZoneModeHint.Text" xml:space="preserve">
-    <value>Τα αρχεία συμπίεσης προσφέρουν εξαγωγή· οτιδήποτε άλλο θα συμπιεστεί</value>
+    <value>Τα αρχεία συμπίεσης μπορούν να εξαχθούν· οτιδήποτε άλλο συμπιέζεται</value>
   </data>
 
   <!-- Labels -->
@@ -370,5 +370,155 @@
   </data>
   <data name="StatusExtractingCount" xml:space="preserve">
     <value>Εξαγωγή σε εξέλιξη... (αρχειοθήκες: {0})</value>
+  </data>
+  <data name="StatusOpening" xml:space="preserve">
+    <value>Άνοιγμα...</value>
+  </data>
+  <data name="ThisPcBreadcrumbRoot" xml:space="preserve">
+    <value>Αυτός ο υπολογιστής</value>
+  </data>
+  <data name="NestedArchiveDepthLimitReached" xml:space="preserve">
+    <value>Δεν είναι δυνατό το άνοιγμα — αυτό το αρχείο είναι ενσωματωμένο σε υπερβολικό βάθος.</value>
+  </data>
+  <data name="UnsafePreviewConfirmTitle" xml:space="preserve">
+    <value>Δεν είναι δυνατή η προεπισκόπηση</value>
+  </data>
+  <data name="UnsafePreviewConfirmMessage" xml:space="preserve">
+    <value>Το "{0}" δεν μπορεί να ανοιχτεί με ασφάλεια απευθείας. Να εξαχθεί σε φάκελο δίπλα στο αρχείο;</value>
+  </data>
+  <data name="OutcomeCompressed" xml:space="preserve">
+    <value>Συμπιέστηκαν σε {0} δευτ. — αρχεία: {1}</value>
+  </data>
+  <data name="OutcomeExtracted" xml:space="preserve">
+    <value>Εξήχθησαν σε {0} δευτ. — αρχεία: {1}</value>
+  </data>
+  <data name="OutcomeProblems" xml:space="preserve">
+    <value>Ολοκληρώθηκε με προβλήματα: {0}</value>
+  </data>
+  <data name="OutcomeNothingDone" xml:space="preserve">
+    <value>Δεν έγινε τίποτα — παραλείφθηκαν: {0}</value>
+  </data>
+  <data name="BrowseSelectionLine" xml:space="preserve">
+    <value>Επιλέχθηκαν {0} από {1}</value>
+  </data>
+  <data name="OutcomeShowInFolderButton.Content" xml:space="preserve">
+    <value>Εμφάνιση στον φάκελο</value>
+  </data>
+  <data name="OutcomeDetailsButton.Content" xml:space="preserve">
+    <value>Λεπτομέρειες...</value>
+  </data>
+  <data name="EncryptPasswordLayoutHint" xml:space="preserve">
+    <value>Γράμματα εκτός της αγγλικής διάταξης πληκτρολογίου δεν μπορούν να χρησιμοποιηθούν και δεν προστέθηκαν. Αλλάξτε τη διάταξη σε αγγλική, καθαρίστε το πεδίο και πληκτρολογήστε ξανά τον κωδικό πρόσβασης.</value>
+  </data>
+  <data name="EncryptPasswordRefusedCharacter" xml:space="preserve">
+    <value>Αυτός ο χαρακτήρας δεν μπορεί να χρησιμοποιηθεί και δεν προστέθηκε. Καθαρίστε το πεδίο και πληκτρολογήστε ξανά τον κωδικό πρόσβασης μόνο με αγγλικά γράμματα, ψηφία, κενά και σημεία στίξης.</value>
+  </data>
+  <data name="NewArchiveCardTitle.Text" xml:space="preserve">
+    <value>Νέο αρχείο</value>
+  </data>
+  <data name="DestinationCardTitle.Text" xml:space="preserve">
+    <value>Πού, και τι μετά</value>
+  </data>
+  <data name="EncryptZipOnlyNote.Text" xml:space="preserve">
+    <value>Η κρυπτογράφηση με κωδικό πρόσβασης είναι διαθέσιμη μόνο για ZIP</value>
+  </data>
+  <data name="RecycleBinNote.Text" xml:space="preserve">
+    <value>Σε δικτυακές και αφαιρούμενες μονάδες δίσκου, που δεν έχουν Κάδο Ανακύκλωσης, το Pakko ρωτά πρώτα.</value>
+  </data>
+  <data name="EmptyAddFilesButton.Content" xml:space="preserve">
+    <value>Προσθήκη αρχείων</value>
+  </data>
+  <data name="EmptyAddFolderButton.Content" xml:space="preserve">
+    <value>Προσθήκη φακέλου</value>
+  </data>
+  <data name="DestinationSaveLabel" xml:space="preserve">
+    <value>Αποθήκευση σε:</value>
+  </data>
+  <data name="DestinationExtractLabel" xml:space="preserve">
+    <value>Εξαγωγή σε:</value>
+  </data>
+  <data name="DeleteAfterCompressLabel" xml:space="preserve">
+    <value>Μετά από επιτυχή συμπίεση, μετακίνηση των αρχικών αρχείων στον Κάδο Ανακύκλωσης</value>
+  </data>
+  <data name="DeleteAfterExtractLabel" xml:space="preserve">
+    <value>Μετά από επιτυχή εξαγωγή, μετακίνηση των αρχείων συμπίεσης στον Κάδο Ανακύκλωσης</value>
+  </data>
+  <data name="ArchiveNameAutoPlaceholder" xml:space="preserve">
+    <value>{0} (αυτόματα)</value>
+  </data>
+  <data name="ArchiveNamePerItemPlaceholder" xml:space="preserve">
+    <value>{0}, ... (ένα αρχείο ανά στοιχείο)</value>
+  </data>
+  <data name="SummaryCompressionFast" xml:space="preserve">
+    <value>Γρήγορη</value>
+  </data>
+  <data name="SummaryCompressionNormal" xml:space="preserve">
+    <value>Κανονική</value>
+  </data>
+  <data name="SummaryCompressionBest" xml:space="preserve">
+    <value>Βέλτιστη</value>
+  </data>
+  <data name="SummaryCompressionNone" xml:space="preserve">
+    <value>Χωρίς συμπίεση</value>
+  </data>
+  <data name="SummaryWithPassword" xml:space="preserve">
+    <value>με κωδικό πρόσβασης</value>
+  </data>
+  <data name="SummaryNoPassword" xml:space="preserve">
+    <value>χωρίς κωδικό πρόσβασης</value>
+  </data>
+  <data name="NewArchiveCollapsedReason" xml:space="preserve">
+    <value>σε σύμπτυξη, η λίστα περιέχει μόνο αρχεία συμπίεσης</value>
+  </data>
+  <data name="ExtractUnavailableHint" xml:space="preserve">
+    <value>Η λίστα δεν περιέχει αρχεία συμπίεσης, δεν υπάρχει κάτι για εξαγωγή</value>
+  </data>
+  <data name="DeleteAfterEitherLabel" xml:space="preserve">
+    <value>Μετά από επιτυχή λειτουργία, μετακίνηση στον Κάδο Ανακύκλωσης όσων χρησιμοποίησε: των αρχικών αρχείων μετά τη συμπίεση, των αρχείων συμπίεσης μετά την εξαγωγή</value>
+  </data>
+  <data name="TestArchiveButton.Content" xml:space="preserve">
+    <value>Δοκιμή αρχείου</value>
+  </data>
+  <data name="CloseArchiveButton.Content" xml:space="preserve">
+    <value>Κλείσιμο αρχείου</value>
+  </data>
+  <data name="StatusTesting" xml:space="preserve">
+    <value>Δοκιμή σε εξέλιξη...</value>
+  </data>
+  <data name="TestResultTitle" xml:space="preserve">
+    <value>Δοκιμή αρχείου</value>
+  </data>
+  <data name="TestNoErrorsFound" xml:space="preserve">
+    <value>Δεν βρέθηκαν σφάλματα.</value>
+  </data>
+  <data name="BrowseEncryptedBadgeUnknown" xml:space="preserve">
+    <value>Κρυπτογραφημένο</value>
+  </data>
+  <data name="BrowseEncryptedUnknownMethod" xml:space="preserve">
+    <value>άγνωστη μέθοδος</value>
+  </data>
+  <data name="BrowseEncryptedCount" xml:space="preserve">
+    <value>Κρυπτογραφημένα αρχεία ({0}): {1} από {2}.</value>
+  </data>
+  <data name="BrowseEncryptedPasswordNote" xml:space="preserve">
+    <value>Το Pakko ζητά τον κωδικό πρόσβασης όταν εξάγετε ή ανοίγετε ένα αρχείο. Τα ονόματα αρχείων δεν κρυπτογραφούνται και η κρυπτογράφηση προσθέτει λίγα byte σε κάθε αρχείο.</value>
+  </data>
+  <data name="BrowseEncryptedAe2Note" xml:space="preserve">
+    <value>Το CRC-32 είναι κενό για αρχεία AES (AE-2): επαληθεύονται με έλεγχο ταυτότητας, όχι με άθροισμα ελέγχου.</value>
+  </data>
+  <data name="BrowseZipCryptoWeakNote" xml:space="preserve">
+    <value>Το ZipCrypto είναι αδύναμη κρυπτογράφηση: τα αρχεία μπορούν να ανακτηθούν χωρίς τον κωδικό πρόσβασης. Χρησιμοποιήστε AES-256 για οτιδήποτε ευαίσθητο.</value>
+  </data>
+  <data name="BrowseOutsideInfo" xml:space="preserve">
+    <value>Αυτός είναι φάκελος στον δίσκο, όχι αρχείο συμπίεσης. Κάντε διπλό κλικ σε ένα αρχείο συμπίεσης για να το ανοίξετε ή πατήστε "Κλείσιμο αρχείου" (Esc) για να επιστρέψετε στη δημιουργία αρχείων.</value>
+  </data>
+  <data name="BrowseUpButtonName" xml:space="preserve">
+    <value>Ένα επίπεδο επάνω</value>
+  </data>
+  <data name="DestinationUpButtonName" xml:space="preserve">
+    <value>Γονικός φάκελος</value>
+  </data>
+  <data name="DragAddCaption" xml:space="preserve">
+    <value>Προσθήκη στη λίστα</value>
   </data>
 </root>

@@ -15,7 +15,7 @@
 
   <!-- Buttons -->
   <data name="ArchiveButtonLabel" xml:space="preserve">
-    <value>压缩</value>
+    <value>压缩为 {0}</value>
   </data>
   <data name="ExtractButtonLabel" xml:space="preserve">
     <value>解压</value>
@@ -85,7 +85,7 @@
     <value>退出</value>
   </data>
   <data name="RemoveMenuItem.Text" xml:space="preserve">
-    <value>移除</value>
+    <value>从列表中移除</value>
   </data>
 
   <!-- Archive options -->
@@ -152,10 +152,10 @@
 
   <!-- Drop zone -->
   <data name="DropZoneHint.Text" xml:space="preserve">
-    <value>将文件或文件夹拖放到此处，或双击浏览文件</value>
+    <value>将文件或文件夹拖放到此处</value>
   </data>
   <data name="DropZoneModeHint.Text" xml:space="preserve">
-    <value>压缩包可供解压；其他内容将被压缩</value>
+    <value>压缩包可以解压；其他内容将被压缩</value>
   </data>
 
   <!-- Labels -->
@@ -370,5 +370,155 @@
   </data>
   <data name="StatusExtractingCount" xml:space="preserve">
     <value>正在解压... (压缩包: {0})</value>
+  </data>
+  <data name="StatusOpening" xml:space="preserve">
+    <value>正在打开...</value>
+  </data>
+  <data name="ThisPcBreadcrumbRoot" xml:space="preserve">
+    <value>此电脑</value>
+  </data>
+  <data name="NestedArchiveDepthLimitReached" xml:space="preserve">
+    <value>无法打开 — 此压缩包嵌套层级过深。</value>
+  </data>
+  <data name="UnsafePreviewConfirmTitle" xml:space="preserve">
+    <value>无法预览</value>
+  </data>
+  <data name="UnsafePreviewConfirmMessage" xml:space="preserve">
+    <value>无法直接安全地打开“{0}”。改为将其解压到压缩包旁边的文件夹吗?</value>
+  </data>
+  <data name="OutcomeCompressed" xml:space="preserve">
+    <value>已在 {0} 秒内压缩 — 压缩包: {1}</value>
+  </data>
+  <data name="OutcomeExtracted" xml:space="preserve">
+    <value>已在 {0} 秒内解压 — 压缩包: {1}</value>
+  </data>
+  <data name="OutcomeProblems" xml:space="preserve">
+    <value>已完成，但存在问题: {0}</value>
+  </data>
+  <data name="OutcomeNothingDone" xml:space="preserve">
+    <value>未执行任何操作 — 已跳过: {0}</value>
+  </data>
+  <data name="BrowseSelectionLine" xml:space="preserve">
+    <value>已选择 {0} 个，共 {1} 个</value>
+  </data>
+  <data name="OutcomeShowInFolderButton.Content" xml:space="preserve">
+    <value>在文件夹中显示</value>
+  </data>
+  <data name="OutcomeDetailsButton.Content" xml:space="preserve">
+    <value>详细信息...</value>
+  </data>
+  <data name="EncryptPasswordLayoutHint" xml:space="preserve">
+    <value>英文键盘布局以外的字母无法使用，未被添加。请将输入法切换为英文，清空此字段，然后重新输入密码。</value>
+  </data>
+  <data name="EncryptPasswordRefusedCharacter" xml:space="preserve">
+    <value>该字符无法使用，未被添加。请清空此字段，然后仅使用英文字母、数字、空格和标点重新输入密码。</value>
+  </data>
+  <data name="NewArchiveCardTitle.Text" xml:space="preserve">
+    <value>新建压缩包</value>
+  </data>
+  <data name="DestinationCardTitle.Text" xml:space="preserve">
+    <value>保存位置及后续操作</value>
+  </data>
+  <data name="EncryptZipOnlyNote.Text" xml:space="preserve">
+    <value>密码加密仅适用于 ZIP</value>
+  </data>
+  <data name="RecycleBinNote.Text" xml:space="preserve">
+    <value>对于没有回收站的网络驱动器和可移动驱动器，Pakko 会先询问。</value>
+  </data>
+  <data name="EmptyAddFilesButton.Content" xml:space="preserve">
+    <value>添加文件</value>
+  </data>
+  <data name="EmptyAddFolderButton.Content" xml:space="preserve">
+    <value>添加文件夹</value>
+  </data>
+  <data name="DestinationSaveLabel" xml:space="preserve">
+    <value>保存到:</value>
+  </data>
+  <data name="DestinationExtractLabel" xml:space="preserve">
+    <value>解压到:</value>
+  </data>
+  <data name="DeleteAfterCompressLabel" xml:space="preserve">
+    <value>压缩成功后，将源文件移到回收站</value>
+  </data>
+  <data name="DeleteAfterExtractLabel" xml:space="preserve">
+    <value>解压成功后，将压缩包移到回收站</value>
+  </data>
+  <data name="ArchiveNameAutoPlaceholder" xml:space="preserve">
+    <value>{0} (自动)</value>
+  </data>
+  <data name="ArchiveNamePerItemPlaceholder" xml:space="preserve">
+    <value>{0}, ... (每个项目一个压缩包)</value>
+  </data>
+  <data name="SummaryCompressionFast" xml:space="preserve">
+    <value>快速</value>
+  </data>
+  <data name="SummaryCompressionNormal" xml:space="preserve">
+    <value>标准</value>
+  </data>
+  <data name="SummaryCompressionBest" xml:space="preserve">
+    <value>最佳</value>
+  </data>
+  <data name="SummaryCompressionNone" xml:space="preserve">
+    <value>不压缩</value>
+  </data>
+  <data name="SummaryWithPassword" xml:space="preserve">
+    <value>有密码</value>
+  </data>
+  <data name="SummaryNoPassword" xml:space="preserve">
+    <value>无密码</value>
+  </data>
+  <data name="NewArchiveCollapsedReason" xml:space="preserve">
+    <value>已折叠，列表中只有压缩包</value>
+  </data>
+  <data name="ExtractUnavailableHint" xml:space="preserve">
+    <value>列表中没有压缩包，无可解压内容</value>
+  </data>
+  <data name="DeleteAfterEitherLabel" xml:space="preserve">
+    <value>操作成功后，将其使用的内容移到回收站: 压缩后为源文件，解压后为压缩包</value>
+  </data>
+  <data name="TestArchiveButton.Content" xml:space="preserve">
+    <value>测试压缩包</value>
+  </data>
+  <data name="CloseArchiveButton.Content" xml:space="preserve">
+    <value>关闭压缩包</value>
+  </data>
+  <data name="StatusTesting" xml:space="preserve">
+    <value>正在测试...</value>
+  </data>
+  <data name="TestResultTitle" xml:space="preserve">
+    <value>测试压缩包</value>
+  </data>
+  <data name="TestNoErrorsFound" xml:space="preserve">
+    <value>未发现错误。</value>
+  </data>
+  <data name="BrowseEncryptedBadgeUnknown" xml:space="preserve">
+    <value>已加密</value>
+  </data>
+  <data name="BrowseEncryptedUnknownMethod" xml:space="preserve">
+    <value>未知方法</value>
+  </data>
+  <data name="BrowseEncryptedCount" xml:space="preserve">
+    <value>加密文件 ({0}): {1}/{2}。</value>
+  </data>
+  <data name="BrowseEncryptedPasswordNote" xml:space="preserve">
+    <value>解压或打开文件时，Pakko 会要求输入密码。文件名未加密，且加密会为每个文件增加几个字节。</value>
+  </data>
+  <data name="BrowseEncryptedAe2Note" xml:space="preserve">
+    <value>AES (AE-2) 文件的 CRC-32 为空: 它们通过身份验证而非校验和进行验证。</value>
+  </data>
+  <data name="BrowseZipCryptoWeakNote" xml:space="preserve">
+    <value>ZipCrypto 是弱加密: 无需密码即可恢复文件。任何敏感内容请使用 AES-256。</value>
+  </data>
+  <data name="BrowseOutsideInfo" xml:space="preserve">
+    <value>这是磁盘上的文件夹，不是压缩包。双击压缩包将其打开，或按“关闭压缩包”(Esc) 返回创建压缩包。</value>
+  </data>
+  <data name="BrowseUpButtonName" xml:space="preserve">
+    <value>向上一级</value>
+  </data>
+  <data name="DestinationUpButtonName" xml:space="preserve">
+    <value>上级文件夹</value>
+  </data>
+  <data name="DragAddCaption" xml:space="preserve">
+    <value>添加到列表</value>
   </data>
 </root>

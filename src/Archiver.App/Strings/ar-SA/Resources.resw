@@ -15,7 +15,7 @@
 
   <!-- Buttons -->
   <data name="ArchiveButtonLabel" xml:space="preserve">
-    <value>أرشفة</value>
+    <value>ضغط إلى {0}</value>
   </data>
   <data name="ExtractButtonLabel" xml:space="preserve">
     <value>استخراج</value>
@@ -85,7 +85,7 @@
     <value>خروج</value>
   </data>
   <data name="RemoveMenuItem.Text" xml:space="preserve">
-    <value>إزالة</value>
+    <value>إزالة من القائمة</value>
   </data>
 
   <!-- Archive options -->
@@ -152,10 +152,10 @@
 
   <!-- Drop zone -->
   <data name="DropZoneHint.Text" xml:space="preserve">
-    <value>أفلت الملفات أو المجلدات هنا، أو انقر نقرًا مزدوجًا لتصفح الملفات</value>
+    <value>أفلت الملفات أو المجلدات هنا</value>
   </data>
   <data name="DropZoneModeHint.Text" xml:space="preserve">
-    <value>الأرشيفات تعرض الاستخراج؛ وأي شيء آخر يتم أرشفته</value>
+    <value>يمكن استخراج الأرشيفات؛ وأي شيء آخر يتم ضغطه</value>
   </data>
 
   <!-- Labels -->
@@ -179,7 +179,7 @@
     <value>جاهز</value>
   </data>
   <data name="StatusArchiving" xml:space="preserve">
-    <value>جارٍ الأرشفة...</value>
+    <value>جارٍ الضغط...</value>
   </data>
   <data name="StatusExtracting" xml:space="preserve">
     <value>جارٍ الاستخراج...</value>
@@ -200,7 +200,7 @@
     <value>سيتم استخراج {0} أرشيف(ات) إلى المجلد أعلاه</value>
   </data>
   <data name="OutcomeWillArchive" xml:space="preserve">
-    <value>سيتم أرشفة {0} عنصر(عناصر) إلى المجلد أعلاه</value>
+    <value>سيتم ضغط {0} عنصر(عناصر) إلى المجلد أعلاه</value>
   </data>
 
   <!-- Dialog strings -->
@@ -366,9 +366,159 @@
     <value>{0} GB</value>
   </data>
   <data name="StatusArchivingCount" xml:space="preserve">
-    <value>جارٍ الأرشفة... (الملفات: {0}, {1})</value>
+    <value>جارٍ الضغط... (الملفات: {0}, {1})</value>
   </data>
   <data name="StatusExtractingCount" xml:space="preserve">
     <value>جارٍ الاستخراج... (الأرشيفات: {0})</value>
+  </data>
+  <data name="StatusOpening" xml:space="preserve">
+    <value>جارٍ الفتح...</value>
+  </data>
+  <data name="ThisPcBreadcrumbRoot" xml:space="preserve">
+    <value>هذا الكمبيوتر</value>
+  </data>
+  <data name="NestedArchiveDepthLimitReached" xml:space="preserve">
+    <value>تعذّر الفتح — هذا الأرشيف متداخل بعمق كبير جدًا.</value>
+  </data>
+  <data name="UnsafePreviewConfirmTitle" xml:space="preserve">
+    <value>المعاينة غير متاحة</value>
+  </data>
+  <data name="UnsafePreviewConfirmMessage" xml:space="preserve">
+    <value>لا يمكن فتح "{0}" مباشرة بأمان. هل تريد استخراجه إلى مجلد بجوار الأرشيف بدلاً من ذلك؟</value>
+  </data>
+  <data name="OutcomeCompressed" xml:space="preserve">
+    <value>تم الضغط في {0} ث — الأرشيفات: {1}</value>
+  </data>
+  <data name="OutcomeExtracted" xml:space="preserve">
+    <value>تم الاستخراج في {0} ث — الأرشيفات: {1}</value>
+  </data>
+  <data name="OutcomeProblems" xml:space="preserve">
+    <value>اكتمل مع وجود مشكلات: {0}</value>
+  </data>
+  <data name="OutcomeNothingDone" xml:space="preserve">
+    <value>لم يتم تنفيذ أي شيء — تم التخطي: {0}</value>
+  </data>
+  <data name="BrowseSelectionLine" xml:space="preserve">
+    <value>تم تحديد {0} من {1}</value>
+  </data>
+  <data name="OutcomeShowInFolderButton.Content" xml:space="preserve">
+    <value>إظهار في المجلد</value>
+  </data>
+  <data name="OutcomeDetailsButton.Content" xml:space="preserve">
+    <value>التفاصيل...</value>
+  </data>
+  <data name="EncryptPasswordLayoutHint" xml:space="preserve">
+    <value>لا يمكن استخدام الأحرف من خارج لوحة المفاتيح الإنجليزية ولم تتم إضافتها. بدّل لغة الإدخال إلى الإنجليزية، وامسح الحقل، ثم اكتب كلمة المرور من جديد.</value>
+  </data>
+  <data name="EncryptPasswordRefusedCharacter" xml:space="preserve">
+    <value>لا يمكن استخدام هذا الحرف ولم تتم إضافته. امسح الحقل واكتب كلمة المرور من جديد باستخدام الأحرف الإنجليزية والأرقام والمسافات وعلامات الترقيم فقط.</value>
+  </data>
+  <data name="NewArchiveCardTitle.Text" xml:space="preserve">
+    <value>أرشيف جديد</value>
+  </data>
+  <data name="DestinationCardTitle.Text" xml:space="preserve">
+    <value>إلى أين، وماذا بعد</value>
+  </data>
+  <data name="EncryptZipOnlyNote.Text" xml:space="preserve">
+    <value>التشفير بكلمة مرور متاح لتنسيق ZIP فقط</value>
+  </data>
+  <data name="RecycleBinNote.Text" xml:space="preserve">
+    <value>على محركات الأقراص الشبكية والقابلة للإزالة، التي لا تحتوي على سلة محذوفات، يسألك Pakko أولاً.</value>
+  </data>
+  <data name="EmptyAddFilesButton.Content" xml:space="preserve">
+    <value>إضافة ملفات</value>
+  </data>
+  <data name="EmptyAddFolderButton.Content" xml:space="preserve">
+    <value>إضافة مجلد</value>
+  </data>
+  <data name="DestinationSaveLabel" xml:space="preserve">
+    <value>الحفظ في:</value>
+  </data>
+  <data name="DestinationExtractLabel" xml:space="preserve">
+    <value>الاستخراج إلى:</value>
+  </data>
+  <data name="DeleteAfterCompressLabel" xml:space="preserve">
+    <value>بعد الضغط بنجاح، انقل الملفات المصدر إلى سلة المحذوفات</value>
+  </data>
+  <data name="DeleteAfterExtractLabel" xml:space="preserve">
+    <value>بعد الاستخراج بنجاح، انقل الأرشيفات إلى سلة المحذوفات</value>
+  </data>
+  <data name="ArchiveNameAutoPlaceholder" xml:space="preserve">
+    <value>{0} (تلقائي)</value>
+  </data>
+  <data name="ArchiveNamePerItemPlaceholder" xml:space="preserve">
+    <value>{0}، ... (أرشيف لكل عنصر)</value>
+  </data>
+  <data name="SummaryCompressionFast" xml:space="preserve">
+    <value>سريع</value>
+  </data>
+  <data name="SummaryCompressionNormal" xml:space="preserve">
+    <value>عادي</value>
+  </data>
+  <data name="SummaryCompressionBest" xml:space="preserve">
+    <value>الأفضل</value>
+  </data>
+  <data name="SummaryCompressionNone" xml:space="preserve">
+    <value>بدون ضغط</value>
+  </data>
+  <data name="SummaryWithPassword" xml:space="preserve">
+    <value>بكلمة مرور</value>
+  </data>
+  <data name="SummaryNoPassword" xml:space="preserve">
+    <value>بدون كلمة مرور</value>
+  </data>
+  <data name="NewArchiveCollapsedReason" xml:space="preserve">
+    <value>مطوي، فالقائمة تحتوي على أرشيفات فقط</value>
+  </data>
+  <data name="ExtractUnavailableHint" xml:space="preserve">
+    <value>لا تحتوي القائمة على أرشيفات، لا يوجد ما يُستخرج</value>
+  </data>
+  <data name="DeleteAfterEitherLabel" xml:space="preserve">
+    <value>بعد نجاح العملية، انقل ما استخدمته إلى سلة المحذوفات: الملفات المصدر بعد الضغط، والأرشيفات بعد الاستخراج</value>
+  </data>
+  <data name="TestArchiveButton.Content" xml:space="preserve">
+    <value>اختبار الأرشيف</value>
+  </data>
+  <data name="CloseArchiveButton.Content" xml:space="preserve">
+    <value>إغلاق الأرشيف</value>
+  </data>
+  <data name="StatusTesting" xml:space="preserve">
+    <value>جارٍ الاختبار...</value>
+  </data>
+  <data name="TestResultTitle" xml:space="preserve">
+    <value>اختبار الأرشيف</value>
+  </data>
+  <data name="TestNoErrorsFound" xml:space="preserve">
+    <value>لم يتم العثور على أخطاء.</value>
+  </data>
+  <data name="BrowseEncryptedBadgeUnknown" xml:space="preserve">
+    <value>مشفّر</value>
+  </data>
+  <data name="BrowseEncryptedUnknownMethod" xml:space="preserve">
+    <value>طريقة غير معروفة</value>
+  </data>
+  <data name="BrowseEncryptedCount" xml:space="preserve">
+    <value>الملفات المشفرة ({0}): {1} من {2}.</value>
+  </data>
+  <data name="BrowseEncryptedPasswordNote" xml:space="preserve">
+    <value>يطلب Pakko كلمة المرور عند استخراج ملف أو فتحه. أسماء الملفات غير مشفرة، ويضيف التشفير بضعة بايتات إلى كل ملف.</value>
+  </data>
+  <data name="BrowseEncryptedAe2Note" xml:space="preserve">
+    <value>قيمة CRC-32 فارغة لملفات AES (AE-2): يتم التحقق منها بالمصادقة، لا بمجموع اختباري.</value>
+  </data>
+  <data name="BrowseZipCryptoWeakNote" xml:space="preserve">
+    <value>ZipCrypto تشفير ضعيف: يمكن استرداد الملفات بدون كلمة المرور. استخدم AES-256 لأي بيانات حساسة.</value>
+  </data>
+  <data name="BrowseOutsideInfo" xml:space="preserve">
+    <value>هذا مجلد على القرص، وليس أرشيفًا. انقر نقرًا مزدوجًا فوق أرشيف لفتحه، أو اضغط "إغلاق الأرشيف" (Esc) للعودة إلى إنشاء الأرشيفات.</value>
+  </data>
+  <data name="BrowseUpButtonName" xml:space="preserve">
+    <value>مستوى واحد لأعلى</value>
+  </data>
+  <data name="DestinationUpButtonName" xml:space="preserve">
+    <value>المجلد الأصل</value>
+  </data>
+  <data name="DragAddCaption" xml:space="preserve">
+    <value>إضافة إلى القائمة</value>
   </data>
 </root>

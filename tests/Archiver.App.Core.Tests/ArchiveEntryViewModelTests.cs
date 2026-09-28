@@ -6,6 +6,15 @@ namespace Archiver.App.Core.Tests;
 
 public class ArchiveEntryViewModelTests
 {
+    // T-F198 item 2: a screen reader reads a list row by its item's ToString().
+    [Fact]
+    public void ToString_IsTheName()
+    {
+        var entry = new ArchiveEntryViewModel { FullPath = "docs/звіт.txt", Name = "звіт.txt", IsFolder = false };
+
+        entry.ToString().Should().Be("звіт.txt");
+    }
+
     [Fact]
     public void CompressedSizeDisplay_Folder_IsEmpty()
     {

@@ -15,7 +15,7 @@
 
   <!-- Buttons -->
   <data name="ArchiveButtonLabel" xml:space="preserve">
-    <value>Archiwizuj</value>
+    <value>Kompresuj do {0}</value>
   </data>
   <data name="ExtractButtonLabel" xml:space="preserve">
     <value>Wypakuj</value>
@@ -85,7 +85,7 @@
     <value>Zakończ</value>
   </data>
   <data name="RemoveMenuItem.Text" xml:space="preserve">
-    <value>Usuń</value>
+    <value>Usuń z listy</value>
   </data>
 
   <!-- Archive options -->
@@ -152,10 +152,10 @@
 
   <!-- Drop zone -->
   <data name="DropZoneHint.Text" xml:space="preserve">
-    <value>Przeciągnij tu pliki lub foldery albo kliknij dwukrotnie, aby je wybrać</value>
+    <value>Przeciągnij tu pliki lub foldery</value>
   </data>
   <data name="DropZoneModeHint.Text" xml:space="preserve">
-    <value>Archiwa oferują wypakowanie; wszystko inne zostanie zarchiwizowane</value>
+    <value>Archiwa można wypakować; wszystko inne zostanie skompresowane</value>
   </data>
 
   <!-- Labels -->
@@ -179,7 +179,7 @@
     <value>Gotowy</value>
   </data>
   <data name="StatusArchiving" xml:space="preserve">
-    <value>Archiwizowanie...</value>
+    <value>Kompresowanie...</value>
   </data>
   <data name="StatusExtracting" xml:space="preserve">
     <value>Wypakowywanie...</value>
@@ -200,7 +200,7 @@
     <value>Zostanie wypakowanych archiwów: {0} — do folderu powyżej</value>
   </data>
   <data name="OutcomeWillArchive" xml:space="preserve">
-    <value>Zostanie zarchiwizowanych elementów: {0} — do folderu powyżej</value>
+    <value>Zostanie skompresowanych elementów: {0} — do folderu powyżej</value>
   </data>
 
   <!-- Dialog strings -->
@@ -366,9 +366,159 @@
     <value>{0} GB</value>
   </data>
   <data name="StatusArchivingCount" xml:space="preserve">
-    <value>Archiwizowanie... (pliki: {0}, {1})</value>
+    <value>Kompresowanie... (pliki: {0}, {1})</value>
   </data>
   <data name="StatusExtractingCount" xml:space="preserve">
     <value>Wypakowywanie... (archiwa: {0})</value>
+  </data>
+  <data name="StatusOpening" xml:space="preserve">
+    <value>Otwieranie...</value>
+  </data>
+  <data name="ThisPcBreadcrumbRoot" xml:space="preserve">
+    <value>Ten komputer</value>
+  </data>
+  <data name="NestedArchiveDepthLimitReached" xml:space="preserve">
+    <value>Nie można otworzyć — to archiwum jest zagnieżdżone zbyt głęboko.</value>
+  </data>
+  <data name="UnsafePreviewConfirmTitle" xml:space="preserve">
+    <value>Podgląd niedostępny</value>
+  </data>
+  <data name="UnsafePreviewConfirmMessage" xml:space="preserve">
+    <value>Nie można bezpiecznie otworzyć "{0}" bezpośrednio. Czy zamiast tego wypakować go do folderu obok archiwum?</value>
+  </data>
+  <data name="OutcomeCompressed" xml:space="preserve">
+    <value>Skompresowano w {0} s — archiwa: {1}</value>
+  </data>
+  <data name="OutcomeExtracted" xml:space="preserve">
+    <value>Wypakowano w {0} s — archiwa: {1}</value>
+  </data>
+  <data name="OutcomeProblems" xml:space="preserve">
+    <value>Zakończono z problemami: {0}</value>
+  </data>
+  <data name="OutcomeNothingDone" xml:space="preserve">
+    <value>Nic nie zrobiono — pominięto: {0}</value>
+  </data>
+  <data name="BrowseSelectionLine" xml:space="preserve">
+    <value>Wybrano {0} z {1}</value>
+  </data>
+  <data name="OutcomeShowInFolderButton.Content" xml:space="preserve">
+    <value>Pokaż w folderze</value>
+  </data>
+  <data name="OutcomeDetailsButton.Content" xml:space="preserve">
+    <value>Szczegóły...</value>
+  </data>
+  <data name="EncryptPasswordLayoutHint" xml:space="preserve">
+    <value>Litery spoza angielskiego układu klawiatury nie mogą być używane i nie zostały dodane. Przełącz układ na angielski, wyczyść pole i wpisz hasło ponownie.</value>
+  </data>
+  <data name="EncryptPasswordRefusedCharacter" xml:space="preserve">
+    <value>Tego znaku nie można użyć i nie został dodany. Wyczyść pole i wpisz hasło ponownie, używając tylko angielskich liter, cyfr, spacji i znaków interpunkcyjnych.</value>
+  </data>
+  <data name="NewArchiveCardTitle.Text" xml:space="preserve">
+    <value>Nowe archiwum</value>
+  </data>
+  <data name="DestinationCardTitle.Text" xml:space="preserve">
+    <value>Dokąd, i co potem</value>
+  </data>
+  <data name="EncryptZipOnlyNote.Text" xml:space="preserve">
+    <value>Szyfrowanie hasłem jest dostępne tylko dla formatu ZIP</value>
+  </data>
+  <data name="RecycleBinNote.Text" xml:space="preserve">
+    <value>Na dyskach sieciowych i wymiennych, które nie mają Kosza, Pakko najpierw pyta.</value>
+  </data>
+  <data name="EmptyAddFilesButton.Content" xml:space="preserve">
+    <value>Dodaj pliki</value>
+  </data>
+  <data name="EmptyAddFolderButton.Content" xml:space="preserve">
+    <value>Dodaj folder</value>
+  </data>
+  <data name="DestinationSaveLabel" xml:space="preserve">
+    <value>Zapisz w:</value>
+  </data>
+  <data name="DestinationExtractLabel" xml:space="preserve">
+    <value>Wypakuj do:</value>
+  </data>
+  <data name="DeleteAfterCompressLabel" xml:space="preserve">
+    <value>Po udanej kompresji przenieś pliki źródłowe do Kosza</value>
+  </data>
+  <data name="DeleteAfterExtractLabel" xml:space="preserve">
+    <value>Po udanym wypakowaniu przenieś archiwa do Kosza</value>
+  </data>
+  <data name="ArchiveNameAutoPlaceholder" xml:space="preserve">
+    <value>{0} (automatycznie)</value>
+  </data>
+  <data name="ArchiveNamePerItemPlaceholder" xml:space="preserve">
+    <value>{0}, ... (jedno archiwum na element)</value>
+  </data>
+  <data name="SummaryCompressionFast" xml:space="preserve">
+    <value>Szybka</value>
+  </data>
+  <data name="SummaryCompressionNormal" xml:space="preserve">
+    <value>Normalna</value>
+  </data>
+  <data name="SummaryCompressionBest" xml:space="preserve">
+    <value>Najlepsza</value>
+  </data>
+  <data name="SummaryCompressionNone" xml:space="preserve">
+    <value>Bez kompresji</value>
+  </data>
+  <data name="SummaryWithPassword" xml:space="preserve">
+    <value>z hasłem</value>
+  </data>
+  <data name="SummaryNoPassword" xml:space="preserve">
+    <value>bez hasła</value>
+  </data>
+  <data name="NewArchiveCollapsedReason" xml:space="preserve">
+    <value>zwinięte, lista zawiera tylko archiwa</value>
+  </data>
+  <data name="ExtractUnavailableHint" xml:space="preserve">
+    <value>Lista nie zawiera archiwów, nie ma czego wypakować</value>
+  </data>
+  <data name="DeleteAfterEitherLabel" xml:space="preserve">
+    <value>Po udanej operacji przenieś do Kosza to, czego użyła: pliki źródłowe po kompresji, archiwa po wypakowaniu</value>
+  </data>
+  <data name="TestArchiveButton.Content" xml:space="preserve">
+    <value>Testuj archiwum</value>
+  </data>
+  <data name="CloseArchiveButton.Content" xml:space="preserve">
+    <value>Zamknij archiwum</value>
+  </data>
+  <data name="StatusTesting" xml:space="preserve">
+    <value>Testowanie...</value>
+  </data>
+  <data name="TestResultTitle" xml:space="preserve">
+    <value>Test archiwum</value>
+  </data>
+  <data name="TestNoErrorsFound" xml:space="preserve">
+    <value>Nie znaleziono błędów.</value>
+  </data>
+  <data name="BrowseEncryptedBadgeUnknown" xml:space="preserve">
+    <value>Zaszyfrowane</value>
+  </data>
+  <data name="BrowseEncryptedUnknownMethod" xml:space="preserve">
+    <value>nieznana metoda</value>
+  </data>
+  <data name="BrowseEncryptedCount" xml:space="preserve">
+    <value>Zaszyfrowane pliki ({0}): {1} z {2}.</value>
+  </data>
+  <data name="BrowseEncryptedPasswordNote" xml:space="preserve">
+    <value>Pakko pyta o hasło, gdy wypakowujesz lub otwierasz plik. Nazwy plików nie są szyfrowane, a szyfrowanie dodaje do każdego pliku kilka bajtów.</value>
+  </data>
+  <data name="BrowseEncryptedAe2Note" xml:space="preserve">
+    <value>CRC-32 jest puste dla plików AES (AE-2): weryfikuje je uwierzytelnianie, a nie suma kontrolna.</value>
+  </data>
+  <data name="BrowseZipCryptoWeakNote" xml:space="preserve">
+    <value>ZipCrypto to słabe szyfrowanie: pliki można odzyskać bez hasła. Do wszystkiego, co poufne, używaj AES-256.</value>
+  </data>
+  <data name="BrowseOutsideInfo" xml:space="preserve">
+    <value>To jest folder na dysku, a nie archiwum. Kliknij dwukrotnie archiwum, aby je otworzyć, lub naciśnij "Zamknij archiwum" (Esc), aby wrócić do tworzenia archiwów.</value>
+  </data>
+  <data name="BrowseUpButtonName" xml:space="preserve">
+    <value>Poziom wyżej</value>
+  </data>
+  <data name="DestinationUpButtonName" xml:space="preserve">
+    <value>Folder nadrzędny</value>
+  </data>
+  <data name="DragAddCaption" xml:space="preserve">
+    <value>Dodaj do listy</value>
   </data>
 </root>

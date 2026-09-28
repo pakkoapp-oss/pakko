@@ -15,7 +15,7 @@
 
   <!-- Buttons -->
   <data name="ArchiveButtonLabel" xml:space="preserve">
-    <value>Arhiveeri</value>
+    <value>Tihenda vormingusse {0}</value>
   </data>
   <data name="ExtractButtonLabel" xml:space="preserve">
     <value>Paki lahti</value>
@@ -85,7 +85,7 @@
     <value>Välju</value>
   </data>
   <data name="RemoveMenuItem.Text" xml:space="preserve">
-    <value>Eemalda</value>
+    <value>Eemalda loendist</value>
   </data>
 
   <!-- Archive options -->
@@ -152,10 +152,10 @@
 
   <!-- Drop zone -->
   <data name="DropZoneHint.Text" xml:space="preserve">
-    <value>Lohistage failid või kaustad siia, või tehke failide sirvimiseks topeltklõps</value>
+    <value>Lohistage failid või kaustad siia</value>
   </data>
   <data name="DropZoneModeHint.Text" xml:space="preserve">
-    <value>Arhiivid pakuvad lahtipakkimist; kõik muu arhiveeritakse</value>
+    <value>Arhiive saab lahti pakkida; kõik muu tihendatakse</value>
   </data>
 
   <!-- Labels -->
@@ -179,7 +179,7 @@
     <value>Valmis</value>
   </data>
   <data name="StatusArchiving" xml:space="preserve">
-    <value>Arhiveerimine...</value>
+    <value>Tihendamine...</value>
   </data>
   <data name="StatusExtracting" xml:space="preserve">
     <value>Lahtipakkimine...</value>
@@ -200,7 +200,7 @@
     <value>Lahti pakitakse {0} arhiivi ülal olevasse kausta</value>
   </data>
   <data name="OutcomeWillArchive" xml:space="preserve">
-    <value>Arhiveeritakse {0} elementi ülal olevasse kausta</value>
+    <value>Tihendatakse {0} elementi ülal olevasse kausta</value>
   </data>
 
   <!-- Dialog strings -->
@@ -366,9 +366,159 @@
     <value>{0} GB</value>
   </data>
   <data name="StatusArchivingCount" xml:space="preserve">
-    <value>Arhiveerimine... (faile: {0}, {1})</value>
+    <value>Tihendamine... (faile: {0}, {1})</value>
   </data>
   <data name="StatusExtractingCount" xml:space="preserve">
     <value>Lahtipakkimine... (arhiive: {0})</value>
+  </data>
+  <data name="StatusOpening" xml:space="preserve">
+    <value>Avamine...</value>
+  </data>
+  <data name="ThisPcBreadcrumbRoot" xml:space="preserve">
+    <value>See arvuti</value>
+  </data>
+  <data name="NestedArchiveDepthLimitReached" xml:space="preserve">
+    <value>Ei saa avada — see arhiiv on liiga sügavale pesastatud.</value>
+  </data>
+  <data name="UnsafePreviewConfirmTitle" xml:space="preserve">
+    <value>Eelvaade pole saadaval</value>
+  </data>
+  <data name="UnsafePreviewConfirmMessage" xml:space="preserve">
+    <value>Faili "{0}" ei saa otse turvaliselt avada. Kas pakkida see hoopis lahti arhiivi kõrval olevasse kausta?</value>
+  </data>
+  <data name="OutcomeCompressed" xml:space="preserve">
+    <value>Tihendatud {0} s-ga — arhiive: {1}</value>
+  </data>
+  <data name="OutcomeExtracted" xml:space="preserve">
+    <value>Lahti pakitud {0} s-ga — arhiive: {1}</value>
+  </data>
+  <data name="OutcomeProblems" xml:space="preserve">
+    <value>Lõpetatud probleemidega: {0}</value>
+  </data>
+  <data name="OutcomeNothingDone" xml:space="preserve">
+    <value>Midagi ei tehtud — vahele jäetud: {0}</value>
+  </data>
+  <data name="BrowseSelectionLine" xml:space="preserve">
+    <value>Valitud {0} / {1}</value>
+  </data>
+  <data name="OutcomeShowInFolderButton.Content" xml:space="preserve">
+    <value>Näita kaustas</value>
+  </data>
+  <data name="OutcomeDetailsButton.Content" xml:space="preserve">
+    <value>Üksikasjad...</value>
+  </data>
+  <data name="EncryptPasswordLayoutHint" xml:space="preserve">
+    <value>Ingliskeelsest klaviatuuripaigutusest väljaspool olevaid tähti ei saa kasutada ja neid ei lisatud. Lülitage paigutus inglise keelele, tühjendage väli ja tippige parool uuesti.</value>
+  </data>
+  <data name="EncryptPasswordRefusedCharacter" xml:space="preserve">
+    <value>Seda märki ei saa kasutada ja seda ei lisatud. Tühjendage väli ja tippige parool uuesti, kasutades ainult ingliskeelseid tähti, numbreid, tühikuid ja kirjavahemärke.</value>
+  </data>
+  <data name="NewArchiveCardTitle.Text" xml:space="preserve">
+    <value>Uus arhiiv</value>
+  </data>
+  <data name="DestinationCardTitle.Text" xml:space="preserve">
+    <value>Kuhu ja mis edasi</value>
+  </data>
+  <data name="EncryptZipOnlyNote.Text" xml:space="preserve">
+    <value>Parooliga krüptimine on saadaval ainult ZIP-i jaoks</value>
+  </data>
+  <data name="RecycleBinNote.Text" xml:space="preserve">
+    <value>Võrgu- ja irdketastel, millel pole prügikasti, küsib Pakko enne.</value>
+  </data>
+  <data name="EmptyAddFilesButton.Content" xml:space="preserve">
+    <value>Lisa failid</value>
+  </data>
+  <data name="EmptyAddFolderButton.Content" xml:space="preserve">
+    <value>Lisa kaust</value>
+  </data>
+  <data name="DestinationSaveLabel" xml:space="preserve">
+    <value>Salvesta asukohta:</value>
+  </data>
+  <data name="DestinationExtractLabel" xml:space="preserve">
+    <value>Paki lahti asukohta:</value>
+  </data>
+  <data name="DeleteAfterCompressLabel" xml:space="preserve">
+    <value>Pärast edukat tihendamist teisalda lähtefailid prügikasti</value>
+  </data>
+  <data name="DeleteAfterExtractLabel" xml:space="preserve">
+    <value>Pärast edukat lahtipakkimist teisalda arhiivid prügikasti</value>
+  </data>
+  <data name="ArchiveNameAutoPlaceholder" xml:space="preserve">
+    <value>{0} (automaatne)</value>
+  </data>
+  <data name="ArchiveNamePerItemPlaceholder" xml:space="preserve">
+    <value>{0}, ... (üks arhiiv elemendi kohta)</value>
+  </data>
+  <data name="SummaryCompressionFast" xml:space="preserve">
+    <value>Kiire</value>
+  </data>
+  <data name="SummaryCompressionNormal" xml:space="preserve">
+    <value>Tavaline</value>
+  </data>
+  <data name="SummaryCompressionBest" xml:space="preserve">
+    <value>Parim</value>
+  </data>
+  <data name="SummaryCompressionNone" xml:space="preserve">
+    <value>Tihenduseta</value>
+  </data>
+  <data name="SummaryWithPassword" xml:space="preserve">
+    <value>parooliga</value>
+  </data>
+  <data name="SummaryNoPassword" xml:space="preserve">
+    <value>paroolita</value>
+  </data>
+  <data name="NewArchiveCollapsedReason" xml:space="preserve">
+    <value>ahendatud, loendis on ainult arhiivid</value>
+  </data>
+  <data name="ExtractUnavailableHint" xml:space="preserve">
+    <value>Loendis pole arhiive, pole midagi lahti pakkida</value>
+  </data>
+  <data name="DeleteAfterEitherLabel" xml:space="preserve">
+    <value>Pärast edukat toimingut teisalda kasutatu prügikasti: lähtefailid pärast tihendamist, arhiivid pärast lahtipakkimist</value>
+  </data>
+  <data name="TestArchiveButton.Content" xml:space="preserve">
+    <value>Testi arhiivi</value>
+  </data>
+  <data name="CloseArchiveButton.Content" xml:space="preserve">
+    <value>Sulge arhiiv</value>
+  </data>
+  <data name="StatusTesting" xml:space="preserve">
+    <value>Testimine...</value>
+  </data>
+  <data name="TestResultTitle" xml:space="preserve">
+    <value>Arhiivi testimine</value>
+  </data>
+  <data name="TestNoErrorsFound" xml:space="preserve">
+    <value>Vigu ei leitud.</value>
+  </data>
+  <data name="BrowseEncryptedBadgeUnknown" xml:space="preserve">
+    <value>Krüptitud</value>
+  </data>
+  <data name="BrowseEncryptedUnknownMethod" xml:space="preserve">
+    <value>tundmatu meetod</value>
+  </data>
+  <data name="BrowseEncryptedCount" xml:space="preserve">
+    <value>Krüptitud failid ({0}): {1} / {2}.</value>
+  </data>
+  <data name="BrowseEncryptedPasswordNote" xml:space="preserve">
+    <value>Pakko küsib parooli, kui pakite faili lahti või avate selle. Failinimed pole krüptitud ja krüptimine lisab igale failile mõne baidi.</value>
+  </data>
+  <data name="BrowseEncryptedAe2Note" xml:space="preserve">
+    <value>AES-failide (AE-2) CRC-32 on tühi: neid kontrollib autentimine, mitte kontrollsumma.</value>
+  </data>
+  <data name="BrowseZipCryptoWeakNote" xml:space="preserve">
+    <value>ZipCrypto on nõrk krüptimine: faile saab taastada ilma paroolita. Kasutage tundlike andmete jaoks AES-256.</value>
+  </data>
+  <data name="BrowseOutsideInfo" xml:space="preserve">
+    <value>See on kaust kettal, mitte arhiiv. Arhiivi avamiseks topeltklõpsake seda või vajutage arhiivide loomise juurde naasmiseks "Sulge arhiiv" (Esc).</value>
+  </data>
+  <data name="BrowseUpButtonName" xml:space="preserve">
+    <value>Taseme võrra üles</value>
+  </data>
+  <data name="DestinationUpButtonName" xml:space="preserve">
+    <value>Ülemkaust</value>
+  </data>
+  <data name="DragAddCaption" xml:space="preserve">
+    <value>Lisa loendisse</value>
   </data>
 </root>

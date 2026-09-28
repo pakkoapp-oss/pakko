@@ -4364,6 +4364,7 @@ real console) and T-F226's deferred per-arrow diagram ritual — carried as open
 ### T-F198 — UI quick fixes from the 2026-09-24 UI/UX review
 
 - **Progress (2026-09-28, fix phase 7):** items 1 and 7 fixed in 4b6ce03 — list words ("Folder"/"File"/size units), the busy status lines, every dialog's Yes/No/OK and the "Error" titles come from the App's resources in 37 locales (App.Core's `DisplayText`, set by the App at startup; the preview path reads `FileItem.IsFolder`). Device (Deploy 1.5.0.16, uk-UA): browse error dialog "Помилка ... Гаразд". Items 2-6 stay for wave 4 (T-F199).
+- **Progress (2026-09-28, T-F199 step 8):** items 2 and 6 fixed (row names, lock, Up buttons, ComboBox labels, Cancel name, decrypt PasswordBox name); device 1.5.0.32.
 - **Progress (2026-09-28, T-F199 step 5):** item 3 closed — the Encrypt dialog is gone (password inline), so no prompt is open while the status says "Стиснення...". Device 1.5.0.26.
 
 - [ ] **Status:** open. Point fixes, no layout change (the layout is T-F199):
@@ -4502,6 +4503,21 @@ real console) and T-F226's deferred per-arrow diagram ritual — carried as open
   Clear clears it; 900x520 keeps the footer and the row. Notes for step 8: the seconds include the
   time spent in the password prompt (as before); list rows' UIA names are the record's
   `ToString()` (`ArchiveEntryViewModel { ... }`, `Archiver.App.Core.FileItem`) — give them names.
+  Step 8 (words and locales) done: the Compress button is "Compress to {format}" ("Стиснути в
+  TAR.GZ", follows the Format box), busy "Compressing..."; the empty-state hint no longer offers a
+  double-click (nothing handles it there); "Remove from list", the drag caption (T-F242 item 5) and
+  every key the redesign added (steps 4-7, plus four older ones: `StatusOpening`,
+  `ThisPcBreadcrumbRoot`, `NestedArchiveDepthLimitReached`, `UnsafePreview*`) are in all 37
+  locales, verbs matching Explorer's menu per locale. `AppResourceKeysTests` now requires every
+  en-US key in every locale with English's placeholders (only the three About URLs are exempt),
+  instead of a hand-kept list. UIA names (T-F198 items 2 and 6): list rows read their name
+  (`ToString()` on `FileItem`/`ArchiveEntryViewModel`, mutation-checked), the lock is a named child
+  of the row, both Up buttons are named and their tooltips localized, the three ComboBoxes are
+  labeled by their captions, Cancel reads without the glyph, the decrypt PasswordBox is "Password".
+  Device (1.5.0.32, uk-UA): "Стиснути в ZIP" -> "Стиснути в TAR.GZ"; UIA: "Формат:",
+  "Стиснення:", "Якщо файл існує:", "Батьківська папка", "На рівень вище", row "readme.txt" with
+  "Зашифровано" inside it, "Пароль", "Скасувати". Not device-checked: the drag caption (needs a
+  real drag) and long locales (de/fi/hu/el "Compress to TAR.LZMA") at the 900 px floor.
 
 - **Carried into wave 4 (2026-09-28): device checks left open by fix phase 7** — T-F254 on a
   regional Windows language (e.g. de-AT, zh-CN: menu, Shell windows and App agree on the language);
@@ -5392,7 +5408,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   the magic-byte probe runs off the UI thread; both lists do nothing while busy; preview and
   nested drill-in resolve the extracted file with `ResolveInScope`, which refuses absolute and
   `..` entry names before anything reaches ShellExecute (mutation-checked). Item 5 (drag caption)
-  goes with T-F199 step 8's localization.
+  goes with T-F199 step 8's localization — done there (`DragAddCaption`, 37 locales).
 
 - **Progress (2026-09-25, fix phase 1):** item 1 done with T-F207 (sources still on disk are
   logged and listed in a dialog); item 2 done — both dead fields removed, with the two tests that

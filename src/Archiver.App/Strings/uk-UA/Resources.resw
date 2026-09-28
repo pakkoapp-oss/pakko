@@ -15,7 +15,7 @@
 
   <!-- Buttons -->
   <data name="ArchiveButtonLabel" xml:space="preserve">
-    <value>Архів</value>
+    <value>Стиснути в {0}</value>
   </data>
   <data name="ExtractButtonLabel" xml:space="preserve">
     <value>Видобути</value>
@@ -153,10 +153,10 @@
 
   <!-- Drop zone -->
   <data name="DropZoneHint.Text" xml:space="preserve">
-    <value>Перетягніть файли або папки сюди, або двічі клацніть, щоб вибрати файли</value>
+    <value>Перетягніть файли або папки сюди</value>
   </data>
   <data name="DropZoneModeHint.Text" xml:space="preserve">
-    <value>Архіви пропонують видобування; все інше буде заархівовано</value>
+    <value>Архіви можна видобути, усе інше — стиснути</value>
   </data>
 
   <!-- Labels -->
@@ -180,7 +180,7 @@
     <value>Готово</value>
   </data>
   <data name="StatusArchiving" xml:space="preserve">
-    <value>Архівування...</value>
+    <value>Стиснення...</value>
   </data>
   <data name="StatusExtracting" xml:space="preserve">
     <value>Видобування...</value>
@@ -216,7 +216,7 @@
     <value>Буде видобуто архівів: {0} — у вказану вище папку</value>
   </data>
   <data name="OutcomeWillArchive" xml:space="preserve">
-    <value>Буде заархівовано елементів: {0} — у вказану вище папку</value>
+    <value>Буде стиснуто елементів: {0} — у вказану вище папку</value>
   </data>
   <data name="OutcomeCompressed" xml:space="preserve">
     <value>Стиснуто за {0} с — архівів: {1}</value>
@@ -409,7 +409,7 @@
     <value>{0} ГБ</value>
   </data>
   <data name="StatusArchivingCount" xml:space="preserve">
-    <value>Архівування... (файлів: {0}, {1})</value>
+    <value>Стиснення... (файлів: {0}, {1})</value>
   </data>
   <data name="StatusExtractingCount" xml:space="preserve">
     <value>Видобування... (архівів: {0})</value>
@@ -512,5 +512,14 @@
   </data>
   <data name="BrowseOutsideInfo" xml:space="preserve">
     <value>Це папка на диску, не архів. Двічі клацніть архів, щоб відкрити його, або натисніть «Закрити архів» (Esc), щоб повернутися до створення архіву.</value>
+  </data>
+  <data name="BrowseUpButtonName" xml:space="preserve">
+    <value>На рівень вище</value>
+  </data>
+  <data name="DestinationUpButtonName" xml:space="preserve">
+    <value>Батьківська папка</value>
+  </data>
+  <data name="DragAddCaption" xml:space="preserve">
+    <value>Додати до списку</value>
   </data>
 </root>

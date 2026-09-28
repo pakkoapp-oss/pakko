@@ -25,6 +25,9 @@ public sealed partial class FileItem : ObservableObject
     public DateTime Modified { get; }
     public string ModifiedDisplay => Modified.ToString("yyyy-MM-dd HH:mm");
 
+    // T-F198 item 2: a list row's accessible name is its item's ToString().
+    public override string ToString() => Name;
+
     [ObservableProperty]
     private string _size = "...";
 

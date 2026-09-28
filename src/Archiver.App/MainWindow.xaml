@@ -244,7 +244,8 @@
                         Margin="0,0,8,0"
                         Padding="8,4,8,4"
                         Command="{x:Bind ViewModel.NavigateUpCommand, Mode=OneWay}"
-                        ToolTipService.ToolTip="Up">
+                        ToolTipService.ToolTip="{x:Bind viewmodels:MainViewModel.BrowseUpButtonName}"
+                        AutomationProperties.Name="{x:Bind viewmodels:MainViewModel.BrowseUpButtonName}">
                         <FontIcon Glyph="&#xE74A;" FontFamily="Segoe MDL2 Assets" FontSize="14"/>
                     </Button>
                     <BreadcrumbBar
@@ -331,6 +332,7 @@
                                         FontSize="12"
                                         Margin="0,0,6,0"
                                         Opacity="0.7"
+                                        AutomationProperties.Name="{x:Bind viewmodels:MainViewModel.EncryptedEntryIconName}"
                                         Visibility="{x:Bind IsEncrypted}"/>
                                     <TextBlock
                                         Grid.Column="1"
@@ -436,9 +438,10 @@
                             Text="{x:Bind ViewModel.ArchiveName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                             IsEnabled="{x:Bind ViewModel.IsArchiveNameAndNotBusy, Mode=OneWay}"/>
 
-                        <TextBlock x:Uid="FormatLabel" Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" Style="{StaticResource CaptionTextBlockStyle}"/>
+                        <TextBlock x:Name="FormatLabelText" x:Uid="FormatLabel" Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" Style="{StaticResource CaptionTextBlockStyle}"/>
                         <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Spacing="12">
                             <ComboBox MinHeight="32" MinWidth="120" SelectedIndex="{x:Bind ViewModel.FormatIndex, Mode=TwoWay}"
+                                      AutomationProperties.LabeledBy="{x:Bind FormatLabelText}"
                                       IsEnabled="{x:Bind ViewModel.IsNotBusy, Mode=OneWay}">
                                 <ComboBoxItem x:Uid="FormatZipItem"/>
                                 <ComboBoxItem x:Uid="FormatTarItem" Visibility="{x:Bind ViewModel.TarFormatVisibility}"/>
@@ -448,8 +451,9 @@
                                 <ComboBoxItem x:Uid="FormatTarZstItem" Visibility="{x:Bind ViewModel.TarFormatVisibility}"/>
                                 <ComboBoxItem x:Uid="FormatTarLzmaItem" Visibility="{x:Bind ViewModel.TarFormatVisibility}"/>
                             </ComboBox>
-                            <TextBlock x:Uid="CompressionLabel" VerticalAlignment="Center" Style="{StaticResource CaptionTextBlockStyle}"/>
+                            <TextBlock x:Name="CompressionLabelText" x:Uid="CompressionLabel" VerticalAlignment="Center" Style="{StaticResource CaptionTextBlockStyle}"/>
                             <ComboBox MinHeight="32" MinWidth="140" SelectedIndex="{x:Bind ViewModel.CompressionLevelIndex, Mode=TwoWay}"
+                                      AutomationProperties.LabeledBy="{x:Bind CompressionLabelText}"
                                       IsEnabled="{x:Bind ViewModel.IsCompressionLevelEnabled, Mode=OneWay}">
                                 <ComboBoxItem x:Uid="CompressionFastItem"/>
                                 <ComboBoxItem x:Uid="CompressionNormalItem"/>
@@ -555,7 +559,8 @@
                                 Grid.Column="0"
                                 Padding="8,4,8,4"
                                 Command="{x:Bind ViewModel.NavigateDestinationUpCommand, Mode=OneWay}"
-                                ToolTipService.ToolTip="Up">
+                                ToolTipService.ToolTip="{x:Bind viewmodels:MainViewModel.DestinationUpButtonName}"
+                                AutomationProperties.Name="{x:Bind viewmodels:MainViewModel.DestinationUpButtonName}">
                                 <FontIcon Glyph="&#xE74A;" FontFamily="Segoe MDL2 Assets" FontSize="14"/>
                             </Button>
                             <TextBox
@@ -570,8 +575,9 @@
                                 IsEnabled="{x:Bind ViewModel.IsNotBusy, Mode=OneWay}"/>
                         </Grid>
 
-                        <TextBlock x:Uid="ConflictLabel" Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" Style="{StaticResource CaptionTextBlockStyle}"/>
+                        <TextBlock x:Name="ConflictLabelText" x:Uid="ConflictLabel" Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" Style="{StaticResource CaptionTextBlockStyle}"/>
                         <ComboBox Grid.Row="2" Grid.Column="1" MinHeight="32" MinWidth="200" SelectedIndex="{x:Bind ViewModel.OnConflictIndex, Mode=TwoWay}"
+                                  AutomationProperties.LabeledBy="{x:Bind ConflictLabelText}"
                                   IsEnabled="{x:Bind ViewModel.IsNotBusy, Mode=OneWay}">
                             <ComboBoxItem x:Uid="ConflictOverwriteItem"/>
                             <ComboBoxItem x:Uid="ConflictSkipItem"/>
@@ -645,6 +651,7 @@
                 <Button
                     x:Uid="CancelButton"
                     Grid.Column="1"
+                    AutomationProperties.Name="{x:Bind viewmodels:MainViewModel.CancelButtonName}"
                     VerticalAlignment="Center"
                     Command="{x:Bind ViewModel.CancelCommand, Mode=OneWay}"
                     Visibility="{x:Bind ViewModel.IsOperationRunningVisibility, Mode=OneWay}"/>

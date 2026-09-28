@@ -4,20 +4,13 @@ using FluentAssertions;
 
 namespace Archiver.App.Core.Tests;
 
-// T-F198: the words that replaced the App's hard-coded English ("Folder", "N bytes", "Yes"/"No",
-// "OK", "Error", the busy status lines). A key missing from one locale silently shows English
-// there, so every locale must have every one of them, with English's placeholders.
+// T-F198/T-F199: a key missing from one locale silently shows English there, so every locale must
+// have every key, with English's placeholders.
 public sealed partial class AppResourceKeysTests
 {
-    private static readonly string[] Keys =
-    [
-        "DialogYesButton", "DialogNoButton", "DialogOkButton", "DialogErrorTitle", "TypeFolder", "TypeFile",
-        "SizeBytes", "SizeKB", "SizeMB", "SizeGB", "StatusArchivingCount", "StatusExtractingCount",
-        // T-F199 step 5: the inline encryption panel and the decrypt prompt's reveal toggle.
-        "EncryptPasswordDialogMessage", "EncryptPasswordPlaceholder", "EncryptPasswordConfirmPlaceholder",
-        "EncryptPasswordRuleHint", "EncryptPasswordErrorTooLong",
-        "EncryptPasswordErrorMismatch", "EncryptShowPasswordCheck.Content", "PasswordDialogShowPasswordCheck",
-    ];
+    // T-F199 step 8: every word the App shows, not a hand-kept list — a new key that is not
+    // translated shows English in 35 locales. Only the About dialog's links stay English-only.
+    private static readonly string[] EnglishOnlyKeys = ["AboutGitHubUrl", "AboutPrivacyUrl", "AboutKofiUrl"];
 
     private static readonly string StringsRoot = Path.Combine(FindRepoRoot(), "src", "Archiver.App", "Strings");
 
@@ -39,7 +32,7 @@ public sealed partial class AppResourceKeysTests
         Dictionary<string, string> english = Read("en-US");
         Dictionary<string, string> local = Read(locale);
 
-        foreach (string key in Keys)
+        foreach (string key in english.Keys.Except(EnglishOnlyKeys))
         {
             local.Should().ContainKey(key, locale);
             local[key].Should().NotBeNullOrWhiteSpace($"{locale} {key}");

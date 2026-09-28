@@ -138,7 +138,8 @@ public sealed partial class MainViewModel : ObservableObject
 
     public string ArchiveButtonText => IsBusy && _lastOperation == "archive"
         ? _res.GetString("StatusArchiving")
-        : _res.GetString("ArchiveButtonLabel");
+        : string.Format(System.Globalization.CultureInfo.CurrentCulture, _res.GetString("ArchiveButtonLabel"),
+            CreateModeText.FormatName(SelectedContainerFormat));
     public string ExtractButtonText => IsBusy && _lastOperation == "extract"
         ? _res.GetString("StatusExtracting")
         : _res.GetString("ExtractButtonLabel");
@@ -390,6 +391,7 @@ public sealed partial class MainViewModel : ObservableObject
     // ZIP and all 5 compressed tar variants, keeps the compression-level control live.
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(FormatIndex))]
+    [NotifyPropertyChangedFor(nameof(ArchiveButtonText))]
     [NotifyPropertyChangedFor(nameof(IsCompressionLevelEnabled))]
     [NotifyPropertyChangedFor(nameof(NewArchiveSummary))]
     [NotifyPropertyChangedFor(nameof(ArchiveNamePlaceholder))]
@@ -458,6 +460,13 @@ public sealed partial class MainViewModel : ObservableObject
 
     public static string EncryptPasswordNote => _res.GetString("EncryptPasswordDialogMessage");
     public static string EncryptPasswordPlaceholder => _res.GetString("EncryptPasswordPlaceholder");
+
+    // T-F198 items 2 and 6: names for controls that show only a glyph (the Cancel label starts with one).
+    public static string CancelButtonName => _res.GetString("PasswordDialogCancelButton");
+    public static string BrowseUpButtonName => _res.GetString("BrowseUpButtonName");
+    public static string DestinationUpButtonName => _res.GetString("DestinationUpButtonName");
+    public static string EncryptedEntryIconName => _res.GetString("BrowseEncryptedBadgeUnknown");
+    public static string DragAddCaption => _res.GetString("DragAddCaption");
     public static string EncryptPasswordConfirmPlaceholder => _res.GetString("EncryptPasswordConfirmPlaceholder");
     public static string EncryptPasswordRuleHint =>
         _res.GetString("EncryptPasswordRuleHint").Replace("{0}", EncryptionPasswordRule.MaxLength.ToString());

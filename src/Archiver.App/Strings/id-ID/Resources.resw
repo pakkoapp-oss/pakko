@@ -15,7 +15,7 @@
 
   <!-- Buttons -->
   <data name="ArchiveButtonLabel" xml:space="preserve">
-    <value>Arsipkan</value>
+    <value>Kompres ke {0}</value>
   </data>
   <data name="ExtractButtonLabel" xml:space="preserve">
     <value>Ekstrak</value>
@@ -85,7 +85,7 @@
     <value>Keluar</value>
   </data>
   <data name="RemoveMenuItem.Text" xml:space="preserve">
-    <value>Hapus</value>
+    <value>Hapus dari daftar</value>
   </data>
 
   <!-- Archive options -->
@@ -152,10 +152,10 @@
 
   <!-- Drop zone -->
   <data name="DropZoneHint.Text" xml:space="preserve">
-    <value>Jatuhkan file atau folder di sini, atau klik dua kali untuk menelusuri file</value>
+    <value>Jatuhkan file atau folder di sini</value>
   </data>
   <data name="DropZoneModeHint.Text" xml:space="preserve">
-    <value>Arsip menawarkan ekstraksi; selain itu akan diarsipkan</value>
+    <value>Arsip dapat diekstrak; selain itu akan dikompres</value>
   </data>
 
   <!-- Labels -->
@@ -179,7 +179,7 @@
     <value>Siap</value>
   </data>
   <data name="StatusArchiving" xml:space="preserve">
-    <value>Mengarsipkan...</value>
+    <value>Mengompres...</value>
   </data>
   <data name="StatusExtracting" xml:space="preserve">
     <value>Mengekstrak...</value>
@@ -200,7 +200,7 @@
     <value>Akan mengekstrak {0} arsip ke folder di atas</value>
   </data>
   <data name="OutcomeWillArchive" xml:space="preserve">
-    <value>Akan mengarsipkan {0} item ke folder di atas</value>
+    <value>Akan mengompres {0} item ke folder di atas</value>
   </data>
 
   <!-- Dialog strings -->
@@ -366,9 +366,159 @@
     <value>{0} GB</value>
   </data>
   <data name="StatusArchivingCount" xml:space="preserve">
-    <value>Mengarsipkan... (file: {0}, {1})</value>
+    <value>Mengompres... (file: {0}, {1})</value>
   </data>
   <data name="StatusExtractingCount" xml:space="preserve">
     <value>Mengekstrak... (arsip: {0})</value>
+  </data>
+  <data name="StatusOpening" xml:space="preserve">
+    <value>Membuka...</value>
+  </data>
+  <data name="ThisPcBreadcrumbRoot" xml:space="preserve">
+    <value>PC Ini</value>
+  </data>
+  <data name="NestedArchiveDepthLimitReached" xml:space="preserve">
+    <value>Tidak dapat membuka — arsip ini bersarang terlalu dalam.</value>
+  </data>
+  <data name="UnsafePreviewConfirmTitle" xml:space="preserve">
+    <value>Tidak dapat dipratinjau</value>
+  </data>
+  <data name="UnsafePreviewConfirmMessage" xml:space="preserve">
+    <value>"{0}" tidak dapat dibuka langsung dengan aman. Ekstrak ke folder di sebelah arsip saja?</value>
+  </data>
+  <data name="OutcomeCompressed" xml:space="preserve">
+    <value>Dikompres dalam {0} dtk — arsip: {1}</value>
+  </data>
+  <data name="OutcomeExtracted" xml:space="preserve">
+    <value>Diekstrak dalam {0} dtk — arsip: {1}</value>
+  </data>
+  <data name="OutcomeProblems" xml:space="preserve">
+    <value>Selesai dengan masalah: {0}</value>
+  </data>
+  <data name="OutcomeNothingDone" xml:space="preserve">
+    <value>Tidak ada yang dilakukan — dilewati: {0}</value>
+  </data>
+  <data name="BrowseSelectionLine" xml:space="preserve">
+    <value>{0} dari {1} dipilih</value>
+  </data>
+  <data name="OutcomeShowInFolderButton.Content" xml:space="preserve">
+    <value>Tampilkan di folder</value>
+  </data>
+  <data name="OutcomeDetailsButton.Content" xml:space="preserve">
+    <value>Detail...</value>
+  </data>
+  <data name="EncryptPasswordLayoutHint" xml:space="preserve">
+    <value>Huruf di luar tata letak keyboard bahasa Inggris tidak dapat digunakan dan tidak ditambahkan. Ganti tata letak ke bahasa Inggris, kosongkan bidang, lalu ketik ulang kata sandi.</value>
+  </data>
+  <data name="EncryptPasswordRefusedCharacter" xml:space="preserve">
+    <value>Karakter itu tidak dapat digunakan dan tidak ditambahkan. Kosongkan bidang, lalu ketik ulang kata sandi hanya dengan huruf bahasa Inggris, angka, spasi, dan tanda baca.</value>
+  </data>
+  <data name="NewArchiveCardTitle.Text" xml:space="preserve">
+    <value>Arsip baru</value>
+  </data>
+  <data name="DestinationCardTitle.Text" xml:space="preserve">
+    <value>Ke mana, dan apa setelahnya</value>
+  </data>
+  <data name="EncryptZipOnlyNote.Text" xml:space="preserve">
+    <value>Enkripsi kata sandi hanya tersedia untuk ZIP</value>
+  </data>
+  <data name="RecycleBinNote.Text" xml:space="preserve">
+    <value>Pada drive jaringan dan drive yang dapat dilepas, yang tidak memiliki Recycle Bin, Pakko bertanya terlebih dahulu.</value>
+  </data>
+  <data name="EmptyAddFilesButton.Content" xml:space="preserve">
+    <value>Tambah file</value>
+  </data>
+  <data name="EmptyAddFolderButton.Content" xml:space="preserve">
+    <value>Tambah folder</value>
+  </data>
+  <data name="DestinationSaveLabel" xml:space="preserve">
+    <value>Simpan ke:</value>
+  </data>
+  <data name="DestinationExtractLabel" xml:space="preserve">
+    <value>Ekstrak ke:</value>
+  </data>
+  <data name="DeleteAfterCompressLabel" xml:space="preserve">
+    <value>Setelah kompresi berhasil, pindahkan file sumber ke Recycle Bin</value>
+  </data>
+  <data name="DeleteAfterExtractLabel" xml:space="preserve">
+    <value>Setelah ekstraksi berhasil, pindahkan arsip ke Recycle Bin</value>
+  </data>
+  <data name="ArchiveNameAutoPlaceholder" xml:space="preserve">
+    <value>{0} (otomatis)</value>
+  </data>
+  <data name="ArchiveNamePerItemPlaceholder" xml:space="preserve">
+    <value>{0}, ... (satu arsip per item)</value>
+  </data>
+  <data name="SummaryCompressionFast" xml:space="preserve">
+    <value>Cepat</value>
+  </data>
+  <data name="SummaryCompressionNormal" xml:space="preserve">
+    <value>Normal</value>
+  </data>
+  <data name="SummaryCompressionBest" xml:space="preserve">
+    <value>Terbaik</value>
+  </data>
+  <data name="SummaryCompressionNone" xml:space="preserve">
+    <value>Tanpa kompresi</value>
+  </data>
+  <data name="SummaryWithPassword" xml:space="preserve">
+    <value>dengan kata sandi</value>
+  </data>
+  <data name="SummaryNoPassword" xml:space="preserve">
+    <value>tanpa kata sandi</value>
+  </data>
+  <data name="NewArchiveCollapsedReason" xml:space="preserve">
+    <value>diciutkan, daftar hanya berisi arsip</value>
+  </data>
+  <data name="ExtractUnavailableHint" xml:space="preserve">
+    <value>Daftar tidak berisi arsip, tidak ada yang diekstrak</value>
+  </data>
+  <data name="DeleteAfterEitherLabel" xml:space="preserve">
+    <value>Setelah operasi berhasil, pindahkan yang digunakannya ke Recycle Bin: file sumber setelah Kompres, arsip setelah Ekstrak</value>
+  </data>
+  <data name="TestArchiveButton.Content" xml:space="preserve">
+    <value>Uji arsip</value>
+  </data>
+  <data name="CloseArchiveButton.Content" xml:space="preserve">
+    <value>Tutup arsip</value>
+  </data>
+  <data name="StatusTesting" xml:space="preserve">
+    <value>Menguji...</value>
+  </data>
+  <data name="TestResultTitle" xml:space="preserve">
+    <value>Uji arsip</value>
+  </data>
+  <data name="TestNoErrorsFound" xml:space="preserve">
+    <value>Tidak ditemukan kesalahan.</value>
+  </data>
+  <data name="BrowseEncryptedBadgeUnknown" xml:space="preserve">
+    <value>Terenkripsi</value>
+  </data>
+  <data name="BrowseEncryptedUnknownMethod" xml:space="preserve">
+    <value>metode tidak dikenal</value>
+  </data>
+  <data name="BrowseEncryptedCount" xml:space="preserve">
+    <value>File terenkripsi ({0}): {1} dari {2}.</value>
+  </data>
+  <data name="BrowseEncryptedPasswordNote" xml:space="preserve">
+    <value>Pakko meminta kata sandi saat Anda mengekstrak atau membuka file. Nama file tidak dienkripsi, dan enkripsi menambahkan beberapa byte ke setiap file.</value>
+  </data>
+  <data name="BrowseEncryptedAe2Note" xml:space="preserve">
+    <value>CRC-32 kosong untuk file AES (AE-2): file tersebut diverifikasi oleh autentikasi, bukan checksum.</value>
+  </data>
+  <data name="BrowseZipCryptoWeakNote" xml:space="preserve">
+    <value>ZipCrypto adalah enkripsi lemah: file dapat dipulihkan tanpa kata sandi. Gunakan AES-256 untuk apa pun yang sensitif.</value>
+  </data>
+  <data name="BrowseOutsideInfo" xml:space="preserve">
+    <value>Ini adalah folder di disk, bukan arsip. Klik dua kali arsip untuk membukanya, atau tekan "Tutup arsip" (Esc) untuk kembali membuat arsip.</value>
+  </data>
+  <data name="BrowseUpButtonName" xml:space="preserve">
+    <value>Naik satu tingkat</value>
+  </data>
+  <data name="DestinationUpButtonName" xml:space="preserve">
+    <value>Folder induk</value>
+  </data>
+  <data name="DragAddCaption" xml:space="preserve">
+    <value>Tambahkan ke daftar</value>
   </data>
 </root>

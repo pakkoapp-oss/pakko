@@ -15,7 +15,7 @@
 
   <!-- Buttons -->
   <data name="ArchiveButtonLabel" xml:space="preserve">
-    <value>Arkistoi</value>
+    <value>Pakkaa muotoon {0}</value>
   </data>
   <data name="ExtractButtonLabel" xml:space="preserve">
     <value>Pura</value>
@@ -85,7 +85,7 @@
     <value>Lopeta</value>
   </data>
   <data name="RemoveMenuItem.Text" xml:space="preserve">
-    <value>Poista</value>
+    <value>Poista luettelosta</value>
   </data>
 
   <!-- Archive options -->
@@ -152,10 +152,10 @@
 
   <!-- Drop zone -->
   <data name="DropZoneHint.Text" xml:space="preserve">
-    <value>Pudota tiedostoja tai kansioita tähän, tai kaksoisnapsauta selataksesi tiedostoja</value>
+    <value>Pudota tiedostoja tai kansioita tähän</value>
   </data>
   <data name="DropZoneModeHint.Text" xml:space="preserve">
-    <value>Arkistot tarjoutuvat purettavaksi; kaikki muu arkistoidaan</value>
+    <value>Arkistot voi purkaa; kaikki muu pakataan</value>
   </data>
 
   <!-- Labels -->
@@ -179,7 +179,7 @@
     <value>Valmis</value>
   </data>
   <data name="StatusArchiving" xml:space="preserve">
-    <value>Arkistoidaan...</value>
+    <value>Pakataan...</value>
   </data>
   <data name="StatusExtracting" xml:space="preserve">
     <value>Puretaan...</value>
@@ -200,7 +200,7 @@
     <value>Puretaan {0} arkisto(a) yllä olevaan kansioon</value>
   </data>
   <data name="OutcomeWillArchive" xml:space="preserve">
-    <value>Arkistoidaan {0} kohde(tta) yllä olevaan kansioon</value>
+    <value>Pakataan {0} kohde(tta) yllä olevaan kansioon</value>
   </data>
 
   <!-- Dialog strings -->
@@ -366,9 +366,159 @@
     <value>{0} Gt</value>
   </data>
   <data name="StatusArchivingCount" xml:space="preserve">
-    <value>Arkistoidaan... (tiedostoja: {0}, {1})</value>
+    <value>Pakataan... (tiedostoja: {0}, {1})</value>
   </data>
   <data name="StatusExtractingCount" xml:space="preserve">
     <value>Puretaan... (arkistoja: {0})</value>
+  </data>
+  <data name="StatusOpening" xml:space="preserve">
+    <value>Avataan...</value>
+  </data>
+  <data name="ThisPcBreadcrumbRoot" xml:space="preserve">
+    <value>Tämä tietokone</value>
+  </data>
+  <data name="NestedArchiveDepthLimitReached" xml:space="preserve">
+    <value>Ei voi avata — tämä arkisto on sisäkkäin liian syvällä.</value>
+  </data>
+  <data name="UnsafePreviewConfirmTitle" xml:space="preserve">
+    <value>Ei esikatseltavissa</value>
+  </data>
+  <data name="UnsafePreviewConfirmMessage" xml:space="preserve">
+    <value>Tiedostoa "{0}" ei voi avata suoraan turvallisesti. Puretaanko se sen sijaan arkiston vieressä olevaan kansioon?</value>
+  </data>
+  <data name="OutcomeCompressed" xml:space="preserve">
+    <value>Pakattu {0} s:ssa — arkistoja: {1}</value>
+  </data>
+  <data name="OutcomeExtracted" xml:space="preserve">
+    <value>Purettu {0} s:ssa — arkistoja: {1}</value>
+  </data>
+  <data name="OutcomeProblems" xml:space="preserve">
+    <value>Valmis, ongelmia: {0}</value>
+  </data>
+  <data name="OutcomeNothingDone" xml:space="preserve">
+    <value>Mitään ei tehty — ohitettu: {0}</value>
+  </data>
+  <data name="BrowseSelectionLine" xml:space="preserve">
+    <value>{0}/{1} valittu</value>
+  </data>
+  <data name="OutcomeShowInFolderButton.Content" xml:space="preserve">
+    <value>Näytä kansiossa</value>
+  </data>
+  <data name="OutcomeDetailsButton.Content" xml:space="preserve">
+    <value>Tiedot...</value>
+  </data>
+  <data name="EncryptPasswordLayoutHint" xml:space="preserve">
+    <value>Englanninkielisen näppäimistöasettelun ulkopuolisia kirjaimia ei voi käyttää, eikä niitä lisätty. Vaihda asetteluksi englanti, tyhjennä kenttä ja kirjoita salasana uudelleen.</value>
+  </data>
+  <data name="EncryptPasswordRefusedCharacter" xml:space="preserve">
+    <value>Tätä merkkiä ei voi käyttää, eikä sitä lisätty. Tyhjennä kenttä ja kirjoita salasana uudelleen käyttäen vain englanninkielisiä kirjaimia, numeroita, välilyöntejä ja välimerkkejä.</value>
+  </data>
+  <data name="NewArchiveCardTitle.Text" xml:space="preserve">
+    <value>Uusi arkisto</value>
+  </data>
+  <data name="DestinationCardTitle.Text" xml:space="preserve">
+    <value>Minne, ja mitä sen jälkeen</value>
+  </data>
+  <data name="EncryptZipOnlyNote.Text" xml:space="preserve">
+    <value>Salasanasalaus on käytettävissä vain ZIP-muodolle</value>
+  </data>
+  <data name="RecycleBinNote.Text" xml:space="preserve">
+    <value>Verkko- ja siirrettävillä asemilla, joilla ei ole roskakoria, Pakko kysyy ensin.</value>
+  </data>
+  <data name="EmptyAddFilesButton.Content" xml:space="preserve">
+    <value>Lisää tiedostoja</value>
+  </data>
+  <data name="EmptyAddFolderButton.Content" xml:space="preserve">
+    <value>Lisää kansio</value>
+  </data>
+  <data name="DestinationSaveLabel" xml:space="preserve">
+    <value>Tallenna kohteeseen:</value>
+  </data>
+  <data name="DestinationExtractLabel" xml:space="preserve">
+    <value>Pura kohteeseen:</value>
+  </data>
+  <data name="DeleteAfterCompressLabel" xml:space="preserve">
+    <value>Siirrä lähdetiedostot roskakoriin onnistuneen pakkaamisen jälkeen</value>
+  </data>
+  <data name="DeleteAfterExtractLabel" xml:space="preserve">
+    <value>Siirrä arkistot roskakoriin onnistuneen purkamisen jälkeen</value>
+  </data>
+  <data name="ArchiveNameAutoPlaceholder" xml:space="preserve">
+    <value>{0} (automaattinen)</value>
+  </data>
+  <data name="ArchiveNamePerItemPlaceholder" xml:space="preserve">
+    <value>{0}, ... (yksi arkisto kohdetta kohden)</value>
+  </data>
+  <data name="SummaryCompressionFast" xml:space="preserve">
+    <value>Nopea</value>
+  </data>
+  <data name="SummaryCompressionNormal" xml:space="preserve">
+    <value>Normaali</value>
+  </data>
+  <data name="SummaryCompressionBest" xml:space="preserve">
+    <value>Paras</value>
+  </data>
+  <data name="SummaryCompressionNone" xml:space="preserve">
+    <value>Ei pakkausta</value>
+  </data>
+  <data name="SummaryWithPassword" xml:space="preserve">
+    <value>salasanalla</value>
+  </data>
+  <data name="SummaryNoPassword" xml:space="preserve">
+    <value>ei salasanaa</value>
+  </data>
+  <data name="NewArchiveCollapsedReason" xml:space="preserve">
+    <value>kutistettu, luettelossa on vain arkistoja</value>
+  </data>
+  <data name="ExtractUnavailableHint" xml:space="preserve">
+    <value>Luettelossa ei ole arkistoja, purettavaa ei ole</value>
+  </data>
+  <data name="DeleteAfterEitherLabel" xml:space="preserve">
+    <value>Siirrä onnistuneen toiminnon jälkeen sen käyttämät kohteet roskakoriin: lähdetiedostot pakkaamisen jälkeen, arkistot purkamisen jälkeen</value>
+  </data>
+  <data name="TestArchiveButton.Content" xml:space="preserve">
+    <value>Testaa arkisto</value>
+  </data>
+  <data name="CloseArchiveButton.Content" xml:space="preserve">
+    <value>Sulje arkisto</value>
+  </data>
+  <data name="StatusTesting" xml:space="preserve">
+    <value>Testataan...</value>
+  </data>
+  <data name="TestResultTitle" xml:space="preserve">
+    <value>Arkiston testaus</value>
+  </data>
+  <data name="TestNoErrorsFound" xml:space="preserve">
+    <value>Virheitä ei löytynyt.</value>
+  </data>
+  <data name="BrowseEncryptedBadgeUnknown" xml:space="preserve">
+    <value>Salattu</value>
+  </data>
+  <data name="BrowseEncryptedUnknownMethod" xml:space="preserve">
+    <value>tuntematon menetelmä</value>
+  </data>
+  <data name="BrowseEncryptedCount" xml:space="preserve">
+    <value>Salatut tiedostot ({0}): {1}/{2}.</value>
+  </data>
+  <data name="BrowseEncryptedPasswordNote" xml:space="preserve">
+    <value>Pakko kysyy salasanaa, kun purat tai avaat tiedoston. Tiedostonimiä ei ole salattu, ja salaus lisää jokaiseen tiedostoon muutaman tavun.</value>
+  </data>
+  <data name="BrowseEncryptedAe2Note" xml:space="preserve">
+    <value>CRC-32 on tyhjä AES-tiedostoille (AE-2): ne tarkistetaan todennuksella, ei tarkistussummalla.</value>
+  </data>
+  <data name="BrowseZipCryptoWeakNote" xml:space="preserve">
+    <value>ZipCrypto on heikko salaus: tiedostot voidaan palauttaa ilman salasanaa. Käytä AES-256:ta kaikelle arkaluonteiselle.</value>
+  </data>
+  <data name="BrowseOutsideInfo" xml:space="preserve">
+    <value>Tämä on levyllä oleva kansio, ei arkisto. Avaa arkisto kaksoisnapsauttamalla sitä tai palaa arkistojen luontiin painamalla "Sulje arkisto" (Esc).</value>
+  </data>
+  <data name="BrowseUpButtonName" xml:space="preserve">
+    <value>Yksi taso ylös</value>
+  </data>
+  <data name="DestinationUpButtonName" xml:space="preserve">
+    <value>Yläkansio</value>
+  </data>
+  <data name="DragAddCaption" xml:space="preserve">
+    <value>Lisää luetteloon</value>
   </data>
 </root>

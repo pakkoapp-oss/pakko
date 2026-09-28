@@ -15,7 +15,7 @@
 
   <!-- Buttons -->
   <data name="ArchiveButtonLabel" xml:space="preserve">
-    <value>압축</value>
+    <value>{0}(으)로 압축</value>
   </data>
   <data name="ExtractButtonLabel" xml:space="preserve">
     <value>압축 풀기</value>
@@ -85,7 +85,7 @@
     <value>종료</value>
   </data>
   <data name="RemoveMenuItem.Text" xml:space="preserve">
-    <value>제거</value>
+    <value>목록에서 제거</value>
   </data>
 
   <!-- Archive options -->
@@ -152,10 +152,10 @@
 
   <!-- Drop zone -->
   <data name="DropZoneHint.Text" xml:space="preserve">
-    <value>여기에 파일 또는 폴더를 끌어다 놓거나, 더블클릭하여 파일을 찾아보세요</value>
+    <value>여기에 파일 또는 폴더를 끌어다 놓으세요</value>
   </data>
   <data name="DropZoneModeHint.Text" xml:space="preserve">
-    <value>압축 파일은 압축 풀기를 제안하며, 그 외의 항목은 압축됩니다</value>
+    <value>압축 파일은 풀 수 있으며, 그 외의 항목은 압축됩니다</value>
   </data>
 
   <!-- Labels -->
@@ -370,5 +370,155 @@
   </data>
   <data name="StatusExtractingCount" xml:space="preserve">
     <value>압축 푸는 중... (보관 파일: {0})</value>
+  </data>
+  <data name="StatusOpening" xml:space="preserve">
+    <value>여는 중...</value>
+  </data>
+  <data name="ThisPcBreadcrumbRoot" xml:space="preserve">
+    <value>내 PC</value>
+  </data>
+  <data name="NestedArchiveDepthLimitReached" xml:space="preserve">
+    <value>열 수 없음 — 이 압축 파일은 너무 깊이 중첩되어 있습니다.</value>
+  </data>
+  <data name="UnsafePreviewConfirmTitle" xml:space="preserve">
+    <value>미리 볼 수 없음</value>
+  </data>
+  <data name="UnsafePreviewConfirmMessage" xml:space="preserve">
+    <value>"{0}"은(는) 직접 안전하게 열 수 없습니다. 대신 압축 파일 옆의 폴더에 압축을 풀까요?</value>
+  </data>
+  <data name="OutcomeCompressed" xml:space="preserve">
+    <value>{0}초 만에 압축됨 — 압축 파일: {1}</value>
+  </data>
+  <data name="OutcomeExtracted" xml:space="preserve">
+    <value>{0}초 만에 압축 풀림 — 압축 파일: {1}</value>
+  </data>
+  <data name="OutcomeProblems" xml:space="preserve">
+    <value>문제와 함께 완료됨: {0}</value>
+  </data>
+  <data name="OutcomeNothingDone" xml:space="preserve">
+    <value>아무 작업도 하지 않음 — 건너뜀: {0}</value>
+  </data>
+  <data name="BrowseSelectionLine" xml:space="preserve">
+    <value>{1}개 중 {0}개 선택됨</value>
+  </data>
+  <data name="OutcomeShowInFolderButton.Content" xml:space="preserve">
+    <value>폴더에서 보기</value>
+  </data>
+  <data name="OutcomeDetailsButton.Content" xml:space="preserve">
+    <value>세부 정보...</value>
+  </data>
+  <data name="EncryptPasswordLayoutHint" xml:space="preserve">
+    <value>영어 키보드 레이아웃 이외의 문자는 사용할 수 없어 추가되지 않았습니다. 입력 언어를 영어로 바꾸고, 필드를 지운 다음 암호를 다시 입력하세요.</value>
+  </data>
+  <data name="EncryptPasswordRefusedCharacter" xml:space="preserve">
+    <value>이 문자는 사용할 수 없어 추가되지 않았습니다. 필드를 지우고 영문자, 숫자, 공백, 문장 부호만 사용하여 암호를 다시 입력하세요.</value>
+  </data>
+  <data name="NewArchiveCardTitle.Text" xml:space="preserve">
+    <value>새 압축 파일</value>
+  </data>
+  <data name="DestinationCardTitle.Text" xml:space="preserve">
+    <value>저장 위치와 이후 작업</value>
+  </data>
+  <data name="EncryptZipOnlyNote.Text" xml:space="preserve">
+    <value>암호 암호화는 ZIP에서만 사용할 수 있습니다</value>
+  </data>
+  <data name="RecycleBinNote.Text" xml:space="preserve">
+    <value>휴지통이 없는 네트워크 드라이브와 이동식 드라이브에서는 Pakko가 먼저 묻습니다.</value>
+  </data>
+  <data name="EmptyAddFilesButton.Content" xml:space="preserve">
+    <value>파일 추가</value>
+  </data>
+  <data name="EmptyAddFolderButton.Content" xml:space="preserve">
+    <value>폴더 추가</value>
+  </data>
+  <data name="DestinationSaveLabel" xml:space="preserve">
+    <value>저장 위치:</value>
+  </data>
+  <data name="DestinationExtractLabel" xml:space="preserve">
+    <value>압축 풀 위치:</value>
+  </data>
+  <data name="DeleteAfterCompressLabel" xml:space="preserve">
+    <value>압축에 성공하면 원본 파일을 휴지통으로 이동</value>
+  </data>
+  <data name="DeleteAfterExtractLabel" xml:space="preserve">
+    <value>압축 풀기에 성공하면 압축 파일을 휴지통으로 이동</value>
+  </data>
+  <data name="ArchiveNameAutoPlaceholder" xml:space="preserve">
+    <value>{0} (자동)</value>
+  </data>
+  <data name="ArchiveNamePerItemPlaceholder" xml:space="preserve">
+    <value>{0}, ... (항목마다 압축 파일 하나)</value>
+  </data>
+  <data name="SummaryCompressionFast" xml:space="preserve">
+    <value>빠름</value>
+  </data>
+  <data name="SummaryCompressionNormal" xml:space="preserve">
+    <value>보통</value>
+  </data>
+  <data name="SummaryCompressionBest" xml:space="preserve">
+    <value>최고</value>
+  </data>
+  <data name="SummaryCompressionNone" xml:space="preserve">
+    <value>압축 안 함</value>
+  </data>
+  <data name="SummaryWithPassword" xml:space="preserve">
+    <value>암호 사용</value>
+  </data>
+  <data name="SummaryNoPassword" xml:space="preserve">
+    <value>암호 없음</value>
+  </data>
+  <data name="NewArchiveCollapsedReason" xml:space="preserve">
+    <value>목록에 압축 파일만 있어 접힘</value>
+  </data>
+  <data name="ExtractUnavailableHint" xml:space="preserve">
+    <value>목록에 압축 파일이 없어 풀 항목이 없습니다</value>
+  </data>
+  <data name="DeleteAfterEitherLabel" xml:space="preserve">
+    <value>작업에 성공하면 사용한 항목을 휴지통으로 이동: 압축 후에는 원본 파일, 압축 풀기 후에는 압축 파일</value>
+  </data>
+  <data name="TestArchiveButton.Content" xml:space="preserve">
+    <value>압축 파일 테스트</value>
+  </data>
+  <data name="CloseArchiveButton.Content" xml:space="preserve">
+    <value>압축 파일 닫기</value>
+  </data>
+  <data name="StatusTesting" xml:space="preserve">
+    <value>테스트하는 중...</value>
+  </data>
+  <data name="TestResultTitle" xml:space="preserve">
+    <value>압축 파일 테스트</value>
+  </data>
+  <data name="TestNoErrorsFound" xml:space="preserve">
+    <value>오류가 없습니다.</value>
+  </data>
+  <data name="BrowseEncryptedBadgeUnknown" xml:space="preserve">
+    <value>암호화됨</value>
+  </data>
+  <data name="BrowseEncryptedUnknownMethod" xml:space="preserve">
+    <value>알 수 없는 방식</value>
+  </data>
+  <data name="BrowseEncryptedCount" xml:space="preserve">
+    <value>암호화된 파일({0}): {2}개 중 {1}개.</value>
+  </data>
+  <data name="BrowseEncryptedPasswordNote" xml:space="preserve">
+    <value>파일을 풀거나 열 때 Pakko가 암호를 묻습니다. 파일 이름은 암호화되지 않으며, 암호화하면 각 파일에 몇 바이트가 추가됩니다.</value>
+  </data>
+  <data name="BrowseEncryptedAe2Note" xml:space="preserve">
+    <value>AES(AE-2) 파일의 CRC-32는 비어 있습니다. 체크섬이 아니라 인증으로 검증됩니다.</value>
+  </data>
+  <data name="BrowseZipCryptoWeakNote" xml:space="preserve">
+    <value>ZipCrypto는 약한 암호화입니다. 암호 없이도 파일을 복구할 수 있습니다. 중요한 데이터에는 AES-256을 사용하세요.</value>
+  </data>
+  <data name="BrowseOutsideInfo" xml:space="preserve">
+    <value>디스크의 폴더이며 압축 파일이 아닙니다. 압축 파일을 두 번 클릭하여 열거나, "압축 파일 닫기"(Esc)를 눌러 압축 파일 만들기로 돌아가세요.</value>
+  </data>
+  <data name="BrowseUpButtonName" xml:space="preserve">
+    <value>한 수준 위로</value>
+  </data>
+  <data name="DestinationUpButtonName" xml:space="preserve">
+    <value>상위 폴더</value>
+  </data>
+  <data name="DragAddCaption" xml:space="preserve">
+    <value>목록에 추가</value>
   </data>
 </root>

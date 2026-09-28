@@ -15,7 +15,7 @@
 
   <!-- Buttons -->
   <data name="ArchiveButtonLabel" xml:space="preserve">
-    <value>Arhivēt</value>
+    <value>Saspiest formātā {0}</value>
   </data>
   <data name="ExtractButtonLabel" xml:space="preserve">
     <value>Atarhivēt</value>
@@ -85,7 +85,7 @@
     <value>Iziet</value>
   </data>
   <data name="RemoveMenuItem.Text" xml:space="preserve">
-    <value>Noņemt</value>
+    <value>Noņemt no saraksta</value>
   </data>
 
   <!-- Archive options -->
@@ -152,10 +152,10 @@
 
   <!-- Drop zone -->
   <data name="DropZoneHint.Text" xml:space="preserve">
-    <value>Ievelciet failus vai mapes šeit, vai veiciet dubultklikšķi, lai pārlūkotu failus</value>
+    <value>Ievelciet failus vai mapes šeit</value>
   </data>
   <data name="DropZoneModeHint.Text" xml:space="preserve">
-    <value>Arhīvi piedāvā atarhivēšanu; viss pārējais tiks arhivēts</value>
+    <value>Arhīvus var atarhivēt; viss pārējais tiek saspiests</value>
   </data>
 
   <!-- Labels -->
@@ -179,7 +179,7 @@
     <value>Gatavs</value>
   </data>
   <data name="StatusArchiving" xml:space="preserve">
-    <value>Notiek arhivēšana...</value>
+    <value>Notiek saspiešana...</value>
   </data>
   <data name="StatusExtracting" xml:space="preserve">
     <value>Notiek atarhivēšana...</value>
@@ -200,7 +200,7 @@
     <value>Tiks atarhivēti {0} arhīvi augstāk norādītajā mapē</value>
   </data>
   <data name="OutcomeWillArchive" xml:space="preserve">
-    <value>Tiks arhivēti {0} vienumi augstāk norādītajā mapē</value>
+    <value>Tiks saspiesti {0} vienumi augstāk norādītajā mapē</value>
   </data>
 
   <!-- Dialog strings -->
@@ -366,9 +366,159 @@
     <value>{0} GB</value>
   </data>
   <data name="StatusArchivingCount" xml:space="preserve">
-    <value>Notiek arhivēšana... (faili: {0}, {1})</value>
+    <value>Notiek saspiešana... (faili: {0}, {1})</value>
   </data>
   <data name="StatusExtractingCount" xml:space="preserve">
     <value>Notiek atarhivēšana... (arhīvi: {0})</value>
+  </data>
+  <data name="StatusOpening" xml:space="preserve">
+    <value>Notiek atvēršana...</value>
+  </data>
+  <data name="ThisPcBreadcrumbRoot" xml:space="preserve">
+    <value>Šis dators</value>
+  </data>
+  <data name="NestedArchiveDepthLimitReached" xml:space="preserve">
+    <value>Nevar atvērt — šis arhīvs ir ligzdots pārāk dziļi.</value>
+  </data>
+  <data name="UnsafePreviewConfirmTitle" xml:space="preserve">
+    <value>Priekšskatījums nav pieejams</value>
+  </data>
+  <data name="UnsafePreviewConfirmMessage" xml:space="preserve">
+    <value>"{0}" nevar droši atvērt tieši. Vai tā vietā atarhivēt to mapē blakus arhīvam?</value>
+  </data>
+  <data name="OutcomeCompressed" xml:space="preserve">
+    <value>Saspiests {0} s laikā — arhīvi: {1}</value>
+  </data>
+  <data name="OutcomeExtracted" xml:space="preserve">
+    <value>Atarhivēts {0} s laikā — arhīvi: {1}</value>
+  </data>
+  <data name="OutcomeProblems" xml:space="preserve">
+    <value>Pabeigts ar problēmām: {0}</value>
+  </data>
+  <data name="OutcomeNothingDone" xml:space="preserve">
+    <value>Nekas netika darīts — izlaisti: {0}</value>
+  </data>
+  <data name="BrowseSelectionLine" xml:space="preserve">
+    <value>Atlasīti {0} no {1}</value>
+  </data>
+  <data name="OutcomeShowInFolderButton.Content" xml:space="preserve">
+    <value>Rādīt mapē</value>
+  </data>
+  <data name="OutcomeDetailsButton.Content" xml:space="preserve">
+    <value>Detalizēti...</value>
+  </data>
+  <data name="EncryptPasswordLayoutHint" xml:space="preserve">
+    <value>Burtus ārpus angļu tastatūras izkārtojuma nevar izmantot, un tie netika pievienoti. Pārslēdziet izkārtojumu uz angļu, notīriet lauku un ierakstiet paroli vēlreiz.</value>
+  </data>
+  <data name="EncryptPasswordRefusedCharacter" xml:space="preserve">
+    <value>Šo rakstzīmi nevar izmantot, un tā netika pievienota. Notīriet lauku un ierakstiet paroli vēlreiz, izmantojot tikai angļu burtus, ciparus, atstarpes un pieturzīmes.</value>
+  </data>
+  <data name="NewArchiveCardTitle.Text" xml:space="preserve">
+    <value>Jauns arhīvs</value>
+  </data>
+  <data name="DestinationCardTitle.Text" xml:space="preserve">
+    <value>Kur un kas pēc tam</value>
+  </data>
+  <data name="EncryptZipOnlyNote.Text" xml:space="preserve">
+    <value>Šifrēšana ar paroli ir pieejama tikai ZIP formātam</value>
+  </data>
+  <data name="RecycleBinNote.Text" xml:space="preserve">
+    <value>Tīkla un noņemamajos diskos, kuros nav atkritnes, Pakko vispirms jautā.</value>
+  </data>
+  <data name="EmptyAddFilesButton.Content" xml:space="preserve">
+    <value>Pievienot failus</value>
+  </data>
+  <data name="EmptyAddFolderButton.Content" xml:space="preserve">
+    <value>Pievienot mapi</value>
+  </data>
+  <data name="DestinationSaveLabel" xml:space="preserve">
+    <value>Saglabāt:</value>
+  </data>
+  <data name="DestinationExtractLabel" xml:space="preserve">
+    <value>Atarhivēt uz:</value>
+  </data>
+  <data name="DeleteAfterCompressLabel" xml:space="preserve">
+    <value>Pēc veiksmīgas saspiešanas pārvietot avota failus uz atkritni</value>
+  </data>
+  <data name="DeleteAfterExtractLabel" xml:space="preserve">
+    <value>Pēc veiksmīgas atarhivēšanas pārvietot arhīvus uz atkritni</value>
+  </data>
+  <data name="ArchiveNameAutoPlaceholder" xml:space="preserve">
+    <value>{0} (automātiski)</value>
+  </data>
+  <data name="ArchiveNamePerItemPlaceholder" xml:space="preserve">
+    <value>{0}, ... (viens arhīvs katram vienumam)</value>
+  </data>
+  <data name="SummaryCompressionFast" xml:space="preserve">
+    <value>Ātra</value>
+  </data>
+  <data name="SummaryCompressionNormal" xml:space="preserve">
+    <value>Parasta</value>
+  </data>
+  <data name="SummaryCompressionBest" xml:space="preserve">
+    <value>Labākā</value>
+  </data>
+  <data name="SummaryCompressionNone" xml:space="preserve">
+    <value>Bez saspiešanas</value>
+  </data>
+  <data name="SummaryWithPassword" xml:space="preserve">
+    <value>ar paroli</value>
+  </data>
+  <data name="SummaryNoPassword" xml:space="preserve">
+    <value>bez paroles</value>
+  </data>
+  <data name="NewArchiveCollapsedReason" xml:space="preserve">
+    <value>sakļauts, sarakstā ir tikai arhīvi</value>
+  </data>
+  <data name="ExtractUnavailableHint" xml:space="preserve">
+    <value>Sarakstā nav arhīvu, nav ko atarhivēt</value>
+  </data>
+  <data name="DeleteAfterEitherLabel" xml:space="preserve">
+    <value>Pēc veiksmīgas darbības pārvietot uz atkritni to, ko tā izmantoja: avota failus pēc saspiešanas, arhīvus pēc atarhivēšanas</value>
+  </data>
+  <data name="TestArchiveButton.Content" xml:space="preserve">
+    <value>Testēt arhīvu</value>
+  </data>
+  <data name="CloseArchiveButton.Content" xml:space="preserve">
+    <value>Aizvērt arhīvu</value>
+  </data>
+  <data name="StatusTesting" xml:space="preserve">
+    <value>Notiek testēšana...</value>
+  </data>
+  <data name="TestResultTitle" xml:space="preserve">
+    <value>Arhīva testēšana</value>
+  </data>
+  <data name="TestNoErrorsFound" xml:space="preserve">
+    <value>Kļūdas netika atrastas.</value>
+  </data>
+  <data name="BrowseEncryptedBadgeUnknown" xml:space="preserve">
+    <value>Šifrēts</value>
+  </data>
+  <data name="BrowseEncryptedUnknownMethod" xml:space="preserve">
+    <value>nezināma metode</value>
+  </data>
+  <data name="BrowseEncryptedCount" xml:space="preserve">
+    <value>Šifrēti faili ({0}): {1} no {2}.</value>
+  </data>
+  <data name="BrowseEncryptedPasswordNote" xml:space="preserve">
+    <value>Pakko pieprasa paroli, kad atarhivējat vai atverat failu. Failu nosaukumi nav šifrēti, un šifrēšana katram failam pievieno dažus baitus.</value>
+  </data>
+  <data name="BrowseEncryptedAe2Note" xml:space="preserve">
+    <value>AES (AE-2) failiem CRC-32 ir tukšs: tos pārbauda autentifikācija, nevis kontrolsumma.</value>
+  </data>
+  <data name="BrowseZipCryptoWeakNote" xml:space="preserve">
+    <value>ZipCrypto ir vāja šifrēšana: failus var atgūt bez paroles. Jebkuriem sensitīviem datiem izmantojiet AES-256.</value>
+  </data>
+  <data name="BrowseOutsideInfo" xml:space="preserve">
+    <value>Šī ir mape diskā, nevis arhīvs. Veiciet dubultklikšķi uz arhīva, lai to atvērtu, vai nospiediet "Aizvērt arhīvu" (Esc), lai atgrieztos pie arhīvu izveides.</value>
+  </data>
+  <data name="BrowseUpButtonName" xml:space="preserve">
+    <value>Vienu līmeni augstāk</value>
+  </data>
+  <data name="DestinationUpButtonName" xml:space="preserve">
+    <value>Vecākmape</value>
+  </data>
+  <data name="DragAddCaption" xml:space="preserve">
+    <value>Pievienot sarakstam</value>
   </data>
 </root>

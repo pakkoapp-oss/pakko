@@ -15,7 +15,7 @@
 
   <!-- Buttons -->
   <data name="ArchiveButtonLabel" xml:space="preserve">
-    <value>Archivovať</value>
+    <value>Komprimovať do {0}</value>
   </data>
   <data name="ExtractButtonLabel" xml:space="preserve">
     <value>Rozbaliť</value>
@@ -85,7 +85,7 @@
     <value>Ukončiť</value>
   </data>
   <data name="RemoveMenuItem.Text" xml:space="preserve">
-    <value>Odstrániť</value>
+    <value>Odstrániť zo zoznamu</value>
   </data>
 
   <!-- Archive options -->
@@ -152,10 +152,10 @@
 
   <!-- Drop zone -->
   <data name="DropZoneHint.Text" xml:space="preserve">
-    <value>Presuňte sem súbory alebo priečinky, alebo dvakrát kliknite na výber súborov</value>
+    <value>Presuňte sem súbory alebo priečinky</value>
   </data>
   <data name="DropZoneModeHint.Text" xml:space="preserve">
-    <value>Archívy ponúkajú rozbalenie; všetko ostatné bude zabalené</value>
+    <value>Archívy možno rozbaliť; všetko ostatné sa skomprimuje</value>
   </data>
 
   <!-- Labels -->
@@ -179,7 +179,7 @@
     <value>Pripravené</value>
   </data>
   <data name="StatusArchiving" xml:space="preserve">
-    <value>Archivovanie...</value>
+    <value>Komprimácia...</value>
   </data>
   <data name="StatusExtracting" xml:space="preserve">
     <value>Rozbaľovanie...</value>
@@ -200,7 +200,7 @@
     <value>Rozbalí sa archívov: {0} — do priečinka vyššie</value>
   </data>
   <data name="OutcomeWillArchive" xml:space="preserve">
-    <value>Zabalí sa položiek: {0} — do priečinka vyššie</value>
+    <value>Skomprimuje sa položiek: {0} — do priečinka vyššie</value>
   </data>
 
   <!-- Dialog strings -->
@@ -366,9 +366,159 @@
     <value>{0} GB</value>
   </data>
   <data name="StatusArchivingCount" xml:space="preserve">
-    <value>Archivovanie... (súbory: {0}, {1})</value>
+    <value>Komprimácia... (súbory: {0}, {1})</value>
   </data>
   <data name="StatusExtractingCount" xml:space="preserve">
     <value>Rozbaľovanie... (archívy: {0})</value>
+  </data>
+  <data name="StatusOpening" xml:space="preserve">
+    <value>Otváranie...</value>
+  </data>
+  <data name="ThisPcBreadcrumbRoot" xml:space="preserve">
+    <value>Tento počítač</value>
+  </data>
+  <data name="NestedArchiveDepthLimitReached" xml:space="preserve">
+    <value>Nedá sa otvoriť — tento archív je vnorený príliš hlboko.</value>
+  </data>
+  <data name="UnsafePreviewConfirmTitle" xml:space="preserve">
+    <value>Ukážka nie je k dispozícii</value>
+  </data>
+  <data name="UnsafePreviewConfirmMessage" xml:space="preserve">
+    <value>"{0}" nemožno bezpečne otvoriť priamo. Rozbaliť ho namiesto toho do priečinka vedľa archívu?</value>
+  </data>
+  <data name="OutcomeCompressed" xml:space="preserve">
+    <value>Skomprimované za {0} s — archívy: {1}</value>
+  </data>
+  <data name="OutcomeExtracted" xml:space="preserve">
+    <value>Rozbalené za {0} s — archívy: {1}</value>
+  </data>
+  <data name="OutcomeProblems" xml:space="preserve">
+    <value>Dokončené s problémami: {0}</value>
+  </data>
+  <data name="OutcomeNothingDone" xml:space="preserve">
+    <value>Nič sa neurobilo — preskočené: {0}</value>
+  </data>
+  <data name="BrowseSelectionLine" xml:space="preserve">
+    <value>Vybraté {0} z {1}</value>
+  </data>
+  <data name="OutcomeShowInFolderButton.Content" xml:space="preserve">
+    <value>Zobraziť v priečinku</value>
+  </data>
+  <data name="OutcomeDetailsButton.Content" xml:space="preserve">
+    <value>Podrobnosti...</value>
+  </data>
+  <data name="EncryptPasswordLayoutHint" xml:space="preserve">
+    <value>Písmená mimo anglického rozloženia klávesnice nemožno použiť a neboli pridané. Prepnite rozloženie na angličtinu, vymažte pole a zadajte heslo znova.</value>
+  </data>
+  <data name="EncryptPasswordRefusedCharacter" xml:space="preserve">
+    <value>Tento znak nemožno použiť a nebol pridaný. Vymažte pole a zadajte heslo znova iba pomocou anglických písmen, číslic, medzier a interpunkcie.</value>
+  </data>
+  <data name="NewArchiveCardTitle.Text" xml:space="preserve">
+    <value>Nový archív</value>
+  </data>
+  <data name="DestinationCardTitle.Text" xml:space="preserve">
+    <value>Kam a čo potom</value>
+  </data>
+  <data name="EncryptZipOnlyNote.Text" xml:space="preserve">
+    <value>Šifrovanie heslom je k dispozícii iba pre ZIP</value>
+  </data>
+  <data name="RecycleBinNote.Text" xml:space="preserve">
+    <value>Pri sieťových a vymeniteľných jednotkách, ktoré nemajú Kôš, sa Pakko najprv opýta.</value>
+  </data>
+  <data name="EmptyAddFilesButton.Content" xml:space="preserve">
+    <value>Pridať súbory</value>
+  </data>
+  <data name="EmptyAddFolderButton.Content" xml:space="preserve">
+    <value>Pridať priečinok</value>
+  </data>
+  <data name="DestinationSaveLabel" xml:space="preserve">
+    <value>Uložiť do:</value>
+  </data>
+  <data name="DestinationExtractLabel" xml:space="preserve">
+    <value>Rozbaliť do:</value>
+  </data>
+  <data name="DeleteAfterCompressLabel" xml:space="preserve">
+    <value>Po úspešnej komprimácii presunúť zdrojové súbory do Koša</value>
+  </data>
+  <data name="DeleteAfterExtractLabel" xml:space="preserve">
+    <value>Po úspešnom rozbalení presunúť archívy do Koša</value>
+  </data>
+  <data name="ArchiveNameAutoPlaceholder" xml:space="preserve">
+    <value>{0} (automaticky)</value>
+  </data>
+  <data name="ArchiveNamePerItemPlaceholder" xml:space="preserve">
+    <value>{0}, ... (jeden archív pre každú položku)</value>
+  </data>
+  <data name="SummaryCompressionFast" xml:space="preserve">
+    <value>Rýchla</value>
+  </data>
+  <data name="SummaryCompressionNormal" xml:space="preserve">
+    <value>Normálna</value>
+  </data>
+  <data name="SummaryCompressionBest" xml:space="preserve">
+    <value>Najlepšia</value>
+  </data>
+  <data name="SummaryCompressionNone" xml:space="preserve">
+    <value>Bez kompresie</value>
+  </data>
+  <data name="SummaryWithPassword" xml:space="preserve">
+    <value>s heslom</value>
+  </data>
+  <data name="SummaryNoPassword" xml:space="preserve">
+    <value>bez hesla</value>
+  </data>
+  <data name="NewArchiveCollapsedReason" xml:space="preserve">
+    <value>zbalené, zoznam obsahuje iba archívy</value>
+  </data>
+  <data name="ExtractUnavailableHint" xml:space="preserve">
+    <value>Zoznam neobsahuje archívy, nie je čo rozbaliť</value>
+  </data>
+  <data name="DeleteAfterEitherLabel" xml:space="preserve">
+    <value>Po úspešnej operácii presunúť do Koša to, s čím pracovala: zdrojové súbory po komprimácii, archívy po rozbalení</value>
+  </data>
+  <data name="TestArchiveButton.Content" xml:space="preserve">
+    <value>Otestovať archív</value>
+  </data>
+  <data name="CloseArchiveButton.Content" xml:space="preserve">
+    <value>Zavrieť archív</value>
+  </data>
+  <data name="StatusTesting" xml:space="preserve">
+    <value>Testovanie...</value>
+  </data>
+  <data name="TestResultTitle" xml:space="preserve">
+    <value>Test archívu</value>
+  </data>
+  <data name="TestNoErrorsFound" xml:space="preserve">
+    <value>Nenašli sa žiadne chyby.</value>
+  </data>
+  <data name="BrowseEncryptedBadgeUnknown" xml:space="preserve">
+    <value>Šifrované</value>
+  </data>
+  <data name="BrowseEncryptedUnknownMethod" xml:space="preserve">
+    <value>neznáma metóda</value>
+  </data>
+  <data name="BrowseEncryptedCount" xml:space="preserve">
+    <value>Šifrované súbory ({0}): {1} z {2}.</value>
+  </data>
+  <data name="BrowseEncryptedPasswordNote" xml:space="preserve">
+    <value>Pakko sa opýta na heslo, keď súbor rozbalíte alebo otvoríte. Názvy súborov nie sú šifrované a šifrovanie pridá ku každému súboru niekoľko bajtov.</value>
+  </data>
+  <data name="BrowseEncryptedAe2Note" xml:space="preserve">
+    <value>CRC-32 je pri súboroch AES (AE-2) prázdne: overuje ich autentifikácia, nie kontrolný súčet.</value>
+  </data>
+  <data name="BrowseZipCryptoWeakNote" xml:space="preserve">
+    <value>ZipCrypto je slabé šifrovanie: súbory možno obnoviť aj bez hesla. Na citlivé údaje použite AES-256.</value>
+  </data>
+  <data name="BrowseOutsideInfo" xml:space="preserve">
+    <value>Toto je priečinok na disku, nie archív. Dvakrát kliknite na archív, aby ste ho otvorili, alebo stlačte "Zavrieť archív" (Esc) a vráťte sa k vytváraniu archívov.</value>
+  </data>
+  <data name="BrowseUpButtonName" xml:space="preserve">
+    <value>O úroveň vyššie</value>
+  </data>
+  <data name="DestinationUpButtonName" xml:space="preserve">
+    <value>Nadradený priečinok</value>
+  </data>
+  <data name="DragAddCaption" xml:space="preserve">
+    <value>Pridať do zoznamu</value>
   </data>
 </root>

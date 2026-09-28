@@ -15,7 +15,7 @@
 
   <!-- Buttons -->
   <data name="ArchiveButtonLabel" xml:space="preserve">
-    <value>Tömörítés</value>
+    <value>Tömörítés ide: {0}</value>
   </data>
   <data name="ExtractButtonLabel" xml:space="preserve">
     <value>Kibontás</value>
@@ -85,7 +85,7 @@
     <value>Kilépés</value>
   </data>
   <data name="RemoveMenuItem.Text" xml:space="preserve">
-    <value>Eltávolítás</value>
+    <value>Eltávolítás a listából</value>
   </data>
 
   <!-- Archive options -->
@@ -152,10 +152,10 @@
 
   <!-- Drop zone -->
   <data name="DropZoneHint.Text" xml:space="preserve">
-    <value>Húzzon ide fájlokat vagy mappákat, vagy kattintson duplán a fájlok tallózásához</value>
+    <value>Húzzon ide fájlokat vagy mappákat</value>
   </data>
   <data name="DropZoneModeHint.Text" xml:space="preserve">
-    <value>Az archívumok kibontást ajánlanak fel; minden más tömörítve lesz</value>
+    <value>Az archívumok kibonthatók; minden más tömörítve lesz</value>
   </data>
 
   <!-- Labels -->
@@ -370,5 +370,155 @@
   </data>
   <data name="StatusExtractingCount" xml:space="preserve">
     <value>Kibontás... (archívumok: {0})</value>
+  </data>
+  <data name="StatusOpening" xml:space="preserve">
+    <value>Megnyitás...</value>
+  </data>
+  <data name="ThisPcBreadcrumbRoot" xml:space="preserve">
+    <value>Ez a gép</value>
+  </data>
+  <data name="NestedArchiveDepthLimitReached" xml:space="preserve">
+    <value>Nem nyitható meg — ez az archívum túl mélyen van beágyazva.</value>
+  </data>
+  <data name="UnsafePreviewConfirmTitle" xml:space="preserve">
+    <value>Nem tekinthető meg</value>
+  </data>
+  <data name="UnsafePreviewConfirmMessage" xml:space="preserve">
+    <value>A(z) "{0}" nem nyitható meg közvetlenül biztonságosan. Kibontja inkább az archívum melletti mappába?</value>
+  </data>
+  <data name="OutcomeCompressed" xml:space="preserve">
+    <value>Tömörítve {0} mp alatt — archívumok: {1}</value>
+  </data>
+  <data name="OutcomeExtracted" xml:space="preserve">
+    <value>Kibontva {0} mp alatt — archívumok: {1}</value>
+  </data>
+  <data name="OutcomeProblems" xml:space="preserve">
+    <value>Befejezve, hibák: {0}</value>
+  </data>
+  <data name="OutcomeNothingDone" xml:space="preserve">
+    <value>Semmi sem történt — kihagyva: {0}</value>
+  </data>
+  <data name="BrowseSelectionLine" xml:space="preserve">
+    <value>{0} / {1} kijelölve</value>
+  </data>
+  <data name="OutcomeShowInFolderButton.Content" xml:space="preserve">
+    <value>Megjelenítés a mappában</value>
+  </data>
+  <data name="OutcomeDetailsButton.Content" xml:space="preserve">
+    <value>Részletek...</value>
+  </data>
+  <data name="EncryptPasswordLayoutHint" xml:space="preserve">
+    <value>Az angol billentyűzetkiosztáson kívüli betűk nem használhatók, és nem lettek hozzáadva. Váltson angol kiosztásra, ürítse ki a mezőt, és írja be újra a jelszót.</value>
+  </data>
+  <data name="EncryptPasswordRefusedCharacter" xml:space="preserve">
+    <value>Ez a karakter nem használható, és nem lett hozzáadva. Ürítse ki a mezőt, és írja be újra a jelszót csak angol betűkkel, számjegyekkel, szóközökkel és írásjelekkel.</value>
+  </data>
+  <data name="NewArchiveCardTitle.Text" xml:space="preserve">
+    <value>Új archívum</value>
+  </data>
+  <data name="DestinationCardTitle.Text" xml:space="preserve">
+    <value>Hová, és mi utána</value>
+  </data>
+  <data name="EncryptZipOnlyNote.Text" xml:space="preserve">
+    <value>A jelszavas titkosítás csak ZIP formátumhoz érhető el</value>
+  </data>
+  <data name="RecycleBinNote.Text" xml:space="preserve">
+    <value>Hálózati és cserélhető meghajtókon, amelyeken nincs Lomtár, a Pakko előbb rákérdez.</value>
+  </data>
+  <data name="EmptyAddFilesButton.Content" xml:space="preserve">
+    <value>Fájlok hozzáadása</value>
+  </data>
+  <data name="EmptyAddFolderButton.Content" xml:space="preserve">
+    <value>Mappa hozzáadása</value>
+  </data>
+  <data name="DestinationSaveLabel" xml:space="preserve">
+    <value>Mentés ide:</value>
+  </data>
+  <data name="DestinationExtractLabel" xml:space="preserve">
+    <value>Kibontás ide:</value>
+  </data>
+  <data name="DeleteAfterCompressLabel" xml:space="preserve">
+    <value>Sikeres tömörítés után a forrásfájlok áthelyezése a Lomtárba</value>
+  </data>
+  <data name="DeleteAfterExtractLabel" xml:space="preserve">
+    <value>Sikeres kibontás után az archívumok áthelyezése a Lomtárba</value>
+  </data>
+  <data name="ArchiveNameAutoPlaceholder" xml:space="preserve">
+    <value>{0} (automatikus)</value>
+  </data>
+  <data name="ArchiveNamePerItemPlaceholder" xml:space="preserve">
+    <value>{0}, ... (elemenként egy archívum)</value>
+  </data>
+  <data name="SummaryCompressionFast" xml:space="preserve">
+    <value>Gyors</value>
+  </data>
+  <data name="SummaryCompressionNormal" xml:space="preserve">
+    <value>Normál</value>
+  </data>
+  <data name="SummaryCompressionBest" xml:space="preserve">
+    <value>Legjobb</value>
+  </data>
+  <data name="SummaryCompressionNone" xml:space="preserve">
+    <value>Tömörítés nélkül</value>
+  </data>
+  <data name="SummaryWithPassword" xml:space="preserve">
+    <value>jelszóval</value>
+  </data>
+  <data name="SummaryNoPassword" xml:space="preserve">
+    <value>jelszó nélkül</value>
+  </data>
+  <data name="NewArchiveCollapsedReason" xml:space="preserve">
+    <value>összecsukva, a lista csak archívumokat tartalmaz</value>
+  </data>
+  <data name="ExtractUnavailableHint" xml:space="preserve">
+    <value>A lista nem tartalmaz archívumot, nincs mit kibontani</value>
+  </data>
+  <data name="DeleteAfterEitherLabel" xml:space="preserve">
+    <value>Sikeres művelet után a felhasznált elemek áthelyezése a Lomtárba: tömörítés után a forrásfájlok, kibontás után az archívumok</value>
+  </data>
+  <data name="TestArchiveButton.Content" xml:space="preserve">
+    <value>Archívum tesztelése</value>
+  </data>
+  <data name="CloseArchiveButton.Content" xml:space="preserve">
+    <value>Archívum bezárása</value>
+  </data>
+  <data name="StatusTesting" xml:space="preserve">
+    <value>Tesztelés...</value>
+  </data>
+  <data name="TestResultTitle" xml:space="preserve">
+    <value>Archívum tesztelése</value>
+  </data>
+  <data name="TestNoErrorsFound" xml:space="preserve">
+    <value>Nem található hiba.</value>
+  </data>
+  <data name="BrowseEncryptedBadgeUnknown" xml:space="preserve">
+    <value>Titkosított</value>
+  </data>
+  <data name="BrowseEncryptedUnknownMethod" xml:space="preserve">
+    <value>ismeretlen módszer</value>
+  </data>
+  <data name="BrowseEncryptedCount" xml:space="preserve">
+    <value>Titkosított fájlok ({0}): {1} / {2}.</value>
+  </data>
+  <data name="BrowseEncryptedPasswordNote" xml:space="preserve">
+    <value>A Pakko kibontáskor vagy egy fájl megnyitásakor kéri a jelszót. A fájlnevek nincsenek titkosítva, és a titkosítás minden fájlhoz hozzáad néhány bájtot.</value>
+  </data>
+  <data name="BrowseEncryptedAe2Note" xml:space="preserve">
+    <value>Az AES (AE-2) fájlok CRC-32 értéke üres: ezeket hitelesítés ellenőrzi, nem ellenőrzőösszeg.</value>
+  </data>
+  <data name="BrowseZipCryptoWeakNote" xml:space="preserve">
+    <value>A ZipCrypto gyenge titkosítás: a fájlok jelszó nélkül is visszanyerhetők. Bizalmas adatokhoz használjon AES-256-ot.</value>
+  </data>
+  <data name="BrowseOutsideInfo" xml:space="preserve">
+    <value>Ez egy mappa a lemezen, nem archívum. Kattintson duplán egy archívumra a megnyitásához, vagy nyomja meg az "Archívum bezárása" (Esc) gombot az archívumok létrehozásához való visszatéréshez.</value>
+  </data>
+  <data name="BrowseUpButtonName" xml:space="preserve">
+    <value>Egy szinttel feljebb</value>
+  </data>
+  <data name="DestinationUpButtonName" xml:space="preserve">
+    <value>Szülőmappa</value>
+  </data>
+  <data name="DragAddCaption" xml:space="preserve">
+    <value>Hozzáadás a listához</value>
   </data>
 </root>

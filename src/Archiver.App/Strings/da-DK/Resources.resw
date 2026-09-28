@@ -15,7 +15,7 @@
 
   <!-- Buttons -->
   <data name="ArchiveButtonLabel" xml:space="preserve">
-    <value>Arkivér</value>
+    <value>Komprimer til {0}</value>
   </data>
   <data name="ExtractButtonLabel" xml:space="preserve">
     <value>Udpak</value>
@@ -85,7 +85,7 @@
     <value>Afslut</value>
   </data>
   <data name="RemoveMenuItem.Text" xml:space="preserve">
-    <value>Fjern</value>
+    <value>Fjern fra listen</value>
   </data>
 
   <!-- Archive options -->
@@ -152,10 +152,10 @@
 
   <!-- Drop zone -->
   <data name="DropZoneHint.Text" xml:space="preserve">
-    <value>Slip filer eller mapper her, eller dobbeltklik for at gennemse filer</value>
+    <value>Slip filer eller mapper her</value>
   </data>
   <data name="DropZoneModeHint.Text" xml:space="preserve">
-    <value>Arkiver tilbyder udpakning; alt andet bliver arkiveret</value>
+    <value>Arkiver kan udpakkes; alt andet komprimeres</value>
   </data>
 
   <!-- Labels -->
@@ -179,7 +179,7 @@
     <value>Klar</value>
   </data>
   <data name="StatusArchiving" xml:space="preserve">
-    <value>Arkiverer...</value>
+    <value>Komprimerer...</value>
   </data>
   <data name="StatusExtracting" xml:space="preserve">
     <value>Udpakker...</value>
@@ -200,7 +200,7 @@
     <value>{0} arkiv(er) udpakkes til mappen ovenfor</value>
   </data>
   <data name="OutcomeWillArchive" xml:space="preserve">
-    <value>{0} element(er) arkiveres til mappen ovenfor</value>
+    <value>{0} element(er) komprimeres til mappen ovenfor</value>
   </data>
 
   <!-- Dialog strings -->
@@ -366,9 +366,159 @@
     <value>{0} GB</value>
   </data>
   <data name="StatusArchivingCount" xml:space="preserve">
-    <value>Arkiverer... (filer: {0}, {1})</value>
+    <value>Komprimerer... (filer: {0}, {1})</value>
   </data>
   <data name="StatusExtractingCount" xml:space="preserve">
     <value>Udpakker... (arkiver: {0})</value>
+  </data>
+  <data name="StatusOpening" xml:space="preserve">
+    <value>Åbner...</value>
+  </data>
+  <data name="ThisPcBreadcrumbRoot" xml:space="preserve">
+    <value>Denne pc</value>
+  </data>
+  <data name="NestedArchiveDepthLimitReached" xml:space="preserve">
+    <value>Kan ikke åbne — dette arkiv er indlejret for dybt.</value>
+  </data>
+  <data name="UnsafePreviewConfirmTitle" xml:space="preserve">
+    <value>Kan ikke vises</value>
+  </data>
+  <data name="UnsafePreviewConfirmMessage" xml:space="preserve">
+    <value>"{0}" kan ikke åbnes sikkert direkte. Vil du i stedet udpakke den til en mappe ved siden af arkivet?</value>
+  </data>
+  <data name="OutcomeCompressed" xml:space="preserve">
+    <value>Komprimeret på {0} s — arkiver: {1}</value>
+  </data>
+  <data name="OutcomeExtracted" xml:space="preserve">
+    <value>Udpakket på {0} s — arkiver: {1}</value>
+  </data>
+  <data name="OutcomeProblems" xml:space="preserve">
+    <value>Afsluttet med problemer: {0}</value>
+  </data>
+  <data name="OutcomeNothingDone" xml:space="preserve">
+    <value>Intet blev udført — sprunget over: {0}</value>
+  </data>
+  <data name="BrowseSelectionLine" xml:space="preserve">
+    <value>{0} af {1} valgt</value>
+  </data>
+  <data name="OutcomeShowInFolderButton.Content" xml:space="preserve">
+    <value>Vis i mappe</value>
+  </data>
+  <data name="OutcomeDetailsButton.Content" xml:space="preserve">
+    <value>Detaljer...</value>
+  </data>
+  <data name="EncryptPasswordLayoutHint" xml:space="preserve">
+    <value>Bogstaver uden for det engelske tastaturlayout kan ikke bruges og blev ikke tilføjet. Skift layoutet til engelsk, ryd feltet, og skriv adgangskoden igen.</value>
+  </data>
+  <data name="EncryptPasswordRefusedCharacter" xml:space="preserve">
+    <value>Det tegn kan ikke bruges og blev ikke tilføjet. Ryd feltet, og skriv adgangskoden igen med kun engelske bogstaver, tal, mellemrum og tegnsætning.</value>
+  </data>
+  <data name="NewArchiveCardTitle.Text" xml:space="preserve">
+    <value>Nyt arkiv</value>
+  </data>
+  <data name="DestinationCardTitle.Text" xml:space="preserve">
+    <value>Hvor, og hvad bagefter</value>
+  </data>
+  <data name="EncryptZipOnlyNote.Text" xml:space="preserve">
+    <value>Kryptering med adgangskode er kun tilgængelig for ZIP</value>
+  </data>
+  <data name="RecycleBinNote.Text" xml:space="preserve">
+    <value>På netværksdrev og flytbare drev, som ikke har en papirkurv, spørger Pakko først.</value>
+  </data>
+  <data name="EmptyAddFilesButton.Content" xml:space="preserve">
+    <value>Tilføj filer</value>
+  </data>
+  <data name="EmptyAddFolderButton.Content" xml:space="preserve">
+    <value>Tilføj mappe</value>
+  </data>
+  <data name="DestinationSaveLabel" xml:space="preserve">
+    <value>Gem i:</value>
+  </data>
+  <data name="DestinationExtractLabel" xml:space="preserve">
+    <value>Udpak til:</value>
+  </data>
+  <data name="DeleteAfterCompressLabel" xml:space="preserve">
+    <value>Flyt kildefilerne til papirkurven efter en vellykket komprimering</value>
+  </data>
+  <data name="DeleteAfterExtractLabel" xml:space="preserve">
+    <value>Flyt arkiverne til papirkurven efter en vellykket udpakning</value>
+  </data>
+  <data name="ArchiveNameAutoPlaceholder" xml:space="preserve">
+    <value>{0} (auto)</value>
+  </data>
+  <data name="ArchiveNamePerItemPlaceholder" xml:space="preserve">
+    <value>{0}, ... (ét arkiv pr. element)</value>
+  </data>
+  <data name="SummaryCompressionFast" xml:space="preserve">
+    <value>Hurtig</value>
+  </data>
+  <data name="SummaryCompressionNormal" xml:space="preserve">
+    <value>Normal</value>
+  </data>
+  <data name="SummaryCompressionBest" xml:space="preserve">
+    <value>Bedst</value>
+  </data>
+  <data name="SummaryCompressionNone" xml:space="preserve">
+    <value>Ingen komprimering</value>
+  </data>
+  <data name="SummaryWithPassword" xml:space="preserve">
+    <value>med adgangskode</value>
+  </data>
+  <data name="SummaryNoPassword" xml:space="preserve">
+    <value>uden adgangskode</value>
+  </data>
+  <data name="NewArchiveCollapsedReason" xml:space="preserve">
+    <value>skjult, listen indeholder kun arkiver</value>
+  </data>
+  <data name="ExtractUnavailableHint" xml:space="preserve">
+    <value>Listen indeholder ingen arkiver, intet at udpakke</value>
+  </data>
+  <data name="DeleteAfterEitherLabel" xml:space="preserve">
+    <value>Flyt det, handlingen brugte, til papirkurven efter en vellykket handling: kildefilerne efter komprimering, arkiverne efter udpakning</value>
+  </data>
+  <data name="TestArchiveButton.Content" xml:space="preserve">
+    <value>Test arkiv</value>
+  </data>
+  <data name="CloseArchiveButton.Content" xml:space="preserve">
+    <value>Luk arkiv</value>
+  </data>
+  <data name="StatusTesting" xml:space="preserve">
+    <value>Tester...</value>
+  </data>
+  <data name="TestResultTitle" xml:space="preserve">
+    <value>Test arkiv</value>
+  </data>
+  <data name="TestNoErrorsFound" xml:space="preserve">
+    <value>Der blev ikke fundet fejl.</value>
+  </data>
+  <data name="BrowseEncryptedBadgeUnknown" xml:space="preserve">
+    <value>Krypteret</value>
+  </data>
+  <data name="BrowseEncryptedUnknownMethod" xml:space="preserve">
+    <value>ukendt metode</value>
+  </data>
+  <data name="BrowseEncryptedCount" xml:space="preserve">
+    <value>Krypterede filer ({0}): {1} af {2}.</value>
+  </data>
+  <data name="BrowseEncryptedPasswordNote" xml:space="preserve">
+    <value>Pakko beder om adgangskoden, når du udpakker eller åbner en fil. Filnavne er ikke krypteret, og krypteringen tilføjer nogle få byte til hver fil.</value>
+  </data>
+  <data name="BrowseEncryptedAe2Note" xml:space="preserve">
+    <value>CRC-32 er tom for AES-filer (AE-2): de bekræftes ved godkendelse, ikke ved en kontrolsum.</value>
+  </data>
+  <data name="BrowseZipCryptoWeakNote" xml:space="preserve">
+    <value>ZipCrypto er svag kryptering: filerne kan gendannes uden adgangskoden. Brug AES-256 til alt følsomt.</value>
+  </data>
+  <data name="BrowseOutsideInfo" xml:space="preserve">
+    <value>Dette er en mappe på disken, ikke et arkiv. Dobbeltklik på et arkiv for at åbne det, eller tryk på "Luk arkiv" (Esc) for at vende tilbage til at oprette arkiver.</value>
+  </data>
+  <data name="BrowseUpButtonName" xml:space="preserve">
+    <value>Et niveau op</value>
+  </data>
+  <data name="DestinationUpButtonName" xml:space="preserve">
+    <value>Overordnet mappe</value>
+  </data>
+  <data name="DragAddCaption" xml:space="preserve">
+    <value>Føj til listen</value>
   </data>
 </root>

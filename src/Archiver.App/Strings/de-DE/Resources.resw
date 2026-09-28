@@ -15,7 +15,7 @@
 
   <!-- Buttons -->
   <data name="ArchiveButtonLabel" xml:space="preserve">
-    <value>Archivieren</value>
+    <value>Komprimieren als {0}</value>
   </data>
   <data name="ExtractButtonLabel" xml:space="preserve">
     <value>Extrahieren</value>
@@ -85,7 +85,7 @@
     <value>Beenden</value>
   </data>
   <data name="RemoveMenuItem.Text" xml:space="preserve">
-    <value>Entfernen</value>
+    <value>Aus der Liste entfernen</value>
   </data>
 
   <!-- Archive options -->
@@ -152,10 +152,10 @@
 
   <!-- Drop zone -->
   <data name="DropZoneHint.Text" xml:space="preserve">
-    <value>Dateien oder Ordner hierher ziehen oder doppelklicken, um Dateien auszuwählen</value>
+    <value>Dateien oder Ordner hierher ziehen</value>
   </data>
   <data name="DropZoneModeHint.Text" xml:space="preserve">
-    <value>Archive bieten Extraktion an; alles andere wird archiviert</value>
+    <value>Archive können extrahiert werden; alles andere wird komprimiert</value>
   </data>
 
   <!-- Labels -->
@@ -179,7 +179,7 @@
     <value>Bereit</value>
   </data>
   <data name="StatusArchiving" xml:space="preserve">
-    <value>Archivieren...</value>
+    <value>Komprimieren...</value>
   </data>
   <data name="StatusExtracting" xml:space="preserve">
     <value>Extrahieren...</value>
@@ -200,7 +200,7 @@
     <value>Es werden {0} Archiv(e) in den obigen Ordner extrahiert</value>
   </data>
   <data name="OutcomeWillArchive" xml:space="preserve">
-    <value>Es werden {0} Element(e) in den obigen Ordner archiviert</value>
+    <value>Es werden {0} Element(e) in den obigen Ordner komprimiert</value>
   </data>
 
   <!-- Dialog strings -->
@@ -366,9 +366,159 @@
     <value>{0} GB</value>
   </data>
   <data name="StatusArchivingCount" xml:space="preserve">
-    <value>Archivieren... (Dateien: {0}, {1})</value>
+    <value>Komprimieren... (Dateien: {0}, {1})</value>
   </data>
   <data name="StatusExtractingCount" xml:space="preserve">
     <value>Extrahieren... (Archive: {0})</value>
+  </data>
+  <data name="StatusOpening" xml:space="preserve">
+    <value>Öffnen...</value>
+  </data>
+  <data name="ThisPcBreadcrumbRoot" xml:space="preserve">
+    <value>Dieser PC</value>
+  </data>
+  <data name="NestedArchiveDepthLimitReached" xml:space="preserve">
+    <value>Öffnen nicht möglich — dieses Archiv ist zu tief verschachtelt.</value>
+  </data>
+  <data name="UnsafePreviewConfirmTitle" xml:space="preserve">
+    <value>Keine Vorschau möglich</value>
+  </data>
+  <data name="UnsafePreviewConfirmMessage" xml:space="preserve">
+    <value>"{0}" kann nicht sicher direkt geöffnet werden. Stattdessen in einen Ordner neben dem Archiv extrahieren?</value>
+  </data>
+  <data name="OutcomeCompressed" xml:space="preserve">
+    <value>Komprimiert in {0} s — Archive: {1}</value>
+  </data>
+  <data name="OutcomeExtracted" xml:space="preserve">
+    <value>Extrahiert in {0} s — Archive: {1}</value>
+  </data>
+  <data name="OutcomeProblems" xml:space="preserve">
+    <value>Mit Problemen abgeschlossen: {0}</value>
+  </data>
+  <data name="OutcomeNothingDone" xml:space="preserve">
+    <value>Nichts wurde ausgeführt — übersprungen: {0}</value>
+  </data>
+  <data name="BrowseSelectionLine" xml:space="preserve">
+    <value>{0} von {1} ausgewählt</value>
+  </data>
+  <data name="OutcomeShowInFolderButton.Content" xml:space="preserve">
+    <value>Im Ordner anzeigen</value>
+  </data>
+  <data name="OutcomeDetailsButton.Content" xml:space="preserve">
+    <value>Details...</value>
+  </data>
+  <data name="EncryptPasswordLayoutHint" xml:space="preserve">
+    <value>Buchstaben außerhalb des englischen Tastaturlayouts können nicht verwendet werden und wurden nicht hinzugefügt. Stellen Sie das Layout auf Englisch um, leeren Sie das Feld und geben Sie das Passwort erneut ein.</value>
+  </data>
+  <data name="EncryptPasswordRefusedCharacter" xml:space="preserve">
+    <value>Dieses Zeichen kann nicht verwendet werden und wurde nicht hinzugefügt. Leeren Sie das Feld und geben Sie das Passwort erneut nur mit englischen Buchstaben, Ziffern, Leerzeichen und Satzzeichen ein.</value>
+  </data>
+  <data name="NewArchiveCardTitle.Text" xml:space="preserve">
+    <value>Neues Archiv</value>
+  </data>
+  <data name="DestinationCardTitle.Text" xml:space="preserve">
+    <value>Wohin, und was danach</value>
+  </data>
+  <data name="EncryptZipOnlyNote.Text" xml:space="preserve">
+    <value>Verschlüsselung mit Passwort ist nur für ZIP verfügbar</value>
+  </data>
+  <data name="RecycleBinNote.Text" xml:space="preserve">
+    <value>Bei Netzwerk- und Wechsellaufwerken, die keinen Papierkorb haben, fragt Pakko zuerst nach.</value>
+  </data>
+  <data name="EmptyAddFilesButton.Content" xml:space="preserve">
+    <value>Dateien hinzufügen</value>
+  </data>
+  <data name="EmptyAddFolderButton.Content" xml:space="preserve">
+    <value>Ordner hinzufügen</value>
+  </data>
+  <data name="DestinationSaveLabel" xml:space="preserve">
+    <value>Speichern in:</value>
+  </data>
+  <data name="DestinationExtractLabel" xml:space="preserve">
+    <value>Extrahieren nach:</value>
+  </data>
+  <data name="DeleteAfterCompressLabel" xml:space="preserve">
+    <value>Nach erfolgreicher Komprimierung die Quelldateien in den Papierkorb verschieben</value>
+  </data>
+  <data name="DeleteAfterExtractLabel" xml:space="preserve">
+    <value>Nach erfolgreicher Extraktion die Archive in den Papierkorb verschieben</value>
+  </data>
+  <data name="ArchiveNameAutoPlaceholder" xml:space="preserve">
+    <value>{0} (automatisch)</value>
+  </data>
+  <data name="ArchiveNamePerItemPlaceholder" xml:space="preserve">
+    <value>{0}, ... (ein Archiv pro Element)</value>
+  </data>
+  <data name="SummaryCompressionFast" xml:space="preserve">
+    <value>Schnell</value>
+  </data>
+  <data name="SummaryCompressionNormal" xml:space="preserve">
+    <value>Normal</value>
+  </data>
+  <data name="SummaryCompressionBest" xml:space="preserve">
+    <value>Beste</value>
+  </data>
+  <data name="SummaryCompressionNone" xml:space="preserve">
+    <value>Keine Komprimierung</value>
+  </data>
+  <data name="SummaryWithPassword" xml:space="preserve">
+    <value>mit Passwort</value>
+  </data>
+  <data name="SummaryNoPassword" xml:space="preserve">
+    <value>ohne Passwort</value>
+  </data>
+  <data name="NewArchiveCollapsedReason" xml:space="preserve">
+    <value>eingeklappt, die Liste enthält nur Archive</value>
+  </data>
+  <data name="ExtractUnavailableHint" xml:space="preserve">
+    <value>Die Liste enthält keine Archive, es gibt nichts zu extrahieren</value>
+  </data>
+  <data name="DeleteAfterEitherLabel" xml:space="preserve">
+    <value>Nach einem erfolgreichen Vorgang das Verwendete in den Papierkorb verschieben: die Quelldateien nach dem Komprimieren, die Archive nach dem Extrahieren</value>
+  </data>
+  <data name="TestArchiveButton.Content" xml:space="preserve">
+    <value>Archiv testen</value>
+  </data>
+  <data name="CloseArchiveButton.Content" xml:space="preserve">
+    <value>Archiv schließen</value>
+  </data>
+  <data name="StatusTesting" xml:space="preserve">
+    <value>Testen...</value>
+  </data>
+  <data name="TestResultTitle" xml:space="preserve">
+    <value>Archiv testen</value>
+  </data>
+  <data name="TestNoErrorsFound" xml:space="preserve">
+    <value>Keine Fehler gefunden.</value>
+  </data>
+  <data name="BrowseEncryptedBadgeUnknown" xml:space="preserve">
+    <value>Verschlüsselt</value>
+  </data>
+  <data name="BrowseEncryptedUnknownMethod" xml:space="preserve">
+    <value>unbekannte Methode</value>
+  </data>
+  <data name="BrowseEncryptedCount" xml:space="preserve">
+    <value>Verschlüsselte Dateien ({0}): {1} von {2}.</value>
+  </data>
+  <data name="BrowseEncryptedPasswordNote" xml:space="preserve">
+    <value>Pakko fragt beim Extrahieren oder Öffnen einer Datei nach dem Passwort. Dateinamen sind nicht verschlüsselt, und die Verschlüsselung fügt jeder Datei einige Bytes hinzu.</value>
+  </data>
+  <data name="BrowseEncryptedAe2Note" xml:space="preserve">
+    <value>CRC-32 ist bei AES-Dateien (AE-2) leer: Sie werden durch Authentifizierung geprüft, nicht durch eine Prüfsumme.</value>
+  </data>
+  <data name="BrowseZipCryptoWeakNote" xml:space="preserve">
+    <value>ZipCrypto ist eine schwache Verschlüsselung: Die Dateien lassen sich ohne Passwort wiederherstellen. Verwenden Sie für vertrauliche Daten AES-256.</value>
+  </data>
+  <data name="BrowseOutsideInfo" xml:space="preserve">
+    <value>Dies ist ein Ordner auf dem Datenträger, kein Archiv. Doppelklicken Sie auf ein Archiv, um es zu öffnen, oder drücken Sie "Archiv schließen" (Esc), um zum Erstellen von Archiven zurückzukehren.</value>
+  </data>
+  <data name="BrowseUpButtonName" xml:space="preserve">
+    <value>Eine Ebene höher</value>
+  </data>
+  <data name="DestinationUpButtonName" xml:space="preserve">
+    <value>Übergeordneter Ordner</value>
+  </data>
+  <data name="DragAddCaption" xml:space="preserve">
+    <value>Zur Liste hinzufügen</value>
   </data>
 </root>

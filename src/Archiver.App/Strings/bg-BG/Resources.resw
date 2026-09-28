@@ -15,7 +15,7 @@
 
   <!-- Buttons -->
   <data name="ArchiveButtonLabel" xml:space="preserve">
-    <value>Архивиране</value>
+    <value>Компресиране в {0}</value>
   </data>
   <data name="ExtractButtonLabel" xml:space="preserve">
     <value>Разархивиране</value>
@@ -85,7 +85,7 @@
     <value>Изход</value>
   </data>
   <data name="RemoveMenuItem.Text" xml:space="preserve">
-    <value>Премахване</value>
+    <value>Премахване от списъка</value>
   </data>
 
   <!-- Archive options -->
@@ -152,10 +152,10 @@
 
   <!-- Drop zone -->
   <data name="DropZoneHint.Text" xml:space="preserve">
-    <value>Пуснете файлове или папки тук, или щракнете двукратно, за да прегледате файлове</value>
+    <value>Пуснете файлове или папки тук</value>
   </data>
   <data name="DropZoneModeHint.Text" xml:space="preserve">
-    <value>Архивите предлагат разархивиране; всичко останало ще бъде архивирано</value>
+    <value>Архивите могат да бъдат разархивирани; всичко останало се компресира</value>
   </data>
 
   <!-- Labels -->
@@ -179,7 +179,7 @@
     <value>Готово</value>
   </data>
   <data name="StatusArchiving" xml:space="preserve">
-    <value>Архивиране...</value>
+    <value>Компресиране...</value>
   </data>
   <data name="StatusExtracting" xml:space="preserve">
     <value>Разархивиране...</value>
@@ -200,7 +200,7 @@
     <value>Ще бъдат разархивирани {0} архив(а) в папката по-горе</value>
   </data>
   <data name="OutcomeWillArchive" xml:space="preserve">
-    <value>Ще бъдат архивирани {0} елемент(а) в папката по-горе</value>
+    <value>Ще бъдат компресирани {0} елемент(а) в папката по-горе</value>
   </data>
 
   <!-- Dialog strings -->
@@ -366,9 +366,159 @@
     <value>{0} ГБ</value>
   </data>
   <data name="StatusArchivingCount" xml:space="preserve">
-    <value>Архивиране... (файлове: {0}, {1})</value>
+    <value>Компресиране... (файлове: {0}, {1})</value>
   </data>
   <data name="StatusExtractingCount" xml:space="preserve">
     <value>Разархивиране... (архиви: {0})</value>
+  </data>
+  <data name="StatusOpening" xml:space="preserve">
+    <value>Отваряне...</value>
+  </data>
+  <data name="ThisPcBreadcrumbRoot" xml:space="preserve">
+    <value>Този компютър</value>
+  </data>
+  <data name="NestedArchiveDepthLimitReached" xml:space="preserve">
+    <value>Не може да се отвори — този архив е вложен твърде дълбоко.</value>
+  </data>
+  <data name="UnsafePreviewConfirmTitle" xml:space="preserve">
+    <value>Не може да се прегледа</value>
+  </data>
+  <data name="UnsafePreviewConfirmMessage" xml:space="preserve">
+    <value>"{0}" не може да бъде отворен безопасно директно. Да се разархивира ли в папка до архива?</value>
+  </data>
+  <data name="OutcomeCompressed" xml:space="preserve">
+    <value>Компресирано за {0} с — архиви: {1}</value>
+  </data>
+  <data name="OutcomeExtracted" xml:space="preserve">
+    <value>Разархивирано за {0} с — архиви: {1}</value>
+  </data>
+  <data name="OutcomeProblems" xml:space="preserve">
+    <value>Завършено с проблеми: {0}</value>
+  </data>
+  <data name="OutcomeNothingDone" xml:space="preserve">
+    <value>Нищо не е направено — пропуснати: {0}</value>
+  </data>
+  <data name="BrowseSelectionLine" xml:space="preserve">
+    <value>Избрани {0} от {1}</value>
+  </data>
+  <data name="OutcomeShowInFolderButton.Content" xml:space="preserve">
+    <value>Покажи в папката</value>
+  </data>
+  <data name="OutcomeDetailsButton.Content" xml:space="preserve">
+    <value>Подробности...</value>
+  </data>
+  <data name="EncryptPasswordLayoutHint" xml:space="preserve">
+    <value>Букви извън английската клавиатурна подредба не могат да се използват и не бяха добавени. Превключете подредбата на английски, изчистете полето и въведете паролата отново.</value>
+  </data>
+  <data name="EncryptPasswordRefusedCharacter" xml:space="preserve">
+    <value>Този знак не може да се използва и не беше добавен. Изчистете полето и въведете паролата отново само с английски букви, цифри, интервали и препинателни знаци.</value>
+  </data>
+  <data name="NewArchiveCardTitle.Text" xml:space="preserve">
+    <value>Нов архив</value>
+  </data>
+  <data name="DestinationCardTitle.Text" xml:space="preserve">
+    <value>Къде и какво след това</value>
+  </data>
+  <data name="EncryptZipOnlyNote.Text" xml:space="preserve">
+    <value>Шифроването с парола е налично само за ZIP</value>
+  </data>
+  <data name="RecycleBinNote.Text" xml:space="preserve">
+    <value>За мрежови и преносими дискове, които нямат кошче, Pakko първо пита.</value>
+  </data>
+  <data name="EmptyAddFilesButton.Content" xml:space="preserve">
+    <value>Добавяне на файлове</value>
+  </data>
+  <data name="EmptyAddFolderButton.Content" xml:space="preserve">
+    <value>Добавяне на папка</value>
+  </data>
+  <data name="DestinationSaveLabel" xml:space="preserve">
+    <value>Запис в:</value>
+  </data>
+  <data name="DestinationExtractLabel" xml:space="preserve">
+    <value>Разархивиране в:</value>
+  </data>
+  <data name="DeleteAfterCompressLabel" xml:space="preserve">
+    <value>След успешно компресиране преместване на изходните файлове в кошчето</value>
+  </data>
+  <data name="DeleteAfterExtractLabel" xml:space="preserve">
+    <value>След успешно разархивиране преместване на архивите в кошчето</value>
+  </data>
+  <data name="ArchiveNameAutoPlaceholder" xml:space="preserve">
+    <value>{0} (автоматично)</value>
+  </data>
+  <data name="ArchiveNamePerItemPlaceholder" xml:space="preserve">
+    <value>{0}, ... (по един архив за елемент)</value>
+  </data>
+  <data name="SummaryCompressionFast" xml:space="preserve">
+    <value>Бърза</value>
+  </data>
+  <data name="SummaryCompressionNormal" xml:space="preserve">
+    <value>Нормална</value>
+  </data>
+  <data name="SummaryCompressionBest" xml:space="preserve">
+    <value>Най-добра</value>
+  </data>
+  <data name="SummaryCompressionNone" xml:space="preserve">
+    <value>Без компресия</value>
+  </data>
+  <data name="SummaryWithPassword" xml:space="preserve">
+    <value>с парола</value>
+  </data>
+  <data name="SummaryNoPassword" xml:space="preserve">
+    <value>без парола</value>
+  </data>
+  <data name="NewArchiveCollapsedReason" xml:space="preserve">
+    <value>свито, в списъка има само архиви</value>
+  </data>
+  <data name="ExtractUnavailableHint" xml:space="preserve">
+    <value>В списъка няма архиви, няма какво да се разархивира</value>
+  </data>
+  <data name="DeleteAfterEitherLabel" xml:space="preserve">
+    <value>След успешна операция преместване в кошчето на използваното: изходните файлове след компресиране, архивите след разархивиране</value>
+  </data>
+  <data name="TestArchiveButton.Content" xml:space="preserve">
+    <value>Тестване на архива</value>
+  </data>
+  <data name="CloseArchiveButton.Content" xml:space="preserve">
+    <value>Затваряне на архива</value>
+  </data>
+  <data name="StatusTesting" xml:space="preserve">
+    <value>Тестване...</value>
+  </data>
+  <data name="TestResultTitle" xml:space="preserve">
+    <value>Тестване на архива</value>
+  </data>
+  <data name="TestNoErrorsFound" xml:space="preserve">
+    <value>Не са открити грешки.</value>
+  </data>
+  <data name="BrowseEncryptedBadgeUnknown" xml:space="preserve">
+    <value>Шифрован</value>
+  </data>
+  <data name="BrowseEncryptedUnknownMethod" xml:space="preserve">
+    <value>неизвестен метод</value>
+  </data>
+  <data name="BrowseEncryptedCount" xml:space="preserve">
+    <value>Шифровани файлове ({0}): {1} от {2}.</value>
+  </data>
+  <data name="BrowseEncryptedPasswordNote" xml:space="preserve">
+    <value>Pakko пита за паролата, когато разархивирате или отваряте файл. Имената на файловете не са шифровани, а шифроването добавя няколко байта към всеки файл.</value>
+  </data>
+  <data name="BrowseEncryptedAe2Note" xml:space="preserve">
+    <value>CRC-32 е празна за файлове AES (AE-2): те се проверяват чрез удостоверяване, а не чрез контролна сума.</value>
+  </data>
+  <data name="BrowseZipCryptoWeakNote" xml:space="preserve">
+    <value>ZipCrypto е слабо шифроване: файловете могат да бъдат възстановени без паролата. Използвайте AES-256 за всичко чувствително.</value>
+  </data>
+  <data name="BrowseOutsideInfo" xml:space="preserve">
+    <value>Това е папка на диска, а не архив. Щракнете двукратно върху архив, за да го отворите, или натиснете "Затваряне на архива" (Esc), за да се върнете към създаването на архиви.</value>
+  </data>
+  <data name="BrowseUpButtonName" xml:space="preserve">
+    <value>Едно ниво нагоре</value>
+  </data>
+  <data name="DestinationUpButtonName" xml:space="preserve">
+    <value>Родителска папка</value>
+  </data>
+  <data name="DragAddCaption" xml:space="preserve">
+    <value>Добавяне към списъка</value>
   </data>
 </root>

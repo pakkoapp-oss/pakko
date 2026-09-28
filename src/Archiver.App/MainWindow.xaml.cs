@@ -271,7 +271,7 @@ public sealed partial class MainWindow : Window
     private void FileList_DragOver(object sender, DragEventArgs e)
     {
         e.AcceptedOperation = Windows.ApplicationModel.DataTransfer.DataPackageOperation.Copy;
-        e.DragUIOverride.Caption = "Add to list";
+        e.DragUIOverride.Caption = MainViewModel.DragAddCaption;
         e.Handled = true;
     }
 

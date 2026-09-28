@@ -213,6 +213,7 @@ public sealed class DialogService : IDialogService
             try
             {
                 var passwordBox = new PasswordBox();
+                Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(passwordBox, _res.GetString("EncryptPasswordPlaceholder"));
 
                 var panel = new StackPanel { Spacing = 8 };
                 panel.Children.Add(new TextBlock

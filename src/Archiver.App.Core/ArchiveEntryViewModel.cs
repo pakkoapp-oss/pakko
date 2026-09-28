@@ -23,6 +23,9 @@ public sealed record ArchiveEntryViewModel
 
     public bool IsEncrypted => Encryption is { } kind && kind != EntryEncryption.None;
 
+    // T-F198 item 2: a list row's accessible name is its item's ToString().
+    public override string ToString() => Name;
+
     public string ModifiedDisplay => Modified?.ToString("yyyy-MM-dd HH:mm") ?? "—";
     public string SizeDisplay => IsFolder ? string.Empty : FormatSize(Size);
 

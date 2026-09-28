@@ -15,7 +15,7 @@
 
   <!-- Buttons -->
   <data name="ArchiveButtonLabel" xml:space="preserve">
-    <value>संग्रहित करें</value>
+    <value>{0} में संपीड़ित करें</value>
   </data>
   <data name="ExtractButtonLabel" xml:space="preserve">
     <value>निकालें</value>
@@ -85,7 +85,7 @@
     <value>बाहर निकलें</value>
   </data>
   <data name="RemoveMenuItem.Text" xml:space="preserve">
-    <value>हटाएं</value>
+    <value>सूची से हटाएं</value>
   </data>
 
   <!-- Archive options -->
@@ -152,10 +152,10 @@
 
   <!-- Drop zone -->
   <data name="DropZoneHint.Text" xml:space="preserve">
-    <value>यहां फ़ाइलें या फ़ोल्डर छोड़ें, या फ़ाइलें ब्राउज़ करने के लिए डबल-क्लिक करें</value>
+    <value>फ़ाइलें या फ़ोल्डर यहां छोड़ें</value>
   </data>
   <data name="DropZoneModeHint.Text" xml:space="preserve">
-    <value>संग्रह निकालने का विकल्प देते हैं; बाकी सब कुछ संग्रहित किया जाएगा</value>
+    <value>संग्रह निकाले जा सकते हैं; बाकी सब कुछ संपीड़ित होता है</value>
   </data>
 
   <!-- Labels -->
@@ -179,7 +179,7 @@
     <value>तैयार</value>
   </data>
   <data name="StatusArchiving" xml:space="preserve">
-    <value>संग्रहित किया जा रहा है...</value>
+    <value>संपीड़ित किया जा रहा है...</value>
   </data>
   <data name="StatusExtracting" xml:space="preserve">
     <value>निकाला जा रहा है...</value>
@@ -200,7 +200,7 @@
     <value>ऊपर दिए गए फ़ोल्डर में {0} संग्रह निकाले जाएंगे</value>
   </data>
   <data name="OutcomeWillArchive" xml:space="preserve">
-    <value>ऊपर दिए गए फ़ोल्डर में {0} आइटम संग्रहित किए जाएंगे</value>
+    <value>ऊपर दिए गए फ़ोल्डर में {0} आइटम संपीड़ित किए जाएंगे</value>
   </data>
 
   <!-- Dialog strings -->
@@ -366,9 +366,159 @@
     <value>{0} GB</value>
   </data>
   <data name="StatusArchivingCount" xml:space="preserve">
-    <value>संग्रहित किया जा रहा है... (फ़ाइलें: {0}, {1})</value>
+    <value>संपीड़ित किया जा रहा है... (फ़ाइलें: {0}, {1})</value>
   </data>
   <data name="StatusExtractingCount" xml:space="preserve">
     <value>निकाला जा रहा है... (संग्रह: {0})</value>
+  </data>
+  <data name="StatusOpening" xml:space="preserve">
+    <value>खोला जा रहा है...</value>
+  </data>
+  <data name="ThisPcBreadcrumbRoot" xml:space="preserve">
+    <value>यह PC</value>
+  </data>
+  <data name="NestedArchiveDepthLimitReached" xml:space="preserve">
+    <value>खोला नहीं जा सकता — यह संग्रह बहुत गहराई तक नेस्टेड है।</value>
+  </data>
+  <data name="UnsafePreviewConfirmTitle" xml:space="preserve">
+    <value>पूर्वावलोकन उपलब्ध नहीं</value>
+  </data>
+  <data name="UnsafePreviewConfirmMessage" xml:space="preserve">
+    <value>"{0}" को सीधे सुरक्षित रूप से नहीं खोला जा सकता। क्या इसके बजाय इसे संग्रह के पास एक फ़ोल्डर में निकालें?</value>
+  </data>
+  <data name="OutcomeCompressed" xml:space="preserve">
+    <value>{0} सेकंड में संपीड़ित — संग्रह: {1}</value>
+  </data>
+  <data name="OutcomeExtracted" xml:space="preserve">
+    <value>{0} सेकंड में निकाला गया — संग्रह: {1}</value>
+  </data>
+  <data name="OutcomeProblems" xml:space="preserve">
+    <value>समस्याओं के साथ पूर्ण: {0}</value>
+  </data>
+  <data name="OutcomeNothingDone" xml:space="preserve">
+    <value>कुछ नहीं किया गया — छोड़े गए: {0}</value>
+  </data>
+  <data name="BrowseSelectionLine" xml:space="preserve">
+    <value>{1} में से {0} चयनित</value>
+  </data>
+  <data name="OutcomeShowInFolderButton.Content" xml:space="preserve">
+    <value>फ़ोल्डर में दिखाएं</value>
+  </data>
+  <data name="OutcomeDetailsButton.Content" xml:space="preserve">
+    <value>विवरण...</value>
+  </data>
+  <data name="EncryptPasswordLayoutHint" xml:space="preserve">
+    <value>अंग्रेज़ी कीबोर्ड लेआउट के बाहर के अक्षर उपयोग नहीं किए जा सकते और जोड़े नहीं गए। लेआउट को अंग्रेज़ी में बदलें, फ़ील्ड साफ़ करें और पासवर्ड फिर से लिखें।</value>
+  </data>
+  <data name="EncryptPasswordRefusedCharacter" xml:space="preserve">
+    <value>यह वर्ण उपयोग नहीं किया जा सकता और जोड़ा नहीं गया। फ़ील्ड साफ़ करें और केवल अंग्रेज़ी अक्षरों, अंकों, रिक्त स्थानों और विराम चिह्नों का उपयोग करके पासवर्ड फिर से लिखें।</value>
+  </data>
+  <data name="NewArchiveCardTitle.Text" xml:space="preserve">
+    <value>नया संग्रह</value>
+  </data>
+  <data name="DestinationCardTitle.Text" xml:space="preserve">
+    <value>कहां, और उसके बाद क्या</value>
+  </data>
+  <data name="EncryptZipOnlyNote.Text" xml:space="preserve">
+    <value>पासवर्ड एन्क्रिप्शन केवल ZIP के लिए उपलब्ध है</value>
+  </data>
+  <data name="RecycleBinNote.Text" xml:space="preserve">
+    <value>नेटवर्क और हटाने योग्य ड्राइव पर, जिनमें रीसायकल बिन नहीं होता, Pakko पहले पूछता है।</value>
+  </data>
+  <data name="EmptyAddFilesButton.Content" xml:space="preserve">
+    <value>फ़ाइलें जोड़ें</value>
+  </data>
+  <data name="EmptyAddFolderButton.Content" xml:space="preserve">
+    <value>फ़ोल्डर जोड़ें</value>
+  </data>
+  <data name="DestinationSaveLabel" xml:space="preserve">
+    <value>यहां सहेजें:</value>
+  </data>
+  <data name="DestinationExtractLabel" xml:space="preserve">
+    <value>यहां निकालें:</value>
+  </data>
+  <data name="DeleteAfterCompressLabel" xml:space="preserve">
+    <value>सफल संपीड़न के बाद, स्रोत फ़ाइलों को रीसायकल बिन में ले जाएं</value>
+  </data>
+  <data name="DeleteAfterExtractLabel" xml:space="preserve">
+    <value>सफलतापूर्वक निकालने के बाद, संग्रहों को रीसायकल बिन में ले जाएं</value>
+  </data>
+  <data name="ArchiveNameAutoPlaceholder" xml:space="preserve">
+    <value>{0} (स्वचालित)</value>
+  </data>
+  <data name="ArchiveNamePerItemPlaceholder" xml:space="preserve">
+    <value>{0}, ... (प्रति आइटम एक संग्रह)</value>
+  </data>
+  <data name="SummaryCompressionFast" xml:space="preserve">
+    <value>तेज़</value>
+  </data>
+  <data name="SummaryCompressionNormal" xml:space="preserve">
+    <value>सामान्य</value>
+  </data>
+  <data name="SummaryCompressionBest" xml:space="preserve">
+    <value>सर्वोत्तम</value>
+  </data>
+  <data name="SummaryCompressionNone" xml:space="preserve">
+    <value>कोई संपीड़न नहीं</value>
+  </data>
+  <data name="SummaryWithPassword" xml:space="preserve">
+    <value>पासवर्ड के साथ</value>
+  </data>
+  <data name="SummaryNoPassword" xml:space="preserve">
+    <value>बिना पासवर्ड</value>
+  </data>
+  <data name="NewArchiveCollapsedReason" xml:space="preserve">
+    <value>संकुचित, सूची में केवल संग्रह हैं</value>
+  </data>
+  <data name="ExtractUnavailableHint" xml:space="preserve">
+    <value>सूची में कोई संग्रह नहीं है, निकालने के लिए कुछ नहीं</value>
+  </data>
+  <data name="DeleteAfterEitherLabel" xml:space="preserve">
+    <value>सफल कार्रवाई के बाद, उपयोग की गई चीज़ों को रीसायकल बिन में ले जाएं: संपीड़न के बाद स्रोत फ़ाइलें, निकालने के बाद संग्रह</value>
+  </data>
+  <data name="TestArchiveButton.Content" xml:space="preserve">
+    <value>संग्रह का परीक्षण करें</value>
+  </data>
+  <data name="CloseArchiveButton.Content" xml:space="preserve">
+    <value>संग्रह बंद करें</value>
+  </data>
+  <data name="StatusTesting" xml:space="preserve">
+    <value>परीक्षण किया जा रहा है...</value>
+  </data>
+  <data name="TestResultTitle" xml:space="preserve">
+    <value>संग्रह का परीक्षण</value>
+  </data>
+  <data name="TestNoErrorsFound" xml:space="preserve">
+    <value>कोई त्रुटि नहीं मिली।</value>
+  </data>
+  <data name="BrowseEncryptedBadgeUnknown" xml:space="preserve">
+    <value>एन्क्रिप्टेड</value>
+  </data>
+  <data name="BrowseEncryptedUnknownMethod" xml:space="preserve">
+    <value>अज्ञात विधि</value>
+  </data>
+  <data name="BrowseEncryptedCount" xml:space="preserve">
+    <value>एन्क्रिप्टेड फ़ाइलें ({0}): {2} में से {1}।</value>
+  </data>
+  <data name="BrowseEncryptedPasswordNote" xml:space="preserve">
+    <value>जब आप कोई फ़ाइल निकालते या खोलते हैं, तो Pakko पासवर्ड पूछता है। फ़ाइल नाम एन्क्रिप्ट नहीं होते, और एन्क्रिप्शन हर फ़ाइल में कुछ बाइट जोड़ता है।</value>
+  </data>
+  <data name="BrowseEncryptedAe2Note" xml:space="preserve">
+    <value>AES (AE-2) फ़ाइलों के लिए CRC-32 खाली होता है: उनकी पुष्टि प्रमाणीकरण से होती है, चेकसम से नहीं।</value>
+  </data>
+  <data name="BrowseZipCryptoWeakNote" xml:space="preserve">
+    <value>ZipCrypto कमज़ोर एन्क्रिप्शन है: फ़ाइलें पासवर्ड के बिना पुनर्प्राप्त की जा सकती हैं। किसी भी संवेदनशील चीज़ के लिए AES-256 का उपयोग करें।</value>
+  </data>
+  <data name="BrowseOutsideInfo" xml:space="preserve">
+    <value>यह डिस्क पर एक फ़ोल्डर है, संग्रह नहीं। किसी संग्रह को खोलने के लिए उस पर डबल-क्लिक करें, या संग्रह बनाने पर लौटने के लिए "संग्रह बंद करें" (Esc) दबाएं।</value>
+  </data>
+  <data name="BrowseUpButtonName" xml:space="preserve">
+    <value>एक स्तर ऊपर</value>
+  </data>
+  <data name="DestinationUpButtonName" xml:space="preserve">
+    <value>पैरेंट फ़ोल्डर</value>
+  </data>
+  <data name="DragAddCaption" xml:space="preserve">
+    <value>सूची में जोड़ें</value>
   </data>
 </root>

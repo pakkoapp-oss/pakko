@@ -15,7 +15,7 @@
 
   <!-- Buttons -->
   <data name="ArchiveButtonLabel" xml:space="preserve">
-    <value>Archyvuoti</value>
+    <value>Suspausti į {0}</value>
   </data>
   <data name="ExtractButtonLabel" xml:space="preserve">
     <value>Išskleisti</value>
@@ -85,7 +85,7 @@
     <value>Išeiti</value>
   </data>
   <data name="RemoveMenuItem.Text" xml:space="preserve">
-    <value>Pašalinti</value>
+    <value>Pašalinti iš sąrašo</value>
   </data>
 
   <!-- Archive options -->
@@ -152,10 +152,10 @@
 
   <!-- Drop zone -->
   <data name="DropZoneHint.Text" xml:space="preserve">
-    <value>Nutempkite failus ar aplankus čia arba dukart spustelėkite, kad naršytumėte failus</value>
+    <value>Nutempkite failus ar aplankus čia</value>
   </data>
   <data name="DropZoneModeHint.Text" xml:space="preserve">
-    <value>Archyvai siūlo išskleidimą; visa kita bus archyvuojama</value>
+    <value>Archyvus galima išskleisti; visa kita suspaudžiama</value>
   </data>
 
   <!-- Labels -->
@@ -179,7 +179,7 @@
     <value>Paruošta</value>
   </data>
   <data name="StatusArchiving" xml:space="preserve">
-    <value>Archyvuojama...</value>
+    <value>Suspaudžiama...</value>
   </data>
   <data name="StatusExtracting" xml:space="preserve">
     <value>Išskleidžiama...</value>
@@ -200,7 +200,7 @@
     <value>Bus išskleista archyvų: {0} — į aukščiau nurodytą aplanką</value>
   </data>
   <data name="OutcomeWillArchive" xml:space="preserve">
-    <value>Bus archyvuota elementų: {0} — į aukščiau nurodytą aplanką</value>
+    <value>Bus suspausta elementų: {0} — į aukščiau nurodytą aplanką</value>
   </data>
 
   <!-- Dialog strings -->
@@ -366,9 +366,159 @@
     <value>{0} GB</value>
   </data>
   <data name="StatusArchivingCount" xml:space="preserve">
-    <value>Archyvuojama... (failai: {0}, {1})</value>
+    <value>Suspaudžiama... (failai: {0}, {1})</value>
   </data>
   <data name="StatusExtractingCount" xml:space="preserve">
     <value>Išskleidžiama... (archyvai: {0})</value>
+  </data>
+  <data name="StatusOpening" xml:space="preserve">
+    <value>Atveriama...</value>
+  </data>
+  <data name="ThisPcBreadcrumbRoot" xml:space="preserve">
+    <value>Šis kompiuteris</value>
+  </data>
+  <data name="NestedArchiveDepthLimitReached" xml:space="preserve">
+    <value>Negalima atverti — šis archyvas įdėtas per giliai.</value>
+  </data>
+  <data name="UnsafePreviewConfirmTitle" xml:space="preserve">
+    <value>Peržiūra negalima</value>
+  </data>
+  <data name="UnsafePreviewConfirmMessage" xml:space="preserve">
+    <value>"{0}" negalima saugiai atverti tiesiogiai. Ar išskleisti jį į aplanką šalia archyvo?</value>
+  </data>
+  <data name="OutcomeCompressed" xml:space="preserve">
+    <value>Suspausta per {0} s — archyvų: {1}</value>
+  </data>
+  <data name="OutcomeExtracted" xml:space="preserve">
+    <value>Išskleista per {0} s — archyvų: {1}</value>
+  </data>
+  <data name="OutcomeProblems" xml:space="preserve">
+    <value>Baigta su problemomis: {0}</value>
+  </data>
+  <data name="OutcomeNothingDone" xml:space="preserve">
+    <value>Nieko neatlikta — praleista: {0}</value>
+  </data>
+  <data name="BrowseSelectionLine" xml:space="preserve">
+    <value>Pasirinkta {0} iš {1}</value>
+  </data>
+  <data name="OutcomeShowInFolderButton.Content" xml:space="preserve">
+    <value>Rodyti aplanke</value>
+  </data>
+  <data name="OutcomeDetailsButton.Content" xml:space="preserve">
+    <value>Išsamiau...</value>
+  </data>
+  <data name="EncryptPasswordLayoutHint" xml:space="preserve">
+    <value>Raidžių, nepriklausančių angliškam klaviatūros išdėstymui, naudoti negalima, todėl jos nepridėtos. Perjunkite išdėstymą į anglų, išvalykite lauką ir įveskite slaptažodį iš naujo.</value>
+  </data>
+  <data name="EncryptPasswordRefusedCharacter" xml:space="preserve">
+    <value>Šio simbolio naudoti negalima, todėl jis nepridėtas. Išvalykite lauką ir įveskite slaptažodį iš naujo naudodami tik anglų kalbos raides, skaitmenis, tarpus ir skyrybos ženklus.</value>
+  </data>
+  <data name="NewArchiveCardTitle.Text" xml:space="preserve">
+    <value>Naujas archyvas</value>
+  </data>
+  <data name="DestinationCardTitle.Text" xml:space="preserve">
+    <value>Kur ir kas po to</value>
+  </data>
+  <data name="EncryptZipOnlyNote.Text" xml:space="preserve">
+    <value>Šifravimas slaptažodžiu galimas tik ZIP formatui</value>
+  </data>
+  <data name="RecycleBinNote.Text" xml:space="preserve">
+    <value>Tinklo ir keičiamuosiuose diskuose, kuriuose nėra šiukšlinės, Pakko pirmiausia paklausia.</value>
+  </data>
+  <data name="EmptyAddFilesButton.Content" xml:space="preserve">
+    <value>Pridėti failus</value>
+  </data>
+  <data name="EmptyAddFolderButton.Content" xml:space="preserve">
+    <value>Pridėti aplanką</value>
+  </data>
+  <data name="DestinationSaveLabel" xml:space="preserve">
+    <value>Įrašyti į:</value>
+  </data>
+  <data name="DestinationExtractLabel" xml:space="preserve">
+    <value>Išskleisti į:</value>
+  </data>
+  <data name="DeleteAfterCompressLabel" xml:space="preserve">
+    <value>Sėkmingai suspaudus, perkelti šaltinio failus į šiukšlinę</value>
+  </data>
+  <data name="DeleteAfterExtractLabel" xml:space="preserve">
+    <value>Sėkmingai išskleidus, perkelti archyvus į šiukšlinę</value>
+  </data>
+  <data name="ArchiveNameAutoPlaceholder" xml:space="preserve">
+    <value>{0} (automatiškai)</value>
+  </data>
+  <data name="ArchiveNamePerItemPlaceholder" xml:space="preserve">
+    <value>{0}, ... (po vieną archyvą kiekvienam elementui)</value>
+  </data>
+  <data name="SummaryCompressionFast" xml:space="preserve">
+    <value>Greitas</value>
+  </data>
+  <data name="SummaryCompressionNormal" xml:space="preserve">
+    <value>Įprastas</value>
+  </data>
+  <data name="SummaryCompressionBest" xml:space="preserve">
+    <value>Geriausias</value>
+  </data>
+  <data name="SummaryCompressionNone" xml:space="preserve">
+    <value>Be suspaudimo</value>
+  </data>
+  <data name="SummaryWithPassword" xml:space="preserve">
+    <value>su slaptažodžiu</value>
+  </data>
+  <data name="SummaryNoPassword" xml:space="preserve">
+    <value>be slaptažodžio</value>
+  </data>
+  <data name="NewArchiveCollapsedReason" xml:space="preserve">
+    <value>suskleista, sąraše yra tik archyvai</value>
+  </data>
+  <data name="ExtractUnavailableHint" xml:space="preserve">
+    <value>Sąraše nėra archyvų, nėra ką išskleisti</value>
+  </data>
+  <data name="DeleteAfterEitherLabel" xml:space="preserve">
+    <value>Sėkmingai atlikus operaciją, perkelti į šiukšlinę tai, ką ji naudojo: šaltinio failus po suspaudimo, archyvus po išskleidimo</value>
+  </data>
+  <data name="TestArchiveButton.Content" xml:space="preserve">
+    <value>Tikrinti archyvą</value>
+  </data>
+  <data name="CloseArchiveButton.Content" xml:space="preserve">
+    <value>Uždaryti archyvą</value>
+  </data>
+  <data name="StatusTesting" xml:space="preserve">
+    <value>Tikrinama...</value>
+  </data>
+  <data name="TestResultTitle" xml:space="preserve">
+    <value>Archyvo tikrinimas</value>
+  </data>
+  <data name="TestNoErrorsFound" xml:space="preserve">
+    <value>Klaidų nerasta.</value>
+  </data>
+  <data name="BrowseEncryptedBadgeUnknown" xml:space="preserve">
+    <value>Užšifruota</value>
+  </data>
+  <data name="BrowseEncryptedUnknownMethod" xml:space="preserve">
+    <value>nežinomas metodas</value>
+  </data>
+  <data name="BrowseEncryptedCount" xml:space="preserve">
+    <value>Užšifruoti failai ({0}): {1} iš {2}.</value>
+  </data>
+  <data name="BrowseEncryptedPasswordNote" xml:space="preserve">
+    <value>Pakko paprašo slaptažodžio, kai išskleidžiate ar atveriate failą. Failų pavadinimai nešifruojami, o šifravimas prie kiekvieno failo prideda kelis baitus.</value>
+  </data>
+  <data name="BrowseEncryptedAe2Note" xml:space="preserve">
+    <value>AES (AE-2) failų CRC-32 tuščias: jie tikrinami autentifikavimu, o ne kontroline suma.</value>
+  </data>
+  <data name="BrowseZipCryptoWeakNote" xml:space="preserve">
+    <value>ZipCrypto yra silpnas šifravimas: failus galima atkurti be slaptažodžio. Jautriems duomenims naudokite AES-256.</value>
+  </data>
+  <data name="BrowseOutsideInfo" xml:space="preserve">
+    <value>Tai aplankas diske, o ne archyvas. Dukart spustelėkite archyvą, kad jį atvertumėte, arba paspauskite "Uždaryti archyvą" (Esc), kad grįžtumėte prie archyvų kūrimo.</value>
+  </data>
+  <data name="BrowseUpButtonName" xml:space="preserve">
+    <value>Vienu lygiu aukštyn</value>
+  </data>
+  <data name="DestinationUpButtonName" xml:space="preserve">
+    <value>Pirminis aplankas</value>
+  </data>
+  <data name="DragAddCaption" xml:space="preserve">
+    <value>Įtraukti į sąrašą</value>
   </data>
 </root>

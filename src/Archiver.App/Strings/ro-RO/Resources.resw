@@ -15,7 +15,7 @@
 
   <!-- Buttons -->
   <data name="ArchiveButtonLabel" xml:space="preserve">
-    <value>Arhivează</value>
+    <value>Comprimă în {0}</value>
   </data>
   <data name="ExtractButtonLabel" xml:space="preserve">
     <value>Extrage</value>
@@ -85,7 +85,7 @@
     <value>Ieșire</value>
   </data>
   <data name="RemoveMenuItem.Text" xml:space="preserve">
-    <value>Elimină</value>
+    <value>Elimină din listă</value>
   </data>
 
   <!-- Archive options -->
@@ -152,10 +152,10 @@
 
   <!-- Drop zone -->
   <data name="DropZoneHint.Text" xml:space="preserve">
-    <value>Plasați fișiere sau foldere aici, sau faceți dublu clic pentru a răsfoi fișierele</value>
+    <value>Plasați fișiere sau foldere aici</value>
   </data>
   <data name="DropZoneModeHint.Text" xml:space="preserve">
-    <value>Arhivele oferă extragere; orice altceva va fi arhivat</value>
+    <value>Arhivele pot fi extrase; orice altceva este comprimat</value>
   </data>
 
   <!-- Labels -->
@@ -179,7 +179,7 @@
     <value>Gata</value>
   </data>
   <data name="StatusArchiving" xml:space="preserve">
-    <value>Se arhivează...</value>
+    <value>Se comprimă...</value>
   </data>
   <data name="StatusExtracting" xml:space="preserve">
     <value>Se extrage...</value>
@@ -200,7 +200,7 @@
     <value>Vor fi extrase {0} arhivă/arhive în folderul de mai sus</value>
   </data>
   <data name="OutcomeWillArchive" xml:space="preserve">
-    <value>Vor fi arhivate {0} element(e) în folderul de mai sus</value>
+    <value>Vor fi comprimate {0} element(e) în folderul de mai sus</value>
   </data>
 
   <!-- Dialog strings -->
@@ -366,9 +366,159 @@
     <value>{0} GB</value>
   </data>
   <data name="StatusArchivingCount" xml:space="preserve">
-    <value>Se arhivează... (fișiere: {0}, {1})</value>
+    <value>Se comprimă... (fișiere: {0}, {1})</value>
   </data>
   <data name="StatusExtractingCount" xml:space="preserve">
     <value>Se extrage... (arhive: {0})</value>
+  </data>
+  <data name="StatusOpening" xml:space="preserve">
+    <value>Se deschide...</value>
+  </data>
+  <data name="ThisPcBreadcrumbRoot" xml:space="preserve">
+    <value>Acest PC</value>
+  </data>
+  <data name="NestedArchiveDepthLimitReached" xml:space="preserve">
+    <value>Nu se poate deschide — această arhivă este imbricată prea adânc.</value>
+  </data>
+  <data name="UnsafePreviewConfirmTitle" xml:space="preserve">
+    <value>Previzualizare indisponibilă</value>
+  </data>
+  <data name="UnsafePreviewConfirmMessage" xml:space="preserve">
+    <value>"{0}" nu poate fi deschis direct în siguranță. Îl extrageți în schimb într-un folder de lângă arhivă?</value>
+  </data>
+  <data name="OutcomeCompressed" xml:space="preserve">
+    <value>Comprimat în {0} s — arhive: {1}</value>
+  </data>
+  <data name="OutcomeExtracted" xml:space="preserve">
+    <value>Extras în {0} s — arhive: {1}</value>
+  </data>
+  <data name="OutcomeProblems" xml:space="preserve">
+    <value>Finalizat cu probleme: {0}</value>
+  </data>
+  <data name="OutcomeNothingDone" xml:space="preserve">
+    <value>Nu s-a făcut nimic — omise: {0}</value>
+  </data>
+  <data name="BrowseSelectionLine" xml:space="preserve">
+    <value>{0} din {1} selectate</value>
+  </data>
+  <data name="OutcomeShowInFolderButton.Content" xml:space="preserve">
+    <value>Afișează în folder</value>
+  </data>
+  <data name="OutcomeDetailsButton.Content" xml:space="preserve">
+    <value>Detalii...</value>
+  </data>
+  <data name="EncryptPasswordLayoutHint" xml:space="preserve">
+    <value>Literele din afara aspectului de tastatură englezesc nu pot fi folosite și nu au fost adăugate. Comutați aspectul la engleză, goliți câmpul și tastați din nou parola.</value>
+  </data>
+  <data name="EncryptPasswordRefusedCharacter" xml:space="preserve">
+    <value>Acest caracter nu poate fi folosit și nu a fost adăugat. Goliți câmpul și tastați din nou parola folosind doar litere englezești, cifre, spații și semne de punctuație.</value>
+  </data>
+  <data name="NewArchiveCardTitle.Text" xml:space="preserve">
+    <value>Arhivă nouă</value>
+  </data>
+  <data name="DestinationCardTitle.Text" xml:space="preserve">
+    <value>Unde, și ce urmează</value>
+  </data>
+  <data name="EncryptZipOnlyNote.Text" xml:space="preserve">
+    <value>Criptarea cu parolă este disponibilă doar pentru ZIP</value>
+  </data>
+  <data name="RecycleBinNote.Text" xml:space="preserve">
+    <value>Pe unitățile de rețea și cele amovibile, care nu au Coș de reciclare, Pakko întreabă mai întâi.</value>
+  </data>
+  <data name="EmptyAddFilesButton.Content" xml:space="preserve">
+    <value>Adaugă fișiere</value>
+  </data>
+  <data name="EmptyAddFolderButton.Content" xml:space="preserve">
+    <value>Adaugă folder</value>
+  </data>
+  <data name="DestinationSaveLabel" xml:space="preserve">
+    <value>Salvează în:</value>
+  </data>
+  <data name="DestinationExtractLabel" xml:space="preserve">
+    <value>Extrage în:</value>
+  </data>
+  <data name="DeleteAfterCompressLabel" xml:space="preserve">
+    <value>După o comprimare reușită, mută fișierele sursă în Coșul de reciclare</value>
+  </data>
+  <data name="DeleteAfterExtractLabel" xml:space="preserve">
+    <value>După o extragere reușită, mută arhivele în Coșul de reciclare</value>
+  </data>
+  <data name="ArchiveNameAutoPlaceholder" xml:space="preserve">
+    <value>{0} (automat)</value>
+  </data>
+  <data name="ArchiveNamePerItemPlaceholder" xml:space="preserve">
+    <value>{0}, ... (câte o arhivă pentru fiecare element)</value>
+  </data>
+  <data name="SummaryCompressionFast" xml:space="preserve">
+    <value>Rapidă</value>
+  </data>
+  <data name="SummaryCompressionNormal" xml:space="preserve">
+    <value>Normală</value>
+  </data>
+  <data name="SummaryCompressionBest" xml:space="preserve">
+    <value>Maximă</value>
+  </data>
+  <data name="SummaryCompressionNone" xml:space="preserve">
+    <value>Fără comprimare</value>
+  </data>
+  <data name="SummaryWithPassword" xml:space="preserve">
+    <value>cu parolă</value>
+  </data>
+  <data name="SummaryNoPassword" xml:space="preserve">
+    <value>fără parolă</value>
+  </data>
+  <data name="NewArchiveCollapsedReason" xml:space="preserve">
+    <value>restrâns, lista conține doar arhive</value>
+  </data>
+  <data name="ExtractUnavailableHint" xml:space="preserve">
+    <value>Lista nu conține arhive, nu există nimic de extras</value>
+  </data>
+  <data name="DeleteAfterEitherLabel" xml:space="preserve">
+    <value>După o operație reușită, mută în Coșul de reciclare ce a folosit: fișierele sursă după comprimare, arhivele după extragere</value>
+  </data>
+  <data name="TestArchiveButton.Content" xml:space="preserve">
+    <value>Testează arhiva</value>
+  </data>
+  <data name="CloseArchiveButton.Content" xml:space="preserve">
+    <value>Închide arhiva</value>
+  </data>
+  <data name="StatusTesting" xml:space="preserve">
+    <value>Se testează...</value>
+  </data>
+  <data name="TestResultTitle" xml:space="preserve">
+    <value>Testare arhivă</value>
+  </data>
+  <data name="TestNoErrorsFound" xml:space="preserve">
+    <value>Nu s-au găsit erori.</value>
+  </data>
+  <data name="BrowseEncryptedBadgeUnknown" xml:space="preserve">
+    <value>Criptat</value>
+  </data>
+  <data name="BrowseEncryptedUnknownMethod" xml:space="preserve">
+    <value>metodă necunoscută</value>
+  </data>
+  <data name="BrowseEncryptedCount" xml:space="preserve">
+    <value>Fișiere criptate ({0}): {1} din {2}.</value>
+  </data>
+  <data name="BrowseEncryptedPasswordNote" xml:space="preserve">
+    <value>Pakko cere parola când extrageți sau deschideți un fișier. Numele fișierelor nu sunt criptate, iar criptarea adaugă câțiva octeți fiecărui fișier.</value>
+  </data>
+  <data name="BrowseEncryptedAe2Note" xml:space="preserve">
+    <value>CRC-32 este gol pentru fișierele AES (AE-2): acestea sunt verificate prin autentificare, nu printr-o sumă de control.</value>
+  </data>
+  <data name="BrowseZipCryptoWeakNote" xml:space="preserve">
+    <value>ZipCrypto este o criptare slabă: fișierele pot fi recuperate fără parolă. Folosiți AES-256 pentru orice date sensibile.</value>
+  </data>
+  <data name="BrowseOutsideInfo" xml:space="preserve">
+    <value>Acesta este un folder de pe disc, nu o arhivă. Faceți dublu clic pe o arhivă pentru a o deschide sau apăsați "Închide arhiva" (Esc) pentru a reveni la crearea arhivelor.</value>
+  </data>
+  <data name="BrowseUpButtonName" xml:space="preserve">
+    <value>Un nivel mai sus</value>
+  </data>
+  <data name="DestinationUpButtonName" xml:space="preserve">
+    <value>Folder părinte</value>
+  </data>
+  <data name="DragAddCaption" xml:space="preserve">
+    <value>Adaugă în listă</value>
   </data>
 </root>

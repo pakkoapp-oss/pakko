@@ -15,7 +15,7 @@
 
   <!-- Buttons -->
   <data name="ArchiveButtonLabel" xml:space="preserve">
-    <value>آرکائیو کریں</value>
+    <value>{0} میں کمپریس کریں</value>
   </data>
   <data name="ExtractButtonLabel" xml:space="preserve">
     <value>نکالیں</value>
@@ -85,7 +85,7 @@
     <value>خارج ہوں</value>
   </data>
   <data name="RemoveMenuItem.Text" xml:space="preserve">
-    <value>ہٹائیں</value>
+    <value>فہرست سے ہٹائیں</value>
   </data>
 
   <!-- Archive options -->
@@ -152,10 +152,10 @@
 
   <!-- Drop zone -->
   <data name="DropZoneHint.Text" xml:space="preserve">
-    <value>فائلیں یا فولڈرز یہاں چھوڑیں، یا فائلیں براؤز کرنے کے لیے ڈبل کلک کریں</value>
+    <value>فائلیں یا فولڈرز یہاں چھوڑیں</value>
   </data>
   <data name="DropZoneModeHint.Text" xml:space="preserve">
-    <value>آرکائیوز نکالنے کی پیشکش کرتے ہیں؛ باقی سب کچھ آرکائیو کیا جائے گا</value>
+    <value>آرکائیوز نکالے جا سکتے ہیں؛ باقی سب کچھ کمپریس ہوتا ہے</value>
   </data>
 
   <!-- Labels -->
@@ -179,7 +179,7 @@
     <value>تیار</value>
   </data>
   <data name="StatusArchiving" xml:space="preserve">
-    <value>آرکائیو کیا جا رہا ہے...</value>
+    <value>کمپریس کیا جا رہا ہے...</value>
   </data>
   <data name="StatusExtracting" xml:space="preserve">
     <value>نکالا جا رہا ہے...</value>
@@ -200,7 +200,7 @@
     <value>اوپر دیے گئے فولڈر میں {0} آرکائیو(ز) نکالے جائیں گے</value>
   </data>
   <data name="OutcomeWillArchive" xml:space="preserve">
-    <value>اوپر دیے گئے فولڈر میں {0} آئٹم(ز) آرکائیو کیے جائیں گے</value>
+    <value>اوپر دیے گئے فولڈر میں {0} آئٹم(ز) کمپریس کیے جائیں گے</value>
   </data>
 
   <!-- Dialog strings -->
@@ -366,9 +366,159 @@
     <value>{0} GB</value>
   </data>
   <data name="StatusArchivingCount" xml:space="preserve">
-    <value>آرکائیو کیا جا رہا ہے... (فائلیں: {0}, {1})</value>
+    <value>کمپریس کیا جا رہا ہے... (فائلیں: {0}, {1})</value>
   </data>
   <data name="StatusExtractingCount" xml:space="preserve">
     <value>نکالا جا رہا ہے... (آرکائیوز: {0})</value>
+  </data>
+  <data name="StatusOpening" xml:space="preserve">
+    <value>کھولا جا رہا ہے...</value>
+  </data>
+  <data name="ThisPcBreadcrumbRoot" xml:space="preserve">
+    <value>یہ پی سی</value>
+  </data>
+  <data name="NestedArchiveDepthLimitReached" xml:space="preserve">
+    <value>کھولا نہیں جا سکتا — یہ آرکائیو بہت گہرائی تک اندر رکھا گیا ہے۔</value>
+  </data>
+  <data name="UnsafePreviewConfirmTitle" xml:space="preserve">
+    <value>پیش منظر دستیاب نہیں</value>
+  </data>
+  <data name="UnsafePreviewConfirmMessage" xml:space="preserve">
+    <value>"{0}" کو براہ راست محفوظ طریقے سے نہیں کھولا جا سکتا۔ کیا اس کے بجائے اسے آرکائیو کے ساتھ والے فولڈر میں نکالیں؟</value>
+  </data>
+  <data name="OutcomeCompressed" xml:space="preserve">
+    <value>{0} سیکنڈ میں کمپریس ہوا — آرکائیوز: {1}</value>
+  </data>
+  <data name="OutcomeExtracted" xml:space="preserve">
+    <value>{0} سیکنڈ میں نکالا گیا — آرکائیوز: {1}</value>
+  </data>
+  <data name="OutcomeProblems" xml:space="preserve">
+    <value>مسائل کے ساتھ مکمل ہوا: {0}</value>
+  </data>
+  <data name="OutcomeNothingDone" xml:space="preserve">
+    <value>کچھ نہیں کیا گیا — نظرانداز شدہ: {0}</value>
+  </data>
+  <data name="BrowseSelectionLine" xml:space="preserve">
+    <value>{1} میں سے {0} منتخب</value>
+  </data>
+  <data name="OutcomeShowInFolderButton.Content" xml:space="preserve">
+    <value>فولڈر میں دکھائیں</value>
+  </data>
+  <data name="OutcomeDetailsButton.Content" xml:space="preserve">
+    <value>تفصیلات...</value>
+  </data>
+  <data name="EncryptPasswordLayoutHint" xml:space="preserve">
+    <value>انگریزی کی بورڈ لے آؤٹ سے باہر کے حروف استعمال نہیں کیے جا سکتے اور شامل نہیں کیے گئے۔ لے آؤٹ کو انگریزی پر تبدیل کریں، فیلڈ صاف کریں اور پاس ورڈ دوبارہ ٹائپ کریں۔</value>
+  </data>
+  <data name="EncryptPasswordRefusedCharacter" xml:space="preserve">
+    <value>یہ حرف استعمال نہیں کیا جا سکتا اور شامل نہیں کیا گیا۔ فیلڈ صاف کریں اور صرف انگریزی حروف، ہندسوں، خالی جگہوں اور رموز اوقاف کے ساتھ پاس ورڈ دوبارہ ٹائپ کریں۔</value>
+  </data>
+  <data name="NewArchiveCardTitle.Text" xml:space="preserve">
+    <value>نیا آرکائیو</value>
+  </data>
+  <data name="DestinationCardTitle.Text" xml:space="preserve">
+    <value>کہاں، اور اس کے بعد کیا</value>
+  </data>
+  <data name="EncryptZipOnlyNote.Text" xml:space="preserve">
+    <value>پاس ورڈ سے انکرپشن صرف ZIP کے لیے دستیاب ہے</value>
+  </data>
+  <data name="RecycleBinNote.Text" xml:space="preserve">
+    <value>نیٹ ورک اور ہٹائی جا سکنے والی ڈرائیوز پر، جن میں ری سائیکل بن نہیں ہوتا، Pakko پہلے پوچھتا ہے۔</value>
+  </data>
+  <data name="EmptyAddFilesButton.Content" xml:space="preserve">
+    <value>فائلیں شامل کریں</value>
+  </data>
+  <data name="EmptyAddFolderButton.Content" xml:space="preserve">
+    <value>فولڈر شامل کریں</value>
+  </data>
+  <data name="DestinationSaveLabel" xml:space="preserve">
+    <value>یہاں محفوظ کریں:</value>
+  </data>
+  <data name="DestinationExtractLabel" xml:space="preserve">
+    <value>یہاں نکالیں:</value>
+  </data>
+  <data name="DeleteAfterCompressLabel" xml:space="preserve">
+    <value>کامیاب کمپریشن کے بعد، ماخذ فائلوں کو ری سائیکل بن میں منتقل کریں</value>
+  </data>
+  <data name="DeleteAfterExtractLabel" xml:space="preserve">
+    <value>کامیابی سے نکالنے کے بعد، آرکائیوز کو ری سائیکل بن میں منتقل کریں</value>
+  </data>
+  <data name="ArchiveNameAutoPlaceholder" xml:space="preserve">
+    <value>{0} (خودکار)</value>
+  </data>
+  <data name="ArchiveNamePerItemPlaceholder" xml:space="preserve">
+    <value>{0}، ... (ہر آئٹم کے لیے ایک آرکائیو)</value>
+  </data>
+  <data name="SummaryCompressionFast" xml:space="preserve">
+    <value>تیز</value>
+  </data>
+  <data name="SummaryCompressionNormal" xml:space="preserve">
+    <value>عام</value>
+  </data>
+  <data name="SummaryCompressionBest" xml:space="preserve">
+    <value>بہترین</value>
+  </data>
+  <data name="SummaryCompressionNone" xml:space="preserve">
+    <value>کوئی کمپریشن نہیں</value>
+  </data>
+  <data name="SummaryWithPassword" xml:space="preserve">
+    <value>پاس ورڈ کے ساتھ</value>
+  </data>
+  <data name="SummaryNoPassword" xml:space="preserve">
+    <value>بغیر پاس ورڈ</value>
+  </data>
+  <data name="NewArchiveCollapsedReason" xml:space="preserve">
+    <value>سمیٹا ہوا، فہرست میں صرف آرکائیوز ہیں</value>
+  </data>
+  <data name="ExtractUnavailableHint" xml:space="preserve">
+    <value>فہرست میں کوئی آرکائیو نہیں، نکالنے کے لیے کچھ نہیں</value>
+  </data>
+  <data name="DeleteAfterEitherLabel" xml:space="preserve">
+    <value>کامیاب کارروائی کے بعد، جو کچھ استعمال ہوا اسے ری سائیکل بن میں منتقل کریں: کمپریشن کے بعد ماخذ فائلیں، نکالنے کے بعد آرکائیوز</value>
+  </data>
+  <data name="TestArchiveButton.Content" xml:space="preserve">
+    <value>آرکائو کی جانچ کریں</value>
+  </data>
+  <data name="CloseArchiveButton.Content" xml:space="preserve">
+    <value>آرکائیو بند کریں</value>
+  </data>
+  <data name="StatusTesting" xml:space="preserve">
+    <value>جانچ ہو رہی ہے...</value>
+  </data>
+  <data name="TestResultTitle" xml:space="preserve">
+    <value>آرکائو کی جانچ</value>
+  </data>
+  <data name="TestNoErrorsFound" xml:space="preserve">
+    <value>کوئی خرابی نہیں ملی۔</value>
+  </data>
+  <data name="BrowseEncryptedBadgeUnknown" xml:space="preserve">
+    <value>انکرپٹڈ</value>
+  </data>
+  <data name="BrowseEncryptedUnknownMethod" xml:space="preserve">
+    <value>نامعلوم طریقہ</value>
+  </data>
+  <data name="BrowseEncryptedCount" xml:space="preserve">
+    <value>انکرپٹڈ فائلیں ({0}): {2} میں سے {1}۔</value>
+  </data>
+  <data name="BrowseEncryptedPasswordNote" xml:space="preserve">
+    <value>جب آپ کوئی فائل نکالتے یا کھولتے ہیں تو Pakko پاس ورڈ پوچھتا ہے۔ فائلوں کے نام انکرپٹ نہیں ہوتے، اور انکرپشن ہر فائل میں چند بائٹس کا اضافہ کرتی ہے۔</value>
+  </data>
+  <data name="BrowseEncryptedAe2Note" xml:space="preserve">
+    <value>AES (AE-2) فائلوں کے لیے CRC-32 خالی ہوتا ہے: ان کی تصدیق چیک سم سے نہیں بلکہ توثیق سے ہوتی ہے۔</value>
+  </data>
+  <data name="BrowseZipCryptoWeakNote" xml:space="preserve">
+    <value>ZipCrypto کمزور انکرپشن ہے: فائلیں پاس ورڈ کے بغیر بازیافت کی جا سکتی ہیں۔ کسی بھی حساس چیز کے لیے AES-256 استعمال کریں۔</value>
+  </data>
+  <data name="BrowseOutsideInfo" xml:space="preserve">
+    <value>یہ ڈسک پر ایک فولڈر ہے، آرکائیو نہیں۔ کسی آرکائیو کو کھولنے کے لیے اس پر ڈبل کلک کریں، یا آرکائیوز بنانے پر واپس جانے کے لیے "آرکائیو بند کریں" (Esc) دبائیں۔</value>
+  </data>
+  <data name="BrowseUpButtonName" xml:space="preserve">
+    <value>ایک سطح اوپر</value>
+  </data>
+  <data name="DestinationUpButtonName" xml:space="preserve">
+    <value>بنیادی فولڈر</value>
+  </data>
+  <data name="DragAddCaption" xml:space="preserve">
+    <value>فہرست میں شامل کریں</value>
   </data>
 </root>

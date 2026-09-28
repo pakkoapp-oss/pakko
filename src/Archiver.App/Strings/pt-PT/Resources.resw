@@ -15,7 +15,7 @@
 
   <!-- Buttons -->
   <data name="ArchiveButtonLabel" xml:space="preserve">
-    <value>Arquivar</value>
+    <value>Comprimir em {0}</value>
   </data>
   <data name="ExtractButtonLabel" xml:space="preserve">
     <value>Extrair</value>
@@ -85,7 +85,7 @@
     <value>Sair</value>
   </data>
   <data name="RemoveMenuItem.Text" xml:space="preserve">
-    <value>Remover</value>
+    <value>Remover da lista</value>
   </data>
 
   <!-- Archive options -->
@@ -152,10 +152,10 @@
 
   <!-- Drop zone -->
   <data name="DropZoneHint.Text" xml:space="preserve">
-    <value>Largue ficheiros ou pastas aqui, ou clique duas vezes para procurar ficheiros</value>
+    <value>Largue ficheiros ou pastas aqui</value>
   </data>
   <data name="DropZoneModeHint.Text" xml:space="preserve">
-    <value>Os arquivos oferecem extração; tudo o resto será arquivado</value>
+    <value>Os arquivos podem ser extraídos; tudo o resto é comprimido</value>
   </data>
 
   <!-- Labels -->
@@ -179,7 +179,7 @@
     <value>Pronto</value>
   </data>
   <data name="StatusArchiving" xml:space="preserve">
-    <value>A arquivar...</value>
+    <value>A comprimir...</value>
   </data>
   <data name="StatusExtracting" xml:space="preserve">
     <value>A extrair...</value>
@@ -200,7 +200,7 @@
     <value>Serão extraídos {0} arquivo(s) para a pasta acima</value>
   </data>
   <data name="OutcomeWillArchive" xml:space="preserve">
-    <value>Serão arquivados {0} item(ns) para a pasta acima</value>
+    <value>Serão comprimidos {0} item(ns) para a pasta acima</value>
   </data>
 
   <!-- Dialog strings -->
@@ -366,9 +366,159 @@
     <value>{0} GB</value>
   </data>
   <data name="StatusArchivingCount" xml:space="preserve">
-    <value>A arquivar... (ficheiros: {0}, {1})</value>
+    <value>A comprimir... (ficheiros: {0}, {1})</value>
   </data>
   <data name="StatusExtractingCount" xml:space="preserve">
     <value>A extrair... (arquivos: {0})</value>
+  </data>
+  <data name="StatusOpening" xml:space="preserve">
+    <value>A abrir...</value>
+  </data>
+  <data name="ThisPcBreadcrumbRoot" xml:space="preserve">
+    <value>Este PC</value>
+  </data>
+  <data name="NestedArchiveDepthLimitReached" xml:space="preserve">
+    <value>Não é possível abrir — este arquivo está aninhado a demasiada profundidade.</value>
+  </data>
+  <data name="UnsafePreviewConfirmTitle" xml:space="preserve">
+    <value>Pré-visualização indisponível</value>
+  </data>
+  <data name="UnsafePreviewConfirmMessage" xml:space="preserve">
+    <value>Não é possível abrir "{0}" diretamente em segurança. Extraí-lo antes para uma pasta junto ao arquivo?</value>
+  </data>
+  <data name="OutcomeCompressed" xml:space="preserve">
+    <value>Comprimido em {0} s — arquivos: {1}</value>
+  </data>
+  <data name="OutcomeExtracted" xml:space="preserve">
+    <value>Extraído em {0} s — arquivos: {1}</value>
+  </data>
+  <data name="OutcomeProblems" xml:space="preserve">
+    <value>Concluído com problemas: {0}</value>
+  </data>
+  <data name="OutcomeNothingDone" xml:space="preserve">
+    <value>Nada foi feito — ignorados: {0}</value>
+  </data>
+  <data name="BrowseSelectionLine" xml:space="preserve">
+    <value>{0} de {1} selecionados</value>
+  </data>
+  <data name="OutcomeShowInFolderButton.Content" xml:space="preserve">
+    <value>Mostrar na pasta</value>
+  </data>
+  <data name="OutcomeDetailsButton.Content" xml:space="preserve">
+    <value>Detalhes...</value>
+  </data>
+  <data name="EncryptPasswordLayoutHint" xml:space="preserve">
+    <value>As letras fora do esquema de teclado inglês não podem ser utilizadas e não foram adicionadas. Mude o esquema para inglês, limpe o campo e escreva novamente a palavra-passe.</value>
+  </data>
+  <data name="EncryptPasswordRefusedCharacter" xml:space="preserve">
+    <value>Esse carácter não pode ser utilizado e não foi adicionado. Limpe o campo e escreva novamente a palavra-passe utilizando apenas letras inglesas, algarismos, espaços e pontuação.</value>
+  </data>
+  <data name="NewArchiveCardTitle.Text" xml:space="preserve">
+    <value>Novo arquivo</value>
+  </data>
+  <data name="DestinationCardTitle.Text" xml:space="preserve">
+    <value>Onde, e o que fazer depois</value>
+  </data>
+  <data name="EncryptZipOnlyNote.Text" xml:space="preserve">
+    <value>A encriptação com palavra-passe só está disponível para ZIP</value>
+  </data>
+  <data name="RecycleBinNote.Text" xml:space="preserve">
+    <value>Em unidades de rede e amovíveis, que não têm Reciclagem, o Pakko pergunta primeiro.</value>
+  </data>
+  <data name="EmptyAddFilesButton.Content" xml:space="preserve">
+    <value>Adicionar ficheiros</value>
+  </data>
+  <data name="EmptyAddFolderButton.Content" xml:space="preserve">
+    <value>Adicionar pasta</value>
+  </data>
+  <data name="DestinationSaveLabel" xml:space="preserve">
+    <value>Guardar em:</value>
+  </data>
+  <data name="DestinationExtractLabel" xml:space="preserve">
+    <value>Extrair para:</value>
+  </data>
+  <data name="DeleteAfterCompressLabel" xml:space="preserve">
+    <value>Após uma compressão bem-sucedida, mover os ficheiros de origem para a Reciclagem</value>
+  </data>
+  <data name="DeleteAfterExtractLabel" xml:space="preserve">
+    <value>Após uma extração bem-sucedida, mover os arquivos para a Reciclagem</value>
+  </data>
+  <data name="ArchiveNameAutoPlaceholder" xml:space="preserve">
+    <value>{0} (automático)</value>
+  </data>
+  <data name="ArchiveNamePerItemPlaceholder" xml:space="preserve">
+    <value>{0}, ... (um arquivo por item)</value>
+  </data>
+  <data name="SummaryCompressionFast" xml:space="preserve">
+    <value>Rápida</value>
+  </data>
+  <data name="SummaryCompressionNormal" xml:space="preserve">
+    <value>Normal</value>
+  </data>
+  <data name="SummaryCompressionBest" xml:space="preserve">
+    <value>Máxima</value>
+  </data>
+  <data name="SummaryCompressionNone" xml:space="preserve">
+    <value>Sem compressão</value>
+  </data>
+  <data name="SummaryWithPassword" xml:space="preserve">
+    <value>com palavra-passe</value>
+  </data>
+  <data name="SummaryNoPassword" xml:space="preserve">
+    <value>sem palavra-passe</value>
+  </data>
+  <data name="NewArchiveCollapsedReason" xml:space="preserve">
+    <value>fechado, a lista só contém arquivos</value>
+  </data>
+  <data name="ExtractUnavailableHint" xml:space="preserve">
+    <value>A lista não contém arquivos, não há nada para extrair</value>
+  </data>
+  <data name="DeleteAfterEitherLabel" xml:space="preserve">
+    <value>Após uma operação bem-sucedida, mover para a Reciclagem o que ela utilizou: os ficheiros de origem após comprimir, os arquivos após extrair</value>
+  </data>
+  <data name="TestArchiveButton.Content" xml:space="preserve">
+    <value>Testar arquivo</value>
+  </data>
+  <data name="CloseArchiveButton.Content" xml:space="preserve">
+    <value>Fechar arquivo</value>
+  </data>
+  <data name="StatusTesting" xml:space="preserve">
+    <value>A testar...</value>
+  </data>
+  <data name="TestResultTitle" xml:space="preserve">
+    <value>Testar arquivo</value>
+  </data>
+  <data name="TestNoErrorsFound" xml:space="preserve">
+    <value>Não foram encontrados erros.</value>
+  </data>
+  <data name="BrowseEncryptedBadgeUnknown" xml:space="preserve">
+    <value>Encriptado</value>
+  </data>
+  <data name="BrowseEncryptedUnknownMethod" xml:space="preserve">
+    <value>método desconhecido</value>
+  </data>
+  <data name="BrowseEncryptedCount" xml:space="preserve">
+    <value>Ficheiros encriptados ({0}): {1} de {2}.</value>
+  </data>
+  <data name="BrowseEncryptedPasswordNote" xml:space="preserve">
+    <value>O Pakko pede a palavra-passe quando extrai ou abre um ficheiro. Os nomes dos ficheiros não são encriptados e a encriptação acrescenta alguns bytes a cada ficheiro.</value>
+  </data>
+  <data name="BrowseEncryptedAe2Note" xml:space="preserve">
+    <value>O CRC-32 está vazio nos ficheiros AES (AE-2): são verificados por autenticação, não por uma soma de verificação.</value>
+  </data>
+  <data name="BrowseZipCryptoWeakNote" xml:space="preserve">
+    <value>O ZipCrypto é uma encriptação fraca: os ficheiros podem ser recuperados sem a palavra-passe. Utilize AES-256 para tudo o que for sensível.</value>
+  </data>
+  <data name="BrowseOutsideInfo" xml:space="preserve">
+    <value>Esta é uma pasta no disco, não um arquivo. Faça duplo clique num arquivo para o abrir ou prima "Fechar arquivo" (Esc) para voltar à criação de arquivos.</value>
+  </data>
+  <data name="BrowseUpButtonName" xml:space="preserve">
+    <value>Subir um nível</value>
+  </data>
+  <data name="DestinationUpButtonName" xml:space="preserve">
+    <value>Pasta principal</value>
+  </data>
+  <data name="DragAddCaption" xml:space="preserve">
+    <value>Adicionar à lista</value>
   </data>
 </root>

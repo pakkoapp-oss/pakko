@@ -15,7 +15,7 @@
 
   <!-- Buttons -->
   <data name="ArchiveButtonLabel" xml:space="preserve">
-    <value>บีบอัด</value>
+    <value>บีบอัดเป็น {0}</value>
   </data>
   <data name="ExtractButtonLabel" xml:space="preserve">
     <value>แตกไฟล์</value>
@@ -85,7 +85,7 @@
     <value>ออก</value>
   </data>
   <data name="RemoveMenuItem.Text" xml:space="preserve">
-    <value>ลบ</value>
+    <value>นำออกจากรายการ</value>
   </data>
 
   <!-- Archive options -->
@@ -152,10 +152,10 @@
 
   <!-- Drop zone -->
   <data name="DropZoneHint.Text" xml:space="preserve">
-    <value>วางไฟล์หรือโฟลเดอร์ที่นี่ หรือดับเบิลคลิกเพื่อเรียกดูไฟล์</value>
+    <value>วางไฟล์หรือโฟลเดอร์ที่นี่</value>
   </data>
   <data name="DropZoneModeHint.Text" xml:space="preserve">
-    <value>ไฟล์บีบอัดจะเสนอให้แตกไฟล์ ส่วนอย่างอื่นจะถูกบีบอัด</value>
+    <value>ไฟล์บีบอัดสามารถแตกไฟล์ได้ ส่วนอย่างอื่นจะถูกบีบอัด</value>
   </data>
 
   <!-- Labels -->
@@ -370,5 +370,155 @@
   </data>
   <data name="StatusExtractingCount" xml:space="preserve">
     <value>กำลังแตกไฟล์... (ไฟล์บีบอัด: {0})</value>
+  </data>
+  <data name="StatusOpening" xml:space="preserve">
+    <value>กำลังเปิด...</value>
+  </data>
+  <data name="ThisPcBreadcrumbRoot" xml:space="preserve">
+    <value>พีซีเครื่องนี้</value>
+  </data>
+  <data name="NestedArchiveDepthLimitReached" xml:space="preserve">
+    <value>ไม่สามารถเปิดได้ — ไฟล์บีบอัดนี้ซ้อนกันลึกเกินไป</value>
+  </data>
+  <data name="UnsafePreviewConfirmTitle" xml:space="preserve">
+    <value>ไม่สามารถแสดงตัวอย่างได้</value>
+  </data>
+  <data name="UnsafePreviewConfirmMessage" xml:space="preserve">
+    <value>ไม่สามารถเปิด "{0}" โดยตรงได้อย่างปลอดภัย ต้องการแตกไฟล์ไปยังโฟลเดอร์ข้างไฟล์บีบอัดแทนหรือไม่</value>
+  </data>
+  <data name="OutcomeCompressed" xml:space="preserve">
+    <value>บีบอัดเสร็จใน {0} วินาที — ไฟล์บีบอัด: {1}</value>
+  </data>
+  <data name="OutcomeExtracted" xml:space="preserve">
+    <value>แตกไฟล์เสร็จใน {0} วินาที — ไฟล์บีบอัด: {1}</value>
+  </data>
+  <data name="OutcomeProblems" xml:space="preserve">
+    <value>เสร็จสิ้นโดยมีปัญหา: {0}</value>
+  </data>
+  <data name="OutcomeNothingDone" xml:space="preserve">
+    <value>ไม่มีการดำเนินการใด — ข้ามไป: {0}</value>
+  </data>
+  <data name="BrowseSelectionLine" xml:space="preserve">
+    <value>เลือก {0} จาก {1}</value>
+  </data>
+  <data name="OutcomeShowInFolderButton.Content" xml:space="preserve">
+    <value>แสดงในโฟลเดอร์</value>
+  </data>
+  <data name="OutcomeDetailsButton.Content" xml:space="preserve">
+    <value>รายละเอียด...</value>
+  </data>
+  <data name="EncryptPasswordLayoutHint" xml:space="preserve">
+    <value>ไม่สามารถใช้ตัวอักษรที่อยู่นอกแป้นพิมพ์ภาษาอังกฤษได้ และไม่ได้เพิ่มตัวอักษรเหล่านั้น สลับแป้นพิมพ์เป็นภาษาอังกฤษ ล้างช่อง แล้วพิมพ์รหัสผ่านอีกครั้ง</value>
+  </data>
+  <data name="EncryptPasswordRefusedCharacter" xml:space="preserve">
+    <value>ไม่สามารถใช้อักขระนั้นได้ และไม่ได้เพิ่มอักขระนั้น ล้างช่อง แล้วพิมพ์รหัสผ่านอีกครั้งโดยใช้เฉพาะตัวอักษรภาษาอังกฤษ ตัวเลข ช่องว่าง และเครื่องหมายวรรคตอน</value>
+  </data>
+  <data name="NewArchiveCardTitle.Text" xml:space="preserve">
+    <value>ไฟล์บีบอัดใหม่</value>
+  </data>
+  <data name="DestinationCardTitle.Text" xml:space="preserve">
+    <value>ที่ไหน และทำอะไรต่อ</value>
+  </data>
+  <data name="EncryptZipOnlyNote.Text" xml:space="preserve">
+    <value>การเข้ารหัสด้วยรหัสผ่านใช้ได้กับ ZIP เท่านั้น</value>
+  </data>
+  <data name="RecycleBinNote.Text" xml:space="preserve">
+    <value>บนไดรฟ์เครือข่ายและไดรฟ์แบบถอดได้ ซึ่งไม่มีถังรีไซเคิล Pakko จะถามก่อน</value>
+  </data>
+  <data name="EmptyAddFilesButton.Content" xml:space="preserve">
+    <value>เพิ่มไฟล์</value>
+  </data>
+  <data name="EmptyAddFolderButton.Content" xml:space="preserve">
+    <value>เพิ่มโฟลเดอร์</value>
+  </data>
+  <data name="DestinationSaveLabel" xml:space="preserve">
+    <value>บันทึกไปที่:</value>
+  </data>
+  <data name="DestinationExtractLabel" xml:space="preserve">
+    <value>แตกไฟล์ไปที่:</value>
+  </data>
+  <data name="DeleteAfterCompressLabel" xml:space="preserve">
+    <value>หลังจากบีบอัดสำเร็จ ให้ย้ายไฟล์ต้นฉบับไปยังถังรีไซเคิล</value>
+  </data>
+  <data name="DeleteAfterExtractLabel" xml:space="preserve">
+    <value>หลังจากแตกไฟล์สำเร็จ ให้ย้ายไฟล์บีบอัดไปยังถังรีไซเคิล</value>
+  </data>
+  <data name="ArchiveNameAutoPlaceholder" xml:space="preserve">
+    <value>{0} (อัตโนมัติ)</value>
+  </data>
+  <data name="ArchiveNamePerItemPlaceholder" xml:space="preserve">
+    <value>{0}, ... (หนึ่งไฟล์บีบอัดต่อรายการ)</value>
+  </data>
+  <data name="SummaryCompressionFast" xml:space="preserve">
+    <value>เร็ว</value>
+  </data>
+  <data name="SummaryCompressionNormal" xml:space="preserve">
+    <value>ปกติ</value>
+  </data>
+  <data name="SummaryCompressionBest" xml:space="preserve">
+    <value>ดีที่สุด</value>
+  </data>
+  <data name="SummaryCompressionNone" xml:space="preserve">
+    <value>ไม่บีบอัด</value>
+  </data>
+  <data name="SummaryWithPassword" xml:space="preserve">
+    <value>มีรหัสผ่าน</value>
+  </data>
+  <data name="SummaryNoPassword" xml:space="preserve">
+    <value>ไม่มีรหัสผ่าน</value>
+  </data>
+  <data name="NewArchiveCollapsedReason" xml:space="preserve">
+    <value>ยุบไว้ เนื่องจากรายการมีเฉพาะไฟล์บีบอัด</value>
+  </data>
+  <data name="ExtractUnavailableHint" xml:space="preserve">
+    <value>รายการไม่มีไฟล์บีบอัด จึงไม่มีอะไรให้แตกไฟล์</value>
+  </data>
+  <data name="DeleteAfterEitherLabel" xml:space="preserve">
+    <value>หลังจากดำเนินการสำเร็จ ให้ย้ายสิ่งที่ใช้ไปยังถังรีไซเคิล: ไฟล์ต้นฉบับหลังการบีบอัด ไฟล์บีบอัดหลังการแตกไฟล์</value>
+  </data>
+  <data name="TestArchiveButton.Content" xml:space="preserve">
+    <value>ทดสอบไฟล์บีบอัด</value>
+  </data>
+  <data name="CloseArchiveButton.Content" xml:space="preserve">
+    <value>ปิดไฟล์บีบอัด</value>
+  </data>
+  <data name="StatusTesting" xml:space="preserve">
+    <value>กำลังทดสอบ...</value>
+  </data>
+  <data name="TestResultTitle" xml:space="preserve">
+    <value>ทดสอบไฟล์บีบอัด</value>
+  </data>
+  <data name="TestNoErrorsFound" xml:space="preserve">
+    <value>ไม่พบข้อผิดพลาด</value>
+  </data>
+  <data name="BrowseEncryptedBadgeUnknown" xml:space="preserve">
+    <value>เข้ารหัสแล้ว</value>
+  </data>
+  <data name="BrowseEncryptedUnknownMethod" xml:space="preserve">
+    <value>วิธีการที่ไม่รู้จัก</value>
+  </data>
+  <data name="BrowseEncryptedCount" xml:space="preserve">
+    <value>ไฟล์ที่เข้ารหัส ({0}): {1} จาก {2}</value>
+  </data>
+  <data name="BrowseEncryptedPasswordNote" xml:space="preserve">
+    <value>Pakko จะขอรหัสผ่านเมื่อคุณแตกไฟล์หรือเปิดไฟล์ ชื่อไฟล์ไม่ได้เข้ารหัส และการเข้ารหัสจะเพิ่มข้อมูลสองสามไบต์ให้กับทุกไฟล์</value>
+  </data>
+  <data name="BrowseEncryptedAe2Note" xml:space="preserve">
+    <value>CRC-32 ว่างเปล่าสำหรับไฟล์ AES (AE-2): ไฟล์เหล่านี้ได้รับการตรวจสอบด้วยการยืนยันตัวตน ไม่ใช่ผลรวมตรวจสอบ</value>
+  </data>
+  <data name="BrowseZipCryptoWeakNote" xml:space="preserve">
+    <value>ZipCrypto เป็นการเข้ารหัสที่อ่อนแอ: สามารถกู้คืนไฟล์ได้โดยไม่ต้องใช้รหัสผ่าน ใช้ AES-256 สำหรับข้อมูลที่ละเอียดอ่อน</value>
+  </data>
+  <data name="BrowseOutsideInfo" xml:space="preserve">
+    <value>นี่คือโฟลเดอร์บนดิสก์ ไม่ใช่ไฟล์บีบอัด ดับเบิลคลิกไฟล์บีบอัดเพื่อเปิด หรือกด "ปิดไฟล์บีบอัด" (Esc) เพื่อกลับไปสร้างไฟล์บีบอัด</value>
+  </data>
+  <data name="BrowseUpButtonName" xml:space="preserve">
+    <value>ขึ้นไปหนึ่งระดับ</value>
+  </data>
+  <data name="DestinationUpButtonName" xml:space="preserve">
+    <value>โฟลเดอร์หลัก</value>
+  </data>
+  <data name="DragAddCaption" xml:space="preserve">
+    <value>เพิ่มลงในรายการ</value>
   </data>
 </root>

@@ -15,7 +15,7 @@
 
   <!-- Buttons -->
   <data name="ArchiveButtonLabel" xml:space="preserve">
-    <value>אריכוב</value>
+    <value>דחיסה ל-{0}</value>
   </data>
   <data name="ExtractButtonLabel" xml:space="preserve">
     <value>חילוץ</value>
@@ -85,7 +85,7 @@
     <value>יציאה</value>
   </data>
   <data name="RemoveMenuItem.Text" xml:space="preserve">
-    <value>הסר</value>
+    <value>הסר מהרשימה</value>
   </data>
 
   <!-- Archive options -->
@@ -152,10 +152,10 @@
 
   <!-- Drop zone -->
   <data name="DropZoneHint.Text" xml:space="preserve">
-    <value>גרור לכאן קבצים או תיקיות, או לחץ פעמיים כדי לעיין בקבצים</value>
+    <value>גרור לכאן קבצים או תיקיות</value>
   </data>
   <data name="DropZoneModeHint.Text" xml:space="preserve">
-    <value>ארכיונים מציעים חילוץ; כל השאר יאורכב</value>
+    <value>ניתן לחלץ ארכיונים; כל השאר נדחס</value>
   </data>
 
   <!-- Labels -->
@@ -179,7 +179,7 @@
     <value>מוכן</value>
   </data>
   <data name="StatusArchiving" xml:space="preserve">
-    <value>מאכרך...</value>
+    <value>דוחס...</value>
   </data>
   <data name="StatusExtracting" xml:space="preserve">
     <value>מחלץ...</value>
@@ -200,7 +200,7 @@
     <value>יחולצו {0} ארכיונים לתיקייה שלמעלה</value>
   </data>
   <data name="OutcomeWillArchive" xml:space="preserve">
-    <value>יאורכבו {0} פריטים לתיקייה שלמעלה</value>
+    <value>יידחסו {0} פריטים לתיקייה שלמעלה</value>
   </data>
 
   <!-- Dialog strings -->
@@ -366,9 +366,159 @@
     <value>{0} GB</value>
   </data>
   <data name="StatusArchivingCount" xml:space="preserve">
-    <value>מאכרך... (קבצים: {0}, {1})</value>
+    <value>דוחס... (קבצים: {0}, {1})</value>
   </data>
   <data name="StatusExtractingCount" xml:space="preserve">
     <value>מחלץ... (ארכיונים: {0})</value>
+  </data>
+  <data name="StatusOpening" xml:space="preserve">
+    <value>פותח...</value>
+  </data>
+  <data name="ThisPcBreadcrumbRoot" xml:space="preserve">
+    <value>מחשב זה</value>
+  </data>
+  <data name="NestedArchiveDepthLimitReached" xml:space="preserve">
+    <value>לא ניתן לפתוח — הארכיון הזה מקונן לעומק רב מדי.</value>
+  </data>
+  <data name="UnsafePreviewConfirmTitle" xml:space="preserve">
+    <value>אין אפשרות תצוגה מקדימה</value>
+  </data>
+  <data name="UnsafePreviewConfirmMessage" xml:space="preserve">
+    <value>לא ניתן לפתוח את "{0}" ישירות באופן בטוח. לחלץ אותו במקום זאת לתיקייה ליד הארכיון?</value>
+  </data>
+  <data name="OutcomeCompressed" xml:space="preserve">
+    <value>נדחס תוך {0} שנ' — ארכיונים: {1}</value>
+  </data>
+  <data name="OutcomeExtracted" xml:space="preserve">
+    <value>חולץ תוך {0} שנ' — ארכיונים: {1}</value>
+  </data>
+  <data name="OutcomeProblems" xml:space="preserve">
+    <value>הסתיים עם בעיות: {0}</value>
+  </data>
+  <data name="OutcomeNothingDone" xml:space="preserve">
+    <value>לא בוצע דבר — דולגו: {0}</value>
+  </data>
+  <data name="BrowseSelectionLine" xml:space="preserve">
+    <value>נבחרו {0} מתוך {1}</value>
+  </data>
+  <data name="OutcomeShowInFolderButton.Content" xml:space="preserve">
+    <value>הצג בתיקייה</value>
+  </data>
+  <data name="OutcomeDetailsButton.Content" xml:space="preserve">
+    <value>פרטים...</value>
+  </data>
+  <data name="EncryptPasswordLayoutHint" xml:space="preserve">
+    <value>לא ניתן להשתמש באותיות מחוץ לפריסת המקלדת האנגלית, והן לא נוספו. החלף את הפריסה לאנגלית, נקה את השדה והקלד שוב את הסיסמה.</value>
+  </data>
+  <data name="EncryptPasswordRefusedCharacter" xml:space="preserve">
+    <value>לא ניתן להשתמש בתו הזה, והוא לא נוסף. נקה את השדה והקלד שוב את הסיסמה באמצעות אותיות אנגליות, ספרות, רווחים וסימני פיסוק בלבד.</value>
+  </data>
+  <data name="NewArchiveCardTitle.Text" xml:space="preserve">
+    <value>ארכיון חדש</value>
+  </data>
+  <data name="DestinationCardTitle.Text" xml:space="preserve">
+    <value>לאן, ומה אחר כך</value>
+  </data>
+  <data name="EncryptZipOnlyNote.Text" xml:space="preserve">
+    <value>הצפנה בסיסמה זמינה עבור ZIP בלבד</value>
+  </data>
+  <data name="RecycleBinNote.Text" xml:space="preserve">
+    <value>בכוננים ברשת ובכוננים נשלפים, שאין בהם סל מיחזור, Pakko שואל תחילה.</value>
+  </data>
+  <data name="EmptyAddFilesButton.Content" xml:space="preserve">
+    <value>הוסף קבצים</value>
+  </data>
+  <data name="EmptyAddFolderButton.Content" xml:space="preserve">
+    <value>הוסף תיקייה</value>
+  </data>
+  <data name="DestinationSaveLabel" xml:space="preserve">
+    <value>שמור ב:</value>
+  </data>
+  <data name="DestinationExtractLabel" xml:space="preserve">
+    <value>חלץ אל:</value>
+  </data>
+  <data name="DeleteAfterCompressLabel" xml:space="preserve">
+    <value>לאחר דחיסה מוצלחת, העבר את קובצי המקור לסל המיחזור</value>
+  </data>
+  <data name="DeleteAfterExtractLabel" xml:space="preserve">
+    <value>לאחר חילוץ מוצלח, העבר את הארכיונים לסל המיחזור</value>
+  </data>
+  <data name="ArchiveNameAutoPlaceholder" xml:space="preserve">
+    <value>{0} (אוטומטי)</value>
+  </data>
+  <data name="ArchiveNamePerItemPlaceholder" xml:space="preserve">
+    <value>{0}, ... (ארכיון אחד לכל פריט)</value>
+  </data>
+  <data name="SummaryCompressionFast" xml:space="preserve">
+    <value>מהירה</value>
+  </data>
+  <data name="SummaryCompressionNormal" xml:space="preserve">
+    <value>רגילה</value>
+  </data>
+  <data name="SummaryCompressionBest" xml:space="preserve">
+    <value>מיטבית</value>
+  </data>
+  <data name="SummaryCompressionNone" xml:space="preserve">
+    <value>ללא דחיסה</value>
+  </data>
+  <data name="SummaryWithPassword" xml:space="preserve">
+    <value>עם סיסמה</value>
+  </data>
+  <data name="SummaryNoPassword" xml:space="preserve">
+    <value>ללא סיסמה</value>
+  </data>
+  <data name="NewArchiveCollapsedReason" xml:space="preserve">
+    <value>מכווץ, הרשימה מכילה ארכיונים בלבד</value>
+  </data>
+  <data name="ExtractUnavailableHint" xml:space="preserve">
+    <value>הרשימה אינה מכילה ארכיונים, אין מה לחלץ</value>
+  </data>
+  <data name="DeleteAfterEitherLabel" xml:space="preserve">
+    <value>לאחר פעולה מוצלחת, העבר לסל המיחזור את מה שהיא השתמשה בו: קובצי המקור אחרי דחיסה, הארכיונים אחרי חילוץ</value>
+  </data>
+  <data name="TestArchiveButton.Content" xml:space="preserve">
+    <value>בדיקת ארכיון</value>
+  </data>
+  <data name="CloseArchiveButton.Content" xml:space="preserve">
+    <value>סגור ארכיון</value>
+  </data>
+  <data name="StatusTesting" xml:space="preserve">
+    <value>בודק...</value>
+  </data>
+  <data name="TestResultTitle" xml:space="preserve">
+    <value>בדיקת ארכיון</value>
+  </data>
+  <data name="TestNoErrorsFound" xml:space="preserve">
+    <value>לא נמצאו שגיאות.</value>
+  </data>
+  <data name="BrowseEncryptedBadgeUnknown" xml:space="preserve">
+    <value>מוצפן</value>
+  </data>
+  <data name="BrowseEncryptedUnknownMethod" xml:space="preserve">
+    <value>שיטה לא ידועה</value>
+  </data>
+  <data name="BrowseEncryptedCount" xml:space="preserve">
+    <value>קבצים מוצפנים ({0}): {1} מתוך {2}.</value>
+  </data>
+  <data name="BrowseEncryptedPasswordNote" xml:space="preserve">
+    <value>Pakko מבקש את הסיסמה כשאתה מחלץ או פותח קובץ. שמות הקבצים אינם מוצפנים, וההצפנה מוסיפה מספר בתים לכל קובץ.</value>
+  </data>
+  <data name="BrowseEncryptedAe2Note" xml:space="preserve">
+    <value>CRC-32 ריק עבור קובצי AES (AE-2): הם מאומתים באמצעות אימות, לא באמצעות סכום ביקורת.</value>
+  </data>
+  <data name="BrowseZipCryptoWeakNote" xml:space="preserve">
+    <value>ZipCrypto היא הצפנה חלשה: ניתן לשחזר את הקבצים ללא הסיסמה. השתמש ב-AES-256 עבור כל מידע רגיש.</value>
+  </data>
+  <data name="BrowseOutsideInfo" xml:space="preserve">
+    <value>זוהי תיקייה בדיסק, לא ארכיון. לחץ פעמיים על ארכיון כדי לפתוח אותו, או לחץ על "סגור ארכיון" (Esc) כדי לחזור ליצירת ארכיונים.</value>
+  </data>
+  <data name="BrowseUpButtonName" xml:space="preserve">
+    <value>רמה אחת למעלה</value>
+  </data>
+  <data name="DestinationUpButtonName" xml:space="preserve">
+    <value>תיקיית אב</value>
+  </data>
+  <data name="DragAddCaption" xml:space="preserve">
+    <value>הוסף לרשימה</value>
   </data>
 </root>

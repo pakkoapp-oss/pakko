@@ -41,6 +41,13 @@ public sealed class FileItemTests : IDisposable
         item!.Type.Should().Be("Folder");
     }
 
+    // T-F198 item 2: a screen reader reads a list row by its item's ToString().
+    [Fact]
+    public void ToString_IsTheName()
+    {
+        FileItem.TryCreate(_dir)!.ToString().Should().Be(Path.GetFileName(_dir));
+    }
+
     [Fact]
     public void TryCreate_MissingPath_ReturnsNull()
     {

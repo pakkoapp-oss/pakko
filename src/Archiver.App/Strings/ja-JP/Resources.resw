@@ -15,7 +15,7 @@
 
   <!-- Buttons -->
   <data name="ArchiveButtonLabel" xml:space="preserve">
-    <value>圧縮</value>
+    <value>{0} に圧縮</value>
   </data>
   <data name="ExtractButtonLabel" xml:space="preserve">
     <value>展開</value>
@@ -85,7 +85,7 @@
     <value>終了</value>
   </data>
   <data name="RemoveMenuItem.Text" xml:space="preserve">
-    <value>削除</value>
+    <value>一覧から削除</value>
   </data>
 
   <!-- Archive options -->
@@ -152,10 +152,10 @@
 
   <!-- Drop zone -->
   <data name="DropZoneHint.Text" xml:space="preserve">
-    <value>ここにファイルまたはフォルダーをドロップするか、ダブルクリックしてファイルを参照してください</value>
+    <value>ここにファイルまたはフォルダーをドロップしてください</value>
   </data>
   <data name="DropZoneModeHint.Text" xml:space="preserve">
-    <value>アーカイブは展開を提案します。それ以外は圧縮されます</value>
+    <value>アーカイブは展開でき、それ以外は圧縮されます</value>
   </data>
 
   <!-- Labels -->
@@ -370,5 +370,155 @@
   </data>
   <data name="StatusExtractingCount" xml:space="preserve">
     <value>展開中... (アーカイブ: {0})</value>
+  </data>
+  <data name="StatusOpening" xml:space="preserve">
+    <value>開いています...</value>
+  </data>
+  <data name="ThisPcBreadcrumbRoot" xml:space="preserve">
+    <value>PC</value>
+  </data>
+  <data name="NestedArchiveDepthLimitReached" xml:space="preserve">
+    <value>開けません — このアーカイブは入れ子が深すぎます。</value>
+  </data>
+  <data name="UnsafePreviewConfirmTitle" xml:space="preserve">
+    <value>プレビューできません</value>
+  </data>
+  <data name="UnsafePreviewConfirmMessage" xml:space="preserve">
+    <value>"{0}" を直接安全に開くことはできません。代わりにアーカイブの隣のフォルダーに展開しますか?</value>
+  </data>
+  <data name="OutcomeCompressed" xml:space="preserve">
+    <value>{0} 秒で圧縮しました — アーカイブ: {1}</value>
+  </data>
+  <data name="OutcomeExtracted" xml:space="preserve">
+    <value>{0} 秒で展開しました — アーカイブ: {1}</value>
+  </data>
+  <data name="OutcomeProblems" xml:space="preserve">
+    <value>問題ありで完了: {0}</value>
+  </data>
+  <data name="OutcomeNothingDone" xml:space="preserve">
+    <value>何も行われませんでした — スキップ: {0}</value>
+  </data>
+  <data name="BrowseSelectionLine" xml:space="preserve">
+    <value>{1} 個中 {0} 個を選択</value>
+  </data>
+  <data name="OutcomeShowInFolderButton.Content" xml:space="preserve">
+    <value>フォルダーに表示</value>
+  </data>
+  <data name="OutcomeDetailsButton.Content" xml:space="preserve">
+    <value>詳細...</value>
+  </data>
+  <data name="EncryptPasswordLayoutHint" xml:space="preserve">
+    <value>英語キーボード配列以外の文字は使用できないため、追加されませんでした。入力を英語に切り替え、フィールドをクリアして、パスワードをもう一度入力してください。</value>
+  </data>
+  <data name="EncryptPasswordRefusedCharacter" xml:space="preserve">
+    <value>その文字は使用できないため、追加されませんでした。フィールドをクリアし、英字、数字、スペース、句読点のみでパスワードをもう一度入力してください。</value>
+  </data>
+  <data name="NewArchiveCardTitle.Text" xml:space="preserve">
+    <value>新しいアーカイブ</value>
+  </data>
+  <data name="DestinationCardTitle.Text" xml:space="preserve">
+    <value>保存先とその後の処理</value>
+  </data>
+  <data name="EncryptZipOnlyNote.Text" xml:space="preserve">
+    <value>パスワードによる暗号化は ZIP でのみ使用できます</value>
+  </data>
+  <data name="RecycleBinNote.Text" xml:space="preserve">
+    <value>ごみ箱のないネットワーク ドライブやリムーバブル ドライブでは、Pakko が先に確認します。</value>
+  </data>
+  <data name="EmptyAddFilesButton.Content" xml:space="preserve">
+    <value>ファイルを追加</value>
+  </data>
+  <data name="EmptyAddFolderButton.Content" xml:space="preserve">
+    <value>フォルダーを追加</value>
+  </data>
+  <data name="DestinationSaveLabel" xml:space="preserve">
+    <value>保存先:</value>
+  </data>
+  <data name="DestinationExtractLabel" xml:space="preserve">
+    <value>展開先:</value>
+  </data>
+  <data name="DeleteAfterCompressLabel" xml:space="preserve">
+    <value>圧縮が成功したら、元のファイルをごみ箱に移動する</value>
+  </data>
+  <data name="DeleteAfterExtractLabel" xml:space="preserve">
+    <value>展開が成功したら、アーカイブをごみ箱に移動する</value>
+  </data>
+  <data name="ArchiveNameAutoPlaceholder" xml:space="preserve">
+    <value>{0} (自動)</value>
+  </data>
+  <data name="ArchiveNamePerItemPlaceholder" xml:space="preserve">
+    <value>{0}, ... (項目ごとに 1 つのアーカイブ)</value>
+  </data>
+  <data name="SummaryCompressionFast" xml:space="preserve">
+    <value>高速</value>
+  </data>
+  <data name="SummaryCompressionNormal" xml:space="preserve">
+    <value>標準</value>
+  </data>
+  <data name="SummaryCompressionBest" xml:space="preserve">
+    <value>最高</value>
+  </data>
+  <data name="SummaryCompressionNone" xml:space="preserve">
+    <value>圧縮なし</value>
+  </data>
+  <data name="SummaryWithPassword" xml:space="preserve">
+    <value>パスワードあり</value>
+  </data>
+  <data name="SummaryNoPassword" xml:space="preserve">
+    <value>パスワードなし</value>
+  </data>
+  <data name="NewArchiveCollapsedReason" xml:space="preserve">
+    <value>一覧がアーカイブのみのため折りたたみ</value>
+  </data>
+  <data name="ExtractUnavailableHint" xml:space="preserve">
+    <value>一覧にアーカイブがないため、展開するものはありません</value>
+  </data>
+  <data name="DeleteAfterEitherLabel" xml:space="preserve">
+    <value>操作が成功したら、使用したものをごみ箱に移動する: 圧縮後は元のファイル、展開後はアーカイブ</value>
+  </data>
+  <data name="TestArchiveButton.Content" xml:space="preserve">
+    <value>書庫をテスト</value>
+  </data>
+  <data name="CloseArchiveButton.Content" xml:space="preserve">
+    <value>アーカイブを閉じる</value>
+  </data>
+  <data name="StatusTesting" xml:space="preserve">
+    <value>テスト中...</value>
+  </data>
+  <data name="TestResultTitle" xml:space="preserve">
+    <value>書庫をテスト</value>
+  </data>
+  <data name="TestNoErrorsFound" xml:space="preserve">
+    <value>エラーは見つかりませんでした。</value>
+  </data>
+  <data name="BrowseEncryptedBadgeUnknown" xml:space="preserve">
+    <value>暗号化</value>
+  </data>
+  <data name="BrowseEncryptedUnknownMethod" xml:space="preserve">
+    <value>不明な方式</value>
+  </data>
+  <data name="BrowseEncryptedCount" xml:space="preserve">
+    <value>暗号化されたファイル ({0}): {2} 個中 {1} 個。</value>
+  </data>
+  <data name="BrowseEncryptedPasswordNote" xml:space="preserve">
+    <value>ファイルを展開または開くときに、Pakko がパスワードを確認します。ファイル名は暗号化されず、暗号化により各ファイルに数バイトが追加されます。</value>
+  </data>
+  <data name="BrowseEncryptedAe2Note" xml:space="preserve">
+    <value>AES (AE-2) ファイルの CRC-32 は空です: チェックサムではなく認証によって検証されます。</value>
+  </data>
+  <data name="BrowseZipCryptoWeakNote" xml:space="preserve">
+    <value>ZipCrypto は弱い暗号化です: ファイルはパスワードなしで復元される可能性があります。機密性の高いものには AES-256 を使用してください。</value>
+  </data>
+  <data name="BrowseOutsideInfo" xml:space="preserve">
+    <value>これはディスク上のフォルダーで、アーカイブではありません。アーカイブをダブルクリックして開くか、[アーカイブを閉じる] (Esc) を押してアーカイブの作成に戻ります。</value>
+  </data>
+  <data name="BrowseUpButtonName" xml:space="preserve">
+    <value>1 つ上のレベルへ</value>
+  </data>
+  <data name="DestinationUpButtonName" xml:space="preserve">
+    <value>親フォルダー</value>
+  </data>
+  <data name="DragAddCaption" xml:space="preserve">
+    <value>一覧に追加</value>
   </data>
 </root>

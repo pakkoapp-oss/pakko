@@ -15,7 +15,7 @@
 
   <!-- Buttons -->
   <data name="ArchiveButtonLabel" xml:space="preserve">
-    <value>Arhiviraj</value>
+    <value>Stisni v {0}</value>
   </data>
   <data name="ExtractButtonLabel" xml:space="preserve">
     <value>Razširi</value>
@@ -85,7 +85,7 @@
     <value>Izhod</value>
   </data>
   <data name="RemoveMenuItem.Text" xml:space="preserve">
-    <value>Odstrani</value>
+    <value>Odstrani s seznama</value>
   </data>
 
   <!-- Archive options -->
@@ -152,10 +152,10 @@
 
   <!-- Drop zone -->
   <data name="DropZoneHint.Text" xml:space="preserve">
-    <value>Spustite datoteke ali mape sem ali dvokliknite za brskanje po datotekah</value>
+    <value>Spustite datoteke ali mape sem</value>
   </data>
   <data name="DropZoneModeHint.Text" xml:space="preserve">
-    <value>Arhivi ponujajo razširitev; vse drugo bo arhivirano</value>
+    <value>Arhive je mogoče razširiti; vse drugo se stisne</value>
   </data>
 
   <!-- Labels -->
@@ -179,7 +179,7 @@
     <value>Pripravljeno</value>
   </data>
   <data name="StatusArchiving" xml:space="preserve">
-    <value>Arhiviranje...</value>
+    <value>Stiskanje...</value>
   </data>
   <data name="StatusExtracting" xml:space="preserve">
     <value>Razširjanje...</value>
@@ -200,7 +200,7 @@
     <value>Razširjenih bo {0} arhiv(ov) v zgornjo mapo</value>
   </data>
   <data name="OutcomeWillArchive" xml:space="preserve">
-    <value>Arhiviranih bo {0} predmet(ov) v zgornjo mapo</value>
+    <value>Stisnjenih bo {0} predmet(ov) v zgornjo mapo</value>
   </data>
 
   <!-- Dialog strings -->
@@ -366,9 +366,159 @@
     <value>{0} GB</value>
   </data>
   <data name="StatusArchivingCount" xml:space="preserve">
-    <value>Arhiviranje... (datoteke: {0}, {1})</value>
+    <value>Stiskanje... (datoteke: {0}, {1})</value>
   </data>
   <data name="StatusExtractingCount" xml:space="preserve">
     <value>Razširjanje... (arhivi: {0})</value>
+  </data>
+  <data name="StatusOpening" xml:space="preserve">
+    <value>Odpiranje...</value>
+  </data>
+  <data name="ThisPcBreadcrumbRoot" xml:space="preserve">
+    <value>Ta računalnik</value>
+  </data>
+  <data name="NestedArchiveDepthLimitReached" xml:space="preserve">
+    <value>Ni mogoče odpreti — ta arhiv je vgnezden pregloboko.</value>
+  </data>
+  <data name="UnsafePreviewConfirmTitle" xml:space="preserve">
+    <value>Predogled ni mogoč</value>
+  </data>
+  <data name="UnsafePreviewConfirmMessage" xml:space="preserve">
+    <value>"{0}" ni mogoče varno odpreti neposredno. Ali ga želite namesto tega razširiti v mapo poleg arhiva?</value>
+  </data>
+  <data name="OutcomeCompressed" xml:space="preserve">
+    <value>Stisnjeno v {0} s — arhivi: {1}</value>
+  </data>
+  <data name="OutcomeExtracted" xml:space="preserve">
+    <value>Razširjeno v {0} s — arhivi: {1}</value>
+  </data>
+  <data name="OutcomeProblems" xml:space="preserve">
+    <value>Zaključeno s težavami: {0}</value>
+  </data>
+  <data name="OutcomeNothingDone" xml:space="preserve">
+    <value>Nič ni bilo narejeno — preskočeno: {0}</value>
+  </data>
+  <data name="BrowseSelectionLine" xml:space="preserve">
+    <value>Izbrano {0} od {1}</value>
+  </data>
+  <data name="OutcomeShowInFolderButton.Content" xml:space="preserve">
+    <value>Pokaži v mapi</value>
+  </data>
+  <data name="OutcomeDetailsButton.Content" xml:space="preserve">
+    <value>Podrobnosti...</value>
+  </data>
+  <data name="EncryptPasswordLayoutHint" xml:space="preserve">
+    <value>Črk zunaj angleške razporeditve tipkovnice ni mogoče uporabiti in niso bile dodane. Preklopite razporeditev na angleško, počistite polje in znova vnesite geslo.</value>
+  </data>
+  <data name="EncryptPasswordRefusedCharacter" xml:space="preserve">
+    <value>Tega znaka ni mogoče uporabiti in ni bil dodan. Počistite polje in znova vnesite geslo samo z angleškimi črkami, števkami, presledki in ločili.</value>
+  </data>
+  <data name="NewArchiveCardTitle.Text" xml:space="preserve">
+    <value>Nov arhiv</value>
+  </data>
+  <data name="DestinationCardTitle.Text" xml:space="preserve">
+    <value>Kam, in kaj potem</value>
+  </data>
+  <data name="EncryptZipOnlyNote.Text" xml:space="preserve">
+    <value>Šifriranje z geslom je na voljo samo za ZIP</value>
+  </data>
+  <data name="RecycleBinNote.Text" xml:space="preserve">
+    <value>Na omrežnih in izmenljivih pogonih, ki nimajo koša, Pakko najprej vpraša.</value>
+  </data>
+  <data name="EmptyAddFilesButton.Content" xml:space="preserve">
+    <value>Dodaj datoteke</value>
+  </data>
+  <data name="EmptyAddFolderButton.Content" xml:space="preserve">
+    <value>Dodaj mapo</value>
+  </data>
+  <data name="DestinationSaveLabel" xml:space="preserve">
+    <value>Shrani v:</value>
+  </data>
+  <data name="DestinationExtractLabel" xml:space="preserve">
+    <value>Razširi v:</value>
+  </data>
+  <data name="DeleteAfterCompressLabel" xml:space="preserve">
+    <value>Po uspešnem stiskanju premakni izvorne datoteke v koš</value>
+  </data>
+  <data name="DeleteAfterExtractLabel" xml:space="preserve">
+    <value>Po uspešni razširitvi premakni arhive v koš</value>
+  </data>
+  <data name="ArchiveNameAutoPlaceholder" xml:space="preserve">
+    <value>{0} (samodejno)</value>
+  </data>
+  <data name="ArchiveNamePerItemPlaceholder" xml:space="preserve">
+    <value>{0}, ... (en arhiv na predmet)</value>
+  </data>
+  <data name="SummaryCompressionFast" xml:space="preserve">
+    <value>Hitro</value>
+  </data>
+  <data name="SummaryCompressionNormal" xml:space="preserve">
+    <value>Običajno</value>
+  </data>
+  <data name="SummaryCompressionBest" xml:space="preserve">
+    <value>Najboljše</value>
+  </data>
+  <data name="SummaryCompressionNone" xml:space="preserve">
+    <value>Brez stiskanja</value>
+  </data>
+  <data name="SummaryWithPassword" xml:space="preserve">
+    <value>z geslom</value>
+  </data>
+  <data name="SummaryNoPassword" xml:space="preserve">
+    <value>brez gesla</value>
+  </data>
+  <data name="NewArchiveCollapsedReason" xml:space="preserve">
+    <value>strnjeno, seznam vsebuje samo arhive</value>
+  </data>
+  <data name="ExtractUnavailableHint" xml:space="preserve">
+    <value>Seznam ne vsebuje arhivov, ničesar ni za razširiti</value>
+  </data>
+  <data name="DeleteAfterEitherLabel" xml:space="preserve">
+    <value>Po uspešni operaciji premakni v koš tisto, kar je uporabila: izvorne datoteke po stiskanju, arhive po razširitvi</value>
+  </data>
+  <data name="TestArchiveButton.Content" xml:space="preserve">
+    <value>Preizkusi arhiv</value>
+  </data>
+  <data name="CloseArchiveButton.Content" xml:space="preserve">
+    <value>Zapri arhiv</value>
+  </data>
+  <data name="StatusTesting" xml:space="preserve">
+    <value>Preizkušanje...</value>
+  </data>
+  <data name="TestResultTitle" xml:space="preserve">
+    <value>Preizkus arhiva</value>
+  </data>
+  <data name="TestNoErrorsFound" xml:space="preserve">
+    <value>Napak ni bilo najdenih.</value>
+  </data>
+  <data name="BrowseEncryptedBadgeUnknown" xml:space="preserve">
+    <value>Šifrirano</value>
+  </data>
+  <data name="BrowseEncryptedUnknownMethod" xml:space="preserve">
+    <value>neznan način</value>
+  </data>
+  <data name="BrowseEncryptedCount" xml:space="preserve">
+    <value>Šifrirane datoteke ({0}): {1} od {2}.</value>
+  </data>
+  <data name="BrowseEncryptedPasswordNote" xml:space="preserve">
+    <value>Pakko vpraša za geslo, ko razširite ali odprete datoteko. Imena datotek niso šifrirana, šifriranje pa vsaki datoteki doda nekaj bajtov.</value>
+  </data>
+  <data name="BrowseEncryptedAe2Note" xml:space="preserve">
+    <value>CRC-32 je za datoteke AES (AE-2) prazen: preverja jih overjanje, ne kontrolna vsota.</value>
+  </data>
+  <data name="BrowseZipCryptoWeakNote" xml:space="preserve">
+    <value>ZipCrypto je šibko šifriranje: datoteke je mogoče obnoviti brez gesla. Za vse občutljivo uporabite AES-256.</value>
+  </data>
+  <data name="BrowseOutsideInfo" xml:space="preserve">
+    <value>To je mapa na disku, ne arhiv. Dvokliknite arhiv, da ga odprete, ali pritisnite "Zapri arhiv" (Esc), da se vrnete na ustvarjanje arhivov.</value>
+  </data>
+  <data name="BrowseUpButtonName" xml:space="preserve">
+    <value>Eno raven višje</value>
+  </data>
+  <data name="DestinationUpButtonName" xml:space="preserve">
+    <value>Nadrejena mapa</value>
+  </data>
+  <data name="DragAddCaption" xml:space="preserve">
+    <value>Dodaj na seznam</value>
   </data>
 </root>

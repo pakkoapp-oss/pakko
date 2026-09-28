@@ -15,7 +15,7 @@
 
   <!-- Buttons -->
   <data name="ArchiveButtonLabel" xml:space="preserve">
-    <value>Arşivle</value>
+    <value>{0} olarak sıkıştır</value>
   </data>
   <data name="ExtractButtonLabel" xml:space="preserve">
     <value>Çıkart</value>
@@ -85,7 +85,7 @@
     <value>Çıkış</value>
   </data>
   <data name="RemoveMenuItem.Text" xml:space="preserve">
-    <value>Kaldır</value>
+    <value>Listeden kaldır</value>
   </data>
 
   <!-- Archive options -->
@@ -152,10 +152,10 @@
 
   <!-- Drop zone -->
   <data name="DropZoneHint.Text" xml:space="preserve">
-    <value>Dosyaları veya klasörleri buraya bırakın, ya da dosyalara göz atmak için çift tıklayın</value>
+    <value>Dosyaları veya klasörleri buraya bırakın</value>
   </data>
   <data name="DropZoneModeHint.Text" xml:space="preserve">
-    <value>Arşivler çıkartma seçeneği sunar; diğer her şey arşivlenir</value>
+    <value>Arşivler çıkartılabilir; diğer her şey sıkıştırılır</value>
   </data>
 
   <!-- Labels -->
@@ -179,7 +179,7 @@
     <value>Hazır</value>
   </data>
   <data name="StatusArchiving" xml:space="preserve">
-    <value>Arşivleniyor...</value>
+    <value>Sıkıştırılıyor...</value>
   </data>
   <data name="StatusExtracting" xml:space="preserve">
     <value>Çıkartılıyor...</value>
@@ -200,7 +200,7 @@
     <value>Yukarıdaki klasöre {0} arşiv çıkartılacak</value>
   </data>
   <data name="OutcomeWillArchive" xml:space="preserve">
-    <value>Yukarıdaki klasöre {0} öğe arşivlenecek</value>
+    <value>Yukarıdaki klasöre {0} öğe sıkıştırılacak</value>
   </data>
 
   <!-- Dialog strings -->
@@ -366,9 +366,159 @@
     <value>{0} GB</value>
   </data>
   <data name="StatusArchivingCount" xml:space="preserve">
-    <value>Arşivleniyor... (dosya: {0}, {1})</value>
+    <value>Sıkıştırılıyor... (dosya: {0}, {1})</value>
   </data>
   <data name="StatusExtractingCount" xml:space="preserve">
     <value>Çıkartılıyor... (arşiv: {0})</value>
+  </data>
+  <data name="StatusOpening" xml:space="preserve">
+    <value>Açılıyor...</value>
+  </data>
+  <data name="ThisPcBreadcrumbRoot" xml:space="preserve">
+    <value>Bu bilgisayar</value>
+  </data>
+  <data name="NestedArchiveDepthLimitReached" xml:space="preserve">
+    <value>Açılamıyor — bu arşiv çok derin iç içe geçmiş.</value>
+  </data>
+  <data name="UnsafePreviewConfirmTitle" xml:space="preserve">
+    <value>Önizlenemiyor</value>
+  </data>
+  <data name="UnsafePreviewConfirmMessage" xml:space="preserve">
+    <value>"{0}" doğrudan güvenli şekilde açılamıyor. Bunun yerine arşivin yanındaki bir klasöre çıkartılsın mı?</value>
+  </data>
+  <data name="OutcomeCompressed" xml:space="preserve">
+    <value>{0} sn içinde sıkıştırıldı — arşiv: {1}</value>
+  </data>
+  <data name="OutcomeExtracted" xml:space="preserve">
+    <value>{0} sn içinde çıkartıldı — arşiv: {1}</value>
+  </data>
+  <data name="OutcomeProblems" xml:space="preserve">
+    <value>Sorunlarla tamamlandı: {0}</value>
+  </data>
+  <data name="OutcomeNothingDone" xml:space="preserve">
+    <value>Hiçbir şey yapılmadı — atlanan: {0}</value>
+  </data>
+  <data name="BrowseSelectionLine" xml:space="preserve">
+    <value>{1} öğeden {0} tanesi seçildi</value>
+  </data>
+  <data name="OutcomeShowInFolderButton.Content" xml:space="preserve">
+    <value>Klasörde göster</value>
+  </data>
+  <data name="OutcomeDetailsButton.Content" xml:space="preserve">
+    <value>Ayrıntılar...</value>
+  </data>
+  <data name="EncryptPasswordLayoutHint" xml:space="preserve">
+    <value>İngilizce klavye düzeni dışındaki harfler kullanılamaz ve eklenmedi. Düzeni İngilizce olarak değiştirin, alanı temizleyin ve parolayı yeniden yazın.</value>
+  </data>
+  <data name="EncryptPasswordRefusedCharacter" xml:space="preserve">
+    <value>Bu karakter kullanılamaz ve eklenmedi. Alanı temizleyin ve parolayı yalnızca İngilizce harfler, rakamlar, boşluklar ve noktalama işaretleriyle yeniden yazın.</value>
+  </data>
+  <data name="NewArchiveCardTitle.Text" xml:space="preserve">
+    <value>Yeni arşiv</value>
+  </data>
+  <data name="DestinationCardTitle.Text" xml:space="preserve">
+    <value>Nereye ve sonra ne olacak</value>
+  </data>
+  <data name="EncryptZipOnlyNote.Text" xml:space="preserve">
+    <value>Parola ile şifreleme yalnızca ZIP için kullanılabilir</value>
+  </data>
+  <data name="RecycleBinNote.Text" xml:space="preserve">
+    <value>Geri Dönüşüm Kutusu olmayan ağ ve çıkarılabilir sürücülerde Pakko önce sorar.</value>
+  </data>
+  <data name="EmptyAddFilesButton.Content" xml:space="preserve">
+    <value>Dosya ekle</value>
+  </data>
+  <data name="EmptyAddFolderButton.Content" xml:space="preserve">
+    <value>Klasör ekle</value>
+  </data>
+  <data name="DestinationSaveLabel" xml:space="preserve">
+    <value>Kaydetme yeri:</value>
+  </data>
+  <data name="DestinationExtractLabel" xml:space="preserve">
+    <value>Çıkartma yeri:</value>
+  </data>
+  <data name="DeleteAfterCompressLabel" xml:space="preserve">
+    <value>Başarılı sıkıştırmadan sonra kaynak dosyaları Geri Dönüşüm Kutusu'na taşı</value>
+  </data>
+  <data name="DeleteAfterExtractLabel" xml:space="preserve">
+    <value>Başarılı çıkartmadan sonra arşivleri Geri Dönüşüm Kutusu'na taşı</value>
+  </data>
+  <data name="ArchiveNameAutoPlaceholder" xml:space="preserve">
+    <value>{0} (otomatik)</value>
+  </data>
+  <data name="ArchiveNamePerItemPlaceholder" xml:space="preserve">
+    <value>{0}, ... (her öğe için bir arşiv)</value>
+  </data>
+  <data name="SummaryCompressionFast" xml:space="preserve">
+    <value>Hızlı</value>
+  </data>
+  <data name="SummaryCompressionNormal" xml:space="preserve">
+    <value>Normal</value>
+  </data>
+  <data name="SummaryCompressionBest" xml:space="preserve">
+    <value>En iyi</value>
+  </data>
+  <data name="SummaryCompressionNone" xml:space="preserve">
+    <value>Sıkıştırma yok</value>
+  </data>
+  <data name="SummaryWithPassword" xml:space="preserve">
+    <value>parolalı</value>
+  </data>
+  <data name="SummaryNoPassword" xml:space="preserve">
+    <value>parolasız</value>
+  </data>
+  <data name="NewArchiveCollapsedReason" xml:space="preserve">
+    <value>daraltıldı, listede yalnızca arşivler var</value>
+  </data>
+  <data name="ExtractUnavailableHint" xml:space="preserve">
+    <value>Listede arşiv yok, çıkartılacak bir şey yok</value>
+  </data>
+  <data name="DeleteAfterEitherLabel" xml:space="preserve">
+    <value>Başarılı bir işlemden sonra kullandığı öğeleri Geri Dönüşüm Kutusu'na taşı: sıkıştırmadan sonra kaynak dosyaları, çıkartmadan sonra arşivleri</value>
+  </data>
+  <data name="TestArchiveButton.Content" xml:space="preserve">
+    <value>Arşivi test et</value>
+  </data>
+  <data name="CloseArchiveButton.Content" xml:space="preserve">
+    <value>Arşivi kapat</value>
+  </data>
+  <data name="StatusTesting" xml:space="preserve">
+    <value>Test ediliyor...</value>
+  </data>
+  <data name="TestResultTitle" xml:space="preserve">
+    <value>Arşivi test et</value>
+  </data>
+  <data name="TestNoErrorsFound" xml:space="preserve">
+    <value>Hata bulunamadı.</value>
+  </data>
+  <data name="BrowseEncryptedBadgeUnknown" xml:space="preserve">
+    <value>Şifreli</value>
+  </data>
+  <data name="BrowseEncryptedUnknownMethod" xml:space="preserve">
+    <value>bilinmeyen yöntem</value>
+  </data>
+  <data name="BrowseEncryptedCount" xml:space="preserve">
+    <value>Şifreli dosyalar ({0}): {2} dosyadan {1} tanesi.</value>
+  </data>
+  <data name="BrowseEncryptedPasswordNote" xml:space="preserve">
+    <value>Pakko, bir dosyayı çıkarttığınızda veya açtığınızda parolayı sorar. Dosya adları şifrelenmez ve şifreleme her dosyaya birkaç bayt ekler.</value>
+  </data>
+  <data name="BrowseEncryptedAe2Note" xml:space="preserve">
+    <value>AES (AE-2) dosyalarında CRC-32 boştur: bu dosyalar sağlama toplamıyla değil, kimlik doğrulamayla doğrulanır.</value>
+  </data>
+  <data name="BrowseZipCryptoWeakNote" xml:space="preserve">
+    <value>ZipCrypto zayıf bir şifrelemedir: dosyalar parola olmadan kurtarılabilir. Hassas her şey için AES-256 kullanın.</value>
+  </data>
+  <data name="BrowseOutsideInfo" xml:space="preserve">
+    <value>Bu, diskteki bir klasördür, arşiv değildir. Bir arşivi açmak için çift tıklayın veya arşiv oluşturmaya dönmek için "Arşivi kapat" (Esc) düğmesine basın.</value>
+  </data>
+  <data name="BrowseUpButtonName" xml:space="preserve">
+    <value>Bir düzey yukarı</value>
+  </data>
+  <data name="DestinationUpButtonName" xml:space="preserve">
+    <value>Üst klasör</value>
+  </data>
+  <data name="DragAddCaption" xml:space="preserve">
+    <value>Listeye ekle</value>
   </data>
 </root>
