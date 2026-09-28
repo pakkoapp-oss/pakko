@@ -43,6 +43,59 @@ public sealed partial class AppResourceKeysTests
         }
     }
 
+    // T-F199 step 0 (the T-F104 class): a dotted key only resolves through a matching x:Uid, a plain
+    // one only through a GetString call. The redesign removes and renames many keys; a key nothing
+    // uses anymore is dead in 37 files.
+    [Fact]
+    public void EveryEnglishKey_IsUsedByAnXUidOrAStringLiteral()
+    {
+        string appDir = Path.Combine(FindRepoRoot(), "src", "Archiver.App");
+        string xaml = string.Concat(Directory.EnumerateFiles(appDir, "*.xaml", SearchOption.AllDirectories)
+            .Where(IsSource).Select(File.ReadAllText));
+        string code = string.Concat(new[] { appDir, Path.Combine(FindRepoRoot(), "src", "Archiver.App.Core") }
+            .SelectMany(d => Directory.EnumerateFiles(d, "*.cs", SearchOption.AllDirectories))
+            .Where(IsSource).Select(File.ReadAllText));
+
+        string[] unused = Read("en-US").Keys.Where(key =>
+        {
+            int dot = key.IndexOf('.');
+            return dot > 0
+                ? !xaml.Contains($"x:Uid=\"{key[..dot]}\"", StringComparison.Ordinal)
+                : !code.Contains($"\"{key}\"", StringComparison.Ordinal);
+        }).ToArray();
+
+        unused.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void EveryXUid_HasAnEnglishKey()
+    {
+        string appDir = Path.Combine(FindRepoRoot(), "src", "Archiver.App");
+        HashSet<string> uidsWithKeys = Read("en-US").Keys.Where(k => k.Contains('.')).Select(k => k[..k.IndexOf('.')]).ToHashSet();
+
+        string[] orphans = Directory.EnumerateFiles(appDir, "*.xaml", SearchOption.AllDirectories).Where(IsSource)
+            .SelectMany(f => XUidPattern().Matches(File.ReadAllText(f)).Select(m => m.Groups[1].Value))
+            .Where(uid => !uidsWithKeys.Contains(uid)).ToArray();
+
+        orphans.Should().BeEmpty();
+    }
+
+    [Theory]
+    [MemberData(nameof(Locales))]
+    public void NoLocale_HasAKeyEnglishLacks(string locale)
+    {
+        HashSet<string> english = Read("en-US").Keys.ToHashSet();
+
+        Read(locale).Keys.Where(k => !english.Contains(k)).Should().BeEmpty(locale);
+    }
+
+    private static bool IsSource(string path) =>
+        !path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
+        && !path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal);
+
+    [GeneratedRegex("x:Uid=\"([^\"]+)\"")]
+    private static partial Regex XUidPattern();
+
     private static Dictionary<string, string> Read(string locale) =>
         XDocument.Load(Path.Combine(StringsRoot, locale, "Resources.resw")).Root!
             .Elements("data")

@@ -157,9 +157,6 @@
   <data name="DropZoneHint.Text" xml:space="preserve">
     <value>Dosyaları veya klasörleri buraya bırakın, ya da dosyalara göz atmak için çift tıklayın</value>
   </data>
-  <data name="MultipleFoldersHint.Text" xml:space="preserve">
-    <value>Birden fazla klasör için — Explorer'dan sürükleyip bırakın</value>
-  </data>
   <data name="DropZoneModeHint.Text" xml:space="preserve">
     <value>Arşivler çıkartma seçeneği sunar; diğer her şey arşivlenir</value>
   </data>

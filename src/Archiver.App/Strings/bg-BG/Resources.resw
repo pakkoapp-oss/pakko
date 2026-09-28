@@ -157,9 +157,6 @@
   <data name="DropZoneHint.Text" xml:space="preserve">
     <value>Пуснете файлове или папки тук, или щракнете двукратно, за да прегледате файлове</value>
   </data>
-  <data name="MultipleFoldersHint.Text" xml:space="preserve">
-    <value>За няколко папки — плъзнете и пуснете от Explorer</value>
-  </data>
   <data name="DropZoneModeHint.Text" xml:space="preserve">
     <value>Архивите предлагат разархивиране; всичко останало ще бъде архивирано</value>
   </data>

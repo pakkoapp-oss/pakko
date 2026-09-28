@@ -157,9 +157,6 @@
   <data name="DropZoneHint.Text" xml:space="preserve">
     <value>Prevucite datoteke ili fascikle ovde, ili dvaput kliknite da pregledate datoteke</value>
   </data>
-  <data name="MultipleFoldersHint.Text" xml:space="preserve">
-    <value>Za više fascikli — prevucite ih iz Explorer-a</value>
-  </data>
   <data name="DropZoneModeHint.Text" xml:space="preserve">
     <value>Arhive nude raspakivanje; sve ostalo će biti arhivirano</value>
   </data>

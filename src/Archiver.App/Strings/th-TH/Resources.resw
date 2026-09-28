@@ -157,9 +157,6 @@
   <data name="DropZoneHint.Text" xml:space="preserve">
     <value>วางไฟล์หรือโฟลเดอร์ที่นี่ หรือดับเบิลคลิกเพื่อเรียกดูไฟล์</value>
   </data>
-  <data name="MultipleFoldersHint.Text" xml:space="preserve">
-    <value>สำหรับหลายโฟลเดอร์ — ลากแล้ววางจาก Explorer</value>
-  </data>
   <data name="DropZoneModeHint.Text" xml:space="preserve">
     <value>ไฟล์บีบอัดจะเสนอให้แตกไฟล์ ส่วนอย่างอื่นจะถูกบีบอัด</value>
   </data>

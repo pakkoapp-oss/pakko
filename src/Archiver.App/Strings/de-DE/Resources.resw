@@ -157,9 +157,6 @@
   <data name="DropZoneHint.Text" xml:space="preserve">
     <value>Dateien oder Ordner hierher ziehen oder doppelklicken, um Dateien auszuwählen</value>
   </data>
-  <data name="MultipleFoldersHint.Text" xml:space="preserve">
-    <value>Für mehrere Ordner — per Drag &amp; Drop aus dem Explorer</value>
-  </data>
   <data name="DropZoneModeHint.Text" xml:space="preserve">
     <value>Archive bieten Extraktion an; alles andere wird archiviert</value>
   </data>

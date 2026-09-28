@@ -157,9 +157,6 @@
   <data name="DropZoneHint.Text" xml:space="preserve">
     <value>将文件或文件夹拖放到此处，或双击浏览文件</value>
   </data>
-  <data name="MultipleFoldersHint.Text" xml:space="preserve">
-    <value>多个文件夹 — 请从资源管理器拖放</value>
-  </data>
   <data name="DropZoneModeHint.Text" xml:space="preserve">
     <value>压缩包可供解压；其他内容将被压缩</value>
   </data>

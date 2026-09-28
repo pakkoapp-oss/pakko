@@ -157,9 +157,6 @@
   <data name="DropZoneHint.Text" xml:space="preserve">
     <value>ここにファイルまたはフォルダーをドロップするか、ダブルクリックしてファイルを参照してください</value>
   </data>
-  <data name="MultipleFoldersHint.Text" xml:space="preserve">
-    <value>複数のフォルダーの場合 — エクスプローラーからドラッグ &amp; ドロップしてください</value>
-  </data>
   <data name="DropZoneModeHint.Text" xml:space="preserve">
     <value>アーカイブは展開を提案します。それ以外は圧縮されます</value>
   </data>

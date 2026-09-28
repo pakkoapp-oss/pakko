@@ -157,9 +157,6 @@
   <data name="DropZoneHint.Text" xml:space="preserve">
     <value>Slipp filer eller mapper her, eller dobbeltklikk for å bla gjennom filer</value>
   </data>
-  <data name="MultipleFoldersHint.Text" xml:space="preserve">
-    <value>For flere mapper — dra og slipp fra Filutforsker</value>
-  </data>
   <data name="DropZoneModeHint.Text" xml:space="preserve">
     <value>Arkiver tilbyr utpakking; alt annet blir arkivert</value>
   </data>

@@ -158,9 +158,6 @@
   <data name="DropZoneHint.Text" xml:space="preserve">
     <value>Перетягніть файли або папки сюди, або двічі клацніть, щоб вибрати файли</value>
   </data>
-  <data name="MultipleFoldersHint.Text" xml:space="preserve">
-    <value>Для кількох папок — перетягніть їх з Провідника</value>
-  </data>
   <data name="DropZoneModeHint.Text" xml:space="preserve">
     <value>Архіви пропонують видобування; все інше буде заархівовано</value>
   </data>

@@ -157,9 +157,6 @@
   <data name="DropZoneHint.Text" xml:space="preserve">
     <value>여기에 파일 또는 폴더를 끌어다 놓거나, 더블클릭하여 파일을 찾아보세요</value>
   </data>
-  <data name="MultipleFoldersHint.Text" xml:space="preserve">
-    <value>여러 폴더의 경우 — 탐색기에서 끌어다 놓으세요</value>
-  </data>
   <data name="DropZoneModeHint.Text" xml:space="preserve">
     <value>압축 파일은 압축 풀기를 제안하며, 그 외의 항목은 압축됩니다</value>
   </data>

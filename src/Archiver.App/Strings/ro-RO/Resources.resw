@@ -157,9 +157,6 @@
   <data name="DropZoneHint.Text" xml:space="preserve">
     <value>Plasați fișiere sau foldere aici, sau faceți dublu clic pentru a răsfoi fișierele</value>
   </data>
-  <data name="MultipleFoldersHint.Text" xml:space="preserve">
-    <value>Pentru mai multe foldere — trageți din Explorer</value>
-  </data>
   <data name="DropZoneModeHint.Text" xml:space="preserve">
     <value>Arhivele oferă extragere; orice altceva va fi arhivat</value>
   </data>

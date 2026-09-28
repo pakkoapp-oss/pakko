@@ -157,9 +157,6 @@
   <data name="DropZoneHint.Text" xml:space="preserve">
     <value>यहां फ़ाइलें या फ़ोल्डर छोड़ें, या फ़ाइलें ब्राउज़ करने के लिए डबल-क्लिक करें</value>
   </data>
-  <data name="MultipleFoldersHint.Text" xml:space="preserve">
-    <value>कई फ़ोल्डरों के लिए — एक्सप्लोरर से खींचें और छोड़ें</value>
-  </data>
   <data name="DropZoneModeHint.Text" xml:space="preserve">
     <value>संग्रह निकालने का विकल्प देते हैं; बाकी सब कुछ संग्रहित किया जाएगा</value>
   </data>

@@ -157,9 +157,6 @@
   <data name="DropZoneHint.Text" xml:space="preserve">
     <value>Lohistage failid või kaustad siia, või tehke failide sirvimiseks topeltklõps</value>
   </data>
-  <data name="MultipleFoldersHint.Text" xml:space="preserve">
-    <value>Mitme kausta jaoks — lohistage need Explorerist</value>
-  </data>
   <data name="DropZoneModeHint.Text" xml:space="preserve">
     <value>Arhiivid pakuvad lahtipakkimist; kõik muu arhiveeritakse</value>
   </data>

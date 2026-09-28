@@ -157,9 +157,6 @@
   <data name="DropZoneHint.Text" xml:space="preserve">
     <value>Sleep bestanden of mappen hierheen, of dubbelklik om bestanden te bladeren</value>
   </data>
-  <data name="MultipleFoldersHint.Text" xml:space="preserve">
-    <value>Voor meerdere mappen — sleep ze vanuit Verkenner</value>
-  </data>
   <data name="DropZoneModeHint.Text" xml:space="preserve">
     <value>Archieven bieden uitpakken aan; al het andere wordt gearchiveerd</value>
   </data>

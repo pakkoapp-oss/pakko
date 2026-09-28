@@ -157,9 +157,6 @@
   <data name="DropZoneHint.Text" xml:space="preserve">
     <value>Presuňte sem súbory alebo priečinky, alebo dvakrát kliknite na výber súborov</value>
   </data>
-  <data name="MultipleFoldersHint.Text" xml:space="preserve">
-    <value>Pre viac priečinkov — presuňte ich z Prieskumníka</value>
-  </data>
   <data name="DropZoneModeHint.Text" xml:space="preserve">
     <value>Archívy ponúkajú rozbalenie; všetko ostatné bude zabalené</value>
   </data>

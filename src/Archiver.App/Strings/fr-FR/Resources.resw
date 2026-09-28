@@ -157,9 +157,6 @@
   <data name="DropZoneHint.Text" xml:space="preserve">
     <value>Déposez des fichiers ou des dossiers ici, ou double-cliquez pour parcourir les fichiers</value>
   </data>
-  <data name="MultipleFoldersHint.Text" xml:space="preserve">
-    <value>Pour plusieurs dossiers — glissez-déposez depuis l'Explorateur</value>
-  </data>
   <data name="DropZoneModeHint.Text" xml:space="preserve">
     <value>Les archives proposent l'extraction ; tout le reste sera archivé</value>
   </data>

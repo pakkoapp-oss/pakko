@@ -157,9 +157,6 @@
   <data name="DropZoneHint.Text" xml:space="preserve">
     <value>גרור לכאן קבצים או תיקיות, או לחץ פעמיים כדי לעיין בקבצים</value>
   </data>
-  <data name="MultipleFoldersHint.Text" xml:space="preserve">
-    <value>עבור מספר תיקיות — גרור ושחרר מ-Explorer</value>
-  </data>
   <data name="DropZoneModeHint.Text" xml:space="preserve">
     <value>ארכיונים מציעים חילוץ; כל השאר יאורכב</value>
   </data>

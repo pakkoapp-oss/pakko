@@ -157,9 +157,6 @@
   <data name="DropZoneHint.Text" xml:space="preserve">
     <value>Släpp filer eller mappar här, eller dubbelklicka för att bläddra efter filer</value>
   </data>
-  <data name="MultipleFoldersHint.Text" xml:space="preserve">
-    <value>För flera mappar — dra och släpp från Utforskaren</value>
-  </data>
   <data name="DropZoneModeHint.Text" xml:space="preserve">
     <value>Arkiv erbjuder extrahering; allt annat arkiveras</value>
   </data>

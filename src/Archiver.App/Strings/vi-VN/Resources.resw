@@ -157,9 +157,6 @@
   <data name="DropZoneHint.Text" xml:space="preserve">
     <value>Thả tệp hoặc thư mục vào đây, hoặc nhấp đúp để duyệt tệp</value>
   </data>
-  <data name="MultipleFoldersHint.Text" xml:space="preserve">
-    <value>Đối với nhiều thư mục — kéo &amp; thả từ Explorer</value>
-  </data>
   <data name="DropZoneModeHint.Text" xml:space="preserve">
     <value>Tệp nén sẽ đề nghị giải nén; mọi thứ khác sẽ được nén</value>
   </data>

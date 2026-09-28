@@ -157,9 +157,6 @@
   <data name="DropZoneHint.Text" xml:space="preserve">
     <value>Suelta archivos o carpetas aquí, o haz doble clic para explorar archivos</value>
   </data>
-  <data name="MultipleFoldersHint.Text" xml:space="preserve">
-    <value>Para varias carpetas — arrastra y suelta desde el Explorador</value>
-  </data>
   <data name="DropZoneModeHint.Text" xml:space="preserve">
     <value>Los archivos comprimidos ofrecen extraerse; todo lo demás se comprimirá</value>
   </data>

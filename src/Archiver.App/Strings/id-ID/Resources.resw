@@ -157,9 +157,6 @@
   <data name="DropZoneHint.Text" xml:space="preserve">
     <value>Jatuhkan file atau folder di sini, atau klik dua kali untuk menelusuri file</value>
   </data>
-  <data name="MultipleFoldersHint.Text" xml:space="preserve">
-    <value>Untuk beberapa folder — seret &amp; jatuhkan dari Explorer</value>
-  </data>
   <data name="DropZoneModeHint.Text" xml:space="preserve">
     <value>Arsip menawarkan ekstraksi; selain itu akan diarsipkan</value>
   </data>

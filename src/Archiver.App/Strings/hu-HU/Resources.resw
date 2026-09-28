@@ -157,9 +157,6 @@
   <data name="DropZoneHint.Text" xml:space="preserve">
     <value>Húzzon ide fájlokat vagy mappákat, vagy kattintson duplán a fájlok tallózásához</value>
   </data>
-  <data name="MultipleFoldersHint.Text" xml:space="preserve">
-    <value>Több mappa esetén — húzza ide az Intézőből</value>
-  </data>
   <data name="DropZoneModeHint.Text" xml:space="preserve">
     <value>Az archívumok kibontást ajánlanak fel; minden más tömörítve lesz</value>
   </data>

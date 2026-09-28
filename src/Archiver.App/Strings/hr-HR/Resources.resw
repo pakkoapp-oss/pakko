@@ -157,9 +157,6 @@
   <data name="DropZoneHint.Text" xml:space="preserve">
     <value>Ispustite datoteke ili mape ovdje, ili dvaput kliknite za pregled datoteka</value>
   </data>
-  <data name="MultipleFoldersHint.Text" xml:space="preserve">
-    <value>Za više mapa — povucite i ispustite iz Istraživača</value>
-  </data>
   <data name="DropZoneModeHint.Text" xml:space="preserve">
     <value>Arhive nude raspakiravanje; sve ostalo bit će arhivirano</value>
   </data>

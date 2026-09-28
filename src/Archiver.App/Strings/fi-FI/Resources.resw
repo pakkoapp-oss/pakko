@@ -157,9 +157,6 @@
   <data name="DropZoneHint.Text" xml:space="preserve">
     <value>Pudota tiedostoja tai kansioita tähän, tai kaksoisnapsauta selataksesi tiedostoja</value>
   </data>
-  <data name="MultipleFoldersHint.Text" xml:space="preserve">
-    <value>Useita kansioita varten — vedä ja pudota Resurssienhallinnasta</value>
-  </data>
   <data name="DropZoneModeHint.Text" xml:space="preserve">
     <value>Arkistot tarjoutuvat purettavaksi; kaikki muu arkistoidaan</value>
   </data>

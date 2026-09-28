@@ -157,9 +157,6 @@
   <data name="DropZoneHint.Text" xml:space="preserve">
     <value>Dondosha faili au folda hapa, au bofya mara mbili kuvinjari faili</value>
   </data>
-  <data name="MultipleFoldersHint.Text" xml:space="preserve">
-    <value>Kwa folda nyingi — buruta na udondoshe kutoka Explorer</value>
-  </data>
   <data name="DropZoneModeHint.Text" xml:space="preserve">
     <value>Hifadhi hutoa chaguo la kutoa; kingine chochote kitahifadhiwa</value>
   </data>

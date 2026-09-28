@@ -157,9 +157,6 @@
   <data name="DropZoneHint.Text" xml:space="preserve">
     <value>Σύρετε αρχεία ή φακέλους εδώ, ή κάντε διπλό κλικ για περιήγηση στα αρχεία</value>
   </data>
-  <data name="MultipleFoldersHint.Text" xml:space="preserve">
-    <value>Για πολλαπλούς φακέλους — σύρετε και αφήστε από την Εξερεύνηση αρχείων</value>
-  </data>
   <data name="DropZoneModeHint.Text" xml:space="preserve">
     <value>Τα αρχεία συμπίεσης προσφέρουν εξαγωγή· οτιδήποτε άλλο θα συμπιεστεί</value>
   </data>

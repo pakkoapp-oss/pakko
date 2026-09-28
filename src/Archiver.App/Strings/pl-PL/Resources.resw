@@ -157,9 +157,6 @@
   <data name="DropZoneHint.Text" xml:space="preserve">
     <value>Przeciągnij tu pliki lub foldery albo kliknij dwukrotnie, aby je wybrać</value>
   </data>
-  <data name="MultipleFoldersHint.Text" xml:space="preserve">
-    <value>W przypadku wielu folderów — przeciągnij je z Eksploratora</value>
-  </data>
   <data name="DropZoneModeHint.Text" xml:space="preserve">
     <value>Archiwa oferują wypakowanie; wszystko inne zostanie zarchiwizowane</value>
   </data>

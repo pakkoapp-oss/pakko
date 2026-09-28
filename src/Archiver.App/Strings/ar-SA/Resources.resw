@@ -157,9 +157,6 @@
   <data name="DropZoneHint.Text" xml:space="preserve">
     <value>أفلت الملفات أو المجلدات هنا، أو انقر نقرًا مزدوجًا لتصفح الملفات</value>
   </data>
-  <data name="MultipleFoldersHint.Text" xml:space="preserve">
-    <value>للمجلدات المتعددة — اسحب وأفلت من مستكشف الملفات</value>
-  </data>
   <data name="DropZoneModeHint.Text" xml:space="preserve">
     <value>الأرشيفات تعرض الاستخراج؛ وأي شيء آخر يتم أرشفته</value>
   </data>

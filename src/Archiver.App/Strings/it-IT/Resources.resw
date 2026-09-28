@@ -157,9 +157,6 @@
   <data name="DropZoneHint.Text" xml:space="preserve">
     <value>Trascina qui file o cartelle, oppure fai doppio clic per sfogliare i file</value>
   </data>
-  <data name="MultipleFoldersHint.Text" xml:space="preserve">
-    <value>Per più cartelle — trascina e rilascia da Esplora file</value>
-  </data>
   <data name="DropZoneModeHint.Text" xml:space="preserve">
     <value>Gli archivi offrono l'estrazione; tutto il resto verrà archiviato</value>
   </data>

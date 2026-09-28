@@ -157,9 +157,6 @@
   <data name="DropZoneHint.Text" xml:space="preserve">
     <value>Largue ficheiros ou pastas aqui, ou clique duas vezes para procurar ficheiros</value>
   </data>
-  <data name="MultipleFoldersHint.Text" xml:space="preserve">
-    <value>Para várias pastas — arraste e largue a partir do Explorador</value>
-  </data>
   <data name="DropZoneModeHint.Text" xml:space="preserve">
     <value>Os arquivos oferecem extração; tudo o resto será arquivado</value>
   </data>

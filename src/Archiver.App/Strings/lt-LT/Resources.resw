@@ -157,9 +157,6 @@
   <data name="DropZoneHint.Text" xml:space="preserve">
     <value>Nutempkite failus ar aplankus čia arba dukart spustelėkite, kad naršytumėte failus</value>
   </data>
-  <data name="MultipleFoldersHint.Text" xml:space="preserve">
-    <value>Kelis aplankus — vilkite ir įkelkite iš Explorer</value>
-  </data>
   <data name="DropZoneModeHint.Text" xml:space="preserve">
     <value>Archyvai siūlo išskleidimą; visa kita bus archyvuojama</value>
   </data>
