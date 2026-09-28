@@ -524,4 +524,7 @@
   <data name="AlreadyInListLine" xml:space="preserve">
     <value>Đã có trong danh sách: {0}</value>
   </data>
+  <data name="HashCopyButton" xml:space="preserve">
+    <value>Sao chép</value>
+  </data>
 </root>

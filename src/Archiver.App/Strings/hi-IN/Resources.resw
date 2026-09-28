@@ -524,4 +524,7 @@
   <data name="AlreadyInListLine" xml:space="preserve">
     <value>पहले से सूची में: {0}</value>
   </data>
+  <data name="HashCopyButton" xml:space="preserve">
+    <value>कॉपी करें</value>
+  </data>
 </root>

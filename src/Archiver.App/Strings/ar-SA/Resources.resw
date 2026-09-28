@@ -524,4 +524,7 @@
   <data name="AlreadyInListLine" xml:space="preserve">
     <value>موجود في القائمة بالفعل: {0}</value>
   </data>
+  <data name="HashCopyButton" xml:space="preserve">
+    <value>نسخ</value>
+  </data>
 </root>

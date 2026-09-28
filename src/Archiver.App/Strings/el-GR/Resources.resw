@@ -524,4 +524,7 @@
   <data name="AlreadyInListLine" xml:space="preserve">
     <value>Ήδη στη λίστα: {0}</value>
   </data>
+  <data name="HashCopyButton" xml:space="preserve">
+    <value>Αντιγραφή</value>
+  </data>
 </root>

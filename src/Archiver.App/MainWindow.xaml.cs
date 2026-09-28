@@ -43,8 +43,6 @@ public sealed partial class MainWindow : Window
             await App.Services.GetRequiredService<IDialogService>().ShowAboutAsync();
         });
         TrayExitCommand = new RelayCommand(() => Application.Current.Exit());
-        HashFilesCommand = new AsyncRelayCommand(async () =>
-            await App.Services.GetRequiredService<IDialogService>().ShowFileHashAsync());
         TrayLeftClickCommand = new RelayCommand(() =>
         {
             if (this.AppWindow.IsVisible)
@@ -55,6 +53,8 @@ public sealed partial class MainWindow : Window
 
         InitializeComponent();
         ViewModel = App.Services.GetRequiredService<MainViewModel>();
+        HashFilesCommand = new AsyncRelayCommand(async () =>
+            await App.Services.GetRequiredService<IDialogService>().ShowFileHashAsync([.. ViewModel.FileItems.Select(x => x.FullPath)]));
         // Widened from the original 800x700 (design review 2026-07-13): a file/archive listing
         // is inherently tabular — the Name column needs width far more than the window needs
         // height, matching every reference file manager (Explorer, NanaZip, 7-Zip all default to

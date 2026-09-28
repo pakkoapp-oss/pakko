@@ -524,4 +524,7 @@
   <data name="AlreadyInListLine" xml:space="preserve">
     <value>Sudah ada di daftar: {0}</value>
   </data>
+  <data name="HashCopyButton" xml:space="preserve">
+    <value>Salin</value>
+  </data>
 </root>

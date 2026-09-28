@@ -524,4 +524,7 @@
   <data name="AlreadyInListLine" xml:space="preserve">
     <value>Zaten listede: {0}</value>
   </data>
+  <data name="HashCopyButton" xml:space="preserve">
+    <value>Kopyala</value>
+  </data>
 </root>

@@ -524,4 +524,7 @@
   <data name="AlreadyInListLine" xml:space="preserve">
     <value>Již v seznamu: {0}</value>
   </data>
+  <data name="HashCopyButton" xml:space="preserve">
+    <value>Kopírovat</value>
+  </data>
 </root>

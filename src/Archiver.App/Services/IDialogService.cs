@@ -13,7 +13,7 @@ public interface IDialogService
     Task ShowOperationSummaryAsync(string operationName, ArchiveResult result);
     Task ShowThreatScanResultAsync(ThreatScanResult result);
     Task ShowAboutAsync();
-    Task ShowFileHashAsync();
+    Task ShowFileHashAsync(IReadOnlyList<string> listed);
     Task<bool> ShowCompressionBombConfirmAsync(CompressionBombWarning warning);
     Task<ConflictDecision> ShowConflictDialogAsync(ConflictInfo conflict);
     Task<bool> OpenFileWithDefaultAppAsync(string filePath);

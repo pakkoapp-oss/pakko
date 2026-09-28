@@ -524,4 +524,7 @@
   <data name="AlreadyInListLine" xml:space="preserve">
     <value>Tayari kwenye orodha: {0}</value>
   </data>
+  <data name="HashCopyButton" xml:space="preserve">
+    <value>Nakili</value>
+  </data>
 </root>

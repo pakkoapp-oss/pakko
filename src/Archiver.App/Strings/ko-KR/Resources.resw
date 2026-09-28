@@ -524,4 +524,7 @@
   <data name="AlreadyInListLine" xml:space="preserve">
     <value>이미 목록에 있음: {0}</value>
   </data>
+  <data name="HashCopyButton" xml:space="preserve">
+    <value>복사</value>
+  </data>
 </root>

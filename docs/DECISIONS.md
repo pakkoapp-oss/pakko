@@ -10251,4 +10251,17 @@ change, real selection, open/close archive) with "Show in folder" and "Details..
 
 **Locales.** `AppResourceKeysTests` requires every en-US key in all 37 locales (About URLs
 exempt) instead of a hand-kept list, so a key added in English only fails the build's tests.
-Open: Explorer's operation window and Core messages still say "archiving".
+Explorer's operation window and Core messages said "archiving" until T-F276 (2026-09-29).
+
+---
+
+### T-F219 — App "Hash..." hashes the pending list; still SHA-256 only (user decision, 2026-09-29)
+
+T-F202 filed T-F219 asking for both CRC-32 and SHA-256 in the App's Hash dialog, which contradicts
+T-F164's user decision (SHA-256 only). Asked again: **the user kept SHA-256 only.** What changed:
+with items in the pending list, "Hash..." hashes those (one listed folder gets `FileHashService`'s
+folder mode, several items hash files and report folders as skipped, as Shell's `--hash` does);
+an empty list still opens the file picker. A file found inside a listed folder is named relative
+to that folder's parent. A "Copy" button (dialog stays open) copies one `hash  name` line per
+hashed file, the format `sha256sum -c` reads back; failed files are left out. Logic in App.Core
+`HashReport` (`HashReportTests`); the dialog glue has no unit test (WinUI `ContentDialog`).

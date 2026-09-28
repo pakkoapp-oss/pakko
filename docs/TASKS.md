@@ -4925,7 +4925,12 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 
 ### T-F219 — "Hash..." ignores the pending list and is SHA-256 only (P2)
 
-- [ ] **Status:** open. With items already in the list, "Хеш..." opens a separate file picker; the
+- [~] **Progress (2026-09-29, G1):** "Hash..." hashes the pending list (picker only when it is
+  empty), names files under a listed folder relative to it, and has a Copy button (`hash  name`
+  lines, `sha256sum -c` format). **SHA-256 only kept — user decision again** (T-F164 stands; see
+  `docs/DECISIONS.md`'s T-F219 entry). App.Core `HashReport` + `HashReportTests`; `HashCopyButton`
+  in 37 locales. Device check in G1's App pass.
+- **Was:** open. With items already in the list, "Хеш..." opens a separate file picker; the
   result dialog shows only SHA-256 with no Copy button. Extends T-F164 (CRC-32 missing, not routed
   through `FileHashService`): hash the listed items, offer both algorithms, add Copy.
 - **Reported by:** T-F202, 2026-09-24.

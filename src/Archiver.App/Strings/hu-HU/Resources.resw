@@ -524,4 +524,7 @@
   <data name="AlreadyInListLine" xml:space="preserve">
     <value>Már a listában: {0}</value>
   </data>
+  <data name="HashCopyButton" xml:space="preserve">
+    <value>Másolás</value>
+  </data>
 </root>

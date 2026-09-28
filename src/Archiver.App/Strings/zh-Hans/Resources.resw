@@ -524,4 +524,7 @@
   <data name="AlreadyInListLine" xml:space="preserve">
     <value>已在列表中：{0}</value>
   </data>
+  <data name="HashCopyButton" xml:space="preserve">
+    <value>复制</value>
+  </data>
 </root>

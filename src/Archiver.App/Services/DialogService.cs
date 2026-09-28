@@ -497,9 +497,10 @@ public sealed class DialogService : IDialogService
     // CRC-32 and let the user pick; this dialog was SHA-256-only with no way to pick CRC-32).
     // Deliberately kept SHA-256-only, not given an algorithm picker — a product decision, see
     // docs/DECISIONS.md's T-F164 entry.
-    public async Task ShowFileHashAsync()
+    // T-F219: the pending list when it has items, else a file picker.
+    public async Task ShowFileHashAsync(IReadOnlyList<string> listed)
     {
-        IReadOnlyList<string> files = await PickFilesAsync();
+        IReadOnlyList<string> files = HashReport.SourcesFor(listed) ?? await PickFilesAsync();
         if (files.Count == 0)
             return;
 
@@ -512,7 +513,7 @@ public sealed class DialogService : IDialogService
             var itemPanel = new StackPanel { Spacing = 2 };
             itemPanel.Children.Add(new TextBlock
             {
-                Text = Path.GetFileName(entry.SourcePath),
+                Text = HashReport.DisplayName(entry.SourcePath, files),
                 FontWeight = FontWeights.SemiBold
             });
 
@@ -527,6 +528,7 @@ public sealed class DialogService : IDialogService
             panel.Children.Add(itemPanel);
         }
 
+        string copyText = HashReport.CopyText(result, files);
         var dialog = new ContentDialog
         {
             Title = "SHA-256",
@@ -536,8 +538,18 @@ public sealed class DialogService : IDialogService
                 MaxHeight = 400,
                 VerticalScrollBarVisibility = ScrollBarVisibility.Auto
             },
+            PrimaryButtonText = copyText.Length > 0 ? _res.GetString("HashCopyButton") : string.Empty,
             CloseButtonText = _res.GetString("DialogOkButton"),
+            DefaultButton = ContentDialogButton.Close,
             XamlRoot = _window!.Content.XamlRoot
+        };
+        dialog.PrimaryButtonClick += (_, args) =>
+        {
+            // Copying keeps the dialog open.
+            args.Cancel = true;
+            var package = new Windows.ApplicationModel.DataTransfer.DataPackage();
+            package.SetText(copyText);
+            Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(package);
         };
         await dialog.ShowAsync();
     }
