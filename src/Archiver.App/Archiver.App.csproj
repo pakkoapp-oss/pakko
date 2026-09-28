@@ -84,6 +84,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Archiver.Core\Archiver.Core.csproj" />
     <ProjectReference Include="..\Archiver.App.Core\Archiver.App.Core.csproj" />
+    <ProjectReference Include="..\Archiver.Messages\Archiver.Messages.csproj" />
   </ItemGroup>
 
   <!--

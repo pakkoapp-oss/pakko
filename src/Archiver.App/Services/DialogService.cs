@@ -428,7 +428,7 @@ public sealed class DialogService : IDialogService
                 });
                 itemPanel.Children.Add(new TextBlock
                 {
-                    Text = error.Message,
+                    Text = CoreMessageText.Of(error),
                     TextWrapping = TextWrapping.Wrap,
                     Opacity = 0.7
                 });
@@ -454,7 +454,7 @@ public sealed class DialogService : IDialogService
                 });
                 itemPanel.Children.Add(new TextBlock
                 {
-                    Text = skipped.Reason,
+                    Text = CoreMessageText.Of(skipped),
                     TextWrapping = TextWrapping.Wrap,
                     Opacity = 0.7
                 });
@@ -543,7 +543,7 @@ public sealed class DialogService : IDialogService
         AddSection(
             $"{_res.GetString("ScanInconclusiveSectionHeader")}",
             inconclusive,
-            f => f.Reason ?? "unknown");
+            f => CoreMessageText.Of(f.ReasonText, f.Reason ?? "unknown"));
 
         var dialog = new ContentDialog
         {
@@ -588,7 +588,7 @@ public sealed class DialogService : IDialogService
 
             itemPanel.Children.Add(new TextBlock
             {
-                Text = entry.Hash ?? $"Error: {entry.Error}",
+                Text = entry.Hash ?? $"Error: {CoreMessageText.Of(entry.ErrorText, entry.Error ?? string.Empty)}",
                 FontFamily = new FontFamily("Consolas"),
                 IsTextSelectionEnabled = true,
                 TextWrapping = TextWrapping.Wrap,

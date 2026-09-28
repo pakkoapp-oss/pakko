@@ -23,6 +23,23 @@ public static class UiCulture
     public static CultureInfo Resolve(CultureInfo requested) =>
         ResolveName(requested.Name) is { } name ? CultureInfo.GetCultureInfo(name) : CultureInfo.InvariantCulture;
 
+    /// <summary>
+    /// The first of the user's preferred languages Pakko has a translation for, the way Windows
+    /// resource matching picks the App's own strings; English when none has one.
+    /// </summary>
+    public static CultureInfo ResolveFirst(IEnumerable<string> preferredTags)
+    {
+        foreach (string tag in preferredTags)
+        {
+            // English is the neutral table: a user who lists it before another language gets it.
+            if (tag.Equals("en", StringComparison.OrdinalIgnoreCase) || tag.StartsWith("en-", StringComparison.OrdinalIgnoreCase))
+                return CultureInfo.InvariantCulture;
+            if (ResolveName(tag) is { } name)
+                return CultureInfo.GetCultureInfo(name);
+        }
+        return CultureInfo.InvariantCulture;
+    }
+
     /// <summary>The shipped culture name for a BCP-47 tag, or null for English.</summary>
     public static string? ResolveName(string tag)
     {

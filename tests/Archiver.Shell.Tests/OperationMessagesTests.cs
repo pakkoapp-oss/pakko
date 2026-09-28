@@ -76,6 +76,20 @@ public sealed class OperationMessagesTests : IDisposable
         message.Text.Should().StartWith("Skipped (1):").And.Contain("bad.txt: ADS entry");
     }
 
+    // T-F209: a coded Core reason follows the UI language; before, it was always English.
+    [Fact]
+    public void ForArchiveResult_UnderUkrainian_RendersCoreReasonInUkrainian()
+    {
+        CoreText reason = ArchiveFormatPolicy.GetRefusalReason(
+            ArchiveFormat.SevenZip, new TarCapabilities(), new GroupPolicyOptions { DisableTarExtraction = true })!;
+        var result = new ArchiveResult { SkippedFiles = [new SkippedFile { Path = "a.7z", Reason = reason.English, Text = reason }] };
+        CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("uk-UA");
+
+        string text = OperationMessages.ForArchiveResult("T", result)!.Text;
+
+        text.Should().Contain("a.7z: Видобування за допомогою tar.exe вимкнено груповою політикою.").And.NotContain("disabled");
+    }
+
     // --- Test (T-F216, T-F274) ---
 
     private static readonly SkippedFile TarSkip = new() { Path = "b.tar", Reason = "no test" };

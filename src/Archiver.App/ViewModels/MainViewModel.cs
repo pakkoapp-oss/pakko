@@ -744,7 +744,7 @@ public sealed partial class MainViewModel : ObservableObject
         {
             IsBrowsingArchive = false;
             BrowsedArchivePath = null;
-            await _dialogService.ShowErrorAsync("Error", result.ErrorMessage ?? "Failed to read archive.");
+            await _dialogService.ShowErrorAsync("Error", CoreMessageText.Of(result.ErrorText, result.ErrorMessage ?? "Failed to read archive."));
             return;
         }
 
@@ -864,7 +864,7 @@ public sealed partial class MainViewModel : ObservableObject
         {
             NestedArchiveCache.DeleteScope(scopeDir);
             if (listResult is not null)
-                await _dialogService.ShowErrorAsync("Error", listResult.ErrorMessage ?? "Failed to read archive.");
+                await _dialogService.ShowErrorAsync("Error", CoreMessageText.Of(listResult.ErrorText, listResult.ErrorMessage ?? "Failed to read archive."));
             return;
         }
 
@@ -1206,7 +1206,7 @@ public sealed partial class MainViewModel : ObservableObject
             if (!result.Success || result.CreatedFiles.Count == 0)
             {
                 await _dialogService.ShowErrorAsync("Error",
-                    (result.Errors.Count > 0 ? result.Errors[0] : null)?.Message ?? _res.GetString("StatusIssues"));
+                    (result.Errors.Count > 0 ? CoreMessageText.Of(result.Errors[0]) : null) ?? _res.GetString("StatusIssues"));
                 return;
             }
 

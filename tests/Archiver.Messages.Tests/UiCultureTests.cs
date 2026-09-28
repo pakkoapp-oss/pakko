@@ -32,4 +32,12 @@ public sealed class UiCultureTests
     [InlineData("")]
     public void ResolveName_WithoutATranslation_IsEnglish(string tag) =>
         UiCulture.ResolveName(tag).Should().BeNull();
+
+    [Fact]
+    public void ResolveFirst_SkipsLanguagesWithoutATranslation() =>
+        UiCulture.ResolveFirst(["ga-IE", "uk-UA", "de-DE"]).Name.Should().Be("uk-UA");
+
+    [Fact]
+    public void ResolveFirst_EnglishBeforeAnyTranslation_IsEnglish() =>
+        UiCulture.ResolveFirst(["en-US", "uk-UA"]).Should().Be(System.Globalization.CultureInfo.InvariantCulture);
 }

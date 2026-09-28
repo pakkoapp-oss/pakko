@@ -1,11 +1,18 @@
+using System.Globalization;
 using Archiver.Core.Models;
 using Archiver.Core.Services;
+using Archiver.Messages;
 using Archiver.Shell;
 
 // T-F51: loaded once per invocation and threaded into every service Archiver.Shell constructs —
 // it has no DI container, so this is the App.xaml.cs AddSingleton(GroupPolicyService.Load())
 // equivalent for this frontend.
 GroupPolicyOptions policy = GroupPolicyService.Load();
+
+// T-F254: every Shell text resource is per region (de-DE); .NET's own fallback walks only the
+// parent chain (de-AT -> de -> English), so map the user's language onto the one Pakko ships.
+if (UiCulture.ResolveName(CultureInfo.CurrentUICulture.Name) is { } shippedCulture)
+    CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(shippedCulture);
 
 ParsedCommand command = ShellArgumentParser.Parse(args);
 

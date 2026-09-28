@@ -14,6 +14,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Archiver.Core\Archiver.Core.csproj" />
     <ProjectReference Include="..\Archiver.OperationUi.Protocol\Archiver.OperationUi.Protocol.csproj" />
+    <ProjectReference Include="..\Archiver.Messages\Archiver.Messages.csproj" />
   </ItemGroup>
   <ItemGroup>
     <!-- T-F192: lets Archiver.Shell.Tests unit-test PasswordDialogTemplateBuilder's byte-layout

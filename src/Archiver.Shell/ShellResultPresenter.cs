@@ -1,4 +1,6 @@
+using System.Globalization;
 using Archiver.Core.Models;
+using Archiver.Messages;
 
 namespace Archiver.Shell;
 
@@ -14,7 +16,7 @@ public static class ShellResultPresenter
     public static string BuildSkippedMessage(IReadOnlyList<SkippedFile> skipped, int maxLinesShown = 10)
     {
         IEnumerable<string> lines = skipped.Take(maxLinesShown)
-            .Select(s => $"{Path.GetFileName(s.Path)}: {s.Reason}");
+            .Select(s => $"{Path.GetFileName(s.Path)}: {MessageText.Render(s, CultureInfo.CurrentUICulture)}");
         string header = ResultMessagesLocalizer.Get("ResultSkippedHeader", skipped.Count);
         string message = $"{header}{Environment.NewLine}{string.Join(Environment.NewLine, lines)}";
 

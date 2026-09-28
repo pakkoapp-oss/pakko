@@ -1,6 +1,7 @@
 using System.Globalization;
 using Archiver.Core.Models;
 using Archiver.Core.Services;
+using Archiver.Messages;
 
 namespace Archiver.Shell;
 
@@ -64,7 +65,7 @@ internal static class OperationMessages
             IEnumerable<string> entryLines = result.Entries.Take(MaxLinesShown)
                 .Select(e => e.Error is null
                     ? $"{Path.GetFileName(e.SourcePath)}: {e.Hash}"
-                    : $"{Path.GetFileName(e.SourcePath)}: {e.Error}");
+                    : $"{Path.GetFileName(e.SourcePath)}: {MessageText.Render(e.ErrorText, e.Error, CultureInfo.CurrentUICulture)}");
             lines = result.Entries.Count > MaxLinesShown
                 ? [.. entryLines, HashResultLocalizer.Get("HashResultAndMoreLine", result.Entries.Count - MaxLinesShown)]
                 : [.. entryLines];
@@ -94,7 +95,7 @@ internal static class OperationMessages
             // Inconclusive finding a reason, so the "unknown" fallback is defensive only.
             string detail = f.Verdict == ThreatVerdict.ThreatDetected
                 ? f.ThreatName ?? ScanResultLocalizer.Get("ScanThreatDetectedGeneric")
-                : f.Reason ?? "unknown";
+                : MessageText.Render(f.ReasonText, f.Reason ?? "unknown", CultureInfo.CurrentUICulture);
             return $"{label}: {detail}";
         }).ToList();
 
@@ -141,7 +142,7 @@ internal static class OperationMessages
             return new OperationMessage(title, MessageSeverity.Error, ResultMessagesLocalizer.Get("ResultOperationFailed"));
 
         string text = string.Join(Environment.NewLine,
-            errors.Take(MaxLinesShown).Select(e => $"{Path.GetFileName(e.SourcePath)}: {e.Message}"));
+            errors.Take(MaxLinesShown).Select(e => $"{Path.GetFileName(e.SourcePath)}: {MessageText.Render(e, CultureInfo.CurrentUICulture)}"));
         if (errors.Count > MaxLinesShown)
             text += $"{Environment.NewLine}{ResultMessagesLocalizer.Get("ResultAndMoreLine", errors.Count - MaxLinesShown)}";
 
