@@ -159,6 +159,7 @@ src/
 │       ├── OperationOutcome.cs             ← T-F260: what a whole operation achieved
 │       ├── ArchiveFormat.cs / ArchiveContainerFormat.cs   ← detection vs. creation enums
 │       ├── ArchiveEntryInfo.cs / ArchiveListResult.cs     ← T-F05: browse-mode listing
+│       ├── EntryEncryption.cs                             ← T-F199: per-entry encryption marker
 │       ├── ConflictInfo.cs / ConflictDecision.cs          ← T-F06; incoming size/time T-F268
 │       ├── CompressionBombWarning.cs                      ← T-F94
 │       ├── HashAlgorithmKind.cs                           ← T-F128: Crc32 | Sha256
@@ -1272,7 +1273,12 @@ public sealed record ArchiveEntryInfo
     public uint? Crc32 { get; init; }            // null for tar-routed formats — no per-entry CRC
     public DateTime? Modified { get; init; }     // null for tar (date column is locale-mangled)
     public bool IsDirectory { get; init; }
+    public EntryEncryption? Encryption { get; init; } // T-F199: ZIP only, read without a password; null = format can't say
+    public int? AesVersion { get; init; }            // WinZip AE-1/AE-2, null unless AES
 }
+
+// Models/EntryEncryption.cs (T-F199)
+public enum EntryEncryption { None, ZipCrypto, Aes128, Aes192, Aes256, Unknown } // Unknown: bit 0 set, method unreadable
 
 // Models/ArchiveListResult.cs
 public sealed record ArchiveListResult

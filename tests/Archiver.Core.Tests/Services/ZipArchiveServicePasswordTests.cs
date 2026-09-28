@@ -443,6 +443,48 @@ public sealed class ZipArchiveServicePasswordTests : IDisposable
         result.Entries.Should().ContainSingle().Which.Crc32.Should().NotBeNull().And.NotBe(0u);
     }
 
+    // T-F199: the browse view marks encrypted entries without asking for a password.
+    [Theory]
+    [InlineData("encrypted_aes256.zip", EntryEncryption.Aes256, 2)]
+    [InlineData("encrypted_aes256_ae1.zip", EntryEncryption.Aes256, 1)]
+    [InlineData("encrypted_aes128.zip", EntryEncryption.Aes128, 2)]
+    [InlineData("encrypted_zipcrypto_real.zip", EntryEncryption.ZipCrypto, null)]
+    [InlineData("valid_single_file.zip", EntryEncryption.None, null)]
+    public async Task ListEntriesAsync_ReportsEachEntrysEncryption(string fixture, EntryEncryption expected, int? aesVersion)
+    {
+        ArchiveListResult result = await _sut.ListEntriesAsync(FixtureHelper.Archive(fixture));
+
+        result.Success.Should().BeTrue();
+        result.Entries.Where(e => !e.IsDirectory).Should().AllSatisfy(e =>
+        {
+            e.Encryption.Should().Be(expected);
+            e.AesVersion.Should().Be(aesVersion);
+        });
+    }
+
+    [Fact]
+    public async Task ListEntriesAsync_MixedArchive_MarksOnlyTheEncryptedEntry()
+    {
+        ArchiveListResult result = await _sut.ListEntriesAsync(FixtureHelper.Archive("mixed_encrypted_and_plain.zip"));
+
+        result.Success.Should().BeTrue();
+        result.Entries.Single(e => e.Path == "readme.txt").Encryption.Should().Be(EntryEncryption.None);
+        result.Entries.Single(e => e.Path == "compressible.txt").Encryption.Should().Be(EntryEncryption.Aes256);
+    }
+
+    [Theory]
+    [InlineData((ushort)200)]
+    [InlineData((ushort)2)]
+    public async Task ListEntriesAsync_MalformedAesExtraRecord_StillMarksEntryEncrypted(ushort declaredSize)
+    {
+        string path = MalformedAesExtraFixture.Create(_temp.Path, declaredSize);
+
+        ArchiveListResult result = await _sut.ListEntriesAsync(path);
+
+        result.Entries.Where(e => !e.IsDirectory).Should().NotBeEmpty()
+            .And.AllSatisfy(e => e.Encryption.Should().Be(EntryEncryption.Unknown));
+    }
+
     // ── T-F193 Phase 0: Zip64 layouts, end to end ─────────────────────────────
 
     [Fact]

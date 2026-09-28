@@ -22,6 +22,9 @@ internal sealed record LocatedZipEntry
     public required long UncompressedSize { get; init; }
     public required ushort CompressionMethod { get; init; }
     public required bool GeneralPurposeEncryptedBit { get; init; }
+
+    /// <summary>General-purpose bit 6: PKWARE strong encryption, which Pakko cannot decrypt.</summary>
+    public bool StrongEncryptionBit { get; init; }
     public required uint StoredCrc32 { get; init; }
 
     /// <summary>T-F243: the byte the last ZipCrypto header byte must equal for the right password —
@@ -274,6 +277,7 @@ internal static class RawZipEntryLocator
             UncompressedSize = central.UncompressedSize,
             CompressionMethod = method,
             GeneralPurposeEncryptedBit = (generalPurposeFlag & 0x0001) != 0,
+            StrongEncryptionBit = (generalPurposeFlag & 0x0040) != 0,
             StoredCrc32 = storedCrc32,
             ZipCryptoCheckByte = (generalPurposeFlag & DataDescriptorFlag) != 0
                 ? (byte)(lastModTime >> 8)

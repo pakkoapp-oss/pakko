@@ -21,7 +21,7 @@ public sealed class CliEntryFormatterTests
 
         string row = CliEntryFormatter.FormatRow(entry);
 
-        row.Should().Be("12345\t4321\ta1b2c3d4\t2026-07-18T14:03:02\tf\tdocs/readme.txt");
+        row.Should().Be("12345\t4321\ta1b2c3d4\t2026-07-18T14:03:02\tf\t?\tdocs/readme.txt");
     }
 
     [Fact]
@@ -39,12 +39,28 @@ public sealed class CliEntryFormatterTests
 
         string row = CliEntryFormatter.FormatRow(entry);
 
-        row.Should().Be("0\t0\t-\t-\td\tdocs/");
+        row.Should().Be("0\t0\t-\t-\td\t?\tdocs/");
     }
 
     [Fact]
-    public void Header_HasSixTabSeparatedColumns()
+    public void Header_HasSevenTabSeparatedColumnsWithPathLast()
     {
-        CliEntryFormatter.Header.Split('\t').Should().HaveCount(6);
+        CliEntryFormatter.Header.Split('\t').Should().HaveCount(7).And.EndWith("Path");
+    }
+
+    // T-F221 item 7 (T-F199): 7-Zip marks encrypted entries; '?' when the format cannot say.
+    [Theory]
+    [InlineData(EntryEncryption.None, "-")]
+    [InlineData(EntryEncryption.ZipCrypto, "ZipCrypto")]
+    [InlineData(EntryEncryption.Aes128, "AES-128")]
+    [InlineData(EntryEncryption.Aes192, "AES-192")]
+    [InlineData(EntryEncryption.Aes256, "AES-256")]
+    [InlineData(EntryEncryption.Unknown, "+")]
+    [InlineData(null, "?")]
+    public void FormatRow_EncryptionColumn(EntryEncryption? encryption, string expected)
+    {
+        var entry = new ArchiveEntryInfo { Path = "a.txt", Encryption = encryption };
+
+        CliEntryFormatter.FormatRow(entry).Split('\t')[5].Should().Be(expected);
     }
 }

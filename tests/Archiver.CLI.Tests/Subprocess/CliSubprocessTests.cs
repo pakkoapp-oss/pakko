@@ -415,9 +415,9 @@ public sealed class CliSubprocessTests
 
         exitCode.Should().Be(0);
         stdErr.Should().BeEmpty();
-        stdOut.Should().Contain("Size\tCompressed\tCrc32\tModified\tType\tPath");
-        stdOut.Should().Contain("a.txt");
-        stdOut.Should().Contain("b.txt");
+        stdOut.Should().Contain("Size\tCompressed\tCrc32\tModified\tType\tEncrypted\tPath");
+        stdOut.Should().Contain("\tf\t-\ta.txt");
+        stdOut.Should().Contain("\tf\t-\tb.txt");
     }
 
     // T-F238: redirected output used the console code page, so on a cp866 console `l > list.txt`

@@ -1056,10 +1056,9 @@ public sealed class ZipArchiveService : IArchiveService
                     // AE-2 zeroes the header CRC-32 by design (HMAC is the sole authority) — report
                     // null rather than a misleading 0, consistent with ArchiveEntryInfo.Crc32's
                     // existing nullable convention (0 is itself a legitimate CRC-32 for other entries).
-                    bool isAe2WithZeroedCrc = encryptedEntryMap is { } map
-                        && map.TryGetValue(e, out LocatedZipEntry? located)
-                        && located.CompressionMethod == 99
-                        && located.AeVersion == 2;
+                    LocatedZipEntry? located = null;
+                    encryptedEntryMap?.TryGetValue(e, out located);
+                    bool isAe2WithZeroedCrc = located is { CompressionMethod: 99, AeVersion: 2 };
 
                     bool isDirectory = named.FullName.EndsWith('/');
                     return new ArchiveEntryInfo
@@ -1070,6 +1069,8 @@ public sealed class ZipArchiveService : IArchiveService
                         Modified = e.LastWriteTime.DateTime,
                         IsDirectory = isDirectory,
                         Crc32 = isDirectory || isAe2WithZeroedCrc ? null : e.Crc32,
+                        Encryption = EncryptionOf(e, located),
+                        AesVersion = located?.AeVersion,
                     };
                 }).ToList();
             }, cancellationToken).ConfigureAwait(false);
@@ -1086,6 +1087,23 @@ public sealed class ZipArchiveService : IArchiveService
         {
             return CoreMessages.ListFailure(CoreMessages.FromException(ex));
         }
+    }
+
+    private static EntryEncryption EncryptionOf(ZipArchiveEntry entry, LocatedZipEntry? located)
+    {
+        if (!entry.IsEncrypted)
+            return EntryEncryption.None;
+        if (located is null || located.StrongEncryptionBit)
+            return EntryEncryption.Unknown;
+        if (located.CompressionMethod != 99)
+            return EntryEncryption.ZipCrypto;
+        return located.AesStrengthBits switch
+        {
+            128 => EntryEncryption.Aes128,
+            192 => EntryEncryption.Aes192,
+            256 => EntryEncryption.Aes256,
+            _ => EntryEncryption.Unknown,
+        };
     }
 
     // Reads every entry's decompressed bytes and compares a freshly computed CRC-32 against

@@ -23,4 +23,11 @@ public sealed record ArchiveEntryInfo
     public DateTime? Modified { get; init; }
 
     public bool IsDirectory { get; init; }
+
+    /// <summary>Null when the format cannot say without extracting (tar-family, 7z, RAR).</summary>
+    public EntryEncryption? Encryption { get; init; }
+
+    /// <summary>WinZip AE version (1 keeps the real CRC-32, 2 stores 0 and relies on the HMAC);
+    /// null unless the entry is WinZip AES-encrypted.</summary>
+    public int? AesVersion { get; init; }
 }
