@@ -25,7 +25,7 @@
     <value>प्रतीकात्मक लिंक और NTFS जंक्शन संग्रहीत नहीं किए जाते।</value>
   </data>
   <data name="FolderLinkNotFollowed" xml:space="preserve">
-    <value>संग्रह करते समय NTFS जंक्शन और फ़ोल्डर के प्रतीकात्मक लिंक का अनुसरण नहीं किया जाता।</value>
+    <value>संपीड़ित करते समय NTFS जंक्शन और फ़ोल्डर के प्रतीकात्मक लिंक का अनुसरण नहीं किया जाता।</value>
   </data>
   <data name="ReparsePointNotArchived" xml:space="preserve">
     <value>प्रतीकात्मक लिंक और पुनर्विश्लेषण बिंदु संग्रहीत नहीं किए जाते।</value>
@@ -43,7 +43,7 @@
     <value>अप्रत्याशित त्रुटि: {0}</value>
   </data>
   <data name="UnknownArchivingError" xml:space="preserve">
-    <value>संग्रह करते समय अज्ञात त्रुटि।</value>
+    <value>संपीड़ित करते समय अज्ञात त्रुटि।</value>
   </data>
   <data name="EntryNameTooLong" xml:space="preserve">
     <value>प्रविष्टि का नाम ZIP संग्रह के लिए बहुत लंबा है (UTF-8 में {0} बाइट; अधिकतम {1})।</value>

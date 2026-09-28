@@ -25,7 +25,7 @@
     <value>Viungo vya ishara na makutano ya NTFS havihifadhiwi kwenye kumbukumbu.</value>
   </data>
   <data name="FolderLinkNotFollowed" xml:space="preserve">
-    <value>Makutano ya NTFS na viungo vya ishara vya folda havifuatwi wakati wa kuhifadhi.</value>
+    <value>Makutano ya NTFS na viungo vya ishara vya folda havifuatwi wakati wa kubana.</value>
   </data>
   <data name="ReparsePointNotArchived" xml:space="preserve">
     <value>Viungo vya ishara na sehemu za kuchanganua upya havihifadhiwi kwenye kumbukumbu.</value>
@@ -43,7 +43,7 @@
     <value>Hitilafu isiyotarajiwa: {0}</value>
   </data>
   <data name="UnknownArchivingError" xml:space="preserve">
-    <value>Hitilafu isiyojulikana wakati wa kuhifadhi.</value>
+    <value>Hitilafu isiyojulikana wakati wa kubana.</value>
   </data>
   <data name="EntryNameTooLong" xml:space="preserve">
     <value>Jina la kipengee ni refu mno kwa kumbukumbu ya ZIP (baiti {0} katika UTF-8; upeo ni {1}).</value>

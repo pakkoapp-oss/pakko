@@ -25,7 +25,7 @@
     <value>Οι συμβολικές συνδέσεις και οι συνδέσεις NTFS δεν αρχειοθετούνται.</value>
   </data>
   <data name="FolderLinkNotFollowed" xml:space="preserve">
-    <value>Κατά την αρχειοθέτηση δεν ακολουθούνται οι συνδέσεις NTFS και οι συμβολικές συνδέσεις φακέλων.</value>
+    <value>Κατά τη συμπίεση δεν ακολουθούνται οι συνδέσεις NTFS και οι συμβολικές συνδέσεις φακέλων.</value>
   </data>
   <data name="ReparsePointNotArchived" xml:space="preserve">
     <value>Οι συμβολικές συνδέσεις και τα σημεία επανανάλυσης δεν αρχειοθετούνται.</value>
@@ -43,7 +43,7 @@
     <value>Μη αναμενόμενο σφάλμα: {0}</value>
   </data>
   <data name="UnknownArchivingError" xml:space="preserve">
-    <value>Άγνωστο σφάλμα κατά την αρχειοθέτηση.</value>
+    <value>Άγνωστο σφάλμα κατά τη συμπίεση.</value>
   </data>
   <data name="EntryNameTooLong" xml:space="preserve">
     <value>Το όνομα της καταχώρησης είναι πολύ μεγάλο για αρχείο ZIP ({0} byte σε UTF-8· μέγιστο {1}).</value>

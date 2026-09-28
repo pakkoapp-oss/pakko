@@ -25,7 +25,7 @@
     <value>Simboličke veze i NTFS spojišta ne arhiviraju se.</value>
   </data>
   <data name="FolderLinkNotFollowed" xml:space="preserve">
-    <value>Tijekom arhiviranja ne slijede se NTFS spojišta ni simboličke veze na mape.</value>
+    <value>Tijekom komprimiranja ne slijede se NTFS spojišta ni simboličke veze na mape.</value>
   </data>
   <data name="ReparsePointNotArchived" xml:space="preserve">
     <value>Simboličke veze i točke ponovne analize ne arhiviraju se.</value>
@@ -43,7 +43,7 @@
     <value>Neočekivana pogreška: {0}</value>
   </data>
   <data name="UnknownArchivingError" xml:space="preserve">
-    <value>Nepoznata pogreška pri arhiviranju.</value>
+    <value>Nepoznata pogreška pri komprimiranju.</value>
   </data>
   <data name="EntryNameTooLong" xml:space="preserve">
     <value>Naziv stavke predug je za ZIP arhivu ({0} bajtova u UTF-8; najviše {1}).</value>

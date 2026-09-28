@@ -25,7 +25,7 @@
     <value>קישורים סמליים ונקודות צומת של NTFS אינם נכללים בארכיון.</value>
   </data>
   <data name="FolderLinkNotFollowed" xml:space="preserve">
-    <value>במהלך יצירת ארכיון לא עוקבים אחר נקודות צומת של NTFS וקישורים סמליים לתיקיות.</value>
+    <value>במהלך דחיסה לא עוקבים אחר נקודות צומת של NTFS וקישורים סמליים לתיקיות.</value>
   </data>
   <data name="ReparsePointNotArchived" xml:space="preserve">
     <value>קישורים סמליים ונקודות ניתוח מחדש אינם נכללים בארכיון.</value>
@@ -43,7 +43,7 @@
     <value>שגיאה בלתי צפויה: {0}</value>
   </data>
   <data name="UnknownArchivingError" xml:space="preserve">
-    <value>שגיאה לא ידועה במהלך יצירת הארכיון.</value>
+    <value>שגיאה לא ידועה במהלך הדחיסה.</value>
   </data>
   <data name="EntryNameTooLong" xml:space="preserve">
     <value>שם הפריט ארוך מדי לארכיון ZIP ({0} בתים ב-UTF-8; המקסימום הוא {1}).</value>

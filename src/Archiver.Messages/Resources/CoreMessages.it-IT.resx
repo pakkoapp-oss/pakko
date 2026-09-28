@@ -25,7 +25,7 @@
     <value>I collegamenti simbolici e le giunzioni NTFS non vengono archiviati.</value>
   </data>
   <data name="FolderLinkNotFollowed" xml:space="preserve">
-    <value>Durante l’archiviazione le giunzioni NTFS e i collegamenti simbolici alle cartelle non vengono seguiti.</value>
+    <value>Durante la compressione le giunzioni NTFS e i collegamenti simbolici alle cartelle non vengono seguiti.</value>
   </data>
   <data name="ReparsePointNotArchived" xml:space="preserve">
     <value>I collegamenti simbolici e i reparse point non vengono archiviati.</value>
@@ -43,7 +43,7 @@
     <value>Errore imprevisto: {0}</value>
   </data>
   <data name="UnknownArchivingError" xml:space="preserve">
-    <value>Errore sconosciuto durante l’archiviazione.</value>
+    <value>Errore sconosciuto durante la compressione.</value>
   </data>
   <data name="EntryNameTooLong" xml:space="preserve">
     <value>Il nome della voce è troppo lungo per un archivio ZIP ({0} byte in UTF-8; il massimo è {1}).</value>

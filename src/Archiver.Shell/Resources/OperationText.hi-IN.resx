@@ -40,7 +40,7 @@
     <value>संग्रह छोड़ें</value>
   </data>
   <data name="TitleArchiving" xml:space="preserve">
-    <value>संग्रहित किया जा रहा है: {0}</value>
+    <value>संपीड़ित किया जा रहा है: {0}</value>
   </data>
   <data name="TitleExtracting" xml:space="preserve">
     <value>निकाला जा रहा है: {0}</value>

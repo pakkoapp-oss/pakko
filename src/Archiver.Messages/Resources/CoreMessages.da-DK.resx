@@ -25,7 +25,7 @@
     <value>Symbolske links og NTFS-forbindelsespunkter arkiveres ikke.</value>
   </data>
   <data name="FolderLinkNotFollowed" xml:space="preserve">
-    <value>NTFS-forbindelsespunkter og symbolske links til mapper følges ikke under arkivering.</value>
+    <value>NTFS-forbindelsespunkter og symbolske links til mapper følges ikke under komprimering.</value>
   </data>
   <data name="ReparsePointNotArchived" xml:space="preserve">
     <value>Symbolske links og genfortolkningspunkter arkiveres ikke.</value>
@@ -43,7 +43,7 @@
     <value>Uventet fejl: {0}</value>
   </data>
   <data name="UnknownArchivingError" xml:space="preserve">
-    <value>Ukendt fejl under arkivering.</value>
+    <value>Ukendt fejl under komprimering.</value>
   </data>
   <data name="EntryNameTooLong" xml:space="preserve">
     <value>Elementnavnet er for langt til et ZIP-arkiv ({0} byte i UTF-8; maksimum er {1}).</value>

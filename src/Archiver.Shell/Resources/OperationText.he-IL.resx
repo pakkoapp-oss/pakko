@@ -40,7 +40,7 @@
     <value>דלג על הארכיון</value>
   </data>
   <data name="TitleArchiving" xml:space="preserve">
-    <value>יצירת ארכיון: {0}</value>
+    <value>דחיסה: {0}</value>
   </data>
   <data name="TitleExtracting" xml:space="preserve">
     <value>חילוץ: {0}</value>

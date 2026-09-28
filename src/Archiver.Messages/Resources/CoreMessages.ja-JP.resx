@@ -25,7 +25,7 @@
     <value>シンボリック リンクと NTFS ジャンクションはアーカイブされません。</value>
   </data>
   <data name="FolderLinkNotFollowed" xml:space="preserve">
-    <value>アーカイブ時に NTFS ジャンクションとフォルダーのシンボリック リンクはたどりません。</value>
+    <value>圧縮時に NTFS ジャンクションとフォルダーのシンボリック リンクはたどりません。</value>
   </data>
   <data name="ReparsePointNotArchived" xml:space="preserve">
     <value>シンボリック リンクと再解析ポイントはアーカイブされません。</value>
@@ -43,7 +43,7 @@
     <value>予期しないエラー: {0}</value>
   </data>
   <data name="UnknownArchivingError" xml:space="preserve">
-    <value>アーカイブ中に不明なエラーが発生しました。</value>
+    <value>圧縮中に不明なエラーが発生しました。</value>
   </data>
   <data name="EntryNameTooLong" xml:space="preserve">
     <value>エントリ名が ZIP アーカイブには長すぎます (UTF-8 で {0} バイト、最大 {1})。</value>

@@ -25,7 +25,7 @@
     <value>Symbolisia linkkejä ja NTFS-liitoskohtia ei arkistoida.</value>
   </data>
   <data name="FolderLinkNotFollowed" xml:space="preserve">
-    <value>NTFS-liitoskohtia ja kansioiden symbolisia linkkejä ei seurata arkistoitaessa.</value>
+    <value>NTFS-liitoskohtia ja kansioiden symbolisia linkkejä ei seurata pakattaessa.</value>
   </data>
   <data name="ReparsePointNotArchived" xml:space="preserve">
     <value>Symbolisia linkkejä ja uudelleenjäsennyskohtia ei arkistoida.</value>
@@ -43,7 +43,7 @@
     <value>Odottamaton virhe: {0}</value>
   </data>
   <data name="UnknownArchivingError" xml:space="preserve">
-    <value>Tuntematon virhe arkistoinnissa.</value>
+    <value>Tuntematon virhe pakkaamisessa.</value>
   </data>
   <data name="EntryNameTooLong" xml:space="preserve">
     <value>Kohteen nimi on liian pitkä ZIP-arkistoon ({0} tavua UTF-8-muodossa; enintään {1}).</value>

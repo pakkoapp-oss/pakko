@@ -25,7 +25,7 @@
     <value>Les liens symboliques et les jonctions NTFS ne sont pas archivés.</value>
   </data>
   <data name="FolderLinkNotFollowed" xml:space="preserve">
-    <value>Les jonctions NTFS et les liens symboliques de dossier ne sont pas suivis lors de l’archivage.</value>
+    <value>Les jonctions NTFS et les liens symboliques de dossier ne sont pas suivis lors de la compression.</value>
   </data>
   <data name="ReparsePointNotArchived" xml:space="preserve">
     <value>Les liens symboliques et les points d’analyse ne sont pas archivés.</value>
@@ -43,7 +43,7 @@
     <value>Erreur inattendue : {0}</value>
   </data>
   <data name="UnknownArchivingError" xml:space="preserve">
-    <value>Erreur inconnue lors de l’archivage.</value>
+    <value>Erreur inconnue lors de la compression.</value>
   </data>
   <data name="EntryNameTooLong" xml:space="preserve">
     <value>Le nom de l’entrée est trop long pour une archive ZIP ({0} octets en UTF-8 ; le maximum est {1}).</value>

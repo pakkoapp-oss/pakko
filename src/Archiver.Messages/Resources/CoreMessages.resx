@@ -25,7 +25,7 @@
     <value>Symbolic links and NTFS junctions are not archived.</value>
   </data>
   <data name="FolderLinkNotFollowed" xml:space="preserve">
-    <value>NTFS junctions and directory symbolic links are not followed during archiving.</value>
+    <value>NTFS junctions and directory symbolic links are not followed during compression.</value>
   </data>
   <data name="ReparsePointNotArchived" xml:space="preserve">
     <value>Symbolic links and reparse points are not archived.</value>
@@ -43,7 +43,7 @@
     <value>Unexpected error: {0}</value>
   </data>
   <data name="UnknownArchivingError" xml:space="preserve">
-    <value>Unknown error while archiving.</value>
+    <value>Unknown error while compressing.</value>
   </data>
   <data name="EntryNameTooLong" xml:space="preserve">
     <value>Entry name is too long for a ZIP archive ({0} bytes as UTF-8; the maximum is {1}).</value>

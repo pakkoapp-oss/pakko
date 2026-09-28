@@ -25,7 +25,7 @@
     <value>Łącza symboliczne i punkty połączenia NTFS nie są archiwizowane.</value>
   </data>
   <data name="FolderLinkNotFollowed" xml:space="preserve">
-    <value>Podczas archiwizacji punkty połączenia NTFS i łącza symboliczne do folderów nie są śledzone.</value>
+    <value>Podczas kompresji punkty połączenia NTFS i łącza symboliczne do folderów nie są śledzone.</value>
   </data>
   <data name="ReparsePointNotArchived" xml:space="preserve">
     <value>Łącza symboliczne i punkty ponownej analizy nie są archiwizowane.</value>
@@ -43,7 +43,7 @@
     <value>Nieoczekiwany błąd: {0}</value>
   </data>
   <data name="UnknownArchivingError" xml:space="preserve">
-    <value>Nieznany błąd podczas archiwizacji.</value>
+    <value>Nieznany błąd podczas kompresji.</value>
   </data>
   <data name="EntryNameTooLong" xml:space="preserve">
     <value>Nazwa elementu jest za długa dla archiwum ZIP ({0} bajtów w UTF-8; maksimum to {1}).</value>

@@ -25,7 +25,7 @@
     <value>As ligações simbólicas e as junções NTFS não são arquivadas.</value>
   </data>
   <data name="FolderLinkNotFollowed" xml:space="preserve">
-    <value>As junções NTFS e as ligações simbólicas de pastas não são seguidas durante o arquivamento.</value>
+    <value>As junções NTFS e as ligações simbólicas de pastas não são seguidas durante a compressão.</value>
   </data>
   <data name="ReparsePointNotArchived" xml:space="preserve">
     <value>As ligações simbólicas e os pontos de reanálise não são arquivados.</value>
@@ -43,7 +43,7 @@
     <value>Erro inesperado: {0}</value>
   </data>
   <data name="UnknownArchivingError" xml:space="preserve">
-    <value>Erro desconhecido durante o arquivamento.</value>
+    <value>Erro desconhecido durante a compressão.</value>
   </data>
   <data name="EntryNameTooLong" xml:space="preserve">
     <value>O nome da entrada é demasiado longo para um arquivo ZIP ({0} bytes em UTF-8; o máximo é {1}).</value>

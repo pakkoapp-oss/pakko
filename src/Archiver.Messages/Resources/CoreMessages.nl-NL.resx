@@ -25,7 +25,7 @@
     <value>Symbolische koppelingen en NTFS-koppelpunten worden niet gearchiveerd.</value>
   </data>
   <data name="FolderLinkNotFollowed" xml:space="preserve">
-    <value>NTFS-koppelpunten en symbolische mapkoppelingen worden bij het archiveren niet gevolgd.</value>
+    <value>NTFS-koppelpunten en symbolische mapkoppelingen worden bij het comprimeren niet gevolgd.</value>
   </data>
   <data name="ReparsePointNotArchived" xml:space="preserve">
     <value>Symbolische koppelingen en reparsepunten worden niet gearchiveerd.</value>
@@ -43,7 +43,7 @@
     <value>Onverwachte fout: {0}</value>
   </data>
   <data name="UnknownArchivingError" xml:space="preserve">
-    <value>Onbekende fout tijdens het archiveren.</value>
+    <value>Onbekende fout tijdens het comprimeren.</value>
   </data>
   <data name="EntryNameTooLong" xml:space="preserve">
     <value>De itemnaam is te lang voor een ZIP-archief ({0} bytes in UTF-8; maximaal {1}).</value>

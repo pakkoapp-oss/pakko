@@ -25,7 +25,7 @@
     <value>Simboliskās saites un NTFS savienojumi netiek arhivēti.</value>
   </data>
   <data name="FolderLinkNotFollowed" xml:space="preserve">
-    <value>Arhivēšanas laikā NTFS savienojumiem un mapju simboliskajām saitēm neseko.</value>
+    <value>Saspiešanas laikā NTFS savienojumiem un mapju simboliskajām saitēm neseko.</value>
   </data>
   <data name="ReparsePointNotArchived" xml:space="preserve">
     <value>Simboliskās saites un atkārtotas parsēšanas punkti netiek arhivēti.</value>
@@ -43,7 +43,7 @@
     <value>Neparedzēta kļūda: {0}</value>
   </data>
   <data name="UnknownArchivingError" xml:space="preserve">
-    <value>Nezināma kļūda arhivēšanas laikā.</value>
+    <value>Nezināma kļūda saspiešanas laikā.</value>
   </data>
   <data name="EntryNameTooLong" xml:space="preserve">
     <value>Vienuma nosaukums ir pārāk garš ZIP arhīvam ({0} baiti UTF-8; maksimums ir {1}).</value>

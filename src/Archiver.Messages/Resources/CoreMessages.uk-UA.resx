@@ -25,7 +25,7 @@
     <value>Символьні посилання та з’єднання NTFS не архівуються.</value>
   </data>
   <data name="FolderLinkNotFollowed" xml:space="preserve">
-    <value>Під час архівування з’єднання NTFS і символьні посилання на папки не відкриваються.</value>
+    <value>Під час стиснення з’єднання NTFS і символьні посилання на папки не відкриваються.</value>
   </data>
   <data name="ReparsePointNotArchived" xml:space="preserve">
     <value>Символьні посилання та точки повторного аналізу не архівуються.</value>
@@ -43,7 +43,7 @@
     <value>Неочікувана помилка: {0}</value>
   </data>
   <data name="UnknownArchivingError" xml:space="preserve">
-    <value>Невідома помилка під час архівування.</value>
+    <value>Невідома помилка під час стиснення.</value>
   </data>
   <data name="EntryNameTooLong" xml:space="preserve">
     <value>Ім’я елемента задовге для архіву ZIP ({0} байт у UTF-8; максимум — {1}).</value>

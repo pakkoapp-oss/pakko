@@ -25,7 +25,7 @@
     <value>Legăturile simbolice și joncțiunile NTFS nu sunt arhivate.</value>
   </data>
   <data name="FolderLinkNotFollowed" xml:space="preserve">
-    <value>Joncțiunile NTFS și legăturile simbolice către foldere nu sunt urmate la arhivare.</value>
+    <value>Joncțiunile NTFS și legăturile simbolice către foldere nu sunt urmate la comprimare.</value>
   </data>
   <data name="ReparsePointNotArchived" xml:space="preserve">
     <value>Legăturile simbolice și punctele de reanalizare nu sunt arhivate.</value>
@@ -43,7 +43,7 @@
     <value>Eroare neașteptată: {0}</value>
   </data>
   <data name="UnknownArchivingError" xml:space="preserve">
-    <value>Eroare necunoscută la arhivare.</value>
+    <value>Eroare necunoscută la comprimare.</value>
   </data>
   <data name="EntryNameTooLong" xml:space="preserve">
     <value>Numele elementului este prea lung pentru o arhivă ZIP ({0} octeți în UTF-8; maximul este {1}).</value>

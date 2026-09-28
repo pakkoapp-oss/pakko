@@ -94,7 +94,7 @@ public sealed class ShellCommandsTests : IDisposable
         await Create(ui).ArchiveAsync([folder], ArchiveContainerFormat.Zip);
 
         File.Exists(Path.Combine(_root, "docs.zip")).Should().BeTrue();
-        ui.Sessions.Should().ContainSingle().Which.Title.Should().Be("Archiving: docs");
+        ui.Sessions.Should().ContainSingle().Which.Title.Should().Be("Compressing: docs");
         ui.Messages.Should().BeEmpty();
     }
 

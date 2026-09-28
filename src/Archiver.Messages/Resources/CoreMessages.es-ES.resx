@@ -25,7 +25,7 @@
     <value>Los vínculos simbólicos y las uniones NTFS no se archivan.</value>
   </data>
   <data name="FolderLinkNotFollowed" xml:space="preserve">
-    <value>Durante el archivado no se siguen las uniones NTFS ni los vínculos simbólicos de carpetas.</value>
+    <value>Durante la compresión no se siguen las uniones NTFS ni los vínculos simbólicos de carpetas.</value>
   </data>
   <data name="ReparsePointNotArchived" xml:space="preserve">
     <value>Los vínculos simbólicos y los puntos de repetición de análisis no se archivan.</value>

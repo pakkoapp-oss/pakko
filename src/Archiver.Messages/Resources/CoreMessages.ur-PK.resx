@@ -25,7 +25,7 @@
     <value>علامتی لنکس اور NTFS جنکشنز آرکائیو نہیں کیے جاتے۔</value>
   </data>
   <data name="FolderLinkNotFollowed" xml:space="preserve">
-    <value>آرکائیو کرتے وقت NTFS جنکشنز اور فولڈرز کے علامتی لنکس کی پیروی نہیں کی جاتی۔</value>
+    <value>کمپریس کرتے وقت NTFS جنکشنز اور فولڈرز کے علامتی لنکس کی پیروی نہیں کی جاتی۔</value>
   </data>
   <data name="ReparsePointNotArchived" xml:space="preserve">
     <value>علامتی لنکس اور ری پارس پوائنٹس آرکائیو نہیں کیے جاتے۔</value>
@@ -43,7 +43,7 @@
     <value>غیر متوقع خرابی: {0}</value>
   </data>
   <data name="UnknownArchivingError" xml:space="preserve">
-    <value>آرکائیو کرتے وقت نامعلوم خرابی۔</value>
+    <value>کمپریس کرتے وقت نامعلوم خرابی۔</value>
   </data>
   <data name="EntryNameTooLong" xml:space="preserve">
     <value>اندراج کا نام ZIP آرکائیو کے لیے بہت لمبا ہے (UTF-8 میں {0} بائٹس؛ زیادہ سے زیادہ {1})۔</value>

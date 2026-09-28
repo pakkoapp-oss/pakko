@@ -25,7 +25,7 @@
     <value>Symbolické prepojenia a spojenia NTFS sa nearchivujú.</value>
   </data>
   <data name="FolderLinkNotFollowed" xml:space="preserve">
-    <value>Pri archivácii sa nesledujú spojenia NTFS ani symbolické prepojenia na priečinky.</value>
+    <value>Pri komprimácii sa nesledujú spojenia NTFS ani symbolické prepojenia na priečinky.</value>
   </data>
   <data name="ReparsePointNotArchived" xml:space="preserve">
     <value>Symbolické prepojenia a body opätovnej analýzy sa nearchivujú.</value>
@@ -43,7 +43,7 @@
     <value>Neočakávaná chyba: {0}</value>
   </data>
   <data name="UnknownArchivingError" xml:space="preserve">
-    <value>Neznáma chyba pri archivácii.</value>
+    <value>Neznáma chyba pri komprimácii.</value>
   </data>
   <data name="EntryNameTooLong" xml:space="preserve">
     <value>Názov položky je pre archív ZIP príliš dlhý ({0} bajtov v UTF-8; maximum je {1}).</value>

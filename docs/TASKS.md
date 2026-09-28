@@ -6522,7 +6522,13 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 
 ### T-F276 — Explorer and Core still say "archiving" where the App says "compress" (P3)
 
-- [ ] **Status:** open. T-F199 renamed the App's create verb to "Compress" ("Стиснути в ZIP",
+- [~] **Progress (2026-09-29, G1):** fixed in 37 locales — `TitleArchiving` ("Compressing: {0}",
+  uk "Стиснення: {0}"), `FolderLinkNotFollowed` and `UnknownArchivingError` (English in
+  `MessageTemplates`: "...during compression.", "Unknown error while compressing."); keys and codes
+  unchanged. Guard tests: `OperationText_CallsCreatingAnArchiveCompress`,
+  `Messages_CallCreatingAnArchiveCompress` (English + uk-UA). **CHANGELOG v1.6.0:** the CLI's
+  stderr wording of these two messages changed. Device check (Explorer window title) in G1's pass.
+- **Was:** open. T-F199 renamed the App's create verb to "Compress" ("Стиснути в ZIP",
   "Стиснення...", "Стиснуто за ..."), as Explorer's menu already did. Explorer's operation window
   (`OperationText.resx` `TitleArchiving`, uk "Архівування: {0}") and Core's message texts still say
   "archiving", so one operation is called two things depending on where it started. Align in all

@@ -40,7 +40,7 @@
     <value>تخطي الأرشيف</value>
   </data>
   <data name="TitleArchiving" xml:space="preserve">
-    <value>جارٍ الأرشفة: {0}</value>
+    <value>جارٍ الضغط: {0}</value>
   </data>
   <data name="TitleExtracting" xml:space="preserve">
     <value>جارٍ الاستخراج: {0}</value>

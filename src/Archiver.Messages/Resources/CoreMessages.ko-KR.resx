@@ -25,7 +25,7 @@
     <value>기호화된 링크와 NTFS 연결 지점은 보관되지 않습니다.</value>
   </data>
   <data name="FolderLinkNotFollowed" xml:space="preserve">
-    <value>보관할 때 NTFS 연결 지점과 폴더의 기호화된 링크는 따라가지 않습니다.</value>
+    <value>압축할 때 NTFS 연결 지점과 폴더의 기호화된 링크는 따라가지 않습니다.</value>
   </data>
   <data name="ReparsePointNotArchived" xml:space="preserve">
     <value>기호화된 링크와 재분석 지점은 보관되지 않습니다.</value>
@@ -43,7 +43,7 @@
     <value>예기치 않은 오류: {0}</value>
   </data>
   <data name="UnknownArchivingError" xml:space="preserve">
-    <value>보관하는 중 알 수 없는 오류가 발생했습니다.</value>
+    <value>압축하는 중 알 수 없는 오류가 발생했습니다.</value>
   </data>
   <data name="EntryNameTooLong" xml:space="preserve">
     <value>항목 이름이 ZIP 보관 파일에 비해 너무 깁니다(UTF-8로 {0}바이트, 최대 {1}).</value>

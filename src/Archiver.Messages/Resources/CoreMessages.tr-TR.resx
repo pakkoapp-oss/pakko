@@ -25,7 +25,7 @@
     <value>Sembolik bağlantılar ve NTFS birleşim noktaları arşivlenmez.</value>
   </data>
   <data name="FolderLinkNotFollowed" xml:space="preserve">
-    <value>Arşivleme sırasında NTFS birleşim noktaları ve klasör sembolik bağlantıları izlenmez.</value>
+    <value>Sıkıştırma sırasında NTFS birleşim noktaları ve klasör sembolik bağlantıları izlenmez.</value>
   </data>
   <data name="ReparsePointNotArchived" xml:space="preserve">
     <value>Sembolik bağlantılar ve yeniden ayrıştırma noktaları arşivlenmez.</value>
@@ -43,7 +43,7 @@
     <value>Beklenmeyen hata: {0}</value>
   </data>
   <data name="UnknownArchivingError" xml:space="preserve">
-    <value>Arşivleme sırasında bilinmeyen hata.</value>
+    <value>Sıkıştırma sırasında bilinmeyen hata.</value>
   </data>
   <data name="EntryNameTooLong" xml:space="preserve">
     <value>Öğe adı bir ZIP arşivi için çok uzun (UTF-8 olarak {0} bayt; en fazla {1}).</value>

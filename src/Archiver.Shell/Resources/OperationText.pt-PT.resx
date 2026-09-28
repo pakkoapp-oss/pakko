@@ -40,7 +40,7 @@
     <value>Ignorar arquivo</value>
   </data>
   <data name="TitleArchiving" xml:space="preserve">
-    <value>A arquivar: {0}</value>
+    <value>A comprimir: {0}</value>
   </data>
   <data name="TitleExtracting" xml:space="preserve">
     <value>A extrair: {0}</value>

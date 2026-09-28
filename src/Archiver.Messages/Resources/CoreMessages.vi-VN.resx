@@ -25,7 +25,7 @@
     <value>Liên kết tượng trưng và điểm nối NTFS không được lưu trữ.</value>
   </data>
   <data name="FolderLinkNotFollowed" xml:space="preserve">
-    <value>Khi lưu trữ, điểm nối NTFS và liên kết tượng trưng đến thư mục không được đi theo.</value>
+    <value>Khi nén, điểm nối NTFS và liên kết tượng trưng đến thư mục không được đi theo.</value>
   </data>
   <data name="ReparsePointNotArchived" xml:space="preserve">
     <value>Liên kết tượng trưng và điểm phân tích lại không được lưu trữ.</value>
@@ -43,7 +43,7 @@
     <value>Lỗi không mong muốn: {0}</value>
   </data>
   <data name="UnknownArchivingError" xml:space="preserve">
-    <value>Lỗi không xác định khi lưu trữ.</value>
+    <value>Lỗi không xác định khi nén.</value>
   </data>
   <data name="EntryNameTooLong" xml:space="preserve">
     <value>Tên mục quá dài cho kho lưu trữ ZIP ({0} byte theo UTF-8; tối đa {1}).</value>

@@ -25,7 +25,7 @@
     <value>Simbolne povezave in stičišča NTFS se ne arhivirajo.</value>
   </data>
   <data name="FolderLinkNotFollowed" xml:space="preserve">
-    <value>Med arhiviranjem se stičiščem NTFS in simbolnim povezavam do map ne sledi.</value>
+    <value>Med stiskanjem se stičiščem NTFS in simbolnim povezavam do map ne sledi.</value>
   </data>
   <data name="ReparsePointNotArchived" xml:space="preserve">
     <value>Simbolne povezave in točke ponovne razčlenitve se ne arhivirajo.</value>
@@ -43,7 +43,7 @@
     <value>Nepričakovana napaka: {0}</value>
   </data>
   <data name="UnknownArchivingError" xml:space="preserve">
-    <value>Neznana napaka med arhiviranjem.</value>
+    <value>Neznana napaka med stiskanjem.</value>
   </data>
   <data name="EntryNameTooLong" xml:space="preserve">
     <value>Ime vnosa je predolgo za arhiv ZIP ({0} bajtov v UTF-8; največ {1}).</value>

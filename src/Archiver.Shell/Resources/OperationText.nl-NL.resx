@@ -40,7 +40,7 @@
     <value>Archief overslaan</value>
   </data>
   <data name="TitleArchiving" xml:space="preserve">
-    <value>Archiveren: {0}</value>
+    <value>Comprimeren: {0}</value>
   </data>
   <data name="TitleExtracting" xml:space="preserve">
     <value>Uitpakken: {0}</value>

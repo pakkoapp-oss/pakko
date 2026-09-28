@@ -25,7 +25,7 @@
     <value>Sümbolilinke ja NTFS-ühenduspunkte ei arhiivita.</value>
   </data>
   <data name="FolderLinkNotFollowed" xml:space="preserve">
-    <value>Arhiivimisel ei järgita NTFS-ühenduspunkte ega kaustade sümbolilinke.</value>
+    <value>Tihendamisel ei järgita NTFS-ühenduspunkte ega kaustade sümbolilinke.</value>
   </data>
   <data name="ReparsePointNotArchived" xml:space="preserve">
     <value>Sümbolilinke ja ümbersuunamispunkte ei arhiivita.</value>
@@ -43,7 +43,7 @@
     <value>Ootamatu tõrge: {0}</value>
   </data>
   <data name="UnknownArchivingError" xml:space="preserve">
-    <value>Tundmatu tõrge arhiivimisel.</value>
+    <value>Tundmatu tõrge tihendamisel.</value>
   </data>
   <data name="EntryNameTooLong" xml:space="preserve">
     <value>Kirje nimi on ZIP-arhiivi jaoks liiga pikk ({0} baiti UTF-8-s; maksimum on {1}).</value>

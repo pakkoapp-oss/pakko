@@ -25,7 +25,7 @@
     <value>A szimbolikus hivatkozások és az NTFS-csomópontok nem kerülnek archiválásra.</value>
   </data>
   <data name="FolderLinkNotFollowed" xml:space="preserve">
-    <value>Archiváláskor az NTFS-csomópontokat és a mappákra mutató szimbolikus hivatkozásokat a program nem követi.</value>
+    <value>Tömörítéskor az NTFS-csomópontokat és a mappákra mutató szimbolikus hivatkozásokat a program nem követi.</value>
   </data>
   <data name="ReparsePointNotArchived" xml:space="preserve">
     <value>A szimbolikus hivatkozások és az újraelemzési pontok nem kerülnek archiválásra.</value>
@@ -43,7 +43,7 @@
     <value>Váratlan hiba: {0}</value>
   </data>
   <data name="UnknownArchivingError" xml:space="preserve">
-    <value>Ismeretlen hiba az archiválás közben.</value>
+    <value>Ismeretlen hiba a tömörítés közben.</value>
   </data>
   <data name="EntryNameTooLong" xml:space="preserve">
     <value>Az elem neve túl hosszú egy ZIP-archívumhoz ({0} bájt UTF-8-ban; a maximum {1}).</value>

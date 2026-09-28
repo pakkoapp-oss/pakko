@@ -25,7 +25,7 @@
     <value>Символните връзки и съединенията NTFS не се архивират.</value>
   </data>
   <data name="FolderLinkNotFollowed" xml:space="preserve">
-    <value>При архивиране съединенията NTFS и символните връзки към папки не се следват.</value>
+    <value>При компресиране съединенията NTFS и символните връзки към папки не се следват.</value>
   </data>
   <data name="ReparsePointNotArchived" xml:space="preserve">
     <value>Символните връзки и точките на повторен анализ не се архивират.</value>
@@ -43,7 +43,7 @@
     <value>Неочаквана грешка: {0}</value>
   </data>
   <data name="UnknownArchivingError" xml:space="preserve">
-    <value>Неизвестна грешка при архивиране.</value>
+    <value>Неизвестна грешка при компресиране.</value>
   </data>
   <data name="EntryNameTooLong" xml:space="preserve">
     <value>Името на елемента е твърде дълго за ZIP архив ({0} байта в UTF-8; максимумът е {1}).</value>

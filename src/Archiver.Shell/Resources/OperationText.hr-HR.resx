@@ -40,7 +40,7 @@
     <value>Preskoči arhivu</value>
   </data>
   <data name="TitleArchiving" xml:space="preserve">
-    <value>Arhiviranje: {0}</value>
+    <value>Komprimiranje: {0}</value>
   </data>
   <data name="TitleExtracting" xml:space="preserve">
     <value>Raspakiravanje: {0}</value>

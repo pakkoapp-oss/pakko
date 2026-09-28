@@ -25,7 +25,7 @@
     <value>لا تتم أرشفة الارتباطات الرمزية ونقاط الوصل في NTFS.</value>
   </data>
   <data name="FolderLinkNotFollowed" xml:space="preserve">
-    <value>لا يتم تتبع نقاط الوصل في NTFS والارتباطات الرمزية للمجلدات أثناء الأرشفة.</value>
+    <value>لا يتم تتبع نقاط الوصل في NTFS والارتباطات الرمزية للمجلدات أثناء الضغط.</value>
   </data>
   <data name="ReparsePointNotArchived" xml:space="preserve">
     <value>لا تتم أرشفة الارتباطات الرمزية ونقاط إعادة التحليل.</value>
@@ -43,7 +43,7 @@
     <value>خطأ غير متوقع: {0}</value>
   </data>
   <data name="UnknownArchivingError" xml:space="preserve">
-    <value>خطأ غير معروف أثناء الأرشفة.</value>
+    <value>خطأ غير معروف أثناء الضغط.</value>
   </data>
   <data name="EntryNameTooLong" xml:space="preserve">
     <value>اسم العنصر طويل جدًا لأرشيف ZIP ({0} بايت بترميز UTF-8؛ الحد الأقصى {1}).</value>

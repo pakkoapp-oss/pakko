@@ -62,6 +62,16 @@ public sealed partial class MessageTextTests
         }
     }
 
+    // T-F276: the App and Explorer's menu call creating an archive "compress".
+    [Theory]
+    [InlineData("", "archiving")]
+    [InlineData("uk-UA", "архівуван")]
+    public void Messages_CallCreatingAnArchiveCompress(string culture, string oldWord)
+    {
+        foreach ((string code, string template) in Read(CultureInfo.GetCultureInfo(culture)))
+            template.Should().NotContainEquivalentOf(oldWord, code);
+    }
+
     [Fact]
     public void Render_Ukrainian_TranslatesEveryLevelOfANestedMessage()
     {

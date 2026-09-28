@@ -25,7 +25,7 @@
     <value>Simbolinės nuorodos ir NTFS jungtys neįtraukiamos į archyvą.</value>
   </data>
   <data name="FolderLinkNotFollowed" xml:space="preserve">
-    <value>Archyvuojant nesekama NTFS jungtimis ir aplankų simbolinėmis nuorodomis.</value>
+    <value>Suspaudžiant nesekama NTFS jungtimis ir aplankų simbolinėmis nuorodomis.</value>
   </data>
   <data name="ReparsePointNotArchived" xml:space="preserve">
     <value>Simbolinės nuorodos ir pakartotinio analizavimo taškai neįtraukiami į archyvą.</value>
@@ -43,7 +43,7 @@
     <value>Netikėta klaida: {0}</value>
   </data>
   <data name="UnknownArchivingError" xml:space="preserve">
-    <value>Nežinoma klaida archyvuojant.</value>
+    <value>Nežinoma klaida suspaudžiant.</value>
   </data>
   <data name="EntryNameTooLong" xml:space="preserve">
     <value>Elemento pavadinimas per ilgas ZIP archyvui ({0} baitų UTF-8; daugiausia {1}).</value>

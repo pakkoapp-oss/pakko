@@ -49,6 +49,18 @@ public sealed partial class ShellResourceParityTests
         }
     }
 
+    // T-F276: the App and Explorer's menu call creating an archive "compress".
+    [Theory]
+    [InlineData("", "Archiving")]
+    [InlineData("uk-UA", "Архівуван")]
+    public void OperationText_CallsCreatingAnArchiveCompress(string culture, string oldWord)
+    {
+        var manager = new ResourceManager("Archiver.Shell.Resources.OperationText", typeof(ResultMessagesLocalizer).Assembly);
+
+        foreach ((string key, string value) in Read(manager, CultureInfo.GetCultureInfo(culture)))
+            value.Should().NotContainEquivalentOf(oldWord, key);
+    }
+
     [Fact]
     public void Hello_UnderUkrainian_TranslatesEveryWindowLabel()
     {

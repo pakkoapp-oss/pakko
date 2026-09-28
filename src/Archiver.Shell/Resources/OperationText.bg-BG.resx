@@ -40,7 +40,7 @@
     <value>Пропускане на архива</value>
   </data>
   <data name="TitleArchiving" xml:space="preserve">
-    <value>Архивиране: {0}</value>
+    <value>Компресиране: {0}</value>
   </data>
   <data name="TitleExtracting" xml:space="preserve">
     <value>Разархивиране: {0}</value>

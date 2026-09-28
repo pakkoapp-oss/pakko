@@ -40,7 +40,7 @@
     <value>Hopp over arkiv</value>
   </data>
   <data name="TitleArchiving" xml:space="preserve">
-    <value>Arkiverer: {0}</value>
+    <value>Komprimerer: {0}</value>
   </data>
   <data name="TitleExtracting" xml:space="preserve">
     <value>Pakker ut: {0}</value>

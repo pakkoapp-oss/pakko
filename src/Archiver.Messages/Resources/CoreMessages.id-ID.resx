@@ -25,7 +25,7 @@
     <value>Tautan simbolis dan junction NTFS tidak diarsipkan.</value>
   </data>
   <data name="FolderLinkNotFollowed" xml:space="preserve">
-    <value>Junction NTFS dan tautan simbolis folder tidak diikuti saat pengarsipan.</value>
+    <value>Junction NTFS dan tautan simbolis folder tidak diikuti saat pengompresan.</value>
   </data>
   <data name="ReparsePointNotArchived" xml:space="preserve">
     <value>Tautan simbolis dan titik reparse tidak diarsipkan.</value>
@@ -43,7 +43,7 @@
     <value>Kesalahan tak terduga: {0}</value>
   </data>
   <data name="UnknownArchivingError" xml:space="preserve">
-    <value>Kesalahan tidak dikenal saat mengarsipkan.</value>
+    <value>Kesalahan tidak dikenal saat mengompres.</value>
   </data>
   <data name="EntryNameTooLong" xml:space="preserve">
     <value>Nama entri terlalu panjang untuk arsip ZIP ({0} byte dalam UTF-8; maksimum {1}).</value>

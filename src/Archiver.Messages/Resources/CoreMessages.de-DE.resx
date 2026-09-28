@@ -25,7 +25,7 @@
     <value>Symbolische Links und NTFS-Verbindungspunkte werden nicht archiviert.</value>
   </data>
   <data name="FolderLinkNotFollowed" xml:space="preserve">
-    <value>NTFS-Verbindungspunkten und symbolischen Ordnerlinks wird beim Archivieren nicht gefolgt.</value>
+    <value>NTFS-Verbindungspunkten und symbolischen Ordnerlinks wird beim Komprimieren nicht gefolgt.</value>
   </data>
   <data name="ReparsePointNotArchived" xml:space="preserve">
     <value>Symbolische Links und Analysepunkte werden nicht archiviert.</value>
@@ -43,7 +43,7 @@
     <value>Unerwarteter Fehler: {0}</value>
   </data>
   <data name="UnknownArchivingError" xml:space="preserve">
-    <value>Unbekannter Fehler beim Archivieren.</value>
+    <value>Unbekannter Fehler beim Komprimieren.</value>
   </data>
   <data name="EntryNameTooLong" xml:space="preserve">
     <value>Der Eintragsname ist für ein ZIP-Archiv zu lang ({0} Bytes in UTF-8; maximal {1}).</value>
