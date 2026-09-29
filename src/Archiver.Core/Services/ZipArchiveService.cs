@@ -308,12 +308,7 @@ public sealed class ZipArchiveService : IArchiveService
         ZipArchive archive, string sourcePath, CompressionLevel compressionLevel, EntryWriteProgress progressInfo,
         HashSet<string> usedEntryNames, ArchiveWorkSink sink, CancellationToken cancellationToken)
     {
-        // Compute source size for offset tracking (best-effort)
-        long pathSize = 0;
-        if (File.Exists(sourcePath))
-            try { pathSize = new FileInfo(sourcePath).Length; } catch { /* best-effort */ }
-        else if (Directory.Exists(sourcePath))
-            pathSize = ComputeDirectoryBytes(sourcePath);
+        long pathSize = ComputeSourceBytesBestEffort(sourcePath);
 
         // T-F23: Skip top-level symlinks and NTFS junctions
         if (ArchiveEntrySecurity.IsReparsePoint(sourcePath))
@@ -507,11 +502,7 @@ public sealed class ZipArchiveService : IArchiveService
         long[] completedBytesBox = progressContext.CompletedBytesBox;
         IProgress<ProgressReport>? progress = progressContext.Progress;
 
-        long pathSize = 0;
-        if (File.Exists(sourcePath))
-            try { pathSize = new FileInfo(sourcePath).Length; } catch { /* best-effort */ }
-        else if (Directory.Exists(sourcePath))
-            pathSize = ComputeDirectoryBytes(sourcePath);
+        long pathSize = ComputeSourceBytesBestEffort(sourcePath);
 
         long baseOffset = Interlocked.Read(ref completedBytesBox[0]);
         string separateTempPath = destPath + ".tmp";
@@ -694,15 +685,10 @@ public sealed class ZipArchiveService : IArchiveService
                 archivePath, errors, skippedFiles, passwordResolver).ConfigureAwait(false);
             if (!rejected)
             {
-                string destDir = options.Mode == ExtractMode.SeparateFolders
-                    ? Path.Combine(options.DestinationFolder,
-                        options.SeparateFolderName ?? ArchiveNaming.GetBaseName(archivePath))
-                    : options.DestinationFolder;
-
                 IProgress<ProgressReport>? archiveProgress = singleArchive ? progress : null;
                 var sink = new ZipExtractResultSink(errors, createdFiles, skippedFiles, conflictSkipped);
                 await ExtractOneZipWithErrorMappingAsync(
-                    archivePath, destDir, options, conflictResolver, password, sink, archiveProgress, cancellationToken).ConfigureAwait(false);
+                    archivePath, options, conflictResolver, password, sink, archiveProgress, cancellationToken).ConfigureAwait(false);
             }
 
             // T-F265: a subset extraction never makes the whole archive deletable.
@@ -881,12 +867,16 @@ public sealed class ZipArchiveService : IArchiveService
         List<string> ConflictSkippedEntries);
 
     private async Task ExtractOneZipWithErrorMappingAsync(
-        string archivePath, string destDir, ExtractOptions options, ConflictResolver conflictResolver,
+        string archivePath, ExtractOptions options, ConflictResolver conflictResolver,
         ResolvedZipPassword? password, ZipExtractResultSink sink, IProgress<ProgressReport>? archiveProgress, CancellationToken cancellationToken)
     {
         try
         {
             bool alreadyIsolated = options.Mode == ExtractMode.SeparateFolders;
+            string destDir = alreadyIsolated
+                ? Path.Combine(options.DestinationFolder,
+                    options.SeparateFolderName ?? ArchiveNaming.GetBaseName(archivePath))
+                : options.DestinationFolder;
             var context = new ZipExtractionContext(
                 conflictResolver, sink.SkippedFiles, options.ConfirmCompressionBombExtraction, _policy.MotwMode, archiveProgress, sink.Errors,
                 sink.ConflictSkippedEntries, NameCodePages, password, options.EliminateDuplicateRootFolder);
@@ -934,65 +924,8 @@ public sealed class ZipArchiveService : IArchiveService
             // T-F268: was `break`, which returned Success = true for a cancelled Test (T-F260 contract).
             cancellationToken.ThrowIfCancellationRequested();
 
-            string archivePath = archivePaths[i];
-
-            if (!File.Exists(archivePath))
-            {
-                errors.Add(CoreMessages.Error(archivePath, MessageCode.SourceNotFound, archivePath));
-                progress?.Report(new ProgressReport { Percent = (i + 1) * 100 / total, BytesTransferred = 0, TotalBytes = 0 });
-                continue;
-            }
-
-            if (!IsZipFile(archivePath))
-            {
-                // T-F117: see ExtractAsync's identical branch — unrecognized bytes are a real
-                // error, not a silent no-op, distinct from a known-but-unsupported format skip.
-                CoreText? reason = GetKnownArchiveReason(archivePath);
-                if (reason is not null)
-                    skippedFiles.Add(CoreMessages.Skip(archivePath, reason));
-                else
-                    errors.Add(CoreMessages.Error(archivePath, CoreMessages.Text(MessageCode.NotAnArchiveTest)));
-                progress?.Report(new ProgressReport { Percent = (i + 1) * 100 / total, BytesTransferred = 0, TotalBytes = 0 });
-                continue;
-            }
-
-            if (IsZipBlocked)
-            {
-                skippedFiles.Add(CoreMessages.Skip(archivePath, ZipBlockedReason));
-                progress?.Report(new ProgressReport { Percent = (i + 1) * 100 / total, BytesTransferred = 0, TotalBytes = 0 });
-                continue;
-            }
-
-            ResolvedZipPassword? password = null;
-            if (IsEncryptedZip(archivePath))
-            {
-                password = await ResolveArchivePasswordAsync(archivePath, passwordResolver, NameCodePages).ConfigureAwait(false);
-                if (password is null)
-                {
-                    errors.Add(CoreMessages.Error(archivePath, CoreMessages.Text(MessageCode.PasswordProtectedTest)));
-                    progress?.Report(new ProgressReport { Percent = (i + 1) * 100 / total, BytesTransferred = 0, TotalBytes = 0 });
-                    continue;
-                }
-            }
-
-            // T-F274: a source is recorded only once its entries were actually read — a skipped or
-            // refused archive leaves none, so a Test that read nothing reports NothingDone.
-            int errorsBefore = errors.Count;
-            try
-            {
-                await Task.Run(() => TestArchiveEntries(archivePath, password, NameCodePages, errors, cancellationToken), cancellationToken)
-                    .ConfigureAwait(false);
-            }
-            catch (IOException ex)
-            {
-                errors.Add(CoreMessages.Error(archivePath, CoreMessages.Wrap(MessageCode.CannotReadArchive, ex), ex));
-            }
-            catch (InvalidDataException ex)
-            {
-                errors.Add(CoreMessages.Error(archivePath, CoreMessages.Text(MessageCode.ZipCorrupted), ex));
-            }
-            sources.Add(SourceOutcomeRules.Classify(archivePath, produced: true, clean: errors.Count == errorsBefore));
-
+            await TestOneArchiveAsync(archivePaths[i], passwordResolver, errors, skippedFiles, sources, cancellationToken)
+                .ConfigureAwait(false);
             progress?.Report(new ProgressReport { Percent = (i + 1) * 100 / total, BytesTransferred = 0, TotalBytes = 0 });
         }
 
@@ -1002,6 +935,65 @@ public sealed class ZipArchiveService : IArchiveService
             SkippedFiles = skippedFiles,
             Sources = sources,
         };
+    }
+
+    // One archive of TestAsync's loop.
+    private async Task TestOneArchiveAsync(
+        string archivePath, PasswordResolver passwordResolver, List<ArchiveError> errors,
+        List<SkippedFile> skippedFiles, List<SourceResult> sources, CancellationToken cancellationToken)
+    {
+        if (!File.Exists(archivePath))
+        {
+            errors.Add(CoreMessages.Error(archivePath, MessageCode.SourceNotFound, archivePath));
+            return;
+        }
+
+        if (!IsZipFile(archivePath))
+        {
+            // T-F117: see ExtractAsync's identical branch — unrecognized bytes are a real
+            // error, not a silent no-op, distinct from a known-but-unsupported format skip.
+            CoreText? reason = GetKnownArchiveReason(archivePath);
+            if (reason is not null)
+                skippedFiles.Add(CoreMessages.Skip(archivePath, reason));
+            else
+                errors.Add(CoreMessages.Error(archivePath, CoreMessages.Text(MessageCode.NotAnArchiveTest)));
+            return;
+        }
+
+        if (IsZipBlocked)
+        {
+            skippedFiles.Add(CoreMessages.Skip(archivePath, ZipBlockedReason));
+            return;
+        }
+
+        ResolvedZipPassword? password = null;
+        if (IsEncryptedZip(archivePath))
+        {
+            password = await ResolveArchivePasswordAsync(archivePath, passwordResolver, NameCodePages).ConfigureAwait(false);
+            if (password is null)
+            {
+                errors.Add(CoreMessages.Error(archivePath, CoreMessages.Text(MessageCode.PasswordProtectedTest)));
+                return;
+            }
+        }
+
+        // T-F274: a source is recorded only once its entries were actually read — a skipped or
+        // refused archive leaves none, so a Test that read nothing reports NothingDone.
+        int errorsBefore = errors.Count;
+        try
+        {
+            await Task.Run(() => TestArchiveEntries(archivePath, password, NameCodePages, errors, cancellationToken), cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (IOException ex)
+        {
+            errors.Add(CoreMessages.Error(archivePath, CoreMessages.Wrap(MessageCode.CannotReadArchive, ex), ex));
+        }
+        catch (InvalidDataException ex)
+        {
+            errors.Add(CoreMessages.Error(archivePath, CoreMessages.Text(MessageCode.ZipCorrupted), ex));
+        }
+        sources.Add(SourceOutcomeRules.Classify(archivePath, produced: true, clean: errors.Count == errorsBefore));
     }
 
     /// <inheritdoc/>
@@ -1031,13 +1023,7 @@ public sealed class ZipArchiveService : IArchiveService
                     try
                     {
                         using FileStream rawArchiveStream = File.OpenRead(archivePath);
-                        List<LocatedZipEntry> located = RawZipEntryLocator.LocateAll(rawArchiveStream);
-                        if (located.Count == archive.Entries.Count)
-                        {
-                            encryptedEntryMap = new Dictionary<ZipArchiveEntry, LocatedZipEntry>(archive.Entries.Count);
-                            for (int i = 0; i < archive.Entries.Count; i++)
-                                encryptedEntryMap[archive.Entries[i]] = located[i];
-                        }
+                        encryptedEntryMap = MapLocatedEntries(rawArchiveStream, archive);
                     }
                     catch (Exception ex) when (ex is IOException or InvalidDataException or EndOfStreamException)
                     {
@@ -1050,29 +1036,7 @@ public sealed class ZipArchiveService : IArchiveService
                     }
                 }
 
-                return reader.Entries.Select(named =>
-                {
-                    ZipArchiveEntry e = named.Entry;
-                    // AE-2 zeroes the header CRC-32 by design (HMAC is the sole authority) — report
-                    // null rather than a misleading 0, consistent with ArchiveEntryInfo.Crc32's
-                    // existing nullable convention (0 is itself a legitimate CRC-32 for other entries).
-                    LocatedZipEntry? located = null;
-                    encryptedEntryMap?.TryGetValue(e, out located);
-                    bool isAe2WithZeroedCrc = located is { CompressionMethod: 99, AeVersion: 2 };
-
-                    bool isDirectory = named.FullName.EndsWith('/');
-                    return new ArchiveEntryInfo
-                    {
-                        Path = named.FullName.TrimEnd('/'),
-                        Size = e.Length,
-                        CompressedSize = e.CompressedLength,
-                        Modified = e.LastWriteTime.DateTime,
-                        IsDirectory = isDirectory,
-                        Crc32 = isDirectory || isAe2WithZeroedCrc ? null : e.Crc32,
-                        Encryption = EncryptionOf(e, located),
-                        AesVersion = located?.AeVersion,
-                    };
-                }).ToList();
+                return reader.Entries.Select(named => ToEntryInfo(named, encryptedEntryMap)).ToList();
             }, cancellationToken).ConfigureAwait(false);
 
             return new ArchiveListResult { Success = true, Entries = entries };
@@ -1087,6 +1051,43 @@ public sealed class ZipArchiveService : IArchiveService
         {
             return CoreMessages.ListFailure(CoreMessages.FromException(ex));
         }
+    }
+
+    private static ArchiveEntryInfo ToEntryInfo(NamedZipEntry named, Dictionary<ZipArchiveEntry, LocatedZipEntry>? encryptedEntryMap)
+    {
+        ZipArchiveEntry e = named.Entry;
+        // AE-2 zeroes the header CRC-32 by design (HMAC is the sole authority) — report
+        // null rather than a misleading 0, consistent with ArchiveEntryInfo.Crc32's
+        // existing nullable convention (0 is itself a legitimate CRC-32 for other entries).
+        LocatedZipEntry? located = null;
+        encryptedEntryMap?.TryGetValue(e, out located);
+        bool isAe2WithZeroedCrc = located is { CompressionMethod: 99, AeVersion: 2 };
+
+        bool isDirectory = named.FullName.EndsWith('/');
+        return new ArchiveEntryInfo
+        {
+            Path = named.FullName.TrimEnd('/'),
+            Size = e.Length,
+            CompressedSize = e.CompressedLength,
+            Modified = e.LastWriteTime.DateTime,
+            IsDirectory = isDirectory,
+            Crc32 = isDirectory || isAe2WithZeroedCrc ? null : e.Crc32,
+            Encryption = EncryptionOf(e, located),
+            AesVersion = located?.AeVersion,
+        };
+    }
+
+    // Pairs each ZipArchive entry with its raw central-directory record, or null when the two
+    // readers disagree on the entry count. Throws whatever LocateAll throws — callers decide.
+    private static Dictionary<ZipArchiveEntry, LocatedZipEntry>? MapLocatedEntries(Stream rawArchiveStream, ZipArchive archive)
+    {
+        List<LocatedZipEntry> located = RawZipEntryLocator.LocateAll(rawArchiveStream);
+        if (located.Count != archive.Entries.Count)
+            return null;
+        var map = new Dictionary<ZipArchiveEntry, LocatedZipEntry>(archive.Entries.Count);
+        for (int i = 0; i < archive.Entries.Count; i++)
+            map[archive.Entries[i]] = located[i];
+        return map;
     }
 
     private static EntryEncryption EncryptionOf(ZipArchiveEntry entry, LocatedZipEntry? located)
@@ -1119,18 +1120,9 @@ public sealed class ZipArchiveService : IArchiveService
         using var reader = ZipArchiveReader.Open(archivePath, codePages);
         ZipArchive archive = reader.Archive;
 
-        Dictionary<ZipArchiveEntry, LocatedZipEntry>? encryptedEntryMap = null;
         using FileStream? rawArchiveStream = password is not null ? File.OpenRead(archivePath) : null;
-        if (password is not null)
-        {
-            List<LocatedZipEntry> located = RawZipEntryLocator.LocateAll(rawArchiveStream!);
-            if (located.Count == archive.Entries.Count)
-            {
-                encryptedEntryMap = new Dictionary<ZipArchiveEntry, LocatedZipEntry>(archive.Entries.Count);
-                for (int i = 0; i < archive.Entries.Count; i++)
-                    encryptedEntryMap[archive.Entries[i]] = located[i];
-            }
-        }
+        Dictionary<ZipArchiveEntry, LocatedZipEntry>? encryptedEntryMap =
+            rawArchiveStream is not null ? MapLocatedEntries(rawArchiveStream, archive) : null;
 
         foreach (NamedZipEntry named in reader.Entries)
         {
@@ -1630,8 +1622,11 @@ public sealed class ZipArchiveService : IArchiveService
             return (false, named.Entry.Length);
         }
 
-        await CopyEntryToDestinationAsync(named, entryStream!, destFilePath, archivePath, plan.TotalUncompressedBytes,
+        await CopyEntryToDestinationAsync(named, entryStream!, destFilePath, plan.TotalUncompressedBytes,
             bytesReadSoFar, context, cancellationToken).ConfigureAwait(false);
+
+        // T-F45: Propagate Zone.Identifier ADS from archive to extracted file
+        ArchiveEntrySecurity.TryPropagateMotw(archivePath, destFilePath, context.MotwMode);
 
         return (true, named.Entry.Length);
     }
@@ -1691,7 +1686,7 @@ public sealed class ZipArchiveService : IArchiveService
     // identically either way. This is what gives an encrypted entry real byte-accurate T-F16
     // progress with no special-casing (see docs/DECISIONS.md's T-F189 streaming design point).
     private static async Task CopyEntryToDestinationAsync(
-        NamedZipEntry named, Stream entryStream, string destFilePath, string archivePath, long totalUncompressedBytes,
+        NamedZipEntry named, Stream entryStream, string destFilePath, long totalUncompressedBytes,
         long bytesReadSoFar, ZipExtractionContext context, CancellationToken cancellationToken)
     {
         try
@@ -1705,9 +1700,6 @@ public sealed class ZipArchiveService : IArchiveService
             TryDeleteBestEffort(destFilePath);
             throw;
         }
-
-        // T-F45: Propagate Zone.Identifier ADS from archive to extracted file
-        ArchiveEntrySecurity.TryPropagateMotw(archivePath, destFilePath, context.MotwMode);
     }
 
     private static async Task CopyEntryStreamAsync(
@@ -1899,6 +1891,17 @@ public sealed class ZipArchiveService : IArchiveService
     internal static ArchiveError UnreadableDirectoryError(string directory, Exception ex) =>
         CoreMessages.Error(directory,
             CoreMessages.Text(ex is UnauthorizedAccessException ? MessageCode.AccessDenied : MessageCode.CannotAccessFile, ex.Message), ex);
+
+    // Size of one source for progress offsets; 0 when it is missing or unreadable.
+    private static long ComputeSourceBytesBestEffort(string sourcePath)
+    {
+        if (File.Exists(sourcePath))
+        {
+            try { return new FileInfo(sourcePath).Length; } catch { /* best-effort */ }
+            return 0;
+        }
+        return Directory.Exists(sourcePath) ? ComputeDirectoryBytes(sourcePath) : 0;
+    }
 
     private static long ComputeTotalBytes(IReadOnlyList<string> paths)
     {

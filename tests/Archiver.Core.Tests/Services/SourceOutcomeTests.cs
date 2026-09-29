@@ -270,6 +270,7 @@ public sealed class SourceOutcomeTests : IDisposable
         });
 
         result.FullyProcessedSources.Should().Equal(a);
+        result.Sources.Select(s => s.Path).Should().Equal(a);
     }
 
     [Fact]
