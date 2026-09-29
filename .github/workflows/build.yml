@@ -331,12 +331,12 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: pakko-store-msix-x64
           path: artifacts/store-x64
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: pakko-store-msix-arm64
           path: artifacts/store-arm64
@@ -462,14 +462,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: pakko-cli
           path: artifacts/cli
 
       # T-F126: pakko-msix-x64 / pakko-msix-arm64 (from build-msix's matrix legs) merged into one
       # directory -- each still nested under its original src/Archiver.App/AppPackages/... path.
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           pattern: pakko-msix-*
           path: artifacts/msix
