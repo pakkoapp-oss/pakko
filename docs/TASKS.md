@@ -455,7 +455,7 @@ tables in both files; `CLI.md` is the canonical owner per `CLAUDE.md`'s Document
 ---
 
 ### T-F116 — Archiver.CLI stdin/stdout streaming (`-si`/`-so`)
-- [~] **Status:** implementation complete 2026-07-18, on-device verification pending. Scoped as a
+- [x] **Status:** done 2026-09-30 (G6): CI build af43cae (run 36626161907, `pakko.exe` 0.0.0-dev+af43cae), 2026-09-30, agent in Windows Terminal + cmd (code page 866), output read from the console window: `a -so p.zip src | l -si`, `x -si -opipe < plain.zip`, `type a.txt | h -si -scrcSHA256` in cmd; a 512 MiB random file through `a -so ... | x -si` in pwsh 7.5 and via `cmd /c` from Windows PowerShell 5.1.26100 - SHA-256 identical to the source in both. Original status: implementation complete 2026-07-18, on-device verification pending. Scoped as a
       separate task, split out of T-F09 at the user's explicit request. Plan redone through
       `advisor` before implementation — see `DECISIONS.md`'s T-F116 entry for the empirical
       PowerShell/cmd binary-pipe findings that materially changed the test/doc plan. Same session,
@@ -494,7 +494,7 @@ PowerShell 5.1, `cmd /c "..."` is byte-perfect everywhere).
       implementation note
 - [x] `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` passes repo-wide (594 tests,
       `Archiver.CLI.Tests` grew from 94 to 121)
-- [ ] Manual on-device verification: real `pakko a -so ...` piped into `pakko x -si ...` via both
+- [x] Manual on-device verification: real `pakko a -so ...` piped into `pakko x -si ...` via both
       a real PowerShell 7 session and (if available) real Windows PowerShell 5.1 using the
       documented `cmd /c "..."` recipe, confirmed byte-correct by the user personally
 
@@ -4061,7 +4061,7 @@ regression from this task, which owns reliability only.
 
 ### T-F160 — Interactive conflict dialog for `Archiver.CLI`'s `pakko x` (parity with T-F155)
 
-- [~] **Status:** implementation complete, 2026-09-24 — the open design question resolved in favor
+- [x] **Status:** done 2026-09-30 (G6): CI build af43cae (run 36626161907, `pakko.exe` 0.0.0-dev+af43cae), 2026-09-30, agent in Windows Terminal + cmd (code page 866), output read from the console window: `x plain.zip -oout1` over existing files asked the Y/N/A/S/U/Q prompt per file; `n` then `u` kept `a.txt` and wrote `c (1).txt`/`Документ (1).txt`; `n` then `s` -> exit 0; `q` -> "operation stopped by user", exit 255. Polish items filed as T-F295. Original status: implementation complete, 2026-09-24 — the open design question resolved in favor
   of building it: real 7-Zip's own console asks (fetched NanaZip's vendored
   `UI/Console/ExtractCallbackConsole.cpp` `AskOverwrite` + `UserInputUtils.cpp`
   `ScanUserYesNoAllQuit`), so `pakko x` now asks the same text prompt — not a `TaskDialog` —
@@ -6710,6 +6710,45 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 
 ---
 
+### T-F293 — `pakko x` suggests `-aoa` after a CRC failure (P2)
+
+- [ ] **Status:** open. Found in G6 (CI build af43cae, `pakko.exe` 0.0.0-dev+af43cae, 2026-09-30).
+  `bad.zip` = one stored entry with one flipped data byte; `pakko x bad.zip -obad` prints the CRC
+  error, then "skipped: No entries were extracted from this archive — every entry was skipped" and
+  "hint: existing files were kept; -aoa overwrites them, -aou renames the extracted ones" (exit 2).
+  No file existed at the destination; `-aoa` cannot help. `PrintHints` (`Program.cs` ~line 628)
+  fires on `MessageCode.AllEntriesSkipped` whenever `KeptExistingByDefault`, without checking that
+  a conflict caused the skips. Fix: show the hint only when a `FileExistsAtDestination` skip exists;
+  consider whether `AllEntriesSkipped` belongs on a result whose entries all failed. Test first in
+  `Archiver.CLI.Tests` (a CRC-failure extraction prints no `-aoa` hint).
+- **Reported by:** G6 device campaign, 2026-09-30.
+
+### T-F294 — PowerShell splits `-ttar.gz`; pakko then writes a plain tar silently (P2)
+
+- [ ] **Status:** open. Found in G6, 2026-09-30, pwsh 7. PowerShell passes `-ttar.gz` to a native
+  exe as two arguments, `-ttar` and `.gz` (a known PowerShell parser rule for `-name.suffix`
+  tokens). Results: `pakko a -ttar.gz t.tar.gz src` -> "Source path does not exist: t.tar.gz"
+  (`.gz` became the archive name); `pakko a t2.tar.gz -ttar.gz src` -> exit 0 and an
+  **uncompressed** tar named `t2.tar.gz`; `pakko a -ttar.gz t3.tar.gz a.txt` -> writes `.gz.tar`.
+  The same command in cmd works (`t4.tar.gz`, 383 bytes, gzip). Real 7-Zip has the same exposure,
+  but `-tgzip` has no dot. Options: document quoting (`'-ttar.gz'` or `--%`) in `docs/CLI.md` and
+  `--help`; accept dot-free aliases (`-ttgz`, `-ttbz2`, `-ttxz`, `-ttzst`); warn when the `-t` type
+  and the archive name's compound extension disagree. Separately, an explicit name `.gz` becomes
+  `.gz.tar` while `7za a -ttar .gz x` writes `.gz` as typed (T-F221 made "explicit name as typed"
+  the rule). Decide the fix with the user; tests first in `Archiver.CLI.Tests`.
+- **Reported by:** G6 device campaign, 2026-09-30.
+
+### T-F295 — CLI console polish from the real-terminal pass (P3)
+
+- [ ] **Status:** open. Found in G6, 2026-09-30, Windows Terminal + cmd, code page 866:
+  1. Ctrl+C during `a big.zip big.bin` prints `" 57%pakko: operation stopped by user"` on the
+     progress line — clear the progress line (or print a newline) before the message.
+  2. The masked prompt says "Enter password (will not be echoed):" but echoes `*` per character
+     (7-Zip's wording, but 7-Zip prints nothing). Say "(input is masked)" or drop the remark.
+  3. The overwrite prompt shows only the existing path; 7-Zip's `AskOverwrite` also shows size and
+     modified time of both files, which is what the user needs to answer Y/N.
+- **Reported by:** G6 device campaign, 2026-09-30.
+
 ## Test-Coverage Audit Follow-Ups (T-F174–T-F186)
 
 Sourced from a full three-stage QA/AppSec coverage audit (requirements extraction -> matrix vs.
@@ -7493,7 +7532,7 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
 
 ### T-F191 — `Archiver.CLI`: real `-p{pwd}` support + interactive masked prompt
 
-- [~] **Status:** implementation complete, 2026-09-18. Agent-driven verification via `windows` MCP
+- [x] **Status:** done 2026-09-30 (G6): CI build af43cae (run 36626161907, `pakko.exe` 0.0.0-dev+af43cae), 2026-09-30, agent in Windows Terminal + cmd (code page 866), output read from the console window: `x enc.zip -oout1` with no `-p` asked "Password for enc.zip:", echoed `*` per character, a wrong password printed "incorrect password, try again" and asked again, the right one extracted every entry. Original status: implementation complete, 2026-09-18. Agent-driven verification via `windows` MCP
   against the real built `pakko.exe` in a genuine interactive console (not `dotnet test`, not a
   redirected shell tool call) confirmed the one branch no automated test can reach: the masked
   prompt appears, echoes `*` per character, a wrong password shows "incorrect password, try
