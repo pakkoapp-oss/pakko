@@ -59,6 +59,7 @@ do not edit by pattern-matching the diagram's previous shape.
 
 Sources read for this diagram: `src/Archiver.ShellExtension/dllmain.cpp`,
 `src/Archiver.ShellExtension/ExplorerCommands.cpp`, `src/Archiver.ShellExtension/ShellExtUtils.cpp`,
+`tests/Archiver.ShellExtension.Tests/ComLoadTests.cpp` (the enumeration order),
 `src/Archiver.Shell/Program.cs`, `src/Archiver.Shell/ShellCommands.cs`,
 `src/Archiver.Shell/Win32OperationUi.cs`, `src/Archiver.Shell/OperationMessages.cs` (T-F268),
 `src/Archiver.Shell/ShellResultPresenter.cs`,
@@ -89,11 +90,13 @@ sequenceDiagram
     participant EF as ExtractFolderCommand
     participant CDC as CompressDialogCommand
     participant AC as ArchiveCommand
+    participant TAC as TarArchiveCommand
     participant TC as TestCommand
-    participant HC as HashCommand
+    participant SC as ScanCommand
+    participant HX as HashCrc32Command / HashSha256Command
     participant ShellExe as Archiver.Shell.exe
-    participant Core as ZipArchiveService
-    participant Dlg as IProgressDialog (shell32)
+    participant Core as Archiver.Core (routers, FileHashService)
+    participant Dlg as IOperationUi session (Win32OperationUi drawn — diagram 8 for the helper)
     participant App as Archiver.App.exe (Launch activation, T-F232)
 
     User->>Explorer: right-click selection
@@ -103,33 +106,23 @@ sequenceDiagram
     Factory->>Root: Make<PakkoRootCommand>()
     Explorer->>Root: GetFlags() → ECF_HASSUBCOMMANDS
     Explorer->>Root: EnumSubCommands()
-    Root->>BC: Make<BrowseCommand>()<br/>(T-F03: "Open" — mirrors NanaZip's real kOpen, a separate<br/>coexisting command, NOT a replacement for ExtractDialogCommand)
-    Root->>EDC: Make<ExtractDialogCommand>()
-    Root->>EHF: Make<ExtractHereFlatCommand>()<br/>(T-F115: new, genuinely flat extract)
-    Root->>EH: Make<ExtractHereCommand>()<br/>(T-F115: title now "...Intelligently" — behavior unchanged)
-    Root->>EF: Make<ExtractFolderCommand>()
-    Root->>CDC: Make<CompressDialogCommand>()
-    Root->>AC: Make<ArchiveCommand>()
-    Root->>TC: Make<TestCommand>()
-    Root->>HC: Make<HashCommand>()<br/>(T-F128: "Хеш-суми" — itself ECF_HASSUBCOMMANDS, joins TC last since it's<br/>also a diagnostic/utility action, and applies to any file type, not just archives)
-    Root->>Enum: SetCommands([BC, EDC, EHF, EH, EF, CDC, AC, TC, HC, ...])<br/>ALWAYS all, unconditionally — selection does not filter EnumSubCommands.<br/>Order mirrors NanaZip's real ContextMenu.cpp (T-F63) and its own three-way<br/>extract-verb layout (T-F115): dialog, then flat, then intelligent, then named-folder.<br/>BC FIRST (T-F03): mirrors NanaZip's own kOpen-before-kExtract insertion order.<br/>TC then HC last: diagnostic/verification/utility actions, not primary —<br/>deliberate deviation from NanaZip's own Test-before-Compress grouping.<br/>TarArchiveCommand (added T-F105) is omitted from this list — pre-existing<br/>diagram gap, not introduced here, see this file's own staleness note above
+    Root->>Enum: Make each leaf, then SetCommands([BC, EDC, EHF, EH, EF, CDC, AC, TAC, TC, SC, HashCrc32, HashSha256])<br/>ALWAYS all twelve, unconditionally — selection does not filter EnumSubCommands.<br/>Order asserted by ComLoadTests' EnumSubCommands_ReturnsAllTwelveLeafCommandsInDocumentedOrder:<br/>BC first (T-F03, NanaZip's kOpen), then extract dialog/flat/intelligent/named-folder (T-F115),<br/>then compress dialog and the two one-click archive verbs (T-F105), then the diagnostic<br/>group last — Test, Scan (T-F146), CRC-32, SHA-256 (T-F128: two flat leaves, no submenu)
     Root-->>Explorer: Enum (IEnumExplorerCommand)
     loop Explorer drains the enumerator
         Explorer->>Enum: Next(celt, ...)
         Enum-->>Explorer: fetched items,<br/>S_OK if fetched==celt, else S_FALSE<br/>S_FALSE is a SUCCESS code here, not failure
     end
-    Note over Explorer,TC: Visibility is decided per-command by GetState(),<br/>separately from enumeration
-    Note over Explorer,TC: T-F262: every GetState below also returns ECS_HIDDEN for an item that<br/>DisableTarExtraction or BlockedFormats blocks (HKLM policy, fail-safe, re-read at most every 5 s)
-    Explorer->>BC: GetState(psia) → ECS_ENABLED iff paths.size()==1 AND AllPathsAreSupportedArchive(paths), else ECS_HIDDEN<br/>(T-F03: single-item only — browsing more than one archive at once has no meaning,<br/>same one-archive-only rule FileActivationRouter already enforces for double-click, T-F100)
-    Explorer->>EDC: GetState(psia) → ECS_ENABLED iff AnyPathIsSupportedArchive(paths), else ECS_HIDDEN<br/>(T-F86: also true for RAR/7z/tar-family when tar.exe exists — EDC routes<br/>to Archiver.App/IExtractionRouter, which supports those formats since T-F85)
-    Explorer->>EHF: GetState(psia) → ECS_ENABLED iff AllPathsAreSupportedArchive(paths), else ECS_HIDDEN<br/>(same condition as EH/EF — T-F115)
-    Explorer->>EH: GetState(psia) → ECS_ENABLED iff AllPathsAreSupportedArchive(paths), else ECS_HIDDEN<br/>(T-F86: also true for RAR/7z/tar-family when tar.exe exists)
-    Explorer->>EF: GetState(psia) → ECS_ENABLED iff AllPathsAreSupportedArchive(paths), else ECS_HIDDEN<br/>(T-F86: also true for RAR/7z/tar-family when tar.exe exists)
-    Explorer->>CDC: GetState(psia) → always ECS_ENABLED (T-F63: shown for any selection,<br/>unlike AC below — archiving a .zip into a new .zip via the dialog is valid)
-    Explorer->>AC: GetState(psia) → ECS_HIDDEN iff AllPathsAreZip(paths), else ECS_ENABLED<br/>(condition is INVERTED vs. EH/EF — T-F86: deliberately UNCHANGED —<br/>still AllPathsAreZip, not AllPathsAreSupportedArchive — archiving an<br/>all-RAR selection into a new ZIP stays valid, same reasoning as CDC)
-    Explorer->>AC: GetTitle(psia) → BuildAddToArchiveTitle(paths)<br/>dynamic "Add to <name>.zip", truncated middle if >40 chars
-    Explorer->>TC: GetState(psia) → ECS_ENABLED iff AnyPathIsZip(paths), else ECS_HIDDEN<br/>(T-F62: AnyPathIsZip, NOT AllPathsAreZip — shows on a mixed selection too —<br/>T-F86: deliberately UNCHANGED — ITarService has no Test/verify method,<br/>so enabling this for RAR/7z would run ZipArchiveService.TestAsync,<br/>which skips non-zip paths internally and would report a false<br/>"No errors detected" — see DECISIONS.md's T-F86 entry)
-    Explorer->>HC: GetState(psia) → ECS_ENABLED iff paths non-empty, else ECS_HIDDEN<br/>(T-F128: any file type, not archive-specific — files AND folders both enable it)
+    Note over Explorer,HX: Visibility is decided per-command by GetState(), separately from enumeration.<br/>T-F262: the archive predicates take GetMenuPolicy() — an item DisableTarExtraction or<br/>BlockedFormats blocks is not an archive for them (HKLM policy, fail-safe, re-read at most every 5 s)
+    Explorer->>BC: GetState → ECS_ENABLED iff paths.size()==1 AND AllPathsAreSupportedArchive(paths, policy)
+    Explorer->>EDC: GetState → ECS_ENABLED iff AnyPathIsSupportedArchive(paths, policy)
+    Explorer->>EHF: GetState → ECS_ENABLED iff AllPathsAreSupportedArchive(paths, policy) — same for EH and EF
+    Explorer->>CDC: GetState → always ECS_ENABLED (T-F63)
+    Explorer->>AC: GetState → ECS_HIDDEN iff AllPathsAreZip(paths) OR NOT IsCreationFormatAllowed("zip", policy)<br/>(INVERTED vs. EH/EF, deliberately still AllPathsAreZip — T-F86)
+    Explorer->>TAC: GetState → ECS_HIDDEN iff AllPathsAreZip(paths) OR NOT IsCreationFormatAllowed("tar", policy)
+    Explorer->>AC: GetTitle(psia) → BuildAddToArchiveTitle(paths)<br/>dynamic "Add to <name>.zip", truncated middle if >40 chars — TAC the same with .tar
+    Explorer->>TC: GetState → ECS_ENABLED iff AnyPathIsZip(paths, policy)<br/>(T-F62/T-F86: ZIP only — tar-family has no test, the router would skip it)
+    Explorer->>SC: GetState → ECS_ENABLED iff AnyPathIsSupportedArchive(paths, policy) (T-F146)
+    Explorer->>HX: GetState → ECS_ENABLED iff paths non-empty (any file or folder, T-F128)
     User->>Explorer: click one visible leaf command
     alt command is BC (Open, T-F03)
         Explorer->>BC: Invoke(psia, pbc)
@@ -141,57 +134,59 @@ sequenceDiagram
         Explorer->>EDC: Invoke(psia, pbc) — or CDC, same shape
         EDC->>ShellExe: LaunchShellExe(BuildOpenUiExtractArgs(), paths)<br/>— or BuildOpenUiArchiveArgs for CDC —<br/>i.e. "--open-ui --extract/--archive --paths-stdin", paths on stdin (T-F235)<br/>Shell refuses a list over LaunchArguments' 32,000-char cap with a message
         EDC-->>Explorer: S_OK, or HRESULT_FROM_WIN32(GetLastError())
-        ShellExe->>App: ActivateApplication("<own PFN>!App", "--extract <base64 JSON>")<br/>— or --archive — then ShellExe's Main returns/exits immediately —<br/>NO NativeProgressDialog, NO ZipArchiveService call in this branch at all
+        ShellExe->>App: ActivateApplication("<own PFN>!App", "--extract <base64 JSON>")<br/>— or --archive — then ShellExe's Main returns/exits immediately —<br/>NO operation window, NO Core call in this branch at all
         Note over App: T-F83 (fixed 2026-07-06): cold start reads the activation via<br/>OnLaunched→AppInstance.GetCurrent().GetActivatedEventArgs(), not just<br/>the OnActivated event (which only fires for redirected/warm activation).<br/>Before the fix, a cold protocol launch silently opened an EMPTY window.
-        App->>App: LaunchActivationRouter.Decide(arguments) → Mode=AddToList<br/>window.ActivationGate.RunOrDefer(...) → MainViewModel.AddPaths(paths)<br/>— files pre-loaded, user drives Archive/Extract from the full UI.<br/>T-F106: wrapped in ActivationGate/DeferredActionGate so this runs AFTER<br/>the first layout pass, not synchronously inline as drawn in earlier versions<br/>of this diagram — a UI-thread timing detail, not a new process/COM contract
-    else command is EHF, EH, EF, AC, or TC (silent form)
-        Explorer->>EH: Invoke(psia, pbc) — or EHF / EF / AC / TC, same shape
+        App->>App: LaunchActivationRouter.Decide(arguments) → Mode=AddToList<br/>window.ActivationGate.RunOrDefer(...) → MainViewModel.AddPaths(paths)<br/>— files pre-loaded, user drives Archive/Extract from the full UI.<br/>T-F106: wrapped in ActivationGate/DeferredActionGate so this runs AFTER<br/>the first layout pass
+    else command is EHF, EH, EF, AC, TAC, TC, SC or a hash leaf (silent form, RunShellCommand)
+        Explorer->>EH: Invoke(psia, pbc) — every silent leaf has this shape
         alt GetSelectionPaths(psia) empty, or an item has no filesystem path
-            EH->>User: MessageBoxW(MB_TOPMOST) — T-F235: a selection is refused whole, never archived partly
+            EH->>User: MessageBoxW(MB_TOPMOST) — T-F235: a selection is refused whole, never processed partly
             EH-->>Explorer: E_INVALIDARG
         else paths present
-            EH->>ShellExe: RunShellCommand — LaunchShellExe(BuildExtractHereArgs(), paths)<br/>— or BuildExtractHereFlatArgs (T-F115, "--extract-flat") /<br/>BuildExtractFolderArgs / BuildArchiveArgs / BuildTestArgs<br/>CreateProcessW("exe" command --paths-stdin) — T-F235: only the stdin read end<br/>is inherited, then the paths go to the child's stdin (UTF-16LE, NUL-separated,<br/>end marker) — does NOT wait for the child<br/>note: TC passes the FULL selection unfiltered — ExtractionRouter.TestAsync<br/>classifies each path (Group Policy + format), tar-family is skipped (T-F261)
+            EH->>ShellExe: LaunchShellExe(args, paths) — BuildExtractHereArgs / BuildExtractHereFlatArgs /<br/>BuildExtractFolderArgs / BuildArchiveArgs() / BuildArchiveArgs("tar") / BuildTestArgs /<br/>BuildScanArgs / BuildHashArgs("crc32"|"sha256")<br/>CreateProcessW(command --paths-stdin) — T-F235: only the stdin read end is inherited, then<br/>the paths go to the child's stdin (UTF-16LE, NUL-separated, end marker) — does NOT wait
             ShellExe->>ShellExe: StdinPathList.Read — a list cut short is refused whole
-            ShellExe-->>Explorer: (no return channel — ShellExe runs independently)
-            EH-->>Explorer: S_OK, or a MessageBoxW with the HRESULT on a launch or<br/>write failure — returned once the list is written,<br/>NOT when the operation finishes
-            ShellExe->>ShellExe: ShellCommands → ui.Begin(title, Bytes) — T-F268: every window goes through<br/>IOperationUi, ONE session per Explorer command (T-F268 step 3), even for a multi-archive<br/>selection — Win32OperationUi is drawn here. Since T-F268 step 4 the WinUI helper<br/>(diagram 8) comes first, and this is its fallback
-            ShellExe->>Dlg: new NativeProgressDialog(title)<br/>= new ProgressDialogCoClass() + StartProgressDialog
-            alt COMException thrown during construction
-                ShellExe->>Core: ArchiveAsync/ExtractAsync/TestAsync(options or paths, session.Progress = null, CancellationToken.None)
-            else dialog constructed
-                loop every 250ms (System.Threading.Timer, lock-guarded on the session's dialog lock)
-                    ShellExe->>Dlg: HasUserCancelled()<br/>[PreserveSig] required — plain BOOL return, not HRESULT
-                    alt returns true
-                        ShellExe->>ShellExe: cts.Cancel()
+            EH-->>Explorer: S_OK, or a MessageBoxW with the HRESULT on a launch or<br/>write failure — returned once the list is written, NOT when the operation finishes
+            ShellExe->>Dlg: ui.Begin(title, Bytes, or Percent for Scan) — ONE session per Explorer command,<br/>even for a multi-archive selection (T-F268 step 3). The WinUI helper comes first<br/>(diagram 8) — Win32OperationUi, drawn here, is its fallback. Cancel is polled every 250 ms<br/>(IProgressDialog.HasUserCancelled, [PreserveSig] BOOL) and cancels the session's one token
+            alt extract commands (EHF / EH / EF)
+                loop each archive of the selection
+                    ShellExe->>Dlg: session.BeginItem(name, i, n) — the title gains "name (i/n)" when n is greater than 1
+                    ShellExe->>Core: IExtractionRouter.ExtractAsync(options with OnConflict=Ask, session.Progress, session.Cancellation)
+                    opt Core raises a prompt (T-F155, T-F192, T-F217)
+                        Core->>Dlg: conflict → session.AskConflictAsync / password → session.AskPasswordAsync,<br/>both through a StickyCallback — "apply to all/remaining" spans the whole selection —<br/>suspected bomb → session.ConfirmAsync, asked per archive, never "for all"
+                        Dlg-->>Core: the user's answer
                     end
+                    Core-->>ShellExe: IProgress<ProgressReport> per file/entry, then ArchiveResult
                 end
-                ShellExe->>Dlg: extract commands only, per archive: session.BeginItem(name, i, n)<br/>— SetTitle(title — name (i/n)) when n is greater than 1, otherwise the title stays
-                ShellExe->>Core: ArchiveAsync/ExtractAsync/TestAsync(options or paths, session.Progress, session.Cancellation)
-                Core-->>ShellExe: IProgress<ProgressReport> callback per file/entry<br/>(TestAsync: TotalBytes=0, one report per archive — no byte-level tracking)
-                ShellExe->>Dlg: SetLine(1, CurrentFile) / SetLine(2, status) / SetProgress64(bytes, total)
+            else AC / TAC
+                ShellExe->>Core: IArchiveCreationRouter.ArchiveAsync(SingleArchive, OnConflict=Rename, Format=zip or tar)
+            else TC
+                ShellExe->>Core: IExtractionRouter.TestAsync(paths, progress, password via session.AskPasswordAsync)<br/>— the FULL selection, the router classifies each path, tar-family is skipped (T-F261)
+            else SC
+                ShellExe->>Core: IAntivirusScanService.ScanAsync — diagram 7
+            else hash leaf
+                ShellExe->>Core: FileHashService.ComputeAsync(paths, algorithm, session.Progress, session.Cancellation)<br/>single file / multi-file independently / single-folder recursive — an unreadable subfolder<br/>or a skipped junction is one error entry, never an exception (T-F251)
             end
-            alt OperationCanceledException from Core
-                ShellExe->>Dlg: session.Dispose() → StopProgressDialog — no message at all<br/>T-F269: the one token stops the whole selection, later archives never start
-            else Core completes
-                Core-->>ShellExe: ArchiveResult, one per archive combined into one (extract commands)<br/>(TestAsync: CreatedFiles always empty — nothing is written to disk)
-                Note over ShellExe: OperationMessages by result.Outcome (T-F260, fix phase 7):<br/>Failed lists errors, CompletedWithSkips and NothingDone list skips, Completed shows nothing.<br/>Test adds No errors detected only when an archive was really read — never for NothingDone (T-F274)<br/>— into ONE message (T-F216). Reasons are rendered in the UI language (T-F209)
-                ShellExe->>Dlg: session.Complete(message) → StopProgressDialog first
+            alt OperationCanceledException, or the session's token was cancelled
+                ShellExe->>Dlg: session.Dispose() — no message at all<br/>T-F269: the one token stops the whole selection, later archives never start
+            else completed
+                Note over ShellExe: OperationMessages.ForArchiveResult / ForTestResult / ForScan / ForHash —<br/>by result.Outcome for archive results (T-F260): Failed lists errors, CompletedWithSkips and<br/>NothingDone list skips, Completed shows nothing. Test adds No errors detected only when an<br/>archive was really read (T-F274). Hash: Warning when any entry failed — for a single folder<br/>only the Files/Size/DataSum/NamesSum lines are shown, not which entry failed (T-F291)
+                ShellExe->>Dlg: session.Complete(message) — closes the progress window first
                 opt message is not null (Extract/Archive success has none)
-                    ShellExe->>User: MessageBoxW(text, MB_ICONERROR / MB_ICONWARNING / MB_ICONINFORMATION by severity,<br/>max 10 lines + and-N-more line) — T-F68: a skipped-only run is no longer silent.<br/>T-F268: shown even when no progress window could be created (was skipped before)
+                    ShellExe->>User: MessageBoxW(text, icon by severity, max 10 lines + and-N-more line)<br/>— shown even when no progress window could be created (T-F268)
                 end
             end
         end
-    else command is a Hash leaf, HashCrc32Command or HashSha256Command (T-F128, reached via<br/>HC's own EnumSubCommands/GetState, not drawn separately — same shape either way)
-        Note over HC: structurally distinct from every branch above — never touches<br/>Core (ZipArchiveService)/ArchiveResult/ShellResultPresenter at all
-        Explorer->>HC: Invoke(psia, pbc) — really the leaf's own Invoke, same shape for both algorithms
-        HC->>ShellExe: LaunchShellExe(BuildHashArgs("crc32"|"sha256"), paths)<br/>i.e. "--hash --algorithm crc32|sha256 --paths-stdin", paths on stdin (T-F235)
-        HC-->>Explorer: S_OK, or HRESULT_FROM_WIN32(GetLastError())
-        ShellExe->>Dlg: ui.Begin(title, Bytes) → new NativeProgressDialog(title) — the same session, cancel poll<br/>and no-COM fallback as the silent-form branch above (T-F268)
-        ShellExe->>ShellExe: FileHashService.ComputeAsync(paths, algorithm, session.Progress, session.Cancellation)<br/>single file / multi-file independently / single-folder recursive<br/>(NanaZip-compatible DataSum+NamesSum via HashDigestAccumulator — DECISIONS.md's T-F128 entry)
-        ShellExe->>Dlg: session.Complete(OperationMessages.ForHash(...)) → StopProgressDialog
-        ShellExe->>User: MessageBoxW(per-file "name: hash" lines, plus DataSum/NamesSum<br/>summary lines if a folder was hashed, MB_ICONINFORMATION or MB_ICONWARNING)
     end
 ```
+
+**T-F258 (2026-09-29):** re-derived from `ExplorerCommands.cpp`, `ComLoadTests.cpp`,
+`ShellCommands.cs`, `Win32OperationUi.cs` and `OperationMessages.cs`. The drawing had gone stale:
+the `HashCommand` submenu parent it showed was flattened into two leaves long ago (T-F128
+follow-up), and `TarArchiveCommand`/`ScanCommand` were missing. Added the extract commands'
+conflict, password and compression-bomb prompts (T-F155, T-F192, T-F217) and the hash result's
+error handling (T-F251). The Win32 dialog is drawn as one `IOperationUi` session; diagram 8 draws
+the WinUI helper that comes before it. While drawing, found T-F291: when Explorer hashes a single
+folder, a failed entry shows only as a warning icon.
 
 **What this catches (verified against the real bugs already fixed here):**
 - **`BC` (T-F03) is a third, distinct Open-UI destination — not a variant of `EDC`/`CDC`'s
@@ -247,14 +242,12 @@ sequenceDiagram
 
 ## 2. State — Operation lifecycle (`MainViewModel`)
 
-Source read for this diagram: `src/Archiver.App/ViewModels/MainViewModel.cs`
-(`ArchiveAsync`/`ExtractAsync`/`Cancel`, lines 271–489 as of T-F85 — shifted from the
-diagram's original 228–437 by T-F85's added `IExtractionRouter` field/constructor param and
-`_extractableTypes` allowlist above `ArchiveAsync`; the state machine itself is unchanged, only
-line numbers moved). Both methods have the identical try/catch/finally shape; the diagram
-applies to either. T-F85 changed `ExtractAsync()`'s single `_archiveService.ExtractAsync(...)`
-call to `_extractionRouter.ExtractAsync(...)` — same await, same exception types, no new
-branch — so this diagram's content is otherwise unaffected by that change.
+Source read for this diagram (re-derived 2026-09-29, T-F258): `src/Archiver.App/ViewModels/MainViewModel.cs`
+— `ArchiveAsync`, `ExtractAsync` → `RunExtractAsync`, `Cancel`, `CanArchive`/`CanExtract`,
+`RunCleanupAsync`. Both methods have the same try/catch/finally shape; the diagram applies to either,
+with the differences named in the labels. (Line numbers are no longer quoted — they went stale
+with every change above them.) `Test`/`Scan` from the browser follow the same cancel path (T-F277)
+but are not drawn here.
 
 **T-F05 (Archive Browser):** `ExtractAsync()`'s body was extracted into a shared
 `RunExtractAsync(archivePaths, selectedEntryPaths)`, now also called by
@@ -295,16 +288,16 @@ action (`FooterLine.Pick`). All three exit paths end in `SetOutcome` (result, er
 ```mermaid
 stateDiagram-v2
     [*] --> Idle
-    Idle --> Busy: ArchiveCommand/ExtractCommand invoked<br/>(CanExecute: FileItems.Count>0 && !IsBusy,<br/>Archive also: inline password valid when it applies)<br/>IsBusy=true
+    Idle --> Busy: ArchiveCommand (CanArchive — !IsBusy, FileItems.Count>0, inline password usable)<br/>or ExtractCommand (CanExtract — !IsBusy, _listActions.CanExtract)<br/>or a browser Extract Selected/All (same RunExtractAsync)<br/>new CancellationTokenSource — IsBusy=true
     Busy --> Busy: CancelCommand invoked<br/>(CanExecute: IsOperationRunning == IsBusy)<br/>→ cts.Cancel() only — IsBusy is NOT changed here —<br/>there is no dedicated Cancelling state in code
-    Busy --> AwaitingSummaryDialog: _archiveService call returns without throwing<br/>StatusMessage = rendered OutcomeLine
-    AwaitingSummaryDialog --> AwaitingSummaryDialog: await ShowOperationSummaryAsync(...)<br/>(no dialog when Outcome==Completed) then delete-after cleanup<br/>IsBusy is STILL TRUE — finally has not run yet
-    AwaitingSummaryDialog --> Idle: finally{no IsBusy change} — wasCancelled==false so the delay<br/>branch below is skipped — THEN IsBusy=false — THEN StatusMessage=StatusReady — THEN SetOutcome (footer result line)<br/>(T-F70: IsBusy=false moved out of finally to here)
-    Busy --> AwaitingErrorDialog: unexpected Exception caught (not OperationCanceledException)<br/>StatusMessage=DialogErrorTitle
+    Busy --> AwaitingSummaryDialog: _archiveCreationRouter.ArchiveAsync / _extractionRouter.ExtractAsync<br/>returns without throwing — StatusMessage = rendered OutcomeLine
+    AwaitingSummaryDialog --> AwaitingSummaryDialog: await ShowOperationSummaryAsync (no dialog when Outcome==Completed),<br/>then, only if DeleteAfterOperation (and allowDeleteAfter for Extract):<br/>RunCleanupAsync(result.FullyProcessedSources) — Recycle Bin, a confirm before<br/>a permanent delete, a dialog listing what was not deleted (T-F207/T-F229/T-F242)<br/>IsBusy is STILL TRUE — finally has not run yet
+    AwaitingSummaryDialog --> Idle: finally (dispose cts, Archive also clears the password) —<br/>wasCancelled==false so no delay — THEN IsBusy=false — THEN StatusMessage=StatusReady —<br/>Extract from the browser: CloseArchiveCore if the archive is gone — THEN SetOutcome
+    Busy --> AwaitingErrorDialog: any other Exception caught (not OperationCanceledException)<br/>StatusMessage=DialogErrorTitle
     AwaitingErrorDialog --> AwaitingErrorDialog: await ShowErrorAsync(...)<br/>IsBusy is STILL TRUE while this modal is open
-    AwaitingErrorDialog --> Idle: finally{no IsBusy change} — delay branch skipped —<br/>THEN IsBusy=false — THEN StatusMessage=StatusReady — THEN SetOutcome (same T-F70 point as above)
-    Busy --> CancelledNoDialog: OperationCanceledException caught<br/>StatusMessage=StatusCancelled — NO dialog is shown
-    CancelledNoDialog --> Idle: finally{no IsBusy change} — THEN await Task.Delay(2000)<br/>(IsBusy still TRUE throughout the delay — T-F70 fix) —<br/>THEN IsBusy=false — THEN StatusMessage=StatusReady — THEN SetOutcome
+    AwaitingErrorDialog --> Idle: finally — no delay — THEN IsBusy=false —<br/>THEN StatusMessage=StatusReady — THEN SetOutcome (same T-F70 point as above)
+    Busy --> CancelledNoDialog: OperationCanceledException caught — both engines throw it on cancel,<br/>tar-family too since T-F245 — StatusMessage=StatusCancelled — NO dialog,<br/>and delete-after is never reached
+    CancelledNoDialog --> Idle: finally — THEN await Task.Delay(2000)<br/>(IsBusy still TRUE throughout the delay — T-F70 fix) —<br/>THEN IsBusy=false — THEN StatusMessage=StatusReady — THEN SetOutcome
 ```
 
 **What this catches:**
@@ -502,31 +495,54 @@ now with less duplication risk behind it, not more. See `DECISIONS.md`'s T-F158 
 
 ## 4. Component/Deployment — MSIX package & process boundaries
 
-Source read for this diagram: `src/Archiver.App/Package.appxmanifest`.
+Sources read for this diagram (re-derived 2026-09-29, T-F258): `src/Archiver.App/Package.appxmanifest`
+(Identity, both `<Application>` entries, the two `uap:FileTypeAssociation`s, `com:SurrogateServer`,
+the `desktop4/5/10` verbs), the `ProjectReference`s of `Archiver.App`, `Archiver.Shell`,
+`Archiver.CLI` (`AssemblyName` `pakko`) and `Archiver.OperationUi`,
+`src/Archiver.Core/Services/Sandbox/TarSandboxScope.cs` (`CreateAsync`, `RunAsync`), and
+`src/Archiver.Core/Services/TarSandboxedService.cs` (`RunUnsandboxedTarAsync`, `DetectCapabilitiesAsync`).
 
 ```mermaid
 flowchart TB
     subgraph MSIX["Pakko.msix — Identity: PavloRybchenko.Pakko"]
-        subgraph AppApp["Application Id=App — EntryPoint=$targetentrypoint$ (WindowsAppSDK)"]
+        subgraph AppApp["Application Id=App — EntryPoint=$targetentrypoint$ (WindowsAppSDK)<br/>FileTypeAssociation zipfile (.zip) and archivefile (.rar .7z .tar .gz ... .jar .apk .asice ...)"]
             App[Archiver.App.exe]
         end
         subgraph AppShell["Application Id=ShellHelper<br/>EntryPoint=Windows.FullTrustApplication<br/>AppListEntry=none"]
             Shell[Archiver.Shell.exe]
         end
-        OpUi["Archiver.OperationUi.exe (T-F268)<br/>no Application entry of its own —<br/>a child of Shell keeps the package identity"]
-        subgraph ComReg["com:Extension windows.comServer → com:SurrogateServer"]
+        OpUi["Archiver.OperationUi.exe (T-F268)<br/>no Application entry of its own —<br/>a child of Shell keeps the package identity<br/>references no Archiver.Core"]
+        subgraph ComReg["com:Extension windows.comServer → com:SurrogateServer<br/>verbs for ItemType * / Directory / Drive"]
             Dll["Archiver.ShellExtension.dll<br/>com:Class Id=1EABC7CE-20A4-48EE-A99F-43D4E0F58D6A<br/>ThreadingModel=STA"]
         end
     end
 
+    Cli["pakko.exe (Archiver.CLI, T-F09)<br/>standalone self-contained download,<br/>NOT in the MSIX — no package identity"]
+    Core["Archiver.Core — in-process library<br/>(ZipArchiveService, TarSandboxedService,<br/>AntivirusScanService → amsi.dll in-process)"]
+
+    subgraph Sandbox["per archive operation: TarSandboxScope"]
+        TarBox["C:\Windows\System32\tar.exe<br/>AppContainer Pakko.TarSandbox + Job Object<br/>(1 process, RAM/CPU limits), archive as stdin (T-F233),<br/>writes only %TEMP%\PakkoTarSandbox\guid\out"]
+    end
+    TarPlain["C:\Windows\System32\tar.exe<br/>unsandboxed: no AppContainer, no Job Object"]
+
     Explorer[explorer.exe] -->|CoCreateInstance| Dllhost[dllhost.exe<br/>isolated COM surrogate process]
+    Explorer -.->|"double-click an associated file<br/>(File activation)"| App
     Dllhost -->|loads| Dll
-    Dll -->|"CreateProcess(Archiver.Shell.exe)<br/>⚠ ERROR_ACCESS_DENIED if not declared<br/>as its own Application entry"| Shell
+    Dll -->|"CreateProcess(Archiver.Shell.exe ... --paths-stdin)<br/>paths over an inherited pipe (T-F235)<br/>⚠ ERROR_ACCESS_DENIED if not declared<br/>as its own Application entry"| Shell
     Shell -.->|"ActivateApplication(PFN!App,<br/>--browse/--extract/--archive base64)<br/>(Launch activation, Open-UI flow only, T-F232 —<br/>no URI protocol is registered)"| App
     Shell -->|"Process.Start + two anonymous pipes<br/>(operation window, diagram 8)"| OpUi
-    Shell --> Core[Archiver.Core / ZipArchiveService]
+    Shell --> Core
     App --> Core
+    Cli --> Core
+    Core -->|"extract, list, scan, pre-scan (T-F49/T-F52)<br/>signature checked first"| TarBox
+    Core -->|"create a tar-family archive (T-F105)<br/>and the one-shot --version probe"| TarPlain
 ```
+
+**T-F258 (2026-09-29):** re-derived. Added the biggest process boundary since T-F52 — tar.exe as a
+child of whichever process hosts `Archiver.Core` (App, Shell or `pakko.exe`), sandboxed for every
+run that reads an untrusted archive and unsandboxed for creation and the version probe (see
+`SECURITY.md`); `pakko.exe` outside the package; the file associations and File activation; the
+stdin path hand-off. `pakko://` is not drawn: T-F232 removed it.
 
 **What this catches:** any satellite EXE added later that is *not* given its own `<Application>`
 entry with `EntryPoint="Windows.FullTrustApplication"` will build and run fine from Visual Studio
@@ -837,15 +853,13 @@ pattern as Rows 1/3; "About" stays in both variants (matches NanaZip's own alway
 
 ## 7. Sequence — AMSI threat scan (T-F146)
 
-Sources read for this diagram: `src/Archiver.ShellExtension/ExplorerCommands.cpp` (`ScanCommand`),
-`src/Archiver.Shell/ShellCommands.cs` (`ScanAsync`), `src/Archiver.Core/Services/
-AntivirusScanService.cs`, `src/Archiver.Core/Services/Antivirus/AmsiScanner.cs`/
-`AmsiProviderCheck.cs`, `src/Archiver.Core/Services/Sandbox/TarSandboxScope.cs`,
-`src/Archiver.App/ViewModels/MainViewModel.cs` (`ScanArchiveFromBrowserAsync`),
-`src/Archiver.App/Services/DialogService.cs` (`ShowThreatScanResultAsync`). Two independent
-entry points converge on the same `AntivirusScanService.ScanAsync` — this diagram draws the
-Explorer path in full and shows the Archive Browser path joining at the same point, since
-everything downstream of `ScanAsync` is identical for both.
+Sources read for this diagram (re-derived 2026-09-29, T-F258): `src/Archiver.ShellExtension/ExplorerCommands.cpp`
+(`ScanCommand::GetState`/`Invoke`), `ShellExtUtils.cpp` (`BuildScanArgs`), `src/Archiver.Shell/ShellCommands.cs`
+(`ScanAsync`), `src/Archiver.Core/Services/AntivirusScanService.cs` (`ScanAsync`, `ScanZipArchiveAsync`,
+`ScanEncryptedEntryAsync`, `ScanOneEntryAsync`, `ScanTarArchiveAsync`, `ScanExtractedFilesAsync`),
+`src/Archiver.Core/Services/Sandbox/TarSandboxScope.cs` (`CreateAsync`, `Dispose`),
+`src/Archiver.App/ViewModels/MainViewModel.cs` (`ScanArchiveFromBrowserAsync`). Two entry points
+converge on the same `AntivirusScanService.ScanAsync`; `Archiver.CLI` has no scan command.
 
 ```mermaid
 sequenceDiagram
@@ -854,59 +868,85 @@ sequenceDiagram
     participant Shell as Archiver.Shell (ShellCommands.ScanAsync)
     participant Browser as MainViewModel<br/>(ScanArchiveFromBrowserAsync)
     participant Service as AntivirusScanService
-    participant Provider as AmsiProviderCheck
-    participant Amsi as AmsiScanner (amsi.dll)
-    participant Sandbox as TarSandboxScope<br/>(AppContainer)
+    participant Amsi as IAmsiScanner (amsi.dll)
+    participant Sandbox as TarSandboxScope<br/>(AppContainer + Job Object)
     participant Dialog as OperationMessages.ForScan /<br/>ShowThreatScanResultAsync
 
-    Explorer->>ScanCommand: Invoke (AnyPathIsSupportedArchive-gated)
-    ScanCommand->>Shell: CreateProcess("--scan" + paths)
-    Shell->>Service: ScanAsync(options)
-    Browser->>Service: ScanAsync(options)<br/>(same call, different frontend)
+    Explorer->>ScanCommand: GetState → ECS_ENABLED iff AnyPathIsSupportedArchive(paths, menu policy)
+    Explorer->>ScanCommand: Invoke
+    ScanCommand->>Shell: RunShellCommand(BuildScanArgs()) — "--scan --paths-stdin", paths on stdin (T-F235)
+    Shell->>Shell: ui.Begin(title, Percent) — one IOperationUi session (T-F268, diagram 8)
+    Shell->>Service: ScanAsync(options with ResolvePasswordAsync = session.AskPasswordAsync, session.Progress, session.Cancellation)
+    Browser->>Service: ScanAsync(options with ResolvePasswordAsync = BrowsePasswordResolver)<br/>(same call, different frontend)
 
-    Service->>Service: ArchiveFormatPolicy.Classify<br/>(zip / tar-family / unsupported+policy-blocked)
-    Note over Service: unsupported/blocked paths become<br/>Inconclusive findings immediately, no AMSI call
+    Service->>Service: ArchiveFormatPolicy.Classify, then a policy-blocked "zip"<br/>moves every ZIP bucket path to Unsupported (T-F250)
+    Note over Service: every Unsupported path becomes an Inconclusive finding, no AMSI call
+    alt no ZIP or tar-family path left
+        Service-->>Dialog: result from those findings alone
+    else no AMSI provider registered (AmsiProviderCheck)
+        Service-->>Dialog: every remaining archive Inconclusive (NoAntivirusRegistered)
+    else scanner factory throws InvalidOperationException (AmsiInitialize/OpenSession failed)
+        Service-->>Dialog: every remaining archive Inconclusive (ScanSessionFailed)
+    else one AMSI session for the whole call
+        Service->>Service: new PasswordResolver(options.ResolvePasswordAsync, maxAttempts: 3)<br/>— one for every archive of the call (T-F194)
 
-    Service->>Provider: IsAnyProviderRegistered()
-    alt no provider registered
-        Provider-->>Service: false
-        Service-->>Dialog: every archive Inconclusive<br/>("No antivirus is registered to scan with")
-    else provider registered
-        Provider-->>Service: true
-        Service->>Amsi: new AmsiScanner("Pakko")<br/>(one session for the whole operation)
-
-        loop each ZIP archive
-            Service->>Service: ZipArchiveReader.Open (decoded names, T-F234), read entry bytes<br/>(no disk writes, size-cap enforced)
-            Service->>Amsi: ScanBuffer(bytes, entryName)
-            Amsi-->>Service: Clean / ThreatDetected
-        end
-
-        loop each tar-family archive
-            Service->>Sandbox: CreateAsync (T-F49 pre-scan)
-            alt archive rejected (symlink/traversal/signature)
-                Sandbox-->>Service: throws (TarArchiveRejectedException etc.)
-                Service-->>Service: whole-archive Inconclusive finding
-            else archive accepted
-                Sandbox->>Sandbox: tar -xf into quarantine "out\"<br/>(exactly like a real Extract — but stops here)
-                loop each extracted file
-                    Service->>Service: read bytes (size-cap enforced)
-                    alt file vanished/blocked mid-scan (real-time AV race)
-                        Service-->>Service: per-entry Inconclusive<br/>("removed or blocked before Pakko could scan it")
-                    else read succeeded
-                        Service->>Amsi: ScanBuffer(bytes, relativePath)
-                        Amsi-->>Service: Clean / ThreatDetected
-                    end
+        loop each ZIP archive (strictly sequential)
+            alt ZipArchiveReader.Open throws IOException / UnauthorizedAccess / InvalidData
+                Service-->>Service: archive Inconclusive (ScanCannotReadArchive)
+            else opened
+                opt the archive has an encrypted entry (TryMapEncryptedEntries)
+                    Service->>Service: ResolveArchivePasswordAsync — the frontend's prompt
                 end
-                Sandbox->>Sandbox: Dispose() — quarantine deleted<br/>(always, regardless of outcome)
+                loop each file entry (the selected subset, if any)
+                    alt encrypted entry
+                        Note over Service: no password → Inconclusive (PasswordProtected)<br/>over 256 MiB by either header → Inconclusive (TooLarge)<br/>wrong password / unsupported method / failed authentication → Inconclusive
+                        Service->>Amsi: on success: ScanBuffer(plaintext) — a Clean result<br/>stands only if the stream then reaches its verified end (else Inconclusive, T-F194)
+                    else plain entry
+                        Service->>Amsi: ScanBuffer(bytes, name) — size cap first, an empty entry<br/>is Clean without a call (T-F247)
+                    end
+                    Amsi-->>Service: Clean / ThreatDetected, or InvalidOperationException → this entry Inconclusive
+                    Note over Service: IOException / UnauthorizedAccess / InvalidData while reading → this entry Inconclusive
+                end
             end
         end
 
+        loop each tar-family archive (strictly sequential)
+            Service->>Sandbox: CreateAsync(needsOutputDir: true) — tar.exe signature check,<br/>archive opened read-only (tar.exe gets it as stdin, T-F233), quarantine + "out\"
+            Service->>Sandbox: ScanForUnsafeEntriesAsync (T-F49 pre-scan, a listing run)
+            alt rejected, signature failure, sandbox setup failure or IOException
+                Sandbox-->>Service: throws
+                Service-->>Service: archive Inconclusive (the exception's own text)
+            else accepted
+                Sandbox->>Sandbox: tar -x into "out\" (only the selected members, if any)
+                alt tar.exe exit code not 0
+                    Service-->>Service: archive Inconclusive (ScanCannotExtract)
+                else extracted
+                    loop each file in "out\" (EnumerateFilesGuarded)
+                        alt file removed or locked before reading (real-time AV race)
+                            Service-->>Service: entry Inconclusive (ScanRemovedOrBlocked)
+                        else read
+                            Service->>Amsi: ScanBuffer — same size cap and empty-entry rule
+                            Amsi-->>Service: Clean / ThreatDetected, or failure → Inconclusive
+                        end
+                    end
+                end
+            end
+            Sandbox->>Sandbox: finally Dispose() — archive handle closed, quarantine deleted best-effort<br/>(the user's archive is never inside the quarantine, T-F233)
+        end
+
         Service->>Amsi: Dispose() (CloseSession, Uninitialize)
-        Service-->>Dialog: ThreatScanResult (OverallVerdict, Findings)
+        Service-->>Dialog: ThreatScanResult — ThreatDetected if any, else Inconclusive if any, else Clean
     end
 
-    Dialog->>Dialog: Clean → "No threats found in this archive"<br/>Threat/Inconclusive → grouped per-finding list<br/>(Inconclusive NEVER rendered as Clean)
+    Note over Shell: OperationCanceledException, or the session was cancelled → no message
+    Dialog->>Dialog: Clean → "No threats found"<br/>Threat/Inconclusive → grouped per-finding list<br/>(Inconclusive NEVER rendered as Clean)
 ```
+
+**T-F258 (2026-09-29):** re-derived from the code. Added since the last drawing: Explorer's paths
+arrive over stdin and Shell's scan runs in one `IOperationUi` session; the password branch for
+encrypted ZIP entries (T-F194); the AMSI session and per-entry failure branches (T-F247); tar
+extraction's non-zero exit; the quarantine no longer holds a link to the user's archive (T-F233,
+which also removed T-F248's read-only leftover), and its deletion is best-effort.
 
 **Why this is a real defense, not decoration:** every branch that doesn't reach `Amsi.ScanBuffer`
 (unsupported format, blocked by policy, no provider, rejected tar archive, oversized entry,

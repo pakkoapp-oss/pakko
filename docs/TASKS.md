@@ -5929,7 +5929,13 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 
 ### T-F258 — Diagrams 1, 2, 4 and 7 are stale (P2, docs)
 
-- [ ] **Status:** open — spot-checked 2026-09-25 (T-F226 check L; not the full per-arrow ritual).
+- [x] **Status:** done 2026-09-29 (G5). Diagrams 1, 2, 4 and 7 re-derived from the code per the
+  Ground Truth Rule and checked with mermaid-cli (all nine blocks render). Beyond the list below:
+  diagram 1 still drew the `HashCommand` submenu parent flattened long ago and lacked
+  `TarArchiveCommand`/`ScanCommand`; diagram 7 predated the stdin hand-off. Several listed items
+  had meanwhile become true in code (T-F245 makes every cancel throw; T-F233 removed the
+  quarantine link T-F248 was about) and are drawn as fixed. Found T-F291. Diagram 6 was not in
+  scope. Was: open — spot-checked 2026-09-25 (T-F226 check L; not the full per-arrow ritual).
   - Diagram 2 (operation lifecycle): no `RunCleanupAsync`/"Delete after operation" step at all —
     the one destructive transition (T-F229, T-F245) — and it asserts every cancel ends in
     `OperationCanceledException` -> `CancelledNoDialog`, which T-F245 disproves for tar. Line
@@ -6666,6 +6672,17 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   covers Cyrillic (1251), and whether to report it upstream. (The probe's list-file runs are not
   evidence: pwsh wrote the list in UTF-8, which tar.exe reads in the ACP.)
 - **Reported by:** T-F240 canary, 2026-09-29.
+
+### T-F291 — Explorer's folder hash hides which entries failed (P2)
+
+- [ ] **Status:** open. Found redrawing diagram 1 (T-F258). For a single-folder selection
+  `OperationMessages.ForHash` shows only the Files/Size/DataSum/NamesSum lines; the error entries
+  `FileHashService` adds since T-F251 (an unreadable subfolder, a skipped junction or symlink, a file
+  that shrank) only turn the icon into a warning. The user cannot tell what the sums leave out.
+  `pakko h` prints each failed entry to stderr (`Program.cs` `PrintHashEntriesAsync`), so the two
+  frontends differ. Fix: list the failed entries (capped like the file list) under the summary;
+  test in `OperationMessagesTests` first.
+- **Reported by:** T-F258 diagram redraw, 2026-09-29.
 
 ### T-F223 — Diagram gap from T-F193 (P2)
 
