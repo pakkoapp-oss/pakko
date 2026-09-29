@@ -202,9 +202,8 @@ Extract first. Two constraints keep this from becoming a new attack surface:
    macro-capable document, or PDF (PDF is deliberately excluded despite looking "safe" — some
    readers execute embedded JavaScript, unlike every other allowlisted type here).
    **Limit (T-F257):** Pakko opens a preview with whatever handler Windows has for the extension.
-   On a machine with Office, `.csv` opens in Excel, which evaluates formulas; Protected View then
-   depends on the archive having carried MOTW (propagated to the preview file, see above). The
-   allowlist restricts file types, not the handlers a machine has registered for them.
+   On a machine with Office, `.csv` opens in Excel, which evaluates formulas. The allowlist
+   restricts file types, not the handlers a machine has registered for them.
    `ShellExecute`-ing an arbitrary archive entry with one click, no "Extract to..." friction first,
    would itself be an attack surface (a malicious file inside an archive, opened automatically).
    **This is deliberately stricter than 7-Zip/NanaZip**, confirmed by reading NanaZip's real

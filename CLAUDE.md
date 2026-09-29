@@ -722,8 +722,7 @@ files.
 - **Non-ASCII glyphs (ellipsis, em-dash, Cyrillic) in C++/PowerShell string literals**: never write
   the literal character — full rule + `\uXXXX` escape pattern, and its one `/utf-8`
   exception (`Localization.cpp`'s table), are in `CONVENTIONS.md`. Shipped
-  three times already (T-F64, T-F76, T-F63) despite being documented — check every new string
-  literal before considering a change done.
+  three times already (T-F64, T-F76, T-F63) — check every new string literal.
   **Fixing an already-corrupted literal is not exempt:** typing the `\uXXXX` escape as Edit-tool
   replacement text silently re-decodes to the same literal glyph (confirmed T-F105) — the Edit
   reports `old_string`/`new_string` identical instead of erroring. Build the escape from raw char
