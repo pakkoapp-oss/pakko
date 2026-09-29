@@ -4242,7 +4242,7 @@ regression from this task, which owns reliability only.
   (no longer the T-F154 single-file unwrap — intended). The on-disk assertion in
   `ZipArchiveServiceEncryptTests` is restored. Agent-verified on device 2026-09-25 (Deploy 1.4.12.11): `pakko x` and Shell --extract-flat recreate `src\empty` and `src\nested\deeper` from both the ZIP and the tar.
 
-- [~] **Status:** fixed in fix phase 2, stays `[~]` until the user's own check. Original: open — found 2026-09-24 while writing T-F193 phase 2's round-trip tests;
+- [x] **Status:** Device (G6, CI build 1.5.0.13 / `pakko.exe` af43cae, App title build 2026-09-29 23:33:05, 2026-09-30): `pakko x` (pass 1) and Explorer "Extract here (smart)", "Extract here" and "Extract to plain\" on `plain.zip` each wrote the empty `порожня\`; Explorer "Add to src.zip" kept it too (`7za` lists the folder). Closed. Original: open — found 2026-09-24 while writing T-F193 phase 2's round-trip tests;
   pre-existing and unrelated to encryption. Pakko writes an empty folder as a `name/` entry
   (T-F66), but extracting that archive back leaves no folder on disk. Reproduced with a plain,
   unencrypted archive of `src/{empty/, f0.txt, f1.txt}` extracted in `ExtractMode.SingleFolder`,
@@ -4740,7 +4740,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   1.4.12.11): Shell --extract-flat keeps `root\` (ZIP and tar), --extract-folder strips it only for
   `root.zip`, `pakko x` keeps it.
 
-- [~] **Status:** fixed in fix phase 2, stays `[~]` until the user's own check. Original: open. `ExtractionDestinationPlanner.Resolve` returns `StripRootPrefix = true`
+- [x] **Status:** Device (G6, CI build 1.5.0.13 / `pakko.exe` af43cae, App title build 2026-09-29 23:33:05, 2026-09-30): Explorer "Extract here" on `plain.zip` (root `src/`) kept `src\` (the conflict window came up for the existing `src\a.txt`); "Extract to plain\" wrote `plain (1)\src\...` (a root not named like the archive is kept). Closed. Original: open. `ExtractionDestinationPlanner.Resolve` returns `StripRootPrefix = true`
   for `(alreadyIsolated: false, RootShape.SingleFolder)`, so in SingleFolder mode the archive's
   single root folder name is lost and its contents spill straight into the destination.
   Repro: `singleroot.zip` = `root/in/c.txt`; Explorer "Extract here" (flat, `--extract-flat`)
@@ -5087,7 +5087,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   slice), never reused, removed on every exit; Hidden is cleared before the fast-path rename. Tar
   moves to it in phase 4. Agent-verified on device 2026-09-25 (Deploy 1.4.12.11): Shell --extract-folder and --extract-here next to a user `multi_tmp\` folder: note untouched, extracted folders not Hidden, no staging left.
 
-- [~] **Status:** fixed in fix phase 2, stays `[~]` until the user's own check. Original: open — found by the T-F226 review (independent reviewer agent), confirmed on
+- [x] **Status:** Device (G6, CI build 1.5.0.13 / `pakko.exe` af43cae, App title build 2026-09-29 23:33:05, 2026-09-30): `pakko x` (pass 1) and Shell `--extract-here multi.zip` next to a foreign `multi_tmp\my-important-notes.txt`: `multi\x.txt`, `multi\y.txt` written, `multi_tmp` untouched. Closed. Original: open — found by the T-F226 review (independent reviewer agent), confirmed on
   device 2026-09-24. `ZipArchiveService` stages into `tempDest = destDir + "_tmp"`
   (`ZipArchiveService.cs:1290`), `Directory.CreateDirectory` silently reuses an existing folder of
   that name (`:1292`), the commit phase moves every file in it into the destination (`:1403-1410`)
@@ -5113,7 +5113,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   unguessable staging name the original out-and-back repro cannot recur either. Tar's whole-archive
   rejection is unchanged (`TarSandboxedServiceExtractTests`). Agent-verified on device 2026-09-25 (Deploy 1.4.12.11): `pakko x -aos` of the repro archive: both unsafe entries reported, `t\b.txt` still ORIGINAL, exit 2.
 
-- [~] **Status:** fixed in fix phase 2, stays `[~]` until the user's own check. Original: open — found by the T-F226 reviewer agent, confirmed on device 2026-09-24. The
+- [x] **Status:** Device (G6, CI build 1.5.0.13 / `pakko.exe` af43cae, App title build 2026-09-29 23:33:05, 2026-09-30): `pakko x -aos evil.zip` (pass 1) and Shell `--extract-folder evil.zip`: `a.txt` extracted, `../t_tmp/b.txt` reported as an unsafe path (localized), nothing written outside the destination. Closed. Original: open — found by the T-F226 reviewer agent, confirmed on device 2026-09-24. The
   traversal check runs on the path normalized inside the staging folder, but the conflict check and
   the duplicate-path set are computed from the un-normalized relative path against the final
   destination (`ZipArchiveService.cs:~1477-1533`), and the commit phase moves files with
@@ -5153,7 +5153,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   archive-level error. A traversal entry says "unsafe path" (T-F228). `ExtractAsync` removes a
   destination folder it created when the run produced nothing. Agent-verified on device 2026-09-25 (Deploy 1.4.12.11): Shell --extract-folder of `qmark.zip`: ok1/ok2 extracted, one error naming `What?.txt` and the destination path.
 
-- [~] **Status:** fixed in fix phase 2, stays `[~]` until the user's own check. Original: open — confirmed on device 2026-09-24. Per-entry I/O failures are not caught
+- [x] **Status:** Device (G6, CI build 1.5.0.13 / `pakko.exe` af43cae, App title build 2026-09-29 23:33:05, 2026-09-30): Shell `--extract-folder qmark.zip`: `ok1.txt`, `ok2.txt` extracted, one error naming `What?.txt` and the destination path `C:\g6\ex\qmark\What?.txt` (not staging); `onlyevil.zip` (one `../escape.txt` entry) left no `onlyevil\` folder. Closed. Original: open — confirmed on device 2026-09-24. Per-entry I/O failures are not caught
   per entry (rule: every IO exception per item becomes an `ArchiveError`): `qmark.zip` =
   `ok1.txt`, `What?.txt` (legal on macOS/Linux), `ok2.txt` -> `pakko x` exit 2 "Cannot extract
   archive: The filename, directory name, or volume label syntax is incorrect. :
@@ -6721,6 +6721,7 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   a conflict caused the skips. Fix: show the hint only when a `FileExistsAtDestination` skip exists;
   consider whether `AllEntriesSkipped` belongs on a result whose entries all failed. Test first in
   `Archiver.CLI.Tests` (a CRC-failure extraction prints no `-aoa` hint).
+- **Folded into T-F296** (user decision 2026-09-30): the fix is T-F296's cause-keyed hint table.
 - **Reported by:** G6 device campaign, 2026-09-30.
 
 ### T-F294 — PowerShell splits `-ttar.gz`; pakko then writes a plain tar silently (P2)
@@ -6736,6 +6737,8 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   and the archive name's compound extension disagree. Separately, an explicit name `.gz` becomes
   `.gz.tar` while `7za a -ttar .gz x` writes `.gz` as typed (T-F221 made "explicit name as typed"
   the rule). Decide the fix with the user; tests first in `Archiver.CLI.Tests`.
+- **Folded into T-F296** (user decision 2026-09-30): the `-t`/name mismatch check is T-F296's
+  validation phase; the PowerShell quoting note in `docs/CLI.md` and `--help` stays here.
 - **Reported by:** G6 device campaign, 2026-09-30.
 
 ### T-F295 — CLI console polish from the real-terminal pass (P3)
@@ -6747,6 +6750,76 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
      (7-Zip's wording, but 7-Zip prints nothing). Say "(input is masked)" or drop the remark.
   3. The overwrite prompt shows only the existing path; 7-Zip's `AskOverwrite` also shows size and
      modified time of both files, which is what the user needs to answer Y/N.
+- **Reported by:** G6 device campaign, 2026-09-30.
+
+### T-F296 — CLI: a semantic validation phase and a cause-keyed hint table (P2)
+
+- [ ] **Status:** open. Filed 2026-09-30 from G6 pass 1 (user decision: one task, next batch).
+  `Archiver.CLI` today has two phases that matter here: `CliArgumentParser` checks each switch on
+  its own, and `ReportResult`/`PrintHints` (`Program.cs` ~line 623) guesses hints from symptom codes.
+  Two findings came from that gap: T-F293 (the `-aoa` hint after a CRC failure, because
+  `AllEntriesSkipped` does not say why) and T-F294 (`-ttar` plus a name ending `.gz` accepted without
+  a cross-check). Add:
+  1. **Validation phase** between parsing and execution: `ParsedCliCommand` -> a resolved plan
+     (format, archive name, destination, conflict mode) with cross-switch rules in one table; a
+     contradiction is a usage error (exit 7) or, where 7-Zip stays silent, a warning. First rules:
+     `-t` vs the archive name's compound extension; `-p` with a non-ZIP format (already exists,
+     move it into the table).
+  2. **Hint table** keyed on the cause code (`MessageCode`) of each error/skip, not on
+     `AllEntriesSkipped`. An exhaustiveness test lists every code as "has hint" or "no hint", like
+     `AppResourceKeysTests`, so a new code cannot slip through unnoticed.
+  No parsing library (System.CommandLine does not fit 7-Zip's glued `-ttar`/`-o{dir}`/`-p{pwd}`
+  syntax and would be a new dependency). Tests first in `Archiver.CLI.Tests`: the T-F293 and
+  T-F294 repros, plus the exhaustiveness test.
+- **Reported by:** G6 device campaign, 2026-09-30.
+
+### T-F297 — Error details from the OS or Core stay English in localized windows (P3)
+
+- [ ] **Status:** open. Found in G6 pass 2, 2026-09-30, uk-UA, Explorer operation window:
+  Test of `bad.zip` shows "Елемент «doc.txt»: Content failed CRC-32 check (expected 73DCA397, got
+  A43E23CF)."; `--extract-folder qmark.zip` shows "Не вдалося видобути «What?.txt»: The filename,
+  directory name, or volume label syntax is incorrect. : '...'". The frame is localized (T-F209);
+  the detail is an exception message: `IO/VerifyingReadStream.cs:54` (Core's own English text) and a
+  .NET `IOException` message. Fix direction: give the CRC mismatch its own `MessageCode` with
+  expected/actual as arguments; for OS I/O errors map the common HResults (invalid name, access
+  denied, sharing violation, disk full) to codes and keep the raw text only as a fallback.
+  Tests first (`Archiver.Messages.Tests` parity + a Core test that the CRC error carries the code).
+- **Reported by:** G6 device campaign, 2026-09-30.
+
+### T-F298 — ZIP extraction does not restore the entries' modification times (P2)
+
+- [ ] **Status:** open. Found in G6 pass 2, 2026-09-30. Every extracted ZIP file gets the time of
+  extraction: `qmark.zip` entries dated 2026-09-30 02:07:36 came out as 02:45:56; same for
+  `plain.zip` through Explorer and `pakko x`. The tar path keeps them (`valid.7z` -> `seven.txt`
+  dated 2026-07-07). 7-Zip, NanaZip and Windows' built-in ZIP folder restore the time; for this
+  audience the dates are part of what a recipient checks. `ZipArchiveService` sets `LastWriteTime`
+  only when creating (`:1765`); the staging/commit path never copies the entry time. Same on
+  `sec-t-f283`. Fix: set the file's last-write time from `ZipArchiveEntry.LastWriteTime` (and the
+  NTFS/Unix extra fields when present, as 7-Zip does) after writing and before commit; folders
+  after their contents. Tests first: extract and compare times, incl. an encrypted entry and a
+  merged commit.
+- **Reported by:** G6 device campaign, 2026-09-30.
+
+### T-F299 — `-mx=1` (Fastest) makes incompressible data 5% larger (P3)
+
+- [ ] **Status:** open. Found in G6 pass 2, 2026-09-30. 32 MiB of random data: `pakko a -mx=1`
+  -> 35,388,889 bytes (+5.5%); `-mx=0` 33,554,544; `-mx=5` 33,564,789; `7za a -mx=1` 33,554,580.
+  512 MiB at `-mx=1` gave a 566 MB archive. .NET's fastest Deflate (zlib-ng's quick strategy) does
+  not fall back to stored blocks. Fix: when an entry's deflated size is not smaller than its
+  original, write it as Stored (the parallel writer already compresses to a buffer or temp file
+  before splicing, so the choice is cheap there); check the single-file path too. Tests first:
+  random input at every level stays within a few bytes of the original.
+- **Reported by:** G6 device campaign, 2026-09-30.
+
+### T-F300 — `CliConflictPromptTests` leaves its temp folders behind (P3)
+
+- [ ] **Status:** open. Found in G6 pass 2, 2026-09-30: 133 `%TEMP%\pakko-cli-conflict-*` folders
+  (2026-09-25 to 2026-09-29), each still holding `two.tar`. `Dispose` catches `IOException` and gives
+  up; the tar leg (`CreateResolver_AlwaysAcrossZipAndTar_PromptsOnceAndOverwritesBoth`) runs through
+  the sandbox, and the file is still in use when the test ends. By the time of the check they
+  deleted normally and their DACL was inherited only (no leftover AppContainer grant). Fix: retry the
+  delete briefly, or reuse the shared test temp helper; a test that asserts no leftover folder after
+  the class runs. Test hygiene only, not a product defect.
 - **Reported by:** G6 device campaign, 2026-09-30.
 
 ## Test-Coverage Audit Follow-Ups (T-F174–T-F186)
