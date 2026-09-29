@@ -5434,7 +5434,9 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 
 ### T-F240 — CI tier gaps for a project that parses untrusted input (P2)
 
-- [~] **Progress 2026-09-29 (G4):** fuzzer (`Category=Fuzz`) plus its first finding fixed
+- [x] **Status:** done 2026-09-29. `workflow_dispatch` run 36620565447 on a2904d7: every job green,
+  `canary-failed-day` skipped, `canary-fuzz` success.
+- **Progress 2026-09-29 (G4):** fuzzer (`Category=Fuzz`) plus its first finding fixed
   (`RawZipEntryLocator` offset bound); NuGetAudit on restore is the vulnerable-package gate (no
   separate list step); `.github/dependabot.yml`; nightly `canary-slow`/`canary-arm64`/`canary-asan`
   (masked) and `canary-fuzz` (not masked); release-checklist step in CLAUDE.md "Deployment". Scope
@@ -6639,7 +6641,7 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   150%) are fine.
 - **Reported by:** G1 device pass, 2026-09-29.
 
-### T-F290 — tar.exe on Windows ARM64 crashes on a non-ASCII name argument (priority pending)
+### T-F290 — tar.exe on Windows ARM64 crashes on a non-ASCII name argument (P3)
 
 - [ ] **Status:** open. On the `windows-11-arm` runner, `C:\Windows\System32\tar.exe -czf
   out.tar.gz <name>` with a Cyrillic file name exits with 0xC0000005 (access violation), both
@@ -6652,6 +6654,12 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   exit codes per name and form; read it, then decide. Until then
   `ExtractAsync_TarGzWithUnicodeFilenameAndContent_ExtractsCorrectly` is skipped on an ARM64 OS
   (`IntegrationNotOnArm64Attribute`).
+- **Probe result (run 36620565447, bsdtar 3.8.8, ACP 1252, OEM 437):** `plain.txt` and `café.txt`
+  exit 0 with `-cf` and `-czf`; a Cyrillic name exits 0xC0000005 with both. So it crashes on a name
+  the ANSI code page cannot represent, not on any non-ASCII name — Pakko refuses such names before
+  tar.exe runs, so production is not exposed; P3. Left open: the same check on a machine whose ACP
+  covers Cyrillic (1251), and whether to report it upstream. (The probe's list-file runs are not
+  evidence: pwsh wrote the list in UTF-8, which tar.exe reads in the ACP.)
 - **Reported by:** T-F240 canary, 2026-09-29.
 
 ### T-F223 — Diagram gap from T-F193 (P2)

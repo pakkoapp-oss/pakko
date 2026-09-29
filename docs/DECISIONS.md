@@ -10302,3 +10302,9 @@ CLAUDE.md's "Deployment", no tag trigger).
   Escape hatch for an advisory with no fixed version yet: a `<NuGetAuditSuppress Include="<advisory
   URL>" />` item with a comment naming the advisory and the task tracking it — never a blanket
   `NoWarn` of NU190x.
+- **What the first dispatches changed.** Run 36616898216: `canary-slow` failed on two things a
+  shared runner cannot give. The 7za timing ratios (Hybrid measured 5.23 against a 3.9 ceiling)
+  and the T-F132 spike (needs a locally published exe) are now filtered out of the nightly job by
+  class name, not loosened; they stay in the local `Category=Slow` run before a release.
+  `canary-arm64` found T-F290: the OS tar.exe crashes on a Unicode fixture name. Run 36620565447
+  (a2904d7) was green on every job, and its probe settled T-F290's scope (see that task).
