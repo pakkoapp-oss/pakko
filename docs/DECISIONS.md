@@ -10267,3 +10267,38 @@ hashed file, `sha256sum`'s layout (names keep Windows backslashes, so `sha256sum
 promised to read it back); failed files are left out. A listed folder was checked through the real
 `FileHashService` (`ListedFolder_ThroughFileHashService_IsNamedUnderTheFolder`). Logic in App.Core
 `HashReport` (`HashReportTests`); the dialog glue has no unit test (WinUI `ContentDialog`).
+
+## T-F240 — CI tiers for untrusted input: fuzzing, nightly checks, NuGet audit, Dependabot (2026-09-29)
+
+User decisions (2026-09-29, asked before implementation): a dependency-free fuzzer; the heavy
+checks nightly in `canary.yml` under the existing 3-day escalation; Dependabot for NuGet and GitHub
+Actions, weekly; a fuzz failure turns the run red at once with the input as an artifact, not
+masked; before a release, `canary.yml` is dispatched on the release commit (a checklist step in
+CLAUDE.md's "Deployment", no tag trigger).
+
+- **Fuzzing (`tests/Archiver.Core.Tests/Fuzz/`, `Category=Fuzz`).** Seeded byte mutation of every
+  fixture ZIP, half the offsets anchored just after a ZIP signature (random offsets alone rarely
+  reach size/offset fields in a small archive). Each case's seed is derived independently so one
+  iteration replays alone (`PAKKO_FUZZ_ONLY_ITERATION`); each input is written to disk before it
+  runs, so a crash or hang leaves it behind. Rejected: SharpFuzz/libFuzzer (a new dependency and a
+  Linux-first toolchain for a Windows-only product). Scope changes against the 2026-09-24 report:
+  the `pakko://` router no longer exists (T-F232) — its successor `LaunchArguments.TryParse` is
+  fuzzed; the `tar -tvf` parser reads tar.exe's own output, not archive bytes, and is left out.
+  First run (seed 777, 300 iterations) found one real bug: a local-header offset past the end of
+  the archive escaped `RawZipEntryLocator.LocateAll` as `ArgumentOutOfRangeException` (a
+  `MemoryStream` seek above 2 GiB) or `EndOfStreamException` (a `FileStream`). Now a bounds check
+  throws `InvalidDataException`; regression test written first and seen failing.
+- **Nightly jobs.** `canary-slow`, `canary-arm64` (`windows-11-arm`) and `canary-asan` use the
+  masked `failed`-output pattern; `canary-status` now reads every `needs` job generically. ASan was
+  proven to fail before being counted as a gate: a deliberate heap overflow in a gtest aborted
+  with `AddressSanitizer: heap-buffer-overflow`. `canary-fuzz` sits outside `canary-status`'s
+  `needs`; its seed is `run_id` reduced below 2^31, because `FuzzRunner` reads an int and an
+  unparsable value now fails the run instead of silently reusing the default seed.
+- **Vulnerable packages: restore, not `dotnet list package --vulnerable`.** Probed in a scratch
+  project with the repo's `Directory.Build.props`: NuGetAudit (on by default in the .NET 10 SDK,
+  mode `all` = transitive too) plus `TreatWarningsAsErrors` already fails restore with NU1903 for
+  System.Text.Json 8.0.4 and Newtonsoft.Json 12.0.1. A separate list step would duplicate it; the
+  three audit properties are pinned in `Directory.Build.props` so an SDK change can't relax them.
+  Escape hatch for an advisory with no fixed version yet: a `<NuGetAuditSuppress Include="<advisory
+  URL>" />` item with a comment naming the advisory and the task tracking it — never a blanket
+  `NoWarn` of NU190x.

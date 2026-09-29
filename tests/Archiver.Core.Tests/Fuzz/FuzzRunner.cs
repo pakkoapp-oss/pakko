@@ -71,6 +71,15 @@ internal static class FuzzRunner
         return unchecked((int)hash ^ (BaseSeed * 486187739) ^ (iteration * 16777619));
     }
 
-    private static int? ReadInt(string name) =>
-        int.TryParse(Environment.GetEnvironmentVariable(name), out int value) ? value : null;
+    // A set but unparsable value throws: silently falling back to the default seed would make every
+    // nightly run fuzz the same inputs and still look green.
+    private static int? ReadInt(string name)
+    {
+        string? raw = Environment.GetEnvironmentVariable(name);
+        if (string.IsNullOrEmpty(raw))
+            return null;
+        return int.TryParse(raw, out int value)
+            ? value
+            : throw new InvalidOperationException($"{name}='{raw}' is not a 32-bit integer.");
+    }
 }

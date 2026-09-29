@@ -3,6 +3,7 @@ using Archiver.Core.Models;
 using Archiver.Core.Services;
 using Archiver.Core.Services.Zip.Decryption;
 using Archiver.Core.Tests.Helpers;
+using FluentAssertions;
 
 namespace Archiver.Core.Tests.Fuzz;
 
@@ -37,8 +38,9 @@ public sealed class ZipFuzzTests : IDisposable
 
     [Theory]
     [MemberData(nameof(SeedArchives))]
-    public Task LocateAll_MutatedArchive_ThrowsOnlyWhatCallersCatch(string seed) =>
-        FuzzRunner.RunAsync("locate", seed, File.ReadAllBytes(FixtureHelper.Archive(seed)), input =>
+    public async Task LocateAll_MutatedArchive_ThrowsOnlyWhatCallersCatch(string seed)
+    {
+        Func<Task> fuzz = () => FuzzRunner.RunAsync("locate", seed, File.ReadAllBytes(FixtureHelper.Archive(seed)), input =>
         {
             // Every caller (listing, Test, Extract) catches IOException and InvalidDataException
             // around this parser; anything else would escape the engines' "never throws" contract.
@@ -53,29 +55,38 @@ public sealed class ZipFuzzTests : IDisposable
             }
             return Task.CompletedTask;
         });
+        await fuzz.Should().NotThrowAsync();
+    }
 
     [Theory]
     [MemberData(nameof(SeedArchives))]
-    public Task ListEntriesAsync_MutatedArchive_NeverThrows(string seed) =>
-        FuzzRunner.RunAsync("list", seed, File.ReadAllBytes(FixtureHelper.Archive(seed)), async input =>
+    public async Task ListEntriesAsync_MutatedArchive_NeverThrows(string seed)
+    {
+        Func<Task> fuzz = () => FuzzRunner.RunAsync("list", seed, File.ReadAllBytes(FixtureHelper.Archive(seed)), async input =>
         {
             string path = WriteInput(input);
             await _sut.ListEntriesAsync(path);
         });
+        await fuzz.Should().NotThrowAsync();
+    }
 
     [Theory]
     [MemberData(nameof(SeedArchives))]
-    public Task TestAsync_MutatedArchive_NeverThrows(string seed) =>
-        FuzzRunner.RunAsync("test", seed, File.ReadAllBytes(FixtureHelper.Archive(seed)), async input =>
+    public async Task TestAsync_MutatedArchive_NeverThrows(string seed)
+    {
+        Func<Task> fuzz = () => FuzzRunner.RunAsync("test", seed, File.ReadAllBytes(FixtureHelper.Archive(seed)), async input =>
         {
             string path = WriteInput(input);
             await _sut.TestAsync([path], resolvePasswordAsync: FixedPassword);
         });
+        await fuzz.Should().NotThrowAsync();
+    }
 
     [Theory]
     [MemberData(nameof(SeedArchives))]
-    public Task ExtractAsync_MutatedArchive_NeverThrowsOrWritesOutsideDestination(string seed) =>
-        FuzzRunner.RunAsync("extract", seed, File.ReadAllBytes(FixtureHelper.Archive(seed)), async input =>
+    public async Task ExtractAsync_MutatedArchive_NeverThrowsOrWritesOutsideDestination(string seed)
+    {
+        Func<Task> fuzz = () => FuzzRunner.RunAsync("extract", seed, File.ReadAllBytes(FixtureHelper.Archive(seed)), async input =>
         {
             string sandbox = Path.Combine(_temp.Path, Path.GetRandomFileName());
             string inputDir = Path.Combine(sandbox, "in");
@@ -96,8 +107,10 @@ public sealed class ZipFuzzTests : IDisposable
                     ResolvePasswordAsync = FixedPassword,
                 });
 
-                string[] outside = Directory.EnumerateFileSystemEntries(sandbox, "*", SearchOption.AllDirectories)
-                    .Where(p => !IsUnder(p, inputDir) && !IsUnder(p, destination) && p != Path.Combine(sandbox, "out"))
+                // The whole temp root, not just the sandbox: a "..\..\x" entry would land above it.
+                string[] outside = Directory.EnumerateFileSystemEntries(_temp.Path, "*", SearchOption.AllDirectories)
+                    .Where(p => !IsUnder(p, inputDir) && !IsUnder(p, destination)
+                        && p != sandbox && p != Path.Combine(sandbox, "out"))
                     .ToArray();
                 if (outside.Length > 0)
                     throw new FuzzViolation($"Extraction wrote outside the destination: {string.Join(", ", outside)}");
@@ -107,20 +120,23 @@ public sealed class ZipFuzzTests : IDisposable
                 Directory.Delete(sandbox, recursive: true);
             }
         });
+        await fuzz.Should().NotThrowAsync();
+    }
 
     [Fact]
-    public Task LaunchArgumentsTryParse_MutatedArguments_NeverThrows()
+    public async Task LaunchArgumentsTryParse_MutatedArguments_NeverThrows()
     {
         // T-F232 replaced the pakko:// URI router with these activation arguments; they are the
         // App's only input that arrives from another process.
         string valid = LaunchArguments.Format(LaunchOperation.Extract, [@"C:\a b\archive.zip", "D:\\\u0444\u0430\u0439\u043b.zip"]);
-        return FuzzRunner.RunAsync("launch-args", "launch-args", Encoding.UTF8.GetBytes(valid), input =>
+        Func<Task> fuzz = () => FuzzRunner.RunAsync("launch-args", "launch-args", Encoding.UTF8.GetBytes(valid), input =>
         {
             if (LaunchArguments.TryParse(Encoding.UTF8.GetString(input), out _, out IReadOnlyList<string> files)
                 && files.Any(string.IsNullOrWhiteSpace))
                 throw new FuzzViolation("TryParse returned a blank file path.");
             return Task.CompletedTask;
         });
+        await fuzz.Should().NotThrowAsync();
     }
 
     private string WriteInput(byte[] input)

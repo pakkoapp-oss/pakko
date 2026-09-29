@@ -4640,8 +4640,11 @@ real console) and T-F226's deferred per-arrow diagram ritual — carried as open
   S6966, S3358), behavior unchanged. `CliLineInput.Read` and the `ZipArchiveService` finding
   remain; re-check Sonar after the push.
 
-- [ ] **Status:** open — for the fix batch (user decision 2026-09-24: this batch is discovery only).
-  Open on `main` after the 2026-09-24 push (commit 8952c12), from the SonarCloud API:
+- [x] **Done 2026-09-29 (G4):** fec53e3 (IDE0036 — `.editorconfig`'s modifier order lacked `file`;
+  S3358; S125) and d623295 (`ZipArchiveService` S3776/S107 splits, behavior unchanged). Sonar on
+  `main` after d623295's green CI: only SYSLIB1054/1096 (T-F287 on `sec-t-f283`, T-F288) and the
+  documented S1135 Won't-Fix remain.
+- **Original report:** open on `main` after the 2026-09-24 push (commit 8952c12), from the SonarCloud API:
   - S3776 cognitive complexity: `Archiver.CLI/Program.cs` `RunArchiveAsync` (23, line ~351) and
     `RunExtractAsync` (16, line ~66); `ZipArchiveService.cs` line ~527 (18); `CliLineInput.Read` (16).
   - S6966 (await `WriteLineAsync`): `Program.cs` lines ~357, ~413.
@@ -5431,7 +5434,14 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 
 ### T-F240 — CI tier gaps for a project that parses untrusted input (P2)
 
-- [ ] **Status:** open — checked 2026-09-24 against `.github/workflows/build.yml`/`canary.yml`.
+- [~] **Progress 2026-09-29 (G4):** fuzzer (`Category=Fuzz`) plus its first finding fixed
+  (`RawZipEntryLocator` offset bound); NuGetAudit on restore is the vulnerable-package gate (no
+  separate list step); `.github/dependabot.yml`; nightly `canary-slow`/`canary-arm64`/`canary-asan`
+  (masked) and `canary-fuzz` (not masked); release-checklist step in CLAUDE.md "Deployment". Scope
+  changes: `pakko://` is gone (T-F232), its successor `LaunchArguments.TryParse` is fuzzed; the
+  tar parser reads tar.exe's output, not archive bytes, so it is left out. Closes when a real
+  `workflow_dispatch` of `canary.yml` has every new job green. See `docs/DECISIONS.md`'s T-F240 entry.
+- **Original report:** open — checked 2026-09-24 against `.github/workflows/build.yml`/`canary.yml`.
   Missing: a `dotnet list package --vulnerable --include-transitive` gate (all 11 projects are
   clean today); a `.github/dependabot.yml` (`build.yml:96` describes Dependabot PRs, but no config
   exists); fuzzing of the untrusted-input parsers (Zip64 locator, `RawZipEntryLocator`, AES/ZipCrypto

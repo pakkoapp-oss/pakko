@@ -12,7 +12,7 @@ name: Canary
 # and, if today failed, the real consecutive-failure `streak` (reconstructed from real history via
 # canary-failed-day, a trivial sentinel job that only runs when today failed, so its own recorded
 # conclusion -- success = failed that day, skipped = didn't -- across past runs IS the persisted
-# state). canary-alert is the ONLY job allowed to actually fail: streak < 3 -> it exits 0 with a
+# state). canary-alert is the only escalation job allowed to actually fail: streak < 3 -> it exits 0 with a
 # `::warning::` only (no red X, no email); streak >= 3 -> it exits 1 for real (GitHub's default
 # failure email) and creates/updates one de-duplicated tracking Issue, closed automatically on the
 # next green run. Deliberately keeping canary-status itself always-green (rather than having it
@@ -26,6 +26,14 @@ name: Canary
 # windows-latest's current image lacks the ARM64 v143 variant (MSB8020, confirmed unfixable after
 # three attempts, T-F122). Escalating that here would open a tracking Issue that could never
 # auto-close, since the cause isn't transient. That gap stays tracked only via build.yml/T-F122.
+#
+# T-F240: no longer drift-only. The nightly run also carries the checks too slow or too
+# specialized for every push -- `Category=Slow` (canary-slow), the .NET suite on a real ARM64
+# runner (canary-arm64), the C++ tests under MSVC AddressSanitizer (canary-asan) -- under the same
+# masked 3-day escalation, and a fuzzing run (canary-fuzz) that is NOT masked: it sits outside
+# canary-status's `needs`, fails red on the first bad night and uploads the failing inputs, since
+# a fuzz finding is a real bug, not a transient. canary-alert and canary-fuzz are the two jobs
+# allowed to fail. Release checklist: CLAUDE.md's "Deployment" section.
 on:
   schedule:
     # Deliberately not top-of-hour -- GitHub's own scheduling docs note :00 is the most delayed/
@@ -132,12 +140,188 @@ jobs:
           $failed = ($outcomes -contains 'failure') -or ($outcomes -contains 'cancelled')
           "failed=$($failed.ToString().ToLower())" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
+  # T-F240: Zip64 and T-F114's performance comparisons -- real multi-second cost, too slow for
+  # every push. Same masked shape as canary-dotnet.
+  canary-slow:
+    runs-on: windows-latest
+    permissions:
+      contents: read
+    outputs:
+      failed: ${{ steps.record.outputs.failed }}
+    steps:
+      - uses: actions/checkout@v4
+        continue-on-error: true
+        id: checkout
+
+      - uses: actions/setup-dotnet@v4
+        continue-on-error: true
+        id: setup_dotnet
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Run Category=Slow tests (2 attempts)
+        id: slow_test
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          $attempts = 2
+          for ($i = 1; $i -le $attempts; $i++) {
+            if ($i -gt 1) { Start-Sleep -Seconds 15 }
+            dotnet test --filter "Category=Slow"
+            if ($LASTEXITCODE -eq 0) { exit 0 }
+          }
+          throw "Category=Slow tests failed after $attempts attempt(s)."
+
+      - name: Record result
+        id: record
+        if: always()
+        shell: pwsh
+        run: |
+          $outcomes = @('${{ steps.checkout.outcome }}', '${{ steps.setup_dotnet.outcome }}', '${{ steps.slow_test.outcome }}')
+          $failed = ($outcomes -contains 'failure') -or ($outcomes -contains 'cancelled')
+          "failed=$($failed.ToString().ToLower())" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+  # T-F240: the ARM64 CLI and MSIX are built on every push but their tests never ran on ARM64.
+  # The default filter's PerformanceTests have no timing assertions, and SevenZipRunner picks the
+  # vendored arm64 7za.exe by process architecture.
+  canary-arm64:
+    runs-on: windows-11-arm
+    permissions:
+      contents: read
+    outputs:
+      failed: ${{ steps.record.outputs.failed }}
+    steps:
+      - uses: actions/checkout@v4
+        continue-on-error: true
+        id: checkout
+
+      - uses: actions/setup-dotnet@v4
+        continue-on-error: true
+        id: setup_dotnet
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Run .NET test suite on ARM64 (2 attempts)
+        id: build_test
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          Write-Host "Process architecture: $([System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture)"
+          $attempts = 2
+          for ($i = 1; $i -le $attempts; $i++) {
+            if ($i -gt 1) { Start-Sleep -Seconds 15 }
+            dotnet test --filter "Category!=Slow&Category!=VeryLarge"
+            if ($LASTEXITCODE -eq 0) { exit 0 }
+          }
+          throw "dotnet test on ARM64 failed after $attempts attempt(s)."
+
+      - name: Record result
+        id: record
+        if: always()
+        shell: pwsh
+        run: |
+          $outcomes = @('${{ steps.checkout.outcome }}', '${{ steps.setup_dotnet.outcome }}', '${{ steps.build_test.outcome }}')
+          $failed = ($outcomes -contains 'failure') -or ($outcomes -contains 'cancelled')
+          "failed=$($failed.ToString().ToLower())" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+  # T-F240: the C++ tests (and, through the ProjectReference, Archiver.ShellExtension.dll itself)
+  # built with MSVC AddressSanitizer. Proven to fail: a deliberate heap overflow in a gtest aborted
+  # with "AddressSanitizer: heap-buffer-overflow" (2026-09-29). The ASan runtime DLL is not on
+  # PATH by default; it comes from the MSVC toolset the build used.
+  canary-asan:
+    runs-on: windows-latest
+    permissions:
+      contents: read
+    outputs:
+      failed: ${{ steps.record.outputs.failed }}
+    steps:
+      - uses: actions/checkout@v4
+        continue-on-error: true
+        id: checkout
+
+      - name: Set up MSBuild
+        uses: microsoft/setup-msbuild@6fb02220983dee41ce7ae257b6f4d8f9bf5ed4ce # v2.0.0
+        continue-on-error: true
+        id: setup_msbuild
+
+      - name: Set up NuGet
+        uses: nuget/setup-nuget@d105a947828025cd7a980103c35ba2bfae586d0f # v2.0.2
+        continue-on-error: true
+        id: setup_nuget
+
+      - name: Build and run Archiver.ShellExtension.Tests under ASan
+        id: asan_test
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          nuget restore tests\Archiver.ShellExtension.Tests\Archiver.ShellExtension.Tests.vcxproj -SolutionDirectory .
+          if ($LASTEXITCODE -ne 0) { throw "nuget restore failed (exit $LASTEXITCODE)" }
+          $vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.Component.MSBuild -property installationPath
+          # VS 2026 ships v143 as a side toolset with its own version file; VS 2022's default is v143.
+          $verFile = Join-Path $vs 'VC\Auxiliary\Build\Microsoft.VCToolsVersion.v143.default.txt'
+          if (-not (Test-Path $verFile)) { $verFile = Join-Path $vs 'VC\Auxiliary\Build\Microsoft.VCToolsVersion.default.txt' }
+          $asanDir = Join-Path $vs "VC\Tools\MSVC\$((Get-Content $verFile -Raw).Trim())\bin\Hostx64\x64"
+          if (-not (Test-Path (Join-Path $asanDir 'clang_rt.asan_dynamic-x86_64.dll'))) { throw "ASan runtime not found in $asanDir" }
+          Write-Host "ASan runtime: $asanDir"
+          msbuild tests\Archiver.ShellExtension.Tests\Archiver.ShellExtension.Tests.vcxproj "/p:SolutionDir=${{ github.workspace }}\" /p:Configuration=Debug /p:Platform=x64 /p:EnableASAN=true
+          if ($LASTEXITCODE -ne 0) { throw "ASan build failed (exit $LASTEXITCODE)" }
+          $env:PATH = "$asanDir;$env:PATH"
+          & "tests\Archiver.ShellExtension.Tests\bin\x64\Debug\Archiver.ShellExtension.Tests.exe"
+          if ($LASTEXITCODE -ne 0) { throw "Archiver.ShellExtension.Tests failed under ASan (exit $LASTEXITCODE)" }
+
+      - name: Record result
+        id: record
+        if: always()
+        shell: pwsh
+        run: |
+          $outcomes = @('${{ steps.checkout.outcome }}', '${{ steps.setup_msbuild.outcome }}', '${{ steps.setup_nuget.outcome }}', '${{ steps.asan_test.outcome }}')
+          $failed = ($outcomes -contains 'failure') -or ($outcomes -contains 'cancelled')
+          "failed=$($failed.ToString().ToLower())" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+  # T-F240: deliberately NOT masked and NOT in canary-status's needs (see the header). A fresh seed
+  # every night; the failure message names the seed and iteration, and the failing input is
+  # uploaded. run_id exceeds int32, so it is reduced first -- FuzzRunner rejects an unparsable seed.
+  canary-fuzz:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      # --blame-hang-timeout is per test case (one seed archive x all iterations); a single
+      # iteration is already bounded to 30 s by FuzzRunner.
+      - name: Fuzz the untrusted-input parsers
+        shell: pwsh
+        env:
+          PAKKO_FUZZ_ITERATIONS: "500"
+          PAKKO_FUZZ_OUTPUT: ${{ runner.temp }}\pakko-fuzz
+        run: |
+          $env:PAKKO_FUZZ_SEED = [string]([long]'${{ github.run_id }}' % 2147483647)
+          Write-Host "PAKKO_FUZZ_SEED=$env:PAKKO_FUZZ_SEED PAKKO_FUZZ_ITERATIONS=$env:PAKKO_FUZZ_ITERATIONS"
+          dotnet test tests/Archiver.Core.Tests --filter "Category=Fuzz" --blame-crash --blame-hang-timeout 15m --results-directory "${{ runner.temp }}\fuzz-results"
+          if ($LASTEXITCODE -ne 0) { throw "Fuzzing found a failure -- see the fuzz-inputs artifact." }
+
+      - name: Upload failing inputs and dumps
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzz-inputs
+          path: |
+            ${{ runner.temp }}\pakko-fuzz
+            ${{ runner.temp }}\fuzz-results
+
   # Deliberately always exits 0 -- this job's outputs are consumed by canary-failed-day and
   # canary-alert below, and whether a *failed* job's outputs reliably propagate to jobs that
   # `needs` it is not something this design wants to depend on. See docs/DECISIONS.md's T-F187
   # entry for the failure mode this sidesteps.
   canary-status:
-    needs: [canary-dotnet, canary-shellext]
+    # Every masked job goes here; the evaluation below reads them all generically (T-F240).
+    needs: [canary-dotnet, canary-shellext, canary-slow, canary-arm64, canary-asan]
     if: always()
     runs-on: ubuntu-latest
     permissions:
@@ -149,28 +333,24 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       TRACKING_TITLE: "CI Canary: build failing for 3+ consecutive days"
+      NEEDS_JSON: ${{ toJSON(needs) }}
     steps:
       - name: Evaluate today's result and compute the streak
         id: evaluate
         shell: bash
         run: |
           set -euo pipefail
-          dotnet_result="${{ needs.canary-dotnet.result }}"
-          shellext_result="${{ needs.canary-shellext.result }}"
-          dotnet_failed_flag="${{ needs.canary-dotnet.outputs.failed }}"
-          shellext_failed_flag="${{ needs.canary-shellext.outputs.failed }}"
+          echo "$NEEDS_JSON" | jq -r 'to_entries[] | "\(.key): result=\(.value.result) failed=\(.value.outputs.failed // "-")"'
 
           # A human-cancelled run is neither a pass nor a real failure -- don't advance or
           # reset the streak, and leave any existing tracking Issue exactly as it is.
-          if [ "$dotnet_result" = "cancelled" ] || [ "$shellext_result" = "cancelled" ]; then
+          if echo "$NEEDS_JSON" | jq -e 'any(.[]; .result == "cancelled")' > /dev/null; then
             echo "Run was cancelled -- not counted toward the failure streak, tracking Issue left untouched."
             echo "today_failed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          today_failed=false
-          if [ "$dotnet_failed_flag" = "true" ] || [ "$dotnet_result" != "success" ]; then today_failed=true; fi
-          if [ "$shellext_failed_flag" = "true" ] || [ "$shellext_result" != "success" ]; then today_failed=true; fi
+          today_failed=$(echo "$NEEDS_JSON" | jq -r 'any(.[]; .result != "success" or .outputs.failed == "true")')
           echo "today_failed=$today_failed" >> "$GITHUB_OUTPUT"
 
           if [ "$today_failed" = "false" ]; then
@@ -249,7 +429,8 @@ jobs:
       - name: Record today as a failure day
         run: echo "Canary failed today -- this job's own success/skip status is read back by future runs to reconstruct the consecutive-failure streak."
 
-  # The ONLY job in this workflow allowed to actually fail. Nothing downstream consumes its
+  # The only escalation job allowed to actually fail (canary-fuzz fails on its own, outside the
+  # escalation). Nothing downstream consumes its
   # outputs, so whether a failed job's outputs propagate correctly is a non-issue here -- unlike
   # canary-status, which deliberately never fails for exactly that reason.
   canary-alert:
@@ -269,7 +450,7 @@ jobs:
           streak="${{ needs.canary-status.outputs.streak }}"
 
           if [ -z "$streak" ] || [ "$streak" -lt 3 ]; then
-            echo "::warning::Canary build failed today (day ${streak:-1} of 3 before escalation) -- see canary-dotnet/canary-shellext job logs."
+            echo "::warning::Canary build failed today (day ${streak:-1} of 3 before escalation) -- canary-status's log lists which job failed."
             exit 0
           fi
 

@@ -25,7 +25,7 @@ dotnet test tests/Archiver.Core.Tests --filter "Category=VeryLarge"
 bare `Category!=Slow` run picked up T-F114's two one-large-file tests, which are exactly the ones
 meant to be on-demand-only). Always combine both: `Category!=Slow&Category!=VeryLarge`.**
 
-**Three tiers, not two — `Category` alone isn't enough to describe cost here:**
+**Three cost tiers, not two, plus Fuzz — `Category` alone isn't enough to describe cost here:**
 - **(no trait)** — default fast unit tests, always run.
 - **`[Trait("Category", "Slow")]`** — genuinely expensive but bounded (seconds, not minutes); run
   before a release or when touching Zip64/compression-path-adjacent code.
@@ -35,6 +35,22 @@ meant to be on-demand-only). Always combine both: `Category!=Slow&Category!=Very
   explicit demand via `Category=VeryLarge`, per user request: the "short" perf scenarios below
   (many-small-files, hybrid) should always run under a normal `Category=Slow` pass; only the
   genuinely large ones need a separate, deliberate opt-in.
+- **`[Trait("Category", "Fuzz")]`** (T-F240) — `tests/Archiver.Core.Tests/Fuzz/`. Seeded mutational
+  fuzzing, no fuzzing library: `ByteMutator` mutates every fixture ZIP (except EICAR), half the
+  offsets just after a ZIP signature. Targets: `RawZipEntryLocator.LocateAll` may throw only
+  `IOException`/`InvalidDataException`; `ListEntriesAsync`/`TestAsync`/`ExtractAsync` never throw,
+  and extraction writes nothing outside the destination; `LaunchArguments.TryParse` never throws.
+  Runs in the default filter at 10 iterations per seed input with a fixed seed (a few seconds);
+  the nightly `canary-fuzz` job runs 500 with a fresh seed. Knobs: `PAKKO_FUZZ_ITERATIONS`,
+  `PAKKO_FUZZ_SEED`, `PAKKO_FUZZ_ONLY_ITERATION` (replays one case from a failure message),
+  `PAKKO_FUZZ_OUTPUT` (default `%TEMP%\pakko-fuzz`; each input is written as `current-*.bin` before
+  it runs, a failure is kept as `failure-*.bin`). A set but unparsable knob fails the run.
+  ```powershell
+  $env:PAKKO_FUZZ_SEED='777'; $env:PAKKO_FUZZ_ITERATIONS='300'
+  dotnet test tests/Archiver.Core.Tests --filter "Category=Fuzz"
+  ```
+  First finding (seed 777): a local-header offset past the end of the archive escaped
+  `LocateAll` as `ArgumentOutOfRangeException`; regression test in `RawZipEntryLocatorTests`.
 
 `ZipArchiveServiceZip64Tests.cs` (T-F20) creates 65,600 real files (the `Slow`-tagged tests) and a
 >4 GiB sparse file (the `VeryLarge`-tagged test) to exercise Zip64's entry-count and large-size

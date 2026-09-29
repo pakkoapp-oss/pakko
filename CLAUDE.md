@@ -329,10 +329,7 @@ XML Documentation section rewritten to match actual practice (summary-only inter
 example no real interface followed.
 
 **Test count:** run `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` for current ground
-truth (as of 2026-08-11: ~826 .NET tests across `Archiver.Core.Tests`,
-`Archiver.Core.PerformanceTests`, `Archiver.Shell.Tests`, `Archiver.App.Core.Tests`,
-`Archiver.Core.IntegrationTests`, `Archiver.CLI.Tests`; C++ `Archiver.ShellExtension.Tests.exe`
-separately, 100/100 as of T-F150) — don't trust any older count in git history as current.
+truth; never trust a count written in a doc.
 
 **Next work:** Future tasks in `docs/TASKS.md`, including **T-F148** (SYSLIB1054 conversion, split
 out of T-F147), **T-F159** (unify `GetUniqueFilePath`, split out of T-F158), **T-F160**
@@ -468,7 +465,7 @@ history narrative below, which predates the move and was not mechanically rewrit
 | `CHANGELOG.md` | **Canonical owner of per-release history** — one section per version tag, plain-language summary of the `T-Fxx` tasks shipped since the previous tag | Cutting a release | Every version tag — see this file's "Deployment" section |
 | `docs/index.html` + `docs/uk/index.html` | Public project website — bilingual EN/UK landing page: trust model, what's implemented, download links. **Deployment changed T-F172 (2026-08-13):** GitHub Pages is no longer served directly from the `/docs` branch path; `.github/workflows/build.yml`'s `docs`/`deploy-pages` jobs assemble these files (copied verbatim via an explicit allowlist) plus the DocFX site into one Pages artifact on every push to `main` — content and authoring are unchanged, only the delivery mechanism | User-facing — not an agent instruction source | Supported-format list changes, a major feature ships, download/release mechanics change, or roadmap/version-status changes — keep both language versions in sync with each other and with `README.md`'s "Project Status"/"Supported Formats" |
 | `docfx.json` + `toc.yml` + `index.md` + `api/index.md` (repo root) | DocFX config for the generated developer/API docs site (T-F172) — book content is the *existing* curated `docs/*.md`/root `*.md` files read in place (no duplication), API reference is generated from `Archiver.Core`/`Archiver.App.Core`'s own XML `///` comments. Live at `https://pakkoapp-oss.github.io/pakko/dev/` | Adding a new conceptual doc that should appear in the site's nav, or a new class library whose XML comments should be included in the API reference | The curated article list changes, or a new project's API should be included — remember to add its `.csproj` to `docfx.json`'s `metadata[0].src.files` too |
-| `.github/workflows/canary.yml` | Daily canary build on floating toolchain versions (T-F187) — catches SDK/NuGet/MSVC drift before `build.yml`'s pin needs bumping; 3-day-streak escalation to a tracking GitHub Issue | Investigating a canary failure or its tracking Issue | Escalation logic, schedule, or build scope changes |
+| `.github/workflows/canary.yml` | Nightly canary on floating toolchain versions (T-F187) plus the checks too slow for every push (T-F240: `Category=Slow`, ARM64 tests, C++ tests under ASan) — 3-day-streak escalation to a tracking GitHub Issue; `canary-fuzz` is outside it and fails red at once | Investigating a canary failure or its tracking Issue | Escalation logic, schedule, or build scope changes |
 
 **Canonical topic owners — do not duplicate, link instead:**
 - Security/threat-model/CVE/supply-chain rationale → `SECURITY.md` only. `docs/SPEC.md`/`README.md` keep at most a 2-line teaser with a link.
@@ -880,6 +877,8 @@ dotnet test --filter "Category!=Slow&Category!=VeryLarge"  # the actual default 
 dotnet test --filter "Category=Slow"    # Zip64 + T-F114 perf tests — real multi-second cost
 dotnet test -c Release --filter "Category=VeryLarge"  # >4 GiB Zip64 test + T-F114's one-large-file
                                             # scenarios — on demand only, Release only (T-F272)
+# Fuzz (T-F240) is in the default run at 10 iterations; a longer run (knobs: docs/TESTING.md):
+$env:PAKKO_FUZZ_ITERATIONS='300'; dotnet test tests/Archiver.Core.Tests --filter "Category=Fuzz"
 
 # Build core only
 dotnet build src/Archiver.Core
@@ -1373,6 +1372,10 @@ Two more, not duplicated elsewhere:
   before this fix, every prior release's GitHub-side notes were the template alone, with no
   changelog content at all. Get the header wrong or omit a tag's section and that release's notes
   silently fall back to template-only again.
+  **Before tagging, run the nightly checks on the release commit (T-F240):** after pushing it,
+  `gh workflow run canary.yml --ref main`, confirm the run's `headSha` is that commit, and read the
+  verdict from `gh run view <id> --json jobs` — not the run's colour, since the masked jobs report
+  success even when they failed: `canary-failed-day` must be `skipped` and `canary-fuzz` `success`.
 
 ---
 
