@@ -112,6 +112,10 @@ zips each as `pakko-<rid>.zip`, and writes a `SHA256SUMS` file covering both zip
 attach directly to a GitHub Release. See `CLI.md`'s "Distribution" section for why no `tar.exe`
 copy is bundled alongside it.
 
+`-OutputRoot <dir>` publishes elsewhere. The folder is wiped first, so the script accepts only a
+new or empty folder, the default, or one it created before (it leaves a `.pakko-cli-output`
+marker); any other non-empty folder is refused (T-F259).
+
 ---
 
 ## Continuous Integration (T-F122)

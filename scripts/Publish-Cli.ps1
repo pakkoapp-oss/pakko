@@ -18,7 +18,9 @@
 .PARAMETER Configuration
     Build configuration (default: Release).
 .PARAMETER OutputRoot
-    Directory to publish into (default: artifacts/cli under the repo root).
+    Directory to publish into (default: artifacts/cli under the repo root). Its old contents
+    are deleted first, so it must be new, empty, the default, or a previous output of this
+    script; any other non-empty folder is refused.
 .PARAMETER Version
     Overrides Archiver.CLI.csproj's <Version> for this publish (drives `pakko --version`'s
     output). CI passes the pushed git tag here (stripped of its leading "v") so a released
@@ -44,14 +46,25 @@ $ErrorActionPreference = 'Stop'
 # ── Paths ─────────────────────────────────────────────────────────────────────
 $repoRoot = Split-Path $PSScriptRoot -Parent
 $csproj   = Join-Path $repoRoot 'src\Archiver.CLI\Archiver.CLI.csproj'
+$defaultOutputRoot = Join-Path $repoRoot 'artifacts\cli'
 if (-not $OutputRoot) {
-    $OutputRoot = Join-Path $repoRoot 'artifacts\cli'
+    $OutputRoot = $defaultOutputRoot
 }
+$OutputRoot = [System.IO.Path]::GetFullPath($OutputRoot)
+$ownerMarker = Join-Path $OutputRoot '.pakko-cli-output'
 
-if (Test-Path $OutputRoot) {
-    Remove-Item -Recurse -Force $OutputRoot
+# T-F259: -OutputRoot is caller-supplied, so only a folder this script owns is ever wiped.
+if (Test-Path -LiteralPath $OutputRoot) {
+    $isDefault = $OutputRoot.TrimEnd('\') -ieq $defaultOutputRoot.TrimEnd('\')
+    $isOwned   = Test-Path -LiteralPath $ownerMarker
+    $isEmpty   = -not (Get-ChildItem -LiteralPath $OutputRoot -Force | Select-Object -First 1)
+    if (-not ($isDefault -or $isOwned -or $isEmpty)) {
+        throw "OutputRoot '$OutputRoot' is not empty and was not created by this script; refusing to delete it. Pass an empty or new folder."
+    }
+    Remove-Item -LiteralPath $OutputRoot -Recurse -Force
 }
 New-Item -ItemType Directory -Force -Path $OutputRoot | Out-Null
+New-Item -ItemType File -Path $ownerMarker | Out-Null
 
 $architectures = if ($Architecture -eq 'both') { @('x64', 'arm64') } else { @($Architecture) }
 $zipPaths = @()

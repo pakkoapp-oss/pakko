@@ -5924,7 +5924,10 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 
 ### T-F259 — `Publish-Cli.ps1 -OutputRoot` recursively deletes whatever folder it is given (P2)
 
-- [ ] **Status:** open — code-confirmed 2026-09-25. `scripts/Publish-Cli.ps1:51-53` runs
+- [x] **Status:** done 2026-09-29 — the script wipes only the default folder, an empty one, or
+  one carrying its own `.pakko-cli-output` marker; any other non-empty folder is refused before
+  anything is deleted. Checked: a foreign folder with a file is refused and kept; two runs into
+  a new folder both succeed. Was: code-confirmed 2026-09-25. `scripts/Publish-Cli.ps1:51-53` runs
   `Remove-Item -Recurse -Force $OutputRoot` on a user-supplied parameter documented as "Directory
   to publish into", with no check that it is empty, under the repo, or created by the script —
   `-OutputRoot $HOME\Desktop` wipes the Desktop. Delete only a folder the script owns (e.g. a
