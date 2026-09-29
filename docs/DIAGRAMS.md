@@ -48,6 +48,7 @@ documentation that lies.
 | `MainWindow.xaml` row added/removed, or any row's `Visibility` binding changed; new `IsBrowsingArchive`-gated (or should-be-gated) UI element | **6. State (UI mode)** | Exactly the category that missed Row 0 never hiding in browse mode (found 2026-07-13 by manual comparison, not by this table) — a per-row visibility table is the only thing that would have caught it before shipping. |
 | `HelperOperationUi`'s failover/close handling, `OperationWindowModel`'s states, or a new protocol message | **8. Sequence (operation window helper)** | Close, clean end and crash differ only by the last frame on the pipe — a missed case either loses the result or shows it twice. |
 | New branch in `AntivirusScanService`'s ZIP-vs-tar-family dispatch, or either scan path's error handling | **7. Sequence (AMSI scan)** | A scan silently returning `Clean` for a path it never actually examined (unsupported format, no provider, oversized entry, a vanished tar quarantine file) is the exact failure class this feature exists to prevent — a missed branch here is a false negative, the highest-severity outcome this diagram category can catch. |
+| `ArchiveCreationRouter`, either engine's `ArchiveAsync`/`CompressAsync` branching (mode, parallel threshold, encryption, conflict pre-pass, tar argument building) | **9. Activity (archive creation)** | The two engines differ on purpose (password, parallelism, command line) — a change that treats them as mirror images breaks the one it did not look at. |
 
 Update the diagram in the same commit as the code change, alongside `dotnet test` — not as a
 follow-up. Re-derive the affected part from the current source per the Ground Truth Rule above;
@@ -1034,6 +1035,81 @@ apart only by that last frame. A helper that exits without writing it turns ever
 into a spurious Win32 failover, so `ShellPipe.Send` writes synchronously before the window closes.
 A prompt is completed by exactly one of: the helper's answer, the fallback re-asking it after a
 crash, or the safe answer after a cancel — whoever removes it from the pending map under the lock.
+
+---
+
+## 9. Activity — Archive creation routing (T-F223)
+
+Sources read for this diagram (2026-09-29): `src/Archiver.Core/Services/ArchiveCreationRouter.cs`;
+`ZipArchiveService.cs` — `ArchiveAsync`, `ResolveEncryptionPasswordAsync`, `ArchiveSingleArchiveModeAsync`,
+`ArchiveSeparateArchivesModeAsync`, `ResolveSeparateArchivePlansAsync`, `ArchiveSingleSeparatePathAsync`;
+`TarSandboxedService.cs` — `CompressAsync`, `ProcessSeparateArchivesAsync`, `CompressToArchiveAsync`,
+`AppendSourcesToTarArgs`, `CountRecursiveEntriesAndBytes`, `RunUnsandboxedTarAsync`; the callers
+`MainViewModel.ArchiveAsync`, `ShellCommands.ArchiveAsync` and `Archiver.CLI`'s `BuildArchiveOptions`/
+`CliArgumentParser` (`-t{type}`).
+
+```mermaid
+flowchart TD
+    F1["App: Format combobox, SelectedArchiveMode,<br/>inline password when Encrypt applies (ZIP only)"] --> R
+    F2["Shell: Add to X.zip or Add to X.tar<br/>SingleArchive, OnConflict=Rename, no password"] --> R
+    F3["CLI a: -t zip / tar / tar.gz ... (default zip), SingleArchive,<br/>-y → Overwrite else Skip, -p refused by the parser for tar-family"] --> R
+    R{"ArchiveCreationRouter: format allowed by<br/>AllowedFormats/BlockedFormats?"} -- no --> RE1["Errors += CreationFormatBlocked"]
+    R -- yes --> R2{"DisableTarExtraction and format is not Zip?"}
+    R2 -- yes --> RE2["Errors += TarCreationDisabled — tar.exe never starts"]
+    R2 -- no --> R3{"Format == Zip?"}
+
+    R3 -- yes --> Z0["ZipArchiveService.ArchiveAsync: trim trailing separators (T-F153)"]
+    Z0 --> Z1{"ResolvePasswordAsync set?"}
+    Z1 -- yes --> Z2["ResolveEncryptionPasswordAsync — one prompt, maxAttempts 1,<br/>BEFORE any conflict step (T-F193)"]
+    Z2 --> Z3{"null, empty, non-printable-ASCII or over 99 chars?<br/>(EncryptionPasswordRule)"}
+    Z3 -- yes --> ZE["return: one error, nothing written"]
+    Z3 -- no --> ZM
+    Z1 -- no --> ZM{"Mode"}
+
+    ZM -- SingleArchive --> S1["DestinationConflictResolver on name.zip<br/>(Ask → the frontend's conflict prompt, T-F158)"]
+    S1 -- Skip --> S1S["return: every source SkippedFiles (ArchiveAlreadyExists)"]
+    S1 -- "Overwrite / Rename" --> S2["one walk: total bytes and file count (T-F35)"]
+    S2 --> S3{"password set, OR file count over 64?"}
+    S3 -- yes --> S4["ParallelSingleArchiveWriter — hand-rolled writer,<br/>the only one that encrypts (AES-256 AE-2), T-F35/T-F193"]
+    S3 -- no --> S5["sequential ZipArchive writer"]
+    S4 --> S6
+    S5 --> S6{"cancelled? then: any entry in the .tmp?"}
+    S6 -- "cancelled" --> SX["delete .tmp, rethrow OperationCanceledException"]
+    S6 -- "entries" --> S7["File.Move .tmp → name.zip, CreatedFiles += it"]
+    S6 -- "none" --> S8["delete .tmp — no empty archive (T-F60)"]
+
+    ZM -- SeparateArchives --> P1["sequential plan pass, sorted: a reparse point is skipped (T-F23),<br/>DestinationConflictResolver per source incl. same-run name clashes (T-F12)"]
+    P1 --> P2["Parallel.ForEachAsync over the plans — degree = cores,<br/>or cores / writer window when encrypting"]
+    P2 --> P3{"per source: password set?"}
+    P3 -- yes --> P4["ParallelSingleArchiveWriter with that one source"]
+    P3 -- "no, folder" --> P5["ZipArchive + AddDirectoryToArchiveAsync"]
+    P3 -- "no, file" --> P6["ZipArchive + AddEntryFromFileAsync"]
+    P3 -- "neither exists" --> P7["Errors += SourceNotFound"]
+
+    R3 -- no --> T0["TarSandboxedService.CompressAsync — UNSANDBOXED (T-F105)"]
+    T0 --> T1{"ResolvePasswordAsync set?"}
+    T1 -- yes --> TE1["Errors += PasswordOnlyForZip — before any prompt"]
+    T1 -- no --> T2{"tar.exe Authenticode signature valid?"}
+    T2 -- no --> TE2["Errors += TarSignatureInvalid"]
+    T2 -- yes --> TM{"Mode"}
+    TM -- SingleArchive --> T3["DestinationConflictResolver on name.ext, Skip returns every source skipped"]
+    TM -- SeparateArchives --> T4["SEQUENTIAL loop, sorted: missing → SourceNotFound,<br/>conflict per source, then one tar.exe per source"]
+    T3 --> T5
+    T4 --> T5["AppendSourcesToTarArgs, per source: reparse point skipped, missing → error,<br/>a name the ANSI code page cannot hold anywhere in the tree → error (T-F266/T-F204),<br/>a clashing FILE name staged as a renamed copy (T-F168 — folders not, T-F171),<br/>then -C parent name — every source on the command line (T-F273, open)"]
+    T5 --> T6{"no source left?"}
+    T6 -- yes --> T7["no tar.exe run"]
+    T6 -- no --> T8["tar.exe -v -cf name.tmp — SandboxedProcessLauncher with no AppContainer and<br/>no Job Object, stderr a-lines drive progress"]
+    T8 --> T9{"exit code 0 and .tmp exists?"}
+    T9 -- no --> TE3["delete .tmp, Errors += TarCreationFailed"]
+    T9 -- yes --> T10["File.Move .tmp → name.ext, CreatedFiles += it"]
+```
+
+**What this catches:** the two engines are not symmetric, and a change that assumes they are will
+be wrong. ZIP resolves the password before any destination is touched; tar refuses a password
+outright. ZIP's separate archives run in parallel after a sequential planning pass; tar's run one
+after another. ZIP writes entries itself; tar hands every source path to tar.exe on one command
+line, which is why the ANSI-name gate and the command-line limit (T-F273) exist only on this side.
+Encryption forces the hand-rolled writer at any file count — `ZipArchive` has no encrypting API.
 
 ---
 

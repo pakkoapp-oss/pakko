@@ -6686,7 +6686,11 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 
 ### T-F223 — Diagram gap from T-F193 (P2)
 
-- [ ] **Status:** open. Carried by T-F202 from `docs/DECISIONS.md`'s T-F193 entry: no diagram in
+- [x] **Status:** done 2026-09-29 (G5). New diagram 9 (archive creation routing: router policy
+  gates, ZIP single/separate, sequential/parallel/encrypted, tar unsandboxed creation with the
+  ANSI-name gate and T-F273) plus its DoD row. Diagram 3's encrypted-entry branch was already in
+  node K (decrypting stream, T-F246/T-F231). Was: open. Carried by T-F202 from
+  `docs/DECISIONS.md`'s T-F193 entry: no diagram in
   `docs/DIAGRAMS.md` models `ArchiveAsync` routing (ZIP sequential/parallel/encrypted vs tar),
   and diagram 3 has no encrypted-entry branch. Validate with mermaid-cli per the DoD.
 - **Reported by:** T-F202, 2026-09-24.
