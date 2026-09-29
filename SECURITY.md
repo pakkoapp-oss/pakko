@@ -181,10 +181,10 @@ Pakko propagates MOTW on all extracted files by default:
 
 Implementation: `FileStream` with ADS path `"extractedfile.txt:Zone.Identifier"`, no P/Invoke required.
 
-**For system administrators:** the planned v1.4 Group Policy surface (`EnforceMOTW`,
-`AllowedFormats`/`BlockedFormats`, `DisableTarExtraction` under `HKLM\Software\Policies\Pakko\`) is
-documented in full, with deployment instructions, in [`POLICIES.md`](docs/POLICIES.md) — not yet
-implemented (tracked as `T-F51`), see that file's status banner.
+**For system administrators:** the Group Policy surface (`EnforceMOTW`,
+`AllowedFormats`/`BlockedFormats`, `DisableTarExtraction` under `HKLM\Software\Policies\Pakko\`,
+shipped 2026-07-18, T-F51) is documented in full, with deployment instructions, in
+[`POLICIES.md`](docs/POLICIES.md).
 
 ---
 
@@ -201,6 +201,10 @@ Extract first. Two constraints keep this from becoming a new attack surface:
    (`.mp3`/`.wav`/`.flac`/`.ogg`/`.m4a`/`.aac`, added T-F109) — no executable, script, `.lnk`,
    macro-capable document, or PDF (PDF is deliberately excluded despite looking "safe" — some
    readers execute embedded JavaScript, unlike every other allowlisted type here).
+   **Limit (T-F257):** Pakko opens a preview with whatever handler Windows has for the extension.
+   On a machine with Office, `.csv` opens in Excel, which evaluates formulas; Protected View then
+   depends on the archive having carried MOTW (propagated to the preview file, see above). The
+   allowlist restricts file types, not the handlers a machine has registered for them.
    `ShellExecute`-ing an arbitrary archive entry with one click, no "Extract to..." friction first,
    would itself be an attack surface (a malicious file inside an archive, opened automatically).
    **This is deliberately stricter than 7-Zip/NanaZip**, confirmed by reading NanaZip's real
@@ -227,9 +231,10 @@ Extract first. Two constraints keep this from becoming a new attack surface:
    automatically, since it happens inside `ZipArchiveService`/`TarSandboxedService` as part of
    normal extraction, not something the App layer has to remember to call separately.
 
-Preview files are staged under `%TEMP%\PakkoPreview\<random>\` (one shared cache root, a fresh
-subfolder per preview) and deleted on window close, best-effort — see `DECISIONS.md`'s T-F97
-entry.
+Preview files are staged under `%TEMP%\PakkoPreview\<pid>-<start ticks>\<random>\` (one
+subfolder per Pakko process, a fresh subfolder per preview). A window deletes only its own
+process's folder on close, best-effort; the next start removes folders whose process is gone
+(T-F252) — see `DECISIONS.md`'s T-F97 entry.
 
 ---
 

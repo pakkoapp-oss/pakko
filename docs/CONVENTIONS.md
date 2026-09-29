@@ -319,6 +319,10 @@ downstream service calls. Do not add path content checks to `ShellArgumentParser
   `ShellExtUtils.cpp`: `L"…"` compiled into `вЂ¦`; see T-F64 in `TASKS.md`). `\uXXXX` escapes are
   pure ASCII in the source file, so they're immune to this regardless of BOM/locale. This applies
   to comments too, though there it's cosmetic rather than a functional bug.
+  **One exception (T-F115, T-F257):** `Localization.cpp`'s per-locale table holds its translations
+  as literal text. That is safe only because both `Archiver.ShellExtension.vcxproj` and
+  `Archiver.ShellExtension.Tests.vcxproj` compile with `/utf-8`; don't drop that flag, and don't
+  "fix" the table into escapes. Outside that table the escape rule still holds.
 
 ---
 

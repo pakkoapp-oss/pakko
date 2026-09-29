@@ -720,7 +720,8 @@ files.
   handler `OnActivated` uses, or a cold Explorer/file-association launch silently opens a blank
   window (see T-F83 in `DECISIONS.md`).
 - **Non-ASCII glyphs (ellipsis, em-dash, Cyrillic) in C++/PowerShell string literals**: never write
-  the literal character — full rule + `\uXXXX` escape pattern is in `CONVENTIONS.md`. Shipped
+  the literal character — full rule + `\uXXXX` escape pattern, and its one `/utf-8`
+  exception (`Localization.cpp`'s table), are in `CONVENTIONS.md`. Shipped
   three times already (T-F64, T-F76, T-F63) despite being documented — check every new string
   literal before considering a change done.
   **Fixing an already-corrupted literal is not exempt:** typing the `\uXXXX` escape as Edit-tool

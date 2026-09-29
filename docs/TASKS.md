@@ -5904,7 +5904,12 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 
 ### T-F257 — Security and convention docs contradict the code (P2, docs)
 
-- [ ] **Status:** open — checked 2026-09-25 (T-F226 batch 3, `SECURITY.md` against code).
+- [x] **Status:** done 2026-09-29 (G5). Items 1-3 fixed in `SECURITY.md` (Group Policy shipped;
+  per-process preview folders per T-F252; `.csv` kept, the claim narrowed to what the allowlist
+  controls — the file type, not the handler a machine registers). Item 4: `docs/CONVENTIONS.md`
+  and `CLAUDE.md` name the `/utf-8` exception for `Localization.cpp`. Item 5 was already true
+  after T-F261 added `IExtractionRouter.TestAsync`. Was: open — checked 2026-09-25 (T-F226
+  batch 3, `SECURITY.md` against code).
   1. `SECURITY.md:166-169` says the Group Policy surface is "planned ... not yet implemented
      (tracked as T-F51)"; `GroupPolicyService` ships and `docs/POLICIES.md` says "shipped
      2026-07-18". (What POLICIES.md itself over-promises is T-F250.)
