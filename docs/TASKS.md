@@ -6791,12 +6791,13 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 - [ ] **Status:** open. Found in G6 pass 2, 2026-09-30. Every extracted ZIP file gets the time of
   extraction: `qmark.zip` entries dated 2026-09-30 02:07:36 came out as 02:45:56; same for
   `plain.zip` through Explorer and `pakko x`. The tar path keeps them (`valid.7z` -> `seven.txt`
-  dated 2026-07-07). 7-Zip, NanaZip and Windows' built-in ZIP folder restore the time; for this
-  audience the dates are part of what a recipient checks. `ZipArchiveService` sets `LastWriteTime`
+  dated 2026-07-07). Not a regression: the released v1.5.0 and v1.4.12 `pakko x plain.zip` do the
+  same (checked 2026-09-30). 7-Zip restores the time; for this audience the dates are part of what
+  a recipient checks. `ZipArchiveService` sets `LastWriteTime`
   only when creating (`:1765`); the staging/commit path never copies the entry time. Same on
   `sec-t-f283`. Fix: set the file's last-write time from `ZipArchiveEntry.LastWriteTime` (and the
-  NTFS/Unix extra fields when present, as 7-Zip does) after writing and before commit; folders
-  after their contents. Tests first: extract and compare times, incl. an encrypted entry and a
+  NTFS/Unix extra fields when present, as 7-Zip does) after writing and before commit (check
+  what 7-Zip reads from the NTFS/Unix extra fields before copying it); folders after their contents. Tests first: extract and compare times, incl. an encrypted entry and a
   merged commit.
 - **Reported by:** G6 device campaign, 2026-09-30.
 
@@ -6804,8 +6805,12 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 
 - [ ] **Status:** open. Found in G6 pass 2, 2026-09-30. 32 MiB of random data: `pakko a -mx=1`
   -> 35,388,889 bytes (+5.5%); `-mx=0` 33,554,544; `-mx=5` 33,564,789; `7za a -mx=1` 33,554,580.
-  512 MiB at `-mx=1` gave a 566 MB archive. .NET's fastest Deflate (zlib-ng's quick strategy) does
-  not fall back to stored blocks. Fix: when an entry's deflated size is not smaller than its
+  512 MiB at `-mx=1` gave a 566 MB archive. **Regression from T-F270 (.NET 8 -> 10):** the released
+  v1.5.0 and v1.4.12 CLIs (.NET 8) give 33,564,789 at `-mx=1` on the same file; v1.6.0 would ship
+  it. The App's **default** level is Fastest (`MainViewModel.cs:365`), so an App-made ZIP of
+  already-compressed files (photos, video, ZIPs) grows by ~5% by default; Explorer's "Add to"
+  uses Optimal (`ArchiveOptions` default) and is not affected. Priority is the user's call before G7.
+  .NET 10's fastest Deflate does not fall back to stored blocks for incompressible input. Fix: when an entry's deflated size is not smaller than its
   original, write it as Stored (the parallel writer already compresses to a buffer or temp file
   before splicing, so the choice is cheap there); check the single-file path too. Tests first:
   random input at every level stays within a few bytes of the original.
@@ -6820,6 +6825,19 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   deleted normally and their DACL was inherited only (no leftover AppContainer grant). Fix: retry the
   delete briefly, or reuse the shared test temp helper; a test that asserts no leftover folder after
   the class runs. Test hygiene only, not a product defect.
+- **Reported by:** G6 device campaign, 2026-09-30.
+
+### T-F301 — A remembered password that does not fit reads as "no password given" (P3)
+
+- [ ] **Status:** open. Found in G6 pass 2, 2026-09-30, Explorer "Extract each to its own folder" on
+  `enc2.zip` (Passw0rd) + `enc.zip` (secret1): the prompt for `enc2.zip` with "Apply to remaining
+  archives" ticked -> `enc2\` extracted; `enc.zip` then fails with "Цей архів захищено паролем, тому
+  його не можна видобути." No re-prompt is by design (`docs/DECISIONS.md`, T-F192's
+  `StickyPasswordResolver` entry: a differently-keyed later archive surfaces as an error), but the
+  text is the no-password message: the user did give a password, it just did not fit this archive.
+  Fix: when the attempt came from a remembered password, say so ("the password applied to the
+  remaining archives does not fit X") in all three frontends' wording; consider a re-prompt for that
+  archive only (a decision for the user). Tests first at the message-code level.
 - **Reported by:** G6 device campaign, 2026-09-30.
 
 ## Test-Coverage Audit Follow-Ups (T-F174–T-F186)
