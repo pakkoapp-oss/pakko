@@ -4356,7 +4356,7 @@ T-F240, T-F259, T-F203 (after G2). G5 docs: T-F257 (SECURITY.md needs permission
 T-F165. G6 one device campaign on CI artifacts: T-F202 (coverage table rebuilt from current
 source), every `[~]` check (delegated), T-F221 terminal, T-F260 mapping, light theme, keyboard,
 narrow window; Windows display language last (sign-out ends the agent session; restore after).
-G7 release v1.6.0 — **user decision 2026-09-28: T-F202's P0/P1 findings are fixed before the
+G7 release v1.6.0 (watch the tag run's `release` job: its `download-artifact@v8` `pattern`/`merge-multiple` step runs only on a tag, since Dependabot #4-#8, 2026-09-29) — **user decision 2026-09-28: T-F202's P0/P1 findings are fixed before the
 release, P2/P3 go to the next batch.** User: real drag done (T-F242 closed, T-F278 filed),
 permission to switch theme and language given. After the release, separate batches: T-F275,
 T-F132, T-F121, T-F111, T-F112, remaining P/Invoke conversion, distribution tasks (T-F119, T-F10,
