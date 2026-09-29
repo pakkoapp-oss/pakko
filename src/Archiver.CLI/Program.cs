@@ -378,9 +378,13 @@ static async Task<int> RunInfoAsync(PakkoServices services)
 
     Task PrintFormatLineAsync(string format, string capabilitiesText, ArchiveFormat archiveFormat)
     {
-        string status = ArchiveFormatPolicy.IsBlockedByPolicy(archiveFormat, policy) ? "blocked by Group Policy"
-            : ArchiveFormatPolicy.GetRefusalReason(archiveFormat, capabilities, policy) is null ? "supported"
-            : "not supported";
+        string status;
+        if (ArchiveFormatPolicy.IsBlockedByPolicy(archiveFormat, policy))
+            status = "blocked by Group Policy";
+        else if (ArchiveFormatPolicy.GetRefusalReason(archiveFormat, capabilities, policy) is null)
+            status = "supported";
+        else
+            status = "not supported";
         return Console.Out.WriteLineAsync($"  {format,-9} {capabilitiesText,-27}  ({status})");
     }
 }

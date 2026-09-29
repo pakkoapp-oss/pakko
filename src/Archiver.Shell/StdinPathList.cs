@@ -15,8 +15,8 @@ internal static class StdinPathList
 {
     public const string Flag = "--paths-stdin";
 
-    // Matches ShellExtUtils.cpp's kMaxPathListBytes. Far past any selection Explorer can hand over;
-    // it only bounds memory for a caller that never stops writing.
+    // Same limit as kMaxPathListBytes in the shell extension. Far past any selection Explorer can
+    // hand over; it only bounds memory for a caller that never stops writing.
     public const int MaxBytes = 256 * 1024 * 1024;
 
     private const int ChunkBytes = 64 * 1024;

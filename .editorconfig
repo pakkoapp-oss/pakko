@@ -29,7 +29,7 @@ dotnet_style_coalesce_expression = true:suggestion
 csharp_using_directive_placement = outside_namespace:error
 
 # Modifier order
-csharp_preferred_modifier_order = public,private,protected,internal,static,extern,new,virtual,abstract,sealed,override,readonly,unsafe,volatile,async:suggestion
+csharp_preferred_modifier_order = public,private,protected,internal,file,static,extern,new,virtual,abstract,sealed,override,readonly,unsafe,volatile,async:suggestion
 
 # Naming rules
 dotnet_naming_rule.private_fields_should_be_camel_case.severity = warning
