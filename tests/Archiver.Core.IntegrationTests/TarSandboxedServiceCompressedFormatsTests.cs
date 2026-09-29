@@ -159,7 +159,7 @@ public sealed class TarSandboxedServiceCompressedFormatsTests : IDisposable
         File.ReadAllText(Path.Combine(destDir, "a.txt")).Should().Be("hello lzma");
     }
 
-    [Integration]
+    [IntegrationNotOnArm64]
     public async Task ExtractAsync_TarGzWithUnicodeFilenameAndContent_ExtractsCorrectly()
     {
         string archivePath = Path.Combine(_temp.Path, "unicode.tar.gz");

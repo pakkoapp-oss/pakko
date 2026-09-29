@@ -5441,6 +5441,12 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   changes: `pakko://` is gone (T-F232), its successor `LaunchArguments.TryParse` is fuzzed; the
   tar parser reads tar.exe's output, not archive bytes, so it is left out. Closes when a real
   `workflow_dispatch` of `canary.yml` has every new job green. See `docs/DECISIONS.md`'s T-F240 entry.
+  First dispatch (run 36616898216): dotnet, shellext, asan and fuzz green; the escalation opened
+  its day as designed. Two red jobs, both scoped rather than loosened: `canary-slow` now leaves
+  out the 7za timing ratios (Hybrid measured 5.23 against 3.9 on a shared runner) and the T-F132
+  spike (needs a locally published exe) -- both stay in the local `Category=Slow` run before a
+  release; `canary-arm64` found T-F290 (the OS tar.exe crashes), that one test is skipped on an
+  ARM64 OS and the job carries a diagnostic probe for it.
 - **Original report:** open — checked 2026-09-24 against `.github/workflows/build.yml`/`canary.yml`.
   Missing: a `dotnet list package --vulnerable --include-transitive` gate (all 11 projects are
   clean today); a `.github/dependabot.yml` (`build.yml:96` describes Dependabot PRs, but no config
@@ -6632,6 +6638,21 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   the height where everything fits (it fits at 665). Realistic screens (1366x768, 1920x1080 at
   150%) are fine.
 - **Reported by:** G1 device pass, 2026-09-29.
+
+### T-F290 — tar.exe on Windows ARM64 crashes on a non-ASCII name argument (priority pending)
+
+- [ ] **Status:** open. On the `windows-11-arm` runner, `C:\Windows\System32\tar.exe -czf
+  out.tar.gz <name>` with a Cyrillic file name exits with 0xC0000005 (access violation), both
+  attempts of the T-F240 canary run 36616898216. The x64 runners pass the same fixture. The failing
+  call is the test fixture (`ExternalTarFixtureBuilder`), not Pakko. Open question, which sets the
+  priority: does it crash only on a name the ANSI code page cannot represent (Pakko already refuses
+  those before tar.exe runs, `TarCommandLineEncoding.IsRepresentable`), or on any non-ASCII name
+  (then TAR creation on an ARM64 machine whose code page does cover it, e.g. Cyrillic under 1251,
+  would hit it)? `canary-arm64`'s "tar.exe name probe" step logs the tar version, code pages and
+  exit codes per name and form; read it, then decide. Until then
+  `ExtractAsync_TarGzWithUnicodeFilenameAndContent_ExtractsCorrectly` is skipped on an ARM64 OS
+  (`IntegrationNotOnArm64Attribute`).
+- **Reported by:** T-F240 canary, 2026-09-29.
 
 ### T-F223 — Diagram gap from T-F193 (P2)
 
