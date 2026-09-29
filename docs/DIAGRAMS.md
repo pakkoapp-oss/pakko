@@ -221,8 +221,8 @@ folder, a failed entry shows only as a warning icon.
   Archive for all-ZIP selections") would be editing the wrong method; `ArchiveCommand`'s
   `GetState` condition is the *inverse* of `ExtractHereCommand`/`ExtractFolderCommand`'s, which is
   easy to get backwards when copy-pasting.
-- `TestCommand::GetState` (T-F62) uses `AnyPathIsZip`, a condition also shared by `ExtractDialogCommand`
-  (T-F63) but distinct from `AllPathsAreZip` (EH/EF) and its inverse (AC) — copy-pasting
+- `TestCommand::GetState` (T-F62) uses `AnyPathIsZip` (`ExtractDialogCommand` shared it until T-F86
+  moved it to `AnyPathIsSupportedArchive`), distinct from `AllPathsAreZip` (EH/EF) and its inverse (AC) — copy-pasting
   `AllPathsAreZip` here would hide Test/ExtractDialog on any mixed selection, unlike NanaZip's
   reference behavior (verified against real
   NanaZip source in `DECISIONS.md`).
@@ -235,6 +235,11 @@ folder, a failed entry shows only as a warning icon.
   archive…" for an all-RAR selection was never correct to begin with. A future change that makes
   these four commands' gates "consistent" by copy-pasting one predicate onto all of them would
   reintroduce either the false-Test-pass bug or hide a legitimate archive action.
+  **Since T-F261/T-F274 (2026-09-28)** Test goes through `ExtractionRouter.TestAsync`, which skips a
+  tar-family archive with its own reason and never says "No errors detected" for a run that read
+  nothing — so enabling Test for tar would now show a skip, not a false pass. `TC` stays ZIP-only
+  because there is still nothing to test there. (The comment at `ExplorerCommands.cpp`'s
+  `TestCommand::GetState` still gives the pre-T-F261 reason.)
 - **T-F99 (2026-07-13), obsolete since T-F235 (2026-09-28):** paths no longer go on the command
   line, so `QuotePath`'s drive-root trailing-backslash corruption cannot recur there; see
   `DECISIONS.md`'s T-F99 and fix phase 5 entries.
@@ -331,13 +336,18 @@ Source read for this diagram (redrawn 2026-09-25, fix phase 2; updated the same 
 adding `Zip/ZipArchiveReader` and `ArchiveEntrySecurity.HasReservedName`): `ExtractWithSmartFolderingCoreAsync`,
 `TryExtractSingleEntryAsync`, `TryCreateFolderEntry`, `WriteEntryAsync` and `CopyEntryToDestinationAsync` in
 `src/Archiver.Core/Services/ZipArchiveService.cs`, plus `ExtractionStaging.CommitInto` and
-`IO/VerifyingReadStream`.
+`IO/VerifyingReadStream`. T-F223 (2026-09-29): nodes PW-PW2 and K's encrypted-entry failures from
+`TryRejectUnsupportedOrEncryptedZipAsync`, `ResolveArchivePasswordAsync` and `OpenEntryContentStream`.
 
 ```mermaid
 flowchart TD
     PM{"ExtractAsync outer loop, per archive:<br/>file missing? (T-F221)"} -- yes --> PM1["Errors += SourceNotFound<br/>(not 'not a recognized archive')"]
     PM -- no --> P0{"zip blocked by Group Policy?<br/>(T-F250 — also catches an Unknown-detected ZIP)"} -- yes --> P1["SkippedFiles += policy reason,<br/>archive not opened"]
-    P0 -- no --> A0["ZipArchiveReader.Open: allEntries = every ZIP entry, files AND folder entries (T-F197),<br/>each with its name decoded by 7-Zip's rule, never ZipArchiveEntry.FullName (T-F234)"] --> A1{"T-F05: options.SelectedEntryPaths<br/>set and non-empty?"}
+    P0 -- no --> PW{"IsEncryptedZip? (any entry, whole central directory)"}
+    PW -- yes --> PW1["ResolveArchivePasswordAsync, once per archive, before staging:<br/>options.ResolvePasswordAsync, up to 3 attempts, each checked against<br/>the smallest encrypted entry (T-F189/T-F243)"]
+    PW1 -- "no password (none wired, cancelled, attempts used up)" --> PW2["Errors += PasswordProtectedExtract, archive not opened"]
+    PW1 -- "resolved" --> A0
+    PW -- no --> A0["ZipArchiveReader.Open: allEntries = every ZIP entry, files AND folder entries (T-F197),<br/>each with its name decoded by 7-Zip's rule, never ZipArchiveEntry.FullName (T-F234)"] --> A1{"T-F05: options.SelectedEntryPaths<br/>set and non-empty?"}
     A1 -- no --> A2["entries = allEntries.<br/>isSingleRootFolder/isSingleRootFile computed over files AND folders<br/>(a.txt + empty/ is MultiRoot), then<br/>ExtractionDestinationPlanner.Classify → RootShape (T-F157)"]
     A1 -- yes --> A3["entries = allEntries filtered to the selected paths<br/>+ anything nested under a selected folder path<br/>→ RootShape.SelectedSubset"]
     A2 --> A3B["ExtractionDestinationPlanner.Resolve(alreadyIsolated, shape, destDir,<br/>unisolatedDestDir, rootDuplicatesArchiveName)<br/>→ (actualDest, stripRootPrefix). T-F205: SingleFolder keeps the root<br/>unless EliminateDuplicateRootFolder is set and the root is named like the archive"]
@@ -367,7 +377,7 @@ flowchart TD
     J0 -- "Overwrite" --> K
     K2 --> K
     K["open content: VerifyingReadStream(entry.Open, Length, Crc32),<br/>or the decrypting stream, capped the same way (T-F246/T-F231).<br/>Copy to staging, delete a half-written file on failure, then MOTW"]
-    K -- "CRC mismatch / longer than declared / I/O error" --> E2["Errors += Cannot extract name: reason<br/>(destination path, never the staging path)"]
+    K -- "CRC mismatch / longer than declared / I/O error /<br/>encrypted entry: wrong password, unsupported method, authentication failed" --> E2["Errors += Cannot extract name: reason<br/>(destination path, never the staging path)"]
     T -. "ERROR_DISK_FULL" .-> X["rethrown: one archive-level error"]
     K --> L["extractedCount++"]
     FK --> L
@@ -953,7 +963,8 @@ which also removed T-F248's read-only leftover), and its deletion is best-effort
 (unsupported format, blocked by policy, no provider, rejected tar archive, oversized entry,
 vanished quarantine file) produces an explicit `Inconclusive` finding with a stated reason —
 there is no path through `AntivirusScanService.ScanAsync` that silently returns `Clean` for an
-archive or entry it never actually examined. This was the exact concern `advisor` raised before
+archive or entry it never actually examined. The one `Clean` without a `ScanBuffer` call is an
+empty entry (T-F247): there are no bytes to examine, and AMSI rejects a zero-length buffer. This was the exact concern `advisor` raised before
 implementation started (docs/DECISIONS.md's T-F146 entry) and is what the Phase A test suite
 (`AntivirusScanServiceTests.cs`, `AntivirusScanServiceTarTests.cs`) exercises directly, one branch
 at a time.
@@ -1077,6 +1088,7 @@ flowchart TD
     S6 -- "cancelled" --> SX["delete .tmp, rethrow OperationCanceledException"]
     S6 -- "entries" --> S7["File.Move .tmp → name.zip, CreatedFiles += it"]
     S6 -- "none" --> S8["delete .tmp — no empty archive (T-F60)"]
+    S4 & S5 -. "IOException / UnauthorizedAccessException / any other exception" .-> S9["delete .tmp, Errors += CannotCreateArchive /<br/>AccessDeniedCreatingArchive / UnexpectedError — never thrown"]
 
     ZM -- SeparateArchives --> P1["sequential plan pass, sorted: a reparse point is skipped (T-F23),<br/>DestinationConflictResolver per source incl. same-run name clashes (T-F12)"]
     P1 --> P2["Parallel.ForEachAsync over the plans — degree = cores,<br/>or cores / writer window when encrypting"]

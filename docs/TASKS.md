@@ -5053,7 +5053,9 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   survivor (T-F256). **Not closed:** check L was a spot-check of diagrams 1, 2, 4, 7 (T-F258);
   diagram 6 is unchecked and the per-arrow ground-truth ritual over `docs/DIAGRAMS.md` is still
   deferred until the fixes for T-F227/T-F228/T-F233/T-F236 rewrite those diagrams (with T-F165/
-  T-F223) — the review's exit criterion is not met for that cell.
+  T-F223) — the review's exit criterion is not met for that cell. **2026-09-29 (G5):** the ritual
+  ran for diagrams 1, 2, 3 (password gate), 4 and 7 (T-F258) and the new diagram 9 (T-F223);
+  T-F165 was already done 2026-08-12. Diagram 6 is still unchecked — now T-F292.
   Checked with no finding: the fire-and-forget calls and `async void` (event handlers only),
   `static` mutable state (`FileHashService._threadPoolWarmed` is a process-wide one-shot latch around
   a process-wide setting), `ArchiveTreeIndex` recursion (iterative; memory issue is T-F237),
@@ -5932,7 +5934,8 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 - [x] **Status:** done 2026-09-29 (G5). Diagrams 1, 2, 4 and 7 re-derived from the code per the
   Ground Truth Rule and checked with mermaid-cli (all nine blocks render). Beyond the list below:
   diagram 1 still drew the `HashCommand` submenu parent flattened long ago and lacked
-  `TarArchiveCommand`/`ScanCommand`; diagram 7 predated the stdin hand-off. Several listed items
+  `TarArchiveCommand`/`ScanCommand`; diagram 7 predated the stdin hand-off. Diagram 6 turned out
+  stale too: T-F292. Several listed items
   had meanwhile become true in code (T-F245 makes every cancel throw; T-F233 removed the
   quarantine link T-F248 was about) and are drawn as fixed. Found T-F291. Diagram 6 was not in
   scope. Was: open — spot-checked 2026-09-25 (T-F226 check L; not the full per-arrow ritual).
@@ -6683,6 +6686,16 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   frontends differ. Fix: list the failed entries (capped like the file list) under the summary;
   test in `OperationMessagesTests` first.
 - **Reported by:** T-F258 diagram redraw, 2026-09-29.
+
+### T-F292 — Diagram 6 (MainWindow UI mode) predates the T-F199 redesign (P2, docs)
+
+- [ ] **Status:** open. Diagram 6's per-row visibility table still lists the pre-redesign rows
+  (Row 0 buttons, Row 6 conflict combo and checkboxes). Since wave 4 (T-F199) the window is
+  `AppTitleBar` + `ContentGrid` with mode-gated rows, the option cards (`NewArchiveCard`,
+  `DestinationCard`) in `OptionsScroll`, and a footer. No `docs/DIAGRAMS.md` commit touched diagram
+  6 in that wave, although its DoD row fires on any row or visibility change. Redraw from
+  `MainWindow.xaml` and `docs/XAML.md` per the Ground Truth Rule; mermaid-cli.
+- **Reported by:** G5 closing review, 2026-09-29.
 
 ### T-F223 — Diagram gap from T-F193 (P2)
 

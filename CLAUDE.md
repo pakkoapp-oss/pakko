@@ -15,8 +15,8 @@ Target audience: Ukrainian government/defense — trust, auditability, minimal a
 ## Current State
 
 **v1.1** tagged `v1.1.0` (GitHub-only early-tester release). **v1.2 (shell extension)**,
-**v1.3 (tar.exe integration)**, and **v1.4** are all complete except **T-F51** (Group
-Policy/ADMX support, still open — see `docs/SPEC.md`'s roadmap table). Full per-task detail for
+**v1.3 (tar.exe integration)**, and **v1.4** are all complete (T-F51 Group Policy/ADMX done
+2026-07-18 — see `docs/SPEC.md`'s roadmap table). Full per-task detail for
 everything marked `[x]` below lives in `docs/TASKS_DONE.md` and `docs/DECISIONS.md` (each task's
 own entry there) — this section only tracks current status, not the investigation trail.
 
@@ -414,7 +414,7 @@ footer with the primary action rightmost ("Compress to {format}"), inline encryp
 browse badge/Test/Close archive, footer result line (T-F211); every App key in 37 locales
 (`AppResourceKeysTests`). Structure: `docs/XAML.md`; decisions: `docs/DECISIONS.md`'s wave 4 entry.
 **G1** (2026-09-29, plan groups G0-G7 in `docs/TASKS.md`): T-F276/277/278/219 and new T-F279 (a
-cancelled ZIP Test reported clean, P1) fixed and device-checked; T-F280-T-F282 filed. Next: G2 (tar/sandbox).
+cancelled ZIP Test reported clean, P1) fixed and device-checked; T-F280-T-F282 filed. G2 on local `sec-t-f283`; G4, G5 on main. Next: G6.
 
 ## Roadmap Summary
 
