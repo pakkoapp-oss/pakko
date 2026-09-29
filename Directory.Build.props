@@ -20,6 +20,13 @@
          conversions can silently rebind calls like array.Contains/Reverse to MemoryExtensions.
          The .NET 8 -> 10 move keeps the language unchanged; moving to C# 14 is its own decision. -->
     <LangVersion>12</LangVersion>
+    <!-- T-F240: the vulnerable-package gate. With TreatWarningsAsErrors above, any known
+         advisory (NU1901-NU1904), direct or transitive, fails restore on every CI run and the
+         nightly canary. These match the .NET 10 SDK defaults; pinned so an SDK change can't
+         quietly relax them. -->
+    <NuGetAudit>true</NuGetAudit>
+    <NuGetAuditMode>all</NuGetAuditMode>
+    <NuGetAuditLevel>low</NuGetAuditLevel>
   </PropertyGroup>
 
 </Project>

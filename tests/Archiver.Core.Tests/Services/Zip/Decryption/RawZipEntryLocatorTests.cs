@@ -163,6 +163,28 @@ public sealed class RawZipEntryLocatorTests
         act.Should().Throw<InvalidDataException>();
     }
 
+    // T-F240 (fuzzer-found): a central record's local-header offset past the end of the archive
+    // made a MemoryStream seek throw ArgumentOutOfRange (above 2 GiB) and a FileStream read throw
+    // EndOfStream; both must be the InvalidDataException every caller maps.
+    [Theory]
+    [InlineData(0xFFFF_FFF0u, false)]
+    [InlineData(0xFFFF_FFF0u, true)]
+    [InlineData(0x0000_1000u, true)]
+    public void LocateAll_LocalHeaderOffsetPastEnd_ThrowsInvalidData(uint offset, bool memoryStream)
+    {
+        byte[] bytes = File.ReadAllBytes(FixtureHelper.Archive("encrypted_aes256.zip"));
+        int central = bytes.AsSpan().IndexOf("PK\x01\x02"u8);
+        BitConverter.TryWriteBytes(bytes.AsSpan(central + 42, 4), offset).Should().BeTrue();
+        using var temp = new TempDirectory();
+        string path = Path.Combine(temp.Path, "offset.zip");
+        File.WriteAllBytes(path, bytes);
+        using Stream stream = memoryStream ? new MemoryStream(bytes, writable: false) : File.OpenRead(path);
+
+        Action act = () => RawZipEntryLocator.LocateAll(stream);
+
+        act.Should().Throw<InvalidDataException>();
+    }
+
     // ── T-F193 Phase 0: Zip64 directory layouts ──────────────────────────────
     // "Never write what Pakko can't read back": T-F193's writer emits Zip64 for big archives, and
     // real tools (7-Zip reading from stdin) already emit Zip64 local headers today.

@@ -1,0 +1,17 @@
+# T-F240: weekly version updates. Security updates for vulnerable packages come on top of these
+# whenever GitHub has an advisory; restore itself also fails on any vulnerable package
+# (NuGetAudit in Directory.Build.props).
+version: 2
+updates:
+  - package-ecosystem: nuget
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+  # Third-party actions are pinned to a full commit SHA with a "# vX.Y.Z" comment (CLAUDE.md);
+  # Dependabot updates both together.
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5

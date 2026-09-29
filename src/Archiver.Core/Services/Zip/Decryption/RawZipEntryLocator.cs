@@ -219,6 +219,10 @@ internal static class RawZipEntryLocator
     {
         uint centralCrc32 = central.Crc32;
         long centralCompressedSize = central.CompressedSize;
+        // T-F240: 30 = the local header's fixed part. A crafted offset past the end otherwise
+        // throws ArgumentOutOfRange (MemoryStream) or EndOfStream, which callers don't all map.
+        if (central.LocalHeaderOffset > zipStream.Length - 30)
+            throw new InvalidDataException("ZIP local header offset is past the end of the archive.");
         zipStream.Seek(central.LocalHeaderOffset, SeekOrigin.Begin);
         uint signature = ReadUInt32(zipStream);
         if (signature != LocalFileHeaderSignature)
