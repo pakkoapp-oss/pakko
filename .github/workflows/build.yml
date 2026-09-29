@@ -255,7 +255,7 @@ jobs:
             src/Archiver.App/AppPackages/**/*.msix
             src/Archiver.App/AppPackages/**/*.msixbundle
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: pakko-msix-${{ matrix.architecture }}
           path: |
@@ -308,7 +308,7 @@ jobs:
         shell: pwsh
         run: .\scripts\CI-Build-Msix.ps1 -Architecture ${{ matrix.architecture }} -Thumbprint $env:PAKKO_STORE_CERT_THUMBPRINT -MsBuildPath msbuild
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: pakko-store-msix-${{ matrix.architecture }}
           path: |
@@ -408,7 +408,7 @@ jobs:
           New-Item -ItemType Directory -Path out -Force | Out-Null
           Move-Item $outBundle out/
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: pakko-store-msixbundle
           path: out/*.msixbundle
@@ -447,7 +447,7 @@ jobs:
         with:
           subject-checksums: artifacts/cli/SHA256SUMS
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: pakko-cli
           path: artifacts/cli/**
