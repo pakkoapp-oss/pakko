@@ -10520,3 +10520,19 @@ Split out: the `[ComImport]` interfaces (`IApplicationActivationManager`, `IProg
 `[GeneratedComInterface]` — T-F288. Not a mechanical swap: a generated COM wrapper is not
 apartment-bound like a classic RCW, and Shell's `IProgressDialog` sits behind a lock
 (`Win32OperationUi.Session._dialogLock`), so it is likely called from more than one thread.
+
+---
+
+## Store 1.6.1.0 — the Store package version differs from the v1.6.0 tag (2026-09-30)
+
+The GitHub release is tag `v1.6.0` (61376bf, MSIX 1.6.0.0). The Store got **1.6.1.0** with the same
+code: branch `store/1.6.1.0` (commit 6e4b352, pushed) changes only `Package.appxmanifest`'s
+`Version`, and the Store bundle came from a `build.yml` dispatch on that branch (run 36748884254).
+
+- **Why:** the first 1.6.0.0 upload to Partner Center failed part-way, and Partner Center then
+  refused 1.6.0.0 as already existing. A package's full name (name + version + architecture +
+  publisher) is claimed per account for good once uploaded (T-F129), so a new version number was
+  the only way forward. The revision segment must stay 0 for the Store, so 1.6.0.1 was not an
+  option.
+- **Consequence:** `main`'s manifest stays 1.6.0.0. The next Store upload must be above 1.6.1.0
+  (1.7.0.0 is fine). The branch is not merged back; it is the record of what the Store build was.

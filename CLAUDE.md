@@ -331,17 +331,8 @@ example no real interface followed.
 **Test count:** run `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` for current ground
 truth; never trust a count written in a doc.
 
-**Next work:** Future tasks in `docs/TASKS.md`, including **T-F148**/**T-F287** (`[~]`, every P/Invoke on
-`[LibraryImport]`; COM interfaces are T-F288), **T-F159** (unify `GetUniqueFilePath`, split out of T-F158), **T-F160**
-(interactive conflict dialog for `Archiver.CLI`'s `pakko x`, parity with T-F155), **T-F164** (GUI
-Hash lacks CRC-32, not routed through `FileHashService`), **T-F165** (`docs/DIAGRAMS.md` diagram 3
-stale after T-F161), **T-F166**-**T-F170** (test-coverage gaps: real junctions, AES-256 ZIP, Tar
-duplicate-entry-names, in-flight Tar cancellation, locked destination on extract). **T-F174**-
-**T-F186** (2026-08-30 QA/AppSec coverage-audit follow-ups: COM entry-point tests, sandbox
-reentrancy, GroupPolicy fuzzing, AMSI automated EICAR test, MAX_PATH at the service layer, CLI
-conflict-behavior characterization, format-spoofing routing safety, hash Int64 boundary, tar.exe-
-absent handling, UI double-invoke race, Zalgo/RTL-override filenames, Tar destination traversal,
-AMSI size-cap boundary — see `docs/TASKS.md`'s own section for full detail and priority tiers).
+**Next work:** v1.7.0 in waves 0-9 (plan outside the repo; one wave = 3-5 related open tasks in
+`docs/TASKS.md`, pushed per wave). Completed tasks graduated to `docs/TASKS_DONE.md` 2026-09-30.
 **T-F187** (canary CI build for toolchain-drift detection) is `[x]` done — a real triggered
 `workflow_dispatch` run confirmed both build jobs green on the current `windows-latest` image.
 **T-F188** (ZIP password decrypt engine — ZipCrypto + WinZip AE, internal only) is `[x]` done —
@@ -399,11 +390,9 @@ required before this batch closes; the Store build is live).**
 with `Win32OperationUi` as fallback and failover. Steps 1-5 done (step 5, 2026-09-27: conflict
 and password prompts inside the window); next: step 6, polish (`docs/TASKS.md`, `docs/DECISIONS.md`). **T-F270** (`[x]`, 2026-09-26) — all projects on .NET 10 LTS (Build Commands' toolchain note);
 small-files ZIP slowdown fixed where possible in T-F271 (dotnet/runtime#134700).
-**Fix phase 5** (`[~]`, 2026-09-28): one Group Policy owner (T-F261/T-F250 — `GroupPolicyOptions`
+**Fix phase 5** (2026-09-28): one Group Policy owner (T-F261/T-F250 — `GroupPolicyOptions`
 required everywhere, `PakkoServices.Create`, listing gated), Explorer selection over stdin (T-F235,
-`--paths-stdin`), menu hides policy-blocked items (T-F262), one naming rule (T-F264); the
-policy device checks wait for a UAC-approved run. Found T-F273 (tar creation hits tar.exe's
-command-line limit on a large selection).
+`--paths-stdin`), menu hides policy-blocked items (T-F262), one naming rule (T-F264).
 **Fix phase 7** (2026-09-28): Core messages are codes (`CoreMessages`/`MessageCode`, never a bare
 `Message =` — a test reads Core's source) rendered by the new `Archiver.Messages` in 37 locales for
 Shell and App, the CLI stays English (T-F209); one `ArchiveResult.Outcome`, `Success` derived
@@ -413,8 +402,10 @@ messages, 7-Zip naming), T-F198 items 1 and 7. See `docs/DECISIONS.md`'s fix pha
 footer with the primary action rightmost ("Compress to {format}"), inline encryption password,
 browse badge/Test/Close archive, footer result line (T-F211); every App key in 37 locales
 (`AppResourceKeysTests`). Structure: `docs/XAML.md`; decisions: `docs/DECISIONS.md`'s wave 4 entry.
-**G1** (2026-09-29, plan groups G0-G7 in `docs/TASKS.md`): T-F276/277/278/219 and new T-F279 (a
-cancelled ZIP Test reported clean, P1) fixed and device-checked; T-F280-T-F282 filed. G2-G6 done; G2 (the local `sec-t-f283` branch) squash-merged for v1.6.0 in G7.
+**v1.6.0** released 2026-09-30 (tag on 61376bf; G1-G7 in `docs/TASKS.md`'s batch index). The Store
+got **1.6.1.0**: the same code, branch `store/1.6.1.0` bumps only the manifest, since Partner Center
+had already claimed the 1.6.0.0 name; a later Store version must be above 1.6.1.0 (see
+`docs/DECISIONS.md`).
 
 ## Roadmap Summary
 
