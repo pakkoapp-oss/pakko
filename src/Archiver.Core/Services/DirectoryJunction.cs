@@ -101,6 +101,6 @@ internal static partial class DirectoryJunction
 
     [LibraryImport("kernel32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static partial bool DeviceIoControl(SafeFileHandle device, uint ioControlCode, byte[] inBuffer, int inBufferSize,
+    private static partial bool DeviceIoControl(SafeFileHandle device, uint ioControlCode, [In] byte[] inBuffer, int inBufferSize,
         IntPtr outBuffer, int outBufferSize, out int bytesReturned, IntPtr overlapped);
 }

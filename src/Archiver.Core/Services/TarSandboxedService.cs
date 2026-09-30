@@ -1314,7 +1314,7 @@ public sealed class TarSandboxedService : ITarService
         int entryCount = 0;
         long totalEntriesForProgress = 0;
         long totalBytesForProgress = 0;
-        var claimedNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var claims = new SourceNameClaims(collisionStagingDir, stagedJunctions);
 
         foreach (string sourcePath in sortedSourcePaths)
         {
@@ -1355,45 +1355,12 @@ public sealed class TarSandboxedService : ITarService
             }
             else
             {
-                // T-F171: every source claims its name, file or folder.
-                if (!claimedNames.Add(name))
-                {
-                    bool isFolder = Directory.Exists(fullSource);
-                    if (isFolder && DirectoryJunction.IsNetworkPath(fullSource))
-                    {
-                        errors.Add(CoreMessages.Error(sourcePath, MessageCode.TarSourceNameCollisionNotAdded));
-                        continue;
-                    }
-                    string uniqueName = GetUniqueEntryName(name, claimedNames);
-                    string stagedPath = Path.Combine(collisionStagingDir, uniqueName);
-                    try
-                    {
-                        Directory.CreateDirectory(collisionStagingDir);
-                        if (isFolder)
-                        {
-                            DirectoryJunction.Create(stagedPath, fullSource);
-                            stagedJunctions.Add(stagedPath);
-                        }
-                        else
-                        {
-                            File.Copy(fullSource, stagedPath);
-                        }
-                    }
-                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-                    {
-                        errors.Add(CoreMessages.Error(sourcePath, isFolder
-                            ? CoreMessages.Text(MessageCode.TarSourceNameCollisionNotAdded)
-                            : CoreMessages.Wrap(MessageCode.CannotCreateArchive, ex), ex));
-                        continue;
-                    }
-                    claimedNames.Add(uniqueName);
-                    parent = collisionStagingDir;
-                    name = uniqueName;
-                }
+                if (claims.Claim(sourcePath, fullSource, parent!, name, errors) is not { } claimed)
+                    continue;
 
                 nameList.Add("-C");
-                nameList.Add(parent!);
-                nameList.Add(name == "-C" ? "./-C" : name);
+                nameList.Add(claimed.Parent);
+                nameList.Add(claimed.Name == "-C" ? "./-C" : claimed.Name);
             }
 
             entryCount++;
@@ -1402,6 +1369,51 @@ public sealed class TarSandboxedService : ITarService
         }
 
         return (entryCount, totalEntriesForProgress, totalBytesForProgress);
+    }
+
+    // T-F171: every source claims its name, file or folder. A clashing file is staged as a renamed
+    // copy, a clashing folder as a junction under the new name; a clashing folder on a network share
+    // cannot be, and is refused. Null means the source was refused and its error is recorded.
+    private sealed class SourceNameClaims(string stagingDir, List<string> stagedJunctions)
+    {
+        private readonly HashSet<string> _claimed = new(StringComparer.OrdinalIgnoreCase);
+
+        public (string Parent, string Name)? Claim(string sourcePath, string fullSource, string parent, string name, List<ArchiveError> errors)
+        {
+            if (_claimed.Add(name))
+                return (parent, name);
+
+            bool isFolder = Directory.Exists(fullSource);
+            if (isFolder && DirectoryJunction.IsNetworkPath(fullSource))
+            {
+                errors.Add(CoreMessages.Error(sourcePath, MessageCode.TarSourceNameCollisionNotAdded));
+                return null;
+            }
+            string uniqueName = GetUniqueEntryName(name, _claimed);
+            string stagedPath = Path.Combine(stagingDir, uniqueName);
+            try
+            {
+                Directory.CreateDirectory(stagingDir);
+                if (isFolder)
+                {
+                    DirectoryJunction.Create(stagedPath, fullSource);
+                    stagedJunctions.Add(stagedPath);
+                }
+                else
+                {
+                    File.Copy(fullSource, stagedPath);
+                }
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                errors.Add(CoreMessages.Error(sourcePath, isFolder
+                    ? CoreMessages.Text(MessageCode.TarSourceNameCollisionNotAdded)
+                    : CoreMessages.Wrap(MessageCode.CannotCreateArchive, ex), ex));
+                return null;
+            }
+            _claimed.Add(uniqueName);
+            return (stagingDir, uniqueName);
+        }
     }
 
     // Same "name (1)", "name (2)", ... convention as ArchiveNaming.GetUniqueFilePath, but checked against

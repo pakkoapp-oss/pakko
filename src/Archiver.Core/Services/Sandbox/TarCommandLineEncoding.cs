@@ -104,7 +104,7 @@ internal static partial class TarCommandLineEncoding
     // StringMarshalling.Utf16 matters: a char[] must go through as UTF-16, one wide char per char.
     [LibraryImport("kernel32.dll", StringMarshalling = StringMarshalling.Utf16, SetLastError = true)]
     private static partial int MultiByteToWideChar(
-        uint codePage, uint flags, byte[] multiByte, int multiByteCount, [Out] char[]? wideChars, int wideCharCount);
+        uint codePage, uint flags, [In] byte[] multiByte, int multiByteCount, [Out] char[]? wideChars, int wideCharCount);
 }
 
 /// <summary>

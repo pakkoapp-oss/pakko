@@ -509,15 +509,16 @@ public sealed class AntivirusScanService : IAntivirusScanService
             // extraction would keep.
             List<TarSandboxedService.DuplicateGroup> duplicates =
                 TarSandboxedService.FindDuplicateGroups(fileEntries, allNames, expandedSelection);
+            var target = new TarScanTarget(archivePath, scanner, findings, reportProgress);
             int scanned = await ScanExtractedFilesAsync(
-                scope.OutputDirectory!, 0, archivePath, totalEntries + duplicates.Count, scanner, findings, reportProgress, cancellationToken)
+                scope.OutputDirectory!, 0, totalEntries + duplicates.Count, target, cancellationToken)
                 .ConfigureAwait(false);
             if (duplicates.Count > 0)
             {
                 (string firstDir, _, _) = await scope.ExtractFirstOccurrencesAsync(
                     duplicates.Select(g => g.FirstName).ToList(), cancellationToken).ConfigureAwait(false);
                 await ScanExtractedFilesAsync(
-                    firstDir, scanned, archivePath, totalEntries + duplicates.Count, scanner, findings, reportProgress, cancellationToken)
+                    firstDir, scanned, totalEntries + duplicates.Count, target, cancellationToken)
                     .ConfigureAwait(false);
             }
         }
@@ -548,11 +549,14 @@ public sealed class AntivirusScanService : IAntivirusScanService
         }
     }
 
+    private sealed record TarScanTarget(
+        string ArchivePath, IAmsiScanner Scanner, List<ThreatFinding> Findings, Action<string?, int, int> ReportProgress);
+
     // Returns the running count of scanned files; startAt continues it across a second folder.
     private static async Task<int> ScanExtractedFilesAsync(
-        string outputDirectory, int startAt, string archivePath, int totalEntries, IAmsiScanner scanner,
-        List<ThreatFinding> findings, Action<string?, int, int> reportProgress, CancellationToken cancellationToken)
+        string outputDirectory, int startAt, int totalEntries, TarScanTarget target, CancellationToken cancellationToken)
     {
+        (string archivePath, IAmsiScanner scanner, List<ThreatFinding> findings, Action<string?, int, int> reportProgress) = target;
         int entriesDone = startAt;
         foreach (string file in TarSandboxedService.EnumerateFilesGuarded(outputDirectory))
         {

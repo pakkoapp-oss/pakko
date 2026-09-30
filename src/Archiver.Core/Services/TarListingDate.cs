@@ -16,8 +16,10 @@ internal static partial class TarListingDate
     private const int DateColumn = 5;
     private const uint LocaleSAbbrevMonthName1 = 0x00000044;
     private const int LocaleNameMaxLength = 85;
-    private static readonly DateTime UnixEpochEast = new(1970, 1, 1);
-    private static readonly DateTime UnixEpochWest = new(1969, 12, 31);
+    // Compared by date only: tar.exe prints the epoch in local time, 1970-01-01 east of UTC, the
+    // day before west of it.
+    private static readonly DateTime UnixEpochEast = DateTime.UnixEpoch;
+    private static readonly DateTime UnixEpochWest = DateTime.UnixEpoch.AddDays(-1);
 
     /// <summary>The user locale's twelve month abbreviations, or none when Windows cannot say.</summary>
     public static IReadOnlyList<string> UserMonthNames { get; } = ReadUserMonthNames();
@@ -66,7 +68,7 @@ internal static partial class TarListingDate
 
     private static DateTime? TryCreate(int year, int month, int day, int hour, int minute) =>
         year is >= 1 and <= 9999 && day >= 1 && day <= DateTime.DaysInMonth(year, month)
-            ? new DateTime(year, month, day, hour, minute, 0)
+            ? new DateTime(year, month, day, hour, minute, 0, DateTimeKind.Local)
             : null;
 
     private static string[] ReadUserMonthNames()
@@ -76,7 +78,7 @@ internal static partial class TarListingDate
             return [];
         string locale = new string(localeName).TrimEnd('\0');
 
-        var names = new string[12];
+        string[] names = new string[12];
         char[] buffer = new char[80];
         for (int i = 0; i < names.Length; i++)
         {
