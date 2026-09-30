@@ -6,7 +6,7 @@ namespace Archiver.Shell.Tests;
 // T-F255: Explorer's password dialog read the edit control into a fixed 256-char buffer, so a
 // longer password was cut without notice and reported as wrong. Uses a real (never shown) EDIT
 // control: WM_GETTEXT/WM_SETTEXT are sent on this thread, so no message loop is needed.
-public sealed class PasswordDialogReadTextTests
+public sealed partial class PasswordDialogReadTextTests
 {
     [Theory]
     [InlineData(0)]
@@ -34,16 +34,18 @@ public sealed class PasswordDialogReadTextTests
 
     private const int EmLimitText = 0x00C5;
 
-    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
-    private static extern IntPtr CreateWindowExW(int exStyle, string className, string? windowName, int style,
+    [LibraryImport("user32.dll", StringMarshalling = StringMarshalling.Utf16)]
+    private static partial IntPtr CreateWindowExW(int exStyle, string className, string? windowName, int style,
         int x, int y, int width, int height, IntPtr parent, IntPtr menu, IntPtr instance, IntPtr param);
 
-    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
-    private static extern bool SetWindowTextW(IntPtr hWnd, string text);
+    [LibraryImport("user32.dll", StringMarshalling = StringMarshalling.Utf16)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static partial bool SetWindowTextW(IntPtr hWnd, string text);
 
-    [DllImport("user32.dll")]
-    private static extern IntPtr SendMessageW(IntPtr hWnd, int msg, nint wParam, nint lParam);
+    [LibraryImport("user32.dll")]
+    private static partial IntPtr SendMessageW(IntPtr hWnd, int msg, nint wParam, nint lParam);
 
-    [DllImport("user32.dll")]
-    private static extern bool DestroyWindow(IntPtr hWnd);
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static partial bool DestroyWindow(IntPtr hWnd);
 }

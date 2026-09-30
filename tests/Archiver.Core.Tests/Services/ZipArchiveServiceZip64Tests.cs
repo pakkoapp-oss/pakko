@@ -20,7 +20,7 @@ namespace Archiver.Core.Tests.Services;
 /// disk I/O for the &gt;4 GiB case. Run explicitly with
 /// `dotnet test --filter "Category=Slow"` (see CLAUDE.md/TESTING.md).
 /// </summary>
-public sealed class ZipArchiveServiceZip64Tests : IDisposable
+public sealed partial class ZipArchiveServiceZip64Tests : IDisposable
 {
     private readonly ZipArchiveService _sut = new(new GroupPolicyOptions());
     private readonly TempDirectory _temp = new();
@@ -123,8 +123,9 @@ public sealed class ZipArchiveServiceZip64Tests : IDisposable
         return DeviceIoControl(handle, FSCTL_SET_SPARSE, IntPtr.Zero, 0, IntPtr.Zero, 0, out _, IntPtr.Zero);
     }
 
-    [DllImport("kernel32.dll", SetLastError = true)]
-    private static extern bool DeviceIoControl(
+    [LibraryImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static partial bool DeviceIoControl(
         SafeFileHandle hDevice, uint dwIoControlCode,
         IntPtr lpInBuffer, uint nInBufferSize,
         IntPtr lpOutBuffer, uint nOutBufferSize,

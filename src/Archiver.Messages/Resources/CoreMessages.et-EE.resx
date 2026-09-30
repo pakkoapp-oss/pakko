@@ -198,6 +198,12 @@
   <data name="TarSpecialEntry" xml:space="preserve">
     <value>Arhiiv sisaldab sümbolilinki, püsilinki, seadet või muud erikirjet ja seda ei saa turvaliselt ekstraktida.</value>
   </data>
+  <data name="TarDuplicateCopiesNotExtracted" xml:space="preserve">
+    <value>Veel {0} selle nimega koopiat jäi välja pakkimata: sellest arhiivist saab võtta ainult esimese ja viimase koopia.</value>
+  </data>
+  <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
+    <value>Teisel valitud üksusel on sama nimi ja seda kausta ei saanud uue nimega lisada. Nimetage üks neist ümber ja proovige uuesti.</value>
+  </data>
   <data name="ListingInconsistent" xml:space="preserve">
     <value>Arhiivi sisuloend on vastuoluline.</value>
   </data>

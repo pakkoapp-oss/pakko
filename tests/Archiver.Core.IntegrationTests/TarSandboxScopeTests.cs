@@ -15,7 +15,7 @@ namespace Archiver.Core.IntegrationTests;
 /// </summary>
 [Collection("TarSandbox")]
 [System.Runtime.Versioning.SupportedOSPlatform("windows")]
-public sealed class TarSandboxScopeTests : IDisposable
+public sealed partial class TarSandboxScopeTests : IDisposable
 {
     private readonly TempDirectory _temp = new();
 
@@ -232,9 +232,9 @@ public sealed class TarSandboxScopeTests : IDisposable
         public uint FileIndexLow;
     }
 
-    [System.Runtime.InteropServices.DllImport("kernel32.dll", SetLastError = true)]
+    [System.Runtime.InteropServices.LibraryImport("kernel32.dll", SetLastError = true)]
     [return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
-    private static extern bool GetFileInformationByHandle(Microsoft.Win32.SafeHandles.SafeFileHandle file, out ByHandleFileInformation info);
+    private static partial bool GetFileInformationByHandle(Microsoft.Win32.SafeHandles.SafeFileHandle file, out ByHandleFileInformation info);
 
     [Fact]
     public async Task RunAsync_TwoConcurrentScopes_BothSucceedWithDistinctQuarantineRoots()

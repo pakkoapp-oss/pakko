@@ -9,7 +9,7 @@ namespace Archiver.Core.Services.Sandbox;
 /// DECISIONS.md), and always PROC_THREAD_ATTRIBUTE_HANDLE_LIST naming the only handles the child
 /// may inherit (T-F244 item 5). Built per launch, since the inherited handles differ each time.
 /// </summary>
-internal sealed class LaunchAttributeList : IDisposable
+internal sealed partial class LaunchAttributeList : IDisposable
 {
     // ProcThreadAttributeValue(ProcThreadAttributeSecurityCapabilities = 9, Thread = FALSE,
     // Input = TRUE, Additive = FALSE) = 9 | PROC_THREAD_ATTRIBUTE_INPUT(0x00020000) = 0x00020009.
@@ -113,25 +113,25 @@ internal sealed class LaunchAttributeList : IDisposable
         public uint Reserved;
     }
 
-    private static class NativeMethods
+    private static partial class NativeMethods
     {
-        [DllImport("kernel32.dll", SetLastError = true)]
+        [LibraryImport("kernel32.dll", SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
-        public static extern bool InitializeProcThreadAttributeList(
+        public static partial bool InitializeProcThreadAttributeList(
             SafeProcThreadAttributeListHandle lpAttributeList, int dwAttributeCount, int dwFlags, ref IntPtr lpSize);
 
         // Separate IntPtr-typed overload for the buffer-size probe call only (Create() above,
         // before any buffer exists to pass) — a SafeHandle-typed P/Invoke parameter throws
         // ArgumentNullException on null rather than marshaling it as a zero handle, so the
         // two-call size-then-allocate idiom needs this real IntPtr.Zero entry point.
-        [DllImport("kernel32.dll", SetLastError = true, EntryPoint = "InitializeProcThreadAttributeList")]
+        [LibraryImport("kernel32.dll", SetLastError = true, EntryPoint = "InitializeProcThreadAttributeList")]
         [return: MarshalAs(UnmanagedType.Bool)]
-        public static extern bool InitializeProcThreadAttributeListSizeProbe(
+        public static partial bool InitializeProcThreadAttributeListSizeProbe(
             IntPtr lpAttributeList, int dwAttributeCount, int dwFlags, ref IntPtr lpSize);
 
-        [DllImport("kernel32.dll", SetLastError = true)]
+        [LibraryImport("kernel32.dll", SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
-        public static extern bool UpdateProcThreadAttribute(
+        public static partial bool UpdateProcThreadAttribute(
             SafeProcThreadAttributeListHandle lpAttributeList,
             uint dwFlags,
             IntPtr attribute,

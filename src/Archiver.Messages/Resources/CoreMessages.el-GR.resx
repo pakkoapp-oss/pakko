@@ -198,6 +198,12 @@
   <data name="TarSpecialEntry" xml:space="preserve">
     <value>Το αρχείο περιέχει συμβολική σύνδεση, σταθερή σύνδεση, συσκευή ή άλλη ειδική καταχώρηση και δεν μπορεί να εξαχθεί με ασφάλεια.</value>
   </data>
+  <data name="TarDuplicateCopiesNotExtracted" xml:space="preserve">
+    <value>Δεν εξήχθησαν άλλα {0} αντίγραφα με αυτό το όνομα: από αυτό το αρχείο μπορούν να ληφθούν μόνο το πρώτο και το τελευταίο αντίγραφο.</value>
+  </data>
+  <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
+    <value>Ένα άλλο επιλεγμένο στοιχείο έχει το ίδιο όνομα και αυτός ο φάκελος δεν ήταν δυνατό να προστεθεί με νέο όνομα. Μετονομάστε ένα από αυτά και δοκιμάστε ξανά.</value>
+  </data>
   <data name="ListingInconsistent" xml:space="preserve">
     <value>Η λίστα περιεχομένων του αρχείου είναι ασυνεπής.</value>
   </data>

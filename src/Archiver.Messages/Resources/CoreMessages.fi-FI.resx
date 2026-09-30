@@ -198,6 +198,12 @@
   <data name="TarSpecialEntry" xml:space="preserve">
     <value>Arkisto sisältää symbolisen linkin, kovan linkin, laitteen tai muun erikoiskohteen, eikä sitä voi purkaa turvallisesti.</value>
   </data>
+  <data name="TarDuplicateCopiesNotExtracted" xml:space="preserve">
+    <value>{0} muuta tämännimistä kopiota jäi purkamatta: tästä arkistosta voidaan ottaa vain ensimmäinen ja viimeinen kopio.</value>
+  </data>
+  <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
+    <value>Toisella valitulla kohteella on sama nimi, eikä tätä kansiota voitu lisätä uudella nimellä. Nimeä toinen niistä uudelleen ja yritä uudelleen.</value>
+  </data>
   <data name="ListingInconsistent" xml:space="preserve">
     <value>Arkiston sisältöluettelo on ristiriitainen.</value>
   </data>

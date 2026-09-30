@@ -20,7 +20,7 @@ namespace Archiver.Core.Services.Sandbox;
 /// so catalog support is out of scope — do not "fix" a future catalog-signed target by assuming
 /// this class already handles it.
 /// </summary>
-internal static class TarSignatureVerifier
+internal static partial class TarSignatureVerifier
 {
     private static readonly Guid WintrustActionGenericVerifyV2 = new("00AAC56B-CD44-11D0-8CC2-00C04FC295EE");
 
@@ -185,14 +185,14 @@ internal static class TarSignatureVerifier
         public IntPtr pSignatureSettings;
     }
 
-    private static class NativeMethods
+    private static partial class NativeMethods
     {
-        [DllImport("wintrust.dll", SetLastError = true)]
-        public static extern int WinVerifyTrust(IntPtr hwnd, ref Guid pgActionID, ref WINTRUST_DATA pWVTData);
+        [LibraryImport("wintrust.dll", SetLastError = true)]
+        public static partial int WinVerifyTrust(IntPtr hwnd, ref Guid pgActionID, ref WINTRUST_DATA pWVTData);
 
-        [DllImport("crypt32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        [LibraryImport("crypt32.dll", StringMarshalling = StringMarshalling.Utf16, SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
-        public static extern bool CryptQueryObject(
+        public static partial bool CryptQueryObject(
             uint dwObjectType,
             string pvObject,
             uint dwExpectedContentTypeFlags,
@@ -205,31 +205,31 @@ internal static class TarSignatureVerifier
             out IntPtr phMsg,
             IntPtr ppvContext);
 
-        [DllImport("crypt32.dll", SetLastError = true)]
+        [LibraryImport("crypt32.dll", SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
-        public static extern bool CryptMsgGetParam(
+        public static partial bool CryptMsgGetParam(
             IntPtr hCryptMsg, uint dwParamType, uint dwIndex, IntPtr pvData, ref uint pcbData);
 
-        [DllImport("crypt32.dll", SetLastError = true)]
-        public static extern IntPtr CertFindCertificateInStore(
+        [LibraryImport("crypt32.dll", SetLastError = true)]
+        public static partial IntPtr CertFindCertificateInStore(
             IntPtr hCertStore, uint dwCertEncodingType, uint dwFindFlags, uint dwFindType,
             IntPtr pvFindPara, IntPtr pPrevCertContext);
 
-        [DllImport("crypt32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-        public static extern uint CertGetNameStringW(
+        [LibraryImport("crypt32.dll", StringMarshalling = StringMarshalling.Utf16, SetLastError = true)]
+        public static partial uint CertGetNameStringW(
             IntPtr pCertContext, uint dwType, uint dwFlags, IntPtr pvTypePara,
             [Out] char[] pszNameString, uint cchNameString);
 
-        [DllImport("crypt32.dll", SetLastError = true)]
+        [LibraryImport("crypt32.dll", SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
-        public static extern bool CertFreeCertificateContext(IntPtr pCertContext);
+        public static partial bool CertFreeCertificateContext(IntPtr pCertContext);
 
-        [DllImport("crypt32.dll", SetLastError = true)]
+        [LibraryImport("crypt32.dll", SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
-        public static extern bool CertCloseStore(IntPtr hCertStore, uint dwFlags);
+        public static partial bool CertCloseStore(IntPtr hCertStore, uint dwFlags);
 
-        [DllImport("crypt32.dll", SetLastError = true)]
+        [LibraryImport("crypt32.dll", SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
-        public static extern bool CryptMsgClose(IntPtr hCryptMsg);
+        public static partial bool CryptMsgClose(IntPtr hCryptMsg);
     }
 }

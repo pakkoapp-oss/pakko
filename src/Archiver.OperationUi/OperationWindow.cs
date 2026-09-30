@@ -27,7 +27,7 @@ namespace Archiver.OperationUi;
 /// approved step 3 mockup: 520 px wide, title row, heading, archive line, bar, file, status, buttons.
 /// A conflict, password (step 5) or yes/no (T-F217) prompt replaces the progress part until answered.
 /// </summary>
-internal sealed class OperationWindow
+internal sealed partial class OperationWindow
 {
     private const double WidthDip = 520;
     private const double TitleBarDip = 32;
@@ -471,6 +471,6 @@ internal sealed class OperationWindow
     private static void SetVisible(UIElement element, bool visible) =>
         element.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
 
-    [DllImport("user32.dll")]
-    private static extern uint GetDpiForWindow(IntPtr hwnd);
+    [LibraryImport("user32.dll")]
+    private static partial uint GetDpiForWindow(IntPtr hwnd);
 }

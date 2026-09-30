@@ -14,7 +14,7 @@ namespace Archiver.Shell;
 // (T-F155, DECISIONS.md): a plain Sequential-layout TASKDIALOG_BUTTON, 16 bytes and naturally
 // aligned, reliably crashed TaskDialogIndirect with an AccessViolationException. Pack = 1,
 // giving 12 tightly-packed bytes, fixed it. Don't revert this to natural alignment.
-public static class ShellConflictDialog
+public static partial class ShellConflictDialog
 {
     private const int IdOverwrite = 1001;
     private const int IdRename = 1002;
@@ -97,6 +97,7 @@ public static class ShellConflictDialog
         TaskDialogButton[] buttons = [.. buttonSpecs.Select(b => new TaskDialogButton { ButtonId = b.ButtonId, ButtonText = b.Text })];
         int buttonStructSize = Marshal.SizeOf<TaskDialogButton>();
         IntPtr buttonsPtr = Marshal.AllocHGlobal(buttonStructSize * buttons.Length);
+        IntPtr configPtr = IntPtr.Zero;
         try
         {
             for (int i = 0; i < buttons.Length; i++)
@@ -117,11 +118,20 @@ public static class ShellConflictDialog
                 Callback = Marshal.GetFunctionPointerForDelegate(BringToFrontCallback),
             };
 
-            int hr = NativeMethods.TaskDialogIndirect(ref config, out int selectedButtonId, out _, out bool verificationChecked);
+            // T-F287: the config's LPWStr fields keep it non-blittable, so it goes out by pointer
+            // the same way the buttons do; [LibraryImport] passes only blittable structs by ref.
+            configPtr = Marshal.AllocHGlobal(Marshal.SizeOf<TaskDialogConfig>());
+            Marshal.StructureToPtr(config, configPtr, false);
+            int hr = NativeMethods.TaskDialogIndirect(configPtr, out int selectedButtonId, out _, out bool verificationChecked);
             return (hr, selectedButtonId, verificationChecked);
         }
         finally
         {
+            if (configPtr != IntPtr.Zero)
+            {
+                Marshal.DestroyStructure<TaskDialogConfig>(configPtr);
+                Marshal.FreeHGlobal(configPtr);
+            }
             for (int i = 0; i < buttons.Length; i++)
                 Marshal.DestroyStructure<TaskDialogButton>(buttonsPtr + i * buttonStructSize);
             Marshal.FreeHGlobal(buttonsPtr);
@@ -193,11 +203,11 @@ public static class ShellConflictDialog
         [MarshalAs(UnmanagedType.LPWStr)] public string ButtonText;
     }
 
-    private static class NativeMethods
+    private static partial class NativeMethods
     {
-        [DllImport("comctl32.dll", CharSet = CharSet.Unicode)]
-        public static extern int TaskDialogIndirect(
-            ref TaskDialogConfig config, out int selectedButtonId, out int selectedRadioButtonId,
+        [LibraryImport("comctl32.dll")]
+        public static partial int TaskDialogIndirect(
+            IntPtr config, out int selectedButtonId, out int selectedRadioButtonId,
             [MarshalAs(UnmanagedType.Bool)] out bool verificationFlagChecked);
 
         public const uint TDN_CREATED = 0;
@@ -208,7 +218,7 @@ public static class ShellConflictDialog
 
         public delegate int TaskDialogCallback(IntPtr hwnd, uint notification, IntPtr wParam, IntPtr lParam, IntPtr refData);
 
-        [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int x, int y, int cx, int cy, uint flags);
-        [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd);
+        [LibraryImport("user32.dll")][return: MarshalAs(UnmanagedType.Bool)] public static partial bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int x, int y, int cx, int cy, uint flags);
+        [LibraryImport("user32.dll")][return: MarshalAs(UnmanagedType.Bool)] public static partial bool SetForegroundWindow(IntPtr hWnd);
     }
 }

@@ -10,7 +10,7 @@ namespace Archiver.Shell;
 /// and <see cref="PasswordDialog"/> for prompts, <c>MessageBoxW</c> for results. One copy of the
 /// progress/cancel plumbing that Extract/Archive/Test, Hash and Scan each carried before.
 /// </summary>
-internal sealed class Win32OperationUi : IOperationUi
+internal sealed partial class Win32OperationUi : IOperationUi
 {
     private const uint MbIconError = 0x10;
     private const uint MbIconWarning = 0x30;
@@ -31,8 +31,8 @@ internal sealed class Win32OperationUi : IOperationUi
         _ = MessageBoxW(IntPtr.Zero, message.Text, message.Title, icon);
     }
 
-    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
-    private static extern int MessageBoxW(IntPtr hWnd, string text, string caption, uint type);
+    [LibraryImport("user32.dll", StringMarshalling = StringMarshalling.Utf16)]
+    private static partial int MessageBoxW(IntPtr hWnd, string text, string caption, uint type);
 
     private sealed class Session : IOperationSession
     {

@@ -9,7 +9,7 @@ namespace Archiver.Shell;
 /// Starts Archiver.OperationUi.exe from Shell's own folder (an absolute path, never PATH) over two
 /// anonymous pipes. The handles go on the command line as numbers; nothing secret ever does.
 /// </summary>
-internal sealed class HelperProcessLauncher : IHelperLauncher
+internal sealed partial class HelperProcessLauncher : IHelperLauncher
 {
     public const string ExeName = "Archiver.OperationUi.exe";
 
@@ -65,7 +65,7 @@ internal sealed class HelperProcessLauncher : IHelperLauncher
         }
     }
 
-    [DllImport("user32.dll")]
+    [LibraryImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool AllowSetForegroundWindow(int processId);
+    private static partial bool AllowSetForegroundWindow(int processId);
 }

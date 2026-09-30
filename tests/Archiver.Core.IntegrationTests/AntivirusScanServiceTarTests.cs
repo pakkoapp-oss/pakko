@@ -13,6 +13,8 @@ namespace Archiver.Core.IntegrationTests;
 internal sealed class FakeAmsiScanner : IAmsiScanner
 {
     public HashSet<string> DetectedContentNames { get; } = new(StringComparer.Ordinal);
+    // T-F171: same-named copies differ only in content.
+    public string? DetectedText { get; set; }
     public List<string> ScannedContentNames { get; } = [];
     public bool Disposed { get; private set; }
 
@@ -22,7 +24,8 @@ internal sealed class FakeAmsiScanner : IAmsiScanner
         if (length == 0)
             throw new InvalidOperationException("AmsiScanBuffer failed (HRESULT 0x80070057).");
         ScannedContentNames.Add(contentName);
-        return DetectedContentNames.Contains(contentName)
+        bool textMatch = DetectedText is not null && Encoding.ASCII.GetString(buffer, 0, length).Contains(DetectedText, StringComparison.Ordinal);
+        return DetectedContentNames.Contains(contentName) || textMatch
             ? (ThreatVerdict.ThreatDetected, "Fake-Test-Threat")
             : (ThreatVerdict.Clean, null);
     }
@@ -127,6 +130,27 @@ public sealed class AntivirusScanServiceTarTests : IDisposable
         result.OverallVerdict.Should().Be(ThreatVerdict.ThreatDetected);
         result.Findings.Should().ContainSingle(f => f.EntryPath == "bad.txt" && f.Verdict == ThreatVerdict.ThreatDetected);
         result.Findings.Should().ContainSingle(f => f.EntryPath == "clean.txt" && f.Verdict == ThreatVerdict.Clean);
+    }
+
+    // T-F171: extraction now also takes out the first of several same-named copies, so the scan
+    // must see it too — a threat hidden behind a clean later copy is not missed.
+    [Integration]
+    public async Task ScanAsync_DuplicateNames_ScansTheFirstCopyToo()
+    {
+        string archivePath = Path.Combine(_temp.Path, "dup.tar");
+        TarBuilder.WriteTar(archivePath,
+        [
+            new TarBuilder.Entry { Name = "dup.txt", Content = Encoding.ASCII.GetBytes("EVIL-first") },
+            new TarBuilder.Entry { Name = "dup.txt", Content = Encoding.ASCII.GetBytes("fine-last") },
+        ]);
+
+        var scanner = new FakeAmsiScanner { DetectedText = "EVIL" };
+        AntivirusScanService service = CreateService(scanner);
+
+        ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [archivePath] });
+
+        result.OverallVerdict.Should().Be(ThreatVerdict.ThreatDetected);
+        scanner.ScannedContentNames.Should().HaveCount(2);
     }
 
     [Integration]

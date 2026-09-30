@@ -198,6 +198,12 @@
   <data name="TarSpecialEntry" xml:space="preserve">
     <value>Het archief bevat een symbolische koppeling, harde koppeling, apparaat of ander speciaal item en kan niet veilig worden uitgepakt.</value>
   </data>
+  <data name="TarDuplicateCopiesNotExtracted" xml:space="preserve">
+    <value>{0} andere kopieën met deze naam zijn niet uitgepakt: uit dit archief kunnen alleen de eerste en de laatste kopie worden gehaald.</value>
+  </data>
+  <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
+    <value>Een ander geselecteerd item heeft dezelfde naam en deze map kon niet onder een nieuwe naam worden toegevoegd. Wijzig de naam van een van beide en probeer het opnieuw.</value>
+  </data>
   <data name="ListingInconsistent" xml:space="preserve">
     <value>De inhoudslijst van het archief is inconsistent.</value>
   </data>

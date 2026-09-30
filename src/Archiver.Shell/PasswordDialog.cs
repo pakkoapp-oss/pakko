@@ -9,7 +9,7 @@ namespace Archiver.Shell;
 // DialogBoxIndirectParamW, NOT CredUIPromptForCredentialsW — confirmed by fetching NanaZip's real
 // PasswordDialog.rc/.cpp, which use exactly this shape (EDITTEXT with ES_PASSWORD|
 // ES_AUTOHSCROLL, a "Show password" checkbox toggling EM_SETPASSWORDCHAR) and never CredUI.
-public static class PasswordDialog
+public static partial class PasswordDialog
 {
     private const int IdOk = 1;     // IDOK
     private const int IdCancel = 2; // IDCANCEL
@@ -71,7 +71,7 @@ public static class PasswordDialog
         {
             Marshal.Copy(template, 0, templatePtr, template.Length);
             IntPtr hInstance = NativeMethods.GetModuleHandle(null);
-            NativeMethods.DialogBoxIndirectParam(hInstance, templatePtr, IntPtr.Zero, proc, IntPtr.Zero);
+            NativeMethods.DialogBoxIndirectParam(hInstance, templatePtr, IntPtr.Zero, Marshal.GetFunctionPointerForDelegate(proc), IntPtr.Zero);
         }
         finally
         {
@@ -166,7 +166,7 @@ public static class PasswordDialog
         }
     }
 
-    private static class NativeMethods
+    private static partial class NativeMethods
     {
         public const int WM_INITDIALOG = 0x0110;
         public const int WM_COMMAND = 0x0111;
@@ -180,24 +180,27 @@ public static class PasswordDialog
 
         public delegate IntPtr DialogProcDelegate(IntPtr hwndDlg, uint msg, IntPtr wParam, IntPtr lParam);
 
-        [DllImport("user32.dll", CharSet = CharSet.Unicode)]
-        public static extern IntPtr DialogBoxIndirectParam(IntPtr hInstance, IntPtr lpTemplate, IntPtr hWndParent, DialogProcDelegate lpDialogFunc, IntPtr dwInitParam);
+        // T-F287: [LibraryImport] never adds the W suffix CharSet.Unicode used to find, and
+        // ShowAsync turns EntryPointNotFoundException into "no password" — so every W name is explicit.
+        // The dialog procedure goes in as a function pointer ([LibraryImport] marshals no delegates).
+        [LibraryImport("user32.dll", EntryPoint = "DialogBoxIndirectParamW")]
+        public static partial IntPtr DialogBoxIndirectParam(IntPtr hInstance, IntPtr lpTemplate, IntPtr hWndParent, IntPtr lpDialogFunc, IntPtr dwInitParam);
 
-        [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
-        public static extern IntPtr GetModuleHandle(string? lpModuleName);
+        [LibraryImport("kernel32.dll", EntryPoint = "GetModuleHandleW", StringMarshalling = StringMarshalling.Utf16)]
+        public static partial IntPtr GetModuleHandle(string? lpModuleName);
 
-        [DllImport("user32.dll")] public static extern IntPtr GetDlgItem(IntPtr hDlg, int nIDDlgItem);
-        [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int GetWindowTextLength(IntPtr hWnd);
-        [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int GetWindowText(IntPtr hWnd, char[] lpString, int nMaxCount);
-        [DllImport("user32.dll")] public static extern int IsDlgButtonChecked(IntPtr hDlg, int nIDButton);
-        [DllImport("user32.dll")] public static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
-        [DllImport("user32.dll")] public static extern bool EndDialog(IntPtr hDlg, int nResult);
-        [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd);
-        [DllImport("user32.dll")] public static extern IntPtr SetActiveWindow(IntPtr hWnd);
-        [DllImport("user32.dll")] public static extern bool BringWindowToTop(IntPtr hWnd);
-        [DllImport("user32.dll")] public static extern IntPtr SetFocus(IntPtr hWnd);
-        [DllImport("user32.dll")] public static extern bool InvalidateRect(IntPtr hWnd, IntPtr lpRect, bool bErase);
-        [DllImport("user32.dll")] public static extern bool FlashWindow(IntPtr hWnd, bool bInvert);
-        [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int x, int y, int cx, int cy, uint flags);
+        [LibraryImport("user32.dll")] public static partial IntPtr GetDlgItem(IntPtr hDlg, int nIDDlgItem);
+        [LibraryImport("user32.dll", EntryPoint = "GetWindowTextLengthW")] public static partial int GetWindowTextLength(IntPtr hWnd);
+        [LibraryImport("user32.dll", EntryPoint = "GetWindowTextW", StringMarshalling = StringMarshalling.Utf16)] public static partial int GetWindowText(IntPtr hWnd, [Out] char[] lpString, int nMaxCount);
+        [LibraryImport("user32.dll")] public static partial int IsDlgButtonChecked(IntPtr hDlg, int nIDButton);
+        [LibraryImport("user32.dll", EntryPoint = "SendMessageW")] public static partial IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
+        [LibraryImport("user32.dll")][return: MarshalAs(UnmanagedType.Bool)] public static partial bool EndDialog(IntPtr hDlg, int nResult);
+        [LibraryImport("user32.dll")][return: MarshalAs(UnmanagedType.Bool)] public static partial bool SetForegroundWindow(IntPtr hWnd);
+        [LibraryImport("user32.dll")] public static partial IntPtr SetActiveWindow(IntPtr hWnd);
+        [LibraryImport("user32.dll")][return: MarshalAs(UnmanagedType.Bool)] public static partial bool BringWindowToTop(IntPtr hWnd);
+        [LibraryImport("user32.dll")] public static partial IntPtr SetFocus(IntPtr hWnd);
+        [LibraryImport("user32.dll")][return: MarshalAs(UnmanagedType.Bool)] public static partial bool InvalidateRect(IntPtr hWnd, IntPtr lpRect, [MarshalAs(UnmanagedType.Bool)] bool bErase);
+        [LibraryImport("user32.dll")][return: MarshalAs(UnmanagedType.Bool)] public static partial bool FlashWindow(IntPtr hWnd, [MarshalAs(UnmanagedType.Bool)] bool bInvert);
+        [LibraryImport("user32.dll")][return: MarshalAs(UnmanagedType.Bool)] public static partial bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int x, int y, int cx, int cy, uint flags);
     }
 }

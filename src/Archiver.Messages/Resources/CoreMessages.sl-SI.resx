@@ -198,6 +198,12 @@
   <data name="TarSpecialEntry" xml:space="preserve">
     <value>Arhiv vsebuje simbolno povezavo, trdo povezavo, napravo ali drug poseben vnos in ga ni mogoče varno razširiti.</value>
   </data>
+  <data name="TarDuplicateCopiesNotExtracted" xml:space="preserve">
+    <value>Še {0} kopij s tem imenom ni bilo razširjenih: iz tega arhiva je mogoče vzeti le prvo in zadnjo kopijo.</value>
+  </data>
+  <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
+    <value>Drug izbrani element ima enako ime in te mape ni bilo mogoče dodati pod novim imenom. Preimenujte enega od njiju in poskusite znova.</value>
+  </data>
   <data name="ListingInconsistent" xml:space="preserve">
     <value>Seznam vsebine arhiva ni skladen.</value>
   </data>

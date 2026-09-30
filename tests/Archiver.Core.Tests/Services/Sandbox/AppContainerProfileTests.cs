@@ -8,7 +8,7 @@ namespace Archiver.Core.Tests.Services.Sandbox;
 // is never created or deleted by any test — production code creates it once, lazily, and never
 // deletes it (see DECISIONS.md's T-F52 follow-up entry). Do not "fix" this test to exercise the
 // shared production profile name.
-public sealed class AppContainerProfileTests : IDisposable
+public sealed partial class AppContainerProfileTests : IDisposable
 {
     private readonly string _testProfileName = "Pakko.TarSandbox.Test." + Guid.NewGuid();
     private readonly AppContainerProfile _sut;
@@ -89,11 +89,10 @@ public sealed class AppContainerProfileTests : IDisposable
         }
     }
 
-    [System.Runtime.InteropServices.DllImport("advapi32.dll", EntryPoint = "ConvertSidToStringSidW",
-        CharSet = System.Runtime.InteropServices.CharSet.Unicode, SetLastError = true)]
+    [System.Runtime.InteropServices.LibraryImport("advapi32.dll", EntryPoint = "ConvertSidToStringSidW", SetLastError = true)]
     [return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
-    private static extern bool ConvertSidToStringSidW(IntPtr sid, out IntPtr stringSid);
+    private static partial bool ConvertSidToStringSidW(IntPtr sid, out IntPtr stringSid);
 
-    [System.Runtime.InteropServices.DllImport("kernel32.dll", SetLastError = true)]
-    private static extern IntPtr LocalFree(IntPtr hMem);
+    [System.Runtime.InteropServices.LibraryImport("kernel32.dll", SetLastError = true)]
+    private static partial IntPtr LocalFree(IntPtr hMem);
 }

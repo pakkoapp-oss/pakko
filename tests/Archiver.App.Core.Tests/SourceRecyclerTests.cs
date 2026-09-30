@@ -161,7 +161,7 @@ public sealed class SourceRecyclerTests
         _ops.RecycleCalls.Should().ContainSingle().Which.Should().ContainSingle();
     }
 
-    // --- Real Win32 operations: resolution only, nothing is deleted ---
+    // --- Real Win32 operations: resolution, plus one recycle of a test-created temp file ---
 
     [Fact]
     public void Win32_LocalTempFile_ResolvesToFixedLocalVolume()
@@ -197,6 +197,33 @@ public sealed class SourceRecyclerTests
             }
         }
         finally { File.Delete(file); }
+    }
+
+    // T-F287: the one real recycle — proves SHFileOperationW's struct and flags still reach the
+    // Recycle Bin (a wrong layout or a lost FOF_ALLOWUNDO would delete the file for good).
+    [Fact]
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+    public void Win32_MoveToRecycleBin_FileLandsInRecycleBinNotDeleted()
+    {
+        string unique = "pakko-recycle-" + Guid.NewGuid().ToString("N") + ".txt";
+        string file = Path.Combine(Path.GetTempPath(), unique);
+        File.WriteAllText(file, "recycle me");
+        string sid = System.Security.Principal.WindowsIdentity.GetCurrent().User!.Value;
+        string bin = Path.Combine(Path.GetPathRoot(file)!, "$Recycle.Bin", sid);
+        var ops = new Win32SourceDeleteOperations(() => IntPtr.Zero);
+
+        ops.MoveToRecycleBin([ops.ResolveFinalPath(file)!]);
+
+        File.Exists(file).Should().BeFalse();
+        string[] info = Directory.EnumerateFiles(bin, "$I*")
+            .Where(i => System.Text.Encoding.Unicode.GetString(File.ReadAllBytes(i)).Contains(unique, StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+        foreach (string i in info)
+        {
+            File.Delete(Path.Combine(bin, "$R" + Path.GetFileName(i)[2..]));
+            File.Delete(i);
+        }
+        info.Should().ContainSingle("the file must be in the Recycle Bin, not deleted permanently");
     }
 
     [Fact]

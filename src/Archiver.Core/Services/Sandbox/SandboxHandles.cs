@@ -92,16 +92,17 @@ internal sealed class SafeProcThreadAttributeListHandle : SafeHandle
 /// by calling these directly, so there is no shared "NativeMethods god-class" here, just the
 /// release primitives these SafeHandle subclasses need.
 /// </summary>
-file static class Interop
+// Not file-scoped: [LibraryImport] emits the other half of this partial class in a generated file.
+internal static partial class Interop
 {
-    [DllImport("advapi32.dll", SetLastError = true)]
-    public static extern IntPtr FreeSid(IntPtr pSid);
+    [LibraryImport("advapi32.dll", SetLastError = true)]
+    public static partial IntPtr FreeSid(IntPtr pSid);
 
-    [DllImport("kernel32.dll", SetLastError = true)]
+    [LibraryImport("kernel32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    public static extern bool CloseHandle(IntPtr hObject);
+    public static partial bool CloseHandle(IntPtr hObject);
 
-    [DllImport("kernel32.dll", SetLastError = true)]
+    [LibraryImport("kernel32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    public static extern bool DeleteProcThreadAttributeList(IntPtr lpAttributeList);
+    public static partial bool DeleteProcThreadAttributeList(IntPtr lpAttributeList);
 }

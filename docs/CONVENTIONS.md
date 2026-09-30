@@ -420,10 +420,20 @@ Won't-fix categories recorded so far:
   option — .NET's `Aes` class has no built-in CTR mode. Dismissed on GitHub as a false positive
   (alerts #2 and #3) with a link to this entry; don't "fix" by rewriting the construction.
 
-**`SYSLIB1054` (`DllImport` → `LibraryImportAttribute`, ~40 findings across
-`Archiver.Core/Services/Sandbox/`) is deferred, not won't-fix** — it needs its own focused pass
-with its own design-first review and full sandbox test run (security-critical native interop),
-not a mechanical batch conversion inside an unrelated triage task. Tracked as **T-F148**.
+**`SYSLIB1054` (`DllImport` → `LibraryImportAttribute`):** every P/Invoke in `src/` and
+`tests/` is `[LibraryImport]` (T-F148, T-F287), and a new one is too:
+- `StringMarshalling.Utf16` and an explicit `W` entry point (`EntryPoint = "GetWindowTextW"` when
+  the C# name has no suffix) — `LibraryImport` never probes for an A/W suffix;
+- `bool` parameters and returns carry `[MarshalAs(UnmanagedType.Bool)]`; OS-written arrays `[Out]`;
+- a struct passed `ref` must be blittable (an `int` for a BOOL field); one with string fields goes
+  out by pointer (`Marshal.StructureToPtr` + `DestroyStructure`, or `StringToHGlobalUni`);
+- a callback goes in as `Marshal.GetFunctionPointerForDelegate(d)` with `GC.KeepAlive(d)` after
+  the call;
+- never `[assembly: DisableRuntimeMarshalling]`: the `StructureToPtr` structs and the callback
+  delegates above rely on runtime marshalling.
+
+`[ComImport]` interfaces (`SYSLIB1096`, info) are still classic RCWs — tracked as T-F288. See
+`docs/DECISIONS.md`'s T-F148 and T-F287 entries.
 
 ### C++ (`Archiver.ShellExtension`): MSVC `/analyze`, T-F150
 

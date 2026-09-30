@@ -288,7 +288,7 @@ public sealed class TarSandboxedService : ITarService
         // subset will be extracted (see T-F49's exploit finding in DECISIONS.md: a symlink entry
         // can escape quarantine before any per-entry check runs, so the whole archive must be
         // validated regardless of what subset the caller eventually asks tar.exe to extract).
-        (long declaredUncompressedSize, string[]? allNames, Dictionary<string, long>? sizeByName) = await ScanForUnsafeEntriesAsync(scope, cancellationToken)
+        (long declaredUncompressedSize, string[]? allNames, Dictionary<string, long>? sizeByName, List<(string Name, long Size)> fileEntries) = await ScanForUnsafeEntriesAsync(scope, cancellationToken)
             .ConfigureAwait(false);
 
         // T-F118: mirrors ZipArchiveService.ExtractWithSmartFolderingAsync's identical algorithm
@@ -407,6 +407,10 @@ public sealed class TarSandboxedService : ITarService
         if (exitCode != 0)
             throw new CoreTextIOException(CoreMessages.Text(MessageCode.TarExtractionFailed, DescribeFailure(stdErr)));
 
+        (string? firstCopyDir, HashSet<string> firstCopies) = await ExtractFirstCopiesAsync(
+            scope, FindDuplicateGroups(fileEntries, allNames, expandedSelection), skippedFiles, cancellationToken)
+            .ConfigureAwait(false);
+
         // T-F263: the same staging + commit as ZIP extraction (ExtractionStaging) — files move from
         // the quarantine into a staging folder on the destination's volume, and only a finished
         // archive is committed, so a cancel or failure partway through leaves no partial files.
@@ -424,19 +428,26 @@ public sealed class TarSandboxedService : ITarService
         // rather than leaving the dialog sitting at whatever the extraction-phase poll last saw.
         // Uses the same expandedSelection-vs-whole-archive distinction as progressTotalBytes above
         // — a subset selection only ever moves its own subset of files, not fileNames.Count.
-        int totalFileEntries = expandedSelection != null
+        int totalFileEntries = (expandedSelection != null
             ? expandedSelection.Count(n => !n.EndsWith('/'))
-            : fileNames.Count;
+            : fileNames.Count) + firstCopies.Count;
         var moveReportStopwatch = System.Diagnostics.Stopwatch.StartNew();
         long lastMoveReportMs = -MoveReportThrottleMs;
 
-        foreach (string file in EnumerateFilesGuarded(scope.OutputDirectory!))
+        // T-F171: first copies move first, so the first copy takes the name and the last one meets
+        // the conflict rule, as a duplicate ZIP entry does (T-F30).
+        IEnumerable<(string File, string Root)> quarantined = firstCopyDir is null
+            ? []
+            : EnumerateFilesGuarded(firstCopyDir).Where(firstCopies.Contains).Select(f => (f, firstCopyDir));
+        quarantined = quarantined.Concat(EnumerateFilesGuarded(scope.OutputDirectory!).Select(f => (f, scope.OutputDirectory!)));
+
+        foreach ((string file, string root) in quarantined)
         {
             cancellationToken.ThrowIfCancellationRequested();
             totalFiles++;
 
             (bool extracted, string? relativePath) = await TryMoveSingleEntryAsync(
-                file, scope.OutputDirectory!, plan, archivePath, context).ConfigureAwait(false);
+                file, root, plan, archivePath, context).ConfigureAwait(false);
             if (!extracted)
                 continue;
 
@@ -484,6 +495,70 @@ public sealed class TarSandboxedService : ITarService
 
         progress?.Report(new ProgressReport { Percent = 100, BytesTransferred = progressTotalBytes, TotalBytes = progressTotalBytes });
         return (actualDest, true);
+    }
+
+    // T-F171: a name several file entries share. Case-insensitive, since NTFS makes "A.txt" and
+    // "a.txt" one file; FirstName is the exact name of the first entry, which "-q" matches.
+    internal sealed record DuplicateGroup(string FirstName, long FirstSize, int Count);
+
+    // Groups among the entries being extracted (the selection, or the whole archive). A name that
+    // is also a folder entry is left out: the two cannot both exist on disk.
+    internal static List<DuplicateGroup> FindDuplicateGroups(
+        IReadOnlyList<(string Name, long Size)> fileEntries, IReadOnlyList<string> allNames, IReadOnlyCollection<string>? selection)
+    {
+        HashSet<string>? selected = selection is null ? null : new HashSet<string>(selection, StringComparer.Ordinal);
+        var folders = new HashSet<string>(
+            allNames.Where(n => n.EndsWith('/')).Select(n => StripLeadingDotSlash(n).TrimEnd('/')),
+            StringComparer.OrdinalIgnoreCase);
+        var groups = new Dictionary<string, DuplicateGroup>(StringComparer.OrdinalIgnoreCase);
+        foreach ((string name, long size) in fileEntries)
+        {
+            if (selected is not null && !selected.Contains(name))
+                continue;
+            string key = StripLeadingDotSlash(name);
+            groups[key] = groups.TryGetValue(key, out DuplicateGroup? group)
+                ? group with { Count = group.Count + 1 }
+                : new DuplicateGroup(name, size, 1);
+        }
+        return groups.Where(g => g.Value.Count > 1 && !folders.Contains(g.Key)).Select(g => g.Value).ToList();
+    }
+
+    // T-F171: runs the first-copy pass and keeps only files at a group's exact path with the first
+    // entry's listed size. A member is a pattern (T-F284), so "a[1].txt" can pull in "a1.txt"
+    // instead; anything unexpected stays in the quarantine. A group whose first copy is not
+    // recovered keeps only its last copy, and every copy not extracted is reported.
+    private static async Task<(string? Directory, HashSet<string> Files)> ExtractFirstCopiesAsync(
+        TarSandboxScope scope, List<DuplicateGroup> groups, List<SkippedFile> skippedFiles, CancellationToken cancellationToken)
+    {
+        var accepted = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (groups.Count == 0)
+            return (null, accepted);
+
+        string? firstDir;
+        try
+        {
+            (firstDir, _, _) = await scope.ExtractFirstOccurrencesAsync(
+                groups.Select(g => g.FirstName).ToList(), cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SandboxSetupException)
+        {
+            firstDir = null; // the main pass already succeeded: keep its last copies, report the rest
+        }
+
+        foreach (DuplicateGroup group in groups)
+        {
+            string displayName = StripLeadingDotSlash(group.FirstName);
+            FileInfo? info = firstDir is null ? null : new FileInfo(Path.GetFullPath(Path.Combine(firstDir, displayName)));
+            bool recovered = info is { Exists: true } && info.Length == group.FirstSize
+                && (info.Attributes & FileAttributes.ReparsePoint) == 0;
+            if (recovered)
+                accepted.Add(info!.FullName);
+            int notExtracted = group.Count - (recovered ? 2 : 1);
+            if (notExtracted > 0)
+                skippedFiles.Add(CoreMessages.Skip(displayName, MessageCode.TarDuplicateCopiesNotExtracted,
+                    notExtracted.ToString(CultureInfo.CurrentCulture)));
+        }
+        return (firstDir, accepted);
     }
 
     // Where ExtractSingleArchiveAsync's move phase puts each file: into Staging under the path it
@@ -749,7 +824,7 @@ public sealed class TarSandboxedService : ITarService
     // T-F146: internal (was private) so AntivirusScanService can reuse the exact same T-F49
     // pre-scan for its own tar-family quarantine-extraction flow, without a second implementation
     // that could silently drift from what real extraction actually rejects.
-    internal static async Task<(long TotalDeclaredSize, string[] Names, Dictionary<string, long> SizeByName)> ScanForUnsafeEntriesAsync(
+    internal static async Task<(long TotalDeclaredSize, string[] Names, Dictionary<string, long> SizeByName, List<(string Name, long Size)> FileEntries)> ScanForUnsafeEntriesAsync(
         TarSandboxScope scope, CancellationToken cancellationToken)
     {
         (int nameExitCode, string? nameStdOut, string? nameStdErr) = await scope.ListAsync(verbose: false, cancellationToken).ConfigureAwait(false);
@@ -781,6 +856,9 @@ public sealed class TarSandboxedService : ITarService
         // Retained here rather than re-parsed with a second "-tvf" pass, since this loop already
         // reads every line's size column once.
         var sizeByName = new Dictionary<string, long>(names.Length, StringComparer.Ordinal);
+        // T-F171: every file entry in archive order — sizeByName keeps one size per name, but
+        // same-named entries each need their own.
+        var fileEntries = new List<(string Name, long Size)>();
 
         for (int i = 0; i < typeLines.Length; i++)
         {
@@ -794,6 +872,7 @@ public sealed class TarSandboxedService : ITarService
                 long size = ParseTarListingSize(line);
                 totalDeclaredSize += size;
                 sizeByName[names[i]] = size;
+                fileEntries.Add((names[i], size));
             }
         }
 
@@ -802,7 +881,7 @@ public sealed class TarSandboxedService : ITarService
         // member argument list without a second "-tf" invocation, and so the exact path form
         // tar.exe itself uses is what's ever passed back to it (see DECISIONS.md's T-F05 spike
         // entry — an unmatched/mismatched member name makes the whole "-xf" call fail non-zero).
-        return (totalDeclaredSize, names, sizeByName);
+        return (totalDeclaredSize, names, sizeByName, fileEntries);
     }
 
     // T-F05: expands a UI-selected set of archive-internal paths (ArchiveEntryInfo.Path's
@@ -916,6 +995,7 @@ public sealed class TarSandboxedService : ITarService
 
     private static List<ArchiveEntryInfo> BuildEntryList(string[] names, string[] typeLines)
     {
+        DateTime now = DateTime.Now;
         var entries = new List<ArchiveEntryInfo>(names.Length);
         for (int i = 0; i < names.Length; i++)
         {
@@ -931,11 +1011,7 @@ public sealed class TarSandboxedService : ITarService
             {
                 Path = path,
                 Size = typeChar == '-' ? ParseTarListingSize(typeLines[i]) : 0,
-                CompressedSize = 0,
-                // Date column was observed locale-mangled (see this method's sibling
-                // ScanForUnsafeEntriesAsync's comment and DECISIONS.md's T-F84 entry) — left null
-                // rather than risk a half-correct parse; the UI shows "—" instead.
-                Modified = null,
+                Modified = TarListingDate.Parse(typeLines[i], TarListingDate.UserMonthNames, now),
                 IsDirectory = typeChar == 'd',
             });
         }
@@ -963,7 +1039,7 @@ public sealed class TarSandboxedService : ITarService
 
         // T-F153: see ZipArchiveService.ArchiveAsync's identical normalization for the full
         // rationale — a trailing separator on a source path made Path.GetFileName(sourcePath)
-        // return "" in AppendSourcesToTarArgs, which this class's own comment there already
+        // return "" in AppendSourcesToNameList, which this class's own comment there already
         // treats as the drive-root case (tar.exe strips the drive letter itself) even for an
         // ordinary folder like "src\" — silently misrouting it through the wrong tar.exe argument
         // shape instead of the normal "-C <parent> <name>" one.
@@ -1107,7 +1183,10 @@ public sealed class TarSandboxedService : ITarService
         CancellationToken cancellationToken)
     {
         string tempPath = destPath + ".tmp";
-        string? collisionStagingDir = null;
+        // T-F171: decided here, created only on the first collision, so the finally below cleans it
+        // up even when staging stops partway through.
+        string collisionStagingDir = Path.Combine(Path.GetTempPath(), "PakkoTarStage_" + Guid.NewGuid().ToString("N"));
+        var stagedJunctions = new List<string>();
 
         try
         {
@@ -1116,10 +1195,16 @@ public sealed class TarSandboxedService : ITarService
             tarArgs.Add("-v");
             tarArgs.Add("-cf");
             tarArgs.Add(tempPath);
+            // T-F283/T-F273: the names go to tar.exe as a list on its stdin, never as arguments —
+            // a selected name could otherwise be read as one of its options, and a long selection
+            // would overflow the command line.
+            tarArgs.Add("-T");
+            tarArgs.Add("-");
 
             var sortedSourcePaths = options.SourcePaths.OrderBy(p => p, StringComparer.OrdinalIgnoreCase).ToList();
-            (int entryCount, long totalEntriesForProgress, long totalBytesForProgress, collisionStagingDir) =
-                AppendSourcesToTarArgs(tarArgs, sortedSourcePaths, errors, skippedFiles);
+            var nameList = new List<string>();
+            (int entryCount, long totalEntriesForProgress, long totalBytesForProgress) =
+                AppendSourcesToNameList(nameList, sortedSourcePaths, errors, skippedFiles, collisionStagingDir, stagedJunctions);
 
             if (entryCount == 0)
                 return;
@@ -1143,7 +1228,8 @@ public sealed class TarSandboxedService : ITarService
 
             try
             {
-                (int exitCode, _, string? stdErr) = await RunUnsandboxedTarAsync(tarArgs, OnVerboseLine, cancellationToken).ConfigureAwait(false);
+                byte[] nameListBytes = TarCommandLineEncoding.EncodeLines(nameList);
+                (int exitCode, _, string? stdErr) = await RunUnsandboxedTarAsync(tarArgs, nameListBytes, OnVerboseLine, cancellationToken).ConfigureAwait(false);
 
                 if (exitCode != 0 || !File.Exists(tempPath))
                 {
@@ -1174,9 +1260,28 @@ public sealed class TarSandboxedService : ITarService
         }
         finally
         {
-            if (collisionStagingDir != null)
-                try { Directory.Delete(collisionStagingDir, recursive: true); } catch { /* best-effort */ }
+            if (Directory.Exists(collisionStagingDir))
+                DeleteStagingDirectory(collisionStagingDir, stagedJunctions);
         }
+    }
+
+    // T-F171: each junction is removed on its own first (a non-recursive delete removes only the
+    // link), and the staging folder is deleted recursively only once every junction is gone — a
+    // recursive delete never reaches a folder that points at the user's own files.
+    private static void DeleteStagingDirectory(string stagingDir, List<string> junctions)
+    {
+        foreach (string junction in junctions)
+        {
+            try
+            {
+                Directory.Delete(junction, recursive: false);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                return; // the staging folder stays in %TEMP% rather than risk the junction's target
+            }
+        }
+        try { Directory.Delete(stagingDir, recursive: true); } catch { /* best-effort */ }
     }
 
     private static void TryDeleteBestEffort(string path)
@@ -1198,16 +1303,18 @@ public sealed class TarSandboxedService : ITarService
     // "Option --transform is not supported"), so unlike ZipArchiveService (which writes entries
     // programmatically and can just pick a different in-archive name), the only way to give a
     // colliding FILE source a distinct entry name is to stage a real renamed copy and point tar.exe
-    // at that instead. Directory-source basename collisions are NOT handled here (would need a
-    // full recursive copy of the tree, not a single file) — see docs/TASKS.md's T-F171 follow-up.
-    private static (int EntryCount, long TotalEntriesForProgress, long TotalBytesForProgress, string? CollisionStagingDir) AppendSourcesToTarArgs(
-        List<string> tarArgs, IReadOnlyList<string> sortedSourcePaths, List<ArchiveError> errors, List<SkippedFile> skippedFiles)
+    // at that instead. T-F171: a colliding FOLDER source is staged as a junction under the new name
+    // (no copy); a folder on a network share cannot be, and is refused with a message.
+    // T-F283: every name is one line of tar.exe's "-T -" list. In that list only an exact "-C" line
+    // is special (the next line is the folder to change to); no other line is read as an option.
+    private static (int EntryCount, long TotalEntriesForProgress, long TotalBytesForProgress) AppendSourcesToNameList(
+        List<string> nameList, IReadOnlyList<string> sortedSourcePaths, List<ArchiveError> errors, List<SkippedFile> skippedFiles,
+        string collisionStagingDir, List<string> stagedJunctions)
     {
         int entryCount = 0;
         long totalEntriesForProgress = 0;
         long totalBytesForProgress = 0;
         var claimedNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        string? collisionStagingDir = null;
 
         foreach (string sourcePath in sortedSourcePaths)
         {
@@ -1244,25 +1351,49 @@ public sealed class TarSandboxedService : ITarService
                 // argument on its own (see IsDangerousEntryName's comment above) — pass it
                 // through directly rather than via -C. Same edge case T-F99 already handles for
                 // ZipArchiveService; needs its own on-device confirmation in Phase C/D.
-                tarArgs.Add(fullSource);
+                nameList.Add(fullSource);
             }
             else
             {
-                if (File.Exists(fullSource) && !claimedNames.Add(name))
+                // T-F171: every source claims its name, file or folder.
+                if (!claimedNames.Add(name))
                 {
-                    collisionStagingDir ??= Path.Combine(Path.GetTempPath(), "PakkoTarStage_" + Guid.NewGuid().ToString("N"));
-                    Directory.CreateDirectory(collisionStagingDir);
+                    bool isFolder = Directory.Exists(fullSource);
+                    if (isFolder && DirectoryJunction.IsNetworkPath(fullSource))
+                    {
+                        errors.Add(CoreMessages.Error(sourcePath, MessageCode.TarSourceNameCollisionNotAdded));
+                        continue;
+                    }
                     string uniqueName = GetUniqueEntryName(name, claimedNames);
-                    claimedNames.Add(uniqueName);
                     string stagedPath = Path.Combine(collisionStagingDir, uniqueName);
-                    File.Copy(fullSource, stagedPath);
+                    try
+                    {
+                        Directory.CreateDirectory(collisionStagingDir);
+                        if (isFolder)
+                        {
+                            DirectoryJunction.Create(stagedPath, fullSource);
+                            stagedJunctions.Add(stagedPath);
+                        }
+                        else
+                        {
+                            File.Copy(fullSource, stagedPath);
+                        }
+                    }
+                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                    {
+                        errors.Add(CoreMessages.Error(sourcePath, isFolder
+                            ? CoreMessages.Text(MessageCode.TarSourceNameCollisionNotAdded)
+                            : CoreMessages.Wrap(MessageCode.CannotCreateArchive, ex), ex));
+                        continue;
+                    }
+                    claimedNames.Add(uniqueName);
                     parent = collisionStagingDir;
                     name = uniqueName;
                 }
 
-                tarArgs.Add("-C");
-                tarArgs.Add(parent!);
-                tarArgs.Add(name);
+                nameList.Add("-C");
+                nameList.Add(parent!);
+                nameList.Add(name == "-C" ? "./-C" : name);
             }
 
             entryCount++;
@@ -1270,7 +1401,7 @@ public sealed class TarSandboxedService : ITarService
             totalBytesForProgress += bytes;
         }
 
-        return (entryCount, totalEntriesForProgress, totalBytesForProgress, collisionStagingDir);
+        return (entryCount, totalEntriesForProgress, totalBytesForProgress);
     }
 
     // Same "name (1)", "name (2)", ... convention as ArchiveNaming.GetUniqueFilePath, but checked against
@@ -1390,11 +1521,12 @@ public sealed class TarSandboxedService : ITarService
     // empirically; NOT stdout), so this is how per-entry progress is derived.
     private static Task<(int ExitCode, string StdOut, string StdErr)> RunUnsandboxedTarAsync(
         IReadOnlyList<string> arguments,
+        byte[] stdInData,
         Action<string>? onStdErrLine,
         CancellationToken cancellationToken)
         => SandboxedProcessLauncher.RunAsync(
             TarExecutablePath, arguments,
-            new ProcessLaunchOptions(OnStdErrLine: onStdErrLine, OutputEncoding: TarOutputEncoding.Current), cancellationToken);
+            new ProcessLaunchOptions(OnStdErrLine: onStdErrLine, OutputEncoding: TarOutputEncoding.Current, StdInData: stdInData), cancellationToken);
 
     // T-F204: tar.exe's own words for a name it cannot show in the locale's code page (or an
     // empty one) — the archive is not damaged, this system just cannot name the file.

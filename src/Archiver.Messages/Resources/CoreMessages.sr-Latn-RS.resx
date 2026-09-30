@@ -198,6 +198,12 @@
   <data name="TarSpecialEntry" xml:space="preserve">
     <value>Arhiva sadrži simboličku vezu, čvrstu vezu, uređaj ili drugu posebnu stavku i ne može se bezbedno raspakovati.</value>
   </data>
+  <data name="TarDuplicateCopiesNotExtracted" xml:space="preserve">
+    <value>Još {0} kopija sa ovim imenom nije raspakovano: iz ove arhive mogu se uzeti samo prva i poslednja kopija.</value>
+  </data>
+  <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
+    <value>Druga izabrana stavka ima isto ime, a ova fascikla nije mogla da se doda pod novim imenom. Preimenujte jednu od njih i pokušajte ponovo.</value>
+  </data>
   <data name="ListingInconsistent" xml:space="preserve">
     <value>Spisak sadržaja arhive nije dosledan.</value>
   </data>

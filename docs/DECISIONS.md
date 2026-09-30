@@ -10360,3 +10360,163 @@ An 80 KB ZIP with one `"a/" * 20000 + "x.txt"` entry held the App at ~1.7 GB in 
   level), and 256 costs a fraction of a second per chain on the curve above (a 256-level entry:
   0.65 s for the whole `pakko x` run). Accepted asymmetry: Pakko still archives a deeper tree
   (item 1); extracting that archive refuses only the entries past the limit.
+
+---
+
+### T-F283/T-F273 — tar.exe gets names as data: a stdin list for creation, `--` for extraction (2026-09-29)
+
+tar.exe read a selected name that started with `-` as one of its own options (T-F283), and every
+selected path went on its command line, which overflows at 32,767 characters (T-F273). One fix
+for both. **Creation** writes the arguments `-v -cf <tmp> -T -` and sends the names on stdin, one
+per line: `-C`, the parent folder, the name, per source (a drive root is one line as-is). In that
+list bsdtar treats only an exact `-C` line as special, so a source named exactly `-C` is written
+`./-C`; every other line, `-`-prefixed or `@`-prefixed, is a name (the tests cover `--exclude=...`,
+`-v`, `-T`, `-C`, `@list.tar`). The single-file case goes through the list too: it is the case the
+injection used. **No `--null`:** with it this bsdtar build crashed or walked the drive root in the
+spike, so the list is newline-separated; a Windows name cannot hold a line break, and
+`EncodeLines` refuses one anyway. The list is encoded in the ANSI code page with the same
+no-best-fit, round-trip check as the command line (T-F266), because bsdtar reads it the same way.
+**Extraction** of selected entries puts `--` before the member names inside the sandbox scope.
+
+`SandboxedProcessLauncher` gained `ProcessLaunchOptions.StdInData`: a pipe whose read end is
+inheritable only through the launch's handle list, our copy of it closed right after
+`CreateProcessW`, the bytes written on their own thread. That write is not awaited together with
+the stdout/stderr readers — a child that stops reading must not keep a cancel waiting; the
+terminate on cancel breaks the pipe and ends the write, and a child that exits without reading
+turns the write into a swallowed broken-pipe `IOException`. Mutation-checked: keeping our copy of
+the read end open makes `Launcher_StdInDataChildNeverReads_Completes` fail.
+
+---
+
+### T-F214 — tar-family listing: the date from `-tv`, not mtree; packed size is null (2026-09-29)
+
+The Archive Browser and `pakko l` showed no date and a packed size of `0` for tar, 7z and RAR.
+**Date:** parsed from the `-tvf` line the listing already runs (`TarListingDate`). tar.exe prints
+it with the C runtime's `strftime` in the user's locale: `%b %d %H:%M` within half a year of now,
+else `%b %d  %Y`. The month abbreviations come from `GetLocaleInfoEx(GetUserDefaultLocaleName(),
+LOCALE_SABBREVMONTHNAME1..12)` — checked on this machine to match tar.exe's `Січ`...`Гру`
+exactly, while .NET's ICU-backed `CultureInfo` gives `січ` (different case). The year of a
+minute-form date is the one nearest now (bsdtar's own rule). A date-only form becomes 00:00, and
+a line whose month is not one of the twelve is null, not a guess.
+
+**Rejected: `tar -cf - --format=mtree @-`.** It prints every entry's exact epoch time with no
+locale in it, but it copies each entry through a writer, so it decompresses all the data:
+measured on a 9 MB solid 7z of 629 MB text, `-tvf` 0.0 s against mtree 0.8 s (a `.tar.xz` costs
+the same either way, 7.1 s vs 7.2 s). For 7z and RAR that turns a header read into a full
+decompression per browse. It also sorts and merges entries (no index pairing with `-tf`, so no
+duplicate names, T-F171) and rejects `--options tar:hdrcharset=UTF-8` ("Unknown module name"), so
+it would fail outright on every UTF-8-header archive.
+
+**Packed size:** `ArchiveEntryInfo.CompressedSize` and `ArchiveEntryViewModel.CompressedSize` are
+now `long?`, null for tar-routed formats. `pakko l` prints `-` there (was `0`); the App's column
+stays blank for null and now shows `0 B` for an empty ZIP entry, since 0 is no longer a sentinel.
+
+---
+
+### T-F171 — same-named entries in tar-family archives: first and last copy (2026-09-29)
+
+**Extraction.** tar.exe writes every same-named entry to one quarantine path, so only the last
+survived, silently. The user chose the middle of three tiers (first + last copy; not
+"report only", not full recovery through `tar -O` split by `-tv` sizes, which needs binary stdout
+out of the sandbox). When the entries being extracted hold names shared by several file entries
+(case-insensitive, `./` stripped, a name that is also a folder left out), a second sandboxed run
+`-x -q -C first -- <first names>` extracts the first match of each into a `first` folder beside
+`out` (same AppContainer, Job Object and `--`). A file there is used only at the exact expected
+path with the first entry's listed size — a member is a pattern (T-F284), so `a[1].txt` can pull
+`a1.txt` instead, and that is left in the quarantine. The move phase then takes the first copies
+before `out`, through the existing `ClaimedFinalPaths` and `ConflictResolver`, so a same-named pair
+behaves as in ZIP (T-F30): Rename gives `f.txt` + `f (1).txt`, Skip keeps the first, Overwrite
+keeps the last, Ask prompts once. A third copy and later are not extracted and are reported
+(`TarDuplicateCopiesNotExtracted`), as is a first copy that was not recovered. An archive without
+duplicates runs no extra tar.exe. "Scan for threats" scans the first copies too (all of `first`),
+since extraction now writes them. Progress counts the first copies as entries; the byte poll still
+watches `out` only.
+
+Spike facts (bundled bsdtar 3.8.4): `-s` is rejected ("-s is not supported by this version of
+bsdtar"), like `--transform`; `-xkf` and `-xqf <name>` both give the first copy; `-xOf` gives all
+copies concatenated; `-q`/`-O` match case-sensitively while NTFS merges `A.txt`/`a.txt` on `-x`.
+
+**Creation.** Every source now claims its name, file or folder (only files did, T-F168). A
+colliding folder is staged as a directory junction `name (1)` in the existing `PakkoTarStage_`
+folder — a junction in the `-T` list is archived as the folder it points to (no `-H` needed); no
+copy. `DirectoryJunction` sets the mount-point reparse data with `FSCTL_SET_REPARSE_POINT` (.NET
+creates only symbolic links, which need Developer Mode). A junction cannot point to a network
+volume, so a colliding folder on a share or mapped network drive is refused for that source
+(`TarSourceNameCollisionNotAdded`, user decision); the rest of the archive is created. Cleanup
+removes each junction with a non-recursive delete first and deletes the staging folder recursively
+only when all are gone; if one cannot be removed the folder stays in `%TEMP%`.
+
+Closing review (same day): the staging folder's path is now decided before any source is staged,
+so `finally` removes the junctions even when a later collision throws; a staged copy or junction
+that fails becomes an `ArchiveError` for that source only (test: a locked second `y.txt` after two
+`x` folders). A failure of the first-copy pass (an ACL error on `first`, now a
+`SandboxSetupException` like the scope's own setup) keeps the last copies and reports the rest
+instead of failing an archive whose main pass succeeded. A kill during tar.exe can still leave a
+junction behind: T-F286.
+
+User decision (same day): the first copy takes the name, as in ZIP, although in a tar appended
+with `-r`/`-u` the last copy is the newest — so Skip now keeps the older copy (before: only the
+last survived). Rejected: letting the last copy take the name for tar-family only.
+
+### T-F148 — sandbox and tar P/Invokes on `[LibraryImport]` (2026-09-29)
+
+All 51 declarations in `Services/Sandbox/`, `TarListingDate.cs` and `DirectoryJunction.cs` moved
+from `[DllImport]` to source-generated `[LibraryImport]` (SYSLIB1054). The generated marshalling
+code uses pointers, so `Archiver.Core` now sets `AllowUnsafeBlocks` (SYSLIB1062 otherwise, no
+workaround); Core has no hand-written `unsafe` code, and no published doc claimed otherwise
+(checked `SECURITY.md`, `SPEC.md`, `README.md`, both `index.html`, `CONVENTIONS.md`).
+
+- `CharSet.Unicode` became `StringMarshalling.Utf16`. `LibraryImport` never probes for an A/W
+  suffix, so every converted `(dll, entry point)` pair was resolved by its exact name with
+  `NativeLibrary.TryGetExport` in a throwaway check (51/51) — a few (`DeleteAppContainerProfile`)
+  run only on cleanup paths the tests may not reach. `TarSignatureVerifierTests` runs the real
+  WinVerifyTrust/crypt32 path against the real tar.exe and notepad.exe.
+- `SECURITY_ATTRIBUTES.bInheritHandle` is an `int` (Win32 BOOL): a struct passed `ref` must be
+  blittable, and a field-level `MarshalAs` is not honored there.
+- Buffers the OS writes (`WideCharToMultiByte`, `MultiByteToWideChar`) carry an explicit `[Out]`.
+- `SandboxHandles.cs`'s release-primitive class is `internal`, not `file`: the generator emits the
+  other half of a partial class in its own file.
+- No `[assembly: DisableRuntimeMarshalling]`: `TarSignatureVerifier` still builds
+  `WINTRUST_FILE_INFO` (a string field) with `Marshal.StructureToPtr`, and the `DllImport`s left in
+  Core rely on runtime marshalling.
+
+Deliberately left on `DllImport` (plan section 8.8: G2 is sandbox/tar only), so their SYSLIB1054
+findings are not unfinished work of this task: `Antivirus/AmsiScanner.cs`, `ArchiveEntrySecurity.cs`,
+`Zip/ZipNameCodePages.cs`, and every P/Invoke in `Archiver.Shell`, `Archiver.App.Core`
+(`SHFileOperationW` guards the Recycle Bin), `Archiver.CLI` and `Archiver.OperationUi`.
+
+### T-F287 — every remaining P/Invoke on `[LibraryImport]` (2026-09-29)
+
+User request: finish what T-F148 started. Zero `[DllImport]` is left in `src/` or `tests/` (10 more in four test helpers; 42 more
+declarations: Core's AMSI, `ArchiveEntrySecurity`, `ZipNameCodePages`; `Archiver.App.Core`,
+`Archiver.CLI`, `Archiver.OperationUi`, `Archiver.Shell`). `AllowUnsafeBlocks` is now set in five
+projects (Core, App.Core, CLI, OperationUi, Shell), for the generated code only. All 93
+`(dll, entry point)` pairs resolve by exact name (`NativeLibrary.TryGetExport`);
+`TaskDialogIndirect` exists only in comctl32 v6, which Shell gets from its manifest (T-F155) — a
+plain `NativeLibrary.Load("comctl32.dll")` loads v5 and misses it, so it was checked in the v6
+WinSxS copy.
+
+- **Recycle Bin (T-F207).** `SHFILEOPSTRUCTW` had string fields; now raw PWSTRs, `From` built with
+  `StringToHGlobalUni` (it copies the embedded nulls and adds the last one) and freed in `finally`.
+  Written test-first: `Win32_MoveToRecycleBin_FileLandsInRecycleBinNotDeleted` recycles a uniquely
+  named temp file for real, finds its `$I` record under `$Recycle.Bin\<user SID>` and removes it;
+  without `FOF_ALLOWUNDO` (mutation) the file is deleted for good and the test fails.
+- **TaskDialog.** `TASKDIALOGCONFIG` (LPWStr fields, `Pack = 1`) goes out by pointer with
+  `StructureToPtr`, the way its buttons already did.
+- **Callbacks.** `[LibraryImport]` marshals no delegates: `EnumWindows` and
+  `DialogBoxIndirectParamW` get `Marshal.GetFunctionPointerForDelegate(d)`, kept alive with
+  `GC.KeepAlive` over the synchronous call.
+- **`PasswordDialog` names its entry points** (`DialogBoxIndirectParamW`, `GetModuleHandleW`,
+  `GetWindowTextW`, `GetWindowTextLengthW`): `ShowAsync` turns an `EntryPointNotFoundException`
+  into "no password", so a wrong name would fail silently as "password-protected".
+- **Behaviour change:** `SendMessage` had no `CharSet`, so `DllImport` bound `SendMessageA`; it is
+  now `SendMessageW`, matching the Unicode dialog. It carries `EM_GETPASSWORDCHAR`/
+  `EM_SETPASSWORDCHAR` (T-F255's bullet) — device-checked in the G2 pass.
+- **`DisableRuntimeMarshalling` must stay off:** `StructureToPtr` on `WINTRUST_FILE_INFO`,
+  `TaskDialogConfig`/`TaskDialogButton` (LPWStr fields) and the `MarshalAs(Bool)` return of the
+  `EnumWindowsProc`/dialog-procedure thunks all use runtime marshalling.
+
+Split out: the `[ComImport]` interfaces (`IApplicationActivationManager`, `IProgressDialog`) to
+`[GeneratedComInterface]` — T-F288. Not a mechanical swap: a generated COM wrapper is not
+apartment-bound like a classic RCW, and Shell's `IProgressDialog` sits behind a lock
+(`Win32OperationUi.Session._dialogLock`), so it is likely called from more than one thread.

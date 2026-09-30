@@ -1282,9 +1282,9 @@ public sealed record ArchiveEntryInfo
 {
     public required string Path { get; init; }  // '/'-separated, no leading slash
     public long Size { get; init; }
-    public long CompressedSize { get; init; }
+    public long? CompressedSize { get; init; }   // null for tar-routed formats: no per-entry packed size (T-F214)
     public uint? Crc32 { get; init; }            // null for tar-routed formats — no per-entry CRC
-    public DateTime? Modified { get; init; }     // null for tar (date column is locale-mangled)
+    public DateTime? Modified { get; init; }     // tar: parsed from "-tv" by TarListingDate (T-F214), minute or date only; null if unreadable
     public bool IsDirectory { get; init; }
     public EntryEncryption? Encryption { get; init; } // T-F199: ZIP only, read without a password; null = format can't say
     public int? AesVersion { get; init; }            // WinZip AE-1/AE-2, null unless AES
@@ -1362,7 +1362,7 @@ public sealed record ArchiveEntryViewModel
     public required string Name { get; init; }
     public required bool IsFolder { get; init; }
     public long Size { get; init; }
-    public long CompressedSize { get; init; }
+    public long? CompressedSize { get; init; }
     public uint? Crc32 { get; init; }
     public DateTime? Modified { get; init; }
 
@@ -1419,9 +1419,9 @@ removed the same day it shipped (design review 2026-07-13) once every field it s
 table-column equivalent. Note `CompressedSizeDisplay`/`CrcDisplay` are both blank for every
 tar-routed format (RAR/7z/tar.*) — `TarSandboxedService`'s listing path never populates
 `CompressedSize`/`Crc32` (no per-entry concept for either in a tar-family archive) — so both
-columns only ever show a value for ZIP. `CrcDisplay` guards on `Crc32 is null`, not `<= 0` —
-unlike a size, `0` is a legitimate CRC-32 (an empty file), so it cannot double as a
-"not available" sentinel the way `CompressedSizeDisplay`'s `<= 0` guard safely does.
+columns only ever show a value for ZIP. Both guard on `null`: `0` is a real CRC-32 (an empty
+file) and a real packed size (an empty ZIP entry), so neither can double as a "not available"
+sentinel (T-F214 made `CompressedSize` nullable for this).
 
 `MainWindow.xaml`'s Row 1 (file table) and Row 3 (action buttons) each gain a sibling `Grid`
 toggled by `IsPendingListVisibility`/`IsBrowsingArchiveVisibility` (inline mode-swap, not a new

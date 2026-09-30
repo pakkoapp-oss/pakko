@@ -7,6 +7,8 @@
          actual Windows build. -->
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <Nullable>enable</Nullable>
+    <!-- T-F287: [LibraryImport]'s generated marshalling code uses pointers; no hand-written unsafe code. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>12</LangVersion>
     <ApplicationManifest>app.manifest</ApplicationManifest>

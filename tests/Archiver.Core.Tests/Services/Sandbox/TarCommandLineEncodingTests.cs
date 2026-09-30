@@ -44,6 +44,69 @@ public sealed class TarCommandLineEncodingTests
         TarCommandLineEncoding.IsRepresentable(value, (uint)codePage).Should().BeFalse();
     }
 
+    // T-F283: the names tar.exe reads from its stdin list go through the same code page.
+    [Fact]
+    public void EncodeLines_EachLineEndsWithNewlineInCodePage()
+    {
+        byte[] bytes = TarCommandLineEncoding.EncodeLines(["-C", "\u0414\u043E\u043A"], 1251);
+
+        bytes.Should().Equal((byte)'-', (byte)'C', (byte)'\n', 0xC4, 0xEE, 0xEA, (byte)'\n');
+    }
+
+    [Fact]
+    public void EncodeLines_BestFitName_Throws()
+    {
+        Action act = () => TarCommandLineEncoding.EncodeLines(["ok", "x\uFF02y"], 1252);
+
+        act.Should().Throw<TarArgumentEncodingException>();
+    }
+
+    [Fact]
+    public async Task Launcher_StdInData_ReachesChild()
+    {
+        (int exitCode, string stdOut, _) = await SandboxedProcessLauncher.RunAsync(
+            @"C:\Windows\System32\findstr.exe", ["x"],
+            new ProcessLaunchOptions(StdInData: "xa\nyb\nxc\n"u8.ToArray()), CancellationToken.None);
+
+        exitCode.Should().Be(0);
+        stdOut.Split(["\r\n", "\n"], StringSplitOptions.RemoveEmptyEntries).Should().Equal("xa", "xc");
+    }
+
+    // A child that exits without reading its stdin must not leave the call waiting on the write.
+    [Fact]
+    public async Task Launcher_StdInDataChildNeverReads_Completes()
+    {
+        Task<(int, string, string)> run = SandboxedProcessLauncher.RunAsync(
+            @"C:\Windows\System32\hostname.exe", [],
+            new ProcessLaunchOptions(StdInData: new byte[4 * 1024 * 1024]), CancellationToken.None);
+
+        (await Task.WhenAny(run, Task.Delay(TimeSpan.FromSeconds(30)))).Should().BeSameAs(run);
+        (await run).Item1.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Launcher_StdInDataCancelled_ThrowsPromptly()
+    {
+        using var cts = new CancellationTokenSource();
+        // Not CancellationTokenSource(TimeSpan): its timer fires on the ThreadPool, which a full
+        // parallel CI run can starve past PING's whole minute (same as T-F279's test, 3798127).
+        var canceller = new Thread(() =>
+        {
+            using var never = new ManualResetEventSlim();
+            never.Wait(TimeSpan.FromMilliseconds(500));
+            cts.Cancel();
+        });
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        canceller.Start();
+        Task<(int, string, string)> run = SandboxedProcessLauncher.RunAsync(
+            @"C:\Windows\System32\PING.EXE", ["-n", "60", "127.0.0.1"],
+            new ProcessLaunchOptions(StdInData: new byte[4 * 1024 * 1024]), cts.Token);
+
+        await run.Invoking(t => t).Should().ThrowAsync<OperationCanceledException>();
+        clock.Elapsed.Should().BeLessThan(TimeSpan.FromSeconds(30));
+        canceller.Join();
+    }
+
     [Fact]
     public async Task Launcher_UnrepresentableArgument_RefusesBeforeCreatingProcess()
     {

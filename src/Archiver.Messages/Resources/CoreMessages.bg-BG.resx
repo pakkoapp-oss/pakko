@@ -198,6 +198,12 @@
   <data name="TarSpecialEntry" xml:space="preserve">
     <value>Архивът съдържа символна връзка, твърда връзка, устройство или друг специален елемент и не може да бъде извлечен безопасно.</value>
   </data>
+  <data name="TarDuplicateCopiesNotExtracted" xml:space="preserve">
+    <value>Още {0} копия с това име не бяха извлечени: от този архив могат да се вземат само първото и последното копие.</value>
+  </data>
+  <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
+    <value>Друг избран елемент има същото име и тази папка не можа да бъде добавена с ново име. Преименувайте един от тях и опитайте отново.</value>
+  </data>
   <data name="ListingInconsistent" xml:space="preserve">
     <value>Списъкът със съдържанието на архива е противоречив.</value>
   </data>

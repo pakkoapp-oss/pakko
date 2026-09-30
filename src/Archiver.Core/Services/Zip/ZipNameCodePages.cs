@@ -9,7 +9,7 @@ namespace Archiver.Core.Services.Zip;
 /// <see cref="ZipEntryNameDecoder"/>). <see cref="System"/> reads this machine's pages; tests pass
 /// explicit ones so expectations don't depend on the machine.
 /// </summary>
-internal sealed record ZipNameCodePages(Encoding Oem, Encoding Ansi)
+internal sealed partial record ZipNameCodePages(Encoding Oem, Encoding Ansi)
 {
     private const int Utf8CodePage = 65001;
 
@@ -25,9 +25,9 @@ internal sealed record ZipNameCodePages(Encoding Oem, Encoding Ansi)
             ? Encoding.UTF8
             : CodePagesEncodingProvider.Instance.GetEncoding(codePage) ?? Encoding.Latin1;
 
-    [DllImport("kernel32.dll")]
-    private static extern uint GetOEMCP();
+    [LibraryImport("kernel32.dll")]
+    private static partial uint GetOEMCP();
 
-    [DllImport("kernel32.dll")]
-    private static extern uint GetACP();
+    [LibraryImport("kernel32.dll")]
+    private static partial uint GetACP();
 }

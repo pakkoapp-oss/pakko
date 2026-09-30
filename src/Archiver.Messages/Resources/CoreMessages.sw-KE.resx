@@ -198,6 +198,12 @@
   <data name="TarSpecialEntry" xml:space="preserve">
     <value>Kumbukumbu ina kiungo cha ishara, kiungo kigumu, kifaa au kipengee kingine maalum na haiwezi kutolewa kwa usalama.</value>
   </data>
+  <data name="TarDuplicateCopiesNotExtracted" xml:space="preserve">
+    <value>Nakala {0} zaidi zenye jina hili hazikutolewa: ni nakala ya kwanza na ya mwisho pekee zinazoweza kutolewa kutoka kwenye kumbukumbu hii.</value>
+  </data>
+  <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
+    <value>Kipengee kingine kilichochaguliwa kina jina hilo hilo, na folda hii haikuweza kuongezwa kwa jina jipya. Badilisha jina la mojawapo kisha ujaribu tena.</value>
+  </data>
   <data name="ListingInconsistent" xml:space="preserve">
     <value>Orodha ya maudhui ya kumbukumbu haiendani.</value>
   </data>

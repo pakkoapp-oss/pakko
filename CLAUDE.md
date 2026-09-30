@@ -331,8 +331,8 @@ example no real interface followed.
 **Test count:** run `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` for current ground
 truth; never trust a count written in a doc.
 
-**Next work:** Future tasks in `docs/TASKS.md`, including **T-F148** (SYSLIB1054 conversion, split
-out of T-F147), **T-F159** (unify `GetUniqueFilePath`, split out of T-F158), **T-F160**
+**Next work:** Future tasks in `docs/TASKS.md`, including **T-F148**/**T-F287** (`[~]`, every P/Invoke on
+`[LibraryImport]`; COM interfaces are T-F288), **T-F159** (unify `GetUniqueFilePath`, split out of T-F158), **T-F160**
 (interactive conflict dialog for `Archiver.CLI`'s `pakko x`, parity with T-F155), **T-F164** (GUI
 Hash lacks CRC-32, not routed through `FileHashService`), **T-F165** (`docs/DIAGRAMS.md` diagram 3
 stale after T-F161), **T-F166**-**T-F170** (test-coverage gaps: real junctions, AES-256 ZIP, Tar
@@ -587,7 +587,7 @@ files.
   `[SupportedOSPlatform("windows")]` to make the resulting `CA1416` warning meaningful instead of
   leaving it unaddressed (T-F51, `GroupPolicyService`/`Win32RegistryReader`).
   **Don't over-annotate:** only the member that directly touches the Windows-only BCL API needs
-  `[SupportedOSPlatform("windows")]` — a raw P/Invoke wrapper class calling its own `DllImport`s
+  `[SupportedOSPlatform("windows")]` — a raw P/Invoke wrapper class calling its own `[LibraryImport]`s
   (e.g. `Services/Sandbox/`, `Services/Antivirus/AmsiScanner.cs`) needs no annotation at all, since
   `DllImport` itself isn't BCL-platform-tagged. Annotating the whole class anyway makes `CA1416`
   propagate into every caller, including test projects on a plain `net10.0` TFM — confirmed

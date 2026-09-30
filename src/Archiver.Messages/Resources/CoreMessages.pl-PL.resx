@@ -198,6 +198,12 @@
   <data name="TarSpecialEntry" xml:space="preserve">
     <value>Archiwum zawiera łącze symboliczne, łącze twarde, urządzenie lub inny specjalny element i nie można go bezpiecznie wyodrębnić.</value>
   </data>
+  <data name="TarDuplicateCopiesNotExtracted" xml:space="preserve">
+    <value>Nie wyodrębniono kolejnych kopii o tej nazwie ({0}): z tego archiwum można wyjąć tylko pierwszą i ostatnią kopię.</value>
+  </data>
+  <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
+    <value>Inny zaznaczony element ma taką samą nazwę, a tego folderu nie udało się dodać pod nową nazwą. Zmień nazwę jednego z nich i spróbuj ponownie.</value>
+  </data>
   <data name="ListingInconsistent" xml:space="preserve">
     <value>Lista zawartości archiwum jest niespójna.</value>
   </data>

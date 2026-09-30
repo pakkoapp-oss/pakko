@@ -4,7 +4,7 @@ using Microsoft.Win32.SafeHandles;
 namespace Archiver.App.Core;
 
 /// <summary>Real <see cref="ISourceDeleteOperations"/> over Win32 (T-F207).</summary>
-public sealed class Win32SourceDeleteOperations(Func<IntPtr> ownerWindow) : ISourceDeleteOperations
+public sealed partial class Win32SourceDeleteOperations(Func<IntPtr> ownerWindow) : ISourceDeleteOperations
 {
     private const uint FileShareAll = 0x7;              // READ | WRITE | DELETE
     private const uint OpenExisting = 3;
@@ -16,35 +16,36 @@ public sealed class Win32SourceDeleteOperations(Func<IntPtr> ownerWindow) : ISou
         FofNoErrorUi = 0x0400, FofWantNukeWarning = 0x4000;
 
     // shellapi.h packs this struct to 8 on 64-bit, 1 only on 32-bit; this app ships x64/ARM64 only.
-    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    // String fields are raw PWSTRs so the struct stays blittable for [LibraryImport] (T-F287).
+    [StructLayout(LayoutKind.Sequential)]
     private struct ShFileOpStruct
     {
         public IntPtr Hwnd;
         public uint Func;
-        public string From;
-        public string? To;
+        public IntPtr From;
+        public IntPtr To;
         public ushort Flags;
         public int AnyOperationsAborted;
         public IntPtr NameMappings;
-        public string? ProgressTitle;
+        public IntPtr ProgressTitle;
     }
 
-    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-    private static extern SafeFileHandle CreateFileW(
+    [LibraryImport("kernel32.dll", StringMarshalling = StringMarshalling.Utf16, SetLastError = true)]
+    private static partial SafeFileHandle CreateFileW(
         string fileName, uint access, uint share, IntPtr security, uint creation, uint flags, IntPtr template);
 
-    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-    private static extern uint GetFinalPathNameByHandleW(SafeFileHandle file, [Out] char[] path, uint length, uint flags);
+    [LibraryImport("kernel32.dll", StringMarshalling = StringMarshalling.Utf16, SetLastError = true)]
+    private static partial uint GetFinalPathNameByHandleW(SafeFileHandle file, [Out] char[] path, uint length, uint flags);
 
-    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    [LibraryImport("kernel32.dll", StringMarshalling = StringMarshalling.Utf16, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool GetVolumePathNameW(string fileName, [Out] char[] volumePath, uint length);
+    private static partial bool GetVolumePathNameW(string fileName, [Out] char[] volumePath, uint length);
 
-    [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
-    private static extern uint GetDriveTypeW(string rootPath);
+    [LibraryImport("kernel32.dll", StringMarshalling = StringMarshalling.Utf16)]
+    private static partial uint GetDriveTypeW(string rootPath);
 
-    [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
-    private static extern int SHFileOperationW(ref ShFileOpStruct operation);
+    [LibraryImport("shell32.dll")]
+    private static partial int SHFileOperationW(ref ShFileOpStruct operation);
 
     /// <inheritdoc/>
     public string? ResolveFinalPath(string path)
@@ -83,16 +84,25 @@ public sealed class Win32SourceDeleteOperations(Func<IntPtr> ownerWindow) : ISou
     /// <inheritdoc/>
     public void MoveToRecycleBin(IReadOnlyList<string> finalPaths)
     {
-        var operation = new ShFileOpStruct
+        // Double-null-terminated list; StringToHGlobalUni copies embedded nulls and adds one more.
+        IntPtr from = Marshal.StringToHGlobalUni(string.Join('\0', finalPaths) + "\0\0");
+        try
         {
-            Hwnd = ownerWindow(),
-            Func = FoDelete,
-            From = string.Join('\0', finalPaths) + "\0\0",
-            // FofWantNukeWarning stays as a second line of defence for an item too large for the
-            // bin; SourceRecycler checks the disk afterwards either way.
-            Flags = (ushort)(FofAllowUndo | FofNoConfirmation | FofWantNukeWarning | FofNoErrorUi | FofSilent),
-        };
-        _ = SHFileOperationW(ref operation);
+            var operation = new ShFileOpStruct
+            {
+                Hwnd = ownerWindow(),
+                Func = FoDelete,
+                From = from,
+                // FofWantNukeWarning stays as a second line of defence for an item too large for the
+                // bin; SourceRecycler checks the disk afterwards either way.
+                Flags = (ushort)(FofAllowUndo | FofNoConfirmation | FofWantNukeWarning | FofNoErrorUi | FofSilent),
+            };
+            _ = SHFileOperationW(ref operation);
+        }
+        finally
+        {
+            Marshal.FreeHGlobal(from);
+        }
     }
 
     /// <inheritdoc/>

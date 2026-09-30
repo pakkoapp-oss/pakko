@@ -198,6 +198,12 @@
   <data name="TarSpecialEntry" xml:space="preserve">
     <value>L’archive contient un lien symbolique, un lien physique, un périphérique ou une autre entrée spéciale et ne peut pas être extraite en toute sécurité.</value>
   </data>
+  <data name="TarDuplicateCopiesNotExtracted" xml:space="preserve">
+    <value>{0} autres copies portant ce nom n'ont pas été extraites : seules la première et la dernière copie peuvent être extraites de cette archive.</value>
+  </data>
+  <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
+    <value>Un autre élément sélectionné porte le même nom, et ce dossier n'a pas pu être ajouté sous un nouveau nom. Renommez l'un d'eux et réessayez.</value>
+  </data>
   <data name="ListingInconsistent" xml:space="preserve">
     <value>La liste du contenu de l’archive est incohérente.</value>
   </data>

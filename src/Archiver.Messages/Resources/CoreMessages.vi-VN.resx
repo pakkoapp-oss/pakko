@@ -198,6 +198,12 @@
   <data name="TarSpecialEntry" xml:space="preserve">
     <value>Kho lưu trữ chứa liên kết tượng trưng, liên kết cứng, thiết bị hoặc mục đặc biệt khác và không thể giải nén an toàn.</value>
   </data>
+  <data name="TarDuplicateCopiesNotExtracted" xml:space="preserve">
+    <value>{0} bản sao khác có tên này chưa được giải nén: chỉ có thể lấy bản sao đầu tiên và cuối cùng ra khỏi kho lưu trữ này.</value>
+  </data>
+  <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
+    <value>Một mục được chọn khác có cùng tên và không thể thêm thư mục này với tên mới. Hãy đổi tên một trong hai rồi thử lại.</value>
+  </data>
   <data name="ListingInconsistent" xml:space="preserve">
     <value>Danh sách nội dung kho lưu trữ không nhất quán.</value>
   </data>

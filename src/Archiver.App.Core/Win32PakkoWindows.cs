@@ -7,7 +7,7 @@ namespace Archiver.App.Core;
 /// T-F201: top-left corners of the visible top-level windows of other Pakko App processes, for
 /// <see cref="WindowCascade"/>.
 /// </summary>
-public static class Win32PakkoWindows
+public static partial class Win32PakkoWindows
 {
     /// <summary>Corners of every visible top-level window owned by another process with this process's name.</summary>
     public static IReadOnlyList<(int Left, int Top)> OtherWindowCorners()
@@ -26,7 +26,7 @@ public static class Win32PakkoWindows
             return [];
 
         var corners = new List<(int, int)>();
-        EnumWindows((hWnd, _) =>
+        EnumWindowsProc callback = (hWnd, _) =>
         {
             if (IsWindowVisible(hWnd)
                 && GetWindowThreadProcessId(hWnd, out uint pid) != 0
@@ -35,7 +35,11 @@ public static class Win32PakkoWindows
                 && GetWindowRect(hWnd, out Rect rect))
                 corners.Add((rect.Left, rect.Top));
             return true;
-        }, IntPtr.Zero);
+        };
+        // [LibraryImport] does not marshal delegates: pass the thunk and keep the delegate alive
+        // until EnumWindows (synchronous) has returned.
+        EnumWindows(Marshal.GetFunctionPointerForDelegate(callback), IntPtr.Zero);
+        GC.KeepAlive(callback);
         return corners;
     }
 
@@ -50,23 +54,24 @@ public static class Win32PakkoWindows
         public int Bottom;
     }
 
+    [return: MarshalAs(UnmanagedType.Bool)]
     private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
 
-    [DllImport("user32.dll")]
+    [LibraryImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
+    private static partial bool EnumWindows(IntPtr lpEnumFunc, IntPtr lParam);
 
-    [DllImport("user32.dll")]
+    [LibraryImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool IsWindowVisible(IntPtr hWnd);
+    private static partial bool IsWindowVisible(IntPtr hWnd);
 
-    [DllImport("user32.dll")]
-    private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+    [LibraryImport("user32.dll")]
+    private static partial uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
 
-    [DllImport("user32.dll")]
-    private static extern IntPtr GetWindow(IntPtr hWnd, uint uCmd);
+    [LibraryImport("user32.dll")]
+    private static partial IntPtr GetWindow(IntPtr hWnd, uint uCmd);
 
-    [DllImport("user32.dll")]
+    [LibraryImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool GetWindowRect(IntPtr hWnd, out Rect lpRect);
+    private static partial bool GetWindowRect(IntPtr hWnd, out Rect lpRect);
 }

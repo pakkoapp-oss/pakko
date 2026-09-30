@@ -198,6 +198,12 @@
   <data name="TarSpecialEntry" xml:space="preserve">
     <value>Arkivet innehåller en symbolisk länk, hård länk, enhet eller annan specialpost och kan inte extraheras säkert.</value>
   </data>
+  <data name="TarDuplicateCopiesNotExtracted" xml:space="preserve">
+    <value>{0} fler kopior med det här namnet extraherades inte: bara den första och den sista kopian kan tas ut ur det här arkivet.</value>
+  </data>
+  <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
+    <value>Ett annat markerat objekt har samma namn och den här mappen kunde inte läggas till med ett nytt namn. Byt namn på ett av dem och försök igen.</value>
+  </data>
   <data name="ListingInconsistent" xml:space="preserve">
     <value>Arkivets innehållslista är inkonsekvent.</value>
   </data>

@@ -198,6 +198,12 @@
   <data name="TarSpecialEntry" xml:space="preserve">
     <value>アーカイブにシンボリック リンク、ハード リンク、デバイス、またはその他の特殊なエントリが含まれているため、安全に展開できません。</value>
   </data>
+  <data name="TarDuplicateCopiesNotExtracted" xml:space="preserve">
+    <value>この名前のコピーがさらに {0} 個展開されませんでした: このアーカイブから取り出せるのは最初と最後のコピーだけです。</value>
+  </data>
+  <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
+    <value>選択した別の項目が同じ名前のため、このフォルダーを新しい名前で追加できませんでした。どちらかの名前を変更してもう一度お試しください。</value>
+  </data>
   <data name="ListingInconsistent" xml:space="preserve">
     <value>アーカイブの内容一覧に矛盾があります。</value>
   </data>

@@ -21,7 +21,7 @@ namespace Archiver.Core.Services.Antivirus;
 // of leaving raw P/Invoke wrapper classes unannotated (AppContainerProfile, etc.); only BCL APIs
 // that are themselves platform-annotated (e.g. Microsoft.Win32.Registry, see AmsiProviderCheck)
 // need the attribute here, since that's where CA1416 actually originates.
-internal sealed class AmsiScanner : IAmsiScanner
+internal sealed partial class AmsiScanner : IAmsiScanner
 {
     // AMSI_RESULT_DETECTED per the Windows SDK's amsi.h — everything below this is "not detected"
     // (AMSI_RESULT_CLEAN = 0, AMSI_RESULT_NOT_DETECTED = 1, and the
@@ -93,22 +93,22 @@ internal sealed class AmsiScanner : IAmsiScanner
         }
     }
 
-    private static class NativeMethods
+    private static partial class NativeMethods
     {
-        [DllImport("amsi.dll", CharSet = CharSet.Unicode)]
-        public static extern int AmsiInitialize(string appName, out IntPtr amsiContext);
+        [LibraryImport("amsi.dll", StringMarshalling = StringMarshalling.Utf16)]
+        public static partial int AmsiInitialize(string appName, out IntPtr amsiContext);
 
-        [DllImport("amsi.dll")]
-        public static extern void AmsiUninitialize(IntPtr amsiContext);
+        [LibraryImport("amsi.dll")]
+        public static partial void AmsiUninitialize(IntPtr amsiContext);
 
-        [DllImport("amsi.dll")]
-        public static extern int AmsiOpenSession(IntPtr amsiContext, out IntPtr amsiSession);
+        [LibraryImport("amsi.dll")]
+        public static partial int AmsiOpenSession(IntPtr amsiContext, out IntPtr amsiSession);
 
-        [DllImport("amsi.dll")]
-        public static extern void AmsiCloseSession(IntPtr amsiContext, IntPtr amsiSession);
+        [LibraryImport("amsi.dll")]
+        public static partial void AmsiCloseSession(IntPtr amsiContext, IntPtr amsiSession);
 
-        [DllImport("amsi.dll", CharSet = CharSet.Unicode)]
-        public static extern int AmsiScanBuffer(
+        [LibraryImport("amsi.dll", StringMarshalling = StringMarshalling.Utf16)]
+        public static partial int AmsiScanBuffer(
             IntPtr amsiContext, IntPtr buffer, uint length, string contentName, IntPtr amsiSession, out int result);
     }
 }

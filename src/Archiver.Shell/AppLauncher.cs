@@ -24,7 +24,7 @@ public enum AppLaunchResult
 /// <c>IApplicationActivationManager::ActivateApplication</c>, passing <see cref="LaunchArguments"/> —
 /// replaces the <c>pakko://</c> URI scheme, which any web page or document link could launch.
 /// </summary>
-public static class AppLauncher
+public static partial class AppLauncher
 {
     private const int AppModelErrorNoPackage = 15700;
     private const int ErrorInsufficientBuffer = 122;
@@ -102,9 +102,9 @@ public static class AppLauncher
     {
     }
 
-    private static class NativeMethods
+    private static partial class NativeMethods
     {
-        [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
-        public static extern int GetCurrentPackageFamilyName(ref uint packageFamilyNameLength, char[]? packageFamilyName);
+        [LibraryImport("kernel32.dll", StringMarshalling = StringMarshalling.Utf16)]
+        public static partial int GetCurrentPackageFamilyName(ref uint packageFamilyNameLength, [Out] char[]? packageFamilyName);
     }
 }

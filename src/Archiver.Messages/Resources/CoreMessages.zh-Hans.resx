@@ -198,6 +198,12 @@
   <data name="TarSpecialEntry" xml:space="preserve">
     <value>压缩包包含符号链接、硬链接、设备或其他特殊条目，无法安全解压。</value>
   </data>
+  <data name="TarDuplicateCopiesNotExtracted" xml:space="preserve">
+    <value>另有 {0} 个同名副本未被解压：此存档只能取出第一个和最后一个副本。</value>
+  </data>
+  <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
+    <value>另一个选定项目的名称相同，无法以新名称添加此文件夹。请重命名其中一个，然后重试。</value>
+  </data>
   <data name="ListingInconsistent" xml:space="preserve">
     <value>压缩包内容列表不一致。</value>
   </data>

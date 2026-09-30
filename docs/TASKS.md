@@ -3931,13 +3931,14 @@ regression from this task, which owns reliability only.
 
 ### T-F148 — Convert Sandbox P/Invoke layer from `DllImport` to `LibraryImportAttribute`
 
+- **G2 device pass (2026-09-29, installed 1.5.0.37, Explorer + App + Shell via `windows` MCP):** Explorer "Extract to" of a `.tar.gz` (dates kept), `.7z` and `.rar` through the sandbox from the packaged identity — all extracted. Acceptance met; stays `[~]` only until the v1.6.0 merge with the rest of `sec-t-f283`.
 - **Progress (2026-09-26, fix phase 4a):** `Archiver.Shell/AppLauncher.cs` adds a `DllImport`
   (`GetCurrentPackageFamilyName`) and a `[ComImport]` interface Sonar flags as `SYSLIB1096`
   (INFO: use `[GeneratedComInterface]`). The COM half needs `ComWrappers` + `CoCreateInstance`
-  instead of `new` on a coclass — convert it with the rest of source-generated interop here.
+  instead of `new` on a coclass — moved to T-F288.
 - **Progress (2026-09-25, fix phase 4):** new `DllImport`s in `TarCommandLineEncoding`, `TarOutputEncoding`, `TarSandboxScope` (ReOpenFile), `SandboxJobObject` (completion port) and `AppContainerProfile` (ConvertSidToStringSidW) — convert with the rest.
 
-- [ ] **Status:** not started.
+- [~] **Status (2026-09-29, G2, local on `sec-t-f283`):** sandbox/tar part done — all 51 declarations in `Services/Sandbox/`, `TarListingDate.cs` and `DirectoryJunction.cs` are `[LibraryImport]`; Core sets `AllowUnsafeBlocks` (generated code only). Default suite after each of three batches, Slow suite, and an exact-name export check (51/51) green. Stays `[~]` until a `.tar.gz`/`.7z`/`.rar` extraction through the installed package in the G2 packaged-identity device pass. Still on `DllImport` by plan (not this task's leftovers): AMSI, `ArchiveEntrySecurity`, `ZipNameCodePages`, Shell, App.Core, CLI, OperationUi — T-F287. See `docs/DECISIONS.md`'s T-F148 entry.
 - **Context:** split out of T-F147, deliberately out of scope there per the user's explicit
   decision — `SYSLIB1054` (~40 findings across `Archiver.Core/Services/Sandbox/`, e.g.
   `SandboxedProcessLauncher.cs`, `SecurityCapabilitiesAttributeList.cs`, `QuarantineAcl.cs`,
@@ -4114,7 +4115,29 @@ regression from this task, which owns reliability only.
 
 ### T-F171 — Real Tar-family duplicate-entry-name parity with ZIP (T-F30), split from T-F168
 
-- [ ] **Status:** not started — split out of T-F168 once its investigation showed genuine parity
+- **G2 device pass (2026-09-29, installed 1.5.0.37, Explorer + App + Shell via `windows` MCP):** App browse of a two-copy `dup.tar` (opened by Explorer's Pakko > Open), Extract all with Rename: `f.txt` = first copy, `f (1).txt` = second. The App check is done.
+- [~] **Progress (2026-09-29, G2):** done on `sec-t-f283`, design approved by the user (tier B:
+  first + last copy; a colliding network folder is refused). Extraction runs a second sandboxed
+  `-x -q` pass for the first copies, and both copies go through the conflict rule; creation stages a
+  colliding folder as a junction. "Scan for threats" scans the first copies too. Tests first; see
+  `docs/DECISIONS.md`'s T-F171 entry. Device check (App browse + Extract with Rename/Ask on a
+  `.tar`/`.tar.gz` with two same-named entries, Explorer "Extract Here", `pakko x`; App and Explorer
+  "Add to X.tar" of two folders named `x`) goes with the G2 packaged-identity check. **v1.6.0
+  CHANGELOG:** a tar/7z/RAR archive with a repeated name used to extract only the last copy,
+  silently; now the conflict setting decides, as for ZIP — Rename keeps both (`f.txt` = first,
+  `f (1).txt` = last), Skip keeps the first (an appended tar's older copy; the user chose the ZIP
+  rule over last-takes-the-name, 2026-09-29), Overwrite keeps the last, Ask asks; a third copy or
+  later is reported, not extracted. Creating a tar from two same-named folders names the second
+  `x (1)`. Closing-advisor fixes (same day): a later collision that cannot be staged fails only
+  its own source and no junction is left in `%TEMP%` (test-first); a failed first-copy pass keeps
+  the last copies instead of failing the archive. Follow-ups: T-F286; T-F148 adds
+  `DirectoryJunction.cs`'s two `DllImport`s.
+- **Device (Deploy 1.5.0.36, 2026-09-29):** installed `Archiver.Shell.exe --extract-here` on a
+  `.tar.gz` with two `x/f.txt` -> the operation window asked once, Rename -> `f.txt` = first,
+  `f (1).txt` = last, `sub/g.txt` intact. `--archive --format tar a\x b\x` -> entries `x/` and
+  `x (1)/` with the full tree, no `PakkoTarStage_*` left, source intact. Still open: App browse +
+  Extract (one row for the name, both copies extracted), with the G2 packaged pass.
+- **Status (original):** not started — split out of T-F168 once its investigation showed genuine parity
   gaps, not just a missing test (see `docs/DECISIONS.md`'s T-F168 entry for the full spike
   evidence).
 - **Context:** two Phase 0 spikes (raw duplicate-named tar via a `TarBuilder`-style script, real
@@ -4349,10 +4372,10 @@ and one test-first cycle per task):** G0 CI/Sonar for the last pushes. G1 App: T
 T-F219, T-F198 item 5, new keys in 37 locales; one Deploy and one full App pass that also closes
 wave 4 (T-F199), the stale statuses (T-F210, T-F212, T-F224, T-F267), T-F213's check and a re-check
 of T-F268 (f) with the display confirmed on. G2 tar/sandbox: T-F273 (first, P1), T-F214, T-F171
-(short design approved by the user first), T-F148 last and sandbox/tar only (Shell/App.Core/AMSI
-P/Invokes later — `SHFileOperationW` guards the Recycle Bin); one integration + Slow run and one
-packaged-identity device check. G3 only if T-F268 (f) reproduces. G4 on main between groups:
-T-F240, T-F259, T-F203 (after G2). G5 docs: T-F257 (SECURITY.md needs permission), T-F258, T-F223,
+(short design approved by the user first), T-F148 sandbox/tar only, then T-F287 (every other
+P/Invoke, added 2026-09-29 by the user — `SHFileOperationW` guards the Recycle Bin); one
+integration + Slow run and one packaged-identity device check. G3 only if T-F268 (f) reproduces. G4 on main between groups:
+T-F240, T-F259, T-F203 (after G2). T-F289 (ZIP extraction keeps entry dates) goes after v1.6.0 (user, 2026-09-29). G5 docs: T-F257 (SECURITY.md needs permission), T-F258, T-F223,
 T-F165. G6 one device campaign on CI artifacts: T-F202 (coverage table rebuilt from current
 source), every `[~]` check (delegated), T-F221 terminal, T-F260 mapping, light theme, keyboard,
 narrow window; Windows display language last (sign-out ends the agent session; restore after).
@@ -4872,9 +4895,11 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 
 ### T-F214 — Tar-family listing shows no modified date and "0" packed size (P2)
 
+- **G2 device pass (2026-09-29, installed 1.5.0.37, Explorer + App + Shell via `windows` MCP):** App browse of a `.tar`: date shown, Compressed and CRC-32 blank; `pakko l` of a `.tar.gz` prints `-` for Compressed and `2019-03-04T00:00:00` for an old entry (tar -tv gives no time).
 - **Progress (2026-09-25, fix phase 4):** deferred to fix phase 9 — it changes the public `ArchiveEntryInfo` model and every frontend renderer. Note: dates in `-tv` are the locale's month abbreviations (`Вер 25 19:24`), now decodable since acca0de.
 
-- [ ] **Status:** open. `pakko l sr.tar.gz`/`multi.7z` and the Archive Browser show Modified "-"/"—"
+- [~] **Progress (2026-09-29, G2):** fixed on `sec-t-f283` — the date is parsed from the existing `-tvf` line with the user locale's month names (`TarListingDate`; mtree rejected, it decompresses every 7z/RAR entry), `CompressedSize` is `long?`, null for tar-family (`pakko l` prints `-`). Tests first, mutation-checked; see `docs/DECISIONS.md`'s T-F214 entry. An entry with no stored time (7z `-mtm=off`, listed as the local Unix epoch) stays null. Device check (App browse of a .tar.gz/.7z: dates shown, Compressed blank; an old entry shows `00:00`; an empty ZIP entry now shows `0 B` compressed; `pakko l` prints `-` for Compressed) goes with the G2 packaged-identity check. **v1.6.0 CHANGELOG:** `pakko l` prints `-` (was `0`) in Compressed for tar-family/7z/RAR. T-F148 adds `TarListingDate.cs`'s two `DllImport`s.
+- **Status (original):** open. `pakko l sr.tar.gz`/`multi.7z` and the Archive Browser show Modified "-"/"—"
   and Compressed `0`, although `tar.exe -tvf` prints the dates. Parse the verbose listing's
   mtime; show "—" (not 0) where packed size is unknown.
 - **Reported by:** T-F202, 2026-09-24.
@@ -6536,9 +6561,140 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   the tier's configuration; recalibrate only with evidence.
 - **Reported by:** T-F270 verification, 2026-09-26.
 
+### T-F283 — tar.exe option injection: a selected name starting with "-" is read as a tar option (P0, security)
+
+- [~] **Progress (2026-09-29, branch `sec-t-f283`, not pushed before v1.6.0):** implementation
+  complete — creation hands tar.exe every name as a `-T -` stdin list (`AppendSourcesToNameList`,
+  `TarCommandLineEncoding.EncodeLines`, `ProcessLaunchOptions.StdInData`), extract-selected puts
+  `--` before the members; `TarSandboxedServiceNameListTests` + launcher stdin tests, default and
+  Slow suites green. **Device (Deploy 1.5.0.35, uk-UA):** Explorer "Додати до opt.tar" on
+  `--exclude=real.txt`, `-C`, `-T`, `-v`, `@list.tar`, `real.txt` -> all 6 entries (`7za l`; `-C`
+  stored as `./-C`); `pakko a -ttar` on the same files -> same 6, `pakko x` restores all 6 names;
+  Shell `--archive --format tar` on a Cyrillic folder -> `Папка б/Документ.txt`. Not checked on
+  device: the App's TAR format (same Core path as Shell/CLI). A `subst` drive root fails before
+  and after (T-F285). See `docs/DECISIONS.md`'s T-F283 entry.
+- **Found:** 2026-09-29 with `tar.exe` directly (bsdtar 3.8.8). Archive creation passed every
+  selected name to tar.exe (run unsandboxed) as its own argument, so a file or folder whose name
+  looked like a tar option was read as one: a crafted name could change what tar.exe does, up to
+  running another program, and a name like `--exclude=x` silently produced an empty archive.
+  Extract-selected passed archive entry names as member arguments the same way (inside the
+  sandbox). Reach: Explorer "Add to X.tar", the App's TAR format, `pakko a -t tar`.
+- **Fix:** creation — every source through the `-T -` stdin list (T-F273); extraction — `--`
+  before the member names. Tests use only option names that do nothing harmful.
+  `SECURITY.md` and the CHANGELOG security section at release (user-permitted).
+- **Reported by:** T-F273 spike (G2), 2026-09-29.
+
+### T-F284 — tar extract-selected matches entry names as patterns: "a[1].txt" extracts "a1.txt" (P2)
+
+- [ ] **Status:** open — confirmed 2026-09-29 with `tar.exe` directly (bsdtar 3.8.8): a tar holding
+  `a[1].txt` and `a1.txt`, `tar -xf g.tar -C out -- "a[1].txt"` exits 0 and writes only `a1.txt`.
+  bsdtar reads extract member arguments as wildcard patterns, so the Archive Browser's Extract
+  Selected / preview / nested drill-in on a tar-family entry whose name holds `[`, `*` or `?` can
+  extract a different entry, or several, and miss the selected one. Inside the sandbox and after
+  the pre-scan, so not a security issue; a wrong-result bug. Predates T-F283 (`--` only ends
+  options, it does not make members literal).
+- **Fix direction:** check whether this bsdtar build honours backslash-escaping in member patterns
+  on Windows, or select by extracting through a `-T` list with an exact-match mode, or filter
+  after extraction in quarantine; tests first with a bracket-named entry next to its glob match.
+- **Reported by:** T-F283 closing review, 2026-09-29.
+
+### T-F285 — tar creation from a `subst` drive root fails inside tar.exe (P3)
+
+- [ ] **Status:** open — found 2026-09-29 in the T-F283 device pass. Shell `--archive --format tar
+  P:\` (P: = `subst` of a small folder) shows "tar.exe не зміг створити архів: ... Couldn't visit
+  directory" with a garbled path. `tar.exe` alone fails the same way with `P:\` as an argument
+  (the pre-T-F283 form), as a `-T -` list line, as `P:/`, and as `-C P:\` + `.`; `-C P:\` +
+  `r.txt` fails with "GetVolumePathName failed: 123". A bsdtar limitation, not a Pakko regression.
+  A real volume root was not tried (needs a small real drive or an elevated VHD).
+- **Fix direction:** check a real volume root first; if only `subst`/mapped drives fail, resolve
+  the drive to its target path (`QueryDosDevice`) before building the list, or refuse with a clear
+  message. The archive name for a drive root is T-F281.
+- **Reported by:** T-F283 device pass, 2026-09-29.
+
+### T-F287 — finish the move off `DllImport`: every remaining P/Invoke on `[LibraryImport]` (P3)
+
+- **G2 device pass (2026-09-29, installed 1.5.0.37, Explorer + App + Shell via `windows` MCP):** all items pass. Operation window (DPI size) for extract/password/scan; Explorer Pakko > Open launches the App (`GetCurrentPackageFamilyName`); a second App window opens offset (59,52 vs 215,208 — `EnumWindows` thunk); App Delete-after sent `dup.tar` to the Recycle Bin (`$I` record found); AMSI scan of a ZIP reports clean (not inconclusive). Win32 fallback forced by killing `Archiver.OperationUi` at the password prompt: Shell failed over to the native progress dialog and `PasswordDialog` (on top; bullet mask; Show password on/off restores the bullet — `SendMessageW`; the password read back right), then `ShellConflictDialog` (on top, localized, Rename gave `a (1).txt`). `pakko l -sccDOS`/`-sccWIN` fine. Progress-dialog Cancel not retested (`NativeProgressDialog` is COM, unchanged here — T-F288). Found T-F289 (ZIP extraction drops entry dates, pre-existing).
+- [~] **Status (2026-09-29, local on `sec-t-f283`):** done — zero `[DllImport]` in `src/`
+  (`150fb61`) and in `tests/` (4 test helpers, next commit), default + Slow suites green, 93/93
+  exports resolve, new real-recycle test (mutation-checked). **At the v1.6.0 merge** that test runs
+  in CI for the first time (this branch is never pushed): it needs a working Recycle Bin for the
+  runner user on `%TEMP%`'s drive — if CI is red then, check it first. The COM step moved to **T-F288**. Stays `[~]` until the device items below
+  pass in the G2 packaged-identity pass. See `docs/DECISIONS.md`'s T-F287 entry.
+- **Device items (G2 pass):** Shell password dialog appears on top, "Show password" on/off brings
+  the bullet back (`SendMessage` is now W); Shell conflict dialog on top, "apply to all" works;
+  progress dialog Cancel; the operation window (DPI size); App "Delete after operation" goes to the
+  Recycle Bin; a second App window cascades (`Win32PakkoWindows`); Explorer "Open in App"
+  (`GetCurrentPackageFamilyName`, packaged only); AMSI scan; `pakko -sccDOS`/`-sccWIN`.
+- Originally: user request 2026-09-29, scheduled in G2 right after T-F148 (plan section 8.8), so
+  the one G2 packaged-identity device pass covers it too.
+- **Scope:** every `[DllImport]` left after T-F148 (~46 in 13 files): `Archiver.Core`
+  (`Antivirus/AmsiScanner.cs`, `ArchiveEntrySecurity.cs`, `Zip/ZipNameCodePages.cs`),
+  `Archiver.Shell` (`AppLauncher`, `HelperProcessLauncher`, `NativeProgressDialog`,
+  `PasswordDialog`, `ShellConflictDialog`, `Win32OperationUi`), `Archiver.App.Core`
+  (`Win32PakkoWindows`, `Win32SourceDeleteOperations`), `Archiver.CLI` (`CliConsoleCharset`),
+  `Archiver.OperationUi` (`OperationWindow`). The `[ComImport]` interfaces are T-F288.
+- **Same rules as T-F148:** batches with the default suite after each; `StringMarshalling.Utf16`
+  and exact `W` entry-point names, checked with `NativeLibrary.TryGetExport`; blittable structs
+  only (`DLGTEMPLATEEX`/`TASKDIALOGCONFIG`/`SHFILEOPSTRUCTW` layouts incl. `Pack = 1` checked
+  before and after); `AllowUnsafeBlocks` per project that needs it; no
+  `DisableRuntimeMarshalling`. `SHFileOperationW` guards the Recycle Bin (T-F207): test-first on
+  its flags, and a device check that "Delete after operation" still recycles, not deletes.
+- **Acceptance:** zero `[DllImport]` in `src/` and `tests/`; default + Slow suites green; C++ untouched; device
+  pass: Shell password and conflict dialogs, progress dialog Cancel, operation window, App delete-
+  after to Recycle Bin, AMSI scan, `pakko` console charset; Sonar `SYSLIB1054` count 0 after merge.
+- **Reported by:** user, 2026-09-29 ("додай у хвилю задачу повного переїзду з DllImport").
+
+### T-F288 — `[ComImport]` interfaces to `[GeneratedComInterface]` (SYSLIB1096, P3)
+
+- [ ] **Status:** open — split out of T-F287, 2026-09-29 (that task was about `DllImport`; this is
+  a different mechanism, info-level in Sonar, never a build error). Not scheduled in G2.
+- **Scope:** `Archiver.Shell/AppLauncher.cs` (`IApplicationActivationManager`, coclass `new`) and
+  `Archiver.Shell/NativeProgressDialog.cs` (`IProgressDialog`) to `[GeneratedComInterface]` +
+  `StrategyBasedComWrappers`, created with a `CoCreateInstance` `[LibraryImport]` instead of `new`
+  on a `[ComImport]` coclass.
+- **First step, before any code:** a generated wrapper is not apartment-bound like a classic RCW
+  (no cross-apartment marshalling of calls). Check where `NativeProgressDialog` is created, which
+  threads call it (`Win32OperationUi.Session._dialogLock` suggests several) and whether Shell's
+  `Main` is `[STAThread]`; if creation and calls are on different threads, the design needs
+  explicit marshalling or one owning thread.
+- **Keep:** `HasUserCancelled`'s `BOOL` return — `[PreserveSig]` semantics (CLAUDE.md hard
+  constraint; Cancel did nothing without it). `NativeProgressDialog` is a documented known test
+  gap, so the device check (progress, Cancel) is the acceptance gate; `AppLauncher` runs only
+  under package identity.
+- **Reported by:** T-F287 advisor review, 2026-09-29.
+
+### T-F289 — ZIP extraction drops every entry's modified date (P2)
+
+- [ ] **Status:** open — **user decision 2026-09-29: after the v1.6.0 release** (next batch; first
+  said before, then moved it after). Found in the G2 device pass, 2026-09-29; pre-existing, not caused by T-F287.
+  `plain.zip`/`aes.zip` made by 7-Zip hold `a.txt` dated 2019-03-04 (the Shell conflict dialog shows
+  it: "З архіву ... змінено 04.03.2019"), but every frontend (Explorer, App, `pakko x`) writes the
+  extracted file with the current time. tar-family extraction keeps dates (tar.exe sets them).
+  7-Zip and Explorer's own ZIP extractor restore the stored time.
+- **Fix direction:** after the entry's bytes are committed, set `LastWriteTime` from
+  `ZipArchiveEntry.LastWriteTime` (and the hand-rolled/decrypting paths from the DOS date or the
+  NTFS extra field when present), best-effort per file like MOTW; tests first for plain, AES and
+  ZipCrypto entries, then a check against `7za l -slt`. Folder dates are a separate question.
+- **Reported by:** G2 device pass (agent), 2026-09-29.
+
+### T-F286 — a crash during tar creation can leave a junction to the user's folder in `%TEMP%` (P3)
+
+- [ ] **Status:** open — found in T-F171's closing review, 2026-09-29. A colliding folder source is
+  staged as a junction in `%TEMP%\PakkoTarStage_<guid>\`, removed in `CompressToArchiveAsync`'s
+  `finally`. If the process is killed or crashes while tar.exe runs, `finally` never runs and the
+  junction stays. A tool that deletes `%TEMP%` recursively and follows junctions (Windows
+  PowerShell 5.1 `Remove-Item -Recurse`, some cleaners) would then delete the user's files.
+- **Fix direction:** at the next `CompressAsync`, sweep stale `PakkoTarStage_*` folders: remove
+  every reparse point inside non-recursively first, then the folder.
+- **Reported by:** T-F171 closing advisor, 2026-09-29.
+
 ### T-F273 — "Add to X.tar" fails for a large selection: every path goes on tar.exe's command line (P1)
 
-- [ ] **Status:** open — device-confirmed 2026-09-28 (Deploy 1.5.0.15), found checking T-F235.
+- [~] **Progress (2026-09-29):** fixed with T-F283 — names go through the `-T -` stdin list, so
+  the command line no longer grows with the selection (`CompressAsync_SelectionLongerThanACommandLine_
+  ArchivesEveryFile`, 300 sources over 32,767 characters). No `--null` (see the T-F283 decision).
+  Device (Deploy 1.5.0.35): Explorer "Додати до many.tar" on the 300 files -> 300 entries.
+- **Found:** device-confirmed 2026-09-28 (Deploy 1.5.0.15), found checking T-F235.
   Explorer "Add to many.tar" on 300 files with ~95-character names reaches Shell (T-F235), then
   `TarSandboxedService.CompressAsync` passes every source path to `C:\Windows\System32\tar.exe` as
   arguments: the window shows "Cannot create archive: CreateProcessW failed for

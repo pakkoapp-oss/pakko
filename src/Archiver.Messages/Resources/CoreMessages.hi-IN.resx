@@ -198,6 +198,12 @@
   <data name="TarSpecialEntry" xml:space="preserve">
     <value>संग्रह में प्रतीकात्मक लिंक, हार्ड लिंक, डिवाइस या अन्य विशेष प्रविष्टि है और इसे सुरक्षित रूप से नहीं निकाला जा सकता।</value>
   </data>
+  <data name="TarDuplicateCopiesNotExtracted" xml:space="preserve">
+    <value>इस नाम की {0} और प्रतियाँ निकाली नहीं गईं: इस संग्रह से केवल पहली और अंतिम प्रति ही निकाली जा सकती है।</value>
+  </data>
+  <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
+    <value>किसी अन्य चयनित आइटम का नाम भी यही है, और यह फ़ोल्डर नए नाम से जोड़ा नहीं जा सका। उनमें से एक का नाम बदलें और फिर से प्रयास करें।</value>
+  </data>
   <data name="ListingInconsistent" xml:space="preserve">
     <value>संग्रह की सामग्री सूची असंगत है।</value>
   </data>

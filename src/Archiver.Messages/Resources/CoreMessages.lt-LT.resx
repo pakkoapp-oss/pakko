@@ -198,6 +198,12 @@
   <data name="TarSpecialEntry" xml:space="preserve">
     <value>Archyve yra simbolinė nuoroda, griežtoji nuoroda, įrenginys ar kitas specialus elementas, todėl jo negalima saugiai išskleisti.</value>
   </data>
+  <data name="TarDuplicateCopiesNotExtracted" xml:space="preserve">
+    <value>Dar {0} kopijos šiuo pavadinimu nebuvo išskleistos: iš šio archyvo galima paimti tik pirmąją ir paskutinę kopiją.</value>
+  </data>
+  <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
+    <value>Kitas pasirinktas elementas turi tą patį pavadinimą, o šio aplanko nepavyko pridėti nauju pavadinimu. Pervardykite vieną iš jų ir bandykite dar kartą.</value>
+  </data>
   <data name="ListingInconsistent" xml:space="preserve">
     <value>Archyvo turinio sąrašas prieštaringas.</value>
   </data>

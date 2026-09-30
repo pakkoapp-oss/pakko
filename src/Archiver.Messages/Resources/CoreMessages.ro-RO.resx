@@ -198,6 +198,12 @@
   <data name="TarSpecialEntry" xml:space="preserve">
     <value>Arhiva conține o legătură simbolică, o legătură fizică, un dispozitiv sau alt element special și nu poate fi extrasă în siguranță.</value>
   </data>
+  <data name="TarDuplicateCopiesNotExtracted" xml:space="preserve">
+    <value>Încă {0} copii cu acest nume nu au fost extrase: din această arhivă se pot lua doar prima și ultima copie.</value>
+  </data>
+  <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
+    <value>Un alt element selectat are același nume, iar acest folder nu a putut fi adăugat cu un nume nou. Redenumiți unul dintre ele și încercați din nou.</value>
+  </data>
   <data name="ListingInconsistent" xml:space="preserve">
     <value>Lista conținutului arhivei este inconsecventă.</value>
   </data>

@@ -198,6 +198,12 @@
   <data name="TarSpecialEntry" xml:space="preserve">
     <value>Arhīvā ir simboliskā saite, cietā saite, ierīce vai cits īpašs vienums, un to nevar droši izvilkt.</value>
   </data>
+  <data name="TarDuplicateCopiesNotExtracted" xml:space="preserve">
+    <value>Vēl {0} kopijas ar šo nosaukumu netika izvilktas: no šī arhīva var paņemt tikai pirmo un pēdējo kopiju.</value>
+  </data>
+  <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
+    <value>Citam atlasītam vienumam ir tāds pats nosaukums, un šo mapi nevarēja pievienot ar jaunu nosaukumu. Pārdēvējiet vienu no tiem un mēģiniet vēlreiz.</value>
+  </data>
   <data name="ListingInconsistent" xml:space="preserve">
     <value>Arhīva satura saraksts ir pretrunīgs.</value>
   </data>

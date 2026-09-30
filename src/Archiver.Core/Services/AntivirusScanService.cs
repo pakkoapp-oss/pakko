@@ -478,7 +478,7 @@ public sealed class AntivirusScanService : IAntivirusScanService
             scope = await TarSandboxScope.CreateAsync(archivePath, needsOutputDir: true, cancellationToken)
                 .ConfigureAwait(false);
 
-            (_, string[] allNames, _) = await TarSandboxedService.ScanForUnsafeEntriesAsync(scope, cancellationToken)
+            (_, string[] allNames, _, List<(string Name, long Size)> fileEntries) = await TarSandboxedService.ScanForUnsafeEntriesAsync(scope, cancellationToken)
                 .ConfigureAwait(false);
 
             bool isSelectedSubset = selectedEntryPaths is { Count: > 0 };
@@ -504,9 +504,22 @@ public sealed class AntivirusScanService : IAntivirusScanService
                 return;
             }
 
-            await ScanExtractedFilesAsync(
-                scope.OutputDirectory!, archivePath, totalEntries, scanner, findings, reportProgress, cancellationToken)
+            // T-F171: extraction also takes out the first of several same-named copies, so it is
+            // scanned too. Everything the first-copy pass wrote is scanned, not only the files
+            // extraction would keep.
+            List<TarSandboxedService.DuplicateGroup> duplicates =
+                TarSandboxedService.FindDuplicateGroups(fileEntries, allNames, expandedSelection);
+            int scanned = await ScanExtractedFilesAsync(
+                scope.OutputDirectory!, 0, archivePath, totalEntries + duplicates.Count, scanner, findings, reportProgress, cancellationToken)
                 .ConfigureAwait(false);
+            if (duplicates.Count > 0)
+            {
+                (string firstDir, _, _) = await scope.ExtractFirstOccurrencesAsync(
+                    duplicates.Select(g => g.FirstName).ToList(), cancellationToken).ConfigureAwait(false);
+                await ScanExtractedFilesAsync(
+                    firstDir, scanned, archivePath, totalEntries + duplicates.Count, scanner, findings, reportProgress, cancellationToken)
+                    .ConfigureAwait(false);
+            }
         }
         catch (OperationCanceledException) { throw; }
         catch (Exception ex) when (ex is TarSandboxedService.TarArchiveRejectedException
@@ -535,11 +548,12 @@ public sealed class AntivirusScanService : IAntivirusScanService
         }
     }
 
-    private static async Task ScanExtractedFilesAsync(
-        string outputDirectory, string archivePath, int totalEntries, IAmsiScanner scanner,
+    // Returns the running count of scanned files; startAt continues it across a second folder.
+    private static async Task<int> ScanExtractedFilesAsync(
+        string outputDirectory, int startAt, string archivePath, int totalEntries, IAmsiScanner scanner,
         List<ThreatFinding> findings, Action<string?, int, int> reportProgress, CancellationToken cancellationToken)
     {
-        int entriesDone = 0;
+        int entriesDone = startAt;
         foreach (string file in TarSandboxedService.EnumerateFilesGuarded(outputDirectory))
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -577,5 +591,6 @@ public sealed class AntivirusScanService : IAntivirusScanService
                 reportProgress(relativePath, ++entriesDone, totalEntries);
             }
         }
+        return entriesDone;
     }
 }

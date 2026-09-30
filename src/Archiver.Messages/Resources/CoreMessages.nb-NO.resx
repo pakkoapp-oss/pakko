@@ -198,6 +198,12 @@
   <data name="TarSpecialEntry" xml:space="preserve">
     <value>Arkivet inneholder en symbolsk kobling, en hard kobling, en enhet eller en annen spesiell oppføring og kan ikke pakkes ut trygt.</value>
   </data>
+  <data name="TarDuplicateCopiesNotExtracted" xml:space="preserve">
+    <value>{0} flere kopier med dette navnet ble ikke pakket ut: bare den første og den siste kopien kan hentes ut av dette arkivet.</value>
+  </data>
+  <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
+    <value>Et annet valgt element har samme navn, og denne mappen kunne ikke legges til under et nytt navn. Gi nytt navn til ett av dem, og prøv igjen.</value>
+  </data>
   <data name="ListingInconsistent" xml:space="preserve">
     <value>Arkivets innholdsliste er inkonsekvent.</value>
   </data>

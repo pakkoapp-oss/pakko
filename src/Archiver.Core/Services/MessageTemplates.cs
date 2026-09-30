@@ -89,6 +89,10 @@ public static class MessageTemplates
         [MessageCode.TarListingInconsistent] = "Archive listing is inconsistent and cannot be safely extracted.",
         [MessageCode.TarSpecialEntry] =
             "Archive contains a symlink, hardlink, device, or other special entry and cannot be safely extracted.",
+        [MessageCode.TarDuplicateCopiesNotExtracted] =
+            "{0} more copies with this name were not extracted: only the first and the last copy can be taken out of this archive.",
+        [MessageCode.TarSourceNameCollisionNotAdded] =
+            "Another selected item has the same name, and this folder could not be added under a new name. Rename one of them and try again.",
         [MessageCode.ListingInconsistent] = "Archive listing is inconsistent.",
         [MessageCode.TarUnreadableNames] =
             "The archive contains file names tar.exe cannot represent on this system (code page {0}), " +

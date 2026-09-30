@@ -11,7 +11,7 @@ namespace Archiver.Core.Services.Sandbox;
 /// of a throwaway test-only profile name; it must never be called against
 /// <see cref="ProductionProfileName"/>.
 /// </summary>
-internal sealed class AppContainerProfile
+internal sealed partial class AppContainerProfile
 {
     // Fixed, safe-to-share identity for every sandboxed tar.exe launch. Not per-operation —
     // see the Flow section of TASKS.md's T-F52 entry for why a per-operation profile would be
@@ -113,10 +113,10 @@ internal sealed class AppContainerProfile
             throw new InvalidOperationException($"DeleteAppContainerProfile failed (HRESULT 0x{hr:X8}).");
     }
 
-    private static class NativeMethods
+    private static partial class NativeMethods
     {
-        [DllImport("userenv.dll", CharSet = CharSet.Unicode, SetLastError = false)]
-        public static extern int CreateAppContainerProfile(
+        [LibraryImport("userenv.dll", StringMarshalling = StringMarshalling.Utf16, SetLastError = false)]
+        public static partial int CreateAppContainerProfile(
             string pszAppContainerName,
             string pszDisplayName,
             string pszDescription,
@@ -124,22 +124,22 @@ internal sealed class AppContainerProfile
             uint dwCapabilityCount,
             out IntPtr ppSidAppContainerSid);
 
-        [DllImport("userenv.dll", CharSet = CharSet.Unicode, SetLastError = false)]
-        public static extern int DeriveAppContainerSidFromAppContainerName(
+        [LibraryImport("userenv.dll", StringMarshalling = StringMarshalling.Utf16, SetLastError = false)]
+        public static partial int DeriveAppContainerSidFromAppContainerName(
             string pszAppContainerName,
             out IntPtr ppsidAppContainerSid);
 
-        [DllImport("userenv.dll", CharSet = CharSet.Unicode, SetLastError = false)]
-        public static extern int DeleteAppContainerProfile(string pszAppContainerName);
+        [LibraryImport("userenv.dll", StringMarshalling = StringMarshalling.Utf16, SetLastError = false)]
+        public static partial int DeleteAppContainerProfile(string pszAppContainerName);
 
-        [DllImport("advapi32.dll", SetLastError = true)]
-        public static extern IntPtr FreeSid(IntPtr pSid);
+        [LibraryImport("advapi32.dll", SetLastError = true)]
+        public static partial IntPtr FreeSid(IntPtr pSid);
 
-        [DllImport("advapi32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        [LibraryImport("advapi32.dll", StringMarshalling = StringMarshalling.Utf16, SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
-        public static extern bool ConvertSidToStringSidW(SafeSidHandle sid, out IntPtr stringSid);
+        public static partial bool ConvertSidToStringSidW(SafeSidHandle sid, out IntPtr stringSid);
 
-        [DllImport("kernel32.dll", SetLastError = true)]
-        public static extern IntPtr LocalFree(IntPtr hMem);
+        [LibraryImport("kernel32.dll", SetLastError = true)]
+        public static partial IntPtr LocalFree(IntPtr hMem);
     }
 }

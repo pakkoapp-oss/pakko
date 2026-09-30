@@ -198,6 +198,12 @@
   <data name="TarSpecialEntry" xml:space="preserve">
     <value>הארכיון מכיל קישור סמלי, קישור קשיח, התקן או פריט מיוחד אחר ולא ניתן לחלץ אותו בבטחה.</value>
   </data>
+  <data name="TarDuplicateCopiesNotExtracted" xml:space="preserve">
+    <value>{0} עותקים נוספים בשם זה לא חולצו: ניתן לקחת מארכיון זה רק את העותק הראשון והאחרון.</value>
+  </data>
+  <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
+    <value>לפריט נבחר אחר יש אותו שם, ולא ניתן היה להוסיף תיקייה זו בשם חדש. שנה את שמו של אחד מהם ונסה שוב.</value>
+  </data>
   <data name="ListingInconsistent" xml:space="preserve">
     <value>רשימת התוכן של הארכיון אינה עקבית.</value>
   </data>

@@ -43,6 +43,15 @@ public sealed class CliEntryFormatterTests
     }
 
     [Fact]
+    public void FormatRow_UnknownCompressedSize_RendersDash()
+    {
+        // T-F214: tar-family entries have no per-entry packed size.
+        var entry = new ArchiveEntryInfo { Path = "a.txt", Size = 5, CompressedSize = null };
+
+        CliEntryFormatter.FormatRow(entry).Should().StartWith("5	-	");
+    }
+
+    [Fact]
     public void Header_HasSevenTabSeparatedColumnsWithPathLast()
     {
         CliEntryFormatter.Header.Split('\t').Should().HaveCount(7).And.EndWith("Path");

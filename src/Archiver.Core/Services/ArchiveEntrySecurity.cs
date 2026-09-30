@@ -8,7 +8,7 @@ namespace Archiver.Core.Services;
 /// (ZipArchiveService, TarProcessService). Kept in one place so ADS/reserved-name/reparse-point
 /// validation cannot drift between extractors — see DECISIONS.md's T-F49 entry.
 /// </summary>
-internal static class ArchiveEntrySecurity
+internal static partial class ArchiveEntrySecurity
 {
     // T-F94: single source of truth for both extractors' bomb-ratio threshold — previously
     // duplicated separately in ZipArchiveService and TarProcessService. See DECISIONS.md's
@@ -223,9 +223,9 @@ internal static class ArchiveEntrySecurity
         }
     }
 
-    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    [LibraryImport("kernel32.dll", StringMarshalling = StringMarshalling.Utf16, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool GetDiskFreeSpaceExW(
+    private static partial bool GetDiskFreeSpaceExW(
         string lpDirectoryName,
         out ulong lpFreeBytesAvailable,
         out ulong lpTotalNumberOfBytes,

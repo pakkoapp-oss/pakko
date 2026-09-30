@@ -10,7 +10,7 @@ namespace Archiver.Core.Services.Sandbox;
 /// start running, and potentially spawn its own children, before AssignProcessToJobObject takes
 /// effect.
 /// </summary>
-internal sealed class SandboxJobObject : IDisposable
+internal sealed partial class SandboxJobObject : IDisposable
 {
     private const uint JOB_OBJECT_LIMIT_PROCESS_TIME = 0x00000002;
     private const uint JOB_OBJECT_LIMIT_ACTIVE_PROCESS = 0x00000008;
@@ -243,23 +243,23 @@ internal sealed class SandboxJobObject : IDisposable
         public uint UIRestrictionsClass;
     }
 
-    private static class NativeMethods
+    private static partial class NativeMethods
     {
-        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-        public static extern IntPtr CreateJobObjectW(IntPtr lpJobAttributes, string? lpName);
+        [LibraryImport("kernel32.dll", StringMarshalling = StringMarshalling.Utf16, SetLastError = true)]
+        public static partial IntPtr CreateJobObjectW(IntPtr lpJobAttributes, string? lpName);
 
-        [DllImport("kernel32.dll", SetLastError = true)]
+        [LibraryImport("kernel32.dll", SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
-        public static extern bool SetInformationJobObject(
+        public static partial bool SetInformationJobObject(
             SafeJobObjectHandle hJob, int jobObjectInfoClass, IntPtr lpJobObjectInfo, uint cbJobObjectInfoLength);
 
-        [DllImport("kernel32.dll", SetLastError = true)]
-        public static extern SafeCompletionPortHandle CreateIoCompletionPort(
+        [LibraryImport("kernel32.dll", SetLastError = true)]
+        public static partial SafeCompletionPortHandle CreateIoCompletionPort(
             IntPtr fileHandle, IntPtr existingCompletionPort, UIntPtr completionKey, uint numberOfConcurrentThreads);
 
-        [DllImport("kernel32.dll", SetLastError = true)]
+        [LibraryImport("kernel32.dll", SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
-        public static extern bool GetQueuedCompletionStatus(
+        public static partial bool GetQueuedCompletionStatus(
             SafeCompletionPortHandle completionPort, out uint numberOfBytes, out UIntPtr completionKey,
             out IntPtr overlapped, uint milliseconds);
     }

@@ -198,6 +198,12 @@
   <data name="TarSpecialEntry" xml:space="preserve">
     <value>Archiv obsahuje symbolický odkaz, pevný odkaz, zařízení nebo jinou zvláštní položku a nelze jej bezpečně extrahovat.</value>
   </data>
+  <data name="TarDuplicateCopiesNotExtracted" xml:space="preserve">
+    <value>Dalších {0} kopií s tímto názvem nebylo extrahováno: z tohoto archivu lze získat pouze první a poslední kopii.</value>
+  </data>
+  <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
+    <value>Jiná vybraná položka má stejný název a tuto složku nebylo možné přidat pod novým názvem. Přejmenujte jednu z nich a zkuste to znovu.</value>
+  </data>
   <data name="ListingInconsistent" xml:space="preserve">
     <value>Seznam obsahu archivu je nekonzistentní.</value>
   </data>

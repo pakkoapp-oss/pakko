@@ -8,7 +8,7 @@ namespace Archiver.Core.Tests.Helpers;
 /// a time with one system call per level (.NET's CreateDirectory checks every parent first, and
 /// its recursive Delete could itself run out of stack at these depths).
 /// </summary>
-public sealed class DeepTree : IDisposable
+public sealed partial class DeepTree : IDisposable
 {
     public string Root { get; }
     public string Deepest { get; }
@@ -38,11 +38,11 @@ public sealed class DeepTree : IDisposable
         }
     }
 
-    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    [LibraryImport("kernel32.dll", StringMarshalling = StringMarshalling.Utf16, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool CreateDirectoryW(string path, IntPtr securityAttributes);
+    private static partial bool CreateDirectoryW(string path, IntPtr securityAttributes);
 
-    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    [LibraryImport("kernel32.dll", StringMarshalling = StringMarshalling.Utf16, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool RemoveDirectoryW(string path);
+    private static partial bool RemoveDirectoryW(string path);
 }

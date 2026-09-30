@@ -198,6 +198,12 @@
   <data name="TarSpecialEntry" xml:space="preserve">
     <value>ไฟล์บีบอัดมีลิงก์สัญลักษณ์ ฮาร์ดลิงก์ อุปกรณ์ หรือรายการพิเศษอื่นๆ และไม่สามารถแตกไฟล์ได้อย่างปลอดภัย</value>
   </data>
+  <data name="TarDuplicateCopiesNotExtracted" xml:space="preserve">
+    <value>ไม่ได้แตกสำเนาชื่อนี้อีก {0} รายการ: จากไฟล์เก็บถาวรนี้สามารถนำออกได้เฉพาะสำเนาแรกและสำเนาสุดท้ายเท่านั้น</value>
+  </data>
+  <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
+    <value>รายการอื่นที่เลือกมีชื่อเดียวกัน และไม่สามารถเพิ่มโฟลเดอร์นี้ด้วยชื่อใหม่ได้ เปลี่ยนชื่อรายการใดรายการหนึ่งแล้วลองอีกครั้ง</value>
+  </data>
   <data name="ListingInconsistent" xml:space="preserve">
     <value>รายการเนื้อหาของไฟล์บีบอัดไม่สอดคล้องกัน</value>
   </data>

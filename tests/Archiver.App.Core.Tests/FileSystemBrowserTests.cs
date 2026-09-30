@@ -42,7 +42,7 @@ public sealed class FileSystemBrowserTests : IDisposable
         ArchiveEntryViewModel file = entries.Single(e => e.Name == "data.bin");
         file.IsFolder.Should().BeFalse();
         file.Size.Should().Be(1234);
-        file.CompressedSize.Should().Be(0);
+        file.CompressedSize.Should().BeNull();
         file.Crc32.Should().BeNull();
         file.Modified.Should().NotBeNull();
         file.FullPath.Should().Be(filePath);

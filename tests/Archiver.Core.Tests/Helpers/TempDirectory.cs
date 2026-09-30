@@ -15,9 +15,22 @@ public sealed class TempDirectory : IDisposable
         return path;
     }
 
+    // A full parallel run showed a freshly written file still held for a few milliseconds by
+    // another process after the test closed it (Restart Manager listed no holder a moment later),
+    // so cleanup retries briefly instead of failing a test whose assertions all passed.
     public void Dispose()
     {
-        if (Directory.Exists(Path))
-            Directory.Delete(Path, recursive: true);
+        using var pause = new ManualResetEventSlim();
+        for (int attempt = 1; Directory.Exists(Path); attempt++)
+        {
+            try
+            {
+                Directory.Delete(Path, recursive: true);
+            }
+            catch (IOException) when (attempt < 20)
+            {
+                pause.Wait(TimeSpan.FromMilliseconds(50));
+            }
+        }
     }
 }

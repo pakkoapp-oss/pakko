@@ -198,6 +198,12 @@
   <data name="TarSpecialEntry" xml:space="preserve">
     <value>El archivo comprimido contiene un vínculo simbólico, un vínculo físico, un dispositivo u otra entrada especial y no se puede extraer de forma segura.</value>
   </data>
+  <data name="TarDuplicateCopiesNotExtracted" xml:space="preserve">
+    <value>No se extrajeron otras {0} copias con este nombre: de este archivo solo se pueden sacar la primera y la última copia.</value>
+  </data>
+  <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
+    <value>Otro elemento seleccionado tiene el mismo nombre y no se pudo agregar esta carpeta con un nombre nuevo. Cambie el nombre de uno de ellos e inténtelo de nuevo.</value>
+  </data>
   <data name="ListingInconsistent" xml:space="preserve">
     <value>La lista de contenido del archivo comprimido es incoherente.</value>
   </data>

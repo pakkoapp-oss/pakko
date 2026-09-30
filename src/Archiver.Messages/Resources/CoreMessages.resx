@@ -198,6 +198,12 @@
   <data name="TarSpecialEntry" xml:space="preserve">
     <value>Archive contains a symlink, hardlink, device, or other special entry and cannot be safely extracted.</value>
   </data>
+  <data name="TarDuplicateCopiesNotExtracted" xml:space="preserve">
+    <value>{0} more copies with this name were not extracted: only the first and the last copy can be taken out of this archive.</value>
+  </data>
+  <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
+    <value>Another selected item has the same name, and this folder could not be added under a new name. Rename one of them and try again.</value>
+  </data>
   <data name="ListingInconsistent" xml:space="preserve">
     <value>Archive listing is inconsistent.</value>
   </data>

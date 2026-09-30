@@ -298,6 +298,11 @@ repo's convention), every assertion is against real OS behavior:
   — the acceptance-criteria proofs: a write outside the quarantine is denied, a spawned child
   process under the Job Object never completes, and a socket-connect attempt fails inside the
   AppContainer while succeeding unsandboxed against the same listener).
+  `TarSandboxedServiceDuplicateNamesTests.cs` (T-F171: two same-named entries under
+  Rename/Skip/Overwrite/Ask, three copies, case-only names, a selected duplicate, a name that is also
+  a pattern; creation from two same-named folders and a file plus a folder, a source named `@x.txt`).
+  Pure parts (`FindDuplicateGroups`, `DirectoryJunction`) are in
+  `Archiver.Core.Tests/Services/TarDuplicateNamesTests.cs`.
 
 No `[Trait("Category", "Sandbox")]` was added — per-test wall time measured at 44–172ms (profile
 reuse means no registry-provisioning cost per test), so there was nothing to gain from a

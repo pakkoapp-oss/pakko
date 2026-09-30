@@ -9,7 +9,7 @@ namespace Archiver.CLI;
 /// is lossy the same way by default. The values are 7-Zip's own sentinels (CP_ACP, CP_OEMCP,
 /// CP_UTF8), resolved to real code pages only at run time so parsing stays machine-independent.
 /// </summary>
-public static class CliConsoleCharset
+public static partial class CliConsoleCharset
 {
     /// <summary><c>-sccWIN</c>: the system ANSI code page (CP_ACP).</summary>
     public const int Ansi = 0;
@@ -59,9 +59,9 @@ public static class CliConsoleCharset
     private static TextWriter CreateWriter(Stream stream, Encoding encoding) =>
         TextWriter.Synchronized(new StreamWriter(stream, encoding) { AutoFlush = true });
 
-    [DllImport("kernel32.dll")]
-    private static extern uint GetACP();
+    [LibraryImport("kernel32.dll")]
+    private static partial uint GetACP();
 
-    [DllImport("kernel32.dll")]
-    private static extern uint GetOEMCP();
+    [LibraryImport("kernel32.dll")]
+    private static partial uint GetOEMCP();
 }

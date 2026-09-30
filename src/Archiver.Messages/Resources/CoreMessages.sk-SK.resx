@@ -198,6 +198,12 @@
   <data name="TarSpecialEntry" xml:space="preserve">
     <value>Archív obsahuje symbolické prepojenie, pevné prepojenie, zariadenie alebo inú špeciálnu položku a nie je možné ho bezpečne extrahovať.</value>
   </data>
+  <data name="TarDuplicateCopiesNotExtracted" xml:space="preserve">
+    <value>Ďalších {0} kópií s týmto názvom nebolo extrahovaných: z tohto archívu možno získať iba prvú a poslednú kópiu.</value>
+  </data>
+  <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
+    <value>Iná vybratá položka má rovnaký názov a tento priečinok sa nepodarilo pridať pod novým názvom. Premenujte jednu z nich a skúste to znova.</value>
+  </data>
   <data name="ListingInconsistent" xml:space="preserve">
     <value>Zoznam obsahu archívu je nekonzistentný.</value>
   </data>

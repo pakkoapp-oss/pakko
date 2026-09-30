@@ -13,7 +13,7 @@ namespace Archiver.Core.Services.Sandbox;
 /// entries must still be preserved so Pakko's own (non-sandboxed) process identity keeps its
 /// normal access to stage/validate/move files.
 /// </summary>
-internal static class QuarantineAcl
+internal static partial class QuarantineAcl
 {
     // Standard, documented NTFS "simple permission" masks (the same values Windows' own ACL UI
     // and icacls use under these names) — not invented constants.
@@ -190,10 +190,10 @@ internal static class QuarantineAcl
         public TRUSTEE_W Trustee;
     }
 
-    private static class NativeMethods
+    private static partial class NativeMethods
     {
-        [DllImport("advapi32.dll", CharSet = CharSet.Unicode, SetLastError = false)]
-        public static extern uint GetNamedSecurityInfoW(
+        [LibraryImport("advapi32.dll", StringMarshalling = StringMarshalling.Utf16, SetLastError = false)]
+        public static partial uint GetNamedSecurityInfoW(
             string pObjectName,
             int objectType,
             uint securityInfo,
@@ -203,15 +203,15 @@ internal static class QuarantineAcl
             IntPtr ppSacl,
             out IntPtr ppSecurityDescriptor);
 
-        [DllImport("advapi32.dll", SetLastError = false)]
-        public static extern uint SetEntriesInAclW(
+        [LibraryImport("advapi32.dll", SetLastError = false)]
+        public static partial uint SetEntriesInAclW(
             int cCountOfExplicitEntries,
             ref EXPLICIT_ACCESS_W pListOfExplicitEntries,
             IntPtr oldAcl,
             out IntPtr newAcl);
 
-        [DllImport("advapi32.dll", CharSet = CharSet.Unicode, SetLastError = false)]
-        public static extern uint SetNamedSecurityInfoW(
+        [LibraryImport("advapi32.dll", StringMarshalling = StringMarshalling.Utf16, SetLastError = false)]
+        public static partial uint SetNamedSecurityInfoW(
             string pObjectName,
             int objectType,
             uint securityInfo,
@@ -220,31 +220,31 @@ internal static class QuarantineAcl
             IntPtr dacl,
             IntPtr sacl);
 
-        [DllImport("kernel32.dll", SetLastError = true)]
-        public static extern IntPtr LocalFree(IntPtr hMem);
+        [LibraryImport("kernel32.dll", SetLastError = true)]
+        public static partial IntPtr LocalFree(IntPtr hMem);
 
-        [DllImport("advapi32.dll", SetLastError = true)]
+        [LibraryImport("advapi32.dll", SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
-        public static extern bool InitializeSecurityDescriptor(IntPtr pSecurityDescriptor, uint dwRevision);
+        public static partial bool InitializeSecurityDescriptor(IntPtr pSecurityDescriptor, uint dwRevision);
 
-        [DllImport("advapi32.dll", SetLastError = true)]
+        [LibraryImport("advapi32.dll", SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
-        public static extern bool SetSecurityDescriptorDacl(
+        public static partial bool SetSecurityDescriptorDacl(
             IntPtr pSecurityDescriptor,
             [MarshalAs(UnmanagedType.Bool)] bool bDaclPresent,
             IntPtr pDacl,
             [MarshalAs(UnmanagedType.Bool)] bool bDaclDefaulted);
 
-        [DllImport("advapi32.dll", SetLastError = true)]
+        [LibraryImport("advapi32.dll", SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
-        public static extern bool SetSecurityDescriptorControl(
+        public static partial bool SetSecurityDescriptorControl(
             IntPtr pSecurityDescriptor, ushort controlBitsOfInterest, ushort controlBitsToSet);
 
         // Obsolete per its docs in favor of SetNamedSecurityInfoW — deliberately used here for the
         // one property that makes it the right call: it never propagates to children (T-F195).
-        [DllImport("advapi32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        [LibraryImport("advapi32.dll", StringMarshalling = StringMarshalling.Utf16, SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
-        public static extern bool SetFileSecurityW(
+        public static partial bool SetFileSecurityW(
             string lpFileName, uint securityInformation, IntPtr pSecurityDescriptor);
     }
 }

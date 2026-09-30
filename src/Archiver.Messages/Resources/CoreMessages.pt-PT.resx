@@ -198,6 +198,12 @@
   <data name="TarSpecialEntry" xml:space="preserve">
     <value>O arquivo contém uma ligação simbólica, uma ligação física, um dispositivo ou outra entrada especial e não pode ser extraído em segurança.</value>
   </data>
+  <data name="TarDuplicateCopiesNotExtracted" xml:space="preserve">
+    <value>Não foram extraídas mais {0} cópias com este nome: deste arquivo só é possível retirar a primeira e a última cópia.</value>
+  </data>
+  <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
+    <value>Outro item selecionado tem o mesmo nome e não foi possível adicionar esta pasta com um nome novo. Mude o nome de um deles e tente novamente.</value>
+  </data>
   <data name="ListingInconsistent" xml:space="preserve">
     <value>A listagem do conteúdo do arquivo é inconsistente.</value>
   </data>

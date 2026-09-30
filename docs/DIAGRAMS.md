@@ -601,9 +601,12 @@ flowchart TD
     G2 -- yes --> G3["ExpandSelection(allNames, SelectedEntryPaths):<br/>each selected path → its exact -t name<br/>(file or dir form) + every -t name it's<br/>a '/'-prefix of (descendants) — built from<br/>the SAME name list gate D already validated,<br/>never a second listing"]
     G3 --> H2["scope.ExtractAsync(&lt;expanded members&gt;)"]
     H2 -- "exit != 0 (e.g. a stale/unmatched<br/>member name — 'Not found in archive')" --> RejIO2
-    H2 -- "exit 0" --> I
+    H2 -- "exit 0" --> FC
     H -- "exit != 0 (T-F239: a Job limit hit is named in front of stderr)" --> RejIO2["throw IOException(stdErr)<br/>→ finally still runs: scope disposed<br/>→ caught in ExtractAsync as ArchiveError"]
-    H -- "exit 0" --> I["T-F263: staging = ExtractionStaging.Create(unisolatedDestDir)<br/>walk EnumerateFilesGuarded(scope.OutputDirectory)"]
+    H -- "exit 0" --> FC{"T-F171: FindDuplicateGroups - file names several<br/>extracted entries share (case-insensitive, not a folder name)?"}
+    FC -- "none" --> I
+    FC -- "yes" --> FC2["scope.ExtractFirstOccurrencesAsync(first names)<br/>= tar -x -q -C first -- names (same AppContainer, fresh Job Object)<br/>keep a file only at the exact expected path with the first entry's -tv size.<br/>SkippedFiles += copies not extracted (3rd+ copy, or an unrecovered first copy)"]
+    FC2 --> I["T-F263: staging = ExtractionStaging.Create(unisolatedDestDir)<br/>walk the kept first copies, then EnumerateFilesGuarded(scope.OutputDirectory)<br/>- the first copy claims the name, the last meets the conflict rule"]
     I --> J{"subdirectory hit during walk:<br/>IsReparsePoint?"}
     J -- yes --> K["⚠ silently NOT descended into —<br/>no SkippedFiles entry, no ArchiveError<br/>(see Finding below)"]
     J -- no --> L[yield each file in this directory]
@@ -940,6 +943,9 @@ sequenceDiagram
                             Amsi-->>Service: Clean / ThreatDetected, or failure → Inconclusive
                         end
                     end
+                    opt T-F171: same-named file entries
+                        Sandbox->>Sandbox: tar -x -q into quarantine "first\"<br/>(first copies — every file there is scanned the same way)
+                    end
                 end
             end
             Sandbox->>Sandbox: finally Dispose() — archive handle closed, quarantine deleted best-effort<br/>(the user's archive is never inside the quarantine, T-F233)
@@ -1107,10 +1113,10 @@ flowchart TD
     TM -- SingleArchive --> T3["DestinationConflictResolver on name.ext, Skip returns every source skipped"]
     TM -- SeparateArchives --> T4["SEQUENTIAL loop, sorted: missing → SourceNotFound,<br/>conflict per source, then one tar.exe per source"]
     T3 --> T5
-    T4 --> T5["AppendSourcesToTarArgs, per source: reparse point skipped, missing → error,<br/>a name the ANSI code page cannot hold anywhere in the tree → error (T-F266/T-F204),<br/>a clashing FILE name staged as a renamed copy (T-F168 — folders not, T-F171),<br/>then -C parent name — every source on the command line (T-F273, open)"]
+    T4 --> T5["AppendSourcesToNameList, per source: reparse point skipped, missing → error,<br/>a name the ANSI code page cannot hold anywhere in the tree → error (T-F266/T-F204),<br/>a clashing name: file staged as a renamed copy, folder as a junction (T-F168, T-F171),<br/>a clashing folder on a network share → error, then lines -C, parent, name (exact -C → ./-C, T-F283)"]
     T5 --> T6{"no source left?"}
     T6 -- yes --> T7["no tar.exe run"]
-    T6 -- no --> T8["tar.exe -v -cf name.tmp — SandboxedProcessLauncher with no AppContainer and<br/>no Job Object, stderr a-lines drive progress"]
+    T6 -- no --> T8["tar.exe -v -cf name.tmp -T - — the name list on stdin (T-F273/T-F283), SandboxedProcessLauncher with no AppContainer and<br/>no Job Object, stderr a-lines drive progress"]
     T8 --> T9{"exit code 0 and .tmp exists?"}
     T9 -- no --> TE3["delete .tmp, Errors += TarCreationFailed"]
     T9 -- yes --> T10["File.Move .tmp → name.ext, CreatedFiles += it"]
@@ -1119,8 +1125,8 @@ flowchart TD
 **What this catches:** the two engines are not symmetric, and a change that assumes they are will
 be wrong. ZIP resolves the password before any destination is touched; tar refuses a password
 outright. ZIP's separate archives run in parallel after a sequential planning pass; tar's run one
-after another. ZIP writes entries itself; tar hands every source path to tar.exe on one command
-line, which is why the ANSI-name gate and the command-line limit (T-F273) exist only on this side.
+after another. ZIP writes entries itself; tar hands every source path to tar.exe as a name list on
+its stdin (never as arguments, T-F283/T-F273), which is why the ANSI-name gate exists only on this side.
 Encryption forces the hand-rolled writer at any file count — `ZipArchive` has no encrypting API.
 
 ---

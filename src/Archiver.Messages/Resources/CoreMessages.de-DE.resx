@@ -198,6 +198,12 @@
   <data name="TarSpecialEntry" xml:space="preserve">
     <value>Das Archiv enthält einen symbolischen Link, einen Hardlink, ein Gerät oder einen anderen Sondereintrag und kann nicht sicher extrahiert werden.</value>
   </data>
+  <data name="TarDuplicateCopiesNotExtracted" xml:space="preserve">
+    <value>{0} weitere Kopien mit diesem Namen wurden nicht extrahiert: Aus diesem Archiv können nur die erste und die letzte Kopie entnommen werden.</value>
+  </data>
+  <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
+    <value>Ein anderes ausgewähltes Element hat denselben Namen, und dieser Ordner konnte nicht unter einem neuen Namen hinzugefügt werden. Benennen Sie eines davon um und versuchen Sie es erneut.</value>
+  </data>
   <data name="ListingInconsistent" xml:space="preserve">
     <value>Die Inhaltsliste des Archivs ist widersprüchlich.</value>
   </data>

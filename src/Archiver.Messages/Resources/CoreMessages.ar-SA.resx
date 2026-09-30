@@ -198,6 +198,12 @@
   <data name="TarSpecialEntry" xml:space="preserve">
     <value>يحتوي الأرشيف على ارتباط رمزي أو ارتباط ثابت أو جهاز أو عنصر خاص آخر ولا يمكن استخراجه بأمان.</value>
   </data>
+  <data name="TarDuplicateCopiesNotExtracted" xml:space="preserve">
+    <value>لم يتم استخراج {0} نسخ إضافية بهذا الاسم: يمكن أخذ النسخة الأولى والأخيرة فقط من هذا الأرشيف.</value>
+  </data>
+  <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
+    <value>يحمل عنصر محدد آخر الاسم نفسه، وتعذر إضافة هذا المجلد باسم جديد. أعد تسمية أحدهما وحاول مرة أخرى.</value>
+  </data>
   <data name="ListingInconsistent" xml:space="preserve">
     <value>قائمة محتويات الأرشيف غير متسقة.</value>
   </data>

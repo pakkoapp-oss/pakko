@@ -198,6 +198,12 @@
   <data name="TarSpecialEntry" xml:space="preserve">
     <value>Arsip berisi tautan simbolis, tautan keras, perangkat, atau entri khusus lainnya dan tidak dapat diekstrak dengan aman.</value>
   </data>
+  <data name="TarDuplicateCopiesNotExtracted" xml:space="preserve">
+    <value>{0} salinan lain dengan nama ini tidak diekstrak: hanya salinan pertama dan terakhir yang dapat diambil dari arsip ini.</value>
+  </data>
+  <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
+    <value>Item lain yang dipilih memiliki nama yang sama, dan folder ini tidak dapat ditambahkan dengan nama baru. Ganti nama salah satunya lalu coba lagi.</value>
+  </data>
   <data name="ListingInconsistent" xml:space="preserve">
     <value>Daftar isi arsip tidak konsisten.</value>
   </data>

@@ -17,7 +17,7 @@ namespace Archiver.Core.Services.Sandbox;
 /// read-only, sharing read only, for the whole scope, so the bytes the pre-scan checked are the
 /// bytes extraction reads.
 /// </summary>
-internal sealed class TarSandboxScope : IDisposable
+internal sealed partial class TarSandboxScope : IDisposable
 {
     private const string TarExecutablePath = @"C:\Windows\System32\tar.exe"; // NOSONAR: S1075 — CLAUDE.md's Hard Constraints mandate this exact absolute path, never PATH-resolved (PATH-hijack resistance); moving it to config would reopen that risk
     // Per tar.exe process. A decoder allocates the whole dictionary up front (7-Zip allows up to
@@ -44,6 +44,8 @@ internal sealed class TarSandboxScope : IDisposable
     // tar.exe runs with the quarantine root as its current directory and extracts into this
     // relative folder — no user-profile path appears in its command line.
     private const string OutputFolderName = "out";
+    // T-F171: the second, first-copy pass extracts beside "out", never into it.
+    private const string FirstCopyFolderName = "first";
 
     private const int ErrorSharingViolation = unchecked((int)0x80070020);
     private const uint GenericRead = 0x80000000;
@@ -217,7 +219,42 @@ internal sealed class TarSandboxScope : IDisposable
             throw new InvalidOperationException("This scope was created without an output folder.");
         if (_utf8Headers is null)
             await ListAsync(verbose: false, cancellationToken).ConfigureAwait(false);
-        return await RunAsync("-x", ["-C", OutputFolderName, .. members ?? []], cancellationToken).ConfigureAwait(false);
+        // T-F283: "--" ends tar's options, so an entry name starting with "-" is a member, not an option.
+        string[] memberArguments = members is { Count: > 0 } ? ["--", .. members] : [];
+        return await RunAsync("-x", ["-C", OutputFolderName, .. memberArguments], cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// T-F171: extracts the first entry matching each of <paramref name="members"/> ("-q") into a
+    /// fresh folder beside <see cref="OutputDirectory"/>, and returns that folder. The main pass
+    /// leaves only the last of several same-named entries; this recovers the first one.
+    /// <paramref name="members"/> must be non-empty; each must be a validated pre-scan name.
+    /// </summary>
+    public async Task<(string Directory, int ExitCode, string StdErr)> ExtractFirstOccurrencesAsync(
+        IReadOnlyList<string> members, CancellationToken cancellationToken)
+    {
+        if (OutputDirectory is null)
+            throw new InvalidOperationException("This scope was created without an output folder.");
+        string firstDir = Path.Combine(_quarantineRoot, FirstCopyFolderName);
+        Directory.CreateDirectory(firstDir);
+        try
+        {
+            QuarantineAcl.GrantModify(firstDir, _sid);
+        }
+        catch (InvalidOperationException ex)
+        {
+            throw new SandboxSetupException(CoreMessages.Text(MessageCode.SandboxSetupFailed, ex.Message), ex);
+        }
+        // T-F52: libarchive cannot create a missing parent folder inside the AppContainer.
+        foreach (string member in members)
+        {
+            string? parent = Path.GetDirectoryName(member);
+            if (!string.IsNullOrEmpty(parent))
+                Directory.CreateDirectory(Path.Combine(firstDir, parent));
+        }
+        (int exitCode, _, string stdErr) = await RunAsync(
+            "-x", ["-q", "-C", FirstCopyFolderName, "--", .. members], cancellationToken).ConfigureAwait(false);
+        return (firstDir, exitCode, stdErr);
     }
 
     // One tar.exe run inside this scope's AppContainer, under a fresh Job Object (ActiveProcessLimit
@@ -287,10 +324,10 @@ internal sealed class TarSandboxScope : IDisposable
         try { if (Directory.Exists(_quarantineRoot)) Directory.Delete(_quarantineRoot, recursive: true); } catch { /* best-effort cleanup */ }
     }
 
-    private static class NativeMethods
+    private static partial class NativeMethods
     {
-        [DllImport("kernel32.dll", SetLastError = true)]
-        public static extern SafeFileHandle ReOpenFile(
+        [LibraryImport("kernel32.dll", SetLastError = true)]
+        public static partial SafeFileHandle ReOpenFile(
             SafeFileHandle hOriginalFile, uint dwDesiredAccess, uint dwShareMode, uint dwFlagsAndAttributes);
     }
 }

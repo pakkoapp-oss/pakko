@@ -11,7 +11,7 @@ namespace Archiver.Core.Services.Sandbox;
 /// converts to the ANSI code page exactly (no best-fit, no default character) and back to itself.
 /// Checked with the operating system's own tables, the ones the C runtime uses.
 /// </summary>
-internal static class TarCommandLineEncoding
+internal static partial class TarCommandLineEncoding
 {
     private const uint CpUtf8 = 65001;
     private const uint WcNoBestFitChars = 0x00000400;
@@ -24,10 +24,34 @@ internal static class TarCommandLineEncoding
     /// <summary>True when <paramref name="value"/> reaches tar.exe unchanged.</summary>
     public static bool IsRepresentable(string value) => IsRepresentable(value, AnsiCodePage);
 
-    internal static bool IsRepresentable(string value, uint codePage)
+    internal static bool IsRepresentable(string value, uint codePage) => TryEncode(value, codePage) is not null;
+
+    /// <summary>
+    /// T-F283: <paramref name="lines"/> as the newline-terminated list tar.exe reads with "-T -",
+    /// in the ANSI code page its names go through. Throws <see cref="TarArgumentEncodingException"/>
+    /// for the first line that would not reach tar.exe unchanged.
+    /// </summary>
+    public static byte[] EncodeLines(IEnumerable<string> lines) => EncodeLines(lines, AnsiCodePage);
+
+    internal static byte[] EncodeLines(IEnumerable<string> lines, uint codePage)
+    {
+        var result = new List<byte>();
+        foreach (string line in lines)
+        {
+            // A line break would split one name into two list entries.
+            byte[] bytes = (line.AsSpan().IndexOfAny('\r', '\n') < 0 ? TryEncode(line, codePage) : null)
+                ?? throw new TarArgumentEncodingException(line, codePage);
+            result.AddRange(bytes);
+            result.Add((byte)'\n');
+        }
+        return [.. result];
+    }
+
+    // The exact bytes of value in codePage, or null when it would not convert back to itself.
+    private static byte[]? TryEncode(string value, uint codePage)
     {
         if (value.Length == 0)
-            return true;
+            return [];
 
         // UTF-8 allows neither the no-best-fit flag nor a used-default pointer; it only fails on
         // an unpaired surrogate, which the flag below turns into an error.
@@ -36,7 +60,7 @@ internal static class TarCommandLineEncoding
 
         int byteCount = WideCharToMultiByte(codePage, flags, value, value.Length, null, 0, IntPtr.Zero, IntPtr.Zero);
         if (byteCount <= 0)
-            return false;
+            return null;
 
         byte[] bytes = new byte[byteCount];
         int usedDefault = 0;
@@ -44,15 +68,16 @@ internal static class TarCommandLineEncoding
             ? WideCharToMultiByte(codePage, flags, value, value.Length, bytes, bytes.Length, IntPtr.Zero, IntPtr.Zero)
             : WideCharToMultiByteUsedDefault(codePage, flags, value, value.Length, bytes, bytes.Length, IntPtr.Zero, out usedDefault);
         if (written != byteCount || usedDefault != 0)
-            return false;
+            return null;
 
         int charCount = MultiByteToWideChar(codePage, MbErrInvalidChars, bytes, bytes.Length, null, 0);
         if (charCount != value.Length)
-            return false;
+            return null;
 
         char[] roundTrip = new char[charCount];
-        return MultiByteToWideChar(codePage, MbErrInvalidChars, bytes, bytes.Length, roundTrip, roundTrip.Length) == charCount
+        bool exact = MultiByteToWideChar(codePage, MbErrInvalidChars, bytes, bytes.Length, roundTrip, roundTrip.Length) == charCount
             && value.AsSpan().SequenceEqual(roundTrip);
+        return exact ? bytes : null;
     }
 
     /// <summary>Throws <see cref="TarArgumentEncodingException"/> for the first argument that would not reach tar.exe unchanged.</summary>
@@ -63,23 +88,23 @@ internal static class TarCommandLineEncoding
             throw new TarArgumentEncodingException(unrepresentable, AnsiCodePage);
     }
 
-    [DllImport("kernel32.dll")]
-    private static extern uint GetACP();
+    [LibraryImport("kernel32.dll")]
+    private static partial uint GetACP();
 
-    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-    private static extern int WideCharToMultiByte(
+    [LibraryImport("kernel32.dll", StringMarshalling = StringMarshalling.Utf16, SetLastError = true)]
+    private static partial int WideCharToMultiByte(
         uint codePage, uint flags, string wideChars, int wideCharCount,
-        byte[]? multiByte, int multiByteCount, IntPtr defaultChar, IntPtr usedDefaultChar);
+        [Out] byte[]? multiByte, int multiByteCount, IntPtr defaultChar, IntPtr usedDefaultChar);
 
-    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true, EntryPoint = "WideCharToMultiByte")]
-    private static extern int WideCharToMultiByteUsedDefault(
+    [LibraryImport("kernel32.dll", StringMarshalling = StringMarshalling.Utf16, SetLastError = true, EntryPoint = "WideCharToMultiByte")]
+    private static partial int WideCharToMultiByteUsedDefault(
         uint codePage, uint flags, string wideChars, int wideCharCount,
-        byte[] multiByte, int multiByteCount, IntPtr defaultChar, out int usedDefaultChar);
+        [Out] byte[] multiByte, int multiByteCount, IntPtr defaultChar, out int usedDefaultChar);
 
-    // CharSet.Unicode matters: without it a char[] is marshaled as one byte per char.
-    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-    private static extern int MultiByteToWideChar(
-        uint codePage, uint flags, byte[] multiByte, int multiByteCount, char[]? wideChars, int wideCharCount);
+    // StringMarshalling.Utf16 matters: a char[] must go through as UTF-16, one wide char per char.
+    [LibraryImport("kernel32.dll", StringMarshalling = StringMarshalling.Utf16, SetLastError = true)]
+    private static partial int MultiByteToWideChar(
+        uint codePage, uint flags, byte[] multiByte, int multiByteCount, [Out] char[]? wideChars, int wideCharCount);
 }
 
 /// <summary>

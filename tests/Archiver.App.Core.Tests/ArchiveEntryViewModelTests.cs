@@ -31,20 +31,35 @@ public class ArchiveEntryViewModelTests
     }
 
     [Fact]
-    public void CompressedSizeDisplay_ZeroCompressedSize_IsEmpty()
+    public void CompressedSizeDisplay_UnknownCompressedSize_IsEmpty()
     {
-        // Real for every tar-routed format (RAR/7z/tar.*) — TarProcessService's listing path
-        // never populates a per-entry compressed size.
+        // T-F214: every tar-routed format (RAR/7z/tar.*) — the listing has no per-entry packed size.
         var entry = new ArchiveEntryViewModel
         {
             FullPath = "file.txt",
             Name = "file.txt",
             IsFolder = false,
             Size = 500,
-            CompressedSize = 0,
+            CompressedSize = null,
         };
 
         entry.CompressedSizeDisplay.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void CompressedSizeDisplay_ZeroCompressedSize_ShowsZero()
+    {
+        // An empty ZIP entry really packs to 0 bytes; 0 is no longer the tar "unknown" sentinel.
+        var entry = new ArchiveEntryViewModel
+        {
+            FullPath = "empty.txt",
+            Name = "empty.txt",
+            IsFolder = false,
+            Size = 0,
+            CompressedSize = 0,
+        };
+
+        entry.CompressedSizeDisplay.Should().Be("0 B");
     }
 
     [Fact]

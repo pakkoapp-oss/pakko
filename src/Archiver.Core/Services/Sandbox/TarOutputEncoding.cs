@@ -11,7 +11,7 @@ namespace Archiver.Core.Services.Sandbox;
 /// Confirmed 2026-09-25 on uk-UA (both 1251): a 7z entry "Док" is printed as C4 EE EA. Reading
 /// that output as UTF-8 turned every non-ASCII name in a listing into U+FFFD.
 /// </summary>
-internal static class TarOutputEncoding
+internal static partial class TarOutputEncoding
 {
     private const uint LocaleIDefaultAnsiCodePage = 0x00001004;
     private const uint LocaleReturnNumber = 0x20000000;
@@ -35,9 +35,9 @@ internal static class TarOutputEncoding
         return written > 0 && value > 0 ? value : (int)GetACP();
     }
 
-    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-    private static extern int GetLocaleInfoEx(string? localeName, uint type, ref int data, int dataCount);
+    [LibraryImport("kernel32.dll", StringMarshalling = StringMarshalling.Utf16, SetLastError = true)]
+    private static partial int GetLocaleInfoEx(string? localeName, uint type, ref int data, int dataCount);
 
-    [DllImport("kernel32.dll")]
-    private static extern uint GetACP();
+    [LibraryImport("kernel32.dll")]
+    private static partial uint GetACP();
 }

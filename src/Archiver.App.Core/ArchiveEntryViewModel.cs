@@ -14,7 +14,7 @@ public sealed record ArchiveEntryViewModel
     public required string Name { get; init; }
     public required bool IsFolder { get; init; }
     public long Size { get; init; }
-    public long CompressedSize { get; init; }
+    public long? CompressedSize { get; init; }
     public uint? Crc32 { get; init; }
     public DateTime? Modified { get; init; }
 
@@ -29,14 +29,12 @@ public sealed record ArchiveEntryViewModel
     public string ModifiedDisplay => Modified?.ToString("yyyy-MM-dd HH:mm") ?? "—";
     public string SizeDisplay => IsFolder ? string.Empty : FormatSize(Size);
 
-    // CompressedSize is 0 for every tar-routed format (TarProcessService's listing never
-    // populates it — the underlying gzip/xz/etc. stream is whole-archive, not per-entry) so this
-    // column reads blank for RAR/7z/tar.* and only ever shows a real value for ZIP.
-    public string CompressedSizeDisplay => IsFolder || CompressedSize <= 0 ? string.Empty : FormatSize(CompressedSize);
+    // CompressedSize is null for every tar-routed format (the gzip/xz/etc. stream is
+    // whole-archive, not per-entry), so this column reads blank for RAR/7z/tar.* (T-F214).
+    public string CompressedSizeDisplay => IsFolder || CompressedSize is not { } compressed ? string.Empty : FormatSize(compressed);
 
     // Crc32 is null (not 0) for folders and every tar-routed format — 0 is a legitimate CRC-32
-    // for an empty file, so it can't double as a "not available" sentinel the way CompressedSize's
-    // <= 0 guard does.
+    // for an empty file.
     public string CrcDisplay => IsFolder || Crc32 is null ? string.Empty : $"{Crc32:X8}";
 
     // T-F98: set by MainViewModel.RefreshCurrentFolder for a nested-archive row only, when

@@ -84,7 +84,7 @@ public sealed class TarSandboxedServiceCompressTests : IDisposable
 
     // T-F168: mirrors ZipArchiveServiceArchiveTests.ArchiveAsync_TwoSourceFilesShareBasename_
     // SecondRenamedWithSuffix — bsdtar has no --transform on this bundled build (confirmed via a
-    // Phase 0 spike, see DECISIONS.md's T-F168 entry), so AppendSourcesToTarArgs stages the
+    // Phase 0 spike, see DECISIONS.md's T-F168 entry), so AppendSourcesToNameList stages the
     // colliding source under a renamed temp copy before invoking tar.exe.
     [Integration]
     public async Task CompressAsync_TwoFileSourcesShareBasename_SecondRenamedWithSuffix()
@@ -333,7 +333,7 @@ public sealed class TarSandboxedServiceCompressTests : IDisposable
     }
 
     // T-F153: a source folder path ending in a directory separator (e.g. typed with tab-
-    // completion, "src\") made AppendSourcesToTarArgs' Path.GetFileName(fullSource) return "",
+    // completion, "src\") made AppendSourcesToNameList' Path.GetFileName(fullSource) return "",
     // which that method's own existing comment already treats as the real-drive-root case
     // (tar.exe strips the drive letter itself) — silently misrouting an ordinary folder through
     // the wrong tar.exe argument shape instead of "-C <parent> <name>". CompressAsync now

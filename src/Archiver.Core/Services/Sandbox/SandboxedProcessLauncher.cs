@@ -13,7 +13,7 @@ namespace Archiver.Core.Services.Sandbox;
 /// own stdout/stderr pipe ends and nothing else (T-F244 item 5): with bInheritHandles = TRUE alone
 /// it inherited every inheritable handle in this process, including another launch's pipes.
 /// </summary>
-internal static class SandboxedProcessLauncher
+internal static partial class SandboxedProcessLauncher
 {
     private const uint STARTF_USESTDHANDLES = 0x00000100;
     private const uint CREATE_NO_WINDOW = 0x08000000;
@@ -35,36 +35,49 @@ internal static class SandboxedProcessLauncher
 
         // T-F244 item 1: each pipe end is owned by a SafeHandle from the moment it exists, so a
         // failure anywhere below releases every handle created so far.
-        CreateInheritablePipe(out SafeFileHandle stdOutRead, out SafeFileHandle stdOutWrite, "stdout");
-        using (stdOutRead)
-        using (stdOutWrite)
+        SafeFileHandle? stdInRead = null, stdInWrite = null;
+        if (options.StdInData is not null)
         {
-            CreateInheritablePipe(out SafeFileHandle stdErrRead, out SafeFileHandle stdErrWrite, "stderr");
-            using (stdErrRead)
-            using (stdErrWrite)
+            if (options.StdIn is not null)
+                throw new ArgumentException("StdIn and StdInData are exclusive.", nameof(options));
+            CreateInheritablePipe(out stdInRead, out stdInWrite, "stdin", childReads: true);
+            options = options with { StdIn = stdInRead };
+        }
+        using (stdInRead)
+        using (stdInWrite)
+        {
+            CreateInheritablePipe(out SafeFileHandle stdOutRead, out SafeFileHandle stdOutWrite, "stdout");
+            using (stdOutRead)
+            using (stdOutWrite)
             {
-                PROCESS_INFORMATION processInfo = CreateSuspendedProcess(fileName, arguments, options, stdOutWrite, stdErrWrite);
-
-                // The child holds its own copies of the write ends now — ours must close, otherwise
-                // the read ends never see EOF (classic pipe-handle-leak deadlock).
-                stdOutWrite.Dispose();
-                stdErrWrite.Dispose();
-
-                using var processHandle = new SafeProcessOrThreadHandle(processInfo.hProcess);
-                using var threadHandle = new SafeProcessOrThreadHandle(processInfo.hThread);
-                options.OnProcessStarted?.Invoke(processInfo.dwProcessId);
-
-                try
+                CreateInheritablePipe(out SafeFileHandle stdErrRead, out SafeFileHandle stdErrWrite, "stderr");
+                using (stdErrRead)
+                using (stdErrWrite)
                 {
-                    return await RunCreatedProcessAsync(processHandle, threadHandle, options, stdOutRead, stdErrRead, cancellationToken)
-                        .ConfigureAwait(false);
-                }
-                catch
-                {
-                    // Any failure or a cancel: the child must be gone before this returns — a
-                    // caller then deletes the folders it was writing into (T-F244 item 1).
-                    TerminateAndWait(processHandle);
-                    throw;
+                    PROCESS_INFORMATION processInfo = CreateSuspendedProcess(fileName, arguments, options, stdOutWrite, stdErrWrite);
+
+                    // The child holds its own copies of the write ends now — ours must close, otherwise
+                    // the read ends never see EOF (classic pipe-handle-leak deadlock).
+                    stdOutWrite.Dispose();
+                    stdErrWrite.Dispose();
+                    stdInRead?.Dispose();
+
+                    using var processHandle = new SafeProcessOrThreadHandle(processInfo.hProcess);
+                    using var threadHandle = new SafeProcessOrThreadHandle(processInfo.hThread);
+                    options.OnProcessStarted?.Invoke(processInfo.dwProcessId);
+
+                    try
+                    {
+                        return await RunCreatedProcessAsync(processHandle, threadHandle, options, stdInWrite, stdOutRead, stdErrRead, cancellationToken)
+                            .ConfigureAwait(false);
+                    }
+                    catch
+                    {
+                        // Any failure or a cancel: the child must be gone before this returns — a
+                        // caller then deletes the folders it was writing into (T-F244 item 1).
+                        TerminateAndWait(processHandle);
+                        throw;
+                    }
                 }
             }
         }
@@ -167,13 +180,15 @@ internal static class SandboxedProcessLauncher
     // SafeHandle-typed P/Invoke parameters — the CLR marshaller pins/releases each one itself.
     private static async Task<(int ExitCode, string StdOut, string StdErr)> RunCreatedProcessAsync(
         SafeProcessOrThreadHandle processHandle, SafeProcessOrThreadHandle threadHandle, ProcessLaunchOptions options,
-        SafeFileHandle stdOutRead, SafeFileHandle stdErrRead, CancellationToken cancellationToken)
+        SafeFileHandle? stdInWrite, SafeFileHandle stdOutRead, SafeFileHandle stdErrRead, CancellationToken cancellationToken)
     {
         if (options.Job is not null && !NativeMethods.AssignProcessToJobObject(options.Job, processHandle))
             throw new IOException($"AssignProcessToJobObject failed (Win32 error {Marshal.GetLastWin32Error()}).");
 
         if (NativeMethods.ResumeThread(threadHandle) == uint.MaxValue)
             throw new IOException($"ResumeThread failed (Win32 error {Marshal.GetLastWin32Error()}).");
+
+        Task stdInTask = stdInWrite is null ? Task.CompletedTask : WriteStdIn(stdInWrite, options.StdInData!);
 
         using var stdOutStream = new FileStream(stdOutRead, FileAccess.Read);
         using var stdErrStream = new FileStream(stdErrRead, FileAccess.Read);
@@ -188,11 +203,27 @@ internal static class SandboxedProcessLauncher
         await Task.WhenAll(stdOutTask, stdErrTask).ConfigureAwait(false);
 
         await WaitForExitAsync(processHandle, cancellationToken).ConfigureAwait(false);
+        await stdInTask.ConfigureAwait(false);
 
         if (!NativeMethods.GetExitCodeProcess(processHandle, out uint exitCode))
             throw new IOException($"GetExitCodeProcess failed (Win32 error {Marshal.GetLastWin32Error()}).");
 
         return ((int)exitCode, stdOutTask.Result, stdErrTask.Result);
+    }
+
+    // Written on its own thread and not awaited with the readers: a child that stops reading must
+    // not keep a cancel waiting. Terminating the child breaks the pipe, which ends the write.
+    private static Task WriteStdIn(SafeFileHandle stdInWrite, byte[] data)
+    {
+        var stream = new FileStream(stdInWrite, FileAccess.Write, bufferSize: 0);
+        return Task.Run(() =>
+        {
+            using (stream)
+            {
+                try { stream.Write(data); }
+                catch (IOException) { /* the child exited without reading all of its stdin */ }
+            }
+        });
     }
 
     // tar.exe's "-v" writes one "a <name>" line per entry to stderr during creation — streamed so
@@ -220,24 +251,24 @@ internal static class SandboxedProcessLauncher
         catch { /* best-effort — the original exception is what the caller needs */ }
     }
 
-    // Pure pipe-pair setup. The read end stays ours only (not inheritable); the write end is
-    // inheritable, but only a launch whose handle list names it can actually receive it.
-    private static void CreateInheritablePipe(out SafeFileHandle readEnd, out SafeFileHandle writeEnd, string pipeName)
+    // Pure pipe-pair setup. Our end is not inheritable; the child's end (the write end, or the read
+    // end for stdin) is, but only a launch whose handle list names it can actually receive it.
+    private static void CreateInheritablePipe(out SafeFileHandle readEnd, out SafeFileHandle writeEnd, string pipeName, bool childReads = false)
     {
         var pipeSecurity = new SECURITY_ATTRIBUTES
         {
             nLength = Marshal.SizeOf<SECURITY_ATTRIBUTES>(),
             lpSecurityDescriptor = IntPtr.Zero,
-            bInheritHandle = true,
+            bInheritHandle = 1,
         };
         if (!NativeMethods.CreatePipe(out readEnd, out writeEnd, ref pipeSecurity, 0))
             throw new IOException($"CreatePipe ({pipeName}) failed (Win32 error {Marshal.GetLastWin32Error()}).");
-        if (!NativeMethods.SetHandleInformation(readEnd, HANDLE_FLAG_INHERIT, 0))
+        if (!NativeMethods.SetHandleInformation(childReads ? writeEnd : readEnd, HANDLE_FLAG_INHERIT, 0))
         {
             int error = Marshal.GetLastWin32Error();
             readEnd.Dispose();
             writeEnd.Dispose();
-            throw new IOException($"SetHandleInformation ({pipeName} read end) failed (Win32 error {error}).");
+            throw new IOException($"SetHandleInformation ({pipeName} parent end) failed (Win32 error {error}).");
         }
     }
 
@@ -354,7 +385,7 @@ internal static class SandboxedProcessLauncher
     {
         public int nLength;
         public IntPtr lpSecurityDescriptor;
-        [MarshalAs(UnmanagedType.Bool)] public bool bInheritHandle;
+        public int bInheritHandle; // Win32 BOOL; an int keeps the struct blittable for [LibraryImport]
     }
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
@@ -396,23 +427,23 @@ internal static class SandboxedProcessLauncher
         public int dwThreadId;
     }
 
-    private static class NativeMethods
+    private static partial class NativeMethods
     {
-        [DllImport("kernel32.dll", SetLastError = true)]
+        [LibraryImport("kernel32.dll", SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
-        public static extern bool CreatePipe(
+        public static partial bool CreatePipe(
             out SafeFileHandle hReadPipe, out SafeFileHandle hWritePipe, ref SECURITY_ATTRIBUTES lpPipeAttributes, uint nSize);
 
-        [DllImport("kernel32.dll", SetLastError = true)]
+        [LibraryImport("kernel32.dll", SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
-        public static extern bool SetHandleInformation(SafeFileHandle hObject, uint dwMask, uint dwFlags);
+        public static partial bool SetHandleInformation(SafeFileHandle hObject, uint dwMask, uint dwFlags);
 
-        [DllImport("kernel32.dll", SetLastError = true)]
-        public static extern uint WaitForSingleObject(SafeProcessOrThreadHandle hHandle, uint dwMilliseconds);
+        [LibraryImport("kernel32.dll", SetLastError = true)]
+        public static partial uint WaitForSingleObject(SafeProcessOrThreadHandle hHandle, uint dwMilliseconds);
 
-        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        [LibraryImport("kernel32.dll", StringMarshalling = StringMarshalling.Utf16, SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
-        public static extern bool CreateProcessW(
+        public static partial bool CreateProcessW(
             string? lpApplicationName,
             char[] lpCommandLine,
             IntPtr lpProcessAttributes,
@@ -424,19 +455,19 @@ internal static class SandboxedProcessLauncher
             ref STARTUPINFOEX lpStartupInfo,
             out PROCESS_INFORMATION lpProcessInformation);
 
-        [DllImport("kernel32.dll", SetLastError = true)]
-        public static extern uint ResumeThread(SafeProcessOrThreadHandle hThread);
+        [LibraryImport("kernel32.dll", SetLastError = true)]
+        public static partial uint ResumeThread(SafeProcessOrThreadHandle hThread);
 
-        [DllImport("kernel32.dll", SetLastError = true)]
+        [LibraryImport("kernel32.dll", SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
-        public static extern bool TerminateProcess(SafeProcessOrThreadHandle hProcess, uint uExitCode);
+        public static partial bool TerminateProcess(SafeProcessOrThreadHandle hProcess, uint uExitCode);
 
-        [DllImport("kernel32.dll", SetLastError = true)]
+        [LibraryImport("kernel32.dll", SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
-        public static extern bool GetExitCodeProcess(SafeProcessOrThreadHandle hProcess, out uint lpExitCode);
+        public static partial bool GetExitCodeProcess(SafeProcessOrThreadHandle hProcess, out uint lpExitCode);
 
-        [DllImport("kernel32.dll", SetLastError = true)]
+        [LibraryImport("kernel32.dll", SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
-        public static extern bool AssignProcessToJobObject(SafeJobObjectHandle hJob, SafeProcessOrThreadHandle hProcess);
+        public static partial bool AssignProcessToJobObject(SafeJobObjectHandle hJob, SafeProcessOrThreadHandle hProcess);
     }
 }

@@ -198,6 +198,12 @@
   <data name="TarSpecialEntry" xml:space="preserve">
     <value>Arkivet indeholder et symbolsk link, et hårdt link, en enhed eller et andet specielt element og kan ikke udpakkes sikkert.</value>
   </data>
+  <data name="TarDuplicateCopiesNotExtracted" xml:space="preserve">
+    <value>{0} yderligere kopier med dette navn blev ikke udpakket: kun den første og den sidste kopi kan tages ud af dette arkiv.</value>
+  </data>
+  <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
+    <value>Et andet valgt element har samme navn, og denne mappe kunne ikke tilføjes under et nyt navn. Omdøb et af dem, og prøv igen.</value>
+  </data>
   <data name="ListingInconsistent" xml:space="preserve">
     <value>Arkivets indholdsliste er inkonsistent.</value>
   </data>

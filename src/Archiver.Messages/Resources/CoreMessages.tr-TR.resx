@@ -198,6 +198,12 @@
   <data name="TarSpecialEntry" xml:space="preserve">
     <value>Arşiv bir sembolik bağlantı, sabit bağlantı, cihaz veya başka bir özel öğe içeriyor ve güvenle ayıklanamıyor.</value>
   </data>
+  <data name="TarDuplicateCopiesNotExtracted" xml:space="preserve">
+    <value>Bu ada sahip {0} kopya daha ayıklanmadı: bu arşivden yalnızca ilk ve son kopya alınabilir.</value>
+  </data>
+  <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
+    <value>Seçili başka bir öğe aynı ada sahip ve bu klasör yeni bir adla eklenemedi. Bunlardan birini yeniden adlandırıp tekrar deneyin.</value>
+  </data>
   <data name="ListingInconsistent" xml:space="preserve">
     <value>Arşivin içerik listesi tutarsız.</value>
   </data>

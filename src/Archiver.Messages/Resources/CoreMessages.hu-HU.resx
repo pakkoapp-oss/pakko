@@ -198,6 +198,12 @@
   <data name="TarSpecialEntry" xml:space="preserve">
     <value>Az archívum szimbolikus hivatkozást, rögzített hivatkozást, eszközt vagy más különleges elemet tartalmaz, ezért nem bontható ki biztonságosan.</value>
   </data>
+  <data name="TarDuplicateCopiesNotExtracted" xml:space="preserve">
+    <value>További {0} ilyen nevű példány nem lett kibontva: ebből az archívumból csak az első és az utolsó példány vehető ki.</value>
+  </data>
+  <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
+    <value>Egy másik kijelölt elemnek ugyanez a neve, és ezt a mappát nem sikerült új néven hozzáadni. Nevezze át az egyiket, és próbálja újra.</value>
+  </data>
   <data name="ListingInconsistent" xml:space="preserve">
     <value>Az archívum tartalomlistája ellentmondásos.</value>
   </data>

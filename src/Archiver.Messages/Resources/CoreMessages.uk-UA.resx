@@ -198,6 +198,12 @@
   <data name="TarSpecialEntry" xml:space="preserve">
     <value>Архів містить символьне або жорстке посилання, пристрій чи інший особливий елемент, тому його не можна безпечно видобути.</value>
   </data>
+  <data name="TarDuplicateCopiesNotExtracted" xml:space="preserve">
+    <value>Ще {0} копій з цим іменем не видобуто: з цього архіву можна взяти лише першу й останню копію.</value>
+  </data>
+  <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
+    <value>Інший вибраний елемент має таке саме ім'я, а цю папку не вдалося додати під новим іменем. Перейменуйте один із них і спробуйте ще раз.</value>
+  </data>
   <data name="ListingInconsistent" xml:space="preserve">
     <value>Список вмісту архіву суперечливий.</value>
   </data>

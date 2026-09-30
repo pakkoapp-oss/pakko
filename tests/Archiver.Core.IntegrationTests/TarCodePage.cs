@@ -7,7 +7,7 @@ namespace Archiver.Core.IntegrationTests;
 // The code pages tar.exe uses on this machine: the system ANSI page for its command line, and
 // the user locale's ANSI/OEM pages (libarchive's get_current_codepage/oemcp after
 // setlocale(LC_ALL, "")) for the names it prints and for tar headers without a charset.
-internal static class TarCodePage
+internal static partial class TarCodePage
 {
     private const uint LocaleIDefaultCodePage = 0x0000000B;
     private const uint LocaleIDefaultAnsiCodePage = 0x00001004;
@@ -76,12 +76,12 @@ internal static class TarCodePage
         return written > 0 && value > 0 ? value : fallback;
     }
 
-    [DllImport("kernel32.dll")]
-    private static extern uint GetACP();
+    [LibraryImport("kernel32.dll")]
+    private static partial uint GetACP();
 
-    [DllImport("kernel32.dll")]
-    private static extern uint GetOEMCP();
+    [LibraryImport("kernel32.dll")]
+    private static partial uint GetOEMCP();
 
-    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-    private static extern int GetLocaleInfoEx(string? localeName, uint type, ref int data, int dataCount);
+    [LibraryImport("kernel32.dll", StringMarshalling = StringMarshalling.Utf16, SetLastError = true)]
+    private static partial int GetLocaleInfoEx(string? localeName, uint type, ref int data, int dataCount);
 }
