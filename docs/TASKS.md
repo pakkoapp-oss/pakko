@@ -139,7 +139,7 @@ Invoke via `System.Diagnostics.Process`.
 ---
 
 ### T-F05 — Archive Browser (Navigate, Select, Extract Selected/All)
-- [~] **Status:** partial — versioned into v1.4 (`SPEC.md`) 2026-07-13; Core listing API,
+- [x] **Status:** done 2026-09-30 (G6 pass 3). Device (G6 pass 3, CI build 1.5.0.13, App title build 2026-09-29 23:33:05, uk-UA, dark theme, 2026-09-30): browse from the pending list: breadcrumb `plain.zip › src › sub`; Up climbed to `C:\g6\ex`, `C:` and "Цей комп'ютер" (Up disabled there); a text entry previewed in Notepad; `nest.zip`: `data.bin` asked (Так/Ні; Ні wrote nothing), `inner.zip` drilled in, `clip.mp4` opened in VLC; Test -> "Помилок не виявлено"; Extract Selected (one entry) wrote only `nest\note.txt`; Extract All wrote all four; the cp866 `legacy_oem866_7za.zip` lists `Тека`, `А.txt`, `Б.txt`. Closed. Original status: partial — versioned into v1.4 (`SPEC.md`) 2026-07-13; Core listing API,
       `Archiver.App.Core`, and the full WinUI wiring (mode-swap, breadcrumb, browser `ListView`,
       Extract Selected/All/Info commands) are all implemented and `dotnet test` is green
       (208/208, `Category!=Slow`; Zip64 `Category=Slow` also green). Stays partial until the
@@ -3458,7 +3458,7 @@ regression from this task, which owns reliability only.
 
 ### T-F142 — Show Compression/Decompression Speed for Every Archive Format (Archive + Extract)
 
-- [~] **Status:** implementation complete 2026-08-04, on-device visual verification pending (the
+- [x] **Status:** done 2026-09-30 (G6 pass 3). Device (G6 pass 3, CI build 1.5.0.13, App title build 2026-09-29 23:33:05, uk-UA, dark theme, 2026-09-30): compressing a 512 MiB file showed a moving bar and "Стиснення... (файлів: 1, 512,0 МБ) · 54,5 MB/s"; Cancel mid-run -> "Скасовано", no archive and no temp file left. The unit is English (T-F303). The tar progress poll runs through G2-changed sandbox files; its re-check is G7's. Closed. Original status: implementation complete 2026-08-04, on-device visual verification pending (the
       user will check personally — no `windows` MCP UI-automation server was available this
       session to do it in-agent). Requested right after T-F140 shipped ("show compression and
       decompression speed, for all archive types, with tests"). Scoping surfaced a real
@@ -4091,7 +4091,7 @@ regression from this task, which owns reliability only.
 
 ### T-F164 — GUI "Hash…" button is SHA‑256‑only, ad‑hoc, not routed through `FileHashService`
 
-- [~] **Status:** implementation complete 2026-08-12, on-device verification pending. Found
+- [x] **Status:** done 2026-09-30 (G6 pass 3). Device (G6 pass 3, CI build 1.5.0.13, App title build 2026-09-29 23:33:05, uk-UA, dark theme, 2026-09-30): Hash of `seven.txt` + `plain.zip`: both SHA-256 values equal `Get-FileHash`; "Копіювати" put `<hash>  <name>` lines on the clipboard; a file that no longer exists gets its own error line. Closed. Original status: implementation complete 2026-08-12, on-device verification pending. Found
   during the v1.4.12 pre-release verification pass, confirmed live against the installed release
   build, not just by reading code.
 - **Context/decision:** `DialogService.ShowFileHashAsync` computed a hash inline via
@@ -4779,6 +4779,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   the shell's nuke warning never fires for UNC/SUBST (`docs/DECISIONS.md`, T-F207 entry). Device
   check pending (phase end).
 
+- **Device (G6 pass 3, 1.5.0.13, temporary: the delete path is G2's `Win32SourceDeleteOperations`, re-check in G7):** App compress with the Recycle Bin box -> archive written, the source in the Recycle Bin under its original folder; Extract All of `nest.zip` with the box -> the archive in the Recycle Bin, browse closed. Found T-F302 (the recycled rows stay in the list).
 - [~] **Status:** fixed in fix phase 1 (2026-09-25), agent-verified on device (Deploy.ps1 build: clean ZIP to the Recycle Bin, `\\localhost\c$` archive -> confirmation, Keep kept it with no second dialog, Delete permanently deleted it, locked archive reported); stays `[~]` until the user's own check. Details: `docs/DECISIONS.md` T-F207 entry.
 - **Original report:** open. App, archive mode: tick "Видалити після операції", click Archive -> the
   source folder is deleted outright; it is not in the Recycle Bin, and no confirmation appears
@@ -4834,6 +4835,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   are still not listed (Core does not report renames; mockup board 7 deferred), so this task's own
   repro (a second Extract all with Rename) still reads as a clean "Видобуто" — that part stays open.
   Device 1.5.0.31.
+- **Device (G6 pass 3, 1.5.0.13):** clean runs show "Стиснуто/Видобуто за N с — архівів: 1 · Показати в папці" (opens the folder); a run with a problem shows "Завершено з проблемами: N · Деталі...", which reopens the summary. The rename case still reads clean (Rename + apply to all on a second Extract gave three `(1)` copies and "Видобуто за 13 с — архівів: 1"), so this stays `[~]`.
 - [~] **Status:** fixed, see progress. Original: On success with no errors/skips, `MainViewModel` sets "Розпаковано за N с
   — файлів: M" and then, a few lines later, unconditionally resets `StatusMessage` to
   "Готово" (`MainViewModel.cs` ~line 702, and the matching reset in `ArchiveAsync` ~line 603);
@@ -6183,6 +6185,7 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 - **Device repro (2026-09-25, installed CI build 1.4.12.9):** `subset.zip` (`a.txt`, `b.txt`)
   opened in the Archive Browser, "Видалити після операції" on, `a.txt` selected, "Розпакувати
   вибране" -> only `subset\a.txt` on disk, `subset.zip` gone and not in the Recycle Bin.
+- **Device (G6 pass 3, 1.5.0.13, temporary until G7):** Extract Selected (one entry of `nest.zip`) with the Recycle Bin box ticked kept the archive; Extract All then recycled it.
 - [~] **Status:** fixed in fix phase 1 (2026-09-25), agent-verified on device (Extract Selected of one entry kept the archive; the previous build deleted it); stays `[~]` until the user's own check. Details: `docs/DECISIONS.md` T-F260 entry.
 - **Original report:** open — code-confirmed 2026-09-25, device-confirmed the same day. Archive Browser's Extract
   Selected (`MainViewModel.cs:1093`) and the single-entry T-F109 extraction (`:1180`) both go
@@ -6829,6 +6832,7 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 
 ### T-F301 — A remembered password that does not fit reads as "no password given" (P3)
 
+- **App (G6 pass 3):** the same case in the App reads "Не вдалося розшифрувати елемент «a.txt»: неправильний пароль." — only Shell's wording is affected.
 - [ ] **Status:** open. Found in G6 pass 2, 2026-09-30, Explorer "Extract each to its own folder" on
   `enc2.zip` (Passw0rd) + `enc.zip` (secret1): the prompt for `enc2.zip` with "Apply to remaining
   archives" ticked -> `enc2\` extracted; `enc.zip` then fails with "Цей архів захищено паролем, тому
@@ -6838,6 +6842,35 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   Fix: when the attempt came from a remembered password, say so ("the password applied to the
   remaining archives does not fit X") in all three frontends' wording; consider a re-prompt for that
   archive only (a decision for the user). Tests first at the message-code level.
+- **Reported by:** G6 device campaign, 2026-09-30.
+
+### T-F302 — Items moved to the Recycle Bin stay in the App's list (P3)
+
+- [ ] **Status:** open. Found in G6 pass 3, 2026-09-30 (1.5.0.13). App compress `victim-p3.txt` with "Після
+  успішного стиснення перемістити вихідні файли в Кошик": the file goes to the Recycle Bin but its row stays
+  in the list; a second "Стиснути" first asks about the existing `victim-p3.zip`, then ends with "Шлях
+  джерела не існує". Same after Extract All of a browsed archive with the box ticked: browse closes
+  (`MainViewModel` "nothing left to browse") but the archive row stays in the pending list. Fix: drop the
+  rows whose paths were recycled (`SourceRecycler.DeleteAsync` returns the ones not deleted). Tests first at
+  the ViewModel level. The delete path is G2's (`Win32SourceDeleteOperations`): do it after the squash.
+- **Reported by:** G6 device campaign, 2026-09-30.
+
+### T-F303 — App speed readout units are English (P3)
+
+- [ ] **Status:** open. Found in G6 pass 3, 2026-09-30 (1.5.0.13): under uk-UA the footer reads
+  "Стиснення... (файлів: 1, 512,0 МБ) · 54,5 MB/s". `MainViewModel.cs` (the speed `switch`, ~line 1744)
+  hardcodes `GB/s`/`MB/s`/`KB/s`/`B/s` while sizes go through the localized units. Use the localized size
+  unit plus a per-second format from `.resw` (37 locales); check the operation window's speed text too.
+- **Reported by:** G6 device campaign, 2026-09-30.
+
+### T-F304 — Two App controls have no UIA name (P3)
+
+- [ ] **Status:** open. Found in G6 pass 3, 2026-09-30 (1.5.0.13), `windows` MCP `ui_find`: the read-only
+  destination path TextBox ("Зберегти в" / "Видобути в") and, in extract mode, the collapsed "Новий
+  архів" card header Button both expose an empty name (the pass 2 carry-over "Button with empty UIA name"
+  is the second one). Narrator reads nothing useful. Fix: `AutomationProperties.LabeledBy` to the row's
+  label, and a name for the card toggle via `x:Uid` (37 locales); extend the App UIA-name test if one
+  covers `MainWindow.xaml`.
 - **Reported by:** G6 device campaign, 2026-09-30.
 
 ## Test-Coverage Audit Follow-Ups (T-F174–T-F186)
@@ -7562,7 +7595,7 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
 
 ### T-F190 — WinUI App: password prompt dialog, wired into `MainViewModel` (+ free Archive Browser coverage)
 
-- [~] **Status:** implementation complete, agent-driven on-device verification passed
+- [x] **Status:** done 2026-09-30 (G6 pass 3). Device (G6 pass 3, CI build 1.5.0.13, App title build 2026-09-29 23:33:05, uk-UA, dark theme, 2026-09-30): Extract of `enc.zip` + `enc2.zip` + `plain.zip` + `bomb.zip` from the list: the prompt for `enc.zip` with "Застосувати до решти архівів"; a wrong password -> "Неправильний пароль. Спробуйте ще раз."; the right one extracted `enc\`; `enc2.zip` (a different password) then failed with "Не вдалося розшифрувати елемент «a.txt»: неправильний пароль." (no re-prompt, by design); the bomb asked and "Ні" skipped it. Preview inside an AES archive asked once; the next entry opened without asking. Closed. Original status: implementation complete, agent-driven on-device verification passed
   2026-09-18 (via `windows` MCP, user-directed accepted substitute per this project's own
   convention — not yet the user's own personal click-through).
 - **Context:** `DialogService` already had the exact pattern to follow —
@@ -7741,7 +7774,7 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
 
 ### T-F193 — Create password-protected ZIP archives (AES-256 only)
 
-- [~] **Status:** implementation complete 2026-09-24 (phases 0-3 code, phase 4 docs). Stays `[~]`
+- [x] **Status:** done 2026-09-30 (G6 pass 3). Device (G6 pass 3, CI build 1.5.0.13, App title build 2026-09-29 23:33:05, uk-UA, dark theme, 2026-09-30): App: "Зашифрувати паролем (AES-256)" shows the inline fields and the note; a mismatched confirmation -> "Паролі не збігаються." with the button disabled; TAR.GZ -> "Шифрування паролем доступне лише для ZIP"; `ex.zip` (5 files + an empty folder): `7za l -slt` shows AES-256 Deflate on every file, `7za t -pPassw0rd` OK, a wrong password -> Wrong password; the fields are cleared after the run. CLI part: pass 1. Closed. Original status: implementation complete 2026-09-24 (phases 0-3 code, phase 4 docs). Stays `[~]`
   until the batch's full UI smoke test (T-F202) and the user's own click-through; the CLI's
   real-console double prompt is not yet exercised on a real console.
 - **Context:** reading supports ZipCrypto and AES for compatibility; writing is AES-only, forever —
