@@ -3120,7 +3120,8 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 - **Decision (user, 2026-09-30):** Test reports a local/central header mismatch as an error
   ("Headers Error", as `7za t`); extraction carries on from the central directory and adds a
   warning to the summary.
-- [~] **Status:** Test half fixed in code 2026-09-30 (v1.7.0 wave 1). Left: the extraction
+- [~] **Status:** Test half done 2026-09-30 (v1.7.0 wave 1; Device (Deploy 1.6.0.0 from 480cb74, App title build 2026-09-30 22:47:15, uk-UA, 2026-09-30): a ZIP with one local CRC
+  flipped -> `pakko t` exit 2 with the English message, Explorer Test window in Ukrainian). Left: the extraction
   warning, which needs a warning channel in `ArchiveResult` — v1.7.0 wave 6 (see
   `docs/DECISIONS.md`'s T-F280 entry). **CHANGELOG v1.7.0:** Test reports a ZIP whose local file
   headers disagree with its central directory, as 7-Zip does.
@@ -3138,7 +3139,8 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 
 - **Decision (user, 2026-09-30):** the drive letter — `C.zip` for `C:\`; a UNC share root keeps
   the share name.
-- [~] **Status:** fixed in code 2026-09-30 (v1.7.0 wave 1); device check at the end of the wave.
+- [x] **Status:** done 2026-09-30 (v1.7.0 wave 1). Device (Deploy 1.6.0.0 from 480cb74, App title build 2026-09-30 22:47:15, uk-UA, 2026-09-30): on a `subst` drive P:, Explorer's menu reads
+  "Додати до \"P.zip\"" and Shell `--archive P:\` creates `P.zip`.
 - **Progress (2026-09-30):** `ArchiveNaming.GetDefaultArchiveName` and C++ `BuildAddToArchiveTitle`
   name a drive root, and several files at one, after the upper-cased letter (`C.zip`, `Z.tar`).
   Tests first on both sides (C# 6 red, C++ 4 red with the old code), full suites green. See
@@ -3283,7 +3285,11 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 - **Decision (user, 2026-09-30):** files and folders, as 7-Zip: the time from the NTFS extra field
   (0x000A) or the Unix extended timestamp (0x5455) when present, else the DOS time; folders get
   their time after their contents are written; ZIP and tar behave the same.
-- [~] **Status:** fixed in code 2026-09-30 (v1.7.0 wave 1); device check at the end of the wave.
+- [x] **Status:** done 2026-09-30 (v1.7.0 wave 1). Device (Deploy 1.6.0.0 from 480cb74, App title build 2026-09-30 22:47:15, uk-UA, 2026-09-30), a 7-Zip `.zip` (NTFS times) and a tar.exe
+  `.tar.gz`, both marked with `Zone.Identifier`: Explorer "Extract Here" and `pakko x` give every
+  file and folder its archive time (ZIP to the millisecond), with MOTW on the files; the folder the
+  single root collapses into takes the root's time; App browse of the `.tar.gz`: preview opens,
+  Extract Selected of `docs` keeps `docs` and `note.txt` times.
 - **Progress (2026-09-30):** ZIP files and folder entries get the entry time (NTFS > Unix > DOS,
   hostile fields fall back to DOS); tar folder entries get theirs (only implicitly needed
   directories are pre-created now); MOTW no longer resets a file's time — that lost every
@@ -3306,7 +3312,8 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 
 ### T-F299 — `-mx=1` (Fastest) makes incompressible data 5% larger (P3)
 
-- [~] **Status:** fixed in code 2026-09-30 (v1.7.0 wave 1); device check at the end of the wave.
+- [x] **Status:** done 2026-09-30 (v1.7.0 wave 1). Device (Deploy 1.6.0.0 from 480cb74, App title build 2026-09-30 22:47:15, uk-UA, 2026-09-30): App compress of 32 MiB of random data at the
+  default level -> 33,554,548 bytes for 33,554,432 (was 35.39 MB).
 - **Progress (2026-09-30):** an entry Deflate did not shrink is written as Stored (7-Zip's rule):
   `ZipEntryCompressor` compares in memory; the temp-file compressor rewrites the chunk as Stored
   with a second read (no second progress report). `ZipArchive` cannot do this, so
@@ -3450,6 +3457,16 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   folder lazily, or remove it on cancel/refusal when Pakko created it and it is still empty (never a folder
   that existed before).
 - **Reported by:** G6 device campaign, 2026-09-30.
+
+### T-F311 — `Archiver.App.Core.Tests` fail once in a while under a full-suite run (P3)
+
+- [ ] **Status:** open. Seen 2026-09-30 in wave 1, in different full `dotnet test` runs:
+  `SourceRecyclerTests.Win32_MoveToRecycleBin_FileLandsInRecycleBinNotDeleted` and
+  `FileItemTests.TryCreate_ExistingFile_ReturnsItemWithSizeAndCrc`, each once; both pass alone and
+  in three reruns of the project. Code the wave did not touch. Find the shared resource or timing
+  (the real Recycle Bin; an async CRC load) and make the tests deterministic, as T-F162 did for
+  `Progress<T>`.
+- **Reported by:** v1.7.0 wave 1 (agent), 2026-09-30.
 
 ### T-F310 — A compressed GNU-format tar with OEM (cp866) names is still refused (P2)
 

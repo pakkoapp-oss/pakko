@@ -127,7 +127,7 @@ public sealed class ZipArchiveServiceTestHeadersTests : IDisposable
     {
         // ZipArchive on a non-seekable stream writes bit 3: local CRC and sizes are zero.
         string path = Path.Combine(_temp.Path, "descriptor.zip");
-        using (var file = File.Create(path))
+        using (FileStream file = File.Create(path))
         using (var forwardOnly = new ForwardOnlyStream(file))
         using (var zip = new ZipArchive(forwardOnly, ZipArchiveMode.Create))
         {
