@@ -3117,6 +3117,9 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 
 ### T-F280 — ZIP Test ignores local-header mismatches that 7-Zip reports (P2)
 
+- **Decision (user, 2026-09-30):** Test reports a local/central header mismatch as an error
+  ("Headers Error", as `7za t`); extraction carries on from the central directory and adds a
+  warning to the summary.
 - [ ] **Status:** open. A ZIP whose local file headers disagree with the central directory
   (an entry's local CRC field and another entry's local name byte flipped; data and central
   directory intact) passes Pakko's Test ("не виявлено помилок", Explorer Test, 1.5.0.34), while
@@ -3129,6 +3132,8 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 
 ### T-F281 — Archive auto-name for a drive-root source is "archive" (P2)
 
+- **Decision (user, 2026-09-30):** the drive letter — `C.zip` for `C:\`; a UNC share root keeps
+  the share name.
 - [ ] **Status:** open. Split out of T-F213 (closed 2026-09-29). Compressing a drive root (App or
   Explorer) names the archive `archive.zip` by design (T-F99/T-F100); a name from the drive letter
   or volume label (`C.zip`, `Data (D).zip`) would be friendlier. Naming lives in the shared
@@ -3265,6 +3270,9 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 
 ### T-F298 — ZIP extraction does not restore the entries' modification times (P2)
 
+- **Decision (user, 2026-09-30):** files and folders, as 7-Zip: the time from the NTFS extra field
+  (0x000A) or the Unix extended timestamp (0x5455) when present, else the DOS time; folders get
+  their time after their contents are written; ZIP and tar behave the same.
 - [ ] **Status:** open. Found in G6 pass 2, 2026-09-30. Every extracted ZIP file gets the time of
   extraction: `qmark.zip` entries dated 2026-09-30 02:07:36 came out as 02:45:56; same for
   `plain.zip` through Explorer and `pakko x`. The tar path keeps them (`valid.7z` -> `seven.txt`
@@ -3280,7 +3288,21 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 
 ### T-F299 — `-mx=1` (Fastest) makes incompressible data 5% larger (P3)
 
-- [ ] **Status:** open. Found in G6 pass 2, 2026-09-30. 32 MiB of random data: `pakko a -mx=1`
+- [~] **Status:** fixed in code 2026-09-30 (v1.7.0 wave 1); device check at the end of the wave.
+- **Progress (2026-09-30):** an entry Deflate did not shrink is written as Stored (7-Zip's rule):
+  `ZipEntryCompressor` compares in memory; the temp-file compressor rewrites the chunk as Stored
+  with a second read (no second progress report). `ZipArchive` cannot do this, so
+  `CompressionSettings.RequiresHandRolledWriter` (password OR Fastest) now routes Fastest through
+  `ParallelSingleArchiveWriter` in both SingleArchive and SeparateArchives modes. zlib level 2
+  instead of 1 was measured and rejected: 1.7x slower on text at Fastest. Tests first
+  (`ZipArchiveServiceIncompressibleTests`, 7 red before the fix), mutants killed (in-memory
+  fallback, temp-file fallback, Fastest routing); `7za t`/`l -slt` show `Store`/`AES-256 Store`
+  for random data and `Deflate` for text. **Acceptance, as measured:** Fastest and every
+  hand-rolled path (password, over 64 files) store incompressible data exactly; the sequential
+  `ZipArchive` path at Optimal/SmallestSize stays +0.03% (e.g. +10 KB on 32 MiB), as in v1.5.0.
+  **CHANGELOG v1.7.0:** Fastest no longer makes already-compressed files ~5% larger (removes the
+  v1.6.0 known issue).
+- **Earlier status:** open. Found in G6 pass 2, 2026-09-30. 32 MiB of random data: `pakko a -mx=1`
   -> 35,388,889 bytes (+5.5%); `-mx=0` 33,554,544; `-mx=5` 33,564,789; `7za a -mx=1` 33,554,580.
   512 MiB at `-mx=1` gave a 566 MB archive. **Regression from T-F270 (.NET 8 -> 10):** the released
   v1.5.0 and v1.4.12 CLIs (.NET 8) give 33,564,789 at `-mx=1` on the same file; v1.6.0 would ship

@@ -54,9 +54,8 @@ internal static class ZipEntryCompressor
         }
         else
         {
-            long uncompressedLength;
-            using (var deflate = new DeflateStream(buffer, compressionLevel, leaveOpen: true))
-                uncompressedLength = CopyWithCrc(sourceStream, deflate, ref acc);
+            using var raw = new MemoryStream();
+            long uncompressedLength = CopyWithCrc(sourceStream, raw, ref acc);
 
             // A zero-length input never causes DeflateStream to write anything at all (0 bytes
             // out, not even a minimal empty final block) — tagging that as the Deflate method
@@ -65,6 +64,14 @@ internal static class ZipEntryCompressor
             // Stored for empty entries regardless of requested level; match that here.
             if (uncompressedLength == 0)
                 return new CompressedEntryData(Array.Empty<byte>(), acc.Finish(), 0, StoredMethod);
+
+            using (var deflate = new DeflateStream(buffer, compressionLevel, leaveOpen: true))
+                deflate.Write(raw.GetBuffer(), 0, (int)raw.Length);
+
+            // T-F299: Fastest (zlib-ng level 1) grows random data by ~5.5% and the other levels by
+            // a few KB; 7-Zip stores such an entry instead, and so does this writer.
+            if (buffer.Length >= uncompressedLength)
+                return new CompressedEntryData(raw.ToArray(), acc.Finish(), uncompressedLength, StoredMethod);
 
             return new CompressedEntryData(buffer.ToArray(), acc.Finish(), uncompressedLength, DeflateMethod);
         }

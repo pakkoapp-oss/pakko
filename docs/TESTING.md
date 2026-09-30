@@ -543,6 +543,12 @@ tests caught before shipping):
 All four run as part of the default `dotnet test --filter "Category!=Slow&Category!=VeryLarge"`
 pass (untagged, fast) — no new Slow/VeryLarge tier was needed for T-F35 itself.
 
+**T-F299:** `ZipArchiveServiceIncompressibleTests` (`Archiver.Core.Tests/Services/`) — random data
+through `ArchiveAsync` is stored, not grown: one file at Fastest (in-memory and temp-file sizes),
+SeparateArchives at Fastest, a password at Optimal (Stored inside AES), 80 files at Optimal; a text
+file at Fastest stays Deflate. Method and sizes are read with `RawZipEntryLocator`; each case
+round-trips through Pakko's reader.
+
 ---
 
 ## Archiver.CLI.Tests (v1.5, T-F09)

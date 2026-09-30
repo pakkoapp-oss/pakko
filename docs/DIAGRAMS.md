@@ -1086,8 +1086,8 @@ flowchart TD
     ZM -- SingleArchive --> S1["DestinationConflictResolver on name.zip<br/>(Ask → the frontend's conflict prompt, T-F158)"]
     S1 -- Skip --> S1S["return: every source SkippedFiles (ArchiveAlreadyExists)"]
     S1 -- "Overwrite / Rename" --> S2["one walk: total bytes and file count (T-F35)"]
-    S2 --> S3{"password set, OR file count over 64?"}
-    S3 -- yes --> S4["ParallelSingleArchiveWriter — hand-rolled writer,<br/>the only one that encrypts (AES-256 AE-2), T-F35/T-F193"]
+    S2 --> S3{"password set, OR level Fastest, OR file count over 64?<br/>(CompressionSettings.RequiresHandRolledWriter, T-F299)"}
+    S3 -- yes --> S4["ParallelSingleArchiveWriter — hand-rolled writer,<br/>the only one that encrypts (AES-256 AE-2), T-F35/T-F193,<br/>and stores an entry Deflate did not shrink (T-F299)"]
     S3 -- no --> S5["sequential ZipArchive writer"]
     S4 --> S6
     S5 --> S6{"cancelled? then: any entry in the .tmp?"}
@@ -1097,8 +1097,8 @@ flowchart TD
     S4 & S5 -. "IOException / UnauthorizedAccessException / any other exception" .-> S9["delete .tmp, Errors += CannotCreateArchive /<br/>AccessDeniedCreatingArchive / UnexpectedError — never thrown"]
 
     ZM -- SeparateArchives --> P1["sequential plan pass, sorted: a reparse point is skipped (T-F23),<br/>DestinationConflictResolver per source incl. same-run name clashes (T-F12)"]
-    P1 --> P2["Parallel.ForEachAsync over the plans — degree = cores,<br/>or cores / writer window when encrypting"]
-    P2 --> P3{"per source: password set?"}
+    P1 --> P2["Parallel.ForEachAsync over the plans — degree = cores,<br/>or cores / writer window for the hand-rolled writer"]
+    P2 --> P3{"per source: password set, OR level Fastest?"}
     P3 -- yes --> P4["ParallelSingleArchiveWriter with that one source"]
     P3 -- "no, folder" --> P5["ZipArchive + AddDirectoryToArchiveAsync"]
     P3 -- "no, file" --> P6["ZipArchive + AddEntryFromFileAsync"]

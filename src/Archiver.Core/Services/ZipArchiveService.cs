@@ -205,9 +205,10 @@ public sealed class ZipArchiveService : IArchiveService
             .ToList();
 
         // T-F35: gate the parallel pipeline behind a file-count threshold — see the constant's
-        // own comment. T-F193: encryption exists only in the hand-rolled writer (ZipArchive has no
-        // encrypting API), so a password always takes that path regardless of file count.
-        bool useParallelPipeline = run.Password is not null || totalFileCount > ParallelPipelineFileCountThreshold;
+        // own comment. T-F193/T-F299: a password or Fastest always takes the hand-rolled writer,
+        // regardless of file count (see CompressionSettings.RequiresHandRolledWriter).
+        var settings = new Zip.ParallelSingleArchiveWriter.CompressionSettings(options.CompressionLevel, run.Password);
+        bool useParallelPipeline = settings.RequiresHandRolledWriter || totalFileCount > ParallelPipelineFileCountThreshold;
 
         try
         {
@@ -215,7 +216,7 @@ public sealed class ZipArchiveService : IArchiveService
             {
                 var callbacks = new Zip.ParallelSingleArchiveWriter.ReportCallbacks(skippedFiles.Add, errors.Add);
                 await Zip.ParallelSingleArchiveWriter.WriteAsync(
-                    tempPath, sortedSourcePaths, new Zip.ParallelSingleArchiveWriter.CompressionSettings(options.CompressionLevel, run.Password),
+                    tempPath, sortedSourcePaths, settings,
                     totalSourceBytes, callbacks, progress, cancellationToken).ConfigureAwait(false);
             }
             else
@@ -374,18 +375,19 @@ public sealed class ZipArchiveService : IArchiveService
         var concurrentSink = new ArchiveResultSink([], [], [], []);
         var progressContext = new SeparateArchiveProgressContext(totalSourceBytes, [0], progress);
 
-        // T-F193: an encrypted archive runs ParallelSingleArchiveWriter, which already compresses
-        // with up to ComputeWindowCapacity() workers of its own — divide the outer parallelism so
-        // the two levels together stay near the core count instead of multiplying.
-        int degreeOfParallelism = run.Password is null
-            ? Environment.ProcessorCount
-            : Math.Max(1, Environment.ProcessorCount / Zip.ParallelSingleArchiveWriter.ComputeWindowCapacity());
+        // T-F193/T-F299: an archive written by ParallelSingleArchiveWriter already compresses with
+        // up to ComputeWindowCapacity() workers of its own — divide the outer parallelism so the
+        // two levels together stay near the core count instead of multiplying.
+        var settings = new Zip.ParallelSingleArchiveWriter.CompressionSettings(options.CompressionLevel, run.Password);
+        int degreeOfParallelism = settings.RequiresHandRolledWriter
+            ? Math.Max(1, Environment.ProcessorCount / Zip.ParallelSingleArchiveWriter.ComputeWindowCapacity())
+            : Environment.ProcessorCount;
 
         await Parallel.ForEachAsync(
             plans.Where(p => p.DestPath is not null),
             new ParallelOptions { MaxDegreeOfParallelism = degreeOfParallelism, CancellationToken = cancellationToken },
             async (plan, token) => await ArchiveSingleSeparatePathAsync(
-                plan.SourcePath, plan.DestPath!, new Zip.ParallelSingleArchiveWriter.CompressionSettings(options.CompressionLevel, run.Password),
+                plan.SourcePath, plan.DestPath!, settings,
                 concurrentSink, progressContext, token).ConfigureAwait(false)
         ).ConfigureAwait(false);
 
@@ -515,10 +517,11 @@ public sealed class ZipArchiveService : IArchiveService
         void AddError(ArchiveError e) { Interlocked.Increment(ref issues); sink.Errors.Add(e); }
         try
         {
-            if (settings.Password is not null && (Directory.Exists(sourcePath) || File.Exists(sourcePath)))
+            if (settings.RequiresHandRolledWriter && (Directory.Exists(sourcePath) || File.Exists(sourcePath)))
             {
-                // T-F193: the only writer that can encrypt. A one-source "single archive" of its
-                // own; WorkItemEnumerator names the entries exactly as the branches below do.
+                // T-F193/T-F299: the only writer that can encrypt or store an entry Deflate grew. A
+                // one-source "single archive" of its own; WorkItemEnumerator names the entries
+                // exactly as the branches below do.
                 var callbacks = new Zip.ParallelSingleArchiveWriter.ReportCallbacks(AddSkipped, AddError);
                 OffsetProgress? offsetProgress = progress is null ? null : new OffsetProgress(progress, baseOffset, totalSourceBytes);
                 await Zip.ParallelSingleArchiveWriter.WriteAsync(

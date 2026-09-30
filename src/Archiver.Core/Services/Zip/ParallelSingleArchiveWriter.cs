@@ -53,6 +53,13 @@ internal static class ParallelSingleArchiveWriter
     internal readonly record struct CompressionSettings(CompressionLevel Level, string? Password = null)
     {
         public static implicit operator CompressionSettings(CompressionLevel level) => new(level);
+
+        /// <summary>
+        /// True when <c>ZipArchive</c> cannot write this archive: it has no encrypting API
+        /// (T-F193), and it cannot store an entry its Deflate grew — at Fastest (zlib-ng level 1)
+        /// incompressible data grows by ~5.5% (T-F299).
+        /// </summary>
+        public bool RequiresHandRolledWriter => Password is not null || Level == CompressionLevel.Fastest;
     }
 
     /// <summary>
@@ -468,44 +475,30 @@ internal static class ParallelSingleArchiveWriter
 
                 ushort method = ZipEntryWriter.SelectMethod(settings.Level);
                 byte[] buffer = new byte[CopyBufferSize];
-                long uncompressedTotal;
-                uint crc;
 
                 // T-F140: real live progress for this file comes from onBytesRead (per chunk, fed
-                // into the shared ProgressTracker) — the progress/totalBytes/startOffset params
-                // below stay unused (null/0/0) because they model a single-stream, sequential
-                // report shape that doesn't fit several concurrent workers sharing one percentage.
+                // into the shared ProgressTracker).
                 void OnChunkRead(long delta) => tracker?.ReportBytes(delta, item.EntryName);
 
-                // T-F193: dispose order matters — the compressor flushes its tail into the AES
-                // stream, whose own dispose then appends the authentication code, and only after
-                // both is tempOut.Length the entry's real compressed size.
-                WinZipAesEncryptStream? aes = settings.Password is null ? null : new WinZipAesEncryptStream(tempOut, settings.Password);
-                using (aes)
+                (long uncompressedTotal, uint crc) = await WriteTempEntryAsync(
+                    source, tempOut, method, settings, buffer, item.EntryName, OnChunkRead, cancellationToken).ConfigureAwait(false);
+
+                // T-F299: an entry Deflate did not shrink is rewritten as Stored (7-Zip's rule).
+                // Only incompressible files pay the second read, and it reports no progress again.
+                long aesOverhead = settings.Password is null ? 0 : WinZipAesEncryptStream.Overhead;
+                if (method == ZipEntryWriter.DeflateMethod && tempOut.Length - aesOverhead >= uncompressedTotal)
                 {
-                    Stream target = (Stream?)aes ?? tempOut;
-                    if (method == ZipEntryWriter.StoredMethod)
-                    {
-                        (uncompressedTotal, crc) = await ZipEntryWriter.CopyWithCrcAsync(
-                            source, target, buffer, progress: null, totalBytes: 0, startOffset: 0,
-                            item.EntryName, cancellationToken, onBytesRead: OnChunkRead).ConfigureAwait(false);
-                    }
-                    else
-                    {
-                        var deflate = new DeflateStream(target, settings.Level, leaveOpen: true);
-                        await using (deflate.ConfigureAwait(false))
-                        {
-                            (uncompressedTotal, crc) = await ZipEntryWriter.CopyWithCrcAsync(
-                                source, deflate, buffer, progress: null, totalBytes: 0, startOffset: 0,
-                                item.EntryName, cancellationToken, onBytesRead: OnChunkRead).ConfigureAwait(false);
-                        }
-                    }
+                    method = ZipEntryWriter.StoredMethod;
+                    source.Seek(0, SeekOrigin.Begin);
+                    tempOut.SetLength(0);
+                    (uncompressedTotal, crc) = await WriteTempEntryAsync(
+                        source, tempOut, method, settings, buffer, item.EntryName, onBytesRead: null, cancellationToken).ConfigureAwait(false);
                 }
 
                 long compressedSize = tempOut.Length;
                 return WorkResult.ForTempFileCompressed(
                     item.EntryName, tempFilePath, crc, compressedSize, uncompressedTotal, method, item.LastWriteTime,
-                    isAesEncrypted: aes is not null);
+                    isAesEncrypted: settings.Password is not null);
             }
             catch (IOException ex)
             {
@@ -526,6 +519,36 @@ internal static class ParallelSingleArchiveWriter
                 throw;
             }
         }, cancellationToken);
+
+    // T-F193: dispose order matters — the compressor flushes its tail into the AES stream, whose
+    // own dispose then appends the authentication code, and only after both is tempOut.Length the
+    // entry's real compressed size. The progress/totalBytes/startOffset params stay unused
+    // (null/0/0): they model a single-stream report shape that doesn't fit several concurrent
+    // workers sharing one percentage (T-F140).
+    private static async Task<(long Total, uint Crc32)> WriteTempEntryAsync( // NOSONAR: S107 — one call site pair, independent fields
+        FileStream source, FileStream tempOut, ushort method, CompressionSettings settings, byte[] buffer,
+        string entryName, Action<long>? onBytesRead, CancellationToken cancellationToken)
+    {
+        WinZipAesEncryptStream? aes = settings.Password is null ? null : new WinZipAesEncryptStream(tempOut, settings.Password);
+        using (aes)
+        {
+            Stream target = (Stream?)aes ?? tempOut;
+            if (method == ZipEntryWriter.StoredMethod)
+            {
+                return await ZipEntryWriter.CopyWithCrcAsync(
+                    source, target, buffer, progress: null, totalBytes: 0, startOffset: 0,
+                    entryName, cancellationToken, onBytesRead).ConfigureAwait(false);
+            }
+
+            var deflate = new DeflateStream(target, settings.Level, leaveOpen: true);
+            await using (deflate.ConfigureAwait(false))
+            {
+                return await ZipEntryWriter.CopyWithCrcAsync(
+                    source, deflate, buffer, progress: null, totalBytes: 0, startOffset: 0,
+                    entryName, cancellationToken, onBytesRead).ConfigureAwait(false);
+            }
+        }
+    }
 
     private static void TryDeleteTempFile(string path, ConcurrentDictionary<string, byte>? pendingTempFiles)
     {
