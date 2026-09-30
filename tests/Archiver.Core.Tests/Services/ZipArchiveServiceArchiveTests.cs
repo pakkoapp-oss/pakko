@@ -13,6 +13,11 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
 
     public void Dispose() => _temp.Dispose();
 
+    private sealed class SynchronousProgress<T>(Action<T> onReport) : IProgress<T>
+    {
+        public void Report(T value) => onReport(value);
+    }
+
     [Fact]
     public async Task ArchiveAsync_SingleFile_CreatesZip()
     {
@@ -495,7 +500,9 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
         string file = _temp.CreateFile("data.txt", content);
 
         var reports = new List<ProgressReport>();
-        var progress = new Progress<ProgressReport>(r => reports.Add(r));
+        // T-F162's pattern: Progress<T> posts to the ThreadPool, and under a full-suite run the
+        // posts could land after the assertions (seen 2026-09-30); report on the calling thread.
+        var progress = new SynchronousProgress<ProgressReport>(reports.Add);
 
         var options = new ArchiveOptions
         {
@@ -507,7 +514,6 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
         };
 
         await _sut.ArchiveAsync(options, progress);
-        await Task.Delay(50); // let Progress<ProgressReport> callbacks fire
 
         reports.Should().NotBeEmpty();
         reports[0].Percent.Should().Be(0);
