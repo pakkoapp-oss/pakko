@@ -10308,3 +10308,29 @@ CLAUDE.md's "Deployment", no tag trigger).
   class name, not loosened; they stay in the local `Category=Slow` run before a release.
   `canary-arm64` found T-F290: the OS tar.exe crashes on a Unicode fixture name. Run 36620565447
   (a2904d7) was green on every job, and its probe settled T-F290's scope (see that task).
+
+## T-F305 — tar header charset: header bytes decide where libarchive's wording cannot (2026-09-30)
+
+T-F204 chose UTF-8 vs the OEM reading from libarchive's stderr under `hdrcharset=UTF-8`: invalid UTF-8
+prints "Pathname can't be converted from UTF-8", a valid UTF-8 name the code page cannot show prints
+only "empty or unreadable filename". Probed 2026-09-30 (bsdtar 3.8.8): under GNU magic (`ustar  \0`,
+7-Zip's and GNU tar's default) invalid UTF-8 also prints only "unreadable filename", so GNU-magic
+cp866 archives were refused as unrepresentable; the T-F204 device check had used a POSIX-magic fixture.
+
+- **Chosen:** keep the UTF-8-first run and the stderr rule; only in the branch it cannot decide,
+  `TarHeaderNames.AreAllUtf8` reads an uncompressed tar's header blocks in-process and applies 7-Zip's
+  rule (every name valid UTF-8 or not). Checked: the name field, the POSIX prefix (GNU headers keep
+  atime/ctime there), GNU `L` long-name records; the header after an `L` or pax `x` record is skipped,
+  since its name is a copy cut at 100 bytes that can split a UTF-8 sequence. Checksum verified on every
+  header; base-256 sizes, GNU sparse, a missing magic, a short block or an oversized `L` record give
+  "unknown", which keeps the refusal. Success paths and every case the stderr rule already decided are
+  unchanged.
+- **Trust boundary:** the walk reads header blocks only (`RandomAccess.Read`, content skipped by
+  offset) and chooses between two sandboxed tar.exe readings; nothing is extracted in-process and the
+  security pre-scan still runs on tar.exe's own listing. Same kind of bounded metadata read as
+  `ArchiveFormatDetector.IsEncryptedRar` (RAR5 block walk), which `SECURITY.md` already describes.
+- **Rejected:** recovering the header bytes from the plain reading's output (re-encode the printed
+  names to the OEM page, then test UTF-8). tar.exe converts with best fit: `utf8.tar`'s `Док.txt` read as
+  cp866 contains `╨` (U+2568), which cp1251 lacks, and it printed `¦` with exit 0, so the bytes cannot
+  be recovered and the tick name would pass as OEM on some code-page pairs.
+- **Left open:** a compressed GNU-magic tar with OEM names is still refused (T-F310).

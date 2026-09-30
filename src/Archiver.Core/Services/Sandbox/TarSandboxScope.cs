@@ -197,8 +197,12 @@ internal sealed class TarSandboxScope : IDisposable
         // other, wrong names, so this failure is the answer. Any other failure — invalid UTF-8, or
         // a tar.exe (another Windows build's bsdtar) that rejects the option or words its errors
         // differently — falls back to the plain reading used before fix phase 4.
+        // T-F305: under GNU magic ("ustar  \0", 7-Zip's and GNU tar's default) invalid UTF-8 gives
+        // only "unreadable filename" too, so an uncompressed tar's own header bytes decide; a
+        // compressed one stays refused rather than risk mojibake.
         if (result.StdErr.Contains(UnreadableNameMessage, StringComparison.Ordinal)
-            && !result.StdErr.Contains(NotUtf8HeaderMessage, StringComparison.Ordinal))
+            && !result.StdErr.Contains(NotUtf8HeaderMessage, StringComparison.Ordinal)
+            && TarHeaderNames.AreAllUtf8(_archive.SafeFileHandle, cancellationToken) != false)
             return result;
 
         _utf8Headers = false;

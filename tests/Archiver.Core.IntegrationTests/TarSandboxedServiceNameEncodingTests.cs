@@ -25,6 +25,8 @@ public sealed class TarSandboxedServiceNameEncodingTests : IDisposable
     [InlineData("utf8")]
     [InlineData("oem")]
     [InlineData("pax")]
+    [InlineData("gnu-utf8")] // T-F305: GNU magic, as 7-Zip and GNU tar write it
+    [InlineData("gnu-oem")]
     public async Task NonAsciiName_ExtractsAndListsTheRealName(string layout)
     {
         string? name = TarCodePage.PortableNonAsciiName();
@@ -34,11 +36,11 @@ public sealed class TarSandboxedServiceNameEncodingTests : IDisposable
         byte[] content = Encoding.ASCII.GetBytes("payload");
         TarBuilder.Entry[] entries = layout switch
         {
-            "utf8" => [new TarBuilder.Entry { Name = "x", NameBytes = Encoding.UTF8.GetBytes(name), Content = content }],
-            "oem" => [new TarBuilder.Entry { Name = "x", NameBytes = TarCodePage.Encoding(TarCodePage.UserOem).GetBytes(name), Content = content }],
+            "utf8" or "gnu-utf8" => [new TarBuilder.Entry { Name = "x", NameBytes = Encoding.UTF8.GetBytes(name), Content = content }],
+            "oem" or "gnu-oem" => [new TarBuilder.Entry { Name = "x", NameBytes = TarCodePage.Encoding(TarCodePage.UserOem).GetBytes(name), Content = content }],
             _ => [TarBuilder.PaxPath(name), new TarBuilder.Entry { Name = "placeholder.txt", Content = content }],
         };
-        TarBuilder.WriteTar(archivePath, entries);
+        TarBuilder.WriteTar(archivePath, entries, gnuMagic: layout.StartsWith("gnu-", StringComparison.Ordinal));
 
         ArchiveListResult list = await _sut.ListEntriesAsync(archivePath);
         list.Success.Should().BeTrue(list.ErrorMessage + " " + TarCodePage.Describe());
@@ -55,15 +57,17 @@ public sealed class TarSandboxedServiceNameEncodingTests : IDisposable
     // tar.exe can name it (a UTF-8 or "C" locale, as on the CI runner) and it arrives under its
     // real name, or it cannot and the failure says so with nothing written. Before fix phase 4 it
     // was extracted as "tick тЬУ.txt" with success.
-    [Fact]
-    public async Task NameOutsideCodePage_RealNameOrClearFailure_NeverMojibake()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)] // T-F305: under GNU magic libarchive words this failure like invalid UTF-8
+    public async Task NameOutsideCodePage_RealNameOrClearFailure_NeverMojibake(bool gnuMagic)
     {
         const string name = "tick ✓.txt";
         string archivePath = Path.Combine(_temp.Path, "tick.tar");
         TarBuilder.WriteTar(archivePath,
         [
             new TarBuilder.Entry { Name = "x", NameBytes = Encoding.UTF8.GetBytes(name), Content = [1] },
-        ]);
+        ], gnuMagic);
 
         string dest = Path.Combine(_temp.Path, "out");
         ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions { ArchivePaths = [archivePath], DestinationFolder = dest, Mode = ExtractMode.SingleFolder });

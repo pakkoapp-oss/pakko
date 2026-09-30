@@ -4705,7 +4705,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 
 ### T-F204 — tar.exe paths: filenames outside the system code page break or silently corrupt (P0)
 
-- **Device (G6 pass 4, 1.5.0.13 + its CI `pakko.exe`, temporary until G7):** ustar-magic tars with cp866 names (`Док.txt`, `Тека/Документ.txt`) list and extract correctly; a GNU-magic tar with the same cp866 name (Python `GNU_FORMAT`, 7-Zip `-ttar -mcp=866`) is refused as a whole: regression since v1.5.0, filed as T-F305 (P1). The 2026-09-26 check above used a ustar-magic fixture.
+- **Device (G6 pass 4, 1.5.0.13 + its CI `pakko.exe`, temporary until G7):** ustar-magic tars with cp866 names (`Док.txt`, `Тека/Документ.txt`) list and extract correctly; a GNU-magic tar with the same cp866 name (Python `GNU_FORMAT`, 7-Zip `-ttar -mcp=866`) is refused as a whole: regression since v1.5.0, filed as T-F305 (P1), fixed 2026-09-30 for an uncompressed tar (compressed: T-F310). The 2026-09-26 check above used a ustar-magic fixture.
 
 - **Device check (2026-09-26, Deploy 1.4.12.13, title build 2026-09-25 23:58:24, agent via Shell/`windows` MCP):** GNU-tar UTF-8 and cp866 Cyrillic names extracted as `Док.txt`; the Archive Browser lists `Док.txt`. Stays `[~]`.
 
@@ -6903,7 +6903,7 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 
 ### T-F305 — A GNU-format tar with OEM (cp866) names is refused as a whole (P1, regression)
 
-- [ ] **Status:** open. Found in G6 pass 4, 2026-09-30 (CI `pakko.exe` of af43cae, ACP 1251 / OEMCP 866).
+- [x] **Status:** done 2026-09-30 for an uncompressed tar (compressed: T-F310). Found in G6 pass 4, 2026-09-30 (CI `pakko.exe` of af43cae, ACP 1251 / OEMCP 866).
   A tar whose header magic is GNU's `ustar  \0` (7-Zip's default tar output, GNU tar, Python
   `GNU_FORMAT`) holding a cp866 name (`Док.txt`; 7-Zip `a -ttar -mcp=866`, or `tarfile` with
   `encoding="cp866"`): `pakko x`/`pakko l` refuse the whole archive with "file names tar.exe cannot
@@ -6919,6 +6919,16 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   extract; decide the header charset from the header bytes (valid UTF-8 or not, 7-Zip's rule) rather
   than from libarchive's wording. Fixtures: `C:\g6\p4\cp866.tar`, `z7oem.tar` (GNU), `cp866u.tar`,
   `cp866d.tar` (ustar).
+- **Fix:** `TarSandboxScope.ListAsync` keeps the UTF-8-first run and its stderr rule; only in the branch
+  that rule cannot decide ("unreadable filename" without the conversion message) the new
+  `TarHeaderNames.AreAllUtf8` reads an uncompressed tar's header blocks (name, POSIX prefix, GNU `L`
+  records; the name after an `L`/pax record is skipped) and falls back to the OEM reading when a name is
+  not valid UTF-8. Anything it cannot read (compressed, malformed, sparse, no magic) keeps the refusal.
+  Tests first: `TarBuilder` writes GNU magic; `gnu-utf8`/`gnu-oem` layouts and a GNU tick case in
+  `TarSandboxedServiceNameEncodingTests` (`gnu-oem` failed before the fix with the reported message);
+  28 `TarHeaderNamesTests`. Device: a local `pakko.exe` (built 04:51) lists and extracts all six
+  `C:\g6\p4` fixtures (`cp866`, `z7oem`, `cp866u`, `cp866d`, `utf8`, `z7`) under their real names.
+  See `docs/DECISIONS.md`'s T-F305 entry.
 - **Reported by:** G6 device campaign, 2026-09-30.
 
 ### T-F306 — App: a mixed ZIP + tar extraction shows 100% for the whole tar part (P2)
@@ -6977,6 +6987,18 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   folder lazily, or remove it on cancel/refusal when Pakko created it and it is still empty (never a folder
   that existed before).
 - **Reported by:** G6 device campaign, 2026-09-30.
+
+### T-F310 — A compressed GNU-format tar with OEM (cp866) names is still refused (P2)
+
+- [ ] **Status:** open. Found fixing T-F305, 2026-09-30. `C:\g6\p4\cp866.tar` gzipped (`cp866.tar.gz`):
+  `pakko l` refuses it with the "cannot represent on this system (code page 1251)" message. T-F305's
+  header check reads only an uncompressed tar, so for `.tar.gz`/`.bz2`/`.xz`/`.zst` libarchive's wording
+  still decides and cannot tell invalid UTF-8 under GNU magic from a valid name the code page cannot show;
+  refusing is the fail-closed answer (the OEM reading could extract mojibake). v1.4.12 read it as OEM.
+  Options: decompress gzip in-process for the header check only (`GZipStream`; bz2/xz/zst have no BCL
+  decoder), or a second sandboxed tar.exe run that exposes the raw name bytes. Needs a decision on
+  in-process decompression of untrusted input before any code.
+- **Reported by:** T-F305 fix, 2026-09-30.
 
 ## Test-Coverage Audit Follow-Ups (T-F174–T-F186)
 

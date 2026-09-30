@@ -33,12 +33,13 @@ internal static class TarBuilder
         return new Entry { Name = "PaxHeader", TypeFlag = 'x', Content = record };
     }
 
-    public static void WriteTar(string path, IEnumerable<Entry> entries)
+    // T-F305: gnuMagic writes GNU tar's magic (7-Zip's and GNU tar's default) instead of POSIX ustar's.
+    public static void WriteTar(string path, IEnumerable<Entry> entries, bool gnuMagic = false)
     {
         using var fs = new FileStream(path, FileMode.Create, FileAccess.Write);
         foreach (Entry entry in entries)
         {
-            byte[] header = BuildHeader(entry.NameBytes ?? Encoding.ASCII.GetBytes(entry.Name), entry.Content.Length, entry.TypeFlag, entry.LinkName);
+            byte[] header = BuildHeader(entry.NameBytes ?? Encoding.ASCII.GetBytes(entry.Name), entry.Content.Length, entry.TypeFlag, entry.LinkName, gnuMagic);
             fs.Write(header, 0, header.Length);
             if (entry.Content.Length > 0)
             {
@@ -61,7 +62,7 @@ internal static class TarBuilder
         stream.Write(pad, 0, pad.Length);
     }
 
-    private static byte[] BuildHeader(byte[] name, int size, char typeFlag, string linkName)
+    private static byte[] BuildHeader(byte[] name, int size, char typeFlag, string linkName, bool gnuMagic)
     {
         byte[] header = new byte[512];
 
@@ -74,8 +75,15 @@ internal static class TarBuilder
         SetField(header, 148, 8, "        "); // checksum placeholder (8 spaces)
         header[156] = (byte)typeFlag;
         SetField(header, 157, 100, linkName);
-        SetField(header, 257, 6, "ustar\0");
-        SetField(header, 263, 2, "00");
+        if (gnuMagic)
+        {
+            SetField(header, 257, 8, "ustar  \0");
+        }
+        else
+        {
+            SetField(header, 257, 6, "ustar\0");
+            SetField(header, 263, 2, "00");
+        }
         SetField(header, 265, 32, "root");
         SetField(header, 297, 32, "root");
         SetField(header, 329, 8, "0000000\0");
