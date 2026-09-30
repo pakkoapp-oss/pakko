@@ -44,13 +44,23 @@ public sealed class ZipArchiveServiceTestAsyncTests
                 for (int i = 0; i < 256; i++)
                     entry.Write(block);
             }
-            using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(100));
+            using var cts = new CancellationTokenSource();
+            // Not CancellationTokenSource(TimeSpan): its timer fires on the ThreadPool, which a full
+            // parallel CI run starved past the whole ~3 s Test, so nothing was cancelled (5cb41cb).
+            var canceller = new Thread(() =>
+            {
+                using var never = new ManualResetEventSlim();
+                never.Wait(TimeSpan.FromMilliseconds(100));
+                cts.Cancel();
+            });
             var clock = System.Diagnostics.Stopwatch.StartNew();
+            canceller.Start();
 
             Func<Task<ArchiveResult>> act = () => _sut.TestAsync([archive], cancellationToken: cts.Token);
 
             await act.Should().ThrowAsync<OperationCanceledException>();
             clock.Elapsed.Should().BeLessThan(TimeSpan.FromSeconds(30));
+            canceller.Join();
         }
         finally
         {
