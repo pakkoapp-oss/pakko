@@ -650,19 +650,19 @@ TEST(BuildAddToArchiveTitle, MultipleFilesUseContainingFolderName)
     EXPECT_EQ(title, L"Add to \"MyStuff.zip\"");
 }
 
-TEST(BuildAddToArchiveTitle, MultipleFilesAtDriveRootFallsBackToArchive)
+TEST(BuildAddToArchiveTitle, MultipleFilesAtDriveRootUseTheDriveLetter)
 {
     const auto title = BuildAddToArchiveTitle({ L"C:\\first.txt", L"C:\\second.txt" });
-    EXPECT_EQ(title, L"Add to \"archive.zip\"");
+    EXPECT_EQ(title, L"Add to \"C.zip\"");
 }
 
-// T-F99: a single drive-root selection (e.g. "Z:\") is a distinct case from the
+// T-F99/T-F281: a single drive-root selection (e.g. "Z:\") is a distinct case from the
 // multi-file-at-drive-root case above — PathFindFileNameW returns the whole "Z:\" string
-// unchanged (not an empty tail), so it needs its own trailing-backslash check to fall back.
-TEST(BuildAddToArchiveTitle, SingleDriveRootFallsBackToArchive)
+// unchanged (not an empty tail). Both are named after the drive letter (user decision 2026-09-30).
+TEST(BuildAddToArchiveTitle, SingleDriveRootUsesTheDriveLetter)
 {
-    const auto title = BuildAddToArchiveTitle({ L"Z:\\" });
-    EXPECT_EQ(title, L"Add to \"archive.zip\"");
+    EXPECT_EQ(BuildAddToArchiveTitle({ L"Z:\\" }), L"Add to \"Z.zip\"");
+    EXPECT_EQ(BuildAddToArchiveTitle({ L"d:\\" }), L"Add to \"D.zip\"");
 }
 
 // T-F264: a UNC share root; ArchiveNamingTests.GetDefaultArchiveName_MatchesTheExplorerMenuTitle
@@ -711,16 +711,16 @@ TEST(BuildAddToArchiveTitle, TarExtensionCompoundTarExtensionStripsBothComponent
     EXPECT_EQ(BuildAddToArchiveTitle({ L"C:\\Docs\\backup.tar.gz" }, L".tar"), L"Add to \"backup.tar\"");
 }
 
-TEST(BuildAddToArchiveTitle, TarExtensionMultipleFilesAtDriveRootFallsBackToArchive)
+TEST(BuildAddToArchiveTitle, TarExtensionMultipleFilesAtDriveRootUseTheDriveLetter)
 {
     const auto title = BuildAddToArchiveTitle({ L"C:\\first.txt", L"C:\\second.txt" }, L".tar");
-    EXPECT_EQ(title, L"Add to \"archive.tar\"");
+    EXPECT_EQ(title, L"Add to \"C.tar\"");
 }
 
-TEST(BuildAddToArchiveTitle, TarExtensionSingleDriveRootFallsBackToArchive)
+TEST(BuildAddToArchiveTitle, TarExtensionSingleDriveRootUsesTheDriveLetter)
 {
     const auto title = BuildAddToArchiveTitle({ L"Z:\\" }, L".tar");
-    EXPECT_EQ(title, L"Add to \"archive.tar\"");
+    EXPECT_EQ(title, L"Add to \"Z.tar\"");
 }
 
 TEST(BuildAddToArchiveTitle, TarExtensionNameOverLimitIsTruncatedInTheMiddle)

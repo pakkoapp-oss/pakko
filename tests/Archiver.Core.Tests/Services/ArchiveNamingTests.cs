@@ -62,9 +62,10 @@ public sealed class ArchiveNamingTests
     }
 
     [Fact]
-    public void ResolveSingleArchiveName_NoExplicitName_MultipleSources_FallsBackToArchive()
+    public void ResolveSingleArchiveName_NoExplicitName_MultipleSourcesAtDriveRoot_UsesTheDriveLetter()
     {
-        ArchiveNaming.ResolveSingleArchiveName(null, [@"C:\a.txt", @"C:\b.txt"]).Should().Be("archive");
+        // T-F281 (user decision 2026-09-30): the drive letter, as for a drive-root source itself.
+        ArchiveNaming.ResolveSingleArchiveName(null, [@"C:\a.txt", @"C:\b.txt"]).Should().Be("C");
     }
 
     [Fact]
@@ -74,11 +75,11 @@ public sealed class ArchiveNamingTests
     }
 
     [Fact]
-    public void ResolveSingleArchiveName_NoExplicitName_DriveRootSource_FallsBackToArchive()
+    public void ResolveSingleArchiveName_NoExplicitName_DriveRootSource_UsesTheDriveLetter()
     {
-        // T-F99: Path.GetFileNameWithoutExtension("Z:\") returns "" — the drive-root case this
-        // fallback exists for (e.g. a single-source Drive ItemType selection via the shell extension).
-        ArchiveNaming.ResolveSingleArchiveName(null, [@"Z:\"]).Should().Be("archive");
+        // T-F99/T-F281: a drive root has no file name (a single-source Drive ItemType selection via
+        // the shell extension); it is named after its drive letter, not a generic "archive".
+        ArchiveNaming.ResolveSingleArchiveName(null, [@"Z:\"]).Should().Be("Z");
     }
 
     // T-F185: a real path-traversal write was found and fixed here — an explicit ArchiveName
@@ -115,8 +116,10 @@ public sealed class ArchiveNamingTests
     [InlineData(new[] { @"C:\Docs\report.docx" }, "report")]
     [InlineData(new[] { @"C:\Docs\backup.tar.gz" }, "backup")]
     [InlineData(new[] { @"C:\Projects\MyStuff\first.txt", @"C:\Projects\MyStuff\second.txt" }, "MyStuff")]
-    [InlineData(new[] { @"C:\first.txt", @"C:\second.txt" }, "archive")]
-    [InlineData(new[] { @"Z:\" }, "archive")]
+    [InlineData(new[] { @"C:\first.txt", @"C:\second.txt" }, "C")]
+    [InlineData(new[] { @"Z:\" }, "Z")]
+    [InlineData(new[] { @"d:\" }, "D")]
+    [InlineData(new[] { @"Z:" }, "Z")]
     [InlineData(new[] { @"C:\Projects\MyFolder" }, "MyFolder")]
     [InlineData(new[] { @"C:\Projects\.gitignore" }, ".gitignore")]
     [InlineData(new[] { @"\\server\share\a.txt", @"\\server\share\b.txt" }, "share")]

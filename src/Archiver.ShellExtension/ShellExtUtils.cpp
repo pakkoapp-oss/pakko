@@ -531,12 +531,15 @@ std::wstring BuildAddToArchiveTitle(const std::vector<std::wstring>& paths, cons
         ? GetParentFolderName(paths.front())
         : GetFileNameWithoutExtension(paths.front());
 
-    // Empty (no parent, e.g. a drive root) or a bare drive letter like "C:" \u2014 invalid as a
-    // display name (and as the file name ShellCommands.ArchiveAsync would build) \u2014 fall back.
     // T-F99: PathFindFileNameW returns the whole string unchanged for a path ending in a
-    // backslash (e.g. "Z:\", a real drive root's SIGDN_FILESYSPATH) rather than an empty tail,
-    // so name.back() == L':' alone doesn't catch it \u2014 check for a trailing backslash too.
-    if (name.empty() || name.back() == L':' || name.back() == L'\\') name = L"archive";
+    // backslash (e.g. "Z:\", a real drive root's SIGDN_FILESYSPATH) rather than an empty tail.
+    // T-F281: a drive root ("C:" as a parent, "Z:\" itself) is named after its letter, as
+    // ArchiveNaming.GetDefaultArchiveName names the created archive.
+    if (!name.empty() && name.back() == L'\\') name.pop_back();
+    const bool isDriveLetter = name.size() == 2 && name[1] == L':'
+        && ((name[0] >= L'A' && name[0] <= L'Z') || (name[0] >= L'a' && name[0] <= L'z'));
+    if (isDriveLetter) name = std::wstring(1, static_cast<wchar_t>(towupper(name[0])));
+    if (name.empty() || name.back() == L':') name = L"archive";
 
     const std::wstring tmpl = GetLocalizedString(StringId::ArchiveNamedTemplate, localeTag);
     return ApplyTemplate(tmpl, TruncateMiddle(name) + ext);

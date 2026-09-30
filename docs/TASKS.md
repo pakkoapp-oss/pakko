@@ -3134,7 +3134,13 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 
 - **Decision (user, 2026-09-30):** the drive letter — `C.zip` for `C:\`; a UNC share root keeps
   the share name.
-- [ ] **Status:** open. Split out of T-F213 (closed 2026-09-29). Compressing a drive root (App or
+- [~] **Status:** fixed in code 2026-09-30 (v1.7.0 wave 1); device check at the end of the wave.
+- **Progress (2026-09-30):** `ArchiveNaming.GetDefaultArchiveName` and C++ `BuildAddToArchiveTitle`
+  name a drive root, and several files at one, after the upper-cased letter (`C.zip`, `Z.tar`).
+  Tests first on both sides (C# 6 red, C++ 4 red with the old code), full suites green. See
+  `docs/DECISIONS.md`'s T-F281 entry. **CHANGELOG v1.7.0:** compressing a whole drive names the
+  archive after its letter (`C.zip`) instead of `archive.zip`.
+- **Earlier status:** open. Split out of T-F213 (closed 2026-09-29). Compressing a drive root (App or
   Explorer) names the archive `archive.zip` by design (T-F99/T-F100); a name from the drive letter
   or volume label (`C.zip`, `Data (D).zip`) would be friendlier. Naming lives in the shared
   `ArchiveNaming` rule (T-F264) — change it once for all frontends. Tests first.

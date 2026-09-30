@@ -10536,3 +10536,17 @@ code: branch `store/1.6.1.0` (commit 6e4b352, pushed) changes only `Package.appx
   option.
 - **Consequence:** `main`'s manifest stays 1.6.0.0. The next Store upload must be above 1.6.1.0
   (1.7.0.0 is fine). The branch is not merged back; it is the record of what the Store build was.
+
+---
+
+## T-F281 — a drive root is named after its letter, not "archive" (2026-09-30)
+
+**Corrects T-F99's fallback** (a drive root has no file name, so the archive was `archive.zip`).
+User decision 2026-09-30, of three offered (letter, volume label, label + letter): the drive
+letter, upper-cased — `C.zip` for `C:\`, and for several files at a drive root (the folder that
+holds them is the root). Chosen over the label because a label can be empty, duplicated across
+drives, or hold characters a file name cannot. One rule, two copies kept in step by tests:
+`ArchiveNaming.GetDefaultArchiveName` names the created archive, `BuildAddToArchiveTitle` names it
+in the Explorer menu (`ArchiveNamingTests` and `ShellExtUtilsTests` mirror each other's rows). A
+UNC share root keeps the share name; no sources, or a name that is only an extension, still give
+`archive`.

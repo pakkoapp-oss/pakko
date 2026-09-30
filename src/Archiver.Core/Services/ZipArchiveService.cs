@@ -159,10 +159,9 @@ public sealed class ZipArchiveService : IArchiveService
         List<ArchiveError> errors, List<string> createdFiles, List<SkippedFile> skippedFiles,
         IProgress<ProgressReport>? progress, CancellationToken cancellationToken)
     {
-        // T-F99: Path.GetFileNameWithoutExtension returns "" for a drive root (e.g. "Z:\"), now a
-        // reachable single-source selection via the shell extension's Drive ItemType — falls back
-        // to "archive" the same way BuildAddToArchiveTitle already does for the context-menu
-        // title text, instead of silently naming the archive ".zip".
+        // T-F99/T-F281: a drive root (e.g. "Z:\", reachable via the shell extension's Drive
+        // ItemType) has no file name; ArchiveNaming names it after the drive letter ("Z.zip"), the
+        // same way BuildAddToArchiveTitle does for the context-menu title text.
         string destPath = Path.Combine(options.DestinationFolder, ArchiveNaming.SingleArchiveFileName(options with { Format = ArchiveContainerFormat.Zip }));
 
         Directory.CreateDirectory(options.DestinationFolder);

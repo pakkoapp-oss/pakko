@@ -23,8 +23,9 @@ public static class ArchiveNaming
     /// T-F264: the one default name for a new archive, used by the App (blank name box), Explorer's
     /// "Add to" commands and — mirrored in ShellExtUtils.cpp's BuildAddToArchiveTitle — the menu
     /// title. One source: its name without extension (compound tar extensions stripped as a unit, a
-    /// dotfile keeps its full name). Several sources: the folder that holds the first one. Falls back
-    /// to "archive" where that gives no usable name (a drive root, no sources).
+    /// dotfile keeps its full name). Several sources: the folder that holds the first one. A drive
+    /// root is named after its letter ("C", T-F281). Falls back to "archive" where that gives no
+    /// usable name (no sources, a name of only an extension).
     /// </summary>
     public static string GetDefaultArchiveName(IReadOnlyList<string> sourcePaths)
     {
@@ -35,12 +36,17 @@ public static class ArchiveNaming
         string name = sourcePaths.Count > 1
             ? LastSegment(Path.GetDirectoryName(first) ?? "")
             : GetBaseName(first);
+        if (IsDriveSpecifier(name))
+            return char.ToUpperInvariant(name[0]).ToString();
         return name.Length == 0 || name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0 ? FallbackName : name;
     }
 
+    private static bool IsDriveSpecifier(string name) =>
+        name.Length == 2 && name[1] == ':' && char.IsAsciiLetter(name[0]);
+
     // The text after the last separator, like the C++ side's PathFindFileNameW. Unlike
     // Path.GetFileName it gives "share" for a UNC root "\\server\share" (GetFileName gives ""), and
-    // "C:" for a drive root, which the invalid-character check above then rejects.
+    // "C:" for a drive root, which GetDefaultArchiveName turns into the drive letter.
     private static string LastSegment(string path)
     {
         string trimmed = path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
