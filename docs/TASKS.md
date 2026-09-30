@@ -4703,6 +4703,8 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 
 ### T-F204 — tar.exe paths: filenames outside the system code page break or silently corrupt (P0)
 
+- **Device (G6 pass 4, 1.5.0.13 + its CI `pakko.exe`, temporary until G7):** ustar-magic tars with cp866 names (`Док.txt`, `Тека/Документ.txt`) list and extract correctly; a GNU-magic tar with the same cp866 name (Python `GNU_FORMAT`, 7-Zip `-ttar -mcp=866`) is refused as a whole: regression since v1.5.0, filed as T-F305 (P1). The 2026-09-26 check above used a ustar-magic fixture.
+
 - **Device check (2026-09-26, Deploy 1.4.12.13, title build 2026-09-25 23:58:24, agent via Shell/`windows` MCP):** GNU-tar UTF-8 and cp866 Cyrillic names extracted as `Док.txt`; the Archive Browser lists `Док.txt`. Stays `[~]`.
 
 - **Progress (2026-09-25, fix phase 4):** reading fixed in acca0de — output decoded with the user locale's ANSI code page; tar headers read as UTF-8 when valid, else OEM (7-Zip's rule, via `--options tar:hdrcharset=UTF-8` and tar.exe's own invalid-UTF-8 message); a name outside the code page fails with a clear message (U+2713 used to extract as mojibake). Creation: names outside the code page are refused before tar.exe runs (ac379ee, T-F266). Repro matrix re-run under ACP 1251 in the phase-4 spike (DECISIONS). Found on the way: T-F266.
@@ -4876,6 +4878,8 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 - **Reported by:** T-F202, 2026-09-24.
 
 ### T-F215 — tar.exe failure messages show its verbose stdout, stderr is mojibake (P2)
+
+- **Device (G6 pass 4, 1.5.0.13 + its CI `pakko.exe`, temporary until G7):** `pakko a -ttar` on a folder with an exclusively locked `Бе.txt` -> "tar.exe failed to create archive: tar.exe: Couldn't open lk/Бе.txt: Permission denied" (no `a ...` progress lines, the Cyrillic name decoded correctly), exit 2, no archive left.
 
 - **Progress (2026-09-25, fix phase 4):** fixed in acca0de — creation errors keep only tar.exe's error lines (no `a ...` progress lines), decoded in the locale's code page.
 
@@ -5131,6 +5135,8 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 
 ### T-F229 — "Delete after operation" deletes an archive whose entries were partly skipped (P0)
 
+- **Device (G6 pass 4, 1.5.0.13 + its CI `pakko.exe`, temporary until G7):** App (dark, uk-UA) Extract of `reserved.zip` (`fine.txt` + `CON.a.b`) with the Recycle Bin box ticked: `fine.txt` written, the summary listed the skipped `CON.a.b`, and after "Гаразд" the archive was still in place.
+
 - **Progress (2026-09-25, fix phase 1):** the archive is `Partial` in Core (T-F260) and the App
   deletes only `FullyProcessedSources`, after the summary dialog. Device check pending (phase end).
 
@@ -5224,6 +5230,8 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 - **Reported by:** T-F226 review, 2026-09-24.
 
 ### T-F233 — Opening a tar-family archive permanently rewrites the original file's permissions (P0 or P1 — user decision)
+
+- **Device (G6 pass 4, 1.5.0.13 + its CI `pakko.exe`, temporary until G7):** a folder with an explicit `Users:(OI)(CI)R` grant holding `t4.tar.gz`, `valid.7z`, `valid.rar`, `lk.tar.gz`: SDDL and link count (1) of every archive identical before and after `pakko x` (7z, tar.gz) and the App's browse + Extract All of `t4.tar.gz`; `%TEMP%\PakkoTarSandbox` empty afterwards.
 
 - **Device check (2026-09-26, Deploy 1.4.12.13, title build 2026-09-25 23:58:24, agent via Shell/`windows` MCP):** Explorer "Extract to folder" and the Archive Browser on tars in a folder granting Users read: SDDL identical before/after, one link. Stays `[~]` until your own check.
 
@@ -5425,6 +5433,8 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 - **Root (grouping, architecture review 2026-09-25):** text crossing a process or format boundary with no explicit encoding (tar.exe arguments and output, ZIP names without the UTF-8 flag, redirected CLI output). Fix T-F204/T-F234/T-F238 (and T-F244's R14) with one encoding helper per boundary.
 
 ### T-F239 — tar-family extraction decompresses the archive three times; a Job-limit kill reports nothing (P2)
+
+- **Device (G6 pass 4, 1.5.0.13 + its CI `pakko.exe`, temporary until G7):** a 7z with an LZMA2 768 MB dictionary (896 MiB of zeros, `7za -md=768m`) extracted with `pakko x` in 2.8 s, exit 0, full size.
 
 - **Progress (2026-09-25, fix phase 4):** fixed in daa5a61 — reproduced with a 7z whose LZMA2 dictionary is 768 MB: tar.exe said "Cannot allocate memory" (not an empty stderr, as assumed). The Job reports the limit it enforced on a completion port and the scope names it. Pass count unchanged (reason in DECISIONS). Limits raised at the user's request (7884814, ca1d49b): memory = half the machine's memory within 1-4 GiB, CPU time = at least 60 min plus 1 min per 10 MB of archive; that 7z now extracts.
 
@@ -5693,6 +5703,8 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 
 ### T-F248 — Read-only archives leave a hardlink to the user's archive in %TEMP% after every tar-family operation (P1)
 
+- **Device (G6 pass 4, 1.5.0.13 + its CI `pakko.exe`, temporary until G7):** `r.tar` with `attrib +R`: `pakko x` exit 0; the archive still ReadOnly, one hard link, nothing under `%TEMP%\PakkoTarSandbox`.
+
 - **Device check (2026-09-26, Deploy 1.4.12.13, title build 2026-09-25 23:58:24, agent via Shell/`windows` MCP):** a read-only tar extracted; still read-only, one link, nothing under `PakkoTarSandbox`. Stays `[~]`.
 
 - **Progress (2026-09-25, fix phase 4):** fixed with T-F233 (8bbfeed) — nothing is linked or copied, so nothing is left; test: a read-only archive keeps its attribute and link count and the quarantine folder goes.
@@ -5720,6 +5732,8 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 - **Root:** T-F263 (staging/commit owner) — the part this leaf needs goes with it.
 
 ### T-F249 — RAR encryption checks read the whole archive into memory (P2)
+
+- **Device (G6 pass 4, 1.5.0.13 + its CI `pakko.exe`, temporary until G7):** a 1.5 GB file starting with the RAR5 signature: `pakko l` and `pakko x` peak at 31-32 MB working set and answer in 0.3-0.4 s (tar.exe's own error, exit 2); the crafted `-5` record-size `loop.rar` answers in 0.3 s (no hang).
 
 - **Progress (2026-09-25, fix phase 4):** fixed in c5d045b — a 64 KB header window; NEW: a record size of -5 looped forever (a crafted .rar hung listing/extraction) — now ends the parse; `ReadVInt` bounds on each line.
 
@@ -5884,6 +5898,8 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 - **Reported by:** T-F226 batch 3, 2026-09-25.
 
 ### T-F256 — The T-F49 symlink-escape regression test no longer proves the pre-scan (P2, tests)
+
+- **Device (G6 pass 4, 1.5.0.13 + its CI `pakko.exe`, temporary until G7):** `evil.tar` (`ok.txt`, a symlink `link -> ../../../../escaped`, `link/pwned.txt`): `pakko x` -> "Archive contains a symlink, hardlink, device, or other special entry and cannot be safely extracted.", exit 2; no `escaped` anywhere, the output folder empty, quarantine empty.
 
 - **Progress (2026-09-25, fix phase 4):** fixed in 1c8af01 — the test asserts the pre-scan's message; the `if (false)` mutant now fails it. The pre-scan also splits on `\` (acca0de).
 
@@ -6867,6 +6883,7 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   "Стиснення... (файлів: 1, 512,0 МБ) · 54,5 MB/s". `MainViewModel.cs` (the speed `switch`, ~line 1744)
   hardcodes `GB/s`/`MB/s`/`KB/s`/`B/s` while sizes go through the localized units. Use the localized size
   unit plus a per-second format from `.resw` (37 locales); check the operation window's speed text too.
+- **G6 pass 4:** the App's ETA is English too ("· 140 KB/s · ~40:37 remaining" during a tar.bz2 extraction). The Explorer operation window is already localized ("155,1 МБ/с").
 - **Reported by:** G6 device campaign, 2026-09-30.
 
 ### T-F304 — Two App controls have no UIA name (P3)
@@ -6877,6 +6894,51 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   is the second one). Narrator reads nothing useful. Fix: `AutomationProperties.LabeledBy` to the row's
   label, and a name for the card toggle via `x:Uid` (37 locales); extend the App UIA-name test if one
   covers `MainWindow.xaml`.
+- **Reported by:** G6 device campaign, 2026-09-30.
+
+### T-F305 — A GNU-format tar with OEM (cp866) names is refused as a whole (P1, regression)
+
+- [ ] **Status:** open. Found in G6 pass 4, 2026-09-30 (CI `pakko.exe` of af43cae, ACP 1251 / OEMCP 866).
+  A tar whose header magic is GNU's `ustar  \0` (7-Zip's default tar output, GNU tar, Python
+  `GNU_FORMAT`) holding a cp866 name (`Док.txt`; 7-Zip `a -ttar -mcp=866`, or `tarfile` with
+  `encoding="cp866"`): `pakko x`/`pakko l` refuse the whole archive with "file names tar.exe cannot
+  represent on this system (code page 1251)" — wrong, the name is Cyrillic and fits 1251. The same name
+  in a POSIX-ustar-magic tar (`ustar\0`) lists and extracts fine. **Regression:** v1.4.12's `pakko x`
+  extracts both GNU fixtures as `Док.txt`; v1.5.0 (fix phase 4, T-F204) already refuses them.
+  Cause: `TarSandboxScope.ListAsync` runs `--options tar:hdrcharset=UTF-8` first and falls back to the
+  plain (OEM) reading only when stderr has libarchive's "Pathname can't be converted from UTF-8"; on a
+  GNU-magic header libarchive prints only "empty or unreadable filename", so the scope treats it as a
+  valid-UTF-8 name the code page cannot show and stops. Plain `tar -tf` reads the archive (exit 0).
+  `TarBuilder` (integration tests) writes only `ustar\0`, so GNU magic has no test; the 2026-09-26 T-F204
+  device check used a ustar fixture. Fix tests-first: GNU-magic cp866 and UTF-8 names through list and
+  extract; decide the header charset from the header bytes (valid UTF-8 or not, 7-Zip's rule) rather
+  than from libarchive's wording. Fixtures: `C:\g6\p4\cp866.tar`, `z7oem.tar` (GNU), `cp866u.tar`,
+  `cp866d.tar` (ustar).
+- **Reported by:** G6 device campaign, 2026-09-30.
+
+### T-F306 — App: a mixed ZIP + tar extraction shows 100% for the whole tar part (P2)
+
+- [ ] **Status:** open. Found in G6 pass 4, 2026-09-30 (1.5.0.13, App). Extract of `big.zip` (540 MB) +
+  `big.tar.bz2` (200 MB) from the list: the bar reaches 100% at 3.2 s after the ZIP and stays at 100%
+  with the speed frozen ("178,5 MB/s") until "Видобуто за 43 с" — about 93% of the run looks finished.
+  `ExtractionRouter.ExtractAsync` passes `progress: null` to tar whenever ZIP also ran (T-F142's guard
+  against a second 0->100 climb); its comment says this "keeps the pre-T-F142 percent-only
+  per-archive-slice shape" — the device shows no tar reports at all. Explorer is not affected: Shell
+  runs one archive at a time ("Архів 2 з 2 · big.tar.bz2", bar restarts from 0 with bytes and speed).
+  Fix: one combined byte total (ZIP bytes + tar's polled bytes), or per-archive slices with the archive
+  number shown, as the operation window does. T-F142 itself stays done (the mixed case was its
+  documented compromise).
+- **Reported by:** G6 device campaign, 2026-09-30.
+
+### T-F307 — tar-family extraction sits at 0% with no status through the listing passes (P3)
+
+- [ ] **Status:** open. Found in G6 pass 4, 2026-09-30 (1.5.0.13). A 200 MB `.tar.bz2`: the App shows
+  "Видобування... (архівів: 1)" at 0% with no speed for 24.7 s of 38 s, the Explorer window "Архів 2 з 2 ·
+  big.tar.bz2" at 0% for 26 s; a 316 MB `.tar.bz2` Extract Selected: 39 s at 0% of 58 s. That time is the
+  `-t`/`-tv` listing passes (each decompresses the whole archive; T-F239 kept the pass count). Browse
+  of the 316 MB archive showed an empty list for about 30 s (whether a busy indicator was visible was not
+  checked). Show a "Перевірка архіву..." phase (indeterminate or polled by the archive bytes read), or
+  cut the passes to one `-tv`.
 - **Reported by:** G6 device campaign, 2026-09-30.
 
 ## Test-Coverage Audit Follow-Ups (T-F174–T-F186)
