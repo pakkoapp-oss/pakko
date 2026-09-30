@@ -52,8 +52,8 @@ public sealed class ZipArchiveServiceExtractPerEntryFailureTests : IDisposable
         Directory.GetDirectories(dest, ".pakko-x-*").Should().BeEmpty();
     }
 
-    // T-F237: a name past Windows' 32,767-character limit fails only itself, and the error stays
-    // readable - it used to repeat the whole 40,000-character path twice (80 KB).
+    // T-F237: a 20,000-level name fails only itself (over MaxEntryDepth), and the error stays
+    // readable - it used to carry the whole 40,000-character path twice (80 KB).
     [Fact]
     public async Task ExtractAsync_TwentyThousandSegmentName_OthersExtractAndTheErrorIsShort()
     {
@@ -74,7 +74,28 @@ public sealed class ZipArchiveServiceExtractPerEntryFailureTests : IDisposable
         Directory.Exists(Path.Combine(dest, "a")).Should().BeFalse();
         ArchiveError error = result.Errors.Should().ContainSingle().Subject;
         error.Message.Length.Should().BeLessThan(8 * 1024);
-        error.Message.Should().StartWith("Cannot extract 'a/a/").And.Contain("x.txt");
+        error.Message.Should().StartWith("Entry 'a/a/").And.Contain("x.txt").And.Contain("unsafe path");
+    }
+
+    [Fact]
+    public async Task ExtractAsync_NameDeeperThanTheLimit_OnlyThatEntryIsRefusedAndNoFolderIsMade()
+    {
+        string deep = string.Concat(Enumerable.Repeat("a/", ArchiveEntrySecurity.MaxEntryDepth)) + "x.txt";
+        string zip = CreateZip("deep.zip", "ok1.txt", deep, "ok2.txt");
+        string dest = Path.Combine(_temp.Path, "lim");
+        Directory.CreateDirectory(dest);
+
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [zip],
+            DestinationFolder = dest,
+            Mode = ExtractMode.SingleFolder,
+        });
+
+        File.Exists(Path.Combine(dest, "ok1.txt")).Should().BeTrue();
+        File.Exists(Path.Combine(dest, "ok2.txt")).Should().BeTrue();
+        Directory.Exists(Path.Combine(dest, "a")).Should().BeFalse();
+        result.Errors.Should().ContainSingle().Which.Message.Should().Contain("unsafe path");
     }
 
     // Shell's "Extract to <name>\" passes a fresh folder that does not exist yet.

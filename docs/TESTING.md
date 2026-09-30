@@ -850,7 +850,10 @@ Ukrainian UI, CI an English one.
   (`GC.GetAllocatedBytesForCurrentThread`; 1.6 GB before the fix), plus pinned odd shapes (explicit
   folder after its implied one, a file and a folder with one name, `a//b`, a leading `/`). Core:
   `CoreTextTests` (a long argument keeps head and tail, surrogate pairs whole) and
-  `ExtractAsync_TwentyThousandSegmentName_OthersExtractAndTheErrorIsShort` (80 KB error before).
+  `ExtractAsync_TwentyThousandSegmentName_OthersExtractAndTheErrorIsShort` (80 KB error before);
+  `MaxEntryDepth`: `HasUnsafePath_Depth*` (limit and limit+1, both separators, `a//b`),
+  `ExtractAsync_NameDeeperThanTheLimit_*` (ZIP, that entry only) and
+  `NameDeeperThanTheLimit_RejectedByThePreScan` (tar, pax path).
 - T-F198: `AppResourceKeysTests` (App.Core) — the twelve new App keys in all 37 `.resw` files with
   English's placeholders.
 - T-F221: `CliFacingMessagesTests` (Core) and `CliMessagesSubprocessTests` (real `pakko.exe`):

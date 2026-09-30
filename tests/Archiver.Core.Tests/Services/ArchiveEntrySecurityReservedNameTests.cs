@@ -55,4 +55,30 @@ public sealed class ArchiveEntrySecurityReservedNameTests
     {
         ArchiveEntrySecurity.HasUnsafePath(entryPath).Should().BeTrue();
     }
+
+    // T-F237: each new folder level costs Windows a parse of the whole path, so a deep chain is
+    // quadratic and uncancellable (4,000 levels: 91 s) - deeper names are refused like traversal.
+    [Theory]
+    [InlineData('/')]
+    [InlineData('\\')]
+    public void HasUnsafePath_DepthOverTheLimit_IsUnsafe(char separator)
+    {
+        string atLimit = string.Join(separator, Enumerable.Repeat("a", ArchiveEntrySecurity.MaxEntryDepth));
+        string overLimit = atLimit + separator + "x.txt";
+
+        ArchiveEntrySecurity.HasUnsafePath(atLimit).Should().BeFalse();
+        ArchiveEntrySecurity.HasUnsafePath(atLimit + separator).Should().BeFalse(); // a folder entry
+        ArchiveEntrySecurity.HasUnsafePath(overLimit).Should().BeTrue();
+    }
+
+    [Fact]
+    public void HasUnsafePath_DepthCountsBothSeparatorsButNotEmptySegments()
+    {
+        string half = string.Join('/', Enumerable.Repeat("a", ArchiveEntrySecurity.MaxEntryDepth / 2));
+        string mixed = half + "\\" + half.Replace('/', '\\');
+
+        ArchiveEntrySecurity.HasUnsafePath(mixed).Should().BeFalse();
+        ArchiveEntrySecurity.HasUnsafePath(mixed + "/x.txt").Should().BeTrue();
+        ArchiveEntrySecurity.HasUnsafePath(mixed.Replace("/", "//")).Should().BeFalse();
+    }
 }

@@ -104,6 +104,30 @@ public sealed class TarSandboxedServiceNameEncodingTests : IDisposable
         result.Errors.Should().ContainSingle().Which.Message.Should().Contain("unsafe entry path");
     }
 
+    // T-F237: refused before tar.exe runs, so the quarantine never holds the deep tree.
+    [Fact]
+    public async Task NameDeeperThanTheLimit_RejectedByThePreScan()
+    {
+        string archivePath = Path.Combine(_temp.Path, "deep.tar");
+        string deep = string.Concat(Enumerable.Repeat("a/", ArchiveEntrySecurity.MaxEntryDepth)) + "x.txt";
+        TarBuilder.WriteTar(archivePath,
+        [
+            new TarBuilder.Entry { Name = "ok.txt", Content = [1] },
+            TarBuilder.PaxPath(deep),
+            new TarBuilder.Entry { Name = "placeholder.txt", Content = [2] },
+        ]);
+        string output = Path.Combine(_temp.Path, "out");
+
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [archivePath], DestinationFolder = output, Mode = ExtractMode.SingleFolder,
+        });
+
+        result.Success.Should().BeFalse();
+        result.Errors.Should().ContainSingle().Which.Message.Should().Contain("unsafe entry path");
+        Directory.Exists(Path.Combine(output, "a")).Should().BeFalse();
+    }
+
     // T-F215: a failed creation reported tar.exe's "-v" progress lines ("a src", "a src/a.txt")
     // instead of the reason.
     [Fact]

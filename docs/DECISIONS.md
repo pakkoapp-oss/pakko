@@ -10335,7 +10335,7 @@ cp866 archives were refused as unrepresentable; the T-F204 device check had used
   be recovered and the tick name would pass as OEM on some code-page pairs.
 - **Left open:** a compressed GNU-magic tar with OEM names is still refused (T-F310).
 
-## T-F237 item 2 — deep entry names: linear browse tree, shortened messages, no depth limit (2026-09-30)
+## T-F237 item 2 — deep entry names: linear browse tree, shortened messages, a depth limit (2026-09-30)
 
 An 80 KB ZIP with one `"a/" * 20000 + "x.txt"` entry held the App at ~1.7 GB in browse mode
 (`ArchiveTreeIndex` made one full-path string per ancestor, O(depth^2)), and `pakko x` printed an
@@ -10348,6 +10348,15 @@ An 80 KB ZIP with one `"a/" * 20000 + "x.txt"` entry held the App at ~1.7 GB in 
   root (before, its empty segment was a nameless row leading back to the root).
 - **Chosen:** `CoreText` shortens every string argument over 2,048 characters to its head and tail
   around `...`, so no Core message can carry a 40,000-character path; surrogate pairs stay whole.
-- **Rejected for now:** an entry depth or length limit in the pre-extraction checks. Windows already
-  refuses a path over 32,767 characters, per entry (T-F230: the rest extracts, nothing is created);
-  a depth limit below that would be a policy number with no fact behind it.
+- **Chosen:** `ArchiveEntrySecurity.MaxEntryDepth = 256` folder levels, in `HasUnsafePath` (both
+  separators, empty segments not counted), so ZIP refuses that entry alone and the tar pre-scan the
+  whole archive, both before any file system call; the message is the existing "unsafe path" one.
+  Evidence: a name just under Windows' 32,767-character limit is still extracted, and every new level
+  makes Windows parse the whole path again inside one `Directory.CreateDirectory` call that no
+  cancellation reaches. Measured with `pakko x` (60 KB ZIPs): 1,000 levels 5 s, 2,000 levels 22 s,
+  4,000 levels 91 s; 15,000 levels ran 6+ minutes before being killed and its tree took 10 minutes
+  to delete. Each distinct chain pays depth squared again. 256 is chosen by reasoning, not a
+  standard: MAX_PATH-era tools cannot reach much past 130 levels (260 characters, at least 2 per
+  level), and 256 costs a fraction of a second per chain on the curve above (a 256-level entry:
+  0.65 s for the whole `pakko x` run). Accepted asymmetry: Pakko still archives a deeper tree
+  (item 1); extracting that archive refuses only the entries past the limit.

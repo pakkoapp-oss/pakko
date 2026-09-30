@@ -14,6 +14,13 @@ internal static class ArchiveEntrySecurity
     // duplicated separately in ZipArchiveService and TarProcessService. See DECISIONS.md's
     // T-F94 entry.
     public const int MaxCompressionRatio = 1000;
+
+    /// <summary>
+    /// T-F237: the most folder levels an entry name may have. Windows parses the whole path again
+    /// for every new level, so a chain costs depth squared, inside one uncancellable call (measured:
+    /// 1,000 levels 5 s, 4,000 levels 91 s, from a 60 KB ZIP).
+    /// </summary>
+    public const int MaxEntryDepth = 256;
     // T-F39: Reject reserved Windows device names (with or without extension, case-insensitive).
     // T-F243: the full list from Microsoft's "Naming Files" page, incl. COM0/LPT0, the
     // superscript-digit ports and the console names.
@@ -27,10 +34,15 @@ internal static class ArchiveEntrySecurity
 
     // T-F228: a ".." segment (either separator — Windows honors both) or a rooted/drive-relative
     // name can leave the extraction folder, or leave and re-enter it under a name the conflict
-    // check never sees. Rejected outright, never normalized.
+    // check never sees. Rejected outright, never normalized. T-F237: so is a name deeper than
+    // MaxEntryDepth; empty segments ("a//b") are not levels.
     public static bool HasUnsafePath(string entryPath)
-        => Path.IsPathRooted(entryPath)
-           || entryPath.Split(PathSeparators).Any(segment => segment == "..");
+    {
+        if (Path.IsPathRooted(entryPath))
+            return true;
+        string[] segments = entryPath.Split(PathSeparators, StringSplitOptions.RemoveEmptyEntries);
+        return segments.Length > MaxEntryDepth || segments.Contains("..");
+    }
 
     private static readonly char[] PathSeparators = ['/', '\\'];
 
