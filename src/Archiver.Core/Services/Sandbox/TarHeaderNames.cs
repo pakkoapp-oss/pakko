@@ -88,6 +88,12 @@ internal static class TarHeaderNames
                     return true;
             }
         }
+
+        private static bool IsUtf8(ReadOnlySpan<byte> field)
+        {
+            int end = field.IndexOf((byte)0);
+            return Utf8.IsValid(end < 0 ? field : field[..end]);
+        }
     }
 
     private static int ReadFully(ReadAt read, Span<byte> buffer, long offset)
@@ -101,12 +107,6 @@ internal static class TarHeaderNames
             total += n;
         }
         return total;
-    }
-
-    private static bool IsUtf8(ReadOnlySpan<byte> field)
-    {
-        int end = field.IndexOf((byte)0);
-        return Utf8.IsValid(end < 0 ? field : field[..end]);
     }
 
     // Stored octal, over the header with the checksum field as spaces; old tars summed signed bytes.
