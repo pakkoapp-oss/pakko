@@ -377,7 +377,9 @@ public sealed class TarSandboxedService : ITarService
         // T-F298: only the directories tar.exe would have to create implicitly — tar.exe does not
         // set the time of a directory that already exists, so pre-creating one with its own entry
         // lost that entry's time.
-        foreach (string relativeDir in DirectoriesToPreCreate(allNames))
+        // With a selection, only the selected names are extracted: their folders' entries may not be.
+        IEnumerable<string> extractedNames = (IEnumerable<string>?)expandedSelection ?? allNames;
+        foreach (string relativeDir in DirectoriesToPreCreate(extractedNames))
             Directory.CreateDirectory(Path.Combine(scope.OutputDirectory!, relativeDir));
 
 

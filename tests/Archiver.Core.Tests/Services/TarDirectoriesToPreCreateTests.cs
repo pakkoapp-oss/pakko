@@ -18,6 +18,8 @@ public sealed class TarDirectoriesToPreCreateTests
     [InlineData(new[] { "a/f.txt", "a/" }, new[] { "a" })]
     [InlineData(new[] { "a/", "a/b/c.txt" }, new[] { "a/b" })]
     [InlineData(new[] { "x/y/z.txt" }, new[] { "x", "x/y" })]
+    // An Extract Selected expansion of "a/b/f.txt": its folders' entries are not extracted.
+    [InlineData(new[] { "a/b/f.txt" }, new[] { "a", "a/b" })]
     public void DirectoriesToPreCreate_OnlyDirectoriesWithoutAnEarlierEntry(string[] names, string[] expected)
     {
         TarSandboxedService.DirectoriesToPreCreate(names).Should().BeEquivalentTo(expected);

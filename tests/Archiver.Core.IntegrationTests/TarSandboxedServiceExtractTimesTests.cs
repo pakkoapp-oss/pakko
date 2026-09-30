@@ -102,6 +102,26 @@ public sealed class TarSandboxedServiceExtractTimesTests : IDisposable
         System.IO.File.GetLastWriteTimeUtc(Path.Combine(dest, "b", "c", "d.txt")).Should().Be(FileUtc);
     }
 
+    // T-F52 guard for Extract Selected (and T-F97 preview, T-F98 drill-in): the selection holds a
+    // nested file but not its folders' entries, so tar.exe never creates those folders itself.
+    [Integration]
+    public async Task ExtractAsync_SelectedNestedFileUnderExplicitFolders_Extracts()
+    {
+        string archive = Tar("select.tar", Folder("a/"), Folder("a/b/"), File("a/b/f.txt"), File("c.txt"));
+
+        string dest = Path.Combine(_temp.Path, "selected");
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [archive],
+            DestinationFolder = dest,
+            Mode = ExtractMode.SingleFolder,
+            SelectedEntryPaths = ["a/b/f.txt"],
+        });
+
+        result.Success.Should().BeTrue(because: string.Join("; ", result.Errors.Select(e => e.Message)));
+        System.IO.File.Exists(Path.Combine(dest, "a", "b", "f.txt")).Should().BeTrue();
+    }
+
     [Integration]
     public async Task ExtractAsync_SeparateFolders_SingleRootFolderEntry_TheCreatedFolderGetsTheRootTime()
     {

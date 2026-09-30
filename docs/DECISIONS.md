@@ -10580,4 +10580,10 @@ approved in Plan mode, advisor-reviewed before and after.
   entries work there) and then dates. Accepted cost: a rare archive with an implicit subfolder under
   an explicit folder pre-creates that subfolder, and so its parent, which then loses its time; it
   still extracts. tar folder times are read from the quarantine before the move phase.
+- **T-F52's failure did not reproduce on 2026-09-30:** with no directory pre-created at all, all 162
+  `Archiver.Core.IntegrationTests` passed (bsdtar 3.8.8, Windows 11 26200), including "sub/b.txt"
+  with no "sub/" entry. Pre-creation stays as a defense for other tar.exe builds. With a selection
+  (Extract Selected, T-F97 preview, T-F98 drill-in) it follows the names tar.exe actually extracts
+  (`expandedSelection`), whose folder entries are often not among them; a test cannot tell the two
+  inputs apart on this machine, so `TarDirectoriesToPreCreateTests` checks the function instead.
 - **Not changed:** listing, Test and the App browser still show the DOS time.
