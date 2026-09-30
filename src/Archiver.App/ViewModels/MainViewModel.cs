@@ -54,8 +54,7 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly SessionPasswordMemory _browsePasswords = new();
     private readonly InlinePasswordState _encryptionPassword = new();
 
-    private IReadOnlyDictionary<string, IReadOnlyList<ArchiveEntryViewModel>> _archiveIndex =
-        new Dictionary<string, IReadOnlyList<ArchiveEntryViewModel>>();
+    private ArchiveTree _archiveIndex = ArchiveTreeIndex.Build([]);
 
     // T-F98: nested archive drill-down. Each pushed frame is the PARENT level's state, restored
     // when the user navigates back up out of the currently-open (child) nested archive's own
@@ -69,7 +68,7 @@ public sealed partial class MainViewModel : ObservableObject
         string? ArchivePath,
         string CurrentFolderPath,
         string? DisplayName,
-        IReadOnlyDictionary<string, IReadOnlyList<ArchiveEntryViewModel>> ArchiveIndex,
+        ArchiveTree ArchiveIndex,
         List<string> BreadcrumbAncestry,
         string? ScopeDir,
         EncryptionSummary? Encryption,
@@ -1222,14 +1221,13 @@ public sealed partial class MainViewModel : ObservableObject
     private void RefreshCurrentFolder()
     {
         // T-F05/T-F107: a childless archive folder (explicit empty directory entry) is a node in
-        // its parent's child list but has no key of its own in the index — TryGetValue + empty
-        // fallback avoids a KeyNotFoundException on navigating into one, rather than assuming
-        // every folder path is guaranteed a dictionary entry.
+        // its parent's child list but has no children of its own — TryGetChildren is false for it,
+        // hence the empty fallback.
         IReadOnlyList<ArchiveEntryViewModel> entries = BrowseScope switch
         {
             ArchiveBrowseScope.RealFileSystem => FileSystemBrowser.ListFolder(CurrentFolderPath),
             ArchiveBrowseScope.ThisPc => FileSystemBrowser.ListDrives(),
-            _ => _archiveIndex.TryGetValue(CurrentFolderPath, out IReadOnlyList<ArchiveEntryViewModel>? list) ? list : [],
+            _ => _archiveIndex.TryGetChildren(CurrentFolderPath, out IReadOnlyList<ArchiveEntryViewModel> list) ? list : [],
         };
 
         // T-F98/T-F110: only a nested-archive row inside the currently browsed archive can ever
@@ -1499,7 +1497,7 @@ public sealed partial class MainViewModel : ObservableObject
     {
         ResetNestedBrowseStack();
         _browsePasswords.Clear();
-        _archiveIndex = new Dictionary<string, IReadOnlyList<ArchiveEntryViewModel>>();
+        _archiveIndex = ArchiveTreeIndex.Build([]);
         BrowsedArchivePath = null;
         BrowseScope = ArchiveBrowseScope.Archive;
         CurrentFolderPath = string.Empty;

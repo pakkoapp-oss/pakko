@@ -3,108 +3,130 @@ using Archiver.Core.Models;
 namespace Archiver.App.Core;
 
 /// <summary>
-/// Builds a parent-path -&gt; children index from a flat ArchiveEntryInfo list, once per archive
-/// open. Folder navigation afterward is an O(1) dictionary lookup — there is no per-navigation
-/// re-scan of the flat list, which matters at the 65,000+-entry scale this app's archives can
-/// reach (T-F20's Zip64 tests). Lives in Archiver.App.Core (not Archiver.Core) because
-/// Archiver.Core has zero WinUI/UI-model references — a folder hierarchy is an App-layer concern.
+/// Builds an <see cref="ArchiveTree"/> from a flat ArchiveEntryInfo list, once per archive open.
+/// Lives in Archiver.App.Core (not Archiver.Core) because Archiver.Core has zero WinUI/UI-model
+/// references — a folder hierarchy is an App-layer concern.
 /// </summary>
 public static class ArchiveTreeIndex
 {
-    /// <summary>Builds the parent-path -&gt; children index for O(1) folder navigation.</summary>
-    public static IReadOnlyDictionary<string, IReadOnlyList<ArchiveEntryViewModel>> Build(
-        IReadOnlyList<ArchiveEntryInfo> flatEntries)
-    {
-        Dictionary<string, ArchiveEntryViewModel> nodesByPath = BuildNodesByPath(flatEntries);
-        Dictionary<string, List<ArchiveEntryViewModel>> childrenByParent = BuildChildrenIndex(nodesByPath.Values);
-        return SortAndBuildResult(childrenByParent);
-    }
+    /// <summary>Builds the folder tree; linear in the total length of the entry paths.</summary>
+    public static ArchiveTree Build(IReadOnlyList<ArchiveEntryInfo> flatEntries) => new(flatEntries);
+}
 
-    // Many ZIPs have no explicit directory entries — folders are implied purely by '/' in file
-    // paths (confirmed for this project's own fixtures: ZipArchiveService.ListEntriesAsync
-    // reports IsDirectory=false for every entry of valid_nested_folders.zip). tar-family listings
-    // do carry explicit directory entries. Either input shape must produce the same tree, so every
-    // node — explicit or implied — is deduplicated by path before grouping.
-    private static Dictionary<string, ArchiveEntryViewModel> BuildNodesByPath(
-        IReadOnlyList<ArchiveEntryInfo> flatEntries)
-    {
-        var nodesByPath = new Dictionary<string, ArchiveEntryViewModel>(StringComparer.Ordinal);
+/// <summary>
+/// An archive's folder tree. Many ZIPs have no explicit directory entries — folders are implied
+/// by '/' in file paths — while tar-family listings carry them; both shapes give the same tree,
+/// and the first entry at a path wins. A folder's row list is built on first request, so only
+/// visited folders pay for full-path strings (T-F237: one string per ancestor was O(depth^2)).
+/// </summary>
+public sealed class ArchiveTree
+{
+    private readonly Node _root = new(string.Empty, 0);
 
+    internal ArchiveTree(IReadOnlyList<ArchiveEntryInfo> flatEntries)
+    {
         foreach (ArchiveEntryInfo entry in flatEntries)
+            Insert(entry);
+    }
+
+    /// <summary>
+    /// The rows of <paramref name="folderPath"/> ('/'-separated, empty for the root), folders first,
+    /// then files, both ordinal — File Explorer's order. False for a folder with no children.
+    /// </summary>
+    public bool TryGetChildren(string folderPath, out IReadOnlyList<ArchiveEntryViewModel> children)
+    {
+        Node? node = Find(folderPath);
+        if (node?.Children is null)
         {
-            string path = entry.Path;
-            if (!nodesByPath.ContainsKey(path))
+            children = [];
+            return false;
+        }
+        children = node.Rows ??= BuildRows(node.Children);
+        return true;
+    }
+
+    private void Insert(ArchiveEntryInfo entry)
+    {
+        string path = entry.Path;
+        Node node = _root;
+        int start = FirstSegmentStart(path);
+        while (true)
+        {
+            int slash = path.IndexOf('/', start);
+            int end = slash < 0 ? path.Length : slash;
+            node.Children ??= new Dictionary<string, Node>(StringComparer.Ordinal);
+            string name = path[start..end];
+            if (!node.Children.TryGetValue(name, out Node? child))
             {
-                nodesByPath[path] = new ArchiveEntryViewModel
-                {
-                    FullPath = path,
-                    Name = path[(path.LastIndexOf('/') + 1)..],
-                    IsFolder = entry.IsDirectory,
-                    Size = entry.Size,
-                    CompressedSize = entry.CompressedSize,
-                    Crc32 = entry.Crc32,
-                    Modified = entry.Modified,
-                    Encryption = entry.Encryption,
-                };
+                child = new Node(path, end) { Entry = slash < 0 ? entry : null };
+                node.Children[name] = child;
             }
-
-            SynthesizeAncestorFolders(path, nodesByPath);
+            if (slash < 0)
+                return;
+            node = child;
+            start = slash + 1;
         }
-
-        return nodesByPath;
     }
 
-    // Synthesizes every ancestor folder implied by an entry's path, even if no explicit directory
-    // entry for it exists in flatEntries.
-    private static void SynthesizeAncestorFolders(string path, Dictionary<string, ArchiveEntryViewModel> nodesByPath)
+    private Node? Find(string folderPath)
     {
-        int slash = path.LastIndexOf('/');
-        while (slash >= 0)
+        if (folderPath.Length == 0)
+            return _root;
+        Node? node = _root;
+        int start = FirstSegmentStart(folderPath);
+        while (node?.Children is not null)
         {
-            string folderPath = path[..slash];
-            if (!nodesByPath.ContainsKey(folderPath))
+            int slash = folderPath.IndexOf('/', start);
+            int end = slash < 0 ? folderPath.Length : slash;
+            if (!node.Children.TryGetValue(folderPath[start..end], out node))
+                return null;
+            if (slash < 0)
+                return node;
+            start = slash + 1;
+        }
+        return null;
+    }
+
+    // A leading '/' belongs to the root — its empty first segment would otherwise be a folder
+    // whose path, "", is the root's own.
+    private static int FirstSegmentStart(string path) => path.Length > 1 && path[0] == '/' ? 1 : 0;
+
+    private static List<ArchiveEntryViewModel> BuildRows(Dictionary<string, Node> children)
+    {
+        var rows = new List<ArchiveEntryViewModel>(children.Count);
+        foreach ((string name, Node child) in children)
+            rows.Add(child.ToRow(name));
+        rows.Sort((a, b) =>
+        {
+            if (a.IsFolder != b.IsFolder)
+                return a.IsFolder ? -1 : 1;
+            return string.CompareOrdinal(a.Name, b.Name);
+        });
+        return rows;
+    }
+
+    // A node's own path is PathSource[..PathLength] — a prefix of the first entry path that
+    // reached it, kept as a reference rather than copied.
+    private sealed class Node(string pathSource, int pathLength)
+    {
+        public Dictionary<string, Node>? Children { get; set; }
+
+        public ArchiveEntryInfo? Entry { get; init; }
+
+        public List<ArchiveEntryViewModel>? Rows { get; set; }
+
+        public ArchiveEntryViewModel ToRow(string name) => Entry is { } entry
+            ? new ArchiveEntryViewModel
             {
-                nodesByPath[folderPath] = new ArchiveEntryViewModel
-                {
-                    FullPath = folderPath,
-                    Name = folderPath[(folderPath.LastIndexOf('/') + 1)..],
-                    IsFolder = true,
-                };
+                FullPath = entry.Path,
+                Name = name,
+                IsFolder = entry.IsDirectory,
+                Size = entry.Size,
+                CompressedSize = entry.CompressedSize,
+                Crc32 = entry.Crc32,
+                Modified = entry.Modified,
+                Encryption = entry.Encryption,
             }
-            slash = folderPath.LastIndexOf('/');
-        }
-    }
-
-    private static Dictionary<string, List<ArchiveEntryViewModel>> BuildChildrenIndex(
-        IEnumerable<ArchiveEntryViewModel> nodes)
-    {
-        var childrenByParent = new Dictionary<string, List<ArchiveEntryViewModel>>(StringComparer.Ordinal);
-        foreach (ArchiveEntryViewModel node in nodes)
-        {
-            int slash = node.FullPath.LastIndexOf('/');
-            string parentPath = slash >= 0 ? node.FullPath[..slash] : string.Empty;
-            if (!childrenByParent.TryGetValue(parentPath, out List<ArchiveEntryViewModel>? siblings))
-                childrenByParent[parentPath] = siblings = [];
-            siblings.Add(node);
-        }
-        return childrenByParent;
-    }
-
-    // Folders first, then files, both alphabetical — matches File Explorer's own ordering.
-    private static Dictionary<string, IReadOnlyList<ArchiveEntryViewModel>> SortAndBuildResult(
-        Dictionary<string, List<ArchiveEntryViewModel>> childrenByParent)
-    {
-        var result = new Dictionary<string, IReadOnlyList<ArchiveEntryViewModel>>(StringComparer.Ordinal);
-        foreach ((string? parentPath, List<ArchiveEntryViewModel>? children) in childrenByParent)
-        {
-            children.Sort((a, b) =>
-            {
-                if (a.IsFolder != b.IsFolder)
-                    return a.IsFolder ? -1 : 1;
-                return string.CompareOrdinal(a.Name, b.Name);
-            });
-            result[parentPath] = children;
-        }
-        return result;
+            : new ArchiveEntryViewModel { FullPath = pathSource[..pathLength], Name = name, IsFolder = true };
     }
 }

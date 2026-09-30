@@ -1377,15 +1377,21 @@ public sealed record ArchiveEntryViewModel
 // Archiver.App.Core/ArchiveTreeIndex.cs
 public static class ArchiveTreeIndex
 {
-    public static IReadOnlyDictionary<string, IReadOnlyList<ArchiveEntryViewModel>> Build(
-        IReadOnlyList<ArchiveEntryInfo> flatEntries);
+    public static ArchiveTree Build(IReadOnlyList<ArchiveEntryInfo> flatEntries);
+}
+
+public sealed class ArchiveTree
+{
+    public bool TryGetChildren(string folderPath, out IReadOnlyList<ArchiveEntryViewModel> children);
 }
 ```
 
 `Build` synthesizes implied folder nodes from `/`-split paths (ZIP archives commonly have no
-explicit directory entries) and runs once per archive open — folder navigation afterward is an
-O(1) dictionary lookup, never a re-scan of the flat list, which matters at the 65,000+-entry
-scale this app's archives can reach (T-F20).
+explicit directory entries) and runs once per archive open, linear in the total path length —
+folder navigation afterward walks the path's segments, never a re-scan of the flat list, which
+matters at the 65,000+-entry scale this app's archives can reach (T-F20). A folder's rows (and
+their full-path strings) are made on its first visit only (T-F237: one string per ancestor was
+O(depth^2)).
 
 `MainViewModel` (`Archiver.App`) gains an `IArchiveListingRouter` constructor dependency plus
 browser state (`IsBrowsingArchive`, `BrowsedArchivePath`, `CurrentFolderPath`,

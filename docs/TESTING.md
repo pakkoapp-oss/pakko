@@ -845,6 +845,10 @@ Ukrainian UI, CI an English one.
   EDIT control (0-4096 characters; a 256-cap mutant fails three). T-F253: `BuildContent_*`.
 - T-F254 (C++): `LocalizationTests` — zh-CN/zh-SG/zh-Hans-CN, Traditional stays English, regional
   variants, tag case (three red before the fix).
+- T-F237 item 2 (App.Core, tests first): `ArchiveTreeIndexTests` — a 20,000-segment entry name
+  builds and opens its deepest folder under a 32 MiB allocation budget
+  (`GC.GetAllocatedBytesForCurrentThread`; 1.6 GB before the fix), plus pinned odd shapes (explicit
+  folder after its implied one, a file and a folder with one name, `a//b`, a leading `/`).
 - T-F198: `AppResourceKeysTests` (App.Core) — the twelve new App keys in all 37 `.resw` files with
   English's placeholders.
 - T-F221: `CliFacingMessagesTests` (Core) and `CliMessagesSubprocessTests` (real `pakko.exe`):

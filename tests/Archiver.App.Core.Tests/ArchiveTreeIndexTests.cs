@@ -31,13 +31,13 @@ public sealed class ArchiveTreeIndexTests
             File("src/main.cs"),
         };
 
-        IReadOnlyDictionary<string, IReadOnlyList<ArchiveEntryViewModel>> index = ArchiveTreeIndex.Build(flat);
+        ArchiveTree index = ArchiveTreeIndex.Build(flat);
 
-        index[""].Select(e => e.Name).Should().BeEquivalentTo(["docs", "src", "root.txt"]);
-        index[""].Should().OnlyContain(e => e.FullPath != "docs" || e.IsFolder);
-        index["docs"].Select(e => e.Name).Should().BeEquivalentTo(["sub", "manual.txt", "readme.txt"]);
-        index["docs/sub"].Select(e => e.Name).Should().BeEquivalentTo(["appendix.txt"]);
-        index["src"].Select(e => e.Name).Should().BeEquivalentTo(["main.cs"]);
+        index.At("").Select(e => e.Name).Should().BeEquivalentTo(["docs", "src", "root.txt"]);
+        index.At("").Should().OnlyContain(e => e.FullPath != "docs" || e.IsFolder);
+        index.At("docs").Select(e => e.Name).Should().BeEquivalentTo(["sub", "manual.txt", "readme.txt"]);
+        index.At("docs/sub").Select(e => e.Name).Should().BeEquivalentTo(["appendix.txt"]);
+        index.At("src").Select(e => e.Name).Should().BeEquivalentTo(["main.cs"]);
     }
 
     [Fact]
@@ -51,12 +51,12 @@ public sealed class ArchiveTreeIndexTests
             File("root.txt"),
         };
 
-        IReadOnlyDictionary<string, IReadOnlyList<ArchiveEntryViewModel>> index = ArchiveTreeIndex.Build(flat);
+        ArchiveTree index = ArchiveTreeIndex.Build(flat);
 
-        index[""].Should().HaveCount(2);
-        ArchiveEntryViewModel docsNode = index[""].Single(e => e.Name == "docs");
+        index.At("").Should().HaveCount(2);
+        ArchiveEntryViewModel docsNode = index.At("").Single(e => e.Name == "docs");
         docsNode.IsFolder.Should().BeTrue();
-        index["docs"].Select(e => e.Name).Should().BeEquivalentTo(["readme.txt"]);
+        index.At("docs").Select(e => e.Name).Should().BeEquivalentTo(["readme.txt"]);
     }
 
     [Fact]
@@ -64,10 +64,10 @@ public sealed class ArchiveTreeIndexTests
     {
         ArchiveEntryInfo[] flat = new[] { Dir("empty"), File("root.txt") };
 
-        IReadOnlyDictionary<string, IReadOnlyList<ArchiveEntryViewModel>> index = ArchiveTreeIndex.Build(flat);
+        ArchiveTree index = ArchiveTreeIndex.Build(flat);
 
-        index[""].Select(e => e.Name).Should().BeEquivalentTo(["empty", "root.txt"]);
-        index.Should().NotContainKey("empty");
+        index.At("").Select(e => e.Name).Should().BeEquivalentTo(["empty", "root.txt"]);
+        index.TryGetChildren("empty", out _).Should().BeFalse();
     }
 
     [Fact]
@@ -81,9 +81,9 @@ public sealed class ArchiveTreeIndexTests
             Dir("aaa_folder"),
         };
 
-        IReadOnlyDictionary<string, IReadOnlyList<ArchiveEntryViewModel>> index = ArchiveTreeIndex.Build(flat);
+        ArchiveTree index = ArchiveTreeIndex.Build(flat);
 
-        index[""].Select(e => e.Name).Should().ContainInOrder("aaa_folder", "zzz_folder", "apple.txt", "zebra.txt");
+        index.At("").Select(e => e.Name).Should().ContainInOrder("aaa_folder", "zzz_folder", "apple.txt", "zebra.txt");
     }
 
     [Fact]
@@ -95,11 +95,72 @@ public sealed class ArchiveTreeIndexTests
             flat[i] = File($"folder{i % 100}/file{i}.txt");
 
         var sw = System.Diagnostics.Stopwatch.StartNew();
-        IReadOnlyDictionary<string, IReadOnlyList<ArchiveEntryViewModel>> index = ArchiveTreeIndex.Build(flat);
+        ArchiveTree index = ArchiveTreeIndex.Build(flat);
         sw.Stop();
 
         sw.Elapsed.Should().BeLessThan(TimeSpan.FromSeconds(5));
-        index[""].Should().HaveCount(100); // 100 distinct top-level synthesized folders
-        index["folder0"].Should().HaveCount(fileCount / 100);
+        index.At("").Should().HaveCount(100); // 100 distinct top-level synthesized folders
+        index.At("folder0").Should().HaveCount(fileCount / 100);
+    }
+
+    [Fact]
+    public void Build_ExplicitDirAfterItsImpliedAncestor_FirstNodeWins()
+    {
+        ArchiveTree index =
+            ArchiveTreeIndex.Build([File("a/x.txt"), Dir("a"), File("a/x.txt", size: 7)]);
+
+        ArchiveEntryViewModel a = index.At("").Single();
+        a.Should().Be(new ArchiveEntryViewModel { FullPath = "a", Name = "a", IsFolder = true });
+        index.At("a").Single().Size.Should().Be(100);
+    }
+
+    [Fact]
+    public void Build_FileAndFolderWithTheSameName_FileRowKeepsItsChildren()
+    {
+        ArchiveTree index =
+            ArchiveTreeIndex.Build([File("a"), File("a/x.txt")]);
+
+        index.At("").Single().IsFolder.Should().BeFalse();
+        index.At("a").Single().FullPath.Should().Be("a/x.txt");
+    }
+
+    [Fact]
+    public void Build_EmptySegment_IsAFolderWithAnEmptyName()
+    {
+        ArchiveTree index =
+            ArchiveTreeIndex.Build([File("a//b.txt")]);
+
+        index.At("a").Single().Should().Be(new ArchiveEntryViewModel { FullPath = "a/", Name = "", IsFolder = true });
+        index.At("a/").Single().FullPath.Should().Be("a//b.txt");
+    }
+
+    // Before T-F237 the empty first segment was a nameless root row whose path "" led back to the
+    // root, so "/d/y.txt" could never be reached.
+    [Fact]
+    public void Build_LeadingSlash_BelongsToTheRootAndKeepsTheEntryPath()
+    {
+        ArchiveTree index = ArchiveTreeIndex.Build([File("/x.txt"), File("/d/y.txt")]);
+
+        index.At("").Select(e => e.FullPath).Should().Equal("/d", "/x.txt");
+        index.At("/d").Single().FullPath.Should().Be("/d/y.txt");
+    }
+
+    // T-F237 item 2: every ancestor used to be its own full-path string, O(depth^2) — an 80 KB ZIP
+    // with one 20,000-segment name held the App at ~1.7 GB.
+    [Fact]
+    public void Build_TwentyThousandSegmentName_StaysWithinAFixedAllocationBudget()
+    {
+        const int depth = 20_000;
+        string folder = string.Join('/', Enumerable.Repeat("a", depth));
+        ArchiveEntryInfo[] flat = [File(folder + "/x.txt")];
+
+        long before = GC.GetAllocatedBytesForCurrentThread();
+        ArchiveTree index = ArchiveTreeIndex.Build(flat);
+        IReadOnlyList<ArchiveEntryViewModel> deepest = index.At(folder);
+        long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+
+        deepest.Single().FullPath.Should().Be(folder + "/x.txt");
+        index.At("").Single().Name.Should().Be("a");
+        allocated.Should().BeLessThan(32L * 1024 * 1024);
     }
 }

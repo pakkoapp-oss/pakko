@@ -88,14 +88,14 @@ public sealed class BrowseModeTests
     [Fact]
     public void TreeIndex_CarriesEncryptionToTheRow_SynthesizedFolderIsPlain()
     {
-        IReadOnlyDictionary<string, IReadOnlyList<ArchiveEntryViewModel>> index = ArchiveTreeIndex.Build(
+        ArchiveTree index = ArchiveTreeIndex.Build(
             [Entry("dir/secret.txt", EntryEncryption.Aes256, 2), Entry("plain.txt", EntryEncryption.None), Entry("tar.txt", null)]);
 
-        ArchiveEntryViewModel folder = index[string.Empty].Single(e => e.Name == "dir");
+        ArchiveEntryViewModel folder = index.At(string.Empty).Single(e => e.Name == "dir");
         folder.IsEncrypted.Should().BeFalse();
-        index[string.Empty].Single(e => e.Name == "plain.txt").IsEncrypted.Should().BeFalse();
-        index[string.Empty].Single(e => e.Name == "tar.txt").IsEncrypted.Should().BeFalse();
-        index["dir"].Single().IsEncrypted.Should().BeTrue();
+        index.At(string.Empty).Single(e => e.Name == "plain.txt").IsEncrypted.Should().BeFalse();
+        index.At(string.Empty).Single(e => e.Name == "tar.txt").IsEncrypted.Should().BeFalse();
+        index.At("dir").Single().IsEncrypted.Should().BeTrue();
     }
 
     [Fact]
