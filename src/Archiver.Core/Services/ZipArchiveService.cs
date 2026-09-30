@@ -1122,6 +1122,18 @@ public sealed class ZipArchiveService : IArchiveService
         using var reader = ZipArchiveReader.Open(archivePath, codePages);
         ZipArchive archive = reader.Archive;
 
+        // T-F280: one error per archive (a hostile archive must not flood the summary), naming how
+        // many entries disagree and the first one — as 7-Zip's Test reports "Headers Error".
+        List<int> mismatched;
+        using (FileStream headerStream = File.OpenRead(archivePath))
+            mismatched = RawZipEntryLocator.FindLocalHeaderMismatches(headerStream);
+        if (mismatched.Count > 0)
+        {
+            string first = mismatched[0] < reader.Entries.Count ? reader.Entries[mismatched[0]].FullName : "?";
+            errors.Add(CoreMessages.Error(archivePath, MessageCode.LocalHeaderMismatch,
+                mismatched.Count.ToString(CultureInfo.InvariantCulture), first));
+        }
+
         using FileStream? rawArchiveStream = password is not null ? File.OpenRead(archivePath) : null;
         Dictionary<ZipArchiveEntry, LocatedZipEntry>? encryptedEntryMap =
             rawArchiveStream is not null ? MapLocatedEntries(rawArchiveStream, archive) : null;

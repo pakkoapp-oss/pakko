@@ -270,4 +270,7 @@
   <data name="ScanEntryTooLarge" xml:space="preserve">
     <value>العنصر أكبر من {0} ميبيبايت ولم يتم فحصه.</value>
   </data>
+  <data name="LocalHeaderMismatch" xml:space="preserve">
+    <value>يحتوي {0} من العناصر على رأس محلي لا يطابق الدليل المركزي (الأول: "{1}"). قد تستخرج برامج أخرى أسماءً أو بيانات مختلفة من هذا الأرشيف.</value>
+  </data>
 </root>

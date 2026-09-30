@@ -3120,7 +3120,11 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 - **Decision (user, 2026-09-30):** Test reports a local/central header mismatch as an error
   ("Headers Error", as `7za t`); extraction carries on from the central directory and adds a
   warning to the summary.
-- [ ] **Status:** open. A ZIP whose local file headers disagree with the central directory
+- [~] **Status:** Test half fixed in code 2026-09-30 (v1.7.0 wave 1). Left: the extraction
+  warning, which needs a warning channel in `ArchiveResult` — v1.7.0 wave 6 (see
+  `docs/DECISIONS.md`'s T-F280 entry). **CHANGELOG v1.7.0:** Test reports a ZIP whose local file
+  headers disagree with its central directory, as 7-Zip does.
+- **Earlier status:** open. A ZIP whose local file headers disagree with the central directory
   (an entry's local CRC field and another entry's local name byte flipped; data and central
   directory intact) passes Pakko's Test ("не виявлено помилок", Explorer Test, 1.5.0.34), while
   `7za t` reports "Headers Error" and "CRC Failed : dir\a.txt". Pakko reads everything through

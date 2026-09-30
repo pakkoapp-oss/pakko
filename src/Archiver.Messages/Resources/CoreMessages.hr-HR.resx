@@ -270,4 +270,7 @@
   <data name="ScanEntryTooLarge" xml:space="preserve">
     <value>Stavka je veća od {0} MiB i nije skenirana.</value>
   </data>
+  <data name="LocalHeaderMismatch" xml:space="preserve">
+    <value>{0} stavki ima lokalno zaglavlje koje ne odgovara središnjem direktoriju (prva: „{1}”). Drugi programi mogu iz ove arhive izdvojiti drukčija imena ili podatke.</value>
+  </data>
 </root>

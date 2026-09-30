@@ -270,4 +270,7 @@
   <data name="ScanEntryTooLarge" xml:space="preserve">
     <value>Het item is groter dan {0} MiB en is niet gescand.</value>
   </data>
+  <data name="LocalHeaderMismatch" xml:space="preserve">
+    <value>Bij {0} items komt de lokale header niet overeen met de centrale map (eerste: ‘{1}’). Andere programma's kunnen andere namen of gegevens uit dit archief uitpakken.</value>
+  </data>
 </root>

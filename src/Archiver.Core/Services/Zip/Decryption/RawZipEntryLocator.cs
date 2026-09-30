@@ -118,6 +118,113 @@ internal static class RawZipEntryLocator
                 ZipExtendedTime.TryReadModifiedUtc(r.Extra)))
             .ToList();
 
+    /// <summary>
+    /// T-F280: the central-directory indexes of entries whose local header disagrees with the
+    /// central directory — different raw name bytes, or, unless the entry uses a data descriptor
+    /// (bit 3, where the local CRC and sizes are legitimately zero), a different CRC-32 or size.
+    /// Other tools read the local header, so such an archive can extract differently elsewhere;
+    /// 7-Zip's Test calls this "Headers Error". A local header that cannot be read is itself a
+    /// mismatch, never an exception; a Zip64 field that cannot be resolved is not compared.
+    /// </summary>
+    public static List<int> FindLocalHeaderMismatches(Stream zipStream)
+    {
+        List<CentralDirectoryRecord> records = ReadCentralDirectory(zipStream, resolveZip64: false);
+        var mismatched = new List<int>();
+        for (int i = 0; i < records.Count; i++)
+        {
+            if (!LocalHeaderMatches(zipStream, records[i]))
+                mismatched.Add(i);
+        }
+        return mismatched;
+    }
+
+    private const int LocalHeaderFixedLength = 30;
+
+    private static bool LocalHeaderMatches(Stream zipStream, CentralDirectoryRecord central)
+    {
+        (long? centralUncompressed, long? centralCompressed, long? localOffset) =
+            TryResolveCentralZip64(central.Extra, central.UncompressedSize, central.CompressedSize, central.LocalHeaderOffset);
+        if (localOffset is not { } offset)
+            return true; // its local header cannot be found without the Zip64 offset: not compared
+        if (offset > zipStream.Length - LocalHeaderFixedLength)
+            return false;
+
+        byte[] header = new byte[LocalHeaderFixedLength];
+        zipStream.Seek(offset, SeekOrigin.Begin);
+        ReadExact(zipStream, header);
+        if (BitConverter.ToUInt32(header, 0) != LocalFileHeaderSignature)
+            return false;
+        ushort flags = BitConverter.ToUInt16(header, 6);
+        uint crc32 = BitConverter.ToUInt32(header, 14);
+        uint compressedField = BitConverter.ToUInt32(header, 18);
+        uint uncompressedField = BitConverter.ToUInt32(header, 22);
+        int nameLength = BitConverter.ToUInt16(header, 26);
+        int extraLength = BitConverter.ToUInt16(header, 28);
+        if (nameLength + extraLength > zipStream.Length - zipStream.Position)
+            return false;
+        byte[] name = ReadBytes(zipStream, nameLength);
+        byte[] extra = ReadBytes(zipStream, extraLength);
+
+        if (!name.AsSpan().SequenceEqual(central.NameBytes))
+            return false;
+        if ((flags & DataDescriptorFlag) != 0)
+            return true;
+        if (crc32 != central.Crc32)
+            return false;
+
+        (long? localUncompressed, long? localCompressed) = TryResolveLocalZip64(extra, uncompressedField, compressedField);
+        return SameOrUnknown(localCompressed, centralCompressed) && SameOrUnknown(localUncompressed, centralUncompressed);
+    }
+
+    private static bool SameOrUnknown(long? a, long? b) => a is null || b is null || a == b;
+
+    // The central record's Zip64 fields, in spec order, holding only the fields that are
+    // sentinels. Null for a sentinel whose value cannot be read.
+    private static (long? Uncompressed, long? Compressed, long? Offset) TryResolveCentralZip64(
+        byte[] extra, long uncompressed, long compressed, long offset)
+    {
+        byte[]? record = TryFindExtraRecord(extra, Zip64ExtraId);
+        int position = 0;
+        long? Next(long value)
+        {
+            if (value != Zip32Sentinel)
+                return value;
+            if (record is null || position > record.Length - 8)
+                return null;
+            long read = BitConverter.ToInt64(record, position);
+            position += 8;
+            return read >= 0 ? read : null;
+        }
+        long? realUncompressed = Next(uncompressed);
+        long? realCompressed = Next(compressed);
+        return (realUncompressed, realCompressed, Next(offset));
+    }
+
+    // A local header's Zip64 extra always holds both sizes, uncompressed first.
+    private static (long? Uncompressed, long? Compressed) TryResolveLocalZip64(byte[] extra, uint uncompressed, uint compressed)
+    {
+        if (uncompressed != Zip32Sentinel && compressed != Zip32Sentinel)
+            return (uncompressed, compressed);
+        byte[]? record = TryFindExtraRecord(extra, Zip64ExtraId);
+        if (record is null || record.Length < 16)
+            return (uncompressed == Zip32Sentinel ? null : uncompressed, compressed == Zip32Sentinel ? null : compressed);
+        long realUncompressed = BitConverter.ToInt64(record, 0);
+        long realCompressed = BitConverter.ToInt64(record, 8);
+        return (realUncompressed >= 0 ? realUncompressed : null, realCompressed >= 0 ? realCompressed : null);
+    }
+
+    private static byte[]? TryFindExtraRecord(byte[] extra, ushort headerId)
+    {
+        try
+        {
+            return FindExtraRecord(extra, headerId);
+        }
+        catch (InvalidDataException)
+        {
+            return null; // a malformed extra block holds no usable record
+        }
+    }
+
     private sealed record CentralDirectoryRecord(
         byte[] NameBytes, long LocalHeaderOffset, uint Crc32, long CompressedSize, long UncompressedSize,
         ushort GeneralPurposeFlag, byte HostOs, byte[] Extra);

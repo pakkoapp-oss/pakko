@@ -59,6 +59,13 @@ public static class SevenZipRunner
     public static void ArchiveEncrypted(string destinationZipPath, string password, bool store, params string[] sources) =>
         Run(["a", "-tzip", store ? "-mx=0" : "-mx=5", "-mem=AES256", $"-p{password}", "-bd", destinationZipPath, .. sources]);
 
+    /// <summary>
+    /// T-F280: a ZIP made by <c>7za a -si</c> — the stdin shape whose local sizes are Zip64
+    /// sentinels (T-F193), one of the legitimate archives the header check must not flag.
+    /// </summary>
+    public static void ArchiveFromStdIn(string destinationZipPath, byte[] data) =>
+        RunForOutput(["a", "-tzip", "-si", "-bd", destinationZipPath], data);
+
     /// <summary>T-F193: 7-Zip's integrity check with a password — validates Pakko-written AES entries.</summary>
     public static void TestEncrypted(string archivePath, string password) =>
         Run(["t", $"-p{password}", "-bd", archivePath]);
@@ -110,7 +117,7 @@ public static class SevenZipRunner
         return stopwatch.Elapsed;
     }
 
-    private static string RunForOutput(IReadOnlyList<string> arguments)
+    private static string RunForOutput(IReadOnlyList<string> arguments, byte[]? stdIn = null)
     {
         if (!IsAvailable)
             throw new InvalidOperationException(
@@ -120,7 +127,7 @@ public static class SevenZipRunner
         using var job = SandboxJobObject.Create(RamLimitBytes, CpuTimeLimit);
 
         (int exitCode, string stdOut, string stdErr) = SandboxedProcessLauncher.RunAsync(
-                ExePath, arguments, new ProcessLaunchOptions(Job: job.Handle), CancellationToken.None)
+                ExePath, arguments, new ProcessLaunchOptions(Job: job.Handle, StdInData: stdIn), CancellationToken.None)
             .GetAwaiter().GetResult();
 
         if (exitCode != 0)

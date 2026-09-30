@@ -270,4 +270,7 @@
   <data name="ScanEntryTooLarge" xml:space="preserve">
     <value>Елемент більший за {0} МіБ, тому його не перевірено.</value>
   </data>
+  <data name="LocalHeaderMismatch" xml:space="preserve">
+    <value>Локальний заголовок не збігається з центральним каталогом у {0} елементів (перший: «{1}»). Інші програми можуть видобути з цього архіву інші імена чи дані.</value>
+  </data>
 </root>

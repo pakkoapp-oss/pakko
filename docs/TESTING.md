@@ -559,6 +559,13 @@ keeps its time), the SeparateFolders root folder, MOTW plus time, an AES entry.
 now takes `ModifiedUnixSeconds`) — MOTW plus file time, folder times new/merged/root, and a file ahead
 of its folder entry plus an implicit subfolder still extracting (the T-F52 guard).
 
+**T-F280:** `ZipArchiveServiceTestHeadersTests` (`Archiver.Core.Tests/Services/`) — Test reports a
+local CRC plus a local name flip as one error (count 2, first entry named), a changed local size, and
+a local header whose signature is gone; and reports nothing for every repo fixture, a data-descriptor
+archive and Pakko's own writers (Optimal, Fastest, Stored, AES). `ZipHeaderCheckCorpusTests`
+(`Archiver.Core.PerformanceTests`, vendored 7za) — 7-Zip's plain, AES-256 and `-si` archives report
+nothing.
+
 ---
 
 ## Archiver.CLI.Tests (v1.5, T-F09)

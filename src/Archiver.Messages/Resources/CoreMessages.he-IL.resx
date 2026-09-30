@@ -270,4 +270,7 @@
   <data name="ScanEntryTooLarge" xml:space="preserve">
     <value>הפריט גדול מ-{0} MiB ולא נסרק.</value>
   </data>
+  <data name="LocalHeaderMismatch" xml:space="preserve">
+    <value>ב-{0} פריטים הכותרת המקומית אינה תואמת לספרייה המרכזית (הראשון: "{1}"). תוכנות אחרות עשויות לחלץ מארכיון זה שמות או נתונים שונים.</value>
+  </data>
 </root>

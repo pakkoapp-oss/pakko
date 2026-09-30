@@ -10587,3 +10587,30 @@ approved in Plan mode, advisor-reviewed before and after.
   (`expandedSelection`), whose folder entries are often not among them; a test cannot tell the two
   inputs apart on this machine, so `TarDirectoriesToPreCreateTests` checks the function instead.
 - **Not changed:** listing, Test and the App browser still show the DOS time.
+
+---
+
+## T-F280 — Test reports local/central header mismatches; the extraction warning waits for a channel (2026-09-30)
+
+User decision 2026-09-30: Test reports the mismatch as an error ("Headers Error", as `7za t`);
+extraction carries on from the central directory and adds a warning.
+
+- **Test half, done.** `RawZipEntryLocator.FindLocalHeaderMismatches` compares every local header
+  with its central record: raw name bytes, and — unless bit 3 (data descriptor) is set, where the
+  local CRC and sizes are legitimately zero — the CRC-32 and both sizes, with Zip64 sentinels
+  resolved on both sides (a local header's Zip64 extra holds both sizes). The data-descriptor shape
+  is not checked against the descriptor itself. Tolerant by construction: an unreadable local
+  header is a mismatch, never an exception; a Zip64 field that cannot be resolved is not compared.
+  One error per archive — the count and the first entry — so a hostile archive cannot flood the
+  summary. The false-positive corpus is the deciding test: every repo fixture, .NET's
+  data-descriptor output, Pakko's sequential and hand-rolled writers (AES, Stored), and 7-Zip's
+  plain, AES-256 and `-si` archives report nothing.
+- **Behaviour change:** the T-F243 item 5 test's crafted archive (local name `../evil.txt`, central
+  `a.txt`) used to Test clean; it now reports the mismatch. Extraction is unchanged and still
+  writes the central name.
+- **Extraction half deferred to v1.7.0 wave 6.** `ArchiveResult` has no warning channel:
+  `SkippedFiles` would say the entry was not extracted (false), and `Errors` would turn a successful
+  extraction into a failure (CLI exit 2, the archive no longer deletable) — the "refuse" option the
+  user did not choose. A warning channel is a public model change touching `Outcome`, the
+  delete-after rules and all three renderers, so it belongs with wave 6's architecture work. The
+  user's choice is queued behind that channel, not dropped.

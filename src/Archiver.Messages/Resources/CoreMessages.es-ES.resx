@@ -270,4 +270,7 @@
   <data name="ScanEntryTooLarge" xml:space="preserve">
     <value>La entrada supera los {0} MiB y no se analizó.</value>
   </data>
+  <data name="LocalHeaderMismatch" xml:space="preserve">
+    <value>{0} entradas tienen un encabezado local que no coincide con el directorio central (la primera: «{1}»). Otros programas pueden extraer nombres o datos distintos de este archivo.</value>
+  </data>
 </root>

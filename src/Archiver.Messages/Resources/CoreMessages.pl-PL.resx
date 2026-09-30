@@ -270,4 +270,7 @@
   <data name="ScanEntryTooLarge" xml:space="preserve">
     <value>Element jest większy niż {0} MiB i nie został przeskanowany.</value>
   </data>
+  <data name="LocalHeaderMismatch" xml:space="preserve">
+    <value>{0} wpisów ma nagłówek lokalny niezgodny z katalogiem centralnym (pierwszy: „{1}”). Inne programy mogą wyodrębnić z tego archiwum inne nazwy lub dane.</value>
+  </data>
 </root>

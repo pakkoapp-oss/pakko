@@ -102,4 +102,5 @@ public enum MessageCode
     ScanEntryUnsupportedMethod,
     ScanEntryAuthenticationFailed,
     ScanEntryTooLarge,
+    LocalHeaderMismatch,
 }

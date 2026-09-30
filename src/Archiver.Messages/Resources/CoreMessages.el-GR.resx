@@ -270,4 +270,7 @@
   <data name="ScanEntryTooLarge" xml:space="preserve">
     <value>Η καταχώρηση είναι μεγαλύτερη από {0} MiB και δεν σαρώθηκε.</value>
   </data>
+  <data name="LocalHeaderMismatch" xml:space="preserve">
+    <value>{0} στοιχεία έχουν τοπική κεφαλίδα που δεν ταιριάζει με τον κεντρικό κατάλογο (πρώτο: «{1}»). Άλλα προγράμματα ενδέχεται να εξαγάγουν διαφορετικά ονόματα ή δεδομένα από αυτό το αρχείο.</value>
+  </data>
 </root>

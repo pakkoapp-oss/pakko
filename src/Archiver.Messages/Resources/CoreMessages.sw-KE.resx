@@ -270,4 +270,7 @@
   <data name="ScanEntryTooLarge" xml:space="preserve">
     <value>Kipengee ni kikubwa kuliko MiB {0} na hakikuchunguzwa.</value>
   </data>
+  <data name="LocalHeaderMismatch" xml:space="preserve">
+    <value>Vipengee {0} vina kichwa cha ndani kisicholingana na saraka kuu (cha kwanza: "{1}"). Programu nyingine zinaweza kutoa majina au data tofauti kutoka kwenye kumbukumbu hii.</value>
+  </data>
 </root>

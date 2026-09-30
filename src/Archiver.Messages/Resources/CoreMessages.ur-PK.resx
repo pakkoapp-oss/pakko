@@ -270,4 +270,7 @@
   <data name="ScanEntryTooLarge" xml:space="preserve">
     <value>اندراج {0} MiB سے بڑا ہے اور اسکین نہیں کیا گیا۔</value>
   </data>
+  <data name="LocalHeaderMismatch" xml:space="preserve">
+    <value>{0} اندراجات کا مقامی ہیڈر مرکزی ڈائریکٹری سے مماثل نہیں ہے (پہلا: "{1}")۔ دوسرے پروگرام اس آرکائیو سے مختلف نام یا ڈیٹا نکال سکتے ہیں۔</value>
+  </data>
 </root>

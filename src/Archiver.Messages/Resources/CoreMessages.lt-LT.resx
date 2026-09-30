@@ -270,4 +270,7 @@
   <data name="ScanEntryTooLarge" xml:space="preserve">
     <value>Elementas didesnis nei {0} MiB ir nebuvo nuskaitytas.</value>
   </data>
+  <data name="LocalHeaderMismatch" xml:space="preserve">
+    <value>{0} įrašų vietinė antraštė nesutampa su centriniu katalogu (pirmasis: „{1}“). Kitos programos iš šio archyvo gali išskleisti kitus pavadinimus ar duomenis.</value>
+  </data>
 </root>

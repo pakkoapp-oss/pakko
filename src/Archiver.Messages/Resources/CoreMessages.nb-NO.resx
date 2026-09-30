@@ -270,4 +270,7 @@
   <data name="ScanEntryTooLarge" xml:space="preserve">
     <value>Oppføringen er større enn {0} MiB og ble ikke skannet.</value>
   </data>
+  <data name="LocalHeaderMismatch" xml:space="preserve">
+    <value>{0} oppføringer har en lokal header som ikke samsvarer med den sentrale katalogen (første: «{1}»). Andre programmer kan pakke ut andre navn eller data fra dette arkivet.</value>
+  </data>
 </root>

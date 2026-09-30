@@ -270,4 +270,7 @@
   <data name="ScanEntryTooLarge" xml:space="preserve">
     <value>Елементът е по-голям от {0} MiB и не е сканиран.</value>
   </data>
+  <data name="LocalHeaderMismatch" xml:space="preserve">
+    <value>{0} елемента имат локален заглавен блок, който не съответства на централната директория (първи: „{1}“). Други програми може да извлекат различни имена или данни от този архив.</value>
+  </data>
 </root>

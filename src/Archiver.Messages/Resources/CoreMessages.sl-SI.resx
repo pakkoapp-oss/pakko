@@ -270,4 +270,7 @@
   <data name="ScanEntryTooLarge" xml:space="preserve">
     <value>Vnos je večji od {0} MiB in ni bil pregledan.</value>
   </data>
+  <data name="LocalHeaderMismatch" xml:space="preserve">
+    <value>{0} vnosov ima lokalno glavo, ki se ne ujema s centralnim imenikom (prvi: »{1}«). Drugi programi lahko iz tega arhiva razširijo drugačna imena ali podatke.</value>
+  </data>
 </root>

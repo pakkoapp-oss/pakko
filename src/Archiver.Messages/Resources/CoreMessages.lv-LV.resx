@@ -270,4 +270,7 @@
   <data name="ScanEntryTooLarge" xml:space="preserve">
     <value>Vienums ir lielāks par {0} MiB un netika skenēts.</value>
   </data>
+  <data name="LocalHeaderMismatch" xml:space="preserve">
+    <value>{0} ierakstiem lokālā galvene neatbilst centrālajam direktorijam (pirmais: “{1}”). Citas programmas no šī arhīva var izvilkt citus nosaukumus vai datus.</value>
+  </data>
 </root>

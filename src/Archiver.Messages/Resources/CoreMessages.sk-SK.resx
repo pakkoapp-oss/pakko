@@ -270,4 +270,7 @@
   <data name="ScanEntryTooLarge" xml:space="preserve">
     <value>Položka je väčšia ako {0} MiB a nebola skontrolovaná.</value>
   </data>
+  <data name="LocalHeaderMismatch" xml:space="preserve">
+    <value>{0} položiek má miestnu hlavičku, ktorá nezodpovedá centrálnemu adresáru (prvá: „{1}“). Iné programy môžu z tohto archívu rozbaliť iné názvy alebo údaje.</value>
+  </data>
 </root>

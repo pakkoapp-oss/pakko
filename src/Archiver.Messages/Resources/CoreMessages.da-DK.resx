@@ -270,4 +270,7 @@
   <data name="ScanEntryTooLarge" xml:space="preserve">
     <value>Elementet er større end {0} MiB og blev ikke scannet.</value>
   </data>
+  <data name="LocalHeaderMismatch" xml:space="preserve">
+    <value>{0} poster har en lokal header, der ikke stemmer overens med det centrale bibliotek (første: „{1}“). Andre programmer kan udpakke andre navne eller data fra dette arkiv.</value>
+  </data>
 </root>

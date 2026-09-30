@@ -270,4 +270,7 @@
   <data name="ScanEntryTooLarge" xml:space="preserve">
     <value>Elementul depășește {0} MiB și nu a fost scanat.</value>
   </data>
+  <data name="LocalHeaderMismatch" xml:space="preserve">
+    <value>{0} intrări au un antet local care nu corespunde directorului central (prima: „{1}”). Alte programe pot extrage din această arhivă alte nume sau date.</value>
+  </data>
 </root>

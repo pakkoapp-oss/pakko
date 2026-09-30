@@ -274,10 +274,12 @@ public sealed class ZipArchiveServiceLegacyNameEncodingTests : IDisposable
     }
 
     // T-F243 item 5 (hypothesis "Test and Extract can disagree when local and central records
-    // differ"): both take names from the central directory and data through the same readers, so
-    // they agree; the local-header name is never used for a path, not even a traversal one.
+    // differ"): both take names from the central directory and data through the same readers; the
+    // local-header name is never used for a path, not even a traversal one. T-F280 (user decision
+    // 2026-09-30): Test now reports the mismatch itself, as 7-Zip's "Headers Error" — other tools
+    // read the local name; extraction still uses the central name.
     [Fact]
-    public async Task LocalHeaderNameDiffersFromCentral_TestAndExtractAgree_CentralNameWins()
+    public async Task LocalHeaderNameDiffersFromCentral_TestReportsIt_ExtractUsesTheCentralName()
     {
         string zip = Legacy("mismatch.zip",
             new LegacyZipBuilder.Entry("a.txt"u8.ToArray(), "A"u8.ToArray(), LocalRawName: "../evil.txt"u8.ToArray()));
@@ -285,7 +287,7 @@ public sealed class ZipArchiveServiceLegacyNameEncodingTests : IDisposable
         ArchiveResult tested = await _sut.TestAsync([zip]);
         (ArchiveResult? extracted, string? dest) = await ExtractAsync(zip);
 
-        tested.Success.Should().BeTrue();
+        tested.Errors.Should().ContainSingle(e => e.Text!.Code == MessageCode.LocalHeaderMismatch);
         extracted.Success.Should().BeTrue();
         File.ReadAllText(Path.Combine(dest, "a.txt")).Should().Be("A");
         File.Exists(Path.Combine(_temp.Path, "evil.txt")).Should().BeFalse();

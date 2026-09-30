@@ -270,4 +270,7 @@
   <data name="ScanEntryTooLarge" xml:space="preserve">
     <value>Kohde on suurempi kuin {0} Mt, eikä sitä tarkistettu.</value>
   </data>
+  <data name="LocalHeaderMismatch" xml:space="preserve">
+    <value>{0} kohteen paikallinen otsake ei vastaa keskushakemistoa (ensimmäinen: ”{1}”). Muut ohjelmat voivat purkaa tästä arkistosta eri nimiä tai tietoja.</value>
+  </data>
 </root>

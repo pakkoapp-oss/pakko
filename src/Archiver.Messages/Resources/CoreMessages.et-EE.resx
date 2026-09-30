@@ -270,4 +270,7 @@
   <data name="ScanEntryTooLarge" xml:space="preserve">
     <value>Kirje on suurem kui {0} MiB ja seda ei skannitud.</value>
   </data>
+  <data name="LocalHeaderMismatch" xml:space="preserve">
+    <value>{0} kirje kohalik päis ei vasta kesksele kataloogile (esimene: „{1}”). Teised programmid võivad sellest arhiivist välja pakkida teistsuguseid nimesid või andmeid.</value>
+  </data>
 </root>

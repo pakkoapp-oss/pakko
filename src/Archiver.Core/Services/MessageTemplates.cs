@@ -64,6 +64,8 @@ public static class MessageTemplates
         [MessageCode.CannotReadArchive] = "Cannot read archive: {0}",
         [MessageCode.EntryNameCollision] =
             "Entry '{0}' has the same name as another entry once decoded; it is not extracted, since one would overwrite the other.",
+        [MessageCode.LocalHeaderMismatch] =
+            "{0} entries have a local header that does not match the central directory (first: '{1}'). Other programs may extract different names or data from this archive.",
         [MessageCode.EntryFailed] = "Entry '{0}': {1}",
         [MessageCode.EntryWrongPassword] = "Entry '{0}' could not be decrypted: wrong password.",
         [MessageCode.EntryAuthenticationFailed] = "Entry '{0}' could not be decrypted: authentication failed (corrupted or tampered).",

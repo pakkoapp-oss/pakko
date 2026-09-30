@@ -270,4 +270,7 @@
   <data name="ScanEntryTooLarge" xml:space="preserve">
     <value>प्रविष्टि {0} MiB से बड़ी है और स्कैन नहीं की गई।</value>
   </data>
+  <data name="LocalHeaderMismatch" xml:space="preserve">
+    <value>{0} प्रविष्टियों का स्थानीय हेडर केंद्रीय निर्देशिका से मेल नहीं खाता (पहली: "{1}")। अन्य प्रोग्राम इस संग्रह से अलग नाम या डेटा निकाल सकते हैं।</value>
+  </data>
 </root>

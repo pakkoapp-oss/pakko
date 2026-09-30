@@ -270,4 +270,7 @@
   <data name="ScanEntryTooLarge" xml:space="preserve">
     <value>Entry is larger than {0} MiB and was not scanned.</value>
   </data>
+  <data name="LocalHeaderMismatch" xml:space="preserve">
+    <value>{0} entries have a local header that does not match the central directory (first: '{1}'). Other programs may extract different names or data from this archive.</value>
+  </data>
 </root>

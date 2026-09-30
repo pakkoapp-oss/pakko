@@ -270,4 +270,7 @@
   <data name="ScanEntryTooLarge" xml:space="preserve">
     <value>Entri lebih besar dari {0} MiB dan tidak dipindai.</value>
   </data>
+  <data name="LocalHeaderMismatch" xml:space="preserve">
+    <value>{0} entri memiliki header lokal yang tidak cocok dengan direktori pusat (pertama: "{1}"). Program lain mungkin mengekstrak nama atau data yang berbeda dari arsip ini.</value>
+  </data>
 </root>

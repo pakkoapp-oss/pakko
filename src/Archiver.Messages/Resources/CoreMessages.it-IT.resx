@@ -270,4 +270,7 @@
   <data name="ScanEntryTooLarge" xml:space="preserve">
     <value>La voce supera {0} MiB e non è stata analizzata.</value>
   </data>
+  <data name="LocalHeaderMismatch" xml:space="preserve">
+    <value>{0} voci hanno un'intestazione locale che non corrisponde alla directory centrale (la prima: «{1}»). Altri programmi potrebbero estrarre da questo archivio nomi o dati diversi.</value>
+  </data>
 </root>

@@ -270,4 +270,7 @@
   <data name="ScanEntryTooLarge" xml:space="preserve">
     <value>L’entrée dépasse {0} Mio et n’a pas été analysée.</value>
   </data>
+  <data name="LocalHeaderMismatch" xml:space="preserve">
+    <value>{0} entrées ont un en-tête local qui ne correspond pas au répertoire central (la première : '{1}'). D'autres programmes peuvent extraire de cette archive des noms ou des données différents.</value>
+  </data>
 </root>
