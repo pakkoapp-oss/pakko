@@ -139,7 +139,7 @@ Invoke via `System.Diagnostics.Process`.
 ---
 
 ### T-F05 — Archive Browser (Navigate, Select, Extract Selected/All)
-- [x] **Status:** done 2026-09-30 (G6 pass 3). Device (G6 pass 3, CI build 1.5.0.13, App title build 2026-09-29 23:33:05, uk-UA, dark theme, 2026-09-30): browse from the pending list: breadcrumb `plain.zip › src › sub`; Up climbed to `C:\g6\ex`, `C:` and "Цей комп'ютер" (Up disabled there); a text entry previewed in Notepad; `nest.zip`: `data.bin` asked (Так/Ні; Ні wrote nothing), `inner.zip` drilled in, `clip.mp4` opened in VLC; Test -> "Помилок не виявлено"; Extract Selected (one entry) wrote only `nest\note.txt`; Extract All wrote all four; the cp866 `legacy_oem866_7za.zip` lists `Тека`, `А.txt`, `Б.txt`. Closed. Original status: partial — versioned into v1.4 (`SPEC.md`) 2026-07-13; Core listing API,
+- [x] **Status:** done 2026-09-30 (G6 pass 3). Device (G6 pass 3, CI build 1.5.0.13, App title build 2026-09-29 23:33:05, uk-UA, dark theme, 2026-09-30): browse from the pending list: breadcrumb `plain.zip › src › sub`; Up climbed to `C:\g6\ex`, `C:` and "Цей комп'ютер" (Up disabled there); a text entry previewed in Notepad; `nest.zip`: `data.bin` asked (Так/Ні; Ні wrote nothing), `inner.zip` drilled in, `clip.mp4` opened in VLC; Test -> "Помилок не виявлено"; Extract Selected (one entry) wrote only `nest\note.txt`; Extract All wrote all four. Closed. Original status: partial — versioned into v1.4 (`SPEC.md`) 2026-07-13; Core listing API,
       `Archiver.App.Core`, and the full WinUI wiring (mode-swap, breadcrumb, browser `ListView`,
       Extract Selected/All/Info commands) are all implemented and `dotnet test` is green
       (208/208, `Category!=Slow`; Zip64 `Category=Slow` also green). Stays partial until the
@@ -5290,6 +5290,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   `-mcp=866` archive — `pakko l` real names, `pakko t` exit 0, `pakko x` real names on disk.
   A ZipCrypto archive with the Cyrillic password in cp1251 (7za accepts it too) — Shell prompt,
   typed `пароль`, extracted. Stays `[~]` until your own check.
+- **Device (G6 pass 3, 1.5.0.13, App part, temporary: `ZipNameCodePages` is G2-changed, re-check in G7):** the App browser lists the cp866 `legacy_oem866_7za.zip` as `Тека`, `А.txt`, `Б.txt`.
 - [~] **Status:** fixed, awaiting user check. Original report: open — confirmed on device 2026-09-24. Archives written by older Windows
   "Compressed folders", 1C, scanners and other tools in a uk/ru locale store names in the OEM code
   page (866) with general-purpose bit 11 clear. Every ZIP reader call opens archives without an
@@ -6853,6 +6854,10 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   (`MainViewModel` "nothing left to browse") but the archive row stays in the pending list. Fix: drop the
   rows whose paths were recycled (`SourceRecycler.DeleteAsync` returns the ones not deleted). Tests first at
   the ViewModel level. The delete path is G2's (`Win32SourceDeleteOperations`): do it after the squash.
+  Related, same area: the Recycle Bin tick survives a finished run and "Очистити" (it resets only on
+  entering or leaving browse), so a tick given for "sources after compression" carries into a later
+  list of archives, where the label becomes "archives after extraction". Decide whether a run or a clear
+  should reset it (T-F207 history argues for yes).
 - **Reported by:** G6 device campaign, 2026-09-30.
 
 ### T-F303 — App speed readout units are English (P3)
