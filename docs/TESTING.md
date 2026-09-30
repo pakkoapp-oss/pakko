@@ -252,7 +252,8 @@ when T-F52 replaced `TarProcessService` with the sandboxed service — same test
 (files-only and folder-with-descendants), compression-bomb handling, and whole-archive-reject
 cases (path-traversal entry, ADS/reserved-name entry, truncated tar, and a symlink-entry escape —
 the last is a regression test for the exploit documented in `DECISIONS.md`'s T-F49 entry).
-Fixtures are self-generated per-test via `TarBuilder.cs` (raw USTAR bytes, no third-party tooling
+Fixtures are self-generated per-test via `TarBuilder.cs` (raw USTAR bytes, or GNU magic via
+`gnuMagic` (T-F305), no third-party tooling
 — needed since a `..`-entry or a symlink escape target isn't a representable real source path)
 rather than a prebuilt corpus; T-F50 still owns the full multi-format fixture set below.
 `TarSandboxedServiceCompressedFormatsTests.cs` and `TarSandboxedServiceExternalFormatsTests.cs`
@@ -271,7 +272,8 @@ repo's convention), every assertion is against real OS behavior:
   handles), `AppContainerLaunchTests.cs` (`tar.exe --version` inside a real AppContainer),
   `TarCommandLineEncodingTests.cs` (T-F266: best-fit/unrepresentable strings per explicit code
   page, the launcher refuses before creating a process), `TarSandboxScopeLimitMessageTests.cs`
-  (T-F239 messages, the memory/CPU limit rules), `AppContainerProfileTests.cs` (profile
+  (T-F239 messages, the memory/CPU limit rules), `TarHeaderNamesTests.cs` (T-F305: the header-byte
+  UTF-8 check, incl. GNU `L`/pax records and malformed headers giving "unknown"), `AppContainerProfileTests.cs` (profile
   create/reuse/delete, using its own throwaway test profile name — never the shared production
   `Pakko.TarSandbox` profile — plus a real forced-failure case: a >64-char profile name makes
   `CreateAppContainerProfile` throw `InvalidOperationException`, the exact failure shape
@@ -290,8 +292,8 @@ repo's convention), every assertion is against real OS behavior:
   `EnsureExists` never fails; a `Slow` test runs 8 workers x 15 scopes),
   `SandboxJobObjectTarExtractionTests.cs` (`.tar.xz`/`.tar.zst` extraction survives
   `ActiveProcessLimit = 1`; T-F239: the job reports memory, CPU-time or no limit hit),
-  `TarSandboxedServiceNameEncodingTests.cs` (T-F204/T-F215: UTF-8, OEM and pax names, a name
-  outside the code page, a backslash traversal, a creation error without `-v` lines — expectations
+  `TarSandboxedServiceNameEncodingTests.cs` (T-F204/T-F215/T-F305: UTF-8, OEM and pax names under
+  POSIX and GNU magic, a name outside the code page, a backslash traversal, a creation error without `-v` lines — expectations
   built from this machine's code pages), and `TarSandboxedServiceSandboxBehaviorTests.cs` (3 tests
   — the acceptance-criteria proofs: a write outside the quarantine is denied, a spawned child
   process under the Job Object never completes, and a socket-connect attempt fails inside the
