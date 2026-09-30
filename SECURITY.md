@@ -111,6 +111,12 @@ The app runs only when the user explicitly opens it. No persistent processes.
 Each supported format adds parser attack surface. RAR and 7z are read-only, via the Windows
 built-in `tar.exe` process — not an in-process parser — since libarchive has no writer for
 either. TAR-family formats (read and create) use the same `tar.exe` process.
+Two bounded metadata reads run in-process, neither extracting anything: the RAR5 encryption check
+(see "Encrypted-Archive Diagnostics" below) and, for an uncompressed tar only, a walk of its
+512-byte header blocks (T-F305) that decides whether the names are UTF-8 or the OEM code page when
+tar.exe's own error text cannot tell. It reads names only, verifies every header checksum, skips
+file content by offset, and on anything it cannot read keeps the refusal; it only chooses between
+two sandboxed tar.exe readings, and the security pre-scan still runs on tar.exe's own listing.
 
 **ZIP extraction: staged, checked per entry, verified (v1.5.0)**
 - **Integrity.** Every extracted entry's content CRC-32 is checked against its header (AE-2

@@ -10325,7 +10325,7 @@ cp866 archives were refused as unrepresentable; the T-F204 device check had used
   header; base-256 sizes, GNU sparse, a missing magic, a short block or an oversized `L` record give
   "unknown", which keeps the refusal. Success paths and every case the stderr rule already decided are
   unchanged.
-- **Trust boundary:** the walk reads header blocks only (`RandomAccess.Read`, content skipped by
+- **Trust boundary (in `SECURITY.md`, user OK 2026-09-30):** the walk reads header blocks only (`RandomAccess.Read`, content skipped by
   offset) and chooses between two sandboxed tar.exe readings; nothing is extracted in-process and the
   security pre-scan still runs on tar.exe's own listing. Same kind of bounded metadata read as
   `ArchiveFormatDetector.IsEncryptedRar` (RAR5 block walk), which `SECURITY.md` already describes.
