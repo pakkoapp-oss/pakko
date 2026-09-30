@@ -8029,7 +8029,7 @@ regression from this task, which owns reliability only.
 
 ### T-F283 — tar.exe option injection: a selected name starting with "-" is read as a tar option (P0, security)
 
-- [x] **Status:** done 2026-09-30 — merged in v1.6.0 (2ac8ffa); tag smoke on release v1.6.0 (`pakko.exe` 1.6.0 from the GitHub Release, installed MSIX 1.6.0.0): option-like names archived and restored (`-C` stored as `./-C`). The App TAR format was not driven on device; it calls the same `TarSandboxedService.CompressAsync` as Shell and CLI.
+- [x] **Status:** done 2026-09-30 — merged in v1.6.0 (2ac8ffa); tag smoke on release v1.6.0 (`pakko.exe` 1.6.0 from the GitHub Release, installed MSIX 1.6.0.0): option-like names archived and restored (`-C` stored as `./-C`). App on installed 1.6.0.0 (files opened via `--open-ui --archive`, Format TAR, "Стиснути в TAR"): `opt.tar` holds all six entries `--exclude=real.txt`, `-C`, `-T`, `-v`, `@list.tar`, `real.txt` (`pakko l`).
 - [~] **Progress (2026-09-29, branch `sec-t-f283`, not pushed before v1.6.0):** implementation
   complete — creation hands tar.exe every name as a `-T -` stdin list (`AppendSourcesToNameList`,
   `TarCommandLineEncoding.EncodeLines`, `ProcessLaunchOptions.StdInData`), extract-selected puts

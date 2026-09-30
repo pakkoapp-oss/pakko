@@ -39,11 +39,10 @@ own `AppPackages`/`obj` cleanup) is `[~]` **closed as non-blocking** — root ca
 (leading suspect: Search Indexer race), but `Deploy.ps1`'s own tolerance mitigation has absorbed
 every recurrence since 2026-07-07; see `docs/TASKS.md`'s T-F96 entry if this needs revisiting.
 
-**T-F05 (Archive Browser) is `[~]` partial** — all implementation done (Core
+**T-F05 (Archive Browser) is `[x]` done** (G6 device pass, 2026-09-30) — all implementation done (Core
 `ListEntriesAsync`/`IArchiveListingRouter`, `ExtractOptions.SelectedEntryPaths`, the
 `Archiver.App.Core` project, full breadcrumb/per-folder browser + Extract Selected/All/Info
-wiring), AI-driven on-device verification passed 2026-07-13; stays partial until the user's own
-on-device click-through. A same-day UI design-review pass (comparing a real screenshot against
+wiring), AI-driven on-device verification passed 2026-07-13. A same-day UI design-review pass (comparing a real screenshot against
 NanaZip) found and fixed a genuine bug (Row 0's Add Files/Add Folder/Hash never hid during browse
 mode). Follow-ups (Info dialog folded into columns, CRC-32 column, a blank-row race) are in
 `docs/DECISIONS.md`'s three T-F05 follow-up entries.
@@ -114,8 +113,7 @@ calibrated constant with 3x cross-machine tolerance, tar-family explicitly out o
 AppContainer/quarantine, so timing is unaffected). Many-small-files/hybrid tests are tagged
 `Category=Slow`; the one-large-file tests are tagged `Category=VeryLarge` (on-demand only).
 
-**T-F35** (parallel ZIP compression above a 64-file threshold) is `[~]` **implementation complete,
-on-device verification pending** — a new `Archiver.Core/Services/Zip/` subsystem
+**T-F35** (parallel ZIP compression above a 64-file threshold) is `[x]` done — a new `Archiver.Core/Services/Zip/` subsystem
 (`WorkItemEnumerator`, `ParallelSingleArchiveWriter`, `ZipEntryWriter`, `ZipEntryCompressor`,
 `DosDateTime`) compresses every non-placeholder file in parallel (small files in memory,
 everything else via a per-worker temp file) through a hand-rolled ZIP container writer, since
@@ -131,8 +129,7 @@ compatibility bug invisible to `dotnet test`: zero-byte files were tagged `Defla
 `DeflateStream` emits 0 bytes for empty input (not a valid deflate stream) — real `ZipArchiveEntry`
 always uses `Store` for empty entries; fixed to match. Final T-F114 ratios:
 `ManySmallFiles` 6.02 -> ~1.0, `Hybrid` 3.47 -> ~1.3, `OneLargeFile` 1.22 -> 1.18 (unaffected, as
-expected). Stays `[~]` until a manual on-device archive+verify of 100+ real small files including
-a genuinely empty one — not graduated on `dotnet test` alone, per this project's workflow rule.
+expected).
 See `docs/DECISIONS.md`'s T-F35 entry and its four follow-ups for the full stage-by-stage trail.
 
 **T-F09 (`Archiver.CLI`, 7z-familiar CLI)** is `[~]` **implementation complete** — a fourth thin
@@ -143,13 +140,11 @@ its own standalone self-contained per-architecture download. New `Archiver.CLI.T
 test layer in this repo to do that. Stays `[~]` until the user's own on-device terminal run of all
 five commands plus the three error cases.
 
-**T-F116** (`Archiver.CLI` `-si`/`-so` stdin/stdout streaming) is `[~]` **implementation
-complete** — implemented via private `%TEMP%` staging in `CliStreamStaging.cs`, zero
+**T-F116** (`Archiver.CLI` `-si`/`-so` stdin/stdout streaming) is `[x]` done — implemented via private `%TEMP%` staging in `CliStreamStaging.cs`, zero
 `Archiver.Core` changes. Empirically confirmed native PowerShell 5.1 silently corrupts binary
 data piped between two executables while PowerShell 7+/`cmd /c` do not (documented in `docs/CLI.md`).
 Same session: the built exe was renamed `Archiver.CLI.exe` -> **`pakko.exe`** (not added to PATH
-automatically, matching ripgrep/fd/bat convention). Stays `[~]` until the user's own on-device
-confirmation of a real piped round trip.
+automatically, matching ripgrep/fd/bat convention).
 
 **T-F122** (GitHub Actions CI, `.github/workflows/build.yml`) is
 `[x]` done — builds the MSIX + `pakko.exe` on every push/tag and publishes CLI zips + `SHA256SUMS`
@@ -213,7 +208,7 @@ files were reopened with `FileShare.None`, which could abort the entire operatio
 client or AV briefly opened a finished chunk file — the read-back never needed exclusivity in the
 first place, so this was a one-word fix to `FileShare.Read`.
 
-**T-F142** (`[~]` **implementation complete, on-device visual check pending**) — real TAR
+**T-F142** (`[x]` done) — real TAR
 extraction byte progress via a poll of the sandboxed quarantine output directory (no streamed
 subprocess channel exists for a sandboxed launch), plus a new shared `ProgressSpeedSampler`
 consumed by both `MainViewModel` and `Archiver.Shell`'s dialog. Advisor review caught two real
@@ -349,19 +344,18 @@ ordinary rejection message instead); `ListEntriesAsync` now reports `Crc32 = nul
 misleading `0`) for an AE-2 entry. Full design rationale, two failed fixture-design attempts
 before the traversal hard-invariant test actually proved anything, and the advisor-caught
 Zip64/exception-safety gaps are in `docs/DECISIONS.md`'s T-F189 entry. **T-F190** (WinUI App
-password prompt dialog) is `[~]` implementation complete, 2026-09-18 — `IDialogService.
+password prompt dialog) is `[x]` done (2026-09-18, device-closed in G6) — `IDialogService.
 ShowPasswordPromptAsync` wired at `MainViewModel`'s 3 real `ExtractOptions` sites (main Extract,
-T-F97 preview, T-F98 nested drill-in), 37-locale localized, agent-verified on device; stays `[~]` until the user's own click-through. `canApplyToRemaining` is a `ShowPasswordPromptAsync`
+T-F97 preview, T-F98 nested drill-in), 37-locale localized, agent-verified on device. `canApplyToRemaining` is a `ShowPasswordPromptAsync`
 parameter the App layer computes per call site, not a `PasswordPromptInfo` field — see
 `docs/DECISIONS.md`'s T-F190 entry for why Core can't compute it correctly for every frontend.
-**T-F191** (`Archiver.CLI` real `-p{pwd}` support) is `[~]` implementation complete, 2026-09-18 —
+**T-F191** (`Archiver.CLI` real `-p{pwd}` support) is `[x]` done (2026-09-18, device-closed in G6) —
 `-p{pwd}` on `x`/`t` wired onto T-F189's `ResolvePasswordAsync`/`TestAsync` hooks with zero
 `Archiver.Core` diff; a masked interactive prompt (new `CliPasswordPrompt` class, unit-tested via
 a fake key source since the Subprocess test layer always redirects stdin) when no `-p` and a real
 console; a CLI-specific "incorrect password" line added on top of Core's generic message, since
 `PasswordResolver` itself collapses never-wired/cancelled/exhausted-attempts into the same null
-result. Agent-verified in a real console (`docs/DECISIONS.md`'s T-F191 entry); stays `[~]`
-until the user's own terminal click-through. **T-F192** (`Archiver.Shell` native password prompt)
+result. Agent-verified in a real console (`docs/DECISIONS.md`'s T-F191 entry). **T-F192** (`Archiver.Shell` native password prompt)
 is `[~]` implementation complete, 2026-09-18 — a custom in-memory `DLGTEMPLATEEX` dialog via
 `DialogBoxIndirectParamW` (NOT `CredUIPromptForCredentialsW`, confirmed by fetching NanaZip's real
 `PasswordDialog.rc`/`.cpp`, which use exactly this custom-dialog shape), wired into all 3 extract
@@ -378,13 +372,10 @@ entries in memory and hands the plaintext to AMSI (all 3 frontends prompt); no p
 `Clean` on a ZipCrypto check-byte collision and several hostile-header escapes from the "never
 throws" rule — see `docs/DECISIONS.md`'s T-F194 entry. The trust docs (`SECURITY.md`'s new
 "Password-Protected ZIP" section, `SPEC.md`, `README.md`, both `index.html`) were updated the
-same day with user permission. **T-F193** (`[~]`, 2026-09-24) — creating encrypted ZIPs, WinZip AES-256 AE-2 only: App checkbox +
+same day with user permission. **T-F193** (`[x]`, 2026-09-24) — creating encrypted ZIPs, WinZip AES-256 AE-2 only: App checkbox +
 Encrypt dialog, `pakko a -p`/bare `-p`/`-mem`; public `EncryptionPasswordRule` (printable ASCII,
 <= 99 — 7-Zip's rule, user-confirmed); read side lifted first (Zip64 locator, streaming two-pass
-reader, no size limit). See `docs/DECISIONS.md`'s T-F193 entry. **Open from the same batch:**
-T-F197 (ZIP extract drops empty folders), T-F198-T-F201 (UI/UX review fixes, layout redesign,
-browse password re-prompt, stacked second window), **T-F202 (full UI + every-menu smoke test —
-required before this batch closes; the Store build is live).**
+reader, no size limit). See `docs/DECISIONS.md`'s T-F193 entry. T-F197-T-F201 from the same batch are done; **T-F202** (full UI + every-menu smoke test) stays open.
 **T-F268** (`[~]`, fix phase 4b) — Explorer commands show a code-only WinUI 3 operation window
 (`Archiver.OperationUi`, started by Shell over anonymous pipes; logic in `Archiver.OperationUi.Core`)
 with `Win32OperationUi` as fallback and failover. Steps 1-5 done (step 5, 2026-09-27: conflict
