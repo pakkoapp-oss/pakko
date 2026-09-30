@@ -4418,6 +4418,8 @@ real console) and T-F226's deferred per-arrow diagram ritual — carried as open
 
 ### T-F199 — Archive/browse window layout redesign (+ inline encryption password)
 
+- **Device (G6 pass 5, 1.5.0.13, light theme, uk-UA, 2026-09-30):** create, extract and browse modes, the inline encryption password, About and the password dialog all read correctly in the light theme (the only theme-dependent code, the title-bar button colours, follows `ActualTheme`). At the minimum size the presenter allows (900x520) the two option cards stack and scroll in both modes, the footer stays whole. Tab order in create mode: toolbar, column headers, list, card toggle, card fields, destination card, Clear, primary action, wrapping to the toolbar; focus is visible in both themes. Keyboard gaps filed as T-F308.
+
 - [x] **Status:** done 2026-09-29 — steps 0-9 device-checked per step; G1 App pass on 1.5.0.33/1.5.0.34 (first render, add files/folders, duplicates, Hash, compress with auto name, browse, Test cancel, Close archive, small window sizes). Light theme, en-US, keyboard-only and the carried T-F254/T-F221/T-F260 checks move to G6 (plan 8.8).
 - **Progress (2026-09-28, wave 4):** steps 0-3 done. Step 1 aa9cf8f/13bd543 (per-entry encryption,
   `pakko l` Encrypted column); step 0 0698d88 (resw key-usage witness tests, dead
@@ -6251,6 +6253,8 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 
 ### T-F268 — Explorer operations: one UI interface, then a WinUI 3 operation window (P2, design + spike)
 
+- **Device (G6 pass 5, 1.5.0.13, light theme, temporary until G7 - `OperationWindow` is G2-changed):** the conflict, password, progress and result states read correctly in the light theme. Keyboard: the conflict prompt opens with focus on "Пропустити" and cycles checkbox -> Перезаписати -> Перейменувати -> Пропустити; Space ticks "apply to all", Enter answers, Esc skips the one file; the password prompt opens in the field, Esc = "Пропустити архів"; Esc on a running extraction cancels it, Esc on the result closes the window. Found T-F309 (a cancelled "Extract to X\" leaves its empty folder).
+
 - [~] **Progress:** step 1 done 2026-09-26 — `IOperationUi`/`IOperationSession` + `Win32OperationUi`,
   `ShellCommands`, `OperationMessages`, `ShellServices`; `Program.cs` only parses and dispatches.
   Same windows as before, except T-F216's double box is now one, and results show even without a
@@ -6894,6 +6898,7 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   is the second one). Narrator reads nothing useful. Fix: `AutomationProperties.LabeledBy` to the row's
   label, and a name for the card toggle via `x:Uid` (37 locales); extend the App UIA-name test if one
   covers `MainWindow.xaml`.
+- **G6 pass 5:** the card toggle (`NewArchiveCard`) has no name in create mode too, not only when collapsed; the archive-name TextBox is announced by its placeholder ("src.zip (авто)") rather than its "Назва:" label.
 - **Reported by:** G6 device campaign, 2026-09-30.
 
 ### T-F305 — A GNU-format tar with OEM (cp866) names is refused as a whole (P1, regression)
@@ -6939,6 +6944,37 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   of the 316 MB archive showed an empty list for about 30 s (whether a busy indicator was visible was not
   checked). Show a "Перевірка архіву..." phase (indeterminate or polled by the archive bytes read), or
   cut the passes to one `-tv`.
+- **Reported by:** G6 device campaign, 2026-09-30.
+
+### T-F308 — App: keyboard-only gaps in the lists and the footer (P2)
+
+- [ ] **Status:** open. Found in G6 pass 5, 2026-09-30 (1.5.0.13, E6, keyboard only):
+  1. Archive browser: Enter on a folder, a previewable file or a nested archive does nothing; only
+     `DoubleTapped` opens them (no `KeyDown`/`ItemClick` on `ArchiveBrowserListView`). Backspace and Alt+Up
+     do not go up either (the Up button does). A keyboard user cannot get below the archive root.
+  2. Create list: Delete does not remove the focused row, and Shift+F10 / the menu key open nothing — the
+     "Прибрати зі списку" `ContextFlyout` sits on the item template's inner `Grid`, which a keyboard context
+     request on the `ListViewItem` never reaches. Only "Очистити" (everything) is left.
+  3. Extract mode footer: Tab goes Очистити -> Видобути -> Стиснути в ZIP while the screen shows
+     Очистити, Стиснути в ZIP, Видобути — document order, while `ExtractButtonColumn`/`ArchiveButtonColumn`
+     swap the columns. Found by pressing Enter on what should have been Видобути: it compressed `enc.zip`.
+  4. After About closes (Esc works), focus lands on "Додати файли", not back on "Про програму".
+  5. Seen, not a bug of ours so far: the multi-select check of a selected browse row is faint in both themes
+     (no accent fill); check against the WinUI default `ListViewItem` style before changing anything.
+  Fix tests-first where a ViewModel command can carry it (open-entry / remove-entry commands bound to keys);
+  XAML: `KeyboardAccelerator`s or a `KeyDown` handler, `ContextFlyout` on the `ListViewItem` style, `TabIndex`
+  bound with the column.
+- **Reported by:** G6 device campaign, 2026-09-30.
+
+### T-F309 — A cancelled or refused extraction leaves the empty destination folder Pakko created (P3)
+
+- [ ] **Status:** open. Found in G6 pass 5, 2026-09-30 (1.5.0.13). Explorer "Extract to big\" (`--extract-folder`)
+  of a 200 MB `big.tar.bz2` with `big\` already present, cancelled during the listing phase (Esc or
+  "Скасувати"): no files, quarantine empty, but an empty `big (1)\` stays (it exists 3 s into the run). Same
+  shape seen in G6 pass 4: `pakko x -o<new dir>` of an archive the pre-scan refuses leaves the empty `-o` folder.
+  T-F245's "no partial output" holds for files; the folder is created before the engine runs. Fix: create the
+  folder lazily, or remove it on cancel/refusal when Pakko created it and it is still empty (never a folder
+  that existed before).
 - **Reported by:** G6 device campaign, 2026-09-30.
 
 ## Test-Coverage Audit Follow-Ups (T-F174–T-F186)
