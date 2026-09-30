@@ -10,6 +10,127 @@ the technical account of any task named here.
 
 ---
 
+## v1.6.0 — 2026-09-30
+
+A redesigned main window, a Pakko window for Explorer's commands, messages in all 37 languages, a
+security fix for tar archive creation, and a move to .NET 10. Please update: the security issue
+below affects every earlier version.
+
+### Security — please read
+
+- **T-F283** — creating a `.tar` archive (Explorer "Add to X.tar", the App's TAR format,
+  `pakko a -ttar`) passed every selected name to tar.exe on its command line, and tar.exe runs
+  outside the sandbox when it creates an archive. A file or folder whose name looked like a
+  tar.exe option was read as one: a crafted name could change what tar.exe did, up to running
+  another program as you. tar.exe now receives the names as a list on its standard input, where
+  a name is only ever a name; extracting selected entries of a tar-family archive puts `--`
+  before the entry names for the same reason. The fix also removes the limit on how many files
+  one tar archive can be created from (**T-F273**: a large selection used to fail).
+- **T-F237** — an archive entry nested deeper than 256 folders is now refused as an unsafe path
+  (for ZIP that entry, for tar-family the whole archive, before tar.exe runs). A crafted archive
+  with thousands of levels used to keep Pakko busy for minutes in a step that could not be
+  cancelled, and deep names cost gigabytes of memory in the App's archive view (now linear in
+  the name's length).
+
+### New
+
+- **T-F199** — the main window is redesigned: its own title bar, option cards, and a footer that
+  holds the main action (**"Compress to ZIP"** / "Compress to TAR" — the button used to say
+  "Archive"), the encryption password (the separate Encrypt dialog is gone), and the result of
+  the last operation with "Show in folder" and "Details" (**T-F211**). Browsing an archive gets
+  Test, Close archive (Esc), an encryption badge and lock icons on encrypted entries. The window
+  fits smaller screens (**T-F224**); Extract is offered only when the list holds archives
+  (**T-F212**).
+- **T-F268 / T-F269** — Explorer's commands (extract, compress, test, scan, hash) show a Pakko
+  window with progress, the conflict and password questions, and the result, instead of the old
+  Windows progress dialog and message boxes; the old dialogs remain as a fallback. Cancel stops
+  the whole selection, not only the current archive.
+- **T-F209 / T-F254** — error and skip messages from the archive engine are shown in the App's
+  and Explorer's language (37 languages; the command line stays English). Explorer's menu now
+  follows Chinese (zh-CN) and regional variants of Windows' language instead of falling back to
+  English.
+- **T-F217** — Explorer's extract commands ask before extracting a suspected compression bomb
+  (No is the default) instead of refusing with no way forward.
+- **T-F214** — tar, 7z and RAR archives show each entry's modified date in the App and in
+  `pakko l`.
+- **T-F219** — the App's Hash button hashes the files in the list and can copy the result
+  (SHA-256).
+- **T-F200** — browsing a password-protected ZIP asks for the password once per archive, not
+  for every previewed file.
+- **T-F238** — `pakko -scc{UTF-8|WIN|DOS}` sets the character set of its output, so redirected
+  output can keep every file name exactly (7-Zip's switch).
+- **T-F221** — `pakko l` has an `Encrypted` column; `pakko` shows progress on a console and
+  says what went wrong and how to go on (missing file, wrong password, existing files, empty
+  input).
+
+### Changed behavior
+
+- **T-F206** — `pakko x` without `-o` extracts into the current directory, like `7z x` (it
+  used to extract next to the archive).
+- **T-F221** — `pakko a -t<type> name.ext` writes exactly the name given (7-Zip's rule); only a
+  name with no extension gets one added. `pakko l`'s `Path` column moves from column 6 to 7,
+  after the new `Encrypted` column, and **T-F214** prints `-` instead of `0` in the Compressed
+  column for tar, 7z and RAR. Scripts that parse `pakko l` need updating.
+- **T-F276** — Explorer's window title and two command-line messages say "compress" instead of
+  "archiving" ("...are not followed during compression.", "Unknown error while compressing.").
+- **T-F171** — a tar, 7z or RAR archive holding two entries with the same name used to extract
+  only the last one, silently. Now the "if file exists" setting decides, as for ZIP: Rename keeps
+  both (`f.txt` is the first, `f (1).txt` the last), Skip keeps the first, Overwrite the last, Ask
+  asks; a third copy or later is reported, not extracted. Creating a tar from two folders with
+  the same name stores the second as `x (1)`.
+- **T-F250 / T-F261 / T-F262** — Group Policy now also applies to listing and browsing an
+  archive and to Test and Scan, and Explorer's menu hides the commands a policy blocks.
+- **T-F222** — a `pakko` build that is not a release reports `0.0.0-dev+<commit>` as its
+  version.
+
+### Fixed
+
+- **T-F235** — a very large Explorer selection no longer makes Pakko's commands silently do
+  nothing (the known limit in v1.5.0's notes).
+- **T-F305** — a GNU-format tar with Cyrillic names in code page 866 was refused as a whole
+  since v1.5.0; it lists and extracts again.
+- **T-F279** — a cancelled ZIP Test no longer reports "no errors found"; **T-F274** — Explorer's
+  Test no longer says "no errors detected" when nothing was tested.
+- **T-F236** — one unreadable subfolder no longer aborts creating the whole archive.
+- **T-F251 / T-F225** — folder hashes survive unreadable subfolders and junction loops, and the
+  "data and names" checksum now matches 7-Zip's.
+- **T-F247** — "Scan for threats" no longer fails on an archive that contains an empty file.
+- **T-F201 / T-F252** — a second Pakko window opens offset from the first, and closing one window
+  no longer deletes another window's preview files.
+- **T-F253 / T-F255** — Explorer's conflict dialog opens in front and names the file in full;
+  its password dialog no longer cuts passwords at 255 characters.
+- **T-F216** — no "every entry was skipped" warning after you chose Skip yourself.
+- **T-F244** — `pakko -si`/`-so` clean up their temporary files on Ctrl+C and after a crashed
+  run.
+- **T-F218** — the title bar's build time is the time the app was built (not installed); a Store
+  build shows none.
+- **T-F277 / T-F278 / T-F198** — smaller App fixes: a cancelled browse-mode Test says
+  "Cancelled", adding a file already in the list says so, no English words left in Ukrainian and
+  other localized lists and buttons.
+
+### Known issues
+
+- **T-F299** — at the "Fastest" level (the App's default, `pakko a -mx=1`), already-compressed
+  files (photos, video, ZIPs) come out about 5% larger than the originals — a change in .NET 10's
+  fastest compression. No data or compatibility risk; other levels are not affected. Choose
+  another level for such files until this is fixed.
+- **T-F298** — ZIP extraction sets each file's date to the time of extraction, not the date
+  stored in the archive (every earlier version does the same).
+
+### Under the hood
+
+- **T-F270 / T-F271** — every project moved to .NET 10 LTS (.NET 8 support ends 2026-11-10);
+  most of the slowdown it caused when compressing many small files is recovered, the rest is in
+  the runtime and reported upstream (dotnet/runtime#134700).
+- **T-F148 / T-F287** — every Windows API call uses source-generated marshalling
+  (`LibraryImport`).
+- **T-F240** — a dependency-free ZIP fuzzer, nightly Slow, ARM64 and AddressSanitizer runs,
+  NuGet vulnerability audit and Dependabot.
+- **T-F257 / T-F258 / T-F223** — security, convention and diagram documents re-checked against
+  the code.
+
+---
+
 ## v1.5.0 — 2026-09-26
 
 Password-protected ZIP support (open, test, scan and create), three security fixes, and a large

@@ -414,7 +414,7 @@ footer with the primary action rightmost ("Compress to {format}"), inline encryp
 browse badge/Test/Close archive, footer result line (T-F211); every App key in 37 locales
 (`AppResourceKeysTests`). Structure: `docs/XAML.md`; decisions: `docs/DECISIONS.md`'s wave 4 entry.
 **G1** (2026-09-29, plan groups G0-G7 in `docs/TASKS.md`): T-F276/277/278/219 and new T-F279 (a
-cancelled ZIP Test reported clean, P1) fixed and device-checked; T-F280-T-F282 filed. G2 on local `sec-t-f283`; G4, G5 on main. Next: G6.
+cancelled ZIP Test reported clean, P1) fixed and device-checked; T-F280-T-F282 filed. G2-G6 done; G2 (the local `sec-t-f283` branch) squash-merged for v1.6.0 in G7.
 
 ## Roadmap Summary
 

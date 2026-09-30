@@ -127,7 +127,7 @@ two sandboxed tar.exe readings, and the security pre-scan still runs on tar.exe'
   path is rejected per entry and reported as an error, never normalized (T-F228) — the tar path
   rejects such archives whole.
 - **Deep names.** A name deeper than 256 folder levels counts as an unsafe path too, with the same
-  per-entry (ZIP) and whole-archive (tar) rejection before any file system call (T-F237). Windows
+  per-entry (ZIP) and whole-archive (tar) rejection before any file system call (T-F237, v1.6.0). Windows
   parses the whole path again for every new level inside one call that cannot be cancelled, so a
   deep chain from a small archive costs minutes of CPU (a 60 KB ZIP with 4,000 levels: 91 s).
 - **Owned staging.** Extraction stages into a fresh, uniquely named folder the run creates and
@@ -155,6 +155,7 @@ two sandboxed tar.exe readings, and the security pre-scan still runs on tar.exe'
 | Native decompression 0-day in the ZIP path (a memory-corruption bug in the native zlib-derived code `System.IO.Compression`'s `DeflateStream` calls across its managed→native boundary, triggered by a maliciously malformed compression stream — e.g. corrupted Huffman tables) | Low (theoretical) | **Accepted risk, not sandboxed.** Unlike tar-family extraction (AppContainer, T-F52), ZIP handling runs unsandboxed in-process by design — see "No format parsers beyond ZIP" above. Successful exploitation would execute with the app's own user-level privileges; no isolation boundary catches it. The only mitigation is indirect: Microsoft's MSRC CVE process on `dotnet/runtime`, the same trust basis this project already extends to `System.IO.Compression` generally. Sandboxing the ZIP path the same way as tar.exe is a real, undone option — not pursued, since it would add real overhead (cross-process marshaling for the common case) against a threat class with no track record against this specific code path so far. Revisit if that changes. |
 | Opening a tar-family archive changed that file's permissions (versions before v1.5.0) | High | Fixed in v1.5.0 (T-F233) — tar.exe now reads the archive only as a handle Pakko opens itself; the sandbox gets no permission entry on the user's file. Older versions added an entry for the sandbox and replaced the entries the file inherited from its folder, which could remove other users' access on a shared folder. See "Advisory: Permissions Changed by Earlier Versions" below. |
 | Command-line option injection into tar.exe through a crafted file name ("WorstFit" best-fit mapping, e.g. U+FF02 becoming `"`) | High | Fixed in v1.5.0 (T-F266) — every string passed to tar.exe must convert to the ANSI code page exactly (`WC_NO_BEST_FIT_CHARS`, no default character, exact round trip); a name that does not is refused before tar.exe runs, with a message pointing to ZIP. Archive creation is unsandboxed, so before this fix a selected file named this way could add tar options. |
+| tar.exe reading a selected name that looks like one of its options as an option (versions before v1.6.0) | High | Fixed in v1.6.0 (T-F283) — archive creation gives tar.exe every name as a line of a `-T -` list on its standard input, never as an argument; in that list only an exact `-C` line is special, and a source named exactly `-C` is written as `./-C`. Extracting selected entries puts `--` before the entry names. Before this fix a crafted file or folder name could change what the unsandboxed creation run did, up to starting another program as the user. |
 | A web page, e-mail or document link launching Pakko on an arbitrary (UNC) path through the `pakko://` scheme (versions before v1.5.0) | High | Fixed in v1.5.0 (T-F232) — the scheme is removed; Explorer's commands reach the app through a Launch activation only a process already on the machine can start. See "Advisory: `pakko://` Links in Earlier Versions" below. |
 | Microsoft as trust anchor | Low-Medium | Accepted tradeoff for the target audience; .NET is open source and auditable |
 
@@ -301,7 +302,10 @@ The "maliciously-named source file" case this section once called hypothetical w
 through the command line, not libarchive's writer: tar.exe converts its command line with
 best-fit mapping, and a file name with fullwidth quotes could add options (T-F266). It is closed by
 validating every argument (see the risk table), not by sandboxing creation; running creation in
-the sandbox stays a separate, open decision.
+the sandbox stays a separate, open decision. A second case of the same class was a name that
+simply starts with `-` (T-F283, fixed in v1.6.0): since then the selected names never reach
+tar.exe's command line at all — they go to its standard input as a name list, where only an exact
+`-C` line has a meaning of its own.
 
 ### Trust Chain
 

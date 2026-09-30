@@ -5423,7 +5423,8 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   uncancellable `CreateDirectory` (`docs/DECISIONS.md`). Device check of browse mode on the deep ZIP
   pending (G7).
 
-- [~] **Status:** fixed in code (items 1 and 2), device check pending — confirmed on device 2026-09-24.
+- **Device (G7, 2026-09-30, Deploy 1.5.0.38 from the merged release tree, title build 2026-09-30 10:11:46):** App browse of `dp15.zip` (15,000 levels): folder `a`, `ok1.txt`, `ok2.txt`, process 152 MB (was ~1.6 GB); `pakko x dp15.zip` (same tree) 0.26 s, exit 2, the deep entry refused, `ok1.txt`/`ok2.txt` written (was 6+ minutes).
+- [x] **Status:** done 2026-09-30 (G7 device check above). Was: fixed in code (items 1 and 2), device check pending — confirmed on device 2026-09-24.
   1. **Stack overflow:** directory walks recurse without a depth bound —
      `ZipArchiveService.ComputeDirectoryTotals` (`:1900-1926`), `WorkItemEnumerator.EnumerateDirectory`
      (`:113`, nested iterators, also O(depth^2) time), `AddDirectoryToArchiveAsync` (`:1822`).
@@ -5792,7 +5793,8 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   bypasses the routers. A failing-tar-fake matrix covers extract/create/list/test under both
   policies. Device check pending.
 
-- [~] **Status:** fixed in code (see Progress above); device check pending (G6/G7). Status line synced 2026-09-30. Original: open — code-confirmed 2026-09-25 (T-F226 batch 3). `ArchiveListingRouter`'s
+- **Device (G7, 2026-09-30, Deploy 1.5.0.38 from the merged release tree, HKLM `BlockedFormats` = zip, sevenzip, removed afterwards):** App browse of `valid.7z` (opened through Shell `--open-ui --browse`) -> error dialog "Цей формат архіву (sevenzip) заблоковано груповою політикою."; `pakko l valid.7z` / `l dp256.zip` exit 2 and `t dp256.zip` skipped with the policy message, no tar.exe started.
+- [x] **Status:** done 2026-09-30 (G7 device check above). Was: fixed in code; open — code-confirmed 2026-09-25 (T-F226 batch 3). `ArchiveListingRouter`'s
   constructor takes no `GroupPolicyOptions` at all (`ArchiveListingRouter.cs:7-10`); it dispatches
   on format and tar capabilities only (`:17-30`). `ExtractionRouter`, `AntivirusScanService` and
   `ArchiveCreationRouter` all apply `ArchiveFormatPolicy.Classify`/`IsFormatAllowed`, listing does
@@ -6141,7 +6143,8 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   `BlockedFormats=zip` -> `hf.zip` shows only Compress/Hash. Each change applied without restarting
   Explorer. `AllowedFormats` not checked (not read by design).
 
-- [ ] **Status:** open — code-confirmed 2026-09-25. `Archiver.ShellExtension` has no policy
+- **Device (G7, 2026-09-30, same build and policy, user's own check):** Explorer menu on `backup.zip` shows only Compress and the two hashes; on `valid.7z` no Open/Extract/Scan and no "Add to valid.zip", with Compress, "Add to valid.tar" and the hashes kept.
+- [x] **Status:** done 2026-09-30 (G7 device check above). Was: open — code-confirmed 2026-09-25. `Archiver.ShellExtension` has no policy
   reader at all (no match for "Polic"/registry calls in the project); the tar-family menu items
   are gated only on tar.exe's presence (`ShellExtUtils.cpp:186`, `ExplorerCommands.cpp:115`). With
   `DisableTarExtraction=1` or `BlockedFormats=sevenzip`, Explorer still offers "Add to X.tar" and
