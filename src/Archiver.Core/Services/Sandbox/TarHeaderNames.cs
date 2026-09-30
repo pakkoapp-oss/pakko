@@ -27,56 +27,66 @@ internal static class TarHeaderNames
     internal static bool? AreAllUtf8(ReadAt read, CancellationToken cancellationToken)
     {
         byte[] header = new byte[BlockSize];
+        var walk = new NameWalk(read);
         long offset = 0;
-        bool nextNameReplaced = false;
-        bool allUtf8 = true;
         while (true)
         {
             cancellationToken.ThrowIfCancellationRequested();
             int n = ReadFully(read, header, offset);
-            if (n == 0)
-                return offset == 0 ? null : allUtf8;
+            if (n == 0 || (n == BlockSize && header.AsSpan().IndexOfAnyExcept((byte)0) < 0))
+                return offset == 0 ? null : walk.AllUtf8;
             if (n < BlockSize)
                 return null;
-            if (header.AsSpan().IndexOfAnyExcept((byte)0) < 0)
-                return offset == 0 ? null : allUtf8;
-
-            bool gnu = header.AsSpan(257, 8).SequenceEqual("ustar  \0"u8);
-            bool posix = header.AsSpan(257, 6).SequenceEqual("ustar\0"u8);
-            if ((!gnu && !posix) || !ChecksumMatches(header) || (header[124] & 0x80) != 0)
+            long? size = ParseHeader(header, out bool gnu);
+            if (size is null || !walk.Visit(header, gnu, size.Value, offset + BlockSize))
                 return null;
-            long? size = ParseOctal(header.AsSpan(124, 12));
-            if (size is null)
-                return null;
+            offset += BlockSize + (size.Value + BlockSize - 1) / BlockSize * BlockSize;
+        }
+    }
 
-            byte type = header[156];
-            long contentOffset = offset + BlockSize;
-            switch (type)
+    // The entry's content size, or null when the block is not a valid POSIX/GNU tar header.
+    private static long? ParseHeader(byte[] header, out bool gnu)
+    {
+        gnu = header.AsSpan(257, 8).SequenceEqual("ustar  \0"u8);
+        bool posix = header.AsSpan(257, 6).SequenceEqual("ustar\0"u8);
+        if ((!gnu && !posix) || !ChecksumMatches(header) || (header[124] & 0x80) != 0)
+            return null;
+        return ParseOctal(header.AsSpan(124, 12));
+    }
+
+    private sealed class NameWalk(ReadAt read)
+    {
+        private bool _nextNameReplaced;
+
+        public bool AllUtf8 { get; private set; } = true;
+
+        // False when the walk cannot decide and the caller must answer null.
+        public bool Visit(byte[] header, bool gnu, long size, long contentOffset)
+        {
+            switch (header[156])
             {
                 case (byte)'S':
-                    return null; // GNU sparse: extension blocks follow; left to libarchive's wording
+                    return false; // GNU sparse: extension blocks follow; left to libarchive's wording
                 case (byte)'L':
                     if (size > MaxLongNameBytes)
-                        return null;
-                    byte[] longName = new byte[size.Value];
+                        return false;
+                    byte[] longName = new byte[size];
                     if (ReadFully(read, longName, contentOffset) < longName.Length)
-                        return null;
-                    allUtf8 &= IsUtf8(longName);
-                    nextNameReplaced = true;
-                    break;
+                        return false;
+                    AllUtf8 &= IsUtf8(longName);
+                    _nextNameReplaced = true;
+                    return true;
                 case (byte)'x':
-                    nextNameReplaced = true; // pax "path" is UTF-8 by the standard
-                    break;
+                    _nextNameReplaced = true; // pax "path" is UTF-8 by the standard
+                    return true;
                 case (byte)'g' or (byte)'K':
-                    break;
+                    return true;
                 default:
-                    if (!nextNameReplaced)
-                        allUtf8 &= IsUtf8(header.AsSpan(0, 100)) && (gnu || IsUtf8(header.AsSpan(345, 155)));
-                    nextNameReplaced = false;
-                    break;
+                    if (!_nextNameReplaced)
+                        AllUtf8 &= IsUtf8(header.AsSpan(0, 100)) && (gnu || IsUtf8(header.AsSpan(345, 155)));
+                    _nextNameReplaced = false;
+                    return true;
             }
-
-            offset = contentOffset + (size.Value + BlockSize - 1) / BlockSize * BlockSize;
         }
     }
 
