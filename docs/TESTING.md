@@ -848,7 +848,9 @@ Ukrainian UI, CI an English one.
 - T-F237 item 2 (App.Core, tests first): `ArchiveTreeIndexTests` — a 20,000-segment entry name
   builds and opens its deepest folder under a 32 MiB allocation budget
   (`GC.GetAllocatedBytesForCurrentThread`; 1.6 GB before the fix), plus pinned odd shapes (explicit
-  folder after its implied one, a file and a folder with one name, `a//b`, a leading `/`).
+  folder after its implied one, a file and a folder with one name, `a//b`, a leading `/`). Core:
+  `CoreTextTests` (a long argument keeps head and tail, surrogate pairs whole) and
+  `ExtractAsync_TwentyThousandSegmentName_OthersExtractAndTheErrorIsShort` (80 KB error before).
 - T-F198: `AppResourceKeysTests` (App.Core) — the twelve new App keys in all 37 `.resw` files with
   English's placeholders.
 - T-F221: `CliFacingMessagesTests` (Core) and `CliMessagesSubprocessTests` (real `pakko.exe`):

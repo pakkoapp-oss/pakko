@@ -10334,3 +10334,20 @@ cp866 archives were refused as unrepresentable; the T-F204 device check had used
   cp866 contains `╨` (U+2568), which cp1251 lacks, and it printed `¦` with exit 0, so the bytes cannot
   be recovered and the tick name would pass as OEM on some code-page pairs.
 - **Left open:** a compressed GNU-magic tar with OEM names is still refused (T-F310).
+
+## T-F237 item 2 — deep entry names: linear browse tree, shortened messages, no depth limit (2026-09-30)
+
+An 80 KB ZIP with one `"a/" * 20000 + "x.txt"` entry held the App at ~1.7 GB in browse mode
+(`ArchiveTreeIndex` made one full-path string per ancestor, O(depth^2)), and `pakko x` printed an
+80 KB error (the entry name plus the OS message quoting the whole path).
+
+- **Chosen:** `ArchiveTreeIndex.Build` returns an `ArchiveTree` of internal nodes keyed by segment;
+  a node's path is a prefix of the first entry path that reached it (a reference plus a length), and
+  a folder's rows are made on its first visit. `ArchiveEntryViewModel` is unchanged: a parent link in
+  a record would make its generated `Equals` recurse up the chain. A leading `/` now belongs to the
+  root (before, its empty segment was a nameless row leading back to the root).
+- **Chosen:** `CoreText` shortens every string argument over 2,048 characters to its head and tail
+  around `...`, so no Core message can carry a 40,000-character path; surrogate pairs stay whole.
+- **Rejected for now:** an entry depth or length limit in the pre-extraction checks. Windows already
+  refuses a path over 32,767 characters, per entry (T-F230: the rest extracts, nothing is created);
+  a depth limit below that would be a policy number with no fact behind it.

@@ -5391,6 +5391,11 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   is on the iterative `DirectoryWalker`; a 5,000-deep tree archives (`DeepFolderTreeTests`,
   `Category=Slow`). **Remaining:** item 2 (`ArchiveTreeIndex` O(depth^2) ancestor strings,
   entry-depth/length limit in the pre-extraction checks) — phase 9 with the App.
+- **Progress (2026-09-30):** item 2 fixed tests-first — `ArchiveTree` is linear in path length
+  (20,000 segments: 1.6 GB -> under 32 MiB allocated, 96c1a5c); Core messages shorten any argument
+  over 2,048 characters (`pakko x` error 80 KB -> ~2 KB). No depth limit: Windows' 32,767-character
+  limit already fails such an entry alone (`docs/DECISIONS.md`). Device check of browse mode on the
+  deep ZIP pending (G7).
 
 - [ ] **Status:** open — confirmed on device 2026-09-24.
   1. **Stack overflow:** directory walks recurse without a depth bound —

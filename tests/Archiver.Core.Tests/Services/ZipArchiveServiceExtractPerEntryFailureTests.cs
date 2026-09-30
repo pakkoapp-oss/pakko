@@ -52,6 +52,31 @@ public sealed class ZipArchiveServiceExtractPerEntryFailureTests : IDisposable
         Directory.GetDirectories(dest, ".pakko-x-*").Should().BeEmpty();
     }
 
+    // T-F237: a name past Windows' 32,767-character limit fails only itself, and the error stays
+    // readable - it used to repeat the whole 40,000-character path twice (80 KB).
+    [Fact]
+    public async Task ExtractAsync_TwentyThousandSegmentName_OthersExtractAndTheErrorIsShort()
+    {
+        string deep = string.Concat(Enumerable.Repeat("a/", 20_000)) + "x.txt";
+        string zip = CreateZip("deep.zip", "ok1.txt", deep, "ok2.txt");
+        string dest = Path.Combine(_temp.Path, "d");
+        Directory.CreateDirectory(dest);
+
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [zip],
+            DestinationFolder = dest,
+            Mode = ExtractMode.SingleFolder,
+        });
+
+        File.Exists(Path.Combine(dest, "ok1.txt")).Should().BeTrue();
+        File.Exists(Path.Combine(dest, "ok2.txt")).Should().BeTrue();
+        Directory.Exists(Path.Combine(dest, "a")).Should().BeFalse();
+        ArchiveError error = result.Errors.Should().ContainSingle().Subject;
+        error.Message.Length.Should().BeLessThan(8 * 1024);
+        error.Message.Should().StartWith("Cannot extract 'a/a/").And.Contain("x.txt");
+    }
+
     // Shell's "Extract to <name>\" passes a fresh folder that does not exist yet.
     [Fact]
     public async Task ExtractAsync_NothingExtracted_RemovesTheDestinationFolderItCreated()
