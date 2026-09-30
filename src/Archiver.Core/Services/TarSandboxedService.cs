@@ -1331,8 +1331,6 @@ public sealed class TarSandboxedService : ITarService
             }
 
             string fullSource = Path.GetFullPath(sourcePath);
-            string? parent = Path.GetDirectoryName(fullSource);
-            string name = Path.GetFileName(fullSource);
 
             // T-F266/T-F204: tar.exe receives this path and walks the folder itself, so every
             // name it will touch must survive its ANSI command line / path conversion. Refused
@@ -1344,24 +1342,8 @@ public sealed class TarSandboxedService : ITarService
                 continue;
             }
 
-            if (string.IsNullOrEmpty(name))
-            {
-                // Drive-root source (e.g. "Z:\") — GetFileName returns "" and GetDirectoryName
-                // returns null. tar.exe strips the drive letter from a rooted absolute-path
-                // argument on its own (see IsDangerousEntryName's comment above) — pass it
-                // through directly rather than via -C. Same edge case T-F99 already handles for
-                // ZipArchiveService; needs its own on-device confirmation in Phase C/D.
-                nameList.Add(fullSource);
-            }
-            else
-            {
-                if (claims.Claim(sourcePath, fullSource, parent!, name, errors) is not { } claimed)
-                    continue;
-
-                nameList.Add("-C");
-                nameList.Add(claimed.Parent);
-                nameList.Add(claimed.Name == "-C" ? "./-C" : claimed.Name);
-            }
+            if (!claims.TryAppendLines(nameList, sourcePath, fullSource, errors))
+                continue;
 
             entryCount++;
             totalEntriesForProgress += entries;
@@ -1378,7 +1360,31 @@ public sealed class TarSandboxedService : ITarService
     {
         private readonly HashSet<string> _claimed = new(StringComparer.OrdinalIgnoreCase);
 
-        public (string Parent, string Name)? Claim(string sourcePath, string fullSource, string parent, string name, List<ArchiveError> errors)
+        // False when the source was refused (its error is recorded).
+        public bool TryAppendLines(List<string> nameList, string sourcePath, string fullSource, List<ArchiveError> errors)
+        {
+            string name = Path.GetFileName(fullSource);
+            if (string.IsNullOrEmpty(name))
+            {
+                // Drive-root source (e.g. "Z:\") — GetFileName returns "" and GetDirectoryName
+                // returns null. tar.exe strips the drive letter from a rooted absolute-path
+                // argument on its own (see IsDangerousEntryName's comment above) — pass it
+                // through directly rather than via -C. Same edge case T-F99 already handles for
+                // ZipArchiveService; needs its own on-device confirmation in Phase C/D.
+                nameList.Add(fullSource);
+                return true;
+            }
+
+            if (Claim(sourcePath, fullSource, Path.GetDirectoryName(fullSource)!, name, errors) is not { } claimed)
+                return false;
+
+            nameList.Add("-C");
+            nameList.Add(claimed.Parent);
+            nameList.Add(claimed.Name == "-C" ? "./-C" : claimed.Name);
+            return true;
+        }
+
+        private (string Parent, string Name)? Claim(string sourcePath, string fullSource, string parent, string name, List<ArchiveError> errors)
         {
             if (_claimed.Add(name))
                 return (parent, name);
