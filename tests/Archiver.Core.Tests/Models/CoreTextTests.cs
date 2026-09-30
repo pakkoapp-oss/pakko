@@ -30,7 +30,8 @@ public sealed class CoreTextTests
     [Fact]
     public void Shortening_NeverSplitsASurrogatePair()
     {
-        string name = string.Concat(Enumerable.Repeat("\U0001F600", CoreText.MaxArgumentLength));
+        // The leading "x" puts both cut points inside a pair.
+        string name = "x" + string.Concat(Enumerable.Repeat("\U0001F600", CoreText.MaxArgumentLength)) + "y";
 
         string english = CoreText.Raw(name).English;
 
