@@ -6253,7 +6253,7 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 
 ### T-F268 — Explorer operations: one UI interface, then a WinUI 3 operation window (P2, design + spike)
 
-- **Device (G6 pass 5, 1.5.0.13, light theme, temporary until G7 - `OperationWindow` is G2-changed):** the conflict, password, progress and result states read correctly in the light theme. Keyboard: the conflict prompt opens with focus on "Пропустити" and cycles checkbox -> Перезаписати -> Перейменувати -> Пропустити; Space ticks "apply to all", Enter answers, Esc skips the one file; the password prompt opens in the field, Esc = "Пропустити архів"; Esc on a running extraction cancels it, Esc on the result closes the window. Found T-F309 (a cancelled "Extract to X\" leaves its empty folder).
+- **Device (G6 pass 5, 1.5.0.13, light theme, temporary until G7 - `OperationWindow` is G2-changed):** the conflict, password, progress and result states read correctly in the light theme. Keyboard: the conflict prompt opens with focus on "Пропустити" and cycles checkbox -> Перезаписати -> Перейменувати -> Пропустити; Space ticks "apply to all", Enter answers, Esc skips the one file; the password prompt opens in the field, Esc = "Пропустити архів"; Esc on a running extraction cancels it, Esc on the result closes the window. The window sizes itself per state (522 wide; 394/288/232 tall) and has no sizing frame, so the narrow-window check (E5) does not apply. Found T-F309 (a cancelled "Extract to X\" leaves its empty folder).
 
 - [~] **Progress:** step 1 done 2026-09-26 — `IOperationUi`/`IOperationSession` + `Win32OperationUi`,
   `ShellCommands`, `OperationMessages`, `ShellServices`; `Program.cs` only parses and dispatches.
@@ -6949,9 +6949,10 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 ### T-F308 — App: keyboard-only gaps in the lists and the footer (P2)
 
 - [ ] **Status:** open. Found in G6 pass 5, 2026-09-30 (1.5.0.13, E6, keyboard only):
-  1. Archive browser: Enter on a folder, a previewable file or a nested archive does nothing; only
-     `DoubleTapped` opens them (no `KeyDown`/`ItemClick` on `ArchiveBrowserListView`). Backspace and Alt+Up
-     do not go up either (the Up button does). A keyboard user cannot get below the archive root.
+  1. Archive browser: Enter on a folder (`src` of `plain.zip`) only toggles its selection ("Вибрано 1 з 1")
+     and does not open it; Backspace and Alt+Up leave the list as it is (the Up button works). Files and
+     nested archives were not pressed, but only `DoubleTapped` is wired (no `KeyDown`/`ItemClick` on
+     `ArchiveBrowserListView`), so they behave the same. A keyboard user cannot get below the archive root.
   2. Create list: Delete does not remove the focused row, and Shift+F10 / the menu key open nothing — the
      "Прибрати зі списку" `ContextFlyout` sits on the item template's inner `Grid`, which a keyboard context
      request on the `ListViewItem` never reaches. Only "Очистити" (everything) is left.
