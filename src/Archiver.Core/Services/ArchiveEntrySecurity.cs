@@ -148,12 +148,18 @@ internal static partial class ArchiveEntrySecurity
                 FileMode.Open,
                 FileAccess.Read,
                 FileShare.Read);
-            using var dest = new FileStream(
+            // T-F298: writing the stream updates the file's own modification time — confirmed on
+            // device — which lost the archive's time for every downloaded archive, tar included.
+            DateTime modifiedUtc = File.GetLastWriteTimeUtc(destFilePath);
+            using (var dest = new FileStream(
                 destFilePath + ":Zone.Identifier",
                 FileMode.Create,
                 FileAccess.Write,
-                FileShare.None);
-            source.CopyTo(dest);
+                FileShare.None))
+            {
+                source.CopyTo(dest);
+            }
+            FileTimes.TrySetFile(destFilePath, modifiedUtc);
         }
         catch
         {

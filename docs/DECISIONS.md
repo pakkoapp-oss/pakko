@@ -10550,3 +10550,34 @@ drives, or hold characters a file name cannot. One rule, two copies kept in step
 in the Explorer menu (`ArchiveNamingTests` and `ShellExtUtilsTests` mirror each other's rows). A
 UNC share root keeps the share name; no sources, or a name that is only an extension, still give
 `archive`.
+
+---
+
+## T-F298 — extraction restores modification times, files and folders (2026-09-30)
+
+User decision 2026-09-30: files **and** folder entries, as 7-Zip, for ZIP and tar alike. Plan
+approved in Plan mode, advisor-reviewed before and after.
+
+- **ZIP time source, 7-Zip's order:** the NTFS extra record (0x000A, tag 0x0001, mtime FILETIME),
+  then the Info-ZIP extended timestamp (0x5455, flag bit 0), else the DOS time `ZipArchiveEntry`
+  gives. Read from the central directory in the name pass T-F234 already makes
+  (`ZipExtendedTime`), so there is no extra pass. The extra block is attacker-controlled: a bad
+  field (zero or out-of-range FILETIME, a size running past the block) gives no time, never an
+  exception, and extraction falls back to the DOS time.
+- **Setting a time is best-effort** (`FileTimes`): a failure — including `ArgumentException` for a
+  date Windows cannot store — never fails the entry.
+- **Found on device: writing the `Zone.Identifier` stream updates the file's own time.** So every
+  downloaded archive lost its times, tar included, although tar.exe sets them.
+  `TryPropagateMotw` now puts the file's time back after writing the stream.
+- **Folder times are set after the commit** (`ExtractionStaging.RecordFolderTime`, applied by
+  `CommitInto`): moving files into a folder changes its time. Only folders the commit created —
+  decided before the commit creates any — so a folder the user already had keeps its time. The
+  root folder a single-root archive collapses into (`StripRootPrefix`) takes the root entry's time.
+- **tar: the T-F52 pre-creation lost every folder time.** tar.exe does not set the time of a
+  directory that already exists, and T-F52 pre-created every directory. Now only the directories an
+  entry needs before its own directory entry, in archive order (`DirectoriesToPreCreate`), are
+  pre-created — the rest tar.exe creates inside the AppContainer (T-F52 found explicit directory
+  entries work there) and then dates. Accepted cost: a rare archive with an implicit subfolder under
+  an explicit folder pre-creates that subfolder, and so its parent, which then loses its time; it
+  still extracts. tar folder times are read from the quarantine before the move phase.
+- **Not changed:** listing, Test and the App browser still show the DOS time.

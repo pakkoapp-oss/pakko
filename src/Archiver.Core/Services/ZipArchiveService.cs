@@ -1385,7 +1385,7 @@ public sealed class ZipArchiveService : IArchiveService
         // silently overwrite the first one's file in tempDest.
         var claimedFinalPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        var plan = new ExtractionPlan(tempDest, fullTempDest, actualDest, stripRootPrefix, totalUncompressedBytes, claimedFinalPaths,
+        var plan = new ExtractionPlan(staging, tempDest, fullTempDest, actualDest, stripRootPrefix, totalUncompressedBytes, claimedFinalPaths,
             encryptedEntryMap, rawArchiveStream);
 
         // T-F216: what this archive's loop adds, to tell "the user skipped everything" apart.
@@ -1459,6 +1459,7 @@ public sealed class ZipArchiveService : IArchiveService
     // reads unchanged — cut into its own type alongside ZipExtractionContext so
     // TryExtractSingleEntryAsync's own parameter count stays under S107's threshold.
     private sealed record ExtractionPlan(
+        ExtractionStaging Staging,
         string TempDest,
         string FullTempDest,
         string ActualDest,
@@ -1501,9 +1502,13 @@ public sealed class ZipArchiveService : IArchiveService
         {
             int sep = relativePath.IndexOf(Path.DirectorySeparatorChar);
             relativePath = relativePath[(sep + 1)..];
-            // The stripped root folder itself: actualDest stands in for it.
+            // The stripped root folder itself: actualDest stands in for it (and takes its time, T-F298).
             if (string.IsNullOrEmpty(relativePath))
+            {
+                if (isFolder)
+                    plan.Staging.RecordFolderTime(string.Empty, named.ModifiedUtc);
                 return (isFolder && !Directory.Exists(plan.ActualDest), named.Entry.Length);
+            }
         }
 
         // T-F38/T-F39: Reject ADS-marked, reserved-name, or control-character entry names
@@ -1557,6 +1562,7 @@ public sealed class ZipArchiveService : IArchiveService
         }
 
         Directory.CreateDirectory(folder);
+        plan.Staging.RecordFolderTime(relativePath, named.ModifiedUtc);
         return !Directory.Exists(Path.Combine(plan.ActualDest, relativePath));
     }
 
@@ -1597,7 +1603,7 @@ public sealed class ZipArchiveService : IArchiveService
         if (File.Exists(finalFilePath) || claimedFinalPaths.Contains(finalFilePath))
         {
             ConflictBehavior resolvedConflict = await context.ConflictResolver
-                .ResolveAsync(finalFilePath, named.Entry.Length, named.Entry.LastWriteTime).ConfigureAwait(false);
+                .ResolveAsync(finalFilePath, named.Entry.Length, new DateTimeOffset(named.ModifiedUtc).ToLocalTime()).ConfigureAwait(false);
             if (resolvedConflict == ConflictBehavior.Skip)
             {
                 context.ConflictSkippedEntries.Add(relativePath);
@@ -1629,6 +1635,9 @@ public sealed class ZipArchiveService : IArchiveService
 
         // T-F45: Propagate Zone.Identifier ADS from archive to extracted file
         ArchiveEntrySecurity.TryPropagateMotw(archivePath, destFilePath, context.MotwMode);
+
+        // T-F298: the entry's own time, as 7-Zip restores it; the commit's moves keep it.
+        FileTimes.TrySetFile(destFilePath, named.ModifiedUtc);
 
         return (true, named.Entry.Length);
     }

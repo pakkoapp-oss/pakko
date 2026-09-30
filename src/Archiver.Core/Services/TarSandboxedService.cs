@@ -374,12 +374,11 @@ public sealed class TarSandboxedService : ITarService
         // DECISIONS.md's T-F52 entry). Pre-creating here sidesteps it entirely: Directory.
         // CreateDirectory, run by Pakko's own trusted process, correctly inherits "out\"'s ACEs
         // for every directory it creates, so tar.exe's own directory ever needs to create one.
-        foreach (string name in allNames)
-        {
-            string? relativeDir = name.EndsWith('/') ? name.TrimEnd('/') : Path.GetDirectoryName(name);
-            if (!string.IsNullOrEmpty(relativeDir))
-                Directory.CreateDirectory(Path.Combine(scope.OutputDirectory!, relativeDir));
-        }
+        // T-F298: only the directories tar.exe would have to create implicitly — tar.exe does not
+        // set the time of a directory that already exists, so pre-creating one with its own entry
+        // lost that entry's time.
+        foreach (string relativeDir in DirectoriesToPreCreate(allNames))
+            Directory.CreateDirectory(Path.Combine(scope.OutputDirectory!, relativeDir));
 
 
         // T-F142: real byte-level progress for a single-archive extraction (progress is only
@@ -417,6 +416,7 @@ public sealed class TarSandboxedService : ITarService
         using var staging = ExtractionStaging.Create(unisolatedDestDir);
         var plan = new TarCommitPlan(staging, actualDest, stripRootPrefix,
             new HashSet<string>(StringComparer.OrdinalIgnoreCase));
+        RecordFolderTimes((IEnumerable<string>?)expandedSelection ?? allNames, stripRootPrefix, scope.OutputDirectory!, staging);
 
         int totalFiles = 0;
         int extractedCount = 0;
@@ -585,6 +585,63 @@ public sealed class TarSandboxedService : ITarService
             }
             if (relative.Length > 0)
                 Directory.CreateDirectory(Path.Combine(actualDest, relative));
+        }
+    }
+
+    // T-F52/T-F298: the directories an entry needs before its own directory entry has been seen,
+    // in archive order — tar.exe cannot create those itself inside the AppContainer. A directory
+    // whose entry comes before everything inside it (what GNU tar, bsdtar and 7-Zip write) is
+    // left to tar.exe, which then sets its time. Pre-creating a directory also creates its
+    // parents, so a rare archive with an implicit subfolder under an explicit one loses that
+    // parent's time; it still extracts.
+    internal static List<string> DirectoriesToPreCreate(IEnumerable<string> namesInArchiveOrder)
+    {
+        var seenDirectoryEntries = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var preCreate = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (string name in namesInArchiveOrder)
+        {
+            string path = StripLeadingDotSlash(name);
+            bool isDirectory = path.EndsWith('/');
+            string[] segments = path.TrimEnd('/').Split('/', StringSplitOptions.RemoveEmptyEntries);
+            for (int i = 1; i < segments.Length; i++)
+            {
+                string ancestor = string.Join('/', segments, 0, i);
+                if (!seenDirectoryEntries.Contains(ancestor))
+                    preCreate.Add(ancestor);
+            }
+            if (isDirectory && segments.Length > 0)
+                seenDirectoryEntries.Add(string.Join('/', segments));
+        }
+        return [.. preCreate];
+    }
+
+    // T-F298: a folder entry takes the time tar.exe gave it in the quarantine — read before the
+    // move phase, since moving a folder's files out changes that time. Same names and root strip
+    // as CreateFolderEntries; "" is the stripped root, which actualDest stands in for.
+    private static void RecordFolderTimes(IEnumerable<string> names, bool stripRootPrefix, string quarantineDir, ExtractionStaging staging)
+    {
+        foreach (string name in names)
+        {
+            if (!name.EndsWith('/'))
+                continue;
+            string entryPath = StripLeadingDotSlash(name).TrimEnd('/').Replace('/', Path.DirectorySeparatorChar);
+            string quarantined = Path.Combine(quarantineDir, entryPath);
+            if (entryPath.Length == 0 || !Directory.Exists(quarantined))
+                continue;
+            string relative = entryPath;
+            if (stripRootPrefix)
+            {
+                int sep = relative.IndexOf(Path.DirectorySeparatorChar);
+                relative = sep < 0 ? string.Empty : relative[(sep + 1)..];
+            }
+            try
+            {
+                staging.RecordFolderTime(relative, Directory.GetLastWriteTimeUtc(quarantined));
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                // best-effort: the folder keeps the time the commit gives it
+            }
         }
     }
 

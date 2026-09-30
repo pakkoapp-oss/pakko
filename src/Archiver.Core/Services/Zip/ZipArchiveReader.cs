@@ -13,7 +13,15 @@ namespace Archiver.Core.Services.Zip;
 /// <param name="FullName">The decoded name, '/'-separated.</param>
 /// <param name="CollidesAfterDecoding">True when an earlier entry has different raw name bytes but
 /// the same decoded name — writing both would silently lose one.</param>
-internal sealed record NamedZipEntry(ZipArchiveEntry Entry, string FullName, bool CollidesAfterDecoding);
+/// <param name="ExtendedModifiedUtc">T-F298: the NTFS/extended-timestamp time, null when the entry
+/// has none.</param>
+internal sealed record NamedZipEntry(ZipArchiveEntry Entry, string FullName, bool CollidesAfterDecoding,
+    DateTime? ExtendedModifiedUtc = null)
+{
+    /// <summary>T-F298: the time extraction gives the file or folder — the extended time, else the
+    /// entry's DOS time.</summary>
+    public DateTime ModifiedUtc => ExtendedModifiedUtc ?? Entry.LastWriteTime.UtcDateTime;
+}
 
 /// <summary>
 /// T-F234: opens a ZIP for reading and pairs every <see cref="ZipArchiveEntry"/> with its decoded
@@ -37,7 +45,7 @@ internal sealed class ZipArchiveReader : IDisposable
         ZipArchive archive = ZipFile.OpenRead(path);
         try
         {
-            List<(byte[] RawName, string Name)> names;
+            List<(byte[] RawName, string Name, DateTime? ExtendedModifiedUtc)> names;
             using (FileStream raw = File.OpenRead(path))
                 names = RawZipEntryLocator.ReadEntryNames(raw, codePages);
 
@@ -54,13 +62,13 @@ internal sealed class ZipArchiveReader : IDisposable
     }
 
     private static List<NamedZipEntry> Pair(
-        ReadOnlyCollection<ZipArchiveEntry> entries, List<(byte[] RawName, string Name)> names)
+        ReadOnlyCollection<ZipArchiveEntry> entries, List<(byte[] RawName, string Name, DateTime? ExtendedModifiedUtc)> names)
     {
         var firstRawByName = new Dictionary<string, byte[]>(StringComparer.Ordinal);
         var result = new List<NamedZipEntry>(entries.Count);
         for (int i = 0; i < entries.Count; i++)
         {
-            (byte[]? rawName, string? name) = names[i];
+            (byte[]? rawName, string? name, DateTime? modifiedUtc) = names[i];
             bool collides = false;
             if (!name.EndsWith('/'))
             {
@@ -69,7 +77,7 @@ internal sealed class ZipArchiveReader : IDisposable
                 else
                     firstRawByName[name] = rawName;
             }
-            result.Add(new NamedZipEntry(entries[i], name, collides));
+            result.Add(new NamedZipEntry(entries[i], name, collides, modifiedUtc));
         }
         return result;
     }

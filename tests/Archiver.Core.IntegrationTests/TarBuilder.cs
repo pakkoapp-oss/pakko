@@ -20,6 +20,9 @@ internal static class TarBuilder
         // T-F204: the header's name field as raw bytes (a UTF-8 or OEM-code-page name, the way
         // GNU tar, 7-Zip or an old Windows tool writes it). Overrides Name when set.
         public byte[]? NameBytes { get; init; }
+
+        // T-F298: the header's mtime, in Unix seconds; 0 (1970-01-01) is what every earlier caller got.
+        public long ModifiedUnixSeconds { get; init; }
     }
 
     // A pax extended header ('x') carrying "path=<UTF-8>" for the entry that follows it.
@@ -39,7 +42,8 @@ internal static class TarBuilder
         using var fs = new FileStream(path, FileMode.Create, FileAccess.Write);
         foreach (Entry entry in entries)
         {
-            byte[] header = BuildHeader(entry.NameBytes ?? Encoding.ASCII.GetBytes(entry.Name), entry.Content.Length, entry.TypeFlag, entry.LinkName, gnuMagic);
+            byte[] header = BuildHeader(entry.NameBytes ?? Encoding.ASCII.GetBytes(entry.Name), entry.Content.Length, entry.TypeFlag, entry.LinkName, gnuMagic,
+                entry.ModifiedUnixSeconds);
             fs.Write(header, 0, header.Length);
             if (entry.Content.Length > 0)
             {
@@ -62,7 +66,7 @@ internal static class TarBuilder
         stream.Write(pad, 0, pad.Length);
     }
 
-    private static byte[] BuildHeader(byte[] name, int size, char typeFlag, string linkName, bool gnuMagic)
+    private static byte[] BuildHeader(byte[] name, int size, char typeFlag, string linkName, bool gnuMagic, long mtime)
     {
         byte[] header = new byte[512];
 
@@ -71,7 +75,7 @@ internal static class TarBuilder
         SetField(header, 108, 8, "0000000\0");
         SetField(header, 116, 8, "0000000\0");
         SetField(header, 124, 12, Convert.ToString(size, 8).PadLeft(11, '0') + "\0");
-        SetField(header, 136, 12, "00000000000\0");
+        SetField(header, 136, 12, Convert.ToString(mtime, 8).PadLeft(11, '0') + "\0");
         SetField(header, 148, 8, "        "); // checksum placeholder (8 spaces)
         header[156] = (byte)typeFlag;
         SetField(header, 157, 100, linkName);

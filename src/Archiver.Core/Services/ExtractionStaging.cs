@@ -24,6 +24,14 @@ internal sealed class ExtractionStaging : IDisposable
     /// <summary>The full staging path with a trailing separator, for prefix checks.</summary>
     public string FullPathWithSeparator { get; }
 
+    private readonly Dictionary<string, DateTime> _folderTimes = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>T-F298: the time a folder entry gets at the destination, by its path relative to
+    /// the destination ("" is the destination itself). Set by <see cref="CommitInto"/> after every
+    /// file has moved (moving a file into a folder changes the folder's time), and only on folders
+    /// the commit created — a folder the user already had keeps its own time.</summary>
+    public void RecordFolderTime(string relativePath, DateTime utc) => _folderTimes[relativePath] = utc;
+
     /// <summary>Creates a new staging folder inside <paramref name="stagingRoot"/>, which must be
     /// on the same volume as the destination so the commit can rename instead of copy.</summary>
     public static ExtractionStaging Create(string stagingRoot)
@@ -59,6 +67,12 @@ internal sealed class ExtractionStaging : IDisposable
     /// paths of files that could not be moved.</summary>
     public IReadOnlyList<string> CommitInto(string actualDest, Action<string, string>? moveOverride = null)
     {
+        // T-F298: before anything below creates a folder, or every folder would look pre-existing.
+        List<(string Folder, DateTime Utc)> newFolderTimes = [.. _folderTimes
+            .Select(t => (Folder: t.Key.Length == 0 ? actualDest : System.IO.Path.Combine(actualDest, t.Key), t.Value))
+            .Where(t => !Directory.Exists(t.Folder))
+            .OrderByDescending(t => t.Folder.Length)];
+
         if (!Directory.Exists(actualDest))
         {
             // The rename carries the folder's attributes with it.
@@ -67,6 +81,7 @@ internal sealed class ExtractionStaging : IDisposable
             try
             {
                 (moveOverride ?? Directory.Move)(Path, actualDest);
+                ApplyFolderTimes(newFolderTimes);
                 return [];
             }
             catch (IOException)
@@ -97,7 +112,16 @@ internal sealed class ExtractionStaging : IDisposable
 
         // A file left behind above failed to move (locked); Dispose removes it with the rest of
         // the staging folder — it cannot reach its destination, and must not be left behind.
+        ApplyFolderTimes(newFolderTimes);
         return lockedRelativePaths;
+    }
+
+    // Deepest first: setting a child's time does not touch its parent's, but it keeps the order
+    // obviously safe if that ever changes.
+    private static void ApplyFolderTimes(List<(string Folder, DateTime Utc)> folderTimes)
+    {
+        foreach ((string folder, DateTime utc) in folderTimes)
+            FileTimes.TrySetDirectory(folder, utc);
     }
 
     /// <summary>Removes the staging folder (best-effort).</summary>

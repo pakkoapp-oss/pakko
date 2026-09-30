@@ -110,10 +110,12 @@ internal static class RawZipEntryLocator
     /// its raw bytes, in central-directory order — the order <see cref="System.IO.Compression.ZipArchive.Entries"/>
     /// uses, so the two pair positionally. Reads the central directory only: no local-header seeks
     /// and no WinZip AES checks, so any archive whose directory .NET can read gets names too.
+    /// T-F298: also each entry's NTFS/extended-timestamp modification time, null when it has none.
     /// </summary>
-    public static List<(byte[] RawName, string Name)> ReadEntryNames(Stream zipStream, ZipNameCodePages codePages) =>
+    public static List<(byte[] RawName, string Name, DateTime? ExtendedModifiedUtc)> ReadEntryNames(Stream zipStream, ZipNameCodePages codePages) =>
         ReadCentralDirectory(zipStream, resolveZip64: false)
-            .Select(r => (r.NameBytes, ZipEntryNameDecoder.Decode(r.NameBytes, r.GeneralPurposeFlag, r.HostOs, r.Extra, codePages)))
+            .Select(r => (r.NameBytes, ZipEntryNameDecoder.Decode(r.NameBytes, r.GeneralPurposeFlag, r.HostOs, r.Extra, codePages),
+                ZipExtendedTime.TryReadModifiedUtc(r.Extra)))
             .ToList();
 
     private sealed record CentralDirectoryRecord(

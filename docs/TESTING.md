@@ -549,6 +549,16 @@ SeparateArchives at Fastest, a password at Optimal (Stored inside AES), 80 files
 file at Fastest stays Deflate. Method and sizes are read with `RawZipEntryLocator`; each case
 round-trips through Pakko's reader.
 
+**T-F298:** `ZipArchiveServiceExtractTimesTests` (`Archiver.Core.Tests/Services/`) — archives from
+`LegacyZipBuilder` (now with DOS time/date and `NtfsTimeExtra`/`UnixTimeExtra` helpers): DOS, NTFS
+and Unix times, NTFS winning over a disagreeing Unix field, six hostile time fields (extraction
+succeeds with the DOS time), folder entries in a new and in a merged destination (an existing folder
+keeps its time), the SeparateFolders root folder, MOTW plus time, an AES entry.
+`TarDirectoriesToPreCreateTests` — which quarantine directories are pre-created, by archive order.
+`TarSandboxedServiceExtractTimesTests` (`Archiver.Core.IntegrationTests`, real tar.exe; `TarBuilder`
+now takes `ModifiedUnixSeconds`) — MOTW plus file time, folder times new/merged/root, and a file ahead
+of its folder entry plus an implicit subfolder still extracting (the T-F52 guard).
+
 ---
 
 ## Archiver.CLI.Tests (v1.5, T-F09)

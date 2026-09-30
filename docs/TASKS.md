@@ -3279,7 +3279,15 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 - **Decision (user, 2026-09-30):** files and folders, as 7-Zip: the time from the NTFS extra field
   (0x000A) or the Unix extended timestamp (0x5455) when present, else the DOS time; folders get
   their time after their contents are written; ZIP and tar behave the same.
-- [ ] **Status:** open. Found in G6 pass 2, 2026-09-30. Every extracted ZIP file gets the time of
+- [~] **Status:** fixed in code 2026-09-30 (v1.7.0 wave 1); device check at the end of the wave.
+- **Progress (2026-09-30):** ZIP files and folder entries get the entry time (NTFS > Unix > DOS,
+  hostile fields fall back to DOS); tar folder entries get theirs (only implicitly needed
+  directories are pre-created now); MOTW no longer resets a file's time — that lost every
+  downloaded archive's times, tar included. Folder times only on folders the commit created.
+  Tests first (15 ZIP + 3 tar red), 7 mutants killed, suites green. See `docs/DECISIONS.md`'s
+  T-F298 entry. **CHANGELOG v1.7.0:** extracted files and folders keep the dates stored in the
+  archive (ZIP, and tar-family archives downloaded from the internet), as in 7-Zip.
+- **Earlier status:** open. Found in G6 pass 2, 2026-09-30. Every extracted ZIP file gets the time of
   extraction: `qmark.zip` entries dated 2026-09-30 02:07:36 came out as 02:45:56; same for
   `plain.zip` through Explorer and `pakko x`. The tar path keeps them (`valid.7z` -> `seven.txt`
   dated 2026-07-07). Not a regression: the released v1.5.0 and v1.4.12 `pakko x plain.zip` do the

@@ -376,7 +376,7 @@ flowchart TD
     J0 -- "Rename" --> K2["unique name via GetUniqueFilePath"]
     J0 -- "Overwrite" --> K
     K2 --> K
-    K["open content: VerifyingReadStream(entry.Open, Length, Crc32),<br/>or the decrypting stream, capped the same way (T-F246/T-F231).<br/>Copy to staging, delete a half-written file on failure, then MOTW"]
+    K["open content: VerifyingReadStream(entry.Open, Length, Crc32),<br/>or the decrypting stream, capped the same way (T-F246/T-F231).<br/>Copy to staging, delete a half-written file on failure, then MOTW<br/>(keeps the file time), then the entry time: NTFS 0x000A, else<br/>Unix 0x5455, else DOS (T-F298, best-effort)"]
     K -- "CRC mismatch / longer than declared / I/O error /<br/>encrypted entry: wrong password, unsupported method, authentication failed" --> E2["Errors += Cannot extract name: reason<br/>(destination path, never the staging path)"]
     T -. "ERROR_DISK_FULL" .-> X["rethrown: one archive-level error"]
     K --> L["extractedCount++"]
@@ -384,7 +384,7 @@ flowchart TD
     E0 & E1 & S1 & S4 & S6 & E2 & Z --> M{"More entries?"}
     L --> M
     M -- yes --> A
-    M -- no --> N["staging.CommitInto(actualDest): if actualDest is new, clear Hidden<br/>then Directory.Move (T-F161). Otherwise, or on IOException, merge:<br/>folders first (T-F197), then files with File.Move overwrite —<br/>a locked target becomes a per-item ArchiveError (T-F170)"]
+    M -- no --> N["staging.CommitInto(actualDest): if actualDest is new, clear Hidden<br/>then Directory.Move (T-F161). Otherwise, or on IOException, merge:<br/>folders first (T-F197), then files with File.Move overwrite —<br/>a locked target becomes a per-item ArchiveError (T-F170).<br/>Last, recorded folder-entry times on the folders the commit created (T-F298)"]
     N --> N2{"extractedCount == 0?"}
     N2 -- yes --> NU{"every skip in this archive was the user's own<br/>conflict answer, no other skip or error? (T-F216)"}
     NU -- yes --> N4["no warning — archive still not in CreatedFiles"]
@@ -595,7 +595,7 @@ flowchart TD
     G -- "yes, every entry '-' or 'd'" --> Bomb{"T-F94: ArchiveEntrySecurity.EvaluateCompressionBombAsync<br/>(declaredUncompressedSize from the scan above,<br/>compressedFileSize = archivePath's FileInfo.Length,<br/>free space at destDir, confirmCompressionBombExtraction callback)"}
     Bomb -- "InsufficientDiskSpace" --> BombSkip1["SkippedFiles += 'destination has N bytes free,<br/>archive declares M uncompressed'; return (destDir, false)<br/>— scope disposed, no extraction ever runs"]
     Bomb -- "UserDeclined<br/>(callback null → defaults to declined, e.g. Archiver.Shell/CLI)" --> BombSkip2["SkippedFiles += 'suspicious ratio N:1'; return (destDir, false)<br/>— scope disposed, no extraction ever runs"]
-    Bomb -- "NotABomb, or UserConfirmed" --> PreDir["Pre-create every directory allNames implies,<br/>via Directory.CreateDirectory at Pakko's OWN<br/>(unsandboxed) identity under scope.OutputDirectory —<br/>libarchive's own implicit parent-dir creation was found<br/>to fail under the AppContainer even with a correctly<br/>ACL'd out\; see DECISIONS.md's T-F52 entry"]
+    Bomb -- "NotABomb, or UserConfirmed" --> PreDir["Pre-create the directories an entry needs before<br/>its own directory entry (archive order), via Directory.CreateDirectory<br/>at Pakko's OWN (unsandboxed) identity under scope.OutputDirectory —<br/>libarchive's implicit parent-dir creation fails under the AppContainer<br/>(T-F52); a directory with its own entry first is left to tar.exe,<br/>which sets its time (T-F298)"]
     PreDir --> G2{"T-F05: options.SelectedEntryPaths<br/>set and non-empty?<br/>(gates D-G above already ran<br/>UNCONDITIONALLY — the pre-scan<br/>never branches on this)"}
     G2 -- no --> H["scope.ExtractAsync(null)<br/>= tar -x -f - -C out (current directory = quarantine root)"]
     G2 -- yes --> G3["ExpandSelection(allNames, SelectedEntryPaths):<br/>each selected path → its exact -t name<br/>(file or dir form) + every -t name it's<br/>a '/'-prefix of (descendants) — built from<br/>the SAME name list gate D already validated,<br/>never a second listing"]
@@ -606,7 +606,7 @@ flowchart TD
     H -- "exit 0" --> FC{"T-F171: FindDuplicateGroups - file names several<br/>extracted entries share (case-insensitive, not a folder name)?"}
     FC -- "none" --> I
     FC -- "yes" --> FC2["scope.ExtractFirstOccurrencesAsync(first names)<br/>= tar -x -q -C first -- names (same AppContainer, fresh Job Object)<br/>keep a file only at the exact expected path with the first entry's -tv size.<br/>SkippedFiles += copies not extracted (3rd+ copy, or an unrecovered first copy)"]
-    FC2 --> I["T-F263: staging = ExtractionStaging.Create(unisolatedDestDir)<br/>walk the kept first copies, then EnumerateFilesGuarded(scope.OutputDirectory)<br/>- the first copy claims the name, the last meets the conflict rule"]
+    FC2 --> I["T-F263: staging = ExtractionStaging.Create(unisolatedDestDir),<br/>T-F298: record folder-entry times from the quarantine before any move<br/>walk the kept first copies, then EnumerateFilesGuarded(scope.OutputDirectory)<br/>- the first copy claims the name, the last meets the conflict rule"]
     I --> J{"subdirectory hit during walk:<br/>IsReparsePoint?"}
     J -- yes --> K["⚠ silently NOT descended into —<br/>no SkippedFiles entry, no ArchiveError<br/>(see Finding below)"]
     J -- no --> L[yield each file in this directory]
@@ -619,10 +619,10 @@ flowchart TD
     N0 -- "resolvedConflict==Overwrite" --> O3["NO explicit branch — falls through to O<br/>with the ORIGINAL finalFilePath;<br/>the commit's File.Move(overwrite:true) does the actual overwrite<br/>(same asymmetry as diagram 3's ZIP OnConflict gate)"]
     O2 --> O
     O3 --> O
-    O["claim finalFilePath; File.Move(file, staging\relative path of finalFilePath)<br/>ArchiveEntrySecurity.TryPropagateMotw(archivePath, stagedFile)<br/>— from the archive the user chose; the stream moves with the file"] --> Mloop
+    O["claim finalFilePath; File.Move(file, staging\relative path of finalFilePath)<br/>ArchiveEntrySecurity.TryPropagateMotw(archivePath, stagedFile)<br/>— from the archive the user chose; the stream moves with the file;<br/>the file keeps the time tar.exe set (T-F298)"] --> Mloop
     P --> Mloop
     Mloop -- yes --> I
-    Mloop -- no --> CF["T-F197: CreateFolderEntries — every folder entry from the pre-scanned<br/>names (or the expanded selection), same root strip, created under<br/>staging, so empty folders arrive too"] --> CM["staging.CommitInto(actualDest) — the same commit as ZIP (diagram 3):<br/>rename when actualDest is new, else a per-file merge;<br/>each locked destination file = one ArchiveError.<br/>A cancel before this point leaves nothing at the destination"]
+    Mloop -- no --> CF["T-F197: CreateFolderEntries — every folder entry from the pre-scanned<br/>names (or the expanded selection), same root strip, created under<br/>staging, so empty folders arrive too"] --> CM["staging.CommitInto(actualDest) — the same commit as ZIP (diagram 3):<br/>rename when actualDest is new, else a per-file merge;<br/>each locked destination file = one ArchiveError, then the recorded<br/>folder times (T-F298). A cancel before this point leaves nothing at the destination"]
     CM --> Q2{"totalFiles &gt; 0 &&<br/>extractedCount == 0?<br/>(T-F87 - every file hit P, nothing moved)"}
     Q2 -- yes --> Q3["SkippedFiles += whole-archive entry<br/>(Path == archivePath); caller does NOT<br/>add this archive to CreatedFiles"]
     Q2 -- no --> Q
