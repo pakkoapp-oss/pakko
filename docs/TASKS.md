@@ -4764,7 +4764,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   into the current directory; `--help` and `docs/CLI.md` updated. Subprocess test red before the
   fix. Stays `[~]` until a real-console check.
 
-- [ ] **Status:** open. `Archiver.CLI/Program.cs` defaults the destination to
+- [~] **Status:** fixed in code (see Progress above); device check pending (G6/G7). Status line synced 2026-09-30. Original: open. `Archiver.CLI/Program.cs` defaults the destination to
   `Path.GetDirectoryName(archive)`; 7-Zip extracts into the current directory. Repro: from an empty
   folder, `pakko x ..\out.zip` -> nothing in the current folder; files land beside `out.zip`
   (and, with T-F205, without their root folder). Undocumented in `docs/CLI.md`. Either adopt cwd
@@ -4795,7 +4795,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 
 - [x] **Progress (2026-09-28, fix phase 7):** already done by T-F268's `OperationText.resx`; device (Deploy 1.5.0.16, uk-UA): title "Тестування: sr.tar.gz", hash titles "CRC-32 (файлів: 2)"/"SHA-256: bomb.zip", folder hash "Розмір: 50 КБ (51 093 Б)". Closed.
 
-- [ ] **Status:** open. Under uk-UA: progress/result titles "Testing: X", "Testing 2 archives",
+- [x] **Status:** closed (the Progress entry above records the device check; status line synced 2026-09-30). Original: open. Under uk-UA: progress/result titles "Testing: X", "Testing 2 archives",
   "Scanning: X", "Extracting: X", "Archiving: X", "CRC-32: 2 files"; hash result "Розмір: 6 B
   (6 bytes)". T-F163 localized the result bodies but not the titles. Move to `.resx`, 37 locales.
 - **Reported by:** T-F202, 2026-09-24.
@@ -4805,7 +4805,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 
 - [x] **Progress (2026-09-28, fix phase 7):** fixed (a85cd7a, edac740, eb5876e). Every Core message carries a `CoreText` (code + arguments, nested) next to the unchanged English text; `MessageTemplates` is the one English table, `CoreMessages` the only place a message field is set (`CoreMessageSourceGuardTests` reads Core's source). New `Archiver.Messages` renders a code in 37 locales (`CoreMessages.resx`); Shell and App render through it, the CLI stays English (user decision). Device (Deploy 1.5.0.16, uk-UA): Explorer Test and bomb skip reasons, App browse error — all Ukrainian. Closed.
 
-- [ ] **Status:** open. Under uk-UA every Core-originated reason is English: "File has ZIP
+- [x] **Status:** closed (the Progress entry above records the device check; status line synced 2026-09-30). Original: open. Under uk-UA every Core-originated reason is English: "File has ZIP
   signature but appears corrupted or incomplete.", "GZip format is not supported. Only ZIP-based
   formats are supported.", "Suspicious compression ratio (1028:1, ...) ... declined",
   "File is not a recognized archive format and cannot be extracted.", "No entries were extracted
@@ -4911,7 +4911,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 
 - [x] **Progress (2026-09-28, fix phase 7):** fixed in c17d5bc — Explorer asks (operation window `AskConfirm`/`ConfirmAnswer`, protocol 2; Win32 `ShellConfirmDialog` fallback), declining is the default and Esc/close/failure is no. SECURITY.md updated (user-approved). Device (Deploy 1.5.0.16): Esc -> skipped with the Ukrainian reason, nothing written; Видобути -> 50 MB extracted. Win32 fallback (helper killed during the question): TaskDialog topmost, Ukrainian, Esc -> skipped, nothing written. Closed.
 
-- [ ] **Status:** open. Explorer "Extract here" on a 1029:1 ZIP -> "Пропущено (1): Suspicious
+- [x] **Status:** closed (the Progress entry above records the device check; status line synced 2026-09-30). Original: open. Explorer "Extract here" on a 1029:1 ZIP -> "Пропущено (1): Suspicious
   compression ratio ... declined as a precaution" — no confirm (the App asks via
   `ShowCompressionBombConfirmAsync`), no hint how to proceed. Safe, but a dead end for a
   legitimate highly-compressible archive. Offer the same confirm, or tell the user to open it in
@@ -5028,7 +5028,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   (7-Zip follows them), unreadable subfolders not counted as items, 7-Zip hides the names line for
   a contents-only single file. Stays `[~]` until the device check.
 
-- [ ] **Status:** open. DataSum matches the vendored `7za.exe h` exactly, but NamesSum differs for
+- [~] **Status:** fixed in code (see Progress above); device check pending (G6/G7). Status line synced 2026-09-30. Original: open. DataSum matches the vendored `7za.exe h` exactly, but NamesSum differs for
   every folder tried — including a folder holding a single ASCII file with no subfolders:
   `one\a.txt` -> Pakko `CRC32 for data and names: 680B36C2`, 7za `FBAAC368-00000000`; two files
   -> `A2D28CEB-00000000` vs `44372226-00000002`; a real 27-file CD folder (SHA-256) ->
@@ -5333,7 +5333,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   Remaining real triggers (MTP phone, other shell namespaces) need that hardware/namespace; covered
   by the C++ `GetSelectionPaths` test with a Control Panel item.
 
-- [ ] **Status:** open — symptom confirmed on device 2026-09-24, cause likely (not isolated). The
+- [~] **Status:** fixed in code (see Progress above); device check pending (G6/G7). Status line synced 2026-09-30. Original: open — symptom confirmed on device 2026-09-24, cause likely (not isolated). The
   extension passes the whole selection as one `CreateProcessW` command line
   (`ShellExtUtils.cpp:228-253`, `Build*Args`), whose documented limit is 32,767 characters. When it
   fails, `Invoke` returns the HRESULT (`ExplorerCommands.cpp:125` and siblings), which Explorer
@@ -5672,7 +5672,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   zero-byte tar entry, one failing entry. Known gap (older): a short read is still scanned. Stays
   `[~]` until the device check.
 
-- [ ] **Status:** open — confirmed 2026-09-25. A plain ZIP made by `pakko a` from `a.txt` +
+- [~] **Status:** fixed in code (see Progress above); device check pending (G6/G7). Status line synced 2026-09-30. Original: open — confirmed 2026-09-25. A plain ZIP made by `pakko a` from `a.txt` +
   a zero-byte `empty.txt`, and a plain `tar -cf` of the same two files: `AntivirusScanService.
   ScanAsync` throws `System.InvalidOperationException: AmsiScanBuffer failed (HRESULT 0x80070057)`
   for both. `AmsiScanBuffer` rejects a zero-length buffer with `E_INVALIDARG`; `AmsiScanner`
@@ -5745,7 +5745,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   bypasses the routers. A failing-tar-fake matrix covers extract/create/list/test under both
   policies. Device check pending.
 
-- [ ] **Status:** open — code-confirmed 2026-09-25 (T-F226 batch 3). `ArchiveListingRouter`'s
+- [~] **Status:** fixed in code (see Progress above); device check pending (G6/G7). Status line synced 2026-09-30. Original: open — code-confirmed 2026-09-25 (T-F226 batch 3). `ArchiveListingRouter`'s
   constructor takes no `GroupPolicyOptions` at all (`ArchiveListingRouter.cs:7-10`); it dispatches
   on format and tar capabilities only (`:17-30`). `ExtractionRouter`, `AntivirusScanService` and
   `ArchiveCreationRouter` all apply `ArchiveFormatPolicy.Classify`/`IsFormatAllowed`, listing does
@@ -5777,7 +5777,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   are skipped with their own entry (no loops, no foreign files); the parallel CRC-32 path fails a
   file that shrank while hashed. Stays `[~]` until the device check.
 
-- [ ] **Status:** open — confirmed 2026-09-25. `FileHashService.ComputeFolderAsync` enumerates
+- [~] **Status:** fixed in code (see Progress above); device check pending (G6/G7). Status line synced 2026-09-30. Original: open — confirmed 2026-09-25. `FileHashService.ComputeFolderAsync` enumerates
   with `new DirectoryInfo(root).EnumerateFiles("*", SearchOption.AllDirectories).ToList()`
   (`FileHashService.cs:128`) outside any try, with the default options: inaccessible folders
   throw and reparse points are followed.
@@ -5834,7 +5834,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 
 - [x] **Progress (2026-09-28, fix phase 7):** fixed in 18a16d1 — the Win32 fallback conflict dialog goes topmost on TDN_CREATED and names the full path plus both files' size/date. The operation window (normal path) already did both. Device (Deploy 1.5.0.16, helper killed during the prompt so Shell fails over): the TaskDialog is WS_EX_TOPMOST and shows the full path and both files' size/date. Closed.
 
-- [ ] **Status:** open — confirmed on device 2026-09-25. `ShellConflictDialog` calls
+- [x] **Status:** closed (the Progress entry above records the device check; status line synced 2026-09-30). Original: open — confirmed on device 2026-09-25. `ShellConflictDialog` calls
   `TaskDialogIndirect` with no owner and none of the Z-order handling `PasswordDialog` needed
   (`PasswordDialog.cs:95-110`, T-F192: `SetForegroundWindow` alone is unreliable from this call
   site, fixed with `HWND_TOPMOST`). Same launch (`Archiver.Shell.exe --extract-here` from a
@@ -5872,7 +5872,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 
 - [x] **Progress (2026-09-28, fix phase 7):** fixed in 18a16d1 — the read-back is sized from `GetWindowTextLength` (test with a real edit control, 0-4096 chars; a 256-cap mutant fails), "Show password" restores the control's own mask. Device (Deploy 1.5.0.16, fallback via a killed helper): a ZipCrypto archive with a 300-character password (made with 7za) extracts after pasting it. Closed.
 
-- [ ] **Status:** open — code-confirmed 2026-09-25. `PasswordDialog.OnCommand` reads the edit
+- [x] **Status:** closed (the Progress entry above records the device check; status line synced 2026-09-30). Original: open — code-confirmed 2026-09-25. `PasswordDialog.OnCommand` reads the edit
   control into a fixed `char[256]` (`PasswordDialog.cs:133-135`) and the template sets no
   `EM_LIMITTEXT`/max length, so a longer password (typed or pasted — decryption accepts any
   length, `docs/CLI.md`) is truncated without notice and reported as a wrong password. The App's
@@ -5988,7 +5988,7 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 - **Progress (2026-09-25, fix phase 1):** slice done in Core — `ArchiveResult.Sources` /
   `FullyProcessedSources` (fail-closed) and the cancellation rule; the general outcome and the
   frontend mapping stay for phase 7 (`docs/DECISIONS.md`, T-F260 entry).
-- [ ] **Status:** open — code-confirmed 2026-09-25. `ArchiveResult` is `Success` plus three string
+- [~] **Status:** fixed in code (see Progress above); device check pending (G6/G7). Status line synced 2026-09-30. Original: open — code-confirmed 2026-09-25. `ArchiveResult` is `Success` plus three string
   lists (`ArchiveResult.cs`); it cannot say "cancelled" or "partly done", `SkippedFile.Path` does
   not say whether a source or an entry was skipped, and `CreatedFiles` holds output folders for
   extraction but archives for creation (the App status line still calls them "file(s)").
@@ -6044,7 +6044,7 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   T-F262. Found: T-F274 (Test says "no errors" when nothing was tested); the App's error box is
   English ("Error" + Core reason) in the uk-UA UI, T-F209.
 
-- [ ] **Status:** open — code-confirmed 2026-09-25. Extract, Create and List have routers; Test
+- [~] **Status:** fixed in code (see Progress above); device check pending (G6/G7). Status line synced 2026-09-30. Original: open — code-confirmed 2026-09-25. Extract, Create and List have routers; Test
   has none (`IExtractionRouter.cs:10-17` has only `ExtractAsync`, although
   `docs/ARCHITECTURE.md:73` says it routes `TestAsync`): Shell sends every path to the ZIP engine
   (`Archiver.Shell/Program.cs:292-299`, the root of T-F216), the CLI re-runs format detection
@@ -6530,7 +6530,7 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 
 - [x] **Progress (2026-09-28, fix phase 7):** fixed in 6e0575d — `TestAsync` records a source per archive it read, so a Test that read nothing is `NothingDone` and Shell leaves out "no errors". Device (Deploy 1.5.0.16, uk-UA): Test on sr.tar.gz shows only the skipped line. Closed.
 
-- [ ] **Status:** open — device-confirmed 2026-09-28 (Deploy 1.5.0.15). Explorer/Shell `--test` on
+- [x] **Status:** closed (the Progress entry above records the device check; status line synced 2026-09-30). Original: open — device-confirmed 2026-09-28 (Deploy 1.5.0.15). Explorer/Shell `--test` on
   a selection whose every archive is skipped (a tar-family archive — no test capability — or any
   archive under a blocking Group Policy) shows "Skipped (1): ... blocked by Group Policy" followed
   by "No errors were found in the archive(s)." The second line claims a test that never ran. T-F216
@@ -6818,6 +6818,7 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   original, write it as Stored (the parallel writer already compresses to a buffer or temp file
   before splicing, so the choice is cheap there); check the single-file path too. Tests first:
   random input at every level stays within a few bytes of the original.
+- **Decision (2026-09-30, agent, delegated by the user):** stays P3, next batch, not a v1.6.0 blocker: +5.5% size on incompressible data only, no data or compatibility risk. G7 adds a known-issue line for it to the v1.6.0 CHANGELOG section.
 - **Reported by:** G6 device campaign, 2026-09-30.
 
 ### T-F300 — `CliConflictPromptTests` leaves its temp folders behind (P3)
