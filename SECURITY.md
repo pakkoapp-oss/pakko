@@ -126,6 +126,10 @@ two sandboxed tar.exe readings, and the security pre-scan still runs on tar.exe'
 - **Unsafe names.** An entry name with a `..` segment (either separator) or a rooted/drive-relative
   path is rejected per entry and reported as an error, never normalized (T-F228) — the tar path
   rejects such archives whole.
+- **Deep names.** A name deeper than 256 folder levels counts as an unsafe path too, with the same
+  per-entry (ZIP) and whole-archive (tar) rejection before any file system call (T-F237). Windows
+  parses the whole path again for every new level inside one call that cannot be cancelled, so a
+  deep chain from a small archive costs minutes of CPU (a 60 KB ZIP with 4,000 levels: 91 s).
 - **Owned staging.** Extraction stages into a fresh, uniquely named folder the run creates and
   removes itself, never a fixed `<dest>_tmp` name that could be a user's own folder (T-F227).
 
