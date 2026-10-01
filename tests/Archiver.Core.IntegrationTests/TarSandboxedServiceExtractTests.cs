@@ -262,7 +262,8 @@ public sealed class TarSandboxedServiceExtractTests : IDisposable
 
         await act.Should().ThrowAsync<OperationCanceledException>();
         cts.IsCancellationRequested.Should().BeTrue("the move phase must have been reached");
-        Directory.GetFiles(destDir, "*", SearchOption.AllDirectories).Should().BeEmpty();
+        // T-F309: the destination this run created goes too, not only its files.
+        Directory.Exists(destDir).Should().BeFalse();
     }
 
     // Rename on conflict picks "a (1).txt" by looking at the destination; with staging, an entry

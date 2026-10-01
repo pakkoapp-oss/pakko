@@ -100,10 +100,28 @@ public sealed class TarSandboxedService : ITarService
         // cross a mixed zip+tar-family selection (an accepted, documented scope cut).
         var conflictResolver = new ConflictResolver(options.OnConflict, options.ResolveConflictAsync);
 
+        bool destinationExisted = Directory.Exists(options.DestinationFolder);
         Directory.CreateDirectory(options.DestinationFolder);
+        try
+        {
+            return await ExtractArchivesAsync(options, conflictResolver, new ArchiveResultSink(errors, createdFiles, skippedFiles), progress, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        finally
+        {
+            // T-F309: as ZIP's T-F230 — a run that produced nothing (refused, cancelled) must not
+            // leave behind the empty folder it created. Never one CreatedFiles names.
+            if (!destinationExisted && createdFiles.Count == 0)
+                ZipArchiveService.TryDeleteEmptyDirectory(options.DestinationFolder);
+        }
+    }
 
+    private async Task<ArchiveResult> ExtractArchivesAsync(
+        ExtractOptions options, ConflictResolver conflictResolver, ArchiveResultSink sink,
+        IProgress<ProgressReport>? progress, CancellationToken cancellationToken)
+    {
+        (List<ArchiveError> errors, List<string> createdFiles, List<SkippedFile> skippedFiles) = sink;
         int total = options.ArchivePaths.Count;
-        var sink = new ArchiveResultSink(errors, createdFiles, skippedFiles);
         var sources = new List<SourceResult>();
 
         for (int i = 0; i < total; i++)
@@ -1244,7 +1262,8 @@ public sealed class TarSandboxedService : ITarService
         string tempPath = destPath + ".tmp";
         // T-F171: decided here, created only on the first collision, so the finally below cleans it
         // up even when staging stops partway through.
-        string collisionStagingDir = Path.Combine(Path.GetTempPath(), "PakkoTarStage_" + Guid.NewGuid().ToString("N"));
+        TarCollisionStaging.SweepStale();
+        string collisionStagingDir = TarCollisionStaging.NewDirectoryPath(Path.GetTempPath());
         var stagedJunctions = new List<string>();
 
         try

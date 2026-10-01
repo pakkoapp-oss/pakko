@@ -649,7 +649,7 @@ public sealed class ZipArchiveService : IArchiveService
         }
     }
 
-    private static void TryDeleteEmptyDirectory(string path)
+    internal static void TryDeleteEmptyDirectory(string path)
     {
         try
         {
