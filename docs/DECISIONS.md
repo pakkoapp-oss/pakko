@@ -10628,3 +10628,62 @@ extraction carries on from the central directory and adds a warning.
   user did not choose. A warning channel is a public model change touching `Outcome`, the
   delete-after rules and all three renderers, so it belongs with wave 6's architecture work. The
   user's choice is queued behind that channel, not dropped.
+
+---
+
+## v1.7.0 wave 1 closing checks — Fastest on the hand-rolled writer (2026-10-01)
+
+T-F299 moved every Fastest archive (the App's default level) onto `ParallelSingleArchiveWriter`, so
+the closing review checked what the default and Slow suites do not reach:
+
+- **One file over 4 GiB at Fastest** (4.5 GiB, release `pakko.exe`): random data is written Stored
+  with Zip64 in 91 s, repeating text Deflate in 5.8 s; `7za t` and `pakko t` pass on both. The same
+  random file at Optimal (the `ZipArchive` path) takes 158 s and stays Deflate, 1.4 MB larger than
+  the source — the Stored fallback exists only in the hand-rolled writer, as T-F299 recorded.
+- **Pakko's own output against T-F280's header check and 7-Zip:** Fastest, Optimal and Store, each
+  with and without a password (AES + Stored entries included), an empty file, an empty folder, and
+  a 120-file archive: `7za t` and `pakko t` report nothing, extraction is byte-identical.
+- **Fuzz:** `Category=Fuzz` at 300 iterations reaches `ZipExtendedTime` and
+  `FindLocalHeaderMismatches` through `TestAsync`/`ExtractAsync`; 105 tests green.
+- Tar folders are still created by Pakko at the destination (`CreateFolderEntries`), not moved out
+  of the quarantine, so letting tar.exe create explicit folders there changed no destination ACL.
+
+---
+
+## v1.7.0 wave 2 — tar and sandbox leftovers (2026-10-01)
+
+- **T-F284, member names are escaped, not matched as patterns.** bsdtar reads an extract member as
+  a wildcard pattern (`a[1].txt` took `a1.txt`). Probed on this `tar.exe` (bsdtar 3.8.8): both a
+  backslash escape and a one-character class select exactly the named entry. The class form
+  (`[[]`, `[*]`, `[?]`) was chosen: a backslash is also a path separator on Windows, and the class
+  needs no assumption about how libarchive treats it. `TarSandboxScope.EscapeMemberPattern` is
+  applied at both member sites (the main extraction and T-F171's first-copy pass), so Extract
+  Selected, preview, nested drill-in and the scan all get it. The T-F171 test that pinned the old
+  degraded result (last copy only, reported) now expects the real one.
+- **T-F286, stale staging folders are swept by owner process id.** The collision staging folder is
+  now `PakkoTarStage_<pid>_<guid>`; each tar creation first removes the folders whose process no
+  longer runs: every reparse point inside is deleted as a link, then the folder. A lock file was
+  rejected (a handle to manage, and a window between creating the folder and the lock); a reused
+  process id only keeps a stale folder longer. A folder with no process id in its name (written by
+  v1.6.0) is removed once it is a day old.
+- **T-F309, tar follows ZIP's T-F230 rule.** `TarSandboxedService.ExtractAsync` removes the
+  destination it created when the run produced nothing (refused by the pre-scan, cancelled). A
+  folder that existed before, or that anything was extracted into, stays.
+- **T-F310, gzip only, in-process (user decision 2026-10-01).** For a `.tar.gz` the T-F305 header
+  walk reads through `GZipStream`, forward only: bytes between two headers are decompressed and
+  dropped, nothing is kept or written. It stops undecided (the refusal stays) at 1000 times the
+  archive's size — the existing compression-bomb ratio — or on any gzip error. It runs
+  only in the already-ambiguous branch (tar.exe failed with "unreadable filename" alone), costs one
+  more pass over the archive there, and still only chooses between two sandboxed tar.exe readings.
+  bzip2, xz and zstd have no BCL decoder and keep the refusal; a second sandboxed run that exposes
+  raw names was not pursued (no known tar.exe option gives them).
+- **T-F306, a mixed ZIP + tar extraction is one climb; this reverses T-F142's router rule.** T-F142
+  gave tar no progress when ZIP also ran, to avoid a second 0-100 climb; on the device the bar then
+  sat at 100% for the whole tar part. `ExtractionRouter` now gives each engine a slice of the
+  percent, sized by the archives' sizes on disk (the only measure both have before either runs;
+  by count if no size can be read), and tar's bytes continue after ZIP's total, since
+  `ProgressSpeedSampler` ignores a byte count that goes back. A report with no byte total stays
+  without one. A selection of one kind passes through untouched.
+- **T-F307 moved to wave 5.** A "checking the archive" phase for tar's listing passes needs a phase
+  in `ProgressReport` and a localized status in the App, the operation window and the Win32 dialog
+  (37 locales each) — operation-window work, done together with T-F268 step 6.

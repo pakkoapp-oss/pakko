@@ -273,7 +273,7 @@ repo's convention), every assertion is against real OS behavior:
   `TarCommandLineEncodingTests.cs` (T-F266: best-fit/unrepresentable strings per explicit code
   page, the launcher refuses before creating a process), `TarSandboxScopeLimitMessageTests.cs`
   (T-F239 messages, the memory/CPU limit rules), `TarHeaderNamesTests.cs` (T-F305: the header-byte
-  UTF-8 check, incl. GNU `L`/pax records and malformed headers giving "unknown"), `AppContainerProfileTests.cs` (profile
+  UTF-8 check, incl. GNU `L`/pax records and malformed headers giving "unknown"; T-F310: the same through gzip, with the size limit and a damaged stream), `AppContainerProfileTests.cs` (profile
   create/reuse/delete, using its own throwaway test profile name — never the shared production
   `Pakko.TarSandbox` profile — plus a real forced-failure case: a >64-char profile name makes
   `CreateAppContainerProfile` throw `InvalidOperationException`, the exact failure shape
@@ -301,6 +301,12 @@ repo's convention), every assertion is against real OS behavior:
   `TarSandboxedServiceDuplicateNamesTests.cs` (T-F171: two same-named entries under
   Rename/Skip/Overwrite/Ask, three copies, case-only names, a selected duplicate, a name that is also
   a pattern; creation from two same-named folders and a file plus a folder, a source named `@x.txt`).
+  `TarSandboxedServiceMemberPatternTests.cs` (T-F284: a selected bracket-named entry next to the name
+  its pattern would match; `*`/`?` only in `TarMemberPatternTests.cs`, since Windows cannot hold such
+  a file). `TarSandboxedServiceEmptyDestinationTests.cs` (T-F309: a refused or cancelled run removes
+  the destination it created, never one that existed). `TarCollisionStagingTests.cs` (T-F286: the
+  stale-staging sweep over real junctions, with a fake process-alive check).
+  `TarSandboxedServiceNameEncodingTests.cs` also runs its GNU-magic layouts under gzip (T-F310).
   Pure parts (`FindDuplicateGroups`, `DirectoryJunction`) are in
   `Archiver.Core.Tests/Services/TarDuplicateNamesTests.cs`.
 
